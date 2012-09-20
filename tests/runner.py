@@ -7829,11 +7829,13 @@ elif 'browser' in str(sys.argv):
               var actual = actualCtx.getImageData(0, 0, actualImage.width, actualImage.height).data;
 
               var total = 0;
-              for (var x = 0; x < img.width; x++) {
-                for (var y = 0; y < img.height; y++) {
-                  total += Math.abs(expected[y*img.width*4 + x*4 + 0] - actual[y*img.width*4 + x*4 + 0]);
-                  total += Math.abs(expected[y*img.width*4 + x*4 + 1] - actual[y*img.width*4 + x*4 + 1]);
-                  total += Math.abs(expected[y*img.width*4 + x*4 + 2] - actual[y*img.width*4 + x*4 + 2]);
+              var width = img.width;
+              var height = img.height;
+              for (var x = 0; x < width; x++) {
+                for (var y = 0; y < height; y++) {
+                  total += Math.abs(expected[y*width*4 + x*4 + 0] - actual[y*width*4 + x*4 + 0]);
+                  total += Math.abs(expected[y*width*4 + x*4 + 1] - actual[y*width*4 + x*4 + 1]);
+                  total += Math.abs(expected[y*width*4 + x*4 + 2] - actual[y*width*4 + x*4 + 2]);
                 }
               }
               var wrong = Math.floor(total / (img.width*img.height*3)); // floor, to allow some margin of error for antialiasing
@@ -8805,7 +8807,7 @@ elif 'sanity' in str(sys.argv):
         assert (open(CONFIG_FILE).read() == open(path_from_root('settings.py')).read()), 'Settings should be copied from settings.py'
 
         # Second run, with bad EM_CONFIG
-        for settings in ['blah', 'LLVM_ROOT="blah"; JS_ENGINES=[]; COMPILER_ENGINE=NODE_JS=SPIDERMONKEY_ENGINE=[]']:
+        for settings in ['blah', 'LLVM_ROOT="blarg"; JS_ENGINES=[]; COMPILER_ENGINE=NODE_JS=SPIDERMONKEY_ENGINE=[]']:
           f = open(CONFIG_FILE, 'w')
           f.write(settings)
           f.close()
@@ -8900,6 +8902,15 @@ elif 'sanity' in str(sys.argv):
       output = self.check_working(EMCC)
       self.assertNotContained(SANITY_MESSAGE, output)
       self.assertNotContained(SANITY_FAIL_MESSAGE, output)
+
+      # but with EMCC_DEBUG=1 we should check
+      assert not os.environ.get('EMCC_DEBUG'), 'do not run sanity checks in debug mode!'
+      os.environ['EMCC_DEBUG'] = '1'
+      output = self.check_working(EMCC)
+      self.assertContained(SANITY_MESSAGE, output)
+      del os.environ['EMCC_DEBUG']
+      output = self.check_working(EMCC)
+      self.assertNotContained(SANITY_MESSAGE, output)
 
       # But the test runner should
       output = self.check_working(commands[1])

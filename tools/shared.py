@@ -95,7 +95,7 @@ def check_sanity(force=False):
         print >> sys.stderr, 'FATAL: Node.js (%s) does not seem to work, check the paths in %s' % (NODE_JS, EM_CONFIG)
         sys.exit(0)
 
-    for cmd in [CLANG, LLVM_DIS]:
+    for cmd in [CLANG, LLVM_LINK, LLVM_AR, LLVM_OPT, LLVM_AS, LLVM_DIS, LLVM_NM]:
       if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'): # .exe extension required for Windows
         print >> sys.stderr, 'FATAL: Cannot find %s, check the paths in %s' % (cmd, EM_CONFIG)
         sys.exit(0)
@@ -122,18 +122,28 @@ def check_sanity(force=False):
 
 # Tools/paths
 
+LLVM_ADD_VERSION = os.getenv('LLVM_ADD_VERSION')
+
+# Some distributions ship with multiple llvm versions so they add
+# the version to the binaries, cope with that
+def build_llvm_tool_path(tool):
+  if LLVM_ADD_VERSION:
+    return os.path.join(LLVM_ROOT, tool + "-" + LLVM_ADD_VERSION)
+  else:
+    return os.path.join(LLVM_ROOT, tool)
+
 CLANG_CC=os.path.expanduser(os.path.join(LLVM_ROOT, 'clang'))
 CLANG_CPP=os.path.expanduser(os.path.join(LLVM_ROOT, 'clang++'))
 CLANG=CLANG_CPP
-LLVM_LINK=os.path.join(LLVM_ROOT, 'llvm-link')
-LLVM_AR=os.path.join(LLVM_ROOT, 'llvm-ar')
-LLVM_OPT=os.path.expanduser(os.path.join(LLVM_ROOT, 'opt'))
-LLVM_AS=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-as'))
-LLVM_DIS=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-dis'))
-LLVM_NM=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-nm'))
-LLVM_INTERPRETER=os.path.expanduser(os.path.join(LLVM_ROOT, 'lli'))
-LLVM_COMPILER=os.path.expanduser(os.path.join(LLVM_ROOT, 'llc'))
-LLVM_EXTRACT=os.path.expanduser(os.path.join(LLVM_ROOT, 'llvm-extract'))
+LLVM_LINK=build_llvm_tool_path('llvm-link')
+LLVM_AR=build_llvm_tool_path('llvm-ar')
+LLVM_OPT=os.path.expanduser(build_llvm_tool_path('opt'))
+LLVM_AS=os.path.expanduser(build_llvm_tool_path('llvm-as'))
+LLVM_DIS=os.path.expanduser(build_llvm_tool_path('llvm-dis'))
+LLVM_NM=os.path.expanduser(build_llvm_tool_path('llvm-nm'))
+LLVM_INTERPRETER=os.path.expanduser(build_llvm_tool_path('lli'))
+LLVM_COMPILER=os.path.expanduser(build_llvm_tool_path('llc'))
+LLVM_EXTRACT=os.path.expanduser(build_llvm_tool_path('llvm-extract'))
 COFFEESCRIPT = path_from_root('tools', 'eliminator', 'node_modules', 'coffee-script', 'bin', 'coffee')
 
 EMSCRIPTEN = path_from_root('emscripten.py')
@@ -169,11 +179,11 @@ if os.environ.get('EMCC_DEBUG'):
     EMSCRIPTEN_TEMP_DIR = CANONICAL_TEMP_DIR
     if not os.path.exists(EMSCRIPTEN_TEMP_DIR):
       os.makedirs(EMSCRIPTEN_TEMP_DIR)
-  except:
-    print >> sys.stderr, 'Could not create canonical temp dir. Check definition of TEMP_DIR in ~/.emscripten'
+  except Exception, e:
+    print >> sys.stderr, e, 'Could not create canonical temp dir. Check definition of TEMP_DIR in ~/.emscripten'
 
 if not EMSCRIPTEN_TEMP_DIR:
-  EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_')
+  EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_', dir=TEMP_DIR)
   def clean_temp():
     try_delete(EMSCRIPTEN_TEMP_DIR)
   atexit.register(clean_temp)
@@ -483,7 +493,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       .replace('$EMSCRIPTEN_ROOT', path_from_root('').replace('\\', '/')) \
       .replace('$CFLAGS', env['CFLAGS']) \
       .replace('$CXXFLAGS', env['CFLAGS'])
-    toolchainFile = mkstemp(suffix='.txt')[1]
+    toolchainFile = mkstemp(suffix='.cmaketoolchain.txt', dir=TEMP_DIR)[1]
     open(toolchainFile, 'w').write(CMakeToolchain)
     args.append('-DCMAKE_TOOLCHAIN_FILE=%s' % os.path.abspath(toolchainFile))
     return args
