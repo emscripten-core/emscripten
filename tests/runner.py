@@ -8408,6 +8408,17 @@ elif 'browser' in str(sys.argv):
       shutil.move('water.dds', 'water.donotfindme.dds') # make sure we load from the compressed
       self.btest('s3tc_crunch.c', reference='s3tc_crunch.png', reference_slack=1, args=['--pre-js', 'pre.js'])
 
+    def test_s3tc_crunch_split(self): # load several datafiles/outputs of file packager
+      shutil.copyfile(path_from_root('tests', 'ship.dds'), 'ship.dds')
+      shutil.copyfile(path_from_root('tests', 'bloom.dds'), 'bloom.dds')
+      shutil.copyfile(path_from_root('tests', 'water.dds'), 'water.dds')
+      Popen(['python', FILE_PACKAGER, 'asset_a.data', '--pre-run', '--crunch', '--preload', 'ship.dds', 'bloom.dds'], stdout=open('asset_a.js', 'w')).communicate()
+      Popen(['python', FILE_PACKAGER, 'asset_b.data', '--pre-run', '--crunch', '--preload', 'water.dds'], stdout=open('asset_b.js', 'w')).communicate()
+      shutil.move('ship.dds', 'ship.donotfindme.dds') # make sure we load from the compressed
+      shutil.move('bloom.dds', 'bloom.donotfindme.dds') # make sure we load from the compressed
+      shutil.move('water.dds', 'water.donotfindme.dds') # make sure we load from the compressed
+      self.btest('s3tc_crunch.c', reference='s3tc_crunch.png', reference_slack=1, args=['--pre-js', 'asset_a.js', '--pre-js', 'asset_b.js'])
+
     def test_aniso(self):
       shutil.copyfile(path_from_root('tests', 'water.dds'), 'water.dds')
       self.btest('aniso.c', reference='aniso.png', reference_slack=2, args=['--preload-file', 'water.dds'])

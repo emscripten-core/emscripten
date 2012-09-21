@@ -300,7 +300,7 @@ if has_preloaded:
         curr.response = byteArray.subarray(%d,%d);
         curr.onload();
       ''' % (file_['name'], file_['data_start'], file_['data_end'])
-  use_data += "          Module['removeRunDependency']('datafile');\n"
+  use_data += "          Module['removeRunDependency']('datafile_%s');\n" % data_target
 
   if Compression.on:
     use_data = '''
@@ -328,10 +328,10 @@ if has_preloaded:
       var curr;
       %s
     };
-    Module['addRunDependency']('datafile');
+    Module['addRunDependency']('datafile_%s');
     dataFile.send(null);
     if (Module['setStatus']) Module['setStatus']('Downloading...');
-  ''' % (os.path.basename(Compression.compressed_name(data_target) if Compression.on else data_target), use_data) # use basename because from the browser's point of view, we need to find the datafile in the same dir as the html file
+  ''' % (os.path.basename(Compression.compressed_name(data_target) if Compression.on else data_target), use_data, data_target) # use basename because from the browser's point of view, we need to find the datafile in the same dir as the html file
 
 if pre_run:
   print '''
