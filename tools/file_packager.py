@@ -97,6 +97,10 @@ for arg in sys.argv[1:]:
       Compression.js_name = arg
       in_compress = 0
 
+print '''
+(function() {
+'''
+
 code = '''
 function assert(check, msg) {
   if (!check) throw msg + new Error().stack;
@@ -347,5 +351,9 @@ if crunch:
   Module["postRun"].push(function() {
     decrunchWorker.terminate();
   });
+'''
+
+print '''
+})();
 '''
 
