@@ -8393,7 +8393,7 @@ elif 'browser' in str(sys.argv):
       shutil.move('ship.dds', 'ship.donotfindme.dds') # make sure we load from the compressed
       shutil.move('bloom.dds', 'bloom.donotfindme.dds') # make sure we load from the compressed
       shutil.move('water.dds', 'water.donotfindme.dds') # make sure we load from the compressed
-      self.btest('s3tc_crunch.c', reference='s3tc_crunch.png', args=['--pre-js', 'pre.js'])
+      self.btest('s3tc_crunch.c', reference='s3tc_crunch.png', reference_slack=1, args=['--pre-js', 'pre.js'])
 
     def test_aniso(self):
       shutil.copyfile(path_from_root('tests', 'water.dds'), 'water.dds')
