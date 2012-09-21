@@ -25,7 +25,7 @@ TODO:        You can also provide .crn files yourself, pre-crunched. With this o
              to dds files in the browser, exactly the same as if this tool compressed them.
 '''
 
-import os, sys, shutil
+import os, sys, shutil, random
 
 from shared import Compression, execute, suffix, unsuffixed
 import shared
@@ -130,6 +130,9 @@ def was_seen(name):
   seen[name] = 1
   return False
 data_files = filter(lambda file_: not was_seen(file_['name']), data_files)
+
+# Randomize order, to get around silly fake antivirus positivies
+random.shuffle(data_files)
 
 # Apply plugins
 for file_ in data_files:
