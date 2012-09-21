@@ -2,6 +2,8 @@
 # IMPORTANT: Edit the *copy* with the right paths!
 # Note: If you put paths relative to the home directory, do not forget os.path.expanduser
 
+import os
+
 # this helps projects using emscripten find it
 EMSCRIPTEN_ROOT = os.path.expanduser(os.getenv('EMSCRIPTEN') or '/opt/emscripten')
 LLVM_ROOT = os.path.expanduser(os.getenv('LLVM') or '/usr/bin')
