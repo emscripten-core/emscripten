@@ -743,7 +743,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
     # Run Emscripten
     settings = Settings.serialize()
-    compiler_output = timeout_run(Popen(ENV_PREFIX + ['python', EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE), None, 'Compiling')
+    compiler_output = timeout_run(Popen(ENV_PREFIX + ['python', EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdin=PIPE, stdout=PIPE, stderr=PIPE), None, 'Compiling')
     #print compiler_output
 
     # Detect compilation crashes and errors
