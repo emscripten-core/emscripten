@@ -27,7 +27,13 @@ extern "C" {
 
 #include <unistd.h>
 
-#if defined(_POSIX_THREADS) || defined(EMSCRIPTEN)
+#if EMSCRIPTEN
+  #define _POSIX_THREADS
+  #define _UNIX98_THREAD_MUTEX_ATTRIBUTES
+  #define _POSIX_READER_WRITER_LOCKS
+#endif
+
+#if defined(_POSIX_THREADS)
 
 #include <sys/types.h>
 #include <time.h>
@@ -46,7 +52,7 @@ int	_EXFUN(pthread_mutexattr_getpshared,
 int	_EXFUN(pthread_mutexattr_setpshared,
 		(pthread_mutexattr_t *__attr, int __pshared));
 
-#if defined(_UNIX98_THREAD_MUTEX_ATTRIBUTES) || defined(EMSCRIPTEN)
+#if defined(_UNIX98_THREAD_MUTEX_ATTRIBUTES)
 
 /* Single UNIX Specification 2 Mutex Attributes types */
 
