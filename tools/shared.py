@@ -47,12 +47,15 @@ except Exception, e:
 
 EXPECTED_LLVM_VERSION = (3,1)
 
+def check_clang_version():
+  expected = 'clang version ' + '.'.join(map(str, EXPECTED_LLVM_VERSION))
+  actual = Popen([CLANG, '-v'], stderr=PIPE).communicate()[1].split('\n')[0]
+  if expected not in actual:
+    print >> sys.stderr, 'warning: LLVM version appears incorrect (seeing "%s", expected "%s")' % (actual, expected)
+
 def check_llvm_version():
   try:
-    expected = 'clang version ' + '.'.join(map(str, EXPECTED_LLVM_VERSION))
-    actual = Popen([CLANG, '-v'], stderr=PIPE).communicate()[1].split('\n')[0][0:len(expected)]
-    if expected != actual:
-      print >> sys.stderr, 'warning: LLVM version appears incorrect (seeing "%s", expected "%s")' % (actual, expected)
+    check_clang_version();
   except Exception, e:
     print >> sys.stderr, 'warning: Could not verify LLVM version: %s' % str(e)
 
