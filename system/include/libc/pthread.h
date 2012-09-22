@@ -27,12 +27,6 @@ extern "C" {
 
 #include <unistd.h>
 
-#if EMSCRIPTEN
-  #define _POSIX_THREADS
-  #define _UNIX98_THREAD_MUTEX_ATTRIBUTES
-  #define _POSIX_READER_WRITER_LOCKS
-#endif
-
 #if defined(_POSIX_THREADS)
 
 #include <sys/types.h>
