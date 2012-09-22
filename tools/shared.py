@@ -50,7 +50,7 @@ EXPECTED_LLVM_VERSION = (3,1)
 def check_llvm_version():
   try:
     expected = 'clang version ' + '.'.join(map(str, EXPECTED_LLVM_VERSION))
-    actual = Popen([CLANG, '-v'], stderr=PIPE).communicate()[1].split('\n')[0][0:len(expected)]
+    actual = Popen([CLANG, '-v'], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate()[1].split('\n')[0][0:len(expected)]
     if expected != actual:
       print >> sys.stderr, 'warning: LLVM version appears incorrect (seeing "%s", expected "%s")' % (actual, expected)
   except Exception, e:
@@ -263,7 +263,7 @@ WINDOWS = sys.platform.startswith('win')
 ENV_PREFIX = []
 if not WINDOWS:
   try:
-    assert 'Python' in Popen(['env', 'python', '-V'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    assert 'Python' in Popen(['env', 'python', '-V'], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate()[0]
     ENV_PREFIX = ['env']
   except:
     pass
@@ -332,6 +332,7 @@ def run_js(filename, engine=None, args=[], check_timeout=False, stdout=PIPE, std
   if type(engine) is not list: engine = [engine]
   command = engine + [filename] + (['--'] if 'd8' in engine[0] else []) + args
   if EM_DEBUG: print >> sys.stderr, 'run_js: ' + ' '.join(command)
+  # TODO: On Windows, if stdin,stdout or stderr == PIPE, then all should equal PIPE. How to test for that here?
   return timeout_run(Popen(command, stdout=stdout, stderr=stderr, cwd=cwd), 15*60 if check_timeout else None, 'Execution')
 
 def to_cc(cxx):
@@ -589,7 +590,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
           if not os.path.exists(temp_dir):
             os.makedirs(temp_dir)
           os.chdir(temp_dir)
-          contents = filter(lambda x: len(x) > 0, Popen([LLVM_AR, 't', f], stdout=PIPE).communicate()[0].split('\n'))
+          contents = filter(lambda x: len(x) > 0, Popen([LLVM_AR, 't', f], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate()[0].split('\n'))
           if len(contents) == 0:
             print >> sys.stderr, 'Warning: Archive %s appears to be empty (recommendation: link an .so instead of .a)' % f
           else:
@@ -597,7 +598,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
               dirname = os.path.dirname(content)
               if dirname and not os.path.exists(dirname):
                 os.makedirs(dirname)
-            Popen([LLVM_AR, 'x', f], stdout=PIPE).communicate() # if absolute paths, files will appear there. otherwise, in this directory
+            Popen([LLVM_AR, 'x', f], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate() # if absolute paths, files will appear there. otherwise, in this directory
             contents = map(lambda content: os.path.join(temp_dir, content), contents)
             contents = filter(os.path.exists, map(os.path.abspath, contents))
             needed = False # We add or do not add the entire archive. We let llvm dead code eliminate parts we do not need, instead of
@@ -630,13 +631,13 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
           print >> sys.stderr, 'emcc: warning: removing duplicates in', actual
           for dupe in dupes:
             print >> sys.stderr, 'emcc: warning: removing duplicate', dupe
-            Popen([LLVM_EXTRACT, actual, '-delete', '-glob=' + dupe, '-o', actual], stderr=PIPE).communicate()
-            Popen([LLVM_EXTRACT, actual, '-delete', '-func=' + dupe, '-o', actual], stderr=PIPE).communicate()
-          Popen([LLVM_EXTRACT, actual, '-delete', '-glob=.str', '-o', actual], stderr=PIPE).communicate() # garbage that appears here
+            Popen([LLVM_EXTRACT, actual, '-delete', '-glob=' + dupe, '-o', actual], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate()
+            Popen([LLVM_EXTRACT, actual, '-delete', '-func=' + dupe, '-o', actual], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate()
+          Popen([LLVM_EXTRACT, actual, '-delete', '-glob=.str', '-o', actual], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate() # garbage that appears here
         seen_symbols = seen_symbols.union(symbols.defs)
 
     # Finish link
-    output = Popen([LLVM_LINK] + actual_files + ['-o', target], stdout=PIPE).communicate()[0]
+    output = Popen([LLVM_LINK] + actual_files + ['-o', target], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate()[0]
     assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output + '\nemcc: If you get duplicate symbol errors, try --remove-duplicates'
     if temp_dir:
       try_delete(temp_dir)
@@ -658,7 +659,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
   def llvm_opt(filename, opts):
     if type(opts) is int:
       opts = Building.pick_llvm_opts(opts)
-    output = Popen([LLVM_OPT, filename] + opts + ['-o=' + filename + '.opt.bc'], stdout=PIPE).communicate()[0]
+    output = Popen([LLVM_OPT, filename] + opts + ['-o=' + filename + '.opt.bc'], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate()[0]
     assert os.path.exists(filename + '.opt.bc'), 'Failed to run llvm optimizations: ' + output
     shutil.move(filename + '.opt.bc', filename)
 
@@ -666,7 +667,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
   def llvm_opts(filename): # deprecated version, only for test runner. TODO: remove
     if Building.LLVM_OPTS:
       shutil.move(filename + '.o', filename + '.o.pre')
-      output = Popen([LLVM_OPT, filename + '.o.pre'] + Building.LLVM_OPT_OPTS + ['-o=' + filename + '.o'], stdout=PIPE).communicate()[0]
+      output = Popen([LLVM_OPT, filename + '.o.pre'] + Building.LLVM_OPT_OPTS + ['-o=' + filename + '.o'], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate()[0]
       assert os.path.exists(filename + '.o'), 'Failed to run llvm optimizations: ' + output
 
   @staticmethod
@@ -677,7 +678,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       output_filename = input_filename + '.o.ll'
       input_filename = input_filename + '.o'
     try_delete(output_filename)
-    output = Popen([LLVM_DIS, input_filename, '-o=' + output_filename], stdout=PIPE).communicate()[0]
+    output = Popen([LLVM_DIS, input_filename, '-o=' + output_filename], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate()[0]
     assert os.path.exists(output_filename), 'Could not create .ll file: ' + output
     return output_filename
 
@@ -689,14 +690,17 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       output_filename = input_filename + '.o'
       input_filename = input_filename + '.o.ll'
     try_delete(output_filename)
-    output = Popen([LLVM_AS, input_filename, '-o=' + output_filename], stdout=PIPE).communicate()[0]
+    output = Popen([LLVM_AS, input_filename, '-o=' + output_filename], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate()[0]
     assert os.path.exists(output_filename), 'Could not create bc file: ' + output
     return output_filename
 
   @staticmethod
   def llvm_nm(filename, stdout=PIPE, stderr=None):
     # LLVM binary ==> list of symbols
-    output = Popen([LLVM_NM, filename], stdout=stdout, stderr=stderr).communicate()[0]
+    if stdout == PIPE or stderr == PIPE:
+      stdout = PIPE
+      stderr = PIPE
+    output = Popen([LLVM_NM, filename], stdin=PIPE, stdout=stdout, stderr=stderr).communicate()[0]
     class ret:
       defs = []
       undefs = []
@@ -870,7 +874,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     if type(passes) == str:
       passes = [passes]
     # XXX Disable crankshaft to work around v8 bug 1895
-    output = Popen([NODE_JS, '--nocrankshaft', JS_OPTIMIZER, filename] + passes, stdout=PIPE).communicate()[0]
+    output = Popen([NODE_JS, '--nocrankshaft', JS_OPTIMIZER, filename] + passes, stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate()[0]
     assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + output
     filename += '.jo.js'
     f = open(filename, 'w')
@@ -886,7 +890,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     coffee = path_from_root('tools', 'eliminator', 'node_modules', 'coffee-script', 'bin', 'coffee')
     eliminator = path_from_root('tools', 'eliminator', 'eliminator.coffee')
     input = open(filename, 'r').read()
-    output = Popen([NODE_JS, coffee, eliminator, filename], stdout=PIPE).communicate()[0]
+    output = Popen([NODE_JS, coffee, eliminator, filename], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate()[0]
     assert len(output) > 0, 'Error in eliminator: ' + output
     filename += '.el.js'
     f = open(filename, 'w')
@@ -910,7 +914,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
             '--js', filename, '--js_output_file', filename + '.cc.js']
     if os.environ.get('EMCC_CLOSURE_ARGS'):
       args += shlex.split(os.environ.get('EMCC_CLOSURE_ARGS'))
-    process = Popen(args, stdout=PIPE, stderr=STDOUT)
+    process = Popen(args, stdin=PIPE, stdout=PIPE, stderr=PIPE)
     cc_output = process.communicate()[0]
     if process.returncode != 0 or not os.path.exists(filename + '.cc.js'):
       raise Exception('closure compiler error: ' + cc_output + ' (rc: %d)' % process.returncode)
