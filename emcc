@@ -482,6 +482,8 @@ try:
   def check_bad_eq(arg):
     assert '=' not in arg, 'Invalid parameter (do not use "=" with "--" options)'
 
+  absolute_warning_shown = False
+
   for i in range(len(newargs)):
     if newargs[i].startswith('-O'):
       try:
@@ -572,7 +574,9 @@ try:
       print >> sys.stderr, 'emcc: clearing cache'
       shared.Cache.erase()
     elif newargs[i].startswith(('-I/', '-L/')):
-      print >> sys.stderr, 'emcc: warning: -I or -L of an absolute path encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript)' # Of course an absolute path to a non-system-specific library or header is fine, and you can ignore this warning. The danger are system headers that are e.g. x86 specific and nonportable. The emscripten bundled headers are modified to be portable, local system ones are generally not
+      if not absolute_warning_shown:
+        print >> sys.stderr, 'emcc: warning: -I or -L of an absolute path encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript)' # Of course an absolute path to a non-system-specific library or header is fine, and you can ignore this warning. The danger are system headers that are e.g. x86 specific and nonportable. The emscripten bundled headers are modified to be portable, local system ones are generally not
+        absolute_warning_shown = True
   newargs = [ arg for arg in newargs if arg is not '' ]
 
   if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
