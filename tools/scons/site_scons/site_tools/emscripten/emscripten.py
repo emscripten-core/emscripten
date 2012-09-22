@@ -21,6 +21,8 @@ def generate(env, emscripten_path=None, **kw):
   		
   		emscripten_path = EMSCRIPTEN_ROOT
 
+	env['EMSCRIPTEN_ROOT'] = emscripten_path
+	
 	try:
 		emscPath = emscripten_path.abspath
 	except:
