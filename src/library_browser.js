@@ -255,6 +255,21 @@ mergeInto(LibraryManager.library, {
       }
       return ctx;
     },
+    setCanvasSize: function(canvas, width, height) {
+      canvas.width = width;
+      canvas.height = height;
+    },
+    setCanvasTitle: function(canvas, title) {
+      document.title = title;
+    },
+
+    getCanvas: function() {
+      return Module['canvas'];
+    },
+
+    createCanvas: function() {
+      return document.createElement('canvas');
+    },
 
     requestFullScreen: function() {
       var canvas = Module['canvas'];
@@ -494,8 +509,7 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_set_canvas_size: function(width, height) {
-    Module['canvas'].width = width;
-    Module['canvas'].height = height;
+    Browser.setCanvasSize(Browser.getCanvas(), width, height);
   },
 
   emscripten_get_now: function() {

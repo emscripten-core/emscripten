@@ -259,7 +259,7 @@ var LibraryManager = {
   load: function() {
     assert(!this.library);
 
-    var libraries = ['library.js', 'library_browser.js', 'library_sdl.js', 'library_gl.js', 'library_glut.js', 'library_xlib.js', 'library_egl.js', 'library_gc.js'].concat(additionalLibraries);
+    var libraries = ['library.js', 'library_browser.js', 'library_sdl.js', 'library_gl.js', 'library_es.js', 'library_glut.js', 'library_xlib.js', 'library_egl.js', 'library_gc.js'].concat(additionalLibraries);
     for (var i = 0; i < libraries.length; i++) {
       eval(processMacros(preprocess(read(libraries[i]))));
     }
