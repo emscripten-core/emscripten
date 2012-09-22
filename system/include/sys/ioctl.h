@@ -8,6 +8,9 @@ extern "C" {
 #define SIOCGIFCONF 1 // bogus value
 #define SIOCGIFNETMASK 2 // bogus value
 
+#define TIOCGSIZE 80 // bogus
+#define TIOCGWINSZ 80 // bogus
+
 int ioctl(int d, int request, ...);
 
 #define SO_RCVTIMEO 1000
