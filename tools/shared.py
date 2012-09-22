@@ -20,7 +20,7 @@ if '\n' in EM_CONFIG:
 else:
   CONFIG_FILE = os.path.expanduser(EM_CONFIG)
   if not os.path.exists(CONFIG_FILE):
-    shutil.copy(path_from_root('settings.py'), CONFIG_FILE)
+    shutil.copy(path_from_root('tools', 'settings_template_readonly.py'), CONFIG_FILE)
     print >> sys.stderr, '''
 ==============================================================================
 Welcome to Emscripten!
@@ -103,7 +103,7 @@ def check_sanity(force=False):
     try:
       subprocess.call([JAVA, '-version'], stdout=PIPE, stderr=PIPE)
     except:
-      print >> sys.stderr, 'WARNING: java does not seem to exist, required for closure compiler. -O2 and above will fail. You need to define JAVA in ~/.emscripten (see settings.py)'
+      print >> sys.stderr, 'WARNING: java does not seem to exist, required for closure compiler. -O2 and above will fail. You need to define JAVA in ~/.emscripten'
 
     if not os.path.exists(CLOSURE_COMPILER):
       print >> sys.stderr, 'WARNING: Closure compiler (%s) does not exist, check the paths in %s. -O2 and above will fail' % (CLOSURE_COMPILER, EM_CONFIG)

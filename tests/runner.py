@@ -4,8 +4,6 @@
 '''
 Simple test runner
 
-See settings.py file for options&params. Edit as needed.
-
 These tests can be run in parallel using nose, for example
 
   nosetests --processes=4 -v -s tests/runner.py
@@ -62,7 +60,7 @@ from tools.shared import *
 try:
   assert COMPILER_OPTS != None
 except:
-  raise Exception('Cannot find "COMPILER_OPTS" definition. Is %s set up properly? You may need to copy the template from settings.py into it.' % EM_CONFIG)
+  raise Exception('Cannot find "COMPILER_OPTS" definition. Is %s set up properly? You may need to copy the template settings file into it.' % EM_CONFIG)
 
 # Core test runner class, shared between normal tests and benchmarks
 
@@ -356,7 +354,7 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
         if Settings.USE_TYPED_ARRAYS:
           js_engines = filter(lambda engine: engine != V8_ENGINE, js_engines) # V8 issue 1822
         js_engines = filter(lambda engine: engine not in self.banned_js_engines, js_engines)
-        if len(js_engines) == 0: return self.skip('No JS engine present to run this test with. Check %s and settings.py and the paths therein.' % EM_CONFIG)
+        if len(js_engines) == 0: return self.skip('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
         for engine in js_engines:
           js_output = self.run_generated_code(engine, filename + '.o.js', args)
           if output_nicerizer is not None:
@@ -8828,7 +8826,7 @@ elif 'sanity' in str(sys.argv):
         self.assertContained('make sure LLVM_ROOT and NODE_JS are correct', output)
         self.assertContained('This command will now exit. When you are done editing those paths, re-run it.', output)
         assert output.split()[-1].endswith('===='), 'We should have stopped: ' + output
-        assert (open(CONFIG_FILE).read() == open(path_from_root('settings.py')).read()), 'Settings should be copied from settings.py'
+        assert (open(CONFIG_FILE).read() == open(path_from_root('tools', 'settings_template_readonly.py')).read()), 'Settings should be copied from tools/settings_template_readonly.py'
 
         # Second run, with bad EM_CONFIG
         for settings in ['blah', 'LLVM_ROOT="blarg"; JS_ENGINES=[]; COMPILER_ENGINE=NODE_JS=SPIDERMONKEY_ENGINE=[]']:
