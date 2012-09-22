@@ -4,6 +4,11 @@ to work with that.
 
 This is called by emcc. You can also call it yourself.
 
+You can split your files into "asset bundles", and create each bundle separately
+with this tool. Then just include the generated js for each and they will load
+the data and prepare it accordingly. This allows you to share assets and reduce
+data downloads.
+
 Usage:
 
   file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--compress COMPRESSION_DATA] [--pre-run] [--crunch[=X]]
