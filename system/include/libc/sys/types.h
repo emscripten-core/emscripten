@@ -360,7 +360,7 @@ typedef struct {
 
 #endif /* !defined(__XMK__) */
 
-#if defined(_POSIX_THREAD_PROCESS_SHARED)
+#if defined(_POSIX_THREAD_PROCESS_SHARED) || defined(EMSCRIPTEN)
 /* NOTE: P1003.1c/D10, p. 81 defines following values for process_shared.  */
 
 #define PTHREAD_PROCESS_PRIVATE 0 /* visible within only the creating process */
