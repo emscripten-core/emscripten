@@ -8275,19 +8275,21 @@ elif 'browser' in str(sys.argv):
         os.path.join('Chapter_10', 'MultiTexture', 'CH10_MultiTexture.bc'),
         os.path.join('Chapter_13', 'ParticleSystem', 'CH13_ParticleSystem.bc'),
       ], configure=None)
+      def book_path(*pathelems):
+        return path_from_root('tests', 'glbook', *pathelems)
       for program in programs:
         print program
         basename = os.path.basename(program)
         args = []
         if basename == 'CH10_MultiTexture.bc':
-          shutil.copyfile(path_from_root('tests', 'glbook', 'Chapter_10', 'MultiTexture', 'basemap.tga'), os.path.join(self.get_dir(), 'basemap.tga'))
-          shutil.copyfile(path_from_root('tests', 'glbook', 'Chapter_10', 'MultiTexture', 'lightmap.tga'), os.path.join(self.get_dir(), 'lightmap.tga'))
+          shutil.copyfile(book_path('Chapter_10', 'MultiTexture', 'basemap.tga'), os.path.join(self.get_dir(), 'basemap.tga'))
+          shutil.copyfile(book_path('Chapter_10', 'MultiTexture', 'lightmap.tga'), os.path.join(self.get_dir(), 'lightmap.tga'))
           args = ['--preload-file', 'basemap.tga', '--preload-file', 'lightmap.tga']
         elif basename == 'CH13_ParticleSystem.bc':
-          shutil.copyfile(path_from_root('tests', 'glbook', 'Chapter_13', 'ParticleSystem', 'smoke.tga'), os.path.join(self.get_dir(), 'smoke.tga'))
+          shutil.copyfile(book_path('Chapter_13', 'ParticleSystem', 'smoke.tga'), os.path.join(self.get_dir(), 'smoke.tga'))
           args = ['--preload-file', 'smoke.tga', '-O2'] # test optimizations and closure here as well for more coverage
 
-        self.reftest(path_from_root('tests', 'glbook', basename.replace('.bc', '.png')))
+        self.reftest(book_path(basename.replace('.bc', '.png')))
         Popen(['python', EMCC, program, '-o', 'program.html', '--pre-js', 'reftest.js'] + args).communicate()
         self.run_browser('program.html', '', '/report_result?0')
 
