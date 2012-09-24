@@ -46,6 +46,8 @@ CRUNCH_OUTPUT_SUFFIX = '.crn'
 
 DDS_HEADER_SIZE = 128
 
+AV_WORKAROUND = 0 # Set to 1 to randomize file order and add some padding, to work around silly av false positives
+
 data_files = []
 in_preload = False
 in_embed = False
@@ -136,8 +138,8 @@ def was_seen(name):
   return False
 data_files = filter(lambda file_: not was_seen(file_['name']), data_files)
 
-# Randomize order, to get around silly fake antivirus positivies
-random.shuffle(data_files)
+if AV_WORKAROUND:
+  random.shuffle(data_files)
 
 # Apply plugins
 for file_ in data_files:
@@ -222,6 +224,7 @@ if has_preloaded:
     file_['data_start'] = start
     curr = open(file_['localname'], 'rb').read()
     file_['data_end'] = start + len(curr)
+    if AV_WORKAROUND: curr += '\x00'
     print >> sys.stderr, 'bundling', file_['name'], file_['localname'], file_['data_start'], file_['data_end']
     start += len(curr)
     data.write(curr)
