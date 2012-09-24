@@ -318,18 +318,46 @@ if has_preloaded:
       });
 ''' % use_data
 
-  code += '''
+  code += r'''
+    if (!Module.expectedDataFileDownloads) {
+      Module.expectedDataFileDownloads = 0;
+      Module.finishedDataFileDownloads = 0;
+    }
+    Module.expectedDataFileDownloads++;
+
     var dataFile = new XMLHttpRequest();
     dataFile.onprogress = function(event) {
+      var url = '%s';
       if (event.loaded && event.total) {
-        Module.setStatus('Downloading data... (' + event.loaded + '/' + event.total + ')');
-      } else {
+        if (!dataFile.addedTotal) {
+          dataFile.addedTotal = true;
+          if (!Module.dataFileDownloads) Module.dataFileDownloads = {};
+          Module.dataFileDownloads[url] = {
+            loaded: event.loaded,
+            total: event.total
+          };
+        } else {
+          Module.dataFileDownloads[url].loaded = event.loaded;
+        }
+        var total = 0;
+        var loaded = 0;
+        var num = 0;
+        for (var download in Module.dataFileDownloads) {
+          var data = Module.dataFileDownloads[download];
+          total += data.total;
+          loaded += data.loaded;
+          num++;
+        }
+        total = Math.ceil(total * Module.expectedDataFileDownloads/num);
+        Module.setStatus('Downloading data... (' + loaded + '/' + total + ')');
+      } else if (!Module.dataFileDownloads) {
         Module.setStatus('Downloading data...');
       }
     }
     dataFile.open('GET', '%s', true);
     dataFile.responseType = 'arraybuffer';
     dataFile.onload = function() {
+      Module.finishedDataFileDownloads++;
       var arrayBuffer = dataFile.response;
       assert(arrayBuffer, 'Loading data file failed.');
       var byteArray = new Uint8Array(arrayBuffer);
@@ -339,7 +367,7 @@ if has_preloaded:
     Module['addRunDependency']('datafile_%s');
     dataFile.send(null);
     if (Module['setStatus']) Module['setStatus']('Downloading...');
-  ''' % (os.path.basename(Compression.compressed_name(data_target) if Compression.on else data_target), use_data, data_target) # use basename because from the browser's point of view, we need to find the datafile in the same dir as the html file
+  ''' % (data_target, os.path.basename(Compression.compressed_name(data_target) if Compression.on else data_target), use_data, data_target) # use basename because from the browser's point of view, we need to find the datafile in the same dir as the html file
 
 if pre_run:
   print '''
