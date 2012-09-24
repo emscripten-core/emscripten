@@ -550,9 +550,16 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     if configure: # Useful in debugging sometimes to comment this out (and the lines below up to and including the |link| call)
       Building.configure(configure + configure_args, stdout=open(os.path.join(project_dir, 'configure_'), 'w'),
                                                      stderr=open(os.path.join(project_dir, 'configure_err'), 'w'), env=env)
-    for i in range(2): # workaround for some build systems that need to be run twice to succeed (e.g. poppler)
-      Building.make(make + make_args, stdout=open(os.path.join(project_dir, 'make_' + str(i)), 'w'),
-                                      stderr=open(os.path.join(project_dir, 'make_err' + str(i)), 'w'), env=env)
+    def openMakeOut(i, mode='r'):
+      return open(os.path.join(project_dir, 'make_' + str(i)), mode)
+    
+    def openMakeErr(i, mode='r'):
+      return open(os.path.join(project_dir, 'make_err' + str(i)), mode)
+    
+    for i in range(2): # FIXME: Sad workaround for some build systems that need to be run twice to succeed (e.g. poppler)
+      with openMakeOut(i, 'w') as make_out, openMakeErr(i, 'w') as make_err:
+        Building.make(make + make_args, stdout=make_out,
+                                        stderr=make_err, env=env)
       try:
         if cache is not None:
           cache[cache_name] = []
@@ -561,7 +568,12 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
             cache[cache_name].append((basename, open(f, 'rb').read()))
         break
       except:
-        if i > 0: raise Exception('could not build library ' + name)
+        if i > 0:
+          # Due to the ugly hack above our best guess is to output the first run
+          with openMakeErr(0) as ferr:
+            for line in ferr:
+              sys.stderr.write(line)
+          raise Exception('could not build library ' + name)
     if old_dir:
       os.chdir(old_dir)
     return generated_libs
