@@ -558,9 +558,10 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       return open(os.path.join(project_dir, 'make_err' + str(i)), mode)
     
     for i in range(2): # FIXME: Sad workaround for some build systems that need to be run twice to succeed (e.g. poppler)
-      with open_make_out(i, 'w') as make_out, open_make_err(i, 'w') as make_err:
-        Building.make(make + make_args, stdout=make_out,
-                                        stderr=make_err, env=env)
+      with open_make_out(i, 'w') as make_out:
+        with open_make_err(i, 'w') as make_err:
+          Building.make(make + make_args, stdout=make_out,
+                                          stderr=make_err, env=env)
       try:
         if cache is not None:
           cache[cache_name] = []
