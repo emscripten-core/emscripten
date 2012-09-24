@@ -513,6 +513,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
   def make(args, stdout=None, stderr=None, env=None):
     if env is None:
       env = Building.get_building_env()
+    #args += ['VERBOSE=1']
     Popen(args, stdout=stdout, stderr=stderr, env=env).communicate()
 
   @staticmethod
