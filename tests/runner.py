@@ -8876,7 +8876,7 @@ elif 'sanity' in str(sys.argv):
       restore()
 
       # Clang should report the version number we expect, and emcc should not warn
-      assert ('clang version ' + '.'.join(map(str, EXPECTED_LLVM_VERSION))) in Popen([CLANG, '-v'], stderr=PIPE).communicate()[1]
+      assert check_clang_version()
       output = self.check_working(EMCC)
       assert LLVM_WARNING not in output, output
 
