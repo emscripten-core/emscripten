@@ -30,7 +30,7 @@ assert left_result != right_result
 
 # Calculate diff chunks
 print 'diffing'
-diff = Popen(['diff', '-U', '5', 'left', 'right'], stdout=PIPE).communicate()[0].split('\n')
+diff = Popen(['diff', '-U', '5', 'left', 'right'], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate()[0].split('\n')
 pre_diff = diff[:2]
 diff = diff[2:]
 
@@ -59,7 +59,7 @@ for mid in range(high):
   difff.write(curr_diff)
   difff.close()
   shutil.copy('left', 'middle')
-  Popen(['patch', 'middle', 'diff.diff'], stdout=PIPE, stderr=PIPE).communicate()
+  Popen(['patch', 'middle', 'diff.diff'], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate()
   result = run_js('middle', stderr=PIPE)
   if result == left_result:
     print 'found where it starts to work: %d' % mid
@@ -73,7 +73,7 @@ c.write(critical)
 c.close()
 print 'sanity check'
 shutil.copy('middle', 'middle2')
-Popen(['patch', 'middle2', 'critical.diff'], stdout=PIPE, stderr=PIPE).communicate()
+Popen(['patch', 'middle2', 'critical.diff'], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate()
 assert run_js('middle', stderr=PIPE) == left_result, 'middle was expected %s' % left_result
 assert run_js('middle2', stderr=PIPE) != left_result, 'middle2 was expected NOT %s' % left_result
 

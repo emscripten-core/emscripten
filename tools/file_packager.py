@@ -181,7 +181,7 @@ if crunch:
 
       # guess at format. this lets us tell crunch to not try to be clever and use odd formats like DXT5_AGBR
       try:
-        format = Popen(['file', file_['name']], stdout=PIPE).communicate()[0]
+        format = Popen(['file', file_['name']], stdin=PIPE, stdout=PIPE, stderr=PIPE).communicate()[0]
         if 'DXT5' in format:
           format = ['-dxt5']
         elif 'DXT1' in format:
