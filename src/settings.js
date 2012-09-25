@@ -198,6 +198,8 @@ var INCLUDE_FULL_LIBRARY = 0; // Whether to include the whole library rather tha
                               // dynamically loading modules that make use of runtime
                               // library functions that are not used in the main module.
 
+var SHELL_FILE = null; // set this to a string to override the shell file used
+
 var SHOW_LABELS = 0; // Show labels in the generated code
 
 var BUILD_AS_SHARED_LIB = 0; // Whether to build the code as a shared library, which

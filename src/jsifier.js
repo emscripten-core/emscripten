@@ -32,7 +32,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     // else. This lets us not hold any strings in memory, we simply print
     // things out as they are ready.
 
-    var shellFile = BUILD_AS_SHARED_LIB ? 'shell_sharedlib.js' : 'shell.js';
+    var shellFile = SHELL_FILE ? SHELL_FILE : (BUILD_AS_SHARED_LIB ? 'shell_sharedlib.js' : 'shell.js');
     var shellParts = read(shellFile).split('{{BODY}}');
     print(shellParts[0]);
     var preFile = BUILD_AS_SHARED_LIB ? 'preamble_sharedlib.js' : 'preamble.js';
