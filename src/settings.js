@@ -198,6 +198,8 @@ var INCLUDE_FULL_LIBRARY = 0; // Whether to include the whole library rather tha
 
 var SHOW_LABELS = 0; // Show labels in the generated code
 
+var PRINT_SPLIT_FILE_MARKER = 0; // Prints markers in Javascript generation to split the file later on. See emcc --split option.
+
 var BUILD_AS_SHARED_LIB = 0; // Whether to build the code as a shared library, which
                              // must be loaded dynamically using dlopen().
                              // 0 here means this is not a shared lib: It is a main file.

@@ -256,6 +256,12 @@ Options that are modified or new in %s include:
                               will not minify the code (closure does
                               that)
 
+  --split <size>           Splits the resulting javascript file in pieces
+                           of <size> bytes with the suffix ".partxxxxx.js"
+                           and a main file with the suffix ".base.js".
+                           Splitting only works when generating Javascript
+                           (target -o <name>.js).
+                           
   --ignore-dynamic-linking Normally emcc will treat dynamic linking like
                            static linking, by linking in the code from
                            the dynamic library. This fails if the same
@@ -437,6 +443,7 @@ try:
   pre_js = ''
   post_js = ''
   minify_whitespace = None
+  split_js_file = None
   preload_files = []
   embed_files = []
   compression = None
@@ -491,6 +498,11 @@ try:
       minify_whitespace = int(newargs[i+1])
       newargs[i] = ''
       newargs[i+1] = ''
+    elif newargs[i].startswith('--split'):
+      check_bad_eq(newargs[i])
+      split_js_file = int(newargs[i+1])
+      newargs[i] = ''
+      newargs[i+1] = ''      
     elif newargs[i].startswith('--embed-file'):
       check_bad_eq(newargs[i])
       embed_files.append(newargs[i+1])
@@ -564,6 +576,9 @@ try:
       newargs[i] = ''
       newargs[i+1] = ''
   newargs = [ arg for arg in newargs if arg is not '' ]
+
+  if split_js_file:
+      settings_changes.append("PRINT_SPLIT_FILE_MARKER=1")
 
   # Find input files
 
@@ -1035,8 +1050,12 @@ try:
 
     html.close()
   else:
-    # copy final JS to output
-    shutil.move(final, target)
+    if split_js_file:
+        from tools.split import split_javascript_file
+        split_javascript_file(final, unsuffixed(target), split_js_file)
+    else:
+        # copy final JS to output
+        shutil.move(final, target)
 
 finally:
   if not TEMP_DIR:
