@@ -4850,6 +4850,7 @@ LibraryManager.library = {
   // RTTI hacks for exception handling, defining type_infos for common types.
   // The values are dummies. We simply use the addresses of these statically
   // allocated variables as unique identifiers.
+  _ZTIb: [0], // bool
   _ZTIi: [0], // int
   _ZTIj: [0], // unsigned int
   _ZTIl: [0], // long
@@ -4863,7 +4864,7 @@ LibraryManager.library = {
   _ZTIa: [0], // signed char
   _ZTIh: [0], // unsigned char
   _ZTIs: [0], // short
-  _ZTIt: [0], // signed short
+  _ZTIt: [0], // unsigned short
   _ZTIv: [0], // void
   _ZTIPv: [0], // void*
 
