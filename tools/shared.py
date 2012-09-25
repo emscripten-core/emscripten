@@ -50,8 +50,12 @@ EXPECTED_LLVM_VERSION = (3,1)
 def check_clang_version():
   expected = 'clang version ' + '.'.join(map(str, EXPECTED_LLVM_VERSION))
   actual = Popen([CLANG, '-v'], stderr=PIPE).communicate()[1].split('\n')[0]
-  if expected not in actual:
-    print >> sys.stderr, 'warning: LLVM version appears incorrect (seeing "%s", expected "%s")' % (actual, expected)
+  if expected in actual:
+    return True
+  
+  print >> sys.stderr, 'warning: LLVM version appears incorrect (seeing "%s", expected "%s")' % (actual, expected)
+  return False
+
 
 def check_llvm_version():
   try:
