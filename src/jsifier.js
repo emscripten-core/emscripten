@@ -522,6 +522,10 @@ function JSify(data, functionsOnly, givenFunctions) {
         func.JS += ' */\n';
       }
 
+      if (PRINT_SPLIT_FILE_MARKER) {
+          func.JS += '//FUNCTION_BEGIN_MARKER\n'
+      }
+      
       func.JS += 'function ' + func.ident + '(' + paramIdents.join(', ') + ') {\n';
 
       if (PROFILE) {
@@ -653,6 +657,11 @@ function JSify(data, functionsOnly, givenFunctions) {
         func.JS += '  return' + (func.returnType !== 'void' ? ' null' : '') + ';\n';
       }
       func.JS += '}\n';
+      
+      if (PRINT_SPLIT_FILE_MARKER) {
+          func.JS += '//FUNCTION_END_MARKER\n'
+      }
+      
       if (func.ident in EXPORTED_FUNCTIONS) {
         func.JS += 'Module["' + func.ident + '"] = ' + func.ident + ';';
       }
