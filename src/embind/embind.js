@@ -4,6 +4,16 @@
 /*global Pointer_stringify, writeStringToMemory*/
 /*global __emval_register, _emval_handle_array, __emval_decref*/
 
+function createNamedFunction(name, body) {
+    /*jshint evil:true*/
+    return new Function(
+        "body",
+        "return function " + name + "() {\n" +
+        "    return body.apply(this, arguments);\n" +
+        "};\n"
+    )(body);
+}
+
 function _embind_repr(v) {
     var t = typeof v;
     if (t === 'object' || t === 'array' || t === 'function') {
@@ -352,7 +362,7 @@ function __embind_register_class(
     name = Pointer_stringify(name);
     destructor = FUNCTION_TABLE[destructor];
 
-    var Handle = IMVU.createNamedFunction(name, function(ptr) {
+    var Handle = createNamedFunction(name, function(ptr) {
         this.count = {value: 1};
         this.ptr = ptr;
     });
@@ -388,7 +398,7 @@ function __embind_register_class(
         this.ptr = undefined;
     };
 
-    var constructor = IMVU.createNamedFunction(name, function() {
+    var constructor = createNamedFunction(name, function() {
         var body = constructor.body;
         body.apply(this, arguments);
     });
@@ -580,7 +590,7 @@ function __embind_register_enum_value(
 
     var Value = Object.create(enumType.constructor.prototype, {
         value: {value: enumValue},
-        constructor: {value: IMVU.createNamedFunction(enumType.name + '_' + name, function() {})},
+        constructor: {value: createNamedFunction(enumType.name + '_' + name, function() {})},
     });
     Enum.values[enumValue] = Value;
     Enum[name] = Value;
