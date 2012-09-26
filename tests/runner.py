@@ -7707,6 +7707,10 @@ fscanfed: 10 - hello
 elif 'browser' in str(sys.argv):
   # Browser tests.
 
+  print
+  print 'Running the browser tests. Make sure the browser allows popups from localhost.'
+  print
+
   # Run a server and a web page. When a test runs, we tell the server about it,
   # which tells the web page, which then opens a window with the test. Doing
   # it this way then allows the page to close() itself when done.
