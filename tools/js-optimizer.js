@@ -26,6 +26,16 @@ if (ENVIRONMENT_IS_NODE) {
   var nodeFS = require('fs');
   var nodePath = require('path');
 
+  if (!nodeFS.existsSync) {
+    nodeFS.existsSync = function(path) {
+      try {
+        return !!nodeFS.readFileSync(path);
+      } catch(e) {
+        return false;
+      }
+    }
+  }
+
   function find(filename) {
     var prefixes = [nodePath.join(__dirname, '..', 'src'), process.cwd()];
     for (var i = 0; i < prefixes.length; ++i) {
