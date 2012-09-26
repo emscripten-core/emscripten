@@ -20,7 +20,7 @@ if '\n' in EM_CONFIG:
 else:
   CONFIG_FILE = os.path.expanduser(EM_CONFIG)
   if not os.path.exists(CONFIG_FILE):
-    shutil.copy(path_from_root('settings.py'), CONFIG_FILE)
+    shutil.copy(path_from_root('tools', 'settings_template_readonly.py'), CONFIG_FILE)
     print >> sys.stderr, '''
 ==============================================================================
 Welcome to Emscripten!
@@ -103,7 +103,7 @@ def check_sanity(force=False):
     try:
       subprocess.call([JAVA, '-version'], stdout=PIPE, stderr=PIPE)
     except:
-      print >> sys.stderr, 'WARNING: java does not seem to exist, required for closure compiler. -O2 and above will fail. You need to define JAVA in ~/.emscripten (see settings.py)'
+      print >> sys.stderr, 'WARNING: java does not seem to exist, required for closure compiler. -O2 and above will fail. You need to define JAVA in ~/.emscripten'
 
     if not os.path.exists(CLOSURE_COMPILER):
       print >> sys.stderr, 'WARNING: Closure compiler (%s) does not exist, check the paths in %s. -O2 and above will fail' % (CLOSURE_COMPILER, EM_CONFIG)
@@ -235,6 +235,7 @@ if USE_EMSDK:
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'bsd'), # posix stuff
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'libc'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'libcxx'),
+    '-Xclang', '-isystem' + path_from_root('system', 'lib', 'libcxxabi', 'include'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'gfx'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'net'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'SDL'),
@@ -512,6 +513,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
   def make(args, stdout=None, stderr=None, env=None):
     if env is None:
       env = Building.get_building_env()
+    #args += ['VERBOSE=1']
     Popen(args, stdout=stdout, stderr=stderr, env=env).communicate()
 
   @staticmethod
@@ -549,9 +551,17 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     if configure: # Useful in debugging sometimes to comment this out (and the lines below up to and including the |link| call)
       Building.configure(configure + configure_args, stdout=open(os.path.join(project_dir, 'configure_'), 'w'),
                                                      stderr=open(os.path.join(project_dir, 'configure_err'), 'w'), env=env)
-    for i in range(2): # workaround for some build systems that need to be run twice to succeed (e.g. poppler)
-      Building.make(make + make_args, stdout=open(os.path.join(project_dir, 'make_' + str(i)), 'w'),
-                                      stderr=open(os.path.join(project_dir, 'make_err' + str(i)), 'w'), env=env)
+    def open_make_out(i, mode='r'):
+      return open(os.path.join(project_dir, 'make_' + str(i)), mode)
+    
+    def open_make_err(i, mode='r'):
+      return open(os.path.join(project_dir, 'make_err' + str(i)), mode)
+    
+    for i in range(2): # FIXME: Sad workaround for some build systems that need to be run twice to succeed (e.g. poppler)
+      with open_make_out(i, 'w') as make_out:
+        with open_make_err(i, 'w') as make_err:
+          Building.make(make + make_args, stdout=make_out,
+                                          stderr=make_err, env=env)
       try:
         if cache is not None:
           cache[cache_name] = []
@@ -560,7 +570,12 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
             cache[cache_name].append((basename, open(f, 'rb').read()))
         break
       except:
-        if i > 0: raise Exception('could not build library ' + name)
+        if i > 0:
+          # Due to the ugly hack above our best guess is to output the first run
+          with open_make_err(0) as ferr:
+            for line in ferr:
+              sys.stderr.write(line)
+          raise Exception('could not build library ' + name)
     if old_dir:
       os.chdir(old_dir)
     return generated_libs

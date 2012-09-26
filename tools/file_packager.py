@@ -4,6 +4,11 @@ to work with that.
 
 This is called by emcc. You can also call it yourself.
 
+You can split your files into "asset bundles", and create each bundle separately
+with this tool. Then just include the generated js for each and they will load
+the data and prepare it accordingly. This allows you to share assets and reduce
+data downloads.
+
 Usage:
 
   file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--compress COMPRESSION_DATA] [--pre-run] [--crunch[=X]]
@@ -25,7 +30,7 @@ TODO:        You can also provide .crn files yourself, pre-crunched. With this o
              to dds files in the browser, exactly the same as if this tool compressed them.
 '''
 
-import os, sys, shutil
+import os, sys, shutil, random
 
 from shared import Compression, execute, suffix, unsuffixed
 import shared
@@ -40,6 +45,8 @@ CRUNCH_INPUT_SUFFIX = '.dds'
 CRUNCH_OUTPUT_SUFFIX = '.crn'
 
 DDS_HEADER_SIZE = 128
+
+AV_WORKAROUND = 0 # Set to 1 to randomize file order and add some padding, to work around silly av false positives
 
 data_files = []
 in_preload = False
@@ -97,6 +104,10 @@ for arg in sys.argv[1:]:
       Compression.js_name = arg
       in_compress = 0
 
+print '''
+(function() {
+'''
+
 code = '''
 function assert(check, msg) {
   if (!check) throw msg + new Error().stack;
@@ -126,6 +137,9 @@ def was_seen(name):
   seen[name] = 1
   return False
 data_files = filter(lambda file_: not was_seen(file_['name']), data_files)
+
+if AV_WORKAROUND:
+  random.shuffle(data_files)
 
 # Apply plugins
 for file_ in data_files:
@@ -199,7 +213,7 @@ for file_ in data_files:
     for i in range(len(parts)):
       partial = '/'.join(parts[:i+1])
       if partial not in partial_dirs:
-        code += '''Module['FS_createFolder']('/%s', '%s', true, true);\n''' % ('/'.join(parts[:i]), parts[i])
+        code += '''Module['FS_createPath']('/%s', '%s', true, true);\n''' % ('/'.join(parts[:i]), parts[i])
         partial_dirs.append(partial)
 
 if has_preloaded:
@@ -210,6 +224,7 @@ if has_preloaded:
     file_['data_start'] = start
     curr = open(file_['localname'], 'rb').read()
     file_['data_end'] = start + len(curr)
+    if AV_WORKAROUND: curr += '\x00'
     print >> sys.stderr, 'bundling', file_['name'], file_['localname'], file_['data_start'], file_['data_end']
     start += len(curr)
     data.write(curr)
@@ -296,7 +311,7 @@ if has_preloaded:
         curr.response = byteArray.subarray(%d,%d);
         curr.onload();
       ''' % (file_['name'], file_['data_start'], file_['data_end'])
-  use_data += "          Module['removeRunDependency']('datafile');\n"
+  use_data += "          Module['removeRunDependency']('datafile_%s');\n" % data_target
 
   if Compression.on:
     use_data = '''
@@ -306,28 +321,56 @@ if has_preloaded:
       });
 ''' % use_data
 
-  code += '''
+  code += r'''
+    if (!Module.expectedDataFileDownloads) {
+      Module.expectedDataFileDownloads = 0;
+      Module.finishedDataFileDownloads = 0;
+    }
+    Module.expectedDataFileDownloads++;
+
     var dataFile = new XMLHttpRequest();
     dataFile.onprogress = function(event) {
+      var url = '%s';
       if (event.loaded && event.total) {
-        Module.setStatus('Downloading data... (' + event.loaded + '/' + event.total + ')');
-      } else {
+        if (!dataFile.addedTotal) {
+          dataFile.addedTotal = true;
+          if (!Module.dataFileDownloads) Module.dataFileDownloads = {};
+          Module.dataFileDownloads[url] = {
+            loaded: event.loaded,
+            total: event.total
+          };
+        } else {
+          Module.dataFileDownloads[url].loaded = event.loaded;
+        }
+        var total = 0;
+        var loaded = 0;
+        var num = 0;
+        for (var download in Module.dataFileDownloads) {
+          var data = Module.dataFileDownloads[download];
+          total += data.total;
+          loaded += data.loaded;
+          num++;
+        }
+        total = Math.ceil(total * Module.expectedDataFileDownloads/num);
+        Module.setStatus('Downloading data... (' + loaded + '/' + total + ')');
+      } else if (!Module.dataFileDownloads) {
         Module.setStatus('Downloading data...');
       }
     }
     dataFile.open('GET', '%s', true);
     dataFile.responseType = 'arraybuffer';
     dataFile.onload = function() {
+      Module.finishedDataFileDownloads++;
       var arrayBuffer = dataFile.response;
       assert(arrayBuffer, 'Loading data file failed.');
       var byteArray = new Uint8Array(arrayBuffer);
       var curr;
       %s
     };
-    Module['addRunDependency']('datafile');
+    Module['addRunDependency']('datafile_%s');
     dataFile.send(null);
     if (Module['setStatus']) Module['setStatus']('Downloading...');
-  ''' % (os.path.basename(Compression.compressed_name(data_target) if Compression.on else data_target), use_data) # use basename because from the browser's point of view, we need to find the datafile in the same dir as the html file
+  ''' % (data_target, os.path.basename(Compression.compressed_name(data_target) if Compression.on else data_target), use_data, data_target) # use basename because from the browser's point of view, we need to find the datafile in the same dir as the html file
 
 if pre_run:
   print '''
@@ -347,5 +390,9 @@ if crunch:
   Module["postRun"].push(function() {
     decrunchWorker.terminate();
   });
+'''
+
+print '''
+})();
 '''
 

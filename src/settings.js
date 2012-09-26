@@ -53,9 +53,11 @@ var FAST_MEMORY = 2*1024*1024; // The amount of memory to initialize to 0. This 
 var MICRO_OPTS = 1; // Various micro-optimizations, like nativizing variables
 var RELOOP = 0; // Recreate js native loops from llvm data
 var USE_TYPED_ARRAYS = 2; // Use typed arrays for the heap. See https://github.com/kripken/emscripten/wiki/Code-Generation-Modes/
+                          // 0 means no typed arrays are used.
                           // 1 has two heaps, IHEAP (int32) and FHEAP (double),
                           // and addresses there are a match for normal addresses.
-                          // 2 is a single heap, accessible through views as int8, int32, etc.
+                          // 2 is a single heap, accessible through views as int8, int32, etc. This is
+                          //   the recommended mode both for performance and for compatibility.
 var USE_FHEAP = 1; // Relevant in USE_TYPED_ARRAYS == 1. If this is disabled, only IHEAP will be used, and FHEAP
                    // not generated at all. This is useful if your code is 100% ints without floats or doubles
 var DOUBLE_MODE = 1; // How to load and store 64-bit doubles. Without typed arrays or in typed array mode 1,

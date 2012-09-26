@@ -4,8 +4,6 @@
 '''
 Simple test runner
 
-See settings.py file for options&params. Edit as needed.
-
 These tests can be run in parallel using nose, for example
 
   nosetests --processes=4 -v -s tests/runner.py
@@ -62,7 +60,7 @@ from tools.shared import *
 try:
   assert COMPILER_OPTS != None
 except:
-  raise Exception('Cannot find "COMPILER_OPTS" definition. Is %s set up properly? You may need to copy the template from settings.py into it.' % EM_CONFIG)
+  raise Exception('Cannot find "COMPILER_OPTS" definition. Is %s set up properly? You may need to copy the template settings file into it.' % EM_CONFIG)
 
 # Core test runner class, shared between normal tests and benchmarks
 
@@ -356,7 +354,7 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
         if Settings.USE_TYPED_ARRAYS:
           js_engines = filter(lambda engine: engine != V8_ENGINE, js_engines) # V8 issue 1822
         js_engines = filter(lambda engine: engine not in self.banned_js_engines, js_engines)
-        if len(js_engines) == 0: return self.skip('No JS engine present to run this test with. Check %s and settings.py and the paths therein.' % EM_CONFIG)
+        if len(js_engines) == 0: return self.skip('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
         for engine in js_engines:
           js_output = self.run_generated_code(engine, filename + '.o.js', args)
           if output_nicerizer is not None:
@@ -7674,6 +7672,19 @@ fscanfed: 10 - hello
       code = open('a.out.js').read()
       assert 'SAFE_HEAP' in code, 'valid -s option had an effect'
 
+    def test_conftest_s_flag_passing(self):
+      open(os.path.join(self.get_dir(), 'conftest.c'), 'w').write(r'''
+        int main() {
+          return 0;
+        }
+      ''')
+      os.environ["EMMAKEN_JUST_CONFIGURE"] = "1"
+      cmd = ['python', EMCC, '-s', 'ASSERTIONS=1', os.path.join(self.get_dir(), 'conftest.c'), '-o', 'conftest']
+      output = Popen(cmd, stderr=PIPE).communicate()
+      self.assertNotContained('emcc: warning: treating -s as linker option', output[1])
+      assert os.path.exists('conftest')
+      del os.environ["EMMAKEN_JUST_CONFIGURE"]
+
     def test_crunch(self):
       # crunch should not be run if a .crn exists that is more recent than the .dds
       shutil.copyfile(path_from_root('tests', 'ship.dds'), 'ship.dds')
@@ -8264,19 +8275,21 @@ elif 'browser' in str(sys.argv):
         os.path.join('Chapter_10', 'MultiTexture', 'CH10_MultiTexture.bc'),
         os.path.join('Chapter_13', 'ParticleSystem', 'CH13_ParticleSystem.bc'),
       ], configure=None)
+      def book_path(*pathelems):
+        return path_from_root('tests', 'glbook', *pathelems)
       for program in programs:
         print program
         basename = os.path.basename(program)
         args = []
         if basename == 'CH10_MultiTexture.bc':
-          shutil.copyfile(path_from_root('tests', 'glbook', 'Chapter_10', 'MultiTexture', 'basemap.tga'), os.path.join(self.get_dir(), 'basemap.tga'))
-          shutil.copyfile(path_from_root('tests', 'glbook', 'Chapter_10', 'MultiTexture', 'lightmap.tga'), os.path.join(self.get_dir(), 'lightmap.tga'))
+          shutil.copyfile(book_path('Chapter_10', 'MultiTexture', 'basemap.tga'), os.path.join(self.get_dir(), 'basemap.tga'))
+          shutil.copyfile(book_path('Chapter_10', 'MultiTexture', 'lightmap.tga'), os.path.join(self.get_dir(), 'lightmap.tga'))
           args = ['--preload-file', 'basemap.tga', '--preload-file', 'lightmap.tga']
         elif basename == 'CH13_ParticleSystem.bc':
-          shutil.copyfile(path_from_root('tests', 'glbook', 'Chapter_13', 'ParticleSystem', 'smoke.tga'), os.path.join(self.get_dir(), 'smoke.tga'))
+          shutil.copyfile(book_path('Chapter_13', 'ParticleSystem', 'smoke.tga'), os.path.join(self.get_dir(), 'smoke.tga'))
           args = ['--preload-file', 'smoke.tga', '-O2'] # test optimizations and closure here as well for more coverage
 
-        self.reftest(path_from_root('tests', 'glbook', basename.replace('.bc', '.png')))
+        self.reftest(book_path(basename.replace('.bc', '.png')))
         Popen(['python', EMCC, program, '-o', 'program.html', '--pre-js', 'reftest.js'] + args).communicate()
         self.run_browser('program.html', '', '/report_result?0')
 
@@ -8320,52 +8333,52 @@ elif 'browser' in str(sys.argv):
       self.btest('gl_matrix_identity.c', expected=['-1882984448', '460451840'])
 
     def test_cubegeom_pre(self):
-      self.btest('cubegeom_pre.c', expected='-1472804742')
+      self.btest('cubegeom_pre.c', expected=['-1472804742', '-1626058463'])
 
     def test_cubegeom_pre2(self):
-      self.btest('cubegeom_pre2.c', expected='-1472804742', args=['-s', 'GL_DEBUG=1']) # some coverage for GL_DEBUG not breaking the build
+      self.btest('cubegeom_pre2.c', expected=['-1472804742', '-1626058463'], args=['-s', 'GL_DEBUG=1']) # some coverage for GL_DEBUG not breaking the build
 
     def test_cubegeom_pre3(self):
-      self.btest('cubegeom_pre3.c', expected='-1472804742')
+      self.btest('cubegeom_pre3.c', expected=['-1472804742', '-1626058463'])
 
     def test_cubegeom(self):
-      self.btest('cubegeom.c', expected=['188641320', '1522377227'])
+      self.btest('cubegeom.c', expected=['188641320', '1522377227', '-1054007155'])
 
     def test_cubegeom_color(self):
-      self.btest('cubegeom_color.c', expected='588472350')
+      self.btest('cubegeom_color.c', expected=['588472350', '-687660609'])
 
     def test_cubegeom_normal(self):
-      self.btest('cubegeom_normal.c', expected='752917084')
+      self.btest('cubegeom_normal.c', expected=['752917084', '-251570256'])
 
     def test_cubegeom_normal_dap(self): # draw is given a direct pointer to clientside memory, no element array buffer
-      self.btest('cubegeom_normal_dap.c', expected='752917084')
+      self.btest('cubegeom_normal_dap.c', expected=['752917084', '-251570256'])
 
     def test_cubegeom_normal_dap_far(self): # indices do nto start from 0
-      self.btest('cubegeom_normal_dap_far.c', expected='752917084')
+      self.btest('cubegeom_normal_dap_far.c', expected=['752917084', '-251570256'])
 
     def test_cubegeom_normal_dap_far_range(self): # glDrawRangeElements
-      self.btest('cubegeom_normal_dap_far_range.c', expected='752917084')
+      self.btest('cubegeom_normal_dap_far_range.c', expected=['752917084', '-251570256'])
 
     def test_cubegeom_normal_dap_far_glda(self): # use glDrawArrays
-      self.btest('cubegeom_normal_dap_far_glda.c', expected='-218745386')
+      self.btest('cubegeom_normal_dap_far_glda.c', expected=['-218745386', '-263951846'])
 
     def test_cubegeom_normal_dap_far_glda_quad(self): # with quad
-      self.btest('cubegeom_normal_dap_far_glda_quad.c', expected='1757386625')
+      self.btest('cubegeom_normal_dap_far_glda_quad.c', expected=['1757386625', '-677777235'])
 
     def test_cubegeom_mt(self):
-      self.btest('cubegeom_mt.c', expected='-457159152') # multitexture
+      self.btest('cubegeom_mt.c', expected=['-457159152', '910983047']) # multitexture
 
     def test_cubegeom_color2(self):
-      self.btest('cubegeom_color2.c', expected='1121999515')
+      self.btest('cubegeom_color2.c', expected=['1121999515', '-391668088'])
 
     def test_cubegeom_texturematrix(self):
-      self.btest('cubegeom_texturematrix.c', expected='1297500583')
+      self.btest('cubegeom_texturematrix.c', expected=['1297500583', '-791216738'])
 
     def test_cubegeom_fog(self):
-      self.btest('cubegeom_fog.c', expected='1617140399')
+      self.btest('cubegeom_fog.c', expected=['1617140399', '-898782526'])
 
     def test_cube_explosion(self):
-      self.btest('cube_explosion.c', expected='667220544')
+      self.btest('cube_explosion.c', expected=['667220544', '-1543354600'])
 
     def test_sdl_canvas_palette(self):
       self.btest('sdl_canvas_palette.c', reference='sdl_canvas_palette.png')
@@ -8393,7 +8406,18 @@ elif 'browser' in str(sys.argv):
       shutil.move('ship.dds', 'ship.donotfindme.dds') # make sure we load from the compressed
       shutil.move('bloom.dds', 'bloom.donotfindme.dds') # make sure we load from the compressed
       shutil.move('water.dds', 'water.donotfindme.dds') # make sure we load from the compressed
-      self.btest('s3tc_crunch.c', reference='s3tc_crunch.png', args=['--pre-js', 'pre.js'])
+      self.btest('s3tc_crunch.c', reference='s3tc_crunch.png', reference_slack=1, args=['--pre-js', 'pre.js'])
+
+    def test_s3tc_crunch_split(self): # load several datafiles/outputs of file packager
+      shutil.copyfile(path_from_root('tests', 'ship.dds'), 'ship.dds')
+      shutil.copyfile(path_from_root('tests', 'bloom.dds'), 'bloom.dds')
+      shutil.copyfile(path_from_root('tests', 'water.dds'), 'water.dds')
+      Popen(['python', FILE_PACKAGER, 'asset_a.data', '--pre-run', '--crunch', '--preload', 'ship.dds', 'bloom.dds'], stdout=open('asset_a.js', 'w')).communicate()
+      Popen(['python', FILE_PACKAGER, 'asset_b.data', '--pre-run', '--crunch', '--preload', 'water.dds'], stdout=open('asset_b.js', 'w')).communicate()
+      shutil.move('ship.dds', 'ship.donotfindme.dds') # make sure we load from the compressed
+      shutil.move('bloom.dds', 'bloom.donotfindme.dds') # make sure we load from the compressed
+      shutil.move('water.dds', 'water.donotfindme.dds') # make sure we load from the compressed
+      self.btest('s3tc_crunch.c', reference='s3tc_crunch.png', reference_slack=1, args=['--pre-js', 'asset_a.js', '--pre-js', 'asset_b.js'])
 
     def test_aniso(self):
       shutil.copyfile(path_from_root('tests', 'water.dds'), 'water.dds')
@@ -8804,7 +8828,7 @@ elif 'sanity' in str(sys.argv):
         self.assertContained('make sure LLVM_ROOT and NODE_JS are correct', output)
         self.assertContained('This command will now exit. When you are done editing those paths, re-run it.', output)
         assert output.split()[-1].endswith('===='), 'We should have stopped: ' + output
-        assert (open(CONFIG_FILE).read() == open(path_from_root('settings.py')).read()), 'Settings should be copied from settings.py'
+        assert (open(CONFIG_FILE).read() == open(path_from_root('tools', 'settings_template_readonly.py')).read()), 'Settings should be copied from tools/settings_template_readonly.py'
 
         # Second run, with bad EM_CONFIG
         for settings in ['blah', 'LLVM_ROOT="blarg"; JS_ENGINES=[]; COMPILER_ENGINE=NODE_JS=SPIDERMONKEY_ENGINE=[]']:

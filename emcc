@@ -159,6 +159,18 @@ Options that are modified or new in %s include:
   -s OPTION=VALUE          JavaScript code generation option passed
                            into the emscripten compiler. For the
                            available options, see src/settings.js
+                           Note that for options that are lists, you
+                           need quotation marks in most shells, for
+                           example
+
+                            -s RUNTIME_LINKED_LIBS="['liblib.so']"
+
+                           or
+
+                            -s "RUNTIME_LINKED_LIBS=['liblib.so']"
+
+                           (without the external "s in either of those,
+                           you would get an error)
 
   --typed-arrays <mode>    0: No typed arrays
                            1: Parallel typed arrays
@@ -321,6 +333,14 @@ elif len(sys.argv) == 2 and sys.argv[1] == '-v': # -v with no inputs
   print 'emcc (Emscripten GCC-like replacement) 2.0'
   exit(subprocess.call([shared.CLANG, '-v']))
 
+def is_minus_s_for_emcc(newargs,i):
+  assert newargs[i] == '-s'
+  if i+1 < len(newargs) and '=' in newargs[i+1]: # -s OPT=VALUE is for us, -s by itself is a linker option
+    return True
+  else:
+    print >> sys.stderr, 'emcc: warning: treating -s as linker option and not as -s OPT=VALUE for js compilation'
+    return False
+
 # If this is a configure-type thing, do not compile to JavaScript, instead use clang
 # to compile to a native binary (using our headers, so things make sense later)
 CONFIGURE_CONFIG = os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in sys.argv
@@ -329,7 +349,21 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
   compiler = shared.CLANG
   if not ('CXXCompiler' in ' '.join(sys.argv) or os.environ.get('EMMAKEN_CXX')):
     compiler = shared.to_cc(compiler)
-  cmd = [compiler] + shared.EMSDK_OPTS + ['-DEMSCRIPTEN'] + sys.argv[1:]
+  def filter_emscripten_options(argv):
+    idx = 0
+    skip_next = False
+    for el in argv:
+      if skip_next:
+        skip_next = False
+        idx += 1
+        continue
+      if el == '-s' and is_minus_s_for_emcc(argv, idx):
+        skip_next = True
+      else:
+        yield el
+      idx += 1
+    
+  cmd = [compiler] + shared.EMSDK_OPTS + ['-DEMSCRIPTEN'] + list(filter_emscripten_options(sys.argv[1:]))
   if DEBUG: print >> sys.stderr, 'emcc, just configuring: ', ' '.join(cmd)
   exit(subprocess.call(cmd))
 
@@ -448,6 +482,8 @@ try:
   def check_bad_eq(arg):
     assert '=' not in arg, 'Invalid parameter (do not use "=" with "--" options)'
 
+  absolute_warning_shown = False
+
   for i in range(len(newargs)):
     if newargs[i].startswith('-O'):
       try:
@@ -538,7 +574,9 @@ try:
       print >> sys.stderr, 'emcc: clearing cache'
       shared.Cache.erase()
     elif newargs[i].startswith(('-I/', '-L/')):
-      print >> sys.stderr, 'emcc: warning: -I or -L of an absolute path encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript)' # Of course an absolute path to a non-system-specific library or header is fine, and you can ignore this warning. The danger are system headers that are e.g. x86 specific and nonportable. The emscripten bundled headers are modified to be portable, local system ones are generally not
+      if not absolute_warning_shown:
+        print >> sys.stderr, 'emcc: warning: -I or -L of an absolute path encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript)' # Of course an absolute path to a non-system-specific library or header is fine, and you can ignore this warning. The danger are system headers that are e.g. x86 specific and nonportable. The emscripten bundled headers are modified to be portable, local system ones are generally not
+        absolute_warning_shown = True
   newargs = [ arg for arg in newargs if arg is not '' ]
 
   if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
@@ -553,11 +591,9 @@ try:
   settings_changes = []
   for i in range(len(newargs)):
     if newargs[i] == '-s':
-      if i+1 < len(newargs) and '=' in newargs[i+1]: # -s OPT=VALUE is for us, -s by itself is a linker option
+      if is_minus_s_for_emcc(newargs, i):
         settings_changes.append(newargs[i+1])
         newargs[i] = newargs[i+1] = ''
-      else:
-        print >> sys.stderr, 'emcc: warning: treating -s as linker option and not as -s OPT=VALUE for js compilation'
     elif newargs[i].startswith('--typed-arrays'):
       assert '=' not in newargs[i], 'Invalid typed arrays parameter (do not use "=")'
       settings_changes.append('USE_TYPED_ARRAYS=' + newargs[i+1])
