@@ -2,9 +2,9 @@
 
 #include <stddef.h>
 #include <string>
+#include <type_traits>
 #include <emscripten/val.h>
 #include <emscripten/wire.h>
-#include <boost/optional.hpp>
 
 namespace emscripten {
     namespace internal {
@@ -525,6 +525,49 @@ namespace emscripten {
         }
     };
 
+    namespace internal {
+        template<typename T>
+        class optional {
+        public:            
+            optional()
+                : initialized(false)
+            {}
+
+            ~optional() {
+                if (initialized) {
+                    get()->~T();
+                }
+            }
+
+            optional(const optional&) = delete;
+
+            T& operator*() {
+                assert(initialized);
+                return *get();
+            }
+
+            explicit operator bool() const {
+                return initialized;
+            }
+
+            optional& operator=(const T& v) {
+                if (initialized) {
+                    get()->~T();
+                }
+                new(get()) T(v);
+                initialized = true;
+            }
+            
+        private:
+            T* get() {
+                return reinterpret_cast<T*>(&data);
+            }
+
+            bool initialized;
+            typename std::aligned_storage<sizeof(T)>::type data;
+        };
+    }
+
     template<typename InterfaceType>
     class wrapper : public InterfaceType {
     public:
@@ -572,7 +615,7 @@ namespace emscripten {
             }
         }
 
-        boost::optional<val> jsobj;
+        internal::optional<val> jsobj;
     };
 
     namespace internal {
