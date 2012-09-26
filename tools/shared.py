@@ -22,7 +22,24 @@ else:
   if not os.path.exists(CONFIG_FILE):
     config_file = open(path_from_root('tools', 'settings_template_readonly.py')).read().split('\n')
     config_file = config_file[1:] # remove "this file will be copied..."
-    open(CONFIG_FILE, 'w').write('\n'.join(config_file))
+    config_file = '\n'.join(config_file)
+    # autodetect some default paths
+    config_file = config_file.replace('{{{ EMSCRIPTEN_ROOT }}}', __rootpath__)
+    llvm_root = '/usr/bin'
+    try:
+      llvm_root = os.path.dirname(Popen(['which', 'clang'], stdout=PIPE).communicate()[0].replace('\n', ''))
+    except:
+      pass
+    config_file = config_file.replace('{{{ LLVM_ROOT }}}', llvm_root)
+    node = 'node'
+    try:
+      node = Popen(['which', 'node'], stdout=PIPE).communicate()[0].replace('\n', '')
+    except:
+      pass
+    config_file = config_file.replace('{{{ NODE }}}', node)
+
+    # write
+    open(CONFIG_FILE, 'w').write(config_file)
     print >> sys.stderr, '''
 ==============================================================================
 Welcome to Emscripten!
@@ -31,12 +48,17 @@ This is the first time any of the Emscripten tools has been run.
 
 A settings file has been copied to %s, at absolute path: %s
 
-Please edit that file and change the paths to fit your system. Specifically,
-make sure LLVM_ROOT and NODE_JS are correct.
+It contains our best guesses for the important paths, which are:
+
+  LLVM_ROOT       = %s
+  NODE_JS         = %s
+  EMSCRIPTEN_ROOT = %s
+
+Please edit the file if any of those are incorrect.
 
 This command will now exit. When you are done editing those paths, re-run it.
 ==============================================================================
-''' % (EM_CONFIG, CONFIG_FILE)
+''' % (EM_CONFIG, CONFIG_FILE, llvm_root, node, __rootpath__)
     sys.exit(0)
 try:
   config_text = open(CONFIG_FILE, 'r').read() if CONFIG_FILE else EM_CONFIG

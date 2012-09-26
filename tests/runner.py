@@ -8828,17 +8828,27 @@ elif 'sanity' in str(sys.argv):
         self.assertContained('Welcome to Emscripten!', output)
         self.assertContained('This is the first time any of the Emscripten tools has been run.', output)
         self.assertContained('A settings file has been copied to %s, at absolute path: %s' % (EM_CONFIG, CONFIG_FILE), output)
-        self.assertContained('Please edit that file and change the paths to fit your system', output)
-        self.assertContained('make sure LLVM_ROOT and NODE_JS are correct', output)
+        self.assertContained('It contains our best guesses for the important paths, which are:', output)
+        self.assertContained('LLVM_ROOT', output)
+        self.assertContained('NODE_JS', output)
+        self.assertContained('Please edit the file if any of those are incorrect', output)
         self.assertContained('This command will now exit. When you are done editing those paths, re-run it.', output)
         assert output.split()[-1].endswith('===='), 'We should have stopped: ' + output
         config_file = open(CONFIG_FILE).read()
         template_file = open(path_from_root('tools', 'settings_template_readonly.py')).read()
         self.assertNotContained('~/.emscripten', config_file)
         self.assertContained('~/.emscripten', template_file)
+        self.assertNotContained('{{{', config_file)
+        self.assertNotContained('}}}', config_file)
+        self.assertContained('{{{', template_file)
+        self.assertContained('}}}', template_file)
         for content in ['EMSCRIPTEN_ROOT', 'LLVM_ROOT', 'NODE_JS', 'TEMP_DIR', 'COMPILER_ENGINE', 'JS_ENGINES']:
           self.assertContained(content, config_file)
-        self.assertContained(config_file, template_file)
+
+        # The guessed config should be ok XXX This depends on your local system! it is possible `which` guesses wrong
+        try_delete('a.out.js')
+        output = Popen(['python', EMCC, path_from_root('tests', 'hello_world.c')], stdout=PIPE, stderr=PIPE).communicate()
+        self.assertContained('hello, world!', run_js('a.out.js'), output)
 
         # Second run, with bad EM_CONFIG
         for settings in ['blah', 'LLVM_ROOT="blarg"; JS_ENGINES=[]; COMPILER_ENGINE=NODE_JS=SPIDERMONKEY_ENGINE=[]']:

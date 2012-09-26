@@ -1,15 +1,15 @@
-# This file will be copied to ~/.emscripten if that file doesn't exist.
+# This file will be edited (the {{{ }}} things), and then ~/.emscripten created with the result, if ~/.emscripten doesn't exist.
 
 # Note: If you put paths relative to the home directory, do not forget os.path.expanduser
 
 import os
 
 # this helps projects using emscripten find it
-EMSCRIPTEN_ROOT = os.path.expanduser(os.getenv('EMSCRIPTEN') or '/opt/emscripten')
-LLVM_ROOT = os.path.expanduser(os.getenv('LLVM') or '/usr/bin')
+EMSCRIPTEN_ROOT = os.path.expanduser(os.getenv('EMSCRIPTEN') or '{{{ EMSCRIPTEN_ROOT }}}')
+LLVM_ROOT = os.path.expanduser(os.getenv('LLVM') or '{{{ LLVM_ROOT }}}')
 
 # See below for notes on which JS engine(s) you need
-NODE_JS = 'node'
+NODE_JS = '{{{ NODE }}}'
 SPIDERMONKEY_ENGINE = [
   os.path.expanduser(os.getenv('SPIDERMONKEY') or 'js'), '-m', '-n']
 V8_ENGINE = os.path.expanduser(os.getenv('V8') or 'd8')
