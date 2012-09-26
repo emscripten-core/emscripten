@@ -8832,7 +8832,13 @@ elif 'sanity' in str(sys.argv):
         self.assertContained('make sure LLVM_ROOT and NODE_JS are correct', output)
         self.assertContained('This command will now exit. When you are done editing those paths, re-run it.', output)
         assert output.split()[-1].endswith('===='), 'We should have stopped: ' + output
-        assert (open(CONFIG_FILE).read() == open(path_from_root('tools', 'settings_template_readonly.py')).read()), 'Settings should be copied from tools/settings_template_readonly.py'
+        config_file = open(CONFIG_FILE).read()
+        template_file = open(path_from_root('tools', 'settings_template_readonly.py')).read()
+        self.assertNotContained('~/.emscripten', config_file)
+        self.assertContained('~/.emscripten', template_file)
+        for content in ['EMSCRIPTEN_ROOT', 'LLVM_ROOT', 'NODE_JS', 'TEMP_DIR', 'COMPILER_ENGINE', 'JS_ENGINES']:
+          self.assertContained(content, config_file)
+        self.assertContained(config_file, template_file)
 
         # Second run, with bad EM_CONFIG
         for settings in ['blah', 'LLVM_ROOT="blarg"; JS_ENGINES=[]; COMPILER_ENGINE=NODE_JS=SPIDERMONKEY_ENGINE=[]']:

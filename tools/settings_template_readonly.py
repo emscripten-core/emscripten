@@ -1,5 +1,5 @@
-# This file will be copied to ~/.emscripten if that file doesn't exist. Or, this is that copy.
-# IMPORTANT: Edit the *copy* with the right paths!
+# This file will be copied to ~/.emscripten if that file doesn't exist.
+
 # Note: If you put paths relative to the home directory, do not forget os.path.expanduser
 
 import os

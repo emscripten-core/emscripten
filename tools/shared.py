@@ -20,7 +20,9 @@ if '\n' in EM_CONFIG:
 else:
   CONFIG_FILE = os.path.expanduser(EM_CONFIG)
   if not os.path.exists(CONFIG_FILE):
-    shutil.copy(path_from_root('tools', 'settings_template_readonly.py'), CONFIG_FILE)
+    config_file = open(path_from_root('tools', 'settings_template_readonly.py')).read().split('\n')
+    config_file = config_file[1:] # remove "this file will be copied..."
+    open(CONFIG_FILE, 'w').write('\n'.join(config_file))
     print >> sys.stderr, '''
 ==============================================================================
 Welcome to Emscripten!
