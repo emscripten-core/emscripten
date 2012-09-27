@@ -7887,9 +7887,9 @@ elif 'browser' in str(sys.argv):
       # test HTML generation.
       self.reftest(path_from_root('tests', 'htmltest.png'))
       output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.js', '--split', '100']).communicate()
-      assert os.path.exists(os.path.join(self.get_dir(), 'something.js')), 'must be side js'
-      assert os.path.exists(os.path.join(self.get_dir(), 'something_functions.js')), 'must be side js'
-      assert os.path.exists(os.path.join(self.get_dir(), 'something.include.html')), 'must be side js'
+      assert os.path.exists(os.path.join(self.get_dir(), 'something.js')), 'must be main js file'
+      assert os.path.exists(os.path.join(self.get_dir(), 'something_functions.js')), 'must be functions js file'
+      assert os.path.exists(os.path.join(self.get_dir(), 'something.include.html')), 'must be js include file'
       
       open(os.path.join(self.get_dir(), 'something.html'), 'w').write('''
       
@@ -7978,9 +7978,9 @@ elif 'browser' in str(sys.argv):
     def test_split_in_source_filenames(self):
       self.reftest(path_from_root('tests', 'htmltest.png'))
       output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.js', '-g', '--split', '100']).communicate()
-      assert os.path.exists(os.path.join(self.get_dir(), 'something.js')), 'must be side js'
-      assert os.path.exists(self.get_dir() + '/something/' + path_from_root('tests', 'hello_world_sdl.cpp.js')), 'must be side js'
-      assert os.path.exists(os.path.join(self.get_dir(), 'something.include.html')), 'must be side js'
+      assert os.path.exists(os.path.join(self.get_dir(), 'something.js')), 'must be main js file'
+      assert os.path.exists(self.get_dir() + '/something/' + path_from_root('tests', 'hello_world_sdl.cpp.js')), 'must be functions js file'
+      assert os.path.exists(os.path.join(self.get_dir(), 'something.include.html')), 'must be js include file'
 
       open(os.path.join(self.get_dir(), 'something.html'), 'w').write('''
 
