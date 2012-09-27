@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+usage() {
+    echo "Usage: $(basename $0) PORT CMDLINE"
+    echo
+    echo "    PORT     Port to wrap with WebSockets support"
+    echo "    CMDLINE  Command line to wrap"
+    exit 2
+}
+
+# Parameter defaults
+mydir=$(readlink -f $(dirname ${0}))
+
+# Process parameters
+#while [ "${1}" != "${1#-}" ]; do
+#    param=$1; shift
+#done
+
+export WSWRAP_PORT="${1}"; shift
+
+LD_PRELOAD=${mydir}/wswrapper.so "${@}"
+

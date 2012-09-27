@@ -1,0 +1,68 @@
+<html>
+
+    <head>
+        <title>Websock Simple Client</title>
+        <script src="include/util.js"></script>
+        <script src="include/base64.js"></script>
+        <script src="include/websock.js"></script> 
+    </head>
+
+    <body>
+        WebSocket/websockify URI: <input id='target'>&nbsp;
+        <input id='connectButton' type='button' value='Connect'
+            onclick="connect();">
+        <br> <br>
+        <input id='sendText'>&nbsp;
+        <input id='sendButton' type='button' value='Send' disabled
+            onclick="send();">&nbsp;
+        <br> <br>
+        Log:<br><textarea id="messages" cols=80 rows=25></textarea>
+    </body>
+
+
+    <script>
+        var $D = function(id) { return document.getElementById(id); },
+            ws = null, msgs = $D('messages');
+
+        function msg(str) {
+            msgs.innerHTML += str + "\n";
+            msgs.scrollTop = msgs.scrollHeight;
+        }
+
+        function connect() {
+            var uri = $D('target').value;
+            ws = new Websock()
+            msg("connecting to: " + uri);
+            ws.open(uri);
+            ws.on('open', function () {
+                msg("Connected");
+            });
+            ws.on('message', function () {
+                msg("Received: " + ws.rQshiftStr());
+            });
+            ws.on('close', function () {
+                disconnect();
+                msg("Disconnected");
+            });
+
+            $D('connectButton').value = "Disconnect";
+            $D('connectButton').onclick = disconnect;
+            $D('sendButton').disabled = false;
+        }
+
+        function disconnect() {
+            if (ws) { ws.close(); }
+            ws = null;
+
+            $D('connectButton').value = "Connect";
+            $D('connectButton').onclick = connect;
+            $D('sendButton').disabled = true;
+        }
+
+        function send() {
+            msg("Sending: " + $D('sendText').value);
+            ws.send_string($D('sendText').value);
+        };
+    </script>
+
+</html>

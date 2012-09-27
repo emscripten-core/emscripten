@@ -6315,6 +6315,75 @@ LibraryManager.library = {
   ntohl: 'htonl',
   ntohs: 'htons',
 
+  inet_pton__deps: ['__setErrNo', '$ERRNO_CODES'],
+  inet_pton: function(af, src, dst) {
+    // int af, const char *src, void *dst
+    if ((af ^ {{{ cDefine("AF_INET") }}}) !==  0) { ___setErrNo(ERRNO_CODES.EAFNOSUPPORT); return -1; }
+    var b = Pointer_stringify(src).split(".");
+    if (b.length !== 4) return 0;
+    var ret = Number(b[0]) | (Number(b[1]) << 8) | (Number(b[2]) << 16) | (Number(b[3]) << 24);
+    if (isNaN(ret)) return 0;
+    setValue(dst, ret, 'i32');
+    return 1;
+  },
+
+  _inet_ntop_raw: function(addr) {
+    return (addr & 0xff) + '.' + ((addr >> 8) & 0xff) + '.' + ((addr >> 16) & 0xff) + '.' + ((addr >> 24) & 0xff)
+  },
+
+  inet_ntop__deps: ['_inet_ntop_raw'],
+  inet_ntop: function(af, src, dst, size) {
+    var addr = getValue(src, 'i32');
+    var str = __inet_ntop_raw(addr);
+    writeStringToMemory(str.substr(0, size), dst, true);
+    return dst;
+  },
+
+  // ==========================================================================
+  // sockets
+  // ==========================================================================
+
+  $Sockets__deps: ['__setErrNo', '$ERRNO_CODES'],
+  $Sockets: {
+    nextFd: 1,
+    fds: {},
+    sockaddr_in_layout: Runtime.generateStructInfo([
+      ['i16', 'sin_family'],
+      ['i16', 'sin_port'],
+      ['i32', 'sin_addr'],
+      ['i64', 'sin_zero'],
+    ]),
+  },
+
+  socket__deps: ['$Sockets'],
+  socket: function(family, type, protocol) {
+    var fd = Sockets.nextFd++;
+    Sockets.fds[fd] = {
+      connected: false
+    };
+    return fd;
+  },
+
+  connect__deps: ['$Sockets', '_inet_ntop_raw', 'ntohs'],
+  connect: function(fd, addr, addrlen) {
+    var info = Sockets.fds[fd];
+    info.connected = true;
+    info.addr = getValue(addr + Sockets.sockaddr_in_layout.sin_addr, 'i32');
+    info.port = _ntohs(getValue(addr + Sockets.sockaddr_in_layout.sin_port, 'i16'));
+    info.host = __inet_ntop_raw(info.addr);
+    info.socket = new WebSocket('ws://' + info.host + ':' + info.port, ['binary']);
+    info.socket.onmessage = function (event) {
+      console.log(event.data + ',' + typeof event.data);
+    }
+    return 0;
+  },
+
+  recv__deps: ['$Sockets'],
+  recv: function(fd, buf, len, flags) {
+    //___setErrNo(ERRNO_CODES.EINTR);
+    return 0; // TODO
+  },
+
   // ==========================================================================
   // emscripten.h
   // ==========================================================================

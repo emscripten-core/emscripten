@@ -7802,7 +7802,7 @@ elif 'browser' in str(sys.argv):
         print '(moving on..)'
 
     def with_report_result(self, code):
-      return '''
+      return r'''
         #define REPORT_RESULT_INTERNAL(sync) \
           char output[1000]; \
           sprintf(output, \
@@ -8446,6 +8446,32 @@ elif 'browser' in str(sys.argv):
         };
       ''')
       self.btest('pre_run_deps.cpp', expected='10', args=['--pre-js', 'pre.js'])
+
+    def zzztest_websockets(self):
+      try:
+        def server_func():
+          os.system('while true; do (/bin/echo -en "test\x02") | nc -vvvl 8990; done;')
+
+        server = multiprocessing.Process(target=server_func)
+        server.start()
+        print '[Socket server on process %d]' % server.pid
+
+        def websockify_func():
+          os.system('python ' + path_from_root('third_party', 'websockify', 'run') + ' -vvv 8991 127.0.0.1:8990')
+
+        websockify = multiprocessing.Process(target=websockify_func)
+        websockify.start()
+        print '[Websockify on process %d]' % websockify.pid
+
+        self.btest('websockets.c', expected='fleefl')
+
+      finally:
+        try:
+          websockify.terminate()
+          print '[Cleaned up websockify]'
+        finally:
+          server.terminate()
+          print '[Cleaned up socket server]'
 
 elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
