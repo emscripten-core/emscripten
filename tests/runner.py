@@ -8450,7 +8450,7 @@ elif 'browser' in str(sys.argv):
     def zzztest_websockets(self):
       try:
         def server_func():
-          os.system('while true; do (/bin/echo -en "test\x02") | nc -vvvl 8990; done;')
+          os.system('while true; do (/bin/echo -en "test\x02" ; sleep 1000) | nc -vvvl 8990; done;') # sleep to work around websockify issue 63
 
         server = multiprocessing.Process(target=server_func)
         server.start()
