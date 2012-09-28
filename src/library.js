@@ -6411,6 +6411,11 @@ LibraryManager.library = {
     return ret;
   },
 
+  shutdown: function(fd, how) {
+    Sockets.fds[fd].socket.close();
+    Sockets.fds[fd] = null;
+  },
+
   // ==========================================================================
   // emscripten.h
   // ==========================================================================

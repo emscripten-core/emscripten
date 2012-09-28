@@ -60,6 +60,8 @@ void iter(void *arg) {
 
     done = 1;
 
+    printf("sum: %d\n", sum);
+
 #if EMSCRIPTEN
     int result = sum;
     REPORT_RESULT();
