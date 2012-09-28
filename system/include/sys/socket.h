@@ -23,6 +23,7 @@ extern "C" {
 #define SO_RCVBUF 60
 #define SO_LINGER 70
 #define SO_NOSIGPIPE 80
+#define SO_KEEPALIVE 90
 
 #define SHUT_RDWR 1
 
