@@ -6345,6 +6345,7 @@ LibraryManager.library = {
 
   $Sockets__deps: ['__setErrNo', '$ERRNO_CODES'],
   $Sockets: {
+    BUFFER_SIZE: 10*1024,
     nextFd: 1,
     fds: {},
     sockaddr_in_layout: Runtime.generateStructInfo([
@@ -6371,17 +6372,43 @@ LibraryManager.library = {
     info.addr = getValue(addr + Sockets.sockaddr_in_layout.sin_addr, 'i32');
     info.port = _ntohs(getValue(addr + Sockets.sockaddr_in_layout.sin_port, 'i16'));
     info.host = __inet_ntop_raw(info.addr);
-    info.socket = new WebSocket('ws://' + info.host + ':' + info.port, ['binary']);
+    info.socket = new WebSocket('ws://' + info.host + ':' + info.port, ['arraybuffer']);
+    info.socket.binaryType = 'arraybuffer';
+    info.buffer = new Uint8Array(Sockets.BUFFER_SIZE);
+    info.bufferWrite = info.bufferRead = 0;
     info.socket.onmessage = function (event) {
-      console.log(event.data + ',' + typeof event.data);
+      var data = event.data;
+      if (typeof data == 'string') {
+        var binaryString = window.atob(data);
+        var len = binaryString.length;
+        for (var i = 0; i < len; i++) {
+          info.buffer[info.bufferWrite++] = binaryString.charCodeAt(i);
+          if (info.bufferWrite == Sockets.BUFFER_SIZE) info.bufferWrite = 0;
+          if (info.bufferWrite == info.bufferRead) throw 'socket buffer overflow';
+        }
+      } else {
+        console.log('binary!');
+      }
     }
     return 0;
   },
 
   recv__deps: ['$Sockets'],
   recv: function(fd, buf, len, flags) {
-    //___setErrNo(ERRNO_CODES.EINTR);
-    return 0; // TODO
+    var info = Sockets.fds[fd];
+    if (info.bufferWrite == info.bufferRead) {
+      ___setErrNo(ERRNO_CODES.EAGAIN); // no data, and all sockets are nonblocking, so this is the right behavior
+      return 0; // should this be -1 like the spec says?
+    }
+    var ret = 0;
+    while (info.bufferWrite != info.bufferRead && len > 0) {
+      // write out a byte
+      {{{ makeSetValue('buf++', '0', 'info.buffer[info.bufferRead++]', 'i8') }}};
+      if (info.bufferRead == Sockets.BUFFER_SIZE) info.bufferRead = 0;
+      len--;
+      ret++;
+    }
+    return ret;
   },
 
   // ==========================================================================
