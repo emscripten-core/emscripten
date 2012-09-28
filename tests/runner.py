@@ -8447,31 +8447,33 @@ elif 'browser' in str(sys.argv):
       ''')
       self.btest('pre_run_deps.cpp', expected='10', args=['--pre-js', 'pre.js'])
 
-    def test_websockets(self):
-      try:
+    class WebsockHarness:
+      def __enter__(self):
         def server_func():
           os.system('while true; do (/bin/echo -en "te\x01\xff\x79st\x02" ; sleep 1000) | nc -vvvl 127.0.0.1 8990; done;') # sleep to work around websockify issue 63
 
-        server = multiprocessing.Process(target=server_func)
-        server.start()
-        print '[Socket server on process %d]' % server.pid
+        self.server = multiprocessing.Process(target=server_func)
+        self.server.start()
+        print '[Socket server on process %d]' % self.server.pid
 
         def websockify_func():
           os.system(path_from_root('third_party', 'websockify', 'other', 'websockify') + ' -vvv 8991 127.0.0.1:8990')
 
-        websockify = multiprocessing.Process(target=websockify_func)
-        websockify.start()
-        print '[Websockify on process %d]' % websockify.pid
+        self.websockify = multiprocessing.Process(target=websockify_func)
+        self.websockify.start()
+        print '[Websockify on process %d]' % self.websockify.pid
 
+      def __exit__(self, *args, **kwargs):
+        for proc in [self.websockify, self.server]:
+          try:
+            print '[Cleaning up %d]', proc.pid
+            proc.terminate()
+          finally:
+            pass
+
+    def test_websockets(self):
+      with self.WebsockHarness():
         self.btest('websockets.c', expected='571')
-
-      finally:
-        try:
-          websockify.terminate()
-          print '[Cleaned up websockify]'
-        finally:
-          server.terminate()
-          print '[Cleaned up socket server]'
 
 elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
