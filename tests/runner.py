@@ -8449,28 +8449,45 @@ elif 'browser' in str(sys.argv):
 
     class WebsockHarness:
       def __enter__(self):
-        def server_func():
-          subprocess.call([path_from_root('tests', 'socket_server.sh')]);
+        self.pids = []
 
-        self.server = multiprocessing.Process(target=server_func)
+        def server_func(q):
+          proc = Popen([path_from_root('tests', 'socket_server.sh')])
+          q.put(proc.pid)
+          proc.communicate()
+
+        server_queue = multiprocessing.Queue()
+        self.server = multiprocessing.Process(target=server_func, args=(server_queue,))
         self.server.start()
-        print '[Socket server on process %d]' % self.server.pid
+        self.pids.append(self.server.pid)
+        while True:
+          if not server_queue.empty():
+            self.pids.append(server_queue.get())
+            break
+          time.sleep(0.1)
+        print '[Socket server on processes %s]' % str(self.pids[-2:])
 
-        def websockify_func():
-          subprocess.call([path_from_root('third_party', 'websockify', 'other', 'websockify'), '-vvv', '8991', '127.0.0.1:8990'])
+        def websockify_func(q):
+          proc = Popen([path_from_root('third_party', 'websockify', 'other', 'websockify'), '-vvv', '8991', '127.0.0.1:8990'])
+          q.put(proc.pid)
+          proc.communicate()
 
-        self.websockify = multiprocessing.Process(target=websockify_func)
+        websockify_queue = multiprocessing.Queue()
+        self.websockify = multiprocessing.Process(target=websockify_func, args=(websockify_queue,))
         self.websockify.start()
-        print '[Websockify on process %d]' % self.websockify.pid
+        self.pids.append(self.websockify.pid)
+        while True:
+          if not websockify_queue.empty():
+            self.pids.append(websockify_queue.get())
+            break
+          time.sleep(0.1)
+        print '[Websockify on processes %s]' % str(self.pids[-2:])
 
       def __exit__(self, *args, **kwargs):
-        for proc in [self.websockify, self.server]:
-          try:
-            print '[Cleaning up %d]' % proc.pid
-            proc.terminate()
-            print '[ok]'
-          finally:
-            pass
+        import signal
+        for pid in self.pids:
+          #os.kill(pid, signal.SIGTERM) # With this commented, we leave no children, but we hang the test harness on exit XXX
+          print '[%d should be cleaned up automatically]' % pid
 
     def test_websockets(self):
       with self.WebsockHarness():
