@@ -8450,14 +8450,14 @@ elif 'browser' in str(sys.argv):
     class WebsockHarness:
       def __enter__(self):
         def server_func():
-          os.system('while true; do (/bin/echo -en "te\x01\xff\x79st\x02" ; sleep 1000) | nc -vvvl 127.0.0.1 8990; done;') # sleep to work around websockify issue 63
+          subprocess.call([path_from_root('tests', 'socket_server.sh')]);
 
         self.server = multiprocessing.Process(target=server_func)
         self.server.start()
         print '[Socket server on process %d]' % self.server.pid
 
         def websockify_func():
-          os.system(path_from_root('third_party', 'websockify', 'other', 'websockify') + ' -vvv 8991 127.0.0.1:8990')
+          subprocess.call([path_from_root('third_party', 'websockify', 'other', 'websockify'), '-vvv', '8991', '127.0.0.1:8990'])
 
         self.websockify = multiprocessing.Process(target=websockify_func)
         self.websockify.start()
@@ -8466,8 +8466,9 @@ elif 'browser' in str(sys.argv):
       def __exit__(self, *args, **kwargs):
         for proc in [self.websockify, self.server]:
           try:
-            print '[Cleaning up %d]', proc.pid
+            print '[Cleaning up %d]' % proc.pid
             proc.terminate()
+            print '[ok]'
           finally:
             pass
 
