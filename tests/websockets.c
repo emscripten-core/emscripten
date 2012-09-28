@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/ioctl.h>
 #if EMSCRIPTEN
 #include <emscripten.h>
 #endif
@@ -17,8 +18,11 @@ int SocketFD;
 
 unsigned int get_all_buf(int sock, char* output, unsigned int maxsize)
 {
-  char buffer[1024];
+  int bytes;
+  if (ioctl(sock, FIONREAD, &bytes)) return 0;
+  if (bytes == 0) return 0;
 
+  char buffer[1024];
   int n;
   unsigned int offset = 0;
   while((errno = 0, (n = recv(sock, buffer, sizeof(buffer), 0))>0) ||

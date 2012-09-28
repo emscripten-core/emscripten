@@ -6368,6 +6368,7 @@ LibraryManager.library = {
   connect__deps: ['$Sockets', '_inet_ntop_raw', 'ntohs'],
   connect: function(fd, addr, addrlen) {
     var info = Sockets.fds[fd];
+    if (!info) return -1;
     info.connected = true;
     info.addr = getValue(addr + Sockets.sockaddr_in_layout.sin_addr, 'i32');
     info.port = _ntohs(getValue(addr + Sockets.sockaddr_in_layout.sin_port, 'i16'));
@@ -6396,6 +6397,7 @@ LibraryManager.library = {
   recv__deps: ['$Sockets'],
   recv: function(fd, buf, len, flags) {
     var info = Sockets.fds[fd];
+    if (!info) return -1;
     if (info.bufferWrite == info.bufferRead) {
       ___setErrNo(ERRNO_CODES.EAGAIN); // no data, and all sockets are nonblocking, so this is the right behavior
       return 0; // should this be -1 like the spec says?
@@ -6412,8 +6414,21 @@ LibraryManager.library = {
   },
 
   shutdown: function(fd, how) {
-    Sockets.fds[fd].socket.close();
+    var info = Sockets.fds[fd];
+    if (!info) return -1;
+    info.socket.close();
     Sockets.fds[fd] = null;
+  },
+
+  ioctl: function(fd, request, varargs) {
+    var info = Sockets.fds[fd];
+    if (!info) return -1;
+    var start = info.bufferRead;
+    var end = info.bufferWrite;
+    if (end < start) end += Sockets.BUFFER_SIZE;
+    var dest = {{{ makeGetValue('varargs', '0', 'i32') }}};
+    {{{ makeSetValue('dest', '0', 'end - start', 'i32') }}};
+    return 0;
   },
 
   // ==========================================================================

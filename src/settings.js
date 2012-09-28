@@ -1126,6 +1126,7 @@ var C_DEFINES = {'SI_MESGQ': '5',
    '_CS_POSIX_V7_LP64_OFF64_LDFLAGS': '10',
    '_SC_TTY_NAME_MAX': '41',
    'AF_INET': '1',
-   'AF_INET6': '6'
+   'AF_INET6': '6',
+   'FIONREAD': '1'
 };
 
