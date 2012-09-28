@@ -271,7 +271,8 @@ if USE_EMSDK:
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'net'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'SDL'),
   ] + [
-    '-U__APPLE__', '-U__linux__'
+    '-U__APPLE__', '-U__linux__',
+    '-D_LIBCPP_HAS_NO_DELETED_FUNCTIONS' # otherwise libc++ has errors with --std=c++11
   ]
   COMPILER_OPTS += EMSDK_OPTS
 else:
