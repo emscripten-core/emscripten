@@ -13,8 +13,6 @@ Usage:
 
   file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--compress COMPRESSION_DATA] [--pre-run] [--crunch[=X]]
 
-Notes:
-
   --pre-run Will generate wrapper code that does preloading in Module.preRun. This is necessary if you add this
             code before the main file has been loading, which includes necessary components like addRunDependency.
 
@@ -25,6 +23,11 @@ Notes:
              packaging your site.
              DDS files will not be crunched if the .crn is more recent than the .dds. This prevents a lot of
              unneeded computation.
+
+Notes:
+
+  * The file packager generates unix-style file paths. So if you are on windows and a file is accessed at
+    subdir\file, in JS it will be subdir/file. For simplicity we treat the web platform as a *NIX.
 
 TODO:        You can also provide .crn files yourself, pre-crunched. With this option, they will be decompressed
              to dds files in the browser, exactly the same as if this tool compressed them.
