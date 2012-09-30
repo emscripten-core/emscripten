@@ -522,6 +522,11 @@ function JSify(data, functionsOnly, givenFunctions) {
         func.JS += ' */\n';
       }
 
+      if (PRINT_SPLIT_FILE_MARKER) {
+          func.JS += '\n//FUNCTION_BEGIN_MARKER\n'
+          var associatedSourceFile = "NO_SOURCE";
+      }
+      
       func.JS += 'function ' + func.ident + '(' + paramIdents.join(', ') + ') {\n';
 
       if (PROFILE) {
@@ -572,6 +577,13 @@ function JSify(data, functionsOnly, givenFunctions) {
           if (EXECUTION_TIMEOUT > 0) {
             ret += indent + 'if (Date.now() - START_TIME >= ' + (EXECUTION_TIMEOUT*1000) + ') throw "Timed out!" + (new Error().stack);\n';
           }
+          
+          if (PRINT_SPLIT_FILE_MARKER && Debugging.on && Debugging.getAssociatedSourceFile(line.lineNum)) {
+            // Overwrite the associated source file for every line. The last line should contain the source file associated to
+            // the return value/address of outer most block (the marked function).
+            associatedSourceFile = Debugging.getAssociatedSourceFile(line.lineNum);
+          }
+          
           // for special labels we care about (for phi), mark that we visited them
           return ret + label.lines.map(function(line) { return line.JS + (Debugging.on ? Debugging.getComment(line.lineNum) : '') })
                                   .join('\n')
@@ -653,6 +665,11 @@ function JSify(data, functionsOnly, givenFunctions) {
         func.JS += '  return' + (func.returnType !== 'void' ? ' null' : '') + ';\n';
       }
       func.JS += '}\n';
+      
+      if (PRINT_SPLIT_FILE_MARKER) {
+          func.JS += '\n//FUNCTION_END_MARKER_OF_SOURCE_FILE_' + associatedSourceFile + '\n';
+      }
+      
       if (func.ident in EXPORTED_FUNCTIONS) {
         func.JS += 'Module["' + func.ident + '"] = ' + func.ident + ';';
       }
