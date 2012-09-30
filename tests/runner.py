@@ -8672,7 +8672,7 @@ elif 'browser' in str(sys.argv):
           #os.kill(pid, signal.SIGTERM) # With this commented, we leave no children, but we hang the test harness on exit XXX
           print '[%d should be cleaned up automatically]' % pid
 
-    def test_websockets(self):
+    def test_zz_websockets(self): # always run this test last
       with self.WebsockHarness():
         self.btest('websockets.c', expected='571')
 
