@@ -31,15 +31,30 @@ if (ENVIRONMENT_IS_NODE) {
   var nodeFS = require('fs');
   var nodePath = require('path');
 
-  read = function(filename) {
-    filename = nodePath['normalize'](filename);
-    var ret = nodeFS['readFileSync'](filename).toString();
-    // The path is absolute if the normalized version is the same as the resolved.
-    if (!ret && filename != nodePath['resolve'](filename)) {
-      filename = path.join(__dirname, '..', 'src', filename);
-      ret = nodeFS['readFileSync'](filename).toString();
+  if (!nodeFS.existsSync) {
+    nodeFS.existsSync = function(path) {
+      try {
+        return !!nodeFS.readFileSync(path);
+      } catch(e) {
+        return false;
+      }
     }
-    return ret;
+  }
+
+  function find(filename) {
+    var prefixes = [__dirname, process.cwd()];
+    for (var i = 0; i < prefixes.length; ++i) {
+      var combined = nodePath.join(prefixes[i], filename);
+      if (nodeFS.existsSync(combined)) {
+        return combined;
+      }
+    }
+    return filename;
+  }
+
+  read = function(filename) {
+    var absolute = find(filename);
+    return nodeFS['readFileSync'](absolute).toString();
   };
 
   load = function(f) {

@@ -1,0 +1,250 @@
+<html>
+
+    <head>
+        <title>WebSockets Load Test</title>
+        <script src="include/util.js"></script>
+        <script src="include/webutil.js"></script> 
+        <script src="include/base64.js"></script>
+        <script src="include/websock.js"></script> 
+        <!-- Uncomment to activate firebug lite -->
+        <!--
+        <script type='text/javascript' 
+            src='http://getfirebug.com/releases/lite/1.2/firebug-lite-compressed.js'></script>
+        -->
+
+
+    </head>
+
+    <body>
+
+        Host: <input id='host' style='width:100'>&nbsp;
+        Port: <input id='port' style='width:50'>&nbsp;
+        Encrypt: <input id='encrypt' type='checkbox'>&nbsp;
+        Send Delay (ms): <input id='sendDelay' style='width:50' value="100">&nbsp;
+        <input id='connectButton' type='button' value='Start' style='width:100px'
+            onclick="connect();">&nbsp;
+
+        <br><br>
+        <table border=1>
+            <tr>
+                <th align="right">Packets sent:</th>
+                <td align="right"><div id='sent'>0</div></td>
+            </tr><tr>
+                <th align="right">Good Packets Received:</th>
+                <td align="right"><div id='received'>0</div></td>
+            </tr><tr>
+                <th align="right">Errors (Bad Packets Received:)</th>
+                <td align="right"><div id='errors'>0</div></td>
+            </tr>
+        </table>
+
+        <br>
+        Errors:<br>
+        <textarea id="error" style="font-size: 9;" cols=80 rows=25></textarea>
+    </body>
+
+
+    <script>
+
+        function error(str) {
+            console.error(str);
+            cell = $D('error');
+            cell.innerHTML += errors + ": " + str + "\n";
+            cell.scrollTop = cell.scrollHeight;
+        }
+
+        var host = null, port = null, sendDelay = 0;
+        var ws = null, update_ref = null, send_ref = null;
+        var sent = 0, received = 0, errors = 0;
+        var max_send = 2000;
+        var recv_seq = 0, send_seq = 0;
+
+        Array.prototype.pushStr = function (str) {
+            var n = str.length;
+            for (var i=0; i < n; i++) {
+                this.push(str.charCodeAt(i));
+            }
+        }
+
+
+
+        function add (x,y) {
+            return parseInt(x,10)+parseInt(y,10);
+        }
+
+        function check_respond(data) {
+            //console.log(">> check_respond");
+            var first, last, str, length, chksum, nums, arr;
+            first = String.fromCharCode(data.shift());
+            last = String.fromCharCode(data.pop());
+
+            if (first != "^") {
+                errors++;
+                error("Packet missing start char '^'");
+                return;
+            }
+            if (last != "$") {
+                errors++;
+                error("Packet missing end char '$'");
+                return;
+            }
+            arr = data.map(function(num) {
+                    return String.fromCharCode(num); 
+                } ).join('').split(':');
+            seq    = arr[0];
+            length = arr[1];
+            chksum = arr[2];
+            nums   = arr[3];
+
+            //console.log("   length:" + length + " chksum:" + chksum + " nums:" + nums);
+            if (seq != recv_seq) {
+                errors++;
+                error("Expected seq " + recv_seq + " but got " + seq);
+                recv_seq = parseInt(seq,10) + 1;   // Back on track
+                return;
+            }
+            recv_seq++;
+            if (nums.length != length) {
+                errors++;
+                error("Expected length " + length + " but got " + nums.length);
+                return;
+            }
+            //real_chksum = nums.reduce(add);
+            real_chksum = 0;
+            for (var i=0; i < nums.length; i++) {
+                real_chksum += parseInt(nums.charAt(i), 10);
+            }
+            if (real_chksum != chksum) {
+                errors++
+                error("Expected chksum " + chksum + " but real chksum is " + real_chksum);
+                return;
+            }
+            received++;
+            //console.log("   Packet checks out: length:" + length + " chksum:" + chksum);
+            //console.log("<< check_respond");
+        }
+
+        function send() {
+            var length = Math.floor(Math.random()*(max_send-9)) + 10; // 10 - max_send
+            var numlist = [], arr = [];
+            for (var i=0; i < length; i++) {
+                numlist.push( Math.floor(Math.random()*10) );
+            }
+            //chksum = numlist.reduce(add);
+            chksum = 0;
+            for (var i=0; i < numlist.length; i++) {
+                chksum += parseInt(numlist[i], 10);
+            }
+            var nums = numlist.join('');
+            arr.pushStr("^" + send_seq + ":" + length + ":" + chksum + ":" + nums + "$")
+            send_seq ++;
+            ws.send(arr);
+            sent++;
+        }
+
+        function update_stats() {
+            $D('sent').innerHTML = sent;
+            $D('received').innerHTML = received;
+            $D('errors').innerHTML = errors;
+        }
+
+        function init_ws() {
+            console.log(">> init_ws");
+            var scheme = "ws://";
+            if ($D('encrypt').checked) {
+                scheme = "wss://";
+            }
+            var uri = scheme + host + ":" + port;
+            console.log("connecting to " + uri);
+            ws = new Websock();
+            ws.open(uri);
+
+            ws.on('message', function() {
+                //console.log(">> WebSockets.onmessage");
+                arr = ws.rQshiftBytes(ws.rQlen());
+                check_respond(arr);
+                //console.log("<< WebSockets.onmessage");
+            });
+            ws.on('open', function() {
+                console.log(">> WebSockets.onopen");
+                send_ref = setInterval(send, sendDelay);
+                console.log("<< WebSockets.onopen");
+            });
+            ws.on('close', function(e) {
+                console.log(">> WebSockets.onclose");
+                clearInterval(send_ref);
+                console.log("<< WebSockets.onclose");
+            });
+            ws.on('error', function(e) {
+                console.log(">> WebSockets.onerror");
+                console.log("   " + e);
+                console.log("<< WebSockets.onerror");
+            });
+
+            console.log("<< init_ws");
+        }
+
+        function connect() {
+            console.log(">> connect");
+            host = $D('host').value;
+            port = $D('port').value;
+            sendDelay = parseInt($D('sendDelay').value, 10);
+            if ((!host) || (!port)) {
+                console.log("must set host and port");
+                return;
+            }
+
+            if (ws) {
+                ws.close();
+            }
+            init_ws();
+            update_ref = setInterval(update_stats, 1);
+
+            $D('connectButton').value = "Stop";
+            $D('connectButton').onclick = disconnect;
+            console.log("<< connect");
+        }
+
+        function disconnect() {
+            console.log(">> disconnect");
+            if (ws) {
+                ws.close();
+            }
+
+            clearInterval(update_ref);
+            update_stats(); // Final numbers
+            recv_seq = 0;
+            send_seq = 0;
+
+            $D('connectButton').value = "Start";
+            $D('connectButton').onclick = connect;
+            console.log("<< disconnect");
+        }
+
+
+        /* If no builtin websockets then load web_socket.js */
+        if (window.WebSocket) {
+            VNC_native_ws = true;
+        } else {
+            VNC_native_ws = false;
+            console.log("Loading web-socket-js flash bridge");
+            var extra = "<script src='include/web-socket-js/swfobject.js'><\/script>";
+            extra += "<script src='include/web-socket-js/FABridge.js'><\/script>";
+            extra += "<script src='include/web-socket-js/web_socket.js'><\/script>";
+            document.write(extra);
+        }
+
+        window.onload = function() {
+            console.log("onload");
+            if (!VNC_native_ws) {
+                console.log("initializing web-socket-js flash bridge");
+                WebSocket.__swfLocation = "include/web-socket-js/WebSocketMain.swf";
+                WebSocket.__initialize();
+            }
+            var url = document.location.href;
+            $D('host').value = (url.match(/host=([^&#]*)/) || ['',''])[1];
+            $D('port').value = (url.match(/port=([^&#]*)/) || ['',''])[1];
+        }
+    </script>
+
+</html>

@@ -1,0 +1,4 @@
+Manual setup:
+
+DATA="echo \'<cross-domain-policy><allow-access-from domain=\\\"*\\\" to-ports=\\\"*\\\" /></cross-domain-policy>\'"
+/usr/bin/socat -T 1 TCP-L:843,reuseaddr,fork,crlf SYSTEM:"$DATA"

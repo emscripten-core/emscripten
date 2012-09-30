@@ -6,8 +6,7 @@ var LibraryXlib = {
 
   XCreateWindow: function(display, parent, x, y, width, height, border_width, depth, class_, visual, valuemask, attributes) {
     // All we can do is set the width and height
-    Module['canvas'].width = width;
-    Module['canvas'].height = height;
+    Browser.setCanvasSize(width, height);
     return 2;
   },
 

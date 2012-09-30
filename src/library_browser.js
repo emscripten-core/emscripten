@@ -347,6 +347,12 @@ mergeInto(LibraryManager.library, {
       });
       addRunDependency('al ' + url);
     },
+    
+    setCanvasSize: function(width, height) {
+      var canvas = Module['canvas'];
+      canvas.width = width;
+      canvas.height = height;
+    }
   },
 
   emscripten_async_wget: function(url, file, onload, onerror) {
@@ -494,8 +500,7 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_set_canvas_size: function(width, height) {
-    Module['canvas'].width = width;
-    Module['canvas'].height = height;
+    Browser.setCanvasSize(width, height);
   },
 
   emscripten_get_now: function() {

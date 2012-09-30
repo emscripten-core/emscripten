@@ -198,7 +198,11 @@ var INCLUDE_FULL_LIBRARY = 0; // Whether to include the whole library rather tha
                               // dynamically loading modules that make use of runtime
                               // library functions that are not used in the main module.
 
+var SHELL_FILE = 0; // set this to a string to override the shell file used
+
 var SHOW_LABELS = 0; // Show labels in the generated code
+
+var PRINT_SPLIT_FILE_MARKER = 0; // Prints markers in Javascript generation to split the file later on. See emcc --split option.
 
 var BUILD_AS_SHARED_LIB = 0; // Whether to build the code as a shared library, which
                              // must be loaded dynamically using dlopen().
@@ -1122,5 +1126,9 @@ var C_DEFINES = {'SI_MESGQ': '5',
    'AT_FDCWD': '-2',
    'SIGTTOU': '22',
    '_CS_POSIX_V7_LP64_OFF64_LDFLAGS': '10',
-   '_SC_TTY_NAME_MAX': '41'};
+   '_SC_TTY_NAME_MAX': '41',
+   'AF_INET': '1',
+   'AF_INET6': '6',
+   'FIONREAD': '1'
+};
 

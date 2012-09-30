@@ -127,6 +127,11 @@ var Debugging = {
                                                                 this.llvmLineToSourceFile[lineNum] + '"' : '';
   },
 
+  getAssociatedSourceFile: function(lineNum) {
+    if (!this.on) return null;
+    return lineNum in this.llvmLineToSourceLine ? this.llvmLineToSourceFile[lineNum] : null;
+  },
+  
   getIdentifier: function(lineNum) {
     if (!this.on) return null;
     if (lineNum === undefined) {

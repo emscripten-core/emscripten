@@ -4850,6 +4850,7 @@ LibraryManager.library = {
   // RTTI hacks for exception handling, defining type_infos for common types.
   // The values are dummies. We simply use the addresses of these statically
   // allocated variables as unique identifiers.
+  _ZTIb: [0], // bool
   _ZTIi: [0], // int
   _ZTIj: [0], // unsigned int
   _ZTIl: [0], // long
@@ -4863,7 +4864,7 @@ LibraryManager.library = {
   _ZTIa: [0], // signed char
   _ZTIh: [0], // unsigned char
   _ZTIs: [0], // short
-  _ZTIt: [0], // signed short
+  _ZTIt: [0], // unsigned short
   _ZTIv: [0], // void
   _ZTIPv: [0], // void*
 
@@ -6313,6 +6314,122 @@ LibraryManager.library = {
   },
   ntohl: 'htonl',
   ntohs: 'htons',
+
+  inet_pton__deps: ['__setErrNo', '$ERRNO_CODES'],
+  inet_pton: function(af, src, dst) {
+    // int af, const char *src, void *dst
+    if ((af ^ {{{ cDefine("AF_INET") }}}) !==  0) { ___setErrNo(ERRNO_CODES.EAFNOSUPPORT); return -1; }
+    var b = Pointer_stringify(src).split(".");
+    if (b.length !== 4) return 0;
+    var ret = Number(b[0]) | (Number(b[1]) << 8) | (Number(b[2]) << 16) | (Number(b[3]) << 24);
+    if (isNaN(ret)) return 0;
+    setValue(dst, ret, 'i32');
+    return 1;
+  },
+
+  _inet_ntop_raw: function(addr) {
+    return (addr & 0xff) + '.' + ((addr >> 8) & 0xff) + '.' + ((addr >> 16) & 0xff) + '.' + ((addr >> 24) & 0xff)
+  },
+
+  inet_ntop__deps: ['_inet_ntop_raw'],
+  inet_ntop: function(af, src, dst, size) {
+    var addr = getValue(src, 'i32');
+    var str = __inet_ntop_raw(addr);
+    writeStringToMemory(str.substr(0, size), dst, true);
+    return dst;
+  },
+
+  // ==========================================================================
+  // sockets
+  // ==========================================================================
+
+  $Sockets__deps: ['__setErrNo', '$ERRNO_CODES'],
+  $Sockets: {
+    BUFFER_SIZE: 10*1024,
+    nextFd: 1,
+    fds: {},
+    sockaddr_in_layout: Runtime.generateStructInfo([
+      ['i16', 'sin_family'],
+      ['i16', 'sin_port'],
+      ['i32', 'sin_addr'],
+      ['i64', 'sin_zero'],
+    ]),
+  },
+
+  socket__deps: ['$Sockets'],
+  socket: function(family, type, protocol) {
+    var fd = Sockets.nextFd++;
+    Sockets.fds[fd] = {
+      connected: false
+    };
+    return fd;
+  },
+
+  connect__deps: ['$Sockets', '_inet_ntop_raw', 'ntohs'],
+  connect: function(fd, addr, addrlen) {
+    var info = Sockets.fds[fd];
+    if (!info) return -1;
+    info.connected = true;
+    info.addr = getValue(addr + Sockets.sockaddr_in_layout.sin_addr, 'i32');
+    info.port = _ntohs(getValue(addr + Sockets.sockaddr_in_layout.sin_port, 'i16'));
+    info.host = __inet_ntop_raw(info.addr);
+    info.socket = new WebSocket('ws://' + info.host + ':' + info.port, ['arraybuffer']);
+    info.socket.binaryType = 'arraybuffer';
+    info.buffer = new Uint8Array(Sockets.BUFFER_SIZE);
+    info.bufferWrite = info.bufferRead = 0;
+    info.socket.onmessage = function (event) {
+      var data = event.data;
+      if (typeof data == 'string') {
+        var binaryString = window.atob(data);
+        var len = binaryString.length;
+        for (var i = 0; i < len; i++) {
+          info.buffer[info.bufferWrite++] = binaryString.charCodeAt(i);
+          if (info.bufferWrite == Sockets.BUFFER_SIZE) info.bufferWrite = 0;
+          if (info.bufferWrite == info.bufferRead) throw 'socket buffer overflow';
+        }
+      } else {
+        console.log('binary!');
+      }
+    }
+    return 0;
+  },
+
+  recv__deps: ['$Sockets'],
+  recv: function(fd, buf, len, flags) {
+    var info = Sockets.fds[fd];
+    if (!info) return -1;
+    if (info.bufferWrite == info.bufferRead) {
+      ___setErrNo(ERRNO_CODES.EAGAIN); // no data, and all sockets are nonblocking, so this is the right behavior
+      return 0; // should this be -1 like the spec says?
+    }
+    var ret = 0;
+    while (info.bufferWrite != info.bufferRead && len > 0) {
+      // write out a byte
+      {{{ makeSetValue('buf++', '0', 'info.buffer[info.bufferRead++]', 'i8') }}};
+      if (info.bufferRead == Sockets.BUFFER_SIZE) info.bufferRead = 0;
+      len--;
+      ret++;
+    }
+    return ret;
+  },
+
+  shutdown: function(fd, how) {
+    var info = Sockets.fds[fd];
+    if (!info) return -1;
+    info.socket.close();
+    Sockets.fds[fd] = null;
+  },
+
+  ioctl: function(fd, request, varargs) {
+    var info = Sockets.fds[fd];
+    if (!info) return -1;
+    var start = info.bufferRead;
+    var end = info.bufferWrite;
+    if (end < start) end += Sockets.BUFFER_SIZE;
+    var dest = {{{ makeGetValue('varargs', '0', 'i32') }}};
+    {{{ makeSetValue('dest', '0', 'end - start', 'i32') }}};
+    return 0;
+  },
 
   // ==========================================================================
   // emscripten.h

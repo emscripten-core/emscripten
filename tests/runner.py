@@ -7707,6 +7707,10 @@ fscanfed: 10 - hello
 elif 'browser' in str(sys.argv):
   # Browser tests.
 
+  print
+  print 'Running the browser tests. Make sure the browser allows popups from localhost.'
+  print
+
   # Run a server and a web page. When a test runs, we tell the server about it,
   # which tells the web page, which then opens a window with the test. Doing
   # it this way then allows the page to close() itself when done.
@@ -7798,7 +7802,7 @@ elif 'browser' in str(sys.argv):
         print '(moving on..)'
 
     def with_report_result(self, code):
-      return '''
+      return r'''
         #define REPORT_RESULT_INTERNAL(sync) \
           char output[1000]; \
           sprintf(output, \
@@ -7882,6 +7886,189 @@ elif 'browser' in str(sys.argv):
         Popen(['sh', './doit.sh']).communicate()
       finally:
         os.chdir(cwd)
+
+    def test_split(self):
+      # test HTML generation.
+      self.reftest(path_from_root('tests', 'htmltest.png'))
+      output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.js', '--split', '100', '--pre-js', 'reftest.js']).communicate()
+      assert os.path.exists(os.path.join(self.get_dir(), 'something.js')), 'must be main js file'
+      assert os.path.exists(os.path.join(self.get_dir(), 'something_functions.js')), 'must be functions js file'
+      assert os.path.exists(os.path.join(self.get_dir(), 'something.include.html')), 'must be js include file'
+      
+      open(os.path.join(self.get_dir(), 'something.html'), 'w').write('''
+      
+      <!doctype html>
+      <html lang="en-us">
+        <head>
+          <meta charset="utf-8">
+          <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+          <title>Emscripten-Generated Code</title>
+          <style>
+            .emscripten { padding-right: 0; margin-left: auto; margin-right: auto; display: block; }
+            canvas.emscripten { border: 1px solid black; }
+            textarea.emscripten { font-family: monospace; width: 80%; }
+            div.emscripten { text-align: center; }
+          </style>
+        </head>
+        <body>
+          <hr/>
+          <div class="emscripten" id="status">Downloading...</div>
+          <div class="emscripten">
+            <progress value="0" max="100" id="progress" hidden=1></progress>  
+          </div>
+          <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+          <hr/>
+          <div class="emscripten"><input type="button" value="fullscreen" onclick="Module.requestFullScreen()"></div>
+          <hr/>
+          <textarea class="emscripten" id="output" rows="8"></textarea>
+          <hr>
+          <script type='text/javascript'>
+            // connect to canvas
+            var Module = {
+              preRun: [],
+              postRun: [],
+              print: (function() {
+                var element = document.getElementById('output');
+                element.value = ''; // clear browser cache
+                return function(text) {
+                  // These replacements are necessary if you render to raw HTML
+                  //text = text.replace(/&/g, "&amp;");
+                  //text = text.replace(/</g, "&lt;");
+                  //text = text.replace(/>/g, "&gt;");
+                  //text = text.replace('\\n', '<br>', 'g');
+                  element.value += text + "\\n";
+                  element.scrollTop = 99999; // focus on bottom
+                };
+              })(),
+              printErr: function(text) {
+                if (0) { // XXX disabled for safety typeof dump == 'function') {
+                  dump(text + '\\n'); // fast, straight to the real console
+                } else {
+                  console.log(text);
+                }
+              },
+              canvas: document.getElementById('canvas'),
+              setStatus: function(text) {
+                if (Module.setStatus.interval) clearInterval(Module.setStatus.interval);
+                var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
+                var statusElement = document.getElementById('status');
+                var progressElement = document.getElementById('progress');
+                if (m) {
+                  text = m[1];
+                  progressElement.value = parseInt(m[2])*100;
+                  progressElement.max = parseInt(m[4])*100;
+                  progressElement.hidden = false;
+                } else {
+                  progressElement.value = null;
+                  progressElement.max = null;
+                  progressElement.hidden = true;
+                }
+                statusElement.innerHTML = text;
+              },
+              totalDependencies: 0,
+              monitorRunDependencies: function(left) {
+                this.totalDependencies = Math.max(this.totalDependencies, left);
+                Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
+              }
+            };
+            Module.setStatus('Downloading...');
+          </script>''' + open(os.path.join(self.get_dir(), 'something.include.html')).read() + '''
+        </body>
+      </html>
+      ''')
+      
+      self.run_browser('something.html', 'You should see "hello, world!" and a colored cube.', '/report_result?0')
+
+    def test_split_in_source_filenames(self):
+      self.reftest(path_from_root('tests', 'htmltest.png'))
+      output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.js', '-g', '--split', '100', '--pre-js', 'reftest.js']).communicate()
+      assert os.path.exists(os.path.join(self.get_dir(), 'something.js')), 'must be main js file'
+      assert os.path.exists(self.get_dir() + '/something/' + path_from_root('tests', 'hello_world_sdl.cpp.js')), 'must be functions js file'
+      assert os.path.exists(os.path.join(self.get_dir(), 'something.include.html')), 'must be js include file'
+
+      open(os.path.join(self.get_dir(), 'something.html'), 'w').write('''
+
+      <!doctype html>
+      <html lang="en-us">
+        <head>
+          <meta charset="utf-8">
+          <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+          <title>Emscripten-Generated Code</title>
+          <style>
+            .emscripten { padding-right: 0; margin-left: auto; margin-right: auto; display: block; }
+            canvas.emscripten { border: 1px solid black; }
+            textarea.emscripten { font-family: monospace; width: 80%; }
+            div.emscripten { text-align: center; }
+          </style>
+        </head>
+        <body>
+          <hr/>
+          <div class="emscripten" id="status">Downloading...</div>
+          <div class="emscripten">
+            <progress value="0" max="100" id="progress" hidden=1></progress>  
+          </div>
+          <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+          <hr/>
+          <div class="emscripten"><input type="button" value="fullscreen" onclick="Module.requestFullScreen()"></div>
+          <hr/>
+          <textarea class="emscripten" id="output" rows="8"></textarea>
+          <hr>
+          <script type='text/javascript'>
+            // connect to canvas
+            var Module = {
+              preRun: [],
+              postRun: [],
+              print: (function() {
+                var element = document.getElementById('output');
+                element.value = ''; // clear browser cache
+                return function(text) {
+                  // These replacements are necessary if you render to raw HTML
+                  //text = text.replace(/&/g, "&amp;");
+                  //text = text.replace(/</g, "&lt;");
+                  //text = text.replace(/>/g, "&gt;");
+                  //text = text.replace('\\n', '<br>', 'g');
+                  element.value += text + "\\n";
+                  element.scrollTop = 99999; // focus on bottom
+                };
+              })(),
+              printErr: function(text) {
+                if (0) { // XXX disabled for safety typeof dump == 'function') {
+                  dump(text + '\\n'); // fast, straight to the real console
+                } else {
+                  console.log(text);
+                }
+              },
+              canvas: document.getElementById('canvas'),
+              setStatus: function(text) {
+                if (Module.setStatus.interval) clearInterval(Module.setStatus.interval);
+                var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
+                var statusElement = document.getElementById('status');
+                var progressElement = document.getElementById('progress');
+                if (m) {
+                  text = m[1];
+                  progressElement.value = parseInt(m[2])*100;
+                  progressElement.max = parseInt(m[4])*100;
+                  progressElement.hidden = false;
+                } else {
+                  progressElement.value = null;
+                  progressElement.max = null;
+                  progressElement.hidden = true;
+                }
+                statusElement.innerHTML = text;
+              },
+              totalDependencies: 0,
+              monitorRunDependencies: function(left) {
+                this.totalDependencies = Math.max(this.totalDependencies, left);
+                Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
+              }
+            };
+            Module.setStatus('Downloading...');
+          </script>''' + open(os.path.join(self.get_dir(), 'something.include.html')).read() + '''
+        </body>
+      </html>
+      ''')
+
+      self.run_browser('something.html', 'You should see "hello, world!" and a colored cube.', '/report_result?0')
 
     def test_compression(self):
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
@@ -8443,6 +8630,52 @@ elif 'browser' in str(sys.argv):
       ''')
       self.btest('pre_run_deps.cpp', expected='10', args=['--pre-js', 'pre.js'])
 
+    class WebsockHarness:
+      def __enter__(self):
+        self.pids = []
+
+        def server_func(q):
+          proc = Popen([path_from_root('tests', 'socket_server.sh')])
+          q.put(proc.pid)
+          proc.communicate()
+
+        server_queue = multiprocessing.Queue()
+        self.server = multiprocessing.Process(target=server_func, args=(server_queue,))
+        self.server.start()
+        self.pids.append(self.server.pid)
+        while True:
+          if not server_queue.empty():
+            self.pids.append(server_queue.get())
+            break
+          time.sleep(0.1)
+        print '[Socket server on processes %s]' % str(self.pids[-2:])
+
+        def websockify_func(q):
+          proc = Popen([path_from_root('third_party', 'websockify', 'other', 'websockify'), '-vvv', '8991', '127.0.0.1:8990'])
+          q.put(proc.pid)
+          proc.communicate()
+
+        websockify_queue = multiprocessing.Queue()
+        self.websockify = multiprocessing.Process(target=websockify_func, args=(websockify_queue,))
+        self.websockify.start()
+        self.pids.append(self.websockify.pid)
+        while True:
+          if not websockify_queue.empty():
+            self.pids.append(websockify_queue.get())
+            break
+          time.sleep(0.1)
+        print '[Websockify on processes %s]' % str(self.pids[-2:])
+
+      def __exit__(self, *args, **kwargs):
+        import signal
+        for pid in self.pids:
+          #os.kill(pid, signal.SIGTERM) # With this commented, we leave no children, but we hang the test harness on exit XXX
+          print '[%d should be cleaned up automatically]' % pid
+
+    def test_zz_websockets(self): # always run this test last
+      with self.WebsockHarness():
+        self.btest('websockets.c', expected='571')
+
 elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
   # |benchmark.test_X|.
@@ -8824,11 +9057,27 @@ elif 'sanity' in str(sys.argv):
         self.assertContained('Welcome to Emscripten!', output)
         self.assertContained('This is the first time any of the Emscripten tools has been run.', output)
         self.assertContained('A settings file has been copied to %s, at absolute path: %s' % (EM_CONFIG, CONFIG_FILE), output)
-        self.assertContained('Please edit that file and change the paths to fit your system', output)
-        self.assertContained('make sure LLVM_ROOT and NODE_JS are correct', output)
+        self.assertContained('It contains our best guesses for the important paths, which are:', output)
+        self.assertContained('LLVM_ROOT', output)
+        self.assertContained('NODE_JS', output)
+        self.assertContained('Please edit the file if any of those are incorrect', output)
         self.assertContained('This command will now exit. When you are done editing those paths, re-run it.', output)
         assert output.split()[-1].endswith('===='), 'We should have stopped: ' + output
-        assert (open(CONFIG_FILE).read() == open(path_from_root('tools', 'settings_template_readonly.py')).read()), 'Settings should be copied from tools/settings_template_readonly.py'
+        config_file = open(CONFIG_FILE).read()
+        template_file = open(path_from_root('tools', 'settings_template_readonly.py')).read()
+        self.assertNotContained('~/.emscripten', config_file)
+        self.assertContained('~/.emscripten', template_file)
+        self.assertNotContained('{{{', config_file)
+        self.assertNotContained('}}}', config_file)
+        self.assertContained('{{{', template_file)
+        self.assertContained('}}}', template_file)
+        for content in ['EMSCRIPTEN_ROOT', 'LLVM_ROOT', 'NODE_JS', 'TEMP_DIR', 'COMPILER_ENGINE', 'JS_ENGINES']:
+          self.assertContained(content, config_file)
+
+        # The guessed config should be ok XXX This depends on your local system! it is possible `which` guesses wrong
+        try_delete('a.out.js')
+        output = Popen(['python', EMCC, path_from_root('tests', 'hello_world.c')], stdout=PIPE, stderr=PIPE).communicate()
+        self.assertContained('hello, world!', run_js('a.out.js'), output)
 
         # Second run, with bad EM_CONFIG
         for settings in ['blah', 'LLVM_ROOT="blarg"; JS_ENGINES=[]; COMPILER_ENGINE=NODE_JS=SPIDERMONKEY_ENGINE=[]']:
@@ -8876,7 +9125,7 @@ elif 'sanity' in str(sys.argv):
       restore()
 
       # Clang should report the version number we expect, and emcc should not warn
-      assert ('clang version ' + '.'.join(map(str, EXPECTED_LLVM_VERSION))) in Popen([CLANG, '-v'], stderr=PIPE).communicate()[1]
+      assert check_clang_version()
       output = self.check_working(EMCC)
       assert LLVM_WARNING not in output, output
 

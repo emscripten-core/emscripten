@@ -11,6 +11,8 @@ extern "C" {
 #define TIOCGSIZE 80 // bogus
 #define TIOCGWINSZ 80 // bogus
 
+#define FIONREAD 1
+
 int ioctl(int d, int request, ...);
 
 #define SO_RCVTIMEO 1000
