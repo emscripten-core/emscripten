@@ -6391,6 +6391,29 @@ LibraryManager.library = {
         console.log('binary!');
       }
     }
+    info.sendQueue = [];
+    info.senderWaiting = false;
+    info.sender = function(data) {
+      if (data) {
+        info.sendQueue.push(data);
+      } else if (info.sendQueue.length == 0) {
+        return;
+      }
+      if (info.socket.readyState != info.socket.OPEN) {
+        if (!info.senderWaiting) {
+          console.log('waiting for socket in order to send');
+          setTimeout(info.sender, 100);
+          info.senderWaiting = true;
+        }
+        return;
+      }
+      for (var i = 0; i < info.sendQueue.length; i++) {
+        console.log('sending ' + info.sendQueue[i]);
+        info.socket.send(window.btoa(info.sendQueue[i]));
+      }
+      info.sendQueue = [];
+      info.senderWaiting = false;
+    }
     return 0;
   },
 
@@ -6411,6 +6434,13 @@ LibraryManager.library = {
       ret++;
     }
     return ret;
+  },
+
+  send__deps: ['$Sockets'],
+  send: function(fd, buf, len, flags) {
+    var info = Sockets.fds[fd];
+    if (!info) return -1;
+    info.sender(Pointer_stringify(buf, len));
   },
 
   shutdown: function(fd, how) {

@@ -8662,28 +8662,34 @@ elif 'browser' in str(sys.argv):
       ''')
       self.btest('pre_run_deps.cpp', expected='10', args=['--pre-js', 'pre.js'])
 
+    # Runs a websocket server at a specific port. port is the true tcp socket we forward to, port+1 is the websocket one
     class WebsockHarness:
-      def __init__(self, port):
+      def __init__(self, port, server_func=None, no_server=False):
         self.port = port
+        self.server_func = server_func
+        self.no_server = no_server
 
       def __enter__(self):
         self.pids = []
 
-        def server_func(q):
-          proc = Popen([path_from_root('tests', 'socket_server.sh'), str(self.port)])
-          q.put(proc.pid)
-          proc.communicate()
+        if not self.no_server:
+          def server_func(q):
+            proc = Popen([path_from_root('tests', 'socket_server.sh'), str(self.port)])
+            q.put(proc.pid)
+            proc.communicate()
 
-        server_queue = multiprocessing.Queue()
-        self.server = multiprocessing.Process(target=server_func, args=(server_queue,))
-        self.server.start()
-        self.pids.append(self.server.pid)
-        while True:
-          if not server_queue.empty():
-            self.pids.append(server_queue.get())
-            break
-          time.sleep(0.1)
-        print '[Socket server on processes %s]' % str(self.pids[-2:])
+          server_func = self.server_func or server_func
+
+          server_queue = multiprocessing.Queue()
+          self.server = multiprocessing.Process(target=server_func, args=(server_queue,))
+          self.server.start()
+          self.pids.append(self.server.pid)
+          while True:
+            if not server_queue.empty():
+              self.pids.append(server_queue.get())
+              break
+            time.sleep(0.1)
+          print '[Socket server on processes %s]' % str(self.pids[-2:])
 
         def websockify_func(q):
           proc = Popen([path_from_root('third_party', 'websockify', 'other', 'websockify'), '-vvv', str(self.port+1), '127.0.0.1:' + str(self.port)])
@@ -8711,7 +8717,15 @@ elif 'browser' in str(sys.argv):
       with self.WebsockHarness(8990):
         self.btest('websockets.c', expected='571')
 
-    #def test_websockets_bi(self):
+    def test_zz_websockets_bi(self):
+      def server_func(q):
+        proc = Popen(['python', path_from_root('tests', 'socket_relay.py'), '8990', '8995'])
+        q.put(proc.pid)
+        proc.communicate()
+      with self.WebsockHarness(8990, server_func):
+        with self.WebsockHarness(8995, no_server=True):
+          Popen(['python', EMCC, path_from_root('tests', 'websockets_bi_side.c'), '-o', 'side.html']).communicate()
+          self.btest('websockets_bi.c', expected='2499')
 
 elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
