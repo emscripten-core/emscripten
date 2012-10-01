@@ -8708,6 +8708,7 @@ elif 'browser' in str(sys.argv):
         print '[Websockify on processes %s]' % str(self.pids[-2:])
 
       def __exit__(self, *args, **kwargs):
+        time.sleep(2) # let things quit
         import signal
         for pid in self.pids:
           #os.kill(pid, signal.SIGTERM) # With this commented, we leave no children, but we hang the test harness on exit XXX
@@ -8725,7 +8726,7 @@ elif 'browser' in str(sys.argv):
       with self.WebsockHarness(8990, server_func):
         with self.WebsockHarness(8995, no_server=True):
           Popen(['python', EMCC, path_from_root('tests', 'websockets_bi_side.c'), '-o', 'side.html']).communicate()
-          self.btest('websockets_bi.c', expected='2499')
+          self.btest('websockets_bi.c', expected='2499') # XXX result is incorrect
 
 elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
