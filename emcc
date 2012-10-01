@@ -367,7 +367,7 @@ def is_minus_s_for_emcc(newargs,i):
 CONFIGURE_CONFIG = os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in sys.argv
 CMAKE_CONFIG = 'CMakeFiles/cmTryCompileExec.dir' in ' '.join(sys.argv)# or 'CMakeCCompilerId' in ' '.join(sys.argv)
 if CONFIGURE_CONFIG or CMAKE_CONFIG:
-  compiler = shared.CLANG
+  compiler = os.environ.get('CONFIGURE_CC') or shared.CLANG # if CONFIGURE_CC is defined, use that. let's you use local gcc etc. if you need that
   if not ('CXXCompiler' in ' '.join(sys.argv) or os.environ.get('EMMAKEN_CXX')):
     compiler = shared.to_cc(compiler)
   def filter_emscripten_options(argv):
