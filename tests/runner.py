@@ -8667,7 +8667,7 @@ elif 'browser' in str(sys.argv):
         self.pids = []
 
         def server_func(q):
-          proc = Popen([path_from_root('tests', 'socket_server.sh')])
+          proc = Popen([path_from_root('tests', 'socket_server.sh'), '8990'])
           q.put(proc.pid)
           proc.communicate()
 
@@ -8707,6 +8707,8 @@ elif 'browser' in str(sys.argv):
     def test_zz_websockets(self): # always run this test last
       with self.WebsockHarness():
         self.btest('websockets.c', expected='571')
+
+    #def test_websockets_bi(self):
 
 elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
