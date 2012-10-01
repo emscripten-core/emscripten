@@ -7361,6 +7361,38 @@ f.close()
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--embed-file', 'somefile.txt', '--embed-file', 'somefile.txt']).communicate()
       self.assertContained('|hello from a file wi|', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+    def test_embed_file_dup(self):
+      try_delete(os.path.join(self.get_dir(), 'tst'))
+      os.mkdir(os.path.join(self.get_dir(), 'tst'))
+      os.mkdir(os.path.join(self.get_dir(), 'tst', 'test1'))
+      os.mkdir(os.path.join(self.get_dir(), 'tst', 'test2'))
+
+      open(os.path.join(self.get_dir(), 'tst', 'aa.txt'), 'w').write('''frist''')
+      open(os.path.join(self.get_dir(), 'tst', 'test1', 'aa.txt'), 'w').write('''sacond''')
+      open(os.path.join(self.get_dir(), 'tst', 'test2', 'aa.txt'), 'w').write('''thard''')
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
+        #include <stdio.h>
+        #include <string.h>
+        void print_file(const char *name) {
+          FILE *f = fopen(name, "r");
+          char buf[100];
+          memset(buf, 0, 100);
+          fread(buf, 1, 20, f);
+          buf[20] = 0;
+          fclose(f);
+          printf("|%s|\n", buf);
+        }
+        int main() {
+          print_file("tst/aa.txt");
+          print_file("tst/test1/aa.txt");
+          print_file("tst/test2/aa.txt");
+          return 0;
+        }
+      ''')
+
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--embed-file', 'tst']).communicate()
+      self.assertContained('|frist|\n|sacond|\n|thard|\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
     def test_multidynamic_link(self):
       # Linking the same dynamic library in will error, normally, since we statically link it, causing dupe symbols
       # A workaround is to use --ignore-dynamic-linking, see emcc --help for details

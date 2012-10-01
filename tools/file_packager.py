@@ -252,7 +252,7 @@ for file_ in data_files:
   filename = file_['name']
   if file_['mode'] == 'embed':
     # Embed
-    code += '''Module['FS_createDataFile']('/', '%s', %s, true, true);\n''' % (os.path.basename(filename), str(map(ord, open(file_['localname'], 'rb').read())))
+    code += '''Module['FS_createDataFile']('/%s', '%s', %s, true, true);\n''' % (os.path.dirname(filename), os.path.basename(filename), str(map(ord, open(file_['localname'], 'rb').read())))
   elif file_['mode'] == 'preload':
     # Preload
     varname = 'filePreload%d' % counter
