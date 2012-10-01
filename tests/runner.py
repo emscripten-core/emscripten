@@ -8663,11 +8663,14 @@ elif 'browser' in str(sys.argv):
       self.btest('pre_run_deps.cpp', expected='10', args=['--pre-js', 'pre.js'])
 
     class WebsockHarness:
+      def __init__(self, port):
+        self.port = port
+
       def __enter__(self):
         self.pids = []
 
         def server_func(q):
-          proc = Popen([path_from_root('tests', 'socket_server.sh'), '8990'])
+          proc = Popen([path_from_root('tests', 'socket_server.sh'), str(self.port)])
           q.put(proc.pid)
           proc.communicate()
 
@@ -8683,7 +8686,7 @@ elif 'browser' in str(sys.argv):
         print '[Socket server on processes %s]' % str(self.pids[-2:])
 
         def websockify_func(q):
-          proc = Popen([path_from_root('third_party', 'websockify', 'other', 'websockify'), '-vvv', '8991', '127.0.0.1:8990'])
+          proc = Popen([path_from_root('third_party', 'websockify', 'other', 'websockify'), '-vvv', str(self.port+1), '127.0.0.1:' + str(self.port)])
           q.put(proc.pid)
           proc.communicate()
 
@@ -8705,7 +8708,7 @@ elif 'browser' in str(sys.argv):
           print '[%d should be cleaned up automatically]' % pid
 
     def test_zz_websockets(self): # always run this test last
-      with self.WebsockHarness():
+      with self.WebsockHarness(8990):
         self.btest('websockets.c', expected='571')
 
     #def test_websockets_bi(self):
