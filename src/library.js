@@ -6386,6 +6386,15 @@ LibraryManager.library = {
     return ret;
   },
 
+  gethostbyname_r__deps: ['gethostbyname'],
+  gethostbyname_r: function(name, hostData, buffer, bufferSize, hostEntry, errnum) {
+    var data = _gethostbyname(name);
+    _memcpy(hostData, data, _gethostbyname.hostent_layout.__size__);
+    _free(data);
+    setValue(errnum, 0, 'i32');
+    return 0;
+  },
+
   // ==========================================================================
   // sockets
   // ==========================================================================
@@ -6512,6 +6521,11 @@ LibraryManager.library = {
     if (end < start) end += Sockets.BUFFER_SIZE;
     var dest = {{{ makeGetValue('varargs', '0', 'i32') }}};
     {{{ makeSetValue('dest', '0', 'end - start', 'i32') }}};
+    return 0;
+  },
+
+  setsockopt: function(d, level, optname, optval, optlen) {
+    console.log('ignoring setsockopt command');
     return 0;
   },
 

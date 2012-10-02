@@ -1,5 +1,6 @@
 // g++ /home/alon/Dev/emscripten/tests/enet_client.c -I/home/alon/Dev/emscripten/system/include/emscripten/ -Iinclude/ -fpermissive .libs/libenet.a -o enet_client
 
+#include <stdio.h>
 #include <emscripten.h>
 
 #include <enet/enet.h>
@@ -13,7 +14,7 @@ void main_loop() {
   switch (event.type)
   {
     case ENET_EVENT_TYPE_CONNECT:
-      printf ("Connection succeeded\n");
+      printf ("Connection succeeded!\n");
 
       break;
     case ENET_EVENT_TYPE_RECEIVE:
@@ -58,10 +59,9 @@ int main (int argc, char ** argv)
     exit (EXIT_FAILURE);
   }
 
-  /* Connect to some.server.net:1234. */
   ENetAddress address;
   enet_address_set_host (& address, "localhost");
-  address.port = 1234;
+  address.port = 1237;
 
   printf("connecting to server...\n");
 
@@ -73,19 +73,14 @@ int main (int argc, char ** argv)
     "No available peers for initiating an ENet connection.\n");
     exit (EXIT_FAILURE);
   }
-  /* Wait up to 5 seconds for the connection attempt to succeed. */
-  ENetEvent event;
-  if (enet_host_service (host, & event, 5000) > 0 &&
-      event.type == ENET_EVENT_TYPE_CONNECT)
-  {
-    puts ("Connection to some.server.net:1234 succeeded.");
-  }
-  else
-  {
-    enet_peer_reset (peer);
-    puts ("Connection to some.server.net:1234 failed.");
-    return 0;
-  }
+
+#if EMSCRIPTEN
+  emscripten_run_script("console.log('adding iframe');"
+                        "var iframe = document.createElement('iframe');"
+                        "iframe.src = 'server.html';"
+                        "document.body.appendChild(iframe);"
+                        "console.log('added.');");
+#endif
 
   emscripten_set_main_loop(main_loop, 0);
 

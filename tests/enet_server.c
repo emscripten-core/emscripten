@@ -1,5 +1,6 @@
 // g++ /home/alon/Dev/emscripten/tests/enet_server.c -I/home/alon/Dev/emscripten/system/include/emscripten/ -Iinclude/ -fpermissive .libs/libenet.a -o enet_server
 
+#include <stdio.h>
 #include <emscripten.h>
 
 #include <enet/enet.h>
@@ -69,7 +70,7 @@ int main (int argc, char ** argv)
 
   ENetAddress address;
   address.host = ENET_HOST_ANY;
-  address.port = 1234;
+  address.port = 1235;
   printf("create!\n");
   host = enet_host_create (& address /* the address to bind the server host to */,
                              32 /* allow up to 32 clients and/or outgoing connections */,

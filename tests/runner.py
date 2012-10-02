@@ -8799,21 +8799,21 @@ elif 'browser' in str(sys.argv):
         self.clean_pids()
 
     def zzztest_zz_enet(self):
-      #try:
-      #  with self.WebsockHarness(8992, self.relay_server):
-      #    with self.WebsockHarness(8994, no_server=True):
+      try:
+        with self.WebsockHarness(1234, self.relay_server):
+          with self.WebsockHarness(1236, no_server=True):
             try_delete(self.in_dir('enet'))
             shutil.copytree(path_from_root('tests', 'enet'), self.in_dir('enet'))
             pwd = os.getcwd()
             os.chdir(self.in_dir('enet'))
             Popen(['python', path_from_root('emconfigure'), './configure']).communicate()
             Popen(['python', path_from_root('emmake'), 'make']).communicate()
-            enet = self.in_dir('enet', '.libs', 'libenet.a')
+            enet = [self.in_dir('enet', '.libs', 'libenet.a'), '-I'+path_from_root('tests', 'enet', 'include')]
             os.chdir(pwd)
-            Popen(['python', EMCC, path_from_root('tests', 'enet_server.c'), enet, '-o', 'server.html']).communicate()
-            self.btest('enet_client.c', expected='cheez', args=[enet])
-      #finally:
-      #  self.clean_pids()
+            Popen(['python', EMCC, path_from_root('tests', 'enet_server.c'), '-o', 'server.html'] + enet).communicate()
+            self.btest('enet_client.c', expected='cheez', args=enet)
+      finally:
+        self.clean_pids()
 
 elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
