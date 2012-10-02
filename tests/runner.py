@@ -5079,6 +5079,48 @@ def process(filename):
       '''
       self.do_run(src, '*d4c3b2a1,e07235fe,f0cdab07,cdab,34122143,afbe*\n4e0ab4be\n')
 
+    def test_gethostbyname(self):
+      src = r'''
+        #include <netdb.h>
+        #include <stdio.h>
+
+        void test(char *hostname) {
+          hostent *host = gethostbyname(hostname);
+          if (!host) {
+            printf("no such thing\n");
+            return;
+          }
+          printf("%s : %d : %d\n", host->h_name, host->h_addrtype, host->h_length);
+          char **name = host->h_aliases;
+          while (*name) {
+            printf("- %s\n", *name);
+            name++;
+          }
+          name = host->h_addr_list;
+          while (name && *name) {
+            printf("* ");
+            for (int i = 0; i < host->h_length; i++)
+              printf("%d.", (*name)[i]);
+            printf("\n");
+            name++;
+          }
+        }
+
+        int main() {
+          test("www.cheezburger.com");
+          test("fail.on.this.never.work"); // we will "work" on this - because we are just making aliases of names to ips
+          test("localhost");
+          return 1;
+        }
+      '''
+      self.do_run(src, '''www.cheezburger.com : 1 : 4
+* -84.29.0.0.
+fail.on.this.never.work : 1 : 4
+* -84.29.1.0.
+localhost : 1 : 4
+* -84.29.2.0.
+''')
+
     def test_ctype(self):
       # The bit fiddling done by the macros using __ctype_b_loc requires this.
       Settings.CORRECT_SIGNS = 1
