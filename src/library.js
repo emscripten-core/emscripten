@@ -6408,7 +6408,6 @@ LibraryManager.library = {
         return;
       }
       for (var i = 0; i < info.sendQueue.length; i++) {
-        console.log('sending ' + info.sendQueue[i]);
         info.socket.send(window.btoa(info.sendQueue[i]));
       }
       info.sendQueue = [];

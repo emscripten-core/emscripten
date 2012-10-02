@@ -8738,7 +8738,7 @@ elif 'browser' in str(sys.argv):
         with self.WebsockHarness(8992, server_func):
           with self.WebsockHarness(8994, no_server=True):
             Popen(['python', EMCC, path_from_root('tests', 'websockets_bi_side.c'), '-o', 'side.html']).communicate()
-            self.btest('websockets_bi.c', expected='2499') # XXX result is incorrect
+            self.btest('websockets_bi.c', expected='2499')
       finally:
         self.clean_pids()
 
