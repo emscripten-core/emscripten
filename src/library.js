@@ -6315,14 +6315,18 @@ LibraryManager.library = {
   ntohl: 'htonl',
   ntohs: 'htons',
 
-  inet_pton__deps: ['__setErrNo', '$ERRNO_CODES'],
+  inet_addr: function(ptr) {
+    var b = Pointer_stringify(ptr).split(".");
+    if (b.length !== 4) return -1; // we return -1 for error, and otherwise a uint32. this helps inet_pton differentiate
+    return (Number(b[0]) | (Number(b[1]) << 8) | (Number(b[2]) << 16) | (Number(b[3]) << 24)) >>> 0;
+  },
+
+  inet_pton__deps: ['__setErrNo', '$ERRNO_CODES', 'inet_addr'],
   inet_pton: function(af, src, dst) {
     // int af, const char *src, void *dst
     if ((af ^ {{{ cDefine("AF_INET") }}}) !==  0) { ___setErrNo(ERRNO_CODES.EAFNOSUPPORT); return -1; }
-    var b = Pointer_stringify(src).split(".");
-    if (b.length !== 4) return 0;
-    var ret = Number(b[0]) | (Number(b[1]) << 8) | (Number(b[2]) << 16) | (Number(b[3]) << 24);
-    if (isNaN(ret)) return 0;
+    var ret = _inet_addr(src);
+    if (ret == -1 || isNaN(ret)) return 0;
     setValue(dst, ret, 'i32');
     return 1;
   },
