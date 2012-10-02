@@ -6412,7 +6412,7 @@ LibraryManager.library = {
     return fd;
   },
 
-  connect__deps: ['$Sockets', '_inet_ntop_raw', 'ntohs'],
+  connect__deps: ['$Sockets', '_inet_ntop_raw', 'ntohs', 'gethostbyname'],
   connect: function(fd, addr, addrlen) {
     var info = Sockets.fds[fd];
     if (!info) return -1;
@@ -6420,6 +6420,14 @@ LibraryManager.library = {
     info.addr = getValue(addr + Sockets.sockaddr_in_layout.sin_addr, 'i32');
     info.port = _ntohs(getValue(addr + Sockets.sockaddr_in_layout.sin_port, 'i16'));
     info.host = __inet_ntop_raw(info.addr);
+    // Support 'fake' ips from gethostbyname
+    var parts = info.host.split('.');
+    if (parts[0] == '172' && parts[1] == '29') {
+      var low = Number(parts[2]);
+      var high = Number(parts[3]);
+      info.host = _gethostbyname.table[low + 0xff*high];
+      assert(info.host, 'problem translating fake ip ' + parts);
+    }
     info.socket = new WebSocket('ws://' + info.host + ':' + info.port, ['arraybuffer']);
     info.socket.binaryType = 'arraybuffer';
     info.buffer = new Uint8Array(Sockets.BUFFER_SIZE);

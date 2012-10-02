@@ -8791,6 +8791,13 @@ elif 'browser' in str(sys.argv):
       finally:
         self.clean_pids()
 
+    def test_zz_websockets_gethostbyname(self):
+      try:
+        with self.WebsockHarness(7000):
+          self.btest('websockets_gethostbyname.c', expected='571')
+      finally:
+        self.clean_pids()
+
     def zzztest_zz_enet(self):
       #try:
       #  with self.WebsockHarness(8992, self.relay_server):
