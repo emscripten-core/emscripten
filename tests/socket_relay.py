@@ -10,7 +10,8 @@ and then make a connection to another port, and do bidirectional
 communication. We need to actually listen on both ports.
 '''
 
-import os, sys, socket, time, threading
+import os, sys, socket, time, threading, signal
+from subprocess import Popen, PIPE, STDOUT
 
 ports = [int(sys.argv[1]), int(sys.argv[2])]
 

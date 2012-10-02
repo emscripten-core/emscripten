@@ -29,7 +29,7 @@ emscripten_run_script("console.log('hallo from siide')");
   memset(&stSockAddr, 0, sizeof(stSockAddr));
 
   stSockAddr.sin_family = AF_INET;
-  stSockAddr.sin_port = htons(8996);
+  stSockAddr.sin_port = htons(8995);
   Res = inet_pton(AF_INET, "127.0.0.1", &stSockAddr.sin_addr);
 
   if (0 > Res) {

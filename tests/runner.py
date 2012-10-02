@@ -8662,6 +8662,18 @@ elif 'browser' in str(sys.argv):
       ''')
       self.btest('pre_run_deps.cpp', expected='10', args=['--pre-js', 'pre.js'])
 
+    pids_to_clean = []
+    def clean_pids(self):
+      return
+      import signal
+      for pid in browser.pids_to_clean:
+        print '[killing %d]' % pid
+        try:
+          os.kill(pid, signal.SIGKILL) # With this commented, we leave no children, but we hang the test harness on exit XXX
+          print '[kill succeeded]'
+        except:
+          print '[kill fail]'
+
     # Runs a websocket server at a specific port. port is the true tcp socket we forward to, port+1 is the websocket one
     class WebsockHarness:
       def __init__(self, port, server_func=None, no_server=False):
@@ -8670,8 +8682,6 @@ elif 'browser' in str(sys.argv):
         self.no_server = no_server
 
       def __enter__(self):
-        self.pids = []
-
         if not self.no_server:
           def server_func(q):
             proc = Popen([path_from_root('tests', 'socket_server.sh'), str(self.port)])
@@ -8683,13 +8693,13 @@ elif 'browser' in str(sys.argv):
           server_queue = multiprocessing.Queue()
           self.server = multiprocessing.Process(target=server_func, args=(server_queue,))
           self.server.start()
-          self.pids.append(self.server.pid)
+          browser.pids_to_clean.append(self.server.pid)
           while True:
             if not server_queue.empty():
-              self.pids.append(server_queue.get())
+              browser.pids_to_clean.append(server_queue.get())
               break
             time.sleep(0.1)
-          print '[Socket server on processes %s]' % str(self.pids[-2:])
+          print '[Socket server on processes %s]' % str(browser.pids_to_clean[-2:])
 
         def websockify_func(q):
           proc = Popen([path_from_root('third_party', 'websockify', 'other', 'websockify'), '-vvv', str(self.port+1), '127.0.0.1:' + str(self.port)])
@@ -8699,34 +8709,38 @@ elif 'browser' in str(sys.argv):
         websockify_queue = multiprocessing.Queue()
         self.websockify = multiprocessing.Process(target=websockify_func, args=(websockify_queue,))
         self.websockify.start()
-        self.pids.append(self.websockify.pid)
+        browser.pids_to_clean.append(self.websockify.pid)
         while True:
           if not websockify_queue.empty():
-            self.pids.append(websockify_queue.get())
+            browser.pids_to_clean.append(websockify_queue.get())
             break
           time.sleep(0.1)
-        print '[Websockify on processes %s]' % str(self.pids[-2:])
+        print '[Websockify on processes %s]' % str(browser.pids_to_clean[-2:])
 
       def __exit__(self, *args, **kwargs):
-        time.sleep(2) # let things quit
-        import signal
-        for pid in self.pids:
-          #os.kill(pid, signal.SIGTERM) # With this commented, we leave no children, but we hang the test harness on exit XXX
-          print '[%d should be cleaned up automatically]' % pid
+        time.sleep(1)
 
-    def test_zz_websockets(self): # always run this test last
-      with self.WebsockHarness(8990):
-        self.btest('websockets.c', expected='571')
+    # always run these tests last
+    # make sure to use different ports in each one because it takes a while for the processes to be cleaned up
+    def test_zz_websockets(self):
+      try:
+        with self.WebsockHarness(8990):
+          self.btest('websockets.c', expected='571')
+      finally:
+        self.clean_pids()
 
     def test_zz_websockets_bi(self):
-      def server_func(q):
-        proc = Popen(['python', path_from_root('tests', 'socket_relay.py'), '8990', '8995'])
-        q.put(proc.pid)
-        proc.communicate()
-      with self.WebsockHarness(8990, server_func):
-        with self.WebsockHarness(8995, no_server=True):
-          Popen(['python', EMCC, path_from_root('tests', 'websockets_bi_side.c'), '-o', 'side.html']).communicate()
-          self.btest('websockets_bi.c', expected='2499') # XXX result is incorrect
+      try:
+        def server_func(q):
+          proc = Popen(['python', path_from_root('tests', 'socket_relay.py'), '8992', '8994'])
+          q.put(proc.pid)
+          proc.communicate()
+        with self.WebsockHarness(8992, server_func):
+          with self.WebsockHarness(8994, no_server=True):
+            Popen(['python', EMCC, path_from_root('tests', 'websockets_bi_side.c'), '-o', 'side.html']).communicate()
+            self.btest('websockets_bi.c', expected='2499') # XXX result is incorrect
+      finally:
+        self.clean_pids()
 
 elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do

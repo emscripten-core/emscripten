@@ -94,9 +94,9 @@ int main(void)
   stSockAddr.sin_family = AF_INET;
   stSockAddr.sin_port = htons(
 #if EMSCRIPTEN
-    8991
+    8993
 #else
-    8990
+    8992
 #endif
   );
   Res = inet_pton(AF_INET, "127.0.0.1", &stSockAddr.sin_addr);
