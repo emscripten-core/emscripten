@@ -1,0 +1,24 @@
+/**
+ @page FAQ Frequently Answered Questions
+
+@section Q1 Is ENet thread safe?
+
+ENet does not use any significant global variables, the vast majority
+of state is encapsulated in the ENetHost structure.  As such, as long
+as the application guards access to this structure, then ENet should
+operate fine in a multithreaded environment.
+   
+@section Q2 Isn't ENet just re-inventing TCP?!  What's the point?
+
+In a perfect world, that would be true.  But as many have found, using
+TCP either in lieu of or in conjunction with UDP can lead to all kinds
+of nightmares.  TCP is a good, solid protocol, however it simply isn't
+up to the task of real-time games.  Too much of TCP's implementation
+dictates a policy that isn't practical for games.  If you want to use
+TCP, then do so -- this library is for people that either don't want
+to use TCP or have tried and ended up being discouraged with the
+performance.
+
+*/
+
+

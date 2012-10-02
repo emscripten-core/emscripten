@@ -102,6 +102,9 @@ class RunnerCore(unittest.TestCase):
   def get_dir(self):
     return self.working_dir
 
+  def in_dir(self, *pathelems):
+    return os.path.join(self.get_dir(), *pathelems)
+
   def get_shared_library_name(self, linux_name):
     if platform.system() == 'Linux':
       return linux_name
@@ -8731,18 +8734,37 @@ elif 'browser' in str(sys.argv):
       finally:
         self.clean_pids()
 
+    @staticmethod
+    def relay_server(q):
+      proc = Popen(['python', path_from_root('tests', 'socket_relay.py'), '8992', '8994'])
+      q.put(proc.pid)
+      proc.communicate()
+
     def test_zz_websockets_bi(self):
       try:
-        def server_func(q):
-          proc = Popen(['python', path_from_root('tests', 'socket_relay.py'), '8992', '8994'])
-          q.put(proc.pid)
-          proc.communicate()
-        with self.WebsockHarness(8992, server_func):
+        with self.WebsockHarness(8992, self.relay_server):
           with self.WebsockHarness(8994, no_server=True):
             Popen(['python', EMCC, path_from_root('tests', 'websockets_bi_side.c'), '-o', 'side.html']).communicate()
             self.btest('websockets_bi.c', expected='2499')
       finally:
         self.clean_pids()
+
+    def zzztest_zz_enet(self):
+      #try:
+      #  with self.WebsockHarness(8992, self.relay_server):
+      #    with self.WebsockHarness(8994, no_server=True):
+            try_delete(self.in_dir('enet'))
+            shutil.copytree(path_from_root('tests', 'enet'), self.in_dir('enet'))
+            pwd = os.getcwd()
+            os.chdir(self.in_dir('enet'))
+            Popen(['python', path_from_root('emconfigure'), './configure']).communicate()
+            Popen(['python', path_from_root('emmake'), 'make']).communicate()
+            enet = self.in_dir('enet', '.libs', 'libenet.a')
+            os.chdir(pwd)
+            Popen(['python', EMCC, path_from_root('tests', 'enet_server.c'), enet, '-o', 'server.html']).communicate()
+            self.btest('enet_client.c', expected='cheez', args=[enet])
+      #finally:
+      #  self.clean_pids()
 
 elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
