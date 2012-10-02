@@ -11,6 +11,10 @@
 extern "C" {
 #endif
 
+#if !EMSCRIPTEN
+#include <SDL/SDL.h> /* for SDL_Delay in async_call */
+#endif
+
 /*
  * Forces LLVM to not dead-code-eliminate a function. Note that
  * closure may still eliminate it at the JS level, for which you
@@ -43,10 +47,15 @@ extern void emscripten_async_run_script(const char *script, int millis);
  * asynchronous callbacks, but you must pause the main
  * loop until they complete.
  */
+#if EMSCRIPTEN
 extern void emscripten_set_main_loop(void (*func)(), int fps);
 extern void emscripten_pause_main_loop();
 extern void emscripten_resume_main_loop();
 extern void emscripten_cancel_main_loop();
+#else
+#define emscripten_set_main_loop(func, fps) \
+  while (1) func();
+#endif
 
 /*
  * Add a function to a queue of events that will execute
