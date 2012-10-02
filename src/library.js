@@ -6400,8 +6400,9 @@ LibraryManager.library = {
     info.sender = function(data) {
       if (data) {
         info.sendQueue.push(data);
-      } else if (info.sendQueue.length == 0) {
-        return;
+      } else {
+        info.senderWaiting = false; // we are a setTimeout callback
+        if (info.sendQueue.length == 0) return;
       }
       if (info.socket.readyState != info.socket.OPEN) {
         if (!info.senderWaiting) {
@@ -6415,7 +6416,6 @@ LibraryManager.library = {
         info.socket.send(window.btoa(info.sendQueue[i]));
       }
       info.sendQueue = [];
-      info.senderWaiting = false;
     }
     return 0;
   },
