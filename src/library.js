@@ -6410,6 +6410,15 @@ LibraryManager.library = {
       ['i32', 'sin_addr'],
       ['i64', 'sin_zero'],
     ]),
+    msghdr_layout: Runtime.generateStructInfo([
+      ['*', 'msg_name'],
+      ['i32', 'msg_namelen'],
+      ['*', 'msg_iov'],
+      ['i32', 'msg_iovlen'],
+      ['*', 'msg_control'],
+      ['i32', 'msg_controllen'],
+      ['i32', 'msg_flags'],
+    ]),
   },
 
   socket__deps: ['$Sockets'],
@@ -6504,6 +6513,40 @@ LibraryManager.library = {
     var info = Sockets.fds[fd];
     if (!info) return -1;
     info.sender(Pointer_stringify(buf, len));
+    return len;
+  },
+
+  sendmsg__deps: ['$Sockets', 'connect'],
+  sendmsg: function(fd, msg, flags) {
+    var info = Sockets.fds[fd];
+    if (!info) return -1;
+    // if we are not connected, use the address info in the message
+    if (!info.connected) {
+      var name = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_name', '*') }}};
+      assert(name, 'sendmsg on non-connected socket, and no name/address in the message');
+      _connect(fd, name, {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_namelen', 'i32') }}});
+    }
+    var num = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iovlen', 'i32') }}};
+    var data = '';
+    for (var i = 0; i < num; i++) {
+      var currNum = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iov+8*i' + '+4', 'i32') }}};
+      if (!currNum) continue;
+      data += Pointer_stringify({{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iov+8*i', 'i8*') }}}, currNum);
+    }
+    info.sender(data);
+    return data.length;
+  },
+
+  recvmsg__deps: ['$Sockets', 'connect', 'recv'],
+  recvmsg: function(fd, buf, len, flags, addr, addrlen) {
+    var info = Sockets.fds[fd];
+    if (!info) return -1;
+    // if we are not connected, use the address info in the message
+    if (!info.connected) {
+      //var name = {{{ makeGetValue('addr', '0', '*') }}};
+      _connect(fd, addr, addrlen);
+    }
+    return _recv(fd, buf, len, flags);
   },
 
   shutdown: function(fd, how) {

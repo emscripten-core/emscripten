@@ -1,4 +1,4 @@
-// g++ /home/alon/Dev/emscripten/tests/enet_server.c -I/home/alon/Dev/emscripten/system/include/emscripten/ -Iinclude/ -fpermissive .libs/libenet.a -o enet_server
+// g++ /home/alon/Dev/emscripten/tests/enet_server.c -I/home/alon/Dev/emscripten/system/include/emscripten/ -Iinclude/ -fpermissive .libs/libenet.a -o enet_server ; g++ /home/alon/Dev/emscripten/tests/enet_client.c -I/home/alon/Dev/emscripten/system/include/emscripten/ -Iinclude/ -fpermissive .libs/libenet.a -o enet_client
 
 #include <stdio.h>
 #include <emscripten.h>

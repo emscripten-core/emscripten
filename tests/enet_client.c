@@ -1,5 +1,3 @@
-// g++ /home/alon/Dev/emscripten/tests/enet_client.c -I/home/alon/Dev/emscripten/system/include/emscripten/ -Iinclude/ -fpermissive .libs/libenet.a -o enet_client
-
 #include <stdio.h>
 #include <emscripten.h>
 
@@ -61,7 +59,11 @@ int main (int argc, char ** argv)
 
   ENetAddress address;
   enet_address_set_host (& address, "localhost");
+#if EMSCRIPTEN
   address.port = 1237;
+#else
+  address.port = 1235;
+#endif
 
   printf("connecting to server...\n");
 
