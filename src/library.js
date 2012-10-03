@@ -6446,6 +6446,7 @@ LibraryManager.library = {
       info.host = _gethostbyname.table[low + 0xff*high];
       assert(info.host, 'problem translating fake ip ' + parts);
     }
+    console.log('opening ws://' + info.host + ':' + info.port);
     info.socket = new WebSocket('ws://' + info.host + ':' + info.port, ['arraybuffer']);
     info.socket.binaryType = 'arraybuffer';
     info.buffer = new Uint8Array(Sockets.BUFFER_SIZE);

@@ -6,9 +6,8 @@
 ENetHost * host;
 
 void main_loop() {
-  printf("loop!\n");
   ENetEvent event;
-  if (enet_host_service (host, & event, 1000) == 0) return;
+  if (enet_host_service (host, & event, 0) == 0) return;
   switch (event.type)
   {
     case ENET_EVENT_TYPE_CONNECT:
@@ -84,7 +83,7 @@ int main (int argc, char ** argv)
                         "console.log('added.');");
 #endif
 
-  emscripten_set_main_loop(main_loop, 0);
+  emscripten_set_main_loop(main_loop, 500);
 
   return 1;
 }

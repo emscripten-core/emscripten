@@ -8720,6 +8720,7 @@ elif 'browser' in str(sys.argv):
           print '[kill succeeded]'
         except:
           print '[kill fail]'
+      browser.pids_to_clean = []
 
     # Runs a websocket server at a specific port. port is the true tcp socket we forward to, port+1 is the websocket one
     class WebsockHarness:
@@ -8749,6 +8750,7 @@ elif 'browser' in str(sys.argv):
           print '[Socket server on processes %s]' % str(browser.pids_to_clean[-2:])
 
         def websockify_func(q):
+          print >> sys.stderr, 'running websockify on tcp %d, ws %d' % (self.port, self.port+1)
           proc = Popen([path_from_root('third_party', 'websockify', 'other', 'websockify'), '-vvv', str(self.port+1), '127.0.0.1:' + str(self.port)])
           q.put(proc.pid)
           proc.communicate()
@@ -8778,6 +8780,7 @@ elif 'browser' in str(sys.argv):
 
     def make_relay_server(self, port1, port2):
       def relay_server(q):
+        print >> sys.stderr, 'creating relay server on ports %d,%d' % (port1, port2)
         proc = Popen(['python', path_from_root('tests', 'socket_relay.py'), str(port1), str(port2)])
         q.put(proc.pid)
         proc.communicate()
@@ -8800,18 +8803,19 @@ elif 'browser' in str(sys.argv):
         self.clean_pids()
 
     def zzztest_zz_enet(self):
+      try_delete(self.in_dir('enet'))
+      shutil.copytree(path_from_root('tests', 'enet'), self.in_dir('enet'))
+      pwd = os.getcwd()
+      os.chdir(self.in_dir('enet'))
+      Popen(['python', path_from_root('emconfigure'), './configure']).communicate()
+      Popen(['python', path_from_root('emmake'), 'make']).communicate()
+      enet = [self.in_dir('enet', '.libs', 'libenet.a'), '-I'+path_from_root('tests', 'enet', 'include')]
+      os.chdir(pwd)
+      Popen(['python', EMCC, path_from_root('tests', 'enet_server.c'), '-o', 'server.html'] + enet).communicate()
+
       try:
         with self.WebsockHarness(1234, self.make_relay_server(1234, 1236)):
           with self.WebsockHarness(1236, no_server=True):
-            try_delete(self.in_dir('enet'))
-            shutil.copytree(path_from_root('tests', 'enet'), self.in_dir('enet'))
-            pwd = os.getcwd()
-            os.chdir(self.in_dir('enet'))
-            Popen(['python', path_from_root('emconfigure'), './configure']).communicate()
-            Popen(['python', path_from_root('emmake'), 'make']).communicate()
-            enet = [self.in_dir('enet', '.libs', 'libenet.a'), '-I'+path_from_root('tests', 'enet', 'include')]
-            os.chdir(pwd)
-            Popen(['python', EMCC, path_from_root('tests', 'enet_server.c'), '-o', 'server.html'] + enet).communicate()
             self.btest('enet_client.c', expected='cheez', args=enet)
       finally:
         self.clean_pids()
