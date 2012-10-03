@@ -7178,6 +7178,14 @@ f.close()
       # TODO: test normal project linking, static and dynamic: get_library should not need to be told what to link!
       # TODO: deprecate llvm optimizations, dlmalloc, etc. in emscripten.py.
 
+    def test_Os(self):
+      for opt in ['s', '0']:
+        output = Popen(['python', EMCC, path_from_root('tests', 'hello_world.c'), '-O' + opt], stdout=PIPE, stderr=PIPE).communicate()
+        assert len(output[0]) == 0, output[0]
+        assert ('emcc: warning: -Os is ignored (use -O0, -O1, -O2)' in output[1]) == (opt == 's'), 'warn on -Os when necessary'
+        assert os.path.exists('a.out.js'), '\n'.join(output)
+        self.assertContained('hello, world!', run_js('a.out.js'))
+
     def test_catch_undef(self):
       open(os.path.join(self.get_dir(), 'test.cpp'), 'w').write(r'''
         #include <vector>

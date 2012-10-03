@@ -508,11 +508,15 @@ try:
 
   for i in range(len(newargs)):
     if newargs[i].startswith('-O'):
-      try:
-        opt_level = int(newargs[i][2])
-        assert 0 <= opt_level <= 3
-      except:
-        raise Exception('Invalid optimization level: ' + newargs[i])
+      requested_level = newargs[i][2]
+      if requested_level == 's':
+        print >> sys.stderr, 'emcc: warning: -Os is ignored (use -O0, -O1, -O2)'
+      else:
+        try:
+          opt_level = int(requested_level)
+          assert 0 <= opt_level <= 3
+        except:
+          raise Exception('Invalid optimization level: ' + newargs[i])
       newargs[i] = ''
     elif newargs[i].startswith('--llvm-opts'):
       check_bad_eq(newargs[i])
