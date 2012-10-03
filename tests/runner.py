@@ -5114,11 +5114,11 @@ def process(filename):
         }
       '''
       self.do_run(src, '''www.cheezburger.com : 1 : 4
-* -84.29.0.0.
-fail.on.this.never.work : 1 : 4
 * -84.29.1.0.
-localhost : 1 : 4
+fail.on.this.never.work : 1 : 4
 * -84.29.2.0.
+localhost : 1 : 4
+* -84.29.3.0.
 ''')
 
     def test_ctype(self):
@@ -8798,7 +8798,7 @@ elif 'browser' in str(sys.argv):
     def test_zz_websockets_gethostbyname(self):
       try:
         with self.WebsockHarness(7000):
-          self.btest('websockets_gethostbyname.c', expected='571')
+          self.btest('websockets_gethostbyname.c', expected='571', args=['-O2'])
       finally:
         self.clean_pids()
 

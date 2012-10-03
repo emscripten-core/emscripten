@@ -6352,37 +6352,39 @@ LibraryManager.library = {
   // name resolving clientside in a browser.
   // we do the aliasing in 172.29.*.*, giving us 65536 possibilities
   // note: lots of leaking here!
+  __hostent_struct_layout: Runtime.generateStructInfo([
+    ['i8*', 'h_name'],
+    ['i8**', 'h_aliases'],
+    ['i32', 'h_addrtype'],
+    ['i32', 'h_length'],
+    ['i8**', 'h_addr_list'],
+  ]),
+  gethostbyname__deps: ['__hostent_struct_layout'],
   gethostbyname: function(name) {
     name = Pointer_stringify(name);
-    if (!_gethostbyname.hostent_layout) {
-      _gethostbyname.hostent_layout = Runtime.generateStructInfo([
-        ['i8*', 'h_name'],
-        ['i8**', 'h_aliases'],
-        ['i32', 'h_addrtype'],
-        ['i32', 'h_length'],
-        ['i8**', 'h_addr_list'],
-      ]);
-      _gethostbyname.table = {};
-      _gethostbyname.id = 0;
-    }
+      if (!_gethostbyname.id) {
+        _gethostbyname.id = 1;
+        _gethostbyname.table = {};
+      }
     var id = _gethostbyname.id++;
     assert(id < 65535);
+    var fakeAddr = 172 | (29 << 8) | ((id & 0xff) << 16) | ((id & 0xff00) << 24);
     _gethostbyname.table[id] = name;
     // generate hostent
-    var ret = _malloc(_gethostbyname.hostent_layout.__size__);
+    var ret = _malloc(___hostent_struct_layout.__size__);
     var nameBuf = _malloc(name.length+1);
     writeStringToMemory(name, nameBuf);
-    setValue(ret+_gethostbyname.hostent_layout.h_name, nameBuf, 'i8*');
+    setValue(ret+___hostent_struct_layout.h_name, nameBuf, 'i8*');
     var aliasesBuf = _malloc(4);
     setValue(aliasesBuf, 0, 'i8*');
-    setValue(ret+_gethostbyname.hostent_layout.h_aliases, aliasesBuf, 'i8**');
-    setValue(ret+_gethostbyname.hostent_layout.h_addrtype, {{{ cDefine("AF_INET") }}}, 'i32');
-    setValue(ret+_gethostbyname.hostent_layout.h_length, 4, 'i32');
+    setValue(ret+___hostent_struct_layout.h_aliases, aliasesBuf, 'i8**');
+    setValue(ret+___hostent_struct_layout.h_addrtype, {{{ cDefine("AF_INET") }}}, 'i32');
+    setValue(ret+___hostent_struct_layout.h_length, 4, 'i32');
     var addrListBuf = _malloc(12);
     setValue(addrListBuf, addrListBuf+8, 'i32*');
     setValue(addrListBuf+4, 0, 'i32*');
-    setValue(addrListBuf+8, 172 | (29 << 8) | ((id & 0xff) << 16) | ((id & 0xff00) << 24), 'i32');
-    setValue(ret+_gethostbyname.hostent_layout.h_addr_list, addrListBuf, 'i8**');
+    setValue(addrListBuf+8, fakeAddr, 'i32');
+    setValue(ret+___hostent_struct_layout.h_addr_list, addrListBuf, 'i8**');
     return ret;
   },
 
