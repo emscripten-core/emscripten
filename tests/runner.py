@@ -8776,15 +8776,16 @@ elif 'browser' in str(sys.argv):
       finally:
         self.clean_pids()
 
-    @staticmethod
-    def relay_server(q):
-      proc = Popen(['python', path_from_root('tests', 'socket_relay.py'), '8992', '8994'])
-      q.put(proc.pid)
-      proc.communicate()
+    def make_relay_server(self, port1, port2):
+      def relay_server(q):
+        proc = Popen(['python', path_from_root('tests', 'socket_relay.py'), str(port1), str(port2)])
+        q.put(proc.pid)
+        proc.communicate()
+      return relay_server
 
     def test_zz_websockets_bi(self):
       try:
-        with self.WebsockHarness(8992, self.relay_server):
+        with self.WebsockHarness(8992, self.make_relay_server(8992, 8994)):
           with self.WebsockHarness(8994, no_server=True):
             Popen(['python', EMCC, path_from_root('tests', 'websockets_bi_side.c'), '-o', 'side.html']).communicate()
             self.btest('websockets_bi.c', expected='2499')
@@ -8800,7 +8801,7 @@ elif 'browser' in str(sys.argv):
 
     def zzztest_zz_enet(self):
       try:
-        with self.WebsockHarness(1234, self.relay_server):
+        with self.WebsockHarness(1234, self.make_relay_server(1234, 1236)):
           with self.WebsockHarness(1236, no_server=True):
             try_delete(self.in_dir('enet'))
             shutil.copytree(path_from_root('tests', 'enet'), self.in_dir('enet'))
