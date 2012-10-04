@@ -28,6 +28,7 @@ void main_loop() {
       /* Reset the peer's client information. */
       event.peer -> data = NULL;
       enet_host_destroy(host);
+      break;
     default:
       printf("whaaa? %d\n", event.type);
   }
@@ -79,6 +80,8 @@ int main (int argc, char ** argv)
   emscripten_run_script("console.log('adding iframe');"
                         "var iframe = document.createElement('iframe');"
                         "iframe.src = 'server.html';"
+                        "iframe.width = '100%';"
+                        "iframe.height = '25%';"
                         "document.body.appendChild(iframe);"
                         "console.log('added.');");
 #endif

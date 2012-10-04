@@ -53,6 +53,7 @@ void main_loop() {
       /* Reset the peer's client information. */
       event.peer -> data = NULL;
       enet_host_destroy(host);
+      break;
     default:
       printf("whaaa? %d\n", event.type);
   }

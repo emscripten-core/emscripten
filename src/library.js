@@ -6456,14 +6456,27 @@ LibraryManager.library = {
     info.bufferWrite = info.bufferRead = 0;
     info.socket.onmessage = function (event) {
       var data = event.data;
+#if SOCKET_DEBUG
+      Module.print(['onmessage', window.location, event.data, window.atob(data)]);
+#endif
       if (typeof data == 'string') {
         var binaryString = window.atob(data);
         var len = binaryString.length;
+#if SOCKET_DEBUG
+        var out = [];
+#endif
         for (var i = 0; i < len; i++) {
-          info.buffer[info.bufferWrite++] = binaryString.charCodeAt(i);
+          var curr = binaryString.charCodeAt(i);
+          info.buffer[info.bufferWrite++] = curr;
+#if SOCKET_DEBUG
+          out.push(curr);
+#endif
           if (info.bufferWrite == Sockets.BUFFER_SIZE) info.bufferWrite = 0;
           if (info.bufferWrite == info.bufferRead) throw 'socket buffer overflow';
         }
+#if SOCKET_DEBUG
+        Module.print(['onmessage data:', out]);
+#endif
       } else {
         console.log('binary!');
       }
@@ -6509,6 +6522,9 @@ LibraryManager.library = {
       len--;
       ret++;
     }
+#if SOCKET_DEBUG
+    Module.print('recv: ' + Array.prototype.slice.call(HEAPU8.subarray(buf-len, buf)));
+#endif
     return ret;
   },
 
@@ -6516,6 +6532,9 @@ LibraryManager.library = {
   send: function(fd, buf, len, flags) {
     var info = Sockets.fds[fd];
     if (!info) return -1;
+#if SOCKET_DEBUG
+    Module.print('send: ' + Array.prototype.slice.call(HEAPU8.subarray(buf, buf+len)));
+#endif
     info.sender(Pointer_stringify(buf, len));
     return len;
   },
@@ -6535,7 +6554,11 @@ LibraryManager.library = {
     for (var i = 0; i < num; i++) {
       var currNum = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iov+8*i' + '+4', 'i32') }}};
       if (!currNum) continue;
-      data += Pointer_stringify({{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iov+8*i', 'i8*') }}}, currNum);
+      var currBuf = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iov+8*i', 'i8*') }}};
+#if SOCKET_DEBUG
+      Module.print('sendmsg part ' + i + ' : ' + Array.prototype.slice.call(HEAPU8.subarray(currBuf, currBuf+currNum)));
+#endif
+      data += Pointer_stringify(currBuf, currNum);
     }
     info.sender(data);
     return data.length;

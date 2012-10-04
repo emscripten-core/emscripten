@@ -8758,7 +8758,7 @@ elif 'browser' in str(sys.argv):
           print '[Socket server on processes %s]' % str(browser.pids_to_clean[-2:])
 
         def websockify_func(q):
-          print >> sys.stderr, 'running websockify on tcp %d, ws %d' % (self.port, self.port+1)
+          print >> sys.stderr, 'running websockify on %d, forward to tcp %d' % (self.port+1, self.port)
           proc = Popen([path_from_root('third_party', 'websockify', 'other', 'websockify'), '-vvv', str(self.port+1), '127.0.0.1:' + str(self.port)])
           q.put(proc.pid)
           proc.communicate()
