@@ -19,17 +19,17 @@ namespace emscripten {
             EM_VAL _emval_get_property_by_unsigned_long(EM_VAL object, unsigned long key);
             void _emval_set_property(EM_VAL object, const char* key, EM_VAL value);
             void _emval_set_property_by_int(EM_VAL object, long key, EM_VAL value);
-            void _emval_as(EM_VAL value, emscripten::internal::TypeID returnType);
+            void _emval_as(EM_VAL value, emscripten::internal::TYPEID returnType);
             EM_VAL _emval_call(
                 EM_VAL value,
                 unsigned argCount,
-                internal::TypeID argTypes[]
+                internal::TYPEID argTypes[]
                 /*, ... */);
             EM_VAL _emval_call_method(
                 EM_VAL value,
                 const char* methodName,
                 unsigned argCount,
-                internal::TypeID argTypes[]
+                internal::TYPEID argTypes[]
                 /*, ... */);
         }
     }
@@ -106,7 +106,7 @@ namespace emscripten {
             typedef internal::EM_VAL (*TypedCall)(
                 internal::EM_VAL,
                 unsigned,
-                internal::TypeID argTypes[],
+                internal::TYPEID argTypes[],
                 typename internal::BindingType<Args>::WireType...);
             TypedCall typedCall = reinterpret_cast<TypedCall>(&internal::_emval_call);
             return val(
@@ -124,7 +124,7 @@ namespace emscripten {
                 internal::EM_VAL,
                 const char* name,
                 unsigned,
-                internal::TypeID argTypes[],
+                internal::TYPEID argTypes[],
                 typename internal::BindingType<Args>::WireType...);
             TypedCall typedCall = reinterpret_cast<TypedCall>(&internal::_emval_call_method);
             return val(
@@ -142,10 +142,10 @@ namespace emscripten {
 
             typedef typename BT::WireType (*TypedAs)(
                 internal::EM_VAL value,
-                emscripten::internal::TypeID returnType);
+                emscripten::internal::TYPEID returnType);
             TypedAs typedAs = reinterpret_cast<TypedAs>(&internal::_emval_as);
 
-            typename BT::WireType wt = typedAs(handle, internal::getTypeID<T>());
+            typename BT::WireType wt = typedAs(handle, internal::TypeID<T>::get());
             internal::WireDeleter<T> deleter(wt);
             return BT::fromWireType(wt);
         }

@@ -9,7 +9,7 @@
 
 namespace emscripten {
     namespace internal {
-        typedef const struct _TypeID* TypeID;
+        typedef const struct _TYPEID* TYPEID;
 
         // This implementation is technically not legal, as it's not
         // required that two calls to typeid produce the same exact
@@ -18,9 +18,18 @@ namespace emscripten {
         // an int, and store all TypeInfo we see in a map, allocating
         // new TypeIDs as we add new items to the map.
         template<typename T>
-        inline TypeID getTypeID() {
-            return reinterpret_cast<TypeID>(&typeid(T));
-        }
+        struct TypeID {
+        	static TYPEID get() {
+        		return reinterpret_cast<TYPEID>(&typeid(T));
+        	}
+        };
+
+        template<typename T>
+		struct TypeID<std::unique_ptr<T>> {
+			static TYPEID get() {
+				return TypeID<T>::get();
+			}
+		};
 
         // count<>
 
@@ -44,14 +53,14 @@ namespace emscripten {
 
         template<>
         struct ArgTypes<> {
-            static void fill(TypeID* argTypes) {
+            static void fill(TYPEID* argTypes) {
             }
         };
 
         template<typename T, typename... Args>
         struct ArgTypes<T, Args...> {
-            static void fill(TypeID* argTypes) {
-                *argTypes = getTypeID<T>();
+            static void fill(TYPEID* argTypes) {
+                *argTypes = TypeID<T>::get();
                 return ArgTypes<Args...>::fill(argTypes + 1);
             }
         };
@@ -66,7 +75,7 @@ namespace emscripten {
             }
 
             unsigned count;
-            TypeID types[args_count];
+            TYPEID types[args_count];
         };
 
         // BindingType<T>
@@ -188,6 +197,15 @@ namespace emscripten {
 
             static void destroy(WireType p) {
                 delete p;
+            }
+        };
+
+        template<typename T>
+        struct GenericBindingType<std::unique_ptr<T>> {
+            typedef typename BindingType<T>::WireType WireType;
+
+            static WireType toWireType(std::unique_ptr<T> p) {
+            	return BindingType<T>::toWireType(*p);
             }
         };
 
