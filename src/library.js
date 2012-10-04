@@ -6391,7 +6391,7 @@ LibraryManager.library = {
   gethostbyname_r__deps: ['gethostbyname'],
   gethostbyname_r: function(name, hostData, buffer, bufferSize, hostEntry, errnum) {
     var data = _gethostbyname(name);
-    _memcpy(hostData, data, _gethostbyname.hostent_layout.__size__);
+    _memcpy(hostData, data, ___hostent_struct_layout.__size__);
     _free(data);
     setValue(errnum, 0, 'i32');
     return 0;
