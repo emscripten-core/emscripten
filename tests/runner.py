@@ -8798,8 +8798,17 @@ elif 'browser' in str(sys.argv):
       try:
         with self.WebsockHarness(8992, self.make_relay_server(8992, 8994)):
           with self.WebsockHarness(8994, no_server=True):
-            Popen(['python', EMCC, path_from_root('tests', 'websockets_bi_side.c'), '-o', 'side.html']).communicate()
+            Popen(['python', EMCC, path_from_root('tests', 'websockets_bi_side.c'), '-o', 'side.html', '-DSOCKK=8995']).communicate()
             self.btest('websockets_bi.c', expected='2499')
+      finally:
+        self.clean_pids()
+
+    def test_zz_websockets_bi_listen(self):
+      try:
+        with self.WebsockHarness(6992, self.make_relay_server(6992, 6994)):
+          with self.WebsockHarness(6994, no_server=True):
+            Popen(['python', EMCC, path_from_root('tests', 'websockets_bi_side.c'), '-o', 'side.html', '-DSOCKK=6995']).communicate()
+            self.btest('websockets_bi_listener.c', expected='2499')
       finally:
         self.clean_pids()
 

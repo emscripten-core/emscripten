@@ -1209,7 +1209,7 @@ LibraryManager.library = {
         return 0;
       case {{{ cDefine('F_SETOWN') }}}:
       case {{{ cDefine('F_GETOWN') }}}:
-        // These are for sockets. We don't have them implemented (yet?).
+        // These are for sockets. We don't have them fully implemented yet.
         ___setErrNo(ERRNO_CODES.EINVAL);
         return -1;
       default:
@@ -6398,7 +6398,8 @@ LibraryManager.library = {
   },
 
   // ==========================================================================
-  // sockets
+  // sockets. Note that the implementation assumes all sockets are always
+  // nonblocking
   // ==========================================================================
 
   $Sockets__deps: ['__setErrNo', '$ERRNO_CODES'],
@@ -6573,6 +6574,29 @@ LibraryManager.library = {
   setsockopt: function(d, level, optname, optval, optlen) {
     console.log('ignoring setsockopt command');
     return 0;
+  },
+
+  bind__deps: ['connect'],
+  bind: function(fd, addr, addrlen) {
+    return _connect(fd, addr, addrlen);
+  },
+
+  listen: function(fd, backlog) {
+    return 0;
+  },
+
+  accept: function(fd, addr, addrlen) {
+    // TODO: webrtc queued incoming connections, etc.
+    // For now, the model is that bind does a connect, and we "accept" that one connection,
+    // which has host:port the same as ours. We also return the same socket fd.
+    var info = Sockets.fds[fd];
+    if (!info) return -1;
+    if (addr) {
+      setValue(addr + Sockets.sockaddr_in_layout.sin_addr, info.addr, 'i32');
+      setValue(addr + Sockets.sockaddr_in_layout.sin_port, info.port, 'i32');
+      setValue(addrlen, Sockets.sockaddr_in_layout.__size__, 'i32');
+    }
+    return fd;
   },
 
   // ==========================================================================
