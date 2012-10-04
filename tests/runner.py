@@ -8828,12 +8828,12 @@ elif 'browser' in str(sys.argv):
       Popen(['python', path_from_root('emmake'), 'make']).communicate()
       enet = [self.in_dir('enet', '.libs', 'libenet.a'), '-I'+path_from_root('tests', 'enet', 'include')]
       os.chdir(pwd)
-      Popen(['python', EMCC, path_from_root('tests', 'enet_server.c'), '-o', 'server.html'] + enet).communicate()
+      Popen(['python', EMCC, path_from_root('tests', 'enet_server.c'), '-o', 'server.html', '-s', 'SOCKET_DEBUG=1'] + enet).communicate()
 
       try:
         with self.WebsockHarness(1234, self.make_relay_server(1234, 1236)):
           with self.WebsockHarness(1236, no_server=True):
-            self.btest('enet_client.c', expected='cheez', args=enet)
+            self.btest('enet_client.c', expected='cheez', args=enet+['-s', 'SOCKET_DEBUG=1'])
       finally:
         self.clean_pids()
 

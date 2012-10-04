@@ -6475,7 +6475,7 @@ LibraryManager.library = {
           if (info.bufferWrite == info.bufferRead) throw 'socket buffer overflow';
         }
 #if SOCKET_DEBUG
-        Module.print(['onmessage data:', out]);
+        Module.print(['onmessage data:', len, ':', out]);
 #endif
       } else {
         console.log('binary!');
@@ -6515,6 +6515,9 @@ LibraryManager.library = {
       return 0; // should this be -1 like the spec says?
     }
     var ret = 0;
+#if SOCKET_DEBUG
+    Module.print('pre-recv: ' + [len, info.bufferWrite, info.bufferRead]);
+#endif
     while (info.bufferWrite != info.bufferRead && len > 0) {
       // write out a byte
       {{{ makeSetValue('buf++', '0', 'info.buffer[info.bufferRead++]', 'i8') }}};
@@ -6523,7 +6526,7 @@ LibraryManager.library = {
       ret++;
     }
 #if SOCKET_DEBUG
-    Module.print('recv: ' + Array.prototype.slice.call(HEAPU8.subarray(buf-len, buf)));
+    Module.print('recv: ' + ret + ' : ' + Array.prototype.slice.call(HEAPU8.subarray(buf-len, buf)));
 #endif
     return ret;
   },
@@ -6556,7 +6559,7 @@ LibraryManager.library = {
       if (!currNum) continue;
       var currBuf = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iov+8*i', 'i8*') }}};
 #if SOCKET_DEBUG
-      Module.print('sendmsg part ' + i + ' : ' + Array.prototype.slice.call(HEAPU8.subarray(currBuf, currBuf+currNum)));
+      Module.print('sendmsg part ' + i + ' : ' + currNum + ' : ' + Array.prototype.slice.call(HEAPU8.subarray(currBuf, currBuf+currNum)));
 #endif
       data += Pointer_stringify(currBuf, currNum);
     }
@@ -6564,8 +6567,53 @@ LibraryManager.library = {
     return data.length;
   },
 
-  recvmsg__deps: ['$Sockets', 'connect', 'recv'],
-  recvmsg: function(fd, buf, len, flags, addr, addrlen) {
+  recvmsg__deps: ['$Sockets', 'connect', 'recv', '__setErrNo', '$ERRNO_CODES'],
+  recvmsg: function(fd, msg, flags) {
+#if SOCKET_DEBUG
+    Module.print('recvmsg!');
+#endif
+    var info = Sockets.fds[fd];
+    if (!info) return -1;
+    // if we are not connected, use the address info in the message
+    if (!info.connected) {
+#if SOCKET_DEBUG
+      Module.print('recvmsg connecting');
+#endif
+      var name = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_name', '*') }}};
+      assert(name, 'sendmsg on non-connected socket, and no name/address in the message');
+      _connect(fd, name, {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_namelen', 'i32') }}});
+    }
+    var bytes = info.bufferWrite - info.bufferRead;
+    if (bytes < 0) bytes += Sockets.BUFFER_SIZE;
+#if SOCKET_DEBUG
+    Module.print('recvmsg bytes: ' + bytes);
+#endif
+    if (bytes == 0) {
+      ___setErrNo(ERRNO_CODES.EWOULDBLOCK);
+      return -1;
+    }
+    var ret = bytes;
+    var num = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iovlen', 'i32') }}};
+    var data = '';
+    for (var i = 0; i < num && bytes > 0; i++) {
+      var currNum = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iov+8*i' + '+4', 'i32') }}};
+#if SOCKET_DEBUG
+      Module.print('recvmsg loop ' + [i, num, bytes, currNum]);
+#endif
+      if (!currNum) continue;
+      currNum = Math.min(currNum, bytes); // XXX what should happen when we partially fill a buffer..?
+      bytes -= currNum;
+      var currBuf = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iov+8*i', 'i8*') }}};
+#if SOCKET_DEBUG
+      Module.print('recvmsg call recv ' + currNum);
+#endif
+      assert(_recv(fd, currBuf, currNum, 0) == currNum);
+    }
+    return ret;
+  },
+
+  recvfrom__deps: ['$Sockets', 'connect', 'recv'],
+  recvfrom: function(fd, buf, len, flags, addr, addrlen) {
     var info = Sockets.fds[fd];
     if (!info) return -1;
     // if we are not connected, use the address info in the message

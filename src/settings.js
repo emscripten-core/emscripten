@@ -124,6 +124,7 @@ var LIBRARY_DEBUG = 0; // Print out when we enter a library call (library*.js). 
                        //   emscripten_run_script("Runtime.debug = ...;");
 var GL_DEBUG = 0; // Print out all calls into WebGL. As with LIBRARY_DEBUG, you can set a runtime
                   // option, in this case GL.debug.
+var SOCKET_DEBUG = 0; // Log out socket/network data transfer.
 
 var PROFILE_MAIN_LOOP = 0; // Profile the function called in set_main_loop
 

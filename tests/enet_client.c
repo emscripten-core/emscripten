@@ -6,6 +6,14 @@
 ENetHost * host;
 
 void main_loop() {
+  static int counter = 0;
+  counter++;
+  if (counter == 20) {
+    printf("stop!\n");
+    emscripten_cancel_main_loop();
+    return;
+  }
+
   ENetEvent event;
   if (enet_host_service (host, & event, 0) == 0) return;
   switch (event.type)
@@ -81,12 +89,12 @@ int main (int argc, char ** argv)
                         "var iframe = document.createElement('iframe');"
                         "iframe.src = 'server.html';"
                         "iframe.width = '100%';"
-                        "iframe.height = '25%';"
+                        "iframe.height = '33%';"
                         "document.body.appendChild(iframe);"
                         "console.log('added.');");
 #endif
 
-  emscripten_set_main_loop(main_loop, 500);
+  emscripten_set_main_loop(main_loop, 1);
 
   return 1;
 }

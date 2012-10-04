@@ -25,6 +25,14 @@ void send_msg(ENetPeer *peer) {
 }
 
 void main_loop() {
+  static int counter = 0;
+  counter++;
+  if (counter == 20) {
+    printf("stop!\n");
+    emscripten_cancel_main_loop();
+    return;
+  }
+
   ENetEvent event;
   if (enet_host_service (host, & event, 0) == 0) return;
   switch (event.type)
@@ -84,7 +92,7 @@ int main (int argc, char ** argv)
     exit (EXIT_FAILURE);
   }
 
-  emscripten_set_main_loop(main_loop, 500);
+  emscripten_set_main_loop(main_loop, 1);
 
   return 1;
 }
