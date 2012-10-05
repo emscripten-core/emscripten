@@ -157,12 +157,28 @@ float emscripten_random();
  */
 
 /*
- * Load file from url in asynchronous way. 
+ * Load file from url in asynchronous way. In addition to
+ * fetching the URL from the network, the contents are
+ * prepared so that the data is usable in IMG_Load and
+ * so forth (we asynchronously do the work to make the
+ * browser decode the image or audio and so forth).
+ * When file is ready then 'onload' callback will called.
+ * If any error occurred 'onerror' will called.
+ * The callbacks are called with the file as their argument.
+ */
+void emscripten_async_wget(const char* url, const char* file, void (*onload)(const char*), void (*onerror)(const char*));
+
+/*
+ * Prepare a file in asynchronous way. This does just the
+ * preparation part of emscripten_async_wget, that is, it
+ * works on file data already present, and asynchronously
+ * prepares it for use in IMG_Load, Mix_LoadWAV, etc.
  * When file is loaded then 'onload' callback will called.
  * If any error occurred 'onerror' will called.
  * The callbacks are called with the file as their argument.
- */ 
-void emscripten_async_wget(const char* url, const char* file, void (*onload)(const char*), void (*onerror)(const char*));
+ * @return 0 if successful, -1 if the file does not exist
+ */
+int emscripten_async_prepare(const char* file, void (*onload)(const char*), void (*onerror)(const char*));
 
 /*
  * Profiling tools.

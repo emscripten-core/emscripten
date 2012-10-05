@@ -364,12 +364,32 @@ mergeInto(LibraryManager.library, {
       _file.substr(index +1),
       _url, true, true,
       function() {
-        FUNCTION_TABLE[onload](file);
+        if (onload) FUNCTION_TABLE[onload](file);
       },
       function() {
-        FUNCTION_TABLE[onerror](file);
+        if (onerror) FUNCTION_TABLE[onerror](file);
       }
     );
+  },
+
+  emscripten_async_prepare: function(file, onload, onerror) {
+    var _file = Pointer_stringify(file);
+    var data = FS.analyzePath(_file);
+    if (!data.exists) return -1;
+    var index = _file.lastIndexOf('/');
+    FS.createPreloadedFile(
+      _file.substr(0, index),
+      _file.substr(index +1),
+      new Uint8Array(data.object.contents), true, true,
+      function() {
+        if (onload) FUNCTION_TABLE[onload](file);
+      },
+      function() {
+        if (onerror) FUNCTION_TABLE[onerror](file);
+      },
+      true // don'tCreateFile - it's already there
+    );
+    return 0;
   },
 
   emscripten_async_run_script__deps: ['emscripten_run_script'],

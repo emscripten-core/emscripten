@@ -304,12 +304,14 @@ LibraryManager.library = {
     // You can also call this with a typed array instead of a url. It will then
     // do preloading for the Image/Audio part, as if the typed array were the
     // result of an XHR that you did manually.
-    createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror) {
+    createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile) {
       Browser.ensureObjects();
       var fullname = FS.joinPath([parent, name], true);
       function processData(byteArray) {
         function finish(byteArray) {
-          FS.createDataFile(parent, name, byteArray, canRead, canWrite);
+          if (!dontCreateFile) {
+            FS.createDataFile(parent, name, byteArray, canRead, canWrite);
+          }
           if (onload) onload();
           removeRunDependency('cp ' + fullname);
         }
