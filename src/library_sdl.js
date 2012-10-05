@@ -1047,6 +1047,7 @@ var LibrarySDL = {
   },
   SDL_LoadBMP: 'IMG_Load',
   SDL_LoadBMP_RW: 'IMG_Load',
+  IMG_Load_RW: 'IMG_Load',
 
   // SDL_Audio
 
