@@ -38,10 +38,17 @@ var LibraryEGL = {
   // EGLAPI EGLDisplay EGLAPIENTRY eglGetDisplay(EGLNativeDisplayType display_id);
   eglGetDisplay: function(nativeDisplayType) {
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
-    if (nativeDisplayType == 0 /* EGL_DEFAULT_DISPLAY */)
-      return 62000; // Magic ID for Emscripten 'default display'
-    else
-      return 0; // EGL_NO_DISPLAY
+    // Note: As a 'conformant' implementation of EGL, we would prefer to init here only if the user
+    //       calls this function with EGL_DEFAULT_DISPLAY. Other display IDs would be preferred to be unsupported
+    //       and EGL_NO_DISPLAY returned. Uncomment the following code lines to do this.
+    // Instead, an alternative route has been preferred, namely that the Emscripten EGL implementation
+    // "emulates" X11, and eglGetDisplay is expected to accept/receive a pointer to an X11 Display object.
+    // Therefore, be lax and allow anything to be passed in, and return the magic handle to our default EGLDisplay object.
+
+//    if (nativeDisplayType == 0 /* EGL_DEFAULT_DISPLAY */)
+        return 62000; // Magic ID for Emscripten 'default display'
+//    else
+//      return 0; // EGL_NO_DISPLAY
   },
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglInitialize(EGLDisplay dpy, EGLint *major, EGLint *minor);
