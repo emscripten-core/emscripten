@@ -354,49 +354,36 @@ function __embind_register_struct_field(
     };
 }
 
-function __embind_register_shared_ptr(
-	ptrType,
-	classType,
-	name,
-	destructor,
-	internalPtrGetter
-) 	{
-	name = Pointer_stringify(name);
-	classType = requireRegisteredType(classType, 'class');
-	destructor = FUNCTION_TABLE[destructor];
-	internalPtrGetter = FUNCTION_TABLE[internalPtrGetter];
-	
-	var Handle = createNamedFunction(name, function(ptr) {
-		this.count = {value: 1};
-		this.ptr = ptr;
-		
-		var args = new Array(1);
-		args[0] = ptr;
-		this.internalReference = classType.fromWireType(internalPtrGetter.apply(null, args));
-	});
+function __embind_register_smart_ptr(
+    pointerType,
+    pointeeType,
+    name,
+    destructor,
+    getPointee
+) {
+    name = Pointer_stringify(name);
+    pointeeType = requireRegisteredType(pointeeType, 'class');
+    destructor = FUNCTION_TABLE[destructor];
+    getPointee = FUNCTION_TABLE[getPointee];
     
-	for(var prop in classType.Handle.prototype){
-		if(prop === 'clone' || prop === 'move' === prop === 'delete'){
-			continue;
-		}
-		
-		function createDuplicatedFunc(prop) {
-			return function() {
-				console.log(arguments);
-				return classType.Handle.prototype[prop].apply(this.internalReference, arguments);
-			}
-		}
-		
-		Handle.prototype[prop] = createDuplicatedFunc(prop);
-	}
-	
-	Handle.prototype.clone = function() {
+    var Handle = createNamedFunction(name, function(ptr) {
+        this.count = {value: 1};
+        this.smartPointer = ptr;
+        this.ptr = getPointee(ptr);
+    });
+
+    // TODO: test for SmartPtr.prototype.constructor property?
+    // We likely want it distinct from pointeeType.prototype.constructor
+    Handle.prototype = Object.create(pointeeType.Handle.prototype);
+    
+    Handle.prototype.clone = function() {
         if (!this.ptr) {
-            throw new BindingError(classType.name + ' instance already deleted');
+            throw new BindingError(pointeeType.name + ' instance already deleted');
         }
 
         var clone = Object.create(Handle.prototype);
         clone.count = this.count;
+        clone.smartPointer = this.smartPointer;
         clone.ptr = this.ptr;
         
         clone.count.value += 1;
@@ -408,30 +395,29 @@ function __embind_register_shared_ptr(
         this.delete();
         return rv;
     };
-	
-	Handle.prototype['delete'] = function() {
-		if (!this.ptr) {
-            throw new BindingError(classType.name + ' instance already deleted');
+    
+    Handle.prototype['delete'] = function() {
+        if (!this.ptr) {
+            throw new BindingError(pointeeType.name + ' instance already deleted');
         }
-		
+        
         this.count.value -= 1;
         if (0 === this.count.value) {
-        	console.log(destructor);
-            destructor(this.ptr);
+            destructor(this.smartPointer);
         }
+        this.smartPointer = undefined;
         this.ptr = undefined;
-	}
-	
-	typeRegistry[ptrType] = {
-		name: name,
-		Handle: Handle,
-		fromWireType: function(ptr) {
-			return new Handle(ptr);
+    }
+    
+    typeRegistry[pointerType] = {
+        name: name,
+        fromWireType: function(ptr) {
+            return new Handle(ptr);
         },
         toWireType: function(destructors, o) {
-        	return o.ptr;
+            return o.ptr;
         }
-	};
+    };
 }
 
 function __embind_register_class(

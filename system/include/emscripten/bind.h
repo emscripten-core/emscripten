@@ -91,12 +91,12 @@ namespace emscripten {
                 size_t memberPointerSize,
                 void* memberPointer);
 
-            void _embind_register_shared_ptr(
-            	TYPEID ptrType,
-            	TYPEID classType,
-            	const char* ptrName,
-            	GenericFunction destructor,
-            	GenericFunction invoker);
+            void _embind_register_smart_ptr(
+                TYPEID pointerType,
+                TYPEID pointeeType,
+                const char* pointerName,
+                GenericFunction destructor,
+                GenericFunction getPointee);
 
             void _embind_register_class(
                 TYPEID classType,
@@ -157,7 +157,7 @@ namespace emscripten {
         class BindingsDefinition {
         public:
             template<typename Function>
-                BindingsDefinition(Function fn) {
+            BindingsDefinition(Function fn) {
                 fn();
             }
         };
@@ -222,9 +222,10 @@ namespace emscripten {
             delete ptr;
         }
 
-        template<typename ClassType>
-        ClassType* getSharedInternalPtr(std::shared_ptr<ClassType>* ptr) {
-        	return ptr->get();
+        template<typename PointerType>
+        typename PointerType::element_type* get_pointee(PointerType* ptr) {
+            // TODO: replace with general pointer traits implementation
+            return ptr->get();
         }
 
         template<typename ClassType, typename ReturnType, typename... Args>
@@ -436,19 +437,18 @@ namespace emscripten {
         }
     };
 
-    template<typename ClassType>
-    class shared_ptr_ {
-    public:
-    	shared_ptr_(const char* name) {
-    		internal::registerStandardTypes();
-    		internal::_embind_register_shared_ptr(
-    			internal::TypeID<std::shared_ptr<ClassType>>::get(),
-    			internal::TypeID<ClassType>::get(),
-    			name,
-    			reinterpret_cast<internal::GenericFunction>(&internal::raw_destructor<std::shared_ptr<ClassType>>),
-    			reinterpret_cast<internal::GenericFunction>(&internal::getSharedInternalPtr<ClassType>));
-    	}
-    };
+    template<typename PointerType>
+    inline void register_smart_ptr(const char* name) {
+        typedef typename PointerType::element_type PointeeType;
+
+        internal::registerStandardTypes();
+        internal::_embind_register_smart_ptr(
+            internal::TypeID<PointerType>::get(),
+            internal::TypeID<PointeeType>::get(),
+            name,
+            reinterpret_cast<internal::GenericFunction>(&internal::raw_destructor<PointerType>),
+            reinterpret_cast<internal::GenericFunction>(&internal::get_pointee<PointerType>));
+    }
 
     // TODO: support class definitions without constructors.
     // TODO: support external class constructors
