@@ -354,6 +354,86 @@ function __embind_register_struct_field(
     };
 }
 
+function __embind_register_shared_ptr(
+	ptrType,
+	classType,
+	name,
+	destructor,
+	internalPtrGetter
+) 	{
+	name = Pointer_stringify(name);
+	classType = requireRegisteredType(classType, 'class');
+	destructor = FUNCTION_TABLE[destructor];
+	internalPtrGetter = FUNCTION_TABLE[internalPtrGetter];
+	
+	var Handle = createNamedFunction(name, function(ptr) {
+		this.count = {value: 1};
+		this.ptr = ptr;
+		
+		var args = new Array(1);
+		args[0] = ptr;
+		this.internalReference = classType.fromWireType(internalPtrGetter.apply(null, args));
+	});
+    
+	for(var prop in classType.Handle.prototype){
+		if(prop === 'clone' || prop === 'move' === prop === 'delete'){
+			continue;
+		}
+		
+		function createDuplicatedFunc(prop) {
+			return function() {
+				console.log(arguments);
+				return classType.Handle.prototype[prop].apply(this.internalReference, arguments);
+			}
+		}
+		
+		Handle.prototype[prop] = createDuplicatedFunc(prop);
+	}
+	
+	Handle.prototype.clone = function() {
+        if (!this.ptr) {
+            throw new BindingError(classType.name + ' instance already deleted');
+        }
+
+        var clone = Object.create(Handle.prototype);
+        clone.count = this.count;
+        clone.ptr = this.ptr;
+        
+        clone.count.value += 1;
+        return clone;
+    };
+
+    Handle.prototype.move = function() {
+        var rv = this.clone();
+        this.delete();
+        return rv;
+    };
+	
+	Handle.prototype['delete'] = function() {
+		if (!this.ptr) {
+            throw new BindingError(classType.name + ' instance already deleted');
+        }
+		
+        this.count.value -= 1;
+        if (0 === this.count.value) {
+        	console.log(destructor);
+            destructor(this.ptr);
+        }
+        this.ptr = undefined;
+	}
+	
+	typeRegistry[ptrType] = {
+		name: name,
+		Handle: Handle,
+		fromWireType: function(ptr) {
+			return new Handle(ptr);
+        },
+        toWireType: function(destructors, o) {
+        	return o.ptr;
+        }
+	};
+}
+
 function __embind_register_class(
     classType,
     name,
@@ -479,7 +559,7 @@ function __embind_register_class_method(
         for (var i = 0; i < argCount; ++i) {
             args[i + 2] = argTypes[i].toWireType(destructors, arguments[i]);
         }
-
+        
         var rv = returnType.fromWireType(invoker.apply(null, args));
         runDestructors(destructors);
         return rv;

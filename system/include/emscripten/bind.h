@@ -91,6 +91,13 @@ namespace emscripten {
                 size_t memberPointerSize,
                 void* memberPointer);
 
+            void _embind_register_shared_ptr(
+            	TYPEID ptrType,
+            	TYPEID classType,
+            	const char* ptrName,
+            	GenericFunction destructor,
+            	GenericFunction invoker);
+
             void _embind_register_class(
                 TYPEID classType,
                 const char* className,
@@ -213,6 +220,11 @@ namespace emscripten {
         template<typename ClassType>
         void raw_destructor(ClassType* ptr) {
             delete ptr;
+        }
+
+        template<typename ClassType>
+        ClassType* getSharedInternalPtr(std::shared_ptr<ClassType>* ptr) {
+        	return ptr->get();
         }
 
         template<typename ClassType, typename ReturnType, typename... Args>
@@ -422,6 +434,20 @@ namespace emscripten {
                                 
             return *this;
         }
+    };
+
+    template<typename ClassType>
+    class shared_ptr_ {
+    public:
+    	shared_ptr_(const char* name) {
+    		internal::registerStandardTypes();
+    		internal::_embind_register_shared_ptr(
+    			internal::TypeID<std::shared_ptr<ClassType>>::get(),
+    			internal::TypeID<ClassType>::get(),
+    			name,
+    			reinterpret_cast<internal::GenericFunction>(&internal::raw_destructor<std::shared_ptr<ClassType>>),
+    			reinterpret_cast<internal::GenericFunction>(&internal::getSharedInternalPtr<ClassType>));
+    	}
     };
 
     // TODO: support class definitions without constructors.
