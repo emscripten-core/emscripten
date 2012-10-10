@@ -389,12 +389,6 @@ function __embind_register_smart_ptr(
         clone.count.value += 1;
         return clone;
     };
-
-    Handle.prototype.move = function() {
-        var rv = this.clone();
-        this.delete();
-        return rv;
-    };
     
     Handle.prototype['delete'] = function() {
         if (!this.ptr) {
@@ -433,6 +427,20 @@ function __embind_register_class(
         this.ptr = ptr;
     });
 
+    Handle.prototype.clone = function() {
+        if (!this.ptr) {
+            throw new BindingError(pointeeType.name + ' instance already deleted');
+        }
+
+        var clone = Object.create(Handle.prototype);
+        clone.count = this.count;
+        clone.smartPointer = this.smartPointer;
+        clone.ptr = this.ptr;
+        
+        clone.count.value += 1;
+        return clone;
+    };
+    
     Handle.prototype.clone = function() {
         if (!this.ptr) {
             throw new BindingError(classType.name + ' instance already deleted');

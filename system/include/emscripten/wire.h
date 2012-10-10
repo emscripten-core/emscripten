@@ -19,17 +19,17 @@ namespace emscripten {
         // new TypeIDs as we add new items to the map.
         template<typename T>
         struct TypeID {
-        	static TYPEID get() {
-        		return reinterpret_cast<TYPEID>(&typeid(T));
-        	}
+            static TYPEID get() {
+                return reinterpret_cast<TYPEID>(&typeid(T));
+            }
         };
 
         template<typename T>
-		struct TypeID<std::unique_ptr<T>> {
-			static TYPEID get() {
-				return TypeID<T>::get();
-			}
-		};
+        struct TypeID<std::unique_ptr<T>> {
+            static TYPEID get() {
+                return TypeID<T>::get();
+            }
+        };
 
         // count<>
 
@@ -205,7 +205,7 @@ namespace emscripten {
             typedef typename BindingType<T>::WireType WireType;
 
             static WireType toWireType(std::unique_ptr<T> p) {
-            	return BindingType<T>::toWireType(*p);
+                return BindingType<T>::toWireType(*p);
             }
         };
 
