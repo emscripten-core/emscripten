@@ -629,7 +629,7 @@ try:
   newargs = [ arg for arg in newargs if arg is not '' ]
 
   if split_js_file:
-      settings_changes.append("PRINT_SPLIT_FILE_MARKER=1")
+    settings_changes.append("PRINT_SPLIT_FILE_MARKER=1")
 
   # Find input files
 
