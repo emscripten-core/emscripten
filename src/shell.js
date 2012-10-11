@@ -81,6 +81,8 @@ if (ENVIRONMENT_IS_WEB) {
 }
 
 if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
+  Uint8Array.prototype.get = function(idx) { return this[idx]; };
+
   Module['read'] = function(url) {
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, false);
