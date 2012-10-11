@@ -375,6 +375,10 @@ process(sys.argv[1])
         struct point p = { 54, 2 };
         suppFunc(p);
         printf("main see: %d\nok.\n", suppInt);
+        #ifdef BROWSER
+          int result = suppInt;
+          REPORT_RESULT();
+        #endif
         return 0;
       }
     '''
@@ -7810,6 +7814,8 @@ elif 'browser' in str(sys.argv):
 
     def with_report_result(self, code):
       return r'''
+        #if EMSCRIPTEN
+        #include <emscripten.h>
         #define REPORT_RESULT_INTERNAL(sync) \
           char output[1000]; \
           sprintf(output, \
@@ -7819,6 +7825,7 @@ elif 'browser' in str(sys.argv):
           emscripten_run_script(output); \
           emscripten_run_script("setTimeout(function() { window.close() }, 1000)");
         #define REPORT_RESULT() REPORT_RESULT_INTERNAL(0)
+        #endif
 ''' + code
 
     def reftest(self, expected):
@@ -8489,7 +8496,12 @@ elif 'browser' in str(sys.argv):
 
     def btest(self, filename, expected=None, reference=None, reference_slack=0, args=[]): # TODO: use in all other tests
       if not reference:
-        open(os.path.join(self.get_dir(), filename), 'w').write(self.with_report_result(open(path_from_root('tests', filename)).read()))
+        if '\n' in filename: # if we are provided the source and not a path, use that
+          src = filename
+          filename = 'main.cpp'
+        else:
+          src = open(path_from_root('tests', filename)).read()
+        open(os.path.join(self.get_dir(), filename), 'w').write(self.with_report_result(src))
       else:
         expected = [str(i) for i in range(0, reference_slack+1)]
         shutil.copyfile(path_from_root('tests', filename), os.path.join(self.get_dir(), filename))
@@ -8623,7 +8635,14 @@ elif 'browser' in str(sys.argv):
     def test_float_tex(self):
       self.btest('float_tex.cpp', reference='float_tex.png')
 
-    #def test_runtimelink(self):
+    def test_runtimelink(self):
+      main, supp = self.setup_runtimelink_test()
+
+      open(self.in_dir('supp.cpp'), 'w').write(supp)
+      Popen(['python', EMCC, self.in_dir('supp.cpp'), '-o', 'supp.js', '-s', 'LINKABLE=1', '-s', 'BUILD_AS_SHARED_LIB=2', '-O2', '--closure', '0']).communicate()
+      shutil.move(self.in_dir('supp.js'), self.in_dir('supp.so'))
+
+      self.btest(main, args=['-s', 'LINKABLE=1', '-s', 'RUNTIME_LINKED_LIBS=["supp.so"]', '-DBROWSER=1', '-O2', '--closure', '0'], expected='76')
 
     def test_pre_run_deps(self):
       # Adding a dependency in preRun will delay run
