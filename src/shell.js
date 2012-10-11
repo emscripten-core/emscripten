@@ -44,7 +44,9 @@ if (ENVIRONMENT_IS_NODE) {
   if (!Module['arguments']) {
     Module['arguments'] = process['argv'].slice(2);
   }
-} else if (ENVIRONMENT_IS_SHELL) {
+}
+
+if (ENVIRONMENT_IS_SHELL) {
   Module['print'] = print;
   if (typeof printErr != 'undefined') Module['printErr'] = printErr; // not present in v8 or older sm
 
@@ -62,7 +64,9 @@ if (ENVIRONMENT_IS_NODE) {
       Module['arguments'] = arguments;
     }
   }
-} else if (ENVIRONMENT_IS_WEB) {
+}
+
+if (ENVIRONMENT_IS_WEB) {
   if (!Module['print']) {
     Module['print'] = function(x) {
       console.log(x);
@@ -74,7 +78,9 @@ if (ENVIRONMENT_IS_NODE) {
       console.log(x);
     };
   }
+}
 
+if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   Module['read'] = function(url) {
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, false);
@@ -87,12 +93,24 @@ if (ENVIRONMENT_IS_NODE) {
       Module['arguments'] = arguments;
     }
   }
-} else if (ENVIRONMENT_IS_WORKER) {
+}
+
+if (ENVIRONMENT_IS_WORKER) {
   // We can do very little here...
+  var TRY_USE_DUMP = false;
+  if (!Module['print']) {
+    Module['print'] = (TRY_USE_DUMP && (typeof(dump) !== "undefined") ? (function(x) {
+      dump(x);
+    }) : (function(x) {
+      self.postMessage(x);
+    }));
+  }
 
   Module['load'] = importScripts;
+}
 
-} else {
+if (!ENVIRONMENT_IS_WORKER && !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_SHELL) {
+  // Unreachable because SHELL is dependant on the others
   throw 'Unknown runtime environment. Where are we?';
 }
 
