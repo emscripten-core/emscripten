@@ -1237,7 +1237,7 @@ function analyzer(data, sidePass) {
             if (phi.intertype == 'phi') {
               for (var i = 0; i < phi.params.length; i++) {
                 phi.params[i].label = func.labelIds[phi.params[i].label];
-                if (!phi.params[i].label) warn('phi refers to nonexistent label on line ' + phi.lineNum);
+                if (VERBOSE && !phi.params[i].label) warn('phi refers to nonexistent label on line ' + phi.lineNum);
               }
             }
           });
@@ -1316,7 +1316,7 @@ function analyzer(data, sidePass) {
             if (phi.intertype == 'phi') {
               for (var i = 0; i < phi.params.length; i++) {
                 var param = phi.params[i];
-                if (!param.label) warn('phi refers to nonexistent label on line ' + phi.lineNum);
+                if (VERBOSE && !param.label) warn('phi refers to nonexistent label on line ' + phi.lineNum);
                 var sourceLabelId = getActualLabelId(param.label);
                 if (sourceLabelId) {
                   var sourceLabel = func.labelsDict[sourceLabelId];
