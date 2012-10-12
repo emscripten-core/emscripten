@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stddef.h>
+#include <assert.h>
 #include <string>
 #include <type_traits>
 #include <emscripten/val.h>

@@ -211,7 +211,7 @@ namespace emscripten {
         struct BindingType : std::conditional<
             std::is_enum<T>::value,
             EnumBindingType<T>,
-            GenericBindingType<T>>::type
+            GenericBindingType<T> >::type
         {};
 
         template<typename T>
