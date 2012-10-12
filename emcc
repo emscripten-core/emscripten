@@ -986,7 +986,10 @@ try:
   # Add bindings glue if used
   if bind:
     if DEBUG: print >> sys.stderr, 'emcc: adding embind glue'
-    src = open(final).read().replace('// {{PRE_RUN_ADDITIONS}}', '// {{PRE_RUN_ADDITIONS}}\n' + open(shared.path_from_root('src', 'embind', 'embind.js')).read())
+    src = open(final).read().replace('// {{PRE_RUN_ADDITIONS}}', '// {{PRE_RUN_ADDITIONS}}\n' +
+            open(shared.path_from_root('src', 'embind', 'embind.js')).read() +
+            open(shared.path_from_root('src', 'embind', 'emval.js')).read()
+          )
     final += '.bd.js'
     open(final, 'w').write(src)
     if DEBUG: save_intermediate('bind')

@@ -7695,7 +7695,7 @@ f.close()
       output = run_js('scons_integration.js')
       assert 'If you see this - the world is all right!' in output
 
-    def zzztest_embind(self):
+    def test_embind(self):
       # TODO: test -O1 and -O2
       for args, fail in [
         ([], True), # without --bind, we fail
@@ -7707,7 +7707,54 @@ f.close()
         assert os.path.exists(self.in_dir('a.out.js')) == (not fail)
         if not fail:
           output = run_js(self.in_dir('a.out.js'))
-          assert 'If you see this - the world is all right!' in output
+          self.assertContained('''fixture: embind
+--test: test value creation
+--test: test passthrough
+--test: test void return converts to undefined
+--test: test booleans can be marshalled
+--test: test convert double to unsigned
+--test: test get length of array
+--test: test add a bunch of things
+--test: test sum array
+--test: test strings
+--test: test no memory leak when passing strings in by const reference
+fixture: classes
+--test: test class instance
+--test: test class methods
+--test: test can't call methods on deleted class instances
+--test: test isinstance
+--test: test can return class instances by value
+--test: test can pass class instances to functions by reference
+--test: test can access struct fields
+--test: test can set struct fields
+--test: test assignment returns value
+--test: test assigning string to integer raises TypeError
+--test: test can return tuples by value
+--test: test tuples can contain tuples
+--test: test can pass tuples by value
+--test: test can return structs by value
+--test: test can pass structs by value
+--test: test can pass and return tuples in structs
+--test: test can clone handles
+--test: test can't clone if already deleted
+--test: test moving handles is a clone+delete
+--test: test StringHolder
+fixture: embind enumerations
+--test: test can compare enumeration values
+--test: test repr includes enum value
+--test: test instanceof
+--test: test can pass and return enumeration values to functions
+fixture: C++11 enum class
+--test: test can compare enumeration values
+--test: test repr includes enum value
+--test: test instanceof
+--test: test can pass and return enumeration values to functions
+fixture: emval call tests
+--test: test can call functions from C++
+fixture: interfaces
+--test: test can wrap JS object in native interface
+--test: test can pass arguments and return complicated values
+--test: test can call interface methods that return nothing''', output)
 
     def test_llvm_nativizer(self):
       # avoid impure_ptr problems etc.
