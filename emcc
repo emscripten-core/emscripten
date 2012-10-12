@@ -289,6 +289,9 @@ Options that are modified or new in %s include:
                               The main file resides in the base directory and
                               has the suffix ".js".
 
+  --bind                   Compiles the source code using the "embind"
+                           bindings approach, which connects C/C++ and JS.
+
   --ignore-dynamic-linking Normally emcc will treat dynamic linking like
                            static linking, by linking in the code from
                            the dynamic library. This fails if the same
@@ -413,6 +416,8 @@ STATICLIB_SUFFIXES = ('.a',)
 ASSEMBLY_SUFFIXES = ('.ll',)
 LIB_PREFIXES = ('', 'lib')
 
+JS_CONTAINING_SUFFIXES = ('js', 'html')
+
 seen_names = {}
 def uniquename(name):
   if name not in seen_names:
@@ -500,6 +505,7 @@ try:
   shell_path = shared.path_from_root('src', 'shell.html')
   js_libraries = []
   remove_duplicates = False
+  bind = False
 
   def check_bad_eq(arg):
     assert '=' not in arg, 'Invalid parameter (do not use "=" with "--" options)'
@@ -558,6 +564,9 @@ try:
       split_js_file = int(newargs[i+1])
       newargs[i] = ''
       newargs[i+1] = ''      
+    elif newargs[i] == '--bind':
+      bind = True
+      newargs[i] = '-std=c++11' # Force C++11 for embind code
     elif newargs[i].startswith('--embed-file'):
       check_bad_eq(newargs[i])
       embed_files.append(newargs[i+1])
@@ -730,6 +739,10 @@ try:
 
   assert not (Compression.on and final_suffix != 'html'), 'Compression only works when generating HTML'
 
+  # If we are using embind and generating JS, now is the time to link in bind.cpp
+  if bind and final_suffix in JS_CONTAINING_SUFFIXES:
+    input_files.append(shared.path_from_root('system', 'lib', 'embind', 'bind.cpp'))
+
   # Apply optimization level settings
   shared.Settings.apply_opt_level(opt_level, noisy=True)
 
@@ -779,7 +792,7 @@ try:
   if not LEAVE_INPUTS_RAW: assert len(temp_files) == len(input_files)
 
   # If we were just asked to generate bitcode, stop there
-  if final_suffix not in ['js', 'html']:
+  if final_suffix not in JS_CONTAINING_SUFFIXES:
     if llvm_opts > 0:
       print >> sys.stderr, 'emcc: warning: -Ox flags ignored, since not generating JavaScript'
     if not specified_target:
@@ -957,7 +970,7 @@ try:
     if Compression.on:
       file_args += ['--compress', Compression.encoder, Compression.decoder, Compression.js_name]
     code = execute(shared.ENV_PREFIX + ['python', shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE)[0]
-    src = open(final).read().replace('// {{PRE_RUN_ADDITIONS}}', code)
+    src = open(final).read().replace('// {{PRE_RUN_ADDITIONS}}', '// {{PRE_RUN_ADDITIONS}}\n' + code)
     final += '.files.js'
     open(final, 'w').write(src)
     if DEBUG: save_intermediate('files')
@@ -969,6 +982,14 @@ try:
     final += '.pp.js'
     open(final, 'w').write(pre_js + src + post_js)
     if DEBUG: save_intermediate('pre-post')
+
+  # Add bindings glue if used
+  if bind:
+    if DEBUG: print >> sys.stderr, 'emcc: adding embind glue'
+    src = open(final).read().replace('// {{PRE_RUN_ADDITIONS}}', '// {{PRE_RUN_ADDITIONS}}\n' + open(shared.path_from_root('src', 'embind', 'embind.js')).read())
+    final += '.bd.js'
+    open(final, 'w').write(src)
+    if DEBUG: save_intermediate('bind')
 
   # Apply a source code transformation, if requested
   if js_transform:

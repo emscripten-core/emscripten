@@ -7695,6 +7695,20 @@ f.close()
       output = run_js('scons_integration.js')
       assert 'If you see this - the world is all right!' in output
 
+    def zzztest_embind(self):
+      # TODO: test -O1 and -O2
+      for args, fail in [
+        ([], True), # without --bind, we fail
+        (['--bind'], False)
+      ]:
+        print args, fail
+        try_delete(self.in_dir('a.out.js'))
+        Popen(['python', EMCC, path_from_root('tests', 'embind', 'embind_test.cpp'), '--post-js', path_from_root('tests', 'embind', 'embind_test.js')] + args, stderr=PIPE if fail else None).communicate()
+        assert os.path.exists(self.in_dir('a.out.js')) == (not fail)
+        if not fail:
+          output = run_js(self.in_dir('a.out.js'))
+          assert 'If you see this - the world is all right!' in output
+
     def test_llvm_nativizer(self):
       # avoid impure_ptr problems etc.
       shutil.copyfile(path_from_root('tests', 'files.cpp'), os.path.join(self.get_dir(), 'files.cpp'))
