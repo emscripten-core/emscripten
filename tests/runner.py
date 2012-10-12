@@ -328,6 +328,62 @@ process(sys.argv[1])
       for name in os.listdir(EMSCRIPTEN_TEMP_DIR):
         try_delete(os.path.join(EMSCRIPTEN_TEMP_DIR, name))
 
+  # Shared test code between main suite and others
+
+  def setup_runtimelink_test(self):
+    header = r'''
+      struct point
+      {
+        int x, y;
+      };
+
+    '''
+    open(os.path.join(self.get_dir(), 'header.h'), 'w').write(header)
+
+    supp = r'''
+      #include <stdio.h>
+      #include "header.h"
+
+      extern void mainFunc(int x);
+      extern int mainInt;
+
+      void suppFunc(struct point &p) {
+        printf("supp: %d,%d\n", p.x, p.y);
+        mainFunc(p.x+p.y);
+        printf("supp see: %d\n", mainInt);
+      }
+
+      int suppInt = 76;
+    '''
+    supp_name = os.path.join(self.get_dir(), 'supp.c')
+    open(supp_name, 'w').write(supp)
+
+    main = r'''
+      #include <stdio.h>
+      #include "header.h"
+
+      extern void suppFunc(struct point &p);
+      extern int suppInt;
+
+      void mainFunc(int x) {
+        printf("main: %d\n", x);
+      }
+
+      int mainInt = 543;
+
+      int main( int argc, const char *argv[] ) {
+        struct point p = { 54, 2 };
+        suppFunc(p);
+        printf("main see: %d\nok.\n", suppInt);
+        #ifdef BROWSER
+          int result = suppInt;
+          REPORT_RESULT();
+        #endif
+        return 0;
+      }
+    '''
+
+    return (main, supp)
 
 ###################################################################################################
 
@@ -3435,62 +3491,14 @@ def process(filename):
     def test_runtimelink(self):
       if Building.LLVM_OPTS: return self.skip('LLVM opts will optimize printf into puts in the parent, and the child will still look for puts')
 
-      Settings.LINKABLE = 1
+      main, supp = self.setup_runtimelink_test()
 
       self.banned_js_engines = [NODE_JS] # node's global scope behaves differently than everything else, needs investigation FIXME
-
-      header = r'''
-        struct point
-        {
-          int x, y;
-        };
-
-      '''
-      open(os.path.join(self.get_dir(), 'header.h'), 'w').write(header)
-
-      supp = r'''
-        #include <stdio.h>
-        #include "header.h"
-
-        extern void mainFunc(int x);
-        extern int mainInt;
-
-        void suppFunc(struct point &p) {
-          printf("supp: %d,%d\n", p.x, p.y);
-          mainFunc(p.x+p.y);
-          printf("supp see: %d\n", mainInt);
-        }
-
-        int suppInt = 76;
-      '''
-      supp_name = os.path.join(self.get_dir(), 'supp.c')
-      open(supp_name, 'w').write(supp)
-
-      main = r'''
-        #include <stdio.h>
-        #include "header.h"
-
-        extern void suppFunc(struct point &p);
-        extern int suppInt;
-
-        void mainFunc(int x) {
-          printf("main: %d\n", x);
-        }
-
-        int mainInt = 543;
-
-        int main( int argc, const char *argv[] ) {
-          struct point p = { 54, 2 };
-          suppFunc(p);
-          printf("main see: %d\nok.\n", suppInt);
-          return 0;
-        }
-      '''
-
+      Settings.LINKABLE = 1
       Settings.BUILD_AS_SHARED_LIB = 2
-      dirname = self.get_dir()
-      self.build(supp, dirname, supp_name)
-      shutil.move(supp_name + '.o.js', os.path.join(dirname, 'liblib.so'))
+
+      self.build(supp, self.get_dir(), self.in_dir('supp.c'))
+      shutil.move(self.in_dir('supp.c.o.js'), self.in_dir('liblib.so'))
       Settings.BUILD_AS_SHARED_LIB = 0
 
       Settings.RUNTIME_LINKED_LIBS = ['liblib.so'];
@@ -7890,6 +7898,8 @@ elif 'browser' in str(sys.argv):
 
     def with_report_result(self, code):
       return r'''
+        #if EMSCRIPTEN
+        #include <emscripten.h>
         #define REPORT_RESULT_INTERNAL(sync) \
           char output[1000]; \
           sprintf(output, \
@@ -7899,6 +7909,7 @@ elif 'browser' in str(sys.argv):
           emscripten_run_script(output); \
           emscripten_run_script("setTimeout(function() { window.close() }, 1000)");
         #define REPORT_RESULT() REPORT_RESULT_INTERNAL(0)
+        #endif
 ''' + code
 
     def reftest(self, expected):
@@ -8574,7 +8585,12 @@ elif 'browser' in str(sys.argv):
 
     def btest(self, filename, expected=None, reference=None, reference_slack=0, args=[]): # TODO: use in all other tests
       if not reference:
-        open(os.path.join(self.get_dir(), filename), 'w').write(self.with_report_result(open(path_from_root('tests', filename)).read()))
+        if '\n' in filename: # if we are provided the source and not a path, use that
+          src = filename
+          filename = 'main.cpp'
+        else:
+          src = open(path_from_root('tests', filename)).read()
+        open(os.path.join(self.get_dir(), filename), 'w').write(self.with_report_result(src))
       else:
         expected = [str(i) for i in range(0, reference_slack+1)]
         shutil.copyfile(path_from_root('tests', filename), os.path.join(self.get_dir(), filename))
@@ -8707,6 +8723,15 @@ elif 'browser' in str(sys.argv):
 
     def test_float_tex(self):
       self.btest('float_tex.cpp', reference='float_tex.png')
+
+    def test_runtimelink(self):
+      main, supp = self.setup_runtimelink_test()
+
+      open(self.in_dir('supp.cpp'), 'w').write(supp)
+      Popen(['python', EMCC, self.in_dir('supp.cpp'), '-o', 'supp.js', '-s', 'LINKABLE=1', '-s', 'BUILD_AS_SHARED_LIB=2', '-O2', '--closure', '0']).communicate()
+      shutil.move(self.in_dir('supp.js'), self.in_dir('supp.so'))
+
+      self.btest(main, args=['-s', 'LINKABLE=1', '-s', 'RUNTIME_LINKED_LIBS=["supp.so"]', '-DBROWSER=1', '-O2', '--closure', '0'], expected='76')
 
     def test_pre_run_deps(self):
       # Adding a dependency in preRun will delay run

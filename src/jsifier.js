@@ -1243,7 +1243,7 @@ function JSify(data, functionsOnly, givenFunctions) {
 
     // Load runtime-linked libraries
     RUNTIME_LINKED_LIBS.forEach(function(lib) {
-      print('eval(read("' + lib + '"))(FUNCTION_TABLE.length, this);');
+      print('eval(Module["read"]("' + lib + '"))(FUNCTION_TABLE.length, this);');
     });
 
     print(postParts[1]);
