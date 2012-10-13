@@ -8664,6 +8664,9 @@ elif 'browser' in str(sys.argv):
     def test_emscripten_api(self):
       self.btest('emscripten_api_browser.cpp', '1')
 
+    def test_emscripten_api_infloop(self):
+      self.btest('emscripten_api_browser_infloop.cpp', '7')
+
     def test_emscripten_fs_api(self):
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png')) # preloaded *after* run
       self.btest('emscripten_fs_api_browser.cpp', '1')

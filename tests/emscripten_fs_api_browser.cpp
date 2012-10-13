@@ -69,7 +69,7 @@ int main() {
     onLoaded,
     onError);
 
-  emscripten_set_main_loop(wait_wgets, 0);
+  emscripten_set_main_loop(wait_wgets, 0, 0);
 
   return 0;
 }

@@ -46,14 +46,30 @@ extern void emscripten_async_run_script(const char *script, int millis);
  * code assumes that), so you can break the code up into
  * asynchronous callbacks, but you must pause the main
  * loop until they complete.
+ *
+ * @simulate_infinite_loop If true, this function will throw an
+ *    exception in order to stop execution of the caller. This
+ *    will lead to the main loop being entered instead of code
+ *    after the call to emscripten_set_main_loop being run, which
+ *    is the closest we can get to simulating an infinite loop
+ *    (we do something similar in glutMainLoop in GLUT). If this
+ *    parameter is false, then the behavior is the same as it
+ *    was before this parameter was added to the API, which is
+ *    that execution continues normally. Note that in both cases
+ *    we do not run global destructors, atexit, etc., since we
+ *    know the main loop will still be running, but if we do
+ *    not simulate an infinite loop then the stack will be unwinded.
+ *    That means that if simulate_infinite_loop is false, and
+ *    you created an object on the stack, it will be cleaned up
+ *    before the main loop will be called the first time.
  */
 #if EMSCRIPTEN
-extern void emscripten_set_main_loop(void (*func)(), int fps);
+extern void emscripten_set_main_loop(void (*func)(), int fps, int simulate_infinite_loop);
 extern void emscripten_pause_main_loop();
 extern void emscripten_resume_main_loop();
 extern void emscripten_cancel_main_loop();
 #else
-#define emscripten_set_main_loop(func, fps) \
+#define emscripten_set_main_loop(func, fps, simulateInfiniteLoop) \
   while (1) func();
 #endif
 

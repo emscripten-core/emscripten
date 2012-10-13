@@ -94,7 +94,7 @@ int main (int argc, char ** argv)
                         "console.log('added.');");
 #endif
 
-  emscripten_set_main_loop(main_loop, 1);
+  emscripten_set_main_loop(main_loop, 1, 1);
 
   return 1;
 }
