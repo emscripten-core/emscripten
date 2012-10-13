@@ -7696,10 +7696,11 @@ f.close()
       assert 'If you see this - the world is all right!' in output
 
     def test_embind(self):
-      # TODO: test -O1 and -O2
       for args, fail in [
         ([], True), # without --bind, we fail
-        (['--bind'], False)
+        (['--bind'], False),
+        (['--bind', '-O1'], False)
+        # XXX TODO (['--bind', '-O2'], False)
       ]:
         print args, fail
         try_delete(self.in_dir('a.out.js'))
