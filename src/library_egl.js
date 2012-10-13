@@ -25,10 +25,12 @@ var LibraryEGL = {
         EGL.setErrorCode(0x300C /* EGL_BAD_PARAMETER */);
         return 0;
       }
-      if (numConfigs)
+      if (numConfigs) {
         {{{ makeSetValue('numConfigs', '0', '1', 'i32') }}}; // Total number of supported configs: 1.
-      if (config && config_size > 0)
+      }
+      if (config && config_size > 0) {
         {{{ makeSetValue('config', '0', '62002' /* Magic ID for the only EGLConfig supported by Emscripten */, 'i32') }}}; 
+      }
       
       EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
       return 1;
@@ -45,8 +47,9 @@ var LibraryEGL = {
     // "emulates" X11, and eglGetDisplay is expected to accept/receive a pointer to an X11 Display object.
     // Therefore, be lax and allow anything to be passed in, and return the magic handle to our default EGLDisplay object.
 
-//    if (nativeDisplayType == 0 /* EGL_DEFAULT_DISPLAY */)
+//    if (nativeDisplayType == 0 /* EGL_DEFAULT_DISPLAY */) {
         return 62000; // Magic ID for Emscripten 'default display'
+//    }
 //    else
 //      return 0; // EGL_NO_DISPLAY
   },
@@ -54,10 +57,12 @@ var LibraryEGL = {
   // EGLAPI EGLBoolean EGLAPIENTRY eglInitialize(EGLDisplay dpy, EGLint *major, EGLint *minor);
   eglInitialize: function(display, majorVersion, minorVersion) {
     if (display == 62000 /* Magic ID for Emscripten 'default display' */) {
-      if (majorVersion)
+      if (majorVersion) {
         {{{ makeSetValue('majorVersion', '0', '1', 'i32') }}}; // Advertise EGL Major version: '1'
-      if (minorVersion)
+      }
+      if (minorVersion) {
         {{{ makeSetValue('minorVersion', '0', '4', 'i32') }}}; // Advertise EGL Minor version: '4'
+      }
       EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
       return 1;
     } 
