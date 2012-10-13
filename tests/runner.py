@@ -5256,6 +5256,59 @@ int main(int argc, char **argv) {
 
       self.do_run(src, '789:123.46\n0:100.1')
 
+    def test_jansson(self):
+        src = '''
+          #include <jansson.h>
+          #include <stdio.h>
+          #include <string.h>
+
+          int main()
+          {
+            const char* jsonString = "{\\"key\\": \\"value\\",\\"array\\": [\\"array_item1\\",\\"array_item2\\",\\"array_item3\\"],\\"dict\\":{\\"number\\": 3,\\"float\\": 2.2}}";
+            
+            json_error_t error;
+            json_t *root = json_loadb(jsonString, strlen(jsonString), 0, &error);
+
+            if(!root || !json_is_object(root))
+              return 0;
+            printf("%s\\n", json_string_value(json_object_get(root, "key")));
+    
+            json_t *array = json_object_get(root, "array");
+            if(!array || !json_is_array(array))
+              return 0;
+            for(size_t i=0; i<json_array_size(array); ++i)
+            {
+              json_t *arrayNode = json_array_get(array, i);
+              if(!root || !json_is_string(arrayNode))
+                return 0;
+              printf("%s\\n", json_string_value(arrayNode));
+            }
+
+            json_t *dict = json_object_get(root, "dict");
+            if(!dict || !json_is_object(dict))
+              return 0;
+
+            json_t *numberNode = json_object_get(dict, "number");
+            json_t *floatNode = json_object_get(dict, "float");
+            
+            if(!numberNode || !json_is_number(numberNode) ||
+               !floatNode || !json_is_real(floatNode))
+              return 0;
+            
+            printf("%i\\n", json_integer_value(numberNode));
+            printf("%.2f\\n", json_number_value(numberNode));
+            printf("%.2f\\n", json_real_value(floatNode));
+
+            json_decref(root);
+
+            if(!json_is_object(root))
+              printf("jansson!\\n");
+
+            return 0;
+          }
+        '''
+        self.do_run(src, 'value\narray_item1\narray_item2\narray_item3\n3\n3.00\n2.20\njansson!')
+
     ### 'Medium' tests
 
     def test_fannkuch(self):
