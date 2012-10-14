@@ -846,8 +846,13 @@ try:
     # libcxx
     def create_libcxx():
       if DEBUG: print >> sys.stderr, 'emcc: building libcxx for cache'
-      shared.Building.build_library('libcxx', shared.EMSCRIPTEN_TEMP_DIR, shared.EMSCRIPTEN_TEMP_DIR, ['libcxx.bc'], configure=None, copy_project=True, source_dir=shared.path_from_root('system', 'lib', 'libcxx'))
-      return os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'libcxx', 'libcxx.bc')
+      os = []
+      for src in ['algorithm.cpp', 'condition_variable.cpp', 'future.cpp', 'iostream.cpp', 'memory.cpp', 'random.cpp', 'stdexcept.cpp', 'system_error.cpp', 'utility.cpp', 'bind.cpp', 'debug.cpp', 'hash.cpp', 'mutex.cpp', 'string.cpp', 'thread.cpp', 'valarray.cpp', 'chrono.cpp', 'exception.cpp', 'ios.cpp', 'locale.cpp', 'regex.cpp', 'strstream.cpp', 'typeinfo.cpp']:
+        o = in_temp(src + '.o')
+        execute(shared.ENV_PREFIX + ['python', shared.EMXX, shared.path_from_root('system', 'lib', 'libcxx', src), '-o', o], stdout=stdout, stderr=stderr)
+        os.append(o)
+      shared.Building.link(os, in_temp('libcxx.bc'))
+      return in_temp('libcxx.bc')
     def fix_libcxx():
       assert shared.Settings.QUANTUM_SIZE == 4, 'We do not support libc++ with QUANTUM_SIZE == 1'
       # libcxx might need corrections, so turn them all on. TODO: check which are actually needed
@@ -860,8 +865,13 @@ try:
     # libcxxabi - just for dynamic_cast for now
     def create_libcxxabi():
       if DEBUG: print >> sys.stderr, 'emcc: building libcxxabi for cache'
-      shared.Building.build_library('libcxxabi', shared.EMSCRIPTEN_TEMP_DIR, shared.EMSCRIPTEN_TEMP_DIR, ['libcxxabi.bc'], configure=None, copy_project=True, source_dir=shared.path_from_root('system', 'lib', 'libcxxabi'))
-      return os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'libcxxabi', 'libcxxabi.bc')
+      os = []
+      for src in ['private_typeinfo.cpp']:
+        o = in_temp(src + '.o')
+        execute(shared.ENV_PREFIX + ['python', shared.EMXX, shared.path_from_root('system', 'lib', 'libcxxabi', 'src', src), '-o', o], stdout=stdout, stderr=stderr)
+        os.append(o)
+      shared.Building.link(os, in_temp('libcxxabi.bc'))
+      return in_temp('libcxxabi.bc')
     def fix_libcxxabi():
       assert shared.Settings.QUANTUM_SIZE == 4, 'We do not support libc++abi with QUANTUM_SIZE == 1'
       #print >> sys.stderr, 'emcc: info: using libcxxabi, this may need CORRECT_* options'
