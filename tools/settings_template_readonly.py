@@ -9,7 +9,7 @@ EMSCRIPTEN_ROOT = os.path.expanduser(os.getenv('EMSCRIPTEN') or '{{{ EMSCRIPTEN_
 LLVM_ROOT = os.path.expanduser(os.getenv('LLVM') or '{{{ LLVM_ROOT }}}')
 
 # See below for notes on which JS engine(s) you need
-NODE_JS = '{{{ NODE }}}'
+NODE_JS = os.path.expanduser(os.getenv('NODE') or '{{{ NODE }}}')
 SPIDERMONKEY_ENGINE = [
   os.path.expanduser(os.getenv('SPIDERMONKEY') or 'js'), '-m', '-n']
 V8_ENGINE = os.path.expanduser(os.getenv('V8') or 'd8')
