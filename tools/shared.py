@@ -617,7 +617,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     actual_files = []
     unresolved_symbols = set(['main']) # tracking unresolveds is necessary for .a linking, see below. (and main is always a necessary symbol)
     resolved_symbols = set()
-    temp_dir = None
+    temp_dirs = []
     files = map(os.path.abspath, files)
     for f in files:
       if not Building.is_ar(f):
@@ -631,7 +631,8 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
         # (link in an entire .o from the archive if it supplies symbols still unresolved)
         cwd = os.getcwd()
         try:
-          temp_dir = os.path.join(EMSCRIPTEN_TEMP_DIR, 'ar_output_' + str(os.getpid()))
+          temp_dir = os.path.join(EMSCRIPTEN_TEMP_DIR, 'ar_output_' + str(os.getpid()) + '_' + str(len(temp_dirs)))
+          temp_dirs.append(temp_dir)
           if not os.path.exists(temp_dir):
             os.makedirs(temp_dir)
           os.chdir(temp_dir)
@@ -684,7 +685,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     # Finish link
     output = Popen([LLVM_LINK] + actual_files + ['-o', target], stdout=PIPE).communicate()[0]
     assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output + '\nemcc: If you get duplicate symbol errors, try --remove-duplicates'
-    if temp_dir:
+    for temp_dir in temp_dirs:
       try_delete(temp_dir)
 
   # Emscripten optimizations that we run on the .ll file

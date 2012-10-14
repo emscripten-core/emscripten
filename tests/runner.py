@@ -7402,6 +7402,37 @@ f.close()
 
       self.assertContained('result: 12346.', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+    def test_dup_o_in_a(self):
+      open('common.c', 'w').write(r'''
+        #include <stdio.h>
+        void a(void) {
+          printf("a\n");
+        }
+      ''')
+      Popen(['python', EMCC, 'common.c', '-c', '-o', 'common.o']).communicate()
+      Popen(['python', EMAR, 'rc', 'liba.a', 'common.o']).communicate()
+
+      open('common.c', 'w').write(r'''
+        #include <stdio.h>
+        void b(void) {
+          printf("b\n");
+        }
+      ''')
+      Popen(['python', EMCC, 'common.c', '-c', '-o', 'common.o']).communicate()
+      Popen(['python', EMAR, 'rc', 'libb.a', 'common.o']).communicate()
+
+      open('main.c', 'w').write(r'''
+        void a(void);
+        void b(void);
+        int main() {
+          a();
+          b();
+        }
+      ''')
+      Popen(['python', EMCC, 'main.c', '-L.', '-la', '-lb']).communicate()
+
+      self.assertContained('a\nb\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
     def test_embed_file(self):
       open(os.path.join(self.get_dir(), 'somefile.txt'), 'w').write('''hello from a file with lots of data and stuff in it thank you very much''')
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
