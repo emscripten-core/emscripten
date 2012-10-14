@@ -533,6 +533,8 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
   @staticmethod
   def configure(args, stdout=None, stderr=None, env=None):
+    if not args:
+      return
     if env is None:
       env = Building.get_building_env()
     env['EMMAKEN_JUST_CONFIGURE'] = '1'
