@@ -7343,6 +7343,70 @@ f.close()
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), os.path.join(self.get_dir(), 'subdir', 'libfile.so'), '-L.']).communicate()
       self.assertContained('hello from lib', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+    def test_runtimelink_multi(self):
+      open('testa.h', 'w').write(r'''
+        #ifndef _TESTA_H_
+        #define _TESTA_H_
+
+        class TestA {
+	        public:
+		        TestA();
+        };
+
+        #endif
+      ''')
+      open('testb.h', 'w').write(r'''
+        #ifndef _TESTB_H_
+        #define _TESTB_H_
+
+        class TestB {
+	        public:
+		        TestB();
+        };
+
+        #endif
+      ''')
+      open('testa.cpp', 'w').write(r'''
+        #include <stdio.h>
+        #include <testa.h>
+
+        TestA::TestA() {
+	        printf("TestA\n");	
+        }
+      ''')
+      open('testb.cpp', 'w').write(r'''
+        #include <stdio.h>
+        #include <testb.h>
+        #include <testa.h>
+        /*
+        */
+        TestB::TestB() {
+	        printf("TestB\n");	
+	        TestA* testa = new TestA();
+        }
+      ''')
+      open('main.cpp', 'w').write(r'''
+        #include <stdio.h>
+        #include <testa.h>
+        #include <testb.h>
+
+        /*
+        */
+        int main(int argc, char** argv) {
+	        printf("Main\n");
+	        TestA* testa = new TestA();
+	        TestB* testb = new TestB();
+        }
+      ''')
+
+      Popen(['python', EMCC, 'testa.cpp', '-o', 'liba.js', '-s', 'BUILD_AS_SHARED_LIB=2', '-s', 'LINKABLE=1', '-I.']).communicate()
+      Popen(['python', EMCC, 'testb.cpp', '-o', 'libb.js', '-s', 'BUILD_AS_SHARED_LIB=2', '-s', 'LINKABLE=1', '-I.']).communicate()
+      Popen(['python', EMCC, 'main.cpp', '-o', 'main.js', '-s', 'RUNTIME_LINKED_LIBS=["liba.js", "libb.js"]', '-I.']).communicate()
+
+      Popen(['python', EMCC, 'main.cpp', 'testa.cpp', 'testb.cpp', '-o', 'full.js', '-I.']).communicate()
+
+      self.assertContained('TestA\nTestB\nTestA\n', run_js('main.js', engine=SPIDERMONKEY_ENGINE))
+
     def test_js_libraries(self):
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
         #include <stdio.h>
