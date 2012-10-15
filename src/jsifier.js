@@ -358,11 +358,21 @@ function JSify(data, functionsOnly, givenFunctions) {
       item.JS = 'var ' + item.ident + ';';
       // Set the actual value in a postset, since it may be a global variable. We also order by dependencies there
       var value = Variables.globals[item.ident].resolvedAlias = finalizeLLVMParameter(item.value);
+      var fix = '';
+      if (BUILD_AS_SHARED_LIB == 2 && !item.private_) {
+        var target = item.ident;
+        if (isFunctionType(item.type)) {
+          target = item.value.ident; // the other side does not know this is an alias/function table index. So make it the alias target.
+          var varData = Variables.globals[target];
+          assert(!varData, 'multi-level aliasing does not work yet in shared lib 2 exports');
+        }
+        fix = '\nif (globalScope) { assert(!globalScope["' + item.ident + '"]); globalScope["' + item.ident + '"] = ' + target + ' }'
+      }
       ret.push({
         intertype: 'GlobalVariablePostSet',
         ident: item.ident,
         dependencies: set([value]),
-        JS: item.ident + ' = ' + value + ';'
+        JS: item.ident + ' = ' + value + ';' + fix
       });
       return ret;
     }

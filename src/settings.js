@@ -198,6 +198,10 @@ var INCLUDE_FULL_LIBRARY = 0; // Whether to include the whole library rather tha
                               // functions used by the generated code. This is needed when
                               // dynamically loading modules that make use of runtime
                               // library functions that are not used in the main module.
+                              // Note that this includes js libraries but *not* C. You will
+                              // need the main file to include all needed C libraries. For
+                              // example, if a library uses malloc or new, you will need
+                              // to use those in the main file too to link in dlmalloc.
 
 var SHELL_FILE = 0; // set this to a string to override the shell file used
 
