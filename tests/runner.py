@@ -5258,6 +5258,7 @@ int main(int argc, char **argv) {
 
     def test_jansson(self):
         if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
+        if Settings.SAFE_HEAP: return self.skip('jansson is not safe-heap safe')
 
         src = '''
           #include <jansson.h>
