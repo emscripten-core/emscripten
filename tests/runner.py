@@ -5088,6 +5088,8 @@ def process(filename):
       self.do_run(src, '*d4c3b2a1,e07235fe,f0cdab07,cdab,34122143,afbe*\n4e0ab4be\n')
 
     def test_gethostbyname(self):
+      if Settings.USE_TYPED_ARRAYS != 2: return self.skip("assume t2 in gethostbyname")
+
       src = r'''
         #include <netdb.h>
         #include <stdio.h>
