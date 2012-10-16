@@ -2417,8 +2417,8 @@ LibraryManager.library = {
           while ((curr < max_ || isNaN(max_)) && next > 0) {
             if (!(next in __scanString.whiteSpace) && // stop on whitespace
                 (type == 's' ||
-                 ((type === 'd' || type == 'u') && ((next >= '0'.charCodeAt(0) && next <= '9'.charCodeAt(0)) ||
-                                                    (first && next == '-'.charCodeAt(0)))) ||
+                 ((type === 'd' || type == 'u' || type == 'i') && ((next >= '0'.charCodeAt(0) && next <= '9'.charCodeAt(0)) ||
+                                                                   (first && next == '-'.charCodeAt(0)))) ||
                  (type === 'x' && (next >= '0'.charCodeAt(0) && next <= '9'.charCodeAt(0) ||
                                    next >= 'a'.charCodeAt(0) && next <= 'f'.charCodeAt(0) ||
                                    next >= 'A'.charCodeAt(0) && next <= 'F'.charCodeAt(0)))) &&
@@ -2437,7 +2437,7 @@ LibraryManager.library = {
         var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
         argIndex += Runtime.getNativeFieldSize('void*');
         switch (type) {
-          case 'd': case 'u':
+          case 'd': case 'u': case 'i':
             if (half) {
               {{{ makeSetValue('argPtr', 0, 'parseInt(text, 10)', 'i16') }}};
             } else {

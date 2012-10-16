@@ -4264,13 +4264,20 @@ at function.:blag
           printf("%d\n", sscanf("-123 -765 -34-6", "%d %u %d", &neg, &neg2, &neg3));
           printf("%d,%u,%d\n", neg, neg2, neg3);
 
+          {
+            int a = 0;
+            sscanf("1", "%i", &a);
+            printf("%i\n", a);
+          }
+
           return 0;
         }
         '''
       self.do_run(src, 'en-us : 2\nen-r : 99\nen : 3\n1.234567, 0.000000\n2.8208\n-3.0300\n|some|\n|something|\n|somethingmoar|\n' +
                        '1\n1499\n' +
                        '5\n87,0.481565,0.059481,0,1\n' +
-                       '3\n-123,4294966531,-34\n')
+                       '3\n-123,4294966531,-34\n' +
+                       '1\n')
 
     def test_sscanf_2(self):
       # doubles
