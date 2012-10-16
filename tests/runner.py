@@ -9015,6 +9015,7 @@ elif 'browser' in str(sys.argv):
         def websockify_func(q):
           print >> sys.stderr, 'running websockify on %d, forward to tcp %d' % (self.port+1, self.port)
           proc = Popen([path_from_root('third_party', 'websockify', 'other', 'websockify'), '-vvv', str(self.port+1), '127.0.0.1:' + str(self.port)])
+          #proc = Popen([path_from_root('third_party', 'websockify', 'websockify.py'), '-vvv', str(self.port+1), '127.0.0.1:' + str(self.port)])
           q.put(proc.pid)
           proc.communicate()
 
@@ -9071,6 +9072,15 @@ elif 'browser' in str(sys.argv):
       try:
         with self.WebsockHarness(7000):
           self.btest('websockets_gethostbyname.c', expected='571', args=['-O2'])
+      finally:
+        self.clean_pids()
+
+    def zzztest_zz_websockets_bi_bigdata(self):
+      try:
+        with self.WebsockHarness(3992, self.make_relay_server(3992, 3994)):
+          with self.WebsockHarness(3994, no_server=True):
+            Popen(['python', EMCC, path_from_root('tests', 'websockets_bi_side_bigdata.c'), '-o', 'side.html', '-DSOCKK=3995', '-s', 'SOCKET_DEBUG=0', '-I' + path_from_root('tests')]).communicate()
+            self.btest('websockets_bi_bigdata.c', expected='0', args=['-s', 'SOCKET_DEBUG=0', '-I' + path_from_root('tests')])
       finally:
         self.clean_pids()
 
