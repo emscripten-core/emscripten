@@ -914,9 +914,6 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
   @staticmethod
   def js_optimizer(filename, passes):
-    if not check_engine(NODE_JS):
-      raise Exception('Node.js appears to be missing or broken, looked at: ' + str(NODE_JS))
-
     if type(passes) == str:
       passes = [passes]
     # XXX Might need to disable crankshaft to work around v8 bug 1895 , '--nocrankshaft'
@@ -930,9 +927,6 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
   @staticmethod
   def eliminator(filename):
-    if not check_engine(NODE_JS):
-      raise Exception('Node.js appears to be missing or broken, looked at: ' + str(NODE_JS))
-
     coffee = path_from_root('tools', 'eliminator', 'node_modules', 'coffee-script', 'bin', 'coffee')
     eliminator = path_from_root('tools', 'eliminator', 'eliminator.coffee')
     input = open(filename, 'r').read()
