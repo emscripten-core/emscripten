@@ -912,8 +912,56 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     Building.LLVM_OPT_OPTS = opts
     return opts
 
+  MAX_JS_PROCESS_SIZE = 12*1024*1024
+  BEST_JS_PROCESS_SIZE = 8*1024*1024
+
   @staticmethod
-  def js_optimizer(filename, passes):
+  def splitter(filename, addendum, func, args=[]):
+    # Split up huge files into pieces small enough for node/uglify/etc. to handle
+    js = open(filename).read()
+    if len(js) > Building.MAX_JS_PROCESS_SIZE:
+      if os.environ.get('EMCC_DEBUG'): print >> sys.stderr, 'splitting up js file'
+
+      suffix_marker = '// EMSCRIPTEN_GENERATED_FUNCTIONS'
+      suffix_start = js.find(suffix_marker)
+      suffix = ''
+      if suffix_start >= 0:
+        suffix = js[suffix_start:js.find('\n', suffix_start)] + '\n'
+
+      filename += addendum
+      f = open(filename, 'w')
+
+      i = 0
+      f_start = 0
+      while True:
+        f_end = f_start
+        while f_end-f_start < Building.BEST_JS_PROCESS_SIZE and f_end != -1:
+          f_end = js.find('\n}\n', f_end+1)
+        chunk = js[f_start:(-1 if f_end == -1 else f_end+3)] + suffix
+        temp_in_file = filename + '.p%d.js' % i
+        if os.environ.get('EMCC_DEBUG'): print >> sys.stderr, '  split %d, size %d' % (i, len(chunk))
+        i += 1
+        open(temp_in_file, 'w').write(chunk)
+        temp_out_file = func(*([temp_in_file] + args + [False])) # maybe_big is now false
+        f.write(
+          ''.join(filter(lambda line: not line.startswith(suffix_marker), open(temp_out_file).readlines()))
+        )
+        if f_end == -1: break
+        f_start = f_end+3
+        if f_start >= len(js): break
+
+      f.write(suffix)
+      f.close()
+      return filename
+
+  @staticmethod
+  def js_optimizer(filename, passes, maybe_big=True):
+    if maybe_big:
+      # When we split up, we cannot do unGlobalize, the only pass which is *not* function-local
+      args = [filter(lambda p: p != 'unGlobalize', passes)]
+      ret = Building.splitter(filename, addendum='.jo.js', func=Building.js_optimizer, args=args)
+      if ret: return ret
+
     if type(passes) == str:
       passes = [passes]
     # XXX Might need to disable crankshaft to work around v8 bug 1895 , '--nocrankshaft'
@@ -926,7 +974,11 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     return filename
 
   @staticmethod
-  def eliminator(filename):
+  def eliminator(filename, maybe_big=True):
+    if maybe_big:
+      ret = Building.splitter(filename, addendum='.el.js', func=Building.eliminator)
+      if ret: return ret
+
     coffee = path_from_root('tools', 'eliminator', 'node_modules', 'coffee-script', 'bin', 'coffee')
     eliminator = path_from_root('tools', 'eliminator', 'eliminator.coffee')
     input = open(filename, 'r').read()
