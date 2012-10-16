@@ -6452,7 +6452,7 @@ LibraryManager.library = {
       assert(info.host, 'problem translating fake ip ' + parts);
     }
     console.log('opening ws://' + info.host + ':' + info.port);
-    info.socket = new WebSocket('ws://' + info.host + ':' + info.port, ['arraybuffer']);
+    info.socket = new WebSocket('ws://' + info.host + ':' + info.port, ['base64']);
     info.socket.binaryType = 'arraybuffer';
     info.buffer = new Uint8Array(Sockets.BUFFER_SIZE);
     info.bufferWrite = info.bufferRead = 0;
