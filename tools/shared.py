@@ -952,7 +952,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     # Something like this (adjust memory as needed):
     #   java -Xmx1024m -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
     args = [JAVA,
-            '-Xmx1024m',
+            '-Xmx' + (os.environ.get('JAVA_HEAP_SIZE') or '1024m'), # if you need a larger Java heap, use this environment variable
             '-jar', CLOSURE_COMPILER,
             '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
             '--formatting', 'PRETTY_PRINT',
