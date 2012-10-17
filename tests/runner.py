@@ -1183,15 +1183,10 @@ c5,de,15,8a
           }
         '''
 
-        Settings.EMULATE_UNALIGNED_ACCESSES = 0
-
         try:
           self.do_run(src, '*300:1*\n*515559*\n*42949672960*\n')
         except Exception, e:
           assert 'must be aligned' in str(e), e # expected to fail without emulation
-
-        # XXX TODO Settings.EMULATE_UNALIGNED_ACCESSES = 1
-        #self.do_run(src, '*300:1*\n*515559*\n*42949672960*\n') # but succeeds with it
 
     def test_unsigned(self):
         Settings.CORRECT_SIGNS = 1 # We test for exactly this sort of thing here
@@ -7278,6 +7273,26 @@ f.close()
       ''')
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'test.cpp'), '-fcatch-undefined-behavior']).communicate()
       self.assertContained('hello, world!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
+    def test_unaligned_memory(self):
+      open(os.path.join(self.get_dir(), 'test.cpp'), 'w').write(r'''
+        #include <stdio.h>
+
+        typedef unsigned char   Bit8u;
+        typedef unsigned short  Bit16u;
+        typedef unsigned int    Bit32u;
+
+        int main()
+        {
+          Bit8u data[4] = {0x01,0x23,0x45,0x67};
+
+          printf("data: %x\n", *(Bit32u*)data);
+          printf("data[0,1] 16bit: %x\n", *(Bit16u*)data);
+          printf("data[1,2] 16bit: %x\n", *(Bit16u*)(data+1));
+        }
+      ''')
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'test.cpp'), '-s', 'UNALIGNED_MEMORY=1']).communicate()
+      self.assertContained('data: 67452301\ndata[0,1] 16bit: 2301\ndata[1,2] 16bit: 4523', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
     def test_l_link(self):
       # Linking with -lLIBNAME and -L/DIRNAME should work
