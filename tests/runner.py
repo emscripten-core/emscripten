@@ -8850,6 +8850,9 @@ elif 'browser' in str(sys.argv):
     def test_sdl_quit(self):
       self.btest('sdl_quit.c', '1')
 
+    def test_sdl_resize(self):
+      self.btest('sdl_resize.c', '1')
+
     def test_gc(self):
       self.btest('browser_gc.cpp', '1')
 

@@ -3,6 +3,12 @@
 // See browser tests for examples (tests/runner.py, search for sdl_). Run with
 //    python tests/runner.py browser
 
+// Notes:
+//  SDL_VIDEORESIZE: This is sent when the canvas is resized. Note that the user
+//                   cannot manually do so, so this is only sent when the
+//                   program manually resizes it (emscripten_set_canvas_size
+//                   or otherwise).
+
 var LibrarySDL = {
   $SDL__deps: ['$FS', '$Browser'],
   $SDL: {
@@ -188,6 +194,11 @@ var LibrarySDL = {
         ['i8', 'padding2'],
         ['i32', 'x'],
         ['i32', 'y']
+      ]),
+      ResizeEvent: Runtime.generateStructInfo([
+        ['i32', 'type'],
+        ['i32', 'w'],
+        ['i32', 'h']
       ]),
       AudioSpec: Runtime.generateStructInfo([
         ['i32', 'freq'],
@@ -411,6 +422,9 @@ var LibrarySDL = {
           // Force-run a main event loop, since otherwise this event will never be caught!
           Browser.mainLoop.runner();
           return true;
+        case 'resize':
+          SDL.events.push(event);
+          break;
       }
       return false;
     },
@@ -515,6 +529,12 @@ var LibrarySDL = {
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
           break;
         }
+        case 'resize': {
+          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
+          {{{ makeSetValue('ptr', 'SDL.structs.ResizeEvent.w', 'event.w', 'i32') }}};
+          {{{ makeSetValue('ptr', 'SDL.structs.ResizeEvent.h', 'event.h', 'i32') }}};
+          break;
+        }
         default: throw 'Unhandled SDL event: ' + event.type;
       }
     },
@@ -598,6 +618,7 @@ var LibrarySDL = {
     SDL.DOMEventToSDLEvent['mouseup'] = 0x402 /* SDL_MOUSEBUTTONUP */;
     SDL.DOMEventToSDLEvent['mousemove'] = 0x400 /* SDL_MOUSEMOTION */;
     SDL.DOMEventToSDLEvent['unload'] = 0x100 /* SDL_QUIT */;
+    SDL.DOMEventToSDLEvent['resize'] = 0x7001 /* SDL_VIDEORESIZE/SDL_EVENT_COMPAT2 */;
     return 0; // success
   },
 
@@ -659,8 +680,19 @@ var LibrarySDL = {
     ['mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll', 'mousewheel', 'mouseout'].forEach(function(event) {
       Module['canvas'].addEventListener(event, SDL.receiveEvent, true);
     });
-    Browser.setCanvasSize(width, height);
-    return SDL.screen = SDL.makeSurface(width, height, flags, true, 'screen');
+    Browser.setCanvasSize(width, height, true);
+    SDL.screen = SDL.makeSurface(width, height, flags, true, 'screen');
+    if (!SDL.addedResizeListener) {
+      SDL.addedResizeListener = true;
+      Browser.resizeListeners.push(function(w, h) {
+        SDL.receiveEvent({
+          type: 'resize',
+          w: w,
+          h: h
+        });
+      });
+    }
+    return SDL.screen;
   },
 
   SDL_GetVideoSurface: function() {

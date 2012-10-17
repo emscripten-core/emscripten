@@ -347,11 +347,21 @@ mergeInto(LibraryManager.library, {
       });
       addRunDependency('al ' + url);
     },
-    
-    setCanvasSize: function(width, height) {
+
+    resizeListeners: [],
+
+    updateResizeListeners: function() {
+      var canvas = Module['canvas'];
+      Browser.resizeListeners.forEach(function(listener) {
+        listener(canvas.width, canvas.height);
+      });
+    },
+
+    setCanvasSize: function(width, height, noUpdates) {
       var canvas = Module['canvas'];
       canvas.width = width;
       canvas.height = height;
+      if (!noUpdates) Browser.updateResizeListeners();
     }
   },
 
