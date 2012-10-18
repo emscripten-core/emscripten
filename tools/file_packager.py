@@ -355,9 +355,9 @@ if has_preloaded:
           num++;
         }
         total = Math.ceil(total * Module.expectedDataFileDownloads/num);
-        Module.setStatus('Downloading data... (' + loaded + '/' + total + ')');
+        Module['setStatus']('Downloading data... (' + loaded + '/' + total + ')');
       } else if (!Module.dataFileDownloads) {
-        Module.setStatus('Downloading data...');
+        Module['setStatus']('Downloading data...');
       }
     }
     dataFile.open('GET', '%s', true);
