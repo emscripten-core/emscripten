@@ -1005,6 +1005,10 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
     return '(tempDoubleF64[0]=' + value + ',' +
             makeSetValue(ptr, pos, 'tempDoubleI32[0]', 'i32', noNeedFirst, ignore, align, noSafe, ',') + ',' +
             makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'tempDoubleI32[1]', 'i32', noNeedFirst, ignore, align, noSafe, ',') + ')';
+  } else if (USE_TYPED_ARRAYS == 2 && type == 'i64') {
+    return '(tempI64 = [' + splitI64(value) + '],' +
+            makeSetValue(ptr, pos, 'tempI64[0]', 'i32', noNeedFirst, ignore, align, noSafe, ',') + ',' +
+            makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'tempI64[1]', 'i32', noNeedFirst, ignore, align, noSafe, ',') + ')';
   }
 
   var bits = getBits(type);
