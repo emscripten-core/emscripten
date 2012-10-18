@@ -41,6 +41,12 @@ To run a specific set of tests, you can do things like
 Combinations work too, for example
 
   python tests/runner.py browser.test_sdl_image
+
+In the main test suite, you can run all variations (O0, O1, O2, etc.) of
+an individual test with
+
+  python tests/runner.py ALL.test_hello_world
+
 ==============================================================================
 
 '''
@@ -393,6 +399,11 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
   # Tests
 
   print "Running Emscripten tests..."
+
+  if len(sys.argv) == 2 and 'ALL.' in sys.argv[1]:
+    ignore, test = sys.argv[1].split('.')
+    print 'Running all test modes on test "%s"' % test
+    sys.argv = [sys.argv[0], 'default.'+test, 'o1.'+test, 'o2.'+test, 's_0_0.'+test, 's_0_1.'+test, 's_0_1_q1.'+test, 's_1_0.'+test, 's_1_1.'+test, 's_1_1_q1.'+test]
 
   class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
     ## Does a complete test - builds, runs, checks output, etc.
