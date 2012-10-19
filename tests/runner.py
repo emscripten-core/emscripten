@@ -1079,6 +1079,20 @@ m_divisor is 1091269979
       '''
       self.do_run(src, ',0,,2,C!,0,C!,0,,65535,C!,0,')
 
+    def test_long_double(self): # long doubles should be double64, not x86_fp80 or worse
+      src = r'''
+        #include <stdio.h>
+
+        int main()
+        {
+          unsigned long ips = 4000000;
+          double m_ips;
+          m_ips = ((double)ips) / 1000000.0L;
+          printf("m_ips %f\n", m_ips);
+        }
+      '''
+      self.do_run(src, 'm_ips 4.000000')
+
     def test_bswap(self):
       if self.emcc_args == None: return self.skip('needs ta2')
 
@@ -2345,11 +2359,11 @@ c5,de,15,8a
       if self.emcc_args is None: return # too slow in other modes
 
       # We should not blow up the stack with numerous allocas
-      src = '''
+      src = r'''
         #include <stdio.h>
         #include <stdlib.h>
 
-        func(int i) {
+        int func(int i) {
           char *pc = (char *)alloca(100);
           *pc = i;
           (*pc)++;
@@ -2357,9 +2371,11 @@ c5,de,15,8a
         }
         int main() {
           int total = 0;
-          for (int i = 0; i < 1024*1024; i++)
+          for (int i = 0; i < 1024*1024; i++) {
+            printf("%d\n", total);
             total += func(i);
-          printf("ok:%d*\\n", total);
+          }
+          printf("ok:%d*\n", total);
           return 0;
         }
       '''
@@ -7949,7 +7965,7 @@ fixture: interfaces
       open(os.path.join(self.get_dir(), 'somefile.binary'), 'w').write('''waka waka############################''')
       open(os.path.join(self.get_dir(), 'test.file'), 'w').write('''ay file..............,,,,,,,,,,,,,,''')
       open(os.path.join(self.get_dir(), 'stdin'), 'w').write('''inter-active''')
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'files.cpp'), '-c']).communicate()
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'files.cpp'), '-c'], env={ 'EMCC_NO_TARGET_TRIPLE': '1' }).communicate()
       Popen(['python', path_from_root('tools', 'nativize_llvm.py'), os.path.join(self.get_dir(), 'files.o')]).communicate(input)[0]
       output = Popen([os.path.join(self.get_dir(), 'files.o.run')], stdin=open(os.path.join(self.get_dir(), 'stdin')), stdout=PIPE, stderr=PIPE).communicate()
       self.assertIdentical('''size: 37

@@ -251,8 +251,12 @@ except:
 # Force a simple, standard target as much as possible: target 32-bit linux, and disable various flags that hint at other platforms
 COMPILER_OPTS = COMPILER_OPTS + ['-m32', '-U__i386__', '-U__x86_64__', '-U__i386', '-U__x86_64', '-U__SSE__', '-U__SSE2__', '-U__MMX__',
                                  '-UX87_DOUBLE_ROUNDING', '-UHAVE_GCC_ASM_FOR_X87', '-DEMSCRIPTEN', '-U__STRICT_ANSI__', '-U__CYGWIN__',
-                                 '-D__STDC__', '-Xclang', '-triple=i386-pc-linux-gnu', '-D__IEEE_LITTLE_ENDIAN']
+                                 '-D__STDC__', '-D__IEEE_LITTLE_ENDIAN']
 
+NO_TARGET_TRIPLE = os.environ.get('EMCC_NO_TARGET_TRIPLE')
+if not NO_TARGET_TRIPLE:
+  # using arm as the CPU prevents x86_fp80 floating point numbers, which we had with -triple=i386-pc-linux-gnu
+  COMPILER_OPTS += ['-ccc-host-triple', 'arm-linux-gnu']
 
 USE_EMSDK = not os.environ.get('EMMAKEN_NO_SDK')
 
