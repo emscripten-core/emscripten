@@ -292,13 +292,11 @@ LibraryManager.library = {
 
       if (typeof XMLHttpRequest !== 'undefined') {
         if (!ENVIRONMENT_IS_WORKER) throw 'Cannot do synchronous binary XHRs outside webworkers in modern browsers. Use --embed-file or --preload-file in emcc';
-      
         // Lazy chunked Uint8Array (implements get and length from Uint8Array). Actual getting is abstracted away for eventual reuse.
         var LazyUint8Array = function(chunkSize, length) {
           this.length = length;
           this.chunkSize = chunkSize;
           this.chunks = []; // Loaded chunks. Index is the chunk number
-          this.isLazyUint8Array = true;
         }
         LazyUint8Array.prototype.get = function(idx) {
           if (idx > this.length-1 || idx < 0) {
@@ -320,7 +318,7 @@ LibraryManager.library = {
         var datalength = Number(xhr.getResponseHeader("Content-length"));
         var header;
         var hasByteServing = (header = xhr.getResponseHeader("Accept-Ranges")) && header === "bytes";
-#if SMALL_CHUNKS
+#if SMALL_XHR_CHUNKS
         var chunkSize = 1024; // Chunk size in bytes
 #else
         var chunkSize = 1024*1024; // Chunk size in bytes
@@ -1708,13 +1706,13 @@ LibraryManager.library = {
       }
       var contents = stream.object.contents;
       var size = Math.min(contents.length - offset, nbyte);
-      if (contents.isLazyUint8Array) {
-        for (var i = 0; i < size; i++) {
-          {{{ makeSetValue('buf', 'i', 'contents.get(offset + i)', 'i8') }}}
+      if (contents.byteLength) {
+        for (var i = 0; i < size; i++) { // typed array
+          {{{ makeSetValue('buf', 'i', 'contents[offset + i]', 'i8') }}}
         }
       } else {
-        for (var i = 0; i < size; i++) {
-          {{{ makeSetValue('buf', 'i', 'contents[offset + i]', 'i8') }}}
+        for (var i = 0; i < size; i++) { // LazyUint8Array from sync binary XHR
+          {{{ makeSetValue('buf', 'i', 'contents.get(offset + i)', 'i8') }}}
         }
       }
       bytesRead += size;
