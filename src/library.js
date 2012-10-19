@@ -318,14 +318,18 @@ LibraryManager.library = {
         xhr.send(null);
         if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
         var datalength = Number(xhr.getResponseHeader("Content-length"));
-	var header;
+        var header;
         var hasByteServing = (header = xhr.getResponseHeader("Accept-Ranges")) && header === "bytes";
+#if SMALL_CHUNKS
+        var chunkSize = 1024; // Chunk size in bytes
+#else
         var chunkSize = 1024*1024; // Chunk size in bytes
-	if (!hasByteServing) chunkSize = datalength;
+#endif
+        if (!hasByteServing) chunkSize = datalength;
   
         // Function to get a range from the remote URL.
         var doXHR = (function(from, to) {
-          if (from >= to) throw new Error("invalid range or no bytes requested!");
+          if (from > to) throw new Error("invalid range (" + from + ", " + to + ") or no bytes requested!");
           if (to > datalength-1) throw new Error("only " + datalength + " bytes available! programmer error!");
   
           // TODO: Use mozResponseArrayBuffer, responseStream, etc. if available.

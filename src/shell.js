@@ -66,7 +66,7 @@ if (ENVIRONMENT_IS_SHELL) {
   }
 }
 
-if (ENVIRONMENT_IS_WEB) {
+if (ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_WORKER) {
   if (!Module['print']) {
     Module['print'] = function(x) {
       console.log(x);
