@@ -187,7 +187,7 @@ var Runtime = {
       "%double": 8
     }['%'+type]; // add '%' since float and double confuse Closure compiler as keys, and also spidermonkey as a compiler will remove 's from '_i8' etc
     if (!size) {
-      if (type[type.length-1] == '*') {
+      if (type.charAt(type.length-1) == '*') {
         size = Runtime.QUANTUM_SIZE; // A pointer
       } else if (type[0] == 'i') {
         var bits = parseInt(type.substr(1));

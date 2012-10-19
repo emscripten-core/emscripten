@@ -37,7 +37,7 @@ function SAFE_HEAP_ACCESS(dest, type, store, ignore) {
 #if USE_TYPED_ARRAYS == 2
   return; // It is legitimate to violate the load-store assumption in this case
 #endif
-  if (type && type[type.length-1] == '*') type = 'i32'; // pointers are ints, for our purposes here
+  if (type && type.charAt(type.length-1) == '*') type = 'i32'; // pointers are ints, for our purposes here
   // Note that this will pass even with unions: You can store X, load X, then store Y and load Y.
   // You cannot, however, do the nonportable act of store X and load Y!
   if (store) {
@@ -391,7 +391,7 @@ Module["cwrap"] = cwrap;
 // getValue need LLVM types ('i8', 'i32') - this is a lower-level operation
 function setValue(ptr, value, type, noSafe) {
   type = type || 'i8';
-  if (type[type.length-1] === '*') type = 'i32'; // pointers are 32-bit
+  if (type.charAt(type.length-1) === '*') type = 'i32'; // pointers are 32-bit
 #if SAFE_HEAP
   if (noSafe) {
     switch(type) {
@@ -425,7 +425,7 @@ Module['setValue'] = setValue;
 // Parallel to setValue.
 function getValue(ptr, type, noSafe) {
   type = type || 'i8';
-  if (type[type.length-1] === '*') type = 'i32'; // pointers are 32-bit
+  if (type.charAt(type.length-1) === '*') type = 'i32'; // pointers are 32-bit
 #if SAFE_HEAP
   if (noSafe) {
     switch(type) {
