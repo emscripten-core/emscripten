@@ -255,8 +255,9 @@ COMPILER_OPTS = COMPILER_OPTS + ['-m32', '-U__i386__', '-U__x86_64__', '-U__i386
 
 NO_TARGET_TRIPLE = os.environ.get('EMCC_NO_TARGET_TRIPLE')
 if not NO_TARGET_TRIPLE:
-  # using arm as the CPU prevents x86_fp80 floating point numbers, which we had with -triple=i386-pc-linux-gnu
-  COMPILER_OPTS += ['-ccc-host-triple', 'arm-linux-gnu']
+  # using sparc as the CPU prevents x86_fp80 floating point numbers, which we had with -triple=i386-pc-linux-gnu
+  # sparc is as close as we can get to 'generic 32-bit arch'
+  COMPILER_OPTS += ['-ccc-host-triple', 'sparc-linux-gnu']
 
 USE_EMSDK = not os.environ.get('EMMAKEN_NO_SDK')
 

@@ -2372,7 +2372,6 @@ c5,de,15,8a
         int main() {
           int total = 0;
           for (int i = 0; i < 1024*1024; i++) {
-            printf("%d\n", total);
             total += func(i);
           }
           printf("ok:%d*\n", total);
