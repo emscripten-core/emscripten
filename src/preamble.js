@@ -700,6 +700,8 @@ STACK_MAX = tempDoublePtr + 8;
 
 STATICTOP = alignMemoryPage(STACK_MAX);
 
+assert(STATICTOP < TOTAL_MEMORY); // Stack must fit in TOTAL_MEMORY; allocations from here on may enlarge TOTAL_MEMORY
+
 var nullString = allocate(intArrayFromString('(null)'), 'i8', ALLOC_STATIC);
 
 function callRuntimeCallbacks(callbacks) {
