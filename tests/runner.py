@@ -8780,6 +8780,114 @@ elif 'browser' in str(sys.argv):
       html_file.close()
       self.run_browser('main.html', 'You should see that the worker was called, and said "hello from worker!"', '/report_result?hello%20from%20worker!')
 
+    def test_chunked_synchronous_xhr(self):
+      main = 'chunked_sync_xhr.html'
+      worker_filename = "download_and_checksum_worker.js"
+
+      html_file = open(main, 'w')
+      html_file.write(r"""
+        <!doctype html>
+        <html>
+        <head><meta charset="utf-8"><title>Chunked XHR</title></head>
+        <html>
+        <body>
+          Chunked XHR Web Worker Test
+          <script>
+            var worker = new Worker(""" + json.dumps(worker_filename) + r""");
+            var buffer = [];
+            worker.onmessage = function(event) {
+              if (event.data.channel === "stdout") {
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', 'http://localhost:8888/report_result?' + event.data.line);
+                xhr.send();
+                setTimeout(function() { window.close() }, 1000);
+              } else {
+                if (event.data.trace) event.data.trace.split("\n").map(function(v) { console.error(v); });
+                if (event.data.line) {
+                  console.error(event.data.line);
+                } else {
+                  var v = event.data.char;
+                  if (v == 10) {
+                    var line = buffer.splice(0);
+                    console.error(line = line.map(function(charCode){return String.fromCharCode(charCode);}).join(''));
+                  } else {
+                    buffer.push(v);
+                  }
+                }
+              }
+            };
+          </script>
+        </body>
+        </html>
+      """)
+      html_file.close()
+
+      c_source_filename = "checksummer.c"
+
+      prejs_filename = "worker_prejs.js"
+      prejs_file = open(prejs_filename, 'w')
+      prejs_file.write(r"""
+        if (typeof(Module) === "undefined") Module = {};
+        Module["arguments"] = ["/bigfile"];
+        Module["preInit"] = function() {
+            FS.createLazyFile('/', "bigfile", "http://localhost:11111/bogus_file_path", true, false);
+        };
+        var doTrace = true;
+        Module["print"] =    function(s) { self.postMessage({channel: "stdout", line: s}); };
+        Module["stderr"] =   function(s) { self.postMessage({channel: "stderr", char: s, trace: ((doTrace && s === 10) ? new Error().stack : null)}); doTrace = false; };
+      """)
+      prejs_file.close()
+      # vs. os.path.join(self.get_dir(), filename)
+      # vs. path_from_root('tests', 'hello_world_gles.c')
+      Popen(['python', EMCC, path_from_root('tests', c_source_filename), '-g', '-s', 'SMALL_CHUNKS=1', '-o', worker_filename,
+                                           '--pre-js', prejs_filename]).communicate()
+
+      chunkSize = 1024
+      data = os.urandom(10*chunkSize+1) # 10 full chunks and one 1 byte chunk
+      expectedConns = 11
+      import zlib
+      checksum = zlib.adler32(data)
+
+      def chunked_server(support_byte_ranges):
+        class ChunkedServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+          @staticmethod
+          def sendheaders(s, extra=[], length=len(data)):
+            s.send_response(200)
+            s.send_header("Content-Length", str(length))
+            s.send_header("Access-Control-Allow-Origin", "http://localhost:8888")
+            s.send_header("Access-Control-Expose-Headers", "Content-Length, Accept-Ranges")
+            s.send_header("Content-type", "application/octet-stream")
+            if support_byte_ranges:
+              s.send_header("Accept-Ranges", "bytes")
+            for i in extra:
+              s.send_header(i[0], i[1])
+            s.end_headers()
+
+          def do_HEAD(s):
+            ChunkedServerHandler.sendheaders(s)
+            
+          def do_GET(s):
+            if not support_byte_ranges:
+              ChunkedServerHandler.sendheaders(s)
+              s.wfile.write(data)
+            else:
+              (start, end) = s.headers.get("range").split("=")[1].split("-")
+              start = int(start)
+              end = int(end)
+              end = min(len(data)-1, end)
+              length = end-start+1
+              ChunkedServerHandler.sendheaders(s,[],length)
+              s.wfile.write(data[start:end+1])
+            s.wfile.close()
+        httpd = BaseHTTPServer.HTTPServer(('localhost', 11111), ChunkedServerHandler)
+        for i in range(expectedConns+1):
+          httpd.handle_request()
+
+      server = multiprocessing.Process(target=chunked_server, args=(True,))
+      server.start()
+      self.run_browser(main, 'Chunked binary synchronous XHR in Web Workers!', '/report_result?' + str(checksum))
+      server.terminate()
+
     def test_glgears(self):
       self.reftest(path_from_root('tests', 'gears.png'))
       Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
