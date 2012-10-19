@@ -25,17 +25,21 @@ int testImage(const char* fileName) {
   return result;
 }
 
-void ready(char *data, const char *fileName) {
-  printf("ready! %s\n", fileName);
+void ready(void *arg, const char *fileName) {
+  printf("ready! %s (%d)\n", fileName, (int)arg);
 
   static int first = 1;
   static const char *seenName;
+  static void *seenArg;
   if (first) {
     first = 0;
     seenName = fileName;
+    seenArg = arg;
   } else {
     printf("%s ? %s == %d\n", fileName, seenName, strcmp(fileName, seenName));
     assert(strcmp(fileName, seenName)); // different names
+
+    assert(seenArg != arg); // different args
 
     testImage(seenName);
 
@@ -57,8 +61,8 @@ int main() {
   fread(buffer, SIZE, 1, f);
   fclose(f);
 
-  emscripten_async_prepare_data(buffer, SIZE, "jpg", ready, NULL);
-  emscripten_async_prepare_data(buffer, SIZE, "jpg", ready, NULL); // twice to see different filenames
+  emscripten_async_prepare_data(buffer, SIZE, "jpg", (void*)25, ready, NULL);
+  emscripten_async_prepare_data(buffer, SIZE, "jpg", (void*)33, ready, NULL); // twice to see different filenames
 
   return 0;
 }

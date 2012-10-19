@@ -200,7 +200,7 @@ int emscripten_async_prepare(const char* file, void (*onload)(const char*), void
  * Data version of emscripten_async_prepare, which receives
  * raw data as input instead of a filename (this can prevent
  * the need to write data to a file first). onload and
- * onerror are called back with the data pointer as the
+ * onerror are called back with the given arg pointer as the
  * first parameter. onload also receives a second
  * parameter, which is a 'fake' filename which you can
  * then pass into IMG_Load (it is not an actual file,
@@ -210,7 +210,7 @@ int emscripten_async_prepare(const char* file, void (*onload)(const char*), void
  * the fake filename.
  * @suffix The file suffix, e.g. 'png' or 'jpg'.
  */
-void emscripten_async_prepare_data(char* data, int size, const char *suffix, void (*onload)(char*, const char*), void (*onerror)(char*));
+void emscripten_async_prepare_data(char* data, int size, const char *suffix, void *arg, void (*onload)(void*, const char*), void (*onerror)(void*));
 
 /*
  * Profiling tools.

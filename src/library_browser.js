@@ -402,7 +402,7 @@ mergeInto(LibraryManager.library, {
     return 0;
   },
 
-  emscripten_async_prepare_data: function(data, size, suffix, onload, onerror) {
+  emscripten_async_prepare_data: function(data, size, suffix, arg, onload, onerror) {
     var _suffix = Pointer_stringify(suffix);
     if (!Browser.asyncPrepareDataCounter) Browser.asyncPrepareDataCounter = 0;
     var name = 'prepare_data_' + (Browser.asyncPrepareDataCounter++) + '.' + _suffix;
@@ -414,10 +414,10 @@ mergeInto(LibraryManager.library, {
       {{{ makeHEAPView('U8', 'data', 'data + size') }}},
       true, true,
       function() {
-        if (onload) FUNCTION_TABLE[onload](data, cname);
+        if (onload) FUNCTION_TABLE[onload](arg, cname);
       },
       function() {
-        if (onerror) FUNCTION_TABLE[onerror](data);
+        if (onerror) FUNCTION_TABLE[onerror](arg);
       },
       true // don'tCreateFile - it's already there
     );
