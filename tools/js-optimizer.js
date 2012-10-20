@@ -454,8 +454,25 @@ function simplifyExpressionsPre(ast) {
     }
   }
 
+  // if (x == 0) can be if (!x), etc.
+  function simplifyZeroComp(ast) {
+    traverseGenerated(ast, function(node, type) {
+      var binary;
+      if (type == 'if' && (binary = node[1])[0] == 'binary') {
+        if ((binary[1] == '!=' || binary[1] == '!==') && binary[3][0] == 'num' && binary[3][1] == 0) {
+          node[1] = binary[2];
+          return node;
+        } else if ((binary[1] == '==' || binary[1] == '===') && binary[3][0] == 'num' && binary[3][1] == 0) {
+          node[1] = ['unary-prefix', '!', binary[2]];
+          return node;
+        }
+      }
+    });
+  }
+
   simplifyBitops(ast);
   joinAdditions(ast);
+  // simplifyZeroComp(ast); TODO: investigate performance
 }
 
 // In typed arrays mode 2, we can have
