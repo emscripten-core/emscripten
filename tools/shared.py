@@ -964,8 +964,8 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
     if type(passes) == str:
       passes = [passes]
-    # XXX Might need to disable crankshaft to work around v8 bug 1895 , '--nocrankshaft'
-    output = Popen([NODE_JS, JS_OPTIMIZER, filename] + passes, stdout=PIPE).communicate()[0]
+    # XXX disable crankshaft to work around v8 bug 1895
+    output = Popen([NODE_JS, '--nocrankshaft', JS_OPTIMIZER, filename] + passes, stdout=PIPE).communicate()[0]
     assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + output
     filename += '.jo.js'
     f = open(filename, 'w')
