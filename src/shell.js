@@ -102,7 +102,7 @@ if (ENVIRONMENT_IS_WORKER) {
     Module['print'] = (TRY_USE_DUMP && (typeof(dump) !== "undefined") ? (function(x) {
       dump(x);
     }) : (function(x) {
-      self.postMessage(x);
+      // self.postMessage(x); // enable this if you want stdout to be sent as messages
     }));
   }
 
