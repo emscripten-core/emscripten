@@ -1176,7 +1176,13 @@ function JSify(data, functionsOnly, givenFunctions) {
     return makeFunctionCall(item.ident, item.params, item.funcData, item.type) + (item.standalone ? ';' : '');
   });
 
-  makeFuncLineActor('unreachable', function(item) { return 'throw "Reached an unreachable!"' }); // Original .ll line: ' + item.lineNum + '";' });
+  makeFuncLineActor('unreachable', function(item) {
+    if (ASSERTIONS) {
+      return 'throw "Reached an unreachable!"';
+    } else {
+      return ';';
+    }
+  });
 
   // Final combiner
 
