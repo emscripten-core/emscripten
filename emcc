@@ -74,7 +74,7 @@ emcc can be influenced by a few environment variables:
   EMMAKEN_COMPILER - The compiler to be used, if you don't want the default clang.
 '''
 
-import os, sys, shutil, tempfile, subprocess, shlex
+import os, sys, shutil, tempfile, subprocess, shlex, time
 from subprocess import PIPE, STDOUT
 from tools import shared
 from tools.shared import Compression, execute, suffix, unsuffixed, unsuffixed_basename
@@ -922,10 +922,15 @@ try:
     print >> sys.stderr, 'emcc: saving intermediate processing steps to %s' % shared.EMSCRIPTEN_TEMP_DIR
 
     intermediate_counter = 0
+    intermediate_time = None
     def save_intermediate(name=None, suffix='js'):
-      global intermediate_counter
+      global intermediate_counter, intermediate_time
       shutil.copyfile(final, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, 'emcc-%d%s.%s' % (intermediate_counter, '' if name is None else '-' + name, suffix)))
       intermediate_counter += 1
+      now = time.time()
+      if intermediate_time:
+        print >> sys.stderr, 'emcc:    step took %.2f seconds' % (now - intermediate_time)
+      intermediate_time = now
 
     if not LEAVE_INPUTS_RAW: save_intermediate('basebc', 'bc')
 
