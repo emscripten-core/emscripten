@@ -270,6 +270,21 @@ var LibraryGLUT = {
   glutInit: function(argcp, argv) {
     // Ignore arguments
     GLUT.initTime = Date.now();
+
+    window.addEventListener("keydown", GLUT.onKeydown, true);
+    window.addEventListener("keyup", GLUT.onKeyup, true);
+    window.addEventListener("mousemove", GLUT.onMousemove, true);
+    window.addEventListener("mousedown", GLUT.onMouseButtonDown, true);
+    window.addEventListener("mouseup", GLUT.onMouseButtonUp, true);
+
+    __ATEXIT__.push({ func: function() {
+      window.removeEventListener("keydown", GLUT.onKeydown, true);
+      window.removeEventListener("keyup", GLUT.onKeyup, true);
+      window.removeEventListener("mousemove", GLUT.onMousemove, true);
+      window.removeEventListener("mousedown", GLUT.onMouseButtonDown, true);
+      window.removeEventListener("mouseup", GLUT.onMouseButtonUp, true);
+      Module["canvas"].width = Module["canvas"].height = 1;
+    } });
   },
 
   glutInitWindowSize: function(width, height) {
@@ -408,22 +423,6 @@ var LibraryGLUT = {
 
   glutMainLoop__deps: ['$GLUT', 'glutReshapeWindow', 'glutPostRedisplay'],
   glutMainLoop: function() {
-
-    window.addEventListener("keydown", GLUT.onKeydown, true);
-    window.addEventListener("keyup", GLUT.onKeyup, true);
-    window.addEventListener("mousemove", GLUT.onMousemove, true);
-    window.addEventListener("mousedown", GLUT.onMouseButtonDown, true);
-    window.addEventListener("mouseup", GLUT.onMouseButtonUp, true);
-
-    __ATEXIT__.push({ func: function() {
-      window.removeEventListener("keydown", GLUT.onKeydown, true);
-      window.removeEventListener("keyup", GLUT.onKeyup, true);
-      window.removeEventListener("mousemove", GLUT.onMousemove, true);
-      window.removeEventListener("mousedown", GLUT.onMouseButtonDown, true);
-      window.removeEventListener("mouseup", GLUT.onMouseButtonUp, true);
-      Module["canvas"].width = Module["canvas"].height = 1;
-    } });
-
     _glutReshapeWindow(Module['canvas'].width, Module['canvas'].height);
     _glutPostRedisplay();
     throw 'GLUT mainloop called, simulating infinite loop by throwing so we get right into the JS event loop';
