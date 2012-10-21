@@ -77,16 +77,28 @@ def check_clang_version():
   actual = Popen([CLANG, '-v'], stderr=PIPE).communicate()[1].split('\n')[0]
   if expected in actual:
     return True
-  
   print >> sys.stderr, 'warning: LLVM version appears incorrect (seeing "%s", expected "%s")' % (actual, expected)
   return False
-
 
 def check_llvm_version():
   try:
     check_clang_version();
   except Exception, e:
     print >> sys.stderr, 'warning: Could not verify LLVM version: %s' % str(e)
+
+EXPECTED_NODE_VERSION = (0,6,8)
+
+def check_node_version():
+  try:
+    actual = Popen([NODE_JS, '--version'], stdout=PIPE).communicate()[0].strip()
+    version = tuple(map(int, actual.replace('v', '').split('.')))
+    if version >= EXPECTED_NODE_VERSION:
+      return True
+    print >> sys.stderr, 'warning: node version appears too old (seeing "%s", expected "%s")' % (actual, 'v' + ('.'.join(map(str, EXPECTED_NODE_VERSION))))
+    return False
+  except Exception, e:
+    print >> sys.stderr, 'warning: cannot check node version:', e
+    return False
 
 # Check that basic stuff we need (a JS engine to compile, Node.js, and Clang and LLVM)
 # exists.
@@ -110,7 +122,9 @@ def check_sanity(force=False):
       print >> sys.stderr, '(Emscripten: Config file changed, clearing cache)' # LLVM may have changed, etc.
       Cache.erase()
 
-    check_llvm_version() # just a warning, not a fatal check - do it even if EM_IGNORE_SANITY is on
+    # some warning, not fatal checks - do them even if EM_IGNORE_SANITY is on
+    check_llvm_version()
+    check_node_version()
 
     if os.environ.get('EM_IGNORE_SANITY'):
       print >> sys.stderr, 'EM_IGNORE_SANITY set, ignoring sanity checks'
@@ -964,8 +978,8 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
     if type(passes) == str:
       passes = [passes]
-    # XXX disable crankshaft to work around v8 bug 1895
-    output = Popen([NODE_JS, '--nocrankshaft', JS_OPTIMIZER, filename] + passes, stdout=PIPE).communicate()[0]
+    # XXX Use '--nocrankshaft' to disable crankshaft to work around v8 bug 1895, needed for older v8/node (node 0.6.8+ should be ok)
+    output = Popen([NODE_JS, JS_OPTIMIZER, filename] + passes, stdout=PIPE).communicate()[0]
     assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + output
     filename += '.jo.js'
     f = open(filename, 'w')

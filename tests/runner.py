@@ -9725,6 +9725,50 @@ elif 'sanity' in str(sys.argv):
       finally:
         del os.environ['EM_IGNORE_SANITY']
 
+    def test_node(self):
+      NODE_WARNING = 'warning: node version appears too old'
+      NODE_WARNING_2 = 'warning: cannot check node version'
+
+      restore()
+
+      # Clang should report the version number we expect, and emcc should not warn
+      assert check_node_version()
+      output = self.check_working(EMCC)
+      assert NODE_WARNING not in output, output
+
+      # Fake a different node version
+      restore()
+      f = open(CONFIG_FILE, 'a')
+      f.write('NODE_JS = "' + path_from_root('tests', 'fake', 'nodejs') + '"')
+      f.close()
+
+      if not os.path.exists(path_from_root('tests', 'fake')):
+        os.makedirs(path_from_root('tests', 'fake'))
+
+      try:
+        os.environ['EM_IGNORE_SANITY'] = '1'
+        for version, succeed in [(('v0.6.6'), False), (('v0.6.7'), False), (('v0.6.8'), True), (('v0.6.9'), True), (('v0.7.1'), True), (('v0.7.9'), True), (('v0.8.7'), True), (('v0.8.9'), True), ('cheez', False)]:
+          f = open(path_from_root('tests', 'fake', 'nodejs'), 'w')
+          f.write('#!/bin/sh\n')
+          f.write('''if [ $1 = "--version" ]; then
+  echo "%s"
+else
+  %s $@
+fi
+''' % (version, NODE_JS))
+          f.close()
+          os.chmod(path_from_root('tests', 'fake', 'nodejs'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+          if not succeed:
+            if version[0] == 'v':
+              self.check_working(EMCC, NODE_WARNING)
+            else:
+              self.check_working(EMCC, NODE_WARNING_2)
+          else:
+            output = self.check_working(EMCC)
+            assert NODE_WARNING not in output, output
+      finally:
+        del os.environ['EM_IGNORE_SANITY']
+
     def test_emcc(self):
       SANITY_MESSAGE = 'Emscripten: Running sanity checks'
       SANITY_FAIL_MESSAGE = 'sanity check failed to run'
