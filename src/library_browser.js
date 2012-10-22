@@ -42,6 +42,7 @@ mergeInto(LibraryManager.library, {
     },
     pointerLock: false,
     moduleContextCreatedCallbacks: [],
+    workers: [],
 
     ensureObjects: function() {
       if (Browser.ensured) return;
@@ -565,6 +566,71 @@ mergeInto(LibraryManager.library, {
     } else {
       return Date.now();
     }
+  },
+
+  emscripten_create_worker: function(url) {
+    url = Pointer_stringify(url);
+    var id = Browser.workers.length;
+    var info = {
+      worker: new Worker(url),
+      callbacks: [],
+      buffer: 0,
+      bufferSize: 0
+    };
+    info.worker.onmessage = function(msg) {
+      var info = Browser.workers[id];
+      if (!info) return; // worker was destroyed meanwhile
+      var callbackId = msg.data.callbackId;
+      var callbackInfo = info.callbacks[callbackId];
+      if (!callbackInfo) return; // no callback or callback removed meanwhile
+      info.callbacks[callbackId] = null; // TODO: reuse callbackIds, compress this
+      var data = msg.data.data;
+      if (!data.byteLength) data = new Uint8Array(data);
+      if (!info.buffer || info.bufferSize < data.length) {
+        if (info.buffer) _free(info.buffer);
+        info.bufferSize = data.length;
+        info.buffer = _malloc(data.length);
+      }
+      HEAPU8.set(data, info.buffer);
+      callbackInfo.func(info.buffer, data.length, callbackInfo.arg);
+    };
+    Browser.workers.push(info);
+    return id;
+  },
+
+  emscripten_destroy_worker: function(id) {
+    var info = Browser.workers[id];
+    info.worker.terminate();
+    if (info.buffer) _free(info.buffer);
+    Browser.workers[id] = null;
+  },
+
+  emscripten_call_worker: function(id, funcName, data, size, callback, arg) {
+    funcName = Pointer_stringify(funcName);
+    var info = Browser.workers[id];
+    var callbackId = -1;
+    if (callback) {
+      callbackId = info.callbacks.length;
+      info.callbacks.push({
+        func: Runtime.getFuncWrapper(callback),
+        arg: arg
+      });
+    }
+    info.worker.postMessage({
+      funcName: funcName,
+      callbackId: callbackId,
+      data: {{{ makeHEAPView('U8', 'data', 'data + size') }}}
+    });
+  },
+
+  emscripten_worker_respond: function(data, size) {
+    if (!inWorkerCall) throw 'not in worker call!';
+    if (workerResponded) throw 'already responded!';
+    workerResponded = true;
+    postMessage({
+      callbackId: workerCallbackId,
+      data: {{{ makeHEAPView('U8', 'data', 'data + size') }}}
+    });
   }
 });
 

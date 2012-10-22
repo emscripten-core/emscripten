@@ -213,10 +213,9 @@ var SHOW_LABELS = 0; // Show labels in the generated code
 
 var PRINT_SPLIT_FILE_MARKER = 0; // Prints markers in Javascript generation to split the file later on. See emcc --split option.
 
-var BUILD_AS_SHARED_LIB = 0; // Whether to build the code as a shared library, which
-                             // must be loaded dynamically using dlopen().
+var BUILD_AS_SHARED_LIB = 0; // Whether to build the code as a shared library
                              // 0 here means this is not a shared lib: It is a main file.
-                             // 1 means this is a normal shared lib.
+                             // 1 means this is a normal shared lib, load it with dlopen().
                              // 2 means this is a shared lib that will be linked at runtime,
                              //   which means it will insert its functions into
                              //   the global namespace. See STATIC_LIBS_TO_LOAD.
@@ -225,6 +224,8 @@ var RUNTIME_LINKED_LIBS = []; // If this is a main file (BUILD_AS_SHARED_LIB == 
                               // BUILD_AS_SHARED_LIB == 2.
                               // NOTE: LLVM optimizations run separately on the main file and
                               //       linked libraries can break things.
+var BUILD_AS_WORKER = 0; // If set to 1, this is a worker library, a special kind of library
+                         // that is run in a worker. See emscripten.h
 var LINKABLE = 0; // If set to 1, this file can be linked with others, either as a shared
                   // library or as the main file that calls a shared library. To enable that,
                   // we will not internalize all symbols and cull the unused ones, in other

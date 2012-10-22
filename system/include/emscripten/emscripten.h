@@ -213,6 +213,60 @@ int emscripten_async_prepare(const char* file, void (*onload)(const char*), void
 void emscripten_async_prepare_data(char* data, int size, const char *suffix, void *arg, void (*onload)(void*, const char*), void (*onerror)(void*));
 
 /*
+ * Worker API. Basically a wrapper around web workers, lets
+ * you create workers and communicate with them.
+
+ * Note that the current API is mainly focused on a main thread that
+ * sends jobs to workers and waits for responses, i.e., in an
+ * asymmetrical manner, there is no current API to send a message
+ * without being asked for it from a worker to the main thread.
+ *
+ */
+
+typedef int worker_t;
+
+/*
+ * Create and destroy workers.
+ */
+worker_t emscripten_create_worker(const char *url);
+void emscripten_destroy_worker(worker_t worker);
+
+/*
+ * Asynchronously call a worker.
+ *
+ * The worker function will be called with two parameters: a
+ * data pointer, and a size.  The data block defined by the
+ * pointer and size exists only during the callback and
+ * _cannot_ be relied upon afterwards - if you need to keep some
+ * of that information around, you need to copy it to a safe
+ * location.
+ *
+ * The called worker function can return data, by calling
+ * emscripten_worker_respond(). If called, and if a callback was
+ * given, then the callback will be called with three arguments:
+ * a data pointer, a size, and  * an argument that was provided
+ * when calling emscripten_call_worker (to more easily associate
+ * callbacks to calls). The data block defined by the data pointer
+ * and size behave like the data block in the worker function -
+ * it exists only during the callback.
+ *
+ * @funcname the name of the function in the worker. The function
+ *           must be a C function (so no C++ name mangling), and
+ *           must be exported (EXPORTED_FUNCTIONS).
+ * @data the address of a block of memory to copy over
+ * @size the size of the block of memory
+ * @callback the callback with the response (can be null)
+ * @arg an argument to be passed to the callback
+ */
+void emscripten_call_worker(worker_t worker, const char *funcname, char *data, int size, void (*callback)(char *, int, void*), void *arg);
+
+/*
+ * Sends a response when in a worker call. Should only be
+ * called once in each call.
+ */
+void emscripten_worker_respond(char *data, int size);
+
+/*
  * Profiling tools.
  * INIT must be called first, with the maximum identifier that
  * will be used. BEGIN will add some code that marks
