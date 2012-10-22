@@ -4433,6 +4433,9 @@ LibraryManager.library = {
   __strtok_state: 0,
   strtok__deps: ['__strtok_state', 'strtok_r'],
   strtok: function(s, delim) {
+    if (!___strtok_state) {
+      ___strtok_state = _malloc(4);
+    }
     return _strtok_r(s, delim, ___strtok_state);
   },
 
