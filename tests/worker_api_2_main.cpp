@@ -17,6 +17,28 @@ Info x[3] = { {    22,      3.159,  97, 2.1828 },
 
 int stage = 1;
 
+int c3_7 = 0, c3_8 = 0;
+
+void c3(char *data, int size, void *arg) { // tests calls different in different workers.
+  int calls = *((int*)data);
+  printf("%d: %d\n", (int)arg, calls);
+  if ((int)arg == 7) {
+    assert(c3_7 == 0);
+    c3_7++;
+    assert(calls == 5);
+  } else {
+    assert((int)arg == 8);
+    assert(c3_8 == 0);
+    c3_8++;
+    assert(calls == 1);
+  }
+  if (c3_7 && c3_7) { // note: racey, responses from 2 workers here
+    emscripten_destroy_worker(w1);
+    int result = 11;
+    REPORT_RESULT();
+  }
+}
+
 void c2(char *data, int size, void *arg) { // tests queuing up several messages, each with different data
   assert((int)arg == stage);
   Info *x2 = (Info*)data;
@@ -31,8 +53,11 @@ void c2(char *data, int size, void *arg) { // tests queuing up several messages,
   assert(x2[0].d == x[i].d-1);
 
   if (stage == 5) {
-    int result = 11;
-    REPORT_RESULT();
+    int w2 = emscripten_create_worker("worker.js");
+    emscripten_call_worker(w2, "three", NULL, 0, NULL, (void*)6); // bump calls in new worker, once
+
+    emscripten_call_worker(w1, "four", NULL, 0, c3, (void*)7);
+    emscripten_call_worker(w2, "four", NULL, 0, c3, (void*)8);
   }
   stage++;
 }

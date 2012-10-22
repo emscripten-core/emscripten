@@ -122,18 +122,24 @@ onmessage = function(msg) {
   var func = Module['_' + msg.data['funcName']];
   if (!func) throw 'invalid worker function to call: ' + msg.data['funcName'];
   var data = msg.data['data'];
-  if (!data.byteLength) data = new Uint8Array(data);
-  if (!buffer || bufferSize < data.length) {
-    if (buffer) _free(buffer);
-    bufferSize = data.length;
-    buffer = _malloc(data.length);
+  if (data) {
+    if (!data.byteLength) data = new Uint8Array(data);
+    if (!buffer || bufferSize < data.length) {
+      if (buffer) _free(buffer);
+      bufferSize = data.length;
+      buffer = _malloc(data.length);
+    }
+    HEAPU8.set(data, buffer);
   }
-  HEAPU8.set(data, buffer);
 
   inWorkerCall = true;
   workerResponded = false;
   workerCallbackId = msg.data['callbackId'];
-  func(buffer, data.length);
+  if (data) {
+    func(buffer, data.length);
+  } else {
+    func(0, 0);
+  }
   inWorkerCall = false;
 }
 

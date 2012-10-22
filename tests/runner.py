@@ -9119,7 +9119,7 @@ elif 'browser' in str(sys.argv):
       self.btest('worker_api_main.cpp', expected='566')
 
     def test_worker_api_2(self):
-      Popen(['python', EMCC, path_from_root('tests', 'worker_api_2_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-O2', '--minify', '0', '-s', 'EXPORTED_FUNCTIONS=["_one", "_two"]']).communicate()
+      Popen(['python', EMCC, path_from_root('tests', 'worker_api_2_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-O2', '--minify', '0', '-s', 'EXPORTED_FUNCTIONS=["_one", "_two", "_three", "_four"]']).communicate()
       self.btest('worker_api_2_main.cpp', args=['-O2', '--minify', '0'], expected='11')
 
     pids_to_clean = []

@@ -585,14 +585,18 @@ mergeInto(LibraryManager.library, {
       if (!callbackInfo) return; // no callback or callback removed meanwhile
       info.callbacks[callbackId] = null; // TODO: reuse callbackIds, compress this
       var data = msg.data['data'];
-      if (!data.byteLength) data = new Uint8Array(data);
-      if (!info.buffer || info.bufferSize < data.length) {
-        if (info.buffer) _free(info.buffer);
-        info.bufferSize = data.length;
-        info.buffer = _malloc(data.length);
+      if (data) {
+        if (!data.byteLength) data = new Uint8Array(data);
+        if (!info.buffer || info.bufferSize < data.length) {
+          if (info.buffer) _free(info.buffer);
+          info.bufferSize = data.length;
+          info.buffer = _malloc(data.length);
+        }
+        HEAPU8.set(data, info.buffer);
+        callbackInfo.func(info.buffer, data.length, callbackInfo.arg);
+      } else {
+        callbackInfo.func(0, 0, callbackInfo.arg);
       }
-      HEAPU8.set(data, info.buffer);
-      callbackInfo.func(info.buffer, data.length, callbackInfo.arg);
     };
     Browser.workers.push(info);
     return id;
@@ -619,7 +623,7 @@ mergeInto(LibraryManager.library, {
     info.worker.postMessage({
       'funcName': funcName,
       'callbackId': callbackId,
-      'data': {{{ makeHEAPView('U8', 'data', 'data + size') }}}
+      'data': data ? {{{ makeHEAPView('U8', 'data', 'data + size') }}} : 0
     });
   },
 
@@ -629,7 +633,7 @@ mergeInto(LibraryManager.library, {
     workerResponded = true;
     postMessage({
       'callbackId': workerCallbackId,
-      'data': {{{ makeHEAPView('U8', 'data', 'data + size') }}}
+      'data': data ? {{{ makeHEAPView('U8', 'data', 'data + size') }}} : 0
     });
   }
 });
