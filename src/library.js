@@ -1706,8 +1706,8 @@ LibraryManager.library = {
       }
       var contents = stream.object.contents;
       var size = Math.min(contents.length - offset, nbyte);
-      if (contents.byteLength) {
-        for (var i = 0; i < size; i++) { // typed array
+      if (contents.subarray || contents.slice) { // typed array or normal array
+        for (var i = 0; i < size; i++) {
           {{{ makeSetValue('buf', 'i', 'contents[offset + i]', 'i8') }}}
         }
       } else {
