@@ -347,11 +347,21 @@ mergeInto(LibraryManager.library, {
       });
       addRunDependency('al ' + url);
     },
-    
-    setCanvasSize: function(width, height) {
+
+    resizeListeners: [],
+
+    updateResizeListeners: function() {
+      var canvas = Module['canvas'];
+      Browser.resizeListeners.forEach(function(listener) {
+        listener(canvas.width, canvas.height);
+      });
+    },
+
+    setCanvasSize: function(width, height, noUpdates) {
       var canvas = Module['canvas'];
       canvas.width = width;
       canvas.height = height;
+      if (!noUpdates) Browser.updateResizeListeners();
     }
   },
 
@@ -386,6 +396,28 @@ mergeInto(LibraryManager.library, {
       },
       function() {
         if (onerror) FUNCTION_TABLE[onerror](file);
+      },
+      true // don'tCreateFile - it's already there
+    );
+    return 0;
+  },
+
+  emscripten_async_prepare_data: function(data, size, suffix, arg, onload, onerror) {
+    var _suffix = Pointer_stringify(suffix);
+    if (!Browser.asyncPrepareDataCounter) Browser.asyncPrepareDataCounter = 0;
+    var name = 'prepare_data_' + (Browser.asyncPrepareDataCounter++) + '.' + _suffix;
+    var cname = _malloc(name.length+1);
+    writeStringToMemory(name, cname);
+    FS.createPreloadedFile(
+      '',
+      name,
+      {{{ makeHEAPView('U8', 'data', 'data + size') }}},
+      true, true,
+      function() {
+        if (onload) FUNCTION_TABLE[onload](arg, cname);
+      },
+      function() {
+        if (onerror) FUNCTION_TABLE[onerror](arg);
       },
       true // don'tCreateFile - it's already there
     );

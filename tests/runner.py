@@ -41,6 +41,12 @@ To run a specific set of tests, you can do things like
 Combinations work too, for example
 
   python tests/runner.py browser.test_sdl_image
+
+In the main test suite, you can run all variations (O0, O1, O2, etc.) of
+an individual test with
+
+  python tests/runner.py ALL.test_hello_world
+
 ==============================================================================
 
 '''
@@ -393,6 +399,11 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
   # Tests
 
   print "Running Emscripten tests..."
+
+  if len(sys.argv) == 2 and 'ALL.' in sys.argv[1]:
+    ignore, test = sys.argv[1].split('.')
+    print 'Running all test modes on test "%s"' % test
+    sys.argv = [sys.argv[0], 'default.'+test, 'o1.'+test, 'o2.'+test, 's_0_0.'+test, 's_0_1.'+test, 's_0_1_q1.'+test, 's_1_0.'+test, 's_1_1.'+test, 's_1_1_q1.'+test]
 
   class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
     ## Does a complete test - builds, runs, checks output, etc.
@@ -1183,15 +1194,10 @@ c5,de,15,8a
           }
         '''
 
-        Settings.EMULATE_UNALIGNED_ACCESSES = 0
-
         try:
           self.do_run(src, '*300:1*\n*515559*\n*42949672960*\n')
         except Exception, e:
           assert 'must be aligned' in str(e), e # expected to fail without emulation
-
-        # XXX TODO Settings.EMULATE_UNALIGNED_ACCESSES = 1
-        #self.do_run(src, '*300:1*\n*515559*\n*42949672960*\n') # but succeeds with it
 
     def test_unsigned(self):
         Settings.CORRECT_SIGNS = 1 # We test for exactly this sort of thing here
@@ -4264,13 +4270,20 @@ at function.:blag
           printf("%d\n", sscanf("-123 -765 -34-6", "%d %u %d", &neg, &neg2, &neg3));
           printf("%d,%u,%d\n", neg, neg2, neg3);
 
+          {
+            int a = 0;
+            sscanf("1", "%i", &a);
+            printf("%i\n", a);
+          }
+
           return 0;
         }
         '''
       self.do_run(src, 'en-us : 2\nen-r : 99\nen : 3\n1.234567, 0.000000\n2.8208\n-3.0300\n|some|\n|something|\n|somethingmoar|\n' +
                        '1\n1499\n' +
                        '5\n87,0.481565,0.059481,0,1\n' +
-                       '3\n-123,4294966531,-34\n')
+                       '3\n-123,4294966531,-34\n' +
+                       '1\n')
 
     def test_sscanf_2(self):
       # doubles
@@ -7272,6 +7285,26 @@ f.close()
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'test.cpp'), '-fcatch-undefined-behavior']).communicate()
       self.assertContained('hello, world!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+    def test_unaligned_memory(self):
+      open(os.path.join(self.get_dir(), 'test.cpp'), 'w').write(r'''
+        #include <stdio.h>
+
+        typedef unsigned char   Bit8u;
+        typedef unsigned short  Bit16u;
+        typedef unsigned int    Bit32u;
+
+        int main()
+        {
+          Bit8u data[4] = {0x01,0x23,0x45,0x67};
+
+          printf("data: %x\n", *(Bit32u*)data);
+          printf("data[0,1] 16bit: %x\n", *(Bit16u*)data);
+          printf("data[1,2] 16bit: %x\n", *(Bit16u*)(data+1));
+        }
+      ''')
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'test.cpp'), '-s', 'UNALIGNED_MEMORY=1']).communicate()
+      self.assertContained('data: 67452301\ndata[0,1] 16bit: 2301\ndata[1,2] 16bit: 4523', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
     def test_l_link(self):
       # Linking with -lLIBNAME and -L/DIRNAME should work
 
@@ -7342,6 +7375,70 @@ f.close()
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'libfile.cpp'), '-o', 'libfile.so']).communicate()
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), os.path.join(self.get_dir(), 'subdir', 'libfile.so'), '-L.']).communicate()
       self.assertContained('hello from lib', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
+    def test_runtimelink_multi(self):
+      open('testa.h', 'w').write(r'''
+        #ifndef _TESTA_H_
+        #define _TESTA_H_
+
+        class TestA {
+	        public:
+		        TestA();
+        };
+
+        #endif
+      ''')
+      open('testb.h', 'w').write(r'''
+        #ifndef _TESTB_H_
+        #define _TESTB_H_
+
+        class TestB {
+	        public:
+		        TestB();
+        };
+
+        #endif
+      ''')
+      open('testa.cpp', 'w').write(r'''
+        #include <stdio.h>
+        #include <testa.h>
+
+        TestA::TestA() {
+	        printf("TestA\n");	
+        }
+      ''')
+      open('testb.cpp', 'w').write(r'''
+        #include <stdio.h>
+        #include <testb.h>
+        #include <testa.h>
+        /*
+        */
+        TestB::TestB() {
+	        printf("TestB\n");	
+	        TestA* testa = new TestA();
+        }
+      ''')
+      open('main.cpp', 'w').write(r'''
+        #include <stdio.h>
+        #include <testa.h>
+        #include <testb.h>
+
+        /*
+        */
+        int main(int argc, char** argv) {
+	        printf("Main\n");
+	        TestA* testa = new TestA();
+	        TestB* testb = new TestB();
+        }
+      ''')
+
+      Popen(['python', EMCC, 'testa.cpp', '-o', 'liba.js', '-s', 'BUILD_AS_SHARED_LIB=2', '-s', 'LINKABLE=1', '-I.']).communicate()
+      Popen(['python', EMCC, 'testb.cpp', '-o', 'libb.js', '-s', 'BUILD_AS_SHARED_LIB=2', '-s', 'LINKABLE=1', '-I.']).communicate()
+      Popen(['python', EMCC, 'main.cpp', '-o', 'main.js', '-s', 'RUNTIME_LINKED_LIBS=["liba.js", "libb.js"]', '-I.']).communicate()
+
+      Popen(['python', EMCC, 'main.cpp', 'testa.cpp', 'testb.cpp', '-o', 'full.js', '-I.']).communicate()
+
+      self.assertContained('TestA\nTestB\nTestA\n', run_js('main.js', engine=SPIDERMONKEY_ENGINE))
 
     def test_js_libraries(self):
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
@@ -8506,6 +8603,11 @@ elif 'browser' in str(sys.argv):
       shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.not'))
       self.btest('sdl_image_prepare.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.not'])
 
+    def test_sdl_image_prepare_data(self):
+      # load an image file, get pixel data. Also O2 coverage for --preload-file
+      shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.not'))
+      self.btest('sdl_image_prepare_data.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.not'])
+
     def test_sdl_canvas(self):
       open(os.path.join(self.get_dir(), 'sdl_canvas.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_canvas.c')).read()))
 
@@ -8678,6 +8780,114 @@ elif 'browser' in str(sys.argv):
       html_file.close()
       self.run_browser('main.html', 'You should see that the worker was called, and said "hello from worker!"', '/report_result?hello%20from%20worker!')
 
+    def test_chunked_synchronous_xhr(self):
+      main = 'chunked_sync_xhr.html'
+      worker_filename = "download_and_checksum_worker.js"
+
+      html_file = open(main, 'w')
+      html_file.write(r"""
+        <!doctype html>
+        <html>
+        <head><meta charset="utf-8"><title>Chunked XHR</title></head>
+        <html>
+        <body>
+          Chunked XHR Web Worker Test
+          <script>
+            var worker = new Worker(""" + json.dumps(worker_filename) + r""");
+            var buffer = [];
+            worker.onmessage = function(event) {
+              if (event.data.channel === "stdout") {
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', 'http://localhost:8888/report_result?' + event.data.line);
+                xhr.send();
+                setTimeout(function() { window.close() }, 1000);
+              } else {
+                if (event.data.trace) event.data.trace.split("\n").map(function(v) { console.error(v); });
+                if (event.data.line) {
+                  console.error(event.data.line);
+                } else {
+                  var v = event.data.char;
+                  if (v == 10) {
+                    var line = buffer.splice(0);
+                    console.error(line = line.map(function(charCode){return String.fromCharCode(charCode);}).join(''));
+                  } else {
+                    buffer.push(v);
+                  }
+                }
+              }
+            };
+          </script>
+        </body>
+        </html>
+      """)
+      html_file.close()
+
+      c_source_filename = "checksummer.c"
+
+      prejs_filename = "worker_prejs.js"
+      prejs_file = open(prejs_filename, 'w')
+      prejs_file.write(r"""
+        if (typeof(Module) === "undefined") Module = {};
+        Module["arguments"] = ["/bigfile"];
+        Module["preInit"] = function() {
+            FS.createLazyFile('/', "bigfile", "http://localhost:11111/bogus_file_path", true, false);
+        };
+        var doTrace = true;
+        Module["print"] =    function(s) { self.postMessage({channel: "stdout", line: s}); };
+        Module["stderr"] =   function(s) { self.postMessage({channel: "stderr", char: s, trace: ((doTrace && s === 10) ? new Error().stack : null)}); doTrace = false; };
+      """)
+      prejs_file.close()
+      # vs. os.path.join(self.get_dir(), filename)
+      # vs. path_from_root('tests', 'hello_world_gles.c')
+      Popen(['python', EMCC, path_from_root('tests', c_source_filename), '-g', '-s', 'SMALL_CHUNKS=1', '-o', worker_filename,
+                                           '--pre-js', prejs_filename]).communicate()
+
+      chunkSize = 1024
+      data = os.urandom(10*chunkSize+1) # 10 full chunks and one 1 byte chunk
+      expectedConns = 11
+      import zlib
+      checksum = zlib.adler32(data)
+
+      def chunked_server(support_byte_ranges):
+        class ChunkedServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+          @staticmethod
+          def sendheaders(s, extra=[], length=len(data)):
+            s.send_response(200)
+            s.send_header("Content-Length", str(length))
+            s.send_header("Access-Control-Allow-Origin", "http://localhost:8888")
+            s.send_header("Access-Control-Expose-Headers", "Content-Length, Accept-Ranges")
+            s.send_header("Content-type", "application/octet-stream")
+            if support_byte_ranges:
+              s.send_header("Accept-Ranges", "bytes")
+            for i in extra:
+              s.send_header(i[0], i[1])
+            s.end_headers()
+
+          def do_HEAD(s):
+            ChunkedServerHandler.sendheaders(s)
+            
+          def do_GET(s):
+            if not support_byte_ranges:
+              ChunkedServerHandler.sendheaders(s)
+              s.wfile.write(data)
+            else:
+              (start, end) = s.headers.get("range").split("=")[1].split("-")
+              start = int(start)
+              end = int(end)
+              end = min(len(data)-1, end)
+              length = end-start+1
+              ChunkedServerHandler.sendheaders(s,[],length)
+              s.wfile.write(data[start:end+1])
+            s.wfile.close()
+        httpd = BaseHTTPServer.HTTPServer(('localhost', 11111), ChunkedServerHandler)
+        for i in range(expectedConns+1):
+          httpd.handle_request()
+
+      server = multiprocessing.Process(target=chunked_server, args=(True,))
+      server.start()
+      self.run_browser(main, 'Chunked binary synchronous XHR in Web Workers!', '/report_result?' + str(checksum))
+      server.terminate()
+
     def test_glgears(self):
       self.reftest(path_from_root('tests', 'gears.png'))
       Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
@@ -8764,6 +8974,9 @@ elif 'browser' in str(sys.argv):
     def test_sdl_quit(self):
       self.btest('sdl_quit.c', '1')
 
+    def test_sdl_resize(self):
+      self.btest('sdl_resize.c', '1')
+
     def test_gc(self):
       self.btest('browser_gc.cpp', '1')
 
@@ -8782,52 +8995,52 @@ elif 'browser' in str(sys.argv):
       self.btest('gl_matrix_identity.c', expected=['-1882984448', '460451840'])
 
     def test_cubegeom_pre(self):
-      self.btest('cubegeom_pre.c', expected=['-1472804742', '-1626058463'])
+      self.btest('cubegeom_pre.c', expected=['-1472804742', '-1626058463', '-2046234971'])
 
     def test_cubegeom_pre2(self):
-      self.btest('cubegeom_pre2.c', expected=['-1472804742', '-1626058463'], args=['-s', 'GL_DEBUG=1']) # some coverage for GL_DEBUG not breaking the build
+      self.btest('cubegeom_pre2.c', expected=['-1472804742', '-1626058463', '-2046234971'], args=['-s', 'GL_DEBUG=1']) # some coverage for GL_DEBUG not breaking the build
 
     def test_cubegeom_pre3(self):
-      self.btest('cubegeom_pre3.c', expected=['-1472804742', '-1626058463'])
+      self.btest('cubegeom_pre3.c', expected=['-1472804742', '-1626058463', '-2046234971'])
 
     def test_cubegeom(self):
-      self.btest('cubegeom.c', expected=['188641320', '1522377227', '-1054007155'])
+      self.btest('cubegeom.c', expected=['188641320', '1522377227', '-1054007155', '-1111866053'])
 
     def test_cubegeom_color(self):
-      self.btest('cubegeom_color.c', expected=['588472350', '-687660609'])
+      self.btest('cubegeom_color.c', expected=['588472350', '-687660609', '-818120875'])
 
     def test_cubegeom_normal(self):
-      self.btest('cubegeom_normal.c', expected=['752917084', '-251570256'])
+      self.btest('cubegeom_normal.c', expected=['752917084', '-251570256', '-291655550'])
 
     def test_cubegeom_normal_dap(self): # draw is given a direct pointer to clientside memory, no element array buffer
-      self.btest('cubegeom_normal_dap.c', expected=['752917084', '-251570256'])
+      self.btest('cubegeom_normal_dap.c', expected=['752917084', '-251570256', '-291655550'])
 
     def test_cubegeom_normal_dap_far(self): # indices do nto start from 0
-      self.btest('cubegeom_normal_dap_far.c', expected=['752917084', '-251570256'])
+      self.btest('cubegeom_normal_dap_far.c', expected=['752917084', '-251570256', '-291655550'])
 
     def test_cubegeom_normal_dap_far_range(self): # glDrawRangeElements
-      self.btest('cubegeom_normal_dap_far_range.c', expected=['752917084', '-251570256'])
+      self.btest('cubegeom_normal_dap_far_range.c', expected=['752917084', '-251570256', '-291655550'])
 
     def test_cubegeom_normal_dap_far_glda(self): # use glDrawArrays
-      self.btest('cubegeom_normal_dap_far_glda.c', expected=['-218745386', '-263951846'])
+      self.btest('cubegeom_normal_dap_far_glda.c', expected=['-218745386', '-263951846', '-375182658'])
 
     def test_cubegeom_normal_dap_far_glda_quad(self): # with quad
-      self.btest('cubegeom_normal_dap_far_glda_quad.c', expected=['1757386625', '-677777235'])
+      self.btest('cubegeom_normal_dap_far_glda_quad.c', expected=['1757386625', '-677777235', '-690699597'])
 
     def test_cubegeom_mt(self):
-      self.btest('cubegeom_mt.c', expected=['-457159152', '910983047']) # multitexture
+      self.btest('cubegeom_mt.c', expected=['-457159152', '910983047', '870576921']) # multitexture
 
     def test_cubegeom_color2(self):
-      self.btest('cubegeom_color2.c', expected=['1121999515', '-391668088'])
+      self.btest('cubegeom_color2.c', expected=['1121999515', '-391668088', '-522128354'])
 
     def test_cubegeom_texturematrix(self):
-      self.btest('cubegeom_texturematrix.c', expected=['1297500583', '-791216738'])
+      self.btest('cubegeom_texturematrix.c', expected=['1297500583', '-791216738', '-783804685'])
 
     def test_cubegeom_fog(self):
-      self.btest('cubegeom_fog.c', expected=['1617140399', '-898782526'])
+      self.btest('cubegeom_fog.c', expected=['1617140399', '-898782526', '-946179526'])
 
     def test_cube_explosion(self):
-      self.btest('cube_explosion.c', expected=['667220544', '-1543354600'])
+      self.btest('cube_explosion.c', expected=['667220544', '-1543354600', '-1485258415'])
 
     def test_sdl_canvas_palette(self):
       self.btest('sdl_canvas_palette.c', reference='sdl_canvas_palette.png')
@@ -8944,6 +9157,7 @@ elif 'browser' in str(sys.argv):
         def websockify_func(q):
           print >> sys.stderr, 'running websockify on %d, forward to tcp %d' % (self.port+1, self.port)
           proc = Popen([path_from_root('third_party', 'websockify', 'other', 'websockify'), '-vvv', str(self.port+1), '127.0.0.1:' + str(self.port)])
+          #proc = Popen([path_from_root('third_party', 'websockify', 'websockify.py'), '-vvv', str(self.port+1), '127.0.0.1:' + str(self.port)])
           q.put(proc.pid)
           proc.communicate()
 
@@ -9000,6 +9214,15 @@ elif 'browser' in str(sys.argv):
       try:
         with self.WebsockHarness(7000):
           self.btest('websockets_gethostbyname.c', expected='571', args=['-O2'])
+      finally:
+        self.clean_pids()
+
+    def zzztest_zz_websockets_bi_bigdata(self):
+      try:
+        with self.WebsockHarness(3992, self.make_relay_server(3992, 3994)):
+          with self.WebsockHarness(3994, no_server=True):
+            Popen(['python', EMCC, path_from_root('tests', 'websockets_bi_side_bigdata.c'), '-o', 'side.html', '-DSOCKK=3995', '-s', 'SOCKET_DEBUG=0', '-I' + path_from_root('tests')]).communicate()
+            self.btest('websockets_bi_bigdata.c', expected='0', args=['-s', 'SOCKET_DEBUG=0', '-I' + path_from_root('tests')])
       finally:
         self.clean_pids()
 
@@ -9106,13 +9329,13 @@ elif 'benchmark' in str(sys.argv):
       print '   JavaScript: mean: %.3f (+-%.3f) secs  median: %.3f  range: %.3f-%.3f  (noise: %3.3f%%)  (%d runs)' % (mean, std, median, min(times), max(times), 100*std/mean, TEST_REPS)
       print '   Native    : mean: %.3f (+-%.3f) secs  median: %.3f  range: %.3f-%.3f  (noise: %3.3f%%)  JS is %.2f X slower' % (mean_native, std_native, median_native, min(native_times), max(native_times), 100*std_native/mean_native, final)
 
-    def do_benchmark(self, src, args=[], expected_output='FAIL', emcc_args=[]):
+    def do_benchmark(self, name, src, args=[], expected_output='FAIL', emcc_args=[]):
       dirname = self.get_dir()
-      filename = os.path.join(dirname, 'src.cpp')
+      filename = os.path.join(dirname, name + '.cpp')
       f = open(filename, 'w')
       f.write(src)
       f.close()
-      final_filename = os.path.join(dirname, 'src.js')
+      final_filename = os.path.join(dirname, name + '.js')
 
       try_delete(final_filename)
       output = Popen(['python', EMCC, filename, '-O3',
@@ -9175,7 +9398,7 @@ elif 'benchmark' in str(sys.argv):
           return 1;
         }
       '''
-      self.do_benchmark(src, [], 'lastprime: 1297001.')
+      self.do_benchmark('primes', src, [], 'lastprime: 1297001.')
 
     def test_memops(self):
       src = '''
@@ -9198,7 +9421,7 @@ elif 'benchmark' in str(sys.argv):
           return 1;
         }      
       '''
-      self.do_benchmark(src, [], 'final: 720.')
+      self.do_benchmark('memops', src, [], 'final: 720.')
 
     def zzztest_files(self):
       src = r'''
@@ -9284,11 +9507,11 @@ elif 'benchmark' in str(sys.argv):
           return 1;
         }      
       '''
-      self.do_benchmark(src, [], 'sum:9928\n', emcc_args=['-s', 'QUANTUM_SIZE=4', '-s', 'USE_TYPED_ARRAYS=2'])
+      self.do_benchmark('copy', src, [], 'sum:9928\n', emcc_args=['-s', 'QUANTUM_SIZE=4', '-s', 'USE_TYPED_ARRAYS=2'])
 
     def test_fannkuch(self):
       src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read()
-      self.do_benchmark(src, ['10'], 'Pfannkuchen(10) = 38.')
+      self.do_benchmark('fannkuch', src, ['10'], 'Pfannkuchen(10) = 38.')
 
     def test_corrections(self):
       src = r'''
@@ -9311,11 +9534,11 @@ elif 'benchmark' in str(sys.argv):
           return 1;
         }      
       '''
-      self.do_benchmark(src, [], 'final: 826:14324.', emcc_args=['-s', 'CORRECT_SIGNS=1', '-s', 'CORRECT_OVERFLOWS=1', '-s', 'CORRECT_ROUNDINGS=1'])
+      self.do_benchmark('corrections', src, [], 'final: 826:14324.', emcc_args=['-s', 'CORRECT_SIGNS=1', '-s', 'CORRECT_OVERFLOWS=1', '-s', 'CORRECT_ROUNDINGS=1'])
 
     def fasta(self, double_rep):
       src = open(path_from_root('tests', 'fasta.cpp'), 'r').read().replace('double', double_rep)
-      self.do_benchmark(src, ['2100000'], '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA\nTCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACT\nAAAAATACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAG\nGCTGAGGCAGGAGAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCG\nCCACTGCACTCCAGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAAGGCCGGGCGCGGT\nGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGATCACCTGAGGTCA\nGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAATACAAAAA\nTTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAGGCTGAGGCAGGAG\nAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCCA\nGCCTGGGCGA''')
+      self.do_benchmark('fasta', src, ['2100000'], '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA\nTCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACT\nAAAAATACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAG\nGCTGAGGCAGGAGAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCG\nCCACTGCACTCCAGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAAGGCCGGGCGCGGT\nGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGATCACCTGAGGTCA\nGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAATACAAAAA\nTTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAGGCTGAGGCAGGAG\nAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCCA\nGCCTGGGCGA''')
 
     def test_fasta_float(self):
       self.fasta('float')
@@ -9325,12 +9548,12 @@ elif 'benchmark' in str(sys.argv):
 
     def test_skinning(self):
       src = open(path_from_root('tests', 'skinning_test_no_simd.cpp'), 'r').read()
-      self.do_benchmark(src, ['10000', '1000'], 'blah=0.000000')
+      self.do_benchmark('skinning', src, ['10000', '1000'], 'blah=0.000000')
 
     def test_dlmalloc(self):
       # XXX This seems to have regressed slightly with emcc. Are -g and the signs lines passed properly?
       src = open(path_from_root('system', 'lib', 'dlmalloc.c'), 'r').read() + '\n\n\n' + open(path_from_root('tests', 'dlmalloc_test.c'), 'r').read()
-      self.do_benchmark(src, ['400', '400'], '*400,0*', emcc_args=['-g', '-s', 'CORRECT_SIGNS=2', '-s', 'CORRECT_SIGNS_LINES=[4820, 4195, 4250, 4203, 4209, 4239, 4231]'])
+      self.do_benchmark('dlmalloc', src, ['400', '400'], '*400,0*', emcc_args=['-g', '-s', 'CORRECT_SIGNS=2', '-s', 'CORRECT_SIGNS_LINES=[4820, 4195, 4250, 4203, 4209, 4239, 4231]'])
 
 elif 'sanity' in str(sys.argv):
 
@@ -9499,6 +9722,50 @@ elif 'sanity' in str(sys.argv):
             else:
               output = self.check_working(EMCC)
               assert LLVM_WARNING not in output, output
+      finally:
+        del os.environ['EM_IGNORE_SANITY']
+
+    def test_node(self):
+      NODE_WARNING = 'warning: node version appears too old'
+      NODE_WARNING_2 = 'warning: cannot check node version'
+
+      restore()
+
+      # Clang should report the version number we expect, and emcc should not warn
+      assert check_node_version()
+      output = self.check_working(EMCC)
+      assert NODE_WARNING not in output, output
+
+      # Fake a different node version
+      restore()
+      f = open(CONFIG_FILE, 'a')
+      f.write('NODE_JS = "' + path_from_root('tests', 'fake', 'nodejs') + '"')
+      f.close()
+
+      if not os.path.exists(path_from_root('tests', 'fake')):
+        os.makedirs(path_from_root('tests', 'fake'))
+
+      try:
+        os.environ['EM_IGNORE_SANITY'] = '1'
+        for version, succeed in [(('v0.6.6'), False), (('v0.6.7'), False), (('v0.6.8'), True), (('v0.6.9'), True), (('v0.7.1'), True), (('v0.7.9'), True), (('v0.8.7'), True), (('v0.8.9'), True), ('cheez', False)]:
+          f = open(path_from_root('tests', 'fake', 'nodejs'), 'w')
+          f.write('#!/bin/sh\n')
+          f.write('''if [ $1 = "--version" ]; then
+  echo "%s"
+else
+  %s $@
+fi
+''' % (version, NODE_JS))
+          f.close()
+          os.chmod(path_from_root('tests', 'fake', 'nodejs'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+          if not succeed:
+            if version[0] == 'v':
+              self.check_working(EMCC, NODE_WARNING)
+            else:
+              self.check_working(EMCC, NODE_WARNING_2)
+          else:
+            output = self.check_working(EMCC)
+            assert NODE_WARNING not in output, output
       finally:
         del os.environ['EM_IGNORE_SANITY']
 

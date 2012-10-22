@@ -77,16 +77,28 @@ def check_clang_version():
   actual = Popen([CLANG, '-v'], stderr=PIPE).communicate()[1].split('\n')[0]
   if expected in actual:
     return True
-  
   print >> sys.stderr, 'warning: LLVM version appears incorrect (seeing "%s", expected "%s")' % (actual, expected)
   return False
-
 
 def check_llvm_version():
   try:
     check_clang_version();
   except Exception, e:
     print >> sys.stderr, 'warning: Could not verify LLVM version: %s' % str(e)
+
+EXPECTED_NODE_VERSION = (0,6,8)
+
+def check_node_version():
+  try:
+    actual = Popen([NODE_JS, '--version'], stdout=PIPE).communicate()[0].strip()
+    version = tuple(map(int, actual.replace('v', '').split('.')))
+    if version >= EXPECTED_NODE_VERSION:
+      return True
+    print >> sys.stderr, 'warning: node version appears too old (seeing "%s", expected "%s")' % (actual, 'v' + ('.'.join(map(str, EXPECTED_NODE_VERSION))))
+    return False
+  except Exception, e:
+    print >> sys.stderr, 'warning: cannot check node version:', e
+    return False
 
 # Check that basic stuff we need (a JS engine to compile, Node.js, and Clang and LLVM)
 # exists.
@@ -110,7 +122,9 @@ def check_sanity(force=False):
       print >> sys.stderr, '(Emscripten: Config file changed, clearing cache)' # LLVM may have changed, etc.
       Cache.erase()
 
-    check_llvm_version() # just a warning, not a fatal check - do it even if EM_IGNORE_SANITY is on
+    # some warning, not fatal checks - do them even if EM_IGNORE_SANITY is on
+    check_llvm_version()
+    check_node_version()
 
     if os.environ.get('EM_IGNORE_SANITY'):
       print >> sys.stderr, 'EM_IGNORE_SANITY set, ignoring sanity checks'
@@ -912,15 +926,60 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     Building.LLVM_OPT_OPTS = opts
     return opts
 
+  MAX_JS_PROCESS_SIZE = 12*1024*1024
+  BEST_JS_PROCESS_SIZE = 8*1024*1024
+
   @staticmethod
-  def js_optimizer(filename, passes):
-    if not check_engine(NODE_JS):
-      raise Exception('Node.js appears to be missing or broken, looked at: ' + str(NODE_JS))
+  def splitter(filename, addendum, func, args=[]):
+    # Split up huge files into pieces small enough for node/uglify/etc. to handle
+    js = open(filename).read()
+    if len(js) > Building.MAX_JS_PROCESS_SIZE:
+      if os.environ.get('EMCC_DEBUG'): print >> sys.stderr, 'splitting up js file'
+
+      suffix_marker = '// EMSCRIPTEN_GENERATED_FUNCTIONS'
+      suffix_start = js.find(suffix_marker)
+      suffix = ''
+      if suffix_start >= 0:
+        suffix = js[suffix_start:js.find('\n', suffix_start)] + '\n'
+
+      filename += addendum
+      f = open(filename, 'w')
+
+      i = 0
+      f_start = 0
+      while True:
+        f_end = f_start
+        while f_end-f_start < Building.BEST_JS_PROCESS_SIZE and f_end != -1:
+          f_end = js.find('\n}\n', f_end+1)
+        chunk = js[f_start:(-1 if f_end == -1 else f_end+3)] + suffix
+        temp_in_file = filename + '.p%d.js' % i
+        if os.environ.get('EMCC_DEBUG'): print >> sys.stderr, '  split %d, size %d' % (i, len(chunk))
+        i += 1
+        open(temp_in_file, 'w').write(chunk)
+        temp_out_file = func(*([temp_in_file] + args + [False])) # maybe_big is now false
+        f.write(
+          ''.join(filter(lambda line: not line.startswith(suffix_marker), open(temp_out_file).readlines()))
+        )
+        if f_end == -1: break
+        f_start = f_end+3
+        if f_start >= len(js): break
+
+      f.write(suffix)
+      f.close()
+      return filename
+
+  @staticmethod
+  def js_optimizer(filename, passes, maybe_big=True):
+    if maybe_big:
+      # When we split up, we cannot do unGlobalize, the only pass which is *not* function-local
+      args = [filter(lambda p: p != 'unGlobalize', passes)]
+      ret = Building.splitter(filename, addendum='.jo.js', func=Building.js_optimizer, args=args)
+      if ret: return ret
 
     if type(passes) == str:
       passes = [passes]
-    # XXX Disable crankshaft to work around v8 bug 1895
-    output = Popen([NODE_JS, '--nocrankshaft', JS_OPTIMIZER, filename] + passes, stdout=PIPE).communicate()[0]
+    # XXX Use '--nocrankshaft' to disable crankshaft to work around v8 bug 1895, needed for older v8/node (node 0.6.8+ should be ok)
+    output = Popen([NODE_JS, JS_OPTIMIZER, filename] + passes, stdout=PIPE).communicate()[0]
     assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + output
     filename += '.jo.js'
     f = open(filename, 'w')
@@ -929,9 +988,10 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     return filename
 
   @staticmethod
-  def eliminator(filename):
-    if not check_engine(NODE_JS):
-      raise Exception('Node.js appears to be missing or broken, looked at: ' + str(NODE_JS))
+  def eliminator(filename, maybe_big=True):
+    if maybe_big:
+      ret = Building.splitter(filename, addendum='.el.js', func=Building.eliminator)
+      if ret: return ret
 
     coffee = path_from_root('tools', 'eliminator', 'node_modules', 'coffee-script', 'bin', 'coffee')
     eliminator = path_from_root('tools', 'eliminator', 'eliminator.coffee')
@@ -952,7 +1012,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     # Something like this (adjust memory as needed):
     #   java -Xmx1024m -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
     args = [JAVA,
-            '-Xmx1024m',
+            '-Xmx' + (os.environ.get('JAVA_HEAP_SIZE') or '1024m'), # if you need a larger Java heap, use this environment variable
             '-jar', CLOSURE_COMPILER,
             '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
             '--formatting', 'PRETTY_PRINT',

@@ -72,6 +72,10 @@ var DOUBLE_MODE = 1; // How to load and store 64-bit doubles. Without typed arra
                      // then load it aligned, and that load-store will make JS engines alter it if it is being
                      // stored to a typed array for security reasons. That will 'fix' the number from being a
                      // NaN or an infinite number.
+var UNALIGNED_MEMORY = 0; // If enabled, all memory accesses are assumed to be unaligned. (This only matters in
+                          // typed arrays mode 2 where alignment is relevant.) In unaligned memory mode, you
+                          // can run nonportable code that typically would break in JS (or on ARM for that
+                          // matter, which also cannot do unaligned reads/writes), at the cost of slowness
 var PRECISE_I64_MATH = 1; // If enabled, i64 addition etc. is emulated - which is slow but precise. If disabled,
                           // we use the 'double trick' which is fast but incurs rounding at high values.
                           // Note that we do not catch 32-bit multiplication by default (which must be done in
@@ -198,6 +202,10 @@ var INCLUDE_FULL_LIBRARY = 0; // Whether to include the whole library rather tha
                               // functions used by the generated code. This is needed when
                               // dynamically loading modules that make use of runtime
                               // library functions that are not used in the main module.
+                              // Note that this includes js libraries but *not* C. You will
+                              // need the main file to include all needed C libraries. For
+                              // example, if a library uses malloc or new, you will need
+                              // to use those in the main file too to link in dlmalloc.
 
 var SHELL_FILE = 0; // set this to a string to override the shell file used
 
@@ -246,6 +254,10 @@ var WARN_ON_UNDEFINED_SYMBOLS = 0; // If set to 1, we will warn on any undefined
                                    // going to actually be called (and don't want to mess with
                                    // the existing buildsystem), and (2) functions might be
                                    // implemented later on, say in --pre-js
+
+var SMALL_XHR_CHUNKS = 0; // Use small chunk size for binary synchronous XHR's in Web Workers.
+                          // Used for testing.
+                          // See test_chunked_synchronous_xhr in runner.py and library.js.
 
 // Compiler debugging options
 var DEBUG_TAGS_SHOWING = [];
