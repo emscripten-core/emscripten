@@ -119,9 +119,9 @@ var buffer = 0, bufferSize = 0;
 var inWorkerCall = false, workerResponded = false, workerCallbackId = -1;
 
 onmessage = function(msg) {
-  var func = Module['_' + msg.data.funcName];
-  if (!func) throw 'invalid worker function to call: ' + msg.data.funcName;
-  var data = msg.data.data;
+  var func = Module['_' + msg.data['funcName']];
+  if (!func) throw 'invalid worker function to call: ' + msg.data['funcName'];
+  var data = msg.data['data'];
   if (!data.byteLength) data = new Uint8Array(data);
   if (!buffer || bufferSize < data.length) {
     if (buffer) _free(buffer);
@@ -132,7 +132,7 @@ onmessage = function(msg) {
 
   inWorkerCall = true;
   workerResponded = false;
-  workerCallbackId = msg.data.callbackId;
+  workerCallbackId = msg.data['callbackId'];
   func(buffer, data.length);
   inWorkerCall = false;
 }

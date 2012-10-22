@@ -580,11 +580,11 @@ mergeInto(LibraryManager.library, {
     info.worker.onmessage = function(msg) {
       var info = Browser.workers[id];
       if (!info) return; // worker was destroyed meanwhile
-      var callbackId = msg.data.callbackId;
+      var callbackId = msg.data['callbackId'];
       var callbackInfo = info.callbacks[callbackId];
       if (!callbackInfo) return; // no callback or callback removed meanwhile
       info.callbacks[callbackId] = null; // TODO: reuse callbackIds, compress this
-      var data = msg.data.data;
+      var data = msg.data['data'];
       if (!data.byteLength) data = new Uint8Array(data);
       if (!info.buffer || info.bufferSize < data.length) {
         if (info.buffer) _free(info.buffer);
@@ -617,9 +617,9 @@ mergeInto(LibraryManager.library, {
       });
     }
     info.worker.postMessage({
-      funcName: funcName,
-      callbackId: callbackId,
-      data: {{{ makeHEAPView('U8', 'data', 'data + size') }}}
+      'funcName': funcName,
+      'callbackId': callbackId,
+      'data': {{{ makeHEAPView('U8', 'data', 'data + size') }}}
     });
   },
 
@@ -628,8 +628,8 @@ mergeInto(LibraryManager.library, {
     if (workerResponded) throw 'already responded!';
     workerResponded = true;
     postMessage({
-      callbackId: workerCallbackId,
-      data: {{{ makeHEAPView('U8', 'data', 'data + size') }}}
+      'callbackId': workerCallbackId,
+      'data': {{{ makeHEAPView('U8', 'data', 'data + size') }}}
     });
   }
 });

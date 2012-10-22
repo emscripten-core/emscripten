@@ -9115,8 +9115,12 @@ elif 'browser' in str(sys.argv):
       self.btest('pre_run_deps.cpp', expected='10', args=['--pre-js', 'pre.js'])
 
     def test_worker_api(self):
-      Popen(['python', EMCC, path_from_root('tests', 'worker_api_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-O0', '--closure', '0', '-s', 'EXPORTED_FUNCTIONS=["_one", "_two"]']).communicate()
-      self.btest('worker_api_main.cpp', args=['-O0', '--closure', '0'], expected='566')
+      Popen(['python', EMCC, path_from_root('tests', 'worker_api_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-s', 'EXPORTED_FUNCTIONS=["_one"]']).communicate()
+      self.btest('worker_api_main.cpp', expected='566')
+
+    def test_worker_api_2(self):
+      Popen(['python', EMCC, path_from_root('tests', 'worker_api_2_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-O2', '--minify', '0', '-s', 'EXPORTED_FUNCTIONS=["_one", "_two"]']).communicate()
+      self.btest('worker_api_2_main.cpp', args=['-O2', '--minify', '0'], expected='11')
 
     pids_to_clean = []
     def clean_pids(self):
