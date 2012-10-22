@@ -16,7 +16,7 @@ function SAFE_HEAP_CLEAR(dest) {
 #if SAFE_HEAP_LOG
   Module.print('SAFE_HEAP clear: ' + dest);
 #endif
-  HEAP_HISTORY[dest] = [];
+  HEAP_HISTORY[dest] = undefined;
 }
 var SAFE_HEAP_ERRORS = 0;
 var ACCEPTABLE_SAFE_HEAP_ERRORS = 0;
