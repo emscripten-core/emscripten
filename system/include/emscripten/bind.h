@@ -223,9 +223,9 @@ namespace emscripten {
         }
 
         template<typename PointerType>
-        typename PointerType::element_type* get_pointee(PointerType* ptr) {
+        typename PointerType::element_type* get_pointee(PointerType ptr) {
             // TODO: replace with general pointer traits implementation
-            return ptr->get();
+            return ptr.get();
         }
 
         template<typename ClassType, typename ReturnType, typename... Args>
