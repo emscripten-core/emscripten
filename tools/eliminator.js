@@ -115,49 +115,49 @@ var that = that; // there is always a single global Eliminator instance
 function Eliminator(func) {
   that = this;
   // The statements of the function to analyze.
-  that.body = func[3];
+  this.body = func[3];
 
   // Identifier stats. Each of these objects === indexed by the identifier name.
   // Whether the identifier === a local variable.
-  that.isLocal = {};
+  this.isLocal = {};
   // Whether the identifier === never modified after initialization.
-  that.isSingleDef = {};
+  this.isSingleDef = {};
   // How many times the identifier === used.
-  that.useCount = {};
+  this.useCount = {};
   // Whether the initial value of a single-def identifier uses only nodes
   // evaluating which has no side effects.
-  that.usesOnlySimpleNodes = {};
+  this.usesOnlySimpleNodes = {};
   // Whether the identifier depends on any non-local name, perhaps indirectly.
-  that.dependsOnAGlobal = {};
+  this.dependsOnAGlobal = {};
   // Whether the dependencies of the single-def identifier may be mutated
   // within its live range.
-  that.depsMutatedInLiveRange = {};
+  this.depsMutatedInLiveRange = {};
   // Maps a given single-def variable to the AST expression of its initial value.
-  that.initialValue = {};
+  this.initialValue = {};
   // Maps identifiers to single-def variables which reference it in their
   // initial value, i.e., which other variables it affects.
-  that.affects = {};
+  this.affects = {};
 
   // Runs the eliminator on a given function body updating the AST in-place.
   //   that.returns: The number of variables eliminated, or undefined if (skipped.
-  that.run = function() {
-    that.calculateBasicVarStats();
-    that.analyzeInitialValues();
-    that.calculateTransitiveDependencies();
-    that.analyzeLiveRanges();
+  this.run = function() {
+    this.calculateBasicVarStats();
+    this.analyzeInitialValues();
+    this.calculateTransitiveDependencies();
+    this.analyzeLiveRanges();
 
     var toReplace = {};
     var eliminated = 0;
-    for (var varName in that.isSingleDef) {
-      if (that.isEliminateable(varName)) {
-        toReplace[varName] = that.initialValue[varName];
+    for (var varName in this.isSingleDef) {
+      if (this.isEliminateable(varName)) {
+        toReplace[varName] = this.initialValue[varName];
         eliminated++;
       }
     }
 
-    that.removeDeclarations(toReplace);
-    that.collapseValues(toReplace);
-    that.updateUses(toReplace);
+    this.removeDeclarations(toReplace);
+    this.collapseValues(toReplace);
+    this.updateUses(toReplace);
 
     return eliminated;
   };
@@ -167,8 +167,8 @@ function Eliminator(func) {
   //   isSingleDef
   //   useCount
   //   initialValue
-  that.calculateBasicVarStats = function() {
-    traverse(that.body, function(node, type) {
+  this.calculateBasicVarStats = function() {
+    traverse(this.body, function(node, type) {
       if (type === 'var') {
         node[1].forEach(function(pair) {
           var varName = pair[0];
@@ -195,11 +195,11 @@ function Eliminator(func) {
   //   affects
   //   dependsOnAGlobal
   //   usesOnlySimpleNodes
-  that.analyzeInitialValues = function() {
-    for (var varName in that.isSingleDef) {
-      if (!that.isSingleDef[varName]) continue;
-      that.usesOnlySimpleNodes[varName] = true;
-      traverse(that.initialValue[varName], function(node, type) {
+  this.analyzeInitialValues = function() {
+    for (var varName in this.isSingleDef) {
+      if (!this.isSingleDef[varName]) continue;
+      this.usesOnlySimpleNodes[varName] = true;
+      traverse(this.initialValue[varName], function(node, type) {
         if (!(type in NODES_WITHOUT_SIDE_EFFECTS)) {
           that.usesOnlySimpleNodes[varName] = false;
         } else if (type === 'name') {
@@ -215,11 +215,11 @@ function Eliminator(func) {
   };
 
   // Updates the dependency graph (@affects) to its transitive closure && 
-  // synchronizes that.dependsOnAGlobal to the new dependencies.
-  that.calculateTransitiveDependencies = function() {
+  // synchronizes this.dependsOnAGlobal to the new dependencies.
+  this.calculateTransitiveDependencies = function() {
     var incomplete = true;
     var todo = {};
-    for (var element in that.affects) {
+    for (var element in this.affects) {
       todo[element] = 1;
     }
 
@@ -228,13 +228,13 @@ function Eliminator(func) {
     while (incomplete) {
       incomplete = false;
       var nextTodo = {};
-      for (var source in that.affects) {
-        var targets = that.affects[source];
+      for (var source in this.affects) {
+        var targets = this.affects[source];
         for (var target in targets) {
           if (todo[target]) {
-            for (target2 in that.affects[target]) {
+            for (target2 in this.affects[target]) {
               if (!targets[target2]) {
-                if (!that.isLocal[source]) that.dependsOnAGlobal[target2] = true;
+                if (!this.isLocal[source]) this.dependsOnAGlobal[target2] = true;
                 targets[target2] = true;
                 nextTodo[source] = 1;
                 incomplete = true;
@@ -252,7 +252,7 @@ function Eliminator(func) {
   // Analyzes the live ranges of single-def variables. Requires dependencies to
   // have been calculated. Fills the following member variables:
   //   depsMutatedInLiveRange
-  that.analyzeLiveRanges = function() {
+  this.analyzeLiveRanges = function() {
     var isLive = {};
 
     // Checks if (a given node may mutate any of the currently live variables.
@@ -360,26 +360,26 @@ function Eliminator(func) {
       }
     }
 
-    traverse(that.body, analyzeBlock);
+    traverse(this.body, analyzeBlock);
   };
 
   // Determines whether a given variable can be safely eliminated. Requires all
   // analysis passes to have been run.
-  that.isEliminateable = function(varName) {
-    if (that.isSingleDef[varName] && that.usesOnlySimpleNodes[varName]) {
-      if (that.useCount[varName] == 0) {
+  this.isEliminateable = function(varName) {
+    if (this.isSingleDef[varName] && this.usesOnlySimpleNodes[varName]) {
+      if (this.useCount[varName] == 0) {
         return true;
-      } else if (that.useCount[varName] <= MAX_USES) {
-        return !that.depsMutatedInLiveRange[varName];
+      } else if (this.useCount[varName] <= MAX_USES) {
+        return !this.depsMutatedInLiveRange[varName];
       }
     }
     return false;
   };
 
   // Removes all var declarations for the specified variables.
-  //   that.arg toRemove: An object whose keys are the variable names to remove.
-  that.removeDeclarations = function(toRemove) {
-    traverse(that.body, function(node, type) {
+  //   this.arg toRemove: An object whose keys are the variable names to remove.
+  this.removeDeclarations = function(toRemove) {
+    traverse(this.body, function(node, type) {
       if (type === 'var') {
         var intactVars = node[1].filter(function(i) { return !toRemove.hasOwnProperty(i[0]) });
         if (intactVars.length) {
@@ -394,8 +394,8 @@ function Eliminator(func) {
 
   // Updates all the values for the given variables to eliminate reference to any
   // of the other variables in the group.
-  //   that.arg values: A map from variable names to their values as AST expressions.
-  that.collapseValues = function(values) {
+  //   this.arg values: A map from variable names to their values as AST expressions.
+  this.collapseValues = function(values) {
     var incomplete = true;
     while (incomplete) {
       incomplete = false;
@@ -414,9 +414,9 @@ function Eliminator(func) {
 
   // Replaces all uses of the specified variables with their respective
   // expressions.
-  //   that.arg replacements: A map from variable names to AST expressions.
-  that.updateUses = function(replacements) {
-    traverse(that.body, function(node, type) {
+  //   this.arg replacements: A map from variable names to AST expressions.
+  this.updateUses = function(replacements) {
+    traverse(this.body, function(node, type) {
       if (type === 'name' && replacements.hasOwnProperty(node[1])) {
         return replacements[node[1]];
       }
@@ -430,8 +430,7 @@ function ExpressionOptimizer(node) {
   this.node = node;
 
   this.run = function() {
-    var that = this;
-    traverse(that.node, function(node, type) {
+    traverse(this.node, function(node, type) {
       if (type === 'binary' && node[1] == '+') {
         var names = [];
         var num = 0;
