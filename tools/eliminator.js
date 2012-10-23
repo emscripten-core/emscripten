@@ -170,9 +170,11 @@ function Eliminator(func) {
   this.calculateBasicVarStats = function() {
     traverse(this.body, function(node, type) {
       if (type === 'var') {
-        for (var i = 0; i < node[1].length; i++) {
-          var varName = node[1][i][0];
-          var varValue = node[1][i][1];
+        var node1 = node[1];
+        for (var i = 0; i < node1.length; i++) {
+          var node1i = node1[i];
+          var varName = node1i[0];
+          var varValue = node1i[1];
           that.isLocal[varName] = true;
           if (!varValue) varValue = ['name', 'undefined']; // XXX share?
           that.isSingleDef[varName] = !that.isSingleDef.hasOwnProperty(varName);
@@ -232,7 +234,8 @@ function Eliminator(func) {
         var targets = this.affects[source];
         for (var target in targets) {
           if (todo[target]) {
-            for (target2 in this.affects[target]) {
+            var this_affects_target = this.affects[target];
+            for (target2 in this_affects_target) {
               if (!targets[target2]) {
                 if (!this.isLocal[source]) this.dependsOnAGlobal[target2] = true;
                 targets[target2] = true;
