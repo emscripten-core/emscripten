@@ -274,8 +274,9 @@ function Eliminator(func) {
             reference = reference[1];
           }
           reference = reference[1];
-          if (that.affects[reference]) {
-            for (var varName in that.affects[reference]) {
+          var aff = that.affects[reference]
+          if (aff) {
+            for (var varName in aff) {
               if (isLive[varName]) {
                 isLive[varName] = false;
               }
@@ -323,8 +324,9 @@ function Eliminator(func) {
         }
         if (type === 'switch') {
           traverseChild(node[1]);
-          for (var i = 0; i < node[2].length; i++) {
-            traverseChild(node[2][i]);
+          var node2 = node[2];
+          for (var i = 0; i < node2.length; i++) {
+            traverseChild(node2[i]);
           }
         } else if (type == 'if' || type == 'try') {
           for (var i = 0; i < node.length; i++) {
@@ -339,10 +341,11 @@ function Eliminator(func) {
         }
         return node;
       }  else if (type === 'var') {
-        for (var i = 0; i < node[1].length; i++) {
-          var varName = node[1][i][0];
-// all for-in are suspect
-          var varValue = node[1][i][1];
+        var node1 = node[1];
+        for (var i = 0; i < node1.length; i++) {
+          var node1i = node1[i];
+          var varName = node1i[0];
+          var varValue = node1i[1];
           if (varValue) traverse(varValue, checkForMutations);
           // Mark the variable as live
           if (that.isSingleDef[varName]) {
@@ -350,7 +353,8 @@ function Eliminator(func) {
           }
           // Mark variables that depend on it as no longer live
           if (that.affects[varName]) {
-            for (var varNameDep in that.affects[varName]) {
+            var aff = that.affects[varName];
+            for (var varNameDep in aff) {
               if (isLive[varNameDep]) {
                 isLive[varNameDep] = false;
               }
@@ -499,8 +503,9 @@ function main() {
   // Write out the optimized code.
   // NOTE: For large file, can't generate code for the whole file in a single
   //       call due to the v8 memory limit. Writing out root children instead.
-  for (var i = 0; i < ast[1].length; i++) {
-    var node = ast[1][i];
+  var ast1 = ast[1];
+  for (var i = 0; i < ast1.length; i++) {
+    var node = ast1[i];
 
     // Parse && recompile again, to remove unneeded lines XXX is this worth the parse time?
     var src2 = uglify.uglify.gen_code(node, GEN_OPTIONS);
