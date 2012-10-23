@@ -170,15 +170,15 @@ function Eliminator(func) {
   this.calculateBasicVarStats = function() {
     traverse(this.body, function(node, type) {
       if (type === 'var') {
-        node[1].forEach(function(pair) {
-          var varName = pair[0];
-          var varValue = pair[1];
+        for (var i = 0; i < node[1].length; i++) {
+          var varName = node[1][i][0];
+          var varValue = node[1][i][1];
           that.isLocal[varName] = true;
           if (!varValue) varValue = ['name', 'undefined']; // XXX share?
           that.isSingleDef[varName] = !that.isSingleDef.hasOwnProperty(varName);
           that.initialValue[varName] = varValue;
           that.useCount[varName] = 0;
-        });
+        }
       } else if (type === 'name') {
         varName = node[1];
         if (that.useCount.hasOwnProperty(varName)) that.useCount[varName]++;
