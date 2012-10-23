@@ -226,7 +226,8 @@ void emscripten_async_prepare_data(char* data, int size, const char *suffix, voi
 typedef int worker_t;
 
 /*
- * Create and destroy workers.
+ * Create and destroy workers. A worker must be compiled separately
+ * from the main program, and with the BUILD_AS_WORKER flag set to 1.
  */
 worker_t emscripten_create_worker(const char *url);
 void emscripten_destroy_worker(worker_t worker);
