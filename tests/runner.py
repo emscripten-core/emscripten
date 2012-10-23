@@ -7836,8 +7836,13 @@ f.close()
 
     def test_eliminator(self):
       expected = open(path_from_root('tools', 'eliminator', 'eliminator-test-output.js')).read()
-      output = Popen([NODE_JS, COFFEESCRIPT, VARIABLE_ELIMINATOR, path_from_root('tools', 'eliminator', 'eliminator-test.js')], stdout=PIPE).communicate()[0]
-      self.assertIdentical(expected, output)
+      cwd = os.getcwd()
+      try:
+        os.chdir(path_from_root('tools', 'eliminator'))
+        output = Popen([NODE_JS, VARIABLE_ELIMINATOR, path_from_root('tools', 'eliminator', 'eliminator-test.js')], stdout=PIPE).communicate()[0]
+        self.assertIdentical(expected, output)
+      finally:
+        os.chdir(cwd)
 
     def test_fix_closure(self):
       input = path_from_root('tests', 'test-fix-closure.js')

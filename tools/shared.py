@@ -205,7 +205,7 @@ EMMAKEN = path_from_root('tools', 'emmaken.py')
 AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
 BINDINGS_GENERATOR = path_from_root('tools', 'bindings_generator.py')
 EXEC_LLVM = path_from_root('tools', 'exec_llvm.py')
-VARIABLE_ELIMINATOR = path_from_root('tools', 'eliminator', 'eliminator.coffee')
+VARIABLE_ELIMINATOR = path_from_root('tools', 'eliminator.js')
 JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
 FILE_PACKAGER = path_from_root('tools', 'file_packager.py')
 
@@ -993,10 +993,8 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       ret = Building.splitter(filename, addendum='.el.js', func=Building.eliminator)
       if ret: return ret
 
-    coffee = path_from_root('tools', 'eliminator', 'node_modules', 'coffee-script', 'bin', 'coffee')
-    eliminator = path_from_root('tools', 'eliminator', 'eliminator.coffee')
     input = open(filename, 'r').read()
-    output = Popen([NODE_JS, coffee, eliminator, filename], stdout=PIPE).communicate()[0]
+    output = Popen([NODE_JS, VARIABLE_ELIMINATOR, filename], stdout=PIPE).communicate()[0]
     assert len(output) > 0, 'Error in eliminator: ' + output
     filename += '.el.js'
     f = open(filename, 'w')
