@@ -507,11 +507,13 @@ function main() {
   for (var i = 0; i < ast1.length; i++) {
     var node = ast1[i];
 
-    // Parse && recompile again, to remove unneeded lines XXX is this worth the parse time?
-    var src2 = uglify.uglify.gen_code(node, GEN_OPTIONS);
-    var node2 = uglify.parser.parse(src2);
-
-    process.stdout.write(uglify.uglify.gen_code(node2, GEN_OPTIONS));
+    var js = uglify.uglify.gen_code(node, GEN_OPTIONS), old;
+    // remove unneeded newlines+spaces
+    do {
+      old = js;
+      js = js.replace(/\n *\n/g, '\n');
+    } while (js != old);
+    process.stdout.write(js);
     process.stdout.write('\n');
   }
   process.stdout.write(generatedFunctionsLine + '\n');
