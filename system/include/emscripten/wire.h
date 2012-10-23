@@ -30,6 +30,13 @@ namespace emscripten {
                 return TypeID<T>::get();
             }
         };
+        
+        template<typename T>
+        struct TypeID<std::shared_ptr<T>> {
+            static TYPEID get() {
+                return TypeID<T>::get();
+            }
+        };
 
         // count<>
 
@@ -210,6 +217,24 @@ namespace emscripten {
         };
 
         template<typename T>
+        struct GenericBindingType<std::shared_ptr<T>> {
+            typedef typename std::shared_ptr<T> ActualT;
+            typedef ActualT* WireType;
+
+            static WireType toWireType(std::shared_ptr<T> p) {
+                return new std::shared_ptr<T>(p);
+            }
+
+            static std::shared_ptr<T> fromWireType(WireType p) {
+                return *p;
+            }
+
+            static void destroy(WireType p) {
+                delete p;
+            }
+        };
+
+        template<typename T>
         struct WireDeleter {
             typedef typename BindingType<T>::WireType WireType;
             
@@ -236,6 +261,5 @@ namespace emscripten {
         auto toWireType(const T& v) -> typename BindingType<T>::WireType {
             return BindingType<T>::toWireType(v);
         }
-
     }
 }
