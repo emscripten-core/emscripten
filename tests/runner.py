@@ -5287,13 +5287,29 @@ int main(int argc, char **argv) {
             json_error_t error;
             json_t *root = json_loadb(jsonString, strlen(jsonString), 0, &error);
 
-            if(!root || !json_is_object(root))
+            if(!root) {
+              printf("Node `root` is `null`.");
               return 0;
+            }
+
+            if(!json_is_object(root)) {
+              printf("Node `root` is no object.");
+              return 0;
+            }
+
             printf("%s\\n", json_string_value(json_object_get(root, "key")));
     
             json_t *array = json_object_get(root, "array");
-            if(!array || !json_is_array(array))
+            if(!array) {
+              printf("Node `array` is `null`.");
               return 0;
+            }
+
+            if(!json_is_array(array)) {
+              printf("Node `array` is no array.");
+              return 0;
+            }
+
             for(size_t i=0; i<json_array_size(array); ++i)
             {
               json_t *arrayNode = json_array_get(array, i);
@@ -5312,10 +5328,16 @@ int main(int argc, char **argv) {
             if(!numberNode || !json_is_number(numberNode) ||
                !floatNode || !json_is_real(floatNode))
               return 0;
-            
+
             printf("%i\\n", json_integer_value(numberNode));
             printf("%.2f\\n", json_number_value(numberNode));
             printf("%.2f\\n", json_real_value(floatNode));
+
+            json_t *invalidNode = json_object_get(dict, "invalidNode");
+            if(invalidNode)
+              return 0;
+
+            printf("%i\\n", json_number_value(invalidNode));
 
             json_decref(root);
 
@@ -5325,7 +5347,7 @@ int main(int argc, char **argv) {
             return 0;
           }
         '''
-        self.do_run(src, 'value\narray_item1\narray_item2\narray_item3\n3\n3.00\n2.20\njansson!')
+        self.do_run(src, 'value\narray_item1\narray_item2\narray_item3\n3\n3.00\n2.20\nJansson: Node with ID `0` not found. Context has `10` nodes.\n0\nJansson: No JSON context.\njansson!')
 
     ### 'Medium' tests
 

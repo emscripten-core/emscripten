@@ -94,7 +94,25 @@ typedef long json_int_t;
     extern "C" bool json_is_false(const void *object);
     extern "C" bool json_is_boolean(const void *object);
     extern "C" bool json_is_null(const void *object);
+
+    static JSON_INLINE
+    json_t *json_incref(json_t *json)
+    {
+        return json;
+    }
+
+    void json_delete(json_t *json);
+
+    static JSON_INLINE
+    void json_decref(json_t *json)
+    {
+        json_delete(json);
+    }
+
 #else
+
+   // typedef json_t* json_ptr_t;
+
     #define json_typeof(json)      ((json)->type)
     #define json_is_object(json)   (json && json_typeof(json) == JSON_OBJECT)
     #define json_is_array(json)    (json && json_typeof(json) == JSON_ARRAY)
@@ -106,38 +124,38 @@ typedef long json_int_t;
     #define json_is_false(json)    (json && json_typeof(json) == JSON_FALSE)
     #define json_is_boolean(json)  (json_is_true(json) || json_is_false(json))
     #define json_is_null(json)     (json && json_typeof(json) == JSON_NULL)
+
+    /* construction, destruction, reference counting */
+
+    json_t *json_object(void);
+    json_t *json_array(void);
+    json_t *json_string(const char *value);
+    json_t *json_string_nocheck(const char *value);
+    json_t *json_integer(json_int_t value);
+    json_t *json_real(double value);
+    json_t *json_true(void);
+    json_t *json_false(void);
+    #define json_boolean(val)      ((val) ? json_true() : json_false())
+    json_t *json_null(void);
+
+    static JSON_INLINE
+    json_t *json_incref(json_t *json)
+    {
+        if(json && json->refcount != (size_t)-1)
+            ++json->refcount;
+        return json;
+    }
+
+    /* do not call json_delete directly */
+    void json_delete(json_t *json);
+
+    static JSON_INLINE
+    void json_decref(json_t *json)
+    {
+        if(json && json->refcount != (size_t)-1 && --json->refcount == 0)
+            json_delete(json);
+    }
 #endif
-
-/* construction, destruction, reference counting */
-
-json_t *json_object(void);
-json_t *json_array(void);
-json_t *json_string(const char *value);
-json_t *json_string_nocheck(const char *value);
-json_t *json_integer(json_int_t value);
-json_t *json_real(double value);
-json_t *json_true(void);
-json_t *json_false(void);
-#define json_boolean(val)      ((val) ? json_true() : json_false())
-json_t *json_null(void);
-
-static JSON_INLINE
-json_t *json_incref(json_t *json)
-{
-    if(json && json->refcount != (size_t)-1)
-        ++json->refcount;
-    return json;
-}
-
-/* do not call json_delete directly */
-void json_delete(json_t *json);
-
-static JSON_INLINE
-void json_decref(json_t *json)
-{
-    if(json && json->refcount != (size_t)-1 && --json->refcount == 0)
-        json_delete(json);
-}
 
 
 /* error reporting */
