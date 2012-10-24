@@ -1044,18 +1044,11 @@ try:
     if shared.Settings.RELOOP:
       js_optimizer_queue += ['hoistMultiples', 'loopOptimizer']
 
-    flush_js_optimizer_queue()
-
-    if DEBUG: print >> sys.stderr, 'emcc: running variable eliminator'
-    final = shared.Building.eliminator(final)
-    if DEBUG: save_intermediate('eliminator')
+    js_optimizer_queue += ['eliminate']
 
     js_optimizer_queue += ['simplifyExpressionsPre']
     if shared.Settings.RELOOP:
-      js_optimizer_queue += ['optimizeShiftsAggressive'] # aggressive shifts optimization requires loops, it breaks on switches
-      flush_js_optimizer_queue()
-      final = shared.Building.eliminator(final) # aggressive shifts optimization introduces some new variables, remove ones that we can
-      if DEBUG: save_intermediate('eliminator')
+      js_optimizer_queue += ['optimizeShiftsAggressive', 'eliminate'] # aggressive shifts optimization requires loops, it breaks on switches
 
   if closure:
     flush_js_optimizer_queue()

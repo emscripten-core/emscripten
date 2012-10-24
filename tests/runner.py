@@ -7834,16 +7834,6 @@ f.close()
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '--pre-js', 'pre2.js']).communicate()
       self.assertContained('prepre\npre-run\nhello from main\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
-    def test_eliminator(self):
-      expected = open(path_from_root('tools', 'eliminator', 'eliminator-test-output.js')).read()
-      cwd = os.getcwd()
-      try:
-        os.chdir(path_from_root('tools', 'eliminator'))
-        output = Popen([NODE_JS, VARIABLE_ELIMINATOR, path_from_root('tools', 'eliminator', 'eliminator-test.js')], stdout=PIPE).communicate()[0]
-        self.assertIdentical(expected, output)
-      finally:
-        os.chdir(cwd)
-
     def test_fix_closure(self):
       input = path_from_root('tests', 'test-fix-closure.js')
       expected = path_from_root('tests', 'test-fix-closure.out.js')

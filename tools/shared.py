@@ -190,7 +190,6 @@ LLVM_NM=os.path.expanduser(build_llvm_tool_path('llvm-nm'))
 LLVM_INTERPRETER=os.path.expanduser(build_llvm_tool_path('lli'))
 LLVM_COMPILER=os.path.expanduser(build_llvm_tool_path('llc'))
 LLVM_EXTRACT=os.path.expanduser(build_llvm_tool_path('llvm-extract'))
-COFFEESCRIPT = path_from_root('tools', 'eliminator', 'node_modules', 'coffee-script', 'bin', 'coffee')
 
 EMSCRIPTEN = path_from_root('emscripten.py')
 DEMANGLER = path_from_root('third_party', 'demangler.py')
@@ -205,7 +204,6 @@ EMMAKEN = path_from_root('tools', 'emmaken.py')
 AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
 BINDINGS_GENERATOR = path_from_root('tools', 'bindings_generator.py')
 EXEC_LLVM = path_from_root('tools', 'exec_llvm.py')
-VARIABLE_ELIMINATOR = path_from_root('tools', 'eliminator.js')
 JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
 FILE_PACKAGER = path_from_root('tools', 'file_packager.py')
 
@@ -982,21 +980,6 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     output = Popen([NODE_JS, JS_OPTIMIZER, filename] + passes, stdout=PIPE).communicate()[0]
     assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + output
     filename += '.jo.js'
-    f = open(filename, 'w')
-    f.write(output)
-    f.close()
-    return filename
-
-  @staticmethod
-  def eliminator(filename, maybe_big=True):
-    if maybe_big:
-      ret = Building.splitter(filename, addendum='.el.js', func=Building.eliminator)
-      if ret: return ret
-
-    input = open(filename, 'r').read()
-    output = Popen([NODE_JS, VARIABLE_ELIMINATOR, filename], stdout=PIPE).communicate()[0]
-    assert len(output) > 0, 'Error in eliminator: ' + output
-    filename += '.el.js'
     f = open(filename, 'w')
     f.write(output)
     f.close()
