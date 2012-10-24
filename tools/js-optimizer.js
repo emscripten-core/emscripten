@@ -1391,9 +1391,7 @@ if (metadata) setGeneratedFunctions(metadata);
 arguments_.slice(1).forEach(function(arg) {
   passes[arg](ast);
 });
-//printErr('output: ' + dump(ast));
-//printErr('output: ' + astToSrc(ast));
-ast = srcToAst(astToSrc(ast)); // re-parse, to simplify a little
+
 print(astToSrc(ast, compress));
 if (metadata) print(metadata + '\n');
 
