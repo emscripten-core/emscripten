@@ -1408,7 +1408,8 @@ function eliminate(ast) {
     throw: true,
     call: true,
     label: true,
-    debugger: true
+    debugger: true,
+    seq: true
   };
 
   var ANALYZE_BLOCK_TYPES = {
