@@ -1556,9 +1556,13 @@ var LibrarySDL = {
   },
 
   SDL_AddTimer: function(interval, callback, param) {
-    return window.setTimeout(function() {
-      FUNCTION_TABLE[callback](interval, param);
-    }, interval);
+    var timer_func = function() {
+      var ret = FUNCTION_TABLE[callback](interval, param);
+      if (ret > 0) {
+        window.setTimeout(timer_func, ret);
+      }
+    };
+    return window.setTimeout(timer_func, interval);
   },
   SDL_RemoveTimer: function(id) {
     window.clearTimeout(id);
