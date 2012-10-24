@@ -1393,6 +1393,7 @@ function eliminate(ast) {
   // Node types which can be evaluated without side effects.
   var NODES_WITHOUT_SIDE_EFFECTS = {
     name: true,
+    sname: true,
     num: true,
     string: true,
     binary: true,
@@ -1611,7 +1612,7 @@ function eliminate(ast) {
         if (type == 'assign' || type == 'unary-prefix' || type == 'unary-postfix') {
           if (type === 'assign' || node[1] == '--' || node[1] == '++') {
             var reference = node[2];
-            while (reference[0] != 'name') {
+            while (reference[0] != 'name' && reference[0] != 'sname') {
               reference = reference[1];
             }
             reference = reference[1];
@@ -1819,9 +1820,20 @@ function eliminate(ast) {
   // Run on all functions.
   traverse(ast, function(node, type) {
     if ((type == 'defun' || type == 'function') && isGenerated(node[1])) {
+      // 'hide' X in X[10] so we don't get confused by it - these do not matter to variable effects
+      traverse(node, function(node, type) {
+        if (type === 'sub' && node[1][0] == 'name') {
+          node[1][0] = 'sname';
+        }
+      });
       // Run the eliminator
-      //process.stderr.write (node[1] || '(anonymous)') + '\n'
       var eliminated = new Eliminator(node).run();
+      // Undo X[10] hiding
+      traverse(node, function(node, type) {
+        if (type === 'sname') {
+          node[0] = 'name';
+        }
+      });
       // Run the expression optimizer
       new ExpressionOptimizer(node[3]).run();
     }
