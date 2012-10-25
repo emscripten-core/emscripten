@@ -1366,6 +1366,8 @@ function registerize(ast) {
 function eliminate(ast) {
   // Find variables that have a single use, and if they can be eliminated, do so
   traverseGeneratedFunctions(ast, function(func, type) {
+    //printErr('eliminate in ' + func[1]);
+
     // 'hide' X in X[10] so we don't get confused by it - these do not matter to variable effects
     traverse(func, function(node, type) {
       if (type === 'sub' && node[1][0] == 'name') {
@@ -1377,6 +1379,7 @@ function eliminate(ast) {
     var definitions = {};
     var uses = {};
     var locals = {};
+    var varsToRemove = {}; // variables being removed, that we can eliminate all 'var x;' of
     traverse(func, function(node, type) {
       if (type === 'var') {
         var node1 = node[1];
@@ -1412,6 +1415,8 @@ function eliminate(ast) {
     for (var name in locals) {
       if (definitions[name] == 1 && uses[name] == 1) {
         potentials[name] = 1;
+      } else if (uses[name] == 0) {
+        varsToRemove[name] = 1; // variable with no uses, might as well remove it
       }
     }
     //printErr('defs: ' + JSON.stringify(definitions));
@@ -1494,7 +1499,6 @@ function eliminate(ast) {
       });
       return ok;
     }
-    var varsToRemove = {}; // must remove vars in a post pass; there can be multiple 'var x;' for an x.
     function tryEliminate(node) { // it is ok to try to eliminate on this node, try all currently tracked
       //printErr('tryelim ' + JSON.stringify(node));
       traverse(node, function(node, type) {
