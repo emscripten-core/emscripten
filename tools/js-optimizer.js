@@ -1442,11 +1442,15 @@ function eliminate(ast) {
     // We can now proceed through the function. In each list of statements, we try to eliminate
     var tracked = {};
     function track(name, value, defNode) { // add a potential that has just been defined to the tracked list, we hope to eliminate it
-      var usesGlobals = false, usesMemory = false;
+      var usesGlobals = false, usesMemory = false, deps = {};
       traverse(value, function(node, type) {
         if (type == 'name') {
-          if (!(node[1] in locals)) {
+          var name = node[1];
+          if (!(name in locals)) {
             usesGlobals = true;
+          }
+          if (!(name in potentials)) { // deps do not matter for potentials - they are defined once, so no complexity
+            deps[name] = 1;
           }
         } else if (type == 'sub') {
           usesMemory = true;
@@ -1458,7 +1462,8 @@ function eliminate(ast) {
       tracked[name] = {
         usesGlobals: usesGlobals,
         usesMemory: usesMemory,
-        defNode: defNode
+        defNode: defNode,
+        deps: deps
       };
       //printErr('track ' + [name, JSON.stringify(tracked[name])]);
     }
@@ -1491,6 +1496,19 @@ function eliminate(ast) {
         delete tracked[temp[i]];
       }
     }
+    function invalidateByDep(dep) {
+      //printErr('invalidate by dep ' + dep);
+      temp.length = [];
+      for (var name in tracked) {
+        var info = tracked[name];
+        if (info.deps[dep]) {
+          temp.push(name);
+        }
+      }
+      for (var i = 0; i < temp.length; i++) {
+        delete tracked[temp[i]];
+      }
+    }
     function check(node) { // checks a potential (var/assign) node for things that affect elimination. returns if ok to process this node
       //printErr('check ' + JSON.stringify(node));
       var ok = true;
@@ -1498,10 +1516,28 @@ function eliminate(ast) {
       needMemoryInvalidated = false;
       traverse(node, function(node, type) {
         if (type == 'assign') {
-          if (node[2][0] == 'name' && !(node[2][1] in locals)) {
-            needGlobalsInvalidated = true;
+          if (node[2][0] == 'name') {
+            var name = node[2][1];
+            if (!(name in locals)) {
+              needGlobalsInvalidated = true;
+            }
+            if (!(name in potentials)) {
+              // expensive check for invalidating specific tracked vars. This list is generally quite short though, because of
+              // how we just eliminate in short spans and abort when control flow happens
+              invalidateByDep(name);
+            }
           } else if (node[2][0] == 'sub') {
             needMemoryInvalidated = true;
+          }
+        } else if (type == 'var') {
+          var node1 = node[1];
+          for (var i = 0; i < node1.length; i++) {
+            var node1i = node1[i];
+            var name = node1i[0];
+            var value = node1i[1];
+            if (value && !(name in potentials)) {
+              invalidateByDep(name);
+            }
           }
         } else if (type == 'call') {
           needGlobalsInvalidated = true;

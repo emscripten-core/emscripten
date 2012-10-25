@@ -163,10 +163,10 @@ function t() {
   }
 }
 function f2() {
-  var $_pre = HEAPU32[($vla + ($storemerge312 << 2) | 0) >> 2];
-  var $storemerge312 = $storemerge312 + 1 | 0;
-  var $8 = $_pre;
-  c($8);
+  var $_pre = HEAPU32[$vla + ($storemerge312 << 2) | 0 >> 2];
+  var $phitmp = $storemerge312 + 1 | 0;
+  var $storemerge312 = $phitmp;
+  c($_pre);
 }
 function f3($s, $tree, $k) {
   var $0 = HEAPU32[($s + 2908 + ($k << 2) | 0) >> 2];
