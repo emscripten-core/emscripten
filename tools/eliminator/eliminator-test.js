@@ -135,7 +135,7 @@ function h() {
     x = y ? x + 1 : 7;
     var x = -5;
   }
-  var oneUse = glob;
+  var oneUse = glob; // for now, cannot eliminate into body or else of if
   if (1) {
     otherGlob = oneUse;
     breakMe();

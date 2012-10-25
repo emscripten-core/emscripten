@@ -1514,12 +1514,13 @@ function eliminate(ast) {
       });
       return ok;
     }
-    function tryEliminate(node) { // it is ok to try to eliminate on this node, try all currently tracked
+    function tryEliminate(base) { // it is ok to try to eliminate on this node, try all currently tracked
       //printErr('tryelim ' + JSON.stringify(node));
-      traverse(node, function(node, type) {
+      traverse(base, function(node, type) {
         if (type == 'name') {
           var name = node[1];
           if (name in tracked) {
+            var value;
             //printErr('elim!!!!! ' + name);
             // yes, eliminate!
             varsToRemove[name] = 1; // both assign and var definitions can have other vars we must clean up
@@ -1527,21 +1528,27 @@ function eliminate(ast) {
             delete tracked[name];
             var defNode = info.defNode;
             if (defNode[0] == 'var') {
-              var value;
               defNode[1].forEach(function(pair) {
                 if (pair[0] == name) {
                   value = pair[1];
                 }
               });
               assert(value);
-              return value;
             } else { // assign
-              var value = defNode[3];
+              value = defNode[3];
               // wipe out the assign
               defNode[0] = 'toplevel';
               defNode[1] = [];
               defNode.length = 2;
+            }
+            if (base != node) {
               return value;
+            } else {
+              // replace this node in-place (we may be traversing on ['name', 'X'] without a parent, so cannot substitute in)
+              node.length = 0;
+              for (var i = 0; i < value.length; i++) {
+                node[i] = value[i];
+              }
             }
           }
         }
@@ -1561,6 +1568,7 @@ function eliminate(ast) {
         }
         // Check for things that affect elimination
         if (type in ELIMINATION_SAFE_NODES) {
+          if (type == 'if') node = node[1]; // we can eliminate in the condition, but not otherwise. note: node and type are now out of sync
           // can we eliminate and/or track?
           if (!check(node)) continue;
           // try to eliminate
@@ -1586,6 +1594,8 @@ function eliminate(ast) {
                 track(name, node[3], node);
               }
             }
+          } else if (type == 'if') {
+            tracked = {}; // hopefully we eliminated in the condition, but must abort after it
           }
         } else {
           tracked = {}; // not a var or assign, break all potential elimination so far

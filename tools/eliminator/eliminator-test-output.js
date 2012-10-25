@@ -112,8 +112,9 @@ function h() {
     x = y ? x + 1 : 7;
     var x = -5;
   }
+  var oneUse = glob;
   if (1) {
-    otherGlob = glob;
+    otherGlob = oneUse;
     breakMe();
   }
   var oneUse2 = glob2;
