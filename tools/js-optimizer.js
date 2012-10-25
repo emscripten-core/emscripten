@@ -1363,6 +1363,8 @@ function registerize(ast) {
   });
 }
 
+var ELIMINATION_SAFE_NODES = set('var', 'assign', 'call', 'if');
+
 function eliminate(ast) {
   // Find variables that have a single use, and if they can be eliminated, do so
   traverseGeneratedFunctions(ast, function(func, type) {
@@ -1545,7 +1547,7 @@ function eliminate(ast) {
           type = node[0];
         }
         // Check for things that affect elimination
-        if (type == 'var' || type == 'assign' || type == 'call') {
+        if (type in ELIMINATION_SAFE_NODES) {
           // can we eliminate and/or track?
           if (!check(node)) continue;
           // try to eliminate

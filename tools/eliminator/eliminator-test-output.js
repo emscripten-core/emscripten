@@ -72,8 +72,7 @@ function g(a1, a2) {
   }
   var $0 = HEAP[5];
   MAYBE_HEAP[myglobal] = 123;
-  var $1 = $0 < 0;
-  if ($1) {
+  if ($0 < 0) {
     __label__ = 1;
   } else {
     __label__ = 2;
