@@ -70,8 +70,10 @@ function g(a1, a2) {
   for (var iterator in SOME_GLOBAL) {
     quux(iterator);
   }
+  var $0 = HEAP[5];
   MAYBE_HEAP[myglobal] = 123;
-  if (HEAP[5] < 0) {
+  var $1 = $0 < 0;
+  if ($1) {
     __label__ = 1;
   } else {
     __label__ = 2;
