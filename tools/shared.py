@@ -399,7 +399,7 @@ def line_splitter(data):
 
   return out
 
-def limit_size(string, MAX=8000*20):
+def limit_size(string, MAX=80*20):
   if len(string) < MAX: return string
   return string[0:MAX/2] + '\n[..]\n' + string[-MAX/2:]
 
