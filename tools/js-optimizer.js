@@ -1470,9 +1470,10 @@ function eliminate(ast) {
     var temp = [];
     var needGlobalsInvalidated = false;
     var needMemoryInvalidated = false;
+    var neededDepInvalidations = [];
     function invalidateGlobals() {
       //printErr('invalidate globals');
-      temp.length = [];
+      temp.length = 0;
       for (var name in tracked) {
         var info = tracked[name];
         if (info.usesGlobals) {
@@ -1485,7 +1486,7 @@ function eliminate(ast) {
     }
     function invalidateMemory() {
       //printErr('invalidate memory');
-      temp.length = [];
+      temp.length = 0;
       for (var name in tracked) {
         var info = tracked[name];
         if (info.usesMemory) {
@@ -1496,18 +1497,22 @@ function eliminate(ast) {
         delete tracked[temp[i]];
       }
     }
-    function invalidateByDep(dep) {
-      //printErr('invalidate by dep ' + dep);
-      temp.length = [];
-      for (var name in tracked) {
-        var info = tracked[name];
-        if (info.deps[dep]) {
-          temp.push(name);
+    function invalidateByDeps() {
+      temp.length = 0;
+      for (var i = 0; i < neededDepInvalidations.length; i++) {
+        var dep = neededDepInvalidations[i];
+        //printErr('invalidate by dep ' + dep);
+        for (var name in tracked) {
+          var info = tracked[name];
+          if (info.deps[dep]) {
+            temp.push(name);
+          }
         }
       }
       for (var i = 0; i < temp.length; i++) {
         delete tracked[temp[i]];
       }
+      neededDepInvalidations.length = 0;
     }
     function check(node) { // checks a potential (var/assign) node for things that affect elimination. returns if ok to process this node
       //printErr('check ' + JSON.stringify(node));
@@ -1524,7 +1529,7 @@ function eliminate(ast) {
             if (!(name in potentials)) {
               // expensive check for invalidating specific tracked vars. This list is generally quite short though, because of
               // how we just eliminate in short spans and abort when control flow happens
-              invalidateByDep(name);
+              neededDepInvalidations.push(name);
             }
           } else if (node[2][0] == 'sub') {
             needMemoryInvalidated = true;
@@ -1536,7 +1541,7 @@ function eliminate(ast) {
             var name = node1i[0];
             var value = node1i[1];
             if (value && !(name in potentials)) {
-              invalidateByDep(name);
+              neededDepInvalidations.push(name);
             }
           }
         } else if (type == 'call') {
@@ -1612,6 +1617,7 @@ function eliminate(ast) {
           // apply invalidations from the check (after elimination - they affect the future, not the present)
           if (needGlobalsInvalidated) invalidateGlobals();
           if (needMemoryInvalidated) invalidateMemory();
+          if (neededDepInvalidations.length) invalidateByDeps();
           // try to track
           if (type == 'var') {
             var node1 = node[1];

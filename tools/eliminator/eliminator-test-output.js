@@ -163,9 +163,8 @@ function t() {
   }
 }
 function f2() {
-  var $_pre = HEAPU32[$vla + ($storemerge312 << 2) | 0 >> 2];
-  var $phitmp = $storemerge312 + 1 | 0;
-  var $storemerge312 = $phitmp;
+  var $_pre = HEAPU32[($vla + ($storemerge312 << 2) | 0) >> 2];
+  var $storemerge312 = $storemerge312 + 1 | 0;
   c($_pre);
 }
 function f3($s, $tree, $k) {
