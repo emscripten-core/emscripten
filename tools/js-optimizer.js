@@ -1364,6 +1364,7 @@ function registerize(ast) {
 }
 
 var ELIMINATION_SAFE_NODES = set('var', 'assign', 'call', 'if');
+var NODES_WITHOUT_ELIMINATION_SIDE_EFFECTS = set('name', 'sname', 'num', 'string', 'binary', 'sub', 'unary-prefix');
 
 function eliminate(ast) {
   // Find variables that have a single use, and if they can be eliminated, do so
@@ -1380,6 +1381,7 @@ function eliminate(ast) {
     // First, find the potentially eliminatable functions: that have one definition and one use
     var definitions = {};
     var uses = {};
+    var values = {};
     var locals = {};
     var varsToRemove = {}; // variables being removed, that we can eliminate all 'var x;' of
     traverse(func, function(node, type) {
@@ -1392,6 +1394,7 @@ function eliminate(ast) {
           if (value) {
             if (!definitions[name]) definitions[name] = 0;
             definitions[name]++;
+            values[name] = value;
           }
           if (!uses[name]) uses[name] = 0;
           locals[name] = true;
@@ -1407,6 +1410,7 @@ function eliminate(ast) {
           if (!definitions[name]) definitions[name] = 0;
           definitions[name]++;
           if (!uses[name]) uses[name] = 0;
+          values[name] = target[2];
           if (node[1] === true) { // not +=, -= etc., just =
             uses[name]--; // because the name node will show up by itself in the previous case
           }
@@ -1418,19 +1422,27 @@ function eliminate(ast) {
       if (definitions[name] == 1 && uses[name] == 1) {
         potentials[name] = 1;
       } else if (uses[name] == 0) {
-        varsToRemove[name] = 1; // variable with no uses, might as well remove it
+        var mustRemain = false;
+        if (values[name]) {
+          traverse(values[name], function(node, value) {
+            if (!(type in NODES_WITHOUT_ELIMINATION_SIDE_EFFECTS)) {
+              mustRemain = true; // cannot remove this unused variable, constructing it has side effects
+            }
+          });
+        }
+        if (!mustRemain) varsToRemove[name] = 1; // variable with no uses, might as well remove it
       }
     }
     //printErr('defs: ' + JSON.stringify(definitions));
     //printErr('uses: ' + JSON.stringify(uses));
     //printErr('locals: ' + JSON.stringify(locals));
-    definitions = uses = null;
+    definitions = uses = values = null;
     //printErr('potentials: ' + JSON.stringify(potentials));
     // We can now proceed through the function. In each list of statements, we try to eliminate
     var tracked = {};
     function track(name, value, defNode) { // add a potential that has just been defined to the tracked list, we hope to eliminate it
       var usesGlobals = false, usesMemory = false;
-      traverse(defNode, function(node, type) {
+      traverse(value, function(node, type) {
         if (type == 'name') {
           if (!(node[1] in locals)) {
             usesGlobals = true;
