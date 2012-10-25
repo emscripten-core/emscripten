@@ -176,11 +176,11 @@ function f3($s, $tree, $k) {
 }
 function llvm3_1() {
   while (check()) {
+    var $inc = $aj_0 + 1;
     if ($curri_01 % $zj_0 == 0) {
       break;
     }
-    var $j_0 = $aj_0 + 1;
-    run($j_0 / 2);
+    run($inc / 2);
   }
 }
 function _inflate($strm, $flush) {
