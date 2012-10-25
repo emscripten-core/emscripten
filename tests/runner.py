@@ -7167,8 +7167,8 @@ Options that are modified or new in %s include:
             assert ('(__label__)' in generated) == (opt_level <= 1), 'relooping should be in opt >= 2'
             assert ('assert(STACKTOP < STACK_MAX' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
             assert 'var $i;' in generated or 'var $i_01;' in generated or 'var $storemerge3;' in generated or 'var $storemerge4;' in generated or 'var $i_04;' in generated, 'micro opts should always be on'
-            if opt_level >= 1:
-              assert 'HEAP8[HEAP32[' in generated or 'HEAP8[$vla1 + (($storemerge4 | 0) / 2 & -1) | 0]' in generated or 'HEAP8[$vla1 + (($storemerge4 | 0) / 2 & -1) | 0]' in generated or 'HEAP8[$vla1 + (($i_04 | 0) / 2 & -1) | 0]' in generated or 'HEAP8[$vla1 + ($i_04 / 2 & -1)]' in generated or 'HEAP8[$1 + (($i_01 | 0) / 2 & -1) | 0]' in generated or 'HEAP8[$1 + (($i_01 | 0) / 2 & -1) | 0]' in generated or 'HEAP8[$1 + ($i_01 / 2 & -1)]' in generated, 'eliminator should create compound expressions, and fewer one-time vars'
+            if opt_level >= 2:
+              assert 'HEAP8[HEAP32[' in generated or 'HEAP8[$vla1 + (($storemerge4 | 0) / 2 & -1) | 0]' in generated or 'HEAP8[$vla1 + (($storemerge4 | 0) / 2 & -1) | 0]' in generated or 'HEAP8[$vla1 + (($i_04 | 0) / 2 & -1) | 0]' in generated or 'HEAP8[$vla1 + ($i_04 / 2 & -1)]' in generated or 'HEAP8[$1 + (($i_01 | 0) / 2 & -1) | 0]' in generated or 'HEAP8[$1 + (($i_01 | 0) / 2 & -1) | 0]' in generated or 'HEAP8[$1 + ($i_01 / 2 & -1)]' in generated, 'eliminator should create compound expressions, and fewer one-time vars' # also in -O1, but easier to test in -O2
             assert ('_puts(' in generated) == (opt_level >= 1), 'with opt >= 1, llvm opts are run and they should optimize printf to puts'
             assert ('function _malloc(bytes) {' in generated) == (not has_malloc), 'If malloc is needed, it should be there, if not not'
             assert 'function _main() {' in generated, 'Should be unminified, including whitespace'
