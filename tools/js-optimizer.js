@@ -1424,9 +1424,10 @@ function eliminate(ast) {
       } else if (uses[name] == 0) {
         var mustRemain = false;
         if (values[name]) {
-          traverse(values[name], function(node, value) {
+          traverse(values[name], function(node, type) {
             if (!(type in NODES_WITHOUT_ELIMINATION_SIDE_EFFECTS)) {
               mustRemain = true; // cannot remove this unused variable, constructing it has side effects
+              return true;
             }
           });
         }

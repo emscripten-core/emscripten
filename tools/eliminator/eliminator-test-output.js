@@ -66,6 +66,9 @@ function g(a1, a2) {
   foo(c);
   foo(2);
   for (var i = 0; i < 5; i++) {
+    var q = {
+      a: 1
+    } + [ 2, 3 ];
   }
   for (var iterator in SOME_GLOBAL) {
     quux(iterator);
