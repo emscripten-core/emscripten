@@ -1512,13 +1512,13 @@ function eliminate(ast) {
       for (var i = 0; i < temp.length; i++) {
         delete tracked[temp[i]];
       }
-      neededDepInvalidations.length = 0;
     }
     function check(node) { // checks a potential (var/assign) node for things that affect elimination. returns if ok to process this node
       //printErr('check ' + JSON.stringify(node));
       var ok = true;
       needGlobalsInvalidated = false;
       needMemoryInvalidated = false;
+      neededDepInvalidations.length = 0;
       traverse(node, function(node, type) {
         if (type == 'assign') {
           if (node[2][0] == 'name') {
