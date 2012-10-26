@@ -1442,7 +1442,7 @@ function eliminate(ast) {
     // We can now proceed through the function. In each list of statements, we try to eliminate
     var tracked = {};
     function track(name, value, defNode) { // add a potential that has just been defined to the tracked list, we hope to eliminate it
-      var usesGlobals = false, usesMemory = false, deps = {};
+      var usesGlobals = false, usesMemory = false, deps = {}, doesCall = false;
       traverse(value, function(node, type) {
         if (type == 'name') {
           var name = node[1];
@@ -1457,13 +1457,15 @@ function eliminate(ast) {
         } else if (type == 'call') {
           usesGlobals = true;
           usesMemory = true;
+          doesCall = true;        
         }
       });
       tracked[name] = {
         usesGlobals: usesGlobals,
         usesMemory: usesMemory,
         defNode: defNode,
-        deps: deps
+        deps: deps,
+        doesCall: doesCall
       };
       //printErr('track ' + [name, JSON.stringify(tracked[name])]);
     }
@@ -1471,6 +1473,7 @@ function eliminate(ast) {
     var needGlobalsInvalidated = false;
     var needMemoryInvalidated = false;
     var neededDepInvalidations = [];
+    var needCallsInvalidated = false;
     function invalidateGlobals() {
       //printErr('invalidate globals');
       temp.length = 0;
@@ -1513,6 +1516,19 @@ function eliminate(ast) {
         delete tracked[temp[i]];
       }
     }
+    function invalidateCalls() {
+      //printErr('invalidate calls');
+      temp.length = 0;
+      for (var name in tracked) {
+        var info = tracked[name];
+        if (info.doesCall) {
+          temp.push(name);
+        }
+      }
+      for (var i = 0; i < temp.length; i++) {
+        delete tracked[temp[i]];
+      }
+    }
     function check(node) { // checks a potential (var/assign) node for things that affect elimination. returns if ok to process this node
       //printErr('check ' + JSON.stringify(node));
       var ok = true;
@@ -1544,6 +1560,10 @@ function eliminate(ast) {
               neededDepInvalidations.push(name);
             }
           }
+        } else if (type == 'name') {
+          if (!(node[1] in locals)) needCallsInvalidated = true; // call might write to a global, so cannot reorder
+        } else if (type == 'sub') {
+          needCallsInvalidated = true; // call might write to memory, so cannot reorder
         } else if (type == 'call') {
           needGlobalsInvalidated = true;
           needMemoryInvalidated = true;
@@ -1626,9 +1646,11 @@ function eliminate(ast) {
             if (needGlobalsInvalidated) invalidateGlobals();
             if (needMemoryInvalidated) invalidateMemory();
             if (neededDepInvalidations.length) invalidateByDeps();
+            if (needCallsInvalidated) invalidateCalls();
             // try to track
             if (type == 'var') {
               var node1 = node[1];
+              // XXX if we have more than one, disallow tracking things with a call()
               for (var j = 0; j < node1.length; j++) {
                 var node1j = node1[j];
                 var name = node1j[0];
