@@ -15,7 +15,7 @@ Info x[3] = { {    22,      3.159,  97, 2.1828 },
               { 55123, 987612.563, 190, 0.0009 },
               {  -102,    -12.532, -21, -51252 } };
 
-int stage = 1;
+int stage = -1;
 
 int c3_7 = 0, c3_8 = 0;
 
@@ -64,6 +64,10 @@ void c2(char *data, int size, void *arg) { // tests queuing up several messages,
 
 void c1(char *data, int size, void *arg) { // tests copying + buffer enlargement
   assert((int)arg == stage);
+  if (stage == 1) {
+    printf("wait 0? %d\n", emscripten_get_worker_queue_size(w1));
+    assert(emscripten_get_worker_queue_size(w1) == 0);
+  }
   Info *x2 = (Info*)data;
   assert(x2 != x && x2 != x+1 && x2 != x+2);
   for (int i = 0; i < size/sizeof(Info); i++) {
@@ -78,9 +82,13 @@ void c1(char *data, int size, void *arg) { // tests copying + buffer enlargement
   if (stage < 2) {
     emscripten_call_worker(w1, "one", (char*)x, sizeof(Info)*3, c1, (void*)2);
   } else {
+    printf("wait 1? %d\n", emscripten_get_worker_queue_size(w1));
+    assert(emscripten_get_worker_queue_size(w1) == 0);
     emscripten_call_worker(w1, "two", (char*)&x[0], sizeof(Info), c2, (void*)3);
     emscripten_call_worker(w1, "two", (char*)&x[1], sizeof(Info), c2, (void*)4);
     emscripten_call_worker(w1, "two", (char*)&x[2], sizeof(Info), c2, (void*)5);
+    printf("wait 2? %d\n", emscripten_get_worker_queue_size(w1));
+    assert(emscripten_get_worker_queue_size(w1) == 3);
   }
   stage++;
 }
@@ -88,7 +96,12 @@ void c1(char *data, int size, void *arg) { // tests copying + buffer enlargement
 int main() {
   w1 = emscripten_create_worker("worker.js");
 
+  printf("wait -1? %d\n", emscripten_get_worker_queue_size(w1));
+  assert(emscripten_get_worker_queue_size(w1) == 0);
   emscripten_call_worker(w1, "one", (char*)x, sizeof(Info)*2, c1, (void*)1);
+  printf("wait -1? %d\n", emscripten_get_worker_queue_size(w1));
+  assert(emscripten_get_worker_queue_size(w1) == 1);
+  stage = 1; // make sure we get here
 
   return 0;
 }

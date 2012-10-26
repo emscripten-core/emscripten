@@ -574,6 +574,7 @@ mergeInto(LibraryManager.library, {
     var info = {
       worker: new Worker(url),
       callbacks: [],
+      awaited: 0,
       buffer: 0,
       bufferSize: 0
     };
@@ -583,6 +584,7 @@ mergeInto(LibraryManager.library, {
       var callbackId = msg.data['callbackId'];
       var callbackInfo = info.callbacks[callbackId];
       if (!callbackInfo) return; // no callback or callback removed meanwhile
+      info.awaited--;
       info.callbacks[callbackId] = null; // TODO: reuse callbackIds, compress this
       var data = msg.data['data'];
       if (data) {
@@ -619,6 +621,7 @@ mergeInto(LibraryManager.library, {
         func: Runtime.getFuncWrapper(callback),
         arg: arg
       });
+      info.awaited++;
     }
     info.worker.postMessage({
       'funcName': funcName,
@@ -635,6 +638,12 @@ mergeInto(LibraryManager.library, {
       'callbackId': workerCallbackId,
       'data': data ? {{{ makeHEAPView('U8', 'data', 'data + size') }}} : 0
     });
+  },
+
+  emscripten_get_worker_queue_size: function(id) {
+    var info = Browser.workers[id];
+    if (!info) return -1;
+    return info.awaited;
   }
 });
 

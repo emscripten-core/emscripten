@@ -268,6 +268,16 @@ void emscripten_call_worker(worker_t worker, const char *funcname, char *data, i
 void emscripten_worker_respond(char *data, int size);
 
 /*
+ * Checks how many responses are being waited for from a worker. This
+ * only counts calls to emscripten_call_worker that had a non-null
+ * callback (if it's null, we do not have any tracking of a response),
+ * and that the response was not yet received. It is a simple way to
+ * check on the status of the worker to see how busy it is, and do
+ * basic decisions about throttling.
+ */
+int emscripten_get_worker_queue_size(worker_t worker);
+
+/*
  * Profiling tools.
  * INIT must be called first, with the maximum identifier that
  * will be used. BEGIN will add some code that marks
