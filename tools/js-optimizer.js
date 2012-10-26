@@ -1470,6 +1470,7 @@ function eliminate(ast) {
       //printErr('track ' + [name, JSON.stringify(tracked[name])]);
     }
     var temp = [];
+    // TODO: invalidate using a sequence number for each type (if you were tracked before the last invalidation, you are cancelled). remove for.in loops
     var needGlobalsInvalidated = false;
     var needMemoryInvalidated = false;
     var neededDepInvalidations = [];
