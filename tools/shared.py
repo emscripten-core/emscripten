@@ -980,11 +980,14 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       cores = min(multiprocessing.cpu_count(), chunks)
       if os.environ.get('EMCC_DEBUG'): print >> sys.stderr, 'splitting up js optimization into %d chunks, using %d cores' % (len(chunks), cores)
       pool = multiprocessing.Pool(processes=cores)
+      commands = map(lambda command: command + ['noPrintMetadata'], commands)
       filenames = pool.map(run_js_optimizer, commands, chunksize=1)
       filename += '.jo.js'
       f = open(filename, 'w')
       for out_file in filenames:
         f.write(open(out_file).read())
+      f.write(suffix)
+      f.write('\n')
       f.close()
       return filename
     else:

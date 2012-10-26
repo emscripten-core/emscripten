@@ -1749,7 +1749,7 @@ function eliminate(ast) {
 
 // Passes table
 
-var compress = false;
+var compress = false, printMetadata = true;
 
 var passes = {
   dumpAst: dumpAst,
@@ -1765,7 +1765,8 @@ var passes = {
   loopOptimizer: loopOptimizer,
   registerize: registerize,
   eliminate: eliminate,
-  compress: function() { compress = true; }
+  compress: function() { compress = true; },
+  noPrintMetadata: function() { printMetadata = false; }
 };
 
 // Main
@@ -1789,5 +1790,6 @@ do {
   js = js.replace(/\n *\n/g, '\n');
 } while (js != old);
 print(js);
-if (metadata) print(metadata + '\n');
+if (metadata && printMetadata) print(metadata);
+print('\n');
 
