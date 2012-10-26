@@ -274,6 +274,9 @@ function dumpSrc(ast) {
 // undefined, null. These cut down on size, but do not affect gzip size
 // and make JS engine's lives slightly harder (?)
 function unGlobalize(ast) {
+
+  throw 'this is deprecated!'; // and does not work with parallel compilation
+
   assert(ast[0] == 'toplevel');
   var values = {};
   // Find global renamings of the relevant values

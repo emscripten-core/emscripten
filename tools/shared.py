@@ -969,9 +969,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
   @staticmethod
   def js_optimizer(filename, passes, maybe_big=True):
     if maybe_big:
-      # When we split up, we cannot do unGlobalize, the only pass which is *not* function-local
-      args = [filter(lambda p: p != 'unGlobalize', passes)]
-      ret = Building.splitter(filename, addendum='.jo.js', func=Building.js_optimizer, args=args)
+      ret = Building.splitter(filename, addendum='.jo.js', func=Building.js_optimizer, args=[passes])
       if ret: return ret
 
     if type(passes) == str:
