@@ -67,6 +67,18 @@ function b() {
   var $156;
   HEAP32[$139 + ($136 << 4) + 4 >> 2] = _sqlite3FindFunction($145, $147, $148, $156, $135, 0);
 }
+function c() {
+  var x = MEM[100], y = callMe(5), z = glob;
+  zoom(z);
+  hail(x * 2);
+  sunk(y);
+  barrier();
+  var y2 = $callMe2;
+  var w2 = MEM[100] * 2;
+  zoom(glob);
+  hail(w2);
+  sunk(y2);
+}
 function f() {
   HEAP[123] = (GLOB[1] + 1) / 2;
 }
@@ -6146,4 +6158,4 @@ function _mallocNoU($bytes) {
   return $mem_0;
   return null;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "b", "f", "g", "h", "py", "r", "t", "f2", "f3", "llvm3_1", "_inflate", "_malloc", "_mallocNoU"]
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "b", "c", "f", "g", "h", "py", "r", "t", "f2", "f3", "llvm3_1", "_inflate", "_malloc", "_mallocNoU"]

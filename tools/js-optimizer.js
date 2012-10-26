@@ -1474,6 +1474,7 @@ function eliminate(ast) {
     var needMemoryInvalidated = false;
     var neededDepInvalidations = [];
     var needCallsInvalidated = false;
+    var seenCall = false;
     function invalidateGlobals() {
       //printErr('invalidate globals');
       temp.length = 0;
@@ -1535,6 +1536,8 @@ function eliminate(ast) {
       needGlobalsInvalidated = false;
       needMemoryInvalidated = false;
       neededDepInvalidations.length = 0;
+      needCallsInvalidated = false;
+      seenCall = false;
       traverse(node, function(node, type) {
         if (type == 'assign') {
           if (node[2][0] == 'name') {
@@ -1567,6 +1570,7 @@ function eliminate(ast) {
         } else if (type == 'call') {
           needGlobalsInvalidated = true;
           needMemoryInvalidated = true;
+          seenCall = true;
         } else if (type == 'seq' || type in CONTROL_FLOW) {
           tracked = {};
           ok = false;
@@ -1650,7 +1654,7 @@ function eliminate(ast) {
             // try to track
             if (type == 'var') {
               var node1 = node[1];
-              // XXX if we have more than one, disallow tracking things with a call()
+              if (seenCall && node1.length > 1) continue; // if we have a call, we cannot track if there is more than one
               for (var j = 0; j < node1.length; j++) {
                 var node1j = node1[j];
                 var name = node1j[0];
