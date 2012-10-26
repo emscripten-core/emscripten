@@ -251,7 +251,7 @@ var Functions = {
     var indices = vals.toString().replace('"', '');
     if (BUILD_AS_SHARED_LIB) {
       // Shared libraries reuse the parent's function table.
-      return 'FUNCTION_TABLE = FUNCTION_TABLE.concat([' + indices + ']);';
+      return 'FUNCTION_TABLE.push.apply(FUNCTION_TABLE, [' + indices + ']);';
     } else {
       return 'FUNCTION_TABLE = [' + indices + ']; Module["FUNCTION_TABLE"] = FUNCTION_TABLE;';
     }
