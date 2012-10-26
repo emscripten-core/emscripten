@@ -578,7 +578,7 @@ var STATICTOP;
 function enlargeMemory() {
   // TOTAL_MEMORY is the current size of the actual array, and STATICTOP is the new top.
 #if ASSERTIONS
-  Module.printErr('Warning: Enlarging memory arrays, this is not fast! ' + [STATICTOP, TOTAL_MEMORY]);
+  Module.printErr('Warning: Enlarging memory arrays, this is not fast, and can also break in high optimization levels where we assume globals are not modified! ' + [STATICTOP, TOTAL_MEMORY]); // XXX perhaps never do elimination optimizations of calls that can lead to resizing, to avoid HEAP[malloc()] = X; where JS semantic will write to the old HEAP if malloc replaces it
   assert(STATICTOP >= TOTAL_MEMORY);
   assert(TOTAL_MEMORY > 4); // So the loop below will not be infinite
 #endif
