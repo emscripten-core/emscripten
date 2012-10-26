@@ -1547,7 +1547,7 @@ function eliminate(ast) {
         } else if (type == 'call') {
           needGlobalsInvalidated = true;
           needMemoryInvalidated = true;
-        } else if (type == 'seq') {
+        } else if (type == 'seq' || type in CONTROL_FLOW) {
           tracked = {};
           ok = false;
           return true;
@@ -1609,35 +1609,42 @@ function eliminate(ast) {
         }
         // Check for things that affect elimination
         if (type in ELIMINATION_SAFE_NODES) {
-          if (type == 'if') node = node[1]; // we can eliminate in the condition, but not otherwise. note: node and type are now out of sync
-          // can we eliminate and/or track?
-          if (!check(node)) continue;
-          // try to eliminate
-          tryEliminate(node);
-          // apply invalidations from the check (after elimination - they affect the future, not the present)
-          if (needGlobalsInvalidated) invalidateGlobals();
-          if (needMemoryInvalidated) invalidateMemory();
-          if (neededDepInvalidations.length) invalidateByDeps();
-          // try to track
-          if (type == 'var') {
-            var node1 = node[1];
-            for (var j = 0; j < node1.length; j++) {
-              var node1j = node1[j];
-              var name = node1j[0];
-              var value = node1j[1];
-              if (value && (name in potentials)) {
-                track(name, value, node);
+          if (type == 'if') {
+            // ifs are special. If we can eliminate into the condition, but not the body, that's ok. If we cannot check a part, we abort
+            if (!check(node[1])) { tracked = {}; continue; }
+            tryEliminate(node[1]);
+            if (!check(node[2])) { tracked = {}; continue; } // do not tolerate TODO: actually if 2 fails but 3 checks, it is ok to elim there
+            tryEliminate(node[2]);
+            if (node[3]) {
+              if (!check(node[3])) { tracked = {}; continue; } // do not tolerate
+              tryEliminate(node[3]);
+            }
+          } else { // anything but if: var, assign, etc.
+            if (!check(node)) continue;
+            tryEliminate(node);
+            // apply invalidations from the check (after elimination - they affect the future, not the present)
+            if (needGlobalsInvalidated) invalidateGlobals();
+            if (needMemoryInvalidated) invalidateMemory();
+            if (neededDepInvalidations.length) invalidateByDeps();
+            // try to track
+            if (type == 'var') {
+              var node1 = node[1];
+              for (var j = 0; j < node1.length; j++) {
+                var node1j = node1[j];
+                var name = node1j[0];
+                var value = node1j[1];
+                if (value && (name in potentials)) {
+                  track(name, value, node);
+                }
+              }
+            } else if (type == 'assign') {
+              if (node[1] === true && node[2][0] == 'name') {
+                var name = node[2][1];
+                if (name in potentials) {
+                  track(name, node[3], node);
+                }
               }
             }
-          } else if (type == 'assign') {
-            if (node[1] === true && node[2][0] == 'name') {
-              var name = node[2][1];
-              if (name in potentials) {
-                track(name, node[3], node);
-              }
-            }
-          } else if (type == 'if') {
-            tracked = {}; // hopefully we eliminated in the condition, but must abort after it
           }
         } else {
           tracked = {}; // not a var or assign, break all potential elimination so far
