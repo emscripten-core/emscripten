@@ -31,13 +31,6 @@ namespace emscripten {
             }
         };
         
-        template<typename T>
-        struct TypeID<std::shared_ptr<T>> {
-            static TYPEID get() {
-                return TypeID<T>::get();
-            }
-        };
-
         // count<>
 
         template<typename... Args>

@@ -402,7 +402,7 @@ function __embind_register_smart_ptr(
         this.smartPointer = undefined;
         this.ptr = undefined;
     }
-    
+
     typeRegistry[pointerType] = {
         name: name,
         fromWireType: function(ptr) {
@@ -427,20 +427,6 @@ function __embind_register_class(
         this.ptr = ptr;
     });
 
-    Handle.prototype.clone = function() {
-        if (!this.ptr) {
-            throw new BindingError(pointeeType.name + ' instance already deleted');
-        }
-
-        var clone = Object.create(Handle.prototype);
-        clone.count = this.count;
-        clone.smartPointer = this.smartPointer;
-        clone.ptr = this.ptr;
-        
-        clone.count.value += 1;
-        return clone;
-    };
-    
     Handle.prototype.clone = function() {
         if (!this.ptr) {
             throw new BindingError(classType.name + ' instance already deleted');
@@ -533,6 +519,7 @@ function __embind_register_class_method(
     classType = requireRegisteredType(classType, 'class');
     methodName = Pointer_stringify(methodName);
     var humanName = classType.name + '.' + methodName;
+
     returnType = requireRegisteredType(returnType, 'method ' + humanName + ' return value');
     argTypes = requireArgumentTypes(argCount, argTypes, 'method ' + humanName);
     invoker = FUNCTION_TABLE[invoker];
@@ -553,7 +540,7 @@ function __embind_register_class_method(
         for (var i = 0; i < argCount; ++i) {
             args[i + 2] = argTypes[i].toWireType(destructors, arguments[i]);
         }
-        
+
         var rv = returnType.fromWireType(invoker.apply(null, args));
         runDestructors(destructors);
         return rv;
