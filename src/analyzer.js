@@ -969,7 +969,8 @@ function analyzer(data, sidePass) {
   //
   // Analyze our variables and detect their signs. In USE_TYPED_ARRAYS == 2,
   // we can read signed or unsigned values and prevent the need for signing
-  // corrections.
+  // corrections. If on the other hand we are doing corrections anyhow, then
+  // we can skip this pass.
   //
   // For each variable that is the result of a Load, we look a little forward
   // to see where it is used. We only care about mathops, since only they
@@ -978,7 +979,7 @@ function analyzer(data, sidePass) {
   substrate.addActor('Signalyzer', {
     processItem: function(item) {
       this.forwardItem(item, 'QuantumFixer');
-      if (USE_TYPED_ARRAYS !== 2) return;
+      if (USE_TYPED_ARRAYS != 2 || CORRECT_SIGNS == 1) return;
 
       function seekIdent(item, obj) {
         if (item.ident === obj.ident) {
