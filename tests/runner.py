@@ -4341,6 +4341,26 @@ Pass: 123456.789000 123456.789000
 Pass: 0.000012 0.000012
 Pass: 0.000012 0.000012''')
 
+    def test_sscanf_n(self):
+      src = r'''
+        #include<stdio.h>
+        int main() {
+          char *line = "version 1.0";
+          int i, l, lineno;
+          char word[80];
+          if (sscanf(line, "%s%n", word, &l) != 1) {
+              printf("Header format error, line %d\n", lineno);
+          }
+          printf("[DEBUG] word 1: %s, l: %d\n", word, l);
+
+          int x = sscanf("one %n two", "%s %n", word, &l);
+          printf("%d,%s,%d\n", x, word, l);
+
+          return 0;
+        }
+      '''
+      self.do_run(src, '''[DEBUG] word 1: version, l: 7\n1,one,4''')
+
     def test_langinfo(self):
       src = open(path_from_root('tests', 'langinfo', 'test.c'), 'r').read()
       expected = open(path_from_root('tests', 'langinfo', 'output.txt'), 'r').read()

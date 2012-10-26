@@ -2437,6 +2437,20 @@ LibraryManager.library = {
     // Supports %x, %4x, %d.%d, %s, %f, %lf.
     // TODO: Support all format specifiers.
     format = Pointer_stringify(format);
+    var soFar = 0;
+    if (format.indexOf('%n') >= 0) {
+      // need to track soFar
+      var _get = get;
+      get = function() {
+        soFar++;
+        return _get();
+      }
+      var _unget = unget;
+      unget = function() {
+        soFar--;
+        return _unget();
+      }
+    }
     var formatIndex = 0;
     var argsi = 0;
     var fields = 0;
@@ -2450,6 +2464,7 @@ LibraryManager.library = {
     } 
     unget(next);
     next = 1;
+    mainLoop:
     for (var formatIndex = 0; formatIndex < format.length; formatIndex++) {
       if (next <= 0) return fields;
       var next = get();
@@ -2493,7 +2508,7 @@ LibraryManager.library = {
             unget(buffer.pop().charCodeAt(0));
           }
           next = get();
-        } else {
+        } else if (type != 'n') {
           var first = true;
           while ((curr < max_ || isNaN(max_)) && next > 0) {
             if (!(next in __scanString.whiteSpace) && // stop on whitespace
@@ -2513,7 +2528,7 @@ LibraryManager.library = {
             first = false;
           }
         }
-        if (buffer.length === 0) return 0;  // Failure.
+        if (buffer.length === 0 && type != 'n') return 0;  // Failure.
         var text = buffer.join('');
         var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
         argIndex += Runtime.getNativeFieldSize('void*');
@@ -2541,21 +2556,29 @@ LibraryManager.library = {
               {{{ makeSetValue('argPtr', 'j', 'array[j]', 'i8') }}}
             }
             break;
+          case 'n':
+            {{{ makeSetValue('argPtr', 0, 'soFar-1', 'i32') }}}
+            break;
         }
-        fields++;
+        if (type != 'n') fields++;
       } else if (format[formatIndex] in __scanString.whiteSpace) {
         while (next in __scanString.whiteSpace) {
           next = get();
-          if (next <= 0) return fields;  // End of input.
+          if (next <= 0) break mainLoop;  // End of input.
         }
         unget(next);
       } else {
         // Not a specifier.
         if (format[formatIndex].charCodeAt(0) !== next) {
           unget(next);
-          return fields;
+          break mainLoop;
         }
       }
+    }
+    // 'n' is special in that it needs no input. so it can be at the end, even with nothing left to read
+    if (format[formatIndex-1] == '%' && format[formatIndex] == 'n') {
+      var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
+      {{{ makeSetValue('argPtr', 0, 'soFar-1', 'i32') }}}
     }
     return fields;
   },
