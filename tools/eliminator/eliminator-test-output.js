@@ -56,6 +56,17 @@ function a() {
   chak();
   tor(HEAP[9]);
 }
+function b() {
+  var $148 = _sqlite3Strlen30($147);
+  var $150 = HEAP32[$pExpr + 16 >> 2];
+  if (($150 | 0) == 0) {
+    var $156 = 0;
+  } else {
+    var $156 = HEAP32[$150 >> 2];
+  }
+  var $156;
+  HEAP32[$139 + ($136 << 4) + 4 >> 2] = _sqlite3FindFunction($145, $147, $148, $156, $135, 0);
+}
 function f() {
   HEAP[123] = (GLOB[1] + 1) / 2;
 }
@@ -6135,4 +6146,4 @@ function _mallocNoU($bytes) {
   return $mem_0;
   return null;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "f", "g", "h", "py", "r", "t", "f2", "f3", "llvm3_1", "_inflate", "_malloc", "_mallocNoU"]
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "b", "f", "g", "h", "py", "r", "t", "f2", "f3", "llvm3_1", "_inflate", "_malloc", "_mallocNoU"]
