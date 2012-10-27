@@ -1,4 +1,5 @@
-function a() {
+function a($directory) {
+  chak($directory + _strlen($directory) | 0);
   var $210 = HEAP32[100];
   HEAP32[1e3] = HEAP32[5];
   HEAP32[90] = $210;

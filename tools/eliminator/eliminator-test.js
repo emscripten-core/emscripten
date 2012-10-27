@@ -1,4 +1,7 @@
-function a() {
+function a($directory) {
+  var $1 = _strlen($directory);
+  var $p_0 = $directory + $1 | 0;
+  chak($p_0);
   var $210 = HEAP32[100]; // heaps alias each other! so this cannot be eliminated
   HEAP32[1e3] = HEAP32[5];
   HEAP32[90] = $210;

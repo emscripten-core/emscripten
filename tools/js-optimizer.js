@@ -1382,6 +1382,13 @@ function eliminate(ast) {
     var values = {};
     var locals = {};
     var varsToRemove = {}; // variables being removed, that we can eliminate all 'var x;' of
+    // add arguments as locals
+    if (func[2]) {
+      for (var i = 0; i < func[2].length; i++) {
+        locals[func[2][i]] = true;
+      }
+    }
+    // examine body and note locals
     traverse(func, function(node, type) {
       if (type === 'var') {
         var node1 = node[1];
