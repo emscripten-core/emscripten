@@ -1368,7 +1368,7 @@ function registerize(ast) {
 
 var ELIMINATION_SAFE_NODES = set('var', 'assign', 'call', 'if', 'toplevel');
 var NODES_WITHOUT_ELIMINATION_SIDE_EFFECTS = set('name', 'num', 'string', 'binary', 'sub', 'unary-prefix');
-var IGNORABLE_ELIMINATOR_SCAN_NODES = set('num', 'toplevel', 'string', 'break', 'continue', 'dot'); // dot can only be STRING_TABLE.*
+var IGNORABLE_ELIMINATOR_SCAN_NODES = set('num', 'toplevel', 'string', 'break', 'continue', 'dot', 'return'); // dot can only be STRING_TABLE.*
 
 function eliminate(ast) {
   // Find variables that have a single use, and if they can be eliminated, do so
