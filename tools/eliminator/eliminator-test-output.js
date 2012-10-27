@@ -3660,7 +3660,8 @@ function _malloc($bytes) {
                 HEAP32[(_mparams + 16 | 0) >> 2] = 2097152;
                 HEAP32[(_mparams + 20 | 0) >> 2] = 0;
                 HEAP32[(__gm_ + 440 | 0) >> 2] = 0;
-                HEAP32[(_mparams | 0) >> 2] = _time(0) & -16 ^ 1431655768;
+                var $762 = _time(0) & -16 ^ 1431655768;
+                HEAP32[(_mparams | 0) >> 2] = $762;
               } else {
                 _abort();
               }
@@ -5309,7 +5310,8 @@ function _mallocNoU($bytes) {
                 HEAP32[(_mparams + 16 | 0) >> 2] = 2097152;
                 HEAP32[(_mparams + 20 | 0) >> 2] = 0;
                 HEAP32[(__gm_ + 440 | 0) >> 2] = 0;
-                HEAP32[(_mparams | 0) >> 2] = _time(0) & -16 ^ 1431655768;
+                var $762 = _time(0) & -16 ^ 1431655768;
+                HEAP32[(_mparams | 0) >> 2] = $762;
               } else {
                 _abort();
               }
