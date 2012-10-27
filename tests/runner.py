@@ -5870,13 +5870,7 @@ def process(filename):
 
         return output
 
-      try:
-        # some test coverage for EMCC_DEBUG
-        adding_debug = self.emcc_args and '-O2' in self.emcc_args and 'EMCC_DEBUG' not in os.environ
-        if adding_debug:
-          print >> sys.stderr, 'running in EMCC_DEBUG mode for test coverage'
-          os.environ['EMCC_DEBUG'] = '1'
-
+      def do_test():
         self.do_run(open(path_from_root('tests', 'openjpeg', 'codec', 'j2k_to_image.c'), 'r').read(),
                      'Successfully generated', # The real test for valid output is in image_compare
                      '-i image.j2k -o image.raw'.split(' '),
@@ -5888,8 +5882,19 @@ def process(filename):
                      force_c=True,
                      post_build=post,
                      output_nicerizer=image_compare)#, build_ll_hook=self.do_autodebug)
-      finally:
-        if adding_debug: del os.environ['EMCC_DEBUG']
+
+      do_test()
+
+      # some test coverage for EMCC_DEBUG
+      if self.emcc_args and '-O2' in self.emcc_args and 'EMCC_DEBUG' not in os.environ:
+        shutil.copyfile('src.c.o.js', 'release.js')
+        try:
+          os.environ['EMCC_DEBUG'] = '1'
+          do_test()
+        finally:
+          del os.environ['EMCC_DEBUG']
+        shutil.copyfile('src.c.o.js', 'debug.js')
+        self.assertIdentical(open('release.js').read().replace('\n\n', '\n').replace('\n\n', '\n'), open('debug.js').read().replace('\n\n', '\n').replace('\n\n', '\n')) # EMCC_DEBUG=1 mode must not generate different code!
 
     def test_python(self):
       if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: make this work')
