@@ -56,10 +56,8 @@ function a() {
   chak();
   tor(HEAP[9]);
   barrier();
-  var $65, $image, $51$s2, $71;
-  var $66 = HEAP32[$65 >> 2];
-  var $71 = $66 - _int_ceildiv(HEAP32[$image >> 2], HEAP32[$51$s2]) | 0;
-  HEAP32[$65 >> 2] = _int_ceildivpow2($71, HEAP32[$51$s2 + 10]);
+  var $65, $image, $51$s2;
+  HEAP32[$65 >> 2] = _int_ceildivpow2(HEAP32[$65 >> 2] - _int_ceildiv(HEAP32[$image >> 2], HEAP32[$51$s2]) | 0, HEAP32[$51$s2 + 10]);
 }
 function b() {
   var $148 = _sqlite3Strlen30($147);
@@ -73,8 +71,8 @@ function b() {
   HEAP32[$139 + ($136 << 4) + 4 >> 2] = _sqlite3FindFunction($145, $147, $148, $156, $135, 0);
 }
 function c() {
-  var x = MEM[100], y = callMe(5), z = glob;
-  zoom(z);
+  var x = MEM[100], y = callMe(5);
+  zoom(glob);
   hail(x * 2);
   sunk(y);
   barrier();

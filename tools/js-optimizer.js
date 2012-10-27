@@ -1367,19 +1367,13 @@ function registerize(ast) {
 }
 
 var ELIMINATION_SAFE_NODES = set('var', 'assign', 'call', 'if', 'toplevel');
-var NODES_WITHOUT_ELIMINATION_SIDE_EFFECTS = set('name', 'sname', 'num', 'string', 'binary', 'sub', 'unary-prefix');
+var NODES_WITHOUT_ELIMINATION_SIDE_EFFECTS = set('name', 'num', 'string', 'binary', 'sub', 'unary-prefix');
+var IGNORABLE_ELIMINATOR_SCAN_NODES = set('num', 'toplevel', 'string', 'break', 'continue', 'dot'); // dot can only be STRING_TABLE.*
 
 function eliminate(ast) {
   // Find variables that have a single use, and if they can be eliminated, do so
   traverseGeneratedFunctions(ast, function(func, type) {
     //printErr('eliminate in ' + func[1]);
-
-    // 'hide' X in X[10] so we don't get confused by it - these do not matter to variable effects
-    traverse(func, function(node, type) {
-      if (type === 'sub' && node[1][0] == 'name') {
-        node[1][0] = 'sname';
-      }
-    });
 
     // First, find the potentially eliminatable functions: that have one definition and one use
     var definitions = {};
@@ -1444,23 +1438,35 @@ function eliminate(ast) {
     //printErr('potentials: ' + JSON.stringify(potentials));
     // We can now proceed through the function. In each list of statements, we try to eliminate
     var tracked = {};
+    var globalsInvalidated = false; // do not repeat invalidations, until we track something new
+    var memoryInvalidated = false;
+    var callsInvalidated = false;
     function track(name, value, defNode) { // add a potential that has just been defined to the tracked list, we hope to eliminate it
       var usesGlobals = false, usesMemory = false, deps = {}, doesCall = false;
+      var ignoreName = false; // one-time ignorings of names, as first op in sub and call
       traverse(value, function(node, type) {
         if (type == 'name') {
-          var name = node[1];
-          if (!(name in locals)) {
-            usesGlobals = true;
-          }
-          if (!(name in potentials)) { // deps do not matter for potentials - they are defined once, so no complexity
-            deps[name] = 1;
+          if (!ignoreName) {
+            var name = node[1];
+            if (!(name in locals)) {
+              usesGlobals = true;
+            }
+            if (!(name in potentials)) { // deps do not matter for potentials - they are defined once, so no complexity
+              deps[name] = 1;
+            }
+          } else {
+            ignoreName = false;
           }
         } else if (type == 'sub') {
           usesMemory = true;
+          ignoreName = true;
         } else if (type == 'call') {
           usesGlobals = true;
           usesMemory = true;
           doesCall = true;        
+          ignoreName = true;
+        } else {
+          ignoreName = false;
         }
       });
       tracked[name] = {
@@ -1470,15 +1476,13 @@ function eliminate(ast) {
         deps: deps,
         doesCall: doesCall
       };
+      globalsInvalidated = false;
+      memoryInvalidated = false;
+      callsInvalidated = false;
       //printErr('track ' + [name, JSON.stringify(tracked[name])]);
     }
     var temp = [];
     // TODO: invalidate using a sequence number for each type (if you were tracked before the last invalidation, you are cancelled). remove for.in loops
-    var needGlobalsInvalidated = false;
-    var needMemoryInvalidated = false;
-    var neededDepInvalidations = [];
-    var needCallsInvalidated = false;
-    var seenCall = false;
     function invalidateGlobals() {
       //printErr('invalidate globals');
       temp.length = 0;
@@ -1505,16 +1509,13 @@ function eliminate(ast) {
         delete tracked[temp[i]];
       }
     }
-    function invalidateByDeps() {
+    function invalidateByDep(dep) {
+      //printErr('invalidate by dep ' + dep);
       temp.length = 0;
-      for (var i = 0; i < neededDepInvalidations.length; i++) {
-        var dep = neededDepInvalidations[i];
-        //printErr('invalidate by dep ' + dep);
-        for (var name in tracked) {
-          var info = tracked[name];
-          if (info.deps[dep]) {
-            temp.push(name);
-          }
+      for (var name in tracked) {
+        var info = tracked[name];
+        if (info.deps[dep]) {
+          temp.push(name);
         }
       }
       for (var i = 0; i < temp.length; i++) {
@@ -1534,94 +1535,160 @@ function eliminate(ast) {
         delete tracked[temp[i]];
       }
     }
-    function check(node) { // checks a potential (var/assign) node for things that affect elimination. returns if ok to process this node
-      //printErr('check ' + JSON.stringify(node));
-      var ok = true;
-      needGlobalsInvalidated = false;
-      needMemoryInvalidated = false;
-      neededDepInvalidations.length = 0;
-      needCallsInvalidated = false;
-      seenCall = false;
-      traverse(node, function(node, type) {
+
+    // Generate the sequence of execution. This determines what is executed before what, so we know what can be reordered. Using
+    // that, performs invalidations and eliminations
+    function scan(node) {
+      //printErr('scan: ' + JSON.stringify(node).substr(0, 50) + ' : ' + keys(tracked));
+      var abort = false;
+      var allowTracking = true; // false inside an if; also prevents recursing in an if
+      function traverseInOrder(node, ignoreSub, ignoreName) {
+        if (abort) return;
+        //printErr('  trav: ' + JSON.stringify(node).substr(0, 50) + ' : ' + keys(tracked));
+        var type = node[0];
         if (type == 'assign') {
-          if (node[2][0] == 'name') {
-            var name = node[2][1];
-            if (!(name in locals)) {
-              needGlobalsInvalidated = true;
-            }
+          var target = node[2];
+          var nameTarget = target[0] == 'name';
+          traverseInOrder(target, true, nameTarget); // evaluate left
+          traverseInOrder(node[3]); // evaluate right
+          // do the actual assignment
+          if (nameTarget) {
+            var name = target[1];
             if (!(name in potentials)) {
               // expensive check for invalidating specific tracked vars. This list is generally quite short though, because of
-              // how we just eliminate in short spans and abort when control flow happens
-              neededDepInvalidations.push(name);
+              // how we just eliminate in short spans and abort when control flow happens TODO: history numbers instead
+              invalidateByDep(name); // can happen more than once per dep..
+              if (!(name in locals) && !globalsInvalidated) {
+                invalidateGlobals();
+                globalsInvalidated = true;
+              }
+            } else {
+              if (allowTracking) track(name, node[3], node);
             }
-          } else if (node[2][0] == 'sub') {
-            needMemoryInvalidated = true;
+          } else if (target[0] == 'sub') {
+            if (!memoryInvalidated) {
+              invalidateMemory();
+              memoryInvalidated = true;
+            }
+          }
+        } else if (type == 'sub') {
+          traverseInOrder(node[1], false, true); // evaluate inner
+          traverseInOrder(node[2]); // evaluate outer
+          if (!ignoreSub) { // ignoreSub means we are a write (happening later), not a read
+            // do the memory access
+            if (!callsInvalidated) {
+              invalidateCalls();
+              callsInvalidated = true;
+            }
           }
         } else if (type == 'var') {
-          var node1 = node[1];
-          for (var i = 0; i < node1.length; i++) {
-            var node1i = node1[i];
-            var name = node1i[0];
-            var value = node1i[1];
-            if (value && !(name in potentials)) {
-              neededDepInvalidations.push(name);
-            }
-          }
-        } else if (type == 'name') {
-          if (!(node[1] in locals)) needCallsInvalidated = true; // call might write to a global, so cannot reorder
-        } else if (type == 'sub') {
-          needCallsInvalidated = true; // call might write to memory, so cannot reorder
-        } else if (type == 'call') {
-          needGlobalsInvalidated = true;
-          needMemoryInvalidated = true;
-          seenCall = true;
-        } else if (type == 'seq' || type in CONTROL_FLOW) {
-          tracked = {};
-          ok = false;
-          return true;
-        }
-      });
-      return ok;
-    }
-    function tryEliminate(base) { // it is ok to try to eliminate on this node, try all currently tracked
-      //printErr('tryelim ' + JSON.stringify(node));
-      traverse(base, function(node, type) {
-        if (type == 'name') {
-          var name = node[1];
-          if (name in tracked) {
-            var value;
-            //printErr('elim!!!!! ' + name);
-            // yes, eliminate!
-            varsToRemove[name] = 1; // both assign and var definitions can have other vars we must clean up
-            var info = tracked[name];
-            delete tracked[name];
-            var defNode = info.defNode;
-            if (defNode[0] == 'var') {
-              defNode[1].forEach(function(pair) {
-                if (pair[0] == name) {
-                  value = pair[1];
-                }
-              });
-              assert(value);
-            } else { // assign
-              value = defNode[3];
-              // wipe out the assign
-              defNode[0] = 'toplevel';
-              defNode[1] = [];
-              defNode.length = 2;
-            }
-            if (base != node) {
-              return value;
-            } else {
-              // replace this node in-place (we may be traversing on ['name', 'X'] without a parent, so cannot substitute in)
-              node.length = 0;
-              for (var i = 0; i < value.length; i++) {
-                node[i] = value[i];
+          var vars = node[1];
+          for (var i = 0; i < vars.length; i++) {
+            var name = vars[i][0];
+            var value = vars[i][1];
+            if (value) {
+              traverseInOrder(value);
+              if (name in potentials && allowTracking) {
+                track(name, value, node);
               }
             }
           }
+        } else if (type == 'binary') {
+          traverseInOrder(node[2]);
+          traverseInOrder(node[3]);
+        } else if (type == 'name') {
+          if (!ignoreName) { // ignoreName means we are the name of something like a call or a sub - irrelevant for us
+            var name = node[1];
+            if (name in tracked) {
+              doEliminate(name, node);
+            } else if (!(name in locals) && !globalsInvalidated) {
+              invalidateGlobals();
+              globalsInvalidated = true;
+            }
+          }
+        } else if (type == 'unary-prefix' || type == 'unary-postfix') {
+          traverseInOrder(node[2]);
+        } else if (type in IGNORABLE_ELIMINATOR_SCAN_NODES) {
+        } else if (type == 'call') {
+          traverseInOrder(node[1], false, true);
+          var args = node[2];
+          for (var i = 0; i < args.length; i++) {
+            traverseInOrder(args[i]);
+          }
+          // these two invalidations will also invalidate calls
+          if (!globalsInvalidated) {
+            invalidateGlobals();
+            globalsInvalidated = true;
+          }
+          if (!memoryInvalidated) {
+            invalidateMemory();
+            memoryInvalidated = true;
+          }
+        } else if (type == 'if') {
+          if (allowTracking) {
+            traverseInOrder(node[1]); // can eliminate into condition, but nowhere else
+            allowTracking = false;
+            traverseInOrder(node[2]); // 2 and 3 could be 'parallel', really..
+            if (node[3]) traverseInOrder(node[3]);
+            allowTracking = true;
+          } else {
+            tracked = {};
+            abort = true;
+          }
+        } else if (type == 'block') {
+          var stats = node[1];
+          for (var i = 0; i < stats.length; i++) {
+            traverseInOrder(stats[i]);
+          }
+        } else if (type == 'stat') {
+          traverseInOrder(node[1]);
+        } else if (type == 'label') {
+          traverseInOrder(node[2]);
+        } else if (type == 'while') {
+          traverseInOrder(node[1]);
+          traverseInOrder(node[2]);
+        } else if (type == 'do') {
+          traverseInOrder(node[1]);
+          if (node[2]) traverseInOrder(node[2]);
+        } else if (type == 'conditional') {
+          traverseInOrder(node[1]);
+          traverseInOrder(node[2]);
+          traverseInOrder(node[3]);
+        } else if (type == 'new' || type == 'object') {
+          tracked = {}; // we could do this, but nevermind
+          abort = true;
+        } else {
+          throw 'unfamiliar eliminator scan node: ' + JSON.stringify(node);
         }
-      });
+      }
+      traverseInOrder(node);
+    }
+    function doEliminate(name, node) {
+      //printErr('elim!!!!! ' + name);
+      // yes, eliminate!
+      varsToRemove[name] = 1; // both assign and var definitions can have other vars we must clean up
+      var info = tracked[name];
+      delete tracked[name];
+      var defNode = info.defNode;
+      if (defNode[0] == 'var') {
+        defNode[1].forEach(function(pair) {
+          if (pair[0] == name) {
+            value = pair[1];
+          }
+        });
+        assert(value);
+      } else { // assign
+        value = defNode[3];
+        // wipe out the assign
+        defNode[0] = 'toplevel';
+        defNode[1] = [];
+        defNode.length = 2;
+      }
+      // replace this node in-place
+      node.length = 0;
+      for (var i = 0; i < value.length; i++) {
+        node[i] = value[i];
+      }
     }
     traverse(func, function(block) {
       var stats = getStatements(block);
@@ -1630,54 +1697,13 @@ function eliminate(ast) {
       for (var i = 0; i < stats.length; i++) {
         var node = stats[i];
         var type = node[0];
-        //printErr('line ' + i + ' : ' + JSON.stringify(node));
         if (type == 'stat') {
           node = node[1];
           type = node[0];
         }
         // Check for things that affect elimination
         if (type in ELIMINATION_SAFE_NODES) {
-          if (type == 'if') {
-            // ifs are special. If we can eliminate into the condition, but not the body, that's ok. If we cannot check a part, we abort
-            if (!check(node[1])) { tracked = {}; continue; }
-            tryEliminate(node[1]);
-            if (!check(node[2])) { tracked = {}; continue; } // do not tolerate TODO: actually if 2 fails but 3 checks, it is ok to elim there
-            tryEliminate(node[2]);
-            if (node[3]) {
-              if (!check(node[3])) { tracked = {}; continue; } // do not tolerate
-              tryEliminate(node[3]);
-            }
-          } else if (type == 'toplevel') {
-            if (node[1].length != 0) tracked = {}; // ['toplevel', []] is an empty node, anything else is dangerous
-          } else { // anything else: var, assign, etc.
-            if (!check(node)) continue;
-            tryEliminate(node);
-            // apply invalidations from the check (after elimination - they affect the future, not the present)
-            if (needGlobalsInvalidated) invalidateGlobals();
-            if (needMemoryInvalidated) invalidateMemory();
-            if (neededDepInvalidations.length) invalidateByDeps();
-            if (needCallsInvalidated) invalidateCalls();
-            // try to track
-            if (type == 'var') {
-              var node1 = node[1];
-              if (seenCall && node1.length > 1) continue; // if we have a call, we cannot track if there is more than one
-              for (var j = 0; j < node1.length; j++) {
-                var node1j = node1[j];
-                var name = node1j[0];
-                var value = node1j[1];
-                if (value && (name in potentials)) {
-                  track(name, value, node);
-                }
-              }
-            } else if (type == 'assign') {
-              if (node[1] === true && node[2][0] == 'name') {
-                var name = node[2][1];
-                if (name in potentials) {
-                  track(name, node[3], node);
-                }
-              }
-            }
-          }
+          scan(node);
         } else {
           tracked = {}; // not a var or assign, break all potential elimination so far
         }
@@ -1694,13 +1720,6 @@ function eliminate(ast) {
           node[0] = 'toplevel';
           node[1] = [];
         }
-      }
-    });
-
-    // Undo X[10] hiding
-    traverse(func, function(node, type) {
-      if (type === 'sname') {
-        node[0] = 'name';
       }
     });
   });
