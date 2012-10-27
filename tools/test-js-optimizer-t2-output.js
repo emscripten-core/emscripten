@@ -89,3 +89,4 @@ function shifty($id2) {
   q(go() + 2 >> 2);
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["shifty"]
+
