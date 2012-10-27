@@ -1366,6 +1366,35 @@ function registerize(ast) {
   });
 }
 
+// Eliminator aka Expressionizer
+//
+// The goal of this pass is to eliminate unneeded variables (which represent one of the infinite registers in the LLVM
+// model) and thus to generate complex expressions where possible, for example
+//
+//  var x = a(10);
+//  var y = HEAP[20];
+//  print(x+y);
+//
+// can be transformed into
+//
+//  print(a(10)+HEAP[20]);
+//
+// The basic principle is to scan along the code in the order of parsing/execution, and keep a list of tracked
+// variables that are current contenders for elimination. We must untrack when we see something that we cannot
+// cross, for example, a write to memory means we must invalidate variables that depend on reading from
+// memory, since if we change the order then we do not preserve the computation.
+//
+// We rely on some assumptions about emscripten-generated code here, which means we can do a lot more than
+// a general JS optimization can. For example, we assume that 'sub' nodes (indexing like HEAP[..]) are
+// memory accesses or FUNCTION_TABLE accesses, and in both cases that the symbol cannot be replaced although
+// the contents can. So we assume FUNCTION_TABLE might have its contents changed but not be pointed to
+// a different object, which allows
+//
+//  var x = f();
+//  FUNCTION_TABLE[x]();
+//
+// to be optimized (f could replace FUNCTION_TABLE, so in general JS eliminating x is not valid).
+
 var ELIMINATION_SAFE_NODES = set('var', 'assign', 'call', 'if', 'toplevel', 'do'); // do is checked carefully, however
 var NODES_WITHOUT_ELIMINATION_SIDE_EFFECTS = set('name', 'num', 'string', 'binary', 'sub', 'unary-prefix');
 var IGNORABLE_ELIMINATOR_SCAN_NODES = set('num', 'toplevel', 'string', 'break', 'continue', 'dot', 'return'); // dot can only be STRING_TABLE.*
