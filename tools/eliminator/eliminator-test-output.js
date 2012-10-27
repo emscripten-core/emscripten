@@ -68,6 +68,8 @@ function a($directory) {
   while (ONCEb) {
     work();
   }
+  var $26 = __ZL3minIiET_S0_S0_12(4096, 4096 - $16 | 0);
+  print(FUNCTION_TABLE[$22]($18, $16 + ($this + 27) | 0, $26));
 }
 function b() {
   var $148 = _sqlite3Strlen30($147);
