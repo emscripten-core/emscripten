@@ -1645,7 +1645,7 @@ function eliminate(ast) {
           traverseInOrder(node[1]);
         } else if (type == 'label') {
           traverseInOrder(node[2]);
-        } else if (type == 'while') {
+        } else if (type == 'while' || type == 'seq') {
           traverseInOrder(node[1]);
           traverseInOrder(node[2]);
         } else if (type == 'do') {
