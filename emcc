@@ -152,9 +152,10 @@ Options that are modified or new in %s include:
                            LLVM -O2 optimizations
                            Warning: Compiling with this takes a long time!
   -O3                      As -O2, plus dangerous optimizations that may
-                           break the generated code! If that happens, try
-                           -O2 and then adding dangerous optimizations one
-                           by one.
+                           break the generated code! This is not
+                           recommended at all, see the wiki for more
+                           details (you can try -O2 and then add
+                           dangerous optimizations one by one).
 
   -s OPTION=VALUE          JavaScript code generation option passed
                            into the emscripten compiler. For the
