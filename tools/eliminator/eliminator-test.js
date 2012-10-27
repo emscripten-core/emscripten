@@ -69,7 +69,11 @@ function a() {
   chak();
   $$e3 = HEAP[9];
   tor($$e3);
-  // TODO: (,a,b) 'seq'
+  barrier();
+  var $65, $image, $51$s2, $71;
+  var $66 = HEAP32[$65 >> 2];
+  var $71 = $66 - _int_ceildiv(HEAP32[$image >> 2], HEAP32[$51$s2]) | 0;
+  HEAP32[$65 >> 2] = _int_ceildivpow2($71, HEAP32[$51$s2 + 10]);
 }
 function b() {
   var $148 = _sqlite3Strlen30($147);
