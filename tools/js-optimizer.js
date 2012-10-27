@@ -1602,9 +1602,9 @@ function eliminate(ast) {
             var name = node[1];
             if (name in tracked) {
               doEliminate(name, node);
-            } else if (!(name in locals) && !globalsInvalidated) {
-              invalidateGlobals();
-              globalsInvalidated = true;
+            } else if (!(name in locals) && !callsInvalidated) {
+              invalidateCalls();
+              callsInvalidated = true;
             }
           }
         } else if (type == 'unary-prefix' || type == 'unary-postfix') {
