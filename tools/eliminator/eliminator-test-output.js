@@ -58,6 +58,15 @@ function a() {
   barrier();
   var $65, $image, $51$s2;
   HEAP32[$65 >> 2] = _int_ceildivpow2(HEAP32[$65 >> 2] - _int_ceildiv(HEAP32[$image >> 2], HEAP32[$51$s2]) | 0, HEAP32[$51$s2 + 10]);
+  barr();
+  var ONCE = sheep();
+  while (ONCE) {
+    work();
+  }
+  var ONCEb = 75;
+  while (ONCEb) {
+    work();
+  }
 }
 function b() {
   var $148 = _sqlite3Strlen30($147);

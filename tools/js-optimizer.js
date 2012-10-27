@@ -1369,7 +1369,7 @@ function registerize(ast) {
 var ELIMINATION_SAFE_NODES = set('var', 'assign', 'call', 'if', 'toplevel');
 var NODES_WITHOUT_ELIMINATION_SIDE_EFFECTS = set('name', 'num', 'string', 'binary', 'sub', 'unary-prefix');
 var IGNORABLE_ELIMINATOR_SCAN_NODES = set('num', 'toplevel', 'string', 'break', 'continue', 'dot', 'return'); // dot can only be STRING_TABLE.*
-var ABORTING_ELIMINATOR_SCAN_NODES = set('new', 'object', 'function', 'defun', 'switch', 'for'); // we could handle some of these, TODO
+var ABORTING_ELIMINATOR_SCAN_NODES = set('new', 'object', 'function', 'defun', 'switch', 'for', 'while'); // we could handle some of these, TODO, but nontrivial (e.g. for while, the condition is hit multiple times after the body)
 
 function eliminate(ast) {
   // Find variables that have a single use, and if they can be eliminated, do so
@@ -1591,8 +1591,9 @@ function eliminate(ast) {
               traverseInOrder(value);
               if (name in potentials && allowTracking) {
                 track(name, value, node);
+              } else {
+                invalidateByDep(name);
               }
-              invalidateByDep(name);
             }
           }
         } else if (type == 'binary') {
@@ -1646,7 +1647,7 @@ function eliminate(ast) {
           traverseInOrder(node[1]);
         } else if (type == 'label') {
           traverseInOrder(node[2]);
-        } else if (type == 'while' || type == 'seq') {
+        } else if (type == 'seq') {
           traverseInOrder(node[1]);
           traverseInOrder(node[2]);
         } else if (type == 'do') {
