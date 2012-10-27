@@ -1591,6 +1591,7 @@ function eliminate(ast) {
               if (name in potentials && allowTracking) {
                 track(name, value, node);
               }
+              invalidateByDep(name);
             }
           }
         } else if (type == 'binary') {
