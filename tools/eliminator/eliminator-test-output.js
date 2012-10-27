@@ -413,9 +413,8 @@ function _inflate($strm, $flush) {
               var $54 = HEAP32[$15 >> 2];
             }
             var $54;
-            var $tobool56 = ($54 & 1 | 0) == 0;
             do {
-              if (!$tobool56) {
+              if (!(($54 & 1 | 0) == 0)) {
                 if (!((((($hold_1 << 8 & 65280) + ($hold_1 >>> 8) | 0) >>> 0) % 31 | 0) == 0)) {
                   break;
                 }
@@ -424,9 +423,8 @@ function _inflate($strm, $flush) {
                   var $sub = $bits_1 - 4 | 0;
                   var $add77 = ($shr74 & 15) + 8 | 0;
                   var $55 = HEAPU32[$19 >> 2];
-                  var $cmp78 = ($55 | 0) == 0;
                   do {
-                    if (!$cmp78) {
+                    if (!(($55 | 0) == 0)) {
                       if (!($add77 >>> 0 > $55 >>> 0)) {
                         break;
                       }
@@ -876,9 +874,8 @@ function _inflate($strm, $flush) {
             __label__ = 268;
             break;
           } else if (($49 | 0) == 26) {
-            var $tobool1626 = (HEAP32[$15 >> 2] | 0) == 0;
             do {
-              if (!$tobool1626) {
+              if (!((HEAP32[$15 >> 2] | 0) == 0)) {
                 var $next_52 = $next_0;
                 var $have_52 = $have_0;
                 var $hold_48 = $hold_0;
@@ -1171,9 +1168,8 @@ function _inflate($strm, $flush) {
             var $hold_50;
             var $have_54;
             var $next_54;
-            var $tobool1702 = (HEAP32[$15 >> 2] | 0) == 0;
             do {
-              if (!$tobool1702) {
+              if (!((HEAP32[$15 >> 2] | 0) == 0)) {
                 if ((HEAP32[$17 >> 2] | 0) == 0) {
                   var $next_56 = $next_54;
                   var $have_56 = $have_54;
@@ -1690,9 +1686,8 @@ function _inflate($strm, $flush) {
             var $have_5;
             var $next_5;
             var $71 = HEAPU32[$17 >> 2];
-            var $tobool263 = ($71 & 1024 | 0) == 0;
             do {
-              if ($tobool263) {
+              if (($71 & 1024 | 0) == 0) {
                 var $76 = HEAP32[$18 >> 2];
                 if (($76 | 0) == 0) {
                   var $next_7 = $next_5;
@@ -1888,9 +1883,8 @@ function _inflate($strm, $flush) {
                 var $86 = $77;
               } else {
                 var $79 = HEAPU32[$18 >> 2];
-                var $cmp330 = ($79 | 0) == 0;
                 do {
-                  if ($cmp330) {
+                  if (($79 | 0) == 0) {
                     var $83 = $77;
                   } else {
                     var $80 = HEAP32[($79 + 16 | 0) >> 2];
@@ -2024,9 +2018,8 @@ function _inflate($strm, $flush) {
             var $tmp21 = HEAPU8[$152 + ($and1214 << 2) | 0];
             var $tmp23 = HEAPU16[($152 + ($and1214 << 2) + 2 | 0) >> 1];
             var $conv1237 = $tmp21 & 255;
-            var $tobool1238 = $tmp21 << 24 >> 24 == 0;
             do {
-              if ($tobool1238) {
+              if ($tmp21 << 24 >> 24 == 0) {
                 var $next_41 = $next_39;
                 var $have_41 = $have_39;
                 var $hold_37 = $hold_35;
@@ -2166,9 +2159,8 @@ function _inflate($strm, $flush) {
             var $hold_9;
             var $have_11;
             var $next_11;
-            var $tobool376 = ($89 & 2048 | 0) == 0;
             do {
-              if ($tobool376) {
+              if (($89 & 2048 | 0) == 0) {
                 var $98 = HEAP32[$18 >> 2];
                 if (($98 | 0) == 0) {
                   var $next_12 = $next_11;
@@ -2194,9 +2186,8 @@ function _inflate($strm, $flush) {
                   var $inc = $copy_1 + 1 | 0;
                   var $90 = HEAP8[$next_11 + $copy_1 | 0];
                   var $91 = HEAP32[$18 >> 2];
-                  var $cmp386 = ($91 | 0) == 0;
                   do {
-                    if (!$cmp386) {
+                    if (!(($91 | 0) == 0)) {
                       var $name = $91 + 28 | 0;
                       if ((HEAP32[$name >> 2] | 0) == 0) {
                         break;
@@ -2315,9 +2306,8 @@ function _inflate($strm, $flush) {
             var $hold_10;
             var $have_13;
             var $next_13;
-            var $tobool436 = (HEAP32[$17 >> 2] & 4096 | 0) == 0;
             do {
-              if ($tobool436) {
+              if ((HEAP32[$17 >> 2] & 4096 | 0) == 0) {
                 var $108 = HEAP32[$18 >> 2];
                 if (($108 | 0) == 0) {
                   var $next_14 = $next_13;
@@ -2343,9 +2333,8 @@ function _inflate($strm, $flush) {
                   var $inc443 = $copy_2 + 1 | 0;
                   var $100 = HEAP8[$next_13 + $copy_2 | 0];
                   var $101 = HEAP32[$18 >> 2];
-                  var $cmp447 = ($101 | 0) == 0;
                   do {
-                    if (!$cmp447) {
+                    if (!(($101 | 0) == 0)) {
                       var $comment = $101 + 36 | 0;
                       if ((HEAP32[$comment >> 2] | 0) == 0) {
                         break;
@@ -2534,9 +2523,8 @@ function _inflate($strm, $flush) {
             var $have_15;
             var $next_15;
             var $109 = HEAPU32[$17 >> 2];
-            var $tobool499 = ($109 & 512 | 0) == 0;
             do {
-              if (!$tobool499) {
+              if (!(($109 & 512 | 0) == 0)) {
                 var $next_16 = $next_15;
                 var $have_16 = $have_15;
                 var $hold_12 = $hold_11;
@@ -2691,13 +2679,11 @@ function _inflate($strm, $flush) {
             }
             var $sub1554 = $out_0 - $left_0 | 0;
             var $171 = HEAPU32[$30 >> 2];
-            var $cmp1556 = $171 >>> 0 > $sub1554 >>> 0;
             do {
-              if ($cmp1556) {
+              if ($171 >>> 0 > $sub1554 >>> 0) {
                 var $sub1560 = $171 - $sub1554 | 0;
-                var $cmp1561 = $sub1560 >>> 0 > HEAPU32[$31 >> 2] >>> 0;
                 do {
-                  if ($cmp1561) {
+                  if ($sub1560 >>> 0 > HEAPU32[$31 >> 2] >>> 0) {
                     if ((HEAP32[$32 >> 2] | 0) == 0) {
                       break;
                     }
@@ -2820,9 +2806,8 @@ function _inflate($strm, $flush) {
       HEAP32[$avail_in15 >> 2] = $have_58;
       HEAP32[$11 >> 2] = $hold_54;
       HEAP32[$13 >> 2] = $bits_54;
-      var $tobool1755 = (HEAP32[$35 >> 2] | 0) == 0;
       do {
-        if ($tobool1755) {
+        if ((HEAP32[$35 >> 2] | 0) == 0) {
           if (!(HEAPU32[$mode >> 2] >>> 0 < 26)) {
             __label__ = 300;
             break;
@@ -2972,9 +2957,8 @@ function _malloc($bytes) {
           var $121 = __gm_ + 40 + ($119 << 2) | 0;
           var $122 = HEAPU32[(__gm_ | 0) >> 2];
           var $123 = 1 << ($113 >>> 3);
-          var $125 = ($122 & $123 | 0) == 0;
           do {
-            if ($125) {
+            if (($122 & $123 | 0) == 0) {
               HEAP32[(__gm_ | 0) >> 2] = $122 | $123;
               var $F4_0 = $121;
               var $_pre_phi = __gm_ + 40 + (($119 + 2 | 0) << 2) | 0;
@@ -3045,9 +3029,8 @@ function _malloc($bytes) {
       }
       var $189 = $v_0_i;
       var $190 = HEAPU32[(__gm_ + 16 | 0) >> 2];
-      var $191 = $189 >>> 0 < $190 >>> 0;
       do {
-        if (!$191) {
+        if (!($189 >>> 0 < $190 >>> 0)) {
           var $193 = $189 + $8 | 0;
           var $194 = $193;
           if (!($189 >>> 0 < $193 >>> 0)) {
@@ -3055,9 +3038,8 @@ function _malloc($bytes) {
           }
           var $198 = HEAPU32[($v_0_i + 24 | 0) >> 2];
           var $200 = HEAPU32[($v_0_i + 12 | 0) >> 2];
-          var $201 = ($200 | 0) == ($v_0_i | 0);
           do {
-            if ($201) {
+            if (($200 | 0) == ($v_0_i | 0)) {
               var $212 = $v_0_i + 20 | 0;
               var $213 = HEAP32[$212 >> 2];
               if (($213 | 0) == 0) {
@@ -3115,9 +3097,8 @@ function _malloc($bytes) {
             if (!$232) {
               var $234 = $v_0_i + 28 | 0;
               var $236 = __gm_ + 304 + (HEAP32[$234 >> 2] << 2) | 0;
-              var $238 = ($v_0_i | 0) == (HEAP32[$236 >> 2] | 0);
               do {
-                if ($238) {
+                if (($v_0_i | 0) == (HEAP32[$236 >> 2] | 0)) {
                   HEAP32[$236 >> 2] = $R_1_i;
                   if (!(($R_1_i | 0) == 0)) {
                     break;
@@ -3181,9 +3162,8 @@ function _malloc($bytes) {
               var $315 = __gm_ + 40 + ($313 << 2) | 0;
               var $316 = HEAPU32[(__gm_ | 0) >> 2];
               var $317 = 1 << ($307 >>> 3);
-              var $319 = ($316 & $317 | 0) == 0;
               do {
-                if ($319) {
+                if (($316 & $317 | 0) == 0) {
                   HEAP32[(__gm_ | 0) >> 2] = $316 | $317;
                   var $F1_0_i = $315;
                   var $_pre_phi_i = __gm_ + 40 + (($313 + 2 | 0) << 2) | 0;
@@ -3236,9 +3216,8 @@ function _malloc($bytes) {
       }
       var $346 = -$342 | 0;
       var $347 = $341 >>> 8;
-      var $348 = ($347 | 0) == 0;
       do {
-        if ($348) {
+        if (($347 | 0) == 0) {
           var $idx_0_i = 0;
         } else {
           if ($342 >>> 0 > 16777215) {
@@ -3390,9 +3369,8 @@ function _malloc($bytes) {
       }
       var $456 = $v_3_lcssa_i;
       var $457 = HEAPU32[(__gm_ + 16 | 0) >> 2];
-      var $458 = $456 >>> 0 < $457 >>> 0;
       do {
-        if (!$458) {
+        if (!($456 >>> 0 < $457 >>> 0)) {
           var $460 = $456 + $342 | 0;
           var $461 = $460;
           if (!($456 >>> 0 < $460 >>> 0)) {
@@ -3400,9 +3378,8 @@ function _malloc($bytes) {
           }
           var $465 = HEAPU32[($v_3_lcssa_i + 24 | 0) >> 2];
           var $467 = HEAPU32[($v_3_lcssa_i + 12 | 0) >> 2];
-          var $468 = ($467 | 0) == ($v_3_lcssa_i | 0);
           do {
-            if ($468) {
+            if (($467 | 0) == ($v_3_lcssa_i | 0)) {
               var $479 = $v_3_lcssa_i + 20 | 0;
               var $480 = HEAP32[$479 >> 2];
               if (($480 | 0) == 0) {
@@ -3460,9 +3437,8 @@ function _malloc($bytes) {
             if (!$499) {
               var $501 = $v_3_lcssa_i + 28 | 0;
               var $503 = __gm_ + 304 + (HEAP32[$501 >> 2] << 2) | 0;
-              var $505 = ($v_3_lcssa_i | 0) == (HEAP32[$503 >> 2] | 0);
               do {
-                if ($505) {
+                if (($v_3_lcssa_i | 0) == (HEAP32[$503 >> 2] | 0)) {
                   HEAP32[$503 >> 2] = $R_1_i19;
                   if (!(($R_1_i19 | 0) == 0)) {
                     break;
@@ -3526,9 +3502,8 @@ function _malloc($bytes) {
                 var $580 = __gm_ + 40 + ($578 << 2) | 0;
                 var $581 = HEAPU32[(__gm_ | 0) >> 2];
                 var $582 = 1 << ($rsize_3_lcssa_i >>> 3);
-                var $584 = ($581 & $582 | 0) == 0;
                 do {
-                  if ($584) {
+                  if (($581 & $582 | 0) == 0) {
                     HEAP32[(__gm_ | 0) >> 2] = $581 | $582;
                     var $F5_0_i = $580;
                     var $_pre_phi_i25 = __gm_ + 40 + (($578 + 2 | 0) << 2) | 0;
@@ -3552,9 +3527,8 @@ function _malloc($bytes) {
               } else {
                 var $601 = $460;
                 var $602 = $rsize_3_lcssa_i >>> 8;
-                var $603 = ($602 | 0) == 0;
                 do {
-                  if ($603) {
+                  if (($602 | 0) == 0) {
                     var $I7_0_i = 0;
                   } else {
                     if ($rsize_3_lcssa_i >>> 0 > 16777215) {
@@ -3599,9 +3573,8 @@ function _malloc($bytes) {
                       var $683 = $T_0_i + 8 | 0;
                       var $684 = HEAPU32[$683 >> 2];
                       var $686 = HEAPU32[(__gm_ + 16 | 0) >> 2];
-                      var $687 = $T_0_i >>> 0 < $686 >>> 0;
                       do {
-                        if (!$687) {
+                        if (!($T_0_i >>> 0 < $686 >>> 0)) {
                           if ($684 >>> 0 < $686 >>> 0) {
                             break;
                           }
@@ -3666,9 +3639,8 @@ function _malloc($bytes) {
           HEAP32[($736 + 4 | 0) >> 2] = $nb_0 | 3;
           var $mem_0 = $736 + 8 | 0;
         } else {
-          var $749 = (HEAP32[(_mparams | 0) >> 2] | 0) == 0;
           do {
-            if ($749) {
+            if ((HEAP32[(_mparams | 0) >> 2] | 0) == 0) {
               if (!((HEAP32[(_mparams | 0) >> 2] | 0) == 0)) {
                 break;
               }
@@ -3782,9 +3754,8 @@ function _malloc($bytes) {
                     __label__ = 194;
                     break $_$234;
                   }
-                  var $or_cond_i28 = ($br_0_i | 0) != -1 & $asize_1_i >>> 0 < 2147483647;
                   do {
-                    if ($or_cond_i28) {
+                    if (($br_0_i | 0) != -1 & $asize_1_i >>> 0 < 2147483647) {
                       if (!($asize_1_i >>> 0 < ($nb_0 + 48 | 0) >>> 0)) {
                         var $asize_2_i = $asize_1_i;
                         break;
@@ -4018,9 +3989,8 @@ function _malloc($bytes) {
                                     HEAP32[(__gm_ | 0) >> 2] = HEAP32[(__gm_ | 0) >> 2] & (1 << $1030 ^ -1);
                                   } else {
                                     var $1049 = __gm_ + 40 + (($1025 >>> 2 & 1073741822) << 2) | 0;
-                                    var $1050 = ($1035 | 0) == ($1049 | 0);
                                     do {
-                                      if ($1050) {
+                                      if (($1035 | 0) == ($1049 | 0)) {
                                         __label__ = 233;
                                       } else {
                                         if ($1035 >>> 0 < HEAPU32[(__gm_ + 16 | 0) >> 2] >>> 0) {
@@ -4049,9 +4019,8 @@ function _malloc($bytes) {
                                   var $1064 = $992;
                                   var $1067 = HEAPU32[($tbase_243_i + (($991 | 24) + $tsize_242_i | 0) | 0) >> 2];
                                   var $1070 = HEAPU32[($tbase_243_i + (($tsize_242_i + 12 | 0) + $991 | 0) | 0) >> 2];
-                                  var $1071 = ($1070 | 0) == ($1064 | 0);
                                   do {
-                                    if ($1071) {
+                                    if (($1070 | 0) == ($1064 | 0)) {
                                       var $_sum67_i_i = $991 | 16;
                                       var $1085 = $tbase_243_i + ($_sum2_i18_i + $_sum67_i_i | 0) | 0;
                                       var $1086 = HEAP32[$1085 >> 2];
@@ -4110,9 +4079,8 @@ function _malloc($bytes) {
                                   }
                                   var $1110 = $tbase_243_i + (($tsize_242_i + 28 | 0) + $991 | 0) | 0;
                                   var $1112 = __gm_ + 304 + (HEAP32[$1110 >> 2] << 2) | 0;
-                                  var $1114 = ($1064 | 0) == (HEAP32[$1112 >> 2] | 0);
                                   do {
-                                    if ($1114) {
+                                    if (($1064 | 0) == (HEAP32[$1112 >> 2] | 0)) {
                                       HEAP32[$1112 >> 2] = $R_1_i_i;
                                       if (!(($R_1_i_i | 0) == 0)) {
                                         break;
@@ -4178,9 +4146,8 @@ function _malloc($bytes) {
                               var $1186 = __gm_ + 40 + ($1184 << 2) | 0;
                               var $1187 = HEAPU32[(__gm_ | 0) >> 2];
                               var $1188 = 1 << ($qsize_0_i_i >>> 3);
-                              var $1190 = ($1187 & $1188 | 0) == 0;
                               do {
-                                if ($1190) {
+                                if (($1187 & $1188 | 0) == 0) {
                                   HEAP32[(__gm_ | 0) >> 2] = $1187 | $1188;
                                   var $F4_0_i_i = $1186;
                                   var $_pre_phi_i20_i = __gm_ + 40 + (($1184 + 2 | 0) << 2) | 0;
@@ -4204,9 +4171,8 @@ function _malloc($bytes) {
                             } else {
                               var $1207 = $997;
                               var $1208 = $qsize_0_i_i >>> 8;
-                              var $1209 = ($1208 | 0) == 0;
                               do {
-                                if ($1209) {
+                                if (($1208 | 0) == 0) {
                                   var $I7_0_i_i = 0;
                                 } else {
                                   if ($qsize_0_i_i >>> 0 > 16777215) {
@@ -4251,9 +4217,8 @@ function _malloc($bytes) {
                                     var $1289 = $T_0_i21_i + 8 | 0;
                                     var $1290 = HEAPU32[$1289 >> 2];
                                     var $1292 = HEAPU32[(__gm_ + 16 | 0) >> 2];
-                                    var $1293 = $T_0_i21_i >>> 0 < $1292 >>> 0;
                                     do {
-                                      if (!$1293) {
+                                      if (!($T_0_i21_i >>> 0 < $1292 >>> 0)) {
                                         if ($1290 >>> 0 < $1292 >>> 0) {
                                           break;
                                         }
@@ -4380,9 +4345,8 @@ function _malloc($bytes) {
                     var $1387 = __gm_ + 40 + ($1385 << 2) | 0;
                     var $1388 = HEAPU32[(__gm_ | 0) >> 2];
                     var $1389 = 1 << ($1372 >>> 3);
-                    var $1391 = ($1388 & $1389 | 0) == 0;
                     do {
-                      if ($1391) {
+                      if (($1388 & $1389 | 0) == 0) {
                         HEAP32[(__gm_ | 0) >> 2] = $1388 | $1389;
                         var $F_0_i_i = $1387;
                         var $_pre_phi_i_i = __gm_ + 40 + (($1385 + 2 | 0) << 2) | 0;
@@ -4406,9 +4370,8 @@ function _malloc($bytes) {
                   } else {
                     var $1406 = $876;
                     var $1407 = $1372 >>> 8;
-                    var $1408 = ($1407 | 0) == 0;
                     do {
-                      if ($1408) {
+                      if (($1407 | 0) == 0) {
                         var $I1_0_i_i = 0;
                       } else {
                         if ($1372 >>> 0 > 16777215) {
@@ -4453,9 +4416,8 @@ function _malloc($bytes) {
                           var $1478 = $T_0_i_i + 8 | 0;
                           var $1479 = HEAPU32[$1478 >> 2];
                           var $1481 = HEAPU32[(__gm_ + 16 | 0) >> 2];
-                          var $1482 = $T_0_i_i >>> 0 < $1481 >>> 0;
                           do {
-                            if (!$1482) {
+                            if (!($T_0_i_i >>> 0 < $1481 >>> 0)) {
                               if ($1479 >>> 0 < $1481 >>> 0) {
                                 break;
                               }
@@ -4622,9 +4584,8 @@ function _mallocNoU($bytes) {
           var $121 = __gm_ + 40 + ($119 << 2) | 0;
           var $122 = HEAP32[(__gm_ | 0) >> 2];
           var $123 = 1 << ($113 >>> 3);
-          var $125 = ($122 & $123 | 0) == 0;
           do {
-            if ($125) {
+            if (($122 & $123 | 0) == 0) {
               HEAP32[(__gm_ | 0) >> 2] = $122 | $123;
               var $F4_0 = $121;
               var $_pre_phi = __gm_ + 40 + (($119 + 2 | 0) << 2) | 0;
@@ -4695,9 +4656,8 @@ function _mallocNoU($bytes) {
       }
       var $189 = $v_0_i;
       var $190 = HEAP32[(__gm_ + 16 | 0) >> 2];
-      var $191 = $189 >>> 0 < $190 >>> 0;
       do {
-        if (!$191) {
+        if (!($189 >>> 0 < $190 >>> 0)) {
           var $193 = $189 + $8 | 0;
           var $194 = $193;
           if (!($189 >>> 0 < $193 >>> 0)) {
@@ -4705,9 +4665,8 @@ function _mallocNoU($bytes) {
           }
           var $198 = HEAP32[($v_0_i + 24 | 0) >> 2];
           var $200 = HEAP32[($v_0_i + 12 | 0) >> 2];
-          var $201 = ($200 | 0) == ($v_0_i | 0);
           do {
-            if ($201) {
+            if (($200 | 0) == ($v_0_i | 0)) {
               var $212 = $v_0_i + 20 | 0;
               var $213 = HEAP32[$212 >> 2];
               if (($213 | 0) == 0) {
@@ -4765,9 +4724,8 @@ function _mallocNoU($bytes) {
             if (!$232) {
               var $234 = $v_0_i + 28 | 0;
               var $236 = __gm_ + 304 + (HEAP32[$234 >> 2] << 2) | 0;
-              var $238 = ($v_0_i | 0) == (HEAP32[$236 >> 2] | 0);
               do {
-                if ($238) {
+                if (($v_0_i | 0) == (HEAP32[$236 >> 2] | 0)) {
                   HEAP32[$236 >> 2] = $R_1_i;
                   if (!(($R_1_i | 0) == 0)) {
                     break;
@@ -4831,9 +4789,8 @@ function _mallocNoU($bytes) {
               var $315 = __gm_ + 40 + ($313 << 2) | 0;
               var $316 = HEAP32[(__gm_ | 0) >> 2];
               var $317 = 1 << ($307 >>> 3);
-              var $319 = ($316 & $317 | 0) == 0;
               do {
-                if ($319) {
+                if (($316 & $317 | 0) == 0) {
                   HEAP32[(__gm_ | 0) >> 2] = $316 | $317;
                   var $F1_0_i = $315;
                   var $_pre_phi_i = __gm_ + 40 + (($313 + 2 | 0) << 2) | 0;
@@ -4886,9 +4843,8 @@ function _mallocNoU($bytes) {
       }
       var $346 = -$342 | 0;
       var $347 = $341 >>> 8;
-      var $348 = ($347 | 0) == 0;
       do {
-        if ($348) {
+        if (($347 | 0) == 0) {
           var $idx_0_i = 0;
         } else {
           if ($342 >>> 0 > 16777215) {
@@ -5040,9 +4996,8 @@ function _mallocNoU($bytes) {
       }
       var $456 = $v_3_lcssa_i;
       var $457 = HEAP32[(__gm_ + 16 | 0) >> 2];
-      var $458 = $456 >>> 0 < $457 >>> 0;
       do {
-        if (!$458) {
+        if (!($456 >>> 0 < $457 >>> 0)) {
           var $460 = $456 + $342 | 0;
           var $461 = $460;
           if (!($456 >>> 0 < $460 >>> 0)) {
@@ -5050,9 +5005,8 @@ function _mallocNoU($bytes) {
           }
           var $465 = HEAP32[($v_3_lcssa_i + 24 | 0) >> 2];
           var $467 = HEAP32[($v_3_lcssa_i + 12 | 0) >> 2];
-          var $468 = ($467 | 0) == ($v_3_lcssa_i | 0);
           do {
-            if ($468) {
+            if (($467 | 0) == ($v_3_lcssa_i | 0)) {
               var $479 = $v_3_lcssa_i + 20 | 0;
               var $480 = HEAP32[$479 >> 2];
               if (($480 | 0) == 0) {
@@ -5110,9 +5064,8 @@ function _mallocNoU($bytes) {
             if (!$499) {
               var $501 = $v_3_lcssa_i + 28 | 0;
               var $503 = __gm_ + 304 + (HEAP32[$501 >> 2] << 2) | 0;
-              var $505 = ($v_3_lcssa_i | 0) == (HEAP32[$503 >> 2] | 0);
               do {
-                if ($505) {
+                if (($v_3_lcssa_i | 0) == (HEAP32[$503 >> 2] | 0)) {
                   HEAP32[$503 >> 2] = $R_1_i19;
                   if (!(($R_1_i19 | 0) == 0)) {
                     break;
@@ -5176,9 +5129,8 @@ function _mallocNoU($bytes) {
                 var $580 = __gm_ + 40 + ($578 << 2) | 0;
                 var $581 = HEAP32[(__gm_ | 0) >> 2];
                 var $582 = 1 << ($rsize_3_lcssa_i >>> 3);
-                var $584 = ($581 & $582 | 0) == 0;
                 do {
-                  if ($584) {
+                  if (($581 & $582 | 0) == 0) {
                     HEAP32[(__gm_ | 0) >> 2] = $581 | $582;
                     var $F5_0_i = $580;
                     var $_pre_phi_i25 = __gm_ + 40 + (($578 + 2 | 0) << 2) | 0;
@@ -5202,9 +5154,8 @@ function _mallocNoU($bytes) {
               } else {
                 var $601 = $460;
                 var $602 = $rsize_3_lcssa_i >>> 8;
-                var $603 = ($602 | 0) == 0;
                 do {
-                  if ($603) {
+                  if (($602 | 0) == 0) {
                     var $I7_0_i = 0;
                   } else {
                     if ($rsize_3_lcssa_i >>> 0 > 16777215) {
@@ -5249,9 +5200,8 @@ function _mallocNoU($bytes) {
                       var $683 = $T_0_i + 8 | 0;
                       var $684 = HEAP32[$683 >> 2];
                       var $686 = HEAP32[(__gm_ + 16 | 0) >> 2];
-                      var $687 = $T_0_i >>> 0 < $686 >>> 0;
                       do {
-                        if (!$687) {
+                        if (!($T_0_i >>> 0 < $686 >>> 0)) {
                           if ($684 >>> 0 < $686 >>> 0) {
                             break;
                           }
@@ -5316,9 +5266,8 @@ function _mallocNoU($bytes) {
           HEAP32[($736 + 4 | 0) >> 2] = $nb_0 | 3;
           var $mem_0 = $736 + 8 | 0;
         } else {
-          var $749 = (HEAP32[(_mparams | 0) >> 2] | 0) == 0;
           do {
-            if ($749) {
+            if ((HEAP32[(_mparams | 0) >> 2] | 0) == 0) {
               if (!((HEAP32[(_mparams | 0) >> 2] | 0) == 0)) {
                 break;
               }
@@ -5432,9 +5381,8 @@ function _mallocNoU($bytes) {
                     __label__ = 194;
                     break $_$234;
                   }
-                  var $or_cond_i28 = ($br_0_i | 0) != -1 & $asize_1_i >>> 0 < 2147483647;
                   do {
-                    if ($or_cond_i28) {
+                    if (($br_0_i | 0) != -1 & $asize_1_i >>> 0 < 2147483647) {
                       if (!($asize_1_i >>> 0 < ($nb_0 + 48 | 0) >>> 0)) {
                         var $asize_2_i = $asize_1_i;
                         break;
@@ -5668,9 +5616,8 @@ function _mallocNoU($bytes) {
                                     HEAP32[(__gm_ | 0) >> 2] = HEAP32[(__gm_ | 0) >> 2] & (1 << $1030 ^ -1);
                                   } else {
                                     var $1049 = __gm_ + 40 + (($1025 >>> 2 & 1073741822) << 2) | 0;
-                                    var $1050 = ($1035 | 0) == ($1049 | 0);
                                     do {
-                                      if ($1050) {
+                                      if (($1035 | 0) == ($1049 | 0)) {
                                         __label__ = 233;
                                       } else {
                                         if ($1035 >>> 0 < HEAP32[(__gm_ + 16 | 0) >> 2] >>> 0) {
@@ -5699,9 +5646,8 @@ function _mallocNoU($bytes) {
                                   var $1064 = $992;
                                   var $1067 = HEAP32[($tbase_243_i + (($991 | 24) + $tsize_242_i | 0) | 0) >> 2];
                                   var $1070 = HEAP32[($tbase_243_i + (($tsize_242_i + 12 | 0) + $991 | 0) | 0) >> 2];
-                                  var $1071 = ($1070 | 0) == ($1064 | 0);
                                   do {
-                                    if ($1071) {
+                                    if (($1070 | 0) == ($1064 | 0)) {
                                       var $_sum67_i_i = $991 | 16;
                                       var $1085 = $tbase_243_i + ($_sum2_i18_i + $_sum67_i_i | 0) | 0;
                                       var $1086 = HEAP32[$1085 >> 2];
@@ -5760,9 +5706,8 @@ function _mallocNoU($bytes) {
                                   }
                                   var $1110 = $tbase_243_i + (($tsize_242_i + 28 | 0) + $991 | 0) | 0;
                                   var $1112 = __gm_ + 304 + (HEAP32[$1110 >> 2] << 2) | 0;
-                                  var $1114 = ($1064 | 0) == (HEAP32[$1112 >> 2] | 0);
                                   do {
-                                    if ($1114) {
+                                    if (($1064 | 0) == (HEAP32[$1112 >> 2] | 0)) {
                                       HEAP32[$1112 >> 2] = $R_1_i_i;
                                       if (!(($R_1_i_i | 0) == 0)) {
                                         break;
@@ -5828,9 +5773,8 @@ function _mallocNoU($bytes) {
                               var $1186 = __gm_ + 40 + ($1184 << 2) | 0;
                               var $1187 = HEAP32[(__gm_ | 0) >> 2];
                               var $1188 = 1 << ($qsize_0_i_i >>> 3);
-                              var $1190 = ($1187 & $1188 | 0) == 0;
                               do {
-                                if ($1190) {
+                                if (($1187 & $1188 | 0) == 0) {
                                   HEAP32[(__gm_ | 0) >> 2] = $1187 | $1188;
                                   var $F4_0_i_i = $1186;
                                   var $_pre_phi_i20_i = __gm_ + 40 + (($1184 + 2 | 0) << 2) | 0;
@@ -5854,9 +5798,8 @@ function _mallocNoU($bytes) {
                             } else {
                               var $1207 = $997;
                               var $1208 = $qsize_0_i_i >>> 8;
-                              var $1209 = ($1208 | 0) == 0;
                               do {
-                                if ($1209) {
+                                if (($1208 | 0) == 0) {
                                   var $I7_0_i_i = 0;
                                 } else {
                                   if ($qsize_0_i_i >>> 0 > 16777215) {
@@ -5901,9 +5844,8 @@ function _mallocNoU($bytes) {
                                     var $1289 = $T_0_i21_i + 8 | 0;
                                     var $1290 = HEAP32[$1289 >> 2];
                                     var $1292 = HEAP32[(__gm_ + 16 | 0) >> 2];
-                                    var $1293 = $T_0_i21_i >>> 0 < $1292 >>> 0;
                                     do {
-                                      if (!$1293) {
+                                      if (!($T_0_i21_i >>> 0 < $1292 >>> 0)) {
                                         if ($1290 >>> 0 < $1292 >>> 0) {
                                           break;
                                         }
@@ -6030,9 +5972,8 @@ function _mallocNoU($bytes) {
                     var $1387 = __gm_ + 40 + ($1385 << 2) | 0;
                     var $1388 = HEAP32[(__gm_ | 0) >> 2];
                     var $1389 = 1 << ($1372 >>> 3);
-                    var $1391 = ($1388 & $1389 | 0) == 0;
                     do {
-                      if ($1391) {
+                      if (($1388 & $1389 | 0) == 0) {
                         HEAP32[(__gm_ | 0) >> 2] = $1388 | $1389;
                         var $F_0_i_i = $1387;
                         var $_pre_phi_i_i = __gm_ + 40 + (($1385 + 2 | 0) << 2) | 0;
@@ -6056,9 +5997,8 @@ function _mallocNoU($bytes) {
                   } else {
                     var $1406 = $876;
                     var $1407 = $1372 >>> 8;
-                    var $1408 = ($1407 | 0) == 0;
                     do {
-                      if ($1408) {
+                      if (($1407 | 0) == 0) {
                         var $I1_0_i_i = 0;
                       } else {
                         if ($1372 >>> 0 > 16777215) {
@@ -6103,9 +6043,8 @@ function _mallocNoU($bytes) {
                           var $1478 = $T_0_i_i + 8 | 0;
                           var $1479 = HEAP32[$1478 >> 2];
                           var $1481 = HEAP32[(__gm_ + 16 | 0) >> 2];
-                          var $1482 = $T_0_i_i >>> 0 < $1481 >>> 0;
                           do {
-                            if (!$1482) {
+                            if (!($T_0_i_i >>> 0 < $1481 >>> 0)) {
                               if ($1479 >>> 0 < $1481 >>> 0) {
                                 break;
                               }
