@@ -108,6 +108,12 @@ function zeros(size) {
   return ret;
 }
 
+function spaces(size) {
+  var ret = '';
+  for (var i = 0; i < size; i++) ret += ' ';
+  return ret;
+}
+
 function keys(x) {
   var ret = [];
   for (var a in x) ret.push(a);

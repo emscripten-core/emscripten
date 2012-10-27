@@ -70,6 +70,14 @@ function a($directory) {
   }
   var $26 = __ZL3minIiET_S0_S0_12(4096, 4096 - $16 | 0);
   print(FUNCTION_TABLE[$22]($18, $16 + ($this + 27) | 0, $26));
+  chak();
+  do {
+    print(10);
+  } while (0);
+  var zzz1 = 10;
+  do {
+    print(zzz1);
+  } while (1);
 }
 function b() {
   var $148 = _sqlite3Strlen30($147);

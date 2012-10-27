@@ -1366,7 +1366,7 @@ function registerize(ast) {
   });
 }
 
-var ELIMINATION_SAFE_NODES = set('var', 'assign', 'call', 'if', 'toplevel');
+var ELIMINATION_SAFE_NODES = set('var', 'assign', 'call', 'if', 'toplevel', 'do'); // do is checked carefully, however
 var NODES_WITHOUT_ELIMINATION_SIDE_EFFECTS = set('name', 'num', 'string', 'binary', 'sub', 'unary-prefix');
 var IGNORABLE_ELIMINATOR_SCAN_NODES = set('num', 'toplevel', 'string', 'break', 'continue', 'dot', 'return'); // dot can only be STRING_TABLE.*
 var ABORTING_ELIMINATOR_SCAN_NODES = set('new', 'object', 'function', 'defun', 'switch', 'for', 'while', 'array', 'throw'); // we could handle some of these, TODO, but nontrivial (e.g. for while, the condition is hit multiple times after the body)
@@ -1550,9 +1550,11 @@ function eliminate(ast) {
       //printErr('scan: ' + JSON.stringify(node).substr(0, 50) + ' : ' + keys(tracked));
       var abort = false;
       var allowTracking = true; // false inside an if; also prevents recursing in an if
+      //var nesting = 1; // printErr-related
       function traverseInOrder(node, ignoreSub, ignoreName) {
         if (abort) return;
-        //printErr('  trav: ' + JSON.stringify(node).substr(0, 50) + ' : ' + keys(tracked));
+        //nesting++; // printErr-related
+        //printErr(spaces(2*(nesting+1)) + 'trav: ' + JSON.stringify(node).substr(0, 50) + ' : ' + keys(tracked) + ' : ' + [allowTracking, ignoreSub, ignoreName]);
         var type = node[0];
         if (type == 'assign') {
           var target = node[2];
@@ -1658,8 +1660,12 @@ function eliminate(ast) {
           traverseInOrder(node[1]);
           traverseInOrder(node[2]);
         } else if (type == 'do') {
-          traverseInOrder(node[1]);
-          if (node[2]) traverseInOrder(node[2]);
+          if (node[1][0] == 'num' && node[1][1] == 0) { // one-time loop
+            traverseInOrder(node[2]);
+          } else {
+            tracked = {};
+            abort = true;
+          }
         } else if (type == 'conditional') {
           traverseInOrder(node[1]);
           traverseInOrder(node[2]);
@@ -1671,6 +1677,7 @@ function eliminate(ast) {
           tracked = {};
           abort = true;
         }
+        //nesting--; // printErr-related
       }
       traverseInOrder(node);
     }
@@ -1705,8 +1712,10 @@ function eliminate(ast) {
       var stats = getStatements(block);
       if (!stats) return;
       tracked = {};
+      //printErr('new StatBlock');
       for (var i = 0; i < stats.length; i++) {
         var node = stats[i];
+        //printErr('StatBlock[' + i + '] => ' + JSON.stringify(node));
         var type = node[0];
         if (type == 'stat') {
           node = node[1];

@@ -89,6 +89,15 @@ function a($directory) {
   var $26 = __ZL3minIiET_S0_S0_12(4096, 4096 - $16 | 0); // cannot eliminate this because the call might modify FUNCTION_TABLE
   var $27 = FUNCTION_TABLE[$22]($18, $this + ($16 + 27) | 0, $26);
   print($27);
+  chak();
+  var zzz = 10;
+  do {
+    print(zzz);
+  } while (0);
+  var zzz1 = 10;
+  do {
+    print(zzz1);
+  } while (1); // cannot eliminate a do-while that is not one-time
 }
 function b() {
   var $148 = _sqlite3Strlen30($147);
