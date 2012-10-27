@@ -1657,11 +1657,12 @@ function eliminate(ast) {
           traverseInOrder(node[1]);
           traverseInOrder(node[2]);
           traverseInOrder(node[3]);
-        } else if (type in ABORTING_ELIMINATOR_SCAN_NODES) {
+        } else {
+          if (!(type in ABORTING_ELIMINATOR_SCAN_NODES)) {
+            printErr('unfamiliar eliminator scan node: ' + JSON.stringify(node));
+          }
           tracked = {};
           abort = true;
-        } else {
-          printErr('unfamiliar eliminator scan node: ' + JSON.stringify(node));
         }
       }
       traverseInOrder(node);
