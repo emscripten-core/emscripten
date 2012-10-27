@@ -1366,7 +1366,7 @@ function registerize(ast) {
   });
 }
 
-var ELIMINATION_SAFE_NODES = set('var', 'assign', 'call', 'if');
+var ELIMINATION_SAFE_NODES = set('var', 'assign', 'call', 'if', 'toplevel');
 var NODES_WITHOUT_ELIMINATION_SIDE_EFFECTS = set('name', 'sname', 'num', 'string', 'binary', 'sub', 'unary-prefix');
 
 function eliminate(ast) {
@@ -1647,7 +1647,9 @@ function eliminate(ast) {
               if (!check(node[3])) { tracked = {}; continue; } // do not tolerate
               tryEliminate(node[3]);
             }
-          } else { // anything but if: var, assign, etc.
+          } else if (type == 'toplevel') {
+            if (node[1].length != 0) tracked = {}; // ['toplevel', []] is an empty node, anything else is dangerous
+          } else { // anything else: var, assign, etc.
             if (!check(node)) continue;
             tryEliminate(node);
             // apply invalidations from the check (after elimination - they affect the future, not the present)
