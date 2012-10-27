@@ -5870,17 +5870,26 @@ def process(filename):
 
         return output
 
-      self.do_run(open(path_from_root('tests', 'openjpeg', 'codec', 'j2k_to_image.c'), 'r').read(),
-                   'Successfully generated', # The real test for valid output is in image_compare
-                   '-i image.j2k -o image.raw'.split(' '),
-                   libraries=lib,
-                   includes=[path_from_root('tests', 'openjpeg', 'libopenjpeg'),
-                             path_from_root('tests', 'openjpeg', 'codec'),
-                             path_from_root('tests', 'openjpeg', 'common'),
-                             os.path.join(self.get_build_dir(), 'openjpeg')],
-                   force_c=True,
-                   post_build=post,
-                   output_nicerizer=image_compare)#, build_ll_hook=self.do_autodebug)
+      try:
+        # some test coverage for EMCC_DEBUG
+        adding_debug = self.emcc_args and '-O2' in self.emcc_args and 'EMCC_DEBUG' not in os.environ
+        if adding_debug:
+          print >> sys.stderr, 'running in EMCC_DEBUG mode for test coverage'
+          os.environ['EMCC_DEBUG'] = '1'
+
+        self.do_run(open(path_from_root('tests', 'openjpeg', 'codec', 'j2k_to_image.c'), 'r').read(),
+                     'Successfully generated', # The real test for valid output is in image_compare
+                     '-i image.j2k -o image.raw'.split(' '),
+                     libraries=lib,
+                     includes=[path_from_root('tests', 'openjpeg', 'libopenjpeg'),
+                               path_from_root('tests', 'openjpeg', 'codec'),
+                               path_from_root('tests', 'openjpeg', 'common'),
+                               os.path.join(self.get_build_dir(), 'openjpeg')],
+                     force_c=True,
+                     post_build=post,
+                     output_nicerizer=image_compare)#, build_ll_hook=self.do_autodebug)
+      finally:
+        if adding_debug: del os.environ['EMCC_DEBUG']
 
     def test_python(self):
       if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: make this work')
