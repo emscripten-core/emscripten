@@ -368,12 +368,16 @@ def is_minus_s_for_emcc(newargs,i):
 
 # If this is a configure-type thing, do not compile to JavaScript, instead use clang
 # to compile to a native binary (using our headers, so things make sense later)
-CONFIGURE_CONFIG = os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in sys.argv
+CONFIGURE_CONFIG = (os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in sys.argv) and not os.environ.get('EMMAKEN_JUST_CONFIGURE_RECURSE')
 CMAKE_CONFIG = 'CMakeFiles/cmTryCompileExec.dir' in ' '.join(sys.argv)# or 'CMakeCCompilerId' in ' '.join(sys.argv)
 if CONFIGURE_CONFIG or CMAKE_CONFIG:
-  compiler = os.environ.get('CONFIGURE_CC') or shared.CLANG # if CONFIGURE_CC is defined, use that. let's you use local gcc etc. if you need that
+  use_clang = True # whether we fake configure tests using clang - the local, native compiler - or not. if not, we generate JS and use node with a shebang
+                   # neither approach is perfect, you can try both, but may need to edit configure scripts in some cases
+                   # XXX False is not fully tested yet
+  compiler = os.environ.get('CONFIGURE_CC') or (shared.CLANG if use_clang else shared.EMCC) # if CONFIGURE_CC is defined, use that. let's you use local gcc etc. if you need that
   if not ('CXXCompiler' in ' '.join(sys.argv) or os.environ.get('EMMAKEN_CXX')):
     compiler = shared.to_cc(compiler)
+
   def filter_emscripten_options(argv):
     idx = 0
     skip_next = False
@@ -387,10 +391,32 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
       else:
         yield el
       idx += 1
-    
-  cmd = [compiler] + shared.EMSDK_OPTS + ['-DEMSCRIPTEN'] + list(filter_emscripten_options(sys.argv[1:]))
+
+  cmd = [compiler] + list(filter_emscripten_options(sys.argv[1:]))
+  if use_clang: cmd += shared.EMSDK_OPTS + ['-DEMSCRIPTEN']
   if DEBUG: print >> sys.stderr, 'emcc, just configuring: ', ' '.join(cmd)
-  exit(subprocess.call(cmd))
+  if use_clang:
+    exit(subprocess.call(cmd))
+  else:
+    os.environ['EMMAKEN_JUST_CONFIGURE_RECURSE'] = '1'
+    ret = subprocess.call(cmd)
+    os.environ['EMMAKEN_JUST_CONFIGURE_RECURSE'] = ''
+    target = None
+    for i in range(len(sys.argv)-1):
+      if sys.argv[i] == '-o':
+        target = sys.argv[i+1]
+        break
+    if not target:
+      target = 'a.out'
+      if not os.path.exists(target): exit(1)
+      shutil.copyfile(target + '.js', target)
+    else:
+      if not os.path.exists(target): exit(2)
+    src = open(target).read()
+    open(target, 'w').write('#!' + shared.NODE_JS + '\n' + src) # add shebang
+    import stat
+    os.chmod(target, stat.S_IMODE(os.stat(target).st_mode) | stat.S_IXUSR) # make executable
+    exit(ret)
 
 if os.environ.get('EMMAKEN_COMPILER'):
   CXX = os.environ['EMMAKEN_COMPILER']
