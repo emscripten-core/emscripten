@@ -2742,6 +2742,8 @@ def process(filename):
         self.do_run(src, 'Inline JS is very cool')
 
     def test_memorygrowth(self):
+      if Settings.USE_TYPED_ARRAYS == 0: return self.skip('memory growth is only supported with typed arrays')
+
       # With typed arrays in particular, it is dangerous to use more memory than TOTAL_MEMORY,
       # since we then need to enlarge the heap(s).
       src = r'''
@@ -2779,7 +2781,22 @@ def process(filename):
           return 0;
         }
       '''
+
+      # Fail without memory growth
+      self.do_run(src, 'Cannot enlarge memory arrays. Adjust TOTAL_MEMORY or compile with ALLOW_MEMORY_GROWTH')
+      fail = open('src.cpp.o.js').read()
+
+      # Win with it
+      Settings.ALLOW_MEMORY_GROWTH = 1
       self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
+      win = open('src.cpp.o.js').read()
+
+      if self.emcc_args and '-O2' in self.emcc_args:
+        # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
+        code_start = 'var TOTAL_MEMORY = '
+        fail = fail[fail.find(code_start):]
+        win = win[win.find(code_start):]
+        assert len(fail) < len(win), 'failing code - without memory growth on - is more optimized, and smaller'
 
     def test_ssr(self): # struct self-ref
         src = '''

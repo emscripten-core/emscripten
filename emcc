@@ -1045,11 +1045,14 @@ try:
     if shared.Settings.RELOOP:
       js_optimizer_queue += ['hoistMultiples', 'loopOptimizer']
 
-    js_optimizer_queue += ['eliminate']
+    def get_eliminate():
+      return 'eliminate' if not shared.Settings.ALLOW_MEMORY_GROWTH else 'eliminateMemSafe'
+
+    js_optimizer_queue += [get_eliminate()]
 
     js_optimizer_queue += ['simplifyExpressionsPre']
     if shared.Settings.RELOOP:
-      js_optimizer_queue += ['optimizeShiftsAggressive', 'eliminate'] # aggressive shifts optimization requires loops, it breaks on switches
+      js_optimizer_queue += ['optimizeShiftsAggressive', get_eliminate()] # aggressive shifts optimization requires loops, it breaks on switches
 
   if closure:
     flush_js_optimizer_queue()
