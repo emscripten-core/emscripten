@@ -89,6 +89,7 @@ function b() {
   }
   var $156;
   HEAP32[$139 + ($136 << 4) + 4 >> 2] = _sqlite3FindFunction($145, $147, $148, $156, $135, 0);
+  return cheez();
 }
 function c() {
   var x = MEM[100], y = callMe(5);
@@ -101,6 +102,7 @@ function c() {
   zoom(glob);
   hail(w2);
   sunk(y2);
+  return;
 }
 function f() {
   HEAP[123] = (GLOB[1] + 1) / 2;

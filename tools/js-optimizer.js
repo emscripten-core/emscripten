@@ -1395,9 +1395,9 @@ function registerize(ast) {
 //
 // to be optimized (f could replace FUNCTION_TABLE, so in general JS eliminating x is not valid).
 
-var ELIMINATION_SAFE_NODES = set('var', 'assign', 'call', 'if', 'toplevel', 'do'); // do is checked carefully, however
+var ELIMINATION_SAFE_NODES = set('var', 'assign', 'call', 'if', 'toplevel', 'do', 'return'); // do is checked carefully, however
 var NODES_WITHOUT_ELIMINATION_SIDE_EFFECTS = set('name', 'num', 'string', 'binary', 'sub', 'unary-prefix');
-var IGNORABLE_ELIMINATOR_SCAN_NODES = set('num', 'toplevel', 'string', 'break', 'continue', 'dot', 'return'); // dot can only be STRING_TABLE.*
+var IGNORABLE_ELIMINATOR_SCAN_NODES = set('num', 'toplevel', 'string', 'break', 'continue', 'dot'); // dot can only be STRING_TABLE.*
 var ABORTING_ELIMINATOR_SCAN_NODES = set('new', 'object', 'function', 'defun', 'switch', 'for', 'while', 'array', 'throw'); // we could handle some of these, TODO, but nontrivial (e.g. for while, the condition is hit multiple times after the body)
 
 function eliminate(ast) {
@@ -1695,6 +1695,8 @@ function eliminate(ast) {
             tracked = {};
             abort = true;
           }
+        } else if (type == 'return') {
+          if (node[1]) traverseInOrder(node[1]);
         } else if (type == 'conditional') {
           traverseInOrder(node[1]);
           traverseInOrder(node[2]);

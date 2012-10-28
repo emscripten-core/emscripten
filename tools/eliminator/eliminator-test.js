@@ -109,6 +109,8 @@ function b() {
   }
   var $156;
   HEAP32[$139 + ($136 << 4) + 4 >> 2] = _sqlite3FindFunction($145, $147, $148, $156, $135, 0);
+  var finality = cheez();
+  return finality;
 }
 function c() {
   var x = MEM[100], y = callMe(5), z = glob; // do not eliminate vars with multiple variables, if there is a call!
@@ -122,6 +124,7 @@ function c() {
   zoom(z2);
   hail(w2);
   sunk(y2);
+  return;
 }
 function f() {
   var unused;
