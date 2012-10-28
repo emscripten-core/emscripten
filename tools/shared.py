@@ -428,9 +428,10 @@ def read_pgo_data(filename):
     'overflows_lines': overflows_lines
   }
 
-def run_js_optimizer(command):
+def run_js_optimizer(command): # must be here in the toplevel to be pickleable and used by process pool
+  import subprocess # make this as standalone as possible
   filename = command[2] # XXX hackish
-  output = Popen(command, stdout=PIPE).communicate()[0]
+  output = subprocess.Popen(command, stdout=subprocess.PIPE).communicate()[0]
   assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + output
   filename += '.jo.js'
   f = open(filename, 'w')
