@@ -132,6 +132,8 @@ var LOOP = set('do', 'while', 'for');
 var LOOP_FLOW = set('break', 'continue');
 var ASSIGN_OR_ALTER = set('assign', 'unary-postfix', 'unary-prefix');
 var CONTROL_FLOW = set('do', 'while', 'for', 'if', 'switch');
+var NAME_OR_NUM = set('name', 'num');
+var ASSOCIATIVE_BINARIES = set('+', '*', '|', '&', '^');
 
 var NULL_NODE = ['name', 'null'];
 var UNDEFINED_NODE = ['unary-prefix', 'void', ['num', 0]];
@@ -1635,8 +1637,21 @@ function eliminate(ast) {
             }
           }
         } else if (type == 'binary') {
+          var flipped = false;
+          if (node[1] in ASSOCIATIVE_BINARIES && !(node[2][0] in NAME_OR_NUM) && node[3][0] in NAME_OR_NUM) { // TODO recurse here?
+            // associatives like + and * can be reordered in the simple case of one of the sides being a name, since we assume they are all just numbers
+            var temp = node[2];
+            node[2] = node[3];
+            node[3] = temp;
+            flipped = true;
+          }
           traverseInOrder(node[2]);
           traverseInOrder(node[3]);
+          if (flipped && node[2][0] in NAME_OR_NUM) { // dunno if we optimized, but safe to flip back - and keeps the code closer to the original and more readable
+            var temp = node[2];
+            node[2] = node[3];
+            node[3] = temp;
+          }
         } else if (type == 'name') {
           if (!ignoreName) { // ignoreName means we are the name of something like a call or a sub - irrelevant for us
             var name = node[1];

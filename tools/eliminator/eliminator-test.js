@@ -109,6 +109,11 @@ function b() {
   }
   var $156;
   HEAP32[$139 + ($136 << 4) + 4 >> 2] = _sqlite3FindFunction($145, $147, $148, $156, $135, 0);
+  farr();
+  var $a = f1();
+  var $b = f2() + $a; // this could be reordered to facilitate optimization
+  f3($b);
+  farr();
   var finality = cheez();
   return finality;
 }

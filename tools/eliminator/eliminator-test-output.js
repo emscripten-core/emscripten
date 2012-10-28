@@ -89,6 +89,9 @@ function b() {
   }
   var $156;
   HEAP32[$139 + ($136 << 4) + 4 >> 2] = _sqlite3FindFunction($145, $147, $148, $156, $135, 0);
+  farr();
+  f3(f1() + f2());
+  farr();
   return cheez();
 }
 function c() {
