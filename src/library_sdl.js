@@ -418,9 +418,11 @@ var LibrarySDL = {
           }
           break;
         case 'unload':
-          SDL.events.push(event);
-          // Force-run a main event loop, since otherwise this event will never be caught!
-          Browser.mainLoop.runner();
+          if (Browser.mainLoop.runner) {
+            SDL.events.push(event);
+            // Force-run a main event loop, since otherwise this event will never be caught!
+            Browser.mainLoop.runner();
+          }
           return true;
         case 'resize':
           SDL.events.push(event);
