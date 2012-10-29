@@ -1,4 +1,4 @@
-import shutil, time, os, sys, json, tempfile, copy, shlex, atexit, subprocess, multiprocessing
+import shutil, time, os, sys, json, tempfile, copy, shlex, atexit, subprocess
 from subprocess import Popen, PIPE, STDOUT
 from tempfile import mkstemp
 
