@@ -9,6 +9,8 @@ JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
 
 BEST_JS_PROCESS_SIZE = 1024*1024
 
+WINDOWS = sys.platform.startswith('win')
+
 def run_on_chunk(command):
   filename = command[2] # XXX hackish
   output = subprocess.Popen(command, stdout=subprocess.PIPE).communicate()[0]
@@ -59,12 +61,27 @@ def run(filename, passes, js_engine):
   commands = map(lambda chunk: [js_engine, JS_OPTIMIZER, chunk] + passes, chunks)
 
   if len(chunks) > 1:
-    cores = min(multiprocessing.cpu_count(), chunks)
-    if os.environ.get('EMCC_DEBUG'): print >> sys.stderr, 'splitting up js optimization into %d chunks, using %d cores' % (len(chunks), cores)
-    pool = multiprocessing.Pool(processes=cores)
+    # We are splitting into chunks. Hopefully we can do that in parallel
     commands = map(lambda command: command + ['noPrintMetadata'], commands)
-    filenames = pool.map(run_on_chunk, commands, chunksize=1)
     filename += '.jo.js'
+
+    fail = None
+    cores = min(multiprocessing.cpu_count(), chunks)
+    if cores < 2:
+      fail = 'python reports you have %d cores' % cores
+    elif WINDOWS:
+      fail = 'windows (see issue 663)'
+
+    if not fail:
+      # We can parallelize
+      if os.environ.get('EMCC_DEBUG'): print >> sys.stderr, 'splitting up js optimization into %d chunks, using %d cores' % (len(chunks), cores)
+      pool = multiprocessing.Pool(processes=cores)
+      filenames = pool.map(run_on_chunk, commands, chunksize=1)
+    else:
+      # We can't parallize, but still break into chunks to avoid uglify/node memory issues
+      if os.environ.get('EMCC_DEBUG'): print >> sys.stderr, 'splitting up js optimization into %d chunks (not in parallel because %s)' % (len(chunks), fail)
+      filenames = [run_on_chunk(command) for command in commands]
+
     f = open(filename, 'w')
     for out_file in filenames:
       f.write(open(out_file).read())
