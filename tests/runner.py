@@ -9124,6 +9124,9 @@ elif 'browser' in str(sys.argv):
     def test_sdl_canvas_palette(self):
       self.btest('sdl_canvas_palette.c', reference='sdl_canvas_palette.png')
 
+    def test_sdl_canvas_twice(self):
+      self.btest('sdl_canvas_twice.c', reference='sdl_canvas_twice.png')
+
     def test_sdl_maprgba(self):
       self.btest('sdl_maprgba.c', reference='sdl_maprgba.png', reference_slack=3)
 
