@@ -69,8 +69,8 @@ def run(filename, passes, js_engine):
     cores = min(multiprocessing.cpu_count(), chunks)
     if cores < 2:
       fail = 'python reports you have %d cores' % cores
-    elif WINDOWS:
-      fail = 'windows (see issue 663)'
+    #elif WINDOWS:
+    #  fail = 'windows (see issue 663)' # This seems fixed with adding emcc.py that imports this file
 
     if not fail:
       # We can parallelize
