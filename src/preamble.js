@@ -577,7 +577,7 @@ var STATICTOP;
 #if USE_TYPED_ARRAYS
 function enlargeMemory() {
 #if ALLOW_MEMORY_GROWTH == 0
-  abort('Cannot enlarge memory arrays. Adjust TOTAL_MEMORY or compile with ALLOW_MEMORY_GROWTH');
+  abort('Cannot enlarge memory arrays. Adjust TOTAL_MEMORY (currently ' + TOTAL_MEMORY + ') or compile with ALLOW_MEMORY_GROWTH');
 #else
   // TOTAL_MEMORY is the current size of the actual array, and STATICTOP is the new top.
 #if ASSERTIONS

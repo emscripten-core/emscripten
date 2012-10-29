@@ -2783,7 +2783,7 @@ def process(filename):
       '''
 
       # Fail without memory growth
-      self.do_run(src, 'Cannot enlarge memory arrays. Adjust TOTAL_MEMORY or compile with ALLOW_MEMORY_GROWTH')
+      self.do_run(src, 'Cannot enlarge memory arrays. Adjust TOTAL_MEMORY (currently 10485760) or compile with ALLOW_MEMORY_GROWTH')
       fail = open('src.cpp.o.js').read()
 
       # Win with it
@@ -5430,7 +5430,7 @@ int main(int argc, char **argv) {
         # emcc should build in dlmalloc automatically, and do all the sign correction etc. for it
 
         try_delete(os.path.join(self.get_dir(), 'src.cpp.o.js'))
-        output = Popen(['python', EMCC, path_from_root('tests', 'dlmalloc_test.c'),
+        output = Popen(['python', EMCC, path_from_root('tests', 'dlmalloc_test.c'), '-s', 'TOTAL_MEMORY=100000000',
                         '-o', os.path.join(self.get_dir(), 'src.cpp.o.js')], stdout=PIPE, stderr=self.stderr_redirect).communicate()
 
         self.do_run('x', '*1,0*', ['200', '1'], no_build=True)
@@ -5584,6 +5584,8 @@ void*:16
       self.do_run(src, '*10,22*')
       
     def test_mmap(self):
+      Settings.TOTAL_MEMORY = 100*1024*1024
+
       src = '''
         #include <stdio.h>
         #include <sys/mman.h>
