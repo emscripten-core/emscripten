@@ -143,7 +143,8 @@ var FALSE_NODE = ['unary-prefix', '!', ['num', 1]];
 var GENERATED_FUNCTIONS_MARKER = '// EMSCRIPTEN_GENERATED_FUNCTIONS:';
 var generatedFunctions = null;
 function setGeneratedFunctions(metadata) {
-  generatedFunctions = set(eval(metadata.replace(GENERATED_FUNCTIONS_MARKER, '')));
+  var start = metadata.indexOf(GENERATED_FUNCTIONS_MARKER);
+  generatedFunctions = set(eval(metadata.substr(start + GENERATED_FUNCTIONS_MARKER.length)));
 }
 function isGenerated(ident) {
   return ident in generatedFunctions;
@@ -1869,7 +1870,7 @@ var passes = {
 var src = read(arguments_[0]);
 var ast = srcToAst(src);
 //printErr(JSON.stringify(ast)); throw 1;
-var metadata = src.split('\n').filter(function(line) { return line.indexOf('EMSCRIPTEN_GENERATED_FUNCTIONS') >= 0 })[0];
+var metadata = src.split('\n').filter(function(line) { return line.indexOf(GENERATED_FUNCTIONS_MARKER) >= 0 })[0];
 //assert(metadata, 'Must have EMSCRIPTEN_GENERATED_FUNCTIONS metadata');
 if (metadata) setGeneratedFunctions(metadata);
 
