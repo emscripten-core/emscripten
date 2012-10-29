@@ -2,6 +2,8 @@ import shutil, time, os, sys, json, tempfile, copy, shlex, atexit, subprocess, m
 from subprocess import Popen, PIPE, STDOUT
 from tempfile import mkstemp
 
+import js_optimizer
+
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
@@ -204,7 +206,6 @@ EMMAKEN = path_from_root('tools', 'emmaken.py')
 AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
 BINDINGS_GENERATOR = path_from_root('tools', 'bindings_generator.py')
 EXEC_LLVM = path_from_root('tools', 'exec_llvm.py')
-JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
 FILE_PACKAGER = path_from_root('tools', 'file_packager.py')
 
 # Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use TEMP_DIR/emscripten_temp
@@ -427,17 +428,6 @@ def read_pgo_data(filename):
     'signs_lines': signs_lines,
     'overflows_lines': overflows_lines
   }
-
-def run_js_optimizer(command): # must be here in the toplevel to be pickleable and used by process pool
-  import subprocess # make this as standalone as possible
-  filename = command[2] # XXX hackish
-  output = subprocess.Popen(command, stdout=subprocess.PIPE).communicate()[0]
-  assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + output
-  filename += '.jo.js'
-  f = open(filename, 'w')
-  f.write(output)
-  f.close()
-  return filename
 
 # Settings. A global singleton. Not pretty, but nicer than passing |, settings| everywhere
 
@@ -935,65 +925,9 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     Building.LLVM_OPT_OPTS = opts
     return opts
 
-  BEST_JS_PROCESS_SIZE = 1024*1024
-
   @staticmethod
   def js_optimizer(filename, passes):
-    if type(passes) == str:
-      passes = [passes]
-
-    js = open(filename).read()
-
-    # Find suffix
-    suffix_marker = '// EMSCRIPTEN_GENERATED_FUNCTIONS'
-    suffix_start = js.find(suffix_marker)
-    suffix = ''
-    if suffix_start >= 0:
-      suffix = js[suffix_start:js.find('\n', suffix_start)] + '\n'
-
-    # Pick where to split into chunks, so that (1) they do not oom in node/uglify, and (2) we can run them in parallel
-    chunks = []
-    i = 0
-    f_start = 0
-    while True:
-      f_end = f_start
-      while f_end-f_start < Building.BEST_JS_PROCESS_SIZE and f_end != -1:
-        f_end = js.find('\n}\n', f_end+1)
-      chunk = js[f_start:(-1 if f_end == -1 else f_end+3)] + suffix
-      temp_file = filename + '.p%d.js' % i
-      i += 1
-      f_start = f_end+3
-      done = f_end == -1 or f_start >= len(js)
-      if done and len(chunks) == 0: break # do not write anything out, just use the input file
-      f = open(temp_file, 'w')
-      f.write(chunk)
-      f.close()
-      chunks.append(temp_file)
-      if done: break
-
-    if len(chunks) == 0:
-      chunks.append(filename)
-
-    # XXX Use '--nocrankshaft' to disable crankshaft to work around v8 bug 1895, needed for older v8/node (node 0.6.8+ should be ok)
-    commands = map(lambda chunk: [NODE_JS, JS_OPTIMIZER, chunk] + passes, chunks)
-
-    if len(chunks) > 1:
-      cores = min(multiprocessing.cpu_count(), chunks)
-      if os.environ.get('EMCC_DEBUG'): print >> sys.stderr, 'splitting up js optimization into %d chunks, using %d cores' % (len(chunks), cores)
-      pool = multiprocessing.Pool(processes=cores)
-      commands = map(lambda command: command + ['noPrintMetadata'], commands)
-      filenames = pool.map(run_js_optimizer, commands, chunksize=1)
-      filename += '.jo.js'
-      f = open(filename, 'w')
-      for out_file in filenames:
-        f.write(open(out_file).read())
-      f.write(suffix)
-      f.write('\n')
-      f.close()
-      return filename
-    else:
-      # one simple chunk, just do it
-      return run_js_optimizer(commands[0])
+    return js_optimizer.run(filename, passes, NODE_JS)
 
   @staticmethod
   def closure_compiler(filename):

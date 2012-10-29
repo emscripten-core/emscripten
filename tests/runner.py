@@ -7934,7 +7934,7 @@ f.close()
         (path_from_root('tools', 'eliminator', 'safe-eliminator-test.js'), open(path_from_root('tools', 'eliminator', 'safe-eliminator-test-output.js')).read(),
          ['eliminateMemSafe']),
       ]:
-        output = Popen([NODE_JS, JS_OPTIMIZER, input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
+        output = Popen([NODE_JS, path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
         self.assertIdentical(expected, output.replace('\n\n', '\n'))
 
     def test_m_mm(self):
