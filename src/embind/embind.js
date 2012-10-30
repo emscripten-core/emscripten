@@ -4,6 +4,13 @@
 /*global Pointer_stringify, writeStringToMemory*/
 /*global __emval_register, _emval_handle_array, __emval_decref*/
 
+function exposePublicSymbol(name, value) {
+    if (Module.hasOwnProperty(name)) {
+        throw new BindingError("Cannot register public name '" + name + "' twice");
+    }
+    Module[name] = value;
+}
+
 function createNamedFunction(name, body) {
     /*jshint evil:true*/
     return new Function(
@@ -25,30 +32,29 @@ function _embind_repr(v) {
 
 var typeRegistry = {};
 
-function validateType(type, name) {
+function registerType(type, name, info) {
     if (!type) {
         throw new BindingError('type "' + name + '" must have a positive integer typeid pointer');
     }
-    if (undefined !== typeRegistry[type]) {
-        throw new BindingError('cannot register type "' + name + '" twice');
+    if (typeRegistry.hasOwnProperty(type)) {
+        throw new BindingError("Cannot register type '" + name + "' twice");
     }
+    typeRegistry[type] = info;
 }
 
 function __embind_register_void(voidType, name) {
     name = Pointer_stringify(name);
-    validateType(voidType, name);
-    typeRegistry[voidType] = {
+    registerType(voidType, name, {
         name: name,
         fromWireType: function() {
             return undefined;
         }
-    };
+    });
 }
 
 function __embind_register_bool(boolType, name, trueValue, falseValue) {
     name = Pointer_stringify(name);
-    validateType(boolType, name);
-    typeRegistry[boolType] = {
+    registerType(boolType, name, {
         name: name,
         toWireType: function(destructors, o) {
             return o ? trueValue : falseValue;
@@ -56,13 +62,12 @@ function __embind_register_bool(boolType, name, trueValue, falseValue) {
         fromWireType: function(wt) {
             return wt === trueValue;
         },
-    };
+    });
 }
 
 function __embind_register_integer(primitiveType, name) {
     name = Pointer_stringify(name);
-    validateType(primitiveType, name);
-    typeRegistry[primitiveType] = {
+    registerType(primitiveType, name, {
         name: name,
         toWireType: function(destructors, value) {
             if (typeof value !== "number") {
@@ -73,13 +78,12 @@ function __embind_register_integer(primitiveType, name) {
         fromWireType: function(value) {
             return value;
         }
-    };
+    });
 }
 
 function __embind_register_float(primitiveType, name) {
     name = Pointer_stringify(name);
-    validateType(primitiveType, name);
-    typeRegistry[primitiveType] = {
+    registerType(primitiveType, name, {
         name: name,
         toWireType: function(destructors, value) {
             if (typeof value !== "number") {
@@ -90,13 +94,12 @@ function __embind_register_float(primitiveType, name) {
         fromWireType: function(value) {
             return value;
         }
-    };
+    });
 }
 
 function __embind_register_cstring(stringType, name) {
     name = Pointer_stringify(name);
-    validateType(stringType, name);
-    typeRegistry[stringType] = {
+    registerType(stringType, name, {
         name: name,
         toWireType: function(destructors, value) {
             var ptr = _malloc(value.length + 1);
@@ -110,13 +113,12 @@ function __embind_register_cstring(stringType, name) {
             _free(value);
             return rv;
         }
-    };
+    });
 }
 
 function __embind_register_emval(emvalType, name) {
     name = Pointer_stringify(name);
-    validateType(emvalType, name);
-    typeRegistry[emvalType] = {
+    registerType(emvalType, name, {
         name: name,
         toWireType: function(destructors, value) {
             return __emval_register(value);
@@ -126,7 +128,7 @@ function __embind_register_emval(emvalType, name) {
             __emval_decref(handle);
             return rv;
         }
-    };
+    });
 }
 
 var BindingError = Error;
@@ -169,7 +171,7 @@ function __embind_register_function(name, returnType, argCount, argTypes, invoke
     invoker = FUNCTION_TABLE[invoker];
     argTypes = requireArgumentTypes(argCount, argTypes, name);
 
-    Module[name] = function() {
+    exposePublicSymbol(name, function() {
         if (arguments.length !== argCount) {
             throw new BindingError('emscripten binding function ' + name + ' called with ' + arguments.length + ' arguments, expected ' + argCount);
         }
@@ -182,7 +184,7 @@ function __embind_register_function(name, returnType, argCount, argTypes, invoke
         var rv = returnType.fromWireType(invoker.apply(null, args));
         runDestructors(destructors);
         return rv;
-    };
+    });
 }
 
 function __embind_register_tuple(tupleType, name, constructor, destructor) {
@@ -192,7 +194,7 @@ function __embind_register_tuple(tupleType, name, constructor, destructor) {
 
     var elements = [];
 
-    typeRegistry[tupleType] = {
+    registerType(tupleType, name, {
         name: name,
         elements: elements,
         fromWireType: function(ptr) {
@@ -217,7 +219,7 @@ function __embind_register_tuple(tupleType, name, constructor, destructor) {
             destructors.push(ptr);
             return ptr;
         }
-    };
+    });
 }
 
 function copyMemberPointer(memberPointer, memberPointerSize) {
@@ -297,7 +299,7 @@ function __embind_register_struct(
     constructor = FUNCTION_TABLE[constructor];
     destructor = FUNCTION_TABLE[destructor];
 
-    typeRegistry[structType] = {
+    registerType(structType, name, {
         fields: {},
         fromWireType: function(ptr) {
             var fields = this.fields;
@@ -323,7 +325,7 @@ function __embind_register_struct(
             destructors.push(ptr);
             return ptr;
         }
-    };
+    });
 }
 
 function __embind_register_struct_field(
@@ -401,9 +403,9 @@ function __embind_register_smart_ptr(
         }
         this.smartPointer = undefined;
         this.ptr = undefined;
-    }
+    };
 
-    typeRegistry[pointerType] = {
+    registerType(pointerType, name, {
         name: name,
         fromWireType: function(ptr) {
             return new Handle(ptr);
@@ -411,7 +413,7 @@ function __embind_register_smart_ptr(
         toWireType: function(destructors, o) {
             return o.smartPointer;
         }
-    };
+    });
 }
 
 function __embind_register_class(
@@ -464,7 +466,7 @@ function __embind_register_class(
     });
     constructor.prototype = Handle.prototype;
     
-    typeRegistry[classType] = {
+    registerType(classType, name, {
         name: name,
         constructor: constructor,
         Handle: Handle,
@@ -474,9 +476,9 @@ function __embind_register_class(
         toWireType: function(destructors, o) {
             return o.ptr;
         }
-    };
+    });
 
-    Module[name] = constructor;
+    exposePublicSymbol(name, constructor);
 }
 
 function __embind_register_class_constructor(
@@ -625,7 +627,7 @@ function __embind_register_enum(
     }
     Enum.values = {};
 
-    typeRegistry[enumType] = {
+    registerType(enumType, name, {
         name: name,
         constructor: Enum,
         toWireType: function(destructors, c) {
@@ -634,9 +636,9 @@ function __embind_register_enum(
         fromWireType: function(c) {
             return Enum.values[c];
         },
-    };
+    });
     
-    Module[name] = Enum;
+    exposePublicSymbol(name, Enum);
 }
 
 function __embind_register_enum_value(
@@ -667,7 +669,7 @@ function __embind_register_interface(
     constructor = FUNCTION_TABLE[constructor];
     destructor = FUNCTION_TABLE[destructor];
 
-    typeRegistry[interfaceType] = {
+    registerType(interfaceType, name, {
         name: name,
         toWireType: function(destructors, o) {
             var handle = __emval_register(o);
@@ -676,6 +678,6 @@ function __embind_register_interface(
             destructors.push(ptr);
             return ptr;
         },
-    };
+    });
 }
 
