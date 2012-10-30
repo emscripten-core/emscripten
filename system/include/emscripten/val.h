@@ -31,6 +31,12 @@ namespace emscripten {
                 unsigned argCount,
                 internal::TYPEID argTypes[]
                 /*, ... */);
+            void _emval_call_void_method(
+                EM_VAL value,
+                const char* methodName,
+                unsigned argCount,
+                internal::TYPEID argTypes[]
+                /*, ...*/);
         }
     }
 
@@ -134,6 +140,24 @@ namespace emscripten {
                     argList.count,
                     argList.types,
                     internal::toWireType(args)...));
+        }
+
+        template<typename ...Args>
+        void call_void(const char* name, Args... args) {
+            internal::ArgTypeList<Args...> argList;
+            typedef void (*TypedCall)(
+                internal::EM_VAL,
+                const char* name,
+                unsigned,
+                internal::TYPEID argTypes[],
+                typename internal::BindingType<Args>::WireType...);
+            TypedCall typedCall = reinterpret_cast<TypedCall>(&internal::_emval_call_void_method);
+            return typedCall(
+                handle,
+                name,
+                argList.count,
+                argList.types,
+                internal::toWireType(args)...);
         }
 
         template<typename T>
