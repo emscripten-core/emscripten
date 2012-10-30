@@ -9246,8 +9246,8 @@ elif 'browser' in str(sys.argv):
 
         def websockify_func(q):
           print >> sys.stderr, 'running websockify on %d, forward to tcp %d' % (self.port+1, self.port)
-          proc = Popen([path_from_root('third_party', 'websockify', 'other', 'websockify'), '-vvv', str(self.port+1), '127.0.0.1:' + str(self.port)])
-          #proc = Popen([path_from_root('third_party', 'websockify', 'websockify.py'), '-vvv', str(self.port+1), '127.0.0.1:' + str(self.port)])
+          #proc = Popen([path_from_root('third_party', 'websockify', 'other', 'websockify'), '-vvv', str(self.port+1), '127.0.0.1:' + str(self.port)])
+          proc = Popen([path_from_root('third_party', 'websockify', 'websockify.py'), '-vvv', str(self.port+1), '127.0.0.1:' + str(self.port)])
           q.put(proc.pid)
           proc.communicate()
 
