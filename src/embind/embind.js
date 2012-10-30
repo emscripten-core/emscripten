@@ -462,7 +462,7 @@ function __embind_register_class(
         var body = constructor.body;
         body.apply(this, arguments);
     });
-    constructor.prototype = Object.create(Handle.prototype);
+    constructor.prototype = Handle.prototype;
     
     typeRegistry[classType] = {
         name: name,
