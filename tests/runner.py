@@ -5940,7 +5940,7 @@ def process(filename):
         self.assertIdentical(open('release.js').read().replace('\n\n', '\n').replace('\n\n', '\n'), open('debug.js').read().replace('\n\n', '\n').replace('\n\n', '\n')) # EMCC_DEBUG=1 mode must not generate different code!
         print >> sys.stderr, 'debug check passed too'
       else:
-        print >> sys.stderr, 'not doing debug check because already in debug'
+        print >> sys.stderr, 'not doing debug check'
 
     def test_python(self):
       if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: make this work')
