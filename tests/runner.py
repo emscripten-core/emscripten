@@ -9307,7 +9307,7 @@ elif 'browser' in str(sys.argv):
       finally:
         self.clean_pids()
 
-    def zzztest_zz_websockets_bi_bigdata(self):
+    def test_zz_websockets_bi_bigdata(self):
       try:
         with self.WebsockHarness(3992, self.make_relay_server(3992, 3994)):
           with self.WebsockHarness(3994, no_server=True):

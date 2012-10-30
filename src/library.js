@@ -6513,7 +6513,8 @@ LibraryManager.library = {
 
   $Sockets__deps: ['__setErrNo', '$ERRNO_CODES'],
   $Sockets: {
-    BUFFER_SIZE: 10*1024,
+    BUFFER_SIZE: 10*1024, // initial size
+    MAX_BUFFER_SIZE: 10*1024*1024, // maximum size we will grow the buffer
     nextFd: 1,
     fds: {},
     sockaddr_in_layout: Runtime.generateStructInfo([
@@ -6572,8 +6573,19 @@ LibraryManager.library = {
 #endif
       for (var i = 0; i < len; i++) { // TODO: typed array set, carefully with ranges, or other trick
         info.buffer[info.bufferWrite++] = data[i];
-        if (info.bufferWrite == Sockets.BUFFER_SIZE) info.bufferWrite = 0;
-        if (info.bufferWrite == info.bufferRead) throw 'socket buffer overflow';
+        if (info.bufferWrite == info.buffer.length) info.bufferWrite = 0;
+        if (info.bufferWrite == info.bufferRead) {
+          // grow the buffer
+          var currLen = info.buffer.length;
+          if (currLen > Sockets.MAX_BUFFER_SIZE) throw 'socket buffer overflow';
+          var newBuffer = new Uint8Array(currLen*2);
+          for (var j = 0; j < currLen; j++) {
+            newBuffer[j] = info.buffer[(info.bufferRead + j)%currLen];
+          }
+          info.bufferRead = 0;
+          info.bufferWrite = currLen;
+          info.buffer = newBuffer;
+        }
       }
     }
     info.sendQueue = [];
@@ -6581,7 +6593,7 @@ LibraryManager.library = {
     info.sender = function(data) {
       if (data) {
 #if SOCKET_DEBUG
-      Module.print(['sender', data, data.length, '|', Array.prototype.slice.call(data)]);
+        Module.print(['sender', data, data.length, '|', Array.prototype.slice.call(data)]);
 #endif
         info.sendQueue.push(new Uint8Array(data)); // must copy, because while this waits memory can change!
       } else {
@@ -6619,7 +6631,7 @@ LibraryManager.library = {
     while (info.bufferWrite != info.bufferRead && len > 0) {
       // write out a byte
       {{{ makeSetValue('buf++', '0', 'info.buffer[info.bufferRead++]', 'i8') }}};
-      if (info.bufferRead == Sockets.BUFFER_SIZE) info.bufferRead = 0;
+      if (info.bufferRead == info.buffer.length) info.bufferRead = 0;
       len--;
       ret++;
     }
@@ -6675,7 +6687,7 @@ LibraryManager.library = {
       _connect(fd, name, {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_namelen', 'i32') }}});
     }
     var bytes = info.bufferWrite - info.bufferRead;
-    if (bytes < 0) bytes += Sockets.BUFFER_SIZE;
+    if (bytes < 0) bytes += info.buffer.length;
 #if SOCKET_DEBUG
     Module.print('recvmsg bytes: ' + bytes);
 #endif
@@ -6727,7 +6739,7 @@ LibraryManager.library = {
     if (!info) return -1;
     var start = info.bufferRead;
     var end = info.bufferWrite;
-    if (end < start) end += Sockets.BUFFER_SIZE;
+    if (end < start) end += info.buffer.length;
     var dest = {{{ makeGetValue('varargs', '0', 'i32') }}};
     {{{ makeSetValue('dest', '0', 'end - start', 'i32') }}};
     return 0;

@@ -29,15 +29,15 @@ class Listener(threading.Thread):
     conn, addr = s.accept()
     self.conn = conn
     while 1:
-      time.sleep(1)
+      time.sleep(0.5)
       print 'listener', port, 'waiting for data'
-      data = conn.recv(1024)
+      data = conn.recv(20*1024)
       if not data:
         continue
       while not self.other.conn:
         print 'listener', port, 'waiting for other connection in order to send data'
         time.sleep(1)
-      print 'listener', port, 'sending data', data
+      print 'listener', port, 'sending data', len(data)
       self.other.conn.send(data)
 
 in_listener = Listener()
