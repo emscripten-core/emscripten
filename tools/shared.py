@@ -501,6 +501,7 @@ class Building:
     env['CXX'] = EMXX if not WINDOWS else 'python %r' % EMXX
     env['AR'] = EMAR if not WINDOWS else 'python %r' % EMAR
     env['LD'] = EMCC if not WINDOWS else 'python %r' % EMCC
+    env['LDSHARED'] = EMCC if not WINDOWS else 'python %r' % EMCC
     env['RANLIB'] = EMRANLIB if not WINDOWS else 'python %r' % EMRANLIB
     #env['LIBTOOL'] = EMLIBTOOL if not WINDOWS else 'python %r' % EMLIBTOOL
     env['EMMAKEN_COMPILER'] = Building.COMPILER
