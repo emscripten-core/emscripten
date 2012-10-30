@@ -223,7 +223,7 @@ namespace emscripten {
         }
 
         template<typename PointerType>
-        typename PointerType::element_type* get_pointee(PointerType ptr) {
+        typename PointerType::element_type* get_pointee(const PointerType& ptr) {
             // TODO: replace with general pointer traits implementation
             return ptr.get();
         }

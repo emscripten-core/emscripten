@@ -194,7 +194,7 @@ namespace emscripten {
                 return v.handle;
             }
             static val fromWireType(WireType v) {
-                return val(v);
+                return val::take_ownership(v);
             }
         };
     }

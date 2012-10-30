@@ -130,7 +130,7 @@ namespace emscripten {
         template<>
         struct BindingType<std::string> {
             typedef char* WireType;
-            static WireType toWireType(std::string v) {
+            static WireType toWireType(const std::string& v) {
                 return strdup(v.c_str());
             }
             static std::string fromWireType(char* v) {
@@ -138,14 +138,14 @@ namespace emscripten {
             }
         };
 
-        template<>
-        struct BindingType<const std::string&> {
-            typedef char* WireType;
-            static WireType toWireType(std::string v) {
-                return strdup(v.c_str());
+        template<typename T>
+        struct BindingType<const T&> {
+            typedef typename BindingType<T>::WireType WireType;
+            static WireType toWireType(const T& v) {
+                return BindingType<T>::toWireType(v);
             }
-            static std::string fromWireType(char* v) {
-                return std::string(v);
+            static T fromWireType(WireType wt) {
+                return BindingType<T>::fromWireType(wt);
             }
         };
 
@@ -206,24 +206,6 @@ namespace emscripten {
 
             static WireType toWireType(std::unique_ptr<T> p) {
                 return BindingType<T>::toWireType(*p);
-            }
-        };
-
-        template<typename T>
-        struct GenericBindingType<std::shared_ptr<T>> {
-            typedef typename std::shared_ptr<T> ActualT;
-            typedef ActualT* WireType;
-
-            static WireType toWireType(std::shared_ptr<T> p) {
-                return new std::shared_ptr<T>(p);
-            }
-
-            static std::shared_ptr<T> fromWireType(WireType p) {
-                return *p;
-            }
-
-            static void destroy(WireType p) {
-                delete p;
             }
         };
 

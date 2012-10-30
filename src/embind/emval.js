@@ -13,11 +13,6 @@ Module.count_emval_handles = function() {
     return _emval_handle_array.length;
 };
 
-Module.reset_emval_handles = function() {
-    _emval_handle_array = [];
-    _emval_free_list = [];
-};
-
 // Private C++ API
 
 function __emval_register(value) {

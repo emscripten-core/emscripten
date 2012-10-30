@@ -368,8 +368,8 @@ function __embind_register_smart_ptr(
     
     var Handle = createNamedFunction(name, function(ptr) {
         this.count = {value: 1};
-        this.smartPointer = ptr;
-        this.ptr = getPointee(ptr);
+        this.smartPointer = ptr; // std::shared_ptr<T>*
+        this.ptr = getPointee(ptr); // T*
     });
 
     // TODO: test for SmartPtr.prototype.constructor property?
