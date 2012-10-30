@@ -240,32 +240,33 @@ Sec-WebSocket-Accept: %s\r
         os.dup2(os.open(os.devnull, os.O_RDWR), sys.stderr.fileno())
 
     @staticmethod
-    def unmask(buf, f):
-        pstart = f['hlen'] + 4
-        pend = pstart + f['length']
+    def unmask(buf, hlen, plen):
+        pstart = hlen + 4
+        pend = pstart + plen
         if numpy:
             b = c = s2b('')
-            if f['length'] >= 4:
+            if plen >= 4:
                 mask = numpy.frombuffer(buf, dtype=numpy.dtype('<u4'),
-                        offset=f['hlen'], count=1)
+                        offset=hlen, count=1)
                 data = numpy.frombuffer(buf, dtype=numpy.dtype('<u4'),
-                        offset=pstart, count=int(f['length'] / 4))
+                        offset=pstart, count=int(plen / 4))
                 #b = numpy.bitwise_xor(data, mask).data
                 b = numpy.bitwise_xor(data, mask).tostring()
 
-            if f['length'] % 4:
+            if plen % 4:
                 #print("Partial unmask")
                 mask = numpy.frombuffer(buf, dtype=numpy.dtype('B'),
-                        offset=f['hlen'], count=(f['length'] % 4))
+                        offset=hlen, count=(plen % 4))
                 data = numpy.frombuffer(buf, dtype=numpy.dtype('B'),
-                        offset=pend - (f['length'] % 4),
-                        count=(f['length'] % 4))
+                        offset=pend - (plen % 4),
+                        count=(plen % 4))
                 c = numpy.bitwise_xor(data, mask).tostring()
             return b + c
         else:
             # Slower fallback
+            mask = buf[hlen:hlen+4]
             data = array.array('B')
-            mask = s2a(f['mask'])
+            mask = s2a(mask)
             data.fromstring(buf[pstart:pend])
             for i in range(len(data)):
                 data[i] ^= mask[i % 4]
@@ -304,7 +305,7 @@ Sec-WebSocket-Accept: %s\r
         Returns:
             {'fin'          : 0_or_1,
              'opcode'       : number,
-             'mask'         : 32_bit_number,
+             'masked'       : boolean,
              'hlen'         : header_bytes_number,
              'length'       : payload_bytes_number,
              'payload'      : decoded_buffer,
@@ -315,7 +316,7 @@ Sec-WebSocket-Accept: %s\r
 
         f = {'fin'          : 0,
              'opcode'       : 0,
-             'mask'         : 0,
+             'masked'       : False,
              'hlen'         : 2,
              'length'       : 0,
              'payload'      : None,
@@ -332,7 +333,7 @@ Sec-WebSocket-Accept: %s\r
         b1, b2 = unpack_from(">BB", buf)
         f['opcode'] = b1 & 0x0f
         f['fin'] = (b1 & 0x80) >> 7
-        has_mask = (b2 & 0x80) >> 7
+        f['masked'] = (b2 & 0x80) >> 7
 
         f['length'] = b2 & 0x7f
 
@@ -347,7 +348,7 @@ Sec-WebSocket-Accept: %s\r
                 return f # Incomplete frame header
             (f['length'],) = unpack_from('>xxQ', buf)
 
-        full_len = f['hlen'] + has_mask * 4 + f['length']
+        full_len = f['hlen'] + f['masked'] * 4 + f['length']
 
         if blen < full_len: # Incomplete frame
             return f # Incomplete frame header
@@ -356,13 +357,13 @@ Sec-WebSocket-Accept: %s\r
         f['left'] = blen - full_len
 
         # Process 1 frame
-        if has_mask:
+        if f['masked']:
             # unmask payload
-            f['mask'] = buf[f['hlen']:f['hlen']+4]
-            f['payload'] = WebSocketServer.unmask(buf, f)
+            f['payload'] = WebSocketServer.unmask(buf, f['hlen'],
+                                                  f['length'])
         else:
             print("Unmasked frame: %s" % repr(buf))
-            f['payload'] = buf[(f['hlen'] + has_mask * 4):full_len]
+            f['payload'] = buf[(f['hlen'] + f['masked'] * 4):full_len]
 
         if base64 and f['opcode'] in [1, 2]:
             try:
@@ -389,6 +390,7 @@ Sec-WebSocket-Accept: %s\r
         end = buf.find(s2b('\xff'))
         return {'payload': b64decode(buf[1:end]),
                 'hlen': 1,
+                'masked': False,
                 'length': end - 1,
                 'left': len(buf) - (end + 1)}
 
@@ -456,7 +458,7 @@ Sec-WebSocket-Accept: %s\r
                 if self.rec:
                     self.rec.write("%s,\n" %
                             repr("{%s{" % tdelta
-                                + encbuf[lenhead:-lentail]))
+                                + encbuf[lenhead:len(encbuf)-lentail]))
 
                 self.send_parts.append(encbuf)
 
@@ -536,8 +538,14 @@ Sec-WebSocket-Accept: %s\r
             if self.rec:
                 start = frame['hlen']
                 end = frame['hlen'] + frame['length']
+                if frame['masked']:
+                    recbuf = WebSocketServer.unmask(buf, frame['hlen'],
+                                                   frame['length'])
+                else:
+                    recbuf = buf[frame['hlen']:frame['hlen'] +
+                                               frame['length']]
                 self.rec.write("%s,\n" %
-                        repr("}%s}" % tdelta + buf[start:end]))
+                        repr("}%s}" % tdelta + recbuf))
 
 
             bufs.append(frame['payload'])
@@ -779,6 +787,10 @@ Sec-WebSocket-Accept: %s\r
                                         self.handler_id)
                     self.msg("opening record file: %s" % fname)
                     self.rec = open(fname, 'w+')
+                    encoding = "binary"
+                    if self.base64: encoding = "base64"
+                    self.rec.write("var VNC_frame_encoding = '%s';\n"
+                            % encoding)
                     self.rec.write("var VNC_frame_data = [\n")
 
                 self.ws_connection = True
@@ -800,7 +812,7 @@ Sec-WebSocket-Accept: %s\r
                     self.msg(traceback.format_exc())
         finally:
             if self.rec:
-                self.rec.write("'EOF']\n")
+                self.rec.write("'EOF'];\n")
                 self.rec.close()
 
             if self.client and self.client != startsock:

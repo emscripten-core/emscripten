@@ -1,14 +1,26 @@
+#!/usr/bin/env node
+
 // A WebSocket to TCP socket proxy
 // Copyright 2012 Joel Martin
 // Licensed under LGPL version 3 (see docs/LICENSE.LGPL-3)
 
-// Known to work with node 0.6
+// Known to work with node 0.8.9
 // Requires node modules: ws, base64, optimist and policyfile
 //     npm install ws base64 optimist policyfile
+//
+// NOTE: 
+// This version requires a patched version of einaros/ws that supports
+// subprotocol negotiation. You can use the patched version like this:
+// 
+//     cd websockify/other
+//     git clone https://github.com/kanaka/ws
+//     npm link ./ws
+
 
 var argv = require('optimist').argv,
     net = require('net'),
     http = require('http'),
+    https = require('https'),
     url = require('url'),
     path = require('path'),
     fs = require('fs'),
@@ -18,36 +30,55 @@ var argv = require('optimist').argv,
     Buffer = require('buffer').Buffer,
     WebSocketServer = require('ws').Server,
 
-    httpServer, wsServer,
+    webServer, wsServer,
     source_host, source_port, target_host, target_port,
     web_path = null;
 
 
 // Handle new WebSocket client
 new_client = function(client) {
-    console.log('WebSocket client connected');
-    //console.log('protocol: ' + client.protocol);
+    var clientAddr = client._socket.remoteAddress, log;
+    log = function (msg) {
+        console.log(' ' + clientAddr + ': '+ msg);
+    };
+    log('WebSocket connection');
+    log('Version ' + client.protocolVersion + ', subprotocol: ' + client.protocol);
 
-    var target = net.createConnection(target_port,target_host);
-    target.on('begin', function() {
-        console.log('connected to target');
+    var target = net.createConnection(target_port,target_host, function() {
+        log('connected to target');
     });
     target.on('data', function(data) {
-        client.send(base64.encode(new Buffer(data)));                     
+        //log("sending message: " + data);
+        try {
+            if (client.protocol === 'base64') {
+                client.send(base64.encode(new Buffer(data)));
+            } else {
+                client.send(data,{binary: true});
+            }
+        } catch(e) {
+            log("Client closed, cleaning up target");
+            target.end();
+        }
     });
     target.on('end', function() {
-        console.log('target disconnected');
+        log('target disconnected');
     });
 
     client.on('message', function(msg) {
-        //console.log('got some message');
-        target.write(base64.decode(msg),'binary');
+        //log('got message: ' + msg);
+        if (client.protocol === 'base64') {
+            target.write(base64.decode(msg),'binary');
+        } else {
+            target.write(msg,'binary');
+        }
     });
     client.on('close', function(code, reason) {
-        console.log('WebSocket client disconnected: ' + code + ' [' + reason + ']');
+        log('WebSocket client disconnected: ' + code + ' [' + reason + ']');
+        target.end();
     });
     client.on('error', function(a) {
-        console.log('WebSocket client error: ' + a);
+        log('WebSocket client error: ' + a);
+        target.end();
     });
 };
 
@@ -94,6 +125,20 @@ http_request = function (request, response) {
     });
 };
 
+// Select 'binary' or 'base64' subprotocol, preferring 'binary'
+selectProtocol = function(protocols, callback) {
+    var plist = protocols ? protocols.split(',') : "";
+    var plist = protocols.split(',');
+    if (plist.indexOf('binary') >= 0) {
+        callback(true, 'binary');
+    } else if (plist.indexOf('base64') >= 0) {
+        callback(true, 'base64');
+    } else {
+        console.log("Client must support 'binary' or 'base64' protocol");
+        callback(false);
+    }
+}
+
 // parse source and target arguments into parts
 try {
     source_arg = argv._[0].toString();
@@ -120,7 +165,7 @@ try {
         throw("illegal port");
     }
 } catch(e) {
-    console.error("wsproxy.py [--web web_dir] [source_addr:]source_port target_addr:target_port");
+    console.error("websockify.js [--web web_dir] [--cert cert.pem [--key key.pem]] [source_addr:]source_port target_addr:target_port");
     process.exit(2);
 }
 
@@ -131,11 +176,21 @@ if (argv.web) {
     console.log("    - Web server active. Serving: " + argv.web);
 }
 
-httpServer = http.createServer(http_request);
-httpServer.listen(source_port, function() {
-    wsServer = new WebSocketServer({server: httpServer});
+if (argv.cert) {
+    argv.key = argv.key || argv.cert;
+    var cert = fs.readFileSync(argv.cert),
+        key = fs.readFileSync(argv.key);
+    console.log("    - Running in encrypted HTTPS (wss://) mode using: " + argv.cert + ", " + argv.key);
+    webServer = https.createServer({cert: cert, key: key}, http_request);
+} else {
+    console.log("    - Running in unencrypted HTTP (ws://) mode");
+    webServer = http.createServer(http_request);
+}
+webServer.listen(source_port, function() {
+    wsServer = new WebSocketServer({server: webServer,
+                                    handleProtocols: selectProtocol});
     wsServer.on('connection', new_client);
 });
 
 // Attach Flash policyfile answer service
-policyfile.createServer().listen(-1, httpServer);
+policyfile.createServer().listen(-1, webServer);
