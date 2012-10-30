@@ -394,7 +394,17 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
 
   cmd = [compiler] + list(filter_emscripten_options(sys.argv[1:]))
   if use_clang: cmd += shared.EMSDK_OPTS + ['-DEMSCRIPTEN']
+
   if DEBUG: print >> sys.stderr, 'emcc, just configuring: ', ' '.join(cmd)
+  if 0: # XXX use this to debug non-clang configure; ./configure's generally hide our normal output including stderr so we write to a file
+    tempout = '/tmp/emscripten_temp/out'
+    if not os.path.exists(tempout):
+      open(tempout, 'w').write('//\n')
+    open(tempout, 'a').write('emcc, just configuring: ' + ' '.join(cmd) + '\n\n')
+    for i in range(len(sys.argv)):
+      if sys.argv[i].endswith('.c'):
+        open(tempout, 'a').write('============= ' + sys.argv[i] + '\n' + open(sys.argv[i]).read() + '\n=============\n\n')
+
   if use_clang:
     exit(subprocess.call(cmd))
   else:
