@@ -371,8 +371,8 @@ def is_minus_s_for_emcc(newargs,i):
 CONFIGURE_CONFIG = (os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in sys.argv) and not os.environ.get('EMMAKEN_JUST_CONFIGURE_RECURSE')
 CMAKE_CONFIG = 'CMakeFiles/cmTryCompileExec.dir' in ' '.join(sys.argv)# or 'CMakeCCompilerId' in ' '.join(sys.argv)
 if CONFIGURE_CONFIG or CMAKE_CONFIG:
-  debug_configure = False # XXX use this to debug configure stuff. ./configure's generally hide our normal output including stderr so we write to a file
-  use_clang = True # whether we fake configure tests using clang - the local, native compiler - or not. if not, we generate JS and use node with a shebang
+  debug_configure = 0 # XXX use this to debug configure stuff. ./configure's generally hide our normal output including stderr so we write to a file
+  use_clang = 1 # whether we fake configure tests using clang - the local, native compiler - or not. if not we generate JS and use node with a shebang
                    # neither approach is perfect, you can try both, but may need to edit configure scripts in some cases
                    # XXX False is not fully tested yet
 
@@ -386,11 +386,11 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
     if sys.argv[i].endswith('.c'):
       try:
         src = open(sys.argv[i]).read()
+        if debug_configure: open(tempout, 'a').write('============= ' + sys.argv[i] + '\n' + src + '\n=============\n\n')
       except:
         pass
 
   if src:
-    if debug_configure: open(tempout, 'a').write('=============\n' + src + '\n=============\n\n')
     if 'fopen' in src and '"w"' in src:
       use_clang = True # we cannot write to files from js!
       if debug_configure: open(tempout, 'a').write('Forcing clang since uses fopen to write\n')
@@ -422,22 +422,30 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
   if use_clang:
     exit(subprocess.call(cmd))
   else:
+    only_object = '-c' in cmd
+    target = None
+    for i in range(len(cmd)-1):
+      if cmd[i] == '-o':
+        if not only_object:
+          cmd[i+1] += '.js'
+        target = cmd[i+1]
+        break
+    print 't1', target
+    if not target:
+      target = 'a.out.js'
+    print 't2', target, only_object
     os.environ['EMMAKEN_JUST_CONFIGURE_RECURSE'] = '1'
     ret = subprocess.call(cmd)
     os.environ['EMMAKEN_JUST_CONFIGURE_RECURSE'] = ''
-    target = None
-    for i in range(len(sys.argv)-1):
-      if sys.argv[i] == '-o':
-        target = sys.argv[i+1]
-        break
-    if not target:
-      target = 'a.out'
-      if not os.path.exists(target + '.js'): exit(1)
-      shutil.copyfile(target + '.js', target)
-    else:
-      if not os.path.exists(target): exit(2)
+    if not os.path.exists(target): exit(1)
+    if target.endswith('.js'):
+      shutil.copyfile(target, target[:-3])
+      target = target[:-3]
     src = open(target).read()
-    open(target, 'w').write('#!' + shared.NODE_JS + '\n' + src) # add shebang
+    full_node = shared.NODE_JS
+    if os.path.sep not in full_node:
+      full_node = '/usr/bin/' + full_node # TODO: use whereis etc. And how about non-*NIX?
+    open(target, 'w').write('#!' + full_node + '\n' + src) # add shebang
     import stat
     os.chmod(target, stat.S_IMODE(os.stat(target).st_mode) | stat.S_IXUSR) # make executable
     exit(ret)
