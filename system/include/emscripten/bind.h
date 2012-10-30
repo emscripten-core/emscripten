@@ -632,7 +632,7 @@ namespace emscripten {
         template<typename... Args>
         struct Caller<void, Args...> {
             static void call(val& v, const char* name, Args... args) {
-                v.call(name, args...);
+                v.call_void(name, args...);
             }
         };
 

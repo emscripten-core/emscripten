@@ -16,7 +16,8 @@ Module.count_emval_handles = function() {
 Module.reset_emval_handles = function() {
     _emval_handle_array = [];
     _emval_free_list = [];
-}
+};
+
 // Private C++ API
 
 function __emval_register(value) {
@@ -86,31 +87,46 @@ function __emval_as(handle, returnType) {
     return returnType.toWireType(destructors, _emval_handle_array[handle].value);
 }
 
-function __emval_call(handle, argCount, argTypes) {
-    var args = Array.prototype.slice.call(arguments, 3);
-    var fn = _emval_handle_array[handle].value;
+function parseParameters(argCount, argTypes, argWireTypes) {
     var a = new Array(argCount);
     for (var i = 0; i < argCount; ++i) {
         var argType = requireRegisteredType(
             HEAP32[(argTypes >> 2) + i],
             "parameter " + i);
-        a[i] = argType.fromWireType(args[i]);
+        a[i] = argType.fromWireType(argWireTypes[i]);
     }
-    var rv = fn.apply(undefined, a);
+    return a;
+}
+
+function __emval_call(handle, argCount, argTypes) {
+    var fn = _emval_handle_array[handle].value;
+    var args = parseParameters(
+        argCount,
+        argTypes,
+        Array.prototype.slice.call(arguments, 3));
+    var rv = fn.apply(undefined, args);
     return __emval_register(rv);
 }
 
 function __emval_call_method(handle, name, argCount, argTypes) {
     name = Pointer_stringify(name);
-    var args = Array.prototype.slice.call(arguments, 4);
+
+    var args = parseParameters(
+        argCount,
+        argTypes,
+        Array.prototype.slice.call(arguments, 4));
     var obj = _emval_handle_array[handle].value;
-    var a = new Array(argCount);
-    for (var i = 0; i < argCount; ++i) {
-        var argType = requireRegisteredType(
-            HEAP32[(argTypes >> 2) + i],
-            "parameter " + i);
-        a[i] = argType.fromWireType(args[i]);
-    }
-    var rv = obj[name].apply(obj, a);
+    var rv = obj[name].apply(obj, args);
     return __emval_register(rv);
+}
+
+function __emval_call_void_method(handle, name, argCount, argTypes) {
+    name = Pointer_stringify(name);
+
+    var args = parseParameters(
+        argCount,
+        argTypes,
+        Array.prototype.slice.call(arguments, 4));
+    var obj = _emval_handle_array[handle].value;
+    obj[name].apply(obj, args);
 }
