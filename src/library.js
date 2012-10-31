@@ -6639,7 +6639,7 @@ LibraryManager.library = {
       ret++;
     }
 #if SOCKET_DEBUG
-    Module.print('recv: ' + ret + ' : ' + Array.prototype.slice.call(HEAPU8.subarray(buf-len, buf)));
+    Module.print('recv: ' + [ret, len, buf] + ' : ' + Array.prototype.slice.call(HEAPU8.subarray(buf-ret, buf)));
 #endif
     return ret;
   },
@@ -6662,12 +6662,13 @@ LibraryManager.library = {
       assert(name, 'sendmsg on non-connected socket, and no name/address in the message');
       _connect(fd, name, {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_namelen', 'i32') }}});
     }
+    var iov = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iov', 'i8*') }}};
     var num = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iovlen', 'i32') }}};
     var data = '';
     for (var i = 0; i < num; i++) {
-      var currNum = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iov+8*i' + '+4', 'i32') }}};
+      var currNum = {{{ makeGetValue('iov', '8*i + 4', 'i32') }}};
       if (!currNum) continue;
-      var currBuf = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iov+8*i', 'i8*') }}};
+      var currBuf = {{{ makeGetValue('iov', '8*i', 'i8*') }}};
       info.sender(HEAPU8.subarray(currBuf, currBuf+currNum));
     }
     return data.length;
@@ -6675,9 +6676,6 @@ LibraryManager.library = {
 
   recvmsg__deps: ['$Sockets', 'connect', 'recv', '__setErrNo', '$ERRNO_CODES'],
   recvmsg: function(fd, msg, flags) {
-#if SOCKET_DEBUG
-    Module.print('recvmsg!');
-#endif
     var info = Sockets.fds[fd];
     if (!info) return -1;
     // if we are not connected, use the address info in the message
@@ -6691,25 +6689,26 @@ LibraryManager.library = {
     }
     var bytes = info.bufferWrite - info.bufferRead;
     if (bytes < 0) bytes += info.buffer.length;
-#if SOCKET_DEBUG
-    Module.print('recvmsg bytes: ' + bytes);
-#endif
     if (bytes == 0) {
       ___setErrNo(ERRNO_CODES.EWOULDBLOCK);
       return -1;
     }
+#if SOCKET_DEBUG
+    Module.print('recvmsg bytes: ' + bytes);
+#endif
     var ret = bytes;
+    var iov = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iov', 'i8*') }}};
     var num = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iovlen', 'i32') }}};
     var data = '';
     for (var i = 0; i < num && bytes > 0; i++) {
-      var currNum = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iov+8*i' + '+4', 'i32') }}};
+      var currNum = {{{ makeGetValue('iov', '8*i + 4', 'i32') }}};
 #if SOCKET_DEBUG
       Module.print('recvmsg loop ' + [i, num, bytes, currNum]);
 #endif
       if (!currNum) continue;
       currNum = Math.min(currNum, bytes); // XXX what should happen when we partially fill a buffer..?
       bytes -= currNum;
-      var currBuf = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iov+8*i', 'i8*') }}};
+      var currBuf = {{{ makeGetValue('iov', '8*i', 'i8*') }}};
 #if SOCKET_DEBUG
       Module.print('recvmsg call recv ' + currNum);
 #endif
