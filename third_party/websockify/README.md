@@ -11,11 +11,24 @@ the target in both directions.
 ### WebSockets binary data
 
 Websockify supports all versions of the WebSockets protocol (Hixie and
-HyBI). The older Hixie versions of the protocol only support UTF-8
+HyBi). The older Hixie versions of the protocol only support UTF-8
 text payloads. In order to transport binary data over UTF-8 an
-encoding must used to encapsulate the data within UTF-8. Websockify
-uses base64 to encode all traffic to and from the client. This does
-not affect the data between websockify and the server.
+encoding must used to encapsulate the data within UTF-8.
+
+With Hixie clients, Websockify uses base64 to encode all traffic to
+and from the client. This does not affect the data between websockify
+and the server.
+
+With HyBi clients, websockify negotiates whether to base64 encode
+traffic to and from the client via the subprotocol header
+(Sec-WebSocket-Protocol). The valid subprotocol values are 'binary'
+and 'base64' and if the client sends both then the server (the python
+implementation) will prefer 'binary'. The 'binary' subprotocol
+indicates that the data will be sent raw using binary WebSocket
+frames. Some HyBi clients (such as the Flash fallback and older Chrome
+and iOS versions) do not support binary data which is why the
+negotiation is necessary.
+
 
 ### Encrypted WebSocket connections (wss://)
 
