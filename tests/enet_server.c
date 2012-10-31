@@ -1,4 +1,4 @@
-// g++ /home/alon/Dev/emscripten/tests/enet_server.c -I/home/alon/Dev/emscripten/system/include/emscripten/ -Iinclude/ -fpermissive .libs/libenet.a -o enet_server ; g++ /home/alon/Dev/emscripten/tests/enet_client.c -I/home/alon/Dev/emscripten/system/include/emscripten/ -Iinclude/ -fpermissive .libs/libenet.a -o enet_client
+// g++ -fpermissive ../enet_server.c -I/home/alon/Dev/emscripten/system/include/emscripten/ -Iinclude/ -fpermissive .libs/libenet.a -o enet_server ; g++ ../enet_client.c -I/home/alon/Dev/emscripten/system/include/emscripten/ -Iinclude/ -fpermissive .libs/libenet.a -o enet_client
 
 #include <stdio.h>
 #include <emscripten.h>
@@ -26,15 +26,19 @@ void send_msg(ENetPeer *peer) {
 
 void main_loop() {
   static int counter = 0;
+#if EMSCRIPTEN
   counter++;
-  if (counter == 20) {
+#endif
+  if (counter == 10) {
     printf("stop!\n");
     emscripten_cancel_main_loop();
     return;
   }
 
   ENetEvent event;
+//printf("enet host?\n");
   if (enet_host_service (host, & event, 0) == 0) return;
+printf("enet host, got event of type %d\n", event.type);
   switch (event.type)
   {
     case ENET_EVENT_TYPE_CONNECT:

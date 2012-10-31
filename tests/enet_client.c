@@ -7,8 +7,10 @@ ENetHost * host;
 
 void main_loop() {
   static int counter = 0;
+#if EMSCRIPTEN
   counter++;
-  if (counter == 20) {
+#endif
+  if (counter == 10) {
     printf("stop!\n");
     emscripten_cancel_main_loop();
     return;
