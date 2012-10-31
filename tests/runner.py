@@ -8260,7 +8260,7 @@ elif 'browser' in str(sys.argv):
                   "xhr.open('GET', 'http://localhost:8888/report_result?%d'%s);" \
                   "xhr.send();", result, sync ? ", false" : ""); \
           emscripten_run_script(output); \
-          emscripten_run_script("setTimeout(function() { window.close() }, 1000)");
+          emscripten_run_script("setTimeout(function() { window.close() }, 1000)"); // comment this out to keep the test runner window open to debug
         #define REPORT_RESULT() REPORT_RESULT_INTERNAL(0)
         #endif
 ''' + code
