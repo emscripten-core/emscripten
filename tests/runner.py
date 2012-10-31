@@ -57,7 +57,7 @@ an individual test with
 __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
-sys.path += [path_from_root('')]
+sys.path += [path_from_root(''), path_from_root('third_party/websockify')]
 import tools.shared
 from tools.shared import *
 
@@ -9232,15 +9232,30 @@ elif 'browser' in str(sys.argv):
 
     pids_to_clean = []
     def clean_pids(self):
-      return
-      import signal
-      for pid in browser.pids_to_clean:
-        print '[killing %d]' % pid
+      import signal, errno
+      def pid_exists(pid):
         try:
-          os.kill(pid, signal.SIGKILL) # With this commented, we leave no children, but we hang the test harness on exit XXX
-          print '[kill succeeded]'
-        except:
-          print '[kill fail]'
+            # NOTE: may just kill the process in Windows
+            os.kill(pid, 0)
+        except OSError, e:
+            return e.errno == errno.EPERM
+        else:
+            return True
+      def kill_pids(pids, sig):
+        for pid in pids:
+          if not pid_exists(pid):
+            break
+          print '[killing %d]' % pid
+          try:
+            os.kill(pid, sig)
+            print '[kill succeeded]'
+          except:
+            print '[kill fail]'
+      # ask nicely (to try and catch the children)
+      kill_pids(browser.pids_to_clean, signal.SIGTERM)
+      time.sleep(1)
+      # extreme prejudice, may leave children
+      kill_pids(browser.pids_to_clean, signal.SIGKILL)
       browser.pids_to_clean = []
 
     # Runs a websocket server at a specific port. port is the true tcp socket we forward to, port+1 is the websocket one
@@ -9251,11 +9266,17 @@ elif 'browser' in str(sys.argv):
         self.no_server = no_server
 
       def __enter__(self):
+        import socket, websockify
         if not self.no_server:
           def server_func(q):
-            proc = Popen([path_from_root('tests', 'socket_server.sh'), str(self.port)])
-            q.put(proc.pid)
-            proc.communicate()
+            q.put(None) # No sub-process to start
+            ssock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            ssock.bind(("127.0.0.1", self.port))
+            ssock.listen(2)
+            while True:
+              csock, addr = ssock.accept()
+              print "Connection from %s" % repr(addr)
+              csock.send("te\x01\xff\x79st\x02")
 
           server_func = self.server_func or server_func
 
@@ -9265,31 +9286,26 @@ elif 'browser' in str(sys.argv):
           browser.pids_to_clean.append(self.server.pid)
           while True:
             if not server_queue.empty():
-              browser.pids_to_clean.append(server_queue.get())
+              spid = server_queue.get()
+              if spid:
+                browser.pids_to_clean.append(spid)
               break
             time.sleep(0.1)
           print '[Socket server on processes %s]' % str(browser.pids_to_clean[-2:])
 
-        def websockify_func(q):
-          print >> sys.stderr, 'running websockify on %d, forward to tcp %d' % (self.port+1, self.port)
-          #proc = Popen([path_from_root('third_party', 'websockify', 'other', 'websockify'), '-vvv', str(self.port+1), '127.0.0.1:' + str(self.port)])
-          proc = Popen([path_from_root('third_party', 'websockify', 'websockify.py'), '-vvv', str(self.port+1), '127.0.0.1:' + str(self.port)])
-          q.put(proc.pid)
-          proc.communicate()
+        def websockify_func(wsp): wsp.start_server()
 
-        websockify_queue = multiprocessing.Queue()
-        self.websockify = multiprocessing.Process(target=websockify_func, args=(websockify_queue,))
+        print >> sys.stderr, 'running websockify on %d, forward to tcp %d' % (self.port+1, self.port)
+        wsp = websockify.WebSocketProxy(verbose=True, listen_port=self.port+1, target_host="127.0.0.1", target_port=self.port, run_once=True)
+        self.websockify = multiprocessing.Process(target=websockify_func, args=(wsp,))
         self.websockify.start()
         browser.pids_to_clean.append(self.websockify.pid)
-        while True:
-          if not websockify_queue.empty():
-            browser.pids_to_clean.append(websockify_queue.get())
-            break
-          time.sleep(0.1)
         print '[Websockify on processes %s]' % str(browser.pids_to_clean[-2:])
 
       def __exit__(self, *args, **kwargs):
-        time.sleep(1)
+        if self.websockify.is_alive():
+          self.websockify.terminate()
+        self.websockify.join()
 
     # always run these tests last
     # make sure to use different ports in each one because it takes a while for the processes to be cleaned up
