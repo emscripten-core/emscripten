@@ -1547,6 +1547,10 @@ var LibrarySDL = {
   SDL_RemoveTimer: function(id) {
     window.clearTimeout(id);
     return true;
+  },
+
+  SDL_CreateThread: function() {
+    throw 'SDL threads cannot be supported in the web platform because they assume shared state. See emscripten_create_worker etc. for a message-passing concurrency model that does let you run code in another thread.'
   }
 };
 
