@@ -6559,36 +6559,31 @@ LibraryManager.library = {
       assert(info.host, 'problem translating fake ip ' + parts);
     }
     console.log('opening ws://' + info.host + ':' + info.port);
-    info.socket = new WebSocket('ws://' + info.host + ':' + info.port, ['base64']);
+    info.socket = new WebSocket('ws://' + info.host + ':' + info.port, ['binary']);
     info.socket.binaryType = 'arraybuffer';
     info.buffer = new Uint8Array(Sockets.BUFFER_SIZE);
     info.bufferWrite = info.bufferRead = 0;
     info.socket.onmessage = function (event) {
       var data = event.data;
 #if SOCKET_DEBUG
-      Module.print(['onmessage', window.location, event.data, window.atob(data)]);
+      Module.print(['onmessage', window.location, event.data]);
 #endif
-      if (typeof data == 'string') {
-        var binaryString = window.atob(data);
-        var len = binaryString.length;
+      var u8buf = new Uint8Array(data);
+      var len = u8buf.length;
 #if SOCKET_DEBUG
-        var out = [];
+      var out = [];
 #endif
-        for (var i = 0; i < len; i++) {
-          var curr = binaryString.charCodeAt(i);
-          info.buffer[info.bufferWrite++] = curr;
+      for (var i = 0; i < len; i++) {
+        info.buffer[info.bufferWrite++] = u8buf[i];
 #if SOCKET_DEBUG
-          out.push(curr);
+        out.push(u8buf[i]);
 #endif
-          if (info.bufferWrite == Sockets.BUFFER_SIZE) info.bufferWrite = 0;
-          if (info.bufferWrite == info.bufferRead) throw 'socket buffer overflow';
-        }
-#if SOCKET_DEBUG
-        Module.print(['onmessage data:', len, ':', out]);
-#endif
-      } else {
-        console.log('binary!');
+        if (info.bufferWrite == Sockets.BUFFER_SIZE) info.bufferWrite = 0;
+        if (info.bufferWrite == info.bufferRead) throw 'socket buffer overflow';
       }
+#if SOCKET_DEBUG
+      Module.print(['onmessage data:', len, ':', out]);
+#endif
     }
     info.sendQueue = [];
     info.senderWaiting = false;
@@ -6608,7 +6603,10 @@ LibraryManager.library = {
         return;
       }
       for (var i = 0; i < info.sendQueue.length; i++) {
-        info.socket.send(window.btoa(info.sendQueue[i]));
+        var sendBuf = info.sendQueue[i];
+        // We need to copy to avoid sending the whole underlying buffer
+        var rawBuf = sendBuf.buffer.slice(sendBuf.byteOffset, sendBuf.byteOffset+sendBuf.byteLength);
+        info.socket.send(rawBuf);
       }
       info.sendQueue = [];
     }
@@ -6647,7 +6645,7 @@ LibraryManager.library = {
 #if SOCKET_DEBUG
     Module.print('send: ' + Array.prototype.slice.call(HEAPU8.subarray(buf, buf+len)));
 #endif
-    info.sender(Pointer_stringify(buf, len));
+    info.sender(HEAPU8.subarray(buf, buf+len));
     return len;
   },
 
@@ -6662,7 +6660,7 @@ LibraryManager.library = {
       _connect(fd, name, {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_namelen', 'i32') }}});
     }
     var num = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iovlen', 'i32') }}};
-    var data = '';
+    var data = [];
     for (var i = 0; i < num; i++) {
       var currNum = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iov+8*i' + '+4', 'i32') }}};
       if (!currNum) continue;
@@ -6670,9 +6668,9 @@ LibraryManager.library = {
 #if SOCKET_DEBUG
       Module.print('sendmsg part ' + i + ' : ' + currNum + ' : ' + Array.prototype.slice.call(HEAPU8.subarray(currBuf, currBuf+currNum)));
 #endif
-      data += Pointer_stringify(currBuf, currNum);
+      data.push.apply(data, HEAPU8.subarray(currBuf, currBuf+currNum));
     }
-    info.sender(data);
+    info.sender(new Uint8Array(data));
     return data.length;
   },
 
