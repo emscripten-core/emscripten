@@ -2456,19 +2456,22 @@ LibraryManager.library = {
     var fields = 0;
     var argIndex = 0;
     var next;
-    // remove initial whitespace
-    while (1) {
-      next = get();
-      if (next == 0) return 0;
-      if (!(next in __scanString.whiteSpace)) break;
-    } 
-    unget(next);
+
     next = 1;
     mainLoop:
     for (var formatIndex = 0; formatIndex < format.length; formatIndex++) {
+      // remove whitespace
+      while (1) {
+        next = get();
+        if (next == 0) return fields;
+        if (!(next in __scanString.whiteSpace)) break;
+      } 
+      unget(next);
+      
       if (next <= 0) return fields;
       var next = get();
       if (next <= 0) return fields;  // End of input.
+
       if (format[formatIndex] === '%') {
         formatIndex++;
         var maxSpecifierStart = formatIndex;
