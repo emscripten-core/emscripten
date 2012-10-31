@@ -942,6 +942,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
             '-jar', CLOSURE_COMPILER,
             '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
             '--formatting', 'PRETTY_PRINT',
+            '--language_in', 'ECMASCRIPT5',
             #'--variable_map_output_file', filename + '.vars',
             '--js', filename, '--js_output_file', filename + '.cc.js']
     if os.environ.get('EMCC_CLOSURE_ARGS'):
