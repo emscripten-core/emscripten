@@ -418,9 +418,11 @@ var LibrarySDL = {
           }
           break;
         case 'unload':
-          SDL.events.push(event);
-          // Force-run a main event loop, since otherwise this event will never be caught!
-          Browser.mainLoop.runner();
+          if (Browser.mainLoop.runner) {
+            SDL.events.push(event);
+            // Force-run a main event loop, since otherwise this event will never be caught!
+            Browser.mainLoop.runner();
+          }
           return true;
         case 'resize':
           SDL.events.push(event);
@@ -720,16 +722,15 @@ var LibrarySDL = {
     surfData.locked++;
     if (surfData.locked > 1) return 0;
 
-    if (!surfData.image) {
-      surfData.image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
-      if (surf == SDL.screen) {
-        var data = surfData.image.data;
-        var num = data.length;
-        for (var i = 0; i < num/4; i++) {
-          data[i*4+3] = 255; // opacity, as canvases blend alpha
-        }
+    surfData.image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
+    if (surf == SDL.screen) {
+      var data = surfData.image.data;
+      var num = data.length;
+      for (var i = 0; i < num/4; i++) {
+        data[i*4+3] = 255; // opacity, as canvases blend alpha
       }
     }
+
     if (SDL.defaults.copyOnLock) {
       // Copy pixel data to somewhere accessible to 'C/C++'
       if (surfData.isFlagSet(0x00200000 /* SDL_HWPALETTE */)) {

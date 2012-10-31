@@ -1,45 +1,8 @@
-/*
- * Modified from:
- * http://lxr.mozilla.org/mozilla/source/extensions/xml-rpc/src/nsXmlRpcClient.js#956
- */
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* ***** BEGIN LICENSE BLOCK *****
- * Version: MPL 1.1/GPL 2.0/LGPL 2.1
- *
- * The contents of this file are subject to the Mozilla Public License Version
- * 1.1 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
- *
- * Software distributed under the License is distributed on an "AS IS" basis,
- * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
- * for the specific language governing rights and limitations under the
- * License.
- *
- * The Original Code is Mozilla XML-RPC Client component.
- *
- * The Initial Developer of the Original Code is
- * Digital Creations 2, Inc.
- * Portions created by the Initial Developer are Copyright (C) 2000
- * the Initial Developer. All Rights Reserved.
- *
- * Contributor(s):
- *   Martijn Pieters <mj@digicool.com> (original author)
- *   Samuel Sieb <samuel@sieb.net>
- *
- * Alternatively, the contents of this file may be used under the terms of
- * either the GNU General Public License Version 2 or later (the "GPL"), or
- * the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
- * in which case the provisions of the GPL or the LGPL are applicable instead
- * of those above. If you wish to allow use of your version of this file only
- * under the terms of either the GPL or the LGPL, and not to allow others to
- * use your version of this file under the terms of the MPL, indicate your
- * decision by deleting the provisions above and replace them with the notice
- * and other provisions required by the GPL or the LGPL. If you do not delete
- * the provisions above, a recipient may use your version of this file under
- * the terms of any one of the MPL, the GPL or the LGPL.
- *
- * ***** END LICENSE BLOCK ***** */
+// From: http://hg.mozilla.org/mozilla-central/raw-file/ec10630b1a54/js/src/devtools/jint/sunspider/string-base64.js
 
 /*jslint white: false, bitwise: false, plusplus: false */
 /*global console */
@@ -47,35 +10,37 @@
 var Base64 = {
 
 /* Convert data (an array of integers) to a Base64 string. */
-toBase64Table : 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/',
+toBase64Table : 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'.split(''),
 base64Pad     : '=',
 
 encode: function (data) {
     "use strict";
-    var result = '',
-        chrTable = Base64.toBase64Table.split(''),
-        pad = Base64.base64Pad,
-        length = data.length,
-        i;
+    var result = '';
+    var toBase64Table = Base64.toBase64Table;
+    var base64Pad = Base64.base64Pad;
+    var length = data.length;
+    var i;
     // Convert every three bytes to 4 ascii characters.
+  /* BEGIN LOOP */
     for (i = 0; i < (length - 2); i += 3) {
-        result += chrTable[data[i] >> 2];
-        result += chrTable[((data[i] & 0x03) << 4) + (data[i+1] >> 4)];
-        result += chrTable[((data[i+1] & 0x0f) << 2) + (data[i+2] >> 6)];
-        result += chrTable[data[i+2] & 0x3f];
+        result += toBase64Table[data[i] >> 2];
+        result += toBase64Table[((data[i] & 0x03) << 4) + (data[i+1] >> 4)];
+        result += toBase64Table[((data[i+1] & 0x0f) << 2) + (data[i+2] >> 6)];
+        result += toBase64Table[data[i+2] & 0x3f];
     }
+  /* END LOOP */
 
     // Convert the remaining 1 or 2 bytes, pad out to 4 characters.
     if (length%3) {
         i = length - (length%3);
-        result += chrTable[data[i] >> 2];
+        result += toBase64Table[data[i] >> 2];
         if ((length%3) === 2) {
-            result += chrTable[((data[i] & 0x03) << 4) + (data[i+1] >> 4)];
-            result += chrTable[(data[i+1] & 0x0f) << 2];
-            result += pad;
+            result += toBase64Table[((data[i] & 0x03) << 4) + (data[i+1] >> 4)];
+            result += toBase64Table[(data[i+1] & 0x0f) << 2];
+            result += base64Pad;
         } else {
-            result += chrTable[(data[i] & 0x03) << 4];
-            result += pad + pad;
+            result += toBase64Table[(data[i] & 0x03) << 4];
+            result += base64Pad + base64Pad;
         }
     }
 
@@ -97,12 +62,12 @@ toBinaryTable : [
 decode: function (data, offset) {
     "use strict";
     offset = typeof(offset) !== 'undefined' ? offset : 0;
-    var binTable = Base64.toBinaryTable,
-        pad = Base64.base64Pad,
-        result, result_length, idx, i, c, padding,
-        leftbits = 0, // number of bits decoded, but yet to be appended
-        leftdata = 0, // bits decoded, but yet to be appended
-        data_length = data.indexOf('=') - offset;
+    var toBinaryTable = Base64.toBinaryTable;
+    var base64Pad = Base64.base64Pad;
+    var result, result_length, idx, i, c, padding;
+    var leftbits = 0; // number of bits decoded, but yet to be appended
+    var leftdata = 0; // bits decoded, but yet to be appended
+    var data_length = data.indexOf('=') - offset;
 
     if (data_length < 0) { data_length = data.length - offset; }
 
@@ -111,9 +76,10 @@ decode: function (data, offset) {
     result = new Array(result_length);
 
     // Convert one by one.
+  /* BEGIN LOOP */
     for (idx = 0, i = offset; i < data.length; i++) {
-        c = binTable[data.charCodeAt(i) & 0x7f];
-        padding = (data.charAt(i) === pad);
+        c = toBinaryTable[data.charCodeAt(i) & 0x7f];
+        padding = (data.charAt(i) === base64Pad);
         // Skip illegal characters and whitespace
         if (c === -1) {
             console.error("Illegal character code " + data.charCodeAt(i) + " at position " + i);
@@ -134,6 +100,7 @@ decode: function (data, offset) {
             leftdata &= (1 << leftbits) - 1;
         }
     }
+  /* END LOOP */
 
     // If there are any bits left, the base64 string was corrupted
     if (leftbits) {

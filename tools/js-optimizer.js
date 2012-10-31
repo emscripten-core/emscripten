@@ -1417,6 +1417,7 @@ function eliminate(ast, memSafe) {
     var values = {};
     var locals = {};
     var varsToRemove = {}; // variables being removed, that we can eliminate all 'var x;' of
+    var varsToTryToRemove = {}; // variables that have 0 uses, but have side effects - when we scan we can try to remove them
     // add arguments as locals
     if (func[2]) {
       for (var i = 0; i < func[2].length; i++) {
@@ -1434,7 +1435,7 @@ function eliminate(ast, memSafe) {
           if (value) {
             if (!definitions[name]) definitions[name] = 0;
             definitions[name]++;
-            values[name] = value;
+            if (!values[name]) values[name] = value;
           }
           if (!uses[name]) uses[name] = 0;
           locals[name] = true;
@@ -1450,7 +1451,7 @@ function eliminate(ast, memSafe) {
           if (!definitions[name]) definitions[name] = 0;
           definitions[name]++;
           if (!uses[name]) uses[name] = 0;
-          values[name] = target[2];
+          if (!values[name]) values[name] = node[3];
           if (node[1] === true) { // not +=, -= etc., just =
             uses[name]--; // because the name node will show up by itself in the previous case
           }
@@ -1462,21 +1463,27 @@ function eliminate(ast, memSafe) {
       if (definitions[name] == 1 && uses[name] == 1) {
         potentials[name] = 1;
       } else if (uses[name] == 0) {
-        var mustRemain = false;
+        var hasSideEffects = false;
         if (values[name]) {
           traverse(values[name], function(node, type) {
             if (!(type in NODES_WITHOUT_ELIMINATION_SIDE_EFFECTS)) {
-              mustRemain = true; // cannot remove this unused variable, constructing it has side effects
+              hasSideEffects = true; // cannot remove this unused variable, constructing it has side effects
               return true;
             }
           });
         }
-        if (!mustRemain) varsToRemove[name] = 1; // variable with no uses, might as well remove it
+        if (!hasSideEffects) {
+          varsToRemove[name] = 1; // remove it normally
+        } else {
+          varsToTryToRemove[name] = 1; // try to remove it later during scanning
+        }
       }
     }
     //printErr('defs: ' + JSON.stringify(definitions));
     //printErr('uses: ' + JSON.stringify(uses));
     //printErr('locals: ' + JSON.stringify(locals));
+    //printErr('varsToRemove: ' + JSON.stringify(varsToRemove));
+    //printErr('2varsToTryToRemove: ' + JSON.stringify(varsToTryToRemove));
     definitions = uses = values = null;
     //printErr('potentials: ' + JSON.stringify(potentials));
     // We can now proceed through the function. In each list of statements, we try to eliminate
@@ -1593,19 +1600,29 @@ function eliminate(ast, memSafe) {
         var type = node[0];
         if (type == 'assign') {
           var target = node[2];
+          var value = node[3];
           var nameTarget = target[0] == 'name';
           traverseInOrder(target, true, nameTarget); // evaluate left
-          traverseInOrder(node[3]); // evaluate right
+          traverseInOrder(value); // evaluate right
           // do the actual assignment
           if (nameTarget) {
             var name = target[1];
             if (!(name in potentials)) {
-              // expensive check for invalidating specific tracked vars. This list is generally quite short though, because of
-              // how we just eliminate in short spans and abort when control flow happens TODO: history numbers instead
-              invalidateByDep(name); // can happen more than once per dep..
-              if (!(name in locals) && !globalsInvalidated) {
-                invalidateGlobals();
-                globalsInvalidated = true;
+              if (!(name in varsToTryToRemove)) {
+                // expensive check for invalidating specific tracked vars. This list is generally quite short though, because of
+                // how we just eliminate in short spans and abort when control flow happens TODO: history numbers instead
+                invalidateByDep(name); // can happen more than once per dep..
+                if (!(name in locals) && !globalsInvalidated) {
+                  invalidateGlobals();
+                  globalsInvalidated = true;
+                }
+              } else {
+                // replace it in-place
+                node.length = value.length;
+                for (var i = 0; i < value.length; i++) {
+                  node[i] = value[i];
+                }
+                varsToRemove[name] = 1;
               }
             } else {
               if (allowTracking) track(name, node[3], node);
@@ -1637,6 +1654,15 @@ function eliminate(ast, memSafe) {
                 track(name, value, node);
               } else {
                 invalidateByDep(name);
+              }
+              if (vars.length == 1 && name in varsToTryToRemove && value) {
+                // replace it in-place
+                value = ['stat', value];
+                node.length = value.length;
+                for (var i = 0; i < value.length; i++) {
+                  node[i] = value[i];
+                }
+                varsToRemove[name] = 1;
               }
             }
           }
