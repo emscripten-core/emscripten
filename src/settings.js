@@ -193,6 +193,15 @@ var PROFILE = 0; // Enables runtime profiling. See test_profiling for a usage ex
 
 var EXPORTED_FUNCTIONS = ['_main', '_malloc', '_free']; // Functions that are explicitly exported, so they are guaranteed to
                                                         // be accessible outside of the generated code even after running closure compiler.
+                                                        // Note the necessary prefix of "_".
+
+var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = ['memcpy', 'memset', 'malloc', 'free', '$Browser']; // JS library functions (C functions implemented in JS)
+                                                                                           // that we include by default. If you want to make sure
+                                                                                           // something is included by the JS compiler, add it here.
+                                                                                           // For example, if you do not use some emscripten_*
+                                                                                           // C API call from C, but you want to call it from JS,
+                                                                                           // add it here (and in EXPORTED FUNCTIONS with prefix
+                                                                                           // "_", for closure).
 
 var IGNORED_FUNCTIONS = []; // Functions that we should not generate, neither a stub nor a complete function.
                             // This is useful if your project code includes a function, and you want to replace

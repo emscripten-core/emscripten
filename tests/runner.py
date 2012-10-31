@@ -4378,6 +4378,32 @@ Pass: 0.000012 0.000012''')
       '''
       self.do_run(src, '''[DEBUG] word 1: version, l: 7\n1,one,4''')
 
+    def test_sscanf_whitespace(self):
+      src = r'''
+        #include<stdio.h>
+
+        int main() {
+          short int x;
+          short int y;
+
+          const char* buffer[] = {
+            "173,16",
+            "    16,173",
+            "183,   173",
+            "  17,   287",
+            " 98,  123,   "
+          };
+
+          for (int i=0; i<5; ++i) {
+            sscanf(buffer[i], "%hd,%hd", &x, &y);
+            printf("%d:%d,%d ", i, x, y);
+          }
+
+          return 0;
+        }
+      '''
+      self.do_run(src, '''0:173,16 1:16,173 2:183,173 3:17,287 4:98,123''')      
+
     def test_langinfo(self):
       src = open(path_from_root('tests', 'langinfo', 'test.c'), 'r').read()
       expected = open(path_from_root('tests', 'langinfo', 'output.txt'), 'r').read()
@@ -5940,7 +5966,7 @@ def process(filename):
         self.assertIdentical(open('release.js').read().replace('\n\n', '\n').replace('\n\n', '\n'), open('debug.js').read().replace('\n\n', '\n').replace('\n\n', '\n')) # EMCC_DEBUG=1 mode must not generate different code!
         print >> sys.stderr, 'debug check passed too'
       else:
-        print >> sys.stderr, 'not doing debug check because already in debug'
+        print >> sys.stderr, 'not doing debug check'
 
     def test_python(self):
       if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: make this work')
@@ -9124,6 +9150,9 @@ elif 'browser' in str(sys.argv):
     def test_sdl_canvas_palette(self):
       self.btest('sdl_canvas_palette.c', reference='sdl_canvas_palette.png')
 
+    def test_sdl_canvas_twice(self):
+      self.btest('sdl_canvas_twice.c', reference='sdl_canvas_twice.png')
+
     def test_sdl_maprgba(self):
       self.btest('sdl_maprgba.c', reference='sdl_maprgba.png', reference_slack=3)
 
@@ -9243,8 +9272,8 @@ elif 'browser' in str(sys.argv):
 
         def websockify_func(q):
           print >> sys.stderr, 'running websockify on %d, forward to tcp %d' % (self.port+1, self.port)
-          proc = Popen([path_from_root('third_party', 'websockify', 'other', 'websockify'), '-vvv', str(self.port+1), '127.0.0.1:' + str(self.port)])
-          #proc = Popen([path_from_root('third_party', 'websockify', 'websockify.py'), '-vvv', str(self.port+1), '127.0.0.1:' + str(self.port)])
+          #proc = Popen([path_from_root('third_party', 'websockify', 'other', 'websockify'), '-vvv', str(self.port+1), '127.0.0.1:' + str(self.port)])
+          proc = Popen([path_from_root('third_party', 'websockify', 'websockify.py'), '-vvv', str(self.port+1), '127.0.0.1:' + str(self.port)])
           q.put(proc.pid)
           proc.communicate()
 
@@ -9304,7 +9333,7 @@ elif 'browser' in str(sys.argv):
       finally:
         self.clean_pids()
 
-    def zzztest_zz_websockets_bi_bigdata(self):
+    def test_zz_websockets_bi_bigdata(self):
       try:
         with self.WebsockHarness(3992, self.make_relay_server(3992, 3994)):
           with self.WebsockHarness(3994, no_server=True):

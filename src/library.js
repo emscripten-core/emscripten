@@ -2456,19 +2456,22 @@ LibraryManager.library = {
     var fields = 0;
     var argIndex = 0;
     var next;
-    // remove initial whitespace
-    while (1) {
-      next = get();
-      if (next == 0) return 0;
-      if (!(next in __scanString.whiteSpace)) break;
-    } 
-    unget(next);
+
     next = 1;
     mainLoop:
     for (var formatIndex = 0; formatIndex < format.length; formatIndex++) {
+      // remove whitespace
+      while (1) {
+        next = get();
+        if (next == 0) return fields;
+        if (!(next in __scanString.whiteSpace)) break;
+      } 
+      unget(next);
+      
       if (next <= 0) return fields;
       var next = get();
       if (next <= 0) return fields;  // End of input.
+
       if (format[formatIndex] === '%') {
         formatIndex++;
         var maxSpecifierStart = formatIndex;
@@ -6513,7 +6516,8 @@ LibraryManager.library = {
 
   $Sockets__deps: ['__setErrNo', '$ERRNO_CODES'],
   $Sockets: {
-    BUFFER_SIZE: 10*1024,
+    BUFFER_SIZE: 10*1024, // initial size
+    MAX_BUFFER_SIZE: 10*1024*1024, // maximum size we will grow the buffer
     nextFd: 1,
     fds: {},
     sockaddr_in_layout: Runtime.generateStructInfo([
@@ -6559,42 +6563,42 @@ LibraryManager.library = {
       assert(info.host, 'problem translating fake ip ' + parts);
     }
     console.log('opening ws://' + info.host + ':' + info.port);
-    info.socket = new WebSocket('ws://' + info.host + ':' + info.port, ['base64']);
+    info.socket = new WebSocket('ws://' + info.host + ':' + info.port, ['binary']);
     info.socket.binaryType = 'arraybuffer';
     info.buffer = new Uint8Array(Sockets.BUFFER_SIZE);
     info.bufferWrite = info.bufferRead = 0;
     info.socket.onmessage = function (event) {
-      var data = event.data;
+      assert(typeof event.data !== 'string' && event.data.byteLength); // must get binary data!
+      var data = new Uint8Array(event.data); // make a typed array view on the array buffer
+      var len = data.length;
 #if SOCKET_DEBUG
-      Module.print(['onmessage', window.location, event.data, window.atob(data)]);
+      Module.print(['onmessage', window.location, data, len, '|', Array.prototype.slice.call(data)]);
 #endif
-      if (typeof data == 'string') {
-        var binaryString = window.atob(data);
-        var len = binaryString.length;
-#if SOCKET_DEBUG
-        var out = [];
-#endif
-        for (var i = 0; i < len; i++) {
-          var curr = binaryString.charCodeAt(i);
-          info.buffer[info.bufferWrite++] = curr;
-#if SOCKET_DEBUG
-          out.push(curr);
-#endif
-          if (info.bufferWrite == Sockets.BUFFER_SIZE) info.bufferWrite = 0;
-          if (info.bufferWrite == info.bufferRead) throw 'socket buffer overflow';
+      for (var i = 0; i < len; i++) { // TODO: typed array set, carefully with ranges, or other trick
+        info.buffer[info.bufferWrite++] = data[i];
+        if (info.bufferWrite == info.buffer.length) info.bufferWrite = 0;
+        if (info.bufferWrite == info.bufferRead) {
+          // grow the buffer
+          var currLen = info.buffer.length;
+          if (currLen > Sockets.MAX_BUFFER_SIZE) throw 'socket buffer overflow';
+          var newBuffer = new Uint8Array(currLen*2);
+          for (var j = 0; j < currLen; j++) {
+            newBuffer[j] = info.buffer[(info.bufferRead + j)%currLen];
+          }
+          info.bufferRead = 0;
+          info.bufferWrite = currLen;
+          info.buffer = newBuffer;
         }
-#if SOCKET_DEBUG
-        Module.print(['onmessage data:', len, ':', out]);
-#endif
-      } else {
-        console.log('binary!');
       }
     }
     info.sendQueue = [];
     info.senderWaiting = false;
     info.sender = function(data) {
       if (data) {
-        info.sendQueue.push(data);
+#if SOCKET_DEBUG
+        Module.print(['sender', data, data.length, '|', Array.prototype.slice.call(data)]);
+#endif
+        info.sendQueue.push(new Uint8Array(data)); // must copy, because while this waits memory can change!
       } else {
         info.senderWaiting = false; // we are a setTimeout callback
         if (info.sendQueue.length == 0) return;
@@ -6608,7 +6612,7 @@ LibraryManager.library = {
         return;
       }
       for (var i = 0; i < info.sendQueue.length; i++) {
-        info.socket.send(window.btoa(info.sendQueue[i]));
+        info.socket.send(info.sendQueue[i]);
       }
       info.sendQueue = [];
     }
@@ -6630,7 +6634,7 @@ LibraryManager.library = {
     while (info.bufferWrite != info.bufferRead && len > 0) {
       // write out a byte
       {{{ makeSetValue('buf++', '0', 'info.buffer[info.bufferRead++]', 'i8') }}};
-      if (info.bufferRead == Sockets.BUFFER_SIZE) info.bufferRead = 0;
+      if (info.bufferRead == info.buffer.length) info.bufferRead = 0;
       len--;
       ret++;
     }
@@ -6644,10 +6648,7 @@ LibraryManager.library = {
   send: function(fd, buf, len, flags) {
     var info = Sockets.fds[fd];
     if (!info) return -1;
-#if SOCKET_DEBUG
-    Module.print('send: ' + Array.prototype.slice.call(HEAPU8.subarray(buf, buf+len)));
-#endif
-    info.sender(Pointer_stringify(buf, len));
+    info.sender(HEAPU8.subarray(buf, buf+len));
     return len;
   },
 
@@ -6667,12 +6668,8 @@ LibraryManager.library = {
       var currNum = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iov+8*i' + '+4', 'i32') }}};
       if (!currNum) continue;
       var currBuf = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iov+8*i', 'i8*') }}};
-#if SOCKET_DEBUG
-      Module.print('sendmsg part ' + i + ' : ' + currNum + ' : ' + Array.prototype.slice.call(HEAPU8.subarray(currBuf, currBuf+currNum)));
-#endif
-      data += Pointer_stringify(currBuf, currNum);
+      info.sender(HEAPU8.subarray(currBuf, currBuf+currNum));
     }
-    info.sender(data);
     return data.length;
   },
 
@@ -6693,7 +6690,7 @@ LibraryManager.library = {
       _connect(fd, name, {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_namelen', 'i32') }}});
     }
     var bytes = info.bufferWrite - info.bufferRead;
-    if (bytes < 0) bytes += Sockets.BUFFER_SIZE;
+    if (bytes < 0) bytes += info.buffer.length;
 #if SOCKET_DEBUG
     Module.print('recvmsg bytes: ' + bytes);
 #endif
@@ -6745,7 +6742,7 @@ LibraryManager.library = {
     if (!info) return -1;
     var start = info.bufferRead;
     var end = info.bufferWrite;
-    if (end < start) end += Sockets.BUFFER_SIZE;
+    if (end < start) end += info.buffer.length;
     var dest = {{{ makeGetValue('varargs', '0', 'i32') }}};
     {{{ makeSetValue('dest', '0', 'end - start', 'i32') }}};
     return 0;

@@ -223,14 +223,14 @@ void emscripten_async_prepare_data(char* data, int size, const char *suffix, voi
  *
  */
 
-typedef int worker_t;
+typedef int worker_handle;
 
 /*
  * Create and destroy workers. A worker must be compiled separately
  * from the main program, and with the BUILD_AS_WORKER flag set to 1.
  */
-worker_t emscripten_create_worker(const char *url);
-void emscripten_destroy_worker(worker_t worker);
+worker_handle emscripten_create_worker(const char *url);
+void emscripten_destroy_worker(worker_handle worker);
 
 /*
  * Asynchronously call a worker.
@@ -259,7 +259,7 @@ void emscripten_destroy_worker(worker_t worker);
  * @callback the callback with the response (can be null)
  * @arg an argument to be passed to the callback
  */
-void emscripten_call_worker(worker_t worker, const char *funcname, char *data, int size, void (*callback)(char *, int, void*), void *arg);
+void emscripten_call_worker(worker_handle worker, const char *funcname, char *data, int size, void (*callback)(char *, int, void*), void *arg);
 
 /*
  * Sends a response when in a worker call. Should only be
@@ -275,7 +275,7 @@ void emscripten_worker_respond(char *data, int size);
  * check on the status of the worker to see how busy it is, and do
  * basic decisions about throttling.
  */
-int emscripten_get_worker_queue_size(worker_t worker);
+int emscripten_get_worker_queue_size(worker_handle worker);
 
 /*
  * Profiling tools.

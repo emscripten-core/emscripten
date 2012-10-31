@@ -127,7 +127,7 @@ int main(void)
                         "iframe.width = '40%';"
                         "document.body.appendChild(iframe);"
                         "console.log('added.');");
-  emscripten_set_main_loop(iter, 1, 0);
+  emscripten_set_main_loop(iter, 3, 0);
 #else
   while (!done) iter(NULL);
 #endif

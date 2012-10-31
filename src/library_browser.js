@@ -98,6 +98,7 @@ mergeInto(LibraryManager.library, {
           b = bb.getBlob();
         }
         var url = Browser.URLObject.createObjectURL(b);
+        assert(typeof url == 'string', 'createObjectURL must return a url as a string');
         var img = new Image();
         img.onload = function() {
           assert(img.complete, 'Image ' + name + ' could not be decoded');
@@ -143,6 +144,7 @@ mergeInto(LibraryManager.library, {
             return fail();
           }
           var url = Browser.URLObject.createObjectURL(b); // XXX we never revoke this!
+          assert(typeof url == 'string', 'createObjectURL must return a url as a string');
           var audio = new Audio();
           audio.addEventListener('canplaythrough', function() { finish(audio) }, false); // use addEventListener due to chromium bug 124926
           audio.onerror = function(event) {

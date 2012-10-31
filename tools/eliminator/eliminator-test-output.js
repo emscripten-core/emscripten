@@ -105,6 +105,11 @@ function c() {
   zoom(glob);
   hail(w2);
   sunk(y2);
+  you(fools);
+  var two = three();
+  fools(you);
+  var noneed2;
+  noneed2 += fools(you2);
   return;
 }
 function f() {
@@ -117,7 +122,7 @@ function g(a1, a2) {
   foo(c);
   foo(2);
   for (var i = 0; i < 5; i++) {
-    var q = {
+    {
       a: 1
     } + [ 2, 3 ];
   }
@@ -131,10 +136,10 @@ function g(a1, a2) {
   } else {
     __label__ = 2;
   }
-  var sadijn = new asd;
+  new asd;
   sadijn2 = "qwe%sert";
   this.Module || (this.Module = {});
-  var obj = {
+  {
     "quoted": 1,
     "doublequoted": 2,
     unquoted: 3,
@@ -3772,7 +3777,7 @@ function _malloc($bytes) {
                         break;
                       }
                       if ((_sbrk($839) | 0) == -1) {
-                        var $847 = _sbrk($825);
+                        _sbrk($825);
                         var $tsize_0242932_ph_i = $tsize_0_i;
                         break $_$253;
                       }
@@ -5399,7 +5404,7 @@ function _mallocNoU($bytes) {
                         break;
                       }
                       if ((_sbrk($839) | 0) == -1) {
-                        var $847 = _sbrk($825);
+                        _sbrk($825);
                         var $tsize_0242932_ph_i = $tsize_0_i;
                         break $_$253;
                       }

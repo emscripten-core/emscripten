@@ -129,6 +129,12 @@ function c() {
   zoom(z2);
   hail(w2);
   sunk(y2);
+  var fly = you(fools);
+  var one, two = three(); // more than one var here, so cannot eliminate |two=|, oh well
+  var noneed;
+  noneed = fools(you);
+  var noneed2;
+  noneed2 += fools(you2);
   return;
 }
 function f() {
