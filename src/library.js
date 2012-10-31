@@ -6598,7 +6598,7 @@ LibraryManager.library = {
 #if SOCKET_DEBUG
         Module.print(['sender', data, data.length, '|', Array.prototype.slice.call(data)]);
 #endif
-        info.sendQueue.push(new Uint8Array(data)); // must copy, because while this waits memory can change!
+        info.sendQueue.push(new Uint8Array(data).buffer); // must copy, because while this waits memory can change!
       } else {
         info.senderWaiting = false; // we are a setTimeout callback
         if (info.sendQueue.length == 0) return;
