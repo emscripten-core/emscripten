@@ -4378,6 +4378,32 @@ Pass: 0.000012 0.000012''')
       '''
       self.do_run(src, '''[DEBUG] word 1: version, l: 7\n1,one,4''')
 
+    def test_sscanf_whitespace(self):
+      src = r'''
+        #include<stdio.h>
+
+        int main() {
+          short int x;
+          short int y;
+
+          const char* buffer[] = {
+            "173,16",
+            "    16,173",
+            "183,   173",
+            "  17,   287",
+            " 98,  123,   "
+          };
+
+          for (int i=0; i<5; ++i) {
+            sscanf(buffer[i], "%hd,%hd", &x, &y);
+            printf("%d:%d,%d ", i, x, y);
+          }
+
+          return 0;
+        }
+      '''
+      self.do_run(src, '''0:173,16 1:16,173 2:183,173 3:17,287 4:98,123''')      
+
     def test_langinfo(self):
       src = open(path_from_root('tests', 'langinfo', 'test.c'), 'r').read()
       expected = open(path_from_root('tests', 'langinfo', 'output.txt'), 'r').read()
