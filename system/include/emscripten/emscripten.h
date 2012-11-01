@@ -69,7 +69,7 @@ extern void emscripten_pause_main_loop();
 extern void emscripten_resume_main_loop();
 #else
 #define emscripten_set_main_loop(func, fps, simulateInfiniteLoop) \
-  while (1) func();
+  while (1) { func(); usleep(1000000/fps); }
 #define emscripten_cancel_main_loop() exit(1);
 #endif
 
