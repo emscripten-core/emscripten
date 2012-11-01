@@ -15,7 +15,6 @@ will use 4 processes. To install nose do something like
 from subprocess import Popen, PIPE, STDOUT
 import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, multiprocessing, functools, stat
 
-
 if len(sys.argv) == 1:
   print '''
 ==============================================================================
@@ -8155,6 +8154,12 @@ fscanfed: 10 - hello
 elif 'browser' in str(sys.argv):
   # Browser tests.
 
+  ''' Enable this code to run in another browser than webbrowser detects as default
+  def run_in_other_browser(url):
+    execute(['yourbrowser', url])
+  webbrowser.open_new = run_in_other_browser
+  '''
+
   print
   print 'Running the browser tests. Make sure the browser allows popups from localhost.'
   print
@@ -9351,12 +9356,12 @@ elif 'browser' in str(sys.argv):
       Popen(['python', path_from_root('emmake'), 'make']).communicate()
       enet = [self.in_dir('enet', '.libs', 'libenet.a'), '-I'+path_from_root('tests', 'enet', 'include')]
       os.chdir(pwd)
-      Popen(['python', EMCC, path_from_root('tests', 'enet_server.c'), '-o', 'server.html', '-s', 'SOCKET_DEBUG=1'] + enet).communicate()
+      Popen(['python', EMCC, path_from_root('tests', 'enet_server.c'), '-o', 'server.html'] + enet).communicate()
 
       try:
         with self.WebsockHarness(1234, self.make_relay_server(1234, 1236)):
           with self.WebsockHarness(1236, no_server=True):
-            self.btest('enet_client.c', expected='cheez', args=enet+['-s', 'SOCKET_DEBUG=1'])
+            self.btest('enet_client.c', expected='cheez', args=enet)
       finally:
         self.clean_pids()
 
