@@ -96,7 +96,7 @@ int main (int argc, char ** argv)
     exit (EXIT_FAILURE);
   }
 
-  emscripten_set_main_loop(main_loop, 1, 1);
+  emscripten_set_main_loop(main_loop, 3, 1);
 
   return 1;
 }

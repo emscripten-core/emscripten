@@ -30,6 +30,10 @@ void main_loop() {
               event.packet -> data,
               event.peer -> data,
               event.channelID);
+
+      int result = strcmp("packetfoo", event.packet->data);
+      REPORT_RESULT();
+
       /* Clean up the packet now that we're done using it. */
       enet_packet_destroy (event.packet);
       break;
@@ -96,7 +100,7 @@ int main (int argc, char ** argv)
                         "console.log('added.');");
 #endif
 
-  emscripten_set_main_loop(main_loop, 1, 1);
+  emscripten_set_main_loop(main_loop, 3, 1);
 
   return 1;
 }

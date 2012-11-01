@@ -9347,7 +9347,7 @@ elif 'browser' in str(sys.argv):
       finally:
         self.clean_pids()
 
-    def zzztest_zz_enet(self):
+    def test_zz_enet(self):
       try_delete(self.in_dir('enet'))
       shutil.copytree(path_from_root('tests', 'enet'), self.in_dir('enet'))
       pwd = os.getcwd()
@@ -9361,7 +9361,7 @@ elif 'browser' in str(sys.argv):
       try:
         with self.WebsockHarness(1234, self.make_relay_server(1234, 1236)):
           with self.WebsockHarness(1236, no_server=True):
-            self.btest('enet_client.c', expected='cheez', args=enet)
+            self.btest('enet_client.c', expected='0', args=enet)
       finally:
         self.clean_pids()
 
