@@ -6664,14 +6664,15 @@ LibraryManager.library = {
     }
     var iov = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iov', 'i8*') }}};
     var num = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iovlen', 'i32') }}};
-    var data = '';
+    var ret = 0;
     for (var i = 0; i < num; i++) {
       var currNum = {{{ makeGetValue('iov', '8*i + 4', 'i32') }}};
       if (!currNum) continue;
       var currBuf = {{{ makeGetValue('iov', '8*i', 'i8*') }}};
       info.sender(HEAPU8.subarray(currBuf, currBuf+currNum));
+      ret += currNum;
     }
-    return data.length;
+    return ret;
   },
 
   recvmsg__deps: ['$Sockets', 'connect', 'recv', '__setErrNo', '$ERRNO_CODES'],
