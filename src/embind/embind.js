@@ -393,7 +393,7 @@ function __embind_register_smart_ptr(
     };
     
     Handle.prototype['delete'] = function() {
-        if (!this.ptr) {
+        if (!this.ptr && !this.smartPointer) {
             throw new BindingError(pointeeType.name + ' instance already deleted');
         }
         
