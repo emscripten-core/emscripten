@@ -6675,7 +6675,7 @@ LibraryManager.library = {
     return ret;
   },
 
-  recvmsg__deps: ['$Sockets', 'connect', 'recv', '__setErrNo', '$ERRNO_CODES'],
+  recvmsg__deps: ['$Sockets', 'connect', 'recv', '__setErrNo', '$ERRNO_CODES', 'htons'],
   recvmsg: function(fd, msg, flags) {
     var info = Sockets.fds[fd];
     if (!info) return -1;
@@ -6697,6 +6697,11 @@ LibraryManager.library = {
 #if SOCKET_DEBUG
     Module.print('recvmsg bytes: ' + bytes);
 #endif
+    // write source
+    var name = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_name', '*') }}};
+    {{{ makeSetValue('name', 'Sockets.sockaddr_in_layout.sin_addr', 'info.addr', 'i32') }}};
+    {{{ makeSetValue('name', 'Sockets.sockaddr_in_layout.sin_port', '_htons(info.port)', 'i16') }}};
+    // write data
     var ret = bytes;
     var iov = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iov', 'i8*') }}};
     var num = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iovlen', 'i32') }}};
