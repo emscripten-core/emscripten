@@ -185,6 +185,9 @@ namespace emscripten {
             static std::string fromWireType(char* v) {
                 return std::string(v);
             }
+            static void destroy(WireType v) {
+            	delete v;
+            }
         };
 
         template<typename T>
