@@ -179,7 +179,7 @@ function makeInvoker(name, returnType, argCount, argTypes, invoker, fn) {
         var rv = returnType.fromWireType(invoker.apply(null, args));
         runDestructors(destructors);
         return rv;
-    }
+    };
 }
 
 function __embind_register_function(name, returnType, argCount, argTypes, invoker, fn) {
