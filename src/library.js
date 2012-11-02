@@ -2564,6 +2564,7 @@ LibraryManager.library = {
             break;
         }
         if (type != 'n') fields++;
+        if (next <= 0) break mainLoop;  // End of input.
       } else if (format[formatIndex] in __scanString.whiteSpace) {
         while (next in __scanString.whiteSpace) {
           next = get();
