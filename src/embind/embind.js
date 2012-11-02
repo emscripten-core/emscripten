@@ -165,15 +165,10 @@ function runDestructors(destructors) {
     }
 }
 
-function __embind_register_function(name, returnType, argCount, argTypes, invoker, fn) {
-    name = Pointer_stringify(name);
-    returnType = requireRegisteredType(returnType, "Function " + name + " return value");
-    invoker = FUNCTION_TABLE[invoker];
-    argTypes = requireArgumentTypes(argCount, argTypes, name);
-
-    exposePublicSymbol(name, function() {
+function makeInvoker(name, returnType, argCount, argTypes, invoker, fn) {
+    return function() {
         if (arguments.length !== argCount) {
-            throw new BindingError('emscripten binding function ' + name + ' called with ' + arguments.length + ' arguments, expected ' + argCount);
+            throw new BindingError('function ' + name + ' called with ' + arguments.length + ' arguments, expected ' + argCount);
         }
         var destructors = [];
         var args = new Array(argCount + 1);
@@ -184,7 +179,16 @@ function __embind_register_function(name, returnType, argCount, argTypes, invoke
         var rv = returnType.fromWireType(invoker.apply(null, args));
         runDestructors(destructors);
         return rv;
-    });
+    }
+}
+
+function __embind_register_function(name, returnType, argCount, argTypes, invoker, fn) {
+    name = Pointer_stringify(name);
+    returnType = requireRegisteredType(returnType, "Function " + name + " return value");
+    invoker = FUNCTION_TABLE[invoker];
+    argTypes = requireArgumentTypes(argCount, argTypes, name);
+
+    exposePublicSymbol(name, makeInvoker(name, returnType, argCount, argTypes, invoker, fn));
 }
 
 function __embind_register_tuple(tupleType, name, constructor, destructor) {
@@ -576,23 +580,7 @@ function __embind_register_class_classmethod(
     argTypes = requireArgumentTypes(argCount, argTypes, 'classmethod ' + humanName);
     invoker = FUNCTION_TABLE[invoker];
 
-    classType.constructor[methodName] = function() {
-        if (arguments.length !== argCount) {
-            throw new BindingError('emscripten binding class method ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + argCount);
-        }
-
-        var destructors = [];
-        var args = new Array(argCount + 1);
-        args[0] = fn;
-        for (var i = 0; i < argCount; ++i) {
-            args[i + 1] = argTypes[i].toWireType(destructors, arguments[i]);
-        }
-
-        var rv = returnType.fromWireType(invoker.apply(null, args));
-        runDestructors(destructors);
-        return rv;
-    };
-}
+    classType.constructor[methodName] = makeInvoker(humanName, returnType, argCount, argTypes, invoker, fn);}
 
 function __embind_register_class_field(
     classType,
