@@ -165,6 +165,27 @@ namespace emscripten {
 }
 
 namespace emscripten {
+    ////////////////////////////////////////////////////////////////////////////////
+    // POLICIES
+    ////////////////////////////////////////////////////////////////////////////////
+
+    template<int Index>
+    struct arg {
+        static constexpr int index = Index;
+    };
+
+    template<typename Slot>
+    struct allow_raw_pointer {
+        template<typename InputType, int Index>
+        struct Transform {
+            typedef typename std::conditional<
+                Index == Slot::index,
+                internal::AllowedRawPointer<typename std::remove_pointer<InputType>::type>,
+                InputType
+            >::type type;
+        };
+    };
+
     namespace internal {
         template<typename ReturnType, typename... Args>
         struct Invoker {
@@ -192,6 +213,10 @@ namespace emscripten {
             }
         };
     }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // FUNCTIONS
+    ////////////////////////////////////////////////////////////////////////////////
 
     template<typename ReturnType, typename... Args>
     void function(const char* name, ReturnType (fn)(Args...)) {
@@ -328,6 +353,10 @@ namespace emscripten {
         };
     }
 
+    ////////////////////////////////////////////////////////////////////////////////
+    // VALUE TUPLES
+    ////////////////////////////////////////////////////////////////////////////////
+
     template<typename ClassType>
     class value_tuple {
     public:
@@ -410,6 +439,10 @@ namespace emscripten {
         }
     };
 
+    ////////////////////////////////////////////////////////////////////////////////
+    // VALUE STRUCTS
+    ////////////////////////////////////////////////////////////////////////////////
+
     template<typename ClassType>
     class value_struct {
     public:
@@ -437,6 +470,10 @@ namespace emscripten {
         }
     };
 
+    ////////////////////////////////////////////////////////////////////////////////
+    // SMART POINTERS
+    ////////////////////////////////////////////////////////////////////////////////
+
     template<typename PointerType>
     inline void register_smart_ptr(const char* name) {
         typedef typename PointerType::element_type PointeeType;
@@ -450,55 +487,67 @@ namespace emscripten {
             reinterpret_cast<internal::GenericFunction>(&internal::get_pointee<PointerType>));
     }
 
+    ////////////////////////////////////////////////////////////////////////////////
+    // CLASSES
+    ////////////////////////////////////////////////////////////////////////////////
+
     // TODO: support class definitions without constructors.
     // TODO: support external class constructors
     template<typename ClassType>
     class class_ {
     public:
         class_(const char* name) {
-            internal::registerStandardTypes();
-            internal::_embind_register_class(
-                internal::TypeID<ClassType>::get(),
+            using namespace internal;
+
+            registerStandardTypes();
+            _embind_register_class(
+                TypeID<ClassType>::get(),
                 name,
-                reinterpret_cast<internal::GenericFunction>(&internal::raw_destructor<ClassType>));
+                reinterpret_cast<GenericFunction>(&raw_destructor<ClassType>));
         }
 
         template<typename... ConstructorArgs>
         class_& constructor() {
-            internal::ArgTypeList<ConstructorArgs...> args;
-            internal::_embind_register_class_constructor(
-                internal::TypeID<ClassType>::get(),
+            using namespace internal;
+
+            ArgTypeList<ConstructorArgs...> args;
+            _embind_register_class_constructor(
+                TypeID<ClassType>::get(),
                 args.count,
                 args.types,
-                reinterpret_cast<internal::GenericFunction>(&internal::raw_constructor<ClassType, ConstructorArgs...>));
+                reinterpret_cast<GenericFunction>(&raw_constructor<ClassType, ConstructorArgs...>));
             return *this;
         }
 
-        template<typename ReturnType, typename... Args>
-        class_& method(const char* methodName, ReturnType (ClassType::*memberFunction)(Args...)) {
-            internal::ArgTypeList<Args...> args;
-            internal::_embind_register_class_method(
-                internal::TypeID<ClassType>::get(),
+        template<typename ReturnType, typename... Args, typename... Policies>
+        class_& method(const char* methodName, ReturnType (ClassType::*memberFunction)(Args...), Policies...) {
+            using namespace internal;
+
+            typename WithPolicies<Policies...>::template ArgTypeList<Args...> args;
+            _embind_register_class_method(
+                TypeID<ClassType>::get(),
                 methodName,
-                internal::TypeID<ReturnType>::get(),
+                TypeID<ReturnType>::get(),
                 args.count,
                 args.types,
-                reinterpret_cast<internal::GenericFunction>(&internal::MethodInvoker<ClassType, ReturnType, Args...>::invoke),
+                reinterpret_cast<GenericFunction>(&MethodInvoker<ClassType, ReturnType, Args...>::invoke),
                 sizeof(memberFunction),
                 &memberFunction);
             return *this;
         }
 
-        template<typename ReturnType, typename... Args>
-        class_& method(const char* methodName, ReturnType (ClassType::*memberFunction)(Args...) const) {
-            internal::ArgTypeList<Args...> args;
-            internal::_embind_register_class_method(
-                internal::TypeID<ClassType>::get(),
+        template<typename ReturnType, typename... Args, typename... Policies>
+        class_& method(const char* methodName, ReturnType (ClassType::*memberFunction)(Args...) const, Policies...) {
+            using namespace internal;
+
+            typename WithPolicies<Policies...>::template ArgTypeList<Args...> args;
+            _embind_register_class_method(
+                TypeID<ClassType>::get(),
                 methodName,
-                internal::TypeID<ReturnType>::get(),
+                TypeID<ReturnType>::get(),
                 args.count,
                 args.types,
-                reinterpret_cast<internal::GenericFunction>(&internal::ConstMethodInvoker<ClassType, ReturnType, Args...>::invoke),
+                reinterpret_cast<GenericFunction>(&ConstMethodInvoker<ClassType, ReturnType, Args...>::invoke),
                 sizeof(memberFunction),
                 &memberFunction);
             return *this;
@@ -506,30 +555,38 @@ namespace emscripten {
 
         template<typename FieldType>
         class_& field(const char* fieldName, FieldType ClassType::*field) {
-            internal::_embind_register_class_field(
-                internal::TypeID<ClassType>::get(),
+            using namespace internal;
+
+            _embind_register_class_field(
+                TypeID<ClassType>::get(),
                 fieldName,
-                internal::TypeID<FieldType>::get(),
-                reinterpret_cast<internal::GenericFunction>(&internal::FieldAccess<ClassType, FieldType>::get),
-                reinterpret_cast<internal::GenericFunction>(&internal::FieldAccess<ClassType, FieldType>::set),
+                TypeID<FieldType>::get(),
+                reinterpret_cast<GenericFunction>(&FieldAccess<ClassType, FieldType>::get),
+                reinterpret_cast<GenericFunction>(&FieldAccess<ClassType, FieldType>::set),
                 sizeof(field),
                 &field);
             return *this;
         }
 
-        template<typename ReturnType, typename... Args>
-        class_& classmethod(const char* methodName, ReturnType (*classMethod)(Args...)) {
-            internal::ArgTypeList<Args...> args;
-            internal::_embind_register_class_classmethod(
-                internal::TypeID<ClassType>::get(),
+        template<typename ReturnType, typename... Args, typename... Policies>
+        class_& classmethod(const char* methodName, ReturnType (*classMethod)(Args...), Policies...) {
+            using namespace internal;
+
+            typename WithPolicies<Policies...>::template ArgTypeList<Args...> args;
+            _embind_register_class_classmethod(
+                TypeID<ClassType>::get(),
                 methodName,
-                internal::TypeID<ReturnType>::get(),
+                TypeID<ReturnType>::get(),
                 args.count,
                 args.types,
-                reinterpret_cast<internal::GenericFunction>(classMethod));
+                reinterpret_cast<GenericFunction>(classMethod));
             return *this;
         }
     };
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // ENUMS
+    ////////////////////////////////////////////////////////////////////////////////
 
     template<typename EnumType>
     class enum_ {
@@ -596,6 +653,10 @@ namespace emscripten {
             typename std::aligned_storage<sizeof(T)>::type data;
         };
     }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // INTERFACES
+    ////////////////////////////////////////////////////////////////////////////////
 
     template<typename InterfaceType>
     class wrapper : public InterfaceType {

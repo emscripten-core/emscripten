@@ -416,6 +416,17 @@ function __embind_register_smart_ptr(
     });
 }
 
+function __embind_register_raw_pointer(
+    pointeeType,
+    pointerType
+) {
+    pointeeType = requireRegisteredType(pointeeType, 'class');
+    var name = pointeeType.name + '*';
+    registerType(pointerType, name, {
+        name: name,
+    });
+}
+
 function __embind_register_class(
     classType,
     name,
