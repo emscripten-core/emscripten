@@ -941,6 +941,11 @@ Sec-WebSocket-Accept: %s\r
                 if startsock:
                     startsock.close()
 
+        # Close listen port
+        self.vmsg("Closing socket listening at %s:%s"
+                % (self.listen_host, self.listen_port))
+        lsock.close()
+
 
 # HTTP handler with WebSocket upgrade support
 class WSRequestHandler(SimpleHTTPRequestHandler):
