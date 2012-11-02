@@ -566,27 +566,29 @@ function __embind_register_class_classmethod(
     returnType,
     argCount,
     argTypes,
-    method
+    invoker,
+    fn
 ) {
     classType = requireRegisteredType(classType, 'class');
     methodName = Pointer_stringify(methodName);
     var humanName = classType.name + '.' + methodName;
     returnType = requireRegisteredType(returnType, 'classmethod ' + humanName + ' return value');
     argTypes = requireArgumentTypes(argCount, argTypes, 'classmethod ' + humanName);
-    method = FUNCTION_TABLE[method];
+    invoker = FUNCTION_TABLE[invoker];
 
     classType.constructor[methodName] = function() {
         if (arguments.length !== argCount) {
-            throw new BindingError('emscripten binding method ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + argCount);
+            throw new BindingError('emscripten binding class method ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + argCount);
         }
 
         var destructors = [];
-        var args = new Array(argCount);
+        var args = new Array(argCount + 1);
+        args[0] = fn;
         for (var i = 0; i < argCount; ++i) {
-            args[i] = argTypes[i].toWireType(destructors, arguments[i]);
+            args[i + 1] = argTypes[i].toWireType(destructors, arguments[i]);
         }
 
-        var rv = returnType.fromWireType(method.apply(null, args));
+        var rv = returnType.fromWireType(invoker.apply(null, args));
         runDestructors(destructors);
         return rv;
     };
