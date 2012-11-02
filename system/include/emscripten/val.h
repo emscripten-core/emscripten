@@ -19,7 +19,7 @@ namespace emscripten {
             EM_VAL _emval_get_property_by_unsigned_long(EM_VAL object, unsigned long key);
             void _emval_set_property(EM_VAL object, const char* key, EM_VAL value);
             void _emval_set_property_by_int(EM_VAL object, long key, EM_VAL value);
-            void _emval_as(EM_VAL value, emscripten::internal::TYPEID returnType);
+            void _emval_as(EM_VAL value, TYPEID returnType);
             EM_VAL _emval_call(
                 EM_VAL value,
                 unsigned argCount,
@@ -108,69 +108,77 @@ namespace emscripten {
 
         template<typename ...Args>
         val operator()(Args... args) {
-            internal::ArgTypeList<Args...> argList;
-            typedef internal::EM_VAL (*TypedCall)(
-                internal::EM_VAL,
+            using namespace internal;
+
+            WithPolicies<>::ArgTypeList<Args...> argList;
+            typedef EM_VAL (*TypedCall)(
+                EM_VAL,
                 unsigned,
-                internal::TYPEID argTypes[],
-                typename internal::BindingType<Args>::WireType...);
-            TypedCall typedCall = reinterpret_cast<TypedCall>(&internal::_emval_call);
+                TYPEID argTypes[],
+                typename BindingType<Args>::WireType...);
+            TypedCall typedCall = reinterpret_cast<TypedCall>(&_emval_call);
             return val(
                 typedCall(
                     handle,
                     argList.count,
                     argList.types,
-                    internal::toWireType(args)...));
+                    toWireType(args)...));
         }
 
         template<typename ...Args>
         val call(const char* name, Args... args) {
-            internal::ArgTypeList<Args...> argList;
-            typedef internal::EM_VAL (*TypedCall)(
-                internal::EM_VAL,
+            using namespace internal;
+
+            WithPolicies<>::ArgTypeList<Args...> argList;
+            typedef EM_VAL (*TypedCall)(
+                EM_VAL,
                 const char* name,
                 unsigned,
-                internal::TYPEID argTypes[],
-                typename internal::BindingType<Args>::WireType...);
-            TypedCall typedCall = reinterpret_cast<TypedCall>(&internal::_emval_call_method);
+                TYPEID argTypes[],
+                typename BindingType<Args>::WireType...);
+            TypedCall typedCall = reinterpret_cast<TypedCall>(&_emval_call_method);
             return val(
                 typedCall(
                     handle,
                     name,
                     argList.count,
                     argList.types,
-                    internal::toWireType(args)...));
+                    toWireType(args)...));
         }
 
         template<typename ...Args>
         void call_void(const char* name, Args... args) {
-            internal::ArgTypeList<Args...> argList;
+            using namespace internal;
+
+            WithPolicies<>::ArgTypeList<Args...> argList;
             typedef void (*TypedCall)(
-                internal::EM_VAL,
+                EM_VAL,
                 const char* name,
                 unsigned,
-                internal::TYPEID argTypes[],
-                typename internal::BindingType<Args>::WireType...);
-            TypedCall typedCall = reinterpret_cast<TypedCall>(&internal::_emval_call_void_method);
+                TYPEID argTypes[],
+                typename BindingType<Args>::WireType...);
+            TypedCall typedCall = reinterpret_cast<TypedCall>(&_emval_call_void_method);
             return typedCall(
                 handle,
                 name,
                 argList.count,
                 argList.types,
-                internal::toWireType(args)...);
+                toWireType(args)...);
         }
 
         template<typename T>
         T as() const {
-            typedef internal::BindingType<T> BT;
+            using namespace internal;
+
+            typedef BindingType<T> BT;
 
             typedef typename BT::WireType (*TypedAs)(
-                internal::EM_VAL value,
-                emscripten::internal::TYPEID returnType);
-            TypedAs typedAs = reinterpret_cast<TypedAs>(&internal::_emval_as);
+                EM_VAL value,
+                TYPEID returnType);
+            TypedAs typedAs = reinterpret_cast<TypedAs>(&_emval_as);
 
-            typename BT::WireType wt = typedAs(handle, internal::TypeID<T>::get());
-            internal::WireDeleter<T> deleter(wt);
+            typename BT::WireType wt = typedAs(handle, TypeID<T>::get());
+            WireDeleter<T> deleter(wt);
             return BT::fromWireType(wt);
         }
 

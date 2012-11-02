@@ -100,6 +100,8 @@ namespace emscripten {
 
             void _embind_register_class(
                 TYPEID classType,
+                TYPEID pointerType,
+                TYPEID constPointerType,
                 const char* className,
                 GenericFunction destructor);
 
@@ -187,6 +189,18 @@ namespace emscripten {
         };
     };
 
+    // whitelist all raw pointers
+    struct allow_raw_pointers {
+        template<typename InputType, int Index>
+        struct Transform {
+            typedef typename std::conditional<
+                std::is_pointer<InputType>::value,
+                internal::AllowedRawPointer<typename std::remove_pointer<InputType>::type>,
+                InputType
+            >::type type;
+        };
+    };
+
     namespace internal {
         template<typename ReturnType, typename... Args>
         struct Invoker {
@@ -219,18 +233,20 @@ namespace emscripten {
     // FUNCTIONS
     ////////////////////////////////////////////////////////////////////////////////
 
-    template<typename ReturnType, typename... Args>
+    template<typename ReturnType, typename... Args, typename... Policies>
     void function(const char* name, ReturnType (fn)(Args...)) {
-        internal::registerStandardTypes();
+        using namespace internal;
 
-        internal::ArgTypeList<Args...> args;
-        internal::_embind_register_function(
+        registerStandardTypes();
+
+        typename WithPolicies<Policies...>::template ArgTypeList<Args...> args;
+        _embind_register_function(
             name,
-            internal::TypeID<ReturnType>::get(),
+            TypeID<ReturnType>::get(),
             args.count,
             args.types,
-            reinterpret_cast<internal::GenericFunction>(&internal::Invoker<ReturnType, Args...>::invoke),
-            reinterpret_cast<internal::GenericFunction>(fn));
+            reinterpret_cast<GenericFunction>(&Invoker<ReturnType, Args...>::invoke),
+            reinterpret_cast<GenericFunction>(fn));
     }
 
     namespace internal {
@@ -503,15 +519,17 @@ namespace emscripten {
             registerStandardTypes();
             _embind_register_class(
                 TypeID<ClassType>::get(),
+                TypeID<AllowedRawPointer<ClassType>>::get(),
+                TypeID<AllowedRawPointer<const ClassType>>::get(),
                 name,
                 reinterpret_cast<GenericFunction>(&raw_destructor<ClassType>));
         }
 
-        template<typename... ConstructorArgs>
-        class_& constructor() {
+        template<typename... ConstructorArgs, typename... Policies>
+        class_& constructor(Policies...) {
             using namespace internal;
 
-            ArgTypeList<ConstructorArgs...> args;
+            typename WithPolicies<Policies...>::template ArgTypeList<ConstructorArgs...> args;
             _embind_register_class_constructor(
                 TypeID<ClassType>::get(),
                 args.count,
