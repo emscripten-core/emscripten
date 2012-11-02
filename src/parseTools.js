@@ -1566,6 +1566,19 @@ function makeRounding(value, bits, signed, floatConversion) {
   // been rounded properly regardless, and we will be sign-corrected later when actually used, if
   // necessary.
   return makeInlineCalculation('VALUE >= 0 ? Math.floor(VALUE) : Math.ceil(VALUE)', value, 'tempBigIntR');
+/* refactored version - needs perf testing TODO
+  if (bits <= 32) {
+    if (signed) {
+      return '((' + value + ')&-1)'; // &-1 (instead of |0) hints to the js optimizer that this is a rounding correction
+    } else {
+      return '((' + value + ')>>>0)';
+    }
+  }
+  // Math.floor is reasonably fast if we don't care about corrections (and even correct if unsigned)
+  if (!correctRoundings() || !signed) return 'Math.floor(' + value + ')';
+  // We are left with >32 bits
+  return makeInlineCalculation('VALUE >= 0 ? Math.floor(VALUE) : Math.ceil(VALUE)', value, 'tempBigIntR');
+*/
 }
 
 // fptoui and fptosi are not in these, because we need to be careful about what we do there. We can't
