@@ -11,12 +11,19 @@ namespace emscripten {
     namespace internal {
         typedef const struct _TYPEID* TYPEID;
 
+        extern "C" {
+            void _embind_register_raw_pointer(
+                TYPEID pointee,
+                TYPEID pointer);
+        }
+
         // This implementation is technically not legal, as it's not
         // required that two calls to typeid produce the same exact
-        // std::type_info instance.  That said, it's likely to work.
-        // Should it not work in the future: replace TypeID with
-        // an int, and store all TypeInfo we see in a map, allocating
-        // new TypeIDs as we add new items to the map.
+        // std::type_info instance.  That said, it's likely to work
+        // given Emscripten compiles everything into one binary.
+        // Should it not work in the future: replace TypeID with an
+        // int, and store all TypeInfo we see in a map, allocating new
+        // TypeIDs as we add new items to the map.
         template<typename T>
         struct TypeID {
             static TYPEID get() {
@@ -30,6 +37,24 @@ namespace emscripten {
                 return TypeID<T>::get();
             }
         };
+
+        template<typename T>
+        struct TypeID<T*> {
+            static_assert(!std::is_pointer<T*>::value, "Implicitly binding raw pointers is illegal.  Specify ???");
+        };
+
+        template<typename T>
+        struct AllowedRawPointer {
+        };
+
+        template<typename T>
+        struct TypeID<AllowedRawPointer<T>> {
+            static TYPEID get() {
+                TYPEID ptype = reinterpret_cast<TYPEID>(&typeid(T*));
+                _embind_register_raw_pointer(TypeID<T>::get(), ptype);
+                return ptype;
+            }
+        };
         
         // count<>
 
@@ -38,44 +63,81 @@ namespace emscripten {
 
         template<>
         struct count<> {
-            enum { value = 0 };
+            constexpr static unsigned value = 0;
         };
 
         template<typename T, typename... Args>
         struct count<T, Args...> {
-            enum { value = 1 + count<Args...>::value };
+            constexpr static unsigned value = 1 + count<Args...>::value;
         };
 
-        // ArgTypeList<>
+        // ExecutePolicies<>
 
-        template<typename... Args>
-        struct ArgTypes;
+        template<typename... Policies>
+        struct ExecutePolicies;
 
         template<>
-        struct ArgTypes<> {
+        struct ExecutePolicies<> {
+            template<typename T, int Index>
+            struct With {
+                typedef T type;
+            };
+        };
+        
+        template<typename Policy, typename... Remaining>
+        struct ExecutePolicies<Policy, Remaining...> {
+            template<typename T, int Index>
+            struct With {
+                typedef typename Policy::template Transform<
+                    typename ExecutePolicies<Remaining...>::template With<T, Index>::type,
+                    Index
+                >::type type;
+            };
+        };
+
+        // ArgTypes<>
+
+        template<int Index, typename... Args>
+        struct ArgTypes;
+
+        template<int Index>
+        struct ArgTypes<Index> {
+            template<typename... Policies>
             static void fill(TYPEID* argTypes) {
             }
         };
 
-        template<typename T, typename... Args>
-        struct ArgTypes<T, Args...> {
+        template<int Index, typename T, typename... Remaining>
+        struct ArgTypes<Index, T, Remaining...> {
+            template<typename... Policies>
             static void fill(TYPEID* argTypes) {
-                *argTypes = TypeID<T>::get();
-                return ArgTypes<Args...>::fill(argTypes + 1);
+                typedef typename ExecutePolicies<Policies...>::template With<T, Index>::type TransformT;
+                
+                *argTypes = TypeID<TransformT>::get();
+                return ArgTypes<Index + 1, Remaining...>::fill(argTypes + 1);
             }
         };
 
+        // WithPolicies<...>::ArgTypeList<...>
+        template<typename... Policies>
+        struct WithPolicies {
+            template<typename... Args>
+            struct ArgTypeList {
+                enum { args_count = count<Args...>::value };
+
+                ArgTypeList() {
+                    count = args_count;
+                    ArgTypes<0, Args...>::template fill<Policies...>(types);
+                }
+
+                unsigned count;
+                TYPEID types[args_count];
+            };
+        };
+
+        // TODO: kill this and make every signature support policies
         template<typename... Args>
-        struct ArgTypeList {
-            enum { args_count = count<Args...>::value };
-
-            ArgTypeList() {
-                count = args_count;
-                ArgTypes<Args...>::fill(types);
-            }
-
-            unsigned count;
-            TYPEID types[args_count];
+        struct ArgTypeList : WithPolicies<>::ArgTypeList<Args...> {
         };
 
         // BindingType<T>
@@ -147,6 +209,13 @@ namespace emscripten {
             static T fromWireType(WireType wt) {
                 return BindingType<T>::fromWireType(wt);
             }
+        };
+
+        template<typename T>
+        struct BindingType<T*>;
+
+        template<typename T>
+        struct BindingType<AllowedRawPointer<T>> {
         };
 
         template<typename Enum>
