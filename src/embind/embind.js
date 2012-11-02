@@ -428,6 +428,9 @@ function __embind_register_raw_pointer(
     var name = pointeeType.name + '*';
     registerType(pointerType, name, {
         name: name,
+        toWireType: function(destructors, o) {
+            return o.ptr;
+        }
     });
 }
 

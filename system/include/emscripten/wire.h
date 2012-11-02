@@ -212,10 +212,12 @@ namespace emscripten {
         };
 
         template<typename T>
-        struct BindingType<T*>;
+        struct BindingType<T*> {
+            typedef T* WireType;
 
-        template<typename T>
-        struct BindingType<AllowedRawPointer<T>> {
+            static T* fromWireType(WireType wt) {
+                return wt;
+            }
         };
 
         template<typename Enum>
