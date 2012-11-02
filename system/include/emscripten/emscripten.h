@@ -67,6 +67,7 @@ extern void emscripten_async_run_script(const char *script, int millis);
 extern void emscripten_set_main_loop(void (*func)(), int fps, int simulate_infinite_loop);
 extern void emscripten_pause_main_loop();
 extern void emscripten_resume_main_loop();
+extern void emscripten_cancel_main_loop();
 #else
 #define emscripten_set_main_loop(func, fps, simulateInfiniteLoop) \
   while (1) { func(); usleep(1000000/fps); }
