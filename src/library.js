@@ -1729,12 +1729,15 @@ LibraryManager.library = {
       return bytesRead;
     }
   },
-  read__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'pread'],
+  read__deps: ['$FS', '$Sockets', '__setErrNo', '$ERRNO_CODES', 'recv', 'pread'],
   read: function(fildes, buf, nbyte) {
     // ssize_t read(int fildes, void *buf, size_t nbyte);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/read.html
+    var socket = Sockets.fds[fildes];
     var stream = FS.streams[fildes];
-    if (!stream) {
+    if (socket) {
+        return _recv(fildes, buf, nbyte, 0);
+    } else if (!stream) {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
     } else if (!stream.isRead) {
@@ -1925,12 +1928,15 @@ LibraryManager.library = {
       return i;
     }
   },
-  write__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'pwrite'],
+  write__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'send', 'pwrite'],
   write: function(fildes, buf, nbyte) {
     // ssize_t write(int fildes, const void *buf, size_t nbyte);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/write.html
+    var socket = Sockets.fds[fildes];
     var stream = FS.streams[fildes];
-    if (!stream) {
+    if (socket) {
+        return _send(fildes, buf, nbyte, 0);
+    } else if (!stream) {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
     } else if (!stream.isWrite) {
