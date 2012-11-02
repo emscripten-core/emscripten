@@ -420,22 +420,10 @@ function __embind_register_smart_ptr(
     });
 }
 
-function __embind_register_raw_pointer(
-    pointeeType,
-    pointerType
-) {
-    pointeeType = requireRegisteredType(pointeeType, 'class');
-    var name = pointeeType.name + '*';
-    registerType(pointerType, name, {
-        name: name,
-        toWireType: function(destructors, o) {
-            return o.ptr;
-        }
-    });
-}
-
 function __embind_register_class(
     classType,
+    pointerType,
+    constPointerType,
     name,
     destructor
 ) {
@@ -491,6 +479,22 @@ function __embind_register_class(
         fromWireType: function(ptr) {
             return new Handle(ptr);
         },
+        toWireType: function(destructors, o) {
+            return o.ptr;
+        }
+    });
+
+    var pointerName = name + '*';
+    registerType(pointerType, pointerName, {
+        name: pointerName,
+        toWireType: function(destructors, o) {
+            return o.ptr;
+        }
+    });
+
+    var constPointerName = name + ' const*';
+    registerType(constPointerType, constPointerName, {
+        name: constPointerName,
         toWireType: function(destructors, o) {
             return o.ptr;
         }

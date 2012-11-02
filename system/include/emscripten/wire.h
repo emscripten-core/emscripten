@@ -11,12 +11,6 @@ namespace emscripten {
     namespace internal {
         typedef const struct _TYPEID* TYPEID;
 
-        extern "C" {
-            void _embind_register_raw_pointer(
-                TYPEID pointee,
-                TYPEID pointer);
-        }
-
         // This implementation is technically not legal, as it's not
         // required that two calls to typeid produce the same exact
         // std::type_info instance.  That said, it's likely to work
@@ -40,7 +34,7 @@ namespace emscripten {
 
         template<typename T>
         struct TypeID<T*> {
-            static_assert(!std::is_pointer<T*>::value, "Implicitly binding raw pointers is illegal.  Specify ???");
+            static_assert(!std::is_pointer<T*>::value, "Implicitly binding raw pointers is illegal.  Specify allow_raw_pointer<arg<?>>");
         };
 
         template<typename T>
@@ -50,9 +44,7 @@ namespace emscripten {
         template<typename T>
         struct TypeID<AllowedRawPointer<T>> {
             static TYPEID get() {
-                TYPEID ptype = reinterpret_cast<TYPEID>(&typeid(T*));
-                _embind_register_raw_pointer(TypeID<T>::get(), ptype);
-                return ptype;
+                return reinterpret_cast<TYPEID>(&typeid(T*));
             }
         };
         
@@ -114,7 +106,7 @@ namespace emscripten {
                 typedef typename ExecutePolicies<Policies...>::template With<T, Index>::type TransformT;
                 
                 *argTypes = TypeID<TransformT>::get();
-                return ArgTypes<Index + 1, Remaining...>::fill(argTypes + 1);
+                return ArgTypes<Index + 1, Remaining...>::template fill<Policies...>(argTypes + 1);
             }
         };
 
@@ -133,11 +125,6 @@ namespace emscripten {
                 unsigned count;
                 TYPEID types[args_count];
             };
-        };
-
-        // TODO: kill this and make every signature support policies
-        template<typename... Args>
-        struct ArgTypeList : WithPolicies<>::ArgTypeList<Args...> {
         };
 
         // BindingType<T>
