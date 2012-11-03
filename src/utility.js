@@ -319,11 +319,12 @@ function Benchmarker() {
     //printErr(['+', id, starts[id]]);
     starts[id] = (starts[id] || []).concat([Date.now()]);
   };
-  this.end = function(id) {
+  this.stop = function(id) {
     //printErr(['-', id, starts[id]]);
     assert(starts[id], new Error().stack);
     times[id] = (times[id] || 0) + Date.now() - starts[id].pop();
     counts[id] = (counts[id] || 0) + 1;
+    this.print();
   };
   this.print = function() {
     var ids = keys(times);
