@@ -4731,15 +4731,6 @@ LibraryManager.library = {
     return 32;
   },
 
-  llvm_cttz_i32: function(x) {
-    for (var i=0; i<32; i++) {
-        if ( (x & (1 << i)) != 0 ) {
-            return i;
-        }
-    }
-    return 0;
-  },
-
   __assert_fail: function(condition, file, line) {
     ABORT = true;
     throw 'Assertion failed: ' + Pointer_stringify(condition);//JSON.stringify(arguments)//condition;
