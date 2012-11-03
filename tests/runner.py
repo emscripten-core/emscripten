@@ -7009,6 +7009,28 @@ finalizing 3 (global == 0)
 .
 ''')
 
+    def test_builtin_expect(self):
+      Settings.CATCH_EXIT_CODE = 1
+      src = r'''
+        #include <stdlib.h>
+        int main(void) {
+          if (__builtin_expect(0, 0)) {
+            exit(EXIT_FAILURE);
+          }
+          if (__builtin_expect(0, 1)) {
+            exit(EXIT_FAILURE);
+          }
+
+          if (!__builtin_expect(1, 0)) {
+            exit(EXIT_FAILURE);
+          }
+          if (!__builtin_expect(1, 1)) {
+            exit(EXIT_FAILURE);
+          }
+          exit(EXIT_SUCCESS);
+        }'''
+      self.do_run(src, 'Exit Status: 0')
+
   # Generate tests for everything
   def make_run(fullname, name=-1, compiler=-1, llvm_opts=0, embetter=0, quantum_size=0, typed_arrays=0, emcc_args=None):
     exec('''
