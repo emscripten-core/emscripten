@@ -201,6 +201,9 @@ var raw = read(ll_file);
 if (FAKE_X86_FP80) {
   raw = raw.replace(/x86_fp80/g, 'double');
 }
+if (raw.search('\r\n') >= 0) {
+  raw = raw.replace(/\r\n/g, '\n'); // fix windows line endings
+}
 var lines = raw.split('\n');
 raw = null;
 
