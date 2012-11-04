@@ -7481,6 +7481,8 @@ f.close()
       self.assertContained('hello from lib', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
     def test_runtimelink_multi(self):
+      if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('cannot run without spidermonkey due to node limitations')
+
       open('testa.h', 'w').write(r'''
         #ifndef _TESTA_H_
         #define _TESTA_H_
