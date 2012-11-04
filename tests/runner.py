@@ -10,6 +10,9 @@ These tests can be run in parallel using nose, for example
 
 will use 4 processes. To install nose do something like
 |pip install nose| or |sudo apt-get install python-nose|.
+
+Note however that emcc now uses multiple cores when optimizing,
+so you may prefer to use fewer cores here.
 '''
 
 from subprocess import Popen, PIPE, STDOUT
