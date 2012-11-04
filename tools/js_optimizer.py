@@ -28,6 +28,8 @@ def run(filename, passes, js_engine):
     passes = [passes]
 
   js = open(filename).read()
+  if os.linesep != '\n':
+    js = js.replace(os.linesep, '\n') # we assume \n in the splitting code
 
   # Find suffix
   suffix_marker = '// EMSCRIPTEN_GENERATED_FUNCTIONS'
