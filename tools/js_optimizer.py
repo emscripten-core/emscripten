@@ -11,6 +11,8 @@ BEST_JS_PROCESS_SIZE = 1024*1024
 
 WINDOWS = sys.platform.startswith('win')
 
+DEBUG = os.environ.get('EMCC_DEBUG')
+
 def run_on_chunk(command):
   filename = command[2] # XXX hackish
   output = subprocess.Popen(command, stdout=subprocess.PIPE).communicate()[0]
@@ -44,6 +46,7 @@ def run(filename, passes, js_engine):
       f_end = js.find('\n}\n', f_end+1)
     chunk = js[f_start:(-1 if f_end == -1 else f_end+3)] + suffix
     temp_file = filename + '.p%d.js' % i
+    if DEBUG: print >> sys.stderr, '  chunk %d: %d bytes' % (i, (f_end if f_end >= 0 else len(js)) - f_start)
     i += 1
     f_start = f_end+3
     done = f_end == -1 or f_start >= len(js)
@@ -74,12 +77,12 @@ def run(filename, passes, js_engine):
 
     if not fail:
       # We can parallelize
-      if os.environ.get('EMCC_DEBUG'): print >> sys.stderr, 'splitting up js optimization into %d chunks, using %d cores' % (len(chunks), cores)
+      if DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks, using %d cores' % (len(chunks), cores)
       pool = multiprocessing.Pool(processes=cores)
       filenames = pool.map(run_on_chunk, commands, chunksize=1)
     else:
       # We can't parallize, but still break into chunks to avoid uglify/node memory issues
-      if os.environ.get('EMCC_DEBUG'): print >> sys.stderr, 'splitting up js optimization into %d chunks (not in parallel because %s)' % (len(chunks), fail)
+      if DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks (not in parallel because %s)' % (len(chunks), fail)
       filenames = [run_on_chunk(command) for command in commands]
 
     f = open(filename, 'w')
