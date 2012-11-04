@@ -3201,7 +3201,8 @@ def process(filename):
       # XXX Not sure what the right output is here. Looks like the test started failing with daylight savings changes. Modified it to pass again.
       src = open(path_from_root('tests', 'time', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'time', 'output.txt'), 'r').read()
-      self.do_run(src, expected,
+      expected2 = open(path_from_root('tests', 'time', 'output2.txt'), 'r').read()
+      self.do_run(src, [expected, expected2],
                    extra_emscripten_args=['-H', 'libc/time.h'])
                    #extra_emscripten_args=['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/langinfo.h,libc/time.h'])
 

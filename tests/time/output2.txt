@@ -1,0 +1,38 @@
+stime: -1
+tzname[0] set: 1
+tzname[1] set: 1
+sec: 43
+min: 22
+hour: 3
+day: 25
+mon: 11
+year: 102
+wday: 3
+yday: 358
+dst: 0
+off: 0
+zone: GMT
+timegm <-> gmtime: 0
+old year: 102
+new year: 70
+old year again: 102
+localtime timezone: 0
+localtime daylight: 1
+localtime tzname: 1
+localtime <-> mktime: 1
+localtime_r(1): 1
+localtime_r(2): 1
+time: 1
+difftime+: 268848637.000000
+difftime-: -268848637.000000
+1854 days: 365
+2000 days: 366
+2001 days: 365
+2004 days: 366
+asctime: Wed Dec 25 03:22:43 2002
+old asctime: Wed Dec 25 03:22:43 2002
+new asctime_r: Sat Jul  2 19:33:20 2011
+old asctime again: Wed Dec 25 03:22:43 2002
+clock(start): 1
+clock(end): 1
+ctime: 0
