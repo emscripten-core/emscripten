@@ -5778,8 +5778,7 @@ def process(filename):
                          open(path_from_root('tests', 'sqlite', 'benchmark.c'), 'r').read(),
                    open(path_from_root('tests', 'sqlite', 'benchmark.txt'), 'r').read(),
                    includes=[path_from_root('tests', 'sqlite')],
-                   force_c=True,
-                   js_engines=[SPIDERMONKEY_ENGINE]) # V8 is slow
+                   force_c=True)
 
     def test_zlib(self):
       if self.emcc_args is not None and '-O2' in self.emcc_args:
@@ -5810,8 +5809,7 @@ def process(filename):
                                                           os.path.join('src', '.libs', 'libBulletCollision.a'),
                                                           os.path.join('src', '.libs', 'libLinearMath.a')],
                                                configure_args=['--disable-demos','--disable-dependency-tracking']),
-                   includes=[path_from_root('tests', 'bullet', 'src')],
-                   js_engines=[SPIDERMONKEY_ENGINE]) # V8 issue 1407
+                   includes=[path_from_root('tests', 'bullet', 'src')])
 
     def test_poppler(self):
       if self.emcc_args is None: return self.skip('very slow, we only do this in emcc runs')
