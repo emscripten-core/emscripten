@@ -186,7 +186,7 @@ namespace emscripten {
                 return std::string(v);
             }
             static void destroy(WireType v) {
-            	delete v;
+                free(v);
             }
         };
 
