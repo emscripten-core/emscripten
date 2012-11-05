@@ -6927,6 +6927,7 @@ def process(filename):
           assert 'UnSign|src.cpp:13 : 6 hits, %17 failures' in output, 'no indication of Sign corrections: ' + output
         return output
 
+      print >>sys.stderr, '1'
       self.do_run(src, '*186854335,63*\n', output_nicerizer=check)
 
       Settings.PGO = Settings.CHECK_OVERFLOWS = Settings.CORRECT_OVERFLOWS = Settings.CHECK_SIGNS = Settings.CORRECT_SIGNS = 0
@@ -6940,10 +6941,12 @@ def process(filename):
       Settings.CORRECT_OVERFLOWS = 2
       Settings.CORRECT_OVERFLOWS_LINES = pgo_data['overflows_lines']
 
+      print >>sys.stderr, '2'
       self.do_run(src, '*186854335,63*\n')
 
       # Sanity check: Without PGO, we will fail
 
+      print >>sys.stderr, '3'
       try:
         self.do_run(src, '*186854335,63*\n')
       except:
