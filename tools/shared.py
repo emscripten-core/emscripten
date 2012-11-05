@@ -567,7 +567,11 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     if env is None:
       env = Building.get_building_env()
     #args += ['VERBOSE=1']
-    Popen(args, stdout=stdout, stderr=stderr, env=env).communicate()
+    try:
+      Popen(args, stdout=stdout, stderr=stderr, env=env).communicate()
+    except Exception, e:
+      print >> sys.stderr, 'Error: Exception thrown when invoking Popen in make with args: "%s"!' % ' '.join(args)
+      raise
 
   @staticmethod
   def build_library(name, build_dir, output_dir, generated_libs, configure=['sh', './configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=None, cache_name=None, copy_project=False, env_init={}, source_dir=None):
