@@ -4498,6 +4498,30 @@ def process(filename):
         '''
       self.do_run(src, 'isatty? 0,0,1\ngot: 35\ngot: 45\ngot: 25\ngot: 15\n', post_build=post)
 
+    def test_fwrite_0(self):
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        int main ()
+        {
+            FILE *fh;
+
+            fh = fopen("a.txt", "wb");
+            if (!fh) exit(1);
+            fclose(fh);
+
+            fh = fopen("a.txt", "rb");
+            if (!fh) exit(1);
+
+            char data[] = "foobar";
+            size_t written = fwrite(data, 1, sizeof(data), fh);
+
+            printf("written=%zu\n", written);
+        }
+        '''
+      self.do_run(src, 'written=0')
+
     def test_fgetc_unsigned(self):
       if self.emcc_args is None: return self.skip('requires emcc')
       src = r'''

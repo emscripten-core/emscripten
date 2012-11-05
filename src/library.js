@@ -3215,7 +3215,7 @@ LibraryManager.library = {
     var streamObj = FS.streams[stream];
     if (bytesRead == -1) {
       if (streamObj) streamObj.error = true;
-      return -1;
+      return 0;
     } else {
       if (bytesRead < bytesToRead) streamObj.eof = true;
       return Math.floor(bytesRead / size);
@@ -3299,7 +3299,7 @@ LibraryManager.library = {
     var bytesWritten = _write(stream, ptr, bytesToWrite);
     if (bytesWritten == -1) {
       if (FS.streams[stream]) FS.streams[stream].error = true;
-      return -1;
+      return 0;
     } else {
       return Math.floor(bytesWritten / size);
     }
