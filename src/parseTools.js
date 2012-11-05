@@ -1598,8 +1598,6 @@ function isSignedOp(op, variant) {
 }
 
 var legalizedI64s = USE_TYPED_ARRAYS == 2; // We do not legalize globals, but do legalize function lines. This will be true in the latter case
-var preciseI64MathUsed = false; // Set to true if we actually use precise i64 math: If PRECISE_I64_MATH is set, and also such math is actually
-                                // needed (+,-,*,/,% - we do not need it for bitops)
 
 function processMathop(item) {
   var op = item.op;
@@ -1657,7 +1655,7 @@ function processMathop(item) {
       }
     }
     function i64PreciseOp(type, lastArg) {
-      preciseI64MathUsed = true;
+      Types.preciseI64MathUsed = true;
       return finish(['(i64Math.' + type + '(' + low1 + ',' + high1 + ',' + low2 + ',' + high2 +
                      (lastArg ? ',' + lastArg : '') + '),i64Math.result[0])', 'i64Math.result[1]']);
     }
@@ -1818,7 +1816,7 @@ function processMathop(item) {
     case 'sdiv': case 'udiv': return makeRounding(getFastValue(idents[0], '/', idents[1], item.type), bits, op[0] === 's');
     case 'mul': {
       if (bits == 32 && PRECISE_I32_MUL) {
-        preciseI64MathUsed = true;
+        Types.preciseI64MathUsed = true;
         return '(i64Math.multiply(' + idents[0] + ',0,' + idents[1] + ',0),i64Math.result[0])';
       } else {
         return handleOverflow(getFastValue(idents[0], '*', idents[1], item.type), bits);
@@ -2002,7 +2000,9 @@ function parseBlockAddress(segment) {
 }
 
 function finalizeBlockAddress(param) {
-  return Functions.currFunctions[param.func].labelIds[param.label]; // XXX We rely on currFunctions here...?
+  assert(param.func in Functions.blockAddresses);
+  assert(param.label in Functions.blockAddresses[param.func]);
+  return Functions.blockAddresses[param.func][param.label];
 }
 
 function stripCorrections(param) {

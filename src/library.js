@@ -5042,7 +5042,7 @@ LibraryManager.library = {
     };
   },
 
-  llvm_uadd_with_overflow_i64__deps: [function() { preciseI64MathUsed = 1 }],
+  llvm_uadd_with_overflow_i64__deps: [function() { Types.preciseI64MathUsed = 1 }],
   llvm_uadd_with_overflow_i64: function(xl, xh, yl, yh) {
     i64Math.add(xl, xh, yl, yh);
     return {
@@ -5051,7 +5051,7 @@ LibraryManager.library = {
     };
   },
 
-  llvm_umul_with_overflow_i64__deps: [function() { preciseI64MathUsed = 1 }],
+  llvm_umul_with_overflow_i64__deps: [function() { Types.preciseI64MathUsed = 1 }],
   llvm_umul_with_overflow_i64: function(xl, xh, yl, yh) {
     i64Math.mul(xl, xh, yl, yh);
     return {

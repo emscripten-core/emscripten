@@ -25,6 +25,8 @@ WARNING: You should normally never use this! Use emcc instead.
 
 from tools import shared
 
+DEBUG = os.environ.get('EMCC_DEBUG')
+
 __rootpath__ = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(*pathelems):
   """Returns the absolute path for which the given path elements are
@@ -35,21 +37,114 @@ def path_from_root(*pathelems):
 temp_files = shared.TempFiles()
 
 
+def scan(ll, settings):
+  # blockaddress(@main, %23)
+  blockaddrs = []
+  for blockaddr in re.findall('blockaddress\([^)]*\)', ll):
+    b = blockaddr.split('(')[1][:-1].split(', ')
+    blockaddrs.append(b)
+  if len(blockaddrs) > 0:
+    settings['NECESSARY_BLOCKADDRS'] = blockaddrs
+
 def emscript(infile, settings, outfile, libraries=[]):
-  """Runs the emscripten LLVM-to-JS compiler.
+  """Runs the emscripten LLVM-to-JS compiler. We parallelize as much as possible
 
   Args:
     infile: The path to the input LLVM assembly file.
-    settings: JSON-formatted string of settings that overrides the values
+    settings: JSON-formatted settings that override the values
       defined in src/settings.js.
     outfile: The file where the output is written.
   """
-  settings_file = temp_files.get('.txt').name # Save settings to a file to work around v8 issue 1579
-  s = open(settings_file, 'w')
-  s.write(settings)
-  s.close()
+
   compiler = path_from_root('src', 'compiler.js')
-  shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, infile] + libraries, stdout=outfile, cwd=path_from_root('src'))
+
+  # Parallelization: We run 3 passes:
+  #   1 aka 'pre'  : Process types and metadata and so forth, and generate the preamble.
+  #   2 aka 'funcs': Process functions. We can parallelize this, working on each function independently.
+  #   3 aka 'post' : Process globals, generate postamble and finishing touches.
+
+  # Pre-scan ll and alter settings as necessary
+  ll = open(infile).read()
+  scan(ll, settings)
+  ll = None # allow collection
+
+  # Split input into the relevant parts for each phase
+  pre = ''
+  funcs = [] # split up functions here, for parallelism later
+  meta = '' # needed by each function XXX
+  post = ''
+
+  in_func = False
+  ll_lines = open(infile).readlines()
+  for line in ll_lines:
+    if in_func:
+      funcs[-1] += line
+      if line.startswith('}'):
+        in_func = False
+        #pre += line # XXX pre needs function defs?
+    else:
+      if line.startswith('define '):
+        in_func = True
+        funcs.append(line)
+        #pre += line # XXX pre needs function defs?
+      elif line.find(' = type { ') > 0:
+        pre += line # type
+      elif line.startswith('!'):
+        meta += line # metadata
+      else:
+        post += line # global
+        pre += line # pre needs it to, so we know about globals in pre and funcs
+  ll_lines = None
+
+  #print '========= pre ================\n'
+  #print pre
+  #print '========== funcs ===============\n'
+  #for func in funcs:
+  #  print '\n// ===\n\n', func
+  #print '========== post ==============\n'
+  #print post
+  #print '=========================\n'
+
+  # Save settings to a file to work around v8 issue 1579
+  settings_file = temp_files.get('.txt').name
+  s = open(settings_file, 'w')
+  s.write(json.dumps(settings))
+  s.close()
+
+  # Pass 1
+  if DEBUG: print >> sys.stderr, 'phase 1'
+  pre_file = temp_files.get('.ll').name
+  open(pre_file, 'w').write(pre)
+  out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, pre_file, 'pre'] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
+  js, forwarded_data = out.split('//FORWARDED_DATA:')
+  #print 'js', js
+  #print >> sys.stderr, 'FORWARDED_DATA 1:', forwarded_data, type(forwarded_data)
+  forwarded_file = temp_files.get('.json').name
+  open(forwarded_file, 'w').write(forwarded_data)
+
+  # Pass 2
+  if DEBUG: print >> sys.stderr, 'phase 2'
+  funcs_file = temp_files.get('.ll').name
+  open(funcs_file, 'w').write('\n'.join(funcs) + '\n' + meta)
+  #print 'pass 2c..'#, open(funcs_file).read()
+  out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, funcs_file, 'funcs', forwarded_file] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
+  funcs_js, forwarded_data = out.split('//FORWARDED_DATA:')
+  #print 'js', js
+  forwarded_file += '2'
+  #print >> sys.stderr, 'FORWARDED_DATA 2:', forwarded_data, type(forwarded_data), forwarded_file
+  open(forwarded_file, 'w').write(forwarded_data)
+  # XXX must coordinate function indexixing data when parallelizing
+  #print 'OUT\n', out
+  js += funcs_js
+
+  # Pass 3
+  if DEBUG: print >> sys.stderr, 'phase 3'
+  post_file = temp_files.get('.ll').name
+  open(post_file, 'w').write(post)
+  out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, post_file, 'post', forwarded_file] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
+  js += out
+
+  outfile.write(js)
   outfile.close()
 
 
@@ -127,7 +222,7 @@ def main(args):
   libraries = args.libraries[0].split(',') if len(args.libraries) > 0 else []
 
   # Compile the assembly to Javascript.
-  emscript(args.infile, json.dumps(settings), args.outfile, libraries)
+  emscript(args.infile, settings, args.outfile, libraries)
 
 if __name__ == '__main__':
   parser = optparse.OptionParser(

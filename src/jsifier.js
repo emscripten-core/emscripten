@@ -13,33 +13,36 @@ function JSify(data, functionsOnly, givenFunctions) {
   var mainPass = !functionsOnly;
 
   if (mainPass) {
-    // We will start to print out the data, but must do so carefully - we are
-    // dealing with potentially *huge* strings. Convenient replacements and
-    // manipulations may create in-memory copies, and we may OOM.
-    //
-    // Final shape that will be created:
-    //    shell
-    //      (body)
-    //        preamble
-    //          runtime
-    //        generated code
-    //        postamble
-    //          global_vars
-    //
-    // First, we print out everything until the generated code. Then the
-    // functions will print themselves out as they are parsed. Finally, we
-    // will call finalCombiner in the main pass, to print out everything
-    // else. This lets us not hold any strings in memory, we simply print
-    // things out as they are ready.
-
     var shellFile = SHELL_FILE ? SHELL_FILE : (BUILD_AS_SHARED_LIB ? 'shell_sharedlib.js' : 'shell.js');
-    var shellParts = read(shellFile).split('{{BODY}}');
-    print(shellParts[0]);
-    var preFile = BUILD_AS_SHARED_LIB ? 'preamble_sharedlib.js' : 'preamble.js';
-    var pre = processMacros(preprocess(read(preFile).replace('{{RUNTIME}}', getRuntime())));
-    print(pre);
 
-    Functions.implementedFunctions = set(data.unparsedFunctions.map(function(func) { return func.ident }));
+    if (phase == 'pre') {
+      // We will start to print out the data, but must do so carefully - we are
+      // dealing with potentially *huge* strings. Convenient replacements and
+      // manipulations may create in-memory copies, and we may OOM.
+      //
+      // Final shape that will be created:
+      //    shell
+      //      (body)
+      //        preamble
+      //          runtime
+      //        generated code
+      //        postamble
+      //          global_vars
+      //
+      // First, we print out everything until the generated code. Then the
+      // functions will print themselves out as they are parsed. Finally, we
+      // will call finalCombiner in the main pass, to print out everything
+      // else. This lets us not hold any strings in memory, we simply print
+      // things out as they are ready.
+
+      var shellParts = read(shellFile).split('{{BODY}}');
+      print(shellParts[0]);
+      var preFile = BUILD_AS_SHARED_LIB ? 'preamble_sharedlib.js' : 'preamble.js';
+      var pre = processMacros(preprocess(read(preFile).replace('{{RUNTIME}}', getRuntime())));
+      print(pre);
+    } else if (phase == 'funcs') {
+      Functions.implementedFunctions = set(data.unparsedFunctions.map(function(func) { return func.ident }));
+    }
   }
 
   // Does simple 'macro' substitution, using Django-like syntax,
@@ -1230,10 +1233,16 @@ function JSify(data, functionsOnly, givenFunctions) {
       return;
     }
 
-    // This is the main pass. Print out the generated code that we have here, together with the
+    if (phase == 'pre' || phase == 'funcs') {
+      // serialize out the data that later passes need
+      PassManager.serialize(); // XXX for funcs pass, do not serialize it all. I think we just need which were indexized.
+      return;
+    }
+
+    // This is the main 'post' pass. Print out the generated code that we have here, together with the
     // rest of the output that we started to print out earlier (see comment on the
     // "Final shape that will be created").
-    if (PRECISE_I64_MATH && preciseI64MathUsed) {
+    if (PRECISE_I64_MATH && Types.preciseI64MathUsed) {
       print(read('long.js'));
     } else {
       print('// Warning: printing of i64 values may be slightly rounded! No deep i64 math used, so precise i64 code not included');
@@ -1264,6 +1273,7 @@ function JSify(data, functionsOnly, givenFunctions) {
 
     print(postParts[1]);
 
+    var shellParts = read(shellFile).split('{{BODY}}');
     print(shellParts[1]);
     // Print out some useful metadata (for additional optimizations later, like the eliminator)
     print('// EMSCRIPTEN_GENERATED_FUNCTIONS: ' + JSON.stringify(Functions.allIdents) + '\n');

@@ -1346,6 +1346,14 @@ function analyzer(data, sidePass) {
             }
           });
         });
+
+        if (func.ident in NECESSARY_BLOCKADDRS) {
+          Functions.blockAddresses[func.ident] = {};
+          for (var needed in NECESSARY_BLOCKADDRS[func.ident]) {
+            assert(needed in func.labelIds);
+            Functions.blockAddresses[func.ident][needed] = func.labelIds[needed];
+          }
+        }
       });
       this.forwardItem(item, 'StackAnalyzer');
     }

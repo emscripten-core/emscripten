@@ -205,7 +205,10 @@ var Types = {
     }, this);
   },
 
-  needAnalysis: {} // Types noticed during parsing, that need analysis
+  needAnalysis: {}, // Types noticed during parsing, that need analysis
+
+  preciseI64MathUsed: false // Set to true if we actually use precise i64 math: If PRECISE_I64_MATH is set, and also such math is actually
+                            // needed (+,-,*,/,% - we do not need it for bitops)
 };
 
 var Functions = {
@@ -213,13 +216,15 @@ var Functions = {
   currFunctions: [],
 
   // All functions that will be implemented in this file
-  implementedFunctions: null,
+  implementedFunctions: [],
 
   // All the function idents seen so far
   allIdents: [],
 
   indexedFunctions: {},
   nextIndex: 2, // Start at a non-0 (even, see below) value
+
+  blockAddresses: {}, // maps functions to a map of block labels to label ids
 
   // Mark a function as needing indexing, and returns the index
   getIndex: function(ident) {
@@ -295,4 +300,31 @@ var LibraryManager = {
 function cDefine(key) {
   return key in C_DEFINES ? C_DEFINES[key] : ('0 /* XXX missing C define ' + key + ' */');
 }
+
+var PassManager = {
+  serialize: function() {
+    print('\n//FORWARDED_DATA:' + JSON.stringify({
+      Types: Types,
+      Variables: Variables,
+      Functions: Functions
+    }));
+  },
+  load: function(json) {
+    var data = JSON.parse(json);
+    for (var i in data.Types) {
+      Types[i] = data.Types[i];
+    }
+    for (var i in data.Variables) {
+      Variables[i] = data.Variables[i];
+    }
+    for (var i in data.Functions) {
+      Functions[i] = data.Functions[i];
+    }
+    print('\n//LOADED_DATA:' + phase + ':' + JSON.stringify({
+      Types: Types,
+      Variables: Variables,
+      Functions: Functions
+    }));
+  }
+};
 

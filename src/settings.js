@@ -276,6 +276,8 @@ var SMALL_XHR_CHUNKS = 0; // Use small chunk size for binary synchronous XHR's i
                           // Used for testing.
                           // See test_chunked_synchronous_xhr in runner.py and library.js.
 
+var NECESSARY_BLOCKADDRS = []; // List of (function, block) for all block addresses that are taken.
+
 // Compiler debugging options
 var DEBUG_TAGS_SHOWING = [];
   // Some useful items:
