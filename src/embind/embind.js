@@ -430,6 +430,51 @@ function __embind_register_smart_ptr(
     });
 }
 
+function __embind_register_vector(
+    vectorType,
+    elementType,
+    name,
+    constructor,
+    destructor,
+    length,
+    getter,
+    setter
+) {
+    name = Pointer_stringify(name);
+    elementType = requireRegisteredType(elementType, 'vector ' + name);
+    
+    constructor = FUNCTION_TABLE[constructor];
+    destructor = FUNCTION_TABLE[destructor];
+    length = FUNCTION_TABLE[length];
+    getter = FUNCTION_TABLE[getter];
+    setter = FUNCTION_TABLE[setter];
+
+    registerType(vectorType, name, {
+        name: name,
+        fromWireType: function(ptr) {
+            var arr = [];
+            var n = length(ptr);
+
+            for (var i = 0; i < n; i++) {
+                var v = elementType.fromWireType(getter(ptr, i));
+                arr.push(v);
+            }
+
+            destructor(ptr);
+            return arr;
+        },
+        toWireType: function(destructors, o) {
+            var vec = constructor();
+            for (var val in o) {
+                setter(vec, elementType.toWireType(destructors, o[val]));
+            }
+            destructors.push(destructor);
+            destructors.push(vec);
+            return vec;
+        }
+    });
+}
+
 function __embind_register_class(
     classType,
     pointerType,

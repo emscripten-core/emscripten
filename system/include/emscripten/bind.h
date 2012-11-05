@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <assert.h>
 #include <string>
+#include <vector>
 #include <type_traits>
 #include <emscripten/val.h>
 #include <emscripten/wire.h>
@@ -97,6 +98,16 @@ namespace emscripten {
                 const char* pointerName,
                 GenericFunction destructor,
                 GenericFunction getPointee);
+
+            void _embind_register_vector(
+                TYPEID vectorType,
+                TYPEID elementType,
+                const char* name,
+                GenericFunction constructor,
+                GenericFunction destructor,
+                GenericFunction length,
+                GenericFunction getter,
+                GenericFunction setter);
 
             void _embind_register_class(
                 TYPEID classType,
@@ -368,6 +379,33 @@ namespace emscripten {
                 setter(ptr, FieldBinding::fromWireType(value));
             }
         };
+
+        template<typename VectorType>
+        struct Vector {
+            typedef typename VectorType::value_type ElementType;
+            typedef internal::BindingType<ElementType> FieldBinding;
+            typedef typename FieldBinding::WireType WireType;
+
+            static int length(
+                VectorType* ptr
+            ) {
+                return (*ptr).size();
+            }
+
+            static WireType getAt(
+                VectorType* ptr,
+                int pos
+            ) {
+                return FieldBinding::toWireType((*ptr).at(pos));
+            }
+
+            static void push_back(
+                VectorType* ptr,
+                WireType val
+            ) {
+                (*ptr).push_back(FieldBinding::fromWireType(val));
+            }
+        };
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -502,6 +540,27 @@ namespace emscripten {
             name,
             reinterpret_cast<internal::GenericFunction>(&internal::raw_destructor<PointerType>),
             reinterpret_cast<internal::GenericFunction>(&internal::get_pointee<PointerType>));
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // VECTORS
+    ////////////////////////////////////////////////////////////////////////////////
+    
+    template<typename VectorType>
+    inline void register_vector(const char* name) {
+        typedef typename VectorType::value_type ElementType;
+
+        internal::registerStandardTypes();
+        internal::_embind_register_vector(
+            internal::TypeID<VectorType>::get(),
+            internal::TypeID<ElementType>::get(),
+            name,
+            reinterpret_cast<internal::GenericFunction>(&internal::raw_constructor<VectorType>),
+            reinterpret_cast<internal::GenericFunction>(&internal::raw_destructor<VectorType>),
+            reinterpret_cast<internal::GenericFunction>(&internal::Vector<VectorType>::length),
+            reinterpret_cast<internal::GenericFunction>(&internal::Vector<VectorType>::getAt),
+            reinterpret_cast<internal::GenericFunction>(&internal::Vector<VectorType>::push_back)
+        );
     }
 
     ////////////////////////////////////////////////////////////////////////////////
