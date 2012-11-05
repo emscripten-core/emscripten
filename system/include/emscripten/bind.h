@@ -612,7 +612,7 @@ namespace emscripten {
                  methodName,
                  TypeID<ReturnType>::get(),
                 reinterpret_cast<GenericFunction>(&performPointerCast<PointeeType,ReturnPointeeType>));
-            return *this;
+            return *this;      
         }
     };
 
