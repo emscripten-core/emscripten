@@ -8099,6 +8099,11 @@ fixture: interfaces
 --test: test can call interface methods that return nothing''', output)
 
     def test_llvm_nativizer(self):
+      try:
+        Popen(['as', '--version'], stdout=PIPE, stderr=PIPE).communicate()
+      except:
+        return self.skip('no gnu as, cannot run nativizer')
+
       # avoid impure_ptr problems etc.
       shutil.copyfile(path_from_root('tests', 'files.cpp'), os.path.join(self.get_dir(), 'files.cpp'))
       open(os.path.join(self.get_dir(), 'somefile.binary'), 'w').write('''waka waka############################''')
