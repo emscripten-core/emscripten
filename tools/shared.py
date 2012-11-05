@@ -555,7 +555,11 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     env['EMMAKEN_JUST_CONFIGURE'] = '1'
     if 'cmake' in args[0]:
       args = Building.handle_CMake_toolchain(args, env)
-    Popen(args, stdout=stdout, stderr=stderr, env=env).communicate()
+    try:
+      Popen(args, stdout=stdout, stderr=stderr, env=env).communicate()
+    except Exception, e:
+      print >> sys.stderr, 'Error: Exception thrown when invoking Popen in configure with args: "%s"!' % ' '.join(args)
+      raise
     del env['EMMAKEN_JUST_CONFIGURE']
 
   @staticmethod
