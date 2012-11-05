@@ -60,7 +60,9 @@ function __embind_register_bool(boolType, name, trueValue, falseValue) {
             return o ? trueValue : falseValue;
         },
         fromWireType: function(wt) {
-            return wt === trueValue;
+            // ambiguous emscripten ABI: sometimes return values are
+            // true or false, and sometimes integers (0 or 1)
+            return !!wt;
         },
     });
 }
@@ -397,7 +399,7 @@ function __embind_register_smart_ptr(
     };
     
     Handle.prototype['delete'] = function() {
-        if (!this.ptr && !this.smartPointer) {
+        if (!this.ptr) {
             throw new BindingError(pointeeType.name + ' instance already deleted');
         }
         
@@ -412,10 +414,18 @@ function __embind_register_smart_ptr(
     registerType(pointerType, name, {
         name: name,
         fromWireType: function(ptr) {
+            if (!getPointee(ptr)) {
+                destructor(ptr);
+                return null;
+            }
             return new Handle(ptr);
         },
         toWireType: function(destructors, o) {
-            return o.smartPointer;
+            if (null === o) {
+                return 0;
+            } else {
+                return o.smartPointer;
+            }
         }
     });
 }
