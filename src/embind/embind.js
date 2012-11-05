@@ -505,7 +505,6 @@ function __embind_register_class(
         
         return h; 
     });
-    
     Handle.prototype.clone = function() {
         if (!this.ptr) {
             throw new BindingError(classType.name + ' instance already deleted');
