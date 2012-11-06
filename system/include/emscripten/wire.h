@@ -238,6 +238,8 @@ namespace emscripten {
             static Enum fromWireType(WireType v) {
                 return v;
             }
+            static void destroy(WireType) {
+            }
         };
 
         template<typename T>
