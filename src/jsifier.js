@@ -86,19 +86,7 @@ function JSify(data, functionsOnly, givenFunctions) {
 
   // Functions
 
-  Functions.currFunctions = !mainPass ? givenFunctions.currFunctions : {};
   Functions.currExternalFunctions = !mainPass ? givenFunctions.currExternalFunctions : {};
-
-  // Now that first-pass analysis has completed (so we have basic types, etc.), we can get around to handling unparsedFunctions
-  // XXX do we need this?
-  (!mainPass ? data.functions : data.unparsedFunctions.concat(data.functions)).forEach(function(func) {
-    // Save just what we need, to save memory
-    Functions.currFunctions[func.ident] = {
-      hasVarArgs: func.hasVarArgs,
-      numParams: func.params.length,
-      labelIds: func.labelIds // TODO: We need this for globals, but perhaps we can calculate them early and free this
-   };
-  });
 
   data.functionStubs.forEach(function(func) {
     // Don't overwrite stubs that have more info.

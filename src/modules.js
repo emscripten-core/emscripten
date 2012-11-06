@@ -212,9 +212,6 @@ var Types = {
 };
 
 var Functions = {
-  // The list of function datas which are being processed in the jsifier, currently
-  currFunctions: [],
-
   // All functions that will be implemented in this file
   implementedFunctions: {},
 
