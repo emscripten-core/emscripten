@@ -94,10 +94,12 @@ def emscript(infile, settings, outfile, libraries=[]):
       funcs[-1].append(line)
       if line.startswith('}'):
         in_func = False
+        pre.append(line) # pre needs it to, so we know about all implemented functions
     else:
       if line.startswith('define '):
         in_func = True
         funcs.append([line])
+        pre.append(line) # pre needs it to, so we know about all implemented functions
       elif line.find(' = type { ') > 0:
         pre.append(line) # type
       elif line.startswith('!'):
@@ -152,9 +154,6 @@ def emscript(infile, settings, outfile, libraries=[]):
     #print >> sys.stderr, 'f', '\n\n' + json.dumps(forwarded_json) + '\n\n'
     #print >> sys.stderr, 'c', '\n\n' + json.dumps(curr_forwarded_json) + '\n\n'
     forwarded_json['Types']['preciseI64MathUsed'] = forwarded_json['Types']['preciseI64MathUsed'] or curr_forwarded_json['Types']['preciseI64MathUsed']
-    forwarded_json['Functions']['implementedFunctions'] = forwarded_json['Functions']['implementedFunctions'] or {}
-    for key, value in curr_forwarded_json['Functions']['implementedFunctions'].iteritems():
-      forwarded_json['Functions']['implementedFunctions'][key] = value
     for key, value in curr_forwarded_json['Functions']['blockAddresses'].iteritems():
       forwarded_json['Functions']['blockAddresses'][key] = value
     for key in curr_forwarded_json['Functions']['indexedFunctions'].iterkeys():

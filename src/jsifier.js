@@ -40,7 +40,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       var preFile = BUILD_AS_SHARED_LIB ? 'preamble_sharedlib.js' : 'preamble.js';
       var pre = processMacros(preprocess(read(preFile).replace('{{RUNTIME}}', getRuntime())));
       print(pre);
-    } else if (phase == 'funcs') {
+
       Functions.implementedFunctions = set(data.unparsedFunctions.map(function(func) { return func.ident }));
     }
   }
@@ -90,6 +90,7 @@ function JSify(data, functionsOnly, givenFunctions) {
   Functions.currExternalFunctions = !mainPass ? givenFunctions.currExternalFunctions : {};
 
   // Now that first-pass analysis has completed (so we have basic types, etc.), we can get around to handling unparsedFunctions
+  // XXX do we need this?
   (!mainPass ? data.functions : data.unparsedFunctions.concat(data.functions)).forEach(function(func) {
     // Save just what we need, to save memory
     Functions.currFunctions[func.ident] = {
@@ -110,24 +111,26 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
   });
 
-  var MAX_BATCH_FUNC_LINES = 1000;
-  while (data.unparsedFunctions.length > 0) {
-    var currFuncLines = [];
-    var currBaseLineNums = [];
-    while (currFuncLines.length == 0 ||
-           (data.unparsedFunctions.length > 0 && currFuncLines.length + data.unparsedFunctions[0].lines.length <= MAX_BATCH_FUNC_LINES)) {
-      currBaseLineNums.push([currFuncLines.length, data.unparsedFunctions[0].lineNum-1]);
-      currFuncLines = currFuncLines.concat(data.unparsedFunctions[0].lines); // for first one, assign, do not concat?
-      data.unparsedFunctions.shift();
+  if (phase == 'funcs') { // pre has function shells, just to defined implementedFunctions
+    var MAX_BATCH_FUNC_LINES = 1000;
+    while (data.unparsedFunctions.length > 0) {
+      var currFuncLines = [];
+      var currBaseLineNums = [];
+      while (currFuncLines.length == 0 ||
+             (data.unparsedFunctions.length > 0 && currFuncLines.length + data.unparsedFunctions[0].lines.length <= MAX_BATCH_FUNC_LINES)) {
+        currBaseLineNums.push([currFuncLines.length, data.unparsedFunctions[0].lineNum-1]);
+        currFuncLines = currFuncLines.concat(data.unparsedFunctions[0].lines); // for first one, assign, do not concat?
+        data.unparsedFunctions.shift();
+      }
+      dprint('unparsedFunctions','====================\n// Processing function batch of ' + currBaseLineNums.length +
+                                 ' functions, ' + currFuncLines.length + ' lines, functions left: ' + data.unparsedFunctions.length);
+      if (DEBUG_MEMORY) MemoryDebugger.tick('pre-func');
+      JSify(analyzer(intertyper(currFuncLines, true, currBaseLineNums), true), true, Functions);
+      if (DEBUG_MEMORY) MemoryDebugger.tick('post-func');
     }
-    dprint('unparsedFunctions','====================\n// Processing function batch of ' + currBaseLineNums.length +
-                               ' functions, ' + currFuncLines.length + ' lines, functions left: ' + data.unparsedFunctions.length);
-    if (DEBUG_MEMORY) MemoryDebugger.tick('pre-func');
-    JSify(analyzer(intertyper(currFuncLines, true, currBaseLineNums), true), true, Functions);
-    if (DEBUG_MEMORY) MemoryDebugger.tick('post-func');
+    currFuncLines = currBaseLineNums = null; // Do not hold on to anything from inside that loop (JS function scoping..)
+    data.unparsedFunctions = null;
   }
-  currFuncLines = currBaseLineNums = null; // Do not hold on to anything from inside that loop (JS function scoping..)
-  data.unparsedFunctions = null;
 
   // Actors
 

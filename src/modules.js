@@ -216,7 +216,7 @@ var Functions = {
   currFunctions: [],
 
   // All functions that will be implemented in this file
-  implementedFunctions: [],
+  implementedFunctions: {},
 
   indexedFunctions: {},
   nextIndex: 2, // Start at a non-0 (even, see below) value
