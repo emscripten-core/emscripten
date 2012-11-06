@@ -155,7 +155,7 @@ def emscript(infile, settings, outfile, libraries=[]):
       curr += func
     else:
       chunks.append(curr)
-      curr = ''
+      curr = func
   if curr:
     chunks.append(curr)
     curr = ''
