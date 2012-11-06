@@ -74,43 +74,42 @@ def emscript(infile, settings, outfile, libraries=[]):
   if DEBUG: print >> sys.stderr, '  emscript: scan took %s seconds' % (time.time() - t)
 
   # Split input into the relevant parts for each phase
-  pre = ''
+  pre = []
   funcs = [] # split up functions here, for parallelism later
-  meta = '' # needed by each function XXX
-  post = ''
+  meta = [] # needed by each function XXX
+  post = []
 
   if DEBUG: t = time.time()
   in_func = False
   ll_lines = open(infile).readlines()
   for line in ll_lines:
     if in_func:
-      funcs[-1] += line
+      funcs[-1].append(line)
       if line.startswith('}'):
         in_func = False
-        #pre += line # XXX pre needs function defs?
     else:
       if line.startswith('define '):
         in_func = True
-        funcs.append(line)
-        #pre += line # XXX pre needs function defs?
+        funcs.append([line])
       elif line.find(' = type { ') > 0:
-        pre += line # type
+        pre.append(line) # type
       elif line.startswith('!'):
-        meta += line # metadata
+        meta.append(line) # metadata
       else:
-        post += line # global
-        pre += line # pre needs it to, so we know about globals in pre and funcs
+        post.append(line) # global
+        pre.append(line) # pre needs it to, so we know about globals in pre and funcs
   ll_lines = None
   if DEBUG: print >> sys.stderr, '  emscript: split took %s seconds' % (time.time() - t)
 
-  #print '========= pre ================\n'
-  #print pre
-  #print '========== funcs ===============\n'
-  #for func in funcs:
-  #  print '\n// ===\n\n', func
-  #print '========== post ==============\n'
-  #print post
-  #print '=========================\n'
+  #if DEBUG:
+  #  print >> sys.stderr, '========= pre ================\n'
+  #  print >> sys.stderr, ''.join(pre)
+  #  print >> sys.stderr, '========== funcs ===============\n'
+  #  for func in funcs:
+  #    print >> sys.stderr, '\n// ===\n\n', ''.join(func)
+  #  print >> sys.stderr, '========== post ==============\n'
+  #  print >> sys.stderr, ''.join(post)
+  #  print >> sys.stderr, '=========================\n'
 
   # Save settings to a file to work around v8 issue 1579
   settings_file = temp_files.get('.txt').name
@@ -120,8 +119,8 @@ def emscript(infile, settings, outfile, libraries=[]):
 
   # Phase 1
   if DEBUG: t = time.time()
-  pre_file = temp_files.get('.ll').name
-  open(pre_file, 'w').write(pre)
+  pre_file = temp_files.get('.pre.ll').name
+  open(pre_file, 'w').write(''.join(pre))
   out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, pre_file, 'pre'] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
   js, forwarded_data = out.split('//FORWARDED_DATA:')
   #print 'js', js
@@ -133,8 +132,12 @@ def emscript(infile, settings, outfile, libraries=[]):
   # Phase 2
   # XXX must coordinate function indexixing data when parallelizing
   if DEBUG: t = time.time()
-  funcs_file = temp_files.get('.ll').name
-  open(funcs_file, 'w').write('\n'.join(funcs) + '\n' + meta)
+  funcs_file = temp_files.get('.funcs.ll').name
+  f = open(funcs_file, 'w')
+  f.write('\n'.join([''.join(func) for func in funcs]))
+  f.write('\n')
+  f.write(''.join(meta))
+  f.close()
   out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, funcs_file, 'funcs', forwarded_file] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
   funcs_js, forwarded_data = out.split('//FORWARDED_DATA:')
   forwarded_file += '2'
@@ -144,8 +147,8 @@ def emscript(infile, settings, outfile, libraries=[]):
 
   # Phase 3
   if DEBUG: t = time.time()
-  post_file = temp_files.get('.ll').name
-  open(post_file, 'w').write(post)
+  post_file = temp_files.get('.post.ll').name
+  open(post_file, 'w').write(''.join(post))
   out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, post_file, 'post', forwarded_file] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
   js += out
   if DEBUG: print >> sys.stderr, '  emscript: phase 3 took %s seconds' % (time.time() - t)
