@@ -1224,11 +1224,6 @@ function JSify(data, functionsOnly, givenFunctions) {
 
     if (!mainPass) {
       var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable).concat(itemsDict.GlobalVariablePostSet);
-      Functions.allIdents = Functions.allIdents.concat(itemsDict.function.map(function(func) {
-        return func.ident;
-      }).filter(function(func) {
-        return IGNORED_FUNCTIONS.indexOf(func.ident) < 0;
-      }));
       if (!DEBUG_MEMORY) print(generated.map(function(item) { return item.JS }).join('\n'));
       return;
     }
@@ -1276,7 +1271,9 @@ function JSify(data, functionsOnly, givenFunctions) {
     var shellParts = read(shellFile).split('{{BODY}}');
     print(shellParts[1]);
     // Print out some useful metadata (for additional optimizations later, like the eliminator)
-    print('// EMSCRIPTEN_GENERATED_FUNCTIONS: ' + JSON.stringify(Functions.allIdents) + '\n');
+    print('// EMSCRIPTEN_GENERATED_FUNCTIONS: ' + JSON.stringify(keys(Functions.implementedFunctions).filter(function(func) {
+      return IGNORED_FUNCTIONS.indexOf(func.ident) < 0;
+    })) + '\n');
 
     return null;
   }
