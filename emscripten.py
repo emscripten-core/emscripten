@@ -15,6 +15,7 @@ import os
 import subprocess
 import re
 import sys
+import time
 
 if not os.environ.get('EMSCRIPTEN_SUPPRESS_USAGE_WARNING'):
   print >> sys.stderr, '''
@@ -58,15 +59,19 @@ def emscript(infile, settings, outfile, libraries=[]):
 
   compiler = path_from_root('src', 'compiler.js')
 
-  # Parallelization: We run 3 passes:
+  # Parallelization: We run 3 phases:
   #   1 aka 'pre'  : Process types and metadata and so forth, and generate the preamble.
   #   2 aka 'funcs': Process functions. We can parallelize this, working on each function independently.
   #   3 aka 'post' : Process globals, generate postamble and finishing touches.
 
+  if DEBUG: print >> sys.stderr, 'emscript: ll=>js'
+
   # Pre-scan ll and alter settings as necessary
+  if DEBUG: t = time.time()
   ll = open(infile).read()
   scan(ll, settings)
   ll = None # allow collection
+  if DEBUG: print >> sys.stderr, '  emscript: scan took %s seconds' % (time.time() - t)
 
   # Split input into the relevant parts for each phase
   pre = ''
@@ -74,6 +79,7 @@ def emscript(infile, settings, outfile, libraries=[]):
   meta = '' # needed by each function XXX
   post = ''
 
+  if DEBUG: t = time.time()
   in_func = False
   ll_lines = open(infile).readlines()
   for line in ll_lines:
@@ -95,6 +101,7 @@ def emscript(infile, settings, outfile, libraries=[]):
         post += line # global
         pre += line # pre needs it to, so we know about globals in pre and funcs
   ll_lines = None
+  if DEBUG: print >> sys.stderr, '  emscript: split took %s seconds' % (time.time() - t)
 
   #print '========= pre ================\n'
   #print pre
@@ -111,8 +118,8 @@ def emscript(infile, settings, outfile, libraries=[]):
   s.write(json.dumps(settings))
   s.close()
 
-  # Pass 1
-  if DEBUG: print >> sys.stderr, 'phase 1'
+  # Phase 1
+  if DEBUG: t = time.time()
   pre_file = temp_files.get('.ll').name
   open(pre_file, 'w').write(pre)
   out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, pre_file, 'pre'] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
@@ -121,10 +128,11 @@ def emscript(infile, settings, outfile, libraries=[]):
   #print >> sys.stderr, 'FORWARDED_DATA 1:', forwarded_data, type(forwarded_data)
   forwarded_file = temp_files.get('.json').name
   open(forwarded_file, 'w').write(forwarded_data)
+  if DEBUG: print >> sys.stderr, '  emscript: phase 1 took %s seconds' % (time.time() - t)
 
-  # Pass 2
+  # Phase 2
   # XXX must coordinate function indexixing data when parallelizing
-  if DEBUG: print >> sys.stderr, 'phase 2'
+  if DEBUG: t = time.time()
   funcs_file = temp_files.get('.ll').name
   open(funcs_file, 'w').write('\n'.join(funcs) + '\n' + meta)
   out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, funcs_file, 'funcs', forwarded_file] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
@@ -132,13 +140,15 @@ def emscript(infile, settings, outfile, libraries=[]):
   forwarded_file += '2'
   open(forwarded_file, 'w').write(forwarded_data)
   js += funcs_js
+  if DEBUG: print >> sys.stderr, '  emscript: phase 2 took %s seconds' % (time.time() - t)
 
-  # Pass 3
-  if DEBUG: print >> sys.stderr, 'phase 3'
+  # Phase 3
+  if DEBUG: t = time.time()
   post_file = temp_files.get('.ll').name
   open(post_file, 'w').write(post)
   out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, post_file, 'post', forwarded_file] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
   js += out
+  if DEBUG: print >> sys.stderr, '  emscript: phase 3 took %s seconds' % (time.time() - t)
 
   outfile.write(js)
   outfile.close()
