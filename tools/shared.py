@@ -219,7 +219,8 @@ except:
 CANONICAL_TEMP_DIR = os.path.join(TEMP_DIR, 'emscripten_temp')
 EMSCRIPTEN_TEMP_DIR = None
 
-if os.environ.get('EMCC_DEBUG'):
+DEBUG = os.environ.get('EMCC_DEBUG')
+if DEBUG:
   try:
     EMSCRIPTEN_TEMP_DIR = CANONICAL_TEMP_DIR
     if not os.path.exists(EMSCRIPTEN_TEMP_DIR):
@@ -334,11 +335,14 @@ class TempFiles:
 
   def get(self, suffix):
     """Returns a named temp file  with the given prefix."""
-    named_file = tempfile.NamedTemporaryFile(dir=TEMP_DIR, suffix=suffix, delete=False)
+    named_file = tempfile.NamedTemporaryFile(dir=TEMP_DIR if not DEBUG else EMSCRIPTEN_TEMP_DIR, suffix=suffix, delete=False)
     self.note(named_file.name)
     return named_file
 
   def clean(self):
+    if DEBUG:
+      print >> sys.stderr, 'not cleaning up temp files since in debug mode, see them in %s' % EMSCRIPTEN_TEMP_DIR
+      return
     for filename in self.to_clean:
       try_delete(filename)
     self.to_clean = []
@@ -371,13 +375,10 @@ def timeout_run(proc, timeout, note='unnamed process'):
       raise Exception("Timed out: " + note)
   return proc.communicate()[0]
 
-EM_DEBUG = os.environ.get('EM_DEBUG')
-
 def run_js(filename, engine=None, args=[], check_timeout=False, stdout=PIPE, stderr=None, cwd=None):
   if engine is None: engine = JS_ENGINES[0]
   if type(engine) is not list: engine = [engine]
   command = engine + [filename] + (['--'] if 'd8' in engine[0] else []) + args
-  if EM_DEBUG: print >> sys.stderr, 'run_js: ' + ' '.join(command)
   return timeout_run(Popen(command, stdout=stdout, stderr=stderr, cwd=cwd), 15*60 if check_timeout else None, 'Execution')
 
 def to_cc(cxx):
