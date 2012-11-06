@@ -47,6 +47,8 @@ def scan(ll, settings):
   if len(blockaddrs) > 0:
     settings['NECESSARY_BLOCKADDRS'] = blockaddrs
 
+BEST_JS_PROCESS_SIZE = 1024*1024
+
 def process_funcs(args):
   i, ll, settings_file, compiler, forwarded_file, libraries = args
   funcs_file = temp_files.get('.func_%d.ll' % i).name
@@ -94,6 +96,7 @@ def emscript(infile, settings, outfile, libraries=[]):
       funcs[-1].append(line)
       if line.startswith('}'):
         in_func = False
+        funcs[-1] = ''.join(funcs[-1])
         pre.append(line) # pre needs it to, so we know about all implemented functions
     else:
       if line.startswith('define '):
@@ -144,9 +147,21 @@ def emscript(infile, settings, outfile, libraries=[]):
   if DEBUG: t = time.time()
   forwarded_json = json.loads(forwarded_data)
   indexed_functions = set()
+  chunks = [] # bundles of functions
+  curr = ''
   for i in range(len(funcs)):
     func = funcs[i]
-    funcs_js, curr_forwarded_data = process_funcs((i, ''.join(func) + '\n' + meta, settings_file, compiler, forwarded_file, libraries))
+    if len(curr) + len(func) < BEST_JS_PROCESS_SIZE + 3*len(meta): # keep ratio of lots of function code to meta
+      curr += func
+    else:
+      chunks.append(curr)
+      curr = ''
+  if curr:
+    chunks.append(curr)
+    curr = ''
+  if DEBUG: print >> sys.stderr, '  emscript: phase 2 working on %d chunks' % len(chunks)
+  for chunk in chunks:
+    funcs_js, curr_forwarded_data = process_funcs((i, chunk + '\n' + meta, settings_file, compiler, forwarded_file, libraries))
     js += funcs_js
     # merge forwarded data
     curr_forwarded_json = json.loads(curr_forwarded_data)
