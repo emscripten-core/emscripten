@@ -47,6 +47,13 @@ def scan(ll, settings):
   if len(blockaddrs) > 0:
     settings['NECESSARY_BLOCKADDRS'] = blockaddrs
 
+def process_funcs(args):
+  i, ll, settings_file, compiler, forwarded_file, libraries = args
+  funcs_file = temp_files.get('.func_%d.ll' % i).name
+  open(funcs_file, 'w').write(ll)
+  out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, funcs_file, 'funcs', forwarded_file] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
+  return out.split('//FORWARDED_DATA:')
+
 def emscript(infile, settings, outfile, libraries=[]):
   """Runs the emscripten LLVM-to-JS compiler. We parallelize as much as possible
 
@@ -132,18 +139,45 @@ def emscript(infile, settings, outfile, libraries=[]):
   # Phase 2
   # XXX must coordinate function indexixing data when parallelizing
   if DEBUG: t = time.time()
-  funcs_file = temp_files.get('.funcs.ll').name
-  f = open(funcs_file, 'w')
-  f.write('\n'.join([''.join(func) for func in funcs]))
-  f.write('\n')
-  f.write(''.join(meta))
-  f.close()
-  out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, funcs_file, 'funcs', forwarded_file] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
-  funcs_js, forwarded_data = out.split('//FORWARDED_DATA:')
-  forwarded_file += '2'
-  open(forwarded_file, 'w').write(forwarded_data)
-  js += funcs_js
+  forwarded_json = json.loads(forwarded_data)
+  indexed_functions = set()
+  for i in range(len(funcs)):
+    func = funcs[i]
+    funcs_js, curr_forwarded_data = process_funcs((i, ''.join(func) + '\n' + ''.join(meta), settings_file, compiler, forwarded_file, libraries))
+    js += funcs_js
+    # merge forwarded data
+    curr_forwarded_json = json.loads(curr_forwarded_data)
+    #print >> sys.stderr, 'f', '\n\n' + json.dumps(forwarded_json) + '\n\n'
+    #print >> sys.stderr, 'c', '\n\n' + json.dumps(curr_forwarded_json) + '\n\n'
+    forwarded_json['Types']['preciseI64MathUsed'] = forwarded_json['Types']['preciseI64MathUsed'] or curr_forwarded_json['Types']['preciseI64MathUsed']
+    forwarded_json['Functions']['implementedFunctions'] = forwarded_json['Functions']['implementedFunctions'] or {}
+    for key, value in curr_forwarded_json['Functions']['implementedFunctions'].iteritems():
+      forwarded_json['Functions']['implementedFunctions'][key] = value
+    for key, value in curr_forwarded_json['Functions']['blockAddresses'].iteritems():
+      forwarded_json['Functions']['blockAddresses'][key] = value
+    for key in curr_forwarded_json['Functions']['indexedFunctions'].iterkeys():
+      indexed_functions.add(key)
   if DEBUG: print >> sys.stderr, '  emscript: phase 2 took %s seconds' % (time.time() - t)
+  if DEBUG: t = time.time()
+  # calculations on merged forwarded data
+  forwarded_json['Functions']['indexedFunctions'] = {}
+  #print >> sys.stderr, 'need index', indexed_functions
+  index_reps = []
+  i = 2
+  for indexed in indexed_functions:
+    index_reps.append((indexed, i))
+    forwarded_json['Functions']['indexedFunctions'][indexed] = i
+    i += 2
+  forwarded_json['Functions']['nextIndex'] = i
+  def indexize(js):
+    for indexed, i in index_reps:
+      js = js.replace('{{{ FI_' + indexed + ' }}}', str(i)) # TODO: optimize, do them all with a regexp replace?
+    return js
+  # forward
+  forwarded_data = json.dumps(forwarded_json)
+  forwarded_file = temp_files.get('.2.json').name
+  open(forwarded_file, 'w').write(forwarded_data)
+  if DEBUG: print >> sys.stderr, '  emscript: phase 2b took %s seconds' % (time.time() - t)
 
   # Phase 3
   if DEBUG: t = time.time()
@@ -153,7 +187,8 @@ def emscript(infile, settings, outfile, libraries=[]):
   js += out
   if DEBUG: print >> sys.stderr, '  emscript: phase 3 took %s seconds' % (time.time() - t)
 
-  outfile.write(js)
+  js = indexize(js)
+  outfile.write(js) # TODO: write in parts (see previous line though)
   outfile.close()
 
 

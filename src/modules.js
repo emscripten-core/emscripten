@@ -226,15 +226,20 @@ var Functions = {
 
   blockAddresses: {}, // maps functions to a map of block labels to label ids
 
-  // Mark a function as needing indexing, and returns the index
+  // Mark a function as needing indexing. Python will coordinate them all
   getIndex: function(ident) {
-    var ret = this.indexedFunctions[ident];
-    if (!ret) {
-      ret = this.nextIndex;
-      this.nextIndex += 2; // Need to have indexes be even numbers, see |polymorph| test
-      this.indexedFunctions[ident] = ret;
+    if (phase != 'post') {
+      this.indexedFunctions[ident] = 0; // tell python we need this indexized
+      return '{{{ FI_' + ident + ' }}}'; // something python will replace later
+    } else {
+      var ret = this.indexedFunctions[ident];
+      if (!ret) {
+        ret = this.nextIndex;
+        this.nextIndex += 2; // Need to have indexes be even numbers, see |polymorph| test
+        this.indexedFunctions[ident] = ret;
+      }
+      return ret.toString();
     }
-    return ret.toString();
   },
 
   // Generate code for function indexing
@@ -320,11 +325,13 @@ var PassManager = {
     for (var i in data.Functions) {
       Functions[i] = data.Functions[i];
     }
+    /*
     print('\n//LOADED_DATA:' + phase + ':' + JSON.stringify({
       Types: Types,
       Variables: Variables,
       Functions: Functions
     }));
+    */
   }
 };
 
