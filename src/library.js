@@ -2434,7 +2434,7 @@ LibraryManager.library = {
       __scanString.whiteSpace['\t'] = 1;
       __scanString.whiteSpace['\n'] = 1;
     }
-    // Supports %x, %4x, %d.%d, %s, %f, %lf.
+    // Supports %x, %4x, %d.%d, %lld, %s, %f, %lf.
     // TODO: Support all format specifiers.
     format = Pointer_stringify(format);
     var soFar = 0;
@@ -2485,9 +2485,14 @@ LibraryManager.library = {
         }
         var long_ = false;
         var half = false;
+        var longLong = false;
         if (format[formatIndex] == 'l') {
           long_ = true;
           formatIndex++;
+          if(format[formatIndex] == 'l') {
+            longLong = true;
+            formatIndex++;
+          }
         } else if (format[formatIndex] == 'h') {
           half = true;
           formatIndex++;
@@ -2498,7 +2503,7 @@ LibraryManager.library = {
         var buffer = [];
         // Read characters according to the format. floats are trickier, they may be in an unfloat state in the middle, then be a valid float later
         if (type == 'f') {
-          var last = -1;
+          var last = 0;
           while (next > 0) {
             buffer.push(String.fromCharCode(next));
             if (__isFloat(buffer.join(''))) {
@@ -2539,6 +2544,8 @@ LibraryManager.library = {
           case 'd': case 'u': case 'i':
             if (half) {
               {{{ makeSetValue('argPtr', 0, 'parseInt(text, 10)', 'i16') }}};
+            } else if(longLong) {
+              {{{ makeSetValue('argPtr', 0, 'parseInt(text, 10)', 'i64') }}};
             } else {
               {{{ makeSetValue('argPtr', 0, 'parseInt(text, 10)', 'i32') }}};
             }
@@ -2564,6 +2571,7 @@ LibraryManager.library = {
             break;
         }
         if (type != 'n') fields++;
+        if (next <= 0) break mainLoop;  // End of input.
       } else if (format[formatIndex] in __scanString.whiteSpace) {
         while (next in __scanString.whiteSpace) {
           next = get();
@@ -3207,7 +3215,7 @@ LibraryManager.library = {
     var streamObj = FS.streams[stream];
     if (bytesRead == -1) {
       if (streamObj) streamObj.error = true;
-      return -1;
+      return 0;
     } else {
       if (bytesRead < bytesToRead) streamObj.eof = true;
       return Math.floor(bytesRead / size);
@@ -3291,7 +3299,7 @@ LibraryManager.library = {
     var bytesWritten = _write(stream, ptr, bytesToWrite);
     if (bytesWritten == -1) {
       if (FS.streams[stream]) FS.streams[stream].error = true;
-      return -1;
+      return 0;
     } else {
       return Math.floor(bytesWritten / size);
     }

@@ -10,6 +10,9 @@ These tests can be run in parallel using nose, for example
 
 will use 4 processes. To install nose do something like
 |pip install nose| or |sudo apt-get install python-nose|.
+
+Note however that emcc now uses multiple cores when optimizing,
+so you may prefer to use fewer cores here.
 '''
 
 from subprocess import Popen, PIPE, STDOUT
@@ -3201,7 +3204,8 @@ def process(filename):
       # XXX Not sure what the right output is here. Looks like the test started failing with daylight savings changes. Modified it to pass again.
       src = open(path_from_root('tests', 'time', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'time', 'output.txt'), 'r').read()
-      self.do_run(src, expected,
+      expected2 = open(path_from_root('tests', 'time', 'output2.txt'), 'r').read()
+      self.do_run(src, [expected, expected2],
                    extra_emscripten_args=['-H', 'libc/time.h'])
                    #extra_emscripten_args=['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/langinfo.h,libc/time.h'])
 
@@ -4403,6 +4407,29 @@ Pass: 0.000012 0.000012''')
       '''
       self.do_run(src, '''0:173,16 1:16,173 2:183,173 3:17,287 4:98,123''')      
 
+    def test_sscanf_3(self):
+      # i64
+      if not Settings.USE_TYPED_ARRAYS == 2: return self.skip('64-bit sscanf only supported in ta2')
+      src = r'''
+        #include <stdio.h>
+
+        int main(){
+            
+            int64_t s, m, l;
+            printf("%d\n", sscanf("123 1073741823 1125899906842620", "%lld %lld %lld", &s, &m, &l));
+            printf("%lld,%lld,%lld\n", s, m, l);
+   
+            int64_t negS, negM, negL;
+            printf("%d\n", sscanf("-123 -1073741823 -1125899906842620", "%lld %lld %lld", &negS, &negM, &negL));
+            printf("%lld,%lld,%lld\n", negS, negM, negL);
+
+            return 0;
+        }
+      '''
+      
+      self.do_run(src, '3\n123,1073741823,1125899906842620\n' + 
+                     '3\n-123,-1073741823,-1125899906842620\n')
+        
     def test_langinfo(self):
       src = open(path_from_root('tests', 'langinfo', 'test.c'), 'r').read()
       expected = open(path_from_root('tests', 'langinfo', 'output.txt'), 'r').read()
@@ -4470,6 +4497,30 @@ def process(filename):
         }
         '''
       self.do_run(src, 'isatty? 0,0,1\ngot: 35\ngot: 45\ngot: 25\ngot: 15\n', post_build=post)
+
+    def test_fwrite_0(self):
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        int main ()
+        {
+            FILE *fh;
+
+            fh = fopen("a.txt", "wb");
+            if (!fh) exit(1);
+            fclose(fh);
+
+            fh = fopen("a.txt", "rb");
+            if (!fh) exit(1);
+
+            char data[] = "foobar";
+            size_t written = fwrite(data, 1, sizeof(data), fh);
+
+            printf("written=%zu\n", written);
+        }
+        '''
+      self.do_run(src, 'written=0')
 
     def test_fgetc_unsigned(self):
       if self.emcc_args is None: return self.skip('requires emcc')
@@ -5778,8 +5829,7 @@ def process(filename):
                          open(path_from_root('tests', 'sqlite', 'benchmark.c'), 'r').read(),
                    open(path_from_root('tests', 'sqlite', 'benchmark.txt'), 'r').read(),
                    includes=[path_from_root('tests', 'sqlite')],
-                   force_c=True,
-                   js_engines=[SPIDERMONKEY_ENGINE]) # V8 is slow
+                   force_c=True)
 
     def test_zlib(self):
       if self.emcc_args is not None and '-O2' in self.emcc_args:
@@ -5810,8 +5860,7 @@ def process(filename):
                                                           os.path.join('src', '.libs', 'libBulletCollision.a'),
                                                           os.path.join('src', '.libs', 'libLinearMath.a')],
                                                configure_args=['--disable-demos','--disable-dependency-tracking']),
-                   includes=[path_from_root('tests', 'bullet', 'src')],
-                   js_engines=[SPIDERMONKEY_ENGINE]) # V8 issue 1407
+                   includes=[path_from_root('tests', 'bullet', 'src')])
 
     def test_poppler(self):
       if self.emcc_args is None: return self.skip('very slow, we only do this in emcc runs')
@@ -6004,7 +6053,7 @@ def process(filename):
 
       try:
         os.environ['EMCC_LEAVE_INPUTS_RAW'] = '1'
-        self.banned_js_engines = [NODE_JS] # node issue 1669, exception causes stdout not to be flushed
+        #self.banned_js_engines = [NODE_JS] # node issue 1669, exception causes stdout not to be flushed
         Settings.CHECK_OVERFLOWS = 0
 
         for name in glob.glob(path_from_root('tests', 'cases', '*.ll')):
@@ -7482,6 +7531,8 @@ f.close()
       self.assertContained('hello from lib', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
     def test_runtimelink_multi(self):
+      if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('cannot run without spidermonkey due to node limitations')
+
       open('testa.h', 'w').write(r'''
         #ifndef _TESTA_H_
         #define _TESTA_H_

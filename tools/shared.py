@@ -136,17 +136,17 @@ def check_sanity(force=False):
 
     if not check_engine(COMPILER_ENGINE):
       print >> sys.stderr, 'FATAL: The JavaScript shell used for compiling (%s) does not seem to work, check the paths in %s' % (COMPILER_ENGINE, EM_CONFIG)
-      sys.exit(0)
+      sys.exit(1)
 
     if NODE_JS != COMPILER_ENGINE:
       if not check_engine(NODE_JS):
         print >> sys.stderr, 'FATAL: Node.js (%s) does not seem to work, check the paths in %s' % (NODE_JS, EM_CONFIG)
-        sys.exit(0)
+        sys.exit(1)
 
     for cmd in [CLANG, LLVM_LINK, LLVM_AR, LLVM_OPT, LLVM_AS, LLVM_DIS, LLVM_NM]:
       if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'): # .exe extension required for Windows
         print >> sys.stderr, 'FATAL: Cannot find %s, check the paths in %s' % (cmd, EM_CONFIG)
-        sys.exit(0)
+        sys.exit(1)
 
     try:
       subprocess.call([JAVA, '-version'], stdout=PIPE, stderr=PIPE)
