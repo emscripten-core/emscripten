@@ -8128,20 +8128,24 @@ fscanfed: 10 - hello
       self.assertIdentical('texte\n', output[1])
 
     def test_emconfig(self):
-      output = Popen(['python', EMCONFIG, 'LLVM_ROOT'], stdout=PIPE, stderr=PIPE).communicate()[0]
-      assert output == LLVM_ROOT + "\n"
-      invalid = 'Usage: em-config VAR_NAME\n'
+      output = Popen(['python', EMCONFIG, 'LLVM_ROOT'], stdout=PIPE, stderr=PIPE).communicate()[0].strip()
+      try:
+        assert output == LLVM_ROOT
+      except:
+        print >> sys.stderr, 'Assertion failed: python %s LLVM_ROOT returned "%s" instead of expected "%s"!' % (EMCONFIG, output, LLVM_ROOT)
+        raise
+      invalid = 'Usage: em-config VAR_NAME'
       # Don't accept variables that do not exist
-      output = Popen(['python', EMCONFIG, 'VAR_WHICH_DOES_NOT_EXIST'], stdout=PIPE, stderr=PIPE).communicate()[0]
+      output = Popen(['python', EMCONFIG, 'VAR_WHICH_DOES_NOT_EXIST'], stdout=PIPE, stderr=PIPE).communicate()[0].strip()
       assert output == invalid
       # Don't accept no arguments
-      output = Popen(['python', EMCONFIG], stdout=PIPE, stderr=PIPE).communicate()[0]
+      output = Popen(['python', EMCONFIG], stdout=PIPE, stderr=PIPE).communicate()[0].strip()
       assert output == invalid
       # Don't accept more than one variable
-      output = Popen(['python', EMCONFIG, 'LLVM_ROOT', 'EMCC'], stdout=PIPE, stderr=PIPE).communicate()[0]
+      output = Popen(['python', EMCONFIG, 'LLVM_ROOT', 'EMCC'], stdout=PIPE, stderr=PIPE).communicate()[0].strip()
       assert output == invalid
       # Don't accept arbitrary python code
-      output = Popen(['python', EMCONFIG, 'sys.argv[1]'], stdout=PIPE, stderr=PIPE).communicate()[0]
+      output = Popen(['python', EMCONFIG, 'sys.argv[1]'], stdout=PIPE, stderr=PIPE).communicate()[0].strip()
       assert output == invalid
 
     def test_link_s(self):
