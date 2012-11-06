@@ -128,7 +128,7 @@ def emscript(infile, settings, outfile, libraries=[]):
   s.write(json.dumps(settings))
   s.close()
 
-  # Phase 1
+  # Phase 1 - pre
   if DEBUG: t = time.time()
   pre_file = temp_files.get('.pre.ll').name
   open(pre_file, 'w').write(''.join(pre) + '\n' + meta)
@@ -140,8 +140,7 @@ def emscript(infile, settings, outfile, libraries=[]):
   open(forwarded_file, 'w').write(forwarded_data)
   if DEBUG: print >> sys.stderr, '  emscript: phase 1 took %s seconds' % (time.time() - t)
 
-  # Phase 2
-  # XXX must coordinate function indexixing data when parallelizing
+  # Phase 2 - func
   if DEBUG: t = time.time()
   forwarded_json = json.loads(forwarded_data)
   indexed_functions = set()
@@ -151,8 +150,6 @@ def emscript(infile, settings, outfile, libraries=[]):
     js += funcs_js
     # merge forwarded data
     curr_forwarded_json = json.loads(curr_forwarded_data)
-    #print >> sys.stderr, 'f', '\n\n' + json.dumps(forwarded_json) + '\n\n'
-    #print >> sys.stderr, 'c', '\n\n' + json.dumps(curr_forwarded_json) + '\n\n'
     forwarded_json['Types']['preciseI64MathUsed'] = forwarded_json['Types']['preciseI64MathUsed'] or curr_forwarded_json['Types']['preciseI64MathUsed']
     for key, value in curr_forwarded_json['Functions']['blockAddresses'].iteritems():
       forwarded_json['Functions']['blockAddresses'][key] = value
@@ -162,7 +159,6 @@ def emscript(infile, settings, outfile, libraries=[]):
   if DEBUG: t = time.time()
   # calculations on merged forwarded data
   forwarded_json['Functions']['indexedFunctions'] = {}
-  #print >> sys.stderr, 'need index', indexed_functions
   index_reps = []
   i = 2
   for indexed in indexed_functions:
@@ -180,7 +176,7 @@ def emscript(infile, settings, outfile, libraries=[]):
   open(forwarded_file, 'w').write(forwarded_data)
   if DEBUG: print >> sys.stderr, '  emscript: phase 2b took %s seconds' % (time.time() - t)
 
-  # Phase 3
+  # Phase 3 - post
   if DEBUG: t = time.time()
   post_file = temp_files.get('.post.ll').name
   open(post_file, 'w').write(''.join(post) + '\n' + meta)
