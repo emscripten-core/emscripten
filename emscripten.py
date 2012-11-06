@@ -106,6 +106,8 @@ def emscript(infile, settings, outfile, libraries=[]):
         post.append(line) # global
         pre.append(line) # pre needs it to, so we know about globals in pre and funcs
   ll_lines = None
+  meta = ''.join(meta)
+  if DEBUG and len(meta) > 1024*1024: print >> sys.stderr, 'emscript warning: large amounts of metadata, will slow things down'
   if DEBUG: print >> sys.stderr, '  emscript: split took %s seconds' % (time.time() - t)
 
   #if DEBUG:
@@ -127,7 +129,7 @@ def emscript(infile, settings, outfile, libraries=[]):
   # Phase 1
   if DEBUG: t = time.time()
   pre_file = temp_files.get('.pre.ll').name
-  open(pre_file, 'w').write(''.join(pre))
+  open(pre_file, 'w').write(''.join(pre) + '\n' + meta)
   out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, pre_file, 'pre'] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
   js, forwarded_data = out.split('//FORWARDED_DATA:')
   #print 'js', js
@@ -143,7 +145,7 @@ def emscript(infile, settings, outfile, libraries=[]):
   indexed_functions = set()
   for i in range(len(funcs)):
     func = funcs[i]
-    funcs_js, curr_forwarded_data = process_funcs((i, ''.join(func) + '\n' + ''.join(meta), settings_file, compiler, forwarded_file, libraries))
+    funcs_js, curr_forwarded_data = process_funcs((i, ''.join(func) + '\n' + meta, settings_file, compiler, forwarded_file, libraries))
     js += funcs_js
     # merge forwarded data
     curr_forwarded_json = json.loads(curr_forwarded_data)
@@ -182,7 +184,7 @@ def emscript(infile, settings, outfile, libraries=[]):
   # Phase 3
   if DEBUG: t = time.time()
   post_file = temp_files.get('.post.ll').name
-  open(post_file, 'w').write(''.join(post))
+  open(post_file, 'w').write(''.join(post) + '\n' + meta)
   out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, post_file, 'post', forwarded_file] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
   js += out
   if DEBUG: print >> sys.stderr, '  emscript: phase 3 took %s seconds' % (time.time() - t)
