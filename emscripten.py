@@ -123,18 +123,14 @@ def emscript(infile, settings, outfile, libraries=[]):
   open(forwarded_file, 'w').write(forwarded_data)
 
   # Pass 2
+  # XXX must coordinate function indexixing data when parallelizing
   if DEBUG: print >> sys.stderr, 'phase 2'
   funcs_file = temp_files.get('.ll').name
   open(funcs_file, 'w').write('\n'.join(funcs) + '\n' + meta)
-  #print 'pass 2c..'#, open(funcs_file).read()
   out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, funcs_file, 'funcs', forwarded_file] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
   funcs_js, forwarded_data = out.split('//FORWARDED_DATA:')
-  #print 'js', js
   forwarded_file += '2'
-  #print >> sys.stderr, 'FORWARDED_DATA 2:', forwarded_data, type(forwarded_data), forwarded_file
   open(forwarded_file, 'w').write(forwarded_data)
-  # XXX must coordinate function indexixing data when parallelizing
-  #print 'OUT\n', out
   js += funcs_js
 
   # Pass 3
