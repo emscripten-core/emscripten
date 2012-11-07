@@ -41,7 +41,8 @@ def scan(ll, settings):
   if len(blockaddrs) > 0:
     settings['NECESSARY_BLOCKADDRS'] = blockaddrs
 
-BEST_JS_PROCESS_SIZE = 1024*1024
+NUM_CHUNKS_PER_CORE = 4
+MIN_CHUNK_SIZE = 1024*1024
 
 def process_funcs(args):
   i, ll, settings_file, compiler, forwarded_file, libraries = args
@@ -73,6 +74,7 @@ def emscript(infile, settings, outfile, libraries=[]):
   if DEBUG: t = time.time()
   ll = open(infile).read()
   scan(ll, settings)
+  total_ll_size = len(ll)
   ll = None # allow collection
   if DEBUG: print >> sys.stderr, '  emscript: scan took %s seconds' % (time.time() - t)
 
@@ -138,6 +140,13 @@ def emscript(infile, settings, outfile, libraries=[]):
   if DEBUG: print >> sys.stderr, '  emscript: phase 1 took %s seconds' % (time.time() - t)
 
   # Phase 2 - func
+
+  cores = multiprocessing.cpu_count()
+  assert cores >= 1
+  intended_num_chunks = cores * NUM_CHUNKS_PER_CORE
+  chunk_size = max(MIN_CHUNK_SIZE, total_ll_size / intended_num_chunks)
+  chunk_size += 3*len(meta) # keep ratio of lots of function code to meta
+
   if DEBUG: t = time.time()
   forwarded_json = json.loads(forwarded_data)
   indexed_functions = set()
@@ -145,7 +154,7 @@ def emscript(infile, settings, outfile, libraries=[]):
   curr = ''
   for i in range(len(funcs)):
     func = funcs[i]
-    if len(curr) + len(func) < BEST_JS_PROCESS_SIZE + 3*len(meta): # keep ratio of lots of function code to meta
+    if len(curr) + len(func) < chunk_size:
       curr += func
     else:
       chunks.append(curr)
@@ -153,7 +162,9 @@ def emscript(infile, settings, outfile, libraries=[]):
   if curr:
     chunks.append(curr)
     curr = ''
-  if DEBUG: print >> sys.stderr, '  emscript: phase 2 working on %d chunks' % len(chunks)
+  if DEBUG: print >> sys.stderr, '  emscript: phase 2 working on %d chunks (intended chunk size: %.2f MB, meta: %.2f MB)' % (len(chunks), chunk_size/(1024*1024.), len(meta)/(1024*1024.))
+  if cores == 1: assert len(chunks) == 1, 'no point in splitting up without multiple cores'
+
   for chunk in chunks:
     funcs_js, curr_forwarded_data = process_funcs((i, chunk + '\n' + meta, settings_file, compiler, forwarded_file, libraries))
     js += funcs_js
