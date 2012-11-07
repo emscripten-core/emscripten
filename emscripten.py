@@ -187,17 +187,14 @@ def emscript(infile, settings, outfile, libraries=[]):
 
   # calculations on merged forwarded data
   forwarded_json['Functions']['indexedFunctions'] = {}
-  index_reps = []
   i = 2
   for indexed in indexed_functions:
-    index_reps.append((indexed, i))
-    forwarded_json['Functions']['indexedFunctions'][indexed] = i
+    forwarded_json['Functions']['indexedFunctions'][indexed] = i # make sure not to modify this python object later - we use it in indexize
     i += 2
   forwarded_json['Functions']['nextIndex'] = i
+  indexing = forwarded_json['Functions']['indexedFunctions']
   def indexize(js):
-    for indexed, i in index_reps:
-      js = js.replace('{{{ FI_' + indexed + ' }}}', str(i)) # TODO: optimize, do them all with a regexp replace?
-    return js
+    return re.sub(r'{{{ FI_([\w\d_$]+) }}}', lambda m: str(indexing[m.groups(0)[0]]), js)
   # forward
   forwarded_data = json.dumps(forwarded_json)
   forwarded_file = temp_files.get('.2.json').name
