@@ -44,6 +44,7 @@ def scan(ll, settings):
 
 NUM_CHUNKS_PER_CORE = 4
 MIN_CHUNK_SIZE = 1024*1024
+MAX_CHUNK_SIZE = float(os.environ.get('EMSCRIPT_MAX_CHUNK_SIZE') or 'inf') # configuring this is just for debugging purposes
 
 def process_funcs(args):
   i, ll, settings_file, compiler, forwarded_file, libraries = args
@@ -147,6 +148,7 @@ def emscript(infile, settings, outfile, libraries=[]):
   intended_num_chunks = cores * NUM_CHUNKS_PER_CORE
   chunk_size = max(MIN_CHUNK_SIZE, total_ll_size / intended_num_chunks)
   chunk_size += 3*len(meta) # keep ratio of lots of function code to meta
+  chunk_size = min(MAX_CHUNK_SIZE, chunk_size)
 
   if DEBUG: t = time.time()
   forwarded_json = json.loads(forwarded_data)

@@ -1123,16 +1123,22 @@ c5,de,15,8a
       self.do_run(open(path_from_root('tests', 'cube2md5.cpp')).read(), open(path_from_root('tests', 'cube2md5.ok')).read())
 
     def test_cube2hash(self):
-      # A good test of i64 math
-      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2 C-style memory aliasing')
-      self.do_run('', 'Usage: hashstring <seed>',
-                  libraries=self.get_library('cube2hash', ['cube2hash.bc'], configure=None),  
-                  includes=[path_from_root('tests', 'cube2hash')])
+      try:
+        old_chunk_size = os.environ.get('EMSCRIPT_MAX_CHUNK_SIZE') or ''
+        os.environ['EMSCRIPT_MAX_CHUNK_SIZE'] = '1' # test splitting out each function to a chunk in emscripten.py (21 functions here)
 
-      for text, output in [('fleefl', '892BDB6FD3F62E863D63DA55851700FDE3ACF30204798CE9'),
-                           ('fleefl2', 'AA2CC5F96FC9D540CA24FDAF1F71E2942753DB83E8A81B61'),
-                           ('64bitisslow', '64D8470573635EC354FEE7B7F87C566FCAF1EFB491041670')]:
-        self.do_run('', 'hash value: ' + output, [text], no_build=True)
+        # A good test of i64 math
+        if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2 C-style memory aliasing')
+        self.do_run('', 'Usage: hashstring <seed>',
+                    libraries=self.get_library('cube2hash', ['cube2hash.bc'], configure=None),  
+                    includes=[path_from_root('tests', 'cube2hash')])
+
+        for text, output in [('fleefl', '892BDB6FD3F62E863D63DA55851700FDE3ACF30204798CE9'),
+                             ('fleefl2', 'AA2CC5F96FC9D540CA24FDAF1F71E2942753DB83E8A81B61'),
+                             ('64bitisslow', '64D8470573635EC354FEE7B7F87C566FCAF1EFB491041670')]:
+          self.do_run('', 'hash value: ' + output, [text], no_build=True)
+      finally:
+        os.environ['EMSCRIPT_MAX_CHUNK_SIZE'] = old_chunk_size
 
     def test_unaligned(self):
         if Settings.QUANTUM_SIZE == 1: return self.skip('No meaning to unaligned addresses in q1')
