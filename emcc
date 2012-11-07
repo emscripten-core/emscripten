@@ -173,6 +173,11 @@ Options that are modified or new in %s include:
                            (without the external "s in either of those,
                            you would get an error)
 
+  -g                       Use debug info. Note that you need this during
+                           the last compilation phase from bitcode to
+                           JavaScript, or else we will remove it by
+                           default in -O1 and above.
+
   --typed-arrays <mode>    0: No typed arrays
                            1: Parallel typed arrays
                            2: Shared (C-like) typed arrays (default)
@@ -461,7 +466,7 @@ CC = shared.to_cc(CXX)
 if os.environ.get('EMMAKEN_CXX'):
   CC = CXX
 
-CC_ADDITIONAL_ARGS = shared.COMPILER_OPTS # + ['-g']?
+CC_ADDITIONAL_ARGS = shared.COMPILER_OPTS
 
 EMMAKEN_CFLAGS = os.environ.get('EMMAKEN_CFLAGS')
 if EMMAKEN_CFLAGS: CC_ADDITIONAL_ARGS += shlex.split(EMMAKEN_CFLAGS)
@@ -564,6 +569,7 @@ try:
   shell_path = shared.path_from_root('src', 'shell.html')
   js_libraries = []
   remove_duplicates = False
+  keep_debug = False
   bind = False
 
   def check_bad_eq(arg):
@@ -622,7 +628,9 @@ try:
       check_bad_eq(newargs[i])
       split_js_file = int(newargs[i+1])
       newargs[i] = ''
-      newargs[i+1] = ''      
+      newargs[i+1] = ''
+    elif newargs[i] == '-g':
+      keep_debug = True
     elif newargs[i] == '--bind':
       bind = True
       newargs[i] = '-std=c++11' # Force C++11 for embind code
@@ -683,6 +691,7 @@ try:
   if closure is None: closure = 1 if opt_level >= 2 else 0
   if minify_whitespace is None:
     minify_whitespace = closure # if closure is run, minify whitespace
+  if opt_level <= 0: keep_debug = True # always keep debug in -O0
 
   if closure:
     assert os.path.exists(shared.CLOSURE_COMPILER), 'emcc: fatal: Closure compiler (%s) does not exist' % shared.CLOSURE_COMPILER
@@ -809,6 +818,10 @@ try:
   for change in settings_changes:
     key, value = change.split('=')
     exec('shared.Settings.' + key + ' = ' + value)
+
+  # Apply effects from settings
+  if shared.Settings.CORRECT_SIGNS >= 2 or shared.Settings.CORRECT_OVERFLOWS >= 2 or shared.Settings.CORRECT_ROUNDINGS >= 2:
+    keep_debug = True # must keep debug info to do line-by-line operations 
 
   ## Compile source code to bitcode
 
@@ -994,23 +1007,24 @@ try:
     if not LEAVE_INPUTS_RAW: save_intermediate('basebc', 'bc')
 
   # Optimize, if asked to
+  link_opts = [] if keep_debug else ['-strip-debug']
   if llvm_opts > 0 and not LEAVE_INPUTS_RAW:
     if DEBUG: print >> sys.stderr, 'emcc: LLVM -O%d' % llvm_opts
     shared.Building.llvm_opt(in_temp(target_basename + '.bc'), llvm_opts)
     if DEBUG: save_intermediate('opt', 'bc')
     # Do LTO in a separate pass to work around LLVM bug XXX (see failure e.g. in cubescript)
     if llvm_lto and shared.Building.can_use_unsafe_opts() and shared.Building.can_build_standalone():
-      lto_opts = []
-      if not shared.Building.can_inline(): lto_opts.append('-disable-inlining')
-      lto_opts.append('-std-link-opts')
-      if DEBUG: print >> sys.stderr, 'emcc: LLVM LTO:', lto_opts
-      shared.Building.llvm_opt(in_temp(target_basename + '.bc'), lto_opts)
+      if not shared.Building.can_inline(): link_opts.append('-disable-inlining')
+      link_opts.append('-std-link-opts')
+      if DEBUG: print >> sys.stderr, 'emcc: LLVM LTO:', link_opts
+      shared.Building.llvm_opt(in_temp(target_basename + '.bc'), link_opts)
       if DEBUG: save_intermediate('lto', 'bc')
   else:
     # If possible, remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
     if not LEAVE_INPUTS_RAW and shared.Building.can_build_standalone():
-      if DEBUG: print >> sys.stderr, 'emcc: LLVM dead globals elimination'
-      shared.Building.llvm_opt(in_temp(target_basename + '.bc'), ['-internalize', '-globaldce'])
+      link_opts += ['-internalize', '-globaldce']
+      if DEBUG: print >> sys.stderr, 'emcc: LLVM dead code elimination:', link_opts
+      shared.Building.llvm_opt(in_temp(target_basename + '.bc'), link_opts)
       if DEBUG: save_intermediate('dce', 'bc')
 
   # Prepare .ll for Emscripten

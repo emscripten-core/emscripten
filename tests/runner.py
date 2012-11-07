@@ -5755,8 +5755,7 @@ void*:16
     def get_freetype(self):
       Settings.INIT_STACK = 1 # TODO: Investigate why this is necessary
       return self.get_library('freetype',
-                              os.path.join('objs', '.libs', 'libfreetype.a'),
-                              cache_name_extra='' if self.emcc_args is None or '-O2' not in self.emcc_args else '_opt')
+                              os.path.join('objs', '.libs', 'libfreetype.a'))
 
     def test_freetype(self):
       if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: Figure out and try to fix')
