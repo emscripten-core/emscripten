@@ -7104,6 +7104,8 @@ class %s(T):
     if self.emcc_args is not None:
       Settings.load(self.emcc_args)
       Building.LLVM_OPTS = 0
+      if '-O2' in self.emcc_args:
+        Building.COMPILER_TEST_OPTS = [] # remove -g in -O2 tests, for more coverage
       return
 
     llvm_opts = %d # 1 is yes, 2 is yes and unsafe
