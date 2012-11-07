@@ -9,13 +9,7 @@ header files (so that the JS compiler can see the constants in those
 headers, for the libc implementation in JS).
 '''
 
-import json
-import optparse
-import os
-import subprocess
-import re
-import sys
-import time
+import os, sys, json, optparse, subprocess, re, time, multiprocessing
 
 if not os.environ.get('EMSCRIPTEN_SUPPRESS_USAGE_WARNING'):
   print >> sys.stderr, '''
