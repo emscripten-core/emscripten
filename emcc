@@ -90,7 +90,7 @@ LLVM_OPT_LEVEL = {
   3: 3,
 }
 
-DEBUG = os.environ.get('EMCC_DEBUG')
+DEBUG = int(os.environ.get('EMCC_DEBUG') or 0)
 TEMP_DIR = os.environ.get('EMCC_TEMP_DIR')
 LEAVE_INPUTS_RAW = os.environ.get('EMCC_LEAVE_INPUTS_RAW') # Do not compile .ll files into .bc, just compile them with emscripten directly
                                                            # Not recommended, this is mainly for the test runner, or if you have some other
@@ -1097,8 +1097,10 @@ try:
   def flush_js_optimizer_queue():
     global final, js_optimizer_queue
     if len(js_optimizer_queue) > 0:
-      if not DEBUG:
+      if DEBUG < 2:
+        if DEBUG: print >> sys.stderr, 'emcc: applying js optimization passes:', js_optimizer_queue
         final = shared.Building.js_optimizer(final, js_optimizer_queue)
+        if DEBUG: save_intermediate('js_opts')
       else:
         for name in js_optimizer_queue:
           print >> sys.stderr, 'emcc: applying js optimization pass:', name
@@ -1109,7 +1111,7 @@ try:
   if opt_level >= 1:
     if DEBUG: print >> sys.stderr, 'emcc: running pre-closure post-opts'
 
-    if DEBUG:
+    if DEBUG >= 2:
       # Clean up the syntax a bit
       final = shared.Building.js_optimizer(final, [])
       if DEBUG: save_intermediate('pretty')
