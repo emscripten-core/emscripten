@@ -185,7 +185,7 @@ process(sys.argv[1])
 ''')
         transform.close()
         transform_args = ['--js-transform', "python %s" % transform_filename]
-      Building.emcc(filename + '.o.ll', Settings.serialize() + self.emcc_args + transform_args, filename + '.o.js')
+      Building.emcc(filename + '.o.ll', Settings.serialize() + self.emcc_args + transform_args + Building.COMPILER_TEST_OPTS, filename + '.o.js')
       run_post(post2)
 
   # Build JavaScript code from source code
