@@ -10073,7 +10073,7 @@ fi
         try_delete('a.out.js')
 
         basebc_name = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-0-basebc.bc')
-        dcebc_name = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-1-dce.bc')
+        dcebc_name = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-1-linktime.bc')
 
         # Building a file that *does* need dlmalloc *should* trigger cache generation, but only the first time
         for filename, libname in [('hello_malloc.cpp', 'dlmalloc'), ('hello_libcxx.cpp', 'libcxx')]:
