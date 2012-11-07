@@ -163,7 +163,7 @@ def emscript(infile, settings, outfile, libraries=[]):
     chunks.append(curr)
     curr = ''
   if cores == 1: assert len(chunks) == 1, 'no point in splitting up without multiple cores'
-  if DEBUG: print >> sys.stderr, '  emscript: phase 2 working on %d chunks %s (intended chunk size: %.2f MB, meta: %.2f MB, cores: %d)' % (len(chunks), 'in parallel' if len(chunks) > 1 else '', chunk_size/(1024*1024.), len(meta)/(1024*1024.), cores)
+  if DEBUG: print >> sys.stderr, '  emscript: phase 2 working on %d chunks %s (intended chunk size: %.2f MB, meta: %.2f MB)' % (len(chunks), ('using %d cores' % cores) if len(chunks) > 1 else '', chunk_size/(1024*1024.), len(meta)/(1024*1024.))
 
   commands = [(i, chunk + '\n' + meta, settings_file, compiler, forwarded_file, libraries) for chunk in chunks]
 
@@ -207,9 +207,9 @@ def emscript(infile, settings, outfile, libraries=[]):
   open(post_file, 'w').write(''.join(post) + '\n' + meta)
   out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, post_file, 'post', forwarded_file] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
   js += out
+  js = indexize(js)
   if DEBUG: print >> sys.stderr, '  emscript: phase 3 took %s seconds' % (time.time() - t)
 
-  js = indexize(js)
   outfile.write(js) # TODO: write in parts (see previous line though)
   outfile.close()
 
