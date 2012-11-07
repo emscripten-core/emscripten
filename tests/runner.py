@@ -306,14 +306,14 @@ process(sys.argv[1])
       os.makedirs(ret)
     return ret
 
-  def get_library(self, name, generated_libs, configure=['sh', './configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=True, env_init={}):
+  def get_library(self, name, generated_libs, configure=['sh', './configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=True, env_init={}, cache_name_extra=''):
     build_dir = self.get_build_dir()
     output_dir = self.get_dir()
 
-    cache_name = name + '|' + Building.COMPILER
+    cache_name = name + cache_name_extra
     if self.library_cache is not None:
       if cache and self.library_cache.get(cache_name):
-        print >> sys.stderr,  '<load build from cache> ',
+        print >> sys.stderr,  '<load %s from cache> ' % cache_name,
         generated_libs = []
         for basename, contents in self.library_cache[cache_name]:
           bc_file = os.path.join(build_dir, basename)
@@ -323,7 +323,7 @@ process(sys.argv[1])
           generated_libs.append(bc_file)
         return generated_libs
 
-    print >> sys.stderr, '<building and saving into cache> ',
+    print >> sys.stderr, '<building and saving %s into cache> ' % cache_name,
 
     return Building.build_library(name, build_dir, output_dir, generated_libs, configure, configure_args, make, make_args, self.library_cache, cache_name,
                                   copy_project=True, env_init=env_init)
@@ -5748,8 +5748,9 @@ void*:16
 
     def get_freetype(self):
       Settings.INIT_STACK = 1 # TODO: Investigate why this is necessary
-
-      return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a'))
+      return self.get_library('freetype',
+                              os.path.join('objs', '.libs', 'libfreetype.a'),
+                              cache_name_extra='' if self.emcc_args is None or '-O2' not in self.emcc_args else '_opt')
 
     def test_freetype(self):
       if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: Figure out and try to fix')
