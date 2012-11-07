@@ -48,7 +48,7 @@ def run(filename, passes, js_engine):
       f_end = js.find('\n}\n', f_end+1)
     chunk = js[f_start:(-1 if f_end == -1 else f_end+3)] + suffix
     temp_file = filename + '.p%d.js' % i
-    if DEBUG: print >> sys.stderr, '  chunk %d: %d bytes' % (i, (f_end if f_end >= 0 else len(js)) - f_start)
+    #if DEBUG: print >> sys.stderr, '  chunk %d: %d bytes' % (i, (f_end if f_end >= 0 else len(js)) - f_start)
     i += 1
     f_start = f_end+3
     done = f_end == -1 or f_start >= len(js)
