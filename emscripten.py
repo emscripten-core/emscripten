@@ -31,6 +31,7 @@ def path_from_root(*pathelems):
 
 temp_files = shared.TempFiles()
 
+compiler_engine = None
 
 def scan(ll, settings):
   # blockaddress(@main, %23)
@@ -48,7 +49,7 @@ def process_funcs(args):
   i, ll, settings_file, compiler, forwarded_file, libraries = args
   funcs_file = temp_files.get('.func_%d.ll' % i).name
   open(funcs_file, 'w').write(ll)
-  out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, funcs_file, 'funcs', forwarded_file] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
+  out = shared.run_js(compiler, compiler_engine, [settings_file, funcs_file, 'funcs', forwarded_file] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
   return out.split('//FORWARDED_DATA:')
 
 def emscript(infile, settings, outfile, libraries=[]):
@@ -292,7 +293,7 @@ def main(args):
 
 if __name__ == '__main__':
   parser = optparse.OptionParser(
-      usage='usage: %prog [-h] [-H HEADERS] [-o OUTFILE] [-s FOO=BAR]* infile',
+      usage='usage: %prog [-h] [-H HEADERS] [-o OUTFILE] [-c COMPILER_ENGINE] [-s FOO=BAR]* infile',
       description=('You should normally never use this! Use emcc instead. '
                    'This is a wrapper around the JS compiler, converting .ll to .js.'),
       epilog='')
@@ -307,6 +308,9 @@ if __name__ == '__main__':
   parser.add_option('-o', '--outfile',
                     default=sys.stdout,
                     help='Where to write the output; defaults to stdout.')
+  parser.add_option('-c', '--compiler',
+                    default=shared.COMPILER_ENGINE,
+                    help='Which JS engine to use to run the compiler; defaults to the one in ~/.emscripten.')
   parser.add_option('-s', '--setting',
                     dest='settings',
                     default=[],
@@ -322,6 +326,7 @@ if __name__ == '__main__':
   keywords.infile = os.path.abspath(positional[0])
   if isinstance(keywords.outfile, basestring):
     keywords.outfile = open(keywords.outfile, 'w')
+  compiler_engine = keywords.compiler
 
   temp_files.run_and_clean(lambda: main(keywords))
 
