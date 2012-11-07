@@ -162,11 +162,18 @@ def emscript(infile, settings, outfile, libraries=[]):
   if curr:
     chunks.append(curr)
     curr = ''
-  if DEBUG: print >> sys.stderr, '  emscript: phase 2 working on %d chunks (intended chunk size: %.2f MB, meta: %.2f MB)' % (len(chunks), chunk_size/(1024*1024.), len(meta)/(1024*1024.))
   if cores == 1: assert len(chunks) == 1, 'no point in splitting up without multiple cores'
+  if DEBUG: print >> sys.stderr, '  emscript: phase 2 working on %d chunks %s (intended chunk size: %.2f MB, meta: %.2f MB, cores: %d)' % (len(chunks), 'in parallel' if len(chunks) > 1 else '', chunk_size/(1024*1024.), len(meta)/(1024*1024.), cores)
 
-  for chunk in chunks:
-    funcs_js, curr_forwarded_data = process_funcs((i, chunk + '\n' + meta, settings_file, compiler, forwarded_file, libraries))
+  commands = [(i, chunk + '\n' + meta, settings_file, compiler, forwarded_file, libraries) for chunk in chunks]
+
+  if len(chunks) > 1:
+    pool = multiprocessing.Pool(processes=cores)
+    outputs = pool.map(process_funcs, commands, chunksize=1)
+  else:
+    outputs = [process_funcs(commands[0])]
+
+  for funcs_js, curr_forwarded_data in outputs:
     js += funcs_js
     # merge forwarded data
     curr_forwarded_json = json.loads(curr_forwarded_data)
@@ -177,6 +184,7 @@ def emscript(infile, settings, outfile, libraries=[]):
       indexed_functions.add(key)
   if DEBUG: print >> sys.stderr, '  emscript: phase 2 took %s seconds' % (time.time() - t)
   if DEBUG: t = time.time()
+
   # calculations on merged forwarded data
   forwarded_json['Functions']['indexedFunctions'] = {}
   index_reps = []
