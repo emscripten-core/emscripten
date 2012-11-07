@@ -6746,6 +6746,7 @@ def process(filename):
         assert 'Assertion failed' in str(e), str(e)
 
     def test_linespecific(self):
+      if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
       if self.emcc_args: self.emcc_args += ['--llvm-opts', '0'] # llvm full opts make the expected failures here not happen
 
       Settings.CHECK_SIGNS = 0
@@ -6902,6 +6903,7 @@ def process(filename):
         Settings.CORRECT_SIGNS = 0
 
     def test_pgo(self):
+      if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
       Settings.PGO = Settings.CHECK_OVERFLOWS = Settings.CORRECT_OVERFLOWS = Settings.CHECK_SIGNS = Settings.CORRECT_SIGNS = 1
 
       src = '''
