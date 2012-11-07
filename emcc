@@ -1007,25 +1007,24 @@ try:
     if not LEAVE_INPUTS_RAW: save_intermediate('basebc', 'bc')
 
   # Optimize, if asked to
-  link_opts = [] if keep_debug else ['-strip-debug']
-  if llvm_opts > 0 and not LEAVE_INPUTS_RAW:
-    if DEBUG: print >> sys.stderr, 'emcc: LLVM -O%d' % llvm_opts
-    shared.Building.llvm_opt(in_temp(target_basename + '.bc'), llvm_opts)
-    if DEBUG: save_intermediate('opt', 'bc')
-    # Do LTO in a separate pass to work around LLVM bug XXX (see failure e.g. in cubescript)
-    if llvm_lto and shared.Building.can_use_unsafe_opts() and shared.Building.can_build_standalone():
-      if not shared.Building.can_inline(): link_opts.append('-disable-inlining')
-      link_opts.append('-std-link-opts')
-      if DEBUG: print >> sys.stderr, 'emcc: LLVM LTO:', link_opts
+  if not LEAVE_INPUTS_RAW:
+    link_opts = [] if keep_debug else ['-strip-debug']
+    if llvm_opts > 0:
+      if DEBUG: print >> sys.stderr, 'emcc: LLVM -O%d' % llvm_opts
+      shared.Building.llvm_opt(in_temp(target_basename + '.bc'), llvm_opts)
+      if DEBUG: save_intermediate('opt', 'bc')
+      # Do LTO in a separate pass to work around LLVM bug XXX (see failure e.g. in cubescript)
+    if shared.Building.can_build_standalone():
+      if llvm_lto and shared.Building.can_use_unsafe_opts():
+        if not shared.Building.can_inline(): link_opts.append('-disable-inlining')
+        link_opts.append('-std-link-opts')
+      else:
+        # At least remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
+        link_opts += ['-internalize', '-globaldce']
+    if link_opts:
+      if DEBUG: print >> sys.stderr, 'emcc: LLVM linktime:', link_opts
       shared.Building.llvm_opt(in_temp(target_basename + '.bc'), link_opts)
-      if DEBUG: save_intermediate('lto', 'bc')
-  else:
-    # If possible, remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
-    if not LEAVE_INPUTS_RAW and shared.Building.can_build_standalone():
-      link_opts += ['-internalize', '-globaldce']
-      if DEBUG: print >> sys.stderr, 'emcc: LLVM dead code elimination:', link_opts
-      shared.Building.llvm_opt(in_temp(target_basename + '.bc'), link_opts)
-      if DEBUG: save_intermediate('dce', 'bc')
+      if DEBUG: save_intermediate('linktime', 'bc')
 
   # Prepare .ll for Emscripten
   if not LEAVE_INPUTS_RAW:
