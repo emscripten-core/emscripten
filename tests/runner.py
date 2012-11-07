@@ -6008,17 +6008,23 @@ def process(filename):
 
       do_test()
 
-      # some test coverage for EMCC_DEBUG
+      # some test coverage for EMCC_DEBUG 1 and 2
       if self.emcc_args and '-O2' in self.emcc_args and 'EMCC_DEBUG' not in os.environ:
         shutil.copyfile('src.c.o.js', 'release.js')
         try:
           os.environ['EMCC_DEBUG'] = '1'
+          print '2'
           do_test()
+          shutil.copyfile('src.c.o.js', 'debug1.js')
+          os.environ['EMCC_DEBUG'] = '2'
+          print '3'
+          do_test()
+          shutil.copyfile('src.c.o.js', 'debug2.js')
         finally:
           del os.environ['EMCC_DEBUG']
-        shutil.copyfile('src.c.o.js', 'debug.js')
-        self.assertIdentical(open('release.js').read().replace('\n\n', '\n').replace('\n\n', '\n'), open('debug.js').read().replace('\n\n', '\n').replace('\n\n', '\n')) # EMCC_DEBUG=1 mode must not generate different code!
-        print >> sys.stderr, 'debug check passed too'
+        for debug in [1,2]:
+          self.assertIdentical(open('release.js').read().replace('\n\n', '\n').replace('\n\n', '\n'), open('debug%d.js' % debug).read().replace('\n\n', '\n').replace('\n\n', '\n')) # EMCC_DEBUG=1 mode must not generate different code!
+          print >> sys.stderr, 'debug check %d passed too' % debug
       else:
         print >> sys.stderr, 'not doing debug check'
 
