@@ -6714,6 +6714,8 @@ def process(filename):
         assert 'Too many corrections' in str(e), str(e)
 
     def test_debug(self):
+      if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
+
       src = '''
         #include <stdio.h>
         #include <assert.h>
