@@ -10027,8 +10027,8 @@ fi
       assert not os.environ.get('EMCC_DEBUG'), 'do not run sanity checks in debug mode!'
       os.environ['EMCC_DEBUG'] = '1'
       output = self.check_working(EMCC)
-      self.assertContained(SANITY_MESSAGE, output)
       del os.environ['EMCC_DEBUG']
+      self.assertContained(SANITY_MESSAGE, output)
       output = self.check_working(EMCC)
       self.assertNotContained(SANITY_MESSAGE, output)
 
@@ -10065,8 +10065,8 @@ fi
         }
       ''')
       Popen(['python', EMCC, os.path.join(dirname, 'main.cpp'), '-o', os.path.join(dirname, 'a.out.js')]).communicate()
-      self.assertContained('hello from emcc with no config file', run_js(os.path.join(dirname, 'a.out.js')))
       del os.environ['EM_CONFIG']
+      self.assertContained('hello from emcc with no config file', run_js(os.path.join(dirname, 'a.out.js')))
       shutil.rmtree(dirname)
 
     def test_emcc_caching(self):
