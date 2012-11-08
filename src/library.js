@@ -6459,8 +6459,24 @@ LibraryManager.library = {
   inet_ntop: function(af, src, dst, size) {
     var addr = getValue(src, 'i32');
     var str = __inet_ntop_raw(addr);
-    writeStringToMemory(str.substr(0, size), dst, true);
+    writeStringToMemory(str.substr(0, size), dst);
     return dst;
+  },
+
+  inet_ntoa__deps: ['inet_ntop'],
+  inet_ntoa: function(in_addr) {
+    if (!_inet_ntoa.buffer) {
+      _inet_ntoa.buffer = _malloc(1024);
+    }
+    return _inet_ntop(0, in_addr, _inet_ntoa.buffer, 1024);
+  },
+
+  inet_aton__deps: ['inet_addr'],
+  inet_aton: function(cp, inp) {
+    var addr = _inet_addr(cp);
+    setValue(inp, addr, 'i32');
+    if (addr < 0) return 0;
+    return 1;
   },
 
   // ==========================================================================

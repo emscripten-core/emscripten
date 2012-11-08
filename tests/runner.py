@@ -5219,6 +5219,23 @@ def process(filename):
       '''
       self.do_run(src, '*d4c3b2a1,e07235fe,f0cdab07,cdab,34122143,afbe*\n4e0ab4be\n')
 
+    def test_inet2(self):
+      src = r'''
+        #include <stdio.h>
+        #include <arpa/inet.h>
+
+        int main() {
+          struct in_addr x, x2;
+          int *y = (int*)&x;
+          *y = 0x12345678;
+          printf("%s\n", inet_ntoa(x));
+          int r = inet_aton(inet_ntoa(x), &x2);
+          printf("%s\n", inet_ntoa(x2));
+          return 0;
+        }
+      '''
+      self.do_run(src, '120.86.52.18\n120.86.52.18\n')
+
     def test_gethostbyname(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip("assume t2 in gethostbyname")
 
