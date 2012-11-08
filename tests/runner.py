@@ -2791,7 +2791,7 @@ def process(filename):
       '''
 
       # Fail without memory growth
-      self.do_run(src, 'Cannot enlarge memory arrays. Adjust TOTAL_MEMORY (currently 10485760) or compile with ALLOW_MEMORY_GROWTH')
+      self.do_run(src, 'Cannot enlarge memory arrays.')
       fail = open('src.cpp.o.js').read()
 
       # Win with it
