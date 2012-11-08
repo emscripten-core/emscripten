@@ -1,3 +1,5 @@
+// XXX add relooper.js
+
 //"use strict";
 
 // Convert analyzed data to javascript. Everything has already been calculated
@@ -596,7 +598,7 @@ function JSify(data, functionsOnly, givenFunctions) {
                                   .join('\n');
         }
         var ret = '';
-        if (block.type == 'emulated') {
+        if (!RELOOP){ // || block.labels.length == 1) {
           if (block.labels.length > 1) {
             if (block.entries.length == 1) {
               ret += indent + '__label__ = ' + getLabelId(block.entries[0]) + '; ' + (SHOW_LABELS ? '/* ' + getOriginalLabelId(block.entries[0]) + ' */' : '') + '\n';
@@ -627,38 +629,25 @@ function JSify(data, functionsOnly, givenFunctions) {
             ret += (SHOW_LABELS ? indent + '/* ' + block.entries[0] + ' */' : '') + '\n' + getLabelLines(block.labels[0], indent);
           }
           ret += '\n';
-        } else if (block.type == 'reloop') {
-          ret += indent + block.id + ': while(1) { ' + (SHOW_LABELS ? ' /* ' + block.entries + + ' */' : '') + '\n';
-          ret += walkBlock(block.inner, indent + '  ');
-          ret += indent + '}\n';
-        } else if (block.type == 'multiple') {
-          var first = true;
-          var multipleIdent = '';
-          ret += indent + block.id + ': do { \n';
-          multipleIdent = '  ';
-          // TODO: Find out cases where the final if/case is not needed - where we know we must be in a specific label at that point
-          var SWITCH_IN_MULTIPLE = 0; // This appears to never be worth it, for no amount of labels
-          if (SWITCH_IN_MULTIPLE && block.entryLabels.length >= 2) {
-            ret += indent + multipleIdent + 'switch(__label__) {\n';
-            block.entryLabels.forEach(function(entryLabel) {
-              ret += indent + multipleIdent + '  case ' + getLabelId(entryLabel.ident) + ': {\n';
-              ret += walkBlock(entryLabel.block, indent + '    ' + multipleIdent);
-              ret += indent + multipleIdent + '  } break;\n';
-            });
-            ret += indent + multipleIdent + '}\n';
-          } else {
-            block.entryLabels.forEach(function(entryLabel) {
-              ret += indent + multipleIdent + (first ? '' : 'else ') + 'if (__label__ == ' + getLabelId(entryLabel.ident) + ') {\n';
-              ret += walkBlock(entryLabel.block, indent + '  ' + multipleIdent);
-              ret += indent + multipleIdent + '}\n';
-              first = false;
-            });
-          }
-          ret += indent + '} while(0);\n';
         } else {
-          throw "Walked into an invalid block type: " + block.type;
+          // Reloop multiple blocks using the compiled relooper
+
+          Relooper.setDebug(1);
+          Relooper.init();
+
+          printErr('zz reloopah');
+          var blockMap = {};
+          for (var i = 0; i < block.labels.length; i++) {
+            var label = block.labels[i];
+            var content = getLabelLines(label, '');
+            printErr(label.ident + ' : ' + content);
+            blockMap[label.ident] = Relooper.addBlock(content);
+          }
+          printErr('zz render');
+          //Relooper.addBranch(b_a, b_b, "check == 10");
+          ret += Relooper.render(blockMap[block.entries[0]]);
         }
-        return ret + walkBlock(block.next, indent);
+        return ret;
       }
       func.JS += walkBlock(func.block, '  ');
       // Finalize function
