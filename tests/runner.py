@@ -328,9 +328,9 @@ process(sys.argv[1])
     return Building.build_library(name, build_dir, output_dir, generated_libs, configure, configure_args, make, make_args, self.library_cache, cache_name,
                                   copy_project=True, env_init=env_init)
 
-  def clear(self):
+  def clear(self, in_curr=False):
     for name in os.listdir(self.get_dir()):
-      try_delete(os.path.join(self.get_dir(), name))
+      try_delete(os.path.join(self.get_dir(), name) if not in_curr else name)
     emcc_debug = os.environ.get('EMCC_DEBUG')
     if emcc_debug:
       for name in os.listdir(EMSCRIPTEN_TEMP_DIR):
@@ -7274,7 +7274,7 @@ Options that are modified or new in %s include:
           os.chdir('a_dir')
           os.mkdir('b_dir')
           for path in [os.path.abspath(os.path.join('..', 'file1.js')), os.path.join('b_dir', 'file2.js')]:
-            self.clear()
+            self.clear(in_curr=True)
             output = Popen(['python', compiler, path_from_root('tests', 'hello_world.ll'), '-o', path], stdout=PIPE, stderr=PIPE).communicate()
             assert os.path.exists(path), path + ' does not exist; ' + '\n'.join(output)
             self.assertContained('hello, world!', run_js(path))
