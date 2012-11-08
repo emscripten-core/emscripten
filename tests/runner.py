@@ -330,7 +330,7 @@ process(sys.argv[1])
 
   def clear(self):
     for name in os.listdir(self.get_dir()):
-      try_delete(name)
+      try_delete(os.path.join(self.get_dir(), name))
     emcc_debug = os.environ.get('EMCC_DEBUG')
     if emcc_debug:
       for name in os.listdir(EMSCRIPTEN_TEMP_DIR):
@@ -10077,14 +10077,25 @@ fi
         try_delete('a.out.js')
 
         basebc_name = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-0-basebc.bc')
-        dcebc_name = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-1-linktime.bc')
+        dcebc_name1 = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-1-linktime.bc')
+        dcebc_name2 = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-2-linktime.bc')
+        ll_name1 = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-2-ll.ll')
+        ll_name2 = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-3-ll.ll')
+
+        self.working_dir = os.path.join(TEMP_DIR, 'emscripten_temp')
 
         # Building a file that *does* need dlmalloc *should* trigger cache generation, but only the first time
         for filename, libname in [('hello_malloc.cpp', 'dlmalloc'), ('hello_libcxx.cpp', 'libcxx')]:
           for i in range(3):
+            print filename, libname, i
+            self.clear()
+            dcebc_name = dcebc_name1 if i == 0 else dcebc_name2
+            ll_name = ll_name1 if i == 0 else ll_name2
             try_delete(basebc_name) # we might need to check this file later
             try_delete(dcebc_name) # we might need to check this file later
-            output = self.do([EMCC, path_from_root('tests', filename)])
+            try_delete(ll_name) # we might need to check this file later
+            output = self.do([EMCC, '-O' + str(i), '--closure', '0', '-s', 'RELOOP=0', '--llvm-lto', '0', path_from_root('tests', filename)])
+            #print output
             assert INCLUDING_MESSAGE.replace('X', libname) in output
             if libname == 'dlmalloc':
               assert INCLUDING_MESSAGE.replace('X', 'libcxx') not in output # we don't need libcxx in this code
@@ -10099,6 +10110,11 @@ fi
               assert os.stat(os.path.join(EMCC_CACHE, libname + '.bc')).st_size > 2000000, 'libc++ is big'
               assert os.stat(basebc_name).st_size > 2000000, 'libc++ is indeed big'
               assert os.stat(dcebc_name).st_size < 1500000, 'Dead code elimination must remove most of libc++'
+            # should only have metadata in -O0, not 1 and 2
+            ll = open(ll_name).read()
+            if (ll.count('\n!') < 10) == (i == 0): # a few lines are left even in -O1 and -O2
+              print i, 'll metadata should be removed in -O1 and O2 by default', ll[-300:]
+              assert False
       finally:
         if emcc_debug:
           os.environ['EMCC_DEBUG'] = emcc_debug
