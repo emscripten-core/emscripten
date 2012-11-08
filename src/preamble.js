@@ -327,6 +327,25 @@ var globalScope = this;
 //                   Note that string arguments will be stored on the stack (the JS string will become a C string on the stack).
 // @return           The return value, as a native JS value (as in returnType)
 function ccall(ident, returnType, argTypes, args) {
+  return ccallFunc(getCFunc(ident), returnType, argTypes, args);
+}
+Module["ccall"] = ccall;
+
+// Returns the C function with a specified identifier (for C++, you need to do manual name mangling)
+function getCFunc(ident) {
+  try {
+    var func = eval('_' + ident);
+  } catch(e) {
+    try {
+      func = globalScope['Module']['_' + ident]; // closure exported function
+    } catch(e) {}
+  }
+  assert(func, 'Cannot call unknown function ' + ident + ' (perhaps LLVM optimizations or closure removed it?)');
+  return func;
+}
+
+// Internal function that does a C call using a function, not an identifier
+function ccallFunc(func, returnType, argTypes, args) {
   var stack = 0;
   function toC(value, type) {
     if (type == 'string') {
@@ -350,14 +369,6 @@ function ccall(ident, returnType, argTypes, args) {
     assert(type != 'array');
     return value;
   }
-  try {
-    var func = eval('_' + ident);
-  } catch(e) {
-    try {
-      func = globalScope['Module']['_' + ident]; // closure exported function
-    } catch(e) {}
-  }
-  assert(func, 'Cannot call unknown function ' + ident + ' (perhaps LLVM optimizations or closure removed it?)');
   var i = 0;
   var cArgs = args ? args.map(function(arg) {
     return toC(arg, argTypes[i++]);
@@ -366,7 +377,6 @@ function ccall(ident, returnType, argTypes, args) {
   if (stack) Runtime.stackRestore(stack);
   return ret;
 }
-Module["ccall"] = ccall;
 
 // Returns a native JS wrapper for a C function. This is similar to ccall, but
 // returns a function you can call repeatedly in a normal way. For example:
@@ -376,9 +386,9 @@ Module["ccall"] = ccall;
 //   alert(my_function(99, 12));
 //
 function cwrap(ident, returnType, argTypes) {
-  // TODO: optimize this, eval the whole function once instead of going through ccall each time
+  var func = getCFunc(ident);
   return function() {
-    return ccall(ident, returnType, argTypes, Array.prototype.slice.call(arguments));
+    return ccallFunc(func, returnType, argTypes, Array.prototype.slice.call(arguments));
   }
 }
 Module["cwrap"] = cwrap;
