@@ -81,6 +81,8 @@ function SAFE_HEAP_STORE(dest, value, type, ignore) {
   if (!ignore && !value && (value === null || value === undefined)) {
     throw('Warning: Writing an invalid value of ' + JSON.stringify(value) + ' at ' + dest + ' :: ' + new Error().stack + '\n');
   }
+  //if (!ignore && (value === Infinity || value === -Infinity || isNaN(value))) throw [value, typeof value, new Error().stack];
+
   SAFE_HEAP_ACCESS(dest, type, true, ignore);
   if (dest in HEAP_WATCHED) {
     Module.print((new Error()).stack);
