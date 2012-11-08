@@ -147,7 +147,7 @@ def emscript(infile, settings, outfile, libraries=[]):
   assert cores >= 1
   intended_num_chunks = cores * NUM_CHUNKS_PER_CORE
   chunk_size = max(MIN_CHUNK_SIZE, total_ll_size / intended_num_chunks)
-  chunk_size += 3*len(meta) # keep ratio of lots of function code to meta
+  chunk_size += len(forwarded_data)/3 + 3*len(meta) # keep ratio of lots of function code to meta (expensive to process) and forwarded (cheap)
   chunk_size = min(MAX_CHUNK_SIZE, chunk_size)
 
   if DEBUG: t = time.time()
@@ -166,7 +166,7 @@ def emscript(infile, settings, outfile, libraries=[]):
     chunks.append(curr)
     curr = ''
   if cores == 1: assert len(chunks) == 1, 'no point in splitting up without multiple cores'
-  if DEBUG: print >> sys.stderr, '  emscript: phase 2 working on %d chunks %s (intended chunk size: %.2f MB, meta: %.2f MB)' % (len(chunks), ('using %d cores' % cores) if len(chunks) > 1 else '', chunk_size/(1024*1024.), len(meta)/(1024*1024.))
+  if DEBUG: print >> sys.stderr, '  emscript: phase 2 working on %d chunks %s (intended chunk size: %.2f MB, meta: %.2f MB, forwarded: %.2f)' % (len(chunks), ('using %d cores' % cores) if len(chunks) > 1 else '', chunk_size/(1024*1024.), len(meta)/(1024*1024.), len(forwarded_data)/(1024*1024.))
 
   commands = [(i, chunk + '\n' + meta, settings_file, compiler, forwarded_file, libraries) for chunk in chunks]
 
