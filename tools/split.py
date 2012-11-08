@@ -17,7 +17,8 @@ def split_javascript_file(input_filename, output_filename_prefix, max_part_size_
     # Variable will contain the source of a Javascript function if we find one during parsing
     js_function = None
     
-    # Dictionary with source file as key and an array of functions associated to that source file as value
+    # Dictionary with lower case source file as key and a tupel of case sensitive source file name (first encountered case wins)
+    # and an array of functions associated to that source file as value
     function_buckets = {};
     
     output_part_file = None
@@ -37,10 +38,12 @@ def split_javascript_file(input_filename, output_filename_prefix, max_part_size_
           # Functions with a known associated source file are stored in a file in the directory `output_filename_prefix`
           associated_source_file_base = output_filename_prefix + os.path.realpath(associated_source_file_base)
         
+        associated_source_file_base_lower = associated_source_file_base.lower()
+        
         # Add the function to its respective file
-        if associated_source_file_base not in function_buckets:
-          function_buckets[associated_source_file_base] = []
-        function_buckets[associated_source_file_base] += [js_function]
+        if associated_source_file_base_lower not in function_buckets:
+          function_buckets[associated_source_file_base_lower] = [associated_source_file_base, []]
+        function_buckets[associated_source_file_base_lower][1] += [js_function]
         
         # Clear the function read cache
         js_function = None
@@ -54,7 +57,7 @@ def split_javascript_file(input_filename, output_filename_prefix, max_part_size_
     # An associated file is split into chunks of `max_part_size_in_bytes`
     for associated_source_file_base in function_buckets:
       # At first we try to name the Javascript source file to match the assoicated source file + `.js`
-      js_source_file = associated_source_file_base + ".js"
+      js_source_file = function_buckets[associated_source_file_base][0] + ".js"
     
       # Check if the directory of the Javascript source file exists
       js_source_dir = os.path.dirname(js_source_file)
@@ -63,7 +66,7 @@ def split_javascript_file(input_filename, output_filename_prefix, max_part_size_
     
       output_part_file_counter = 0
       output_part_file = None
-      for js_function in function_buckets[associated_source_file_base]:
+      for js_function in function_buckets[associated_source_file_base][1]:
         if output_part_file is None:
           output_html_include_file.write("<script type=\"text/javascript\" src=\"" + js_source_file + "\"></script>")
           output_part_file = open(js_source_file,'w')
@@ -74,7 +77,7 @@ def split_javascript_file(input_filename, output_filename_prefix, max_part_size_
           output_part_file.close()
           output_part_file = None
           output_part_file_counter += 1
-          js_source_file = associated_source_file_base + ".part" + str(output_part_file_counter) + ".js"
+          js_source_file = function_buckets[associated_source_file_base][0] + ".part" + str(output_part_file_counter) + ".js"
     
       if output_part_file is not None:
         output_part_file.close()
