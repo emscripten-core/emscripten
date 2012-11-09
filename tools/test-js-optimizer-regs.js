@@ -24,7 +24,7 @@ function test() {
   f(ck());
 }
 function primes() {
-  var __label__;
+  var label;
   var $curri_01 = 2;
   var $primes_02 = 0;
   $_$2 : while (1) {

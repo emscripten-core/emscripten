@@ -567,7 +567,7 @@ function JSify(data, functionsOnly, givenFunctions) {
 
       if (true) { // TODO: optimize away when not needed
         if (CLOSURE_ANNOTATIONS) func.JS += '/** @type {number} */';
-        func.JS += '  var __label__;\n';
+        func.JS += '  var label;\n';
       }
 
       // Walk function blocks and generate JS
@@ -601,13 +601,13 @@ function JSify(data, functionsOnly, givenFunctions) {
         if (!RELOOP) {
           if (block.labels.length > 1) {
             if (block.entries.length == 1) {
-              ret += indent + '__label__ = ' + getLabelId(block.entries[0]) + '; ' + (SHOW_LABELS ? '/* ' + getOriginalLabelId(block.entries[0]) + ' */' : '') + '\n';
+              ret += indent + 'label = ' + getLabelId(block.entries[0]) + '; ' + (SHOW_LABELS ? '/* ' + getOriginalLabelId(block.entries[0]) + ' */' : '') + '\n';
             } // otherwise, should have been set before!
             if (func.setjmpTable) {
               var setjmpTable = {};
               ret += indent + 'var setjmpTable = {';
               func.setjmpTable.forEach(function(triple) { // original label, label we created for right after the setjmp, variable setjmp result goes into
-                ret += '"' + getLabelId(triple[0]) + '": ' + 'function(value) { __label__ = ' + getLabelId(triple[1]) + '; ' + triple[2] + ' = value },';
+                ret += '"' + getLabelId(triple[0]) + '": ' + 'function(value) { label = ' + getLabelId(triple[1]) + '; ' + triple[2] + ' = value },';
               });
               ret += 'dummy: 0';
               ret += '};\n';
@@ -616,12 +616,12 @@ function JSify(data, functionsOnly, givenFunctions) {
             if (func.setjmpTable) {
               ret += 'try { ';
             }
-            ret += 'switch(__label__) {\n';
+            ret += 'switch(label) {\n';
             ret += block.labels.map(function(label) {
               return indent + '  case ' + getLabelId(label.ident) + ': ' + (SHOW_LABELS ? '// ' + getOriginalLabelId(label.ident) : '') + '\n'
                             + getLabelLines(label, indent + '    ');
             }).join('\n');
-            ret += '\n' + indent + '  default: assert(0, "bad label: " + __label__);\n' + indent + '}';
+            ret += '\n' + indent + '  default: assert(0, "bad label: " + label);\n' + indent + '}';
             if (func.setjmpTable) {
               ret += ' } catch(e) { if (!e.longjmp) throw(e); setjmpTable[e.label](e.value) }';
             }
@@ -828,7 +828,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       var parts = label.split('|');
       var trueLabel = parts[1] || '';
       var oldLabel = parts[2] || '';
-      var labelSetting = oldLabel ? '__label__ = ' + getLabelId(oldLabel) + ';' +
+      var labelSetting = oldLabel ? 'label = ' + getLabelId(oldLabel) + ';' +
                          (SHOW_LABELS ? ' /* to: ' + getOriginalLabelId(cleanLabel(oldLabel)) + ' */' : '') : ''; // TODO: optimize away the setting
       if (label[1] == 'R') {
         if (label[2] == 'N') { // BRNOL: break, no label setting
@@ -849,7 +849,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
     } else {
       if (!labelIsVariable) label = getLabelId(label);
-      return pre + '__label__ = ' + label + ';' + (SHOW_LABELS ? ' /* to: ' + getOriginalLabelId(cleanLabel(label)) + ' */' : '') + ' break;';
+      return pre + 'label = ' + label + ';' + (SHOW_LABELS ? ' /* to: ' + getOriginalLabelId(cleanLabel(label)) + ' */' : '') + ' break;';
     }
   }
 

@@ -371,8 +371,8 @@ function removeAssignsToUndefined(ast) {
 }
 
 // XXX This is an invalid optimization
-// We sometimes leave some settings to __label__ that are not needed, if later in
-// the relooper we realize that we have a single entry, so no checks on __label__
+// We sometimes leave some settings to label that are not needed, if later in
+// the relooper we realize that we have a single entry, so no checks on label
 // are actually necessary. It's easy to clean those up now.
 function removeUnneededLabelSettings(ast) {
   traverse(ast, function(node, type) {
@@ -380,14 +380,14 @@ function removeUnneededLabelSettings(ast) {
       // Find all checks
       var checked = {};
       traverse(node, function(node, type) {
-        if (type == 'binary' && node[1] == '==' && node[2][0] == 'name' && node[2][1] == '__label__') {
+        if (type == 'binary' && node[1] == '==' && node[2][0] == 'name' && node[2][1] == 'label') {
           assert(node[3][0] == 'num');
           checked[node[3][1]] = 1;
         }
       });
       // Remove unneeded sets
       traverse(node, function(node, type) {
-        if (type == 'assign' && node[2][0] == 'name' && node[2][1] == '__label__') {
+        if (type == 'assign' && node[2][0] == 'name' && node[2][1] == 'label') {
           assert(node[3][0] == 'num');
           if (!(node[3][1] in checked)) return emptyNode();
         }
@@ -954,9 +954,9 @@ function getStatements(node) {
 }
 
 // Multiple blocks from the relooper are, in general, implemented by
-//   if (__label__ == x) { } else if ..
+//   if (label == x) { } else if ..
 // and branching into them by
-//   if (condition) { __label__ == x } else ..
+//   if (condition) { label == x } else ..
 // We can hoist the multiple block into the condition, thus removing code and one 'if' check
 function hoistMultiples(ast) {
   traverseGeneratedFunctions(ast, function(node) {
@@ -987,7 +987,7 @@ function hoistMultiples(ast) {
         // Look into this if, and its elseifs
         while (postInner && postInner[0] == 'if') {
           var cond = postInner[1];
-          if (cond[0] == 'binary' && cond[1] == '==' && cond[2][0] == 'name' && cond[2][1] == '__label__') {
+          if (cond[0] == 'binary' && cond[1] == '==' && cond[2][0] == 'name' && cond[2][1] == 'label') {
             assert(cond[3][0] == 'num');
             // We have a valid Multiple check here. Try to hoist it, look for the source in |pre| and its else's
             var labelNum = cond[3][1];
@@ -995,10 +995,10 @@ function hoistMultiples(ast) {
             assert(labelBlock[0] == 'block');
             var found = false;
             traverse(pre, function(preNode, preType) {
-              if (!found && preType == 'assign' && preNode[2][0] == 'name' && preNode[2][1] == '__label__') {
+              if (!found && preType == 'assign' && preNode[2][0] == 'name' && preNode[2][1] == 'label') {
                 assert(preNode[3][0] == 'num');
                 if (preNode[3][1] == labelNum) {
-                  // That's it! Hoist away. We can also throw away the __label__ setting as its goal has already been achieved
+                  // That's it! Hoist away. We can also throw away the label setting as its goal has already been achieved
                   found = true;
                   modifiedI = true;
                   postInner[2] = ['block', []];
@@ -1021,7 +1021,7 @@ function hoistMultiples(ast) {
       if (modified) return node;
     });
 
-    // After hoisting in this function, it is safe to remove { __label__ = x; } blocks, because
+    // After hoisting in this function, it is safe to remove { label = x; } blocks, because
     // if they were leading to the next code right after them, they would be hoisted, and if they
     // are going to some other place entirely, they would break or continue. The only risky
     // situation is if the code after us is a multiple, in which case we might be checking for
@@ -1035,7 +1035,7 @@ function hoistMultiples(ast) {
         if (node[0] == 'block' && node[1] && node[1].length > 0) {
           var subNode = node[1][node[1].length-1];
           if (subNode[0] == 'stat' && subNode[1][0] == 'assign' && subNode[1][2][0] == 'name' &&
-              subNode[1][2][1] == '__label__' && subNode[1][3][0] == 'num') {
+              subNode[1][2][1] == 'label' && subNode[1][3][0] == 'num') {
             if (node[1].length == 1) {
               return emptyNode();
             } else {
