@@ -332,7 +332,7 @@ process(sys.argv[1])
     for name in os.listdir(self.get_dir()):
       try_delete(os.path.join(self.get_dir(), name) if not in_curr else name)
     emcc_debug = os.environ.get('EMCC_DEBUG')
-    if emcc_debug:
+    if emcc_debug and not in_curr:
       for name in os.listdir(EMSCRIPTEN_TEMP_DIR):
         try_delete(os.path.join(EMSCRIPTEN_TEMP_DIR, name))
 
