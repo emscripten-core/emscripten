@@ -9,6 +9,7 @@
 
 var STRUCT_LIST = set('struct', 'list');
 var UNDERSCORE_OPENPARENS = set('_', '(');
+var RELOOP_IGNORED_LASTS = set('return', 'unreachable');
 
 // JSifier
 function JSify(data, functionsOnly, givenFunctions) {
@@ -657,7 +658,7 @@ function JSify(data, functionsOnly, givenFunctions) {
                 Relooper.addBranch(blockMap[ident], blockMap[last.labelTrue], last.valueJS, relevant(last.labelTrueJS));
                 Relooper.addBranch(blockMap[ident], blockMap[last.labelFalse], 0, relevant(last.labelFalseJS));
               }
-            } else if (last.intertype == 'return') {
+            } else if (last.intertype in RELOOP_IGNORED_LASTS) {
             } else {
               throw 'unknown reloop last line: ' + last.intertype;
             }
