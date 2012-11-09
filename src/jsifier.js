@@ -658,6 +658,14 @@ function JSify(data, functionsOnly, givenFunctions) {
                 Relooper.addBranch(blockMap[ident], blockMap[last.labelTrue], last.valueJS, relevant(last.labelTrueJS));
                 Relooper.addBranch(blockMap[ident], blockMap[last.labelFalse], 0, relevant(last.labelFalseJS));
               }
+            } else if (last.intertype == 'switch') {
+              var signedIdent = makeSignOp(last.ident, last.type, 're'); // we need to standardize for purpose of comparison
+              last.switchLabels.forEach(function(switchLabel) {
+                Relooper.addBranch(blockMap[ident], blockMap[switchLabel.label],
+                                   makeComparison(signedIdent, makeSignOp(switchLabel.value, last.type, 're'), last.type),
+                                   relevant(switchLabel.labelJS));
+              });
+              Relooper.addBranch(blockMap[ident], blockMap[last.defaultLabel], 0, relevant(last.defaultLabelJS));
             } else if (last.intertype in RELOOP_IGNORED_LASTS) {
             } else {
               throw 'unknown reloop last line: ' + last.intertype;
@@ -953,7 +961,9 @@ function JSify(data, functionsOnly, givenFunctions) {
     // js optimizer hoistMultiples much easier to implement (we hoist into one place, not
     // many).
     var targetLabels = {}; // for each target label, the list of values going to it
+    var switchLabelMap = {};
     item.switchLabels.forEach(function(switchLabel) {
+      switchLabelMap[switchLabel.label] = switchLabel;
       if (!targetLabels[switchLabel.label]) {
         targetLabels[switchLabel.label] = [];
       }
@@ -971,11 +981,13 @@ function JSify(data, functionsOnly, givenFunctions) {
       ret += 'if (' + targetLabels[targetLabel].map(function(value) {
         return makeComparison(signedIdent, makeSignOp(value, item.type, 're'), item.type)
       }).join(' || ') + ') {\n';
-      ret += '  ' + getPhiSetsForLabel(phiSets, targetLabel) + makeBranch(targetLabel, item.currLabelId || null) + '\n';
+      var phiSet = switchLabelMap[targetLabel].labelJS = getPhiSetsForLabel(phiSets, targetLabel);
+      ret += '  ' + phiSet + makeBranch(targetLabel, item.currLabelId || null) + '\n';
       ret += '}\n';
     }
     if (item.switchLabels.length > 0) ret += 'else {\n';
-    ret += getPhiSetsForLabel(phiSets, item.defaultLabel) + makeBranch(item.defaultLabel, item.currLabelId) + '\n';
+    var phiSet = item.defaultLabelJS = getPhiSetsForLabel(phiSets, item.defaultLabel);
+    ret += phiSet + makeBranch(item.defaultLabel, item.currLabelId) + '\n';
     if (item.switchLabels.length > 0) ret += '}\n';
     if (item.value) {
       ret += ' ' + toNiceIdent(item.value);
