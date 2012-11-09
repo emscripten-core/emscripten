@@ -671,11 +671,8 @@ function JSify(data, functionsOnly, givenFunctions) {
                 Relooper.addBranch(blockMap[ident], blockMap[last.labelFalse], 0, relevant(last.labelFalseJS));
               }
             } else if (last.intertype == 'switch') {
-              var signedIdent = makeSignOp(last.ident, last.type, 're'); // we need to standardize for purpose of comparison
-              last.switchLabels.forEach(function(switchLabel) {
-                Relooper.addBranch(blockMap[ident], blockMap[switchLabel.label],
-                                   makeComparison(signedIdent, makeSignOp(switchLabel.value, last.type, 're'), last.type),
-                                   relevant(switchLabel.labelJS));
+              last.groupedLabels.forEach(function(switchLabel) {
+                Relooper.addBranch(blockMap[ident], blockMap[switchLabel.label], switchLabel.value, relevant(switchLabel.labelJS));
               });
               Relooper.addBranch(blockMap[ident], blockMap[last.defaultLabel], 0, relevant(last.defaultLabelJS));
             } else if (last.intertype == 'invoke') {
@@ -970,9 +967,7 @@ function JSify(data, functionsOnly, givenFunctions) {
   makeFuncLineActor('switch', function(item) {
     // TODO: Find a case where switch is important, and benchmark that. var SWITCH_IN_SWITCH = 1; 
     var phiSets = calcPhiSets(item);
-    // Consolidate checks that go to the same label. This is important because it makes the
-    // js optimizer hoistMultiples much easier to implement (we hoist into one place, not
-    // many).
+    // Consolidate checks that go to the same label. This is important because it makes the relooper simpler and faster.
     var targetLabels = {}; // for each target label, the list of values going to it
     var switchLabelMap = {};
     item.switchLabels.forEach(function(switchLabel) {
@@ -985,18 +980,29 @@ function JSify(data, functionsOnly, givenFunctions) {
     var ret = '';
     var first = true;
     var signedIdent = makeSignOp(item.ident, item.type, 're'); // we need to standardize for purpose of comparison
+    if (RELOOP) {
+      item.groupedLabels = [];
+    }
     for (var targetLabel in targetLabels) {
       if (!first) {
         ret += 'else ';
       } else {
         first = false;
       }
-      ret += 'if (' + targetLabels[targetLabel].map(function(value) {
+      var value = targetLabels[targetLabel].map(function(value) {
         return makeComparison(signedIdent, makeSignOp(value, item.type, 're'), item.type)
-      }).join(' || ') + ') {\n';
-      var phiSet = switchLabelMap[targetLabel].labelJS = getPhiSetsForLabel(phiSets, targetLabel);
+      }).join(' || ');
+      ret += 'if (' + value + ') {\n';
+      var phiSet = getPhiSetsForLabel(phiSets, targetLabel);
       ret += '  ' + phiSet + makeBranch(targetLabel, item.currLabelId || null) + '\n';
       ret += '}\n';
+      if (RELOOP) {
+        item.groupedLabels.push({
+          label: targetLabel,
+          value: value,
+          labelJS: phiSet
+        });
+      }
     }
     if (item.switchLabels.length > 0) ret += 'else {\n';
     var phiSet = item.defaultLabelJS = getPhiSetsForLabel(phiSets, item.defaultLabel);
