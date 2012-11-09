@@ -714,6 +714,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         func.JS += 'if (globalScope) { assert(!globalScope["' + func.ident + '"]); globalScope["' + func.ident + '"] = ' + func.ident + ' }';
       }
 
+      func.JS = func.JS.replace(/\n *;/g, ''); // remove unneeded lines
       return func;
     }
   });
