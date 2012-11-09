@@ -431,7 +431,7 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
           js_output = self.run_generated_code(engine, filename + '.o.js', args)
           if output_nicerizer is not None:
               js_output = output_nicerizer(js_output)
-          self.assertContained(expected_output, js_output)
+          self.assertContained(expected_output, js_output.replace('\r\n', '\n'))
           self.assertNotContained('ERROR', js_output)
 
         #shutil.rmtree(dirname) # TODO: leave no trace in memory. But for now nice for debugging
@@ -6956,8 +6956,8 @@ def process(filename):
       def check(output):
         # TODO: check the line #
         if self.emcc_args is None or self.emcc_args == []: # LLVM full opts optimize out some corrections
-          assert 'Overflow|src.cpp:6 : 60 hits, %20 failures' in output, 'no indication of Overflow corrections: ' + output
-          assert 'UnSign|src.cpp:13 : 6 hits, %17 failures' in output, 'no indication of Sign corrections: ' + output
+          assert re.search('^Overflow\|.*src.cpp:6 : 60 hits, %20 failures$', output, re.M), 'no indication of Overflow corrections: ' + output
+          assert re.search('^UnSign\|.*src.cpp:13 : 6 hits, %17 failures$', output, re.M), 'no indication of Sign corrections: ' + output
         return output
 
       print >>sys.stderr, '1'
@@ -7251,7 +7251,7 @@ Options that are modified or new in %s include:
         self.assertContained('error: invalid preprocessing directive', output[1])
         self.assertContained("error: use of undeclared identifier 'cheez", output[1])
         self.assertContained('2 errors generated', output[1])
-        assert output[1].split('2 errors generated.')[1].replace('\r', '').replace('\n', '') == 'emcc: compiler frontend failed to generate LLVM bitcode, halting'
+        assert 'emcc: compiler frontend failed to generate LLVM bitcode, halting' in output[1].split('2 errors generated.')[1]
 
         # emcc src.cpp -c    and   emcc src.cpp -o src.[o|bc] ==> should give a .bc file
         #      regression check: -o js should create "js", with bitcode content
@@ -8056,7 +8056,7 @@ f.close()
          ['eliminateMemSafe']),
       ]:
         output = Popen([NODE_JS, path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
-        self.assertIdentical(expected, output.replace('\n\n', '\n'))
+        self.assertIdentical(expected, output.replace('\r\n', '\n').replace('\n\n', '\n'))
 
     def test_m_mm(self):
       open(os.path.join(self.get_dir(), 'foo.c'), 'w').write('''#include <emscripten.h>''')
