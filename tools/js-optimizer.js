@@ -1723,8 +1723,10 @@ function eliminate(ast, memSafe) {
           }
         } else if (type == 'block') {
           var stats = node[1];
-          for (var i = 0; i < stats.length; i++) {
-            traverseInOrder(stats[i]);
+          if (stats) {
+            for (var i = 0; i < stats.length; i++) {
+              traverseInOrder(stats[i]);
+            }
           }
         } else if (type == 'stat') {
           traverseInOrder(node[1]);
