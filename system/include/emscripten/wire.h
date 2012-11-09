@@ -226,6 +226,10 @@ namespace emscripten {
                     return shared_ptr();
                 }
             }
+
+            static void destroy(WireType p) {
+                delete p;
+            }
         };
 
         template<typename Enum>
