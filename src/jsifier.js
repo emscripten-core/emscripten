@@ -598,7 +598,7 @@ function JSify(data, functionsOnly, givenFunctions) {
                                   .join('\n');
         }
         var ret = '';
-        if (!RELOOP){ // || block.labels.length == 1) {
+        if (!RELOOP) {
           if (block.labels.length > 1) {
             if (block.entries.length == 1) {
               ret += indent + '__label__ = ' + getLabelId(block.entries[0]) + '; ' + (SHOW_LABELS ? '/* ' + getOriginalLabelId(block.entries[0]) + ' */' : '') + '\n';
@@ -635,16 +635,32 @@ function JSify(data, functionsOnly, givenFunctions) {
           Relooper.setDebug(1);
           Relooper.init();
 
-          printErr('zz reloopah');
           var blockMap = {};
+          // add blocks
           for (var i = 0; i < block.labels.length; i++) {
             var label = block.labels[i];
             var content = getLabelLines(label, '');
-            printErr(label.ident + ' : ' + content);
+            //printErr(func.ident + ' : ' + label.ident + ' : ' + content + '\n');
             blockMap[label.ident] = Relooper.addBlock(content);
           }
-          printErr('zz render');
-          //Relooper.addBranch(b_a, b_b, "check == 10");
+          // add branchings
+          for (var i = 0; i < block.labels.length; i++) {
+            var label = block.labels[i];
+            var ident = label.ident;
+            var last = label.lines[label.lines.length-1];
+            //printErr('zz last ' + dump(last));
+            if (last.intertype == 'branch') {
+              if (last.label) { // 1 target
+                Relooper.addBranch(blockMap[ident], blockMap[last.label], 0);
+              } else { // 2 targets
+                Relooper.addBranch(blockMap[ident], blockMap[last.labelTrue], last.valueJS);
+                Relooper.addBranch(blockMap[ident], blockMap[last.labelFalse], 0);
+              }
+            } else if (last.intertype == 'return') {
+            } else {
+              throw 'unknown reloop last line: ' + last.intertype;
+            }
+          }
           ret += Relooper.render(blockMap[block.entries[0]]);
         }
         return ret;
@@ -804,6 +820,7 @@ function JSify(data, functionsOnly, givenFunctions) {
   }
 
   function makeBranch(label, lastLabel, labelIsVariable) { // lastLabel is deprecated
+    if (RELOOP) return ' '; // done in relooper
     var pre = '';
     if (label[0] == 'B') {
       assert(!labelIsVariable, 'Cannot handle branches to variables with special branching options');
@@ -909,7 +926,8 @@ function JSify(data, functionsOnly, givenFunctions) {
     if (!item.value) {
       return getPhiSetsForLabel(phiSets, item.label) + makeBranch(item.label, item.currLabelId);
     } else {
-      var condition = finalizeLLVMParameter(item.value);
+// XXX need to not emit branches anymore. but still need phisets!
+      var condition = item.valueJS = finalizeLLVMParameter(item.value);
       var labelTrue = getPhiSetsForLabel(phiSets, item.labelTrue) + makeBranch(item.labelTrue, item.currLabelId);
       var labelFalse = getPhiSetsForLabel(phiSets, item.labelFalse) + makeBranch(item.labelFalse, item.currLabelId);
       if (labelTrue == ';' && labelFalse == ';') return ';';
