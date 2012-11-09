@@ -632,7 +632,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         } else {
           // Reloop multiple blocks using the compiled relooper
 
-          Relooper.setDebug(1);
+          //Relooper.setDebug(1);
           Relooper.init();
 
           var blockMap = {};
@@ -644,6 +644,7 @@ function JSify(data, functionsOnly, givenFunctions) {
             blockMap[label.ident] = Relooper.addBlock(content);
           }
           // add branchings
+          function relevant(x) { return x && x.length > 2 ? x : 0 } // ignores ';' which valueJS and label*JS can be if empty
           for (var i = 0; i < block.labels.length; i++) {
             var label = block.labels[i];
             var ident = label.ident;
@@ -651,10 +652,10 @@ function JSify(data, functionsOnly, givenFunctions) {
             //printErr('zz last ' + dump(last));
             if (last.intertype == 'branch') {
               if (last.label) { // 1 target
-                Relooper.addBranch(blockMap[ident], blockMap[last.label], 0);
+                Relooper.addBranch(blockMap[ident], blockMap[last.label], 0, relevant(last.labelJS));
               } else { // 2 targets
-                Relooper.addBranch(blockMap[ident], blockMap[last.labelTrue], last.valueJS);
-                Relooper.addBranch(blockMap[ident], blockMap[last.labelFalse], 0);
+                Relooper.addBranch(blockMap[ident], blockMap[last.labelTrue], last.valueJS, relevant(last.labelTrueJS));
+                Relooper.addBranch(blockMap[ident], blockMap[last.labelFalse], 0, relevant(last.labelFalseJS));
               }
             } else if (last.intertype == 'return') {
             } else {
@@ -924,12 +925,12 @@ function JSify(data, functionsOnly, givenFunctions) {
   makeFuncLineActor('branch', function(item) {
     var phiSets = calcPhiSets(item);
     if (!item.value) {
-      return getPhiSetsForLabel(phiSets, item.label) + makeBranch(item.label, item.currLabelId);
+      return item.labelJS = getPhiSetsForLabel(phiSets, item.label) + makeBranch(item.label, item.currLabelId);
     } else {
-// XXX need to not emit branches anymore. but still need phisets!
       var condition = item.valueJS = finalizeLLVMParameter(item.value);
-      var labelTrue = getPhiSetsForLabel(phiSets, item.labelTrue) + makeBranch(item.labelTrue, item.currLabelId);
-      var labelFalse = getPhiSetsForLabel(phiSets, item.labelFalse) + makeBranch(item.labelFalse, item.currLabelId);
+      var labelTrue = item.labelTrueJS = getPhiSetsForLabel(phiSets, item.labelTrue) + makeBranch(item.labelTrue, item.currLabelId);
+      var labelFalse = item.labelFalseJS = getPhiSetsForLabel(phiSets, item.labelFalse) + makeBranch(item.labelFalse, item.currLabelId);
+      if (RELOOP) return ';';
       if (labelTrue == ';' && labelFalse == ';') return ';';
       var head = 'if (' + condition + ') { ';
       var head2 = 'if (!(' + condition + ')) { ';
