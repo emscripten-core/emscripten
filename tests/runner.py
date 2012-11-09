@@ -8056,7 +8056,7 @@ f.close()
          ['eliminateMemSafe']),
       ]:
         output = Popen([NODE_JS, path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
-        self.assertIdentical(expected, output.replace('\n\n', '\n'))
+        self.assertIdentical(expected, output.replace('\r\n', '\n').replace('\n\n', '\n'))
 
     def test_m_mm(self):
       open(os.path.join(self.get_dir(), 'foo.c'), 'w').write('''#include <emscripten.h>''')
