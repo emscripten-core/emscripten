@@ -61,6 +61,25 @@ LibraryManager.library = {
     // This is set to false when the runtime is initialized, allowing you
     // to modify the filesystem freely before run() is called.
     ignorePermissions: true,
+    createFileHandle: function(stream, fd) {
+      if (typeof stream === 'undefined') {
+        stream = null;
+      }
+      // Keep dense
+      fd = (typeof fd !== 'undefined') ? fd : FS.streams.length;
+      for (var i = FS.streams.length; i < fd; i++) {
+        FS.streams[i] = null; // Keep dense
+      }
+      // Close WebSocket first if we are about to replace the fd (i.e. dup2)
+      if (FS.streams[fd] && FS.streams[fd].socket && FS.streams[fd].socket.close) {
+        FS.streams[fd].socket.close();
+      }
+      FS.streams[fd] = stream;
+      return fd;
+    },
+    removeFileHandle: function(fd) {
+      FS.streams[fd] = null;
+    },
     joinPath: function(parts, forceRelative) {
       var ret = parts[0];
       for (var i = 1; i < parts.length; i++) {
@@ -645,10 +664,9 @@ LibraryManager.library = {
       ___setErrNo(ERRNO_CODES.EACCES);
       return 0;
     }
-    var id = FS.streams.length; // Keep dense
     var contents = [];
     for (var key in target.contents) contents.push(key);
-    FS.streams[id] = {
+    var id = FS.createFileHandle({
       path: path,
       object: target,
       // An index into contents. Special values: -2 is ".", -1 is "..".
@@ -665,7 +683,7 @@ LibraryManager.library = {
       contents: contents,
       // Each stream has its own area for readdir() returns.
       currentEntry: _malloc(___dirent_struct_layout.__size__)
-    };
+    });
 #if ASSERTIONS
     FS.checkStreams();
 #endif
@@ -1177,7 +1195,7 @@ LibraryManager.library = {
       finalPath = path.parentPath + '/' + path.name;
     }
     // Actually create an open stream.
-    var id = FS.streams.length; // Keep dense
+    var id;
     if (target.isFolder) {
       var entryBuffer = 0;
       if (___dirent_struct_layout) {
@@ -1185,7 +1203,7 @@ LibraryManager.library = {
       }
       var contents = [];
       for (var key in target.contents) contents.push(key);
-      FS.streams[id] = {
+      id = FS.createFileHandle({
         path: finalPath,
         object: target,
         // An index into contents. Special values: -2 is ".", -1 is "..".
@@ -1202,9 +1220,9 @@ LibraryManager.library = {
         contents: contents,
         // Each stream has its own area for readdir() returns.
         currentEntry: entryBuffer
-      };
+      });
     } else {
-      FS.streams[id] = {
+      id = FS.createFileHandle({
         path: finalPath,
         object: target,
         position: 0,
@@ -1214,7 +1232,7 @@ LibraryManager.library = {
         error: false,
         eof: false,
         ungotten: []
-      };
+      });
     }
 #if ASSERTIONS
     FS.checkStreams();
@@ -1257,10 +1275,7 @@ LibraryManager.library = {
           newStream[member] = stream[member];
         }
         arg = dup2 ? arg : Math.max(arg, FS.streams.length); // dup2 wants exactly arg; fcntl wants a free descriptor >= arg
-        for (var i = FS.streams.length; i < arg; i++) {
-          FS.streams[i] = null; // Keep dense
-        }
-        FS.streams[arg] = newStream;
+        FS.createFileHandle(newStream, arg);
 #if ASSERTIONS
         FS.checkStreams();
 #endif
@@ -1729,14 +1744,13 @@ LibraryManager.library = {
       return bytesRead;
     }
   },
-  read__deps: ['$FS', '$Sockets', '__setErrNo', '$ERRNO_CODES', 'recv', 'pread'],
+  read__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'recv', 'pread'],
   read: function(fildes, buf, nbyte) {
     // ssize_t read(int fildes, void *buf, size_t nbyte);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/read.html
-    var socket = Sockets.fds[fildes];
     var stream = FS.streams[fildes];
-    if (socket) {
-        return _recv(fildes, buf, nbyte, 0);
+    if ('socket' in stream) {
+      return _recv(fildes, buf, nbyte, 0);
     } else if (!stream) {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
@@ -1932,9 +1946,8 @@ LibraryManager.library = {
   write: function(fildes, buf, nbyte) {
     // ssize_t write(int fildes, const void *buf, size_t nbyte);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/write.html
-    var socket = Sockets.fds[fildes];
     var stream = FS.streams[fildes];
-    if (socket) {
+    if ('socket' in stream) {
         return _send(fildes, buf, nbyte, 0);
     } else if (!stream) {
       ___setErrNo(ERRNO_CODES.EBADF);
@@ -6792,7 +6805,6 @@ LibraryManager.library = {
 
     backend: 0, // default to websockets
     nextFd: 1,
-    fds: {},
     sockaddr_in_layout: Runtime.generateStructInfo([
       ['i16', 'sin_family'],
       ['i16', 'sin_port'],
@@ -6820,7 +6832,7 @@ LibraryManager.library = {
           var i8Temp = new Uint8Array(i32Temp.buffer);
 
           info.inQueue = [];
-          if (!info.stream) {
+          if (!info.sock_stream) {
             var partialBuffer = null; // inQueue contains full dgram messages; this buffers incomplete data. Must begin with the beginning of a message
           }
 
@@ -6830,7 +6842,7 @@ LibraryManager.library = {
 #if SOCKET_DEBUG
             Module.print(['onmessage', data.length, '|', Array.prototype.slice.call(data)]);
 #endif
-            if (info.stream) {
+            if (info.sock_stream) {
               info.inQueue.push(data);
             } else {
               // we added headers with message sizes, read those to find discrete messages
@@ -6893,7 +6905,7 @@ LibraryManager.library = {
             }
           }
           info.sender = function(data) {
-            if (!info.stream) {
+            if (!info.sock_stream) {
               // add a header with the message size
               var header = new Uint8Array(4);
               i32Temp[0] = data.length;
@@ -6915,27 +6927,30 @@ LibraryManager.library = {
     Sockets.backend = backend;
   },
 
-  socket__deps: ['$Sockets'],
+// ==========================================================================
+// socket.h
+// ==========================================================================
+
+  socket__deps: ['$FS'],
   socket: function(family, type, protocol) {
-    var fd = Sockets.nextFd++;
-    assert(fd < 64); // select() assumes socket fd values are in 0..63
-    var stream = type == {{{ cDefine('SOCK_STREAM') }}};
+    var sock_stream = type == {{{ cDefine('SOCK_STREAM') }}};
     if (protocol) {
-      assert(stream == (protocol == {{{ cDefine('IPPROTO_TCP') }}})); // if stream, must be tcp
+      assert(sock_stream == (protocol == {{{ cDefine('IPPROTO_TCP') }}})); // if sock_stream, must be tcp
     }
     if (Sockets.backend == Sockets.BACKEND_WEBRTC) {
-      assert(!stream); // If WebRTC, we can only support datagram, not stream
+      assert(!sock_stream); // If WebRTC, we can only support datagram, not sock_stream
     }
-    Sockets.fds[fd] = {
+    var fd = FS.createFileHandle({
+      socket: true,
       connected: false,
-      stream: stream
-    };
+      sock_stream: sock_stream
+    });
     return fd;
   },
 
-  connect__deps: ['$Sockets', '_inet_ntop_raw', 'ntohs', 'gethostbyname'],
+  connect__deps: ['$FS', '$Sockets', '_inet_ntop_raw', 'ntohs', 'gethostbyname'],
   connect: function(fd, addr, addrlen) {
-    var info = Sockets.fds[fd];
+    var info = FS.streams[fd];
     if (!info) return -1;
     info.connected = true;
     info.addr = getValue(addr + Sockets.sockaddr_in_layout.sin_addr, 'i32');
@@ -6953,9 +6968,9 @@ LibraryManager.library = {
     return 0;
   },
 
-  recv__deps: ['$Sockets'],
+  recv__deps: ['$FS'],
   recv: function(fd, buf, len, flags) {
-    var info = Sockets.fds[fd];
+    var info = FS.streams[fd];
     if (!info) return -1;
     if (info.inQueue.length == 0) {
       ___setErrNo(ERRNO_CODES.EAGAIN); // no data, and all sockets are nonblocking, so this is the right behavior
@@ -6972,17 +6987,17 @@ LibraryManager.library = {
     return buffer.length;
   },
 
-  send__deps: ['$Sockets'],
+  send__deps: ['$FS'],
   send: function(fd, buf, len, flags) {
-    var info = Sockets.fds[fd];
+    var info = FS.streams[fd];
     if (!info) return -1;
     info.sender(HEAPU8.subarray(buf, buf+len));
     return len;
   },
 
-  sendmsg__deps: ['$Sockets', 'connect'],
+  sendmsg__deps: ['$FS', '$Sockets', 'connect'],
   sendmsg: function(fd, msg, flags) {
-    var info = Sockets.fds[fd];
+    var info = FS.streams[fd];
     if (!info) return -1;
     // if we are not connected, use the address info in the message
     if (!info.connected) {
@@ -7015,9 +7030,9 @@ LibraryManager.library = {
     return ret;
   },
 
-  recvmsg__deps: ['$Sockets', 'connect', 'recv', '__setErrNo', '$ERRNO_CODES', 'htons'],
+  recvmsg__deps: ['$FS', '$Sockets', 'connect', 'recv', '__setErrNo', '$ERRNO_CODES', 'htons'],
   recvmsg: function(fd, msg, flags) {
-    var info = Sockets.fds[fd];
+    var info = FS.streams[fd];
     if (!info) return -1;
     // if we are not connected, use the address info in the message
     if (!info.connected) {
@@ -7061,7 +7076,7 @@ LibraryManager.library = {
       HEAPU8.set(buffer.subarray(bufferPos, bufferPos + currNum), currBuf);
       bufferPos += currNum;
     }
-    if (info.stream) {
+    if (info.sock_stream) {
       // This is tcp (reliable), so if not all was read, keep it
       if (bufferPos < bytes) {
         info.inQueue.unshift(buffer.subArray(bufferPos));
@@ -7070,9 +7085,9 @@ LibraryManager.library = {
     return ret;
   },
 
-  recvfrom__deps: ['$Sockets', 'connect', 'recv'],
+  recvfrom__deps: ['$FS', 'connect', 'recv'],
   recvfrom: function(fd, buf, len, flags, addr, addrlen) {
-    var info = Sockets.fds[fd];
+    var info = FS.streams[fd];
     if (!info) return -1;
     // if we are not connected, use the address info in the message
     if (!info.connected) {
@@ -7083,14 +7098,14 @@ LibraryManager.library = {
   },
 
   shutdown: function(fd, how) {
-    var info = Sockets.fds[fd];
+    var info = FS.streams[fd];
     if (!info) return -1;
     info.socket.close();
-    Sockets.fds[fd] = null;
+    FS.removeFileHandle(fd);
   },
 
   ioctl: function(fd, request, varargs) {
-    var info = Sockets.fds[fd];
+    var info = FS.streams[fd];
     if (!info) return -1;
     var bytes = 0;
     if (info.inQueue.length > 0) {
@@ -7115,11 +7130,12 @@ LibraryManager.library = {
     return 0;
   },
 
+  accept__deps: ['$FS', '$Sockets'],
   accept: function(fd, addr, addrlen) {
     // TODO: webrtc queued incoming connections, etc.
     // For now, the model is that bind does a connect, and we "accept" that one connection,
     // which has host:port the same as ours. We also return the same socket fd.
-    var info = Sockets.fds[fd];
+    var info = FS.streams[fd];
     if (!info) return -1;
     if (addr) {
       setValue(addr + Sockets.sockaddr_in_layout.sin_addr, info.addr, 'i32');
@@ -7129,6 +7145,7 @@ LibraryManager.library = {
     return fd;
   },
 
+  select__deps: ['$FS'],
   select: function(nfds, readfds, writefds, exceptfds, timeout) {
     // only readfds are supported, not writefds or exceptfds
     // timeout is always 0 - fully async
@@ -7141,7 +7158,7 @@ LibraryManager.library = {
       var bit = fd % 32, int = fd < 32 ? l : h;
       if (int & (1 << bit)) {
         // index is in the set, check if it is ready for read
-        var info = Sockets.fds[fd];
+        var info = FS.streams[fd];
         if (!info) continue;
         if (info.inQueue.length > 0) ret++;
       }
