@@ -1532,7 +1532,6 @@ c5,de,15,8a
         self.do_run(src, '*1800*')
 
         generated = open('src.cpp.o.js', 'r').read()
-        assert '__label__ ==' not in generated, 'We should hoist into the loop'
 
     def test_stack(self):
         src = '''
@@ -7356,7 +7355,7 @@ Options that are modified or new in %s include:
             # closure has not been run, we can do some additional checks. TODO: figure out how to do these even with closure
             assert 'Module._main = ' not in generated, 'closure compiler should not have been run'
             # XXX find a way to test this: assert ('& 255' in generated or '&255' in generated) == (opt_level <= 2), 'corrections should be in opt <= 2'
-            assert ('(__label__)' in generated) == (opt_level <= 1), 'relooping should be in opt >= 2'
+            assert ('(label)' in generated) == (opt_level <= 1), 'relooping should be in opt >= 2'
             assert ('assert(STACKTOP < STACK_MAX' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
             assert 'var $i;' in generated or 'var $i_01;' in generated or 'var $storemerge3;' in generated or 'var $storemerge4;' in generated or 'var $i_04;' in generated, 'micro opts should always be on'
             if opt_level >= 2:
