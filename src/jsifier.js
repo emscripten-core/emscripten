@@ -575,7 +575,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       function walkBlock(block, indent) {
         if (!block) return '';
         dprint('relooping', 'walking block: ' + block.type + ',' + block.entries + ' : ' + block.labels.length);
-        function getLabelLines(label, indent) {
+        function getLabelLines(label, indent, relooping) {
           if (!label) return '';
           var ret = '';
           if (LABEL_DEBUG) {
@@ -592,14 +592,26 @@ function JSify(data, functionsOnly, givenFunctions) {
           }
           
           // for special labels we care about (for phi), mark that we visited them
-          return ret + label.lines.map(function(line) { return line.JS + (Debugging.on ? Debugging.getComment(line.lineNum) : '') })
+          var i = 0;
+          return ret + label.lines.map(function(line) {
+            var JS = line.JS;
+            if (relooping && i == label.lines.length-1) {
+              if (line.intertype == 'branch' || line.intertype == 'switch') {
+                JS = ''; // just branching operations - done in the relooper, so nothing need be done here
+              } else if (line.intertype == 'invoke') {
+                JS = line.reloopingJS; // invokes have code that is not rendered in the relooper (the call inside a try-catch)
+              }
+            }
+            i++;
+            return JS + (Debugging.on ? Debugging.getComment(line.lineNum) : '');
+          })
                                   .join('\n')
                                   .split('\n') // some lines include line breaks
                                   .map(function(line) { return indent + line })
                                   .join('\n');
         }
         var ret = '';
-        if (!RELOOP) {
+        if (!RELOOP || func.forceEmulated) { // TODO: also if just 1 label?
           if (block.labels.length > 1) {
             if (block.entries.length == 1) {
               ret += indent + 'label = ' + getLabelId(block.entries[0]) + '; ' + (SHOW_LABELS ? '/* ' + getOriginalLabelId(block.entries[0]) + ' */' : '') + '\n';
@@ -640,7 +652,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           // add blocks
           for (var i = 0; i < block.labels.length; i++) {
             var label = block.labels[i];
-            var content = getLabelLines(label, '');
+            var content = getLabelLines(label, '', true);
             //printErr(func.ident + ' : ' + label.ident + ' : ' + content + '\n');
             blockMap[label.ident] = Relooper.addBlock(content);
           }
@@ -666,6 +678,9 @@ function JSify(data, functionsOnly, givenFunctions) {
                                    relevant(switchLabel.labelJS));
               });
               Relooper.addBranch(blockMap[ident], blockMap[last.defaultLabel], 0, relevant(last.defaultLabelJS));
+            } else if (last.intertype == 'invoke') {
+              Relooper.addBranch(blockMap[ident], blockMap[last.toLabel], '!__THREW__', relevant(last.toLabelJS));
+              Relooper.addBranch(blockMap[ident], blockMap[last.unwindLabel], 0, relevant(last.unwindLabelJS));
             } else if (last.intertype in RELOOP_IGNORED_LASTS) {
             } else {
               throw 'unknown reloop last line: ' + last.intertype;
@@ -830,7 +845,6 @@ function JSify(data, functionsOnly, givenFunctions) {
   }
 
   function makeBranch(label, lastLabel, labelIsVariable) { // lastLabel is deprecated
-    if (RELOOP) return ' '; // done in relooper
     var pre = '';
     if (label[0] == 'B') {
       assert(!labelIsVariable, 'Cannot handle branches to variables with special branching options');
@@ -934,12 +948,11 @@ function JSify(data, functionsOnly, givenFunctions) {
   makeFuncLineActor('branch', function(item) {
     var phiSets = calcPhiSets(item);
     if (!item.value) {
-      return item.labelJS = getPhiSetsForLabel(phiSets, item.label) + makeBranch(item.label, item.currLabelId);
+      return (item.labelJS = getPhiSetsForLabel(phiSets, item.label)) + makeBranch(item.label, item.currLabelId);
     } else {
       var condition = item.valueJS = finalizeLLVMParameter(item.value);
-      var labelTrue = item.labelTrueJS = getPhiSetsForLabel(phiSets, item.labelTrue) + makeBranch(item.labelTrue, item.currLabelId);
-      var labelFalse = item.labelFalseJS = getPhiSetsForLabel(phiSets, item.labelFalse) + makeBranch(item.labelFalse, item.currLabelId);
-      if (RELOOP) return ';';
+      var labelTrue = (item.labelTrueJS = getPhiSetsForLabel(phiSets, item.labelTrue)) + makeBranch(item.labelTrue, item.currLabelId);
+      var labelFalse = (item.labelFalseJS = getPhiSetsForLabel(phiSets, item.labelFalse)) + makeBranch(item.labelFalse, item.currLabelId);
       if (labelTrue == ';' && labelFalse == ';') return ';';
       var head = 'if (' + condition + ') { ';
       var head2 = 'if (!(' + condition + ')) { ';
@@ -1036,8 +1049,11 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
       item.assignTo = null;
     }
-    ret += 'if (!__THREW__) { ' + getPhiSetsForLabel(phiSets, item.toLabel) + makeBranch(item.toLabel, item.currLabelId)
-            + ' } else { ' + getPhiSetsForLabel(phiSets, item.unwindLabel)  + makeBranch(item.unwindLabel, item.currLabelId) + ' }';
+    item.reloopingJS = ret; // everything but the actual branching (which the relooper will do for us)
+    item.toLabelJS = getPhiSetsForLabel(phiSets, item.toLabel);
+    item.unwindLabelJS = getPhiSetsForLabel(phiSets, item.unwindLabel);
+    ret += 'if (!__THREW__) { ' + item.toLabelJS + makeBranch(item.toLabel, item.currLabelId)
+            + ' } else { ' + item.unwindLabelJS + makeBranch(item.unwindLabel, item.currLabelId) + ' }';
     return ret;
   });
   makeFuncLineActor('atomic', function(item) {
