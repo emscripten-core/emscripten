@@ -91,11 +91,11 @@ function hoisting() {
   }
   pause(5);
   if ($i < $N) {
-    __label__ = 2;
+    label = 2;
   } else {
     somethingElse();
   }
-  if (__label__ == 55) {
+  if (label == 55) {
     callOther();
   }
   pause(6);
@@ -105,7 +105,7 @@ function hoisting() {
   pause(7);
   while (1) {
     if ($i >= $N) {
-      __label__ = 3;
+      label = 3;
       break;
     }
     somethingElse();
@@ -119,19 +119,19 @@ function hoisting() {
   do {
     if ($cmp95) {
       if (!$cmp103) {
-        __label__ = 38;
+        label = 38;
         break;
       }
       if (!$cmp106) {
-        __label__ = 38;
+        label = 38;
         break;
       }
-      __label__ = 39;
+      label = 39;
       break;
     }
-    __label__ = 38;
+    label = 38;
   } while (0);
-  if (__label__ == 38) {
+  if (label == 38) {
     var $79 = $_pr6;
   }
   pause(9);
@@ -200,15 +200,15 @@ function demangle($cmp) {
   do {
     if (!$cmp) {
       if (something()) {
-        __label__ = 3;
+        label = 3;
         break;
       }
       more();
       break;
     }
-    __label__ = 3;
+    label = 3;
   } while (0);
-  if (__label__ == 3) {
+  if (label == 3) {
     final();
   }
 }
@@ -229,15 +229,15 @@ function lua() {
   }
   pause();
   if ($1435 == 0) {
-    __label__ = 176;
+    label = 176;
     cheez();
   } else if ($1435 != 1) {
-    __label__ = 180;
+    label = 180;
     cheez();
   }
   pause();
   if ($1435 == 0) {
-    __label__ = 176;
+    label = 176;
     cheez();
   }
 }

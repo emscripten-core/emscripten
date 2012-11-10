@@ -64,91 +64,91 @@ function maths() {
 }
 function hoisting() {
   if ($i < $N) {
-    __label__ = 2;
+    label = 2;
   }
-  if (__label__ == 2) {
+  if (label == 2) {
     callOther();
   }
   pause(1);
   if ($i < $N) {
-    __label__ = 2;
+    label = 2;
   } else {
-    __label__ = 3;
+    label = 3;
   }
   $for_body3$$for_end$5 : do {
-    if (__label__ == 2) {
+    if (label == 2) {
       while(true) { break $for_body3$$for_end$5 }
       callOther();
     }
   } while (0);
   pause(2);
   if ($i < $N) {
-    __label__ = 2;
+    label = 2;
   } else {
-    __label__ = 3;
+    label = 3;
   }
   cheez: do {
-    if (__label__ == 2) {
+    if (label == 2) {
       if (callOther()) break cheez;
     }
   } while (0);
   pause(3);
   if ($i < $N) {
-    __label__ = 2;
+    label = 2;
   } else {
-    __label__ = 3;
+    label = 3;
   }
-  if (__label__ == 2) {
+  if (label == 2) {
     callOther();
   }
   pause(4);
   if ($i < $N) {
-    __label__ = 2;
+    label = 2;
   } else {
-    __label__ = 3;
+    label = 3;
   }
-  if (__label__ == 2) {
+  if (label == 2) {
     callOther();
-  } else if (__label__ == 3) {
+  } else if (label == 3) {
     somethingElse();
   }
   pause(5);
   if ($i < $N) {
-    __label__ = 2;
+    label = 2;
   } else {
-    __label__ = 3;
+    label = 3;
   }
-  if (__label__ == 55) {
+  if (label == 55) {
     callOther();
-  } else if (__label__ == 3) {
+  } else if (label == 3) {
     somethingElse();
   }
   pause(6);
   if ($i < $N) {
-    __label__ = 2;
+    label = 2;
   } else {
-    __label__ = 3;
+    label = 3;
   }
-  if (__label__ == 3) {
+  if (label == 3) {
     somethingElse();
   }
   pause(7);
   free: while (1) {
     if ($i < $N) {
-      __label__ = 2;
+      label = 2;
     } else {
-      __label__ = 3; // this cannot be removed!
+      label = 3; // this cannot be removed!
       break;
     }
-    if (__label__ == 2) {
+    if (label == 2) {
       somethingElse();
     }
     if ($i < $N) {
-      __label__ = 2;
+      label = 2;
     } else {
-      __label__ = 3; // this can be removed!
+      label = 3; // this can be removed!
     }
-    if (__label__ == 2) {
+    if (label == 2) {
       somethingElse();
     }
     nothing();
@@ -156,94 +156,94 @@ function hoisting() {
   pause(8);
   var $cmp95 = $69 == -1;
   if ($cmp95) {
-    __label__ = 35;
+    label = 35;
   } else {
-    __label__ = 38;
+    label = 38;
   }
   $if_then96$$if_end110thread_pre_split$48 : do {
-    if (__label__ == 35) {
+    if (label == 35) {
       if (!$cmp103) {
-        __label__ = 38;
+        label = 38;
         break $if_then96$$if_end110thread_pre_split$48;
       }
       if (!$cmp106) {
-        __label__ = 38;
+        label = 38;
         break $if_then96$$if_end110thread_pre_split$48;
       }
-      __label__ = 39;
+      label = 39;
       break $if_then96$$if_end110thread_pre_split$48;
     }
   } while (0);
   $if_end110$$if_end110thread_pre_split$52 : do {
-    if (__label__ == 38) {
+    if (label == 38) {
       var $79 = $_pr6;
     }
   } while (0);
   pause(9);
   var $cmp70 = ($call69 | 0) != 0;
   if ($cmp70) {
-    __label__ = 40;
+    label = 40;
   } else {
-    __label__ = 41;
+    label = 41;
   }
   $if_then72$$if_end73$126 : do {
-    if (__label__ == 40) {} else if (__label__ == 41) {}
+    if (label == 40) {} else if (label == 41) {}
   } while (0);
   pause(10);
   while(check()) {
     if ($i < $N) {
-      __label__ = 2;
+      label = 2;
     } else {
-      __label__ = 3;
+      label = 3;
     }
-    if (__label__ == 2) {
+    if (label == 2) {
       callOther();
       break;
-    } else if (__label__ == 3) {
+    } else if (label == 3) {
       somethingElse();
     }
     if ($i1 < $N) {
-      __label__ = 2;
+      label = 2;
     } else {
-      __label__ = 3;
+      label = 3;
     }
-    if (__label__ == 2) {
+    if (label == 2) {
       callOther();
       continue;
-    } else if (__label__ == 3) {
+    } else if (label == 3) {
       somethingElse();
     }
     if ($i2 < $N) {
-      __label__ = 2;
+      label = 2;
     } else {
-      __label__ = 3;
+      label = 3;
     }
-    if (__label__ == 2) {
+    if (label == 2) {
       callOther();
-    } else if (__label__ == 3) {
+    } else if (label == 3) {
       somethingElse();
       break;
     }
     if ($i3 < $N) {
-      __label__ = 2;
+      label = 2;
     } else {
-      __label__ = 3;
+      label = 3;
     }
-    if (__label__ == 2) {
+    if (label == 2) {
       callOther();
-    } else if (__label__ == 3) {
+    } else if (label == 3) {
       somethingElse();
       continue;
     }
     if ($i4 < $N) {
-      __label__ = 2;
+      label = 2;
     } else {
-      __label__ = 3;
+      label = 3;
     }
-    if (__label__ == 2) {
+    if (label == 2) {
       callOther();
       break;
-    } else if (__label__ == 3) {
+    } else if (label == 3) {
       somethingElse();
       continue;
     }
@@ -252,9 +252,9 @@ function hoisting() {
 function innerShouldAlsoBeHoisted() {
   function hoisting() {
     if ($i < $N) {
-      __label__ = 2;
+      label = 2;
     }
-    if (__label__ == 2) {
+    if (label == 2) {
       callOther();
     }
   }
@@ -288,14 +288,14 @@ function sleep() {
 }
 function demangle($cmp) {
   if ($cmp) {
-    __label__ = 3;
+    label = 3;
   } else {
-    __label__ = 1;
+    label = 1;
   }
   $if_then$$lor_lhs_false$2 : do {
-    if (__label__ == 1) {
+    if (label == 1) {
       if (something()) {
-        __label__ = 3;
+        label = 3;
         break $if_then$$lor_lhs_false$2;
       }
       more();
@@ -303,7 +303,7 @@ function demangle($cmp) {
     }
   } while (0);
   $if_then$$return$6 : do {
-    if (__label__ == 3) {
+    if (label == 3) {
       final();
     }
   } while (0);
@@ -311,12 +311,12 @@ function demangle($cmp) {
 function lua() {
   $5$98 : while (1) {
     if ($14) {
-      __label__ = 3;
+      label = 3;
     } else {
-      __label__ = 4;
+      label = 4;
     }
     $15$$16$101 : do {
-      if (__label__ == 3) {} else if (__label__ == 4) {
+      if (label == 3) {} else if (label == 4) {
         var $17 = $i;
         var $18 = $3;
         var $19 = $18 + ($17 << 2) | 0;
@@ -330,15 +330,15 @@ function lua() {
   }
   pause();
   if ($1435 == 0) {
-    __label__ = 176;
+    label = 176;
     cheez();
   } else if ($1435 == 1) {} else {
-    __label__ = 180;
+    label = 180;
     cheez();
   }
   pause();
   if ($1435 == 0) {
-    __label__ = 176;
+    label = 176;
     cheez();
   } else if ($1435 == 1) {}
 }
@@ -374,7 +374,7 @@ function moreLabels() {
       }
     } else {
       var $_lcssa = $5;
-      __label__ = 2;
+      label = 2;
     }
   } while (0);
   var $_lcssa;

@@ -7,6 +7,7 @@
 
 var STRUCT_LIST = set('struct', 'list');
 var UNDERSCORE_OPENPARENS = set('_', '(');
+var RELOOP_IGNORED_LASTS = set('return', 'unreachable', 'resume');
 
 // JSifier
 function JSify(data, functionsOnly, givenFunctions) {
@@ -565,14 +566,14 @@ function JSify(data, functionsOnly, givenFunctions) {
 
       if (true) { // TODO: optimize away when not needed
         if (CLOSURE_ANNOTATIONS) func.JS += '/** @type {number} */';
-        func.JS += '  var __label__;\n';
+        func.JS += '  var label;\n';
       }
 
       // Walk function blocks and generate JS
       function walkBlock(block, indent) {
         if (!block) return '';
         dprint('relooping', 'walking block: ' + block.type + ',' + block.entries + ' : ' + block.labels.length);
-        function getLabelLines(label, indent) {
+        function getLabelLines(label, indent, relooping) {
           if (!label) return '';
           var ret = '';
           if (LABEL_DEBUG) {
@@ -589,23 +590,35 @@ function JSify(data, functionsOnly, givenFunctions) {
           }
           
           // for special labels we care about (for phi), mark that we visited them
-          return ret + label.lines.map(function(line) { return line.JS + (Debugging.on ? Debugging.getComment(line.lineNum) : '') })
+          var i = 0;
+          return ret + label.lines.map(function(line) {
+            var JS = line.JS;
+            if (relooping && i == label.lines.length-1) {
+              if (line.intertype == 'branch' || line.intertype == 'switch') {
+                JS = ''; // just branching operations - done in the relooper, so nothing need be done here
+              } else if (line.intertype == 'invoke') {
+                JS = line.reloopingJS; // invokes have code that is not rendered in the relooper (the call inside a try-catch)
+              }
+            }
+            i++;
+            return JS + (Debugging.on ? Debugging.getComment(line.lineNum) : '');
+          })
                                   .join('\n')
                                   .split('\n') // some lines include line breaks
                                   .map(function(line) { return indent + line })
                                   .join('\n');
         }
         var ret = '';
-        if (block.type == 'emulated') {
+        if (!RELOOP || func.forceEmulated) { // TODO: also if just 1 label?
           if (block.labels.length > 1) {
             if (block.entries.length == 1) {
-              ret += indent + '__label__ = ' + getLabelId(block.entries[0]) + '; ' + (SHOW_LABELS ? '/* ' + getOriginalLabelId(block.entries[0]) + ' */' : '') + '\n';
+              ret += indent + 'label = ' + getLabelId(block.entries[0]) + '; ' + (SHOW_LABELS ? '/* ' + getOriginalLabelId(block.entries[0]) + ' */' : '') + '\n';
             } // otherwise, should have been set before!
             if (func.setjmpTable) {
               var setjmpTable = {};
               ret += indent + 'var setjmpTable = {';
               func.setjmpTable.forEach(function(triple) { // original label, label we created for right after the setjmp, variable setjmp result goes into
-                ret += '"' + getLabelId(triple[0]) + '": ' + 'function(value) { __label__ = ' + getLabelId(triple[1]) + '; ' + triple[2] + ' = value },';
+                ret += '"' + getLabelId(triple[0]) + '": ' + 'function(value) { label = ' + getLabelId(triple[1]) + '; ' + triple[2] + ' = value },';
               });
               ret += 'dummy: 0';
               ret += '};\n';
@@ -614,12 +627,12 @@ function JSify(data, functionsOnly, givenFunctions) {
             if (func.setjmpTable) {
               ret += 'try { ';
             }
-            ret += 'switch(__label__) {\n';
+            ret += 'switch(label) {\n';
             ret += block.labels.map(function(label) {
               return indent + '  case ' + getLabelId(label.ident) + ': ' + (SHOW_LABELS ? '// ' + getOriginalLabelId(label.ident) : '') + '\n'
                             + getLabelLines(label, indent + '    ');
             }).join('\n');
-            ret += '\n' + indent + '  default: assert(0, "bad label: " + __label__);\n' + indent + '}';
+            ret += '\n' + indent + '  default: assert(0, "bad label: " + label);\n' + indent + '}';
             if (func.setjmpTable) {
               ret += ' } catch(e) { if (!e.longjmp) throw(e); setjmpTable[e.label](e.value) }';
             }
@@ -627,38 +640,50 @@ function JSify(data, functionsOnly, givenFunctions) {
             ret += (SHOW_LABELS ? indent + '/* ' + block.entries[0] + ' */' : '') + '\n' + getLabelLines(block.labels[0], indent);
           }
           ret += '\n';
-        } else if (block.type == 'reloop') {
-          ret += indent + block.id + ': while(1) { ' + (SHOW_LABELS ? ' /* ' + block.entries + + ' */' : '') + '\n';
-          ret += walkBlock(block.inner, indent + '  ');
-          ret += indent + '}\n';
-        } else if (block.type == 'multiple') {
-          var first = true;
-          var multipleIdent = '';
-          ret += indent + block.id + ': do { \n';
-          multipleIdent = '  ';
-          // TODO: Find out cases where the final if/case is not needed - where we know we must be in a specific label at that point
-          var SWITCH_IN_MULTIPLE = 0; // This appears to never be worth it, for no amount of labels
-          if (SWITCH_IN_MULTIPLE && block.entryLabels.length >= 2) {
-            ret += indent + multipleIdent + 'switch(__label__) {\n';
-            block.entryLabels.forEach(function(entryLabel) {
-              ret += indent + multipleIdent + '  case ' + getLabelId(entryLabel.ident) + ': {\n';
-              ret += walkBlock(entryLabel.block, indent + '    ' + multipleIdent);
-              ret += indent + multipleIdent + '  } break;\n';
-            });
-            ret += indent + multipleIdent + '}\n';
-          } else {
-            block.entryLabels.forEach(function(entryLabel) {
-              ret += indent + multipleIdent + (first ? '' : 'else ') + 'if (__label__ == ' + getLabelId(entryLabel.ident) + ') {\n';
-              ret += walkBlock(entryLabel.block, indent + '  ' + multipleIdent);
-              ret += indent + multipleIdent + '}\n';
-              first = false;
-            });
-          }
-          ret += indent + '} while(0);\n';
         } else {
-          throw "Walked into an invalid block type: " + block.type;
+          // Reloop multiple blocks using the compiled relooper
+
+          //Relooper.setDebug(1);
+          Relooper.init();
+
+          var blockMap = {};
+          // add blocks
+          for (var i = 0; i < block.labels.length; i++) {
+            var label = block.labels[i];
+            var content = getLabelLines(label, '', true);
+            //printErr(func.ident + ' : ' + label.ident + ' : ' + content + '\n');
+            blockMap[label.ident] = Relooper.addBlock(content);
+          }
+          // add branchings
+          function relevant(x) { return x && x.length > 2 ? x : 0 } // ignores ';' which valueJS and label*JS can be if empty
+          for (var i = 0; i < block.labels.length; i++) {
+            var label = block.labels[i];
+            var ident = label.ident;
+            var last = label.lines[label.lines.length-1];
+            //printErr('zz last ' + dump(last));
+            if (last.intertype == 'branch') {
+              if (last.label) { // 1 target
+                Relooper.addBranch(blockMap[ident], blockMap[last.label], 0, relevant(last.labelJS));
+              } else { // 2 targets
+                Relooper.addBranch(blockMap[ident], blockMap[last.labelTrue], last.valueJS, relevant(last.labelTrueJS));
+                Relooper.addBranch(blockMap[ident], blockMap[last.labelFalse], 0, relevant(last.labelFalseJS));
+              }
+            } else if (last.intertype == 'switch') {
+              last.groupedLabels.forEach(function(switchLabel) {
+                Relooper.addBranch(blockMap[ident], blockMap[switchLabel.label], switchLabel.value, relevant(switchLabel.labelJS));
+              });
+              Relooper.addBranch(blockMap[ident], blockMap[last.defaultLabel], 0, relevant(last.defaultLabelJS));
+            } else if (last.intertype == 'invoke') {
+              Relooper.addBranch(blockMap[ident], blockMap[last.toLabel], '!__THREW__', relevant(last.toLabelJS));
+              Relooper.addBranch(blockMap[ident], blockMap[last.unwindLabel], 0, relevant(last.unwindLabelJS));
+            } else if (last.intertype in RELOOP_IGNORED_LASTS) {
+            } else {
+              throw 'unknown reloop last line: ' + last.intertype;
+            }
+          }
+          ret += Relooper.render(blockMap[block.entries[0]]);
         }
-        return ret + walkBlock(block.next, indent);
+        return ret;
       }
       func.JS += walkBlock(func.block, '  ');
       // Finalize function
@@ -687,6 +712,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         func.JS += 'if (globalScope) { assert(!globalScope["' + func.ident + '"]); globalScope["' + func.ident + '"] = ' + func.ident + ' }';
       }
 
+      func.JS = func.JS.replace(/\n *;/g, '\n'); // remove unneeded lines
       return func;
     }
   });
@@ -821,7 +847,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       var parts = label.split('|');
       var trueLabel = parts[1] || '';
       var oldLabel = parts[2] || '';
-      var labelSetting = oldLabel ? '__label__ = ' + getLabelId(oldLabel) + ';' +
+      var labelSetting = oldLabel ? 'label = ' + getLabelId(oldLabel) + ';' +
                          (SHOW_LABELS ? ' /* to: ' + getOriginalLabelId(cleanLabel(oldLabel)) + ' */' : '') : ''; // TODO: optimize away the setting
       if (label[1] == 'R') {
         if (label[2] == 'N') { // BRNOL: break, no label setting
@@ -842,7 +868,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
     } else {
       if (!labelIsVariable) label = getLabelId(label);
-      return pre + '__label__ = ' + label + ';' + (SHOW_LABELS ? ' /* to: ' + getOriginalLabelId(cleanLabel(label)) + ' */' : '') + ' break;';
+      return pre + 'label = ' + label + ';' + (SHOW_LABELS ? ' /* to: ' + getOriginalLabelId(cleanLabel(label)) + ' */' : '') + ' break;';
     }
   }
 
@@ -918,11 +944,11 @@ function JSify(data, functionsOnly, givenFunctions) {
   makeFuncLineActor('branch', function(item) {
     var phiSets = calcPhiSets(item);
     if (!item.value) {
-      return getPhiSetsForLabel(phiSets, item.label) + makeBranch(item.label, item.currLabelId);
+      return (item.labelJS = getPhiSetsForLabel(phiSets, item.label)) + makeBranch(item.label, item.currLabelId);
     } else {
-      var condition = finalizeLLVMParameter(item.value);
-      var labelTrue = getPhiSetsForLabel(phiSets, item.labelTrue) + makeBranch(item.labelTrue, item.currLabelId);
-      var labelFalse = getPhiSetsForLabel(phiSets, item.labelFalse) + makeBranch(item.labelFalse, item.currLabelId);
+      var condition = item.valueJS = finalizeLLVMParameter(item.value);
+      var labelTrue = (item.labelTrueJS = getPhiSetsForLabel(phiSets, item.labelTrue)) + makeBranch(item.labelTrue, item.currLabelId);
+      var labelFalse = (item.labelFalseJS = getPhiSetsForLabel(phiSets, item.labelFalse)) + makeBranch(item.labelFalse, item.currLabelId);
       if (labelTrue == ';' && labelFalse == ';') return ';';
       var head = 'if (' + condition + ') { ';
       var head2 = 'if (!(' + condition + ')) { ';
@@ -940,11 +966,11 @@ function JSify(data, functionsOnly, givenFunctions) {
   makeFuncLineActor('switch', function(item) {
     // TODO: Find a case where switch is important, and benchmark that. var SWITCH_IN_SWITCH = 1; 
     var phiSets = calcPhiSets(item);
-    // Consolidate checks that go to the same label. This is important because it makes the
-    // js optimizer hoistMultiples much easier to implement (we hoist into one place, not
-    // many).
+    // Consolidate checks that go to the same label. This is important because it makes the relooper simpler and faster.
     var targetLabels = {}; // for each target label, the list of values going to it
+    var switchLabelMap = {};
     item.switchLabels.forEach(function(switchLabel) {
+      switchLabelMap[switchLabel.label] = switchLabel;
       if (!targetLabels[switchLabel.label]) {
         targetLabels[switchLabel.label] = [];
       }
@@ -953,20 +979,33 @@ function JSify(data, functionsOnly, givenFunctions) {
     var ret = '';
     var first = true;
     var signedIdent = makeSignOp(item.ident, item.type, 're'); // we need to standardize for purpose of comparison
+    if (RELOOP) {
+      item.groupedLabels = [];
+    }
     for (var targetLabel in targetLabels) {
       if (!first) {
         ret += 'else ';
       } else {
         first = false;
       }
-      ret += 'if (' + targetLabels[targetLabel].map(function(value) {
+      var value = targetLabels[targetLabel].map(function(value) {
         return makeComparison(signedIdent, makeSignOp(value, item.type, 're'), item.type)
-      }).join(' || ') + ') {\n';
-      ret += '  ' + getPhiSetsForLabel(phiSets, targetLabel) + makeBranch(targetLabel, item.currLabelId || null) + '\n';
+      }).join(' || ');
+      ret += 'if (' + value + ') {\n';
+      var phiSet = getPhiSetsForLabel(phiSets, targetLabel);
+      ret += '  ' + phiSet + makeBranch(targetLabel, item.currLabelId || null) + '\n';
       ret += '}\n';
+      if (RELOOP) {
+        item.groupedLabels.push({
+          label: targetLabel,
+          value: value,
+          labelJS: phiSet
+        });
+      }
     }
     if (item.switchLabels.length > 0) ret += 'else {\n';
-    ret += getPhiSetsForLabel(phiSets, item.defaultLabel) + makeBranch(item.defaultLabel, item.currLabelId) + '\n';
+    var phiSet = item.defaultLabelJS = getPhiSetsForLabel(phiSets, item.defaultLabel);
+    ret += phiSet + makeBranch(item.defaultLabel, item.currLabelId) + '\n';
     if (item.switchLabels.length > 0) ret += '}\n';
     if (item.value) {
       ret += ' ' + toNiceIdent(item.value);
@@ -1015,8 +1054,11 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
       item.assignTo = null;
     }
-    ret += 'if (!__THREW__) { ' + getPhiSetsForLabel(phiSets, item.toLabel) + makeBranch(item.toLabel, item.currLabelId)
-            + ' } else { ' + getPhiSetsForLabel(phiSets, item.unwindLabel)  + makeBranch(item.unwindLabel, item.currLabelId) + ' }';
+    item.reloopingJS = ret; // everything but the actual branching (which the relooper will do for us)
+    item.toLabelJS = getPhiSetsForLabel(phiSets, item.toLabel);
+    item.unwindLabelJS = getPhiSetsForLabel(phiSets, item.unwindLabel);
+    ret += 'if (!__THREW__) { ' + item.toLabelJS + makeBranch(item.toLabel, item.currLabelId)
+            + ' } else { ' + item.unwindLabelJS + makeBranch(item.unwindLabel, item.currLabelId) + ' }';
     return ret;
   });
   makeFuncLineActor('atomic', function(item) {
