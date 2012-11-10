@@ -1115,9 +1115,6 @@ try:
       final = shared.Building.js_optimizer(final, [])
       if DEBUG: save_intermediate('pretty')
 
-    #if shared.Settings.RELOOP:
-    #  js_optimizer_queue += ['hoistMultiples', 'loopOptimizer']
-
     def get_eliminate():
       return 'eliminate' if not shared.Settings.ALLOW_MEMORY_GROWTH else 'eliminateMemSafe'
 

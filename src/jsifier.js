@@ -1,5 +1,3 @@
-// XXX add relooper.js
-
 //"use strict";
 
 // Convert analyzed data to javascript. Everything has already been calculated
