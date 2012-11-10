@@ -421,11 +421,90 @@ function __embind_register_smart_ptr(
             return new Handle(ptr);
         },
         toWireType: function(destructors, o) {
+            return o.smartPointer;
             if (null === o) {
                 return 0;
             } else {
                 return o.smartPointer;
             }
+        }
+    });
+}
+
+function __embind_register_function_ptr(
+    name,
+    functorType,
+    returnType,
+    argCount,
+    argTypes,
+    destructor,
+    invoker
+) {
+    name = Pointer_stringify(name);
+    var humanName = 'functor::' + name;
+    
+    returnType = requireRegisteredType(returnType);
+    argTypes = requireArgumentTypes(argCount, argTypes, humanName);
+    destructor = FUNCTION_TABLE[destructor];
+    invoker = FUNCTION_TABLE[invoker];
+    
+    var Handle = createNamedFunction(name, function(ptr) {
+        this.count = {value: 1};
+        this.functorPtr = ptr;
+    });
+   
+    Handle.prototype['delete'] = function() {
+        if (!this.functorPtr) {
+            throw new BindingError(functorType.name + ' instance already deleted');
+        }
+
+        this.count.value -= 1;
+        if(0 === this.count.value) {
+            destructor(this.functorPtr);
+        }
+        this.functorPtr = undefined;
+    };
+    
+    function createFunctor(ptr) {
+        var h = new Handle(ptr);
+        
+        var invoke = function() {
+            if(!this.functorPtr) {
+                throw new BindingError('cannot call invoke functor ' + humanName + ' on deleted object');
+            }
+            
+            if (arguments.length !== argCount) {
+                throw new BindingError('emscripten functor ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + argCount);
+            }
+            
+            var destructors = [];
+            var args = new Array(argCount + 1);
+            args[0] = this.functorPtr;
+            
+            for (var i = 0; i < argCount; ++i) {
+                args[i + 1] = argTypes[i].toWireType(destructors, arguments[i]);
+            }
+
+            var rv = returnType.fromWireType(invoker.apply(null, args));
+            runDestructors(destructors);
+            return rv;
+        }.bind(h);
+        
+        invoke.handle = h;
+        invoke['delete'] = function() {
+            this.handle.delete();
+        };
+       
+        return invoke;
+    }
+    
+    registerType(functorType, name, {
+        name: name,
+        fromWireType: function(ptr) {
+            return createFunctor(ptr);
+        },
+        toWireType: function(destructors, o) {
+            return o.ptr;
         }
     });
 }
@@ -489,7 +568,7 @@ function __embind_register_class(
         this.count = {value: 1};
         this.ptr = ptr;
     });
-
+    
     Handle.prototype.clone = function() {
         if (!this.ptr) {
             throw new BindingError(classType.name + ' instance already deleted');

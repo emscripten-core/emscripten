@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <assert.h>
 #include <string>
+#include <functional>
 #include <vector>
 #include <type_traits>
 #include <emscripten/val.h>
@@ -99,6 +100,18 @@ namespace emscripten {
                 GenericFunction destructor,
                 GenericFunction getPointee);
 
+<<<<<<< HEAD
+=======
+            void _embind_register_function_ptr(
+                const char* name,
+                TYPEID functorType,
+                TYPEID returnType,
+                unsigned argCount,
+                TYPEID argTypes[],
+                GenericFunction destructor,
+                GenericFunction invoker);
+
+>>>>>>> Exposing std::function to javascript.
             void _embind_register_vector(
                 TYPEID vectorType,
                 TYPEID elementType,
@@ -280,6 +293,21 @@ namespace emscripten {
             // TODO: replace with general pointer traits implementation
             return ptr.get();
         }
+
+        template<typename FunctorType, typename ReturnType, typename... Args>
+        struct FunctorInvoker {
+            static typename internal::BindingType<ReturnType>::WireType invoke(
+                const FunctorType& ptr,
+                typename internal::BindingType<Args>::WireType... args
+            ) {
+                return internal::BindingType<ReturnType>::toWireType(
+                    ptr(
+                        internal::BindingType<Args>::fromWireType(args)...
+                    )
+                );
+            }
+        };
+
 
         template<typename ClassType, typename ReturnType, typename... Args>
         struct MethodInvoker {
@@ -540,6 +568,26 @@ namespace emscripten {
             name,
             reinterpret_cast<internal::GenericFunction>(&internal::raw_destructor<PointerType>),
             reinterpret_cast<internal::GenericFunction>(&internal::get_pointee<PointerType>));
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // FUNCTION POINTERS
+    ////////////////////////////////////////////////////////////////////////////////
+    template<typename ReturnType, typename... Args, typename... Policies>
+    inline void register_function_ptr(const char* name) {
+        typedef std::function<ReturnType(Args...)> FunctorType;
+
+        internal::registerStandardTypes();
+        typename internal::WithPolicies<Policies...>::template ArgTypeList<Args...> args;
+        internal::_embind_register_function_ptr(
+            name,
+            internal::TypeID<FunctorType>::get(),
+            internal::TypeID<ReturnType>::get(),
+            args.count,
+            args.types,
+            reinterpret_cast<internal::GenericFunction>(&internal::raw_destructor<FunctorType>),
+            reinterpret_cast<internal::GenericFunction>(&internal::FunctorInvoker<FunctorType, ReturnType, Args...>::invoke)
+        );
     }
 
     ////////////////////////////////////////////////////////////////////////////////
