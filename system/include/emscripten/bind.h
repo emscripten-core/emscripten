@@ -100,8 +100,6 @@ namespace emscripten {
                 GenericFunction destructor,
                 GenericFunction getPointee);
 
-<<<<<<< HEAD
-=======
             void _embind_register_function_ptr(
                 const char* name,
                 TYPEID functorType,
@@ -111,7 +109,6 @@ namespace emscripten {
                 GenericFunction destructor,
                 GenericFunction invoker);
 
->>>>>>> Exposing std::function to javascript.
             void _embind_register_vector(
                 TYPEID vectorType,
                 TYPEID elementType,
