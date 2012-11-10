@@ -1059,6 +1059,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       os.chdir(currdir)
       if not ok:
         print >> sys.stderr, 'bootstrapping relooper failed. You may need to manually create src/relooper.js, by checking out the Relooper project ( https://github.com/kripken/Relooper ) and building in the emscripten/ dir.'
+        1/0
 
 # Permanent cache for dlmalloc and stdlibc++
 class Cache:
