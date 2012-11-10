@@ -207,6 +207,7 @@ AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
 BINDINGS_GENERATOR = path_from_root('tools', 'bindings_generator.py')
 EXEC_LLVM = path_from_root('tools', 'exec_llvm.py')
 FILE_PACKAGER = path_from_root('tools', 'file_packager.py')
+RELOOPER = path_from_root('src', 'relooper.js')
 
 # Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use TEMP_DIR/emscripten_temp
 
@@ -1011,6 +1012,54 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
     return False
 
+  # Make sure the relooper exists. If it does not, check out the relooper code and bootstrap it
+  @staticmethod
+  def ensure_relooper():
+    if os.path.exists(RELOOPER): return
+    try:
+      ok = False
+      print >> sys.stderr, '======================================='
+      print >> sys.stderr, 'bootstrapping relooper...'
+      Cache.ensure()
+      RELOOPER_DIR = os.path.join(Cache.dirname, 'relooper')
+      currdir = os.getcwd()
+      if not os.path.exists(RELOOPER_DIR):
+        # check out relooper
+        os.chdir(os.path.dirname(RELOOPER_DIR))
+        print >> sys.stderr, '  checking out', os.getcwd()
+        execute(['git', 'clone', 'git://github.com/kripken/Relooper.git', os.path.basename(RELOOPER_DIR)])
+        assert os.path.exists(RELOOPER_DIR)
+      else:
+        # update
+        print >> sys.stderr, '  updating'
+        os.chdir(RELOOPER_DIR)
+        execute(['git', 'pull', '-u'], stdout=None if DEBUG else PIPE, stderr=None if DEBUG else PIPE)
+
+      def make(opt_level):
+        raw = RELOOPER + '.raw.js'
+        Building.emcc(os.path.join(RELOOPER_DIR, 'Relooper.cpp'), ['-I' + os.path.join(RELOOPER_DIR), '--post-js', os.path.join(RELOOPER_DIR, 'emscripten', 'glue.js'), '-s', 'TOTAL_MEMORY=52428800', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["memcpy", "memset", "malloc", "free", "puts"]', '-O' + str(opt_level)], raw)
+        f = open(RELOOPER, 'w')
+        f.write("// Relooper, (C) 2012 Alon Zakai, MIT license, https://github.com/kripken/Relooper\n")
+        f.write("var Relooper = (function() {\n");
+        f.write(open(raw).read())
+        f.write('\n  return Module.Relooper;\n')
+        f.write('})();\n')
+        f.close()
+
+      # bootstrap phase 1: generate unrelooped relooper, for which we do not need a relooper (so we cannot recurse infinitely in this function)
+      print >> sys.stderr, '  bootstrap phase 1'
+      make(1)
+      # bootstrap phase 2: generate relooped relooper, using the unrelooped relooper (we see relooper.js exists so we cannot recurse infinitely in this function)
+      print >> sys.stderr, '  bootstrap phase 2'
+      make(2)
+      print >> sys.stderr, 'bootstrapping relooper succeeded'
+      print >> sys.stderr, '======================================='
+      ok = True
+    finally:
+      os.chdir(currdir)
+      if not ok:
+        print >> sys.stderr, 'bootstrapping relooper failed. You may need to manually create src/relooper.js, by checking out the Relooper project ( https://github.com/kripken/Relooper ) and building in the emscripten/ dir.'
+
 # Permanent cache for dlmalloc and stdlibc++
 class Cache:
   dirname = os.environ.get('EM_CACHE')
@@ -1018,11 +1067,17 @@ class Cache:
     dirname = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
 
   @staticmethod
+  def ensure():
+    if not os.path.exists(Cache.dirname):
+      os.makedirs(Cache.dirname)
+
+  @staticmethod
   def erase():
     try:
       shutil.rmtree(Cache.dirname)
     except:
       pass
+    try_delete(RELOOPER)
 
   # Request a cached file. If it isn't in the cache, it will be created with
   # the given creator function
@@ -1032,8 +1087,7 @@ class Cache:
     cachename = os.path.join(Cache.dirname, shortname)
     if os.path.exists(cachename):
       return cachename
-    if not os.path.exists(Cache.dirname):
-      os.makedirs(Cache.dirname)
+    Cache.ensure()
     shutil.copyfile(creator(), cachename)
     return cachename
 

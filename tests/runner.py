@@ -10141,6 +10141,26 @@ fi
       assert ERASING_MESSAGE in output
       assert not os.path.exists(EMCC_CACHE)
 
+    def test_relooper(self):
+      restore()
+      for phase in range(2): # 0: we wipe the relooper dir. 1: we have it, so should just update
+        if phase == 0: Cache.erase()
+        try_delete(RELOOPER)
+
+        for i in range(4):
+          print phase, i
+          opt = min(i, 2)
+          try_delete('a.out.js')
+          output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_loop.cpp'), '-O' + str(opt), '--closure', '0'],
+                         stdout=PIPE, stderr=PIPE).communicate()
+          self.assertContained('hello, world!', run_js('a.out.js'))
+          output = '\n'.join(output)
+          assert ('bootstrapping relooper succeeded' in output) == (i == 2), 'only bootstrap on first O2: ' + output
+          assert os.path.exists(RELOOPER) == (i >= 2), 'have relooper on O2: ' + output
+          assert ('  checking out' in output) == (i == 2 and phase == 0), 'check out the code on first O2, and if no dir already present: ' + output
+          assert ('  updating' in output) == (i == 2 and phase == 1), 'when have relooper dir, just update: ' + output
+          assert ('L2 : do {' in open('a.out.js').read()) == (i >= 2), 'reloop code on O2: ' + output
+
 else:
   raise Exception('Test runner is confused: ' + str(sys.argv))
 

@@ -294,6 +294,8 @@ def main(args):
   libraries = args.libraries[0].split(',') if len(args.libraries) > 0 else []
 
   # Compile the assembly to Javascript.
+  if settings.get('RELOOP'): shared.Building.ensure_relooper()
+
   emscript(args.infile, settings, args.outfile, libraries)
 
 if __name__ == '__main__':
