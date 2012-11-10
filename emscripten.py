@@ -171,7 +171,7 @@ def emscript(infile, settings, outfile, libraries=[]):
   if cores == 1 and total_ll_size < MAX_CHUNK_SIZE: assert len(chunks) == 1, 'no point in splitting up without multiple cores'
   if DEBUG: print >> sys.stderr, '  emscript: phase 2 working on %d chunks %s (intended chunk size: %.2f MB, meta: %.2f MB, forwarded: %.2f)' % (len(chunks), ('using %d cores' % cores) if len(chunks) > 1 else '', chunk_size/(1024*1024.), len(meta)/(1024*1024.), len(forwarded_data)/(1024*1024.))
 
-  commands = [(i, chunk + '\n' + meta, settings_file, compiler, forwarded_file, libraries) for chunk in chunks]
+  commands = [(i, chunks[i] + '\n' + meta, settings_file, compiler, forwarded_file, libraries) for i in range(len(chunks))]
 
   if len(chunks) > 1:
     pool = multiprocessing.Pool(processes=cores)
