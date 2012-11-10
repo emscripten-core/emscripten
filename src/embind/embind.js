@@ -421,7 +421,6 @@ function __embind_register_smart_ptr(
             return new Handle(ptr);
         },
         toWireType: function(destructors, o) {
-            return o.smartPointer;
             if (null === o) {
                 return 0;
             } else {
