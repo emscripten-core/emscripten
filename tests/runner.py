@@ -7432,6 +7432,54 @@ f.close()
       # TODO: test normal project linking, static and dynamic: get_library should not need to be told what to link!
       # TODO: deprecate llvm optimizations, dlmalloc, etc. in emscripten.py.
 
+    def test_cmake(self):
+      emscriptencmaketoolchain = path_from_root('cmake', 'Platform', 'Emscripten.cmake')
+
+      # On Windows, we want to build cmake-generated Makefiles with mingw32-make instead of e.g. cygwin make, since mingw32-make
+      # understands Windows paths, and cygwin make additionally produces a cryptic 'not valid bitcode file' errors on files that
+      # *are* valid bitcode files.
+      if os.name == 'nt':
+        make_command = 'mingw32-make'
+      else:
+        make_command = 'make'
+
+      cmake_cases = ['target_js', 'target_html']
+      cmake_outputs = ['hello_world.js', 'hello_world_gles.html']
+      for i in range(0, 2):
+        for configuration in ['Debug', 'Release']:
+        
+          # Create a temp workspace folder
+          cmakelistsdir = path_from_root('tests', 'cmake', cmake_cases[i])
+          tempdirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
+          try:
+            os.chdir(tempdirname)
+            
+            # Run Cmake
+            cmd = ['cmake', '-DCMAKE_TOOLCHAIN_FILE='+emscriptencmaketoolchain, '-DCMAKE_BUILD_TYPE=' + configuration, '-G' 'Unix Makefiles', cmakelistsdir]
+            ret = Popen(cmd, stdout=PIPE, stderr=PIPE).communicate()
+            if 'error' in ret[1].lower():
+              print >> sys.stderr, 'Failed command: ' + ' '.join(cmd)
+              print >> sys.stderr, 'Result:\n' + ret[1]
+              raise Exception('cmake call failed!') # cmake spams this silly message to stderr, so hide it: "Platform/Emscripten to use this system, please send your config file to cmake@www.cmake.org so it can be added to cmake"
+            assert os.path.exists(tempdirname + '/Makefile'), 'CMake call did not produce a Makefile!'
+            
+            # Build
+            cmd = [make_command]
+            ret = Popen(cmd, stdout=PIPE).communicate()
+            if 'error' in ret[0].lower() and not '0 error(s)' in ret[0].lower():
+              print >> sys.stderr, 'Failed command: ' + ' '.join(cmd)
+              print >> sys.stderr, 'Result:\n' + ret[0]
+              raise Exception('make failed!')
+            assert os.path.exists(tempdirname + '/' + cmake_outputs[i]), 'Building a cmake-generated Makefile failed to produce an output file!'
+            
+            # Run through node, if CMake produced a .js file.
+            if cmake_outputs[i].endswith('.js'):
+              ret = Popen([NODE_JS, tempdirname + '/' + cmake_outputs[i]], stdout=PIPE).communicate()[0]
+              assert 'hello, world!' in ret, 'Running cmake-based .js application failed!'
+          finally:
+            os.chdir(path_from_root('tests')) # Move away from the directory we are about to remove.
+            shutil.rmtree(tempdirname)
+      
     def test_Os(self):
       for opt in ['s', '0']:
         output = Popen(['python', EMCC, path_from_root('tests', 'hello_world.c'), '-O' + opt], stdout=PIPE, stderr=PIPE).communicate()
