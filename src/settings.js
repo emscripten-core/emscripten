@@ -126,7 +126,8 @@ var SAFE_HEAP = 0; // Check each write to the heap, for example, this will give 
                    // that 3 is the option you usually want here.
 var SAFE_HEAP_LOG = 0; // Log out all SAFE_HEAP operations
 
-var LABEL_DEBUG = 0; // Print out labels and functions as we enter them
+var LABEL_DEBUG = 0; // 1: Print out functions as we enter them
+                     // 2: Also print out each label as we enter it
 var EXCEPTION_DEBUG = 1; // Print out exceptions in emscriptened code
 
 var LIBRARY_DEBUG = 0; // Print out when we enter a library call (library*.js). You can also unset

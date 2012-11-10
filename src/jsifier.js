@@ -562,7 +562,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         }
       });
 
-      if (LABEL_DEBUG) func.JS += "  Module.print(INDENT + ' Entering: " + func.ident + "'); INDENT += '  ';\n";
+      if (LABEL_DEBUG) func.JS += "  Module.print(INDENT + ' Entering: " + func.ident + ": ' + Array.prototype.slice.call(arguments)); INDENT += '  ';\n";
 
       if (true) { // TODO: optimize away when not needed
         if (CLOSURE_ANNOTATIONS) func.JS += '/** @type {number} */';
@@ -576,7 +576,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         function getLabelLines(label, indent, relooping) {
           if (!label) return '';
           var ret = '';
-          if (LABEL_DEBUG) {
+          if (LABEL_DEBUG >= 2) {
             ret += indent + "Module.print(INDENT + '" + func.ident + ":" + label.ident + "');\n";
           }
           if (EXECUTION_TIMEOUT > 0) {
