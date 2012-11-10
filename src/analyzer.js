@@ -1433,61 +1433,8 @@ function analyzer(data, sidePass) {
     }
   });
 
-  //! @param toLabelId If false, just a dry run - useful to search for labels
-  function replaceLabels(line, labelIds, toLabelId) {
-    var ret = [];
-
-    var value = keys(labelIds)[0];
-    var wildcard = value.indexOf('*') >= 0;
-    assert(!wildcard || values(labelIds).length == 1); // For now, just handle that case
-    var wildcardParts = null;
-    if (wildcard) {
-      wildcardParts = value.split('|');
-    }
-    function wildcardCheck(s) {
-      var parts = s.split('|');
-      for (var i = 0; i < 3; i++) {
-        if (wildcardParts[i] !== '*' && wildcardParts[i] != parts[i]) return false;
-      }
-      return true;
-    }
-
-    operateOnLabels(line, function process(item, id) {
-      if (item[id] in labelIds || (wildcard && wildcardCheck(item[id]))) {
-        ret.push(item[id]);
-        if (dcheck('relooping')) dprint('zz ' + id + ' replace ' + item[id] + ' with ' + toLabelId);
-        if (toLabelId) {
-          // replace wildcards in new value with old parts
-          var oldParts = item[id].split('|');
-          var newParts = toLabelId.split('|');
-          for (var i = 1; i < 3; i++) {
-            if (newParts[i] === '*') newParts[i] = oldParts[i];
-          }
-          item[id] = newParts.join('|') + '|' + item[id];
-        }
-      }
-    });
-    return ret;
-  }
-
-  function replaceLabelLabels(labels, labelIds, toLabelId) {
-    ret = [];
-    labels.forEach(function(label) {
-      ret = ret.concat(replaceLabels(label.lines[label.lines.length-1], labelIds, toLabelId));
-    });
-    return ret;
-  }
-
-  function isReachable(label, otherLabels, ignoreLabel) { // is label reachable by otherLabels, ignoring ignoreLabel in those otherLabels
-    var reachable = false;
-    otherLabels.forEach(function(otherLabel) {
-      reachable = reachable || (otherLabel !== ignoreLabel && (label.ident == otherLabel.ident ||
-                                                               label.ident in otherLabel.allOutLabels));
-    });
-    return reachable;
-  }
-
   // ReLooper - reconstruct nice loops, as much as possible
+  // This is now done in the jsify stage, using compiled relooper2
   substrate.addActor('Relooper', {
     processItem: function(item) {
       function finish() {
@@ -1512,80 +1459,6 @@ function analyzer(data, sidePass) {
         func.block = makeBlock(func.labels, [toNiceIdent(func.labels[0].ident)], func.labelsDict, func.forceEmulated);
       });
 
-      return finish();
-    }
-  });
-
-  // LoopOptimizer. The Relooper generates native loop structures, that are
-  //       logically correct. The LoopOptimizer works on that, doing further optimizations
-  //       like switching to BNOPP when possible, etc.
-
-  substrate.addActor('LoopOptimizer', {
-    processItem: function(item) {
-      var that = this;
-      function finish() {
-        item.__finalResult__ = true;
-        return [item];
-      }
-      if (!RELOOP) return finish();
-
-      // Find where each block will 'naturally' get to, just by the flow of code
-      function exploreBlockEndings(block, endOfTheWorld) { // endoftheworld - where we will get, if we have nothing else to get to - 'fall off the face of the earth'
-        if (!block) return;
-
-        function singular(block) {
-          if (!block) return endOfTheWorld;
-          if (block.type === 'multiple') return null;
-          if (block.entries.length == 1) {
-            return block.entries[0];
-          } else {
-            return null;
-          }
-        }
-
-        dprint('relooping', "//    exploring block: " + block.type + ' : ' + block.entries);
-
-        if (block.type == 'reloop') {
-          exploreBlockEndings(block.inner, singular(block.inner));
-        } else if (block.type == 'multiple') {
-          block.entryLabels.forEach(function(entryLabel) { exploreBlockEndings(entryLabel.block, singular(block.next)) });
-        }
-
-        exploreBlockEndings(block.next, endOfTheWorld);
-
-        if (block.next) {
-          block.willGetTo = singular(block.next);
-        } else {
-          block.willGetTo = endOfTheWorld;
-        }
-
-        dprint('relooping', "//    explored block: " + block.type + ' : ' + block.entries + ' , willGetTo: ' + block.willGetTo);
-      }
-
-      // Remove unneeded label settings, if we set it to where we will get anyhow
-      function optimizeBlockEndings(block) {
-        if (!block) return;
-
-        dprint('relooping', "//    optimizing block: " + block.type + ' : ' + block.entries);
-
-        recurseBlock(block, optimizeBlockEndings);
-
-        if (block.type === 'emulated' && block.willGetTo) {
-          dprint('relooping', '//         removing (trying): ' + block.willGetTo);
-          replaceLabelLabels(block.labels, set('BJSET|*|' + block.willGetTo), 'BNOPP');
-          replaceLabelLabels(block.labels, set('BCONT|*|' + block.willGetTo), 'BNOPP');
-          replaceLabelLabels(block.labels, set('BREAK|*|' + block.willGetTo), 'BNOPP');
-          replaceLabelLabels(block.labels, set('BRNOL|*|' + block.willGetTo), 'BNOPP');
-          replaceLabelLabels(block.labels, set('BCNOL|*|' + block.willGetTo), 'BNOPP');
-        }
-      }
-
-      // TODO: Parallelize
-      item.functions.forEach(function(func) {
-        dprint('relooping', "// loopOptimizing function: " + func.ident);
-        exploreBlockEndings(func.block);
-        optimizeBlockEndings(func.block);
-      });
       return finish();
     }
   });
