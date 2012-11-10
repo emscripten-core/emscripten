@@ -413,6 +413,7 @@ function __embind_register_smart_ptr(
 
     registerType(pointerType, name, {
         name: name,
+        Handle: Handle,
         fromWireType: function(ptr) {
             if (!getPointee(ptr)) {
                 destructor(ptr);
@@ -541,7 +542,7 @@ function __embind_register_class(
         return body.apply(this, arguments);
     });
     constructor.prototype = Handle.prototype;
-    
+
     registerType(classType, name, {
         name: name,
         constructor: constructor,
@@ -639,6 +640,64 @@ function __embind_register_class_method(
 
         var rv = returnType.fromWireType(invoker.apply(null, args));
         runDestructors(destructors);
+        return rv;
+    };
+}
+
+function __embind_register_cast_method(
+    classType,
+    methodName,
+    returnType,
+    invoker
+) {
+    classType = requireRegisteredType(classType, 'class');
+    methodName = Pointer_stringify(methodName);
+    var humanName = classType.name + '.' + methodName;
+
+    returnType = requireRegisteredType(returnType, 'method ' + humanName + ' return value');
+    invoker = FUNCTION_TABLE[invoker];
+
+    classType.Handle.prototype[methodName] = function() {
+        if (!this.ptr) {
+            throw new BindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
+        }
+        if (arguments.length !== 0) {
+            throw new BindingError('emscripten binding method ' + humanName + ' called with arguments, none expected');
+        }
+
+        var args = new Array(1);
+        args[0] = this.ptr;
+        var rv = returnType.fromWireType(invoker.apply(null, args)); // in case ptr needs to be adjusted for multiple inheritance
+        return rv;
+    };
+}
+
+function __embind_register_pointer_cast_method(
+    classType,
+    methodName,
+    returnType,
+    invoker
+) {
+    classType = requireRegisteredType(classType, 'class');
+    methodName = Pointer_stringify(methodName);
+    var humanName = classType.name + '.' + methodName;
+
+    returnType = requireRegisteredType(returnType, 'method ' + humanName + ' return value');
+    invoker = FUNCTION_TABLE[invoker];
+
+    classType.Handle.prototype[methodName] = function() {
+        if (!this.ptr) {
+            throw new BindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
+        }
+        if (arguments.length !== 0) {
+            throw new BindingError('emscripten binding method ' + humanName + ' called with arguments, none expected');
+        }
+        var args = new Array(2);
+        var newPtr = _malloc(8);
+        args[0] = newPtr;
+        args[1] = this.smartPointer;
+        invoker.apply(null,args);
+        var rv = returnType.fromWireType(newPtr); // in case ptr needs to be adjusted for multiple inheritance
         return rv;
     };
 }

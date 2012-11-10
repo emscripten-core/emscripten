@@ -133,6 +133,18 @@ namespace emscripten {
                 size_t memberFunctionSize,
                 void* memberFunction);
 
+            void _embind_register_cast_method(
+                TYPEID classType,
+                const char* methodName,
+                TYPEID returnType,
+                GenericFunction invoker);
+
+            void _embind_register_pointer_cast_method(
+                TYPEID classType,
+                const char* methodName,
+                TYPEID returnType,
+                GenericFunction invoker);
+
             void _embind_register_class_field(
                 TYPEID classType,
                 const char* fieldName,
@@ -252,6 +264,17 @@ namespace emscripten {
     ////////////////////////////////////////////////////////////////////////////////
     // FUNCTIONS
     ////////////////////////////////////////////////////////////////////////////////
+
+
+    template<typename FromType, typename ToType>
+    ToType& performCast(FromType& from) {
+        return *dynamic_cast<ToType*>(&from);
+    };
+
+    template<typename FromRawType, typename ToRawType>
+    std::shared_ptr<ToRawType> performPointerCast(std::shared_ptr<FromRawType> from) {
+        return std::shared_ptr<ToRawType>(from, dynamic_cast<ToRawType*>(from.get()));
+    };
 
     template<typename ReturnType, typename... Args, typename... Policies>
     void function(const char* name, ReturnType (fn)(Args...), Policies...) {
@@ -563,17 +586,35 @@ namespace emscripten {
     ////////////////////////////////////////////////////////////////////////////////
 
     template<typename PointerType>
-    inline void register_smart_ptr(const char* name) {
-        typedef typename PointerType::element_type PointeeType;
+    class register_smart_ptr {
+    public:
+        register_smart_ptr(const char* name) {
+            using namespace internal;
+            typedef typename PointerType::element_type PointeeType;
 
-        internal::registerStandardTypes();
-        internal::_embind_register_smart_ptr(
-            internal::TypeID<PointerType>::get(),
-            internal::TypeID<PointeeType>::get(),
-            name,
-            reinterpret_cast<internal::GenericFunction>(&internal::raw_destructor<PointerType>),
-            reinterpret_cast<internal::GenericFunction>(&internal::get_pointee<PointerType>));
-    }
+            registerStandardTypes();
+            _embind_register_smart_ptr(
+                 TypeID<PointerType>::get(),
+                 TypeID<PointeeType>::get(),
+                 name,
+                 reinterpret_cast<GenericFunction>(&raw_destructor<PointerType>),
+                 reinterpret_cast<GenericFunction>(&get_pointee<PointerType>));
+
+        }
+
+        template<typename ReturnType>
+        register_smart_ptr& cast(const char* methodName) {
+            using namespace internal;
+            typedef typename ReturnType::element_type ReturnPointeeType;
+            typedef typename PointerType::element_type PointeeType;
+            _embind_register_pointer_cast_method(
+                 TypeID<PointerType>::get(),
+                 methodName,
+                 TypeID<ReturnType>::get(),
+                reinterpret_cast<GenericFunction>(&performPointerCast<PointeeType,ReturnPointeeType>));
+            return *this;
+        }
+    };
 
     ////////////////////////////////////////////////////////////////////////////////
     // VECTORS
@@ -599,7 +640,6 @@ namespace emscripten {
     ////////////////////////////////////////////////////////////////////////////////
     // CLASSES
     ////////////////////////////////////////////////////////////////////////////////
-
     // TODO: support class definitions without constructors.
     // TODO: support external class constructors
     template<typename ClassType>
@@ -706,6 +746,18 @@ namespace emscripten {
                 args.count,
                 args.types,
                 reinterpret_cast<internal::GenericFunction>(&internal::FunctorInvoker<ClassType, ReturnType, Args...>::invoke));
+            return *this;
+        }
+
+        template<typename ReturnType>
+        class_& cast(const char* methodName) {
+            using namespace internal;
+
+            _embind_register_cast_method(
+                TypeID<ClassType>::get(),
+                methodName,
+                TypeID<ReturnType>::get(),
+                reinterpret_cast<GenericFunction>(&performCast<ClassType,ReturnType>));
             return *this;
         }
     };
