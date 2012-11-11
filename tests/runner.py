@@ -10168,8 +10168,6 @@ fi
           output = '\n'.join(output)
           assert ('bootstrapping relooper succeeded' in output) == (i == 2), 'only bootstrap on first O2: ' + output
           assert os.path.exists(RELOOPER) == (i >= 2), 'have relooper on O2: ' + output
-          assert ('  checking out' in output) == (i == 2 and phase == 0), 'check out the code on first O2, and if no dir already present: ' + output
-          assert ('  updating' in output) == (i == 2 and phase == 1), 'when have relooper dir, just update: ' + output
           assert ('L2 : do {' in open('a.out.js').read()) == (i >= 2), 'reloop code on O2: ' + output
 
 else:

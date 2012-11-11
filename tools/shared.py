@@ -1032,19 +1032,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       print >> sys.stderr, '======================================='
       print >> sys.stderr, 'bootstrapping relooper...'
       Cache.ensure()
-      RELOOPER_DIR = os.path.join(Cache.dirname, 'relooper')
-      currdir = os.getcwd()
-      if not os.path.exists(RELOOPER_DIR):
-        # check out relooper
-        os.chdir(os.path.dirname(RELOOPER_DIR))
-        print >> sys.stderr, '  checking out', os.getcwd()
-        execute(['git', 'clone', 'git://github.com/kripken/Relooper.git', os.path.basename(RELOOPER_DIR)])
-        assert os.path.exists(RELOOPER_DIR)
-      else:
-        # update
-        print >> sys.stderr, '  updating'
-        os.chdir(RELOOPER_DIR)
-        execute(['git', 'pull', '-u'], stdout=None if DEBUG else PIPE, stderr=None if DEBUG else PIPE)
+      RELOOPER_DIR = path_from_root('src', 'relooper')
 
       def make(opt_level):
         raw = RELOOPER + '.raw.js'
@@ -1067,9 +1055,8 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       print >> sys.stderr, '======================================='
       ok = True
     finally:
-      os.chdir(currdir)
       if not ok:
-        print >> sys.stderr, 'bootstrapping relooper failed. You may need to manually create src/relooper.js, by checking out the Relooper project ( https://github.com/kripken/Relooper ) and building in the emscripten/ dir.'
+        print >> sys.stderr, 'bootstrapping relooper failed. You may need to manually create src/relooper.js by compiling it, see src/relooper/emscripten'
         1/0
 
 # Permanent cache for dlmalloc and stdlibc++
