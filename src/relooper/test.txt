@@ -1,0 +1,99 @@
+
+
+-- If pattern --
+
+
+
+// block A
+if (check == 10) {
+  atob();
+  // block B
+  btoc();
+} else {
+  atoc();
+}
+// block C
+
+
+
+-- If-else pattern --
+
+
+
+// block A
+if (check == 15) {
+  // block B
+} else {
+  // block C
+}
+// block D
+
+
+
+-- Loop + tail pattern --
+
+
+
+while(1) {
+  // block A
+  var check = maybe();
+  // block B
+  if (!(check == 41)) {
+    break;
+  }
+}
+// block C
+
+
+
+-- Loop with phi to head 
+
+// code 1
+var $i_0 = 0;var $x_0 = 5; 
+while(1) {
+  // code 2
+  if (!($2)) {
+    var $x_1 = $x_0; 
+    label = 18;
+    break;
+  }
+  // code 3
+  if ($6) {
+    label = 14;
+    break;
+  } else {
+    var $i_0 = $7;var $x_0 = $5; 
+  }
+}
+if (label == 14) {
+  // code 4
+  if ($10) {
+    // code 5
+  }
+  // code 6
+  var $x_1 = $13; 
+  // code 7
+}
+else if (label == 18) {
+  // code 7
+}
+
+
+
+-- phi on split dead ends --
+
+
+
+// block A...................................................................................................
+if (chak()) {
+  atob();
+  // block B...................................................................................................
+  btod();
+  // block D
+} else {
+  atoc();
+  // block C...................................................................................................
+  ctod2();
+  // block D
+}
+

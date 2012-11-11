@@ -1,0 +1,32 @@
+//0
+if (check(0)) {
+  while(1) {
+    //1
+    if (!(check(1))) {
+      break;
+    }
+  }
+  while(1) {
+    //2
+    if (!(check(2))) {
+      break;
+    }
+  }
+  //3
+} else {
+  goingFrom0to4();
+  while(1) {
+    //4
+    if (!(check(4))) {
+      break;
+    }
+  }
+  while(1) {
+    //5
+    if (check(5)) {
+      break;
+    }
+  }
+  //3
+}
+

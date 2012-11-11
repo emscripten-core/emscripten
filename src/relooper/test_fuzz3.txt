@@ -1,0 +1,9 @@
+
+
+print('entry'); var label; var state; var decisions = [3, 3, 4, 1, 2, 1, 2, 4, 4, 4, 2, 3, 3, 1, 2]; var index = 0; function check() { if (index == decisions.length) throw 'HALT'; return decisions[index++] }
+print(1); state = check();
+print(3); state = check();
+while(1) {
+  print(4); state = check();
+}
+
