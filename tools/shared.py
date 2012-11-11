@@ -1038,13 +1038,13 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
         # check out relooper
         os.chdir(os.path.dirname(RELOOPER_DIR))
         print >> sys.stderr, '  checking out', os.getcwd()
-        execute(['git', 'clone', 'git://github.com/kripken/Relooper.git', os.path.basename(RELOOPER_DIR)])
+        execute(['git', 'clone', 'git://github.com/kripken/Relooper.git', os.path.basename(RELOOPER_DIR)], shell=True)
         assert os.path.exists(RELOOPER_DIR)
       else:
         # update
         print >> sys.stderr, '  updating'
         os.chdir(RELOOPER_DIR)
-        execute(['git', 'pull', '-u'], stdout=None if DEBUG else PIPE, stderr=None if DEBUG else PIPE)
+        execute(['git', 'pull', '-u'], stdout=None if DEBUG else PIPE, stderr=None if DEBUG else PIPE, shell=True)
 
       def make(opt_level):
         raw = RELOOPER + '.raw.js'
