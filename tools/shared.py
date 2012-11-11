@@ -107,6 +107,10 @@ def check_node_version():
 # The test runner always does this check (through |force|). emcc does this less frequently,
 # only when ${EM_CONFIG}_sanity does not exist or is older than EM_CONFIG (so,
 # we re-check sanity when the settings are changed)
+# We also re-check sanity and clear the cache when the version changes
+
+EMSCRIPTEN_VERSION = '1.0.1'
+
 def check_sanity(force=False):
   try:
     if not force:
@@ -114,14 +118,21 @@ def check_sanity(force=False):
         return # config stored directly in EM_CONFIG => skip sanity checks
       settings_mtime = os.stat(CONFIG_FILE).st_mtime
       sanity_file = CONFIG_FILE + '_sanity'
+      reason = 'unknown'
       try:
         sanity_mtime = os.stat(sanity_file).st_mtime
-        if sanity_mtime > settings_mtime:
-          return # sanity has been checked
+        if sanity_mtime <= settings_mtime:
+          reason = 'settings file has changed'
+        else:
+          sanity_version = open(sanity_file).read()
+          if sanity_version != EMSCRIPTEN_VERSION:
+            reason = 'version bump'
+          else:
+            return # all is well
       except:
         pass
 
-      print >> sys.stderr, '(Emscripten: Config file changed, clearing cache)' # LLVM may have changed, etc.
+      print >> sys.stderr, '(Emscripten: %s, clearing cache)' % reason
       Cache.erase()
 
     # some warning, not fatal checks - do them even if EM_IGNORE_SANITY is on
@@ -161,7 +172,7 @@ def check_sanity(force=False):
     if not force:
       # Only create/update this file if the sanity check succeeded, i.e., we got here
       f = open(sanity_file, 'w')
-      f.write('certified\n')
+      f.write(EMSCRIPTEN_VERSION)
       f.close()
 
   except Exception, e:

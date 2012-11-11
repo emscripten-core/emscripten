@@ -10015,12 +10015,23 @@ fi
       self.assertContained(SANITY_MESSAGE, output)
       assert os.path.exists(SANITY_FILE) # EMCC should have checked sanity successfully
       assert mtime(SANITY_FILE) >= mtime(CONFIG_FILE)
+      assert open(SANITY_FILE).read() == EMSCRIPTEN_VERSION
       self.assertNotContained(SANITY_FAIL_MESSAGE, output)
 
       # emcc run again should not sanity check, because the sanity file is newer
       output = self.check_working(EMCC)
       self.assertNotContained(SANITY_MESSAGE, output)
       self.assertNotContained(SANITY_FAIL_MESSAGE, output)
+
+      # correct sanity contents mean we need not check
+      open(SANITY_FILE, 'w').write(EMSCRIPTEN_VERSION)
+      output = self.check_working(EMCC)
+      self.assertNotContained(SANITY_MESSAGE, output)
+
+      # incorrect sanity contents mean we *must* check
+      open(SANITY_FILE, 'w').write('wakawaka')
+      output = self.check_working(EMCC)
+      self.assertContained(SANITY_MESSAGE, output)
 
       # but with EMCC_DEBUG=1 we should check
       assert not os.environ.get('EMCC_DEBUG'), 'do not run sanity checks in debug mode!'
