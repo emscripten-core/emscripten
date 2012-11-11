@@ -14,8 +14,11 @@ as taken from http://docs.python.org/dev/library/ssl.html#certificates
 import signal, socket, optparse, time, os, sys, subprocess
 from select import select
 import websocket
-try:    from urllib.parse import parse_qs, urlparse
-except: from urlparse import parse_qs, urlparse
+try:
+    from urllib.parse import parse_qs, urlparse
+except:
+    from cgi import parse_qs
+    from urlparse import urlparse
 
 class WebSocketProxy(websocket.WebSocketServer):
     """
@@ -205,7 +208,7 @@ Traffic Legend:
         # Extract the token parameter from url
         args = parse_qs(urlparse(path)[4]) # 4 is the query from url
 
-        if not len(args['token']):
+        if not args.has_key('token') or not len(args['token']):
             raise self.EClose("Token not present")
 
         token = args['token'][0].rstrip('\n')
@@ -249,6 +252,24 @@ Traffic Legend:
             ins, outs, excepts = select(rlist, wlist, [], 1)
             if excepts: raise Exception("Socket exception")
 
+            if self.client in outs:
+                # Send queued target data to the client
+                c_pend = self.send_frames(cqueue)
+
+                cqueue = []
+
+            if self.client in ins:
+                # Receive client data, decode it, and queue for target
+                bufs, closed = self.recv_frames()
+                tqueue.extend(bufs)
+
+                if closed:
+                    # TODO: What about blocking on client socket?
+                    self.vmsg("%s:%s: Client closed connection" %(
+                        self.target_host, self.target_port))
+                    raise self.CClose(closed['code'], closed['reason'])
+
+
             if target in outs:
                 # Send queued client data to the target
                 dat = tqueue.pop(0)
@@ -272,24 +293,6 @@ Traffic Legend:
                 cqueue.append(buf)
                 self.traffic("{")
 
-
-            if self.client in outs:
-                # Send queued target data to the client
-                c_pend = self.send_frames(cqueue)
-
-                cqueue = []
-
-
-            if self.client in ins:
-                # Receive client data, decode it, and queue for target
-                bufs, closed = self.recv_frames()
-                tqueue.extend(bufs)
-
-                if closed:
-                    # TODO: What about blocking on client socket?
-                    self.vmsg("%s:%s: Client closed connection" %(
-                        self.target_host, self.target_port))
-                    raise self.CClose(closed['code'], closed['reason'])
 
 
 def _subprocess_setup():

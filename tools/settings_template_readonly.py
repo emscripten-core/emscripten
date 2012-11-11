@@ -43,5 +43,5 @@ COMPILER_ENGINE = NODE_JS
 #                 run all the tests due to node issue 1669). v8 is currently not recommended
 #                 here because of v8 issue 1822.
 
-JS_ENGINES = [NODE_JS, SPIDERMONKEY_ENGINE]
+JS_ENGINES = [NODE_JS] # add this if you have spidermonkey installed too, SPIDERMONKEY_ENGINE]
 

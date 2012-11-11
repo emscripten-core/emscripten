@@ -3,6 +3,7 @@
 
 #include <netdb.h>
 #include <sys/select.h>
+#include <sys/uio.h>
 
 #ifdef __cplusplus
 extern "C" {

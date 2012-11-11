@@ -1,6 +1,6 @@
 
-#ifndef _SYS_POLL_H
-#define _SYS_POLL_H
+#ifndef _SYS_UIO_H
+#define _SYS_UIO_H
 
 #ifdef __cplusplus
 extern "C" {

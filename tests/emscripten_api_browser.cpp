@@ -53,7 +53,7 @@ void mainey() {
 void four(void *arg) {
   assert((int)arg == 43);
   printf("four!\n");
-  emscripten_set_main_loop(mainey, 0);
+  emscripten_set_main_loop(mainey, 0, 0);
 }
 
 void __attribute__((used)) third() {

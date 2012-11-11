@@ -1,0 +1,357 @@
+/**
+@page Tutorial Tutorial
+
+@ref Initialization
+
+@ref CreateServer
+
+@ref CreateClient
+
+@ref ManageHost
+
+@ref SendingPacket
+
+@ref Disconnecting
+
+@ref Connecting
+
+@section Initialization Initialization
+
+You should include the file <enet/enet.h> when using ENet. Do not
+include <enet.h> without the directory prefix, as this may cause
+file name conflicts on some systems.
+
+Before using ENet, you must call enet_initialize() to initialize the
+library. Upon program exit, you should call enet_deinitialize() so
+that the library may clean up any used resources.
+
+@code
+#include <enet/enet.h>
+
+int 
+main (int argc, char ** argv) 
+{
+    if (enet_initialize () != 0)
+    {
+        fprintf (stderr, "An error occurred while initializing ENet.\n");
+        return EXIT_FAILURE;
+    }
+    atexit (enet_deinitialize);
+    ...
+    ...
+    ...
+}
+@endcode
+        
+@section CreateServer Creating an ENet server
+
+Servers in ENet are constructed with enet_host_create(). You must
+specify an address on which to receive data and new connections, as
+well as the maximum allowable numbers of connected peers. You may
+optionally specify the incoming and outgoing bandwidth of the server
+in bytes per second so that ENet may try to statically manage
+bandwidth resources among connected peers in addition to its dynamic
+throttling algorithm; specifying 0 for these two options will cause
+ENet to rely entirely upon its dynamic throttling algorithm to manage
+bandwidth.
+
+When done with a host, the host may be destroyed with
+enet_host_destroy().  All connected peers to the host will be reset,
+and the resources used by the host will be freed.
+
+@code
+    ENetAddress address;
+    ENetHost * server;
+
+    /* Bind the server to the default localhost.     */
+    /* A specific host address can be specified by   */
+    /* enet_address_set_host (& address, "x.x.x.x"); */
+
+    address.host = ENET_HOST_ANY;
+    /* Bind the server to port 1234. */
+    address.port = 1234;
+
+    server = enet_host_create (& address /* the address to bind the server host to */, 
+                                 32      /* allow up to 32 clients and/or outgoing connections */,
+                                  2      /* allow up to 2 channels to be used, 0 and 1 */,
+                                  0      /* assume any amount of incoming bandwidth */,
+                                  0      /* assume any amount of outgoing bandwidth */);
+    if (server == NULL)
+    {
+        fprintf (stderr, 
+                 "An error occurred while trying to create an ENet server host.\n");
+        exit (EXIT_FAILURE);
+    }
+    ...
+    ...
+    ...
+    enet_host_destroy(server);
+@endcode
+
+@section CreateClient Creating an ENet client
+
+Clients in ENet are similarly constructed with enet_host_create() when
+no address is specified to bind the host to. Bandwidth may be
+specified for the client host as in the above example. The peer count
+controls the maximum number of connections to other server hosts that
+may be simultaneously open.
+
+@code
+    ENetHost * client;
+
+    client = enet_host_create (NULL /* create a client host */,
+                1 /* only allow 1 outgoing connection */,
+                2 /* allow up 2 channels to be used, 0 and 1 */,
+                57600 / 8 /* 56K modem with 56 Kbps downstream bandwidth */,
+                14400 / 8 /* 56K modem with 14 Kbps upstream bandwidth */);
+
+    if (client == NULL)
+    {
+        fprintf (stderr, 
+                 "An error occurred while trying to create an ENet client host.\n");
+        exit (EXIT_FAILURE);
+    }
+    ...
+    ...
+    ...
+    enet_host_destroy(client);
+@endcode
+
+@section ManageHost Managing an ENet host
+
+ENet uses a polled event model to notify the programmer of significant
+events. ENet hosts are polled for events with enet_host_service(),
+where an optional timeout value in milliseconds may be specified to
+control how long ENet will poll; if a timeout of 0 is specified,
+enet_host_service() will return immediately if there are no events to
+dispatch. enet_host_service() will return 1 if an event was dispatched
+within the specified timeout.
+
+Currently there are only four types of significant events in ENet:
+
+An event of type ENET_EVENT_TYPE_NONE is returned if no event occurred
+within the specified time limit. enet_host_service() will return 0
+with this event.
+
+An event of type ENET_EVENT_TYPE_CONNECT is returned when either a new client
+host has connected to the server host or when an attempt to establish a 
+connection with a foreign host has succeeded. Only the "peer" field of the 
+event structure is valid for this event and contains the newly connected peer.
+
+An event of type ENET_EVENT_TYPE_RECEIVE is returned when a packet is received
+from a connected peer. The "peer" field contains the peer the packet was 
+received from, "channelID" is the channel on which the packet was sent, and 
+"packet" is the packet that was sent. The packet contained in the "packet" 
+field must be destroyed with enet_packet_destroy() when you are done 
+inspecting its contents.
+
+An event of type ENET_EVENT_TYPE_DISCONNECT is returned when a connected peer
+has either explicitly disconnected or timed out. Only the "peer" field of the
+event structure is valid for this event and contains the peer that 
+disconnected. Only the "data" field of the peer is still valid on a 
+disconnect event and must be explicitly reset.
+
+@code
+    ENetEvent event;
+    
+    /* Wait up to 1000 milliseconds for an event. */
+    while (enet_host_service (client, & event, 1000) > 0)
+    {
+        switch (event.type)
+        {
+        case ENET_EVENT_TYPE_CONNECT:
+            printf ("A new client connected from %x:%u.\n", 
+                    event.peer -> address.host,
+                    event.peer -> address.port);
+
+            /* Store any relevant client information here. */
+            event.peer -> data = "Client information";
+
+            break;
+
+        case ENET_EVENT_TYPE_RECEIVE:
+            printf ("A packet of length %u containing %s was received from %s on channel %u.\n",
+                    event.packet -> dataLength,
+                    event.packet -> data,
+                    event.peer -> data,
+                    event.channelID);
+
+            /* Clean up the packet now that we're done using it. */
+            enet_packet_destroy (event.packet);
+            
+            break;
+           
+        case ENET_EVENT_TYPE_DISCONNECT:
+            printf ("%s disconected.\n", event.peer -> data);
+
+            /* Reset the peer's client information. */
+
+            event.peer -> data = NULL;
+        }
+    }
+    ...
+    ...
+    ...
+@endcode
+
+@section SendingPacket Sending a packet to an ENet peer            
+
+Packets in ENet are created with enet_packet_create(), where the size
+of the packet must be specified. Optionally, initial data may be
+specified to copy into the packet.
+
+Certain flags may also be supplied to enet_packet_create() to control
+various packet features:
+
+ENET_PACKET_FLAG_RELIABLE specifies that the packet must use reliable
+delivery.  A reliable packet is guarenteed to be delivered, and a
+number of retry attempts will be made until an acknowledgement is
+received from the foreign host the packet is sent to. If a certain
+number of retry attempts is reached without any acknowledgement, ENet
+will assume the peer has disconnected and forcefully reset the
+connection. If this flag is not specified, the packet is assumed an
+unreliable packet, and no retry attempts will be made nor
+acknowledgements generated.
+
+A packet may be resized (extended or truncated) with
+enet_packet_resize().
+
+A packet is sent to a foreign host with
+enet_peer_send(). enet_peer_send() accepts a channel id over which to
+send the packet to a given peer. Once the packet is handed over to
+ENet with enet_peer_send(), ENet will handle its deallocation and
+enet_packet_destroy() should not be used upon it.
+
+One may also use enet_host_broadcast() to send a packet to all
+connected peers on a given host over a specified channel id, as with
+enet_peer_send().
+
+Queued packets will be sent on a call to enet_host_service().
+Alternatively, enet_host_flush() will send out queued packets without
+dispatching any events.
+
+@code
+    /* Create a reliable packet of size 7 containing "packet\0" */
+    ENetPacket * packet = enet_packet_create ("packet", 
+                                              strlen ("packet") + 1, 
+                                              ENET_PACKET_FLAG_RELIABLE);
+
+    /* Extend the packet so and append the string "foo", so it now */
+    /* contains "packetfoo\0"                                      */
+    enet_packet_resize (packet, strlen ("packetfoo") + 1);
+    strcpy (& packet -> data [strlen ("packet")], "foo");
+    
+    /* Send the packet to the peer over channel id 0. */
+    /* One could also broadcast the packet by         */
+    /* enet_host_broadcast (host, 0, packet);         */
+    enet_peer_send (peer, 0, packet);
+    ...
+    ...
+    ...
+    /* One could just use enet_host_service() instead. */
+    enet_host_flush (host);
+@endcode
+
+@section Disconnecting Disconnecting an ENet peer
+
+Peers may be gently disconnected with enet_peer_disconnect(). A
+disconnect request will be sent to the foreign host, and ENet will
+wait for an acknowledgement from the foreign host before finally
+disconnecting. An event of type ENET_EVENT_TYPE_DISCONNECT will be
+generated once the disconnection succeeds. Normally timeouts apply to
+the disconnect acknowledgement, and so if no acknowledgement is
+received after a length of time the peer will be forcefully
+disconnected.
+
+enet_peer_reset() will forcefully disconnect a peer. The foreign host
+will get no notification of a disconnect and will time out on the
+foreign host. No event is generated.
+
+@code
+    ENetEvent event;
+    
+    enet_peer_disconnect (peer, 0);
+
+    /* Allow up to 3 seconds for the disconnect to succeed
+     * and drop any packets received packets.
+     */
+    while (enet_host_service (client, & event, 3000) > 0)
+    {
+        switch (event.type)
+        {
+        case ENET_EVENT_TYPE_RECEIVE:
+            enet_packet_destroy (event.packet);
+            break;
+
+        case ENET_EVENT_TYPE_DISCONNECT:
+            puts ("Disconnection succeeded.");
+            return;
+        ...
+        ...
+        ...
+        }
+    }
+    
+    /* We've arrived here, so the disconnect attempt didn't */
+    /* succeed yet.  Force the connection down.             */
+    enet_peer_reset (peer);
+    ...
+    ...
+    ...
+@endcode
+
+@section Connecting Connecting to an ENet host
+
+A connection to a foreign host is initiated with enet_host_connect().
+It accepts the address of a foreign host to connect to, and the number
+of channels that should be allocated for communication. If N channels
+are allocated for use, their channel ids will be numbered 0 through
+N-1.  A peer representing the connection attempt is returned, or NULL
+if there were no available peers over which to initiate the
+connection. When the connection attempt succeeds, an event of type
+ENET_EVENT_TYPE_CONNECT will be generated. If the connection attempt
+times out or otherwise fails, an event of type
+ENET_EVENT_TYPE_DISCONNECT will be generated.
+
+@code
+    ENetAddress address;
+    ENetEvent event;
+    ENetPeer *peer;
+
+    /* Connect to some.server.net:1234. */
+    enet_address_set_host (& address, "some.server.net");
+    address.port = 1234;
+
+    /* Initiate the connection, allocating the two channels 0 and 1. */
+    peer = enet_host_connect (client, & address, 2, 0);    
+    
+    if (peer == NULL)
+    {
+       fprintf (stderr, 
+                "No available peers for initiating an ENet connection.\n");
+       exit (EXIT_FAILURE);
+    }
+    
+    /* Wait up to 5 seconds for the connection attempt to succeed. */
+    if (enet_host_service (client, & event, 5000) > 0 &&
+        event.type == ENET_EVENT_TYPE_CONNECT)
+    {
+        puts ("Connection to some.server.net:1234 succeeded.");
+        ...
+        ...
+        ...
+    }
+    else
+    {
+        /* Either the 5 seconds are up or a disconnect event was */
+        /* received. Reset the peer in the event the 5 seconds   */
+        /* had run out without any significant event.            */
+        enet_peer_reset (peer);
+
+        puts ("Connection to some.server.net:1234 failed.");
+    }
+    ...
+    ...
+    ...
+@endcode
+*/

@@ -9,12 +9,7 @@ header files (so that the JS compiler can see the constants in those
 headers, for the libc implementation in JS).
 '''
 
-import json
-import optparse
-import os
-import subprocess
-import re
-import sys
+import os, sys, json, optparse, subprocess, re, time, multiprocessing
 
 if not os.environ.get('EMSCRIPTEN_SUPPRESS_USAGE_WARNING'):
   print >> sys.stderr, '''
@@ -25,6 +20,8 @@ WARNING: You should normally never use this! Use emcc instead.
 
 from tools import shared
 
+DEBUG = os.environ.get('EMCC_DEBUG')
+
 __rootpath__ = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(*pathelems):
   """Returns the absolute path for which the given path elements are
@@ -34,22 +31,189 @@ def path_from_root(*pathelems):
 
 temp_files = shared.TempFiles()
 
+compiler_engine = None
+
+def scan(ll, settings):
+  # blockaddress(@main, %23)
+  blockaddrs = []
+  for blockaddr in re.findall('blockaddress\([^)]*\)', ll):
+    b = blockaddr.split('(')[1][:-1].split(', ')
+    blockaddrs.append(b)
+  if len(blockaddrs) > 0:
+    settings['NECESSARY_BLOCKADDRS'] = blockaddrs
+
+NUM_CHUNKS_PER_CORE = 4
+MIN_CHUNK_SIZE = 1024*1024
+MAX_CHUNK_SIZE = float(os.environ.get('EMSCRIPT_MAX_CHUNK_SIZE') or 'inf') # configuring this is just for debugging purposes
+
+def process_funcs(args):
+  i, ll, settings_file, compiler, forwarded_file, libraries = args
+  funcs_file = temp_files.get('.func_%d.ll' % i).name
+  open(funcs_file, 'w').write(ll)
+  out = shared.run_js(compiler, compiler_engine, [settings_file, funcs_file, 'funcs', forwarded_file] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
+  return out.split('//FORWARDED_DATA:')
 
 def emscript(infile, settings, outfile, libraries=[]):
-  """Runs the emscripten LLVM-to-JS compiler.
+  """Runs the emscripten LLVM-to-JS compiler. We parallelize as much as possible
 
   Args:
     infile: The path to the input LLVM assembly file.
-    settings: JSON-formatted string of settings that overrides the values
+    settings: JSON-formatted settings that override the values
       defined in src/settings.js.
     outfile: The file where the output is written.
   """
-  settings_file = temp_files.get('.txt').name # Save settings to a file to work around v8 issue 1579
-  s = open(settings_file, 'w')
-  s.write(settings)
-  s.close()
+
   compiler = path_from_root('src', 'compiler.js')
-  shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, infile] + libraries, stdout=outfile, cwd=path_from_root('src'))
+
+  # Parallelization: We run 3 phases:
+  #   1 aka 'pre'  : Process types and metadata and so forth, and generate the preamble.
+  #   2 aka 'funcs': Process functions. We can parallelize this, working on each function independently.
+  #   3 aka 'post' : Process globals, generate postamble and finishing touches.
+
+  if DEBUG: print >> sys.stderr, 'emscript: ll=>js'
+
+  # Pre-scan ll and alter settings as necessary
+  if DEBUG: t = time.time()
+  ll = open(infile).read()
+  scan(ll, settings)
+  total_ll_size = len(ll)
+  ll = None # allow collection
+  if DEBUG: print >> sys.stderr, '  emscript: scan took %s seconds' % (time.time() - t)
+
+  # Split input into the relevant parts for each phase
+  pre = []
+  funcs = [] # split up functions here, for parallelism later
+  meta = [] # needed by each function XXX
+  post = []
+
+  if DEBUG: t = time.time()
+  in_func = False
+  ll_lines = open(infile).readlines()
+  for line in ll_lines:
+    if in_func:
+      funcs[-1].append(line)
+      if line.startswith('}'):
+        in_func = False
+        funcs[-1] = ''.join(funcs[-1])
+        pre.append(line) # pre needs it to, so we know about all implemented functions
+    else:
+      if line.startswith('define '):
+        in_func = True
+        funcs.append([line])
+        pre.append(line) # pre needs it to, so we know about all implemented functions
+      elif line.find(' = type { ') > 0:
+        pre.append(line) # type
+      elif line.startswith('!'):
+        meta.append(line) # metadata
+      else:
+        post.append(line) # global
+        pre.append(line) # pre needs it to, so we know about globals in pre and funcs
+  ll_lines = None
+  meta = ''.join(meta)
+  if DEBUG and len(meta) > 1024*1024: print >> sys.stderr, 'emscript warning: large amounts of metadata, will slow things down'
+  if DEBUG: print >> sys.stderr, '  emscript: split took %s seconds' % (time.time() - t)
+
+  #if DEBUG:
+  #  print >> sys.stderr, '========= pre ================\n'
+  #  print >> sys.stderr, ''.join(pre)
+  #  print >> sys.stderr, '========== funcs ===============\n'
+  #  for func in funcs:
+  #    print >> sys.stderr, '\n// ===\n\n', ''.join(func)
+  #  print >> sys.stderr, '========== post ==============\n'
+  #  print >> sys.stderr, ''.join(post)
+  #  print >> sys.stderr, '=========================\n'
+
+  # Save settings to a file to work around v8 issue 1579
+  settings_file = temp_files.get('.txt').name
+  s = open(settings_file, 'w')
+  s.write(json.dumps(settings))
+  s.close()
+
+  # Phase 1 - pre
+  if DEBUG: t = time.time()
+  pre_file = temp_files.get('.pre.ll').name
+  open(pre_file, 'w').write(''.join(pre) + '\n' + meta)
+  out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, pre_file, 'pre'] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
+  js, forwarded_data = out.split('//FORWARDED_DATA:')
+  #print 'js', js
+  #print >> sys.stderr, 'FORWARDED_DATA 1:', forwarded_data, type(forwarded_data)
+  forwarded_file = temp_files.get('.json').name
+  open(forwarded_file, 'w').write(forwarded_data)
+  if DEBUG: print >> sys.stderr, '  emscript: phase 1 took %s seconds' % (time.time() - t)
+
+  # Phase 2 - func
+
+  cores = multiprocessing.cpu_count()
+  assert cores >= 1
+  intended_num_chunks = cores * NUM_CHUNKS_PER_CORE
+  chunk_size = max(MIN_CHUNK_SIZE, total_ll_size / intended_num_chunks)
+  chunk_size += 3*len(meta) # keep ratio of lots of function code to meta
+  chunk_size = min(MAX_CHUNK_SIZE, chunk_size)
+
+  if DEBUG: t = time.time()
+  forwarded_json = json.loads(forwarded_data)
+  indexed_functions = set()
+  chunks = [] # bundles of functions
+  curr = ''
+  for i in range(len(funcs)):
+    func = funcs[i]
+    if len(curr) + len(func) < chunk_size:
+      curr += func
+    else:
+      chunks.append(curr)
+      curr = func
+  if curr:
+    chunks.append(curr)
+    curr = ''
+  if cores == 1: assert len(chunks) == 1, 'no point in splitting up without multiple cores'
+  if DEBUG: print >> sys.stderr, '  emscript: phase 2 working on %d chunks %s (intended chunk size: %.2f MB, meta: %.2f MB)' % (len(chunks), ('using %d cores' % cores) if len(chunks) > 1 else '', chunk_size/(1024*1024.), len(meta)/(1024*1024.))
+
+  commands = [(i, chunk + '\n' + meta, settings_file, compiler, forwarded_file, libraries) for chunk in chunks]
+
+  if len(chunks) > 1:
+    pool = multiprocessing.Pool(processes=cores)
+    outputs = pool.map(process_funcs, commands, chunksize=1)
+  else:
+    outputs = [process_funcs(commands[0])]
+
+  for funcs_js, curr_forwarded_data in outputs:
+    js += funcs_js
+    # merge forwarded data
+    curr_forwarded_json = json.loads(curr_forwarded_data)
+    forwarded_json['Types']['preciseI64MathUsed'] = forwarded_json['Types']['preciseI64MathUsed'] or curr_forwarded_json['Types']['preciseI64MathUsed']
+    for key, value in curr_forwarded_json['Functions']['blockAddresses'].iteritems():
+      forwarded_json['Functions']['blockAddresses'][key] = value
+    for key in curr_forwarded_json['Functions']['indexedFunctions'].iterkeys():
+      indexed_functions.add(key)
+  if DEBUG: print >> sys.stderr, '  emscript: phase 2 took %s seconds' % (time.time() - t)
+  if DEBUG: t = time.time()
+
+  # calculations on merged forwarded data
+  forwarded_json['Functions']['indexedFunctions'] = {}
+  i = 2
+  for indexed in indexed_functions:
+    forwarded_json['Functions']['indexedFunctions'][indexed] = i # make sure not to modify this python object later - we use it in indexize
+    i += 2
+  forwarded_json['Functions']['nextIndex'] = i
+  indexing = forwarded_json['Functions']['indexedFunctions']
+  def indexize(js):
+    return re.sub(r'{{{ FI_([\w\d_$]+) }}}', lambda m: str(indexing[m.groups(0)[0]]), js)
+  # forward
+  forwarded_data = json.dumps(forwarded_json)
+  forwarded_file = temp_files.get('.2.json').name
+  open(forwarded_file, 'w').write(forwarded_data)
+  if DEBUG: print >> sys.stderr, '  emscript: phase 2b took %s seconds' % (time.time() - t)
+
+  # Phase 3 - post
+  if DEBUG: t = time.time()
+  post_file = temp_files.get('.post.ll').name
+  open(post_file, 'w').write(''.join(post) + '\n' + meta)
+  out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, post_file, 'post', forwarded_file] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
+  js += out
+  js = indexize(js)
+  if DEBUG: print >> sys.stderr, '  emscript: phase 3 took %s seconds' % (time.time() - t)
+
+  outfile.write(js) # TODO: write in parts (see previous line though)
   outfile.close()
 
 
@@ -127,11 +291,11 @@ def main(args):
   libraries = args.libraries[0].split(',') if len(args.libraries) > 0 else []
 
   # Compile the assembly to Javascript.
-  emscript(args.infile, json.dumps(settings), args.outfile, libraries)
+  emscript(args.infile, settings, args.outfile, libraries)
 
 if __name__ == '__main__':
   parser = optparse.OptionParser(
-      usage='usage: %prog [-h] [-H HEADERS] [-o OUTFILE] [-s FOO=BAR]* infile',
+      usage='usage: %prog [-h] [-H HEADERS] [-o OUTFILE] [-c COMPILER_ENGINE] [-s FOO=BAR]* infile',
       description=('You should normally never use this! Use emcc instead. '
                    'This is a wrapper around the JS compiler, converting .ll to .js.'),
       epilog='')
@@ -146,6 +310,9 @@ if __name__ == '__main__':
   parser.add_option('-o', '--outfile',
                     default=sys.stdout,
                     help='Where to write the output; defaults to stdout.')
+  parser.add_option('-c', '--compiler',
+                    default=shared.COMPILER_ENGINE,
+                    help='Which JS engine to use to run the compiler; defaults to the one in ~/.emscripten.')
   parser.add_option('-s', '--setting',
                     dest='settings',
                     default=[],
@@ -161,6 +328,7 @@ if __name__ == '__main__':
   keywords.infile = os.path.abspath(positional[0])
   if isinstance(keywords.outfile, basestring):
     keywords.outfile = open(keywords.outfile, 'w')
+  compiler_engine = keywords.compiler
 
   temp_files.run_and_clean(lambda: main(keywords))
 

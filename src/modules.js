@@ -205,31 +205,35 @@ var Types = {
     }, this);
   },
 
-  needAnalysis: {} // Types noticed during parsing, that need analysis
+  needAnalysis: {}, // Types noticed during parsing, that need analysis
+
+  preciseI64MathUsed: false // Set to true if we actually use precise i64 math: If PRECISE_I64_MATH is set, and also such math is actually
+                            // needed (+,-,*,/,% - we do not need it for bitops)
 };
 
 var Functions = {
-  // The list of function datas which are being processed in the jsifier, currently
-  currFunctions: [],
-
   // All functions that will be implemented in this file
-  implementedFunctions: null,
-
-  // All the function idents seen so far
-  allIdents: [],
+  implementedFunctions: {},
 
   indexedFunctions: {},
   nextIndex: 2, // Start at a non-0 (even, see below) value
 
-  // Mark a function as needing indexing, and returns the index
+  blockAddresses: {}, // maps functions to a map of block labels to label ids
+
+  // Mark a function as needing indexing. Python will coordinate them all
   getIndex: function(ident) {
-    var ret = this.indexedFunctions[ident];
-    if (!ret) {
-      ret = this.nextIndex;
-      this.nextIndex += 2; // Need to have indexes be even numbers, see |polymorph| test
-      this.indexedFunctions[ident] = ret;
+    if (phase != 'post') {
+      this.indexedFunctions[ident] = 0; // tell python we need this indexized
+      return '{{{ FI_' + ident + ' }}}'; // something python will replace later
+    } else {
+      var ret = this.indexedFunctions[ident];
+      if (!ret) {
+        ret = this.nextIndex;
+        this.nextIndex += 2; // Need to have indexes be even numbers, see |polymorph| test
+        this.indexedFunctions[ident] = ret;
+      }
+      return ret.toString();
     }
-    return ret.toString();
   },
 
   // Generate code for function indexing
@@ -251,7 +255,7 @@ var Functions = {
     var indices = vals.toString().replace('"', '');
     if (BUILD_AS_SHARED_LIB) {
       // Shared libraries reuse the parent's function table.
-      return 'FUNCTION_TABLE = FUNCTION_TABLE.concat([' + indices + ']);';
+      return 'FUNCTION_TABLE.push.apply(FUNCTION_TABLE, [' + indices + ']);';
     } else {
       return 'FUNCTION_TABLE = [' + indices + ']; Module["FUNCTION_TABLE"] = FUNCTION_TABLE;';
     }
@@ -264,7 +268,7 @@ var LibraryManager = {
   load: function() {
     assert(!this.library);
 
-    var libraries = ['library.js', 'library_browser.js', 'library_sdl.js', 'library_gl.js', 'library_glut.js', 'library_xlib.js', 'library_egl.js', 'library_gc.js'].concat(additionalLibraries);
+    var libraries = ['library.js', 'library_browser.js', 'library_sdl.js', 'library_gl.js', 'library_glut.js', 'library_xlib.js', 'library_egl.js', 'library_gc.js', 'library_jansson.js'].concat(additionalLibraries);
     for (var i = 0; i < libraries.length; i++) {
       eval(processMacros(preprocess(read(libraries[i]))));
     }
@@ -295,4 +299,33 @@ var LibraryManager = {
 function cDefine(key) {
   return key in C_DEFINES ? C_DEFINES[key] : ('0 /* XXX missing C define ' + key + ' */');
 }
+
+var PassManager = {
+  serialize: function() {
+    print('\n//FORWARDED_DATA:' + JSON.stringify({
+      Types: Types,
+      Variables: Variables,
+      Functions: Functions
+    }));
+  },
+  load: function(json) {
+    var data = JSON.parse(json);
+    for (var i in data.Types) {
+      Types[i] = data.Types[i];
+    }
+    for (var i in data.Variables) {
+      Variables[i] = data.Variables[i];
+    }
+    for (var i in data.Functions) {
+      Functions[i] = data.Functions[i];
+    }
+    /*
+    print('\n//LOADED_DATA:' + phase + ':' + JSON.stringify({
+      Types: Types,
+      Variables: Variables,
+      Functions: Functions
+    }));
+    */
+  }
+};
 

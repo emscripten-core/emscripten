@@ -289,7 +289,83 @@ LibraryManager.library = {
     // XHR, which is not possible in browsers except in a web worker! Use preloading,
     // either --preload-file in emcc or FS.createPreloadedFile
     createLazyFile: function(parent, name, url, canRead, canWrite) {
-      var properties = {isDevice: false, url: url};
+
+      if (typeof XMLHttpRequest !== 'undefined') {
+        if (!ENVIRONMENT_IS_WORKER) throw 'Cannot do synchronous binary XHRs outside webworkers in modern browsers. Use --embed-file or --preload-file in emcc';
+        // Lazy chunked Uint8Array (implements get and length from Uint8Array). Actual getting is abstracted away for eventual reuse.
+        var LazyUint8Array = function(chunkSize, length) {
+          this.length = length;
+          this.chunkSize = chunkSize;
+          this.chunks = []; // Loaded chunks. Index is the chunk number
+        }
+        LazyUint8Array.prototype.get = function(idx) {
+          if (idx > this.length-1 || idx < 0) {
+            return undefined;
+          }
+          var chunkOffset = idx % chunkSize;
+          var chunkNum = Math.floor(idx / chunkSize);
+          return this.getter(chunkNum)[chunkOffset];
+        }
+        LazyUint8Array.prototype.setDataGetter = function(getter) {
+          this.getter = getter;
+        }
+  
+        // Find length
+        var xhr = new XMLHttpRequest();
+        xhr.open('HEAD', url, false);
+        xhr.send(null);
+        if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
+        var datalength = Number(xhr.getResponseHeader("Content-length"));
+        var header;
+        var hasByteServing = (header = xhr.getResponseHeader("Accept-Ranges")) && header === "bytes";
+#if SMALL_XHR_CHUNKS
+        var chunkSize = 1024; // Chunk size in bytes
+#else
+        var chunkSize = 1024*1024; // Chunk size in bytes
+#endif
+        if (!hasByteServing) chunkSize = datalength;
+  
+        // Function to get a range from the remote URL.
+        var doXHR = (function(from, to) {
+          if (from > to) throw new Error("invalid range (" + from + ", " + to + ") or no bytes requested!");
+          if (to > datalength-1) throw new Error("only " + datalength + " bytes available! programmer error!");
+  
+          // TODO: Use mozResponseArrayBuffer, responseStream, etc. if available.
+          var xhr = new XMLHttpRequest();
+          xhr.open('GET', url, false);
+          if (datalength !== chunkSize) xhr.setRequestHeader("Range", "bytes=" + from + "-" + to);
+  
+          // Some hints to the browser that we want binary data.
+          if (typeof Uint8Array != 'undefined') xhr.responseType = 'arraybuffer';
+          if (xhr.overrideMimeType) {
+            xhr.overrideMimeType('text/plain; charset=x-user-defined');
+          }
+  
+          xhr.send(null);
+          if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
+          if (xhr.response !== undefined) {
+            return new Uint8Array(xhr.response || []);
+          } else {
+            return intArrayFromString(xhr.responseText || '', true);
+          }
+        });
+  
+        var lazyArray = new LazyUint8Array(chunkSize, datalength);
+        lazyArray.setDataGetter(function(chunkNum) {
+          var start = chunkNum * lazyArray.chunkSize;
+          var end = (chunkNum+1) * lazyArray.chunkSize - 1; // including this byte
+          end = Math.min(end, datalength-1); // if datalength-1 is selected, this is the last block
+          if (typeof(lazyArray.chunks[chunkNum]) === "undefined") {
+            lazyArray.chunks[chunkNum] = doXHR(start, end);
+          }
+          if (typeof(lazyArray.chunks[chunkNum]) === "undefined") throw new Error("doXHR failed!");
+          return lazyArray.chunks[chunkNum];
+        });
+        var properties = { isDevice: false, contents: lazyArray };
+      } else {
+        var properties = { isDevice: false, url: url };
+      }
+
       return FS.createFile(parent, name, properties, canRead, canWrite);
     },
     // Preloads a file asynchronously. You can call this before run, for example in
@@ -304,12 +380,14 @@ LibraryManager.library = {
     // You can also call this with a typed array instead of a url. It will then
     // do preloading for the Image/Audio part, as if the typed array were the
     // result of an XHR that you did manually.
-    createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror) {
+    createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile) {
       Browser.ensureObjects();
       var fullname = FS.joinPath([parent, name], true);
       function processData(byteArray) {
         function finish(byteArray) {
-          FS.createDataFile(parent, name, byteArray, canRead, canWrite);
+          if (!dontCreateFile) {
+            FS.createDataFile(parent, name, byteArray, canRead, canWrite);
+          }
           if (onload) onload();
           removeRunDependency('cp ' + fullname);
         }
@@ -358,8 +436,7 @@ LibraryManager.library = {
       if (obj.isDevice || obj.isFolder || obj.link || obj.contents) return true;
       var success = true;
       if (typeof XMLHttpRequest !== 'undefined') {
-        // Browser.
-        throw 'Cannot do synchronous binary XHRs in modern browsers. Use --embed-file or --preload-file in emcc';
+        throw new Error("Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread.");
       } else if (Module['read']) {
         // Command-line.
         try {
@@ -1209,7 +1286,7 @@ LibraryManager.library = {
         return 0;
       case {{{ cDefine('F_SETOWN') }}}:
       case {{{ cDefine('F_GETOWN') }}}:
-        // These are for sockets. We don't have them implemented (yet?).
+        // These are for sockets. We don't have them fully implemented yet.
         ___setErrNo(ERRNO_CODES.EINVAL);
         return -1;
       default:
@@ -1629,8 +1706,14 @@ LibraryManager.library = {
       }
       var contents = stream.object.contents;
       var size = Math.min(contents.length - offset, nbyte);
-      for (var i = 0; i < size; i++) {
-        {{{ makeSetValue('buf', 'i', 'contents[offset + i]', 'i8') }}}
+      if (contents.subarray || contents.slice) { // typed array or normal array
+        for (var i = 0; i < size; i++) {
+          {{{ makeSetValue('buf', 'i', 'contents[offset + i]', 'i8') }}}
+        }
+      } else {
+        for (var i = 0; i < size; i++) { // LazyUint8Array from sync binary XHR
+          {{{ makeSetValue('buf', 'i', 'contents.get(offset + i)', 'i8') }}}
+        }
       }
       bytesRead += size;
       return bytesRead;
@@ -2351,26 +2434,44 @@ LibraryManager.library = {
       __scanString.whiteSpace['\t'] = 1;
       __scanString.whiteSpace['\n'] = 1;
     }
-    // Supports %x, %4x, %d.%d, %s, %f, %lf.
+    // Supports %x, %4x, %d.%d, %lld, %s, %f, %lf.
     // TODO: Support all format specifiers.
     format = Pointer_stringify(format);
+    var soFar = 0;
+    if (format.indexOf('%n') >= 0) {
+      // need to track soFar
+      var _get = get;
+      get = function() {
+        soFar++;
+        return _get();
+      }
+      var _unget = unget;
+      unget = function() {
+        soFar--;
+        return _unget();
+      }
+    }
     var formatIndex = 0;
     var argsi = 0;
     var fields = 0;
     var argIndex = 0;
     var next;
-    // remove initial whitespace
-    while (1) {
-      next = get();
-      if (next == 0) return 0;
-      if (!(next in __scanString.whiteSpace)) break;
-    } 
-    unget(next);
+
     next = 1;
+    mainLoop:
     for (var formatIndex = 0; formatIndex < format.length; formatIndex++) {
+      // remove whitespace
+      while (1) {
+        next = get();
+        if (next == 0) return fields;
+        if (!(next in __scanString.whiteSpace)) break;
+      } 
+      unget(next);
+      
       if (next <= 0) return fields;
       var next = get();
       if (next <= 0) return fields;  // End of input.
+
       if (format[formatIndex] === '%') {
         formatIndex++;
         var maxSpecifierStart = formatIndex;
@@ -2384,9 +2485,14 @@ LibraryManager.library = {
         }
         var long_ = false;
         var half = false;
+        var longLong = false;
         if (format[formatIndex] == 'l') {
           long_ = true;
           formatIndex++;
+          if(format[formatIndex] == 'l') {
+            longLong = true;
+            formatIndex++;
+          }
         } else if (format[formatIndex] == 'h') {
           half = true;
           formatIndex++;
@@ -2397,7 +2503,7 @@ LibraryManager.library = {
         var buffer = [];
         // Read characters according to the format. floats are trickier, they may be in an unfloat state in the middle, then be a valid float later
         if (type == 'f') {
-          var last = -1;
+          var last = 0;
           while (next > 0) {
             buffer.push(String.fromCharCode(next));
             if (__isFloat(buffer.join(''))) {
@@ -2410,13 +2516,13 @@ LibraryManager.library = {
             unget(buffer.pop().charCodeAt(0));
           }
           next = get();
-        } else {
+        } else if (type != 'n') {
           var first = true;
           while ((curr < max_ || isNaN(max_)) && next > 0) {
             if (!(next in __scanString.whiteSpace) && // stop on whitespace
                 (type == 's' ||
-                 ((type === 'd' || type == 'u') && ((next >= '0'.charCodeAt(0) && next <= '9'.charCodeAt(0)) ||
-                                                    (first && next == '-'.charCodeAt(0)))) ||
+                 ((type === 'd' || type == 'u' || type == 'i') && ((next >= '0'.charCodeAt(0) && next <= '9'.charCodeAt(0)) ||
+                                                                   (first && next == '-'.charCodeAt(0)))) ||
                  (type === 'x' && (next >= '0'.charCodeAt(0) && next <= '9'.charCodeAt(0) ||
                                    next >= 'a'.charCodeAt(0) && next <= 'f'.charCodeAt(0) ||
                                    next >= 'A'.charCodeAt(0) && next <= 'F'.charCodeAt(0)))) &&
@@ -2430,14 +2536,16 @@ LibraryManager.library = {
             first = false;
           }
         }
-        if (buffer.length === 0) return 0;  // Failure.
+        if (buffer.length === 0 && type != 'n') return 0;  // Failure.
         var text = buffer.join('');
         var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
         argIndex += Runtime.getNativeFieldSize('void*');
         switch (type) {
-          case 'd': case 'u':
+          case 'd': case 'u': case 'i':
             if (half) {
               {{{ makeSetValue('argPtr', 0, 'parseInt(text, 10)', 'i16') }}};
+            } else if(longLong) {
+              {{{ makeSetValue('argPtr', 0, 'parseInt(text, 10)', 'i64') }}};
             } else {
               {{{ makeSetValue('argPtr', 0, 'parseInt(text, 10)', 'i32') }}};
             }
@@ -2458,21 +2566,30 @@ LibraryManager.library = {
               {{{ makeSetValue('argPtr', 'j', 'array[j]', 'i8') }}}
             }
             break;
+          case 'n':
+            {{{ makeSetValue('argPtr', 0, 'soFar-1', 'i32') }}}
+            break;
         }
-        fields++;
+        if (type != 'n') fields++;
+        if (next <= 0) break mainLoop;  // End of input.
       } else if (format[formatIndex] in __scanString.whiteSpace) {
         while (next in __scanString.whiteSpace) {
           next = get();
-          if (next <= 0) return fields;  // End of input.
+          if (next <= 0) break mainLoop;  // End of input.
         }
         unget(next);
       } else {
         // Not a specifier.
         if (format[formatIndex].charCodeAt(0) !== next) {
           unget(next);
-          return fields;
+          break mainLoop;
         }
       }
+    }
+    // 'n' is special in that it needs no input. so it can be at the end, even with nothing left to read
+    if (format[formatIndex-1] == '%' && format[formatIndex] == 'n') {
+      var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
+      {{{ makeSetValue('argPtr', 0, 'soFar-1', 'i32') }}}
     }
     return fields;
   },
@@ -3098,7 +3215,7 @@ LibraryManager.library = {
     var streamObj = FS.streams[stream];
     if (bytesRead == -1) {
       if (streamObj) streamObj.error = true;
-      return -1;
+      return 0;
     } else {
       if (bytesRead < bytesToRead) streamObj.eof = true;
       return Math.floor(bytesRead / size);
@@ -3182,7 +3299,7 @@ LibraryManager.library = {
     var bytesWritten = _write(stream, ptr, bytesToWrite);
     if (bytesWritten == -1) {
       if (FS.streams[stream]) FS.streams[stream].error = true;
-      return -1;
+      return 0;
     } else {
       return Math.floor(bytesWritten / size);
     }
@@ -4350,6 +4467,9 @@ LibraryManager.library = {
   __strtok_state: 0,
   strtok__deps: ['__strtok_state', 'strtok_r'],
   strtok: function(s, delim) {
+    if (!___strtok_state) {
+      ___strtok_state = _malloc(4);
+    }
     return _strtok_r(s, delim, ___strtok_state);
   },
 
@@ -4628,7 +4748,7 @@ LibraryManager.library = {
   },
 
   __assert_func: function(filename, line, func, condition) {
-    throw 'Assertion failed: ' + Pointer_stringify(condition) + ', at: ' + [Pointer_stringify(filename), line, Pointer_stringify(func)];
+    throw 'Assertion failed: ' + (condition ? Pointer_stringify(condition) : 'unknown condition') + ', at: ' + [filename ? Pointer_stringify(filename) : 'unknown filename', line, func ? Pointer_stringify(func) : 'unknown function'];
   },
 
   __cxa_guard_acquire: function(variable) {
@@ -4922,7 +5042,7 @@ LibraryManager.library = {
     };
   },
 
-  llvm_uadd_with_overflow_i64__deps: [function() { preciseI64MathUsed = 1 }],
+  llvm_uadd_with_overflow_i64__deps: [function() { Types.preciseI64MathUsed = 1 }],
   llvm_uadd_with_overflow_i64: function(xl, xh, yl, yh) {
     i64Math.add(xl, xh, yl, yh);
     return {
@@ -4931,7 +5051,7 @@ LibraryManager.library = {
     };
   },
 
-  llvm_umul_with_overflow_i64__deps: [function() { preciseI64MathUsed = 1 }],
+  llvm_umul_with_overflow_i64__deps: [function() { Types.preciseI64MathUsed = 1 }],
   llvm_umul_with_overflow_i64: function(xl, xh, yl, yh) {
     i64Math.mul(xl, xh, yl, yh);
     return {
@@ -6315,14 +6435,18 @@ LibraryManager.library = {
   ntohl: 'htonl',
   ntohs: 'htons',
 
-  inet_pton__deps: ['__setErrNo', '$ERRNO_CODES'],
+  inet_addr: function(ptr) {
+    var b = Pointer_stringify(ptr).split(".");
+    if (b.length !== 4) return -1; // we return -1 for error, and otherwise a uint32. this helps inet_pton differentiate
+    return (Number(b[0]) | (Number(b[1]) << 8) | (Number(b[2]) << 16) | (Number(b[3]) << 24)) >>> 0;
+  },
+
+  inet_pton__deps: ['__setErrNo', '$ERRNO_CODES', 'inet_addr'],
   inet_pton: function(af, src, dst) {
     // int af, const char *src, void *dst
     if ((af ^ {{{ cDefine("AF_INET") }}}) !==  0) { ___setErrNo(ERRNO_CODES.EAFNOSUPPORT); return -1; }
-    var b = Pointer_stringify(src).split(".");
-    if (b.length !== 4) return 0;
-    var ret = Number(b[0]) | (Number(b[1]) << 8) | (Number(b[2]) << 16) | (Number(b[3]) << 24);
-    if (isNaN(ret)) return 0;
+    var ret = _inet_addr(src);
+    if (ret == -1 || isNaN(ret)) return 0;
     setValue(dst, ret, 'i32');
     return 1;
   },
@@ -6340,12 +6464,68 @@ LibraryManager.library = {
   },
 
   // ==========================================================================
-  // sockets
+  // netdb.h
+  // ==========================================================================
+
+  // All we can do is alias names to ips. you give this a name, it returns an
+  // "ip" that we later know to use as a name. There is no way to do actual
+  // name resolving clientside in a browser.
+  // we do the aliasing in 172.29.*.*, giving us 65536 possibilities
+  // note: lots of leaking here!
+  __hostent_struct_layout: Runtime.generateStructInfo([
+    ['i8*', 'h_name'],
+    ['i8**', 'h_aliases'],
+    ['i32', 'h_addrtype'],
+    ['i32', 'h_length'],
+    ['i8**', 'h_addr_list'],
+  ]),
+  gethostbyname__deps: ['__hostent_struct_layout'],
+  gethostbyname: function(name) {
+    name = Pointer_stringify(name);
+      if (!_gethostbyname.id) {
+        _gethostbyname.id = 1;
+        _gethostbyname.table = {};
+      }
+    var id = _gethostbyname.id++;
+    assert(id < 65535);
+    var fakeAddr = 172 | (29 << 8) | ((id & 0xff) << 16) | ((id & 0xff00) << 24);
+    _gethostbyname.table[id] = name;
+    // generate hostent
+    var ret = _malloc(___hostent_struct_layout.__size__);
+    var nameBuf = _malloc(name.length+1);
+    writeStringToMemory(name, nameBuf);
+    setValue(ret+___hostent_struct_layout.h_name, nameBuf, 'i8*');
+    var aliasesBuf = _malloc(4);
+    setValue(aliasesBuf, 0, 'i8*');
+    setValue(ret+___hostent_struct_layout.h_aliases, aliasesBuf, 'i8**');
+    setValue(ret+___hostent_struct_layout.h_addrtype, {{{ cDefine("AF_INET") }}}, 'i32');
+    setValue(ret+___hostent_struct_layout.h_length, 4, 'i32');
+    var addrListBuf = _malloc(12);
+    setValue(addrListBuf, addrListBuf+8, 'i32*');
+    setValue(addrListBuf+4, 0, 'i32*');
+    setValue(addrListBuf+8, fakeAddr, 'i32');
+    setValue(ret+___hostent_struct_layout.h_addr_list, addrListBuf, 'i8**');
+    return ret;
+  },
+
+  gethostbyname_r__deps: ['gethostbyname'],
+  gethostbyname_r: function(name, hostData, buffer, bufferSize, hostEntry, errnum) {
+    var data = _gethostbyname(name);
+    _memcpy(hostData, data, ___hostent_struct_layout.__size__);
+    _free(data);
+    setValue(errnum, 0, 'i32');
+    return 0;
+  },
+
+  // ==========================================================================
+  // sockets. Note that the implementation assumes all sockets are always
+  // nonblocking
   // ==========================================================================
 
   $Sockets__deps: ['__setErrNo', '$ERRNO_CODES'],
   $Sockets: {
-    BUFFER_SIZE: 10*1024,
+    BUFFER_SIZE: 10*1024, // initial size
+    MAX_BUFFER_SIZE: 10*1024*1024, // maximum size we will grow the buffer
     nextFd: 1,
     fds: {},
     sockaddr_in_layout: Runtime.generateStructInfo([
@@ -6353,6 +6533,15 @@ LibraryManager.library = {
       ['i16', 'sin_port'],
       ['i32', 'sin_addr'],
       ['i64', 'sin_zero'],
+    ]),
+    msghdr_layout: Runtime.generateStructInfo([
+      ['*', 'msg_name'],
+      ['i32', 'msg_namelen'],
+      ['*', 'msg_iov'],
+      ['i32', 'msg_iovlen'],
+      ['*', 'msg_control'],
+      ['i32', 'msg_controllen'],
+      ['i32', 'msg_flags'],
     ]),
   },
 
@@ -6365,7 +6554,7 @@ LibraryManager.library = {
     return fd;
   },
 
-  connect__deps: ['$Sockets', '_inet_ntop_raw', 'ntohs'],
+  connect__deps: ['$Sockets', '_inet_ntop_raw', 'ntohs', 'gethostbyname'],
   connect: function(fd, addr, addrlen) {
     var info = Sockets.fds[fd];
     if (!info) return -1;
@@ -6373,24 +6562,77 @@ LibraryManager.library = {
     info.addr = getValue(addr + Sockets.sockaddr_in_layout.sin_addr, 'i32');
     info.port = _ntohs(getValue(addr + Sockets.sockaddr_in_layout.sin_port, 'i16'));
     info.host = __inet_ntop_raw(info.addr);
-    info.socket = new WebSocket('ws://' + info.host + ':' + info.port, ['arraybuffer']);
+    // Support 'fake' ips from gethostbyname
+    var parts = info.host.split('.');
+    if (parts[0] == '172' && parts[1] == '29') {
+      var low = Number(parts[2]);
+      var high = Number(parts[3]);
+      info.host = _gethostbyname.table[low + 0xff*high];
+      assert(info.host, 'problem translating fake ip ' + parts);
+    }
+    console.log('opening ws://' + info.host + ':' + info.port);
+    info.socket = new WebSocket('ws://' + info.host + ':' + info.port, ['binary']);
     info.socket.binaryType = 'arraybuffer';
     info.buffer = new Uint8Array(Sockets.BUFFER_SIZE);
     info.bufferWrite = info.bufferRead = 0;
     info.socket.onmessage = function (event) {
-      var data = event.data;
-      if (typeof data == 'string') {
-        var binaryString = window.atob(data);
-        var len = binaryString.length;
-        for (var i = 0; i < len; i++) {
-          info.buffer[info.bufferWrite++] = binaryString.charCodeAt(i);
-          if (info.bufferWrite == Sockets.BUFFER_SIZE) info.bufferWrite = 0;
-          if (info.bufferWrite == info.bufferRead) throw 'socket buffer overflow';
+      assert(typeof event.data !== 'string' && event.data.byteLength); // must get binary data!
+      var data = new Uint8Array(event.data); // make a typed array view on the array buffer
+      var len = data.length;
+#if SOCKET_DEBUG
+      Module.print(['onmessage', window.location, data, len, '|', Array.prototype.slice.call(data)]);
+#endif
+      for (var i = 0; i < len; i++) { // TODO: typed array set, carefully with ranges, or other trick
+        info.buffer[info.bufferWrite++] = data[i];
+        if (info.bufferWrite == info.buffer.length) info.bufferWrite = 0;
+        if (info.bufferWrite == info.bufferRead) {
+          // grow the buffer
+          var currLen = info.buffer.length;
+          if (currLen > Sockets.MAX_BUFFER_SIZE) throw 'socket buffer overflow';
+          var newBuffer = new Uint8Array(currLen*2);
+          for (var j = 0; j < currLen; j++) {
+            newBuffer[j] = info.buffer[(info.bufferRead + j)%currLen];
+          }
+          info.bufferRead = 0;
+          info.bufferWrite = currLen;
+          info.buffer = newBuffer;
         }
-      } else {
-        console.log('binary!');
       }
     }
+    info.sendQueue = new Uint8Array(1024);
+    info.sendQueueUsed = 0;
+    info.senderWaiting = false;
+    info.sender = function(data, justQueue) {
+      if (data) {
+#if SOCKET_DEBUG
+        Module.print(['sender', data, data.length, '|', Array.prototype.slice.call(data)]);
+#endif
+        if (info.sendQueueUsed + data.length >= info.sendQueue.length) {
+          var newQueue = new Uint8Array(2*Math.max(info.sendQueue.length, data.length));
+          newQueue.set(info.sendQueue);
+          info.sendQueue = newQueue;
+        }
+        info.sendQueue.set(data, info.sendQueueUsed); // must copy, because while this waits memory can change!
+        info.sendQueueUsed += data.length;
+      } else {
+        info.senderWaiting = false; // we are a setTimeout callback
+        if (info.sendQueueUsed == 0) return;
+      }
+      if (info.socket.readyState != info.socket.OPEN) {
+        if (!info.senderWaiting) {
+          console.log('waiting for socket in order to send');
+          setTimeout(info.sender, 100);
+          info.senderWaiting = true;
+        }
+        return;
+      }
+      if (justQueue) return;
+#if SOCKET_DEBUG
+      Module.print('sender actually sending ' + info.sendQueueUsed);
+#endif
+      info.socket.send(new Uint8Array(info.sendQueue.subarray(0, info.sendQueueUsed)).buffer); // TODO: if browser accepts views, can optimize this
+      info.sendQueueUsed = 0;
+    };
     return 0;
   },
 
@@ -6403,14 +6645,118 @@ LibraryManager.library = {
       return 0; // should this be -1 like the spec says?
     }
     var ret = 0;
+#if SOCKET_DEBUG
+    Module.print('pre-recv: ' + [len, info.bufferWrite, info.bufferRead]);
+#endif
     while (info.bufferWrite != info.bufferRead && len > 0) {
       // write out a byte
       {{{ makeSetValue('buf++', '0', 'info.buffer[info.bufferRead++]', 'i8') }}};
-      if (info.bufferRead == Sockets.BUFFER_SIZE) info.bufferRead = 0;
+      if (info.bufferRead == info.buffer.length) info.bufferRead = 0;
       len--;
       ret++;
     }
+#if SOCKET_DEBUG
+    Module.print('recv: ' + [ret, len, buf] + ' : ' + Array.prototype.slice.call(HEAPU8.subarray(buf-ret, buf)));
+#endif
     return ret;
+  },
+
+  send__deps: ['$Sockets'],
+  send: function(fd, buf, len, flags) {
+    var info = Sockets.fds[fd];
+    if (!info) return -1;
+    info.sender(HEAPU8.subarray(buf, buf+len));
+    return len;
+  },
+
+  sendmsg__deps: ['$Sockets', 'connect'],
+  sendmsg: function(fd, msg, flags) {
+    var info = Sockets.fds[fd];
+    if (!info) return -1;
+    // if we are not connected, use the address info in the message
+    if (!info.connected) {
+      var name = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_name', '*') }}};
+      assert(name, 'sendmsg on non-connected socket, and no name/address in the message');
+      _connect(fd, name, {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_namelen', 'i32') }}});
+    }
+    var iov = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iov', 'i8*') }}};
+    var num = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iovlen', 'i32') }}};
+    var ret = 0;
+#if SOCKET_DEBUG
+      Module.print('sendmsg vecs: ' + num);
+#endif
+    for (var i = 0; i < num; i++) {
+      var currNum = {{{ makeGetValue('iov', '8*i + 4', 'i32') }}};
+#if SOCKET_DEBUG
+      Module.print('sendmsg curr size: ' + currNum);
+#endif
+      if (!currNum) continue;
+      var currBuf = {{{ makeGetValue('iov', '8*i', 'i8*') }}};
+      info.sender(HEAPU8.subarray(currBuf, currBuf+currNum), true);
+      ret += currNum;
+    }
+    info.sender(null); // flush all of these together. Important they get sent as a single socket message
+    return ret;
+  },
+
+  recvmsg__deps: ['$Sockets', 'connect', 'recv', '__setErrNo', '$ERRNO_CODES', 'htons'],
+  recvmsg: function(fd, msg, flags) {
+    var info = Sockets.fds[fd];
+    if (!info) return -1;
+    // if we are not connected, use the address info in the message
+    if (!info.connected) {
+#if SOCKET_DEBUG
+      Module.print('recvmsg connecting');
+#endif
+      var name = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_name', '*') }}};
+      assert(name, 'sendmsg on non-connected socket, and no name/address in the message');
+      _connect(fd, name, {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_namelen', 'i32') }}});
+    }
+    var bytes = info.bufferWrite - info.bufferRead;
+    if (bytes < 0) bytes += info.buffer.length;
+    if (bytes == 0) {
+      ___setErrNo(ERRNO_CODES.EWOULDBLOCK);
+      return -1;
+    }
+#if SOCKET_DEBUG
+    Module.print('recvmsg bytes: ' + bytes);
+#endif
+    // write source
+    var name = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_name', '*') }}};
+    {{{ makeSetValue('name', 'Sockets.sockaddr_in_layout.sin_addr', 'info.addr', 'i32') }}};
+    {{{ makeSetValue('name', 'Sockets.sockaddr_in_layout.sin_port', '_htons(info.port)', 'i16') }}};
+    // write data
+    var ret = bytes;
+    var iov = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iov', 'i8*') }}};
+    var num = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iovlen', 'i32') }}};
+    var data = '';
+    for (var i = 0; i < num && bytes > 0; i++) {
+      var currNum = {{{ makeGetValue('iov', '8*i + 4', 'i32') }}};
+#if SOCKET_DEBUG
+      Module.print('recvmsg loop ' + [i, num, bytes, currNum]);
+#endif
+      if (!currNum) continue;
+      currNum = Math.min(currNum, bytes); // XXX what should happen when we partially fill a buffer..?
+      bytes -= currNum;
+      var currBuf = {{{ makeGetValue('iov', '8*i', 'i8*') }}};
+#if SOCKET_DEBUG
+      Module.print('recvmsg call recv ' + currNum);
+#endif
+      assert(_recv(fd, currBuf, currNum, 0) == currNum);
+    }
+    return ret;
+  },
+
+  recvfrom__deps: ['$Sockets', 'connect', 'recv'],
+  recvfrom: function(fd, buf, len, flags, addr, addrlen) {
+    var info = Sockets.fds[fd];
+    if (!info) return -1;
+    // if we are not connected, use the address info in the message
+    if (!info.connected) {
+      //var name = {{{ makeGetValue('addr', '0', '*') }}};
+      _connect(fd, addr, addrlen);
+    }
+    return _recv(fd, buf, len, flags);
   },
 
   shutdown: function(fd, how) {
@@ -6425,10 +6771,38 @@ LibraryManager.library = {
     if (!info) return -1;
     var start = info.bufferRead;
     var end = info.bufferWrite;
-    if (end < start) end += Sockets.BUFFER_SIZE;
+    if (end < start) end += info.buffer.length;
     var dest = {{{ makeGetValue('varargs', '0', 'i32') }}};
     {{{ makeSetValue('dest', '0', 'end - start', 'i32') }}};
     return 0;
+  },
+
+  setsockopt: function(d, level, optname, optval, optlen) {
+    console.log('ignoring setsockopt command');
+    return 0;
+  },
+
+  bind__deps: ['connect'],
+  bind: function(fd, addr, addrlen) {
+    return _connect(fd, addr, addrlen);
+  },
+
+  listen: function(fd, backlog) {
+    return 0;
+  },
+
+  accept: function(fd, addr, addrlen) {
+    // TODO: webrtc queued incoming connections, etc.
+    // For now, the model is that bind does a connect, and we "accept" that one connection,
+    // which has host:port the same as ours. We also return the same socket fd.
+    var info = Sockets.fds[fd];
+    if (!info) return -1;
+    if (addr) {
+      setValue(addr + Sockets.sockaddr_in_layout.sin_addr, info.addr, 'i32');
+      setValue(addr + Sockets.sockaddr_in_layout.sin_port, info.port, 'i32');
+      setValue(addrlen, Sockets.sockaddr_in_layout.__size__, 'i32');
+    }
+    return fd;
   },
 
   // ==========================================================================

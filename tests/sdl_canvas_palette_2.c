@@ -68,7 +68,7 @@ int main() {
 
   //Animation
   printf("you should see red gradient animation\n");
-  emscripten_set_main_loop(animatePalette, 0);
+  emscripten_set_main_loop(animatePalette, 0, 1);
 
   SDL_Quit();
 

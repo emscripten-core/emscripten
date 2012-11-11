@@ -16,7 +16,7 @@ function SAFE_HEAP_CLEAR(dest) {
 #if SAFE_HEAP_LOG
   Module.print('SAFE_HEAP clear: ' + dest);
 #endif
-  HEAP_HISTORY[dest] = [];
+  HEAP_HISTORY[dest] = undefined;
 }
 var SAFE_HEAP_ERRORS = 0;
 var ACCEPTABLE_SAFE_HEAP_ERRORS = 0;
@@ -37,7 +37,7 @@ function SAFE_HEAP_ACCESS(dest, type, store, ignore) {
 #if USE_TYPED_ARRAYS == 2
   return; // It is legitimate to violate the load-store assumption in this case
 #endif
-  if (type && type[type.length-1] == '*') type = 'i32'; // pointers are ints, for our purposes here
+  if (type && type.charAt(type.length-1) == '*') type = 'i32'; // pointers are ints, for our purposes here
   // Note that this will pass even with unions: You can store X, load X, then store Y and load Y.
   // You cannot, however, do the nonportable act of store X and load Y!
   if (store) {
@@ -391,7 +391,7 @@ Module["cwrap"] = cwrap;
 // getValue need LLVM types ('i8', 'i32') - this is a lower-level operation
 function setValue(ptr, value, type, noSafe) {
   type = type || 'i8';
-  if (type[type.length-1] === '*') type = 'i32'; // pointers are 32-bit
+  if (type.charAt(type.length-1) === '*') type = 'i32'; // pointers are 32-bit
 #if SAFE_HEAP
   if (noSafe) {
     switch(type) {
@@ -425,7 +425,7 @@ Module['setValue'] = setValue;
 // Parallel to setValue.
 function getValue(ptr, type, noSafe) {
   type = type || 'i8';
-  if (type[type.length-1] === '*') type = 'i32'; // pointers are 32-bit
+  if (type.charAt(type.length-1) === '*') type = 'i32'; // pointers are 32-bit
 #if SAFE_HEAP
   if (noSafe) {
     switch(type) {
@@ -576,9 +576,12 @@ var STACK_ROOT, STACKTOP, STACK_MAX;
 var STATICTOP;
 #if USE_TYPED_ARRAYS
 function enlargeMemory() {
+#if ALLOW_MEMORY_GROWTH == 0
+  abort('Cannot enlarge memory arrays. Adjust TOTAL_MEMORY (currently ' + TOTAL_MEMORY + ') or compile with ALLOW_MEMORY_GROWTH');
+#else
   // TOTAL_MEMORY is the current size of the actual array, and STATICTOP is the new top.
 #if ASSERTIONS
-  Module.printErr('Warning: Enlarging memory arrays, this is not fast! ' + [STATICTOP, TOTAL_MEMORY]);
+  Module.printErr('Warning: Enlarging memory arrays, this is not fast, and ALLOW_MEMORY_GROWTH is not fully tested with all optimizations on! ' + [STATICTOP, TOTAL_MEMORY]); // We perform safe elimination instead of elimination in this mode, but if you see this error, try to disable it and other optimizations entirely
   assert(STATICTOP >= TOTAL_MEMORY);
   assert(TOTAL_MEMORY > 4); // So the loop below will not be infinite
 #endif
@@ -608,6 +611,7 @@ function enlargeMemory() {
   HEAPF32 = new Float32Array(buffer);
   HEAPF64 = new Float64Array(buffer);
   HEAP8.set(oldHEAP8);
+#endif
 #endif
 }
 #endif
@@ -699,6 +703,8 @@ STACK_MAX = tempDoublePtr + 8;
 #endif
 
 STATICTOP = alignMemoryPage(STACK_MAX);
+
+assert(STATICTOP < TOTAL_MEMORY); // Stack must fit in TOTAL_MEMORY; allocations from here on may enlarge TOTAL_MEMORY
 
 var nullString = allocate(intArrayFromString('(null)'), 'i8', ALLOC_STATIC);
 

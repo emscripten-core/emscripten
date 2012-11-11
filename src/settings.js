@@ -48,6 +48,13 @@ var TOTAL_MEMORY = 10*1024*1024; // The total amount of memory to use. Using mor
                                  // we need to copy the old heap into a new one in that case.
 var FAST_MEMORY = 2*1024*1024; // The amount of memory to initialize to 0. This ensures it will be
                                // in a flat array. This only matters in non-typed array builds.
+var ALLOW_MEMORY_GROWTH = 0; // If false, we abort with an error if we try to allocate more memory than
+                             // we can (TOTAL_MEMORY). If true, we will grow the memory arrays at
+                             // runtime, seamlessly and dynamically. This has a performance cost though,
+                             // both during the actual growth and in general (the latter is because in
+                             // that case we must be careful about optimizations, in particular the
+                             // eliminator). Note that memory growth is only supported with typed
+                             // arrays.
 
 // Code embetterments
 var MICRO_OPTS = 1; // Various micro-optimizations, like nativizing variables
@@ -72,6 +79,10 @@ var DOUBLE_MODE = 1; // How to load and store 64-bit doubles. Without typed arra
                      // then load it aligned, and that load-store will make JS engines alter it if it is being
                      // stored to a typed array for security reasons. That will 'fix' the number from being a
                      // NaN or an infinite number.
+var UNALIGNED_MEMORY = 0; // If enabled, all memory accesses are assumed to be unaligned. (This only matters in
+                          // typed arrays mode 2 where alignment is relevant.) In unaligned memory mode, you
+                          // can run nonportable code that typically would break in JS (or on ARM for that
+                          // matter, which also cannot do unaligned reads/writes), at the cost of slowness
 var PRECISE_I64_MATH = 1; // If enabled, i64 addition etc. is emulated - which is slow but precise. If disabled,
                           // we use the 'double trick' which is fast but incurs rounding at high values.
                           // Note that we do not catch 32-bit multiplication by default (which must be done in
@@ -124,6 +135,7 @@ var LIBRARY_DEBUG = 0; // Print out when we enter a library call (library*.js). 
                        //   emscripten_run_script("Runtime.debug = ...;");
 var GL_DEBUG = 0; // Print out all calls into WebGL. As with LIBRARY_DEBUG, you can set a runtime
                   // option, in this case GL.debug.
+var SOCKET_DEBUG = 0; // Log out socket/network data transfer.
 
 var PROFILE_MAIN_LOOP = 0; // Profile the function called in set_main_loop
 
@@ -181,6 +193,15 @@ var PROFILE = 0; // Enables runtime profiling. See test_profiling for a usage ex
 
 var EXPORTED_FUNCTIONS = ['_main', '_malloc', '_free']; // Functions that are explicitly exported, so they are guaranteed to
                                                         // be accessible outside of the generated code even after running closure compiler.
+                                                        // Note the necessary prefix of "_".
+
+var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = ['memcpy', 'memset', 'malloc', 'free', '$Browser']; // JS library functions (C functions implemented in JS)
+                                                                                           // that we include by default. If you want to make sure
+                                                                                           // something is included by the JS compiler, add it here.
+                                                                                           // For example, if you do not use some emscripten_*
+                                                                                           // C API call from C, but you want to call it from JS,
+                                                                                           // add it here (and in EXPORTED FUNCTIONS with prefix
+                                                                                           // "_", for closure).
 
 var IGNORED_FUNCTIONS = []; // Functions that we should not generate, neither a stub nor a complete function.
                             // This is useful if your project code includes a function, and you want to replace
@@ -197,6 +218,10 @@ var INCLUDE_FULL_LIBRARY = 0; // Whether to include the whole library rather tha
                               // functions used by the generated code. This is needed when
                               // dynamically loading modules that make use of runtime
                               // library functions that are not used in the main module.
+                              // Note that this includes js libraries but *not* C. You will
+                              // need the main file to include all needed C libraries. For
+                              // example, if a library uses malloc or new, you will need
+                              // to use those in the main file too to link in dlmalloc.
 
 var SHELL_FILE = 0; // set this to a string to override the shell file used
 
@@ -204,10 +229,9 @@ var SHOW_LABELS = 0; // Show labels in the generated code
 
 var PRINT_SPLIT_FILE_MARKER = 0; // Prints markers in Javascript generation to split the file later on. See emcc --split option.
 
-var BUILD_AS_SHARED_LIB = 0; // Whether to build the code as a shared library, which
-                             // must be loaded dynamically using dlopen().
+var BUILD_AS_SHARED_LIB = 0; // Whether to build the code as a shared library
                              // 0 here means this is not a shared lib: It is a main file.
-                             // 1 means this is a normal shared lib.
+                             // 1 means this is a normal shared lib, load it with dlopen().
                              // 2 means this is a shared lib that will be linked at runtime,
                              //   which means it will insert its functions into
                              //   the global namespace. See STATIC_LIBS_TO_LOAD.
@@ -216,6 +240,8 @@ var RUNTIME_LINKED_LIBS = []; // If this is a main file (BUILD_AS_SHARED_LIB == 
                               // BUILD_AS_SHARED_LIB == 2.
                               // NOTE: LLVM optimizations run separately on the main file and
                               //       linked libraries can break things.
+var BUILD_AS_WORKER = 0; // If set to 1, this is a worker library, a special kind of library
+                         // that is run in a worker. See emscripten.h
 var LINKABLE = 0; // If set to 1, this file can be linked with others, either as a shared
                   // library or as the main file that calls a shared library. To enable that,
                   // we will not internalize all symbols and cull the unused ones, in other
@@ -245,6 +271,12 @@ var WARN_ON_UNDEFINED_SYMBOLS = 0; // If set to 1, we will warn on any undefined
                                    // going to actually be called (and don't want to mess with
                                    // the existing buildsystem), and (2) functions might be
                                    // implemented later on, say in --pre-js
+
+var SMALL_XHR_CHUNKS = 0; // Use small chunk size for binary synchronous XHR's in Web Workers.
+                          // Used for testing.
+                          // See test_chunked_synchronous_xhr in runner.py and library.js.
+
+var NECESSARY_BLOCKADDRS = []; // List of (function, block) for all block addresses that are taken.
 
 // Compiler debugging options
 var DEBUG_TAGS_SHOWING = [];

@@ -2,6 +2,8 @@ import shutil, time, os, sys, json, tempfile, copy, shlex, atexit, subprocess
 from subprocess import Popen, PIPE, STDOUT
 from tempfile import mkstemp
 
+import js_optimizer
+
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
@@ -33,7 +35,8 @@ else:
     config_file = config_file.replace('{{{ LLVM_ROOT }}}', llvm_root)
     node = 'node'
     try:
-      node = Popen(['which', 'node'], stdout=PIPE).communicate()[0].replace('\n', '')
+      node = Popen(['which', 'node'], stdout=PIPE).communicate()[0].replace('\n', '') or \
+             Popen(['which', 'nodejs'], stdout=PIPE).communicate()[0].replace('\n', '')
     except:
       pass
     config_file = config_file.replace('{{{ NODE }}}', node)
@@ -76,16 +79,28 @@ def check_clang_version():
   actual = Popen([CLANG, '-v'], stderr=PIPE).communicate()[1].split('\n')[0]
   if expected in actual:
     return True
-  
   print >> sys.stderr, 'warning: LLVM version appears incorrect (seeing "%s", expected "%s")' % (actual, expected)
   return False
-
 
 def check_llvm_version():
   try:
     check_clang_version();
   except Exception, e:
     print >> sys.stderr, 'warning: Could not verify LLVM version: %s' % str(e)
+
+EXPECTED_NODE_VERSION = (0,6,8)
+
+def check_node_version():
+  try:
+    actual = Popen([NODE_JS, '--version'], stdout=PIPE).communicate()[0].strip()
+    version = tuple(map(int, actual.replace('v', '').split('.')))
+    if version >= EXPECTED_NODE_VERSION:
+      return True
+    print >> sys.stderr, 'warning: node version appears too old (seeing "%s", expected "%s")' % (actual, 'v' + ('.'.join(map(str, EXPECTED_NODE_VERSION))))
+    return False
+  except Exception, e:
+    print >> sys.stderr, 'warning: cannot check node version:', e
+    return False
 
 # Check that basic stuff we need (a JS engine to compile, Node.js, and Clang and LLVM)
 # exists.
@@ -109,7 +124,9 @@ def check_sanity(force=False):
       print >> sys.stderr, '(Emscripten: Config file changed, clearing cache)' # LLVM may have changed, etc.
       Cache.erase()
 
-    check_llvm_version() # just a warning, not a fatal check - do it even if EM_IGNORE_SANITY is on
+    # some warning, not fatal checks - do them even if EM_IGNORE_SANITY is on
+    check_llvm_version()
+    check_node_version()
 
     if os.environ.get('EM_IGNORE_SANITY'):
       print >> sys.stderr, 'EM_IGNORE_SANITY set, ignoring sanity checks'
@@ -119,17 +136,17 @@ def check_sanity(force=False):
 
     if not check_engine(COMPILER_ENGINE):
       print >> sys.stderr, 'FATAL: The JavaScript shell used for compiling (%s) does not seem to work, check the paths in %s' % (COMPILER_ENGINE, EM_CONFIG)
-      sys.exit(0)
+      sys.exit(1)
 
     if NODE_JS != COMPILER_ENGINE:
       if not check_engine(NODE_JS):
         print >> sys.stderr, 'FATAL: Node.js (%s) does not seem to work, check the paths in %s' % (NODE_JS, EM_CONFIG)
-        sys.exit(0)
+        sys.exit(1)
 
     for cmd in [CLANG, LLVM_LINK, LLVM_AR, LLVM_OPT, LLVM_AS, LLVM_DIS, LLVM_NM]:
       if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'): # .exe extension required for Windows
         print >> sys.stderr, 'FATAL: Cannot find %s, check the paths in %s' % (cmd, EM_CONFIG)
-        sys.exit(0)
+        sys.exit(1)
 
     try:
       subprocess.call([JAVA, '-version'], stdout=PIPE, stderr=PIPE)
@@ -175,7 +192,6 @@ LLVM_NM=os.path.expanduser(build_llvm_tool_path('llvm-nm'))
 LLVM_INTERPRETER=os.path.expanduser(build_llvm_tool_path('lli'))
 LLVM_COMPILER=os.path.expanduser(build_llvm_tool_path('llc'))
 LLVM_EXTRACT=os.path.expanduser(build_llvm_tool_path('llvm-extract'))
-COFFEESCRIPT = path_from_root('tools', 'eliminator', 'node_modules', 'coffee-script', 'bin', 'coffee')
 
 EMSCRIPTEN = path_from_root('emscripten.py')
 DEMANGLER = path_from_root('third_party', 'demangler.py')
@@ -190,8 +206,6 @@ EMMAKEN = path_from_root('tools', 'emmaken.py')
 AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
 BINDINGS_GENERATOR = path_from_root('tools', 'bindings_generator.py')
 EXEC_LLVM = path_from_root('tools', 'exec_llvm.py')
-VARIABLE_ELIMINATOR = path_from_root('tools', 'eliminator', 'eliminator.coffee')
-JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
 FILE_PACKAGER = path_from_root('tools', 'file_packager.py')
 
 # Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use TEMP_DIR/emscripten_temp
@@ -205,7 +219,8 @@ except:
 CANONICAL_TEMP_DIR = os.path.join(TEMP_DIR, 'emscripten_temp')
 EMSCRIPTEN_TEMP_DIR = None
 
-if os.environ.get('EMCC_DEBUG'):
+DEBUG = os.environ.get('EMCC_DEBUG')
+if DEBUG:
   try:
     EMSCRIPTEN_TEMP_DIR = CANONICAL_TEMP_DIR
     if not os.path.exists(EMSCRIPTEN_TEMP_DIR):
@@ -320,11 +335,14 @@ class TempFiles:
 
   def get(self, suffix):
     """Returns a named temp file  with the given prefix."""
-    named_file = tempfile.NamedTemporaryFile(dir=TEMP_DIR, suffix=suffix, delete=False)
+    named_file = tempfile.NamedTemporaryFile(dir=TEMP_DIR if not DEBUG else EMSCRIPTEN_TEMP_DIR, suffix=suffix, delete=False)
     self.note(named_file.name)
     return named_file
 
   def clean(self):
+    if DEBUG:
+      print >> sys.stderr, 'not cleaning up temp files since in debug mode, see them in %s' % EMSCRIPTEN_TEMP_DIR
+      return
     for filename in self.to_clean:
       try_delete(filename)
     self.to_clean = []
@@ -357,13 +375,10 @@ def timeout_run(proc, timeout, note='unnamed process'):
       raise Exception("Timed out: " + note)
   return proc.communicate()[0]
 
-EM_DEBUG = os.environ.get('EM_DEBUG')
-
 def run_js(filename, engine=None, args=[], check_timeout=False, stdout=PIPE, stderr=None, cwd=None):
   if engine is None: engine = JS_ENGINES[0]
   if type(engine) is not list: engine = [engine]
   command = engine + [filename] + (['--'] if 'd8' in engine[0] else []) + args
-  if EM_DEBUG: print >> sys.stderr, 'run_js: ' + ' '.join(command)
   return timeout_run(Popen(command, stdout=stdout, stderr=stderr, cwd=cwd), 15*60 if check_timeout else None, 'Execution')
 
 def to_cc(cxx):
@@ -487,6 +502,7 @@ class Building:
     env['CXX'] = EMXX if not WINDOWS else 'python %r' % EMXX
     env['AR'] = EMAR if not WINDOWS else 'python %r' % EMAR
     env['LD'] = EMCC if not WINDOWS else 'python %r' % EMCC
+    env['LDSHARED'] = EMCC if not WINDOWS else 'python %r' % EMCC
     env['RANLIB'] = EMRANLIB if not WINDOWS else 'python %r' % EMRANLIB
     #env['LIBTOOL'] = EMLIBTOOL if not WINDOWS else 'python %r' % EMLIBTOOL
     env['EMMAKEN_COMPILER'] = Building.COMPILER
@@ -533,12 +549,18 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
   @staticmethod
   def configure(args, stdout=None, stderr=None, env=None):
+    if not args:
+      return
     if env is None:
       env = Building.get_building_env()
     env['EMMAKEN_JUST_CONFIGURE'] = '1'
     if 'cmake' in args[0]:
       args = Building.handle_CMake_toolchain(args, env)
-    Popen(args, stdout=stdout, stderr=stderr, env=env).communicate()
+    try:
+      Popen(args, stdout=stdout, stderr=stderr, env=env).communicate()
+    except Exception, e:
+      print >> sys.stderr, 'Error: Exception thrown when invoking Popen in configure with args: "%s"!' % ' '.join(args)
+      raise
     del env['EMMAKEN_JUST_CONFIGURE']
 
   @staticmethod
@@ -546,7 +568,11 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     if env is None:
       env = Building.get_building_env()
     #args += ['VERBOSE=1']
-    Popen(args, stdout=stdout, stderr=stderr, env=env).communicate()
+    try:
+      Popen(args, stdout=stdout, stderr=stderr, env=env).communicate()
+    except Exception, e:
+      print >> sys.stderr, 'Error: Exception thrown when invoking Popen in make with args: "%s"!' % ' '.join(args)
+      raise
 
   @staticmethod
   def build_library(name, build_dir, output_dir, generated_libs, configure=['sh', './configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=None, cache_name=None, copy_project=False, env_init={}, source_dir=None):
@@ -617,7 +643,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     actual_files = []
     unresolved_symbols = set(['main']) # tracking unresolveds is necessary for .a linking, see below. (and main is always a necessary symbol)
     resolved_symbols = set()
-    temp_dir = None
+    temp_dirs = []
     files = map(os.path.abspath, files)
     for f in files:
       if not Building.is_ar(f):
@@ -631,7 +657,8 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
         # (link in an entire .o from the archive if it supplies symbols still unresolved)
         cwd = os.getcwd()
         try:
-          temp_dir = os.path.join(EMSCRIPTEN_TEMP_DIR, 'ar_output_' + str(os.getpid()))
+          temp_dir = os.path.join(EMSCRIPTEN_TEMP_DIR, 'ar_output_' + str(os.getpid()) + '_' + str(len(temp_dirs)))
+          temp_dirs.append(temp_dir)
           if not os.path.exists(temp_dir):
             os.makedirs(temp_dir)
           os.chdir(temp_dir)
@@ -684,7 +711,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     # Finish link
     output = Popen([LLVM_LINK] + actual_files + ['-o', target], stdout=PIPE).communicate()[0]
     assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output + '\nemcc: If you get duplicate symbol errors, try --remove-duplicates'
-    if temp_dir:
+    for temp_dir in temp_dirs:
       try_delete(temp_dir)
 
   # Emscripten optimizations that we run on the .ll file
@@ -910,35 +937,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
   @staticmethod
   def js_optimizer(filename, passes):
-    if not check_engine(NODE_JS):
-      raise Exception('Node.js appears to be missing or broken, looked at: ' + str(NODE_JS))
-
-    if type(passes) == str:
-      passes = [passes]
-    # XXX Disable crankshaft to work around v8 bug 1895
-    output = Popen([NODE_JS, '--nocrankshaft', JS_OPTIMIZER, filename] + passes, stdout=PIPE).communicate()[0]
-    assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + output
-    filename += '.jo.js'
-    f = open(filename, 'w')
-    f.write(output)
-    f.close()
-    return filename
-
-  @staticmethod
-  def eliminator(filename):
-    if not check_engine(NODE_JS):
-      raise Exception('Node.js appears to be missing or broken, looked at: ' + str(NODE_JS))
-
-    coffee = path_from_root('tools', 'eliminator', 'node_modules', 'coffee-script', 'bin', 'coffee')
-    eliminator = path_from_root('tools', 'eliminator', 'eliminator.coffee')
-    input = open(filename, 'r').read()
-    output = Popen([NODE_JS, coffee, eliminator, filename], stdout=PIPE).communicate()[0]
-    assert len(output) > 0, 'Error in eliminator: ' + output
-    filename += '.el.js'
-    f = open(filename, 'w')
-    f.write(output)
-    f.close()
-    return filename
+    return js_optimizer.run(filename, passes, NODE_JS)
 
   @staticmethod
   def closure_compiler(filename):
@@ -948,10 +947,11 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     # Something like this (adjust memory as needed):
     #   java -Xmx1024m -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
     args = [JAVA,
-            '-Xmx1024m',
+            '-Xmx' + (os.environ.get('JAVA_HEAP_SIZE') or '1024m'), # if you need a larger Java heap, use this environment variable
             '-jar', CLOSURE_COMPILER,
             '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
             '--formatting', 'PRETTY_PRINT',
+            '--language_in', 'ECMASCRIPT5',
             #'--variable_map_output_file', filename + '.vars',
             '--js', filename, '--js_output_file', filename + '.cc.js']
     if os.environ.get('EMCC_CLOSURE_ARGS'):

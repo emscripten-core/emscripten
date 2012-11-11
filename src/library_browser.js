@@ -42,6 +42,7 @@ mergeInto(LibraryManager.library, {
     },
     pointerLock: false,
     moduleContextCreatedCallbacks: [],
+    workers: [],
 
     ensureObjects: function() {
       if (Browser.ensured) return;
@@ -97,6 +98,7 @@ mergeInto(LibraryManager.library, {
           b = bb.getBlob();
         }
         var url = Browser.URLObject.createObjectURL(b);
+        assert(typeof url == 'string', 'createObjectURL must return a url as a string');
         var img = new Image();
         img.onload = function() {
           assert(img.complete, 'Image ' + name + ' could not be decoded');
@@ -142,6 +144,7 @@ mergeInto(LibraryManager.library, {
             return fail();
           }
           var url = Browser.URLObject.createObjectURL(b); // XXX we never revoke this!
+          assert(typeof url == 'string', 'createObjectURL must return a url as a string');
           var audio = new Audio();
           audio.addEventListener('canplaythrough', function() { finish(audio) }, false); // use addEventListener due to chromium bug 124926
           audio.onerror = function(event) {
@@ -347,11 +350,21 @@ mergeInto(LibraryManager.library, {
       });
       addRunDependency('al ' + url);
     },
-    
-    setCanvasSize: function(width, height) {
+
+    resizeListeners: [],
+
+    updateResizeListeners: function() {
+      var canvas = Module['canvas'];
+      Browser.resizeListeners.forEach(function(listener) {
+        listener(canvas.width, canvas.height);
+      });
+    },
+
+    setCanvasSize: function(width, height, noUpdates) {
       var canvas = Module['canvas'];
       canvas.width = width;
       canvas.height = height;
+      if (!noUpdates) Browser.updateResizeListeners();
     }
   },
 
@@ -364,12 +377,54 @@ mergeInto(LibraryManager.library, {
       _file.substr(index +1),
       _url, true, true,
       function() {
-        FUNCTION_TABLE[onload](file);
+        if (onload) FUNCTION_TABLE[onload](file);
       },
       function() {
-        FUNCTION_TABLE[onerror](file);
+        if (onerror) FUNCTION_TABLE[onerror](file);
       }
     );
+  },
+
+  emscripten_async_prepare: function(file, onload, onerror) {
+    var _file = Pointer_stringify(file);
+    var data = FS.analyzePath(_file);
+    if (!data.exists) return -1;
+    var index = _file.lastIndexOf('/');
+    FS.createPreloadedFile(
+      _file.substr(0, index),
+      _file.substr(index +1),
+      new Uint8Array(data.object.contents), true, true,
+      function() {
+        if (onload) FUNCTION_TABLE[onload](file);
+      },
+      function() {
+        if (onerror) FUNCTION_TABLE[onerror](file);
+      },
+      true // don'tCreateFile - it's already there
+    );
+    return 0;
+  },
+
+  emscripten_async_prepare_data: function(data, size, suffix, arg, onload, onerror) {
+    var _suffix = Pointer_stringify(suffix);
+    if (!Browser.asyncPrepareDataCounter) Browser.asyncPrepareDataCounter = 0;
+    var name = 'prepare_data_' + (Browser.asyncPrepareDataCounter++) + '.' + _suffix;
+    var cname = _malloc(name.length+1);
+    writeStringToMemory(name, cname);
+    FS.createPreloadedFile(
+      '',
+      name,
+      {{{ makeHEAPView('U8', 'data', 'data + size') }}},
+      true, true,
+      function() {
+        if (onload) FUNCTION_TABLE[onload](arg, cname);
+      },
+      function() {
+        if (onerror) FUNCTION_TABLE[onerror](arg);
+      },
+      true // don'tCreateFile - it's already there
+    );
+    return 0;
   },
 
   emscripten_async_run_script__deps: ['emscripten_run_script'],
@@ -382,7 +437,7 @@ mergeInto(LibraryManager.library, {
     }, millis);
   },
 
-  emscripten_set_main_loop: function(func, fps) {
+  emscripten_set_main_loop: function(func, fps, simulateInfiniteLoop) {
     Module['noExitRuntime'] = true;
 
     var jsFunc = FUNCTION_TABLE[func];
@@ -442,6 +497,10 @@ mergeInto(LibraryManager.library, {
       }
     }
     Browser.mainLoop.scheduler();
+
+    if (simulateInfiniteLoop) {
+      throw 'emscripten_set_main_loop simulating infinite loop by throwing so we get right into the JS event loop';
+    }
   },
 
   emscripten_cancel_main_loop: function() {
@@ -509,6 +568,84 @@ mergeInto(LibraryManager.library, {
     } else {
       return Date.now();
     }
+  },
+
+  emscripten_create_worker: function(url) {
+    url = Pointer_stringify(url);
+    var id = Browser.workers.length;
+    var info = {
+      worker: new Worker(url),
+      callbacks: [],
+      awaited: 0,
+      buffer: 0,
+      bufferSize: 0
+    };
+    info.worker.onmessage = function(msg) {
+      var info = Browser.workers[id];
+      if (!info) return; // worker was destroyed meanwhile
+      var callbackId = msg.data['callbackId'];
+      var callbackInfo = info.callbacks[callbackId];
+      if (!callbackInfo) return; // no callback or callback removed meanwhile
+      info.awaited--;
+      info.callbacks[callbackId] = null; // TODO: reuse callbackIds, compress this
+      var data = msg.data['data'];
+      if (data) {
+        if (!data.byteLength) data = new Uint8Array(data);
+        if (!info.buffer || info.bufferSize < data.length) {
+          if (info.buffer) _free(info.buffer);
+          info.bufferSize = data.length;
+          info.buffer = _malloc(data.length);
+        }
+        HEAPU8.set(data, info.buffer);
+        callbackInfo.func(info.buffer, data.length, callbackInfo.arg);
+      } else {
+        callbackInfo.func(0, 0, callbackInfo.arg);
+      }
+    };
+    Browser.workers.push(info);
+    return id;
+  },
+
+  emscripten_destroy_worker: function(id) {
+    var info = Browser.workers[id];
+    info.worker.terminate();
+    if (info.buffer) _free(info.buffer);
+    Browser.workers[id] = null;
+  },
+
+  emscripten_call_worker: function(id, funcName, data, size, callback, arg) {
+    funcName = Pointer_stringify(funcName);
+    var info = Browser.workers[id];
+    var callbackId = -1;
+    if (callback) {
+      callbackId = info.callbacks.length;
+      info.callbacks.push({
+        func: Runtime.getFuncWrapper(callback),
+        arg: arg
+      });
+      info.awaited++;
+    }
+    info.worker.postMessage({
+      'funcName': funcName,
+      'callbackId': callbackId,
+      'data': data ? {{{ makeHEAPView('U8', 'data', 'data + size') }}} : 0
+    });
+  },
+
+  emscripten_worker_respond: function(data, size) {
+    if (!inWorkerCall) throw 'not in worker call!';
+    if (workerResponded) throw 'already responded!';
+    workerResponded = true;
+    postMessage({
+      'callbackId': workerCallbackId,
+      'data': data ? {{{ makeHEAPView('U8', 'data', 'data + size') }}} : 0
+    });
+  },
+
+  emscripten_get_worker_queue_size: function(id) {
+    var info = Browser.workers[id];
+    if (!info) return -1;
+    return info.awaited;
   }
 });
 

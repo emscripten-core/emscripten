@@ -64,6 +64,6 @@ void main_2(void* arg) {
   emscripten_run_script("window.simulateMouseEvent(30, 77, -1)"); // move some more
   emscripten_run_script("window.simulateMouseEvent(30, 77, 1)"); // trigger the end
 
-  emscripten_set_main_loop(one, 0);
+  emscripten_set_main_loop(one, 0, 0);
 }
 

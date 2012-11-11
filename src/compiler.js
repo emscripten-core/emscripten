@@ -129,7 +129,13 @@ load('settings.js');
 
 var settings_file = arguments_[0];
 var ll_file = arguments_[1];
-additionalLibraries = Array.prototype.slice.call(arguments_, 2);
+phase = arguments_[2];
+if (phase == 'pre') {
+  additionalLibraries = Array.prototype.slice.call(arguments_, 3);
+} else {
+  var forwardedDataFile = arguments_[3];
+  additionalLibraries = Array.prototype.slice.call(arguments_, 4);
+}
 
 if (settings_file) {
   var settings = JSON.parse(read(settings_file));
@@ -191,6 +197,15 @@ load('jsifier.js');
 globalEval(processMacros(preprocess(read('runtime.js'))));
 Runtime.QUANTUM_SIZE = QUANTUM_SIZE;
 
+var temp = {};
+for (var i = 0; i < NECESSARY_BLOCKADDRS.length; i++) {
+  var func = toNiceIdent(NECESSARY_BLOCKADDRS[i][0]);
+  var label = toNiceIdent(NECESSARY_BLOCKADDRS[i][1]);
+  if (!temp[func]) temp[func] = {};
+  temp[func][label] = 1;
+}
+NECESSARY_BLOCKADDRS = temp;
+
 //===============================
 // Main
 //===============================
@@ -201,13 +216,25 @@ var raw = read(ll_file);
 if (FAKE_X86_FP80) {
   raw = raw.replace(/x86_fp80/g, 'double');
 }
+if (raw.search('\r\n') >= 0) {
+  raw = raw.replace(/\r\n/g, '\n'); // fix windows line endings
+}
 var lines = raw.split('\n');
 raw = null;
 
 // Pre-process the LLVM assembly
 
+//printErr('JS compiler in action, phase ' + phase);
+
 Debugging.handleMetadata(lines);
-PreProcessor.eliminateUnneededIntrinsics(lines);
+
+if (phase != 'pre') {
+  PassManager.load(read(forwardedDataFile));
+
+  if (phase == 'funcs') {
+    PreProcessor.eliminateUnneededIntrinsics(lines);
+  }
+}
 
 // Do it
 

@@ -13,33 +13,36 @@ function JSify(data, functionsOnly, givenFunctions) {
   var mainPass = !functionsOnly;
 
   if (mainPass) {
-    // We will start to print out the data, but must do so carefully - we are
-    // dealing with potentially *huge* strings. Convenient replacements and
-    // manipulations may create in-memory copies, and we may OOM.
-    //
-    // Final shape that will be created:
-    //    shell
-    //      (body)
-    //        preamble
-    //          runtime
-    //        generated code
-    //        postamble
-    //          global_vars
-    //
-    // First, we print out everything until the generated code. Then the
-    // functions will print themselves out as they are parsed. Finally, we
-    // will call finalCombiner in the main pass, to print out everything
-    // else. This lets us not hold any strings in memory, we simply print
-    // things out as they are ready.
-
     var shellFile = SHELL_FILE ? SHELL_FILE : (BUILD_AS_SHARED_LIB ? 'shell_sharedlib.js' : 'shell.js');
-    var shellParts = read(shellFile).split('{{BODY}}');
-    print(shellParts[0]);
-    var preFile = BUILD_AS_SHARED_LIB ? 'preamble_sharedlib.js' : 'preamble.js';
-    var pre = processMacros(preprocess(read(preFile).replace('{{RUNTIME}}', getRuntime())));
-    print(pre);
 
-    Functions.implementedFunctions = set(data.unparsedFunctions.map(function(func) { return func.ident }));
+    if (phase == 'pre') {
+      // We will start to print out the data, but must do so carefully - we are
+      // dealing with potentially *huge* strings. Convenient replacements and
+      // manipulations may create in-memory copies, and we may OOM.
+      //
+      // Final shape that will be created:
+      //    shell
+      //      (body)
+      //        preamble
+      //          runtime
+      //        generated code
+      //        postamble
+      //          global_vars
+      //
+      // First, we print out everything until the generated code. Then the
+      // functions will print themselves out as they are parsed. Finally, we
+      // will call finalCombiner in the main pass, to print out everything
+      // else. This lets us not hold any strings in memory, we simply print
+      // things out as they are ready.
+
+      var shellParts = read(shellFile).split('{{BODY}}');
+      print(shellParts[0]);
+      var preFile = BUILD_AS_SHARED_LIB ? 'preamble_sharedlib.js' : 'preamble.js';
+      var pre = processMacros(preprocess(read(preFile).replace('{{RUNTIME}}', getRuntime())));
+      print(pre);
+
+      Functions.implementedFunctions = set(data.unparsedFunctions.map(function(func) { return func.ident }));
+    }
   }
 
   // Does simple 'macro' substitution, using Django-like syntax,
@@ -71,7 +74,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         }
       }
     } else {
-      libFuncsToInclude = ['memcpy', 'memset', 'malloc', 'free', '$Browser'];
+      libFuncsToInclude = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
     }
     libFuncsToInclude.forEach(function(ident) {
       data.functionStubs.push({
@@ -83,18 +86,7 @@ function JSify(data, functionsOnly, givenFunctions) {
 
   // Functions
 
-  Functions.currFunctions = !mainPass ? givenFunctions.currFunctions : {};
   Functions.currExternalFunctions = !mainPass ? givenFunctions.currExternalFunctions : {};
-
-  // Now that first-pass analysis has completed (so we have basic types, etc.), we can get around to handling unparsedFunctions
-  (!mainPass ? data.functions : data.unparsedFunctions.concat(data.functions)).forEach(function(func) {
-    // Save just what we need, to save memory
-    Functions.currFunctions[func.ident] = {
-      hasVarArgs: func.hasVarArgs,
-      numParams: func.params.length,
-      labelIds: func.labelIds // TODO: We need this for globals, but perhaps we can calculate them early and free this
-   };
-  });
 
   data.functionStubs.forEach(function(func) {
     // Don't overwrite stubs that have more info.
@@ -107,24 +99,26 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
   });
 
-  var MAX_BATCH_FUNC_LINES = 1000;
-  while (data.unparsedFunctions.length > 0) {
-    var currFuncLines = [];
-    var currBaseLineNums = [];
-    while (currFuncLines.length == 0 ||
-           (data.unparsedFunctions.length > 0 && currFuncLines.length + data.unparsedFunctions[0].lines.length <= MAX_BATCH_FUNC_LINES)) {
-      currBaseLineNums.push([currFuncLines.length, data.unparsedFunctions[0].lineNum-1]);
-      currFuncLines = currFuncLines.concat(data.unparsedFunctions[0].lines); // for first one, assign, do not concat?
-      data.unparsedFunctions.shift();
+  if (phase == 'funcs') { // pre has function shells, just to defined implementedFunctions
+    var MAX_BATCH_FUNC_LINES = 1000;
+    while (data.unparsedFunctions.length > 0) {
+      var currFuncLines = [];
+      var currBaseLineNums = [];
+      while (currFuncLines.length == 0 ||
+             (data.unparsedFunctions.length > 0 && currFuncLines.length + data.unparsedFunctions[0].lines.length <= MAX_BATCH_FUNC_LINES)) {
+        currBaseLineNums.push([currFuncLines.length, data.unparsedFunctions[0].lineNum-1]);
+        currFuncLines = currFuncLines.concat(data.unparsedFunctions[0].lines); // for first one, assign, do not concat?
+        data.unparsedFunctions.shift();
+      }
+      dprint('unparsedFunctions','====================\n// Processing function batch of ' + currBaseLineNums.length +
+                                 ' functions, ' + currFuncLines.length + ' lines, functions left: ' + data.unparsedFunctions.length);
+      if (DEBUG_MEMORY) MemoryDebugger.tick('pre-func');
+      JSify(analyzer(intertyper(currFuncLines, true, currBaseLineNums), true), true, Functions);
+      if (DEBUG_MEMORY) MemoryDebugger.tick('post-func');
     }
-    dprint('unparsedFunctions','====================\n// Processing function batch of ' + currBaseLineNums.length +
-                               ' functions, ' + currFuncLines.length + ' lines, functions left: ' + data.unparsedFunctions.length);
-    if (DEBUG_MEMORY) MemoryDebugger.tick('pre-func');
-    JSify(analyzer(intertyper(currFuncLines, true, currBaseLineNums), true), true, Functions);
-    if (DEBUG_MEMORY) MemoryDebugger.tick('post-func');
+    currFuncLines = currBaseLineNums = null; // Do not hold on to anything from inside that loop (JS function scoping..)
+    data.unparsedFunctions = null;
   }
-  currFuncLines = currBaseLineNums = null; // Do not hold on to anything from inside that loop (JS function scoping..)
-  data.unparsedFunctions = null;
 
   // Actors
 
@@ -358,11 +352,21 @@ function JSify(data, functionsOnly, givenFunctions) {
       item.JS = 'var ' + item.ident + ';';
       // Set the actual value in a postset, since it may be a global variable. We also order by dependencies there
       var value = Variables.globals[item.ident].resolvedAlias = finalizeLLVMParameter(item.value);
+      var fix = '';
+      if (BUILD_AS_SHARED_LIB == 2 && !item.private_) {
+        var target = item.ident;
+        if (isFunctionType(item.type)) {
+          target = item.value.ident; // the other side does not know this is an alias/function table index. So make it the alias target.
+          var varData = Variables.globals[target];
+          assert(!varData, 'multi-level aliasing does not work yet in shared lib 2 exports');
+        }
+        fix = '\nif (globalScope) { assert(!globalScope["' + item.ident + '"]); globalScope["' + item.ident + '"] = ' + target + ' }'
+      }
       ret.push({
         intertype: 'GlobalVariablePostSet',
         ident: item.ident,
         dependencies: set([value]),
-        JS: item.ident + ' = ' + value + ';'
+        JS: item.ident + ' = ' + value + ';' + fix
       });
       return ret;
     }
@@ -1166,7 +1170,13 @@ function JSify(data, functionsOnly, givenFunctions) {
     return makeFunctionCall(item.ident, item.params, item.funcData, item.type) + (item.standalone ? ';' : '');
   });
 
-  makeFuncLineActor('unreachable', function(item) { return 'throw "Reached an unreachable!"' }); // Original .ll line: ' + item.lineNum + '";' });
+  makeFuncLineActor('unreachable', function(item) {
+    if (ASSERTIONS) {
+      return 'throw "Reached an unreachable!"';
+    } else {
+      return ';';
+    }
+  });
 
   // Final combiner
 
@@ -1205,19 +1215,20 @@ function JSify(data, functionsOnly, givenFunctions) {
 
     if (!mainPass) {
       var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable).concat(itemsDict.GlobalVariablePostSet);
-      Functions.allIdents = Functions.allIdents.concat(itemsDict.function.map(function(func) {
-        return func.ident;
-      }).filter(function(func) {
-        return IGNORED_FUNCTIONS.indexOf(func.ident) < 0;
-      }));
       if (!DEBUG_MEMORY) print(generated.map(function(item) { return item.JS }).join('\n'));
       return;
     }
 
-    // This is the main pass. Print out the generated code that we have here, together with the
+    if (phase == 'pre' || phase == 'funcs') {
+      // serialize out the data that later passes need
+      PassManager.serialize(); // XXX for funcs pass, do not serialize it all. I think we just need which were indexized.
+      return;
+    }
+
+    // This is the main 'post' pass. Print out the generated code that we have here, together with the
     // rest of the output that we started to print out earlier (see comment on the
     // "Final shape that will be created").
-    if (PRECISE_I64_MATH && preciseI64MathUsed) {
+    if (PRECISE_I64_MATH && Types.preciseI64MathUsed) {
       print(read('long.js'));
     } else {
       print('// Warning: printing of i64 values may be slightly rounded! No deep i64 math used, so precise i64 code not included');
@@ -1248,9 +1259,12 @@ function JSify(data, functionsOnly, givenFunctions) {
 
     print(postParts[1]);
 
+    var shellParts = read(shellFile).split('{{BODY}}');
     print(shellParts[1]);
     // Print out some useful metadata (for additional optimizations later, like the eliminator)
-    print('// EMSCRIPTEN_GENERATED_FUNCTIONS: ' + JSON.stringify(Functions.allIdents) + '\n');
+    print('// EMSCRIPTEN_GENERATED_FUNCTIONS: ' + JSON.stringify(keys(Functions.implementedFunctions).filter(function(func) {
+      return IGNORED_FUNCTIONS.indexOf(func.ident) < 0;
+    })) + '\n');
 
     return null;
   }

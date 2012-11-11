@@ -11,6 +11,10 @@
 extern "C" {
 #endif
 
+#if !EMSCRIPTEN
+#include <SDL/SDL.h> /* for SDL_Delay in async_call */
+#endif
+
 /*
  * Forces LLVM to not dead-code-eliminate a function. Note that
  * closure may still eliminate it at the JS level, for which you
@@ -42,11 +46,33 @@ extern void emscripten_async_run_script(const char *script, int millis);
  * code assumes that), so you can break the code up into
  * asynchronous callbacks, but you must pause the main
  * loop until they complete.
+ *
+ * @simulate_infinite_loop If true, this function will throw an
+ *    exception in order to stop execution of the caller. This
+ *    will lead to the main loop being entered instead of code
+ *    after the call to emscripten_set_main_loop being run, which
+ *    is the closest we can get to simulating an infinite loop
+ *    (we do something similar in glutMainLoop in GLUT). If this
+ *    parameter is false, then the behavior is the same as it
+ *    was before this parameter was added to the API, which is
+ *    that execution continues normally. Note that in both cases
+ *    we do not run global destructors, atexit, etc., since we
+ *    know the main loop will still be running, but if we do
+ *    not simulate an infinite loop then the stack will be unwinded.
+ *    That means that if simulate_infinite_loop is false, and
+ *    you created an object on the stack, it will be cleaned up
+ *    before the main loop will be called the first time.
  */
-extern void emscripten_set_main_loop(void (*func)(), int fps);
+#if EMSCRIPTEN
+extern void emscripten_set_main_loop(void (*func)(), int fps, int simulate_infinite_loop);
 extern void emscripten_pause_main_loop();
 extern void emscripten_resume_main_loop();
 extern void emscripten_cancel_main_loop();
+#else
+#define emscripten_set_main_loop(func, fps, simulateInfiniteLoop) \
+  while (1) { func(); usleep(1000000/fps); }
+#define emscripten_cancel_main_loop() exit(1);
+#endif
 
 /*
  * Add a function to a queue of events that will execute
@@ -148,12 +174,109 @@ float emscripten_random();
  */
 
 /*
- * Load file from url in asynchronous way. 
+ * Load file from url in asynchronous way. In addition to
+ * fetching the URL from the network, the contents are
+ * prepared so that the data is usable in IMG_Load and
+ * so forth (we asynchronously do the work to make the
+ * browser decode the image or audio and so forth).
+ * When file is ready then 'onload' callback will called.
+ * If any error occurred 'onerror' will called.
+ * The callbacks are called with the file as their argument.
+ */
+void emscripten_async_wget(const char* url, const char* file, void (*onload)(const char*), void (*onerror)(const char*));
+
+/*
+ * Prepare a file in asynchronous way. This does just the
+ * preparation part of emscripten_async_wget, that is, it
+ * works on file data already present, and asynchronously
+ * prepares it for use in IMG_Load, Mix_LoadWAV, etc.
  * When file is loaded then 'onload' callback will called.
  * If any error occurred 'onerror' will called.
  * The callbacks are called with the file as their argument.
- */ 
-void emscripten_async_wget(const char* url, const char* file, void (*onload)(const char*), void (*onerror)(const char*));
+ * @return 0 if successful, -1 if the file does not exist
+ */
+int emscripten_async_prepare(const char* file, void (*onload)(const char*), void (*onerror)(const char*));
+
+/*
+ * Data version of emscripten_async_prepare, which receives
+ * raw data as input instead of a filename (this can prevent
+ * the need to write data to a file first). onload and
+ * onerror are called back with the given arg pointer as the
+ * first parameter. onload also receives a second
+ * parameter, which is a 'fake' filename which you can
+ * then pass into IMG_Load (it is not an actual file,
+ * but it identifies this image for IMG_Load to be able
+ * to process it). Note that the user of this API is
+ * responsible for free()ing the memory allocated for
+ * the fake filename.
+ * @suffix The file suffix, e.g. 'png' or 'jpg'.
+ */
+void emscripten_async_prepare_data(char* data, int size, const char *suffix, void *arg, void (*onload)(void*, const char*), void (*onerror)(void*));
+
+/*
+ * Worker API. Basically a wrapper around web workers, lets
+ * you create workers and communicate with them.
+
+ * Note that the current API is mainly focused on a main thread that
+ * sends jobs to workers and waits for responses, i.e., in an
+ * asymmetrical manner, there is no current API to send a message
+ * without being asked for it from a worker to the main thread.
+ *
+ */
+
+typedef int worker_handle;
+
+/*
+ * Create and destroy workers. A worker must be compiled separately
+ * from the main program, and with the BUILD_AS_WORKER flag set to 1.
+ */
+worker_handle emscripten_create_worker(const char *url);
+void emscripten_destroy_worker(worker_handle worker);
+
+/*
+ * Asynchronously call a worker.
+ *
+ * The worker function will be called with two parameters: a
+ * data pointer, and a size.  The data block defined by the
+ * pointer and size exists only during the callback and
+ * _cannot_ be relied upon afterwards - if you need to keep some
+ * of that information around, you need to copy it to a safe
+ * location.
+ *
+ * The called worker function can return data, by calling
+ * emscripten_worker_respond(). If called, and if a callback was
+ * given, then the callback will be called with three arguments:
+ * a data pointer, a size, and  * an argument that was provided
+ * when calling emscripten_call_worker (to more easily associate
+ * callbacks to calls). The data block defined by the data pointer
+ * and size behave like the data block in the worker function -
+ * it exists only during the callback.
+ *
+ * @funcname the name of the function in the worker. The function
+ *           must be a C function (so no C++ name mangling), and
+ *           must be exported (EXPORTED_FUNCTIONS).
+ * @data the address of a block of memory to copy over
+ * @size the size of the block of memory
+ * @callback the callback with the response (can be null)
+ * @arg an argument to be passed to the callback
+ */
+void emscripten_call_worker(worker_handle worker, const char *funcname, char *data, int size, void (*callback)(char *, int, void*), void *arg);
+
+/*
+ * Sends a response when in a worker call. Should only be
+ * called once in each call.
+ */
+void emscripten_worker_respond(char *data, int size);
+
+/*
+ * Checks how many responses are being waited for from a worker. This
+ * only counts calls to emscripten_call_worker that had a non-null
+ * callback (if it's null, we do not have any tracking of a response),
+ * and that the response was not yet received. It is a simple way to
+ * check on the status of the worker to see how busy it is, and do
+ * basic decisions about throttling.
+ */
+int emscripten_get_worker_queue_size(worker_handle worker);
 
 /*
  * Profiling tools.

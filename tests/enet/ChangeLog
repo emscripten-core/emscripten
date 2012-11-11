@@ -1,0 +1,116 @@
+ENet 1.3.3 (June 28, 2011):
+
+* fixed bug with simultaneous disconnects not dispatching events
+
+ENet 1.3.2 (May 31, 2011):
+
+* added support for unreliable packet fragmenting via the packet flag
+ENET_PACKET_FLAG_UNRELIABLE_FRAGMENT
+* fixed regression in unreliable packet queuing
+* added check against received port to limit some forms of IP-spoofing
+
+ENet 1.3.1 (February 10, 2011):
+
+* fixed bug in tracking of reliable data in transit
+* reliable data window size now scales with the throttle
+* fixed bug in fragment length calculation when checksums are used
+
+ENet 1.3.0 (June 5, 2010):
+
+* enet_host_create() now requires the channel limit to be specified as
+a parameter
+* enet_host_connect() now accepts a data parameter which is supplied 
+to the receiving receiving host in the event data field for a connect event
+* added an adaptive order-2 PPM range coder as a built-in compressor option
+which can be set with enet_host_compress_with_range_coder()
+* added support for packet compression configurable with a callback
+* improved session number handling to not rely on the packet checksum
+field, saving 4 bytes per packet unless the checksum option is used
+* removed the dependence on the rand callback for session number handling
+
+Caveats: This version is not protocol compatible with the 1.2 series or 
+earlier. The enet_host_connect and enet_host_create API functions require
+supplying additional parameters.
+
+ENet 1.2.5 (June 28, 2011):
+
+* fixed bug with simultaneous disconnects not dispatching events
+
+ENet 1.2.4 (May 31, 2011):
+
+* fixed regression in unreliable packet queuing
+* added check against received port to limit some forms of IP-spoofing
+
+ENet 1.2.3 (February 10, 2011):
+
+* fixed bug in tracking reliable data in transit
+
+ENet 1.2.2 (June 5, 2010):
+
+* checksum functionality is now enabled by setting a checksum callback
+inside ENetHost instead of being a configure script option
+* added totalSentData, totalSentPackets, totalReceivedData, and
+totalReceivedPackets counters inside ENetHost for getting usage
+statistics
+* added enet_host_channel_limit() for limiting the maximum number of
+channels allowed by connected peers
+* now uses dispatch queues for event dispatch rather than potentially
+unscalable array walking
+* added no_memory callback that is called when a malloc attempt fails,
+such that if no_memory returns rather than aborts (the default behavior),
+then the error is propagated to the return value of the API calls
+* now uses packed attribute for protocol structures on platforms with 
+strange alignment rules
+* improved autoconf build system contributed by Nathan Brink allowing 
+for easier building as a shared library
+
+Caveats: If you were using the compile-time option that enabled checksums,
+make sure to set the checksum callback inside ENetHost to enet_crc32 to
+regain the old behavior. The ENetCallbacks structure has added new fields,
+so make sure to clear the structure to zero before use if 
+using enet_initialize_with_callbacks().
+
+ENet 1.2.1 (November 12, 2009):
+
+* fixed bug that could cause disconnect events to be dropped
+* added thin wrapper around select() for portable usage
+* added ENET_SOCKOPT_REUSEADDR socket option
+* factored enet_socket_bind()/enet_socket_listen() out of enet_socket_create()
+* added contributed Code::Blocks build file
+
+ENet 1.2 (February 12, 2008):
+
+* fixed bug in VERIFY_CONNECT acknowledgement that could cause connect
+attempts to occasionally timeout
+* fixed acknowledgements to check both the outgoing and sent queues
+when removing acknowledged packets
+* fixed accidental bit rot in the MSVC project file
+* revised sequence number overflow handling to address some possible
+disconnect bugs
+* added enet_host_check_events() for getting only local queued events
+* factored out socket option setting into enet_socket_set_option() so
+that socket options are now set separately from enet_socket_create()
+
+Caveats: While this release is superficially protocol compatible with 1.1,
+differences in the sequence number overflow handling can potentially cause
+random disconnects.
+
+ENet 1.1 (June 6, 2007):
+
+* optional CRC32 just in case someone needs a stronger checksum than UDP 
+provides (--enable-crc32 configure option)
+* the size of packet headers are half the size they used to be (so less 
+overhead when sending small packets)
+* enet_peer_disconnect_later() that waits till all queued outgoing 
+packets get sent before issuing an actual disconnect
+* freeCallback field in individual packets for notification of when a 
+packet is about to be freed
+* ENET_PACKET_FLAG_NO_ALLOCATE for supplying pre-allocated data to a 
+packet (can be used in concert with freeCallback to support some custom 
+allocation schemes that the normal memory allocation callbacks would 
+normally not allow)
+* enet_address_get_host_ip() for printing address numbers
+* promoted the enet_socket_*() functions to be part of the API now
+* a few stability/crash fixes
+
+

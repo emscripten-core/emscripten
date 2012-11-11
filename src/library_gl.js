@@ -19,6 +19,8 @@ var LibraryGL = {
     uniforms: [],
     shaders: [],
 
+    uniformTable: {}, // name => uniform ID. the uID must be identical until relinking, cannot create a new uID each call to glGetUniformLocation
+
     packAlignment: 4,   // default alignment is 4 bytes
     unpackAlignment: 4, // default alignment is 4 bytes
 
@@ -520,10 +522,15 @@ var LibraryGL = {
 
   glGetUniformLocation: function(program, name) {
     name = Pointer_stringify(name);
+    var ptable = GL.uniformTable[program];
+    if (!ptable) ptable = GL.uniformTable[program] = {};
+    var id = ptable[name];
+    if (id) return id; 
     var loc = Module.ctx.getUniformLocation(GL.programs[program], name);
     if (!loc) return -1;
-    var id = GL.getNewId(GL.uniforms);
+    id = GL.getNewId(GL.uniforms);
     GL.uniforms[id] = loc;
+    ptable[name] = id;
     return id;
   },
 
@@ -826,6 +833,7 @@ var LibraryGL = {
   glDeleteProgram: function(program) {
     Module.ctx.deleteProgram(GL.programs[program]);
     GL.programs[program] = null;
+    GL.uniformTable[program] = null;
   },
 
   glAttachShader: function(program, shader) {
@@ -842,6 +850,7 @@ var LibraryGL = {
 
   glLinkProgram: function(program) {
     Module.ctx.linkProgram(GL.programs[program]);
+    GL.uniformTable[program] = {}; // uniforms no longer keep the same names after linking
   },
 
   glGetProgramInfoLog: function(program, maxLength, length, infoLog) {

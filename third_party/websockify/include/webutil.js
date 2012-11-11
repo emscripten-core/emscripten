@@ -1,7 +1,7 @@
 /*
  * from noVNC: HTML5 VNC client
- * Copyright (C) 2010 Joel Martin
- * Licensed under LGPL-3 (see LICENSE.txt)
+ * Copyright (C) 2012 Joel Martin
+ * Licensed under MPL 2.0 (see LICENSE.txt)
  *
  * See README.md for usage and integration instructions.
  */
@@ -37,14 +37,16 @@ if (!window.$D) {
  */
 
 // init log level reading the logging HTTP param
-WebUtil.init_logging = function() {
-    Util._log_level = (document.location.href.match(
-         /logging=([A-Za-z0-9\._\-]*)/) ||
-         ['', Util._log_level])[1];
-    
+WebUtil.init_logging = function(level) {
+    if (typeof level !== "undefined") {
+        Util._log_level = level;
+    } else {
+        Util._log_level = (document.location.href.match(
+            /logging=([A-Za-z0-9\._\-]*)/) ||
+            ['', Util._log_level])[1];
+    }
     Util.init_logging();
 };
-WebUtil.init_logging();
 
 
 WebUtil.dirObj = function (obj, depth, parent) {
@@ -75,9 +77,14 @@ WebUtil.dirObj = function (obj, depth, parent) {
 
 // Read a query string variable
 WebUtil.getQueryVar = function(name, defVal) {
-    var re = new RegExp('[?][^#]*' + name + '=([^&#]*)');
+    var re = new RegExp('[?][^#]*' + name + '=([^&#]*)'),
+        match = document.location.href.match(re);
     if (typeof defVal === 'undefined') { defVal = null; }
-    return (document.location.href.match(re) || ['',defVal])[1];
+    if (match) {
+        return decodeURIComponent(match[1]);
+    } else {
+        return defVal;
+    }
 };
 
 
@@ -111,6 +118,67 @@ WebUtil.readCookie = function(name, defaultValue) {
 
 WebUtil.eraseCookie = function(name) {
     WebUtil.createCookie(name,"",-1);
+};
+
+/*
+ * Setting handling.
+ */
+
+WebUtil.initSettings = function(callback) {
+    var callbackArgs = Array.prototype.slice.call(arguments, 1);
+    if (window.chrome && window.chrome.storage) {
+        window.chrome.storage.sync.get(function (cfg) {
+            WebUtil.settings = cfg;
+            console.log(WebUtil.settings);
+            if (callback) {
+                callback.apply(this, callbackArgs);
+            }
+        });
+    } else {
+        // No-op
+        if (callback) {
+            callback.apply(this, callbackArgs);
+        }
+    }
+};
+
+// No days means only for this browser session
+WebUtil.writeSetting = function(name, value) {
+    if (window.chrome && window.chrome.storage) {
+        //console.log("writeSetting:", name, value);
+        if (WebUtil.settings[name] !== value) {
+            WebUtil.settings[name] = value;
+            window.chrome.storage.sync.set(WebUtil.settings);
+        }
+    } else {
+        localStorage.setItem(name, value);
+    }
+};
+
+WebUtil.readSetting = function(name, defaultValue) {
+    var value;
+    if (window.chrome && window.chrome.storage) {
+        value = WebUtil.settings[name];
+    } else {
+        value = localStorage.getItem(name);
+    }
+    if (typeof value === "undefined") {
+        value = null;
+    }
+    if (value === null && typeof defaultValue !== undefined) {
+        return defaultValue;
+    } else {
+        return value;
+    }
+};
+
+WebUtil.eraseSetting = function(name) {
+    if (window.chrome && window.chrome.storage) {
+        window.chrome.storage.sync.remove(name);
+        delete WebUtil.settings[name];
+    } else {
+        localStorage.removeItem(name);
+    }
 };
 
 /*

@@ -969,7 +969,8 @@ function analyzer(data, sidePass) {
   //
   // Analyze our variables and detect their signs. In USE_TYPED_ARRAYS == 2,
   // we can read signed or unsigned values and prevent the need for signing
-  // corrections.
+  // corrections. If on the other hand we are doing corrections anyhow, then
+  // we can skip this pass.
   //
   // For each variable that is the result of a Load, we look a little forward
   // to see where it is used. We only care about mathops, since only they
@@ -978,7 +979,7 @@ function analyzer(data, sidePass) {
   substrate.addActor('Signalyzer', {
     processItem: function(item) {
       this.forwardItem(item, 'QuantumFixer');
-      if (USE_TYPED_ARRAYS !== 2) return;
+      if (USE_TYPED_ARRAYS != 2 || CORRECT_SIGNS == 1) return;
 
       function seekIdent(item, obj) {
         if (item.ident === obj.ident) {
@@ -1237,7 +1238,7 @@ function analyzer(data, sidePass) {
             if (phi.intertype == 'phi') {
               for (var i = 0; i < phi.params.length; i++) {
                 phi.params[i].label = func.labelIds[phi.params[i].label];
-                if (!phi.params[i].label) warn('phi refers to nonexistent label on line ' + phi.lineNum);
+                if (VERBOSE && !phi.params[i].label) warn('phi refers to nonexistent label on line ' + phi.lineNum);
               }
             }
           });
@@ -1316,7 +1317,7 @@ function analyzer(data, sidePass) {
             if (phi.intertype == 'phi') {
               for (var i = 0; i < phi.params.length; i++) {
                 var param = phi.params[i];
-                if (!param.label) warn('phi refers to nonexistent label on line ' + phi.lineNum);
+                if (VERBOSE && !param.label) warn('phi refers to nonexistent label on line ' + phi.lineNum);
                 var sourceLabelId = getActualLabelId(param.label);
                 if (sourceLabelId) {
                   var sourceLabel = func.labelsDict[sourceLabelId];
@@ -1345,6 +1346,14 @@ function analyzer(data, sidePass) {
             }
           });
         });
+
+        if (func.ident in NECESSARY_BLOCKADDRS) {
+          Functions.blockAddresses[func.ident] = {};
+          for (var needed in NECESSARY_BLOCKADDRS[func.ident]) {
+            assert(needed in func.labelIds);
+            Functions.blockAddresses[func.ident][needed] = func.labelIds[needed];
+          }
+        }
       });
       this.forwardItem(item, 'StackAnalyzer');
     }

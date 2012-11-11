@@ -1,8 +1,12 @@
 //==============================================================================
-//  Optimizer tool. This is meant to be run after the emscripten compiler has
-//  finished generating code. These optimizations are done on the generated
-//  code to further improve it. Some of the modifications also work in
-//  conjunction with closure compiler.
+// Optimizer tool. This is meant to be run after the emscripten compiler has
+// finished generating code. These optimizations are done on the generated
+// code to further improve it. Some of the modifications also work in
+// conjunction with closure compiler.
+//
+// TODO: Optimize traverse to modify a node we want to replace, in-place,
+//       instead of returning it to the previous call frame where we check?
+// TODO: Share EMPTY_NODE instead of emptyNode that constructs?
 //==============================================================================
 
 // *** Environment setup code ***
@@ -128,6 +132,8 @@ var LOOP = set('do', 'while', 'for');
 var LOOP_FLOW = set('break', 'continue');
 var ASSIGN_OR_ALTER = set('assign', 'unary-postfix', 'unary-prefix');
 var CONTROL_FLOW = set('do', 'while', 'for', 'if', 'switch');
+var NAME_OR_NUM = set('name', 'num');
+var ASSOCIATIVE_BINARIES = set('+', '*', '|', '&', '^');
 
 var NULL_NODE = ['name', 'null'];
 var UNDEFINED_NODE = ['unary-prefix', 'void', ['num', 0]];
@@ -137,7 +143,8 @@ var FALSE_NODE = ['unary-prefix', '!', ['num', 1]];
 var GENERATED_FUNCTIONS_MARKER = '// EMSCRIPTEN_GENERATED_FUNCTIONS:';
 var generatedFunctions = null;
 function setGeneratedFunctions(metadata) {
-  generatedFunctions = set(eval(metadata.replace(GENERATED_FUNCTIONS_MARKER, '')));
+  var start = metadata.indexOf(GENERATED_FUNCTIONS_MARKER);
+  generatedFunctions = set(eval(metadata.substr(start + GENERATED_FUNCTIONS_MARKER.length)));
 }
 function isGenerated(ident) {
   return ident in generatedFunctions;
@@ -250,7 +257,7 @@ function traverseWithVariables(ast, callback) {
   }, []);
 }
 
-function emptyNode() {
+function emptyNode() { // XXX do we need to create new nodes here? can't we reuse?
   return ['toplevel', []]
 }
 
@@ -270,6 +277,9 @@ function dumpSrc(ast) {
 // undefined, null. These cut down on size, but do not affect gzip size
 // and make JS engine's lives slightly harder (?)
 function unGlobalize(ast) {
+
+  throw 'this is deprecated!'; // and does not work with parallel compilation
+
   assert(ast[0] == 'toplevel');
   var values = {};
   // Find global renamings of the relevant values
@@ -454,8 +464,25 @@ function simplifyExpressionsPre(ast) {
     }
   }
 
+  // if (x == 0) can be if (!x), etc.
+  function simplifyZeroComp(ast) {
+    traverseGenerated(ast, function(node, type) {
+      var binary;
+      if (type == 'if' && (binary = node[1])[0] == 'binary') {
+        if ((binary[1] == '!=' || binary[1] == '!==') && binary[3][0] == 'num' && binary[3][1] == 0) {
+          node[1] = binary[2];
+          return node;
+        } else if ((binary[1] == '==' || binary[1] == '===') && binary[3][0] == 'num' && binary[3][1] == 0) {
+          node[1] = ['unary-prefix', '!', binary[2]];
+          return node;
+        }
+      }
+    });
+  }
+
   simplifyBitops(ast);
   joinAdditions(ast);
+  // simplifyZeroComp(ast); TODO: investigate performance
 }
 
 // In typed arrays mode 2, we can have
@@ -1342,9 +1369,508 @@ function registerize(ast) {
   });
 }
 
+// Eliminator aka Expressionizer
+//
+// The goal of this pass is to eliminate unneeded variables (which represent one of the infinite registers in the LLVM
+// model) and thus to generate complex expressions where possible, for example
+//
+//  var x = a(10);
+//  var y = HEAP[20];
+//  print(x+y);
+//
+// can be transformed into
+//
+//  print(a(10)+HEAP[20]);
+//
+// The basic principle is to scan along the code in the order of parsing/execution, and keep a list of tracked
+// variables that are current contenders for elimination. We must untrack when we see something that we cannot
+// cross, for example, a write to memory means we must invalidate variables that depend on reading from
+// memory, since if we change the order then we do not preserve the computation.
+//
+// We rely on some assumptions about emscripten-generated code here, which means we can do a lot more than
+// a general JS optimization can. For example, we assume that 'sub' nodes (indexing like HEAP[..]) are
+// memory accesses or FUNCTION_TABLE accesses, and in both cases that the symbol cannot be replaced although
+// the contents can. So we assume FUNCTION_TABLE might have its contents changed but not be pointed to
+// a different object, which allows
+//
+//  var x = f();
+//  FUNCTION_TABLE[x]();
+//
+// to be optimized (f could replace FUNCTION_TABLE, so in general JS eliminating x is not valid).
+//
+// In memSafe mode, we are more careful and assume functions can replace HEAP and FUNCTION_TABLE, which
+// can happen in ALLOW_MEMORY_GROWTH mode
+
+var ELIMINATION_SAFE_NODES = set('var', 'assign', 'call', 'if', 'toplevel', 'do', 'return'); // do is checked carefully, however
+var NODES_WITHOUT_ELIMINATION_SIDE_EFFECTS = set('name', 'num', 'string', 'binary', 'sub', 'unary-prefix');
+var IGNORABLE_ELIMINATOR_SCAN_NODES = set('num', 'toplevel', 'string', 'break', 'continue', 'dot'); // dot can only be STRING_TABLE.*
+var ABORTING_ELIMINATOR_SCAN_NODES = set('new', 'object', 'function', 'defun', 'switch', 'for', 'while', 'array', 'throw'); // we could handle some of these, TODO, but nontrivial (e.g. for while, the condition is hit multiple times after the body)
+
+function eliminate(ast, memSafe) {
+  // Find variables that have a single use, and if they can be eliminated, do so
+  traverseGeneratedFunctions(ast, function(func, type) {
+    //printErr('eliminate in ' + func[1]);
+
+    // First, find the potentially eliminatable functions: that have one definition and one use
+    var definitions = {};
+    var uses = {};
+    var values = {};
+    var locals = {};
+    var varsToRemove = {}; // variables being removed, that we can eliminate all 'var x;' of
+    var varsToTryToRemove = {}; // variables that have 0 uses, but have side effects - when we scan we can try to remove them
+    // add arguments as locals
+    if (func[2]) {
+      for (var i = 0; i < func[2].length; i++) {
+        locals[func[2][i]] = true;
+      }
+    }
+    // examine body and note locals
+    traverse(func, function(node, type) {
+      if (type === 'var') {
+        var node1 = node[1];
+        for (var i = 0; i < node1.length; i++) {
+          var node1i = node1[i];
+          var name = node1i[0];
+          var value = node1i[1];
+          if (value) {
+            if (!definitions[name]) definitions[name] = 0;
+            definitions[name]++;
+            if (!values[name]) values[name] = value;
+          }
+          if (!uses[name]) uses[name] = 0;
+          locals[name] = true;
+        }
+      } else if (type === 'name') {
+        var name = node[1];
+        if (!uses[name]) uses[name] = 0;
+        uses[name]++;
+      } else if (type == 'assign') {
+        var target = node[2];
+        if (target[0] == 'name') {
+          var name = target[1];
+          if (!definitions[name]) definitions[name] = 0;
+          definitions[name]++;
+          if (!uses[name]) uses[name] = 0;
+          if (!values[name]) values[name] = node[3];
+          if (node[1] === true) { // not +=, -= etc., just =
+            uses[name]--; // because the name node will show up by itself in the previous case
+          }
+        }
+      }
+    });
+    var potentials = {}; // local variables with 1 definition and 1 use
+    for (var name in locals) {
+      if (definitions[name] == 1 && uses[name] == 1) {
+        potentials[name] = 1;
+      } else if (uses[name] == 0) {
+        var hasSideEffects = false;
+        if (values[name]) {
+          traverse(values[name], function(node, type) {
+            if (!(type in NODES_WITHOUT_ELIMINATION_SIDE_EFFECTS)) {
+              hasSideEffects = true; // cannot remove this unused variable, constructing it has side effects
+              return true;
+            }
+          });
+        }
+        if (!hasSideEffects) {
+          varsToRemove[name] = 1; // remove it normally
+        } else {
+          varsToTryToRemove[name] = 1; // try to remove it later during scanning
+        }
+      }
+    }
+    //printErr('defs: ' + JSON.stringify(definitions));
+    //printErr('uses: ' + JSON.stringify(uses));
+    //printErr('locals: ' + JSON.stringify(locals));
+    //printErr('varsToRemove: ' + JSON.stringify(varsToRemove));
+    //printErr('2varsToTryToRemove: ' + JSON.stringify(varsToTryToRemove));
+    definitions = uses = values = null;
+    //printErr('potentials: ' + JSON.stringify(potentials));
+    // We can now proceed through the function. In each list of statements, we try to eliminate
+    var tracked = {};
+    var globalsInvalidated = false; // do not repeat invalidations, until we track something new
+    var memoryInvalidated = false;
+    var callsInvalidated = false;
+    function track(name, value, defNode) { // add a potential that has just been defined to the tracked list, we hope to eliminate it
+      var usesGlobals = false, usesMemory = false, deps = {}, doesCall = false;
+      var ignoreName = false; // one-time ignorings of names, as first op in sub and call
+      traverse(value, function(node, type) {
+        if (type == 'name') {
+          if (!ignoreName) {
+            var name = node[1];
+            if (!(name in locals)) {
+              usesGlobals = true;
+            }
+            if (!(name in potentials)) { // deps do not matter for potentials - they are defined once, so no complexity
+              deps[name] = 1;
+            }
+          } else {
+            ignoreName = false;
+          }
+        } else if (type == 'sub') {
+          usesMemory = true;
+          ignoreName = true;
+        } else if (type == 'call') {
+          usesGlobals = true;
+          usesMemory = true;
+          doesCall = true;        
+          ignoreName = true;
+        } else {
+          ignoreName = false;
+        }
+      });
+      tracked[name] = {
+        usesGlobals: usesGlobals,
+        usesMemory: usesMemory,
+        defNode: defNode,
+        deps: deps,
+        doesCall: doesCall
+      };
+      globalsInvalidated = false;
+      memoryInvalidated = false;
+      callsInvalidated = false;
+      //printErr('track ' + [name, JSON.stringify(tracked[name])]);
+    }
+    var temp = [];
+    // TODO: invalidate using a sequence number for each type (if you were tracked before the last invalidation, you are cancelled). remove for.in loops
+    function invalidateGlobals() {
+      //printErr('invalidate globals');
+      temp.length = 0;
+      for (var name in tracked) {
+        var info = tracked[name];
+        if (info.usesGlobals) {
+          temp.push(name);
+        }
+      }
+      for (var i = 0; i < temp.length; i++) {
+        delete tracked[temp[i]];
+      }
+    }
+    function invalidateMemory() {
+      //printErr('invalidate memory');
+      temp.length = 0;
+      for (var name in tracked) {
+        var info = tracked[name];
+        if (info.usesMemory) {
+          temp.push(name);
+        }
+      }
+      for (var i = 0; i < temp.length; i++) {
+        delete tracked[temp[i]];
+      }
+    }
+    function invalidateByDep(dep) {
+      //printErr('invalidate by dep ' + dep);
+      temp.length = 0;
+      for (var name in tracked) {
+        var info = tracked[name];
+        if (info.deps[dep]) {
+          temp.push(name);
+        }
+      }
+      for (var i = 0; i < temp.length; i++) {
+        delete tracked[temp[i]];
+      }
+    }
+    function invalidateCalls() {
+      //printErr('invalidate calls');
+      temp.length = 0;
+      for (var name in tracked) {
+        var info = tracked[name];
+        if (info.doesCall) {
+          temp.push(name);
+        }
+      }
+      for (var i = 0; i < temp.length; i++) {
+        delete tracked[temp[i]];
+      }
+    }
+
+    // Generate the sequence of execution. This determines what is executed before what, so we know what can be reordered. Using
+    // that, performs invalidations and eliminations
+    function scan(node) {
+      //printErr('scan: ' + JSON.stringify(node).substr(0, 50) + ' : ' + keys(tracked));
+      var abort = false;
+      var allowTracking = true; // false inside an if; also prevents recursing in an if
+      //var nesting = 1; // printErr-related
+      function traverseInOrder(node, ignoreSub, ignoreName) {
+        if (abort) return;
+        //nesting++; // printErr-related
+        //printErr(spaces(2*(nesting+1)) + 'trav: ' + JSON.stringify(node).substr(0, 50) + ' : ' + keys(tracked) + ' : ' + [allowTracking, ignoreSub, ignoreName]);
+        var type = node[0];
+        if (type == 'assign') {
+          var target = node[2];
+          var value = node[3];
+          var nameTarget = target[0] == 'name';
+          traverseInOrder(target, true, nameTarget); // evaluate left
+          traverseInOrder(value); // evaluate right
+          // do the actual assignment
+          if (nameTarget) {
+            var name = target[1];
+            if (!(name in potentials)) {
+              if (!(name in varsToTryToRemove)) {
+                // expensive check for invalidating specific tracked vars. This list is generally quite short though, because of
+                // how we just eliminate in short spans and abort when control flow happens TODO: history numbers instead
+                invalidateByDep(name); // can happen more than once per dep..
+                if (!(name in locals) && !globalsInvalidated) {
+                  invalidateGlobals();
+                  globalsInvalidated = true;
+                }
+              } else {
+                // replace it in-place
+                node.length = value.length;
+                for (var i = 0; i < value.length; i++) {
+                  node[i] = value[i];
+                }
+                varsToRemove[name] = 1;
+              }
+            } else {
+              if (allowTracking) track(name, node[3], node);
+            }
+          } else if (target[0] == 'sub') {
+            if (!memoryInvalidated) {
+              invalidateMemory();
+              memoryInvalidated = true;
+            }
+          }
+        } else if (type == 'sub') {
+          traverseInOrder(node[1], false, !memSafe); // evaluate inner
+          traverseInOrder(node[2]); // evaluate outer
+          if (!ignoreSub) { // ignoreSub means we are a write (happening later), not a read
+            // do the memory access
+            if (!callsInvalidated) {
+              invalidateCalls();
+              callsInvalidated = true;
+            }
+          }
+        } else if (type == 'var') {
+          var vars = node[1];
+          for (var i = 0; i < vars.length; i++) {
+            var name = vars[i][0];
+            var value = vars[i][1];
+            if (value) {
+              traverseInOrder(value);
+              if (name in potentials && allowTracking) {
+                track(name, value, node);
+              } else {
+                invalidateByDep(name);
+              }
+              if (vars.length == 1 && name in varsToTryToRemove && value) {
+                // replace it in-place
+                value = ['stat', value];
+                node.length = value.length;
+                for (var i = 0; i < value.length; i++) {
+                  node[i] = value[i];
+                }
+                varsToRemove[name] = 1;
+              }
+            }
+          }
+        } else if (type == 'binary') {
+          var flipped = false;
+          if (node[1] in ASSOCIATIVE_BINARIES && !(node[2][0] in NAME_OR_NUM) && node[3][0] in NAME_OR_NUM) { // TODO recurse here?
+            // associatives like + and * can be reordered in the simple case of one of the sides being a name, since we assume they are all just numbers
+            var temp = node[2];
+            node[2] = node[3];
+            node[3] = temp;
+            flipped = true;
+          }
+          traverseInOrder(node[2]);
+          traverseInOrder(node[3]);
+          if (flipped && node[2][0] in NAME_OR_NUM) { // dunno if we optimized, but safe to flip back - and keeps the code closer to the original and more readable
+            var temp = node[2];
+            node[2] = node[3];
+            node[3] = temp;
+          }
+        } else if (type == 'name') {
+          if (!ignoreName) { // ignoreName means we are the name of something like a call or a sub - irrelevant for us
+            var name = node[1];
+            if (name in tracked) {
+              doEliminate(name, node);
+            } else if (!(name in locals) && !callsInvalidated) {
+              invalidateCalls();
+              callsInvalidated = true;
+            }
+          }
+        } else if (type == 'unary-prefix' || type == 'unary-postfix') {
+          traverseInOrder(node[2]);
+        } else if (type in IGNORABLE_ELIMINATOR_SCAN_NODES) {
+        } else if (type == 'call') {
+          traverseInOrder(node[1], false, true);
+          var args = node[2];
+          for (var i = 0; i < args.length; i++) {
+            traverseInOrder(args[i]);
+          }
+          // these two invalidations will also invalidate calls
+          if (!globalsInvalidated) {
+            invalidateGlobals();
+            globalsInvalidated = true;
+          }
+          if (!memoryInvalidated) {
+            invalidateMemory();
+            memoryInvalidated = true;
+          }
+        } else if (type == 'if') {
+          if (allowTracking) {
+            traverseInOrder(node[1]); // can eliminate into condition, but nowhere else
+            allowTracking = false;
+            traverseInOrder(node[2]); // 2 and 3 could be 'parallel', really..
+            if (node[3]) traverseInOrder(node[3]);
+            allowTracking = true;
+          } else {
+            tracked = {};
+            abort = true;
+          }
+        } else if (type == 'block') {
+          var stats = node[1];
+          for (var i = 0; i < stats.length; i++) {
+            traverseInOrder(stats[i]);
+          }
+        } else if (type == 'stat') {
+          traverseInOrder(node[1]);
+        } else if (type == 'label') {
+          traverseInOrder(node[2]);
+        } else if (type == 'seq') {
+          traverseInOrder(node[1]);
+          traverseInOrder(node[2]);
+        } else if (type == 'do') {
+          if (node[1][0] == 'num' && node[1][1] == 0) { // one-time loop
+            traverseInOrder(node[2]);
+          } else {
+            tracked = {};
+            abort = true;
+          }
+        } else if (type == 'return') {
+          if (node[1]) traverseInOrder(node[1]);
+        } else if (type == 'conditional') {
+          traverseInOrder(node[1]);
+          traverseInOrder(node[2]);
+          traverseInOrder(node[3]);
+        } else {
+          if (!(type in ABORTING_ELIMINATOR_SCAN_NODES)) {
+            printErr('unfamiliar eliminator scan node: ' + JSON.stringify(node));
+          }
+          tracked = {};
+          abort = true;
+        }
+        //nesting--; // printErr-related
+      }
+      traverseInOrder(node);
+    }
+    function doEliminate(name, node) {
+      //printErr('elim!!!!! ' + name);
+      // yes, eliminate!
+      varsToRemove[name] = 1; // both assign and var definitions can have other vars we must clean up
+      var info = tracked[name];
+      delete tracked[name];
+      var defNode = info.defNode;
+      if (defNode[0] == 'var') {
+        defNode[1].forEach(function(pair) {
+          if (pair[0] == name) {
+            value = pair[1];
+          }
+        });
+        assert(value);
+      } else { // assign
+        value = defNode[3];
+        // wipe out the assign
+        defNode[0] = 'toplevel';
+        defNode[1] = [];
+        defNode.length = 2;
+      }
+      // replace this node in-place
+      node.length = 0;
+      for (var i = 0; i < value.length; i++) {
+        node[i] = value[i];
+      }
+    }
+    traverse(func, function(block) {
+      var stats = getStatements(block);
+      if (!stats) return;
+      tracked = {};
+      //printErr('new StatBlock');
+      for (var i = 0; i < stats.length; i++) {
+        var node = stats[i];
+        //printErr('StatBlock[' + i + '] => ' + JSON.stringify(node));
+        var type = node[0];
+        if (type == 'stat') {
+          node = node[1];
+          type = node[0];
+        }
+        // Check for things that affect elimination
+        if (type in ELIMINATION_SAFE_NODES) {
+          scan(node);
+        } else {
+          tracked = {}; // not a var or assign, break all potential elimination so far
+        }
+      }
+    });
+
+    // clean up vars
+    //printErr('cleaning up ' + JSON.stringify(varsToRemove));
+    traverse(func, function(node, type) {
+      if (type === 'var') {
+        node[1] = node[1].filter(function(pair) { return !(pair[0] in varsToRemove) });
+        if (node[1].length == 0) {
+          // wipe out an empty |var;|
+          node[0] = 'toplevel';
+          node[1] = [];
+        }
+      }
+    });
+  });
+
+  // A class for optimizing expressions. We know that it is legitimate to collapse
+  // 5+7 in the generated code, as it will always be numerical, for example. XXX do we need this? here?
+  function ExpressionOptimizer(node) {
+    this.node = node;
+
+    this.run = function() {
+      traverse(this.node, function(node, type) {
+        if (type === 'binary' && node[1] == '+') {
+          var names = [];
+          var num = 0;
+          var has_num = false;
+          var fail = false;
+          traverse(node, function(subNode, subType) {
+            if (subType === 'binary') {
+              if (subNode[1] != '+') {
+                fail = true;
+                return false;
+              }
+            } else if (subType === 'name') {
+              names.push(subNode[1]);
+              return;
+            } else if (subType === 'num') {
+              num += subNode[1];
+              has_num = true;
+              return;
+            } else {
+              fail = true;
+              return false;
+            }
+          });
+          if (!fail && has_num) {
+            var ret = ['num', num];
+            for (var i = 0; i < names.length; i++) {
+              ret = ['binary', '+', ['name', names[i]], ret];
+            }
+            return ret;
+          }
+        }
+      });
+    };
+  }
+  new ExpressionOptimizer(ast).run();
+}
+
+function eliminateMemSafe(ast) {
+  eliminate(ast, true);
+}
+
 // Passes table
 
-var compress = false;
+var compress = false, printMetadata = true;
 
 var passes = {
   dumpAst: dumpAst,
@@ -1359,7 +1885,10 @@ var passes = {
   hoistMultiples: hoistMultiples,
   loopOptimizer: loopOptimizer,
   registerize: registerize,
-  compress: function() { compress = true; }
+  eliminate: eliminate,
+  eliminateMemSafe: eliminateMemSafe,
+  compress: function() { compress = true; },
+  noPrintMetadata: function() { printMetadata = false; }
 };
 
 // Main
@@ -1367,16 +1896,22 @@ var passes = {
 var src = read(arguments_[0]);
 var ast = srcToAst(src);
 //printErr(JSON.stringify(ast)); throw 1;
-var metadata = src.split('\n').filter(function(line) { return line.indexOf('EMSCRIPTEN_GENERATED_FUNCTIONS') >= 0 })[0];
+var metadata = src.split('\n').filter(function(line) { return line.indexOf(GENERATED_FUNCTIONS_MARKER) >= 0 })[0];
 //assert(metadata, 'Must have EMSCRIPTEN_GENERATED_FUNCTIONS metadata');
 if (metadata) setGeneratedFunctions(metadata);
 
 arguments_.slice(1).forEach(function(arg) {
   passes[arg](ast);
 });
-//printErr('output: ' + dump(ast));
-//printErr('output: ' + astToSrc(ast));
-ast = srcToAst(astToSrc(ast)); // re-parse, to simplify a little
-print(astToSrc(ast, compress));
-if (metadata) print(metadata + '\n');
+
+var js = astToSrc(ast, compress), old;
+
+// remove unneeded newlines+spaces, and print
+do {
+  old = js;
+  js = js.replace(/\n *\n/g, '\n');
+} while (js != old);
+print(js);
+if (metadata && printMetadata) print(metadata);
+print('\n');
 

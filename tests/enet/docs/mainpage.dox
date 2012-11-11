@@ -1,0 +1,75 @@
+/** @mainpage enet
+ <center>http://enet.bespin.org</center>
+ <hr>
+
+ENet's purpose is to provide a relatively thin, simple and robust
+network communication layer on top of UDP (User Datagram Protocol).
+The primary feature it provides is optional reliable, in-order
+delivery of packets.
+
+ENet omits certain higher level networking features such as authentication, 
+lobbying, server discovery, encryption, or other similar tasks that are
+particularly application specific so that the library remains flexible,
+portable, and easily embeddable.
+
+@ref Features
+
+@ref SourceDistro
+
+@ref Installation
+
+@ref Tutorial
+
+@ref MailingList
+
+@ref IRCChannel
+
+@ref FAQ
+
+@ref License
+
+ */
+
+/**
+@page SourceDistro Source Distribution
+
+You can retrieve the source to ENet by downloading it in either .tar.gz form
+or accessing the cvs distribution directly.
+
+The most recent stable release (1.3.3) can be downloaded <a href="http://enet.bespin.org/download/enet-1.3.3.tar.gz">here</a>. 
+The last release that is protocol compatible with the 1.2 series or earlier (1.2.5) can be downloaded <a href="http://enet.bespin.org/download/enet-1.2.5.tar.gz">here</a> 
+
+To access ENet via anonymous CVS, you must use the CVSROOT
+:pserver:anonymous\@bespin.org:/var/lib/cvs/enet with an empty
+password.
+
+@code
+	$ cvs -z3 -d :pserver:anonymous@bespin.org:/var/lib/cvs/enet login
+@endcode
+	Hit the return key when prompted for a password.
+@code
+	$ cvs -z3 -d :pserver:anonymous@bespin.org:/var/lib/cvs/enet co -l .
+	$ cvs -z3 co enet
+@endcode
+
+This will create a CVS directory in the current directory, and with
+the second command will proceed to check the enet module out of CVS.
+Any problems with CVS access or request for write access should be
+sent via email to @ref MailingList.
+
+*/
+
+/**
+@page MailingList ENet Mailing List
+
+The <a href="http://lists.cubik.org/mailman/listinfo/enet-discuss">enet-discuss</a> list is for discussion of ENet, including bug reports or feature requests.
+
+*/
+
+/**
+@page IRCChannel ENet IRC Channel
+
+Join the \#enet channel on the freenode IRC network (irc.freenode.net) for real-time discussion about the ENet library.
+
+*/
+

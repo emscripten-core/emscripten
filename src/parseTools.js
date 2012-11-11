@@ -905,6 +905,7 @@ function getHeapOffset(offset, type) {
 
 // See makeSetValue
 function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSafe) {
+  if (UNALIGNED_MEMORY) align = 1;
   if (isStructType(type)) {
     var typeData = Types.types[type];
     var ret = [];
@@ -930,7 +931,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
           // Special case that we can optimize
           ret += makeGetValue(ptr, pos, 'i16', noNeedFirst, 2, ignore) + '+' +
                  '(' + makeGetValue(ptr, getFastValue(pos, '+', 2), 'i16', noNeedFirst, 2, ignore) + '<<16)';
-        } else if (bytes <= 4) {
+        } else { // XXX we cannot truly handle > 4...
           ret = '';
           for (var i = 0; i < bytes; i++) {
             ret += '(' + makeGetValue(ptr, getFastValue(pos, '+', i), 'i8', noNeedFirst, 1, ignore) + (i > 0 ? '<<' + (8*i) : '') + ')';
@@ -983,7 +984,8 @@ function indexizeFunctions(value, type) {
 //!             'null' means, in the context of SAFE_HEAP, that we should accept all types;
 //!             which means we should write to all slabs, ignore type differences if any on reads, etc.
 //! @param noNeedFirst Whether to ignore the offset in the pointer itself.
-function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep) {
+function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep, forcedAlign) {
+  if (UNALIGNED_MEMORY && !forcedAlign) align = 1;
   sep = sep || ';';
   if (isStructType(type)) {
     var typeData = Types.types[type];
@@ -1003,6 +1005,10 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
     return '(tempDoubleF64[0]=' + value + ',' +
             makeSetValue(ptr, pos, 'tempDoubleI32[0]', 'i32', noNeedFirst, ignore, align, noSafe, ',') + ',' +
             makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'tempDoubleI32[1]', 'i32', noNeedFirst, ignore, align, noSafe, ',') + ')';
+  } else if (USE_TYPED_ARRAYS == 2 && type == 'i64') {
+    return '(tempI64 = [' + splitI64(value) + '],' +
+            makeSetValue(ptr, pos, 'tempI64[0]', 'i32', noNeedFirst, ignore, align, noSafe, ',') + ',' +
+            makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'tempI64[1]', 'i32', noNeedFirst, ignore, align, noSafe, ',') + ')';
   }
 
   var bits = getBits(type);
@@ -1026,7 +1032,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
           }
         }
       } else {
-        ret += makeSetValue('tempDoublePtr', 0, value, type, noNeedFirst, ignore, 8) + sep;
+        ret += makeSetValue('tempDoublePtr', 0, value, type, noNeedFirst, ignore, 8, null, null, true) + sep;
         ret += makeCopyValues(getFastValue(ptr, '+', pos), 'tempDoublePtr', Runtime.getNativeTypeSize(type), type, null, align, sep);
       }
       return ret;
@@ -1564,6 +1570,19 @@ function makeRounding(value, bits, signed, floatConversion) {
   // been rounded properly regardless, and we will be sign-corrected later when actually used, if
   // necessary.
   return makeInlineCalculation('VALUE >= 0 ? Math.floor(VALUE) : Math.ceil(VALUE)', value, 'tempBigIntR');
+/* refactored version - needs perf testing TODO
+  if (bits <= 32) {
+    if (signed) {
+      return '((' + value + ')&-1)'; // &-1 (instead of |0) hints to the js optimizer that this is a rounding correction
+    } else {
+      return '((' + value + ')>>>0)';
+    }
+  }
+  // Math.floor is reasonably fast if we don't care about corrections (and even correct if unsigned)
+  if (!correctRoundings() || !signed) return 'Math.floor(' + value + ')';
+  // We are left with >32 bits
+  return makeInlineCalculation('VALUE >= 0 ? Math.floor(VALUE) : Math.ceil(VALUE)', value, 'tempBigIntR');
+*/
 }
 
 // fptoui and fptosi are not in these, because we need to be careful about what we do there. We can't
@@ -1579,8 +1598,6 @@ function isSignedOp(op, variant) {
 }
 
 var legalizedI64s = USE_TYPED_ARRAYS == 2; // We do not legalize globals, but do legalize function lines. This will be true in the latter case
-var preciseI64MathUsed = false; // Set to true if we actually use precise i64 math: If PRECISE_I64_MATH is set, and also such math is actually
-                                // needed (+,-,*,/,% - we do not need it for bitops)
 
 function processMathop(item) {
   var op = item.op;
@@ -1638,7 +1655,7 @@ function processMathop(item) {
       }
     }
     function i64PreciseOp(type, lastArg) {
-      preciseI64MathUsed = true;
+      Types.preciseI64MathUsed = true;
       return finish(['(i64Math.' + type + '(' + low1 + ',' + high1 + ',' + low2 + ',' + high2 +
                      (lastArg ? ',' + lastArg : '') + '),i64Math.result[0])', 'i64Math.result[1]']);
     }
@@ -1799,7 +1816,7 @@ function processMathop(item) {
     case 'sdiv': case 'udiv': return makeRounding(getFastValue(idents[0], '/', idents[1], item.type), bits, op[0] === 's');
     case 'mul': {
       if (bits == 32 && PRECISE_I32_MUL) {
-        preciseI64MathUsed = true;
+        Types.preciseI64MathUsed = true;
         return '(i64Math.multiply(' + idents[0] + ',0,' + idents[1] + ',0),i64Math.result[0])';
       } else {
         return handleOverflow(getFastValue(idents[0], '*', idents[1], item.type), bits);
@@ -1983,7 +2000,9 @@ function parseBlockAddress(segment) {
 }
 
 function finalizeBlockAddress(param) {
-  return Functions.currFunctions[param.func].labelIds[param.label]; // XXX We rely on currFunctions here...?
+  assert(param.func in Functions.blockAddresses);
+  assert(param.label in Functions.blockAddresses[param.func]);
+  return Functions.blockAddresses[param.func][param.label];
 }
 
 function stripCorrections(param) {

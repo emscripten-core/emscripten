@@ -1,6 +1,11 @@
 Changes
 =======
 
+0.2.1 - Oct 15, 2012
+--------------------
+
+ * re-released with updated version number
+
 0.2.0 - Sep 17, 2012
 --------------------
 

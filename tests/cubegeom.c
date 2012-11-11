@@ -256,6 +256,14 @@ int main(int argc, char *argv[])
 
     GLint lightmapLocation = glGetUniformLocation(program, "lightmap");
     assert(lightmapLocation >= 0);
+    assert(lightmapLocation == glGetUniformLocation(program, "lightmap")); // must get identical ids
+    glLinkProgram(program);
+    glGetProgramiv(program, GL_LINK_STATUS, &ok);
+    assert(ok);
+    assert(lightmapLocation != glGetUniformLocation(program, "lightmap")); // must NOT get identical ids, we re-linked!
+    lightmapLocation = glGetUniformLocation(program, "lightmap");
+    assert(lightmapLocation == glGetUniformLocation(program, "lightmap")); // must get identical ids
+
     glUniform1i(lightmapLocation, 1); // sampler2D? Is it the texture unit?
 
     GLint diffusemapLocation = glGetUniformLocation(program, "diffusemap");

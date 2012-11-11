@@ -15,3 +15,4 @@ function shifty() {
   q(h() >> 2 << 2);
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["shifty"]
+

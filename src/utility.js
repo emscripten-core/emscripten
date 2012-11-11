@@ -108,6 +108,12 @@ function zeros(size) {
   return ret;
 }
 
+function spaces(size) {
+  var ret = '';
+  for (var i = 0; i < size; i++) ret += ' ';
+  return ret;
+}
+
 function keys(x) {
   var ret = [];
   for (var a in x) ret.push(a);
@@ -313,11 +319,12 @@ function Benchmarker() {
     //printErr(['+', id, starts[id]]);
     starts[id] = (starts[id] || []).concat([Date.now()]);
   };
-  this.end = function(id) {
+  this.stop = function(id) {
     //printErr(['-', id, starts[id]]);
     assert(starts[id], new Error().stack);
     times[id] = (times[id] || 0) + Date.now() - starts[id].pop();
     counts[id] = (counts[id] || 0) + 1;
+    this.print();
   };
   this.print = function() {
     var ids = keys(times);
