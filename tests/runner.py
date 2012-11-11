@@ -78,6 +78,9 @@ class RunnerCore(unittest.TestCase):
   stderr_redirect = STDOUT # This avoids cluttering the test runner output, which is stderr too, with compiler warnings etc.
                            # Change this to None to get stderr reporting, for debugging purposes
 
+  def skipme(self): # used by tests we ask on the commandline to be skipped, see right before call to unittest.main
+    return self.skip('requested to be skipped')
+
   def setUp(self):
     global Settings
     Settings.reset()
@@ -10186,6 +10189,17 @@ if __name__ == '__main__':
     print 'WARNING: None of the JS engines in JS_ENGINES appears to work.'
   elif len(JS_ENGINES) < total_engines:
     print 'WARNING: Not all the JS engines in JS_ENGINES appears to work, ignoring those.'
+
+  # Skip requested tests
+
+  for i in range(len(sys.argv)):
+    arg = sys.argv[i]
+    if arg.startswith('skip:'):
+      which = arg.split('skip:')[1]
+      print >> sys.stderr, 'will skip "%s"' % which
+      exec(which + ' = RunnerCore.skipme')
+      sys.argv[i] = ''
+  sys.argv = filter(lambda arg: arg, sys.argv)
 
   # Go
 
