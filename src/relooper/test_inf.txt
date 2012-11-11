@@ -361,32 +361,31 @@ if (uint(i4) >= uint(i5)) {
 code 171
 if (i2 == 0) {
   code 183
-} else {
-  code 172
-  while(1) {
-    code 173
-    if (uint(i5) >= uint(i6)) {
-      code 175
-    } else {
-      code 174
-    }
-    code 176
-    if (uint(i5) >= uint(i6)) {
-      code 178
-    } else {
-      code 177
-    }
-    code 179
-    if (uint(i4) >= uint(i5)) {
-      code 181
-    } else {
-      code 180
-    }
-    code 182
-    if (!(i2 != 0)) {
-      break;
-    }
-  }
-  code 183
 }
+code 172
+while(1) {
+  code 173
+  if (uint(i5) >= uint(i6)) {
+    code 175
+  } else {
+    code 174
+  }
+  code 176
+  if (uint(i5) >= uint(i6)) {
+    code 178
+  } else {
+    code 177
+  }
+  code 179
+  if (uint(i4) >= uint(i5)) {
+    code 181
+  } else {
+    code 180
+  }
+  code 182
+  if (!(i2 != 0)) {
+    break;
+  }
+}
+code 183
 

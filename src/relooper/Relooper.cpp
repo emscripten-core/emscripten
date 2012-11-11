@@ -750,6 +750,49 @@ void Relooper::Calculate(Block *Entry) {
             }
           }
 
+          // As an optimization, if we have 2 independent groups, and one is a small dead end, we can handle only that dead end.
+          // The other then becomes a Next - without nesting in the code and recursion in the analysis.
+          // TODO: if the larger is the only dead end, handle that too
+          // TODO: handle >2 groups
+          // TODO: handle not just dead ends, but also that do not branch to the NextEntries. However, must be careful
+          //       there since we create a Next, and that Next can prevent eliminating a break (since we no longer
+          //       naturally reach the same place), which may necessitate a one-time loop, which makes the unnesting
+          //       pointless.
+          if (IndependentGroups.size() == 2) {
+            // Find the smaller one
+            BlockBlockSetMap::iterator iter = IndependentGroups.begin();
+            Block *SmallEntry = iter->first;
+            int SmallSize = iter->second.size();
+            iter++;
+            Block *LargeEntry = iter->first;
+            int LargeSize = iter->second.size();
+            if (SmallSize != LargeSize) { // ignore the case where they are identical - keep things symmetrical there
+              if (SmallSize > LargeSize) {
+                Block *Temp = SmallEntry;
+                SmallEntry = LargeEntry;
+                LargeEntry = Temp; // Note: we did not flip the Sizes too, they are now invalid. TODO: use the smaller size as a limit?
+              }
+              // Check if dead end
+              bool DeadEnd = true;
+              BlockSet &SmallGroup = IndependentGroups[SmallEntry];
+              for (BlockSet::iterator iter = SmallGroup.begin(); iter != SmallGroup.end(); iter++) {
+                Block *Curr = *iter;
+                for (BlockBranchMap::iterator iter = Curr->BranchesOut.begin(); iter != Curr->BranchesOut.end(); iter++) {
+                  Block *Target = iter->first;
+                  if (SmallGroup.find(Target) == SmallGroup.end()) {
+                    DeadEnd = false;
+                    break;
+                  }
+                }
+                if (!DeadEnd) break;
+              }
+              if (DeadEnd) {
+                PrintDebug("Removing nesting by not handling large group because small group is dead end\n");
+                IndependentGroups.erase(LargeEntry);
+              }
+            }
+          }
+
           PrintDebug("Handleable independent groups: %d\n", IndependentGroups.size());
 
           if (IndependentGroups.size() > 0) {

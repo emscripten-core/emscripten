@@ -59,24 +59,21 @@ while(1) {
   }
   // code 3
   if ($6) {
-    label = 14;
     break;
   } else {
     var $i_0 = $7;var $x_0 = $5; 
   }
 }
-if (label == 14) {
-  // code 4
-  if ($10) {
-    // code 5
-  }
-  // code 6
-  var $x_1 = $13; 
+if (label == 18) {
   // code 7
 }
-else if (label == 18) {
-  // code 7
+// code 4
+if ($10) {
+  // code 5
 }
+// code 6
+var $x_1 = $13; 
+// code 7
 
 
 
@@ -94,6 +91,21 @@ if (chak()) {
   atoc();
   // block C...................................................................................................
   ctod2();
+  // block D
+}
+
+
+
+-- Unbalanced with a dead end --
+
+
+
+// block A
+if (!(check == 10)) {
+  return C;
+}
+while(1) {
+  // block B
   // block D
 }
 

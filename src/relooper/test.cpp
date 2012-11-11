@@ -160,7 +160,7 @@ int main() {
 
     puts(buffer);
   }
-/*
+
   if (1) {
     Relooper::SetOutputBuffer(buffer, sizeof(buffer));
 
@@ -168,11 +168,11 @@ int main() {
 
     Block *b_a = new Block("// block A\n");
     Block *b_b = new Block("// block B\n");
-    Block *b_c = new Block("// block C\n");
+    Block *b_c = new Block("return C;\n");
     Block *b_d = new Block("// block D\n");
 
     b_a->AddBranchTo(b_b, "check == 10");
-    b_a->AddBranchTo(b_c, NULL);
+    b_a->AddBranchTo(b_c, NULL); // c is a dead end
 
     b_b->AddBranchTo(b_d, NULL);
 
@@ -190,6 +190,5 @@ int main() {
 
     puts(buffer);
   }
-*/
 }
 
