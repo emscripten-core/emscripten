@@ -1037,7 +1037,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
       def make(opt_level):
         raw = RELOOPER + '.raw.js'
-        Building.emcc(os.path.join(RELOOPER_DIR, 'Relooper.cpp'), ['-I' + os.path.join(RELOOPER_DIR), '--post-js', os.path.join(RELOOPER_DIR, 'emscripten', 'glue.js'), '-s', 'TOTAL_MEMORY=52428800', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["memcpy", "memset", "malloc", "free", "puts"]', '-O' + str(opt_level)], raw)
+        Building.emcc(os.path.join(RELOOPER_DIR, 'Relooper.cpp'), ['-I' + os.path.join(RELOOPER_DIR), '--post-js', os.path.join(RELOOPER_DIR, 'emscripten', 'glue.js'), '-s', 'TOTAL_MEMORY=52428800', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["memcpy", "memset", "malloc", "free", "puts"]', '-O' + str(opt_level), '--closure', '0'], raw)
         f = open(RELOOPER, 'w')
         f.write("// Relooper, (C) 2012 Alon Zakai, MIT license, https://github.com/kripken/Relooper\n")
         f.write("var Relooper = (function() {\n");
