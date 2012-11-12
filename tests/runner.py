@@ -7452,15 +7452,15 @@ f.close()
       # TODO: deprecate llvm optimizations, dlmalloc, etc. in emscripten.py.
 
     def test_cmake(self):
-      emscriptencmaketoolchain = path_from_root('cmake', 'Platform', 'Emscripten.cmake')
-
       # On Windows, we want to build cmake-generated Makefiles with mingw32-make instead of e.g. cygwin make, since mingw32-make
       # understands Windows paths, and cygwin make additionally produces a cryptic 'not valid bitcode file' errors on files that
       # *are* valid bitcode files.
       if os.name == 'nt':
         make_command = 'mingw32-make'
+        emscriptencmaketoolchain = path_from_root('cmake', 'Platform', 'Emscripten.cmake')
       else:
         make_command = 'make'
+        emscriptencmaketoolchain = path_from_root('cmake', 'Platform', 'Emscripten_unix.cmake')
 
       cmake_cases = ['target_js', 'target_html']
       cmake_outputs = ['hello_world.js', 'hello_world_gles.html']
@@ -7474,8 +7474,13 @@ f.close()
             os.chdir(tempdirname)
             
             # Run Cmake
-            cmd = ['cmake', '-DCMAKE_TOOLCHAIN_FILE='+emscriptencmaketoolchain, '-DCMAKE_BUILD_TYPE=' + configuration, '-G' 'Unix Makefiles', cmakelistsdir]
+            cmd = ['cmake', '-DCMAKE_TOOLCHAIN_FILE='+emscriptencmaketoolchain, 
+                            '-DCMAKE_BUILD_TYPE=' + configuration, 
+                            '-DCMAKE_MODULE_PATH=' + path_from_root('cmake').replace('\\', '/'),
+                            '-G' 'Unix Makefiles', cmakelistsdir]
             ret = Popen(cmd, stdout=PIPE, stderr=PIPE).communicate()
+            if ret[1] != None and len(ret[1].strip()) > 0:
+              print >> sys.stderr, ret[1] # If there were any errors, print them directly to console for diagnostics.
             if 'error' in ret[1].lower():
               print >> sys.stderr, 'Failed command: ' + ' '.join(cmd)
               print >> sys.stderr, 'Result:\n' + ret[1]
@@ -7485,11 +7490,13 @@ f.close()
             # Build
             cmd = [make_command]
             ret = Popen(cmd, stdout=PIPE).communicate()
+            if ret[1] != None and len(ret[1].strip()) > 0:
+              print >> sys.stderr, ret[1] # If there were any errors, print them directly to console for diagnostics.
             if 'error' in ret[0].lower() and not '0 error(s)' in ret[0].lower():
               print >> sys.stderr, 'Failed command: ' + ' '.join(cmd)
               print >> sys.stderr, 'Result:\n' + ret[0]
               raise Exception('make failed!')
-            assert os.path.exists(tempdirname + '/' + cmake_outputs[i]), 'Building a cmake-generated Makefile failed to produce an output file!'
+            assert os.path.exists(tempdirname + '/' + cmake_outputs[i]), 'Building a cmake-generated Makefile failed to produce an output file %s!' % tempdirname + '/' + cmake_outputs[i]
             
             # Run through node, if CMake produced a .js file.
             if cmake_outputs[i].endswith('.js'):
