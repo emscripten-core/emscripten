@@ -13,24 +13,20 @@
 # After that, build the generated Makefile with the command 'make'. On Windows, you may download and use 'mingw32-make' instead.
 
 # the name of the target operating system
-SET(CMAKE_SYSTEM_NAME Emscripten)
-SET(CMAKE_SYSTEM_VERSION 1)
+set(CMAKE_SYSTEM_NAME Emscripten)
+set(CMAKE_SYSTEM_VERSION 1)
 
-if ("$ENV{EMCC_BIN}" STREQUAL "")
-	message(ERROR "Environment variable EMCC_BIN has not been set! Please point it to Emscripten root directory!")
+if ("$ENV{EMSCRIPTEN}" STREQUAL "")
+	message(ERROR "Environment variable EMSCRIPTEN has not been set! Please point it to Emscripten root directory!")
 endif()
 
-#message(STATUS "CMake is using Emscripten toolchain file, Emscripten root path '$ENV{EMCC_BIN}'.")
-
-SET(CMAKE_FIND_ROOT_PATH $ENV{EMCC_BIN})
-
-FILE(TO_CMAKE_PATH "$ENV{EMCC_BIN}" EMCC_PATH)
+set(CMAKE_FIND_ROOT_PATH $ENV{EMSCRIPTEN})
 
 # Specify the compilers to use for C and C++
-SET(CMAKE_C_COMPILER ${EMCC_PATH}/emcc)
-SET(CMAKE_CXX_COMPILER ${EMCC_PATH}/em++)
-SET(CMAKE_AR ${EMCC_PATH}/emar)
-SET(CMAKE_RANLIB ${EMCC_PATH}/emranlib)
+set(CMAKE_C_COMPILER "${EMCC_PATH}emcc")
+set(CMAKE_CXX_COMPILER "${EMCC_PATH}em++")
+set(CMAKE_AR "${EMCC_PATH}emar")
+set(CMAKE_RANLIB "${EMCC_PATH}emranlib")
 
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
@@ -38,9 +34,9 @@ set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE BOTH)
 set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 
 # Specify the program to use when building static libraries. Force Emscripten-related command line options to clang.
-SET(CMAKE_CXX_ARCHIVE_CREATE "${CMAKE_CXX_COMPILER} -o <TARGET> -emit-llvm <LINK_FLAGS> <OBJECTS>")
-SET(CMAKE_C_ARCHIVE_CREATE "${CMAKE_C_COMPILER} -o <TARGET> -emit-llvm <LINK_FLAGS> <OBJECTS>")
+set(CMAKE_CXX_ARCHIVE_CREATE "${CMAKE_CXX_COMPILER} -o <TARGET> -emit-llvm <LINK_FLAGS> <OBJECTS>")
+set(CMAKE_C_ARCHIVE_CREATE "${CMAKE_C_COMPILER} -o <TARGET> -emit-llvm <LINK_FLAGS> <OBJECTS>")
 
 # Set a global EMSCRIPTEN variable that can be used in client CMakeLists.txt to detect when building using Emscripten.
 # There seems to be some kind of bug with CMake, so you might need to define this manually on the command line with "-DEMSCRIPTEN=1".
-SET(EMSCRIPTEN 1)
+set(EMSCRIPTEN 1)
