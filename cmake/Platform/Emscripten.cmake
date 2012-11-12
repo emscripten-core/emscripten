@@ -23,10 +23,12 @@ endif()
 set(CMAKE_FIND_ROOT_PATH $ENV{EMSCRIPTEN})
 
 # Specify the compilers to use for C and C++
-set(CMAKE_C_COMPILER "${EMCC_PATH}emcc")
-set(CMAKE_CXX_COMPILER "${EMCC_PATH}em++")
-set(CMAKE_AR "${EMCC_PATH}emar")
-set(CMAKE_RANLIB "${EMCC_PATH}emranlib")
+if ("${CMAKE_C_COMPILER}" STREQUAL "")
+	set(CMAKE_C_COMPILER "emcc")
+	set(CMAKE_CXX_COMPILER "em++")
+	set(CMAKE_AR "emar")
+	set(CMAKE_RANLIB "emranlib")
+endif()
 
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
