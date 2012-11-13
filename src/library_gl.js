@@ -2080,6 +2080,9 @@ var LibraryGL = {
   glVertex3fv: function(p) {
     _glVertex3f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}}, {{{ makeGetValue('p', '8', 'float') }}});
   },
+  glVertex2fv: function(p) {
+    _glVertex2f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}});
+  },
 
   glTexCoord2i: function(u, v) {
 #if ASSERTIONS

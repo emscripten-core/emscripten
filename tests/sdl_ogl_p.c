@@ -145,9 +145,9 @@ int main(int argc, char *argv[])
     // Render the last item using oldschool glBegin etc
     glBegin( GL_TRIANGLE_STRIP );
         glTexCoord2i( 0, 0 ); glVertex3f( 100, 300, 0 );
-        glTexCoord2i( 1, 0 ); glVertex3f( 300, 300, 0 );
-        glTexCoord2i( 1, 1 ); glVertex3f( 300, 400, 0 );
-        glTexCoord2i( 0, 1 ); glVertex3f( 500, 410, 0 );
+        glTexCoord2i( 1, 0 ); glVertex2f( 300, 300 );
+        glTexCoord2i( 1, 1 ); { float vals[3] = { 300, 400, 0 }; glVertex3fv(vals); }
+        glTexCoord2i( 0, 1 ); { float vals[2] = { 500, 410 }; glVertex2fv(vals); }
     glEnd();
 
     SDL_GL_SwapBuffers();
