@@ -16,11 +16,11 @@
 set(CMAKE_SYSTEM_NAME Emscripten)
 set(CMAKE_SYSTEM_VERSION 1)
 
-if ("$ENV{EMSCRIPTEN}" STREQUAL "")
-	message(ERROR "Environment variable EMSCRIPTEN has not been set! Please point it to Emscripten root directory!")
+if ("${EMSCRIPTEN_ROOT_PATH}" STREQUAL "")
+	set(CMAKE_FIND_ROOT_PATH "$ENV{EMSCRIPTEN}")
+else()
+	set(CMAKE_FIND_ROOT_PATH "${EMSCRIPTEN_ROOT_PATH}")
 endif()
-
-set(CMAKE_FIND_ROOT_PATH $ENV{EMSCRIPTEN})
 
 # Specify the compilers to use for C and C++
 if ("${CMAKE_C_COMPILER}" STREQUAL "")
