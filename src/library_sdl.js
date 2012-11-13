@@ -966,6 +966,16 @@ var LibrarySDL = {
     return _SDL_UpperBlit(src, srcrect, dst, dstrect);
   },
 
+  zoomSurface: function(src, x, y, smooth) {
+    var srcData = SDL.surfaces[src];
+    var w = srcData.width*x;
+    var h = srcData.height*y;
+    var ret = SDL.makeSurface(w, h, srcData.flags, false, 'zoomSurface');
+    var dstData = SDL.surfaces[ret];
+    dstData.ctx.drawImage(srcData.canvas, 0, 0, w, h);
+    return ret;
+  },
+
   SDL_SetAlpha: function(surf, flag, alpha) {
     SDL.surfaces[surf].alpha = alpha;
   },

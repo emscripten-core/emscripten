@@ -9261,6 +9261,10 @@ elif 'browser' in str(sys.argv):
     def test_sdl_maprgba(self):
       self.btest('sdl_maprgba.c', reference='sdl_maprgba.png', reference_slack=3)
 
+    def test_sdl_rotozoom(self):
+      shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'example.png'))
+      self.btest('sdl_rotozoom.c', reference='sdl_rotozoom.png', args=['--preload-file', 'example.png'])
+
     def zzztest_sdl_canvas_palette_2(self): # XXX disabled until we have proper automation
       open(os.path.join(self.get_dir(), 'sdl_canvas_palette_2.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_canvas_palette_2.c')).read()))
       open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('Module[\'preRun\'] = function() { SDL.defaults.copyOnLock = false }')
