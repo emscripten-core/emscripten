@@ -727,7 +727,7 @@ try:
       prev = newargs[i-1]
       if prev in ['-MT', '-install_name']: continue # ignore this gcc-style argument
 
-    if arg.endswith(SOURCE_SUFFIXES + BITCODE_SUFFIXES + DYNAMICLIB_SUFFIXES + ASSEMBLY_SUFFIXES) or shared.Building.is_ar(arg): # we already removed -o <target>, so all these should be inputs
+    if not arg.startswith('-') and (arg.endswith(SOURCE_SUFFIXES + BITCODE_SUFFIXES + DYNAMICLIB_SUFFIXES + ASSEMBLY_SUFFIXES) or shared.Building.is_ar(arg)): # we already removed -o <target>, so all these should be inputs
       newargs[i] = ''
       if os.path.exists(arg):
         if arg.endswith(SOURCE_SUFFIXES):

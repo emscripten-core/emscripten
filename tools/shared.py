@@ -2,6 +2,58 @@ import shutil, time, os, sys, json, tempfile, copy, shlex, atexit, subprocess
 from subprocess import Popen, PIPE, STDOUT
 from tempfile import mkstemp
 
+# A helper class that is used on Windows to represent the subprocess object that is the return value of Popen.
+class MockPopen:
+  def __init__(self, stdout, stderr, returncode):
+    self.returncode = returncode
+    self.output = (stdout, stderr)
+  def communicate(self):
+    return self.output
+
+# On Windows python suffers from a particularly nasty bug if python is spawning new processes while python itself is spawned from some other non-console process.
+# Use a custom replacement for Popen on Windows to avoid the "WindowsError: [Error 6] The handle is invalid" errors when emcc is driven through cmake or mingw32-make. 
+# See http://bugs.python.org/issue3905
+def call_process(args, bufsize=0, executable=None, stdin=None, stdout=None, stderr=None, preexec_fn=None, close_fds=False, 
+                  shell=False, cwd=None, env=None, universal_newlines=False, startupinfo=None, creationflags=0):
+  # (stdin, stdout, stderr) store what the caller originally wanted to be done with the streams.
+  # (stdin_, stdout_, stderr_) will store the fixed set of streams that workaround the bug.
+  stdin_ = stdin
+  stdout_ = stdout
+  stderr_ = stderr
+  
+  # If the caller wants one of these PIPEd, we must PIPE them all to avoid the 'handle is invalid' bug.
+  if stdin_ == PIPE or stdout_ == PIPE or stderr_ == PIPE:
+    if stdin_ == None:
+      stdin_ = PIPE
+    if stdout_ == None:
+      stdout_ = PIPE
+    if stderr_ == None:
+      stderr_ = PIPE
+  
+  # Call the process with fixed streams.
+  process = subprocess.Popen(args, bufsize, executable, stdin_, stdout_, stderr_, preexec_fn, close_fds, shell, cwd, env, universal_newlines, startupinfo, creationflags)
+  output = process.communicate()
+  
+  # If caller never wanted to PIPE stdout or stderr, route the output back to screen to avoid swallowing output.
+  if stdout == None and stdout_ == PIPE:
+    print >> sys.stdout, output[0]
+  if stderr == None and stderr_ == PIPE:
+    print >> sys.stderr, output[1]
+  
+  # Return a mock object to the caller. This works as long as all emscripten code immediately .communicate()s the result, and doesn't
+  # leave the process object around for longer/more exotic uses.
+  if stdout == None and stderr == None:
+    return MockPopen(None, None, process.returncode)
+  if stdout == None:
+    return MockPopen(None, output[1], process.returncode)
+  if stderr == None:
+    return MockPopen(output[0], None, process.returncode)
+  return MockPopen(output[0], output[1], process.returncode)
+
+# Install our replacement Popen handler if we are running on Windows to avoid python spawn process function.
+if os.name == 'nt':
+  Popen = call_process
+  
 import js_optimizer
 
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
@@ -988,7 +1040,8 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
                  b[6] == '>' and ord(b[7]) == 10
       Building._is_ar_cache[filename] = sigcheck
       return sigcheck
-    except:
+    except Exception, e:
+      print 'shared.Building.is_ar failed to test whether file \'%s\' is a llvm archive file! Failed on exception: %s' % (filename, e)
       return False
 
   @staticmethod
@@ -1006,7 +1059,8 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
           test_ll = os.path.join(EMSCRIPTEN_TEMP_DIR, 'test.ll')
           Building.llvm_dis(filename, test_ll)
           assert os.path.exists(test_ll)
-    except:
+    except Exception, e:
+      print 'shared.Building.is_bitcode failed to test whether file \'%s\' is a llvm bitcode file! Failed on exception: %s' % (filename, e)
       return False
 
     # look for magic signature
@@ -1108,7 +1162,7 @@ class Compression:
 
 def execute(cmd, *args, **kw):
   try:
-    return subprocess.Popen(cmd, *args, **kw).communicate() # let compiler frontend print directly, so colors are saved (PIPE kills that)
+    return Popen(cmd, *args, **kw).communicate() # let compiler frontend print directly, so colors are saved (PIPE kills that)
   except:
     if not isinstance(cmd, str):
       cmd = ' '.join(cmd)
