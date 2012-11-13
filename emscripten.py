@@ -51,6 +51,7 @@ def process_funcs(args):
   funcs_file = temp_files.get('.func_%d.ll' % i).name
   open(funcs_file, 'w').write(ll)
   out = shared.run_js(compiler, compiler_engine, [settings_file, funcs_file, 'funcs', forwarded_file] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
+  shared.try_delete(funcs_file)
   return out.split('//FORWARDED_DATA:')
 
 def emscript(infile, settings, outfile, libraries=[]):
