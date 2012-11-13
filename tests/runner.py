@@ -1614,7 +1614,7 @@ c5,de,15,8a
           #define TEST(func) \
           { \
             char *word = "WORD"; \
-            char *wordEntry = "Â"; \
+            char wordEntry[2] = { -61,-126 }; /* "Â"; */ \
             int cmp = func(word, wordEntry, 2); \
             printf("Compare value " #func " is %d\\n", cmp); \
           }
