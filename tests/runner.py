@@ -94,6 +94,12 @@ class RunnerCore(unittest.TestCase):
       os.makedirs(dirname)
     self.working_dir = dirname
     os.chdir(dirname)
+
+    if not self.save_dir:
+      self.has_prev_ll = False
+      for temp_file in os.listdir(TEMP_DIR):
+        if temp_file.endswith('.ll'):
+          self.has_prev_ll = True
     
   def tearDown(self):
     if self.save_JS:
@@ -106,6 +112,12 @@ class RunnerCore(unittest.TestCase):
       # rmtree() fails on Windows if the current working directory is inside the tree.
       os.chdir(os.path.join(self.get_dir(), '..'))
       shutil.rmtree(self.get_dir())
+
+      # Make sure we don't leave stuff around
+      if not self.has_prev_ll:
+        for temp_file in os.listdir(TEMP_DIR):
+          assert not temp_file.endswith('.ll'), temp_file
+          # TODO assert not temp_file.startswith('emscripten_'), temp_file
 
   def skip(self, why):
     print >> sys.stderr, '<skipping: %s> ' % why,
