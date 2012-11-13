@@ -7529,6 +7529,9 @@ f.close()
       # On Windows, we want to build cmake-generated Makefiles with mingw32-make instead of e.g. cygwin make, since mingw32-make
       # understands Windows paths, and cygwin make additionally produces a cryptic 'not valid bitcode file' errors on files that
       # *are* valid bitcode files.
+
+      os.environ['EMSCRIPTEN'] = path_from_root('') # XXX FIXME this should be done in emconfigure
+
       if os.name == 'nt':
         make_command = 'mingw32-make'
         emscriptencmaketoolchain = path_from_root('cmake', 'Platform', 'Emscripten.cmake')
