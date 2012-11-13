@@ -277,6 +277,14 @@ var SMALL_XHR_CHUNKS = 0; // Use small chunk size for binary synchronous XHR's i
                           // Used for testing.
                           // See test_chunked_synchronous_xhr in runner.py and library.js.
 
+var HEADLESS = 0; // If 1, will include shim code that tries to 'fake' a browser
+                  // environment, in order to let you run a browser program (say,
+                  // using SDL) in the shell. Obviously nothing is rendered, but
+                  // this can be useful for benchmarking and debugging if actual
+                  // rendering is not the issue. Note that the shim code is
+                  // very partial - it is hard to fake a whole browser! - so
+                  // keep your expectations low for this to work.
+
 var NECESSARY_BLOCKADDRS = []; // List of (function, block) for all block addresses that are taken.
 
 // Compiler debugging options

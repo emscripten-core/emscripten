@@ -1,4 +1,6 @@
 
+//== HEADLESS ==//
+
 var window = {
   location: {
     toString: function() {
@@ -666,6 +668,11 @@ var document = {
                       data: new Uint8ClampedArray(w*h),
                     };
                   },
+                  save: function(){},
+                  restore: function(){},
+                  fillRect: function(){},
+                  measureText: function() { return 10 },
+                  fillText: function(){},
                 };
               }
               default: throw 'canvas.getContext: ' + which;
@@ -868,4 +875,11 @@ var MozBlobBuilder = function() {
     return this.data.buffer; // return the buffer as a "blob". XXX We might need to change this if it is not opaque
   };
 };
+
+// additional setup
+if (!Module['canvas']) {
+  Module['canvas'] = document.getElementById('canvas');
+}
+
+//== HEADLESS ==//
 

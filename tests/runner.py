@@ -8323,6 +8323,18 @@ fscanfed: 10 - hello
       Popen(['python', FILE_PACKAGER, 'test.data', '--pre-run', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
       assert crunch_time < os.stat('ship.crn').st_mtime, 'Crunch was changed'
 
+    def test_headless(self):
+      shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'example.png'))
+      Popen(['python', EMCC, path_from_root('tests', 'sdl_canvas.c'), '-s', 'HEADLESS=1']).communicate()
+      output = run_js('a.out.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE)
+      assert '''Init: 0
+Font: 0x1
+Sum: 0
+you should see two lines of text in different colors and a blue rectangle
+SDL_Quit called (and ignored)
+done.
+''' in output, output
+
 elif 'browser' in str(sys.argv):
   # Browser tests.
 

@@ -1294,6 +1294,11 @@ function JSify(data, functionsOnly, givenFunctions) {
       print('// Warning: printing of i64 values may be slightly rounded! No deep i64 math used, so precise i64 code not included');
       print('var i64Math = null;');
     }
+    if (HEADLESS) {
+      print('if (!ENVIRONMENT_IS_WEB) {');
+      print(read('headless.js').replace("'%s'", "'http://emscripten.org'").replace("'?%s'", "''").replace('%s,', 'null,').replace('%d', '0'));
+      print('}');
+    }
     var generated = itemsDict.functionStub.concat(itemsDict.GlobalVariablePostSet);
     generated.forEach(function(item) { print(indentify(item.JS || '', 2)); });
     if (RUNTIME_TYPE_INFO) {

@@ -149,7 +149,7 @@ for parent, dirs, files in os.walk(out_dir):
 print 'add boilerplate...'
 
 open(os.path.join(out_dir, first_js), 'w').write(
-  (open(os.path.join(os.path.dirname(__file__), 'reproduceriter_shell.js')).read() % (
+  (open(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'src', 'headless.js')).read() % (
     window_location, window_location.split('?')[-1], on_idle or 'null', dirs_to_drop
   ) if shell else '') +
   open(os.path.join(os.path.dirname(__file__), 'reproduceriter.js')).read() +
