@@ -492,7 +492,24 @@ function __embind_register_function_ptr(
         invoke.handle = h;
         invoke['delete'] = function() {
             this.handle.delete();
-        };
+        }.bind(invoke);
+        invoke.clone = function() {
+            if (!this.handle.functorPtr) {
+                throw new BindingError(functorType.name + ' instance already deleted');
+            }
+
+            var clone = createFunctor(this.handle.functorPtr);
+            clone.handle.count = this.handle.count;
+            clone.handle.ptr = this.handle.ptr;
+            
+            clone.handle.count.value += 1;
+            return clone;
+        }.bind(invoke);
+        invoke.move = function() {
+            var rv = this.clone();
+            this.delete();
+            return rv;
+        }.bind(invoke);
        
         return invoke;
     }
@@ -503,7 +520,7 @@ function __embind_register_function_ptr(
             return createFunctor(ptr);
         },
         toWireType: function(destructors, o) {
-            return o.ptr;
+            return o.handle.functorPtr;
         }
     });
 }
