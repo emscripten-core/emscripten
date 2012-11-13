@@ -3012,6 +3012,78 @@ def process(filename):
           '''
         self.do_run(src, '*cheez: 0+24*\n*cheez: 0+24*\n*albeit*\n*albeit*\nQ85*\nmaxxi:21*\nmaxxD:22.10*\n*vfp:22,199*\n*vfp:22,199*\n')
 
+    def test_varargs_byval(self):
+      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('FIXME: Add support for this')
+
+      src = r'''
+        #include <stdio.h>
+        #include <stdarg.h>
+
+        typedef struct type_a {
+          union {
+            double f;
+            void *p;
+            int i;
+            short sym;
+          } value;
+        } type_a;
+
+        enum mrb_vtype {
+          MRB_TT_FALSE = 0,   /*   0 */
+          MRB_TT_CLASS = 9    /*   9 */
+        };
+
+        typedef struct type_b {
+          enum mrb_vtype tt:8;
+        } type_b;
+
+        void print_type_a(int argc, ...);
+        void print_type_b(int argc, ...);
+
+        int main(int argc, char *argv[])
+        {
+          type_a a;
+          type_b b;
+          a.value.p = (void*) 0x12345678;
+          b.tt = MRB_TT_CLASS;
+
+          printf("The original address of a is: %p\n", a.value.p);
+          printf("The original type of b is: %d\n", b.tt);
+
+          print_type_a(1, a);
+          print_type_b(1, b);
+
+          return 0;
+        }
+
+        void print_type_a(int argc, ...) {
+          va_list ap;
+          type_a a;
+
+          va_start(ap, argc);
+          a = va_arg(ap, type_a);
+          va_end(ap);
+
+          printf("The current address of a is: %p\n", a.value.p);
+        }
+
+        void print_type_b(int argc, ...) {
+          va_list ap;
+          type_b b;
+
+          va_start(ap, argc);
+          b = va_arg(ap, type_b);
+          va_end(ap);
+
+          printf("The current type of b is: %d\n", b.tt);
+        }
+        '''
+      self.do_run(src, '''The original address of a is: 0x12345678
+The original type of b is: 9
+The current address of a is: 0x12345678
+The current type of b is: 9
+''')
+
     def test_structbyval(self):
         # part 1: make sure that normally, passing structs by value works
 

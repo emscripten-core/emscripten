@@ -1148,6 +1148,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     var argsTypes = [];
     var varargs = [];
     var varargsTypes = [];
+    var varargsByVals = {};
     var ignoreFunctionIndexizing = [];
     var useJSArgs = (shortident + '__jsargs') in LibraryManager.library;
     var hasVarArgs = isVarArgsFunctionType(type);
@@ -1159,10 +1160,18 @@ function JSify(data, functionsOnly, givenFunctions) {
         args.push(val);
         argsTypes.push(param.type);
       } else {
+        var size;
+        if (param.byVal) {
+          varargsByVals[varargs.length] = param.byVal;
+          size = calcAllocatedSize(removeAllPointing(param.type));
+        } else {
+          size = Runtime.getNativeFieldSize(param.type);
+        }
         varargs.push(val);
-        varargs = varargs.concat(zeros(Runtime.getNativeFieldSize(param.type)-1));
+        varargs = varargs.concat(zeros(size-1));
+        // TODO: replace concats like this with push
         varargsTypes.push(param.type);
-        varargsTypes = varargsTypes.concat(zeros(Runtime.getNativeFieldSize(param.type)-1));
+        varargsTypes = varargsTypes.concat(zeros(size-1));
       }
     });
 
@@ -1182,8 +1191,17 @@ function JSify(data, functionsOnly, givenFunctions) {
                 varargs.map(function(arg, i) {
                   var type = varargsTypes[i];
                   if (type == 0) return null;
-                  var ret = makeSetValue(getFastValue('tempInt', '+', offset), 0, arg, type, null, null, QUANTUM_SIZE, null, ',');
-                  offset += Runtime.getNativeFieldSize(type);
+                  var ret;
+                  if (!varargsByVals[i]) {
+                    ret = makeSetValue(getFastValue('tempInt', '+', offset), 0, arg, type, null, null, QUANTUM_SIZE, null, ',');
+                    offset += Runtime.getNativeFieldSize(type);
+                  } else {
+                    assert(offset % 4 == 0); // varargs must be aligned
+                    var size = calcAllocatedSize(removeAllPointing(type));
+                    assert(size % 4 == 0); // varargs must stay aligned
+                    ret = makeCopyValues(getFastValue('tempInt', '+', offset), arg, size, null, null, varargsByVals[i], ',');
+                    offset += size;
+                  }
                   return ret;
                 }).filter(function(arg) {
                   return arg !== null;
