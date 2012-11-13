@@ -82,7 +82,7 @@ function run(args) {
     return doRun();
   }
 }
-Module['run'] = run;
+Module['run'] = Module.run = run;
 
 // {{PRE_RUN_ADDITIONS}}
 
