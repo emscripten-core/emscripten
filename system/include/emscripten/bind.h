@@ -767,7 +767,15 @@ namespace emscripten {
                 initialized = true;
                 return *this;
             }
-            
+
+            optional& operator=(optional& o) {
+                if (initialized) {
+                    get()->~T();
+                }
+                new(get()) T(*o);
+                initialized = true;
+            }
+
         private:
             T* get() {
                 return reinterpret_cast<T*>(&data);
@@ -785,6 +793,14 @@ namespace emscripten {
     template<typename InterfaceType>
     class wrapper : public InterfaceType {
     public:
+        wrapper() {}    // to avoid error "call to implicitly deleted construrtor..."
+
+        wrapper(InterfaceType* interface) {
+            // why dynamic_cast causes javascript crash?
+            wrapper<InterfaceType>* iw = static_cast<wrapper<InterfaceType>*>(interface);
+            jsobj = iw->jsobj;
+        }
+
         // Not necessary in any example so far, but appeases a compiler warning.
         virtual ~wrapper() {}
 
