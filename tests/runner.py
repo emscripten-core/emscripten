@@ -6116,6 +6116,8 @@ def process(filename):
         for debug in [1,2]:
           self.assertIdentical(open('release.js').read().replace('\n\n', '\n').replace('\n\n', '\n'), open('debug%d.js' % debug).read().replace('\n\n', '\n').replace('\n\n', '\n')) # EMCC_DEBUG=1 mode must not generate different code!
           print >> sys.stderr, 'debug check %d passed too' % debug
+
+        try_delete(CANONICAL_TEMP_DIR)
       else:
         print >> sys.stderr, 'not doing debug check'
 
@@ -10227,6 +10229,8 @@ fi
       self.assertContained('hello from emcc with no config file', run_js(os.path.join(dirname, 'a.out.js')))
       shutil.rmtree(dirname)
 
+      try_delete(CANONICAL_TEMP_DIR)
+
     def test_emcc_caching(self):
       INCLUDING_MESSAGE = 'emcc: including X'
       BUILDING_MESSAGE = 'emcc: building X for cache'
@@ -10299,6 +10303,8 @@ fi
       output = self.do([EMCC, '--clear-cache'])
       assert ERASING_MESSAGE in output
       assert not os.path.exists(EMCC_CACHE)
+
+      try_delete(CANONICAL_TEMP_DIR)
 
     def test_relooper(self):
       restore()
