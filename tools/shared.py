@@ -13,7 +13,7 @@ class MockPopen:
 # On Windows python suffers from a particularly nasty bug if python is spawning new processes while python itself is spawned from some other non-console process.
 # Use a custom replacement for Popen on Windows to avoid the "WindowsError: [Error 6] The handle is invalid" errors when emcc is driven through cmake or mingw32-make. 
 # See http://bugs.python.org/issue3905
-def CallProcess(args, bufsize=0, executable=None, stdin=None, stdout=None, stderr=None, preexec_fn=None, close_fds=False, 
+def call_process(args, bufsize=0, executable=None, stdin=None, stdout=None, stderr=None, preexec_fn=None, close_fds=False, 
                   shell=False, cwd=None, env=None, universal_newlines=False, startupinfo=None, creationflags=0):
   # (stdin, stdout, stderr) store what the caller originally wanted to be done with the streams.
   # (stdin_, stdout_, stderr_) will store the fixed set of streams that workaround the bug.
@@ -52,7 +52,7 @@ def CallProcess(args, bufsize=0, executable=None, stdin=None, stdout=None, stder
 
 # Install our replacement Popen handler if we are running on Windows to avoid python spawn process function.
 if os.name == 'nt':
-  Popen = CallProcess
+  Popen = call_process
   
 import js_optimizer
 
