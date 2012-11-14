@@ -662,6 +662,7 @@ try:
     elif newargs[i] == '-v':
       shared.COMPILER_OPTS += ['-v']
       DEBUG = 1
+      os.environ['EMCC_DEBUG'] = '1' # send to child processes too
       newargs[i] = ''
     elif newargs[i].startswith('--shell-file'):
       check_bad_eq(newargs[i])
