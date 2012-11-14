@@ -29,7 +29,7 @@ class WindowsPopen:
   
     # Call the process with fixed streams.
     self.process = subprocess.Popen(args, bufsize, executable, self.stdin_, self.stdout_, self.stderr_, preexec_fn, close_fds, shell, cwd, env, universal_newlines, startupinfo, creationflags)
-    
+
   def communicate(self, input=None):
     output = self.process.communicate(input)
     self.returncode = self.process.returncode
@@ -51,10 +51,10 @@ class WindowsPopen:
     return (output[0], output[1])
 
   def poll(self):
-    return self.process.returncode
+    return self.process.poll()
 
   def kill(self):
-    return self.process.kill
+    return self.process.kill()
 
 # Install our replacement Popen handler if we are running on Windows to avoid python spawn process function.
 if os.name == 'nt':
