@@ -224,6 +224,10 @@ def emscript(infile, settings, outfile, libraries=[]):
 
   funcs_js = ''.join([output[0] for output in outputs])
   if settings.get('ASM_JS'):
+    exports = []
+    for export in settings['EXPORTED_FUNCTIONS'] + settings['EXPORTED_GLOBALS']:
+      exports.append("'%s': %s" % (export, export))
+    exports = '{ ' + ', '.join(exports) + ' }'
     funcs_js = '''
 var asm = (function(env, buffer) {
   'use asm';
@@ -236,9 +240,10 @@ var asm = (function(env, buffer) {
   var HEAPF32 = new env.Float32Array(buffer);
   var HEAPF64 = new env.Float64Array(buffer);
 ''' + funcs_js.replace('\n', '\n  ') + '''
-  return {};
+  return %s;
 })({}, buffer);
-'''
+for (var export in asm) Module[export] = asm[export];
+''' % exports
 
   for func_js, curr_forwarded_data in outputs:
     # merge forwarded data
