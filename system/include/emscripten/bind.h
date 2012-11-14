@@ -806,6 +806,13 @@ namespace emscripten {
 
         typedef InterfaceType interface;
 
+        template<class ConcreteWrapperType>
+        static std::shared_ptr<InterfaceType> cloneToSharedPtr(InterfaceType& i) {
+            ConcreteWrapperType* cw = new ConcreteWrapperType(&i);
+            InterfaceType* ip = dynamic_cast<InterfaceType*>(cw);
+            return std::shared_ptr<InterfaceType>(ip);
+        }
+
         void initialize(internal::EM_VAL handle) {
             if (jsobj) {
                 internal::_embind_fatal_error(
