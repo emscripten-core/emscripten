@@ -222,10 +222,23 @@ def emscript(infile, settings, outfile, libraries=[]):
   if DEBUG: print >> sys.stderr, '  emscript: phase 2 took %s seconds' % (time.time() - t)
   if DEBUG: t = time.time()
 
+  # merge forwarded data
+  all_exported_functions = set(settings['EXPORTED_FUNCTIONS']) # both asm.js and otherwise
+  exported_implemented_functions = set()
+  for func_js, curr_forwarded_data in outputs:
+    curr_forwarded_json = json.loads(curr_forwarded_data)
+    forwarded_json['Types']['preciseI64MathUsed'] = forwarded_json['Types']['preciseI64MathUsed'] or curr_forwarded_json['Types']['preciseI64MathUsed']
+    for key, value in curr_forwarded_json['Functions']['blockAddresses'].iteritems():
+      forwarded_json['Functions']['blockAddresses'][key] = value
+    for key in curr_forwarded_json['Functions']['indexedFunctions'].iterkeys():
+      indexed_functions.add(key)
+    for key in curr_forwarded_json['Functions']['implementedFunctions'].iterkeys():
+      if key in all_exported_functions: exported_implemented_functions.add(key)
+
   funcs_js = ''.join([output[0] for output in outputs])
   if settings.get('ASM_JS'):
     exports = []
-    for export in settings['EXPORTED_FUNCTIONS'] + settings['EXPORTED_GLOBALS']:
+    for export in exported_implemented_functions:
       exports.append("'%s': %s" % (export, export))
     exports = '{ ' + ', '.join(exports) + ' }'
     funcs_js = '''
@@ -245,14 +258,6 @@ var asm = (function(env, buffer) {
 for (var export in asm) Module[export] = asm[export];
 ''' % exports
 
-  for func_js, curr_forwarded_data in outputs:
-    # merge forwarded data
-    curr_forwarded_json = json.loads(curr_forwarded_data)
-    forwarded_json['Types']['preciseI64MathUsed'] = forwarded_json['Types']['preciseI64MathUsed'] or curr_forwarded_json['Types']['preciseI64MathUsed']
-    for key, value in curr_forwarded_json['Functions']['blockAddresses'].iteritems():
-      forwarded_json['Functions']['blockAddresses'][key] = value
-    for key in curr_forwarded_json['Functions']['indexedFunctions'].iterkeys():
-      indexed_functions.add(key)
   outputs = None
   if DEBUG: print >> sys.stderr, '  emscript: phase 2b took %s seconds' % (time.time() - t)
   if DEBUG: t = time.time()
