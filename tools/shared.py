@@ -9,6 +9,10 @@ class MockPopen:
     self.output = (stdout, stderr)
   def communicate(self):
     return self.output
+  def poll(self):
+    return self.returncode
+  def kill(self):
+    return # We've already communicate()d the process (waited for its completion), so can't kill() anymore. Therefore this is a no-op.
 
 # On Windows python suffers from a particularly nasty bug if python is spawning new processes while python itself is spawned from some other non-console process.
 # Use a custom replacement for Popen on Windows to avoid the "WindowsError: [Error 6] The handle is invalid" errors when emcc is driven through cmake or mingw32-make. 
@@ -35,9 +39,9 @@ def call_process(args, bufsize=0, executable=None, stdin=None, stdout=None, stde
   output = process.communicate()
   
   # If caller never wanted to PIPE stdout or stderr, route the output back to screen to avoid swallowing output.
-  if stdout == None and stdout_ == PIPE:
+  if stdout == None and stdout_ == PIPE and len(output[0].strip()) > 0:
     print >> sys.stdout, output[0]
-  if stderr == None and stderr_ == PIPE:
+  if stderr == None and stderr_ == PIPE and len(output[1].strip()) > 0:
     print >> sys.stderr, output[1]
   
   # Return a mock object to the caller. This works as long as all emscripten code immediately .communicate()s the result, and doesn't
