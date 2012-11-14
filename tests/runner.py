@@ -7571,7 +7571,7 @@ f.close()
             if 'error' in ret[1].lower():
               print >> sys.stderr, 'Failed command: ' + ' '.join(cmd)
               print >> sys.stderr, 'Result:\n' + ret[1]
-              raise Exception('cmake call failed!') # cmake spams this silly message to stderr, so hide it: "Platform/Emscripten to use this system, please send your config file to cmake@www.cmake.org so it can be added to cmake"
+              raise Exception('cmake call failed!')
             assert os.path.exists(tempdirname + '/Makefile'), 'CMake call did not produce a Makefile!'
             
             # Build
@@ -8082,7 +8082,7 @@ f.close()
         }
       ''')
       output = Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-s', 'WARN_ON_UNDEFINED_SYMBOLS=1'], stderr=PIPE).communicate()
-      self.assertContained('Unresolved symbol: _something\n', output[1])
+      self.assertContained('Unresolved symbol: _something', output[1])
 
       output = Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp')], stderr=PIPE).communicate()
       self.assertNotContained('Unresolved symbol: _something\n', output[1])
