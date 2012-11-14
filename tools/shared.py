@@ -404,8 +404,8 @@ class TempFiles:
     return named_file
 
   def clean(self):
-    if DEBUG:
-      print >> sys.stderr, 'not cleaning up temp files since in debug mode, see them in %s' % EMSCRIPTEN_TEMP_DIR
+    if os.environ.get('EMCC_DEBUG_SAVE'):
+      print >> sys.stderr, 'not cleaning up temp files since in debug-save mode, see them in %s' % EMSCRIPTEN_TEMP_DIR
       return
     for filename in self.to_clean:
       try_delete(filename)
