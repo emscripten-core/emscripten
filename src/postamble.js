@@ -1,4 +1,9 @@
 
+#if ASM_JS
+  return {};
+})({}, buffer);
+#endif
+
 // === Auto-generated postamble setup entry stuff ===
 
 Module.callMain = function callMain(args) {

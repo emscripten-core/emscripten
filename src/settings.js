@@ -294,6 +294,8 @@ var HEADLESS = 0; // If 1, will include shim code that tries to 'fake' a browser
                   // very partial - it is hard to fake a whole browser! - so
                   // keep your expectations low for this to work.
 
+var ASM_JS = 0; // If 1, generate code in asm.js format
+
 var NECESSARY_BLOCKADDRS = []; // List of (function, block) for all block addresses that are taken.
 
 // Compiler debugging options

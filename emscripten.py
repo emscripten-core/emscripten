@@ -223,6 +223,8 @@ def emscript(infile, settings, outfile, libraries=[]):
   if DEBUG: t = time.time()
 
   funcs_js = ''.join([output[0] for output in outputs])
+  if settings.get('ASM_JS'): # asm.js code must be indented
+    funcs_js = '  ' + funcs_js.replace('\n', '\n  ')
 
   for func_js, curr_forwarded_data in outputs:
     # merge forwarded data
