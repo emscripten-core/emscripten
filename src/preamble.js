@@ -889,16 +889,3 @@ Module["preloadedAudios"] = {}; // maps url to audio data
 
 // === Body ===
 
-#if ASM_JS
-var asm = (function(env, buffer) {
-  'use asm';
-  var HEAP8 = new env.Int8Array(buffer);
-  var HEAP16 = new env.Int16Array(buffer);
-  var HEAP32 = new env.Int32Array(buffer);
-  var HEAPU8 = new env.Uint8Array(buffer);
-  var HEAPU16 = new env.Uint16Array(buffer);
-  var HEAPU32 = new env.Uint32Array(buffer);
-  var HEAPF32 = new env.Float32Array(buffer);
-  var HEAPF64 = new env.Float64Array(buffer);
-#endif
-

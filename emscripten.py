@@ -223,8 +223,22 @@ def emscript(infile, settings, outfile, libraries=[]):
   if DEBUG: t = time.time()
 
   funcs_js = ''.join([output[0] for output in outputs])
-  if settings.get('ASM_JS'): # asm.js code must be indented
-    funcs_js = '  ' + funcs_js.replace('\n', '\n  ')
+  if settings.get('ASM_JS'):
+    funcs_js = '''
+var asm = (function(env, buffer) {
+  'use asm';
+  var HEAP8 = new env.Int8Array(buffer);
+  var HEAP16 = new env.Int16Array(buffer);
+  var HEAP32 = new env.Int32Array(buffer);
+  var HEAPU8 = new env.Uint8Array(buffer);
+  var HEAPU16 = new env.Uint16Array(buffer);
+  var HEAPU32 = new env.Uint32Array(buffer);
+  var HEAPF32 = new env.Float32Array(buffer);
+  var HEAPF64 = new env.Float64Array(buffer);
+''' + funcs_js.replace('\n', '\n  ') + '''
+  return {};
+})({}, buffer);
+'''
 
   for func_js, curr_forwarded_data in outputs:
     # merge forwarded data
