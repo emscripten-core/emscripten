@@ -136,8 +136,8 @@ def emscript(infile, settings, outfile, libraries=[]):
   open(pre_file, 'w').write(''.join(pre) + '\n' + meta)
   out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, pre_file, 'pre'] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
   js, forwarded_data = out.split('//FORWARDED_DATA:')
-  #print 'js', js
-  #print >> sys.stderr, 'FORWARDED_DATA 1:', forwarded_data, type(forwarded_data)
+  outfile.write(js)
+  js = None
   forwarded_file = temp_files.get('.json').name
   open(forwarded_file, 'w').write(forwarded_data)
   if DEBUG: print >> sys.stderr, '  emscript: phase 1 took %s seconds' % (time.time() - t)
@@ -180,8 +180,9 @@ def emscript(infile, settings, outfile, libraries=[]):
   else:
     outputs = [process_funcs(commands[0])]
 
-  for funcs_js, curr_forwarded_data in outputs:
-    js += funcs_js
+  funcs_js = ''.join([output[0] for output in outputs])
+
+  for func_js, curr_forwarded_data in outputs:
     # merge forwarded data
     curr_forwarded_json = json.loads(curr_forwarded_data)
     forwarded_json['Types']['preciseI64MathUsed'] = forwarded_json['Types']['preciseI64MathUsed'] or curr_forwarded_json['Types']['preciseI64MathUsed']
@@ -189,6 +190,7 @@ def emscript(infile, settings, outfile, libraries=[]):
       forwarded_json['Functions']['blockAddresses'][key] = value
     for key in curr_forwarded_json['Functions']['indexedFunctions'].iterkeys():
       indexed_functions.add(key)
+  outputs = None
   if DEBUG: print >> sys.stderr, '  emscript: phase 2 took %s seconds' % (time.time() - t)
   if DEBUG: t = time.time()
 
@@ -202,6 +204,9 @@ def emscript(infile, settings, outfile, libraries=[]):
   indexing = forwarded_json['Functions']['indexedFunctions']
   def indexize(js):
     return re.sub(r'{{{ FI_([\w\d_$]+) }}}', lambda m: str(indexing[m.groups(0)[0]]), js)
+  outfile.write(indexize(funcs_js))
+  funcs_js = None
+
   # forward
   forwarded_data = json.dumps(forwarded_json)
   forwarded_file = temp_files.get('.2.json').name
@@ -213,11 +218,9 @@ def emscript(infile, settings, outfile, libraries=[]):
   post_file = temp_files.get('.post.ll').name
   open(post_file, 'w').write(''.join(post) + '\n' + meta)
   out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, post_file, 'post', forwarded_file] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
-  js += out
-  js = indexize(js)
+  outfile.write(indexize(out))
   if DEBUG: print >> sys.stderr, '  emscript: phase 3 took %s seconds' % (time.time() - t)
 
-  outfile.write(js) # TODO: write in parts (see previous line though)
   outfile.close()
 
 
