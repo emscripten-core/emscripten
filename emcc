@@ -116,7 +116,7 @@ shared.check_sanity(force=DEBUG)
 
 if len(sys.argv) == 1:
   print 'emcc: no input files'
-  exit(0)
+  exit(1)
 
 if sys.argv[1] == '--version':
   print '''emcc (Emscripten GCC-like replacement) 2.0
