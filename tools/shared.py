@@ -1088,16 +1088,17 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
   @staticmethod
   def ensure_relooper():
     if os.path.exists(RELOOPER): return
+    curr = os.getcwd()
     try:
       ok = False
       print >> sys.stderr, '======================================='
       print >> sys.stderr, 'bootstrapping relooper...'
       Cache.ensure()
-      RELOOPER_DIR = path_from_root('src', 'relooper')
+      os.chdir(path_from_root('src'))
 
       def make(opt_level):
         raw = RELOOPER + '.raw.js'
-        Building.emcc(os.path.join(RELOOPER_DIR, 'Relooper.cpp'), ['-I' + os.path.join(RELOOPER_DIR), '--post-js', os.path.join(RELOOPER_DIR, 'emscripten', 'glue.js'), '-s', 'TOTAL_MEMORY=52428800', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["memcpy", "memset", "malloc", "free", "puts"]', '-O' + str(opt_level), '--closure', '0'], raw)
+        Building.emcc(os.path.join('relooper', 'Relooper.cpp'), ['-I' + os.path.join('relooper'), '--post-js', os.path.join('relooper', 'emscripten', 'glue.js'), '-s', 'TOTAL_MEMORY=52428800', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["memcpy", "memset", "malloc", "free", "puts"]', '-O' + str(opt_level), '--closure', '0'], raw)
         f = open(RELOOPER, 'w')
         f.write("// Relooper, (C) 2012 Alon Zakai, MIT license, https://github.com/kripken/Relooper\n")
         f.write("var Relooper = (function() {\n");
@@ -1116,6 +1117,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       print >> sys.stderr, '======================================='
       ok = True
     finally:
+      os.chdir(curr)
       if not ok:
         print >> sys.stderr, 'bootstrapping relooper failed. You may need to manually create src/relooper.js by compiling it, see src/relooper/emscripten'
         1/0
