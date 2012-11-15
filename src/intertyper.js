@@ -165,7 +165,7 @@ function intertyper(data, sidePass, baseLineNums) {
       function makeToken(text) {
         if (text.length == 0) return;
         // merge certain tokens
-        if (lastToken && ( (lastToken.text == '%' && text[0] == '"') || /^\**$/.exec(text) ) ) {
+        if (lastToken && ( (lastToken.text == '%' && text[0] == '"') || /^\**$/.test(text) ) ) {
           lastToken.text += text;
           return;
         }
@@ -182,7 +182,7 @@ function intertyper(data, sidePass, baseLineNums) {
         // merge certain tokens
         if (lastToken && isType(lastToken.text) && isFunctionDef(token)) {
           lastToken.text += ' ' + text;
-        } else if (lastToken && /^}\**$/.exec(text)) { // }, }*, etc.
+        } else if (lastToken && /^}\**$/.test(text)) { // }, }*, etc.
           var openBrace = tokens.length-1;
           while (tokens[openBrace].text.substr(-1) != '{') openBrace --;
           token = combineTokens(tokens.slice(openBrace+1));
