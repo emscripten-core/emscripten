@@ -1065,6 +1065,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
           test_ll = os.path.join(EMSCRIPTEN_TEMP_DIR, 'test.ll')
           Building.llvm_dis(filename, test_ll)
           assert os.path.exists(test_ll)
+          try_delete(test_ll)
     except Exception, e:
       print 'shared.Building.is_bitcode failed to test whether file \'%s\' is a llvm bitcode file! Failed on exception: %s' % (filename, e)
       return False
