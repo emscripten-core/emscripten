@@ -242,16 +242,14 @@ var Functions = {
     for (var ident in this.indexedFunctions) {
       vals[this.indexedFunctions[ident]] = ident;
     }
-
     // Resolve multi-level aliases all the way down
     for (var i = 0; i < vals.length; i++) {
       while (1) {
         var varData = Variables.globals[vals[i]];
         if (!(varData && varData.resolvedAlias)) break;
-        vals[i] = vals[varData.resolvedAlias];
+        vals[i] = vals[+varData.resolvedAlias || eval(varData.resolvedAlias)]; // might need to eval to turn (6) into 6
       }
     }
-
     var indices = vals.toString().replace('"', '');
     if (BUILD_AS_SHARED_LIB) {
       // Shared libraries reuse the parent's function table.

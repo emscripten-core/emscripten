@@ -65,24 +65,27 @@ function JSify(data, functionsOnly, givenFunctions) {
     // Add additional necessary items for the main pass. We can now do this since types are parsed (types can be used through
     // generateStructInfo in library.js)
     LibraryManager.load();
-    var libFuncsToInclude;
-    if (INCLUDE_FULL_LIBRARY) {
-      assert(!BUILD_AS_SHARED_LIB, 'Cannot have both INCLUDE_FULL_LIBRARY and BUILD_AS_SHARED_LIB set.')
-      libFuncsToInclude = [];
-      for (var key in LibraryManager.library) {
-        if (!key.match(/__(deps|postset|inline)$/)) {
-          libFuncsToInclude.push(key);
+
+    if (phase == 'pre') {
+      var libFuncsToInclude;
+      if (INCLUDE_FULL_LIBRARY) {
+        assert(!BUILD_AS_SHARED_LIB, 'Cannot have both INCLUDE_FULL_LIBRARY and BUILD_AS_SHARED_LIB set.')
+        libFuncsToInclude = [];
+        for (var key in LibraryManager.library) {
+          if (!key.match(/__(deps|postset|inline)$/)) {
+            libFuncsToInclude.push(key);
+          }
         }
+      } else {
+        libFuncsToInclude = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
       }
-    } else {
-      libFuncsToInclude = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
-    }
-    libFuncsToInclude.forEach(function(ident) {
-      data.functionStubs.push({
-        intertype: 'functionStub',
-        ident: '_' + ident
+      libFuncsToInclude.forEach(function(ident) {
+        data.functionStubs.push({
+          intertype: 'functionStub',
+          ident: '_' + ident
+        });
       });
-    });
+    }
   }
 
   // Functions
@@ -1279,6 +1282,19 @@ function JSify(data, functionsOnly, givenFunctions) {
       return;
     }
 
+    // Print out global variables and postsets TODO: batching
+    if (phase == 'pre') {
+      legalizedI64s = false;
+      JSify(analyzer(intertyper(data.unparsedGlobalss[0].lines, true), true), true, Functions);
+      data.unparsedGlobalss = null;
+
+      var generated = itemsDict.functionStub.concat(itemsDict.GlobalVariablePostSet);
+      generated.forEach(function(item) { print(indentify(item.JS || '', 2)); });
+    } else {
+      assert(data.unparsedGlobalss[0].lines.length == 0, dump([phase, data.unparsedGlobalss]));
+      assert(itemsDict.functionStub.length == 0, dump([phase, itemsDict.functionStub]));
+    }
+
     if (phase == 'pre' || phase == 'funcs') {
       // serialize out the data that later passes need
       PassManager.serialize(); // XXX for funcs pass, do not serialize it all. I think we just need which were indexized.
@@ -1299,8 +1315,6 @@ function JSify(data, functionsOnly, givenFunctions) {
       print(read('headless.js').replace("'%s'", "'http://emscripten.org'").replace("'?%s'", "''").replace('%s,', 'null,').replace('%d', '0'));
       print('}');
     }
-    var generated = itemsDict.functionStub.concat(itemsDict.GlobalVariablePostSet);
-    generated.forEach(function(item) { print(indentify(item.JS || '', 2)); });
     if (RUNTIME_TYPE_INFO) {
       Types.cleanForRuntime();
       print('Runtime.typeInfo = ' + JSON.stringify(Types.types));
@@ -1309,11 +1323,6 @@ function JSify(data, functionsOnly, givenFunctions) {
     var postFile = BUILD_AS_SHARED_LIB ? 'postamble_sharedlib.js' : 'postamble.js';
     var postParts = processMacros(preprocess(read(postFile))).split('{{GLOBAL_VARS}}');
     print(postParts[0]);
-
-    // Print out global variables and postsets TODO: batching
-    legalizedI64s = false;
-    JSify(analyzer(intertyper(data.unparsedGlobalss[0].lines, true), true), true, Functions);
-    data.unparsedGlobalss = null;
 
     print(Functions.generateIndexing()); // done last, as it may rely on aliases set in postsets
 

@@ -1997,9 +1997,7 @@ function parseBlockAddress(segment) {
 }
 
 function finalizeBlockAddress(param) {
-  assert(param.func in Functions.blockAddresses);
-  assert(param.label in Functions.blockAddresses[param.func]);
-  return Functions.blockAddresses[param.func][param.label];
+  return '{{{ BA_' + param.func + '|' + param.label + ' }}}'; // something python will replace later
 }
 
 function stripCorrections(param) {

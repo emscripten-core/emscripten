@@ -85,7 +85,6 @@ def emscript(infile, settings, outfile, libraries=[]):
   pre = []
   funcs = [] # split up functions here, for parallelism later
   meta = [] # needed by each function XXX
-  post = []
 
   if DEBUG: t = time.time()
   in_func = False
@@ -107,8 +106,7 @@ def emscript(infile, settings, outfile, libraries=[]):
       elif line.startswith('!'):
         meta.append(line) # metadata
       else:
-        post.append(line) # global
-        pre.append(line) # pre needs it to, so we know about globals in pre and funcs
+        pre.append(line) # pre needs it so we know about globals in pre and funcs. So emit globals there
   ll_lines = None
   meta = ''.join(meta)
   if DEBUG and len(meta) > 1024*1024: print >> sys.stderr, 'emscript warning: large amounts of metadata, will slow things down'
@@ -120,8 +118,6 @@ def emscript(infile, settings, outfile, libraries=[]):
   #  print >> sys.stderr, '========== funcs ===============\n'
   #  for func in funcs:
   #    print >> sys.stderr, '\n// ===\n\n', ''.join(func)
-  #  print >> sys.stderr, '========== post ==============\n'
-  #  print >> sys.stderr, ''.join(post)
   #  print >> sys.stderr, '=========================\n'
 
   # Save settings to a file to work around v8 issue 1579
@@ -135,9 +131,7 @@ def emscript(infile, settings, outfile, libraries=[]):
   pre_file = temp_files.get('.pre.ll').name
   open(pre_file, 'w').write(''.join(pre) + '\n' + meta)
   out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, pre_file, 'pre'] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
-  js, forwarded_data = out.split('//FORWARDED_DATA:')
-  outfile.write(js)
-  js = None
+  pre, forwarded_data = out.split('//FORWARDED_DATA:')
   forwarded_file = temp_files.get('.json').name
   open(forwarded_file, 'w').write(forwarded_data)
   if DEBUG: print >> sys.stderr, '  emscript: phase 1 took %s seconds' % (time.time() - t)
@@ -201,23 +195,35 @@ def emscript(infile, settings, outfile, libraries=[]):
     forwarded_json['Functions']['indexedFunctions'][indexed] = i # make sure not to modify this python object later - we use it in indexize
     i += 2
   forwarded_json['Functions']['nextIndex'] = i
+
   indexing = forwarded_json['Functions']['indexedFunctions']
   def indexize(js):
     return re.sub(r'{{{ FI_([\w\d_$]+) }}}', lambda m: str(indexing[m.groups(0)[0]]), js)
-  outfile.write(indexize(funcs_js))
+
+  blockaddrs = forwarded_json['Functions']['blockAddresses']
+  def blockaddrsize(js):
+    return re.sub(r'{{{ BA_([\w\d_$]+)\|([\w\d_$]+) }}}', lambda m: str(blockaddrs[m.groups(0)[0]][m.groups(0)[1]]), js)
+
+  if DEBUG: outfile.write('// pre\n')
+  outfile.write(blockaddrsize(indexize(pre)))
+  pre = None
+
+  if DEBUG: outfile.write('// funcs\n')
+  outfile.write(blockaddrsize(indexize(funcs_js)))
   funcs_js = None
 
   # forward
   forwarded_data = json.dumps(forwarded_json)
   forwarded_file = temp_files.get('.2.json').name
-  open(forwarded_file, 'w').write(forwarded_data)
+  open(forwarded_file, 'w').write(indexize(forwarded_data))
   if DEBUG: print >> sys.stderr, '  emscript: phase 2b took %s seconds' % (time.time() - t)
 
   # Phase 3 - post
   if DEBUG: t = time.time()
   post_file = temp_files.get('.post.ll').name
-  open(post_file, 'w').write(''.join(post) + '\n' + meta)
+  open(post_file, 'w').write('\n') # no input, just processing of forwarded data
   out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, post_file, 'post', forwarded_file] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
+  if DEBUG: outfile.write('// post\n')
   outfile.write(indexize(out))
   if DEBUG: print >> sys.stderr, '  emscript: phase 3 took %s seconds' % (time.time() - t)
 
