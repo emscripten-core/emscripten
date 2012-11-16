@@ -602,26 +602,26 @@ function enlargeMemory() {
   }
 #if USE_TYPED_ARRAYS == 1
   var oldIHEAP = IHEAP;
-  HEAP = IHEAP = new Int32Array(TOTAL_MEMORY);
+  Module['HEAP'] = Module['IHEAP'] = HEAP = IHEAP = new Int32Array(TOTAL_MEMORY);
   IHEAP.set(oldIHEAP);
   IHEAPU = new Uint32Array(IHEAP.buffer);
 #if USE_FHEAP
   var oldFHEAP = FHEAP;
-  FHEAP = new Float64Array(TOTAL_MEMORY);
+  Module['FHEAP'] = FHEAP = new Float64Array(TOTAL_MEMORY);
   FHEAP.set(oldFHEAP);
 #endif
 #endif
 #if USE_TYPED_ARRAYS == 2
   var oldHEAP8 = HEAP8;
   var buffer = new ArrayBuffer(TOTAL_MEMORY);
-  HEAP8 = new Int8Array(buffer);
-  HEAP16 = new Int16Array(buffer);
-  HEAP32 = new Int32Array(buffer);
-  HEAPU8 = new Uint8Array(buffer);
-  HEAPU16 = new Uint16Array(buffer);
-  HEAPU32 = new Uint32Array(buffer);
-  HEAPF32 = new Float32Array(buffer);
-  HEAPF64 = new Float64Array(buffer);
+  Module['HEAP8'] = HEAP8 = new Int8Array(buffer);
+  Module['HEAP16'] = HEAP16 = new Int16Array(buffer);
+  Module['HEAP32'] = HEAP32 = new Int32Array(buffer);
+  Module['HEAPU8'] = HEAPU8 = new Uint8Array(buffer);
+  Module['HEAPU16'] = HEAPU16 = new Uint16Array(buffer);
+  Module['HEAPU32'] = HEAPU32 = new Uint32Array(buffer);
+  Module['HEAPF32'] = HEAPF32 = new Float32Array(buffer);
+  Module['HEAPF64'] = HEAPF64 = new Float64Array(buffer);
   HEAP8.set(oldHEAP8);
 #endif
 #endif
