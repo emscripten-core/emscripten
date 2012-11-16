@@ -693,7 +693,7 @@ function __embind_register_class_operator_call(
         var rv = returnType.fromWireType(invoker.apply(null, args));
         runDestructors(destructors);
         return rv;
-    }
+    };
 }
 
 function __embind_register_class_field(
