@@ -167,7 +167,15 @@ function isFunctionDef(token, out) {
   return !fail;
 }
 
+
+function isPossiblyFunctionType(type) {
+  // A quick but unreliable way to see if something is a function type. Yes is just 'maybe', no is definite.
+  var len = type.length;
+  return type[len-2] == ')' && type[len-1] == '*';
+}
+
 function isFunctionType(type, out) {
+  if (!isPossiblyFunctionType(type)) return false;
   type = type.replace(/"[^"]+"/g, '".."');
   var parts;
   // hackish, but quick splitting of function def parts. this must be fast as it happens a lot
@@ -186,12 +194,6 @@ function isFunctionType(type, out) {
 
 function isType(type) { // TODO!
   return isVoidType(type) || Runtime.isNumberType(type) || isStructType(type) || isPointerType(type) || isFunctionType(type);
-}
-
-function isPossiblyFunctionType(type) {
-  // A quick but unreliable way to see if something is a function type. Yes is just 'maybe', no is definite.
-  var suffix = ')*';
-  return type.substr(-suffix.length) == suffix;
 }
 
 function isVarArgsFunctionType(type) {
