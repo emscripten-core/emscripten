@@ -100,15 +100,6 @@ namespace emscripten {
                 GenericFunction destructor,
                 GenericFunction getPointee);
 
-            void _embind_register_function_ptr(
-                const char* name,
-                TYPEID functorType,
-                TYPEID returnType,
-                unsigned argCount,
-                TYPEID argTypes[],
-                GenericFunction destructor,
-                GenericFunction invoker);
-
             void _embind_register_vector(
                 TYPEID vectorType,
                 TYPEID elementType,
@@ -159,6 +150,14 @@ namespace emscripten {
                 TYPEID argTypes[],
                 GenericFunction invoker,
                 GenericFunction method);
+
+            void _embind_register_class_operator_call(
+                TYPEID classType,
+                TYPEID returnType,
+                unsigned argCount,
+                TYPEID argTypes[],
+                GenericFunction invoker
+            );
 
             void _embind_register_enum(
                 TYPEID enumType,
@@ -255,7 +254,7 @@ namespace emscripten {
     ////////////////////////////////////////////////////////////////////////////////
 
     template<typename ReturnType, typename... Args, typename... Policies>
-    void function(const char* name, ReturnType (fn)(Args...)) {
+    void function(const char* name, ReturnType (fn)(Args...), Policies...) {
         using namespace internal;
 
         registerStandardTypes();
@@ -305,6 +304,15 @@ namespace emscripten {
             }
         };
 
+        template<typename FunctorType, typename... Args>
+        struct FunctorInvoker<FunctorType, void, Args...> {
+            static void invoke(
+                const FunctorType& ptr,
+                typename internal::BindingType<Args>::WireType... args
+            ) {
+                ptr(internal::BindingType<Args>::fromWireType(args)...);
+            }
+        };
 
         template<typename ClassType, typename ReturnType, typename... Args>
         struct MethodInvoker {
@@ -568,26 +576,6 @@ namespace emscripten {
     }
 
     ////////////////////////////////////////////////////////////////////////////////
-    // FUNCTION POINTERS
-    ////////////////////////////////////////////////////////////////////////////////
-    template<typename ReturnType, typename... Args, typename... Policies>
-    inline void register_function_ptr(const char* name) {
-        typedef std::function<ReturnType(Args...)> FunctorType;
-
-        internal::registerStandardTypes();
-        typename internal::WithPolicies<Policies...>::template ArgTypeList<Args...> args;
-        internal::_embind_register_function_ptr(
-            name,
-            internal::TypeID<FunctorType>::get(),
-            internal::TypeID<ReturnType>::get(),
-            args.count,
-            args.types,
-            reinterpret_cast<internal::GenericFunction>(&internal::raw_destructor<FunctorType>),
-            reinterpret_cast<internal::GenericFunction>(&internal::FunctorInvoker<FunctorType, ReturnType, Args...>::invoke)
-        );
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////
     // VECTORS
     ////////////////////////////////////////////////////////////////////////////////
     
@@ -704,6 +692,20 @@ namespace emscripten {
                 args.types,
                 reinterpret_cast<internal::GenericFunction>(&internal::Invoker<ReturnType, Args...>::invoke),
                 reinterpret_cast<GenericFunction>(classMethod));
+            return *this;
+        }
+
+        template<typename ReturnType, typename... Args, typename... Policies>
+        class_& calloperator(Policies...) {
+            using namespace internal;
+
+            typename WithPolicies<Policies...>::template ArgTypeList<Args...> args;
+            _embind_register_class_operator_call(
+                TypeID<ClassType>::get(),
+                TypeID<ReturnType>::get(),
+                args.count,
+                args.types,
+                reinterpret_cast<internal::GenericFunction>(&internal::FunctorInvoker<ClassType, ReturnType, Args...>::invoke));
             return *this;
         }
     };

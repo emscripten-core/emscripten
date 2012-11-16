@@ -430,101 +430,6 @@ function __embind_register_smart_ptr(
     });
 }
 
-function __embind_register_function_ptr(
-    name,
-    functorType,
-    returnType,
-    argCount,
-    argTypes,
-    destructor,
-    invoker
-) {
-    name = Pointer_stringify(name);
-    var humanName = 'functor::' + name;
-    
-    returnType = requireRegisteredType(returnType);
-    argTypes = requireArgumentTypes(argCount, argTypes, humanName);
-    destructor = FUNCTION_TABLE[destructor];
-    invoker = FUNCTION_TABLE[invoker];
-    
-    var Handle = createNamedFunction(name, function(ptr) {
-        this.count = {value: 1};
-        this.functorPtr = ptr;
-    });
-   
-    Handle.prototype['delete'] = function() {
-        if (!this.functorPtr) {
-            throw new BindingError(functorType.name + ' instance already deleted');
-        }
-
-        this.count.value -= 1;
-        if(0 === this.count.value) {
-            destructor(this.functorPtr);
-        }
-        this.functorPtr = undefined;
-    };
-    
-    function createFunctor(ptr) {
-        var h = new Handle(ptr);
-        
-        var invoke = function() {
-            if(!this.functorPtr) {
-                throw new BindingError('cannot call invoke functor ' + humanName + ' on deleted object');
-            }
-            
-            if (arguments.length !== argCount) {
-                throw new BindingError('emscripten functor ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + argCount);
-            }
-            
-            var destructors = [];
-            var args = new Array(argCount + 1);
-            args[0] = this.functorPtr;
-            
-            for (var i = 0; i < argCount; ++i) {
-                args[i + 1] = argTypes[i].toWireType(destructors, arguments[i]);
-            }
-
-            var rv = returnType.fromWireType(invoker.apply(null, args));
-            runDestructors(destructors);
-            return rv;
-        }.bind(h);
-        
-        invoke.handle = h;
-        invoke['delete'] = function() {
-            this.handle.delete();
-        }.bind(invoke);
-        invoke.clone = function() {
-            if (!this.handle.functorPtr) {
-                throw new BindingError(functorType.name + ' instance already deleted');
-            }
-
-            var clone = createFunctor(this.handle.functorPtr);
-            clone.handle.count = this.handle.count;
-            clone.handle.ptr = this.handle.ptr;
-            
-            clone.handle.count.value += 1;
-            return clone;
-        }.bind(invoke);
-        invoke.move = function() {
-            var rv = this.clone();
-            this.delete();
-            return rv;
-        }.bind(invoke);
-       
-        return invoke;
-    }
-    
-    registerType(functorType, name, {
-        name: name,
-        fromWireType: function(ptr) {
-            return createFunctor(ptr);
-        },
-        toWireType: function(destructors, o) {
-            return o.handle.functorPtr;
-        }
-    });
-}
-
 function __embind_register_vector(
     vectorType,
     elementType,
@@ -579,10 +484,25 @@ function __embind_register_class(
 ) {
     name = Pointer_stringify(name);
     destructor = FUNCTION_TABLE[destructor];
-
+    
     var Handle = createNamedFunction(name, function(ptr) {
-        this.count = {value: 1};
-        this.ptr = ptr;
+        var h = function() {
+            if(h.operator_call !== undefined) {
+                return h.operator_call.apply(h, arguments);
+            } else {
+                throw new BindingError(name + ' does not define call operator');
+            }
+        };
+        
+        h.count = {value: 1};
+        h.ptr = ptr;
+        
+        for(var prop in Handle.prototype) {
+            var dp = Object.getOwnPropertyDescriptor(Handle.prototype, prop);
+            Object.defineProperty(h, prop, dp);
+        }
+        
+        return h; 
     });
     
     Handle.prototype.clone = function() {
@@ -618,7 +538,7 @@ function __embind_register_class(
 
     var constructor = createNamedFunction(name, function() {
         var body = constructor.body;
-        body.apply(this, arguments);
+        return body.apply(this, arguments);
     });
     constructor.prototype = Handle.prototype;
     
@@ -676,7 +596,8 @@ function __embind_register_class_constructor(
 
         var ptr = constructor.apply(null, args);
         runDestructors(destructors);
-        classType.Handle.call(this, ptr);
+        
+        return classType.Handle.call(this, ptr);
     };
 }
 
@@ -700,6 +621,7 @@ function __embind_register_class_method(
     memberFunction = copyMemberPointer(memberFunction, memberFunctionSize);
 
     classType.Handle.prototype[methodName] = function() {
+        
         if (!this.ptr) {
             throw new BindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
         }
@@ -737,7 +659,42 @@ function __embind_register_class_classmethod(
     argTypes = requireArgumentTypes(argCount, argTypes, 'classmethod ' + humanName);
     invoker = FUNCTION_TABLE[invoker];
 
-    classType.constructor[methodName] = makeInvoker(humanName, returnType, argCount, argTypes, invoker, fn);}
+    classType.constructor[methodName] = makeInvoker(humanName, returnType, argCount, argTypes, invoker, fn);
+}
+
+function __embind_register_class_operator_call(
+    classType,
+    returnType,
+    argCount,
+    argTypes,
+    invoker
+) {
+    classType = requireRegisteredType(classType, 'class');
+    returnType = requireRegisteredType(returnType, 'method ' + humanName + ' return value');
+    argTypes = requireArgumentTypes(argCount, argTypes, 'method ' + humanName);
+    invoker = FUNCTION_TABLE[invoker];
+    var humanName = classType.name + '.' + 'operator_call';
+    
+    classType.Handle.prototype.operator_call = function() {
+        if (!this.ptr) {
+            throw new BindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
+        }
+        if (arguments.length !== argCount) {
+            throw new BindingError('emscripten binding method ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + argCount);
+        }
+        
+        var destructors = [];
+        var args = new Array(argCount + 1);
+        args[0] = this.ptr;
+        for (var i = 0; i < argCount; ++i) {
+            args[i + 1] = argTypes[i].toWireType(destructors, arguments[i]);
+        }
+
+        var rv = returnType.fromWireType(invoker.apply(null, args));
+        runDestructors(destructors);
+        return rv;
+    }
+}
 
 function __embind_register_class_field(
     classType,
