@@ -881,7 +881,6 @@ function correctRoundings() {
 }
 
 function checkSpecificSafeHeap() {
-  assert(!(SAFE_HEAP >= 2 && !Debugging.on), 'Need debugging for line-specific checks');
   if (!Framework.currItem) return false;
   return (SAFE_HEAP === 2 && Debugging.getIdentifier() in SAFE_HEAP_LINES) ||
          (SAFE_HEAP === 3 && !(Debugging.getIdentifier() in SAFE_HEAP_LINES));
