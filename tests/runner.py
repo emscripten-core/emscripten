@@ -7331,9 +7331,11 @@ Options that are modified or new in %s include:
         # properly report source code errors, and stop there
         self.clear()
         assert not os.path.exists('a.out.js')
-        output = Popen(['python', compiler, path_from_root('tests', 'hello_world_error' + suffix)], stdout=PIPE, stderr=PIPE).communicate()
+        process = Popen(['python', compiler, path_from_root('tests', 'hello_world_error' + suffix)], stdout=PIPE, stderr=PIPE)
+        output = process.communicate()
         assert not os.path.exists('a.out.js'), 'compilation failed, so no output file is expected'
         assert len(output[0]) == 0, output[0]
+        assert process.returncode is not 0, 'Failed compilation must return a nonzero error code!'
         self.assertNotContained('IOError', output[1]) # no python stack
         self.assertNotContained('Traceback', output[1]) # no python stack
         self.assertContained('error: invalid preprocessing directive', output[1])
