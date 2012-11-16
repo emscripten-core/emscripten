@@ -192,8 +192,12 @@ function isFunctionType(type, out) {
   return isType(parts[0]) && isFunctionDef({ text: text, item: tokenize(text.substr(1, text.length-2), true) }, out);
 }
 
-function isType(type) { // TODO!
-  return isVoidType(type) || Runtime.isNumberType(type) || isStructType(type) || isPointerType(type) || isFunctionType(type);
+var isTypeCache = {}; // quite hot, optimize as much as possible
+function isType(type) {
+  if (type in isTypeCache) return isTypeCache[type];
+  var ret = isPointerType(type) || isVoidType(type) || Runtime.isNumberType(type) || isStructType(type) || isFunctionType(type);
+  isTypeCache[type] = ret;
+  return ret;
 }
 
 function isVarArgsFunctionType(type) {
