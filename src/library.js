@@ -2741,7 +2741,7 @@ LibraryManager.library = {
           var signed = next == 'd'.charCodeAt(0) || next == 'i'.charCodeAt(0);
           argSize = argSize || 4;
           var currArg = getNextArg('i' + (argSize * 8));
-#if PRECISE_I64_MATH == 1
+#if PRECISE_I64_MATH
           var origArg = currArg;
 #endif
           var argText;
@@ -2760,12 +2760,12 @@ LibraryManager.library = {
           var currAbsArg = Math.abs(currArg);
           var prefix = '';
           if (next == 'd'.charCodeAt(0) || next == 'i'.charCodeAt(0)) {
-#if PRECISE_I64_MATH == 1
-            if (argSize == 8 && i64Math) argText = i64Math.stringify(origArg[0], origArg[1]); else
+#if PRECISE_I64_MATH
+            if (argSize == 8 && i64Math) argText = i64Math.stringify(origArg[0], origArg[1], null); else
 #endif
             argText = reSign(currArg, 8 * argSize, 1).toString(10);
           } else if (next == 'u'.charCodeAt(0)) {
-#if PRECISE_I64_MATH == 1
+#if PRECISE_I64_MATH
             if (argSize == 8 && i64Math) argText = i64Math.stringify(origArg[0], origArg[1], true); else
 #endif
             argText = unSign(currArg, 8 * argSize, 1).toString(10);
@@ -2774,6 +2774,9 @@ LibraryManager.library = {
             argText = (flagAlternative ? '0' : '') + currAbsArg.toString(8);
           } else if (next == 'x'.charCodeAt(0) || next == 'X'.charCodeAt(0)) {
             prefix = flagAlternative ? '0x' : '';
+#if PRECISE_I64_MATH
+            if (argSize == 8 && i64Math) argText = (origArg[1]>>>0).toString(16) + (origArg[0]>>>0).toString(16); else
+#endif
             if (currArg < 0) {
               // Represent negative numbers in hex as 2's complement.
               currArg = -currArg;
