@@ -66,6 +66,13 @@ function __emval_get_property_by_unsigned_long(handle, k) {
     return __emval_register(_emval_handle_array[handle].value[k]);
 }
 
+function __emval_eval_global_method(handle, objectName, methodName) {
+    var objectNameStr = Pointer_stringify(objectName);
+    var methodNameStr = Pointer_stringify(methodName);
+    var result = eval.call(null, objectNameStr)[methodNameStr](_emval_handle_array[handle].value);
+    return __emval_register(result);
+}
+
 function __emval_set_property(handle, k, value) {
     k = Pointer_stringify(k);
     _emval_handle_array[handle].value[k] = _emval_handle_array[value].value;
