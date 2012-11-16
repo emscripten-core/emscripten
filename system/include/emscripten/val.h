@@ -17,6 +17,7 @@ namespace emscripten {
             EM_VAL _emval_get_property(EM_VAL object, const char* key);
             EM_VAL _emval_get_property_by_long(EM_VAL object, long key);
             EM_VAL _emval_get_property_by_unsigned_long(EM_VAL object, unsigned long key);
+            EM_VAL _emval_eval_global_method(EM_VAL object, const char* objectName, const char* methodName);
             void _emval_set_property(EM_VAL object, const char* key, EM_VAL value);
             void _emval_set_property_by_int(EM_VAL object, long key, EM_VAL value);
             void _emval_as(EM_VAL value, TYPEID returnType);
@@ -96,6 +97,10 @@ namespace emscripten {
 
         val get(unsigned long key) const {
             return val(internal::_emval_get_property_by_unsigned_long(handle, key));
+        }
+
+        val eval_global_method(const char* objectName, const char* methodName) {
+            return val(internal::_emval_eval_global_method(handle, objectName, methodName));
         }
 
         void set(const char* key, val v) {
@@ -203,6 +208,8 @@ namespace emscripten {
             }
             static val fromWireType(WireType v) {
                 return val::take_ownership(v);
+            }
+            static void destroy(WireType v) {
             }
         };
     }
