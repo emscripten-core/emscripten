@@ -970,7 +970,7 @@ m_divisor is 1091269979
         Settings.PRECISE_I64_MATH = 0
         self.do_run(src, 'unsigned')
         code = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
-        assert 'goog.math.Long' not in code and 'jsbn' not in code, 'i64 precise math should not have been included if not asked for'
+        assert 'goog.math.Long' not in code, 'i64 precise math should not have been included if not asked for'
 
         # Verify that even if we ask for precision, if it is not needed it is not included
         Settings.PRECISE_I64_MATH = 1
@@ -994,7 +994,13 @@ m_divisor is 1091269979
         '''
         self.do_run(src, '*4903566027370624, 153236438355333*')
         code = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
-        assert 'goog.math.Long' not in code and 'jsbn' not in code, 'i64 precise math should not have been included if not actually used'
+        assert 'goog.math.Long' not in code, 'i64 precise math should not have been included if not actually used'
+
+        # But if we force it to be included, it is
+        Settings.PRECISE_I64_MATH = 2
+        self.do_run(open(path_from_root('tests', 'hello_world.c')).read(), 'hello')
+        code = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
+        assert 'goog.math.Long' in code, 'i64 precise math should be included if forced'
 
     def test_i64_zextneg(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')

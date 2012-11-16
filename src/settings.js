@@ -88,6 +88,10 @@ var PRECISE_I64_MATH = 1; // If enabled, i64 addition etc. is emulated - which i
                           // Note that we do not catch 32-bit multiplication by default (which must be done in
                           // 64 bits for high values for full precision) - you must manually set PRECISE_I32_MUL
                           // for that.
+                          // If set to 2, we always include the i64 math code, which is necessary in the case
+                          // that we can't know at compile time that 64-bit math is needed. For example, if you
+                          // print 64-bit values with printf, but never add them, we can't know at compile time
+                          // and you need to set this to 2.
 var PRECISE_I32_MUL = 0; // If enabled, i64 math is done in i32 multiplication. This is necessary if the values
                          // exceed the JS double-integer limit of ~52 bits. This option can normally be disabled
                          // because generally i32 multiplication works ok without it, and enabling it has a big

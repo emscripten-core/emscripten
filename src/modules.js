@@ -207,8 +207,9 @@ var Types = {
 
   needAnalysis: {}, // Types noticed during parsing, that need analysis
 
-  preciseI64MathUsed: false // Set to true if we actually use precise i64 math: If PRECISE_I64_MATH is set, and also such math is actually
-                            // needed (+,-,*,/,% - we do not need it for bitops)
+  // Set to true if we actually use precise i64 math: If PRECISE_I64_MATH is set, and also such math is actually
+  // needed (+,-,*,/,% - we do not need it for bitops), or PRECISE_I64_MATH is 2 (forced)
+  preciseI64MathUsed: (PRECISE_I64_MATH == 2)
 };
 
 var Functions = {
