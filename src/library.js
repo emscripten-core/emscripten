@@ -5833,17 +5833,17 @@ LibraryManager.library = {
   },
 
   __tm_struct_layout: Runtime.generateStructInfo([
-    'tm_sec',
-    'tm_min',
-    'tm_hour',
-    'tm_mday',
-    'tm_mon',
-    'tm_year',
-    'tm_wday',
-    'tm_yday',
-    'tm_isdst',
-    'tm_gmtoff',
-    'tm_zone'], '%struct.tm'),
+    ['i32', 'tm_sec'],
+    ['i32', 'tm_min'],
+    ['i32', 'tm_hour'],
+    ['i32', 'tm_mday'],
+    ['i32', 'tm_mon'],
+    ['i32', 'tm_year'],
+    ['i32', 'tm_wday'],
+    ['i32', 'tm_yday'],
+    ['i32', 'tm_isdst'],
+    ['i32', 'tm_gmtoff'],
+    ['i32', 'tm_zone']]),
   // Statically allocated time struct.
   __tm_current: 'allocate({{{ Runtime.QUANTUM_SIZE }}}*26, "i8", ALLOC_STACK)',
   // Statically allocated timezone strings.
