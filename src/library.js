@@ -1072,17 +1072,17 @@ LibraryManager.library = {
   // ==========================================================================
 
   __statvfs_struct_layout: Runtime.generateStructInfo([
-    'f_bsize',
-    'f_frsize',
-    'f_blocks',
-    'f_bfree',
-    'f_bavail',
-    'f_files',
-    'f_ffree',
-    'f_favail',
-    'f_fsid',
-    'f_flag',
-    'f_namemax'], '%struct.statvfs'),
+    ['i32', 'f_bsize'],
+    ['i32', 'f_frsize'],
+    ['i32', 'f_blocks'],
+    ['i32', 'f_bfree'],
+    ['i32', 'f_bavail'],
+    ['i32', 'f_files'],
+    ['i32', 'f_ffree'],
+    ['i32', 'f_favail'],
+    ['i32', 'f_fsid'],
+    ['i32', 'f_flag'],
+    ['i32', 'f_namemax']]),
   statvfs__deps: ['$FS', '__statvfs_struct_layout'],
   statvfs: function(path, buf) {
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/stat.html
