@@ -6626,7 +6626,9 @@ LibraryManager.library = {
   // ==========================================================================
 
   // TODO: Implement for real.
-  __rlimit_struct_layout: Runtime.generateStructInfo(['rlim_cur', 'rlim_max'], '%struct.rlimit'),
+  __rlimit_struct_layout: Runtime.generateStructInfo([
+    ['i32', 'rlim_cur'],
+    ['i32', 'rlim_max']]),
   getrlimit__deps: ['__rlimit_struct_layout'],
   getrlimit: function(resource, rlp) {
     // int getrlimit(int resource, struct rlimit *rlp);
