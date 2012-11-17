@@ -791,7 +791,9 @@ LibraryManager.library = {
   // utime.h
   // ==========================================================================
 
-  __utimbuf_struct_layout: Runtime.generateStructInfo(['actime', 'modtime'], '%struct.utimbuf'),
+  __utimbuf_struct_layout: Runtime.generateStructInfo([
+    ['i32', 'actime'],
+    ['i32', 'modtime']]),
   utime__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '__utimbuf_struct_layout'],
   utime: function(path, times) {
     // int utime(const char *path, const struct utimbuf *times);
