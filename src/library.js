@@ -6042,7 +6042,9 @@ LibraryManager.library = {
   // sys/time.h
   // ==========================================================================
 
-  __timespec_struct_layout: Runtime.generateStructInfo(['tv_sec', 'tv_nsec'], '%struct.timespec'),
+  __timespec_struct_layout: Runtime.generateStructInfo([
+    ['i32', 'tv_sec'],
+    ['i32', 'tv_nsec']]),
   // TODO: Implement these for real.
   clock_gettime__deps: ['__timespec_struct_layout'],
   clock_gettime: function(clk_id, tp) {
