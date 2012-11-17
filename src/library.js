@@ -626,7 +626,7 @@ LibraryManager.library = {
 
   __dirent_struct_layout: Runtime.generateStructInfo([
     ['i32', 'd_ino'],
-    ['[1024 x i8]', 'd_name'],
+    ['b1024', 'd_name'],
     ['i32', 'd_off'],
     ['i32', 'd_reclen'],
     ['i32', 'd_type']]),
@@ -5629,11 +5629,11 @@ LibraryManager.library = {
   // ==========================================================================
 
   __utsname_struct_layout: Runtime.generateStructInfo([
-    'sysname',
-    'nodename',
-    'release',
-    'version',
-    'machine'], '%struct.utsname'),
+	  ['b32', 'sysname'],
+	  ['b32', 'nodename'],
+	  ['b32', 'release'],
+	  ['b32', 'version'],
+	  ['b32', 'machine']]),
   uname__deps: ['__utsname_struct_layout'],
   uname: function(name) {
     // int uname(struct utsname *name);

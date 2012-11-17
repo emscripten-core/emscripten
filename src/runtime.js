@@ -242,6 +242,10 @@ var Runtime = {
       } else if (Runtime.isStructType(field)) {
         size = Types.types[field].flatSize;
         alignSize = Types.types[field].alignSize;
+      } else if (field[0] == 'b') {
+        // bN, large number field, like a [N x i8]
+        size = field.substr(1)|0;
+        alignSize = 1;
       } else {
         throw 'Unclear type in struct: ' + field + ', in ' + type.name_ + ' :: ' + dump(Types.types[type.name_]);
       }
