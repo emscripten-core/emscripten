@@ -1343,7 +1343,10 @@ LibraryManager.library = {
   // poll.h
   // ==========================================================================
 
-  __pollfd_struct_layout: Runtime.generateStructInfo(['fd', 'events', 'revents'], '%struct.pollfd'),
+  __pollfd_struct_layout: Runtime.generateStructInfo([
+    ['i32', 'fd'],
+    ['i16', 'events'],
+    ['i16', 'revents']]),
   poll__deps: ['$FS', '__pollfd_struct_layout'],
   poll: function(fds, nfds, timeout) {
     // int poll(struct pollfd fds[], nfds_t nfds, int timeout);
