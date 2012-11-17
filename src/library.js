@@ -1110,12 +1110,12 @@ LibraryManager.library = {
   // ==========================================================================
 
   __flock_struct_layout: Runtime.generateStructInfo([
-    'l_type',
-    'l_whence',
-    'l_start',
-    'l_len',
-    'l_pid',
-    'l_xxx'], '%struct.flock'),
+    ['i16', 'l_type'],
+    ['i16', 'l_whence'],
+    ['i32', 'l_start'],
+    ['i32', 'l_len'],
+    ['i16', 'l_pid'],
+    ['i16', 'l_xxx']]),
   open__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '__dirent_struct_layout'],
   open: function(path, oflag, varargs) {
     // int open(const char *path, int oflag, ...);
