@@ -6101,10 +6101,10 @@ LibraryManager.library = {
   // ==========================================================================
 
   __tms_struct_layout: Runtime.generateStructInfo([
-    'tms_utime',
-    'tms_stime',
-    'tms_cutime',
-    'tms_cstime'], '%struct.tms'),
+    ['i32', 'tms_utime'],
+    ['i32', 'tms_stime'],
+    ['i32', 'tms_cutime'],
+    ['i32', 'tms_cstime']]),
   times__deps: ['__tms_struct_layout', 'memset'],
   times: function(buffer) {
     // clock_t times(struct tms *buffer);
