@@ -624,7 +624,12 @@ LibraryManager.library = {
   // dirent.h
   // ==========================================================================
 
-  __dirent_struct_layout: Runtime.generateStructInfo(['d_ino', 'd_name', 'd_off', 'd_reclen', 'd_type'], '%struct.dirent'),
+  __dirent_struct_layout: Runtime.generateStructInfo([
+    ['i32', 'd_ino'],
+    ['[1024 x i8]', 'd_name'],
+    ['i32', 'd_off'],
+    ['i32', 'd_reclen'],
+    ['i32', 'd_type']]),
   opendir__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '__dirent_struct_layout'],
   opendir: function(dirname) {
     // DIR *opendir(const char *dirname);
