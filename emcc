@@ -327,6 +327,16 @@ Options that are modified or new in %s include:
                            llvm-link's behavior is not as permissive
                            as ld is.
 
+  --jcache                 Use a JavaScript cache. This is disabled by
+                           default. When enabled, emcc will store the
+                           results of compilation in a cache and check
+                           the cache when compiling later, something
+                           like what ccache does. This allows incremental
+                           builds - where you are compiling a large
+                           program but only modified a small part of it -
+                           to be much faster (at the cost of more disk
+                           IO for cache accesses).
+
   --clear-cache            Manually clears the cache of compiled
                            emscripten system libraries (libc++,
                            libc++abi, dlmalloc). This is normally
@@ -336,7 +346,10 @@ Options that are modified or new in %s include:
                            mechanism can get confused. Clearing the
                            cache can fix weird problems related to
                            cache incompatibilities, like clang failing
-                           to link with library files.
+                           to link with library files. This also clears
+                           other cached data like the jcache and
+                           the bootstrapped relooper. After the cache
+                           is cleared, this process will exit.
 
 The target file, if specified (-o <target>), defines what will
 be generated:
@@ -571,6 +584,7 @@ try:
   remove_duplicates = False
   keep_debug = False
   bind = False
+  jcache = False
 
   def check_bad_eq(arg):
     assert '=' not in arg, 'Invalid parameter (do not use "=" with "--" options)'
@@ -678,10 +692,14 @@ try:
     elif newargs[i] == '--remove-duplicates':
       remove_duplicates = True
       newargs[i] = ''
+    elif newargs[i] == '--jcache':
+      jcache = True
+      newargs[i] = ''
     elif newargs[i] == '--clear-cache':
       newargs[i] = ''
       print >> sys.stderr, 'emcc: clearing cache'
       shared.Cache.erase()
+      sys.exit(0)
     elif newargs[i].startswith(('-I/', '-L/')):
       if not absolute_warning_shown:
         print >> sys.stderr, 'emcc: warning: -I or -L of an absolute path encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript)' # Of course an absolute path to a non-system-specific library or header is fine, and you can ignore this warning. The danger are system headers that are e.g. x86 specific and nonportable. The emscripten bundled headers are modified to be portable, local system ones are generally not
@@ -1044,6 +1062,7 @@ try:
   # Emscripten
   if DEBUG: print >> sys.stderr, 'emcc: LLVM => JS'
   extra_args = [] if not js_libraries else ['--libraries', ','.join(map(os.path.abspath, js_libraries))]
+  if jcache: extra_args.append('--jcache')
   final = shared.Building.emscripten(final, append_ext=False, extra_args=extra_args)
   if DEBUG: save_intermediate('original')
 
@@ -1100,12 +1119,12 @@ try:
     if len(js_optimizer_queue) > 0:
       if DEBUG < 2:
         if DEBUG: print >> sys.stderr, 'emcc: applying js optimization passes:', js_optimizer_queue
-        final = shared.Building.js_optimizer(final, js_optimizer_queue)
+        final = shared.Building.js_optimizer(final, js_optimizer_queue, jcache)
         if DEBUG: save_intermediate('js_opts')
       else:
         for name in js_optimizer_queue:
           print >> sys.stderr, 'emcc: applying js optimization pass:', name
-          final = shared.Building.js_optimizer(final, [name])
+          final = shared.Building.js_optimizer(final, [name], jcache)
           save_intermediate(name)
       js_optimizer_queue = []
 

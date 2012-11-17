@@ -32,6 +32,7 @@ def path_from_root(*pathelems):
 temp_files = shared.TempFiles()
 
 compiler_engine = None
+jcache = False
 
 def scan(ll, settings):
   # blockaddress(@main, %23)
@@ -335,6 +336,10 @@ if __name__ == '__main__':
                     metavar='FOO=BAR',
                     help=('Overrides for settings defined in settings.js. '
                           'May occur multiple times.'))
+  parser.add_option('-j', '--jcache',
+                    action='store_true',
+                    default=False,
+                    help=('Enable jcache (ccache-like caching of compilation results, for faster incremental builds).'))
 
   # Convert to the same format that argparse would have produced.
   keywords, positional = parser.parse_args()
@@ -344,6 +349,7 @@ if __name__ == '__main__':
   if isinstance(keywords.outfile, basestring):
     keywords.outfile = open(keywords.outfile, 'w')
   compiler_engine = keywords.compiler
+  jcache = keywords.jcache
 
   temp_files.run_and_clean(lambda: main(keywords))
 

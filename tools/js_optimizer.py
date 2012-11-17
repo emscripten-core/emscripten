@@ -23,7 +23,7 @@ def run_on_chunk(command):
   f.close()
   return filename
 
-def run(filename, passes, js_engine):
+def run(filename, passes, js_engine, jcache):
   if type(passes) == str:
     passes = [passes]
 
