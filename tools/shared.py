@@ -1154,19 +1154,31 @@ class Cache:
     return cachename
 
 class JCache:
-  # Generates a single key from multiple values
-  @staticmethod
-  def get_key(keys):
-    return ''
+  dirname = os.path.join(Cache.dirname, 'jcache')
 
-  # Returns a cached value for a key (from get_key), if it exists
   @staticmethod
-  def get(key):
+  def ensure():
+    Cache.ensure()
+    if not os.path.exists(JCache.dirname):
+      os.makedirs(JCache.dirname)
+
+  @staticmethod
+  def get_shortkey(keys):
+    if type(keys) not in [list, tuple]:
+      keys = [keys]
+    ret = ''
+    for key in keys:
+      ret += md5.md5(key).hexdigest()
+    return ret
+
+  # Returns a cached value, if it exists. Make sure the full key matches
+  @staticmethod
+  def get(shortkey, keys):
     return None
 
   # Sets the cached value for a key (from get_key)
   @staticmethod
-  def set(key, value):
+  def set(shortkey, keys, value):
     pass
 
 # Compression of code and data for smaller downloads
