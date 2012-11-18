@@ -74,7 +74,7 @@ def emscript(infile, settings, outfile, libraries=[]):
 
   if DEBUG: print >> sys.stderr, 'emscript: ll=>js'
 
-  if jcache: JCache.ensure()
+  if jcache: shared.JCache.ensure()
 
   # Pre-scan ll and alter settings as necessary
   if DEBUG: t = time.time()
@@ -137,13 +137,13 @@ def emscript(infile, settings, outfile, libraries=[]):
   out = None
   if jcache:
     keys = [pre_input, settings_text, ','.join(libraries)]
-    shortkey = JCache.get_key(keys)
-    out = JCache.get(shortkey, keys)
+    shortkey = shared.JCache.get_shortkey(keys)
+    out = shared.JCache.get(shortkey, keys)
   if not out:
     open(pre_file, 'w').write(pre_input)
     out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, pre_file, 'pre'] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
     if jcache:
-      JCache.set(shortkey, keys, out)
+      shared.JCache.set(shortkey, keys, out)
   pre, forwarded_data = out.split('//FORWARDED_DATA:')
   forwarded_file = temp_files.get('.json').name
   open(forwarded_file, 'w').write(forwarded_data)

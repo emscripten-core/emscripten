@@ -1,4 +1,4 @@
-import shutil, time, os, sys, json, tempfile, copy, shlex, atexit, subprocess
+import shutil, time, os, sys, json, tempfile, copy, shlex, atexit, subprocess, md5, cPickle
 from subprocess import Popen, PIPE, STDOUT
 from tempfile import mkstemp
 
@@ -1168,18 +1168,39 @@ class JCache:
       keys = [keys]
     ret = ''
     for key in keys:
+      assert type(key) == str
       ret += md5.md5(key).hexdigest()
     return ret
+
+  @staticmethod
+  def get_cachename(shortkey):
+    return os.path.join(JCache.dirname, shortkey)
 
   # Returns a cached value, if it exists. Make sure the full key matches
   @staticmethod
   def get(shortkey, keys):
-    return None
+    cachename = JCache.get_cachename(shortkey)
+    if not os.path.exists(cachename): return
+    data = cPickle.Unpickler(open(cachename, 'rb')).load()
+    if len(data) != 2:
+      if DEBUG: print >> sys.stderr, 'jcache error in get'
+      return
+    oldkeys = data[0]
+    if len(oldkeys) != len(keys):
+      if DEBUG: print >> sys.stderr, 'jcache collision (a)'
+      return
+    for i in range(len(oldkeys)):
+      if oldkeys[i] != keys[i]:
+        if DEBUG: print >> sys.stderr, 'jcache collision (b)'
+        return
+    if DEBUG: print >> sys.stderr, 'jcache win'
+    return data[1]
 
   # Sets the cached value for a key (from get_key)
   @staticmethod
   def set(shortkey, keys, value):
-    pass
+    cachename = JCache.get_cachename(shortkey)
+    cPickle.Pickler(open(cachename, 'wb')).dump([keys, value])
 
 # Compression of code and data for smaller downloads
 class Compression:
