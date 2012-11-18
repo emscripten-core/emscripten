@@ -123,15 +123,24 @@ def emscript(infile, settings, outfile, libraries=[]):
 
   # Save settings to a file to work around v8 issue 1579
   settings_file = temp_files.get('.txt').name
+  settings_text = json.dumps(settings)
   s = open(settings_file, 'w')
-  s.write(json.dumps(settings))
+  s.write(settings_text)
   s.close()
 
   # Phase 1 - pre
   if DEBUG: t = time.time()
   pre_file = temp_files.get('.pre.ll').name
-  open(pre_file, 'w').write(''.join(pre) + '\n' + meta)
-  out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, pre_file, 'pre'] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
+  pre_input = ''.join(pre) + '\n' + meta
+  out = None
+  if jcache:
+    pre_cache_key = JCache.get_key([pre_input, settings_text, ','.join(libraries)])
+    out = JCache.get(pre_cache_key)
+  if not out:
+    open(pre_file, 'w').write(pre_input)
+    out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, pre_file, 'pre'] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
+    if jcache:
+      JCache.set(pre_cache_key, out)
   pre, forwarded_data = out.split('//FORWARDED_DATA:')
   forwarded_file = temp_files.get('.json').name
   open(forwarded_file, 'w').write(forwarded_data)

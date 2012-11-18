@@ -1153,6 +1153,22 @@ class Cache:
     shutil.copyfile(creator(), cachename)
     return cachename
 
+class JCache:
+  # Generates a single key from multiple values
+  @staticmethod
+  def get_key(keys):
+    return ''
+
+  # Returns a cached value for a key (from get_key), if it exists
+  @staticmethod
+  def get(key):
+    return None
+
+  # Sets the cached value for a key (from get_key)
+  @staticmethod
+  def set(key, value):
+    pass
+
 # Compression of code and data for smaller downloads
 class Compression:
   on = False
