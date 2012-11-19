@@ -11,6 +11,8 @@ extern "C" {
 
 // Note that the values of these constants are mostly arbitrary numbers.
 #define SOMAXCONN 128
+#define PF_LOCAL 1
+#define PF_UNIX PF_LOCAL
 #define PF_INET 2
 #define SO_BROADCAST 6
 
