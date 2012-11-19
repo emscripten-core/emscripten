@@ -144,3 +144,12 @@
 #define PATH_MAX	4096
 #endif
 
+/* XXX EMSCRIPTEN */
+#ifndef _LIBC_LIMITS2_H_
+#define _LIBC_LIMITS2_H_	1
+
+#define _POSIX_PATH_MAX PATH_MAX
+#define PTHREAD_STACK_MIN 0
+
+#endif
+
