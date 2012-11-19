@@ -674,7 +674,7 @@ function intertyper(data, sidePass, baseLineNums) {
       // Inline assembly is just JavaScript that we paste into the code
       item.intertype = 'value';
       if (tokensLeft[0].text == 'sideeffect') tokensLeft.splice(0, 1);
-      item.ident = tokensLeft[0].text.substr(1, tokensLeft[0].text.length-2);
+      item.ident = tokensLeft[0].text.substr(1, tokensLeft[0].text.length-2) || ';'; // use ; for empty inline assembly
       return { forward: null, ret: [item], item: item };
     } 
     if (item.ident.substr(-2) == '()') {
