@@ -49,6 +49,8 @@ void endhostent(void);
 void herror(const char* s);
 const char* hstrerror(int err);
 
+extern int h_errno;
+
 #ifdef __cplusplus
 }
 #endif
