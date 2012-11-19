@@ -15,6 +15,7 @@ extern "C" {
 #define PF_UNIX PF_LOCAL
 #define PF_INET 2
 #define SO_BROADCAST 6
+#define AF_UNIX PF_UNIX
 
 #define AF_UNSPEC 100
 #define SOCK_STREAM 200
