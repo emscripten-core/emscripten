@@ -72,7 +72,7 @@ struct linger {
   int l_linger;
 };
 
-#define SIOCATMARK 1
+#define SIOCATMARK 0x8905
 
 #ifdef __cplusplus
 }
