@@ -3,10 +3,11 @@
 extern "C" {
 #endif
 
-#define RTLD_LAZY   1
-#define RTLD_NOW    2
-#define RTLD_GLOBAL 4
-#define RTLD_LOCAL  8
+#define RTLD_DEFAULT 0
+#define RTLD_LAZY    1
+#define RTLD_NOW     2
+#define RTLD_GLOBAL  4
+#define RTLD_LOCAL   8
 
 typedef struct {
   const char *dli_fname;
