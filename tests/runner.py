@@ -10449,12 +10449,19 @@ fi
         os.environ['EMCC_DEBUG'] = '1'
 
         src = None
-        for args, expect_save, expect_load in [([], False, False),
-                                               (['--jcache'], True, False),
-                                               (['--jcache'], False, True),
-                                               ([], False, False)]:
-          print args, expect_save, expect_load
-          out, err = Popen(['python', EMCC, path_from_root('tests', 'hello_world_loop.cpp')] + args, stdout=PIPE, stderr=PIPE).communicate()
+        for args, input_file, expect_save, expect_load in [
+          ([], 'hello_world_loop.cpp', False, False),
+          (['--jcache'], 'hello_world_loop.cpp', True, False),
+          (['--jcache'], 'hello_world_loop.cpp', False, True),
+          ([], 'hello_world_loop.cpp', False, False),
+          ([], 'hello_world.cpp', False, False), # switch input, cannot use cached stuff
+          (['--jcache'], 'hello_world.cpp', True, False),
+          (['--jcache'], 'hello_world.cpp', False, True),
+          ([], 'hello_world.cpp', False, False),
+          (['--jcache'], 'hello_world_loop.cpp', False, True), # go back to old file, experience caching
+        ]:
+          print args, input_file, expect_save, expect_load
+          out, err = Popen(['python', EMCC, path_from_root('tests', input_file)] + args, stdout=PIPE, stderr=PIPE).communicate()
           assert (PRE_SAVE_MSG in err) == expect_save, err
           assert (PRE_LOAD_MSG in err) == expect_load, errr
           curr = open('a.out.js').read()
