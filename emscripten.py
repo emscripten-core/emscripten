@@ -93,7 +93,6 @@ def emscript(infile, settings, outfile, libraries=[]):
   in_func = False
   ll_lines = open(infile).readlines()
   for line in ll_lines:
-    if line.startswith(';'): continue
     if in_func:
       funcs[-1].append(line)
       if line.startswith('}'):
@@ -101,6 +100,7 @@ def emscript(infile, settings, outfile, libraries=[]):
         funcs[-1] = ''.join(funcs[-1])
         pre.append(line) # pre needs it to, so we know about all implemented functions
     else:
+      if line.startswith(';'): continue
       if line.startswith('define '):
         in_func = True
         funcs.append([line])
