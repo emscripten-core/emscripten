@@ -27,6 +27,7 @@ struct rusage {
 };
 
 /* XXX Emscripten */
+#define PRIO_PROCESS 0
 int getrusage(int who, struct rusage *r_usage);
 
 /* XXX Emscripten */
