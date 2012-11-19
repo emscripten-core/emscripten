@@ -26,7 +26,8 @@ extern "C" {
 #define SO_NOSIGPIPE 80
 #define SO_KEEPALIVE 90
 
-#define SHUT_RDWR 1
+#define SHUT_RD 1
+#define SHUT_RDWR 2
 
 typedef unsigned int sa_family_t;
 #define AF_INET 1
@@ -73,6 +74,8 @@ struct linger {
 };
 
 #define SIOCATMARK 0x8905
+
+#define SOCK_RAW 111
 
 #ifdef __cplusplus
 }

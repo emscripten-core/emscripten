@@ -9,6 +9,7 @@ extern "C" {
 #define TRY_AGAIN 2
 #define NO_RECOVERY 3
 #define NO_DATA 4
+#define NO_ADDRESS 5
 
 #define IP_TOS 1
 #define IP_TTL 2
