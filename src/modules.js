@@ -9,7 +9,7 @@ var LLVM = {
   VISIBILITIES: set('default', 'hidden', 'protected'),
   PARAM_ATTR: set('noalias', 'signext', 'zeroext', 'inreg', 'sret', 'nocapture', 'nest'),
   FUNC_ATTR: set('hidden', 'nounwind', 'define', 'inlinehint', '{'),
-  CALLING_CONVENTIONS: set('ccc', 'fastcc', 'coldcc', 'cc10', 'x86_fastcallcc', 'x86_stdcallcc'),
+  CALLING_CONVENTIONS: set('ccc', 'fastcc', 'coldcc', 'cc10', 'x86_fastcallcc', 'x86_stdcallcc', 'cc11'),
   ACCESS_OPTIONS: set('volatile', 'atomic'),
   INVOKE_MODIFIERS: set('alignstack', 'alwaysinline', 'inlinehint', 'naked', 'noimplicitfloat', 'noinline', 'alwaysinline attribute.', 'noredzone', 'noreturn', 'nounwind', 'optsize', 'readnone', 'readonly', 'ssp', 'sspreq'),
   SHIFTS: set('ashr', 'lshr', 'shl'),
