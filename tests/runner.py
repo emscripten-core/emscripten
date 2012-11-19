@@ -7662,6 +7662,22 @@ f.close()
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'test.cpp'), '-s', 'UNALIGNED_MEMORY=1']).communicate()
       self.assertContained('data: 67452301\ndata[0,1] 16bit: 2301\ndata[1,2] 16bit: 4523', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+    def test_unaligned_memory_2(self):
+      open(os.path.join(self.get_dir(), 'test.cpp'), 'w').write(r'''
+        #include <string>
+        #include <stdio.h>
+
+        int main( int argc, char ** argv )
+        {
+            std::string testString( "Hello, World!" );
+
+            printf( "testString = %s\n", testString.c_str() );
+            return 0;
+        }
+        ''')
+      Popen(['python', EMCC, os.path.join(self.get_dir(), 'test.cpp'), '-s', 'UNALIGNED_MEMORY=1']).communicate()
+      self.assertContained('testString = Hello, World!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
     def test_l_link(self):
       # Linking with -lLIBNAME and -L/DIRNAME should work
 
