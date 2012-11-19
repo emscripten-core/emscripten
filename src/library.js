@@ -5127,6 +5127,63 @@ LibraryManager.library = {
   atan2f: 'Math.atan2',
   exp: 'Math.exp',
   expf: 'Math.exp',
+
+  // The erf and erfc functions are inspired from
+  // http://www.digitalmars.com/archives/cplusplus/3634.html
+  // and mruby source code at
+  // https://github.com/mruby/mruby/blob/master/src/math.c
+  erfc: function (x) {
+    var MATH_TOLERANCE = 1E-12;
+    var ONE_SQRTPI = 0.564189583547756287;
+    var a = 1;
+    var b = x;
+    var c = x;
+    var d = x * x + 0.5;
+    var n = 1.0
+    var q1, q2, t;
+
+    if (Math.abs(x) < 2.2) {
+      return 1.0 - _erf(x);
+    }
+    if (x < 0) {
+      return 2.0 - _erfc(-x);
+    }
+    do {
+      t = a * n + b * x;
+      a = b;
+      b = t;
+      t = c * n + d * x;
+      c = d;
+      d = t;
+      n += 0.5;
+      q1 = q2;
+      q2 = b / d;
+    } while (Math.abs(q1 - q2) / q2 > MATH_TOLERANCE);
+    return (ONE_SQRTPI * Math.exp(- x * x) * q2);
+  },
+  erfcf: 'erfcf',
+  erf: function (x) {
+    var MATH_TOLERANCE = 1E-12;
+    var TWO_SQRTPI = 1.128379167095512574;
+    var sum = x;
+    var term = x;
+    var xsqr = x*x;
+    var j = 1;
+
+    if (Math.abs(x) > 2.2) {
+      return 1.0 - _erfc(x);
+    }
+    do {
+      term *= xsqr / j;
+      sum -= term / (2 * j + 1);
+      ++j;
+      term *= xsqr / j;
+      sum += term / (2 * j + 1);
+      ++j;
+    } while (Math.abs(term / sum) > MATH_TOLERANCE);
+    return (TWO_SQRTPI * sum);
+  },
+  erff: 'erf',
   log: 'Math.log',
   logf: 'Math.log',
   sqrt: 'Math.sqrt',
