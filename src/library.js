@@ -5139,8 +5139,9 @@ LibraryManager.library = {
     var b = x;
     var c = x;
     var d = x * x + 0.5;
-    var n = 1.0
-    var q1, q2, t;
+    var n = 1.0;
+    var q2 = b / d;
+    var q1, t;
 
     if (Math.abs(x) < 2.2) {
       return 1.0 - _erf(x);
