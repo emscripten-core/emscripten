@@ -25,6 +25,10 @@
 extern "C" {
 #endif
 
+#if EMSCRIPTEN
+#define _POSIX_REALTIME_SIGNALS 1
+#endif
+
 /* RTEMS adheres to POSIX -- 1003.1b with some features from annexes.  */
 
 #ifdef __rtems__

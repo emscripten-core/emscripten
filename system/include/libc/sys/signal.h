@@ -114,6 +114,7 @@ struct sigaction
 	_sig_func_ptr sa_handler;
 	sigset_t sa_mask;
 	int sa_flags;
+  void (*sa_sigaction)(int, siginfo_t *, void *); /* XXX EMSCRIPTEN */
 };
 #endif /* defined(__rtems__) */
 
