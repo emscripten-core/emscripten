@@ -36,11 +36,6 @@
 #include <sys/cdefs.h>
 #include <sys/_types.h>
 
-#ifndef _SA_FAMILY_T_DECLARED
-typedef	__sa_family_t	sa_family_t;
-#define	_SA_FAMILY_T_DECLARED
-#endif
-
 /*
  * Definitions for UNIX IPC domain.
  */
