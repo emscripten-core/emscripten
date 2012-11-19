@@ -48,7 +48,8 @@ MIN_CHUNK_SIZE = 1024*1024
 MAX_CHUNK_SIZE = float(os.environ.get('EMSCRIPT_MAX_CHUNK_SIZE') or 'inf') # configuring this is just for debugging purposes
 
 def process_funcs(args):
-  i, ll, settings_file, compiler, forwarded_file, libraries = args
+  i, funcs, meta, settings_file, compiler, forwarded_file, libraries = args
+  ll = ''.join(funcs) + '\n' + meta
   funcs_file = temp_files.get('.func_%d.ll' % i).name
   open(funcs_file, 'w').write(ll)
   out = shared.run_js(compiler, compiler_engine, [settings_file, funcs_file, 'funcs', forwarded_file] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
@@ -168,21 +169,21 @@ def emscript(infile, settings, outfile, libraries=[]):
   forwarded_json = json.loads(forwarded_data)
   indexed_functions = set()
   chunks = [] # bundles of functions
-  curr = ''
+  curr = []
   for i in range(len(funcs)):
     func = funcs[i]
     if len(curr) + len(func) < chunk_size:
-      curr += func
+      curr.append(func)
     else:
       chunks.append(curr)
-      curr = func
+      curr = [func]
   if curr:
     chunks.append(curr)
-    curr = ''
+    curr = None
   if cores == 1 and total_ll_size < MAX_CHUNK_SIZE: assert len(chunks) == 1, 'no point in splitting up without multiple cores'
   if DEBUG: print >> sys.stderr, '  emscript: phase 2 working on %d chunks %s (intended chunk size: %.2f MB, meta: %.2f MB, forwarded: %.2f MB, total: %.2f MB)' % (len(chunks), ('using %d cores' % cores) if len(chunks) > 1 else '', chunk_size/(1024*1024.), len(meta)/(1024*1024.), len(forwarded_data)/(1024*1024.), total_ll_size/(1024*1024.))
 
-  commands = [(i, chunks[i] + '\n' + meta, settings_file, compiler, forwarded_file, libraries) for i in range(len(chunks))]
+  commands = [(i, chunks[i], meta, settings_file, compiler, forwarded_file, libraries) for i in range(len(chunks))]
 
   if len(chunks) > 1:
     pool = multiprocessing.Pool(processes=cores)
