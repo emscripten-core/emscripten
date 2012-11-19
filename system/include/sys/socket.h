@@ -33,8 +33,8 @@ extern "C" {
 #define SHUT_RDWR 2
 
 typedef unsigned int sa_family_t;
-#define AF_INET 1
-#define AF_INET6 6
+#define AF_INET 1000
+#define AF_INET6 6000
 
 struct sockaddr {
   sa_family_t sa_family; 
@@ -79,6 +79,9 @@ struct linger {
 #define SIOCATMARK 0x8905
 
 #define SOCK_RAW 111
+#define SOCK_SEQPACKET 555
+
+#define PF_APPLETALK 5
 
 #ifdef __cplusplus
 }
