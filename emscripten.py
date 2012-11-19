@@ -93,6 +93,7 @@ def emscript(infile, settings, outfile, libraries=[]):
   in_func = False
   ll_lines = open(infile).readlines()
   for line in ll_lines:
+    if line.startswith(';'): continue
     if in_func:
       funcs[-1].append(line)
       if line.startswith('}'):
@@ -139,10 +140,12 @@ def emscript(infile, settings, outfile, libraries=[]):
     keys = [pre_input, settings_text, ','.join(libraries)]
     shortkey = shared.JCache.get_shortkey(keys)
     out = shared.JCache.get(shortkey, keys)
+    if out and DEBUG: print >> sys.stderr, '  loading pre from jcache'
   if not out:
     open(pre_file, 'w').write(pre_input)
     out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, pre_file, 'pre'] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
     if jcache:
+      if DEBUG: print >> sys.stderr, '  saving pre to jcache'
       shared.JCache.set(shortkey, keys, out)
   pre, forwarded_data = out.split('//FORWARDED_DATA:')
   forwarded_file = temp_files.get('.json').name

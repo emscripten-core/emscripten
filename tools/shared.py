@@ -1183,17 +1183,17 @@ class JCache:
     if not os.path.exists(cachename): return
     data = cPickle.Unpickler(open(cachename, 'rb')).load()
     if len(data) != 2:
-      if DEBUG: print >> sys.stderr, 'jcache error in get'
+      #if DEBUG: print >> sys.stderr, 'jcache error in get'
       return
     oldkeys = data[0]
     if len(oldkeys) != len(keys):
-      if DEBUG: print >> sys.stderr, 'jcache collision (a)'
+      #if DEBUG: print >> sys.stderr, 'jcache collision (a)'
       return
     for i in range(len(oldkeys)):
       if oldkeys[i] != keys[i]:
-        if DEBUG: print >> sys.stderr, 'jcache collision (b)'
+        #if DEBUG: print >> sys.stderr, 'jcache collision (b)'
         return
-    if DEBUG: print >> sys.stderr, 'jcache win'
+    #if DEBUG: print >> sys.stderr, 'jcache win'
     return data[1]
 
   # Sets the cached value for a key (from get_key)

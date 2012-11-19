@@ -10063,6 +10063,8 @@ elif 'sanity' in str(sys.argv):
 
   assert os.path.exists(CONFIG_FILE), 'To run these tests, we need a (working!) %s file to already exist' % EM_CONFIG
 
+  assert not os.environ.get('EMCC_DEBUG'), 'do not run sanity checks in debug mode!'
+
   shutil.copyfile(CONFIG_FILE, CONFIG_FILE + '_backup')
   def restore():
     shutil.copyfile(CONFIG_FILE + '_backup', CONFIG_FILE)
@@ -10295,10 +10297,11 @@ fi
       self.assertContained(SANITY_MESSAGE, output)
 
       # but with EMCC_DEBUG=1 we should check
-      assert not os.environ.get('EMCC_DEBUG'), 'do not run sanity checks in debug mode!'
-      os.environ['EMCC_DEBUG'] = '1'
-      output = self.check_working(EMCC)
-      del os.environ['EMCC_DEBUG']
+      try:
+        os.environ['EMCC_DEBUG'] = '1'
+        output = self.check_working(EMCC)
+      finally:
+        del os.environ['EMCC_DEBUG']
       self.assertContained(SANITY_MESSAGE, output)
       output = self.check_working(EMCC)
       self.assertNotContained(SANITY_MESSAGE, output)
@@ -10434,6 +10437,33 @@ fi
           assert ('bootstrapping relooper succeeded' in output) == (i == 2), 'only bootstrap on first O2: ' + output
           assert os.path.exists(RELOOPER) == (i >= 2), 'have relooper on O2: ' + output
           assert ('L2 : do {' in open('a.out.js').read()) == (i >= 2), 'reloop code on O2: ' + output
+
+    def test_jcache(self):
+      PRE_LOAD_MSG = 'loading pre from jcache'
+      PRE_SAVE_MSG = 'saving pre to jcache'
+
+      restore()
+      Cache.erase()
+
+      try:
+        os.environ['EMCC_DEBUG'] = '1'
+
+        src = None
+        for args, expect_save, expect_load in [([], False, False),
+                                               (['--jcache'], True, False),
+                                               (['--jcache'], False, True),
+                                               ([], False, False)]:
+          print args, expect_save, expect_load
+          out, err = Popen(['python', EMCC, path_from_root('tests', 'hello_world_loop.cpp')] + args, stdout=PIPE, stderr=PIPE).communicate()
+          assert (PRE_SAVE_MSG in err) == expect_save, err
+          assert (PRE_LOAD_MSG in err) == expect_load, errr
+          curr = open('a.out.js').read()
+          if src is None:
+            src = None
+          else:
+            assert src == curr, 'caching must not affect codegen'
+      finally:
+        del os.environ['EMCC_DEBUG']
 
 else:
   raise Exception('Test runner is confused: ' + str(sys.argv))
