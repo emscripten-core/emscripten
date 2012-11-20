@@ -1133,7 +1133,7 @@ try:
 
     if DEBUG >= 2:
       # Clean up the syntax a bit
-      final = shared.Building.js_optimizer(final, [])
+      final = shared.Building.js_optimizer(final, [], jcache)
       if DEBUG: save_intermediate('pretty')
 
     def get_eliminate():
