@@ -2457,20 +2457,22 @@ LibraryManager.library = {
     var argIndex = 0;
     var next;
 
-    next = 1;
     mainLoop:
-    for (var formatIndex = 0; formatIndex < format.length; formatIndex++) {
+    for (var formatIndex = 0; formatIndex < format.length;) {
+      if (format[formatIndex] === '%' && format[formatIndex+1] == 'n') {
+        var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
+        {{{ makeSetValue('argPtr', 0, 'soFar', 'i32') }}};
+        formatIndex += 2;
+        continue;
+      }
+
       // remove whitespace
       while (1) {
         next = get();
         if (next == 0) return fields;
         if (!(next in __scanString.whiteSpace)) break;
-      } 
-      unget(next);
-      
-      if (next <= 0) return fields;
-      var next = get();
-      if (next <= 0) return fields;  // End of input.
+      }
+      unget();
 
       if (format[formatIndex] === '%') {
         formatIndex++;
@@ -2504,6 +2506,7 @@ LibraryManager.library = {
         // Read characters according to the format. floats are trickier, they may be in an unfloat state in the middle, then be a valid float later
         if (type == 'f') {
           var last = 0;
+          next = get();
           while (next > 0) {
             buffer.push(String.fromCharCode(next));
             if (__isFloat(buffer.join(''))) {
@@ -2511,12 +2514,12 @@ LibraryManager.library = {
             }
             next = get();
           }
-          unget(next);
-          while (buffer.length > last) {
-            unget(buffer.pop().charCodeAt(0));
+          for (var i = 0; i < buffer.length - last + 1; i++) {
+            unget();
           }
+          buffer.length = last;
+        } else {
           next = get();
-        } else if (type != 'n') {
           var first = true;
           while ((curr < max_ || isNaN(max_)) && next > 0) {
             if (!(next in __scanString.whiteSpace) && // stop on whitespace
@@ -2530,13 +2533,14 @@ LibraryManager.library = {
               buffer.push(String.fromCharCode(next));
               next = get();
               curr++;
+              first = false;
             } else {
               break;
             }
-            first = false;
           }
+          unget();
         }
-        if (buffer.length === 0 && type != 'n') return 0;  // Failure.
+        if (buffer.length === 0) return 0;  // Failure.
         var text = buffer.join('');
         var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
         argIndex += Runtime.getNativeFieldSize('void*');
@@ -2566,30 +2570,25 @@ LibraryManager.library = {
               {{{ makeSetValue('argPtr', 'j', 'array[j]', 'i8') }}}
             }
             break;
-          case 'n':
-            {{{ makeSetValue('argPtr', 0, 'soFar-1', 'i32') }}}
-            break;
         }
-        if (type != 'n') fields++;
-        if (next <= 0) break mainLoop;  // End of input.
+        fields++;
       } else if (format[formatIndex] in __scanString.whiteSpace) {
+        next = get();
         while (next in __scanString.whiteSpace) {
-          next = get();
           if (next <= 0) break mainLoop;  // End of input.
+          next = get();
         }
         unget(next);
+        formatIndex++;
       } else {
         // Not a specifier.
+        next = get();
         if (format[formatIndex].charCodeAt(0) !== next) {
           unget(next);
           break mainLoop;
         }
+        formatIndex++;
       }
-    }
-    // 'n' is special in that it needs no input. so it can be at the end, even with nothing left to read
-    if (format[formatIndex-1] == '%' && format[formatIndex] == 'n') {
-      var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
-      {{{ makeSetValue('argPtr', 0, 'soFar-1', 'i32') }}}
     }
     return fields;
   },

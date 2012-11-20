@@ -4542,7 +4542,22 @@ Pass: 0.000012 0.000012''')
       
       self.do_run(src, '3\n123,1073741823,1125899906842620\n' + 
                      '3\n-123,-1073741823,-1125899906842620\n')
-        
+
+    def test_sscanf_4(self):
+      src = r'''
+        #include <stdio.h>
+
+        int main()
+        {
+          char pYear[16], pMonth[16], pDay[16], pDate[64];
+          printf("%d\n", sscanf("Nov 19 2012", "%s%s%s", pMonth, pDay, pYear));
+          printf("day %s, month %s, year %s \n", pDay, pMonth, pYear);
+          return(0);
+        }
+      '''
+
+      self.do_run(src, '3\nday 19, month Nov, year 2012');
+
     def test_langinfo(self):
       src = open(path_from_root('tests', 'langinfo', 'test.c'), 'r').read()
       expected = open(path_from_root('tests', 'langinfo', 'output.txt'), 'r').read()
