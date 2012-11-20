@@ -28,6 +28,11 @@ extern "C" {
 #define SO_LINGER 70
 #define SO_NOSIGPIPE 80
 #define SO_KEEPALIVE 90
+#define SO_OOBINLINE 100
+#define SO_NO_CHECK 110
+#define SO_PRIORITY 120
+#define SO_LINGER 130
+#define SO_BSDCOMPAT 140
 
 #define SHUT_RD 1
 #define SHUT_RDWR 2
