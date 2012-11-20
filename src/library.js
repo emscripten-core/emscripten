@@ -6407,9 +6407,15 @@ LibraryManager.library = {
     _pthread_key_create.keys[key] = value;
   },
 
-  pthread_cleanup__deps: ['atexit'],
   pthread_cleanup_push: function(routine, arg) {
-    _atexit(routine, arg);
+    __ATEXIT__.push({ func: function() { FUNCTION_TABLE[routine](arg) } })
+    _pthread_cleanup_push.level = __ATEXIT__.length;
+  },
+
+  pthread_cleanup_pop: function() {
+    assert(_pthread_cleanup_push.level == __ATEXIT__.length, 'cannot pop if something else added meanwhile!');
+    __ATEXIT__.pop();
+    _pthread_cleanup_push.level = __ATEXIT__.length;
   },
 
   // ==========================================================================
