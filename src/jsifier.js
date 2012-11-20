@@ -332,7 +332,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           if (item.ident.substr(0, 5) == '__ZTV') {
             js += '\n' + makePointer('[0]', null, BUILD_AS_SHARED_LIB ? 'ALLOC_NORMAL' : 'ALLOC_STATIC', ['void*']) + ';';
           }
-          if (item.ident in EXPORTED_GLOBALS) {
+          if (EXPORT_ALL || (item.ident in EXPORTED_GLOBALS)) {
             js += '\nModule["' + item.ident + '"] = ' + item.ident + ';';
           }
           if (BUILD_AS_SHARED_LIB == 2 && !item.private_) {
@@ -442,7 +442,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         }
         var text = (deps ? '\n' + deps.map(addFromLibrary).filter(function(x) { return x != '' }).join('\n') : '');
         text += isFunction ? snippet : 'var ' + ident + '=' + snippet + ';';
-        if (ident in EXPORTED_FUNCTIONS) {
+        if (EXPORT_ALL || (ident in EXPORTED_FUNCTIONS)) {
           text += '\nModule["' + ident + '"] = ' + ident + ';';
         }
         return text;
@@ -702,7 +702,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           func.JS += '\n//FUNCTION_END_MARKER_OF_SOURCE_FILE_' + associatedSourceFile + '\n';
       }
       
-      if (func.ident in EXPORTED_FUNCTIONS) {
+      if (EXPORT_ALL || (func.ident in EXPORTED_FUNCTIONS)) {
         func.JS += 'Module["' + func.ident + '"] = ' + func.ident + ';';
       }
 

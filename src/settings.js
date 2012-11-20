@@ -196,6 +196,7 @@ var PGO = 0; // Profile-guided optimization.
 
 var PROFILE = 0; // Enables runtime profiling. See test_profiling for a usage example.
 
+var EXPORT_ALL = 0; // If true, we export all the symbols
 var EXPORTED_FUNCTIONS = ['_main', '_malloc', '_free']; // Functions that are explicitly exported, so they are guaranteed to
                                                         // be accessible outside of the generated code even after running closure compiler.
                                                         // Note the necessary prefix of "_".
