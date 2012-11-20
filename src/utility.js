@@ -184,7 +184,7 @@ function dprint() {
     text = text(); // Allows deferred calculation, so dprints don't slow us down when not needed
   }
   text = DPRINT_INDENT + '// ' + text;
-  print(text);
+  printErr(text);
 }
 
 var PROF_ORIGIN = Date.now();
