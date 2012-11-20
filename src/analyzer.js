@@ -690,6 +690,7 @@ function analyzer(data, sidePass) {
       var subType = check[2];
       addTypeInternal(subType, data); // needed for anonymous structure definitions (see below)
 
+      // Huge structural types are represented very inefficiently, both here and in generated JS. Best to avoid them - for example static char x[10*1024*1024]; is bad, while static char *x = malloc(10*1024*1024) is fine.
       if (num >= 10*1024*1024) warnOnce('warning: very large fixed-size structural type: ' + type + ' - can you reduce it? (compilation may be slow)');
       Types.types[nonPointing] = {
         name_: nonPointing,
