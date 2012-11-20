@@ -8307,6 +8307,17 @@ f.close()
         assert 'foo.o: ' in output, '-%s failed to produce the right output: %s' % (opt, output)
         assert 'error' not in err, 'Unexpected stderr: ' + err
 
+    def test_chunking(self):
+      if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
+      if multiprocessing.cpu_count() < 2: return self.skip('need multiple cores')
+      try:
+        os.environ['EMCC_DEBUG'] = '1'
+        output, err = Popen(['python', EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O1'], stdout=PIPE, stderr=PIPE).communicate()
+        assert 'phase 2 working on 3 chunks' in err, err
+        assert 'splitting up js optimization into 2 chunks' in err, err
+      finally:
+        del os.environ['EMCC_DEBUG']
+
     def test_scons(self): # also incidentally tests c++11 integration in llvm 3.1
       try_delete(os.path.join(self.get_dir(), 'test'))
       shutil.copytree(path_from_root('tests', 'scons'), os.path.join(self.get_dir(), 'test'))
