@@ -1275,7 +1275,7 @@ class JCache:
         for ident, data in chunk:
           new_mapping[ident] = i
       cPickle.Pickler(open(chunking_file, 'wb')).dump(new_mapping)
-    return chunks
+    return [''.join([func[1] for func in chunk]) for chunk in chunks] # remove function names
 
 class JS:
   @staticmethod
