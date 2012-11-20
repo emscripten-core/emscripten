@@ -4745,6 +4745,10 @@ LibraryManager.library = {
     return 32;
   },
 
+  llvm_trap: function() {
+    throw 'trap! ' + new Error().stack;
+  },
+
   __assert_fail: function(condition, file, line) {
     ABORT = true;
     throw 'Assertion failed: ' + Pointer_stringify(condition);//JSON.stringify(arguments)//condition;
