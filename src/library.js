@@ -3454,8 +3454,9 @@ LibraryManager.library = {
     // int fscanf(FILE *restrict stream, const char *restrict format, ... );
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/scanf.html
     if (FS.streams[stream]) {
-      var get = function() { return _fgetc(stream); };
-      var unget = function(c) { return _ungetc(c, stream); };
+      var stack = [];
+      var get = function() { var ret = _fgetc(stream); stack.push(ret); return ret };
+      var unget = function(c) { return _ungetc(stack.pop(), stream) };
       return __scanString(format, get, unget, varargs);
     } else {
       return -1;
