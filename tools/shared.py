@@ -1153,6 +1153,9 @@ class Cache:
     shutil.copyfile(creator(), cachename)
     return cachename
 
+# JS-specific cache. We cache the results of compilation and optimization,
+# so that in incremental builds we can just load from cache.
+# We cache reasonably-large-sized chunks
 class JCache:
   dirname = os.path.join(Cache.dirname, 'jcache')
 
@@ -1201,6 +1204,31 @@ class JCache:
   def set(shortkey, keys, value):
     cachename = JCache.get_cachename(shortkey)
     cPickle.Pickler(open(cachename, 'wb')).dump([keys, value])
+
+  # Given a set of functions of form (ident, text), and a preferred chunk size,
+  # generates a set of chunks for parallel processing and caching.
+  # It is very important to generate similar chunks in incremental builds, in
+  # order to maximize the chance of cache hits.
+  @staticmethod
+  def chunkify(funcs, chunk_size):
+    chunks = [] # bundles of functions
+    curr = []
+    for i in range(len(funcs)):
+      func = funcs[i]
+      if len(curr) + len(func[1]) < chunk_size:
+        curr.append(func)
+      else:
+        chunks.append(curr)
+        curr = [func]
+    if curr:
+      chunks.append(curr)
+      curr = None
+    return chunks
+
+class JS:
+  @staticmethod
+  def to_nice_ident(ident): # limited version of the JS function toNiceIdent
+    return ident.replace('%', '$').replace('@', '_');
 
 # Compression of code and data for smaller downloads
 class Compression:
