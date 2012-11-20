@@ -1208,10 +1208,50 @@ class JCache:
   # Given a set of functions of form (ident, text), and a preferred chunk size,
   # generates a set of chunks for parallel processing and caching.
   # It is very important to generate similar chunks in incremental builds, in
-  # order to maximize the chance of cache hits.
+  # order to maximize the chance of cache hits. To achieve that, we save the
+  # chunking used in the previous compilation of this phase, and we try to
+  # generate the same chunks, barring big differences in function sizes that
+  # violate our chunk size guideline. If caching is not used, chunking_file
+  # should be None
   @staticmethod
-  def chunkify(funcs, chunk_size):
-    chunks = [] # bundles of functions
+  def chunkify(funcs, chunk_size, chunking_file):
+    previous_mapping = None
+    if chunking_file:
+      chunking_file = JCache.get_cachename(chunking_file)
+      if os.path.exists(chunking_file):
+        try:
+          previous_mapping = cPickle.Unpickler(open(chunking_file, 'rb')).load() # maps a function identifier to the chunk number it will be in
+        except:
+          pass
+    chunks = []
+    if previous_mapping:
+      # initialize with previous chunking
+      news = []
+      for func in funcs:
+        ident, data = func
+        if not ident in previous_mapping:
+          news.append(func)
+        else:
+          n = previous_mapping[ident]
+          while n > len(chunks): chunks.append([])
+          chunks[n].append(func)
+      # add news and adjust for new sizes
+      spilled = news
+      for chunk in chunks:
+        size = sum([len(func[1]) for func in chunk])
+        while size > 1.5*chunk_size and len(chunk) > 0:
+          spill = chunk.pop()
+          spilled.append(spill)
+          size -= len(spill[1])
+      for chunk in chunks:
+        size = sum([len(func[1]) for func in chunk])
+        while size < 0.66*chunk_size and len(spilled) > 0:
+          spill = spilled.pop()
+          chunk.append(spill)
+          size += len(spill[1])
+      chunks = filter(lambda chunk: len(chunk) > 0, chunks) # might have empty ones, eliminate them
+      funcs = spilled # we will allocate these into chunks as if they were normal inputs
+    # initialize reasonably, the rest of the funcs we need to split out
     curr = []
     for i in range(len(funcs)):
       func = funcs[i]
@@ -1223,6 +1263,14 @@ class JCache:
     if curr:
       chunks.append(curr)
       curr = None
+    if chunking_file:
+      # save new mapping info
+      new_mapping = {}
+      for i in range(len(chunks)):
+        chunk = chunks[i]
+        for ident, data in chunk:
+          new_mapping[ident] = i
+      cPickle.Pickler(open(chunking_file, 'wb')).dump(new_mapping)
     return chunks
 
 class JS:

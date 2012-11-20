@@ -10358,8 +10358,8 @@ fi
       assert not os.path.exists(EMCC_CACHE)
 
       try:
-        emcc_debug = os.environ.get('EMCC_DEBUG')
         os.environ['EMCC_DEBUG'] ='1'
+        self.working_dir = os.path.join(TEMP_DIR, 'emscripten_temp')
 
         # Building a file that doesn't need cached stuff should not trigger cache generation
         output = self.do([EMCC, path_from_root('tests', 'hello_world.cpp')])
@@ -10374,8 +10374,6 @@ fi
         dcebc_name2 = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-2-linktime.bc')
         ll_name1 = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-2-ll.ll')
         ll_name2 = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-3-ll.ll')
-
-        self.working_dir = os.path.join(TEMP_DIR, 'emscripten_temp')
 
         # Building a file that *does* need dlmalloc *should* trigger cache generation, but only the first time
         for filename, libname in [('hello_malloc.cpp', 'dlmalloc'), ('hello_libcxx.cpp', 'libcxx')]:
@@ -10409,8 +10407,7 @@ fi
               print i, 'll metadata should be removed in -O1 and O2 by default', ll[-300:]
               assert False
       finally:
-        if emcc_debug:
-          os.environ['EMCC_DEBUG'] = emcc_debug
+        del os.environ['EMCC_DEBUG']
 
       # Manual cache clearing
       assert os.path.exists(EMCC_CACHE)
@@ -10447,6 +10444,9 @@ fi
 
       try:
         os.environ['EMCC_DEBUG'] = '1'
+        self.working_dir = os.path.join(TEMP_DIR, 'emscripten_temp')
+
+        assert not os.path.exists(JCache.get_cachename('emscript_files'))
 
         src = None
         for args, input_file, expect_save, expect_load in [
@@ -10461,6 +10461,7 @@ fi
           (['--jcache'], 'hello_world_loop.cpp', False, True), # go back to old file, experience caching
         ]:
           print args, input_file, expect_save, expect_load
+          self.clear()
           out, err = Popen(['python', EMCC, path_from_root('tests', input_file)] + args, stdout=PIPE, stderr=PIPE).communicate()
           assert (PRE_SAVE_MSG in err) == expect_save, err
           assert (PRE_LOAD_MSG in err) == expect_load, errr
@@ -10469,6 +10470,9 @@ fi
             src = None
           else:
             assert src == curr, 'caching must not affect codegen'
+
+        assert os.path.exists(JCache.get_cachename('emscript_files'))
+
       finally:
         del os.environ['EMCC_DEBUG']
 
