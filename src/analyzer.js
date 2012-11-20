@@ -690,6 +690,7 @@ function analyzer(data, sidePass) {
       var subType = check[2];
       addTypeInternal(subType, data); // needed for anonymous structure definitions (see below)
 
+      if (num >= 10*1024*1024) warnOnce('warning: very large fixed-size structural type: ' + type + ' - can you reduce it? (compilation may be slow)');
       Types.types[nonPointing] = {
         name_: nonPointing,
         fields: range(num).map(function() { return subType }),

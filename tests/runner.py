@@ -8139,6 +8139,33 @@ f.close()
       output = Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp')], stderr=PIPE).communicate()
       self.assertNotContained('Unresolved symbol: _something\n', output[1])
 
+    def test_toobig(self):
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
+        #include <stdio.h>
+
+        #define BYTES 100*1024*1024
+
+        int main(int argc, char **argv) {
+          if (argc == 100) {
+            static char buf[BYTES];
+            static char buf2[BYTES];
+            for (int i = 0; i < BYTES; i++) {
+              buf[i] = i*i;
+              buf2[i] = i/3;
+            }
+            for (int i = 0; i < BYTES; i++) {
+              buf[i] = buf2[i/2];
+              buf2[i] = buf[i/3];
+            }
+            printf("%d\n", buf[10] + buf2[20]);
+          }
+          return 0;
+        }
+      ''')
+      output = Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp')], stderr=PIPE).communicate()[1]
+      assert 'Emscripten failed' in output, output
+      assert 'warning: very large fixed-size structural type' in output, output
+
     def test_prepost(self):
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
         #include <stdio.h>
