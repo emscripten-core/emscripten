@@ -44,6 +44,8 @@ void GC_MAYBE_COLLECT();
 /* Forces a GC. Mainly useful for testing, but call it if you know a good time to GC in your app. */
 void GC_FORCE_COLLECT();
 
+typedef void (*GC_finalization_proc)(void *func, void *arg);
+
 #ifdef __cplusplus
 }
 #endif
