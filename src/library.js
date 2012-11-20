@@ -6407,6 +6407,11 @@ LibraryManager.library = {
     _pthread_key_create.keys[key] = value;
   },
 
+  pthread_cleanup__deps: ['atexit'],
+  pthread_cleanup_push: function(routine, arg) {
+    _atexit(routine, arg);
+  },
+
   // ==========================================================================
   // malloc.h
   // ==========================================================================
