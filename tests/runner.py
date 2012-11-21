@@ -2795,13 +2795,20 @@ def process(filename):
         src = r'''
           #include <stdio.h>
 
+          double get() {
+            double ret = 0;
+            __asm __volatile__("12/3.3":"=a"(ret));
+            return ret;
+          }
+
           int main() {
             asm("Module.print('Inline JS is very cool')");
+            printf("%.2f\n", get());
             return 0;
           }
           '''
 
-        self.do_run(src, 'Inline JS is very cool')
+        self.do_run(src, 'Inline JS is very cool\n3.64')
 
     def test_memorygrowth(self):
       if Settings.USE_TYPED_ARRAYS == 0: return self.skip('memory growth is only supported with typed arrays')
