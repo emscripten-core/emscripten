@@ -713,6 +713,8 @@ try:
     minify_whitespace = closure # if closure is run, minify whitespace
   if opt_level <= 0: keep_debug = True # always keep debug in -O0
 
+  if DEBUG: start_time = time.time() # done after parsing arguments, which might affect debug state
+
   if closure:
     assert os.path.exists(shared.CLOSURE_COMPILER), 'emcc: fatal: Closure compiler (%s) does not exist' % shared.CLOSURE_COMPILER
 
@@ -1239,6 +1241,8 @@ try:
     else:
         # copy final JS to output
         shutil.move(final, target)
+
+  if DEBUG: print >> sys.stderr, 'emcc: total time: %.2f seconds' % (time.time() - start_time)
 
 finally:
   if not TEMP_DIR:
