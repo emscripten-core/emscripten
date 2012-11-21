@@ -20,14 +20,15 @@ def run_on_chunk(command):
   filename = command[2] # XXX hackish
   output = subprocess.Popen(command, stdout=subprocess.PIPE).communicate()[0]
   assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + output
-  filename += '.jo.js'
-  temp_files.note(filename)
+  filename = temp_files.get(os.path.basename(filename) + '.jo.js').name
   f = open(filename, 'w')
   f.write(output)
   f.close()
   return filename
 
 def run(filename, passes, js_engine, jcache):
+  if jcache: shared.JCache.ensure()
+
   if type(passes) == str:
     passes = [passes]
 
@@ -67,6 +68,23 @@ def run(filename, passes, js_engine, jcache):
 
   chunks = shared.JCache.chunkify(funcs, BEST_JS_PROCESS_SIZE, 'jsopt' if jcache else None)
 
+  if jcache:
+    # load chunks from cache where we can # TODO: ignore small chunks
+    cached_outputs = []
+    def load_from_cache(chunk):
+      keys = [chunk]
+      shortkey = shared.JCache.get_shortkey(keys) # TODO: share shortkeys with later code
+      out = shared.JCache.get(shortkey, keys)
+      if out:
+        cached_outputs.append(out)
+        return False
+      return True
+    chunks = filter(load_from_cache, chunks)
+    if len(cached_outputs) > 0:
+      if out and DEBUG: print >> sys.stderr, '  loading %d funcchunks from jcache' % len(cached_outputs)
+    else:
+      cached_outputs = []
+
   if len(chunks) > 1:
     def write_chunk(chunk, i):
       temp_file = temp_files.get('.jsfunc_%d.ll' % i).name
@@ -76,43 +94,46 @@ def run(filename, passes, js_engine, jcache):
         f.write(suffix) # last already has the suffix
       f.close()
       return temp_file
-    chunks = [write_chunk(chunks[i], i) for i in range(len(chunks))]
+    filenames = [write_chunk(chunks[i], i) for i in range(len(chunks))]
   else:
-    chunks = [filename]
+    filenames = [filename]
 
-  # XXX Use '--nocrankshaft' to disable crankshaft to work around v8 bug 1895, needed for older v8/node (node 0.6.8+ should be ok)
-  commands = map(lambda chunk: [js_engine, JS_OPTIMIZER, chunk] + passes, chunks)
+  if len(filenames) > 0:
+    # XXX Use '--nocrankshaft' to disable crankshaft to work around v8 bug 1895, needed for older v8/node (node 0.6.8+ should be ok)
+    commands = map(lambda filename: [js_engine, JS_OPTIMIZER, filename, 'noPrintMetadata'] + passes, filenames)
 
-  if len(chunks) > 1:
-    # We are splitting into chunks. Hopefully we can do that in parallel
-    commands = map(lambda command: command + ['noPrintMetadata'], commands)
-    filename += '.jo.js'
-
-    fail = None
-    cores = min(multiprocessing.cpu_count(), chunks)
-    if cores < 2:
-      fail = 'python reports you have %d cores' % cores
-    #elif WINDOWS:
-    #  fail = 'windows (see issue 663)' # This seems fixed with adding emcc.py that imports this file
-
-    if not fail:
+    cores = min(multiprocessing.cpu_count(), filenames)
+    if len(chunks) > 1 and cores >= 2:
       # We can parallelize
       if DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks, using %d cores  (total: %.2f MB)' % (len(chunks), cores, len(js)/(1024*1024.))
       pool = multiprocessing.Pool(processes=cores)
       filenames = pool.map(run_on_chunk, commands, chunksize=1)
     else:
       # We can't parallize, but still break into chunks to avoid uglify/node memory issues
-      if DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks (not in parallel because %s)' % (len(chunks), fail)
+      if len(chunks) > 1 and DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks' % (len(chunks))
       filenames = [run_on_chunk(command) for command in commands]
-
-    f = open(filename, 'w')
-    for out_file in filenames:
-      f.write(open(out_file).read())
-    f.write(suffix)
-    f.write('\n')
-    f.close()
-    return filename
   else:
-    # one simple chunk, just do it
-    return run_on_chunk(commands[0])
+    filenames = []
+
+  filename += '.jo.js'
+  f = open(filename, 'w')
+  for out_file in filenames:
+    f.write(open(out_file).read())
+  if jcache:
+    for cached in cached_outputs:
+      f.write(cached); # TODO: preserve order
+  f.write(suffix)
+  f.write('\n')
+  f.close()
+
+  if jcache:
+    # save chunks to cache
+    for i in range(len(chunks)):
+      chunk = chunks[i]
+      keys = [chunk]
+      shortkey = shared.JCache.get_shortkey(keys)
+      shared.JCache.set(shortkey, keys, outputs[i])
+    if out and DEBUG and len(chunks) > 0: print >> sys.stderr, '  saving %d funcchunks to jcache' % len(chunks)
+
+  return filename
 
