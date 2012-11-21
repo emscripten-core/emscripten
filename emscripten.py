@@ -173,18 +173,52 @@ def emscript(infile, settings, outfile, libraries=[]):
 
   chunks = shared.JCache.chunkify(funcs, chunk_size, 'emscript_files' if jcache else None)
 
+  if jcache:
+    # load chunks from cache where we can # TODO: ignore small chunks
+    cached_funcs = []
+    def load_from_cache(chunk):
+      keys = [settings_text, forwarded_data, chunk]
+      shortkey = shared.JCache.get_shortkey(keys) # TODO: share shortkeys with later code
+      out = shared.JCache.get(shortkey, keys)
+      if out:
+        cached_funcs.append(out)
+        return False
+      return True
+    chunks = filter(load_from_cache, chunks)
+    if len(cached_funcs) > 0:
+      if out and DEBUG: print >> sys.stderr, '  loading %d funcchunks from jcache' % len(cached_funcs)
+      cached_funcs_js = ''.join(cached_funcs)
+      cached_funcs = None
+    else:
+      cached_funcs_js = ''
+
   if cores == 1 and total_ll_size < MAX_CHUNK_SIZE: assert len(chunks) == 1, 'no point in splitting up without multiple cores'
-  if DEBUG: print >> sys.stderr, '  emscript: phase 2 working on %d chunks %s (intended chunk size: %.2f MB, meta: %.2f MB, forwarded: %.2f MB, total: %.2f MB)' % (len(chunks), ('using %d cores' % cores) if len(chunks) > 1 else '', chunk_size/(1024*1024.), len(meta)/(1024*1024.), len(forwarded_data)/(1024*1024.), total_ll_size/(1024*1024.))
 
-  commands = [(i, chunks[i], meta, settings_file, compiler, forwarded_file, libraries) for i in range(len(chunks))]
+  if len(chunks) > 0:
+    if DEBUG: print >> sys.stderr, '  emscript: phase 2 working on %d chunks %s (intended chunk size: %.2f MB, meta: %.2f MB, forwarded: %.2f MB, total: %.2f MB)' % (len(chunks), ('using %d cores' % cores) if len(chunks) > 1 else '', chunk_size/(1024*1024.), len(meta)/(1024*1024.), len(forwarded_data)/(1024*1024.), total_ll_size/(1024*1024.))
 
-  if len(chunks) > 1:
-    pool = multiprocessing.Pool(processes=cores)
-    outputs = pool.map(process_funcs, commands, chunksize=1)
+    commands = [(i, chunks[i], meta, settings_file, compiler, forwarded_file, libraries) for i in range(len(chunks))]
+
+    if len(chunks) > 1:
+      pool = multiprocessing.Pool(processes=cores)
+      outputs = pool.map(process_funcs, commands, chunksize=1)
+    elif len(chunks) == 1:
+      outputs = [process_funcs(commands[0])]
   else:
-    outputs = [process_funcs(commands[0])]
+    outputs = []
+
+  if jcache:
+    # save chunks to cache
+    for i in range(len(chunks)):
+      chunk = chunks[i]
+      keys = [settings_text, forwarded_data, chunk]
+      shortkey = shared.JCache.get_shortkey(keys)
+      shared.JCache.set(shortkey, keys, outputs[i])
+    if out and DEBUG and len(chunks) > 0: print >> sys.stderr, '  saving %d funcchunks to jcache' % len(chunks)
 
   funcs_js = ''.join([output[0] for output in outputs])
+  if jcache:
+    funcs_js += cached_funcs_js # TODO insert them in the original order
 
   for func_js, curr_forwarded_data in outputs:
     # merge forwarded data

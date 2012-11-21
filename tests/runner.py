@@ -10449,6 +10449,8 @@ fi
     def test_jcache(self):
       PRE_LOAD_MSG = 'loading pre from jcache'
       PRE_SAVE_MSG = 'saving pre to jcache'
+      FUNC_CHUNKS_LOAD_MSG = 'funcchunks from jcache'
+      FUNC_CHUNKS_SAVE_MSG = 'funcchunks to jcache'
 
       restore()
       Cache.erase()
@@ -10475,7 +10477,9 @@ fi
           self.clear()
           out, err = Popen(['python', EMCC, path_from_root('tests', input_file)] + args, stdout=PIPE, stderr=PIPE).communicate()
           assert (PRE_SAVE_MSG in err) == expect_save, err
-          assert (PRE_LOAD_MSG in err) == expect_load, errr
+          assert (PRE_LOAD_MSG in err) == expect_load, err
+          assert (FUNC_CHUNKS_SAVE_MSG in err) == expect_save, err
+          assert (FUNC_CHUNKS_LOAD_MSG in err) == expect_load, err
           curr = open('a.out.js').read()
           if src is None:
             src = None

@@ -1182,8 +1182,11 @@ class JCache:
   # Returns a cached value, if it exists. Make sure the full key matches
   @staticmethod
   def get(shortkey, keys):
+    #if DEBUG: print >> sys.stderr, 'jcache get?'
     cachename = JCache.get_cachename(shortkey)
-    if not os.path.exists(cachename): return
+    if not os.path.exists(cachename):
+      #if DEBUG: print >> sys.stderr, 'jcache none at all'
+      return
     data = cPickle.Unpickler(open(cachename, 'rb')).load()
     if len(data) != 2:
       #if DEBUG: print >> sys.stderr, 'jcache error in get'
@@ -1233,7 +1236,7 @@ class JCache:
           news.append(func)
         else:
           n = previous_mapping[ident]
-          while n > len(chunks): chunks.append([])
+          while n >= len(chunks): chunks.append([])
           chunks[n].append(func)
       # add news and adjust for new sizes
       spilled = news
@@ -1268,6 +1271,9 @@ class JCache:
       chunks.append(curr)
       curr = None
     if chunking_file:
+      # sort within each chunk, to keep the order identical
+      for chunk in chunks:
+        chunk.sort(key=lambda func: func[0])
       # save new mapping info
       new_mapping = {}
       for i in range(len(chunks)):
