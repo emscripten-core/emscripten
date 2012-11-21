@@ -121,9 +121,11 @@ def run(filename, passes, js_engine, jcache):
   f = open(filename, 'w')
   for out_file in filenames:
     f.write(open(out_file).read())
+    f.write('\n')
   if jcache:
     for cached in cached_outputs:
       f.write(cached); # TODO: preserve order
+      f.write('\n')
   f.write(suffix)
   f.write('\n')
   f.close()

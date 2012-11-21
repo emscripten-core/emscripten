@@ -10478,11 +10478,18 @@ fi
           (['--jcache'], 'hello_world_loop.cpp', True, False),
           (['--jcache'], 'hello_world_loop.cpp', False, True),
           ([], 'hello_world_loop.cpp', False, False),
-          ([], 'hello_world.cpp', False, False), # switch input, cannot use cached stuff
+          # new
+          ([], 'hello_world.cpp', False, False),
           (['--jcache'], 'hello_world.cpp', True, False),
           (['--jcache'], 'hello_world.cpp', False, True),
           ([], 'hello_world.cpp', False, False),
-          (['--jcache'], 'hello_world_loop.cpp', False, True), # go back to old file, experience caching
+          # go back to old file, experience caching
+          (['--jcache'], 'hello_world_loop.cpp', False, True),
+          # new, large file
+          ([], 'hello_malloc.cpp', False, False),
+          (['--jcache'], 'hello_malloc.cpp', True, False),
+          (['--jcache'], 'hello_malloc.cpp', False, True),
+          ([], 'hello_malloc.cpp', False, False),
         ]:
           print >> sys.stderr, args, input_file, expect_save, expect_load
           self.clear()
@@ -10498,9 +10505,9 @@ fi
           if input_file not in srcs:
             srcs[input_file] = curr
           else:
-            #open('/home/alon/Dev/emscripten/a', 'w').write(srcs[input_file])
-            #open('/home/alon/Dev/emscripten/b', 'w').write(curr)
-            assert len(curr) == len(srcs[input_file]), 'contents may shift in order, but must remain the same size  %d vs %d' % (len(curr), len(srcs[input_file])) + '\n' + err
+            open('/home/alon/Dev/emscripten/a', 'w').write(srcs[input_file])
+            open('/home/alon/Dev/emscripten/b', 'w').write(curr)
+            assert abs(len(curr)/float(len(srcs[input_file]))-1)<0.01, 'contents may shift in order, but must remain the same size  %d vs %d' % (len(curr), len(srcs[input_file])) + '\n' + err
           used_jcache = used_jcache or ('--jcache' in args)
           assert used_jcache == os.path.exists(JCache.get_cachename('emscript_files'))
 
