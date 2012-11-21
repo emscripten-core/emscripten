@@ -81,7 +81,7 @@ def run(filename, passes, js_engine, jcache):
       return True
     chunks = filter(load_from_cache, chunks)
     if len(cached_outputs) > 0:
-      if out and DEBUG: print >> sys.stderr, '  loading %d funcchunks from jcache' % len(cached_outputs)
+      if DEBUG: print >> sys.stderr, '  loading %d jsfuncchunks from jcache' % len(cached_outputs)
     else:
       cached_outputs = []
 
@@ -95,8 +95,10 @@ def run(filename, passes, js_engine, jcache):
       f.close()
       return temp_file
     filenames = [write_chunk(chunks[i], i) for i in range(len(chunks))]
+  elif len(chunks) == 1:
+    filenames = [filename] # avoid copying a single file
   else:
-    filenames = [filename]
+    filenames = []
 
   if len(filenames) > 0:
     # XXX Use '--nocrankshaft' to disable crankshaft to work around v8 bug 1895, needed for older v8/node (node 0.6.8+ should be ok)
@@ -132,8 +134,8 @@ def run(filename, passes, js_engine, jcache):
       chunk = chunks[i]
       keys = [chunk]
       shortkey = shared.JCache.get_shortkey(keys)
-      shared.JCache.set(shortkey, keys, outputs[i])
-    if out and DEBUG and len(chunks) > 0: print >> sys.stderr, '  saving %d funcchunks to jcache' % len(chunks)
+      shared.JCache.set(shortkey, keys, open(filenames[i]).read())
+    if DEBUG and len(chunks) > 0: print >> sys.stderr, '  saving %d jsfuncchunks to jcache' % len(chunks)
 
   return filename
 

@@ -10456,8 +10456,10 @@ fi
     def test_jcache(self):
       PRE_LOAD_MSG = 'loading pre from jcache'
       PRE_SAVE_MSG = 'saving pre to jcache'
-      FUNC_CHUNKS_LOAD_MSG = 'funcchunks from jcache'
-      FUNC_CHUNKS_SAVE_MSG = 'funcchunks to jcache'
+      FUNC_CHUNKS_LOAD_MSG = ' funcchunks from jcache'
+      FUNC_CHUNKS_SAVE_MSG = ' funcchunks to jcache'
+      JSFUNC_CHUNKS_LOAD_MSG = 'jsfuncchunks from jcache'
+      JSFUNC_CHUNKS_SAVE_MSG = 'jsfuncchunks to jcache'
 
       restore()
       Cache.erase()
@@ -10484,16 +10486,21 @@ fi
         ]:
           print >> sys.stderr, args, input_file, expect_save, expect_load
           self.clear()
-          out, err = Popen(['python', EMCC, path_from_root('tests', input_file)] + args, stdout=PIPE, stderr=PIPE).communicate()
+          out, err = Popen(['python', EMCC, '-O2', '--closure', '0', path_from_root('tests', input_file)] + args, stdout=PIPE, stderr=PIPE).communicate()
+          self.assertContained('hello, world!', run_js('a.out.js'))
           assert (PRE_SAVE_MSG in err) == expect_save, err
           assert (PRE_LOAD_MSG in err) == expect_load, err
           assert (FUNC_CHUNKS_SAVE_MSG in err) == expect_save, err
           assert (FUNC_CHUNKS_LOAD_MSG in err) == expect_load, err
+          assert (JSFUNC_CHUNKS_SAVE_MSG in err) == expect_save, err
+          assert (JSFUNC_CHUNKS_LOAD_MSG in err) == expect_load, err
           curr = open('a.out.js').read()
           if input_file not in srcs:
             srcs[input_file] = curr
           else:
-            assert curr == srcs[input_file], err
+            #open('/home/alon/Dev/emscripten/a', 'w').write(srcs[input_file])
+            #open('/home/alon/Dev/emscripten/b', 'w').write(curr)
+            assert len(curr) == len(srcs[input_file]), 'contents may shift in order, but must remain the same size  %d vs %d' % (len(curr), len(srcs[input_file])) + '\n' + err
           used_jcache = used_jcache or ('--jcache' in args)
           assert used_jcache == os.path.exists(JCache.get_cachename('emscript_files'))
 
