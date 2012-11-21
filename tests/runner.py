@@ -10461,7 +10461,9 @@ fi
 
         assert not os.path.exists(JCache.get_cachename('emscript_files'))
 
-        src = None
+        srcs = {}
+        used_jcache = False
+
         for args, input_file, expect_save, expect_load in [
           ([], 'hello_world_loop.cpp', False, False),
           (['--jcache'], 'hello_world_loop.cpp', True, False),
@@ -10473,7 +10475,7 @@ fi
           ([], 'hello_world.cpp', False, False),
           (['--jcache'], 'hello_world_loop.cpp', False, True), # go back to old file, experience caching
         ]:
-          print args, input_file, expect_save, expect_load
+          print >> sys.stderr, args, input_file, expect_save, expect_load
           self.clear()
           out, err = Popen(['python', EMCC, path_from_root('tests', input_file)] + args, stdout=PIPE, stderr=PIPE).communicate()
           assert (PRE_SAVE_MSG in err) == expect_save, err
@@ -10481,12 +10483,12 @@ fi
           assert (FUNC_CHUNKS_SAVE_MSG in err) == expect_save, err
           assert (FUNC_CHUNKS_LOAD_MSG in err) == expect_load, err
           curr = open('a.out.js').read()
-          if src is None:
-            src = None
+          if input_file not in srcs:
+            srcs[input_file] = curr
           else:
-            assert src == curr, 'caching must not affect codegen'
-
-        assert os.path.exists(JCache.get_cachename('emscript_files'))
+            assert curr == srcs[input_file], err
+          used_jcache = used_jcache or ('--jcache' in args)
+          assert used_jcache == os.path.exists(JCache.get_cachename('emscript_files'))
 
       finally:
         del os.environ['EMCC_DEBUG']

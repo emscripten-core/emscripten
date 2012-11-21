@@ -175,22 +175,22 @@ def emscript(infile, settings, outfile, libraries=[]):
 
   if jcache:
     # load chunks from cache where we can # TODO: ignore small chunks
-    cached_funcs = []
+    cached_outputs = []
     def load_from_cache(chunk):
       keys = [settings_text, forwarded_data, chunk]
       shortkey = shared.JCache.get_shortkey(keys) # TODO: share shortkeys with later code
       out = shared.JCache.get(shortkey, keys)
       if out:
-        cached_funcs.append(out)
+        cached_outputs.append(out)
         return False
       return True
     chunks = filter(load_from_cache, chunks)
-    if len(cached_funcs) > 0:
-      if out and DEBUG: print >> sys.stderr, '  loading %d funcchunks from jcache' % len(cached_funcs)
-      cached_funcs_js = ''.join(cached_funcs)
-      cached_funcs = None
+    if len(cached_outputs) > 0:
+      if out and DEBUG: print >> sys.stderr, '  loading %d funcchunks from jcache' % len(cached_outputs)
     else:
-      cached_funcs_js = ''
+      cached_outputs = []
+
+  # TODO: minimize size of forwarded data from funcs to what we actually need
 
   if cores == 1 and total_ll_size < MAX_CHUNK_SIZE: assert len(chunks) == 1, 'no point in splitting up without multiple cores'
 
@@ -216,9 +216,8 @@ def emscript(infile, settings, outfile, libraries=[]):
       shared.JCache.set(shortkey, keys, outputs[i])
     if out and DEBUG and len(chunks) > 0: print >> sys.stderr, '  saving %d funcchunks to jcache' % len(chunks)
 
+  if jcache: outputs += cached_outputs # TODO: preserve order
   funcs_js = ''.join([output[0] for output in outputs])
-  if jcache:
-    funcs_js += cached_funcs_js # TODO insert them in the original order
 
   for func_js, curr_forwarded_data in outputs:
     # merge forwarded data
