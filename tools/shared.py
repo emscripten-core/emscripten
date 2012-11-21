@@ -59,8 +59,6 @@ class WindowsPopen:
 # Install our replacement Popen handler if we are running on Windows to avoid python spawn process function.
 if os.name == 'nt':
   Popen = WindowsPopen
-  
-import js_optimizer
 
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
@@ -1325,4 +1323,6 @@ def unsuffixed(name):
 
 def unsuffixed_basename(name):
   return os.path.basename(unsuffixed(name))
+
+import js_optimizer
 

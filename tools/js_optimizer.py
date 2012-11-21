@@ -1,5 +1,8 @@
 
-import os, sys, subprocess, multiprocessing
+import os, sys, subprocess, multiprocessing, re
+import shared
+
+temp_files = shared.TempFiles()
 
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
@@ -18,6 +21,7 @@ def run_on_chunk(command):
   output = subprocess.Popen(command, stdout=subprocess.PIPE).communicate()[0]
   assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + output
   filename += '.jo.js'
+  temp_files.note(filename)
   f = open(filename, 'w')
   f.write(output)
   f.close()
@@ -39,28 +43,42 @@ def run(filename, passes, js_engine, jcache):
     suffix = js[suffix_start:js.find('\n', suffix_start)] + '\n'
 
   # Pick where to split into chunks, so that (1) they do not oom in node/uglify, and (2) we can run them in parallel
-  chunks = []
-  i = 0
-  f_start = 0
-  while True:
-    f_end = f_start
-    while f_end-f_start < BEST_JS_PROCESS_SIZE and f_end != -1:
-      f_end = js.find('\n}\n', f_end+1)
-    chunk = js[f_start:(-1 if f_end == -1 else f_end+3)] + suffix
-    temp_file = filename + '.p%d.js' % i
-    #if DEBUG: print >> sys.stderr, '  chunk %d: %d bytes' % (i, (f_end if f_end >= 0 else len(js)) - f_start)
-    i += 1
-    f_start = f_end+3
-    done = f_end == -1 or f_start >= len(js)
-    if done and len(chunks) == 0: break # do not write anything out, just use the input file
-    f = open(temp_file, 'w')
-    f.write(chunk)
-    f.close()
-    chunks.append(temp_file)
-    if done: break
+  parts = map(lambda part: part, js.split('\n}\n'))
+  funcs = []
+  buffered = []
+  for i in range(len(parts)):
+    func = parts[i]
+    if i < len(parts)-1: func += '\n}\n' # last part needs no } and already has suffix
+    m = re.search('function (_\w+)\(', func)
+    if m:
+      ident = m.group(1)
+      if buffered:
+        func = ''.join(buffered) + func
+        buffered = []
+      funcs.append((ident, func))
+    else:
+      buffered.append(func)
+  if buffered:
+    if len(funcs) > 0:
+      funcs[-1] = (funcs[-1][0], funcs[-1][1] + ''.join(buffered))
+    else:
+      funcs.append(('anonymous', ''.join(buffered)))
+  parts = None
 
-  if len(chunks) == 0:
-    chunks.append(filename)
+  chunks = shared.JCache.chunkify(funcs, BEST_JS_PROCESS_SIZE, 'jsopt' if jcache else None)
+
+  if len(chunks) > 1:
+    def write_chunk(chunk, i):
+      temp_file = temp_files.get('.jsfunc_%d.ll' % i).name
+      f = open(temp_file, 'w')
+      f.write(chunk)
+      if i < len(chunks)-1:
+        f.write(suffix) # last already has the suffix
+      f.close()
+      return temp_file
+    chunks = [write_chunk(chunks[i], i) for i in range(len(chunks))]
+  else:
+    chunks = [filename]
 
   # XXX Use '--nocrankshaft' to disable crankshaft to work around v8 bug 1895, needed for older v8/node (node 0.6.8+ should be ok)
   commands = map(lambda chunk: [js_engine, JS_OPTIMIZER, chunk] + passes, chunks)
@@ -79,7 +97,7 @@ def run(filename, passes, js_engine, jcache):
 
     if not fail:
       # We can parallelize
-      if DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks, using %d cores' % (len(chunks), cores)
+      if DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks, using %d cores  (total: %.2f MB)' % (len(chunks), cores, len(js)/(1024*1024.))
       pool = multiprocessing.Pool(processes=cores)
       filenames = pool.map(run_on_chunk, commands, chunksize=1)
     else:
