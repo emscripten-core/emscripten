@@ -6909,6 +6909,18 @@ LibraryManager.library = {
     return eval(Pointer_stringify(ptr));
   },
 
+  emscripten_run_script_string: function(ptr) {
+    var s = eval(Pointer_stringify(ptr));
+    var me = _emscripten_run_script_string;
+    if (!me.bufferSize || me.bufferSize < s.length+1) {
+      if (me.bufferSize) _free(me.buffer);
+      me.bufferSize = s.length+1;
+      me.buffer = _malloc(me.bufferSize);
+    }
+    writeStringToMemory(s, me.buffer);
+    return me.buffer;
+  },
+
   emscripten_random: function() {
     return Math.random();
   },

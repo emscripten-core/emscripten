@@ -31,6 +31,7 @@ extern "C" {
  */
 extern void emscripten_run_script(const char *script);
 extern int emscripten_run_script_int(const char *script);
+extern char *emscripten_run_script_string(const char *script); // uses a single buffer - shared between calls!
 extern void emscripten_async_run_script(const char *script, int millis);
 
 /*

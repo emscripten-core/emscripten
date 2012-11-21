@@ -2777,6 +2777,7 @@ c5,de,15,8a
             // EMSCRIPTEN_COMMENT("hello from the source");
             emscripten_run_script("Module.print('hello world' + '!')");
             printf("*%d*\n", emscripten_run_script_int("5*20"));
+            printf("*%s*\n", emscripten_run_script_string("'five'+'six'"));
             emscripten_run_script("_save_me_aimee()");
             return 0;
           }
@@ -2788,7 +2789,7 @@ def process(filename):
   # TODO: restore this (see comment in emscripten.h) assert '// hello from the source' in src
 '''
 
-        self.do_run(src, 'hello world!\n*100*\nmann\n', post_build=check)
+        self.do_run(src, 'hello world!\n*100*\n*fivesix*\nmann\n', post_build=check)
 
     def test_inlinejs(self):
         src = r'''
