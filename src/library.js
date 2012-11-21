@@ -5112,6 +5112,34 @@ LibraryManager.library = {
   llvm_objectsize_i32: function() { return -1 }, // TODO: support this
 
   // ==========================================================================
+  // llvm-mono integration
+  // ==========================================================================
+
+  llvm_mono_load_i8_p0i8: function(ptr) {
+    return {{{ makeGetValue('ptr', 0, 'i8') }}};
+  },
+
+  llvm_mono_store_i8_p0i8: function(value, ptr) {
+    {{{ makeSetValue('ptr', 0, 'value', 'i8') }}};
+  },
+
+  llvm_mono_load_i16_p0i16: function(ptr) {
+    return {{{ makeGetValue('ptr', 0, 'i16') }}};
+  },
+
+  llvm_mono_store_i16_p0i16: function(value, ptr) {
+    {{{ makeSetValue('ptr', 0, 'value', 'i16') }}};
+  },
+
+  llvm_mono_load_i32_p0i32: function(ptr) {
+    return {{{ makeGetValue('ptr', 0, 'i32') }}};
+  },
+
+  llvm_mono_store_i32_p0i32: function(value, ptr) {
+    {{{ makeSetValue('ptr', 0, 'value', 'i32') }}};
+  },
+
+  // ==========================================================================
   // math.h
   // ==========================================================================
 
