@@ -225,5 +225,4 @@ function switchey(x) {
   r8 = x + 2;
   pp(r8);
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["test", "primes", "atomic", "fcntl_open", "ex", "switchey"]
 

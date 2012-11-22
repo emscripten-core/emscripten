@@ -8295,7 +8295,7 @@ f.close()
         (path_from_root('tools', 'test-js-optimizer-t2.js'), open(path_from_root('tools', 'test-js-optimizer-t2-output.js')).read(),
          ['simplifyExpressionsPre', 'optimizeShiftsAggressive']),
         # Make sure that optimizeShifts handles functions with shift statements.
-        (path_from_root('tools', 'test-js-optimizer-t3.js'), open(path_from_root('tools', 'test-js-optimizer-t3.js')).read(),
+        (path_from_root('tools', 'test-js-optimizer-t3.js'), open(path_from_root('tools', 'test-js-optimizer-t3-output.js')).read(),
          ['optimizeShiftsAggressive']),
         (path_from_root('tools', 'test-js-optimizer-regs.js'), open(path_from_root('tools', 'test-js-optimizer-regs-output.js')).read(),
          ['registerize']),
