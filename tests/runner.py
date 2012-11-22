@@ -10473,41 +10473,43 @@ fi
         srcs = {}
         used_jcache = False
 
-        for args, input_file, expect_save, expect_load in [
-          ([], 'hello_world_loop.cpp', False, False),
-          (['--jcache'], 'hello_world_loop.cpp', True, False),
-          (['--jcache'], 'hello_world_loop.cpp', False, True),
-          ([], 'hello_world_loop.cpp', False, False),
+        for args, input_file, expect_save, expect_load, expected in [
+          ([], 'hello_world_loop.cpp', False, False, []),
+          (['--jcache'], 'hello_world_loop.cpp', True, False, []),
+          (['--jcache'], 'hello_world_loop.cpp', False, True, []),
+          ([], 'hello_world_loop.cpp', False, False, []),
           # new
-          ([], 'hello_world.cpp', False, False),
-          (['--jcache'], 'hello_world.cpp', True, False),
-          (['--jcache'], 'hello_world.cpp', False, True),
-          ([], 'hello_world.cpp', False, False),
+          ([], 'hello_world.cpp', False, False, []),
+          (['--jcache'], 'hello_world.cpp', True, False, []),
+          (['--jcache'], 'hello_world.cpp', False, True, []),
+          ([], 'hello_world.cpp', False, False, []),
           # go back to old file, experience caching
-          (['--jcache'], 'hello_world_loop.cpp', False, True),
+          (['--jcache'], 'hello_world_loop.cpp', False, True, []),
           # new, large file
-          ([], 'hello_malloc.cpp', False, False),
-          (['--jcache'], 'hello_malloc.cpp', True, False),
-          (['--jcache'], 'hello_malloc.cpp', False, True),
-          ([], 'hello_malloc.cpp', False, False),
+          ([], 'hello_malloc.cpp', False, False, []),
+          (['--jcache'], 'hello_malloc.cpp', True, False, []),
+          (['--jcache'], 'hello_malloc.cpp', False, True, []),
+          ([], 'hello_malloc.cpp', False, False, []),
         ]:
-          print >> sys.stderr, args, input_file, expect_save, expect_load
+          print >> sys.stderr, args, input_file, expect_save, expect_load, expected
           self.clear()
           out, err = Popen(['python', EMCC, '-O2', '--closure', '0', path_from_root('tests', input_file)] + args, stdout=PIPE, stderr=PIPE).communicate()
-          self.assertContained('hello, world!', run_js('a.out.js'))
-          assert (PRE_SAVE_MSG in err) == expect_save, err
-          assert (PRE_LOAD_MSG in err) == expect_load, err
-          assert (FUNC_CHUNKS_SAVE_MSG in err) == expect_save, err
-          assert (FUNC_CHUNKS_LOAD_MSG in err) == expect_load, err
-          assert (JSFUNC_CHUNKS_SAVE_MSG in err) == expect_save, err
-          assert (JSFUNC_CHUNKS_LOAD_MSG in err) == expect_load, err
+          errtail = err.split('emcc invocation')[-1]
+          self.assertContained('hello, world!', run_js('a.out.js'), errtail)
+          assert (PRE_SAVE_MSG in err) == expect_save, errtail
+          assert (PRE_LOAD_MSG in err) == expect_load, errtail
+          assert (FUNC_CHUNKS_SAVE_MSG in err) == expect_save, errtail
+          assert (FUNC_CHUNKS_LOAD_MSG in err) == expect_load, errtail
+          assert (JSFUNC_CHUNKS_SAVE_MSG in err) == expect_save, errtail
+          assert (JSFUNC_CHUNKS_LOAD_MSG in err) == expect_load, errtail
+          for expect in expected: assert expect in err, expect + ' ? ' + errtail
           curr = open('a.out.js').read()
           if input_file not in srcs:
             srcs[input_file] = curr
           else:
             open('/home/alon/Dev/emscripten/a', 'w').write(srcs[input_file])
             open('/home/alon/Dev/emscripten/b', 'w').write(curr)
-            assert abs(len(curr)/float(len(srcs[input_file]))-1)<0.01, 'contents may shift in order, but must remain the same size  %d vs %d' % (len(curr), len(srcs[input_file])) + '\n' + err
+            assert abs(len(curr)/float(len(srcs[input_file]))-1)<0.01, 'contents may shift in order, but must remain the same size  %d vs %d' % (len(curr), len(srcs[input_file])) + '\n' + errtail
           used_jcache = used_jcache or ('--jcache' in args)
           assert used_jcache == os.path.exists(JCache.get_cachename('emscript_files'))
 

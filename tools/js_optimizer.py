@@ -42,29 +42,60 @@ def run(filename, passes, js_engine, jcache):
   suffix = ''
   if suffix_start >= 0:
     suffix = js[suffix_start:js.find('\n', suffix_start)] + '\n'
+    # if there is metadata, we will run only on the generated functions. If there isn't, we will run on everything.
+    generated = set(eval(suffix[len(suffix_marker)+1:]))
+
+  if not suffix and jcache:
+    # JCache cannot be used without metadata, since it might reorder stuff, and that's dangerous since only generated can be reordered
+    # This means jcache does not work after closure compiler runs, for example. But you won't get much benefit from jcache with closure
+    # anyhow (since closure is likely the longest part of the build).
+    if DEBUG: print >>sys.stderr, 'js optimizer: no metadata, so disabling jcache'
+    jcache = False
+
+  # If we process only generated code, find that and save the rest on the side
+  func_sig = re.compile('function (_\w+)\(')
+  if suffix:
+    pos = 0
+    gen_start = 0
+    gen_end = 0
+    while 1:
+      m = func_sig.search(js, pos)
+      if not m: break
+      pos = m.end()
+      ident = m.group(1)
+      if ident in generated:
+        if not gen_start:
+          gen_start = m.start()
+          assert gen_start
+        gen_end = js.find('\n}\n', m.end()) + 3
+    assert gen_end > gen_start
+    pre = js[:gen_start]
+    post = js[gen_end:]
+    js = js[gen_start:gen_end]
+  else:
+    pre = ''
+    post = ''
 
   # Pick where to split into chunks, so that (1) they do not oom in node/uglify, and (2) we can run them in parallel
+  # If we have metadata, we split only the generated code, and save the pre and post on the side (and do not optimize them)
   parts = map(lambda part: part, js.split('\n}\n'))
   funcs = []
-  buffered = []
   for i in range(len(parts)):
     func = parts[i]
-    if i < len(parts)-1: func += '\n}\n' # last part needs no } and already has suffix
-    m = re.search('function (_\w+)\(', func)
+    if i < len(parts)-1: func += '\n}\n' # last part needs no }
+    m = func_sig.search(func)
     if m:
       ident = m.group(1)
-      if buffered:
-        func = ''.join(buffered) + func
-        buffered = []
-      funcs.append((ident, func))
     else:
-      buffered.append(func)
-  if buffered:
-    if len(funcs) > 0:
-      funcs[-1] = (funcs[-1][0], funcs[-1][1] + ''.join(buffered))
-    else:
-      funcs.append(('anonymous', ''.join(buffered)))
+      if suffix: continue # ignore whitespace
+      ident = 'anon_%d' % i
+    funcs.append((ident, func))
   parts = None
+  total_size = len(js)
+  js = None
+  if not suffix: # if there is no metadata, we never see generated, and all funcs are in pre
+    funcs = [('anonymous', code) for code in pre]
+    pre = []
 
   chunks = shared.JCache.chunkify(funcs, BEST_JS_PROCESS_SIZE, 'jsopt' if jcache else None)
 
@@ -85,18 +116,15 @@ def run(filename, passes, js_engine, jcache):
     else:
       cached_outputs = []
 
-  if len(chunks) > 1:
+  if len(chunks) > 0:
     def write_chunk(chunk, i):
       temp_file = temp_files.get('.jsfunc_%d.ll' % i).name
       f = open(temp_file, 'w')
       f.write(chunk)
-      if i < len(chunks)-1:
-        f.write(suffix) # last already has the suffix
+      f.write(suffix)
       f.close()
       return temp_file
     filenames = [write_chunk(chunks[i], i) for i in range(len(chunks))]
-  elif len(chunks) == 1:
-    filenames = [filename] # avoid copying a single file
   else:
     filenames = []
 
@@ -107,7 +135,7 @@ def run(filename, passes, js_engine, jcache):
     cores = min(multiprocessing.cpu_count(), filenames)
     if len(chunks) > 1 and cores >= 2:
       # We can parallelize
-      if DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks, using %d cores  (total: %.2f MB)' % (len(chunks), cores, len(js)/(1024*1024.))
+      if DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks, using %d cores  (total: %.2f MB)' % (len(chunks), cores, total_size/(1024*1024.))
       pool = multiprocessing.Pool(processes=cores)
       filenames = pool.map(run_on_chunk, commands, chunksize=1)
     else:
@@ -119,6 +147,7 @@ def run(filename, passes, js_engine, jcache):
 
   filename += '.jo.js'
   f = open(filename, 'w')
+  f.write(pre);
   for out_file in filenames:
     f.write(open(out_file).read())
     f.write('\n')
@@ -126,7 +155,8 @@ def run(filename, passes, js_engine, jcache):
     for cached in cached_outputs:
       f.write(cached); # TODO: preserve order
       f.write('\n')
-  f.write(suffix)
+  f.write(post);
+  # No need to write suffix: if there was one, it is inside post which exists when suffix is there
   f.write('\n')
   f.close()
 

@@ -1916,6 +1916,5 @@ do {
   js = js.replace(/\n *\n/g, '\n');
 } while (js != old);
 print(js);
-if (metadata && printMetadata) print(metadata);
 print('\n');
 
