@@ -93,9 +93,6 @@ def run(filename, passes, js_engine, jcache):
   parts = None
   total_size = len(js)
   js = None
-  if not suffix: # if there is no metadata, we never see generated, and all funcs are in pre
-    funcs = [('anonymous', code) for code in pre]
-    pre = []
 
   chunks = shared.JCache.chunkify(funcs, BEST_JS_PROCESS_SIZE, 'jsopt' if jcache else None)
 
