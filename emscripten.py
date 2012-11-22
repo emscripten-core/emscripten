@@ -252,11 +252,11 @@ def emscript(infile, settings, outfile, libraries=[]):
   def blockaddrsize(js):
     return re.sub(r'{{{ BA_([\w\d_$]+)\|([\w\d_$]+) }}}', lambda m: str(blockaddrs[m.groups(0)[0]][m.groups(0)[1]]), js)
 
-  if DEBUG: outfile.write('// pre\n')
+  #if DEBUG: outfile.write('// pre\n')
   outfile.write(blockaddrsize(indexize(pre)))
   pre = None
 
-  if DEBUG: outfile.write('// funcs\n')
+  #if DEBUG: outfile.write('// funcs\n')
   outfile.write(blockaddrsize(indexize(funcs_js)))
   funcs_js = None
 
@@ -271,7 +271,7 @@ def emscript(infile, settings, outfile, libraries=[]):
   post_file = temp_files.get('.post.ll').name
   open(post_file, 'w').write('\n') # no input, just processing of forwarded data
   out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, post_file, 'post', forwarded_file] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
-  if DEBUG: outfile.write('// post\n')
+  #if DEBUG: outfile.write('// post\n')
   outfile.write(indexize(out))
   if DEBUG: print >> sys.stderr, '  emscript: phase 3 took %s seconds' % (time.time() - t)
 
