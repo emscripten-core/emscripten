@@ -54,7 +54,7 @@ def process_funcs(args):
   open(funcs_file, 'w').write(ll)
   out = shared.run_js(compiler, compiler_engine, [settings_file, funcs_file, 'funcs', forwarded_file] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
   shared.try_delete(funcs_file)
-  return out.split('//FORWARDED_DATA:')
+  return out
 
 def emscript(infile, settings, outfile, libraries=[]):
   """Runs the emscripten LLVM-to-JS compiler. We parallelize as much as possible
@@ -217,6 +217,9 @@ def emscript(infile, settings, outfile, libraries=[]):
     if out and DEBUG and len(chunks) > 0: print >> sys.stderr, '  saving %d funcchunks to jcache' % len(chunks)
 
   if jcache: outputs += cached_outputs # TODO: preserve order
+
+  outputs = [output.split('//FORWARDED_DATA:') for output in outputs]
+
   funcs_js = ''.join([output[0] for output in outputs])
 
   for func_js, curr_forwarded_data in outputs:
