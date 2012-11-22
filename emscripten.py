@@ -178,7 +178,7 @@ def emscript(infile, settings, outfile, libraries=[]):
     def load_from_cache(chunk):
       keys = [settings_text, forwarded_data, chunk]
       shortkey = shared.JCache.get_shortkey(keys) # TODO: share shortkeys with later code
-      out = shared.JCache.get(shortkey, keys)
+      out = shared.JCache.get(shortkey, keys) # this is relatively expensive (pickling?)
       if out:
         cached_outputs.append(out)
         return False
@@ -219,6 +219,9 @@ def emscript(infile, settings, outfile, libraries=[]):
 
   outputs = [output.split('//FORWARDED_DATA:') for output in outputs]
 
+  if DEBUG: print >> sys.stderr, '  emscript: phase 2 took %s seconds' % (time.time() - t)
+  if DEBUG: t = time.time()
+
   funcs_js = ''.join([output[0] for output in outputs])
 
   for func_js, curr_forwarded_data in outputs:
@@ -230,7 +233,7 @@ def emscript(infile, settings, outfile, libraries=[]):
     for key in curr_forwarded_json['Functions']['indexedFunctions'].iterkeys():
       indexed_functions.add(key)
   outputs = None
-  if DEBUG: print >> sys.stderr, '  emscript: phase 2 took %s seconds' % (time.time() - t)
+  if DEBUG: print >> sys.stderr, '  emscript: phase 2b took %s seconds' % (time.time() - t)
   if DEBUG: t = time.time()
 
   # calculations on merged forwarded data
@@ -261,7 +264,7 @@ def emscript(infile, settings, outfile, libraries=[]):
   forwarded_data = json.dumps(forwarded_json)
   forwarded_file = temp_files.get('.2.json').name
   open(forwarded_file, 'w').write(indexize(forwarded_data))
-  if DEBUG: print >> sys.stderr, '  emscript: phase 2b took %s seconds' % (time.time() - t)
+  if DEBUG: print >> sys.stderr, '  emscript: phase 2c took %s seconds' % (time.time() - t)
 
   # Phase 3 - post
   if DEBUG: t = time.time()
