@@ -53,7 +53,7 @@ def run(filename, passes, js_engine, jcache):
     jcache = False
 
   # If we process only generated code, find that and save the rest on the side
-  func_sig = re.compile('function (_\w+)\(')
+  func_sig = re.compile('function (_[\w$]+)\(')
   if suffix:
     pos = 0
     gen_start = 0
