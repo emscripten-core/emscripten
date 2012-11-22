@@ -10467,46 +10467,50 @@ fi
       try:
         os.environ['EMCC_DEBUG'] = '1'
         self.working_dir = os.path.join(TEMP_DIR, 'emscripten_temp')
+        if not os.path.exists(self.working_dir): os.makedirs(self.working_dir)
 
         assert not os.path.exists(JCache.get_cachename('emscript_files'))
 
         srcs = {}
         used_jcache = False
 
-        for args, input_file, expect_save, expect_load, expected in [
-          ([], 'hello_world_loop.cpp', False, False, []),
-          (['--jcache'], 'hello_world_loop.cpp', True, False, []),
-          (['--jcache'], 'hello_world_loop.cpp', False, True, []),
-          ([], 'hello_world_loop.cpp', False, False, []),
+        for args, input_file, expect_pre_save, expect_pre_load, expect_funcs_save, expect_funcs_load, expect_jsfuncs_save, expect_jsfuncs_load, expected in [
+          ([], 'hello_world_loop.cpp', False, False, False, False, False, False, []),
+          (['--jcache'], 'hello_world_loop.cpp', True, False, True, False, True, False, []),
+          (['--jcache'], 'hello_world_loop.cpp', False, True, False, True, False, True, []),
+          ([], 'hello_world_loop.cpp', False, False, False, False, False, False, []),
           # new
-          ([], 'hello_world.cpp', False, False, []),
-          (['--jcache'], 'hello_world.cpp', True, False, []),
-          (['--jcache'], 'hello_world.cpp', False, True, []),
-          ([], 'hello_world.cpp', False, False, []),
+          ([], 'hello_world.cpp', False, False, False, False, False, False, []),
+          (['--jcache'], 'hello_world.cpp', True, False, True, False, True, False, []),
+          (['--jcache'], 'hello_world.cpp', False, True, False, True, False, True, []),
+          ([], 'hello_world.cpp', False, False, False, False, False, False, []),
           # go back to old file, experience caching
-          (['--jcache'], 'hello_world_loop.cpp', False, True, []),
+          (['--jcache'], 'hello_world_loop.cpp', False, True, False, True, False, True, []),
           # new, large file
-          ([], 'hello_malloc.cpp', False, False, []),
-          (['--jcache'], 'hello_malloc.cpp', True, False, []),
-          (['--jcache'], 'hello_malloc.cpp', False, True, []),
-          ([], 'hello_malloc.cpp', False, False, []),
+          ([], 'hello_malloc.cpp', False, False, False, False, False, False, []),
+          (['--jcache'], 'hello_malloc.cpp', True, False, True, False, True, False, []),
+          (['--jcache'], 'hello_malloc.cpp', False, True, False, True, False, True, []),
+          ([], 'hello_malloc.cpp', False, False, False, False, False, False, []),
           # new, huge file
-          ([], 'hello_libcxx.cpp', False, False, ('2 chunks', '3 chunks')),
-          (['--jcache'], 'hello_libcxx.cpp', True, False, []),
-          (['--jcache'], 'hello_libcxx.cpp', False, True, []),
-          ([], 'hello_libcxx.cpp', False, False, []),
+          ([], 'hello_libcxx.cpp', False, False, False, False, False, False, ('2 chunks', '3 chunks')),
+          (['--jcache'], 'hello_libcxx.cpp', True, False, True, False, True, False, []),
+          (['--jcache'], 'hello_libcxx.cpp', False, True, False, True, False, True, []),
+          ([], 'hello_libcxx.cpp', False, False, False, False, False, False, []),
+          # finally, build a file close to the previous, to see that some chunks are found in the cache and some not
+          (['--jcache'], 'hello_libcxx_mod1.cpp', False, True, True, True, True, False, []), # win on pre, mix on funcs, fail on jsfuncs
+          (['--jcache'], 'hello_libcxx_mod1.cpp', False, True, False, True, False, True, []),
         ]:
-          print >> sys.stderr, args, input_file, expect_save, expect_load, expected
+          print >> sys.stderr, args, input_file, expect_pre_save, expect_pre_load, expect_funcs_save, expect_funcs_load, expect_jsfuncs_save, expect_jsfuncs_load, expected
           self.clear()
           out, err = Popen(['python', EMCC, '-O2', '--closure', '0', path_from_root('tests', input_file)] + args, stdout=PIPE, stderr=PIPE).communicate()
           errtail = err.split('emcc invocation')[-1]
           self.assertContained('hello, world!', run_js('a.out.js'), errtail)
-          assert (PRE_SAVE_MSG in err) == expect_save, errtail
-          assert (PRE_LOAD_MSG in err) == expect_load, errtail
-          assert (FUNC_CHUNKS_SAVE_MSG in err) == expect_save, errtail
-          assert (FUNC_CHUNKS_LOAD_MSG in err) == expect_load, errtail
-          assert (JSFUNC_CHUNKS_SAVE_MSG in err) == expect_save, errtail
-          assert (JSFUNC_CHUNKS_LOAD_MSG in err) == expect_load, errtail
+          assert (PRE_SAVE_MSG in err) == expect_pre_save, errtail
+          assert (PRE_LOAD_MSG in err) == expect_pre_load, errtail
+          assert (FUNC_CHUNKS_SAVE_MSG in err) == expect_funcs_save, errtail
+          assert (FUNC_CHUNKS_LOAD_MSG in err) == expect_funcs_load, errtail
+          assert (JSFUNC_CHUNKS_SAVE_MSG in err) == expect_jsfuncs_save, errtail
+          assert (JSFUNC_CHUNKS_LOAD_MSG in err) == expect_jsfuncs_load, errtail
           for expect in expected: assert expect in err, expect + ' ? ' + errtail
           curr = open('a.out.js').read()
           if input_file not in srcs:
@@ -10517,6 +10521,7 @@ fi
             assert abs(len(curr)/float(len(srcs[input_file]))-1)<0.01, 'contents may shift in order, but must remain the same size  %d vs %d' % (len(curr), len(srcs[input_file])) + '\n' + errtail
           used_jcache = used_jcache or ('--jcache' in args)
           assert used_jcache == os.path.exists(JCache.get_cachename('emscript_files'))
+          #print >> sys.stderr, errtail
 
       finally:
         del os.environ['EMCC_DEBUG']
