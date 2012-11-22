@@ -4038,6 +4038,10 @@ LibraryManager.library = {
     return Math.floor(Math.random()*0x80000000);
   },
 
+  drand48: function() {
+    return Math.random();
+  },
+
   realpath__deps: ['$FS', '__setErrNo'],
   realpath: function(file_name, resolved_name) {
     // char *realpath(const char *restrict file_name, char *restrict resolved_name);
