@@ -301,11 +301,21 @@ function cDefine(key) {
 
 var PassManager = {
   serialize: function() {
-    print('\n//FORWARDED_DATA:' + JSON.stringify({
-      Types: Types,
-      Variables: Variables,
-      Functions: Functions
-    }));
+    if (phase == 'pre') {
+      print('\n//FORWARDED_DATA:' + JSON.stringify({
+        Types: Types,
+        Variables: Variables,
+        Functions: Functions
+      }));
+    } else if (phase == 'funcs') {
+      print('\n//FORWARDED_DATA:' + JSON.stringify({
+        Types: { preciseI64MathUsed: Types.preciseI64MathUsed },
+        Functions: {
+          blockAddresses: Functions.blockAddresses,
+          indexedFunctions: Functions.indexedFunctions
+        }
+      }));
+    }
   },
   load: function(json) {
     var data = JSON.parse(json);
