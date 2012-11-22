@@ -619,6 +619,7 @@ function JSify(data, functionsOnly, givenFunctions) {
             } // otherwise, should have been set before!
             if (func.setjmpTable) {
               var setjmpTable = {};
+              ret += indent + 'var setjmped = false;'; // set to true if we setjmp in this invocation
               ret += indent + 'var setjmpTable = {';
               func.setjmpTable.forEach(function(triple) { // original label, label we created for right after the setjmp, variable setjmp result goes into
                 ret += '"' + getLabelId(triple[0]) + '": ' + 'function(value) { label = ' + getLabelId(triple[1]) + '; ' + triple[2] + ' = value },';
@@ -637,7 +638,7 @@ function JSify(data, functionsOnly, givenFunctions) {
             }).join('\n');
             ret += '\n' + indent + '  default: assert(0, "bad label: " + label);\n' + indent + '}';
             if (func.setjmpTable) {
-              ret += ' } catch(e) { if (!e.longjmp) throw(e); setjmpTable[e.label](e.value) }';
+              ret += ' } catch(e) { if (!setjmped) throw(e); if (!e.longjmp) throw(e); setjmpTable[e.label](e.value) }';
             }
           } else {
             ret += (SHOW_LABELS ? indent + '/* ' + block.entries[0] + ' */' : '') + '\n' + getLabelLines(block.labels[0], indent);

@@ -5938,7 +5938,7 @@ LibraryManager.library = {
 
   setjmp__inline: function(env) {
     // Save the label
-    return '(' + makeSetValue(env, '0', 'label', 'i32') + ', 0)';
+    return '(setjmped = true, ' + makeSetValue(env, '0', 'label', 'i32') + ', 0)';
   },
 
   longjmp: function(env, value) {
