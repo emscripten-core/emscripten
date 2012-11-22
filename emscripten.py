@@ -105,8 +105,7 @@ def emscript(infile, settings, outfile, libraries=[]):
       if line.startswith(';'): continue
       if line.startswith('define '):
         in_func = True
-        ident = shared.JS.to_nice_ident(line.split('(')[0].split(' ')[-1])
-        funcs.append((ident, [line]))
+        funcs.append((line, [line])) # use the entire line as the identifier
         pre.append(line) # pre needs it to, so we know about all implemented functions
       elif line.find(' = type { ') > 0:
         pre.append(line) # type

@@ -1180,7 +1180,7 @@ class JCache:
   # Returns a cached value, if it exists. Make sure the full key matches
   @staticmethod
   def get(shortkey, keys):
-    #if DEBUG: print >> sys.stderr, 'jcache get?'
+    #if DEBUG: print >> sys.stderr, 'jcache get?', shortkey
     cachename = JCache.get_cachename(shortkey)
     if not os.path.exists(cachename):
       #if DEBUG: print >> sys.stderr, 'jcache none at all'
@@ -1205,6 +1205,10 @@ class JCache:
   def set(shortkey, keys, value):
     cachename = JCache.get_cachename(shortkey)
     cPickle.Pickler(open(cachename, 'wb')).dump([keys, value])
+    #if DEBUG:
+    #  for i in range(len(keys)):
+    #    open(cachename + '.key' + str(i), 'w').write(keys[i])
+    #  open(cachename + '.value', 'w').write(value)
 
   # Given a set of functions of form (ident, text), and a preferred chunk size,
   # generates a set of chunks for parallel processing and caching.
@@ -1279,6 +1283,13 @@ class JCache:
         for ident, data in chunk:
           new_mapping[ident] = i
       cPickle.Pickler(open(chunking_file, 'wb')).dump(new_mapping)
+      #if DEBUG:
+      #  if previous_mapping:
+      #    for ident in set(previous_mapping.keys() + new_mapping.keys()):
+      #      if previous_mapping.get(ident) != new_mapping.get(ident):
+      #        print >> sys.stderr, 'mapping inconsistency', ident, previous_mapping.get(ident), new_mapping.get(ident)
+      #  for key, value in new_mapping.iteritems():
+      #    print >> sys.stderr, 'mapping:', key, value
     return [''.join([func[1] for func in chunk]) for chunk in chunks] # remove function names
 
 class JS:

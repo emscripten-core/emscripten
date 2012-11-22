@@ -10490,6 +10490,11 @@ fi
           (['--jcache'], 'hello_malloc.cpp', True, False, []),
           (['--jcache'], 'hello_malloc.cpp', False, True, []),
           ([], 'hello_malloc.cpp', False, False, []),
+          # new, huge file
+          ([], 'hello_libcxx.cpp', False, False, ('2 chunks', '3 chunks')),
+          (['--jcache'], 'hello_libcxx.cpp', True, False, []),
+          (['--jcache'], 'hello_libcxx.cpp', False, True, []),
+          ([], 'hello_libcxx.cpp', False, False, []),
         ]:
           print >> sys.stderr, args, input_file, expect_save, expect_load, expected
           self.clear()
