@@ -6188,7 +6188,9 @@ def process(filename):
         finally:
           del os.environ['EMCC_DEBUG']
         for debug in [1,2]:
-          self.assertIdentical(open('release.js').read().replace('\n\n', '\n').replace('\n\n', '\n'), open('debug%d.js' % debug).read().replace('\n\n', '\n').replace('\n\n', '\n')) # EMCC_DEBUG=1 mode must not generate different code!
+          def clean(text):
+            return text.replace('\n\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n')
+          self.assertIdentical(clean(open('release.js').read()), clean(open('debug%d.js' % debug).read())) # EMCC_DEBUG=1 mode must not generate different code!
           print >> sys.stderr, 'debug check %d passed too' % debug
 
         try_delete(CANONICAL_TEMP_DIR)
