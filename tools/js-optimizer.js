@@ -214,6 +214,7 @@ function traverse(node, pre, post, stack) {
 
 // Only walk through the generated functions
 function traverseGenerated(ast, pre, post, stack) {
+  assert(generatedFunctions);
   traverse(ast, function(node) {
     if (node[0] == 'defun' && isGenerated(node[1])) {
       traverse(node, pre, post, stack);
@@ -223,6 +224,7 @@ function traverseGenerated(ast, pre, post, stack) {
 }
 
 function traverseGeneratedFunctions(ast, callback) {
+  assert(generatedFunctions);
   traverse(ast, function(node) {
     if (node[0] == 'defun' && isGenerated(node[1])) {
       callback(node);
