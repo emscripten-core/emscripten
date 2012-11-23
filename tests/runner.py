@@ -7709,7 +7709,20 @@ f.close()
           finally:
             os.chdir(path_from_root('tests')) # Move away from the directory we are about to remove.
             shutil.rmtree(tempdirname)
-      
+
+    def test_failure_error_code(self):
+        # Test that if one file is missing from the build, then emcc shouldn't succeed, and shouldn't try to produce an output file.
+        process = Popen(['python', EMCC, path_from_root('tests', 'hello_world.c'), 'this_file_is_missing.c', '-o', 'this_output_file_should_never_exist.js'], stdout=PIPE, stderr=PIPE)
+        process.communicate()
+        assert process.returncode is not 0, 'Trying to compile a nonexisting file should return with a nonzero error code!'
+        assert os.path.exists('this_output_file_should_never_exist.js') == False, 'Emcc should not produce an output file when build fails!'
+
+        # Same goes for em++
+        process = Popen(['python', EMXX, path_from_root('tests', 'hello_world.cpp'), 'this_file_is_missing.cpp', '-o', 'this_output_file_should_never_exist.js'], stdout=PIPE, stderr=PIPE)
+        process.communicate()
+        assert process.returncode is not 0, 'Trying to compile a nonexisting file should return with a nonzero error code!'
+        assert os.path.exists('this_output_file_should_never_exist.js') == False, 'Emcc should not produce an output file when build fails!'
+
     def test_Os(self):
       for opt in ['s', '0']:
         output = Popen(['python', EMCC, path_from_root('tests', 'hello_world.c'), '-O' + opt], stdout=PIPE, stderr=PIPE).communicate()
