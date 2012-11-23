@@ -1368,12 +1368,15 @@ c5,de,15,8a
     def test_floatvars(self):
         src = '''
           #include <stdio.h>
+          #include <math.h>
           int main()
           {
             float x = 1.234, y = 3.5, q = 0.00000001;
             y *= 3;
             int z = x < y;
             printf("*%d,%d,%.1f,%d,%.4f,%.2f*\\n", z, int(y), y, (int)x, x, q);
+
+            printf("%.2f, %.2f, %.2f, %.2f\\n", fmin(0.5, 3.3), fmin(NAN, 3.3), fmax(0.5, 3.3), fmax(NAN, 3.3));
 
             /*
             // Rounding behavior
@@ -1386,7 +1389,7 @@ c5,de,15,8a
             return 0;
           }
         '''
-        self.do_run(src, '*1,10,10.5,1,1.2340,0.00*')
+        self.do_run(src, '*1,10,10.5,1,1.2340,0.00*\n0.50, 3.30, 3.30, 3.30\n')
 
     def test_globaldoubles(self):
         src = r'''

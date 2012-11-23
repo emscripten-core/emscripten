@@ -5365,7 +5365,7 @@ LibraryManager.library = {
   },
   fmaxf: 'fmax',
   fmin: function(x, y) {
-    return isNaN(x) ? y : isNaN(y) ? x : Math.max(x, y);
+    return isNaN(x) ? y : isNaN(y) ? x : Math.min(x, y);
   },
   fminf: 'fmin',
   fma: function(x, y, z) {
