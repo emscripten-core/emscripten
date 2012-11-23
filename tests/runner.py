@@ -4560,11 +4560,15 @@ Pass: 0.000012 0.000012''')
 
           int x = sscanf("one %n two", "%s %n", word, &l);
           printf("%d,%s,%d\n", x, word, l);
-
+          {
+            int a, b, c, count;
+            count = sscanf("12345 6789", "%d %n%d", &a, &b, &c);
+            printf("%i %i %i %i\n", count, a, b, c);
+          }
           return 0;
         }
       '''
-      self.do_run(src, '''[DEBUG] word 1: version, l: 7\n1,one,4''')
+      self.do_run(src, '''[DEBUG] word 1: version, l: 7\n1,one,4\n2 12345 6 6789\n''')
 
     def test_sscanf_whitespace(self):
       src = r'''
