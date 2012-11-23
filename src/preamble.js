@@ -544,6 +544,9 @@ function Pointer_stringify(ptr, /* optional */ length) {
   var i = 0;
   var t;
   while (1) {
+#if ASSERTIONS
+  assert(i < TOTAL_MEMORY);
+#endif
     t = {{{ makeGetValue('ptr', 'i', 'i8', 0, 1) }}};
     if (nullTerminated && t == 0) break;
     ret += utf8.processCChar(t);
@@ -750,7 +753,11 @@ function exitRuntime() {
 
 function String_len(ptr) {
   var i = ptr;
-  while ({{{ makeGetValue('i++', '0', 'i8') }}}) {}; // Note: should be |!= 0|, technically. But this helps catch bugs with undefineds
+  while ({{{ makeGetValue('i++', '0', 'i8') }}}) { // Note: should be |!= 0|, technically. But this helps catch bugs with undefineds
+#if ASSERTIONS
+  assert(i < TOTAL_MEMORY);
+#endif
+  }
   return i - ptr - 1;
 }
 Module['String_len'] = String_len;
