@@ -776,7 +776,8 @@ try:
           else:
             print >> sys.stderr, 'emcc: %s: warning: Not valid LLVM bitcode' % arg
       else:
-        print >> sys.stderr, 'emcc: %s: warning: No such file or directory' % arg
+        print >> sys.stderr, 'emcc: %s: error: No such file or directory' % arg
+        exit(1)
     elif arg.startswith('-L'):
       lib_dirs.append(arg[2:])
       newargs[i] = ''

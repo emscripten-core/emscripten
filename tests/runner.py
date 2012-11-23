@@ -7711,14 +7711,9 @@ f.close()
             shutil.rmtree(tempdirname)
 
     def test_failure_error_code(self):
+      for compiler in [EMCC, EMXX]:
         # Test that if one file is missing from the build, then emcc shouldn't succeed, and shouldn't try to produce an output file.
-        process = Popen(['python', EMCC, path_from_root('tests', 'hello_world.c'), 'this_file_is_missing.c', '-o', 'this_output_file_should_never_exist.js'], stdout=PIPE, stderr=PIPE)
-        process.communicate()
-        assert process.returncode is not 0, 'Trying to compile a nonexisting file should return with a nonzero error code!'
-        assert os.path.exists('this_output_file_should_never_exist.js') == False, 'Emcc should not produce an output file when build fails!'
-
-        # Same goes for em++
-        process = Popen(['python', EMXX, path_from_root('tests', 'hello_world.cpp'), 'this_file_is_missing.cpp', '-o', 'this_output_file_should_never_exist.js'], stdout=PIPE, stderr=PIPE)
+        process = Popen(['python', compiler, path_from_root('tests', 'hello_world.c'), 'this_file_is_missing.c', '-o', 'this_output_file_should_never_exist.js'], stdout=PIPE, stderr=PIPE)
         process.communicate()
         assert process.returncode is not 0, 'Trying to compile a nonexisting file should return with a nonzero error code!'
         assert os.path.exists('this_output_file_should_never_exist.js') == False, 'Emcc should not produce an output file when build fails!'
