@@ -454,8 +454,7 @@ var LibraryGL = {
   },
 
   glBufferSubData: function(target, offset, size, data) {
-    var floatArray = {{{ makeHEAPView('F32', 'data', 'data+size') }}};
-    Module.ctx.bufferSubData(target, offset, floatArray);
+    Module.ctx.bufferSubData(target, offset, HEAPU8.subarray(data, data+size));
   },
 
   glIsBuffer: function(buffer) {

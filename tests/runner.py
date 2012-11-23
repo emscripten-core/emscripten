@@ -9628,6 +9628,9 @@ elif 'browser' in str(sys.argv):
     def test_float_tex(self):
       self.btest('float_tex.cpp', reference='float_tex.png')
 
+    def test_subdata(self):
+      self.btest('gl_subdata.cpp', reference='float_tex.png')
+
     def test_runtimelink(self):
       main, supp = self.setup_runtimelink_test()
 
