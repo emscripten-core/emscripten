@@ -257,7 +257,7 @@ var asm = (function(env, buffer) {
 ''' + funcs_js.replace('\n', '\n  ') + '''
   return %s;
 })({}, buffer);
-for (var export in asm) Module[export] = asm[export];
+for (var _export in asm) Module[_export] = asm[_export];
 ''' % exports
 
   outputs = None
