@@ -163,10 +163,12 @@ function isFunctionDef(token, out) {
     var subtext = segment[0].text;
     fail = fail || segment.length > 1 || !(isType(subtext) || subtext == '...');
   });
-  if (out) out.numArgs = segments.length;
+  if (out) {
+    out.segments = segments;
+    out.numArgs = segments.length;
+  }
   return !fail;
 }
-
 
 function isPossiblyFunctionType(type) {
   // A quick but unreliable way to see if something is a function type. Yes is just 'maybe', no is definite.
@@ -189,6 +191,7 @@ function isFunctionType(type, out) {
   if (pointingLevels(type) !== 1) return false;
   var text = removeAllPointing(parts.slice(1).join(' '));
   if (!text) return false;
+  if (out) out.returnType = parts[0];
   return isType(parts[0]) && isFunctionDef({ text: text, item: tokenize(text.substr(1, text.length-2), true) }, out);
 }
 
@@ -1000,7 +1003,13 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
 function indexizeFunctions(value, type) {
   assert((type && type !== '?') || (typeof value === 'string' && value.substr(0, 6) === 'CHECK_'), 'No type given for function indexizing');
   assert(value !== type, 'Type set to value');
-  if (type && isFunctionType(type) && value[0] === '_') { // checking for _ differentiates from $ (local vars)
+  var out = {};
+  if (type && isFunctionType(type, out) && value[0] === '_') { // checking for _ differentiates from $ (local vars)
+    // add signature to library functions that we now know need indexing
+    if (!(value in Functions.implementedFunctions) && !(value in Functions.libraryFunctions)) {
+      Functions.libraryFunctions[value] = Functions.getSignature(out.returnType, out.segments ? out.segments.map(function(segment) { return segment[0].text }) : []);
+    }
+
     if (BUILD_AS_SHARED_LIB) {
       return '(FUNCTION_TABLE_OFFSET + ' + Functions.getIndex(value) + ')';
     } else {

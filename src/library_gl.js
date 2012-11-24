@@ -1275,11 +1275,12 @@ var LibraryGL = {
     getProcAddress: function(name) {
       name = name.replace('EXT', '').replace('ARB', '');
       // Do the translation carefully because of closure
+      var sig = '';
       switch (name) {
-        case 'glCreateShaderObject': case 'glCreateShader': func = _glCreateShader; break;
-        case 'glCreateProgramObject': case 'glCreateProgram': func = _glCreateProgram; break;
-        case 'glAttachObject': case 'glAttachShader': func = _glAttachShader; break;
-        case 'glUseProgramObject': case 'glUseProgram': func = _glUseProgram; break;
+        case 'glCreateShaderObject': case 'glCreateShader': func = _glCreateShader; sig = 'ii'; break;
+        case 'glCreateProgramObject': case 'glCreateProgram': func = _glCreateProgram; sig = 'ii'; break;
+        case 'glAttachObject': case 'glAttachShader': func = _glAttachShader; sig = 'vi'; break;
+        case 'glUseProgramObject': case 'glUseProgram': func = _glUseProgram; sig = 'vi'; break;
         case 'glDeleteObject': func = function(id) {
           if (GL.programs[id]) {
             _glDeleteProgram(id);
@@ -1288,7 +1289,7 @@ var LibraryGL = {
           } else {
             Module.printErr('WARNING: deleteObject received invalid id: ' + id);
           }
-        }; break;
+        }; sig = 'vi'; break;
         case 'glGetObjectParameteriv': func = function(id, type, result) {
           if (GL.programs[id]) {
             if (type == 0x8B84) { // GL_OBJECT_INFO_LOG_LENGTH_ARB
@@ -1305,7 +1306,7 @@ var LibraryGL = {
           } else {
             Module.printErr('WARNING: getObjectParameteriv received invalid id: ' + id);
           }
-        }; break;
+        }; sig = 'viii'; break;
         case 'glGetInfoLog': func = function(id, maxLength, length, infoLog) {
           if (GL.programs[id]) {
             _glGetProgramInfoLog(id, maxLength, length, infoLog);
@@ -1314,58 +1315,58 @@ var LibraryGL = {
           } else {
             Module.printErr('WARNING: getObjectParameteriv received invalid id: ' + id);
           }
-        }; break;
+        }; sig = 'viiii'; break;
         case 'glBindProgram': func = function(type, id) {
           assert(id == 0);
-        }; break;
-        case 'glDrawRangeElements': func = _glDrawRangeElements; break;
-        case 'glShaderSource': func = _glShaderSource; break;
-        case 'glCompileShader': func = _glCompileShader; break;
-        case 'glLinkProgram': func = _glLinkProgram; break;
-        case 'glGetUniformLocation': func = _glGetUniformLocation; break;
-        case 'glUniform1f': func = _glUniform1f; break;
-        case 'glUniform2f': func = _glUniform2f; break;
-        case 'glUniform3f': func = _glUniform3f; break;
-        case 'glUniform4f': func = _glUniform4f; break;
-        case 'glUniform1fv': func = _glUniform1fv; break;
-        case 'glUniform2fv': func = _glUniform2fv; break;
-        case 'glUniform3fv': func = _glUniform3fv; break;
-        case 'glUniform4fv': func = _glUniform4fv; break;
-        case 'glUniform1i': func = _glUniform1i; break;
-        case 'glUniform2i': func = _glUniform2i; break;
-        case 'glUniform3i': func = _glUniform3i; break;
-        case 'glUniform4i': func = _glUniform4i; break;
-        case 'glUniform1iv': func = _glUniform1iv; break;
-        case 'glUniform2iv': func = _glUniform2iv; break;
-        case 'glUniform3iv': func = _glUniform3iv; break;
-        case 'glUniform4iv': func = _glUniform4iv; break;
-        case 'glBindAttribLocation': func = _glBindAttribLocation; break;
-        case 'glGetActiveUniform': func = _glGetActiveUniform; break;
-        case 'glGenBuffers': func = _glGenBuffers; break;
-        case 'glBindBuffer': func = _glBindBuffer; break;
-        case 'glBufferData': func = _glBufferData; break;
-        case 'glBufferSubData': func = _glBufferSubData; break;
-        case 'glDeleteBuffers': func = _glDeleteBuffers; break;
-        case 'glActiveTexture': func = _glActiveTexture; break;
-        case 'glClientActiveTexture': func = _glClientActiveTexture; break;
-        case 'glGetProgramiv': func = _glGetProgramiv; break;
-        case 'glEnableVertexAttribArray': func = _glEnableVertexAttribArray; break;
-        case 'glDisableVertexAttribArray': func = _glDisableVertexAttribArray; break;
-        case 'glVertexAttribPointer': func = _glVertexAttribPointer; break;
-        case 'glBindRenderbuffer': func = _glBindRenderbuffer; break;
-        case 'glDeleteRenderbuffers': func = _glDeleteRenderbuffers; break;
-        case 'glGenRenderbuffers': func = _glGenRenderbuffers; break;
-        case 'glCompressedTexImage2D': func = _glCompressedTexImage2D; break;
-        case 'glCompressedTexSubImage2D': func = _glCompressedTexSubImage2D; break;
-        case 'glBindFramebuffer': func = _glBindFramebuffer; break;
-        case 'glGenFramebuffers': func = _glGenFramebuffers; break;
-        case 'glDeleteFramebuffers': func = _glDeleteFramebuffers; break;
-        case 'glFramebufferRenderbuffer': func = _glFramebufferRenderbuffer; break;
-        case 'glFramebufferTexture2D': func = _glFramebufferTexture2D; break;
-        case 'glGetFramebufferAttachmentParameteriv': func = _glGetFramebufferAttachmentParameteriv; break;
-        case 'glIsFramebuffer': func = _glIsFramebuffer; break;
-        case 'glCheckFramebufferStatus': func = _glCheckFramebufferStatus; break;
-        case 'glRenderbufferStorage': func = _glRenderbufferStorage; break;
+        }; sig = 'vii'; break;
+        case 'glDrawRangeElements': func = _glDrawRangeElements; sig = 'viiiiii'; break;
+        case 'glShaderSource': func = _glShaderSource; sig = 'viiii'; break;
+        case 'glCompileShader': func = _glCompileShader; sig = 'vi'; break;
+        case 'glLinkProgram': func = _glLinkProgram; sig = 'vi'; break;
+        case 'glGetUniformLocation': func = _glGetUniformLocation; sig = 'iii'; break;
+        case 'glUniform1f': func = _glUniform1f; sig = 'vid'; break;
+        case 'glUniform2f': func = _glUniform2f; sig = 'vidd'; break;
+        case 'glUniform3f': func = _glUniform3f; sig = 'viddd'; break;
+        case 'glUniform4f': func = _glUniform4f; sig = 'vidddd'; break;
+        case 'glUniform1fv': func = _glUniform1fv; sig = 'viii'; break;
+        case 'glUniform2fv': func = _glUniform2fv; sig = 'viii'; break;
+        case 'glUniform3fv': func = _glUniform3fv; sig = 'viii'; break;
+        case 'glUniform4fv': func = _glUniform4fv; sig = 'viii'; break;
+        case 'glUniform1i': func = _glUniform1i; sig = 'vii'; break;
+        case 'glUniform2i': func = _glUniform2i; sig = 'viii'; break;
+        case 'glUniform3i': func = _glUniform3i; sig = 'viiii'; break;
+        case 'glUniform4i': func = _glUniform4i; sig = 'viiii'; break;
+        case 'glUniform1iv': func = _glUniform1iv; sig = 'viii'; break;
+        case 'glUniform2iv': func = _glUniform2iv; sig = 'viii'; break;
+        case 'glUniform3iv': func = _glUniform3iv; sig = 'viii'; break;
+        case 'glUniform4iv': func = _glUniform4iv; sig = 'viii'; break;
+        case 'glBindAttribLocation': func = _glBindAttribLocation; sig = 'viii'; break;
+        case 'glGetActiveUniform': func = _glGetActiveUniform; sig = 'viiiiiii'; break;
+        case 'glGenBuffers': func = _glGenBuffers; sig = 'iii'; break;
+        case 'glBindBuffer': func = _glBindBuffer; sig = 'vii'; break;
+        case 'glBufferData': func = _glBufferData; sig = 'viiii'; break;
+        case 'glBufferSubData': func = _glBufferSubData; sig = 'viiii'; break;
+        case 'glDeleteBuffers': func = _glDeleteBuffers; sig = 'vii'; break;
+        case 'glActiveTexture': func = _glActiveTexture; sig = 'vi'; break;
+        case 'glClientActiveTexture': func = _glClientActiveTexture; sig = 'vi'; break;
+        case 'glGetProgramiv': func = _glGetProgramiv; sig = 'viii'; break;
+        case 'glEnableVertexAttribArray': func = _glEnableVertexAttribArray; sig = 'vi'; break;
+        case 'glDisableVertexAttribArray': func = _glDisableVertexAttribArray; sig = 'vi'; break;
+        case 'glVertexAttribPointer': func = _glVertexAttribPointer; sig = 'viiiiii'; break;
+        case 'glBindRenderbuffer': func = _glBindRenderbuffer; sig = 'vii'; break;
+        case 'glDeleteRenderbuffers': func = _glDeleteRenderbuffers; sig = 'vii'; break;
+        case 'glGenRenderbuffers': func = _glGenRenderbuffers; sig = 'vii'; break;
+        case 'glCompressedTexImage2D': func = _glCompressedTexImage2D; sig = 'viiiiiiii'; break;
+        case 'glCompressedTexSubImage2D': func = _glCompressedTexSubImage2D; sig = 'viiiiiiiii'; break;
+        case 'glBindFramebuffer': func = _glBindFramebuffer; sig = 'vii'; break;
+        case 'glGenFramebuffers': func = _glGenFramebuffers; sig = 'vii'; break;
+        case 'glDeleteFramebuffers': func = _glDeleteFramebuffers; sig = 'vii'; break;
+        case 'glFramebufferRenderbuffer': func = _glFramebufferRenderbuffer; sig = 'viiii'; break;
+        case 'glFramebufferTexture2D': func = _glFramebufferTexture2D; sig = 'viiiii'; break;
+        case 'glGetFramebufferAttachmentParameteriv': func = _glGetFramebufferAttachmentParameteriv; sig = 'viiii'; break;
+        case 'glIsFramebuffer': func = _glIsFramebuffer; sig = 'ii'; break;
+        case 'glCheckFramebufferStatus': func = _glCheckFramebufferStatus; sig = 'ii'; break;
+        case 'glRenderbufferStorage': func = _glRenderbufferStorage; sig = 'viiii'; break;
         default: {
           Module.printErr('WARNING: getProcAddress failed for ' + name);
           func = function() {
@@ -1374,7 +1375,7 @@ var LibraryGL = {
           };
         }
       }
-      return Runtime.addFunction(func);
+      return Runtime.addFunction(func, sig);
     }
   },
 

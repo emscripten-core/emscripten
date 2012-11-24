@@ -236,6 +236,8 @@ def emscript(infile, settings, outfile, libraries=[]):
     if settings.get('ASM_JS'):
       for key in curr_forwarded_json['Functions']['implementedFunctions'].iterkeys():
         if key in all_exported_functions: exported_implemented_functions.add(key)
+    for key, value in curr_forwarded_json['Functions']['libraryFunctions'].iteritems():
+      forwarded_json['Functions']['libraryFunctions'][key] = value
 
   funcs_js = ''.join([output[0] for output in outputs])
 
@@ -247,7 +249,7 @@ def emscript(infile, settings, outfile, libraries=[]):
     exports = '{ ' + ', '.join(exports) + ' }'
     # caculate globals
     global_vars = forwarded_json['Variables']['globals'].keys()
-    global_funcs = ['_' + x for x in forwarded_json['Functions']['libraryFunctions']]
+    global_funcs = ['_' + x for x in forwarded_json['Functions']['libraryFunctions'].keys()]
     asm_globals = ''.join(['  var ' + g + '=env.' + g + ';\n' for g in global_vars + global_funcs])
     # sent data
     basics = ['buffer', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
@@ -311,6 +313,7 @@ for (var _export in asm) Module[_export] = asm[_export];
   open(post_file, 'w').write('\n') # no input, just processing of forwarded data
   out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, post_file, 'post', forwarded_file] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
   #if DEBUG: outfile.write('// post\n')
+
   outfile.write(indexize(out))
   if DEBUG: print >> sys.stderr, '  emscript: phase 3 took %s seconds' % (time.time() - t)
 

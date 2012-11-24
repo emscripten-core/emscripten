@@ -125,6 +125,7 @@ function intertyper(data, sidePass, baseLineNums) {
               // We need this early, to know basic function info - ident, params, varargs
               ident: toNiceIdent(func.ident),
               params: func.params,
+              returnType: func.returnType,
               hasVarArgs: func.hasVarArgs,
               lineNum: currFunctionLineNum,
               lines: currFunctionLines

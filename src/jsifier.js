@@ -42,7 +42,9 @@ function JSify(data, functionsOnly, givenFunctions) {
       var pre = processMacros(preprocess(read(preFile).replace('{{RUNTIME}}', getRuntime())));
       print(pre);
 
-      Functions.implementedFunctions = set(data.unparsedFunctions.map(function(func) { return func.ident }));
+      data.unparsedFunctions.forEach(function(func) {
+        Functions.implementedFunctions[func.ident] = Functions.getSignature(func.returnType, func.params.map(function(param) { return param.type }));
+      });
     }
   }
 
@@ -420,7 +422,7 @@ function JSify(data, functionsOnly, givenFunctions) {
             snippet = snippet.replace('{', '{ var ret = (function() { if (Runtime.debug) Module.printErr("[library call:' + ident + ': " + Array.prototype.slice.call(arguments).map(Runtime.prettyPrint) + "]"); ');
             snippet = snippet.substr(0, snippet.length-1) + '}).apply(this, arguments); if (Runtime.debug && typeof ret !== "undefined") Module.printErr("  [     return:" + Runtime.prettyPrint(ret)); return ret; }';
           }
-          if (ASM_JS) Functions.libraryFunctions.push(ident);
+          if (ASM_JS) Functions.libraryFunctions[ident] = 1;
         }
 
         var postsetId = ident + '__postset';
@@ -1159,6 +1161,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     var useJSArgs = (shortident + '__jsargs') in LibraryManager.library;
     var hasVarArgs = isVarArgsFunctionType(type);
     var normalArgs = (hasVarArgs && !useJSArgs) ? countNormalArgs(type) : -1;
+    var byPointer = getVarData(funcData, ident);
 
     params.forEach(function(param, i) {
       var val = finalizeParam(param);
@@ -1224,8 +1227,8 @@ function JSify(data, functionsOnly, givenFunctions) {
       return inline.apply(null, args); // Warning: inlining does not prevent recalculation of the arguments. They should be simple identifiers
     }
 
-    if (getVarData(funcData, ident)) {
-      ident = 'FUNCTION_TABLE[' + ident + ']';
+    if (byPointer) {
+      ident = 'FUNCTION_TABLE_' + Functions.getSignature(type, argsTypes) + '[' + ident + ']';
     }
 
     return ident + '(' + args.join(', ') + ')';
@@ -1324,8 +1327,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
 
     if (phase == 'pre' || phase == 'funcs') {
-      // serialize out the data that later passes need
-      PassManager.serialize(); // XXX for funcs pass, do not serialize it all. I think we just need which were indexized.
+      PassManager.serialize();
       return;
     }
 
@@ -1352,7 +1354,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     var postParts = processMacros(preprocess(read(postFile))).split('{{GLOBAL_VARS}}');
     print(postParts[0]);
 
-    print(Functions.generateIndexing()); // done last, as it may rely on aliases set in postsets
+    Functions.generateIndexing(); // done last, as it may rely on aliases set in postsets
 
     // Load runtime-linked libraries
     RUNTIME_LINKED_LIBS.forEach(function(lib) {
@@ -1367,6 +1369,8 @@ function JSify(data, functionsOnly, givenFunctions) {
     print('// EMSCRIPTEN_GENERATED_FUNCTIONS: ' + JSON.stringify(keys(Functions.implementedFunctions).filter(function(func) {
       return IGNORED_FUNCTIONS.indexOf(func.ident) < 0;
     })) + '\n');
+
+    PassManager.serialize();
 
     return null;
   }

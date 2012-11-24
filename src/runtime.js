@@ -311,10 +311,16 @@ var Runtime = {
     return ret;
   },
 
-  addFunction: function(func) {
-    var ret = FUNCTION_TABLE.length;
-    FUNCTION_TABLE.push(func);
-    FUNCTION_TABLE.push(0);
+  getFunctionTable: function(sig) { // return value, param types e.g. "vid" void (int, double)
+    return Module['FUNCTION_TABLE_' + sig];
+  },
+
+  addFunction: function(func, sig) {
+    assert(sig);
+    var table = Runtime.getFunctionTable(sig);
+    var ret = table.length;
+    table.push(func);
+    table.push(0);
     return ret;
   },
 
@@ -328,10 +334,12 @@ var Runtime = {
 
   funcWrappers: {},
 
-  getFuncWrapper: function(func) {
+  getFuncWrapper: function(func, sig) {
+    assert(sig);
+    var table = Runtime.getFunctionTable(sig);
     if (!Runtime.funcWrappers[func]) {
       Runtime.funcWrappers[func] = function() {
-        FUNCTION_TABLE[func].apply(null, arguments);
+        table[func].apply(null, arguments);
       };
     }
     return Runtime.funcWrappers[func];

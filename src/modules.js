@@ -216,14 +216,22 @@ var Types = {
 };
 
 var Functions = {
-  // All functions that will be implemented in this file
+  // All functions that will be implemented in this file. Maps id to signature
   implementedFunctions: {},
-  libraryFunctions: [], // functions added from the library
+  libraryFunctions: {}, // functions added from the library. Maps id to 1, or to a signature if we need indexing
 
   indexedFunctions: {},
   nextIndex: 2, // Start at a non-0 (even, see below) value
 
   blockAddresses: {}, // maps functions to a map of block labels to label ids
+
+  getSignature: function(returnType, argTypes) {
+    var sig = returnType == 'void' ? 'v' : (isIntImplemented(returnType) ? 'i' : 'f');
+    for (var i = 0; i < argTypes.length; i++) {
+      sig += isIntImplemented(argTypes[i]) ? 'i' : 'f';
+    }
+    return sig;
+  },
 
   // Mark a function as needing indexing. Python will coordinate them all
   getIndex: function(ident) {
@@ -243,25 +251,33 @@ var Functions = {
 
   // Generate code for function indexing
   generateIndexing: function() {
-    var vals = zeros(this.nextIndex);
+    var tables = {};
     for (var ident in this.indexedFunctions) {
-      vals[this.indexedFunctions[ident]] = ident;
+      var sig = Functions.implementedFunctions[ident] || Functions.libraryFunctions[ident];
+      assert(sig);
+      if (!tables[sig]) tables[sig] = zeros(this.nextIndex); // TODO: make them compact
+      tables[sig][this.indexedFunctions[ident]] = ident;
     }
     // Resolve multi-level aliases all the way down
-    for (var i = 0; i < vals.length; i++) {
-      while (1) {
-        var varData = Variables.globals[vals[i]];
-        if (!(varData && varData.resolvedAlias)) break;
-        vals[i] = vals[+varData.resolvedAlias || eval(varData.resolvedAlias)]; // might need to eval to turn (6) into 6
+    var ret = '';
+    for (var t in tables) {
+      var table = tables[t];
+      for (var i = 0; i < table.length; i++) {
+        while (1) {
+          var varData = Variables.globals[table[i]];
+          if (!(varData && varData.resolvedAlias)) break;
+          table[i] = table[+varData.resolvedAlias || eval(varData.resolvedAlias)]; // might need to eval to turn (6) into 6
+        }
+      }
+      var indices = table.toString().replace('"', '');
+      if (BUILD_AS_SHARED_LIB) {
+        // Shared libraries reuse the parent's function table.
+        ret += 'FUNCTION_TABLE.push.apply(FUNCTION_TABLE_' + t + ', [' + indices + ']);\n';
+      } else {
+        ret += 'FUNCTION_TABLE_' + t + ' = [' + indices + '];\nModule["FUNCTION_TABLE_' + t + '"] = FUNCTION_TABLE_' + t + ';\n';
       }
     }
-    var indices = vals.toString().replace('"', '');
-    if (BUILD_AS_SHARED_LIB) {
-      // Shared libraries reuse the parent's function table.
-      return 'FUNCTION_TABLE.push.apply(FUNCTION_TABLE, [' + indices + ']);';
-    } else {
-      return 'FUNCTION_TABLE = [' + indices + ']; Module["FUNCTION_TABLE"] = FUNCTION_TABLE;';
-    }
+    Functions.tables = ret;
   }
 };
 
@@ -320,8 +336,14 @@ var PassManager = {
         Functions: {
           blockAddresses: Functions.blockAddresses,
           indexedFunctions: Functions.indexedFunctions,
-          implementedFunctions: ASM_JS ? Functions.implementedFunctions : []
+          implementedFunctions: ASM_JS ? Functions.implementedFunctions : [],
+          libraryFunctions: ASM_JS ? Functions.libraryFunctions : {},
         }
+      }));
+    } else if (phase == 'post') {
+printErr('forward post!');
+      print('\n//FORWARDED_DATA:' + JSON.stringify({
+        Functions: { tables: Functions.tables }
       }));
     }
   },
