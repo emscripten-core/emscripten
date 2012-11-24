@@ -7488,6 +7488,9 @@ TT = %s
   # Make one run with -O2, but without closure (we enable closure in specific tests, otherwise on everything it is too slow)
   exec('o2 = make_run("o2", compiler=CLANG, emcc_args=["-O2", "--closure", "0"])')
 
+  # asm.js
+  exec('asm = make_run("asm", compiler=CLANG, emcc_args=["-O2", "--closure", "0", "-s", "ASM_JS=1"])')
+
   # Make custom runs with various options
   for compiler, quantum, embetter, typed_arrays, llvm_opts in [
     (CLANG, 1, 1, 0, 0),
