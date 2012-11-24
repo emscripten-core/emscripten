@@ -223,8 +223,9 @@ def emscript(infile, settings, outfile, libraries=[]):
   if DEBUG: t = time.time()
 
   # merge forwarded data
-  all_exported_functions = set(settings['EXPORTED_FUNCTIONS']) # both asm.js and otherwise
-  exported_implemented_functions = set()
+  if settings.get('ASM_JS'):
+    all_exported_functions = set(settings['EXPORTED_FUNCTIONS']) # both asm.js and otherwise
+    exported_implemented_functions = set()
   for func_js, curr_forwarded_data in outputs:
     curr_forwarded_json = json.loads(curr_forwarded_data)
     forwarded_json['Types']['preciseI64MathUsed'] = forwarded_json['Types']['preciseI64MathUsed'] or curr_forwarded_json['Types']['preciseI64MathUsed']
@@ -232,8 +233,9 @@ def emscript(infile, settings, outfile, libraries=[]):
       forwarded_json['Functions']['blockAddresses'][key] = value
     for key in curr_forwarded_json['Functions']['indexedFunctions'].iterkeys():
       indexed_functions.add(key)
-    for key in curr_forwarded_json['Functions']['implementedFunctions'].iterkeys():
-      if key in all_exported_functions: exported_implemented_functions.add(key)
+    if settings.get('ASM_JS'):
+      for key in curr_forwarded_json['Functions']['implementedFunctions'].iterkeys():
+        if key in all_exported_functions: exported_implemented_functions.add(key)
 
   funcs_js = ''.join([output[0] for output in outputs])
   if settings.get('ASM_JS'):

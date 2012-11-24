@@ -318,7 +318,8 @@ var PassManager = {
         Types: { preciseI64MathUsed: Types.preciseI64MathUsed },
         Functions: {
           blockAddresses: Functions.blockAddresses,
-          indexedFunctions: Functions.indexedFunctions
+          indexedFunctions: Functions.indexedFunctions,
+          implementedFunctions: ASM_JS ? Functions.implementedFunctions : []
         }
       }));
     }
