@@ -74,12 +74,10 @@ function intertyper(data, sidePass, baseLineNums) {
             var global = /([@%\w\d\.\" $-]+) = .*/.exec(line);
             var globalIdent = toNiceIdent(global[1]);
             var testAlias = /[@%\w\d\.\" $-]+ = alias .*/.exec(line);
-            var testString = /[@%\w\d\.\" $-]+ = [\w ]+ \[\d+ x i8] c".*/.exec(line);
             Variables.globals[globalIdent] = {
               name: globalIdent,
               alias: !!testAlias,
-              impl: VAR_EMULATED,
-              isString : !!testString
+              impl: VAR_EMULATED
             };
             unparsedGlobals.lines.push(line);
           } else {

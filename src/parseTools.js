@@ -356,6 +356,14 @@ function hasVarArgs(params) {
   return false;
 }
 
+function makeGlobalDef(ident) {
+  return 'var ' + ident + ';'; // TODO: add option for namespacing or offsetting to allow reducing the number of globals
+}
+
+function makeGlobalUse(ident) {
+  return ident; // TODO: add option for namespacing or offsetting to allow reducing the number of globals
+}
+
 function finalizeParam(param) {
   if (param.intertype in PARSABLE_LLVM_FUNCTIONS) {
     return finalizeLLVMFunctionCall(param);
@@ -368,10 +376,9 @@ function finalizeParam(param) {
       return parseI64Constant(param.ident);
     }
     var ret = toNiceIdent(param.ident);
-    if (ret in Variables.globals && Variables.globals[ret].isString) {
-      ret = "STRING_TABLE." + ret;
+    if (ret in Variables.globals) {
+      ret = makeGlobalUse(ret);
     }
-    
     return ret;
   }
 }
@@ -1472,8 +1479,8 @@ function finalizeLLVMParameter(param, noIndexizeFunctions) {
     }
   } else if (param.intertype == 'value') {
     ret = param.ident;
-    if (ret in Variables.globals && Variables.globals[ret].isString) {
-      ret = "STRING_TABLE." + ret;
+    if (ret in Variables.globals) {
+      ret = makeGlobalUse(ret);
     }
     if (param.type == 'i64' && USE_TYPED_ARRAYS == 2) {
       ret = parseI64Constant(ret);

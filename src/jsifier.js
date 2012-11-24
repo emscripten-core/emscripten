@@ -250,7 +250,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     processItem: function(item) {
       function needsPostSet(value) {
         return value[0] in UNDERSCORE_OPENPARENS || value.substr(0, 14) === 'CHECK_OVERFLOW'
-            || value.substr(0, 13) === 'STRING_TABLE.';
+            || false; // TODO: interact with output of makeGlobalUse/makeGlobalDef
       }
 
       item.intertype = 'GlobalVariableStub';
@@ -267,9 +267,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           // they would shadow similarly-named globals in the parent.
           item.JS = '';
         } else {
-          if (!(item.ident in Variables.globals) || !Variables.globals[item.ident].isString) {
-          	item.JS = 'var ' + item.ident + ';';
-          } 
+        	item.JS = makeGlobalDef(item.ident);
         }
         var constant = null;
         if (item.external) {
@@ -320,13 +318,7 @@ function JSify(data, functionsOnly, givenFunctions) {
 
           var js;
 
-          // Strings are held in STRING_TABLE, to not clutter up the main namespace (in some cases we have
-          // many many strings, possibly exceeding the js engine limit on global vars).
-          if (Variables.globals[item.ident].isString) {
-            js = 'STRING_TABLE.' + item.ident + '=' + constant + ';';
-          } else {
-          	js = item.ident + '=' + constant + ';';
-          }
+        	js = makeGlobalUse(item.ident) + '=' + constant + ';';
 
           // Special case: class vtables. We make sure they are null-terminated, to allow easy runtime operations
           if (item.ident.substr(0, 5) == '__ZTV') {

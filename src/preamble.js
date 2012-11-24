@@ -813,8 +813,6 @@ function writeArrayToMemory(array, buffer) {
 }
 Module['writeArrayToMemory'] = writeArrayToMemory;
 
-var STRING_TABLE = [];
-
 {{{ unSign }}}
 {{{ reSign }}}
 
