@@ -3485,11 +3485,11 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
     var result = __formatString(format, varargs);
     var limit = (n === undefined) ? result.length
-                                  : Math.min(result.length, n - 1);
+                                  : Math.min(result.length, Math.max(n - 1, 0));
     for (var i = 0; i < limit; i++) {
       {{{ makeSetValue('s', 'i', 'result[i]', 'i8') }}};
     }
-    {{{ makeSetValue('s', 'i', '0', 'i8') }}};
+    if (limit < n) {{{ makeSetValue('s', 'i', '0', 'i8') }}};
     return result.length;
   },
   fprintf__deps: ['fwrite', '_formatString'],
