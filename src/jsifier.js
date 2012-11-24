@@ -704,8 +704,8 @@ function JSify(data, functionsOnly, givenFunctions) {
       if (PRINT_SPLIT_FILE_MARKER) {
           func.JS += '\n//FUNCTION_END_MARKER_OF_SOURCE_FILE_' + associatedSourceFile + '\n';
       }
-      
-      if (!ASM_JS && (EXPORT_ALL || (func.ident in EXPORTED_GLOBALS))) {
+
+      if (!ASM_JS && (EXPORT_ALL || (func.ident in EXPORTED_FUNCTIONS))) {
         func.JS += 'Module["' + func.ident + '"] = ' + func.ident + ';';
       }
 
