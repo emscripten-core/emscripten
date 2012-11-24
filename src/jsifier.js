@@ -262,6 +262,20 @@ function JSify(data, functionsOnly, givenFunctions) {
                   '\n]);\n';
         return ret;
       } else {
+        var constant = null;
+        var allocator = (BUILD_AS_SHARED_LIB && !item.external) ? 'ALLOC_NORMAL' : 'ALLOC_STATIC';
+        var index = null;
+        if (NUM_NAMED_GLOBALS >= 0) {
+          if (Variables.seenGlobals < NUM_NAMED_GLOBALS) {
+            Variables.seenGlobals++; // named
+          } else {
+            // indexed
+            Variables.indexedGlobals[item.ident] = Variables.nextIndexedOffset;
+            index = makeGlobalUse(item.ident);
+            Variables.nextIndexedOffset += Runtime.alignMemory(calcAllocatedSize(Variables.globals[item.ident].type));
+            allocator = 'ALLOC_NONE';
+          }
+        }
         if (item.external && BUILD_AS_SHARED_LIB) {
           // External variables in shared libraries should not be declared as
           // they would shadow similarly-named globals in the parent.
@@ -269,7 +283,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         } else {
         	item.JS = makeGlobalDef(item.ident);
         }
-        var constant = null;
+
         if (item.external) {
           // Import external global variables from the library if available.
           var shortident = item.ident.slice(1);
@@ -284,7 +298,7 @@ function JSify(data, functionsOnly, givenFunctions) {
               padding = makeEmptyStruct(item.type);
             }
             var padded = val.concat(padding.slice(val.length));
-            var js = item.ident + '=' + makePointer(JSON.stringify(padded), null, 'ALLOC_STATIC', item.type) + ';'
+            var js = item.ident + '=' + makePointer(JSON.stringify(padded), null, allocator, item.type, index) + ';'
             if (LibraryManager.library[shortident + '__postset']) {
               js += '\n' + LibraryManager.library[shortident + '__postset'];
             }
@@ -314,15 +328,14 @@ function JSify(data, functionsOnly, givenFunctions) {
           }
           // NOTE: This is the only place that could potentially create static
           //       allocations in a shared library.
-          constant = makePointer(constant, null, BUILD_AS_SHARED_LIB ? 'ALLOC_NORMAL' : 'ALLOC_STATIC', item.type);
-
+          constant = makePointer(constant, null, allocator, item.type, index);
           var js;
 
-        	js = makeGlobalUse(item.ident) + '=' + constant + ';';
+        	js = (index !== null ? '' : item.ident + '=') + constant + ';';
 
           // Special case: class vtables. We make sure they are null-terminated, to allow easy runtime operations
           if (item.ident.substr(0, 5) == '__ZTV') {
-            js += '\n' + makePointer('[0]', null, BUILD_AS_SHARED_LIB ? 'ALLOC_NORMAL' : 'ALLOC_STATIC', ['void*']) + ';';
+            js += '\n' + makePointer('[0]', null, allocator, ['void*'], index) + ';';
           }
           if (EXPORT_ALL || (item.ident in EXPORTED_GLOBALS)) {
             js += '\nModule["' + item.ident + '"] = ' + item.ident + ';';
@@ -1270,6 +1283,15 @@ function JSify(data, functionsOnly, givenFunctions) {
     //
 
     if (!mainPass) {
+      if (phase == 'pre' && !Variables.generatedGlobalBase) {
+        Variables.generatedGlobalBase = true;
+        if (Variables.nextIndexedOffset > 0) {
+          // Variables have been calculated, print out the base generation before we print them
+          print('var GLOBAL_BASE = STATICTOP;\n');
+          print('STATICTOP += ' + Variables.nextIndexedOffset + ';\n');
+          print('assert(STATICTOP < TOTAL_MEMORY);\n');
+        }
+      }
       var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable).concat(itemsDict.GlobalVariablePostSet);
       if (!DEBUG_MEMORY) print(generated.map(function(item) { return item.JS }).join('\n'));
       return;

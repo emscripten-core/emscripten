@@ -1645,7 +1645,15 @@ c5,de,15,8a
             return 0;
           }
         '''
-        self.do_run(src, '4:10,177,543,def\n4\nwowie\ntoo\n76\n5\n(null)\n/* a comment */\n// another\ntest\n', ['wowie', 'too', '74'])
+        for named, expected in [(-1, 0), (0, 100), (1, 98), (5, 88), (1000, 0)]:
+          print named
+          Settings.NUM_NAMED_GLOBALS = named
+          self.do_run(src, '4:10,177,543,def\n4\nwowie\ntoo\n76\n5\n(null)\n/* a comment */\n// another\ntest\n', ['wowie', 'too', '74'])
+          if self.emcc_args == []:
+            gen = open(self.in_dir('src.cpp.o.js')).read()
+            count = gen.count('GLOBAL_BASE')
+            assert count == expected
+            print '  counted'
 
     def test_strcmp_uni(self):
       src = '''

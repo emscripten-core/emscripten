@@ -357,10 +357,12 @@ function hasVarArgs(params) {
 }
 
 function makeGlobalDef(ident) {
+  if (ident in Variables.indexedGlobals) return '';
   return 'var ' + ident + ';'; // TODO: add option for namespacing or offsetting to allow reducing the number of globals
 }
 
 function makeGlobalUse(ident) {
+  if (ident in Variables.indexedGlobals) return getFastValue('GLOBAL_BASE', '+', Variables.indexedGlobals[ident]);
   return ident; // TODO: add option for namespacing or offsetting to allow reducing the number of globals
 }
 
@@ -1267,7 +1269,7 @@ function makeGetPos(ptr) {
 
 var IHEAP_FHEAP = set('IHEAP', 'IHEAPU', 'FHEAP');
 
-function makePointer(slab, pos, allocator, type) {
+function makePointer(slab, pos, allocator, type, ptr) {
   assert(type, 'makePointer requires type info');
   if (slab.substr(0, 4) === 'HEAP' || (USE_TYPED_ARRAYS == 1 && slab in IHEAP_FHEAP)) return pos;
   var types = generateStructTypes(type);
@@ -1297,7 +1299,7 @@ function makePointer(slab, pos, allocator, type) {
       types = de[0];
     }
   }
-  return 'allocate(' + slab + ', ' + JSON.stringify(types) + (allocator ? ', ' + allocator : '') + ')';
+  return 'allocate(' + slab + ', ' + JSON.stringify(types) + (allocator ? ', ' + allocator : '') + (allocator == 'ALLOC_NONE' ? ', ' + ptr : '') + ')';
 }
 
 function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
