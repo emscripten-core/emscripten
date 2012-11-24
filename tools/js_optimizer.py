@@ -115,7 +115,7 @@ def run(filename, passes, js_engine, jcache):
 
   if len(chunks) > 0:
     def write_chunk(chunk, i):
-      temp_file = temp_files.get('.jsfunc_%d.ll' % i).name
+      temp_file = temp_files.get('.jsfunc_%d.js' % i).name
       f = open(temp_file, 'w')
       f.write(chunk)
       f.write(suffix)
