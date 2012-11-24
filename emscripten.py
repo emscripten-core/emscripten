@@ -238,11 +238,21 @@ def emscript(infile, settings, outfile, libraries=[]):
         if key in all_exported_functions: exported_implemented_functions.add(key)
 
   funcs_js = ''.join([output[0] for output in outputs])
+
   if settings.get('ASM_JS'):
+    # calculate exports
     exports = []
     for export in exported_implemented_functions:
       exports.append("'%s': %s" % (export, export))
     exports = '{ ' + ', '.join(exports) + ' }'
+    # caculate globals
+    global_vars = forwarded_json['Variables']['globals'].keys()
+    global_funcs = ['_' + x for x in forwarded_json['Functions']['libraryFunctions']]
+    asm_globals = ''.join(['  var ' + g + '=env.' + g + ';\n' for g in global_vars + global_funcs])
+    # sent data
+    basics = ['buffer', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
+    sending = '{ ' + ', '.join([s + ': ' + s for s in basics + global_vars + global_funcs]) + ' }'
+    # finalize
     funcs_js = '''
 var asm = (function(env, buffer) {
   'use asm';
@@ -254,11 +264,12 @@ var asm = (function(env, buffer) {
   var HEAPU32 = new env.Uint32Array(buffer);
   var HEAPF32 = new env.Float32Array(buffer);
   var HEAPF64 = new env.Float64Array(buffer);
-''' + funcs_js.replace('\n', '\n  ') + '''
+''' + asm_globals + '\n' + funcs_js.replace('\n', '\n  ') + '''
+
   return %s;
-})({}, buffer);
+})(%s, buffer);
 for (var _export in asm) Module[_export] = asm[_export];
-''' % exports
+''' % (exports, sending)
 
   outputs = None
   if DEBUG: print >> sys.stderr, '  emscript: phase 2b took %s seconds' % (time.time() - t)

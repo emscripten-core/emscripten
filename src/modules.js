@@ -218,6 +218,7 @@ var Types = {
 var Functions = {
   // All functions that will be implemented in this file
   implementedFunctions: {},
+  libraryFunctions: [], // functions added from the library
 
   indexedFunctions: {},
   nextIndex: 2, // Start at a non-0 (even, see below) value

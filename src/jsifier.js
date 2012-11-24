@@ -420,6 +420,7 @@ function JSify(data, functionsOnly, givenFunctions) {
             snippet = snippet.replace('{', '{ var ret = (function() { if (Runtime.debug) Module.printErr("[library call:' + ident + ': " + Array.prototype.slice.call(arguments).map(Runtime.prettyPrint) + "]"); ');
             snippet = snippet.substr(0, snippet.length-1) + '}).apply(this, arguments); if (Runtime.debug && typeof ret !== "undefined") Module.printErr("  [     return:" + Runtime.prettyPrint(ret)); return ret; }';
           }
+          if (ASM_JS) Functions.libraryFunctions.push(ident);
         }
 
         var postsetId = ident + '__postset';

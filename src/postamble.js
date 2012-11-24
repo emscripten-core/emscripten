@@ -19,11 +19,11 @@ Module.callMain = function callMain(args) {
 
 #if CATCH_EXIT_CODE
   try {
-    return _main(argc, argv, 0);
+    return Module['_main'](argc, argv, 0);
   }
   catch(e) { if (e.name == "ExitStatus") return e.status; throw e; }
 #else
-  return _main(argc, argv, 0);
+  return Module['_main'](argc, argv, 0);
 #endif
 }
 
