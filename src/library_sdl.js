@@ -1119,17 +1119,54 @@ var LibrarySDL = {
       FUNCTION_TABLE[SDL.audio.callback](SDL.audio.userdata, SDL.audio.buffer, SDL.audio.bufferSize);
       SDL.audio.pushAudio(SDL.audio.buffer, SDL.audio.bufferSize);
     };
-    // Mozilla Audio API. TODO: Other audio APIs
+    // Mozilla Audio API/WebAudioAPI
     try {
-      SDL.audio.mozOutput = new Audio();
-      SDL.audio.mozOutput['mozSetup'](SDL.audio.channels, SDL.audio.freq); // use string attributes on mozOutput for closure compiler
-      SDL.audio.mozBuffer = new Float32Array(totalSamples);
-      SDL.audio.pushAudio = function(ptr, size) {
-        var mozBuffer = SDL.audio.mozBuffer;
-        for (var i = 0; i < totalSamples; i++) {
-          mozBuffer[i] = ({{{ makeGetValue('ptr', 'i*2', 'i16', 0, 0) }}}) / 0x8000; // hardcoded 16-bit audio, signed (TODO: reSign if not ta2?)
-        }
-        SDL.audio.mozOutput['mozWriteAudio'](mozBuffer);
+      SDL.audio.audioOutput = new Audio();
+      SDL.audio.hasWebkitAudio = ((typeof(AudioContext) === "function")||(typeof(webkitAudioContext) === "function"));
+      if(typeof(SDL.audio.audioOutput['mozSetup'])==="function"||!SDL.audio.hasWebkitAudio){
+          SDL.audio.audioOutput['mozSetup'](SDL.audio.channels, SDL.audio.freq); // use string attributes on mozOutput for closure compiler
+          SDL.audio.mozBuffer = new Float32Array(totalSamples);
+          SDL.audio.pushAudio = function(ptr, size) {
+            var mozBuffer = SDL.audio.mozBuffer;
+            for (var i = 0; i < totalSamples; i++) {
+              mozBuffer[i] = ({{{ makeGetValue('ptr', 'i*2', 'i16', 0, 0) }}}) / 0x8000; // hardcoded 16-bit audio, signed (TODO: reSign if not ta2?)
+            }
+            SDL.audio.audioOutput['mozWriteAudio'](mozBuffer);
+          }
+      }else{
+            if (typeof(AudioContext) === "function") {
+                SDL.audio.context = new AudioContext();
+            } else if (typeof(webkitAudioContext) === "function") {
+                SDL.audio.context = new webkitAudioContext();
+            }
+            SDL.audio.pushAudio=function(ptr,size){
+                SDL.audio.soundSource = SDL.audio.context.createBufferSource(SDL.audio.channels,SDL.audio.samples,SDL.audio.freq);
+                if(typeof(SDL.audio.context.createScriptProcessor) === "function"){
+                SDL.audio.soundInjector = SDL.audio.context.createScriptProcessor(SDL.audio.samples,SDL.audio.channels,SDL.audio.channels);
+                }else{
+                    SDL.audio.soundInjector = SDL.audio.context.createJavaScriptNode(SDL.audio.samples,SDL.audio.channels,SDL.audio.channels);
+                }
+                SDL.audio.soundInjector.onaudioprocess = function(e) {
+                    SDL.audio.webAudioFunc(SDL.audio.buffer,e);
+                }
+                SDL.audio.soundSource.connect(SDL.audio.soundInjector);
+                SDL.audio.soundInjector.connect(SDL.audio.context.destination);
+                if(typeof(SDL.audio.soundSource.start)=== "function"){
+                    SDL.audio.soundSource.start(0);
+                }else{
+                    SDL.audio.soundSource.noteOn(0);
+                }
+            }
+            SDL.audio.webAudioFunc = function(ptr,e){
+                for(var j = 0; i<e.outputBuffer.numberOfChannels; j++){
+                        var webaudioBuffer = e.outputBuffer.getChannelData(j);
+                        var q = 0
+                        for (var i = j*SDL.audio.samples; i < ((j*SDL.audio.samples)+SDL.audio.samples); i++) {
+                          webaudioBuffer[q] = ({{{ makeGetValue('ptr', 'i*2', 'i16', 0, 0) }}}) / 0x8000; // hardcoded 16-bit audio, signed (TODO: reSign if not ta2?)
+                          q++;
+                        }
+                    }
+            }
       }
     } catch(e) {
       SDL.audio = null;
@@ -1148,6 +1185,13 @@ var LibrarySDL = {
   SDL_CloseAudio__deps: ['SDL_PauseAudio', 'free'],
   SDL_CloseAudio: function() {
     if (SDL.audio) {
+        try{
+            if(typeof(SDL.audio.soundSource.stop)=== "function"){
+                SDL.audio.soundSource.stop(0);
+            }else{
+                SDL.audio.soundSource.noteOff(0);
+            }
+        }catch(e){}
       _SDL_PauseAudio(1);
       _free(SDL.audio.buffer);
       SDL.audio = null;
