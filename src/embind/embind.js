@@ -154,7 +154,11 @@ function requireArgumentTypes(argCount, argTypes, name) {
     var argTypeImpls = new Array(argCount);
     for (var i = 0; i < argCount; ++i) {
         var argType = HEAP32[(argTypes >> 2) + i];
-        argTypeImpls[i] = requireRegisteredType(argType, name + " parameter " + i);
+        if (i == 0) {
+            argTypeImpls[i] = requireRegisteredType(argType, name + " return value");
+        } else {
+            argTypeImpls[i] = requireRegisteredType(argType, name + " parameter " + i);
+        }
     }
     return argTypeImpls;
 }
@@ -167,30 +171,28 @@ function runDestructors(destructors) {
     }
 }
 
-function makeInvoker(name, returnType, argCount, argTypes, invoker, fn) {
+function makeInvoker(name, argCount, argTypes, invoker, fn) {
     return function() {
-        if (arguments.length !== argCount) {
-            throw new BindingError('function ' + name + ' called with ' + arguments.length + ' arguments, expected ' + argCount);
+        if (arguments.length !== argCount - 1) {
+            throw new BindingError('function ' + name + ' called with ' + arguments.length + ' arguments, expected ' + argCount - 1);
         }
         var destructors = [];
-        var args = new Array(argCount + 1);
+        var args = new Array(argCount);
         args[0] = fn;
-        for (var i = 0; i < argCount; ++i) {
-            args[i + 1] = argTypes[i].toWireType(destructors, arguments[i]);
+        for (var i = 1; i < argCount; ++i) {
+            args[i] = argTypes[i].toWireType(destructors, arguments[i-1]);
         }
-        var rv = returnType.fromWireType(invoker.apply(null, args));
+        var rv = argTypes[0].fromWireType(invoker.apply(null, args));
         runDestructors(destructors);
         return rv;
     };
 }
 
-function __embind_register_function(name, returnType, argCount, argTypes, invoker, fn) {
+function __embind_register_function(name, argCount, argTypes, invoker, fn) {
     name = Pointer_stringify(name);
-    returnType = requireRegisteredType(returnType, "Function " + name + " return value");
     invoker = FUNCTION_TABLE[invoker];
     argTypes = requireArgumentTypes(argCount, argTypes, name);
-
-    exposePublicSymbol(name, makeInvoker(name, returnType, argCount, argTypes, invoker, fn));
+    exposePublicSymbol(name, makeInvoker(name, argCount, argTypes, invoker, fn));
 }
 
 function __embind_register_tuple(tupleType, name, constructor, destructor) {
@@ -558,6 +560,9 @@ function __embind_register_class(
     var pointerName = name + '*';
     registerType(pointerType, pointerName, {
         name: pointerName,
+        fromWireType: function(ptr) {
+            return new Handle(ptr);
+        },
         toWireType: function(destructors, o) {
             return o.ptr;
         }
@@ -586,13 +591,13 @@ function __embind_register_class_constructor(
     constructor = FUNCTION_TABLE[constructor];
 
     classType.constructor.body = function() {
-        if (arguments.length !== argCount) {
-            throw new BindingError('emscripten binding ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + argCount);
+        if (arguments.length !== argCount - 1) {
+            throw new BindingError('emscripten binding ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
         }
         var destructors = [];
-        var args = new Array(argCount);
-        for (var i = 0; i < argCount; ++i) {
-            args[i] = argTypes[i].toWireType(destructors, arguments[i]);
+        var args = new Array(argCount-1);
+        for (var i = 1; i < argCount; ++i) {
+            args[i-1] = argTypes[i].toWireType(destructors, arguments[i-1]);
         }
 
         var ptr = constructor.apply(null, args);
@@ -605,7 +610,6 @@ function __embind_register_class_constructor(
 function __embind_register_class_method(
     classType,
     methodName,
-    returnType,
     argCount,
     argTypes,
     invoker,
@@ -616,7 +620,6 @@ function __embind_register_class_method(
     methodName = Pointer_stringify(methodName);
     var humanName = classType.name + '.' + methodName;
 
-    returnType = requireRegisteredType(returnType, 'method ' + humanName + ' return value');
     argTypes = requireArgumentTypes(argCount, argTypes, 'method ' + humanName);
     invoker = FUNCTION_TABLE[invoker];
     memberFunction = copyMemberPointer(memberFunction, memberFunctionSize);
@@ -626,19 +629,19 @@ function __embind_register_class_method(
         if (!this.ptr) {
             throw new BindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
         }
-        if (arguments.length !== argCount) {
-            throw new BindingError('emscripten binding method ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + argCount);
+        if (arguments.length !== argCount - 1) {
+            throw new BindingError('emscripten binding method ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
         }
         
         var destructors = [];
-        var args = new Array(argCount + 2);
+        var args = new Array(argCount + 1);
         args[0] = this.ptr;
         args[1] = memberFunction;
-        for (var i = 0; i < argCount; ++i) {
-            args[i + 2] = argTypes[i].toWireType(destructors, arguments[i]);
+        for (var i = 1; i < argCount; ++i) {
+            args[i + 1] = argTypes[i].toWireType(destructors, arguments[i-1]);
         }
 
-        var rv = returnType.fromWireType(invoker.apply(null, args));
+        var rv = argTypes[0].fromWireType(invoker.apply(null, args));
         runDestructors(destructors);
         return rv;
     };
@@ -705,7 +708,6 @@ function __embind_register_pointer_cast_method(
 function __embind_register_class_classmethod(
     classType,
     methodName,
-    returnType,
     argCount,
     argTypes,
     invoker,
@@ -714,22 +716,18 @@ function __embind_register_class_classmethod(
     classType = requireRegisteredType(classType, 'class');
     methodName = Pointer_stringify(methodName);
     var humanName = classType.name + '.' + methodName;
-    returnType = requireRegisteredType(returnType, 'classmethod ' + humanName + ' return value');
     argTypes = requireArgumentTypes(argCount, argTypes, 'classmethod ' + humanName);
     invoker = FUNCTION_TABLE[invoker];
-
-    classType.constructor[methodName] = makeInvoker(humanName, returnType, argCount, argTypes, invoker, fn);
+    classType.constructor[methodName] = makeInvoker(humanName, argCount, argTypes, invoker, fn);
 }
 
 function __embind_register_class_operator_call(
     classType,
-    returnType,
     argCount,
     argTypes,
     invoker
 ) {
     classType = requireRegisteredType(classType, 'class');
-    returnType = requireRegisteredType(returnType, 'method ' + humanName + ' return value');
     argTypes = requireArgumentTypes(argCount, argTypes, 'method ' + humanName);
     invoker = FUNCTION_TABLE[invoker];
     var humanName = classType.name + '.' + 'operator_call';
@@ -738,18 +736,18 @@ function __embind_register_class_operator_call(
         if (!this.ptr) {
             throw new BindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
         }
-        if (arguments.length !== argCount) {
-            throw new BindingError('emscripten binding method ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + argCount);
+        if (arguments.length !== argCount - 1) {
+            throw new BindingError('emscripten binding method ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
         }
         
         var destructors = [];
-        var args = new Array(argCount + 1);
+        var args = new Array(argCount);
         args[0] = this.ptr;
-        for (var i = 0; i < argCount; ++i) {
-            args[i + 1] = argTypes[i].toWireType(destructors, arguments[i]);
+        for (var i = 1; i < argCount; ++i) {
+            args[i] = argTypes[i].toWireType(destructors, arguments[i-1]);
         }
 
-        var rv = returnType.fromWireType(invoker.apply(null, args));
+        var rv = argTypes[0].fromWireType(invoker.apply(null, args));
         runDestructors(destructors);
         return rv;
     };
