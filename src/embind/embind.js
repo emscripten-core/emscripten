@@ -154,7 +154,7 @@ function requireArgumentTypes(argCount, argTypes, name) {
     var argTypeImpls = new Array(argCount);
     for (var i = 0; i < argCount; ++i) {
         var argType = HEAP32[(argTypes >> 2) + i];
-        if (i == 0) {
+        if (i === 0) {
             argTypeImpls[i] = requireRegisteredType(argType, name + " return value");
         } else {
             argTypeImpls[i] = requireRegisteredType(argType, name + " parameter " + i);
