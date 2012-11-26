@@ -104,7 +104,6 @@ namespace emscripten {
             template<typename... Policies>
             static void fill(TYPEID* argTypes) {
                 typedef typename ExecutePolicies<Policies...>::template With<T, Index>::type TransformT;
-                
                 *argTypes = TypeID<TransformT>::get();
                 return ArgTypes<Index + 1, Remaining...>::template fill<Policies...>(argTypes + 1);
             }
@@ -204,7 +203,9 @@ namespace emscripten {
         template<typename T>
         struct BindingType<T*> {
             typedef T* WireType;
-
+            static WireType toWireType(T* p) {
+                return p;
+            }
             static T* fromWireType(WireType wt) {
                 return wt;
             }
