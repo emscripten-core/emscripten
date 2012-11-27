@@ -493,15 +493,21 @@ function __embind_register_vector(
     });
 }
 
+// hang onto your hats, guys, we're going to try to make this one registration work for the class and all its
+// derived classes
 function __embind_register_class(
     classType,
     pointerType,
     constPointerType,
     name,
+    getDynamicPointerType,
     destructor
 ) {
     name = Pointer_stringify(name);
     destructor = FUNCTION_TABLE[destructor];
+    if (getDynamicPointerType) {
+        getDynamicPointerType = FUNCTION_TABLE[getDynamicPointerType];
+    }
     
     var Handle = createNamedFunction(name, function(ptr) {
         var h = function() {
@@ -562,6 +568,7 @@ function __embind_register_class(
 
     registerType(classType, name, {
         name: name,
+        pointerType: pointerType,
         constructor: constructor,
         Handle: Handle,
         fromWireType: function(ptr) {
@@ -576,6 +583,19 @@ function __embind_register_class(
     registerType(pointerType, pointerName, {
         name: pointerName,
         fromWireType: function(ptr) {
+            var dynamicType = getDynamicPointerType && getDynamicPointerType(ptr);
+            if (dynamicType === null || dynamicType === pointerType) {
+                return new Handle(ptr);
+            }
+            try {
+                dynamicType = requireRegisteredType(dynamicType);
+            } catch (err) {
+                return new Handle(ptr); // I suppose we could work our way up the inheritance tree...
+            }
+            dynamicType = requireRegisteredType(dynamicType.pointerType);
+            return dynamicType.fromWireTypeStatic(ptr);
+        },
+        fromWireTypeStatic: function(ptr) {
             return new Handle(ptr);
         },
         toWireType: function(destructors, o) {
@@ -586,6 +606,19 @@ function __embind_register_class(
     var constPointerName = name + ' const*';
     registerType(constPointerType, constPointerName, {
         name: constPointerName,
+        fromWireType: function(ptr) {
+            var dynamicType = getDynamicPointerType && getDynamicPointerType(ptr);
+            if (dynamicType === null || dynamicType === pointerType) {
+                return new Handle(ptr);
+            }
+            try {
+                dynamicType = requireRegisteredType(dynamicType);
+            } catch (err) {
+                return new Handle(ptr); // I suppose we could work our way up the inheritance tree...
+            }
+            dynamicType = requireRegisteredType(dynamicType.pointerType);
+            return dynamicType.fromWireType(ptr);
+        },
         toWireType: function(destructors, o) {
             return o.ptr;
         }
@@ -594,6 +627,112 @@ function __embind_register_class(
     exposePublicSymbol(name, constructor);
 }
 
+//function __embind_register_class(
+//    classType,
+//    pointerType,
+//    constPointerType,
+//    name,
+//    destructor
+//) {
+//    name = Pointer_stringify(name);
+//    destructor = FUNCTION_TABLE[destructor];
+//
+//    var Handle = createNamedFunction(name, function(ptr) {
+//        var h = function() {
+//            if(h.operator_call !== undefined) {
+//                return h.operator_call.apply(h, arguments);
+//            } else {
+//                throw new BindingError(name + ' does not define call operator');
+//            }
+//        };
+//
+//        h.count = {value: 1};
+//        h.ptr = ptr;
+//
+//        for(var prop in Handle.prototype) {
+//            var dp = Object.getOwnPropertyDescriptor(Handle.prototype, prop);
+//            Object.defineProperty(h, prop, dp);
+//        }
+//
+//        return h;
+//    });
+//
+//    Handle.prototype.clone = function() {
+//        if (!this.ptr) {
+//            throw new BindingError(classType.name + ' instance already deleted');
+//        }
+//
+//        var clone = Object.create(Handle.prototype);
+//        clone.count = this.count;
+//        clone.ptr = this.ptr;
+//
+//        clone.count.value += 1;
+//        return clone;
+//    };
+//
+//    Handle.prototype.move = function() {
+//        var rv = this.clone();
+//        this.delete();
+//        return rv;
+//    };
+//
+//    Handle.prototype['delete'] = function() {
+//        if (!this.ptr) {
+//            throw new BindingError(classType.name + ' instance already deleted');
+//        }
+//
+//        this.count.value -= 1;
+//        if (0 === this.count.value) {
+//            destructor(this.ptr);
+//        }
+//        this.ptr = undefined;
+//    };
+//
+//    var constructor = createNamedFunction(name, function() {
+//        var body = constructor.body;
+//        return body.apply(this, arguments);
+//    });
+//    constructor.prototype = Handle.prototype;
+//
+//    registerType(classType, name, {
+//        name: name,
+//        constructor: constructor,
+//        Handle: Handle,
+//        fromWireType: function(ptr) {
+//            return new Handle(ptr);
+//        },
+//        toWireType: function(destructors, o) {
+//            return o.ptr;
+//        }
+//    });
+//
+//    var pointerName = name + '*';
+//    registerType(pointerType, pointerName, {
+//        name: pointerName,
+//        fromWireType: function(ptr) {
+//            // based on the fully downcast type of the pointer,
+//
+//            return new Handle(ptr); // if me
+//        },
+//        toWireType: function(destructors, o) {
+//            return o.ptr;
+//        }
+//    });
+//
+//    var constPointerName = name + ' const*';
+//    registerType(constPointerType, constPointerName, {
+//        name: constPointerName,
+//        fromWireType: function(ptr) {
+//            return new Handle(ptr);
+//        },
+//        toWireType: function(destructors, o) {
+//            return o.ptr;
+//        }
+//    });
+//
+//    exposePublicSymbol(name, constructor);
+//}
+//
 function __embind_register_class_constructor(
     classType,
     argCount,
