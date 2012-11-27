@@ -217,7 +217,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           throw 'Invalid segment: ' + dump(segment);
         }
         assert(segment.type, 'Missing type for constant segment!');
-        return indexizeFunctions(ret, segment.type);
+        return makeGlobalUse(indexizeFunctions(ret, segment.type));
       };
       return tokens.map(handleSegment)
     }
@@ -226,7 +226,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     if (value.intertype in PARSABLE_LLVM_FUNCTIONS) {
       return [finalizeLLVMFunctionCall(value)];
     } else if (Runtime.isNumberType(type) || pointingLevels(type) >= 1) {
-      return indexizeFunctions(parseNumerical(value.value), type);
+      return makeGlobalUse(indexizeFunctions(parseNumerical(value.value), type));
     } else if (value.intertype === 'emptystruct') {
       return makeEmptyStruct(type);
     } else if (value.intertype === 'string') {
