@@ -456,8 +456,21 @@ function __embind_register_vector(
         name: name,
         fromWireType: function(ptr) {
             var arr = [];
-            var n = length(ptr);
+            Object.defineProperty(arr, 'delete', {
+                writable: false,
+                enumerable: false,
+                configurable: false,
+                value: function() {
+                    var needsToBeDeleted = elementType.hasOwnProperty('Handle');
+                    for (var i = 0; i < arr.length; i++) {
+                        if (needsToBeDeleted) {
+                            arr[i].delete();
+                        }
+                    }
+                }
+            });
 
+            var n = length(ptr);
             for (var i = 0; i < n; i++) {
                 var v = elementType.fromWireType(getter(ptr, i));
                 arr.push(v);
@@ -471,6 +484,8 @@ function __embind_register_vector(
             for (var val in o) {
                 setter(vec, elementType.toWireType(destructors, o[val]));
             }
+            runDestructors(destructors);
+
             destructors.push(destructor);
             destructors.push(vec);
             return vec;
