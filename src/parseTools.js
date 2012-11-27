@@ -356,13 +356,19 @@ function hasVarArgs(params) {
   return false;
 }
 
+function isIndexableGlobal(ident) {
+  if (!(ident in Variables.globals)) return false;
+  var data = Variables.globals[ident];
+  return !data.alias && !data.external;
+}
+
 function makeGlobalDef(ident) {
-  if (!NAMED_GLOBALS && ident in Variables.globals && !Variables.globals[ident].alias) return '';
+  if (!NAMED_GLOBALS && isIndexableGlobal(ident)) return '';
   return 'var ' + ident + ';'; // TODO: add option for namespacing or offsetting to allow reducing the number of globals
 }
 
 function makeGlobalUse(ident) {
-  if (!NAMED_GLOBALS && ident in Variables.globals && !Variables.globals[ident].alias) {
+  if (!NAMED_GLOBALS && isIndexableGlobal(ident)) {
     if (!(ident in Variables.indexedGlobals)) {
       Variables.indexedGlobals[ident] = Variables.nextIndexedOffset;
       Variables.nextIndexedOffset += Runtime.alignMemory(calcAllocatedSize(Variables.globals[ident].type));

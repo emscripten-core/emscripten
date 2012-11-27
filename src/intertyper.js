@@ -512,6 +512,7 @@ function intertyper(data, sidePass, baseLineNums) {
         };
         if (!NAMED_GLOBALS) {
           Variables.globals[ret.ident].type = ret.type;
+          Variables.globals[ret.ident].external = external;
         }
         Types.needAnalysis[ret.type] = 0;
         if (ident == '@llvm.global_ctors') {
