@@ -250,7 +250,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     processItem: function(item) {
       function needsPostSet(value) {
         return value[0] in UNDERSCORE_OPENPARENS || value.substr(0, 14) === 'CHECK_OVERFLOW'
-            || false; // TODO: interact with output of makeGlobalUse/makeGlobalDef
+                                                 || value.substr(0, 6) === 'GLOBAL';
       }
 
       item.intertype = 'GlobalVariableStub';
@@ -265,16 +265,9 @@ function JSify(data, functionsOnly, givenFunctions) {
         var constant = null;
         var allocator = (BUILD_AS_SHARED_LIB && !item.external) ? 'ALLOC_NORMAL' : 'ALLOC_STATIC';
         var index = null;
-        if (NUM_NAMED_GLOBALS >= 0) {
-          if (Variables.seenGlobals < NUM_NAMED_GLOBALS) {
-            Variables.seenGlobals++; // named
-          } else {
-            // indexed
-            Variables.indexedGlobals[item.ident] = Variables.nextIndexedOffset;
-            index = makeGlobalUse(item.ident);
-            Variables.nextIndexedOffset += Runtime.alignMemory(calcAllocatedSize(Variables.globals[item.ident].type));
-            allocator = 'ALLOC_NONE';
-          }
+        if (!NAMED_GLOBALS) {
+          index = makeGlobalUse(item.ident);
+          allocator = 'ALLOC_NONE';
         }
         if (item.external && BUILD_AS_SHARED_LIB) {
           // External variables in shared libraries should not be declared as

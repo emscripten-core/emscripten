@@ -178,7 +178,6 @@ var Variables = {
   indexedGlobals: {}, // for indexed globals, ident ==> index
   // Used in calculation of indexed globals
   nextIndexedOffset: 0,
-  seenGlobals: 0,
 };
 
 var Types = {

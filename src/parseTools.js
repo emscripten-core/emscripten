@@ -357,12 +357,18 @@ function hasVarArgs(params) {
 }
 
 function makeGlobalDef(ident) {
-  if (ident in Variables.indexedGlobals) return '';
+  if (!NAMED_GLOBALS) return '';
   return 'var ' + ident + ';'; // TODO: add option for namespacing or offsetting to allow reducing the number of globals
 }
 
 function makeGlobalUse(ident) {
-  if (ident in Variables.indexedGlobals) return getFastValue('GLOBAL_BASE', '+', Variables.indexedGlobals[ident]);
+  if (!NAMED_GLOBALS) {
+    if (!(ident in Variables.indexedGlobals)) {
+      Variables.indexedGlobals[ident] = Variables.nextIndexedOffset;
+      Variables.nextIndexedOffset += Runtime.alignMemory(calcAllocatedSize(Variables.globals[ident].type));
+    }
+    return getFastValue('GLOBAL_BASE', '+', Variables.indexedGlobals[ident]);
+  }
   return ident; // TODO: add option for namespacing or offsetting to allow reducing the number of globals
 }
 

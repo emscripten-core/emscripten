@@ -1645,9 +1645,9 @@ c5,de,15,8a
             return 0;
           }
         '''
-        for named, expected in [(-1, 0), (0, 100), (1, 98), (5, 88), (1000, 0)]:
+        for named, expected in [(0, 100), (1, 0)]:
           print named
-          Settings.NUM_NAMED_GLOBALS = named
+          Settings.NAMED_GLOBALS = named
           self.do_run(src, '4:10,177,543,def\n4\nwowie\ntoo\n76\n5\n(null)\n/* a comment */\n// another\ntest\n', ['wowie', 'too', '74'])
           if self.emcc_args == []:
             gen = open(self.in_dir('src.cpp.o.js')).read()
@@ -5956,7 +5956,7 @@ void*:16
       self.do_run(path_from_root('tests', 'cubescript'), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
 
     def test_gcc_unmangler(self):
-      Settings.NUM_NAMED_GLOBALS = 0 # test coverage for this
+      Settings.NAMED_GLOBALS = 0 # test coverage for this
 
       Building.COMPILER_TEST_OPTS = ['-I' + path_from_root('third_party')]
 
@@ -7401,6 +7401,7 @@ class %s(T):
     Settings.EMULATE_UNALIGNED_ACCESSES = int(Settings.USE_TYPED_ARRAYS == 2 and Building.LLVM_OPTS == 2)
     Settings.DOUBLE_MODE = 1 if Settings.USE_TYPED_ARRAYS and Building.LLVM_OPTS == 0 else 0
     Settings.PRECISE_I64_MATH = 0
+    Settings.NAMED_GLOBALS = 0 if not (embetter and llvm_opts) else 1
 
     Building.pick_llvm_opts(3)
 

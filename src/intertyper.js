@@ -507,7 +507,7 @@ function intertyper(data, sidePass, baseLineNums) {
           private_: private_,
           lineNum: item.lineNum
         };
-        if (NUM_NAMED_GLOBALS >= 0) {
+        if (!NAMED_GLOBALS) {
           Variables.globals[ret.ident].type = ret.type;
         }
         Types.needAnalysis[ret.type] = 0;
