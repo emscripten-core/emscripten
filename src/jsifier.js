@@ -319,7 +319,7 @@ function JSify(data, functionsOnly, givenFunctions) {
               if (needsPostSet(value)) { // ident, or expression containing an ident
                 ret.push({
                   intertype: 'GlobalVariablePostSet',
-                  JS: makeSetValue(item.ident, i, value, 'i32', false, true) + ';' // ignore=true, since e.g. rtti and statics cause lots of safe_heap errors
+                  JS: makeSetValue(makeGlobalUse(item.ident), i, value, 'i32', false, true) + ';' // ignore=true, since e.g. rtti and statics cause lots of safe_heap errors
                 });
                 constant[i] = '0';
               }

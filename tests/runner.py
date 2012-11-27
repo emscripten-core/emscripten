@@ -5956,7 +5956,7 @@ void*:16
       self.do_run(path_from_root('tests', 'cubescript'), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
 
     def test_gcc_unmangler(self):
-      #Settings.NUM_NAMED_GLOBALS = 0 # test coverage for this
+      Settings.NUM_NAMED_GLOBALS = 0 # test coverage for this
 
       Building.COMPILER_TEST_OPTS = ['-I' + path_from_root('third_party')]
 
