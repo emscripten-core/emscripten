@@ -264,7 +264,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       } else {
         var constant = null;
         var allocator = (BUILD_AS_SHARED_LIB && !item.external) ? 'ALLOC_NORMAL' : 'ALLOC_STATIC';
-        var index = null;
+        var index = 0;
         if (item.external && BUILD_AS_SHARED_LIB) {
           // External variables in shared libraries should not be declared as
           // they would shadow similarly-named globals in the parent.
@@ -328,7 +328,7 @@ function JSify(data, functionsOnly, givenFunctions) {
 
           // Special case: class vtables. We make sure they are null-terminated, to allow easy runtime operations
           if (item.ident.substr(0, 5) == '__ZTV') {
-            js += '\n' + makePointer('[0]', null, allocator, ['void*'], index) + ';';
+            js += '\n' + makePointer('[0]', null, allocator, ['void*'], getFastValue(index, '+', Runtime.alignMemory(calcAllocatedSize(Variables.globals[item.ident].type)))) + ';';
           }
           if (EXPORT_ALL || (item.ident in EXPORTED_GLOBALS)) {
             js += '\nModule["' + item.ident + '"] = ' + item.ident + ';';
