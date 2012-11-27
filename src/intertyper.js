@@ -457,6 +457,9 @@ function intertyper(data, sidePass, baseLineNums) {
         };
         ret.type = ret.value.type;
         Types.needAnalysis[ret.type] = 0;
+        if (!NAMED_GLOBALS) {
+          Variables.globals[ret.ident].type = ret.type;
+        }
         return [ret];
       }
       if (item.tokens[2].text == 'type') {
