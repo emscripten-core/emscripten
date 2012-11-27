@@ -357,12 +357,12 @@ function hasVarArgs(params) {
 }
 
 function makeGlobalDef(ident) {
-  if (!NAMED_GLOBALS && !Variables.globals[ident].alias) return '';
+  if (!NAMED_GLOBALS && ident in Variables.globals && !Variables.globals[ident].alias) return '';
   return 'var ' + ident + ';'; // TODO: add option for namespacing or offsetting to allow reducing the number of globals
 }
 
 function makeGlobalUse(ident) {
-  if (!NAMED_GLOBALS && !Variables.globals[ident].alias) {
+  if (!NAMED_GLOBALS && ident in Variables.globals && !Variables.globals[ident].alias) {
     if (!(ident in Variables.indexedGlobals)) {
       Variables.indexedGlobals[ident] = Variables.nextIndexedOffset;
       Variables.nextIndexedOffset += Runtime.alignMemory(calcAllocatedSize(Variables.globals[ident].type));
