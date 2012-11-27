@@ -1,4 +1,4 @@
-import shutil, time, os, sys, json, tempfile, copy, shlex, atexit, subprocess, md5, cPickle
+import shutil, time, os, sys, json, tempfile, copy, shlex, atexit, subprocess, hashlib, cPickle
 from subprocess import Popen, PIPE, STDOUT
 from tempfile import mkstemp
 
@@ -1170,7 +1170,7 @@ class JCache:
     ret = ''
     for key in keys:
       assert type(key) == str
-      ret += md5.md5(key).hexdigest()
+      ret += hashlib.md5(key).hexdigest()
     return ret
 
   @staticmethod
