@@ -265,10 +265,6 @@ function JSify(data, functionsOnly, givenFunctions) {
         var constant = null;
         var allocator = (BUILD_AS_SHARED_LIB && !item.external) ? 'ALLOC_NORMAL' : 'ALLOC_STATIC';
         var index = null;
-        if (!NAMED_GLOBALS) {
-          index = makeGlobalUse(item.ident);
-          allocator = 'ALLOC_NONE';
-        }
         if (item.external && BUILD_AS_SHARED_LIB) {
           // External variables in shared libraries should not be declared as
           // they would shadow similarly-named globals in the parent.
@@ -302,6 +298,10 @@ function JSify(data, functionsOnly, givenFunctions) {
           }
           return ret;
         } else {
+          if (!NAMED_GLOBALS) {
+            index = makeGlobalUse(item.ident);
+            allocator = 'ALLOC_NONE';
+          }
           constant = parseConst(item.value, item.type, item.ident);
           if (typeof constant === 'string' && constant[0] != '[') {
             constant = [constant]; // A single item. We may need a postset for it.
