@@ -368,13 +368,7 @@ function makeGlobalDef(ident) {
 }
 
 function makeGlobalUse(ident) {
-  if (!NAMED_GLOBALS && isIndexableGlobal(ident)) {
-    if (!(ident in Variables.indexedGlobals)) {
-      Variables.indexedGlobals[ident] = Variables.nextIndexedOffset;
-      Variables.nextIndexedOffset += Runtime.alignMemory(calcAllocatedSize(Variables.globals[ident].type));
-    }
-    return getFastValue('GLOBAL_BASE', '+', Variables.indexedGlobals[ident]);
-  }
+  if (!NAMED_GLOBALS && isIndexableGlobal(ident)) return getFastValue('GLOBAL_BASE', '+', Variables.indexedGlobals[ident]);
   return ident; // TODO: add option for namespacing or offsetting to allow reducing the number of globals
 }
 

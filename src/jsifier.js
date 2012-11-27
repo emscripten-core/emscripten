@@ -1293,7 +1293,18 @@ function JSify(data, functionsOnly, givenFunctions) {
     // Print out global variables and postsets TODO: batching
     if (phase == 'pre') {
       legalizedI64s = false;
-      JSify(analyzer(intertyper(data.unparsedGlobalss[0].lines, true), true), true, Functions);
+
+      var globalsData = analyzer(intertyper(data.unparsedGlobalss[0].lines, true), true);
+
+      if (!NAMED_GLOBALS) {
+        for (var ident in Variables.globals) {
+          Variables.indexedGlobals[ident] = Variables.nextIndexedOffset;
+          Variables.nextIndexedOffset += Runtime.alignMemory(calcAllocatedSize(Variables.globals[ident].type));
+        }
+      }
+
+      JSify(globalsData, true, Functions);
+      globalsData = null;
       data.unparsedGlobalss = null;
 
       var generated = itemsDict.functionStub.concat(itemsDict.GlobalVariablePostSet);

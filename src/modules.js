@@ -177,7 +177,7 @@ var Variables = {
   globals: {},
   indexedGlobals: {}, // for indexed globals, ident ==> index
   // Used in calculation of indexed globals
-  nextIndexedOffset: 0,
+  nextIndexedOffset: 0
 };
 
 var Types = {
