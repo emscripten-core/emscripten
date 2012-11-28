@@ -279,10 +279,18 @@ process(sys.argv[1])
     return ret
 
   def build_native(self, filename):
-    Popen([CLANG, '-O2', filename, '-o', filename+'.native'], stdout=PIPE).communicate()[0]
+    process = Popen([CLANG, '-O2', filename, '-o', filename+'.native'], stdout=PIPE);
+    output = process.communicate()
+    if process.returncode is not 0:
+      print >> sys.stderr, "Building native executable with command '%s' failed with a return code %d!" % (' '.join([CLANG, '-O2', filename, '-o', filename+'.native']), process.returncode)
+      print "Output: " + output[0]
 
   def run_native(self, filename, args):
-    Popen([filename+'.native'] + args, stdout=PIPE).communicate()[0]
+    process = Popen([filename+'.native'] + args, stdout=PIPE);
+    output = process.communicate()
+    if process.returncode is not 0:
+      print >> sys.stderr, "Running native executable with command '%s' failed with a return code %d!" % (' '.join([filename+'.native'] + args), process.returncode)
+      print "Output: " + output[0]
 
   def assertIdentical(self, values, y):
     if type(values) not in [list, tuple]: values = [values]
