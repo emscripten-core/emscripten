@@ -3489,7 +3489,7 @@ LibraryManager.library = {
     for (var i = 0; i < limit; i++) {
       {{{ makeSetValue('s', 'i', 'result[i]', 'i8') }}};
     }
-    if (limit < n) {{{ makeSetValue('s', 'i', '0', 'i8') }}};
+    if (limit < n || (n === undefined)) {{{ makeSetValue('s', 'i', '0', 'i8') }}};
     return result.length;
   },
   fprintf__deps: ['fwrite', '_formatString'],
