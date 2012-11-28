@@ -14,12 +14,14 @@ namespace emscripten {
             EM_VAL _emval_new_object();
             EM_VAL _emval_new_long(long value);
             EM_VAL _emval_new_cstring(const char* str);
+            bool _emval_has_property(EM_VAL object, const char* key);
             EM_VAL _emval_get_property(EM_VAL object, const char* key);
             EM_VAL _emval_get_property_by_long(EM_VAL object, long key);
             EM_VAL _emval_get_property_by_unsigned_long(EM_VAL object, unsigned long key);
             EM_VAL _emval_eval_global_method(EM_VAL object, const char* objectName, const char* methodName);
             void _emval_set_property(EM_VAL object, const char* key, EM_VAL value);
             void _emval_set_property_by_int(EM_VAL object, long key, EM_VAL value);
+            unsigned int _emval_get_length(EM_VAL object);
             void _emval_as(EM_VAL value, TYPEID returnType);
             EM_VAL _emval_call(
                 EM_VAL value,
@@ -78,6 +80,10 @@ namespace emscripten {
             return *this;
         }
 
+        bool exist(const char* key) const {
+            return internal::_emval_has_property(handle, key);
+        }
+
         val get(const char* key) const {
             return val(internal::_emval_get_property(handle, key));
         }
@@ -109,6 +115,10 @@ namespace emscripten {
 
         void set(long key, val v) {
             internal::_emval_set_property_by_int(handle, key, v.handle);
+        }
+
+        unsigned int length() {
+            return internal::_emval_get_length(handle);
         }
 
         template<typename ...Args>
