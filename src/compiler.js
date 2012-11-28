@@ -172,6 +172,7 @@ RUNTIME_DEBUG = LIBRARY_DEBUG || GL_DEBUG;
 // Settings sanity checks
 
 assert(!(USE_TYPED_ARRAYS === 2 && QUANTUM_SIZE !== 4), 'For USE_TYPED_ARRAYS == 2, must have normal QUANTUM_SIZE of 4');
+assert(!(ASM_JS && ALLOW_MEMORY_GROWTH), 'Cannot grow asm.js heap');
 
 // Output some info and warnings based on settings
 
