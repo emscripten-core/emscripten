@@ -312,9 +312,12 @@ for (var _export in asm) Module[_export] = asm[_export];
   post_file = temp_files.get('.post.ll').name
   open(post_file, 'w').write('\n') # no input, just processing of forwarded data
   out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, post_file, 'post', forwarded_file] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
+  post, forwarded_data = out.split('//FORWARDED_DATA:')
+  forwarded_json = json.loads(forwarded_data)
+  outfile.write(forwarded_json['Functions']['tables'])
   #if DEBUG: outfile.write('// post\n')
 
-  outfile.write(indexize(out))
+  outfile.write(indexize(post))
   if DEBUG: print >> sys.stderr, '  emscript: phase 3 took %s seconds' % (time.time() - t)
 
   outfile.close()

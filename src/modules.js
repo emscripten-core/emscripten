@@ -274,7 +274,7 @@ var Functions = {
         // Shared libraries reuse the parent's function table.
         ret += 'FUNCTION_TABLE.push.apply(FUNCTION_TABLE_' + t + ', [' + indices + ']);\n';
       } else {
-        ret += 'FUNCTION_TABLE_' + t + ' = [' + indices + '];\nModule["FUNCTION_TABLE_' + t + '"] = FUNCTION_TABLE_' + t + ';\n';
+        ret += 'var FUNCTION_TABLE_' + t + ' = [' + indices + '];\n';
       }
     }
     Functions.tables = ret;
@@ -341,7 +341,6 @@ var PassManager = {
         }
       }));
     } else if (phase == 'post') {
-printErr('forward post!');
       print('\n//FORWARDED_DATA:' + JSON.stringify({
         Functions: { tables: Functions.tables }
       }));
