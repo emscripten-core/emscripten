@@ -279,10 +279,18 @@ process(sys.argv[1])
     return ret
 
   def build_native(self, filename):
-    Popen([CLANG, '-O2', filename, '-o', filename+'.native'], stdout=PIPE).communicate()[0]
+    process = Popen([CLANG, '-O2', filename, '-o', filename+'.native'], stdout=PIPE);
+    output = process.communicate()
+    if process.returncode is not 0:
+      print >> sys.stderr, "Building native executable with command '%s' failed with a return code %d!" % (' '.join([CLANG, '-O2', filename, '-o', filename+'.native']), process.returncode)
+      print "Output: " + output[0]
 
   def run_native(self, filename, args):
-    Popen([filename+'.native'] + args, stdout=PIPE).communicate()[0]
+    process = Popen([filename+'.native'] + args, stdout=PIPE);
+    output = process.communicate()
+    if process.returncode is not 0:
+      print >> sys.stderr, "Running native executable with command '%s' failed with a return code %d!" % (' '.join([filename+'.native'] + args), process.returncode)
+      print "Output: " + output[0]
 
   def assertIdentical(self, values, y):
     if type(values) not in [list, tuple]: values = [values]
@@ -1943,7 +1951,7 @@ c5,de,15,8a
             TEST(C4__);
             TEST(C4_2);
             TEST(C__z);
-            return 1;
+            return 0;
           }
         '''
         if Settings.QUANTUM_SIZE == 1:
@@ -1958,7 +1966,7 @@ c5,de,15,8a
           int main() {
             assert(1 == true); // pass
             assert(1 == false); // fail
-            return 1;
+            return 0;
           }
         '''
         self.do_run(src, 'Assertion failed: 1 == false')
@@ -2076,7 +2084,7 @@ Exiting stack_manipulate_func, level: 0
             } catch(...) {
               printf("done!*\\n");
             }
-            return 1;
+            return 0;
           }
         '''
         self.do_run(src, '*throw...caught!infunc...done!*')
@@ -2508,7 +2516,7 @@ Exiting stack_manipulate_func, level: 0
             }
           }
           printf("sum:%d*\n", total);
-          return 1;
+          return 0;
         }
       '''
       self.do_run(src, 'sum:9780*')
@@ -3014,7 +3022,7 @@ def process(filename):
 
           FOO:
             printf("bad\\n");
-            return 1;
+            return 0;
           BAR:
             printf("good\\n");
             const void *addr = &&FOO;
@@ -4215,7 +4223,7 @@ def process(filename):
               printf("at %s:%s\n", word, phrase);
             }
           }
-          return 1;
+          return 0;
         }
       '''
 
@@ -5494,7 +5502,7 @@ def process(filename):
           test("www.cheezburger.com");
           test("fail.on.this.never.work"); // we will "work" on this - because we are just making aliases of names to ips
           test("localhost");
-          return 1;
+          return 0;
         }
       '''
       self.do_run(src, '''www.cheezburger.com : 1 : 4
@@ -5782,7 +5790,7 @@ int main(int argc, char **argv) {
           std::set<int> *fetchOriginatorNums = new std::set<int>();
           fetchOriginatorNums->insert(171);
           printf("hello world\\n");
-          return 1;
+          return 0;
         }
         ''', 'hello world');
 
@@ -7771,7 +7779,7 @@ f.close()
          
         int main() {
           printf("hello, world!\n");
-          return 1;
+          return 0;
         }
       ''')
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'test.cpp'), '-fcatch-undefined-behavior']).communicate()
@@ -10005,7 +10013,7 @@ elif 'benchmark' in str(sys.argv):
             curri++;
           }
           printf("lastprime: %d.\\n", curri-1);
-          return 1;
+          return 0;
         }
       '''
       self.do_benchmark('primes', src, [], 'lastprime: 1297001.')
@@ -10028,7 +10036,7 @@ elif 'benchmark' in str(sys.argv):
             final = final % 1000;
           }
           printf("final: %d.\\n", final);
-          return 1;
+          return 0;
         }      
       '''
       self.do_benchmark('memops', src, [], 'final: 720.')
@@ -10071,7 +10079,7 @@ elif 'benchmark' in str(sys.argv):
             unlink(buf);
           }
           printf("ok");
-          return 1;
+          return 0;
         }      
       '''
       self.do_benchmark(src, [], 'ok')
@@ -10114,7 +10122,7 @@ elif 'benchmark' in str(sys.argv):
             }
           }
           printf("sum:%d\n", total);
-          return 1;
+          return 0;
         }      
       '''
       self.do_benchmark('copy', src, [], 'sum:9928\n', emcc_args=['-s', 'QUANTUM_SIZE=4', '-s', 'USE_TYPED_ARRAYS=2'])
@@ -10141,7 +10149,7 @@ elif 'benchmark' in str(sys.argv):
             }
           }
           printf("final: %d:%d.\n", f, s);
-          return 1;
+          return 0;
         }      
       '''
       self.do_benchmark('corrections', src, [], 'final: 826:14324.', emcc_args=['-s', 'CORRECT_SIGNS=1', '-s', 'CORRECT_OVERFLOWS=1', '-s', 'CORRECT_ROUNDINGS=1'])
