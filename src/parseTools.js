@@ -358,6 +358,7 @@ function hasVarArgs(params) {
 
 function isIndexableGlobal(ident) {
   if (!(ident in Variables.globals)) return false;
+  if (ident == '_llvm_global_ctors') return false;
   var data = Variables.globals[ident];
   return !data.alias && !data.external;
 }
