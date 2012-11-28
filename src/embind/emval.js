@@ -70,15 +70,6 @@ function __emval_get_property_by_unsigned_long(handle, k) {
     return __emval_register(_emval_handle_array[handle].value[k]);
 }
 
-function __emval_get_length(handle) {
-    var val = _emval_handle_array[handle].value;
-    if (Object.prototype.toString.call(val) === "[object Array]") {
-        return val.length;
-    }
-
-    return 0;
-}
-
 function __emval_eval_global_method(handle, objectName, methodName) {
     var objectNameStr = Pointer_stringify(objectName);
     var methodNameStr = Pointer_stringify(methodName);

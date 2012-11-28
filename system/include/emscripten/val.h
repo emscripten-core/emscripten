@@ -21,7 +21,6 @@ namespace emscripten {
             EM_VAL _emval_eval_global_method(EM_VAL object, const char* objectName, const char* methodName);
             void _emval_set_property(EM_VAL object, const char* key, EM_VAL value);
             void _emval_set_property_by_int(EM_VAL object, long key, EM_VAL value);
-            unsigned int _emval_get_length(EM_VAL object);
             void _emval_as(EM_VAL value, TYPEID returnType);
             EM_VAL _emval_call(
                 EM_VAL value,
@@ -118,7 +117,7 @@ namespace emscripten {
         }
 
         unsigned int length() {
-            return internal::_emval_get_length(handle);
+            return get("length").as<unsigned int>();
         }
 
         template<typename ...Args>
