@@ -298,8 +298,8 @@ function JSify(data, functionsOnly, givenFunctions) {
           }
           return ret;
         } else {
-          if (!NAMED_GLOBALS) {
-            index = makeGlobalUse(item.ident);
+          if (!NAMED_GLOBALS && isIndexableGlobal(item.ident)) {
+            index = makeGlobalUse(item.ident); // index !== null indicates we are indexing this
             allocator = 'ALLOC_NONE';
           }
           constant = parseConst(item.value, item.type, item.ident);
@@ -324,11 +324,11 @@ function JSify(data, functionsOnly, givenFunctions) {
           constant = makePointer(constant, null, allocator, item.type, index);
           var js;
 
-        	js = (index !== null ? '' : item.ident + '=') + constant + ';'; // '\n Module.print("' + item.ident + ' :" + ' + makeGlobalUse(item.ident) + ');';
+        	js = (index !== null ? '' : item.ident + '=') + constant + ';'; // \n Module.print("' + item.ident + ' :" + ' + makeGlobalUse(item.ident) + ');';
 
           // Special case: class vtables. We make sure they are null-terminated, to allow easy runtime operations
           if (item.ident.substr(0, 5) == '__ZTV') {
-            if (!NAMED_GLOBALS) {
+            if (index !== null) {
               index = getFastValue(index, '+', Runtime.alignMemory(calcAllocatedSize(Variables.globals[item.ident].type)));
             }
             js += '\n' + makePointer('[0]', null, allocator, ['void*'], index) + ';';
@@ -1302,6 +1302,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       if (!NAMED_GLOBALS) {
         sortGlobals(globalsData.globalVariables).forEach(function(g) {
           var ident = g.ident;
+          if (!isIndexableGlobal(ident)) return;
           Variables.indexedGlobals[ident] = Variables.nextIndexedOffset;
           Variables.nextIndexedOffset += Runtime.alignMemory(calcAllocatedSize(Variables.globals[ident].type));
           if (ident.substr(0, 5) == '__ZTV') { // leave room for null-terminating the vtable

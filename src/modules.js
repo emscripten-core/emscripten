@@ -266,6 +266,7 @@ var Functions = {
 
 var LibraryManager = {
   library: null,
+  loaded: false,
 
   load: function() {
     assert(!this.library);
@@ -274,6 +275,8 @@ var LibraryManager = {
     for (var i = 0; i < libraries.length; i++) {
       eval(processMacros(preprocess(read(libraries[i]))));
     }
+
+    this.loaded = true;
   },
 
   // Given an ident, see if it is an alias for something, and so forth, returning
