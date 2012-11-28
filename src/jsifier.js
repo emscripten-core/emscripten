@@ -264,7 +264,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       } else {
         var constant = null;
         var allocator = (BUILD_AS_SHARED_LIB && !item.external) ? 'ALLOC_NORMAL' : 'ALLOC_STATIC';
-        var index = 0;
+        var index = null;
         if (item.external && BUILD_AS_SHARED_LIB) {
           // External variables in shared libraries should not be declared as
           // they would shadow similarly-named globals in the parent.
@@ -324,11 +324,14 @@ function JSify(data, functionsOnly, givenFunctions) {
           constant = makePointer(constant, null, allocator, item.type, index);
           var js;
 
-        	js = (index !== null ? '' : item.ident + '=') + constant + ';';
+        	js = (index !== null ? '' : item.ident + '=') + constant + ';'; // '\n Module.print("' + item.ident + ' :" + ' + makeGlobalUse(item.ident) + ');';
 
           // Special case: class vtables. We make sure they are null-terminated, to allow easy runtime operations
           if (item.ident.substr(0, 5) == '__ZTV') {
-            js += '\n' + makePointer('[0]', null, allocator, ['void*'], getFastValue(index, '+', Runtime.alignMemory(calcAllocatedSize(Variables.globals[item.ident].type)))) + ';';
+            if (!NAMED_GLOBALS) {
+              index = getFastValue(index, '+', Runtime.alignMemory(calcAllocatedSize(Variables.globals[item.ident].type)));
+            }
+            js += '\n' + makePointer('[0]', null, allocator, ['void*'], index) + ';';
           }
           if (EXPORT_ALL || (item.ident in EXPORTED_GLOBALS)) {
             js += '\nModule["' + item.ident + '"] = ' + item.ident + ';';
@@ -1297,10 +1300,14 @@ function JSify(data, functionsOnly, givenFunctions) {
       var globalsData = analyzer(intertyper(data.unparsedGlobalss[0].lines, true), true);
 
       if (!NAMED_GLOBALS) {
-        for (var ident in Variables.globals) {
+        sortGlobals(globalsData.globalVariables).forEach(function(g) {
+          var ident = g.ident;
           Variables.indexedGlobals[ident] = Variables.nextIndexedOffset;
           Variables.nextIndexedOffset += Runtime.alignMemory(calcAllocatedSize(Variables.globals[ident].type));
-        }
+          if (ident.substr(0, 5) == '__ZTV') { // leave room for null-terminating the vtable
+            Variables.nextIndexedOffset += Runtime.getNativeTypeSize('i32');
+          }
+        });
       }
 
       JSify(globalsData, true, Functions);
@@ -1368,7 +1375,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     substrate.addItems(data.functionStubs, 'FunctionStub');
     assert(data.functions.length == 0);
   } else {
-    substrate.addItems(values(data.globalVariables), 'GlobalVariable');
+    substrate.addItems(sortGlobals(data.globalVariables), 'GlobalVariable');
     substrate.addItems(data.aliass, 'Alias');
     substrate.addItems(data.functions, 'FunctionSplitter');
   }

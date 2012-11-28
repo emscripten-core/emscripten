@@ -368,8 +368,17 @@ function makeGlobalDef(ident) {
 }
 
 function makeGlobalUse(ident) {
-  if (!NAMED_GLOBALS && isIndexableGlobal(ident)) return getFastValue('GLOBAL_BASE', '+', Variables.indexedGlobals[ident]);
+  if (!NAMED_GLOBALS && isIndexableGlobal(ident)) return '(' + getFastValue('GLOBAL_BASE', '+', Variables.indexedGlobals[ident]) + ')';
   return ident; // TODO: add option for namespacing or offsetting to allow reducing the number of globals
+}
+
+function sortGlobals(globals) {
+  var ks = keys(globals);
+  ks.sort();
+  var inv = invertArray(ks);
+  return values(globals).sort(function(a, b) {
+    return inv[b.ident] - inv[a.ident];
+  });
 }
 
 function finalizeParam(param) {
