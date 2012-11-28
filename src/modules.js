@@ -228,7 +228,9 @@ var Functions = {
   getSignature: function(returnType, argTypes) {
     var sig = returnType == 'void' ? 'v' : (isIntImplemented(returnType) ? 'i' : 'f');
     for (var i = 0; i < argTypes.length; i++) {
-      sig += isIntImplemented(argTypes[i]) ? 'i' : 'f';
+      var type = argTypes[i];
+      if (!type) break; // varargs
+      sig += isIntImplemented(type) ? 'i' : 'f';
     }
     return sig;
   },
