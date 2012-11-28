@@ -7,6 +7,8 @@
 //
 // We'll call the on-the-wire type WireType.
 
+#include <cstdlib>
+
 namespace emscripten {
     namespace internal {
         typedef const struct _TYPEID* TYPEID;
