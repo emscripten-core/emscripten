@@ -361,7 +361,7 @@ var UNINDEXABLE_GLOBALS = set(
 );
 
 function noticePtr(ptr) {
-  if (!LibraryManager.loaded) UNINDEXABLE_GLOBALS[ptr] = 1; // we cannot index globals referred to in the library, since they are used there by name
+  if (!NAMED_GLOBALS && !LibraryManager.loaded) UNINDEXABLE_GLOBALS[ptr] = 1; // we cannot index globals referred to in the library, since they are used there by name
 }
 
 function isIndexableGlobal(ident) {
