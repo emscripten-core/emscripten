@@ -256,7 +256,7 @@ var Functions = {
     var tables = {};
     for (var ident in this.indexedFunctions) {
       var sig = Functions.implementedFunctions[ident] || Functions.libraryFunctions[ident];
-      assert(sig);
+      assert(sig, ident);
       if (!tables[sig]) tables[sig] = zeros(this.nextIndex); // TODO: make them compact
       tables[sig][this.indexedFunctions[ident]] = ident;
     }
@@ -339,7 +339,7 @@ var PassManager = {
           blockAddresses: Functions.blockAddresses,
           indexedFunctions: Functions.indexedFunctions,
           implementedFunctions: ASM_JS ? Functions.implementedFunctions : [],
-          libraryFunctions: ASM_JS ? Functions.libraryFunctions : {},
+          libraryFunctions: Functions.libraryFunctions,
         }
       }));
     } else if (phase == 'post') {
