@@ -3712,6 +3712,7 @@ The current type of b is: 9
 
     def test_runtimelink(self):
       if Building.LLVM_OPTS: return self.skip('LLVM opts will optimize printf into puts in the parent, and the child will still look for puts')
+      if Settings.NAMED_GLOBALS == 0: return self.skip('dlopen cannot work without named globals, TODO')
 
       main, supp = self.setup_runtimelink_test()
 
@@ -3871,6 +3872,7 @@ def process(filename):
 
     def test_dlfcn_data_and_fptr(self):
       if Building.LLVM_OPTS: return self.skip('LLVM opts will optimize out parent_func')
+      if Settings.NAMED_GLOBALS == 0: return self.skip('dlopen cannot work without named globals, TODO')
 
       Settings.LINKABLE = 1
 
@@ -3975,6 +3977,7 @@ def process(filename):
       Settings.LINKABLE = 1
 
       if Building.LLVM_OPTS == 2: return self.skip('LLVM LTO will optimize away stuff we expect from the shared library')
+      if Settings.NAMED_GLOBALS == 0: return self.skip('dlopen cannot work without named globals, TODO')
 
       lib_src = r'''
         #include <stdio.h>
