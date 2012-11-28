@@ -53,6 +53,10 @@ function __emval_new_cstring(str) {
     return __emval_register(Pointer_stringify(str));
 }
 
+function __emval_has_property(handle, k) {
+    return _emval_handle_array[handle].value.hasOwnProperty(k);
+}
+
 function __emval_get_property(handle, k) {
     k = Pointer_stringify(k);
     return __emval_register(_emval_handle_array[handle].value[k]);
@@ -64,6 +68,15 @@ function __emval_get_property_by_long(handle, k) {
 
 function __emval_get_property_by_unsigned_long(handle, k) {
     return __emval_register(_emval_handle_array[handle].value[k]);
+}
+
+function __emval_get_length(handle) {
+    var val = _emval_handle_array[handle].value;
+    if (Object.prototype.toString.call(val) === "[object Array]") {
+        return val.length;
+    }
+
+    return 0;
 }
 
 function __emval_eval_global_method(handle, objectName, methodName) {
