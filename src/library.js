@@ -3616,7 +3616,7 @@ LibraryManager.library = {
   },
 
   bsearch: function(key, base, num, size, compar) {
-    var cmp = FUNCTION_TABLE[compar];
+    var cmp = {{{ Functions.getTable('iii') }}}[compar];
     var left = 0;
     var right = num;
     var mid, test, addr;
@@ -3858,7 +3858,7 @@ LibraryManager.library = {
     if (num == 0 || size == 0) return;
     // forward calls to the JavaScript sort method
     // first, sort the items logically
-    comparator = FUNCTION_TABLE[comparator];
+    comparator = {{{ Functions.getTable('iii') }}}[comparator];
     var keys = [];
     for (var i = 0; i < num; i++) keys.push(i);
     keys.sort(function(a, b) {
@@ -4851,7 +4851,7 @@ LibraryManager.library = {
     var ptr = {{{ makeGetValue('_llvm_eh_exception.buf', '0', 'void*') }}};
     var destructor = {{{ makeGetValue('_llvm_eh_exception.buf', 2 * QUANTUM_SIZE, 'void*') }}};
     if (destructor) {
-      FUNCTION_TABLE[destructor](ptr);
+      {{{ Functions.getTable('i') }}}[destructor](ptr);
       {{{ makeSetValue('_llvm_eh_exception.buf', 2 * QUANTUM_SIZE, '0', 'i32') }}}
     }
     // Free ptr if it isn't null.
@@ -5510,7 +5510,7 @@ LibraryManager.library = {
     }
 
     try {
-      var lib_module = eval(lib_data)(FUNCTION_TABLE.length);
+      var lib_module = eval(lib_data)({{{ Functions.getTable('x') }}}.length);
     } catch (e) {
 #if ASSERTIONS
       Module.printErr('Error in loading dynamic library: ' + e);
@@ -5583,9 +5583,9 @@ LibraryManager.library = {
         } else {
           var result = lib.module[symbol];
           if (typeof result == 'function') {
-            FUNCTION_TABLE.push(result);
-            FUNCTION_TABLE.push(0);
-            result = FUNCTION_TABLE.length - 2;
+            {{{ Functions.getTable('x') }}}.push(result);
+            {{{ Functions.getTable('x') }}}.push(0);
+            result = {{{ Functions.getTable('x') }}}.length - 2;
             lib.cached_functions = result;
           }
           return result;
@@ -6486,7 +6486,7 @@ LibraryManager.library = {
   pthread_once: function(ptr, func) {
     if (!_pthread_once.seen) _pthread_once.seen = {};
     if (ptr in _pthread_once.seen) return;
-    FUNCTION_TABLE[func]();
+    {{{ Functions.getTable('v') }}}[func]();
     _pthread_once.seen[ptr] = 1;
   },
 
@@ -6504,7 +6504,7 @@ LibraryManager.library = {
   },
 
   pthread_cleanup_push: function(routine, arg) {
-    __ATEXIT__.push({ func: function() { FUNCTION_TABLE[routine](arg) } })
+    __ATEXIT__.push({ func: function() { {{{ Functions.getTable('vi') }}}[routine](arg) } })
     _pthread_cleanup_push.level = __ATEXIT__.length;
   },
 

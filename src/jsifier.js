@@ -1228,7 +1228,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
 
     if (byPointer) {
-      ident = 'FUNCTION_TABLE_' + Functions.getSignature(type, argsTypes) + '[' + ident + ']';
+      ident = Functions.getTable(Functions.getSignature(type, argsTypes)) + '[' + ident + ']';
     }
 
     return ident + '(' + args.join(', ') + ')';
@@ -1358,7 +1358,7 @@ function JSify(data, functionsOnly, givenFunctions) {
 
     // Load runtime-linked libraries
     RUNTIME_LINKED_LIBS.forEach(function(lib) {
-      print('eval(Module["read"]("' + lib + '"))(FUNCTION_TABLE.length, this);');
+      print('eval(Module["read"]("' + lib + '"))(' + Functions.getTable('x') + '.length, this);');
     });
 
     print(postParts[1]);

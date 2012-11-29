@@ -251,11 +251,20 @@ var Functions = {
     }
   },
 
+  getTable: function(sig) {
+    return ASM_JS ? 'FUNCTION_TABLE_' + sig : 'FUNCTION_TABLE';
+  },
+
   // Generate code for function indexing
   generateIndexing: function() {
     var tables = {};
+    if (ASM_JS) {
+      ['x', 'ii'].forEach(function(sig) { // add some default signatures that are used in the library
+        tables[sig] = zeros(this.nextIndex); // TODO: make them compact
+      });
+    }
     for (var ident in this.indexedFunctions) {
-      var sig = Functions.implementedFunctions[ident] || Functions.libraryFunctions[ident];
+      var sig = ASM_JS ? Functions.implementedFunctions[ident] || Functions.libraryFunctions[ident] : 'x';
       assert(sig, ident);
       if (!tables[sig]) tables[sig] = zeros(this.nextIndex); // TODO: make them compact
       tables[sig][this.indexedFunctions[ident]] = ident;
@@ -274,9 +283,9 @@ var Functions = {
       var indices = table.toString().replace('"', '');
       if (BUILD_AS_SHARED_LIB) {
         // Shared libraries reuse the parent's function table.
-        ret += 'FUNCTION_TABLE.push.apply(FUNCTION_TABLE_' + t + ', [' + indices + ']);\n';
+        ret += Functions.getTable(t) + '.push.apply(' + Functions.getTable(t) + ', [' + indices + ']);\n';
       } else {
-        ret += 'var FUNCTION_TABLE_' + t + ' = [' + indices + '];\n';
+        ret += 'var ' + Functions.getTable(t) + ' = [' + indices + '];\n';
       }
     }
     Functions.tables = ret;

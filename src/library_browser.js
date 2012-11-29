@@ -377,10 +377,10 @@ mergeInto(LibraryManager.library, {
       _file.substr(index +1),
       _url, true, true,
       function() {
-        if (onload) FUNCTION_TABLE[onload](file);
+        if (onload) {{{ Functions.getTable('vi') }}}[onload](file);
       },
       function() {
-        if (onerror) FUNCTION_TABLE[onerror](file);
+        if (onerror) {{{ Functions.getTable('vi') }}}[onerror](file);
       }
     );
   },
@@ -395,10 +395,10 @@ mergeInto(LibraryManager.library, {
       _file.substr(index +1),
       new Uint8Array(data.object.contents), true, true,
       function() {
-        if (onload) FUNCTION_TABLE[onload](file);
+        if (onload) {{{ Functions.getTable('vi') }}}[onload](file);
       },
       function() {
-        if (onerror) FUNCTION_TABLE[onerror](file);
+        if (onerror) {{{ Functions.getTable('vi') }}}[onerror](file);
       },
       true // don'tCreateFile - it's already there
     );
@@ -417,10 +417,10 @@ mergeInto(LibraryManager.library, {
       {{{ makeHEAPView('U8', 'data', 'data + size') }}},
       true, true,
       function() {
-        if (onload) FUNCTION_TABLE[onload](arg, cname);
+        if (onload) {{{ Functions.getTable('vi') }}}[onload](arg, cname);
       },
       function() {
-        if (onerror) FUNCTION_TABLE[onerror](arg);
+        if (onerror) {{{ Functions.getTable('vi') }}}[onerror](arg);
       },
       true // don'tCreateFile - it's already there
     );
@@ -440,7 +440,7 @@ mergeInto(LibraryManager.library, {
   emscripten_set_main_loop: function(func, fps, simulateInfiniteLoop) {
     Module['noExitRuntime'] = true;
 
-    var jsFunc = FUNCTION_TABLE[func];
+    var jsFunc = {{{ Functions.getTable('v') }}}[func];
     Browser.mainLoop.runner = function() {
       if (Browser.mainLoop.queue.length > 0) {
         var start = Date.now();
@@ -517,12 +517,12 @@ mergeInto(LibraryManager.library, {
   },
 
   _emscripten_push_main_loop_blocker: function(func, arg, name) {
-    Browser.mainLoop.queue.push({ func: FUNCTION_TABLE[func], arg: arg, name: Pointer_stringify(name), counted: true });
+    Browser.mainLoop.queue.push({ func: {{{ Functions.getTable('vi') }}}[func], arg: arg, name: Pointer_stringify(name), counted: true });
     Browser.mainLoop.updateStatus();
   },
 
   _emscripten_push_uncounted_main_loop_blocker: function(func, arg, name) {
-    Browser.mainLoop.queue.push({ func: FUNCTION_TABLE[func], arg: arg, name: Pointer_stringify(name), counted: false });
+    Browser.mainLoop.queue.push({ func: {{{ Functions.getTable('vi') }}}[func], arg: arg, name: Pointer_stringify(name), counted: false });
     Browser.mainLoop.updateStatus();
   },
 

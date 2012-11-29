@@ -732,7 +732,7 @@ function callRuntimeCallbacks(callbacks) {
     var callback = callbacks.shift();
     var func = callback.func;
     if (typeof func === 'number') {
-      func = FUNCTION_TABLE_v[func]; // void()
+      func = {{{ Functions.getTable('v') }}}[func]; // void()
     }
     func(callback.arg === undefined ? null : callback.arg);
   }

@@ -311,10 +311,6 @@ var Runtime = {
     return ret;
   },
 
-  getFunctionTable: function(sig) { // return value, param types e.g. "vid" void (int, double)
-    return Module['FUNCTION_TABLE_' + sig];
-  },
-
   addFunction: function(func, sig) {
     assert(sig);
     var table = Runtime.getFunctionTable(sig);
