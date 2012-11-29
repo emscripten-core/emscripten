@@ -1166,7 +1166,12 @@ try:
       if DEBUG: save_intermediate('pretty')
 
     def get_eliminate():
-      return 'eliminate' if not shared.Settings.ALLOW_MEMORY_GROWTH else 'eliminateMemSafe'
+      if shared.Settings.ASM_JS:
+        return 'eliminateAsm'
+      elif shared.Settings.ALLOW_MEMORY_GROWTH:
+        return 'eliminateMemSafe'
+      else:
+        return 'eliminate'
 
     js_optimizer_queue += [get_eliminate()]
 

@@ -1408,7 +1408,7 @@ var NODES_WITHOUT_ELIMINATION_SIDE_EFFECTS = set('name', 'num', 'string', 'binar
 var IGNORABLE_ELIMINATOR_SCAN_NODES = set('num', 'toplevel', 'string', 'break', 'continue', 'dot'); // dot can only be STRING_TABLE.*
 var ABORTING_ELIMINATOR_SCAN_NODES = set('new', 'object', 'function', 'defun', 'switch', 'for', 'while', 'array', 'throw'); // we could handle some of these, TODO, but nontrivial (e.g. for while, the condition is hit multiple times after the body)
 
-function eliminate(ast, memSafe) {
+function eliminate(ast, memSafe, asm) {
   // Find variables that have a single use, and if they can be eliminated, do so
   traverseGeneratedFunctions(ast, function(func, type) {
     //printErr('eliminate in ' + func[1]);
@@ -1426,6 +1426,7 @@ function eliminate(ast, memSafe) {
         locals[func[2][i]] = true;
       }
     }
+    var defaultDefs = asm ? -1 : 0; // in asm.js we have an extra formal def which we can ignore
     // examine body and note locals
     traverse(func, function(node, type) {
       if (type === 'var') {
@@ -1435,7 +1436,7 @@ function eliminate(ast, memSafe) {
           var name = node1i[0];
           var value = node1i[1];
           if (value) {
-            if (!definitions[name]) definitions[name] = 0;
+            if (!(name in definitions)) definitions[name] = defaultDefs;
             definitions[name]++;
             if (!values[name]) values[name] = value;
           }
@@ -1450,7 +1451,7 @@ function eliminate(ast, memSafe) {
         var target = node[2];
         if (target[0] == 'name') {
           var name = target[1];
-          if (!definitions[name]) definitions[name] = 0;
+          if (!(name in definitions)) definitions[name] = defaultDefs;
           definitions[name]++;
           if (!uses[name]) uses[name] = 0;
           if (!values[name]) values[name] = node[3];
@@ -1872,6 +1873,10 @@ function eliminateMemSafe(ast) {
   eliminate(ast, true);
 }
 
+function eliminateAsm(ast) {
+  eliminate(ast, false, true);
+}
+
 // Passes table
 
 var compress = false, printMetadata = true;
@@ -1891,6 +1896,7 @@ var passes = {
   registerize: registerize,
   eliminate: eliminate,
   eliminateMemSafe: eliminateMemSafe,
+  eliminateAsm: eliminateAsm,
   compress: function() { compress = true; },
   noPrintMetadata: function() { printMetadata = false; }
 };
