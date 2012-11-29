@@ -541,6 +541,13 @@ function JSify(data, functionsOnly, givenFunctions) {
       
       func.JS += 'function ' + func.ident + '(' + paramIdents.join(', ') + ') {\n';
 
+      if (ASM_JS) {
+        // spell out argument types
+        func.params.forEach(function(param) {
+          func.JS += '  ' + param.ident + ' = ' + asmCoercion(param.ident, param.type) + ';\n';
+        });
+      }
+
       if (PROFILE) {
         func.JS += '  if (PROFILING) { '
                 +      'var __parentProfilingNode__ = PROFILING_NODE; PROFILING_NODE = PROFILING_NODE.children["' + func.ident + '"]; '

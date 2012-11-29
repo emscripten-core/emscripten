@@ -930,6 +930,7 @@ if (ASM_JS) {
   var decMemoryMask = (TOTAL_MEMORY-1).toString();
   var memoryMask = hexMemoryMask.length <= decMemoryMask.length ? hexMemoryMask : decMemoryMask;
 }
+
 function getHeapOffset(offset, type) {
   if (USE_TYPED_ARRAYS !== 2) {
     return offset;
@@ -945,6 +946,14 @@ function getHeapOffset(offset, type) {
     } else {
       return offset;
     }
+  }
+}
+
+function asmCoercion(value, type) {
+  if (type in Runtime.INT_TYPES) {
+    return value + '|0';
+  } else {
+    return '+' + value;
   }
 }
 
@@ -1005,11 +1014,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
   } else {
     var ret = makeGetSlabs(ptr, type, false, unsigned)[0] + '[' + getHeapOffset(offset, type) + ']';
     if (ASM_JS && phase == 'funcs') {
-      if (type in Runtime.INT_TYPES) {
-        ret = ret + '|0';
-      } else {
-        ret = '+' + ret;
-      }
+      ret = asmCoercion(ret, type);
     }
     return ret;
   }
