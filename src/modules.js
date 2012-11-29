@@ -275,7 +275,9 @@ var Functions = {
       tables[sig][this.indexedFunctions[ident]] = ident;
     }
     // Resolve multi-level aliases all the way down
+    var generated = false;
     for (var t in tables) {
+      generated = true;
       var table = tables[t];
       for (var i = 0; i < table.length; i++) {
         while (1) {
@@ -291,6 +293,9 @@ var Functions = {
       } else {
         tables[t] = 'var ' + Functions.getTable(t) + ' = [' + indices + '];\n';
       }
+    }
+    if (!generated && !ASM_JS) {
+      tables['x'] = 'var FUNCTION_TABLE = [0, 0];\n'; // default empty table
     }
     Functions.tables = tables;
   }
