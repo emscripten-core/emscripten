@@ -13,7 +13,7 @@ var RuntimeGenerator = {
     if (init) {
       ret += sep + '_memset(' + type + 'TOP, 0, ' + size + ')';
     }
-    ret += sep + type + 'TOP += ' + size;
+    ret += sep + type + 'TOP = (' + type + 'TOP + ' + size + ')|0';
     if ({{{ QUANTUM_SIZE }}} > 1 && !ignoreAlign) {
       ret += sep + RuntimeGenerator.alignMemory(type + 'TOP', {{{ QUANTUM_SIZE }}});
     }
@@ -23,11 +23,11 @@ var RuntimeGenerator = {
   // An allocation that lives as long as the current function call
   stackAlloc: function(size, sep) {
     sep = sep || ';';
-    if (USE_TYPED_ARRAYS === 2) 'STACKTOP += STACKTOP % ' + ({{{ QUANTUM_SIZE }}} - (isNumber(size) ? Math.min(size, {{{ QUANTUM_SIZE }}}) : {{{ QUANTUM_SIZE }}})) + sep;
+    if (USE_TYPED_ARRAYS === 2) 'STACKTOP = (STACKTOP + STACKTOP|0 % ' + ({{{ QUANTUM_SIZE }}} - (isNumber(size) ? Math.min(size, {{{ QUANTUM_SIZE }}}) : {{{ QUANTUM_SIZE }}})) + ')' + sep;
     //                                                               The stack is always QUANTUM SIZE aligned, so we may not need to force alignment here
     var ret = RuntimeGenerator.alloc(size, 'STACK', INIT_STACK, sep, USE_TYPED_ARRAYS != 2 || (isNumber(size) && parseInt(size) % {{{ QUANTUM_SIZE }}} == 0));
     if (ASSERTIONS) {
-      ret += sep + 'assert(STACKTOP < STACK_ROOT + STACK_MAX)';
+      ret += sep + 'assert(STACKTOP < (STACK_ROOT + STACK_MAX)|0)';
     }
     return ret;
   },
@@ -35,11 +35,11 @@ var RuntimeGenerator = {
   stackEnter: function(initial, force) {
     if (initial === 0 && SKIP_STACK_IN_SMALL && !force) return '';
     var ret = 'var __stackBase__  = STACKTOP';
-    if (initial > 0) ret += '; STACKTOP += ' + initial;
+    if (initial > 0) ret += '; STACKTOP = (STACKTOP + ' + initial + ')|0';
     if (USE_TYPED_ARRAYS == 2) {
       assert(initial % QUANTUM_SIZE == 0);
       if (ASSERTIONS) {
-        ret += '; assert(STACKTOP % {{{ QUANTUM_SIZE }}} == 0)';
+        ret += '; assert(STACKTOP|0 % {{{ QUANTUM_SIZE }}} == 0)';
       }
     }
     if (ASSERTIONS) {
