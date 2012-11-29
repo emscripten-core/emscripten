@@ -551,7 +551,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         var vars = values(func.variables);
         if (vars.length) {
           func.JS += '  var ' + vars.filter(function(v) { return v.origin != 'funcparam' }).map(function(v) {
-            return v.ident + ' = ' + asmInitializer(v.type);
+            return v.ident + ' = ' + asmInitializer(v.type); //, func.variables[v.ident].impl);
           }).join(', ') + ';\n';
         }
       }
@@ -772,8 +772,9 @@ function JSify(data, functionsOnly, givenFunctions) {
     var valueJS = item.JS;
     item.JS = '';
     if (CLOSURE_ANNOTATIONS) item.JS += '/** @type {number} */ ';
-    item.JS += ((item.overrideSSA || ASM_JS) ? '' : 'var ') + toNiceIdent(item.assignTo);
-
+    if (!ASM_JS || item.intertype != 'alloca' || item.funcData.variables[item.assignTo].impl == VAR_EMULATED) { // asm only needs non-allocas
+      item.JS += ((ASM_JS || item.overrideSSA) ? '' : 'var ') + toNiceIdent(item.assignTo);
+    }
     var value = parseNumerical(valueJS);
     var impl = getVarImpl(item.funcData, item.assignTo);
     switch (impl) {

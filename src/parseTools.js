@@ -949,8 +949,8 @@ function getHeapOffset(offset, type) {
   }
 }
 
-function asmInitializer(type) {
-  if (type in Runtime.INT_TYPES) {
+function asmInitializer(type, impl) {
+  if (isIntImplemented(type)) {// || (impl && impl == 'VAR_EMULATED')) {
     return '0';
   } else {
     return '+0';
@@ -958,7 +958,7 @@ function asmInitializer(type) {
 }
 
 function asmCoercion(value, type) {
-  if (type in Runtime.INT_TYPES) {
+  if (isIntImplemented(type)) {
     return value + '|0';
   } else {
     return '+' + value;
