@@ -4097,14 +4097,14 @@ LibraryManager.library = {
   memcpy__inline: function (dest, src, num, align) {
     var ret = '';
 #if ASSERTIONS
-    ret += "assert(" + num + " % 1 === 0, 'memcpy given ' + " + num + " + ' bytes to copy. Problem with quantum=1 corrections perhaps?');";
+    ret += "assert(" + num + " % 1 === 0);"; //, 'memcpy given ' + " + num + " + ' bytes to copy. Problem with quantum=1 corrections perhaps?');";
 #endif
     ret += makeCopyValues(dest, src, num, 'null', null, align);
     return ret;
   },
   memcpy: function (dest, src, num, align) {
 #if ASSERTIONS
-    assert(num % 1 === 0, 'memcpy given ' + num + ' bytes to copy. Problem with quantum=1 corrections perhaps?');
+    assert(num % 1 === 0); //, 'memcpy given ' + num + ' bytes to copy. Problem with quantum=1 corrections perhaps?');
 #endif
 #if USE_TYPED_ARRAYS == 2
     if (num >= {{{ SEEK_OPTIMAL_ALIGN_MIN }}} && src % 2 == dest % 2) {

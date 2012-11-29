@@ -27,7 +27,7 @@ var RuntimeGenerator = {
     //                                                               The stack is always QUANTUM SIZE aligned, so we may not need to force alignment here
     var ret = RuntimeGenerator.alloc(size, 'STACK', INIT_STACK, sep, USE_TYPED_ARRAYS != 2 || (isNumber(size) && parseInt(size) % {{{ QUANTUM_SIZE }}} == 0));
     if (ASSERTIONS) {
-      ret += sep + 'assert(STACKTOP < STACK_ROOT + STACK_MAX, "Ran out of stack")';
+      ret += sep + 'assert(STACKTOP < STACK_ROOT + STACK_MAX)';
     }
     return ret;
   },
@@ -39,11 +39,11 @@ var RuntimeGenerator = {
     if (USE_TYPED_ARRAYS == 2) {
       assert(initial % QUANTUM_SIZE == 0);
       if (ASSERTIONS) {
-        ret += '; assert(STACKTOP % {{{ QUANTUM_SIZE }}} == 0, "Stack is unaligned")';
+        ret += '; assert(STACKTOP % {{{ QUANTUM_SIZE }}} == 0)';
       }
     }
     if (ASSERTIONS) {
-      ret += '; assert(STACKTOP < STACK_MAX, "Ran out of stack")';
+      ret += '; assert(STACKTOP < STACK_MAX)';
     }
     if (INIT_STACK) {
       ret += '; _memset(__stackBase__, 0, ' + initial + ')';
