@@ -3762,6 +3762,8 @@ The current type of b is: 9
       self.do_run(main, 'supp: 54,2\nmain: 56\nsupp see: 543\nmain see: 76\nok.')
 
     def test_dlfcn_basic(self):
+      if Settings.ASM_JS: return self.skip('TODO: dlopen in asm')
+
       Settings.LINKABLE = 1
 
       lib_src = '''
@@ -3813,6 +3815,8 @@ def process(filename):
                   post_build=add_pre_run_and_checks)
 
     def test_dlfcn_qsort(self):
+      if Settings.ASM_JS: return self.skip('TODO: dlopen in asm')
+
       Settings.LINKABLE = 1
 
       if Settings.USE_TYPED_ARRAYS == 2:
@@ -3905,6 +3909,7 @@ def process(filename):
                   post_build=add_pre_run_and_checks)
 
     def test_dlfcn_data_and_fptr(self):
+      if Settings.ASM_JS: return self.skip('TODO: dlopen in asm')
       if Building.LLVM_OPTS: return self.skip('LLVM opts will optimize out parent_func')
       if Settings.NAMED_GLOBALS == 0: return self.skip('dlopen cannot work without named globals, TODO')
 
@@ -4008,6 +4013,8 @@ def process(filename):
                    post_build=add_pre_run_and_checks)
 
     def test_dlfcn_alias(self):
+      if Settings.ASM_JS: return self.skip('TODO: dlopen in asm')
+
       Settings.LINKABLE = 1
 
       if Building.LLVM_OPTS == 2: return self.skip('LLVM LTO will optimize away stuff we expect from the shared library')
@@ -4063,6 +4070,8 @@ def process(filename):
       Settings.INCLUDE_FULL_LIBRARY = 0
 
     def test_dlfcn_varargs(self):
+      if Settings.ASM_JS: return self.skip('TODO: dlopen in asm')
+
       Settings.LINKABLE = 1
 
       if Building.LLVM_OPTS == 2: return self.skip('LLVM LTO will optimize things that prevent shared objects from working')
