@@ -298,7 +298,10 @@ def emscript(infile, settings, outfile, libraries=[]):
       exports.append("'%s': %s" % (export, export))
     exports = '{ ' + ', '.join(exports) + ' }'
     # calculate globals
-    del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
+    try:
+      del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
+    except:
+      pass
     global_vars = forwarded_json['Variables']['globals'].keys()
     global_funcs = ['_' + x for x in forwarded_json['Functions']['libraryFunctions'].keys()]
     asm_globals = ''.join(['  var ' + g + '=env.' + g + ';\n' for g in basics + global_funcs + global_vars])
