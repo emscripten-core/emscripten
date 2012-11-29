@@ -270,6 +270,8 @@ var asm = (function(env, buffer) {
   var HEAPF64 = new env.Float64Array(buffer);
 ''' + asm_globals + '\n' + funcs_js.replace('\n', '\n  ') + '''
 
+  {{{ FUNCTION_TABLES }}}
+
   return %s;
 })(%s, buffer);
 %s;
@@ -300,8 +302,6 @@ var asm = (function(env, buffer) {
   pre = None
 
   #if DEBUG: outfile.write('// funcs\n')
-  outfile.write(blockaddrsize(indexize(funcs_js)))
-  funcs_js = None
 
   # forward
   forwarded_data = json.dumps(forwarded_json)
@@ -316,8 +316,13 @@ var asm = (function(env, buffer) {
   out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, post_file, 'post', forwarded_file] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
   post, forwarded_data = out.split('//FORWARDED_DATA:')
   forwarded_json = json.loads(forwarded_data)
-  outfile.write(forwarded_json['Functions']['tables'])
-  #if DEBUG: outfile.write('// post\n')
+
+  if settings.get('ASM_JS'):
+    funcs_js = funcs_js.replace('{{{ FUNCTION_TABLES }}}', forwarded_json['Functions']['tables'].replace('\n', '\n  '))
+  else:
+    outfile.write(forwarded_json['Functions']['tables'])
+  outfile.write(blockaddrsize(indexize(funcs_js)))
+  funcs_js = None
 
   outfile.write(indexize(post))
   if DEBUG: print >> sys.stderr, '  emscript: phase 3 took %s seconds' % (time.time() - t)

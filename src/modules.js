@@ -260,7 +260,7 @@ var Functions = {
   generateIndexing: function() {
     var tables = {};
     if (ASM_JS) {
-      ['x', 'ii'].forEach(function(sig) { // add some default signatures that are used in the library
+      ['ii'].forEach(function(sig) { // add some default signatures that are used in the library
         tables[sig] = zeros(this.nextIndex); // TODO: make them compact
       });
     }
