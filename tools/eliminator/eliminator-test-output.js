@@ -6132,4 +6132,12 @@ function _mallocNoU($bytes) {
   return $mem_0;
   return null;
 }
+function asm(x, y) {
+  x = +x;
+  y = y | 0;
+  var a = 0, b = +0;
+  a = cheez(y + ~~x | 0) | 0;
+  b = a * a;
+  fleefl(b | 0, a | 0);
+}
 
