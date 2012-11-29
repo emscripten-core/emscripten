@@ -254,6 +254,8 @@ def emscript(infile, settings, outfile, libraries=[]):
     # sent data
     basics = ['buffer', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
     sending = '{ ' + ', '.join([s + ': ' + s for s in basics + global_vars + global_funcs]) + ' }'
+    # received
+    receiving = ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm.' + s for s in exported_implemented_functions])
     # finalize
     funcs_js = '''
 var asm = (function(env, buffer) {
@@ -270,8 +272,8 @@ var asm = (function(env, buffer) {
 
   return %s;
 })(%s, buffer);
-for (var _export in asm) Module[_export] = asm[_export];
-''' % (exports, sending)
+%s;
+''' % (exports, sending, receiving)
 
   outputs = None
   if DEBUG: print >> sys.stderr, '  emscript: phase 2b took %s seconds' % (time.time() - t)
