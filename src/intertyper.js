@@ -742,6 +742,7 @@ function intertyper(data, sidePass, baseLineNums) {
       }
       var last = getTokenIndexByText(item.tokens, ';');
       item.params = splitTokenList(item.tokens.slice(1, last)).map(parseLLVMSegment);
+      item.type = item.params[1].type;
       this.forwardItem(item, 'Reintegrator');
     }
   });
