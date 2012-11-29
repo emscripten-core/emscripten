@@ -925,6 +925,11 @@ function checkSafeHeap() {
   return SAFE_HEAP === 1 || checkSpecificSafeHeap();
 }
 
+if (ASM_JS) {
+  var hexMemoryMask = '0x' + (TOTAL_MEMORY-1).toString(16);
+  var decMemoryMask = (TOTAL_MEMORY-1).toString();
+  var memoryMask = hexMemoryMask.length <= decMemoryMask.length ? hexMemoryMask : decMemoryMask;
+}
 function getHeapOffset(offset, type) {
   if (USE_TYPED_ARRAYS !== 2) {
     return offset;
@@ -933,10 +938,12 @@ function getHeapOffset(offset, type) {
       type = 'i32'; // XXX we emulate 64-bit values as 32
     }
     var shifts = Math.log(Runtime.getNativeTypeSize(type))/Math.LN2;
+    offset = '(' + offset + ')';
+    if (ASM_JS) offset = '(' + offset + '&' + memoryMask + ')';
     if (shifts != 0) {
-      return '((' + offset + ')>>' + (shifts) + ')';
+      return '(' + offset + '>>' + shifts + ')';
     } else {
-      return '(' + offset + ')';
+      return offset;
     }
   }
 }
