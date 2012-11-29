@@ -959,9 +959,9 @@ function asmInitializer(type, impl) {
 
 function asmCoercion(value, type) {
   if (isIntImplemented(type)) {
-    return value + '|0';
+    return '((' + value + ')|0)';
   } else {
-    return '+' + value;
+    return '(+(' + value + '))';
   }
 }
 
