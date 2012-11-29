@@ -43,7 +43,7 @@ var TOTAL_STACK = 5*1024*1024; // The total stack size. There is no way to enlar
                                // value must be large enough for the program's requirements. If
                                // assertions are on, we will assert on not exceeding this, otherwise,
                                // it will fail silently.
-var TOTAL_MEMORY = 10*1024*1024; // The total amount of memory to use. Using more memory than this will
+var TOTAL_MEMORY = 16777216;     // The total amount of memory to use. Using more memory than this will
                                  // cause us to expand the heap, which can be costly with typed arrays:
                                  // we need to copy the old heap into a new one in that case.
 var FAST_MEMORY = 2*1024*1024; // The amount of memory to initialize to 0. This ensures it will be
