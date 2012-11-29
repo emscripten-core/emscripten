@@ -128,10 +128,12 @@ def emscript(infile, settings, outfile, libraries=[]):
 
   # Save settings to a file to work around v8 issue 1579
   settings_file = temp_files.get('.txt').name
-  settings_text = json.dumps(settings)
-  s = open(settings_file, 'w')
-  s.write(settings_text)
-  s.close()
+  def save_settings():
+    settings_text = json.dumps(settings)
+    s = open(settings_file, 'w')
+    s.write(settings_text)
+    s.close()
+  save_settings()
 
   # Phase 1 - pre
   if DEBUG: t = time.time()
@@ -169,6 +171,9 @@ def emscript(infile, settings, outfile, libraries=[]):
   if DEBUG: t = time.time()
   forwarded_json = json.loads(forwarded_data)
   indexed_functions = set()
+  if settings.get('ASM_JS'):
+    settings['EXPORTED_FUNCTIONS'] = forwarded_json['EXPORTED_FUNCTIONS']
+    save_settings()
 
   chunks = shared.JCache.chunkify(funcs, chunk_size, 'emscript_files' if jcache else None)
 
@@ -293,6 +298,7 @@ def emscript(infile, settings, outfile, libraries=[]):
       exports.append("'%s': %s" % (export, export))
     exports = '{ ' + ', '.join(exports) + ' }'
     # calculate globals
+    del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
     global_vars = forwarded_json['Variables']['globals'].keys()
     global_funcs = ['_' + x for x in forwarded_json['Functions']['libraryFunctions'].keys()]
     asm_globals = ''.join(['  var ' + g + '=env.' + g + ';\n' for g in basics + global_funcs + global_vars])

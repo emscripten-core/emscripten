@@ -348,7 +348,8 @@ var PassManager = {
       print('\n//FORWARDED_DATA:' + JSON.stringify({
         Types: Types,
         Variables: Variables,
-        Functions: Functions
+        Functions: Functions,
+        EXPORTED_FUNCTIONS: EXPORTED_FUNCTIONS // needed for asm.js global constructors (ctors)
       }));
     } else if (phase == 'funcs') {
       print('\n//FORWARDED_DATA:' + JSON.stringify({

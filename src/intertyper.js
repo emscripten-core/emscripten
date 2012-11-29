@@ -521,7 +521,12 @@ function intertyper(data, sidePass, baseLineNums) {
           if (item.tokens[3].item) {
             var subTokens = item.tokens[3].item.tokens;
             splitTokenList(subTokens).forEach(function(segment) {
-              ret.ctors.push(segment[1].tokens.slice(-1)[0].text);
+              var ctor = toNiceIdent(segment[1].tokens.slice(-1)[0].text);
+              ret.ctors.push(ctor);
+              if (ASM_JS) { // must export the global constructors from asm.js module, so mark as implemented and exported
+                Functions.implementedFunctions[ctor] = 'v';
+                EXPORTED_FUNCTIONS[ctor] = 1;
+              }
             });
           }
         } else if (!external) {

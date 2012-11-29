@@ -260,7 +260,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       var ret = [item];
       if (item.ident == '_llvm_global_ctors') {
         item.JS = '\n__ATINIT__ = __ATINIT__.concat([\n' +
-                    item.ctors.map(function(ctor) { return '  { func: ' + toNiceIdent(ctor) + ' }' }).join(',\n') +
+                    item.ctors.map(function(ctor) { return '  { func: function() { ' + ctor + '() } }' }).join(',\n') +
                   '\n]);\n';
         return ret;
       } else {
