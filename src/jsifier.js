@@ -544,6 +544,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       if (ASM_JS) {
         // spell out argument types
         func.params.forEach(function(param) {
+          if (param.intertype == 'varargs') return;
           func.JS += '  ' + param.ident + ' = ' + asmCoercion(param.ident, param.type) + ';\n';
         });
 
