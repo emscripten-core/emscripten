@@ -939,7 +939,7 @@ function getHeapOffset(offset, type) {
     }
     var shifts = Math.log(Runtime.getNativeTypeSize(type))/Math.LN2;
     offset = '(' + offset + ')';
-    if (ASM_JS) offset = '(' + offset + '&' + memoryMask + ')';
+    if (ASM_JS && phase == 'funcs') offset = '(' + offset + '&' + memoryMask + ')';
     if (shifts != 0) {
       return '(' + offset + '>>' + shifts + ')';
     } else {
@@ -1004,7 +1004,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
     return 'SAFE_HEAP_LOAD(' + offset + ', ' + type + ', ' + (!!unsigned+0) + ', ' + ((!checkSafeHeap() || ignore)|0) + ')';
   } else {
     var ret = makeGetSlabs(ptr, type, false, unsigned)[0] + '[' + getHeapOffset(offset, type) + ']';
-    if (ASM_JS) {
+    if (ASM_JS && phase == 'funcs') {
       if (type in Runtime.INT_TYPES) {
         ret = ret + '|0';
       } else {
