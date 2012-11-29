@@ -275,7 +275,6 @@ var Functions = {
       tables[sig][this.indexedFunctions[ident]] = ident;
     }
     // Resolve multi-level aliases all the way down
-    var ret = '';
     for (var t in tables) {
       var table = tables[t];
       for (var i = 0; i < table.length; i++) {
@@ -288,12 +287,12 @@ var Functions = {
       var indices = table.toString().replace('"', '');
       if (BUILD_AS_SHARED_LIB) {
         // Shared libraries reuse the parent's function table.
-        ret += Functions.getTable(t) + '.push.apply(' + Functions.getTable(t) + ', [' + indices + ']);\n';
+        tables[t] = Functions.getTable(t) + '.push.apply(' + Functions.getTable(t) + ', [' + indices + ']);\n';
       } else {
-        ret += 'var ' + Functions.getTable(t) + ' = [' + indices + '];\n';
+        tables[t] = 'var ' + Functions.getTable(t) + ' = [' + indices + '];\n';
       }
     }
-    Functions.tables = ret;
+    Functions.tables = tables;
   }
 };
 

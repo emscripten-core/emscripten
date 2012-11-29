@@ -241,42 +241,6 @@ def emscript(infile, settings, outfile, libraries=[]):
 
   funcs_js = ''.join([output[0] for output in outputs])
 
-  if settings.get('ASM_JS'):
-    # calculate exports
-    exports = []
-    for export in exported_implemented_functions:
-      exports.append("'%s': %s" % (export, export))
-    exports = '{ ' + ', '.join(exports) + ' }'
-    # caculate globals
-    global_vars = forwarded_json['Variables']['globals'].keys()
-    global_funcs = ['_' + x for x in forwarded_json['Functions']['libraryFunctions'].keys()]
-    asm_globals = ''.join(['  var ' + g + '=env.' + g + ';\n' for g in global_funcs])
-    # sent data
-    basics = ['buffer', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
-    sending = '{ ' + ', '.join([s + ': ' + s for s in basics + global_funcs]) + ' }'
-    # received
-    receiving = ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm.' + s for s in exported_implemented_functions])
-    # finalize
-    funcs_js = '''
-var asm = (function(env, buffer) {
-  'use asm';
-  var HEAP8 = new env.Int8Array(buffer);
-  var HEAP16 = new env.Int16Array(buffer);
-  var HEAP32 = new env.Int32Array(buffer);
-  var HEAPU8 = new env.Uint8Array(buffer);
-  var HEAPU16 = new env.Uint16Array(buffer);
-  var HEAPU32 = new env.Uint32Array(buffer);
-  var HEAPF32 = new env.Float32Array(buffer);
-  var HEAPF64 = new env.Float64Array(buffer);
-''' + asm_globals + '\n' + funcs_js.replace('\n', '\n  ') + '''
-
-  {{{ FUNCTION_TABLES }}}
-
-  return %s;
-})(%s, buffer);
-%s;
-''' % (exports, sending, receiving)
-
   outputs = None
   if DEBUG: print >> sys.stderr, '  emscript: phase 2b took %s seconds' % (time.time() - t)
   if DEBUG: t = time.time()
@@ -314,13 +278,49 @@ var asm = (function(env, buffer) {
   post_file = temp_files.get('.post.ll').name
   open(post_file, 'w').write('\n') # no input, just processing of forwarded data
   out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, post_file, 'post', forwarded_file] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
-  post, forwarded_data = out.split('//FORWARDED_DATA:')
-  forwarded_json = json.loads(forwarded_data)
+  post, last_forwarded_data = out.split('//FORWARDED_DATA:')
+  last_forwarded_json = json.loads(last_forwarded_data)
 
+  function_tables_defs = '\n'.join([table for table in last_forwarded_json['Functions']['tables'].itervalues()])
   if settings.get('ASM_JS'):
-    funcs_js = funcs_js.replace('{{{ FUNCTION_TABLES }}}', forwarded_json['Functions']['tables'].replace('\n', '\n  '))
+    # calculate exports
+    function_tables = ['FUNCTION_TABLE_' + table for table in last_forwarded_json['Functions']['tables'].iterkeys()]
+    exported_implemented_functions = list(exported_implemented_functions)
+    exports = []
+    for export in exported_implemented_functions + function_tables:
+      exports.append("'%s': %s" % (export, export))
+    exports = '{ ' + ', '.join(exports) + ' }'
+    # calculate globals
+    global_vars = forwarded_json['Variables']['globals'].keys()
+    global_funcs = ['_' + x for x in forwarded_json['Functions']['libraryFunctions'].keys()]
+    asm_globals = ''.join(['  var ' + g + '=env.' + g + ';\n' for g in global_funcs])
+    # sent data
+    basics = ['buffer', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
+    sending = '{ ' + ', '.join([s + ': ' + s for s in basics + global_funcs]) + ' }'
+    # received
+    receiving = ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm.' + s for s in exported_implemented_functions + function_tables])
+    # finalize
+    funcs_js = '''
+var asm = (function(env, buffer) {
+  'use asm';
+  var HEAP8 = new env.Int8Array(buffer);
+  var HEAP16 = new env.Int16Array(buffer);
+  var HEAP32 = new env.Int32Array(buffer);
+  var HEAPU8 = new env.Uint8Array(buffer);
+  var HEAPU16 = new env.Uint16Array(buffer);
+  var HEAPU32 = new env.Uint32Array(buffer);
+  var HEAPF32 = new env.Float32Array(buffer);
+  var HEAPF64 = new env.Float64Array(buffer);
+''' + asm_globals + '\n' + funcs_js.replace('\n', '\n  ') + '''
+
+  %s
+
+  return %s;
+})(%s, buffer);
+%s;
+''' % (function_tables_defs.replace('\n', '\n  '), exports, sending, receiving)
   else:
-    outfile.write(forwarded_json['Functions']['tables'])
+    outfile.write(function_tables_defs)
   outfile.write(blockaddrsize(indexize(funcs_js)))
   funcs_js = None
 
