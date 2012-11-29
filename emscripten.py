@@ -283,6 +283,8 @@ def emscript(infile, settings, outfile, libraries=[]):
 
   function_tables_defs = '\n'.join([table for table in last_forwarded_json['Functions']['tables'].itervalues()])
   if settings.get('ASM_JS'):
+    fundamentals = ['buffer', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
+    basics = ['abort', 'assert']
     # calculate exports
     function_tables = ['FUNCTION_TABLE_' + table for table in last_forwarded_json['Functions']['tables'].iterkeys()]
     exported_implemented_functions = list(exported_implemented_functions)
@@ -293,10 +295,9 @@ def emscript(infile, settings, outfile, libraries=[]):
     # calculate globals
     global_vars = forwarded_json['Variables']['globals'].keys()
     global_funcs = ['_' + x for x in forwarded_json['Functions']['libraryFunctions'].keys()]
-    asm_globals = ''.join(['  var ' + g + '=env.' + g + ';\n' for g in global_funcs + global_vars])
+    asm_globals = ''.join(['  var ' + g + '=env.' + g + ';\n' for g in basics + global_funcs + global_vars])
     # sent data
-    basics = ['buffer', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
-    sending = '{ ' + ', '.join([s + ': ' + s for s in basics + global_funcs + global_vars]) + ' }'
+    sending = '{ ' + ', '.join([s + ': ' + s for s in fundamentals + basics + global_funcs + global_vars]) + ' }'
     # received
     receiving = ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm.' + s for s in exported_implemented_functions + function_tables])
     # finalize
