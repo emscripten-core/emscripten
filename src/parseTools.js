@@ -1006,8 +1006,8 @@ function indexizeFunctions(value, type) {
   var out = {};
   if (type && isFunctionType(type, out) && value[0] === '_') { // checking for _ differentiates from $ (local vars)
     // add signature to library functions that we now know need indexing
-    if (!(value in Functions.implementedFunctions) && !(value in Functions.libraryFunctions)) {
-      Functions.libraryFunctions[value] = Functions.getSignature(out.returnType, out.segments ? out.segments.map(function(segment) { return segment[0].text }) : []);
+    if (!(value in Functions.implementedFunctions) && !(value in Functions.unimplementedFunctions)) {
+      Functions.unimplementedFunctions[value] = Functions.getSignature(out.returnType, out.segments ? out.segments.map(function(segment) { return segment[0].text }) : []);
     }
 
     if (BUILD_AS_SHARED_LIB) {

@@ -218,7 +218,8 @@ var Types = {
 var Functions = {
   // All functions that will be implemented in this file. Maps id to signature
   implementedFunctions: {},
-  libraryFunctions: {}, // functions added from the library. Maps id to 1, or to a signature if we need indexing
+  libraryFunctions: {}, // functions added from the library
+  unimplementedFunctions: {}, // library etc. functions that we need to index, maps id to signature
 
   indexedFunctions: {},
   nextIndex: 2, // Start at a non-0 (even, see below) value
@@ -264,7 +265,7 @@ var Functions = {
       });
     }
     for (var ident in this.indexedFunctions) {
-      var sig = ASM_JS ? Functions.implementedFunctions[ident] || Functions.libraryFunctions[ident] : 'x';
+      var sig = ASM_JS ? Functions.implementedFunctions[ident] || Functions.unimplementedFunctions[ident] : 'x';
       assert(sig, ident);
       if (!tables[sig]) tables[sig] = zeros(this.nextIndex); // TODO: make them compact
       tables[sig][this.indexedFunctions[ident]] = ident;
@@ -348,7 +349,7 @@ var PassManager = {
           blockAddresses: Functions.blockAddresses,
           indexedFunctions: Functions.indexedFunctions,
           implementedFunctions: ASM_JS ? Functions.implementedFunctions : [],
-          libraryFunctions: Functions.libraryFunctions,
+          unimplementedFunctions: Functions.unimplementedFunctions,
         }
       }));
     } else if (phase == 'post') {
