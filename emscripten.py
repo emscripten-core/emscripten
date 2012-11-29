@@ -293,10 +293,10 @@ def emscript(infile, settings, outfile, libraries=[]):
     # calculate globals
     global_vars = forwarded_json['Variables']['globals'].keys()
     global_funcs = ['_' + x for x in forwarded_json['Functions']['libraryFunctions'].keys()]
-    asm_globals = ''.join(['  var ' + g + '=env.' + g + ';\n' for g in global_funcs])
+    asm_globals = ''.join(['  var ' + g + '=env.' + g + ';\n' for g in global_funcs + global_vars])
     # sent data
     basics = ['buffer', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
-    sending = '{ ' + ', '.join([s + ': ' + s for s in basics + global_funcs]) + ' }'
+    sending = '{ ' + ', '.join([s + ': ' + s for s in basics + global_funcs + global_vars]) + ' }'
     # received
     receiving = ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm.' + s for s in exported_implemented_functions + function_tables])
     # finalize
