@@ -1623,6 +1623,10 @@ function makeSignOp(value, type, op, force, ignore) {
 function makeRounding(value, bits, signed, floatConversion) {
   // TODO: handle roundings of i64s
   assert(bits);
+  if (ASM_JS && floatConversion && bits <= 32) {
+    return '(~~(' + value + '))'; // explicit float-to-int conversion
+  }
+
   // C rounds to 0 (-5.5 to -5, +5.5 to 5), while JS has no direct way to do that.
   if (bits <= 32 && signed) return '((' + value + ')&-1)'; // This is fast and even correct, for all cases. Note that it is the same
                                                            // as |0, but &-1 hints to the js optimizer that this is a rounding correction
