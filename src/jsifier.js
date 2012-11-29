@@ -546,6 +546,14 @@ function JSify(data, functionsOnly, givenFunctions) {
         func.params.forEach(function(param) {
           func.JS += '  ' + param.ident + ' = ' + asmCoercion(param.ident, param.type) + ';\n';
         });
+
+        // spell out local variables
+        var vars = values(func.variables);
+        if (vars.length) {
+          func.JS += '  var ' + vars.filter(function(v) { return v.origin != 'funcparam' }).map(function(v) {
+            return v.ident + ' = ' + asmInitializer(v.type);
+          }).join(', ') + ';\n';
+        }
       }
 
       if (PROFILE) {
@@ -764,7 +772,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     var valueJS = item.JS;
     item.JS = '';
     if (CLOSURE_ANNOTATIONS) item.JS += '/** @type {number} */ ';
-    item.JS += (item.overrideSSA ? '' : 'var ') + toNiceIdent(item.assignTo);
+    item.JS += ((item.overrideSSA || ASM_JS) ? '' : 'var ') + toNiceIdent(item.assignTo);
 
     var value = parseNumerical(valueJS);
     var impl = getVarImpl(item.funcData, item.assignTo);

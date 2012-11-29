@@ -949,6 +949,14 @@ function getHeapOffset(offset, type) {
   }
 }
 
+function asmInitializer(type) {
+  if (type in Runtime.INT_TYPES) {
+    return '0';
+  } else {
+    return '+0';
+  }
+}
+
 function asmCoercion(value, type) {
   if (type in Runtime.INT_TYPES) {
     return value + '|0';
