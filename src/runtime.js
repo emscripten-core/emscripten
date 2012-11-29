@@ -311,6 +311,10 @@ var Runtime = {
     return ret;
   },
 
+  getFunctionTable: function(sig) {
+    return FUNCTION_TABLE; // TODO: Support asm
+  },
+
   addFunction: function(func, sig) {
     assert(sig);
     var table = Runtime.getFunctionTable(sig);

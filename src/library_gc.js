@@ -50,7 +50,7 @@ if (GC_SUPPORT) {
       free: function(ptr) { // does not check if anything refers to it, this is a forced free
         var finalizer = GC.finalizers[ptr];
         if (finalizer) {
-          Runtime.getFuncWrapper(finalizer)(ptr, GC.finalizerArgs[ptr]);
+          Runtime.getFuncWrapper(finalizer, 'vii')(ptr, GC.finalizerArgs[ptr]);
           GC.finalizers[ptr] = 0;
         }
         _free(ptr);
