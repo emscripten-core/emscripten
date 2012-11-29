@@ -5773,7 +5773,7 @@ int main(int argc, char **argv) {
 
       Settings.CORRECT_SIGNS = 2
       Settings.CORRECT_SIGNS_LINES = ['src.cpp:' + str(i+4) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
-      Settings.TOTAL_MEMORY = 100*1024*1024 # needed with typed arrays
+      Settings.TOTAL_MEMORY = 128*1024*1024 # needed with typed arrays
 
       src = open(path_from_root('system', 'lib', 'dlmalloc.c'), 'r').read() + '\n\n\n' + open(path_from_root('tests', 'dlmalloc_test.c'), 'r').read()
       self.do_run(src, '*1,0*', ['200', '1'])
@@ -5788,7 +5788,7 @@ int main(int argc, char **argv) {
         # emcc should build in dlmalloc automatically, and do all the sign correction etc. for it
 
         try_delete(os.path.join(self.get_dir(), 'src.cpp.o.js'))
-        output = Popen(['python', EMCC, path_from_root('tests', 'dlmalloc_test.c'), '-s', 'TOTAL_MEMORY=100000000',
+        output = Popen(['python', EMCC, path_from_root('tests', 'dlmalloc_test.c'), '-s', 'TOTAL_MEMORY=' + str(128*1024*1024),
                         '-o', os.path.join(self.get_dir(), 'src.cpp.o.js')], stdout=PIPE, stderr=self.stderr_redirect).communicate()
 
         self.do_run('x', '*1,0*', ['200', '1'], no_build=True)
@@ -5975,7 +5975,7 @@ void*:16
       self.do_run(src, '*10,22*')
       
     def test_mmap(self):
-      Settings.TOTAL_MEMORY = 100*1024*1024
+      Settings.TOTAL_MEMORY = 128*1024*1024
 
       src = '''
         #include <stdio.h>
@@ -10087,7 +10087,7 @@ elif 'benchmark' in str(sys.argv):
       try_delete(final_filename)
       output = Popen(['python', EMCC, filename, #'-O3',
                       '-O2', '-s', 'INLINING_LIMIT=0', '-s', 'DOUBLE_MODE=0', '-s', 'PRECISE_I64_MATH=0',
-                      '-s', 'TOTAL_MEMORY=100*1024*1024', '-s', 'FAST_MEMORY=10*1024*1024',
+                      '-s', 'TOTAL_MEMORY=128*1024*1024', '-s', 'FAST_MEMORY=10*1024*1024',
                       '-o', final_filename] + emcc_args, stdout=PIPE, stderr=self.stderr_redirect).communicate()
       assert os.path.exists(final_filename), 'Failed to compile file: ' + output[0]
 
