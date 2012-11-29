@@ -548,9 +548,9 @@ function JSify(data, functionsOnly, givenFunctions) {
         });
 
         // spell out local variables
-        var vars = values(func.variables);
-        if (vars.length) {
-          func.JS += '  var ' + vars.filter(function(v) { return v.origin != 'funcparam' }).map(function(v) {
+        var vars = values(func.variables).filter(function(v) { return v.origin != 'funcparam' });
+        if (vars.length > 0) {
+          func.JS += '  var ' + vars.map(function(v) {
             return v.ident + ' = ' + asmInitializer(v.type); //, func.variables[v.ident].impl);
           }).join(', ') + ';\n';
         }
