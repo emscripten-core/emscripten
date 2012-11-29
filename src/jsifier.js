@@ -565,6 +565,11 @@ function JSify(data, functionsOnly, givenFunctions) {
                 +    '}\n';
       }
 
+      if (true) { // TODO: optimize away when not needed
+        if (CLOSURE_ANNOTATIONS) func.JS += '/** @type {number} */';
+        func.JS += '  var label = 0;\n';
+      }
+
       // Prepare the stack, if we need one. If we have other stack allocations, force the stack to be set up.
       func.JS += '  ' + RuntimeGenerator.stackEnter(func.initialStack, func.otherStackAllocations) + ';\n';
 
@@ -585,11 +590,6 @@ function JSify(data, functionsOnly, givenFunctions) {
       });
 
       if (LABEL_DEBUG) func.JS += "  Module.print(INDENT + ' Entering: " + func.ident + ": ' + Array.prototype.slice.call(arguments)); INDENT += '  ';\n";
-
-      if (true) { // TODO: optimize away when not needed
-        if (CLOSURE_ANNOTATIONS) func.JS += '/** @type {number} */';
-        func.JS += '  var label;\n';
-      }
 
       // Walk function blocks and generate JS
       function walkBlock(block, indent) {
