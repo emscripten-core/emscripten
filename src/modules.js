@@ -258,16 +258,20 @@ var Functions = {
 
   // Generate code for function indexing
   generateIndexing: function() {
+    var total = this.nextIndex;
+    function emptyTable(sig) {
+      return zeros(total);
+    }
     var tables = {};
     if (ASM_JS) {
       ['ii'].forEach(function(sig) { // add some default signatures that are used in the library
-        tables[sig] = zeros(this.nextIndex); // TODO: make them compact
+        tables[sig] = emptyTable(sig); // TODO: make them compact
       });
     }
     for (var ident in this.indexedFunctions) {
       var sig = ASM_JS ? Functions.implementedFunctions[ident] || Functions.unimplementedFunctions[ident] : 'x';
       assert(sig, ident);
-      if (!tables[sig]) tables[sig] = zeros(this.nextIndex); // TODO: make them compact
+      if (!tables[sig]) tables[sig] = emptyTable(sig); // TODO: make them compact
       tables[sig][this.indexedFunctions[ident]] = ident;
     }
     // Resolve multi-level aliases all the way down
