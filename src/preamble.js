@@ -732,7 +732,12 @@ function callRuntimeCallbacks(callbacks) {
     var callback = callbacks.shift();
     var func = callback.func;
     if (typeof func === 'number') {
-      func = {{{ Functions.getTable('v') }}}[func]; // void()
+#if ASM_JS
+      func = {{{ Functions.getTable('v') }}}[func] || // void()
+             {{{ Functions.getTable('vi') }}}[func];  // void(int)
+#else
+      func = {{{ Functions.getTable('x') }}}[func];
+#endif
     }
     func(callback.arg === undefined ? null : callback.arg);
   }
