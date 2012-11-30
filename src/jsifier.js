@@ -217,7 +217,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           throw 'Invalid segment: ' + dump(segment);
         }
         assert(segment.type, 'Missing type for constant segment!');
-        return indexizeFunctions(ret, segment.type);
+        return makeGlobalUse(indexizeFunctions(ret, segment.type));
       };
       return tokens.map(handleSegment)
     }
@@ -226,7 +226,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     if (value.intertype in PARSABLE_LLVM_FUNCTIONS) {
       return [finalizeLLVMFunctionCall(value)];
     } else if (Runtime.isNumberType(type) || pointingLevels(type) >= 1) {
-      return indexizeFunctions(parseNumerical(value.value), type);
+      return makeGlobalUse(indexizeFunctions(parseNumerical(value.value), type));
     } else if (value.intertype === 'emptystruct') {
       return makeEmptyStruct(type);
     } else if (value.intertype === 'string') {
@@ -250,7 +250,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     processItem: function(item) {
       function needsPostSet(value) {
         return value[0] in UNDERSCORE_OPENPARENS || value.substr(0, 14) === 'CHECK_OVERFLOW'
-            || value.substr(0, 13) === 'STRING_TABLE.';
+                                                 || value.substr(0, 6) === 'GLOBAL';
       }
 
       item.intertype = 'GlobalVariableStub';
@@ -262,16 +262,17 @@ function JSify(data, functionsOnly, givenFunctions) {
                   '\n]);\n';
         return ret;
       } else {
+        var constant = null;
+        var allocator = (BUILD_AS_SHARED_LIB && !item.external) ? 'ALLOC_NORMAL' : 'ALLOC_STATIC';
+        var index = null;
         if (item.external && BUILD_AS_SHARED_LIB) {
           // External variables in shared libraries should not be declared as
           // they would shadow similarly-named globals in the parent.
           item.JS = '';
         } else {
-          if (!(item.ident in Variables.globals) || !Variables.globals[item.ident].isString) {
-          	item.JS = 'var ' + item.ident + ';';
-          } 
+        	item.JS = makeGlobalDef(item.ident);
         }
-        var constant = null;
+
         if (item.external) {
           // Import external global variables from the library if available.
           var shortident = item.ident.slice(1);
@@ -286,7 +287,7 @@ function JSify(data, functionsOnly, givenFunctions) {
               padding = makeEmptyStruct(item.type);
             }
             var padded = val.concat(padding.slice(val.length));
-            var js = item.ident + '=' + makePointer(JSON.stringify(padded), null, 'ALLOC_STATIC', item.type) + ';'
+            var js = item.ident + '=' + makePointer(JSON.stringify(padded), null, allocator, item.type, index) + ';'
             if (LibraryManager.library[shortident + '__postset']) {
               js += '\n' + LibraryManager.library[shortident + '__postset'];
             }
@@ -297,6 +298,10 @@ function JSify(data, functionsOnly, givenFunctions) {
           }
           return ret;
         } else {
+          if (!NAMED_GLOBALS && isIndexableGlobal(item.ident)) {
+            index = makeGlobalUse(item.ident); // index !== null indicates we are indexing this
+            allocator = 'ALLOC_NONE';
+          }
           constant = parseConst(item.value, item.type, item.ident);
           if (typeof constant === 'string' && constant[0] != '[') {
             constant = [constant]; // A single item. We may need a postset for it.
@@ -307,7 +312,7 @@ function JSify(data, functionsOnly, givenFunctions) {
               if (needsPostSet(value)) { // ident, or expression containing an ident
                 ret.push({
                   intertype: 'GlobalVariablePostSet',
-                  JS: makeSetValue(item.ident, i, value, 'i32', false, true) + ';' // ignore=true, since e.g. rtti and statics cause lots of safe_heap errors
+                  JS: makeSetValue(makeGlobalUse(item.ident), i, value, 'i32', false, true) + ';' // ignore=true, since e.g. rtti and statics cause lots of safe_heap errors
                 });
                 constant[i] = '0';
               }
@@ -316,21 +321,17 @@ function JSify(data, functionsOnly, givenFunctions) {
           }
           // NOTE: This is the only place that could potentially create static
           //       allocations in a shared library.
-          constant = makePointer(constant, null, BUILD_AS_SHARED_LIB ? 'ALLOC_NORMAL' : 'ALLOC_STATIC', item.type);
-
+          constant = makePointer(constant, null, allocator, item.type, index);
           var js;
 
-          // Strings are held in STRING_TABLE, to not clutter up the main namespace (in some cases we have
-          // many many strings, possibly exceeding the js engine limit on global vars).
-          if (Variables.globals[item.ident].isString) {
-            js = 'STRING_TABLE.' + item.ident + '=' + constant + ';';
-          } else {
-          	js = item.ident + '=' + constant + ';';
-          }
+        	js = (index !== null ? '' : item.ident + '=') + constant + ';'; // \n Module.print("' + item.ident + ' :" + ' + makeGlobalUse(item.ident) + ');';
 
           // Special case: class vtables. We make sure they are null-terminated, to allow easy runtime operations
           if (item.ident.substr(0, 5) == '__ZTV') {
-            js += '\n' + makePointer('[0]', null, BUILD_AS_SHARED_LIB ? 'ALLOC_NORMAL' : 'ALLOC_STATIC', ['void*']) + ';';
+            if (index !== null) {
+              index = getFastValue(index, '+', Runtime.alignMemory(calcAllocatedSize(Variables.globals[item.ident].type)));
+            }
+            js += '\n' + makePointer('[0]', null, allocator, ['void*'], index) + ';';
           }
           if (EXPORT_ALL || (item.ident in EXPORTED_GLOBALS)) {
             js += '\nModule["' + item.ident + '"] = ' + item.ident + ';';
@@ -821,7 +822,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         break;
       case VAR_EMULATED:
         if (item.pointer.intertype == 'value') {
-          return makeSetValue(item.ident, 0, value, item.valueType, 0, 0, item.align) + ';';
+          return makeSetValue(makeGlobalUse(item.ident), 0, value, item.valueType, 0, 0, item.align) + ';';
         } else {
           return makeSetValue(0, finalizeLLVMParameter(item.pointer), value, item.valueType, 0, 0, item.align) + ';';
         }
@@ -1278,6 +1279,15 @@ function JSify(data, functionsOnly, givenFunctions) {
     //
 
     if (!mainPass) {
+      if (phase == 'pre' && !Variables.generatedGlobalBase) {
+        Variables.generatedGlobalBase = true;
+        if (Variables.nextIndexedOffset > 0) {
+          // Variables have been calculated, print out the base generation before we print them
+          print('var GLOBAL_BASE = STATICTOP;\n');
+          print('STATICTOP += ' + Variables.nextIndexedOffset + ';\n');
+          print('assert(STATICTOP < TOTAL_MEMORY);\n');
+        }
+      }
       var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable).concat(itemsDict.GlobalVariablePostSet);
       if (!DEBUG_MEMORY) print(generated.map(function(item) { return item.JS }).join('\n'));
       return;
@@ -1286,7 +1296,23 @@ function JSify(data, functionsOnly, givenFunctions) {
     // Print out global variables and postsets TODO: batching
     if (phase == 'pre') {
       legalizedI64s = false;
-      JSify(analyzer(intertyper(data.unparsedGlobalss[0].lines, true), true), true, Functions);
+
+      var globalsData = analyzer(intertyper(data.unparsedGlobalss[0].lines, true), true);
+
+      if (!NAMED_GLOBALS) {
+        sortGlobals(globalsData.globalVariables).forEach(function(g) {
+          var ident = g.ident;
+          if (!isIndexableGlobal(ident)) return;
+          Variables.indexedGlobals[ident] = Variables.nextIndexedOffset;
+          Variables.nextIndexedOffset += Runtime.alignMemory(calcAllocatedSize(Variables.globals[ident].type));
+          if (ident.substr(0, 5) == '__ZTV') { // leave room for null-terminating the vtable
+            Variables.nextIndexedOffset += Runtime.getNativeTypeSize('i32');
+          }
+        });
+      }
+
+      JSify(globalsData, true, Functions);
+      globalsData = null;
       data.unparsedGlobalss = null;
 
       var generated = itemsDict.functionStub.concat(itemsDict.GlobalVariablePostSet);
@@ -1350,7 +1376,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     substrate.addItems(data.functionStubs, 'FunctionStub');
     assert(data.functions.length == 0);
   } else {
-    substrate.addItems(values(data.globalVariables), 'GlobalVariable');
+    substrate.addItems(sortGlobals(data.globalVariables), 'GlobalVariable');
     substrate.addItems(data.aliass, 'Alias');
     substrate.addItems(data.functions, 'FunctionSplitter');
   }

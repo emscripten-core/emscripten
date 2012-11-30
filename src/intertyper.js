@@ -73,13 +73,11 @@ function intertyper(data, sidePass, baseLineNums) {
           if (!testType) {
             var global = /([@%\w\d\.\" $-]+) = .*/.exec(line);
             var globalIdent = toNiceIdent(global[1]);
-            var testAlias = /[@%\w\d\.\" $-]+ = alias .*/.exec(line);
-            var testString = /[@%\w\d\.\" $-]+ = [\w ]+ \[\d+ x i8] c".*/.exec(line);
+            var testAlias = /[@%\w\d\.\" $-]+ = (hidden )?alias .*/.exec(line);
             Variables.globals[globalIdent] = {
               name: globalIdent,
               alias: !!testAlias,
-              impl: VAR_EMULATED,
-              isString : !!testString
+              impl: VAR_EMULATED
             };
             unparsedGlobals.lines.push(line);
           } else {
@@ -459,6 +457,9 @@ function intertyper(data, sidePass, baseLineNums) {
         };
         ret.type = ret.value.type;
         Types.needAnalysis[ret.type] = 0;
+        if (!NAMED_GLOBALS) {
+          Variables.globals[ret.ident].type = ret.type;
+        }
         return [ret];
       }
       if (item.tokens[2].text == 'type') {
@@ -509,6 +510,10 @@ function intertyper(data, sidePass, baseLineNums) {
           private_: private_,
           lineNum: item.lineNum
         };
+        if (!NAMED_GLOBALS) {
+          Variables.globals[ret.ident].type = ret.type;
+          Variables.globals[ret.ident].external = external;
+        }
         Types.needAnalysis[ret.type] = 0;
         if (ident == '@llvm.global_ctors') {
           ret.ctors = [];

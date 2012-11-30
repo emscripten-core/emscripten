@@ -282,6 +282,14 @@ function setIntersect(x, y) {
   return ret;
 }
 
+function invertArray(x) {
+  var ret = {};
+  for (var i = 0; i < x.length; i++) {
+    ret[x[i]] = i;
+  }
+  return ret;
+}
+
 function copy(x) {
   return JSON.parse(JSON.stringify(x));
 }

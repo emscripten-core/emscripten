@@ -2461,6 +2461,7 @@ LibraryManager.library = {
     for (var formatIndex = 0; formatIndex < format.length;) {
       if (format[formatIndex] === '%' && format[formatIndex+1] == 'n') {
         var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
+        argIndex += Runtime.getNativeFieldSize('void*');
         {{{ makeSetValue('argPtr', 0, 'soFar', 'i32') }}};
         formatIndex += 2;
         continue;
@@ -3484,11 +3485,11 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
     var result = __formatString(format, varargs);
     var limit = (n === undefined) ? result.length
-                                  : Math.min(result.length, n - 1);
+                                  : Math.min(result.length, Math.max(n - 1, 0));
     for (var i = 0; i < limit; i++) {
       {{{ makeSetValue('s', 'i', 'result[i]', 'i8') }}};
     }
-    {{{ makeSetValue('s', 'i', '0', 'i8') }}};
+    if (limit < n || (n === undefined)) {{{ makeSetValue('s', 'i', '0', 'i8') }}};
     return result.length;
   },
   fprintf__deps: ['fwrite', '_formatString'],
@@ -3738,6 +3739,7 @@ LibraryManager.library = {
   strtod_l: 'strtod', // no locale support yet
   strtold: 'strtod', // XXX add real support for long double
   strtold_l: 'strtold', // no locale support yet
+  strtof: 'strtod', // use stdtod to handle strtof
 
   _parseInt__deps: ['isspace', '__setErrNo', '$ERRNO_CODES'],
   _parseInt: function(str, endptr, base, min, max, bits, unsign) {
@@ -5363,7 +5365,7 @@ LibraryManager.library = {
   },
   fmaxf: 'fmax',
   fmin: function(x, y) {
-    return isNaN(x) ? y : isNaN(y) ? x : Math.max(x, y);
+    return isNaN(x) ? y : isNaN(y) ? x : Math.min(x, y);
   },
   fminf: 'fmin',
   fma: function(x, y, z) {

@@ -356,6 +356,40 @@ function hasVarArgs(params) {
   return false;
 }
 
+var UNINDEXABLE_GLOBALS = set(
+  '_llvm_global_ctors' // special-cased
+);
+
+function noticePtr(ptr) {
+  if (!NAMED_GLOBALS && !LibraryManager.loaded) UNINDEXABLE_GLOBALS[ptr] = 1; // we cannot index globals referred to in the library, since they are used there by name
+}
+
+function isIndexableGlobal(ident) {
+  if (!(ident in Variables.globals)) return false;
+  if (ident in UNINDEXABLE_GLOBALS) return false;
+  var data = Variables.globals[ident];
+  return !data.alias && !data.external;
+}
+
+function makeGlobalDef(ident) {
+  if (!NAMED_GLOBALS && isIndexableGlobal(ident)) return '';
+  return 'var ' + ident + ';'; // TODO: add option for namespacing or offsetting to allow reducing the number of globals
+}
+
+function makeGlobalUse(ident) {
+  if (!NAMED_GLOBALS && isIndexableGlobal(ident)) return '(' + getFastValue('GLOBAL_BASE', '+', Variables.indexedGlobals[ident]) + ')';
+  return ident; // TODO: add option for namespacing or offsetting to allow reducing the number of globals
+}
+
+function sortGlobals(globals) {
+  var ks = keys(globals);
+  ks.sort();
+  var inv = invertArray(ks);
+  return values(globals).sort(function(a, b) {
+    return inv[b.ident] - inv[a.ident];
+  });
+}
+
 function finalizeParam(param) {
   if (param.intertype in PARSABLE_LLVM_FUNCTIONS) {
     return finalizeLLVMFunctionCall(param);
@@ -368,10 +402,9 @@ function finalizeParam(param) {
       return parseI64Constant(param.ident);
     }
     var ret = toNiceIdent(param.ident);
-    if (ret in Variables.globals && Variables.globals[ret].isString) {
-      ret = "STRING_TABLE." + ret;
+    if (ret in Variables.globals) {
+      ret = makeGlobalUse(ret);
     }
-    
     return ret;
   }
 }
@@ -907,6 +940,7 @@ function getHeapOffset(offset, type) {
 
 // See makeSetValue
 function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSafe) {
+  noticePtr(ptr);
   if (UNALIGNED_MEMORY) align = 1;
   if (isStructType(type)) {
     var typeData = Types.types[type];
@@ -987,6 +1021,7 @@ function indexizeFunctions(value, type) {
 //!             which means we should write to all slabs, ignore type differences if any on reads, etc.
 //! @param noNeedFirst Whether to ignore the offset in the pointer itself.
 function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep, forcedAlign) {
+  noticePtr(ptr);
   if (UNALIGNED_MEMORY && !forcedAlign) align = 1;
   sep = sep || ';';
   if (isStructType(type)) {
@@ -1058,6 +1093,7 @@ var SEEK_OPTIMAL_ALIGN_MIN = 20;
 var UNROLL_LOOP_MAX = 8;
 
 function makeSetValues(ptr, pos, value, type, num, align) {
+  noticePtr(ptr);
   function unroll(type, num, jump, value$) {
     jump = jump || 1;
     value$ = value$ || value;
@@ -1107,6 +1143,8 @@ function makeSetValues(ptr, pos, value, type, num, align) {
 var TYPED_ARRAY_SET_MIN = Infinity; // .set() as memcpy seems to just slow us down
 
 function makeCopyValues(dest, src, num, type, modifier, align, sep) {
+  noticePtr(dest);
+  noticePtr(src);
   sep = sep || ';';
   function unroll(type, num, jump) {
     jump = jump || 1;
@@ -1260,7 +1298,7 @@ function makeGetPos(ptr) {
 
 var IHEAP_FHEAP = set('IHEAP', 'IHEAPU', 'FHEAP');
 
-function makePointer(slab, pos, allocator, type) {
+function makePointer(slab, pos, allocator, type, ptr) {
   assert(type, 'makePointer requires type info');
   if (slab.substr(0, 4) === 'HEAP' || (USE_TYPED_ARRAYS == 1 && slab in IHEAP_FHEAP)) return pos;
   var types = generateStructTypes(type);
@@ -1290,7 +1328,7 @@ function makePointer(slab, pos, allocator, type) {
       types = de[0];
     }
   }
-  return 'allocate(' + slab + ', ' + JSON.stringify(types) + (allocator ? ', ' + allocator : '') + ')';
+  return 'allocate(' + slab + ', ' + JSON.stringify(types) + (allocator ? ', ' + allocator : '') + (allocator == 'ALLOC_NONE' ? ', ' + ptr : '') + ')';
 }
 
 function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
@@ -1472,8 +1510,8 @@ function finalizeLLVMParameter(param, noIndexizeFunctions) {
     }
   } else if (param.intertype == 'value') {
     ret = param.ident;
-    if (ret in Variables.globals && Variables.globals[ret].isString) {
-      ret = "STRING_TABLE." + ret;
+    if (ret in Variables.globals) {
+      ret = makeGlobalUse(ret);
     }
     if (param.type == 'i64' && USE_TYPED_ARRAYS == 2) {
       ret = parseI64Constant(ret);

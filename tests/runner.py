@@ -279,10 +279,18 @@ process(sys.argv[1])
     return ret
 
   def build_native(self, filename):
-    Popen([CLANG, '-O2', filename, '-o', filename+'.native'], stdout=PIPE).communicate()[0]
+    process = Popen([CLANG, '-O2', filename, '-o', filename+'.native'], stdout=PIPE);
+    output = process.communicate()
+    if process.returncode is not 0:
+      print >> sys.stderr, "Building native executable with command '%s' failed with a return code %d!" % (' '.join([CLANG, '-O2', filename, '-o', filename+'.native']), process.returncode)
+      print "Output: " + output[0]
 
   def run_native(self, filename, args):
-    Popen([filename+'.native'] + args, stdout=PIPE).communicate()[0]
+    process = Popen([filename+'.native'] + args, stdout=PIPE);
+    output = process.communicate()
+    if process.returncode is not 0:
+      print >> sys.stderr, "Running native executable with command '%s' failed with a return code %d!" % (' '.join([filename+'.native'] + args), process.returncode)
+      print "Output: " + output[0]
 
   def assertIdentical(self, values, y):
     if type(values) not in [list, tuple]: values = [values]
@@ -1368,12 +1376,15 @@ c5,de,15,8a
     def test_floatvars(self):
         src = '''
           #include <stdio.h>
+          #include <math.h>
           int main()
           {
             float x = 1.234, y = 3.5, q = 0.00000001;
             y *= 3;
             int z = x < y;
             printf("*%d,%d,%.1f,%d,%.4f,%.2f*\\n", z, int(y), y, (int)x, x, q);
+
+            printf("%.2f, %.2f, %.2f, %.2f\\n", fmin(0.5, 3.3), fmin(NAN, 3.3), fmax(0.5, 3.3), fmax(NAN, 3.3));
 
             /*
             // Rounding behavior
@@ -1386,7 +1397,7 @@ c5,de,15,8a
             return 0;
           }
         '''
-        self.do_run(src, '*1,10,10.5,1,1.2340,0.00*')
+        self.do_run(src, '*1,10,10.5,1,1.2340,0.00*\n0.50, 3.30, 3.30, 3.30\n')
 
     def test_globaldoubles(self):
         src = r'''
@@ -1642,7 +1653,15 @@ c5,de,15,8a
             return 0;
           }
         '''
-        self.do_run(src, '4:10,177,543,def\n4\nwowie\ntoo\n76\n5\n(null)\n/* a comment */\n// another\ntest\n', ['wowie', 'too', '74'])
+        for named, expected in [(0, 100), (1, 0)]:
+          print named
+          Settings.NAMED_GLOBALS = named
+          self.do_run(src, '4:10,177,543,def\n4\nwowie\ntoo\n76\n5\n(null)\n/* a comment */\n// another\ntest\n', ['wowie', 'too', '74'])
+          if self.emcc_args == []:
+            gen = open(self.in_dir('src.cpp.o.js')).read()
+            count = gen.count('GLOBAL_BASE')
+            assert count == expected
+            print '  counted'
 
     def test_strcmp_uni(self):
       src = '''
@@ -1932,7 +1951,7 @@ c5,de,15,8a
             TEST(C4__);
             TEST(C4_2);
             TEST(C__z);
-            return 1;
+            return 0;
           }
         '''
         if Settings.QUANTUM_SIZE == 1:
@@ -1947,7 +1966,7 @@ c5,de,15,8a
           int main() {
             assert(1 == true); // pass
             assert(1 == false); // fail
-            return 1;
+            return 0;
           }
         '''
         self.do_run(src, 'Assertion failed: 1 == false')
@@ -2065,7 +2084,7 @@ Exiting stack_manipulate_func, level: 0
             } catch(...) {
               printf("done!*\\n");
             }
-            return 1;
+            return 0;
           }
         '''
         self.do_run(src, '*throw...caught!infunc...done!*')
@@ -2497,7 +2516,7 @@ Exiting stack_manipulate_func, level: 0
             }
           }
           printf("sum:%d*\n", total);
-          return 1;
+          return 0;
         }
       '''
       self.do_run(src, 'sum:9780*')
@@ -3003,7 +3022,7 @@ def process(filename):
 
           FOO:
             printf("bad\\n");
-            return 1;
+            return 0;
           BAR:
             printf("good\\n");
             const void *addr = &&FOO;
@@ -3701,6 +3720,7 @@ The current type of b is: 9
 
     def test_runtimelink(self):
       if Building.LLVM_OPTS: return self.skip('LLVM opts will optimize printf into puts in the parent, and the child will still look for puts')
+      if Settings.NAMED_GLOBALS == 0: return self.skip('dlopen cannot work without named globals, TODO')
 
       main, supp = self.setup_runtimelink_test()
 
@@ -3860,6 +3880,7 @@ def process(filename):
 
     def test_dlfcn_data_and_fptr(self):
       if Building.LLVM_OPTS: return self.skip('LLVM opts will optimize out parent_func')
+      if Settings.NAMED_GLOBALS == 0: return self.skip('dlopen cannot work without named globals, TODO')
 
       Settings.LINKABLE = 1
 
@@ -3964,6 +3985,7 @@ def process(filename):
       Settings.LINKABLE = 1
 
       if Building.LLVM_OPTS == 2: return self.skip('LLVM LTO will optimize away stuff we expect from the shared library')
+      if Settings.NAMED_GLOBALS == 0: return self.skip('dlopen cannot work without named globals, TODO')
 
       lib_src = r'''
         #include <stdio.h>
@@ -4201,7 +4223,7 @@ def process(filename):
               printf("at %s:%s\n", word, phrase);
             }
           }
-          return 1;
+          return 0;
         }
       '''
 
@@ -4314,6 +4336,19 @@ at function.:blag
         Call with 2 variable arguments.
         '''
       self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected))
+
+    def test_snprintf0(self):
+      src = r'''
+        #include <stdio.h>
+        int main()  {
+          int size = snprintf(NULL, 0, "%s %d %.2f\n", "me and myself", 25, 1.345);
+          char buf[size];
+          snprintf(buf, size, "%s %d %.2f\n", "me and myself", 25, 1.345);
+          printf("%d : %s\n", size, buf);
+          return 0;
+        }
+        '''
+      self.do_run(src, '22 : me and myself 25 1.34\n')
 
     def test_atoX(self):
       if self.emcc_args is None: return self.skip('requires ta2')
@@ -4560,11 +4595,15 @@ Pass: 0.000012 0.000012''')
 
           int x = sscanf("one %n two", "%s %n", word, &l);
           printf("%d,%s,%d\n", x, word, l);
-
+          {
+            int a, b, c, count;
+            count = sscanf("12345 6789", "%d %n%d", &a, &b, &c);
+            printf("%i %i %i %i\n", count, a, b, c);
+          }
           return 0;
         }
       '''
-      self.do_run(src, '''[DEBUG] word 1: version, l: 7\n1,one,4''')
+      self.do_run(src, '''[DEBUG] word 1: version, l: 7\n1,one,4\n2 12345 6 6789\n''')
 
     def test_sscanf_whitespace(self):
       src = r'''
@@ -5463,7 +5502,7 @@ def process(filename):
           test("www.cheezburger.com");
           test("fail.on.this.never.work"); // we will "work" on this - because we are just making aliases of names to ips
           test("localhost");
-          return 1;
+          return 0;
         }
       '''
       self.do_run(src, '''www.cheezburger.com : 1 : 4
@@ -5751,7 +5790,7 @@ int main(int argc, char **argv) {
           std::set<int> *fetchOriginatorNums = new std::set<int>();
           fetchOriginatorNums->insert(171);
           printf("hello world\\n");
-          return 1;
+          return 0;
         }
         ''', 'hello world');
 
@@ -5928,7 +5967,11 @@ void*:16
       self.do_run(path_from_root('tests', 'cubescript'), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
 
     def test_gcc_unmangler(self):
-      self.do_run(path_from_root('third_party'), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'], main_file='gcc_demangler.c')
+      Settings.NAMED_GLOBALS = 0 # test coverage for this
+
+      Building.COMPILER_TEST_OPTS = ['-I' + path_from_root('third_party')]
+
+      self.do_run(open(path_from_root('third_party', 'gcc_demangler.c')).read(), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'])
 
       #### Code snippet that is helpful to search for nonportable optimizations ####
       #global LLVM_OPT_OPTS
@@ -7369,6 +7412,7 @@ class %s(T):
     Settings.EMULATE_UNALIGNED_ACCESSES = int(Settings.USE_TYPED_ARRAYS == 2 and Building.LLVM_OPTS == 2)
     Settings.DOUBLE_MODE = 1 if Settings.USE_TYPED_ARRAYS and Building.LLVM_OPTS == 0 else 0
     Settings.PRECISE_I64_MATH = 0
+    Settings.NAMED_GLOBALS = 0 if not (embetter and llvm_opts) else 1
 
     Building.pick_llvm_opts(3)
 
@@ -7441,9 +7485,11 @@ Options that are modified or new in %s include:
         # properly report source code errors, and stop there
         self.clear()
         assert not os.path.exists('a.out.js')
-        output = Popen(['python', compiler, path_from_root('tests', 'hello_world_error' + suffix)], stdout=PIPE, stderr=PIPE).communicate()
+        process = Popen(['python', compiler, path_from_root('tests', 'hello_world_error' + suffix)], stdout=PIPE, stderr=PIPE)
+        output = process.communicate()
         assert not os.path.exists('a.out.js'), 'compilation failed, so no output file is expected'
         assert len(output[0]) == 0, output[0]
+        assert process.returncode is not 0, 'Failed compilation must return a nonzero error code!'
         self.assertNotContained('IOError', output[1]) # no python stack
         self.assertNotContained('Traceback', output[1]) # no python stack
         self.assertContained('error: invalid preprocessing directive', output[1])
@@ -7702,7 +7748,15 @@ f.close()
           finally:
             os.chdir(path_from_root('tests')) # Move away from the directory we are about to remove.
             shutil.rmtree(tempdirname)
-      
+
+    def test_failure_error_code(self):
+      for compiler in [EMCC, EMXX]:
+        # Test that if one file is missing from the build, then emcc shouldn't succeed, and shouldn't try to produce an output file.
+        process = Popen(['python', compiler, path_from_root('tests', 'hello_world.c'), 'this_file_is_missing.c', '-o', 'this_output_file_should_never_exist.js'], stdout=PIPE, stderr=PIPE)
+        process.communicate()
+        assert process.returncode is not 0, 'Trying to compile a nonexisting file should return with a nonzero error code!'
+        assert os.path.exists('this_output_file_should_never_exist.js') == False, 'Emcc should not produce an output file when build fails!'
+
     def test_Os(self):
       for opt in ['s', '0']:
         output = Popen(['python', EMCC, path_from_root('tests', 'hello_world.c'), '-O' + opt], stdout=PIPE, stderr=PIPE).communicate()
@@ -7725,7 +7779,7 @@ f.close()
          
         int main() {
           printf("hello, world!\n");
-          return 1;
+          return 0;
         }
       ''')
       Popen(['python', EMCC, os.path.join(self.get_dir(), 'test.cpp'), '-fcatch-undefined-behavior']).communicate()
@@ -9628,6 +9682,9 @@ elif 'browser' in str(sys.argv):
     def test_float_tex(self):
       self.btest('float_tex.cpp', reference='float_tex.png')
 
+    def test_subdata(self):
+      self.btest('gl_subdata.cpp', reference='float_tex.png')
+
     def test_runtimelink(self):
       main, supp = self.setup_runtimelink_test()
 
@@ -9956,7 +10013,7 @@ elif 'benchmark' in str(sys.argv):
             curri++;
           }
           printf("lastprime: %d.\\n", curri-1);
-          return 1;
+          return 0;
         }
       '''
       self.do_benchmark('primes', src, [], 'lastprime: 1297001.')
@@ -9979,7 +10036,7 @@ elif 'benchmark' in str(sys.argv):
             final = final % 1000;
           }
           printf("final: %d.\\n", final);
-          return 1;
+          return 0;
         }      
       '''
       self.do_benchmark('memops', src, [], 'final: 720.')
@@ -10022,7 +10079,7 @@ elif 'benchmark' in str(sys.argv):
             unlink(buf);
           }
           printf("ok");
-          return 1;
+          return 0;
         }      
       '''
       self.do_benchmark(src, [], 'ok')
@@ -10065,7 +10122,7 @@ elif 'benchmark' in str(sys.argv):
             }
           }
           printf("sum:%d\n", total);
-          return 1;
+          return 0;
         }      
       '''
       self.do_benchmark('copy', src, [], 'sum:9928\n', emcc_args=['-s', 'QUANTUM_SIZE=4', '-s', 'USE_TYPED_ARRAYS=2'])
@@ -10092,7 +10149,7 @@ elif 'benchmark' in str(sys.argv):
             }
           }
           printf("final: %d:%d.\n", f, s);
-          return 1;
+          return 0;
         }      
       '''
       self.do_benchmark('corrections', src, [], 'final: 826:14324.', emcc_args=['-s', 'CORRECT_SIGNS=1', '-s', 'CORRECT_OVERFLOWS=1', '-s', 'CORRECT_ROUNDINGS=1'])
