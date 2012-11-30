@@ -1372,7 +1372,7 @@ function registerize(ast, asm) {
 }
 
 function registerizeAsm(ast) {
-  registerizeAsm(ast, true);
+  registerize(ast, true);
 }
 
 // Eliminator aka Expressionizer
