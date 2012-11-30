@@ -311,7 +311,7 @@ def emscript(infile, settings, outfile, libraries=[]):
     receiving = ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm.' + s for s in exported_implemented_functions + function_tables])
     # finalize
     funcs_js = '''
-var asm = (function(env, buffer) {
+var asmPre = (function(env, buffer) {
   'use asm';
   var HEAP8 = new env.Int8Array(buffer);
   var HEAP16 = new env.Int16Array(buffer);
@@ -326,7 +326,13 @@ var asm = (function(env, buffer) {
   %s
 
   return %s;
-})(%s, buffer);
+});
+if (asmPre.toSource) { // works in sm but not v8, so we get full coverage between those two
+  asmPre = asmPre.toSource();
+  asmPre = asmPre.substr(25, asmPre.length-28);
+  asmPre = new Function('env', 'buffer', asmPre);
+}
+var asm = asmPre(%s, buffer); // pass through Function to prevent seeing outside scope
 %s;
 ''' % (function_tables_defs.replace('\n', '\n  '), exports, sending, receiving)
   else:
