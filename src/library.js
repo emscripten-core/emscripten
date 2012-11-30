@@ -20,9 +20,10 @@ LibraryManager.library = {
   // File system base.
   // ==========================================================================
 
-  stdin: 0,
-  stdout: 0,
-  stderr: 0,
+  // keep this low in memory, because we flatten arrays with them in them
+  stdin: 'allocate(1, "i32*", ALLOC_STACK)',
+  stdout: 'allocate(1, "i32*", ALLOC_STACK)',
+  stderr: 'allocate(1, "i32*", ALLOC_STACK)',
   _impure_ptr: 0,
 
   $FS__deps: ['$ERRNO_CODES', '__setErrNo', 'stdin', 'stdout', 'stderr', '_impure_ptr'],
@@ -572,10 +573,10 @@ LibraryManager.library = {
         eof: false,
         ungotten: []
       };
-      // Allocate these on the stack (and never free, we are called from ATINIT or earlier), to keep their locations low
-      _stdin = allocate([1], 'void*', ALLOC_STACK);
-      _stdout = allocate([2], 'void*', ALLOC_STACK);
-      _stderr = allocate([3], 'void*', ALLOC_STACK);
+      assert(Math.max(_stdin, _stdout, _stderr) < 128); // make sure these are low, we flatten arrays with these
+      {{{ makeSetValue('_stdin', 0, 1, 'void*') }}};
+      {{{ makeSetValue('_stdout', 0, 2, 'void*') }}};
+      {{{ makeSetValue('_stderr', 0, 3, 'void*') }}};
 
       // Other system paths
       FS.createPath('/', 'dev/shm/tmp', true, true); // temp files
