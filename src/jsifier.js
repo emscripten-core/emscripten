@@ -9,6 +9,8 @@ var STRUCT_LIST = set('struct', 'list');
 var UNDERSCORE_OPENPARENS = set('_', '(');
 var RELOOP_IGNORED_LASTS = set('return', 'unreachable', 'resume');
 
+var addedLibraryItems = {};
+
 // JSifier
 function JSify(data, functionsOnly, givenFunctions) {
   var mainPass = !functionsOnly;
@@ -281,6 +283,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           if (LibraryManager.library[shortident] &&
               LibraryManager.library[shortident].length &&
               !BUILD_AS_SHARED_LIB) {
+            if (addedLibraryItems[shortident]) return ret;
             var val = LibraryManager.library[shortident];
             var padding;
             if (Runtime.isNumberType(item.type) || isPointerType(item.type)) {
@@ -378,8 +381,6 @@ function JSify(data, functionsOnly, givenFunctions) {
       return ret;
     }
   });
-
-  var addedLibraryItems = {};
 
   // functionStub
   substrate.addActor('FunctionStub', {
