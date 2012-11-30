@@ -724,8 +724,6 @@ try:
   if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
   if llvm_lto is None: llvm_lto = llvm_opts > 0
   if closure is None: closure = 1 if opt_level >= 2 else 0
-  if minify_whitespace is None:
-    minify_whitespace = closure # if closure is run, minify whitespace
   if opt_level <= 0: keep_debug = True # always keep debug in -O0
 
   if DEBUG: start_time = time.time() # done after parsing arguments, which might affect debug state
@@ -859,6 +857,9 @@ try:
   if closure and shared.Settings.ASM_JS:
     print >> sys.stderr, 'emcc: warning: disabling closure because it is not compatible with asm.js code generation'
     closure = False
+
+  if minify_whitespace is None:
+    minify_whitespace = closure # if closure is run, minify whitespace
 
   ## Compile source code to bitcode
 
