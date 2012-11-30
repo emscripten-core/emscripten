@@ -4852,7 +4852,7 @@ LibraryManager.library = {
     var ptr = {{{ makeGetValue('_llvm_eh_exception.buf', '0', 'void*') }}};
     var destructor = {{{ makeGetValue('_llvm_eh_exception.buf', 2 * QUANTUM_SIZE, 'void*') }}};
     if (destructor) {
-      {{{ Functions.getTable('i') }}}[destructor](ptr);
+      {{{ Functions.getTable('vi') }}}[destructor](ptr);
       {{{ makeSetValue('_llvm_eh_exception.buf', 2 * QUANTUM_SIZE, '0', 'i32') }}}
     }
     // Free ptr if it isn't null.
