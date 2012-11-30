@@ -1185,6 +1185,8 @@ try:
     if DEBUG: print >> sys.stderr, 'emcc: running closure'
     final = shared.Building.closure_compiler(final)
     if DEBUG: save_intermediate('closure')
+  elif shared.settings.ASM_JS and shared.settings.RELOOP:
+    js_optimizer_queue += ['registerizeAsm'] # we can't use closure in asm, but this does much of the same
 
   if opt_level >= 1:
     if DEBUG: print >> sys.stderr, 'emcc: running post-closure post-opts'

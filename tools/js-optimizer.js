@@ -1203,7 +1203,7 @@ function loopOptimizer(ast) {
 // TODO: Consider how this fits in with the rest of the optimization toolchain. Do
 //       we still need the eliminator? Closure? And in what order? Perhaps just
 //       closure simple?
-function registerize(ast) {
+function registerize(ast, asm) {
   traverseGeneratedFunctions(ast, function(fun) {
     // Replace all var definitions with assignments; we will add var definitions at the top after we registerize
     // We also mark local variables - i.e., having a var definition
@@ -1369,6 +1369,10 @@ function registerize(ast) {
     }
     //printErr(fun[1] + ': saved ' + saved + ' / ' + (saved + nextReg - 1) + ' vars through registerization'); // not totally accurate
   });
+}
+
+function registerizeAsm(ast) {
+  registerizeAsm(ast, true);
 }
 
 // Eliminator aka Expressionizer
@@ -1894,6 +1898,7 @@ var passes = {
   hoistMultiples: hoistMultiples,
   loopOptimizer: loopOptimizer,
   registerize: registerize,
+  registerizeAsm: registerizeAsm,
   eliminate: eliminate,
   eliminateMemSafe: eliminateMemSafe,
   eliminateAsm: eliminateAsm,
