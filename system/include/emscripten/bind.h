@@ -218,7 +218,7 @@ namespace emscripten {
         template<typename ClassType, typename ReturnType, typename... Args>
         struct MethodInvoker {
             typedef ReturnType (ClassType::*MemberPointer)(Args...);
-            typename internal::BindingType<ReturnType>::WireType invoke(
+            static typename internal::BindingType<ReturnType>::WireType invoke(
                 ClassType* ptr,
                 const MemberPointer& method,
                 typename internal::BindingType<Args>::WireType... args
