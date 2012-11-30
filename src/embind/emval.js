@@ -45,6 +45,10 @@ function __emval_new_object() {
     return __emval_register({});
 }
 
+function __emval_new_null() {
+    return __emval_register(null);
+}
+
 function __emval_new_long(value) {
     return __emval_register(value);
 }
