@@ -264,7 +264,7 @@ var Functions = {
     }
     var tables = {};
     if (ASM_JS) {
-      ['ii'].forEach(function(sig) { // add some default signatures that are used in the library
+      ['v', 'vi', 'ii', 'iii'].forEach(function(sig) { // add some default signatures that are used in the library
         tables[sig] = emptyTable(sig); // TODO: make them compact
       });
     }
