@@ -376,12 +376,12 @@ function isIndexableGlobal(ident) {
 
 function makeGlobalDef(ident) {
   if (!NAMED_GLOBALS && isIndexableGlobal(ident)) return '';
-  return 'var ' + ident + ';'; // TODO: add option for namespacing or offsetting to allow reducing the number of globals
+  return 'var ' + ident + ';';
 }
 
 function makeGlobalUse(ident) {
   if (!NAMED_GLOBALS && isIndexableGlobal(ident)) return '(' + getFastValue('GLOBAL_BASE', '+', Variables.indexedGlobals[ident]) + ')';
-  return ident; // TODO: add option for namespacing or offsetting to allow reducing the number of globals
+  return ident;
 }
 
 function sortGlobals(globals) {
