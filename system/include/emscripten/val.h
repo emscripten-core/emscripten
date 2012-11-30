@@ -12,6 +12,7 @@ namespace emscripten {
             void _emval_incref(EM_VAL value);
             void _emval_decref(EM_VAL value);
             EM_VAL _emval_new_object();
+            EM_VAL _emval_new_null();
             EM_VAL _emval_new_long(long value);
             EM_VAL _emval_new_cstring(const char* str);
             bool _emval_has_property(EM_VAL object, const char* key);
@@ -46,6 +47,10 @@ namespace emscripten {
     public:
         static val object() {
             return val(internal::_emval_new_object());
+        };
+
+        static val null() {
+            return val(internal::_emval_new_null());
         };
 
         static val take_ownership(internal::EM_VAL e) {
