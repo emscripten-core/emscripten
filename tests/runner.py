@@ -2869,7 +2869,7 @@ Exiting stack_manipulate_func, level: 0
             emscripten_run_script("Module.print('hello world' + '!')");
             printf("*%d*\n", emscripten_run_script_int("5*20"));
             printf("*%s*\n", emscripten_run_script_string("'five'+'six'"));
-            emscripten_run_script("_save_me_aimee()");
+            emscripten_run_script("Module['_save_me_aimee']()");
             return 0;
           }
           '''
@@ -2879,7 +2879,7 @@ def process(filename):
   src = open(filename, 'r').read()
   # TODO: restore this (see comment in emscripten.h) assert '// hello from the source' in src
 '''
-
+        Settings.EXPORTED_FUNCTIONS = ['_main', '_save_me_aimee']
         self.do_run(src, 'hello world!\n*100*\n*fivesix*\nmann\n', post_build=check)
 
     def test_inlinejs(self):
