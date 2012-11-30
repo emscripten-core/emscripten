@@ -275,7 +275,7 @@ namespace emscripten {
             };
 
             static WireType toWireType(T v) {
-                return new ActualT(v);
+                return new T(v);
             }
 
             static Marshaller fromWireType(WireType p) {
