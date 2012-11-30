@@ -1,5 +1,7 @@
 
 if (GC_SUPPORT) {
+  EXPORTED_FUNCTIONS['_calloc'] = 1;
+
   var LibraryGC = {
     $GC__deps: ['sbrk'],
     $GC: {
