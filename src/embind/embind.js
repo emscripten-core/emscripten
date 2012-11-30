@@ -495,6 +495,7 @@ function __embind_register_vector(
 
 // hang onto your hats, guys, we're going to try to make this one registration work for the class and all its
 // derived classes
+
 function __embind_register_class(
     classType,
     pointerType,
@@ -882,9 +883,10 @@ function __embind_register_class_operator_call(
     invoker
 ) {
     classType = requireRegisteredType(classType, 'class');
+    var humanName = classType.name + '.' + 'operator_call';
     argTypes = requireArgumentTypes(argCount, argTypes, 'method ' + humanName);
     invoker = FUNCTION_TABLE[invoker];
-    var humanName = classType.name + '.' + 'operator_call';
+    
     
     classType.Handle.prototype.operator_call = function() {
         if (!this.ptr) {
@@ -902,6 +904,71 @@ function __embind_register_class_operator_call(
         }
 
         var rv = argTypes[0].fromWireType(invoker.apply(null, args));
+        runDestructors(destructors);
+        return rv;
+    };
+}
+
+function __embind_register_class_operator_array_get(
+    classType,
+    elementType,
+    indexType,
+    invoker
+) {
+    classType = requireRegisteredType(classType, 'class');
+    indexType = requireRegisteredType(indexType, 'array access index ' + classType.name);
+    elementType = requireRegisteredType(elementType, 'array access element' + classType.name);
+    invoker = FUNCTION_TABLE[invoker];
+    var humanName = classType.name + '.' + 'operator_array_get';
+    
+    classType.Handle.prototype.array_get = function() {
+        if (!this.ptr) {
+            throw new BindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
+        }
+        
+        if (arguments.length !== 1) {
+            throw new BindingError('emscripten binding method ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + 1);
+        }
+        
+        var destructors = [];
+        var args = new Array(2);
+        args[0] = this.ptr;
+        args[1] = indexType.toWireType(destructors, arguments[0]);
+        
+        var rv = elementType.fromWireType(invoker.apply(null, args));
+        runDestructors(destructors);
+        return rv;
+    };
+}
+
+function __embind_register_class_operator_array_set(
+    classType,
+    elementType,
+    indexType,
+    invoker
+) {
+    classType = requireRegisteredType(classType, 'class');
+    indexType = requireRegisteredType(indexType, 'array access index ' + classType.name);
+    elementType = requireRegisteredType(elementType, 'vector ' + classType.name);
+    invoker = FUNCTION_TABLE[invoker];
+    var humanName = classType.name + '.' + 'operator_array_get';
+    
+    classType.Handle.prototype.array_set = function() {
+        if (!this.ptr) {
+            throw new BindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
+        }
+        
+        if (arguments.length !== 2) {
+            throw new BindingError('emscripten binding method ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + 2);
+        }
+        
+        var destructors = [];
+        var args = new Array(2);
+        args[0] = this.ptr;
+        args[1] = indexType.toWireType(destructors, arguments[0]);
+        args[2] = elementType.toWireType(destructors, arguments[1]);
+        
+        var rv = elementType.fromWireType(invoker.apply(null, args));
         runDestructors(destructors);
         return rv;
     };

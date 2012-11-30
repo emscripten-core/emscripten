@@ -165,8 +165,19 @@ namespace emscripten {
                 TYPEID classType,
                 unsigned argCount,
                 TYPEID argTypes[],
-                GenericFunction invoker
-            );
+                GenericFunction invoker);
+
+            void _embind_register_class_operator_array_get(
+                TYPEID classType,
+                TYPEID elementType,
+                TYPEID indexType,
+                GenericFunction invoker);
+
+            void _embind_register_class_operator_array_set(
+                TYPEID classType,
+                TYPEID elementType,
+                TYPEID indexType,
+                GenericFunction invoker);
 
             void _embind_register_enum(
                 TYPEID enumType,
@@ -338,6 +349,30 @@ namespace emscripten {
                 typename internal::BindingType<Args>::WireType... args
             ) {
                 ptr(internal::BindingType<Args>::fromWireType(args)...);
+            }
+        };
+
+        template<typename ClassType, typename ElementType>
+        struct ArrayAccessGetInvoker {
+            static typename internal::BindingType<ElementType>::WireType invoke(
+                ClassType* ptr,
+                size_t index,
+                typename internal::BindingType<ElementType>
+            ) {
+                return internal::BindingType<ElementType>::toWireType(
+                        (*ptr)[index]
+                );
+            }
+        };
+
+        template<typename ClassType, typename ElementType>
+        struct ArrayAccessSetInvoker {
+            static void invoke(
+                ClassType* ptr,
+                size_t index,
+                typename internal::BindingType<ElementType>::WireType item
+            ) {
+                (*ptr)[index] = internal::BindingType<ElementType>::fromWireType(item);
             }
         };
 
@@ -621,27 +656,6 @@ namespace emscripten {
     };
 
     ////////////////////////////////////////////////////////////////////////////////
-    // VECTORS
-    ////////////////////////////////////////////////////////////////////////////////
-    
-    template<typename VectorType>
-    inline void register_vector(const char* name) {
-        typedef typename VectorType::value_type ElementType;
-
-        internal::registerStandardTypes();
-        internal::_embind_register_vector(
-            internal::TypeID<VectorType>::get(),
-            internal::TypeID<ElementType>::get(),
-            name,
-            reinterpret_cast<internal::GenericFunction>(&internal::raw_constructor<VectorType>),
-            reinterpret_cast<internal::GenericFunction>(&internal::raw_destructor<VectorType>),
-            reinterpret_cast<internal::GenericFunction>(&internal::Vector<VectorType>::length),
-            reinterpret_cast<internal::GenericFunction>(&internal::Vector<VectorType>::getAt),
-            reinterpret_cast<internal::GenericFunction>(&internal::Vector<VectorType>::push_back)
-        );
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////
     // CLASSES
     ////////////////////////////////////////////////////////////////////////////////
     // TODO: support class definitions without constructors.
@@ -750,6 +764,44 @@ namespace emscripten {
             return *this;
         }
 
+
+        /*
+         *  void _embind_register_class_operator_array_get(
+                TYPEID classType,
+                TYPEID elementType,
+                GenericFunction invoker);
+
+            void _embind_register_class_operator_array_set(
+                TYPEID classType,
+                TYPEID elementType,
+                GenericFunction invoker);
+
+                ArrayAccessSetInvoker
+         */
+
+        template<typename ElementType, typename IndexType>
+        class_& arrayoperatorget() {
+            using namespace internal;
+
+            _embind_register_class_operator_array_get(
+                TypeID<ClassType>::get(),
+                TypeID<ElementType>::get(),
+                TypeID<IndexType>::get(),
+                reinterpret_cast<internal::GenericFunction>(&internal::ArrayAccessGetInvoker<ClassType, ElementType>::invoke));
+        }
+
+        template<typename ElementType, typename IndexType>
+        class_& arrayoperatorset() {
+            using namespace internal;
+
+            _embind_register_class_operator_array_set(
+                TypeID<ClassType>::get(),
+                TypeID<ElementType>::get(),
+                TypeID<IndexType>::get(),
+                reinterpret_cast<internal::GenericFunction>(&internal::ArrayAccessSetInvoker<ClassType, ElementType>::invoke));
+            return *this;
+        }
+
         template<typename ReturnType>
         class_& cast(const char* methodName) {
             using namespace internal;
@@ -762,6 +814,29 @@ namespace emscripten {
             return *this;
         }
     };
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // VECTORS
+    ////////////////////////////////////////////////////////////////////////////////
+    template<typename T>
+    class_<std::vector<T>> register_vector(const char* name) {
+        using namespace std;
+        typedef vector<T> VecType;
+        typedef typename vector<T>::iterator IterType;
+        typedef typename vector<T>::const_iterator ConstIterType;
+
+        void (VecType::*push_back)(const T&) = &VecType::push_back;
+        const T& (VecType::*at)(size_t) const = &VecType::at;
+        auto c = class_<std::vector<T>>(name)
+            .template constructor<>()
+            .method("push_back", push_back)
+            .method("at", at)
+            .method("size", &vector<T>::size)
+            .template arrayoperatorget<T, size_t>()
+            .template arrayoperatorset<T, size_t>()
+            ;
+        return c;
+    }
 
     ////////////////////////////////////////////////////////////////////////////////
     // ENUMS
