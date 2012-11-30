@@ -6400,6 +6400,9 @@ def process(filename):
           if '_ta2' in shortname and not Settings.USE_TYPED_ARRAYS == 2:
             print self.skip('case "%s" only relevant for ta2' % shortname)
             continue
+          if '_noasm' in shortname and Settings.ASM_JS:
+            print self.skip('case "%s" not relevant for asm.js' % shortname)
+            continue
           print >> sys.stderr, "Testing case '%s'..." % shortname
           output_file = path_from_root('tests', 'cases', shortname + '.txt')
           if Settings.QUANTUM_SIZE == 1:
