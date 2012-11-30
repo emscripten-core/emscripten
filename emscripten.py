@@ -302,7 +302,7 @@ def emscript(infile, settings, outfile, libraries=[]):
       del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
     except:
       pass
-    global_vars = forwarded_json['Variables']['globals'].keys()
+    global_vars = forwarded_json['Variables']['globals'].keys() if settings['NAMED_GLOBALS'] else []
     global_funcs = ['_' + x for x in forwarded_json['Functions']['libraryFunctions'].keys()]
     asm_globals = ''.join(['  var ' + g + '=env.' + g + ';\n' for g in basics + global_funcs + global_vars])
     # sent data
