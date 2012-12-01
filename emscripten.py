@@ -365,7 +365,7 @@ Runtime.stackRestore = function(top) { asm.stackRestore(top) };
   if DEBUG: print >> sys.stderr, '  emscript: phase 3 took %s seconds' % (time.time() - t)
 
   if settings.get('ASM_JS'):
-    outfile.write('})()\n');
+    outfile.write('}).apply(null, arguments);\n');
 
   outfile.close()
 
