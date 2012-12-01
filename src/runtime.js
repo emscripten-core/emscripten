@@ -311,13 +311,26 @@ var Runtime = {
     return ret;
   },
 
-  getFunctionTable: function(sig) {
-    return FUNCTION_TABLE; // TODO: Support asm
+  dynCall: function(sig, ptr, args) {
+    if (args && args.length) {
+#if ASM_JS
+      args.splice(0, 0, ptr);
+      return Module['dynCall_' + sig].apply(null, args);
+#else
+      return FUNCTION_TABLE[ptr].apply(null, args);
+#endif
+    } else {
+#if ASM_JS
+      return Module['dynCall_' + sig].call(null, ptr);
+#else
+      return FUNCTION_TABLE[ptr]();
+#endif
+    }
   },
 
   addFunction: function(func, sig) {
     assert(sig);
-    var table = Runtime.getFunctionTable(sig);
+    var table = FUNCTION_TABLE; // TODO: support asm
     var ret = table.length;
     table.push(func);
     table.push(0);

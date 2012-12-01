@@ -377,10 +377,10 @@ mergeInto(LibraryManager.library, {
       _file.substr(index +1),
       _url, true, true,
       function() {
-        if (onload) {{{ Functions.getTable('vi') }}}[onload](file);
+        if (onload) Runtime.dynCall('vi', onload, [file]);
       },
       function() {
-        if (onerror) {{{ Functions.getTable('vi') }}}[onerror](file);
+        if (onerror) Runtime.dynCall('vi', onerror, [file]);
       }
     );
   },
@@ -395,10 +395,10 @@ mergeInto(LibraryManager.library, {
       _file.substr(index +1),
       new Uint8Array(data.object.contents), true, true,
       function() {
-        if (onload) {{{ Functions.getTable('vi') }}}[onload](file);
+        if (onload) Runtime.dynCall('vi', onload, [file]);
       },
       function() {
-        if (onerror) {{{ Functions.getTable('vi') }}}[onerror](file);
+        if (onerror) Runtime.dynCall('vi', onerror, [file]);
       },
       true // don'tCreateFile - it's already there
     );
@@ -417,10 +417,10 @@ mergeInto(LibraryManager.library, {
       {{{ makeHEAPView('U8', 'data', 'data + size') }}},
       true, true,
       function() {
-        if (onload) {{{ Functions.getTable('vi') }}}[onload](arg, cname);
+        if (onload) Runtime.dynCall('vii', onload, [file, cname]);
       },
       function() {
-        if (onerror) {{{ Functions.getTable('vi') }}}[onerror](arg);
+        if (onerror) Runtime.dynCall('vi', onerror, [file]);
       },
       true // don'tCreateFile - it's already there
     );
@@ -440,7 +440,6 @@ mergeInto(LibraryManager.library, {
   emscripten_set_main_loop: function(func, fps, simulateInfiniteLoop) {
     Module['noExitRuntime'] = true;
 
-    var jsFunc = {{{ Functions.getTable('v') }}}[func];
     Browser.mainLoop.runner = function() {
       if (Browser.mainLoop.queue.length > 0) {
         var start = Date.now();
@@ -473,7 +472,7 @@ mergeInto(LibraryManager.library, {
         Module['preMainLoop']();
       }
 
-      jsFunc();
+      Runtime.dynCall('v', func);
 
       if (Module['postMainLoop']) {
         Module['postMainLoop']();
@@ -517,12 +516,16 @@ mergeInto(LibraryManager.library, {
   },
 
   _emscripten_push_main_loop_blocker: function(func, arg, name) {
-    Browser.mainLoop.queue.push({ func: {{{ Functions.getTable('vi') }}}[func], arg: arg, name: Pointer_stringify(name), counted: true });
+    Browser.mainLoop.queue.push({ func: function() {
+      Runtime.dynCall('vi', func, [arg]);
+    }, name: Pointer_stringify(name), counted: true });
     Browser.mainLoop.updateStatus();
   },
 
   _emscripten_push_uncounted_main_loop_blocker: function(func, arg, name) {
-    Browser.mainLoop.queue.push({ func: {{{ Functions.getTable('vi') }}}[func], arg: arg, name: Pointer_stringify(name), counted: false });
+    Browser.mainLoop.queue.push({ func: function() {
+      Runtime.dynCall('vi', func, [arg]);
+    }, name: Pointer_stringify(name), counted: false });
     Browser.mainLoop.updateStatus();
   },
 

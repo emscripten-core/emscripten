@@ -728,14 +728,14 @@ function callRuntimeCallbacks(callbacks) {
     var callback = callbacks.shift();
     var func = callback.func;
     if (typeof func === 'number') {
-#if ASM_JS
-      func = {{{ Functions.getTable('v') }}}[func] || // void()
-             {{{ Functions.getTable('vi') }}}[func];  // void(int)
-#else
-      func = {{{ Functions.getTable('x') }}}[func];
-#endif
+      if (callback.arg === undefined) {
+        Runtime.dynCall('v', func);
+      } else {
+        Runtime.dynCall('vi', func, [callback.arg]);
+      }
+    } else {
+      func(callback.arg === undefined ? null : callback.arg);
     }
-    func(callback.arg === undefined ? null : callback.arg);
   }
 }
 

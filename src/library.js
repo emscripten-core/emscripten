@@ -3617,7 +3617,9 @@ LibraryManager.library = {
   },
 
   bsearch: function(key, base, num, size, compar) {
-    var cmp = {{{ Functions.getTable('iii') }}}[compar];
+    var cmp = function(x, y) {
+      return Runtime.dynCall('iii', compar, [x, y])
+    };
     var left = 0;
     var right = num;
     var mid, test, addr;
@@ -3859,7 +3861,9 @@ LibraryManager.library = {
     if (num == 0 || size == 0) return;
     // forward calls to the JavaScript sort method
     // first, sort the items logically
-    comparator = {{{ Functions.getTable('iii') }}}[comparator];
+    comparator = function(x, y) {
+      return Runtime.dynCall('iii', comparator, [x, y]);
+    }
     var keys = [];
     for (var i = 0; i < num; i++) keys.push(i);
     keys.sort(function(a, b) {
@@ -4852,7 +4856,7 @@ LibraryManager.library = {
     var ptr = {{{ makeGetValue('_llvm_eh_exception.buf', '0', 'void*') }}};
     var destructor = {{{ makeGetValue('_llvm_eh_exception.buf', 2 * QUANTUM_SIZE, 'void*') }}};
     if (destructor) {
-      {{{ Functions.getTable('vi') }}}[destructor](ptr);
+      Runtime.dynCall('vi', destructor, [ptr]);
       {{{ makeSetValue('_llvm_eh_exception.buf', 2 * QUANTUM_SIZE, '0', 'i32') }}}
     }
     // Free ptr if it isn't null.
@@ -6491,7 +6495,7 @@ LibraryManager.library = {
   pthread_once: function(ptr, func) {
     if (!_pthread_once.seen) _pthread_once.seen = {};
     if (ptr in _pthread_once.seen) return;
-    {{{ Functions.getTable('v') }}}[func]();
+    Runtime.dynCall('v', func);
     _pthread_once.seen[ptr] = 1;
   },
 
@@ -6509,7 +6513,7 @@ LibraryManager.library = {
   },
 
   pthread_cleanup_push: function(routine, arg) {
-    __ATEXIT__.push({ func: function() { {{{ Functions.getTable('vi') }}}[routine](arg) } })
+    __ATEXIT__.push({ func: function() { Runtime.dynCall('vi', routine, [arg]) } })
     _pthread_cleanup_push.level = __ATEXIT__.length;
   },
 

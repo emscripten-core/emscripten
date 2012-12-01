@@ -1116,7 +1116,7 @@ var LibrarySDL = {
     SDL.audio.bufferSize = totalSamples*2; // hardcoded 16-bit audio
     SDL.audio.buffer = _malloc(SDL.audio.bufferSize);
     SDL.audio.caller = function() {
-      {{{ Functions.getTable('viii') }}}[SDL.audio.callback](SDL.audio.userdata, SDL.audio.buffer, SDL.audio.bufferSize);
+      Runtime.dynCall('viii', SDL.audio.callback, [SDL.audio.userdata, SDL.audio.buffer, SDL.audio.bufferSize]);
       SDL.audio.pushAudio(SDL.audio.buffer, SDL.audio.bufferSize);
     };
     // Mozilla Audio API. TODO: Other audio APIs
@@ -1408,7 +1408,7 @@ var LibrarySDL = {
     audio.pause();
     SDL.music.audio = null;
     if (SDL.hookMusicFinished) {
-      {{{ Functions.getTable('v') }}}[SDL.hookMusicFinished]();
+      Runtime.dynCall('v', SDL.hookMusicFinished);
     }
     return 0;
   },
@@ -1555,7 +1555,7 @@ var LibrarySDL = {
 
   SDL_AddTimer: function(interval, callback, param) {
     return window.setTimeout(function() {
-      {{{ Functions.getTable('ii') }}}[callback](interval, param);
+      Runtime.dynCall('ii', callback, [interval, param]);
     }, interval);
   },
   SDL_RemoveTimer: function(id) {
