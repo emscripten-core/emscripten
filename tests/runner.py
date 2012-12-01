@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # This Python file uses the following encoding: utf-8
 
 '''
@@ -3307,7 +3307,7 @@ The current type of b is: 9
         Building.link([supp_name + '.o', main_name + '.o'], all_name)
 
         # This will fail! See explanation near the warning we check for, in the compiler source code
-        output = Popen(['python', EMCC, all_name], stderr=PIPE).communicate()
+        output = Popen(['python2', EMCC, all_name], stderr=PIPE).communicate()
         # Check for warning in the generated code
         generated = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
         assert 'Casting a function pointer type to another with a different number of arguments' in output[1], 'Missing expected warning'
@@ -5762,7 +5762,7 @@ int main(int argc, char **argv) {
         # emcc should build in dlmalloc automatically, and do all the sign correction etc. for it
 
         try_delete(os.path.join(self.get_dir(), 'src.cpp.o.js'))
-        output = Popen(['python', EMCC, path_from_root('tests', 'dlmalloc_test.c'), '-s', 'TOTAL_MEMORY=100000000',
+        output = Popen(['python2', EMCC, path_from_root('tests', 'dlmalloc_test.c'), '-s', 'TOTAL_MEMORY=100000000',
                         '-o', os.path.join(self.get_dir(), 'src.cpp.o.js')], stdout=PIPE, stderr=self.stderr_redirect).communicate()
 
         self.do_run('x', '*1,0*', ['200', '1'], no_build=True)
@@ -6355,7 +6355,7 @@ def process(filename):
 
     # Autodebug the code
     def do_autodebug(self, filename):
-      output = Popen(['python', AUTODEBUGGER, filename+'.o.ll', filename+'.o.ll.ll'], stdout=PIPE, stderr=self.stderr_redirect).communicate()[0]
+      output = Popen(['python2', AUTODEBUGGER, filename+'.o.ll', filename+'.o.ll.ll'], stdout=PIPE, stderr=self.stderr_redirect).communicate()[0]
       assert 'Success.' in output, output
       self.prep_ll_run(filename, filename+'.o.ll.ll', force_recompile=True) # rebuild .bc # TODO: use code in do_autodebug_post for this
 
@@ -6367,7 +6367,7 @@ def process(filename):
         return True
       print 'Autodebugging during post time'
       delattr(self, 'post')
-      output = Popen(['python', AUTODEBUGGER, filename+'.o.ll', filename+'.o.ll.ll'], stdout=PIPE, stderr=self.stderr_redirect).communicate()[0]
+      output = Popen(['python2', AUTODEBUGGER, filename+'.o.ll', filename+'.o.ll.ll'], stdout=PIPE, stderr=self.stderr_redirect).communicate()[0]
       assert 'Success.' in output, output
       shutil.copyfile(filename + '.o.ll.ll', filename + '.o.ll')
       Building.llvm_as(filename)
@@ -6548,8 +6548,8 @@ def process(filename):
         '''
         post = '''
 def process(filename):
-  Popen(['python', DEMANGLER, filename], stdout=open(filename + '.tmp', 'w')).communicate()
-  Popen(['python', NAMESPACER, filename, filename + '.tmp'], stdout=open(filename + '.tmp2', 'w')).communicate()
+  Popen(['python2', DEMANGLER, filename], stdout=open(filename + '.tmp', 'w')).communicate()
+  Popen(['python2', NAMESPACER, filename, filename + '.tmp'], stdout=open(filename + '.tmp2', 'w')).communicate()
   src = open(filename, 'r').read().replace(
     '// {{MODULE_ADDITIONS}',
     'Module["_"] = ' + open(filename + '.tmp2', 'r').read().replace('var ModuleNames = ', '').rstrip() + ';\n\n' + script_src + '\n\n' +
@@ -6604,7 +6604,7 @@ def process(filename):
         open(header_filename, 'w').write(header)
 
         basename = os.path.join(self.get_dir(), 'bindingtest')
-        output = Popen(['python', BINDINGS_GENERATOR, basename, header_filename], stdout=PIPE, stderr=self.stderr_redirect).communicate()[0]
+        output = Popen(['python2', BINDINGS_GENERATOR, basename, header_filename], stdout=PIPE, stderr=self.stderr_redirect).communicate()[0]
         #print output
         assert 'Traceback' not in output, 'Failure in binding generation: ' + output
 
@@ -6777,7 +6777,7 @@ Child2:9
         open(header_filename, 'w').write(header)
 
         basename = os.path.join(self.get_dir(), 'bindingtest')
-        output = Popen(['python', BINDINGS_GENERATOR, basename, header_filename], stdout=PIPE, stderr=self.stderr_redirect).communicate()[0]
+        output = Popen(['python2', BINDINGS_GENERATOR, basename, header_filename], stdout=PIPE, stderr=self.stderr_redirect).communicate()[0]
         #print output
         assert 'Traceback' not in output, 'Failure in binding generation: ' + output
 
@@ -7452,7 +7452,7 @@ TT = %s
         suffix = '.c' if compiler == EMCC else '.cpp'
 
         # --version
-        output = Popen(['python', compiler, '--version'], stdout=PIPE, stderr=PIPE).communicate()
+        output = Popen(['python2', compiler, '--version'], stdout=PIPE, stderr=PIPE).communicate()
         self.assertContained('''emcc (Emscripten GCC-like replacement) 2.0
 Copyright (C) 2012 the Emscripten authors.
 This is free and open source software under the MIT license.
@@ -7460,11 +7460,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 ''', output[0].replace('\r', ''), output[1].replace('\r', ''))
 
         # -v, without input files
-        output = Popen(['python', compiler, '-v'], stdout=PIPE, stderr=PIPE).communicate()
+        output = Popen(['python2', compiler, '-v'], stdout=PIPE, stderr=PIPE).communicate()
         self.assertContained('''clang version''', output[1].replace('\r', ''), output[1].replace('\r', ''))
 
         # --help
-        output = Popen(['python', compiler, '--help'], stdout=PIPE, stderr=PIPE).communicate()
+        output = Popen(['python2', compiler, '--help'], stdout=PIPE, stderr=PIPE).communicate()
         self.assertContained('''%s [options] file...
 
 Most normal gcc/g++ options will work, for example:
@@ -7477,7 +7477,7 @@ Options that are modified or new in %s include:
 
         # emcc src.cpp ==> writes a.out.js
         self.clear()
-        output = Popen(['python', compiler, path_from_root('tests', 'hello_world' + suffix)], stdout=PIPE, stderr=PIPE).communicate()
+        output = Popen(['python2', compiler, path_from_root('tests', 'hello_world' + suffix)], stdout=PIPE, stderr=PIPE).communicate()
         assert len(output[0]) == 0, output[0]
         assert os.path.exists('a.out.js'), '\n'.join(output)
         self.assertContained('hello, world!', run_js('a.out.js'))
@@ -7485,7 +7485,7 @@ Options that are modified or new in %s include:
         # properly report source code errors, and stop there
         self.clear()
         assert not os.path.exists('a.out.js')
-        process = Popen(['python', compiler, path_from_root('tests', 'hello_world_error' + suffix)], stdout=PIPE, stderr=PIPE)
+        process = Popen(['python2', compiler, path_from_root('tests', 'hello_world_error' + suffix)], stdout=PIPE, stderr=PIPE)
         output = process.communicate()
         assert not os.path.exists('a.out.js'), 'compilation failed, so no output file is expected'
         assert len(output[0]) == 0, output[0]
@@ -7502,29 +7502,29 @@ Options that are modified or new in %s include:
         for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc'], ['-o', 'src.so'], ['-o', 'js']]:
           target = args[1] if len(args) == 2 else 'hello_world.o'
           self.clear()
-          Popen(['python', compiler, path_from_root('tests', 'hello_world' + suffix)] + args, stdout=PIPE, stderr=PIPE).communicate()
+          Popen(['python2', compiler, path_from_root('tests', 'hello_world' + suffix)] + args, stdout=PIPE, stderr=PIPE).communicate()
           syms = Building.llvm_nm(target)
           assert len(syms.defs) == 1 and 'main' in syms.defs, 'Failed to generate valid bitcode'
           if target == 'js': # make sure emcc can recognize the target as a bitcode file
             shutil.move(target, target + '.bc')
             target += '.bc'
-          output = Popen(['python', compiler, target, '-o', target + '.js'], stdout = PIPE, stderr = PIPE).communicate()
+          output = Popen(['python2', compiler, target, '-o', target + '.js'], stdout = PIPE, stderr = PIPE).communicate()
           assert len(output[0]) == 0, output[0]
           assert os.path.exists(target + '.js'), 'Expected %s to exist since args are %s : %s' % (target + '.js', str(args), '\n'.join(output))
           self.assertContained('hello, world!', run_js(target + '.js'))
 
         # handle singleton archives
         self.clear()
-        Popen(['python', compiler, path_from_root('tests', 'hello_world' + suffix), '-o', 'a.bc'], stdout=PIPE, stderr=PIPE).communicate()
+        Popen(['python2', compiler, path_from_root('tests', 'hello_world' + suffix), '-o', 'a.bc'], stdout=PIPE, stderr=PIPE).communicate()
         Popen([LLVM_AR, 'r', 'a.a', 'a.bc'], stdout=PIPE, stderr=PIPE).communicate()
         assert os.path.exists('a.a')
-        output = Popen(['python', compiler, 'a.a']).communicate()
+        output = Popen(['python2', compiler, 'a.a']).communicate()
         assert os.path.exists('a.out.js'), output
         self.assertContained('hello, world!', run_js('a.out.js'))
 
         # emcc src.ll ==> generates .js
         self.clear()
-        output = Popen(['python', compiler, path_from_root('tests', 'hello_world.ll')], stdout=PIPE, stderr=PIPE).communicate()
+        output = Popen(['python2', compiler, path_from_root('tests', 'hello_world.ll')], stdout=PIPE, stderr=PIPE).communicate()
         assert len(output[0]) == 0, output[0]
         assert os.path.exists('a.out.js'), '\n'.join(output)
         self.assertContained('hello, world!', run_js('a.out.js'))
@@ -7536,7 +7536,7 @@ Options that are modified or new in %s include:
           os.mkdir('b_dir')
           for path in [os.path.abspath(os.path.join('..', 'file1.js')), os.path.join('b_dir', 'file2.js')]:
             self.clear(in_curr=True)
-            output = Popen(['python', compiler, path_from_root('tests', 'hello_world.ll'), '-o', path], stdout=PIPE, stderr=PIPE).communicate()
+            output = Popen(['python2', compiler, path_from_root('tests', 'hello_world.ll'), '-o', path], stdout=PIPE, stderr=PIPE).communicate()
             assert os.path.exists(path), path + ' does not exist; ' + '\n'.join(output)
             self.assertContained('hello, world!', run_js(path))
         finally:
@@ -7550,7 +7550,7 @@ Options that are modified or new in %s include:
         # very speed-sensitive. So we do not implement it in JS in library.js, instead we compile it from source
         for source, has_malloc in [('hello_world' + suffix, False), ('hello_malloc.cpp', True)]:
           self.clear()
-          output = Popen(['python', compiler, path_from_root('tests', source)], stdout=PIPE, stderr=PIPE).communicate()
+          output = Popen(['python2', compiler, path_from_root('tests', source)], stdout=PIPE, stderr=PIPE).communicate()
           assert os.path.exists('a.out.js'), '\n'.join(output)
           self.assertContained('hello, world!', run_js('a.out.js'))
           generated = open('a.out.js').read()
@@ -7576,14 +7576,14 @@ Options that are modified or new in %s include:
         ]:
           #print params, opt_level, bc_params, closure
           self.clear()
-          output = Popen(['python', compiler, path_from_root('tests', 'hello_world_loop' + ('_malloc' if has_malloc else '') + '.cpp')] + params,
+          output = Popen(['python2', compiler, path_from_root('tests', 'hello_world_loop' + ('_malloc' if has_malloc else '') + '.cpp')] + params,
                          stdout=PIPE, stderr=PIPE).communicate()
           assert len(output[0]) == 0, output[0]
           if bc_params is not None:
             if '-O1' in params and 'something.bc' in params:
               assert 'warning: -Ox flags ignored, since not generating JavaScript' in output[1]
             assert os.path.exists('something.bc'), output[1]
-            output = Popen(['python', compiler, 'something.bc', '-o', 'something.js'] + bc_params, stdout=PIPE, stderr=PIPE).communicate()
+            output = Popen(['python2', compiler, 'something.bc', '-o', 'something.js'] + bc_params, stdout=PIPE, stderr=PIPE).communicate()
           assert os.path.exists('something.js'), output[1]
           assert ('Warning: Applying some potentially unsafe optimizations!' in output[1]) == (opt_level >= 3), 'unsafe warning should appear in opt >= 3'
           self.assertContained('hello, world!', run_js('something.js'))
@@ -7624,7 +7624,7 @@ Options that are modified or new in %s include:
           (['--llvm-opts', '1'], lambda generated: '_puts(' in generated, 'llvm opts requested'),
         ]:
           self.clear()
-          output = Popen(['python', compiler, path_from_root('tests', 'hello_world_loop.cpp'), '-o', 'a.out.js'] + params, stdout=PIPE, stderr=PIPE).communicate()
+          output = Popen(['python2', compiler, path_from_root('tests', 'hello_world_loop.cpp'), '-o', 'a.out.js'] + params, stdout=PIPE, stderr=PIPE).communicate()
           assert len(output[0]) == 0, output[0]
           assert os.path.exists('a.out.js'), '\n'.join(output)
           self.assertContained('hello, world!', run_js('a.out.js'))
@@ -7633,7 +7633,7 @@ Options that are modified or new in %s include:
         # Compiling two source files into a final JS.
         for args, target in [([], 'a.out.js'), (['-o', 'combined.js'], 'combined.js')]:
           self.clear()
-          output = Popen(['python', compiler, path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.cpp')] + args,
+          output = Popen(['python2', compiler, path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.cpp')] + args,
                          stdout=PIPE, stderr=PIPE).communicate()
           assert len(output[0]) == 0, output[0]
           assert os.path.exists(target), '\n'.join(output)
@@ -7641,7 +7641,7 @@ Options that are modified or new in %s include:
 
           # Compiling two files with -c will generate separate .bc files
           self.clear()
-          output = Popen(['python', compiler, path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.cpp'), '-c'] + args,
+          output = Popen(['python2', compiler, path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.cpp'), '-c'] + args,
                          stdout=PIPE, stderr=PIPE).communicate()
           if '-o' in args:
             # specifying -o and -c is an error
@@ -7653,24 +7653,24 @@ Options that are modified or new in %s include:
           assert not os.path.exists(target), 'We should only have created bitcode here: ' + '\n'.join(output)
 
           # Compiling one of them alone is expected to fail
-          output = Popen(['python', compiler, 'twopart_main.o'] + args, stdout=PIPE, stderr=PIPE).communicate()
+          output = Popen(['python2', compiler, 'twopart_main.o'] + args, stdout=PIPE, stderr=PIPE).communicate()
           assert os.path.exists(target), '\n'.join(output)
           #print '\n'.join(output)
           self.assertContained('is not a function', run_js(target, stderr=STDOUT))
           try_delete(target)
 
           # Combining those bc files into js should work
-          output = Popen(['python', compiler, 'twopart_main.o', 'twopart_side.o'] + args, stdout=PIPE, stderr=PIPE).communicate()
+          output = Popen(['python2', compiler, 'twopart_main.o', 'twopart_side.o'] + args, stdout=PIPE, stderr=PIPE).communicate()
           assert os.path.exists(target), '\n'.join(output)
           self.assertContained('side got: hello from main, over', run_js(target))
 
           # Combining bc files into another bc should also work
           try_delete(target)
           assert not os.path.exists(target)
-          output = Popen(['python', compiler, 'twopart_main.o', 'twopart_side.o', '-o', 'combined.bc'] + args, stdout=PIPE, stderr=PIPE).communicate()
+          output = Popen(['python2', compiler, 'twopart_main.o', 'twopart_side.o', '-o', 'combined.bc'] + args, stdout=PIPE, stderr=PIPE).communicate()
           syms = Building.llvm_nm('combined.bc')
           assert len(syms.defs) == 2 and 'main' in syms.defs, 'Failed to generate valid bitcode'
-          output = Popen(['python', compiler, 'combined.bc', '-o', 'combined.bc.js'], stdout = PIPE, stderr = PIPE).communicate()
+          output = Popen(['python2', compiler, 'combined.bc', '-o', 'combined.bc.js'], stdout = PIPE, stderr = PIPE).communicate()
           assert len(output[0]) == 0, output[0]
           assert os.path.exists('combined.bc.js'), 'Expected %s to exist' % ('combined.bc.js')
           self.assertContained('side got: hello from main, over', run_js('combined.bc.js'))
@@ -7686,7 +7686,7 @@ f.write('transformed!')
 f.close()
 ''')
         trans_file.close()
-        output = Popen(['python', compiler, path_from_root('tests', 'hello_world' + suffix), '--js-transform', 'python t.py'], stdout=PIPE, stderr=PIPE).communicate()
+        output = Popen(['python2', compiler, path_from_root('tests', 'hello_world' + suffix), '--js-transform', 'python t.py'], stdout=PIPE, stderr=PIPE).communicate()
         assert open('a.out.js').read() == 'transformed!', 'Transformed output must be as expected'
 
       # TODO: Add in files test a clear example of using disablePermissions, and link to it from the wiki
@@ -7752,14 +7752,14 @@ f.close()
     def test_failure_error_code(self):
       for compiler in [EMCC, EMXX]:
         # Test that if one file is missing from the build, then emcc shouldn't succeed, and shouldn't try to produce an output file.
-        process = Popen(['python', compiler, path_from_root('tests', 'hello_world.c'), 'this_file_is_missing.c', '-o', 'this_output_file_should_never_exist.js'], stdout=PIPE, stderr=PIPE)
+        process = Popen(['python2', compiler, path_from_root('tests', 'hello_world.c'), 'this_file_is_missing.c', '-o', 'this_output_file_should_never_exist.js'], stdout=PIPE, stderr=PIPE)
         process.communicate()
         assert process.returncode is not 0, 'Trying to compile a nonexisting file should return with a nonzero error code!'
         assert os.path.exists('this_output_file_should_never_exist.js') == False, 'Emcc should not produce an output file when build fails!'
 
     def test_Os(self):
       for opt in ['s', '0']:
-        output = Popen(['python', EMCC, path_from_root('tests', 'hello_world.c'), '-O' + opt], stdout=PIPE, stderr=PIPE).communicate()
+        output = Popen(['python2', EMCC, path_from_root('tests', 'hello_world.c'), '-O' + opt], stdout=PIPE, stderr=PIPE).communicate()
         assert len(output[0]) == 0, output[0]
         assert ('emcc: warning: -Os is ignored (use -O0, -O1, -O2)' in output[1]) == (opt == 's'), 'warn on -Os when necessary'
         assert os.path.exists('a.out.js'), '\n'.join(output)
@@ -7782,7 +7782,7 @@ f.close()
           return 0;
         }
       ''')
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'test.cpp'), '-fcatch-undefined-behavior']).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'test.cpp'), '-fcatch-undefined-behavior']).communicate()
       self.assertContained('hello, world!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
     def test_unaligned_memory(self):
@@ -7802,7 +7802,7 @@ f.close()
           printf("data[1,2] 16bit: %x\n", *(Bit16u*)(data+1));
         }
       ''')
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'test.cpp'), '-s', 'UNALIGNED_MEMORY=1']).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'test.cpp'), '-s', 'UNALIGNED_MEMORY=1']).communicate()
       self.assertContained('data: 67452301\ndata[0,1] 16bit: 2301\ndata[1,2] 16bit: 4523', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
     def test_unaligned_memory_2(self):
@@ -7818,7 +7818,7 @@ f.close()
             return 0;
         }
         ''')
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'test.cpp'), '-s', 'UNALIGNED_MEMORY=1']).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'test.cpp'), '-s', 'UNALIGNED_MEMORY=1']).communicate()
       self.assertContained('testString = Hello, World!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
     def test_l_link(self):
@@ -7844,9 +7844,9 @@ f.close()
         }
       ''')
 
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'libdir', 'libfile.cpp'), '-c']).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'libdir', 'libfile.cpp'), '-c']).communicate()
       shutil.move(os.path.join(self.get_dir(), 'libfile.o'), os.path.join(self.get_dir(), 'libdir', 'libfile.so'))
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-L' + os.path.join(self.get_dir(), 'libdir'), '-lfile']).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-L' + os.path.join(self.get_dir(), 'libdir'), '-lfile']).communicate()
       self.assertContained('hello from lib', run_js(os.path.join(self.get_dir(), 'a.out.js')))
       assert not os.path.exists('a.out') and not os.path.exists('a.exe'), 'Must not leave unneeded linker stubs'
 
@@ -7860,7 +7860,7 @@ f.close()
                              (['-Isubdir/something'], False),
                              (['-Lsubdir/something'], False),
                              ([], False)]:
-        err = Popen(['python', EMCC, 'main.c'] + args, stderr=PIPE).communicate()[1]
+        err = Popen(['python2', EMCC, 'main.c'] + args, stderr=PIPE).communicate()[1]
         assert ('emcc: warning: -I or -L of an absolute path encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript)' in err) == expected, err
 
     def test_local_link(self):
@@ -7888,8 +7888,8 @@ f.close()
         }
       ''')
 
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'libfile.cpp'), '-o', 'libfile.so']).communicate()
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), os.path.join(self.get_dir(), 'subdir', 'libfile.so'), '-L.'], stderr=PIPE).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'libfile.cpp'), '-o', 'libfile.so']).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'main.cpp'), os.path.join(self.get_dir(), 'subdir', 'libfile.so'), '-L.'], stderr=PIPE).communicate()
       self.assertContained('hello from lib', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
     def test_runtimelink_multi(self):
@@ -7950,11 +7950,11 @@ f.close()
         }
       ''')
 
-      Popen(['python', EMCC, 'testa.cpp', '-o', 'liba.js', '-s', 'BUILD_AS_SHARED_LIB=2', '-s', 'LINKABLE=1', '-I.']).communicate()
-      Popen(['python', EMCC, 'testb.cpp', '-o', 'libb.js', '-s', 'BUILD_AS_SHARED_LIB=2', '-s', 'LINKABLE=1', '-I.']).communicate()
-      Popen(['python', EMCC, 'main.cpp', '-o', 'main.js', '-s', 'RUNTIME_LINKED_LIBS=["liba.js", "libb.js"]', '-I.']).communicate()
+      Popen(['python2', EMCC, 'testa.cpp', '-o', 'liba.js', '-s', 'BUILD_AS_SHARED_LIB=2', '-s', 'LINKABLE=1', '-I.']).communicate()
+      Popen(['python2', EMCC, 'testb.cpp', '-o', 'libb.js', '-s', 'BUILD_AS_SHARED_LIB=2', '-s', 'LINKABLE=1', '-I.']).communicate()
+      Popen(['python2', EMCC, 'main.cpp', '-o', 'main.js', '-s', 'RUNTIME_LINKED_LIBS=["liba.js", "libb.js"]', '-I.']).communicate()
 
-      Popen(['python', EMCC, 'main.cpp', 'testa.cpp', 'testb.cpp', '-o', 'full.js', '-I.']).communicate()
+      Popen(['python2', EMCC, 'main.cpp', 'testa.cpp', 'testb.cpp', '-o', 'full.js', '-I.']).communicate()
 
       self.assertContained('TestA\nTestB\nTestA\n', run_js('main.js', engine=SPIDERMONKEY_ENGINE))
 
@@ -7986,7 +7986,7 @@ f.close()
         });
       ''')
 
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--js-library', os.path.join(self.get_dir(), 'mylib1.js'),
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--js-library', os.path.join(self.get_dir(), 'mylib1.js'),
                                                                        '--js-library', os.path.join(self.get_dir(), 'mylib2.js')]).communicate()
       self.assertContained('hello from lib!\n*32*\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
@@ -8013,14 +8013,14 @@ f.close()
         void printey() { printf("hello there\\n"); }
       ''')
 
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'foo', 'main.cpp'), os.path.join(self.get_dir(), 'bar', 'main.cpp')]).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'foo', 'main.cpp'), os.path.join(self.get_dir(), 'bar', 'main.cpp')]).communicate()
       self.assertContained('hello there', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
       # ditto with first creating .o files
       try_delete(os.path.join(self.get_dir(), 'a.out.js'))
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'foo', 'main.cpp'), '-o', os.path.join(self.get_dir(), 'foo', 'main.o')]).communicate()
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'bar', 'main.cpp'), '-o', os.path.join(self.get_dir(), 'bar', 'main.o')]).communicate()
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'foo', 'main.o'), os.path.join(self.get_dir(), 'bar', 'main.o')]).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'foo', 'main.cpp'), '-o', os.path.join(self.get_dir(), 'foo', 'main.o')]).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'bar', 'main.cpp'), '-o', os.path.join(self.get_dir(), 'bar', 'main.o')]).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'foo', 'main.o'), os.path.join(self.get_dir(), 'bar', 'main.o')]).communicate()
       self.assertContained('hello there', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
     def test_remove_duplicates(self):
@@ -8039,12 +8039,12 @@ f.close()
       ''')
 
       # without --remove-duplicates, we fail
-      err = Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), os.path.join(self.get_dir(), 'side.cpp')], stderr=PIPE).communicate()[1]
+      err = Popen(['python2', EMCC, os.path.join(self.get_dir(), 'main.cpp'), os.path.join(self.get_dir(), 'side.cpp')], stderr=PIPE).communicate()[1]
       assert not os.path.exists('a.out.js')
       assert 'multiply' in err
 
       # with it, we succeed
-      err = Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), os.path.join(self.get_dir(), 'side.cpp'), '--remove-duplicates'], stderr=PIPE).communicate()[1]
+      err = Popen(['python2', EMCC, os.path.join(self.get_dir(), 'main.cpp'), os.path.join(self.get_dir(), 'side.cpp'), '--remove-duplicates'], stderr=PIPE).communicate()[1]
       self.assertContained('bye bye', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
     def test_main_a(self):
@@ -8066,12 +8066,12 @@ f.close()
         int f() { return 12346; }
       ''')
 
-      Popen(['python', EMCC, main_name, '-c', '-o', main_name+'.bc']).communicate()
-      Popen(['python', EMCC, other_name, '-c', '-o', other_name+'.bc']).communicate()
+      Popen(['python2', EMCC, main_name, '-c', '-o', main_name+'.bc']).communicate()
+      Popen(['python2', EMCC, other_name, '-c', '-o', other_name+'.bc']).communicate()
 
-      Popen(['python', EMAR, 'cr', main_name+'.a', main_name+'.bc']).communicate()
+      Popen(['python2', EMAR, 'cr', main_name+'.a', main_name+'.bc']).communicate()
 
-      Popen(['python', EMCC, other_name+'.bc', main_name+'.a']).communicate()
+      Popen(['python2', EMCC, other_name+'.bc', main_name+'.a']).communicate()
 
       self.assertContained('result: 12346.', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
@@ -8082,8 +8082,8 @@ f.close()
           printf("a\n");
         }
       ''')
-      Popen(['python', EMCC, 'common.c', '-c', '-o', 'common.o']).communicate()
-      Popen(['python', EMAR, 'rc', 'liba.a', 'common.o']).communicate()
+      Popen(['python2', EMCC, 'common.c', '-c', '-o', 'common.o']).communicate()
+      Popen(['python2', EMAR, 'rc', 'liba.a', 'common.o']).communicate()
 
       open('common.c', 'w').write(r'''
         #include <stdio.h>
@@ -8091,8 +8091,8 @@ f.close()
           printf("b\n");
         }
       ''')
-      Popen(['python', EMCC, 'common.c', '-c', '-o', 'common.o']).communicate()
-      Popen(['python', EMAR, 'rc', 'libb.a', 'common.o']).communicate()
+      Popen(['python2', EMCC, 'common.c', '-c', '-o', 'common.o']).communicate()
+      Popen(['python2', EMAR, 'rc', 'libb.a', 'common.o']).communicate()
 
       open('main.c', 'w').write(r'''
         void a(void);
@@ -8102,7 +8102,7 @@ f.close()
           b();
         }
       ''')
-      Popen(['python', EMCC, 'main.c', '-L.', '-la', '-lb']).communicate()
+      Popen(['python2', EMCC, 'main.c', '-L.', '-la', '-lb']).communicate()
 
       self.assertContained('a\nb\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
@@ -8121,11 +8121,11 @@ f.close()
         }
       ''')
 
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--embed-file', 'somefile.txt']).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--embed-file', 'somefile.txt']).communicate()
       self.assertContained('|hello from a file wi|', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
       # preload twice, should not err
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--embed-file', 'somefile.txt', '--embed-file', 'somefile.txt']).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--embed-file', 'somefile.txt', '--embed-file', 'somefile.txt']).communicate()
       self.assertContained('|hello from a file wi|', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
     def test_embed_file_dup(self):
@@ -8157,7 +8157,7 @@ f.close()
         }
       ''')
 
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--embed-file', 'tst']).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--embed-file', 'tst']).communicate()
       self.assertContained('|frist|\n|sacond|\n|thard|\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
     def test_multidynamic_link(self):
@@ -8202,7 +8202,7 @@ f.close()
       ''')
 
       # This lets us link the same dynamic lib twice. We will need to link it in manually at the end.
-      compiler = ['python', EMCC, '--ignore-dynamic-linking']
+      compiler = ['python2', EMCC, '--ignore-dynamic-linking']
 
       # Build libfile normally into an .so
       Popen(compiler + [os.path.join(self.get_dir(), 'libdir', 'libfile.cpp'), '-o', os.path.join(self.get_dir(), 'libdir', 'libfile.so')]).communicate()
@@ -8212,7 +8212,7 @@ f.close()
       Popen(compiler + [os.path.join(self.get_dir(), 'main.cpp'), '-L' + os.path.join(self.get_dir(), 'libdir'), '-lfile', '-lother', '-c']).communicate()
 
       # The normal build system is over. We need to do an additional step to link in the dynamic libraries, since we ignored them before
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.o'), '-L' + os.path.join(self.get_dir(), 'libdir'), '-lfile', '-lother']).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'main.o'), '-L' + os.path.join(self.get_dir(), 'libdir'), '-lfile', '-lother']).communicate()
 
       self.assertContained('*hello from lib\n|hello from lib|\n*', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
@@ -8232,7 +8232,7 @@ f.close()
         Module.print(MESSAGE);
       ''')
 
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'before.js', '--post-js', 'after.js']).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'before.js', '--post-js', 'after.js']).communicate()
       self.assertContained('hello from main\nhello from js\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
     def test_sdl_endianness(self):
@@ -8245,7 +8245,7 @@ f.close()
           return 0;
         }
       ''')
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp')]).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'main.cpp')]).communicate()
       self.assertContained('1234, 1234, 4321\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
     def test_warn_undefined(self):
@@ -8261,10 +8261,10 @@ f.close()
           return 0;
         }
       ''')
-      output = Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-s', 'WARN_ON_UNDEFINED_SYMBOLS=1'], stderr=PIPE).communicate()
+      output = Popen(['python2', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-s', 'WARN_ON_UNDEFINED_SYMBOLS=1'], stderr=PIPE).communicate()
       self.assertContained('Unresolved symbol: _something', output[1])
 
-      output = Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp')], stderr=PIPE).communicate()
+      output = Popen(['python2', EMCC, os.path.join(self.get_dir(), 'main.cpp')], stderr=PIPE).communicate()
       self.assertNotContained('Unresolved symbol: _something\n', output[1])
 
     def test_toobig(self):
@@ -8290,7 +8290,7 @@ f.close()
           return 0;
         }
       ''')
-      output = Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp')], stderr=PIPE).communicate()[1]
+      output = Popen(['python2', EMCC, os.path.join(self.get_dir(), 'main.cpp')], stderr=PIPE).communicate()[1]
       assert 'Emscripten failed' in output, output
       assert 'warning: very large fixed-size structural type' in output, output
 
@@ -8309,7 +8309,7 @@ f.close()
         };
       ''')
 
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js']).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js']).communicate()
       self.assertContained('pre-run\nhello from main\npost-run\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
       # never run, so no preRun or postRun
@@ -8319,7 +8319,7 @@ f.close()
 
       # noInitialRun prevents run
       for no_initial_run in [0, 1]:
-        Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp')]).communicate()
+        Popen(['python2', EMCC, os.path.join(self.get_dir(), 'main.cpp')]).communicate()
         src = 'var Module = { noInitialRun: %d };\n' % no_initial_run + open(os.path.join(self.get_dir(), 'a.out.js')).read()
         open(os.path.join(self.get_dir(), 'a.out.js'), 'w').write(src)
         assert ('hello from main' in run_js(os.path.join(self.get_dir(), 'a.out.js'))) != no_initial_run, 'only run if no noInitialRun'
@@ -8338,7 +8338,7 @@ f.close()
           preInit: function() { Module.print('pre-init') }
         };
       ''')
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js']).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js']).communicate()
       self.assertContained('pre-init\npre-run\nhello from main\npost-run\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
     def test_prepost2(self):
@@ -8357,7 +8357,7 @@ f.close()
       open(os.path.join(self.get_dir(), 'pre2.js'), 'w').write('''
         Module.postRun = function() { Module.print('post-run') };
       ''')
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '--pre-js', 'pre2.js']).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '--pre-js', 'pre2.js']).communicate()
       self.assertContained('pre-run\nhello from main\npost-run\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
     def test_prepre(self):
@@ -8376,13 +8376,13 @@ f.close()
       open(os.path.join(self.get_dir(), 'pre2.js'), 'w').write('''
         Module.preRun.push(function() { Module.print('prepre') });
       ''')
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '--pre-js', 'pre2.js']).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '--pre-js', 'pre2.js']).communicate()
       self.assertContained('prepre\npre-run\nhello from main\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
     def test_fix_closure(self):
       input = path_from_root('tests', 'test-fix-closure.js')
       expected = path_from_root('tests', 'test-fix-closure.out.js')
-      Popen(['python', path_from_root('tools', 'fix_closure.py'), input, 'out.js']).communicate(input)
+      Popen(['python2', path_from_root('tools', 'fix_closure.py'), input, 'out.js']).communicate(input)
       output = open('out.js').read()
       assert '0,zzz_Q_39fa,0' in output
       assert 'function(a,c)' not in output # should be uninlined, so it gets a name
@@ -8412,7 +8412,7 @@ f.close()
     def test_m_mm(self):
       open(os.path.join(self.get_dir(), 'foo.c'), 'w').write('''#include <emscripten.h>''')
       for opt in ['M', 'MM']:
-        output, err = Popen(['python', EMCC, os.path.join(self.get_dir(), 'foo.c'), '-' + opt], stdout=PIPE, stderr=PIPE).communicate()
+        output, err = Popen(['python2', EMCC, os.path.join(self.get_dir(), 'foo.c'), '-' + opt], stdout=PIPE, stderr=PIPE).communicate()
         assert 'foo.o: ' in output, '-%s failed to produce the right output: %s' % (opt, output)
         assert 'error' not in err, 'Unexpected stderr: ' + err
 
@@ -8421,7 +8421,7 @@ f.close()
       if multiprocessing.cpu_count() < 2: return self.skip('need multiple cores')
       try:
         os.environ['EMCC_DEBUG'] = '1'
-        output, err = Popen(['python', EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O1'], stdout=PIPE, stderr=PIPE).communicate()
+        output, err = Popen(['python2', EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O1'], stdout=PIPE, stderr=PIPE).communicate()
         assert 'phase 2 working on 3 chunks' in err, err
         assert 'splitting up js optimization into 2 chunks' in err, err
       finally:
@@ -8445,7 +8445,7 @@ f.close()
       ]:
         print args, fail
         try_delete(self.in_dir('a.out.js'))
-        Popen(['python', EMCC, path_from_root('tests', 'embind', 'embind_test.cpp'), '--post-js', path_from_root('tests', 'embind', 'embind_test.js')] + args, stderr=PIPE if fail else None).communicate()
+        Popen(['python2', EMCC, path_from_root('tests', 'embind', 'embind_test.cpp'), '--post-js', path_from_root('tests', 'embind', 'embind_test.js')] + args, stderr=PIPE if fail else None).communicate()
         assert os.path.exists(self.in_dir('a.out.js')) == (not fail)
         if not fail:
           output = run_js(self.in_dir('a.out.js'))
@@ -8509,8 +8509,8 @@ fixture: interfaces
       open(os.path.join(self.get_dir(), 'somefile.binary'), 'w').write('''waka waka############################''')
       open(os.path.join(self.get_dir(), 'test.file'), 'w').write('''ay file..............,,,,,,,,,,,,,,''')
       open(os.path.join(self.get_dir(), 'stdin'), 'w').write('''inter-active''')
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'files.cpp'), '-c']).communicate()
-      Popen(['python', path_from_root('tools', 'nativize_llvm.py'), os.path.join(self.get_dir(), 'files.o')]).communicate(input)[0]
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'files.cpp'), '-c']).communicate()
+      Popen(['python2', path_from_root('tools', 'nativize_llvm.py'), os.path.join(self.get_dir(), 'files.o')]).communicate(input)[0]
       output = Popen([os.path.join(self.get_dir(), 'files.o.run')], stdin=open(os.path.join(self.get_dir(), 'stdin')), stdout=PIPE, stderr=PIPE).communicate()
       self.assertIdentical('''size: 37
 data: 119,97,107,97,32,119,97,107,97,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35
@@ -8528,7 +8528,7 @@ fscanfed: 10 - hello
       self.assertIdentical('texte\n', output[1])
 
     def test_emconfig(self):
-      output = Popen(['python', EMCONFIG, 'LLVM_ROOT'], stdout=PIPE, stderr=PIPE).communicate()[0].strip()
+      output = Popen(['python2', EMCONFIG, 'LLVM_ROOT'], stdout=PIPE, stderr=PIPE).communicate()[0].strip()
       try:
         assert output == LLVM_ROOT
       except:
@@ -8536,16 +8536,16 @@ fscanfed: 10 - hello
         raise
       invalid = 'Usage: em-config VAR_NAME'
       # Don't accept variables that do not exist
-      output = Popen(['python', EMCONFIG, 'VAR_WHICH_DOES_NOT_EXIST'], stdout=PIPE, stderr=PIPE).communicate()[0].strip()
+      output = Popen(['python2', EMCONFIG, 'VAR_WHICH_DOES_NOT_EXIST'], stdout=PIPE, stderr=PIPE).communicate()[0].strip()
       assert output == invalid
       # Don't accept no arguments
-      output = Popen(['python', EMCONFIG], stdout=PIPE, stderr=PIPE).communicate()[0].strip()
+      output = Popen(['python2', EMCONFIG], stdout=PIPE, stderr=PIPE).communicate()[0].strip()
       assert output == invalid
       # Don't accept more than one variable
-      output = Popen(['python', EMCONFIG, 'LLVM_ROOT', 'EMCC'], stdout=PIPE, stderr=PIPE).communicate()[0].strip()
+      output = Popen(['python2', EMCONFIG, 'LLVM_ROOT', 'EMCC'], stdout=PIPE, stderr=PIPE).communicate()[0].strip()
       assert output == invalid
       # Don't accept arbitrary python code
-      output = Popen(['python', EMCONFIG, 'sys.argv[1]'], stdout=PIPE, stderr=PIPE).communicate()[0].strip()
+      output = Popen(['python2', EMCONFIG, 'sys.argv[1]'], stdout=PIPE, stderr=PIPE).communicate()[0].strip()
       assert output == invalid
 
     def test_link_s(self):
@@ -8569,10 +8569,10 @@ fscanfed: 10 - hello
           }
         }
       ''')
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-o', 'main.o']).communicate()
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'supp.cpp'), '-o', 'supp.o']).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-o', 'main.o']).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'supp.cpp'), '-o', 'supp.o']).communicate()
 
-      output = Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.o'), '-s', os.path.join(self.get_dir(), 'supp.o'), '-s', 'SAFE_HEAP=1'], stderr=PIPE).communicate()
+      output = Popen(['python2', EMCC, os.path.join(self.get_dir(), 'main.o'), '-s', os.path.join(self.get_dir(), 'supp.o'), '-s', 'SAFE_HEAP=1'], stderr=PIPE).communicate()
       self.assertContained('emcc: warning: treating -s as linker option', output[1])
       output = run_js('a.out.js')
       assert 'yello' in output, 'code works'
@@ -8586,7 +8586,7 @@ fscanfed: 10 - hello
         }
       ''')
       os.environ["EMMAKEN_JUST_CONFIGURE"] = "1"
-      cmd = ['python', EMCC, '-s', 'ASSERTIONS=1', os.path.join(self.get_dir(), 'conftest.c'), '-o', 'conftest']
+      cmd = ['python2', EMCC, '-s', 'ASSERTIONS=1', os.path.join(self.get_dir(), 'conftest.c'), '-o', 'conftest']
       output = Popen(cmd, stderr=PIPE).communicate()
       del os.environ["EMMAKEN_JUST_CONFIGURE"]
       self.assertNotContained('emcc: warning: treating -s as linker option', output[1])
@@ -8596,26 +8596,26 @@ fscanfed: 10 - hello
       # crunch should not be run if a .crn exists that is more recent than the .dds
       shutil.copyfile(path_from_root('tests', 'ship.dds'), 'ship.dds')
       time.sleep(0.1)
-      Popen(['python', FILE_PACKAGER, 'test.data', '--pre-run', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
+      Popen(['python2', FILE_PACKAGER, 'test.data', '--pre-run', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
       assert os.stat('test.data').st_size < 0.25*os.stat('ship.dds').st_size, 'Compressed should be much smaller than dds'
       crunch_time = os.stat('ship.crn').st_mtime
       dds_time = os.stat('ship.dds').st_mtime
       assert crunch_time > dds_time, 'Crunch is more recent'
       # run again, should not recrunch!
       time.sleep(0.1)
-      Popen(['python', FILE_PACKAGER, 'test.data', '--pre-run', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
+      Popen(['python2', FILE_PACKAGER, 'test.data', '--pre-run', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
       assert crunch_time == os.stat('ship.crn').st_mtime, 'Crunch is unchanged'
       # update dds, so should recrunch
       time.sleep(0.1)
       os.utime('ship.dds', None)
-      Popen(['python', FILE_PACKAGER, 'test.data', '--pre-run', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
+      Popen(['python2', FILE_PACKAGER, 'test.data', '--pre-run', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
       assert crunch_time < os.stat('ship.crn').st_mtime, 'Crunch was changed'
 
     def test_headless(self):
       if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('cannot run without spidermonkey due to node limitations (Uint8ClampedArray etc.)')
 
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'example.png'))
-      Popen(['python', EMCC, path_from_root('tests', 'sdl_canvas.c'), '-s', 'HEADLESS=1']).communicate()
+      Popen(['python2', EMCC, path_from_root('tests', 'sdl_canvas.c'), '-s', 'HEADLESS=1']).communicate()
       output = run_js('a.out.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE)
       assert '''Init: 0
 Font: 0x1
@@ -8803,7 +8803,7 @@ elif 'browser' in str(sys.argv):
     def test_html(self):
       # test HTML generation.
       self.reftest(path_from_root('tests', 'htmltest.png'))
-      output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.html',  '--pre-js', 'reftest.js']).communicate()
+      output = Popen(['python2', EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.html',  '--pre-js', 'reftest.js']).communicate()
       self.run_browser('something.html', 'You should see "hello, world!" and a colored cube.', '/report_result?0')
 
     def build_native_lzma(self):
@@ -8820,7 +8820,7 @@ elif 'browser' in str(sys.argv):
     def test_split(self):
       # test HTML generation.
       self.reftest(path_from_root('tests', 'htmltest.png'))
-      output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.js', '--split', '100', '--pre-js', 'reftest.js']).communicate()
+      output = Popen(['python2', EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.js', '--split', '100', '--pre-js', 'reftest.js']).communicate()
       assert os.path.exists(os.path.join(self.get_dir(), 'something.js')), 'must be main js file'
       assert os.path.exists(os.path.join(self.get_dir(), 'something_functions.js')), 'must be functions js file'
       assert os.path.exists(os.path.join(self.get_dir(), 'something.include.html')), 'must be js include file'
@@ -8911,7 +8911,7 @@ elif 'browser' in str(sys.argv):
 
     def test_split_in_source_filenames(self):
       self.reftest(path_from_root('tests', 'htmltest.png'))
-      output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.js', '-g', '--split', '100', '--pre-js', 'reftest.js']).communicate()
+      output = Popen(['python2', EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.js', '-g', '--split', '100', '--pre-js', 'reftest.js']).communicate()
       assert os.path.exists(os.path.join(self.get_dir(), 'something.js')), 'must be main js file'
       assert os.path.exists(self.get_dir() + '/something/' + path_from_root('tests', 'hello_world_sdl.cpp.js')), 'must be functions js file'
       assert os.path.exists(os.path.join(self.get_dir(), 'something.include.html')), 'must be js include file'
@@ -9013,7 +9013,7 @@ elif 'browser' in str(sys.argv):
       '''))
 
       self.build_native_lzma()
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-o', 'page.html',
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-o', 'page.html',
              '--compression', '%s,%s,%s' % (path_from_root('third_party', 'lzma.js', 'lzma-native'),
                                             path_from_root('third_party', 'lzma.js', 'lzma-decoder.js'),
                                             'LZMA.decompress')]).communicate()
@@ -9046,13 +9046,13 @@ elif 'browser' in str(sys.argv):
         ''' % path))
 
       make_main('somefile.txt')
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', 'somefile.txt', '-o', 'page.html']).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', 'somefile.txt', '-o', 'page.html']).communicate()
       self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
 
       # By absolute path
 
       make_main(os.path.join(self.get_dir(), 'somefile.txt'))
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', os.path.join(self.get_dir(), 'somefile.txt'), '-o', 'page.html']).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', os.path.join(self.get_dir(), 'somefile.txt'), '-o', 'page.html']).communicate()
       self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
 
       # Should still work with -o subdir/..
@@ -9062,7 +9062,7 @@ elif 'browser' in str(sys.argv):
         os.mkdir(os.path.join(self.get_dir(), 'dirrey'))
       except:
         pass
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', os.path.join(self.get_dir(), 'somefile.txt'), '-o', 'dirrey/page.html']).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', os.path.join(self.get_dir(), 'somefile.txt'), '-o', 'dirrey/page.html']).communicate()
       self.run_browser('dirrey/page.html', 'You should see |load me right before|.', '/report_result?1')
 
       # With FS.preloadFile
@@ -9073,7 +9073,7 @@ elif 'browser' in str(sys.argv):
         };
       ''')
       make_main('someotherfile.txt')
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '-o', 'page.html']).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '-o', 'page.html']).communicate()
       self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
 
     def test_multifile(self):
@@ -9110,12 +9110,12 @@ elif 'browser' in str(sys.argv):
       '''))
 
       # by individual files
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', 'subdirr/data1.txt', '--preload-file', 'subdirr/moar/data2.txt', '-o', 'page.html']).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', 'subdirr/data1.txt', '--preload-file', 'subdirr/moar/data2.txt', '-o', 'page.html']).communicate()
       self.run_browser('page.html', 'You should see two cool numbers', '/report_result?1')
       os.remove('page.html')
 
       # by directory, and remove files to make sure
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', 'subdirr', '-o', 'page.html']).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', 'subdirr', '-o', 'page.html']).communicate()
       shutil.rmtree(os.path.join(self.get_dir(), 'subdirr'))
       self.run_browser('page.html', 'You should see two cool numbers', '/report_result?1')
 
@@ -9146,7 +9146,7 @@ elif 'browser' in str(sys.argv):
       '''))
 
       self.build_native_lzma()
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-o', 'page.html', '--preload-file', 'datafile.txt', '--preload-file', 'datafile2.txt',
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-o', 'page.html', '--preload-file', 'datafile.txt', '--preload-file', 'datafile2.txt',
              '--compression', '%s,%s,%s' % (path_from_root('third_party', 'lzma.js', 'lzma-native'),
                                             path_from_root('third_party', 'lzma.js', 'lzma-decoder.js'),
                                             'LZMA.decompress')]).communicate()
@@ -9161,7 +9161,7 @@ elif 'browser' in str(sys.argv):
       shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.jpg'))
       open(os.path.join(self.get_dir(), 'sdl_image.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_image.c')).read()))
 
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'sdl_image.c'), '-O2', '--preload-file', 'screenshot.jpg', '-o', 'page.html']).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'sdl_image.c'), '-O2', '--preload-file', 'screenshot.jpg', '-o', 'page.html']).communicate()
       self.run_browser('page.html', '', '/report_result?600')
 
     def test_sdl_image_compressed(self):
@@ -9175,7 +9175,7 @@ elif 'browser' in str(sys.argv):
         open(os.path.join(self.get_dir(), 'sdl_image.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_image.c')).read()).replace('screenshot.jpg', basename))
 
         self.build_native_lzma()
-        Popen(['python', EMCC, os.path.join(self.get_dir(), 'sdl_image.c'), '--preload-file', basename, '-o', 'page.html',
+        Popen(['python2', EMCC, os.path.join(self.get_dir(), 'sdl_image.c'), '--preload-file', basename, '-o', 'page.html',
                '--compression', '%s,%s,%s' % (path_from_root('third_party', 'lzma.js', 'lzma-native'),
                                               path_from_root('third_party', 'lzma.js', 'lzma-decoder.js'),
                                               'LZMA.decompress')]).communicate()
@@ -9195,7 +9195,7 @@ elif 'browser' in str(sys.argv):
     def test_sdl_canvas(self):
       open(os.path.join(self.get_dir(), 'sdl_canvas.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_canvas.c')).read()))
 
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'sdl_canvas.c'), '-o', 'page.html']).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'sdl_canvas.c'), '-o', 'page.html']).communicate()
       self.run_browser('page.html', '', '/report_result?1')
 
     def test_sdl_key(self):
@@ -9223,7 +9223,7 @@ elif 'browser' in str(sys.argv):
       ''')
       open(os.path.join(self.get_dir(), 'sdl_key.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_key.c')).read()))
 
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'sdl_key.c'), '-o', 'page.html', '--pre-js', 'pre.js']).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'sdl_key.c'), '-o', 'page.html', '--pre-js', 'pre.js']).communicate()
       self.run_browser('page.html', '', '/report_result?510510')
 
     def test_sdl_mouse(self):
@@ -9256,7 +9256,7 @@ elif 'browser' in str(sys.argv):
       ''')
       open(os.path.join(self.get_dir(), 'sdl_mouse.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_mouse.c')).read()))
 
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'sdl_mouse.c'), '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js']).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'sdl_mouse.c'), '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js']).communicate()
       self.run_browser('page.html', '', '/report_result?740')
 
     def test_sdl_audio(self):
@@ -9266,81 +9266,81 @@ elif 'browser' in str(sys.argv):
       open(os.path.join(self.get_dir(), 'sdl_audio.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_audio.c')).read()))
 
       # use closure to check for a possible bug with closure minifying away newer Audio() attributes
-      Popen(['python', EMCC, '-O2', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio.c'), '--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--preload-file', 'bad.ogg', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play", "_play2"]']).communicate()
+      Popen(['python2', EMCC, '-O2', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio.c'), '--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--preload-file', 'bad.ogg', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play", "_play2"]']).communicate()
       self.run_browser('page.html', '', '/report_result?1')
 
     def test_sdl_audio_quickload(self):
       open(os.path.join(self.get_dir(), 'sdl_audio_quickload.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_audio_quickload.c')).read()))
 
       # use closure to check for a possible bug with closure minifying away newer Audio() attributes
-      Popen(['python', EMCC, '-O2', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio_quickload.c'), '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play"]']).communicate()
+      Popen(['python2', EMCC, '-O2', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio_quickload.c'), '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play"]']).communicate()
       self.run_browser('page.html', '', '/report_result?1')
 
     def test_sdl_gl_read(self):
       # SDL, OpenGL, readPixels
       open(os.path.join(self.get_dir(), 'sdl_gl_read.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_gl_read.c')).read()))
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'sdl_gl_read.c'), '-o', 'something.html']).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'sdl_gl_read.c'), '-o', 'something.html']).communicate()
       self.run_browser('something.html', '.', '/report_result?1')
 
     def test_sdl_ogl(self):
       # SDL, OpenGL, textures, immediate mode. Closure for more coverage
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
       self.reftest(path_from_root('tests', 'screenshot-gray-purple.png'))
-      Popen(['python', EMCC, path_from_root('tests', 'sdl_ogl.c'), '-O2', '--minify', '0', '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
+      Popen(['python2', EMCC, path_from_root('tests', 'sdl_ogl.c'), '-O2', '--minify', '0', '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
       self.run_browser('something.html', 'You should see an image with gray at the top.', '/report_result?0')
 
     def test_sdl_ogl_defaultmatrixmode(self):
       # SDL, OpenGL, textures, immediate mode. Closure for more coverage
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
       self.reftest(path_from_root('tests', 'screenshot-gray-purple.png'))
-      Popen(['python', EMCC, path_from_root('tests', 'sdl_ogl_defaultMatrixMode.c'), '--minify', '0', '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
+      Popen(['python2', EMCC, path_from_root('tests', 'sdl_ogl_defaultMatrixMode.c'), '--minify', '0', '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
       self.run_browser('something.html', 'You should see an image with gray at the top.', '/report_result?0')
 
     def test_sdl_ogl_p(self):
       # Immediate mode with pointers
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
       self.reftest(path_from_root('tests', 'screenshot-gray.png'))
-      Popen(['python', EMCC, path_from_root('tests', 'sdl_ogl_p.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
+      Popen(['python2', EMCC, path_from_root('tests', 'sdl_ogl_p.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
       self.run_browser('something.html', 'You should see an image with gray at the top.', '/report_result?0')
 
     def test_sdl_fog_simple(self):
       # SDL, OpenGL, textures, fog, immediate mode. Closure for more coverage
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
       self.reftest(path_from_root('tests', 'screenshot-fog-simple.png'))
-      Popen(['python', EMCC, path_from_root('tests', 'sdl_fog_simple.c'), '-O2', '--minify', '0', '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
+      Popen(['python2', EMCC, path_from_root('tests', 'sdl_fog_simple.c'), '-O2', '--minify', '0', '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
       self.run_browser('something.html', 'You should see an image with fog.', '/report_result?0')
 
     def test_sdl_fog_negative(self):
       # SDL, OpenGL, textures, fog, immediate mode. Closure for more coverage
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
       self.reftest(path_from_root('tests', 'screenshot-fog-negative.png'))
-      Popen(['python', EMCC, path_from_root('tests', 'sdl_fog_negative.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
+      Popen(['python2', EMCC, path_from_root('tests', 'sdl_fog_negative.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
       self.run_browser('something.html', 'You should see an image with fog.', '/report_result?0')
 
     def test_sdl_fog_density(self):
       # SDL, OpenGL, textures, fog, immediate mode. Closure for more coverage
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
       self.reftest(path_from_root('tests', 'screenshot-fog-density.png'))
-      Popen(['python', EMCC, path_from_root('tests', 'sdl_fog_density.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
+      Popen(['python2', EMCC, path_from_root('tests', 'sdl_fog_density.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
       self.run_browser('something.html', 'You should see an image with fog.', '/report_result?0')
 
     def test_sdl_fog_exp2(self):
       # SDL, OpenGL, textures, fog, immediate mode. Closure for more coverage
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
       self.reftest(path_from_root('tests', 'screenshot-fog-exp2.png'))
-      Popen(['python', EMCC, path_from_root('tests', 'sdl_fog_exp2.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
+      Popen(['python2', EMCC, path_from_root('tests', 'sdl_fog_exp2.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
       self.run_browser('something.html', 'You should see an image with fog.', '/report_result?0')
 
     def test_sdl_fog_linear(self):
       # SDL, OpenGL, textures, fog, immediate mode. Closure for more coverage
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
       self.reftest(path_from_root('tests', 'screenshot-fog-linear.png'))
-      Popen(['python', EMCC, path_from_root('tests', 'sdl_fog_linear.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
+      Popen(['python2', EMCC, path_from_root('tests', 'sdl_fog_linear.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
       self.run_browser('something.html', 'You should see an image with fog.', '/report_result?0')
 
     def test_worker(self):
       # Test running in a web worker
-      output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'], stdout=PIPE, stderr=PIPE).communicate()
+      output = Popen(['python2', EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'], stdout=PIPE, stderr=PIPE).communicate()
       assert len(output[0]) == 0, output[0]
       assert os.path.exists('worker.js'), output
       self.assertContained('you should not see this text when in a worker!', run_js('worker.js')) # code should run standalone
@@ -9423,7 +9423,7 @@ elif 'browser' in str(sys.argv):
       prejs_file.close()
       # vs. os.path.join(self.get_dir(), filename)
       # vs. path_from_root('tests', 'hello_world_gles.c')
-      Popen(['python', EMCC, path_from_root('tests', c_source_filename), '-g', '-s', 'SMALL_CHUNKS=1', '-o', worker_filename,
+      Popen(['python2', EMCC, path_from_root('tests', c_source_filename), '-g', '-s', 'SMALL_CHUNKS=1', '-o', worker_filename,
                                            '--pre-js', prejs_filename]).communicate()
 
       chunkSize = 1024
@@ -9474,19 +9474,19 @@ elif 'browser' in str(sys.argv):
 
     def test_glgears(self):
       self.reftest(path_from_root('tests', 'gears.png'))
-      Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
+      Popen(['python2', EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
                                            '-DHAVE_BUILTIN_SINCOS', '--pre-js', 'reftest.js']).communicate()
       self.run_browser('something.html', 'You should see animating gears.', '/report_result?0')
 
     def test_glgears_animation(self):
-      Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
+      Popen(['python2', EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
                                            '-DHAVE_BUILTIN_SINCOS',
                                            '--shell-file', path_from_root('tests', 'hello_world_gles_shell.html')]).communicate()
       self.run_browser('something.html', 'You should see animating gears.', '/report_gl_result?true')
 
     def test_glgears_bad(self):
       # Make sure that OpenGL ES is not available if typed arrays are not used
-      Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
+      Popen(['python2', EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
                                            '-DHAVE_BUILTIN_SINCOS',
                                            '-s', 'USE_TYPED_ARRAYS=0',
                                            '--shell-file', path_from_root('tests', 'hello_world_gles_shell.html')]).communicate()
@@ -9494,7 +9494,7 @@ elif 'browser' in str(sys.argv):
 
     def test_glgears_deriv(self):
       self.reftest(path_from_root('tests', 'gears.png'))
-      Popen(['python', EMCC, path_from_root('tests', 'hello_world_gles_deriv.c'), '-o', 'something.html',
+      Popen(['python2', EMCC, path_from_root('tests', 'hello_world_gles_deriv.c'), '-o', 'something.html',
                                            '-DHAVE_BUILTIN_SINCOS', '--pre-js', 'reftest.js']).communicate()
       self.run_browser('something.html', 'You should see animating gears.', '/report_result?0')
       src = open('something.html').read()
@@ -9525,7 +9525,7 @@ elif 'browser' in str(sys.argv):
           args = ['--preload-file', 'smoke.tga', '-O2'] # test optimizations and closure here as well for more coverage
 
         self.reftest(book_path(basename.replace('.bc', '.png')))
-        Popen(['python', EMCC, program, '-o', 'program.html', '--pre-js', 'reftest.js'] + args).communicate()
+        Popen(['python2', EMCC, program, '-o', 'program.html', '--pre-js', 'reftest.js'] + args).communicate()
         self.run_browser('program.html', '', '/report_result?0')
 
     def btest(self, filename, expected=None, reference=None, reference_slack=0, args=[]): # TODO: use in all other tests
@@ -9541,7 +9541,7 @@ elif 'browser' in str(sys.argv):
         shutil.copyfile(path_from_root('tests', filename), os.path.join(self.get_dir(), filename))
         self.reftest(path_from_root('tests', reference))
         args = args + ['--pre-js', 'reftest.js']
-      Popen(['python', EMCC, os.path.join(self.get_dir(), filename), '-o', 'test.html'] + args).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), filename), '-o', 'test.html'] + args).communicate()
       if type(expected) is str: expected = [expected]
       self.run_browser('test.html', '.', ['/report_result?' + e for e in expected])
 
@@ -9643,7 +9643,7 @@ elif 'browser' in str(sys.argv):
       open(os.path.join(self.get_dir(), 'sdl_canvas_palette_2.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_canvas_palette_2.c')).read()))
       open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('Module[\'preRun\'] = function() { SDL.defaults.copyOnLock = false }')
 
-      Popen(['python', EMCC, os.path.join(self.get_dir(), 'sdl_canvas_palette_2.c'), '-o', 'page.html', '--pre-js', 'pre.js']).communicate()
+      Popen(['python2', EMCC, os.path.join(self.get_dir(), 'sdl_canvas_palette_2.c'), '-o', 'page.html', '--pre-js', 'pre.js']).communicate()
       self.run_browser('page.html', '')
 
     def test_s3tc(self):
@@ -9654,7 +9654,7 @@ elif 'browser' in str(sys.argv):
       shutil.copyfile(path_from_root('tests', 'ship.dds'), 'ship.dds')
       shutil.copyfile(path_from_root('tests', 'bloom.dds'), 'bloom.dds')
       shutil.copyfile(path_from_root('tests', 'water.dds'), 'water.dds')
-      Popen(['python', FILE_PACKAGER, 'test.data', '--pre-run', '--crunch', '--preload', 'ship.dds', 'bloom.dds', 'water.dds'], stdout=open('pre.js', 'w')).communicate()
+      Popen(['python2', FILE_PACKAGER, 'test.data', '--pre-run', '--crunch', '--preload', 'ship.dds', 'bloom.dds', 'water.dds'], stdout=open('pre.js', 'w')).communicate()
       assert os.stat('test.data').st_size < 0.5*(os.stat('ship.dds').st_size+os.stat('bloom.dds').st_size+os.stat('water.dds').st_size), 'Compressed should be smaller than dds'
       shutil.move('ship.dds', 'ship.donotfindme.dds') # make sure we load from the compressed
       shutil.move('bloom.dds', 'bloom.donotfindme.dds') # make sure we load from the compressed
@@ -9665,8 +9665,8 @@ elif 'browser' in str(sys.argv):
       shutil.copyfile(path_from_root('tests', 'ship.dds'), 'ship.dds')
       shutil.copyfile(path_from_root('tests', 'bloom.dds'), 'bloom.dds')
       shutil.copyfile(path_from_root('tests', 'water.dds'), 'water.dds')
-      Popen(['python', FILE_PACKAGER, 'asset_a.data', '--pre-run', '--crunch', '--preload', 'ship.dds', 'bloom.dds'], stdout=open('asset_a.js', 'w')).communicate()
-      Popen(['python', FILE_PACKAGER, 'asset_b.data', '--pre-run', '--crunch', '--preload', 'water.dds'], stdout=open('asset_b.js', 'w')).communicate()
+      Popen(['python2', FILE_PACKAGER, 'asset_a.data', '--pre-run', '--crunch', '--preload', 'ship.dds', 'bloom.dds'], stdout=open('asset_a.js', 'w')).communicate()
+      Popen(['python2', FILE_PACKAGER, 'asset_b.data', '--pre-run', '--crunch', '--preload', 'water.dds'], stdout=open('asset_b.js', 'w')).communicate()
       shutil.move('ship.dds', 'ship.donotfindme.dds') # make sure we load from the compressed
       shutil.move('bloom.dds', 'bloom.donotfindme.dds') # make sure we load from the compressed
       shutil.move('water.dds', 'water.donotfindme.dds') # make sure we load from the compressed
@@ -9689,7 +9689,7 @@ elif 'browser' in str(sys.argv):
       main, supp = self.setup_runtimelink_test()
 
       open(self.in_dir('supp.cpp'), 'w').write(supp)
-      Popen(['python', EMCC, self.in_dir('supp.cpp'), '-o', 'supp.js', '-s', 'LINKABLE=1', '-s', 'BUILD_AS_SHARED_LIB=2', '-O2', '--closure', '0']).communicate()
+      Popen(['python2', EMCC, self.in_dir('supp.cpp'), '-o', 'supp.js', '-s', 'LINKABLE=1', '-s', 'BUILD_AS_SHARED_LIB=2', '-O2', '--closure', '0']).communicate()
       shutil.move(self.in_dir('supp.js'), self.in_dir('supp.so'))
 
       self.btest(main, args=['-s', 'LINKABLE=1', '-s', 'RUNTIME_LINKED_LIBS=["supp.so"]', '-DBROWSER=1', '-O2', '--closure', '0'], expected='76')
@@ -9709,11 +9709,11 @@ elif 'browser' in str(sys.argv):
       self.btest('pre_run_deps.cpp', expected='10', args=['--pre-js', 'pre.js'])
 
     def test_worker_api(self):
-      Popen(['python', EMCC, path_from_root('tests', 'worker_api_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-s', 'EXPORTED_FUNCTIONS=["_one"]']).communicate()
+      Popen(['python2', EMCC, path_from_root('tests', 'worker_api_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-s', 'EXPORTED_FUNCTIONS=["_one"]']).communicate()
       self.btest('worker_api_main.cpp', expected='566')
 
     def test_worker_api_2(self):
-      Popen(['python', EMCC, path_from_root('tests', 'worker_api_2_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-O2', '--minify', '0', '-s', 'EXPORTED_FUNCTIONS=["_one", "_two", "_three", "_four"]']).communicate()
+      Popen(['python2', EMCC, path_from_root('tests', 'worker_api_2_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-O2', '--minify', '0', '-s', 'EXPORTED_FUNCTIONS=["_one", "_two", "_three", "_four"]']).communicate()
       self.btest('worker_api_2_main.cpp', args=['-O2', '--minify', '0'], expected='11')
 
     pids_to_clean = []
@@ -9805,7 +9805,7 @@ elif 'browser' in str(sys.argv):
     def make_relay_server(self, port1, port2):
       def relay_server(q):
         print >> sys.stderr, 'creating relay server on ports %d,%d' % (port1, port2)
-        proc = Popen(['python', path_from_root('tests', 'socket_relay.py'), str(port1), str(port2)])
+        proc = Popen(['python2', path_from_root('tests', 'socket_relay.py'), str(port1), str(port2)])
         q.put(proc.pid)
         proc.communicate()
       return relay_server
@@ -9814,7 +9814,7 @@ elif 'browser' in str(sys.argv):
       try:
         with self.WebsockHarness(8992, self.make_relay_server(8992, 8994)):
           with self.WebsockHarness(8994, no_server=True):
-            Popen(['python', EMCC, path_from_root('tests', 'websockets_bi_side.c'), '-o', 'side.html', '-DSOCKK=8995']).communicate()
+            Popen(['python2', EMCC, path_from_root('tests', 'websockets_bi_side.c'), '-o', 'side.html', '-DSOCKK=8995']).communicate()
             self.btest('websockets_bi.c', expected='2499')
       finally:
         self.clean_pids()
@@ -9823,7 +9823,7 @@ elif 'browser' in str(sys.argv):
       try:
         with self.WebsockHarness(6992, self.make_relay_server(6992, 6994)):
           with self.WebsockHarness(6994, no_server=True):
-            Popen(['python', EMCC, path_from_root('tests', 'websockets_bi_side.c'), '-o', 'side.html', '-DSOCKK=6995']).communicate()
+            Popen(['python2', EMCC, path_from_root('tests', 'websockets_bi_side.c'), '-o', 'side.html', '-DSOCKK=6995']).communicate()
             self.btest('websockets_bi_listener.c', expected='2499')
       finally:
         self.clean_pids()
@@ -9839,7 +9839,7 @@ elif 'browser' in str(sys.argv):
       try:
         with self.WebsockHarness(3992, self.make_relay_server(3992, 3994)):
           with self.WebsockHarness(3994, no_server=True):
-            Popen(['python', EMCC, path_from_root('tests', 'websockets_bi_side_bigdata.c'), '-o', 'side.html', '-DSOCKK=3995', '-s', 'SOCKET_DEBUG=0', '-I' + path_from_root('tests')]).communicate()
+            Popen(['python2', EMCC, path_from_root('tests', 'websockets_bi_side_bigdata.c'), '-o', 'side.html', '-DSOCKK=3995', '-s', 'SOCKET_DEBUG=0', '-I' + path_from_root('tests')]).communicate()
             self.btest('websockets_bi_bigdata.c', expected='0', args=['-s', 'SOCKET_DEBUG=0', '-I' + path_from_root('tests')])
       finally:
         self.clean_pids()
@@ -9849,11 +9849,11 @@ elif 'browser' in str(sys.argv):
       shutil.copytree(path_from_root('tests', 'enet'), self.in_dir('enet'))
       pwd = os.getcwd()
       os.chdir(self.in_dir('enet'))
-      Popen(['python', path_from_root('emconfigure'), './configure']).communicate()
-      Popen(['python', path_from_root('emmake'), 'make']).communicate()
+      Popen(['python2', path_from_root('emconfigure'), './configure']).communicate()
+      Popen(['python2', path_from_root('emmake'), 'make']).communicate()
       enet = [self.in_dir('enet', '.libs', 'libenet.a'), '-I'+path_from_root('tests', 'enet', 'include')]
       os.chdir(pwd)
-      Popen(['python', EMCC, path_from_root('tests', 'enet_server.c'), '-o', 'server.html'] + enet).communicate()
+      Popen(['python2', EMCC, path_from_root('tests', 'enet_server.c'), '-o', 'server.html'] + enet).communicate()
 
       try:
         with self.WebsockHarness(1234, self.make_relay_server(1234, 1236)):
@@ -9956,7 +9956,7 @@ elif 'benchmark' in str(sys.argv):
       final_filename = os.path.join(dirname, name + '.js')
 
       try_delete(final_filename)
-      output = Popen(['python', EMCC, filename, #'-O3',
+      output = Popen(['python2', EMCC, filename, #'-O3',
                       '-O2', '-s', 'INLINING_LIMIT=0', '-s', 'DOUBLE_MODE=0', '-s', 'PRECISE_I64_MATH=0',
                       '-s', 'TOTAL_MEMORY=100*1024*1024', '-s', 'FAST_MEMORY=10*1024*1024',
                       '-o', final_filename] + emcc_args, stdout=PIPE, stderr=self.stderr_redirect).communicate()
@@ -10198,7 +10198,7 @@ elif 'sanity' in str(sys.argv):
     try_delete(CONFIG_FILE)
     try_delete(SANITY_FILE)
 
-  commands = [[EMCC], ['python', path_from_root('tests', 'runner.py'), 'blahblah']]
+  commands = [[EMCC], ['python2', path_from_root('tests', 'runner.py'), 'blahblah']]
 
   def mtime(filename):
     return os.stat(filename).st_mtime
@@ -10214,7 +10214,7 @@ elif 'sanity' in str(sys.argv):
       if type(command) is not list:
         command = [command]
       if command[0] == EMCC:
-        command = ['python'] + command
+        command = ['python2'] + command
 
       return Popen(command, stdout=PIPE, stderr=STDOUT).communicate()[0]
 
@@ -10264,7 +10264,7 @@ elif 'sanity' in str(sys.argv):
 
         # The guessed config should be ok XXX This depends on your local system! it is possible `which` guesses wrong
         try_delete('a.out.js')
-        output = Popen(['python', EMCC, path_from_root('tests', 'hello_world.c')], stdout=PIPE, stderr=PIPE).communicate()
+        output = Popen(['python2', EMCC, path_from_root('tests', 'hello_world.c')], stdout=PIPE, stderr=PIPE).communicate()
         self.assertContained('hello, world!', run_js('a.out.js'), output)
 
         # Second run, with bad EM_CONFIG
@@ -10461,7 +10461,7 @@ fi
           return 0;
         }
       ''')
-      Popen(['python', EMCC, os.path.join(dirname, 'main.cpp'), '-o', os.path.join(dirname, 'a.out.js')]).communicate()
+      Popen(['python2', EMCC, os.path.join(dirname, 'main.cpp'), '-o', os.path.join(dirname, 'a.out.js')]).communicate()
       del os.environ['EM_CONFIG']
       self.assertContained('hello from emcc with no config file', run_js(os.path.join(dirname, 'a.out.js')))
       shutil.rmtree(dirname)
@@ -10550,7 +10550,7 @@ fi
           print phase, i
           opt = min(i, 2)
           try_delete('a.out.js')
-          output = Popen(['python', EMCC, path_from_root('tests', 'hello_world_loop.cpp'), '-O' + str(opt), '--closure', '0'],
+          output = Popen(['python2', EMCC, path_from_root('tests', 'hello_world_loop.cpp'), '-O' + str(opt), '--closure', '0'],
                          stdout=PIPE, stderr=PIPE).communicate()
           self.assertContained('hello, world!', run_js('a.out.js'))
           output = '\n'.join(output)
@@ -10607,7 +10607,7 @@ fi
         ]:
           print >> sys.stderr, args, input_file, expect_pre_save, expect_pre_load, expect_funcs_save, expect_funcs_load, expect_jsfuncs_save, expect_jsfuncs_load, expected
           self.clear()
-          out, err = Popen(['python', EMCC, '-O2', '--closure', '0', path_from_root('tests', input_file)] + args, stdout=PIPE, stderr=PIPE).communicate()
+          out, err = Popen(['python2', EMCC, '-O2', '--closure', '0', path_from_root('tests', input_file)] + args, stdout=PIPE, stderr=PIPE).communicate()
           errtail = err.split('emcc invocation')[-1]
           self.assertContained('hello, world!', run_js('a.out.js'), errtail)
           assert (PRE_SAVE_MSG in err) == expect_pre_save, errtail

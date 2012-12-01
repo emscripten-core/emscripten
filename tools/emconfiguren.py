@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 import sys
 print >> sys.stderr, '\n\nemconfiguren.py is deprecated! use "emconfigure"\n\n'

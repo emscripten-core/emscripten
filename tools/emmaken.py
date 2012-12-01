@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 import sys
 print >> sys.stderr, '\n\nemmaken.py is deprecated! use "emcc"\n\n'

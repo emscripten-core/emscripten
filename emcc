@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 '''
 emcc - compiler helper script
@@ -924,9 +924,9 @@ try:
     # dlmalloc
     def create_dlmalloc():
       if DEBUG: print >> sys.stderr, 'emcc: building dlmalloc for cache'
-      execute(shared.ENV_PREFIX + ['python', shared.EMCC, shared.path_from_root('system', 'lib', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')], stdout=stdout, stderr=stderr)
+      execute(shared.ENV_PREFIX + ['python2', shared.EMCC, shared.path_from_root('system', 'lib', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')], stdout=stdout, stderr=stderr)
       # we include the libc++ new stuff here, so that the common case of using just new/delete is quick to link
-      execute(shared.ENV_PREFIX + ['python', shared.EMXX, shared.path_from_root('system', 'lib', 'libcxx', 'new.cpp'), '-g', '-o', in_temp('new.o')], stdout=stdout, stderr=stderr)
+      execute(shared.ENV_PREFIX + ['python2', shared.EMXX, shared.path_from_root('system', 'lib', 'libcxx', 'new.cpp'), '-g', '-o', in_temp('new.o')], stdout=stdout, stderr=stderr)
       shared.Building.link([in_temp('dlmalloc.o'), in_temp('new.o')], in_temp('dlmalloc_full.o'))
       return in_temp('dlmalloc_full.o')
     def fix_dlmalloc():
@@ -949,7 +949,7 @@ try:
       os = []
       for src in ['algorithm.cpp', 'condition_variable.cpp', 'future.cpp', 'iostream.cpp', 'memory.cpp', 'random.cpp', 'stdexcept.cpp', 'system_error.cpp', 'utility.cpp', 'bind.cpp', 'debug.cpp', 'hash.cpp', 'mutex.cpp', 'string.cpp', 'thread.cpp', 'valarray.cpp', 'chrono.cpp', 'exception.cpp', 'ios.cpp', 'locale.cpp', 'regex.cpp', 'strstream.cpp', 'typeinfo.cpp']:
         o = in_temp(src + '.o')
-        execute(shared.ENV_PREFIX + ['python', shared.EMXX, shared.path_from_root('system', 'lib', 'libcxx', src), '-o', o], stdout=stdout, stderr=stderr)
+        execute(shared.ENV_PREFIX + ['python2', shared.EMXX, shared.path_from_root('system', 'lib', 'libcxx', src), '-o', o], stdout=stdout, stderr=stderr)
         os.append(o)
       shared.Building.link(os, in_temp('libcxx.bc'))
       return in_temp('libcxx.bc')
@@ -968,7 +968,7 @@ try:
       os = []
       for src in ['private_typeinfo.cpp']:
         o = in_temp(src + '.o')
-        execute(shared.ENV_PREFIX + ['python', shared.EMXX, shared.path_from_root('system', 'lib', 'libcxxabi', 'src', src), '-o', o], stdout=stdout, stderr=stderr)
+        execute(shared.ENV_PREFIX + ['python2', shared.EMXX, shared.path_from_root('system', 'lib', 'libcxxabi', 'src', src), '-o', o], stdout=stdout, stderr=stderr)
         os.append(o)
       shared.Building.link(os, in_temp('libcxxabi.bc'))
       return in_temp('libcxxabi.bc')
@@ -1062,7 +1062,7 @@ try:
 
   if AUTODEBUG:
     if DEBUG: print >> sys.stderr, 'emcc: autodebug'
-    execute(shared.ENV_PREFIX + ['python', shared.AUTODEBUGGER, final, final + '.ad.ll'])
+    execute(shared.ENV_PREFIX + ['python2', shared.AUTODEBUGGER, final, final + '.ad.ll'])
     final += '.ad.ll'
     if DEBUG: save_intermediate('autodebug', 'll')
 
@@ -1085,7 +1085,7 @@ try:
       file_args += embed_files
     if Compression.on:
       file_args += ['--compress', Compression.encoder, Compression.decoder, Compression.js_name]
-    code = execute(shared.ENV_PREFIX + ['python', shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE)[0]
+    code = execute(shared.ENV_PREFIX + ['python2', shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE)[0]
     src = open(final).read().replace('// {{PRE_RUN_ADDITIONS}}', '// {{PRE_RUN_ADDITIONS}}\n' + code)
     final += '.files.js'
     open(final, 'w').write(src)

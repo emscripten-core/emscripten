@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python2
 
 '''
 Small utility to build some llvm bitcode into native code. Useful when lli (called
