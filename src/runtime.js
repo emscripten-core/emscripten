@@ -313,6 +313,9 @@ var Runtime = {
 
   dynCall: function(sig, ptr, args) {
     if (args && args.length) {
+#if ASSERTIONS
+      assert(args.length == sig.length-1);
+#endif
 #if ASM_JS
       args.splice(0, 0, ptr);
       return Module['dynCall_' + sig].apply(null, args);
@@ -320,6 +323,9 @@ var Runtime = {
       return FUNCTION_TABLE[ptr].apply(null, args);
 #endif
     } else {
+#if ASSERTIONS
+      assert(sig.length == 1);
+#endif
 #if ASM_JS
       return Module['dynCall_' + sig].call(null, ptr);
 #else
