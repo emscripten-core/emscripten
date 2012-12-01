@@ -487,6 +487,8 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
         self.do_run(src, 'hello, world!')
 
     def test_intvars(self):
+        if Settings.ASM_JS: return self.skip('asm does not support i64 yet')
+
         src = '''
           #include <stdio.h>
           int global = 20;
@@ -2919,6 +2921,7 @@ def process(filename):
 
     def test_memorygrowth(self):
       if Settings.USE_TYPED_ARRAYS == 0: return self.skip('memory growth is only supported with typed arrays')
+      if Settings.ASM_JS: return self.skip('asm does not support memory growth yet')
 
       # With typed arrays in particular, it is dangerous to use more memory than TOTAL_MEMORY,
       # since we then need to enlarge the heap(s).
