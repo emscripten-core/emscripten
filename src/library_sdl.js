@@ -1439,6 +1439,10 @@ var LibrarySDL = {
     return id;
   },
 
+  TTF_CloseFont: function(font) {
+    SDL.fonts[font] = null;
+  },
+
   TTF_RenderText_Solid: function(font, text, color) {
     // XXX the font and color are ignored
     text = Pointer_stringify(text) || ' '; // if given an empty string, still return a valid surface
