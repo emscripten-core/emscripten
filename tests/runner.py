@@ -6166,7 +6166,7 @@ def process(filename):
       if self.emcc_args is None: Settings.SAFE_HEAP = 0 # uses time.h to set random bytes, other stuff
       Settings.DISABLE_EXCEPTION_CATCHING = 1
       Settings.FAST_MEMORY = 4*1024*1024
-      Settings.EXPORTED_FUNCTIONS = ['_main', '_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free', '_callback'];
+      Settings.EXPORTED_FUNCTIONS += ['_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free', '_callback'];
 
       self.do_run(r'''
                         #define SQLITE_DISABLE_LFS
@@ -6382,7 +6382,7 @@ def process(filename):
       Settings.CHECK_OVERFLOWS = 0
       if self.emcc_args is None: Settings.SAFE_HEAP = 0 # Has bitfields which are false positives. Also the PyFloat_Init tries to detect endianness.
       Settings.CORRECT_SIGNS = 1 # Not sure why, but needed
-      Settings.EXPORTED_FUNCTIONS = ['_main', '_PyRun_SimpleStringFlags', '_malloc'] # for the demo
+      Settings.EXPORTED_FUNCTIONS += ['_PyRun_SimpleStringFlags'] # for the demo
 
       self.do_ll_run(path_from_root('tests', 'python', 'python.small.bc'),
                       'hello python world!\n[0, 2, 4, 6]\n5\n22\n5.470000',
@@ -6600,7 +6600,7 @@ def process(filename):
   open(filename, 'w').write(src)
 '''
 
-      Settings.EXPORTED_FUNCTIONS = ['_get_int', '_get_float', '_get_string', '_print_int', '_print_float', '_print_string', '_multi', '_pointer', '_malloc']
+      Settings.EXPORTED_FUNCTIONS += ['_get_int', '_get_float', '_get_string', '_print_int', '_print_float', '_print_string', '_multi', '_pointer']
 
       self.do_run(src, '*\nnumber,5\nnumber,3.14\nstring,hello world\n12\nundefined\n14.56\nundefined\ncheez\nundefined\narr-ay\nundefined\nmore\nnumber,10\n650\nnumber,21\n*\natr\n10\nbret\n53\n*\nstack is ok.\n', post_build=post)
 
