@@ -698,25 +698,21 @@ STACK_MAX = STACK_ROOT + TOTAL_STACK;
 
 #if USE_TYPED_ARRAYS == 2
 var tempDoublePtr = Runtime.alignMemory(STACK_MAX, 8);
-var tempDoubleI8  = HEAP8.subarray(tempDoublePtr);
-var tempDoubleI32 = HEAP32.subarray(tempDoublePtr >> 2);
-var tempDoubleF32 = HEAPF32.subarray(tempDoublePtr >> 2);
-var tempDoubleF64 = HEAPF64.subarray(tempDoublePtr >> 3);
 function copyTempFloat(ptr) { // functions, because inlining this code is increases code size too much
-  tempDoubleI8[0] = HEAP8[ptr];
-  tempDoubleI8[1] = HEAP8[ptr+1];
-  tempDoubleI8[2] = HEAP8[ptr+2];
-  tempDoubleI8[3] = HEAP8[ptr+3];
+  HEAP8[tempDoublePtr] = HEAP8[ptr];
+  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];
+  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];
+  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];
 }
 function copyTempDouble(ptr) {
-  tempDoubleI8[0] = HEAP8[ptr];
-  tempDoubleI8[1] = HEAP8[ptr+1];
-  tempDoubleI8[2] = HEAP8[ptr+2];
-  tempDoubleI8[3] = HEAP8[ptr+3];
-  tempDoubleI8[4] = HEAP8[ptr+4];
-  tempDoubleI8[5] = HEAP8[ptr+5];
-  tempDoubleI8[6] = HEAP8[ptr+6];
-  tempDoubleI8[7] = HEAP8[ptr+7];
+  HEAP8[tempDoublePtr] = HEAP8[ptr];
+  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];
+  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];
+  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];
+  HEAP8[tempDoublePtr+4] = HEAP8[ptr+4];
+  HEAP8[tempDoublePtr+5] = HEAP8[ptr+5];
+  HEAP8[tempDoublePtr+6] = HEAP8[ptr+6];
+  HEAP8[tempDoublePtr+7] = HEAP8[ptr+7];
 }
 STACK_MAX = tempDoublePtr + 8;
 #endif
