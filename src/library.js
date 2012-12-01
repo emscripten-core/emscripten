@@ -3857,12 +3857,12 @@ LibraryManager.library = {
   },
 
   qsort__deps: ['memcpy'],
-  qsort: function(base, num, size, comparator) {
+  qsort: function(base, num, size, cmp) {
     if (num == 0 || size == 0) return;
     // forward calls to the JavaScript sort method
     // first, sort the items logically
-    comparator = function(x, y) {
-      return Runtime.dynCall('iii', comparator, [x, y]);
+    var comparator = function(x, y) {
+      return Runtime.dynCall('iii', cmp, [x, y]);
     }
     var keys = [];
     for (var i = 0; i < num; i++) keys.push(i);
