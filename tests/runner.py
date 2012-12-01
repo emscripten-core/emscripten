@@ -7106,6 +7106,8 @@ def process(filename):
         assert 'Assertion failed' in str(e), str(e)
 
     def test_linespecific(self):
+      if Settings.ASM_JS: return self.skip('asm does not support i64 yet')
+
       if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
       if self.emcc_args: self.emcc_args += ['--llvm-opts', '0'] # llvm full opts make the expected failures here not happen
 
