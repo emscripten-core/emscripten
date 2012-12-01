@@ -292,7 +292,8 @@ def emscript(infile, settings, outfile, libraries=[]):
   function_tables_defs = '\n'.join([table for table in last_forwarded_json['Functions']['tables'].itervalues()])
   if settings.get('ASM_JS'):
     fundamentals = ['buffer', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
-    basics = ['abort', 'assert', 'STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT', 'GLOBAL_BASE']
+    basics = ['abort', 'assert', 'STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT']
+    if not settings['NAMED_GLOBALS']: basics += ['GLOBAL_BASE']
     #if forwarded_json['Types']['preciseI64MathUsed']:
     #  basics += ['i64Math']
     asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore']
