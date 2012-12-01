@@ -1340,7 +1340,7 @@ c5,de,15,8a
         # corrections otherwise
         if Settings.USE_TYPED_ARRAYS == 2:
           Settings.CORRECT_SIGNS = 0
-          Settings.CHECK_SIGNS = 1
+          Settings.CHECK_SIGNS = 1 if not Settings.ASM_JS else 0
         else:
           Settings.CORRECT_SIGNS = 1
           Settings.CHECK_SIGNS = 0
