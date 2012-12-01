@@ -2330,6 +2330,7 @@ Exiting stack_manipulate_func, level: 0
 
     def test_segfault(self):
       if self.emcc_args is None: return self.skip('SAFE_HEAP without ta2 means we check types too, which hide segfaults')
+      if Settings.ASM_JS: return self.skip('asm does not support safe heap')
 
       Settings.SAFE_HEAP = 1
 
