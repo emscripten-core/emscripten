@@ -179,15 +179,17 @@ if (ASM_JS) {
 
 // Output some info and warnings based on settings
 
-if (!MICRO_OPTS || !RELOOP || ASSERTIONS || CHECK_SIGNS || CHECK_OVERFLOWS || INIT_STACK || INIT_HEAP ||
-    !SKIP_STACK_IN_SMALL || SAFE_HEAP || PGO || PROFILE || !DISABLE_EXCEPTION_CATCHING) {
-  print('// Note: Some Emscripten settings will significantly limit the speed of the generated code.');
-} else {
-  print('// Note: For maximum-speed code, see "Optimizing Code" on the Emscripten wiki, https://github.com/kripken/emscripten/wiki/Optimizing-Code');
-}
+if (phase == 'pre') {
+  if (!MICRO_OPTS || !RELOOP || ASSERTIONS || CHECK_SIGNS || CHECK_OVERFLOWS || INIT_STACK || INIT_HEAP ||
+      !SKIP_STACK_IN_SMALL || SAFE_HEAP || PGO || PROFILE || !DISABLE_EXCEPTION_CATCHING) {
+    print('// Note: Some Emscripten settings will significantly limit the speed of the generated code.');
+  } else {
+    print('// Note: For maximum-speed code, see "Optimizing Code" on the Emscripten wiki, https://github.com/kripken/emscripten/wiki/Optimizing-Code');
+  }
 
-if (DOUBLE_MODE || CORRECT_SIGNS || CORRECT_OVERFLOWS || CORRECT_ROUNDINGS) {
-  print('// Note: Some Emscripten settings may limit the speed of the generated code.');
+  if (DOUBLE_MODE || CORRECT_SIGNS || CORRECT_OVERFLOWS || CORRECT_ROUNDINGS) {
+    print('// Note: Some Emscripten settings may limit the speed of the generated code.');
+  }
 }
 
 // Load compiler code
