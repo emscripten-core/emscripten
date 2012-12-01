@@ -7265,6 +7265,8 @@ def process(filename):
         Settings.CORRECT_SIGNS = 0
 
     def test_pgo(self):
+      if Settings.ASM_JS: return self.skip('asm does not support pgo')
+
       if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
       Settings.PGO = Settings.CHECK_OVERFLOWS = Settings.CORRECT_OVERFLOWS = Settings.CHECK_SIGNS = Settings.CORRECT_SIGNS = 1
 
