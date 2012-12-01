@@ -6015,6 +6015,8 @@ LibraryManager.library = {
     return 0;
   },
 
+  freelocale: function(locale) {},
+
   uselocale: function(locale) {
     return 0;
   },
