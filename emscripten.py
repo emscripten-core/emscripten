@@ -297,11 +297,22 @@ def emscript(infile, settings, outfile, libraries=[]):
     #if forwarded_json['Types']['preciseI64MathUsed']:
     #  basics += ['i64Math']
     asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore']
+    # function tables
+    function_tables = ['dynCall_' + table for table in last_forwarded_json['Functions']['tables']]
+    function_tables_impls = []
+    for sig in last_forwarded_json['Functions']['tables'].iterkeys():
+      args = ','.join(['a' + str(i) for i in range(1, len(sig))])
+      arg_coercions = ' '.join(['a' + str(i) + '=' + ('+' if sig[i] == 'd' else '') + 'a' + str(i) + ('|0' if sig[i] == 'i' else '') + ';' for i in range(1, len(sig))])
+      function_tables_impls.append('''
+  function dynCall_%s(index%s%s) {
+    %s
+    %sFUNCTION_TABLE_%s[index](%s);
+  }
+''' % (sig, ',' if len(sig) > 1 else '', args, arg_coercions, 'return ' if sig[0] != 'v' else '', sig, args))
     # calculate exports
-    function_tables = ['FUNCTION_TABLE_' + table for table in last_forwarded_json['Functions']['tables'].iterkeys()]
     exported_implemented_functions = list(exported_implemented_functions)
     exports = []
-    for export in exported_implemented_functions + function_tables + asm_runtime_funcs:
+    for export in exported_implemented_functions + asm_runtime_funcs + function_tables:
       exports.append("'%s': %s" % (export, export))
     exports = '{ ' + ', '.join(exports) + ' }'
     # calculate globals
@@ -358,7 +369,7 @@ var asm = asmPre(%s, buffer); // pass through Function to prevent seeing outside
 Runtime.stackAlloc = function(size) { return asm.stackAlloc(size) };
 Runtime.stackSave = function() { return asm.stackSave() };
 Runtime.stackRestore = function(top) { asm.stackRestore(top) };
-''' % (function_tables_defs.replace('\n', '\n  '), exports, sending, receiving)
+''' % (function_tables_defs.replace('\n', '\n  ') + '\n' + '\n'.join(function_tables_impls), exports, sending, receiving)
   else:
     outfile.write(function_tables_defs)
   outfile.write(blockaddrsize(indexize(funcs_js)))
