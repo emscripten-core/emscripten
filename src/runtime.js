@@ -27,7 +27,7 @@ var RuntimeGenerator = {
     //                                                               The stack is always QUANTUM SIZE aligned, so we may not need to force alignment here
     var ret = RuntimeGenerator.alloc(size, 'STACK', INIT_STACK, sep, USE_TYPED_ARRAYS != 2 || (isNumber(size) && parseInt(size) % {{{ QUANTUM_SIZE }}} == 0));
     if (ASSERTIONS) {
-      ret += sep + 'assert(STACKTOP < (STACK_ROOT + STACK_MAX)|0)';
+      ret += sep + 'assert(STACKTOP|0 < STACK_MAX|0)';
     }
     return ret;
   },

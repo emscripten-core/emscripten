@@ -292,12 +292,13 @@ def emscript(infile, settings, outfile, libraries=[]):
   function_tables_defs = '\n'.join([table for table in last_forwarded_json['Functions']['tables'].itervalues()])
   if settings.get('ASM_JS'):
     fundamentals = ['buffer', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
-    basics = ['abort', 'assert']
+    basics = ['abort', 'assert', 'STACKTOP', 'STACK_MAX']
+    asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore']
     # calculate exports
     function_tables = ['FUNCTION_TABLE_' + table for table in last_forwarded_json['Functions']['tables'].iterkeys()]
     exported_implemented_functions = list(exported_implemented_functions)
     exports = []
-    for export in exported_implemented_functions + function_tables:
+    for export in exported_implemented_functions + function_tables + asm_runtime_funcs:
       exports.append("'%s': %s" % (export, export))
     exports = '{ ' + ', '.join(exports) + ' }'
     # calculate globals
@@ -324,7 +325,21 @@ var asmPre = (function(env, buffer) {
   var HEAPU32 = new env.Uint32Array(buffer);
   var HEAPF32 = new env.Float32Array(buffer);
   var HEAPF64 = new env.Float64Array(buffer);
-''' + asm_globals + '\n' + funcs_js.replace('\n', '\n  ') + '''
+''' + asm_globals + '''
+  function stackAlloc(size) {
+    var ret = STACKTOP;
+    STACKTOP = (STACKTOP + size)|0;
+    STACKTOP = ((STACKTOP + 3)>>2)<<2;
+    return ret;
+  }
+  function stackSave() {
+    return STACKTOP;
+  }
+  function stackRestore(top) {
+    top = top|0;
+    STACKTOP = top;
+  }
+''' + funcs_js.replace('\n', '\n  ') + '''
 
   %s
 
@@ -337,6 +352,9 @@ if (asmPre.toSource) { // works in sm but not v8, so we get full coverage betwee
 }
 var asm = asmPre(%s, buffer); // pass through Function to prevent seeing outside scope
 %s;
+Runtime.stackAlloc = function(size) { return asm.stackAlloc(size) };
+Runtime.stackSave = function() { return asm.stackSave() };
+Runtime.stackRestore = function(top) { asm.stackRestore(top) };
 ''' % (function_tables_defs.replace('\n', '\n  '), exports, sending, receiving)
   else:
     outfile.write(function_tables_defs)
