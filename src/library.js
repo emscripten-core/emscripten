@@ -6454,6 +6454,8 @@ LibraryManager.library = {
   pthread_mutexattr_destroy: function() {},
   pthread_mutex_lock: function() {},
   pthread_mutex_unlock: function() {},
+  pthread_cond_init: function() {},
+  pthread_cond_destroy: function() {},
   pthread_cond_broadcast: function() {},
   pthread_self: function() {
     //FIXME: assumes only a single thread
