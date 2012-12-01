@@ -124,36 +124,50 @@ var Runtime = {
 
   // Mirrors processMathop's treatment of constants (which we optimize directly)
   bitshift64: function(low, high, op, bits) {
+    var ret;
     var ander = Math.pow(2, bits)-1;
     if (bits < 32) {
       switch (op) {
         case 'shl':
-          return [low << bits, (high << bits) | ((low&(ander << (32 - bits))) >>> (32 - bits))];
+          ret = [low << bits, (high << bits) | ((low&(ander << (32 - bits))) >>> (32 - bits))];
+          break;
         case 'ashr':
-          return [(((low >>> bits ) | ((high&ander) << (32 - bits))) >> 0) >>> 0, (high >> bits) >>> 0];
+          ret = [(((low >>> bits ) | ((high&ander) << (32 - bits))) >> 0) >>> 0, (high >> bits) >>> 0];
+          break;
         case 'lshr':
-          return [((low >>> bits) | ((high&ander) << (32 - bits))) >>> 0, high >>> bits];
+          ret = [((low >>> bits) | ((high&ander) << (32 - bits))) >>> 0, high >>> bits];
+          break;
       }
     } else if (bits == 32) {
       switch (op) {
         case 'shl':
-          return [0, low];
+          ret = [0, low];
+          break;
         case 'ashr':
-          return [high, (high|0) < 0 ? ander : 0];
+          ret = [high, (high|0) < 0 ? ander : 0];
+          break;
         case 'lshr':
-          return [high, 0];
+          ret = [high, 0];
+          break;
       }
     } else { // bits > 32
       switch (op) {
         case 'shl':
-          return [0, low << (bits - 32)];
+          ret = [0, low << (bits - 32)];
+          break;
         case 'ashr':
-          return [(high >> (bits - 32)) >>> 0, (high|0) < 0 ? ander : 0];
+          ret = [(high >> (bits - 32)) >>> 0, (high|0) < 0 ? ander : 0];
+          break;
         case 'lshr':
-          return [high >>>  (bits - 32) , 0];
+          ret = [high >>>  (bits - 32) , 0];
+          break;
       }
     }
-    abort('unknown bitshift64 op: ' + [value, op, bits]);
+#if ASSERTIONS
+    assert(ret);
+#endif
+    HEAP32[tempDoublePtr>>2] = ret[0]; // cannot use utility functions since we are in runtime itself
+    HEAP32[tempDoublePtr+4>>2] = ret[1];
   },
 
   // Imprecise bitops utilities

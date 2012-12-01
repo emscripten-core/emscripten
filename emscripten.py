@@ -291,9 +291,9 @@ def emscript(infile, settings, outfile, libraries=[]):
 
   function_tables_defs = '\n'.join([table for table in last_forwarded_json['Functions']['tables'].itervalues()])
   if settings.get('ASM_JS'):
-    asm_setup = ''
+    asm_setup = 'var Runtime_bitshift64 = Runtime.bitshift64;'
     fundamentals = ['buffer', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
-    basics = ['abort', 'assert', 'STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT']
+    basics = ['abort', 'assert', 'STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT', 'Runtime_bitshift64']
     if not settings['NAMED_GLOBALS']: basics += ['GLOBAL_BASE']
     if forwarded_json['Types']['preciseI64MathUsed']:
       basics += ['i64Math_' + op for op in ['add', 'subtract', 'multiply', 'divide', 'modulo']]

@@ -965,6 +965,10 @@ function asmCoercion(value, type) {
   }
 }
 
+function makeGetTempDouble(i) {
+  return makeGetValue('tempDoublePtr', Runtime.getNativeTypeSize('i32')*i, 'i32');
+}
+
 // See makeSetValue
 function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSafe) {
   noticePtr(ptr);
@@ -1755,7 +1759,8 @@ function processMathop(item) {
       case 'ashr':
       case 'lshr': {
         if (!isNumber(idents[1])) {
-          return 'Runtime.bitshift64(' + idents[0] + '[0], ' + idents[0] + '[1],"' + op + '",' + stripCorrections(idents[1]) + '[0]|0)';
+          return '(Runtime' + (ASM_JS ? '_' : '.') + 'bitshift64(' + idents[0] + '[0], ' + idents[0] + '[1],"' + op + '",' + stripCorrections(idents[1]) + '[0]|0),' +
+            '[' + makeGetTempDouble(0) + ',' + makeGetTempDouble(1) + '])';
         }
         bits = parseInt(idents[1]);
         var ander = Math.pow(2, bits)-1;

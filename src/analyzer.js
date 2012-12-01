@@ -554,9 +554,10 @@ function analyzer(data, sidePass) {
                     // We can't statically legalize this, do the operation at runtime TODO: optimize
                     assert(sourceBits == 64, 'TODO: handle nonconstant shifts on != 64 bits');
                     value.intertype = 'value';
-                    value.ident = 'Runtime.bitshift64(' + sourceElements[0].ident + ', ' +
+                    value.ident = 'Runtime' + (ASM_JS ? '_' : '.') + 'bitshift64(' + sourceElements[0].ident + ', ' +
                                                           sourceElements[1].ident + ',"' + value.op + '",' + value.params[1].ident + '$0);' +
-                                  'var ' + value.assignTo + '$0 = ' + value.assignTo + '[0], ' + value.assignTo + '$1 = ' + value.assignTo + '[1];';
+                                  'var ' + value.assignTo + '$0 = ' + makeGetTempDouble(0) + ', ' + value.assignTo + '$1 = ' + makeGetTempDouble(1) + ';';
+                    value.assignTo = null;
                     i++;
                     continue;
                   }
