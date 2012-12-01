@@ -487,8 +487,6 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
         self.do_run(src, 'hello, world!')
 
     def test_intvars(self):
-        if Settings.ASM_JS: return self.skip('asm does not support i64 yet')
-
         src = '''
           #include <stdio.h>
           int global = 20;
@@ -574,7 +572,6 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
 
     def test_i64(self):
         if Settings.USE_TYPED_ARRAYS != 2: return self.skip('i64 mode 1 requires ta2')
-        if Settings.ASM_JS: return self.skip('asm does not support i64 yet')
 
         src = '''
           #include <stdio.h>
@@ -790,7 +787,6 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
 
     def test_i64_b(self):
         if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
-        if Settings.ASM_JS: return self.skip('asm does not support i64 yet')
 
         src = r'''
           #include <stdio.h>
@@ -816,7 +812,6 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
 
     def test_i64_cmp(self):
         if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
-        if Settings.ASM_JS: return self.skip('asm does not support i64 yet')
 
         src = r'''
           #include <stdio.h>
@@ -841,7 +836,6 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
 
     def test_i64_cmp2(self):
         if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
-        if Settings.ASM_JS: return self.skip('asm does not support i64 yet')
 
         src = r'''
           #include <inttypes.h>
@@ -888,7 +882,7 @@ m_divisor is 1091269979
 
     def test_i64_double(self):
         if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
-        if Settings.ASM_JS: return self.skip('asm does not support i64 yet')
+
 
         src = r'''
           #include <stdio.h>
@@ -932,7 +926,6 @@ m_divisor is 1091269979
 
     def test_i64_umul(self):
         if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
-        if Settings.ASM_JS: return self.skip('asm does not support i64 yet')
 
         src = r'''
           #include <inttypes.h>
@@ -958,7 +951,6 @@ m_divisor is 1091269979
 
     def test_i64_precise(self):
         if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
-        if Settings.ASM_JS: return self.skip('asm does not support i64 yet')
 
         src = r'''
           #include <inttypes.h>
@@ -1039,7 +1031,6 @@ m_divisor is 1091269979
 
     def test_i64_zextneg(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
-      if Settings.ASM_JS: return self.skip('asm does not support i64 yet')
 
       src = r'''
         #include <stdint.h>
@@ -1061,7 +1052,6 @@ m_divisor is 1091269979
 
     def test_i64_7z(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
-      if Settings.ASM_JS: return self.skip('asm does not support i64 yet')
 
       src = r'''
         #include <stdint.h>
@@ -1083,7 +1073,6 @@ m_divisor is 1091269979
 
     def test_i64_i16(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
-      if Settings.ASM_JS: return self.skip('asm does not support i64 yet')
 
       src = r'''
         #include <stdio.h>
@@ -1126,7 +1115,6 @@ m_divisor is 1091269979
 
     def test_i32_mul_precise(self):
       if self.emcc_args == None: return self.skip('needs ta2')
-      if Settings.ASM_JS: return self.skip('asm does not support i64 yet')
 
       self.emcc_args += ['-s', 'PRECISE_I32_MUL=1']
       src = r'''
@@ -1209,7 +1197,6 @@ c5,de,15,8a
       self.do_run(open(path_from_root('tests', 'cube2md5.cpp')).read(), open(path_from_root('tests', 'cube2md5.ok')).read())
 
     def test_cube2hash(self):
-      if Settings.ASM_JS: return self.skip('asm does not support i64 yet')
 
       try:
         old_chunk_size = os.environ.get('EMSCRIPT_MAX_CHUNK_SIZE') or ''
@@ -7106,8 +7093,6 @@ def process(filename):
         assert 'Assertion failed' in str(e), str(e)
 
     def test_linespecific(self):
-      if Settings.ASM_JS: return self.skip('asm does not support i64 yet')
-
       if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
       if self.emcc_args: self.emcc_args += ['--llvm-opts', '0'] # llvm full opts make the expected failures here not happen
 

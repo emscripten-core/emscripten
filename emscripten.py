@@ -291,11 +291,19 @@ def emscript(infile, settings, outfile, libraries=[]):
 
   function_tables_defs = '\n'.join([table for table in last_forwarded_json['Functions']['tables'].itervalues()])
   if settings.get('ASM_JS'):
+    asm_setup = ''
     fundamentals = ['buffer', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
     basics = ['abort', 'assert', 'STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT']
     if not settings['NAMED_GLOBALS']: basics += ['GLOBAL_BASE']
-    #if forwarded_json['Types']['preciseI64MathUsed']:
-    #  basics += ['i64Math']
+    if forwarded_json['Types']['preciseI64MathUsed']:
+      basics += ['i64Math_' + op for op in ['add', 'subtract', 'multiply', 'divide', 'modulo']]
+      asm_setup += '''
+var i64Math_add = function(a, b, c, d) { i64Math.add(a, b, c, d) };
+var i64Math_subtract = function(a, b, c, d) { i64Math.subtract(a, b, c, d) };
+var i64Math_multiply = function(a, b, c, d) { i64Math.multiply(a, b, c, d) };
+var i64Math_divide = function(a, b, c, d) { i64Math.divide(a, b, c, d) };
+var i64Math_modulo = function(a, b, c, d) { i64Math.modulo(a, b, c, d) };
+'''
     asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore']
     # function tables
     function_tables = ['dynCall_' + table for table in last_forwarded_json['Functions']['tables']]
@@ -329,6 +337,7 @@ def emscript(infile, settings, outfile, libraries=[]):
     receiving = ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm.' + s for s in exported_implemented_functions + function_tables])
     # finalize
     funcs_js = '''
+%s
 var asmPre = (function(env, buffer) {
   'use asm';
   var HEAP8 = new env.Int8Array(buffer);
@@ -339,7 +348,7 @@ var asmPre = (function(env, buffer) {
   var HEAPU32 = new env.Uint32Array(buffer);
   var HEAPF32 = new env.Float32Array(buffer);
   var HEAPF64 = new env.Float64Array(buffer);
-''' + asm_globals + '''
+''' % (asm_setup,) + asm_globals + '''
   function stackAlloc(size) {
     var ret = STACKTOP;
     STACKTOP = (STACKTOP + size)|0;

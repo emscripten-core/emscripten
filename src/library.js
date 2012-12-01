@@ -5064,16 +5064,16 @@ LibraryManager.library = {
   llvm_uadd_with_overflow_i64: function(xl, xh, yl, yh) {
     i64Math.add(xl, xh, yl, yh);
     return {
-      f0: i64Math.result,
+      f0: [HEAP32[tempDoublePtr>>2], HEAP32[tempDoublePtr+4>>2]],
       f1: 0 // XXX Need to hack support for this in long.js
     };
   },
 
   llvm_umul_with_overflow_i64__deps: [function() { Types.preciseI64MathUsed = 1 }],
   llvm_umul_with_overflow_i64: function(xl, xh, yl, yh) {
-    i64Math.mul(xl, xh, yl, yh);
+    i64Math.multiply(xl, xh, yl, yh);
     return {
-      f0: i64Math.result,
+      f0: [HEAP32[tempDoublePtr>>2], HEAP32[tempDoublePtr+4>>2]],
       f1: 0 // XXX Need to hack support for this in long.js
     };
   },
