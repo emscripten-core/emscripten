@@ -231,7 +231,7 @@ var Functions = {
     for (var i = 0; i < argTypes.length; i++) {
       var type = argTypes[i];
       if (!type) break; // varargs
-      sig += isIntImplemented(type) ? 'i' : 'f';
+      sig += isIntImplemented(type) ? (getBits(type) == 64 ? 'ii' : 'i') : 'f'; // legalized i64s will be i32s
     }
     return sig;
   },

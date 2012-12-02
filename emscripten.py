@@ -254,6 +254,7 @@ def emscript(infile, settings, outfile, libraries=[]):
   forwarded_json['Functions']['indexedFunctions'] = {}
   i = 2
   for indexed in indexed_functions:
+    #print >> sys.stderr, 'indaxx', indexed, i
     forwarded_json['Functions']['indexedFunctions'][indexed] = i # make sure not to modify this python object later - we use it in indexize
     i += 2
   forwarded_json['Functions']['nextIndex'] = i
