@@ -369,10 +369,9 @@ var Runtime = {
 
   getFuncWrapper: function(func, sig) {
     assert(sig);
-    var table = Runtime.getFunctionTable(sig);
     if (!Runtime.funcWrappers[func]) {
       Runtime.funcWrappers[func] = function() {
-        table[func].apply(null, arguments);
+        Runtime.dynCall(sig, func, arguments);
       };
     }
     return Runtime.funcWrappers[func];
