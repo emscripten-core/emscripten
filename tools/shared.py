@@ -319,6 +319,12 @@ except:
   CLOSURE_COMPILER = path_from_root('third_party', 'closure-compiler', 'compiler.jar')
 
 try:
+  PYTHON
+except:
+  print >> sys.stderr, 'PYTHON not defined in ~/.emscripten, using "python"'
+  PYTHON = 'python'
+
+try:
   JAVA
 except:
   print >> sys.stderr, 'JAVA not defined in ~/.emscripten, using "java"'
@@ -378,7 +384,7 @@ WINDOWS = sys.platform.startswith('win')
 ENV_PREFIX = []
 if not WINDOWS:
   try:
-    assert 'Python' in Popen(['env', 'python2', '-V'], stdout=PIPE, stderr=STDOUT).communicate()[0]
+    assert 'Python' in Popen(['env', 'python', '-V'], stdout=PIPE, stderr=STDOUT).communicate()[0]
     ENV_PREFIX = ['env']
   except:
     pass
@@ -863,13 +869,13 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     if output_filename is None:
       output_filename = filename + '.o'
     try_delete(output_filename)
-    Popen(ENV_PREFIX + ['python2', EMCC, filename] + args + ['-o', output_filename], stdout=stdout, stderr=stderr, env=env).communicate()
+    Popen([PYTHON, EMCC, filename] + args + ['-o', output_filename], stdout=stdout, stderr=stderr, env=env).communicate()
     assert os.path.exists(output_filename), 'emcc could not create output file'
 
   @staticmethod
   def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None):
     try_delete(output_filename)
-    Popen(ENV_PREFIX + ['python2', EMAR, action, output_filename] + filenames, stdout=stdout, stderr=stderr, env=env).communicate()
+    Popen([PYTHON, EMAR, action, output_filename] + filenames, stdout=stdout, stderr=stderr, env=env).communicate()
     if 'c' in action:
       assert os.path.exists(output_filename), 'emar could not create output file'
 
@@ -880,7 +886,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
     # Run Emscripten
     settings = Settings.serialize()
-    compiler_output = timeout_run(Popen(ENV_PREFIX + ['python2', EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE), None, 'Compiling')
+    compiler_output = timeout_run(Popen([PYTHON, EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE), None, 'Compiling')
     #print compiler_output
 
     # Detect compilation crashes and errors
