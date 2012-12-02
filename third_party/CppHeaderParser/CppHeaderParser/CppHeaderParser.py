@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2
 #
 # Author: Jashua R. Cloutier (contact via sourceforge username:senexcanis)
 #
