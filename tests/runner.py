@@ -199,7 +199,7 @@ sys.path += [%r]
 process(sys.argv[1])
 ''')
         transform.close()
-        transform_args = ['--js-transform', "python %s" % transform_filename]
+        transform_args = ['--js-transform', "python2 %s" % transform_filename]
       Building.emcc(filename + '.o.ll', Settings.serialize() + self.emcc_args + transform_args + Building.COMPILER_TEST_OPTS, filename + '.o.js')
       run_post(post2)
 
@@ -7686,7 +7686,7 @@ f.write('transformed!')
 f.close()
 ''')
         trans_file.close()
-        output = Popen(['python2', compiler, path_from_root('tests', 'hello_world' + suffix), '--js-transform', 'python t.py'], stdout=PIPE, stderr=PIPE).communicate()
+        output = Popen(['python2', compiler, path_from_root('tests', 'hello_world' + suffix), '--js-transform', 'python2 t.py'], stdout=PIPE, stderr=PIPE).communicate()
         assert open('a.out.js').read() == 'transformed!', 'Transformed output must be as expected'
 
       # TODO: Add in files test a clear example of using disablePermissions, and link to it from the wiki
