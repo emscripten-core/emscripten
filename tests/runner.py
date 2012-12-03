@@ -7850,6 +7850,36 @@ f.close()
       self.assertContained('hello from lib', run_js(os.path.join(self.get_dir(), 'a.out.js')))
       assert not os.path.exists('a.out') and not os.path.exists('a.exe'), 'Must not leave unneeded linker stubs'
 
+    def test_multiply_defined_libsymbols(self):
+      lib = "int mult() { return 1; }"
+      lib_name = os.path.join(self.get_dir(), 'libA.c')
+      open(lib_name, 'w').write(lib)
+      a2 = "void x() {}"
+      a2_name = os.path.join(self.get_dir(), 'a2.c')
+      open(a2_name, 'w').write(a2)
+      b2 = "void y() {}"
+      b2_name = os.path.join(self.get_dir(), 'b2.c')
+      open(b2_name, 'w').write(b2)
+      main = r'''
+        #include <stdio.h>
+        int mult();
+        int main() {
+          printf("result: %d\n", mult());
+          return 0;
+        }
+      '''
+      main_name = os.path.join(self.get_dir(), 'main.c')
+      open(main_name, 'w').write(main)
+
+      Building.emcc(lib_name, output_filename='libA.so')
+
+      Building.emcc(a2_name, ['-L.', '-lA'])
+      Building.emcc(b2_name, ['-L.', '-lA'])
+
+      Building.emcc(main_name, ['-L.', '-lA', a2_name+'.o', b2_name+'.o'], output_filename='a.out.js')
+
+      self.assertContained('result: 1', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
     def test_abspaths(self):
       # Includes with absolute paths are generally dangerous, things like -I/usr/.. will get to system local headers, not our portable ones.
 
