@@ -7880,6 +7880,40 @@ f.close()
 
       self.assertContained('result: 1', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+    def test_multiply_defined_libsymbols_2(self):
+      a = "int x() { return 55; }"
+      a_name = os.path.join(self.get_dir(), 'a.c')
+      open(a_name, 'w').write(a)
+      b = "int y() { return 2; }"
+      b_name = os.path.join(self.get_dir(), 'b.c')
+      open(b_name, 'w').write(b)
+      c = "int z() { return 5; }"
+      c_name = os.path.join(self.get_dir(), 'c.c')
+      open(c_name, 'w').write(c)
+      main = r'''
+        #include <stdio.h>
+        int x();
+        int y();
+        int z();
+        int main() {
+          printf("result: %d\n", x() + y() + z());
+          return 0;
+        }
+      '''
+      main_name = os.path.join(self.get_dir(), 'main.c')
+      open(main_name, 'w').write(main)
+
+      Building.emcc(a_name) # a.c.o
+      Building.emcc(b_name) # b.c.o
+      Building.emcc(c_name) # c.c.o
+      lib_name = os.path.join(self.get_dir(), 'libLIB.a')
+      Building.emar('cr', lib_name, [a_name + '.o', b_name + '.o']) # libLIB.a with a and b
+
+      # a is in the lib AND in an .o, so should be ignored in the lib. We do still need b from the lib though
+      Building.emcc(main_name, ['-L.', '-lLIB', a_name+'.o', c_name + '.o'], output_filename='a.out.js')
+
+      self.assertContained('result: 62', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
     def test_abspaths(self):
       # Includes with absolute paths are generally dangerous, things like -I/usr/.. will get to system local headers, not our portable ones.
 

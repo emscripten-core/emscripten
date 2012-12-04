@@ -741,17 +741,11 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
             Popen([LLVM_AR, 'x', f], stdout=PIPE).communicate() # if absolute paths, files will appear there. otherwise, in this directory
             contents = map(lambda content: os.path.join(temp_dir, content), contents)
             contents = filter(os.path.exists, map(os.path.abspath, contents))
-            needed = False # We add or do not add the entire archive. We let llvm dead code eliminate parts we do not need, instead of
-                           # doing intra-dependencies between archive contents
             for content in contents:
               new_symbols = Building.llvm_nm(content)
               # Link in the .o if it provides symbols, *or* this is a singleton archive (which is apparently an exception in gcc ld)
               if new_symbols.defs.intersection(unresolved_symbols) or len(files) == 1:
-                needed = True
-            if needed:
-              for content in contents:
                 if Building.is_bitcode(content):
-                  new_symbols = Building.llvm_nm(content)
                   resolved_symbols = resolved_symbols.union(new_symbols.defs)
                   unresolved_symbols = unresolved_symbols.union(new_symbols.undefs.difference(resolved_symbols)).difference(new_symbols.defs)
                   actual_files.append(content)
