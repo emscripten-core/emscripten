@@ -10,6 +10,7 @@ function __Z11printResultPiS_j($needle, $haystack, $len) {
   $haystack = $haystack | 0;
   $len = $len | 0;
   var $3 = 0, __stackBase__ = 0;
+  __stackBase__ = STACKTOP;
   $3 = _bsearch($needle, $haystack, $len, 4, 2);
   if (($3 | 0) == 0) {
     _puts(_str | 0);

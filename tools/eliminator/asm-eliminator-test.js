@@ -13,7 +13,8 @@ function __Z11printResultPiS_j($needle, $haystack, $len) {
   $len = $len | 0;
   var $1 = 0, $2 = 0, $3 = 0, $4 = 0, $puts = 0, $7 = 0, $8 = 0, $9 = 0;
   var label = 0;
-  var __stackBase__ = STACKTOP;
+  var __stackBase__ = 0;
+  __stackBase__ = STACKTOP;
   $1 = $needle;
   $2 = $haystack;
   $3 = _bsearch($1, $2, $len, 4, 2);
