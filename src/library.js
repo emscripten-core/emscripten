@@ -24,7 +24,7 @@ LibraryManager.library = {
   stdin: 'allocate(1, "i32*", ALLOC_STACK)',
   stdout: 'allocate(1, "i32*", ALLOC_STACK)',
   stderr: 'allocate(1, "i32*", ALLOC_STACK)',
-  _impure_ptr: 0,
+  _impure_ptr: 'allocate(1, "i32*", ALLOC_STACK)',
 
   $FS__deps: ['$ERRNO_CODES', '__setErrNo', 'stdin', 'stdout', 'stderr', '_impure_ptr'],
   $FS__postset: '__ATINIT__.unshift({ func: function() { if (!Module["noFSInit"] && !FS.init.initialized) FS.init() } });' +
@@ -592,9 +592,9 @@ LibraryManager.library = {
       FS.checkStreams();
       assert(FS.streams.length < 1024); // at this early stage, we should not have a large set of file descriptors - just a few
 #endif
-      __impure_ptr = allocate([ allocate(
+      allocate([ allocate(
         {{{ Runtime.QUANTUM_SIZE === 4 ? '[0, 0, 0, 0, _stdin, 0, 0, 0, _stdout, 0, 0, 0, _stderr, 0, 0, 0]' : '[0, _stdin, _stdout, _stderr]' }}},
-        'void*', ALLOC_STATIC) ], 'void*', ALLOC_STATIC);
+        'void*', ALLOC_STATIC) ], 'void*', ALLOC_NONE, __impure_ptr);
     },
 
     quit: function() {
