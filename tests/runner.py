@@ -6597,6 +6597,8 @@ def process(filename):
       self.do_run(src, '*\nnumber,5\nnumber,3.14\nstring,hello world\n12\nundefined\n14.56\nundefined\ncheez\nundefined\narr-ay\nundefined\nmore\nnumber,10\n650\nnumber,21\n*\natr\n10\nbret\n53\n*\nstack is ok.\n', post_build=post)
 
     def test_scriptaclass(self):
+        if Settings.ASM_JS: return self.skip('asm does not bindings generator yet')
+
         header_filename = os.path.join(self.get_dir(), 'header.h')
         header = '''
           struct ScriptMe {
@@ -6841,6 +6843,8 @@ Child2:9
 ''', post_build=[post2, post3])
 
     def test_scriptaclass_2(self):
+        if Settings.ASM_JS: return self.skip('asm does not bindings generator yet')
+
         header_filename = os.path.join(self.get_dir(), 'header.h')
         header = '''
           #include <stdio.h>
