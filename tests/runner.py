@@ -362,6 +362,8 @@ process(sys.argv[1])
   # Shared test code between main suite and others
 
   def setup_runtimelink_test(self):
+    if Settings.ASM_JS: return self.skip('asm does not support runtime linking')
+
     header = r'''
       struct point
       {
@@ -6484,6 +6486,8 @@ def process(filename):
       self.do_run(src, '''AD:-1,1''', build_ll_hook=self.do_autodebug)
 
     def test_profiling(self):
+      if Settings.ASM_JS: return self.skip('asm does not support profiling')
+
       src = '''
           #include <emscripten.h>
           #include <unistd.h>
