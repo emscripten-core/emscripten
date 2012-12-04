@@ -267,9 +267,6 @@ def emscript(infile, settings, outfile, libraries=[]):
   def blockaddrsize(js):
     return re.sub(r'{{{ BA_([\w\d_$]+)\|([\w\d_$]+) }}}', lambda m: str(blockaddrs[m.groups(0)[0]][m.groups(0)[1]]), js)
 
-  if settings.get('ASM_JS'):
-    outfile.write('(function() {\n'); # prevent new Function from seeing the global scope
-
   #if DEBUG: outfile.write('// pre\n')
   outfile.write(blockaddrsize(indexize(pre)))
   pre = None
@@ -387,9 +384,6 @@ Runtime.stackRestore = function(top) { asm.stackRestore(top) };
 
   outfile.write(indexize(post))
   if DEBUG: print >> sys.stderr, '  emscript: phase 3 took %s seconds' % (time.time() - t)
-
-  if settings.get('ASM_JS'):
-    outfile.write('}).apply(null, arguments);\n');
 
   outfile.close()
 

@@ -1142,6 +1142,16 @@ try:
     execute(shlex.split(js_transform, posix=posix) + [os.path.abspath(final)])
     if DEBUG: save_intermediate('transformed')
 
+  if shared.Settings.ASM_JS: # XXX temporary wrapping for testing purposes
+    unwrapped = open(final).read()
+    final += '.asmwrap.js'
+    open(final, 'w').write('''
+(function() { // prevent new Function from seeing the global scope
+%s
+}).apply(null, arguments);
+''' % unwrapped)
+    if DEBUG: save_intermediate('asmwrap')
+
   # It is useful to run several js optimizer passes together, to save on unneeded unparsing/reparsing
   js_optimizer_queue = []
   def flush_js_optimizer_queue():
