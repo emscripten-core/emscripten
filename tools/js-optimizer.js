@@ -263,6 +263,10 @@ function emptyNode() { // XXX do we need to create new nodes here? can't we reus
   return ['toplevel', []]
 }
 
+function isEmptyNode(node) {
+  return node.length == 2 && node[0] == 'toplevel' && node[1].length == 0;
+}
+
 // Passes
 
 // Dump the AST. Useful for debugging. For example,
@@ -1197,6 +1201,94 @@ function loopOptimizer(ast) {
   vacuum(ast);
 }
 
+// asm.js support code - normalize (convert asm.js code to 'normal' JS, without
+// annotations, plus explicit metadata) and denormalize (vice versa)
+var ASM_INT = 0;
+var ASM_DOUBLE = 1;
+
+function detectAsmCoercion(node) {
+  // for params, +x vs x|0, for vars, +0 vs 0, so check for "+"
+  return node[0] == 'unary-prefix' ? ASM_DOUBLE : ASM_INT;
+}
+
+function makeAsmParamCoercion(param, type) {
+  return type == ASM_INT ? ['binary', '|', ['name', param], ['num', 0]] : ['unary-prefix', '+', ['name', param]];
+}
+
+function makeAsmVarDef(v, type) {
+  return [v, type == ASM_INT ? ['num', 0] : ['unary-prefix', '+', ['num', 0]]];
+}
+
+function normalizeAsm(func) {
+  //printErr('pre-normalize \n\n' + astToSrc(func) + '\n\n');
+  var data = {
+    params: {}, // ident => ASM_* type
+    vars: {}, // ident => ASM_* type
+  };
+  // process initial params
+  var stats = func[3];
+  var i = 0;
+  while (i < stats.length) {
+    var node = stats[i];
+    if (node[0] != 'stat') break;
+    node = node[1];
+    data.params[node[2][1]] = detectAsmCoercion(node[3]);
+    stats[i] = emptyNode();
+    i++;
+  }
+  // process initial variable definitions
+  while (i < stats.length) {
+    var node = stats[i];
+    if (node[0] != 'var') break;
+    node[1].forEach(function(v) {
+      data.vars[v[0]] = detectAsmCoercion(v[1]);
+      v[1] = null; // make an un-assigning var
+    });
+    i++;
+  }
+  //printErr('normalized \n\n' + astToSrc(func) + '\n\n');
+  return data;
+}
+
+function denormalizeAsm(func, data) {
+  //printErr('pre-denormalize \n\n' + astToSrc(func) + '\n\n');
+  var stats = func[3];
+  // Remove var definitions, if any
+  for (var i = 0; i < stats.length; i++) {
+    if (stats[i][0] == 'var') {
+      stats[i] = emptyNode();
+    } else {
+      if (!isEmptyNode(stats[i])) break;
+    }
+  }
+  // each param needs a line; reuse emptyNodes as much as we can
+  var numParams = 0;
+  for (var i in data.params) numParams++;
+  var emptyNodes = 0;
+  while (emptyNodes < stats.length) {
+    if (!isEmptyNode(stats[emptyNodes])) break;
+    emptyNodes++;
+  }
+  var neededEmptyNodes = numParams + 1; // params plus one big var
+  if (neededEmptyNodes > emptyNodes) {
+    var args = [0, 0];
+    for (var i = 0; i < neededEmptyNodes - emptyNodes; i++) args[i+2] = 0;
+    stats.splice.apply(stats, args);
+  }
+  // add param coercions
+  var next = 0;
+  func[2].forEach(function(param) {
+    stats[next++] = ['stat', ['assign', true, ['name', param], makeAsmParamCoercion(param, data.params[param])]];
+  });
+  // add variable definitions
+  var varDefs = [];
+  for (var v in data.vars) {
+    varDefs.push(makeAsmVarDef(v, data.vars[v]));
+  }
+  stats[next] = ['var', varDefs];
+  //printErr('denormalized \n\n' + astToSrc(func) + '\n\n');
+}
+
 // Very simple 'registerization', coalescing of variables into a smaller number.
 // We do not optimize when there are switches, so this pass only makes sense with
 // relooping.
@@ -1205,6 +1297,7 @@ function loopOptimizer(ast) {
 //       closure simple?
 function registerize(ast, asm) {
   traverseGeneratedFunctions(ast, function(fun) {
+    if (asm) var asmData = normalizeAsm(fun);
     // Replace all var definitions with assignments; we will add var definitions at the top after we registerize
     // We also mark local variables - i.e., having a var definition
     var localVars = {};
@@ -1360,14 +1453,24 @@ function registerize(ast, asm) {
       }
     });
     // Add vars at the beginning
-    if (nextReg > 1) {
-      var vars = [];
-      for (var i = 1; i < nextReg; i++) {
-        vars.push([fullNames[i]]);
+    if (!asm) {
+      if (nextReg > 1) {
+        var vars = [];
+        for (var i = 1; i < nextReg; i++) {
+          vars.push([fullNames[i]]);
+        }
+        getStatements(fun).unshift(['var', vars]);
       }
-      getStatements(fun).unshift(['var', vars]);
+    } else {
+      var finalAsmData = {
+        params: asmData.params,
+        vars: {},
+      };
+      for (var i = 1; i < nextReg; i++) {
+        finalAsmData.vars['r' + i] = ASM_FLOAT; // XXX split into register classes
+      }
+      denormalizeAsm(fun, finalAsmData);
     }
-    //printErr(fun[1] + ': saved ' + saved + ' / ' + (saved + nextReg - 1) + ' vars through registerization'); // not totally accurate
   });
 }
 
@@ -1415,6 +1518,7 @@ var ABORTING_ELIMINATOR_SCAN_NODES = set('new', 'object', 'function', 'defun', '
 function eliminate(ast, memSafe, asm) {
   // Find variables that have a single use, and if they can be eliminated, do so
   traverseGeneratedFunctions(ast, function(func, type) {
+    if (asm) var asmData = normalizeAsm(func);
     //printErr('eliminate in ' + func[1]);
 
     // First, find the potentially eliminatable functions: that have one definition and one use
@@ -1430,7 +1534,6 @@ function eliminate(ast, memSafe, asm) {
         locals[func[2][i]] = true;
       }
     }
-    var defaultDefs = asm ? -1 : 0; // in asm.js we have an extra formal def which we can ignore
     // examine body and note locals
     traverse(func, function(node, type) {
       if (type === 'var') {
@@ -1440,7 +1543,7 @@ function eliminate(ast, memSafe, asm) {
           var name = node1i[0];
           var value = node1i[1];
           if (value) {
-            if (!(name in definitions)) definitions[name] = defaultDefs;
+            if (!(name in definitions)) definitions[name] = 0;
             definitions[name]++;
             if (!values[name]) values[name] = value;
           }
@@ -1455,7 +1558,7 @@ function eliminate(ast, memSafe, asm) {
         var target = node[2];
         if (target[0] == 'name') {
           var name = target[1];
-          if (!(name in definitions)) definitions[name] = defaultDefs;
+          if (!(name in definitions)) definitions[name] = 0;
           definitions[name]++;
           if (!uses[name]) uses[name] = 0;
           if (!values[name]) values[name] = node[3];
@@ -1827,6 +1930,13 @@ function eliminate(ast, memSafe, asm) {
         }
       }
     });
+
+    if (asm) {
+      for (var v in varsToRemove) {
+        delete asmData.vars[v];
+      }
+      denormalizeAsm(func, asmData);
+    }
   });
 
   // A class for optimizing expressions. We know that it is legitimate to collapse

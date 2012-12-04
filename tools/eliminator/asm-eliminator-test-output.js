@@ -9,17 +9,14 @@ function __Z11printResultPiS_j($needle, $haystack, $len) {
   $needle = $needle | 0;
   $haystack = $haystack | 0;
   $len = $len | 0;
-  var $3 = 0;
-  var __stackBase__ = STACKTOP;
+  var $3 = 0, __stackBase__ = 0;
   $3 = _bsearch($needle, $haystack, $len, 4, 2);
   if (($3 | 0) == 0) {
-    $puts = _puts(_str | 0);
+    _puts(_str | 0);
     STACKTOP = __stackBase__;
     return;
   } else {
-    $7 = $3;
-    $8 = HEAP32[($7 & 16777215) >> 2] | 0;
-    $9 = _printf(__str1 | 0, (tempInt = STACKTOP, STACKTOP = STACKTOP + 4 | 0, HEAP32[(tempInt & 16777215) >> 2] = $8, tempInt));
+    _printf(__str1 | 0, (tempInt = STACKTOP, STACKTOP = STACKTOP + 4 | 0, HEAP32[(tempInt & 16777215) >> 2] = HEAP32[($3 & 16777215) >> 2] | 0, tempInt));
     STACKTOP = __stackBase__;
     return;
   }
