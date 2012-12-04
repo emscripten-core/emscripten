@@ -731,6 +731,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
             os.makedirs(temp_dir)
           os.chdir(temp_dir)
           contents = filter(lambda x: len(x) > 0, Popen([LLVM_AR, 't', f], stdout=PIPE).communicate()[0].split('\n'))
+          #print >> sys.stderr, '  considering archive', f, ':', contents
           if len(contents) == 0:
             print >> sys.stderr, 'Warning: Archive %s appears to be empty (recommendation: link an .so instead of .a)' % f
           else:
@@ -741,14 +742,23 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
             Popen([LLVM_AR, 'x', f], stdout=PIPE).communicate() # if absolute paths, files will appear there. otherwise, in this directory
             contents = map(lambda content: os.path.join(temp_dir, content), contents)
             contents = filter(os.path.exists, map(os.path.abspath, contents))
-            for content in contents:
-              new_symbols = Building.llvm_nm(content)
-              # Link in the .o if it provides symbols, *or* this is a singleton archive (which is apparently an exception in gcc ld)
-              if new_symbols.defs.intersection(unresolved_symbols) or len(files) == 1:
-                if Building.is_bitcode(content):
-                  resolved_symbols = resolved_symbols.union(new_symbols.defs)
-                  unresolved_symbols = unresolved_symbols.union(new_symbols.undefs.difference(resolved_symbols)).difference(new_symbols.defs)
-                  actual_files.append(content)
+            added_contents = set()
+            added = True
+            while added: # recursively traverse until we have everything we need
+              added = False
+              for content in contents:
+                if content in added_contents: continue 
+                new_symbols = Building.llvm_nm(content)
+                # Link in the .o if it provides symbols, *or* this is a singleton archive (which is apparently an exception in gcc ld)
+                #print >> sys.stderr, 'need', content, '?', unresolved_symbols, 'and we can supply', new_symbols.defs
+                if new_symbols.defs.intersection(unresolved_symbols) or len(files) == 1:
+                  if Building.is_bitcode(content):
+                    #print >> sys.stderr, '  adding object', content
+                    resolved_symbols = resolved_symbols.union(new_symbols.defs)
+                    unresolved_symbols = unresolved_symbols.union(new_symbols.undefs.difference(resolved_symbols)).difference(new_symbols.defs)
+                    actual_files.append(content)
+                    added_contents.add(content)
+                    added = True
         finally:
           os.chdir(cwd)
     try_delete(target)
