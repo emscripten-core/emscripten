@@ -949,7 +949,7 @@ function __embind_register_class_operator_array_set(
 ) {
     classType = requireRegisteredType(classType, 'class');
     indexType = requireRegisteredType(indexType, 'array access index ' + classType.name);
-    elementType = requireRegisteredType(elementType, 'vector ' + classType.name);
+    elementType = requireRegisteredType(elementType, 'array access element ' + classType.name);
     invoker = FUNCTION_TABLE[invoker];
     var humanName = classType.name + '.' + 'operator_array_get';
     

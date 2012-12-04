@@ -99,16 +99,6 @@ namespace emscripten {
                 GenericFunction destructor,
                 GenericFunction getPointee);
 
-            void _embind_register_vector(
-                TYPEID vectorType,
-                TYPEID elementType,
-                const char* name,
-                GenericFunction constructor,
-                GenericFunction destructor,
-                GenericFunction length,
-                GenericFunction getter,
-                GenericFunction setter);
-
             void _embind_register_class(
                 TYPEID classType,
                 TYPEID pointerType,
