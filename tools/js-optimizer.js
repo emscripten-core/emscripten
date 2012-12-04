@@ -1471,7 +1471,7 @@ function registerize(ast, asm) {
         vars: {},
       };
       for (var i = 1; i < nextReg; i++) {
-        finalAsmData.vars['r' + i] = ASM_FLOAT; // XXX split into register classes
+        finalAsmData.vars['r' + i] = ASM_DOUBLE; // XXX split into register classes
       }
       denormalizeAsm(fun, finalAsmData);
     }
