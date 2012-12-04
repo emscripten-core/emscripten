@@ -5658,11 +5658,11 @@ LibraryManager.library = {
     'tm_gmtoff',
     'tm_zone'], '%struct.tm'),
   // Statically allocated time struct.
-  __tm_current: 0,
+  __tm_current: 'allocate({{{ Runtime.QUANTUM_SIZE }}}*26, "i8", ALLOC_STACK)',
   // Statically allocated timezone strings.
   __tm_timezones: {},
   // Statically allocated time strings.
-  __tm_formatted: 0,
+  __tm_formatted: 'allocate({{{ Runtime.QUANTUM_SIZE }}}*26, "i8", ALLOC_STACK)',
 
   mktime__deps: ['__tm_struct_layout', 'tzset'],
   mktime: function(tmPtr) {
@@ -5685,7 +5685,6 @@ LibraryManager.library = {
 
   gmtime__deps: ['malloc', '__tm_struct_layout', '__tm_current', 'gmtime_r'],
   gmtime: function(time) {
-    if (!___tm_current) ___tm_current = _malloc(___tm_struct_layout.__size__);
     return _gmtime_r(time, ___tm_current);
   },
 
@@ -5728,7 +5727,6 @@ LibraryManager.library = {
 
   localtime__deps: ['malloc', '__tm_struct_layout', '__tm_current', 'localtime_r'],
   localtime: function(time) {
-    if (!___tm_current) ___tm_current = _malloc(___tm_struct_layout.__size__);
     return _localtime_r(time, ___tm_current);
   },
 
@@ -5764,7 +5762,6 @@ LibraryManager.library = {
 
   asctime__deps: ['malloc', '__tm_formatted', 'asctime_r'],
   asctime: function(tmPtr) {
-    if (!___tm_formatted) ___tm_formatted = _malloc(26);
     return _asctime_r(tmPtr, ___tm_formatted);
   },
 
