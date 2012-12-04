@@ -1285,7 +1285,11 @@ function denormalizeAsm(func, data) {
   for (var v in data.vars) {
     varDefs.push(makeAsmVarDef(v, data.vars[v]));
   }
-  stats[next] = ['var', varDefs];
+  if (varDefs.length) {
+    stats[next] = ['var', varDefs];
+  } else {
+    stats[next] = emptyNode();
+  }
   //printErr('denormalized \n\n' + astToSrc(func) + '\n\n');
 }
 
