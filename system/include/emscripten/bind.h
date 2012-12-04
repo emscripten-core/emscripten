@@ -764,21 +764,6 @@ namespace emscripten {
             return *this;
         }
 
-
-        /*
-         *  void _embind_register_class_operator_array_get(
-                TYPEID classType,
-                TYPEID elementType,
-                GenericFunction invoker);
-
-            void _embind_register_class_operator_array_set(
-                TYPEID classType,
-                TYPEID elementType,
-                GenericFunction invoker);
-
-                ArrayAccessSetInvoker
-         */
-
         template<typename ElementType, typename IndexType>
         class_& arrayoperatorget() {
             using namespace internal;
@@ -819,6 +804,18 @@ namespace emscripten {
     // VECTORS
     ////////////////////////////////////////////////////////////////////////////////
     template<typename T>
+    std::vector<T> vecFromJSArray(val v) {
+        auto l = v.get("length").as<unsigned>();
+
+        std::vector<T> rv;
+        for(unsigned i = 0; i < l; ++i) {
+            rv.push_back(v.get(i).as<T>());
+        }
+
+        return rv;
+    };
+
+    template<typename T>
     class_<std::vector<T>> register_vector(const char* name) {
         using namespace std;
         typedef vector<T> VecType;
@@ -835,6 +832,7 @@ namespace emscripten {
             .template arrayoperatorget<T, size_t>()
             .template arrayoperatorset<T, size_t>()
             ;
+
         return c;
     }
 
