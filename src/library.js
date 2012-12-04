@@ -3879,9 +3879,10 @@ LibraryManager.library = {
     _free(temp);
   },
 
-  environ: null,
-  __environ: null,
-  __buildEnvironment__deps: ['environ', '__environ'],
+  environ: 'allocate(1, "i32*", ALLOC_STACK)',
+  __environ__deps: ['environ'],
+  __environ: '_environ',
+  __buildEnvironment__deps: ['__environ'],
   __buildEnvironment: function(env) {
     // WARNING: Arbitrary limit!
     var MAX_ENV_VALUES = 64;
@@ -3890,7 +3891,8 @@ LibraryManager.library = {
     // Statically allocate memory for the environment.
     var poolPtr;
     var envPtr;
-    if (_environ === null) {
+    if (!___buildEnvironment.called) {
+      ___buildEnvironment.called = true;
       // Set default values. Use string keys for Closure Compiler compatibility.
       ENV['USER'] = 'root';
       ENV['PATH'] = '/';
@@ -3903,9 +3905,7 @@ LibraryManager.library = {
       envPtr = allocate(MAX_ENV_VALUES * {{{ Runtime.QUANTUM_SIZE }}},
                         'i8*', ALLOC_STATIC);
       {{{ makeSetValue('envPtr', '0', 'poolPtr', 'i8*') }}}
-      _environ = allocate([envPtr], 'i8**', ALLOC_STATIC);
-      // Set up global variable alias.
-      ___environ = _environ;
+      {{{ makeSetValue('_environ', 0, 'envPtr', 'i8*') }}};
     } else {
       envPtr = {{{ makeGetValue('_environ', '0', 'i8**') }}};
       poolPtr = {{{ makeGetValue('envPtr', '0', 'i8*') }}};
