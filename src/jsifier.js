@@ -1247,7 +1247,11 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
 
     if (byPointer) {
-      ident = Functions.getTable(Functions.getSignature(type, argsTypes)) + '[' + ident + ']';
+      var returnType = type.split(' ')[0];
+      if (ASM_JS) {
+        assert(returnType.search(/\("'\[,/) == -1); // XXX need isFunctionType(type, out)
+      }
+      ident = Functions.getTable(Functions.getSignature(returnType, argsTypes)) + '[' + ident + ']';
     }
 
     return ident + '(' + args.join(', ') + ')';
