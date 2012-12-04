@@ -5799,18 +5799,17 @@ LibraryManager.library = {
 
   // TODO: Initialize these to defaults on startup from system settings.
   // Note: glibc has one fewer underscore for all of these. Also used in other related functions (timegm)
-  _tzname: null,
-  _daylight: null,
-  _timezone: null,
+  _tzname: 'allocate({{{ 2*Runtime.QUANTUM_SIZE }}}, "i32*", ALLOC_STACK)',
+  _daylight: 'allocate(1, "i32*", ALLOC_STACK)',
+  _timezone: 'allocate(1, "i32*", ALLOC_STACK)',
   tzset__deps: ['_tzname', '_daylight', '_timezone'],
   tzset: function() {
     // TODO: Use (malleable) environment variables instead of system settings.
-    if (__tzname) return; // glibc does not need the double __
+    if (_tzset.called) return;
+    _tzset.called = true;
 
-    __timezone = _malloc({{{ Runtime.QUANTUM_SIZE }}});
     {{{ makeSetValue('__timezone', '0', '-(new Date()).getTimezoneOffset() * 60', 'i32') }}}
 
-    __daylight = _malloc({{{ Runtime.QUANTUM_SIZE }}});
     var winter = new Date(2000, 0, 1);
     var summer = new Date(2000, 6, 1);
     {{{ makeSetValue('__daylight', '0', 'Number(winter.getTimezoneOffset() != summer.getTimezoneOffset())', 'i32') }}}
@@ -5819,7 +5818,6 @@ LibraryManager.library = {
     var summerName = 'GMT'; // XXX do not rely on browser timezone info, it is very unpredictable | summer.toString().match(/\(([A-Z]+)\)/)[1];
     var winterNamePtr = allocate(intArrayFromString(winterName), 'i8', ALLOC_NORMAL);
     var summerNamePtr = allocate(intArrayFromString(summerName), 'i8', ALLOC_NORMAL);
-    __tzname = _malloc(2 * {{{ Runtime.QUANTUM_SIZE }}}); // glibc does not need the double __
     {{{ makeSetValue('__tzname', '0', 'winterNamePtr', 'i32') }}}
     {{{ makeSetValue('__tzname', Runtime.QUANTUM_SIZE, 'summerNamePtr', 'i32') }}}
   },
