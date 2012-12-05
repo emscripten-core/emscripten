@@ -1166,7 +1166,7 @@ function makeSetValues(ptr, pos, value, type, num, align) {
     [4, 2, 1].forEach(function(possibleAlign) {
       if (num == 0) return;
       if (align >= possibleAlign) {
-        if (num <= UNROLL_LOOP_MAX*possibleAlign) {
+        if (num <= UNROLL_LOOP_MAX*possibleAlign || ASM_JS) { // XXX test asm performance
           ret.push(unroll('i' + (possibleAlign*8), Math.floor(num/possibleAlign), possibleAlign, values[possibleAlign]));
         } else {
           ret.push('for (var $$dest = ' + getFastValue(ptr, '+', pos) + (possibleAlign > 1 ? '>>' + log2(possibleAlign) : '') + ', ' +
@@ -1220,7 +1220,7 @@ function makeCopyValues(dest, src, num, type, modifier, align, sep) {
       if (num == 0) return;
       if (align >= possibleAlign) {
         // If we can unroll the loop, do so. Also do so if we must unroll it (we do not create real loops when inlined)
-        if (num <= UNROLL_LOOP_MAX*possibleAlign || sep == ',') {
+        if (num <= UNROLL_LOOP_MAX*possibleAlign || sep == ',' || ASM_JS) { // XXX test asm performance
           ret.push(unroll('i' + (possibleAlign*8), Math.floor(num/possibleAlign), possibleAlign));
         } else {
           assert(sep == ';');
