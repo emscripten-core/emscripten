@@ -1,6 +1,6 @@
 #include <emscripten/bind.h>
-#include <..\lib\libcxxabi\src\private_typeinfo.h>
-#include <..\lib\libcxxabi\include\cxxabi.h>
+#include <../lib/libcxxabi/src/private_typeinfo.h>
+#include <../lib/libcxxabi/include/cxxabi.h>
 #include <list>
 #include <vector>
 #include <typeinfo>
