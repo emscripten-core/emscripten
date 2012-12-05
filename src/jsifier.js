@@ -553,9 +553,22 @@ function JSify(data, functionsOnly, givenFunctions) {
         // spell out local variables
         var vars = values(func.variables).filter(function(v) { return v.origin != 'funcparam' });
         if (vars.length > 0) {
-          func.JS += '  var ' + vars.map(function(v) {
-            return v.ident + ' = ' + asmInitializer(v.type); //, func.variables[v.ident].impl);
-          }).join(', ') + ';\n';
+          var chunkSize = 8;
+          var chunks = [];
+          var i = 0;
+          while (i < vars.length) {
+            chunks.push(vars.slice(i, i+chunkSize));
+            i += chunkSize;
+          }
+          for (i = 0; i < chunks.length; i++) {
+            func.JS += '  var ' + chunks[i].map(function(v) {
+              if (v.type != 'i64') {
+                return v.ident + ' = ' + asmInitializer(v.type); //, func.variables[v.ident].impl);
+              } else {
+                return v.ident + '$0 = 0, ' + v.ident + '$1 = 1';
+              }
+            }).join(', ') + ';\n';
+          }
         }
       }
 
