@@ -3,3 +3,6 @@
 *~
 *.bc
 
+# Ignore generated files 
+src/relooper.js
+src/relooper.js.raw.js
