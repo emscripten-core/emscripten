@@ -7,6 +7,15 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if defined(_MSC_VER) && defined(__clang__)
+// Workaround Windows clang Visual Studio ABI issues. Clang does not find 
+// the required operators, so hack them in manually.
+void *operator new(size_t size) { return malloc(size); }
+void *operator new[](size_t size) { return malloc(size); }
+void operator delete(void *ptr) { free(ptr); }
+void operator delete[](void *ptr) { free(ptr); }
+#endif
+
 // limit output, so we do not benchmark speed of printing
 void puts_limited(char *x)
 {
