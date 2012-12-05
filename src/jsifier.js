@@ -586,6 +586,16 @@ function JSify(data, functionsOnly, givenFunctions) {
         func.JS += '  var label = 0;\n';
       }
 
+      if (ASM_JS) {
+        var hasByVal = false;
+        func.params.forEach(function(param) {
+          hasByVal = hasByVal = hasByVal || param.byVal;
+        });
+        if (hasByVal) {
+          func.js += '  var tempParam = 0;\n';
+        }
+      }
+
       // Prepare the stack, if we need one. If we have other stack allocations, force the stack to be set up.
       func.JS += '  ' + RuntimeGenerator.stackEnter(func.initialStack, func.otherStackAllocations) + ';\n';
 
@@ -600,7 +610,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         if (param.byVal) {
           var type = removePointing(param.type);
           var typeInfo = Types.types[type];
-          func.JS += '  var tempParam = ' + param.ident + '; ' + param.ident + ' = ' + RuntimeGenerator.stackAlloc(typeInfo.flatSize) + ';' +
+          func.JS += '  ' + (ASM_JS ? '' : 'var ') + 'tempParam = ' + param.ident + '; ' + param.ident + ' = ' + RuntimeGenerator.stackAlloc(typeInfo.flatSize) + ';' +
                      makeCopyValues(param.ident, 'tempParam', typeInfo.flatSize, 'null', null, param.byVal) + ';\n';
         }
       });
