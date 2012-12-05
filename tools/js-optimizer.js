@@ -1402,6 +1402,7 @@ function registerize(ast, asm) {
       if (!varUses[name]) return false; // no uses left, or not a relevant variable
       if (optimizables[name]) activeOptimizables[name] = 1;
       var reg = varRegs[name];
+      if (asm) assert(name in asmData.vars, name);
       var freeRegs = asm ? freeRegsClasses[asmData.vars[name]] : freeRegsClasses;
       if (!reg) {
         // acquire register
