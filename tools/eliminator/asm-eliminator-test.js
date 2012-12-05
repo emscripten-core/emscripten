@@ -31,5 +31,43 @@ function __Z11printResultPiS_j($needle, $haystack, $len) {
     return;
   }
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j"]
+function _segment_holding($addr) {
+  $addr = $addr | 0;
+  var $sp_0 = 0, $2 = 0, $3 = 0, $4 = 0, $6 = 0, $7 = 0, $8 = 0, $9 = 0;
+  var $11 = 0, $12 = 0, $13 = 0, $_0 = 0;
+  var label = 0;
+  $sp_0 = __gm_ + 444 | 0;
+  while (1) {
+    $2 = $sp_0 | 0;
+    $3 = HEAP32[($2 & 16777215) >> 2] | 0;
+    $4 = $3 >>> 0 > $addr >>> 0;
+    if (!$4) {
+      $6 = $sp_0 + 4 | 0;
+      $7 = HEAP32[($6 & 16777215) >> 2] | 0;
+      $8 = $3 + $7 | 0;
+      $9 = $8 >>> 0 > $addr >>> 0;
+      if ($9) {
+        $_0 = $sp_0;
+        label = 1658;
+        break;
+      }
+    }
+    $11 = $sp_0 + 8 | 0;
+    $12 = HEAP32[($11 & 16777215) >> 2] | 0;
+    $13 = ($12 | 0) == 0;
+    if ($13) {
+      $_0 = 0;
+      label = 1659;
+      break;
+    } else {
+      $sp_0 = $12;
+    }
+  }
+  if (label == 1659) {
+    return $_0;
+  } else if (label == 1658) {
+    return $_0;
+  }
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j", "_segment_holding"]
 

@@ -22,4 +22,32 @@ function __Z11printResultPiS_j($needle, $haystack, $len) {
     return;
   }
 }
+function _segment_holding($addr) {
+  $addr = $addr | 0;
+  var $sp_0 = 0, $3 = 0, $12 = 0, $_0 = 0, label = 0;
+  $sp_0 = __gm_ + 444 | 0;
+  while (1) {
+    $3 = HEAP32[(($sp_0 | 0) & 16777215) >> 2] | 0;
+    if (!($3 >>> 0 > $addr >>> 0)) {
+      if (($3 + (HEAP32[(($sp_0 + 4 | 0) & 16777215) >> 2] | 0) | 0) >>> 0 > $addr >>> 0) {
+        $_0 = $sp_0;
+        label = 1658;
+        break;
+      }
+    }
+    $12 = HEAP32[(($sp_0 + 8 | 0) & 16777215) >> 2] | 0;
+    if (($12 | 0) == 0) {
+      $_0 = 0;
+      label = 1659;
+      break;
+    } else {
+      $sp_0 = $12;
+    }
+  }
+  if (label == 1659) {
+    return $_0;
+  } else if (label == 1658) {
+    return $_0;
+  }
+}
 
