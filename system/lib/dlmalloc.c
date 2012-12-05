@@ -760,6 +760,15 @@ extern "C" {
 
 /* ------------------- Declarations of public routines ------------------- */
 
+/* Neither VC++ compiler and clang like it if dlmalloc globally implements malloc and free.
+   VC++ compiler gives build errors in that case, and clang will crash on exit, so force
+   USE_DL_PREFIX to be defined when compiling to a native Win32 executable with either of
+   these compilers. Note that clang masquerades as VC++ compiler and defines _MSC_VER when
+   building on Windows, so this catches both compilers. */
+#if defined(_MSC_VER) && !defined(USE_DL_PREFIX)
+#define USE_DL_PREFIX
+#endif
+
 #ifndef USE_DL_PREFIX
 #define dlcalloc               calloc
 #define dlfree                 free
@@ -2723,7 +2732,7 @@ static size_t traverse_and_check(mstate m);
   }\
 }
 
-#elif defined(_MSC_VER) && _MSC_VER>=1300
+#elif defined(_MSC_VER) && _MSC_VER>=1300 && !defined(__clang__)
 #define compute_tree_index(S, I)\
 {\
   size_t X = S >> TREEBIN_SHIFT;\
@@ -2814,7 +2823,7 @@ static size_t traverse_and_check(mstate m);
   I = (bindex_t)J;\
 }
 
-#elif defined(_MSC_VER) && _MSC_VER>=1300
+#elif defined(_MSC_VER) && _MSC_VER>=1300 && !defined(__clang__)
 #define compute_bit2idx(X, I)\
 {\
   unsigned int J;\
