@@ -1390,7 +1390,7 @@ function registerize(ast, asm) {
     // we just use a fresh register to make sure we avoid this, but it could be
     // optimized to check for safe registers (free, and not used in this loop level).
     var varRegs = {}; // maps variables to the register they will use all their life
-    var freeRegs = [];
+    var freeRegsClasses = asm ? [[], []] : []; // two classes for asm, one otherwise
     var nextReg = 1;
     var fullNames = {};
     var loopRegs = {}; // for each loop nesting level, the list of bound variables
@@ -1402,6 +1402,7 @@ function registerize(ast, asm) {
       if (!varUses[name]) return false; // no uses left, or not a relevant variable
       if (optimizables[name]) activeOptimizables[name] = 1;
       var reg = varRegs[name];
+      var freeRegs = asm ? freeRegsClasses[asmData.vars[name]] : freeRegsClasses;
       if (!reg) {
         // acquire register
         if (optimizables[name] && freeRegs.length > 0) {
@@ -1409,7 +1410,7 @@ function registerize(ast, asm) {
           saved++;
         } else {
           reg = nextReg++;
-          fullNames[reg] = 'r' + reg; // TODO: even smaller names
+          fullNames[reg] = (asm ? (asmData.vars[name] ? 'd' : 'i') : 'r') + reg; // TODO: even smaller names
         }
         varRegs[name] = reg;
       }
@@ -1450,8 +1451,14 @@ function registerize(ast, asm) {
       if (type in LOOP) {
         // Free registers that were locked to this loop
         if (loopRegs[loops]) {
-          freeRegs = freeRegs.concat(loopRegs[loops]);
-          loopRegs[loops] = [];
+          if (asm) {
+            loopRegs[loops].forEach(function(loopReg) {
+              freeRegsClasses[asmData.vars[loopReg]].push(loopReg);
+            });
+          } else {
+            freeRegsClasses = freeRegsClasses.concat(loopRegs[loops]);
+          }
+          loopRegs[loops].length = 0;
         }
         loops--;
       }
@@ -1471,7 +1478,8 @@ function registerize(ast, asm) {
         vars: {},
       };
       for (var i = 1; i < nextReg; i++) {
-        finalAsmData.vars['r' + i] = ASM_DOUBLE; // XXX split into register classes
+        var reg = fullNames[i];
+        finalAsmData.vars[reg] = reg[0] == 'i' ? ASM_INT : ASM_DOUBLE;
       }
       denormalizeAsm(fun, finalAsmData);
     }
