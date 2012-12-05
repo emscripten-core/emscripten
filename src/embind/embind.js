@@ -137,15 +137,15 @@ var BindingError = Error;
 /** @expose */
 Module.BindingError = BindingError;
 
-function typeName(typeID) {
-    // could use our carnal knowledge of RTTI but for now just return the pointer...
-    return typeID;
+/*global ___typeName:false*/
+function typeName(type) {
+    return Pointer_stringify(___typeName(type));
 }
 
 function requireRegisteredType(type, humanName) {
     var impl = typeRegistry[type];
     if (undefined === impl) {
-        throw new BindingError(humanName + " has unknown type: " + typeName(type));
+        throw new BindingError(humanName + " has unknown type " + typeName(type));
     }
     return impl;
 }
