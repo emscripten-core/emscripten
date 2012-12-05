@@ -6201,6 +6201,7 @@ def process(filename):
 
     def test_poppler(self):
       if self.emcc_args is None: return self.skip('very slow, we only do this in emcc runs')
+      if Settings.ASM_JS: return self.skip('asm does not support relying on function pointers being cast to different types')
 
       Settings.CORRECT_OVERFLOWS = 1
       Settings.CORRECT_SIGNS = 1
