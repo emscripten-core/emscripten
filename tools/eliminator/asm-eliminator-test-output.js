@@ -50,4 +50,18 @@ function _segment_holding($addr) {
     return $_0;
   }
 }
+function __ZN5identC2EiPKcPci($this, $n, $a) {
+  $this = $this | 0;
+  $n = $n | 0;
+  $a = $a | 0;
+  HEAP32[($this & 16777215) >> 2] = __ZTV5ident + 8 | 0;
+  HEAP32[($this + 4 & 16777215) >> 2] = 5;
+  HEAP32[($this + 8 & 16777215) >> 2] = $n;
+  HEAP32[($this + 20 & 16777215) >> 2] = 2147483647;
+  HEAP32[($this + 24 & 16777215) >> 2] = 0;
+  HEAP32[($this + 28 & 16777215) >> 2] = $a;
+  HEAP32[($this + 32 & 16777215) >> 2] = 0;
+  HEAP32[($this + 40 & 16777215) >> 2] = 1;
+  return;
+}
 

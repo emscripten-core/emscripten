@@ -1230,7 +1230,7 @@ function normalizeAsm(func) {
   var i = 0;
   while (i < stats.length) {
     var node = stats[i];
-    if (node[0] != 'stat' || node[1][0] != 'assign') break;
+    if (node[0] != 'stat' || node[1][0] != 'assign' || node[1][2][0] != 'name') break;
     node = node[1];
     data.params[node[2][1]] = detectAsmCoercion(node[3]);
     stats[i] = emptyNode();
