@@ -836,7 +836,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     return ';';
   });
   makeFuncLineActor('var', function(item) { // assigns into phis become simple vars
-    return 'var ' + item.ident + ';';
+    return ASM_JS ? ';' : ('var ' + item.ident + ';');
   });
   makeFuncLineActor('store', function(item) {
     var value = finalizeLLVMParameter(item.value);
@@ -930,7 +930,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     var labelSets = phiSets[label];
     // FIXME: Many of the |var |s here are not needed, but without them we get slowdowns with closure compiler. TODO: remove this workaround.
     if (labelSets.length == 1) {
-      return 'var ' + labelSets[0].ident + ' = ' + labelSets[0].valueJS + ';';
+      return (ASM_JS ? '' : 'var ') + labelSets[0].ident + ' = ' + labelSets[0].valueJS + ';';
     }
     // TODO: eliminate unneeded sets (to undefined etc.)
     var deps = {}; // for each ident we will set, which others it depends on
