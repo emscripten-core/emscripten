@@ -374,10 +374,12 @@ or LLVM assembly files in human-readable form.
 emcc is affected by several environment variables. For details, view
 the source of emcc (search for 'os.environ').
 
+emcc: supported targets: llvm bitcode, javascript, NOT elf
+(autoconf likes to see elf above to enable shared object support)
 ''' % (this, this, this)
   exit(0)
 elif len(sys.argv) == 2 and sys.argv[1] == '-v': # -v with no inputs
-  print 'emcc (Emscripten GCC-like replacement) 2.0'
+  print 'emcc (Emscripten GCC-like replacement + linker emulating GNU ld ) 2.0'
   exit(subprocess.call([shared.CLANG, '-v']))
 
 def is_minus_s_for_emcc(newargs,i):
