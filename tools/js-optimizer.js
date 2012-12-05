@@ -1453,7 +1453,7 @@ function registerize(ast, asm) {
         if (loopRegs[loops]) {
           if (asm) {
             loopRegs[loops].forEach(function(loopReg) {
-              freeRegsClasses[asmData.vars[loopReg]].push(loopReg);
+              freeRegsClasses[fullNames[loopReg][0] == 'i' ? ASM_INT : ASM_DOUBLE].push(loopReg);
             });
           } else {
             freeRegsClasses = freeRegsClasses.concat(loopRegs[loops]);
