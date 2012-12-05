@@ -959,10 +959,16 @@ var LibrarySDL = {
     surfData.ctx.fillStyle = SDL.translateColorToCSSRGBA(color);
     surfData.ctx.fillRect(r.x, r.y, r.w, r.h);
     surfData.ctx.restore();
+
+    // any cached surface data is now out of date
+    if (surfData.image) surfData.image = null;
   },
 
   SDL_BlitSurface__deps: ['SDL_UpperBlit'],
   SDL_BlitSurface: function(src, srcrect, dst, dstrect) {
+    var surfData = SDL.surfaces[surf];
+    // any cached surface data is now out of date
+    if (surfData.image) surfData.image = null;
     return _SDL_UpperBlit(src, srcrect, dst, dstrect);
   },
 
