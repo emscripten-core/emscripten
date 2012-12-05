@@ -299,8 +299,8 @@ def emscript(infile, settings, outfile, libraries=[]):
 var i64Math_add = function(a, b, c, d) { i64Math.add(a, b, c, d) };
 var i64Math_subtract = function(a, b, c, d) { i64Math.subtract(a, b, c, d) };
 var i64Math_multiply = function(a, b, c, d) { i64Math.multiply(a, b, c, d) };
-var i64Math_divide = function(a, b, c, d) { i64Math.divide(a, b, c, d) };
-var i64Math_modulo = function(a, b, c, d) { i64Math.modulo(a, b, c, d) };
+var i64Math_divide = function(a, b, c, d, e) { i64Math.divide(a, b, c, d, e) };
+var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
 '''
     asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore']
     # function tables
