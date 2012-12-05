@@ -2003,6 +2003,8 @@ c5,de,15,8a
         self.do_run(src, 'Assertion failed: 1 == false')
 
     def test_longjmp(self):
+        if Settings.ASM_JS: return self.skip('asm does not support longjmp')
+
         src = r'''
           #include <stdio.h>
           #include <setjmp.h>
@@ -2038,6 +2040,8 @@ c5,de,15,8a
           self.do_run(src, 'second\nmain: 0\n')
 
     def test_longjmp2(self):
+      if Settings.ASM_JS: return self.skip('asm does not support longjmp')
+
       src = r'''
         #include <setjmp.h>
         #include <stdio.h>
