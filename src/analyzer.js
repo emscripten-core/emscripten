@@ -225,7 +225,7 @@ function analyzer(data, sidePass) {
                     assert(subItem.intertype == 'value', 'We can only unfold illegal constants in phis');
                     // we must handle this in the phi itself, if we unfold normally it will not be pushed back with the phi
                   } else {
-                    var tempIdent = '$$emscripten$temp$' + (tempId++);
+                    var tempIdent = '$$etemp$' + (tempId++);
                     subItem.assignTo = tempIdent;
                     unfolded.unshift(subItem);
                     fixUnfolded(subItem);
@@ -234,7 +234,7 @@ function analyzer(data, sidePass) {
                 } else if (subItem.intertype == 'switch' && isIllegalType(subItem.type)) {
                   subItem.switchLabels.forEach(function(switchLabel) {
                     if (switchLabel.value[0] != '$') {
-                      var tempIdent = '$$emscripten$temp$' + (tempId++);
+                      var tempIdent = '$$etemp$' + (tempId++);
                       unfolded.unshift({
                         assignTo: tempIdent,
                         intertype: 'value',
