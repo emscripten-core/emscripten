@@ -577,6 +577,7 @@ function __embind_register_class(
     });
 
     /*global ___getDynamicPointerType: false*/
+    /*global ___dynamicPointerCast: false*/
     var pointerName = name + '*';
     registerType(pointerType, pointerName, {
         name: pointerName,
