@@ -15,6 +15,7 @@ entry:
   %a1 = extractvalue { i32, i1 } %uadd1, 1
   %a2 = zext i1 %a1 to i32
   call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([9 x i8]* @.str2, i32 0, i32 0), i32 %a0, i32 %a2) ; [#uses=0]
+
   %buadd1prepre = tail call { i32, i1 } @llvm.uadd.with.overflow.i32(i32 %mul7, i32 %shl10)
   %buadd1pre = insertvalue { i32, i1 } %buadd1prepre, i1 0, 1
   %buadd1 = insertvalue { i32, i1 } %buadd1pre, i32 5177, 0
@@ -22,6 +23,16 @@ entry:
   %ba1 = extractvalue { i32, i1 } %buadd1, 1
   %ba2 = zext i1 %ba1 to i32
   call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([9 x i8]* @.str2, i32 0, i32 0), i32 %ba0, i32 %ba2) ; [#uses=0]
+
+  %64buadd1pre = tail call { i64, i1 } @llvm.uadd.with.overflow.i64(i64 5000, i64 3000)
+  %64buadd1 = insertvalue { i64, i1 } %64buadd1pre, i64 9875, 0
+  %64buadd2 = insertvalue { i64, i1 } %64buadd1, i1 1, 1
+  %64ba0pre = extractvalue { i64, i1 } %64buadd2, 0
+  %64ba0 = trunc i64 %64ba0pre to i32
+  %64ba1 = extractvalue { i64, i1 } %64buadd2, 1
+  %64ba2 = zext i1 %64ba1 to i32
+  call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([9 x i8]* @.str2, i32 0, i32 0), i32 %64ba0, i32 %64ba2) ; [#uses=0]
+
   ret i32 1
 }
 
@@ -29,4 +40,5 @@ entry:
 declare i32 @printf(i8*, ...)
 
 declare { i32, i1 } @llvm.uadd.with.overflow.i32(i32, i32) nounwind readnone
+declare { i64, i1 } @llvm.uadd.with.overflow.i64(i64, i32) nounwind readnone
 

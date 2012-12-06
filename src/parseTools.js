@@ -136,6 +136,20 @@ function getStructuralTypeParts(type) { // split { i32, i8 } etc. into parts
   return type.replace(/[ {}]/g, '').split(',');
 }
 
+function getStructureTypeParts(type) {
+  if (isStructuralType(type)) {
+    return type.replace(/[ {}]/g, '').split(',');
+  } else {
+    var typeData = Types.types[type];
+    assert(typeData, type);
+    return typeData.fields;
+  }
+}
+
+function getStructuralTypePartBits(part) {
+  return Math.ceil(getBits(part)/32)*32; // simple 32-bit alignment
+}
+
 function isIntImplemented(type) {
   return type[0] == 'i' || isPointerType(type);
 }
@@ -148,7 +162,9 @@ function getBits(type) {
     if (!isNumber(left)) return 0;
     return parseInt(left);
   }
-  if (isStructuralType(type)) return getStructuralTypeParts(type).length*32; // 32 bits per part in { i32, i1, i8, i32 } etc
+  if (isStructuralType(type)) {
+    return sum(getStructuralTypeParts(type).map(getStructuralTypePartBits));
+  }
   if (isStructType(type)) {
     var typeData = Types.types[type];
     return typeData.flatSize*8;

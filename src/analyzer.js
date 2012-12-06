@@ -120,7 +120,8 @@ function analyzer(data, sidePass) {
     processItem: function(data) {
       // Legalization
       if (USE_TYPED_ARRAYS == 2) {
-        function getLegalVars(base, bits) {
+        function getLegalVars(base, bits, allowLegal) {
+          if (allowLegal && bits <= 32) return [{ ident: base, bits: bits }];
           if (isNumber(base)) return getLegalLiterals(base, bits);
           var ret = new Array(Math.ceil(bits/32));
           var i = 0;
@@ -155,10 +156,6 @@ function analyzer(data, sidePass) {
               return getLegalStructuralParts(value).map(function(part) {
                 return { ident: part.ident, bits: part.type.substr(1) };
               });
-            //} else if (value.ident == 'zeroinitializer' || value.ident == 'undef') {
-            //  return getStructuralTypeParts(value.type).map(function(part) {
-            //    return { ident: 0, bits: 32 };
-            //  });
             } else {
               return getLegalVars(value.ident, bits);
             }
@@ -331,7 +328,7 @@ function analyzer(data, sidePass) {
                         intertype: 'value',
                         assignTo: element.ident,
                         type: element.bits,
-                        ident: 'tempRet' + (j++ - 1)
+                        ident: 'tempRet' + (j - 1)
                       });
                       assert(j<10); // TODO: dynamically create more than 10 tempRet-s
                     }
@@ -461,26 +458,58 @@ function analyzer(data, sidePass) {
                   i++;
                   continue; // special case, handled in makeComparison
                 }
-                case 'extractvalue': {
-                  item.intertype = 'value';
-                  item.ident = item.ident + '$' + item.indexes[0][0].text;
-                  item.type = 'i32'; // XXX we assume they are all i32-compatible
-                  i++;
+                case 'extractvalue': { // XXX we assume 32-bit alignment in extractvalue/insertvalue,
+                                       // but in theory they can run on packed structs too (see use getStructuralTypePartBits)
+                  // potentially legalize the actual extracted value too if it is >32 bits, not just the extraction in general
+                  var index = item.indexes[0][0].text;
+                  var parts = getStructureTypeParts(item.type);
+                  var indexedType = parts[index];
+                  var targetBits = getBits(indexedType);
+                  var sourceBits = getBits(item.type);
+                  var elements = getLegalVars(item.assignTo, targetBits, true); // possibly illegal
+                  var sourceElements = getLegalVars(item.ident, sourceBits); // definitely illegal
+                  var toAdd = [];
+                  var sourceIndex = 0;
+                  for (var partIndex = 0; partIndex < parts.length; partIndex++) {
+                    if (partIndex == index) {
+                      for (var j = 0; j < elements.length; j++) {
+                        toAdd.push({
+                          intertype: 'value',
+                          assignTo: elements[j].ident,
+                          type: 'i' + elements[j].bits,
+                          ident: sourceElements[sourceIndex+j].ident
+                        });
+                      }
+                      break;
+                    }
+                    sourceIndex += getStructuralTypePartBits(parts[partIndex])/32;
+                  }
+                  i += removeAndAdd(label.lines, i, toAdd);
                   continue;
                 }
                 case 'insertvalue': {
+                  var index = item.indexes[0][0].text; // the modified index
+                  var parts = getStructureTypeParts(item.type);
+                  var indexedType = parts[index];
+                  var indexBits = getBits(indexedType);
+                  var bits = getBits(item.type); // source and target
                   bits = getBits(value.type);
                   var toAdd = [];
                   var elements = getLegalVars(item.assignTo, bits);
                   var sourceElements = getLegalVars(item.ident, bits);
-                  var modifiedIndex = value.indexes[0][0].text;
-                  for (var j = 0; j < elements.length; j++) {
-                    toAdd.push({
-                      intertype: 'value',
-                      assignTo: elements[j].ident,
-                      type: 'i' + elements[j].bits,
-                      ident: j == modifiedIndex ? item.value.ident : sourceElements[j].ident
-                    });
+                  var indexElements = getLegalVars(item.value.ident, indexBits, true); // possibly legal
+                  var sourceIndex = 0;
+                  for (var partIndex = 0; partIndex < parts.length; partIndex++) {
+                    var currNum = getStructuralTypePartBits(parts[partIndex])/32;
+                    for (var j = 0; j < currNum; j++) {
+                      toAdd.push({
+                        intertype: 'value',
+                        assignTo: elements[sourceIndex+j].ident,
+                        type: 'i' + elements[sourceIndex+j].bits,
+                        ident: partIndex == index ? indexElements[j].ident : sourceElements[sourceIndex+j].ident
+                      });
+                    }
+                    sourceIndex += currNum;
                   }
                   i += removeAndAdd(label.lines, i, toAdd);
                   continue;

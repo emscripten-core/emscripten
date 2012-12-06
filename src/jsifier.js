@@ -830,7 +830,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     return substrate.addActor('Intertype:' + intertype, {
       processItem: function(item) {
         item.JS = func(item);
-        if (!item.JS) throw "No JS generated for " + dump(item);
+        if (!item.JS) throw "No JS generated for " + dump((item.funcData=null,item));
         if (item.assignTo) {
           makeAssign(item);
           if (!item.JS) throw "No assign JS generated for " + dump(item);
