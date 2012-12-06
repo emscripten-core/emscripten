@@ -15,6 +15,13 @@ entry:
   %a1 = extractvalue { i32, i1 } %uadd1, 1
   %a2 = zext i1 %a1 to i32
   call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([9 x i8]* @.str2, i32 0, i32 0), i32 %a0, i32 %a2) ; [#uses=0]
+  %buadd1prepre = tail call { i32, i1 } @llvm.uadd.with.overflow.i32(i32 %mul7, i32 %shl10)
+  %buadd1pre = insertvalue { i32, i1 } %buadd1prepre, i1 0, 1
+  %buadd1 = insertvalue { i32, i1 } %buadd1pre, i32 5177, 0
+  %ba0 = extractvalue { i32, i1 } %buadd1, 0
+  %ba1 = extractvalue { i32, i1 } %buadd1, 1
+  %ba2 = zext i1 %ba1 to i32
+  call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([9 x i8]* @.str2, i32 0, i32 0), i32 %ba0, i32 %ba2) ; [#uses=0]
   ret i32 1
 }
 

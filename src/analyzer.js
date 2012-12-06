@@ -121,7 +121,7 @@ function analyzer(data, sidePass) {
       // Legalization
       if (USE_TYPED_ARRAYS == 2) {
         function getLegalVars(base, bits) {
-          assert(!isNumber(base));
+          if (isNumber(base)) return getLegalLiterals(base, bits);
           var ret = new Array(Math.ceil(bits/32));
           var i = 0;
           while (bits > 0) {
@@ -461,6 +461,23 @@ function analyzer(data, sidePass) {
                   item.ident = item.ident + '$' + item.indexes[0][0].text;
                   item.type = 'i32'; // XXX we assume they are all i32-compatible
                   i++;
+                  continue;
+                }
+                case 'insertvalue': {
+                  bits = getBits(value.type);
+                  var toAdd = [];
+                  var elements = getLegalVars(item.assignTo, bits);
+                  var sourceElements = getLegalVars(item.ident, bits);
+                  var modifiedIndex = value.indexes[0][0].text;
+                  for (var j = 0; j < elements.length; j++) {
+                    toAdd.push({
+                      intertype: 'value',
+                      assignTo: elements[j].ident,
+                      type: 'i' + elements[j].bits,
+                      ident: j == modifiedIndex ? item.value.ident : sourceElements[j].ident
+                    });
+                  }
+                  i += removeAndAdd(label.lines, i, toAdd);
                   continue;
                 }
                 case 'bitcast': {
