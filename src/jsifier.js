@@ -1098,7 +1098,7 @@ function JSify(data, functionsOnly, givenFunctions) {
             + 'return null } })();';
     if (item.assignTo) {
       ret = 'var ' + item.assignTo + ' = ' + ret;
-      if (isIllegalType(item.type)) {
+      if (USE_TYPED_ARRAYS == 2 && isIllegalType(item.type)) {
         var bits = getBits(item.type);
         for (var i = 0; i < bits/32; i++) {
           ret += 'var ' + item.assignTo + '$' + i + ' = ' + (i == 0 ? item.assignTo : 'tempRet' + (i-1)) + ';'

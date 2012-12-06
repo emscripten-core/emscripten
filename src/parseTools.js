@@ -1572,10 +1572,17 @@ function makeLLVMStruct(values) {
 }
 
 function makeStructuralReturn(values) {
-  var i = 0;
-  return 'return (' + values.slice(1).map(function(value) {
-    return 'tempRet' + (i++) + ' = ' + value;
-  }).concat([values[0]]).join(',') + ')';
+  if (USE_TYPED_ARRAYS == 2) {
+    var i = 0;
+    return 'return (' + values.slice(1).map(function(value) {
+      return 'tempRet' + (i++) + ' = ' + value;
+    }).concat([values[0]]).join(',') + ')';
+  } else {
+    var i = 0;
+    return 'return { ' + values.map(function(value) {
+      return 'f' + (i++) + ': ' + value;
+    }).join(', ') + ' }';
+  }
 }
 
 // From parseLLVMSegment
