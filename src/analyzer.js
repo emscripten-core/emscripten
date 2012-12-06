@@ -145,6 +145,22 @@ function analyzer(data, sidePass) {
         function getLegalStructuralParts(value) {
           return value.params.slice(0);
         }
+        function getLegalParams(params, bits) {
+          return params.map(function(param) {
+            var value = param.value || param;
+            if (isNumber(value.ident)) {
+              return getLegalLiterals(value.ident, bits);
+            } else if (value.intertype == 'structvalue') {
+              return getLegalStructuralParts(value);
+            } else if (value.ident == 'zeroinitializer') {
+              return getStructuralTypeParts(value.type).map(function(part) {
+                return { ident: 0, bits: 32 };
+              });
+            } else {
+              return getLegalVars(value.ident, bits);
+            }
+          });
+        }
         // Uses the right factor to multiply line numbers by so that they fit in between
         // the line[i] and the line after it
         function interpLines(lines, i, toAdd) {
@@ -403,19 +419,7 @@ function analyzer(data, sidePass) {
                   var toAdd = [];
                   var elements = getLegalVars(item.assignTo, bits);
                   var j = 0;
-                  var values = value.params.map(function(param) {
-                    if (isNumber(param.value.ident)) {
-                      return getLegalLiterals(param.value.ident, bits);
-                    } else if (param.value.intertype == 'structvalue') {
-                      return getLegalStructuralParts(param.value);
-                    } else if (param.value.ident == 'zeroinitializer') {
-                      return getStructuralTypeParts(param.value.type).map(function(part) {
-                        return { ident: 0, type: 'i32' };
-                      });
-                    } else {
-                      return getLegalVars(param.value.ident, bits);
-                    }
-                  });
+                  var values = getLegalParams(value.params, bits);
                   elements.forEach(function(element) {
                     var k = 0;
                     toAdd.push({
@@ -513,17 +517,16 @@ function analyzer(data, sidePass) {
                     }
                     case 'select': {
                       sourceBits = targetBits = getBits(value.params[1].type);
-                      var otherElementsA = getLegalVars(value.params[1].ident, sourceBits);
-                      var otherElementsB = getLegalVars(value.params[2].ident, sourceBits);
+                      var params = getLegalParams(value.params.slice(1), sourceBits);
                       processor = function(result, j) {
                         return {
                           intertype: 'mathop',
                           op: 'select',
-                          type: 'i' + otherElementsA[j].bits,
+                          type: 'i' + params[0][j].bits,
                           params: [
                             value.params[0],
-                            { intertype: 'value', ident: otherElementsA[j].ident, type: 'i' + otherElementsA[j].bits },
-                            { intertype: 'value', ident: otherElementsB[j].ident, type: 'i' + otherElementsB[j].bits }
+                            { intertype: 'value', ident: params[0][j].ident, type: 'i' + params[0][j].bits },
+                            { intertype: 'value', ident: params[1][j].ident, type: 'i' + params[1][j].bits }
                           ]
                         };
                       };
