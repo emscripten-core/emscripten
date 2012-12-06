@@ -331,7 +331,7 @@ function analyzer(data, sidePass) {
                         intertype: 'value',
                         assignTo: element.ident,
                         type: element.bits,
-                        ident: 'tempRet' + (j++)
+                        ident: 'tempRet' + (j++ - 1)
                       });
                       assert(j<10); // TODO: dynamically create more than 10 tempRet-s
                     }

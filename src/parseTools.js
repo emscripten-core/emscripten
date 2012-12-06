@@ -1556,7 +1556,7 @@ function makeLLVMStruct(values) {
 }
 
 function makeStructuralReturn(values) {
-  var i = 1;
+  var i = 0;
   return 'return (' + values.slice(1).map(function(value) {
     return 'tempRet' + (i++) + ' = ' + value;
   }).concat([values[0]]).join(',') + ')';
