@@ -347,7 +347,11 @@ function analyzer(data, sidePass) {
                 case 'return': {
                   bits = getBits(item.type);
                   var elements = getLegalVars(item.value.ident, bits);
-                  item.value.ident = '[' + elements.map(function(element) { return element.ident }).join(',') + ']';
+                  item.value.ident = '(';
+                  for (var j = 1; j < elements.length; j++) {
+                    item.value.ident += 'tempRet' + (j-1) + '=' + elements[j].ident + ',';
+                  }
+                  item.value.ident += elements[0].ident + ')';
                   i++;
                   continue;
                 }
