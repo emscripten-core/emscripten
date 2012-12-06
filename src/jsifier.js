@@ -1099,8 +1099,10 @@ function JSify(data, functionsOnly, givenFunctions) {
     if (item.assignTo) {
       ret = 'var ' + item.assignTo + ' = ' + ret;
       if (isIllegalType(item.type)) {
-        assert(item.type == 'i64', 'Can only handle i64 invoke among illegal invokes');
-        ret += 'var ' + item.assignTo + '$0 = ' + item.assignTo + '[0], ' + item.assignTo + '$1 = ' + item.assignTo + '[1];';
+        var bits = getBits(item.type);
+        for (var i = 0; i < bits/32; i++) {
+          ret += 'var ' + item.assignTo + '$' + i + ' = ' + (i == 0 ? item.assignTo : 'tempRet' + (i-1)) + ';'
+        }
       }
       item.assignTo = null;
     }
