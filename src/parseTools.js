@@ -1579,7 +1579,8 @@ function makeStructuralReturn(values) {
   if (USE_TYPED_ARRAYS == 2) {
     var i = 0;
     return 'return (' + values.slice(1).map(function(value) {
-      return 'tempRet' + (i++) + ' = ' + value;
+      return ASM_JS ? 'asm.setTempRet' + (i++) + '(' + value + ')'
+                    : 'tempRet' + (i++) + ' = ' + value;
     }).concat([values[0]]).join(',') + ')';
   } else {
     var i = 0;
