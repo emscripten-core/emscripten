@@ -3813,7 +3813,7 @@ LibraryManager.library = {
 
 #if USE_TYPED_ARRAYS == 2
     if (bits == 64) {
-      ret = [{{{ splitI64('ret') }}}];
+      {{{ makeStructuralReturn(splitI64('ret')) }}};
     }
 #endif
 
