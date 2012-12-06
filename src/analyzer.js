@@ -301,7 +301,7 @@ function analyzer(data, sidePass) {
                   var toAdd = [value];
                   // legalize parameters
                   legalizeFunctionParameters(value.params);
-                  if (value.assignTo) {
+                  if (value.assignTo && elements.length) {
                     // legalize return value
                     value.assignTo = elements[0].ident;
                     for (var j = 1; j < elements.length; j++) {
