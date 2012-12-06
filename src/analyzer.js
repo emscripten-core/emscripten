@@ -19,7 +19,7 @@ function recomputeLines(func) {
 
 var BRANCH_INVOKE = set('branch', 'invoke');
 var SIDE_EFFECT_CAUSERS = set('call', 'invoke', 'atomic');
-var UNUNFOLDABLE = set('value', 'type', 'phiparam');
+var UNUNFOLDABLE = set('value', 'structvalue', 'type', 'phiparam');
 
 // Analyzer
 
@@ -142,6 +142,9 @@ function analyzer(data, sidePass) {
           }
           return ret;
         }
+        function getLegalStructuralParts(value) {
+          return value.params.slice(0);
+        }
         // Uses the right factor to multiply line numbers by so that they fit in between
         // the line[i] and the line after it
         function interpLines(lines, i, toAdd) {
@@ -191,6 +194,7 @@ function analyzer(data, sidePass) {
           // Legalize lines in labels
           var tempId = 0;
           func.labels.forEach(function(label) {
+            if (dcheck('legalizer')) dprint('zz legalizing: \n' + dump(label.lines));
             var i = 0, bits;
             while (i < label.lines.length) {
               var item = label.lines[i];
@@ -222,7 +226,7 @@ function analyzer(data, sidePass) {
                 if (subItem != item && (!(subItem.intertype in UNUNFOLDABLE) ||
                                        (subItem.intertype == 'value' && isNumber(subItem.ident) && isIllegalType(subItem.type)))) {
                   if (item.intertype == 'phi') {
-                    assert(subItem.intertype == 'value', 'We can only unfold illegal constants in phis');
+                    assert(subItem.intertype == 'value' || subItem.intertype == 'structvalue', 'We can only unfold illegal constants in phis');
                     // we must handle this in the phi itself, if we unfold normally it will not be pushed back with the phi
                   } else {
                     var tempIdent = '$$etemp$' + (tempId++);
@@ -341,6 +345,21 @@ function analyzer(data, sidePass) {
                   i += removeAndAdd(label.lines, i, toAdd);
                   continue;
                 }
+                case 'structvalue': {
+                  bits = getBits(value.type);
+                  var elements = getLegalVars(item.assignTo, bits);
+                  var toAdd = [];
+                  for (var j = 0; j < item.params.length; j++) {
+                    toAdd[j] = {
+                      intertype: 'value',
+                      assignTo: elements[j].ident,
+                      type: 'i32',
+                      ident: item.params[j].ident
+                    };
+                  }
+                  i += removeAndAdd(label.lines, i, toAdd);
+                  continue;
+                }
                 case 'load': {
                   bits = getBits(value.valueType);
                   var elements = getLegalVars(item.assignTo, bits);
@@ -382,13 +401,21 @@ function analyzer(data, sidePass) {
                   var toAdd = [];
                   var elements = getLegalVars(item.assignTo, bits);
                   var j = 0;
-                  var literalValues = {}; // special handling of literals - we cannot unfold them normally
-                  value.params.map(function(param) {
+                  var values = value.params.map(function(param) {
                     if (isNumber(param.value.ident)) {
-                      literalValues[param.value.ident] = getLegalLiterals(param.value.ident, bits);
+                      return getLegalLiterals(param.value.ident, bits);
+                    } else if (param.value.intertype == 'structvalue') {
+                      return getLegalStructuralParts(param.value);
+                    } else if (param.value.ident == 'zeroinitializer') {
+                      return getStructuralTypeParts(param.value.type).map(function(part) {
+                        return { ident: 0, type: 'i32' };
+                      });
+                    } else {
+                      return getLegalVars(param.value.ident, bits);
                     }
                   });
                   elements.forEach(function(element) {
+                    var k = 0;
                     toAdd.push({
                       intertype: 'phi',
                       assignTo: element.ident,
@@ -399,7 +426,7 @@ function analyzer(data, sidePass) {
                           label: param.label,
                           value: {
                            intertype: 'value',
-                           ident: (param.value.ident in literalValues) ? literalValues[param.value.ident][j].ident : (param.value.ident + '$' + j),
+                           ident: values[k++][j].ident,
                            type: 'i' + element.bits,
                           }
                         };
@@ -413,6 +440,13 @@ function analyzer(data, sidePass) {
                 case 'switch': {
                   i++;
                   continue; // special case, handled in makeComparison
+                }
+                case 'extractvalue': {
+                  item.intertype = 'value';
+                  item.ident = item.ident + '$' + item.indexes[0][0].text;
+                  item.type = 'i32'; // XXX we assume they are all i32-compatible
+                  i++;
+                  continue;
                 }
                 case 'bitcast': {
                   var inType = item.type2;

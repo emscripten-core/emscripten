@@ -128,12 +128,21 @@ function isStructType(type) {
   return type[0] == '%';
 }
 
+function isStructuralType(type) {
+  return /^{ ?[^}]* ?}$/.test(type); // { i32, i8 } etc. - anonymous struct types
+}
+
+function getStructuralTypeParts(type) { // split { i32, i8 } etc. into parts
+  return type.replace(/[ {}]/g, '').split(',');
+}
+
 function isIntImplemented(type) {
   return type[0] == 'i' || isPointerType(type);
 }
 
 // Note: works for iX types, not pointers (even though they are implemented as ints)
 function getBits(type) {
+  if (isStructuralType(type)) return getStructuralTypeParts(type).length*32; // 32 bits per part in { i32, i1, i8, i32 } etc
   if (!type || type[0] != 'i') return 0;
   var left = type.substr(1);
   if (!isNumber(left)) return 0;

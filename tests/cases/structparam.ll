@@ -15,6 +15,7 @@ define i32 @doit(i32 %x, { i32, i32 } %y) {
 define i32 @main() {
 entry:
   %retval = alloca i32, align 4                   ; [#uses=1 type=i32*]
+  %myi64 = alloca i64, align 4
   %comp = alloca { i32, i32 }, align 4            ; [#uses=1]
   store i32 0, i32* %retval
   br label %cond.end
