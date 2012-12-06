@@ -965,6 +965,11 @@ function getHeapOffset(offset, type) {
   }
 }
 
+function makeVarDef(js) {
+  if (!ASM_JS) js = 'var ' + js;
+  return js;
+}
+
 function asmInitializer(type, impl) {
   if (isIntImplemented(type)) {// || (impl && impl == 'VAR_EMULATED')) {
     return '0';
