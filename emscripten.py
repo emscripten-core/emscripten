@@ -347,6 +347,8 @@ var asmPre = (function(env, buffer) {
   var HEAPF32 = new env.Float32Array(buffer);
   var HEAPF64 = new env.Float64Array(buffer);
 ''' % (asm_setup,) + asm_globals + '''
+  var __THREW__ = 0;
+
   function stackAlloc(size) {
     var ret = STACKTOP;
     STACKTOP = (STACKTOP + size)|0;
