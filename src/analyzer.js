@@ -334,6 +334,11 @@ function analyzer(data, sidePass) {
                   i += removeAndAdd(label.lines, i, toAdd);
                   continue;
                 }
+                case 'landingpad': {
+                  // not much to legalize
+                  i++;
+                  continue;
+                }
                 case 'return': {
                   bits = getBits(item.type);
                   var elements = getLegalVars(item.value.ident, bits);
