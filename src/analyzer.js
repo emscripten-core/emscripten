@@ -124,8 +124,9 @@ function analyzer(data, sidePass) {
           if (isNumber(base)) return getLegalLiterals(base, bits);
           var ret = new Array(Math.ceil(bits/32));
           var i = 0;
+          if (base == 'zeroinitializer' || base == 'undef') base = 0;
           while (bits > 0) {
-            ret[i] = { ident: base + '$' + i, bits: Math.min(32, bits) };
+            ret[i] = { ident: base ? base + '$' + i : '0', bits: Math.min(32, bits) };
             bits -= 32;
             i++;
           }
@@ -154,10 +155,10 @@ function analyzer(data, sidePass) {
               return getLegalStructuralParts(value).map(function(part) {
                 return { ident: part.ident, bits: part.type.substr(1) };
               });
-            } else if (value.ident == 'zeroinitializer') {
-              return getStructuralTypeParts(value.type).map(function(part) {
-                return { ident: 0, bits: 32 };
-              });
+            //} else if (value.ident == 'zeroinitializer' || value.ident == 'undef') {
+            //  return getStructuralTypeParts(value.type).map(function(part) {
+            //    return { ident: 0, bits: 32 };
+            //  });
             } else {
               return getLegalVars(value.ident, bits);
             }
