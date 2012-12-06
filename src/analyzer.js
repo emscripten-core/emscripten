@@ -232,6 +232,7 @@ function analyzer(data, sidePass) {
                 }
               });
               if (!isIllegal) {
+                //if (dcheck('legalizer')) dprint('no need to legalize \n' + dump(item));
                 i++;
                 continue;
               }

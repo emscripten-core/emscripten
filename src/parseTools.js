@@ -147,7 +147,7 @@ function getStructureTypeParts(type) {
 }
 
 function getStructuralTypePartBits(part) {
-  return Math.ceil(getBits(part)/32)*32; // simple 32-bit alignment
+  return Math.ceil((getBits(part) || 32)/32)*32; // simple 32-bit alignment. || 32 is for pointers
 }
 
 function isIntImplemented(type) {
