@@ -140,13 +140,20 @@ function isIntImplemented(type) {
   return type[0] == 'i' || isPointerType(type);
 }
 
-// Note: works for iX types, not pointers (even though they are implemented as ints)
+// Note: works for iX types and structure types, not pointers (even though they are implemented as ints)
 function getBits(type) {
+  if (!type) return 0;
+  if (type[0] == 'i') {
+    var left = type.substr(1);
+    if (!isNumber(left)) return 0;
+    return parseInt(left);
+  }
   if (isStructuralType(type)) return getStructuralTypeParts(type).length*32; // 32 bits per part in { i32, i1, i8, i32 } etc
-  if (!type || type[0] != 'i') return 0;
-  var left = type.substr(1);
-  if (!isNumber(left)) return 0;
-  return parseInt(left);
+  if (isStructType(type)) {
+    var typeData = Types.types[type];
+    return typeData.flatSize*8;
+  }
+  return 0;
 }
 
 function isIllegalType(type) {

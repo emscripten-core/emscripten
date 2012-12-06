@@ -227,6 +227,9 @@ function analyzer(data, sidePass) {
                 if (isIllegalType(item.valueType) || isIllegalType(item.type)) {
                   isIllegal = true;
                 }
+                if ((item.intertype == 'load' || item.intertype == 'store') && isStructType(item.valueType)) {
+                  isIllegal = true; // storing an entire structure is illegal
+                }
               });
               if (!isIllegal) {
                 i++;
