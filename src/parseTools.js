@@ -1539,8 +1539,15 @@ function handleOverflow(text, bits) {
   }
 }
 
-function makeLLVMStruct(values) { // TODO: Use this everywhere
-  return '{ ' + values.map(function(value, i) { return 'f' + i + ': ' + value }).join(', ') + ' }'
+function makeLLVMStruct(values) {
+  return 'DEPRECATED' + (new Error().stack) + 'XXX';
+}
+
+function makeStructuralReturn(values) {
+  var i = 1;
+  return 'return (' + values.slice(1).map(function(value) {
+    return 'tempRet' + (i++) + ' = ' + value;
+  }).concat([values[0]]).join(',') + ')';
 }
 
 // From parseLLVMSegment

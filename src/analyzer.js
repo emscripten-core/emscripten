@@ -294,7 +294,7 @@ function analyzer(data, sidePass) {
                   i += removeAndAdd(label.lines, i, toAdd);
                   continue;
                 }
-                // call, return: Return value is in an unlegalized array literal. Not fully optimal.
+                // call, return: Return the first 32 bits, the rest are in temp
                 case 'call': {
                   bits = getBits(value.type);
                   var elements = getLegalVars(item.assignTo, bits);
@@ -303,15 +303,17 @@ function analyzer(data, sidePass) {
                   legalizeFunctionParameters(value.params);
                   if (value.assignTo) {
                     // legalize return value
-                    var j = 0;
-                    toAdd = toAdd.concat(elements.map(function(element) {
-                      return {
+                    value.assignTo = elements[0].ident;
+                    for (var j = 1; j < elements.length; j++) {
+                      var element = elements[j];
+                      toAdd.push({
                         intertype: 'value',
                         assignTo: element.ident,
-                        type: 'i' + bits,
-                        ident: value.assignTo + '[' + (j++) + ']'
-                      };
-                    }));
+                        type: element.bits,
+                        ident: 'tempRet' + (j++)
+                      });
+                      assert(j<10); // TODO: dynamically create more than 10 tempRet-s
+                    }
                   }
                   i += removeAndAdd(label.lines, i, toAdd);
                   continue;

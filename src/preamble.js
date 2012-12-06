@@ -285,6 +285,7 @@ var undef = 0;
 var tempValue, tempInt, tempBigInt, tempInt2, tempBigInt2, tempPair, tempBigIntI, tempBigIntR, tempBigIntS, tempBigIntP, tempBigIntD;
 #if USE_TYPED_ARRAYS == 2
 var tempI64, tempI64b;
+var tempRet0, tempRet1, tempRet2, tempRet3, tempRet4, tempRet5, tempRet6, tempRet7, tempRet8, tempRet9;
 #endif
 
 function abort(text) {

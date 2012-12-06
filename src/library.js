@@ -4938,12 +4938,12 @@ LibraryManager.library = {
     // return the type of the catch block which should be called.
     for (var i = 0; i < typeArray.length; i++) {
       if (___cxa_does_inherit(typeArray[i], throwntype, thrown))
-        return { f0:thrown, f1:typeArray[i] };
+        {{{ makeStructuralReturn(['thrown', 'typeArray[i]']) }}};
     }
     // Shouldn't happen unless we have bogus data in typeArray
     // or encounter a type for which emscripten doesn't have suitable
     // typeinfo defined. Best-efforts match just in case.
-    return { f0:thrown, f1 :throwntype };
+    {{{ makeStructuralReturn(['thrown', 'throwntype']) }}};
   },
 
   // Recursively walks up the base types of 'possibilityType'
@@ -5009,73 +5009,51 @@ LibraryManager.library = {
   llvm_uadd_with_overflow_i8: function(x, y) {
     x = x & 0xff;
     y = y & 0xff;
-    return {
-      f0: (x+y) & 0xff,
-      f1: x+y > 255
-    };
+    {{{ makeStructuralReturn(['(x+y) & 0xff', 'x+y > 255']) }}};
   },
 
   llvm_umul_with_overflow_i8: function(x, y) {
     x = x & 0xff;
     y = y & 0xff;
-    return {
-      f0: (x*y) & 0xff,
-      f1: x*y > 255
-    };
+    {{{ makeStructuralReturn(['(x*y) & 0xff', 'x*y > 255']) }}};
   },
 
   llvm_uadd_with_overflow_i16: function(x, y) {
     x = x & 0xffff;
     y = y & 0xffff;
-    return {
-      f0: (x+y) & 0xffff,
-      f1: x+y > 65535
-    };
+    {{{ makeStructuralReturn(['(x+y) & 0xffff', 'x+y > 65535']) }}};
   },
 
   llvm_umul_with_overflow_i16: function(x, y) {
     x = x & 0xffff;
     y = y & 0xffff;
-    return {
-      f0: (x*y) & 0xffff,
-      f1: x*y > 65535
-    };
+    {{{ makeStructuralReturn(['(x*y) & 0xffff', 'x*y > 65535']) }}};
   },
 
   llvm_uadd_with_overflow_i32: function(x, y) {
     x = x>>>0;
     y = y>>>0;
-    return {
-      f0: (x+y)>>>0,
-      f1: x+y > 4294967295
-    };
+    {{{ makeStructuralReturn(['(x+y)>>>0', 'x+y > 4294967295']) }}};
   },
 
   llvm_umul_with_overflow_i32: function(x, y) {
     x = x>>>0;
     y = y>>>0;
-    return {
-      f0: (x*y)>>>0,
-      f1: x*y > 4294967295
-    };
+    {{{ makeStructuralReturn(['(x*y)>>>0', 'x*y > 4294967295']) }}};
   },
 
   llvm_uadd_with_overflow_i64__deps: [function() { Types.preciseI64MathUsed = 1 }],
   llvm_uadd_with_overflow_i64: function(xl, xh, yl, yh) {
     i64Math.add(xl, xh, yl, yh);
-    return {
-      f0: [HEAP32[tempDoublePtr>>2], HEAP32[tempDoublePtr+4>>2]],
-      f1: 0 // XXX Need to hack support for this in long.js
-    };
+    {{{ makeStructuralReturn(['[HEAP32[tempDoublePtr>>2], HEAP32[tempDoublePtr+4>>2]]', '0']) }}};
+    // XXX Need to hack support for second param in long.js
   },
 
   llvm_umul_with_overflow_i64__deps: [function() { Types.preciseI64MathUsed = 1 }],
   llvm_umul_with_overflow_i64: function(xl, xh, yl, yh) {
     i64Math.multiply(xl, xh, yl, yh);
-    return {
-      f0: [HEAP32[tempDoublePtr>>2], HEAP32[tempDoublePtr+4>>2]],
-      f1: 0 // XXX Need to hack support for this in long.js
-    };
+    {{{ makeStructuralReturn(['[HEAP32[tempDoublePtr>>2], HEAP32[tempDoublePtr+4>>2]]', '0']) }}};
+    // XXX Need to hack support for second param in long.js
   },
 
   llvm_stacksave: function() {
