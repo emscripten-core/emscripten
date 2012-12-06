@@ -497,6 +497,7 @@ function __embind_register_class(
     classType,
     pointerType,
     constPointerType,
+    isPolymorphic,
     name,
     destructor
 ) {
@@ -580,17 +581,31 @@ function __embind_register_class(
     registerType(pointerType, pointerName, {
         name: pointerName,
         fromWireType: function(ptr) {
-            var dynamicType = ___getDynamicPointerType(ptr); // !!! this won't work if pointer is not dynamic
-            if (dynamicType === null || dynamicType === pointerType) {
+            if (isPolymorphic) {
+                var toType = ___getDynamicPointerType(ptr);
+                var toTypeImpl = null;
+                if (toType === null || toType === pointerType) {
+                    return new Handle(ptr);
+                }
+                var derivation = Module.__getDerivationPath(toType, classType);
+                var candidate = null;
+                for (var i = 0; i < derivation.size(); i++) {
+                    candidate = derivation.at(i);
+                    toTypeImpl = typeRegistry[candidate];
+                    if (toTypeImpl) {
+                        break;
+                    }
+                }
+                derivation.delete();
+                if (toTypeImpl === null) {
+                    return new Handle(ptr);
+                }
+                var toTypePointerImpl = requireRegisteredType(toTypeImpl.pointerType);
+                var castPtr = ___dynamicPointerCast(ptr, classType, candidate);
+                return toTypePointerImpl.fromWireTypeStatic(castPtr);
+            } else {
                 return new Handle(ptr);
             }
-            try {
-                dynamicType = requireRegisteredType(dynamicType);
-            } catch (err) {
-                return new Handle(ptr);
-            }
-            dynamicType = requireRegisteredType(dynamicType.pointerType);
-            return dynamicType.fromWireTypeStatic(ptr);
         },
         fromWireTypeStatic: function(ptr) {
             return new Handle(ptr);

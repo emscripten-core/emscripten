@@ -103,6 +103,7 @@ namespace emscripten {
                 TYPEID classType,
                 TYPEID pointerType,
                 TYPEID constPointerType,
+                bool isPolymorphic,
                 const char* className,
                 GenericFunction destructor);
 
@@ -660,6 +661,7 @@ namespace emscripten {
                 TypeID<ClassType>::get(),
                 TypeID<AllowedRawPointer<ClassType>>::get(),
                 TypeID<AllowedRawPointer<const ClassType>>::get(),
+                std::is_polymorphic<ClassType>::value,
                 name,
                 reinterpret_cast<GenericFunction>(&raw_destructor<ClassType>));
         }
