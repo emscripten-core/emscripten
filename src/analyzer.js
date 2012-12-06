@@ -151,7 +151,9 @@ function analyzer(data, sidePass) {
             if (isNumber(value.ident)) {
               return getLegalLiterals(value.ident, bits);
             } else if (value.intertype == 'structvalue') {
-              return getLegalStructuralParts(value);
+              return getLegalStructuralParts(value).map(function(part) {
+                return { ident: part.ident, bits: part.type.substr(1) };
+              });
             } else if (value.ident == 'zeroinitializer') {
               return getStructuralTypeParts(value.type).map(function(part) {
                 return { ident: 0, bits: 32 };
@@ -281,8 +283,7 @@ function analyzer(data, sidePass) {
                 case 'store': {
                   var toAdd = [];
                   bits = getBits(item.valueType);
-                  var elements;
-                  elements = getLegalVars(item.value.ident, bits);
+                  var elements = getLegalParams([item.value], bits)[0];
                   var j = 0;
                   elements.forEach(function(element) {
                     var tempVar = '$st$' + i + '$' + j;
