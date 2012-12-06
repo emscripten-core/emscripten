@@ -1568,7 +1568,11 @@ function handleOverflow(text, bits) {
 }
 
 function makeLLVMStruct(values) {
-  return 'DEPRECATED' + (new Error().stack) + 'XXX';
+  if (USE_TYPED_ARRAYS == 2) {
+    return 'DEPRECATED' + (new Error().stack) + 'XXX';
+  } else {
+    return '{ ' + values.map(function(value, i) { return 'f' + i + ': ' + value }).join(', ') + ' }'
+  }
 }
 
 function makeStructuralReturn(values) {
