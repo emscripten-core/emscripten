@@ -6094,6 +6094,7 @@ void*:16
 
     def test_freetype(self):
       if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: Figure out and try to fix')
+      if Settings.ASM_JS: return self.skip('asm does not support longjmp')
 
       if Settings.CORRECT_SIGNS == 0: Settings.CORRECT_SIGNS = 1 # Not sure why, but needed
 
