@@ -23,9 +23,12 @@ rightf = open('right', 'w')
 rightf.write(file2)
 rightf.close()
 
+def run_code(name):
+  return run_js(name, stderr=PIPE, full_output=True).replace(name, 'FILENAME')
+
 print 'running files'
-left_result = run_js('left', stderr=PIPE)
-right_result = run_js('right', stderr=PIPE) # right as in left-right, not as in correct
+left_result = run_code('left')
+right_result = run_code('right') # right as in left-right, not as in correct
 assert left_result != right_result
 
 # Calculate diff chunks
@@ -59,8 +62,10 @@ for mid in range(high):
   difff.write(curr_diff)
   difff.close()
   shutil.copy('left', 'middle')
-  Popen(['patch', 'middle', 'diff.diff'], stdout=PIPE, stderr=PIPE).communicate()
-  result = run_js('middle', stderr=PIPE)
+  Popen(['patch', 'middle', 'diff.diff'], stdout=PIPE).communicate()
+  result = run_code('middle')
+  if mid == 0: assert result == right_result, '<<< ' + result + ' ??? ' + right_result + ' >>>'
+  if mid == high-1: assert result == left_result, '<<< ' + result + ' ??? ' + right_result + ' >>>'
   if result == left_result:
     print 'found where it starts to work: %d' % mid
     found = mid
@@ -74,8 +79,8 @@ c.close()
 print 'sanity check'
 shutil.copy('middle', 'middle2')
 Popen(['patch', 'middle2', 'critical.diff'], stdout=PIPE, stderr=PIPE).communicate()
-assert run_js('middle', stderr=PIPE) == left_result, 'middle was expected %s' % left_result
-assert run_js('middle2', stderr=PIPE) != left_result, 'middle2 was expected NOT %s' % left_result
+assert run_code('middle') == left_result, 'middle was expected %s' % left_result
+assert run_code('middle2') != left_result, 'middle2 was expected NOT %s' % left_result
 
 print 'middle is like left, middle2 is like right, critical.diff is the difference that matters,'
 print critical

@@ -433,7 +433,7 @@ def check_engine(engine):
     print 'Checking JS engine %s failed. Check %s. Details: %s' % (str(engine), EM_CONFIG, str(e))
     return False
 
-def timeout_run(proc, timeout, note='unnamed process'):
+def timeout_run(proc, timeout, note='unnamed process', full_output=False):
   start = time.time()
   if timeout is not None:
     while time.time() - start < timeout and proc.poll() is None:
@@ -441,13 +441,14 @@ def timeout_run(proc, timeout, note='unnamed process'):
     if proc.poll() is None:
       proc.kill() # XXX bug: killing emscripten.py does not kill it's child process!
       raise Exception("Timed out: " + note)
-  return proc.communicate()[0]
+  out = proc.communicate()
+  return '\n'.join(out) if full_output else out[0]
 
-def run_js(filename, engine=None, args=[], check_timeout=False, stdout=PIPE, stderr=None, cwd=None):
+def run_js(filename, engine=None, args=[], check_timeout=False, stdout=PIPE, stderr=None, cwd=None, full_output=False):
   if engine is None: engine = JS_ENGINES[0]
   if type(engine) is not list: engine = [engine]
   command = engine + [filename] + (['--'] if 'd8' in engine[0] else []) + args
-  return timeout_run(Popen(command, stdout=stdout, stderr=stderr, cwd=cwd), 15*60 if check_timeout else None, 'Execution')
+  return timeout_run(Popen(command, stdout=stdout, stderr=stderr, cwd=cwd), 15*60 if check_timeout else None, 'Execution', full_output=full_output)
 
 def to_cc(cxx):
   # By default, LLVM_GCC and CLANG are really the C++ versions. This gets an explicit C version
