@@ -1259,8 +1259,18 @@ function normalizeAsm(func) {
     var node = stats[i];
     if (node[0] != 'var') break;
     node[1].forEach(function(v) {
-      data.vars[v[0]] = detectAsmCoercion(v[1]);
-      v.length = 1; // make an un-assigning var
+      var name = v[0];
+      var value = v[1];
+      if (!(name in data.vars)) {
+        assert(value[0] == 'num' || (value[0] == 'unary-prefix' && value[2][0] == 'num')); // must be valid coercion no-op
+        data.vars[name] = detectAsmCoercion(value);
+        v.length = 1; // make an un-assigning var
+      } else {
+        // known var, just an unneeded 'var ' that when removed leaves an assign
+        assert(node[1].length == 1);
+        node[0] = 'stat';
+        node[1] = ['assign', true, ['name', name], value];
+      }
     });
     i++;
   }

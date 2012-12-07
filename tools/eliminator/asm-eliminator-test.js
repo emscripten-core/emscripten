@@ -99,5 +99,36 @@ function _vec2Length($this) {
   STACKTOP = __stackBase__;
   return 0;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j", "_segment_holding", "__ZN5identC2EiPKcPci", "_vec2Length"]
+function exc($this) {
+  $this = $this | 0;
+  var $1 = 0, $3 = 0, $4 = 0, $5 = 0, $6 = 0, $8 = +0, $9 = 0;
+  var label = 0;
+  var $1 = (function() {
+    try {
+      __THREW__ = false;
+      return __ZNSt3__16locale8__globalEv();
+    } catch (e) {
+      if (typeof e != "number") throw e;
+      if (ABORT) throw e;
+      __THREW__ = true;
+      Module.print("Exception: " + e + ", currently at: " + (new Error).stack);
+      return null;
+    }
+  })();
+  if (!__THREW__) {
+    $3 = $this | 0;
+    $4 = $1 | 0;
+    $5 = HEAP32[($4 & 16777215) >> 2] | 0;
+    HEAP32[($3 & 16777215) >> 2] = $5;
+    $6 = $5 | 0;
+    __ZNSt3__114__shared_count12__add_sharedEv($6);
+    return;
+  } else {
+    $8$0 = ___cxa_find_matching_catch(HEAP32[(_llvm_eh_exception.buf & 16777215) >> 2] | 0, HEAP32[(_llvm_eh_exception.buf + 4 & 16777215) >> 2] | 0, []);
+    $8$1 = tempRet0;
+    $9 = $8$0;
+    ___cxa_call_unexpected($9);
+  }
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j", "_segment_holding", "__ZN5identC2EiPKcPci", "_vec2Length", "exc"]
 
