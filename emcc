@@ -991,20 +991,32 @@ try:
     for name, create, fix, library_symbols in [('libcxx',    create_libcxx,    fix_libcxx,    libcxx_symbols),
                                                ('libcxxabi', create_libcxxabi, fix_libcxxabi, libcxxabi_symbols),
                                                ('dlmalloc',  create_dlmalloc,  fix_dlmalloc,  dlmalloc_symbols)]:
-      need = []
-      has = []
+      need = set()
+      has = set()
       for temp_file in temp_files:
         symbols = shared.Building.llvm_nm(temp_file)
         for library_symbol in library_symbols:
           if library_symbol in symbols.undefs:
-            need.append(library_symbol)
+            need.add(library_symbol)
           if library_symbol in symbols.defs:
-            has.append(library_symbol)
-      if DEBUG: print >> sys.stderr, 'emcc: considering including %s: we need |%s| and have |%s|' % (name, str(need), str(has))
-      if force or (need and not has):
+            has.add(library_symbol)
+      for haz in has: # remove symbols that are supplied by another of the inputs
+        if haz in need:
+          need.remove(haz)
+      if DEBUG: print >> sys.stderr, 'emcc: considering including %s: we need %s and have %s' % (name, str(need), str(has))
+      if force or len(need) > 0:
         # We need to build and link the library in
         if DEBUG: print >> sys.stderr, 'emcc: including %s' % name
-        extra_files_to_link.append(shared.Cache.get(name, create))
+        libfile = shared.Cache.get(name, create)
+        if len(has) > 0:
+          # remove the symbols we do not need
+          fixed = in_temp(uniquename(libfile)) + '.bc'
+          shutil.copyfile(libfile, fixed)
+          for haz in has:
+            if DEBUG: print >> sys.stderr, 'emcc: including: removing symbol "%s" that we have' % haz
+            shared.Building.remove_symbol(fixed, haz)
+          libfile = fixed
+        extra_files_to_link.append(libfile)
         force = True
         if fix:
           fix()

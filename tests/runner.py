@@ -5779,6 +5779,39 @@ int main(int argc, char **argv) {
         ]:
           self.do_run(src.replace('{{{ NEW }}}', new).replace('{{{ DELETE }}}', delete), '*1,0*')
 
+    def test_dlmalloc_partial(self):
+      if self.emcc_args is None: return self.skip('only emcc will link in dlmalloc')
+      # present part of the symbols of dlmalloc, not all
+      src = open(path_from_root('tests', 'new.cpp')).read().replace('{{{ NEW }}}', 'new int').replace('{{{ DELETE }}}', 'delete') + '''    
+void *
+operator new(size_t size)
+{
+  printf("new %d!\\n", size);
+  return malloc(size);
+}
+'''
+      self.do_run(src, 'new 4!\n*1,0*')
+
+    def test_dlmalloc_partial_2(self):
+      if self.emcc_args is None or 'SAFE_HEAP' in str(self.emcc_args): return self.skip('only emcc will link in dlmalloc, and we do unsafe stuff')
+      # present part of the symbols of dlmalloc, not all. malloc is harder to link than new which is weak.
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+        void *malloc(size_t size)
+        {
+          return (void*)123;
+        }
+        int main() {
+          void *x = malloc(10);
+          printf("got %p\n", x);
+          free(x);
+          printf("freed the faker\n");
+          return 1;
+        }
+'''
+      self.do_run(src, 'got 0x7b\nfreed')
+
     def test_libcxx(self):
       self.do_run(open(path_from_root('tests', 'hashtest.cpp')).read(),
                    'june -> 30\nPrevious (in alphabetical order) is july\nNext (in alphabetical order) is march')
