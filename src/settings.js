@@ -132,6 +132,15 @@ var SAFE_HEAP_LOG = 0; // Log out all SAFE_HEAP operations
 
 var LABEL_DEBUG = 0; // 1: Print out functions as we enter them
                      // 2: Also print out each label as we enter it
+var LABEL_FUNCTION_FILTERS = []; // Filters for function label debug.
+                                 // The items for this array will be used
+                                 // as filters for function names. Only the
+                                 // labels of functions that match one particular
+                                 // filter are printed out.
+                                 // The filters can be specified in both string
+                                 // type (use equality test) and regular expression
+                                 // (use match test).
+                                 // When the array is empty, the filter is disabled.
 var EXCEPTION_DEBUG = 1; // Print out exceptions in emscriptened code
 
 var LIBRARY_DEBUG = 0; // Print out when we enter a library call (library*.js). You can also unset
