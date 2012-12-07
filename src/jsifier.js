@@ -1076,7 +1076,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
     ret += 'return';
     if (item.value) {
-      ret += ' ' + finalizeLLVMParameter(item.value);
+      ret += ' ' + asmCoercion(finalizeLLVMParameter(item.value), item.type);
     }
     return ret + ';';
   });

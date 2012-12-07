@@ -354,10 +354,10 @@ var asmPre = (function(env, buffer) {
     var ret = STACKTOP;
     STACKTOP = (STACKTOP + size)|0;
     STACKTOP = ((STACKTOP + 3)>>2)<<2;
-    return ret;
+    return ret|0;
   }
   function stackSave() {
-    return STACKTOP;
+    return STACKTOP|0;
   }
   function stackRestore(top) {
     top = top|0;
