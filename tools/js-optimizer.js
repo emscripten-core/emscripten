@@ -1255,10 +1255,12 @@ function normalizeAsm(func) {
     i++;
   }
   // process initial variable definitions
+  outer:
   while (i < stats.length) {
     var node = stats[i];
     if (node[0] != 'var') break;
-    node[1].forEach(function(v) {
+    for (var j = 0; j < node[1].length; j++) {
+      var v = node[1][j];
       var name = v[0];
       var value = v[1];
       if (!(name in data.vars)) {
@@ -1266,12 +1268,9 @@ function normalizeAsm(func) {
         data.vars[name] = detectAsmCoercion(value);
         v.length = 1; // make an un-assigning var
       } else {
-        // known var, just an unneeded 'var ' that when removed leaves an assign
-        assert(node[1].length == 1);
-        node[0] = 'stat';
-        node[1] = ['assign', true, ['name', name], value];
+        break outer;
       }
-    });
+    }
     i++;
   }
   // finally, look for other var definitions and collect them
