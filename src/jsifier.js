@@ -1089,11 +1089,11 @@ function JSify(data, functionsOnly, givenFunctions) {
     // in an assignment
     var phiSets = calcPhiSets(item);
     var call_ = makeFunctionCall(item.ident, item.params, item.funcData, item.type);
-    var ret = '(function() { try { __THREW__ = false; return '
+    var ret = '(function() { try { __THREW__ = 0; return '
             + call_ + ' '
             + '} catch(e) { '
             + 'if (typeof e != "number") throw e; '
-            + 'if (ABORT) throw e; __THREW__ = true; '
+            + 'if (ABORT) throw e; __THREW__ = 1; '
             + (EXCEPTION_DEBUG ? 'Module.print("Exception: " + e + ", currently at: " + (new Error().stack)); ' : '')
             + 'return null } })();';
     if (item.assignTo) {

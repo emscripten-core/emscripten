@@ -4849,7 +4849,11 @@ LibraryManager.library = {
       return;
     }
     // Clear state flag.
-    __THREW__ = false;
+#if ASM_JS
+    asm.setThrew(0);
+#else
+    __THREW__ = 0;
+#endif
     // Clear type.
     {{{ makeSetValue('_llvm_eh_exception.buf', QUANTUM_SIZE, '0', 'void*') }}}
     // Call destructor if one is registered then clear it.

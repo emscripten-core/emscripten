@@ -275,7 +275,7 @@ Module['printProfiling'] = printProfiling;
 // Runtime essentials
 //========================================
 
-var __THREW__ = false; // Used in checking for thrown exceptions.
+var __THREW__ = 0; // Used in checking for thrown exceptions.
 
 var ABORT = false;
 

@@ -302,7 +302,7 @@ var i64Math_multiply = function(a, b, c, d) { i64Math.multiply(a, b, c, d) };
 var i64Math_divide = function(a, b, c, d, e) { i64Math.divide(a, b, c, d, e) };
 var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
 '''
-    asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore'] + ['setTempRet%d' % i for i in range(10)]
+    asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore', 'setThrew'] + ['setTempRet%d' % i for i in range(10)]
     # function tables
     function_tables = ['dynCall_' + table for table in last_forwarded_json['Functions']['tables']]
     function_tables_impls = []
@@ -362,6 +362,10 @@ var asmPre = (function(env, buffer) {
   function stackRestore(top) {
     top = top|0;
     STACKTOP = top;
+  }
+  function setThrew(threw) {
+    threw = threw|0;
+    __THREW__ = threw;
   }
 ''' + ''.join(['''
   var tempRet%d = 0;
