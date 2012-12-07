@@ -83,5 +83,21 @@ function __ZN5identC2EiPKcPci($this, $n, $a) {
   HEAP32[($this + 40 & 16777215) >> 2] = 1;
   return;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j", "_segment_holding", "__ZN5identC2EiPKcPci"]
+function _vec2Length($this) {
+  $this = $this | 0;
+  var $__first_addr_i = 0, $__last_addr_i = 0, $__comp_addr_i = 0, $a13 = 0, $a14 = 0, $a18 = 0, $a19 = 0;
+  var label = 0;
+  var __stackBase__ = 0;
+  __stackBase__ = STACKTOP;
+  STACKTOP = STACKTOP + 8 | 0;
+  $__first_addr_i = __stackBase__;
+  $__last_addr_i = __stackBase__ + 4;
+  $a13 = $__first_addr_i;
+  $a14 = $__last_addr_i;
+  $a18 = $__first_addr_i;
+  $a19 = $__last_addr_i;
+  STACKTOP = __stackBase__;
+  return 0;
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j", "_segment_holding", "__ZN5identC2EiPKcPci", "_vec2Length"]
 

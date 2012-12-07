@@ -64,4 +64,14 @@ function __ZN5identC2EiPKcPci($this, $n, $a) {
   HEAP32[($this + 40 & 16777215) >> 2] = 1;
   return;
 }
+function _vec2Length($this) {
+  $this = $this | 0;
+  var $__first_addr_i = 0, $__last_addr_i = 0, __stackBase__ = 0;
+  __stackBase__ = STACKTOP;
+  STACKTOP = STACKTOP + 8 | 0;
+  $__first_addr_i = __stackBase__;
+  $__last_addr_i = __stackBase__ + 4;
+  STACKTOP = __stackBase__;
+  return 0;
+}
 
