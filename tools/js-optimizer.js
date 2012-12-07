@@ -1201,6 +1201,24 @@ function loopOptimizer(ast) {
   vacuum(ast);
 }
 
+function unVarify(vars, ret) { // transform var x=1, y=2 etc. into (x=1, y=2), i.e., the same assigns, but without a var definition
+  ret = ret || [];
+  ret[0] = 'stat';
+  if (vars.length == 1) {
+    ret[1] = ['assign', true, ['name', vars[0][0]], vars[0][1]];
+  } else {
+    ret[1] = [];
+    var curr = ret[1];
+    for (var i = 0; i < vars.length-1; i++) {
+      curr[0] = 'seq';
+      curr[1] = ['assign', true, ['name', vars[i][0]], vars[i][1]];
+      if (i != vars.length-2) curr = curr[2] = [];
+    }
+    curr[2] = ['assign', true, ['name', vars[vars.length-1][0]], vars[vars.length-1][1]];
+  }
+  return ret;
+}
+
 // asm.js support code - normalize (convert asm.js code to 'normal' JS, without
 // annotations, plus explicit metadata) and denormalize (vice versa)
 var ASM_INT = 0;
@@ -1243,6 +1261,15 @@ function normalizeAsm(func) {
     node[1].forEach(function(v) {
       data.vars[v[0]] = detectAsmCoercion(v[1]);
       v[1] = null; // make an un-assigning var
+    });
+    i++;
+  }
+  // finally, look for other var definitions and collect them
+  while (i < stats.length) {
+    traverse(stats[i], function(node, type) {
+      if (type == 'var') {
+        unVarify(node[1], node);
+      }
     });
     i++;
   }
@@ -1310,18 +1337,8 @@ function registerize(ast, asm) {
       if (type == 'var') {
         node[1].forEach(function(defined) { localVars[defined[0]] = 1 });
         var vars = node[1].filter(function(varr) { return varr[1] });
-        if (vars.length > 1) {
-          var ret = ['stat', []];
-          var curr = ret[1];
-          for (var i = 0; i < vars.length-1; i++) {
-            curr[0] = 'seq';
-            curr[1] = ['assign', true, ['name', vars[i][0]], vars[i][1]];
-            if (i != vars.length-2) curr = curr[2] = [];
-          }
-          curr[2] = ['assign', true, ['name', vars[vars.length-1][0]], vars[vars.length-1][1]];
-          return ret;
-        } else if (vars.length == 1) {
-          return ['stat', ['assign', true, ['name', vars[0][0]], vars[0][1]]];
+        if (vars.length >= 1) {
+          return unVarify(vars);
         } else {
           return emptyNode();
         }
