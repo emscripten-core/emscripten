@@ -1213,7 +1213,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     var byPointer = getVarData(funcData, ident);
 
     params.forEach(function(param, i) {
-      var val = finalizeParam(param);
+      var val = asmCoercion(finalizeParam(param), param.type);
       if (!hasVarArgs || useJSArgs || i < normalArgs) {
         args.push(val);
         argsTypes.push(param.type);
