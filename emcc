@@ -851,12 +851,19 @@ try:
     exec('shared.Settings.' + key + ' = ' + value)
 
   # Apply effects from settings
+  if shared.Settings.ASM_JS:
+    if closure:
+      print >> sys.stderr, 'emcc: warning: disabling closure because it is not compatible with asm.js code generation'
+      closure = False
+    if shared.Settings.CORRECT_SIGNS != 1: 
+      print >> sys.stderr, 'emcc: warning: setting CORRECT_SIGNS to 1 for asm.js code generation'
+      shared.Settings.CORRECT_SIGNS = 1
+    if shared.Settings.CORRECT_OVERFLOWS != 1: 
+      print >> sys.stderr, 'emcc: warning: setting CORRECT_OVERFLOWS to 1 for asm.js code generation'
+      shared.Settings.CORRECT_OVERFLOWS = 1
+
   if shared.Settings.CORRECT_SIGNS >= 2 or shared.Settings.CORRECT_OVERFLOWS >= 2 or shared.Settings.CORRECT_ROUNDINGS >= 2:
     keep_debug = True # must keep debug info to do line-by-line operations 
-
-  if closure and shared.Settings.ASM_JS:
-    print >> sys.stderr, 'emcc: warning: disabling closure because it is not compatible with asm.js code generation'
-    closure = False
 
   if minify_whitespace is None:
     minify_whitespace = closure # if closure is run, minify whitespace
