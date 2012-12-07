@@ -96,6 +96,10 @@ public:
         this->v = v;
     }
 
+    int returnIntPlusFive( int x ) {
+        return x + 5;
+    }
+
     static int some_class_method(int i) {
         return i;
     }
@@ -286,6 +290,7 @@ EMSCRIPTEN_BINDINGS(([]() {
         .constructor<val>()
         .method("getVal", &ValHolder::getVal)
         .method("setVal", &ValHolder::setVal)
+        .method("returnIntPlusFive", &ValHolder::returnIntPlusFive)
         .classmethod("some_class_method", &ValHolder::some_class_method)
         ;
     function("emval_test_return_ValHolder", &emval_test_return_ValHolder);

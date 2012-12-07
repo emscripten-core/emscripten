@@ -1750,7 +1750,7 @@ function processMathop(item) {
           }
         }
       }
-      case 'uitofp': case 'sitofp': return low1 + ' + ' + high1 + '*4294967296';
+      case 'uitofp': case 'sitofp': return RuntimeGenerator.makeBigInt(low1, high1, op[0] == 'u');
       case 'fptoui': case 'fptosi': return finish(splitI64(idents[0]));
       case 'icmp': {
         switch (variant) {

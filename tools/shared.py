@@ -707,6 +707,11 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     return generated_libs
 
   @staticmethod
+  def remove_symbol(filename, symbol):
+    Popen([LLVM_EXTRACT, filename, '-delete', '-glob=' + symbol, '-o', filename], stderr=PIPE).communicate()
+    Popen([LLVM_EXTRACT, filename, '-delete', '-func=' + symbol, '-o', filename], stderr=PIPE).communicate()
+
+  @staticmethod
   def link(files, target, remove_duplicates=False):
     actual_files = []
     unresolved_symbols = set(['main']) # tracking unresolveds is necessary for .a linking, see below. (and main is always a necessary symbol)
@@ -731,6 +736,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
             os.makedirs(temp_dir)
           os.chdir(temp_dir)
           contents = filter(lambda x: len(x) > 0, Popen([LLVM_AR, 't', f], stdout=PIPE).communicate()[0].split('\n'))
+          #print >> sys.stderr, '  considering archive', f, ':', contents
           if len(contents) == 0:
             print >> sys.stderr, 'Warning: Archive %s appears to be empty (recommendation: link an .so instead of .a)' % f
           else:
@@ -741,20 +747,23 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
             Popen([LLVM_AR, 'x', f], stdout=PIPE).communicate() # if absolute paths, files will appear there. otherwise, in this directory
             contents = map(lambda content: os.path.join(temp_dir, content), contents)
             contents = filter(os.path.exists, map(os.path.abspath, contents))
-            needed = False # We add or do not add the entire archive. We let llvm dead code eliminate parts we do not need, instead of
-                           # doing intra-dependencies between archive contents
-            for content in contents:
-              new_symbols = Building.llvm_nm(content)
-              # Link in the .o if it provides symbols, *or* this is a singleton archive (which is apparently an exception in gcc ld)
-              if new_symbols.defs.intersection(unresolved_symbols) or len(files) == 1:
-                needed = True
-            if needed:
+            added_contents = set()
+            added = True
+            while added: # recursively traverse until we have everything we need
+              added = False
               for content in contents:
-                if Building.is_bitcode(content):
-                  new_symbols = Building.llvm_nm(content)
-                  resolved_symbols = resolved_symbols.union(new_symbols.defs)
-                  unresolved_symbols = unresolved_symbols.union(new_symbols.undefs.difference(resolved_symbols)).difference(new_symbols.defs)
-                  actual_files.append(content)
+                if content in added_contents: continue 
+                new_symbols = Building.llvm_nm(content)
+                # Link in the .o if it provides symbols, *or* this is a singleton archive (which is apparently an exception in gcc ld)
+                #print >> sys.stderr, 'need', content, '?', unresolved_symbols, 'and we can supply', new_symbols.defs
+                if new_symbols.defs.intersection(unresolved_symbols) or len(files) == 1:
+                  if Building.is_bitcode(content):
+                    #print >> sys.stderr, '  adding object', content
+                    resolved_symbols = resolved_symbols.union(new_symbols.defs)
+                    unresolved_symbols = unresolved_symbols.union(new_symbols.undefs.difference(resolved_symbols)).difference(new_symbols.defs)
+                    actual_files.append(content)
+                    added_contents.add(content)
+                    added = True
         finally:
           os.chdir(cwd)
     try_delete(target)
@@ -771,8 +780,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
           print >> sys.stderr, 'emcc: warning: removing duplicates in', actual
           for dupe in dupes:
             print >> sys.stderr, 'emcc: warning: removing duplicate', dupe
-            Popen([LLVM_EXTRACT, actual, '-delete', '-glob=' + dupe, '-o', actual], stderr=PIPE).communicate()
-            Popen([LLVM_EXTRACT, actual, '-delete', '-func=' + dupe, '-o', actual], stderr=PIPE).communicate()
+            Building.remove_symbol(actual, dupe)
           Popen([LLVM_EXTRACT, actual, '-delete', '-glob=.str', '-o', actual], stderr=PIPE).communicate() # garbage that appears here
         seen_symbols = seen_symbols.union(symbols.defs)
 

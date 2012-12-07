@@ -374,10 +374,12 @@ or LLVM assembly files in human-readable form.
 emcc is affected by several environment variables. For details, view
 the source of emcc (search for 'os.environ').
 
+emcc: supported targets: llvm bitcode, javascript, NOT elf
+(autoconf likes to see elf above to enable shared object support)
 ''' % (this, this, this)
   exit(0)
 elif len(sys.argv) == 2 and sys.argv[1] == '-v': # -v with no inputs
-  print 'emcc (Emscripten GCC-like replacement) 2.0'
+  print 'emcc (Emscripten GCC-like replacement + linker emulating GNU ld ) 2.0'
   exit(subprocess.call([shared.CLANG, '-v']))
 
 def is_minus_s_for_emcc(newargs,i):
@@ -539,6 +541,15 @@ for i in range(len(sys.argv)-1):
     target = sys.argv[i+1]
     sys.argv = sys.argv[:i] + sys.argv[i+2:]
     break
+
+specified_target = target
+target = specified_target if specified_target is not None else 'a.out.js' # specified_target is the user-specified one, target is what we will generate
+target_basename = unsuffixed_basename(target)
+
+if '.' in target:
+  final_suffix = target.split('.')[-1]
+else:
+  final_suffix = ''
 
 if header: # header or such
   if len(sys.argv) >= 3: # if there is a source and a target, then copy, otherwise do nothing
@@ -751,7 +762,7 @@ try:
 
     if i > 0:
       prev = newargs[i-1]
-      if prev in ['-MT', '-install_name']: continue # ignore this gcc-style argument
+      if prev in ['-MT', '-install_name', '-I', '-L']: continue # ignore this gcc-style argument
 
     if not arg.startswith('-') and (arg.endswith(SOURCE_SUFFIXES + BITCODE_SUFFIXES + DYNAMICLIB_SUFFIXES + ASSEMBLY_SUFFIXES) or shared.Building.is_ar(arg)): # we already removed -o <target>, so all these should be inputs
       newargs[i] = ''
@@ -789,6 +800,17 @@ try:
 
   newargs = [ arg for arg in newargs if arg is not '' ]
 
+  # -c means do not link in gcc, and for us, the parallel is to not go all the way to JS, but stop at bitcode
+  has_dash_c = '-c' in newargs
+  if has_dash_c:
+    assert has_source_inputs, 'Must have source code inputs to use -c'
+    target = target_basename + '.o'
+    final_suffix = 'o'
+
+  # do not link in libs when just generating object code (not an 'executable', i.e. JS, or a library)
+  if ('.' + final_suffix) in BITCODE_SUFFIXES:
+    libs = []
+
   # Find library files
   for lib in libs:
     if DEBUG: print >> sys.stderr, 'emcc: looking for library "%s"' % lib
@@ -815,22 +837,6 @@ try:
     exit(0)
 
   newargs += CC_ADDITIONAL_ARGS
-
-  specified_target = target
-  target = specified_target if specified_target is not None else 'a.out.js' # specified_target is the user-specified one, target is what we will generate
-
-  target_basename = unsuffixed_basename(target)
-
-  # -c means do not link in gcc, and for us, the parallel is to not go all the way to JS, but stop at bitcode
-  has_dash_c = '-c' in newargs
-  if has_dash_c:
-    assert has_source_inputs, 'Must have source code inputs to use -c'
-    target = target_basename + '.o'
-
-  if '.' in target:
-    final_suffix = target.split('.')[-1]
-  else:
-    final_suffix = ''
 
   assert not (Compression.on and final_suffix != 'html'), 'Compression only works when generating HTML'
 
@@ -904,7 +910,7 @@ try:
         assert len(original_input_files) == 1 or not has_dash_c, 'fatal error: cannot specify -o with -c with multiple files' + str(sys.argv) + ':' + str(original_input_files)
         # We have a specified target (-o <target>), which is not JavaScript or HTML, and
         # we have multiple files: Link them
-        if DEBUG: print >> sys.stderr, 'emcc: link: ' + str(temp_files)
+        if DEBUG: print >> sys.stderr, 'emcc: link: ' + str(temp_files), specified_target
         shared.Building.link(temp_files, specified_target, remove_duplicates=remove_duplicates)
     exit(0)
 
@@ -985,20 +991,32 @@ try:
     for name, create, fix, library_symbols in [('libcxx',    create_libcxx,    fix_libcxx,    libcxx_symbols),
                                                ('libcxxabi', create_libcxxabi, fix_libcxxabi, libcxxabi_symbols),
                                                ('dlmalloc',  create_dlmalloc,  fix_dlmalloc,  dlmalloc_symbols)]:
-      need = []
-      has = []
+      need = set()
+      has = set()
       for temp_file in temp_files:
         symbols = shared.Building.llvm_nm(temp_file)
         for library_symbol in library_symbols:
           if library_symbol in symbols.undefs:
-            need.append(library_symbol)
+            need.add(library_symbol)
           if library_symbol in symbols.defs:
-            has.append(library_symbol)
-      if DEBUG: print >> sys.stderr, 'emcc: considering including %s: we need |%s| and have |%s|' % (name, str(need), str(has))
-      if force or (need and not has):
+            has.add(library_symbol)
+      for haz in has: # remove symbols that are supplied by another of the inputs
+        if haz in need:
+          need.remove(haz)
+      if DEBUG: print >> sys.stderr, 'emcc: considering including %s: we need %s and have %s' % (name, str(need), str(has))
+      if force or len(need) > 0:
         # We need to build and link the library in
         if DEBUG: print >> sys.stderr, 'emcc: including %s' % name
-        extra_files_to_link.append(shared.Cache.get(name, create))
+        libfile = shared.Cache.get(name, create)
+        if len(has) > 0:
+          # remove the symbols we do not need
+          fixed = in_temp(uniquename(libfile)) + '.bc'
+          shutil.copyfile(libfile, fixed)
+          for haz in has:
+            if DEBUG: print >> sys.stderr, 'emcc: including: removing symbol "%s" that we have' % haz
+            shared.Building.remove_symbol(fixed, haz)
+          libfile = fixed
+        extra_files_to_link.append(libfile)
         force = True
         if fix:
           fix()
