@@ -2130,6 +2130,57 @@ setjmp exception execution path, level: 0
 Exiting setjmp function, level: 0
 ''')
 
+    def test_longjmp4(self):
+      src = r'''
+        #include <setjmp.h>
+        #include <stdio.h>
+
+        typedef struct {
+          jmp_buf* jmp;
+        } jmp_state;
+
+        void second_func(jmp_state* s);
+
+        void first_func(jmp_state* s) {
+          jmp_buf* prev_jmp = s->jmp;
+          jmp_buf c_jmp;
+          int once = 0;
+
+          if (setjmp(c_jmp) == 0) {
+            printf("Normal execution path of first function!\n");
+
+            s->jmp = &c_jmp;
+            second_func(s);
+          } else {
+            printf("Exception execution path of first function! %d\n", once);
+
+            if (!once) {
+              printf("Calling longjmp the second time!\n");
+              once = 1;
+              longjmp(*(s->jmp), 1);
+            }
+          }
+        }
+
+        void second_func(jmp_state* s) {
+          longjmp(*(s->jmp), 1);
+        }
+
+        int main(int argc, char *argv[]) {
+          jmp_state s;
+          s.jmp = NULL;
+
+          first_func(&s);
+
+          return 0;
+        }
+        '''
+      self.do_run(src, '''Normal execution path of first function!
+Exception execution path of first function! 0
+Calling longjmp the second time!
+Exception execution path of first function! 1
+''')
+
     def test_exceptions(self):
         if Settings.QUANTUM_SIZE == 1: return self.skip("we don't support libcxx in q1")
 
