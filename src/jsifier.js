@@ -1036,12 +1036,10 @@ function JSify(data, functionsOnly, givenFunctions) {
     return ret + ';';
   });
   makeFuncLineActor('resume', function(item) {
-    // exception pointer is from the ident (we can't reuse it from the original exception since cxa_end_catch might clean it up);
-    // type and destructor can be reused.
+    // If there is no current exception, set this one as it (during a resume, the current exception can be wiped out)
     return (EXCEPTION_DEBUG ? 'Module.print("Resuming exception");' : '') + 
-    	'___cxa_throw(' + item.ident + '.f0, ' +
-        makeGetValue('_llvm_eh_exception.buf', Runtime.QUANTUM_SIZE, 'void*') + ',' +
-        makeGetValue('_llvm_eh_exception.buf', Runtime.QUANTUM_SIZE*2, 'void*') + ');';
+      'if (' + makeGetValue('_llvm_eh_exception.buf', 0, 'void*') + ' == 0) { ' + makeSetValue('_llvm_eh_exception.buf', 0, item.ident + '.f0', 'void*') + ' } ' + 
+      'throw ' + item.ident + '.f0;';
   });
   makeFuncLineActor('invoke', function(item) {
     // Wrapping in a function lets us easily return values if we are
