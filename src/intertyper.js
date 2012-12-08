@@ -919,6 +919,7 @@ function intertyper(data, sidePass, baseLineNums) {
     processItem: function(item) {
       return [{
         intertype: 'resume',
+        ident: toNiceIdent(item.tokens[2].text),
         lineNum: item.lineNum
       }];
     }
