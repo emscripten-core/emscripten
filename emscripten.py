@@ -323,9 +323,9 @@ var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
       function_tables_impls.append('''
   function dynCall_%s(index%s%s) {
     %s
-    %sFUNCTION_TABLE_%s[index](%s);
+    %sFUNCTION_TABLE_%s[index&{{{ FTM_%s }}}](%s);
   }
-''' % (sig, ',' if len(sig) > 1 else '', args, arg_coercions, 'return ' if sig[0] != 'v' else '', sig, args))
+''' % (sig, ',' if len(sig) > 1 else '', args, arg_coercions, 'return ' if sig[0] != 'v' else '', sig, sig, args))
     # calculate exports
     exported_implemented_functions = list(exported_implemented_functions)
     exports = []
