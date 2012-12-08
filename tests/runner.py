@@ -2269,6 +2269,67 @@ Exiting setjmp function, level: 0
         expected = open(path_from_root('tests', 'exceptions', 'output.txt'), 'r').read()
         self.do_run(src, expected)
 
+    def test_multiexception(self):
+      Settings.DISABLE_EXCEPTION_CATCHING = 0
+      Settings.EXCEPTION_DEBUG = 0  # Messes up expected output.
+      src = r'''
+#include <stdio.h>
+
+static int current_exception_id = 0;
+
+typedef struct {
+  int jmp;
+} jmp_state;
+
+void setjmp_func(jmp_state* s, int level) {
+  int prev_jmp = s->jmp;
+  int c_jmp;
+
+  if (level == 2) {
+    printf("level is 2, perform longjmp!\n");
+    throw 1;
+  }
+
+  c_jmp = current_exception_id++;
+  try {
+    printf("setjmp normal execution path, level: %d, prev_jmp: %d\n", level, prev_jmp);
+    s->jmp = c_jmp;
+    setjmp_func(s, level + 1);
+  } catch (int catched_eid) {
+    printf("caught %d\n", catched_eid);
+    if (catched_eid == c_jmp) {
+      printf("setjmp exception execution path, level: %d, prev_jmp: %d\n", level, prev_jmp);
+      if (prev_jmp != -1) {
+        printf("prev_jmp is not empty, continue with longjmp!\n");
+        s->jmp = prev_jmp;
+        throw s->jmp;
+      }
+    } else {
+      throw;
+    }
+  }
+
+  printf("Exiting setjmp function, level: %d, prev_jmp: %d\n", level, prev_jmp);
+}
+
+int main(int argc, char *argv[]) {
+  jmp_state s;
+  s.jmp = -1;
+
+  setjmp_func(&s, 0);
+
+  return 0;
+}
+'''
+      self.do_run(src, '''setjmp normal execution path, level: 0, prev_jmp: -1
+setjmp normal execution path, level: 1, prev_jmp: 0
+level is 2, perform longjmp!
+setjmp exception execution path, level: 1, prev_jmp: 0
+prev_jmp is not empty, continue with longjmp!
+setjmp exception execution path, level: 0, prev_jmp: -1
+Exiting setjmp function, level: 0, prev_jmp: -1
+''')
+
     def test_class(self):
         src = '''
           #include <stdio.h>
