@@ -390,6 +390,14 @@ Runtime.stackAlloc = function(size) { return asm.stackAlloc(size) };
 Runtime.stackSave = function() { return asm.stackSave() };
 Runtime.stackRestore = function(top) { asm.stackRestore(top) };
 ''' % (function_tables_defs.replace('\n', '\n  ') + '\n' + '\n'.join(function_tables_impls), exports, sending, receiving)
+
+    # Set function table masks
+    def function_table_maskize(js):
+      masks = {}
+      for sig, table in last_forwarded_json['Functions']['tables'].iteritems():
+        masks[sig] = str(table.count(','))
+      return re.sub(r'{{{ FTM_([vdi]+) }}}', lambda m: masks[m.groups(0)[0]], js)
+    funcs_js = function_table_maskize(funcs_js)
   else:
     outfile.write(function_tables_defs)
   outfile.write(blockaddrsize(indexize(funcs_js)))

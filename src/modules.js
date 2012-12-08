@@ -259,6 +259,7 @@ var Functions = {
   // Generate code for function indexing
   generateIndexing: function() {
     var total = this.nextIndex;
+    if (ASM_JS) total = ceilPowerOfTwo(total); // must be power of 2 for mask
     function emptyTable(sig) {
       return zeros(total);
     }

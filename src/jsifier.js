@@ -1278,10 +1278,12 @@ function JSify(data, functionsOnly, givenFunctions) {
 
     if (byPointer) {
       var returnType = type.split(' ')[0];
+      var sig = Functions.getSignature(returnType, argsTypes);
       if (ASM_JS) {
         assert(returnType.search(/\("'\[,/) == -1); // XXX need isFunctionType(type, out)
+        ident = '(' + ident + ')&{{{ FTM_' + sig + ' }}}'; // the function table mask is set in emscripten.py
       }
-      ident = Functions.getTable(Functions.getSignature(returnType, argsTypes)) + '[' + ident + ']';
+      ident = Functions.getTable(sig) + '[' + ident + ']';
     }
 
     return ident + '(' + args.join(', ') + ')';
