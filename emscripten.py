@@ -297,7 +297,7 @@ def emscript(infile, settings, outfile, libraries=[]):
       params = ','.join(['p%d' % p for p in range(len(sig)-1)])
       coercions = ';'.join(['p%d = %sp%d%s' % (p, '+' if sig[p+1] == 'd' else '', p, '' if sig[p+1] == 'd' else '|0') for p in range(len(sig)-1)]) + ';'
       ret = '' if sig[0] == 'v' else ('return %s0' % ('+' if sig[0] == 'd' else ''))
-      return 'function %s(%s) { %s abort(%d); %s };\n' % (bad, params, coercions, i, ret) + raw.replace('0,', bad + ',').replace('0]', bad + ']')
+      return 'function %s(%s) { %s abort(%d); %s };\n' % (bad, params, coercions, i, ret) + raw.replace(',0,', ',' + bad + ',').replace(',0]', ',' + bad + ']')
     function_tables_defs = '\n'.join([make_table(sig, raw) for sig, raw in last_forwarded_json['Functions']['tables'].iteritems()])
 
     asm_setup = '\n'.join(['var %s = %s;' % (f.replace('.', '_'), f) for f in ['Runtime.bitshift64', 'Math.floor', 'Math.min']])
