@@ -2131,8 +2131,6 @@ Exiting setjmp function, level: 0
 ''')
 
     def test_longjmp4(self):
-      if self.emcc_args and '-O' in str(self.emcc_args): return self.skip('this breaks with LLVM optimizations, even natively - is this undefined behavior? see issue 747')
-
       src = r'''
         #include <setjmp.h>
         #include <stdio.h>
@@ -2146,7 +2144,7 @@ Exiting setjmp function, level: 0
         void first_func(jmp_state* s) {
           jmp_buf* prev_jmp = s->jmp;
           jmp_buf c_jmp;
-          int once = 0;
+          volatile int once = 0;
 
           if (setjmp(c_jmp) == 0) {
             printf("Normal execution path of first function!\n");
