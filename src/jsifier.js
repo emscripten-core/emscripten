@@ -1213,7 +1213,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     var byPointer = getVarData(funcData, ident);
 
     params.forEach(function(param, i) {
-      var val = asmCoercion(finalizeParam(param), param.type);
+      var val = finalizeParam(param);
       if (!hasVarArgs || useJSArgs || i < normalArgs) {
         args.push(val);
         argsTypes.push(param.type);
@@ -1233,7 +1233,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
     });
 
-    args = args.map(function(arg, i) { return indexizeFunctions(arg, argsTypes[i]) });
+    args = args.map(function(arg, i) { return asmCoercion(indexizeFunctions(arg, argsTypes[i]), argsTypes[i]) });
     varargs = varargs.map(function(vararg, i) {
       if (ignoreFunctionIndexizing.indexOf(i) >= 0) return vararg;
       return vararg === 0 ? 0 : indexizeFunctions(vararg, varargsTypes[i])
