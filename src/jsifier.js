@@ -639,7 +639,7 @@ function JSify(data, functionsOnly, givenFunctions) {
             }).join('\n');
             ret += '\n' + indent + '  default: assert(0, "bad label: " + label);\n' + indent + '}';
             if (func.setjmpTable) {
-              ret += ' } catch(e) { if (!setjmped) throw(e); if (!e.longjmp) throw(e); setjmpTable[e.label](e.value) }';
+              ret += ' } catch(e) { if (!setjmped) throw(e); setjmped = false; if (!e.longjmp) throw(e); setjmpTable[e.label](e.value) }';
             }
           } else {
             ret += (SHOW_LABELS ? indent + '/* ' + block.entries[0] + ' */' : '') + '\n' + getLabelLines(block.labels[0], indent);
