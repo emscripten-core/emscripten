@@ -405,9 +405,17 @@ Runtime.stackRestore = function(top) { asm.stackRestore(top) };
     # Set function table masks
     def function_table_maskize(js):
       masks = {}
+      default = None
       for sig, table in last_forwarded_json['Functions']['tables'].iteritems():
         masks[sig] = str(table.count(','))
-      return re.sub(r'{{{ FTM_([vdi]+) }}}', lambda m: masks[m.groups(0)[0]], js)
+        default = sig
+      def fix(m):
+        sig = m.groups(0)[0]
+        if not sig in masks:
+          print >> sys.stderr, 'warning: function table use without functions for it!', sig
+          return masks[default] # TODO: generate empty function tables for this case, even though it would fail at runtime if used
+        return masks[sig]
+      return re.sub(r'{{{ FTM_([\w\d_$]+) }}}', lambda m: fix(m), js) # masks[m.groups(0)[0]]
     funcs_js = function_table_maskize(funcs_js)
   else:
     function_tables_defs = '\n'.join([table for table in last_forwarded_json['Functions']['tables'].itervalues()])
