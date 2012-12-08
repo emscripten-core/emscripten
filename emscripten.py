@@ -287,8 +287,19 @@ def emscript(infile, settings, outfile, libraries=[]):
   post, last_forwarded_data = out.split('//FORWARDED_DATA:')
   last_forwarded_json = json.loads(last_forwarded_data)
 
-  function_tables_defs = '\n'.join([table for table in last_forwarded_json['Functions']['tables'].itervalues()])
   if settings.get('ASM_JS'):
+    class Counter:
+      i = 0
+    def make_table(sig, raw):
+      i = Counter.i
+      Counter.i += 1
+      bad = 'b' + str(i)
+      params = ','.join(['p%d' % p for p in range(len(sig)-1)])
+      coercions = ';'.join(['p%d = %sp%d%s' % (p, '+' if sig[p+1] == 'd' else '', p, '' if sig[p+1] == 'd' else '|0') for p in range(len(sig)-1)]) + ';'
+      ret = '' if sig[0] == 'v' else ('return %s0' % ('+' if sig[0] == 'd' else ''))
+      return 'function %s(%s) { %s abort(%d); %s };\n' % (bad, params, coercions, i, ret) + raw.replace('0,', bad + ',').replace('0]', bad + ']')
+    function_tables_defs = '\n'.join([make_table(sig, raw) for sig, raw in last_forwarded_json['Functions']['tables'].iteritems()])
+
     asm_setup = '\n'.join(['var %s = %s;' % (f.replace('.', '_'), f) for f in ['Runtime.bitshift64', 'Math.floor', 'Math.min']])
     fundamentals = ['buffer', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
     basics = ['abort', 'assert', 'STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT', 'Runtime_bitshift64', 'Math_floor', 'Math_min']
@@ -399,6 +410,7 @@ Runtime.stackRestore = function(top) { asm.stackRestore(top) };
       return re.sub(r'{{{ FTM_([vdi]+) }}}', lambda m: masks[m.groups(0)[0]], js)
     funcs_js = function_table_maskize(funcs_js)
   else:
+    function_tables_defs = '\n'.join([table for table in last_forwarded_json['Functions']['tables'].itervalues()])
     outfile.write(function_tables_defs)
   outfile.write(blockaddrsize(indexize(funcs_js)))
   funcs_js = None
