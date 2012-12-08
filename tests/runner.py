@@ -2131,6 +2131,8 @@ Exiting setjmp function, level: 0
 ''')
 
     def test_longjmp4(self):
+      if self.emcc_args and '-O' in str(self.emcc_args): return self.skip('this breaks with LLVM optimizations, even natively - is this undefined behavior? see issue 747')
+
       src = r'''
         #include <setjmp.h>
         #include <stdio.h>
