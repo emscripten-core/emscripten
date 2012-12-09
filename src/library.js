@@ -5922,11 +5922,11 @@ LibraryManager.library = {
 
   setjmp__inline: function(env) {
     // Save the label
-    return '(setjmped = true, ' + makeSetValue(env, '0', 'label', 'i32') + ', 0)';
+    return '(tempInt = setjmpId++, mySetjmpIds[tempInt] = 1, setjmpLabels[tempInt] = label,' + makeSetValue(env, '0', 'tempInt', 'i32') + ', 0)';
   },
 
   longjmp: function(env, value) {
-    throw { longjmp: true, label: {{{ makeGetValue('env', '0', 'i32') }}}, value: value || 1 };
+    throw { longjmp: true, id: {{{ makeGetValue('env', '0', 'i32') }}}, value: value || 1 };
   },
 
   // ==========================================================================
