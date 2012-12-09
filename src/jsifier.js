@@ -1082,9 +1082,10 @@ function JSify(data, functionsOnly, givenFunctions) {
   });
   makeFuncLineActor('resume', function(item) {
     // If there is no current exception, set this one as it (during a resume, the current exception can be wiped out)
+    var ptr = makeStructuralAccess(item.ident, 0);
     return (EXCEPTION_DEBUG ? 'Module.print("Resuming exception");' : '') + 
-      'if (' + makeGetValue('_llvm_eh_exception.buf', 0, 'void*') + ' == 0) { ' + makeSetValue('_llvm_eh_exception.buf', 0, item.ident + '.f0', 'void*') + ' } ' + 
-      'throw ' + item.ident + '.f0;';
+      'if (' + makeGetValue('_llvm_eh_exception.buf', 0, 'void*') + ' == 0) { ' + makeSetValue('_llvm_eh_exception.buf', 0, ptr, 'void*') + ' } ' + 
+      'throw ' + ptr + ';';
   });
   makeFuncLineActor('invoke', function(item) {
     // Wrapping in a function lets us easily return values if we are

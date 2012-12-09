@@ -1591,6 +1591,14 @@ function makeStructuralReturn(values) {
   }
 }
 
+function makeStructuralAccess(ident, i) {
+  if (USE_TYPED_ARRAYS == 2) {
+    return ident + '$' + i;
+  } else {
+    return ident + '.f' + i;
+  }
+}
+
 // From parseLLVMSegment
 function finalizeLLVMParameter(param, noIndexizeFunctions) {
   var ret;
