@@ -10852,7 +10852,7 @@ fi
         try_delete(RELOOPER)
 
         for i in range(4):
-          print phase, i
+          print >> sys.stderr, phase, i
           opt = min(i, 2)
           try_delete('a.out.js')
           output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_loop.cpp'), '-O' + str(opt), '--closure', '0'],
@@ -10861,7 +10861,10 @@ fi
           output = '\n'.join(output)
           assert ('bootstrapping relooper succeeded' in output) == (i == 2), 'only bootstrap on first O2: ' + output
           assert os.path.exists(RELOOPER) == (i >= 2), 'have relooper on O2: ' + output
-          assert ('L2 : do {' in open('a.out.js').read()) == (i >= 2), 'reloop code on O2: ' + output
+          src = open('a.out.js').read()
+          main = src.split('function _main() {')[1].split('\n}\n')[0]
+          assert ('while (1) {' in main) == (i >= 2), 'reloop code on O2: ' + src
+          assert ('switch' not in main) == (i >= 2), 'reloop code on O2: ' + src
 
     def test_jcache(self):
       PRE_LOAD_MSG = 'loading pre from jcache'
