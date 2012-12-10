@@ -18,13 +18,15 @@ namespace __cxxabiv1
 
 #pragma GCC visibility push(hidden)
 
-class __attribute__ ((__visibility__("hidden"))) __shim_type_info
+class __attribute__ ((__visibility__("default"))) __shim_type_info
     : public std::type_info
 {
 public:
-    virtual ~__shim_type_info();
+     __attribute__ ((__visibility__("hidden"))) virtual ~__shim_type_info();
 
-    virtual bool can_catch(const __shim_type_info* thrown_type, void*& adjustedPtr) const = 0;
+     __attribute__ ((__visibility__("hidden"))) virtual void noop1() const;
+     __attribute__ ((__visibility__("hidden"))) virtual void noop2() const;
+     __attribute__ ((__visibility__("hidden"))) virtual bool can_catch(const __shim_type_info* thrown_type, void*& adjustedPtr) const = 0;
 };
 
 class __attribute__ ((__visibility__("default"))) __fundamental_type_info
@@ -68,16 +70,16 @@ enum
     no
 };
 
-class __class_type_info;
+class __attribute__ ((__visibility__("default"))) __class_type_info;
 
 struct __dynamic_cast_info
 {
 // const data supplied to the search:
 
-    const __class_type_info* const dst_type;
-    const void* const static_ptr;
-    const __class_type_info* const static_type;
-    const std::ptrdiff_t src2dst_offset;
+    const __class_type_info* dst_type;
+    const void* static_ptr;
+    const __class_type_info* static_type;
+    std::ptrdiff_t src2dst_offset;
 
 // Data that represents the answer:
 
@@ -131,9 +133,9 @@ public:
     __attribute__ ((__visibility__("hidden")))
         void process_found_base_class(__dynamic_cast_info*, void*, int) const;
     __attribute__ ((__visibility__("hidden")))
-        virtual void search_above_dst(__dynamic_cast_info*, const void*, const void*, int) const;
+        virtual void search_above_dst(__dynamic_cast_info*, const void*, const void*, int, bool) const;
     __attribute__ ((__visibility__("hidden")))
-        virtual void search_below_dst(__dynamic_cast_info*, const void*, int) const;
+        virtual void search_below_dst(__dynamic_cast_info*, const void*, int, bool) const;
     __attribute__ ((__visibility__("hidden")))
         virtual bool can_catch(const __shim_type_info*, void*&) const;
     __attribute__ ((__visibility__("hidden")))
@@ -150,9 +152,9 @@ public:
     __attribute__ ((__visibility__("hidden"))) virtual ~__si_class_type_info();
 
     __attribute__ ((__visibility__("hidden")))
-        virtual void search_above_dst(__dynamic_cast_info*, const void*, const void*, int) const;
+        virtual void search_above_dst(__dynamic_cast_info*, const void*, const void*, int, bool) const;
     __attribute__ ((__visibility__("hidden")))
-        virtual void search_below_dst(__dynamic_cast_info*, const void*, int) const;
+        virtual void search_below_dst(__dynamic_cast_info*, const void*, int, bool) const;
     __attribute__ ((__visibility__("hidden")))
         virtual void has_unambiguous_public_base(__dynamic_cast_info*, void*, int) const;
 };
@@ -170,8 +172,8 @@ public:
         __offset_shift = 8
     };
 
-    void search_above_dst(__dynamic_cast_info*, const void*, const void*, int) const;
-    void search_below_dst(__dynamic_cast_info*, const void*, int) const;
+    void search_above_dst(__dynamic_cast_info*, const void*, const void*, int, bool) const;
+    void search_below_dst(__dynamic_cast_info*, const void*, int, bool) const;
     void has_unambiguous_public_base(__dynamic_cast_info*, void*, int) const;
 };
 
@@ -195,9 +197,9 @@ public:
     __attribute__ ((__visibility__("hidden"))) virtual ~__vmi_class_type_info();
 
     __attribute__ ((__visibility__("hidden")))
-        virtual void search_above_dst(__dynamic_cast_info*, const void*, const void*, int) const;
+        virtual void search_above_dst(__dynamic_cast_info*, const void*, const void*, int, bool) const;
     __attribute__ ((__visibility__("hidden")))
-        virtual void search_below_dst(__dynamic_cast_info*, const void*, int) const;
+        virtual void search_below_dst(__dynamic_cast_info*, const void*, int, bool) const;
     __attribute__ ((__visibility__("hidden")))
         virtual void has_unambiguous_public_base(__dynamic_cast_info*, void*, int) const;
 };
