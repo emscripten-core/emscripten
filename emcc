@@ -1060,7 +1060,8 @@ try:
         link_opts.append('-std-link-opts')
       else:
         # At least remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
-        link_opts += ['-internalize', '-globaldce']
+        exports = ','.join(map(lambda exp: exp[1:], shared.Settings.EXPORTED_FUNCTIONS))
+        link_opts += ['-internalize', '-internalize-public-api-list=' + exports, '-globaldce']
     if link_opts:
       if DEBUG: print >> sys.stderr, 'emcc: LLVM linktime:', link_opts
       shared.Building.llvm_opt(in_temp(target_basename + '.bc'), link_opts)
