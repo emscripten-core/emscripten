@@ -1236,7 +1236,10 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
     });
 
-    args = args.map(function(arg, i) { return asmCoercion(indexizeFunctions(arg, argsTypes[i]), argsTypes[i]) });
+    if (ASM_JS && shortident in Functions.libraryFunctions) {
+      args = args.map(function(arg, i) { return asmCoercion(indexizeFunctions(arg, argsTypes[i]), argsTypes[i]) });
+    }
+
     varargs = varargs.map(function(vararg, i) {
       if (ignoreFunctionIndexizing.indexOf(i) >= 0) return vararg;
       return vararg === 0 ? 0 : indexizeFunctions(vararg, varargsTypes[i])
@@ -1279,8 +1282,10 @@ function JSify(data, functionsOnly, givenFunctions) {
       return inline.apply(null, args); // Warning: inlining does not prevent recalculation of the arguments. They should be simple identifiers
     }
 
+    var returnType;
+    if (byPointer || ASM_JS) returnType = type.split(' ')[0];
+
     if (byPointer) {
-      var returnType = type.split(' ')[0];
       var sig = Functions.getSignature(returnType, argsTypes);
       if (ASM_JS) {
         assert(returnType.search(/\("'\[,/) == -1); // XXX need isFunctionType(type, out)
@@ -1289,7 +1294,11 @@ function JSify(data, functionsOnly, givenFunctions) {
       ident = Functions.getTable(sig) + '[' + ident + ']';
     }
 
-    return ident + '(' + args.join(', ') + ')';
+    var ret = ident + '(' + args.join(', ') + ')';
+    if (ASM_JS && shortident in Functions.libraryFunctions) {
+      ret = asmCoercion(ret, returnType);
+    }
+    return ret;
   }
   makeFuncLineActor('getelementptr', function(item) { return finalizeLLVMFunctionCall(item) });
   makeFuncLineActor('call', function(item) {
