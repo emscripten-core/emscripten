@@ -464,33 +464,6 @@ namespace emscripten {
                 setter(ptr, FieldBinding::fromWireType(value));
             }
         };
-
-        template<typename VectorType>
-        struct Vector {
-            typedef typename VectorType::value_type ElementType;
-            typedef internal::BindingType<ElementType> FieldBinding;
-            typedef typename FieldBinding::WireType WireType;
-
-            static int length(
-                VectorType* ptr
-            ) {
-                return (*ptr).size();
-            }
-
-            static WireType getAt(
-                VectorType* ptr,
-                int pos
-            ) {
-                return FieldBinding::toWireType((*ptr).at(pos));
-            }
-
-            static void push_back(
-                VectorType* ptr,
-                WireType val
-            ) {
-                (*ptr).push_back(FieldBinding::fromWireType(val));
-            }
-        };
     }
 
     ////////////////////////////////////////////////////////////////////////////////
