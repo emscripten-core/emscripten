@@ -758,7 +758,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
                 new_symbols = Building.llvm_nm(content)
                 # Link in the .o if it provides symbols, *or* this is a singleton archive (which is apparently an exception in gcc ld)
                 #print >> sys.stderr, 'need', content, '?', unresolved_symbols, 'and we can supply', new_symbols.defs
-                print >> sys.stderr, content, 'DEF', new_symbols.defs, '\n'
+                #print >> sys.stderr, content, 'DEF', new_symbols.defs, '\n'
                 if new_symbols.defs.intersection(unresolved_symbols) or len(files) == 1:
                   if Building.is_bitcode(content):
                     #print >> sys.stderr, '  adding object', content, '\n'
