@@ -345,7 +345,9 @@ function parseParamTokens(params) {
     if (segment.length == 1) {
       if (segment[0].text == '...') {
         ret.push({
-          intertype: 'varargs'
+          intertype: 'varargs',
+          type: 'i8*',
+          ident: 'varrp' // the conventional name we have for this
         });
       } else {
         // Clang sometimes has a parameter with just a type,

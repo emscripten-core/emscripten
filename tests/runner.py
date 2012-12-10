@@ -3274,6 +3274,7 @@ def process(filename):
 
     def test_varargs(self):
         if Settings.QUANTUM_SIZE == 1: return self.skip('FIXME: Add support for this')
+        if Settings.ASM_JS: return self.skip('varargs by function pointer not yet supported')
 
         src = '''
           #include <stdio.h>

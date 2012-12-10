@@ -524,8 +524,8 @@ function JSify(data, functionsOnly, givenFunctions) {
       func.JS = '\n';
 
       var paramIdents = func.params.map(function(param) {
-          return (param.intertype == 'varargs') ? null : toNiceIdent(param.ident);
-      }).filter(function(param) { return param != null; })
+          return toNiceIdent(param.ident);
+      });
 
       if (CLOSURE_ANNOTATIONS) {
         func.JS += '/**\n';
@@ -546,7 +546,6 @@ function JSify(data, functionsOnly, givenFunctions) {
       if (ASM_JS) {
         // spell out argument types
         func.params.forEach(function(param) {
-          if (param.intertype == 'varargs') return;
           func.JS += '  ' + param.ident + ' = ' + asmCoercion(param.ident, param.type) + ';\n';
         });
 

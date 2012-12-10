@@ -4721,9 +4721,8 @@ LibraryManager.library = {
   // ==========================================================================
 
   llvm_va_start__inline: function(ptr) {
-    // varargs - we received a pointer to the varargs as a final 'extra' parameter
-    var data = 'arguments[' + Framework.currItem.funcData.ident + '.length]';
-    return makeSetValue(ptr, 0, data, 'void*');
+    // varargs - we received a pointer to the varargs as a final 'extra' parameter called 'varrp'
+    return makeSetValue(ptr, 0, 'varrp', 'void*');
   },
 
   llvm_va_end: function() {},
