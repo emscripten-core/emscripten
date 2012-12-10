@@ -1344,6 +1344,19 @@ function denormalizeAsm(func, data) {
 function registerize(ast, asm) {
   traverseGeneratedFunctions(ast, function(fun) {
     if (asm) var asmData = normalizeAsm(fun);
+    // Add parameters as a first (fake) var (with assignment), so they get taken into consideration
+    var params = {};
+    if (fun[2] && fun[2].length) {
+      var assign = ['num', 0];
+      fun[3].unshift(['var', fun[2].map(function(param) {
+        params[param] = 1;
+        return [param, assign];
+      })]);
+    }
+    if (asm) {
+      // copy params into vars
+      for (var p in asmData.params) asmData.vars[p] = asmData.params[p];
+    }
     // Replace all var definitions with assignments; we will add var definitions at the top after we registerize
     // We also mark local variables - i.e., having a var definition
     var localVars = {};
@@ -1496,23 +1509,41 @@ function registerize(ast, asm) {
         loops--;
       }
     });
-    // Add vars at the beginning
+    var paramRegs = {}; // true if the register is used by a parameter (and so needs no def at start of function)
+    if (fun[2] && fun[2].length) {
+      for (var p in params) {
+        paramRegs[varRegs[p]] = 1;
+      }
+      fun[2].length = 0; // clear params, we will fill with registers
+      fun[3].shift(); // remove fake initial var
+    }
     if (!asm) {
       if (nextReg > 1) {
         var vars = [];
         for (var i = 1; i < nextReg; i++) {
-          vars.push([fullNames[i]]);
+          var reg = fullNames[i];
+          if (!paramRegs[i]) {
+            vars.push([reg]);
+          } else {
+            fun[2].push(reg);
+          }
         }
         getStatements(fun).unshift(['var', vars]);
       }
     } else {
       var finalAsmData = {
-        params: asmData.params,
+        params: {},
         vars: {},
       };
       for (var i = 1; i < nextReg; i++) {
         var reg = fullNames[i];
-        finalAsmData.vars[reg] = reg[0] == 'i' ? ASM_INT : ASM_DOUBLE;
+        var type = reg[0] == 'i' ? ASM_INT : ASM_DOUBLE
+        if (!paramRegs[i]) {
+          finalAsmData.vars[reg] = type;
+        } else {
+          finalAsmData.params[reg] = type;
+          fun[2].push(reg);
+        }
       }
       denormalizeAsm(fun, finalAsmData);
     }
@@ -2090,7 +2121,6 @@ if (metadata) setGeneratedFunctions(metadata);
 arguments_.slice(1).forEach(function(arg) {
   passes[arg](ast);
 });
-
 var js = astToSrc(ast, compress), old;
 
 // remove unneeded newlines+spaces, and print
