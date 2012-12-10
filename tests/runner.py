@@ -10798,8 +10798,8 @@ fi
         try_delete('a.out.js')
 
         basebc_name = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-0-basebc.bc')
-        dcebc_name1 = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-1-linktime.bc')
-        dcebc_name2 = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-2-linktime.bc')
+        dcebc_name1 = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-1-dce.bc')
+        dcebc_name2 = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-2-dce.bc')
         ll_name1 = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-2-ll.ll')
         ll_name2 = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-3-ll.ll')
 
@@ -10826,9 +10826,9 @@ fi
             assert os.path.exists(os.path.join(EMCC_CACHE, libname + '.bc'))
             if libname == 'libcxx':
               print os.stat(os.path.join(EMCC_CACHE, libname + '.bc')).st_size, os.stat(basebc_name).st_size, os.stat(dcebc_name).st_size
-              assert os.stat(os.path.join(EMCC_CACHE, libname + '.bc')).st_size > 2000000, 'libc++ is big'
-              assert os.stat(basebc_name).st_size > 2000000, 'libc++ is indeed big'
-              assert os.stat(dcebc_name).st_size < 1500000, 'Dead code elimination must remove most of libc++'
+              assert os.stat(os.path.join(EMCC_CACHE, libname + '.bc')).st_size > 1800000, 'libc++ is big'
+              assert os.stat(basebc_name).st_size > 1800000, 'libc++ is indeed big'
+              assert os.stat(dcebc_name).st_size < 750000, 'Dead code elimination must remove most of libc++'
             # should only have metadata in -O0, not 1 and 2
             ll = open(ll_name).read()
             if (ll.count('\n!') < 10) == (i == 0): # a few lines are left even in -O1 and -O2
