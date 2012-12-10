@@ -135,7 +135,7 @@ except Exception, e:
 
 # Expectations
 
-EXPECTED_LLVM_VERSION = (3,1)
+EXPECTED_LLVM_VERSION = (3,2)
 
 def check_clang_version():
   expected = 'clang version ' + '.'.join(map(str, EXPECTED_LLVM_VERSION))
