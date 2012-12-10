@@ -84,6 +84,10 @@ namespace emscripten {
             return *this;
         }
 
+        bool exist(const char* key) const {
+            return internal::_emval_has_property(handle, key);
+        }
+
         val get(const char* key) const {
             return val(internal::_emval_get_property(handle, key));
         }
