@@ -1116,7 +1116,12 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
       def make(opt_level):
         raw = RELOOPER + '.raw.js'
-        Building.emcc(os.path.join('relooper', 'Relooper.cpp'), ['-I' + os.path.join('relooper'), '--post-js', os.path.join('relooper', 'emscripten', 'glue.js'), '-s', 'TOTAL_MEMORY=52428800', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["memcpy", "memset", "malloc", "free", "puts"]', '-O' + str(opt_level), '--closure', '0'], raw)
+        Building.emcc(os.path.join('relooper', 'Relooper.cpp'), ['-I' + os.path.join('relooper'), '--post-js',
+          os.path.join('relooper', 'emscripten', 'glue.js'),
+          '-s', 'TOTAL_MEMORY=52428800',
+          '-s', 'EXPORTED_FUNCTIONS=["_rl_set_output_buffer","_rl_make_output_buffer","_rl_new_block","_rl_delete_block","_rl_block_add_branch_to","_rl_new_relooper","_rl_delete_relooper","_rl_relooper_add_block","_rl_relooper_calculate","_rl_relooper_render"]',
+          '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["memcpy", "memset", "malloc", "free", "puts"]',
+          '-O' + str(opt_level), '--closure', '0'], raw)
         f = open(RELOOPER, 'w')
         f.write("// Relooper, (C) 2012 Alon Zakai, MIT license, https://github.com/kripken/Relooper\n")
         f.write("var Relooper = (function() {\n");
