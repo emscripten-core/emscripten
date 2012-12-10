@@ -7737,9 +7737,9 @@ Options that are modified or new in %s include:
         self.assertNotContained('IOError', output[1]) # no python stack
         self.assertNotContained('Traceback', output[1]) # no python stack
         self.assertContained('error: invalid preprocessing directive', output[1])
-        self.assertContained("error: use of undeclared identifier 'cheez", output[1])
-        self.assertContained('2 errors generated', output[1])
-        assert 'emcc: compiler frontend failed to generate LLVM bitcode, halting' in output[1].split('2 errors generated.')[1]
+        self.assertContained(["error: use of undeclared identifier 'cheez", "error: unknown type name 'cheez'"], output[1])
+        self.assertContained('errors generated', output[1])
+        assert 'emcc: compiler frontend failed to generate LLVM bitcode, halting' in output[1].split('errors generated.')[1]
 
         # emcc src.cpp -c    and   emcc src.cpp -o src.[o|bc] ==> should give a .bc file
         #      regression check: -o js should create "js", with bitcode content
@@ -7846,9 +7846,9 @@ Options that are modified or new in %s include:
             # XXX find a way to test this: assert ('& 255' in generated or '&255' in generated) == (opt_level <= 2), 'corrections should be in opt <= 2'
             assert ('(label)' in generated) == (opt_level <= 1), 'relooping should be in opt >= 2'
             assert ('assert(STACKTOP < STACK_MAX' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
-            assert 'var $i;' in generated or 'var $i_01;' in generated or 'var $storemerge3;' in generated or 'var $storemerge4;' in generated or 'var $i_04;' in generated, 'micro opts should always be on'
+            assert 'var $i;' in generated or 'var $i_0' in generated or 'var $storemerge3;' in generated or 'var $storemerge4;' in generated or 'var $i_04;' in generated, 'micro opts should always be on'
             if opt_level >= 2:
-              assert 'HEAP8[HEAP32[' in generated or 'HEAP8[$vla1 + (($storemerge4 | 0) / 2 & -1) | 0]' in generated or 'HEAP8[$vla1 + (($storemerge4 | 0) / 2 & -1) | 0]' in generated or 'HEAP8[$vla1 + (($i_04 | 0) / 2 & -1) | 0]' in generated or 'HEAP8[$vla1 + ($i_04 / 2 & -1)]' in generated or 'HEAP8[$1 + (($i_01 | 0) / 2 & -1) | 0]' in generated or 'HEAP8[$1 + (($i_01 | 0) / 2 & -1) | 0]' in generated or 'HEAP8[$1 + ($i_01 / 2 & -1)]' in generated, 'eliminator should create compound expressions, and fewer one-time vars' # also in -O1, but easier to test in -O2
+              assert 'HEAP8[$0 + ($i_' in generated or 'HEAP8[$0 + (($i_0' in generated or 'HEAP8[HEAP32[' in generated or 'HEAP8[$vla1 + (($storemerge4 | 0) / 2 & -1) | 0]' in generated or 'HEAP8[$vla1 + (($storemerge4 | 0) / 2 & -1) | 0]' in generated or 'HEAP8[$vla1 + (($i_04 | 0) / 2 & -1) | 0]' in generated or 'HEAP8[$vla1 + ($i_04 / 2 & -1)]' in generated or 'HEAP8[$1 + (($i_01 | 0) / 2 & -1) | 0]' in generated or 'HEAP8[$1 + (($i_01 | 0) / 2 & -1) | 0]' in generated or 'HEAP8[$1 + ($i_01 / 2 & -1)]' in generated, 'eliminator should create compound expressions, and fewer one-time vars' # also in -O1, but easier to test in -O2
             assert ('_puts(' in generated) == (opt_level >= 1), 'with opt >= 1, llvm opts are run and they should optimize printf to puts'
             assert ('function _malloc(bytes) {' in generated) == (not has_malloc), 'If malloc is needed, it should be there, if not not'
             assert 'function _main() {' in generated, 'Should be unminified, including whitespace'
@@ -8749,6 +8749,7 @@ f.close()
         # XXX TODO (['--bind', '-O2'], False)
       ]:
         print args, fail
+        self.clear()
         try_delete(self.in_dir('a.out.js'))
         Popen([PYTHON, EMCC, path_from_root('tests', 'embind', 'embind_test.cpp'), '--post-js', path_from_root('tests', 'embind', 'embind_test.js')] + args, stderr=PIPE if fail else None).communicate()
         assert os.path.exists(self.in_dir('a.out.js')) == (not fail)
