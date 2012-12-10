@@ -1345,7 +1345,7 @@ function registerize(ast, asm) {
   traverseGeneratedFunctions(ast, function(fun) {
     if (asm) var asmData = normalizeAsm(fun);
     // Add parameters as a first (fake) var (with assignment), so they get taken into consideration
-    var params = {};
+    var params = {}; // note: params are special, they can never share a register between them (see later)
     if (fun[2] && fun[2].length) {
       var assign = ['num', 0];
       fun[3].unshift(['var', fun[2].map(function(param) {
@@ -1356,6 +1356,7 @@ function registerize(ast, asm) {
     if (asm) {
       // copy params into vars
       for (var p in asmData.params) asmData.vars[p] = asmData.params[p];
+      //printErr('fake params: \n\n' + astToSrc(fun) + '\n\n');
     }
     // Replace all var definitions with assignments; we will add var definitions at the top after we registerize
     // We also mark local variables - i.e., having a var definition
@@ -1443,6 +1444,8 @@ function registerize(ast, asm) {
     var saved = 0;
     var activeOptimizables = {};
     var optimizableLoops = {};
+    var paramRegs = {}; // true if the register is used by a parameter (and so needs no def at start of function; also cannot
+                        // be shared with another param, each needs its own)
     function decUse(name) {
       if (!varUses[name]) return false; // no uses left, or not a relevant variable
       if (optimizables[name]) activeOptimizables[name] = 1;
@@ -1451,12 +1454,14 @@ function registerize(ast, asm) {
       var freeRegs = asm ? freeRegsClasses[asmData.vars[name]] : freeRegsClasses;
       if (!reg) {
         // acquire register
-        if (optimizables[name] && freeRegs.length > 0) {
+        if (optimizables[name] && freeRegs.length > 0 &&
+            !(params[name] && paramRegs[freeRegs[freeRegs.length-1]])) { // do not share registers between parameters
           reg = freeRegs.pop();
           saved++;
         } else {
           reg = nextReg++;
           fullNames[reg] = (asm ? (asmData.vars[name] ? 'd' : 'i') : 'r') + reg; // TODO: even smaller names
+          if (params[name]) paramRegs[reg] = 1;
         }
         varRegs[name] = reg;
       }
@@ -1509,14 +1514,11 @@ function registerize(ast, asm) {
         loops--;
       }
     });
-    var paramRegs = {}; // true if the register is used by a parameter (and so needs no def at start of function)
     if (fun[2] && fun[2].length) {
-      for (var p in params) {
-        paramRegs[varRegs[p]] = 1;
-      }
       fun[2].length = 0; // clear params, we will fill with registers
       fun[3].shift(); // remove fake initial var
     }
+    //printErr('var regs: ' + JSON.stringify(varRegs) + '\n\nparam regs: ' + JSON.stringify(paramRegs));
     if (!asm) {
       if (nextReg > 1) {
         var vars = [];
@@ -1531,6 +1533,7 @@ function registerize(ast, asm) {
         getStatements(fun).unshift(['var', vars]);
       }
     } else {
+      //printErr('unfake params: \n\n' + astToSrc(fun) + '\n\n');
       var finalAsmData = {
         params: {},
         vars: {},

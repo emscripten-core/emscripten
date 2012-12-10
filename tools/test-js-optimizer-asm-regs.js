@@ -10,5 +10,15 @@ function asm(x, y) {
   double2 = double1*5;
   return double2;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j"]
+function _doit($x, $y$0, $y$1) {
+  $x = $x | 0;
+  $y$0 = $y$0 | 0;
+  $y$1 = $y$1 | 0;
+  var __stackBase__ = 0;
+  __stackBase__ = STACKTOP;
+  _printf(__str | 0, (tempInt = STACKTOP, STACKTOP = STACKTOP + 8 | 0, HEAP32[(tempInt & 16777215) >> 2] = $y$0, HEAP32[(tempInt + 4 & 16777215) >> 2] = $y$1, tempInt));
+  STACKTOP = __stackBase__;
+  return 0 | 0;
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "_doit"]
 
