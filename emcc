@@ -808,7 +808,8 @@ try:
     final_suffix = 'o'
 
   # do not link in libs when just generating object code (not an 'executable', i.e. JS, or a library)
-  if ('.' + final_suffix) in BITCODE_SUFFIXES:
+  if ('.' + final_suffix) in BITCODE_SUFFIXES and len(libs) > 0:
+    print >> sys.stderr, 'emcc: warning: not linking against libraries since only compiling to bitcode'
     libs = []
 
   # Find library files
