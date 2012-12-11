@@ -2078,6 +2078,109 @@ Setjmp error execution path, level: 0
 Exiting stack_manipulate_func, level: 0
 ''')
 
+    def test_longjmp3(self):
+      src = r'''
+        #include <setjmp.h>
+        #include <stdio.h>
+
+        typedef struct {
+          jmp_buf* jmp;
+        } jmp_state;
+
+        void setjmp_func(jmp_state* s, int level) {
+          jmp_buf* prev_jmp = s->jmp;
+          jmp_buf c_jmp;
+
+          if (level == 2) {
+            printf("level is 2, perform longjmp!\n");
+            longjmp(*(s->jmp), 1);
+          }
+
+          if (setjmp(c_jmp) == 0) {
+            printf("setjmp normal execution path, level: %d\n", level);
+            s->jmp = &c_jmp;
+            setjmp_func(s, level + 1);
+          } else {
+            printf("setjmp exception execution path, level: %d\n", level);
+            if (prev_jmp) {
+              printf("prev_jmp is not empty, continue with longjmp!\n");
+              s->jmp = prev_jmp;
+              longjmp(*(s->jmp), 1);
+            }
+          }
+
+          printf("Exiting setjmp function, level: %d\n", level);
+        }
+
+        int main(int argc, char *argv[]) {
+          jmp_state s;
+          s.jmp = NULL;
+
+          setjmp_func(&s, 0);
+
+          return 0;
+        }
+        '''
+      self.do_run(src, '''setjmp normal execution path, level: 0
+setjmp normal execution path, level: 1
+level is 2, perform longjmp!
+setjmp exception execution path, level: 1
+prev_jmp is not empty, continue with longjmp!
+setjmp exception execution path, level: 0
+Exiting setjmp function, level: 0
+''')
+
+    def test_longjmp4(self):
+      src = r'''
+        #include <setjmp.h>
+        #include <stdio.h>
+
+        typedef struct {
+          jmp_buf* jmp;
+        } jmp_state;
+
+        void second_func(jmp_state* s);
+
+        void first_func(jmp_state* s) {
+          jmp_buf* prev_jmp = s->jmp;
+          jmp_buf c_jmp;
+          volatile int once = 0;
+
+          if (setjmp(c_jmp) == 0) {
+            printf("Normal execution path of first function!\n");
+
+            s->jmp = &c_jmp;
+            second_func(s);
+          } else {
+            printf("Exception execution path of first function! %d\n", once);
+
+            if (!once) {
+              printf("Calling longjmp the second time!\n");
+              once = 1;
+              longjmp(*(s->jmp), 1);
+            }
+          }
+        }
+
+        void second_func(jmp_state* s) {
+          longjmp(*(s->jmp), 1);
+        }
+
+        int main(int argc, char *argv[]) {
+          jmp_state s;
+          s.jmp = NULL;
+
+          first_func(&s);
+
+          return 0;
+        }
+        '''
+      self.do_run(src, '''Normal execution path of first function!
+Exception execution path of first function! 0
+Calling longjmp the second time!
+Exception execution path of first function! 1
+''')
+
     def test_exceptions(self):
         if Settings.QUANTUM_SIZE == 1: return self.skip("we don't support libcxx in q1")
 
@@ -2216,6 +2319,69 @@ Exiting stack_manipulate_func, level: 0
         src = open(path_from_root('tests', 'exceptions', 'typed.cpp'), 'r').read()
         expected = open(path_from_root('tests', 'exceptions', 'output.txt'), 'r').read()
         self.do_run(src, expected)
+
+    def test_multiexception(self):
+      Settings.DISABLE_EXCEPTION_CATCHING = 0
+      Settings.EXCEPTION_DEBUG = 0  # Messes up expected output.
+      src = r'''
+#include <stdio.h>
+
+static int current_exception_id = 0;
+
+typedef struct {
+  int jmp;
+} jmp_state;
+
+void setjmp_func(jmp_state* s, int level) {
+  int prev_jmp = s->jmp;
+  int c_jmp;
+
+  if (level == 2) {
+    printf("level is 2, perform longjmp!\n");
+    throw 1;
+  }
+
+  c_jmp = current_exception_id++;
+  try {
+    printf("setjmp normal execution path, level: %d, prev_jmp: %d\n", level, prev_jmp);
+    s->jmp = c_jmp;
+    setjmp_func(s, level + 1);
+  } catch (int catched_eid) {
+    printf("caught %d\n", catched_eid);
+    if (catched_eid == c_jmp) {
+      printf("setjmp exception execution path, level: %d, prev_jmp: %d\n", level, prev_jmp);
+      if (prev_jmp != -1) {
+        printf("prev_jmp is not empty, continue with longjmp!\n");
+        s->jmp = prev_jmp;
+        throw s->jmp;
+      }
+    } else {
+      throw;
+    }
+  }
+
+  printf("Exiting setjmp function, level: %d, prev_jmp: %d\n", level, prev_jmp);
+}
+
+int main(int argc, char *argv[]) {
+  jmp_state s;
+  s.jmp = -1;
+
+  setjmp_func(&s, 0);
+
+  return 0;
+}
+'''
+      self.do_run(src, '''setjmp normal execution path, level: 0, prev_jmp: -1
+setjmp normal execution path, level: 1, prev_jmp: 0
+level is 2, perform longjmp!
+caught 1
+setjmp exception execution path, level: 1, prev_jmp: 0
+prev_jmp is not empty, continue with longjmp!
+caught 0
+setjmp exception execution path, level: 0, prev_jmp: -1
+Exiting setjmp function, level: 0, prev_jmp: -1
+''')
 
     def test_class(self):
         src = '''

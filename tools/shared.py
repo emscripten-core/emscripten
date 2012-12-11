@@ -749,21 +749,26 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
             contents = filter(os.path.exists, map(os.path.abspath, contents))
             added_contents = set()
             added = True
+            #print >> sys.stderr, '  initial undef are now ', unresolved_symbols, '\n'
             while added: # recursively traverse until we have everything we need
+              #print >> sys.stderr, '  running loop of archive including for', f
               added = False
               for content in contents:
                 if content in added_contents: continue 
                 new_symbols = Building.llvm_nm(content)
                 # Link in the .o if it provides symbols, *or* this is a singleton archive (which is apparently an exception in gcc ld)
                 #print >> sys.stderr, 'need', content, '?', unresolved_symbols, 'and we can supply', new_symbols.defs
+                #print >> sys.stderr, content, 'DEF', new_symbols.defs, '\n'
                 if new_symbols.defs.intersection(unresolved_symbols) or len(files) == 1:
                   if Building.is_bitcode(content):
-                    #print >> sys.stderr, '  adding object', content
+                    #print >> sys.stderr, '  adding object', content, '\n'
                     resolved_symbols = resolved_symbols.union(new_symbols.defs)
                     unresolved_symbols = unresolved_symbols.union(new_symbols.undefs.difference(resolved_symbols)).difference(new_symbols.defs)
+                    #print >> sys.stderr, '  undef are now ', unresolved_symbols, '\n'
                     actual_files.append(content)
                     added_contents.add(content)
                     added = True
+            #print >> sys.stderr, '  done running loop of archive including for', f
         finally:
           os.chdir(cwd)
     try_delete(target)
@@ -785,6 +790,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
         seen_symbols = seen_symbols.union(symbols.defs)
 
     # Finish link
+    if DEBUG: print >>sys.stderr, 'emcc: llvm-linking:', actual_files
     output = Popen([LLVM_LINK] + actual_files + ['-o', target], stdout=PIPE).communicate()[0]
     assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output + '\nemcc: If you get duplicate symbol errors, try --remove-duplicates'
     for temp_dir in temp_dirs:

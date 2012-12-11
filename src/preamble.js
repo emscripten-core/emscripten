@@ -276,6 +276,8 @@ Module['printProfiling'] = printProfiling;
 //========================================
 
 var __THREW__ = false; // Used in checking for thrown exceptions.
+var setjmpId = 1; // Used in setjmp/longjmp
+var setjmpLabels = {};
 
 var ABORT = false;
 
