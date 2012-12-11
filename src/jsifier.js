@@ -486,25 +486,17 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
   });
 
-  function functionNameFilterTest(ident) {
-    if (LABEL_FUNCTION_FILTERS.length == 0) {
-      // empty array means filter is disabled
+  // function for filtering functions for label debugging
+  if (LABEL_FUNCTION_FILTERS.length > 0) {
+    var LABEL_FUNCTION_FILTER_SET = set(LABEL_FUNCTION_FILTERS);
+    var functionNameFilterTest = function(ident) {
+      return (ident in LABEL_FUNCTION_FILTER_SET);
+    };
+  } else {
+    // no filters are specified, all function names are printed
+    var functionNameFilterTest = function(ident) {
       return true;
     }
-
-    for (var i = 0; i < LABEL_FUNCTION_FILTERS.length; i++) {
-      var filter = LABEL_FUNCTION_FILTERS[i];
-      var match = false;
-
-      if (typeof filter == 'string') {
-        match = (filter == ident);
-      } else if (filter instanceof RegExp) { // typeof would return 'object' for RegExp
-        match = filter.test(ident);
-      }
-
-      if (match) return true;
-    }
-    return false;
   }
 
   // function reconstructor & post-JS optimizer

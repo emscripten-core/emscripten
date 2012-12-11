@@ -135,11 +135,8 @@ var LABEL_DEBUG = 0; // 1: Print out functions as we enter them
 var LABEL_FUNCTION_FILTERS = []; // Filters for function label debug.
                                  // The items for this array will be used
                                  // as filters for function names. Only the
-                                 // labels of functions that match one particular
-                                 // filter are printed out.
-                                 // The filters can be specified in both string
-                                 // type (use equality test) and regular expression
-                                 // (use match test).
+                                 // labels of functions that is equaled to
+                                 // one of the filters are printed out
                                  // When the array is empty, the filter is disabled.
 var EXCEPTION_DEBUG = 1; // Print out exceptions in emscriptened code
 
