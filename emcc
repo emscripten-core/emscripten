@@ -1066,7 +1066,7 @@ try:
       # At minimum remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
       exports = ','.join(map(lambda exp: exp[1:], shared.Settings.EXPORTED_FUNCTIONS))
       # internalize carefully, llvm 3.2 will remove even main if not told not to
-      link_opts += ['-internalize', '-internalize-public-api-list=' + exports, '-globaldce']
+      link_opts += shared.Building.get_safe_internalize() + ['-globaldce']
       if DEBUG: print >> sys.stderr, 'emcc: LLVM linktime:', link_opts
       shared.Building.llvm_opt(in_temp(target_basename + '.bc'), link_opts)
       if DEBUG: save_intermediate('dce', 'bc')

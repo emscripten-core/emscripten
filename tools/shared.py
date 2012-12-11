@@ -922,6 +922,12 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     return Settings.INLINING_LIMIT == 0
 
   @staticmethod
+  def get_safe_internalize():
+    exports = ','.join(map(lambda exp: exp[1:], Settings.EXPORTED_FUNCTIONS))
+    # internalize carefully, llvm 3.2 will remove even main if not told not to
+    return ['-internalize', '-internalize-public-api-list=' + exports]
+
+  @staticmethod
   def pick_llvm_opts(optimization_level):
     '''
       It may be safe to use nonportable optimizations (like -OX) if we remove the platform info from the .ll
@@ -956,7 +962,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
           opts.append('-basicaa') # makes fannkuch slow but primes fast
 
         if Building.can_build_standalone():
-          opts.append('-internalize')
+          opts += Building.get_safe_internalize()
 
         opts.append('-globalopt')
         opts.append('-ipsccp')
