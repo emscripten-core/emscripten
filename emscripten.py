@@ -110,6 +110,7 @@ def emscript(infile, settings, outfile, libraries=[]):
       elif line.find(' = type { ') > 0:
         pre.append(line) # type
       elif line.startswith('!'):
+        if line.startswith('!llvm.module'): continue # we can ignore that
         meta.append(line) # metadata
       else:
         pre.append(line) # pre needs it so we know about globals in pre and funcs. So emit globals there
