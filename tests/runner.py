@@ -279,7 +279,7 @@ process(sys.argv[1])
     return ret
 
   def build_native(self, filename):
-    process = Popen([CLANG, '-O2', filename, '-o', filename+'.native'], stdout=PIPE);
+    process = Popen([CLANG, '-O2', '-fno-math-errno', filename, '-o', filename+'.native'], stdout=PIPE);
     output = process.communicate()
     if process.returncode is not 0:
       print >> sys.stderr, "Building native executable with command '%s' failed with a return code %d!" % (' '.join([CLANG, '-O2', filename, '-o', filename+'.native']), process.returncode)
