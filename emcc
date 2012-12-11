@@ -1058,18 +1058,14 @@ try:
       # If we can LTO, do it before dce, since it opens up dce opportunities
       if llvm_lto and shared.Building.can_use_unsafe_opts():
         if not shared.Building.can_inline(): link_opts.append('-disable-inlining')
-        link_opts += ['-std-link-opts', '-disable-internalize']
-        if DEBUG: print >> sys.stderr, 'emcc: LLVM linktime:', link_opts
-        shared.Building.llvm_opt(in_temp(target_basename + '.bc'), link_opts)
-        if DEBUG: save_intermediate('linktime', 'bc')
-        link_opts = []
+        # do not internalize in std-link-opts - it ignores the internalize-public-api-list we pass later
+        link_opts += ['-disable-internalize', '-std-link-opts']
       # At minimum remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
       exports = ','.join(map(lambda exp: exp[1:], shared.Settings.EXPORTED_FUNCTIONS))
-      # internalize carefully, llvm 3.2 will remove even main if not told not to
       link_opts += shared.Building.get_safe_internalize() + ['-globaldce']
       if DEBUG: print >> sys.stderr, 'emcc: LLVM linktime:', link_opts
       shared.Building.llvm_opt(in_temp(target_basename + '.bc'), link_opts)
-      if DEBUG: save_intermediate('dce', 'bc')
+      if DEBUG: save_intermediate('linktime', 'bc')
 
   # Prepare .ll for Emscripten
   if not LEAVE_INPUTS_RAW:
