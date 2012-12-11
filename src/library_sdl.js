@@ -237,7 +237,7 @@ var LibrarySDL = {
     },
 
     translateColorToCSSRGBA: function(rgba) {
-      return 'rgba(' + ((rgba >> 24)&255) + ',' + ((rgba >> 16)&255) + ',' + ((rgba >> 8)&255) + ',' + ((rgba&255)/255) + ')';
+      return 'rgba(' + (rgba&255) + ',' + ((rgba >> 8)&255) + ',' + ((rgba >> 16)&255) + ',' + (((rgba>>24)&255)/255) + ')';
     },
 
     translateRGBAToCSSRGBA: function(r, g, b, a) {
@@ -245,7 +245,7 @@ var LibrarySDL = {
     },
 
     translateRGBAToColor: function(r, g, b, a) {
-      return (r << 24) + (g << 16) + (b << 8) + a;
+      return (r) + (g << 8) + (b << 16) + (a << 24);
     },
 
     makeSurface: function(width, height, flags, usePageCanvas, source, rmask, gmask, bmask, amask) {
@@ -959,10 +959,16 @@ var LibrarySDL = {
     surfData.ctx.fillStyle = SDL.translateColorToCSSRGBA(color);
     surfData.ctx.fillRect(r.x, r.y, r.w, r.h);
     surfData.ctx.restore();
+
+    // any cached surface data is now out of date
+    if (surfData.image) surfData.image = null;
   },
 
   SDL_BlitSurface__deps: ['SDL_UpperBlit'],
   SDL_BlitSurface: function(src, srcrect, dst, dstrect) {
+    var surfData = SDL.surfaces[surf];
+    // any cached surface data is now out of date
+    if (surfData.image) surfData.image = null;
     return _SDL_UpperBlit(src, srcrect, dst, dstrect);
   },
 
@@ -1041,12 +1047,12 @@ var LibrarySDL = {
 
   SDL_MapRGB: function(fmt, r, g, b) {
     // Canvas screens are always RGBA
-    return 0xff+((b&0xff)<<8)+((g&0xff)<<16)+((r&0xff)<<24)
+    return (r&0xff)+((g&0xff)<<8)+((b&0xff)<<16)+(0xff<<24)
   },
 
   SDL_MapRGBA: function(fmt, r, g, b, a) {
     // Canvas screens are always RGBA
-    return (a&0xff)+((b&0xff)<<8)+((g&0xff)<<16)+((r&0xff)<<24)
+    return (r&0xff)+((g&0xff)<<8)+((b&0xff)<<16)+((a&0xff)<<24)
   },
 
   SDL_WM_GrabInput: function() {},
@@ -1550,9 +1556,13 @@ var LibrarySDL = {
   },
 
   SDL_AddTimer: function(interval, callback, param) {
-    return window.setTimeout(function() {
-      FUNCTION_TABLE[callback](interval, param);
-    }, interval);
+    var timer_func = function() {
+      var ret = FUNCTION_TABLE[callback](interval, param);
+      if (ret > 0) {
+        window.setTimeout(timer_func, ret);
+      }
+    };
+    return window.setTimeout(timer_func, interval);
   },
   SDL_RemoveTimer: function(id) {
     window.clearTimeout(id);
