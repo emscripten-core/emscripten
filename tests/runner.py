@@ -10799,8 +10799,8 @@ fi
         try_delete('a.out.js')
 
         basebc_name = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-0-basebc.bc')
-        dcebc_name1 = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-1-dce.bc')
-        dcebc_name2 = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-2-dce.bc')
+        dcebc_name1 = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-1-linktime.bc')
+        dcebc_name2 = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-2-linktime.bc')
         ll_name1 = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-2-ll.ll')
         ll_name2 = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-3-ll.ll')
 
