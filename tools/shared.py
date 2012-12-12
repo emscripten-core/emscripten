@@ -92,7 +92,7 @@ else:
     node = 'node'
     try:
       node = Popen(['which', 'node'], stdout=PIPE).communicate()[0].replace('\n', '') or \
-             Popen(['which', 'nodejs'], stdout=PIPE).communicate()[0].replace('\n', '')
+             Popen(['which', 'nodejs'], stdout=PIPE).communicate()[0].replace('\n', '') or node
     except:
       pass
     config_file = config_file.replace('{{{ NODE }}}', node)
