@@ -372,7 +372,7 @@ function __embind_register_smart_ptr(
     getPointee
 ) {
     name = Pointer_stringify(name);
-    pointeeType = requireRegisteredType(pointeeType, 'class');
+    var pointeeTypeImpl = requireRegisteredType(pointeeType, 'class');
     destructor = FUNCTION_TABLE[destructor];
     getPointee = FUNCTION_TABLE[getPointee];
     
@@ -384,11 +384,11 @@ function __embind_register_smart_ptr(
 
     // TODO: test for SmartPtr.prototype.constructor property?
     // We likely want it distinct from pointeeType.prototype.constructor
-    Handle.prototype = Object.create(pointeeType.Handle.prototype);
+    Handle.prototype = Object.create(pointeeTypeImpl.Handle.prototype);
     
     Handle.prototype.clone = function() {
         if (!this.ptr) {
-            throw new BindingError(pointeeType.name + ' instance already deleted');
+            throw new BindingError(pointeeTypeImpl.name + ' instance already deleted');
         }
 
         var clone = Object.create(Handle.prototype);
@@ -402,7 +402,7 @@ function __embind_register_smart_ptr(
     
     Handle.prototype['delete'] = function() {
         if (!this.ptr) {
-            throw new BindingError(pointeeType.name + ' instance already deleted');
+            throw new BindingError(pointeeTypeImpl.name + ' instance already deleted');
         }
         
         this.count.value -= 1;
@@ -695,20 +695,21 @@ function __embind_register_class_method(
     };
 }
 
+/*global ___staticPointerCast: false*/
 function __embind_register_cast_method(
     classType,
     methodName,
     returnType,
     invoker
 ) {
-    classType = requireRegisteredType(classType, 'class');
+    var classTypeImpl = requireRegisteredType(classType, 'class');
     methodName = Pointer_stringify(methodName);
-    var humanName = classType.name + '.' + methodName;
+    var humanName = classTypeImpl.name + '.' + methodName;
 
-    returnType = requireRegisteredType(returnType, 'method ' + humanName + ' return value');
+    var returnTypeImpl = requireRegisteredType(returnType, 'method ' + humanName + ' return value');
     invoker = FUNCTION_TABLE[invoker];
 
-    classType.Handle.prototype[methodName] = function() {
+    classTypeImpl.Handle.prototype[methodName] = function() {
         if (!this.ptr) {
             throw new BindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
         }
@@ -718,7 +719,9 @@ function __embind_register_cast_method(
 
         var args = new Array(1);
         args[0] = this.ptr;
-        var rv = returnType.fromWireType(invoker.apply(null, args)); // in case ptr needs to be adjusted for multiple inheritance
+        var rv = returnTypeImpl.fromWireType(invoker.apply(null, args));
+        rv.count = this.count; // the cast value shares the reference count of the original pointer, but does not increment it
+        this.count.value ++;
         return rv;
     };
 }
