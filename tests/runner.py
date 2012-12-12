@@ -5325,6 +5325,8 @@ def process(filename):
 
     def test_utf(self):
       self.banned_js_engines = [SPIDERMONKEY_ENGINE] # only node handles utf well
+      Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc']
+
       src = r'''
         #include <stdio.h>
         #include <emscripten.h>
