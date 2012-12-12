@@ -27,6 +27,21 @@ namespace __cxxabiv1 {
         return bases;
     }
 
+    int __getBaseOffset(const __class_type_info* ctiDv, const __class_type_info* ctiBs) {
+        int offset = 0;
+
+        const __vmi_class_type_info* vcti = dynamic_cast<const __vmi_class_type_info*>(ctiDv);
+        if (vcti) {
+            for (int i = 0; i < vcti->__base_count; i++) {
+                if (vcti->__base_info[i].__base_type == ctiBs) {
+                    offset = vcti->__base_info[i].__offset_flags >> __base_class_type_info::__offset_shift;
+                    break;
+                }
+            }
+        }
+        return offset;
+    }
+
     void __getDerivationPaths(const __class_type_info* dv, const __class_type_info* bs, std::vector<const __class_type_info*>path, std::vector<std::vector<const __class_type_info*>>& paths) {
         std::vector<const __class_type_info*> newPath(path);
         newPath.emplace_back(dv);
@@ -38,6 +53,14 @@ namespace __cxxabiv1 {
                 __getDerivationPaths(bases[i], bs, newPath, paths);
             }
         }
+    }
+
+    int __pathOffset(std::vector<const __cxxabiv1::__class_type_info*> path) {
+        int offset = 0;
+        for (int i = 0; i < path.size()-1; i++) {
+            offset += __getBaseOffset(path[i], path[i+1]);
+        }
+        return offset;
     }
 }
 
@@ -112,8 +135,43 @@ namespace emscripten {
                         }
                     }
                 }
-
                 return derivationPath;
+            }
+
+            void* EMSCRIPTEN_KEEPALIVE __staticPointerCast(void* p, int dv, int bs) {
+                std::vector<std::vector<const __cxxabiv1::__class_type_info*>> paths;
+                int direction = 1;
+
+                const std::type_info* dv1 = (std::type_info*)dv;
+                const std::type_info* bs1 = (std::type_info*)bs;
+                const __cxxabiv1::__class_type_info* dv2 = dynamic_cast<const __cxxabiv1::__class_type_info*>(dv1);
+                const __cxxabiv1::__class_type_info* bs2 = dynamic_cast<const __cxxabiv1::__class_type_info*>(bs1);
+
+                if (dv2 && bs2) {
+                    __cxxabiv1::__getDerivationPaths(dv2, bs2, std::vector<const __cxxabiv1::__class_type_info*>(), paths);
+                    if (paths.size() == 0) {
+                        __cxxabiv1::__getDerivationPaths(bs2, dv2, std::vector<const __cxxabiv1::__class_type_info*>(), paths);
+                        direction = -1;
+                    }
+                }
+
+                int offset = -1;
+                for (int i = 0; i < paths.size(); i++) {
+                    if (offset < 0) {
+                        offset = __cxxabiv1::__pathOffset(paths[i]);
+                    } else {
+                        if (offset != __cxxabiv1::__pathOffset(paths[i])) {
+                            return (void *)-2; // ambiguous cast -- throw instead?
+                        }
+                    }
+                }
+                if (offset < 0) {
+                    return (void *)-1; // types are not related -- throw instead?
+                }
+                if (p == 0) {
+                    return (void *)0;
+                }
+                return (void *)((int)p + offset * direction);
             }
 
             // __getDynamicPointerType returns (for polymorphic types only!) the type of the instance actually

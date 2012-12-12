@@ -279,7 +279,7 @@ namespace emscripten {
 
     template<typename FromRawType, typename ToRawType>
     std::shared_ptr<ToRawType> performPointerCast(std::shared_ptr<FromRawType> from) {
-        return std::shared_ptr<ToRawType>(from, dynamic_cast<ToRawType*>(from.get()));
+        return std::shared_ptr<ToRawType>(from, static_cast<ToRawType*>(from.get()));
     };
 
     template<typename ReturnType, typename... Args, typename... Policies>
@@ -613,7 +613,7 @@ namespace emscripten {
                  TypeID<PointerType>::get(),
                  methodName,
                  TypeID<ReturnType>::get(),
-                reinterpret_cast<GenericFunction>(&performPointerCast<PointeeType,ReturnPointeeType>));
+                 reinterpret_cast<GenericFunction>(&performPointerCast<PointeeType,ReturnPointeeType>));
             return *this;      
         }
     };
