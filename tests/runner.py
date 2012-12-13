@@ -7221,6 +7221,8 @@ def process(filename):
           assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
 
     def test_check_overflow(self):
+      if Settings.ASM_JS: return self.skip('asm always corrects, and cannot check')
+
       Settings.CHECK_OVERFLOWS = 1
       Settings.CORRECT_OVERFLOWS = 0
 
