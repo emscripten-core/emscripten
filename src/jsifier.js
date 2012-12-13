@@ -1357,6 +1357,8 @@ function JSify(data, functionsOnly, givenFunctions) {
           print('var GLOBAL_BASE = STATICTOP; assert(GLOBAL_BASE == STACK_MAX); \n');
           print('STATICTOP += ' + Variables.nextIndexedOffset + ';\n');
           print('assert(STATICTOP < TOTAL_MEMORY);\n');
+        } else {
+          print('var GLOBAL_BASE = 0;\n');
         }
       }
       var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable).concat(itemsDict.GlobalVariablePostSet);
