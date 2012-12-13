@@ -3928,7 +3928,6 @@ The current type of b is: 9
 
     def test_runtimelink(self):
       if Building.LLVM_OPTS: return self.skip('LLVM opts will optimize printf into puts in the parent, and the child will still look for puts')
-      if Settings.NAMED_GLOBALS == 0: return self.skip('dlopen cannot work without named globals, TODO')
       if Settings.ASM_JS: return self.skip('asm does not support runtime linking')
 
       main, supp = self.setup_runtimelink_test()
@@ -3936,6 +3935,7 @@ The current type of b is: 9
       self.banned_js_engines = [NODE_JS] # node's global scope behaves differently than everything else, needs investigation FIXME
       Settings.LINKABLE = 1
       Settings.BUILD_AS_SHARED_LIB = 2
+      Settings.NAMED_GLOBALS = 1
 
       self.build(supp, self.get_dir(), self.in_dir('supp.c'))
       shutil.move(self.in_dir('supp.c.o.js'), self.in_dir('liblib.so'))
@@ -4094,9 +4094,9 @@ def process(filename):
     def test_dlfcn_data_and_fptr(self):
       if Settings.ASM_JS: return self.skip('TODO: dlopen in asm')
       if Building.LLVM_OPTS: return self.skip('LLVM opts will optimize out parent_func')
-      if Settings.NAMED_GLOBALS == 0: return self.skip('dlopen cannot work without named globals, TODO')
 
       Settings.LINKABLE = 1
+      Settings.NAMED_GLOBALS = 1
 
       lib_src = '''
         #include <stdio.h>
@@ -4199,9 +4199,9 @@ def process(filename):
       if Settings.ASM_JS: return self.skip('TODO: dlopen in asm')
 
       Settings.LINKABLE = 1
+      Settings.NAMED_GLOBALS = 1
 
       if Building.LLVM_OPTS == 2: return self.skip('LLVM LTO will optimize away stuff we expect from the shared library')
-      if Settings.NAMED_GLOBALS == 0: return self.skip('dlopen cannot work without named globals, TODO')
 
       lib_src = r'''
         #include <stdio.h>
@@ -6219,7 +6219,7 @@ void*:16
       self.do_run(path_from_root('tests', 'cubescript'), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
 
     def test_gcc_unmangler(self):
-      Settings.NAMED_GLOBALS = 0 # test coverage for this
+      Settings.NAMED_GLOBALS = 1 # test coverage for this
 
       Building.COMPILER_TEST_OPTS = ['-I' + path_from_root('third_party')]
 

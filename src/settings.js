@@ -194,7 +194,7 @@ var PGO = 0; // Profile-guided optimization.
              // All CORRECT_* options default to 1 with PGO builds.
              // See https://github.com/kripken/emscripten/wiki/Optimizing-Code for more info
 
-var NAMED_GLOBALS = 1; // If 1, we use global variables for globals. Otherwise
+var NAMED_GLOBALS = 0; // If 1, we use global variables for globals. Otherwise
                        // they are referred to by a base plus an offset (called an indexed global),
                        // saving global variables but adding runtime overhead.
 
