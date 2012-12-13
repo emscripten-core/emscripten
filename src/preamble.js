@@ -720,8 +720,7 @@ function copyTempDouble(ptr) {
 }
 #endif
 
-STATICTOP = alignMemoryPage(STACK_MAX);
-assert(STATICTOP == STACK_MAX); // STACK_MAX must be aligned
+STATICTOP = STACK_MAX;
 assert(STATICTOP < TOTAL_MEMORY); // Stack must fit in TOTAL_MEMORY; allocations from here on may enlarge TOTAL_MEMORY
 
 var nullString = allocate(intArrayFromString('(null)'), 'i8', ALLOC_STACK);
