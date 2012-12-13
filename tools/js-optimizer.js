@@ -441,6 +441,32 @@ function simplifyExpressionsPre(ast) {
         }
       }, null, []);
     }
+
+    // &-related optimizations
+    traverseGenerated(ast, function(node, type) {
+      if (type == 'binary' && node[1] == '&' && node[3][0] == 'num') {
+        var input = node[2];
+        var amount = node[3][1];
+        if (input[0] == 'binary' && input[1] == '&' && input[3][0] == 'num') {
+          // Collapse X & 255 & 1
+          node[3][1] = amount & input[3][1];
+          node[2] = input[2];
+        } else if (input[0] == 'sub' && input[1][0] == 'name') {
+          // HEAP8[..] & 255 => HEAPU8[..]
+          var name = input[1][1];
+          if (name.substr(0, 4) == 'HEAP') {
+            var unsigned = name[4] == 'U';
+            var bits = parseInt(name.substr(unsigned ? 5 : 4));
+            if (amount == Math.pow(2, bits)-1) {
+              if (!unsigned) {
+                input[1][1] = 'HEAPU' + bits; // make unsigned
+              }
+              return input;
+            }
+          }
+        }
+      }
+    });
   }
 
   // The most common mathop is addition, e.g. in getelementptr done repeatedly. We can join all of those,

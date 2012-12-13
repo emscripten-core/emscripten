@@ -389,4 +389,16 @@ function tricky() {
   // The &-1 is a rounding correction, and must not be removed
   var $conv642 = ($conv6374 - (($132 << 16 >> 16 | 0) / 2 & -1) | 0) & 65535;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["abc", "xyz", "xyz2", "expr", "loopy", "bits", "maths", "hoisting", "demangle", "lua", "moreLabels", "notComps", "tricky"]
+function asmy() {
+  f(HEAP8[_buf + i6 & 16777215] & 255);
+  f(HEAPU8[_buf + i6 & 16777215] & 255);
+  f(HEAP8[_buf + i6 & 16777215] & 255 & 1);
+  f(HEAPU8[_buf + i6 & 16777215] & 255 & 1);
+  f(HEAP8[_buf + i6 & 16777215] & 1 & 255);
+  f(HEAPU8[_buf + i6 & 16777215] & 1 & 255);
+  f((HEAP8[_buf + i6 & 16777215] & 255 & 1) + i5 | 0);
+  f((HEAPU8[_buf + i6 & 16777215] & 255 & 1) + i5 | 0);
+  f((HEAP8[_buf + i6 & 16777215] & 1 & 255) + i5 | 0);
+  f((HEAPU8[_buf + i6 & 16777215] & 1 & 255) + i5 | 0);
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["abc", "xyz", "xyz2", "expr", "loopy", "bits", "maths", "hoisting", "demangle", "lua", "moreLabels", "notComps", "tricky", "asmy"]

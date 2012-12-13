@@ -279,4 +279,16 @@ function notComps() {
 function tricky() {
   var $conv642 = $conv6374 - (($132 << 16 >> 16 | 0) / 2 & -1) & 65535;
 }
+function asmy() {
+  f(HEAPU8[_buf + i6 & 16777215]);
+  f(HEAPU8[_buf + i6 & 16777215]);
+  f(HEAP8[_buf + i6 & 16777215] & 1);
+  f(HEAPU8[_buf + i6 & 16777215] & 1);
+  f(HEAP8[_buf + i6 & 16777215] & 1);
+  f(HEAPU8[_buf + i6 & 16777215] & 1);
+  f((HEAP8[_buf + i6 & 16777215] & 1) + i5 | 0);
+  f((HEAPU8[_buf + i6 & 16777215] & 1) + i5 | 0);
+  f((HEAP8[_buf + i6 & 16777215] & 1) + i5 | 0);
+  f((HEAPU8[_buf + i6 & 16777215] & 1) + i5 | 0);
+}
 
