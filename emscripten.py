@@ -301,9 +301,12 @@ def emscript(infile, settings, outfile, libraries=[]):
       return 'function %s(%s) { %s abort(%d); %s };\n' % (bad, params, coercions, i, ret) + raw.replace('[0,', '[' + bad + ',').replace(',0,', ',' + bad + ',').replace(',0,', ',' + bad + ',').replace(',0]', ',' + bad + ']').replace(',0]', ',' + bad + ']')
     function_tables_defs = '\n'.join([make_table(sig, raw) for sig, raw in last_forwarded_json['Functions']['tables'].iteritems()])
 
-    asm_setup = '\n'.join(['var %s = %s;' % (f.replace('.', '_'), f) for f in ['Runtime.bitshift64', 'Math.floor', 'Math.min']])
+    maths = ['Runtime.bitshift64', 'Math.floor', 'Math.min']
+    if settings['USE_MATH_IMUL']:
+      maths += ['Math.imul']
+    asm_setup = '\n'.join(['var %s = %s;' % (f.replace('.', '_'), f) for f in maths])
     fundamentals = ['buffer', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
-    basic_funcs = ['abort', 'assert', 'Runtime_bitshift64', 'Math_floor', 'Math_min']
+    basic_funcs = ['abort', 'assert'] + [m.replace('.', '_') for m in maths]
     basic_vars = ['STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT']
     if not settings['NAMED_GLOBALS']: basic_vars += ['GLOBAL_BASE']
     if forwarded_json['Types']['preciseI64MathUsed']:

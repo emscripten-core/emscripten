@@ -1975,6 +1975,9 @@ function processMathop(item) {
         if (ASM_JS) {
           // special-case: there is no integer multiply in asm, because there is no true integer
           // multiply in JS. While we wait for Math.imul, do double multiply
+          if (USE_MATH_IMUL) {
+            return 'Math.imul(' + idents[0] + ',' + idents[1] + ')';
+          }
           return '(~~(+' + idents[0] + ' * +' + idents[1] + '))';
         }
         return handleOverflow(getFastValue(idents[0], '*', idents[1], item.type), bits);
