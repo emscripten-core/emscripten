@@ -1972,6 +1972,11 @@ function processMathop(item) {
         Types.preciseI64MathUsed = true;
         return '(i64Math' + (ASM_JS ? '_' : '.') + 'multiply(' + idents[0] + ',0,' + idents[1] + ',0),' + makeGetValue('tempDoublePtr', 0, 'i32') + ')';
       } else {
+        if (ASM_JS) {
+          // special-case: there is no integer multiply in asm, because there is no true integer
+          // multiply in JS. While we wait for Math.imul, do double multiply
+          return '(~~(+' + idents[0] + ' * +' + idents[1] + '))';
+        }
         return handleOverflow(getFastValue(idents[0], '*', idents[1], item.type), bits);
       }
     }
