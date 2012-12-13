@@ -413,7 +413,7 @@ function simplifyExpressionsPre(ast) {
 
   function simplifyBitops(ast) {
     var USEFUL_BINARY_OPS = set('<<', '>>', '|', '&', '^');
-    var SAFE_BINARY_OPS = set('+', '-', '*', '%'); // division is unsafe as it creates non-ints in JS
+    var SAFE_BINARY_OPS = set('+', '-', '*'); // division is unsafe as it creates non-ints in JS; mod is unsafe as signs matter so we can't remove |0's
     var ZERO = ['num', 0];
     var rerun = true;
     while (rerun) {
