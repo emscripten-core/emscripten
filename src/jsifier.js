@@ -1353,8 +1353,8 @@ function JSify(data, functionsOnly, givenFunctions) {
       if (phase == 'pre' && !Variables.generatedGlobalBase) {
         Variables.generatedGlobalBase = true;
         if (Variables.nextIndexedOffset > 0) {
-          // Variables have been calculated, print out the base generation before we print them
-          print('var GLOBAL_BASE = STATICTOP;\n');
+          // Variables have been calculated, get to base generation before we print them
+          print('var GLOBAL_BASE = STATICTOP; assert(GLOBAL_BASE == STACK_MAX); \n');
           print('STATICTOP += ' + Variables.nextIndexedOffset + ';\n');
           print('assert(STATICTOP < TOTAL_MEMORY);\n');
         }

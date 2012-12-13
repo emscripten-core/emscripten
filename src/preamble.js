@@ -697,10 +697,10 @@ Module['HEAPF64'] = HEAPF64;
 #endif
 
 STACK_ROOT = STACKTOP = Runtime.alignMemory(1);
-STACK_MAX = STACK_ROOT + TOTAL_STACK;
+STACK_MAX = TOTAL_STACK; // we lose a little stack here, but TOTAL_STACK is nice and round so use that as the max
 
 #if USE_TYPED_ARRAYS == 2
-var tempDoublePtr = Runtime.alignMemory(STACK_MAX, 8);
+var tempDoublePtr = allocate(8, 'i8', ALLOC_STACK);
 function copyTempFloat(ptr) { // functions, because inlining this code is increases code size too much
   HEAP8[tempDoublePtr] = HEAP8[ptr];
   HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];
@@ -717,14 +717,13 @@ function copyTempDouble(ptr) {
   HEAP8[tempDoublePtr+6] = HEAP8[ptr+6];
   HEAP8[tempDoublePtr+7] = HEAP8[ptr+7];
 }
-STACK_MAX = tempDoublePtr + 8;
 #endif
 
 STATICTOP = alignMemoryPage(STACK_MAX);
-
+assert(STATICTOP == STACK_MAX); // STACK_MAX must be aligned
 assert(STATICTOP < TOTAL_MEMORY); // Stack must fit in TOTAL_MEMORY; allocations from here on may enlarge TOTAL_MEMORY
 
-var nullString = allocate(intArrayFromString('(null)'), 'i8', ALLOC_STATIC);
+var nullString = allocate(intArrayFromString('(null)'), 'i8', ALLOC_STACK);
 
 function callRuntimeCallbacks(callbacks) {
   while(callbacks.length > 0) {
