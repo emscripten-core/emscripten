@@ -369,7 +369,8 @@ var asmPre = (function(env, buffer) {
 
   function stackAlloc(size) {
     size = size|0;
-    var ret = STACKTOP;
+    var ret = 0;
+    ret = STACKTOP;
     STACKTOP = (STACKTOP + size)|0;
     STACKTOP = ((STACKTOP + 3)>>2)<<2;
     return ret|0;
