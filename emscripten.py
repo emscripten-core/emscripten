@@ -303,10 +303,11 @@ def emscript(infile, settings, outfile, libraries=[]):
 
     asm_setup = '\n'.join(['var %s = %s;' % (f.replace('.', '_'), f) for f in ['Runtime.bitshift64', 'Math.floor', 'Math.min']])
     fundamentals = ['buffer', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
-    basics = ['abort', 'assert', 'STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT', 'Runtime_bitshift64', 'Math_floor', 'Math_min']
-    if not settings['NAMED_GLOBALS']: basics += ['GLOBAL_BASE']
+    basic_funcs = ['abort', 'assert', 'Runtime_bitshift64', 'Math_floor', 'Math_min']
+    basic_vars = ['STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT']
+    if not settings['NAMED_GLOBALS']: basic_vars += ['GLOBAL_BASE']
     if forwarded_json['Types']['preciseI64MathUsed']:
-      basics += ['i64Math_' + op for op in ['add', 'subtract', 'multiply', 'divide', 'modulo']]
+      basic_funcs += ['i64Math_' + op for op in ['add', 'subtract', 'multiply', 'divide', 'modulo']]
       asm_setup += '''
 var i64Math_add = function(a, b, c, d) { i64Math.add(a, b, c, d) };
 var i64Math_subtract = function(a, b, c, d) { i64Math.subtract(a, b, c, d) };
@@ -340,9 +341,10 @@ var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
       pass
     global_vars = forwarded_json['Variables']['globals'].keys() if settings['NAMED_GLOBALS'] else []
     global_funcs = ['_' + x for x in forwarded_json['Functions']['libraryFunctions'].keys()]
-    asm_globals = ''.join(['  var ' + g + '=env.' + g + ';\n' for g in basics + global_funcs + global_vars])
+    asm_global_funcs = ''.join(['  var ' + g + '=env.' + g + ';\n' for g in basic_funcs + global_funcs])
+    asm_global_vars = ''.join(['  var ' + g + '=env.' + g + '|0;\n' for g in basic_vars + global_vars])
     # sent data
-    sending = '{ ' + ', '.join([s + ': ' + s for s in fundamentals + basics + global_funcs + global_vars]) + ' }'
+    sending = '{ ' + ', '.join([s + ': ' + s for s in fundamentals + basic_funcs + global_funcs + basic_vars + global_vars]) + ' }'
     # received
     receiving = ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm.' + s for s in exported_implemented_functions + function_tables])
     # finalize
@@ -358,7 +360,7 @@ var asmPre = (function(env, buffer) {
   var HEAPU32 = new env.Uint32Array(buffer);
   var HEAPF32 = new env.Float32Array(buffer);
   var HEAPF64 = new env.Float64Array(buffer);
-''' % (asm_setup,) + asm_globals + '''
+''' % (asm_setup,) + asm_global_funcs + '\n' + asm_global_vars + '''
   var __THREW__ = 0;
   var undef = 0;
 
