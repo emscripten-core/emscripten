@@ -700,7 +700,8 @@ STACK_ROOT = STACKTOP = Runtime.alignMemory(1);
 STACK_MAX = TOTAL_STACK; // we lose a little stack here, but TOTAL_STACK is nice and round so use that as the max
 
 #if USE_TYPED_ARRAYS == 2
-var tempDoublePtr = allocate(8, 'i8', ALLOC_STACK);
+var tempDoublePtr = Runtime.alignMemory(allocate(12, 'i8', ALLOC_STACK), 8);
+assert(tempDoublePtr % 8 == 0);
 function copyTempFloat(ptr) { // functions, because inlining this code is increases code size too much
   HEAP8[tempDoublePtr] = HEAP8[ptr];
   HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];
