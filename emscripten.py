@@ -327,6 +327,7 @@ var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
       arg_coercions = ' '.join(['a' + str(i) + '=' + ('+' if sig[i] == 'd' else '') + 'a' + str(i) + ('|0' if sig[i] == 'i' else '') + ';' for i in range(1, len(sig))])
       function_tables_impls.append('''
   function dynCall_%s(index%s%s) {
+    index = index|0;
     %s
     %sFUNCTION_TABLE_%s[index&{{{ FTM_%s }}}](%s);
   }
@@ -363,10 +364,11 @@ var asmPre = (function(env, buffer) {
   var HEAPU32 = new env.Uint32Array(buffer);
   var HEAPF32 = new env.Float32Array(buffer);
   var HEAPF64 = new env.Float64Array(buffer);
-''' % (asm_setup,) + asm_global_funcs + '\n' + asm_global_vars + '''
+''' % (asm_setup,) + '\n' + asm_global_vars + '''
   var __THREW__ = 0;
   var undef = 0;
-
+''' + ''.join(['''
+  var tempRet%d = 0;''' % i for i in range(10)]) + '\n' + asm_global_funcs + '''
   function stackAlloc(size) {
     size = size|0;
     var ret = 0;
@@ -387,12 +389,11 @@ var asmPre = (function(env, buffer) {
     __THREW__ = threw;
   }
 ''' + ''.join(['''
-  var tempRet%d = 0;
   function setTempRet%d(value) {
     value = value|0;
     tempRet%d = value;
   }
-''' % (i, i, i) for i in range(10)]) + funcs_js.replace('\n', '\n  ') + '''
+''' % (i, i) for i in range(10)]) + funcs_js.replace('\n', '\n  ') + '''
 
   %s
 
