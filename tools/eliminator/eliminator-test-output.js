@@ -6140,4 +6140,12 @@ function asm(x, y) {
   b = a * a;
   fleefl(b | 0, a | 0);
 }
+function phi() {
+  if (wat()) {
+    var $10 = 1;
+  } else {
+    var $10 = (_init_mparams() | 0) != 0;
+  }
+  var $10;
+}
 

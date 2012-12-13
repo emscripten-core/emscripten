@@ -1652,7 +1652,7 @@ function eliminate(ast, memSafe, asm) {
     for (var name in locals) {
       if (definitions[name] == 1 && uses[name] == 1) {
         potentials[name] = 1;
-      } else if (uses[name] == 0) {
+      } else if (uses[name] == 0 && (!definitions[name] || definitions[name] <= 1)) { // no uses, no def or 1 def (cannot operate on phis, and the llvm optimizer will remove unneeded phis anyhow)
         var hasSideEffects = false;
         if (values[name]) {
           traverse(values[name], function(node, type) {

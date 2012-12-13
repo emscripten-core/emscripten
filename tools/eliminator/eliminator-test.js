@@ -8837,5 +8837,15 @@ function asm(x, y) { // asm-style code, without special asm requested so will no
   b = a*a;
   fleefl(b|0, a|0);
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "b", "c", "f", "g", "h", "py", "r", "t", "f2", "f3", "llvm3_1", "_inflate", "_malloc", "_mallocNoU", "asm"]
+function phi() {
+  if (wat()) {
+    var $10 = 1;
+  } else {
+    var $7=_init_mparams();
+    var $8=(($7)|0)!=0;
+    var $10 = $8;
+  }
+  var $10;
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "b", "c", "f", "g", "h", "py", "r", "t", "f2", "f3", "llvm3_1", "_inflate", "_malloc", "_mallocNoU", "asm", "phi"]
 
