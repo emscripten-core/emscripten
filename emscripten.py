@@ -308,7 +308,6 @@ def emscript(infile, settings, outfile, libraries=[]):
     fundamentals = ['buffer', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
     basic_funcs = ['abort', 'assert'] + [m.replace('.', '_') for m in maths]
     basic_vars = ['STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT']
-    if not settings['NAMED_GLOBALS']: basic_vars += ['GLOBAL_BASE']
     if forwarded_json['Types']['preciseI64MathUsed']:
       basic_funcs += ['i64Math_' + op for op in ['add', 'subtract', 'multiply', 'divide', 'modulo']]
       asm_setup += '''

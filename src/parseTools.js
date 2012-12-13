@@ -414,7 +414,8 @@ function makeGlobalDef(ident) {
 }
 
 function makeGlobalUse(ident) {
-  if (!NAMED_GLOBALS && isIndexableGlobal(ident)) return '(' + getFastValue('GLOBAL_BASE', '+', Variables.indexedGlobals[ident]) + ')';
+  // We assert on TOTAL_STACK being equal to GLOBAL_BASE
+  if (!NAMED_GLOBALS && isIndexableGlobal(ident)) return (TOTAL_STACK + Variables.indexedGlobals[ident]).toString();
   return ident;
 }
 

@@ -1353,12 +1353,11 @@ function JSify(data, functionsOnly, givenFunctions) {
       if (phase == 'pre' && !Variables.generatedGlobalBase) {
         Variables.generatedGlobalBase = true;
         if (Variables.nextIndexedOffset > 0) {
-          // Variables have been calculated, get to base generation before we print them
-          print('var GLOBAL_BASE = STATICTOP; assert(GLOBAL_BASE == STACK_MAX); \n');
+          // Variables have been calculated, get to base stuff before we print them
+          // GLOBAL_BASE is statically known to be equal to STACK_MAX and to TOTAL_STACK, assert on this
+          print('assert(STATICTOP == STACK_MAX); assert(STACK_MAX == TOTAL_STACK);\n');
           print('STATICTOP += ' + Variables.nextIndexedOffset + ';\n');
           print('assert(STATICTOP < TOTAL_MEMORY);\n');
-        } else {
-          print('var GLOBAL_BASE = 0;\n');
         }
       }
       var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable).concat(itemsDict.GlobalVariablePostSet);
