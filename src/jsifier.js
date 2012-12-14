@@ -277,7 +277,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         	item.JS = makeGlobalDef(item.ident);
         }
 
-        if (item.external) {
+        if (item.external && !ASM_JS) { // ASM_JS considers externs to be globals
           // Import external global variables from the library if available.
           var shortident = item.ident.slice(1);
           if (LibraryManager.library[shortident] &&
@@ -307,7 +307,17 @@ function JSify(data, functionsOnly, givenFunctions) {
             index = makeGlobalUse(item.ident); // index !== null indicates we are indexing this
             allocator = 'ALLOC_NONE';
           }
-          constant = parseConst(item.value, item.type, item.ident);
+          if (item.external) {
+            assert(ASM_JS);
+            if (Runtime.isNumberType(item.type) || isPointerType(item.type)) {
+              constant = zeros(Runtime.getNativeFieldSize(item.type));
+            } else {
+              constant = makeEmptyStruct(item.type);
+            }
+            constant = JSON.stringify(constant);
+          } else {
+            constant = parseConst(item.value, item.type, item.ident);
+          }
           if (typeof constant === 'string' && constant[0] != '[') {
             constant = [constant]; // A single item. We may need a postset for it.
           }
