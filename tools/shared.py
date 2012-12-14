@@ -92,7 +92,7 @@ else:
     node = 'node'
     try:
       node = Popen(['which', 'node'], stdout=PIPE).communicate()[0].replace('\n', '') or \
-             Popen(['which', 'nodejs'], stdout=PIPE).communicate()[0].replace('\n', '')
+             Popen(['which', 'nodejs'], stdout=PIPE).communicate()[0].replace('\n', '') or node
     except:
       pass
     config_file = config_file.replace('{{{ NODE }}}', node)
@@ -1060,7 +1060,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       Building._is_ar_cache[filename] = sigcheck
       return sigcheck
     except Exception, e:
-      print 'shared.Building.is_ar failed to test whether file \'%s\' is a llvm archive file! Failed on exception: %s' % (filename, e)
+      print >> sys.stderr, 'shared.Building.is_ar failed to test whether file \'%s\' is a llvm archive file! Failed on exception: %s' % (filename, e)
       return False
 
   @staticmethod
@@ -1080,7 +1080,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
           assert os.path.exists(test_ll)
           try_delete(test_ll)
     except Exception, e:
-      print 'shared.Building.is_bitcode failed to test whether file \'%s\' is a llvm bitcode file! Failed on exception: %s' % (filename, e)
+      print >> sys.stderr, 'shared.Building.is_bitcode failed to test whether file \'%s\' is a llvm bitcode file! Failed on exception: %s' % (filename, e)
       return False
 
     # look for magic signature
