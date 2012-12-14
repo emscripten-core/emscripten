@@ -574,9 +574,9 @@ LibraryManager.library = {
         ungotten: []
       };
       assert(Math.max(_stdin, _stdout, _stderr) < 128); // make sure these are low, we flatten arrays with these
-      {{{ makeSetValue('_stdin', 0, 1, 'void*') }}};
-      {{{ makeSetValue('_stdout', 0, 2, 'void*') }}};
-      {{{ makeSetValue('_stderr', 0, 3, 'void*') }}};
+      {{{ makeSetValue(makeGlobalUse('_stdin'), 0, 1, 'void*') }}};
+      {{{ makeSetValue(makeGlobalUse('_stdout'), 0, 2, 'void*') }}};
+      {{{ makeSetValue(makeGlobalUse('_stderr'), 0, 3, 'void*') }}};
 
       // Other system paths
       FS.createPath('/', 'dev/shm/tmp', true, true); // temp files
@@ -3069,7 +3069,7 @@ LibraryManager.library = {
   getchar: function() {
     // int getchar(void);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/getchar.html
-    return _fgetc({{{ makeGetValue('_stdin', '0', 'void*') }}});
+    return _fgetc({{{ makeGetValue(makeGlobalUse('_stdin'), '0', 'void*') }}});
   },
   fgetpos__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   fgetpos: function(stream, pos) {
@@ -3114,7 +3114,7 @@ LibraryManager.library = {
   gets: function(s) {
     // char *gets(char *s);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/gets.html
-    return _fgets(s, 1e6, {{{ makeGetValue('_stdin', '0', 'void*') }}});
+    return _fgets(s, 1e6, {{{ makeGetValue(makeGlobalUse('_stdin'), '0', 'void*') }}});
   },
   fileno: function(stream) {
     // int fileno(FILE *stream);
@@ -3186,7 +3186,7 @@ LibraryManager.library = {
   putchar: function(c) {
     // int putchar(int c);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/putchar.html
-    return _fputc(c, {{{ makeGetValue('_stdout', '0', 'void*') }}});
+    return _fputc(c, {{{ makeGetValue(makeGlobalUse('_stdout'), '0', 'void*') }}});
   },
   putchar_unlocked: 'putchar',
   fputs__deps: ['write', 'strlen'],
@@ -3200,7 +3200,7 @@ LibraryManager.library = {
     // int puts(const char *s);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/puts.html
     // NOTE: puts() always writes an extra newline.
-    var stdout = {{{ makeGetValue('_stdout', '0', 'void*') }}};
+    var stdout = {{{ makeGetValue(makeGlobalUse('_stdout'), '0', 'void*') }}};
     var ret = _fputs(s, stdout);
     if (ret < 0) {
       return ret;
@@ -3468,7 +3468,7 @@ LibraryManager.library = {
   scanf: function(format, varargs) {
     // int scanf(const char *restrict format, ... );
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/scanf.html
-    var stdin = {{{ makeGetValue('_stdin', '0', 'void*') }}};
+    var stdin = {{{ makeGetValue(makeGlobalUse('_stdin'), '0', 'void*') }}};
     return _fscanf(stdin, format, varargs);
   },
   sscanf__deps: ['_scanString'],
@@ -3507,7 +3507,7 @@ LibraryManager.library = {
   printf: function(format, varargs) {
     // int printf(const char *restrict format, ...);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
-    var stdout = {{{ makeGetValue('_stdout', '0', 'void*') }}};
+    var stdout = {{{ makeGetValue(makeGlobalUse('_stdout'), '0', 'void*') }}};
     return _fprintf(stdout, format, varargs);
   },
   sprintf__deps: ['snprintf'],
@@ -3536,7 +3536,7 @@ LibraryManager.library = {
   _ZNSo3putEc: 'putchar',
   _ZNSo5flushEv__deps: ['fflush', 'stdout'],
   _ZNSo5flushEv: function() {
-    _fflush({{{ makeGetValue('_stdout', '0', 'void*') }}});
+    _fflush({{{ makeGetValue(makeGlobalUse('_stdout'), '0', 'void*') }}});
   },
 
   // ==========================================================================
@@ -3905,9 +3905,9 @@ LibraryManager.library = {
       envPtr = allocate(MAX_ENV_VALUES * {{{ Runtime.QUANTUM_SIZE }}},
                         'i8*', ALLOC_STATIC);
       {{{ makeSetValue('envPtr', '0', 'poolPtr', 'i8*') }}}
-      {{{ makeSetValue('_environ', 0, 'envPtr', 'i8*') }}};
+      {{{ makeSetValue(makeGlobalUse('_environ'), 0, 'envPtr', 'i8*') }}};
     } else {
-      envPtr = {{{ makeGetValue('_environ', '0', 'i8**') }}};
+      envPtr = {{{ makeGetValue(makeGlobalUse('_environ'), '0', 'i8**') }}};
       poolPtr = {{{ makeGetValue('envPtr', '0', 'i8*') }}};
     }
 
@@ -5699,8 +5699,8 @@ LibraryManager.library = {
   timegm__deps: ['mktime'],
   timegm: function(tmPtr) {
     _tzset();
-    var offset = {{{ makeGetValue('__timezone', 0, 'i32') }}};
-    var daylight = {{{ makeGetValue('__daylight', 0, 'i32') }}};
+    var offset = {{{ makeGetValue(makeGlobalUse('__timezone'), 0, 'i32') }}};
+    var daylight = {{{ makeGetValue(makeGlobalUse('__daylight'), 0, 'i32') }}};
     daylight = (daylight == 1) ? 60 * 60 : 0;
     var ret = _mktime(tmPtr) + offset - daylight;
     return ret;
@@ -5786,18 +5786,18 @@ LibraryManager.library = {
     if (_tzset.called) return;
     _tzset.called = true;
 
-    {{{ makeSetValue('__timezone', '0', '-(new Date()).getTimezoneOffset() * 60', 'i32') }}}
+    {{{ makeSetValue(makeGlobalUse('__timezone'), '0', '-(new Date()).getTimezoneOffset() * 60', 'i32') }}}
 
     var winter = new Date(2000, 0, 1);
     var summer = new Date(2000, 6, 1);
-    {{{ makeSetValue('__daylight', '0', 'Number(winter.getTimezoneOffset() != summer.getTimezoneOffset())', 'i32') }}}
+    {{{ makeSetValue(makeGlobalUse('__daylight'), '0', 'Number(winter.getTimezoneOffset() != summer.getTimezoneOffset())', 'i32') }}}
 
     var winterName = 'GMT'; // XXX do not rely on browser timezone info, it is very unpredictable | winter.toString().match(/\(([A-Z]+)\)/)[1];
     var summerName = 'GMT'; // XXX do not rely on browser timezone info, it is very unpredictable | summer.toString().match(/\(([A-Z]+)\)/)[1];
     var winterNamePtr = allocate(intArrayFromString(winterName), 'i8', ALLOC_NORMAL);
     var summerNamePtr = allocate(intArrayFromString(summerName), 'i8', ALLOC_NORMAL);
-    {{{ makeSetValue('__tzname', '0', 'winterNamePtr', 'i32') }}}
-    {{{ makeSetValue('__tzname', Runtime.QUANTUM_SIZE, 'summerNamePtr', 'i32') }}}
+    {{{ makeSetValue(makeGlobalUse('__tzname'), '0', 'winterNamePtr', 'i32') }}}
+    {{{ makeSetValue(makeGlobalUse('__tzname'), Runtime.QUANTUM_SIZE, 'summerNamePtr', 'i32') }}}
   },
 
   stime__deps: ['$ERRNO_CODES', '__setErrNo'],
