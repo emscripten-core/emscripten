@@ -4793,13 +4793,13 @@ LibraryManager.library = {
   __cxa_throw: function(ptr, type, destructor) {
     if (!___cxa_throw.initialized) {
       try {
-        {{{ makeSetValue('__ZTVN10__cxxabiv119__pointer_type_infoE', '0', '0', 'i32') }}}; // Workaround for libcxxabi integration bug
+        {{{ makeSetValue(makeGlobalUse('__ZTVN10__cxxabiv119__pointer_type_infoE'), '0', '0', 'i32') }}}; // Workaround for libcxxabi integration bug
       } catch(e){}
       try {
-        {{{ makeSetValue('__ZTVN10__cxxabiv117__class_type_infoE', '0', '1', 'i32') }}}; // Workaround for libcxxabi integration bug
+        {{{ makeSetValue(makeGlobalUse('__ZTVN10__cxxabiv117__class_type_infoE'), '0', '1', 'i32') }}}; // Workaround for libcxxabi integration bug
       } catch(e){}
       try {
-        {{{ makeSetValue('__ZTVN10__cxxabiv120__si_class_type_infoE', '0', '2', 'i32') }}}; // Workaround for libcxxabi integration bug
+        {{{ makeSetValue(makeGlobalUse('__ZTVN10__cxxabiv120__si_class_type_infoE'), '0', '2', 'i32') }}}; // Workaround for libcxxabi integration bug
       } catch(e){}
       ___cxa_throw.initialized = true;
     }
@@ -4897,20 +4897,20 @@ LibraryManager.library = {
 
   __cxa_is_number_type: function(type) {
     var isNumber = false;
-    try { if (type == __ZTIi) isNumber = true } catch(e){}
-    try { if (type == __ZTIj) isNumber = true } catch(e){}
-    try { if (type == __ZTIl) isNumber = true } catch(e){}
-    try { if (type == __ZTIm) isNumber = true } catch(e){}
-    try { if (type == __ZTIx) isNumber = true } catch(e){}
-    try { if (type == __ZTIy) isNumber = true } catch(e){}
-    try { if (type == __ZTIf) isNumber = true } catch(e){}
-    try { if (type == __ZTId) isNumber = true } catch(e){}
-    try { if (type == __ZTIe) isNumber = true } catch(e){}
-    try { if (type == __ZTIc) isNumber = true } catch(e){}
-    try { if (type == __ZTIa) isNumber = true } catch(e){}
-    try { if (type == __ZTIh) isNumber = true } catch(e){}
-    try { if (type == __ZTIs) isNumber = true } catch(e){}
-    try { if (type == __ZTIt) isNumber = true } catch(e){}
+    try { if (type == {{{ makeGlobalUse('__ZTIi') }}}) isNumber = true } catch(e){}
+    try { if (type == {{{ makeGlobalUse('__ZTIj') }}}) isNumber = true } catch(e){}
+    try { if (type == {{{ makeGlobalUse('__ZTIl') }}}) isNumber = true } catch(e){}
+    try { if (type == {{{ makeGlobalUse('__ZTIm') }}}) isNumber = true } catch(e){}
+    try { if (type == {{{ makeGlobalUse('__ZTIx') }}}) isNumber = true } catch(e){}
+    try { if (type == {{{ makeGlobalUse('__ZTIy') }}}) isNumber = true } catch(e){}
+    try { if (type == {{{ makeGlobalUse('__ZTIf') }}}) isNumber = true } catch(e){}
+    try { if (type == {{{ makeGlobalUse('__ZTId') }}}) isNumber = true } catch(e){}
+    try { if (type == {{{ makeGlobalUse('__ZTIe') }}}) isNumber = true } catch(e){}
+    try { if (type == {{{ makeGlobalUse('__ZTIc') }}}) isNumber = true } catch(e){}
+    try { if (type == {{{ makeGlobalUse('__ZTIa') }}}) isNumber = true } catch(e){}
+    try { if (type == {{{ makeGlobalUse('__ZTIh') }}}) isNumber = true } catch(e){}
+    try { if (type == {{{ makeGlobalUse('__ZTIs') }}}) isNumber = true } catch(e){}
+    try { if (type == {{{ makeGlobalUse('__ZTIt') }}}) isNumber = true } catch(e){}
     return isNumber;
   },
 

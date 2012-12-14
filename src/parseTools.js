@@ -397,10 +397,6 @@ var UNINDEXABLE_GLOBALS = set(
   '_llvm_global_ctors' // special-cased
 );
 
-function noticePtr(ptr) {
-  if (!NAMED_GLOBALS && !LibraryManager.loaded) UNINDEXABLE_GLOBALS[ptr] = 1; // we cannot index globals referred to in the library, since they are used there by name
-}
-
 function isIndexableGlobal(ident) {
   if (!(ident in Variables.globals)) return false;
   if (ident in UNINDEXABLE_GLOBALS) return false;
@@ -415,8 +411,16 @@ function makeGlobalDef(ident) {
 }
 
 function makeGlobalUse(ident) {
-  // We assert on TOTAL_STACK being equal to GLOBAL_BASE
-  if (!NAMED_GLOBALS && isIndexableGlobal(ident)) return (TOTAL_STACK + Variables.indexedGlobals[ident]).toString();
+  if (!NAMED_GLOBALS && isIndexableGlobal(ident)) {
+    var index = Variables.indexedGlobals[ident];
+    if (index === undefined) {
+      // we are accessing this before we index globals, likely from the library. mark as unindexable
+      UNINDEXABLE_GLOBALS[ident] = 1;
+      return ident;
+    }
+    // We know and assert on TOTAL_STACK being equal to GLOBAL_BASE
+    return (TOTAL_STACK + index).toString();
+  }
   return ident;
 }
 
@@ -1013,7 +1017,6 @@ function makeGetTempDouble(i) {
 
 // See makeSetValue
 function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSafe) {
-  noticePtr(ptr);
   if (UNALIGNED_MEMORY) align = 1;
   if (isStructType(type)) {
     var typeData = Types.types[type];
@@ -1104,7 +1107,6 @@ function indexizeFunctions(value, type) {
 //!             which means we should write to all slabs, ignore type differences if any on reads, etc.
 //! @param noNeedFirst Whether to ignore the offset in the pointer itself.
 function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep, forcedAlign) {
-  noticePtr(ptr);
   if (UNALIGNED_MEMORY && !forcedAlign) align = 1;
   sep = sep || ';';
   if (isStructType(type)) {
@@ -1176,7 +1178,6 @@ var SEEK_OPTIMAL_ALIGN_MIN = 20;
 var UNROLL_LOOP_MAX = 8;
 
 function makeSetValues(ptr, pos, value, type, num, align) {
-  noticePtr(ptr);
   function unroll(type, num, jump, value$) {
     jump = jump || 1;
     value$ = value$ || value;
@@ -1226,8 +1227,6 @@ function makeSetValues(ptr, pos, value, type, num, align) {
 var TYPED_ARRAY_SET_MIN = Infinity; // .set() as memcpy seems to just slow us down
 
 function makeCopyValues(dest, src, num, type, modifier, align, sep) {
-  noticePtr(dest);
-  noticePtr(src);
   sep = sep || ';';
   function unroll(type, num, jump) {
     jump = jump || 1;
