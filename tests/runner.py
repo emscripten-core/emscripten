@@ -3947,6 +3947,7 @@ The current type of b is: 9
     def test_dlfcn_basic(self):
       if Settings.ASM_JS: return self.skip('TODO: dlopen in asm')
 
+      Settings.NAMED_GLOBALS = 1
       Settings.LINKABLE = 1
 
       lib_src = '''
@@ -4001,6 +4002,7 @@ def process(filename):
       if Settings.ASM_JS: return self.skip('TODO: dlopen in asm')
 
       Settings.LINKABLE = 1
+      Settings.NAMED_GLOBALS = 1
 
       if Settings.USE_TYPED_ARRAYS == 2:
         Settings.CORRECT_SIGNS = 1 # Needed for unsafe optimizations
@@ -4256,6 +4258,7 @@ def process(filename):
       if Settings.ASM_JS: return self.skip('TODO: dlopen in asm')
 
       Settings.LINKABLE = 1
+      Settings.NAMED_GLOBALS = 1
 
       if Building.LLVM_OPTS == 2: return self.skip('LLVM LTO will optimize things that prevent shared objects from working')
       if Settings.QUANTUM_SIZE == 1: return self.skip('FIXME: Add support for this')
