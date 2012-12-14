@@ -5967,6 +5967,7 @@ int main(int argc, char **argv) {
     def test_dlmalloc(self):
       if self.emcc_args is None: self.emcc_args = [] # dlmalloc auto-inclusion is only done if we use emcc
 
+      self.banned_js_engines = [NODE_JS] # slower, and fail on 64-bit
       Settings.CORRECT_SIGNS = 2
       Settings.CORRECT_SIGNS_LINES = ['src.cpp:' + str(i+4) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
       Settings.TOTAL_MEMORY = 128*1024*1024 # needed with typed arrays
