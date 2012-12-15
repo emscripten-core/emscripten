@@ -598,10 +598,10 @@ function JSify(data, functionsOnly, givenFunctions) {
       if (ASM_JS) {
         var hasByVal = false;
         func.params.forEach(function(param) {
-          hasByVal = hasByVal = hasByVal || param.byVal;
+          hasByVal = hasByVal || param.byVal;
         });
         if (hasByVal) {
-          func.js += '  var tempParam = 0;\n';
+          func.JS += '  var tempParam = 0;\n';
         }
       }
 
