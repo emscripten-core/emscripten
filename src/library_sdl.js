@@ -1278,7 +1278,7 @@ var LibrarySDL = {
     channelInfo.audio = audio = audio.cloneNode(true);
     if (SDL.channelFinished) {
       audio['onended'] = function() { // TODO: cache these
-        Runtime.getFuncWrapper(SDL.channelFinished)(channel);
+        Runtime.getFuncWrapper(SDL.channelFinished, 'vi')(channel);
       }
     }
     // Either play the element, or load the dynamic data into it
@@ -1349,7 +1349,7 @@ var LibrarySDL = {
       info.audio = null;
     }
     if (SDL.channelFinished) {
-      Runtime.getFuncWrapper(SDL.channelFinished)(channel);
+      Runtime.getFuncWrapper(SDL.channelFinished, 'vi')(channel);
     }
     return 0;
   },

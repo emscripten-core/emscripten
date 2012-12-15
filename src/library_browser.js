@@ -623,7 +623,7 @@ mergeInto(LibraryManager.library, {
     if (callback) {
       callbackId = info.callbacks.length;
       info.callbacks.push({
-        func: Runtime.getFuncWrapper(callback),
+        func: Runtime.getFuncWrapper(callback, 'viii'),
         arg: arg
       });
       info.awaited++;
