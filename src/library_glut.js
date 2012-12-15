@@ -418,7 +418,7 @@ var LibraryGLUT = {
   glutPostRedisplay: function() {
     if (GLUT.displayFunc) {
       Browser.requestAnimationFrame(function() {
-        Runtime.dynCall('vi', GLUT.displayFunc);
+        Runtime.dynCall('v', GLUT.displayFunc);
       });
     }
   },
