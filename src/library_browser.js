@@ -417,10 +417,10 @@ mergeInto(LibraryManager.library, {
       {{{ makeHEAPView('U8', 'data', 'data + size') }}},
       true, true,
       function() {
-        if (onload) Runtime.dynCall('vii', onload, [file, cname]);
+        if (onload) Runtime.dynCall('vii', onload, [arg, cname]);
       },
       function() {
-        if (onerror) Runtime.dynCall('vi', onerror, [file]);
+        if (onerror) Runtime.dynCall('vi', onerror, [arg]);
       },
       true // don'tCreateFile - it's already there
     );
