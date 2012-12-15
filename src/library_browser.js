@@ -539,7 +539,7 @@ mergeInto(LibraryManager.library, {
     Module['noExitRuntime'] = true;
 
     function wrapper() {
-      Runtime.getFuncWrapper(func)(arg);
+      Runtime.getFuncWrapper(func, 'vi')(arg);
     }
 
     if (millis >= 0) {
