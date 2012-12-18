@@ -141,7 +141,7 @@ namespace emscripten {
         }
 
         template<typename ...Args>
-        val call(const char* name, Args... args) {
+        val call(const char* name, Args... args) const {
             using namespace internal;
 
             WithPolicies<>::ArgTypeList<Args...> argList;
@@ -162,7 +162,7 @@ namespace emscripten {
         }
 
         template<typename ...Args>
-        void call_void(const char* name, Args... args) {
+        void call_void(const char* name, Args... args) const {
             using namespace internal;
 
             WithPolicies<>::ArgTypeList<Args...> argList;
