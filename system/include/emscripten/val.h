@@ -121,10 +121,6 @@ namespace emscripten {
             internal::_emval_set_property_by_int(handle, key, v.handle);
         }
 
-        unsigned int length() {
-            return get("length").as<unsigned int>();
-        }
-
         template<typename ...Args>
         val operator()(Args... args) {
             using namespace internal;
