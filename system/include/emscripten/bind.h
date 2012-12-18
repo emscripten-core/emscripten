@@ -887,9 +887,7 @@ namespace emscripten {
         wrapper() {}    // to avoid error "call to implicitly deleted construrtor..."
 
         wrapper(InterfaceType* interface) {
-            // why dynamic_cast causes javascript crash?
-            wrapper<InterfaceType>* iw = static_cast<wrapper<InterfaceType>*>(interface);
-            jsobj = iw->jsobj;
+            cloneInterface(interface);
         }
 
         // Not necessary in any example so far, but appeases a compiler warning.
@@ -917,6 +915,13 @@ namespace emscripten {
         ReturnType call(const char* name, Args... args) {
             assertInitialized();
             return Caller<ReturnType, Args...>::call(*jsobj, name, args...);
+        }
+
+    protected:
+        void cloneInterface(InterfaceType* interface) {
+            // why dynamic_cast causes javascript crash?
+            wrapper<InterfaceType>* iw = static_cast<wrapper<InterfaceType>*>(interface);
+            jsobj = iw->jsobj;
         }
 
     private:
