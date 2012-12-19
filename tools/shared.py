@@ -96,6 +96,12 @@ else:
     except:
       pass
     config_file = config_file.replace('{{{ NODE }}}', node)
+    python = 'python'
+    try:
+      python = Popen(['which', 'python'], stdout=PIPE).communicate()[0].replace('\n', '')
+    except:
+      pass
+    config_file = config_file.replace('{{{ PYTHON }}}', python)    
 
     # write
     open(CONFIG_FILE, 'w').write(config_file)
@@ -110,6 +116,7 @@ A settings file has been copied to %s, at absolute path: %s
 It contains our best guesses for the important paths, which are:
 
   LLVM_ROOT       = %s
+  PYTHON          = %s
   NODE_JS         = %s
   EMSCRIPTEN_ROOT = %s
 
@@ -117,7 +124,7 @@ Please edit the file if any of those are incorrect.
 
 This command will now exit. When you are done editing those paths, re-run it.
 ==============================================================================
-''' % (EM_CONFIG, CONFIG_FILE, llvm_root, node, __rootpath__)
+''' % (EM_CONFIG, CONFIG_FILE, llvm_root, python, node, __rootpath__)
     sys.exit(0)
 try:
   config_text = open(CONFIG_FILE, 'r').read() if CONFIG_FILE else EM_CONFIG
