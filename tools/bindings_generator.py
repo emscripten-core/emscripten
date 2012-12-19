@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 '''
 Use CppHeaderParser to parse some C++ headers, and generate binding code for them.
