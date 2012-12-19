@@ -62,7 +62,6 @@ def path_from_root(*pathelems):
 sys.path += [path_from_root(''), path_from_root('third_party/websockify')]
 import tools.shared
 from tools.shared import *
-print(PYTHON)
 
 # Sanity check for config
 
