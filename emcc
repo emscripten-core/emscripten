@@ -322,11 +322,6 @@ Options that are modified or new in %s include:
                            -v to Clang, and also enable EMCC_DEBUG
                            to details emcc's operations
 
-  --remove-duplicates      If set, will remove duplicate symbols when
-                           linking. This can be useful because
-                           llvm-link's behavior is not as permissive
-                           as ld is.
-
   --jcache                 Use a JavaScript cache. This is disabled by
                            default. When enabled, emcc will store the
                            results of compilation in a cache and check
@@ -596,7 +591,6 @@ try:
   ignore_dynamic_linking = False
   shell_path = shared.path_from_root('src', 'shell.html')
   js_libraries = []
-  remove_duplicates = False
   keep_debug = False
   bind = False
   jcache = False
@@ -705,7 +699,7 @@ try:
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i] == '--remove-duplicates':
-      remove_duplicates = True
+      print >> sys.stderr, 'emcc: warning: --remove-duplicates is deprecated as it is no longer needed. If you cannot link without it, file a bug with a testcase'
       newargs[i] = ''
     elif newargs[i] == '--jcache':
       jcache = True
@@ -912,7 +906,7 @@ try:
         # We have a specified target (-o <target>), which is not JavaScript or HTML, and
         # we have multiple files: Link them
         if DEBUG: print >> sys.stderr, 'emcc: link: ' + str(temp_files), specified_target
-        shared.Building.link(temp_files, specified_target, remove_duplicates=remove_duplicates)
+        shared.Building.link(temp_files, specified_target)
     exit(0)
 
   ## Continue on to create JavaScript
@@ -1027,7 +1021,7 @@ try:
      (not LEAVE_INPUTS_RAW and not (suffix(temp_files[0]) in BITCODE_SUFFIXES or suffix(temp_files[0]) in DYNAMICLIB_SUFFIXES) and shared.Building.is_ar(temp_files[0])):
     linker_inputs = temp_files + extra_files_to_link
     if DEBUG: print >> sys.stderr, 'emcc: linking: ', linker_inputs
-    shared.Building.link(linker_inputs, in_temp(target_basename + '.bc'), remove_duplicates=remove_duplicates)
+    shared.Building.link(linker_inputs, in_temp(target_basename + '.bc'))
     final = in_temp(target_basename + '.bc')
   else:
     if not LEAVE_INPUTS_RAW:

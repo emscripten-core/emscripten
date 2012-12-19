@@ -712,7 +712,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     Popen([LLVM_EXTRACT, filename, '-delete', '-func=' + symbol, '-o', filename], stderr=PIPE).communicate()
 
   @staticmethod
-  def link(files, target, remove_duplicates=False):
+  def link(files, target):
     actual_files = []
     unresolved_symbols = set(['main']) # tracking unresolveds is necessary for .a linking, see below. (and main is always a necessary symbol)
     resolved_symbols = set()
@@ -773,27 +773,11 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
           os.chdir(cwd)
     try_delete(target)
 
-    if remove_duplicates:
-      # Remove duplicate symbols. This is a workaround for how we compile .a files, we try to
-      # emulate ld behavior which is permissive TODO: cache llvm-nm results
-      seen_symbols = set()
-      print >> sys.stderr, actual_files
-      for actual in actual_files:
-        symbols = Building.llvm_nm(actual)
-        dupes = seen_symbols.intersection(symbols.defs)
-        if len(dupes) > 0:
-          print >> sys.stderr, 'emcc: warning: removing duplicates in', actual
-          for dupe in dupes:
-            print >> sys.stderr, 'emcc: warning: removing duplicate', dupe
-            Building.remove_symbol(actual, dupe)
-          Popen([LLVM_EXTRACT, actual, '-delete', '-glob=.str', '-o', actual], stderr=PIPE).communicate() # garbage that appears here
-        seen_symbols = seen_symbols.union(symbols.defs)
-
     # Finish link
     actual_files = list(set(actual_files)) # tolerate people trying to link a.so a.so etc.
     if DEBUG: print >>sys.stderr, 'emcc: llvm-linking:', actual_files
     output = Popen([LLVM_LINK] + actual_files + ['-o', target], stdout=PIPE).communicate()[0]
-    assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output + '\nemcc: If you get duplicate symbol errors, try --remove-duplicates'
+    assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
     for temp_dir in temp_dirs:
       try_delete(temp_dir)
 
