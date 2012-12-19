@@ -96,6 +96,12 @@ else:
     except:
       pass
     config_file = config_file.replace('{{{ NODE }}}', node)
+    python = 'python'
+    try:
+      python = Popen(['which', 'python'], stdout=PIPE).communicate()[0].replace('\n', '')
+    except:
+      pass
+    config_file = config_file.replace('{{{ PYTHON }}}', python)    
 
     # write
     open(CONFIG_FILE, 'w').write(config_file)
@@ -110,6 +116,7 @@ A settings file has been copied to %s, at absolute path: %s
 It contains our best guesses for the important paths, which are:
 
   LLVM_ROOT       = %s
+  PYTHON          = %s
   NODE_JS         = %s
   EMSCRIPTEN_ROOT = %s
 
@@ -117,7 +124,7 @@ Please edit the file if any of those are incorrect.
 
 This command will now exit. When you are done editing those paths, re-run it.
 ==============================================================================
-''' % (EM_CONFIG, CONFIG_FILE, llvm_root, node, __rootpath__)
+''' % (EM_CONFIG, CONFIG_FILE, llvm_root, python, node, __rootpath__)
     sys.exit(0)
 try:
   config_text = open(CONFIG_FILE, 'r').read() if CONFIG_FILE else EM_CONFIG
@@ -317,6 +324,12 @@ try:
   CLOSURE_COMPILER
 except:
   CLOSURE_COMPILER = path_from_root('third_party', 'closure-compiler', 'compiler.jar')
+
+try:
+  PYTHON
+except:
+  print >> sys.stderr, 'PYTHON not defined in ~/.emscripten, using "python"'
+  PYTHON = 'python'
 
 try:
   JAVA
@@ -862,13 +875,13 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     if output_filename is None:
       output_filename = filename + '.o'
     try_delete(output_filename)
-    Popen(ENV_PREFIX + ['python', EMCC, filename] + args + ['-o', output_filename], stdout=stdout, stderr=stderr, env=env).communicate()
+    Popen([PYTHON, EMCC, filename] + args + ['-o', output_filename], stdout=stdout, stderr=stderr, env=env).communicate()
     assert os.path.exists(output_filename), 'emcc could not create output file'
 
   @staticmethod
   def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None):
     try_delete(output_filename)
-    Popen(ENV_PREFIX + ['python', EMAR, action, output_filename] + filenames, stdout=stdout, stderr=stderr, env=env).communicate()
+    Popen([PYTHON, EMAR, action, output_filename] + filenames, stdout=stdout, stderr=stderr, env=env).communicate()
     if 'c' in action:
       assert os.path.exists(output_filename), 'emar could not create output file'
 
@@ -879,7 +892,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
     # Run Emscripten
     settings = Settings.serialize()
-    compiler_output = timeout_run(Popen(ENV_PREFIX + ['python', EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE), None, 'Compiling')
+    compiler_output = timeout_run(Popen([PYTHON, EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE), None, 'Compiling')
     #print compiler_output
 
     # Detect compilation crashes and errors
