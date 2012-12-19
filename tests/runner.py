@@ -8139,6 +8139,27 @@ f.close()
 
       self.assertContained('result: 62', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+    def test_redundant_link(self):
+      lib = "int mult() { return 1; }"
+      lib_name = os.path.join(self.get_dir(), 'libA.c')
+      open(lib_name, 'w').write(lib)
+      main = r'''
+        #include <stdio.h>
+        int mult();
+        int main() {
+          printf("result: %d\n", mult());
+          return 0;
+        }
+      '''
+      main_name = os.path.join(self.get_dir(), 'main.c')
+      open(main_name, 'w').write(main)
+
+      Building.emcc(lib_name, output_filename='libA.so')
+
+      Building.emcc(main_name, ['libA.so']*2, output_filename='a.out.js')
+
+      self.assertContained('result: 1', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
     def test_abspaths(self):
       # Includes with absolute paths are generally dangerous, things like -I/usr/.. will get to system local headers, not our portable ones.
 
