@@ -7,6 +7,7 @@ import os
 # this helps projects using emscripten find it
 EMSCRIPTEN_ROOT = os.path.expanduser(os.getenv('EMSCRIPTEN') or '{{{ EMSCRIPTEN_ROOT }}}')
 LLVM_ROOT = os.path.expanduser(os.getenv('LLVM') or '{{{ LLVM_ROOT }}}')
+PYTHON = os.path.expanduser(os.getenv('PYTHON') or '{{{ PYTHON }}}')
 
 # See below for notes on which JS engine(s) you need
 NODE_JS = os.path.expanduser(os.getenv('NODE') or '{{{ NODE }}}')
