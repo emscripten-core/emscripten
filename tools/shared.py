@@ -511,6 +511,14 @@ def read_pgo_data(filename):
     'overflows_lines': overflows_lines
   }
 
+def unique_ordered(values): # return a list of unique values in an input list, without changing order (list(set(.)) would change order randomly)
+  seen = set()
+  def check(value):
+    if value in seen: return False
+    seen.add(value)
+    return True
+  return filter(check, values)
+
 # Settings. A global singleton. Not pretty, but nicer than passing |, settings| everywhere
 
 class Settings:
@@ -787,7 +795,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     try_delete(target)
 
     # Finish link
-    actual_files = list(set(actual_files)) # tolerate people trying to link a.so a.so etc.
+    actual_files = unique_ordered(actual_files) # tolerate people trying to link a.so a.so etc.
     if DEBUG: print >>sys.stderr, 'emcc: llvm-linking:', actual_files
     output = Popen([LLVM_LINK] + actual_files + ['-o', target], stdout=PIPE).communicate()[0]
     assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
