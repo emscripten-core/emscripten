@@ -1533,6 +1533,12 @@ var LibrarySDL = {
 
   SDL_GL_SwapBuffers: function() {},
 
+  // TODO
+
+  SDL_SetGamma: function(r, g, b) {
+    return -1;
+  },
+
   // Misc
 
   SDL_InitSubSystem: function(flags) { return 0 },
