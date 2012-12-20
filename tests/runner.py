@@ -3605,6 +3605,25 @@ The current type of b is: 9
                    extra_emscripten_args=['-H', 'libc/time.h'])
                    #extra_emscripten_args=['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/langinfo.h,libc/time.h'])
 
+    def test_timeb(self):
+      # Confirms they are called in reverse order
+      src = r'''
+        #include <stdio.h>
+        #include <assert.h>
+        #include <sys/timeb.h>
+
+        int main() {
+          timeb tb;
+          tb.timezone = 1;
+          printf("*%d\n", ftime(&tb));
+          assert(tb.time > 10000);
+          assert(tb.timezone == 0);
+          assert(tb.dstflag == 0);
+          return 0;
+        }
+        '''
+      self.do_run(src, '*0\n')
+
     def test_intentional_fault(self):
       # Some programs intentionally segfault themselves, we should compile that into a throw
       src = r'''
