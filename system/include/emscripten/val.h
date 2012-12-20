@@ -109,7 +109,7 @@ namespace emscripten {
             return val(internal::_emval_get_property_by_unsigned_long(handle, key));
         }
 
-        val eval_global_method(const char* objectName, const char* methodName) {
+        val eval_global_method(const char* objectName, const char* methodName) const {
             return val(internal::_emval_eval_global_method(handle, objectName, methodName));
         }
 
