@@ -58,6 +58,7 @@ function __emval_new_cstring(str) {
 }
 
 function __emval_has_property(handle, k) {
+    k = Pointer_stringify(k);
     return _emval_handle_array[handle].value.hasOwnProperty(k);
 }
 
