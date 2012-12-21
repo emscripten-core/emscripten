@@ -904,7 +904,7 @@ namespace emscripten {
 
         template<class ConcreteWrapperType>
         static std::shared_ptr<ConcreteWrapperType> cloneToSharedWrapperPtr(InterfaceType& i) {
-            return std::dynamic_pointer_cast<ConcreteWrapperType>(cloneToSharedPtr<ConcreteWrapperType>(i));
+            return std::make_shared<ConcreteWrapperType>(&i);
         }
 
         void initialize(internal::EM_VAL handle) {
