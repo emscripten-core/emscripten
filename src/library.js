@@ -5886,6 +5886,26 @@ LibraryManager.library = {
   },
 
   // ==========================================================================
+  // sys/timeb.h
+  // ==========================================================================
+
+  __timeb_struct_layout: Runtime.generateStructInfo([
+    ['i32', 'time'],
+    ['i16', 'millitm'],
+    ['i16', 'timezone'],
+    ['i16', 'dstflag']
+  ]),
+  ftime__deps: ['__timeb_struct_layout'],
+  ftime: function(p) {
+    var millis = Date.now();
+    {{{ makeSetValue('p', '___timeb_struct_layout.time', 'Math.floor(millis/1000)', 'i32') }}};
+    {{{ makeSetValue('p', '___timeb_struct_layout.millitm', 'millis % 1000', 'i16') }}};
+    {{{ makeSetValue('p', '___timeb_struct_layout.timezone', '0', 'i16') }}}; // TODO
+    {{{ makeSetValue('p', '___timeb_struct_layout.dstflag', '0', 'i16') }}}; // TODO
+    return 0;
+  },
+
+  // ==========================================================================
   // sys/times.h
   // ==========================================================================
 

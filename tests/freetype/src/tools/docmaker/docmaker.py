@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 #
 #  DocMaker (c) 2002, 2004, 2008 David Turner <david@freetype.org>
 #

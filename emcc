@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 '''
 emcc - compiler helper script
@@ -322,11 +322,6 @@ Options that are modified or new in %s include:
                            -v to Clang, and also enable EMCC_DEBUG
                            to details emcc's operations
 
-  --remove-duplicates      If set, will remove duplicate symbols when
-                           linking. This can be useful because
-                           llvm-link's behavior is not as permissive
-                           as ld is.
-
   --jcache                 Use a JavaScript cache. This is disabled by
                            default. When enabled, emcc will store the
                            results of compilation in a cache and check
@@ -596,7 +591,6 @@ try:
   ignore_dynamic_linking = False
   shell_path = shared.path_from_root('src', 'shell.html')
   js_libraries = []
-  remove_duplicates = False
   keep_debug = False
   bind = False
   jcache = False
@@ -705,7 +699,7 @@ try:
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i] == '--remove-duplicates':
-      remove_duplicates = True
+      print >> sys.stderr, 'emcc: warning: --remove-duplicates is deprecated as it is no longer needed. If you cannot link without it, file a bug with a testcase'
       newargs[i] = ''
     elif newargs[i] == '--jcache':
       jcache = True
@@ -912,7 +906,7 @@ try:
         # We have a specified target (-o <target>), which is not JavaScript or HTML, and
         # we have multiple files: Link them
         if DEBUG: print >> sys.stderr, 'emcc: link: ' + str(temp_files), specified_target
-        shared.Building.link(temp_files, specified_target, remove_duplicates=remove_duplicates)
+        shared.Building.link(temp_files, specified_target)
     exit(0)
 
   ## Continue on to create JavaScript
@@ -931,9 +925,9 @@ try:
     # dlmalloc
     def create_dlmalloc():
       if DEBUG: print >> sys.stderr, 'emcc: building dlmalloc for cache'
-      execute(shared.ENV_PREFIX + ['python', shared.EMCC, shared.path_from_root('system', 'lib', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')], stdout=stdout, stderr=stderr)
+      execute([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')], stdout=stdout, stderr=stderr)
       # we include the libc++ new stuff here, so that the common case of using just new/delete is quick to link
-      execute(shared.ENV_PREFIX + ['python', shared.EMXX, shared.path_from_root('system', 'lib', 'libcxx', 'new.cpp'), '-g', '-o', in_temp('new.o')], stdout=stdout, stderr=stderr)
+      execute([shared.PYTHON, shared.EMXX, shared.path_from_root('system', 'lib', 'libcxx', 'new.cpp'), '-g', '-o', in_temp('new.o')], stdout=stdout, stderr=stderr)
       shared.Building.link([in_temp('dlmalloc.o'), in_temp('new.o')], in_temp('dlmalloc_full.o'))
       return in_temp('dlmalloc_full.o')
     def fix_dlmalloc():
@@ -956,7 +950,7 @@ try:
       os = []
       for src in ['algorithm.cpp', 'condition_variable.cpp', 'future.cpp', 'iostream.cpp', 'memory.cpp', 'random.cpp', 'stdexcept.cpp', 'system_error.cpp', 'utility.cpp', 'bind.cpp', 'debug.cpp', 'hash.cpp', 'mutex.cpp', 'string.cpp', 'thread.cpp', 'valarray.cpp', 'chrono.cpp', 'exception.cpp', 'ios.cpp', 'locale.cpp', 'regex.cpp', 'strstream.cpp', 'typeinfo.cpp']:
         o = in_temp(src + '.o')
-        execute(shared.ENV_PREFIX + ['python', shared.EMXX, shared.path_from_root('system', 'lib', 'libcxx', src), '-o', o], stdout=stdout, stderr=stderr)
+        execute([shared.PYTHON, shared.EMXX, shared.path_from_root('system', 'lib', 'libcxx', src), '-o', o], stdout=stdout, stderr=stderr)
         os.append(o)
       shared.Building.link(os, in_temp('libcxx.bc'))
       return in_temp('libcxx.bc')
@@ -975,7 +969,7 @@ try:
       os = []
       for src in ['private_typeinfo.cpp']:
         o = in_temp(src + '.o')
-        execute(shared.ENV_PREFIX + ['python', shared.EMXX, shared.path_from_root('system', 'lib', 'libcxxabi', 'src', src), '-o', o], stdout=stdout, stderr=stderr)
+        execute([shared.PYTHON, shared.EMXX, shared.path_from_root('system', 'lib', 'libcxxabi', 'src', src), '-o', o], stdout=stdout, stderr=stderr)
         os.append(o)
       shared.Building.link(os, in_temp('libcxxabi.bc'))
       return in_temp('libcxxabi.bc')
@@ -1027,7 +1021,7 @@ try:
      (not LEAVE_INPUTS_RAW and not (suffix(temp_files[0]) in BITCODE_SUFFIXES or suffix(temp_files[0]) in DYNAMICLIB_SUFFIXES) and shared.Building.is_ar(temp_files[0])):
     linker_inputs = temp_files + extra_files_to_link
     if DEBUG: print >> sys.stderr, 'emcc: linking: ', linker_inputs
-    shared.Building.link(linker_inputs, in_temp(target_basename + '.bc'), remove_duplicates=remove_duplicates)
+    shared.Building.link(linker_inputs, in_temp(target_basename + '.bc'))
     final = in_temp(target_basename + '.bc')
   else:
     if not LEAVE_INPUTS_RAW:
@@ -1061,13 +1055,14 @@ try:
       if DEBUG: save_intermediate('opt', 'bc')
       # Do LTO in a separate pass to work around LLVM bug XXX (see failure e.g. in cubescript)
     if shared.Building.can_build_standalone():
+      # If we can LTO, do it before dce, since it opens up dce opportunities
       if llvm_lto and shared.Building.can_use_unsafe_opts():
         if not shared.Building.can_inline(): link_opts.append('-disable-inlining')
-        link_opts.append('-std-link-opts')
+        # do not internalize in std-link-opts - it ignores internalize-public-api-list - and add a manual internalize
+        link_opts += ['-disable-internalize'] + shared.Building.get_safe_internalize() + ['-std-link-opts']
       else:
-        # At least remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
-        link_opts += ['-internalize', '-globaldce']
-    if link_opts:
+        # At minimum remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
+        link_opts += shared.Building.get_safe_internalize() + ['-globaldce']
       if DEBUG: print >> sys.stderr, 'emcc: LLVM linktime:', link_opts
       shared.Building.llvm_opt(in_temp(target_basename + '.bc'), link_opts)
       if DEBUG: save_intermediate('linktime', 'bc')
@@ -1081,7 +1076,7 @@ try:
 
   if AUTODEBUG:
     if DEBUG: print >> sys.stderr, 'emcc: autodebug'
-    execute(shared.ENV_PREFIX + ['python', shared.AUTODEBUGGER, final, final + '.ad.ll'])
+    execute([shared.PYTHON, shared.AUTODEBUGGER, final, final + '.ad.ll'])
     final += '.ad.ll'
     if DEBUG: save_intermediate('autodebug', 'll')
 
@@ -1104,7 +1099,7 @@ try:
       file_args += embed_files
     if Compression.on:
       file_args += ['--compress', Compression.encoder, Compression.decoder, Compression.js_name]
-    code = execute(shared.ENV_PREFIX + ['python', shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE)[0]
+    code = execute([shared.PYTHON, shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE)[0]
     src = open(final).read().replace('// {{PRE_RUN_ADDITIONS}}', '// {{PRE_RUN_ADDITIONS}}\n' + code)
     final += '.files.js'
     open(final, 'w').write(src)

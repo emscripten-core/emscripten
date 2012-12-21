@@ -6132,4 +6132,12 @@ function _mallocNoU($bytes) {
   return $mem_0;
   return null;
 }
+function phi() {
+  if (wat()) {
+    var $10 = 1;
+  } else {
+    var $10 = (_init_mparams() | 0) != 0;
+  }
+  var $10;
+}
 
