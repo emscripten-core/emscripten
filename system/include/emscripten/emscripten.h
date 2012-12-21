@@ -186,6 +186,8 @@ float emscripten_random();
  */
 void emscripten_async_wget(const char* url, const char* file, void (*onload)(const char*), void (*onerror)(const char*));
 
+void emscripten_async_wget2(const char* url, const char* file,  const char* requesttype, const char* param, void *arg, void (*onload)(void*, const char*), void (*onerror)(void*, int), void (*onprogress)(void*, int));
+
 /*
  * Prepare a file in asynchronous way. This does just the
  * preparation part of emscripten_async_wget, that is, it
