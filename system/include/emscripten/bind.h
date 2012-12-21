@@ -902,6 +902,11 @@ namespace emscripten {
             return std::shared_ptr<InterfaceType>(ip);
         }
 
+        template<class ConcreteWrapperType>
+        static std::shared_ptr<ConcreteWrapperType> cloneToSharedWrapperPtr(InterfaceType& i) {
+            return std::dynamic_pointer_cast<ConcreteWrapperType>(cloneToSharedPtr<ConcreteWrapperType>(i));
+        }
+
         void initialize(internal::EM_VAL handle) {
             if (jsobj) {
                 internal::_embind_fatal_error(
