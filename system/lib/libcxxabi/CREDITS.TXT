@@ -13,10 +13,22 @@ E: hhinnant@apple.com
 D: Architect and primary coauthor of libc++abi
 
 N: Marshall Clow
-E: marshall@idio.com
 E: mclow.lists@gmail.com
-E: mclow@qualcomm.com
+E: marshall@idio.com
 D: Architect and primary coauthor of libc++abi
 
 N: Nick Kledzik
 E: kledzik@apple.com
+
+N: Andrew Morrow
+E: andrew.c.morrow@gmail.com
+D: Minor patches and fixes
+
+N: Erik Olofsson
+E: erik.olofsson@hansoft.se
+E: erik@olofsson.info
+D: Minor patches and fixes
+
+N: Nowar Gu
+E: wenhan.gu@gmail.com
+D: Minor patches and fixes

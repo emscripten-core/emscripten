@@ -501,6 +501,19 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
   });
 
+  // function for filtering functions for label debugging
+  if (LABEL_FUNCTION_FILTERS.length > 0) {
+    var LABEL_FUNCTION_FILTER_SET = set(LABEL_FUNCTION_FILTERS);
+    var functionNameFilterTest = function(ident) {
+      return (ident in LABEL_FUNCTION_FILTER_SET);
+    };
+  } else {
+    // no filters are specified, all function names are printed
+    var functionNameFilterTest = function(ident) {
+      return true;
+    }
+  }
+
   // function reconstructor & post-JS optimizer
   substrate.addActor('FunctionReconstructor', {
     funcs: {},
@@ -624,7 +637,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         }
       });
 
-      if (LABEL_DEBUG) func.JS += "  Module.print(INDENT + ' Entering: " + func.ident + ": ' + Array.prototype.slice.call(arguments)); INDENT += '  ';\n";
+      if (LABEL_DEBUG && functionNameFilterTest(func.ident)) func.JS += "  Module.print(INDENT + ' Entering: " + func.ident + ": ' + Array.prototype.slice.call(arguments)); INDENT += '  ';\n";
 
       // Walk function blocks and generate JS
       function walkBlock(block, indent) {
@@ -633,7 +646,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         function getLabelLines(label, indent, relooping) {
           if (!label) return '';
           var ret = '';
-          if (LABEL_DEBUG >= 2) {
+          if ((LABEL_DEBUG >= 2) && functionNameFilterTest(func.ident)) {
             ret += indent + "Module.print(INDENT + '" + func.ident + ":" + label.ident + "');\n";
           }
           if (EXECUTION_TIMEOUT > 0) {
@@ -745,7 +758,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
       func.JS += walkBlock(func.block, '  ');
       // Finalize function
-      if (LABEL_DEBUG) func.JS += "  INDENT = INDENT.substr(0, INDENT.length-2);\n";
+      if (LABEL_DEBUG && functionNameFilterTest(func.ident)) func.JS += "  INDENT = INDENT.substr(0, INDENT.length-2);\n";
       // Add an unneeded return, needed for strict mode to not throw warnings in some cases.
       // If we are not relooping, then switches make it unimportant to have this (and, we lack hasReturn anyhow)
       if (RELOOP && func.lines.length > 0 && func.labels.filter(function(label) { return label.hasReturn }).length > 0) {
@@ -1079,7 +1092,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           +    'PROFILING_NODE = __parentProfilingNode__ '
           +  '}\n';
     }
-    if (LABEL_DEBUG) {
+    if (LABEL_DEBUG && functionNameFilterTest(item.funcData.ident)) {
       ret += "Module.print(INDENT + 'Exiting: " + item.funcData.ident + "');\n"
           +  "INDENT = INDENT.substr(0, INDENT.length-2);\n";
     }

@@ -132,6 +132,12 @@ var SAFE_HEAP_LOG = 0; // Log out all SAFE_HEAP operations
 
 var LABEL_DEBUG = 0; // 1: Print out functions as we enter them
                      // 2: Also print out each label as we enter it
+var LABEL_FUNCTION_FILTERS = []; // Filters for function label debug.
+                                 // The items for this array will be used
+                                 // as filters for function names. Only the
+                                 // labels of functions that is equaled to
+                                 // one of the filters are printed out
+                                 // When the array is empty, the filter is disabled.
 var EXCEPTION_DEBUG = 1; // Print out exceptions in emscriptened code
 
 var LIBRARY_DEBUG = 0; // Print out when we enter a library call (library*.js). You can also unset
@@ -201,9 +207,10 @@ var NAMED_GLOBALS = 0; // If 1, we use global variables for globals. Otherwise
 var PROFILE = 0; // Enables runtime profiling. See test_profiling for a usage example.
 
 var EXPORT_ALL = 0; // If true, we export all the symbols
-var EXPORTED_FUNCTIONS = ['_main', '_malloc', '_free']; // Functions that are explicitly exported, so they are guaranteed to
-                                                        // be accessible outside of the generated code even after running closure compiler.
-                                                        // Note the necessary prefix of "_".
+var EXPORTED_FUNCTIONS = ['_main']; // Functions that are explicitly exported. These functions are kept alive
+                                    // through LLVM dead code elimination, and also made accessible outside of
+                                    // the generated code even after running closure compiler (on "Module").
+                                    // Note the necessary prefix of "_".
 
 var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = ['memcpy', 'memset', 'malloc', 'free', '$Browser']; // JS library functions (C functions implemented in JS)
                                                                                            // that we include by default. If you want to make sure

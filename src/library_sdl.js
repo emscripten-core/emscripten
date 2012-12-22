@@ -898,7 +898,7 @@ var LibrarySDL = {
   },
 
   SDL_GetError: function() {
-    return allocate(intArrayFromString("SDL is cool"), 'i8');
+    return allocate(intArrayFromString("unknown SDL-emscripten error"), 'i8');
   },
 
   SDL_CreateRGBSurface: function(flags, width, height, depth, rmask, gmask, bmask, amask) {
@@ -1536,6 +1536,12 @@ var LibrarySDL = {
   },
 
   SDL_GL_SwapBuffers: function() {},
+
+  // TODO
+
+  SDL_SetGamma: function(r, g, b) {
+    return -1;
+  },
 
   // Misc
 

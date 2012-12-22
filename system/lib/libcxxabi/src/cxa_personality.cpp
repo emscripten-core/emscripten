@@ -48,19 +48,36 @@
 | callSiteEncoding | (char) | Encoding for Call Site Table |
 +------------------+--+-----+-----+------------------------+--------------------------+
 | callSiteTableLength | (ULEB128) | Call Site Table length, used to find Action table |
-+---------------------+-----------+------------------------------------------------+--+
-| Beginning of Call Site Table            If the current ip lies within the        |
++---------------------+-----------+---------------------------------------------------+
+#if !__arm__
++---------------------+-----------+------------------------------------------------+
+| Beginning of Call Site Table            The current ip lies within the           |
 | ...                                     (start, length) range of one of these    |
-|                                         call sites, there may be action needed.  |
+|                                         call sites. There may be action needed.  |
 | +-------------+---------------------------------+------------------------------+ |
 | | start       | (encoded with callSiteEncoding) | offset relative to funcStart | |
-| | length      | (encoded with callSiteEncoding) | lenght of code fragment      | |
+| | length      | (encoded with callSiteEncoding) | length of code fragment      | |
 | | landingPad  | (encoded with callSiteEncoding) | offset relative to lpStart   | |
 | | actionEntry | (ULEB128)                       | Action Table Index 1-based   | |
 | |             |                                 | actionEntry == 0 -> cleanup  | |
 | +-------------+---------------------------------+------------------------------+ |
 | ...                                                                              |
-+---------------------------------------------------------------------+------------+
++----------------------------------------------------------------------------------+
+#else  // __arm_
++---------------------+-----------+------------------------------------------------+
+| Beginning of Call Site Table            The current ip is a 1-based index into   |
+| ...                                     this table.  Or it is -1 meaning no      |
+|                                         action is needed.  Or it is 0 meaning    |
+|                                         terminate.                               |
+| +-------------+---------------------------------+------------------------------+ |
+| | landingPad  | (ULEB128)                       | offset relative to lpStart   | |
+| | actionEntry | (ULEB128)                       | Action Table Index 1-based   | |
+| |             |                                 | actionEntry == 0 -> cleanup  | |
+| +-------------+---------------------------------+------------------------------+ |
+| ...                                                                              |
++----------------------------------------------------------------------------------+
+#endif  // __arm_
++---------------------------------------------------------------------+
 | Beginning of Action Table       ttypeIndex == 0 : cleanup           |
 | ...                             ttypeIndex  > 0 : catch             |
 |                                 ttypeIndex  < 0 : exception spec    |
@@ -175,7 +192,7 @@ readULEB128(const uint8_t** data)
 /// @param data reference variable holding memory pointer to decode from
 /// @returns decoded value
 static
-uintptr_t
+intptr_t
 readSLEB128(const uint8_t** data)
 {
     uintptr_t result = 0;
@@ -191,7 +208,7 @@ readSLEB128(const uint8_t** data)
     *data = p;
     if ((byte & 0x40) && (shift < (sizeof(result) << 3)))
         result |= static_cast<uintptr_t>(~0) << shift;
-    return result;
+    return static_cast<intptr_t>(result);
 }
 
 /// Read a pointer encoded value and advance pointer 
@@ -219,7 +236,7 @@ readEncodedPointer(const uint8_t** data, uint8_t encoding)
         result = readULEB128(&p);
         break;
     case DW_EH_PE_sleb128:
-        result = readSLEB128(&p);
+        result = static_cast<uintptr_t>(readSLEB128(&p));
         break;
     case DW_EH_PE_udata2:
         result = *((uint16_t*)p);
@@ -230,19 +247,19 @@ readEncodedPointer(const uint8_t** data, uint8_t encoding)
         p += sizeof(uint32_t);
         break;
     case DW_EH_PE_udata8:
-        result = *((uint64_t*)p);
+        result = static_cast<uintptr_t>(*((uint64_t*)p));
         p += sizeof(uint64_t);
         break;
     case DW_EH_PE_sdata2:
-        result = *((int16_t*)p);
+        result = static_cast<uintptr_t>(*((int16_t*)p));
         p += sizeof(int16_t);
         break;
     case DW_EH_PE_sdata4:
-        result = *((int32_t*)p);
+        result = static_cast<uintptr_t>(*((int32_t*)p));
         p += sizeof(int32_t);
         break;
     case DW_EH_PE_sdata8:
-        result = *((int64_t*)p);
+        result = static_cast<uintptr_t>(*((int64_t*)p));
         p += sizeof(int64_t);
         break;
     default:
@@ -292,7 +309,7 @@ call_terminate(bool native_exception, _Unwind_Exception* unwind_exception)
 
 static
 const __shim_type_info*
-get_shim_type_info(int64_t ttypeIndex, const uint8_t* classInfo,
+get_shim_type_info(uint64_t ttypeIndex, const uint8_t* classInfo,
                    uint8_t ttypeEncoding, bool native_exception,
                    _Unwind_Exception* unwind_exception)
 {
@@ -381,6 +398,41 @@ get_thrown_object_ptr(_Unwind_Exception* unwind_exception)
     return adjustedPtr;
 }
 
+namespace
+{
+
+struct scan_results
+{
+    int64_t        ttypeIndex;   // > 0 catch handler, < 0 exception spec handler, == 0 a cleanup
+    const uint8_t* actionRecord;         // Currently unused.  Retained to ease future maintenance.
+    const uint8_t* languageSpecificData;  // Needed only for __cxa_call_unexpected
+    uintptr_t      landingPad;   // null -> nothing found, else something found
+    void*          adjustedPtr;  // Used in cxa_exception.cpp
+    _Unwind_Reason_Code reason;  // One of _URC_FATAL_PHASE1_ERROR,
+                                 //        _URC_FATAL_PHASE2_ERROR,
+                                 //        _URC_CONTINUE_UNWIND,
+                                 //        _URC_HANDLER_FOUND
+};
+
+}  // unnamed namespace
+
+static
+void
+set_registers(_Unwind_Exception* unwind_exception, _Unwind_Context* context,
+              const scan_results& results)
+{
+#if __arm__
+    _Unwind_SetGR(context, 0, reinterpret_cast<uintptr_t>(unwind_exception));
+    _Unwind_SetGR(context, 1, static_cast<uintptr_t>(results.ttypeIndex));
+#else
+    _Unwind_SetGR(context, __builtin_eh_return_data_regno(0),
+                                 reinterpret_cast<uintptr_t>(unwind_exception));
+    _Unwind_SetGR(context, __builtin_eh_return_data_regno(1),
+                                    static_cast<uintptr_t>(results.ttypeIndex));
+#endif
+    _Unwind_SetIP(context, results.landingPad);
+}
+
 /*
     There are 3 types of scans needed:
 
@@ -401,24 +453,6 @@ get_thrown_object_ptr(_Unwind_Exception* unwind_exception)
         May terminate for invalid exception table.
         _UA_CLEANUP_PHASE && !_UA_HANDLER_FRAME
 */
-
-namespace
-{
-
-struct scan_results
-{
-    int64_t        ttypeIndex;   // > 0 catch handler, < 0 exception spec handler, == 0 a cleanup
-    const uint8_t* actionRecord;         // Currently unused.  Retained to ease future maintenance.
-    const uint8_t* languageSpecificData;  // Needed only for __cxa_call_unexpected
-    uintptr_t      landingPad;   // null -> nothing found, else something found
-    void*          adjustedPtr;  // Used in cxa_exception.cpp
-    _Unwind_Reason_Code reason;  // One of _URC_FATAL_PHASE1_ERROR,
-                                 //        _URC_FATAL_PHASE2_ERROR,
-                                 //        _URC_CONTINUE_UNWIND,
-                                 //        _URC_HANDLER_FOUND
-};
-
-}  // unnamed namespace
 
 static
 void
@@ -477,7 +511,19 @@ scan_eh_tab(scan_results& results, _Unwind_Action actions, bool native_exception
     // Get beginning current frame's code (as defined by the 
     // emitted dwarf code)
     uintptr_t funcStart = _Unwind_GetRegionStart(context);
+#if __arm__
+    if (ip == uintptr_t(-1))
+    {
+        // no action
+        results.reason = _URC_CONTINUE_UNWIND;
+        return;
+    }
+    else if (ip == 0)
+        call_terminate(native_exception, unwind_exception);
+    // ip is 1-based index into call site table
+#else  // __arm__
     uintptr_t ipOffset = ip - funcStart;
+#endif  // __arm__
     const uint8_t* classInfo = NULL;
     // Note: See JITDwarfEmitter::EmitExceptionTable(...) for corresponding
     //       dwarf emission
@@ -498,14 +544,18 @@ scan_eh_tab(scan_results& results, _Unwind_Action actions, bool native_exception
     // Walk call-site table looking for range that 
     // includes current PC. 
     uint8_t callSiteEncoding = *lsda++;
-    uint32_t callSiteTableLength = readULEB128(&lsda);
+#if __arm__
+    (void)callSiteEncoding;  // On arm callSiteEncoding is never used
+#endif
+    uint32_t callSiteTableLength = static_cast<uint32_t>(readULEB128(&lsda));
     const uint8_t* callSiteTableStart = lsda;
     const uint8_t* callSiteTableEnd = callSiteTableStart + callSiteTableLength;
     const uint8_t* actionTableStart = callSiteTableEnd;
     const uint8_t* callSitePtr = callSiteTableStart;
-    while (true)
+    while (callSitePtr < callSiteTableEnd)
     {
         // There is one entry per call site.
+#if !__arm__
         // The call sites are non-overlapping in [start, start+length)
         // The call sites are ordered in increasing value of start
         uintptr_t start = readEncodedPointer(&callSitePtr, callSiteEncoding);
@@ -513,8 +563,15 @@ scan_eh_tab(scan_results& results, _Unwind_Action actions, bool native_exception
         uintptr_t landingPad = readEncodedPointer(&callSitePtr, callSiteEncoding);
         uintptr_t actionEntry = readULEB128(&callSitePtr);
         if ((start <= ipOffset) && (ipOffset < (start + length)))
+#else  // __arm__
+        // ip is 1-based index into this table
+        uintptr_t landingPad = readULEB128(&callSitePtr);
+        uintptr_t actionEntry = readULEB128(&callSitePtr);
+        if (--ip == 0)
+#endif  // __arm__
         {
             // Found the call site containing ip.
+#if !__arm__
             if (landingPad == 0)
             {
                 // No handler here
@@ -522,6 +579,9 @@ scan_eh_tab(scan_results& results, _Unwind_Action actions, bool native_exception
                 return;
             }
             landingPad = (uintptr_t)lpStart + landingPad;
+#else  // __arm__
+            ++landingPad;
+#endif  // __arm__
             if (actionEntry == 0)
             {
                 // Found a cleanup
@@ -550,9 +610,9 @@ scan_eh_tab(scan_results& results, _Unwind_Action actions, bool native_exception
                     // Found a catch, does it actually catch?
                     // First check for catch (...)
                     const __shim_type_info* catchType =
-                        get_shim_type_info(ttypeIndex, classInfo,
-                                           ttypeEncoding, native_exception,
-                                           unwind_exception);
+                        get_shim_type_info(static_cast<uint64_t>(ttypeIndex),
+                                           classInfo, ttypeEncoding,
+                                           native_exception, unwind_exception);
                     if (catchType == 0)
                     {
                         // Found catch (...) catches everything, including foreign exceptions
@@ -713,6 +773,7 @@ scan_eh_tab(scan_results& results, _Unwind_Action actions, bool native_exception
                 action += actionOffset;
             }  // there is no break out of this loop, only return
         }
+#if !__arm__
         else if (ipOffset < start)
         {
             // There is no call site for this ip
@@ -720,7 +781,12 @@ scan_eh_tab(scan_results& results, _Unwind_Action actions, bool native_exception
             // Possible stack corruption.
             call_terminate(native_exception, unwind_exception);
         }
-    }  // there is no break out of this loop, only return
+#endif  // !__arm__
+    }  // there might be some tricky cases which break out of this loop
+
+    // It is possible that no eh table entry specify how to handle
+    // this exception. By spec, terminate it immediately.
+    call_terminate(native_exception, unwind_exception);
 }
 
 // public API
@@ -772,7 +838,12 @@ _UA_CLEANUP_PHASE
 */
 
 _Unwind_Reason_Code
-__gxx_personality_v0(int version, _Unwind_Action actions, uint64_t exceptionClass,
+#if __arm__
+__gxx_personality_sj0
+#else
+__gxx_personality_v0
+#endif
+                    (int version, _Unwind_Action actions, uint64_t exceptionClass,
                      _Unwind_Exception* unwind_exception, _Unwind_Context* context)
 {
     if (version != 1 || unwind_exception == 0 || context == 0)
@@ -832,9 +903,7 @@ __gxx_personality_v0(int version, _Unwind_Action actions, uint64_t exceptionClas
                     call_terminate(native_exception, unwind_exception);
             }
             // Jump to the handler
-            _Unwind_SetGR(context, __builtin_eh_return_data_regno(0), (uintptr_t)unwind_exception);
-            _Unwind_SetGR(context, __builtin_eh_return_data_regno(1), results.ttypeIndex);
-            _Unwind_SetIP(context, results.landingPad);
+            set_registers(unwind_exception, context, results);
             return _URC_INSTALL_CONTEXT;
         }
         // Either we didn't do a phase 1 search (due to forced unwinding), or
@@ -844,9 +913,7 @@ __gxx_personality_v0(int version, _Unwind_Action actions, uint64_t exceptionClas
         if (results.reason == _URC_HANDLER_FOUND)
         {
             // Found a non-catching handler.  Jump to it:
-            _Unwind_SetGR(context, __builtin_eh_return_data_regno(0), (uintptr_t)unwind_exception);
-            _Unwind_SetGR(context, __builtin_eh_return_data_regno(1), results.ttypeIndex);
-            _Unwind_SetIP(context, results.landingPad);
+            set_registers(unwind_exception, context, results);
             return _URC_INSTALL_CONTEXT;
         }
         // Did not find a cleanup.  Return the results of the scan
@@ -910,6 +977,7 @@ __cxa_call_unexpected(void* arg)
             //   uint8_t ttypeEncoding
             uint8_t lpStartEncoding = *lsda++;
             const uint8_t* lpStart = (const uint8_t*)readEncodedPointer(&lsda, lpStartEncoding);
+            (void)lpStart;  // purposefully unused.  Just needed to increment lsda.
             uint8_t ttypeEncoding = *lsda++;
             if (ttypeEncoding == DW_EH_PE_omit)
                 std::__terminate(t_handler);

@@ -96,6 +96,12 @@ else:
     except:
       pass
     config_file = config_file.replace('{{{ NODE }}}', node)
+    python = 'python'
+    try:
+      python = Popen(['which', 'python'], stdout=PIPE).communicate()[0].replace('\n', '')
+    except:
+      pass
+    config_file = config_file.replace('{{{ PYTHON }}}', python)    
 
     # write
     open(CONFIG_FILE, 'w').write(config_file)
@@ -110,6 +116,7 @@ A settings file has been copied to %s, at absolute path: %s
 It contains our best guesses for the important paths, which are:
 
   LLVM_ROOT       = %s
+  PYTHON          = %s
   NODE_JS         = %s
   EMSCRIPTEN_ROOT = %s
 
@@ -117,7 +124,7 @@ Please edit the file if any of those are incorrect.
 
 This command will now exit. When you are done editing those paths, re-run it.
 ==============================================================================
-''' % (EM_CONFIG, CONFIG_FILE, llvm_root, node, __rootpath__)
+''' % (EM_CONFIG, CONFIG_FILE, llvm_root, python, node, __rootpath__)
     sys.exit(0)
 try:
   config_text = open(CONFIG_FILE, 'r').read() if CONFIG_FILE else EM_CONFIG
@@ -128,7 +135,7 @@ except Exception, e:
 
 # Expectations
 
-EXPECTED_LLVM_VERSION = (3,1)
+EXPECTED_LLVM_VERSION = (3,2)
 
 def check_clang_version():
   expected = 'clang version ' + '.'.join(map(str, EXPECTED_LLVM_VERSION))
@@ -165,7 +172,7 @@ def check_node_version():
 # we re-check sanity when the settings are changed)
 # We also re-check sanity and clear the cache when the version changes
 
-EMSCRIPTEN_VERSION = '1.0.1a'
+EMSCRIPTEN_VERSION = '1.1.0'
 
 def check_sanity(force=False):
   try:
@@ -319,6 +326,12 @@ except:
   CLOSURE_COMPILER = path_from_root('third_party', 'closure-compiler', 'compiler.jar')
 
 try:
+  PYTHON
+except:
+  print >> sys.stderr, 'PYTHON not defined in ~/.emscripten, using "python"'
+  PYTHON = 'python'
+
+try:
   JAVA
 except:
   print >> sys.stderr, 'JAVA not defined in ~/.emscripten, using "java"'
@@ -333,7 +346,7 @@ except:
 # Force a simple, standard target as much as possible: target 32-bit linux, and disable various flags that hint at other platforms
 COMPILER_OPTS = COMPILER_OPTS + ['-m32', '-U__i386__', '-U__x86_64__', '-U__i386', '-U__x86_64', '-U__SSE__', '-U__SSE2__', '-U__MMX__',
                                  '-UX87_DOUBLE_ROUNDING', '-UHAVE_GCC_ASM_FOR_X87', '-DEMSCRIPTEN', '-U__STRICT_ANSI__', '-U__CYGWIN__',
-                                 '-D__STDC__', '-Xclang', '-triple=i386-pc-linux-gnu', '-D__IEEE_LITTLE_ENDIAN']
+                                 '-D__STDC__', '-Xclang', '-triple=i386-pc-linux-gnu', '-D__IEEE_LITTLE_ENDIAN', '-fno-math-errno']
 
 
 USE_EMSDK = not os.environ.get('EMMAKEN_NO_SDK')
@@ -498,6 +511,14 @@ def read_pgo_data(filename):
     'signs_lines': signs_lines,
     'overflows_lines': overflows_lines
   }
+
+def unique_ordered(values): # return a list of unique values in an input list, without changing order (list(set(.)) would change order randomly)
+  seen = set()
+  def check(value):
+    if value in seen: return False
+    seen.add(value)
+    return True
+  return filter(check, values)
 
 # Settings. A global singleton. Not pretty, but nicer than passing |, settings| everywhere
 
@@ -713,7 +734,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     Popen([LLVM_EXTRACT, filename, '-delete', '-func=' + symbol, '-o', filename], stderr=PIPE).communicate()
 
   @staticmethod
-  def link(files, target, remove_duplicates=False):
+  def link(files, target):
     actual_files = []
     unresolved_symbols = set(['main']) # tracking unresolveds is necessary for .a linking, see below. (and main is always a necessary symbol)
     resolved_symbols = set()
@@ -774,26 +795,11 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
           os.chdir(cwd)
     try_delete(target)
 
-    if remove_duplicates:
-      # Remove duplicate symbols. This is a workaround for how we compile .a files, we try to
-      # emulate ld behavior which is permissive TODO: cache llvm-nm results
-      seen_symbols = set()
-      print >> sys.stderr, actual_files
-      for actual in actual_files:
-        symbols = Building.llvm_nm(actual)
-        dupes = seen_symbols.intersection(symbols.defs)
-        if len(dupes) > 0:
-          print >> sys.stderr, 'emcc: warning: removing duplicates in', actual
-          for dupe in dupes:
-            print >> sys.stderr, 'emcc: warning: removing duplicate', dupe
-            Building.remove_symbol(actual, dupe)
-          Popen([LLVM_EXTRACT, actual, '-delete', '-glob=.str', '-o', actual], stderr=PIPE).communicate() # garbage that appears here
-        seen_symbols = seen_symbols.union(symbols.defs)
-
     # Finish link
+    actual_files = unique_ordered(actual_files) # tolerate people trying to link a.so a.so etc.
     if DEBUG: print >>sys.stderr, 'emcc: llvm-linking:', actual_files
     output = Popen([LLVM_LINK] + actual_files + ['-o', target], stdout=PIPE).communicate()[0]
-    assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output + '\nemcc: If you get duplicate symbol errors, try --remove-duplicates'
+    assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
     for temp_dir in temp_dirs:
       try_delete(temp_dir)
 
@@ -878,13 +884,13 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     if output_filename is None:
       output_filename = filename + '.o'
     try_delete(output_filename)
-    Popen(ENV_PREFIX + ['python', EMCC, filename] + args + ['-o', output_filename], stdout=stdout, stderr=stderr, env=env).communicate()
+    Popen([PYTHON, EMCC, filename] + args + ['-o', output_filename], stdout=stdout, stderr=stderr, env=env).communicate()
     assert os.path.exists(output_filename), 'emcc could not create output file'
 
   @staticmethod
   def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None):
     try_delete(output_filename)
-    Popen(ENV_PREFIX + ['python', EMAR, action, output_filename] + filenames, stdout=stdout, stderr=stderr, env=env).communicate()
+    Popen([PYTHON, EMAR, action, output_filename] + filenames, stdout=stdout, stderr=stderr, env=env).communicate()
     if 'c' in action:
       assert os.path.exists(output_filename), 'emar could not create output file'
 
@@ -895,7 +901,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
     # Run Emscripten
     settings = Settings.serialize()
-    compiler_output = timeout_run(Popen(ENV_PREFIX + ['python', EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE), None, 'Compiling')
+    compiler_output = timeout_run(Popen([PYTHON, EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE), None, 'Compiling')
     #print compiler_output
 
     # Detect compilation crashes and errors
@@ -915,6 +921,12 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
   @staticmethod
   def can_inline():
     return Settings.INLINING_LIMIT == 0
+
+  @staticmethod
+  def get_safe_internalize():
+    exports = ','.join(map(lambda exp: exp[1:], Settings.EXPORTED_FUNCTIONS))
+    # internalize carefully, llvm 3.2 will remove even main if not told not to
+    return ['-internalize', '-internalize-public-api-list=' + exports]
 
   @staticmethod
   def pick_llvm_opts(optimization_level):
@@ -951,7 +963,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
           opts.append('-basicaa') # makes fannkuch slow but primes fast
 
         if Building.can_build_standalone():
-          opts.append('-internalize')
+          opts += Building.get_safe_internalize()
 
         opts.append('-globalopt')
         opts.append('-ipsccp')
@@ -1111,7 +1123,12 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
       def make(opt_level):
         raw = RELOOPER + '.raw.js'
-        Building.emcc(os.path.join('relooper', 'Relooper.cpp'), ['-I' + os.path.join('relooper'), '--post-js', os.path.join('relooper', 'emscripten', 'glue.js'), '-s', 'TOTAL_MEMORY=52428800', '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["memcpy", "memset", "malloc", "free", "puts"]', '-O' + str(opt_level), '--closure', '0'], raw)
+        Building.emcc(os.path.join('relooper', 'Relooper.cpp'), ['-I' + os.path.join('relooper'), '--post-js',
+          os.path.join('relooper', 'emscripten', 'glue.js'),
+          '-s', 'TOTAL_MEMORY=52428800',
+          '-s', 'EXPORTED_FUNCTIONS=["_rl_set_output_buffer","_rl_make_output_buffer","_rl_new_block","_rl_delete_block","_rl_block_add_branch_to","_rl_new_relooper","_rl_delete_relooper","_rl_relooper_add_block","_rl_relooper_calculate","_rl_relooper_render"]',
+          '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["memcpy", "memset", "malloc", "free", "puts"]',
+          '-O' + str(opt_level), '--closure', '0'], raw)
         f = open(RELOOPER, 'w')
         f.write("// Relooper, (C) 2012 Alon Zakai, MIT license, https://github.com/kripken/Relooper\n")
         f.write("var Relooper = (function() {\n");
