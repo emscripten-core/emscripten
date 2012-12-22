@@ -182,7 +182,12 @@ function makeInvoker(name, argCount, argTypes, invoker, fn) {
         for (var i = 1; i < argCount; ++i) {
             args[i] = argTypes[i].toWireType(destructors, arguments[i-1]);
         }
-        var rv = argTypes[0].fromWireType(invoker.apply(null, args));
+        var rv = invoker.apply(null, args);
+        if (argTypes[0].hasOwnProperty('fromWireTypeAutoDowncast')) {
+            rv = argTypes[0].fromWireTypeAutoDowncast(rv);
+        } else {
+            rv = argTypes[0].fromWireType(rv);
+        }
         runDestructors(destructors);
         return rv;
     };
@@ -367,12 +372,14 @@ function __embind_register_struct_field(
 function __embind_register_smart_ptr(
     pointerType,
     pointeeType,
+    isPolymorphic,
     name,
     destructor,
     getPointee
 ) {
     name = Pointer_stringify(name);
     var pointeeTypeImpl = requireRegisteredType(pointeeType, 'class');
+    pointeeTypeImpl.smartPointerType = pointerType;
     destructor = FUNCTION_TABLE[destructor];
     getPointee = FUNCTION_TABLE[getPointee];
     
@@ -416,6 +423,44 @@ function __embind_register_smart_ptr(
     registerType(pointerType, name, {
         name: name,
         Handle: Handle,
+        fromWireTypeAutoDowncast: function(ptr) {
+            if (!getPointee(ptr)) {
+                destructor(ptr);
+                return null;
+            }
+            if (isPolymorphic) {
+                // todo: clean up this code
+                var pointee = getPointee(ptr);
+                var toType = ___getDynamicPointerType(pointee);
+                var toTypeImpl = null;
+                if (toType === null || toType === pointeeType) {
+                    return new Handle(ptr);
+                }
+                // todo: getDerivationPath is expensive -- cache the result
+                var derivation = Module.__getDerivationPath(toType, pointeeType);
+                var candidate = null;
+                for (var i = 0; i < derivation.size(); i++) {
+                    candidate = derivation.at(i);
+                    toTypeImpl = typeRegistry[candidate];
+                    if (toTypeImpl) {
+                        break;
+                    }
+                }
+                derivation.delete();
+                if (toTypeImpl === null) {
+                    return new Handle(ptr);
+                }
+                var toTypePointerImpl = requireRegisteredType(toTypeImpl.smartPointerType);
+                // todo: need to clone the ptr here (really??)
+                var castPtr = toTypePointerImpl.fromWireType(ptr);
+                // todo: do we really need ___dynamicPointerCast here? We know what type we're starting with.
+                castPtr.ptr = ___dynamicPointerCast(pointee, candidate);
+                // todo: we need to release the pre-cast pointer, don't we? how did this get past the tests?
+                return castPtr;
+            } else {
+                return new Handle(ptr);
+            }
+        },
         fromWireType: function(ptr) {
             if (!getPointee(ptr)) {
                 destructor(ptr);
@@ -493,6 +538,7 @@ function __embind_register_vector(
     });
 }
 
+// TODO: null pointers are always zero (not a Handle) in Javascript
 function __embind_register_class(
     classType,
     pointerType,
@@ -513,7 +559,7 @@ function __embind_register_class(
             }
         };
         
-        h.count = {value: 1};
+        h.count = {value: 1, ptr: ptr };
         h.ptr = ptr;
 
         for(var prop in Handle.prototype) {
@@ -532,7 +578,7 @@ function __embind_register_class(
         var clone = Object.create(Handle.prototype);
         clone.count = this.count;
         clone.ptr = this.ptr;
-        
+
         clone.count.value += 1;
         return clone;
     };
@@ -543,6 +589,8 @@ function __embind_register_class(
         return rv;
     };
 
+    // todo: test delete with upcast and downcast multiply derived pointers
+    // todo: then replace this.count.ptr below with this.ptr and make sure it fails
     Handle.prototype['delete'] = function() {
         if (!this.ptr) {
             throw new BindingError(classType.name + ' instance already deleted');
@@ -550,7 +598,7 @@ function __embind_register_class(
 
         this.count.value -= 1;
         if (0 === this.count.value) {
-            destructor(this.ptr);
+            destructor(this.count.ptr);
         }
         this.ptr = undefined;
     };
@@ -581,7 +629,7 @@ function __embind_register_class(
     var pointerName = name + '*';
     registerType(pointerType, pointerName, {
         name: pointerName,
-        fromWireType: function(ptr) {
+        fromWireTypeAutoDowncast: function(ptr) {
             if (isPolymorphic) {
                 var toType = ___getDynamicPointerType(ptr);
                 var toTypeImpl = null;
@@ -602,13 +650,16 @@ function __embind_register_class(
                     return new Handle(ptr);
                 }
                 var toTypePointerImpl = requireRegisteredType(toTypeImpl.pointerType);
-                var castPtr = ___dynamicPointerCast(ptr, classType, candidate);
-                return toTypePointerImpl.fromWireTypeStatic(castPtr);
+                var handle = toTypePointerImpl.fromWireType(ptr);
+                handle.ptr = ___staticPointerCast(handle.ptr, classType, candidate);
+                // todo: can come back -1 or -2!! Throw appropriate exception
+                return handle;
             } else {
-                return new Handle(ptr);
-            }
+                handle = new Handle(ptr);
+           }
+            return handle;
         },
-        fromWireTypeStatic: function(ptr) {
+        fromWireType: function(ptr) {
             return new Handle(ptr);
         },
         toWireType: function(destructors, o) {
@@ -688,8 +739,12 @@ function __embind_register_class_method(
         for (var i = 1; i < argCount; ++i) {
             args[i + 1] = argTypes[i].toWireType(destructors, arguments[i-1]);
         }
-
-        var rv = argTypes[0].fromWireType(invoker.apply(null, args));
+        var rv = invoker.apply(null, args);
+        if (argTypes[0].hasOwnProperty('fromWireTypeAutoDowncast')) {
+            rv = argTypes[0].fromWireTypeAutoDowncast(rv);
+        } else {
+            rv = argTypes[0].fromWireType(rv);
+        }
         runDestructors(destructors);
         return rv;
     };
@@ -698,6 +753,7 @@ function __embind_register_class_method(
 /*global ___staticPointerCast: false*/
 function __embind_register_cast_method(
     classType,
+    isPolymorphic,
     methodName,
     returnType,
     invoker
@@ -716,42 +772,75 @@ function __embind_register_cast_method(
         if (arguments.length !== 0) {
             throw new BindingError('emscripten binding method ' + humanName + ' called with arguments, none expected');
         }
-
+        if (isPolymorphic) {
+            // todo: this is all only to validate the cast -- cache the result
+            var runtimeType = ___getDynamicPointerType(this.ptr);
+            var derivation = Module.__getDerivationPath(returnType, runtimeType); // downcast is valid
+            var size = derivation.size();
+            derivation.delete();
+            if (size == 0) {
+                derivation = Module.__getDerivationPath(runtimeType, returnType); // upcast is valid
+                size = derivation.size();
+                derivation.delete();
+                if (size == 0) {
+                    // todo: return zero
+                    return returnTypeImpl.fromWireType(0);
+                }
+            }
+        }
         var args = new Array(1);
         args[0] = this.ptr;
         var rv = returnTypeImpl.fromWireType(invoker.apply(null, args));
-        rv.count = this.count; // the cast value shares the reference count of the original pointer, but does not increment it
+        rv.count = this.count;
         this.count.value ++;
         return rv;
     };
 }
 
 function __embind_register_pointer_cast_method(
-    classType,
-    methodName,
+    pointerType,
     returnType,
+    returnPointeeType,
+    isPolymorphic,
+    methodName,
     invoker
 ) {
-    classType = requireRegisteredType(classType, 'class');
+    var pointerTypeImpl = requireRegisteredType(pointerType, 'smart pointer class');
     methodName = Pointer_stringify(methodName);
-    var humanName = classType.name + '.' + methodName;
+    var humanName = pointerTypeImpl.name + '.' + methodName;
 
-    returnType = requireRegisteredType(returnType, 'method ' + humanName + ' return value');
+    var returnTypeImpl = requireRegisteredType(returnType, 'method ' + humanName + ' return value');
     invoker = FUNCTION_TABLE[invoker];
 
-    classType.Handle.prototype[methodName] = function() {
+    pointerTypeImpl.Handle.prototype[methodName] = function() {
         if (!this.ptr) {
             throw new BindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
         }
         if (arguments.length !== 0) {
             throw new BindingError('emscripten binding method ' + humanName + ' called with arguments, none expected');
         }
+        if (isPolymorphic) {
+            // todo: just validating the cast -- cache the result
+            // todo: throw exception instead of returning zero
+            var runtimeType = ___getDynamicPointerType(this.ptr);
+            var derivation = Module.__getDerivationPath(returnPointeeType, runtimeType); // downcast is valid
+            var size = derivation.size();
+            derivation.delete();
+            if (size == 0) {
+                derivation = Module.__getDerivationPath(runtimeType, returnPointeeType); // upcast is valid
+                size = derivation.size();
+                derivation.delete();
+                if (size == 0) {
+                    return 0;
+                }
+            }
+        }
         var args = new Array(2);
         var newPtr = _malloc(8);
         args[0] = newPtr;
         args[1] = this.smartPointer;
         invoker.apply(null,args);
-        var rv = returnType.fromWireType(newPtr); // in case ptr needs to be adjusted for multiple inheritance
+        var rv = returnTypeImpl.fromWireType(newPtr);
         return rv;
     };
 }

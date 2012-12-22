@@ -138,19 +138,19 @@ namespace emscripten {
                 return derivationPath;
             }
 
-            void* EMSCRIPTEN_KEEPALIVE __staticPointerCast(void* p, int dv, int bs) {
+            void* EMSCRIPTEN_KEEPALIVE __staticPointerCast(void* p, int from, int to) {
                 std::vector<std::vector<const __cxxabiv1::__class_type_info*>> paths;
                 int direction = 1;
 
-                const std::type_info* dv1 = (std::type_info*)dv;
-                const std::type_info* bs1 = (std::type_info*)bs;
-                const __cxxabiv1::__class_type_info* dv2 = dynamic_cast<const __cxxabiv1::__class_type_info*>(dv1);
-                const __cxxabiv1::__class_type_info* bs2 = dynamic_cast<const __cxxabiv1::__class_type_info*>(bs1);
+                const std::type_info* from1 = (std::type_info*)from;
+                const std::type_info* to1 = (std::type_info*)to;
+                const __cxxabiv1::__class_type_info* from2 = dynamic_cast<const __cxxabiv1::__class_type_info*>(from1);
+                const __cxxabiv1::__class_type_info* to2 = dynamic_cast<const __cxxabiv1::__class_type_info*>(to1);
 
-                if (dv2 && bs2) {
-                    __cxxabiv1::__getDerivationPaths(dv2, bs2, std::vector<const __cxxabiv1::__class_type_info*>(), paths);
+                if (from2 && to2) {
+                    __cxxabiv1::__getDerivationPaths(from2, to2, std::vector<const __cxxabiv1::__class_type_info*>(), paths);
                     if (paths.size() == 0) {
-                        __cxxabiv1::__getDerivationPaths(bs2, dv2, std::vector<const __cxxabiv1::__class_type_info*>(), paths);
+                        __cxxabiv1::__getDerivationPaths(to2, from2, std::vector<const __cxxabiv1::__class_type_info*>(), paths);
                         direction = -1;
                     }
                 }
@@ -189,10 +189,14 @@ namespace emscripten {
 
             // __dynamicPointerCast performs a C++ dynamic_cast<>() operation, but allowing run-time specification of
             // the from and to pointer types.
-            int EMSCRIPTEN_KEEPALIVE __dynamicPointerCast(int p, int from, int to) {
+            int EMSCRIPTEN_KEEPALIVE __dynamicPointerCast(int p, int to) {
                 // The final parameter is a place-holder for a hint, a feature which is not currently implemented
                 // in the emscripten runtime. The compiler passes a dummy value of -1, and so do we.
-                return (int)__dynamic_cast((void *)p, (const std::type_info*)from, (const std::type_info *)to, -1);
+                int ret = (int)__staticPointerCast((void *)p, __getDynamicPointerType(p), to);
+                if (ret < 0) {
+                    return 0;
+                }
+                return ret;
             }
 
             const char* EMSCRIPTEN_KEEPALIVE __typeName(int p) {
