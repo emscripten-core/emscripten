@@ -143,6 +143,8 @@ def run_on_js(filename, passes, js_engine, jcache):
   else:
     filenames = []
 
+  for filename in filenames: temp_files.note(filename)
+
   filename += '.jo.js'
   f = open(filename, 'w')
   f.write(pre);
