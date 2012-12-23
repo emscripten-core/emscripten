@@ -430,7 +430,7 @@ class TempFiles:
 
   def run_and_clean(self, func):
     try:
-      func()
+      return func()
     finally:
       self.clean()
 

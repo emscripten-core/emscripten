@@ -26,7 +26,8 @@ def run_on_chunk(command):
   f.close()
   return filename
 
-def run(filename, passes, js_engine, jcache):
+def run_on_js(filename, passes, js_engine, jcache):
+
   if jcache: shared.JCache.ensure()
 
   if type(passes) == str:
@@ -167,4 +168,7 @@ def run(filename, passes, js_engine, jcache):
     if DEBUG and len(chunks) > 0: print >> sys.stderr, '  saving %d jsfuncchunks to jcache' % len(chunks)
 
   return filename
+
+def run(filename, passes, js_engine, jcache):
+  return temp_files.run_and_clean(lambda: run_on_js(filename, passes, js_engine, jcache))
 
