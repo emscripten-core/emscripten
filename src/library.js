@@ -4751,6 +4751,13 @@ LibraryManager.library = {
     return 32;
   },
 
+  llvm_ctlz_i64__deps: ['llvm_ctlz_i32'],
+  llvm_ctlz_i64: function(l, h) {
+    var ret = _llvm_ctlz_i32(h);
+    if (ret == 32) ret += _llvm_ctlz_i32(l);
+    return ret;
+  },
+
   llvm_trap: function() {
     throw 'trap! ' + new Error().stack;
   },
