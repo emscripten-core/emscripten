@@ -4755,7 +4755,11 @@ LibraryManager.library = {
   llvm_ctlz_i64: function(l, h) {
     var ret = _llvm_ctlz_i32(h);
     if (ret == 32) ret += _llvm_ctlz_i32(l);
+#if USE_TYPED_ARRAYS == 2
+    return [ret, 0];
+#else
     return ret;
+#endif
   },
 
   llvm_trap: function() {

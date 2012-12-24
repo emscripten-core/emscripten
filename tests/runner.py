@@ -1151,15 +1151,18 @@ m_divisor is 1091269979
       '''
       self.do_run(src, ',0,,2,C!,0,C!,0,,65535,C!,0,')
 
-    def test_bswap(self):
+    def test_llvm_intrinsics(self):
       if self.emcc_args == None: return self.skip('needs ta2')
 
       src = r'''
         #include <stdio.h>
+        #include <sys/types.h>
 
         extern "C" {
           extern unsigned short llvm_bswap_i16(unsigned short x);
           extern unsigned int llvm_bswap_i32(unsigned int x);
+          extern int32_t llvm_ctlz_i32(int32_t x);
+          extern int64_t llvm_ctlz_i64(int64_t x);
         }
 
         int main(void) {
@@ -1172,6 +1175,8 @@ m_divisor is 1091269979
             printf("%x,%x,%x,%x\n", y&0xff, (y>>8)&0xff, (y>>16)&0xff, (y>>24)&0xff);
             y = llvm_bswap_i32(y);
             printf("%x,%x,%x,%x\n", y&0xff, (y>>8)&0xff, (y>>16)&0xff, (y>>24)&0xff);
+
+            printf("%d,%d\n", (int)llvm_ctlz_i64(((int64_t)1) << 40), llvm_ctlz_i32(1<<10));
             return 0;
         }
       '''
@@ -1179,6 +1184,7 @@ m_divisor is 1091269979
 c8,ef
 8a,15,de,c5
 c5,de,15,8a
+23,21
 ''')
 
     def test_sha1(self):
