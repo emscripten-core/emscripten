@@ -1040,13 +1040,13 @@ var LibrarySDL = {
   },
 
   SDL_MapRGB: function(fmt, r, g, b) {
-    // Canvas screens are always RGBA
-    return 0xff+((b&0xff)<<8)+((g&0xff)<<16)+((r&0xff)<<24)
+    // Canvas screens are always RGBA, little endian
+    return (r & 0xff)+((g&0xff)<<8) +((b&0xff)<<16)+(0xff<<24)
   },
 
   SDL_MapRGBA: function(fmt, r, g, b, a) {
-    // Canvas screens are always RGBA
-    return (a&0xff)+((b&0xff)<<8)+((g&0xff)<<16)+((r&0xff)<<24)
+    // Canvas screens are always RGBA, little endian
+    return (r & 0xff)+((g&0xff)<<8) +((b&0xff)<<16)+((a&0xff)<<24)
   },
 
   SDL_WM_GrabInput: function() {},
