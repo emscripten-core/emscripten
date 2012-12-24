@@ -5116,8 +5116,8 @@ LibraryManager.library = {
     return ret;
   },
 
-  llvm_expect_i32__inline: function(x, y) {
-    return '((' + x + ')==(' + y + '))';
+  llvm_expect_i32__inline: function(val, expected) {
+    return '(' + val + ')';
   },
 
   llvm_lifetime_start: function() {},
