@@ -16,6 +16,10 @@ f.close()
 lines = data.split('\n')
 in_func = False
 for i in range(len(lines)):
+  if lines[i].startswith('function '):
+    name = lines[i].split('(')[0].split(' ')[1]
+    args = lines[i].split('(')[1].split(')')[0]
+    lines[i] += ' print("call %s(" + [%s] + ")");' % (name, args)
   if lines[i].startswith('function ' + func + '('):
     in_func = True
     continue
