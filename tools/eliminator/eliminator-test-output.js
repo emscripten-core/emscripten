@@ -6142,7 +6142,7 @@ function phi() {
 }
 function intoCond() {
   var $115 = 22;
-  $NumWords = __ZN4llvm15BitstreamCursor4ReadEj($117, 32);
+  var $NumWords = __ZN4llvm15BitstreamCursor4ReadEj($117, 32);
   if (($115 | 0) != 0) {
     HEAP32[$115 >> 2] = $NumWords;
   }
