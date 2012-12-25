@@ -32,6 +32,10 @@ for i in range(len(lines)):
       if 'STACKTOP' not in lines[i] and 'stackBase' not in lines[i]:
         #lines[i] += ''' print("[%4d] %s = " + %s);''' % (i+1, var, var)
         lines[i] += ''' print("%s = " + %s);''' % (var, var)
+    m = re.match('^ +HEAP.*$', lines[i])
+    if m and lines[i].count(' = ') == 1:
+      left, right = lines[i].split(' = ')
+      lines[i] += ''' print("%s = " + %s);''' % (left, left)
 
 print '\n'.join(lines)
 
