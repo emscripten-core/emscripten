@@ -328,13 +328,13 @@ except:
 try:
   PYTHON
 except:
-  print >> sys.stderr, 'PYTHON not defined in ~/.emscripten, using "python"'
+  if DEBUG: print >> sys.stderr, 'PYTHON not defined in ~/.emscripten, using "python"'
   PYTHON = 'python'
 
 try:
   JAVA
 except:
-  print >> sys.stderr, 'JAVA not defined in ~/.emscripten, using "java"'
+  if DEBUG: print >> sys.stderr, 'JAVA not defined in ~/.emscripten, using "java"'
   JAVA = 'java'
 
 # Additional compiler options
