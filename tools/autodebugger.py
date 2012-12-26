@@ -21,8 +21,6 @@ POSTAMBLE = '''
 @.emscripten.autodebug.str.f = private constant [11 x i8] c"AD:%d,%lf\\0A\\00", align 1 ; [#uses=1]
 @.emscripten.autodebug.str.64 = private constant [13 x i8] c"AD:%d,%d,%d\\0A\\00", align 1 ; [#uses=1]
 
-declare i32 @printf(i8*, ...)
-
 ; [#uses=1]
 define void @emscripten_autodebug_i64(i32 %line, i64 %value) {
 entry:
@@ -95,8 +93,6 @@ POSTAMBLE_NEW = '''
 @.emscripten.autodebug.str.2 = private constant [13 x i8] c"AD:%d,%d,%d\\0A\\00", align 1 ; [#uses=1]
 @.emscripten.autodebug.str.f = private constant [11 x i8] c"AD:%d,%lf\\0A\\00", align 1 ; [#uses=1]
 
-declare i32 @printf(i8*, ...)
-
 ; [#uses=1]
 define void @emscripten_autodebug_i64(i32 %line, i64 %value) {
   %1 = trunc i64 %value to i32
@@ -147,6 +143,10 @@ f.close()
 
 if 'declare i32 @printf(' not in data:
   POSTAMBLE += '''
+; [#uses=1]
+declare i32 @printf(i8*, ...)
+'''
+  POSTAMBLE_NEW += '''
 ; [#uses=1]
 declare i32 @printf(i8*, ...)
 '''
