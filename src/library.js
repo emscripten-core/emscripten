@@ -611,7 +611,7 @@ LibraryManager.library = {
     },
 
     deleteFile: function(path) {
-      var path = FS.analyzePath(path);
+      path = FS.analyzePath(path);
       if (!path.parentExists || !path.exists) {
         throw 'Invalid path ' + path;
       }
