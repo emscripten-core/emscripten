@@ -225,30 +225,43 @@ raw = null;
 
 // Pre-process the LLVM assembly
 
-//printErr('JS compiler in action, phase ' + phase);
-
 Debugging.handleMetadata(lines);
 
-if (phase != 'pre') {
-  PassManager.load(read(forwardedDataFile));
+function runPhase(currPhase) {
+  //printErr('// JS compiler in action, phase ' + currPhase + typeof lines + (lines === null));
+  phase = currPhase;
+  if (phase != 'pre') {
+    if (singlePhase) PassManager.load(read(forwardedDataFile));
 
-  if (phase == 'funcs') {
-    PreProcessor.eliminateUnneededIntrinsics(lines);
+    if (phase == 'funcs') {
+      PreProcessor.eliminateUnneededIntrinsics(lines);
+    }
+  }
+
+  // Do it
+
+  var intertyped = intertyper(lines);
+  if (singlePhase) lines = null;
+  var analyzed = analyzer(intertyped);
+  intertyped = null;
+  JSify(analyzed);
+
+  if (DEBUG_MEMORY) {
+    print('zzz. last gc: ' + gc());
+    MemoryDebugger.dump();
+    print('zzz. hanging now!');
+    while(1){};
   }
 }
 
-// Do it
+// Normal operation is for each execution of compiler.js to run a single phase. The calling script sends us exactly the information we need, and it is easy to parallelize operation that way. However, it is also possible to run in an unoptimal multiphase mode, where a single invocation goes from ll to js directly. This is not recommended and will likely do a lot of duplicate processing.
+singlePhase = !!phase;
 
-var intertyped = intertyper(lines);
-lines = null;
-var analyzed = analyzer(intertyped);
-intertyped = null;
-JSify(analyzed);
-
-if (DEBUG_MEMORY) {
-  print('zzz. last gc: ' + gc());
-  MemoryDebugger.dump();
-  print('zzz. hanging now!');
-  while(1){};
+if (singlePhase) {
+  runPhase(phase);
+} else {
+  runPhase('pre');
+  runPhase('funcs');
+  runPhase('post');
 }
 

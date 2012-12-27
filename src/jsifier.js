@@ -1333,8 +1333,10 @@ function JSify(data, functionsOnly, givenFunctions) {
       var generated = itemsDict.functionStub.concat(itemsDict.GlobalVariablePostSet);
       generated.forEach(function(item) { print(indentify(item.JS || '', 2)); });
     } else {
-      assert(data.unparsedGlobalss[0].lines.length == 0, dump([phase, data.unparsedGlobalss]));
-      assert(itemsDict.functionStub.length == 0, dump([phase, itemsDict.functionStub]));
+      if (singlePhase) {
+        assert(data.unparsedGlobalss[0].lines.length == 0, dump([phase, data.unparsedGlobalss]));
+        assert(itemsDict.functionStub.length == 0, dump([phase, itemsDict.functionStub]));
+      }
     }
 
     if (phase == 'pre' || phase == 'funcs') {
