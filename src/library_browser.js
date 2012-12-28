@@ -394,45 +394,44 @@ mergeInto(LibraryManager.library, {
      
     var http = new XMLHttpRequest();
     http.open(_request, _url, true);
-	http.responseType = 'arraybuffer';
+    http.responseType = 'arraybuffer';
     
     // LOAD
     http.onload = function(e) {
-    	if (http.status == 200) {
-	    	FS.createDataFile( _file.substr(0, index), _file.substr(index +1), new Uint8Array(http.response), true, true);
-	    	if (onload) FUNCTION_TABLE[onload](arg,file);
-        } else {
-        	if (onerror) FUNCTION_TABLE[onerror](arg,http.status);
-        }
+      if (http.status == 200) {
+        FS.createDataFile( _file.substr(0, index), _file.substr(index + 1), new Uint8Array(http.response), true, true);
+        if (onload) FUNCTION_TABLE[onload](arg, file);
+      } else {
+        if (onerror) FUNCTION_TABLE[onerror](arg, http.status);
+      }
     };
       
     // ERROR
     http.onerror = function(e) {
-		if (onerror) FUNCTION_TABLE[onerror](arg,http.status);
-	};
+      if (onerror) FUNCTION_TABLE[onerror](arg, http.status);
+    };
 	
-	// PROGRESS
-	http.onprogress = function(e) {
-	  	var percentComplete = (e.position / e.totalSize)*100;
-	  	if (onprogress) FUNCTION_TABLE[onprogress](arg,percentComplete);
-	};
+    // PROGRESS
+    http.onprogress = function(e) {
+      var percentComplete = (e.position / e.totalSize)*100;
+      if (onprogress) FUNCTION_TABLE[onprogress](arg, percentComplete);
+    };
 	  
-	try {  
-	if (http.channel instanceof Ci.nsIHttpChannel)
-    	http.channel.redirectionLimit = 0;
-	} catch (ex) { /* whatever */ }
+	// Useful because the browser can limit the number of redirection
+    try {  
+      if (http.channel instanceof Ci.nsIHttpChannel)
+      http.channel.redirectionLimit = 0;
+    } catch (ex) { /* whatever */ }
 
     if (_request == "POST") {
-		//Send the proper header information along with the request
-		http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-		http.setRequestHeader("Content-length", _param.length);
-		http.setRequestHeader("Connection", "close");
-		
-		http.send(_param);
+      //Send the proper header information along with the request
+      http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+      http.setRequestHeader("Content-length", _param.length);
+      http.setRequestHeader("Connection", "close");
+      http.send(_param);
     } else {
-        http.send(null);
+      http.send(null);
     }
-    
   },
   
   emscripten_async_prepare: function(file, onload, onerror) {
