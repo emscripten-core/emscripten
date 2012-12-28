@@ -76,9 +76,11 @@ if (ENVIRONMENT_IS_NODE) {
   }
 
 } else if (ENVIRONMENT_IS_WEB) {
-  this['print'] = printErr = function(x) {
+  printErr = function(x) {
     console.log(x);
   };
+
+  if (!this['print']) this['print'] = printErr;
 
   this['read'] = function(url) {
     var xhr = new XMLHttpRequest();

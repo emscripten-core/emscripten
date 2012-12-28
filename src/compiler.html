@@ -8,12 +8,22 @@ Open the web console to see stderr output
   arguments = ['', 'hello_world.ll'];
 
   var outputElement = document.getElementById('output');
+  var compilerOutput = '';
   print = function(x) {
-    outputElement.innerHTML += x;
+    //outputElement.innerHTML += x;
+    compilerOutput += x;
+  };
+
+  // For generated code
+  var Module = {
+    print: function(x) {
+      outputElement.innerHTML += x;
+    }
   };
 </script>
 <script src="compiler.js">
 </script>
+<input type="button" value="run!" onclick="eval(compilerOutput)">
 </body>
 </html>
 
