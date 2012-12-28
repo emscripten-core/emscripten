@@ -268,9 +268,11 @@ function compile(raw) {
   }
 }
 
-if (ll_file.indexOf('\n') == -1) {
-  compile(read(ll_file));
-} else {
-  compile(ll_file); // we are given raw .ll
+if (ll_file) {
+  if (ll_file.indexOf(String.fromCharCode(10)) == -1) {
+    compile(read(ll_file));
+  } else {
+    compile(ll_file); // we are given raw .ll
+  }
 }
 
