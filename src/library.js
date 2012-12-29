@@ -3548,21 +3548,42 @@ LibraryManager.library = {
      * this implementation simply uses malloc underneath the call to
      * mmap.
      */
+    if (!_mmap.mappings) _mmap.mappings = {};
     if (stream == -1) {
       var ptr = _malloc(num);
-      _memset(ptr, 0, num);
-      return ptr;
+    } else {
+      var info = FS.streams[stream];
+      if (!info) return -1;
+      var contents = info.object.contents;
+      contents = Array.prototype.slice.call(contents, offset, offset+num);
+      ptr = allocate(contents, 'i8', ALLOC_NORMAL);
     }
-    var info = FS.streams[stream];
-    if (!info) return -1;
-    var contents = info.object.contents;
-    contents = Array.prototype.slice.call(contents, offset, offset+num);
-    return allocate(contents, 'i8', ALLOC_NORMAL);
+    // align to page size
+    var ret = ptr;
+    if (ptr % PAGE_SIZE != 0) {
+      var old = ptr;
+      ptr = _malloc(num + PAGE_SIZE);
+      _memcpy(ptr, old, num);
+      _free(old);
+      ret = alignMemoryPage(ptr);
+    }
+    if (stream == -1) {
+      _memset(ret, 0, num);
+    }
+    _mmap.mappings[ret] = { malloc: ptr, num: num };
+    return ret;
   },
   __01mmap64_: 'mmap',
 
   munmap: function(start, num) {
-    _free(start);
+    if (!_mmap.mappings) _mmap.mappings = {};
+    // TODO: support unmmap'ing parts of allocations
+    var info = _mmap.mappings[start];
+    if (!info) return 0;
+    if (num == info.num) {
+      _mmap.mappings[start] = null;
+      _free(info.malloc);
+    }
     return 0;
   },
 
