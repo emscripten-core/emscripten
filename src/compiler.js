@@ -248,6 +248,8 @@ function compile(raw) {
     intertyped = null;
     JSify(analyzed);
 
+    phase = null;
+
     if (DEBUG_MEMORY) {
       print('zzz. last gc: ' + gc());
       MemoryDebugger.dump();
