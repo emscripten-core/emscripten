@@ -1310,6 +1310,7 @@ function JSify(data, functionsOnly, givenFunctions) {
 
     // Print out global variables and postsets TODO: batching
     if (phase == 'pre') {
+      var legalizedI64sDefault = legalizedI64s;
       legalizedI64s = false;
 
       var globalsData = analyzer(intertyper(data.unparsedGlobalss[0].lines, true), true);
@@ -1332,6 +1333,8 @@ function JSify(data, functionsOnly, givenFunctions) {
 
       var generated = itemsDict.functionStub.concat(itemsDict.GlobalVariablePostSet);
       generated.forEach(function(item) { print(indentify(item.JS || '', 2)); });
+
+      legalizedI64s = legalizedI64sDefault;
     } else {
       if (singlePhase) {
         assert(data.unparsedGlobalss[0].lines.length == 0, dump([phase, data.unparsedGlobalss]));
