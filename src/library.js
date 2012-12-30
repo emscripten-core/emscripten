@@ -3852,6 +3852,7 @@ LibraryManager.library = {
     }
 
     // Find base.
+    var ok = false;
     var finalBase = base;
     if (!finalBase) {
       if ({{{ makeGetValue('str', 0, 'i8') }}} == '0'.charCodeAt(0)) {
@@ -3862,6 +3863,7 @@ LibraryManager.library = {
         } else {
           finalBase = 8;
           str++;
+          ok = true; // we saw an initial zero, perhaps the entire thing is just "0"
         }
       }
     }
@@ -3869,14 +3871,13 @@ LibraryManager.library = {
 
     // Get digits.
     var chr;
-    var ok = false;
     while ((chr = {{{ makeGetValue('str', 0, 'i8') }}}) != 0) {
       var digit = parseInt(String.fromCharCode(chr), finalBase);
       if (isNaN(digit)) {
         break;
       } else {
-        ok = true;
         str++;
+        ok = true;
       }
     }
     if (!ok) {
