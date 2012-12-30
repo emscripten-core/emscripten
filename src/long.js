@@ -1595,7 +1595,7 @@ var i64Math = (function() { // Emscripten wrapper
       }
     },
     modulo: function(xl, xh, yl, yh, unsigned) {
-      if (!Wrapper.two32) Wrapper.makeTwo32();
+      Wrapper.ensureTemps();
       if (!unsigned) {
         var x = new goog.math.Long(xl, xh);
         var y = new goog.math.Long(yl, yh);
