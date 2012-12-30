@@ -6239,7 +6239,7 @@ void*:16
         }
       '''
       self.do_run(src, '*10,22*')
-      
+
     def test_mmap(self):
       Settings.TOTAL_MEMORY = 100*1024*1024
 
@@ -6281,6 +6281,33 @@ void*:16
       '''
       self.do_run(src, 'hello,world')
       self.do_run(src, 'hello,world', force_c=True)
+
+    def test_mmap_file(self):
+      if self.emcc_args is None: return self.skip('requires emcc')
+      self.emcc_args += ['--embed-file', 'data.dat']
+
+      open(self.in_dir('data.dat'), 'w').write('data from the file ' + ('.' * 9000))
+
+      src = r'''
+        #include <stdio.h>
+        #include <sys/mman.h>
+
+        int main() {
+          printf("*\n");
+          FILE *f = fopen("data.dat", "r");
+          char *m;
+          m = (char*)mmap(NULL, 9000, PROT_READ, MAP_PRIVATE, fileno(f), 0);
+          for (int i = 0; i < 20; i++) putchar(m[i]);
+          munmap(m, 9000);
+          printf("\n");
+          m = (char*)mmap(NULL, 9000, PROT_READ, MAP_PRIVATE, fileno(f), 5);
+          for (int i = 0; i < 20; i++) putchar(m[i]);
+          munmap(m, 9000);
+          printf("\n*\n");
+          return 0;
+        }
+      '''
+      self.do_run(src, '*\ndata from the file .\nfrom the file ......\n*\n')
 
     def test_cubescript(self):
       if self.emcc_args is not None and '-O2' in self.emcc_args:

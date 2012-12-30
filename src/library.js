@@ -3563,9 +3563,9 @@ LibraryManager.library = {
     if (ptr % PAGE_SIZE != 0) {
       var old = ptr;
       ptr = _malloc(num + PAGE_SIZE);
-      _memcpy(ptr, old, num);
-      _free(old);
       ret = alignMemoryPage(ptr);
+      _memcpy(ret, old, num);
+      _free(old);
     }
     if (stream == -1) {
       _memset(ret, 0, num);
