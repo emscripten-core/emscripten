@@ -3837,9 +3837,71 @@ LibraryManager.library = {
 
     return ret;
   },
-  strtoll__deps: ['_parseInt'],
+#if USE_TYPED_ARRAYS == 2
+  _parseInt64__deps: ['isspace', '__setErrNo', '$ERRNO_CODES', function() { Types.preciseI64MathUsed = 1 }],
+  _parseInt64: function(str, endptr, base, min, max, unsign) {
+    var start = str;
+
+    // Skip space.
+    while (_isspace({{{ makeGetValue('str', 0, 'i8') }}})) str++;
+
+    // Check for a plus/minus sign.
+    if ({{{ makeGetValue('str', 0, 'i8') }}} == '-'.charCodeAt(0)) {
+      str++;
+    } else if ({{{ makeGetValue('str', 0, 'i8') }}} == '+'.charCodeAt(0)) {
+      str++;
+    }
+
+    // Find base.
+    var finalBase = base;
+    if (!finalBase) {
+      if ({{{ makeGetValue('str', 0, 'i8') }}} == '0'.charCodeAt(0)) {
+        if ({{{ makeGetValue('str+1', 0, 'i8') }}} == 'x'.charCodeAt(0) ||
+            {{{ makeGetValue('str+1', 0, 'i8') }}} == 'X'.charCodeAt(0)) {
+          finalBase = 16;
+          str += 2;
+        } else {
+          finalBase = 8;
+          str++;
+        }
+      }
+    }
+    if (!finalBase) finalBase = 10;
+
+    // Get digits.
+    var chr;
+    var ok = false;
+    while ((chr = {{{ makeGetValue('str', 0, 'i8') }}}) != 0) {
+      var digit = parseInt(String.fromCharCode(chr), finalBase);
+      if (isNaN(digit)) {
+        break;
+      } else {
+        ok = true;
+        str++;
+      }
+    }
+
+    try {
+      i64Math.fromString(Pointer_stringify(start, str - start), finalBase, min, max, unsign);
+    } catch(e) {
+      ___setErrNo(ERRNO_CODES.ERANGE); // not quite correct
+    }
+
+    // Set end pointer.
+    if (endptr) {
+      {{{ makeSetValue('endptr', 0, 'str', '*') }}}
+    }
+
+    // Unsign if needed. XXX
+
+    ret = i64Math.result.slice(0);
+
+    return ret;
+  },
+#endif
+  strtoll__deps: ['_parseInt64'],
   strtoll: function(str, endptr, base) {
-    return __parseInt(str, endptr, base, -9223372036854775200, 9223372036854775200, 64);  // LLONG_MIN, LLONG_MAX; imprecise.
+    return __parseInt64(str, endptr, base, '-9223372036854775808', '9223372036854775807');  // LLONG_MIN, LLONG_MAX.
   },
   strtoll_l: 'strtoll', // no locale support yet
   strtol__deps: ['_parseInt'],
@@ -3852,9 +3914,9 @@ LibraryManager.library = {
     return __parseInt(str, endptr, base, 0, 4294967295, 32, true);  // ULONG_MAX.
   },
   strtoul_l: 'strtoul', // no locale support yet
-  strtoull__deps: ['_parseInt'],
+  strtoull__deps: ['_parseInt64'],
   strtoull: function(str, endptr, base) {
-    return __parseInt(str, endptr, base, 0, 18446744073709551615, 64, true);  // ULONG_MAX; imprecise.
+    return __parseInt64(str, endptr, base, 0, '18446744073709551615', true);  // ULONG_MAX.
   },
   strtoull_l: 'strtoull', // no locale support yet
 
