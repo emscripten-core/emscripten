@@ -3841,7 +3841,6 @@ LibraryManager.library = {
   _parseInt64__deps: ['isspace', '__setErrNo', '$ERRNO_CODES', function() { Types.preciseI64MathUsed = 1 }],
   _parseInt64: function(str, endptr, base, min, max, unsign) {
     var start = str;
-
     // Skip space.
     while (_isspace({{{ makeGetValue('str', 0, 'i8') }}})) str++;
 
@@ -3880,6 +3879,10 @@ LibraryManager.library = {
         str++;
       }
     }
+    if (!ok) {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return 0;
+    }
 
     try {
       i64Math.fromString(Pointer_stringify(start, str - start), finalBase, min, max, unsign);
@@ -3891,8 +3894,6 @@ LibraryManager.library = {
     if (endptr) {
       {{{ makeSetValue('endptr', 0, 'str', '*') }}}
     }
-
-    // Unsign if needed. XXX
 
     ret = i64Math.result.slice(0);
 
