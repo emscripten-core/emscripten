@@ -4763,6 +4763,17 @@ LibraryManager.library = {
     return ((x&0xff)<<24) | (((x>>8)&0xff)<<16) | (((x>>16)&0xff)<<8) | (x>>>24);
   },
 
+  llvm_bswap_i64__deps: ['llvm_bswap_i32'],
+  llvm_bswap_i64: function(l, h) {
+    var retl = _llvm_bswap_i32(h)>>>0;
+    var reth = _llvm_bswap_i32(l)>>>0;
+#if USE_TYPED_ARRAYS == 2
+    return [retl, reth];
+#else
+    throw 'unsupported';
+#endif
+  },
+
   llvm_ctlz_i32: function(x) {
     for (var i=0; i<32; i++) {
         if ( (x & (1 << (31-i))) != 0 ) {
