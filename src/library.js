@@ -3881,7 +3881,7 @@ LibraryManager.library = {
     }
     if (!ok) {
       ___setErrNo(ERRNO_CODES.EINVAL);
-      return 0;
+      return [0, 0];
     }
 
     try {
@@ -3895,7 +3895,7 @@ LibraryManager.library = {
       {{{ makeSetValue('endptr', 0, 'str', '*') }}}
     }
 
-    ret = i64Math.result.slice(0);
+    var ret = i64Math.result.slice(0);
 
     return ret;
   },
