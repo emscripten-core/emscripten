@@ -4834,7 +4834,7 @@ LibraryManager.library = {
     var retl = _llvm_bswap_i32(h)>>>0;
     var reth = _llvm_bswap_i32(l)>>>0;
 #if USE_TYPED_ARRAYS == 2
-    return [retl, reth];
+    {{{ makeStructuralReturn(['retl', 'reth']) }}};
 #else
     throw 'unsupported';
 #endif
