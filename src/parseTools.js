@@ -399,7 +399,10 @@ var UNINDEXABLE_GLOBALS = set(
 
 function isIndexableGlobal(ident) {
   if (!(ident in Variables.globals)) return false;
-  if (ident in UNINDEXABLE_GLOBALS) return false;
+  if (ident in UNINDEXABLE_GLOBALS) {
+    Variables.globals[ident].unIndexable = true;
+    return false;
+  }
   var data = Variables.globals[ident];
   // in asm.js, externals are just globals
   return !data.alias && (ASM_JS || !data.external);
