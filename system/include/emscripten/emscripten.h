@@ -187,6 +187,30 @@ float emscripten_random();
 void emscripten_async_wget(const char* url, const char* file, void (*onload)(const char*), void (*onerror)(const char*));
 
 /*
+ * Data version of emscripten_async_wget. Instead of writing
+ * to a file, it writes to a buffer directly in memory.
+ * This avoids the overhead of using the emulated
+ * filesystem, note however that since files are not used,
+ * It cannot do the 'prepare' stage to set things up for
+ * IMG_Load and so forth (IMG_Load etc. work on files).
+ *
+ * @param arg User-defined data that is passed to the callbacks,
+ *
+ * @param onload Callback on success, with the @arg that
+ *               was provided to this function, a pointer
+ *               to a buffer with the data, and the size
+ *               of the buffer. As in the worker API, the
+ *               data buffer only lives during the
+ *               callback, so you should use it or copy
+ *               it during that time and not later.
+ *
+ * @param onerror An optional callback on failure, with the
+ *                @arg that was provided to this function.
+ *
+ */
+void emscripten_async_wget_data(const char* url, void *arg, void (*onload)(void*, void*, int), void (*onerror)(void*));
+
+/*
  * Prepare a file in asynchronous way. This does just the
  * preparation part of emscripten_async_wget, that is, it
  * works on file data already present, and asynchronously
