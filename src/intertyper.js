@@ -61,7 +61,7 @@ function intertyper(data, sidePass, baseLineNums) {
       var baseLineNumPosition = 0;
       for (var i = 0; i < lines.length; i++) {
         var line = lines[i];
-        lines[i] = null; // lines may be very very large. Allow GCing to occur in the loop by releasing refs here
+        if (singlePhase) lines[i] = null; // lines may be very very large. Allow GCing to occur in the loop by releasing refs here
 
         while (baseLineNumPosition < baseLineNums.length-1 && i >= baseLineNums[baseLineNumPosition+1][0]) {
           baseLineNumPosition++;
@@ -69,11 +69,13 @@ function intertyper(data, sidePass, baseLineNums) {
 
         if (mainPass && (line[0] == '%' || line[0] == '@')) {
           // If this isn't a type, it's a global variable, make a note of the information now, we will need it later
-          var testType = /[@%\w\d\.\" $-]+ = type .*/.exec(line);
+          var parts = line.split(' = ');
+          assert(parts.length >= 2);
+          var left = parts[0], right = parts.slice(1).join(' = ');
+          var testType = /^type .*/.exec(right);
           if (!testType) {
-            var global = /([@%\w\d\.\" $-]+) = .*/.exec(line);
-            var globalIdent = toNiceIdent(global[1]);
-            var testAlias = /[@%\w\d\.\" $-]+ = (hidden )?alias .*/.exec(line);
+            var globalIdent = toNiceIdent(left);
+            var testAlias = /^(hidden )?alias .*/.exec(right);
             Variables.globals[globalIdent] = {
               name: globalIdent,
               alias: !!testAlias,

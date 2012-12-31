@@ -307,7 +307,7 @@ var LibraryManager = {
   loaded: false,
 
   load: function() {
-    assert(!this.library);
+    if (this.library) return;
 
     var libraries = ['library.js', 'library_browser.js', 'library_sdl.js', 'library_gl.js', 'library_glut.js', 'library_xlib.js', 'library_egl.js', 'library_gc.js', 'library_jansson.js'].concat(additionalLibraries);
     for (var i = 0; i < libraries.length; i++) {

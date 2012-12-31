@@ -13,6 +13,7 @@ import os, sys, re
 ALLOW_POINTERS = False
 ALLOW_MISC = True
 MEMCPY = False
+MEMCPY2 = False
 NO_DLMALLOC = True
 
 POSTAMBLE = '''
@@ -89,12 +90,15 @@ return:                                           ; preds = %entry
 
 POSTAMBLE_NEW = '''
 @.emscripten.autodebug.str = private constant [10 x i8] c"AD:%d,%d\\0A\\00", align 1 ; [#uses=1]
+@.emscripten.autodebug.str.2 = private constant [13 x i8] c"AD:%d,%d,%d\\0A\\00", align 1 ; [#uses=1]
 @.emscripten.autodebug.str.f = private constant [11 x i8] c"AD:%d,%lf\\0A\\00", align 1 ; [#uses=1]
 
 ; [#uses=1]
 define void @emscripten_autodebug_i64(i32 %line, i64 %value) {
-  %1 = sitofp i64 %value to double
-  %2 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([11 x i8]* @.emscripten.autodebug.str.f, i32 0, i32 0), i32 %line, double %1) ; [#uses=0]
+  %1 = trunc i64 %value to i32
+  %2 = lshr i64 %value, 32
+  %3 = trunc i64 %2 to i32
+  %4 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([13 x i8]* @.emscripten.autodebug.str.2, i32 0, i32 0), i32 %line, i32 %1, i32 %3) ; [#uses=0]
   ret void
 }
 
@@ -139,6 +143,10 @@ f.close()
 
 if 'declare i32 @printf(' not in data:
   POSTAMBLE += '''
+; [#uses=1]
+declare i32 @printf(i8*, ...)
+'''
+  POSTAMBLE_NEW += '''
 ; [#uses=1]
 declare i32 @printf(i8*, ...)
 '''
@@ -252,20 +260,21 @@ for i in range(len(lines)):
         lines_added += 1
         continue
       if ALLOW_MISC:
-        m = re.match('  %(?P<var>[\w_.]+) = (call|mul|add) (nsw )?(?P<type>i64|i32|i16|i8|float|double+) .*', lines[i])
+        # call is risky - return values can be i32 (i8*) (i16)
+        m = re.match('  %(?P<var>[\w_.]+) = (mul|add) (nsw )?(?P<type>i64|i32|i16|i8|float|double+) .*', lines[i])
         if m:
           index = i+1+lines_added
           lines[i] += '\n  call void @emscripten_autodebug_%s(i32 %d, %s %%%s)' % (m.group('type'), index, m.group('type'), m.group('var'))
           lines_added += 1
           continue
-        m = re.match('  call void @llvm\.memcpy\.p0i8\.p0i8\.i32\(i8\* %(?P<dst>[\w_.]+), i8\* %(?P<src>[\w_.]+), i32 8, i32 (?P<align>\d+),.*', lines[i])
-        if m:
-          index = i+1+lines_added
-          lines[i] += '\n  %%adpretemp%d = bitcast i8* %%%s to i64*' % (index, m.group('src')) + \
-                      '\n  %%adtemp%d = load i64* %%adpretemp%d, align %s' % (index, index, m.group('align')) + \
-                      '\n  call void @emscripten_autodebug_%s(i32 %d, %s %%adtemp%d)' % ('i64', index, 'i64', index)
-          lines_added += 3
-          continue
+        if MEMCPY2:
+          m = re.match('  call void @llvm\.memcpy\.p0i8\.p0i8\.i32\(i8\* %(?P<dst>[\w_.]+), i8\* %(?P<src>[\w_.]+), i32 8, i32 (?P<align>\d+),.*', lines[i])
+          if m:
+            index = i+1+lines_added
+            lines[i] += '\n  %%adtemp%d = load i8* %%%s, align 1' % (index, m.group('src')) + \
+                        '\n  call void @emscripten_autodebug_i8(i32 %d, i8 %%adtemp%d)' % (index, index)
+            lines_added += 3
+            continue
 
   finally:
     if len(pre) > 0:

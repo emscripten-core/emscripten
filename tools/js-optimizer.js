@@ -1937,6 +1937,10 @@ function eliminate(ast, memSafe, asm) {
         } else if (type == 'if') {
           if (allowTracking) {
             traverseInOrder(node[1]); // can eliminate into condition, but nowhere else
+            if (!callsInvalidated) { // invalidate calls, since we cannot eliminate them into an if that may not execute!
+              invalidateCalls();
+              callsInvalidated = true;
+            }
             allowTracking = false;
             traverseInOrder(node[2]); // 2 and 3 could be 'parallel', really..
             if (node[3]) traverseInOrder(node[3]);

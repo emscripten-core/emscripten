@@ -1155,15 +1155,19 @@ m_divisor is 1091269979
       '''
       self.do_run(src, ',0,,2,C!,0,C!,0,,65535,C!,0,')
 
-    def test_bswap(self):
+    def test_llvm_intrinsics(self):
       if self.emcc_args == None: return self.skip('needs ta2')
 
       src = r'''
         #include <stdio.h>
+        #include <sys/types.h>
 
         extern "C" {
           extern unsigned short llvm_bswap_i16(unsigned short x);
           extern unsigned int llvm_bswap_i32(unsigned int x);
+          extern int32_t llvm_ctlz_i32(int32_t x);
+          extern int64_t llvm_ctlz_i64(int64_t x);
+          extern int llvm_expect_i32(int x, int y);
         }
 
         int main(void) {
@@ -1176,6 +1180,11 @@ m_divisor is 1091269979
             printf("%x,%x,%x,%x\n", y&0xff, (y>>8)&0xff, (y>>16)&0xff, (y>>24)&0xff);
             y = llvm_bswap_i32(y);
             printf("%x,%x,%x,%x\n", y&0xff, (y>>8)&0xff, (y>>16)&0xff, (y>>24)&0xff);
+
+            printf("%d,%d\n", (int)llvm_ctlz_i64(((int64_t)1) << 40), llvm_ctlz_i32(1<<10));
+
+            printf("%d\n", llvm_expect_i32(x % 27, 3));
+
             return 0;
         }
       '''
@@ -1183,6 +1192,76 @@ m_divisor is 1091269979
 c8,ef
 8a,15,de,c5
 c5,de,15,8a
+23,21
+13
+''')
+
+    def test_bswap64(self):
+      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
+
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        #include <iostream>
+        #include <string>
+        #include <sstream>
+
+        typedef unsigned long long quint64;   
+
+        using namespace std;
+
+        inline quint64 qbswap(quint64 source)
+        {
+            return 0
+                | ((source & quint64(0x00000000000000ffLL)) << 56)
+                | ((source & quint64(0x000000000000ff00LL)) << 40)
+                | ((source & quint64(0x0000000000ff0000LL)) << 24)
+                | ((source & quint64(0x00000000ff000000LL)) << 8)
+                | ((source & quint64(0x000000ff00000000LL)) >> 8)
+                | ((source & quint64(0x0000ff0000000000LL)) >> 24)
+                | ((source & quint64(0x00ff000000000000LL)) >> 40)
+                | ((source & quint64(0xff00000000000000LL)) >> 56);
+        }
+
+        int main()
+        {
+          quint64 v = strtoull("4433ffeeddccbb00", NULL, 16);
+          printf("%lld\n", v);
+
+	        const string string64bitInt = "4433ffeeddccbb00";
+	        stringstream s(string64bitInt);
+	        quint64 int64bitInt = 0;
+          printf("1\n");
+	        s >> hex >> int64bitInt;
+          printf("2\n");
+	
+	        stringstream out;
+	        out << hex << qbswap(int64bitInt);
+	
+	        cout << out.str() << endl;
+	        cout << hex << int64bitInt << endl;
+	        cout << string64bitInt << endl;
+	
+	        if (out.str() != "bbccddeeff3344")
+	        {
+		        cout << "Failed!" << endl;
+	        }
+	        else
+	        {
+		        cout << "Succeeded!" << endl;
+	        }
+
+          return 0;
+        }
+        '''
+      self.do_run(src, '''4914553019779824384
+1
+2
+bbccddeeff3344
+4433ffeeddccbb00
+4433ffeeddccbb00
+Succeeded!
 ''')
 
     def test_sha1(self):
@@ -6191,7 +6270,7 @@ void*:16
         }
       '''
       self.do_run(src, '*10,22*')
-      
+
     def test_mmap(self):
       self.banned_js_engines = [NODE_JS] # slower, and fail on 64-bit
 
@@ -6203,13 +6282,20 @@ void*:16
         #include <assert.h>
         
         int main(int argc, char *argv[]) {
+            for (int i = 0; i < 10; i++) {
+              int* map = (int*)mmap(0, 5000, PROT_READ | PROT_WRITE,
+                      MAP_SHARED | MAP_ANON, -1, 0);
+              assert(((int)map) % 4096 == 0); // aligned
+              assert(munmap(map, 5000) == 0);
+            }
+
             const int NUM_BYTES = 8 * 1024 * 1024;
             const int NUM_INTS = NUM_BYTES / sizeof(int);
         
             int* map = (int*)mmap(0, NUM_BYTES, PROT_READ | PROT_WRITE,
                     MAP_SHARED | MAP_ANON, -1, 0);
             assert(map != MAP_FAILED);
-        
+
             int i;
         
             for (i = 0; i < NUM_INTS; i++) {
@@ -6228,6 +6314,33 @@ void*:16
       '''
       self.do_run(src, 'hello,world')
       self.do_run(src, 'hello,world', force_c=True)
+
+    def test_mmap_file(self):
+      if self.emcc_args is None: return self.skip('requires emcc')
+      self.emcc_args += ['--embed-file', 'data.dat']
+
+      open(self.in_dir('data.dat'), 'w').write('data from the file ' + ('.' * 9000))
+
+      src = r'''
+        #include <stdio.h>
+        #include <sys/mman.h>
+
+        int main() {
+          printf("*\n");
+          FILE *f = fopen("data.dat", "r");
+          char *m;
+          m = (char*)mmap(NULL, 9000, PROT_READ, MAP_PRIVATE, fileno(f), 0);
+          for (int i = 0; i < 20; i++) putchar(m[i]);
+          munmap(m, 9000);
+          printf("\n");
+          m = (char*)mmap(NULL, 9000, PROT_READ, MAP_PRIVATE, fileno(f), 5);
+          for (int i = 0; i < 20; i++) putchar(m[i]);
+          munmap(m, 9000);
+          printf("\n*\n");
+          return 0;
+        }
+      '''
+      self.do_run(src, '*\ndata from the file .\nfrom the file ......\n*\n')
 
     def test_cubescript(self):
       if self.emcc_args is not None and '-O2' in self.emcc_args:
@@ -8878,7 +8991,7 @@ fixture: interfaces
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'files.cpp'), '-c']).communicate()
       Popen([PYTHON, path_from_root('tools', 'nativize_llvm.py'), os.path.join(self.get_dir(), 'files.o')]).communicate(input)[0]
       output = Popen([os.path.join(self.get_dir(), 'files.o.run')], stdin=open(os.path.join(self.get_dir(), 'stdin')), stdout=PIPE, stderr=PIPE).communicate()
-      self.assertIdentical('''size: 37
+      self.assertContained('''size: 37
 data: 119,97,107,97,32,119,97,107,97,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35
 loop: 119 97 107 97 32 119 97 107 97 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 
 input:inter-active
@@ -8887,9 +9000,6 @@ $
 5 : 10,30,20,11,88
 other=ay file...
 seeked= file.
-seeked=e...
-seeked=,,.
-fscanfed: 10 - hello
 ''', output[0])
       self.assertIdentical('texte\n', output[1])
 

@@ -431,8 +431,8 @@ function JSify(data, functionsOnly, givenFunctions) {
           // name the function; overwrite if it's already named
           snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function _' + ident + '(');
           if (LIBRARY_DEBUG) {
-            snippet = snippet.replace('{', '{ var ret = (function() { if (Runtime.debug) Module.printErr("[library call:' + ident + ': " + Array.prototype.slice.call(arguments).map(Runtime.prettyPrint) + "]"); ');
-            snippet = snippet.substr(0, snippet.length-1) + '}).apply(this, arguments); if (Runtime.debug && typeof ret !== "undefined") Module.printErr("  [     return:" + Runtime.prettyPrint(ret)); return ret; }';
+            snippet = snippet.replace('{', '{ var ret = (function() { if (Runtime.debug) Module.print("[library call:' + ident + ': " + Array.prototype.slice.call(arguments).map(Runtime.prettyPrint) + "]"); ');
+            snippet = snippet.substr(0, snippet.length-1) + '}).apply(this, arguments); if (Runtime.debug && typeof ret !== "undefined") Module.print("  [     return:" + Runtime.prettyPrint(ret)); return ret; }';
           }
           if (ASM_JS) Functions.libraryFunctions[ident] = 1;
         }
@@ -1390,6 +1390,7 @@ function JSify(data, functionsOnly, givenFunctions) {
 
     // Print out global variables and postsets TODO: batching
     if (phase == 'pre') {
+      var legalizedI64sDefault = legalizedI64s;
       legalizedI64s = false;
 
       var globalsData = analyzer(intertyper(data.unparsedGlobalss[0].lines, true), true);
@@ -1412,9 +1413,13 @@ function JSify(data, functionsOnly, givenFunctions) {
 
       var generated = itemsDict.functionStub.concat(itemsDict.GlobalVariablePostSet);
       generated.forEach(function(item) { print(indentify(item.JS || '', 2)); });
+
+      legalizedI64s = legalizedI64sDefault;
     } else {
-      assert(data.unparsedGlobalss[0].lines.length == 0, dump([phase, data.unparsedGlobalss]));
-      assert(itemsDict.functionStub.length == 0, dump([phase, itemsDict.functionStub]));
+      if (singlePhase) {
+        assert(data.unparsedGlobalss[0].lines.length == 0, dump([phase, data.unparsedGlobalss]));
+        assert(itemsDict.functionStub.length == 0, dump([phase, itemsDict.functionStub]));
+      }
     }
 
     if (phase == 'pre' || phase == 'funcs') {

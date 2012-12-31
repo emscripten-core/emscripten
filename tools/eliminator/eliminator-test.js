@@ -8847,5 +8847,17 @@ function phi() {
   }
   var $10;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "b", "c", "f", "g", "h", "py", "r", "t", "f2", "f3", "llvm3_1", "_inflate", "_malloc", "_mallocNoU", "asm", "phi"]
+function intoCond() {
+  var $115 = 22;
+  var $499 = __ZN4llvm15BitstreamCursor4ReadEj($117, 32);
+  var $NumWords = $499;
+  var $500 = $115;
+  var $501 = ($500 | 0) != 0;
+  if ($501) {
+    var $503 = $NumWords;
+    var $504 = $115;
+    HEAP32[$504 >> 2] = $503;
+  }
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "b", "c", "f", "g", "h", "py", "r", "t", "f2", "f3", "llvm3_1", "_inflate", "_malloc", "_mallocNoU", "asm", "phi", "intoCond"]
 

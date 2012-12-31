@@ -1062,7 +1062,6 @@ try:
   if not LEAVE_INPUTS_RAW:
     link_opts = [] if keep_debug else ['-strip-debug']
     if llvm_opts > 0:
-      if DEBUG: print >> sys.stderr, 'emcc: LLVM -O%d' % llvm_opts
       shared.Building.llvm_opt(in_temp(target_basename + '.bc'), llvm_opts)
       if DEBUG: save_intermediate('opt', 'bc')
       # Do LTO in a separate pass to work around LLVM bug XXX (see failure e.g. in cubescript)
@@ -1075,7 +1074,6 @@ try:
       else:
         # At minimum remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
         link_opts += shared.Building.get_safe_internalize() + ['-globaldce']
-      if DEBUG: print >> sys.stderr, 'emcc: LLVM linktime:', link_opts
       shared.Building.llvm_opt(in_temp(target_basename + '.bc'), link_opts)
       if DEBUG: save_intermediate('linktime', 'bc')
 
