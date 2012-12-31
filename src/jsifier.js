@@ -355,6 +355,10 @@ function JSify(data, functionsOnly, givenFunctions) {
             // TODO: make the assert conditional on ASSERTIONS
             js += 'if (globalScope) { assert(!globalScope["' + item.ident + '"]); globalScope["' + item.ident + '"] = ' + item.ident + ' }';
           }
+          if (item.external && !NAMED_GLOBALS) {
+            assert(ASM_JS);
+            js = 'var ' + item.ident + ' = ' + js; // force an explicit naming, even if unnamed globals, for asm forwarding
+          }
           return ret.concat({
             intertype: 'GlobalVariable',
             JS: js,
