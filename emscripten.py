@@ -344,7 +344,8 @@ var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
       del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
     except:
       pass
-    global_vars = forwarded_json['Variables']['globals'].keys() if settings['NAMED_GLOBALS'] else []
+    # If no named globals, only need externals
+    global_vars = map(lambda g: g['name'], filter(lambda g: settings['NAMED_GLOBALS'] or g['external'], forwarded_json['Variables']['globals'].values()))
     global_funcs = ['_' + x for x in forwarded_json['Functions']['libraryFunctions'].keys()]
     asm_global_funcs = ''.join(['  var ' + g + '=env.' + g + ';\n' for g in basic_funcs + global_funcs])
     asm_global_vars = ''.join(['  var ' + g + '=env.' + g + '|0;\n' for g in basic_vars + global_vars])
