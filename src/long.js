@@ -1649,8 +1649,8 @@ var i64Math = (function() { // Emscripten wrapper
         error = true;
       }
       var ret = goog.math.Long.fromString(bignum.toString()); // min-max checks should have clamped this to a range goog.math.Long can handle well
-      Wrapper.result[0] = ret.low_;
-      Wrapper.result[1] = ret.high_;
+      HEAP32[tempDoublePtr>>2] = ret.low_;
+      HEAP32[tempDoublePtr+4>>2] = ret.high_;
       if (error) throw 'range error';
     }
   };

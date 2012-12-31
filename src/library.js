@@ -3885,7 +3885,12 @@ LibraryManager.library = {
     }
     if (!ok) {
       ___setErrNo(ERRNO_CODES.EINVAL);
-      return [0, 0];
+      {{{ makeStructuralReturn(['0', '0']) }}};
+    }
+
+    // Set end pointer.
+    if (endptr) {
+      {{{ makeSetValue('endptr', 0, 'str', '*') }}}
     }
 
     try {
@@ -3894,14 +3899,7 @@ LibraryManager.library = {
       ___setErrNo(ERRNO_CODES.ERANGE); // not quite correct
     }
 
-    // Set end pointer.
-    if (endptr) {
-      {{{ makeSetValue('endptr', 0, 'str', '*') }}}
-    }
-
-    var ret = i64Math.result.slice(0);
-
-    return ret;
+    {{{ makeStructuralReturn([makeGetTempDouble(0), makeGetTempDouble(1)]) }}};
   },
 #endif
   strtoll__deps: ['_parseInt64'],

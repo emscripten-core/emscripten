@@ -1011,7 +1011,7 @@ function asmCoercion(value, type) {
   }
 }
 
-function makeGetTempDouble(i) {
+function makeGetTempDouble(i) { // TODO: Support other than i32
   return makeGetValue('tempDoublePtr', Runtime.getNativeTypeSize('i32')*i, 'i32');
 }
 
