@@ -345,7 +345,7 @@ var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
     except:
       pass
     # If no named globals, only need externals
-    global_vars = map(lambda g: g['name'], filter(lambda g: settings['NAMED_GLOBALS'] or g['external'] or g.get('unIndexable'), forwarded_json['Variables']['globals'].values()))
+    global_vars = map(lambda g: g['name'], filter(lambda g: settings['NAMED_GLOBALS'] or g.get('external') or g.get('unIndexable'), forwarded_json['Variables']['globals'].values()))
     global_funcs = ['_' + x for x in forwarded_json['Functions']['libraryFunctions'].keys()]
     asm_global_funcs = ''.join(['  var ' + g + '=env.' + g + ';\n' for g in basic_funcs + global_funcs])
     asm_global_vars = ''.join(['  var ' + g + '=env.' + g + '|0;\n' for g in basic_vars + global_vars])
