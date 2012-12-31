@@ -31,6 +31,8 @@ void onErrorData(void *arg) {
 }
 
 void wait_wgets() {
+  printf("%d\n", get_count);
+
   if (get_count == 3) {
     emscripten_async_wget_data(
       "http://localhost:8888/screenshot.png",
@@ -101,7 +103,7 @@ int main() {
     onLoaded,
     onError);
 
-  emscripten_set_main_loop(wait_wgets, 0, 0);
+  emscripten_set_main_loop(wait_wgets, 1000, 0);
 
   return 0;
 }
