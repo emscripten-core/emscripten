@@ -3,6 +3,10 @@
 /*global FUNCTION_TABLE, HEAP32*/
 /*global Pointer_stringify, writeStringToMemory*/
 /*global __emval_register, _emval_handle_array, __emval_decref*/
+/*global ___getDynamicPointerType: false*/
+/*global ___dynamicPointerCast: false*/
+/*global ___typeName:false*/
+/*global ___staticPointerCast: false*/
 
 function exposePublicSymbol(name, value) {
     if (Module.hasOwnProperty(name)) {
@@ -32,112 +36,133 @@ function _embind_repr(v) {
 
 var typeRegistry = {};
 
-function registerType(type, name, info) {
+function registerType(type, name, registeredInstance) {
     if (!type) {
         throw new BindingError('type "' + name + '" must have a positive integer typeid pointer');
     }
     if (typeRegistry.hasOwnProperty(type)) {
         throw new BindingError("Cannot register type '" + name + "' twice");
     }
-    typeRegistry[type] = info;
+    registeredInstance.type = type;
+    registeredInstance.name = name;
+    typeRegistry[type] = registeredInstance;
 }
+
+function RegisteredVoid() {
+}
+
+RegisteredVoid.prototype.fromWireType = function() {
+    return undefined;
+};
 
 function __embind_register_void(voidType, name) {
     name = Pointer_stringify(name);
-    registerType(voidType, name, {
-        name: name,
-        fromWireType: function() {
-            return undefined;
-        }
-    });
+    registerType(voidType, name, new RegisteredVoid());
 }
 
-function __embind_register_bool(boolType, name, trueValue, falseValue) {
-    name = Pointer_stringify(name);
-    registerType(boolType, name, {
-        name: name,
-        toWireType: function(destructors, o) {
-            return o ? trueValue : falseValue;
-        },
-        fromWireType: function(wt) {
+function RegisteredBool(trueValue, falseValue) {
+    this.trueValue = trueValue;
+    this.falseValue = falseValue;
+}
+
+RegisteredBool.prototype.toWireType = function(destructors, o) {
+    return o ? this.trueValue : this.falseValue;
+};
+
+RegisteredBool.prototype.fromWireType = function(wt) {
             // ambiguous emscripten ABI: sometimes return values are
             // true or false, and sometimes integers (0 or 1)
             return !!wt;
-        },
-    });
+};
+
+function __embind_register_bool(boolType, name, trueValue, falseValue) {
+    name = Pointer_stringify(name);
+    registerType(boolType, name, new RegisteredBool(trueValue, falseValue));
 }
+
+function RegisteredInteger() {
+}
+
+RegisteredInteger.prototype.toWireType = function(destructors, value) {
+    if (typeof value !== "number") {
+        throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
+    }
+    return value | 0;
+};
+
+RegisteredInteger.prototype.fromWireType = function(value) {
+    return value;
+};
 
 function __embind_register_integer(primitiveType, name) {
     name = Pointer_stringify(name);
-    registerType(primitiveType, name, {
-        name: name,
-        toWireType: function(destructors, value) {
-            if (typeof value !== "number") {
-                throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + name);
-            }
-            return value | 0;
-        },
-        fromWireType: function(value) {
-            return value;
-        }
-    });
+    registerType(primitiveType, name, new RegisteredInteger());
 }
+
+function RegisteredFloat() {
+}
+
+RegisteredFloat.prototype.toWireType = function(destructors, value) {
+    if (typeof value !== "number") {
+        throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' +this.name);
+    }
+    return value;
+};
+
+RegisteredFloat.prototype.fromWireType = function(value) {
+    return value;
+};
 
 function __embind_register_float(primitiveType, name) {
     name = Pointer_stringify(name);
-    registerType(primitiveType, name, {
-        name: name,
-        toWireType: function(destructors, value) {
-            if (typeof value !== "number") {
-                throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + name);
-            }
-            return value;
-        },
-        fromWireType: function(value) {
-            return value;
-        }
-    });
+    registerType(primitiveType, name, new RegisteredFloat());
 }
+
+function RegisteredString(stringType, name) {
+
+}
+
+RegisteredString.prototype.toWireType = function(destructors, value) {
+    var ptr = _malloc(value.length + 1);
+    writeStringToMemory(value, ptr);
+    destructors.push(_free);
+    destructors.push(ptr);
+    return ptr;
+};
+
+RegisteredString.prototype.fromWireType = function(value) {
+    var rv = Pointer_stringify(value);
+    _free(value);
+    return rv;
+};
 
 function __embind_register_cstring(stringType, name) {
     name = Pointer_stringify(name);
-    registerType(stringType, name, {
-        name: name,
-        toWireType: function(destructors, value) {
-            var ptr = _malloc(value.length + 1);
-            writeStringToMemory(value, ptr);
-            destructors.push(_free);
-            destructors.push(ptr);
-            return ptr;
-        },
-        fromWireType: function(value) {
-            var rv = Pointer_stringify(value);
-            _free(value);
-            return rv;
-        }
-    });
+    registerType(stringType, name, new RegisteredString());
 }
+
+function RegisteredEmval() {
+}
+
+RegisteredEmval.prototype.toWireType = function(destructors, value) {
+    return __emval_register(value);
+};
+
+RegisteredEmval.prototype.fromWireType = function(handle) {
+    var rv = _emval_handle_array[handle].value;
+    __emval_decref(handle);
+    return rv;
+};
 
 function __embind_register_emval(emvalType, name) {
     name = Pointer_stringify(name);
-    registerType(emvalType, name, {
-        name: name,
-        toWireType: function(destructors, value) {
-            return __emval_register(value);
-        },
-        fromWireType: function(handle) {
-            var rv = _emval_handle_array[handle].value;
-            __emval_decref(handle);
-            return rv;
-        }
-    });
+    registerType(emvalType, name, new RegisteredEmval());
 }
 
 var BindingError = Error;
 /** @expose */
 Module.BindingError = BindingError;
 
-/*global ___typeName:false*/
 function typeName(type) {
     return Pointer_stringify(___typeName(type));
 }
@@ -183,7 +208,7 @@ function makeInvoker(name, argCount, argTypes, invoker, fn) {
             args[i] = argTypes[i].toWireType(destructors, arguments[i-1]);
         }
         var rv = invoker.apply(null, args);
-        if (argTypes[0].hasOwnProperty('fromWireTypeAutoDowncast')) {
+        if (argTypes[0].fromWireTypeAutoDowncast) {
             rv = argTypes[0].fromWireTypeAutoDowncast(rv);
         } else {
             rv = argTypes[0].fromWireType(rv);
@@ -200,39 +225,41 @@ function __embind_register_function(name, argCount, argTypes, invoker, fn) {
     exposePublicSymbol(name, makeInvoker(name, argCount, argTypes, invoker, fn));
 }
 
+function RegisteredTuple(constructor, destructor) {
+    this.constructor = constructor;
+    this.destructor = destructor;
+    this.elements = [];
+}
+
+RegisteredTuple.prototype.toWireType = function(destructors, o) {
+    var len = this.elements.length;
+    if (len !== o.length) {
+        throw new TypeError("Incorrect number of tuple elements");
+    }
+    var ptr = this.constructor();
+    for (var i = 0; i < len; ++i) {
+        this.elements[i].write(ptr, o[i]);
+    }
+    destructors.push(this.destructor);
+    destructors.push(ptr);
+    return ptr;
+};
+
+RegisteredTuple.prototype.fromWireType = function(ptr) {
+    var len = this.elements.length;
+    var rv = new Array(len);
+    for (var i = 0; i < len; ++i) {
+        rv[i] = this.elements[i].read(ptr);
+    }
+    this.destructor(ptr);
+    return rv;
+};
+
 function __embind_register_tuple(tupleType, name, constructor, destructor) {
     name = Pointer_stringify(name);
     constructor = FUNCTION_TABLE[constructor];
     destructor = FUNCTION_TABLE[destructor];
-
-    var elements = [];
-
-    registerType(tupleType, name, {
-        name: name,
-        elements: elements,
-        fromWireType: function(ptr) {
-            var len = elements.length;
-            var rv = new Array(len);
-            for (var i = 0; i < len; ++i) {
-                rv[i] = elements[i].read(ptr);
-            }
-            destructor(ptr);
-            return rv;
-        },
-        toWireType: function(destructors, o) {
-            var len = elements.length;
-            if (len !== o.length) {
-                throw new TypeError("Incorrect number of tuple elements");
-            }
-            var ptr = constructor();
-            for (var i = 0; i < len; ++i) {
-                elements[i].write(ptr, o[i]);
-            }
-            destructors.push(destructor);
-            destructors.push(ptr);
-            return ptr;
-        }
-    });
+    registerType(tupleType, name, new RegisteredTuple(constructor, destructor));
 }
 
 function copyMemberPointer(memberPointer, memberPointerSize) {
@@ -302,6 +329,38 @@ function __embind_register_tuple_element_accessor(
     });
 }
 
+function RegisteredStruct(constructor, destructor) {
+    this.constructor = constructor;
+    this.destructor = destructor;
+    this.fields = {};
+}
+
+RegisteredStruct.prototype.toWireType = function(destructors, o) {
+    var fields = this.fields;
+    for (var fieldName in fields) {
+        if (!(fieldName in o)) {
+            throw new TypeError('Missing field');
+        }
+    }
+    var ptr = this.constructor();
+    for (fieldName in fields) {
+        fields[fieldName].write(ptr, o[fieldName]);
+    }
+    destructors.push(this.destructor);
+    destructors.push(ptr);
+    return ptr;
+};
+
+RegisteredStruct.prototype.fromWireType = function(ptr) {
+    var fields = this.fields;
+    var rv = {};
+    for (var i in fields) {
+        rv[i] = fields[i].read(ptr);
+    }
+    this.destructor(ptr);
+    return rv;
+};
+
 function __embind_register_struct(
     structType,
     name,
@@ -312,33 +371,7 @@ function __embind_register_struct(
     constructor = FUNCTION_TABLE[constructor];
     destructor = FUNCTION_TABLE[destructor];
 
-    registerType(structType, name, {
-        fields: {},
-        fromWireType: function(ptr) {
-            var fields = this.fields;
-            var rv = {};
-            for (var i in fields) {
-                rv[i] = fields[i].read(ptr);
-            }
-            destructor(ptr);
-            return rv;
-        },
-        toWireType: function(destructors, o) {
-            var fields = this.fields;
-            for (var fieldName in fields) {
-                if (!(fieldName in o)) {
-                    throw new TypeError('Missing field');
-                }
-            }
-            var ptr = constructor();
-            for (var fieldName in fields) {
-                fields[fieldName].write(ptr, o[fieldName]);
-            }
-            destructors.push(destructor);
-            destructors.push(ptr);
-            return ptr;
-        }
-    });
+    registerType(structType, name, new RegisteredStruct(constructor, destructor));
 }
 
 function __embind_register_struct_field(
@@ -369,7 +402,69 @@ function __embind_register_struct_field(
     };
 }
 
-/*global ___dynamicPointerCast: false*/
+function RegisteredSmartPointer(getPointee, Handle, destructor, isPolymorphic, pointeeType) {
+    this.getPointee = getPointee;
+    this.Handle = Handle;
+    this.destructor = destructor;
+    this.isPolymorphic = isPolymorphic;
+    this.pointeeType = pointeeType;
+}
+
+RegisteredSmartPointer.prototype.toWireType = function(destructors, o) {
+    if (null === o) {
+        return 0;
+    } else {
+        return o.smartPointer;
+    }
+};
+
+RegisteredSmartPointer.prototype.fromWireType = function(ptr) {
+    if (!this.getPointee(ptr)) {
+        this.destructor(ptr);
+        return null;
+    }
+    return new this.Handle(ptr);
+};
+
+RegisteredSmartPointer.prototype.fromWireTypeAutoDowncast = function(ptr) {
+    if (!this.getPointee(ptr)) {
+        this.destructor(ptr);
+        return null;
+    }
+    if (this.isPolymorphic) {
+        // todo: clean up this code
+        var pointee = this.getPointee(ptr);
+        var toType = ___getDynamicPointerType(pointee);
+        var toTypeImpl = null;
+        if (toType === null || toType === this.pointeeType) {
+            return new this.Handle(ptr);
+        }
+        // todo: getDerivationPath is expensive -- cache the result
+        var derivation = Module.__getDerivationPath(toType, this.pointeeType);
+        var candidate = null;
+        for (var i = 0; i < derivation.size(); i++) {
+            candidate = derivation.at(i);
+            toTypeImpl = typeRegistry[candidate];
+            if (toTypeImpl) {
+                break;
+            }
+        }
+        derivation.delete();
+        if (toTypeImpl === null) {
+            return new this.Handle(ptr);
+        }
+        var toTypePointerImpl = requireRegisteredType(toTypeImpl.smartPointerType);
+        // todo: need to clone the ptr here (really??)
+        var castPtr = toTypePointerImpl.fromWireType(ptr);
+        // todo: do we really need ___dynamicPointerCast here? We know what type we're starting with.
+        castPtr.ptr = ___dynamicPointerCast(pointee, candidate);
+        // todo: we need to release the pre-cast pointer, don't we? how did this get past the tests?
+        return castPtr;
+    } else {
+        return new this.Handle(ptr);
+    }
+};
+
 function __embind_register_smart_ptr(
     pointerType,
     pointeeType,
@@ -421,62 +516,58 @@ function __embind_register_smart_ptr(
         this.ptr = undefined;
     };
 
-    registerType(pointerType, name, {
-        name: name,
-        Handle: Handle,
-        fromWireTypeAutoDowncast: function(ptr) {
-            if (!getPointee(ptr)) {
-                destructor(ptr);
-                return null;
-            }
-            if (isPolymorphic) {
-                // todo: clean up this code
-                var pointee = getPointee(ptr);
-                var toType = ___getDynamicPointerType(pointee);
-                var toTypeImpl = null;
-                if (toType === null || toType === pointeeType) {
-                    return new Handle(ptr);
-                }
-                // todo: getDerivationPath is expensive -- cache the result
-                var derivation = Module.__getDerivationPath(toType, pointeeType);
-                var candidate = null;
-                for (var i = 0; i < derivation.size(); i++) {
-                    candidate = derivation.at(i);
-                    toTypeImpl = typeRegistry[candidate];
-                    if (toTypeImpl) {
-                        break;
-                    }
-                }
-                derivation.delete();
-                if (toTypeImpl === null) {
-                    return new Handle(ptr);
-                }
-                var toTypePointerImpl = requireRegisteredType(toTypeImpl.smartPointerType);
-                // todo: need to clone the ptr here (really??)
-                var castPtr = toTypePointerImpl.fromWireType(ptr);
-                // todo: do we really need ___dynamicPointerCast here? We know what type we're starting with.
-                castPtr.ptr = ___dynamicPointerCast(pointee, candidate);
-                // todo: we need to release the pre-cast pointer, don't we? how did this get past the tests?
-                return castPtr;
-            } else {
-                return new Handle(ptr);
-            }
-        },
-        fromWireType: function(ptr) {
-            if (!getPointee(ptr)) {
-                destructor(ptr);
-                return null;
-            }
-            return new Handle(ptr);
-        },
-        toWireType: function(destructors, o) {
-            if (null === o) {
-                return 0;
-            } else {
-                return o.smartPointer;
+    registerType(pointerType, name, new RegisteredSmartPointer(getPointee, Handle, destructor, isPolymorphic, pointeeType));
+}
+
+function RegisteredRawPointer(isPolymorphic, classType, Handle) {
+    this.isPolymorphic = isPolymorphic;
+    this.classType = classType;
+    this.Handle = Handle;
+}
+
+RegisteredRawPointer.prototype.toWireType = function(destructors, o) {
+    return o.ptr;
+};
+
+RegisteredRawPointer.prototype.fromWireType = function(ptr) {
+    return new this.Handle(ptr);
+};
+
+RegisteredRawPointer.prototype.fromWireTypeAutoDowncast = function(ptr) {
+    if (this.isPolymorphic) {
+        var toType = ___getDynamicPointerType(ptr);
+        var toTypeImpl = null;
+        if (toType === null || toType === this.pointerType) {
+            return new this.Handle(ptr);
+        }
+        var derivation = Module.__getDerivationPath(toType, this.classType);
+        var candidate = null;
+        for (var i = 0; i < derivation.size(); i++) {
+            candidate = derivation.at(i);
+            toTypeImpl = typeRegistry[candidate];
+            if (toTypeImpl) {
+                break;
             }
         }
-    });
+        derivation.delete();
+        if (toTypeImpl === null) {
+            return new this.Handle(ptr);
+        }
+        var toTypePointerImpl = requireRegisteredType(toTypeImpl.type);
+        var handle = toTypePointerImpl.fromWireType(ptr);
+        handle.ptr = ___staticPointerCast(handle.ptr, this.classType, candidate);
+        // todo: can come back -1 or -2!! Throw appropriate exception
+        return handle;
+    } else {
+        handle = new this.Handle(ptr);
+    }
+    return handle;
+};
+
+function RegisteredClassInstance(pointerType, constructor, Handle) {
+    this.pointerType = pointerType;
+    this.constructor = constructor;
+    this.Handle = Handle;
 }
 
 function __embind_register_vector(
@@ -539,6 +630,22 @@ function __embind_register_vector(
     });
 }
 
+RegisteredClassInstance.prototype.toWireType = function(destructors, o) {
+    return o.ptr;
+};
+
+RegisteredClassInstance.prototype.fromWireType = function(ptr) {
+    return new this.Handle(ptr);
+};
+
+function RegisteredRawConstPointer() {
+}
+
+RegisteredRawConstPointer.prototype.toWireType = function(destructors, o) {
+    return o.ptr;
+};
+
+>>>>>>> Refactoring preparatory to code clean-up (no functional changes, all tests pass).
 // TODO: null pointers are always zero (not a Handle) in Javascript
 /*global ___staticPointerCast: false*/
 function __embind_register_class(
@@ -612,70 +719,9 @@ function __embind_register_class(
     constructor.prototype = Handle.prototype;
     constructor.classType = classType;
 
-
-    registerType(classType, name, {
-        name: name,
-        pointerType: pointerType,
-        constructor: constructor,
-        Handle: Handle,
-        fromWireType: function(ptr) {
-            return new Handle(ptr);
-        },
-        toWireType: function(destructors, o) {
-            return o.ptr;
-        }
-    });
-
-    /*global ___getDynamicPointerType: false*/
-    var pointerName = name + '*';
-    registerType(pointerType, pointerName, {
-        name: pointerName,
-        fromWireTypeAutoDowncast: function(ptr) {
-            var handle;
-            if (isPolymorphic) {
-                var toType = ___getDynamicPointerType(ptr);
-                var toTypeImpl = null;
-                if (toType === null || toType === pointerType) {
-                    return new Handle(ptr);
-                }
-                var derivation = Module.__getDerivationPath(toType, classType);
-                var candidate = null;
-                for (var i = 0; i < derivation.size(); i++) {
-                    candidate = derivation.at(i);
-                    toTypeImpl = typeRegistry[candidate];
-                    if (toTypeImpl) {
-                        break;
-                    }
-                }
-                derivation.delete();
-                if (toTypeImpl === null) {
-                    return new Handle(ptr);
-                }
-                var toTypePointerImpl = requireRegisteredType(toTypeImpl.pointerType);
-                handle = toTypePointerImpl.fromWireType(ptr);
-                handle.ptr = ___staticPointerCast(handle.ptr, classType, candidate);
-                // todo: can come back -1 or -2!! Throw appropriate exception
-                return handle;
-            } else {
-                handle = new Handle(ptr);
-            }
-            return handle;
-        },
-        fromWireType: function(ptr) {
-            return new Handle(ptr);
-        },
-        toWireType: function(destructors, o) {
-            return o.ptr;
-        }
-    });
-
-    var constPointerName = name + ' const*';
-    registerType(constPointerType, constPointerName, {
-        name: constPointerName,
-        toWireType: function(destructors, o) {
-            return o.ptr;
-        }
-    });
+    registerType(classType, name, new RegisteredClassInstance(pointerType, constructor, Handle));
+    registerType(pointerType, name + '*', new RegisteredRawPointer(isPolymorphic, classType, Handle));
+    registerType(constPointerType, name + ' const*', new RegisteredRawConstPointer());
 
     exposePublicSymbol(name, constructor);
 }
@@ -742,7 +788,7 @@ function __embind_register_class_method(
             args[i + 1] = argTypes[i].toWireType(destructors, arguments[i-1]);
         }
         var rv = invoker.apply(null, args);
-        if (argTypes[0].hasOwnProperty('fromWireTypeAutoDowncast')) {
+        if (argTypes[0].fromWireTypeAutoDowncast) {
             rv = argTypes[0].fromWireTypeAutoDowncast(rv);
         } else {
             rv = argTypes[0].fromWireType(rv);
@@ -996,28 +1042,27 @@ function __embind_register_class_field(
     });
 }
 
+function RegisteredEnum() {
+    this.constructor = function() {};
+    this.constructor.values = {};
+}
+
+RegisteredEnum.prototype.toWireType = function(destructors, c) {
+    return c.value;
+};
+
+RegisteredEnum.prototype.fromWireType = function(c) {
+    return this.constructor.values[c];
+};
+
 function __embind_register_enum(
     enumType,
     name
 ) {
     name = Pointer_stringify(name);
-
-    function Enum() {
-    }
-    Enum.values = {};
-
-    registerType(enumType, name, {
-        name: name,
-        constructor: Enum,
-        toWireType: function(destructors, c) {
-            return c.value;
-        },
-        fromWireType: function(c) {
-            return Enum.values[c];
-        },
-    });
-    
-    exposePublicSymbol(name, Enum);
+    var newEnum = new RegisteredEnum();
+    registerType(enumType, name, newEnum);
+    exposePublicSymbol(name, newEnum.constructor);
 }
 
 function __embind_register_enum_value(
@@ -1038,6 +1083,19 @@ function __embind_register_enum_value(
     Enum[name] = Value;
 }
 
+function RegisteredInterface(constructor, destructor) {
+    this.constructor = constructor;
+    this.destructor = destructor;
+}
+
+RegisteredInterface.prototype.toWireType = function(destructors, o) {
+    var handle = __emval_register(o);
+    var ptr = this.constructor(handle);
+    destructors.push(this.destructor);
+    destructors.push(ptr);
+    return ptr;
+};
+
 function __embind_register_interface(
     interfaceType,
     name,
@@ -1048,15 +1106,6 @@ function __embind_register_interface(
     constructor = FUNCTION_TABLE[constructor];
     destructor = FUNCTION_TABLE[destructor];
 
-    registerType(interfaceType, name, {
-        name: name,
-        toWireType: function(destructors, o) {
-            var handle = __emval_register(o);
-            var ptr = constructor(handle);
-            destructors.push(destructor);
-            destructors.push(ptr);
-            return ptr;
-        },
-    });
+    registerType(interfaceType, name, new RegisteredInterface(constructor, destructor));
 }
 
