@@ -61,7 +61,7 @@ function intertyper(data, sidePass, baseLineNums) {
       var baseLineNumPosition = 0;
       for (var i = 0; i < lines.length; i++) {
         var line = lines[i];
-        lines[i] = null; // lines may be very very large. Allow GCing to occur in the loop by releasing refs here
+        if (singlePhase) lines[i] = null; // lines may be very very large. Allow GCing to occur in the loop by releasing refs here
 
         while (baseLineNumPosition < baseLineNums.length-1 && i >= baseLineNums[baseLineNumPosition+1][0]) {
           baseLineNumPosition++;

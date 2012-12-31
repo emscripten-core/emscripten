@@ -611,7 +611,7 @@ LibraryManager.library = {
     },
 
     deleteFile: function(path) {
-      var path = FS.analyzePath(path);
+      path = FS.analyzePath(path);
       if (!path.parentExists || !path.exists) {
         throw 'Invalid path ' + path;
       }
@@ -3548,21 +3548,42 @@ LibraryManager.library = {
      * this implementation simply uses malloc underneath the call to
      * mmap.
      */
+    if (!_mmap.mappings) _mmap.mappings = {};
     if (stream == -1) {
       var ptr = _malloc(num);
-      _memset(ptr, 0, num);
-      return ptr;
+    } else {
+      var info = FS.streams[stream];
+      if (!info) return -1;
+      var contents = info.object.contents;
+      contents = Array.prototype.slice.call(contents, offset, offset+num);
+      ptr = allocate(contents, 'i8', ALLOC_NORMAL);
     }
-    var info = FS.streams[stream];
-    if (!info) return -1;
-    var contents = info.object.contents;
-    contents = Array.prototype.slice.call(contents, offset, offset+num);
-    return allocate(contents, 'i8', ALLOC_NORMAL);
+    // align to page size
+    var ret = ptr;
+    if (ptr % PAGE_SIZE != 0) {
+      var old = ptr;
+      ptr = _malloc(num + PAGE_SIZE);
+      ret = alignMemoryPage(ptr);
+      _memcpy(ret, old, num);
+      _free(old);
+    }
+    if (stream == -1) {
+      _memset(ret, 0, num);
+    }
+    _mmap.mappings[ret] = { malloc: ptr, num: num };
+    return ret;
   },
   __01mmap64_: 'mmap',
 
   munmap: function(start, num) {
-    _free(start);
+    if (!_mmap.mappings) _mmap.mappings = {};
+    // TODO: support unmmap'ing parts of allocations
+    var info = _mmap.mappings[start];
+    if (!info) return 0;
+    if (num == info.num) {
+      _mmap.mappings[start] = null;
+      _free(info.malloc);
+    }
     return 0;
   },
 
@@ -3816,9 +3837,73 @@ LibraryManager.library = {
 
     return ret;
   },
-  strtoll__deps: ['_parseInt'],
+#if USE_TYPED_ARRAYS == 2
+  _parseInt64__deps: ['isspace', '__setErrNo', '$ERRNO_CODES', function() { Types.preciseI64MathUsed = 1 }],
+  _parseInt64: function(str, endptr, base, min, max, unsign) {
+    var start = str;
+    // Skip space.
+    while (_isspace({{{ makeGetValue('str', 0, 'i8') }}})) str++;
+
+    // Check for a plus/minus sign.
+    if ({{{ makeGetValue('str', 0, 'i8') }}} == '-'.charCodeAt(0)) {
+      str++;
+    } else if ({{{ makeGetValue('str', 0, 'i8') }}} == '+'.charCodeAt(0)) {
+      str++;
+    }
+
+    // Find base.
+    var ok = false;
+    var finalBase = base;
+    if (!finalBase) {
+      if ({{{ makeGetValue('str', 0, 'i8') }}} == '0'.charCodeAt(0)) {
+        if ({{{ makeGetValue('str+1', 0, 'i8') }}} == 'x'.charCodeAt(0) ||
+            {{{ makeGetValue('str+1', 0, 'i8') }}} == 'X'.charCodeAt(0)) {
+          finalBase = 16;
+          str += 2;
+        } else {
+          finalBase = 8;
+          str++;
+          ok = true; // we saw an initial zero, perhaps the entire thing is just "0"
+        }
+      }
+    }
+    if (!finalBase) finalBase = 10;
+
+    // Get digits.
+    var chr;
+    while ((chr = {{{ makeGetValue('str', 0, 'i8') }}}) != 0) {
+      var digit = parseInt(String.fromCharCode(chr), finalBase);
+      if (isNaN(digit)) {
+        break;
+      } else {
+        str++;
+        ok = true;
+      }
+    }
+    if (!ok) {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return [0, 0];
+    }
+
+    try {
+      i64Math.fromString(Pointer_stringify(start, str - start), finalBase, min, max, unsign);
+    } catch(e) {
+      ___setErrNo(ERRNO_CODES.ERANGE); // not quite correct
+    }
+
+    // Set end pointer.
+    if (endptr) {
+      {{{ makeSetValue('endptr', 0, 'str', '*') }}}
+    }
+
+    var ret = i64Math.result.slice(0);
+
+    return ret;
+  },
+#endif
+  strtoll__deps: ['_parseInt64'],
   strtoll: function(str, endptr, base) {
-    return __parseInt(str, endptr, base, -9223372036854775200, 9223372036854775200, 64);  // LLONG_MIN, LLONG_MAX; imprecise.
+    return __parseInt64(str, endptr, base, '-9223372036854775808', '9223372036854775807');  // LLONG_MIN, LLONG_MAX.
   },
   strtoll_l: 'strtoll', // no locale support yet
   strtol__deps: ['_parseInt'],
@@ -3831,9 +3916,9 @@ LibraryManager.library = {
     return __parseInt(str, endptr, base, 0, 4294967295, 32, true);  // ULONG_MAX.
   },
   strtoul_l: 'strtoul', // no locale support yet
-  strtoull__deps: ['_parseInt'],
+  strtoull__deps: ['_parseInt64'],
   strtoull: function(str, endptr, base) {
-    return __parseInt(str, endptr, base, 0, 18446744073709551615, 64, true);  // ULONG_MAX; imprecise.
+    return __parseInt64(str, endptr, base, 0, '18446744073709551615', true);  // ULONG_MAX.
   },
   strtoull_l: 'strtoull', // no locale support yet
 
@@ -4742,6 +4827,17 @@ LibraryManager.library = {
     return ((x&0xff)<<24) | (((x>>8)&0xff)<<16) | (((x>>16)&0xff)<<8) | (x>>>24);
   },
 
+  llvm_bswap_i64__deps: ['llvm_bswap_i32'],
+  llvm_bswap_i64: function(l, h) {
+    var retl = _llvm_bswap_i32(h)>>>0;
+    var reth = _llvm_bswap_i32(l)>>>0;
+#if USE_TYPED_ARRAYS == 2
+    return [retl, reth];
+#else
+    throw 'unsupported';
+#endif
+  },
+
   llvm_ctlz_i32: function(x) {
     for (var i=0; i<32; i++) {
         if ( (x & (1 << (31-i))) != 0 ) {
@@ -4751,17 +4847,28 @@ LibraryManager.library = {
     return 32;
   },
 
+  llvm_ctlz_i64__deps: ['llvm_ctlz_i32'],
+  llvm_ctlz_i64: function(l, h) {
+    var ret = _llvm_ctlz_i32(h);
+    if (ret == 32) ret += _llvm_ctlz_i32(l);
+#if USE_TYPED_ARRAYS == 2
+    return [ret, 0];
+#else
+    return ret;
+#endif
+  },
+
   llvm_trap: function() {
     throw 'trap! ' + new Error().stack;
   },
 
   __assert_fail: function(condition, file, line) {
     ABORT = true;
-    throw 'Assertion failed: ' + Pointer_stringify(condition);//JSON.stringify(arguments)//condition;
+    throw 'Assertion failed: ' + Pointer_stringify(condition) + ' at ' + new Error().stack;
   },
 
   __assert_func: function(filename, line, func, condition) {
-    throw 'Assertion failed: ' + (condition ? Pointer_stringify(condition) : 'unknown condition') + ', at: ' + [filename ? Pointer_stringify(filename) : 'unknown filename', line, func ? Pointer_stringify(func) : 'unknown function'];
+    throw 'Assertion failed: ' + (condition ? Pointer_stringify(condition) : 'unknown condition') + ', at: ' + [filename ? Pointer_stringify(filename) : 'unknown filename', line, func ? Pointer_stringify(func) : 'unknown function'] + ' at ' + new Error().stack;
   },
 
   __cxa_guard_acquire: function(variable) {
@@ -5105,8 +5212,8 @@ LibraryManager.library = {
     return ret;
   },
 
-  llvm_expect_i32__inline: function(x, y) {
-    return '((' + x + ')==(' + y + '))';
+  llvm_expect_i32__inline: function(val, expected) {
+    return '(' + val + ')';
   },
 
   llvm_lifetime_start: function() {},
