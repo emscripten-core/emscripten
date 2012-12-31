@@ -123,14 +123,14 @@ namespace emscripten {
                 size_t memberFunctionSize,
                 void* memberFunction);
 
-            void _embind_register_cast_method(
+            void _embind_register_raw_cast_method(
                 TYPEID classType,
                 bool isPolymorphic,
                 const char* methodName,
                 TYPEID returnType,
                 GenericFunction invoker);
 
-            void _embind_register_pointer_cast_method(
+            void _embind_register_smart_cast_method(
                 TYPEID pointerType,
                 TYPEID returnType,
                 TYPEID returnPointeeType,
@@ -614,7 +614,7 @@ namespace emscripten {
             using namespace internal;
             typedef typename ReturnType::element_type ReturnPointeeType;
             typedef typename PointerType::element_type PointeeType;
-            _embind_register_pointer_cast_method(
+            _embind_register_smart_cast_method(
                  TypeID<PointerType>::get(),
                  TypeID<ReturnType>::get(),
                  TypeID<ReturnPointeeType>::get(),
@@ -761,7 +761,7 @@ namespace emscripten {
         class_& cast(const char* methodName) {
             using namespace internal;
 
-            _embind_register_cast_method(
+            _embind_register_raw_cast_method(
                 TypeID<ClassType>::get(),
                 std::is_polymorphic<ClassType>::value,
                 methodName,
