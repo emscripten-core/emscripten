@@ -6063,18 +6063,26 @@ LibraryManager.library = {
   },
   sigemptyset: function(set) {
     // int sigemptyset(sigset_t *set);
-    // TODO: Implement for real; don't hardcode offsets.
-    {{{ makeSetValue('set', '0', '0', 'i32') }}}
-    {{{ makeSetValue('set', '4', '0', 'i32') }}}
-    {{{ makeSetValue('set', '8', '0', 'i32') }}}
-    {{{ makeSetValue('set', '12', '0', 'i32') }}}
+    {{{ makeSetValue('set', '0', '0', 'i32') }}};
     return 0;
   },
-  sigfillset: 'sigemptyset',
-  sigdelset: 'sigemptyset',
+  sigfillset: function(set) {
+    {{{ makeSetValue('set', '0', '-1>>>0', 'i32') }}};
+    return 0;
+  },
+  sigaddset: function(set, signum) {
+    {{{ makeSetValue('set', '0', makeGetValue('set', '0', 'i32') + '| (1 << (signum-1))', 'i32') }}};
+    return 0;
+  },
+  sigdelset: function(set, signum) {
+    {{{ makeSetValue('set', '0', makeGetValue('set', '0', 'i32') + '& (~(1 << (signum-1)))', 'i32') }}};
+    return 0;
+  },
+  sigismember: function(set, signum) {
+    return {{{ makeGetValue('set', '0', 'i32') }}} & (1 << (signum-1));
+  },
   sigaction: function(set) {
-    // int sigemptyset(sigset_t *set);
-    // TODO: Implement for real.
+    // TODO:
     return 0;
   },
   sigprocmask: 'sigaction',
