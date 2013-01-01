@@ -130,6 +130,7 @@ def emscript(infile, settings, outfile, libraries=[]):
   # Save settings to a file to work around v8 issue 1579
   settings_file = temp_files.get('.txt').name
   def save_settings():
+    global settings_text
     settings_text = json.dumps(settings)
     s = open(settings_file, 'w')
     s.write(settings_text)
