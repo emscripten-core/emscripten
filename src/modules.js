@@ -238,7 +238,7 @@ var Functions = {
 
   // Mark a function as needing indexing. Python will coordinate them all
   getIndex: function(ident) {
-    if (phase != 'post') {
+    if (phase != 'post' && singlePhase) {
       this.indexedFunctions[ident] = 0; // tell python we need this indexized
       return '{{{ FI_' + ident + ' }}}'; // something python will replace later
     } else {
