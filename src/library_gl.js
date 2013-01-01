@@ -1275,7 +1275,7 @@ var LibraryGL = {
     getProcAddress: function(name) {
       name = name.replace('EXT', '').replace('ARB', '');
       // Do the translation carefully because of closure
-      var sig = '';
+      var sig = '', func;
       switch (name) {
         case 'glCreateShaderObject': case 'glCreateShader': func = _glCreateShader; sig = 'ii'; break;
         case 'glCreateProgramObject': case 'glCreateProgram': func = _glCreateProgram; sig = 'ii'; break;
@@ -1373,6 +1373,7 @@ var LibraryGL = {
             Module.printErr('WARNING: empty replacement for ' + name + ' called, no-op');
             return 0;
           };
+          sig = 'v';
         }
       }
       return Runtime.addFunction(func, sig);
