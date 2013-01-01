@@ -6841,18 +6841,15 @@ Block 0: ''', post_build=post1)
       src = r'''
         #include <stdio.h>
 
-        // Optimizations might wipe out our functions without this
-        #define KEEPALIVE __attribute__((used))
-
         extern "C" {
-          int KEEPALIVE get_int() { return 5; }
-          float KEEPALIVE get_float() { return 3.14; }
-          char * KEEPALIVE get_string() { return "hello world"; }
-          void KEEPALIVE print_int(int x) { printf("%d\n", x); }
-          void KEEPALIVE print_float(float x) { printf("%.2f\n", x); }
-          void KEEPALIVE print_string(char *x) { printf("%s\n", x); }
-          int KEEPALIVE multi(int x, float y, int z, char *str) { if (x) puts(str); return (x+y)*z; }
-          int * KEEPALIVE pointer(int *in) { printf("%d\n", *in); static int ret = 21; return &ret; }
+          int get_int() { return 5; }
+          float get_float() { return 3.14; }
+          char * get_string() { return "hello world"; }
+          void print_int(int x) { printf("%d\n", x); }
+          void print_float(float x) { printf("%.2f\n", x); }
+          void print_string(char *x) { printf("%s\n", x); }
+          int multi(int x, float y, int z, char *str) { if (x) puts(str); return (x+y)*z; }
+          int * pointer(int *in) { printf("%d\n", *in); static int ret = 21; return &ret; }
         }
 
         int main(int argc, char **argv) {
