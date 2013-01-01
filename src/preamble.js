@@ -308,18 +308,10 @@ var globalScope = this;
 // defined with extern "C").
 //
 // Note: LLVM optimizations can inline and remove functions, after which you will not be
-//       able to call them. Adding
+//       able to call them. Closure can also do so. To avoid that, add your function to
+//       the exports using something like
 //
-//         __attribute__((used))
-//
-//       to the function definition will prevent that.
-//
-// Note: Closure optimizations will minify function names, making
-//       functions no longer callable. If you run closure (on by default
-//       in -O2 and above), you should export the functions you will call
-//       by calling emcc with something like
-//
-//         -s EXPORTED_FUNCTIONS='["_func1","_func2"]'
+//         -s EXPORTED_FUNCTIONS='["_main", "_myfunc"]'
 //
 // @param ident      The name of the C function (note that C++ functions will be name-mangled - use extern "C")
 // @param returnType The return type of the function, one of the JS types 'number', 'string' or 'array' (use 'number' for any C pointer, and
