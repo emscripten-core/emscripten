@@ -1763,15 +1763,14 @@ Succeeded!
             return 0;
           }
         '''
-        for named, expected in [(0, range(100, 200)), (1, [0])]:
+        for named in (0, 1):
           print named
           Settings.NAMED_GLOBALS = named
           self.do_run(src, '4:10,177,543,def\n4\nwowie\ntoo\n76\n5\n(null)\n/* a comment */\n// another\ntest\n', ['wowie', 'too', '74'])
           if self.emcc_args == []:
             gen = open(self.in_dir('src.cpp.o.js')).read()
-            count = gen.count('GLOBAL_BASE')
-            assert count in expected, count
-            print '  counted'
+            assert ('var __str1;' in gen) == named
+            assert (gen.count('ALLOC_NONE') < 8) == named
 
     def test_strcmp_uni(self):
       src = '''
