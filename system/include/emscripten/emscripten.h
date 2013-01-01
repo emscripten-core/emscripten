@@ -20,10 +20,11 @@ extern "C" {
  * closure may still eliminate it at the JS level, for which you
  * should use EXPORTED_FUNCTIONS (see settings.js).
  *
- * Example usage:
- *   void EMSCRIPTEN_KEEPALIVE my_function() { .. }
+ * **DEPRECATED**: Use EXPORTED_FUNCTIONS instead, which will work
+ *                 with closure, asm.js, etc. For example
+ *                   -s EXPORTED_FUNCTIONS=["_main", "myfunc"]
  */
-#define EMSCRIPTEN_KEEPALIVE __attribute__((used))
+/* #define EMSCRIPTEN_KEEPALIVE __attribute__((used)) */
 
 /*
  * Interface to the underlying JS engine. This function will

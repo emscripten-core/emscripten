@@ -3119,7 +3119,7 @@ Exiting setjmp function, level: 0, prev_jmp: -1
           #include "emscripten.h"
 
           extern "C" {
-            void EMSCRIPTEN_KEEPALIVE save_me_aimee() { printf("mann\n"); }
+            void save_me_aimee() { printf("mann\n"); }
           }
 
           int main() {
