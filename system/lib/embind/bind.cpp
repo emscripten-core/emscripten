@@ -161,12 +161,12 @@ namespace emscripten {
                         offset = __cxxabiv1::__pathOffset(paths[i]);
                     } else {
                         if (offset != __cxxabiv1::__pathOffset(paths[i])) {
-                            return (void *)-2; // ambiguous cast -- throw instead?
+                            return (void *)-2;
                         }
                     }
                 }
                 if (offset < 0) {
-                    return (void *)-1; // types are not related -- throw instead?
+                    return (void *)-1;
                 }
                 if (p == 0) {
                     return (void *)0;
