@@ -6801,6 +6801,7 @@ LibraryManager.library = {
   socket__deps: ['$Sockets'],
   socket: function(family, type, protocol) {
     var fd = Sockets.nextFd++;
+    assert(fd < 64); // select() assumes socket fd values are in 0..63
     Sockets.fds[fd] = {
       connected: false
     };
