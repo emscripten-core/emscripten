@@ -1227,6 +1227,15 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/creat.html
     return _open(path, {{{ cDefine('O_WRONLY') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_TRUNC') }}}, allocate([mode, 0, 0, 0], 'i32', ALLOC_STACK));
   },
+  mkstemp__deps: ['creat'],
+  mkstemp: function(template) {
+    if (!_mkstemp.counter) _mkstemp.counter = 0;
+    var c = (_mkstemp.counter++).toString();
+    var rep = 'XXXXXX';
+    while (c.length < rep.length) c = '0' + c;
+    writeArrayToMemory(intArrayFromString(c), template + Pointer_stringify(template).indexOf(rep));
+    return _creat(template, 0600);
+  },
   fcntl__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '__flock_struct_layout'],
   fcntl: function(fildes, cmd, varargs, dup2) {
     // int fcntl(int fildes, int cmd, ...);
