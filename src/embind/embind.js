@@ -459,7 +459,7 @@ RegisteredPointer.prototype.getDynamicRawPointerType = function(ptr) {
 RegisteredPointer.prototype.getDynamicDowncastType = function(ptr) {
     var downcastType =  null;
     var type = this.getDynamicRawPointerType(ptr);
-    if (type && type != this.pointeeType.rawType) {
+    if (type && type !== this.pointeeType.rawType) {
         var derivation = Module.__getDerivationPath(type, this.pointeeType.rawType);
         for (var i = 0; i < derivation.size(); i++) {
             downcastType = typeRegistry[derivation.at(i)];
