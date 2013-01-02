@@ -7058,6 +7058,26 @@ LibraryManager.library = {
     return fd;
   },
 
+  select: function(nfds, readfds, writefds, exceptfds, timeout) {
+    // only readfds are supported, not writefds or exceptfds
+    // timeout is always 0 - fully async
+    assert(!writefds && !exceptfds);
+    var ret = 0;
+    var l = {{{ makeGetValue('readfds', 0, 'i32') }}};
+    var h = {{{ makeGetValue('readfds', 4, 'i32') }}};
+    nfds = Math.min(64, nfds); // fd sets have 64 bits
+    for (var fd = 0; fd < nfds; fd++) {
+      var bit = fd % 32, int = fd < 32 ? l : h;
+      if (int & (1 << bit)) {
+        // index is in the set, check if it is ready for read
+        var info = Sockets.fds[fd];
+        if (!info) continue;
+        if (info.bufferWrite != info.bufferRead) ret++;
+      }
+    }
+    return ret;
+  },
+
   // ==========================================================================
   // emscripten.h
   // ==========================================================================
