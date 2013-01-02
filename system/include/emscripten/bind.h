@@ -5,6 +5,7 @@
 #include <string>
 #include <functional>
 #include <vector>
+#include <map>
 #include <type_traits>
 #include <emscripten/val.h>
 #include <emscripten/wire.h>
@@ -346,27 +347,26 @@ namespace emscripten {
             }
         };
 
-        template<typename ClassType, typename ElementType>
+        template<typename ClassType, typename ElementType, typename IndexType>
         struct ArrayAccessGetInvoker {
             static typename internal::BindingType<ElementType>::WireType invoke(
                 ClassType* ptr,
-                size_t index,
-                typename internal::BindingType<ElementType>
+                typename internal::BindingType<IndexType>::WireType index
             ) {
                 return internal::BindingType<ElementType>::toWireType(
-                        (*ptr)[index]
+                        (*ptr)[internal::BindingType<IndexType>::fromWireType(index)]
                 );
             }
         };
 
-        template<typename ClassType, typename ElementType>
+        template<typename ClassType, typename ElementType, typename IndexType>
         struct ArrayAccessSetInvoker {
             static void invoke(
                 ClassType* ptr,
-                size_t index,
+                typename internal::BindingType<IndexType>::WireType index,
                 typename internal::BindingType<ElementType>::WireType item
             ) {
-                (*ptr)[index] = internal::BindingType<ElementType>::fromWireType(item);
+                (*ptr)[internal::BindingType<IndexType>::fromWireType(index)] = internal::BindingType<ElementType>::fromWireType(item);
             }
         };
 
@@ -742,7 +742,7 @@ namespace emscripten {
                 TypeID<ClassType>::get(),
                 TypeID<ElementType>::get(),
                 TypeID<IndexType>::get(),
-                reinterpret_cast<internal::GenericFunction>(&internal::ArrayAccessGetInvoker<ClassType, ElementType>::invoke));
+                reinterpret_cast<internal::GenericFunction>(&internal::ArrayAccessGetInvoker<ClassType, ElementType, IndexType>::invoke));
         }
 
         template<typename ElementType, typename IndexType>
@@ -753,7 +753,7 @@ namespace emscripten {
                 TypeID<ClassType>::get(),
                 TypeID<ElementType>::get(),
                 TypeID<IndexType>::get(),
-                reinterpret_cast<internal::GenericFunction>(&internal::ArrayAccessSetInvoker<ClassType, ElementType>::invoke));
+                reinterpret_cast<internal::GenericFunction>(&internal::ArrayAccessSetInvoker<ClassType, ElementType, IndexType>::invoke));
             return *this;
         }
 
@@ -790,8 +790,6 @@ namespace emscripten {
     class_<std::vector<T>> register_vector(const char* name) {
         using namespace std;
         typedef vector<T> VecType;
-        typedef typename vector<T>::iterator IterType;
-        typedef typename vector<T>::const_iterator ConstIterType;
 
         void (VecType::*push_back)(const T&) = &VecType::push_back;
         const T& (VecType::*at)(size_t) const = &VecType::at;
@@ -806,6 +804,24 @@ namespace emscripten {
 
         return c;
     }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // MAPS
+    ////////////////////////////////////////////////////////////////////////////////
+    template<typename K, typename V>
+    class_<std::map<K, V>> register_map(const char* name) {
+        using namespace std;
+        typedef map<K,V> MapType;
+
+        auto c = class_<MapType>(name)
+            .method("size", &MapType::size)
+            .template arrayoperatorget<V, K>()
+            .template arrayoperatorset<V, K>()
+        ;
+
+        return c;
+    }
+
 
     ////////////////////////////////////////////////////////////////////////////////
     // ENUMS
