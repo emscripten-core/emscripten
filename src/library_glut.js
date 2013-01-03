@@ -217,7 +217,7 @@ var LibraryGLUT = {
       if(GLUT.mouseFunc) {
         event.preventDefault();
         GLUT.saveModifiers(event);
-        Runtime.dynCal('viiii', GLUT.mouseFunc, [event['button'], 1/*GLUT_UP*/, GLUT.lastX, GLUT.lastY]);
+        Runtime.dynCall('viiii', GLUT.mouseFunc, [event['button'], 1/*GLUT_UP*/, GLUT.lastX, GLUT.lastY]);
       }
     },
 
