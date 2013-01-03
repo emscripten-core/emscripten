@@ -301,7 +301,9 @@ var HEADLESS = 0; // If 1, will include shim code that tries to 'fake' a browser
                   // very partial - it is hard to fake a whole browser! - so
                   // keep your expectations low for this to work.
 
-var ASM_JS = 0; // If 1, generate code in asm.js format
+var ASM_JS = 0; // If 1, generate code in asm.js format. XXX This is highly experimental,
+                // and will not work on most codebases yet. It is NOT recommended that you
+                // try this yet.
 var USE_MATH_IMUL = 0; // If 1, use Math.imul when useful
 
 var NECESSARY_BLOCKADDRS = []; // List of (function, block) for all block addresses that are taken.
