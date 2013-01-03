@@ -206,7 +206,11 @@ function makeInvoker(name, argCount, argTypes, invoker, fn) {
         var args = new Array(argCount);
         args[0] = fn;
         for (var i = 1; i < argCount; ++i) {
-            args[i] = argTypes[i].toWireType(destructors, arguments[i-1]);
+            if (argTypes[i].toWireTypeAutoUpcast) {
+                args[i] = argTypes[i].toWireTypeAutoUpcast(destructors, arguments[i-1]);
+            } else {
+                args[i] = argTypes[i].toWireType(destructors, arguments[i-1]);
+            }
         }
         var rv = invoker.apply(null, args);
         if (argTypes[0].fromWireTypeAutoDowncast) {
@@ -411,6 +415,7 @@ function RegisteredPointer(Handle, isPolymorphic, isSmartPointer, rawGetPointee,
     this.rawDestructor = rawDestructor;
 }
 
+// todo: this will go away
 RegisteredPointer.prototype.toWireType = function(destructors, o) {
     if (null === o) {
         return 0;
@@ -422,6 +427,21 @@ RegisteredPointer.prototype.toWireType = function(destructors, o) {
         }
     }
 };
+
+// todo: distinguish ptr and rawPtr
+RegisteredPointer.prototype.toWireTypeAutoUpcast = function(destructors, o) {
+    if (this.isSmartPointer) {
+        return this.toWireType(destructors, o); // for now
+    } else {
+        if (o.pointeeType.isPolymorphic) {
+            var dynamicType = o.pointeeType.getDynamicRawPointerType(o.ptr);
+            return ___staticPointerCast(o.ptr, dynamicType, this.pointeeType.rawType);
+        } else {
+            return ___staticPointerCast(o.ptr, o.pointeeType.rawType, this.pointeeType.rawType);
+        }
+        // todo: this cast can fail
+    }
+ };
 
 RegisteredPointer.prototype.getPointee = function(ptr) {
     if (this.rawGetPointee) {
@@ -444,6 +464,7 @@ RegisteredPointer.prototype.fromWireType = function(ptr) {
     return new this.Handle(ptr);
 };
 
+// todo: could this return the actual type if not polymorphic?
 RegisteredPointer.prototype.getDynamicRawPointerType = function(ptr) {
     var type = null;
     if (this.isPolymorphic) {
@@ -496,6 +517,7 @@ RegisteredPointer.prototype.fromWireTypeAutoDowncast = function(ptr) { // ptr is
     return handle;
 };
 
+// todo: don't need isPolymorphic parameter any more
 function __embind_register_smart_ptr(
     rawType,
     rawPointeeType,
@@ -513,6 +535,7 @@ function __embind_register_smart_ptr(
         this.count = {value: 1};
         this.smartPointer = ptr; // std::shared_ptr<T>*
         this.ptr = rawGetPointee(ptr); // T*
+        this.pointeeType = pointeeType;
     });
 
     // TODO: test for SmartPtr.prototype.constructor property?
@@ -673,7 +696,6 @@ RegisteredRawConstPointer.prototype.toWireType = function(destructors, o) {
 };
 
 // TODO: null pointers are always zero (not a Handle) in Javascript
-/*global ___staticPointerCast: false*/
 function __embind_register_class(
     rawType,
     rawPointerType,
@@ -696,6 +718,7 @@ function __embind_register_class(
         
         h.count = {value: 1, ptr: ptr };
         h.ptr = ptr;
+        h.pointeeType = type; // set below
 
         for(var prop in Handle.prototype) {
             var dp = Object.getOwnPropertyDescriptor(Handle.prototype, prop);
@@ -738,6 +761,7 @@ function __embind_register_class(
         this.ptr = undefined;
     };
 
+    // todo: clean this up!
     var registeredClass = new RegisteredPointer(Handle, isPolymorphic, false);
     var type = registerType(rawType, name, registeredClass);
     registeredClass.pointeeType = type;
