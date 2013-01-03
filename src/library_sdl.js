@@ -1160,6 +1160,8 @@ var LibrarySDL = {
   SDL_CreateMutex: function() { return 0 },
   SDL_LockMutex: function() {},
   SDL_UnlockMutex: function() {},
+  SDL_mutexP: function() { return 0 },
+  SDL_mutexV: function() { return 0 },
   SDL_DestroyMutex: function() {},
 
   SDL_CreateCond: function() { return 0 },
