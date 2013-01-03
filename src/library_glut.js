@@ -181,7 +181,7 @@ var LibraryGLUT = {
           if(GLUT.specialUpFunc) {
             event.preventDefault ();
             GLUT.saveModifiers(event);
-            Runtime.dynCall('viii', GLUT.specialUpFunc, key, [GLUT.lastX, GLUT.lastY]);
+            Runtime.dynCall('viii', GLUT.specialUpFunc, [key, GLUT.lastX, GLUT.lastY]);
           }
         }
         else
