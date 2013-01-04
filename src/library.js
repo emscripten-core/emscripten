@@ -6828,30 +6828,14 @@ LibraryManager.library = {
     info.socket = new WebSocket('ws://' + info.host + ':' + info.port, ['binary']);
     info.socket.binaryType = 'arraybuffer';
     info.buffer = new Uint8Array(Sockets.BUFFER_SIZE);
-    info.bufferWrite = info.bufferRead = 0;
-    info.socket.onmessage = function (event) {
+    info.inQueue = [];
+    info.socket.onmessage = function(event) {
       assert(typeof event.data !== 'string' && event.data.byteLength); // must get binary data!
       var data = new Uint8Array(event.data); // make a typed array view on the array buffer
-      var len = data.length;
 #if SOCKET_DEBUG
-      Module.print(['onmessage', window.location, data, len, '|', Array.prototype.slice.call(data)]);
+      Module.print(['onmessage', data.length, '|', Array.prototype.slice.call(data)]);
 #endif
-      for (var i = 0; i < len; i++) { // TODO: typed array set, carefully with ranges, or other trick
-        info.buffer[info.bufferWrite++] = data[i];
-        if (info.bufferWrite == info.buffer.length) info.bufferWrite = 0;
-        if (info.bufferWrite == info.bufferRead) {
-          // grow the buffer
-          var currLen = info.buffer.length;
-          if (currLen > Sockets.MAX_BUFFER_SIZE) throw 'socket buffer overflow';
-          var newBuffer = new Uint8Array(currLen*2);
-          for (var j = 0; j < currLen; j++) {
-            newBuffer[j] = info.buffer[(info.bufferRead + j)%currLen];
-          }
-          info.bufferRead = 0;
-          info.bufferWrite = currLen;
-          info.buffer = newBuffer;
-        }
-      }
+      info.inQueue.push(data);
     }
     function send(data) {
       // TODO: if browser accepts views, can optimize this
@@ -6891,25 +6875,19 @@ LibraryManager.library = {
   recv: function(fd, buf, len, flags) {
     var info = Sockets.fds[fd];
     if (!info) return -1;
-    if (info.bufferWrite == info.bufferRead) {
+    if (info.inQueue.length == 0) {
       ___setErrNo(ERRNO_CODES.EAGAIN); // no data, and all sockets are nonblocking, so this is the right behavior
       return 0; // should this be -1 like the spec says?
     }
-    var ret = 0;
+    var buffer = info.inQueue.shift();
 #if SOCKET_DEBUG
-    Module.print('pre-recv: ' + [len, info.bufferWrite, info.bufferRead]);
+    Module.print('recv: ' + [Array.prototype.slice.call(buffer)]);
 #endif
-    while (info.bufferWrite != info.bufferRead && len > 0) {
-      // write out a byte
-      {{{ makeSetValue('buf++', '0', 'info.buffer[info.bufferRead++]', 'i8') }}};
-      if (info.bufferRead == info.buffer.length) info.bufferRead = 0;
-      len--;
-      ret++;
+    if (len < buffer.length) {
+      buffer = buffer.subarray(0, len);
     }
-#if SOCKET_DEBUG
-    Module.print('recv: ' + [ret, len, buf] + ' : ' + Array.prototype.slice.call(HEAPU8.subarray(buf-ret, buf)));
-#endif
-    return ret;
+    HEAPU8.set(buffer, buf);
+    return buffer.length;
   },
 
   send__deps: ['$Sockets'],
@@ -6968,12 +6946,12 @@ LibraryManager.library = {
       assert(name, 'sendmsg on non-connected socket, and no name/address in the message');
       _connect(fd, name, {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_namelen', 'i32') }}});
     }
-    var bytes = info.bufferWrite - info.bufferRead;
-    if (bytes < 0) bytes += info.buffer.length;
-    if (bytes == 0) {
+    if (info.inQueue.length == 0) {
       ___setErrNo(ERRNO_CODES.EWOULDBLOCK);
       return -1;
     }
+    var buffer = info.inQueue.shift();
+    var bytes = buffer.length;
 #if SOCKET_DEBUG
     Module.print('recvmsg bytes: ' + bytes);
 #endif
@@ -6985,7 +6963,7 @@ LibraryManager.library = {
     var ret = bytes;
     var iov = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iov', 'i8*') }}};
     var num = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iovlen', 'i32') }}};
-    var data = '';
+    var bufferPos = 0;
     for (var i = 0; i < num && bytes > 0; i++) {
       var currNum = {{{ makeGetValue('iov', '8*i + 4', 'i32') }}};
 #if SOCKET_DEBUG
@@ -6998,7 +6976,8 @@ LibraryManager.library = {
 #if SOCKET_DEBUG
       Module.print('recvmsg call recv ' + currNum);
 #endif
-      assert(_recv(fd, currBuf, currNum, 0) == currNum);
+      HEAPU8.set(buffer.subarray(bufferPos, bufferPos + currNum), currBuf);
+      bufferPos += currNum;
     }
     return ret;
   },
@@ -7025,11 +7004,12 @@ LibraryManager.library = {
   ioctl: function(fd, request, varargs) {
     var info = Sockets.fds[fd];
     if (!info) return -1;
-    var start = info.bufferRead;
-    var end = info.bufferWrite;
-    if (end < start) end += info.buffer.length;
+    var bytes = 0;
+    if (info.inQueue.length > 0) {
+      bytes = info.inQueue[0].length;
+    }
     var dest = {{{ makeGetValue('varargs', '0', 'i32') }}};
-    {{{ makeSetValue('dest', '0', 'end - start', 'i32') }}};
+    {{{ makeSetValue('dest', '0', 'bytes', 'i32') }}};
     return 0;
   },
 
@@ -7075,7 +7055,7 @@ LibraryManager.library = {
         // index is in the set, check if it is ready for read
         var info = Sockets.fds[fd];
         if (!info) continue;
-        if (info.bufferWrite != info.bufferRead) ret++;
+        if (info.inQueue.length > 0) ret++;
       }
     }
     return ret;
