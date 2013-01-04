@@ -6853,39 +6853,36 @@ LibraryManager.library = {
         }
       }
     }
-    info.sendQueue = new Uint8Array(1024);
-    info.sendQueueUsed = 0;
-    info.senderWaiting = false;
-    info.sender = function(data, justQueue) {
-      if (data) {
+    function send(data) {
+      // TODO: if browser accepts views, can optimize this
 #if SOCKET_DEBUG
-        Module.print(['sender', data, data.length, '|', Array.prototype.slice.call(data)]);
+      Module.print('sender actually sending ' + Array.prototype.slice.call(data));
 #endif
-        if (info.sendQueueUsed + data.length >= info.sendQueue.length) {
-          var newQueue = new Uint8Array(2*Math.max(info.sendQueue.length, data.length));
-          newQueue.set(info.sendQueue);
-          info.sendQueue = newQueue;
-        }
-        info.sendQueue.set(data, info.sendQueueUsed); // must copy, because while this waits memory can change!
-        info.sendQueueUsed += data.length;
-      } else {
-        info.senderWaiting = false; // we are a setTimeout callback
-        if (info.sendQueueUsed == 0) return;
-      }
+      info.socket.send(new Uint8Array(data).buffer);
+    }
+    var queue = [];
+    var intervalling = false, interval;
+    function trySend() {
       if (info.socket.readyState != info.socket.OPEN) {
-        if (!info.senderWaiting) {
+        if (!intervalling) {
+          intervalling = true;
           console.log('waiting for socket in order to send');
-          setTimeout(info.sender, 100);
-          info.senderWaiting = true;
+          interval = setInterval(trySend, 100);
         }
         return;
       }
-      if (justQueue) return;
-#if SOCKET_DEBUG
-      Module.print('sender actually sending ' + info.sendQueueUsed);
-#endif
-      info.socket.send(new Uint8Array(info.sendQueue.subarray(0, info.sendQueueUsed)).buffer); // TODO: if browser accepts views, can optimize this
-      info.sendQueueUsed = 0;
+      for (var i = 0; i < queue.length; i++) {
+        send(queue[i]);
+      }
+      queue.length = 0;
+      if (intervalling) {
+        intervalling = false;
+        clearInterval(interval);
+      }
+    }
+    info.sender = function(data) {
+      queue.push(data);
+      trySend();
     };
     return 0;
   },
@@ -6935,10 +6932,15 @@ LibraryManager.library = {
     }
     var iov = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iov', 'i8*') }}};
     var num = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iovlen', 'i32') }}};
-    var ret = 0;
 #if SOCKET_DEBUG
       Module.print('sendmsg vecs: ' + num);
 #endif
+    var totalSize = 0;
+    for (var i = 0; i < num; i++) {
+      totalSize += {{{ makeGetValue('iov', '8*i + 4', 'i32') }}};
+    }
+    var buffer = new Uint8Array(totalSize);
+    var ret = 0;
     for (var i = 0; i < num; i++) {
       var currNum = {{{ makeGetValue('iov', '8*i + 4', 'i32') }}};
 #if SOCKET_DEBUG
@@ -6946,10 +6948,10 @@ LibraryManager.library = {
 #endif
       if (!currNum) continue;
       var currBuf = {{{ makeGetValue('iov', '8*i', 'i8*') }}};
-      info.sender(HEAPU8.subarray(currBuf, currBuf+currNum), true);
+      buffer.set(HEAPU8.subarray(currBuf, currBuf+currNum), ret);
       ret += currNum;
     }
-    info.sender(null); // flush all of these together. Important they get sent as a single socket message
+    info.sender(buffer); // send all the iovs as a single message
     return ret;
   },
 
