@@ -6860,7 +6860,7 @@ LibraryManager.library = {
 #endif
       info.socket.send(new Uint8Array(data).buffer);
     }
-    var queue = [];
+    var outQueue = [];
     var intervalling = false, interval;
     function trySend() {
       if (info.socket.readyState != info.socket.OPEN) {
@@ -6871,17 +6871,17 @@ LibraryManager.library = {
         }
         return;
       }
-      for (var i = 0; i < queue.length; i++) {
-        send(queue[i]);
+      for (var i = 0; i < outQueue.length; i++) {
+        send(outQueue[i]);
       }
-      queue.length = 0;
+      outQueue.length = 0;
       if (intervalling) {
         intervalling = false;
         clearInterval(interval);
       }
     }
     info.sender = function(data) {
-      queue.push(data);
+      outQueue.push(data);
       trySend();
     };
     return 0;
