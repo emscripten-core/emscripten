@@ -707,7 +707,9 @@ var LibrarySDL = {
 
   SDL_Quit: function() {
     for (var i = 0; i < SDL.numChannels; ++i) {
-      SDL.channels[i].audio.pause();
+      if (SDL.channels[i].audio) {
+        SDL.channels[i].audio.pause();
+      }
     }
     if (SDL.music.audio) {
       SDL.music.audio.pause();
