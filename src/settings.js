@@ -147,6 +147,12 @@ var LIBRARY_DEBUG = 0; // Print out when we enter a library call (library*.js). 
 var GL_DEBUG = 0; // Print out all calls into WebGL. As with LIBRARY_DEBUG, you can set a runtime
                   // option, in this case GL.debug.
 var SOCKET_DEBUG = 0; // Log out socket/network data transfer.
+var SOCKET_FORCED_MESSAGING = 0; // If 1, we make sure that each socket send ends up a single socket
+                                 // receive, that is, we force proper messaging (otherwise, sending
+                                 // [A] and [B] can show up on the other side as [A, B]). This will
+                                 // only work if both sides have it enabled, obviously, so it only
+                                 // makes sense for p2p or when connecting to a special server - we
+                                 // add some metadata (message size) to messages in this mode
 
 var PROFILE_MAIN_LOOP = 0; // Profile the function called in set_main_loop
 

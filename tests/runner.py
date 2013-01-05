@@ -10283,13 +10283,14 @@ elif 'browser' in str(sys.argv):
       return relay_server
 
     def test_zz_websockets_bi(self):
-      try:
-        with self.WebsockHarness(8992, self.make_relay_server(8992, 8994)):
-          with self.WebsockHarness(8994, no_server=True):
-            Popen([PYTHON, EMCC, path_from_root('tests', 'websockets_bi_side.c'), '-o', 'side.html', '-DSOCKK=8995']).communicate()
-            self.btest('websockets_bi.c', expected='2499')
-      finally:
-        self.clean_pids()
+      for fm in [0,1]:
+        try:
+          with self.WebsockHarness(8992, self.make_relay_server(8992, 8994)):
+            with self.WebsockHarness(8994, no_server=True):
+              Popen([PYTHON, EMCC, path_from_root('tests', 'websockets_bi_side.c'), '-o', 'side.html', '-DSOCKK=8995', '-s', 'SOCKET_FORCED_MESSAGING=%d' % fm]).communicate()
+              self.btest('websockets_bi.c', expected='2499', args=['-s', 'SOCKET_FORCED_MESSAGING=%d' % fm])
+        finally:
+          self.clean_pids()
 
     def test_zz_websockets_bi_listen(self):
       try:

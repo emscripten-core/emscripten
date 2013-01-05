@@ -6835,14 +6835,31 @@ LibraryManager.library = {
 #if SOCKET_DEBUG
       Module.print(['onmessage', data.length, '|', Array.prototype.slice.call(data)]);
 #endif
+#if SOCKET_FORCED_MESSAGING
+      var i32View = new Uint32Array(data.buffer);
+      var start = 0;
+      while (start < data.length) {
+        var currLen = i32View[start>>2];
+        assert(currLen > 0);
+        start += 4;
+        assert(start + currLen <= data.length, [data.length, start, currLen]); // must not receive fractured messages!
+        info.inQueue.push(data.subarray(start, start+currLen));
+#if SOCKET_DEBUG
+      Module.print(['onmessage message', currLen, '|', Array.prototype.slice.call(data.subarray(start, start+currLen))]);
+#endif
+        start += currLen;
+      }
+#else
       info.inQueue.push(data);
+#endif
     }
     function send(data) {
       // TODO: if browser accepts views, can optimize this
 #if SOCKET_DEBUG
       Module.print('sender actually sending ' + Array.prototype.slice.call(data));
 #endif
-      info.socket.send(new Uint8Array(data).buffer);
+      // ok to use the underlying buffer, we created data and know that the buffer starts at the beginning
+      info.socket.send(data.buffer);
     }
     var outQueue = [];
     var intervalling = false, interval;
@@ -6865,7 +6882,15 @@ LibraryManager.library = {
       }
     }
     info.sender = function(data) {
-      outQueue.push(data);
+#if SOCKET_FORCED_MESSAGING
+      var buffer = new Uint8Array(data.length+4);
+      var i32View = new Uint32Array(buffer.buffer);
+      i32View[0] = data.length;
+      buffer.set(data, 4);
+      outQueue.push(buffer);
+#else
+      outQueue.push(new Uint8Array(data));
+#endif
       trySend();
     };
     return 0;
