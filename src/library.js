@@ -6827,7 +6827,10 @@ LibraryManager.library = {
     console.log('opening ws://' + info.host + ':' + info.port);
     info.socket = new WebSocket('ws://' + info.host + ':' + info.port, ['binary']);
     info.socket.binaryType = 'arraybuffer';
-    info.buffer = new Uint8Array(Sockets.BUFFER_SIZE);
+
+    var i32Temp = new Uint32Array(1);
+    var i8Temp = new Uint8Array(i32Temp.buffer);
+
     info.inQueue = [];
     info.socket.onmessage = function(event) {
       assert(typeof event.data !== 'string' && event.data.byteLength); // must get binary data!
@@ -6836,10 +6839,10 @@ LibraryManager.library = {
       Module.print(['onmessage', data.length, '|', Array.prototype.slice.call(data)]);
 #endif
 #if SOCKET_FORCED_MESSAGING
-      var i32View = new Uint32Array(data.buffer);
       var start = 0;
-      while (start < data.length) {
-        var currLen = i32View[start>>2];
+      while (start+4 < data.length) {
+        i8Temp.set(data.subarray(start, start+4));
+        var currLen = i32Temp[0];
         assert(currLen > 0);
         start += 4;
         assert(start + currLen <= data.length, [data.length, start, currLen]); // must not receive fractured messages!
@@ -6884,8 +6887,8 @@ LibraryManager.library = {
     info.sender = function(data) {
 #if SOCKET_FORCED_MESSAGING
       var buffer = new Uint8Array(data.length+4);
-      var i32View = new Uint32Array(buffer.buffer);
-      i32View[0] = data.length;
+      i32Temp[0] = data.length;
+      buffer.set(i8Temp);
       buffer.set(data, 4);
       outQueue.push(buffer);
 #else
