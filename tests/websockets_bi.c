@@ -81,7 +81,11 @@ int main(void)
 
   struct sockaddr_in stSockAddr;
   int Res;
+#if !TEST_DGRAM
   SocketFD = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+#else
+  SocketFD = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
+#endif
 
   if (-1 == SocketFD)
   {
