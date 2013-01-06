@@ -4516,6 +4516,7 @@ LibraryManager.library = {
     } while (val);
     return 0;
   },
+  index: 'strchr',
 
   strrchr__deps: ['strlen'],
   strrchr: function(ptr, chr) {
@@ -4526,6 +4527,7 @@ LibraryManager.library = {
     } while (ptr2 >= ptr);
     return 0;
   },
+  rindex: 'strrchr',
 
   strdup: function(ptr) {
     var len = String_len(ptr);
