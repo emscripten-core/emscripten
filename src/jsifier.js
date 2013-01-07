@@ -724,6 +724,8 @@ function JSify(data, functionsOnly, givenFunctions) {
           //Relooper.setDebug(1);
           Relooper.init();
 
+          if (ASM_JS) Relooper.setAsmJSMode(1);
+
           var blockMap = {};
           // add blocks
           for (var i = 0; i < block.labels.length; i++) {

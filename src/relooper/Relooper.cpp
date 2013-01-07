@@ -58,6 +58,8 @@ void PutIndented(const char *String) {
   *OutputBuffer = 0;
 }
 
+static int AsmJS = 0;
+
 // Indenter
 
 #if EMSCRIPTEN
@@ -271,7 +273,7 @@ void MultipleShape::Render(bool InLoop) {
   RenderLoopPrefix();
   bool First = true;
   for (BlockShapeMap::iterator iter = InnerMap.begin(); iter != InnerMap.end(); iter++) {
-    PrintIndented("%sif (label == %d) {\n", First ? "" : "else ", iter->first->Id);
+    PrintIndented("%sif (label%s == %d) {\n", First ? "" : "else ", AsmJS ? "|0" : "", iter->first->Id);
     First = false;
     Indenter::Indent();
     iter->second->Render(InLoop);
@@ -977,6 +979,10 @@ void Relooper::MakeOutputBuffer(int Size) {
   OutputBufferSize = Size;
 }
 
+void Relooper::SetAsmJSMode(int On) {
+  AsmJS = On;
+}
+
 #if DEBUG
 // Debugging
 
@@ -1016,6 +1022,10 @@ void rl_set_output_buffer(char *buffer, int size) {
 
 void rl_make_output_buffer(int size) {
   Relooper::SetOutputBuffer((char*)malloc(size), size);
+}
+
+void rl_set_asm_js_mode(int on) {
+  Relooper::SetAsmJSMode(on);
 }
 
 void *rl_new_block(const char *text) {
