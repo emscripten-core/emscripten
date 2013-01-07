@@ -292,6 +292,7 @@ def emscript(infile, settings, outfile, libraries=[]):
   last_forwarded_json = json.loads(last_forwarded_data)
 
   if settings.get('ASM_JS'):
+    simple = os.environ.get('EMCC_SIMPLE_ASM')
     class Counter:
       i = 0
     def make_table(sig, raw):
@@ -337,9 +338,12 @@ var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
     # calculate exports
     exported_implemented_functions = list(exported_implemented_functions)
     exports = []
-    for export in exported_implemented_functions + asm_runtime_funcs + function_tables:
-      exports.append("'%s': %s" % (export, export))
-    exports = '{ ' + ', '.join(exports) + ' }'
+    if not simple:
+      for export in exported_implemented_functions + asm_runtime_funcs + function_tables:
+        exports.append("'%s': %s" % (export, export))
+      exports = '{ ' + ', '.join(exports) + ' }'
+    else:
+      exports = '_main'
     # calculate globals
     try:
       del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
@@ -353,7 +357,10 @@ var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
     # sent data
     sending = '{ ' + ', '.join([s + ': ' + s for s in fundamentals + basic_funcs + global_funcs + basic_vars + global_vars]) + ' }'
     # received
-    receiving = ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm.' + s for s in exported_implemented_functions + function_tables])
+    if not simple:
+      receiving = ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm.' + s for s in exported_implemented_functions + function_tables])
+    else:
+      receiving = 'var _main = Module["_main"] = asm;'
     # finalize
     funcs_js = '''
 %s
