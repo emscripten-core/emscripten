@@ -340,7 +340,7 @@ var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
     exports = []
     if not simple:
       for export in exported_implemented_functions + asm_runtime_funcs + function_tables:
-        exports.append("'%s': %s" % (export, export))
+        exports.append("%s: %s" % (export, export))
       exports = '{ ' + ', '.join(exports) + ' }'
     else:
       exports = '_main'
