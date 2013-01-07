@@ -423,7 +423,9 @@ function JSify(data, functionsOnly, givenFunctions) {
             deps.push(snippet);
             snippet = '_' + snippet;
           }
-          if (ASM_JS) Functions.libraryFunctions[ident] = 1;
+          if (ASM_JS && typeof LibraryManager.library[redirectedIdent] == 'function') {
+            Functions.libraryFunctions[ident] = 1;
+          }
         } else if (typeof snippet === 'object') {
           snippet = stringifyWithFunctions(snippet);
         } else if (typeof snippet === 'function') {
