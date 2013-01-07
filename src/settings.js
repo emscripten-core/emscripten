@@ -138,7 +138,7 @@ var LABEL_FUNCTION_FILTERS = []; // Filters for function label debug.
                                  // labels of functions that is equaled to
                                  // one of the filters are printed out
                                  // When the array is empty, the filter is disabled.
-var EXCEPTION_DEBUG = 1; // Print out exceptions in emscriptened code
+var EXCEPTION_DEBUG = 0; // Print out exceptions in emscriptened code
 
 var LIBRARY_DEBUG = 0; // Print out when we enter a library call (library*.js). You can also unset
                        // Runtime.debug at runtime for logging to cease, and can set it when you

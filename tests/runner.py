@@ -2366,7 +2366,6 @@ Exception execution path of first function! 1
         if '-O2' in self.emcc_args:
           self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
 
-        Settings.EXCEPTION_DEBUG = 0  # Messes up expected output.
         Settings.DISABLE_EXCEPTION_CATCHING = 0
 
         src = r'''
@@ -2406,14 +2405,12 @@ Exception execution path of first function! 1
     def test_typed_exceptions(self):
         Settings.DISABLE_EXCEPTION_CATCHING = 0
         Settings.SAFE_HEAP = 0  # Throwing null will cause an ignorable null pointer access.
-        Settings.EXCEPTION_DEBUG = 0  # Messes up expected output.
         src = open(path_from_root('tests', 'exceptions', 'typed.cpp'), 'r').read()
         expected = open(path_from_root('tests', 'exceptions', 'output.txt'), 'r').read()
         self.do_run(src, expected)
 
     def test_multiexception(self):
       Settings.DISABLE_EXCEPTION_CATCHING = 0
-      Settings.EXCEPTION_DEBUG = 0  # Messes up expected output.
       src = r'''
 #include <stdio.h>
 
