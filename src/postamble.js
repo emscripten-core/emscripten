@@ -18,10 +18,14 @@ Module.callMain = function callMain(args) {
   argv = allocate(argv, 'i32', ALLOC_STATIC);
 
 #if CATCH_EXIT_CODE
+  var initialStackTop = STACKTOP;
   try {
     return Module['_main'](argc, argv, 0);
   }
   catch(e) { if (e.name == "ExitStatus") return e.status; throw e; }
+  finally {
+    STACKTOP = initialStackTop;
+  }
 #else
   return Module['_main'](argc, argv, 0);
 #endif

@@ -118,7 +118,9 @@ var INLINING_LIMIT = 50; // A limit on inlining. If 0, we will inline normally i
 var CATCH_EXIT_CODE = 0; // If set, causes exit() to throw an exception object which is caught
                          // in a try..catch block and results in the exit status being
                          // returned from run(). If zero (the default), the program is just
-                         // terminated with an error message.
+                         // terminated with an error message, that is, the exception thrown
+                         // by exit() is not handled in any way (in particular, the stack
+                         // position will not be reset).
 
 // Generated code debugging options
 var SAFE_HEAP = 0; // Check each write to the heap, for example, this will give a clear
