@@ -1325,7 +1325,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
 
     var ret = ident + '(' + args.join(', ') + ')';
-    if (ASM_JS && shortident in Functions.libraryFunctions) {
+    if (ASM_JS) { // TODO: do only when needed (library functions and Math.*?) XXX && shortident in Functions.libraryFunctions) {
       ret = asmCoercion(ret, returnType);
     }
     return ret;
