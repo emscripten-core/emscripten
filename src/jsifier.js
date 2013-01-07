@@ -416,14 +416,15 @@ function JSify(data, functionsOnly, givenFunctions) {
         var isFunction = false;
 
         if (typeof snippet === 'string') {
-          if (LibraryManager.library[snippet]) {
+          var target = LibraryManager.library[snippet];
+          if (target) {
             // Redirection for aliases. We include the parent, and at runtime make ourselves equal to it.
             // This avoid having duplicate functions with identical content.
             redirectedIdent = snippet;
             deps.push(snippet);
             snippet = '_' + snippet;
           }
-          if (ASM_JS && typeof LibraryManager.library[redirectedIdent] == 'function') {
+          if (ASM_JS && (typeof target == 'function' || /Math\..+/.exec(snippet))) {
             Functions.libraryFunctions[ident] = 1;
           }
         } else if (typeof snippet === 'object') {
