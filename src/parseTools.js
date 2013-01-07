@@ -997,6 +997,15 @@ function makeVarDef(js) {
   return js;
 }
 
+function asmEnsureFloat(value, type) { // ensures that a float type has either 5.5 (clearly a float) or +5 (float due to asm coercion)
+  if (!ASM_JS) return value;
+  if (!isIntImplemented(type) && isNumber(value) && value.toString().indexOf('.') < 0) {
+    return '(+(' + value + '))';
+  } else {
+    return value;
+  }
+}
+
 function asmInitializer(type, impl) {
   if (isIntImplemented(type)) {// || (impl && impl == 'VAR_EMULATED')) {
     return '0';
@@ -2097,7 +2106,7 @@ function processMathop(item) {
     // then unsigning that i32... which would give something huge.
     case 'zext': case 'fpext': case 'sext': return idents[0];
     case 'fptrunc': return idents[0];
-    case 'select': return idents[0] + ' ? ' + idents[1] + ' : ' + idents[2];
+    case 'select': return idents[0] + ' ? ' + asmEnsureFloat(idents[1], item.type) + ' : ' + asmEnsureFloat(idents[2], item.type);
     case 'ptrtoint': case 'inttoptr': {
       var ret = '';
       if (QUANTUM_SIZE == 1) {
