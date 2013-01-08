@@ -407,11 +407,12 @@ function __embind_register_struct_field(
     };
 }
 
-function RegisteredPointer(Handle, isPolymorphic, isSmartPointer, rawGetPointee, rawDestructor) {
+function RegisteredPointer(Handle, isPolymorphic, isSmartPointer, rawGetPointee, rawConstructor, rawDestructor) {
     this.Handle = Handle;
     this.isPolymorphic = isPolymorphic;
     this.isSmartPointer = isSmartPointer;
     this.rawGetPointee = rawGetPointee;
+    this.rawConstructor = rawConstructor;
     this.rawDestructor = rawDestructor;
 }
 
@@ -428,19 +429,29 @@ RegisteredPointer.prototype.toWireType = function(destructors, o) {
     }
 };
 
-// todo: distinguish ptr and rawPtr
-RegisteredPointer.prototype.toWireTypeAutoUpcast = function(destructors, o) {
-    if (this.isSmartPointer) {
-        return this.toWireType(destructors, o); // for now
-    } else {
-        if (o.pointeeType.isPolymorphic) {
-            var dynamicType = o.pointeeType.getDynamicRawPointerType(o.ptr);
-            return ___staticPointerCast(o.ptr, dynamicType, this.pointeeType.rawType);
-        } else {
-            return ___staticPointerCast(o.ptr, o.pointeeType.rawType, this.pointeeType.rawType);
-        }
-        // todo: this cast can fail
+RegisteredPointer.prototype.toWireTypeAutoUpcast = function(destructors, handle) {
+    var fromRawType;
+    if (!handle) {
+        return null;
     }
+    if (handle.pointeeType.isPolymorphic) {
+        fromRawType = handle.pointeeType.getDynamicRawPointerType(handle.ptr);
+    } else {
+        fromRawType = handle.pointeeType.rawType;
+    }
+    if (fromRawType == this.pointeeType.rawType) {
+        return this.isSmartPointer ? handle.smartPointer : handle.ptr;
+    }
+    var ptr = ___staticPointerCast(handle.ptr, fromRawType, this.pointeeType.rawType);
+    if (this.isSmartPointer) {
+        var smartPtr = _malloc(16);
+        // todo: this does not create a pointer that shares the reference count !?!?
+        handle.pointeeType.smartPointerType.rawConstructor(smartPtr, ptr);
+        ptr = smartPtr;
+        destructors.push(handle.pointeeType.smartPointerType.rawDestructor);
+        destructors.push(ptr);
+    }
+    return ptr;
  };
 
 RegisteredPointer.prototype.getPointee = function(ptr) {
@@ -523,11 +534,13 @@ function __embind_register_smart_ptr(
     rawPointeeType,
     isPolymorphic,
     name,
+    rawConstructor,
     rawDestructor,
     rawGetPointee
 ) {
     name = Pointer_stringify(name);
     var pointeeType = requireRegisteredType(rawPointeeType, 'class');
+    rawConstructor = FUNCTION_TABLE[rawConstructor];
     rawDestructor = FUNCTION_TABLE[rawDestructor];
     rawGetPointee = FUNCTION_TABLE[rawGetPointee];
     
@@ -568,7 +581,7 @@ function __embind_register_smart_ptr(
         this.smartPointer = undefined;
         this.ptr = undefined;
     };
-    var registeredPointer = new RegisteredPointer(Handle, isPolymorphic, true, rawGetPointee, rawDestructor);
+    var registeredPointer = new RegisteredPointer(Handle, isPolymorphic, true, rawGetPointee, rawConstructor, rawDestructor);
     registeredPointer.pointeeType = pointeeType;
     pointeeType.smartPointerType = registerType(rawType, name, registeredPointer);
 }
