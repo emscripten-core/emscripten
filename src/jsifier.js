@@ -1329,6 +1329,9 @@ function JSify(data, functionsOnly, givenFunctions) {
     var ret = ident + '(' + args.join(', ') + ')';
     if (ASM_JS) { // TODO: do only when needed (library functions and Math.*?) XXX && shortident in Functions.libraryFunctions) {
       ret = asmCoercion(ret, returnType);
+      if (shortident == 'abort' && funcData.returnType != 'void') {
+        ret += '; return 0'; // special case: abort() can happen without return, breaking the return type of asm functions. ensure a return
+      }
     }
     return ret;
   }
