@@ -74,6 +74,17 @@ function requireArgumentTypes(argCount, rawArgTypes, name) {
     return argTypes;
 }
 
+function staticPointerCast(from, fromType, toType) {
+    if (!from) {
+        return from;
+    }
+    var to = ___staticPointerCast(from, fromType, toType);
+    if (to <= 0) {
+        throw new CastError("Pointer conversion is not available");
+    }
+    return to;
+}
+
 function RegisteredVoid() {
 }
 
@@ -186,8 +197,10 @@ function __embind_register_emval(rawType, name) {
 }
 
 var BindingError = Error;
+var CastError = Error;
 /** @expose */
 Module.BindingError = BindingError;
+Module.CastError = CastError;
 
 function runDestructors(destructors) {
     while (destructors.length) {
@@ -442,10 +455,10 @@ RegisteredPointer.prototype.toWireTypeAutoUpcast = function(destructors, handle)
     if (fromRawType === this.pointeeType.rawType) {
         return this.isSmartPointer ? handle.smartPointer : handle.ptr;
     }
-    var ptr = ___staticPointerCast(handle.ptr, fromRawType, this.pointeeType.rawType);
+    var ptr = staticPointerCast(handle.ptr, fromRawType, this.pointeeType.rawType);
     if (this.isSmartPointer) {
         var smartPtr = _malloc(16);
-        // todo: this does not create a pointer that shares the reference count !?!?
+        // todo: this does not create a pointer that shares the reference count !
         handle.pointeeType.smartPointerType.rawConstructor(smartPtr, ptr);
         ptr = smartPtr;
         destructors.push(handle.pointeeType.smartPointerType.rawDestructor);
@@ -520,8 +533,7 @@ RegisteredPointer.prototype.fromWireTypeAutoDowncast = function(ptr) { // ptr is
         } else {
             handle = toType.fromWireType(ptr);
         }
-        // todo: staticPointerCast can return -1 or -2!! Throw appropriate exception
-        handle.ptr = ___staticPointerCast(handle.ptr, fromType.rawType, toType.rawType);
+        handle.ptr = staticPointerCast(handle.ptr, fromType.rawType, toType.rawType);
     } else {
         handle = this.fromWireType(ptr);
     }
@@ -900,14 +912,14 @@ function __embind_register_raw_cast_method(
                 size = derivation.size();
                 derivation.delete();
                 if (size === 0) {
-                    // todo: return zero
-                    return returnType.fromWireType(0);
+                    throw new CastError("Pointer conversion is not available");
                 }
             }
         }
         var args = new Array(1);
         args[0] = this.ptr;
-        var rv = returnType.fromWireType(rawInvoker.apply(null, args));
+        var ptr = rawInvoker.apply(null, args);
+        var rv = returnType.fromWireType(ptr);
         rv.count = this.count;
         this.count.value ++;
         return rv;
@@ -938,7 +950,6 @@ function __embind_register_smart_cast_method(
         }
         if (isPolymorphic) {
             // todo: just validating the cast -- cache the result
-            // todo: throw exception instead of returning zero
             var runtimeType = ___getDynamicPointerType(this.ptr);
             var derivation = Module.__getDerivationPath(returnPointeeType, runtimeType); // downcast is valid
             var size = derivation.size();
@@ -948,16 +959,16 @@ function __embind_register_smart_cast_method(
                 size = derivation.size();
                 derivation.delete();
                 if (size === 0) {
-                    return 0;
+                    throw new CastError("Pointer conversion is not available");
                 }
             }
         }
         var args = new Array(2);
-        var newPtr = _malloc(8);
-        args[0] = newPtr;
+        var ptr = _malloc(8);
+        args[0] = ptr;
         args[1] = this.smartPointer;
         rawInvoker.apply(null,args);
-        return returnType.fromWireType(newPtr);
+        return returnType.fromWireType(ptr);
     };
 }
 
