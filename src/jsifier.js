@@ -1302,6 +1302,7 @@ function JSify(data, functionsOnly, givenFunctions) {
                 }).filter(function(arg) {
                   return arg !== null;
                 }).join(',') + ',tempInt)';
+      varargs = asmCoercion(varargs, 'i32');
     }
 
     args = args.concat(varargs);
