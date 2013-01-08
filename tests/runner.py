@@ -2275,6 +2275,8 @@ Exception execution path of first function! 1
     def test_exceptions(self):
         if Settings.QUANTUM_SIZE == 1: return self.skip("we don't support libcxx in q1")
 
+        Settings.EXCEPTION_DEBUG = 1
+
         self.banned_js_engines = [NODE_JS] # node issue 1669, exception causes stdout not to be flushed
         Settings.DISABLE_EXCEPTION_CATCHING = 0
         if self.emcc_args is None:
