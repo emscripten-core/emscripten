@@ -12,22 +12,22 @@ int main(int ac, char **av)
   for (int x = 0; x < REPS; x++) {
     char* allocations[NUM];
     for (int i = 0; i < NUM/2; i++) {
-      allocations[i] = (char*)malloc((11*i)%1024 + x);
+      allocations[i] = (char*)dlmalloc((11*i)%1024 + x);
       //printf("zz alloc: %d\n", (int)allocations[i]);
       assert(allocations[i]);
       if (i > 10 && i%4 == 1 && allocations[i-10]) {
         //printf("zz free: %d\n", (int)allocations[i-10]);
-        free(allocations[i-10]);
+        dlfree(allocations[i-10]);
         allocations[i-10] = NULL;
       }
     }
     for (int i = NUM/2; i < NUM; i++) {
-      allocations[i] = (char*)malloc(1024*(i+1));
+      allocations[i] = (char*)dlmalloc(1024*(i+1));
       //printf("zz alloc: %d\n", (int)allocations[i]);
       assert(allocations[i]);
       if (i > 10 && i%4 != 1 && allocations[i-10]) {
         //printf("zz free: %d\n", (int)allocations[i-10]);
-        free(allocations[i-10]);
+        dlfree(allocations[i-10]);
         allocations[i-10] = NULL;
       }
     }
@@ -35,12 +35,12 @@ int main(int ac, char **av)
     for (int i = 0; i < NUM; i++) {
       if (allocations[i]) {
         //printf("zz free: %d\n", (int)allocations[i]);
-        free(allocations[i]);
+        dlfree(allocations[i]);
       }
     }
-    char *last = (char*)malloc(512); // should be identical, as we free'd it all
+    char *last = (char*)dlmalloc(512); // should be identical, as we free'd it all
     //printf("zz last: %d\n", (int)last);
-    char *newer = (char*)malloc(512); // should be different
+    char *newer = (char*)dlmalloc(512); // should be different
     //printf("zz newer: %d\n", (int)newer);
     c1 += first == last;
     c2 += first == newer;

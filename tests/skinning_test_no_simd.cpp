@@ -6,14 +6,20 @@
 // compiled in cygwin with:
 // g++ -Wall -O2 -o skinning_test_no_simd skinning_test_no_simd.cpp
 
-#include <vector>
-#include <set>
-#include <map>
 #include <assert.h>
 #include <math.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#if defined(_MSC_VER) && defined(__clang__)
+// Workaround Windows clang Visual Studio ABI issues. Clang does not find 
+// the required operators, so hack them in manually.
+void *operator new(size_t size) { return malloc(size); }
+void *operator new[](size_t size) { return malloc(size); }
+void operator delete(void *ptr) { free(ptr); }
+void operator delete[](void *ptr) { free(ptr); }
+#endif
 
 struct CalBase4 {
   float x, y, z, w;
