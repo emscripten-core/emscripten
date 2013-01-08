@@ -322,6 +322,17 @@ void emscripten_worker_respond(char *data, int size);
 int emscripten_get_worker_queue_size(worker_handle worker);
 
 /*
+ * Select the networking backend to use. By default emscripten's
+ * socket/networking implementation will use websockets, with this
+ * function you can change that to WebRTC.
+ * This function must be called before any network functions are
+ * called.
+ */
+#define EMSCRIPTEN_NETWORK_WEBSOCKETS 0
+#define EMSCRIPTEN_NETWORK_WEBRTC     1
+void emscripten_set_network_backend(int backend);
+
+/*
  * Profiling tools.
  * INIT must be called first, with the maximum identifier that
  * will be used. BEGIN will add some code that marks

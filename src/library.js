@@ -6779,8 +6779,12 @@ LibraryManager.library = {
 
   $Sockets__deps: ['__setErrNo', '$ERRNO_CODES'],
   $Sockets: {
+    BACKEND_WEBSOCKETS: 0,
+    BACKEND_WEBRTC: 1,
     BUFFER_SIZE: 10*1024, // initial size
     MAX_BUFFER_SIZE: 10*1024*1024, // maximum size we will grow the buffer
+
+    backend: 0, // default to websockets
     nextFd: 1,
     fds: {},
     sockaddr_in_layout: Runtime.generateStructInfo([
@@ -6798,6 +6802,111 @@ LibraryManager.library = {
       ['i32', 'msg_controllen'],
       ['i32', 'msg_flags'],
     ]),
+
+    backends: {
+      0: { // websockets
+        connect: function(info) {
+          console.log('opening ws://' + info.host + ':' + info.port);
+          info.socket = new WebSocket('ws://' + info.host + ':' + info.port, ['binary']);
+          info.socket.binaryType = 'arraybuffer';
+
+          var i32Temp = new Uint32Array(1);
+          var i8Temp = new Uint8Array(i32Temp.buffer);
+
+          info.inQueue = [];
+          if (!info.stream) {
+            var partialBuffer = null; // inQueue contains full dgram messages; this buffers incomplete data. Must begin with the beginning of a message
+          }
+
+          info.socket.onmessage = function(event) {
+            assert(typeof event.data !== 'string' && event.data.byteLength); // must get binary data!
+            var data = new Uint8Array(event.data); // make a typed array view on the array buffer
+#if SOCKET_DEBUG
+            Module.print(['onmessage', data.length, '|', Array.prototype.slice.call(data)]);
+#endif
+            if (info.stream) {
+              info.inQueue.push(data);
+            } else {
+              // we added headers with message sizes, read those to find discrete messages
+              if (partialBuffer) {
+                // append to the partial buffer
+                var newBuffer = new Uint8Array(partialBuffer.length + data.length);
+                newBuffer.set(partialBuffer);
+                newBuffer.set(data, partialBuffer.length);
+                // forget the partial buffer and work on data
+                data = newBuffer;
+                partialBuffer = null;
+              }
+              var currPos = 0;
+              while (currPos+4 < data.length) {
+                i8Temp.set(data.subarray(currPos, currPos+4));
+                var currLen = i32Temp[0];
+                assert(currLen > 0);
+                if (currPos + 4 + currLen > data.length) {
+                  break; // not enough data has arrived
+                }
+                currPos += 4;
+#if SOCKET_DEBUG
+                Module.print(['onmessage message', currLen, '|', Array.prototype.slice.call(data.subarray(currPos, currPos+currLen))]);
+#endif
+                info.inQueue.push(data.subarray(currPos, currPos+currLen));
+                currPos += currLen;
+              }
+              // If data remains, buffer it
+              if (currPos < data.length) {
+                partialBuffer = data.subarray(currPos);
+              }
+            }
+          }
+          function send(data) {
+            // TODO: if browser accepts views, can optimize this
+#if SOCKET_DEBUG
+            Module.print('sender actually sending ' + Array.prototype.slice.call(data));
+#endif
+            // ok to use the underlying buffer, we created data and know that the buffer starts at the beginning
+            info.socket.send(data.buffer);
+          }
+          var outQueue = [];
+          var intervalling = false, interval;
+          function trySend() {
+            if (info.socket.readyState != info.socket.OPEN) {
+              if (!intervalling) {
+                intervalling = true;
+                console.log('waiting for socket in order to send');
+                interval = setInterval(trySend, 100);
+              }
+              return;
+            }
+            for (var i = 0; i < outQueue.length; i++) {
+              send(outQueue[i]);
+            }
+            outQueue.length = 0;
+            if (intervalling) {
+              intervalling = false;
+              clearInterval(interval);
+            }
+          }
+          info.sender = function(data) {
+            if (!info.stream) {
+              // add a header with the message size
+              var header = new Uint8Array(4);
+              i32Temp[0] = data.length;
+              header.set(i8Temp);
+              outQueue.push(header);
+            }
+            outQueue.push(new Uint8Array(data));
+            trySend();
+          };
+        }
+      },
+      1: { // webrtc
+      }
+    }
+  },
+
+  emscripten_set_network_backend__deps: ['$Sockets'],
+  emscripten_set_network_backend: function(backend) {
+    Sockets.backend = backend;
   },
 
   socket__deps: ['$Sockets'],
@@ -6807,6 +6916,9 @@ LibraryManager.library = {
     var stream = type == {{{ cDefine('SOCK_STREAM') }}};
     if (protocol) {
       assert(stream == (protocol == {{{ cDefine('IPPROTO_TCP') }}})); // if stream, must be tcp
+    }
+    if (Sockets.backend == Sockets.BACKEND_WEBRTC) {
+      assert(!stream); // If WebRTC, we can only support datagram, not stream
     }
     Sockets.fds[fd] = {
       connected: false,
@@ -6831,98 +6943,7 @@ LibraryManager.library = {
       info.host = _gethostbyname.table[low + 0xff*high];
       assert(info.host, 'problem translating fake ip ' + parts);
     }
-    console.log('opening ws://' + info.host + ':' + info.port);
-    info.socket = new WebSocket('ws://' + info.host + ':' + info.port, ['binary']);
-    info.socket.binaryType = 'arraybuffer';
-
-    var i32Temp = new Uint32Array(1);
-    var i8Temp = new Uint8Array(i32Temp.buffer);
-
-    info.inQueue = [];
-    if (!info.stream) {
-      var partialBuffer = null; // inQueue contains full dgram messages; this buffers incomplete data. Must begin with the beginning of a message
-    }
-
-    info.socket.onmessage = function(event) {
-      assert(typeof event.data !== 'string' && event.data.byteLength); // must get binary data!
-      var data = new Uint8Array(event.data); // make a typed array view on the array buffer
-#if SOCKET_DEBUG
-      Module.print(['onmessage', data.length, '|', Array.prototype.slice.call(data)]);
-#endif
-      if (info.stream) {
-        info.inQueue.push(data);
-      } else {
-        // we added headers with message sizes, read those to find discrete messages
-        if (partialBuffer) {
-          // append to the partial buffer
-          var newBuffer = new Uint8Array(partialBuffer.length + data.length);
-          newBuffer.set(partialBuffer);
-          newBuffer.set(data, partialBuffer.length);
-          // forget the partial buffer and work on data
-          data = newBuffer;
-          partialBuffer = null;
-        }
-        var currPos = 0;
-        while (currPos+4 < data.length) {
-          i8Temp.set(data.subarray(currPos, currPos+4));
-          var currLen = i32Temp[0];
-          assert(currLen > 0);
-          if (currPos + 4 + currLen > data.length) {
-            break; // not enough data has arrived
-          }
-          currPos += 4;
-#if SOCKET_DEBUG
-          Module.print(['onmessage message', currLen, '|', Array.prototype.slice.call(data.subarray(currPos, currPos+currLen))]);
-#endif
-          info.inQueue.push(data.subarray(currPos, currPos+currLen));
-          currPos += currLen;
-        }
-        // If data remains, buffer it
-        if (currPos < data.length) {
-          partialBuffer = data.subarray(currPos);
-        }
-      }
-#endif
-    }
-    function send(data) {
-      // TODO: if browser accepts views, can optimize this
-#if SOCKET_DEBUG
-      Module.print('sender actually sending ' + Array.prototype.slice.call(data));
-#endif
-      // ok to use the underlying buffer, we created data and know that the buffer starts at the beginning
-      info.socket.send(data.buffer);
-    }
-    var outQueue = [];
-    var intervalling = false, interval;
-    function trySend() {
-      if (info.socket.readyState != info.socket.OPEN) {
-        if (!intervalling) {
-          intervalling = true;
-          console.log('waiting for socket in order to send');
-          interval = setInterval(trySend, 100);
-        }
-        return;
-      }
-      for (var i = 0; i < outQueue.length; i++) {
-        send(outQueue[i]);
-      }
-      outQueue.length = 0;
-      if (intervalling) {
-        intervalling = false;
-        clearInterval(interval);
-      }
-    }
-    info.sender = function(data) {
-      if (!info.stream) {
-        // add a header with the message size
-        var header = new Uint8Array(4);
-        i32Temp[0] = data.length;
-        header.set(i8Temp);
-        outQueue.push(header);
-      }
-      outQueue.push(new Uint8Array(data));
-      trySend();
-    };
+    Sockets.backends[Sockets.backend].connect(info);
     return 0;
   },
 
