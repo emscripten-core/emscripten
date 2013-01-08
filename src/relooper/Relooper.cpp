@@ -273,7 +273,11 @@ void MultipleShape::Render(bool InLoop) {
   RenderLoopPrefix();
   bool First = true;
   for (BlockShapeMap::iterator iter = InnerMap.begin(); iter != InnerMap.end(); iter++) {
-    PrintIndented("%sif (label%s == %d) {\n", First ? "" : "else ", AsmJS ? "|0" : "", iter->first->Id);
+    if (AsmJS) {
+      PrintIndented("%sif ((label|0) == %d) {\n", First ? "" : "else ", iter->first->Id);
+    } else {
+      PrintIndented("%sif (label == %d) {\n", First ? "" : "else ", iter->first->Id);
+    }
     First = false;
     Indenter::Indent();
     iter->second->Render(InLoop);
