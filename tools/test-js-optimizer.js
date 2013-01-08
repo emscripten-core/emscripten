@@ -400,5 +400,8 @@ function asmy() {
   f((HEAPU8[_buf + i6 & 16777215] & 255 & 1) + i5 | 0);
   f((HEAP8[_buf + i6 & 16777215] & 1 & 255) + i5 | 0);
   f((HEAPU8[_buf + i6 & 16777215] & 1 & 255) + i5 | 0);
+  if ((_sbrk($419 | 0) | 0 | 0) == -1) {
+    print('fleefl');
+  }
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["abc", "xyz", "xyz2", "expr", "loopy", "bits", "maths", "hoisting", "demangle", "lua", "moreLabels", "notComps", "tricky", "asmy"]

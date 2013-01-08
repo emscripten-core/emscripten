@@ -418,20 +418,25 @@ function simplifyExpressionsPre(ast) {
     var rerun = true;
     while (rerun) {
       rerun = false;
-      traverseGenerated(ast, function(node, type, stack) {
+      traverseGenerated(ast, function process(node, type, stack) {
         if (type == 'binary' && node[1] == '|' && (jsonCompare(node[2], ZERO) || jsonCompare(node[3], ZERO))) {
-          stack.push(1); // From here on up, no need for this kind of correction, it's done at the top
-
           // We might be able to remove this correction
-          for (var i = stack.length-2; i >= 0; i--) {
+          for (var i = stack.length-1; i >= 0; i--) {
             if (stack[i] == 1) {
               // Great, we can eliminate
               rerun = true;
-              return jsonCompare(node[2], ZERO) ? node[3] : node[2];
+              // we will replace ourselves with the non-zero side. Recursively process that node.
+              var result = jsonCompare(node[2], ZERO) ? node[3] : node[2], other;
+              while (other = process(result, result[0], stack)) {
+                result = other;
+              }
+              return result;
             } else if (stack[i] == -1) {
               break; // Too bad, we can't
             }
           }
+          stack.push(1); // From here on up, no need for this kind of correction, it's done at the top
+                         // (Add this at the end, so it is only added if we did not remove it)
         } else if (type == 'binary' && node[1] in USEFUL_BINARY_OPS) {
           stack.push(1);
         } else if ((type == 'binary' && node[1] in SAFE_BINARY_OPS) || type == 'num' || type == 'name') {
