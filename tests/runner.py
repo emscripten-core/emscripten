@@ -10236,6 +10236,9 @@ elif 'browser' in str(sys.argv):
       Popen([PYTHON, EMCC, path_from_root('tests', 'worker_api_2_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-O2', '--minify', '0', '-s', 'EXPORTED_FUNCTIONS=["_one", "_two", "_three", "_four"]']).communicate()
       self.btest('worker_api_2_main.cpp', args=['-O2', '--minify', '0'], expected='11')
 
+    def test_emscripten_async_wget2(self):
+      self.btest('http.cpp', expected='0', args=['-I' + path_from_root('tests')])
+
     pids_to_clean = []
     def clean_pids(self):
       import signal, errno

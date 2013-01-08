@@ -396,6 +396,55 @@ mergeInto(LibraryManager.library, {
     }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
   },
 
+  emscripten_async_wget2: function(url, file, request, param, arg, onload, onerror, onprogress) {
+    var _url = Pointer_stringify(url);
+    var _file = Pointer_stringify(file);
+    var _request = Pointer_stringify(request);
+    var _param = Pointer_stringify(param);
+    var index = _file.lastIndexOf('/');
+     
+    var http = new XMLHttpRequest();
+    http.open(_request, _url, true);
+    http.responseType = 'arraybuffer';
+    
+    // LOAD
+    http.onload = function(e) {
+      if (http.status == 200) {
+        FS.createDataFile( _file.substr(0, index), _file.substr(index + 1), new Uint8Array(http.response), true, true);
+        if (onload) FUNCTION_TABLE[onload](arg, file);
+      } else {
+        if (onerror) FUNCTION_TABLE[onerror](arg, http.status);
+      }
+    };
+      
+    // ERROR
+    http.onerror = function(e) {
+      if (onerror) FUNCTION_TABLE[onerror](arg, http.status);
+    };
+	
+    // PROGRESS
+    http.onprogress = function(e) {
+      var percentComplete = (e.position / e.totalSize)*100;
+      if (onprogress) FUNCTION_TABLE[onprogress](arg, percentComplete);
+    };
+	  
+    // Useful because the browser can limit the number of redirection
+    try {  
+      if (http.channel instanceof Ci.nsIHttpChannel)
+      http.channel.redirectionLimit = 0;
+    } catch (ex) { /* whatever */ }
+
+    if (_request == "POST") {
+      //Send the proper header information along with the request
+      http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+      http.setRequestHeader("Content-length", _param.length);
+      http.setRequestHeader("Connection", "close");
+      http.send(_param);
+    } else {
+      http.send(null);
+    }
+  },
+  
   emscripten_async_prepare: function(file, onload, onerror) {
     var _file = Pointer_stringify(file);
     var data = FS.analyzePath(_file);
