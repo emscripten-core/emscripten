@@ -10318,7 +10318,7 @@ elif 'browser' in str(sys.argv):
 
     # always run these tests last
     # make sure to use different ports in each one because it takes a while for the processes to be cleaned up
-    def test_zz_websockets(self):
+    def test_websockets(self):
       try:
         with self.WebsockHarness(8990):
           self.btest('websockets.c', expected='571')
@@ -10333,7 +10333,7 @@ elif 'browser' in str(sys.argv):
         proc.communicate()
       return relay_server
 
-    def test_zz_websockets_bi(self):
+    def test_websockets_bi(self):
       for datagram in [0,1]:
         try:
           with self.WebsockHarness(8992, self.make_relay_server(8992, 8994)):
@@ -10343,7 +10343,7 @@ elif 'browser' in str(sys.argv):
         finally:
           self.clean_pids()
 
-    def test_zz_websockets_bi_listen(self):
+    def test_websockets_bi_listen(self):
       try:
         with self.WebsockHarness(6992, self.make_relay_server(6992, 6994)):
           with self.WebsockHarness(6994, no_server=True):
@@ -10352,14 +10352,14 @@ elif 'browser' in str(sys.argv):
       finally:
         self.clean_pids()
 
-    def test_zz_websockets_gethostbyname(self):
+    def test_websockets_gethostbyname(self):
       try:
         with self.WebsockHarness(7000):
           self.btest('websockets_gethostbyname.c', expected='571', args=['-O2'])
       finally:
         self.clean_pids()
 
-    def test_zz_websockets_bi_bigdata(self):
+    def test_websockets_bi_bigdata(self):
       try:
         with self.WebsockHarness(3992, self.make_relay_server(3992, 3994)):
           with self.WebsockHarness(3994, no_server=True):
@@ -10368,7 +10368,7 @@ elif 'browser' in str(sys.argv):
       finally:
         self.clean_pids()
 
-    def test_zz_enet(self):
+    def test_enet(self):
       try_delete(self.in_dir('enet'))
       shutil.copytree(path_from_root('tests', 'enet'), self.in_dir('enet'))
       pwd = os.getcwd()
