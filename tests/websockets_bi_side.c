@@ -54,10 +54,17 @@ int main(void)
     exit(EXIT_FAILURE);
   }
 
+#if TEST_FILE_OPS
+  printf("write..\n");
+
+  char data[] = "hello from the other siide (fileops)\n";
+  write(SocketFD, data, sizeof(data));
+#else
   printf("send..\n");
 
   char data[] = "hello from the other siide\n";
   send(SocketFD, data, sizeof(data), 0);
+#endif
 
   printf("stall..\n");
 

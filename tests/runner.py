@@ -10337,20 +10337,22 @@ elif 'browser' in str(sys.argv):
 
     def test_websockets_bi(self):
       for datagram in [0,1]:
-        try:
-          with self.WebsockHarness(8992, self.make_relay_server(8992, 8994)):
-            with self.WebsockHarness(8994, no_server=True):
-              Popen([PYTHON, EMCC, path_from_root('tests', 'websockets_bi_side.c'), '-o', 'side.html', '-DSOCKK=8995', '-DTEST_DGRAM=%d' % datagram]).communicate()
-              self.btest('websockets_bi.c', expected='2499', args=['-DTEST_DGRAM=%d' % datagram])
-        finally:
-          self.clean_pids()
+        for fileops in [0,1]:
+          try:
+            print >> sys.stderr, 'test_websocket_bi datagram %d, fileops %d' % (datagram, fileops)
+            with self.WebsockHarness(8992, self.make_relay_server(8992, 8994)):
+              with self.WebsockHarness(8994, no_server=True):
+                Popen([PYTHON, EMCC, path_from_root('tests', 'websockets_bi_side.c'), '-o', 'side.html', '-DSOCKK=8995', '-DTEST_DGRAM=%d' % datagram]).communicate()
+                self.btest('websockets_bi.c', expected='2499', args=['-DSOCKK=8993', '-DTEST_DGRAM=%d' % datagram, '-DTEST_FILE_OPS=%s' % fileops])
+          finally:
+            self.clean_pids()
 
     def test_websockets_bi_listen(self):
       try:
         with self.WebsockHarness(6992, self.make_relay_server(6992, 6994)):
           with self.WebsockHarness(6994, no_server=True):
             Popen([PYTHON, EMCC, path_from_root('tests', 'websockets_bi_side.c'), '-o', 'side.html', '-DSOCKK=6995']).communicate()
-            self.btest('websockets_bi_listener.c', expected='2499')
+            self.btest('websockets_bi_listener.c', expected='2499', args=['-DSOCKK=6993'])
       finally:
         self.clean_pids()
 
@@ -10366,7 +10368,7 @@ elif 'browser' in str(sys.argv):
         with self.WebsockHarness(3992, self.make_relay_server(3992, 3994)):
           with self.WebsockHarness(3994, no_server=True):
             Popen([PYTHON, EMCC, path_from_root('tests', 'websockets_bi_side_bigdata.c'), '-o', 'side.html', '-DSOCKK=3995', '-s', 'SOCKET_DEBUG=0', '-I' + path_from_root('tests')]).communicate()
-            self.btest('websockets_bi_bigdata.c', expected='0', args=['-s', 'SOCKET_DEBUG=0', '-I' + path_from_root('tests')])
+            self.btest('websockets_bi_bigdata.c', expected='0', args=['-DSOCKK=3993', '-s', 'SOCKET_DEBUG=0', '-I' + path_from_root('tests')])
       finally:
         self.clean_pids()
 
