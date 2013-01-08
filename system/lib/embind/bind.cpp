@@ -190,6 +190,8 @@ namespace emscripten {
             // __dynamicPointerCast performs a C++ dynamic_cast<>() operation, but allowing run-time specification of
             // the from and to pointer types.
             int EMSCRIPTEN_KEEPALIVE __dynamicPointerCast(int p, int to) {
+                // The final parameter is a place-holder for a hint, a feature which is not currently implemented
+                // in the emscripten runtime. The compiler passes a dummy value of -1, and so do we.
                 int ret = (int)__staticPointerCast((void *)p, __getDynamicPointerType(p), to);
                 if (ret < 0) {
                     return 0;
@@ -212,16 +214,11 @@ namespace emscripten {
                 return name;
             }
 
-            int EMSCRIPTEN_KEEPALIVE __peek32(int p) {
-                return *(int *)p;
-            }
-
             EMSCRIPTEN_BINDINGS(([]() {
                 // We bind __getDerivationPath in order to take advantage of the std::vector to Javascript array
                 // conversion for the return value. This has the unfortunate side-effect of exposing it to third party
                 // developers, but perhaps the double underscore will scare them away from calling it.
                 function("__getDerivationPath", &__getDerivationPath);
-                function("__peek32", &__peek32);
             }));
         }
 
