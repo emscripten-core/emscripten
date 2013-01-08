@@ -1016,7 +1016,9 @@ function asmInitializer(type, impl) {
 
 function asmCoercion(value, type) {
   if (!ASM_JS) return value;
-  if (isIntImplemented(type)) {
+  if (type == 'void') {
+    return value;
+  } else if (isIntImplemented(type)) {
     return '((' + value + ')|0)';
   } else {
     return '(+(' + value + '))';
