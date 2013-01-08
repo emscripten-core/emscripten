@@ -439,7 +439,7 @@ RegisteredPointer.prototype.toWireTypeAutoUpcast = function(destructors, handle)
     } else {
         fromRawType = handle.pointeeType.rawType;
     }
-    if (fromRawType == this.pointeeType.rawType) {
+    if (fromRawType === this.pointeeType.rawType) {
         return this.isSmartPointer ? handle.smartPointer : handle.ptr;
     }
     var ptr = ___staticPointerCast(handle.ptr, fromRawType, this.pointeeType.rawType);
