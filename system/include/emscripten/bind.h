@@ -902,42 +902,17 @@ namespace emscripten {
     }
 
     ////////////////////////////////////////////////////////////////////////////////
-    // INTERFACES
+    // NEW INTERFACE
     ////////////////////////////////////////////////////////////////////////////////
 
-    template<typename InterfaceType>
-    class wrapper : public InterfaceType {
+    class JSInterface {
     public:
-        wrapper() {}    // to avoid error "call to implicitly deleted construrtor..."
-
-        wrapper(InterfaceType* interface) {
-            cloneInterface(interface);
+        JSInterface(internal::EM_VAL handle) {
+            initialize(handle);
         }
 
-        // Not necessary in any example so far, but appeases a compiler warning.
-        virtual ~wrapper() {}
-
-        typedef InterfaceType interface;
-
-        template<class ConcreteWrapperType>
-        static std::shared_ptr<InterfaceType> cloneToSharedPtr(InterfaceType& i) {
-            ConcreteWrapperType* cw = new ConcreteWrapperType(&i);
-            InterfaceType* ip = dynamic_cast<InterfaceType*>(cw);
-            return std::shared_ptr<InterfaceType>(ip);
-        }
-
-        template<class ConcreteWrapperType>
-        static std::shared_ptr<ConcreteWrapperType> cloneToSharedWrapperPtr(InterfaceType& i) {
-            return std::make_shared<ConcreteWrapperType>(&i);
-        }
-
-        void initialize(internal::EM_VAL handle) {
-            if (jsobj) {
-                internal::_embind_fatal_error(
-                    "Cannot initialize interface wrapper twice",
-                    typeid(InterfaceType).name());
-            }
-            jsobj = val::take_ownership(handle);
+        JSInterface(JSInterface& obj) {
+            jsobj = obj.jsobj;
         }
 
         template<typename ReturnType, typename... Args>
@@ -946,14 +921,20 @@ namespace emscripten {
             return Caller<ReturnType, Args...>::call(*jsobj, name, args...);
         }
 
-    protected:
-        void cloneInterface(InterfaceType* interface) {
-            // why dynamic_cast causes javascript crash?
-            wrapper<InterfaceType>* iw = static_cast<wrapper<InterfaceType>*>(interface);
-            jsobj = iw->jsobj;
+        static std::shared_ptr<JSInterface> cloneToSharedPtr(JSInterface& i) {
+            return std::make_shared<JSInterface>(i);
         }
 
     private:
+        void initialize(internal::EM_VAL handle) {
+            if (jsobj) {
+                internal::_embind_fatal_error(
+                    "Cannot initialize interface wrapper twice",
+                    "JSInterface");
+            }
+            jsobj = val::take_ownership(handle);
+        }
+
         // this class only exists because you can't partially specialize function templates
         template<typename ReturnType, typename... Args>
         struct Caller {
@@ -972,8 +953,7 @@ namespace emscripten {
         void assertInitialized() {
             if (!jsobj) {
                 internal::_embind_fatal_error(
-                    "Cannot invoke call on uninitialized interface wrapper.",
-                    typeid(InterfaceType).name());
+                    "Cannot invoke call on uninitialized Javascript interface wrapper.", "JSInterface");
             }
         }
 
@@ -981,25 +961,17 @@ namespace emscripten {
     };
 
     namespace internal {
-        template<typename WrapperType>
-        WrapperType* create_interface_wrapper(EM_VAL e) {
-            WrapperType* p = new WrapperType;
-            p->initialize(e);
-            return p;
-        }
+        extern JSInterface* create_js_interface(EM_VAL e);
     }
 
-    template<typename WrapperType>
-    class interface {
+    class register_js_interface {
     public:
-        typedef typename WrapperType::interface InterfaceType;
-
-        interface(const char* name) {
+        register_js_interface() {
             _embind_register_interface(
-                internal::TypeID<InterfaceType>::get(),
-                name,
-                reinterpret_cast<internal::GenericFunction>(&internal::create_interface_wrapper<WrapperType>),
-                reinterpret_cast<internal::GenericFunction>(&internal::raw_destructor<WrapperType>));
+                internal::TypeID<JSInterface>::get(),
+                "JSInterface",
+                reinterpret_cast<internal::GenericFunction>(&internal::create_js_interface),
+                reinterpret_cast<internal::GenericFunction>(&internal::raw_destructor<JSInterface>));
         }
     };
 }

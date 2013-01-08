@@ -220,8 +220,10 @@ namespace emscripten {
                 // developers, but perhaps the double underscore will scare them away from calling it.
                 function("__getDerivationPath", &__getDerivationPath);
             }));
+        }
 
-
+        JSInterface* create_js_interface(EM_VAL e) {
+            return new JSInterface(e);
         }
     }
 }
