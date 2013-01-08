@@ -98,7 +98,6 @@ namespace emscripten {
                 TYPEID pointeeType,
                 bool isPolymorphic,
                 const char* pointerName,
-                GenericFunction constructor,
                 GenericFunction destructor,
                 GenericFunction getPointee);
 
@@ -283,18 +282,9 @@ namespace emscripten {
         return *static_cast<ToType*>(&from);
     };
 
-    template<typename FromRawType, typename ToRawType, bool isPolymorphic>
-    struct performShared {
-        static std::shared_ptr<ToRawType> cast(std::shared_ptr<FromRawType> from) {
-            return std::dynamic_pointer_cast<ToRawType>(from);
-        };
-    };
-
     template<typename FromRawType, typename ToRawType>
-    struct performShared<FromRawType, ToRawType, false> {
-        static std::shared_ptr<ToRawType> cast(std::shared_ptr<FromRawType> from) {
-            return std::shared_ptr<ToRawType>(from, static_cast<ToRawType*>(from.get()));
-        };
+    std::shared_ptr<ToRawType> performSharedStaticCast(std::shared_ptr<FromRawType> from) {
+        return std::shared_ptr<ToRawType>(from, static_cast<ToRawType*>(from.get()));
     };
 
     template<typename ReturnType, typename... Args, typename... Policies>
@@ -320,14 +310,6 @@ namespace emscripten {
             return new ClassType(
                 internal::BindingType<Args>::fromWireType(args)...
             );
-        }
-
-        template<typename PointerType>
-        void nullDeallocator(PointerType* p) {}
-
-        template<typename PointerType>
-        typename std::shared_ptr<PointerType> raw_smart_pointer_constructor(PointerType *ptr, void (PointerType*)) {
-            return std::shared_ptr<PointerType>(ptr, nullDeallocator<PointerType>);
         }
 
         template<typename ClassType>
@@ -622,7 +604,6 @@ namespace emscripten {
                  TypeID<PointeeType>::get(),
                  std::is_polymorphic<PointeeType>::value,
                  name,
-                 reinterpret_cast<GenericFunction>(&raw_smart_pointer_constructor<PointeeType*>),
                  reinterpret_cast<GenericFunction>(&raw_destructor<PointerType>),
                  reinterpret_cast<GenericFunction>(&get_pointee<PointerType>));
 
@@ -639,8 +620,8 @@ namespace emscripten {
                  TypeID<ReturnPointeeType>::get(),
                  std::is_polymorphic<PointeeType>::value,
                  methodName,
-                 reinterpret_cast<GenericFunction>(&performShared<PointeeType, ReturnPointeeType, std::is_polymorphic<PointeeType>::value>::cast));
-            return *this;
+                 reinterpret_cast<GenericFunction>(&performSharedStaticCast<PointeeType,ReturnPointeeType>));
+            return *this;      
         }
     };
 
