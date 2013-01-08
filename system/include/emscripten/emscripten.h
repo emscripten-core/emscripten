@@ -212,8 +212,9 @@ void emscripten_async_wget(const char* url, const char* file, void (*onload)(con
 void emscripten_async_wget_data(const char* url, void *arg, void (*onload)(void*, void*, int), void (*onerror)(void*));
 
 /*
- * More feature-complete version of emscripten_async_wget.
- * Load file from url in asynchronous way. 
+ * More feature-complete version of emscripten_async_wget. Note:
+ * this version is experimental.
+ *
  * The requestype is 'GET' or 'POST',
  * If is post request, param is the post parameter 
  * like key=value&key2=value2.
