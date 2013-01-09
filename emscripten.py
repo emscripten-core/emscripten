@@ -377,7 +377,7 @@ var asmPre = (function(env, buffer) {
 ''' % (asm_setup,) + '\n' + asm_global_vars + '''
   var __THREW__ = 0;
   var undef = 0;
-  var tempInt = 0;
+  var tempInt = 0, tempValue = 0;
 ''' + ''.join(['''
   var tempRet%d = 0;''' % i for i in range(10)]) + '\n' + asm_global_funcs + '''
   function stackAlloc(size) {
