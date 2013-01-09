@@ -1018,10 +1018,10 @@ function asmCoercion(value, type) {
   if (!ASM_JS) return value;
   if (type == 'void') {
     return value;
-  } else if (isIntImplemented(type)) {
-    return '((' + value + ')|0)';
-  } else {
+  } else if (type in Runtime.FLOAT_TYPES) {
     return '(+(' + value + '))';
+  } else {
+    return '((' + value + ')|0)';
   }
 }
 
