@@ -7,3 +7,6 @@ src/relooper*.js
 # Ignore generated files 
 src/relooper.js
 src/relooper.js.raw.js
+src/relooper/*.o
+src/relooper/*.out
+
