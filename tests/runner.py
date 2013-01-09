@@ -11016,8 +11016,8 @@ fi
 
         # Building a file that doesn't need cached stuff should not trigger cache generation
         output = self.do([EMCC, path_from_root('tests', 'hello_world.cpp')])
-        assert INCLUDING_MESSAGE.replace('X', 'dlmalloc') not in output
-        assert BUILDING_MESSAGE.replace('X', 'dlmalloc') not in output
+        assert INCLUDING_MESSAGE.replace('X', 'libc') not in output
+        assert BUILDING_MESSAGE.replace('X', 'libc') not in output
         self.assertContained('hello, world!', run_js('a.out.js'))
         assert not os.path.exists(EMCC_CACHE)
         try_delete('a.out.js')
@@ -11029,7 +11029,7 @@ fi
         ll_name2 = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-3-ll.ll')
 
         # Building a file that *does* need dlmalloc *should* trigger cache generation, but only the first time
-        for filename, libname in [('hello_malloc.cpp', 'dlmalloc'), ('hello_libcxx.cpp', 'libcxx')]:
+        for filename, libname in [('hello_malloc.cpp', 'libc'), ('hello_libcxx.cpp', 'libcxx')]:
           for i in range(3):
             print filename, libname, i
             self.clear()
@@ -11041,10 +11041,10 @@ fi
             output = self.do([EMCC, '-O' + str(i), '--closure', '0', '-s', 'RELOOP=0', '--llvm-lto', '0', path_from_root('tests', filename)])
             #print output
             assert INCLUDING_MESSAGE.replace('X', libname) in output
-            if libname == 'dlmalloc':
+            if libname == 'libc':
               assert INCLUDING_MESSAGE.replace('X', 'libcxx') not in output # we don't need libcxx in this code
             else:
-              assert INCLUDING_MESSAGE.replace('X', 'dlmalloc') in output # libcxx always forces inclusion of dlmalloc
+              assert INCLUDING_MESSAGE.replace('X', 'libc') in output # libcxx always forces inclusion of libc
             assert (BUILDING_MESSAGE.replace('X', libname) in output) == (i == 0), 'Must only build the first time'
             self.assertContained('hello, world!', run_js('a.out.js'))
             assert os.path.exists(EMCC_CACHE)
