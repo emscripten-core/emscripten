@@ -172,7 +172,7 @@ def check_node_version():
 # we re-check sanity when the settings are changed)
 # We also re-check sanity and clear the cache when the version changes
 
-EMSCRIPTEN_VERSION = '1.2.2'
+EMSCRIPTEN_VERSION = '1.2.3'
 
 def check_sanity(force=False):
   try:

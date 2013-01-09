@@ -95,7 +95,7 @@ TEMP_DIR = os.environ.get('EMCC_TEMP_DIR')
 LEAVE_INPUTS_RAW = os.environ.get('EMCC_LEAVE_INPUTS_RAW') # Do not compile .ll files into .bc, just compile them with emscripten directly
                                                            # Not recommended, this is mainly for the test runner, or if you have some other
                                                            # specific need.
-                                                           # One major limitation with this mode is that dlmalloc and libc++ cannot be
+                                                           # One major limitation with this mode is that libc and libc++ cannot be
                                                            # added in. Also, LLVM optimizations will not be done, nor dead code elimination
 AUTODEBUG = os.environ.get('EMCC_AUTODEBUG') # If set to 1, we will run the autodebugger (the automatic debugging tool, see tools/autodebugger).
                                              # Note that this will disable inclusion of libraries. This is useful because including
@@ -338,7 +338,7 @@ Options that are modified or new in %s include:
 
   --clear-cache            Manually clears the cache of compiled
                            emscripten system libraries (libc++,
-                           libc++abi, dlmalloc). This is normally
+                           libc++abi, libc). This is normally
                            handled automatically, but if you update
                            llvm in-place (instead of having a different
                            directory for a new version), the caching
@@ -934,16 +934,16 @@ try:
     # Note that we assume a single symbol is enough to know if we have/do not have dlmalloc etc. If you
     # include just a few symbols but want the rest, this will not work.
 
-    # dlmalloc
-    def create_dlmalloc():
-      if DEBUG: print >> sys.stderr, 'emcc: building dlmalloc for cache'
+    # libc
+    def create_libc():
+      if DEBUG: print >> sys.stderr, 'emcc: building libc for cache'
       execute([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')], stdout=stdout, stderr=stderr)
       # we include the libc++ new stuff here, so that the common case of using just new/delete is quick to link
       execute([shared.PYTHON, shared.EMXX, shared.path_from_root('system', 'lib', 'libcxx', 'new.cpp'), '-g', '-o', in_temp('new.o')], stdout=stdout, stderr=stderr)
-      shared.Building.link([in_temp('dlmalloc.o'), in_temp('new.o')], in_temp('dlmalloc_full.o'))
-      return in_temp('dlmalloc_full.o')
-    def fix_dlmalloc():
-      # dlmalloc needs some sign correction. # If we are in mode 0, switch to 2. We will add our lines
+      shared.Building.link([in_temp('dlmalloc.o'), in_temp('new.o')], in_temp('libc.o'))
+      return in_temp('libc.o')
+    def fix_libc():
+      # libc needs some sign correction. # If we are in mode 0, switch to 2. We will add our lines
       try:
         if shared.Settings.CORRECT_SIGNS == 0: raise Exception('we need to change to 2')
       except: # we fail if equal to 0 - so we need to switch to 2 - or if CORRECT_SIGNS is not even in Settings
@@ -954,7 +954,7 @@ try:
       # so all is well anyhow too.
     # XXX We also need to add libc symbols that use malloc, for example strdup. It's very rare to use just them and not
     #     a normal malloc symbol (like free, after calling strdup), so we haven't hit this yet, but it is possible.
-    dlmalloc_symbols = open(shared.path_from_root('system', 'lib', 'dlmalloc.symbols')).read().split('\n')
+    libc_symbols = open(shared.path_from_root('system', 'lib', 'libc.symbols')).read().split('\n')
 
     # libcxx
     def create_libcxx():
@@ -972,7 +972,7 @@ try:
       shared.Settings.CORRECT_SIGNS = shared.Settings.CORRECT_OVERFLOWS = shared.Settings.CORRECT_ROUNDINGS = 1
       #print >> sys.stderr, 'emcc: info: using libcxx turns on CORRECT_* options'
     libcxx_symbols = map(lambda line: line.strip().split(' ')[1], open(shared.path_from_root('system', 'lib', 'libcxx', 'symbols')).readlines())
-    libcxx_symbols = filter(lambda symbol: symbol not in dlmalloc_symbols, libcxx_symbols)
+    libcxx_symbols = filter(lambda symbol: symbol not in libc_symbols, libcxx_symbols)
     libcxx_symbols = set(libcxx_symbols)
 
     # libcxxabi - just for dynamic_cast for now
@@ -990,14 +990,14 @@ try:
       #print >> sys.stderr, 'emcc: info: using libcxxabi, this may need CORRECT_* options'
       #shared.Settings.CORRECT_SIGNS = shared.Settings.CORRECT_OVERFLOWS = shared.Settings.CORRECT_ROUNDINGS = 1
     libcxxabi_symbols = map(lambda line: line.strip().split(' ')[1], open(shared.path_from_root('system', 'lib', 'libcxxabi', 'symbols')).readlines())
-    libcxxabi_symbols = filter(lambda symbol: symbol not in dlmalloc_symbols, libcxxabi_symbols)
+    libcxxabi_symbols = filter(lambda symbol: symbol not in libc_symbols, libcxxabi_symbols)
     libcxxabi_symbols = set(libcxxabi_symbols)
 
-    force = False # If we have libcxx, we must force inclusion of dlmalloc, since libcxx uses new internally. Note: this is kind of hacky
+    force = False # If we have libcxx, we must force inclusion of libc, since libcxx uses new internally. Note: this is kind of hacky
 
     for name, create, fix, library_symbols in [('libcxx',    create_libcxx,    fix_libcxx,    libcxx_symbols),
                                                ('libcxxabi', create_libcxxabi, fix_libcxxabi, libcxxabi_symbols),
-                                               ('dlmalloc',  create_dlmalloc,  fix_dlmalloc,  dlmalloc_symbols)]:
+                                               ('libc',      create_libc,  fix_libc,  libc_symbols)]:
       need = set()
       has = set()
       for temp_file in temp_files:
