@@ -6424,27 +6424,22 @@ void*:16
       #    print opt, "FAIL"
 
     def test_lua(self):
-      if self.emcc_args is None and Building.LLVM_OPTS: return self.skip('llvm 3.1 and safe llvm opts break lua')
+      if self.emcc_args is None: return self.skip('requires emcc')
 
-      try:
-        os.environ['EMCC_LEAVE_INPUTS_RAW'] = '1'
+      if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: make this work')
 
-        if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: make this work')
+      # Overflows in luaS_newlstr hash loop
+      if self.emcc_args is None: Settings.SAFE_HEAP = 0 # Has various warnings, with copied HEAP_HISTORY values (fixed if we copy 'null' as the type)
+      Settings.CORRECT_OVERFLOWS = 1
+      Settings.CHECK_OVERFLOWS = 0
+      Settings.CORRECT_SIGNS = 1 # Not sure why, but needed
+      Settings.INIT_STACK = 1 # TODO: Investigate why this is necessary
 
-        # Overflows in luaS_newlstr hash loop
-        if self.emcc_args is None: Settings.SAFE_HEAP = 0 # Has various warnings, with copied HEAP_HISTORY values (fixed if we copy 'null' as the type)
-        Settings.CORRECT_OVERFLOWS = 1
-        Settings.CHECK_OVERFLOWS = 0
-        Settings.CORRECT_SIGNS = 1 # Not sure why, but needed
-        Settings.INIT_STACK = 1 # TODO: Investigate why this is necessary
-
-        self.do_ll_run(path_from_root('tests', 'lua', 'lua.ll'),
-                        'hello lua world!\n17\n1\n2\n3\n4\n7',
-                        args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
-                        output_nicerizer=lambda string, err: (string + err).replace('\n\n', '\n').replace('\n\n', '\n'),
-                        extra_emscripten_args=['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/langinfo.h,libc/time.h'])
-      finally:
-        del os.environ['EMCC_LEAVE_INPUTS_RAW']
+      self.do_ll_run(path_from_root('tests', 'lua', 'lua.ll'),
+                      'hello lua world!\n17\n1\n2\n3\n4\n7',
+                      args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
+                      output_nicerizer=lambda string, err: (string + err).replace('\n\n', '\n').replace('\n\n', '\n'),
+                      extra_emscripten_args=['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/langinfo.h,libc/time.h'])
 
     def get_freetype(self):
       Settings.INIT_STACK = 1 # TODO: Investigate why this is necessary
