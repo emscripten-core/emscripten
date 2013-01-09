@@ -1186,9 +1186,14 @@ try:
       else:
         return 'eliminate'
 
-    js_optimizer_queue += [get_eliminate()]
+    def get_simplify_pre():
+      if shared.Settings.ASM_JS:
+        return 'simplifyExpressionsPreAsm'
+      else:
+        return 'simplifyExpressionsPre'
 
-    js_optimizer_queue += ['simplifyExpressionsPre']
+    js_optimizer_queue += [get_eliminate(), get_simplify_pre()]
+
     if shared.Settings.RELOOP:
       js_optimizer_queue += ['optimizeShiftsAggressive', get_eliminate()] # aggressive shifts optimization requires loops, it breaks on switches
 

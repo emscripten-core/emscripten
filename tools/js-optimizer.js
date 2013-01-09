@@ -404,7 +404,7 @@ function removeUnneededLabelSettings(ast) {
 
 // Various expression simplifications. Pre run before closure (where we still have metadata), Post run after.
 
-function simplifyExpressionsPre(ast) {
+function simplifyExpressionsPre(ast, asm) {
   // When there is a bunch of math like (((8+5)|0)+12)|0, only the external |0 is needed, one correction is enough.
   // At each node, ((X|0)+Y)|0 can be transformed into (X+Y): The inner corrections are not needed
   // TODO: Is the same is true for 0xff, 0xffff?
@@ -423,10 +423,11 @@ function simplifyExpressionsPre(ast) {
           // We might be able to remove this correction
           for (var i = stack.length-1; i >= 0; i--) {
             if (stack[i] == 1) {
-              // Great, we can eliminate
-              rerun = true;
               // we will replace ourselves with the non-zero side. Recursively process that node.
               var result = jsonCompare(node[2], ZERO) ? node[3] : node[2], other;
+              if (asm && result[0] == 'sub') break; // we must keep a coercion right on top of a heap access in asm mode
+              // Great, we can eliminate
+              rerun = true;
               while (other = process(result, result[0], stack)) {
                 result = other;
               }
@@ -520,6 +521,10 @@ function simplifyExpressionsPre(ast) {
   simplifyBitops(ast);
   joinAdditions(ast);
   // simplifyZeroComp(ast); TODO: investigate performance
+}
+
+function simplifyExpressionsPreAsm(ast) {
+  simplifyExpressionsPre(ast, true);
 }
 
 // In typed arrays mode 2, we can have
@@ -2134,6 +2139,7 @@ var passes = {
   removeAssignsToUndefined: removeAssignsToUndefined,
   //removeUnneededLabelSettings: removeUnneededLabelSettings,
   simplifyExpressionsPre: simplifyExpressionsPre,
+  simplifyExpressionsPreAsm: simplifyExpressionsPreAsm,
   optimizeShiftsConservative: optimizeShiftsConservative,
   optimizeShiftsAggressive: optimizeShiftsAggressive,
   simplifyExpressionsPost: simplifyExpressionsPost,
