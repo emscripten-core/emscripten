@@ -425,7 +425,6 @@ function simplifyExpressionsPre(ast, asm) {
             if (stack[i] == 1) {
               // we will replace ourselves with the non-zero side. Recursively process that node.
               var result = jsonCompare(node[2], ZERO) ? node[3] : node[2], other;
-              if (asm && result[0] == 'sub') break; // we must keep a coercion right on top of a heap access in asm mode
               // Great, we can eliminate
               rerun = true;
               while (other = process(result, result[0], stack)) {
@@ -434,6 +433,8 @@ function simplifyExpressionsPre(ast, asm) {
               return result;
             } else if (stack[i] == -1) {
               break; // Too bad, we can't
+            } else if (asm) {
+              break; // we must keep a coercion right on top of a heap access in asm mode
             }
           }
           stack.push(1); // From here on up, no need for this kind of correction, it's done at the top
