@@ -419,22 +419,26 @@ function simplifyExpressionsPre(ast, asm) {
     while (rerun) {
       rerun = false;
       traverseGenerated(ast, function process(node, type, stack) {
-        if (type == 'binary' && node[1] == '|' && (jsonCompare(node[2], ZERO) || jsonCompare(node[3], ZERO))) {
-          // We might be able to remove this correction
-          for (var i = stack.length-1; i >= 0; i--) {
-            if (stack[i] == 1) {
-              // we will replace ourselves with the non-zero side. Recursively process that node.
-              var result = jsonCompare(node[2], ZERO) ? node[3] : node[2], other;
-              // Great, we can eliminate
-              rerun = true;
-              while (other = process(result, result[0], stack)) {
-                result = other;
+        if (type == 'binary' && node[1] == '|') {
+          if (node[2][0] == 'num' && node[3][0] == 'num') {
+            return ['num', node[2][1] | node[3][1]];
+          } else if (jsonCompare(node[2], ZERO) || jsonCompare(node[3], ZERO)) {
+            // We might be able to remove this correction
+            for (var i = stack.length-1; i >= 0; i--) {
+              if (stack[i] == 1) {
+                // we will replace ourselves with the non-zero side. Recursively process that node.
+                var result = jsonCompare(node[2], ZERO) ? node[3] : node[2], other;
+                // Great, we can eliminate
+                rerun = true;
+                while (other = process(result, result[0], stack)) {
+                  result = other;
+                }
+                return result;
+              } else if (stack[i] == -1) {
+                break; // Too bad, we can't
+              } else if (asm) {
+                break; // we must keep a coercion right on top of a heap access in asm mode
               }
-              return result;
-            } else if (stack[i] == -1) {
-              break; // Too bad, we can't
-            } else if (asm) {
-              break; // we must keep a coercion right on top of a heap access in asm mode
             }
           }
           stack.push(1); // From here on up, no need for this kind of correction, it's done at the top
@@ -452,6 +456,7 @@ function simplifyExpressionsPre(ast, asm) {
     // &-related optimizations
     traverseGenerated(ast, function(node, type) {
       if (type == 'binary' && node[1] == '&' && node[3][0] == 'num') {
+        if (node[2][0] == 'num') return ['num', node[2][1] & node[3][1]];
         var input = node[2];
         var amount = node[3][1];
         if (input[0] == 'binary' && input[1] == '&' && input[3][0] == 'num') {
