@@ -999,7 +999,7 @@ function makeVarDef(js) {
 
 function asmEnsureFloat(value, type) { // ensures that a float type has either 5.5 (clearly a float) or +5 (float due to asm coercion)
   if (!ASM_JS) return value;
-  if (!isIntImplemented(type) && isNumber(value) && value.toString().indexOf('.') < 0) {
+  if (type in Runtime.FLOAT_TYPES && isNumber(value) && value.toString().indexOf('.') < 0) {
     return '(+(' + value + '))';
   } else {
     return value;
@@ -1007,10 +1007,10 @@ function asmEnsureFloat(value, type) { // ensures that a float type has either 5
 }
 
 function asmInitializer(type, impl) {
-  if (isIntImplemented(type)) {// || (impl && impl == 'VAR_EMULATED')) {
-    return '0';
-  } else {
+  if (type in Runtime.FLOAT_TYPES) {
     return '+0';
+  } else {
+    return '0';
   }
 }
 
