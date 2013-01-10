@@ -1267,7 +1267,7 @@ function makeCopyValues(dest, src, num, type, modifier, align, sep) {
   } else { // USE_TYPED_ARRAYS == 2
     // If we don't know how to handle this at compile-time, or handling it is best done in a large amount of code, call memset
     if (!isNumber(num) || (align < 4 && parseInt(num) >= SEEK_OPTIMAL_ALIGN_MIN)) {
-      return '_memcpy(' + dest + ', ' + src + ', ' + num + ', ' + align + ')';
+      return '_memcpy(' + dest + ', ' + src + ', ' + num + ')';
     }
     num = parseInt(num);
     var ret = [];
