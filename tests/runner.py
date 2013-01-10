@@ -7992,6 +7992,7 @@ Options that are modified or new in %s include:
         # dlmalloc. dlmalloc is special in that it is the only part of libc that is (1) hard to write well, and
         # very speed-sensitive. So we do not implement it in JS in library.js, instead we compile it from source
         for source, has_malloc in [('hello_world' + suffix, False), ('hello_malloc.cpp', True)]:
+          print source, has_malloc
           self.clear()
           output = Popen([PYTHON, compiler, path_from_root('tests', source)], stdout=PIPE, stderr=PIPE).communicate()
           assert os.path.exists('a.out.js'), '\n'.join(output)

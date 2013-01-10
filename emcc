@@ -1106,7 +1106,10 @@ try:
     if need_memcpy and not has_memcpy:
       if DEBUG: print >> sys.stderr, 'memcpy intrinsic added in optimizations, linking in optimized memcpy'
       memcpy = in_temp('memcpy.bc')
+      force_cxx = os.environ.get('EMMAKEN_CXX')
+      if force_cxx is not None: del os.environ['EMMAKEN_CXX'] # memcpy must be compiled as C
       execute([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'libc', 'musl', 'memcpy.c'), '-o', memcpy], stdout=stdout, stderr=stderr)
+      if force_cxx is not None: os.environ['EMMAKEN_CXX'] = force_cxx
       shared.Building.llvm_opt(memcpy, llvm_opts) # optimize it just like normal code; no point in lto though
       next = final + '.postrinsics.bc'
       shared.Building.link([final, memcpy], next)
