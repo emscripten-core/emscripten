@@ -4202,8 +4202,10 @@ LibraryManager.library = {
 
   memcpy: function (dest, src, num) {
     // simple version, in general it should not be used - we should pull it in from libc
-#if ASSERTIONS
-    Module.printErr('warning: library.js memcpy should not be running!');
+    if (!_memcpy.shown) {
+      _memcpy.shown = true;
+      Module.printErr('warning: library.js memcpy should not be running, it is only for testing!');
+    }
 #endif
     while (num--) {
       HEAP8[dest++] = HEAP8[src++];

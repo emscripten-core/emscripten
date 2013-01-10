@@ -8754,6 +8754,48 @@ f.close()
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp')]).communicate()
       self.assertContained('1234, 1234, 4321\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+    def test_link_memcpy(self):
+      # memcpy can show up *after* optimizations, so after our opportunity to link in libc, so it must be special-cased
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
+        #include <stdio.h>
+
+        int main(int argc, char **argv) {
+          int num = argc + 10;
+          char buf[num], buf2[num];
+          for (int i = 0; i < num; i++) {
+            buf[i] = i*i+i/3;
+          }
+          for (int i = 1; i < num; i++) {
+            buf[i] += buf[i-1];
+          }
+          for (int i = 0; i < num; i++) {
+            buf2[i] = buf[i];
+          }          
+          for (int i = 1; i < num; i++) {
+            buf2[i] += buf2[i-1];
+          }
+          for (int i = 0; i < num; i++) {
+            printf("%d:%d\n", i, buf2[i]);
+          }
+          return 0;
+        }
+      ''')
+      Popen([PYTHON, EMCC, '-O2', '--closure', '-0', os.path.join(self.get_dir(), 'main.cpp')]).communicate()
+      output = run_js(os.path.join(self.get_dir(), 'a.out.js'), full_output=True, stderr=PIPE)
+      self.assertContained('''0:0
+1:1
+2:6
+3:21
+4:53
+5:111
+6:-49
+7:98
+8:55
+9:96
+10:-16
+''', output)
+      self.assertNotContained('warning: library.js memcpy should not be running, it is only for testing!', output)
+
     def test_warn_undefined(self):
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
         #include <stdio.h>

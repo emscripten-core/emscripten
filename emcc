@@ -90,6 +90,8 @@ LLVM_OPT_LEVEL = {
   3: 3,
 }
 
+MEMCPY_ALIASES = ['memcpy', 'llvm.memcpy.i32', 'llvm.memcpy.i64', 'llvm.memcpy.p0i8.p0i8.i32', 'llvm.memcpy.p0i8.p0i8.i64']
+
 DEBUG = int(os.environ.get('EMCC_DEBUG') or 0)
 TEMP_DIR = os.environ.get('EMCC_TEMP_DIR')
 LEAVE_INPUTS_RAW = os.environ.get('EMCC_LEAVE_INPUTS_RAW') # Do not compile .ll files into .bc, just compile them with emscripten directly
@@ -947,7 +949,7 @@ try:
 
     def fix_libc(need):
       # If an intrinsic alias of memcpy is used, we need memcpy
-      for memcpy_alias in ['llvm.memcpy.i32', 'llvm.memcpy.i64', 'llvm.memcpy.p0i8.p0i8.i32', 'llvm.memcpy.p0i8.p0i8.i64']:
+      for memcpy_alias in MEMCPY_ALIASES:
         if memcpy_alias in need:
           if '_memcpy' not in shared.Settings.EXPORTED_FUNCTIONS:
             shared.Settings.EXPORTED_FUNCTIONS.append('_memcpy')
@@ -1086,6 +1088,30 @@ try:
         link_opts += shared.Building.get_safe_internalize() + ['-globaldce']
       shared.Building.llvm_opt(in_temp(target_basename + '.bc'), link_opts)
       if DEBUG: save_intermediate('linktime', 'bc')
+
+    # Optimization and lto can add new intrinsics like memcpy that were not present before. We
+    # are now *after* linking in libc, so we missed our chance to get memcpy - check and add it now
+    # if necessary
+    final_symbols = shared.Building.llvm_nm(final)
+    need_memcpy = False
+    for symbol in final_symbols.undefs:
+      if symbol in MEMCPY_ALIASES:
+        need_memcpy = True
+        break
+    has_memcpy = False
+    for symbol in final_symbols.defs:
+      if symbol in MEMCPY_ALIASES:
+        has_memcpy = True
+        break
+    if need_memcpy and not has_memcpy:
+      if DEBUG: print >> sys.stderr, 'memcpy intrinsic added in optimizations, linking in optimized memcpy'
+      memcpy = in_temp('memcpy.bc')
+      execute([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'libc', 'musl', 'memcpy.c'), '-o', memcpy], stdout=stdout, stderr=stderr)
+      shared.Building.llvm_opt(memcpy, llvm_opts) # optimize it just like normal code; no point in lto though
+      next = final + '.postrinsics.bc'
+      shared.Building.link([final, memcpy], next)
+      final = next
+      if DEBUG: save_intermediate('postrinsics', 'bc')
 
   # Prepare .ll for Emscripten
   if not LEAVE_INPUTS_RAW:
