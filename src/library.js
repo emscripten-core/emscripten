@@ -6777,14 +6777,14 @@ LibraryManager.library = {
   // nonblocking
   // ==========================================================================
 
-  $Sockets__deps: ['__setErrNo', '$ERRNO_CODES'],
+  $Sockets__deps: ['__setErrNo', '$ERRNO_CODES', '$WebRTC'],
   $Sockets: {
     BACKEND_WEBSOCKETS: 0,
     BACKEND_WEBRTC: 1,
     BUFFER_SIZE: 10*1024, // initial size
     MAX_BUFFER_SIZE: 10*1024*1024, // maximum size we will grow the buffer
-
-    backend: 0, // default to websockets
+    
+    backend: 1, // default to websockets
     nextFd: 1,
     fds: {},
     sockaddr_in_layout: Runtime.generateStructInfo([
@@ -6900,6 +6900,11 @@ LibraryManager.library = {
         }
       },
       1: { // webrtc
+        connect: function(info) {
+          info.sender = function(data) {
+            console.log("webrtc: ", WebRTC);
+          }          
+        }
       }
     }
   },
