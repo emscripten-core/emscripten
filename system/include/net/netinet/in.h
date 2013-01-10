@@ -48,6 +48,26 @@ struct ip_mreq {
   struct in_addr imr_interface;
 };
 
+#define IP_MULTICAST_IF 32
+#define IP_MULTICAST_TTL 33
+#define IP_MULTICAST_LOOP 34
+#define IP_ADD_MEMBERSHIP 35
+#define IP_DROP_MEMBERSHIP 36
+#define IP_UNBLOCK_SOURCE 37
+#define IP_BLOCK_SOURCE 38
+#define IP_ADD_SOURCE_MEMBERSHIP 39
+#define IP_DROP_SOURCE_MEMBERSHIP 40
+#define IP_MSFILTER 41
+#define MCAST_JOIN_GROUP 42
+#define MCAST_BLOCK_SOURCE 43
+#define MCAST_UNBLOCK_SOURCE 44
+#define MCAST_LEAVE_GROUP 45
+#define MCAST_JOIN_SOURCE_GROUP 46
+#define MCAST_LEAVE_SOURCE_GROUP 47
+#define MCAST_MSFILTER 48
+#define IP_MULTICAST_ALL 49
+#define IP_UNICAST_IF 50
+
 #ifdef __cplusplus
 }
 #endif

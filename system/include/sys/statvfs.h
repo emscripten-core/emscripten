@@ -22,6 +22,8 @@ struct statvfs {
 
 int statvfs(const char *path, struct statvfs *s);
 
+#define ST_RDONLY 0
+
 #ifdef __cplusplus
 }
 #endif

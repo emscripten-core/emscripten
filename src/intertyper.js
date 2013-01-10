@@ -61,7 +61,7 @@ function intertyper(data, sidePass, baseLineNums) {
       var baseLineNumPosition = 0;
       for (var i = 0; i < lines.length; i++) {
         var line = lines[i];
-        lines[i] = null; // lines may be very very large. Allow GCing to occur in the loop by releasing refs here
+        if (singlePhase) lines[i] = null; // lines may be very very large. Allow GCing to occur in the loop by releasing refs here
 
         while (baseLineNumPosition < baseLineNums.length-1 && i >= baseLineNums[baseLineNumPosition+1][0]) {
           baseLineNumPosition++;
@@ -73,13 +73,11 @@ function intertyper(data, sidePass, baseLineNums) {
           if (!testType) {
             var global = /([@%\w\d\.\" $-]+) = .*/.exec(line);
             var globalIdent = toNiceIdent(global[1]);
-            var testAlias = /[@%\w\d\.\" $-]+ = alias .*/.exec(line);
-            var testString = /[@%\w\d\.\" $-]+ = [\w ]+ \[\d+ x i8] c".*/.exec(line);
+            var testAlias = /[@%\w\d\.\" $-]+ = (hidden )?alias .*/.exec(line);
             Variables.globals[globalIdent] = {
               name: globalIdent,
               alias: !!testAlias,
-              impl: VAR_EMULATED,
-              isString : !!testString
+              impl: VAR_EMULATED
             };
             unparsedGlobals.lines.push(line);
           } else {
@@ -459,6 +457,9 @@ function intertyper(data, sidePass, baseLineNums) {
         };
         ret.type = ret.value.type;
         Types.needAnalysis[ret.type] = 0;
+        if (!NAMED_GLOBALS) {
+          Variables.globals[ret.ident].type = ret.type;
+        }
         return [ret];
       }
       if (item.tokens[2].text == 'type') {
@@ -509,6 +510,10 @@ function intertyper(data, sidePass, baseLineNums) {
           private_: private_,
           lineNum: item.lineNum
         };
+        if (!NAMED_GLOBALS) {
+          Variables.globals[ret.ident].type = ret.type;
+          Variables.globals[ret.ident].external = external;
+        }
         Types.needAnalysis[ret.type] = 0;
         if (ident == '@llvm.global_ctors') {
           ret.ctors = [];
@@ -674,7 +679,7 @@ function intertyper(data, sidePass, baseLineNums) {
       // Inline assembly is just JavaScript that we paste into the code
       item.intertype = 'value';
       if (tokensLeft[0].text == 'sideeffect') tokensLeft.splice(0, 1);
-      item.ident = tokensLeft[0].text.substr(1, tokensLeft[0].text.length-2);
+      item.ident = tokensLeft[0].text.substr(1, tokensLeft[0].text.length-2) || ';'; // use ; for empty inline assembly
       return { forward: null, ret: [item], item: item };
     } 
     if (item.ident.substr(-2) == '()') {
@@ -914,6 +919,7 @@ function intertyper(data, sidePass, baseLineNums) {
     processItem: function(item) {
       return [{
         intertype: 'resume',
+        ident: toNiceIdent(item.tokens[2].text),
         lineNum: item.lineNum
       }];
     }

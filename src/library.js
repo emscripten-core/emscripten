@@ -611,7 +611,7 @@ LibraryManager.library = {
     },
 
     deleteFile: function(path) {
-      var path = FS.analyzePath(path);
+      path = FS.analyzePath(path);
       if (!path.parentExists || !path.exists) {
         throw 'Invalid path ' + path;
       }
@@ -2457,20 +2457,23 @@ LibraryManager.library = {
     var argIndex = 0;
     var next;
 
-    next = 1;
     mainLoop:
-    for (var formatIndex = 0; formatIndex < format.length; formatIndex++) {
+    for (var formatIndex = 0; formatIndex < format.length;) {
+      if (format[formatIndex] === '%' && format[formatIndex+1] == 'n') {
+        var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
+        argIndex += Runtime.getNativeFieldSize('void*');
+        {{{ makeSetValue('argPtr', 0, 'soFar', 'i32') }}};
+        formatIndex += 2;
+        continue;
+      }
+
       // remove whitespace
       while (1) {
         next = get();
         if (next == 0) return fields;
         if (!(next in __scanString.whiteSpace)) break;
-      } 
-      unget(next);
-      
-      if (next <= 0) return fields;
-      var next = get();
-      if (next <= 0) return fields;  // End of input.
+      }
+      unget();
 
       if (format[formatIndex] === '%') {
         formatIndex++;
@@ -2504,6 +2507,7 @@ LibraryManager.library = {
         // Read characters according to the format. floats are trickier, they may be in an unfloat state in the middle, then be a valid float later
         if (type == 'f') {
           var last = 0;
+          next = get();
           while (next > 0) {
             buffer.push(String.fromCharCode(next));
             if (__isFloat(buffer.join(''))) {
@@ -2511,12 +2515,12 @@ LibraryManager.library = {
             }
             next = get();
           }
-          unget(next);
-          while (buffer.length > last) {
-            unget(buffer.pop().charCodeAt(0));
+          for (var i = 0; i < buffer.length - last + 1; i++) {
+            unget();
           }
+          buffer.length = last;
+        } else {
           next = get();
-        } else if (type != 'n') {
           var first = true;
           while ((curr < max_ || isNaN(max_)) && next > 0) {
             if (!(next in __scanString.whiteSpace) && // stop on whitespace
@@ -2530,13 +2534,14 @@ LibraryManager.library = {
               buffer.push(String.fromCharCode(next));
               next = get();
               curr++;
+              first = false;
             } else {
               break;
             }
-            first = false;
           }
+          unget();
         }
-        if (buffer.length === 0 && type != 'n') return 0;  // Failure.
+        if (buffer.length === 0) return 0;  // Failure.
         var text = buffer.join('');
         var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
         argIndex += Runtime.getNativeFieldSize('void*');
@@ -2566,30 +2571,25 @@ LibraryManager.library = {
               {{{ makeSetValue('argPtr', 'j', 'array[j]', 'i8') }}}
             }
             break;
-          case 'n':
-            {{{ makeSetValue('argPtr', 0, 'soFar-1', 'i32') }}}
-            break;
         }
-        if (type != 'n') fields++;
-        if (next <= 0) break mainLoop;  // End of input.
+        fields++;
       } else if (format[formatIndex] in __scanString.whiteSpace) {
+        next = get();
         while (next in __scanString.whiteSpace) {
-          next = get();
           if (next <= 0) break mainLoop;  // End of input.
+          next = get();
         }
         unget(next);
+        formatIndex++;
       } else {
         // Not a specifier.
+        next = get();
         if (format[formatIndex].charCodeAt(0) !== next) {
           unget(next);
           break mainLoop;
         }
+        formatIndex++;
       }
-    }
-    // 'n' is special in that it needs no input. so it can be at the end, even with nothing left to read
-    if (format[formatIndex-1] == '%' && format[formatIndex] == 'n') {
-      var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
-      {{{ makeSetValue('argPtr', 0, 'soFar-1', 'i32') }}}
     }
     return fields;
   },
@@ -3455,8 +3455,9 @@ LibraryManager.library = {
     // int fscanf(FILE *restrict stream, const char *restrict format, ... );
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/scanf.html
     if (FS.streams[stream]) {
-      var get = function() { return _fgetc(stream); };
-      var unget = function(c) { return _ungetc(c, stream); };
+      var stack = [];
+      var get = function() { var ret = _fgetc(stream); stack.push(ret); return ret };
+      var unget = function(c) { return _ungetc(stack.pop(), stream) };
       return __scanString(format, get, unget, varargs);
     } else {
       return -1;
@@ -3484,11 +3485,11 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
     var result = __formatString(format, varargs);
     var limit = (n === undefined) ? result.length
-                                  : Math.min(result.length, n - 1);
+                                  : Math.min(result.length, Math.max(n - 1, 0));
     for (var i = 0; i < limit; i++) {
       {{{ makeSetValue('s', 'i', 'result[i]', 'i8') }}};
     }
-    {{{ makeSetValue('s', 'i', '0', 'i8') }}};
+    if (limit < n || (n === undefined)) {{{ makeSetValue('s', 'i', '0', 'i8') }}};
     return result.length;
   },
   fprintf__deps: ['fwrite', '_formatString'],
@@ -3547,21 +3548,42 @@ LibraryManager.library = {
      * this implementation simply uses malloc underneath the call to
      * mmap.
      */
+    if (!_mmap.mappings) _mmap.mappings = {};
     if (stream == -1) {
       var ptr = _malloc(num);
-      _memset(ptr, 0, num);
-      return ptr;
+    } else {
+      var info = FS.streams[stream];
+      if (!info) return -1;
+      var contents = info.object.contents;
+      contents = Array.prototype.slice.call(contents, offset, offset+num);
+      ptr = allocate(contents, 'i8', ALLOC_NORMAL);
     }
-    var info = FS.streams[stream];
-    if (!info) return -1;
-    var contents = info.object.contents;
-    contents = Array.prototype.slice.call(contents, offset, offset+num);
-    return allocate(contents, 'i8', ALLOC_NORMAL);
+    // align to page size
+    var ret = ptr;
+    if (ptr % PAGE_SIZE != 0) {
+      var old = ptr;
+      ptr = _malloc(num + PAGE_SIZE);
+      ret = alignMemoryPage(ptr);
+      _memcpy(ret, old, num);
+      _free(old);
+    }
+    if (stream == -1) {
+      _memset(ret, 0, num);
+    }
+    _mmap.mappings[ret] = { malloc: ptr, num: num };
+    return ret;
   },
   __01mmap64_: 'mmap',
 
   munmap: function(start, num) {
-    _free(start);
+    if (!_mmap.mappings) _mmap.mappings = {};
+    // TODO: support unmmap'ing parts of allocations
+    var info = _mmap.mappings[start];
+    if (!info) return 0;
+    if (num == info.num) {
+      _mmap.mappings[start] = null;
+      _free(info.malloc);
+    }
     return 0;
   },
 
@@ -3738,6 +3760,7 @@ LibraryManager.library = {
   strtod_l: 'strtod', // no locale support yet
   strtold: 'strtod', // XXX add real support for long double
   strtold_l: 'strtold', // no locale support yet
+  strtof: 'strtod', // use stdtod to handle strtof
 
   _parseInt__deps: ['isspace', '__setErrNo', '$ERRNO_CODES'],
   _parseInt: function(str, endptr, base, min, max, bits, unsign) {
@@ -3814,9 +3837,73 @@ LibraryManager.library = {
 
     return ret;
   },
-  strtoll__deps: ['_parseInt'],
+#if USE_TYPED_ARRAYS == 2
+  _parseInt64__deps: ['isspace', '__setErrNo', '$ERRNO_CODES', function() { Types.preciseI64MathUsed = 1 }],
+  _parseInt64: function(str, endptr, base, min, max, unsign) {
+    var start = str;
+    // Skip space.
+    while (_isspace({{{ makeGetValue('str', 0, 'i8') }}})) str++;
+
+    // Check for a plus/minus sign.
+    if ({{{ makeGetValue('str', 0, 'i8') }}} == '-'.charCodeAt(0)) {
+      str++;
+    } else if ({{{ makeGetValue('str', 0, 'i8') }}} == '+'.charCodeAt(0)) {
+      str++;
+    }
+
+    // Find base.
+    var ok = false;
+    var finalBase = base;
+    if (!finalBase) {
+      if ({{{ makeGetValue('str', 0, 'i8') }}} == '0'.charCodeAt(0)) {
+        if ({{{ makeGetValue('str+1', 0, 'i8') }}} == 'x'.charCodeAt(0) ||
+            {{{ makeGetValue('str+1', 0, 'i8') }}} == 'X'.charCodeAt(0)) {
+          finalBase = 16;
+          str += 2;
+        } else {
+          finalBase = 8;
+          str++;
+          ok = true; // we saw an initial zero, perhaps the entire thing is just "0"
+        }
+      }
+    }
+    if (!finalBase) finalBase = 10;
+
+    // Get digits.
+    var chr;
+    while ((chr = {{{ makeGetValue('str', 0, 'i8') }}}) != 0) {
+      var digit = parseInt(String.fromCharCode(chr), finalBase);
+      if (isNaN(digit)) {
+        break;
+      } else {
+        str++;
+        ok = true;
+      }
+    }
+    if (!ok) {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return [0, 0];
+    }
+
+    try {
+      i64Math.fromString(Pointer_stringify(start, str - start), finalBase, min, max, unsign);
+    } catch(e) {
+      ___setErrNo(ERRNO_CODES.ERANGE); // not quite correct
+    }
+
+    // Set end pointer.
+    if (endptr) {
+      {{{ makeSetValue('endptr', 0, 'str', '*') }}}
+    }
+
+    var ret = i64Math.result.slice(0);
+
+    return ret;
+  },
+#endif
+  strtoll__deps: ['_parseInt64'],
   strtoll: function(str, endptr, base) {
-    return __parseInt(str, endptr, base, -9223372036854775200, 9223372036854775200, 64);  // LLONG_MIN, LLONG_MAX; imprecise.
+    return __parseInt64(str, endptr, base, '-9223372036854775808', '9223372036854775807');  // LLONG_MIN, LLONG_MAX.
   },
   strtoll_l: 'strtoll', // no locale support yet
   strtol__deps: ['_parseInt'],
@@ -3829,9 +3916,9 @@ LibraryManager.library = {
     return __parseInt(str, endptr, base, 0, 4294967295, 32, true);  // ULONG_MAX.
   },
   strtoul_l: 'strtoul', // no locale support yet
-  strtoull__deps: ['_parseInt'],
+  strtoull__deps: ['_parseInt64'],
   strtoull: function(str, endptr, base) {
-    return __parseInt(str, endptr, base, 0, 18446744073709551615, 64, true);  // ULONG_MAX; imprecise.
+    return __parseInt64(str, endptr, base, 0, '18446744073709551615', true);  // ULONG_MAX.
   },
   strtoull_l: 'strtoull', // no locale support yet
 
@@ -4036,6 +4123,10 @@ LibraryManager.library = {
   },
   rand_r: function(seed) { // XXX ignores the seed
     return Math.floor(Math.random()*0x80000000);
+  },
+
+  drand48: function() {
+    return Math.random();
   },
 
   realpath__deps: ['$FS', '__setErrNo'],
@@ -4736,6 +4827,17 @@ LibraryManager.library = {
     return ((x&0xff)<<24) | (((x>>8)&0xff)<<16) | (((x>>16)&0xff)<<8) | (x>>>24);
   },
 
+  llvm_bswap_i64__deps: ['llvm_bswap_i32'],
+  llvm_bswap_i64: function(l, h) {
+    var retl = _llvm_bswap_i32(h)>>>0;
+    var reth = _llvm_bswap_i32(l)>>>0;
+#if USE_TYPED_ARRAYS == 2
+    return [retl, reth];
+#else
+    throw 'unsupported';
+#endif
+  },
+
   llvm_ctlz_i32: function(x) {
     for (var i=0; i<32; i++) {
         if ( (x & (1 << (31-i))) != 0 ) {
@@ -4745,13 +4847,28 @@ LibraryManager.library = {
     return 32;
   },
 
+  llvm_ctlz_i64__deps: ['llvm_ctlz_i32'],
+  llvm_ctlz_i64: function(l, h) {
+    var ret = _llvm_ctlz_i32(h);
+    if (ret == 32) ret += _llvm_ctlz_i32(l);
+#if USE_TYPED_ARRAYS == 2
+    return [ret, 0];
+#else
+    return ret;
+#endif
+  },
+
+  llvm_trap: function() {
+    throw 'trap! ' + new Error().stack;
+  },
+
   __assert_fail: function(condition, file, line) {
     ABORT = true;
-    throw 'Assertion failed: ' + Pointer_stringify(condition);//JSON.stringify(arguments)//condition;
+    throw 'Assertion failed: ' + Pointer_stringify(condition) + ' at ' + new Error().stack;
   },
 
   __assert_func: function(filename, line, func, condition) {
-    throw 'Assertion failed: ' + (condition ? Pointer_stringify(condition) : 'unknown condition') + ', at: ' + [filename ? Pointer_stringify(filename) : 'unknown filename', line, func ? Pointer_stringify(func) : 'unknown function'];
+    throw 'Assertion failed: ' + (condition ? Pointer_stringify(condition) : 'unknown condition') + ', at: ' + [filename ? Pointer_stringify(filename) : 'unknown filename', line, func ? Pointer_stringify(func) : 'unknown function'] + ' at ' + new Error().stack;
   },
 
   __cxa_guard_acquire: function(variable) {
@@ -5095,8 +5212,8 @@ LibraryManager.library = {
     return ret;
   },
 
-  llvm_expect_i32__inline: function(x, y) {
-    return '((' + x + ')==(' + y + '))';
+  llvm_expect_i32__inline: function(val, expected) {
+    return '(' + val + ')';
   },
 
   llvm_lifetime_start: function() {},
@@ -5106,6 +5223,34 @@ LibraryManager.library = {
   llvm_invariant_end: function() {},
 
   llvm_objectsize_i32: function() { return -1 }, // TODO: support this
+
+  // ==========================================================================
+  // llvm-mono integration
+  // ==========================================================================
+
+  llvm_mono_load_i8_p0i8: function(ptr) {
+    return {{{ makeGetValue('ptr', 0, 'i8') }}};
+  },
+
+  llvm_mono_store_i8_p0i8: function(value, ptr) {
+    {{{ makeSetValue('ptr', 0, 'value', 'i8') }}};
+  },
+
+  llvm_mono_load_i16_p0i16: function(ptr) {
+    return {{{ makeGetValue('ptr', 0, 'i16') }}};
+  },
+
+  llvm_mono_store_i16_p0i16: function(value, ptr) {
+    {{{ makeSetValue('ptr', 0, 'value', 'i16') }}};
+  },
+
+  llvm_mono_load_i32_p0i32: function(ptr) {
+    return {{{ makeGetValue('ptr', 0, 'i32') }}};
+  },
+
+  llvm_mono_store_i32_p0i32: function(value, ptr) {
+    {{{ makeSetValue('ptr', 0, 'value', 'i32') }}};
+  },
 
   // ==========================================================================
   // math.h
@@ -5127,6 +5272,64 @@ LibraryManager.library = {
   atan2f: 'Math.atan2',
   exp: 'Math.exp',
   expf: 'Math.exp',
+
+  // The erf and erfc functions are inspired from
+  // http://www.digitalmars.com/archives/cplusplus/3634.html
+  // and mruby source code at
+  // https://github.com/mruby/mruby/blob/master/src/math.c
+  erfc: function (x) {
+    var MATH_TOLERANCE = 1E-12;
+    var ONE_SQRTPI = 0.564189583547756287;
+    var a = 1;
+    var b = x;
+    var c = x;
+    var d = x * x + 0.5;
+    var n = 1.0;
+    var q2 = b / d;
+    var q1, t;
+
+    if (Math.abs(x) < 2.2) {
+      return 1.0 - _erf(x);
+    }
+    if (x < 0) {
+      return 2.0 - _erfc(-x);
+    }
+    do {
+      t = a * n + b * x;
+      a = b;
+      b = t;
+      t = c * n + d * x;
+      c = d;
+      d = t;
+      n += 0.5;
+      q1 = q2;
+      q2 = b / d;
+    } while (Math.abs(q1 - q2) / q2 > MATH_TOLERANCE);
+    return (ONE_SQRTPI * Math.exp(- x * x) * q2);
+  },
+  erfcf: 'erfcf',
+  erf: function (x) {
+    var MATH_TOLERANCE = 1E-12;
+    var TWO_SQRTPI = 1.128379167095512574;
+    var sum = x;
+    var term = x;
+    var xsqr = x*x;
+    var j = 1;
+
+    if (Math.abs(x) > 2.2) {
+      return 1.0 - _erfc(x);
+    }
+    do {
+      term *= xsqr / j;
+      sum -= term / (2 * j + 1);
+      ++j;
+      term *= xsqr / j;
+      sum += term / (2 * j + 1);
+      ++j;
+    } while (Math.abs(term / sum) > MATH_TOLERANCE);
+    return (TWO_SQRTPI * sum);
+  },
+  erff: 'erf',
   log: 'Math.log',
   logf: 'Math.log',
   sqrt: 'Math.sqrt',
@@ -5269,7 +5472,7 @@ LibraryManager.library = {
   },
   fmaxf: 'fmax',
   fmin: function(x, y) {
-    return isNaN(x) ? y : isNaN(y) ? x : Math.max(x, y);
+    return isNaN(x) ? y : isNaN(y) ? x : Math.min(x, y);
   },
   fminf: 'fmin',
   fma: function(x, y, z) {
@@ -5790,6 +5993,26 @@ LibraryManager.library = {
   },
 
   // ==========================================================================
+  // sys/timeb.h
+  // ==========================================================================
+
+  __timeb_struct_layout: Runtime.generateStructInfo([
+    ['i32', 'time'],
+    ['i16', 'millitm'],
+    ['i16', 'timezone'],
+    ['i16', 'dstflag']
+  ]),
+  ftime__deps: ['__timeb_struct_layout'],
+  ftime: function(p) {
+    var millis = Date.now();
+    {{{ makeSetValue('p', '___timeb_struct_layout.time', 'Math.floor(millis/1000)', 'i32') }}};
+    {{{ makeSetValue('p', '___timeb_struct_layout.millitm', 'millis % 1000', 'i16') }}};
+    {{{ makeSetValue('p', '___timeb_struct_layout.timezone', '0', 'i16') }}}; // TODO
+    {{{ makeSetValue('p', '___timeb_struct_layout.dstflag', '0', 'i16') }}}; // TODO
+    return 0;
+  },
+
+  // ==========================================================================
   // sys/times.h
   // ==========================================================================
 
@@ -5844,11 +6067,11 @@ LibraryManager.library = {
 
   setjmp__inline: function(env) {
     // Save the label
-    return '(' + makeSetValue(env, '0', 'label', 'i32') + ', 0)';
+    return '(tempInt = setjmpId++, mySetjmpIds[tempInt] = 1, setjmpLabels[tempInt] = label,' + makeSetValue(env, '0', 'tempInt', 'i32') + ', 0)';
   },
 
   longjmp: function(env, value) {
-    throw { longjmp: true, label: {{{ makeGetValue('env', '0', 'i32') }}}, value: value || 1 };
+    throw { longjmp: true, id: {{{ makeGetValue('env', '0', 'i32') }}}, value: value || 1 };
   },
 
   // ==========================================================================
@@ -6407,6 +6630,17 @@ LibraryManager.library = {
     _pthread_key_create.keys[key] = value;
   },
 
+  pthread_cleanup_push: function(routine, arg) {
+    __ATEXIT__.push({ func: function() { FUNCTION_TABLE[routine](arg) } })
+    _pthread_cleanup_push.level = __ATEXIT__.length;
+  },
+
+  pthread_cleanup_pop: function() {
+    assert(_pthread_cleanup_push.level == __ATEXIT__.length, 'cannot pop if something else added meanwhile!');
+    __ATEXIT__.pop();
+    _pthread_cleanup_push.level = __ATEXIT__.length;
+  },
+
   // ==========================================================================
   // malloc.h
   // ==========================================================================
@@ -6834,6 +7068,18 @@ LibraryManager.library = {
 
   emscripten_run_script_int: function(ptr) {
     return eval(Pointer_stringify(ptr));
+  },
+
+  emscripten_run_script_string: function(ptr) {
+    var s = eval(Pointer_stringify(ptr));
+    var me = _emscripten_run_script_string;
+    if (!me.bufferSize || me.bufferSize < s.length+1) {
+      if (me.bufferSize) _free(me.buffer);
+      me.bufferSize = s.length+1;
+      me.buffer = _malloc(me.bufferSize);
+    }
+    writeStringToMemory(s, me.buffer);
+    return me.buffer;
   },
 
   emscripten_random: function() {

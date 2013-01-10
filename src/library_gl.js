@@ -454,8 +454,7 @@ var LibraryGL = {
   },
 
   glBufferSubData: function(target, offset, size, data) {
-    var floatArray = {{{ makeHEAPView('F32', 'data', 'data+size') }}};
-    Module.ctx.bufferSubData(target, offset, floatArray);
+    Module.ctx.bufferSubData(target, offset, HEAPU8.subarray(data, data+size));
   },
 
   glIsBuffer: function(buffer) {
@@ -2100,6 +2099,11 @@ var LibraryGL = {
   },
 
   glColor4f: function(r, g, b, a) {
+    r = Math.max(Math.min(r, 1), 0);
+    g = Math.max(Math.min(g, 1), 0);
+    b = Math.max(Math.min(b, 1), 0);
+    a = Math.max(Math.min(a, 1), 0);
+
     // TODO: make ub the default, not f, save a few mathops
     if (GL.immediate.mode) {
       var start = GL.immediate.vertexCounter << 2;

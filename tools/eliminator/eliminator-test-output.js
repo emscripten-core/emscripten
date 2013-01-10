@@ -6132,5 +6132,19 @@ function _mallocNoU($bytes) {
   return $mem_0;
   return null;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "b", "c", "f", "g", "h", "py", "r", "t", "f2", "f3", "llvm3_1", "_inflate", "_malloc", "_mallocNoU"]
+function phi() {
+  if (wat()) {
+    var $10 = 1;
+  } else {
+    var $10 = (_init_mparams() | 0) != 0;
+  }
+  var $10;
+}
+function intoCond() {
+  var $115 = 22;
+  var $NumWords = __ZN4llvm15BitstreamCursor4ReadEj($117, 32);
+  if (($115 | 0) != 0) {
+    HEAP32[$115 >> 2] = $NumWords;
+  }
+}
 

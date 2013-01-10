@@ -9,6 +9,7 @@ extern "C" {
 #define TRY_AGAIN 2
 #define NO_RECOVERY 3
 #define NO_DATA 4
+#define NO_ADDRESS 5
 
 #define IP_TOS 1
 #define IP_TTL 2
@@ -47,6 +48,8 @@ void sethostent(int stayopen);
 void endhostent(void);
 void herror(const char* s);
 const char* hstrerror(int err);
+
+extern int h_errno;
 
 #ifdef __cplusplus
 }

@@ -5,11 +5,11 @@
 var LLVM = {
   LINKAGES: set('private', 'linker_private', 'linker_private_weak', 'linker_private_weak_def_auto', 'internal',
                 'available_externally', 'linkonce', 'common', 'weak', 'appending', 'extern_weak', 'linkonce_odr',
-                'weak_odr', 'externally_visible', 'dllimport', 'dllexport', 'unnamed_addr'),
+                'weak_odr', 'externally_visible', 'dllimport', 'dllexport', 'unnamed_addr', 'thread_local'),
   VISIBILITIES: set('default', 'hidden', 'protected'),
   PARAM_ATTR: set('noalias', 'signext', 'zeroext', 'inreg', 'sret', 'nocapture', 'nest'),
   FUNC_ATTR: set('hidden', 'nounwind', 'define', 'inlinehint', '{'),
-  CALLING_CONVENTIONS: set('ccc', 'fastcc', 'coldcc', 'cc10', 'x86_fastcallcc', 'x86_stdcallcc'),
+  CALLING_CONVENTIONS: set('ccc', 'fastcc', 'coldcc', 'cc10', 'x86_fastcallcc', 'x86_stdcallcc', 'cc11'),
   ACCESS_OPTIONS: set('volatile', 'atomic'),
   INVOKE_MODIFIERS: set('alignstack', 'alwaysinline', 'inlinehint', 'naked', 'noimplicitfloat', 'noinline', 'alwaysinline attribute.', 'noredzone', 'noreturn', 'nounwind', 'optsize', 'readnone', 'readonly', 'ssp', 'sspreq'),
   SHIFTS: set('ashr', 'lshr', 'shl'),
@@ -174,7 +174,10 @@ var PreProcessor = {
 };
 
 var Variables = {
-  globals: {}
+  globals: {},
+  indexedGlobals: {}, // for indexed globals, ident ==> index
+  // Used in calculation of indexed globals
+  nextIndexedOffset: 0
 };
 
 var Types = {
@@ -263,14 +266,17 @@ var Functions = {
 
 var LibraryManager = {
   library: null,
+  loaded: false,
 
   load: function() {
-    assert(!this.library);
+    if (this.library) return;
 
     var libraries = ['library.js', 'library_browser.js', 'library_sdl.js', 'library_gl.js', 'library_glut.js', 'library_xlib.js', 'library_egl.js', 'library_gc.js', 'library_jansson.js'].concat(additionalLibraries);
     for (var i = 0; i < libraries.length; i++) {
       eval(processMacros(preprocess(read(libraries[i]))));
     }
+
+    this.loaded = true;
   },
 
   // Given an ident, see if it is an alias for something, and so forth, returning
@@ -301,11 +307,21 @@ function cDefine(key) {
 
 var PassManager = {
   serialize: function() {
-    print('\n//FORWARDED_DATA:' + JSON.stringify({
-      Types: Types,
-      Variables: Variables,
-      Functions: Functions
-    }));
+    if (phase == 'pre') {
+      print('\n//FORWARDED_DATA:' + JSON.stringify({
+        Types: Types,
+        Variables: Variables,
+        Functions: Functions
+      }));
+    } else if (phase == 'funcs') {
+      print('\n//FORWARDED_DATA:' + JSON.stringify({
+        Types: { preciseI64MathUsed: Types.preciseI64MathUsed },
+        Functions: {
+          blockAddresses: Functions.blockAddresses,
+          indexedFunctions: Functions.indexedFunctions
+        }
+      }));
+    }
   },
   load: function(json) {
     var data = JSON.parse(json);

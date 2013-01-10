@@ -14,5 +14,4 @@ function shifty() {
   q($13 + 13 << 2);
   q(h() >> 2 << 2);
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["shifty"]
 

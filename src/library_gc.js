@@ -16,6 +16,11 @@ if (GC_SUPPORT) {
       init: function() {
         assert(!GC.initted);
         GC.initted = true;
+
+        _GC_finalize_on_demand = _malloc(4); setValue(_GC_finalize_on_demand, 0, 'i32')
+        _GC_java_finalization = _malloc(4); setValue(_GC_java_finalization, 0, 'i32');
+        _GC_finalizer_notifier = _malloc(4); setValue(_GC_finalizer_notifier, 0, 'i32');
+
         if (ENVIRONMENT_IS_WEB) {
           setInterval(function() {
             GC.maybeCollect();
@@ -159,7 +164,13 @@ if (GC_SUPPORT) {
     GC_FORCE_COLLECT__deps: ['$GC'],
     GC_FORCE_COLLECT: function() {
       GC.collect();
-    }
+    },
+
+    GC_finalize_on_demand: 0,
+    GC_java_finalization: 0,
+    GC_finalizer_notifier: 0,
+
+    GC_enable_incremental: function(){},
   };
 
   mergeInto(LibraryManager.library, LibraryGC);

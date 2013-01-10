@@ -82,5 +82,4 @@ function a($directory) {
     print(zzz1);
   } while (1);
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["a"]
 

@@ -184,7 +184,7 @@ function dprint() {
     text = text(); // Allows deferred calculation, so dprints don't slow us down when not needed
   }
   text = DPRINT_INDENT + '// ' + text;
-  print(text);
+  printErr(text);
 }
 
 var PROF_ORIGIN = Date.now();
@@ -278,6 +278,14 @@ function setIntersect(x, y) {
     if (xx in y) {
       ret[xx] = true;
     }
+  }
+  return ret;
+}
+
+function invertArray(x) {
+  var ret = {};
+  for (var i = 0; i < x.length; i++) {
+    ret[x[i]] = i;
   }
   return ret;
 }

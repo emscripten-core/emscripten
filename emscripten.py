@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 '''
 You should normally never use this! Use emcc instead.
@@ -32,6 +32,7 @@ def path_from_root(*pathelems):
 temp_files = shared.TempFiles()
 
 compiler_engine = None
+jcache = False
 
 def scan(ll, settings):
   # blockaddress(@main, %23)
@@ -47,12 +48,13 @@ MIN_CHUNK_SIZE = 1024*1024
 MAX_CHUNK_SIZE = float(os.environ.get('EMSCRIPT_MAX_CHUNK_SIZE') or 'inf') # configuring this is just for debugging purposes
 
 def process_funcs(args):
-  i, ll, settings_file, compiler, forwarded_file, libraries = args
+  i, funcs, meta, settings_file, compiler, forwarded_file, libraries = args
+  ll = ''.join(funcs) + '\n' + meta
   funcs_file = temp_files.get('.func_%d.ll' % i).name
   open(funcs_file, 'w').write(ll)
   out = shared.run_js(compiler, compiler_engine, [settings_file, funcs_file, 'funcs', forwarded_file] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
   shared.try_delete(funcs_file)
-  return out.split('//FORWARDED_DATA:')
+  return out
 
 def emscript(infile, settings, outfile, libraries=[]):
   """Runs the emscripten LLVM-to-JS compiler. We parallelize as much as possible
@@ -73,6 +75,8 @@ def emscript(infile, settings, outfile, libraries=[]):
 
   if DEBUG: print >> sys.stderr, 'emscript: ll=>js'
 
+  if jcache: shared.JCache.ensure()
+
   # Pre-scan ll and alter settings as necessary
   if DEBUG: t = time.time()
   ll = open(infile).read()
@@ -84,6 +88,7 @@ def emscript(infile, settings, outfile, libraries=[]):
   # Split input into the relevant parts for each phase
   pre = []
   funcs = [] # split up functions here, for parallelism later
+  func_idents = []
   meta = [] # needed by each function XXX
 
   if DEBUG: t = time.time()
@@ -91,19 +96,21 @@ def emscript(infile, settings, outfile, libraries=[]):
   ll_lines = open(infile).readlines()
   for line in ll_lines:
     if in_func:
-      funcs[-1].append(line)
+      funcs[-1][1].append(line)
       if line.startswith('}'):
         in_func = False
-        funcs[-1] = ''.join(funcs[-1])
+        funcs[-1] = (funcs[-1][0], ''.join(funcs[-1][1]))
         pre.append(line) # pre needs it to, so we know about all implemented functions
     else:
+      if line.startswith(';'): continue
       if line.startswith('define '):
         in_func = True
-        funcs.append([line])
+        funcs.append((line, [line])) # use the entire line as the identifier
         pre.append(line) # pre needs it to, so we know about all implemented functions
       elif line.find(' = type { ') > 0:
         pre.append(line) # type
       elif line.startswith('!'):
+        if line.startswith('!llvm.module'): continue # we can ignore that
         meta.append(line) # metadata
       else:
         pre.append(line) # pre needs it so we know about globals in pre and funcs. So emit globals there
@@ -122,15 +129,27 @@ def emscript(infile, settings, outfile, libraries=[]):
 
   # Save settings to a file to work around v8 issue 1579
   settings_file = temp_files.get('.txt').name
+  settings_text = json.dumps(settings)
   s = open(settings_file, 'w')
-  s.write(json.dumps(settings))
+  s.write(settings_text)
   s.close()
 
   # Phase 1 - pre
   if DEBUG: t = time.time()
   pre_file = temp_files.get('.pre.ll').name
-  open(pre_file, 'w').write(''.join(pre) + '\n' + meta)
-  out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, pre_file, 'pre'] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
+  pre_input = ''.join(pre) + '\n' + meta
+  out = None
+  if jcache:
+    keys = [pre_input, settings_text, ','.join(libraries)]
+    shortkey = shared.JCache.get_shortkey(keys)
+    out = shared.JCache.get(shortkey, keys)
+    if out and DEBUG: print >> sys.stderr, '  loading pre from jcache'
+  if not out:
+    open(pre_file, 'w').write(pre_input)
+    out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, pre_file, 'pre'] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
+    if jcache:
+      if DEBUG: print >> sys.stderr, '  saving pre to jcache'
+      shared.JCache.set(shortkey, keys, out)
   pre, forwarded_data = out.split('//FORWARDED_DATA:')
   forwarded_file = temp_files.get('.json').name
   open(forwarded_file, 'w').write(forwarded_data)
@@ -151,28 +170,58 @@ def emscript(infile, settings, outfile, libraries=[]):
   if DEBUG: t = time.time()
   forwarded_json = json.loads(forwarded_data)
   indexed_functions = set()
-  chunks = [] # bundles of functions
-  curr = ''
-  for i in range(len(funcs)):
-    func = funcs[i]
-    if len(curr) + len(func) < chunk_size:
-      curr += func
+
+  chunks = shared.JCache.chunkify(funcs, chunk_size, 'emscript_files' if jcache else None)
+
+  if jcache:
+    # load chunks from cache where we can # TODO: ignore small chunks
+    cached_outputs = []
+    def load_from_cache(chunk):
+      keys = [settings_text, forwarded_data, chunk]
+      shortkey = shared.JCache.get_shortkey(keys) # TODO: share shortkeys with later code
+      out = shared.JCache.get(shortkey, keys) # this is relatively expensive (pickling?)
+      if out:
+        cached_outputs.append(out)
+        return False
+      return True
+    chunks = filter(load_from_cache, chunks)
+    if len(cached_outputs) > 0:
+      if out and DEBUG: print >> sys.stderr, '  loading %d funcchunks from jcache' % len(cached_outputs)
     else:
-      chunks.append(curr)
-      curr = func
-  if curr:
-    chunks.append(curr)
-    curr = ''
+      cached_outputs = []
+
+  # TODO: minimize size of forwarded data from funcs to what we actually need
+
   if cores == 1 and total_ll_size < MAX_CHUNK_SIZE: assert len(chunks) == 1, 'no point in splitting up without multiple cores'
-  if DEBUG: print >> sys.stderr, '  emscript: phase 2 working on %d chunks %s (intended chunk size: %.2f MB, meta: %.2f MB, forwarded: %.2f MB, total: %.2f MB)' % (len(chunks), ('using %d cores' % cores) if len(chunks) > 1 else '', chunk_size/(1024*1024.), len(meta)/(1024*1024.), len(forwarded_data)/(1024*1024.), total_ll_size/(1024*1024.))
 
-  commands = [(i, chunks[i] + '\n' + meta, settings_file, compiler, forwarded_file, libraries) for i in range(len(chunks))]
+  if len(chunks) > 0:
+    if DEBUG: print >> sys.stderr, '  emscript: phase 2 working on %d chunks %s (intended chunk size: %.2f MB, meta: %.2f MB, forwarded: %.2f MB, total: %.2f MB)' % (len(chunks), ('using %d cores' % cores) if len(chunks) > 1 else '', chunk_size/(1024*1024.), len(meta)/(1024*1024.), len(forwarded_data)/(1024*1024.), total_ll_size/(1024*1024.))
 
-  if len(chunks) > 1:
-    pool = multiprocessing.Pool(processes=cores)
-    outputs = pool.map(process_funcs, commands, chunksize=1)
+    commands = [(i, chunks[i], meta, settings_file, compiler, forwarded_file, libraries) for i in range(len(chunks))]
+
+    if len(chunks) > 1:
+      pool = multiprocessing.Pool(processes=cores)
+      outputs = pool.map(process_funcs, commands, chunksize=1)
+    elif len(chunks) == 1:
+      outputs = [process_funcs(commands[0])]
   else:
-    outputs = [process_funcs(commands[0])]
+    outputs = []
+
+  if jcache:
+    # save chunks to cache
+    for i in range(len(chunks)):
+      chunk = chunks[i]
+      keys = [settings_text, forwarded_data, chunk]
+      shortkey = shared.JCache.get_shortkey(keys)
+      shared.JCache.set(shortkey, keys, outputs[i])
+    if out and DEBUG and len(chunks) > 0: print >> sys.stderr, '  saving %d funcchunks to jcache' % len(chunks)
+
+  if jcache: outputs += cached_outputs # TODO: preserve order
+
+  outputs = [output.split('//FORWARDED_DATA:') for output in outputs]
+
+  if DEBUG: print >> sys.stderr, '  emscript: phase 2 took %s seconds' % (time.time() - t)
+  if DEBUG: t = time.time()
 
   funcs_js = ''.join([output[0] for output in outputs])
 
@@ -185,7 +234,7 @@ def emscript(infile, settings, outfile, libraries=[]):
     for key in curr_forwarded_json['Functions']['indexedFunctions'].iterkeys():
       indexed_functions.add(key)
   outputs = None
-  if DEBUG: print >> sys.stderr, '  emscript: phase 2 took %s seconds' % (time.time() - t)
+  if DEBUG: print >> sys.stderr, '  emscript: phase 2b took %s seconds' % (time.time() - t)
   if DEBUG: t = time.time()
 
   # calculations on merged forwarded data
@@ -204,11 +253,11 @@ def emscript(infile, settings, outfile, libraries=[]):
   def blockaddrsize(js):
     return re.sub(r'{{{ BA_([\w\d_$]+)\|([\w\d_$]+) }}}', lambda m: str(blockaddrs[m.groups(0)[0]][m.groups(0)[1]]), js)
 
-  if DEBUG: outfile.write('// pre\n')
+  #if DEBUG: outfile.write('// pre\n')
   outfile.write(blockaddrsize(indexize(pre)))
   pre = None
 
-  if DEBUG: outfile.write('// funcs\n')
+  #if DEBUG: outfile.write('// funcs\n')
   outfile.write(blockaddrsize(indexize(funcs_js)))
   funcs_js = None
 
@@ -216,14 +265,14 @@ def emscript(infile, settings, outfile, libraries=[]):
   forwarded_data = json.dumps(forwarded_json)
   forwarded_file = temp_files.get('.2.json').name
   open(forwarded_file, 'w').write(indexize(forwarded_data))
-  if DEBUG: print >> sys.stderr, '  emscript: phase 2b took %s seconds' % (time.time() - t)
+  if DEBUG: print >> sys.stderr, '  emscript: phase 2c took %s seconds' % (time.time() - t)
 
   # Phase 3 - post
   if DEBUG: t = time.time()
   post_file = temp_files.get('.post.ll').name
   open(post_file, 'w').write('\n') # no input, just processing of forwarded data
   out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, post_file, 'post', forwarded_file] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
-  if DEBUG: outfile.write('// post\n')
+  #if DEBUG: outfile.write('// post\n')
   outfile.write(indexize(out))
   if DEBUG: print >> sys.stderr, '  emscript: phase 3 took %s seconds' % (time.time() - t)
 
@@ -335,6 +384,10 @@ if __name__ == '__main__':
                     metavar='FOO=BAR',
                     help=('Overrides for settings defined in settings.js. '
                           'May occur multiple times.'))
+  parser.add_option('-j', '--jcache',
+                    action='store_true',
+                    default=False,
+                    help=('Enable jcache (ccache-like caching of compilation results, for faster incremental builds).'))
 
   # Convert to the same format that argparse would have produced.
   keywords, positional = parser.parse_args()
@@ -344,6 +397,7 @@ if __name__ == '__main__':
   if isinstance(keywords.outfile, basestring):
     keywords.outfile = open(keywords.outfile, 'w')
   compiler_engine = keywords.compiler
+  jcache = keywords.jcache
 
   temp_files.run_and_clean(lambda: main(keywords))
 

@@ -12,6 +12,7 @@ extern "C" {
 #define TIOCGWINSZ 80 // bogus
 
 #define FIONREAD 1
+#define FIONBIO 2
 
 int ioctl(int d, int request, ...);
 

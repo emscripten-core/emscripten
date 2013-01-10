@@ -137,6 +137,8 @@ module({
             c.setVal('1234');
             assert.equal('1234', c.getVal());
 
+            assert.equal(1239, c.returnIntPlusFive(1234));
+
             c.delete();
             assert.equal(0, cm.count_emval_handles());
         },

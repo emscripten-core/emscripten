@@ -1053,7 +1053,7 @@ var i64Math = (function() { // Emscripten wrapper
     if(r != 0) return r;
     var i = this.t;
     r = i-a.t;
-    if(r != 0) return r;
+    if(r != 0) return (this.s<0)?-r:r;
     while(--i >= 0) if((r=this[i]-a[i]) != 0) return r;
     return 0;
   }
@@ -1552,9 +1552,15 @@ var i64Math = (function() { // Emscripten wrapper
       Wrapper.result[0] = ret.low_;
       Wrapper.result[1] = ret.high_;
     },
-    makeTwo32: function() {
+    ensureTemps: function() {
+      if (Wrapper.ensuredTemps) return;
+      Wrapper.ensuredTemps = true;
       Wrapper.two32 = new BigInteger();
       Wrapper.two32.fromString('4294967296', 10);
+      Wrapper.two64 = new BigInteger();
+      Wrapper.two64.fromString('18446744073709551616', 10);
+      Wrapper.temp1 = new BigInteger();
+      Wrapper.temp2 = new BigInteger();
     },
     lh2bignum: function(l, h) {
       var a = new BigInteger();
@@ -1568,7 +1574,7 @@ var i64Math = (function() { // Emscripten wrapper
       return d;
     },
     divide: function(xl, xh, yl, yh, unsigned) {
-      if (!Wrapper.two32) Wrapper.makeTwo32();
+      Wrapper.ensureTemps();
       if (!unsigned) {
         var x = new goog.math.Long(xl, xh);
         var y = new goog.math.Long(yl, yh);
@@ -1589,7 +1595,7 @@ var i64Math = (function() { // Emscripten wrapper
       }
     },
     modulo: function(xl, xh, yl, yh, unsigned) {
-      if (!Wrapper.two32) Wrapper.makeTwo32();
+      Wrapper.ensureTemps();
       if (!unsigned) {
         var x = new goog.math.Long(xl, xh);
         var y = new goog.math.Long(yl, yh);
@@ -1613,10 +1619,7 @@ var i64Math = (function() { // Emscripten wrapper
       var ret = new goog.math.Long(l, h).toString();
       if (unsigned && ret[0] == '-') {
         // unsign slowly using jsbn bignums
-        if (!Wrapper.two64) {
-          Wrapper.two64 = new BigInteger();
-          Wrapper.two64.fromString('18446744073709551616', 10);
-        }
+        Wrapper.ensureTemps();
         var bignum = new BigInteger();
         bignum.fromString(ret, 10);
         ret = new BigInteger();
@@ -1624,6 +1627,32 @@ var i64Math = (function() { // Emscripten wrapper
         ret = ret.toString(10);
       }
       return ret;
+    },
+    fromString: function(str, base, min, max, unsigned) {
+      Wrapper.ensureTemps();
+      var bignum = new BigInteger();
+      bignum.fromString(str, base);
+      var bigmin = new BigInteger();
+      bigmin.fromString(min, 10);
+      var bigmax = new BigInteger();
+      bigmax.fromString(max, 10);
+      if (unsigned && bignum.compareTo(BigInteger.ZERO) < 0) {
+        var temp = new BigInteger();
+        bignum.addTo(Wrapper.two64, temp);
+        bignum = temp;
+      }
+      var error = false;
+      if (bignum.compareTo(bigmin) < 0) {
+        bignum = bigmin;
+        error = true;
+      } else if (bignum.compareTo(bigmax) > 0) {
+        bignum = bigmax;
+        error = true;
+      }
+      var ret = goog.math.Long.fromString(bignum.toString()); // min-max checks should have clamped this to a range goog.math.Long can handle well
+      Wrapper.result[0] = ret.low_;
+      Wrapper.result[1] = ret.high_;
+      if (error) throw 'range error';
     }
   };
   return Wrapper;

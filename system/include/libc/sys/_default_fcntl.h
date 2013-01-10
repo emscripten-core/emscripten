@@ -207,6 +207,8 @@ extern int _open64 _PARAMS ((const char *, int, ...));
 
 /* XXX Emscripten */
 #define POSIX_FADV_DONTNEED 135
+#define POSIX_FADV_SEQUENTIAL 136
+#define POSIX_FADV_RANDOM 137
 int posix_fadvise(int fd, off_t offset, off_t len, int advice);
 int posix_fallocate(int fd, off_t offset, off_t len);
 #define LOCK_SH 1

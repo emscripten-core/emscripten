@@ -214,6 +214,7 @@ function traverse(node, pre, post, stack) {
 
 // Only walk through the generated functions
 function traverseGenerated(ast, pre, post, stack) {
+  assert(generatedFunctions);
   traverse(ast, function(node) {
     if (node[0] == 'defun' && isGenerated(node[1])) {
       traverse(node, pre, post, stack);
@@ -223,6 +224,7 @@ function traverseGenerated(ast, pre, post, stack) {
 }
 
 function traverseGeneratedFunctions(ast, callback) {
+  assert(generatedFunctions);
   traverse(ast, function(node) {
     if (node[0] == 'defun' && isGenerated(node[1])) {
       callback(node);
@@ -1462,7 +1464,7 @@ function eliminate(ast, memSafe) {
     for (var name in locals) {
       if (definitions[name] == 1 && uses[name] == 1) {
         potentials[name] = 1;
-      } else if (uses[name] == 0) {
+      } else if (uses[name] == 0 && (!definitions[name] || definitions[name] <= 1)) { // no uses, no def or 1 def (cannot operate on phis, and the llvm optimizer will remove unneeded phis anyhow)
         var hasSideEffects = false;
         if (values[name]) {
           traverse(values[name], function(node, type) {
@@ -1713,6 +1715,10 @@ function eliminate(ast, memSafe) {
         } else if (type == 'if') {
           if (allowTracking) {
             traverseInOrder(node[1]); // can eliminate into condition, but nowhere else
+            if (!callsInvalidated) { // invalidate calls, since we cannot eliminate them into an if that may not execute!
+              invalidateCalls();
+              callsInvalidated = true;
+            }
             allowTracking = false;
             traverseInOrder(node[2]); // 2 and 3 could be 'parallel', really..
             if (node[3]) traverseInOrder(node[3]);
@@ -1914,6 +1920,5 @@ do {
   js = js.replace(/\n *\n/g, '\n');
 } while (js != old);
 print(js);
-if (metadata && printMetadata) print(metadata);
 print('\n');
 

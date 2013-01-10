@@ -11,6 +11,7 @@ extern "C" {
 #define POLLNVAL 4
 #define POLLERR  8
 #define POLLHUP 16
+#define POLLPRI 32
 
 struct pollfd {
   int fd;

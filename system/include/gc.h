@@ -8,7 +8,7 @@
 extern "C" {
 #endif
 
-void __attribute__((used)) __GC_KEEPALIVE__() {
+static void __attribute__((used)) __GC_KEEPALIVE__() {
   // Force inclusion of necessary dlmalloc functions
   static int times = 1;
   void *x = malloc(times);
@@ -43,6 +43,14 @@ void GC_MAYBE_COLLECT();
 
 /* Forces a GC. Mainly useful for testing, but call it if you know a good time to GC in your app. */
 void GC_FORCE_COLLECT();
+
+typedef void (*GC_finalization_proc)(void *func, void *arg);
+extern void (*GC_finalizer_notifier)();
+
+extern int GC_finalize_on_demand;
+extern int GC_java_finalization;
+
+void GC_enable_incremental();
 
 #ifdef __cplusplus
 }

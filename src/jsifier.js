@@ -217,7 +217,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           throw 'Invalid segment: ' + dump(segment);
         }
         assert(segment.type, 'Missing type for constant segment!');
-        return indexizeFunctions(ret, segment.type);
+        return makeGlobalUse(indexizeFunctions(ret, segment.type));
       };
       return tokens.map(handleSegment)
     }
@@ -226,7 +226,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     if (value.intertype in PARSABLE_LLVM_FUNCTIONS) {
       return [finalizeLLVMFunctionCall(value)];
     } else if (Runtime.isNumberType(type) || pointingLevels(type) >= 1) {
-      return indexizeFunctions(parseNumerical(value.value), type);
+      return makeGlobalUse(indexizeFunctions(parseNumerical(value.value), type));
     } else if (value.intertype === 'emptystruct') {
       return makeEmptyStruct(type);
     } else if (value.intertype === 'string') {
@@ -250,7 +250,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     processItem: function(item) {
       function needsPostSet(value) {
         return value[0] in UNDERSCORE_OPENPARENS || value.substr(0, 14) === 'CHECK_OVERFLOW'
-            || value.substr(0, 13) === 'STRING_TABLE.';
+                                                 || value.substr(0, 6) === 'GLOBAL';
       }
 
       item.intertype = 'GlobalVariableStub';
@@ -262,16 +262,17 @@ function JSify(data, functionsOnly, givenFunctions) {
                   '\n]);\n';
         return ret;
       } else {
+        var constant = null;
+        var allocator = (BUILD_AS_SHARED_LIB && !item.external) ? 'ALLOC_NORMAL' : 'ALLOC_STATIC';
+        var index = null;
         if (item.external && BUILD_AS_SHARED_LIB) {
           // External variables in shared libraries should not be declared as
           // they would shadow similarly-named globals in the parent.
           item.JS = '';
         } else {
-          if (!(item.ident in Variables.globals) || !Variables.globals[item.ident].isString) {
-          	item.JS = 'var ' + item.ident + ';';
-          } 
+        	item.JS = makeGlobalDef(item.ident);
         }
-        var constant = null;
+
         if (item.external) {
           // Import external global variables from the library if available.
           var shortident = item.ident.slice(1);
@@ -286,7 +287,7 @@ function JSify(data, functionsOnly, givenFunctions) {
               padding = makeEmptyStruct(item.type);
             }
             var padded = val.concat(padding.slice(val.length));
-            var js = item.ident + '=' + makePointer(JSON.stringify(padded), null, 'ALLOC_STATIC', item.type) + ';'
+            var js = item.ident + '=' + makePointer(JSON.stringify(padded), null, allocator, item.type, index) + ';'
             if (LibraryManager.library[shortident + '__postset']) {
               js += '\n' + LibraryManager.library[shortident + '__postset'];
             }
@@ -297,6 +298,10 @@ function JSify(data, functionsOnly, givenFunctions) {
           }
           return ret;
         } else {
+          if (!NAMED_GLOBALS && isIndexableGlobal(item.ident)) {
+            index = makeGlobalUse(item.ident); // index !== null indicates we are indexing this
+            allocator = 'ALLOC_NONE';
+          }
           constant = parseConst(item.value, item.type, item.ident);
           if (typeof constant === 'string' && constant[0] != '[') {
             constant = [constant]; // A single item. We may need a postset for it.
@@ -307,7 +312,7 @@ function JSify(data, functionsOnly, givenFunctions) {
               if (needsPostSet(value)) { // ident, or expression containing an ident
                 ret.push({
                   intertype: 'GlobalVariablePostSet',
-                  JS: makeSetValue(item.ident, i, value, 'i32', false, true) + ';' // ignore=true, since e.g. rtti and statics cause lots of safe_heap errors
+                  JS: makeSetValue(makeGlobalUse(item.ident), i, value, 'i32', false, true) + ';' // ignore=true, since e.g. rtti and statics cause lots of safe_heap errors
                 });
                 constant[i] = '0';
               }
@@ -316,23 +321,19 @@ function JSify(data, functionsOnly, givenFunctions) {
           }
           // NOTE: This is the only place that could potentially create static
           //       allocations in a shared library.
-          constant = makePointer(constant, null, BUILD_AS_SHARED_LIB ? 'ALLOC_NORMAL' : 'ALLOC_STATIC', item.type);
-
+          constant = makePointer(constant, null, allocator, item.type, index);
           var js;
 
-          // Strings are held in STRING_TABLE, to not clutter up the main namespace (in some cases we have
-          // many many strings, possibly exceeding the js engine limit on global vars).
-          if (Variables.globals[item.ident].isString) {
-            js = 'STRING_TABLE.' + item.ident + '=' + constant + ';';
-          } else {
-          	js = item.ident + '=' + constant + ';';
-          }
+        	js = (index !== null ? '' : item.ident + '=') + constant + ';'; // \n Module.print("' + item.ident + ' :" + ' + makeGlobalUse(item.ident) + ');';
 
           // Special case: class vtables. We make sure they are null-terminated, to allow easy runtime operations
           if (item.ident.substr(0, 5) == '__ZTV') {
-            js += '\n' + makePointer('[0]', null, BUILD_AS_SHARED_LIB ? 'ALLOC_NORMAL' : 'ALLOC_STATIC', ['void*']) + ';';
+            if (index !== null) {
+              index = getFastValue(index, '+', Runtime.alignMemory(calcAllocatedSize(Variables.globals[item.ident].type)));
+            }
+            js += '\n' + makePointer('[0]', null, allocator, ['void*'], index) + ';';
           }
-          if (item.ident in EXPORTED_GLOBALS) {
+          if (EXPORT_ALL || (item.ident in EXPORTED_GLOBALS)) {
             js += '\nModule["' + item.ident + '"] = ' + item.ident + ';';
           }
           if (BUILD_AS_SHARED_LIB == 2 && !item.private_) {
@@ -416,8 +417,8 @@ function JSify(data, functionsOnly, givenFunctions) {
           // name the function; overwrite if it's already named
           snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function _' + ident + '(');
           if (LIBRARY_DEBUG) {
-            snippet = snippet.replace('{', '{ var ret = (function() { if (Runtime.debug) Module.printErr("[library call:' + ident + ': " + Array.prototype.slice.call(arguments).map(Runtime.prettyPrint) + "]"); ');
-            snippet = snippet.substr(0, snippet.length-1) + '}).apply(this, arguments); if (Runtime.debug && typeof ret !== "undefined") Module.printErr("  [     return:" + Runtime.prettyPrint(ret)); return ret; }';
+            snippet = snippet.replace('{', '{ var ret = (function() { if (Runtime.debug) Module.print("[library call:' + ident + ': " + Array.prototype.slice.call(arguments).map(Runtime.prettyPrint) + "]"); ');
+            snippet = snippet.substr(0, snippet.length-1) + '}).apply(this, arguments); if (Runtime.debug && typeof ret !== "undefined") Module.print("  [     return:" + Runtime.prettyPrint(ret)); return ret; }';
           }
         }
 
@@ -442,7 +443,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         }
         var text = (deps ? '\n' + deps.map(addFromLibrary).filter(function(x) { return x != '' }).join('\n') : '');
         text += isFunction ? snippet : 'var ' + ident + '=' + snippet + ';';
-        if (ident in EXPORTED_FUNCTIONS) {
+        if (EXPORT_ALL || (ident in EXPORTED_FUNCTIONS)) {
           text += '\nModule["' + ident + '"] = ' + ident + ';';
         }
         return text;
@@ -484,6 +485,19 @@ function JSify(data, functionsOnly, givenFunctions) {
       this.forwardItems(ret, 'FuncLineTriager');
     }
   });
+
+  // function for filtering functions for label debugging
+  if (LABEL_FUNCTION_FILTERS.length > 0) {
+    var LABEL_FUNCTION_FILTER_SET = set(LABEL_FUNCTION_FILTERS);
+    var functionNameFilterTest = function(ident) {
+      return (ident in LABEL_FUNCTION_FILTER_SET);
+    };
+  } else {
+    // no filters are specified, all function names are printed
+    var functionNameFilterTest = function(ident) {
+      return true;
+    }
+  }
 
   // function reconstructor & post-JS optimizer
   substrate.addActor('FunctionReconstructor', {
@@ -565,7 +579,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         }
       });
 
-      if (LABEL_DEBUG) func.JS += "  Module.print(INDENT + ' Entering: " + func.ident + ": ' + Array.prototype.slice.call(arguments)); INDENT += '  ';\n";
+      if (LABEL_DEBUG && functionNameFilterTest(func.ident)) func.JS += "  Module.print(INDENT + ' Entering: " + func.ident + ": ' + Array.prototype.slice.call(arguments)); INDENT += '  ';\n";
 
       if (true) { // TODO: optimize away when not needed
         if (CLOSURE_ANNOTATIONS) func.JS += '/** @type {number} */';
@@ -579,7 +593,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         function getLabelLines(label, indent, relooping) {
           if (!label) return '';
           var ret = '';
-          if (LABEL_DEBUG >= 2) {
+          if ((LABEL_DEBUG >= 2) && functionNameFilterTest(func.ident)) {
             ret += indent + "Module.print(INDENT + '" + func.ident + ":" + label.ident + "');\n";
           }
           if (EXECUTION_TIMEOUT > 0) {
@@ -619,6 +633,7 @@ function JSify(data, functionsOnly, givenFunctions) {
             } // otherwise, should have been set before!
             if (func.setjmpTable) {
               var setjmpTable = {};
+              ret += indent + 'var mySetjmpIds = {};\n';
               ret += indent + 'var setjmpTable = {';
               func.setjmpTable.forEach(function(triple) { // original label, label we created for right after the setjmp, variable setjmp result goes into
                 ret += '"' + getLabelId(triple[0]) + '": ' + 'function(value) { label = ' + getLabelId(triple[1]) + '; ' + triple[2] + ' = value },';
@@ -637,7 +652,7 @@ function JSify(data, functionsOnly, givenFunctions) {
             }).join('\n');
             ret += '\n' + indent + '  default: assert(0, "bad label: " + label);\n' + indent + '}';
             if (func.setjmpTable) {
-              ret += ' } catch(e) { if (!e.longjmp) throw(e); setjmpTable[e.label](e.value) }';
+              ret += ' } catch(e) { if (!e.longjmp || !(e.id in mySetjmpIds)) throw(e); setjmpTable[setjmpLabels[e.id]](e.value) }';
             }
           } else {
             ret += (SHOW_LABELS ? indent + '/* ' + block.entries[0] + ' */' : '') + '\n' + getLabelLines(block.labels[0], indent);
@@ -690,7 +705,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
       func.JS += walkBlock(func.block, '  ');
       // Finalize function
-      if (LABEL_DEBUG) func.JS += "  INDENT = INDENT.substr(0, INDENT.length-2);\n";
+      if (LABEL_DEBUG && functionNameFilterTest(func.ident)) func.JS += "  INDENT = INDENT.substr(0, INDENT.length-2);\n";
       // Add an unneeded return, needed for strict mode to not throw warnings in some cases.
       // If we are not relooping, then switches make it unimportant to have this (and, we lack hasReturn anyhow)
       if (RELOOP && func.lines.length > 0 && func.labels.filter(function(label) { return label.hasReturn }).length > 0) {
@@ -702,7 +717,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           func.JS += '\n//FUNCTION_END_MARKER_OF_SOURCE_FILE_' + associatedSourceFile + '\n';
       }
       
-      if (func.ident in EXPORTED_FUNCTIONS) {
+      if (EXPORT_ALL || (func.ident in EXPORTED_FUNCTIONS)) {
         func.JS += 'Module["' + func.ident + '"] = ' + func.ident + ';';
       }
 
@@ -820,7 +835,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         break;
       case VAR_EMULATED:
         if (item.pointer.intertype == 'value') {
-          return makeSetValue(item.ident, 0, value, item.valueType, 0, 0, item.align) + ';';
+          return makeSetValue(makeGlobalUse(item.ident), 0, value, item.valueType, 0, 0, item.align) + ';';
         } else {
           return makeSetValue(0, finalizeLLVMParameter(item.pointer), value, item.valueType, 0, 0, item.align) + ';';
         }
@@ -1023,7 +1038,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           +    'PROFILING_NODE = __parentProfilingNode__ '
           +  '}\n';
     }
-    if (LABEL_DEBUG) {
+    if (LABEL_DEBUG && functionNameFilterTest(item.funcData.ident)) {
       ret += "Module.print(INDENT + 'Exiting: " + item.funcData.ident + "');\n"
           +  "INDENT = INDENT.substr(0, INDENT.length-2);\n";
     }
@@ -1034,8 +1049,10 @@ function JSify(data, functionsOnly, givenFunctions) {
     return ret + ';';
   });
   makeFuncLineActor('resume', function(item) {
+    // If there is no current exception, set this one as it (during a resume, the current exception can be wiped out)
     return (EXCEPTION_DEBUG ? 'Module.print("Resuming exception");' : '') + 
-    	'throw ' + makeGetValue('_llvm_eh_exception.buf', '0', 'void*') + ';';
+      'if (' + makeGetValue('_llvm_eh_exception.buf', 0, 'void*') + ' == 0) { ' + makeSetValue('_llvm_eh_exception.buf', 0, item.ident + '.f0', 'void*') + ' } ' + 
+      'throw ' + item.ident + '.f0;';
   });
   makeFuncLineActor('invoke', function(item) {
     // Wrapping in a function lets us easily return values if we are
@@ -1069,12 +1086,12 @@ function JSify(data, functionsOnly, givenFunctions) {
     var param1 = finalizeLLVMParameter(item.params[0]);
     var param2 = finalizeLLVMParameter(item.params[1]);
     switch (item.op) {
-      case 'add': return '(tempValue=' + makeGetValue(param1, 0, type) + ',' + makeSetValue(param1, 0, 'tempValue+' + param2, type) + ',tempValue)';
-      case 'sub': return '(tempValue=' + makeGetValue(param1, 0, type) + ',' + makeSetValue(param1, 0, 'tempValue-' + param2, type) + ',tempValue)';
-      case 'xchg': return '(tempValue=' + makeGetValue(param1, 0, type) + ',' + makeSetValue(param1, 0, param2, type) + ',tempValue)';
+      case 'add': return '(tempValue=' + makeGetValue(param1, 0, type) + ',' + makeSetValue(param1, 0, 'tempValue+' + param2, type, null, null, null, null, ',') + ',tempValue)';
+      case 'sub': return '(tempValue=' + makeGetValue(param1, 0, type) + ',' + makeSetValue(param1, 0, 'tempValue-' + param2, type, null, null, null, null, ',') + ',tempValue)';
+      case 'xchg': return '(tempValue=' + makeGetValue(param1, 0, type) + ',' + makeSetValue(param1, 0, param2, type, null, null, null, null, ',') + ',tempValue)';
       case 'cmpxchg': {
         var param3 = finalizeLLVMParameter(item.params[2]);
-        return '(tempValue=' + makeGetValue(param1, 0, type) + ',(' + makeGetValue(param1, 0, type) + '==' + param2 + ' && (' + makeSetValue(param1, 0, param3, type) + ')),tempValue)';
+        return '(tempValue=' + makeGetValue(param1, 0, type) + ',(' + makeGetValue(param1, 0, type) + '==' + param2 + ' && (' + makeSetValue(param1, 0, param3, type, null, null, null, null, ',') + ')),tempValue)';
       }
       default: throw 'unhandled atomic op: ' + item.op;
     }
@@ -1277,6 +1294,15 @@ function JSify(data, functionsOnly, givenFunctions) {
     //
 
     if (!mainPass) {
+      if (phase == 'pre' && !Variables.generatedGlobalBase) {
+        Variables.generatedGlobalBase = true;
+        if (Variables.nextIndexedOffset > 0) {
+          // Variables have been calculated, print out the base generation before we print them
+          print('var GLOBAL_BASE = STATICTOP;\n');
+          print('STATICTOP += ' + Variables.nextIndexedOffset + ';\n');
+          print('assert(STATICTOP < TOTAL_MEMORY);\n');
+        }
+      }
       var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable).concat(itemsDict.GlobalVariablePostSet);
       if (!DEBUG_MEMORY) print(generated.map(function(item) { return item.JS }).join('\n'));
       return;
@@ -1284,15 +1310,36 @@ function JSify(data, functionsOnly, givenFunctions) {
 
     // Print out global variables and postsets TODO: batching
     if (phase == 'pre') {
+      var legalizedI64sDefault = legalizedI64s;
       legalizedI64s = false;
-      JSify(analyzer(intertyper(data.unparsedGlobalss[0].lines, true), true), true, Functions);
+
+      var globalsData = analyzer(intertyper(data.unparsedGlobalss[0].lines, true), true);
+
+      if (!NAMED_GLOBALS) {
+        sortGlobals(globalsData.globalVariables).forEach(function(g) {
+          var ident = g.ident;
+          if (!isIndexableGlobal(ident)) return;
+          Variables.indexedGlobals[ident] = Variables.nextIndexedOffset;
+          Variables.nextIndexedOffset += Runtime.alignMemory(calcAllocatedSize(Variables.globals[ident].type));
+          if (ident.substr(0, 5) == '__ZTV') { // leave room for null-terminating the vtable
+            Variables.nextIndexedOffset += Runtime.getNativeTypeSize('i32');
+          }
+        });
+      }
+
+      JSify(globalsData, true, Functions);
+      globalsData = null;
       data.unparsedGlobalss = null;
 
       var generated = itemsDict.functionStub.concat(itemsDict.GlobalVariablePostSet);
       generated.forEach(function(item) { print(indentify(item.JS || '', 2)); });
+
+      legalizedI64s = legalizedI64sDefault;
     } else {
-      assert(data.unparsedGlobalss[0].lines.length == 0, dump([phase, data.unparsedGlobalss]));
-      assert(itemsDict.functionStub.length == 0, dump([phase, itemsDict.functionStub]));
+      if (singlePhase) {
+        assert(data.unparsedGlobalss[0].lines.length == 0, dump([phase, data.unparsedGlobalss]));
+        assert(itemsDict.functionStub.length == 0, dump([phase, itemsDict.functionStub]));
+      }
     }
 
     if (phase == 'pre' || phase == 'funcs') {
@@ -1349,7 +1396,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     substrate.addItems(data.functionStubs, 'FunctionStub');
     assert(data.functions.length == 0);
   } else {
-    substrate.addItems(values(data.globalVariables), 'GlobalVariable');
+    substrate.addItems(sortGlobals(data.globalVariables), 'GlobalVariable');
     substrate.addItems(data.aliass, 'Alias');
     substrate.addItems(data.functions, 'FunctionSplitter');
   }

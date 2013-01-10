@@ -336,11 +336,11 @@ mergeInto(LibraryManager.library, {
       xhr.send(null);
     },
 
-    asyncLoad: function(url, onload, onerror) {
+    asyncLoad: function(url, onload, onerror, noRunDep) {
       Browser.xhrLoad(url, function(arrayBuffer) {
         assert(arrayBuffer, 'Loading data file "' + url + '" failed (no arrayBuffer).');
         onload(new Uint8Array(arrayBuffer));
-        removeRunDependency('al ' + url);
+        if (!noRunDep) removeRunDependency('al ' + url);
       }, function(event) {
         if (onerror) {
           onerror();
@@ -348,7 +348,7 @@ mergeInto(LibraryManager.library, {
           throw 'Loading data file "' + url + '" failed.';
         }
       });
-      addRunDependency('al ' + url);
+      if (!noRunDep) addRunDependency('al ' + url);
     },
 
     resizeListeners: [],
@@ -381,8 +381,19 @@ mergeInto(LibraryManager.library, {
       },
       function() {
         if (onerror) FUNCTION_TABLE[onerror](file);
-      }
+      } 
     );
+  },
+
+  emscripten_async_wget_data: function(url, arg, onload, onerror) {
+    Browser.asyncLoad(Pointer_stringify(url), function(byteArray) {
+      var buffer = _malloc(byteArray.length);
+      HEAPU8.set(byteArray, buffer);
+      FUNCTION_TABLE[onload](arg, buffer, byteArray.length);
+      _free(buffer);
+    }, function() {
+      if (onerror) FUNCTION_TABLE[onerror](arg);
+    }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
   },
 
   emscripten_async_prepare: function(file, onload, onerror) {
