@@ -466,7 +466,8 @@ function JSify(data, functionsOnly, givenFunctions) {
           ident = '_' + ident;
         }
         var text = (deps ? '\n' + deps.map(addFromLibrary).filter(function(x) { return x != '' }).join('\n') : '');
-        text += isFunction ? snippet : 'var ' + ident + '=' + snippet + ';';
+        // redirected idents just need a var, but no value assigned to them - it would be unused
+        text += isFunction ? snippet : ('var ' + ident + (redirectedIdent ? '' : '=' + snippet) + ';');
         if (EXPORT_ALL || (ident in EXPORTED_FUNCTIONS)) {
           text += '\nModule["' + ident + '"] = ' + ident + ';';
         }
