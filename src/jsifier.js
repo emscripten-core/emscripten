@@ -1241,7 +1241,9 @@ function JSify(data, functionsOnly, givenFunctions) {
     var callIdent = LibraryManager.getRootIdent(shortident);
     if (callIdent) {
       shortident = callIdent; // ident may not be in library, if all there is is ident__inline, but in this case it is
-      callIdent = '_' + callIdent;
+      if (callIdent.indexOf('.') < 0) {
+        callIdent = '_' + callIdent; // Not Math.*, so add the normal prefix
+      }
     } else {
       callIdent = ident;
     }
