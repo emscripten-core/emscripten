@@ -3603,6 +3603,21 @@ LibraryManager.library = {
   // stdlib.h
   // ==========================================================================
 
+  // tiny, fake malloc/free implementation. If the program actually uses malloc,
+  // a compiled version will be used; this will only be used if the runtime
+  // needs to allocate something, for which this is good enough if otherwise
+  // no malloc is needed.
+  malloc: function(bytes) {
+    /* Over-allocate to make sure it is byte-aligned by 8.
+     * This will leak memory, but this is only the dummy
+     * implementation (replaced by dlmalloc normally) so
+     * not an issue.
+     */
+    ptr = Runtime.staticAlloc(bytes + 8);
+    return (ptr+8) & 0xFFFFFFF8;
+  },
+  free: function(){},
+
   calloc__deps: ['malloc'],
   calloc: function(n, s) {
     var ret = _malloc(n*s);
