@@ -424,7 +424,9 @@ function JSify(data, functionsOnly, givenFunctions) {
             deps.push(snippet);
             snippet = '_' + snippet;
           }
-          if (ASM_JS && (typeof target == 'function' || /Math\..+/.exec(snippet))) {
+          // In asm, we need to know about library functions. If there is a target, though, then no
+          // need to consider this a library function - we will call directly to it anyhow
+          if (ASM_JS && !redirectedIdent && (typeof target == 'function' || /Math\..+/.exec(snippet))) {
             Functions.libraryFunctions[ident] = 1;
           }
         } else if (typeof snippet === 'object') {
@@ -1234,7 +1236,14 @@ function JSify(data, functionsOnly, givenFunctions) {
     // We cannot compile assembly. See comment in intertyper.js:'Call'
     assert(ident != 'asm', 'Inline assembly cannot be compiled to JavaScript!');
 
-    var shortident = LibraryManager.getRootIdent(ident.slice(1)) || ident.slice(1); // ident may not be in library, if all there is is ident__inline
+    var shortident = ident.slice(1);
+    var callIdent = LibraryManager.getRootIdent(shortident);
+    if (callIdent) {
+      shortident = callIdent; // ident may not be in library, if all there is is ident__inline, but in this case it is
+      callIdent = '_' + callIdent;
+    } else {
+      callIdent = ident;
+    }
     var args = [];
     var argsTypes = [];
     var varargs = [];
@@ -1322,12 +1331,12 @@ function JSify(data, functionsOnly, givenFunctions) {
       var sig = Functions.getSignature(returnType, argsTypes);
       if (ASM_JS) {
         assert(returnType.search(/\("'\[,/) == -1); // XXX need isFunctionType(type, out)
-        ident = '(' + ident + ')&{{{ FTM_' + sig + ' }}}'; // the function table mask is set in emscripten.py
+        callIdent = '(' + callIdent + ')&{{{ FTM_' + sig + ' }}}'; // the function table mask is set in emscripten.py
       }
-      ident = Functions.getTable(sig) + '[' + ident + ']';
+      callIdent = Functions.getTable(sig) + '[' + callIdent + ']';
     }
 
-    var ret = ident + '(' + args.join(', ') + ')';
+    var ret = callIdent + '(' + args.join(', ') + ')';
     if (ASM_JS) { // TODO: do only when needed (library functions and Math.*?) XXX && shortident in Functions.libraryFunctions) {
       ret = asmCoercion(ret, returnType);
       if (shortident == 'abort' && funcData.returnType != 'void') {

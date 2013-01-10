@@ -275,16 +275,23 @@ var Functions = {
       if (!tables[sig]) tables[sig] = emptyTable(sig); // TODO: make them compact
       tables[sig][this.indexedFunctions[ident]] = ident;
     }
-    // Resolve multi-level aliases all the way down
     var generated = false;
     for (var t in tables) {
       generated = true;
       var table = tables[t];
       for (var i = 0; i < table.length; i++) {
+        // Resolve multi-level aliases all the way down
         while (1) {
           var varData = Variables.globals[table[i]];
           if (!(varData && varData.resolvedAlias)) break;
           table[i] = table[+varData.resolvedAlias || eval(varData.resolvedAlias)]; // might need to eval to turn (6) into 6
+        }
+        // Resolve library aliases
+        if (table[i]) {
+          var libName = LibraryManager.getRootIdent(table[i].substr(1));
+          if (libName && typeof libName == 'string') {
+            table[i] = '_' + libName;
+          }
         }
       }
       var indices = table.toString().replace('"', '');
