@@ -6737,17 +6737,9 @@ def process(filename):
     def test_lifetime(self):
       if self.emcc_args is None: return self.skip('test relies on emcc opts')
 
-      try:
-        os.environ['EMCC_LEAVE_INPUTS_RAW'] = '1'
-
-        self.do_ll_run(path_from_root('tests', 'lifetime.ll'), 'hello, world!\n')
-        if '-O1' in self.emcc_args or '-O2' in self.emcc_args:
-          assert 'a18' not in open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read(), 'lifetime stuff and their vars must be culled'
-        else:
-          assert 'a18' in open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read(), "without opts, it's there"
-
-      finally:
-        del os.environ['EMCC_LEAVE_INPUTS_RAW']
+      self.do_ll_run(path_from_root('tests', 'lifetime.ll'), 'hello, world!\n')
+      if '-O1' in self.emcc_args or '-O2' in self.emcc_args:
+        assert 'a18' not in open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read(), 'lifetime stuff and their vars must be culled'
 
     # Test cases in separate files. Note that these files may contain invalid .ll!
     # They are only valid enough for us to read for test purposes, not for llvm-as
