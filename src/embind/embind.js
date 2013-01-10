@@ -211,6 +211,9 @@ function runDestructors(destructors) {
 }
 
 function makeInvoker(name, argCount, argTypes, invoker, fn) {
+    if (!FUNCTION_TABLE[fn]) {
+        throw new BindingError('function '+name+' is not defined');
+    }
     return function() {
         if (arguments.length !== argCount - 1) {
             throw new BindingError('function ' + name + ' called with ' + arguments.length + ' arguments, expected ' + (argCount - 1));
@@ -219,11 +222,7 @@ function makeInvoker(name, argCount, argTypes, invoker, fn) {
         var args = new Array(argCount);
         args[0] = fn;
         for (var i = 1; i < argCount; ++i) {
-            if (argTypes[i].toWireTypeAutoUpcast) {
-                args[i] = argTypes[i].toWireTypeAutoUpcast(destructors, arguments[i-1]);
-            } else {
-                args[i] = argTypes[i].toWireType(destructors, arguments[i-1]);
-            }
+            args[i] = argTypes[i].toWireType(destructors, arguments[i-1]);
         }
         var rv = invoker.apply(null, args);
         if (argTypes[0].fromWireTypeAutoDowncast) {
@@ -429,20 +428,7 @@ function RegisteredPointer(Handle, isPolymorphic, isSmartPointer, rawGetPointee,
     this.rawDestructor = rawDestructor;
 }
 
-// todo: this will go away
-RegisteredPointer.prototype.toWireType = function(destructors, o) {
-    if (null === o) {
-        return 0;
-    } else {
-        if (this.isSmartPointer) {
-            return o.smartPointer;
-        } else {
-            return o.ptr; // this allows passing a smart pointer to a raw pointer parameter (but it's not much of a conversion!)s/r
-        }
-    }
-};
-
-RegisteredPointer.prototype.toWireTypeAutoUpcast = function(destructors, handle) {
+RegisteredPointer.prototype.toWireType = function(destructors, handle) {
     var fromRawType;
     if (!handle) {
         return null;
