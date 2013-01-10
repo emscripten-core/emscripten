@@ -290,7 +290,7 @@ var Functions = {
         if (table[i]) {
           var libName = LibraryManager.getRootIdent(table[i].substr(1));
           if (libName && typeof libName == 'string') {
-            table[i] = '_' + libName;
+            table[i] = (libName.indexOf('.') < 0 ? '_' : '') + libName;
           }
         }
       }
