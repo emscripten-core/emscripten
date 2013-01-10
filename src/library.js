@@ -3603,24 +3603,6 @@ LibraryManager.library = {
   // stdlib.h
   // ==========================================================================
 
-  malloc: function(bytes) {
-    /* Over-allocate to make sure it is byte-aligned by 8.
-     * This will leak memory, but this is only the dummy
-     * implementation (replaced by dlmalloc normally) so
-     * not an issue.
-     */
-    ptr = Runtime.staticAlloc(bytes + 8);
-    return (ptr+8) & 0xFFFFFFF8;
-  },
-  _Znwj: 'malloc',
-  _Znaj: 'malloc',
-  _Znam: 'malloc',
-  _Znwm: 'malloc',
-
-  free: function(){},
-  _ZdlPv: 'free',
-  _ZdaPv: 'free',
-
   calloc__deps: ['malloc'],
   calloc: function(n, s) {
     var ret = _malloc(n*s);
