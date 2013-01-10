@@ -937,12 +937,22 @@ try:
     # libc
     def create_libc():
       if DEBUG: print >> sys.stderr, 'emcc: building libc for cache'
-      execute([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'dlmalloc.c'), '-g', '-o', in_temp('dlmalloc.o')], stdout=stdout, stderr=stderr)
-      # we include the libc++ new stuff here, so that the common case of using just new/delete is quick to link
-      execute([shared.PYTHON, shared.EMXX, shared.path_from_root('system', 'lib', 'libcxx', 'new.cpp'), '-g', '-o', in_temp('new.o')], stdout=stdout, stderr=stderr)
-      shared.Building.link([in_temp('dlmalloc.o'), in_temp('new.o')], in_temp('libc.o'))
-      return in_temp('libc.o')
-    def fix_libc():
+      o_s = []
+      for src in ['dlmalloc.c', os.path.join('libc', 'musl', 'memcpy.c'), os.path.join('libcxx', 'new.cpp')]:
+        o = in_temp(os.path.basename(src) + '.o')
+        execute([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o], stdout=stdout, stderr=stderr)
+        o_s.append(o)
+      shared.Building.link(o_s, in_temp('libc.bc'))
+      return in_temp('libc.bc')
+
+    def fix_libc(need):
+      # If an intrinsic alias of memcpy is used, we need memcpy
+      for memcpy_alias in ['llvm.memcpy.i32', 'llvm.memcpy.i64', 'llvm.memcpy.p0i8.p0i8.i32', 'llvm.memcpy.p0i8.p0i8.i64']:
+        if memcpy_alias in need:
+          if '_memcpy' not in shared.Settings.EXPORTED_FUNCTIONS:
+            shared.Settings.EXPORTED_FUNCTIONS.append('_memcpy')
+            break
+
       # libc needs some sign correction. # If we are in mode 0, switch to 2. We will add our lines
       try:
         if shared.Settings.CORRECT_SIGNS == 0: raise Exception('we need to change to 2')
@@ -966,7 +976,7 @@ try:
         os.append(o)
       shared.Building.link(os, in_temp('libcxx.bc'))
       return in_temp('libcxx.bc')
-    def fix_libcxx():
+    def fix_libcxx(need):
       assert shared.Settings.QUANTUM_SIZE == 4, 'We do not support libc++ with QUANTUM_SIZE == 1'
       # libcxx might need corrections, so turn them all on. TODO: check which are actually needed
       shared.Settings.CORRECT_SIGNS = shared.Settings.CORRECT_OVERFLOWS = shared.Settings.CORRECT_ROUNDINGS = 1
@@ -985,7 +995,7 @@ try:
         os.append(o)
       shared.Building.link(os, in_temp('libcxxabi.bc'))
       return in_temp('libcxxabi.bc')
-    def fix_libcxxabi():
+    def fix_libcxxabi(need):
       assert shared.Settings.QUANTUM_SIZE == 4, 'We do not support libc++abi with QUANTUM_SIZE == 1'
       #print >> sys.stderr, 'emcc: info: using libcxxabi, this may need CORRECT_* options'
       #shared.Settings.CORRECT_SIGNS = shared.Settings.CORRECT_OVERFLOWS = shared.Settings.CORRECT_ROUNDINGS = 1
@@ -997,7 +1007,7 @@ try:
 
     for name, create, fix, library_symbols in [('libcxx',    create_libcxx,    fix_libcxx,    libcxx_symbols),
                                                ('libcxxabi', create_libcxxabi, fix_libcxxabi, libcxxabi_symbols),
-                                               ('libc',      create_libc,  fix_libc,  libc_symbols)]:
+                                               ('libc',      create_libc,      fix_libc,      libc_symbols)]:
       need = set()
       has = set()
       for temp_file in temp_files:
@@ -1026,7 +1036,7 @@ try:
         extra_files_to_link.append(libfile)
         force = True
         if fix:
-          fix()
+          fix(need)
 
   # First, combine the bitcode files if there are several. We must also link if we have a singleton .a
   if len(input_files) + len(extra_files_to_link) > 1 or \
