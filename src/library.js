@@ -4200,7 +4200,15 @@ LibraryManager.library = {
     return ret;
   },
 
-  memcpy: function(){ throw 'memcpy should be included from libc' },
+  memcpy: function (dest, src, num) {
+    // simple version, in general it should not be used - we should pull it in from libc
+#if ASSERTIONS
+    Module.printErr('warning: library.js memcpy should not be running!');
+#endif
+    while (num--) {
+      HEAP8[dest++] = HEAP8[src++];
+    }
+  },
 
   llvm_memcpy_i32: 'memcpy',
   llvm_memcpy_i64: 'memcpy',
