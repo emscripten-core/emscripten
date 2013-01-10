@@ -1941,6 +1941,7 @@ Succeeded!
         self.do_run(self.gen_struct_src.replace('{{gen_struct}}', '(S*)malloc(sizeof(S))').replace('{{del_struct}}', 'free'), '*51,62*')
 
     def test_newstruct(self):
+        if self.emcc_args is None: return self.skip('requires emcc')
         self.do_run(self.gen_struct_src.replace('{{gen_struct}}', 'new S').replace('{{del_struct}}', 'delete'), '*51,62*')
 
     def test_addr_of_stacked(self):
@@ -2593,6 +2594,7 @@ Exiting setjmp function, level: 0, prev_jmp: -1
         self.do_run(src, '3.14159')
 
     def test_polymorph(self):
+        if self.emcc_args is None: return self.skip('requires emcc')
         src = '''
           #include <stdio.h>
           struct Pure {
@@ -2769,6 +2771,7 @@ Exiting setjmp function, level: 0, prev_jmp: -1
         self.do_run(src, 'fn2(-5) = 5, fn(10) = 3.16')
 
     def test_emptyclass(self):
+        if self.emcc_args is None: return self.skip('requires emcc')
         src = '''
         #include <stdio.h>
 
@@ -3104,6 +3107,7 @@ Exiting setjmp function, level: 0, prev_jmp: -1
           self.do_run(src, '*0,0,0,4,8,12,16,20*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*12,20,20*')
 
     def test_ptrtoint(self):
+        if self.emcc_args is None: return self.skip('requires emcc')
         src = '''
           #include <stdio.h>
 
@@ -3126,6 +3130,7 @@ Exiting setjmp function, level: 0, prev_jmp: -1
         self.do_run(src, '*5*', output_processor=check_warnings)
 
     def test_sizeof(self):
+        if self.emcc_args is None: return self.skip('requires emcc')
         # Has invalid writes between printouts
         Settings.SAFE_HEAP = 0
 
@@ -3297,6 +3302,7 @@ def process(filename):
           self.do_run(src, '''*16*\n0:22016,0,32,48\n1:22018,1,48,32\n''')
 
     def test_tinyfuncstr(self):
+        if self.emcc_args is None: return self.skip('requires emcc')
         src = '''
           #include <stdio.h>
 
@@ -3648,6 +3654,7 @@ The current type of b is: 9
         assert 'Casting a function pointer type to another with a different number of arguments' in output[1], 'Missing expected warning'
 
     def test_stdlibs(self):
+        if self.emcc_args is None: return self.skip('requires emcc')
         if Settings.USE_TYPED_ARRAYS == 2:
             # Typed arrays = 2 + safe heap prints a warning that messes up our output.
             Settings.SAFE_HEAP = 0
@@ -3851,6 +3858,8 @@ The current type of b is: 9
         self.do_run(src, '*staticccz*\n*1.00,2.00,3.00*')
 
     def test_copyop(self):
+        if self.emcc_args is None: return self.skip('requires emcc')
+
         # clang generated code is vulnerable to this, as it uses
         # memcpy for assignments, with hardcoded numbers of bytes
         # (llvm-gcc copies items one by one). See QUANTUM_SIZE in
@@ -4145,6 +4154,7 @@ def process(filename):
                   post_build=add_pre_run_and_checks)
 
     def test_dlfcn_qsort(self):
+      if self.emcc_args is None: return self.skip('requires emcc')
       if Settings.ASM_JS: return self.skip('TODO: dlopen in asm')
 
       Settings.LINKABLE = 1
@@ -5976,6 +5986,7 @@ int main(int argc, char **argv) {
       self.do_run(src, 'hello world\n77.\n')
 
     def test_stdvec(self):
+      if self.emcc_args is None: return self.skip('requires emcc')
       src = '''
         #include <vector>
         #include <stdio.h>
@@ -6099,6 +6110,7 @@ int main(int argc, char **argv) {
           self.do_run(src, 'Pfannkuchen(%d) = %d.' % (i,j), [str(i)], no_build=i>1)
 
     def test_raytrace(self):
+        if self.emcc_args is None: return self.skip('requires emcc')
         if Settings.USE_TYPED_ARRAYS == 2: return self.skip('Relies on double value rounding, extremely sensitive')
 
         src = open(path_from_root('tests', 'raytrace.cpp'), 'r').read().replace('double', 'float')
@@ -6106,6 +6118,7 @@ int main(int argc, char **argv) {
         self.do_run(src, output, ['3', '16'])#, build_ll_hook=self.do_autodebug)
 
     def test_fasta(self):
+        if self.emcc_args is None: return self.skip('requires emcc')
         results = [ (1,'''GG*ctt**tgagc*'''), (20,'''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tacgtgtagcctagtgtttgtgttgcgttatagtctatttgtggacacagtatggtcaaa**tgacgtcttttgatctgacggcgttaacaaagatactctg*'''),
 (50,'''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA*TCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACAT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tactDtDagcctatttSVHtHttKtgtHMaSattgWaHKHttttagacatWatgtRgaaa**NtactMcSMtYtcMgRtacttctWBacgaa**agatactctgggcaacacacatacttctctcatgttgtttcttcggacctttcataacct**ttcctggcacatggttagctgcacatcacaggattgtaagggtctagtggttcagtgagc**ggaatatcattcgtcggtggtgttaatctatctcggtgtagcttataaatgcatccgtaa**gaatattatgtttatttgtcggtacgttcatggtagtggtgtcgccgatttagacgtaaa**ggcatgtatg*''') ]
         for i, j in results:
@@ -6184,6 +6197,7 @@ operator new(size_t size)
       self.do_run(src, 'got 0x7b\nfreed')
 
     def test_libcxx(self):
+      if self.emcc_args is None: return self.skip('requires emcc')
       self.do_run(open(path_from_root('tests', 'hashtest.cpp')).read(),
                    'june -> 30\nPrevious (in alphabetical order) is july\nNext (in alphabetical order) is march')
 
@@ -6320,6 +6334,7 @@ void*:16
       self.do_run(src, '*10,22*')
 
     def test_mmap(self):
+      if self.emcc_args is None: return self.skip('requires emcc')
       self.banned_js_engines = [NODE_JS] # slower, and fail on 64-bit
 
       Settings.TOTAL_MEMORY = 128*1024*1024
@@ -6391,6 +6406,7 @@ void*:16
       self.do_run(src, '*\ndata from the file .\nfrom the file ......\n*\n')
 
     def test_cubescript(self):
+      if self.emcc_args is None: return self.skip('requires emcc')
       if self.emcc_args is not None and '-O2' in self.emcc_args:
         self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
 
@@ -6447,6 +6463,7 @@ void*:16
                               os.path.join('objs', '.libs', 'libfreetype.a'))
 
     def test_freetype(self):
+      if self.emcc_args is None: return self.skip('requires emcc')
       if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: Figure out and try to fix')
       if Settings.ASM_JS: return self.skip('asm does not support longjmp')
 
@@ -6537,6 +6554,7 @@ def process(filename):
                    force_c=True)
 
     def test_the_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
+      if self.emcc_args is None: return self.skip('requires emcc')
       if Building.LLVM_OPTS and self.emcc_args is None: Settings.SAFE_HEAP = 0 # Optimizations make it so we do not have debug info on the line we need to ignore
 
       # Note: this is also a good test of per-file and per-line changes (since we have multiple files, and correct specific lines)
@@ -6721,6 +6739,7 @@ def process(filename):
         print >> sys.stderr, 'not doing debug check'
 
     def test_python(self):
+      if self.emcc_args is None: return self.skip('requires emcc')
       if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: make this work')
 
       # Overflows in string_hash
@@ -6942,6 +6961,7 @@ def process(filename):
       self.do_run(src, '*\nnumber,5\nnumber,3.14\nstring,hello world\n12\nundefined\n14.56\nundefined\ncheez\nundefined\narr-ay\nundefined\nmore\nnumber,10\n650\nnumber,21\n*\natr\n10\nbret\n53\n*\nstack is ok.\n', post_build=post)
 
     def test_scriptaclass(self):
+        if self.emcc_args is None: return self.skip('requires emcc')
         if Settings.ASM_JS: return self.skip('asm does not bindings generator yet')
 
         header_filename = os.path.join(self.get_dir(), 'header.h')
@@ -7188,6 +7208,7 @@ Child2:9
 ''', post_build=[post2, post3])
 
     def test_scriptaclass_2(self):
+        if self.emcc_args is None: return self.skip('requires emcc')
         if Settings.ASM_JS: return self.skip('asm does not bindings generator yet')
 
         header_filename = os.path.join(self.get_dir(), 'header.h')
