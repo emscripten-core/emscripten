@@ -493,7 +493,7 @@ function parseLLVMSegment(segment) {
     return {
       intertype: 'value',
       ident: toNiceIdent(segment[1].text),
-      type: segment[0].text
+      type: type
     };
   }
 }
@@ -1660,6 +1660,7 @@ function finalizeLLVMParameter(param, noIndexizeFunctions) {
       ret = parseI64Constant(ret);
     }
     ret = parseNumerical(ret, param.type);
+    ret = asmEnsureFloat(ret, param.type);
   } else if (param.intertype == 'structvalue') {
     ret = makeLLVMStruct(param.params.map(function(value) { return finalizeLLVMParameter(value, noIndexizeFunctions) }));
   } else if (param.intertype === 'blockaddress') {
