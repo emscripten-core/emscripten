@@ -222,6 +222,12 @@ var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = ['memcpy', 'memset', 'malloc', 'free', '$
                                                                                            // add it here (and in EXPORTED FUNCTIONS with prefix
                                                                                            // "_", for closure).
 
+var LIBRARY_DEPS_TO_AUTOEXPORT = ['memcpy']; // This list is also used to determine
+                                             // auto-exporting of library dependencies (i.e., functions that
+                                             // might be dependencies of JS library functions, that if
+                                             // so we must export so that if they are implemented in C
+                                             // they will be accessible, in ASM_JS mode).
+
 var IGNORED_FUNCTIONS = []; // Functions that we should not generate, neither a stub nor a complete function.
                             // This is useful if your project code includes a function, and you want to replace
                             // that in the compiled code with your own handwritten JS. (Of course even without

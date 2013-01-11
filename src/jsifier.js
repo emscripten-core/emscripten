@@ -459,6 +459,18 @@ function JSify(data, functionsOnly, givenFunctions) {
         if (redirectedIdent) {
           deps = deps.concat(LibraryManager.library[redirectedIdent + '__deps'] || []);
         }
+        if (ASM_JS) {
+          // In asm, dependencies implemented in C might be needed by JS library functions.
+          // We don't know yet if they are implemented in C or not. To be safe, export such
+          // special cases.
+          [LIBRARY_DEPS_TO_AUTOEXPORT].forEach(function(special) {
+            deps.forEach(function(dep) {
+              if (dep == special && !EXPORTED_FUNCTIONS[dep]) {
+                EXPORTED_FUNCTIONS[dep] = 1;
+              }
+            });
+          });
+        }
         // $ident's are special, we do not prefix them with a '_'.
         if (ident[0] === '$') {
           ident = ident.substr(1);
