@@ -1114,6 +1114,9 @@ try:
       next = final + '.postrinsics.bc'
       shared.Building.link([final, memcpy], next)
       final = next
+      if shared.Settings.ASM_JS: # export it so other library functions etc. can use it
+        if '_memcpy' not in shared.Settings.EXPORTED_FUNCTIONS:
+          shared.Settings.EXPORTED_FUNCTIONS.append('_memcpy')
       if DEBUG: save_intermediate('postrinsics', 'bc')
 
   # Prepare .ll for Emscripten
