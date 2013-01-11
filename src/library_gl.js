@@ -2069,7 +2069,7 @@ var LibraryGL = {
 #endif
     GL.immediate.vertexData[GL.immediate.vertexCounter++] = x;
     GL.immediate.vertexData[GL.immediate.vertexCounter++] = y;
-    GL.immediate.vertexData[GL.immediate.vertexCounter++] = z || 0;
+    GL.immediate.vertexData[GL.immediate.vertexCounter++] = z;
 #if ASSERTIONS
     assert(GL.immediate.vertexCounter << 2 < GL.immediate.MAX_TEMP_BUFFER_SIZE);
 #endif
@@ -2081,8 +2081,9 @@ var LibraryGL = {
   glVertex3fv: function(p) {
     _glVertex3f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}}, {{{ makeGetValue('p', '8', 'float') }}});
   },
+  glVertex2fv__deps: ['glVertex3f'],
   glVertex2fv: function(p) {
-    _glVertex2f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}});
+    _glVertex3f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}}, 0);
   },
 
   glTexCoord2i: function(u, v) {
@@ -2095,9 +2096,9 @@ var LibraryGL = {
   },
   glTexCoord2f: 'glTexCoord2i',
 
-  glTexCoord2fv__deps: ['glTexCoord2f'],
+  glTexCoord2fv__deps: ['glTexCoord2i'],
   glTexCoord2fv: function(v) {
-    _glTexCoord2f({{{ makeGetValue('v', '0', 'float') }}}, {{{ makeGetValue('v', '4', 'float') }}});
+    _glTexCoord2i({{{ makeGetValue('v', '0', 'float') }}}, {{{ makeGetValue('v', '4', 'float') }}});
   },
 
   glColor4f: function(r, g, b, a) {
