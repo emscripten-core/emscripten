@@ -443,9 +443,9 @@ RegisteredPointer.prototype.toWireType = function(destructors, handle) {
     }
     var ptr = staticPointerCast(handle.ptr, fromRawType, this.pointeeType.rawType);
     if (this.isSmartPointer) {
+        // todo: if ptr == handle.ptr, there's no need to allocate a new smartPtr!
         var smartPtr = _malloc(16);
-        // todo: this does not create a pointer that shares the reference count !
-        handle.pointeeType.smartPointerType.rawConstructor(smartPtr, ptr);
+        handle.pointeeType.smartPointerType.rawConstructor(smartPtr, ptr, handle.smartPointer);
         ptr = smartPtr;
         destructors.push(handle.pointeeType.smartPointerType.rawDestructor);
         destructors.push(ptr);
@@ -511,8 +511,6 @@ RegisteredPointer.prototype.fromWireTypeAutoDowncast = function(ptr) { // ptr is
     }
     var toType = this.getDynamicDowncastType(ptr);
     if (toType) {
-        // todo: need to clone the ptr here (really??)
-        // todo: we need to release the pre-cast pointer, don't we? how did this get past the tests?
         var fromType = this.pointeeType;
         if (this.isSmartPointer) {
             handle = toType.smartPointerType.fromWireType(ptr);
@@ -526,11 +524,9 @@ RegisteredPointer.prototype.fromWireTypeAutoDowncast = function(ptr) { // ptr is
     return handle;
 };
 
-// todo: don't need isPolymorphic parameter any more
 function __embind_register_smart_ptr(
     rawType,
     rawPointeeType,
-    isPolymorphic,
     name,
     rawConstructor,
     rawDestructor,
@@ -579,7 +575,7 @@ function __embind_register_smart_ptr(
         this.smartPointer = undefined;
         this.ptr = undefined;
     };
-    var registeredPointer = new RegisteredPointer(Handle, isPolymorphic, true, rawGetPointee, rawConstructor, rawDestructor);
+    var registeredPointer = new RegisteredPointer(Handle, pointeeType.isPolymorphic, true, rawGetPointee, rawConstructor, rawDestructor);
     registeredPointer.pointeeType = pointeeType;
     pointeeType.smartPointerType = registerType(rawType, name, registeredPointer);
 }
