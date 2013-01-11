@@ -1025,7 +1025,7 @@ function asmCoercion(value, type) {
   }
 }
 
-function asmMultiply(a, b) {
+function asmMultiplyI32(a, b) {
   // special-case: there is no integer multiply in asm, because there is no true integer
   // multiply in JS. While we wait for Math.imul, do double multiply
   if (USE_MATH_IMUL) {
@@ -1350,8 +1350,8 @@ function getFastValue(a, op, b, type) {
           return '(' + a + '<<' + shifts + ')';
         }
       }
-      if (ASM_JS) {
-        return asmMultiply(a, b); // unoptimized multiply, do it using asm.js's special multiply operation
+      if (ASM_JS && !(type in Runtime.FLOAT_TYPES)) {
+        return asmMultiplyI32(a, b); // unoptimized multiply, do it using asm.js's special multiply operation
       }
     } else {
       if (a == '0') {
@@ -2022,11 +2022,7 @@ function processMathop(item) {
         Types.preciseI64MathUsed = true;
         return '(i64Math' + (ASM_JS ? '_' : '.') + 'multiply(' + idents[0] + ',0,' + idents[1] + ',0),' + makeGetValue('tempDoublePtr', 0, 'i32') + ')';
       } else {
-        var ret = getFastValue(idents[0], '*', idents[1], item.type);
-        if (!ASM_JS) {
-          ret = handleOverflow(ret, bits); // multiply does not need overflow corrections in asm, since it is special-cased
-        }
-        return ret;
+        return handleOverflow(getFastValue(idents[0], '*', idents[1], item.type), bits);
       }
     }
     case 'urem': case 'srem': return getFastValue(idents[0], '%', idents[1], item.type);
