@@ -305,7 +305,8 @@ def emscript(infile, settings, outfile, libraries=[]):
       return 'function %s(%s) { %s abort(%d); %s };\n' % (bad, params, coercions, i, ret) + raw.replace('[0,', '[' + bad + ',').replace(',0,', ',' + bad + ',').replace(',0,', ',' + bad + ',').replace(',0]', ',' + bad + ']').replace(',0]', ',' + bad + ']')
     function_tables_defs = '\n'.join([make_table(sig, raw) for sig, raw in last_forwarded_json['Functions']['tables'].iteritems()])
 
-    maths = ['Runtime.bitshift64', 'Math.floor', 'Math.min', 'Math.abs']
+    maths = ['Runtime.bitshift64', 'Math.floor', 'Math.min', 'Math.abs', 'Math.sqrt', 'Math.pow', 'Math.cos', 'Math.sin', 'Math.tan', 'Math.acos', 'Math.asin', 'Math.atan', 'Math.atan2', 'Math.exp', 'Math.log', 'Math.ceil', 'Math.floor']
+
     if settings['USE_MATH_IMUL']:
       maths += ['Math.imul']
     asm_setup = '\n'.join(['var %s = %s;' % (f.replace('.', '_'), f) for f in maths])
