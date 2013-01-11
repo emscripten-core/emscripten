@@ -11079,8 +11079,7 @@ fi
         basebc_name = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-0-basebc.bc')
         dcebc_name1 = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-1-linktime.bc')
         dcebc_name2 = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-2-linktime.bc')
-        ll_name1 = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-2-ll.ll')
-        ll_name2 = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-3-ll.ll')
+        ll_names = [os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-X-ll.ll').replace('X', str(x)) for x in range(2,5)]
 
         # Building a file that *does* need dlmalloc *should* trigger cache generation, but only the first time
         for filename, libname in [('hello_malloc.cpp', 'libc'), ('hello_libcxx.cpp', 'libcxx')]:
@@ -11088,10 +11087,9 @@ fi
             print filename, libname, i
             self.clear()
             dcebc_name = dcebc_name1 if i == 0 else dcebc_name2
-            ll_name = ll_name1 if i == 0 else ll_name2
             try_delete(basebc_name) # we might need to check this file later
             try_delete(dcebc_name) # we might need to check this file later
-            try_delete(ll_name) # we might need to check this file later
+            for ll_name in ll_names: try_delete(ll_name)
             output = self.do([EMCC, '-O' + str(i), '--closure', '0', '-s', 'RELOOP=0', '--llvm-lto', '0', path_from_root('tests', filename)])
             #print output
             assert INCLUDING_MESSAGE.replace('X', libname) in output
@@ -11109,10 +11107,16 @@ fi
               assert os.stat(basebc_name).st_size > 1800000, 'libc++ is indeed big'
               assert os.stat(dcebc_name).st_size < 750000, 'Dead code elimination must remove most of libc++'
             # should only have metadata in -O0, not 1 and 2
-            ll = open(ll_name).read()
-            if (ll.count('\n!') < 10) == (i == 0): # a few lines are left even in -O1 and -O2
-              print i, 'll metadata should be removed in -O1 and O2 by default', ll[-300:]
-              assert False
+            if i > 0:
+              for ll_name in ll_names:
+                ll = None
+                try:
+                  ll = open(ll_name).read()
+                  break
+                except:
+                  pass
+              assert ll
+              assert ll.count('\n!') < 10 # a few lines are left even in -O1 and -O2
       finally:
         del os.environ['EMCC_DEBUG']
 
