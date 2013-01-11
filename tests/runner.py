@@ -7313,8 +7313,8 @@ def process(filename):
 
       src = '''
         #include<stdio.h>
-        int main() {
-          int *x = new int;
+        #include<stdlib.h>
+        int main() { int *x = (int*)malloc(sizeof(int));
           *x = 20;
           float *y = (float*)x;
           printf("%f\\n", *y);
@@ -7359,8 +7359,8 @@ def process(filename):
 
       module = '''
         #include<stdio.h>
-        void callFunc() {
-          int *x = new int;
+        #include<stdlib.h>
+        void callFunc() { int *x = (int*)malloc(sizeof(int));
           *x = 20;
           float *y = (float*)x;
           printf("%f\\n", *y);
@@ -7371,10 +7371,10 @@ def process(filename):
 
       main = '''
         #include<stdio.h>
+        #include<stdlib.h>
         extern void callFunc();
-        int main() {
-          callFunc();
-          int *x = new int;
+        int main() { callFunc();
+          int *x = (int*)malloc(sizeof(int));
           *x = 20;
           float *y = (float*)x;
           printf("%f\\n", *y);
