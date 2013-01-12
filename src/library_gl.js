@@ -2069,7 +2069,7 @@ var LibraryGL = {
 #endif
     GL.immediate.vertexData[GL.immediate.vertexCounter++] = x;
     GL.immediate.vertexData[GL.immediate.vertexCounter++] = y;
-    GL.immediate.vertexData[GL.immediate.vertexCounter++] = z;
+    GL.immediate.vertexData[GL.immediate.vertexCounter++] = z || 0;
 #if ASSERTIONS
     assert(GL.immediate.vertexCounter << 2 < GL.immediate.MAX_TEMP_BUFFER_SIZE);
 #endif
