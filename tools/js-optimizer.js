@@ -404,7 +404,7 @@ function removeUnneededLabelSettings(ast) {
 
 // Various expression simplifications. Pre run before closure (where we still have metadata), Post run after.
 
-function simplifyExpressionsPre(ast, asm) {
+function simplifyExpressionsPre(ast) {
   // When there is a bunch of math like (((8+5)|0)+12)|0, only the external |0 is needed, one correction is enough.
   // At each node, ((X|0)+Y)|0 can be transformed into (X+Y): The inner corrections are not needed
   // TODO: Is the same is true for 0xff, 0xffff?
@@ -527,10 +527,6 @@ function simplifyExpressionsPre(ast, asm) {
   simplifyBitops(ast);
   joinAdditions(ast);
   // simplifyZeroComp(ast); TODO: investigate performance
-}
-
-function simplifyExpressionsPreAsm(ast) {
-  simplifyExpressionsPre(ast, true);
 }
 
 // In typed arrays mode 2, we can have
@@ -1384,7 +1380,7 @@ function denormalizeAsm(func, data) {
 // TODO: Consider how this fits in with the rest of the optimization toolchain. Do
 //       we still need the eliminator? Closure? And in what order? Perhaps just
 //       closure simple?
-function registerize(ast, asm) {
+function registerize(ast) {
   traverseGeneratedFunctions(ast, function(fun) {
     if (asm) var asmData = normalizeAsm(fun);
     // Add parameters as a first (fake) var (with assignment), so they get taken into consideration
@@ -1608,10 +1604,6 @@ function registerize(ast, asm) {
   });
 }
 
-function registerizeAsm(ast) {
-  registerize(ast, true);
-}
-
 // Eliminator aka Expressionizer
 //
 // The goal of this pass is to eliminate unneeded variables (which represent one of the infinite registers in the LLVM
@@ -1649,7 +1641,7 @@ var NODES_WITHOUT_ELIMINATION_SIDE_EFFECTS = set('name', 'num', 'string', 'binar
 var IGNORABLE_ELIMINATOR_SCAN_NODES = set('num', 'toplevel', 'string', 'break', 'continue', 'dot'); // dot can only be STRING_TABLE.*
 var ABORTING_ELIMINATOR_SCAN_NODES = set('new', 'object', 'function', 'defun', 'switch', 'for', 'while', 'array', 'throw'); // we could handle some of these, TODO, but nontrivial (e.g. for while, the condition is hit multiple times after the body)
 
-function eliminate(ast, memSafe, asm) {
+function eliminate(ast, memSafe) {
   // Find variables that have a single use, and if they can be eliminated, do so
   traverseGeneratedFunctions(ast, function(func, type) {
     if (asm) var asmData = normalizeAsm(func);
@@ -2142,13 +2134,9 @@ function eliminateMemSafe(ast) {
   eliminate(ast, true);
 }
 
-function eliminateAsm(ast) {
-  eliminate(ast, false, true);
-}
-
 // Passes table
 
-var compress = false, printMetadata = true;
+var compress = false, printMetadata = true, asm = false;
 
 var passes = {
   dumpAst: dumpAst,
@@ -2157,19 +2145,17 @@ var passes = {
   removeAssignsToUndefined: removeAssignsToUndefined,
   //removeUnneededLabelSettings: removeUnneededLabelSettings,
   simplifyExpressionsPre: simplifyExpressionsPre,
-  simplifyExpressionsPreAsm: simplifyExpressionsPreAsm,
   optimizeShiftsConservative: optimizeShiftsConservative,
   optimizeShiftsAggressive: optimizeShiftsAggressive,
   simplifyExpressionsPost: simplifyExpressionsPost,
   hoistMultiples: hoistMultiples,
   loopOptimizer: loopOptimizer,
   registerize: registerize,
-  registerizeAsm: registerizeAsm,
   eliminate: eliminate,
   eliminateMemSafe: eliminateMemSafe,
-  eliminateAsm: eliminateAsm,
-  compress: function() { compress = true; },
-  noPrintMetadata: function() { printMetadata = false; }
+  compress: function() { compress = true },
+  noPrintMetadata: function() { printMetadata = false },
+  asm: function() { asm = true }
 };
 
 // Main
