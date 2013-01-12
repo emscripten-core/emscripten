@@ -275,7 +275,7 @@ Module['printProfiling'] = printProfiling;
 // Runtime essentials
 //========================================
 
-var __THREW__ = false; // Used in checking for thrown exceptions.
+var __THREW__ = 0; // Used in checking for thrown exceptions.
 var setjmpId = 1; // Used in setjmp/longjmp
 var setjmpLabels = {};
 
@@ -287,6 +287,7 @@ var undef = 0;
 var tempValue, tempInt, tempBigInt, tempInt2, tempBigInt2, tempPair, tempBigIntI, tempBigIntR, tempBigIntS, tempBigIntP, tempBigIntD;
 #if USE_TYPED_ARRAYS == 2
 var tempI64, tempI64b;
+var tempRet0, tempRet1, tempRet2, tempRet3, tempRet4, tempRet5, tempRet6, tempRet7, tempRet8, tempRet9;
 #endif
 
 function abort(text) {
@@ -307,18 +308,10 @@ var globalScope = this;
 // defined with extern "C").
 //
 // Note: LLVM optimizations can inline and remove functions, after which you will not be
-//       able to call them. Adding
+//       able to call them. Closure can also do so. To avoid that, add your function to
+//       the exports using something like
 //
-//         __attribute__((used))
-//
-//       to the function definition will prevent that.
-//
-// Note: Closure optimizations will minify function names, making
-//       functions no longer callable. If you run closure (on by default
-//       in -O2 and above), you should export the functions you will call
-//       by calling emcc with something like
-//
-//         -s EXPORTED_FUNCTIONS='["_func1","_func2"]'
+//         -s EXPORTED_FUNCTIONS='["_main", "_myfunc"]'
 //
 // @param ident      The name of the C function (note that C++ functions will be name-mangled - use extern "C")
 // @param returnType The return type of the function, one of the JS types 'number', 'string' or 'array' (use 'number' for any C pointer, and
@@ -577,9 +570,6 @@ Module['Array_stringify'] = Array_stringify;
 
 // Memory management
 
-var FUNCTION_TABLE; // XXX: In theory the indexes here can be equal to pointers to stacked or malloced memory. Such comparisons should
-                    //      be false, but can turn out true. We should probably set the top bit to prevent such issues.
-
 var PAGE_SIZE = 4096;
 function alignMemoryPage(x) {
   return ((x+4095)>>12)<<12;
@@ -601,7 +591,7 @@ var STATICTOP;
 #if USE_TYPED_ARRAYS
 function enlargeMemory() {
 #if ALLOW_MEMORY_GROWTH == 0
-  abort('Cannot enlarge memory arrays. Either (1) compile with -s TOTAL_MEMORY=X with X higher than the current value ( ' + TOTAL_MEMORY + '), (2) compile with ALLOW_MEMORY_GROWTH which adjusts the size at runtime but prevents some optimizations, or (3) set Module.TOTAL_MEMORY before the program runs.');
+  abort('Cannot enlarge memory arrays. Either (1) compile with -s TOTAL_MEMORY=X with X higher than the current value, (2) compile with ALLOW_MEMORY_GROWTH which adjusts the size at runtime but prevents some optimizations, or (3) set Module.TOTAL_MEMORY before the program runs.');
 #else
   // TOTAL_MEMORY is the current size of the actual array, and STATICTOP is the new top.
 #if ASSERTIONS
@@ -699,47 +689,47 @@ Module['HEAPF64'] = HEAPF64;
 #endif
 
 STACK_ROOT = STACKTOP = Runtime.alignMemory(1);
-STACK_MAX = STACK_ROOT + TOTAL_STACK;
+STACK_MAX = TOTAL_STACK; // we lose a little stack here, but TOTAL_STACK is nice and round so use that as the max
 
 #if USE_TYPED_ARRAYS == 2
-var tempDoublePtr = Runtime.alignMemory(STACK_MAX, 8);
-var tempDoubleI8  = HEAP8.subarray(tempDoublePtr);
-var tempDoubleI32 = HEAP32.subarray(tempDoublePtr >> 2);
-var tempDoubleF32 = HEAPF32.subarray(tempDoublePtr >> 2);
-var tempDoubleF64 = HEAPF64.subarray(tempDoublePtr >> 3);
+var tempDoublePtr = Runtime.alignMemory(allocate(12, 'i8', ALLOC_STACK), 8);
+assert(tempDoublePtr % 8 == 0);
 function copyTempFloat(ptr) { // functions, because inlining this code is increases code size too much
-  tempDoubleI8[0] = HEAP8[ptr];
-  tempDoubleI8[1] = HEAP8[ptr+1];
-  tempDoubleI8[2] = HEAP8[ptr+2];
-  tempDoubleI8[3] = HEAP8[ptr+3];
+  HEAP8[tempDoublePtr] = HEAP8[ptr];
+  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];
+  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];
+  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];
 }
 function copyTempDouble(ptr) {
-  tempDoubleI8[0] = HEAP8[ptr];
-  tempDoubleI8[1] = HEAP8[ptr+1];
-  tempDoubleI8[2] = HEAP8[ptr+2];
-  tempDoubleI8[3] = HEAP8[ptr+3];
-  tempDoubleI8[4] = HEAP8[ptr+4];
-  tempDoubleI8[5] = HEAP8[ptr+5];
-  tempDoubleI8[6] = HEAP8[ptr+6];
-  tempDoubleI8[7] = HEAP8[ptr+7];
+  HEAP8[tempDoublePtr] = HEAP8[ptr];
+  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];
+  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];
+  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];
+  HEAP8[tempDoublePtr+4] = HEAP8[ptr+4];
+  HEAP8[tempDoublePtr+5] = HEAP8[ptr+5];
+  HEAP8[tempDoublePtr+6] = HEAP8[ptr+6];
+  HEAP8[tempDoublePtr+7] = HEAP8[ptr+7];
 }
-STACK_MAX = tempDoublePtr + 8;
 #endif
 
-STATICTOP = alignMemoryPage(STACK_MAX);
-
+STATICTOP = STACK_MAX;
 assert(STATICTOP < TOTAL_MEMORY); // Stack must fit in TOTAL_MEMORY; allocations from here on may enlarge TOTAL_MEMORY
 
-var nullString = allocate(intArrayFromString('(null)'), 'i8', ALLOC_STATIC);
+var nullString = allocate(intArrayFromString('(null)'), 'i8', ALLOC_STACK);
 
 function callRuntimeCallbacks(callbacks) {
   while(callbacks.length > 0) {
     var callback = callbacks.shift();
     var func = callback.func;
     if (typeof func === 'number') {
-      func = FUNCTION_TABLE[func];
+      if (callback.arg === undefined) {
+        Runtime.dynCall('v', func);
+      } else {
+        Runtime.dynCall('vi', func, [callback.arg]);
+      }
+    } else {
+      func(callback.arg === undefined ? null : callback.arg);
     }
-    func(callback.arg === undefined ? null : callback.arg);
   }
 }
 
@@ -881,7 +871,8 @@ function removeRunDependency(id) {
       clearInterval(runDependencyWatcher);
       runDependencyWatcher = null;
     } 
-    if (!calledRun) run();
+    // If run has never been called, and we should call run (INVOKE_RUN is true, and Module.noInitialRun is not false)
+    if (!calledRun && shouldRunNow) run();
   }
 }
 Module['removeRunDependency'] = removeRunDependency;

@@ -197,32 +197,32 @@ function ex() {
     }))();
   }
 }
-function switchey(x) {
-  var r1, r2, r3, r4, r5, r6, r7, r8;
-  r1 = 5;
+function switchey(r1) {
+  var r2, r3, r4, r5, r6, r7, r8, r9;
+  r2 = 5;
   while (1) {
-    switch (x = f(x, r1)) {
+    switch (r1 = f(r1, r2)) {
      case 1:
-      g(r1);
-      r2 = x + 1;
-      x--;
+      g(r2);
+      r3 = r1 + 1;
+      r1--;
       break;
      case 2:
-      g(r1 * 2);
-      r3 = x + 22;
-      r4 = r3 + 5;
-      x -= 20;
+      g(r2 * 2);
+      r4 = r1 + 22;
+      r5 = r4 + 5;
+      r1 -= 20;
       break;
      default:
-      r5 = x + 22;
-      r6 = r3 + 5;
-      ch(r5, r6 * r3);
+      r6 = r1 + 22;
+      r7 = r4 + 5;
+      ch(r6, r7 * r4);
       throw 99;
     }
   }
-  r7 = x + 1;
-  p(r1, r7);
-  r8 = x + 2;
-  pp(r8);
+  r8 = r1 + 1;
+  p(r2, r8);
+  r9 = r1 + 2;
+  pp(r9);
 }
 

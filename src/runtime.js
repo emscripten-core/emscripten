@@ -13,7 +13,7 @@ var RuntimeGenerator = {
     if (init) {
       ret += sep + '_memset(' + type + 'TOP, 0, ' + size + ')';
     }
-    ret += sep + type + 'TOP += ' + size;
+    ret += sep + type + 'TOP = (' + type + 'TOP + ' + size + ')|0';
     if ({{{ QUANTUM_SIZE }}} > 1 && !ignoreAlign) {
       ret += sep + RuntimeGenerator.alignMemory(type + 'TOP', {{{ QUANTUM_SIZE }}});
     }
@@ -23,27 +23,27 @@ var RuntimeGenerator = {
   // An allocation that lives as long as the current function call
   stackAlloc: function(size, sep) {
     sep = sep || ';';
-    if (USE_TYPED_ARRAYS === 2) 'STACKTOP += STACKTOP % ' + ({{{ QUANTUM_SIZE }}} - (isNumber(size) ? Math.min(size, {{{ QUANTUM_SIZE }}}) : {{{ QUANTUM_SIZE }}})) + sep;
+    if (USE_TYPED_ARRAYS === 2) 'STACKTOP = (STACKTOP + STACKTOP|0 % ' + ({{{ QUANTUM_SIZE }}} - (isNumber(size) ? Math.min(size, {{{ QUANTUM_SIZE }}}) : {{{ QUANTUM_SIZE }}})) + ')' + sep;
     //                                                               The stack is always QUANTUM SIZE aligned, so we may not need to force alignment here
     var ret = RuntimeGenerator.alloc(size, 'STACK', INIT_STACK, sep, USE_TYPED_ARRAYS != 2 || (isNumber(size) && parseInt(size) % {{{ QUANTUM_SIZE }}} == 0));
     if (ASSERTIONS) {
-      ret += sep + 'assert(STACKTOP < STACK_ROOT + STACK_MAX, "Ran out of stack")';
+      ret += sep + 'assert(STACKTOP|0 < STACK_MAX|0)';
     }
     return ret;
   },
 
   stackEnter: function(initial, force) {
     if (initial === 0 && SKIP_STACK_IN_SMALL && !force) return '';
-    var ret = 'var __stackBase__  = STACKTOP';
-    if (initial > 0) ret += '; STACKTOP += ' + initial;
+    var ret = 'var __stackBase__  = ' + (ASM_JS ? '0; __stackBase__ = ' : '') + 'STACKTOP';
+    if (initial > 0) ret += '; STACKTOP = (STACKTOP + ' + initial + ')|0';
     if (USE_TYPED_ARRAYS == 2) {
       assert(initial % QUANTUM_SIZE == 0);
       if (ASSERTIONS) {
-        ret += '; assert(STACKTOP % {{{ QUANTUM_SIZE }}} == 0, "Stack is unaligned")';
+        ret += '; assert(STACKTOP|0 % {{{ QUANTUM_SIZE }}} == 0)';
       }
     }
     if (ASSERTIONS) {
-      ret += '; assert(STACKTOP < STACK_MAX, "Ran out of stack")';
+      ret += '; assert(STACKTOP < STACK_MAX)';
     }
     if (INIT_STACK) {
       ret += '; _memset(__stackBase__, 0, ' + initial + ')';
@@ -124,36 +124,50 @@ var Runtime = {
 
   // Mirrors processMathop's treatment of constants (which we optimize directly)
   bitshift64: function(low, high, op, bits) {
+    var ret;
     var ander = Math.pow(2, bits)-1;
     if (bits < 32) {
       switch (op) {
         case 'shl':
-          return [low << bits, (high << bits) | ((low&(ander << (32 - bits))) >>> (32 - bits))];
+          ret = [low << bits, (high << bits) | ((low&(ander << (32 - bits))) >>> (32 - bits))];
+          break;
         case 'ashr':
-          return [(((low >>> bits ) | ((high&ander) << (32 - bits))) >> 0) >>> 0, (high >> bits) >>> 0];
+          ret = [(((low >>> bits ) | ((high&ander) << (32 - bits))) >> 0) >>> 0, (high >> bits) >>> 0];
+          break;
         case 'lshr':
-          return [((low >>> bits) | ((high&ander) << (32 - bits))) >>> 0, high >>> bits];
+          ret = [((low >>> bits) | ((high&ander) << (32 - bits))) >>> 0, high >>> bits];
+          break;
       }
     } else if (bits == 32) {
       switch (op) {
         case 'shl':
-          return [0, low];
+          ret = [0, low];
+          break;
         case 'ashr':
-          return [high, (high|0) < 0 ? ander : 0];
+          ret = [high, (high|0) < 0 ? ander : 0];
+          break;
         case 'lshr':
-          return [high, 0];
+          ret = [high, 0];
+          break;
       }
     } else { // bits > 32
       switch (op) {
         case 'shl':
-          return [0, low << (bits - 32)];
+          ret = [0, low << (bits - 32)];
+          break;
         case 'ashr':
-          return [(high >> (bits - 32)) >>> 0, (high|0) < 0 ? ander : 0];
+          ret = [(high >> (bits - 32)) >>> 0, (high|0) < 0 ? ander : 0];
+          break;
         case 'lshr':
-          return [high >>>  (bits - 32) , 0];
+          ret = [high >>>  (bits - 32) , 0];
+          break;
       }
     }
-    abort('unknown bitshift64 op: ' + [value, op, bits]);
+#if ASSERTIONS
+    assert(ret);
+#endif
+    HEAP32[tempDoublePtr>>2] = ret[0]; // cannot use utility functions since we are in runtime itself
+    HEAP32[tempDoublePtr+4>>2] = ret[1];
   },
 
   // Imprecise bitops utilities
@@ -311,10 +325,35 @@ var Runtime = {
     return ret;
   },
 
-  addFunction: function(func) {
-    var ret = FUNCTION_TABLE.length;
-    FUNCTION_TABLE.push(func);
-    FUNCTION_TABLE.push(0);
+  dynCall: function(sig, ptr, args) {
+    if (args && args.length) {
+#if ASSERTIONS
+      assert(args.length == sig.length-1);
+#endif
+#if ASM_JS
+      args.splice(0, 0, ptr);
+      return Module['dynCall_' + sig].apply(null, args);
+#else
+      return FUNCTION_TABLE[ptr].apply(null, args);
+#endif
+    } else {
+#if ASSERTIONS
+      assert(sig.length == 1);
+#endif
+#if ASM_JS
+      return Module['dynCall_' + sig].call(null, ptr);
+#else
+      return FUNCTION_TABLE[ptr]();
+#endif
+    }
+  },
+
+  addFunction: function(func, sig) {
+    assert(sig);
+    var table = FUNCTION_TABLE; // TODO: support asm
+    var ret = table.length;
+    table.push(func);
+    table.push(0);
     return ret;
   },
 
@@ -328,10 +367,11 @@ var Runtime = {
 
   funcWrappers: {},
 
-  getFuncWrapper: function(func) {
+  getFuncWrapper: function(func, sig) {
+    assert(sig);
     if (!Runtime.funcWrappers[func]) {
       Runtime.funcWrappers[func] = function() {
-        FUNCTION_TABLE[func].apply(null, arguments);
+        Runtime.dynCall(sig, func, arguments);
       };
     }
     return Runtime.funcWrappers[func];

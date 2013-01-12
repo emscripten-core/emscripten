@@ -174,18 +174,25 @@ RUNTIME_DEBUG = LIBRARY_DEBUG || GL_DEBUG;
 // Settings sanity checks
 
 assert(!(USE_TYPED_ARRAYS === 2 && QUANTUM_SIZE !== 4), 'For USE_TYPED_ARRAYS == 2, must have normal QUANTUM_SIZE of 4');
+if (ASM_JS) {
+  assert(!ALLOW_MEMORY_GROWTH, 'Cannot grow asm.js heap');
+  assert((TOTAL_MEMORY&(TOTAL_MEMORY-1)) == 0, 'asm.js heap must be power of 2');
+}
+assert(!(!NAMED_GLOBALS && BUILD_AS_SHARED_LIB)); // shared libraries must have named globals
 
 // Output some info and warnings based on settings
 
-if (!MICRO_OPTS || !RELOOP || ASSERTIONS || CHECK_SIGNS || CHECK_OVERFLOWS || INIT_STACK || INIT_HEAP ||
-    !SKIP_STACK_IN_SMALL || SAFE_HEAP || PGO || PROFILE || !DISABLE_EXCEPTION_CATCHING) {
-  print('// Note: Some Emscripten settings will significantly limit the speed of the generated code.');
-} else {
-  print('// Note: For maximum-speed code, see "Optimizing Code" on the Emscripten wiki, https://github.com/kripken/emscripten/wiki/Optimizing-Code');
-}
+if (phase == 'pre') {
+  if (!MICRO_OPTS || !RELOOP || ASSERTIONS || CHECK_SIGNS || CHECK_OVERFLOWS || INIT_STACK || INIT_HEAP ||
+      !SKIP_STACK_IN_SMALL || SAFE_HEAP || PGO || PROFILE || !DISABLE_EXCEPTION_CATCHING) {
+    print('// Note: Some Emscripten settings will significantly limit the speed of the generated code.');
+  } else {
+    print('// Note: For maximum-speed code, see "Optimizing Code" on the Emscripten wiki, https://github.com/kripken/emscripten/wiki/Optimizing-Code');
+  }
 
-if (DOUBLE_MODE || CORRECT_SIGNS || CORRECT_OVERFLOWS || CORRECT_ROUNDINGS) {
-  print('// Note: Some Emscripten settings may limit the speed of the generated code.');
+  if (DOUBLE_MODE || CORRECT_SIGNS || CORRECT_OVERFLOWS || CORRECT_ROUNDINGS) {
+    print('// Note: Some Emscripten settings may limit the speed of the generated code.');
+  }
 }
 
 // Load compiler code

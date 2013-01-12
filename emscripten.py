@@ -129,10 +129,13 @@ def emscript(infile, settings, outfile, libraries=[]):
 
   # Save settings to a file to work around v8 issue 1579
   settings_file = temp_files.get('.txt').name
-  settings_text = json.dumps(settings)
-  s = open(settings_file, 'w')
-  s.write(settings_text)
-  s.close()
+  def save_settings():
+    global settings_text
+    settings_text = json.dumps(settings)
+    s = open(settings_file, 'w')
+    s.write(settings_text)
+    s.close()
+  save_settings()
 
   # Phase 1 - pre
   if DEBUG: t = time.time()
@@ -170,6 +173,9 @@ def emscript(infile, settings, outfile, libraries=[]):
   if DEBUG: t = time.time()
   forwarded_json = json.loads(forwarded_data)
   indexed_functions = set()
+  if settings.get('ASM_JS'):
+    settings['EXPORTED_FUNCTIONS'] = forwarded_json['EXPORTED_FUNCTIONS']
+    save_settings()
 
   chunks = shared.JCache.chunkify(funcs, chunk_size, 'emscript_files' if jcache else None)
 
@@ -223,16 +229,27 @@ def emscript(infile, settings, outfile, libraries=[]):
   if DEBUG: print >> sys.stderr, '  emscript: phase 2 took %s seconds' % (time.time() - t)
   if DEBUG: t = time.time()
 
-  funcs_js = ''.join([output[0] for output in outputs])
-
+  # merge forwarded data
+  if settings.get('ASM_JS'):
+    all_exported_functions = set(settings['EXPORTED_FUNCTIONS']) # both asm.js and otherwise
+    for additional_export in ['_malloc', '_free']: # additional functions to export from asm, if they are implemented
+      all_exported_functions.add(additional_export)
+    exported_implemented_functions = set()
   for func_js, curr_forwarded_data in outputs:
-    # merge forwarded data
     curr_forwarded_json = json.loads(curr_forwarded_data)
     forwarded_json['Types']['preciseI64MathUsed'] = forwarded_json['Types']['preciseI64MathUsed'] or curr_forwarded_json['Types']['preciseI64MathUsed']
     for key, value in curr_forwarded_json['Functions']['blockAddresses'].iteritems():
       forwarded_json['Functions']['blockAddresses'][key] = value
     for key in curr_forwarded_json['Functions']['indexedFunctions'].iterkeys():
       indexed_functions.add(key)
+    if settings.get('ASM_JS'):
+      for key in curr_forwarded_json['Functions']['implementedFunctions'].iterkeys():
+        if key in all_exported_functions: exported_implemented_functions.add(key)
+    for key, value in curr_forwarded_json['Functions']['unimplementedFunctions'].iteritems():
+      forwarded_json['Functions']['unimplementedFunctions'][key] = value
+
+  funcs_js = ''.join([output[0] for output in outputs])
+
   outputs = None
   if DEBUG: print >> sys.stderr, '  emscript: phase 2b took %s seconds' % (time.time() - t)
   if DEBUG: t = time.time()
@@ -241,6 +258,7 @@ def emscript(infile, settings, outfile, libraries=[]):
   forwarded_json['Functions']['indexedFunctions'] = {}
   i = 2
   for indexed in indexed_functions:
+    #print >> sys.stderr, 'indaxx', indexed, i
     forwarded_json['Functions']['indexedFunctions'][indexed] = i # make sure not to modify this python object later - we use it in indexize
     i += 2
   forwarded_json['Functions']['nextIndex'] = i
@@ -258,8 +276,6 @@ def emscript(infile, settings, outfile, libraries=[]):
   pre = None
 
   #if DEBUG: outfile.write('// funcs\n')
-  outfile.write(blockaddrsize(indexize(funcs_js)))
-  funcs_js = None
 
   # forward
   forwarded_data = json.dumps(forwarded_json)
@@ -272,8 +288,163 @@ def emscript(infile, settings, outfile, libraries=[]):
   post_file = temp_files.get('.post.ll').name
   open(post_file, 'w').write('\n') # no input, just processing of forwarded data
   out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, post_file, 'post', forwarded_file] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
-  #if DEBUG: outfile.write('// post\n')
-  outfile.write(indexize(out))
+  post, last_forwarded_data = out.split('//FORWARDED_DATA:')
+  last_forwarded_json = json.loads(last_forwarded_data)
+
+  if settings.get('ASM_JS'):
+    simple = os.environ.get('EMCC_SIMPLE_ASM')
+    class Counter:
+      i = 0
+    def make_table(sig, raw):
+      i = Counter.i
+      Counter.i += 1
+      bad = 'b' + str(i)
+      params = ','.join(['p%d' % p for p in range(len(sig)-1)])
+      coercions = ';'.join(['p%d = %sp%d%s' % (p, '+' if sig[p+1] == 'd' else '', p, '' if sig[p+1] == 'd' else '|0') for p in range(len(sig)-1)]) + ';'
+      ret = '' if sig[0] == 'v' else ('return %s0' % ('+' if sig[0] == 'd' else ''))
+      return 'function %s(%s) { %s abort(%d); %s };\n' % (bad, params, coercions, i, ret) + raw.replace('[0,', '[' + bad + ',').replace(',0,', ',' + bad + ',').replace(',0,', ',' + bad + ',').replace(',0]', ',' + bad + ']').replace(',0]', ',' + bad + ']')
+    function_tables_defs = '\n'.join([make_table(sig, raw) for sig, raw in last_forwarded_json['Functions']['tables'].iteritems()])
+
+    maths = ['Runtime.bitshift64', 'Math.floor', 'Math.min', 'Math.abs', 'Math.sqrt', 'Math.pow', 'Math.cos', 'Math.sin', 'Math.tan', 'Math.acos', 'Math.asin', 'Math.atan', 'Math.atan2', 'Math.exp', 'Math.log', 'Math.ceil']
+
+    if settings['USE_MATH_IMUL']:
+      maths += ['Math.imul']
+    asm_setup = '\n'.join(['var %s = %s;' % (f.replace('.', '_'), f) for f in maths])
+    fundamentals = ['buffer', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
+    basic_funcs = ['abort', 'assert'] + [m.replace('.', '_') for m in maths]
+    basic_vars = ['STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT']
+    if forwarded_json['Types']['preciseI64MathUsed']:
+      basic_funcs += ['i64Math_' + op for op in ['add', 'subtract', 'multiply', 'divide', 'modulo']]
+      asm_setup += '''
+var i64Math_add = function(a, b, c, d) { i64Math.add(a, b, c, d) };
+var i64Math_subtract = function(a, b, c, d) { i64Math.subtract(a, b, c, d) };
+var i64Math_multiply = function(a, b, c, d) { i64Math.multiply(a, b, c, d) };
+var i64Math_divide = function(a, b, c, d, e) { i64Math.divide(a, b, c, d, e) };
+var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
+'''
+    asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore', 'setThrew'] + ['setTempRet%d' % i for i in range(10)]
+    # function tables
+    function_tables = ['dynCall_' + table for table in last_forwarded_json['Functions']['tables']]
+    function_tables_impls = []
+    for sig in last_forwarded_json['Functions']['tables'].iterkeys():
+      args = ','.join(['a' + str(i) for i in range(1, len(sig))])
+      arg_coercions = ' '.join(['a' + str(i) + '=' + ('+' if sig[i] == 'd' else '') + 'a' + str(i) + ('|0' if sig[i] == 'i' else '') + ';' for i in range(1, len(sig))])
+      function_tables_impls.append('''
+  function dynCall_%s(index%s%s) {
+    index = index|0;
+    %s
+    %sFUNCTION_TABLE_%s[index&{{{ FTM_%s }}}](%s);
+  }
+''' % (sig, ',' if len(sig) > 1 else '', args, arg_coercions, 'return ' if sig[0] != 'v' else '', sig, sig, args))
+    # calculate exports
+    exported_implemented_functions = list(exported_implemented_functions)
+    exports = []
+    if not simple:
+      for export in exported_implemented_functions + asm_runtime_funcs + function_tables:
+        exports.append("%s: %s" % (export, export))
+      exports = '{ ' + ', '.join(exports) + ' }'
+    else:
+      exports = '_main'
+    # calculate globals
+    try:
+      del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
+    except:
+      pass
+    # If no named globals, only need externals
+    global_vars = map(lambda g: g['name'], filter(lambda g: settings['NAMED_GLOBALS'] or g.get('external') or g.get('unIndexable'), forwarded_json['Variables']['globals'].values()))
+    global_funcs = ['_' + x for x in forwarded_json['Functions']['libraryFunctions'].keys()]
+    asm_global_funcs = ''.join(['  var ' + g + '=env.' + g + ';\n' for g in basic_funcs + global_funcs])
+    asm_global_vars = ''.join(['  var ' + g + '=env.' + g + '|0;\n' for g in basic_vars + global_vars])
+    # sent data
+    sending = '{ ' + ', '.join([s + ': ' + s for s in fundamentals + basic_funcs + global_funcs + basic_vars + global_vars]) + ' }'
+    # received
+    if not simple:
+      receiving = ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm.' + s for s in exported_implemented_functions + function_tables])
+    else:
+      receiving = 'var _main = Module["_main"] = asm;'
+    # finalize
+    funcs_js = '''
+%s
+var asmPre = (function(env, buffer) {
+  'use asm';
+  var HEAP8 = new env.Int8Array(buffer);
+  var HEAP16 = new env.Int16Array(buffer);
+  var HEAP32 = new env.Int32Array(buffer);
+  var HEAPU8 = new env.Uint8Array(buffer);
+  var HEAPU16 = new env.Uint16Array(buffer);
+  var HEAPU32 = new env.Uint32Array(buffer);
+  var HEAPF32 = new env.Float32Array(buffer);
+  var HEAPF64 = new env.Float64Array(buffer);
+''' % (asm_setup,) + '\n' + asm_global_vars + '''
+  var __THREW__ = 0;
+  var undef = 0;
+  var tempInt = 0, tempValue = 0;
+''' + ''.join(['''
+  var tempRet%d = 0;''' % i for i in range(10)]) + '\n' + asm_global_funcs + '''
+  function stackAlloc(size) {
+    size = size|0;
+    var ret = 0;
+    ret = STACKTOP;
+    STACKTOP = (STACKTOP + size)|0;
+    STACKTOP = ((STACKTOP + 3)>>2)<<2;
+    return ret|0;
+  }
+  function stackSave() {
+    return STACKTOP|0;
+  }
+  function stackRestore(top) {
+    top = top|0;
+    STACKTOP = top;
+  }
+  function setThrew(threw) {
+    threw = threw|0;
+    __THREW__ = threw;
+  }
+''' + ''.join(['''
+  function setTempRet%d(value) {
+    value = value|0;
+    tempRet%d = value;
+  }
+''' % (i, i) for i in range(10)]) + funcs_js.replace('\n', '\n  ') + '''
+
+  %s
+
+  return %s;
+});
+if (asmPre.toSource) { // works in sm but not v8, so we get full coverage between those two
+  asmPre = asmPre.toSource();
+  asmPre = asmPre.substr(25, asmPre.length-28);
+  asmPre = new Function('env', 'buffer', asmPre);
+}
+var asm = asmPre(%s, buffer); // pass through Function to prevent seeing outside scope
+%s;
+Runtime.stackAlloc = function(size) { return asm.stackAlloc(size) };
+Runtime.stackSave = function() { return asm.stackSave() };
+Runtime.stackRestore = function(top) { asm.stackRestore(top) };
+''' % (function_tables_defs.replace('\n', '\n  ') + '\n' + '\n'.join(function_tables_impls), exports, sending, receiving)
+
+    # Set function table masks
+    def function_table_maskize(js):
+      masks = {}
+      default = None
+      for sig, table in last_forwarded_json['Functions']['tables'].iteritems():
+        masks[sig] = str(table.count(','))
+        default = sig
+      def fix(m):
+        sig = m.groups(0)[0]
+        if not sig in masks:
+          print >> sys.stderr, 'warning: function table use without functions for it!', sig
+          return masks[default] # TODO: generate empty function tables for this case, even though it would fail at runtime if used
+        return masks[sig]
+      return re.sub(r'{{{ FTM_([\w\d_$]+) }}}', lambda m: fix(m), js) # masks[m.groups(0)[0]]
+    funcs_js = function_table_maskize(funcs_js)
+  else:
+    function_tables_defs = '\n'.join([table for table in last_forwarded_json['Functions']['tables'].itervalues()])
+    outfile.write(function_tables_defs)
+  outfile.write(blockaddrsize(indexize(funcs_js)))
+  funcs_js = None
+
+  outfile.write(indexize(post))
   if DEBUG: print >> sys.stderr, '  emscript: phase 3 took %s seconds' % (time.time() - t)
 
   outfile.close()

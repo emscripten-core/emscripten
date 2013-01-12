@@ -20,10 +20,11 @@ extern "C" {
  * closure may still eliminate it at the JS level, for which you
  * should use EXPORTED_FUNCTIONS (see settings.js).
  *
- * Example usage:
- *   void EMSCRIPTEN_KEEPALIVE my_function() { .. }
+ * **DEPRECATED**: Use EXPORTED_FUNCTIONS instead, which will work
+ *                 with closure, asm.js, etc. For example
+ *                   -s EXPORTED_FUNCTIONS=["_main", "myfunc"]
  */
-#define EMSCRIPTEN_KEEPALIVE __attribute__((used))
+/* #define EMSCRIPTEN_KEEPALIVE __attribute__((used)) */
 
 /*
  * Interface to the underlying JS engine. This function will
@@ -211,6 +212,23 @@ void emscripten_async_wget(const char* url, const char* file, void (*onload)(con
 void emscripten_async_wget_data(const char* url, void *arg, void (*onload)(void*, void*, int), void (*onerror)(void*));
 
 /*
+ * More feature-complete version of emscripten_async_wget. Note:
+ * this version is experimental.
+ *
+ * The requestype is 'GET' or 'POST',
+ * If is post request, param is the post parameter 
+ * like key=value&key2=value2.
+ * The param 'arg' is a pointer will be pass to the callback
+ * When file is ready then 'onload' callback will called.
+ * During the download 'onprogress' callback will called.
+ * If any error occurred 'onerror' will called.
+ * The callbacks are called with an object pointer give in parameter 
+ * and file if is a success, the progress value during progress
+ * and http status code if is an error.
+ */
+void emscripten_async_wget2(const char* url, const char* file,  const char* requesttype, const char* param, void *arg, void (*onload)(void*, const char*), void (*onerror)(void*, int), void (*onprogress)(void*, int));
+
+/*
  * Prepare a file in asynchronous way. This does just the
  * preparation part of emscripten_async_wget, that is, it
  * works on file data already present, and asynchronously
@@ -302,6 +320,17 @@ void emscripten_worker_respond(char *data, int size);
  * basic decisions about throttling.
  */
 int emscripten_get_worker_queue_size(worker_handle worker);
+
+/*
+ * Select the networking backend to use. By default emscripten's
+ * socket/networking implementation will use websockets, with this
+ * function you can change that to WebRTC.
+ * This function must be called before any network functions are
+ * called.
+ */
+#define EMSCRIPTEN_NETWORK_WEBSOCKETS 0
+#define EMSCRIPTEN_NETWORK_WEBRTC     1
+void emscripten_set_network_backend(int backend);
 
 /*
  * Profiling tools.

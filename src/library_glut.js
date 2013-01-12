@@ -54,11 +54,11 @@ var LibraryGLUT = {
       if (GLUT.buttons == 0 && event.target == Module["canvas"] && GLUT.passiveMotionFunc) {
         event.preventDefault();
         GLUT.saveModifiers(event);
-        FUNCTION_TABLE[GLUT.passiveMotionFunc](GLUT.lastX, GLUT.lastY);
+        Runtime.dynCall('vii', GLUT.passiveMotionFunc, [GLUT.lastX, GLUT.lastY]);
       } else if (GLUT.buttons != 0 && GLUT.motionFunc) {
         event.preventDefault();
         GLUT.saveModifiers(event);
-        FUNCTION_TABLE[GLUT.motionFunc](GLUT.lastX, GLUT.lastY);
+        Runtime.dynCall('vii', GLUT.motionFunc, [GLUT.lastX, GLUT.lastY]);
       }
     },
 
@@ -159,7 +159,7 @@ var LibraryGLUT = {
           if( GLUT.specialFunc ) {
             event.preventDefault();
             GLUT.saveModifiers(event);
-            FUNCTION_TABLE[GLUT.specialFunc](key, GLUT.lastX, GLUT.lastY);
+            Runtime.dynCall('viii', GLUT.specialFunc, [key, GLUT.lastX, GLUT.lastY]);
           }
         }
         else
@@ -168,7 +168,7 @@ var LibraryGLUT = {
           if( key !== null && GLUT.keyboardFunc ) {
             event.preventDefault();
             GLUT.saveModifiers(event);
-            FUNCTION_TABLE[GLUT.keyboardFunc](key, GLUT.lastX, GLUT.lastY);
+            Runtime.dynCall('viii', GLUT.keyboardFunc, [key, GLUT.lastX, GLUT.lastY]);
           }
         }
       }
@@ -181,7 +181,7 @@ var LibraryGLUT = {
           if(GLUT.specialUpFunc) {
             event.preventDefault ();
             GLUT.saveModifiers(event);
-            FUNCTION_TABLE[GLUT.specialUpFunc](key, GLUT.lastX, GLUT.lastY);
+            Runtime.dynCall('viii', GLUT.specialUpFunc, [key, GLUT.lastX, GLUT.lastY]);
           }
         }
         else
@@ -190,7 +190,7 @@ var LibraryGLUT = {
           if( key !== null && GLUT.keyboardUpFunc ) {
             event.preventDefault ();
             GLUT.saveModifiers(event);
-            FUNCTION_TABLE[GLUT.keyboardUpFunc](key, GLUT.lastX, GLUT.lastY);
+            Runtime.dynCall('viii', GLUT.keyboardUpFunc, [key, GLUT.lastX, GLUT.lastY]);
           }
         }
       }
@@ -206,7 +206,7 @@ var LibraryGLUT = {
         } catch (e) {}
         event.preventDefault();
         GLUT.saveModifiers(event);
-        FUNCTION_TABLE[GLUT.mouseFunc](event['button'], 0/*GLUT_DOWN*/, GLUT.lastX, GLUT.lastY);
+        Runtime.dynCall('viiii', GLUT.mouseFunc, [event['button'], 0/*GLUT_DOWN*/, GLUT.lastX, GLUT.lastY]);
       }
     },
 
@@ -217,7 +217,7 @@ var LibraryGLUT = {
       if(GLUT.mouseFunc) {
         event.preventDefault();
         GLUT.saveModifiers(event);
-        FUNCTION_TABLE[GLUT.mouseFunc](event['button'], 1/*GLUT_UP*/, GLUT.lastX, GLUT.lastY);
+        Runtime.dynCall('viiii', GLUT.mouseFunc, [event['button'], 1/*GLUT_UP*/, GLUT.lastX, GLUT.lastY]);
       }
     },
 
@@ -241,7 +241,7 @@ var LibraryGLUT = {
       /* Can't call _glutReshapeWindow as that requests cancelling fullscreen. */
       if (GLUT.reshapeFunc) {
         // console.log("GLUT.reshapeFunc (from FS): " + width + ", " + height);
-        FUNCTION_TABLE[GLUT.reshapeFunc](width, height);
+        Runtime.dynCall('vii', GLUT.reshapeFunc, [width, height]);
       }
       _glutPostRedisplay();
     },
@@ -326,7 +326,7 @@ var LibraryGLUT = {
   glutIdleFunc: function(func) {
     var callback = function() {
       if (GLUT.idleFunc) {
-        FUNCTION_TABLE[GLUT.idleFunc]();
+        Runtime.dynCall('v', GLUT.idleFunc);
         window.setTimeout(callback, 0);
       }
     }
@@ -336,7 +336,7 @@ var LibraryGLUT = {
   },
 
   glutTimerFunc: function(msec, func, value) {
-    window.setTimeout(function() { FUNCTION_TABLE[func](value); }, msec);
+    window.setTimeout(function() { Runtime.dynCall('vi', func, [value]); }, msec);
   },
 
   glutDisplayFunc: function(func) {
@@ -388,7 +388,7 @@ var LibraryGLUT = {
     Browser.setCanvasSize(width, height);
     if (GLUT.reshapeFunc) {
       // console.log("GLUT.reshapeFunc: " + width + ", " + height);
-      FUNCTION_TABLE[GLUT.reshapeFunc](width, height);
+      Runtime.dynCall('vii', GLUT.reshapeFunc, [width, height]);
     }
     _glutPostRedisplay();
   },
@@ -417,7 +417,9 @@ var LibraryGLUT = {
 
   glutPostRedisplay: function() {
     if (GLUT.displayFunc) {
-      Browser.requestAnimationFrame(FUNCTION_TABLE[GLUT.displayFunc]);
+      Browser.requestAnimationFrame(function() {
+        Runtime.dynCall('v', GLUT.displayFunc);
+      });
     }
   },
 

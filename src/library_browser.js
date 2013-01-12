@@ -377,11 +377,11 @@ mergeInto(LibraryManager.library, {
       _file.substr(index +1),
       _url, true, true,
       function() {
-        if (onload) FUNCTION_TABLE[onload](file);
+        if (onload) Runtime.dynCall('vi', onload, [file]);
       },
       function() {
-        if (onerror) FUNCTION_TABLE[onerror](file);
-      } 
+        if (onerror) Runtime.dynCall('vi', onerror, [file]);
+      }
     );
   },
 
@@ -396,6 +396,55 @@ mergeInto(LibraryManager.library, {
     }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
   },
 
+  emscripten_async_wget2: function(url, file, request, param, arg, onload, onerror, onprogress) {
+    var _url = Pointer_stringify(url);
+    var _file = Pointer_stringify(file);
+    var _request = Pointer_stringify(request);
+    var _param = Pointer_stringify(param);
+    var index = _file.lastIndexOf('/');
+     
+    var http = new XMLHttpRequest();
+    http.open(_request, _url, true);
+    http.responseType = 'arraybuffer';
+    
+    // LOAD
+    http.onload = function(e) {
+      if (http.status == 200) {
+        FS.createDataFile( _file.substr(0, index), _file.substr(index + 1), new Uint8Array(http.response), true, true);
+        if (onload) FUNCTION_TABLE[onload](arg, file);
+      } else {
+        if (onerror) FUNCTION_TABLE[onerror](arg, http.status);
+      }
+    };
+      
+    // ERROR
+    http.onerror = function(e) {
+      if (onerror) FUNCTION_TABLE[onerror](arg, http.status);
+    };
+	
+    // PROGRESS
+    http.onprogress = function(e) {
+      var percentComplete = (e.position / e.totalSize)*100;
+      if (onprogress) FUNCTION_TABLE[onprogress](arg, percentComplete);
+    };
+	  
+    // Useful because the browser can limit the number of redirection
+    try {  
+      if (http.channel instanceof Ci.nsIHttpChannel)
+      http.channel.redirectionLimit = 0;
+    } catch (ex) { /* whatever */ }
+
+    if (_request == "POST") {
+      //Send the proper header information along with the request
+      http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+      http.setRequestHeader("Content-length", _param.length);
+      http.setRequestHeader("Connection", "close");
+      http.send(_param);
+    } else {
+      http.send(null);
+    }
+  },
+  
   emscripten_async_prepare: function(file, onload, onerror) {
     var _file = Pointer_stringify(file);
     var data = FS.analyzePath(_file);
@@ -406,10 +455,10 @@ mergeInto(LibraryManager.library, {
       _file.substr(index +1),
       new Uint8Array(data.object.contents), true, true,
       function() {
-        if (onload) FUNCTION_TABLE[onload](file);
+        if (onload) Runtime.dynCall('vi', onload, [file]);
       },
       function() {
-        if (onerror) FUNCTION_TABLE[onerror](file);
+        if (onerror) Runtime.dynCall('vi', onerror, [file]);
       },
       true // don'tCreateFile - it's already there
     );
@@ -428,10 +477,10 @@ mergeInto(LibraryManager.library, {
       {{{ makeHEAPView('U8', 'data', 'data + size') }}},
       true, true,
       function() {
-        if (onload) FUNCTION_TABLE[onload](arg, cname);
+        if (onload) Runtime.dynCall('vii', onload, [arg, cname]);
       },
       function() {
-        if (onerror) FUNCTION_TABLE[onerror](arg);
+        if (onerror) Runtime.dynCall('vi', onerror, [arg]);
       },
       true // don'tCreateFile - it's already there
     );
@@ -451,7 +500,6 @@ mergeInto(LibraryManager.library, {
   emscripten_set_main_loop: function(func, fps, simulateInfiniteLoop) {
     Module['noExitRuntime'] = true;
 
-    var jsFunc = FUNCTION_TABLE[func];
     Browser.mainLoop.runner = function() {
       if (Browser.mainLoop.queue.length > 0) {
         var start = Date.now();
@@ -484,7 +532,7 @@ mergeInto(LibraryManager.library, {
         Module['preMainLoop']();
       }
 
-      jsFunc();
+      Runtime.dynCall('v', func);
 
       if (Module['postMainLoop']) {
         Module['postMainLoop']();
@@ -528,12 +576,16 @@ mergeInto(LibraryManager.library, {
   },
 
   _emscripten_push_main_loop_blocker: function(func, arg, name) {
-    Browser.mainLoop.queue.push({ func: FUNCTION_TABLE[func], arg: arg, name: Pointer_stringify(name), counted: true });
+    Browser.mainLoop.queue.push({ func: function() {
+      Runtime.dynCall('vi', func, [arg]);
+    }, name: Pointer_stringify(name), counted: true });
     Browser.mainLoop.updateStatus();
   },
 
   _emscripten_push_uncounted_main_loop_blocker: function(func, arg, name) {
-    Browser.mainLoop.queue.push({ func: FUNCTION_TABLE[func], arg: arg, name: Pointer_stringify(name), counted: false });
+    Browser.mainLoop.queue.push({ func: function() {
+      Runtime.dynCall('vi', func, [arg]);
+    }, name: Pointer_stringify(name), counted: false });
     Browser.mainLoop.updateStatus();
   },
 
@@ -547,7 +599,7 @@ mergeInto(LibraryManager.library, {
     Module['noExitRuntime'] = true;
 
     function wrapper() {
-      Runtime.getFuncWrapper(func)(arg);
+      Runtime.getFuncWrapper(func, 'vi')(arg);
     }
 
     if (millis >= 0) {
@@ -631,7 +683,7 @@ mergeInto(LibraryManager.library, {
     if (callback) {
       callbackId = info.callbacks.length;
       info.callbacks.push({
-        func: Runtime.getFuncWrapper(callback),
+        func: Runtime.getFuncWrapper(callback, 'viii'),
         arg: arg
       });
       info.awaited++;

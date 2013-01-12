@@ -172,7 +172,7 @@ def check_node_version():
 # we re-check sanity when the settings are changed)
 # We also re-check sanity and clear the cache when the version changes
 
-EMSCRIPTEN_VERSION = '1.1.0'
+EMSCRIPTEN_VERSION = '1.2.3'
 
 def check_sanity(force=False):
   try:
@@ -446,7 +446,7 @@ def check_engine(engine):
     print 'Checking JS engine %s failed. Check %s. Details: %s' % (str(engine), EM_CONFIG, str(e))
     return False
 
-def timeout_run(proc, timeout, note='unnamed process'):
+def timeout_run(proc, timeout, note='unnamed process', full_output=False):
   start = time.time()
   if timeout is not None:
     while time.time() - start < timeout and proc.poll() is None:
@@ -454,13 +454,14 @@ def timeout_run(proc, timeout, note='unnamed process'):
     if proc.poll() is None:
       proc.kill() # XXX bug: killing emscripten.py does not kill it's child process!
       raise Exception("Timed out: " + note)
-  return proc.communicate()[0]
+  out = proc.communicate()
+  return '\n'.join(out) if full_output else out[0]
 
-def run_js(filename, engine=None, args=[], check_timeout=False, stdout=PIPE, stderr=None, cwd=None):
+def run_js(filename, engine=None, args=[], check_timeout=False, stdout=PIPE, stderr=None, cwd=None, full_output=False):
   if engine is None: engine = JS_ENGINES[0]
   if type(engine) is not list: engine = [engine]
   command = engine + [filename] + (['--'] if 'd8' in engine[0] else []) + args
-  return timeout_run(Popen(command, stdout=stdout, stderr=stderr, cwd=cwd), 15*60 if check_timeout else None, 'Execution')
+  return timeout_run(Popen(command, stdout=stdout, stderr=stderr, cwd=cwd), 15*60 if check_timeout else None, 'Execution', full_output=full_output)
 
 def to_cc(cxx):
   # By default, LLVM_GCC and CLANG are really the C++ versions. This gets an explicit C version
@@ -1126,7 +1127,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
         Building.emcc(os.path.join('relooper', 'Relooper.cpp'), ['-I' + os.path.join('relooper'), '--post-js',
           os.path.join('relooper', 'emscripten', 'glue.js'),
           '-s', 'TOTAL_MEMORY=52428800',
-          '-s', 'EXPORTED_FUNCTIONS=["_rl_set_output_buffer","_rl_make_output_buffer","_rl_new_block","_rl_delete_block","_rl_block_add_branch_to","_rl_new_relooper","_rl_delete_relooper","_rl_relooper_add_block","_rl_relooper_calculate","_rl_relooper_render"]',
+          '-s', 'EXPORTED_FUNCTIONS=["_rl_set_output_buffer","_rl_make_output_buffer","_rl_new_block","_rl_delete_block","_rl_block_add_branch_to","_rl_new_relooper","_rl_delete_relooper","_rl_relooper_add_block","_rl_relooper_calculate","_rl_relooper_render", "_rl_set_asm_js_mode"]',
           '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["memcpy", "memset", "malloc", "free", "puts"]',
           '-O' + str(opt_level), '--closure', '0'], raw)
         f = open(RELOOPER, 'w')

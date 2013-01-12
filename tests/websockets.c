@@ -8,6 +8,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
+#include <assert.h>
 #if EMSCRIPTEN
 #include <emscripten.h>
 #endif
@@ -16,11 +17,25 @@
 
 int SocketFD;
 
+int not_always_data = 0;
+
 unsigned int get_all_buf(int sock, char* output, unsigned int maxsize)
 {
+  // select check for IO
+  fd_set sett;
+  FD_ZERO(&sett);
+  assert(select(64, &sett, NULL, NULL, NULL) == 0); // empty set
+  FD_SET(sock, &sett);
+  assert(select(0, &sett, NULL, NULL, NULL) == 0); // max FD to check is 0
+  int select_says_yes = select(64, &sett, NULL, NULL, NULL);
+
+  // ioctl check for IO
   int bytes;
-  if (ioctl(sock, FIONREAD, &bytes)) return 0;
-  if (bytes == 0) return 0;
+  if (ioctl(sock, FIONREAD, &bytes) || bytes == 0) {
+    not_always_data = 1;
+    return 0;
+  }
+  assert(select_says_yes); // ioctl must agree with select
 
   char buffer[1024];
   int n;
@@ -67,6 +82,8 @@ void iter(void *arg) {
     printf("sum: %d\n", sum);
 
 #if EMSCRIPTEN
+    assert(not_always_data == 1);
+
     int result = sum;
     REPORT_RESULT();
 #endif

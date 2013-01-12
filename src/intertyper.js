@@ -69,11 +69,13 @@ function intertyper(data, sidePass, baseLineNums) {
 
         if (mainPass && (line[0] == '%' || line[0] == '@')) {
           // If this isn't a type, it's a global variable, make a note of the information now, we will need it later
-          var testType = /[@%\w\d\.\" $-]+ = type .*/.exec(line);
+          var parts = line.split(' = ');
+          assert(parts.length >= 2);
+          var left = parts[0], right = parts.slice(1).join(' = ');
+          var testType = /^type .*/.exec(right);
           if (!testType) {
-            var global = /([@%\w\d\.\" $-]+) = .*/.exec(line);
-            var globalIdent = toNiceIdent(global[1]);
-            var testAlias = /[@%\w\d\.\" $-]+ = (hidden )?alias .*/.exec(line);
+            var globalIdent = toNiceIdent(left);
+            var testAlias = /^(hidden )?alias .*/.exec(right);
             Variables.globals[globalIdent] = {
               name: globalIdent,
               alias: !!testAlias,
@@ -125,6 +127,7 @@ function intertyper(data, sidePass, baseLineNums) {
               // We need this early, to know basic function info - ident, params, varargs
               ident: toNiceIdent(func.ident),
               params: func.params,
+              returnType: func.returnType,
               hasVarArgs: func.hasVarArgs,
               lineNum: currFunctionLineNum,
               lines: currFunctionLines
@@ -520,7 +523,12 @@ function intertyper(data, sidePass, baseLineNums) {
           if (item.tokens[3].item) {
             var subTokens = item.tokens[3].item.tokens;
             splitTokenList(subTokens).forEach(function(segment) {
-              ret.ctors.push(segment[1].tokens.slice(-1)[0].text);
+              var ctor = toNiceIdent(segment[1].tokens.slice(-1)[0].text);
+              ret.ctors.push(ctor);
+              if (ASM_JS) { // must export the global constructors from asm.js module, so mark as implemented and exported
+                Functions.implementedFunctions[ctor] = 'v';
+                EXPORTED_FUNCTIONS[ctor] = 1;
+              }
             });
           }
         } else if (!external) {
@@ -741,6 +749,7 @@ function intertyper(data, sidePass, baseLineNums) {
       }
       var last = getTokenIndexByText(item.tokens, ';');
       item.params = splitTokenList(item.tokens.slice(1, last)).map(parseLLVMSegment);
+      item.type = item.params[1].type;
       this.forwardItem(item, 'Reintegrator');
     }
   });

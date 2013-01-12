@@ -19,7 +19,7 @@ function recomputeLines(func) {
 
 var BRANCH_INVOKE = set('branch', 'invoke');
 var SIDE_EFFECT_CAUSERS = set('call', 'invoke', 'atomic');
-var UNUNFOLDABLE = set('value', 'type', 'phiparam');
+var UNUNFOLDABLE = set('value', 'structvalue', 'type', 'phiparam');
 
 // Analyzer
 
@@ -120,12 +120,14 @@ function analyzer(data, sidePass) {
     processItem: function(data) {
       // Legalization
       if (USE_TYPED_ARRAYS == 2) {
-        function getLegalVars(base, bits) {
-          assert(!isNumber(base));
+        function getLegalVars(base, bits, allowLegal) {
+          if (allowLegal && bits <= 32) return [{ ident: base, bits: bits }];
+          if (isNumber(base)) return getLegalLiterals(base, bits);
           var ret = new Array(Math.ceil(bits/32));
           var i = 0;
+          if (base == 'zeroinitializer' || base == 'undef') base = 0;
           while (bits > 0) {
-            ret[i] = { ident: base + '$' + i, bits: Math.min(32, bits) };
+            ret[i] = { ident: base ? base + '$' + i : '0', bits: Math.min(32, bits) };
             bits -= 32;
             i++;
           }
@@ -141,6 +143,23 @@ function analyzer(data, sidePass) {
             i++;
           }
           return ret;
+        }
+        function getLegalStructuralParts(value) {
+          return value.params.slice(0);
+        }
+        function getLegalParams(params, bits) {
+          return params.map(function(param) {
+            var value = param.value || param;
+            if (isNumber(value.ident)) {
+              return getLegalLiterals(value.ident, bits);
+            } else if (value.intertype == 'structvalue') {
+              return getLegalStructuralParts(value).map(function(part) {
+                return { ident: part.ident, bits: part.type.substr(1) };
+              });
+            } else {
+              return getLegalVars(value.ident, bits);
+            }
+          });
         }
         // Uses the right factor to multiply line numbers by so that they fit in between
         // the line[i] and the line after it
@@ -191,6 +210,7 @@ function analyzer(data, sidePass) {
           // Legalize lines in labels
           var tempId = 0;
           func.labels.forEach(function(label) {
+            if (dcheck('legalizer')) dprint('zz legalizing: \n' + dump(label.lines));
             var i = 0, bits;
             while (i < label.lines.length) {
               var item = label.lines[i];
@@ -207,8 +227,12 @@ function analyzer(data, sidePass) {
                 if (isIllegalType(item.valueType) || isIllegalType(item.type)) {
                   isIllegal = true;
                 }
+                if ((item.intertype == 'load' || item.intertype == 'store') && isStructType(item.valueType)) {
+                  isIllegal = true; // storing an entire structure is illegal
+                }
               });
               if (!isIllegal) {
+                //if (dcheck('legalizer')) dprint('no need to legalize \n' + dump(item));
                 i++;
                 continue;
               }
@@ -222,10 +246,10 @@ function analyzer(data, sidePass) {
                 if (subItem != item && (!(subItem.intertype in UNUNFOLDABLE) ||
                                        (subItem.intertype == 'value' && isNumber(subItem.ident) && isIllegalType(subItem.type)))) {
                   if (item.intertype == 'phi') {
-                    assert(subItem.intertype == 'value', 'We can only unfold illegal constants in phis');
+                    assert(subItem.intertype == 'value' || subItem.intertype == 'structvalue', 'We can only unfold illegal constants in phis');
                     // we must handle this in the phi itself, if we unfold normally it will not be pushed back with the phi
                   } else {
-                    var tempIdent = '$$emscripten$temp$' + (tempId++);
+                    var tempIdent = '$$etemp$' + (tempId++);
                     subItem.assignTo = tempIdent;
                     unfolded.unshift(subItem);
                     fixUnfolded(subItem);
@@ -234,7 +258,7 @@ function analyzer(data, sidePass) {
                 } else if (subItem.intertype == 'switch' && isIllegalType(subItem.type)) {
                   subItem.switchLabels.forEach(function(switchLabel) {
                     if (switchLabel.value[0] != '$') {
-                      var tempIdent = '$$emscripten$temp$' + (tempId++);
+                      var tempIdent = '$$etemp$' + (tempId++);
                       unfolded.unshift({
                         assignTo: tempIdent,
                         intertype: 'value',
@@ -258,8 +282,7 @@ function analyzer(data, sidePass) {
                 case 'store': {
                   var toAdd = [];
                   bits = getBits(item.valueType);
-                  var elements;
-                  elements = getLegalVars(item.value.ident, bits);
+                  var elements = getLegalParams([item.value], bits)[0];
                   var j = 0;
                   elements.forEach(function(element) {
                     var tempVar = '$st$' + i + '$' + j;
@@ -290,32 +313,43 @@ function analyzer(data, sidePass) {
                   i += removeAndAdd(label.lines, i, toAdd);
                   continue;
                 }
-                // call, return: Return value is in an unlegalized array literal. Not fully optimal.
+                // call, return: Return the first 32 bits, the rest are in temp
                 case 'call': {
                   bits = getBits(value.type);
                   var elements = getLegalVars(item.assignTo, bits);
                   var toAdd = [value];
                   // legalize parameters
                   legalizeFunctionParameters(value.params);
-                  if (value.assignTo) {
+                  if (value.assignTo && isIllegalType(item.type)) {
                     // legalize return value
-                    var j = 0;
-                    toAdd = toAdd.concat(elements.map(function(element) {
-                      return {
+                    value.assignTo = elements[0].ident;
+                    for (var j = 1; j < elements.length; j++) {
+                      var element = elements[j];
+                      toAdd.push({
                         intertype: 'value',
                         assignTo: element.ident,
-                        type: 'i' + bits,
-                        ident: value.assignTo + '[' + (j++) + ']'
-                      };
-                    }));
+                        type: element.bits,
+                        ident: 'tempRet' + (j - 1)
+                      });
+                      assert(j<10); // TODO: dynamically create more than 10 tempRet-s
+                    }
                   }
                   i += removeAndAdd(label.lines, i, toAdd);
+                  continue;
+                }
+                case 'landingpad': {
+                  // not much to legalize
+                  i++;
                   continue;
                 }
                 case 'return': {
                   bits = getBits(item.type);
                   var elements = getLegalVars(item.value.ident, bits);
-                  item.value.ident = '[' + elements.map(function(element) { return element.ident }).join(',') + ']';
+                  item.value.ident = '(';
+                  for (var j = 1; j < elements.length; j++) {
+                    item.value.ident += 'tempRet' + (j-1) + '=' + elements[j].ident + ',';
+                  }
+                  item.value.ident += elements[0].ident + ')';
                   i++;
                   continue;
                 }
@@ -338,6 +372,21 @@ function analyzer(data, sidePass) {
                       ident: values[j++].ident
                     };
                   });
+                  i += removeAndAdd(label.lines, i, toAdd);
+                  continue;
+                }
+                case 'structvalue': {
+                  bits = getBits(value.type);
+                  var elements = getLegalVars(item.assignTo, bits);
+                  var toAdd = [];
+                  for (var j = 0; j < item.params.length; j++) {
+                    toAdd[j] = {
+                      intertype: 'value',
+                      assignTo: elements[j].ident,
+                      type: 'i32',
+                      ident: item.params[j].ident
+                    };
+                  }
                   i += removeAndAdd(label.lines, i, toAdd);
                   continue;
                 }
@@ -382,13 +431,9 @@ function analyzer(data, sidePass) {
                   var toAdd = [];
                   var elements = getLegalVars(item.assignTo, bits);
                   var j = 0;
-                  var literalValues = {}; // special handling of literals - we cannot unfold them normally
-                  value.params.map(function(param) {
-                    if (isNumber(param.value.ident)) {
-                      literalValues[param.value.ident] = getLegalLiterals(param.value.ident, bits);
-                    }
-                  });
+                  var values = getLegalParams(value.params, bits);
                   elements.forEach(function(element) {
+                    var k = 0;
                     toAdd.push({
                       intertype: 'phi',
                       assignTo: element.ident,
@@ -399,7 +444,7 @@ function analyzer(data, sidePass) {
                           label: param.label,
                           value: {
                            intertype: 'value',
-                           ident: (param.value.ident in literalValues) ? literalValues[param.value.ident][j].ident : (param.value.ident + '$' + j),
+                           ident: values[k++][j].ident,
                            type: 'i' + element.bits,
                           }
                         };
@@ -413,6 +458,62 @@ function analyzer(data, sidePass) {
                 case 'switch': {
                   i++;
                   continue; // special case, handled in makeComparison
+                }
+                case 'extractvalue': { // XXX we assume 32-bit alignment in extractvalue/insertvalue,
+                                       // but in theory they can run on packed structs too (see use getStructuralTypePartBits)
+                  // potentially legalize the actual extracted value too if it is >32 bits, not just the extraction in general
+                  var index = item.indexes[0][0].text;
+                  var parts = getStructureTypeParts(item.type);
+                  var indexedType = parts[index];
+                  var targetBits = getBits(indexedType);
+                  var sourceBits = getBits(item.type);
+                  var elements = getLegalVars(item.assignTo, targetBits, true); // possibly illegal
+                  var sourceElements = getLegalVars(item.ident, sourceBits); // definitely illegal
+                  var toAdd = [];
+                  var sourceIndex = 0;
+                  for (var partIndex = 0; partIndex < parts.length; partIndex++) {
+                    if (partIndex == index) {
+                      for (var j = 0; j < elements.length; j++) {
+                        toAdd.push({
+                          intertype: 'value',
+                          assignTo: elements[j].ident,
+                          type: 'i' + elements[j].bits,
+                          ident: sourceElements[sourceIndex+j].ident
+                        });
+                      }
+                      break;
+                    }
+                    sourceIndex += getStructuralTypePartBits(parts[partIndex])/32;
+                  }
+                  i += removeAndAdd(label.lines, i, toAdd);
+                  continue;
+                }
+                case 'insertvalue': {
+                  var index = item.indexes[0][0].text; // the modified index
+                  var parts = getStructureTypeParts(item.type);
+                  var indexedType = parts[index];
+                  var indexBits = getBits(indexedType);
+                  var bits = getBits(item.type); // source and target
+                  bits = getBits(value.type);
+                  var toAdd = [];
+                  var elements = getLegalVars(item.assignTo, bits);
+                  var sourceElements = getLegalVars(item.ident, bits);
+                  var indexElements = getLegalVars(item.value.ident, indexBits, true); // possibly legal
+                  var sourceIndex = 0;
+                  for (var partIndex = 0; partIndex < parts.length; partIndex++) {
+                    var currNum = getStructuralTypePartBits(parts[partIndex])/32;
+                    for (var j = 0; j < currNum; j++) {
+                      toAdd.push({
+                        intertype: 'value',
+                        assignTo: elements[sourceIndex+j].ident,
+                        type: 'i' + elements[sourceIndex+j].bits,
+                        ident: partIndex == index ? indexElements[j].ident : sourceElements[sourceIndex+j].ident
+                      });
+                    }
+                    sourceIndex += currNum;
+                  }
+                  i += removeAndAdd(label.lines, i, toAdd);
+                  continue;
                 }
                 case 'bitcast': {
                   var inType = item.type2;
@@ -477,17 +578,16 @@ function analyzer(data, sidePass) {
                     }
                     case 'select': {
                       sourceBits = targetBits = getBits(value.params[1].type);
-                      var otherElementsA = getLegalVars(value.params[1].ident, sourceBits);
-                      var otherElementsB = getLegalVars(value.params[2].ident, sourceBits);
+                      var params = getLegalParams(value.params.slice(1), sourceBits);
                       processor = function(result, j) {
                         return {
                           intertype: 'mathop',
                           op: 'select',
-                          type: 'i' + otherElementsA[j].bits,
+                          type: 'i' + params[0][j].bits,
                           params: [
                             value.params[0],
-                            { intertype: 'value', ident: otherElementsA[j].ident, type: 'i' + otherElementsA[j].bits },
-                            { intertype: 'value', ident: otherElementsB[j].ident, type: 'i' + otherElementsB[j].bits }
+                            { intertype: 'value', ident: params[0][j].ident, type: 'i' + params[0][j].bits },
+                            { intertype: 'value', ident: params[1][j].ident, type: 'i' + params[1][j].bits }
                           ]
                         };
                       };
@@ -554,9 +654,10 @@ function analyzer(data, sidePass) {
                     // We can't statically legalize this, do the operation at runtime TODO: optimize
                     assert(sourceBits == 64, 'TODO: handle nonconstant shifts on != 64 bits');
                     value.intertype = 'value';
-                    value.ident = 'Runtime.bitshift64(' + sourceElements[0].ident + ', ' +
+                    value.ident = 'Runtime' + (ASM_JS ? '_' : '.') + 'bitshift64(' + sourceElements[0].ident + ', ' +
                                                           sourceElements[1].ident + ',"' + value.op + '",' + value.params[1].ident + '$0);' +
-                                  'var ' + value.assignTo + '$0 = ' + value.assignTo + '[0], ' + value.assignTo + '$1 = ' + value.assignTo + '[1];';
+                                  'var ' + value.assignTo + '$0 = ' + makeGetTempDouble(0) + ', ' + value.assignTo + '$1 = ' + makeGetTempDouble(1) + ';';
+                    value.assignTo = null;
                     i++;
                     continue;
                   }

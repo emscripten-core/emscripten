@@ -321,6 +321,12 @@ function isPowerOfTwo(x) {
   return x > 0 && ((x & (x-1)) == 0);
 }
 
+function ceilPowerOfTwo(x) {
+  var ret = 1;
+  while (ret < x) ret <<= 1;
+  return ret;
+}
+
 function Benchmarker() {
   var starts = {}, times = {}, counts = {};
   this.start = function(id) {

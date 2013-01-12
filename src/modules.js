@@ -216,17 +216,29 @@ var Types = {
 };
 
 var Functions = {
-  // All functions that will be implemented in this file
+  // All functions that will be implemented in this file. Maps id to signature
   implementedFunctions: {},
+  libraryFunctions: {}, // functions added from the library
+  unimplementedFunctions: {}, // library etc. functions that we need to index, maps id to signature
 
   indexedFunctions: {},
   nextIndex: 2, // Start at a non-0 (even, see below) value
 
   blockAddresses: {}, // maps functions to a map of block labels to label ids
 
+  getSignature: function(returnType, argTypes) {
+    var sig = returnType == 'void' ? 'v' : (isIntImplemented(returnType) ? 'i' : 'f');
+    for (var i = 0; i < argTypes.length; i++) {
+      var type = argTypes[i];
+      if (!type) break; // varargs
+      sig += isIntImplemented(type) ? (getBits(type) == 64 ? 'ii' : 'i') : 'f'; // legalized i64s will be i32s
+    }
+    return sig;
+  },
+
   // Mark a function as needing indexing. Python will coordinate them all
   getIndex: function(ident) {
-    if (phase != 'post') {
+    if (phase != 'post' && singlePhase) {
       this.indexedFunctions[ident] = 0; // tell python we need this indexized
       return '{{{ FI_' + ident + ' }}}'; // something python will replace later
     } else {
@@ -240,27 +252,60 @@ var Functions = {
     }
   },
 
+  getTable: function(sig) {
+    return ASM_JS ? 'FUNCTION_TABLE_' + sig : 'FUNCTION_TABLE';
+  },
+
   // Generate code for function indexing
   generateIndexing: function() {
-    var vals = zeros(this.nextIndex);
-    for (var ident in this.indexedFunctions) {
-      vals[this.indexedFunctions[ident]] = ident;
+    var total = this.nextIndex;
+    if (ASM_JS) total = ceilPowerOfTwo(total); // must be power of 2 for mask
+    function emptyTable(sig) {
+      return zeros(total);
     }
-    // Resolve multi-level aliases all the way down
-    for (var i = 0; i < vals.length; i++) {
-      while (1) {
-        var varData = Variables.globals[vals[i]];
-        if (!(varData && varData.resolvedAlias)) break;
-        vals[i] = vals[+varData.resolvedAlias || eval(varData.resolvedAlias)]; // might need to eval to turn (6) into 6
+    var tables = {};
+    if (ASM_JS) {
+      ['v', 'vi', 'ii', 'iii'].forEach(function(sig) { // add some default signatures that are used in the library
+        tables[sig] = emptyTable(sig); // TODO: make them compact
+      });
+    }
+    for (var ident in this.indexedFunctions) {
+      var sig = ASM_JS ? Functions.implementedFunctions[ident] || Functions.unimplementedFunctions[ident] : 'x';
+      assert(sig, ident);
+      if (!tables[sig]) tables[sig] = emptyTable(sig); // TODO: make them compact
+      tables[sig][this.indexedFunctions[ident]] = ident;
+    }
+    var generated = false;
+    for (var t in tables) {
+      generated = true;
+      var table = tables[t];
+      for (var i = 0; i < table.length; i++) {
+        // Resolve multi-level aliases all the way down
+        while (1) {
+          var varData = Variables.globals[table[i]];
+          if (!(varData && varData.resolvedAlias)) break;
+          table[i] = table[+varData.resolvedAlias || eval(varData.resolvedAlias)]; // might need to eval to turn (6) into 6
+        }
+        // Resolve library aliases
+        if (table[i]) {
+          var libName = LibraryManager.getRootIdent(table[i].substr(1));
+          if (libName && typeof libName == 'string') {
+            table[i] = (libName.indexOf('.') < 0 ? '_' : '') + libName;
+          }
+        }
+      }
+      var indices = table.toString().replace('"', '');
+      if (BUILD_AS_SHARED_LIB) {
+        // Shared libraries reuse the parent's function table.
+        tables[t] = Functions.getTable(t) + '.push.apply(' + Functions.getTable(t) + ', [' + indices + ']);\n';
+      } else {
+        tables[t] = 'var ' + Functions.getTable(t) + ' = [' + indices + '];\n';
       }
     }
-    var indices = vals.toString().replace('"', '');
-    if (BUILD_AS_SHARED_LIB) {
-      // Shared libraries reuse the parent's function table.
-      return 'FUNCTION_TABLE.push.apply(FUNCTION_TABLE, [' + indices + ']);';
-    } else {
-      return 'FUNCTION_TABLE = [' + indices + ']; Module["FUNCTION_TABLE"] = FUNCTION_TABLE;';
+    if (!generated && !ASM_JS) {
+      tables['x'] = 'var FUNCTION_TABLE = [0, 0];\n'; // default empty table
     }
+    Functions.tables = tables;
   }
 };
 
@@ -311,15 +356,22 @@ var PassManager = {
       print('\n//FORWARDED_DATA:' + JSON.stringify({
         Types: Types,
         Variables: Variables,
-        Functions: Functions
+        Functions: Functions,
+        EXPORTED_FUNCTIONS: EXPORTED_FUNCTIONS // needed for asm.js global constructors (ctors)
       }));
     } else if (phase == 'funcs') {
       print('\n//FORWARDED_DATA:' + JSON.stringify({
         Types: { preciseI64MathUsed: Types.preciseI64MathUsed },
         Functions: {
           blockAddresses: Functions.blockAddresses,
-          indexedFunctions: Functions.indexedFunctions
+          indexedFunctions: Functions.indexedFunctions,
+          implementedFunctions: ASM_JS ? Functions.implementedFunctions : [],
+          unimplementedFunctions: Functions.unimplementedFunctions,
         }
+      }));
+    } else if (phase == 'post') {
+      print('\n//FORWARDED_DATA:' + JSON.stringify({
+        Functions: { tables: Functions.tables }
       }));
     }
   },

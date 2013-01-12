@@ -54,7 +54,7 @@ def run_on_js(filename, passes, js_engine, jcache):
     jcache = False
 
   # If we process only generated code, find that and save the rest on the side
-  func_sig = re.compile('function (_[\w$]+)\(')
+  func_sig = re.compile('( *)function (_[\w$]+)\(')
   if suffix:
     pos = 0
     gen_start = 0
@@ -63,12 +63,13 @@ def run_on_js(filename, passes, js_engine, jcache):
       m = func_sig.search(js, pos)
       if not m: break
       pos = m.end()
-      ident = m.group(1)
+      indent = m.group(1)
+      ident = m.group(2)
       if ident in generated:
         if not gen_start:
           gen_start = m.start()
           assert gen_start
-        gen_end = js.find('\n}\n', m.end()) + 3
+        gen_end = js.find('\n%s}\n' % indent, m.end()) + (3 + len(indent))
     assert gen_end > gen_start
     pre = js[:gen_start]
     post = js[gen_end:]
@@ -116,7 +117,7 @@ def run_on_js(filename, passes, js_engine, jcache):
 
   if len(chunks) > 0:
     def write_chunk(chunk, i):
-      temp_file = temp_files.get('.jsfunc_%d.ll' % i).name
+      temp_file = temp_files.get('.jsfunc_%d.js' % i).name
       f = open(temp_file, 'w')
       f.write(chunk)
       f.write(suffix)
@@ -129,6 +130,7 @@ def run_on_js(filename, passes, js_engine, jcache):
   if len(filenames) > 0:
     # XXX Use '--nocrankshaft' to disable crankshaft to work around v8 bug 1895, needed for older v8/node (node 0.6.8+ should be ok)
     commands = map(lambda filename: [js_engine, JS_OPTIMIZER, filename, 'noPrintMetadata'] + passes, filenames)
+    #print [' '.join(command) for command in commands]
 
     cores = min(multiprocessing.cpu_count(), filenames)
     if len(chunks) > 1 and cores >= 2:
