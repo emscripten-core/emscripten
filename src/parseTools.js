@@ -1038,7 +1038,7 @@ function asmMultiplyI32(a, b) {
   if (USE_MATH_IMUL) {
     return 'Math.imul(' + a + ',' + b + ')';
   }
-  return '(~~(+' + a + ' * +' + b + '))';
+  return '(~~(+((' + a + ')|0) * +((' + b + ')|0)))';
 }
 
 function makeGetTempDouble(i, type) { // get an aliased part of the tempDouble temporary storage
