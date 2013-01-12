@@ -2136,7 +2136,7 @@ function eliminateMemSafe(ast) {
 
 // Passes table
 
-var compress = false, printMetadata = true, asm = false;
+var compress = false, printMetadata = true, asm = false, last = false;
 
 var passes = {
   dumpAst: dumpAst,
@@ -2155,7 +2155,8 @@ var passes = {
   eliminateMemSafe: eliminateMemSafe,
   compress: function() { compress = true },
   noPrintMetadata: function() { printMetadata = false },
-  asm: function() { asm = true }
+  asm: function() { asm = true },
+  last: function() { last = true }
 };
 
 // Main
@@ -2176,6 +2177,9 @@ var js = astToSrc(ast, compress), old;
 do {
   old = js;
   js = js.replace(/\n *\n/g, '\n');
+  if (asm && last) {
+    js = js.replace(/ = \+0([,;])/g, function(m, end) { return ' = 0.0' + end }); // asm requires 0.0 in var definitions, not +0
+  }
 } while (js != old);
 print(js);
 print('\n');

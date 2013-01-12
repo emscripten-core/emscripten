@@ -1252,6 +1252,8 @@ try:
   if minify_whitespace:
     js_optimizer_queue += ['compress']
 
+  js_optimizer_queue += ['last']
+
   flush_js_optimizer_queue()
 
   # If we were asked to also generate HTML, do that
