@@ -158,8 +158,16 @@ var DISABLE_EXCEPTION_CATCHING = 0; // Disables generating code to actually catc
                                     // then this can make it much faster. If an exception actually happens,
                                     // it will not be caught and the program will halt (so this will not
                                     // introduce silent failures, which is good).
+                                    // DISABLE_EXCEPTION_CATCHING = 0 - generate code to actually catch exceptions
+                                    // DISABLE_EXCEPTION_CATCHING = 1 - disable exception catching at all
+                                    // DISABLE_EXCEPTION_CATCHING = 2 - disable exception catching, but enables 
+                                    // catching in whitelist
                                     // TODO: Make this also remove cxa_begin_catch etc., optimize relooper
                                     //       for it, etc. (perhaps do all of this as preprocessing on .ll?)
+
+var EXCEPTION_CATCHING_WHITELIST = [];  // Enables catching exception in listed functions if
+                                        // DISABLE_EXCEPTION_CATCHING = 2 set
+
 var EXECUTION_TIMEOUT = -1; // Throw an exception after X seconds - useful to debug infinite loops
 var CHECK_OVERFLOWS = 0; // Add code that checks for overflows in integer math operations.
                          // There is currently not much to do to handle overflows if they occur.
