@@ -725,7 +725,7 @@ function intertyper(data, sidePass, baseLineNums) {
   substrate.addActor('Invoke', {
     processItem: function(item) {
       var result = makeCall.call(this, item, 'invoke');
-      if (DISABLE_EXCEPTION_CATCHING) {
+      if (DISABLE_EXCEPTION_CATCHING == 1) {
         result.item.intertype = 'call';
         result.ret.push({
           intertype: 'branch',
