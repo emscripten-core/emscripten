@@ -1034,8 +1034,13 @@ function asmMultiplyI32(a, b) {
   return '(~~(+' + a + ' * +' + b + '))';
 }
 
-function makeGetTempDouble(i) { // TODO: Support other than i32
-  return makeGetValue('tempDoublePtr', Runtime.getNativeTypeSize('i32')*i, 'i32');
+function makeGetTempDouble(i, type) { // get an aliased part of the tempDouble temporary storage
+  // Cannot use makeGetValue because it uses us
+  // this is a unique case where we *can* use HEAPF64
+  var slab = type == 'double' ? 'HEAPF64' : makeGetSlabs(null, type)[0];
+  var ptr = getFastValue('tempDoublePtr', '+', Runtime.getNativeTypeSize(type)*i);
+  var offset = type == 'double' ? ptr + '>>3' : getHeapOffset(ptr, type);
+  return slab + '[' + offset + ']';
 }
 
 // See makeSetValue
@@ -1051,9 +1056,9 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
   }
 
   if (DOUBLE_MODE == 1 && USE_TYPED_ARRAYS == 2 && type == 'double') {
-    return '(HEAP32[tempDoublePtr>>2]=' + makeGetValue(ptr, pos, 'i32', noNeedFirst, unsigned, ignore, align) + ',' +
-            'HEAP32[tempDoublePtr+4>>2]=' + makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'i32', noNeedFirst, unsigned, ignore, align) + ',' +
-            'HEAPF64[tempDoublePtr>>3])';
+    return '(' + makeGetTempDouble(0, 'i32') + '=' + makeGetValue(ptr, pos, 'i32', noNeedFirst, unsigned, ignore, align) + ',' +
+                 makeGetTempDouble(1, 'i32') + '=' + makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'i32', noNeedFirst, unsigned, ignore, align) + ',' +
+            makeGetTempDouble(0, 'double') + ')';
   }
 
   if (USE_TYPED_ARRAYS == 2 && align) {
@@ -1877,7 +1882,7 @@ function processMathop(item) {
       case 'lshr': {
         if (!isNumber(idents[1])) {
           return '(Runtime' + (ASM_JS ? '_' : '.') + 'bitshift64(' + idents[0] + '[0], ' + idents[0] + '[1],"' + op + '",' + stripCorrections(idents[1]) + '[0]|0),' +
-            '[' + makeGetTempDouble(0) + ',' + makeGetTempDouble(1) + '])';
+            '[' + makeGetTempDouble(0, 'i32') + ',' + makeGetTempDouble(1, 'i32') + '])';
         }
         bits = parseInt(idents[1]);
         var ander = Math.pow(2, bits)-1;

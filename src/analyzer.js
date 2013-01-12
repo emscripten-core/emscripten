@@ -656,7 +656,7 @@ function analyzer(data, sidePass) {
                     value.intertype = 'value';
                     value.ident = 'Runtime' + (ASM_JS ? '_' : '.') + 'bitshift64(' + sourceElements[0].ident + ', ' +
                                                           sourceElements[1].ident + ',"' + value.op + '",' + value.params[1].ident + '$0);' +
-                                  'var ' + value.assignTo + '$0 = ' + makeGetTempDouble(0) + ', ' + value.assignTo + '$1 = ' + makeGetTempDouble(1) + ';';
+                                  'var ' + value.assignTo + '$0 = ' + makeGetTempDouble(0, 'i32') + ', ' + value.assignTo + '$1 = ' + makeGetTempDouble(1, 'i32') + ';';
                     value.assignTo = null;
                     i++;
                     continue;

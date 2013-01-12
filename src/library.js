@@ -3905,7 +3905,7 @@ LibraryManager.library = {
       ___setErrNo(ERRNO_CODES.ERANGE); // not quite correct
     }
 
-    {{{ makeStructuralReturn([makeGetTempDouble(0), makeGetTempDouble(1)]) }}};
+    {{{ makeStructuralReturn([makeGetTempDouble(0, 'i32'), makeGetTempDouble(1, 'i32')]) }}};
   },
 #endif
   strtoll__deps: ['_parseInt64'],
