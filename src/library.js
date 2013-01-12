@@ -6734,9 +6734,11 @@ LibraryManager.library = {
     ['i32', 'h_length'],
     ['i8**', 'h_addr_list'],
   ]),
+  /*
   gethostbyname__deps: ['__hostent_struct_layout'],
-  gethostbyname: function(name) {
+  gethostbyname: function(name) {    
     name = Pointer_stringify(name);
+    console.log("gethostbyname: ", name);
       if (!_gethostbyname.id) {
         _gethostbyname.id = 1;
         _gethostbyname.table = {};
@@ -6771,7 +6773,7 @@ LibraryManager.library = {
     setValue(errnum, 0, 'i32');
     return 0;
   },
-
+  */
   // ==========================================================================
   // sockets. Note that the implementation assumes all sockets are always
   // nonblocking
@@ -6787,6 +6789,13 @@ LibraryManager.library = {
     backend: 1, // default to websockets
     nextFd: 1,
     fds: {},
+    nextport: 1,
+    maxport: 65534,
+    peer: {
+      pc: null,
+      binds: {},
+      pending: []
+    },
     sockaddr_in_layout: Runtime.generateStructInfo([
       ['i16', 'sin_family'],
       ['i16', 'sin_port'],
@@ -6802,111 +6811,6 @@ LibraryManager.library = {
       ['i32', 'msg_controllen'],
       ['i32', 'msg_flags'],
     ]),
-
-    backends: {
-      0: { // websockets
-        connect: function(info) {
-          console.log('opening ws://' + info.host + ':' + info.port);
-          info.socket = new WebSocket('ws://' + info.host + ':' + info.port, ['binary']);
-          info.socket.binaryType = 'arraybuffer';
-
-          var i32Temp = new Uint32Array(1);
-          var i8Temp = new Uint8Array(i32Temp.buffer);
-
-          info.inQueue = [];
-          if (!info.stream) {
-            var partialBuffer = null; // inQueue contains full dgram messages; this buffers incomplete data. Must begin with the beginning of a message
-          }
-
-          info.socket.onmessage = function(event) {
-            assert(typeof event.data !== 'string' && event.data.byteLength); // must get binary data!
-            var data = new Uint8Array(event.data); // make a typed array view on the array buffer
-#if SOCKET_DEBUG
-            Module.print(['onmessage', data.length, '|', Array.prototype.slice.call(data)]);
-#endif
-            if (info.stream) {
-              info.inQueue.push(data);
-            } else {
-              // we added headers with message sizes, read those to find discrete messages
-              if (partialBuffer) {
-                // append to the partial buffer
-                var newBuffer = new Uint8Array(partialBuffer.length + data.length);
-                newBuffer.set(partialBuffer);
-                newBuffer.set(data, partialBuffer.length);
-                // forget the partial buffer and work on data
-                data = newBuffer;
-                partialBuffer = null;
-              }
-              var currPos = 0;
-              while (currPos+4 < data.length) {
-                i8Temp.set(data.subarray(currPos, currPos+4));
-                var currLen = i32Temp[0];
-                assert(currLen > 0);
-                if (currPos + 4 + currLen > data.length) {
-                  break; // not enough data has arrived
-                }
-                currPos += 4;
-#if SOCKET_DEBUG
-                Module.print(['onmessage message', currLen, '|', Array.prototype.slice.call(data.subarray(currPos, currPos+currLen))]);
-#endif
-                info.inQueue.push(data.subarray(currPos, currPos+currLen));
-                currPos += currLen;
-              }
-              // If data remains, buffer it
-              if (currPos < data.length) {
-                partialBuffer = data.subarray(currPos);
-              }
-            }
-          }
-          function send(data) {
-            // TODO: if browser accepts views, can optimize this
-#if SOCKET_DEBUG
-            Module.print('sender actually sending ' + Array.prototype.slice.call(data));
-#endif
-            // ok to use the underlying buffer, we created data and know that the buffer starts at the beginning
-            info.socket.send(data.buffer);
-          }
-          var outQueue = [];
-          var intervalling = false, interval;
-          function trySend() {
-            if (info.socket.readyState != info.socket.OPEN) {
-              if (!intervalling) {
-                intervalling = true;
-                console.log('waiting for socket in order to send');
-                interval = setInterval(trySend, 100);
-              }
-              return;
-            }
-            for (var i = 0; i < outQueue.length; i++) {
-              send(outQueue[i]);
-            }
-            outQueue.length = 0;
-            if (intervalling) {
-              intervalling = false;
-              clearInterval(interval);
-            }
-          }
-          info.sender = function(data) {
-            if (!info.stream) {
-              // add a header with the message size
-              var header = new Uint8Array(4);
-              i32Temp[0] = data.length;
-              header.set(i8Temp);
-              outQueue.push(header);
-            }
-            outQueue.push(new Uint8Array(data));
-            trySend();
-          };
-        }
-      },
-      1: { // webrtc
-        connect: function(info) {
-          info.sender = function(data) {
-            console.log("webrtc: ", WebRTC);
-          }          
-        }
-      }
-    }
   },
 
   emscripten_set_network_backend__deps: ['$Sockets'],
@@ -6925,13 +6829,65 @@ LibraryManager.library = {
     if (Sockets.backend == Sockets.BACKEND_WEBRTC) {
       assert(!stream); // If WebRTC, we can only support datagram, not stream
     }
+
+    // Open the peer connection if we don't have it already
+    if(null == Sockets.peer.pc) {
+      var pc;
+      if(Module['remote']) {
+        console.log("preparing peer connection answer");
+        console.log("remote: ", Module['remote']);
+        pc = new WebRTC.DataPeer(null, Module['remote']);
+      } else {        
+        console.log("preparing peer connection offer");
+        pc = new WebRTC.DataPeer();
+      }
+      pc.onerror = function(error) {
+        console.error(error);
+      }
+      pc.onoffercreated = function(url, offer_id) {
+        var url = "http://" + window.location.host + "/game.html?low,low,debug,remote=" + offer_id;
+        console.log("connect to: ", url);
+        var div = document.getElementById("remote-link");
+        if(div) {
+          div.innerHTML = '<a href="' + url + '">Open remote client</a>';
+        }
+      }
+      var reader = new FileReader();
+      reader.onload = function(event) {
+        var message = event.target.result;
+#if SOCKET_DEBUG        
+        Module.print("received " + message.byteLength + " raw bytes");
+#endif
+        var header = new Uint16Array(message, 0, 2);        
+        // console.log("receiving from port ", header[1]);
+        if(Sockets.peer.binds[header[1]]) {          
+          Sockets.peer.binds[header[1]].inQueue.push(message);
+          // console.log(Sockets.peer.binds[header[1]].inQueue.length + " messages queued for recv (onload)");
+        } else {
+          // console.log("unable to deliver message from port ", header[1])
+        }
+      }
+      pc.onunreliablemessage = function(message) {
+        reader.readAsArrayBuffer(message.data);
+      }
+      pc.onreliablemessage = function(message) {
+        reader.readAsArrayBuffer(message.data);
+      }
+      Sockets.peer.pc = pc;
+    }
+
     Sockets.fds[fd] = {
-      connected: false,
-      stream: stream
+      addr: 0x0100007f,
+      host: '127.0.0.1',
+      port: 0,
+      inQueue: [],
+      header: new Uint16Array(2),
+      bound: false
     };
     return fd;
   },
 
+/*
   connect__deps: ['$Sockets', '_inet_ntop_raw', 'ntohs', 'gethostbyname'],
   connect: function(fd, addr, addrlen) {
     var info = Sockets.fds[fd];
@@ -6948,10 +6904,45 @@ LibraryManager.library = {
       info.host = _gethostbyname.table[low + 0xff*high];
       assert(info.host, 'problem translating fake ip ' + parts);
     }
-    Sockets.backends[Sockets.backend].connect(info);
+    Sockets.backends[Sockets.backend].connect(info, false);
     return 0;
   },
+  */
 
+  mkport__deps: ['$Sockets'],
+  mkport: function() {
+    for(var i = 0; i < Sockets.maxport; ++ i) {
+      var port = Sockets.nextport ++;      
+      Sockets.nextport = (Sockets.nextport > Sockets.maxport) ? 1 : Sockets.nextport;
+      if(!Sockets.peer.binds[port]) {
+        return port;
+      }
+    }
+    assert(false, 'all available ports are in use!');
+  },
+
+  bind__deps: ['$Sockets', '_inet_ntop_raw', 'ntohs', 'mkport'],
+  bind: function(fd, addr, addrlen) {
+    var info = Sockets.fds[fd];
+    if (!info) return -1;
+    if(addr) {
+      info.port = _ntohs(getValue(addr + Sockets.sockaddr_in_layout.sin_port, 'i16'));
+      // info.addr = getValue(addr + Sockets.sockaddr_in_layout.sin_addr, 'i32');      
+      // info.host = __inet_ntop_raw(info.addr);
+    }
+    if(!info.port) {
+      info.port = _mkport();
+    }
+    info.close = function() {
+      Sockets.peer.binds[info.port] = undefined;
+    }
+    Sockets.peer.binds[info.port] = info;
+    console.log("bind: ", info.host, info.port);
+    info.bound = true;
+    // Sockets.backends[Sockets.backend].connect(info, true);
+  },
+
+  /*
   recv__deps: ['$Sockets'],
   recv: function(fd, buf, len, flags) {
     var info = Sockets.fds[fd];
@@ -6970,7 +6961,9 @@ LibraryManager.library = {
     HEAPU8.set(buffer, buf);
     return buffer.length;
   },
+  */
 
+  /*
   send__deps: ['$Sockets'],
   send: function(fd, buf, len, flags) {
     var info = Sockets.fds[fd];
@@ -6978,17 +6971,29 @@ LibraryManager.library = {
     info.sender(HEAPU8.subarray(buf, buf+len));
     return len;
   },
+  */
 
-  sendmsg__deps: ['$Sockets', 'connect'],
+  sendmsg__deps: ['$Sockets', 'bind', '_inet_ntop_raw', 'ntohs'],
   sendmsg: function(fd, msg, flags) {
     var info = Sockets.fds[fd];
     if (!info) return -1;
     // if we are not connected, use the address info in the message
-    if (!info.connected) {
-      var name = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_name', '*') }}};
-      assert(name, 'sendmsg on non-connected socket, and no name/address in the message');
-      _connect(fd, name, {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_namelen', 'i32') }}});
+    if(!info.bound) {
+      _bind(fd);
+    }    
+
+    if (!Sockets.peer.pc.connected) {
+      ___setErrNo(ERRNO_CODES.EWOULDBLOCK);
+      return -1;
     }
+
+    var name = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_name', '*') }}};
+    assert(name, 'sendmsg on non-connected socket, and no name/address in the message');    
+    var port = _ntohs(getValue(name + Sockets.sockaddr_in_layout.sin_port, 'i16'));
+    // var addr = getValue(name + Sockets.sockaddr_in_layout.sin_addr, 'i32');
+    // var host = __inet_ntop_raw(addr);
+    // console.log("sendmsg: ", host, port);
+
     var iov = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iov', 'i8*') }}};
     var num = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iovlen', 'i32') }}};
 #if SOCKET_DEBUG
@@ -6998,7 +7003,7 @@ LibraryManager.library = {
     for (var i = 0; i < num; i++) {
       totalSize += {{{ makeGetValue('iov', '8*i + 4', 'i32') }}};
     }
-    var buffer = new Uint8Array(totalSize);
+    var data = new Uint8Array(totalSize);
     var ret = 0;
     for (var i = 0; i < num; i++) {
       var currNum = {{{ makeGetValue('iov', '8*i + 4', 'i32') }}};
@@ -7007,39 +7012,56 @@ LibraryManager.library = {
 #endif
       if (!currNum) continue;
       var currBuf = {{{ makeGetValue('iov', '8*i', 'i8*') }}};
-      buffer.set(HEAPU8.subarray(currBuf, currBuf+currNum), ret);
+      data.set(HEAPU8.subarray(currBuf, currBuf+currNum), ret);
       ret += currNum;
     }
-    info.sender(buffer); // send all the iovs as a single message
-    return ret;
+    // info.sender(buffer, port); // send all the iovs as a single message
+    info.header[0] = info.port; // src port
+    info.header[1] = port; // dst port
+#if SOCKET_DEBUG
+      Module.print('sendmsg port: ' + info.header[0] + ' -> ' + info.header[1]);
+      Module.print('sendmsg bytes: ' + data.length + ' | ' + Array.prototype.slice.call(data));
+#endif    
+    // console.log('sendmsg: header', info.header);
+    // console.log('sendmsg: actually sending ', Array.prototype.slice.call(data));
+    // console.log("sending " + data.buffer.byteLength + " bytes to port ", port);
+    var blob = new Blob([info.header, data]);
+    // Sockets.peer.pc.unreliable.send(blob);
+    Sockets.peer.pc.reliable.send(blob);
   },
 
-  recvmsg__deps: ['$Sockets', 'connect', 'recv', '__setErrNo', '$ERRNO_CODES', 'htons'],
+  recvmsg__deps: ['$Sockets', 'bind', '__setErrNo', '$ERRNO_CODES', 'htons'],
   recvmsg: function(fd, msg, flags) {
     var info = Sockets.fds[fd];
     if (!info) return -1;
-    // if we are not connected, use the address info in the message
-    if (!info.connected) {
-#if SOCKET_DEBUG
-      Module.print('recvmsg connecting');
-#endif
-      var name = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_name', '*') }}};
-      assert(name, 'sendmsg on non-connected socket, and no name/address in the message');
-      _connect(fd, name, {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_namelen', 'i32') }}});
-    }
+    // if we are not connected, use the address info in the message    
+    if (!info.port) {
+      console.log('recvmsg on unbound socket');
+      assert(false, 'cannot receive on unbound socket');
+    }    
+
     if (info.inQueue.length == 0) {
       ___setErrNo(ERRNO_CODES.EWOULDBLOCK);
       return -1;
     }
-    var buffer = info.inQueue.shift();
+    console.log(info.inQueue.length + " messages queued for recv (recvmsg)");
+
+    var message = info.inQueue.shift();
+    var header = new Uint16Array(message, 0, 2);
+    console.log('recvmsg: header', header);
+    var buffer = new Uint8Array(message, 4);
+
     var bytes = buffer.length;
+    // console.log("delivering " + bytes + " bytes on port " + header[1]);
+    // console.log('received', bytes, '|', Array.prototype.slice.call(buffer));
 #if SOCKET_DEBUG
-    Module.print('recvmsg bytes: ' + bytes);
+    Module.print('recvmsg port: ' + header[1] + ' <- ' + header[0]);
+    Module.print('recvmsg bytes: ' + bytes + ' | ' + Array.prototype.slice.call(buffer));
 #endif
     // write source
     var name = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_name', '*') }}};
     {{{ makeSetValue('name', 'Sockets.sockaddr_in_layout.sin_addr', 'info.addr', 'i32') }}};
-    {{{ makeSetValue('name', 'Sockets.sockaddr_in_layout.sin_port', '_htons(info.port)', 'i16') }}};
+    {{{ makeSetValue('name', 'Sockets.sockaddr_in_layout.sin_port', '_htons(header[0])', 'i16') }}};
     // write data
     var ret = bytes;
     var iov = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iov', 'i8*') }}};
@@ -7060,15 +7082,10 @@ LibraryManager.library = {
       HEAPU8.set(buffer.subarray(bufferPos, bufferPos + currNum), currBuf);
       bufferPos += currNum;
     }
-    if (info.stream) {
-      // This is tcp (reliable), so if not all was read, keep it
-      if (bufferPos < bytes) {
-        info.inQueue.unshift(buffer.subArray(bufferPos));
-      }
-    }
     return ret;
   },
 
+  /*
   recvfrom__deps: ['$Sockets', 'connect', 'recv'],
   recvfrom: function(fd, buf, len, flags, addr, addrlen) {
     var info = Sockets.fds[fd];
@@ -7080,11 +7097,12 @@ LibraryManager.library = {
     }
     return _recv(fd, buf, len, flags);
   },
+  */
 
   shutdown: function(fd, how) {
     var info = Sockets.fds[fd];
     if (!info) return -1;
-    info.socket.close();
+    info.close();
     Sockets.fds[fd] = null;
   },
 
@@ -7105,6 +7123,7 @@ LibraryManager.library = {
     return 0;
   },
 
+  /*
   bind__deps: ['connect'],
   bind: function(fd, addr, addrlen) {
     return _connect(fd, addr, addrlen);
@@ -7113,6 +7132,7 @@ LibraryManager.library = {
   listen: function(fd, backlog) {
     return 0;
   },
+  */
 
   accept: function(fd, addr, addrlen) {
     // TODO: webrtc queued incoming connections, etc.
