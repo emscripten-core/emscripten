@@ -895,7 +895,7 @@ var NO_SIDE_EFFECTS = set('num', 'name');
 
 function hasSideEffects(node) { // this is 99% incomplete!
   if (node[0] in NO_SIDE_EFFECTS) return false;
-  if (node[0] == 'unary-prefix' && node[1] == '!') return hasSideEffects(node[2]);
+  if (node[0] == 'unary-prefix') return hasSideEffects(node[2]);
   if (node[0] == 'binary') return hasSideEffects(node[2]) || hasSideEffects(node[3]);
   return true;
 }
