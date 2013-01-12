@@ -1014,11 +1014,18 @@ function asmInitializer(type, impl) {
   }
 }
 
-function asmCoercion(value, type) {
+function asmCoercion(value, type, signedness) {
   if (!ASM_JS) return value;
   if (type == 'void') {
     return value;
   } else if (type in Runtime.FLOAT_TYPES) {
+    if (signedness) {
+      if (signedness == 'u') {
+        value = '(' + value + ')>>>0';
+      } else {
+        value = '(' + value + ')|0';
+      }
+    }
     return '(+(' + value + '))';
   } else {
     return '((' + value + ')|0)';
@@ -2081,7 +2088,7 @@ function processMathop(item) {
     case 'fdiv': return getFastValue(idents[0], '/', idents[1], item.type);
     case 'fmul': return getFastValue(idents[0], '*', idents[1], item.type);
     case 'frem': return getFastValue(idents[0], '%', idents[1], item.type);
-    case 'uitofp': case 'sitofp': return asmCoercion(idents[0], 'double');
+    case 'uitofp': case 'sitofp': return asmCoercion(idents[0], 'double', op[0]);
     case 'fptoui': case 'fptosi': return makeRounding(idents[0], bitsLeft, op === 'fptosi', true);
 
     // TODO: We sometimes generate false instead of 0, etc., in the *cmps. It seemed slightly faster before, but worth rechecking
