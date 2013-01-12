@@ -1200,17 +1200,20 @@ try:
   js_optimizer_queue = []
   def flush_js_optimizer_queue():
     global final, js_optimizer_queue
-    if shared.Settings.ASM_JS:
-      js_optimizer_queue = ['asm'] + js_optimizer_queue
     if len(js_optimizer_queue) > 0:
       if DEBUG < 2:
+        if shared.Settings.ASM_JS:
+          js_optimizer_queue = ['asm'] + js_optimizer_queue
         if DEBUG: print >> sys.stderr, 'emcc: applying js optimization passes:', js_optimizer_queue
         final = shared.Building.js_optimizer(final, js_optimizer_queue, jcache)
         if DEBUG: save_intermediate('js_opts')
       else:
         for name in js_optimizer_queue:
-          print >> sys.stderr, 'emcc: applying js optimization pass:', name
-          final = shared.Building.js_optimizer(final, [name], jcache)
+          passes = [name]
+          if shared.Settings.ASM_JS:
+            passes = ['asm'] + passes
+          print >> sys.stderr, 'emcc: applying js optimization pass:', passes
+          final = shared.Building.js_optimizer(final, passes, jcache)
           save_intermediate(name)
       js_optimizer_queue = []
 
