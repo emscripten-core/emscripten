@@ -1039,7 +1039,13 @@ function makeGetTempDouble(i, type) { // get an aliased part of the tempDouble t
   // this is a unique case where we *can* use HEAPF64
   var slab = type == 'double' ? 'HEAPF64' : makeGetSlabs(null, type)[0];
   var ptr = getFastValue('tempDoublePtr', '+', Runtime.getNativeTypeSize(type)*i);
-  var offset = type == 'double' ? ptr + '>>3' : getHeapOffset(ptr, type);
+  var offset;
+  if (type == 'double') {
+    if (ASM_JS) ptr = '(' + ptr + ')&' + memoryMask;
+    offset = '(' + ptr + ')>>3';
+  } else {
+    offset = getHeapOffset(ptr, type);
+  }
   return slab + '[' + offset + ']';
 }
 
