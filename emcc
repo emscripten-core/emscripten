@@ -1200,7 +1200,7 @@ try:
   js_optimizer_queue = []
   def flush_js_optimizer_queue():
     global final, js_optimizer_queue
-    if len(js_optimizer_queue) > 0:
+    if len(js_optimizer_queue) > 0 and not(len(js_optimizer_queue) == 1 and js_optimizer_queue[0] == 'last'):
       if DEBUG < 2:
         if shared.Settings.ASM_JS:
           js_optimizer_queue = ['asm'] + js_optimizer_queue
