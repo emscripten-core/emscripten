@@ -3347,6 +3347,13 @@ def process(filename):
           '''
         self.do_run(src, '*96,97,98,-14,-14,101*')
 
+    def test_bigswitch(self):
+      src = open(path_from_root('tests', 'bigswitch.cpp')).read()
+      self.do_run(src, '''34962: GL_ARRAY_BUFFER (0x8892)
+26214: what?
+35040: GL_STREAM_DRAW (0x88E0)
+''', args=['34962', '26214', '35040'])
+
     def test_indirectbr(self):
         src = '''
           #include <stdio.h>

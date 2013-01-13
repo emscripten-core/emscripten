@@ -1060,7 +1060,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
   });
   makeFuncLineActor('switch', function(item) {
-    // TODO: Find a case where switch is important, and benchmark that. var SWITCH_IN_SWITCH = 1; 
+    var useIfs = item.switchLabels.length < 1024; // with a huge number of cases, if-else which looks nested to js parsers can cause problems
     var phiSets = calcPhiSets(item);
     // Consolidate checks that go to the same label. This is important because it makes the relooper simpler and faster.
     var targetLabels = {}; // for each target label, the list of values going to it
@@ -1078,16 +1078,27 @@ function JSify(data, functionsOnly, givenFunctions) {
     if (RELOOP) {
       item.groupedLabels = [];
     }
+    if (!useIfs) {
+      ret += 'switch(' + signedIdent + ') {\n';
+    }
     for (var targetLabel in targetLabels) {
-      if (!first) {
+      if (!first && useIfs) {
         ret += 'else ';
       } else {
         first = false;
       }
-      var value = targetLabels[targetLabel].map(function(value) {
-        return makeComparison(signedIdent, makeSignOp(value, item.type, 're'), item.type)
-      }).join(' || ');
-      ret += 'if (' + value + ') {\n';
+      var value;
+      if (useIfs) {
+        value = targetLabels[targetLabel].map(function(value) {
+          return makeComparison(signedIdent, makeSignOp(value, item.type, 're'), item.type)
+        }).join(' || ');
+        ret += 'if (' + value + ') {\n';
+      } else {
+        value = targetLabels[targetLabel].map(function(value) {
+          return 'case ' + makeSignOp(value, item.type, 're') + ':';
+        }).join(' ');
+        ret += value + '{\n';
+      }
       var phiSet = getPhiSetsForLabel(phiSets, targetLabel);
       ret += '  ' + phiSet + makeBranch(targetLabel, item.currLabelId || null) + '\n';
       ret += '}\n';
@@ -1099,10 +1110,18 @@ function JSify(data, functionsOnly, givenFunctions) {
         });
       }
     }
-    if (item.switchLabels.length > 0) ret += 'else {\n';
     var phiSet = item.defaultLabelJS = getPhiSetsForLabel(phiSets, item.defaultLabel);
-    ret += phiSet + makeBranch(item.defaultLabel, item.currLabelId) + '\n';
-    if (item.switchLabels.length > 0) ret += '}\n';
+    if (useIfs) {
+      if (item.switchLabels.length > 0) ret += 'else {\n';
+      ret += phiSet + makeBranch(item.defaultLabel, item.currLabelId) + '\n';
+      if (item.switchLabels.length > 0) ret += '}\n';
+    } else {
+      ret += 'default: {\n';
+      ret += phiSet + makeBranch(item.defaultLabel, item.currLabelId) + '\n';
+      ret += '}\n';
+
+      ret += '} break; \n'; // finish switch and break, to move control flow properly (breaks from makeBranch just broke out of the switch)
+    }
     if (item.value) {
       ret += ' ' + toNiceIdent(item.value);
     }
