@@ -10563,7 +10563,7 @@ elif 'benchmark' in str(sys.argv):
       times = []
       for i in range(TEST_REPS):
         start = time.time()
-        js_output = self.run_generated_code(JS_ENGINE, final_filename, args, check_timeout=False)
+        js_output = run_js(final_filename, engine=JS_ENGINE, args=args, stderr=PIPE, full_output=True)
         if i == 0 and 'Successfully compiled asm.js code' in js_output:
           print "[%s was asm.js'ified]" % name
         curr = time.time()-start
