@@ -1056,6 +1056,10 @@ function makeGetTempDouble(i, type) { // get an aliased part of the tempDouble t
   return slab + '[' + offset + ']';
 }
 
+function makeSetTempDouble(i, type, value) {
+  return makeGetTempDouble(i, type) + '=' + asmEnsureFloat(value, type);
+}
+
 // See makeSetValue
 function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSafe) {
   if (UNALIGNED_MEMORY) align = 1;
@@ -1069,8 +1073,8 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
   }
 
   if (DOUBLE_MODE == 1 && USE_TYPED_ARRAYS == 2 && type == 'double') {
-    return '(' + makeGetTempDouble(0, 'i32') + '=' + makeGetValue(ptr, pos, 'i32', noNeedFirst, unsigned, ignore, align) + ',' +
-                 makeGetTempDouble(1, 'i32') + '=' + makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'i32', noNeedFirst, unsigned, ignore, align) + ',' +
+    return '(' + makeSetTempDouble(0, 'i32', makeGetValue(ptr, pos, 'i32', noNeedFirst, unsigned, ignore, align)) + ',' +
+                 makeSetTempDouble(1, 'i32', makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'i32', noNeedFirst, unsigned, ignore, align)) + ',' +
             makeGetTempDouble(0, 'double') + ')';
   }
 
@@ -1165,7 +1169,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
   }
 
   if (DOUBLE_MODE == 1 && USE_TYPED_ARRAYS == 2 && type == 'double') {
-    return '(' + makeGetTempDouble(0, 'double') + '=' + value + ',' +
+    return '(' + makeSetTempDouble(0, 'double', value) + ',' +
             makeSetValue(ptr, pos, makeGetTempDouble(0, 'i32'), 'i32', noNeedFirst, ignore, align, noSafe, ',') + ',' +
             makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), makeGetTempDouble(1, 'i32'), 'i32', noNeedFirst, ignore, align, noSafe, ',') + ')';
   } else if (USE_TYPED_ARRAYS == 2 && type == 'i64') {
@@ -2016,15 +2020,15 @@ function processMathop(item) {
         var outType = item.type;
         if (inType in Runtime.INT_TYPES && outType in Runtime.FLOAT_TYPES) {
           if (legalizedI64s) {
-            return '(' + makeGetTempDouble(0, 'i32') + '=' + idents[0] + '$0, ' + makeGetTempDouble(1, 'i32') + '=' + idents[0] + '$1, ' + makeGetTempDouble(0, 'double') + ')';
+            return '(' + makeSetTempDouble(0, 'i32', idents[0] + '$0') + ', ' + makeSetTempDouble(1, 'i32', idents[0] + '$1') + ', ' + makeGetTempDouble(0, 'double') + ')';
           } else {
-            return makeInlineCalculation(makeGetTempDouble(0, 'i32') + '=VALUE[0],' + makeGetTempDouble(1, 'i32') + '=VALUE[1],' + makeGetTempDouble(0, 'double'), idents[0], 'tempI64');
+            return makeInlineCalculation(makeSetTempDouble(0, 'i32', 'VALUE[0]') + ',' + makeSetTempDouble(1, 'i32', 'VALUE[1]') + ',' + makeGetTempDouble(0, 'double'), idents[0], 'tempI64');
           }
         } else if (inType in Runtime.FLOAT_TYPES && outType in Runtime.INT_TYPES) {
           if (legalizedI64s) {
-            return makeGetTempDouble(0, 'double') + '=' + idents[0] + '; ' + finish([makeGetTempDouble(0, 'i32'), makeGetTempDouble(1, 'i32')]);
+            return makeSetTempDouble(0, 'double', idents[0]) + '; ' + finish([makeGetTempDouble(0, 'i32'), makeGetTempDouble(1, 'i32')]);
           } else {
-            return '(' + makeGetTempDouble(0, 'double') + '=' + idents[0] + ',[' + makeGetTempDouble(0, 'i32') + ',' + makeGetTempDouble(1, 'i32') + '])';
+            return '(' + makeSetTempDouble(0, 'double', idents[0]) + ',[' + makeGetTempDouble(0, 'i32') + ',' + makeGetTempDouble(1, 'i32') + '])';
           }
         } else {
           throw 'Invalid USE_TYPED_ARRAYS == 2 bitcast: ' + dump(item) + ' : ' + item.params[0].type;
@@ -2163,9 +2167,9 @@ function processMathop(item) {
           (inType in Runtime.FLOAT_TYPES && outType in Runtime.INT_TYPES)) {
         assert(USE_TYPED_ARRAYS == 2, 'Can only bitcast ints <-> floats with typed arrays mode 2');
         if (inType in Runtime.INT_TYPES) {
-          return '(' + makeGetTempDouble(0, 'i32') + '=' + idents[0] + ',' + makeGetTempDouble(0, 'float') + ')';
+          return '(' + makeSetTempDouble(0, 'i32', idents[0]) + ',' + makeGetTempDouble(0, 'float') + ')';
         } else {
-          return '(' + makeGetTempDouble(0, 'float') + '=' + idents[0] + ',' + makeGetTempDouble(0, 'i32') + ')';
+          return '(' + makeSetTempDouble(0, 'float', idents[0]) + ',' + makeGetTempDouble(0, 'i32') + ')';
         }
       }
       return idents[0];
