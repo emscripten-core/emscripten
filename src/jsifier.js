@@ -606,10 +606,12 @@ function JSify(data, functionsOnly, givenFunctions) {
           }
           for (i = 0; i < chunks.length; i++) {
             func.JS += '  var ' + chunks[i].map(function(v) {
-              if (v.type != 'i64') {
+              if (!isIllegalType(v.type) || v.ident.indexOf('$', 1) > 0) { // not illegal, or a broken up illegal
                 return v.ident + ' = ' + asmInitializer(v.type); //, func.variables[v.ident].impl);
               } else {
-                return v.ident + '$0 = 0, ' + v.ident + '$1 = 1';
+                return range(Math.ceil(getBits(v.type)/32)).map(function(i) {
+                  return v.ident + '$' + i + '= 0';
+                }).join(',');
               }
             }).join(', ') + ';\n';
           }
