@@ -276,6 +276,11 @@ process(sys.argv[1])
       os.chdir(cwd)
     out = open(stdout, 'r').read()
     err = open(stderr, 'r').read()
+    if engine == SPIDERMONKEY_ENGINE:
+      if 'Successfully compiled asm.js code' in err:
+        print "[was asm.js'ified]"
+      else:
+        print "[failed to asm.js'ify]"
     if output_nicerizer:
       ret = output_nicerizer(out, err)
     else:
