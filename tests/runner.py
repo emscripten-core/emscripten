@@ -278,9 +278,9 @@ process(sys.argv[1])
     err = open(stderr, 'r').read()
     if engine == SPIDERMONKEY_ENGINE:
       if 'Successfully compiled asm.js code' in err:
-        print "[was asm.js'ified]"
+        print >> sys.stderr, "[was asm.js'ified]"
       else:
-        print "[failed to asm.js'ify]"
+        print >> sys.stderr, "[failed to asm.js'ify]"
     if output_nicerizer:
       ret = output_nicerizer(out, err)
     else:
