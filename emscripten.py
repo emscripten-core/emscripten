@@ -353,10 +353,12 @@ var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
     # If no named globals, only need externals
     global_vars = map(lambda g: g['name'], filter(lambda g: settings['NAMED_GLOBALS'] or g.get('external') or g.get('unIndexable'), forwarded_json['Variables']['globals'].values()))
     global_funcs = ['_' + x for x in forwarded_json['Functions']['libraryFunctions'].keys()]
-    asm_global_funcs = ''.join(['  var ' + g + '=env.' + g + ';\n' for g in basic_funcs + global_funcs])
+    def math_fix(g):
+      return g if not g.startswith('Math_') else g.split('_')[1];
+    asm_global_funcs = ''.join(['  var ' + g + '=env.' + math_fix(g) + ';\n' for g in basic_funcs + global_funcs])
     asm_global_vars = ''.join(['  var ' + g + '=env.' + g + '|0;\n' for g in basic_vars + global_vars])
     # sent data
-    sending = '{ ' + ', '.join([s + ': ' + s for s in fundamentals + basic_funcs + global_funcs + basic_vars + global_vars]) + ' }'
+    sending = '{ ' + ', '.join([math_fix(s) + ': ' + s for s in fundamentals + basic_funcs + global_funcs + basic_vars + global_vars]) + ' }'
     # received
     if not simple:
       receiving = ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm.' + s for s in exported_implemented_functions + function_tables])
