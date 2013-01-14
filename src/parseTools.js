@@ -1666,6 +1666,10 @@ function makeStructuralAccess(ident, i) {
   }
 }
 
+function makeThrow(what) {
+  return 'throw ' + what + (DISABLE_EXCEPTION_CATCHING ? ' + " - Exception catching is disabled, this exception cannot be caught. Compile with -s DISABLE_EXCEPTION_CATCHING=0 to catch."' : '') + ';';
+}
+
 // From parseLLVMSegment
 function finalizeLLVMParameter(param, noIndexizeFunctions) {
   var ret;

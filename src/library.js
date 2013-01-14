@@ -4894,12 +4894,12 @@ LibraryManager.library = {
     } else {
       __ZSt18uncaught_exceptionv.uncaught_exception++;
     }
-    throw ptr;
+    {{{ makeThrow('ptr') }}};
   },
   __cxa_rethrow__deps: ['llvm_eh_exception', '__cxa_end_catch'],
   __cxa_rethrow: function() {
     ___cxa_end_catch.rethrown = true;
-    throw {{{ makeGetValue('_llvm_eh_exception.buf', '0', 'void*') }}};
+    {{{ makeThrow(makeGetValue('_llvm_eh_exception.buf', '0', 'void*')) }}};
   },
   llvm_eh_exception__postset: '_llvm_eh_exception.buf = allocate(12, "void*", ALLOC_STATIC);',
   llvm_eh_exception: function() {
@@ -4962,11 +4962,10 @@ LibraryManager.library = {
   },
 
   _Unwind_Resume_or_Rethrow: function(ptr) {
-    throw ptr;
+    {{{ makeThrow('ptr') }}};
   },
-  _Unwind_RaiseException__deps: ['llvm_eh_exception', '__cxa_find_matching_catch'],
   _Unwind_RaiseException: function(ptr) {
-    throw ptr;
+    {{{ makeThrow('ptr') }}};
   },
   _Unwind_DeleteException: function(ptr) {},
 
