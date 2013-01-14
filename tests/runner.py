@@ -280,7 +280,7 @@ process(sys.argv[1])
       if 'Successfully compiled asm.js code' in err:
         print >> sys.stderr, "[was asm.js'ified]"
       else:
-        print >> sys.stderr, "[failed to asm.js'ify]"
+        print >> sys.stderr, "[did NOT asm.js'ify]"
     if output_nicerizer:
       ret = output_nicerizer(out, err)
     else:
