@@ -1200,15 +1200,20 @@ try:
   js_optimizer_queue = []
   def flush_js_optimizer_queue():
     global final, js_optimizer_queue
-    if len(js_optimizer_queue) > 0:
+    if len(js_optimizer_queue) > 0 and not(len(js_optimizer_queue) == 1 and js_optimizer_queue[0] == 'last'):
       if DEBUG < 2:
+        if shared.Settings.ASM_JS:
+          js_optimizer_queue = ['asm'] + js_optimizer_queue
         if DEBUG: print >> sys.stderr, 'emcc: applying js optimization passes:', js_optimizer_queue
         final = shared.Building.js_optimizer(final, js_optimizer_queue, jcache)
         if DEBUG: save_intermediate('js_opts')
       else:
         for name in js_optimizer_queue:
-          print >> sys.stderr, 'emcc: applying js optimization pass:', name
-          final = shared.Building.js_optimizer(final, [name], jcache)
+          passes = [name]
+          if shared.Settings.ASM_JS:
+            passes = ['asm'] + passes
+          print >> sys.stderr, 'emcc: applying js optimization pass:', passes
+          final = shared.Building.js_optimizer(final, passes, jcache)
           save_intermediate(name)
       js_optimizer_queue = []
 
@@ -1221,20 +1226,12 @@ try:
       if DEBUG: save_intermediate('pretty')
 
     def get_eliminate():
-      if shared.Settings.ASM_JS:
-        return 'eliminateAsm'
-      elif shared.Settings.ALLOW_MEMORY_GROWTH:
+      if shared.Settings.ALLOW_MEMORY_GROWTH:
         return 'eliminateMemSafe'
       else:
         return 'eliminate'
 
-    def get_simplify_pre():
-      if shared.Settings.ASM_JS:
-        return 'simplifyExpressionsPreAsm'
-      else:
-        return 'simplifyExpressionsPre'
-
-    js_optimizer_queue += [get_eliminate(), get_simplify_pre()]
+    js_optimizer_queue += [get_eliminate(), 'simplifyExpressionsPre']
 
     if shared.Settings.RELOOP:
       js_optimizer_queue += ['optimizeShiftsAggressive', get_eliminate()] # aggressive shifts optimization requires loops, it breaks on switches
@@ -1246,7 +1243,7 @@ try:
     final = shared.Building.closure_compiler(final)
     if DEBUG: save_intermediate('closure')
   elif shared.Settings.ASM_JS and shared.Settings.RELOOP:
-    js_optimizer_queue += ['registerizeAsm'] # we can't use closure in asm, but this does much of the same
+    js_optimizer_queue += ['registerize'] # we can't use closure in asm, but this does much of the same
 
   if opt_level >= 1:
     if DEBUG: print >> sys.stderr, 'emcc: running post-closure post-opts'
@@ -1254,6 +1251,8 @@ try:
 
   if minify_whitespace:
     js_optimizer_queue += ['compress']
+
+  js_optimizer_queue += ['last']
 
   flush_js_optimizer_queue()
 

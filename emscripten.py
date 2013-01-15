@@ -311,8 +311,9 @@ def emscript(infile, settings, outfile, libraries=[]):
       maths += ['Math.imul']
     asm_setup = '\n'.join(['var %s = %s;' % (f.replace('.', '_'), f) for f in maths])
     fundamentals = ['buffer', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
-    basic_funcs = ['abort', 'assert'] + [m.replace('.', '_') for m in maths]
+    basic_funcs = ['abort', 'assert', 'asmPrintInt', 'asmPrintFloat'] + [m.replace('.', '_') for m in maths]
     basic_vars = ['STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT']
+    basic_float_vars = ['NaN', 'Infinity']
     if forwarded_json['Types']['preciseI64MathUsed']:
       basic_funcs += ['i64Math_' + op for op in ['add', 'subtract', 'multiply', 'divide', 'modulo']]
       asm_setup += '''
@@ -353,10 +354,13 @@ var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
     # If no named globals, only need externals
     global_vars = map(lambda g: g['name'], filter(lambda g: settings['NAMED_GLOBALS'] or g.get('external') or g.get('unIndexable'), forwarded_json['Variables']['globals'].values()))
     global_funcs = ['_' + x for x in forwarded_json['Functions']['libraryFunctions'].keys()]
-    asm_global_funcs = ''.join(['  var ' + g + '=env.' + g + ';\n' for g in basic_funcs + global_funcs])
-    asm_global_vars = ''.join(['  var ' + g + '=env.' + g + '|0;\n' for g in basic_vars + global_vars])
+    def math_fix(g):
+      return g if not g.startswith('Math_') else g.split('_')[1];
+    asm_global_funcs = ''.join(['  var ' + g + '=env.' + math_fix(g) + ';\n' for g in basic_funcs + global_funcs])
+    asm_global_vars = ''.join(['  var ' + g + '=env.' + g + '|0;\n' for g in basic_vars + global_vars]) + \
+                      ''.join(['  var ' + g + '=+env.' + g + ';\n' for g in basic_float_vars])
     # sent data
-    sending = '{ ' + ', '.join([s + ': ' + s for s in fundamentals + basic_funcs + global_funcs + basic_vars + global_vars]) + ' }'
+    sending = '{ ' + ', '.join([math_fix(s) + ': ' + s for s in fundamentals + basic_funcs + global_funcs + basic_vars + basic_float_vars + global_vars]) + ' }'
     # received
     if not simple:
       receiving = ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm.' + s for s in exported_implemented_functions + function_tables])
@@ -365,6 +369,12 @@ var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
     # finalize
     funcs_js = '''
 %s
+function asmPrintInt(x) {
+  Module.print('int ' + x);// + ' ' + new Error().stack);
+}
+function asmPrintFloat(x) {
+  Module.print('float ' + x);// + ' ' + new Error().stack);
+}
 var asmPre = (function(env, buffer) {
   'use asm';
   var HEAP8 = new env.Int8Array(buffer);
@@ -378,7 +388,7 @@ var asmPre = (function(env, buffer) {
 ''' % (asm_setup,) + '\n' + asm_global_vars + '''
   var __THREW__ = 0;
   var undef = 0;
-  var tempInt = 0, tempValue = 0;
+  var tempInt = 0, tempBigInt = 0, tempValue = 0;
 ''' + ''.join(['''
   var tempRet%d = 0;''' % i for i in range(10)]) + '\n' + asm_global_funcs + '''
   function stackAlloc(size) {

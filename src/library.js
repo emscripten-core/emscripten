@@ -3905,7 +3905,7 @@ LibraryManager.library = {
       ___setErrNo(ERRNO_CODES.ERANGE); // not quite correct
     }
 
-    {{{ makeStructuralReturn([makeGetTempDouble(0), makeGetTempDouble(1)]) }}};
+    {{{ makeStructuralReturn([makeGetTempDouble(0, 'i32'), makeGetTempDouble(1, 'i32')]) }}};
   },
 #endif
   strtoll__deps: ['_parseInt64'],
@@ -4894,12 +4894,12 @@ LibraryManager.library = {
     } else {
       __ZSt18uncaught_exceptionv.uncaught_exception++;
     }
-    throw ptr;
+    {{{ makeThrow('ptr') }}};
   },
   __cxa_rethrow__deps: ['llvm_eh_exception', '__cxa_end_catch'],
   __cxa_rethrow: function() {
     ___cxa_end_catch.rethrown = true;
-    throw {{{ makeGetValue('_llvm_eh_exception.buf', '0', 'void*') }}};
+    {{{ makeThrow(makeGetValue('_llvm_eh_exception.buf', '0', 'void*')) }}};
   },
   llvm_eh_exception__postset: '_llvm_eh_exception.buf = allocate(12, "void*", ALLOC_STATIC);',
   llvm_eh_exception: function() {
@@ -4962,11 +4962,10 @@ LibraryManager.library = {
   },
 
   _Unwind_Resume_or_Rethrow: function(ptr) {
-    throw ptr;
+    {{{ makeThrow('ptr') }}};
   },
-  _Unwind_RaiseException__deps: ['llvm_eh_exception', '__cxa_find_matching_catch'],
   _Unwind_RaiseException: function(ptr) {
-    throw ptr;
+    {{{ makeThrow('ptr') }}};
   },
   _Unwind_DeleteException: function(ptr) {},
 
@@ -5130,14 +5129,14 @@ LibraryManager.library = {
   llvm_uadd_with_overflow_i64__deps: [function() { Types.preciseI64MathUsed = 1 }],
   llvm_uadd_with_overflow_i64: function(xl, xh, yl, yh) {
     i64Math.add(xl, xh, yl, yh);
-    {{{ makeStructuralReturn(['HEAP32[tempDoublePtr>>2]', 'HEAP32[tempDoublePtr+4>>2]', '0']) }}};
+    {{{ makeStructuralReturn([makeGetTempDouble(0, 'i32'), makeGetTempDouble(1, 'i32'), '0']) }}};
     // XXX Need to hack support for second param in long.js
   },
 
   llvm_umul_with_overflow_i64__deps: [function() { Types.preciseI64MathUsed = 1 }],
   llvm_umul_with_overflow_i64: function(xl, xh, yl, yh) {
     i64Math.multiply(xl, xh, yl, yh);
-    {{{ makeStructuralReturn(['HEAP32[tempDoublePtr>>2]', 'HEAP32[tempDoublePtr+4>>2]', '0']) }}};
+    {{{ makeStructuralReturn([makeGetTempDouble(0, 'i32'), makeGetTempDouble(1, 'i32'), '0']) }}};
     // XXX Need to hack support for second param in long.js
   },
 

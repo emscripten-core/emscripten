@@ -606,10 +606,12 @@ function JSify(data, functionsOnly, givenFunctions) {
           }
           for (i = 0; i < chunks.length; i++) {
             func.JS += '  var ' + chunks[i].map(function(v) {
-              if (v.type != 'i64') {
+              if (!isIllegalType(v.type) || v.ident.indexOf('$', 1) > 0) { // not illegal, or a broken up illegal
                 return v.ident + ' = ' + asmInitializer(v.type); //, func.variables[v.ident].impl);
               } else {
-                return v.ident + '$0 = 0, ' + v.ident + '$1 = 1';
+                return range(Math.ceil(getBits(v.type)/32)).map(function(i) {
+                  return v.ident + '$' + i + '= 0';
+                }).join(',');
               }
             }).join(', ') + ';\n';
           }
@@ -1060,7 +1062,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
   });
   makeFuncLineActor('switch', function(item) {
-    // TODO: Find a case where switch is important, and benchmark that. var SWITCH_IN_SWITCH = 1; 
+    var useIfs = RELOOP || item.switchLabels.length < 1024; // with a huge number of cases, if-else which looks nested to js parsers can cause problems
     var phiSets = calcPhiSets(item);
     // Consolidate checks that go to the same label. This is important because it makes the relooper simpler and faster.
     var targetLabels = {}; // for each target label, the list of values going to it
@@ -1078,16 +1080,27 @@ function JSify(data, functionsOnly, givenFunctions) {
     if (RELOOP) {
       item.groupedLabels = [];
     }
+    if (!useIfs) {
+      ret += 'switch(' + signedIdent + ') {\n';
+    }
     for (var targetLabel in targetLabels) {
-      if (!first) {
+      if (!first && useIfs) {
         ret += 'else ';
       } else {
         first = false;
       }
-      var value = targetLabels[targetLabel].map(function(value) {
-        return makeComparison(signedIdent, makeSignOp(value, item.type, 're'), item.type)
-      }).join(' || ');
-      ret += 'if (' + value + ') {\n';
+      var value;
+      if (useIfs) {
+        value = targetLabels[targetLabel].map(function(value) {
+          return makeComparison(signedIdent, makeSignOp(value, item.type, 're'), item.type)
+        }).join(' | ');
+        ret += 'if (' + value + ') {\n';
+      } else {
+        value = targetLabels[targetLabel].map(function(value) {
+          return 'case ' + makeSignOp(value, item.type, 're') + ':';
+        }).join(' ');
+        ret += value + '{\n';
+      }
       var phiSet = getPhiSetsForLabel(phiSets, targetLabel);
       ret += '  ' + phiSet + makeBranch(targetLabel, item.currLabelId || null) + '\n';
       ret += '}\n';
@@ -1099,10 +1112,18 @@ function JSify(data, functionsOnly, givenFunctions) {
         });
       }
     }
-    if (item.switchLabels.length > 0) ret += 'else {\n';
     var phiSet = item.defaultLabelJS = getPhiSetsForLabel(phiSets, item.defaultLabel);
-    ret += phiSet + makeBranch(item.defaultLabel, item.currLabelId) + '\n';
-    if (item.switchLabels.length > 0) ret += '}\n';
+    if (useIfs) {
+      if (item.switchLabels.length > 0) ret += 'else {\n';
+      ret += phiSet + makeBranch(item.defaultLabel, item.currLabelId) + '\n';
+      if (item.switchLabels.length > 0) ret += '}\n';
+    } else {
+      ret += 'default: {\n';
+      ret += phiSet + makeBranch(item.defaultLabel, item.currLabelId) + '\n';
+      ret += '}\n';
+
+      ret += '} break; \n'; // finish switch and break, to move control flow properly (breaks from makeBranch just broke out of the switch)
+    }
     if (item.value) {
       ret += ' ' + toNiceIdent(item.value);
     }
@@ -1131,7 +1152,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     var ptr = makeStructuralAccess(item.ident, 0);
     return (EXCEPTION_DEBUG ? 'Module.print("Resuming exception");' : '') + 
       'if (' + makeGetValue('_llvm_eh_exception.buf', 0, 'void*') + ' == 0) { ' + makeSetValue('_llvm_eh_exception.buf', 0, ptr, 'void*') + ' } ' + 
-      'throw ' + ptr + ';';
+      makeThrow('ptr') + ';';
   });
   makeFuncLineActor('invoke', function(item) {
     // Wrapping in a function lets us easily return values if we are
@@ -1172,7 +1193,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       case 'xchg': return '(tempValue=' + makeGetValue(param1, 0, type) + ',' + makeSetValue(param1, 0, param2, type, null, null, null, null, ',') + ',tempValue)';
       case 'cmpxchg': {
         var param3 = finalizeLLVMParameter(item.params[2]);
-        return '(tempValue=' + makeGetValue(param1, 0, type) + ',(' + makeGetValue(param1, 0, type) + '==' + param2 + ' && (' + makeSetValue(param1, 0, param3, type, null, null, null, null, ',') + ')),tempValue)';
+        return '(tempValue=' + makeGetValue(param1, 0, type) + ',(' + makeGetValue(param1, 0, type) + '==' + param2 + ' ? ' + makeSetValue(param1, 0, param3, type, null, null, null, null, ',') + ' : 0),tempValue)';
       }
       default: throw 'unhandled atomic op: ' + item.op;
     }
@@ -1292,8 +1313,12 @@ function JSify(data, functionsOnly, givenFunctions) {
     });
 
     args = args.map(function(arg, i) { return indexizeFunctions(arg, argsTypes[i]) });
-    if (ASM_JS && shortident in Functions.libraryFunctions) {
-      args = args.map(function(arg, i) { return asmCoercion(arg, argsTypes[i]) });
+    if (ASM_JS) {
+      if (shortident in Functions.libraryFunctions) {
+        args = args.map(function(arg, i) { return asmCoercion(arg, argsTypes[i]) });
+      } else {
+        args = args.map(function(arg, i) { return asmEnsureFloat(arg, argsTypes[i]) });
+      }
     }
 
     varargs = varargs.map(function(vararg, i) {

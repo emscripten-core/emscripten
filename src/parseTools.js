@@ -1014,12 +1014,23 @@ function asmInitializer(type, impl) {
   }
 }
 
-function asmCoercion(value, type) {
+function asmCoercion(value, type, signedness) {
   if (!ASM_JS) return value;
   if (type == 'void') {
     return value;
   } else if (type in Runtime.FLOAT_TYPES) {
-    return '(+(' + value + '))';
+    if (isNumber(value)) {
+      return asmEnsureFloat(value, type);
+    } else {
+      if (signedness) {
+        if (signedness == 'u') {
+          value = '(' + value + ')>>>0';
+        } else {
+          value = '(' + value + ')|0';
+        }
+      }
+      return '(+(' + value + '))';
+    }
   } else {
     return '((' + value + ')|0)';
   }
@@ -1031,11 +1042,28 @@ function asmMultiplyI32(a, b) {
   if (USE_MATH_IMUL) {
     return 'Math.imul(' + a + ',' + b + ')';
   }
-  return '(~~(+' + a + ' * +' + b + '))';
+  return '(~~(+((' + a + ')|0) * +((' + b + ')|0)))';
 }
 
-function makeGetTempDouble(i) { // TODO: Support other than i32
-  return makeGetValue('tempDoublePtr', Runtime.getNativeTypeSize('i32')*i, 'i32');
+function makeGetTempDouble(i, type, forSet) { // get an aliased part of the tempDouble temporary storage
+  // Cannot use makeGetValue because it uses us
+  // this is a unique case where we *can* use HEAPF64
+  var slab = type == 'double' ? 'HEAPF64' : makeGetSlabs(null, type)[0];
+  var ptr = getFastValue('tempDoublePtr', '+', Runtime.getNativeTypeSize(type)*i);
+  var offset;
+  if (type == 'double') {
+    if (ASM_JS) ptr = '(' + ptr + ')&' + memoryMask;
+    offset = '(' + ptr + ')>>3';
+  } else {
+    offset = getHeapOffset(ptr, type);
+  }
+  var ret = slab + '[' + offset + ']';
+  if (!forSet) ret = asmCoercion(ret, type);
+  return ret;
+}
+
+function makeSetTempDouble(i, type, value) {
+  return makeGetTempDouble(i, type, true) + '=' + asmEnsureFloat(value, type);
 }
 
 // See makeSetValue
@@ -1051,9 +1079,9 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
   }
 
   if (DOUBLE_MODE == 1 && USE_TYPED_ARRAYS == 2 && type == 'double') {
-    return '(HEAP32[tempDoublePtr>>2]=' + makeGetValue(ptr, pos, 'i32', noNeedFirst, unsigned, ignore, align) + ',' +
-            'HEAP32[tempDoublePtr+4>>2]=' + makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'i32', noNeedFirst, unsigned, ignore, align) + ',' +
-            'HEAPF64[tempDoublePtr>>3])';
+    return '(' + makeSetTempDouble(0, 'i32', makeGetValue(ptr, pos, 'i32', noNeedFirst, unsigned, ignore, align)) + ',' +
+                 makeSetTempDouble(1, 'i32', makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'i32', noNeedFirst, unsigned, ignore, align)) + ',' +
+            makeGetTempDouble(0, 'double') + ')';
   }
 
   if (USE_TYPED_ARRAYS == 2 && align) {
@@ -1076,9 +1104,9 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
         }
       } else {
         if (type == 'float') {
-          ret += 'copyTempFloat(' + getFastValue(ptr, '+', pos) + '),HEAPF32[tempDoublePtr>>2]';
+          ret += 'copyTempFloat(' + getFastValue(ptr, '+', pos) + '),' + makeGetTempDouble(0, 'float');
         } else {
-          ret += 'copyTempDouble(' + getFastValue(ptr, '+', pos) + '),HEAP64[tempDoublePtr>>3]';
+          ret += 'copyTempDouble(' + getFastValue(ptr, '+', pos) + '),' + makeGetTempDouble(0, 'double');
         }
       }
       ret += ')';
@@ -1147,9 +1175,9 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
   }
 
   if (DOUBLE_MODE == 1 && USE_TYPED_ARRAYS == 2 && type == 'double') {
-    return '(HEAPF64[tempDoublePtr>>3]=' + value + ',' +
-            makeSetValue(ptr, pos, 'HEAP32[tempDoublePtr>>2]', 'i32', noNeedFirst, ignore, align, noSafe, ',') + ',' +
-            makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'HEAP32[tempDoublePtr+4>>2]', 'i32', noNeedFirst, ignore, align, noSafe, ',') + ')';
+    return '(' + makeSetTempDouble(0, 'double', value) + ',' +
+            makeSetValue(ptr, pos, makeGetTempDouble(0, 'i32'), 'i32', noNeedFirst, ignore, align, noSafe, ',') + ',' +
+            makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), makeGetTempDouble(1, 'i32'), 'i32', noNeedFirst, ignore, align, noSafe, ',') + ')';
   } else if (USE_TYPED_ARRAYS == 2 && type == 'i64') {
     return '(tempI64 = [' + splitI64(value) + '],' +
             makeSetValue(ptr, pos, 'tempI64[0]', 'i32', noNeedFirst, ignore, align, noSafe, ',') + ',' +
@@ -1173,7 +1201,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
           ret += 'tempBigInt=' + value + sep;
           for (var i = 0; i < bytes; i++) {
             ret += makeSetValue(ptr, getFastValue(pos, '+', i), 'tempBigInt&0xff', 'i8', noNeedFirst, ignore, 1);
-            if (i < bytes-1) ret += sep + 'tempBigInt>>=8' + sep;
+            if (i < bytes-1) ret += sep + 'tempBigInt = tempBigInt>>8' + sep;
           }
         }
       } else {
@@ -1648,6 +1676,10 @@ function makeStructuralAccess(ident, i) {
   }
 }
 
+function makeThrow(what) {
+  return 'throw ' + what + (DISABLE_EXCEPTION_CATCHING ? ' + " - Exception catching is disabled, this exception cannot be caught. Compile with -s DISABLE_EXCEPTION_CATCHING=0 to catch."' : '') + ';';
+}
+
 // From parseLLVMSegment
 function finalizeLLVMParameter(param, noIndexizeFunctions) {
   var ret;
@@ -1858,8 +1890,8 @@ function processMathop(item) {
     }
     function i64PreciseOp(type, lastArg) {
       Types.preciseI64MathUsed = true;
-      return finish(['(i64Math' + (ASM_JS ? '_' : '.') + type + '(' + low1 + ',' + high1 + ',' + low2 + ',' + high2 +
-                     (lastArg ? ',' + lastArg : '') + '),' + makeGetValue('tempDoublePtr', 0, 'i32') + ')', makeGetValue('tempDoublePtr', Runtime.getNativeTypeSize('i32'), 'i32')]);
+      return finish(['(i64Math' + (ASM_JS ? '_' : '.') + type + '(' + asmCoercion(low1, 'i32') + ',' + asmCoercion(high1, 'i32') + ',' + asmCoercion(low2, 'i32') + ',' + asmCoercion(high2, 'i32') +
+                     (lastArg ? ',' + asmCoercion(+lastArg, 'i32') : '') + '),' + makeGetValue('tempDoublePtr', 0, 'i32') + ')', makeGetValue('tempDoublePtr', Runtime.getNativeTypeSize('i32'), 'i32')]);
     }
     switch (op) {
       // basic integer ops
@@ -1876,8 +1908,8 @@ function processMathop(item) {
       case 'ashr':
       case 'lshr': {
         if (!isNumber(idents[1])) {
-          return '(Runtime' + (ASM_JS ? '_' : '.') + 'bitshift64(' + idents[0] + '[0], ' + idents[0] + '[1],"' + op + '",' + stripCorrections(idents[1]) + '[0]|0),' +
-            '[' + makeGetTempDouble(0) + ',' + makeGetTempDouble(1) + '])';
+          return '(Runtime' + (ASM_JS ? '_' : '.') + 'bitshift64(' + idents[0] + '[0], ' + idents[0] + '[1],' + Runtime['BITSHIFT64_' + op.toUpperCase()] + ',' + stripCorrections(idents[1]) + '[0]|0),' +
+            '[' + makeGetTempDouble(0, 'i32') + ',' + makeGetTempDouble(1, 'i32') + '])';
         }
         bits = parseInt(idents[1]);
         var ander = Math.pow(2, bits)-1;
@@ -1917,24 +1949,24 @@ function processMathop(item) {
       case 'fptoui': case 'fptosi': return finish(splitI64(idents[0]));
       case 'icmp': {
         switch (variant) {
-          case 'uge': return '(' + high1 + '>>>0) >= (' + high2 + '>>>0) && ((' + high1 + '>>>0) >  ('  + high2 + '>>>0) || ' +
-                                                                        '(' + low1 + '>>>0) >= ('  + low2 + '>>>0))';
-          case 'sge': return '(' + high1 + '|0) >= (' + high2 + '|0) && ((' + high1 + '|0) >  ('  + high2 + '|0) || ' +
-                                                                        '(' + low1 + '>>>0) >= ('  + low2 + '>>>0))';
-          case 'ule': return '(' + high1 + '>>>0) <= (' + high2 + '>>>0) && ((' + high1 + '>>>0) <  (' + high2 + '>>>0) || ' +
-                                                                        '(' + low1 + '>>>0) <= (' + low2 + '>>>0))';
-          case 'sle': return '(' + high1 + '|0) <= (' + high2 + '|0) && ((' + high1 + '|0) <  (' + high2 + '|0) || ' +
-                                                                        '(' + low1 + '>>>0) <= (' + low2 + '>>>0))';
-          case 'ugt': return '(' + high1 + '>>>0) > (' + high2 + '>>>0) || ((' + high1 + '>>>0) == (' + high2 + '>>>0) && ' +
-                                                                       '(' + low1 + '>>>0) >  (' + low2 + '>>>0))';
-          case 'sgt': return '(' + high1 + '|0) > (' + high2 + '|0) || ((' + high1 + '|0) == (' + high2 + '|0) && ' +
-                                                                       '(' + low1 + '>>>0) >  (' + low2 + '>>>0))';
-          case 'ult': return '(' + high1 + '>>>0) < (' + high2 + '>>>0) || ((' + high1 + '>>>0) == (' + high2 + '>>>0) && ' +
-                                                                       '(' + low1 + '>>>0) <  (' + low2 + '>>>0))';
-          case 'slt': return '(' + high1 + '|0) < (' + high2 + '|0) || ((' + high1 + '|0) == (' + high2 + '|0) && ' +
-                                                                       '(' + low1 + '>>>0) <  (' + low2 + '>>>0))';
-          case 'ne':  return low1 + ' != ' + low2 + ' || ' + high1 + ' != ' + high2 + '';
-          case 'eq':  return low1 + ' == ' + low2 + ' && ' + high1 + ' == ' + high2 + '';
+          case 'uge': return '((' + high1 + '>>>0) >= (' + high2 + '>>>0)) & ((((' + high1 + '>>>0) >  ('  + high2 + '>>>0)) | ' +
+                                                                        '(' + low1 + '>>>0) >= ('  + low2 + '>>>0)))';
+          case 'sge': return '((' + high1 + '|0) >= (' + high2 + '|0)) & ((((' + high1 + '|0) >  ('  + high2 + '|0)) | ' +
+                                                                        '(' + low1 + '>>>0) >= ('  + low2 + '>>>0)))';
+          case 'ule': return '((' + high1 + '>>>0) <= (' + high2 + '>>>0)) & ((((' + high1 + '>>>0) <  (' + high2 + '>>>0)) | ' +
+                                                                        '(' + low1 + '>>>0) <= (' + low2 + '>>>0)))';
+          case 'sle': return '((' + high1 + '|0) <= (' + high2 + '|0)) & ((((' + high1 + '|0) <  (' + high2 + '|0)) | ' +
+                                                                        '(' + low1 + '>>>0) <= (' + low2 + '>>>0)))';
+          case 'ugt': return '((' + high1 + '>>>0) > (' + high2 + '>>>0)) | ((((' + high1 + '>>>0) == (' + high2 + '>>>0) & ' +
+                                                                       '(' + low1 + '>>>0) >  (' + low2 + '>>>0))))';
+          case 'sgt': return '((' + high1 + '|0) > (' + high2 + '|0)) | ((((' + high1 + '|0) == (' + high2 + '|0) & ' +
+                                                                       '(' + low1 + '>>>0) >  (' + low2 + '>>>0))))';
+          case 'ult': return '((' + high1 + '>>>0) < (' + high2 + '>>>0)) | ((((' + high1 + '>>>0) == (' + high2 + '>>>0) & ' +
+                                                                       '(' + low1 + '>>>0) <  (' + low2 + '>>>0))))';
+          case 'slt': return '((' + high1 + '|0) < (' + high2 + '|0)) | ((((' + high1 + '|0) == (' + high2 + '|0) & ' +
+                                                                       '(' + low1 + '>>>0) <  (' + low2 + '>>>0))))';
+          case 'ne':  return '((' + low1 + '|0) != (' + low2 + '|0)) | ((' + high1 + '|0) != (' + high2 + '|0))';
+          case 'eq':  return '((' + low1 + '|0) == (' + low2 + '|0)) & ((' + high1 + '|0) == (' + high2 + '|0))';
           default: throw 'Unknown icmp variant: ' + variant;
         }
       }
@@ -1994,15 +2026,15 @@ function processMathop(item) {
         var outType = item.type;
         if (inType in Runtime.INT_TYPES && outType in Runtime.FLOAT_TYPES) {
           if (legalizedI64s) {
-            return '(HEAP32[tempDoublePtr>>2]=' + idents[0] + '$0, HEAP32[tempDoublePtr+4>>2]=' + idents[0] + '$1, HEAPF64[tempDoublePtr>>3])';
+            return '(' + makeSetTempDouble(0, 'i32', idents[0] + '$0') + ', ' + makeSetTempDouble(1, 'i32', idents[0] + '$1') + ', ' + makeGetTempDouble(0, 'double') + ')';
           } else {
-            return makeInlineCalculation('HEAP32[tempDoublePtr>>2]=VALUE[0],HEAP32[tempDoublePtr+4>>2]=VALUE[1],HEAPF64[tempDoublePtr>>>3]', idents[0], 'tempI64');
+            return makeInlineCalculation(makeSetTempDouble(0, 'i32', 'VALUE[0]') + ',' + makeSetTempDouble(1, 'i32', 'VALUE[1]') + ',' + makeGetTempDouble(0, 'double'), idents[0], 'tempI64');
           }
         } else if (inType in Runtime.FLOAT_TYPES && outType in Runtime.INT_TYPES) {
           if (legalizedI64s) {
-            return 'HEAPF64[tempDoublePtr>>3]=' + idents[0] + '; ' + finish(['HEAP32[tempDoublePtr>>2]','HEAP32[tempDoublePtr+4>>2]']);
+            return makeSetTempDouble(0, 'double', idents[0]) + '; ' + finish([makeGetTempDouble(0, 'i32'), makeGetTempDouble(1, 'i32')]);
           } else {
-            return '(HEAPF64[tempDoublePtr>>3]=' + idents[0] + ',[HEAP32[tempDoublePtr>>2],HEAP32[tempDoublePtr+4>>2]])';
+            return '(' + makeSetTempDouble(0, 'double', idents[0]) + ',[' + makeGetTempDouble(0, 'i32') + ',' + makeGetTempDouble(1, 'i32') + '])';
           }
         } else {
           throw 'Invalid USE_TYPED_ARRAYS == 2 bitcast: ' + dump(item) + ' : ' + item.params[0].type;
@@ -2020,7 +2052,7 @@ function processMathop(item) {
     case 'mul': {
       if (bits == 32 && PRECISE_I32_MUL) {
         Types.preciseI64MathUsed = true;
-        return '(i64Math' + (ASM_JS ? '_' : '.') + 'multiply(' + idents[0] + ',0,' + idents[1] + ',0),' + makeGetValue('tempDoublePtr', 0, 'i32') + ')';
+        return '(i64Math' + (ASM_JS ? '_' : '.') + 'multiply(' + asmCoercion(idents[0], 'i32') + ',0,' + asmCoercion(idents[1], 'i32') + ',0),' + makeGetValue('tempDoublePtr', 0, 'i32') + ')';
       } else {
         return handleOverflow(getFastValue(idents[0], '*', idents[1], item.type), bits);
       }
@@ -2070,7 +2102,7 @@ function processMathop(item) {
     case 'fdiv': return getFastValue(idents[0], '/', idents[1], item.type);
     case 'fmul': return getFastValue(idents[0], '*', idents[1], item.type);
     case 'frem': return getFastValue(idents[0], '%', idents[1], item.type);
-    case 'uitofp': case 'sitofp': return asmCoercion(idents[0], 'double');
+    case 'uitofp': case 'sitofp': return asmCoercion(idents[0], 'double', op[0]);
     case 'fptoui': case 'fptosi': return makeRounding(idents[0], bitsLeft, op === 'fptosi', true);
 
     // TODO: We sometimes generate false instead of 0, etc., in the *cmps. It seemed slightly faster before, but worth rechecking
@@ -2141,9 +2173,9 @@ function processMathop(item) {
           (inType in Runtime.FLOAT_TYPES && outType in Runtime.INT_TYPES)) {
         assert(USE_TYPED_ARRAYS == 2, 'Can only bitcast ints <-> floats with typed arrays mode 2');
         if (inType in Runtime.INT_TYPES) {
-          return '(HEAP32[tempDoublePtr>>2] = ' + idents[0] + ',HEAPF32[tempDoublePtr>>2])';
+          return '(' + makeSetTempDouble(0, 'i32', idents[0]) + ',' + makeGetTempDouble(0, 'float') + ')';
         } else {
-          return '(HEAPF32[tempDoublePtr>>2] = ' + idents[0] + ',HEAP32[tempDoublePtr>>2])';
+          return '(' + makeSetTempDouble(0, 'float', idents[0]) + ',' + makeGetTempDouble(0, 'i32') + ')';
         }
       }
       return idents[0];

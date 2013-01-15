@@ -691,7 +691,7 @@ mergeInto(LibraryManager.library, {
     info.worker.postMessage({
       'funcName': funcName,
       'callbackId': callbackId,
-      'data': data ? {{{ makeHEAPView('U8', 'data', 'data + size') }}} : 0
+      'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0 // XXX copy to a new typed array as a workaround for chrome bug 169705
     });
   },
 
@@ -701,7 +701,7 @@ mergeInto(LibraryManager.library, {
     workerResponded = true;
     postMessage({
       'callbackId': workerCallbackId,
-      'data': data ? {{{ makeHEAPView('U8', 'data', 'data + size') }}} : 0
+      'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0 // XXX copy to a new typed array as a workaround for chrome bug 169705
     });
   },
 

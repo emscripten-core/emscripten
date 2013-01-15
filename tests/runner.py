@@ -276,6 +276,11 @@ process(sys.argv[1])
       os.chdir(cwd)
     out = open(stdout, 'r').read()
     err = open(stderr, 'r').read()
+    if engine == SPIDERMONKEY_ENGINE and Settings.ASM_JS:
+      if 'Successfully compiled asm.js code' in err and 'asm.js link error' not in err:
+        print >> sys.stderr, "[was asm.js'ified]"
+      else:
+        print >> sys.stderr, "[did NOT asm.js'ify]"
     if output_nicerizer:
       ret = output_nicerizer(out, err)
     else:
@@ -2316,8 +2321,8 @@ Exception execution path of first function! 1
         self.do_run(src, '*throw...caught!infunc...done!*')
 
         Settings.DISABLE_EXCEPTION_CATCHING = 1
-        self.do_run(src, 'Compiled code throwing an exception')
-        
+        self.do_run(src, 'Exception catching is disabled, this exception cannot be caught. Compile with -s DISABLE_EXCEPTION_CATCHING=0 to catch.')
+
         src = '''
         #include <iostream>
         
@@ -3346,6 +3351,15 @@ def process(filename):
           }
           '''
         self.do_run(src, '*96,97,98,-14,-14,101*')
+
+    def test_bigswitch(self):
+      if Settings.RELOOP: return self.skip('TODO: switch in relooper, issue #781')
+
+      src = open(path_from_root('tests', 'bigswitch.cpp')).read()
+      self.do_run(src, '''34962: GL_ARRAY_BUFFER (0x8892)
+26214: what?
+35040: GL_STREAM_DRAW (0x88E0)
+''', args=['34962', '26214', '35040'])
 
     def test_indirectbr(self):
         src = '''
@@ -8980,11 +8994,11 @@ f.close()
         (path_from_root('tools', 'eliminator', 'safe-eliminator-test.js'), open(path_from_root('tools', 'eliminator', 'safe-eliminator-test-output.js')).read(),
          ['eliminateMemSafe']),
         (path_from_root('tools', 'eliminator', 'asm-eliminator-test.js'), open(path_from_root('tools', 'eliminator', 'asm-eliminator-test-output.js')).read(),
-         ['eliminateAsm']),
+         ['asm', 'eliminate']),
         (path_from_root('tools', 'test-js-optimizer-asm-regs.js'), open(path_from_root('tools', 'test-js-optimizer-asm-regs-output.js')).read(),
-         ['registerizeAsm']),
+         ['asm', 'registerize']),
         (path_from_root('tools', 'test-js-optimizer-asm-pre.js'), open(path_from_root('tools', 'test-js-optimizer-asm-pre-output.js')).read(),
-         ['simplifyExpressionsPreAsm']),
+         ['asm', 'simplifyExpressionsPre']),
       ]:
         output = Popen([NODE_JS, path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
         self.assertIdentical(expected, output.replace('\r\n', '\n').replace('\n\n', '\n'))
@@ -10549,7 +10563,7 @@ elif 'benchmark' in str(sys.argv):
       times = []
       for i in range(TEST_REPS):
         start = time.time()
-        js_output = self.run_generated_code(JS_ENGINE, final_filename, args, check_timeout=False)
+        js_output = run_js(final_filename, engine=JS_ENGINE, args=args, stderr=PIPE, full_output=True)
         if i == 0 and 'Successfully compiled asm.js code' in js_output:
           print "[%s was asm.js'ified]" % name
         curr = time.time()-start

@@ -404,7 +404,7 @@ function removeUnneededLabelSettings(ast) {
 
 // Various expression simplifications. Pre run before closure (where we still have metadata), Post run after.
 
-function simplifyExpressionsPre(ast, asm) {
+function simplifyExpressionsPre(ast) {
   // When there is a bunch of math like (((8+5)|0)+12)|0, only the external |0 is needed, one correction is enough.
   // At each node, ((X|0)+Y)|0 can be transformed into (X+Y): The inner corrections are not needed
   // TODO: Is the same is true for 0xff, 0xffff?
@@ -473,6 +473,12 @@ function simplifyExpressionsPre(ast, asm) {
               if (!unsigned) {
                 input[1][1] = 'HEAPU' + bits; // make unsigned
               }
+              if (asm) {
+                // we cannot return HEAPU8 without a coercion, but at least we do HEAP8 & 255 => HEAPU8 | 0
+                node[1] = '|';
+                node[3][1] = 0;
+                return node;
+              }
               return input;
             }
           }
@@ -527,10 +533,6 @@ function simplifyExpressionsPre(ast, asm) {
   simplifyBitops(ast);
   joinAdditions(ast);
   // simplifyZeroComp(ast); TODO: investigate performance
-}
-
-function simplifyExpressionsPreAsm(ast) {
-  simplifyExpressionsPre(ast, true);
 }
 
 // In typed arrays mode 2, we can have
@@ -895,7 +897,7 @@ var NO_SIDE_EFFECTS = set('num', 'name');
 
 function hasSideEffects(node) { // this is 99% incomplete!
   if (node[0] in NO_SIDE_EFFECTS) return false;
-  if (node[0] == 'unary-prefix' && node[1] == '!') return hasSideEffects(node[2]);
+  if (node[0] == 'unary-prefix') return hasSideEffects(node[2]);
   if (node[0] == 'binary') return hasSideEffects(node[2]) || hasSideEffects(node[3]);
   return true;
 }
@@ -1320,6 +1322,14 @@ function normalizeAsm(func) {
   while (i < stats.length) {
     traverse(stats[i], function(node, type) {
       if (type == 'var') {
+        for (var j = 0; j < node[1].length; j++) {
+          var v = node[1][j];
+          var name = v[0];
+          var value = v[1];
+          if (!(name in data.vars)) {
+            data.vars[name] = detectAsmCoercion(value);
+          }
+        }
         unVarify(node[1], node);
       } else if (type == 'dot') {
         if (node[1][0] == 'name' && node[1][1] == 'Math') {
@@ -1384,7 +1394,7 @@ function denormalizeAsm(func, data) {
 // TODO: Consider how this fits in with the rest of the optimization toolchain. Do
 //       we still need the eliminator? Closure? And in what order? Perhaps just
 //       closure simple?
-function registerize(ast, asm) {
+function registerize(ast) {
   traverseGeneratedFunctions(ast, function(fun) {
     if (asm) var asmData = normalizeAsm(fun);
     // Add parameters as a first (fake) var (with assignment), so they get taken into consideration
@@ -1608,10 +1618,6 @@ function registerize(ast, asm) {
   });
 }
 
-function registerizeAsm(ast) {
-  registerize(ast, true);
-}
-
 // Eliminator aka Expressionizer
 //
 // The goal of this pass is to eliminate unneeded variables (which represent one of the infinite registers in the LLVM
@@ -1649,7 +1655,7 @@ var NODES_WITHOUT_ELIMINATION_SIDE_EFFECTS = set('name', 'num', 'string', 'binar
 var IGNORABLE_ELIMINATOR_SCAN_NODES = set('num', 'toplevel', 'string', 'break', 'continue', 'dot'); // dot can only be STRING_TABLE.*
 var ABORTING_ELIMINATOR_SCAN_NODES = set('new', 'object', 'function', 'defun', 'switch', 'for', 'while', 'array', 'throw'); // we could handle some of these, TODO, but nontrivial (e.g. for while, the condition is hit multiple times after the body)
 
-function eliminate(ast, memSafe, asm) {
+function eliminate(ast, memSafe) {
   // Find variables that have a single use, and if they can be eliminated, do so
   traverseGeneratedFunctions(ast, function(func, type) {
     if (asm) var asmData = normalizeAsm(func);
@@ -2142,13 +2148,9 @@ function eliminateMemSafe(ast) {
   eliminate(ast, true);
 }
 
-function eliminateAsm(ast) {
-  eliminate(ast, false, true);
-}
-
 // Passes table
 
-var compress = false, printMetadata = true;
+var compress = false, printMetadata = true, asm = false, last = false;
 
 var passes = {
   dumpAst: dumpAst,
@@ -2157,19 +2159,18 @@ var passes = {
   removeAssignsToUndefined: removeAssignsToUndefined,
   //removeUnneededLabelSettings: removeUnneededLabelSettings,
   simplifyExpressionsPre: simplifyExpressionsPre,
-  simplifyExpressionsPreAsm: simplifyExpressionsPreAsm,
   optimizeShiftsConservative: optimizeShiftsConservative,
   optimizeShiftsAggressive: optimizeShiftsAggressive,
   simplifyExpressionsPost: simplifyExpressionsPost,
   hoistMultiples: hoistMultiples,
   loopOptimizer: loopOptimizer,
   registerize: registerize,
-  registerizeAsm: registerizeAsm,
   eliminate: eliminate,
   eliminateMemSafe: eliminateMemSafe,
-  eliminateAsm: eliminateAsm,
-  compress: function() { compress = true; },
-  noPrintMetadata: function() { printMetadata = false; }
+  compress: function() { compress = true },
+  noPrintMetadata: function() { printMetadata = false },
+  asm: function() { asm = true },
+  last: function() { last = true }
 };
 
 // Main
@@ -2190,6 +2191,9 @@ var js = astToSrc(ast, compress), old;
 do {
   old = js;
   js = js.replace(/\n *\n/g, '\n');
+  if (asm && last) {
+    js = js.replace(/ = \+0([,;])/g, function(m, end) { return ' = 0.0' + end }); // asm requires 0.0 in var definitions, not +0
+  }
 } while (js != old);
 print(js);
 print('\n');
