@@ -473,6 +473,12 @@ function simplifyExpressionsPre(ast) {
               if (!unsigned) {
                 input[1][1] = 'HEAPU' + bits; // make unsigned
               }
+              if (asm) {
+                // we cannot return HEAPU8 without a coercion, but at least we do HEAP8 & 255 => HEAPU8 | 0
+                node[1] = '|';
+                node[3][1] = 0;
+                return node;
+              }
               return input;
             }
           }
