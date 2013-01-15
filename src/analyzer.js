@@ -617,8 +617,8 @@ function analyzer(data, sidePass) {
                           for (var i = 0; i < targetElements.length; i++) {
                             if (i > 0) {
                               switch(value.variant) {
-                                case 'eq': ident += '&&'; break;
-                                case 'ne': ident += '||'; break;
+                                case 'eq': ident += '&'; break;
+                                case 'ne': ident += '|'; break;
                                 default: throw 'unhandleable illegal icmp: ' + value.variant;
                               }
                             }
