@@ -1908,7 +1908,7 @@ function processMathop(item) {
       case 'ashr':
       case 'lshr': {
         if (!isNumber(idents[1])) {
-          return '(Runtime' + (ASM_JS ? '_' : '.') + 'bitshift64(' + idents[0] + '[0], ' + idents[0] + '[1],"' + op + '",' + stripCorrections(idents[1]) + '[0]|0),' +
+          return '(Runtime' + (ASM_JS ? '_' : '.') + 'bitshift64(' + idents[0] + '[0], ' + idents[0] + '[1],' + Runtime['BITSHIFT64_' + op.toUpperCase()] + ',' + stripCorrections(idents[1]) + '[0]|0),' +
             '[' + makeGetTempDouble(0, 'i32') + ',' + makeGetTempDouble(1, 'i32') + '])';
         }
         bits = parseInt(idents[1]);
