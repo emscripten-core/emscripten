@@ -1891,7 +1891,7 @@ function processMathop(item) {
     function i64PreciseOp(type, lastArg) {
       Types.preciseI64MathUsed = true;
       return finish(['(i64Math' + (ASM_JS ? '_' : '.') + type + '(' + asmCoercion(low1, 'i32') + ',' + asmCoercion(high1, 'i32') + ',' + asmCoercion(low2, 'i32') + ',' + asmCoercion(high2, 'i32') +
-                     (lastArg ? ',' + asmCoercion(lastArg, 'i32') : '') + '),' + makeGetValue('tempDoublePtr', 0, 'i32') + ')', makeGetValue('tempDoublePtr', Runtime.getNativeTypeSize('i32'), 'i32')]);
+                     (lastArg ? ',' + asmCoercion(+lastArg, 'i32') : '') + '),' + makeGetValue('tempDoublePtr', 0, 'i32') + ')', makeGetValue('tempDoublePtr', Runtime.getNativeTypeSize('i32'), 'i32')]);
     }
     switch (op) {
       // basic integer ops
