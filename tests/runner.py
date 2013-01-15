@@ -276,7 +276,7 @@ process(sys.argv[1])
       os.chdir(cwd)
     out = open(stdout, 'r').read()
     err = open(stderr, 'r').read()
-    if engine == SPIDERMONKEY_ENGINE:
+    if engine == SPIDERMONKEY_ENGINE and Settings.ASM_JS:
       if 'Successfully compiled asm.js code' in err:
         print >> sys.stderr, "[was asm.js'ified]"
       else:
