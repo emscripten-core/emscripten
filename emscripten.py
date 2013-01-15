@@ -311,9 +311,9 @@ def emscript(infile, settings, outfile, libraries=[]):
       maths += ['Math.imul']
     asm_setup = '\n'.join(['var %s = %s;' % (f.replace('.', '_'), f) for f in maths])
     fundamentals = ['buffer', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
-    basic_funcs = ['abort', 'assert'] + [m.replace('.', '_') for m in maths]
+    basic_funcs = ['abort', 'assert', 'asmPrintInt', 'asmPrintFloat'] + [m.replace('.', '_') for m in maths]
     basic_vars = ['STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT']
-    basic_float_vars = ['NaN']
+    basic_float_vars = ['NaN', 'Infinity']
     if forwarded_json['Types']['preciseI64MathUsed']:
       basic_funcs += ['i64Math_' + op for op in ['add', 'subtract', 'multiply', 'divide', 'modulo']]
       asm_setup += '''
@@ -369,6 +369,12 @@ var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
     # finalize
     funcs_js = '''
 %s
+function asmPrintInt(x) {
+  Module.print('int ' + x);// + ' ' + new Error().stack);
+}
+function asmPrintFloat(x) {
+  Module.print('float ' + x);// + ' ' + new Error().stack);
+}
 var asmPre = (function(env, buffer) {
   'use asm';
   var HEAP8 = new env.Int8Array(buffer);
