@@ -1961,8 +1961,8 @@ function processMathop(item) {
                                                                        '(' + low1 + '>>>0) <  (' + low2 + '>>>0))))';
           case 'slt': return '((' + high1 + '|0) < (' + high2 + '|0)) | ((((' + high1 + '|0) == (' + high2 + '|0) & ' +
                                                                        '(' + low1 + '>>>0) <  (' + low2 + '>>>0))))';
-          case 'ne':  return '(' + low1 + ' != ' + low2 + ') | (' + high1 + ' != ' + high2 + ')';
-          case 'eq':  return '(' + low1 + ' == ' + low2 + ') & (' + high1 + ' == ' + high2 + ')';
+          case 'ne':  return '((' + low1 + '|0) != (' + low2 + '|0)) | ((' + high1 + '|0) != (' + high2 + '|0))';
+          case 'eq':  return '((' + low1 + '|0) == (' + low2 + '|0)) & ((' + high1 + '|0) == (' + high2 + '|0))';
           default: throw 'Unknown icmp variant: ' + variant;
         }
       }
