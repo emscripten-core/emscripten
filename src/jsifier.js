@@ -1242,7 +1242,12 @@ function JSify(data, functionsOnly, givenFunctions) {
     return ret + item.ident + '.f' + item.indexes[0][0].text + ' = ' + finalizeLLVMParameter(item.value) + ', ' + item.ident + ')';
   });
   makeFuncLineActor('indirectbr', function(item) {
-    return makeBranch(finalizeLLVMParameter(item.value), item.currLabelId, true);
+    var phiSets = calcPhiSets(item);
+    var js = 'var ibr = ' + finalizeLLVMParameter(item.value) + ';\n';
+    for (var targetLabel in phiSets) {
+      js += 'if (ibr == ' + targetLabel + ') { ' + getPhiSetsForLabel(phiSets, targetLabel) + ' }\n';
+    }
+    return js + makeBranch('ibr', item.currLabelId, true);
   });
   makeFuncLineActor('alloca', function(item) {
     if (typeof item.allocatedIndex === 'number') {

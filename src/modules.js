@@ -13,7 +13,7 @@ var LLVM = {
   ACCESS_OPTIONS: set('volatile', 'atomic'),
   INVOKE_MODIFIERS: set('alignstack', 'alwaysinline', 'inlinehint', 'naked', 'noimplicitfloat', 'noinline', 'alwaysinline attribute.', 'noredzone', 'noreturn', 'nounwind', 'optsize', 'readnone', 'readonly', 'ssp', 'sspreq'),
   SHIFTS: set('ashr', 'lshr', 'shl'),
-  PHI_REACHERS: set('branch', 'switch', 'invoke'),
+  PHI_REACHERS: set('branch', 'switch', 'invoke', 'indirectbr'),
   EXTENDS: set('sext', 'zext'),
   COMPS: set('icmp', 'fcmp'),
   INTRINSICS_32: set('_llvm_memcpy_p0i8_p0i8_i64', '_llvm_memmove_p0i8_p0i8_i64', '_llvm_memset_p0i8_i64'), // intrinsics that need args converted to i32 in USE_TYPED_ARRAYS == 2
