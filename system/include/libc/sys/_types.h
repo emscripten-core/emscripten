@@ -33,6 +33,10 @@ typedef unsigned __uid_t; /* XXX Emscripten */
 typedef unsigned __gid_t; /* XXX Emscripten */
 #define __gid_t_defined 1
 #endif
+#ifndef __id_t_defined
+typedef unsigned __id_t;  /* can hold a gid_t, pid_t, or uid_t XXX EMSCRIPTEN specific*/
+#define __id_t_defined 1
+#endif
 
 #ifndef __off64_t_defined
 __extension__ typedef unsigned _off64_t; /* XXX Emscripten */
