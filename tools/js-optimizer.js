@@ -1322,6 +1322,14 @@ function normalizeAsm(func) {
   while (i < stats.length) {
     traverse(stats[i], function(node, type) {
       if (type == 'var') {
+        for (var j = 0; j < node[1].length; j++) {
+          var v = node[1][j];
+          var name = v[0];
+          var value = v[1];
+          if (!(name in data.vars)) {
+            data.vars[name] = detectAsmCoercion(value);
+          }
+        }
         unVarify(node[1], node);
       } else if (type == 'dot') {
         if (node[1][0] == 'name' && node[1][1] == 'Math') {
