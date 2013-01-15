@@ -360,7 +360,7 @@ var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
     asm_global_vars = ''.join(['  var ' + g + '=env.' + g + '|0;\n' for g in basic_vars + global_vars]) + \
                       ''.join(['  var ' + g + '=+env.' + g + ';\n' for g in basic_float_vars])
     # sent data
-    sending = '{ ' + ', '.join([math_fix(s) + ': ' + s for s in fundamentals + basic_funcs + global_funcs + basic_vars + global_vars]) + ' }'
+    sending = '{ ' + ', '.join([math_fix(s) + ': ' + s for s in fundamentals + basic_funcs + global_funcs + basic_vars + basic_float_vars + global_vars]) + ' }'
     # received
     if not simple:
       receiving = ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm.' + s for s in exported_implemented_functions + function_tables])
