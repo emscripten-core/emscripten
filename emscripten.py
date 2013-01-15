@@ -313,6 +313,7 @@ def emscript(infile, settings, outfile, libraries=[]):
     fundamentals = ['buffer', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
     basic_funcs = ['abort', 'assert'] + [m.replace('.', '_') for m in maths]
     basic_vars = ['STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT']
+    basic_float_vars = ['NaN']
     if forwarded_json['Types']['preciseI64MathUsed']:
       basic_funcs += ['i64Math_' + op for op in ['add', 'subtract', 'multiply', 'divide', 'modulo']]
       asm_setup += '''
@@ -356,7 +357,8 @@ var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
     def math_fix(g):
       return g if not g.startswith('Math_') else g.split('_')[1];
     asm_global_funcs = ''.join(['  var ' + g + '=env.' + math_fix(g) + ';\n' for g in basic_funcs + global_funcs])
-    asm_global_vars = ''.join(['  var ' + g + '=env.' + g + '|0;\n' for g in basic_vars + global_vars])
+    asm_global_vars = ''.join(['  var ' + g + '=env.' + g + '|0;\n' for g in basic_vars + global_vars]) + \
+                      ''.join(['  var ' + g + '=+env.' + g + ';\n' for g in basic_float_vars])
     # sent data
     sending = '{ ' + ', '.join([math_fix(s) + ': ' + s for s in fundamentals + basic_funcs + global_funcs + basic_vars + global_vars]) + ' }'
     # received
