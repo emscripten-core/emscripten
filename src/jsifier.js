@@ -1313,8 +1313,12 @@ function JSify(data, functionsOnly, givenFunctions) {
     });
 
     args = args.map(function(arg, i) { return indexizeFunctions(arg, argsTypes[i]) });
-    if (ASM_JS && shortident in Functions.libraryFunctions) {
-      args = args.map(function(arg, i) { return asmCoercion(arg, argsTypes[i]) });
+    if (ASM_JS) {
+      if (shortident in Functions.libraryFunctions) {
+        args = args.map(function(arg, i) { return asmCoercion(arg, argsTypes[i]) });
+      } else {
+        args = args.map(function(arg, i) { return asmEnsureFloat(arg, argsTypes[i]) });
+      }
     }
 
     varargs = varargs.map(function(vararg, i) {

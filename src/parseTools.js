@@ -1019,14 +1019,18 @@ function asmCoercion(value, type, signedness) {
   if (type == 'void') {
     return value;
   } else if (type in Runtime.FLOAT_TYPES) {
-    if (signedness) {
-      if (signedness == 'u') {
-        value = '(' + value + ')>>>0';
-      } else {
-        value = '(' + value + ')|0';
+    if (isNumber(value)) {
+      return asmEnsureFloat(value, type);
+    } else {
+      if (signedness) {
+        if (signedness == 'u') {
+          value = '(' + value + ')>>>0';
+        } else {
+          value = '(' + value + ')|0';
+        }
       }
+      return '(+(' + value + '))';
     }
-    return '(+(' + value + '))';
   } else {
     return '((' + value + ')|0)';
   }
