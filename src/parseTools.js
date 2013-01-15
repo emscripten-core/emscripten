@@ -1197,7 +1197,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
           ret += 'tempBigInt=' + value + sep;
           for (var i = 0; i < bytes; i++) {
             ret += makeSetValue(ptr, getFastValue(pos, '+', i), 'tempBigInt&0xff', 'i8', noNeedFirst, ignore, 1);
-            if (i < bytes-1) ret += sep + 'tempBigInt>>=8' + sep;
+            if (i < bytes-1) ret += sep + 'tempBigInt = tempBigInt>>8' + sep;
           }
         }
       } else {
