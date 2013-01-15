@@ -1041,7 +1041,7 @@ function asmMultiplyI32(a, b) {
   return '(~~(+((' + a + ')|0) * +((' + b + ')|0)))';
 }
 
-function makeGetTempDouble(i, type) { // get an aliased part of the tempDouble temporary storage
+function makeGetTempDouble(i, type, forSet) { // get an aliased part of the tempDouble temporary storage
   // Cannot use makeGetValue because it uses us
   // this is a unique case where we *can* use HEAPF64
   var slab = type == 'double' ? 'HEAPF64' : makeGetSlabs(null, type)[0];
@@ -1053,11 +1053,13 @@ function makeGetTempDouble(i, type) { // get an aliased part of the tempDouble t
   } else {
     offset = getHeapOffset(ptr, type);
   }
-  return slab + '[' + offset + ']';
+  var ret = slab + '[' + offset + ']';
+  if (!forSet) ret = asmCoercion(ret, type);
+  return ret;
 }
 
 function makeSetTempDouble(i, type, value) {
-  return makeGetTempDouble(i, type) + '=' + asmEnsureFloat(value, type);
+  return makeGetTempDouble(i, type, true) + '=' + asmEnsureFloat(value, type);
 }
 
 // See makeSetValue
