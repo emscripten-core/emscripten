@@ -1945,24 +1945,24 @@ function processMathop(item) {
       case 'fptoui': case 'fptosi': return finish(splitI64(idents[0]));
       case 'icmp': {
         switch (variant) {
-          case 'uge': return '(' + high1 + '>>>0) >= (' + high2 + '>>>0) && ((' + high1 + '>>>0) >  ('  + high2 + '>>>0) || ' +
-                                                                        '(' + low1 + '>>>0) >= ('  + low2 + '>>>0))';
-          case 'sge': return '(' + high1 + '|0) >= (' + high2 + '|0) && ((' + high1 + '|0) >  ('  + high2 + '|0) || ' +
-                                                                        '(' + low1 + '>>>0) >= ('  + low2 + '>>>0))';
-          case 'ule': return '(' + high1 + '>>>0) <= (' + high2 + '>>>0) && ((' + high1 + '>>>0) <  (' + high2 + '>>>0) || ' +
-                                                                        '(' + low1 + '>>>0) <= (' + low2 + '>>>0))';
-          case 'sle': return '(' + high1 + '|0) <= (' + high2 + '|0) && ((' + high1 + '|0) <  (' + high2 + '|0) || ' +
-                                                                        '(' + low1 + '>>>0) <= (' + low2 + '>>>0))';
-          case 'ugt': return '(' + high1 + '>>>0) > (' + high2 + '>>>0) || ((' + high1 + '>>>0) == (' + high2 + '>>>0) && ' +
-                                                                       '(' + low1 + '>>>0) >  (' + low2 + '>>>0))';
-          case 'sgt': return '(' + high1 + '|0) > (' + high2 + '|0) || ((' + high1 + '|0) == (' + high2 + '|0) && ' +
-                                                                       '(' + low1 + '>>>0) >  (' + low2 + '>>>0))';
-          case 'ult': return '(' + high1 + '>>>0) < (' + high2 + '>>>0) || ((' + high1 + '>>>0) == (' + high2 + '>>>0) && ' +
-                                                                       '(' + low1 + '>>>0) <  (' + low2 + '>>>0))';
-          case 'slt': return '(' + high1 + '|0) < (' + high2 + '|0) || ((' + high1 + '|0) == (' + high2 + '|0) && ' +
-                                                                       '(' + low1 + '>>>0) <  (' + low2 + '>>>0))';
-          case 'ne':  return low1 + ' != ' + low2 + ' || ' + high1 + ' != ' + high2 + '';
-          case 'eq':  return low1 + ' == ' + low2 + ' && ' + high1 + ' == ' + high2 + '';
+          case 'uge': return '((' + high1 + '>>>0) >= (' + high2 + '>>>0)) & ((((' + high1 + '>>>0) >  ('  + high2 + '>>>0)) | ' +
+                                                                        '(' + low1 + '>>>0) >= ('  + low2 + '>>>0)))';
+          case 'sge': return '((' + high1 + '|0) >= (' + high2 + '|0)) & ((((' + high1 + '|0) >  ('  + high2 + '|0)) | ' +
+                                                                        '(' + low1 + '>>>0) >= ('  + low2 + '>>>0)))';
+          case 'ule': return '((' + high1 + '>>>0) <= (' + high2 + '>>>0)) & ((((' + high1 + '>>>0) <  (' + high2 + '>>>0)) | ' +
+                                                                        '(' + low1 + '>>>0) <= (' + low2 + '>>>0)))';
+          case 'sle': return '((' + high1 + '|0) <= (' + high2 + '|0)) & ((((' + high1 + '|0) <  (' + high2 + '|0)) | ' +
+                                                                        '(' + low1 + '>>>0) <= (' + low2 + '>>>0)))';
+          case 'ugt': return '((' + high1 + '>>>0) > (' + high2 + '>>>0)) | ((((' + high1 + '>>>0) == (' + high2 + '>>>0) & ' +
+                                                                       '(' + low1 + '>>>0) >  (' + low2 + '>>>0))))';
+          case 'sgt': return '((' + high1 + '|0) > (' + high2 + '|0)) | ((((' + high1 + '|0) == (' + high2 + '|0) & ' +
+                                                                       '(' + low1 + '>>>0) >  (' + low2 + '>>>0))))';
+          case 'ult': return '((' + high1 + '>>>0) < (' + high2 + '>>>0)) | ((((' + high1 + '>>>0) == (' + high2 + '>>>0) & ' +
+                                                                       '(' + low1 + '>>>0) <  (' + low2 + '>>>0))))';
+          case 'slt': return '((' + high1 + '|0) < (' + high2 + '|0)) | ((((' + high1 + '|0) == (' + high2 + '|0) & ' +
+                                                                       '(' + low1 + '>>>0) <  (' + low2 + '>>>0))))';
+          case 'ne':  return '(' + low1 + ' != ' + low2 + ') | (' + high1 + ' != ' + high2 + ')';
+          case 'eq':  return '(' + low1 + ' == ' + low2 + ') & (' + high1 + ' == ' + high2 + ')';
           default: throw 'Unknown icmp variant: ' + variant;
         }
       }
