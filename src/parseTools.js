@@ -1886,8 +1886,8 @@ function processMathop(item) {
     }
     function i64PreciseOp(type, lastArg) {
       Types.preciseI64MathUsed = true;
-      return finish(['(i64Math' + (ASM_JS ? '_' : '.') + type + '(' + low1 + ',' + high1 + ',' + low2 + ',' + high2 +
-                     (lastArg ? ',' + lastArg : '') + '),' + makeGetValue('tempDoublePtr', 0, 'i32') + ')', makeGetValue('tempDoublePtr', Runtime.getNativeTypeSize('i32'), 'i32')]);
+      return finish(['(i64Math' + (ASM_JS ? '_' : '.') + type + '(' + asmCoercion(low1, 'i32') + ',' + asmCoercion(high1, 'i32') + ',' + asmCoercion(low2, 'i32') + ',' + asmCoercion(high2, 'i32') +
+                     (lastArg ? ',' + asmCoercion(lastArg, 'i32') : '') + '),' + makeGetValue('tempDoublePtr', 0, 'i32') + ')', makeGetValue('tempDoublePtr', Runtime.getNativeTypeSize('i32'), 'i32')]);
     }
     switch (op) {
       // basic integer ops
@@ -2048,7 +2048,7 @@ function processMathop(item) {
     case 'mul': {
       if (bits == 32 && PRECISE_I32_MUL) {
         Types.preciseI64MathUsed = true;
-        return '(i64Math' + (ASM_JS ? '_' : '.') + 'multiply(' + idents[0] + ',0,' + idents[1] + ',0),' + makeGetValue('tempDoublePtr', 0, 'i32') + ')';
+        return '(i64Math' + (ASM_JS ? '_' : '.') + 'multiply(' + asmCoercion(idents[0], 'i32') + ',0,' + asmCoercion(idents[1], 'i32') + ',0),' + makeGetValue('tempDoublePtr', 0, 'i32') + ')';
       } else {
         return handleOverflow(getFastValue(idents[0], '*', idents[1], item.type), bits);
       }
