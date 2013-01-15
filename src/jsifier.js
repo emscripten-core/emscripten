@@ -1093,7 +1093,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       if (useIfs) {
         value = targetLabels[targetLabel].map(function(value) {
           return makeComparison(signedIdent, makeSignOp(value, item.type, 're'), item.type)
-        }).join(' || ');
+        }).join(' | ');
         ret += 'if (' + value + ') {\n';
       } else {
         value = targetLabels[targetLabel].map(function(value) {
