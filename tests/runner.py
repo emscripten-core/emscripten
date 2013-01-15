@@ -277,7 +277,7 @@ process(sys.argv[1])
     out = open(stdout, 'r').read()
     err = open(stderr, 'r').read()
     if engine == SPIDERMONKEY_ENGINE and Settings.ASM_JS:
-      if 'Successfully compiled asm.js code' in err:
+      if 'Successfully compiled asm.js code' in err and 'asm.js link error' not in err:
         print >> sys.stderr, "[was asm.js'ified]"
       else:
         print >> sys.stderr, "[did NOT asm.js'ify]"
