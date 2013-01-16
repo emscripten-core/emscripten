@@ -77,7 +77,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         assert(!BUILD_AS_SHARED_LIB, 'Cannot have both INCLUDE_FULL_LIBRARY and BUILD_AS_SHARED_LIB set.')
         libFuncsToInclude = [];
         for (var key in LibraryManager.library) {
-          if (!key.match(/__(deps|postset|inline)$/)) {
+          if (!key.match(/__(deps|postset|inline|asm)$/)) {
             libFuncsToInclude.push(key);
           }
         }
