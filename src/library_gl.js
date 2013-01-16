@@ -2462,7 +2462,11 @@ var LibraryGL = {
     {{{ makeSetValue('objZ', '0', 'result[2]', 'double') }}};
 
     return 1 /* GL_TRUE */;
-  }
+  },
+  
+  gluOrtho2D: function(left, right, bottom, top) {
+    _glOrtho(left, right, bottom, top, -1, 1);
+  },
 };
 
 // Simple pass-through functions. Starred ones have return values. [X] ones have X in the C name but not in the JS name
