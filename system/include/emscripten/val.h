@@ -11,10 +11,13 @@ namespace emscripten {
         
             void _emval_incref(EM_VAL value);
             void _emval_decref(EM_VAL value);
+
+            EM_VAL _emval_new_array();
             EM_VAL _emval_new_object();
             EM_VAL _emval_new_null();
-            EM_VAL _emval_new_long(long value);
-            EM_VAL _emval_new_cstring(const char* str);
+            EM_VAL _emval_new_cstring(const char*);
+            void _emval_take_value(TYPEID type/*, ...*/);
+
             bool _emval_has_property(EM_VAL object, const char* key);
             EM_VAL _emval_get_property(EM_VAL object, const char* key);
             EM_VAL _emval_get_property_by_long(EM_VAL object, long key);
@@ -45,27 +48,34 @@ namespace emscripten {
 
     class val {
     public:
+        static val array() {
+            return val(internal::_emval_new_array());
+        }
+
         static val object() {
             return val(internal::_emval_new_object());
-        };
+        }
 
         static val null() {
             return val(internal::_emval_new_null());
-        };
+        }
 
         static val take_ownership(internal::EM_VAL e) {
             return val(e);
         }
 
-        explicit val(long l)
-            : handle(internal::_emval_new_long(l))
-        {}
-
-        explicit val(const char* str)
-            : handle(internal::_emval_new_cstring(str))
-        {}
+        template<typename T>
+        explicit val(const T& value) {
+            typedef internal::BindingType<T> BT;
+            auto taker = reinterpret_cast<internal::EM_VAL (*)(internal::TYPEID, typename BT::WireType)>(&internal::_emval_take_value);
+            handle = taker(internal::TypeID<T>::get(), BT::toWireType(value));
+        }
 
         val() = delete;
+
+        val(const char* v)
+            : handle(internal::_emval_new_cstring(v)) 
+        {}
 
         val(const val& v)
             : handle(v.handle)

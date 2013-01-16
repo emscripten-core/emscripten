@@ -41,6 +41,10 @@ function __emval_decref(handle) {
     }
 }
 
+function __emval_new_array() {
+    return __emval_register([]);
+}
+
 function __emval_new_object() {
     return __emval_register({});
 }
@@ -49,12 +53,8 @@ function __emval_new_null() {
     return __emval_register(null);
 }
 
-function __emval_new_long(value) {
-    return __emval_register(value);
-}
-
-function __emval_new_cstring(str) {
-    return __emval_register(Pointer_stringify(str));
+function __emval_new_cstring(v) {
+    return __emval_register(Pointer_stringify(v));
 }
 
 function __emval_has_property(handle, k) {
