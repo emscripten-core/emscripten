@@ -248,6 +248,11 @@ def emscript(infile, settings, outfile, libraries=[]):
     for key, value in curr_forwarded_json['Functions']['unimplementedFunctions'].iteritems():
       forwarded_json['Functions']['unimplementedFunctions'][key] = value
 
+  if settings.get('ASM_JS'):
+    parts = pre.split('// ASM_LIBRARY FUNCTIONS\n')
+    if len(parts) > 1:
+      pre = parts[0]
+      outputs.append([parts[1]])
   funcs_js = ''.join([output[0] for output in outputs])
 
   outputs = None

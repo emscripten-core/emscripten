@@ -2607,6 +2607,7 @@ LibraryManager.library = {
   //   format: A pointer to the format string.
   //   varargs: A pointer to the start of the arguments list.
   // Returns the resulting string string as a character array.
+  _formatString__deps: ['strlen'],
   _formatString: function(format, varargs) {
     var textIndex = format;
     var argIndex = 0;
@@ -2933,7 +2934,7 @@ LibraryManager.library = {
         } else if (next == 's'.charCodeAt(0)) {
           // String.
           var arg = getNextArg('i8*') || nullString;
-          var argLength = String_len(arg);
+          var argLength = _strlen(arg);
           if (precisionSet) argLength = Math.min(argLength, precision);
           if (!flagLeftAlign) {
             while (argLength < width--) {
@@ -4268,8 +4269,15 @@ LibraryManager.library = {
   llvm_memset_p0i8_i32: 'memset',
   llvm_memset_p0i8_i64: 'memset',
 
+  strlen__asm: 'ii',
   strlen: function(ptr) {
-    return String_len(ptr);
+    ptr = ptr|0;
+    var curr = 0;
+    curr = ptr;
+    while ({{{ makeGetValueAsm('curr', '0', 'i8') }}}|0 != 0) {
+      curr = (curr + 1)|0;
+    }
+    return (curr - ptr)|0;
   },
 
   // TODO: Implement when we have real unicode support.
@@ -4493,17 +4501,18 @@ LibraryManager.library = {
   },
   rindex: 'strrchr',
 
+  strdup__deps: ['strlen'],
   strdup: function(ptr) {
-    var len = String_len(ptr);
+    var len = _strlen(ptr);
     var newStr = _malloc(len + 1);
     {{{ makeCopyValues('newStr', 'ptr', 'len', 'null', null, 1) }}};
     {{{ makeSetValue('newStr', 'len', '0', 'i8') }}};
     return newStr;
   },
 
-  strndup__deps: ['strdup'],
+  strndup__deps: ['strdup', 'strlen'],
   strndup: function(ptr, size) {
-    var len = String_len(ptr);
+    var len = _strlen(ptr);
 
     if (size >= len) {
       return _strdup(ptr);
