@@ -10,7 +10,7 @@
 using namespace emscripten;
 
 namespace __cxxabiv1 {
-    std::vector<const __class_type_info*> __getBaseClasses(const __class_type_info* cti) {
+    std::vector<const __class_type_info*> __internalGetBaseClasses(const __class_type_info* cti) {
         std::vector<const __class_type_info*> bases;
 
         const __si_class_type_info* scti = dynamic_cast<const __si_class_type_info*>(cti);
@@ -48,7 +48,7 @@ namespace __cxxabiv1 {
         if (dv == bs) {
             paths.emplace_back(newPath);
         } else {
-            std::vector<const __class_type_info*> bases = __getBaseClasses(dv);
+            std::vector<const __class_type_info*> bases = __internalGetBaseClasses(dv);
             for (int i = 0; i < bases.size(); i++) {
                 __getDerivationPaths(bases[i], bs, newPath, paths);
             }
@@ -212,6 +212,15 @@ namespace emscripten {
                 return name;
             }
 
+            std::vector<int> __getBaseClasses(int tp) {
+                std::vector<const __cxxabiv1::__class_type_info*> baseTypes = __internalGetBaseClasses((const __cxxabiv1::__class_type_info*)tp);
+                std::vector<int> bases;
+                for (int j = 0; j < baseTypes.size(); j++) {
+                    bases.emplace_back((int)baseTypes[j]);
+                }
+                return bases;
+            }
+
             int EMSCRIPTEN_KEEPALIVE __peek32(int p) {
                 return *(int *)p;
             }
@@ -221,6 +230,7 @@ namespace emscripten {
                 // conversion for the return value. This has the unfortunate side-effect of exposing it to third party
                 // developers, but perhaps the double underscore will scare them away from calling it.
                 function("__getDerivationPath", &__getDerivationPath);
+                function("__getBaseClasses", &__getBaseClasses);
                 function("__peek32", &__peek32);
             }));
         }

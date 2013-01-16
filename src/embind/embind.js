@@ -36,6 +36,89 @@ function _embind_repr(v) {
 
 var typeRegistry = {};
 
+function resolveType(type) {
+    function createInheritedFunctionOrProperty(baseClassName, name, baseClassPrototype) {
+        if (!type.Handle.prototype.hasOwnProperty(name)) {
+            var desc = Object.getOwnPropertyDescriptor(baseClassPrototype, baseClassName);
+            if (desc) { // some names in the list may not be present in this particular base class
+                if ('get' in desc || 'put' in desc) {
+                    Object.defineProperty(type.Handle.prototype, name, desc);
+                } else {
+                    type.Handle.prototype[name] = createNamedFunction(name, function() {
+                        return baseClassPrototype[baseClassName].apply(this, arguments); // todo: need to upcast "this" pointer
+                    });
+                }
+            }
+        }
+    }
+    if (!type.resolved) {
+        var i, j, rawBaseClassType, baseClassType, name;
+        var names = [];
+        var qualifiedNames = {};
+        var rawBaseClassTypes =  Module.__getBaseClasses(type.rawType);
+        for (i = 0; i < rawBaseClassTypes.size(); i++) {
+            rawBaseClassType = rawBaseClassTypes.at(i);
+            baseClassType = typeRegistry[rawBaseClassType];
+            if (baseClassType) {
+                resolveType(baseClassType);
+                var proto = baseClassType.Handle.prototype;
+                for (name in proto) {
+                    if (proto.hasOwnProperty(name)) {
+                        var qualifiedName = baseClassType.name + "_" + name;
+                        // todo: figure out how to exclude casting functions
+                        if (['clone', 'move', 'delete'].indexOf(name) < 0) {
+                            if (type.Handle.prototype.hasOwnProperty(qualifiedName)) {
+                                if (names.indexOf(name) < 0) {
+                                    names.push(name);
+                                }
+                                if (names.indexOf(qualifiedName) < 0) {
+                                    qualifiedNames[name] = qualifiedName;
+                                }
+                            } else {
+                                if (names.indexOf(name) >= 0) {
+                                    if (names.indexOf(qualifiedName) < 0) {
+                                        qualifiedNames[name] = qualifiedName;
+                                    }
+                                } else  {
+                                    names.push(name);
+                                    if (type.Handle.prototype.hasOwnProperty(name) && names.indexOf(qualifiedName) < 0) {
+                                        qualifiedNames[name] = qualifiedName;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        for (i = 0; i < rawBaseClassTypes.size(); i++) {
+            rawBaseClassType = rawBaseClassTypes.at(i);
+            baseClassType = typeRegistry[rawBaseClassType];
+            if (baseClassType) {
+                proto = baseClassType.Handle.prototype;
+                for (name in qualifiedNames) {
+                    if (qualifiedNames.hasOwnProperty(name)) {
+                        createInheritedFunctionOrProperty(name, qualifiedNames[name], proto);
+                    }
+                }
+                for (j = 0; j < names.length; j++) {
+                    name = names[j];
+                    if (!(name in qualifiedNames)) {
+                        createInheritedFunctionOrProperty(name, name, proto);
+                    }
+                }
+            }
+        }
+        type.resolved = true;
+    }
+}
+
+function resolveBindings() {
+    for (var rawType in typeRegistry) {
+        resolveType(typeRegistry[rawType]);
+    }
+}
+
 function registerType(rawType, name, registeredInstance) {
     if (!rawType) {
         throw new BindingError('type "' + name + '" must have a positive integer typeid pointer');
@@ -731,8 +814,8 @@ function __embind_register_class(
             var dp = Object.getOwnPropertyDescriptor(Handle.prototype, prop);
             Object.defineProperty(h, prop, dp);
         }
-        
-        return h; 
+
+        return h;
     });
 
     Handle.prototype.clone = function() {
@@ -772,6 +855,7 @@ function __embind_register_class(
     var registeredClass = new RegisteredPointer(Handle, isPolymorphic, false);
     var type = registerType(rawType, name, registeredClass);
     registeredClass.pointeeType = type;
+
     var registeredClass = new RegisteredPointer(Handle, isPolymorphic, false);
     registerType(rawPointerType, name + '*', registeredClass);
     registeredClass.pointeeType = type;
