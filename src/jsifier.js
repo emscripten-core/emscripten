@@ -10,6 +10,7 @@ var UNDERSCORE_OPENPARENS = set('_', '(');
 var RELOOP_IGNORED_LASTS = set('return', 'unreachable', 'resume');
 
 var addedLibraryItems = {};
+var asmLibraryFunctions = [];
 
 // JSifier
 function JSify(data, functionsOnly, givenFunctions) {
@@ -477,13 +478,25 @@ function JSify(data, functionsOnly, givenFunctions) {
         } else {
           ident = '_' + ident;
         }
-        var text = (deps ? '\n' + deps.map(addFromLibrary).filter(function(x) { return x != '' }).join('\n') : '');
+        var depsText = (deps ? '\n' + deps.map(addFromLibrary).filter(function(x) { return x != '' }).join('\n') : '');
         // redirected idents just need a var, but no value assigned to them - it would be unused
-        text += isFunction ? snippet : ('var ' + ident + (redirectedIdent ? '' : '=' + snippet) + ';');
-        if (EXPORT_ALL || (ident in EXPORTED_FUNCTIONS)) {
-          text += '\nModule["' + ident + '"] = ' + ident + ';';
+        var contentText = isFunction ? snippet : ('var ' + ident + (redirectedIdent ? '' : '=' + snippet) + ';');
+        if (ASM_JS) {
+          var asmSig = LibraryManager.library[ident.substr(1) + '__asm'];
+          if (isFunction && asmSig) {
+            // asm library function, add it as generated code alongside the generated code
+            Functions.implementedFunctions[ident] = asmSig;
+            asmLibraryFunctions.push(contentText);
+            contentText = ' ';
+            EXPORTED_FUNCTIONS[ident] = 1;
+            delete Functions.libraryFunctions[ident.substr(1)];
+          }
+        } else {
+          if (EXPORT_ALL || (ident in EXPORTED_FUNCTIONS)) {
+            contentText += '\nModule["' + ident + '"] = ' + ident + ';';
+          }
         }
-        return text;
+        return depsText + contentText;
       }
 
       var ret = [item];
@@ -1482,6 +1495,16 @@ function JSify(data, functionsOnly, givenFunctions) {
       generated.forEach(function(item) { print(indentify(item.JS || '', 2)); });
 
       legalizedI64s = legalizedI64sDefault;
+
+      if (asmLibraryFunctions.length > 0) {
+        print('// ASM_LIBRARY FUNCTIONS');
+        function fix(f) { // fix indenting to not confuse js optimizer
+          f = f.substr(f.indexOf('f')); // remove initial spaces before 'function'
+          f = f.substr(0, f.lastIndexOf('\n')+1); // remove spaces and last }
+          return f + '}'; // add unindented } to match function
+        }
+        print(asmLibraryFunctions.map(fix).join('\n'));
+      }
     } else {
       if (singlePhase) {
         assert(data.unparsedGlobalss[0].lines.length == 0, dump([phase, data.unparsedGlobalss]));

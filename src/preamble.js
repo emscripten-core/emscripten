@@ -750,17 +750,6 @@ function exitRuntime() {
   CorrectionsMonitor.print();
 }
 
-function String_len(ptr) {
-  var i = ptr;
-  while ({{{ makeGetValue('i++', '0', 'i8') }}}) { // Note: should be |!= 0|, technically. But this helps catch bugs with undefineds
-#if ASSERTIONS
-  assert(i < TOTAL_MEMORY);
-#endif
-  }
-  return i - ptr - 1;
-}
-Module['String_len'] = String_len;
-
 // Tools
 
 // This processes a JS string into a C-line array of numbers, 0-terminated.
