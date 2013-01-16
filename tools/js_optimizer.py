@@ -18,6 +18,7 @@ DEBUG = os.environ.get('EMCC_DEBUG')
 
 def run_on_chunk(command):
   filename = command[2] # XXX hackish
+  #print >> sys.stderr, 'running js optimizer command', ' '.join(command), '""""', open(filename).read()
   output = subprocess.Popen(command, stdout=subprocess.PIPE).communicate()[0]
   assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + output
   filename = temp_files.get(os.path.basename(filename) + '.jo.js').name
