@@ -52,7 +52,7 @@ function resolveType(type) {
         }
     }
     if (!type.resolved) {
-        var i, j, rawBaseClassType, baseClassType, name;
+        var i, j, rawBaseClassType, baseClassType, name, proto;
         var names = [];
         var qualifiedNames = {};
         var rawBaseClassTypes =  Module.__getBaseClasses(type.rawType);
@@ -61,7 +61,7 @@ function resolveType(type) {
             baseClassType = typeRegistry[rawBaseClassType];
             if (baseClassType) {
                 resolveType(baseClassType);
-                var proto = baseClassType.Handle.prototype;
+                proto = baseClassType.Handle.prototype;
                 for (name in proto) {
                     if (proto.hasOwnProperty(name)) {
                         var qualifiedName = baseClassType.name + "_" + name;
