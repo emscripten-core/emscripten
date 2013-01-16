@@ -974,7 +974,7 @@ if (ASM_JS) {
   var memoryMask = hexMemoryMask.length <= decMemoryMask.length ? hexMemoryMask : decMemoryMask;
 }
 
-function getHeapOffset(offset, type) {
+function getHeapOffset(offset, type, forceAsm) {
   if (USE_TYPED_ARRAYS !== 2) {
     return offset;
   } else {
@@ -983,7 +983,7 @@ function getHeapOffset(offset, type) {
     }
     var shifts = Math.log(Runtime.getNativeTypeSize(type))/Math.LN2;
     offset = '(' + offset + ')';
-    if (ASM_JS && phase == 'funcs') offset = '(' + offset + '&' + memoryMask + ')';
+    if (ASM_JS && (phase == 'funcs' || forceAsm)) offset = '(' + offset + '&' + memoryMask + ')';
     if (shifts != 0) {
       return '(' + offset + '>>' + shifts + ')';
     } else {
@@ -1067,7 +1067,7 @@ function makeSetTempDouble(i, type, value) {
 }
 
 // See makeSetValue
-function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSafe) {
+function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSafe, forceAsm) {
   if (UNALIGNED_MEMORY) align = 1;
   if (isStructType(type)) {
     var typeData = Types.types[type];
@@ -1120,12 +1120,16 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
     if (type[0] === '#') type = type.substr(1);
     return 'SAFE_HEAP_LOAD(' + offset + ', ' + type + ', ' + (!!unsigned+0) + ', ' + ((!checkSafeHeap() || ignore)|0) + ')';
   } else {
-    var ret = makeGetSlabs(ptr, type, false, unsigned)[0] + '[' + getHeapOffset(offset, type) + ']';
+    var ret = makeGetSlabs(ptr, type, false, unsigned)[0] + '[' + getHeapOffset(offset, type, forceAsm) + ']';
     if (ASM_JS && phase == 'funcs') {
       ret = asmCoercion(ret, type);
     }
     return ret;
   }
+}
+
+function makeGetValueAsm(ptr, pos, type) {
+  return makeGetValue(ptr, pos, type, null, null, null, null, null, true);
 }
 
 function indexizeFunctions(value, type) {
