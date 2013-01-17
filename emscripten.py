@@ -307,8 +307,9 @@ def emscript(infile, settings, outfile, libraries=[]):
       params = ','.join(['p%d' % p for p in range(len(sig)-1)])
       coercions = ';'.join(['p%d = %sp%d%s' % (p, '+' if sig[p+1] == 'd' else '', p, '' if sig[p+1] == 'd' else '|0') for p in range(len(sig)-1)]) + ';'
       ret = '' if sig[0] == 'v' else ('return %s0' % ('+' if sig[0] == 'd' else ''))
-      return 'function %s(%s) { %s abort(%d); %s };\n' % (bad, params, coercions, i, ret) + raw.replace('[0,', '[' + bad + ',').replace(',0,', ',' + bad + ',').replace(',0,', ',' + bad + ',').replace(',0]', ',' + bad + ']').replace(',0]', ',' + bad + ']')
-    function_tables_defs = '\n'.join([make_table(sig, raw) for sig, raw in last_forwarded_json['Functions']['tables'].iteritems()])
+      return ('function %s(%s) { %s abort(%d); %s };' % (bad, params, coercions, i, ret), raw.replace('[0,', '[' + bad + ',').replace(',0,', ',' + bad + ',').replace(',0,', ',' + bad + ',').replace(',0]', ',' + bad + ']').replace(',0]', ',' + bad + ']'))
+    infos = [make_table(sig, raw) for sig, raw in last_forwarded_json['Functions']['tables'].iteritems()]
+    function_tables_defs = '\n'.join([info[0] for info in infos] + [info[1] for info in infos])
 
     maths = ['Runtime.bitshift64', 'Math.floor', 'Math.min', 'Math.abs', 'Math.sqrt', 'Math.pow', 'Math.cos', 'Math.sin', 'Math.tan', 'Math.acos', 'Math.asin', 'Math.atan', 'Math.atan2', 'Math.exp', 'Math.log', 'Math.ceil']
 
@@ -436,7 +437,7 @@ var asm = asmPre(%s, buffer); // pass through Function to prevent seeing outside
 Runtime.stackAlloc = function(size) { return asm.stackAlloc(size) };
 Runtime.stackSave = function() { return asm.stackSave() };
 Runtime.stackRestore = function(top) { asm.stackRestore(top) };
-''' % (function_tables_defs.replace('\n', '\n  ') + '\n' + '\n'.join(function_tables_impls), exports, sending, receiving)
+''' % ('\n'.join(function_tables_impls) + '\n' + function_tables_defs.replace('\n', '\n  '), exports, sending, receiving)
 
     # Set function table masks
     def function_table_maskize(js):
