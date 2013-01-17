@@ -1165,7 +1165,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     var ptr = makeStructuralAccess(item.ident, 0);
     return (EXCEPTION_DEBUG ? 'Module.print("Resuming exception");' : '') + 
       'if (' + makeGetValue('_llvm_eh_exception.buf', 0, 'void*') + ' == 0) { ' + makeSetValue('_llvm_eh_exception.buf', 0, ptr, 'void*') + ' } ' + 
-      makeThrow('ptr') + ';';
+      makeThrow(ptr) + ';';
   });
   makeFuncLineActor('invoke', function(item) {
     // Wrapping in a function lets us easily return values if we are
