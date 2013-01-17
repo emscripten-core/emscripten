@@ -332,6 +332,7 @@ var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
     asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore', 'setThrew'] + ['setTempRet%d' % i for i in range(10)]
     # function tables
     def asm_coerce(value, sig):
+      if sig == 'v': return value
       return ('+' if sig == 'd' else '') + value + ('|0' if sig == 'i' else '')
 
     function_tables = ['dynCall_' + table for table in last_forwarded_json['Functions']['tables']]
@@ -340,12 +341,12 @@ var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
       args = ','.join(['a' + str(i) for i in range(1, len(sig))])
       arg_coercions = ' '.join(['a' + str(i) + '=' + asm_coerce('a' + str(i), sig[i]) + ';' for i in range(1, len(sig))])
       coerced_args = ','.join([asm_coerce('a' + str(i), sig[i]) for i in range(1, len(sig))])
-      ret = '%sFUNCTION_TABLE_%s[index&{{{ FTM_%s }}}](%s);' % ('return ' if sig[0] != 'v' else '', sig, sig, coerced_args)
+      ret = asm_coerce('%sFUNCTION_TABLE_%s[index&{{{ FTM_%s }}}](%s)' % ('return ' if sig[0] != 'v' else '', sig, sig, coerced_args), sig[0])
       function_tables_impls.append('''
   function dynCall_%s(index%s%s) {
     index = index|0;
     %s
-    %s
+    %s;
   }
 ''' % (sig, ',' if len(sig) > 1 else '', args, arg_coercions, ret))
     # calculate exports
