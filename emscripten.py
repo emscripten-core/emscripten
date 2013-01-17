@@ -339,13 +339,15 @@ var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
     for sig in last_forwarded_json['Functions']['tables'].iterkeys():
       args = ','.join(['a' + str(i) for i in range(1, len(sig))])
       arg_coercions = ' '.join(['a' + str(i) + '=' + asm_coerce('a' + str(i), sig[i]) + ';' for i in range(1, len(sig))])
+      coerced_args = ','.join([asm_coerce('a' + str(i), sig[i]) for i in range(1, len(sig))])
+      ret = '%sFUNCTION_TABLE_%s[index&{{{ FTM_%s }}}](%s);' % ('return ' if sig[0] != 'v' else '', sig, sig, coerced_args)
       function_tables_impls.append('''
   function dynCall_%s(index%s%s) {
     index = index|0;
     %s
-    %sFUNCTION_TABLE_%s[index&{{{ FTM_%s }}}](%s);
+    %s
   }
-''' % (sig, ',' if len(sig) > 1 else '', args, arg_coercions, 'return ' if sig[0] != 'v' else '', sig, sig, args))
+''' % (sig, ',' if len(sig) > 1 else '', args, arg_coercions, ret))
     # calculate exports
     exported_implemented_functions = list(exported_implemented_functions)
     exports = []
