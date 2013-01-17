@@ -52,7 +52,7 @@ LibraryManager.library = {
     streams: [null],
 #if ASSERTIONS
     checkStreams: function() {
-      for (var i in FS.streams) assert(i >= 0 && i < FS.streams.length); // no keys not in dense span
+      for (var i in FS.streams) if (FS.streams.hasOwnProperty(i)) assert(i >= 0 && i < FS.streams.length); // no keys not in dense span
       for (var i = 0; i < FS.streams.length; i++) assert(typeof FS.streams[i] == 'object'); // no non-null holes in dense span
     },
 #endif
