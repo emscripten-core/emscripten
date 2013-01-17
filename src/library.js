@@ -3614,7 +3614,7 @@ LibraryManager.library = {
      * implementation (replaced by dlmalloc normally) so
      * not an issue.
      */
-    ptr = Runtime.staticAlloc(bytes + 8);
+    var ptr = Runtime.staticAlloc(bytes + 8);
     return (ptr+8) & 0xFFFFFFF8;
   },
   free: function(){},
