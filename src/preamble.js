@@ -506,10 +506,17 @@ function allocate(slab, types, allocator, ptr) {
   }
 
   if (zeroinit) {
-      _memset(ret, 0, size);
-      return ret;
+    _memset(ret, 0, size);
+    return ret;
   }
-  
+
+#if USE_TYPED_ARRAYS == 2
+  if (singleType === 'i8') {
+    HEAPU8.set(new Uint8Array(slab), ret);
+    return ret;
+  }
+#endif
+
   var i = 0, type;
   while (i < size) {
     var curr = slab[i];
