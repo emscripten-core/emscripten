@@ -4767,7 +4767,7 @@ at function.:blag
         '''
       self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected))
 
-    def test_snprintf0(self):
+    def test_printf_cases(self):
       src = r'''
         #include <stdio.h>
         int main()  {
@@ -4775,10 +4775,13 @@ at function.:blag
           char buf[size];
           snprintf(buf, size, "%s %d %.2f\n", "me and myself", 25, 1.345);
           printf("%d : %s\n", size, buf);
+          char *buff = NULL;
+          asprintf(&buff, "%d waka %d\n", 21, 95);
+          puts(buff);
           return 0;
         }
         '''
-      self.do_run(src, '22 : me and myself 25 1.34\n')
+      self.do_run(src, '22 : me and myself 25 1.34\n21 waka 95\n')
 
     def test_atoX(self):
       if self.emcc_args is None: return self.skip('requires ta2')

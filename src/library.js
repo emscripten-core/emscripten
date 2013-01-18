@@ -3501,6 +3501,12 @@ LibraryManager.library = {
     var result = __formatString(format, varargs);
     var limit = (n === undefined) ? result.length
                                   : Math.min(result.length, Math.max(n - 1, 0));
+    if (s < 0) {
+      s = -s;
+      var buf = _malloc(limit+1);
+      {{{ makeSetValue('s', '0', 'buf', 'i8*') }}};
+      s = buf;
+    }
     for (var i = 0; i < limit; i++) {
       {{{ makeSetValue('s', 'i', 'result[i]', 'i8') }}};
     }
@@ -3530,10 +3536,15 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
     return _snprintf(s, undefined, format, varargs);
   },
+  asprintf__deps: ['sprintf'],
+  asprintf: function(s, format, varargs) {
+    return _sprintf(-s, format, varargs);
+  },
   vfprintf: 'fprintf',
   vsnprintf: 'snprintf',
   vprintf: 'printf',
   vsprintf: 'sprintf',
+  vasprintf: 'asprintf',
   vscanf: 'scanf',
   vfscanf: 'fscanf',
   vsscanf: 'sscanf',
@@ -4214,6 +4225,8 @@ LibraryManager.library = {
     }
   },
 
+  wmemcpy: function() { throw 'wmemcpy not implemented' },
+
   llvm_memcpy_i32: 'memcpy',
   llvm_memcpy_i64: 'memcpy',
   llvm_memcpy_p0i8_p0i8_i32: 'memcpy',
@@ -4238,6 +4251,8 @@ LibraryManager.library = {
   llvm_memmove_i64: 'memmove',
   llvm_memmove_p0i8_p0i8_i32: 'memmove',
   llvm_memmove_p0i8_p0i8_i64: 'memmove',
+
+  wmemmove: function() { throw 'wmemmove not implemented' },
 
   memset__inline: function(ptr, value, num, align) {
     return makeSetValues(ptr, 0, value, 'null', num, align);
@@ -4273,6 +4288,8 @@ LibraryManager.library = {
   llvm_memset_p0i8_i32: 'memset',
   llvm_memset_p0i8_i64: 'memset',
 
+  wmemset: function() { throw 'wmemset not implemented' },
+
   strlen__asm: 'ii',
   strlen: function(ptr) {
     ptr = ptr|0;
@@ -4288,6 +4305,8 @@ LibraryManager.library = {
   mblen: function() {
     return 1;
   },
+
+  wcslen: function() { throw 'wcslen not implemented' },
 
   strspn: function(pstr, pset) {
     var str = pstr, set, strcurr, setcurr;
@@ -6561,6 +6580,7 @@ LibraryManager.library = {
   pthread_cond_init: function() {},
   pthread_cond_destroy: function() {},
   pthread_cond_broadcast: function() {},
+  pthread_cond_wait: function() {},
   pthread_self: function() {
     //FIXME: assumes only a single thread
     return 0;
