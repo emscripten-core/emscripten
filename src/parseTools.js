@@ -1520,7 +1520,7 @@ function makePointer(slab, pos, allocator, type, ptr) {
     }
     if (!fail) types = 'i8';
   }
-  if (typeof slab != 'string') slab = JSON.stringify(slab);
+  if (typeof slab == 'object') slab = '[' + slab.join(',') + ']';
   // JS engines sometimes say array initializers are too large. Work around that by chunking and calling concat to combine at runtime
   var chunkSize = 10240;
   function chunkify(array) {
