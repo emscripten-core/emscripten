@@ -311,13 +311,13 @@ def emscript(infile, settings, outfile, libraries=[]):
     infos = [make_table(sig, raw) for sig, raw in last_forwarded_json['Functions']['tables'].iteritems()]
     function_tables_defs = '\n'.join([info[0] for info in infos] + [info[1] for info in infos])
 
-    maths = ['Runtime.bitshift64', 'Math.floor', 'Math.min', 'Math.abs', 'Math.sqrt', 'Math.pow', 'Math.cos', 'Math.sin', 'Math.tan', 'Math.acos', 'Math.asin', 'Math.atan', 'Math.atan2', 'Math.exp', 'Math.log', 'Math.ceil']
-
+    maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil']]
     if settings['USE_MATH_IMUL']:
       maths += ['Math.imul']
-    asm_setup = '\n'.join(['var %s = %s;' % (f.replace('.', '_'), f) for f in maths])
     fundamentals = ['buffer', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
-    basic_funcs = ['abort', 'assert', 'asmPrintInt', 'asmPrintFloat'] + [m.replace('.', '_') for m in maths]
+    math_envs = ['Runtime.bitshift64']
+    asm_setup = '\n'.join(['var %s = %s;' % (f.replace('.', '_'), f) for f in math_envs])
+    basic_funcs = ['abort', 'assert', 'asmPrintInt', 'asmPrintFloat'] + [m.replace('.', '_') for m in math_envs]
     basic_vars = ['STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT']
     basic_float_vars = ['NaN', 'Infinity']
     if forwarded_json['Types']['preciseI64MathUsed']:
@@ -368,7 +368,8 @@ var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
     global_funcs = ['_' + x for x in forwarded_json['Functions']['libraryFunctions'].keys()]
     def math_fix(g):
       return g if not g.startswith('Math_') else g.split('_')[1];
-    asm_global_funcs = ''.join(['  var ' + g + '=env.' + math_fix(g) + ';\n' for g in basic_funcs + global_funcs])
+    asm_global_funcs = ''.join(['  var ' + g.replace('.', '_') + '=global.' + g + ';\n' for g in maths]) + \
+                       ''.join(['  var ' + g + '=env.' + math_fix(g) + ';\n' for g in basic_funcs + global_funcs])
     asm_global_vars = ''.join(['  var ' + g + '=env.' + g + '|0;\n' for g in basic_vars + global_vars]) + \
                       ''.join(['  var ' + g + '=+env.' + g + ';\n' for g in basic_float_vars])
     # sent data
