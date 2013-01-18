@@ -387,16 +387,16 @@ function asmPrintInt(x) {
 function asmPrintFloat(x) {
   Module.print('float ' + x);// + ' ' + new Error().stack);
 }
-var asmPre = (function(env, buffer) {
+var asm = (function(global, env, buffer) {
   'use asm';
-  var HEAP8 = new env.Int8Array(buffer);
-  var HEAP16 = new env.Int16Array(buffer);
-  var HEAP32 = new env.Int32Array(buffer);
-  var HEAPU8 = new env.Uint8Array(buffer);
-  var HEAPU16 = new env.Uint16Array(buffer);
-  var HEAPU32 = new env.Uint32Array(buffer);
-  var HEAPF32 = new env.Float32Array(buffer);
-  var HEAPF64 = new env.Float64Array(buffer);
+  var HEAP8 = new global.Int8Array(buffer);
+  var HEAP16 = new global.Int16Array(buffer);
+  var HEAP32 = new global.Int32Array(buffer);
+  var HEAPU8 = new global.Uint8Array(buffer);
+  var HEAPU16 = new global.Uint16Array(buffer);
+  var HEAPU32 = new global.Uint32Array(buffer);
+  var HEAPF32 = new global.Float32Array(buffer);
+  var HEAPF64 = new global.Float64Array(buffer);
 ''' % (asm_setup,) + '\n' + asm_global_vars + '''
   var __THREW__ = 0;
   var undef = 0;
@@ -432,13 +432,7 @@ var asmPre = (function(env, buffer) {
   %s
 
   return %s;
-});
-if (asmPre.toSource) { // works in sm but not v8, so we get full coverage between those two
-  asmPre = asmPre.toSource();
-  asmPre = asmPre.substr(25, asmPre.length-28);
-  asmPre = new Function('env', 'buffer', asmPre);
-}
-var asm = asmPre(%s, buffer); // pass through Function to prevent seeing outside scope
+})(this, %s, buffer);
 %s;
 Runtime.stackAlloc = function(size) { return asm.stackAlloc(size) };
 Runtime.stackSave = function() { return asm.stackSave() };
