@@ -333,7 +333,7 @@ var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
     # function tables
     def asm_coerce(value, sig):
       if sig == 'v': return value
-      return ('+' if sig == 'd' else '') + value + ('|0' if sig == 'i' else '')
+      return ('+' if sig == 'f' else '') + value + ('|0' if sig == 'i' else '')
 
     function_tables = ['dynCall_' + table for table in last_forwarded_json['Functions']['tables']]
     function_tables_impls = []
