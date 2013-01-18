@@ -1166,6 +1166,8 @@ m_divisor is 1091269979
     def test_llvm_intrinsics(self):
       if self.emcc_args == None: return self.skip('needs ta2')
 
+      Settings.PRECISE_I64_MATH = 2 # for bswap64
+
       src = r'''
         #include <stdio.h>
         #include <sys/types.h>
@@ -1193,6 +1195,10 @@ m_divisor is 1091269979
 
             printf("%d\n", llvm_expect_i32(x % 27, 3));
 
+            int64_t a = 1;
+            a = __builtin_bswap64(a);
+            printf("%lld\n", a);
+
             return 0;
         }
       '''
@@ -1202,6 +1208,7 @@ c8,ef
 c5,de,15,8a
 23,21
 13
+72057594037927936
 ''')
 
     def test_bswap64(self):
