@@ -41,7 +41,7 @@ function resolveType(type) {
         if (!type.Handle.prototype.hasOwnProperty(name)) {
             var desc = Object.getOwnPropertyDescriptor(baseClassPrototype, baseClassName);
             if (desc) { // some names in the list may not be present in this particular base class
-                if (baseClassPrototype.constructor.memberType[baseClassName] == 'field') {
+                if (baseClassPrototype.constructor.memberType[baseClassName] === 'field') {
                     var newDescriptor = {
                         enumerable: true,
                         get: function() {
@@ -66,7 +66,7 @@ function resolveType(type) {
                         }
                     };
                     Object.defineProperty(type.Handle.prototype, name, desc);
-                } else if (baseClassPrototype.constructor.memberType[baseClassName] == 'method') {
+                } else if (baseClassPrototype.constructor.memberType[baseClassName] === 'method') {
                     type.Handle.prototype[name] = createNamedFunction(name, function() {
                         var save = this.ptr;
                         var baseClassPtr = ___staticPointerCast(this.ptr, type.rawType, baseClassType.rawType);
@@ -84,20 +84,20 @@ function resolveType(type) {
     if (!type.resolved) {
         var i, j, rawBaseClassType, baseClassType, name, baseProto;
         var names = [];
-        function addName(name) {
+        var addName = function(name) {
             if (names.indexOf(name) < 0) {
                 names.push(name);
             }
-        }
+        };
         var qualifiedNames = {};
-        function addQualifiedName(name, qualifiedName) {
+        var addQualifiedName = function(name, qualifiedName) {
             if (!(name in qualifiedNames)) {
                 qualifiedNames[name] = [];
             }
             if (qualifiedNames[name].indexOf(qualifiedName) < 0) {
                 qualifiedNames[name].push(qualifiedName);
             }
-        }
+        };
         var rawBaseClassTypes =  Module.__getBaseClasses(type.rawType);
         for (i = 0; i < rawBaseClassTypes.size(); i++) {
             rawBaseClassType = rawBaseClassTypes.at(i);
@@ -123,7 +123,7 @@ function resolveType(type) {
                 for (name in qualifiedNames) {
                     if (qualifiedNames.hasOwnProperty(name)) {
                         for (j = 0; j < qualifiedNames[name].length; j++) {
-                            if (qualifiedNames[name][j].indexOf(baseClassType.name + "_") == 0) {
+                            if (qualifiedNames[name][j].indexOf(baseClassType.name + "_") === 0) {
                                 createInheritedFunctionOrProperty(name, qualifiedNames[name][j], proto, baseClassType);
                             }
                         }
