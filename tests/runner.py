@@ -2321,7 +2321,7 @@ Exception execution path of first function! 1
         self.do_run(src, '*throw...caught!infunc...done!*')
 
         Settings.DISABLE_EXCEPTION_CATCHING = 1
-        self.do_run(src, 'Exception catching is disabled, this exception cannot be caught. Compile with -s DISABLE_EXCEPTION_CATCHING=0 to catch.')
+        self.do_run(src, 'Exception catching is disabled, this exception cannot be caught. Compile with -s DISABLE_EXCEPTION_CATCHING=0')
 
         src = '''
         #include <iostream>
