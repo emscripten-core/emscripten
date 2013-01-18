@@ -37,56 +37,80 @@ function _embind_repr(v) {
 var typeRegistry = {};
 
 function resolveType(type) {
-    function createInheritedFunctionOrProperty(baseClassName, name, baseClassPrototype) {
+    function createInheritedFunctionOrProperty(baseClassName, name, baseClassPrototype, baseClassType) {
         if (!type.Handle.prototype.hasOwnProperty(name)) {
             var desc = Object.getOwnPropertyDescriptor(baseClassPrototype, baseClassName);
             if (desc) { // some names in the list may not be present in this particular base class
-                if ('get' in desc || 'put' in desc) {
+                if (baseClassPrototype.constructor.memberType[baseClassName] == 'field') {
+                    var newDescriptor = {
+                        enumerable: true,
+                        get: function() {
+                            var save = this.ptr;
+                            var baseClassPtr = ___staticPointerCast(this.ptr, type.rawType, baseClassType.rawType);
+                            try {
+                                this.ptr = baseClassPtr;
+                                return desc.get();
+                            } finally {
+                                this.ptr = save; // todo: still not good, if the base class routine calls through the current handle
+                            }
+                        },
+                        set: function(v) {
+                            var save = this.ptr;
+                            var baseClassPtr = ___staticPointerCast(this.ptr, type.rawType, baseClassType.rawType);
+                            try {
+                                this.ptr = baseClassPtr;
+                                desc.set(v);
+                            } finally {
+                                this.ptr = save; // todo: still not good, if the base class routine calls through the current handle
+                            }
+                        }
+                    };
                     Object.defineProperty(type.Handle.prototype, name, desc);
-                } else {
+                } else if (baseClassPrototype.constructor.memberType[baseClassName] == 'method') {
                     type.Handle.prototype[name] = createNamedFunction(name, function() {
-                        return baseClassPrototype[baseClassName].apply(this, arguments); // todo: need to upcast "this" pointer
+                        var save = this.ptr;
+                        var baseClassPtr = ___staticPointerCast(this.ptr, type.rawType, baseClassType.rawType);
+                        try {
+                            this.ptr = baseClassPtr;
+                            return baseClassPrototype[baseClassName].apply(this, arguments);
+                        } finally {
+                            this.ptr = save; // todo: still not good, if the base class routine calls through the current handle
+                        }
                     });
                 }
             }
         }
     }
     if (!type.resolved) {
-        var i, j, rawBaseClassType, baseClassType, name, proto;
+        var i, j, rawBaseClassType, baseClassType, name, baseProto;
         var names = [];
+        function addName(name) {
+            if (names.indexOf(name) < 0) {
+                names.push(name);
+            }
+        }
         var qualifiedNames = {};
+        function addQualifiedName(name, qualifiedName) {
+            if (!(name in qualifiedNames)) {
+                qualifiedNames[name] = [];
+            }
+            if (qualifiedNames[name].indexOf(qualifiedName) < 0) {
+                qualifiedNames[name].push(qualifiedName);
+            }
+        }
         var rawBaseClassTypes =  Module.__getBaseClasses(type.rawType);
         for (i = 0; i < rawBaseClassTypes.size(); i++) {
             rawBaseClassType = rawBaseClassTypes.at(i);
             baseClassType = typeRegistry[rawBaseClassType];
             if (baseClassType) {
                 resolveType(baseClassType);
-                proto = baseClassType.Handle.prototype;
-                for (name in proto) {
-                    if (proto.hasOwnProperty(name)) {
-                        var qualifiedName = baseClassType.name + "_" + name;
-                        // todo: figure out how to exclude casting functions
-                        if (['clone', 'move', 'delete'].indexOf(name) < 0) {
-                            if (type.Handle.prototype.hasOwnProperty(qualifiedName)) {
-                                if (names.indexOf(name) < 0) {
-                                    names.push(name);
-                                }
-                                if (names.indexOf(qualifiedName) < 0) {
-                                    qualifiedNames[name] = qualifiedName;
-                                }
-                            } else {
-                                if (names.indexOf(name) >= 0) {
-                                    if (names.indexOf(qualifiedName) < 0) {
-                                        qualifiedNames[name] = qualifiedName;
-                                    }
-                                } else  {
-                                    names.push(name);
-                                    if (type.Handle.prototype.hasOwnProperty(name) && names.indexOf(qualifiedName) < 0) {
-                                        qualifiedNames[name] = qualifiedName;
-                                    }
-                                }
-                            }
+                baseProto = baseClassType.Handle.prototype;
+                for (name in baseProto) {
+                    if (baseProto.hasOwnProperty(name) && baseClassType.Handle.memberType[name]) {
+                        if (names.indexOf(name) >= 0 || type.Handle.prototype.hasOwnProperty(name)) {
+                            addQualifiedName(name, baseClassType.name + "_" + name);
                         }
+                        addName(name);
                     }
                 }
             }
@@ -95,16 +119,20 @@ function resolveType(type) {
             rawBaseClassType = rawBaseClassTypes.at(i);
             baseClassType = typeRegistry[rawBaseClassType];
             if (baseClassType) {
-                proto = baseClassType.Handle.prototype;
+                var proto = baseClassType.Handle.prototype;
                 for (name in qualifiedNames) {
                     if (qualifiedNames.hasOwnProperty(name)) {
-                        createInheritedFunctionOrProperty(name, qualifiedNames[name], proto);
+                        for (j = 0; j < qualifiedNames[name].length; j++) {
+                            if (qualifiedNames[name][j].indexOf(baseClassType.name + "_") == 0) {
+                                createInheritedFunctionOrProperty(name, qualifiedNames[name][j], proto, baseClassType);
+                            }
+                        }
                     }
                 }
                 for (j = 0; j < names.length; j++) {
                     name = names[j];
                     if (!(name in qualifiedNames)) {
-                        createInheritedFunctionOrProperty(name, name, proto);
+                        createInheritedFunctionOrProperty(name, name, proto, baseClassType);
                     }
                 }
             }
@@ -850,6 +878,7 @@ function __embind_register_class(
         }
         this.ptr = undefined;
     };
+    Handle.memberType = {};
 
     // todo: clean this up!
     var registeredClass = new RegisteredPointer(Handle, isPolymorphic, false);
@@ -944,8 +973,10 @@ function __embind_register_class_method(
         runDestructors(destructors);
         return rv;
     };
+    classType.Handle.memberType[methodName] = "method";
 }
 
+// todo: cast methods should require binding of their target types
 function __embind_register_raw_cast_method(
     rawClassType,
     isPolymorphic,
@@ -992,6 +1023,7 @@ function __embind_register_raw_cast_method(
     };
 }
 
+// todo: cast methods should not be passed from the smart ptr to the contained object!!
 function __embind_register_smart_cast_method(
     rawPointerType,
     rawReturnType,
@@ -1186,6 +1218,7 @@ function __embind_register_class_field(
         },
         enumerable: true
     });
+    classType.Handle.memberType[fieldName] = "field";
 }
 
 function RegisteredEnum() {
