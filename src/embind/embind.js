@@ -36,103 +36,67 @@ function _embind_repr(v) {
 
 var typeRegistry = {};
 
-function resolveType(type) {
-    function createInheritedFunctionOrProperty(baseClassName, name, baseClassPrototype, baseClassType) {
-        if (!type.Handle.prototype.hasOwnProperty(name)) {
-            var desc = Object.getOwnPropertyDescriptor(baseClassPrototype, baseClassName);
-            if (desc) { // some names in the list may not be present in this particular base class
-                if (baseClassPrototype.constructor.memberType[baseClassName] === 'field') {
-                    var newDescriptor = {
-                        enumerable: true,
-                        get: function() {
-                            var save = this.ptr;
-                            var baseClassPtr = ___staticPointerCast(this.ptr, type.rawType, baseClassType.rawType);
-                            try {
-                                this.ptr = baseClassPtr;
-                                return desc.get();
-                            } finally {
-                                this.ptr = save; // todo: still not good, if the base class routine calls through the current handle
-                            }
-                        },
-                        set: function(v) {
-                            var save = this.ptr;
-                            var baseClassPtr = ___staticPointerCast(this.ptr, type.rawType, baseClassType.rawType);
-                            try {
-                                this.ptr = baseClassPtr;
-                                desc.set(v);
-                            } finally {
-                                this.ptr = save; // todo: still not good, if the base class routine calls through the current handle
-                            }
-                        }
-                    };
-                    Object.defineProperty(type.Handle.prototype, name, desc);
-                } else if (baseClassPrototype.constructor.memberType[baseClassName] === 'method') {
-                    type.Handle.prototype[name] = createNamedFunction(name, function() {
-                        var save = this.ptr;
-                        var baseClassPtr = ___staticPointerCast(this.ptr, type.rawType, baseClassType.rawType);
-                        try {
-                            this.ptr = baseClassPtr;
-                            return baseClassPrototype[baseClassName].apply(this, arguments);
-                        } finally {
-                            this.ptr = save; // todo: still not good, if the base class routine calls through the current handle
-                        }
-                    });
+function createInheritedFunctionOrProperty(name, type, nameInBaseClass, baseClassType) {
+    function upcastingWrapper(method) {
+        return function() {
+            var baseClassPtr = ___staticPointerCast(this.ptr, type.rawType, baseClassType.rawType);
+            if (baseClassPtr === this.ptr) {
+                return method.apply(this, arguments);
+            } else {
+                var handle = this.clone();
+                try {
+                    handle.ptr = baseClassPtr;
+                    return method.apply(handle, arguments);
+                } finally {
+                    handle.delete();
                 }
             }
-        }
+        };
     }
+    var baseClassPrototype = baseClassType.Handle.prototype;
+    if (baseClassPrototype.constructor.memberType[nameInBaseClass] === 'field') {
+        var baseClassDescriptor = Object.getOwnPropertyDescriptor(baseClassPrototype, nameInBaseClass);
+        Object.defineProperty(type.Handle.prototype, name, {
+            enumerable: true,
+            get: upcastingWrapper(baseClassDescriptor.get),
+            set: upcastingWrapper(baseClassDescriptor.set)
+        });
+    } else if (baseClassPrototype.constructor.memberType[nameInBaseClass] === 'method') {
+        var baseClassMethod = baseClassPrototype[nameInBaseClass];
+        type.Handle.prototype[name] = createNamedFunction(name, upcastingWrapper(baseClassMethod));
+    }
+}
+
+function resolveType(type) {
     if (!type.resolved) {
-        var i, j, rawBaseClassType, baseClassType, name, baseProto;
-        var names = [];
-        var addName = function(name) {
-            if (names.indexOf(name) < 0) {
-                names.push(name);
-            }
-        };
-        var qualifiedNames = {};
-        var addQualifiedName = function(name, qualifiedName) {
-            if (!(name in qualifiedNames)) {
-                qualifiedNames[name] = [];
-            }
-            if (qualifiedNames[name].indexOf(qualifiedName) < 0) {
-                qualifiedNames[name].push(qualifiedName);
-            }
-        };
+        var baseClassType, name, baseProto;
+        var inheritedNames = {};
         var rawBaseClassTypes =  Module.__getBaseClasses(type.rawType);
-        for (i = 0; i < rawBaseClassTypes.size(); i++) {
-            rawBaseClassType = rawBaseClassTypes.at(i);
+        for (var i = 0; i < rawBaseClassTypes.size(); i++) {
+            var rawBaseClassType = rawBaseClassTypes.at(i);
             baseClassType = typeRegistry[rawBaseClassType];
             if (baseClassType) {
                 resolveType(baseClassType);
                 baseProto = baseClassType.Handle.prototype;
                 for (name in baseProto) {
                     if (baseProto.hasOwnProperty(name) && baseClassType.Handle.memberType[name]) {
-                        if (names.indexOf(name) >= 0 || type.Handle.prototype.hasOwnProperty(name)) {
-                            addQualifiedName(name, baseClassType.name + "_" + name);
+                        if (!(name in inheritedNames)) {
+                            inheritedNames[name] = [];
                         }
-                        addName(name);
+                        inheritedNames[name].push(baseClassType);
                     }
                 }
             }
         }
-        for (i = 0; i < rawBaseClassTypes.size(); i++) {
-            rawBaseClassType = rawBaseClassTypes.at(i);
-            baseClassType = typeRegistry[rawBaseClassType];
-            if (baseClassType) {
-                var proto = baseClassType.Handle.prototype;
-                for (name in qualifiedNames) {
-                    if (qualifiedNames.hasOwnProperty(name)) {
-                        for (j = 0; j < qualifiedNames[name].length; j++) {
-                            if (qualifiedNames[name][j].indexOf(baseClassType.name + "_") === 0) {
-                                createInheritedFunctionOrProperty(name, qualifiedNames[name][j], proto, baseClassType);
-                            }
-                        }
-                    }
-                }
-                for (j = 0; j < names.length; j++) {
-                    name = names[j];
-                    if (!(name in qualifiedNames)) {
-                        createInheritedFunctionOrProperty(name, name, proto, baseClassType);
+        for (name in inheritedNames) {
+            if (inheritedNames.hasOwnProperty(name)) {
+                if (!type.Handle.prototype.hasOwnProperty(name) && inheritedNames[name].length === 1) {
+                    baseClassType = inheritedNames[name][0];
+                    createInheritedFunctionOrProperty(name, type, name, baseClassType);
+                } else {
+                    for (var j = 0; j < inheritedNames[name].length; j++) {
+                        baseClassType = inheritedNames[name][j];
+                        createInheritedFunctionOrProperty(baseClassType.name+"_"+name, type, name, baseClassType);
                     }
                 }
             }
