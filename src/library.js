@@ -4307,6 +4307,11 @@ LibraryManager.library = {
   },
 
   wcslen: function() { throw 'wcslen not implemented' },
+  mbrlen: function() { throw 'mbrlen not implemented' },
+  mbsrtowcs: function() { throw 'mbsrtowcs not implemented' },
+  wcsnrtombs: function() { throw 'wcsnrtombs not implemented' },
+  mbsnrtowcs: function() { throw 'mbsnrtowcs not implemented' },
+  mbrtowc: function() { throw 'mbrtowc not implemented' },
 
   strspn: function(pstr, pset) {
     var str = pstr, set, strcurr, setcurr;
@@ -5100,6 +5105,8 @@ LibraryManager.library = {
   },
 
   _ZNSt9exceptionD2Ev: function(){}, // XXX a dependency of dlmalloc, but not actually needed if libcxx is not anyhow included
+
+  _ZNSt9type_infoD2Ev: function(){},
 
   // RTTI hacks for exception handling, defining type_infos for common types.
   // The values are dummies. We simply use the addresses of these statically
@@ -6157,6 +6164,8 @@ LibraryManager.library = {
     return me.ret;
   },
 
+  __locale_mb_cur_max: function() { throw '__locale_mb_cur_max not implemented' },
+
   // ==========================================================================
   // langinfo.h
   // ==========================================================================
@@ -6336,6 +6345,10 @@ LibraryManager.library = {
     {{{ makeSetValue('me.ret', 'i', '0', 'i8') }}}
     return me.ret;
   },
+
+  _Z7catopenPKci: function() { throw 'catopen not implemented' },
+  _Z7catgetsP8_nl_catdiiPKc: function() { throw 'catgets not implemented' },
+  _Z8catcloseP8_nl_catd: function() { throw 'catclose not implemented' },
 
   // ==========================================================================
   // errno.h
