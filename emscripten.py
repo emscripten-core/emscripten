@@ -300,6 +300,8 @@ def emscript(infile, settings, outfile, libraries=[]):
     simple = os.environ.get('EMCC_SIMPLE_ASM')
     class Counter:
       i = 0
+    pre_tables = last_forwarded_json['Functions']['tables']['pre']
+    del last_forwarded_json['Functions']['tables']['pre']
     def make_table(sig, raw):
       i = Counter.i
       Counter.i += 1
@@ -438,7 +440,7 @@ var asm = (function(global, env, buffer) {
 Runtime.stackAlloc = function(size) { return asm.stackAlloc(size) };
 Runtime.stackSave = function() { return asm.stackSave() };
 Runtime.stackRestore = function(top) { asm.stackRestore(top) };
-''' % ('\n'.join(function_tables_impls) + '\n' + function_tables_defs.replace('\n', '\n  '), exports, sending, receiving)
+''' % (pre_tables + '\n'.join(function_tables_impls) + '\n' + function_tables_defs.replace('\n', '\n  '), exports, sending, receiving)
 
     # Set function table masks
     def function_table_maskize(js):
