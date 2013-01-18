@@ -305,8 +305,8 @@ def emscript(infile, settings, outfile, libraries=[]):
       Counter.i += 1
       bad = 'b' + str(i)
       params = ','.join(['p%d' % p for p in range(len(sig)-1)])
-      coercions = ';'.join(['p%d = %sp%d%s' % (p, '+' if sig[p+1] == 'd' else '', p, '' if sig[p+1] == 'd' else '|0') for p in range(len(sig)-1)]) + ';'
-      ret = '' if sig[0] == 'v' else ('return %s0' % ('+' if sig[0] == 'd' else ''))
+      coercions = ';'.join(['p%d = %sp%d%s' % (p, '+' if sig[p+1] == 'f' else '', p, '' if sig[p+1] == 'f' else '|0') for p in range(len(sig)-1)]) + ';'
+      ret = '' if sig[0] == 'v' else ('return %s0' % ('+' if sig[0] == 'f' else ''))
       return ('function %s(%s) { %s abort(%d); %s };' % (bad, params, coercions, i, ret), raw.replace('[0,', '[' + bad + ',').replace(',0,', ',' + bad + ',').replace(',0,', ',' + bad + ',').replace(',0]', ',' + bad + ']').replace(',0]', ',' + bad + ']'))
     infos = [make_table(sig, raw) for sig, raw in last_forwarded_json['Functions']['tables'].iteritems()]
     function_tables_defs = '\n'.join([info[0] for info in infos] + [info[1] for info in infos])
