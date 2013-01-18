@@ -6851,28 +6851,25 @@ LibraryManager.library = {
         if(div) {
           div.innerHTML = '<a href="' + url + '">Open remote client</a>';
         }
-      }
-      var reader = new FileReader();
-      reader.onload = function(event) {
-        var message = event.target.result;
+      }      
+      function handleMessage(message) {
 #if SOCKET_DEBUG        
         Module.print("received " + message.byteLength + " raw bytes");
 #endif
-        var header = new Uint16Array(message, 0, 2);        
-        // console.log("receiving from port ", header[1]);
+        var header = new Uint16Array(message, 0, 2);
         if(Sockets.peer.binds[header[1]]) {          
           Sockets.peer.binds[header[1]].inQueue.push(message);
           // console.log(Sockets.peer.binds[header[1]].inQueue.length + " messages queued for recv (onload)");
         } else {
-          // console.log("unable to deliver message from port ", header[1])
+          console.log("unable to deliver message");
         }
       }
       pc.onunreliablemessage = function(message) {
-        reader.readAsArrayBuffer(message.data);
-      }
+        handleMessage(message.data);
+      };
       pc.onreliablemessage = function(message) {
-        reader.readAsArrayBuffer(message.data);
-      }
+        handleMessage(message.data);
+      };
       Sockets.peer.pc = pc;
     }
 
@@ -7025,9 +7022,11 @@ LibraryManager.library = {
     // console.log('sendmsg: header', info.header);
     // console.log('sendmsg: actually sending ', Array.prototype.slice.call(data));
     // console.log("sending " + data.buffer.byteLength + " bytes to port ", port);
-    var blob = new Blob([info.header, data]);
+    var buffer = new Uint8Array(info.header.byteLength + data.byteLength);
+    buffer.set(new Uint8Array(info.header.buffer));
+    buffer.set(data, info.header.byteLength);    
     // Sockets.peer.pc.unreliable.send(blob);
-    Sockets.peer.pc.reliable.send(blob);
+    Sockets.peer.pc.unreliable.send(buffer.buffer);
   },
 
   recvmsg__deps: ['$Sockets', 'bind', '__setErrNo', '$ERRNO_CODES', 'htons'],
@@ -7047,9 +7046,9 @@ LibraryManager.library = {
     console.log(info.inQueue.length + " messages queued for recv (recvmsg)");
 
     var message = info.inQueue.shift();
-    var header = new Uint16Array(message, 0, 2);
+    var header = new Uint16Array(message, 0, info.header.length);
     console.log('recvmsg: header', header);
-    var buffer = new Uint8Array(message, 4);
+    var buffer = new Uint8Array(message, info.header.byteLength);
 
     var bytes = buffer.length;
     // console.log("delivering " + bytes + " bytes on port " + header[1]);

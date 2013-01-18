@@ -151,7 +151,7 @@ var LibraryWebRTC = {
     // onreliablemessage: Called when data arrives on the reliable channel.
     // onunreliablemessage: Called when data arrives on the unreliable channel.
     //TODO: support closing connection, handle closed events.
-    default_broker: "http://127.0.0.1:3000",
+    default_broker: "http://10.242.24.63:3000",
   	DataPeer: function DataPeer(broker, offer_id) {
       this.connected = false;
       this.onoffercreated = null;
@@ -202,7 +202,7 @@ var LibraryWebRTC = {
               self.connected = true;
               callback(self, "onconnect", []);
             }
-            channel.binaryType = "blob";
+            channel.binaryType = "arraybuffer";
             channel.onmessage = function(event) {
               callback(self,
                        channel.reliable ? "onreliablemessage"
@@ -236,18 +236,24 @@ var LibraryWebRTC = {
           pc.onconnection = function() {
             self.channels_open = 0;
             self.reliable = pc.createDataChannel("reliable", {});
-            self.reliable.binaryType = "blob";
+            self.reliable.binaryType = "arraybuffer";
             self.reliable.onmessage = function(event) {
               callback(self, "onreliablemessage", [event]);
+            };
+            self.reliable.onerror = function(event) {
+              console.error("reliable: error, ", event);
             };
             self.reliable.onopen = datachannelopen;
 
             self.unreliable = pc.createDataChannel("unreliable",
                                                    {outOfOrderAllowed: true,
                                                     maxRetransmitNum: 0});
-            self.unreliable.binaryType = "blob";
+            self.unreliable.binaryType = "arraybuffer";
             self.unreliable.onmessage = function(event) {
               callback(self, "onunreliablemessage", [event]);
+            };
+            self.unreliable.onerror = function(event) {
+              console.error("unreliable: error, ", event);
             };
             self.unreliable.onopen = datachannelopen;
           };
