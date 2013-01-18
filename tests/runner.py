@@ -2372,6 +2372,38 @@ Exception execution path of first function! 1
         Settings.DISABLE_EXCEPTION_CATCHING = 0
         self.do_run(src, 'Throw...Construct...Catched...Destruct...Throw...Construct...Copy...Catched...Destruct...Destruct...')
 
+    def test_white_list_exception(self):
+      Settings.DISABLE_EXCEPTION_CATCHING = 2
+      Settings.EXCEPTION_CATCHING_WHITELIST = ["__Z12somefunctionv"]
+
+      src = '''
+          #include <stdio.h>
+          
+          void thrower() {
+            printf("infunc...");
+            throw(99);
+            printf("FAIL");
+          }
+
+          void somefunction() {
+            try {
+              thrower();
+            } catch(...) {
+              printf("done!*\\n");
+            }
+          }
+
+          int main() {
+            somefunction();
+            return 0;
+          }
+        '''
+      self.do_run(src, 'infunc...done!*')
+
+      Settings.DISABLE_EXCEPTION_CATCHING = 0
+      Settings.EXCEPTION_CATCHING_WHITELIST = []
+
+
     def test_uncaught_exception(self):
         if self.emcc_args is None: return self.skip('no libcxx inclusion without emcc')
         if '-O2' in self.emcc_args:
