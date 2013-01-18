@@ -302,6 +302,14 @@ def emscript(infile, settings, outfile, libraries=[]):
       i = 0
     pre_tables = last_forwarded_json['Functions']['tables']['pre']
     del last_forwarded_json['Functions']['tables']['pre']
+
+    # Find function table calls without function tables generated for them
+    for use in set(re.findall(r'{{{ FTM_[\w\d_$]+ }}}', funcs_js)):
+      sig = use[8:len(use)-4]
+      if sig not in last_forwarded_json['Functions']['tables']:
+        print >> sys.stderr, 'add empty function table', sig
+        last_forwarded_json['Functions']['tables'][sig] = 'var FUNCTION_TABLE_' + sig + ' = [0,0];\n'
+
     def make_table(sig, raw):
       i = Counter.i
       Counter.i += 1
@@ -336,7 +344,7 @@ var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
     def asm_coerce(value, sig):
       if sig == 'v': return value
       return ('+' if sig == 'f' else '') + value + ('|0' if sig == 'i' else '')
-
+        
     function_tables = ['dynCall_' + table for table in last_forwarded_json['Functions']['tables']]
     function_tables_impls = []
     for sig in last_forwarded_json['Functions']['tables'].iterkeys():
@@ -351,6 +359,7 @@ var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
     %s;
   }
 ''' % (sig, ',' if len(sig) > 1 else '', args, arg_coercions, ret))
+
     # calculate exports
     exported_implemented_functions = list(exported_implemented_functions)
     exports = []
@@ -451,9 +460,6 @@ Runtime.stackRestore = function(top) { asm.stackRestore(top) };
         default = sig
       def fix(m):
         sig = m.groups(0)[0]
-        if not sig in masks:
-          print >> sys.stderr, 'warning: function table use without functions for it!', sig
-          return masks[default] # TODO: generate empty function tables for this case, even though it would fail at runtime if used
         return masks[sig]
       return re.sub(r'{{{ FTM_([\w\d_$]+) }}}', lambda m: fix(m), js) # masks[m.groups(0)[0]]
     funcs_js = function_table_maskize(funcs_js)
