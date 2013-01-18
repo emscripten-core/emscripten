@@ -1250,7 +1250,7 @@ function makeSetValues(ptr, pos, value, type, num, align) {
     // If we don't know how to handle this at compile-time, or handling it is best done in a large amount of code, call memset
     // TODO: optimize the case of numeric num but non-numeric value
     if (!isNumber(num) || !isNumber(value) || (align < 4 && parseInt(num) >= SEEK_OPTIMAL_ALIGN_MIN)) {
-      return '_memset(' + getFastValue(ptr, '+', pos) + ', ' + value + ', ' + num + ', ' + align + ')';
+      return '_memset(' + asmCoercion(getFastValue(ptr, '+', pos), 'i32') + ', ' + asmCoercion(value, 'i32') + ', ' + asmCoercion(num, 'i32') + ', ' + align + ')';
     }
     num = parseInt(num);
     value = parseInt(value);
