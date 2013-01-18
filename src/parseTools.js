@@ -1440,8 +1440,18 @@ var IHEAP_FHEAP = set('IHEAP', 'IHEAPU', 'FHEAP');
 
 function makePointer(slab, pos, allocator, type, ptr) {
   assert(type, 'makePointer requires type info');
-  if (slab.substr(0, 4) === 'HEAP' || (USE_TYPED_ARRAYS == 1 && slab in IHEAP_FHEAP)) return pos;
+  if (typeof slab == 'string' && (slab.substr(0, 4) === 'HEAP' || (USE_TYPED_ARRAYS == 1 && slab in IHEAP_FHEAP))) return pos;
   var types = generateStructTypes(type);
+  if (typeof slab == 'object') {
+    for (var i = 0; i < slab.length; i++) {
+      var curr = slab[i];
+      if (isNumber(curr)) {
+        slab[i] = parseFloat(curr); // fix "5" to 5 etc.
+      } else if (curr == 'undef') {
+        slab[i] = 0;
+      }
+    }
+  }
   // compress type info and data if possible
   var de;
   try {
@@ -1449,25 +1459,68 @@ function makePointer(slab, pos, allocator, type, ptr) {
     // note that we cannot always eval the slab, e.g., if it contains ident,0,0 etc. In that case, no compression TODO: ensure we get arrays here, not str
     var evaled = typeof slab === 'string' ? eval(slab) : slab;
     de = dedup(evaled);
-    if (de.length === 1 && de[0] === 0) {
+    if (de.length === 1 && de[0] == 0) {
       slab = types.length;
-      if (USE_TYPED_ARRAYS == 2) {
-        types = ['i8']; //  if data is zeros, we don't need type info
-      }
     }
     // TODO: if not all zeros, at least filter out items with type === 0. requires cleverness to know how to skip at runtime though. also
     //       be careful of structure padding
   } catch(e){}
-  de = dedup(types);
-  if (de.length === 1) {
-    types = de[0];
-  } else if (de.length === 2 && typeof slab === 'number') {
-    // If slab is all zeros, we can compress types even if we have i32,0,0,0,i32,0,0,0 etc. - we do not need the zeros
-    de = de.filter(function(x) { return x !== 0 });
+  if (USE_TYPED_ARRAYS != 2) {
+    de = dedup(types);
     if (de.length === 1) {
       types = de[0];
+    } else if (de.length === 2 && typeof slab === 'number') {
+      // If slab is all zeros, we can compress types even if we have i32,0,0,0,i32,0,0,0 etc. - we do not need the zeros
+      de = de.filter(function(x) { return x !== 0 });
+      if (de.length === 1) {
+        types = de[0];
+      }
     }
+  } else { // USE_TYPED_ARRAYS == 2
+    var fail = false;
+    if (typeof slab === 'object') {
+      // flatten out into i8 values, so we can just to typed array .set()
+      for (var i = 0; i < slab.length; i++) {
+        if (!isNumber(slab[i])) { fail = true; break }
+      }
+      if (!fail) {
+        // XXX This heavily assumes the target endianness is the same as our current endianness! XXX
+        var i = 0;
+        var temp64f = new Float64Array(1);
+        var temp32f = new Float32Array(temp64f.buffer);
+        var temp32 = new Uint32Array(temp64f.buffer);
+        var temp16 = new Uint16Array(temp64f.buffer);
+        var temp8 = new Uint8Array(temp64f.buffer);
+        while (i < slab.length) {
+          var currType = types[i];
+          if (!currType) { i++; continue }
+          var currSize = 0, currValue = slab[i];
+          switch (currType) {
+            case 'i8': i++; continue;
+            case 'i16': temp16[0] = currValue;     currSize = 2; break;
+            case 'i64': // fall through, i64 is two i32 chunks
+            case 'i32': temp32[0] = currValue;     currSize = 4; break;
+            case 'float': temp32f[0] = currValue;  currSize = 4; break;
+            case 'double': temp64f[0] = currValue; currSize = 8; break;
+            default: {
+              if (currType[currType.length-1] == '*') {
+                temp32[0] = currValue;
+                currSize = 4;
+              } else {
+                throw 'what? ' + types[i];
+              }
+            }
+          }
+          for (var j = 0; j < currSize; j++) {
+            slab[i+j] = temp8[j];
+          }
+          i += currSize;
+        }
+      }
+    }
+    if (!fail) types = 'i8';
   }
+  if (typeof slab != 'string') slab = JSON.stringify(slab);
   // JS engines sometimes say array initializers are too large. Work around that by chunking and calling concat to combine at runtime
   var chunkSize = 10240;
   function chunkify(array) {
@@ -1480,7 +1533,7 @@ function makePointer(slab, pos, allocator, type, ptr) {
     }
     return ret;
   }
-  if (typeof slab == 'string' && evaled && evaled.length > chunkSize) {
+  if (typeof slab == 'string' && evaled && evaled.length > chunkSize && slab.length > chunkSize) {
     slab = chunkify(evaled);
   }
   if (typeof types != 'string' && types.length > chunkSize) {

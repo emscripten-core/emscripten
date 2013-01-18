@@ -293,7 +293,7 @@ function JSify(data, functionsOnly, givenFunctions) {
               padding = makeEmptyStruct(item.type);
             }
             var padded = val.concat(padding.slice(val.length));
-            var js = item.ident + '=' + makePointer(JSON.stringify(padded), null, allocator, item.type, index) + ';'
+            var js = item.ident + '=' + makePointer(padded, null, allocator, item.type, index) + ';'
             if (LibraryManager.library[shortident + '__postset']) {
               js += '\n' + LibraryManager.library[shortident + '__postset'];
             }
@@ -333,7 +333,6 @@ function JSify(data, functionsOnly, givenFunctions) {
                 constant[i] = '0';
               }
             });
-            constant = '[' + constant.join(', ') + ']';
           }
           // NOTE: This is the only place that could potentially create static
           //       allocations in a shared library.
@@ -347,7 +346,7 @@ function JSify(data, functionsOnly, givenFunctions) {
             if (index !== null) {
               index = getFastValue(index, '+', Runtime.alignMemory(calcAllocatedSize(Variables.globals[item.ident].type)));
             }
-            js += '\n' + makePointer('[0]', null, allocator, ['void*'], index) + ';';
+            js += '\n' + makePointer([0], null, allocator, ['void*'], index) + ';';
           }
           if (!ASM_JS && (EXPORT_ALL || (item.ident in EXPORTED_GLOBALS))) {
             js += '\nModule["' + item.ident + '"] = ' + item.ident + ';';
