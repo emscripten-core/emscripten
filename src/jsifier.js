@@ -797,10 +797,10 @@ function JSify(data, functionsOnly, givenFunctions) {
       func.JS += walkBlock(func.block, '  ');
       // Finalize function
       if (LABEL_DEBUG && functionNameFilterTest(func.ident)) func.JS += "  INDENT = INDENT.substr(0, INDENT.length-2);\n";
-      // Add an unneeded return, needed for strict mode to not throw warnings in some cases.
-      // If we are not relooping, then switches make it unimportant to have this (and, we lack hasReturn anyhow)
-      if (RELOOP && func.lines.length > 0 && func.labels.filter(function(label) { return label.hasReturn }).length > 0) {
-        func.JS += '  return' + (func.returnType !== 'void' ? ' null' : '') + ';\n';
+      // Ensure a return in a function with a type that returns, even if it lacks a return (e.g., if it aborts())
+      if (RELOOP && func.lines.length > 0 && func.returnType != 'void') {
+        var returns = func.labels.filter(function(label) { return label.lines[label.lines.length-1].intertype == 'return' }).length;
+        if (returns == 0) func.JS += '  return ' + asmCoercion('0', func.returnType);
       }
       func.JS += '}\n';
       
