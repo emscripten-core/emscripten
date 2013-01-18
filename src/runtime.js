@@ -46,7 +46,7 @@ var RuntimeGenerator = {
       ret += '; assert(STACKTOP < STACK_MAX)';
     }
     if (INIT_STACK) {
-      ret += '; _memset(__stackBase__, 0, ' + initial + ')';
+      ret += '; _memset(' + asmCoercion('__stackBase__', 'i32') + ', 0, ' + initial + ')';
     }
     return ret;
   },
