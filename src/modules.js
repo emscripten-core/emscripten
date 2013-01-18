@@ -264,7 +264,7 @@ var Functions = {
     function emptyTable(sig) {
       return zeros(total);
     }
-    var tables = {};
+    var tables = { pre: '' };
     if (ASM_JS) {
       ['v', 'vi', 'ii', 'iii'].forEach(function(sig) { // add some default signatures that are used in the library
         tables[sig] = emptyTable(sig); // TODO: make them compact
@@ -277,7 +277,9 @@ var Functions = {
       tables[sig][this.indexedFunctions[ident]] = ident;
     }
     var generated = false;
+    var wrapped = {};
     for (var t in tables) {
+      if (t == 'pre') continue;
       generated = true;
       var table = tables[t];
       for (var i = 0; i < table.length; i++) {
@@ -293,6 +295,22 @@ var Functions = {
           if (libName && typeof libName == 'string') {
             table[i] = (libName.indexOf('.') < 0 ? '_' : '') + libName;
           }
+        }
+        var curr = table[i];
+        if (curr && Functions.unimplementedFunctions[table[i]]) {
+          // This is a library function, we can't just put it in the function table, need a wrapper
+          if (!wrapped[curr]) {
+            var args = '', arg_coercions = '', call = curr + '(', ret = t[0] == 'v' ? '' : ('return ' + (t[0] == 'f' ? '+0' : '0'));
+            for (var i = 1; i < t.length; i++) {
+              args += (i > 1 ? ',' : '') + 'a' + i;
+              arg_coercions += 'a' + i + '=' + (i > 1 ? ';' : '') + asmCoercion('a' + i, t[i] == 'f' ? 'float' : 'i32');
+              call += (i > 1 ? ',' : '') + asmCoercion('a' + i, t[i] == 'f' ? 'float' : 'i32');
+            }
+            call += ')';
+            tables.pre += 'function ' + curr + '__wrapper(' + args + ') { ' + arg_coercions + ' ; ' + call + ' ; ' + ret + ' }\n';
+            wrapped[curr] = 1;
+          }
+          table[i] = curr + '__wrapper';
         }
       }
       var indices = table.toString().replace('"', '');
