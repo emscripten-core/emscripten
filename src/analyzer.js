@@ -635,7 +635,7 @@ function analyzer(data, sidePass) {
                       break;
                     }
                     case 'add': case 'sub': case 'sdiv': case 'udiv': case 'mul': case 'urem': case 'srem':
-                    case 'uitofp': case 'sitofp': {
+                    case 'uitofp': case 'sitofp': case 'fptosi': case 'fptoui': {
                       // We cannot do these in parallel chunks of 32-bit operations. We will handle these in processMathop
                       i++;
                       continue;
