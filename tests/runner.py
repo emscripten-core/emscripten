@@ -9054,6 +9054,8 @@ f.close()
          ['asm', 'registerize']),
         (path_from_root('tools', 'test-js-optimizer-asm-pre.js'), open(path_from_root('tools', 'test-js-optimizer-asm-pre-output.js')).read(),
          ['asm', 'simplifyExpressionsPre']),
+        (path_from_root('tools', 'test-js-optimizer-asm-last.js'), open(path_from_root('tools', 'test-js-optimizer-asm-last-output.js')).read(),
+         ['asm', 'last']),
       ]:
         output = Popen([NODE_JS, path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
         self.assertIdentical(expected, output.replace('\r\n', '\n').replace('\n\n', '\n'))

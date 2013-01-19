@@ -2149,6 +2149,19 @@ function eliminateMemSafe(ast) {
   eliminate(ast, true);
 }
 
+// Change +5 to DOT$ZERO(5). We then textually change 5 to 5.0 (uglify's ast cannot differentiate between 5 and 5.0 directly)
+function prepDotZero(ast) {
+  traverse(ast, function(node, type) {
+    if (type == 'unary-prefix' && node[1] == '+') {
+      if (node[2][0] == 'num') {
+        return ['call', ['name', 'DOT$ZERO'], [['num', node[2][1]]]];
+      } else if (node[2][0] == 'unary-prefix' && node[2][1] == '-' && node[2][2][0] == 'num') {
+        return ['call', ['name', 'DOT$ZERO'], [['num', -node[2][2][1]]]];
+      }
+    }
+  });
+}
+
 // Passes table
 
 var compress = false, printMetadata = true, asm = false, last = false;
@@ -2186,15 +2199,23 @@ if (metadata) setGeneratedFunctions(metadata);
 arguments_.slice(1).forEach(function(arg) {
   passes[arg](ast);
 });
+if (asm && last) {
+  prepDotZero(ast);
+}
 var js = astToSrc(ast, compress), old;
+if (asm && last) {
+  js = js.replace(/DOT\$ZERO\(([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)\)/g, function(m, num) {
+    if (num.indexOf('.') >= 0) return num;
+    var e = num.indexOf('e');
+    if (e < 0) return num + '.0';
+    return num.substr(0, e) + '.0' + num.substr(e);
+  });
+}
 
 // remove unneeded newlines+spaces, and print
 do {
   old = js;
   js = js.replace(/\n *\n/g, '\n');
-  if (asm && last) {
-    js = js.replace(/ = \+0([,;])/g, function(m, end) { return ' = 0.0' + end }); // asm requires 0.0 in var definitions, not +0
-  }
 } while (js != old);
 print(js);
 print('\n');
