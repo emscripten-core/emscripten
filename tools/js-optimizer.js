@@ -428,12 +428,13 @@ function simplifyExpressionsPre(ast) {
               if (stack[i] == 1) {
                 // we will replace ourselves with the non-zero side. Recursively process that node.
                 var result = jsonCompare(node[2], ZERO) ? node[3] : node[2], other;
-                // Great, we can eliminate
-                rerun = true;
-                while (other = process(result, result[0], stack)) {
-                  result = other;
+                // replace node in-place
+                node.length = result.length;
+                for (var j = 0; j < result.length; j++) {
+                  node[j] = result[j];
                 }
-                return result;
+                rerun = true;
+                return process(result, result[0], stack);
               } else if (stack[i] == -1) {
                 break; // Too bad, we can't
               } else if (asm) {
