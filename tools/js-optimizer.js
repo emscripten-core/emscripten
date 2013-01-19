@@ -2154,11 +2154,24 @@ function prepDotZero(ast) {
   traverse(ast, function(node, type) {
     if (type == 'unary-prefix' && node[1] == '+') {
       if (node[2][0] == 'num') {
-        return ['call', ['name', 'DOT$ZERO'], [['num', node[2][1]]]];
+        return ['call', ['name', 'DOT$ZERO'], [node[2]]];
       } else if (node[2][0] == 'unary-prefix' && node[2][1] == '-' && node[2][2][0] == 'num') {
-        return ['call', ['name', 'DOT$ZERO'], [['num', -node[2][2][1]]]];
+        node[2][2][1] = -node[2][2][1];
+        return ['call', ['name', 'DOT$ZERO'], [node[2][2]]];
       }
     }
+  });
+}
+function fixDotZero(js) {
+  return js.replace(/DOT\$ZERO\(((0x)?[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)\)/g, function(m, num) {
+    if (num.substr(0, 2) == '0x') {
+      if (num[2] == '-') num = '-0x' + num.substr(3); // uglify generates 0x-8000 for some reason
+      return eval(num) + '.0';
+    }
+    if (num.indexOf('.') >= 0) return num;
+    var e = num.indexOf('e');
+    if (e < 0) return num + '.0';
+    return num.substr(0, e) + '.0' + num.substr(e);
   });
 }
 
@@ -2204,12 +2217,7 @@ if (asm && last) {
 }
 var js = astToSrc(ast, compress), old;
 if (asm && last) {
-  js = js.replace(/DOT\$ZERO\(([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)\)/g, function(m, num) {
-    if (num.indexOf('.') >= 0) return num;
-    var e = num.indexOf('e');
-    if (e < 0) return num + '.0';
-    return num.substr(0, e) + '.0' + num.substr(e);
-  });
+  js = fixDotZero(js);
 }
 
 // remove unneeded newlines+spaces, and print
