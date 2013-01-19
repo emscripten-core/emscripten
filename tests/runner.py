@@ -2289,6 +2289,7 @@ Exception execution path of first function! 1
 ''')
 
     def test_exceptions(self):
+        if Settings.ASM_JS: return self.skip('no exceptions support in asm')
         if Settings.QUANTUM_SIZE == 1: return self.skip("we don't support libcxx in q1")
 
         Settings.EXCEPTION_DEBUG = 1
@@ -2380,6 +2381,7 @@ Exception execution path of first function! 1
         self.do_run(src, 'Throw...Construct...Catched...Destruct...Throw...Construct...Copy...Catched...Destruct...Destruct...')
 
     def test_white_list_exception(self):
+      if Settings.ASM_JS: return self.skip('no exceptions support in asm')
       Settings.DISABLE_EXCEPTION_CATCHING = 2
       Settings.EXCEPTION_CATCHING_WHITELIST = ["__Z12somefunctionv"]
 
@@ -2412,6 +2414,7 @@ Exception execution path of first function! 1
 
 
     def test_uncaught_exception(self):
+        if Settings.ASM_JS: return self.skip('no exceptions support in asm')
         if self.emcc_args is None: return self.skip('no libcxx inclusion without emcc')
         if '-O2' in self.emcc_args:
           self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
@@ -2453,6 +2456,7 @@ Exception execution path of first function! 1
         self.do_run(src, 'success')
 
     def test_typed_exceptions(self):
+        if Settings.ASM_JS: return self.skip('no exceptions support in asm')
         Settings.DISABLE_EXCEPTION_CATCHING = 0
         Settings.SAFE_HEAP = 0  # Throwing null will cause an ignorable null pointer access.
         src = open(path_from_root('tests', 'exceptions', 'typed.cpp'), 'r').read()
@@ -2460,6 +2464,7 @@ Exception execution path of first function! 1
         self.do_run(src, expected)
 
     def test_multiexception(self):
+      if Settings.ASM_JS: return self.skip('no exceptions support in asm')
       Settings.DISABLE_EXCEPTION_CATCHING = 0
       src = r'''
 #include <stdio.h>
@@ -3239,6 +3244,7 @@ def process(filename):
         self.do_run(src, 'hello world!\n*100*\n*fivesix*\nmann\n', post_build=check)
 
     def test_inlinejs(self):
+        if Settings.ASM_JS: return self.skip('asm does not support random code, TODO: something that works in asm')
         src = r'''
           #include <stdio.h>
 
@@ -3828,6 +3834,7 @@ The current type of b is: 9
       self.do_run(src, '*0\n')
 
     def test_intentional_fault(self):
+      if Settings.ASM_JS: return self.skip('no throw support in asm')
       # Some programs intentionally segfault themselves, we should compile that into a throw
       src = r'''
         int main () {
