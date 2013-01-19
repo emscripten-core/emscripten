@@ -2515,7 +2515,7 @@ LibraryManager.library = {
         var curr = 0;
         var buffer = [];
         // Read characters according to the format. floats are trickier, they may be in an unfloat state in the middle, then be a valid float later
-        if ((type == 'f') || (type == 'e') || (type == 'g') || (type == 'E')) {
+        if (type == 'f' || type == 'e' || type == 'g' || type == 'E') {
           var last = 0;
           next = get();
           while (next > 0) {
