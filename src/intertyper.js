@@ -837,7 +837,7 @@ function intertyper(data, sidePass, baseLineNums) {
       if (item.op === 'select') {
         assert(item.params[1].type === item.params[2].type);
         item.type = item.params[1].type;
-      } else if (item.op === 'inttoptr' || item.op === 'ptrtoint') {
+      } else if (item.op === 'inttoptr' || item.op === 'ptrtoint' || item.op === 'uitofp' || item.op === 'sitofp') {
         item.type = item.params[1].type;
       } else {
         item.type = item.params[0].type;
