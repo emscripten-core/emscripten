@@ -307,7 +307,7 @@ def emscript(infile, settings, outfile, libraries=[]):
     for use in set(re.findall(r'{{{ FTM_[\w\d_$]+ }}}', funcs_js)):
       sig = use[8:len(use)-4]
       if sig not in last_forwarded_json['Functions']['tables']:
-        print >> sys.stderr, 'add empty function table', sig
+        if DEBUG: print >> sys.stderr, 'add empty function table', sig
         last_forwarded_json['Functions']['tables'][sig] = 'var FUNCTION_TABLE_' + sig + ' = [0,0];\n'
 
     def make_table(sig, raw):
