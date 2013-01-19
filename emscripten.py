@@ -325,7 +325,7 @@ def emscript(infile, settings, outfile, libraries=[]):
     if settings['USE_MATH_IMUL']:
       maths += ['Math.imul']
     fundamentals = ['buffer', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
-    math_envs = ['Runtime.bitshift64']
+    math_envs = ['Runtime.bitshift64', 'Math.min'] # TODO: move min to maths
     asm_setup = '\n'.join(['var %s = %s;' % (f.replace('.', '_'), f) for f in math_envs])
     basic_funcs = ['abort', 'assert', 'asmPrintInt', 'asmPrintFloat'] + [m.replace('.', '_') for m in math_envs]
     basic_vars = ['STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT']
