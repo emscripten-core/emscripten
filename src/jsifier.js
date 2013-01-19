@@ -734,12 +734,13 @@ function JSify(data, functionsOnly, givenFunctions) {
             if (func.setjmpTable) {
               ret += 'try { ';
             }
-            ret += 'switch(label) {\n';
+            ret += 'switch(' + asmCoercion('label', 'i32') + ') {\n';
             ret += block.labels.map(function(label) {
               return indent + '  case ' + getLabelId(label.ident) + ': ' + (SHOW_LABELS ? '// ' + getOriginalLabelId(label.ident) : '') + '\n'
                             + getLabelLines(label, indent + '    ');
             }).join('\n');
-            ret += '\n' + indent + '  default: assert(0, "bad label: " + label);\n' + indent + '}';
+            if (ASSERTIONS) ret += '\n' + indent + '  default: assert(0, "bad label: " + label);\n';
+            ret += indent + '}';
             if (func.setjmpTable) {
               ret += ' } catch(e) { if (!e.longjmp || !(e.id in mySetjmpIds)) throw(e); setjmpTable[setjmpLabels[e.id]](e.value) }';
             }
