@@ -304,7 +304,7 @@ var Functions = {
             var args = '', arg_coercions = '', call = curr + '(', ret = t[0] == 'v' ? '' : ('return ' + (t[0] == 'f' ? '+0' : '0'));
             for (var i = 1; i < t.length; i++) {
               args += (i > 1 ? ',' : '') + 'a' + i;
-              arg_coercions += 'a' + i + '=' + (i > 1 ? ';' : '') + asmCoercion('a' + i, t[i] == 'f' ? 'float' : 'i32');
+              arg_coercions += 'a' + i + '=' + asmCoercion('a' + i, t[i] == 'f' ? 'float' : 'i32') + ';';
               call += (i > 1 ? ',' : '') + asmCoercion('a' + i, t[i] == 'f' ? 'float' : 'i32');
             }
             call += ')';
