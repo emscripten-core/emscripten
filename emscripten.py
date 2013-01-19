@@ -351,7 +351,7 @@ var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
       args = ','.join(['a' + str(i) for i in range(1, len(sig))])
       arg_coercions = ' '.join(['a' + str(i) + '=' + asm_coerce('a' + str(i), sig[i]) + ';' for i in range(1, len(sig))])
       coerced_args = ','.join([asm_coerce('a' + str(i), sig[i]) for i in range(1, len(sig))])
-      ret = asm_coerce('%sFUNCTION_TABLE_%s[index&{{{ FTM_%s }}}](%s)' % ('return ' if sig[0] != 'v' else '', sig, sig, coerced_args), sig[0])
+      ret = ('return ' if sig[0] != 'v' else '') + asm_coerce('FUNCTION_TABLE_%s[index&{{{ FTM_%s }}}](%s)' % (sig, sig, coerced_args), sig[0])
       function_tables_impls.append('''
   function dynCall_%s(index%s%s) {
     index = index|0;
