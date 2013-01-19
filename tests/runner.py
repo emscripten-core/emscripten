@@ -204,7 +204,7 @@ process(sys.argv[1])
       run_post(post2)
 
   # Build JavaScript code from source code
-  def build(self, src, dirname, filename, output_processor=None, main_file=None, additional_files=[], libraries=[], includes=[], build_ll_hook=None, extra_emscripten_args=[], post_build=None):
+  def build(self, src, dirname, filename, output_processor=None, main_file=None, additional_files=[], libraries=[], includes=[], extra_flags=[], build_ll_hook=None, extra_emscripten_args=[], post_build=None):
 
     Building.pick_llvm_opts(3) # pick llvm opts here, so we include changes to Settings in the test case code
 
@@ -241,7 +241,7 @@ process(sys.argv[1])
       args = [Building.COMPILER, '-emit-llvm'] + COMPILER_OPTS + Building.COMPILER_TEST_OPTS + \
              ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
              map(lambda include: '-I' + include, includes) + \
-             ['-c', f, '-o', f + '.o']
+             ['-c', f, '-o', f + '.o'] + extra_flags
       output = Popen(args, stdout=PIPE, stderr=self.stderr_redirect).communicate()[0]
       assert os.path.exists(f + '.o'), 'Source compilation error: ' + output
 
@@ -442,7 +442,7 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
 
   class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
     ## Does a complete test - builds, runs, checks output, etc.
-    def do_run(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, additional_files=[], js_engines=None, post_build=None, basename='src.cpp', libraries=[], includes=[], force_c=False, build_ll_hook=None, extra_emscripten_args=[]):
+    def do_run(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, additional_files=[], extra_flags=[], js_engines=None, post_build=None, basename='src.cpp', libraries=[], includes=[], force_c=False, build_ll_hook=None, extra_emscripten_args=[]):
         if force_c or (main_file is not None and main_file[-2:]) == '.c':
           basename = 'src.c'
           Building.COMPILER = to_cc(Building.COMPILER)
@@ -450,7 +450,7 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
         dirname = self.get_dir()
         filename = os.path.join(dirname, basename)
         if not no_build:
-          self.build(src, dirname, filename, main_file=main_file, additional_files=additional_files, libraries=libraries, includes=includes,
+          self.build(src, dirname, filename, main_file=main_file, additional_files=additional_files, libraries=libraries, includes=includes, extra_flags=extra_flags,
                      build_ll_hook=build_ll_hook, extra_emscripten_args=extra_emscripten_args, post_build=post_build)
 
         # Run in both JavaScript engines, if optimizing - significant differences there (typed arrays)
@@ -7833,6 +7833,10 @@ finalizing 2 (global == 0)
 finalizing 3 (global == 0)
 .
 ''')
+
+    def test_objc(self):
+        src = open(path_from_root('tests', 'hello_world.m')).read()
+        self.do_run(src, 'hello, world!', basename='src.m', extra_flags=['-fobjc-runtime=gcc'])
 
   # Generate tests for everything
   def make_run(fullname, name=-1, compiler=-1, llvm_opts=0, embetter=0, quantum_size=0, typed_arrays=0, emcc_args=None):

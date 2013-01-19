@@ -590,6 +590,8 @@ class Building:
     env = os.environ.copy()
     env['CC'] = EMCC if not WINDOWS else 'python %r' % EMCC
     env['CXX'] = EMXX if not WINDOWS else 'python %r' % EMXX
+    env['OBJC'] = EMCC if not WINDOWS else 'python %r' % EMCC
+    env['OBJCXX'] = EMXX if not WINDOWS else 'python %r' % EMXX
     env['AR'] = EMAR if not WINDOWS else 'python %r' % EMAR
     env['LD'] = EMCC if not WINDOWS else 'python %r' % EMCC
     env['LDSHARED'] = EMCC if not WINDOWS else 'python %r' % EMCC
@@ -600,8 +602,12 @@ class Building:
     env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(Building.COMPILER_TEST_OPTS)
     env['HOST_CC'] = CLANG_CC
     env['HOST_CXX'] = CLANG_CPP
+    env['HOST_OBJC'] = CLANG_CC
+    env['HOST_OBJCXX'] = CLANG_CPP
     env['HOST_CFLAGS'] = "-W" #if set to nothing, CFLAGS is used, which we don't want
     env['HOST_CXXFLAGS'] = "-W" #if set to nothing, CXXFLAGS is used, which we don't want
+    env['HOST_OBJCFLAGS'] = "-W" #if set to nothing, CFLAGS is used, which we don't want
+    env['HOST_OBJCXXFLAGS'] = "-W" #if set to nothing, CXXFLAGS is used, which we don't want
     env['PKG_CONFIG_LIBDIR'] = path_from_root('system', 'local', 'lib', 'pkgconfig') + os.path.pathsep + path_from_root('system', 'lib', 'pkgconfig')
     env['PKG_CONFIG_PATH'] = os.environ.get ('EM_PKG_CONFIG_PATH') or ''
     return env
