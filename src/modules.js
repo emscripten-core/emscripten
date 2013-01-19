@@ -297,21 +297,23 @@ var Functions = {
             table[i] = (libName.indexOf('.') < 0 ? '_' : '') + libName;
           }
         }
-        var curr = table[i];
-        if (curr && Functions.unimplementedFunctions[table[i]]) {
-          // This is a library function, we can't just put it in the function table, need a wrapper
-          if (!wrapped[curr]) {
-            var args = '', arg_coercions = '', call = curr + '(', ret = t[0] == 'v' ? '' : ('return ' + (t[0] == 'f' ? '+0' : '0'));
-            for (var i = 1; i < t.length; i++) {
-              args += (i > 1 ? ',' : '') + 'a' + i;
-              arg_coercions += 'a' + i + '=' + asmCoercion('a' + i, t[i] == 'f' ? 'float' : 'i32') + ';';
-              call += (i > 1 ? ',' : '') + asmCoercion('a' + i, t[i] == 'f' ? 'float' : 'i32');
+        if (ASM_JS) {
+          var curr = table[i];
+          if (curr && Functions.unimplementedFunctions[table[i]]) {
+            // This is a library function, we can't just put it in the function table, need a wrapper
+            if (!wrapped[curr]) {
+              var args = '', arg_coercions = '', call = curr + '(', ret = t[0] == 'v' ? '' : ('return ' + (t[0] == 'f' ? '+0' : '0'));
+              for (var i = 1; i < t.length; i++) {
+                args += (i > 1 ? ',' : '') + 'a' + i;
+                arg_coercions += 'a' + i + '=' + asmCoercion('a' + i, t[i] == 'f' ? 'float' : 'i32') + ';';
+                call += (i > 1 ? ',' : '') + asmCoercion('a' + i, t[i] == 'f' ? 'float' : 'i32');
+              }
+              call += ')';
+              tables.pre += 'function ' + curr + '__wrapper(' + args + ') { ' + arg_coercions + ' ; ' + call + ' ; ' + ret + ' }\n';
+              wrapped[curr] = 1;
             }
-            call += ')';
-            tables.pre += 'function ' + curr + '__wrapper(' + args + ') { ' + arg_coercions + ' ; ' + call + ' ; ' + ret + ' }\n';
-            wrapped[curr] = 1;
+            table[i] = curr + '__wrapper';
           }
-          table[i] = curr + '__wrapper';
         }
       }
       var indices = table.toString().replace('"', '');
