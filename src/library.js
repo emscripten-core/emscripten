@@ -2515,7 +2515,7 @@ LibraryManager.library = {
         var curr = 0;
         var buffer = [];
         // Read characters according to the format. floats are trickier, they may be in an unfloat state in the middle, then be a valid float later
-        if (type == 'f') {
+        if (type == 'f' || type == 'e' || type == 'g' || type == 'E') {
           var last = 0;
           next = get();
           while (next > 0) {
@@ -2569,6 +2569,10 @@ LibraryManager.library = {
             {{{ makeSetValue('argPtr', 0, 'parseInt(text, 16)', 'i32') }}}
             break;
           case 'f':
+          case 'e':
+          case 'g':
+          case 'E':
+            // fallthrough intended
             if (long_) {
               {{{ makeSetValue('argPtr', 0, 'parseFloat(text)', 'double') }}}
             } else {
