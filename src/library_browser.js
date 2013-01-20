@@ -389,10 +389,10 @@ mergeInto(LibraryManager.library, {
     Browser.asyncLoad(Pointer_stringify(url), function(byteArray) {
       var buffer = _malloc(byteArray.length);
       HEAPU8.set(byteArray, buffer);
-      FUNCTION_TABLE[onload](arg, buffer, byteArray.length);
+      Runtime.dynCall('viii', onload, [arg, buffer, byteArray.length]);
       _free(buffer);
     }, function() {
-      if (onerror) FUNCTION_TABLE[onerror](arg);
+      if (onerror) Runtime.dynCall('vi', onerror, [arg]);
     }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
   },
 
