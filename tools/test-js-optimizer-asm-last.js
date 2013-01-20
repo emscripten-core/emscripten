@@ -26,6 +26,10 @@ function finall(x) {
   a = +-0x8000000000000000;
   a = -+0x8000000000000000;
   a = -0x8000000000000000;
+  a = +0xde0b6b000000000;
+  a = +-0xde0b6b000000000;
+  a = -+0xde0b6b000000000;
+  a = -0xde0b6b000000000;
   return +12e10;
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["finall"]
