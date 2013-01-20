@@ -334,6 +334,7 @@ var Runtime = {
       assert(args.length == sig.length-1);
 #endif
 #if ASM_JS
+      if (!args.splice) args = Array.prototype.slice.call(args);
       args.splice(0, 0, ptr);
       return Module['dynCall_' + sig].apply(null, args);
 #else
