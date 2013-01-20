@@ -77,7 +77,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         assert(!BUILD_AS_SHARED_LIB, 'Cannot have both INCLUDE_FULL_LIBRARY and BUILD_AS_SHARED_LIB set.')
         libFuncsToInclude = [];
         for (var key in LibraryManager.library) {
-          if (!key.match(/__(deps|postset|inline|asm)$/)) {
+          if (!key.match(/__(deps|postset|inline|asm|sig)$/)) {
             libFuncsToInclude.push(key);
           }
         }
@@ -481,10 +481,10 @@ function JSify(data, functionsOnly, givenFunctions) {
         // redirected idents just need a var, but no value assigned to them - it would be unused
         var contentText = isFunction ? snippet : ('var ' + ident + (redirectedIdent ? '' : '=' + snippet) + ';');
         if (ASM_JS) {
-          var asmSig = LibraryManager.library[ident.substr(1) + '__asm'];
-          if (isFunction && asmSig) {
+          var sig = LibraryManager.library[ident.substr(1) + '__sig'];
+          if (isFunction && sig && LibraryManager.library[ident.substr(1) + '__asm']) {
             // asm library function, add it as generated code alongside the generated code
-            Functions.implementedFunctions[ident] = asmSig;
+            Functions.implementedFunctions[ident] = sig;
             asmLibraryFunctions.push(contentText);
             contentText = ' ';
             EXPORTED_FUNCTIONS[ident] = 1;

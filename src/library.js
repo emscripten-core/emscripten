@@ -4290,7 +4290,8 @@ LibraryManager.library = {
 
   wmemset: function() { throw 'wmemset not implemented' },
 
-  strlen__asm: 'ii',
+  strlen__sig: 'ii',
+  strlen__asm: true,
   strlen: function(ptr) {
     ptr = ptr|0;
     var curr = 0;
