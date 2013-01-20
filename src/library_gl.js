@@ -1393,7 +1393,7 @@ var LibraryGL = {
     tempData: null,
     indexData: null,
     vertexCounter: 0,
-    mode: 0,
+    mode: -1,
 
     rendererCache: null,
     rendererCacheItemTemplate: [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null], // 16 nulls
@@ -1896,7 +1896,7 @@ var LibraryGL = {
           GL.immediate.lastVertex = first + count;
         }
         GL.immediate.flush(null, first);
-        GL.immediate.mode = 0;
+        GL.immediate.mode = -1;
       };
 
       _glDrawElements = function(mode, count, type, indices, start, end) { // start, end are given if we come from glDrawRangeElements
@@ -1915,7 +1915,7 @@ var LibraryGL = {
           GL.immediate.vertexData = {{{ makeHEAPView('F32', 'GL.immediate.vertexPointer', '(end ? GL.immediate.vertexPointer + (end+1)*GL.immediate.stride : TOTAL_MEMORY)') }}}; // XXX assuming float
         }
         GL.immediate.flush(count, 0, indices);
-        GL.immediate.mode = 0;
+        GL.immediate.mode = -1;
       };
     },
 
@@ -2060,12 +2060,12 @@ var LibraryGL = {
     GL.immediate.lastVertex = GL.immediate.vertexCounter / (GL.immediate.stride >> 2);
     GL.immediate.flush();
     GL.immediate.disableBeginEndClientAttributes();
-    GL.immediate.mode = 0;
+    GL.immediate.mode = -1;
   },
 
   glVertex3f: function(x, y, z) {
 #if ASSERTIONS
-    assert(GL.immediate.mode); // must be in begin/end
+    assert(GL.immediate.mode >= 0); // must be in begin/end
 #endif
     GL.immediate.vertexData[GL.immediate.vertexCounter++] = x;
     GL.immediate.vertexData[GL.immediate.vertexCounter++] = y;
@@ -2088,7 +2088,7 @@ var LibraryGL = {
 
   glTexCoord2i: function(u, v) {
 #if ASSERTIONS
-    assert(GL.immediate.mode); // must be in begin/end
+    assert(GL.immediate.mode >= 0); // must be in begin/end
 #endif
     GL.immediate.vertexData[GL.immediate.vertexCounter++] = u;
     GL.immediate.vertexData[GL.immediate.vertexCounter++] = v;
