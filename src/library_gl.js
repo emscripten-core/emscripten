@@ -1382,7 +1382,7 @@ var LibraryGL = {
 
   // GL Immediate mode
 
-  $GLImmediate__postset: 'Browser.moduleContextCreatedCallbacks.push(function() { GL.immediate.init() });',
+  $GLImmediate__postset: 'GL.immediate.setupFuncs(); Browser.moduleContextCreatedCallbacks.push(function() { GL.immediate.init() });',
   $GLImmediate__deps: ['$Browser', '$GL'],
   $GLImmediate: {
     MAX_TEXTURES: 7,
@@ -1843,43 +1843,7 @@ var LibraryGL = {
       return ret;
     },
 
-    // Main functions
-    initted: false,
-    init: function() {
-      Module.printErr('WARNING: using emscripten GL immediate mode emulation. This is very limited in what it supports');
-      GL.immediate.initted = true;
-
-      if (!Module.useWebGL) return; // a 2D canvas may be currently used TODO: make sure we are actually called in that case
-
-      this.matrixStack['m'] = [];
-      this.matrixStack['p'] = [];
-      for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
-        this.matrixStack['t' + i] = [];
-      }
-
-      // Initialize matrix library
-
-      GL.immediate.matrix['m'] = GL.immediate.matrix.lib.mat4.create();
-      GL.immediate.matrix.lib.mat4.identity(GL.immediate.matrix['m']);
-      GL.immediate.matrix['p'] = GL.immediate.matrix.lib.mat4.create();
-      GL.immediate.matrix.lib.mat4.identity(GL.immediate.matrix['p']);
-      for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
-        GL.immediate.matrix['t' + i] = GL.immediate.matrix.lib.mat4.create();
-      }
-
-      // Renderer cache
-      this.rendererCache = this.rendererCacheItemTemplate.slice();
-
-      // Buffers for data
-      this.tempData = new Float32Array(this.MAX_TEMP_BUFFER_SIZE >> 2);
-      this.indexData = new Uint16Array(this.MAX_TEMP_BUFFER_SIZE >> 1);
-
-      this.vertexDataU8 = new Uint8Array(this.tempData.buffer);
-
-      this.generateTempBuffers();
-
-      this.clientColor = new Float32Array([1, 1, 1, 1]);
-
+    setupFuncs: function() {
       // Replace some functions with immediate-mode aware versions. If there are no client
       // attributes enabled, and we use webgl-friendly modes (no GL_QUADS), then no need
       // for emulation
@@ -1917,6 +1881,44 @@ var LibraryGL = {
         GL.immediate.flush(count, 0, indices);
         GL.immediate.mode = -1;
       };
+    },
+
+    // Main functions
+    initted: false,
+    init: function() {
+      Module.printErr('WARNING: using emscripten GL immediate mode emulation. This is very limited in what it supports');
+      GL.immediate.initted = true;
+
+      if (!Module.useWebGL) return; // a 2D canvas may be currently used TODO: make sure we are actually called in that case
+
+      this.matrixStack['m'] = [];
+      this.matrixStack['p'] = [];
+      for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
+        this.matrixStack['t' + i] = [];
+      }
+
+      // Initialize matrix library
+
+      GL.immediate.matrix['m'] = GL.immediate.matrix.lib.mat4.create();
+      GL.immediate.matrix.lib.mat4.identity(GL.immediate.matrix['m']);
+      GL.immediate.matrix['p'] = GL.immediate.matrix.lib.mat4.create();
+      GL.immediate.matrix.lib.mat4.identity(GL.immediate.matrix['p']);
+      for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
+        GL.immediate.matrix['t' + i] = GL.immediate.matrix.lib.mat4.create();
+      }
+
+      // Renderer cache
+      this.rendererCache = this.rendererCacheItemTemplate.slice();
+
+      // Buffers for data
+      this.tempData = new Float32Array(this.MAX_TEMP_BUFFER_SIZE >> 2);
+      this.indexData = new Uint16Array(this.MAX_TEMP_BUFFER_SIZE >> 1);
+
+      this.vertexDataU8 = new Uint8Array(this.tempData.buffer);
+
+      this.generateTempBuffers();
+
+      this.clientColor = new Float32Array([1, 1, 1, 1]);
     },
 
     // Prepares and analyzes client attributes.
