@@ -2163,7 +2163,7 @@ function prepDotZero(ast) {
   });
 }
 function fixDotZero(js) {
-  return js.replace(/DOT\$ZERO\(((0x)?[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)\)/g, function(m, num) {
+  return js.replace(/DOT\$ZERO\(((0x)?[-+]?[0-9a-f]*\.?[0-9]+([eE][-+]?[0-9]+)?)\)/g, function(m, num) {
     if (num.substr(0, 2) == '0x') {
       if (num[2] == '-') num = '-0x' + num.substr(3); // uglify generates 0x-8000 for some reason
       return eval(num) + '.0';
