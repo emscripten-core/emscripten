@@ -411,21 +411,21 @@ mergeInto(LibraryManager.library, {
     http.onload = function(e) {
       if (http.status == 200) {
         FS.createDataFile( _file.substr(0, index), _file.substr(index + 1), new Uint8Array(http.response), true, true);
-        if (onload) FUNCTION_TABLE[onload](arg, file);
+        if (onload) Runtime.dynCall('vii', onload, [arg, file]);
       } else {
-        if (onerror) FUNCTION_TABLE[onerror](arg, http.status);
+        if (onerror) Runtime.dynCall('vii', onerror, [arg, http.status]);
       }
     };
       
     // ERROR
     http.onerror = function(e) {
-      if (onerror) FUNCTION_TABLE[onerror](arg, http.status);
+      if (onerror) Runtime.dynCall('vii', onerror, [arg, http.status]);
     };
 	
     // PROGRESS
     http.onprogress = function(e) {
       var percentComplete = (e.position / e.totalSize)*100;
-      if (onprogress) FUNCTION_TABLE[onprogress](arg, percentComplete);
+      if (onprogress) Runtime.dynCall('vii', onprogress, [arg, percentComplete]);
     };
 	  
     // Useful because the browser can limit the number of redirection
