@@ -10295,6 +10295,10 @@ elif 'browser' in str(sys.argv):
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_canvas_palette_2.c'), '-o', 'page.html', '--pre-js', 'pre.js']).communicate()
       self.run_browser('page.html', '')
 
+    def test_glbegin_points(self):
+      shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
+      self.btest('glbegin_points.c', reference='glbegin_points.png', args=['--preload-file', 'screenshot.png'])
+
     def test_s3tc(self):
       shutil.copyfile(path_from_root('tests', 'screenshot.dds'), os.path.join(self.get_dir(), 'screenshot.dds'))
       self.btest('s3tc.c', reference='s3tc.png', args=['--preload-file', 'screenshot.dds'])
