@@ -1281,44 +1281,10 @@ var LibraryGL = {
         case 'glCreateProgramObject': case 'glCreateProgram': func = _glCreateProgram; sig = 'ii'; break;
         case 'glAttachObject': case 'glAttachShader': func = _glAttachShader; sig = 'vi'; break;
         case 'glUseProgramObject': case 'glUseProgram': func = _glUseProgram; sig = 'vi'; break;
-        case 'glDeleteObject': func = function(id) {
-          if (GL.programs[id]) {
-            _glDeleteProgram(id);
-          } else if (GL.shaders[id]) {
-            _glDeleteShader(id);
-          } else {
-            Module.printErr('WARNING: deleteObject received invalid id: ' + id);
-          }
-        }; sig = 'vi'; break;
-        case 'glGetObjectParameteriv': func = function(id, type, result) {
-          if (GL.programs[id]) {
-            if (type == 0x8B84) { // GL_OBJECT_INFO_LOG_LENGTH_ARB
-              {{{ makeSetValue('result', '0', 'Module.ctx.getProgramInfoLog(GL.programs[id]).length', 'i32') }}};
-              return;
-            }
-            _glGetProgramiv(id, type, result);
-          } else if (GL.shaders[id]) {
-            if (type == 0x8B84) { // GL_OBJECT_INFO_LOG_LENGTH_ARB
-              {{{ makeSetValue('result', '0', 'Module.ctx.getShaderInfoLog(GL.shaders[id]).length', 'i32') }}};
-              return;
-            }
-            _glGetShaderiv(id, type, result);
-          } else {
-            Module.printErr('WARNING: getObjectParameteriv received invalid id: ' + id);
-          }
-        }; sig = 'viii'; break;
-        case 'glGetInfoLog': func = function(id, maxLength, length, infoLog) {
-          if (GL.programs[id]) {
-            _glGetProgramInfoLog(id, maxLength, length, infoLog);
-          } else if (GL.shaders[id]) {
-            _glGetShaderInfoLog(id, maxLength, length, infoLog);
-          } else {
-            Module.printErr('WARNING: getObjectParameteriv received invalid id: ' + id);
-          }
-        }; sig = 'viiii'; break;
-        case 'glBindProgram': func = function(type, id) {
-          assert(id == 0);
-        }; sig = 'vii'; break;
+        case 'glDeleteObject': func = _glDeleteObject; sig = 'vi'; break;
+        case 'glGetObjectParameteriv': func = _glGetObjectParameteriv; sig = 'viii'; break;
+        case 'glGetInfoLog': func = _glGetInfoLog; sig = 'viiii'; break;
+        case 'glBindProgram': func = _glBindProgram; sig = 'vii'; break;
         case 'glDrawRangeElements': func = _glDrawRangeElements; sig = 'viiiiii'; break;
         case 'glShaderSource': func = _glShaderSource; sig = 'viiii'; break;
         case 'glCompileShader': func = _glCompileShader; sig = 'vi'; break;
@@ -1378,6 +1344,48 @@ var LibraryGL = {
       }
       return Runtime.addFunction(func, sig);
     }
+  },
+
+  glDeleteObject: function(id) {
+    if (GL.programs[id]) {
+      _glDeleteProgram(id);
+    } else if (GL.shaders[id]) {
+      _glDeleteShader(id);
+    } else {
+      Module.printErr('WARNING: deleteObject received invalid id: ' + id);
+    }
+  },
+
+  glGetObjectParameteriv: function(id, type, result) {
+    if (GL.programs[id]) {
+      if (type == 0x8B84) { // GL_OBJECT_INFO_LOG_LENGTH_ARB
+        {{{ makeSetValue('result', '0', 'Module.ctx.getProgramInfoLog(GL.programs[id]).length', 'i32') }}};
+        return;
+      }
+      _glGetProgramiv(id, type, result);
+    } else if (GL.shaders[id]) {
+      if (type == 0x8B84) { // GL_OBJECT_INFO_LOG_LENGTH_ARB
+        {{{ makeSetValue('result', '0', 'Module.ctx.getShaderInfoLog(GL.shaders[id]).length', 'i32') }}};
+        return;
+      }
+      _glGetShaderiv(id, type, result);
+    } else {
+      Module.printErr('WARNING: getObjectParameteriv received invalid id: ' + id);
+    }
+  },
+
+  glGetInfoLog: function(id, maxLength, length, infoLog) {
+    if (GL.programs[id]) {
+      _glGetProgramInfoLog(id, maxLength, length, infoLog);
+    } else if (GL.shaders[id]) {
+      _glGetShaderInfoLog(id, maxLength, length, infoLog);
+    } else {
+      Module.printErr('WARNING: getObjectParameteriv received invalid id: ' + id);
+    }
+  },
+
+  glBindProgram: function(type, id) {
+    assert(id == 0);
   },
 
   // GL Immediate mode
@@ -2505,12 +2513,14 @@ var LibraryGL = {
 autoAddDeps(LibraryGL, '$GL');
 
 // Emulation requires everything else, potentially
-LibraryGL.$GLEmulation__deps = LibraryGL.$GLEmulation__deps.slice(0);
+LibraryGL.$GLEmulation__deps = LibraryGL.$GLEmulation__deps.slice(0); // the __deps object is shared
+var glFuncs = [];
 for (var item in LibraryGL) {
   if (item != '$GLEmulation' && item.substr(-6) != '__deps' && item.substr(-9) != '__postset' && item.substr(0, 2) == 'gl') {
-    LibraryGL.$GLEmulation__deps.push(item);
+    glFuncs.push(item);
   }
 }
+LibraryGL.$GLEmulation__deps = LibraryGL.$GLEmulation__deps.concat(glFuncs);
 
 mergeInto(LibraryManager.library, LibraryGL);
 
