@@ -10195,7 +10195,7 @@ elif 'browser' in str(sys.argv):
       self.run_browser('test.html', '.', ['/report_result?' + e for e in expected])
 
     def test_emscripten_api(self):
-      self.btest('emscripten_api_browser.cpp', '1')
+      self.btest('emscripten_api_browser.cpp', '1', args=['-s', '''EXPORTED_FUNCTIONS=['_main', '_third']'''])
 
     def test_emscripten_api_infloop(self):
       self.btest('emscripten_api_browser_infloop.cpp', '7')
