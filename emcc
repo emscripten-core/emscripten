@@ -1186,15 +1186,7 @@ try:
     if DEBUG: save_intermediate('transformed')
 
   if shared.Settings.ASM_JS: # XXX temporary wrapping for testing purposes
-    print >> sys.stderr, 'emcc: ASM_JS mode is highly experimental, and will not work on most codebases yet. It is NOT recommended that you try this yet.' # XXX TODO: 0.0 instead of +0 for local var defs
-    unwrapped = open(final).read()
-    final += '.asmwrap.js'
-    open(final, 'w').write('''
-(function() { // prevent new Function from seeing the global scope
-%s
-}).apply(null, arguments);
-''' % unwrapped)
-    if DEBUG: save_intermediate('asmwrap')
+    print >> sys.stderr, 'emcc: ASM_JS mode is highly experimental, and will not work on most codebases yet. It is NOT recommended that you try this yet.'
 
   # It is useful to run several js optimizer passes together, to save on unneeded unparsing/reparsing
   js_optimizer_queue = []
