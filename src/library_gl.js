@@ -2110,7 +2110,7 @@ var LibraryGL = {
     a = Math.max(Math.min(a, 1), 0);
 
     // TODO: make ub the default, not f, save a few mathops
-    if (GL.immediate.mode) {
+    if (GL.immediate.mode >= 0) {
       var start = GL.immediate.vertexCounter << 2;
       GL.immediate.vertexDataU8[start + 0] = r * 255;
       GL.immediate.vertexDataU8[start + 1] = g * 255;
