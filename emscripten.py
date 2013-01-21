@@ -270,7 +270,7 @@ def emscript(infile, settings, outfile, libraries=[]):
 
   indexing = forwarded_json['Functions']['indexedFunctions']
   def indexize(js):
-    return re.sub(r'{{{ FI_([\w\d_$]+) }}}', lambda m: str(indexing[m.groups(0)[0]]), js)
+    return re.sub(r'"{{ FI_([\w\d_$]+) }}"', lambda m: str(indexing.get(m.groups(0)[0]) or 0), js)
 
   blockaddrs = forwarded_json['Functions']['blockAddresses']
   def blockaddrsize(js):
