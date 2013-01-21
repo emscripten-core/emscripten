@@ -3466,7 +3466,6 @@ def process(filename):
 
     def test_varargs(self):
         if Settings.QUANTUM_SIZE == 1: return self.skip('FIXME: Add support for this')
-        if Settings.ASM_JS: return self.skip('varargs by function pointer not yet supported')
 
         src = '''
           #include <stdio.h>
@@ -3517,7 +3516,7 @@ def process(filename):
           GETMAX(i, int);
           GETMAX(D, double);
 
-          int main() {
+          int main(int argc, char **argv) {
             vary("*cheez: %d+%d*", 0, 24); // Also tests that '0' is not special as an array ender
             vary("*albeit*"); // Should not fail with no var args in vararg function
             vary2('Q', "%d*", 85);
@@ -3528,7 +3527,7 @@ def process(filename):
             printf("maxxD:%.2f*\\n", (float)maxxD);
 
             // And, as a function pointer
-            void (*vfp)(const char *s, ...) = vary;
+            void (*vfp)(const char *s, ...) = argc == 1211 ? NULL : vary;
             vfp("*vfp:%d,%d*", 22, 199);
 
             return 0;
