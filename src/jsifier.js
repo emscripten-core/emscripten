@@ -738,9 +738,9 @@ function JSify(data, functionsOnly, givenFunctions) {
             ret += block.labels.map(function(label) {
               return indent + '  case ' + getLabelId(label.ident) + ': ' + (SHOW_LABELS ? '// ' + getOriginalLabelId(label.ident) : '') + '\n'
                             + getLabelLines(label, indent + '    ');
-            }).join('\n');
-            if (ASSERTIONS) ret += '\n' + indent + '  default: assert(0, "bad label: " + label);\n';
-            ret += indent + '}';
+            }).join('\n') + '\n';
+            if (ASSERTIONS) ret += indent + '  default: assert(0, "bad label: " + label);\n';
+            ret += indent + '}\n';
             if (func.setjmpTable) {
               ret += ' } catch(e) { if (!e.longjmp || !(e.id in mySetjmpIds)) throw(e); setjmpTable[setjmpLabels[e.id]](e.value) }';
             }
