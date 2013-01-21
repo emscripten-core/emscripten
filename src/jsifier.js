@@ -1395,7 +1395,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     if (byPointer || ASM_JS) returnType = type.split(' ')[0];
 
     if (byPointer) {
-      var sig = Functions.getSignature(returnType, argsTypes);
+      var sig = Functions.getSignature(returnType, argsTypes, hasVarArgs);
       if (ASM_JS) {
         assert(returnType.search(/\("'\[,/) == -1); // XXX need isFunctionType(type, out)
         callIdent = '(' + callIdent + ')&{{{ FTM_' + sig + ' }}}'; // the function table mask is set in emscripten.py

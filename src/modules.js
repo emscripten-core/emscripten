@@ -228,13 +228,14 @@ var Functions = {
 
   blockAddresses: {}, // maps functions to a map of block labels to label ids
 
-  getSignature: function(returnType, argTypes) {
+  getSignature: function(returnType, argTypes, hasVarArgs) {
     var sig = returnType == 'void' ? 'v' : (isIntImplemented(returnType) ? 'i' : 'f');
     for (var i = 0; i < argTypes.length; i++) {
       var type = argTypes[i];
       if (!type) break; // varargs
       sig += isIntImplemented(type) ? (getBits(type) == 64 ? 'ii' : 'i') : 'f'; // legalized i64s will be i32s
     }
+    if (hasVarArgs) sig += 'i';
     return sig;
   },
 
