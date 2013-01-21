@@ -277,7 +277,7 @@ var Functions = {
       });
     }
     for (var ident in this.indexedFunctions) {
-      var sig = ASM_JS ? Functions.implementedFunctions[ident] || Functions.unimplementedFunctions[ident] : 'x';
+      var sig = ASM_JS ? Functions.implementedFunctions[ident] || Functions.unimplementedFunctions[ident] || LibraryManager.library[ident.substr(1) + '__sig'] : 'x';
       assert(sig, ident);
       if (!tables[sig]) tables[sig] = emptyTable(sig); // TODO: make them compact
       tables[sig][this.indexedFunctions[ident]] = ident;
