@@ -1082,7 +1082,7 @@ function __embind_register_class_classmethod(
         var humanName = classType.name + '.' + methodName;
         var argTypes = requireArgumentTypes(rawArgTypes, 'classmethod ' + humanName);
         classType.constructor[methodName] = makeInvoker(humanName, argCount, argTypes, rawInvoker, fn);
-    })
+    });
 }
 
 function __embind_register_class_operator_call(
