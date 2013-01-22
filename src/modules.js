@@ -247,7 +247,7 @@ var Functions = {
     }
     if (phase != 'post' && singlePhase) {
       if (!doNotCreate) this.indexedFunctions[ident] = 0; // tell python we need this indexized
-      return '"{{ FI_' + ident + ' }}"'; // something python will replace later
+      return "'{{ FI_" + ident + " }}'"; // something python will replace later
     } else {
       var ret = this.indexedFunctions[ident];
       if (!ret) {
