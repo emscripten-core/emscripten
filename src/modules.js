@@ -319,8 +319,8 @@ var Functions = {
               }
               for (var j = 1; j < t.length; j++) {
                 args += (j > 1 ? ',' : '') + 'a' + j;
-                arg_coercions += 'a' + j + '=' + asmCoercion('a' + j, t[j] == 'f' ? 'float' : 'i32') + ';';
-                call += (j > 1 ? ',' : '') + asmCoercion('a' + j, t[j] == 'f' ? 'float' : 'i32');
+                arg_coercions += 'a' + j + '=' + asmCoercion('a' + j, t[j] != 'i' ? 'float' : 'i32') + ';';
+                call += (j > 1 ? ',' : '') + asmCoercion('a' + j, t[j] != 'i' ? 'float' : 'i32');
               }
               call += ')';
               tables.pre += 'function ' + curr + '__wrapper(' + args + ') { ' + arg_coercions + ' ; ' + retPre + call + retPost + ' }\n';
