@@ -2110,7 +2110,7 @@ function processMathop(item) {
         Types.preciseI64MathUsed = true;
         return '(i64Math' + (ASM_JS ? '_' : '.') + 'multiply(' + asmCoercion(idents[0], 'i32') + ',0,' + asmCoercion(idents[1], 'i32') + ',0),' + makeGetValue('tempDoublePtr', 0, 'i32') + ')';
       } else {
-        return handleOverflow(getFastValue(idents[0], '*', idents[1], item.type), bits);
+        return '((' +getFastValue(idents[0], '*', idents[1], item.type) + ')&-1)'; // force a non-eliminatable coercion here, to prevent a double result from leaking
       }
     }
     case 'urem': case 'srem': return getFastValue(idents[0], '%', idents[1], item.type);
