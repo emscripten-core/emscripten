@@ -74,17 +74,8 @@ function __emval_get_global(name) {
     return __emval_register(global[name]);
 }
 
-function __emval_get_property(handle, k) {
-    k = Pointer_stringify(k);
-    return __emval_register(_emval_handle_array[handle].value[k]);
-}
-
-function __emval_get_property_by_long(handle, k) {
-    return __emval_register(_emval_handle_array[handle].value[k]);
-}
-
-function __emval_get_property_by_unsigned_long(handle, k) {
-    return __emval_register(_emval_handle_array[handle].value[k]);
+function __emval_get_property(handle, key) {
+    return __emval_register(_emval_handle_array[handle].value[_emval_handle_array[key].value]);
 }
 
 function __emval_eval_global_method(handle, objectName, methodName) {
@@ -94,13 +85,8 @@ function __emval_eval_global_method(handle, objectName, methodName) {
     return __emval_register(result);
 }
 
-function __emval_set_property(handle, k, value) {
-    k = Pointer_stringify(k);
-    _emval_handle_array[handle].value[k] = _emval_handle_array[value].value;
-}
-
-function __emval_set_property_by_int(handle, k, value) {
-    _emval_handle_array[handle].value[k] = _emval_handle_array[value].value;
+function __emval_set_property(handle, key, value) {
+    _emval_handle_array[handle].value[_emval_handle_array[key].value] = _emval_handle_array[value].value;
 }
 
 function __emval_as(handle, returnType) {
