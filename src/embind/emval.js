@@ -67,7 +67,7 @@ function __emval_take_value(type, v) {
     return __emval_register(v);
 }
 
-var global = Function('return this')();
+var global = (function(){return Function;})()('return this')();
 
 function __emval_get_global(name) {
     name = Pointer_stringify(name);
