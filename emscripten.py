@@ -324,7 +324,7 @@ def emscript(infile, settings, outfile, libraries=[]):
     maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil']]
     if settings['USE_MATH_IMUL']:
       maths += ['Math.imul']
-    fundamentals = ['buffer', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
+    fundamentals = ['Math', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
     math_envs = ['Runtime.bitshift64', 'Math.min'] # TODO: move min to maths
     asm_setup = '\n'.join(['var %s = %s;' % (f.replace('.', '_'), f) for f in math_envs])
     basic_funcs = ['abort', 'assert', 'asmPrintInt', 'asmPrintFloat'] + [m.replace('.', '_') for m in math_envs]
@@ -384,7 +384,8 @@ var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
     asm_global_vars = ''.join(['  var ' + g + '=env.' + g + '|0;\n' for g in basic_vars + global_vars]) + \
                       ''.join(['  var ' + g + '=+env.' + g + ';\n' for g in basic_float_vars])
     # sent data
-    sending = '{ ' + ', '.join([math_fix(s) + ': ' + s for s in fundamentals + basic_funcs + global_funcs + basic_vars + basic_float_vars + global_vars]) + ' }'
+    the_global = '{ ' + ', '.join([math_fix(s) + ': ' + s for s in fundamentals]) + ' }'
+    sending = '{ ' + ', '.join([math_fix(s) + ': ' + s for s in basic_funcs + global_funcs + basic_vars + basic_float_vars + global_vars]) + ' }'
     # received
     if not simple:
       receiving = ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm.' + s for s in exported_implemented_functions + function_tables])
@@ -444,12 +445,12 @@ var asm = (function(global, env, buffer) {
   %s
 
   return %s;
-})(this, %s, buffer);
+})(%s, %s, buffer);
 %s;
 Runtime.stackAlloc = function(size) { return asm.stackAlloc(size) };
 Runtime.stackSave = function() { return asm.stackSave() };
 Runtime.stackRestore = function(top) { asm.stackRestore(top) };
-''' % (pre_tables + '\n'.join(function_tables_impls) + '\n' + function_tables_defs.replace('\n', '\n  '), exports, sending, receiving)
+''' % (pre_tables + '\n'.join(function_tables_impls) + '\n' + function_tables_defs.replace('\n', '\n  '), exports, the_global, sending, receiving)
 
     # Set function table masks
     def function_table_maskize(js):
