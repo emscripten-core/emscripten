@@ -49,7 +49,11 @@ function __emval_new_object() {
     return __emval_register({});
 }
 
-function __emval_new_null() {
+function __emval_undefined() {
+    return __emval_register(undefined);
+}
+
+function __emval_null() {
     return __emval_register(null);
 }
 
@@ -63,9 +67,11 @@ function __emval_take_value(type, v) {
     return __emval_register(v);
 }
 
-function __emval_has_property(handle, k) {
-    k = Pointer_stringify(k);
-    return _emval_handle_array[handle].value.hasOwnProperty(k);
+var global = Function('return this')();
+
+function __emval_get_global(name) {
+    name = Pointer_stringify(name);
+    return __emval_register(global[name]);
 }
 
 function __emval_get_property(handle, k) {
