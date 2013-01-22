@@ -1,4 +1,5 @@
 /*global Module*/
+/*global Module*/
 /*global _malloc, _free, _memcpy*/
 /*global FUNCTION_TABLE, HEAP32*/
 /*global Pointer_stringify, writeStringToMemory*/
@@ -35,6 +36,18 @@ function _embind_repr(v) {
 }
 
 var typeRegistry = {};
+var deferredRegistrations = [];
+
+function requestDeferredRegistration(registrationFunction) {
+    deferredRegistrations.push(registrationFunction);
+}
+
+function performDeferredRegistrations(){
+    while(deferredRegistrations.length > 0) {
+        var registrationFunction = deferredRegistrations.shift();
+        registrationFunction();
+    }
+}
 
 function createInheritedFunctionOrProperty(name, type, nameInBaseClass, baseClassType) {
     function upcastingWrapper(method) {
@@ -106,8 +119,11 @@ function resolveType(type) {
 }
 
 function resolveBindings() {
+    performDeferredRegistrations();
     for (var rawType in typeRegistry) {
-        resolveType(typeRegistry[rawType]);
+        if (typeRegistry.hasOwnProperty(rawType)) {
+            resolveType(typeRegistry[rawType]);
+        }
     }
 }
 
@@ -136,14 +152,21 @@ function typeName(rawType) {
     return Pointer_stringify(___typeName(rawType));
 }
 
-function requireArgumentTypes(argCount, rawArgTypes, name) {
-    var argTypes = new Array(argCount);
-    for (var i = 0; i < argCount; ++i) {
-        var rawArgType = HEAP32[(rawArgTypes >> 2) + i];
+function heap32VectorToArray(count, firstElement) {
+    var array = [];
+    for (var i = 0; i < count; i++) {
+        array.push(HEAP32[(firstElement >> 2) + i]);
+    }
+    return array;
+}
+
+function requireArgumentTypes(rawArgTypes, name) {
+    var argTypes = [];
+    for (var i = 0; i < rawArgTypes.length; ++i) {
         if (i === 0) {
-            argTypes[i] = requireRegisteredType(rawArgType, name + " return value");
+            argTypes[i] = requireRegisteredType(rawArgTypes[i], name + " return value");
         } else {
-            argTypes[i] = requireRegisteredType(rawArgType, name + " parameter " + i);
+            argTypes[i] = requireRegisteredType(rawArgTypes[i], name + " parameter " + i);
         }
     }
     return argTypes;
@@ -310,11 +333,14 @@ function makeInvoker(name, argCount, argTypes, invoker, fn) {
     };
 }
 
-function __embind_register_function(name, argCount, rawArgTypes, rawInvoker, fn) {
+function __embind_register_function(name, argCount, rawArgTypesAddr, rawInvoker, fn) {
+    var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     name = Pointer_stringify(name);
     rawInvoker = FUNCTION_TABLE[rawInvoker];
-    var argTypes = requireArgumentTypes(argCount, rawArgTypes, name);
-    exposePublicSymbol(name, makeInvoker(name, argCount, argTypes, rawInvoker, fn));
+    requestDeferredRegistration(function() {
+        var argTypes = requireArgumentTypes(rawArgTypes, name);
+        exposePublicSymbol(name, makeInvoker(name, argCount, argTypes, rawInvoker, fn));
+    });
 }
 
 function RegisteredTuple(rawConstructor, rawDestructor) {
@@ -371,21 +397,22 @@ function __embind_register_tuple_element(
     memberPointerSize,
     memberPointer
 ) {
-    var tupleType = requireRegisteredType(rawTupleType, 'tuple');
-    var type = requireRegisteredType(rawType, "element " + tupleType.name + "[" + tupleType.elements.length + "]");
     getter = FUNCTION_TABLE[getter];
     setter = FUNCTION_TABLE[setter];
     memberPointer = copyMemberPointer(memberPointer, memberPointerSize);
-
-    tupleType.elements.push({
-        read: function(ptr) {
-            return type.fromWireType(getter(ptr, memberPointer));
-        },
-        write: function(ptr, o) {
-            var destructors = [];
-            setter(ptr, memberPointer, type.toWireType(destructors, o));
-            runDestructors(destructors);
-        }
+    requestDeferredRegistration(function() {
+        var tupleType = requireRegisteredType(rawTupleType, 'tuple');
+        var type = requireRegisteredType(rawType, "element " + tupleType.name + "[" + tupleType.elements.length + "]");
+        tupleType.elements.push({
+            read: function(ptr) {
+                return type.fromWireType(getter(ptr, memberPointer));
+            },
+            write: function(ptr, o) {
+                var destructors = [];
+                setter(ptr, memberPointer, type.toWireType(destructors, o));
+                runDestructors(destructors);
+            }
+        });
     });
 }
 
@@ -399,25 +426,26 @@ function __embind_register_tuple_element_accessor(
     setterSize,
     setter
 ) {
-    var tupleType = requireRegisteredType(rawTupleType, 'tuple');
-    var elementType = requireRegisteredType(rawElementType, "element " + tupleType.name + "[" + tupleType.elements.length + "]");
     rawStaticGetter = FUNCTION_TABLE[rawStaticGetter];
     getter = copyMemberPointer(getter, getterSize);
     rawStaticSetter = FUNCTION_TABLE[rawStaticSetter];
     setter = copyMemberPointer(setter, setterSize);
-
-    tupleType.elements.push({
-        read: function(ptr) {
-            return elementType.fromWireType(rawStaticGetter(ptr, HEAP32[getter >> 2]));
-        },
-        write: function(ptr, o) {
-            var destructors = [];
-            rawStaticSetter(
-                ptr,
-                HEAP32[setter >> 2],
-                elementType.toWireType(destructors, o));
-            runDestructors(destructors);
-        }
+    requestDeferredRegistration(function() {
+        var tupleType = requireRegisteredType(rawTupleType, 'tuple');
+        var elementType = requireRegisteredType(rawElementType, "element " + tupleType.name + "[" + tupleType.elements.length + "]");
+        tupleType.elements.push({
+            read: function(ptr) {
+                return elementType.fromWireType(rawStaticGetter(ptr, HEAP32[getter >> 2]));
+            },
+            write: function(ptr, o) {
+                var destructors = [];
+                rawStaticSetter(
+                    ptr,
+                    HEAP32[setter >> 2],
+                    elementType.toWireType(destructors, o));
+                runDestructors(destructors);
+            }
+        });
     });
 }
 
@@ -475,23 +503,24 @@ function __embind_register_struct_field(
     memberPointerSize,
     memberPointer
 ) {
-    var structType = requireRegisteredType(rawStructType, 'struct');
     fieldName = Pointer_stringify(fieldName);
-    var fieldType = requireRegisteredType(rawFieldType, 'field "' + structType.name + '.' + fieldName + '"');
     rawGetter = FUNCTION_TABLE[rawGetter];
     rawSetter = FUNCTION_TABLE[rawSetter];
     memberPointer = copyMemberPointer(memberPointer, memberPointerSize);
-
-    structType.fields[fieldName] = {
-        read: function(ptr) {
-            return fieldType.fromWireType(rawGetter(ptr, memberPointer));
-        },
-        write: function(ptr, o) {
-            var destructors = [];
-            rawSetter(ptr, memberPointer, fieldType.toWireType(destructors, o));
-            runDestructors(destructors);
-        }
-    };
+    requestDeferredRegistration(function() {
+        var structType = requireRegisteredType(rawStructType, 'struct');
+        var fieldType = requireRegisteredType(rawFieldType, 'field "' + structType.name + '.' + fieldName + '"');
+        structType.fields[fieldName] = {
+            read: function(ptr) {
+                return fieldType.fromWireType(rawGetter(ptr, memberPointer));
+            },
+            write: function(ptr, o) {
+                var destructors = [];
+                rawSetter(ptr, memberPointer, fieldType.toWireType(destructors, o));
+                runDestructors(destructors);
+            }
+        };
+    });
 }
 
 function RegisteredPointer(Handle, isPolymorphic, isSmartPointer, rawGetPointee, rawConstructor, rawDestructor) {
@@ -870,74 +899,77 @@ function __embind_register_class(
 function __embind_register_class_constructor(
     rawClassType,
     argCount,
-    rawArgTypes,
+    rawArgTypesAddr,
     rawConstructor
 ) {
-    var classType = requireRegisteredType(rawClassType, 'class');
-    var humanName = 'constructor ' + classType.name;
-    var argTypes = requireArgumentTypes(argCount, rawArgTypes, humanName);
+    var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     rawConstructor = FUNCTION_TABLE[rawConstructor];
+    requestDeferredRegistration(function() {
+        var classType = requireRegisteredType(rawClassType, 'class');
+        var humanName = 'constructor ' + classType.name;
+        var argTypes = requireArgumentTypes(rawArgTypes, humanName);
+        classType.constructor.body = function() {
+            if (arguments.length !== argCount - 1) {
+                throw new BindingError('emscripten binding ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
+            }
+            var destructors = [];
+            var args = new Array(argCount-1);
+            for (var i = 1; i < argCount; ++i) {
+                args[i-1] = argTypes[i].toWireType(destructors, arguments[i-1]);
+            }
 
-    classType.constructor.body = function() {
-        if (arguments.length !== argCount - 1) {
-            throw new BindingError('emscripten binding ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
-        }
-        var destructors = [];
-        var args = new Array(argCount-1);
-        for (var i = 1; i < argCount; ++i) {
-            args[i-1] = argTypes[i].toWireType(destructors, arguments[i-1]);
-        }
+            var ptr = rawConstructor.apply(null, args);
+            runDestructors(destructors);
 
-        var ptr = rawConstructor.apply(null, args);
-        runDestructors(destructors);
-        
-        return classType.Handle.call(this, ptr);
-    };
+            return classType.Handle.call(this, ptr);
+        };
+    });
 }
 
 function __embind_register_class_method(
     rawClassType,
     methodName,
     argCount,
-    rawArgTypes,
+    rawArgTypesAddr,
     rawInvoker,
     memberFunctionSize,
     memberFunction
 ) {
-    var classType = requireRegisteredType(rawClassType, 'class');
+    var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     methodName = Pointer_stringify(methodName);
-    var humanName = classType.name + '.' + methodName;
-
-    var argTypes = requireArgumentTypes(argCount, rawArgTypes, 'method ' + humanName);
     rawInvoker = FUNCTION_TABLE[rawInvoker];
     memberFunction = copyMemberPointer(memberFunction, memberFunctionSize);
+    requestDeferredRegistration(function() {
+        var classType = requireRegisteredType(rawClassType, 'class');
+        var humanName = classType.name + '.' + methodName;
+        var argTypes = requireArgumentTypes(rawArgTypes, 'method ' + humanName);
+        classType.Handle.prototype[methodName] = function() {
 
-    classType.Handle.prototype[methodName] = function() {
-        
-        if (!this.ptr) {
-            throw new BindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
-        }
-        if (arguments.length !== argCount - 1) {
-            throw new BindingError('emscripten binding method ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
-        }
-        
-        var destructors = [];
-        var args = new Array(argCount + 1);
-        args[0] = this.ptr;
-        args[1] = memberFunction;
-        for (var i = 1; i < argCount; ++i) {
-            args[i + 1] = argTypes[i].toWireType(destructors, arguments[i-1]);
-        }
-        var rv = rawInvoker.apply(null, args);
-        if (argTypes[0].fromWireTypeAutoDowncast) {
-            rv = argTypes[0].fromWireTypeAutoDowncast(rv);
-        } else {
-            rv = argTypes[0].fromWireType(rv);
-        }
-        runDestructors(destructors);
-        return rv;
-    };
-    classType.Handle.memberType[methodName] = "method";
+            if (!this.ptr) {
+                throw new BindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
+            }
+            if (arguments.length !== argCount - 1) {
+                throw new BindingError('emscripten binding method ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
+            }
+
+            var destructors = [];
+            var args = new Array(argCount + 1);
+            args[0] = this.ptr;
+            args[1] = memberFunction;
+            for (var i = 1; i < argCount; ++i) {
+                args[i + 1] = argTypes[i].toWireType(destructors, arguments[i-1]);
+            }
+            var rv = rawInvoker.apply(null, args);
+            if (argTypes[0].fromWireTypeAutoDowncast) {
+                rv = argTypes[0].fromWireTypeAutoDowncast(rv);
+            } else {
+                rv = argTypes[0].fromWireType(rv);
+            }
+            runDestructors(destructors);
+            return rv;
+        };
+        classType.Handle.memberType[methodName] = "method";
+    });
 }
 
 // todo: cast methods should require binding of their target types
@@ -948,43 +980,43 @@ function __embind_register_raw_cast_method(
     rawReturnType,
     rawInvoker
 ) {
-    var classType = requireRegisteredType(rawClassType, 'class');
-    methodName = Pointer_stringify(methodName);
-    var humanName = classType.name + '.' + methodName;
-
-    var returnType = requireRegisteredType(rawReturnType, 'method ' + humanName + ' return value');
-    rawInvoker = FUNCTION_TABLE[rawInvoker];
-
-    classType.Handle.prototype[methodName] = function() {
-        if (!this.ptr) {
-            throw new BindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
-        }
-        if (arguments.length !== 0) {
-            throw new BindingError('emscripten binding method ' + humanName + ' called with arguments, none expected');
-        }
-        if (isPolymorphic) {
-            // todo: this is all only to validate the cast -- cache the result
-            var runtimeType = ___getDynamicPointerType(this.ptr);
-            var derivation = Module.__getDerivationPath(rawReturnType, runtimeType); // downcast is valid
-            var size = derivation.size();
-            derivation.delete();
-            if (size === 0) {
-                derivation = Module.__getDerivationPath(runtimeType, rawReturnType); // upcast is valid
-                size = derivation.size();
+    requestDeferredRegistration(function() {
+        var classType = requireRegisteredType(rawClassType, 'class');
+        methodName = Pointer_stringify(methodName);
+        var humanName = classType.name + '.' + methodName;
+        var returnType = requireRegisteredType(rawReturnType, 'method ' + humanName + ' return value');
+        rawInvoker = FUNCTION_TABLE[rawInvoker];
+        classType.Handle.prototype[methodName] = function() {
+            if (!this.ptr) {
+                throw new BindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
+            }
+            if (arguments.length !== 0) {
+                throw new BindingError('emscripten binding method ' + humanName + ' called with arguments, none expected');
+            }
+            if (isPolymorphic) {
+                // todo: this is all only to validate the cast -- cache the result
+                var runtimeType = ___getDynamicPointerType(this.ptr);
+                var derivation = Module.__getDerivationPath(rawReturnType, runtimeType); // downcast is valid
+                var size = derivation.size();
                 derivation.delete();
                 if (size === 0) {
-                    throw new CastError("Pointer conversion is not available");
+                    derivation = Module.__getDerivationPath(runtimeType, rawReturnType); // upcast is valid
+                    size = derivation.size();
+                    derivation.delete();
+                    if (size === 0) {
+                        throw new CastError("Pointer conversion is not available");
+                    }
                 }
             }
-        }
-        var args = new Array(1);
-        args[0] = this.ptr;
-        var ptr = rawInvoker.apply(null, args);
-        var rv = returnType.fromWireType(ptr);
-        rv.count = this.count;
-        this.count.value ++;
-        return rv;
-    };
+            var args = new Array(1);
+            args[0] = this.ptr;
+            var ptr = rawInvoker.apply(null, args);
+            var rv = returnType.fromWireType(ptr);
+            rv.count = this.count;
+            this.count.value ++;
+            return rv;
+        };
+    });
 }
 
 // todo: cast methods should not be passed from the smart ptr to the contained object!!
@@ -996,91 +1028,96 @@ function __embind_register_smart_cast_method(
     methodName,
     rawInvoker
 ) {
-    var pointerType = requireRegisteredType(rawPointerType, 'smart pointer class');
-    methodName = Pointer_stringify(methodName);
-    var humanName = pointerType.name + '.' + methodName;
-
-    var returnType = requireRegisteredType(rawReturnType, 'method ' + humanName + ' return value');
-    rawInvoker = FUNCTION_TABLE[rawInvoker];
-
-    pointerType.Handle.prototype[methodName] = function() {
-        if (!this.ptr) {
-            throw new BindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
-        }
-        if (arguments.length !== 0) {
-            throw new BindingError('emscripten binding method ' + humanName + ' called with arguments, none expected');
-        }
-        if (isPolymorphic) {
-            // todo: just validating the cast -- cache the result
-            var runtimeType = ___getDynamicPointerType(this.ptr);
-            var derivation = Module.__getDerivationPath(returnPointeeType, runtimeType); // downcast is valid
-            var size = derivation.size();
-            derivation.delete();
-            if (size === 0) {
-                derivation = Module.__getDerivationPath(runtimeType, returnPointeeType); // upcast is valid
-                size = derivation.size();
+    requestDeferredRegistration(function() {
+        var pointerType = requireRegisteredType(rawPointerType, 'smart pointer class');
+        methodName = Pointer_stringify(methodName);
+        var humanName = pointerType.name + '.' + methodName;
+        var returnType = requireRegisteredType(rawReturnType, 'method ' + humanName + ' return value');
+        rawInvoker = FUNCTION_TABLE[rawInvoker];
+        pointerType.Handle.prototype[methodName] = function() {
+            if (!this.ptr) {
+                throw new BindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
+            }
+            if (arguments.length !== 0) {
+                throw new BindingError('emscripten binding method ' + humanName + ' called with arguments, none expected');
+            }
+            if (isPolymorphic) {
+                // todo: just validating the cast -- cache the result
+                var runtimeType = ___getDynamicPointerType(this.ptr);
+                var derivation = Module.__getDerivationPath(returnPointeeType, runtimeType); // downcast is valid
+                var size = derivation.size();
                 derivation.delete();
                 if (size === 0) {
-                    throw new CastError("Pointer conversion is not available");
+                    derivation = Module.__getDerivationPath(runtimeType, returnPointeeType); // upcast is valid
+                    size = derivation.size();
+                    derivation.delete();
+                    if (size === 0) {
+                        throw new CastError("Pointer conversion is not available");
+                    }
                 }
             }
-        }
-        var args = new Array(2);
-        var ptr = _malloc(8);
-        args[0] = ptr;
-        args[1] = this.smartPointer;
-        rawInvoker.apply(null,args);
-        return returnType.fromWireType(ptr);
-    };
+            var args = new Array(2);
+            var ptr = _malloc(8);
+            args[0] = ptr;
+            args[1] = this.smartPointer;
+            rawInvoker.apply(null,args);
+            return returnType.fromWireType(ptr);
+        };
+    });
 }
 
 function __embind_register_class_classmethod(
     rawClassType,
     methodName,
     argCount,
-    rawArgTypes,
+    rawArgTypesAddr,
     rawInvoker,
     fn
 ) {
-    var classType = requireRegisteredType(rawClassType, 'class');
+    var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     methodName = Pointer_stringify(methodName);
-    var humanName = classType.name + '.' + methodName;
-    var argTypes = requireArgumentTypes(argCount, rawArgTypes, 'classmethod ' + humanName);
     rawInvoker = FUNCTION_TABLE[rawInvoker];
-    classType.constructor[methodName] = makeInvoker(humanName, argCount, argTypes, rawInvoker, fn);
+    requestDeferredRegistration(function() {
+        var classType = requireRegisteredType(rawClassType, 'class');
+        var humanName = classType.name + '.' + methodName;
+        var argTypes = requireArgumentTypes(rawArgTypes, 'classmethod ' + humanName);
+        classType.constructor[methodName] = makeInvoker(humanName, argCount, argTypes, rawInvoker, fn);
+    })
 }
 
 function __embind_register_class_operator_call(
     rawClassType,
     argCount,
-    rawArgTypes,
+    rawArgTypesAddr,
     rawInvoker
 ) {
-    var classType = requireRegisteredType(rawClassType, 'class');
-    var humanName = classType.name + '.' + 'operator_call';
-    var argTypes = requireArgumentTypes(argCount, rawArgTypes, 'method ' + humanName);
+    var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     rawInvoker = FUNCTION_TABLE[rawInvoker];
-    
-    
-    classType.Handle.prototype.operator_call = function() {
-        if (!this.ptr) {
-            throw new BindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
-        }
-        if (arguments.length !== argCount - 1) {
-            throw new BindingError('emscripten binding method ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
-        }
-        
-        var destructors = [];
-        var args = new Array(argCount);
-        args[0] = this.ptr;
-        for (var i = 1; i < argCount; ++i) {
-            args[i] = argTypes[i].toWireType(destructors, arguments[i-1]);
-        }
+    requestDeferredRegistration(function() {
+        var classType = requireRegisteredType(rawClassType, 'class');
+        var humanName = classType.name + '.' + 'operator_call';
+        var argTypes = requireArgumentTypes(rawArgTypes, 'method ' + humanName);
 
-        var rv = argTypes[0].fromWireType(rawInvoker.apply(null, args));
-        runDestructors(destructors);
-        return rv;
-    };
+        classType.Handle.prototype.operator_call = function() {
+            if (!this.ptr) {
+                throw new BindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
+            }
+            if (arguments.length !== argCount - 1) {
+                throw new BindingError('emscripten binding method ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
+            }
+
+            var destructors = [];
+            var args = new Array(argCount);
+            args[0] = this.ptr;
+            for (var i = 1; i < argCount; ++i) {
+                args[i] = argTypes[i].toWireType(destructors, arguments[i-1]);
+            }
+
+            var rv = argTypes[0].fromWireType(rawInvoker.apply(null, args));
+            runDestructors(destructors);
+            return rv;
+        };
+    });
 }
 
 function __embind_register_class_operator_array_get(
@@ -1089,30 +1126,31 @@ function __embind_register_class_operator_array_get(
     indexType,
     rawInvoker
 ) {
-    var classType = requireRegisteredType(rawClassType, 'class');
-    indexType = requireRegisteredType(indexType, 'array access index ' + classType.name);
-    elementType = requireRegisteredType(elementType, 'array access element' + classType.name);
     rawInvoker = FUNCTION_TABLE[rawInvoker];
-    var humanName = classType.name + '.' + 'operator_array_get';
-    
-    classType.Handle.prototype.array_get = function() {
-        if (!this.ptr) {
-            throw new BindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
-        }
-        
-        if (arguments.length !== 1) {
-            throw new BindingError('emscripten binding method ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + 1);
-        }
-        
-        var destructors = [];
-        var args = new Array(2);
-        args[0] = this.ptr;
-        args[1] = indexType.toWireType(destructors, arguments[0]);
-        
-        var rv = elementType.fromWireType(rawInvoker.apply(null, args));
-        runDestructors(destructors);
-        return rv;
-    };
+    requestDeferredRegistration(function() {
+        var classType = requireRegisteredType(rawClassType, 'class');
+        indexType = requireRegisteredType(indexType, 'array access index ' + classType.name);
+        elementType = requireRegisteredType(elementType, 'array access element' + classType.name);
+        var humanName = classType.name + '.' + 'operator_array_get';
+        classType.Handle.prototype.array_get = function() {
+            if (!this.ptr) {
+                throw new BindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
+            }
+
+            if (arguments.length !== 1) {
+                throw new BindingError('emscripten binding method ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + 1);
+            }
+
+            var destructors = [];
+            var args = new Array(2);
+            args[0] = this.ptr;
+            args[1] = indexType.toWireType(destructors, arguments[0]);
+
+            var rv = elementType.fromWireType(rawInvoker.apply(null, args));
+            runDestructors(destructors);
+            return rv;
+        };
+    });
 }
 
 function __embind_register_class_operator_array_set(
@@ -1121,31 +1159,32 @@ function __embind_register_class_operator_array_set(
     rawIndexType,
     rawInvoker
 ) {
-    var classType = requireRegisteredType(rawClassType, 'class');
-    var indexType = requireRegisteredType(rawIndexType, 'array access index ' + classType.name);
-    elementType = requireRegisteredType(elementType, 'array access element ' + classType.name);
     rawInvoker = FUNCTION_TABLE[rawInvoker];
-    var humanName = classType.name + '.' + 'operator_array_get';
-    
-    classType.Handle.prototype.array_set = function() {
-        if (!this.ptr) {
-            throw new BindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
-        }
-        
-        if (arguments.length !== 2) {
-            throw new BindingError('emscripten binding method ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + 2);
-        }
-        
-        var destructors = [];
-        var args = new Array(2);
-        args[0] = this.ptr;
-        args[1] = indexType.toWireType(destructors, arguments[0]);
-        args[2] = elementType.toWireType(destructors, arguments[1]);
-        
-        var rv = elementType.fromWireType(rawInvoker.apply(null, args));
-        runDestructors(destructors);
-        return rv;
-    };
+    requestDeferredRegistration(function() {
+        var classType = requireRegisteredType(rawClassType, 'class');
+        var indexType = requireRegisteredType(rawIndexType, 'array access index ' + classType.name);
+        elementType = requireRegisteredType(elementType, 'array access element ' + classType.name);
+        var humanName = classType.name + '.' + 'operator_array_get';
+        classType.Handle.prototype.array_set = function() {
+            if (!this.ptr) {
+                throw new BindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
+            }
+
+            if (arguments.length !== 2) {
+                throw new BindingError('emscripten binding method ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + 2);
+            }
+
+            var destructors = [];
+            var args = new Array(2);
+            args[0] = this.ptr;
+            args[1] = indexType.toWireType(destructors, arguments[0]);
+            args[2] = elementType.toWireType(destructors, arguments[1]);
+
+            var rv = elementType.fromWireType(rawInvoker.apply(null, args));
+            runDestructors(destructors);
+            return rv;
+        };
+    });
 }
 
 function __embind_register_class_field(
@@ -1157,32 +1196,33 @@ function __embind_register_class_field(
     memberPointerSize,
     memberPointer
 ) {
-    var classType = requireRegisteredType(rawClassType, 'class');
     fieldName = Pointer_stringify(fieldName);
-    var humanName = classType.name + '.' + fieldName;
-    var fieldType = requireRegisteredType(rawFieldType, 'field ' + humanName);
     getter = FUNCTION_TABLE[getter];
     setter = FUNCTION_TABLE[setter];
     memberPointer = copyMemberPointer(memberPointer, memberPointerSize);
-
-    Object.defineProperty(classType.Handle.prototype, fieldName, {
-        get: function() {
-            if (!this.ptr) {
-                throw new BindingError('cannot access emscripten binding field ' + humanName + ' on deleted object');
-            }
-            return fieldType.fromWireType(getter(this.ptr, memberPointer));
-        },
-        set: function(v) {
-            if (!this.ptr) {
-                throw new BindingError('cannot modify emscripten binding field ' + humanName + ' on deleted object');
-            }
-            var destructors = [];
-            setter(this.ptr, memberPointer, fieldType.toWireType(destructors, v));
-            runDestructors(destructors);
-        },
-        enumerable: true
+    requestDeferredRegistration(function() {
+        var classType = requireRegisteredType(rawClassType, 'class');
+        var humanName = classType.name + '.' + fieldName;
+        var fieldType = requireRegisteredType(rawFieldType, 'field ' + humanName);
+        Object.defineProperty(classType.Handle.prototype, fieldName, {
+            get: function() {
+                if (!this.ptr) {
+                    throw new BindingError('cannot access emscripten binding field ' + humanName + ' on deleted object');
+                }
+                return fieldType.fromWireType(getter(this.ptr, memberPointer));
+            },
+            set: function(v) {
+                if (!this.ptr) {
+                    throw new BindingError('cannot modify emscripten binding field ' + humanName + ' on deleted object');
+                }
+                var destructors = [];
+                setter(this.ptr, memberPointer, fieldType.toWireType(destructors, v));
+                runDestructors(destructors);
+            },
+            enumerable: true
+        });
+        classType.Handle.memberType[fieldName] = "field";
     });
-    classType.Handle.memberType[fieldName] = "field";
 }
 
 function RegisteredEnum() {
