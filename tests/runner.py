@@ -6558,7 +6558,6 @@ void*:16
       Settings.CORRECT_OVERFLOWS = 1
       Settings.CHECK_OVERFLOWS = 0
       Settings.CORRECT_SIGNS = 1 # Not sure why, but needed
-      Settings.INIT_STACK = 1 # TODO: Investigate why this is necessary
 
       self.do_ll_run(path_from_root('tests', 'lua', 'lua.ll'),
                       'hello lua world!\n17\n1\n2\n3\n4\n7',
@@ -10600,7 +10599,7 @@ elif 'benchmark' in str(sys.argv):
       JS_ENGINE = eval(arg)
       sys.argv[i] = None
   sys.argv = filter(lambda arg: arg is not None, sys.argv)
-  print 'Benchmarking JS engine:', JS_ENGINE
+  print 'Benchmarking JS engine:', ' '.join(JS_ENGINE)
 
   Building.COMPILER_TEST_OPTS = []
 
