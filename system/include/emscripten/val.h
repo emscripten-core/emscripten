@@ -14,11 +14,12 @@ namespace emscripten {
 
             EM_VAL _emval_new_array();
             EM_VAL _emval_new_object();
-            EM_VAL _emval_new_null();
+            EM_VAL _emval_undefined();
+            EM_VAL _emval_null();
             EM_VAL _emval_new_cstring(const char*);
             void _emval_take_value(TYPEID type/*, ...*/);
 
-            bool _emval_has_property(EM_VAL object, const char* key);
+            EM_VAL _emval_get_global(const char* name);
             EM_VAL _emval_get_property(EM_VAL object, const char* key);
             EM_VAL _emval_get_property_by_long(EM_VAL object, long key);
             EM_VAL _emval_get_property_by_unsigned_long(EM_VAL object, unsigned long key);
@@ -56,12 +57,20 @@ namespace emscripten {
             return val(internal::_emval_new_object());
         }
 
+        static val undefined() {
+            return val(internal::_emval_undefined());
+        }
+
         static val null() {
-            return val(internal::_emval_new_null());
+            return val(internal::_emval_null());
         }
 
         static val take_ownership(internal::EM_VAL e) {
             return val(e);
+        }
+
+        static val global(const char* name) {
+            return val(internal::_emval_get_global(name));
         }
 
         template<typename T>
@@ -94,8 +103,8 @@ namespace emscripten {
             return *this;
         }
 
-        bool exist(const char* key) const {
-            return internal::_emval_has_property(handle, key);
+        bool hasOwnProperty(const char* key) const {
+            return val::global("Object").get("prototype").get("hasOwnProperty").call("call", *this, val(key)).as<bool>();
         }
 
         val get(const char* key) const {
