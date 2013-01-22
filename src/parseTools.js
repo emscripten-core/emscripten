@@ -404,8 +404,7 @@ function isIndexableGlobal(ident) {
     return false;
   }
   var data = Variables.globals[ident];
-  // in asm.js, externals are just globals
-  return !data.alias && (ASM_JS || !data.external);
+  return !data.alias && !data.external;
 }
 
 function makeGlobalDef(ident) {
