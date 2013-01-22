@@ -793,11 +793,11 @@ namespace emscripten {
     ////////////////////////////////////////////////////////////////////////////////
     template<typename T>
     std::vector<T> vecFromJSArray(val v) {
-        auto l = v.get("length").as<unsigned>();
+        auto l = v["length"].as<unsigned>();
 
         std::vector<T> rv;
         for(unsigned i = 0; i < l; ++i) {
-            rv.push_back(v.get(i).as<T>());
+            rv.push_back(v[i].as<T>());
         }
 
         return rv;

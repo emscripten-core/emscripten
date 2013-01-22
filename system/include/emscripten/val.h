@@ -105,7 +105,7 @@ namespace emscripten {
         }
         
         template<typename T>
-        val get(const T& key) const {
+        val operator[](const T& key) const {
             return val(internal::_emval_get_property(handle, val(key).handle));
         }
 
