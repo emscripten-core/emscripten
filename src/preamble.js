@@ -638,7 +638,11 @@ function enlargeMemory() {
 #endif
 
 var TOTAL_STACK = Module['TOTAL_STACK'] || {{{ TOTAL_STACK }}};
+#if ASM_JS == 0
 var TOTAL_MEMORY = Module['TOTAL_MEMORY'] || {{{ TOTAL_MEMORY }}};
+#else
+var TOTAL_MEMORY = {{{ TOTAL_MEMORY }}}; // in asm, we hardcode the mask, so cannot adjust memory at runtime
+#endif
 var FAST_MEMORY = Module['FAST_MEMORY'] || {{{ FAST_MEMORY }}};
 
 // Initialize the runtime's memory
