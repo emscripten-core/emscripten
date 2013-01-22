@@ -20,12 +20,9 @@ namespace emscripten {
             void _emval_take_value(TYPEID type/*, ...*/);
 
             EM_VAL _emval_get_global(const char* name);
-            EM_VAL _emval_get_property(EM_VAL object, const char* key);
-            EM_VAL _emval_get_property_by_long(EM_VAL object, long key);
-            EM_VAL _emval_get_property_by_unsigned_long(EM_VAL object, unsigned long key);
+            EM_VAL _emval_get_property(EM_VAL object, EM_VAL key);
             EM_VAL _emval_eval_global_method(EM_VAL object, const char* objectName, const char* methodName);
-            void _emval_set_property(EM_VAL object, const char* key, EM_VAL value);
-            void _emval_set_property_by_int(EM_VAL object, long key, EM_VAL value);
+            void _emval_set_property(EM_VAL object, EM_VAL key, EM_VAL value);
             void _emval_as(EM_VAL value, TYPEID returnType);
             EM_VAL _emval_call(
                 EM_VAL value,
@@ -106,38 +103,19 @@ namespace emscripten {
         bool hasOwnProperty(const char* key) const {
             return val::global("Object").get("prototype").get("hasOwnProperty").call("call", *this, val(key)).as<bool>();
         }
-
-        val get(const char* key) const {
-            return val(internal::_emval_get_property(handle, key));
-        }
-
-        val get(int key) const {
-            return get(long(key));
-        }
-
-        val get(unsigned int key) const {
-            typedef unsigned long T;
-            return get(T(key));
-        }
-
-        val get(long key) const {
-            return val(internal::_emval_get_property_by_long(handle, key));
-        }
-
-        val get(unsigned long key) const {
-            return val(internal::_emval_get_property_by_unsigned_long(handle, key));
+        
+        template<typename T>
+        val get(const T& key) const {
+            return val(internal::_emval_get_property(handle, val(key).handle));
         }
 
         val eval_global_method(const char* objectName, const char* methodName) const {
             return val(internal::_emval_eval_global_method(handle, objectName, methodName));
         }
 
-        void set(const char* key, val v) {
-            internal::_emval_set_property(handle, key, v.handle);
-        }
-
-        void set(long key, val v) {
-            internal::_emval_set_property_by_int(handle, key, v.handle);
+        template<typename T>
+        void set(const T& key, val v) {
+            internal::_emval_set_property(handle, val(key).handle, v.handle);
         }
 
         template<typename ...Args>
