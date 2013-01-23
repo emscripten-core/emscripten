@@ -228,7 +228,11 @@ function isFunctionType(type, out) {
 }
 
 function getReturnType(type) {
-  return type.substr(0, type.lastIndexOf('(')-1);
+  var lastOpen = type.lastIndexOf('(');
+  if (lastOpen > 0) {
+    return type.substr(0, lastOpen-1);
+  }
+  return type;
 }
 
 var isTypeCache = {}; // quite hot, optimize as much as possible
