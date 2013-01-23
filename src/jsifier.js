@@ -618,10 +618,11 @@ function JSify(data, functionsOnly, givenFunctions) {
           }
           for (i = 0; i < chunks.length; i++) {
             func.JS += '  var ' + chunks[i].map(function(v) {
-              if (!isIllegalType(v.type) || v.ident.indexOf('$', 1) > 0) { // not illegal, or a broken up illegal
-                return v.ident + ' = ' + asmInitializer(v.type); //, func.variables[v.ident].impl);
+              var type = getImplementationType(v);
+              if (!isIllegalType(type) || v.ident.indexOf('$', 1) > 0) { // not illegal, or a broken up illegal
+                return v.ident + ' = ' + asmInitializer(type); //, func.variables[v.ident].impl);
               } else {
-                return range(Math.ceil(getBits(v.type)/32)).map(function(i) {
+                return range(Math.ceil(getBits(type)/32)).map(function(i) {
                   return v.ident + '$' + i + '= 0';
                 }).join(',');
               }
