@@ -721,9 +721,8 @@ RegisteredRawPointer.prototype.fromWireTypeAutoDowncast = function(ptr) {
         // todo: can come back -1 or -2!! Throw appropriate exception
         return handle;
     } else {
-        handle = new this.Handle(ptr);
+        return new this.Handle(ptr);
     }
-    return handle;
 };
 
 function RegisteredClassInstance(constructor, Handle) {
