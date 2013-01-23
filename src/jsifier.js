@@ -1156,8 +1156,10 @@ function JSify(data, functionsOnly, givenFunctions) {
           +  "INDENT = INDENT.substr(0, INDENT.length-2);\n";
     }
     ret += 'return';
-    if (item.value) {
-      ret += ' ' + asmCoercion(finalizeLLVMParameter(item.value), item.type);
+    var value = item.value ? finalizeLLVMParameter(item.value) : null;
+    if (!value && item.funcData.returnType != 'void') value = '0'; // no-value returns must become value returns if function returns
+    if (value) {
+      ret += ' ' + asmCoercion(value, item.type);
     }
     return ret + ';';
   });
