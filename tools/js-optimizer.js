@@ -1416,7 +1416,7 @@ function registerize(ast) {
     // We also mark local variables - i.e., having a var definition
     var localVars = {};
     var hasSwitch = false; // we cannot optimize variables if there is a switch
-    var hasReturnValue = false;
+    var returnType = null; // for asm
     traverse(fun, function(node, type) {
       if (type == 'var') {
         node[1].forEach(function(defined) { localVars[defined[0]] = 1 });
@@ -1429,7 +1429,7 @@ function registerize(ast) {
       } else if (type == 'switch') {
         hasSwitch = true;
       } else if (asm && type == 'return' && node[1]) {
-        hasReturnValue = true;
+        returnType = detectAsmCoercion(node[1]);
       }
     });
     vacuum(fun);
@@ -1608,11 +1608,13 @@ function registerize(ast) {
       denormalizeAsm(fun, finalAsmData);
       // Add a final return if one is missing. This is not strictly a register operation, but
       // this pass traverses the entire AST anyhow so adding it here is efficient.
-      if (hasReturnValue) {
+      if (returnType !== null) {
         var stats = getStatements(fun);
         var last = stats[stats.length-1];
         if (last[0] != 'return') {
-          stats.push(['return', ['num', 0]]);
+          var returnValue = ['num', 0];
+          if (returnType == ASM_DOUBLE) returnValue = ['unary-prefix', '+', returnValue];
+          stats.push(['return', returnValue]);
         }
       }
     }
