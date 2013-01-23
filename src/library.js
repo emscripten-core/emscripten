@@ -1040,6 +1040,8 @@ LibraryManager.library = {
       return _chmod(allocate(pathArray, 'i8', ALLOC_STACK), mode);
     }
   },
+  lchmod: function() { throw 'TODO: lchmod' },
+
   umask__deps: ['$FS'],
   umask: function(newMask) {
     // mode_t umask(mode_t cmask);
@@ -5952,6 +5954,8 @@ LibraryManager.library = {
     return 0;
   },
 
+  setitimer: function() { throw 'setitimer not implemented yet' },
+
   // ==========================================================================
   // sys/time.h
   // ==========================================================================
@@ -6119,6 +6123,8 @@ LibraryManager.library = {
     return -1;
   },
   killpg: 'kill',
+
+  siginterrupt: function() { throw 'siginterrupt not implemented' },
 
   // ==========================================================================
   // sys/wait.h
@@ -7156,6 +7162,15 @@ LibraryManager.library = {
     }
     return ret;
   },
+
+  // pty.h
+
+  openpty: function() { throw 'openpty: TODO' },
+  forkpty: function() { throw 'forkpty: TODO' },
+
+  // grp.h
+
+  initgroups: function() { throw 'initgroups: TODO' },
 
   // ==========================================================================
   // emscripten.h
