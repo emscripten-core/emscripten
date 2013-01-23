@@ -78,13 +78,6 @@ function __emval_get_property(handle, key) {
     return __emval_register(_emval_handle_array[handle].value[_emval_handle_array[key].value]);
 }
 
-function __emval_eval_global_method(handle, objectName, methodName) {
-    var objectNameStr = Pointer_stringify(objectName);
-    var methodNameStr = Pointer_stringify(methodName);
-    var result = eval.call(null, objectNameStr)[methodNameStr](_emval_handle_array[handle].value);
-    return __emval_register(result);
-}
-
 function __emval_set_property(handle, key, value) {
     _emval_handle_array[handle].value[_emval_handle_array[key].value] = _emval_handle_array[value].value;
 }

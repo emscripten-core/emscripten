@@ -21,7 +21,6 @@ namespace emscripten {
 
             EM_VAL _emval_get_global(const char* name);
             EM_VAL _emval_get_property(EM_VAL object, EM_VAL key);
-            EM_VAL _emval_eval_global_method(EM_VAL object, const char* objectName, const char* methodName);
             void _emval_set_property(EM_VAL object, EM_VAL key, EM_VAL value);
             void _emval_as(EM_VAL value, TYPEID returnType);
             EM_VAL _emval_call(
@@ -107,10 +106,6 @@ namespace emscripten {
         template<typename T>
         val operator[](const T& key) const {
             return val(internal::_emval_get_property(handle, val(key).handle));
-        }
-
-        val eval_global_method(const char* objectName, const char* methodName) const {
-            return val(internal::_emval_eval_global_method(handle, objectName, methodName));
         }
 
         template<typename T>
