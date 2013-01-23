@@ -1270,7 +1270,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     var phiSets = calcPhiSets(item);
     var js = 'var ibr = ' + finalizeLLVMParameter(item.value) + ';\n';
     for (var targetLabel in phiSets) {
-      js += 'if (ibr == ' + targetLabel + ') { ' + getPhiSetsForLabel(phiSets, targetLabel) + ' }\n';
+      js += 'if (' + makeComparison('ibr', targetLabel, 'i32') + ') { ' + getPhiSetsForLabel(phiSets, targetLabel) + ' }\n';
     }
     return js + makeBranch('ibr', item.currLabelId, true);
   });
