@@ -1796,7 +1796,8 @@ function makeComparison(a, b, type) {
     return a + ' == ' + b;
   } else {
     assert(type == 'i64');
-    return a + '$0 == ' + b + '$0 && ' + a + '$1 == ' + b + '$1';
+    return asmCoercion(a + '$0', 'i32') + ' == ' + asmCoercion(b + '$0', 'i32') + ' & ' +
+           asmCoercion(a + '$1', 'i32') + ' == ' + asmCoercion(b + '$1', 'i32');
   }
 }
 
