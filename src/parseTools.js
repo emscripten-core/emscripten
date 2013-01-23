@@ -205,15 +205,16 @@ function isFunctionDef(token, out) {
 function isPossiblyFunctionType(type) {
   // A quick but unreliable way to see if something is a function type. Yes is just 'maybe', no is definite.
   var len = type.length;
-  return type[len-2] == ')' && type[len-1] == '*' && type.indexOf('(') > 0;
+  return type[len-2] == ')' && type[len-1] == '*';
 }
 
 function isFunctionType(type, out) {
   if (!isPossiblyFunctionType(type)) return false;
   type = type.substr(0, type.length-1); // remove final '*'
+  var firstOpen = type.indexOf('(');
+  if (firstOpen <= 0) return false;
   type = type.replace(/"[^"]+"/g, '".."');
   var lastOpen = type.lastIndexOf('(');
-  var firstOpen = type.indexOf('(');
   var returnType;
   if (firstOpen == lastOpen) {
     returnType = type.substr(0, type.indexOf(' '));
