@@ -4834,7 +4834,7 @@ at function.:blag
         '''
       self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected))
 
-    def test_printf_cases(self):
+    def test_printf_more(self):
       src = r'''
         #include <stdio.h>
         int main()  {
