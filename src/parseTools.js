@@ -217,7 +217,7 @@ function isFunctionType(type, out) {
   var lastOpen = type.lastIndexOf('(');
   var returnType;
   if (firstOpen == lastOpen) {
-    returnType = type.substr(0, type.indexOf(' '));
+    returnType = getReturnType(type);
     if (!isType(returnType)) return false;
   } else {
     returnType = 'i8*'; // some pointer type, no point in analyzing further
