@@ -74,7 +74,7 @@ function __emval_take_value(type, v) {
 }
 
 function __emval_new(handle) {
-    return __emval_register(new (_emval_handle_array[handle].value))
+    return __emval_register(new (_emval_handle_array[handle].value));
 }
 
 var global = (function(){return Function;})()('return this')();
