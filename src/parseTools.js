@@ -1793,7 +1793,7 @@ function finalizeLLVMParameter(param, noIndexizeFunctions) {
 
 function makeComparison(a, b, type) {
   if (!isIllegalType(type)) {
-    return a + ' == ' + b;
+    return asmCoercion(a, type) + ' == ' + asmCoercion(b, type);
   } else {
     assert(type == 'i64');
     return asmCoercion(a + '$0', 'i32') + ' == ' + asmCoercion(b + '$0', 'i32') + ' & ' +
