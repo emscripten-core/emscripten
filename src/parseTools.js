@@ -205,26 +205,25 @@ function isFunctionDef(token, out) {
 function isPossiblyFunctionType(type) {
   // A quick but unreliable way to see if something is a function type. Yes is just 'maybe', no is definite.
   var len = type.length;
-  return type[len-2] == ')' && type[len-1] == '*';
+  return type[len-2] == ')' && type[len-1] == '*' && type.indexOf('(') > 0;
 }
 
 function isFunctionType(type, out) {
   if (!isPossiblyFunctionType(type)) return false;
+  type = type.substr(0, type.length-1); // remove final '*'
   type = type.replace(/"[^"]+"/g, '".."');
-  var parts;
-  // hackish, but quick splitting of function def parts. this must be fast as it happens a lot
-  if (type[0] != '[') {
-    parts = type.split(' ');
+  var lastOpen = type.lastIndexOf('(');
+  var firstOpen = type.indexOf('(');
+  var returnType;
+  if (firstOpen == lastOpen) {
+    returnType = type.substr(0, type.indexOf(' '));
+    if (!isType(returnType)) return false;
   } else {
-    var index = type.search(']');
-    index += type.substr(index).search(' ');
-    parts = [type.substr(0, index), type.substr(index+1)];
+    returnType = 'i8*'; // some pointer type, no point in analyzing further
   }
-  if (pointingLevels(type) !== 1) return false;
-  var text = removeAllPointing(parts.slice(1).join(' '));
-  if (!text) return false;
-  if (out) out.returnType = parts[0];
-  return isType(parts[0]) && isFunctionDef({ text: text, item: tokenize(text.substr(1, text.length-2), true) }, out);
+  if (out) out.returnType = returnType;
+  var argText = type.substr(lastOpen);
+  return isFunctionDef({ text: argText, item: tokenize(argText.substr(1, argText.length-2), true) }, out);
 }
 
 var isTypeCache = {}; // quite hot, optimize as much as possible
