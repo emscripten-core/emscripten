@@ -5955,6 +5955,7 @@ LibraryManager.library = {
   },
 
   setitimer: function() { throw 'setitimer not implemented yet' },
+  getitimer: function() { throw 'getitimer not implemented yet' },
 
   // ==========================================================================
   // sys/time.h
@@ -7171,6 +7172,13 @@ LibraryManager.library = {
   // grp.h
 
   initgroups: function() { throw 'initgroups: TODO' },
+
+  // pwd.h
+
+  getpwnam: function() { throw 'getpwnam: TODO' },
+  setpwent: function() { throw 'setpwent: TODO' },
+  getpwent: function() { throw 'getpwent: TODO' },
+  endpwent: function() { throw 'endpwent: TODO' },
 
   // ==========================================================================
   // emscripten.h
