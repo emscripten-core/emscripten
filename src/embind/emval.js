@@ -10,7 +10,13 @@ var _emval_free_list = [];
 
 /** @expose */
 Module.count_emval_handles = function() {
-    return _emval_handle_array.length;
+    var count = 0;
+    for (var i = 0; i < _emval_handle_array.length; ++i) {
+        if (_emval_handle_array[i] !== undefined) {
+            ++count;
+        }
+    }
+    return count;
 };
 
 // Private C++ API
