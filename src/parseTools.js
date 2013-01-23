@@ -641,14 +641,16 @@ function makeI64(low, high) {
 
 // Splits a number (an integer in a double, possibly > 32 bits) into an USE_TYPED_ARRAYS == 2 i64 value.
 // Will suffer from rounding. mergeI64 does the opposite.
-function splitI64(value) {
+function splitI64(value, floatConversion) {
   // We need to min here, since our input might be a double, and large values are rounded, so they can
   // be slightly higher than expected. And if we get 4294967296, that will turn into a 0 if put into a
   // HEAP32 or |0'd, etc.
+  var lowInput = legalizedI64s ? value : 'VALUE';
+  if (floatConversion && ASM_JS) lowInput = asmFloatToInt(lowInput);
   if (legalizedI64s) {
-    return [value + '>>>0', 'Math.min(Math.floor((' + value + ')/4294967296), 4294967295)'];
+    return [lowInput + '>>>0', 'Math.min(Math.floor((' + value + ')/' + asmEnsureFloat(4294967296, 'float') + '), ' + asmEnsureFloat(4294967295, 'float') + ')>>>0'];
   } else {
-    return makeInlineCalculation(makeI64('VALUE>>>0', 'Math.min(Math.floor(VALUE/4294967296), 4294967295)'), value, 'tempBigIntP');
+    return makeInlineCalculation(makeI64(lowInput + '>>>0', 'Math.min(Math.floor(VALUE/' + asmEnsureFloat(4294967296, 'float') + '), ' + asmEnsureFloat(4294967295, 'float') + ')>>>0'), value, 'tempBigIntP');
   }
 }
 function mergeI64(value, unsigned) {
@@ -1042,6 +1044,10 @@ function asmMultiplyI32(a, b) {
     return 'Math.imul(' + a + ',' + b + ')';
   }
   return '(~~(+((' + a + ')|0) * +((' + b + ')|0)))';
+}
+
+function asmFloatToInt(x) {
+  return '(~~(' + x + '))';
 }
 
 function makeGetTempDouble(i, type, forSet) { // get an aliased part of the tempDouble temporary storage
@@ -2002,7 +2008,7 @@ function processMathop(item) {
         }
       }
       case 'uitofp': case 'sitofp': return RuntimeGenerator.makeBigInt(low1, high1, op[0] == 'u');
-      case 'fptoui': case 'fptosi': return finish(splitI64(idents[0]));
+      case 'fptoui': case 'fptosi': return finish(splitI64(idents[0], true));
       case 'icmp': {
         switch (variant) {
           case 'uge': return '((' + high1 + '>>>0) >= (' + high2 + '>>>0)) & ((((' + high1 + '>>>0) >  ('  + high2 + '>>>0)) | ' +
