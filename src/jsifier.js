@@ -1392,7 +1392,9 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
 
     var returnType;
-    if (byPointer || ASM_JS) returnType = getReturnType(type);
+    if (byPointer || ASM_JS) {
+      returnType = getReturnType(type);
+    }
 
     if (byPointer) {
       var sig = Functions.getSignature(returnType, argsTypes, hasVarArgs);
