@@ -47,6 +47,22 @@ namespace emscripten {
 
     class val {
     public:
+        // missing operators:
+        // * delete
+        // * in
+        // * instanceof
+        // * typeof
+        // * ! ~ - + ++ --
+        // * * / %
+        // * + -
+        // * << >> >>>
+        // * < <= > >=
+        // * == != === !==
+        // * & ^ | && || ?:
+        //
+        // exposing void, comma, and conditional is unnecessary
+        // same with: = += -= *= /= %= <<= >>= >>>= &= ^= |=
+
         static val array() {
             return val(internal::_emval_new_array());
         }
