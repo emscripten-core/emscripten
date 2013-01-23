@@ -1543,7 +1543,7 @@ Succeeded!
         src = '''
           #include <stdio.h>
           #include <math.h>
-          int main()
+          int main(int argc, char **argv)
           {
             float x = 1.234, y = 3.5, q = 0.00000001;
             y *= 3;
@@ -1551,6 +1551,8 @@ Succeeded!
             printf("*%d,%d,%.1f,%d,%.4f,%.2f*\\n", z, int(y), y, (int)x, x, q);
 
             printf("%.2f, %.2f, %.2f, %.2f\\n", fmin(0.5, 3.3), fmin(NAN, 3.3), fmax(0.5, 3.3), fmax(NAN, 3.3));
+
+            printf("small: %.10f\\n", argc * 0.000001);
 
             /*
             // Rounding behavior
@@ -1563,7 +1565,7 @@ Succeeded!
             return 0;
           }
         '''
-        self.do_run(src, '*1,10,10.5,1,1.2340,0.00*\n0.50, 3.30, 3.30, 3.30\n')
+        self.do_run(src, '*1,10,10.5,1,1.2340,0.00*\n0.50, 3.30, 3.30, 3.30\nsmall: 0.0000010000\n')
 
     def test_isnan(self):
       src = r'''

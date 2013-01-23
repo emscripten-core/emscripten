@@ -1008,7 +1008,8 @@ function makeVarDef(js) {
 
 function asmEnsureFloat(value, type) { // ensures that a float type has either 5.5 (clearly a float) or +5 (float due to asm coercion)
   if (!ASM_JS) return value;
-  if (type in Runtime.FLOAT_TYPES && isNumber(value) && value.toString().indexOf('.') < 0) {
+  // coerce if missing a '.', or if smaller than 1, so could be 1e-5 which has no .
+  if (type in Runtime.FLOAT_TYPES && isNumber(value) && (value.toString().indexOf('.') < 0 || Math.abs(value) < 1)) {
     return '(+(' + value + '))';
   } else {
     return value;
