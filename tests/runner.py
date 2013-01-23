@@ -1565,6 +1565,35 @@ Succeeded!
         '''
         self.do_run(src, '*1,10,10.5,1,1.2340,0.00*\n0.50, 3.30, 3.30, 3.30\n')
 
+    def test_isnan(self):
+      src = r'''
+        #include <stdio.h>
+
+        int IsNaN(double x){
+          int rc;   /* The value return */
+          volatile double y = x;
+          volatile double z = y;
+          rc = (y!=z);
+          return rc;
+        }
+
+        int main() {
+          double tests[] = { 1.0, 3.333, 1.0/0.0, 0.0/0.0, -1.0/0.0, -0, 0, -123123123, 12.0E200 };
+          for (int i = 0; i < sizeof(tests)/sizeof(double); i++)
+            printf("%d - %f - %d\n", i, tests[i], IsNaN(tests[i]));
+        }
+        '''
+      self.do_run(src, '''0 - 1.000000 - 0
+1 - 3.333000 - 0
+2 - inf - 0
+3 - nan - 1
+4 - -inf - 0
+5 - 0.000000 - 0
+6 - 0.000000 - 0
+7 - -123123123.000000 - 0
+8 - 1.2e+201 - 0
+''')
+
     def test_globaldoubles(self):
         src = r'''
           #include <stdlib.h>
