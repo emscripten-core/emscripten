@@ -2336,3 +2336,10 @@ function stripCorrections(param) {
   return param;
 }
 
+function getImplementationType(varInfo) {
+  if (varInfo.impl == 'nativized') {
+    return removePointing(varInfo.type);
+  }
+  return varInfo.type;
+}
+
