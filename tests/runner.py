@@ -2860,6 +2860,26 @@ Exiting setjmp function, level: 0, prev_jmp: -1
           '''
         self.do_run(src, 'fn2(-5) = 5, fn(10) = 3.16')
 
+    def test_funcptrfunc(self):
+      src = r'''
+        #include <stdio.h>
+
+        typedef void (*funcptr)(int, int);
+        typedef funcptr (*funcptrfunc)(int);
+
+        funcptr __attribute__ ((noinline)) getIt(int x) {
+          return (funcptr)x;
+        }
+
+        int main(int argc, char **argv)
+        {
+          funcptrfunc fpf = argc < 100 ? getIt : NULL;
+          printf("*%p*\n", fpf(argc));
+          return 0;
+        }
+      '''
+      self.do_run(src, '*0x1*')
+
     def test_emptyclass(self):
         if self.emcc_args is None: return self.skip('requires emcc')
         src = '''

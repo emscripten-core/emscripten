@@ -227,6 +227,10 @@ function isFunctionType(type, out) {
   return isFunctionDef({ text: argText, item: tokenize(argText.substr(1, argText.length-2), true) }, out);
 }
 
+function getReturnType(type) {
+  return type.substr(0, type.lastIndexOf('(')-1);
+}
+
 var isTypeCache = {}; // quite hot, optimize as much as possible
 function isType(type) {
   if (type in isTypeCache) return isTypeCache[type];
