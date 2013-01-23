@@ -101,7 +101,7 @@ namespace emscripten {
         }
 
         bool hasOwnProperty(const char* key) const {
-            return val::global("Object").get("prototype").get("hasOwnProperty").call("call", *this, val(key)).as<bool>();
+            return val::global("Object")["prototype"]["hasOwnProperty"].call("call", *this, val(key)).as<bool>();
         }
         
         template<typename T>
