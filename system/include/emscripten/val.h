@@ -19,6 +19,8 @@ namespace emscripten {
             EM_VAL _emval_new_cstring(const char*);
             void _emval_take_value(TYPEID type/*, ...*/);
 
+            EM_VAL _emval_new(EM_VAL value);
+
             EM_VAL _emval_get_global(const char* name);
             EM_VAL _emval_get_property(EM_VAL object, EM_VAL key);
             void _emval_set_property(EM_VAL object, EM_VAL key, EM_VAL value);
@@ -101,6 +103,10 @@ namespace emscripten {
 
         bool hasOwnProperty(const char* key) const {
             return val::global("Object")["prototype"]["hasOwnProperty"].call("call", *this, val(key)).as<bool>();
+        }
+
+        val new_() const {
+            return val(internal::_emval_new(handle));
         }
         
         template<typename T>
