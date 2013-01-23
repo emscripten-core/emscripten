@@ -7541,30 +7541,6 @@ def process(filename):
           # This test *should* fail, by throwing this exception
           assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
 
-    def test_check_overflow(self):
-      if Settings.ASM_JS: return self.skip('asm always corrects, and cannot check')
-
-      Settings.CHECK_OVERFLOWS = 1
-      Settings.CORRECT_OVERFLOWS = 0
-
-      src = '''
-          #include<stdio.h>
-          int main() {
-            int t = 77;
-            for (int i = 0; i < 30; i++) {
-              //t = (t << 2) + t + 1; // This would have worked, since << forces into 32-bit int...
-              t = t*5 + 1; // Python lookdict_string has ~the above line, which turns into this one with optimizations...
-              printf("%d,%d\\n", t, t & 127);
-            }
-            return 0;
-          }
-      '''
-      try:
-        self.do_run(src, '*nothingatall*')
-      except Exception, e:
-        # This test *should* fail, by throwing this exception
-        assert 'Too many corrections' in str(e), str(e)
-
     def test_debug(self):
       if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
 
@@ -7653,7 +7629,7 @@ def process(filename):
         int main() {
           int t = 77;
           for (int i = 0; i < 30; i++) {
-            t = t*5 + 1;
+            t = t + t + t + t + t + 1;
           }
           printf("*%d,%d*\\n", t, t & 127);
           return 0;
@@ -7767,7 +7743,7 @@ def process(filename):
         int main() {
           int t = 77;
           for (int i = 0; i < 30; i++) {
-            t = t*5 + 1;
+            t = t + t + t + t + t + 1;
           }
           printf("*%d,%d*\\n", t, t & 127);
 
@@ -7784,7 +7760,7 @@ def process(filename):
       def check(output, err):
         # TODO: check the line #
         if self.emcc_args is None or self.emcc_args == []: # LLVM full opts optimize out some corrections
-          assert re.search('^Overflow\|.*src.cpp:6 : 60 hits, %20 failures$', output, re.M), 'no indication of Overflow corrections: ' + output
+          assert re.search('^Overflow\|.*src.cpp:6 : 150 hits, %21 failures$', output, re.M), 'no indication of Overflow corrections: ' + output
           assert re.search('^UnSign\|.*src.cpp:13 : 6 hits, %17 failures$', output, re.M), 'no indication of Sign corrections: ' + output
         return output
 
