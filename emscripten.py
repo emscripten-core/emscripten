@@ -232,8 +232,8 @@ def emscript(infile, settings, outfile, libraries=[]):
   # merge forwarded data
   if settings.get('ASM_JS'):
     all_exported_functions = set(settings['EXPORTED_FUNCTIONS']) # both asm.js and otherwise
-    for additional_export in ['_malloc', '_free']: # additional functions to export from asm, if they are implemented
-      all_exported_functions.add(additional_export)
+    for additional_export in settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE']: # additional functions to export from asm, if they are implemented
+      all_exported_functions.add('_' + additional_export)
     exported_implemented_functions = set()
   for func_js, curr_forwarded_data in outputs:
     curr_forwarded_json = json.loads(curr_forwarded_data)
