@@ -2056,7 +2056,7 @@ function processMathop(item) {
           return i64PreciseOp('add');
         } else {
           warnI64_1();
-          return finish(splitI64(mergeI64(idents[0]) + '+' + mergeI64(idents[1])));
+          return finish(splitI64(mergeI64(idents[0]) + '+' + mergeI64(idents[1]), true));
         }
       }
       case 'sub': {
@@ -2064,7 +2064,7 @@ function processMathop(item) {
           return i64PreciseOp('subtract');
         } else {
           warnI64_1();
-          return finish(splitI64(mergeI64(idents[0]) + '-' + mergeI64(idents[1])));
+          return finish(splitI64(mergeI64(idents[0]) + '-' + mergeI64(idents[1]), true));
         }
       }
       case 'sdiv': case 'udiv': {
@@ -2072,7 +2072,7 @@ function processMathop(item) {
           return i64PreciseOp('divide', op[0] === 'u');
         } else {
           warnI64_1();
-          return finish(splitI64(makeRounding(mergeI64(idents[0], op[0] === 'u') + '/' + mergeI64(idents[1], op[0] === 'u'), bits, op[0] === 's')));
+          return finish(splitI64(makeRounding(mergeI64(idents[0], op[0] === 'u') + '/' + mergeI64(idents[1], op[0] === 'u'), bits, op[0] === 's'), true));
         }
       }
       case 'mul': {
@@ -2080,7 +2080,7 @@ function processMathop(item) {
           return i64PreciseOp('multiply');
         } else {
           warnI64_1();
-          return finish(splitI64(mergeI64(idents[0], op[0] === 'u') + '*' + mergeI64(idents[1], op[0] === 'u')));
+          return finish(splitI64(mergeI64(idents[0], op[0] === 'u') + '*' + mergeI64(idents[1], op[0] === 'u'), true));
         }
       }
       case 'urem': case 'srem': {
@@ -2088,7 +2088,7 @@ function processMathop(item) {
           return i64PreciseOp('modulo', op[0] === 'u');
         } else {
           warnI64_1();
-          return finish(splitI64(mergeI64(idents[0], op[0] === 'u') + '%' + mergeI64(idents[1], op[0] === 'u')));
+          return finish(splitI64(mergeI64(idents[0], op[0] === 'u') + '%' + mergeI64(idents[1], op[0] === 'u'), true));
         }
       }
       case 'bitcast': {
