@@ -5983,14 +5983,13 @@ LibraryManager.library = {
     return 0;
   },
 
-  // TODO: Implement remaining functions.
   // http://pubs.opengroup.org/onlinepubs/000095399/basedefs/sys/time.h.html
   gettimeofday: function(ptr) {
     // %struct.timeval = type { i32, i32 }
-    var indexes = Runtime.calculateStructAlignment({ fields: ['i32', 'i32'] });
+    {{{ (LibraryManager.structs.gettimeofday = Runtime.calculateStructAlignment({ fields: ['i32', 'i32'] }), null) }}}
     var now = Date.now();
-    {{{ makeSetValue('ptr', 'indexes[0]', 'Math.floor(now/1000)', 'i32') }}} // seconds
-    {{{ makeSetValue('ptr', 'indexes[1]', 'Math.floor((now-1000*Math.floor(now/1000))*1000)', 'i32') }}} // microseconds
+    {{{ makeSetValue('ptr', LibraryManager.structs.gettimeofday[0], 'Math.floor(now/1000)', 'i32') }}}; // seconds
+    {{{ makeSetValue('ptr', LibraryManager.structs.gettimeofday[1], 'Math.floor((now-1000*Math.floor(now/1000))*1000)', 'i32') }}}; // microseconds
     return 0;
   },
 
