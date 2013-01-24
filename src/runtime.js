@@ -46,7 +46,7 @@ var RuntimeGenerator = {
       ret += '; assert(STACKTOP < STACK_MAX)';
     }
     if (INIT_STACK) {
-      ret += '; _memset(__stackBase__, 0, ' + initial + ')';
+      ret += '; _memset(' + asmCoercion('__stackBase__', 'i32') + ', 0, ' + initial + ')';
     }
     return ret;
   },
@@ -79,8 +79,8 @@ var RuntimeGenerator = {
   // Rounding is inevitable if the number is large. This is a particular problem for small negative numbers
   // (-1 will be rounded!), so handle negatives separately and carefully
   makeBigInt: function(low, high, unsigned) {
-    var unsignedRet = '(' + makeSignOp(low, 'i32', 'un', 1, 1) + '+(' + makeSignOp(high, 'i32', 'un', 1, 1) + '*4294967296))';
-    var signedRet = '(' + makeSignOp(low, 'i32', 'un', 1, 1) + '+(' + makeSignOp(high, 'i32', 're', 1, 1) + '*4294967296))';
+    var unsignedRet = '(' + asmCoercion(makeSignOp(low, 'i32', 'un', 1, 1), 'float') + '+(' + asmCoercion(makeSignOp(high, 'i32', 'un', 1, 1), 'float') + '*' + asmEnsureFloat(4294967296, 'float') + '))';
+    var signedRet = '(' + asmCoercion(makeSignOp(low, 'i32', 'un', 1, 1), 'float') + '+(' + asmCoercion(makeSignOp(high, 'i32', 're', 1, 1), 'float') + '*' + asmEnsureFloat(4294967296, 'float') + '))';
     if (typeof unsigned === 'string') return '(' + unsigned + ' ? ' + unsignedRet + ' : ' + signedRet + ')';
     return unsigned ? unsignedRet : signedRet;
   }
@@ -123,42 +123,45 @@ var Runtime = {
   FLOAT_TYPES: set('float', 'double'),
 
   // Mirrors processMathop's treatment of constants (which we optimize directly)
+  BITSHIFT64_SHL: 0,
+  BITSHIFT64_ASHR: 1,
+  BITSHIFT64_LSHR: 2,
   bitshift64: function(low, high, op, bits) {
     var ret;
     var ander = Math.pow(2, bits)-1;
     if (bits < 32) {
       switch (op) {
-        case 'shl':
+        case Runtime.BITSHIFT64_SHL:
           ret = [low << bits, (high << bits) | ((low&(ander << (32 - bits))) >>> (32 - bits))];
           break;
-        case 'ashr':
+        case Runtime.BITSHIFT64_ASHR:
           ret = [(((low >>> bits ) | ((high&ander) << (32 - bits))) >> 0) >>> 0, (high >> bits) >>> 0];
           break;
-        case 'lshr':
+        case Runtime.BITSHIFT64_LSHR:
           ret = [((low >>> bits) | ((high&ander) << (32 - bits))) >>> 0, high >>> bits];
           break;
       }
     } else if (bits == 32) {
       switch (op) {
-        case 'shl':
+        case Runtime.BITSHIFT64_SHL:
           ret = [0, low];
           break;
-        case 'ashr':
+        case Runtime.BITSHIFT64_ASHR:
           ret = [high, (high|0) < 0 ? ander : 0];
           break;
-        case 'lshr':
+        case Runtime.BITSHIFT64_LSHR:
           ret = [high, 0];
           break;
       }
     } else { // bits > 32
       switch (op) {
-        case 'shl':
+        case Runtime.BITSHIFT64_SHL:
           ret = [0, low << (bits - 32)];
           break;
-        case 'ashr':
+        case Runtime.BITSHIFT64_ASHR:
           ret = [(high >> (bits - 32)) >>> 0, (high|0) < 0 ? ander : 0];
           break;
-        case 'lshr':
+        case Runtime.BITSHIFT64_LSHR:
           ret = [high >>>  (bits - 32) , 0];
           break;
       }
@@ -331,6 +334,7 @@ var Runtime = {
       assert(args.length == sig.length-1);
 #endif
 #if ASM_JS
+      if (!args.splice) args = Array.prototype.slice.call(args);
       args.splice(0, 0, ptr);
       return Module['dynCall_' + sig].apply(null, args);
 #else

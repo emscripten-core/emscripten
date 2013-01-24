@@ -445,10 +445,10 @@ mergeInto(LibraryManager.library, {
     Browser.asyncLoad(Pointer_stringify(url), function(byteArray) {
       var buffer = _malloc(byteArray.length);
       HEAPU8.set(byteArray, buffer);
-      FUNCTION_TABLE[onload](arg, buffer, byteArray.length);
+      Runtime.dynCall('viii', onload, [arg, buffer, byteArray.length]);
       _free(buffer);
     }, function() {
-      if (onerror) FUNCTION_TABLE[onerror](arg);
+      if (onerror) Runtime.dynCall('vi', onerror, [arg]);
     }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
   },
 
@@ -467,21 +467,21 @@ mergeInto(LibraryManager.library, {
     http.onload = function(e) {
       if (http.status == 200) {
         FS.createDataFile( _file.substr(0, index), _file.substr(index + 1), new Uint8Array(http.response), true, true);
-        if (onload) FUNCTION_TABLE[onload](arg, file);
+        if (onload) Runtime.dynCall('vii', onload, [arg, file]);
       } else {
-        if (onerror) FUNCTION_TABLE[onerror](arg, http.status);
+        if (onerror) Runtime.dynCall('vii', onerror, [arg, http.status]);
       }
     };
       
     // ERROR
     http.onerror = function(e) {
-      if (onerror) FUNCTION_TABLE[onerror](arg, http.status);
+      if (onerror) Runtime.dynCall('vii', onerror, [arg, http.status]);
     };
 	
     // PROGRESS
     http.onprogress = function(e) {
       var percentComplete = (e.position / e.totalSize)*100;
-      if (onprogress) FUNCTION_TABLE[onprogress](arg, percentComplete);
+      if (onprogress) Runtime.dynCall('vii', onprogress, [arg, percentComplete]);
     };
 	  
     // Useful because the browser can limit the number of redirection
@@ -747,7 +747,7 @@ mergeInto(LibraryManager.library, {
     info.worker.postMessage({
       'funcName': funcName,
       'callbackId': callbackId,
-      'data': data ? {{{ makeHEAPView('U8', 'data', 'data + size') }}} : 0
+      'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0 // XXX copy to a new typed array as a workaround for chrome bug 169705
     });
   },
 
@@ -757,7 +757,7 @@ mergeInto(LibraryManager.library, {
     workerResponded = true;
     postMessage({
       'callbackId': workerCallbackId,
-      'data': data ? {{{ makeHEAPView('U8', 'data', 'data + size') }}} : 0
+      'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0 // XXX copy to a new typed array as a workaround for chrome bug 169705
     });
   },
 

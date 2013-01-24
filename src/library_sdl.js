@@ -1379,6 +1379,7 @@ var LibrarySDL = {
   },
 
   Mix_LoadMUS: 'Mix_LoadWAV_RW',
+  Mix_LoadMUS_RW: 'Mix_LoadWAV_RW',
 
   Mix_FreeMusic: 'Mix_FreeChunk',
 
@@ -1583,7 +1584,25 @@ var LibrarySDL = {
 
   SDL_CreateThread: function() {
     throw 'SDL threads cannot be supported in the web platform because they assume shared state. See emscripten_create_worker etc. for a message-passing concurrency model that does let you run code in another thread.'
-  }
+  },
+
+  SDL_WaitThread: function() { throw 'SDL_WaitThread' },
+  SDL_GetThreadID: function() { throw 'SDL_GetThreadID' },
+  SDL_ThreadID: function() { throw 'SDL_ThreadID' },
+  SDL_AllocRW: function() { throw 'SDL_AllocRW: TODO' },
+  SDL_FreeRW: function() { throw 'SDL_FreeRW: TODO' },
+  SDL_CondBroadcast: function() { throw 'SDL_CondBroadcast: TODO' },
+  SDL_CondWaitTimeout: function() { throw 'SDL_CondWaitTimeout: TODO' },
+  SDL_WM_ToggleFullScreen: function() { throw 'SDL_WM_ToggleFullScreen: TODO' },
+
+  Mix_SetPostMix: function() { throw 'Mix_SetPostMix: TODO' },
+  Mix_QuerySpec: function() { throw 'Mix_QuerySpec: TODO' },
+  Mix_FadeInChannelTimed: function() { throw 'Mix_FadeInChannelTimed' },
+  Mix_FadeOutChannel: function() { throw 'Mix_FadeOutChannel' },
+
+  Mix_Linked_Version: function() { throw 'Mix_Linked_Version: TODO' },
+  SDL_CreateRGBSurfaceFrom: function() { throw 'SDL_CreateRGBSurfaceFrom: TODO' },
+  SDL_SaveBMP_RW: function() { throw 'SDL_SaveBMP_RW: TODO' },
 };
 
 autoAddDeps(LibrarySDL, '$SDL');

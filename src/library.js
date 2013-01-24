@@ -52,7 +52,7 @@ LibraryManager.library = {
     streams: [null],
 #if ASSERTIONS
     checkStreams: function() {
-      for (var i in FS.streams) assert(i >= 0 && i < FS.streams.length); // no keys not in dense span
+      for (var i in FS.streams) if (FS.streams.hasOwnProperty(i)) assert(i >= 0 && i < FS.streams.length); // no keys not in dense span
       for (var i = 0; i < FS.streams.length; i++) assert(typeof FS.streams[i] == 'object'); // no non-null holes in dense span
     },
 #endif
@@ -810,6 +810,8 @@ LibraryManager.library = {
     return 0;
   },
 
+  utimes: function() { throw 'utimes not implemented' },
+
   // ==========================================================================
   // libgen.h
   // ==========================================================================
@@ -1038,6 +1040,8 @@ LibraryManager.library = {
       return _chmod(allocate(pathArray, 'i8', ALLOC_STACK), mode);
     }
   },
+  lchmod: function() { throw 'TODO: lchmod' },
+
   umask__deps: ['$FS'],
   umask: function(newMask) {
     // mode_t umask(mode_t cmask);
@@ -2515,7 +2519,7 @@ LibraryManager.library = {
         var curr = 0;
         var buffer = [];
         // Read characters according to the format. floats are trickier, they may be in an unfloat state in the middle, then be a valid float later
-        if (type == 'f') {
+        if (type == 'f' || type == 'e' || type == 'g' || type == 'E') {
           var last = 0;
           next = get();
           while (next > 0) {
@@ -2569,6 +2573,10 @@ LibraryManager.library = {
             {{{ makeSetValue('argPtr', 0, 'parseInt(text, 16)', 'i32') }}}
             break;
           case 'f':
+          case 'e':
+          case 'g':
+          case 'E':
+            // fallthrough intended
             if (long_) {
               {{{ makeSetValue('argPtr', 0, 'parseFloat(text)', 'double') }}}
             } else {
@@ -2607,6 +2615,7 @@ LibraryManager.library = {
   //   format: A pointer to the format string.
   //   varargs: A pointer to the start of the arguments list.
   // Returns the resulting string string as a character array.
+  _formatString__deps: ['strlen'],
   _formatString: function(format, varargs) {
     var textIndex = format;
     var argIndex = 0;
@@ -2933,7 +2942,7 @@ LibraryManager.library = {
         } else if (next == 's'.charCodeAt(0)) {
           // String.
           var arg = getNextArg('i8*') || nullString;
-          var argLength = String_len(arg);
+          var argLength = _strlen(arg);
           if (precisionSet) argLength = Math.min(argLength, precision);
           if (!flagLeftAlign) {
             while (argLength < width--) {
@@ -3496,6 +3505,12 @@ LibraryManager.library = {
     var result = __formatString(format, varargs);
     var limit = (n === undefined) ? result.length
                                   : Math.min(result.length, Math.max(n - 1, 0));
+    if (s < 0) {
+      s = -s;
+      var buf = _malloc(limit+1);
+      {{{ makeSetValue('s', '0', 'buf', 'i8*') }}};
+      s = buf;
+    }
     for (var i = 0; i < limit; i++) {
       {{{ makeSetValue('s', 'i', 'result[i]', 'i8') }}};
     }
@@ -3525,10 +3540,15 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
     return _snprintf(s, undefined, format, varargs);
   },
+  asprintf__deps: ['sprintf'],
+  asprintf: function(s, format, varargs) {
+    return _sprintf(-s, format, varargs);
+  },
   vfprintf: 'fprintf',
   vsnprintf: 'snprintf',
   vprintf: 'printf',
   vsprintf: 'sprintf',
+  vasprintf: 'asprintf',
   vscanf: 'scanf',
   vfscanf: 'fscanf',
   vsscanf: 'sscanf',
@@ -3613,7 +3633,7 @@ LibraryManager.library = {
      * implementation (replaced by dlmalloc normally) so
      * not an issue.
      */
-    ptr = Runtime.staticAlloc(bytes + 8);
+    var ptr = Runtime.staticAlloc(bytes + 8);
     return (ptr+8) & 0xFFFFFFF8;
   },
   free: function(){},
@@ -3905,7 +3925,7 @@ LibraryManager.library = {
       ___setErrNo(ERRNO_CODES.ERANGE); // not quite correct
     }
 
-    {{{ makeStructuralReturn([makeGetTempDouble(0), makeGetTempDouble(1)]) }}};
+    {{{ makeStructuralReturn([makeGetTempDouble(0, 'i32'), makeGetTempDouble(1, 'i32')]) }}};
   },
 #endif
   strtoll__deps: ['_parseInt64'],
@@ -4209,6 +4229,8 @@ LibraryManager.library = {
     }
   },
 
+  wmemcpy: function() { throw 'wmemcpy not implemented' },
+
   llvm_memcpy_i32: 'memcpy',
   llvm_memcpy_i64: 'memcpy',
   llvm_memcpy_p0i8_p0i8_i32: 'memcpy',
@@ -4233,6 +4255,8 @@ LibraryManager.library = {
   llvm_memmove_i64: 'memmove',
   llvm_memmove_p0i8_p0i8_i32: 'memmove',
   llvm_memmove_p0i8_p0i8_i64: 'memmove',
+
+  wmemmove: function() { throw 'wmemmove not implemented' },
 
   memset__inline: function(ptr, value, num, align) {
     return makeSetValues(ptr, 0, value, 'null', num, align);
@@ -4268,14 +4292,31 @@ LibraryManager.library = {
   llvm_memset_p0i8_i32: 'memset',
   llvm_memset_p0i8_i64: 'memset',
 
+  wmemset: function() { throw 'wmemset not implemented' },
+
+  strlen__sig: 'ii',
+  strlen__asm: true,
   strlen: function(ptr) {
-    return String_len(ptr);
+    ptr = ptr|0;
+    var curr = 0;
+    curr = ptr;
+    while ({{{ makeGetValueAsm('curr', '0', 'i8') }}}|0 != 0) {
+      curr = (curr + 1)|0;
+    }
+    return (curr - ptr)|0;
   },
 
   // TODO: Implement when we have real unicode support.
   mblen: function() {
     return 1;
   },
+
+  wcslen: function() { throw 'wcslen not implemented' },
+  mbrlen: function() { throw 'mbrlen not implemented' },
+  mbsrtowcs: function() { throw 'mbsrtowcs not implemented' },
+  wcsnrtombs: function() { throw 'wcsnrtombs not implemented' },
+  mbsnrtowcs: function() { throw 'mbsnrtowcs not implemented' },
+  mbrtowc: function() { throw 'mbrtowc not implemented' },
 
   strspn: function(pstr, pset) {
     var str = pstr, set, strcurr, setcurr;
@@ -4493,17 +4534,18 @@ LibraryManager.library = {
   },
   rindex: 'strrchr',
 
+  strdup__deps: ['strlen'],
   strdup: function(ptr) {
-    var len = String_len(ptr);
+    var len = _strlen(ptr);
     var newStr = _malloc(len + 1);
     {{{ makeCopyValues('newStr', 'ptr', 'len', 'null', null, 1) }}};
     {{{ makeSetValue('newStr', 'len', '0', 'i8') }}};
     return newStr;
   },
 
-  strndup__deps: ['strdup'],
+  strndup__deps: ['strdup', 'strlen'],
   strndup: function(ptr, size) {
-    var len = String_len(ptr);
+    var len = _strlen(ptr);
 
     if (size >= len) {
       return _strdup(ptr);
@@ -4894,12 +4936,12 @@ LibraryManager.library = {
     } else {
       __ZSt18uncaught_exceptionv.uncaught_exception++;
     }
-    throw ptr;
+    {{{ makeThrow('ptr') }}};
   },
   __cxa_rethrow__deps: ['llvm_eh_exception', '__cxa_end_catch'],
   __cxa_rethrow: function() {
     ___cxa_end_catch.rethrown = true;
-    throw {{{ makeGetValue('_llvm_eh_exception.buf', '0', 'void*') }}};
+    {{{ makeThrow(makeGetValue('_llvm_eh_exception.buf', '0', 'void*')) }}};
   },
   llvm_eh_exception__postset: '_llvm_eh_exception.buf = allocate(12, "void*", ALLOC_STATIC);',
   llvm_eh_exception: function() {
@@ -4962,11 +5004,10 @@ LibraryManager.library = {
   },
 
   _Unwind_Resume_or_Rethrow: function(ptr) {
-    throw ptr;
+    {{{ makeThrow('ptr') }}};
   },
-  _Unwind_RaiseException__deps: ['llvm_eh_exception', '__cxa_find_matching_catch'],
   _Unwind_RaiseException: function(ptr) {
-    throw ptr;
+    {{{ makeThrow('ptr') }}};
   },
   _Unwind_DeleteException: function(ptr) {},
 
@@ -5070,6 +5111,8 @@ LibraryManager.library = {
 
   _ZNSt9exceptionD2Ev: function(){}, // XXX a dependency of dlmalloc, but not actually needed if libcxx is not anyhow included
 
+  _ZNSt9type_infoD2Ev: function(){},
+
   // RTTI hacks for exception handling, defining type_infos for common types.
   // The values are dummies. We simply use the addresses of these statically
   // allocated variables as unique identifiers.
@@ -5130,14 +5173,14 @@ LibraryManager.library = {
   llvm_uadd_with_overflow_i64__deps: [function() { Types.preciseI64MathUsed = 1 }],
   llvm_uadd_with_overflow_i64: function(xl, xh, yl, yh) {
     i64Math.add(xl, xh, yl, yh);
-    {{{ makeStructuralReturn(['HEAP32[tempDoublePtr>>2]', 'HEAP32[tempDoublePtr+4>>2]', '0']) }}};
+    {{{ makeStructuralReturn([makeGetTempDouble(0, 'i32'), makeGetTempDouble(1, 'i32'), '0']) }}};
     // XXX Need to hack support for second param in long.js
   },
 
   llvm_umul_with_overflow_i64__deps: [function() { Types.preciseI64MathUsed = 1 }],
   llvm_umul_with_overflow_i64: function(xl, xh, yl, yh) {
     i64Math.multiply(xl, xh, yl, yh);
-    {{{ makeStructuralReturn(['HEAP32[tempDoublePtr>>2]', 'HEAP32[tempDoublePtr+4>>2]', '0']) }}};
+    {{{ makeStructuralReturn([makeGetTempDouble(0, 'i32'), makeGetTempDouble(1, 'i32'), '0']) }}};
     // XXX Need to hack support for second param in long.js
   },
 
@@ -5911,6 +5954,9 @@ LibraryManager.library = {
     return 0;
   },
 
+  setitimer: function() { throw 'setitimer not implemented yet' },
+  getitimer: function() { throw 'getitimer not implemented yet' },
+
   // ==========================================================================
   // sys/time.h
   // ==========================================================================
@@ -6079,6 +6125,8 @@ LibraryManager.library = {
   },
   killpg: 'kill',
 
+  siginterrupt: function() { throw 'siginterrupt not implemented' },
+
   // ==========================================================================
   // sys/wait.h
   // ==========================================================================
@@ -6125,6 +6173,8 @@ LibraryManager.library = {
     }
     return me.ret;
   },
+
+  __locale_mb_cur_max: function() { throw '__locale_mb_cur_max not implemented' },
 
   // ==========================================================================
   // langinfo.h
@@ -6305,6 +6355,10 @@ LibraryManager.library = {
     {{{ makeSetValue('me.ret', 'i', '0', 'i8') }}}
     return me.ret;
   },
+
+  _Z7catopenPKci: function() { throw 'catopen not implemented' },
+  _Z7catgetsP8_nl_catdiiPKc: function() { throw 'catgets not implemented' },
+  _Z8catcloseP8_nl_catd: function() { throw 'catclose not implemented' },
 
   // ==========================================================================
   // errno.h
@@ -6549,6 +6603,7 @@ LibraryManager.library = {
   pthread_cond_init: function() {},
   pthread_cond_destroy: function() {},
   pthread_cond_broadcast: function() {},
+  pthread_cond_wait: function() {},
   pthread_self: function() {
     //FIXME: assumes only a single thread
     return 0;
@@ -7108,6 +7163,22 @@ LibraryManager.library = {
     }
     return ret;
   },
+
+  // pty.h
+
+  openpty: function() { throw 'openpty: TODO' },
+  forkpty: function() { throw 'forkpty: TODO' },
+
+  // grp.h
+
+  initgroups: function() { throw 'initgroups: TODO' },
+
+  // pwd.h
+
+  getpwnam: function() { throw 'getpwnam: TODO' },
+  setpwent: function() { throw 'setpwent: TODO' },
+  getpwent: function() { throw 'getpwent: TODO' },
+  endpwent: function() { throw 'endpwent: TODO' },
 
   // ==========================================================================
   // emscripten.h

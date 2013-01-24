@@ -13,8 +13,10 @@ var LLVM = {
   ACCESS_OPTIONS: set('volatile', 'atomic'),
   INVOKE_MODIFIERS: set('alignstack', 'alwaysinline', 'inlinehint', 'naked', 'noimplicitfloat', 'noinline', 'alwaysinline attribute.', 'noredzone', 'noreturn', 'nounwind', 'optsize', 'readnone', 'readonly', 'ssp', 'sspreq'),
   SHIFTS: set('ashr', 'lshr', 'shl'),
-  PHI_REACHERS: set('branch', 'switch', 'invoke'),
+  PHI_REACHERS: set('branch', 'switch', 'invoke', 'indirectbr'),
   EXTENDS: set('sext', 'zext'),
+  COMPS: set('icmp', 'fcmp'),
+  CONVERSIONS: set('inttoptr', 'ptrtoint', 'uitofp', 'sitofp', 'fptosi', 'fptoui'),
   INTRINSICS_32: set('_llvm_memcpy_p0i8_p0i8_i64', '_llvm_memmove_p0i8_p0i8_i64', '_llvm_memset_p0i8_i64'), // intrinsics that need args converted to i32 in USE_TYPED_ARRAYS == 2
 };
 LLVM.GLOBAL_MODIFIERS = set(keys(LLVM.LINKAGES).concat(['constant', 'global', 'hidden']));
@@ -226,24 +228,30 @@ var Functions = {
 
   blockAddresses: {}, // maps functions to a map of block labels to label ids
 
-  getSignature: function(returnType, argTypes) {
+  getSignature: function(returnType, argTypes, hasVarArgs) {
     var sig = returnType == 'void' ? 'v' : (isIntImplemented(returnType) ? 'i' : 'f');
     for (var i = 0; i < argTypes.length; i++) {
       var type = argTypes[i];
       if (!type) break; // varargs
       sig += isIntImplemented(type) ? (getBits(type) == 64 ? 'ii' : 'i') : 'f'; // legalized i64s will be i32s
     }
+    if (hasVarArgs) sig += 'i';
     return sig;
   },
 
   // Mark a function as needing indexing. Python will coordinate them all
-  getIndex: function(ident) {
+  getIndex: function(ident, doNotCreate) {
+    if (doNotCreate && !(ident in this.indexedFunctions)) {
+      if (!Functions.getIndex.tentative) Functions.getIndex.tentative = {}; // only used by GL emulation; TODO: generalize when needed
+      Functions.getIndex.tentative[ident] = 0;
+    }
     if (phase != 'post' && singlePhase) {
-      this.indexedFunctions[ident] = 0; // tell python we need this indexized
-      return '{{{ FI_' + ident + ' }}}'; // something python will replace later
+      if (!doNotCreate) this.indexedFunctions[ident] = 0; // tell python we need this indexized
+      return "'{{ FI_" + ident + " }}'"; // something python will replace later
     } else {
       var ret = this.indexedFunctions[ident];
       if (!ret) {
+        if (doNotCreate) return '0';
         ret = this.nextIndex;
         this.nextIndex += 2; // Need to have indexes be even numbers, see |polymorph| test
         this.indexedFunctions[ident] = ret;
@@ -263,20 +271,22 @@ var Functions = {
     function emptyTable(sig) {
       return zeros(total);
     }
-    var tables = {};
+    var tables = { pre: '' };
     if (ASM_JS) {
       ['v', 'vi', 'ii', 'iii'].forEach(function(sig) { // add some default signatures that are used in the library
         tables[sig] = emptyTable(sig); // TODO: make them compact
       });
     }
     for (var ident in this.indexedFunctions) {
-      var sig = ASM_JS ? Functions.implementedFunctions[ident] || Functions.unimplementedFunctions[ident] : 'x';
+      var sig = ASM_JS ? Functions.implementedFunctions[ident] || Functions.unimplementedFunctions[ident] || LibraryManager.library[ident.substr(1) + '__sig'] : 'x';
       assert(sig, ident);
       if (!tables[sig]) tables[sig] = emptyTable(sig); // TODO: make them compact
       tables[sig][this.indexedFunctions[ident]] = ident;
     }
     var generated = false;
+    var wrapped = {};
     for (var t in tables) {
+      if (t == 'pre') continue;
       generated = true;
       var table = tables[t];
       for (var i = 0; i < table.length; i++) {
@@ -291,6 +301,32 @@ var Functions = {
           var libName = LibraryManager.getRootIdent(table[i].substr(1));
           if (libName && typeof libName == 'string') {
             table[i] = (libName.indexOf('.') < 0 ? '_' : '') + libName;
+          }
+        }
+        if (ASM_JS) {
+          var curr = table[i];
+          if (curr && !Functions.implementedFunctions[curr]) {
+            // This is a library function, we can't just put it in the function table, need a wrapper
+            if (!wrapped[curr]) {
+              var args = '', arg_coercions = '', call = curr + '(', retPre = '', retPost = '';
+              if (t[0] != 'v') {
+                if (t[0] == 'i') {
+                  retPre = 'return ';
+                  retPost = '|0';
+                } else {
+                  retPre = 'return +';
+                }
+              }
+              for (var j = 1; j < t.length; j++) {
+                args += (j > 1 ? ',' : '') + 'a' + j;
+                arg_coercions += 'a' + j + '=' + asmCoercion('a' + j, t[j] != 'i' ? 'float' : 'i32') + ';';
+                call += (j > 1 ? ',' : '') + asmCoercion('a' + j, t[j] != 'i' ? 'float' : 'i32');
+              }
+              call += ')';
+              tables.pre += 'function ' + curr + '__wrapper(' + args + ') { ' + arg_coercions + ' ; ' + retPre + call + retPost + ' }\n';
+              wrapped[curr] = 1;
+            }
+            table[i] = curr + '__wrapper';
           }
         }
       }

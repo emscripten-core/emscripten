@@ -10,6 +10,7 @@ var UNDERSCORE_OPENPARENS = set('_', '(');
 var RELOOP_IGNORED_LASTS = set('return', 'unreachable', 'resume');
 
 var addedLibraryItems = {};
+var asmLibraryFunctions = [];
 
 // JSifier
 function JSify(data, functionsOnly, givenFunctions) {
@@ -76,7 +77,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         assert(!BUILD_AS_SHARED_LIB, 'Cannot have both INCLUDE_FULL_LIBRARY and BUILD_AS_SHARED_LIB set.')
         libFuncsToInclude = [];
         for (var key in LibraryManager.library) {
-          if (!key.match(/__(deps|postset|inline)$/)) {
+          if (!key.match(/__(deps|postset|inline|asm|sig)$/)) {
             libFuncsToInclude.push(key);
           }
         }
@@ -292,7 +293,7 @@ function JSify(data, functionsOnly, givenFunctions) {
               padding = makeEmptyStruct(item.type);
             }
             var padded = val.concat(padding.slice(val.length));
-            var js = item.ident + '=' + makePointer(JSON.stringify(padded), null, allocator, item.type, index) + ';'
+            var js = item.ident + '=' + makePointer(padded, null, allocator, item.type, index) + ';'
             if (LibraryManager.library[shortident + '__postset']) {
               js += '\n' + LibraryManager.library[shortident + '__postset'];
             }
@@ -332,7 +333,6 @@ function JSify(data, functionsOnly, givenFunctions) {
                 constant[i] = '0';
               }
             });
-            constant = '[' + constant.join(', ') + ']';
           }
           // NOTE: This is the only place that could potentially create static
           //       allocations in a shared library.
@@ -346,7 +346,7 @@ function JSify(data, functionsOnly, givenFunctions) {
             if (index !== null) {
               index = getFastValue(index, '+', Runtime.alignMemory(calcAllocatedSize(Variables.globals[item.ident].type)));
             }
-            js += '\n' + makePointer('[0]', null, allocator, ['void*'], index) + ';';
+            js += '\n' + makePointer([0], null, allocator, ['void*'], index) + ';';
           }
           if (!ASM_JS && (EXPORT_ALL || (item.ident in EXPORTED_GLOBALS))) {
             js += '\nModule["' + item.ident + '"] = ' + item.ident + ';';
@@ -440,8 +440,8 @@ function JSify(data, functionsOnly, givenFunctions) {
           // name the function; overwrite if it's already named
           snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function _' + ident + '(');
           if (LIBRARY_DEBUG) {
-            snippet = snippet.replace('{', '{ var ret = (function() { if (Runtime.debug) Module.print("[library call:' + ident + ': " + Array.prototype.slice.call(arguments).map(Runtime.prettyPrint) + "]"); ');
-            snippet = snippet.substr(0, snippet.length-1) + '}).apply(this, arguments); if (Runtime.debug && typeof ret !== "undefined") Module.print("  [     return:" + Runtime.prettyPrint(ret)); return ret; }';
+            snippet = snippet.replace('{', '{ var ret = (function() { if (Runtime.debug) Module.printErr("[library call:' + ident + ': " + Array.prototype.slice.call(arguments).map(Runtime.prettyPrint) + "]"); ');
+            snippet = snippet.substr(0, snippet.length-1) + '}).apply(this, arguments); if (Runtime.debug && typeof ret !== "undefined") Module.printErr("  [     return:" + Runtime.prettyPrint(ret)); return ret; \n}';
           }
           if (ASM_JS) Functions.libraryFunctions[ident] = 1;
         }
@@ -477,13 +477,25 @@ function JSify(data, functionsOnly, givenFunctions) {
         } else {
           ident = '_' + ident;
         }
-        var text = (deps ? '\n' + deps.map(addFromLibrary).filter(function(x) { return x != '' }).join('\n') : '');
+        var depsText = (deps ? '\n' + deps.map(addFromLibrary).filter(function(x) { return x != '' }).join('\n') : '');
         // redirected idents just need a var, but no value assigned to them - it would be unused
-        text += isFunction ? snippet : ('var ' + ident + (redirectedIdent ? '' : '=' + snippet) + ';');
-        if (EXPORT_ALL || (ident in EXPORTED_FUNCTIONS)) {
-          text += '\nModule["' + ident + '"] = ' + ident + ';';
+        var contentText = isFunction ? snippet : ('var ' + ident + (redirectedIdent ? '' : '=' + snippet) + ';');
+        if (ASM_JS) {
+          var sig = LibraryManager.library[ident.substr(1) + '__sig'];
+          if (isFunction && sig && LibraryManager.library[ident.substr(1) + '__asm']) {
+            // asm library function, add it as generated code alongside the generated code
+            Functions.implementedFunctions[ident] = sig;
+            asmLibraryFunctions.push(contentText);
+            contentText = ' ';
+            EXPORTED_FUNCTIONS[ident] = 1;
+            delete Functions.libraryFunctions[ident.substr(1)];
+          }
+        } else {
+          if (EXPORT_ALL || (ident in EXPORTED_FUNCTIONS)) {
+            contentText += '\nModule["' + ident + '"] = ' + ident + ';';
+          }
         }
-        return text;
+        return depsText + contentText;
       }
 
       var ret = [item];
@@ -606,10 +618,13 @@ function JSify(data, functionsOnly, givenFunctions) {
           }
           for (i = 0; i < chunks.length; i++) {
             func.JS += '  var ' + chunks[i].map(function(v) {
-              if (v.type != 'i64') {
-                return v.ident + ' = ' + asmInitializer(v.type); //, func.variables[v.ident].impl);
+              var type = getImplementationType(v);
+              if (!isIllegalType(type) || v.ident.indexOf('$', 1) > 0) { // not illegal, or a broken up illegal
+                return v.ident + ' = ' + asmInitializer(type); //, func.variables[v.ident].impl);
               } else {
-                return v.ident + '$0 = 0, ' + v.ident + '$1 = 1';
+                return range(Math.ceil(getBits(type)/32)).map(function(i) {
+                  return v.ident + '$' + i + '= 0';
+                }).join(',');
               }
             }).join(', ') + ';\n';
           }
@@ -720,12 +735,13 @@ function JSify(data, functionsOnly, givenFunctions) {
             if (func.setjmpTable) {
               ret += 'try { ';
             }
-            ret += 'switch(label) {\n';
+            ret += 'switch(' + asmCoercion('label', 'i32') + ') {\n';
             ret += block.labels.map(function(label) {
               return indent + '  case ' + getLabelId(label.ident) + ': ' + (SHOW_LABELS ? '// ' + getOriginalLabelId(label.ident) : '') + '\n'
                             + getLabelLines(label, indent + '    ');
-            }).join('\n');
-            ret += '\n' + indent + '  default: assert(0, "bad label: " + label);\n' + indent + '}';
+            }).join('\n') + '\n';
+            if (ASSERTIONS) ret += indent + '  default: assert(0, "bad label: " + label);\n';
+            ret += indent + '}\n';
             if (func.setjmpTable) {
               ret += ' } catch(e) { if (!e.longjmp || !(e.id in mySetjmpIds)) throw(e); setjmpTable[setjmpLabels[e.id]](e.value) }';
             }
@@ -783,10 +799,10 @@ function JSify(data, functionsOnly, givenFunctions) {
       func.JS += walkBlock(func.block, '  ');
       // Finalize function
       if (LABEL_DEBUG && functionNameFilterTest(func.ident)) func.JS += "  INDENT = INDENT.substr(0, INDENT.length-2);\n";
-      // Add an unneeded return, needed for strict mode to not throw warnings in some cases.
-      // If we are not relooping, then switches make it unimportant to have this (and, we lack hasReturn anyhow)
-      if (RELOOP && func.lines.length > 0 && func.labels.filter(function(label) { return label.hasReturn }).length > 0) {
-        func.JS += '  return' + (func.returnType !== 'void' ? ' null' : '') + ';\n';
+      // Ensure a return in a function with a type that returns, even if it lacks a return (e.g., if it aborts())
+      if (RELOOP && func.lines.length > 0 && func.returnType != 'void') {
+        var returns = func.labels.filter(function(label) { return label.lines[label.lines.length-1].intertype == 'return' }).length;
+        if (returns == 0) func.JS += '  return ' + asmCoercion('0', func.returnType);
       }
       func.JS += '}\n';
       
@@ -1060,7 +1076,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
   });
   makeFuncLineActor('switch', function(item) {
-    // TODO: Find a case where switch is important, and benchmark that. var SWITCH_IN_SWITCH = 1; 
+    var useIfs = RELOOP || item.switchLabels.length < 1024; // with a huge number of cases, if-else which looks nested to js parsers can cause problems
     var phiSets = calcPhiSets(item);
     // Consolidate checks that go to the same label. This is important because it makes the relooper simpler and faster.
     var targetLabels = {}; // for each target label, the list of values going to it
@@ -1078,16 +1094,27 @@ function JSify(data, functionsOnly, givenFunctions) {
     if (RELOOP) {
       item.groupedLabels = [];
     }
+    if (!useIfs) {
+      ret += 'switch(' + signedIdent + ') {\n';
+    }
     for (var targetLabel in targetLabels) {
-      if (!first) {
+      if (!first && useIfs) {
         ret += 'else ';
       } else {
         first = false;
       }
-      var value = targetLabels[targetLabel].map(function(value) {
-        return makeComparison(signedIdent, makeSignOp(value, item.type, 're'), item.type)
-      }).join(' || ');
-      ret += 'if (' + value + ') {\n';
+      var value;
+      if (useIfs) {
+        value = targetLabels[targetLabel].map(function(value) {
+          return makeComparison(signedIdent, '==', makeSignOp(value, item.type, 're'), item.type)
+        }).join(' | ');
+        ret += 'if (' + value + ') {\n';
+      } else {
+        value = targetLabels[targetLabel].map(function(value) {
+          return 'case ' + makeSignOp(value, item.type, 're') + ':';
+        }).join(' ');
+        ret += value + '{\n';
+      }
       var phiSet = getPhiSetsForLabel(phiSets, targetLabel);
       ret += '  ' + phiSet + makeBranch(targetLabel, item.currLabelId || null) + '\n';
       ret += '}\n';
@@ -1099,10 +1126,18 @@ function JSify(data, functionsOnly, givenFunctions) {
         });
       }
     }
-    if (item.switchLabels.length > 0) ret += 'else {\n';
     var phiSet = item.defaultLabelJS = getPhiSetsForLabel(phiSets, item.defaultLabel);
-    ret += phiSet + makeBranch(item.defaultLabel, item.currLabelId) + '\n';
-    if (item.switchLabels.length > 0) ret += '}\n';
+    if (useIfs) {
+      if (item.switchLabels.length > 0) ret += 'else {\n';
+      ret += phiSet + makeBranch(item.defaultLabel, item.currLabelId) + '\n';
+      if (item.switchLabels.length > 0) ret += '}\n';
+    } else {
+      ret += 'default: {\n';
+      ret += phiSet + makeBranch(item.defaultLabel, item.currLabelId) + '\n';
+      ret += '}\n';
+
+      ret += '} break; \n'; // finish switch and break, to move control flow properly (breaks from makeBranch just broke out of the switch)
+    }
     if (item.value) {
       ret += ' ' + toNiceIdent(item.value);
     }
@@ -1121,8 +1156,10 @@ function JSify(data, functionsOnly, givenFunctions) {
           +  "INDENT = INDENT.substr(0, INDENT.length-2);\n";
     }
     ret += 'return';
-    if (item.value) {
-      ret += ' ' + asmCoercion(finalizeLLVMParameter(item.value), item.type);
+    var value = item.value ? finalizeLLVMParameter(item.value) : null;
+    if (!value && item.funcData.returnType != 'void') value = '0'; // no-value returns must become value returns if function returns
+    if (value) {
+      ret += ' ' + asmCoercion(value, item.type);
     }
     return ret + ';';
   });
@@ -1131,20 +1168,29 @@ function JSify(data, functionsOnly, givenFunctions) {
     var ptr = makeStructuralAccess(item.ident, 0);
     return (EXCEPTION_DEBUG ? 'Module.print("Resuming exception");' : '') + 
       'if (' + makeGetValue('_llvm_eh_exception.buf', 0, 'void*') + ' == 0) { ' + makeSetValue('_llvm_eh_exception.buf', 0, ptr, 'void*') + ' } ' + 
-      'throw ' + ptr + ';';
+      makeThrow(ptr) + ';';
   });
   makeFuncLineActor('invoke', function(item) {
     // Wrapping in a function lets us easily return values if we are
     // in an assignment
     var phiSets = calcPhiSets(item);
     var call_ = makeFunctionCall(item.ident, item.params, item.funcData, item.type);
-    var ret = '(function() { try { __THREW__ = 0; return '
-            + call_ + ' '
-            + '} catch(e) { '
-            + 'if (typeof e != "number") throw e; '
-            + 'if (ABORT) throw e; __THREW__ = 1; '
-            + (EXCEPTION_DEBUG ? 'Module.print("Exception: " + e + ", currently at: " + (new Error().stack)); ' : '')
-            + 'return null } })();';
+  
+    var ret;
+
+    if (DISABLE_EXCEPTION_CATCHING == 2  && !(item.funcData.ident in EXCEPTION_CATCHING_WHITELIST)) {
+      ret = call_ + ';';
+    } else {
+      ret = '(function() { try { __THREW__ = 0; return '
+          + call_ + ' '
+          + '} catch(e) { '
+          + 'if (typeof e != "number") throw e; '
+          + 'if (ABORT) throw e; __THREW__ = 1; '
+          + (EXCEPTION_DEBUG ? 'Module.print("Exception: " + e + ", currently at: " + (new Error().stack)); ' : '')
+          + 'return null } })();';
+    }
+
+
     if (item.assignTo) {
       ret = 'var ' + item.assignTo + ' = ' + ret;
       if (USE_TYPED_ARRAYS == 2 && isIllegalType(item.type)) {
@@ -1172,7 +1218,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       case 'xchg': return '(tempValue=' + makeGetValue(param1, 0, type) + ',' + makeSetValue(param1, 0, param2, type, null, null, null, null, ',') + ',tempValue)';
       case 'cmpxchg': {
         var param3 = finalizeLLVMParameter(item.params[2]);
-        return '(tempValue=' + makeGetValue(param1, 0, type) + ',(' + makeGetValue(param1, 0, type) + '==' + param2 + ' && (' + makeSetValue(param1, 0, param3, type, null, null, null, null, ',') + ')),tempValue)';
+        return '(tempValue=' + makeGetValue(param1, 0, type) + ',(' + makeGetValue(param1, 0, type) + '==' + param2 + ' ? ' + makeSetValue(param1, 0, param3, type, null, null, null, null, ',') + ' : 0),tempValue)';
       }
       default: throw 'unhandled atomic op: ' + item.op;
     }
@@ -1221,7 +1267,12 @@ function JSify(data, functionsOnly, givenFunctions) {
     return ret + item.ident + '.f' + item.indexes[0][0].text + ' = ' + finalizeLLVMParameter(item.value) + ', ' + item.ident + ')';
   });
   makeFuncLineActor('indirectbr', function(item) {
-    return makeBranch(finalizeLLVMParameter(item.value), item.currLabelId, true);
+    var phiSets = calcPhiSets(item);
+    var js = 'var ibr = ' + finalizeLLVMParameter(item.value) + ';\n';
+    for (var targetLabel in phiSets) {
+      js += 'if (' + makeComparison('ibr', '==', targetLabel, 'i32') + ') { ' + getPhiSetsForLabel(phiSets, targetLabel) + ' }\n';
+    }
+    return js + makeBranch('ibr', item.currLabelId, true);
   });
   makeFuncLineActor('alloca', function(item) {
     if (typeof item.allocatedIndex === 'number') {
@@ -1292,8 +1343,12 @@ function JSify(data, functionsOnly, givenFunctions) {
     });
 
     args = args.map(function(arg, i) { return indexizeFunctions(arg, argsTypes[i]) });
-    if (ASM_JS && shortident in Functions.libraryFunctions) {
-      args = args.map(function(arg, i) { return asmCoercion(arg, argsTypes[i]) });
+    if (ASM_JS) {
+      if (shortident in Functions.libraryFunctions) {
+        args = args.map(function(arg, i) { return asmCoercion(arg, argsTypes[i]) });
+      } else {
+        args = args.map(function(arg, i) { return asmEnsureFloat(arg, argsTypes[i]) });
+      }
     }
 
     varargs = varargs.map(function(vararg, i) {
@@ -1340,10 +1395,12 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
 
     var returnType;
-    if (byPointer || ASM_JS) returnType = type.split(' ')[0];
+    if (byPointer || ASM_JS) {
+      returnType = getReturnType(type);
+    }
 
     if (byPointer) {
-      var sig = Functions.getSignature(returnType, argsTypes);
+      var sig = Functions.getSignature(returnType, argsTypes, hasVarArgs);
       if (ASM_JS) {
         assert(returnType.search(/\("'\[,/) == -1); // XXX need isFunctionType(type, out)
         callIdent = '(' + callIdent + ')&{{{ FTM_' + sig + ' }}}'; // the function table mask is set in emscripten.py
@@ -1452,6 +1509,16 @@ function JSify(data, functionsOnly, givenFunctions) {
       generated.forEach(function(item) { print(indentify(item.JS || '', 2)); });
 
       legalizedI64s = legalizedI64sDefault;
+
+      if (asmLibraryFunctions.length > 0) {
+        print('// ASM_LIBRARY FUNCTIONS');
+        function fix(f) { // fix indenting to not confuse js optimizer
+          f = f.substr(f.indexOf('f')); // remove initial spaces before 'function'
+          f = f.substr(0, f.lastIndexOf('\n')+1); // remove spaces and last }
+          return f + '}'; // add unindented } to match function
+        }
+        print(asmLibraryFunctions.map(fix).join('\n'));
+      }
     } else {
       if (singlePhase) {
         assert(data.unparsedGlobalss[0].lines.length == 0, dump([phase, data.unparsedGlobalss]));

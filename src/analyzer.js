@@ -617,8 +617,8 @@ function analyzer(data, sidePass) {
                           for (var i = 0; i < targetElements.length; i++) {
                             if (i > 0) {
                               switch(value.variant) {
-                                case 'eq': ident += '&&'; break;
-                                case 'ne': ident += '||'; break;
+                                case 'eq': ident += '&'; break;
+                                case 'ne': ident += '|'; break;
                                 default: throw 'unhandleable illegal icmp: ' + value.variant;
                               }
                             }
@@ -635,7 +635,7 @@ function analyzer(data, sidePass) {
                       break;
                     }
                     case 'add': case 'sub': case 'sdiv': case 'udiv': case 'mul': case 'urem': case 'srem':
-                    case 'uitofp': case 'sitofp': {
+                    case 'uitofp': case 'sitofp': case 'fptosi': case 'fptoui': {
                       // We cannot do these in parallel chunks of 32-bit operations. We will handle these in processMathop
                       i++;
                       continue;
@@ -654,9 +654,12 @@ function analyzer(data, sidePass) {
                     // We can't statically legalize this, do the operation at runtime TODO: optimize
                     assert(sourceBits == 64, 'TODO: handle nonconstant shifts on != 64 bits');
                     value.intertype = 'value';
-                    value.ident = 'Runtime' + (ASM_JS ? '_' : '.') + 'bitshift64(' + sourceElements[0].ident + ', ' +
-                                                          sourceElements[1].ident + ',"' + value.op + '",' + value.params[1].ident + '$0);' +
-                                  'var ' + value.assignTo + '$0 = ' + makeGetTempDouble(0) + ', ' + value.assignTo + '$1 = ' + makeGetTempDouble(1) + ';';
+                    value.ident = 'Runtime' + (ASM_JS ? '_' : '.') + 'bitshift64(' + 
+                        asmCoercion(sourceElements[0].ident, 'i32') + ',' +
+                        asmCoercion(sourceElements[1].ident, 'i32') + ',' +
+                        Runtime['BITSHIFT64_' + value.op.toUpperCase()] + ',' +
+                        asmCoercion(value.params[1].ident + '$0', 'i32') + ');' +
+                      'var ' + value.assignTo + '$0 = ' + makeGetTempDouble(0, 'i32') + ', ' + value.assignTo + '$1 = ' + makeGetTempDouble(1, 'i32') + ';';
                     value.assignTo = null;
                     i++;
                     continue;
