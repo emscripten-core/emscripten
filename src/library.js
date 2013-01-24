@@ -4261,31 +4261,36 @@ LibraryManager.library = {
   memset__inline: function(ptr, value, num, align) {
     return makeSetValues(ptr, 0, value, 'null', num, align);
   },
-  memset: function(ptr, value, num, align) {
+  memset__sig: 'viii',
+  memset__asm: true,
+  memset: function(ptr, value, num) {
 #if USE_TYPED_ARRAYS == 2
-    // TODO: make these settings, and in memcpy, {{'s
-    if (num >= {{{ SEEK_OPTIMAL_ALIGN_MIN }}}) {
+    ptr = ptr|0; value = value|0; num = num|0;
+    var stop = 0, value4 = 0, stop4 = 0, unaligned = 0;
+    stop = (ptr + num)|0;
+    if (num|0 >= {{{ SEEK_OPTIMAL_ALIGN_MIN }}}) {
       // This is unaligned, but quite large, so work hard to get to aligned settings
-      var stop = ptr + num;
-      while (ptr % 4) { // no need to check for stop, since we have large num
-        HEAP8[ptr++] = value;
+      unaligned = ptr & 3;
+      value4 = value | (value << 8) | (value << 16) | (value << 24);
+      stop4 = stop & ~3;
+      if (unaligned) {
+        unaligned = (ptr + 4 - unaligned)|0;
+        while ((ptr|0) < (unaligned|0)) { // no need to check for stop, since we have large num
+          {{{ makeSetValueAsm('ptr', 0, 'value', 'i8') }}};
+          ptr = (ptr+1)|0;
+        }
       }
-      if (value < 0) value += 256; // make it unsigned
-      var ptr4 = ptr >> 2, stop4 = stop >> 2, value4 = value | (value << 8) | (value << 16) | (value << 24);
-      while (ptr4 < stop4) {
-        HEAP32[ptr4++] = value4;
-      }
-      ptr = ptr4 << 2;
-      while (ptr < stop) {
-        HEAP8[ptr++] = value;
-      }
-    } else {
-      while (num--) {
-        HEAP8[ptr++] = value;
+      while ((ptr|0) < (stop4|0)) {
+        {{{ makeSetValueAsm('ptr', 0, 'value4', 'i8') }}};
+        ptr = (ptr+4)|0;
       }
     }
+    while ((ptr|0) < (stop|0)) {
+      {{{ makeSetValueAsm('ptr', 0, 'value', 'i8') }}};
+      ptr = (ptr+1)|0;
+    }
 #else
-    {{{ makeSetValues('ptr', '0', 'value', 'null', 'num', 'align') }}};
+    {{{ makeSetValues('ptr', '0', 'value', 'null', 'num') }}};
 #endif
   },
   llvm_memset_i32: 'memset',

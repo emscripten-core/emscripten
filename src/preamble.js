@@ -473,6 +473,14 @@ Module['ALLOC_STACK'] = ALLOC_STACK;
 Module['ALLOC_STATIC'] = ALLOC_STATIC;
 Module['ALLOC_NONE'] = ALLOC_NONE;
 
+// Simple unoptimized memset - necessary during startup
+var _memset = function(ptr, value, num) {
+  var stop = ptr + num;
+  while (ptr < stop) {
+    {{{ makeSetValueAsm('ptr++', 0, 'value', 'i8') }}};
+  }
+}
+
 // allocate(): This is for internal use. You can use it yourself as well, but the interface
 //             is a little tricky (see docs right below). The reason is that it is optimized
 //             for multiple syntaxes to save space in generated code. So you should

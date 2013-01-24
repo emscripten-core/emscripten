@@ -1174,7 +1174,7 @@ function indexizeFunctions(value, type) {
 //!             'null' means, in the context of SAFE_HEAP, that we should accept all types;
 //!             which means we should write to all slabs, ignore type differences if any on reads, etc.
 //! @param noNeedFirst Whether to ignore the offset in the pointer itself.
-function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep, forcedAlign) {
+function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep, forcedAlign, forceAsm) {
   if (UNALIGNED_MEMORY && !forcedAlign) align = 1;
   sep = sep || ';';
   if (isStructType(type)) {
@@ -1236,10 +1236,12 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
     if (type[0] === '#') type = type.substr(1);
     return 'SAFE_HEAP_STORE(' + offset + ', ' + value + ', ' + type + ', ' + ((!checkSafeHeap() || ignore)|0) + ')';
   } else {
-    return makeGetSlabs(ptr, type, true).map(function(slab) { return slab + '[' + getHeapOffset(offset, type) + ']=' + value }).join(sep);
-    //return '(print("set:"+(' + value + ')+":"+(' + getHeapOffset(offset, type) + ')),' + 
-    //        makeGetSlabs(ptr, type, true).map(function(slab) { return slab + '[' + getHeapOffset(offset, type) + ']=' + value }).join('; ') + ')';
+    return makeGetSlabs(ptr, type, true).map(function(slab) { return slab + '[' + getHeapOffset(offset, type, forceAsm) + ']=' + value }).join(sep);
   }
+}
+
+function makeSetValueAsm(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep, forcedAlign) {
+  return makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep, forcedAlign, true);
 }
 
 var SEEK_OPTIMAL_ALIGN_MIN = 20;
