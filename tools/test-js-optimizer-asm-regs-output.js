@@ -31,4 +31,11 @@ function ret2t() {
     return;
   }
 }
+function retf() {
+  if (f()) {
+    g();
+    return +h();
+  }
+  return +0;
+}
 

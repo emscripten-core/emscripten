@@ -364,6 +364,7 @@ var LibraryGL = {
     }
   },
 
+  glCompressedTexImage2D__sig: 'viiiiiiii',
   glCompressedTexImage2D: function(target, level, internalFormat, width, height, border, imageSize, data) {
     assert(GL.compressionExt);
     if (data) {
@@ -374,6 +375,7 @@ var LibraryGL = {
     Module.ctx['compressedTexImage2D'](target, level, internalFormat, width, height, border, data);
   },
 
+  glCompressedTexSubImage2D__sig: 'viiiiiiiii',
   glCompressedTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, imageSize, data) {
     assert(GL.compressionExt);
     if (data) {
@@ -429,6 +431,7 @@ var LibraryGL = {
     return Module.ctx.isTexture(fb);
   },
 
+  glGenBuffers__sig: 'vii',
   glGenBuffers: function(n, buffers) {
     for (var i = 0; i < n; i++) {
       var id = GL.getNewId(GL.buffers);
@@ -437,6 +440,7 @@ var LibraryGL = {
     }
   },
 
+  glDeleteBuffers__sig: 'vii',
   glDeleteBuffers: function(n, buffers) {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('buffers', 'i*4', 'i32') }}};
@@ -449,10 +453,12 @@ var LibraryGL = {
     {{{ makeSetValue('data', '0', 'Module.ctx.getBufferParameter(target, value)', 'i32') }}};
   },
 
+  glBufferData__sig: 'viiii',
   glBufferData: function(target, size, data, usage) {
     Module.ctx.bufferData(target, HEAPU8.subarray(data, data+size), usage);
   },
 
+  glBufferSubData__sig: 'viiii',
   glBufferSubData: function(target, offset, size, data) {
     Module.ctx.bufferSubData(target, offset, HEAPU8.subarray(data, data+size));
   },
@@ -465,6 +471,7 @@ var LibraryGL = {
     return Module.ctx.isBuffer(fb);
   },
 
+  glGenRenderbuffers__sig: 'vii',
   glGenRenderbuffers: function(n, renderbuffers) {
     for (var i = 0; i < n; i++) {
       var id = GL.getNewId(GL.renderbuffers);
@@ -473,6 +480,7 @@ var LibraryGL = {
     }
   },
 
+  glDeleteRenderbuffers__sig: 'vii',
   glDeleteRenderbuffers: function(n, renderbuffers) {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('renderbuffers', 'i*4', 'i32') }}};
@@ -481,6 +489,7 @@ var LibraryGL = {
     }
   },
 
+  glBindRenderbuffer__sig: 'vii',
   glBindRenderbuffer: function(target, renderbuffer) {
     Module.ctx.bindRenderbuffer(target, renderbuffer ? GL.renderbuffers[renderbuffer] : null);
   },
@@ -519,6 +528,7 @@ var LibraryGL = {
     }
   },
 
+  glGetUniformLocation__sig: 'iii',
   glGetUniformLocation: function(program, name) {
     name = Pointer_stringify(name);
     var ptable = GL.uniformTable[program];
@@ -559,6 +569,7 @@ var LibraryGL = {
     {{{ makeSetValue('pointer', '0', 'Module.ctx.getVertexAttribOffset(index, pname)', 'i32') }}};
   },
 
+  glGetActiveUniform__sig: 'viiiiiii',
   glGetActiveUniform: function(program, index, bufSize, length, size, type, name) {
     program = GL.programs[program];
     var info = Module.ctx.getActiveUniform(program, index);
@@ -577,52 +588,62 @@ var LibraryGL = {
     }
   },
 
+  glUniform1f__sig: 'vid',
   glUniform1f: function(location, v0) {
     location = GL.uniforms[location];
     Module.ctx.uniform1f(location, v0);
   },
 
+  glUniform2f__sig: 'vidd',
   glUniform2f: function(location, v0, v1) {
     location = GL.uniforms[location];
     Module.ctx.uniform2f(location, v0, v1);
   },
 
+  glUniform3f__sig: 'viddd',
   glUniform3f: function(location, v0, v1, v2) {
     location = GL.uniforms[location];
     Module.ctx.uniform3f(location, v0, v1, v2);
   },
 
+  glUniform4f__sig: 'vidddd',
   glUniform4f: function(location, v0, v1, v2, v3) {
     location = GL.uniforms[location];
     Module.ctx.uniform4f(location, v0, v1, v2, v3);
   },
 
+  glUniform1i__sig: 'vii',
   glUniform1i: function(location, v0) {
     location = GL.uniforms[location];
     Module.ctx.uniform1i(location, v0);
   },
 
+  glUniform2i__sig: 'viii',
   glUniform2i: function(location, v0, v1) {
     location = GL.uniforms[location];
     Module.ctx.uniform2i(location, v0, v1);
   },
 
+  glUniform3i__sig: 'viiii',
   glUniform3i: function(location, v0, v1, v2) {
     location = GL.uniforms[location];
     Module.ctx.uniform3i(location, v0, v1, v2);
   },
 
+  glUniform4i__sig: 'viiiii',
   glUniform4i: function(location, v0, v1, v2, v3) {
     location = GL.uniforms[location];
     Module.ctx.uniform4i(location, v0, v1, v2, v3);
   },
 
+  glUniform1iv__sig: 'viii',
   glUniform1iv: function(location, count, value) {
     location = GL.uniforms[location];
     value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
     Module.ctx.uniform1iv(location, value);
   },
 
+  glUniform2iv__sig: 'viii',
   glUniform2iv: function(location, count, value) {
     location = GL.uniforms[location];
     count *= 2;
@@ -630,6 +651,7 @@ var LibraryGL = {
     Module.ctx.uniform2iv(location, value);
   },
 
+  glUniform3iv__sig: 'viii',
   glUniform3iv: function(location, count, value) {
     location = GL.uniforms[location];
     count *= 3;
@@ -637,6 +659,7 @@ var LibraryGL = {
     Module.ctx.uniform3iv(location, value);
   },
 
+  glUniform4iv__sig: 'viii',
   glUniform4iv: function(location, count, value) {
     location = GL.uniforms[location];
     count *= 4;
@@ -644,12 +667,14 @@ var LibraryGL = {
     Module.ctx.uniform4iv(location, value);
   },
 
+  glUniform1fv__sig: 'viii',
   glUniform1fv: function(location, count, value) {
     location = GL.uniforms[location];
     value = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
     Module.ctx.uniform1fv(location, value);
   },
 
+  glUniform2fv__sig: 'viii',
   glUniform2fv: function(location, count, value) {
     location = GL.uniforms[location];
     count *= 2;
@@ -657,6 +682,7 @@ var LibraryGL = {
     Module.ctx.uniform2fv(location, value);
   },
 
+  glUniform3fv__sig: 'viii',
   glUniform3fv: function(location, count, value) {
     location = GL.uniforms[location];
     count *= 3;
@@ -664,6 +690,7 @@ var LibraryGL = {
     Module.ctx.uniform3fv(location, value);
   },
 
+  glUniform4fv__sig: 'viii',
   glUniform4fv: function(location, count, value) {
     location = GL.uniforms[location];
     count *= 4;
@@ -692,6 +719,7 @@ var LibraryGL = {
     Module.ctx.uniformMatrix4fv(location, transpose, value);
   },
 
+  glBindBuffer__sig: 'vii',
   glBindBuffer: function(target, buffer) {
     Module.ctx.bindBuffer(target, buffer ? GL.buffers[buffer] : null);
   },
@@ -740,6 +768,7 @@ var LibraryGL = {
     }
   },
 
+  glCreateShader__sig: 'ii',
   glCreateShader: function(shaderType) {
     var id = GL.getNewId(GL.shaders);
     GL.shaders[id] = Module.ctx.createShader(shaderType);
@@ -768,6 +797,7 @@ var LibraryGL = {
     }
   },
 
+  glShaderSource__sig: 'viiii',
   glShaderSource: function(shader, count, string, length) {
     var source = GL.getSource(shader, count, string, length);
     Module.ctx.shaderSource(GL.shaders[shader], source);
@@ -782,6 +812,7 @@ var LibraryGL = {
     }
   },
 
+  glCompileShader__sig: 'vi',
   glCompileShader: function(shader) {
     Module.ctx.compileShader(GL.shaders[shader]);
   },
@@ -807,6 +838,7 @@ var LibraryGL = {
     }
   },
 
+  glGetProgramiv__sig: 'viii',
   glGetProgramiv : function(program, pname, p) {
     if (pname == 0x8B84) { // GL_INFO_LOG_LENGTH
       {{{ makeSetValue('p', '0', 'Module.ctx.getProgramInfoLog(GL.programs[program]).length + 1', 'i32') }}};
@@ -823,6 +855,7 @@ var LibraryGL = {
     return Module.ctx.isShader(fb);
   },
 
+  glCreateProgram__sig: 'i',
   glCreateProgram: function() {
     var id = GL.getNewId(GL.programs);
     GL.programs[id] = Module.ctx.createProgram();
@@ -835,6 +868,7 @@ var LibraryGL = {
     GL.uniformTable[program] = null;
   },
 
+  glAttachShader__sig: 'vii',
   glAttachShader: function(program, shader) {
     Module.ctx.attachShader(GL.programs[program],
                             GL.shaders[shader]);
@@ -847,6 +881,7 @@ var LibraryGL = {
     {{{ makeSetValue('precision', '0', 'result.precision', 'i32') }}};
   },
 
+  glLinkProgram__sig: 'vi',
   glLinkProgram: function(program) {
     Module.ctx.linkProgram(GL.programs[program]);
     GL.uniformTable[program] = {}; // uniforms no longer keep the same names after linking
@@ -865,6 +900,7 @@ var LibraryGL = {
     }
   },
 
+  glUseProgram__sig: 'vi',
   glUseProgram: function(program) {
     Module.ctx.useProgram(program ? GL.programs[program] : null);
   },
@@ -881,15 +917,18 @@ var LibraryGL = {
     return Module.ctx.isProgram(fb);
   },
 
+  glBindAttribLocation__sig: 'viii',
   glBindAttribLocation: function(program, index, name) {
     name = Pointer_stringify(name);
     Module.ctx.bindAttribLocation(GL.programs[program], index, name);
   },
 
+  glBindFramebuffer__sig: 'vii',
   glBindFramebuffer: function(target, framebuffer) {
     Module.ctx.bindFramebuffer(target, framebuffer ? GL.framebuffers[framebuffer] : null);
   },
 
+  glGenFramebuffers__sig: 'vii',
   glGenFramebuffers: function(n, ids) {
     for (var i = 0; i < n; ++i) {
       var id = GL.getNewId(GL.framebuffers);
@@ -898,6 +937,7 @@ var LibraryGL = {
     }
   },
 
+  glDeleteFramebuffers__sig: 'vii',
   glDeleteFramebuffers: function(n, framebuffers) {
     for (var i = 0; i < n; ++i) {
       var id = {{{ makeGetValue('framebuffers', 'i*4', 'i32') }}};
@@ -906,21 +946,25 @@ var LibraryGL = {
     }
   },
 
+  glFramebufferRenderbuffer__sig: 'viiii',
   glFramebufferRenderbuffer: function(target, attachment, renderbuffertarget, renderbuffer) {
     Module.ctx.framebufferRenderbuffer(target, attachment, renderbuffertarget,
                                        GL.renderbuffers[renderbuffer]);
   },
 
+  glFramebufferTexture2D__sig: 'viiiii',
   glFramebufferTexture2D: function(target, attachment, textarget, texture, level) {
     Module.ctx.framebufferTexture2D(target, attachment, textarget,
                                     GL.textures[texture], level);
   },
 
+  glGetFramebufferAttachmentParameteriv__sig: 'viiii',
   glGetFramebufferAttachmentParameteriv: function(target, attachment, pname, params) {
     var result = Module.ctx.getFramebufferAttachmentParameter(target, attachment, pname);
     {{{ makeSetValue('params', '0', 'params', 'i32') }}};
   },
 
+  glIsFramebuffer__sig: 'ii',
   glIsFramebuffer: function(framebuffer) {
     var fb = GL.framebuffers[framebuffer];
     if (typeof(fb) == 'undefined') {
@@ -1275,114 +1319,119 @@ var LibraryGL = {
     getProcAddress: function(name) {
       name = name.replace('EXT', '').replace('ARB', '');
       // Do the translation carefully because of closure
-      var sig = '', func;
+      var ret = 0;
       switch (name) {
-        case 'glCreateShaderObject': case 'glCreateShader': func = _glCreateShader; sig = 'ii'; break;
-        case 'glCreateProgramObject': case 'glCreateProgram': func = _glCreateProgram; sig = 'ii'; break;
-        case 'glAttachObject': case 'glAttachShader': func = _glAttachShader; sig = 'vi'; break;
-        case 'glUseProgramObject': case 'glUseProgram': func = _glUseProgram; sig = 'vi'; break;
-        case 'glDeleteObject': func = function(id) {
-          if (GL.programs[id]) {
-            _glDeleteProgram(id);
-          } else if (GL.shaders[id]) {
-            _glDeleteShader(id);
-          } else {
-            Module.printErr('WARNING: deleteObject received invalid id: ' + id);
-          }
-        }; sig = 'vi'; break;
-        case 'glGetObjectParameteriv': func = function(id, type, result) {
-          if (GL.programs[id]) {
-            if (type == 0x8B84) { // GL_OBJECT_INFO_LOG_LENGTH_ARB
-              {{{ makeSetValue('result', '0', 'Module.ctx.getProgramInfoLog(GL.programs[id]).length', 'i32') }}};
-              return;
-            }
-            _glGetProgramiv(id, type, result);
-          } else if (GL.shaders[id]) {
-            if (type == 0x8B84) { // GL_OBJECT_INFO_LOG_LENGTH_ARB
-              {{{ makeSetValue('result', '0', 'Module.ctx.getShaderInfoLog(GL.shaders[id]).length', 'i32') }}};
-              return;
-            }
-            _glGetShaderiv(id, type, result);
-          } else {
-            Module.printErr('WARNING: getObjectParameteriv received invalid id: ' + id);
-          }
-        }; sig = 'viii'; break;
-        case 'glGetInfoLog': func = function(id, maxLength, length, infoLog) {
-          if (GL.programs[id]) {
-            _glGetProgramInfoLog(id, maxLength, length, infoLog);
-          } else if (GL.shaders[id]) {
-            _glGetShaderInfoLog(id, maxLength, length, infoLog);
-          } else {
-            Module.printErr('WARNING: getObjectParameteriv received invalid id: ' + id);
-          }
-        }; sig = 'viiii'; break;
-        case 'glBindProgram': func = function(type, id) {
-          assert(id == 0);
-        }; sig = 'vii'; break;
-        case 'glDrawRangeElements': func = _glDrawRangeElements; sig = 'viiiiii'; break;
-        case 'glShaderSource': func = _glShaderSource; sig = 'viiii'; break;
-        case 'glCompileShader': func = _glCompileShader; sig = 'vi'; break;
-        case 'glLinkProgram': func = _glLinkProgram; sig = 'vi'; break;
-        case 'glGetUniformLocation': func = _glGetUniformLocation; sig = 'iii'; break;
-        case 'glUniform1f': func = _glUniform1f; sig = 'vid'; break;
-        case 'glUniform2f': func = _glUniform2f; sig = 'vidd'; break;
-        case 'glUniform3f': func = _glUniform3f; sig = 'viddd'; break;
-        case 'glUniform4f': func = _glUniform4f; sig = 'vidddd'; break;
-        case 'glUniform1fv': func = _glUniform1fv; sig = 'viii'; break;
-        case 'glUniform2fv': func = _glUniform2fv; sig = 'viii'; break;
-        case 'glUniform3fv': func = _glUniform3fv; sig = 'viii'; break;
-        case 'glUniform4fv': func = _glUniform4fv; sig = 'viii'; break;
-        case 'glUniform1i': func = _glUniform1i; sig = 'vii'; break;
-        case 'glUniform2i': func = _glUniform2i; sig = 'viii'; break;
-        case 'glUniform3i': func = _glUniform3i; sig = 'viiii'; break;
-        case 'glUniform4i': func = _glUniform4i; sig = 'viiii'; break;
-        case 'glUniform1iv': func = _glUniform1iv; sig = 'viii'; break;
-        case 'glUniform2iv': func = _glUniform2iv; sig = 'viii'; break;
-        case 'glUniform3iv': func = _glUniform3iv; sig = 'viii'; break;
-        case 'glUniform4iv': func = _glUniform4iv; sig = 'viii'; break;
-        case 'glBindAttribLocation': func = _glBindAttribLocation; sig = 'viii'; break;
-        case 'glGetActiveUniform': func = _glGetActiveUniform; sig = 'viiiiiii'; break;
-        case 'glGenBuffers': func = _glGenBuffers; sig = 'iii'; break;
-        case 'glBindBuffer': func = _glBindBuffer; sig = 'vii'; break;
-        case 'glBufferData': func = _glBufferData; sig = 'viiii'; break;
-        case 'glBufferSubData': func = _glBufferSubData; sig = 'viiii'; break;
-        case 'glDeleteBuffers': func = _glDeleteBuffers; sig = 'vii'; break;
-        case 'glActiveTexture': func = _glActiveTexture; sig = 'vi'; break;
-        case 'glClientActiveTexture': func = _glClientActiveTexture; sig = 'vi'; break;
-        case 'glGetProgramiv': func = _glGetProgramiv; sig = 'viii'; break;
-        case 'glEnableVertexAttribArray': func = _glEnableVertexAttribArray; sig = 'vi'; break;
-        case 'glDisableVertexAttribArray': func = _glDisableVertexAttribArray; sig = 'vi'; break;
-        case 'glVertexAttribPointer': func = _glVertexAttribPointer; sig = 'viiiiii'; break;
-        case 'glBindRenderbuffer': func = _glBindRenderbuffer; sig = 'vii'; break;
-        case 'glDeleteRenderbuffers': func = _glDeleteRenderbuffers; sig = 'vii'; break;
-        case 'glGenRenderbuffers': func = _glGenRenderbuffers; sig = 'vii'; break;
-        case 'glCompressedTexImage2D': func = _glCompressedTexImage2D; sig = 'viiiiiiii'; break;
-        case 'glCompressedTexSubImage2D': func = _glCompressedTexSubImage2D; sig = 'viiiiiiiii'; break;
-        case 'glBindFramebuffer': func = _glBindFramebuffer; sig = 'vii'; break;
-        case 'glGenFramebuffers': func = _glGenFramebuffers; sig = 'vii'; break;
-        case 'glDeleteFramebuffers': func = _glDeleteFramebuffers; sig = 'vii'; break;
-        case 'glFramebufferRenderbuffer': func = _glFramebufferRenderbuffer; sig = 'viiii'; break;
-        case 'glFramebufferTexture2D': func = _glFramebufferTexture2D; sig = 'viiiii'; break;
-        case 'glGetFramebufferAttachmentParameteriv': func = _glGetFramebufferAttachmentParameteriv; sig = 'viiii'; break;
-        case 'glIsFramebuffer': func = _glIsFramebuffer; sig = 'ii'; break;
-        case 'glCheckFramebufferStatus': func = _glCheckFramebufferStatus; sig = 'ii'; break;
-        case 'glRenderbufferStorage': func = _glRenderbufferStorage; sig = 'viiii'; break;
-        default: {
-          Module.printErr('WARNING: getProcAddress failed for ' + name);
-          func = function() {
-            Module.printErr('WARNING: empty replacement for ' + name + ' called, no-op');
-            return 0;
-          };
-          sig = 'v';
-        }
+        case 'glCreateShaderObject': case 'glCreateShader': ret = {{{ Functions.getIndex('_glCreateShader', true) }}}; break;
+        case 'glCreateProgramObject': case 'glCreateProgram': ret = {{{ Functions.getIndex('_glCreateProgram', true) }}}; break;
+        case 'glAttachObject': case 'glAttachShader': ret = {{{ Functions.getIndex('_glAttachShader', true) }}}; break;
+        case 'glUseProgramObject': case 'glUseProgram': ret = {{{ Functions.getIndex('_glUseProgram', true) }}}; break;
+        case 'glDeleteObject': ret = {{{ Functions.getIndex('_glDeleteObject', true) }}}; break;
+        case 'glGetObjectParameteriv': ret = {{{ Functions.getIndex('_glGetObjectParameteriv', true) }}}; break;
+        case 'glGetInfoLog': ret = {{{ Functions.getIndex('_glGetInfoLog', true) }}}; break;
+        case 'glBindProgram': ret = {{{ Functions.getIndex('_glBindProgram', true) }}}; break;
+        case 'glDrawRangeElements': ret = {{{ Functions.getIndex('_glDrawRangeElements', true) }}}; break;
+        case 'glShaderSource': ret = {{{ Functions.getIndex('_glShaderSource', true) }}}; break;
+        case 'glCompileShader': ret = {{{ Functions.getIndex('_glCompileShader', true) }}}; break;
+        case 'glLinkProgram': ret = {{{ Functions.getIndex('_glLinkProgram', true) }}}; break;
+        case 'glGetUniformLocation': ret = {{{ Functions.getIndex('_glGetUniformLocation', true) }}}; break;
+        case 'glUniform1f': ret = {{{ Functions.getIndex('_glUniform1f', true) }}}; break;
+        case 'glUniform2f': ret = {{{ Functions.getIndex('_glUniform2f', true) }}}; break;
+        case 'glUniform3f': ret = {{{ Functions.getIndex('_glUniform3f', true) }}}; break;
+        case 'glUniform4f': ret = {{{ Functions.getIndex('_glUniform4f', true) }}}; break;
+        case 'glUniform1fv': ret = {{{ Functions.getIndex('_glUniform1fv', true) }}}; break;
+        case 'glUniform2fv': ret = {{{ Functions.getIndex('_glUniform2fv', true) }}}; break;
+        case 'glUniform3fv': ret = {{{ Functions.getIndex('_glUniform3fv', true) }}}; break;
+        case 'glUniform4fv': ret = {{{ Functions.getIndex('_glUniform4fv', true) }}}; break;
+        case 'glUniform1i': ret = {{{ Functions.getIndex('_glUniform1i', true) }}}; break;
+        case 'glUniform2i': ret = {{{ Functions.getIndex('_glUniform2i', true) }}}; break;
+        case 'glUniform3i': ret = {{{ Functions.getIndex('_glUniform3i', true) }}}; break;
+        case 'glUniform4i': ret = {{{ Functions.getIndex('_glUniform4i', true) }}}; break;
+        case 'glUniform1iv': ret = {{{ Functions.getIndex('_glUniform1iv', true) }}}; break;
+        case 'glUniform2iv': ret = {{{ Functions.getIndex('_glUniform2iv', true) }}}; break;
+        case 'glUniform3iv': ret = {{{ Functions.getIndex('_glUniform3iv', true) }}}; break;
+        case 'glUniform4iv': ret = {{{ Functions.getIndex('_glUniform4iv', true) }}}; break;
+        case 'glBindAttribLocation': ret = {{{ Functions.getIndex('_glBindAttribLocation', true) }}}; break;
+        case 'glGetActiveUniform': ret = {{{ Functions.getIndex('_glGetActiveUniform', true) }}}; break;
+        case 'glGenBuffers': ret = {{{ Functions.getIndex('_glGenBuffers', true) }}}; break;
+        case 'glBindBuffer': ret = {{{ Functions.getIndex('_glBindBuffer', true) }}}; break;
+        case 'glBufferData': ret = {{{ Functions.getIndex('_glBufferData', true) }}}; break;
+        case 'glBufferSubData': ret = {{{ Functions.getIndex('_glBufferSubData', true) }}}; break;
+        case 'glDeleteBuffers': ret = {{{ Functions.getIndex('_glDeleteBuffers', true) }}}; break;
+        case 'glActiveTexture': ret = {{{ Functions.getIndex('_glActiveTexture', true) }}}; break;
+        case 'glClientActiveTexture': ret = {{{ Functions.getIndex('_glClientActiveTexture', true) }}}; break;
+        case 'glGetProgramiv': ret = {{{ Functions.getIndex('_glGetProgramiv', true) }}}; break;
+        case 'glEnableVertexAttribArray': ret = {{{ Functions.getIndex('_glEnableVertexAttribArray', true) }}}; break;
+        case 'glDisableVertexAttribArray': ret = {{{ Functions.getIndex('_glDisableVertexAttribArray', true) }}}; break;
+        case 'glVertexAttribPointer': ret = {{{ Functions.getIndex('_glVertexAttribPointer', true) }}}; break;
+        case 'glBindRenderbuffer': ret = {{{ Functions.getIndex('_glBindRenderbuffer', true) }}}; break;
+        case 'glDeleteRenderbuffers': ret = {{{ Functions.getIndex('_glDeleteRenderbuffers', true) }}}; break;
+        case 'glGenRenderbuffers': ret = {{{ Functions.getIndex('_glGenRenderbuffers', true) }}}; break;
+        case 'glCompressedTexImage2D': ret = {{{ Functions.getIndex('_glCompressedTexImage2D', true) }}}; break;
+        case 'glCompressedTexSubImage2D': ret = {{{ Functions.getIndex('_glCompressedTexSubImage2D', true) }}}; break;
+        case 'glBindFramebuffer': ret = {{{ Functions.getIndex('_glBindFramebuffer', true) }}}; break;
+        case 'glGenFramebuffers': ret = {{{ Functions.getIndex('_glGenFramebuffers', true) }}}; break;
+        case 'glDeleteFramebuffers': ret = {{{ Functions.getIndex('_glDeleteFramebuffers', true) }}}; break;
+        case 'glFramebufferRenderbuffer': ret = {{{ Functions.getIndex('_glFramebufferRenderbuffer', true) }}}; break;
+        case 'glFramebufferTexture2D': ret = {{{ Functions.getIndex('_glFramebufferTexture2D', true) }}}; break;
+        case 'glGetFramebufferAttachmentParameteriv': ret = {{{ Functions.getIndex('_glGetFramebufferAttachmentParameteriv', true) }}}; break;
+        case 'glIsFramebuffer': ret = {{{ Functions.getIndex('_glIsFramebuffer', true) }}}; break;
+        case 'glCheckFramebufferStatus': ret = {{{ Functions.getIndex('_glCheckFramebufferStatus', true) }}}; break;
+        case 'glRenderbufferStorage': ret = {{{ Functions.getIndex('_glRenderbufferStorage', true) }}}; break;
       }
-      return Runtime.addFunction(func, sig);
+      if (!ret) Module.printErr('WARNING: getProcAddress failed for ' + name);
+      return ret;
     }
+  },
+
+  glDeleteObject__sig: 'vi',
+  glDeleteObject: function(id) {
+    if (GL.programs[id]) {
+      _glDeleteProgram(id);
+    } else if (GL.shaders[id]) {
+      _glDeleteShader(id);
+    } else {
+      Module.printErr('WARNING: deleteObject received invalid id: ' + id);
+    }
+  },
+
+  glGetObjectParameteriv__sig: 'viii',
+  glGetObjectParameteriv: function(id, type, result) {
+    if (GL.programs[id]) {
+      if (type == 0x8B84) { // GL_OBJECT_INFO_LOG_LENGTH_ARB
+        {{{ makeSetValue('result', '0', 'Module.ctx.getProgramInfoLog(GL.programs[id]).length', 'i32') }}};
+        return;
+      }
+      _glGetProgramiv(id, type, result);
+    } else if (GL.shaders[id]) {
+      if (type == 0x8B84) { // GL_OBJECT_INFO_LOG_LENGTH_ARB
+        {{{ makeSetValue('result', '0', 'Module.ctx.getShaderInfoLog(GL.shaders[id]).length', 'i32') }}};
+        return;
+      }
+      _glGetShaderiv(id, type, result);
+    } else {
+      Module.printErr('WARNING: getObjectParameteriv received invalid id: ' + id);
+    }
+  },
+
+  glGetInfoLog__sig: 'viiii',
+  glGetInfoLog: function(id, maxLength, length, infoLog) {
+    if (GL.programs[id]) {
+      _glGetProgramInfoLog(id, maxLength, length, infoLog);
+    } else if (GL.shaders[id]) {
+      _glGetShaderInfoLog(id, maxLength, length, infoLog);
+    } else {
+      Module.printErr('WARNING: getObjectParameteriv received invalid id: ' + id);
+    }
+  },
+
+  glBindProgram__sig: 'vii',
+  glBindProgram: function(type, id) {
+    assert(id == 0);
   },
 
   // GL Immediate mode
 
-  $GLImmediate__postset: 'Browser.moduleContextCreatedCallbacks.push(function() { GL.immediate.init() });',
+  $GLImmediate__postset: 'GL.immediate.setupFuncs(); Browser.moduleContextCreatedCallbacks.push(function() { GL.immediate.init() });',
   $GLImmediate__deps: ['$Browser', '$GL'],
   $GLImmediate: {
     MAX_TEXTURES: 7,
@@ -1393,7 +1442,7 @@ var LibraryGL = {
     tempData: null,
     indexData: null,
     vertexCounter: 0,
-    mode: 0,
+    mode: -1,
 
     rendererCache: null,
     rendererCacheItemTemplate: [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null], // 16 nulls
@@ -1843,6 +1892,46 @@ var LibraryGL = {
       return ret;
     },
 
+    setupFuncs: function() {
+      // Replace some functions with immediate-mode aware versions. If there are no client
+      // attributes enabled, and we use webgl-friendly modes (no GL_QUADS), then no need
+      // for emulation
+      _glDrawArrays = function(mode, first, count) {
+        if (GL.immediate.totalEnabledClientAttributes == 0 && mode <= 6) {
+          Module.ctx.drawArrays(mode, first, count);
+          return;
+        }
+        GL.immediate.prepareClientAttributes(count, false);
+        GL.immediate.mode = mode;
+        if (!GL.currArrayBuffer) {
+          GL.immediate.vertexData = {{{ makeHEAPView('F32', 'GL.immediate.vertexPointer', 'GL.immediate.vertexPointer + (first+count)*GL.immediate.stride') }}}; // XXX assuming float
+          GL.immediate.firstVertex = first;
+          GL.immediate.lastVertex = first + count;
+        }
+        GL.immediate.flush(null, first);
+        GL.immediate.mode = -1;
+      };
+
+      _glDrawElements = function(mode, count, type, indices, start, end) { // start, end are given if we come from glDrawRangeElements
+        if (GL.immediate.totalEnabledClientAttributes == 0 && mode <= 6 && GL.currElementArrayBuffer) {
+          Module.ctx.drawElements(mode, count, type, indices);
+          return;
+        }
+        if (!GL.currElementArrayBuffer) {
+          assert(type == Module.ctx.UNSIGNED_SHORT); // We can only emulate buffers of this kind, for now
+        }
+        GL.immediate.prepareClientAttributes(count, false);
+        GL.immediate.mode = mode;
+        if (!GL.currArrayBuffer) {
+          GL.immediate.firstVertex = end ? start : TOTAL_MEMORY; // if we don't know the start, set an invalid value and we will calculate it later from the indices
+          GL.immediate.lastVertex = end ? end+1 : 0;
+          GL.immediate.vertexData = {{{ makeHEAPView('F32', 'GL.immediate.vertexPointer', '(end ? GL.immediate.vertexPointer + (end+1)*GL.immediate.stride : TOTAL_MEMORY)') }}}; // XXX assuming float
+        }
+        GL.immediate.flush(count, 0, indices);
+        GL.immediate.mode = -1;
+      };
+    },
+
     // Main functions
     initted: false,
     init: function() {
@@ -1879,44 +1968,6 @@ var LibraryGL = {
       this.generateTempBuffers();
 
       this.clientColor = new Float32Array([1, 1, 1, 1]);
-
-      // Replace some functions with immediate-mode aware versions. If there are no client
-      // attributes enabled, and we use webgl-friendly modes (no GL_QUADS), then no need
-      // for emulation
-      _glDrawArrays = function(mode, first, count) {
-        if (GL.immediate.totalEnabledClientAttributes == 0 && mode <= 6) {
-          Module.ctx.drawArrays(mode, first, count);
-          return;
-        }
-        GL.immediate.prepareClientAttributes(count, false);
-        GL.immediate.mode = mode;
-        if (!GL.currArrayBuffer) {
-          GL.immediate.vertexData = {{{ makeHEAPView('F32', 'GL.immediate.vertexPointer', 'GL.immediate.vertexPointer + (first+count)*GL.immediate.stride') }}}; // XXX assuming float
-          GL.immediate.firstVertex = first;
-          GL.immediate.lastVertex = first + count;
-        }
-        GL.immediate.flush(null, first);
-        GL.immediate.mode = 0;
-      };
-
-      _glDrawElements = function(mode, count, type, indices, start, end) { // start, end are given if we come from glDrawRangeElements
-        if (GL.immediate.totalEnabledClientAttributes == 0 && mode <= 6 && GL.currElementArrayBuffer) {
-          Module.ctx.drawElements(mode, count, type, indices);
-          return;
-        }
-        if (!GL.currElementArrayBuffer) {
-          assert(type == Module.ctx.UNSIGNED_SHORT); // We can only emulate buffers of this kind, for now
-        }
-        GL.immediate.prepareClientAttributes(count, false);
-        GL.immediate.mode = mode;
-        if (!GL.currArrayBuffer) {
-          GL.immediate.firstVertex = end ? start : TOTAL_MEMORY; // if we don't know the start, set an invalid value and we will calculate it later from the indices
-          GL.immediate.lastVertex = end ? end+1 : 0;
-          GL.immediate.vertexData = {{{ makeHEAPView('F32', 'GL.immediate.vertexPointer', '(end ? GL.immediate.vertexPointer + (end+1)*GL.immediate.stride : TOTAL_MEMORY)') }}}; // XXX assuming float
-        }
-        GL.immediate.flush(count, 0, indices);
-        GL.immediate.mode = 0;
-      };
     },
 
     // Prepares and analyzes client attributes.
@@ -2060,12 +2111,12 @@ var LibraryGL = {
     GL.immediate.lastVertex = GL.immediate.vertexCounter / (GL.immediate.stride >> 2);
     GL.immediate.flush();
     GL.immediate.disableBeginEndClientAttributes();
-    GL.immediate.mode = 0;
+    GL.immediate.mode = -1;
   },
 
   glVertex3f: function(x, y, z) {
 #if ASSERTIONS
-    assert(GL.immediate.mode); // must be in begin/end
+    assert(GL.immediate.mode >= 0); // must be in begin/end
 #endif
     GL.immediate.vertexData[GL.immediate.vertexCounter++] = x;
     GL.immediate.vertexData[GL.immediate.vertexCounter++] = y;
@@ -2086,9 +2137,11 @@ var LibraryGL = {
     _glVertex3f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}}, 0);
   },
 
+  glVertex2i: function() { throw 'glVertex2i: TODO' },
+
   glTexCoord2i: function(u, v) {
 #if ASSERTIONS
-    assert(GL.immediate.mode); // must be in begin/end
+    assert(GL.immediate.mode >= 0); // must be in begin/end
 #endif
     GL.immediate.vertexData[GL.immediate.vertexCounter++] = u;
     GL.immediate.vertexData[GL.immediate.vertexCounter++] = v;
@@ -2101,6 +2154,8 @@ var LibraryGL = {
     _glTexCoord2i({{{ makeGetValue('v', '0', 'float') }}}, {{{ makeGetValue('v', '4', 'float') }}});
   },
 
+  glTexCoord4f: function() { throw 'glTexCoord4f: TODO' },
+
   glColor4f: function(r, g, b, a) {
     r = Math.max(Math.min(r, 1), 0);
     g = Math.max(Math.min(g, 1), 0);
@@ -2108,7 +2163,7 @@ var LibraryGL = {
     a = Math.max(Math.min(a, 1), 0);
 
     // TODO: make ub the default, not f, save a few mathops
-    if (GL.immediate.mode) {
+    if (GL.immediate.mode >= 0) {
       var start = GL.immediate.vertexCounter << 2;
       GL.immediate.vertexDataU8[start + 0] = r * 255;
       GL.immediate.vertexDataU8[start + 1] = g * 255;
@@ -2175,6 +2230,8 @@ var LibraryGL = {
     _glColor4f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}}, {{{ makeGetValue('p', '8', 'float') }}}, {{{ makeGetValue('p', '12', 'float') }}});
   },
 
+  glColor4ubv: function() { throw 'glColor4ubv not implemented' },
+
   glFogf: function(pname, param) { // partial support, TODO
     switch(pname) {
       case 0x0B63: // GL_FOG_START
@@ -2236,6 +2293,7 @@ var LibraryGL = {
 
   // Additional non-GLES rendering calls
 
+  glDrawRangeElements__sig: 'viiiiii',
   glDrawRangeElements: function(mode, start, end, count, type, indices) {
     _glDrawElements(mode, count, type, indices, start, end);
   },
@@ -2283,6 +2341,7 @@ var LibraryGL = {
     GL.immediate.setClientAttribute(GL.immediate.COLOR, size, type, stride, pointer);
   },
 
+  glClientActiveTexture__sig: 'vi',
   glClientActiveTexture: function(texture) {
     GL.immediate.clientActiveTexture = texture - 0x84C0; // GL_TEXTURE0
   },
@@ -2466,7 +2525,31 @@ var LibraryGL = {
   
   gluOrtho2D: function(left, right, bottom, top) {
     _glOrtho(left, right, bottom, top, -1, 1);
-  }
+  },
+
+  glDrawBuffer: function() { throw 'glDrawBuffer: TODO' },
+  glReadBuffer: function() { throw 'glReadBuffer: TODO' },
+
+  glLightfv: function() { throw 'glLightfv: TODO' },
+  glLightModelfv: function() { throw 'glLightModelfv: TODO' },
+  glMaterialfv: function() { throw 'glMaterialfv: TODO' },
+
+  glTexGeni: function() { throw 'glTexGeni: TODO' },
+  glTexGenfv: function() { throw 'glTexGenfv: TODO' },
+  glTexEnvi: function() { throw 'glTexEnvi: TODO' },
+  glTexEnvfv: function() { throw 'glTexEnvfv: TODO' },
+
+  glTexImage1D: function() { throw 'glTexImage1D: TODO' },
+  glTexCoord3f: function() { throw 'glTexCoord3f: TODO' },
+  glGetTexLevelParameteriv: function() { throw 'glGetTexLevelParameteriv: TODO' },
+
+  // signatures of simple pass-through functions, see later
+  glActiveTexture__sig: 'vi',
+  glEnableVertexAttribArray__sig: 'vi',
+  glDisableVertexAttribArray__sig: 'vi',
+  glVertexAttribPointer__sig: 'viiiiii',
+  glCheckFramebufferStatus__sig: 'ii',
+  glRenderbufferStorage__sig: 'viiii',
 };
 
 // Simple pass-through functions. Starred ones have return values. [X] ones have X in the C name but not in the JS name
@@ -2503,12 +2586,17 @@ var LibraryGL = {
 autoAddDeps(LibraryGL, '$GL');
 
 // Emulation requires everything else, potentially
-LibraryGL.$GLEmulation__deps = LibraryGL.$GLEmulation__deps.slice(0);
+LibraryGL.$GLEmulation__deps = LibraryGL.$GLEmulation__deps.slice(0); // the __deps object is shared
+var glFuncs = [];
 for (var item in LibraryGL) {
-  if (item != '$GLEmulation' && item.substr(-6) != '__deps' && item.substr(-9) != '__postset' && item.substr(0, 2) == 'gl') {
-    LibraryGL.$GLEmulation__deps.push(item);
+  if (item != '$GLEmulation' && item.substr(-6) != '__deps' && item.substr(-9) != '__postset' && item.substr(-5) != '__sig' && item.substr(0, 2) == 'gl') {
+    glFuncs.push(item);
   }
 }
+LibraryGL.$GLEmulation__deps = LibraryGL.$GLEmulation__deps.concat(glFuncs);
+LibraryGL.$GLEmulation__deps.push(function() {
+  for (var func in Functions.getIndex.tentative) Functions.getIndex(func);
+});
 
 mergeInto(LibraryManager.library, LibraryGL);
 

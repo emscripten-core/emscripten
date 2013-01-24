@@ -1,4 +1,6 @@
 
+![logo](http://dl.dropbox.com/u/80664946/emscripten_logo.jpg)
+
 Emscripten
 ==========
 

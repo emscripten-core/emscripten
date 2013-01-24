@@ -10,6 +10,10 @@ function safeQuote(x) {
 
 function dump(item) {
   try {
+    if (typeof item == 'object' && item !== null && item.funcData) {
+      var funcData = item.funcData;
+      item.funcData = null;
+    }
     return '// ' + JSON.stringify(item, null, '  ').replace(/\n/g, '\n// ');
   } catch(e) {
     var ret = [];
@@ -22,6 +26,8 @@ function dump(item) {
       }
     }
     return ret.join(',\n');
+  } finally {
+    if (funcData) item.funcData = funcData;
   }
 }
 

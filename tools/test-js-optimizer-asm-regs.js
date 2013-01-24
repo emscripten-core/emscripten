@@ -34,5 +34,12 @@ function ret2t() {
   }
   // missing final return, but no need
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "_doit", "rett", "ret2t"]
+function retf() {
+  if (f()) {
+    g();
+    return +h();
+  }
+  // missing final return, need it as a float
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "_doit", "rett", "ret2t", "retf"]
 

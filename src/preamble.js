@@ -506,10 +506,17 @@ function allocate(slab, types, allocator, ptr) {
   }
 
   if (zeroinit) {
-      _memset(ret, 0, size);
-      return ret;
+    _memset(ret, 0, size);
+    return ret;
   }
-  
+
+#if USE_TYPED_ARRAYS == 2
+  if (singleType === 'i8') {
+    HEAPU8.set(new Uint8Array(slab), ret);
+    return ret;
+  }
+#endif
+
   var i = 0, type;
   while (i < size) {
     var curr = slab[i];
@@ -591,7 +598,11 @@ var STATICTOP;
 #if USE_TYPED_ARRAYS
 function enlargeMemory() {
 #if ALLOW_MEMORY_GROWTH == 0
+#if ASM_JS == 0
   abort('Cannot enlarge memory arrays. Either (1) compile with -s TOTAL_MEMORY=X with X higher than the current value, (2) compile with ALLOW_MEMORY_GROWTH which adjusts the size at runtime but prevents some optimizations, or (3) set Module.TOTAL_MEMORY before the program runs.');
+#else
+  abort('Cannot enlarge memory arrays in asm.js. Compile with -s TOTAL_MEMORY=X with X higher than the current value.');
+#endif
 #else
   // TOTAL_MEMORY is the current size of the actual array, and STATICTOP is the new top.
 #if ASSERTIONS
@@ -631,7 +642,11 @@ function enlargeMemory() {
 #endif
 
 var TOTAL_STACK = Module['TOTAL_STACK'] || {{{ TOTAL_STACK }}};
+#if ASM_JS == 0
 var TOTAL_MEMORY = Module['TOTAL_MEMORY'] || {{{ TOTAL_MEMORY }}};
+#else
+var TOTAL_MEMORY = {{{ TOTAL_MEMORY }}}; // in asm, we hardcode the mask, so cannot adjust memory at runtime
+#endif
 var FAST_MEMORY = Module['FAST_MEMORY'] || {{{ FAST_MEMORY }}};
 
 // Initialize the runtime's memory
@@ -749,17 +764,6 @@ function exitRuntime() {
   // Print summary of correction activity
   CorrectionsMonitor.print();
 }
-
-function String_len(ptr) {
-  var i = ptr;
-  while ({{{ makeGetValue('i++', '0', 'i8') }}}) { // Note: should be |!= 0|, technically. But this helps catch bugs with undefineds
-#if ASSERTIONS
-  assert(i < TOTAL_MEMORY);
-#endif
-  }
-  return i - ptr - 1;
-}
-Module['String_len'] = String_len;
 
 // Tools
 
