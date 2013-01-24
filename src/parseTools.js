@@ -1892,6 +1892,11 @@ function makeRounding(value, bits, signed, floatConversion) {
   }
 }
 
+function makeIsNaN(value) {
+  if (ASM_JS) return makeInlineCalculation('((VALUE) != (VALUE))', value, 'tempDouble');
+  return 'isNaN(' + value + ')';
+}
+
 // fptoui and fptosi are not in these, because we need to be careful about what we do there. We can't
 // just sign/unsign the input first.
 var UNSIGNED_OP = set('udiv', 'urem', 'uitofp', 'zext', 'lshr');
@@ -2208,8 +2213,8 @@ function processMathop(item) {
         case 'ult': case 'olt': return idents[0] + ' < ' + idents[1];
         case 'une': case 'one': return idents[0] + ' != ' + idents[1];
         case 'ueq': case 'oeq': return idents[0] + ' == ' + idents[1];
-        case 'ord': return '!isNaN(' + idents[0] + ') && !isNaN(' + idents[1] + ')';
-        case 'uno': return 'isNaN(' + idents[0] + ') || isNaN(' + idents[1] + ')';
+        case 'ord': return '!' + makeIsNaN(idents[0]) + ' & !' + makeIsNaN(idents[1]);
+        case 'uno': return makeIsNaN(idents[0]) + ' | ' + makeIsNaN(idents[1]);
         case 'true': return '1';
         default: throw 'Unknown fcmp variant: ' + variant;
       }
