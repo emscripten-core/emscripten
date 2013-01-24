@@ -279,8 +279,8 @@ process(sys.argv[1])
     if engine == SPIDERMONKEY_ENGINE and Settings.ASM_JS:
       if 'Successfully compiled asm.js code' in err and 'asm.js link error' not in err:
         print >> sys.stderr, "[was asm.js'ified]"
-      else:
-        print >> sys.stderr, "[did NOT asm.js'ify]"
+      elif 'asm.js' in err: # if no asm.js error, then not an odin build
+        raise Exception("did NOT asm.js'ify")
     if output_nicerizer:
       ret = output_nicerizer(out, err)
     else:
