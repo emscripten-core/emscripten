@@ -1106,7 +1106,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       var value;
       if (useIfs) {
         value = targetLabels[targetLabel].map(function(value) {
-          return makeComparison(signedIdent, makeSignOp(value, item.type, 're'), item.type)
+          return makeComparison(signedIdent, '==', makeSignOp(value, item.type, 're'), item.type)
         }).join(' | ');
         ret += 'if (' + value + ') {\n';
       } else {
@@ -1270,7 +1270,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     var phiSets = calcPhiSets(item);
     var js = 'var ibr = ' + finalizeLLVMParameter(item.value) + ';\n';
     for (var targetLabel in phiSets) {
-      js += 'if (' + makeComparison('ibr', targetLabel, 'i32') + ') { ' + getPhiSetsForLabel(phiSets, targetLabel) + ' }\n';
+      js += 'if (' + makeComparison('ibr', '==', targetLabel, 'i32') + ') { ' + getPhiSetsForLabel(phiSets, targetLabel) + ' }\n';
     }
     return js + makeBranch('ibr', item.currLabelId, true);
   });

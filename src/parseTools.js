@@ -1792,13 +1792,14 @@ function finalizeLLVMParameter(param, noIndexizeFunctions) {
   return ret;
 }
 
-function makeComparison(a, b, type) {
+function makeComparison(a, op, b, type) {
+  assert(type);
   if (!isIllegalType(type)) {
-    return asmCoercion(a, type) + ' == ' + asmCoercion(b, type);
+    return asmCoercion(a, type) + op + asmCoercion(b, type);
   } else {
     assert(type == 'i64');
-    return asmCoercion(a + '$0', 'i32') + ' == ' + asmCoercion(b + '$0', 'i32') + ' & ' +
-           asmCoercion(a + '$1', 'i32') + ' == ' + asmCoercion(b + '$1', 'i32');
+    return asmCoercion(a + '$0', 'i32') + op + asmCoercion(b + '$0', 'i32') + ' & ' +
+           asmCoercion(a + '$1', 'i32') + op + asmCoercion(b + '$1', 'i32');
   }
 }
 
@@ -1870,7 +1871,7 @@ function makeRounding(value, bits, signed, floatConversion) {
     // Note that if converting a float, we may have the wrong sign at this point! But, we have
     // been rounded properly regardless, and we will be sign-corrected later when actually used, if
     // necessary.
-    return makeInlineCalculation('VALUE >= 0 ? Math.floor(VALUE) : Math.ceil(VALUE)', value, 'tempBigIntR');
+    return makeInlineCalculation(makeComparison('VALUE', '>=', '0', 'float') + ' ? Math.floor(VALUE) : Math.ceil(VALUE)', value, 'tempBigIntR');
   } else {
     // asm.js mode, cleaner refactoring of this function as well. TODO: use in non-asm case, most of this
     if (floatConversion && bits <= 32) {
@@ -1887,7 +1888,7 @@ function makeRounding(value, bits, signed, floatConversion) {
     // Math.floor is reasonably fast if we don't care about corrections (and even correct if unsigned)
     if (!correctRoundings() || !signed) return 'Math.floor(' + value + ')';
     // We are left with >32 bits
-    return makeInlineCalculation('VALUE >= 0 ? Math.floor(VALUE) : Math.ceil(VALUE)', value, 'tempBigIntR');
+    return makeInlineCalculation(makeComparison('VALUE', '>=', '0', 'float') + ' ? Math.floor(VALUE) : Math.ceil(VALUE)', value, 'tempBigIntR');
   }
 }
 
