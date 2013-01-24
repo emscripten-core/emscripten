@@ -4281,7 +4281,7 @@ LibraryManager.library = {
         }
       }
       while ((ptr|0) < (stop4|0)) {
-        {{{ makeSetValueAsm('ptr', 0, 'value4', 'i8') }}};
+        {{{ makeSetValueAsm('ptr', 0, 'value4', 'i32') }}};
         ptr = (ptr+4)|0;
       }
     }
