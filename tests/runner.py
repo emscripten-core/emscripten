@@ -114,10 +114,10 @@ class RunnerCore(unittest.TestCase):
       shutil.rmtree(self.get_dir())
 
       # Make sure we don't leave stuff around
-      if not self.has_prev_ll:
-        for temp_file in os.listdir(TEMP_DIR):
-          assert not temp_file.endswith('.ll'), temp_file
-          # TODO assert not temp_file.startswith('emscripten_'), temp_file
+      #if not self.has_prev_ll:
+      #  for temp_file in os.listdir(TEMP_DIR):
+      #    assert not temp_file.endswith('.ll'), temp_file
+      #    # TODO assert not temp_file.startswith('emscripten_'), temp_file
 
   def skip(self, why):
     print >> sys.stderr, '<skipping: %s> ' % why,
