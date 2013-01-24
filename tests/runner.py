@@ -495,6 +495,8 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
         self.do_run(src, 'hello, world!')
 
     def test_intvars(self):
+        if self.emcc_args == None: return self.skip('needs ta2')
+
         src = '''
           #include <stdio.h>
           int global = 20;
