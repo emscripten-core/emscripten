@@ -2137,6 +2137,8 @@ var LibraryGL = {
     _glVertex3f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}}, 0);
   },
 
+  glVertex2i: function() { throw 'glVertex2i: TODO' },
+
   glTexCoord2i: function(u, v) {
 #if ASSERTIONS
     assert(GL.immediate.mode >= 0); // must be in begin/end
@@ -2151,6 +2153,8 @@ var LibraryGL = {
   glTexCoord2fv: function(v) {
     _glTexCoord2i({{{ makeGetValue('v', '0', 'float') }}}, {{{ makeGetValue('v', '4', 'float') }}});
   },
+
+  glTexCoord4f: function() { throw 'glTexCoord4f: TODO' },
 
   glColor4f: function(r, g, b, a) {
     r = Math.max(Math.min(r, 1), 0);
@@ -2225,6 +2229,8 @@ var LibraryGL = {
   glColor4fv: function(p) {
     _glColor4f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}}, {{{ makeGetValue('p', '8', 'float') }}}, {{{ makeGetValue('p', '12', 'float') }}});
   },
+
+  glColor4ubv: function() { throw 'glColor4ubv not implemented' },
 
   glFogf: function(pname, param) { // partial support, TODO
     switch(pname) {
@@ -2520,6 +2526,22 @@ var LibraryGL = {
   gluOrtho2D: function(left, right, bottom, top) {
     _glOrtho(left, right, bottom, top, -1, 1);
   },
+
+  glDrawBuffer: function() { throw 'glDrawBuffer: TODO' },
+  glReadBuffer: function() { throw 'glReadBuffer: TODO' },
+
+  glLightfv: function() { throw 'glLightfv: TODO' },
+  glLightModelfv: function() { throw 'glLightModelfv: TODO' },
+  glMaterialfv: function() { throw 'glMaterialfv: TODO' },
+
+  glTexGeni: function() { throw 'glTexGeni: TODO' },
+  glTexGenfv: function() { throw 'glTexGenfv: TODO' },
+  glTexEnvi: function() { throw 'glTexEnvi: TODO' },
+  glTexEnvfv: function() { throw 'glTexEnvfv: TODO' },
+
+  glTexImage1D: function() { throw 'glTexImage1D: TODO' },
+  glTexCoord3f: function() { throw 'glTexCoord3f: TODO' },
+  glGetTexLevelParameteriv: function() { throw 'glGetTexLevelParameteriv: TODO' },
 
   // signatures of simple pass-through functions, see later
   glActiveTexture__sig: 'vi',
