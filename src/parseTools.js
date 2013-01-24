@@ -6,11 +6,10 @@
 // Does simple 'macro' substitution, using Django-like syntax,
 // {{{ code }}} will be replaced with |eval(code)|.
 function processMacros(text) {
-  return text.replace(/{{{[^}]+}}}/g, function(str) {
+  return text.replace(/{{{([^}]|}(?!}))+}}}/g, function(str) {
     str = str.substr(3, str.length-6);
     var ret = eval(str);
-    if (ret !== undefined) ret = ret.toString();
-    return ret;
+    return ret ? ret.toString() : '';
   });
 }
 
