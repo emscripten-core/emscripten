@@ -1106,7 +1106,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
       if (isIntImplemented(type)) {
         if (bytes == 4 && align == 2) {
           // Special case that we can optimize
-          ret += makeGetValue(ptr, pos, 'i16', noNeedFirst, 2, ignore) + '+' +
+          ret += makeGetValue(ptr, pos, 'i16', noNeedFirst, 2, ignore) + '|' +
                  '(' + makeGetValue(ptr, getFastValue(pos, '+', 2), 'i16', noNeedFirst, 2, ignore) + '<<16)';
         } else { // XXX we cannot truly handle > 4...
           ret = '';
