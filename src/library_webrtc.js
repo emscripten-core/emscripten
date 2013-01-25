@@ -151,7 +151,7 @@ var LibraryWebRTC = {
     // onreliablemessage: Called when data arrives on the reliable channel.
     // onunreliablemessage: Called when data arrives on the unreliable channel.
     //TODO: support closing connection, handle closed events.
-    default_broker: "http://10.242.24.63:3000",
+    default_broker: "http://webrtc-broker.herokuapp.com",
   	DataPeer: function DataPeer(broker, offer_id) {
       this.connected = false;
       this.onoffercreated = null;
