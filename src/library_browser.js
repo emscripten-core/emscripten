@@ -3,7 +3,7 @@
 // Utilities for browser environments
 
 mergeInto(LibraryManager.library, {
-  $Browser__postset: 'Module["requestFullScreen"] = function( doLockPointer, doResizeCanvas ) { Browser.requestFullScreen( doLockPointer, doResizeCanvas ) };\n' + // exports
+  $Browser__postset: 'Module["requestFullScreen"] = function(doLockPointer, doResizeCanvas) { Browser.requestFullScreen(doLockPointer, doResizeCanvas) };\n' + // exports
                      'Module["requestAnimationFrame"] = function(func) { Browser.requestAnimationFrame(func) };\n' +
                      'Module["pauseMainLoop"] = function() { Browser.mainLoop.pause() };\n' +
                      'Module["resumeMainLoop"] = function() { Browser.mainLoop.resume() };\n',
@@ -261,10 +261,10 @@ mergeInto(LibraryManager.library, {
 
     storedFullScreenHandler: null,
     storedPointerLockHandler: null,
-    requestFullScreen: function( doLockPointer, doResizeCanvas ) {
+    requestFullScreen: function(doLockPointer, doResizeCanvas) {
       if(typeof(doLockPointer)==='undefined') doLockPointer = true;
       if(typeof(doResizeCanvas)==='undefined') doResizeCanvas = false;
-	  
+  
       var canvas = Module['canvas'];
       function fullScreenChange() {
         var isFullScreen = false;
@@ -274,20 +274,20 @@ mergeInto(LibraryManager.library, {
           canvas.requestPointerLock = canvas['requestPointerLock'] ||
                                       canvas['mozRequestPointerLock'] ||
                                       canvas['webkitRequestPointerLock'];
-	  canvas.exitPointerLock = document['exitPointerLock'] ||
-				   document['mozExitPointerLock'] ||
-				   document['webkitExitPointerLock'];
-	  canvas.exitPointerLock = canvas.exitPointerLock.bind( document );
-	  canvas.cancelFullScreen = document['cancelFullScreen'] ||
-				    document['mozCancelFullScreen'] ||
-				    document['webkitCancelFullScreen'];
-	  canvas.cancelFullScreen = canvas.cancelFullScreen.bind( document );
-	  if (doLockPointer) canvas.requestPointerLock();
+          canvas.exitPointerLock = document['exitPointerLock'] ||
+                                   document['mozExitPointerLock'] ||
+                                   document['webkitExitPointerLock'];
+          canvas.exitPointerLock = canvas.exitPointerLock.bind( document );
+          canvas.cancelFullScreen = document['cancelFullScreen'] ||
+                                    document['mozCancelFullScreen'] ||
+                                    document['webkitCancelFullScreen'];
+          canvas.cancelFullScreen = canvas.cancelFullScreen.bind( document );
+          if (doLockPointer) canvas.requestPointerLock();
           isFullScreen = true;
-	  if( doResizeCanvas ) Browser.setFullScreenCanvasSize();
-        } else if( doResizeCanvas ){
-	  Browser.setWindowedCanvasSize();
-	}
+          if(doResizeCanvas) Browser.setFullScreenCanvasSize();
+        } else if(doResizeCanvas){
+          Browser.setWindowedCanvasSize();
+        }
         if (Module['onFullScreen']) Module['onFullScreen'](isFullScreen);
       }
 
@@ -298,16 +298,16 @@ mergeInto(LibraryManager.library, {
       }
       
       if( !(this.storedFullScreenHandler == null) ){
-	document.removeEventListener('fullscreenchange', this.storedFullScreenHandler, false);
-	document.removeEventListener('mozfullscreenchange', this.storedFullScreenHandler, false);
-	document.removeEventListener('webkitfullscreenchange', this.storedFullScreenHandler, false);
-	this.storedFullScreenHandler = null;
+        document.removeEventListener('fullscreenchange', this.storedFullScreenHandler, false);
+        document.removeEventListener('mozfullscreenchange', this.storedFullScreenHandler, false);
+        document.removeEventListener('webkitfullscreenchange', this.storedFullScreenHandler, false);
+        this.storedFullScreenHandler = null;
       }
       if( !(this.storedPointerLockHandler == null) ){
-	document.addEventListener('pointerlockchange', this.storedPointerLockHandler, false);
-	document.addEventListener('mozpointerlockchange', this.storedPointerLockHandler, false);
-	document.addEventListener('webkitpointerlockchange', this.storedPointerLockHandler, false);
-	this.storedPointerLockHandler = null;
+        document.addEventListener('pointerlockchange', this.storedPointerLockHandler, false);
+        document.addEventListener('mozpointerlockchange', this.storedPointerLockHandler, false);
+        document.addEventListener('webkitpointerlockchange', this.storedPointerLockHandler, false);
+        this.storedPointerLockHandler = null;
       }
       
       this.storedFullScreenHandler = fullScreenChange;
@@ -319,7 +319,7 @@ mergeInto(LibraryManager.library, {
       document.addEventListener('pointerlockchange', this.storedPointerLockHandler, false);
       document.addEventListener('mozpointerlockchange', this.storedPointerLockHandler, false);
       document.addEventListener('webkitpointerlockchange', this.storedPointerLockHandler, false);
-	      
+
       canvas.requestFullScreen = canvas['requestFullScreen'] ||
                                  canvas['mozRequestFullScreen'] ||
                                  (canvas['webkitRequestFullScreen'] ? function() { canvas['webkitRequestFullScreen'](Element['ALLOW_KEYBOARD_INPUT']) } : null);
