@@ -440,7 +440,7 @@ var asm = (function(global, env, buffer) {
     value = value|0;
     tempRet%d = value;
   }
-''' % (i, i) for i in range(10)]) + funcs_js.replace('\n', '\n  ') + '''
+''' % (i, i) for i in range(10)]) + funcs_js + '''
 
   %s
 
