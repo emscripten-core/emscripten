@@ -588,8 +588,14 @@ class Building:
   COMPILER_TEST_OPTS = [] # For use of the test runner
 
   @staticmethod
-  def get_building_env():
+  def get_building_env(native=False):
     env = os.environ.copy()
+    if native:
+      env['CC'] = CLANG_CC
+      env['CXX'] = CLANG_CPP
+      env['LD'] = CLANG
+      env['CFLAGS'] = '-O2'
+      return env
     env['CC'] = EMCC if not WINDOWS else 'python %r' % EMCC
     env['CXX'] = EMXX if not WINDOWS else 'python %r' % EMXX
     env['AR'] = EMAR if not WINDOWS else 'python %r' % EMAR
@@ -667,14 +673,14 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       raise
 
   @staticmethod
-  def build_library(name, build_dir, output_dir, generated_libs, configure=['sh', './configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=None, cache_name=None, copy_project=False, env_init={}, source_dir=None):
+  def build_library(name, build_dir, output_dir, generated_libs, configure=['sh', './configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=None, cache_name=None, copy_project=False, env_init={}, source_dir=None, native=False):
     ''' Build a library into a .bc file. We build the .bc file once and cache it for all our tests. (We cache in
         memory since the test directory is destroyed and recreated for each test. Note that we cache separately
         for different compilers).
         This cache is just during the test runner. There is a different concept of caching as well, see |Cache|. '''
 
     if type(generated_libs) is not list: generated_libs = [generated_libs]
-    if source_dir is None: source_dir = path_from_root('tests', name)
+    if source_dir is None: source_dir = path_from_root('tests', name.replace('_native', ''))
 
     temp_dir = build_dir
     if copy_project:
@@ -695,7 +701,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     #    os.unlink(lib) # make sure compilation completed successfully
     #  except:
     #    pass
-    env = Building.get_building_env()
+    env = Building.get_building_env(native)
     for k, v in env_init.iteritems():
       env[k] = v
     if configure: # Useful in debugging sometimes to comment this out (and the lines below up to and including the |link| call)
