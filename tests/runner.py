@@ -9144,9 +9144,12 @@ f.close()
       if multiprocessing.cpu_count() < 2: return self.skip('need multiple cores')
       try:
         os.environ['EMCC_DEBUG'] = '1'
-        for linkable, chunks, js_chunks in [(0, 3, 2), (1, 7, 4)]:
-          print linkable, chunks, js_chunks
-          output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O1', '-s', 'LINKABLE=%d' % linkable], stdout=PIPE, stderr=PIPE).communicate()
+        for asm, linkable, chunks, js_chunks in [
+            (0, 0, 3, 2), (0, 1, 7, 4),
+            (1, 0, 3, 2), (1, 1, 7, 5)
+          ]:
+          print asm, linkable, chunks, js_chunks
+          output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O1', '-s', 'LINKABLE=%d' % linkable, '-s', 'ASM_JS=%d' % asm], stdout=PIPE, stderr=PIPE).communicate()
           assert 'phase 2 working on %d chunks' %chunks in err, err
           assert 'splitting up js optimization into %d chunks' % js_chunks in err, err
       finally:
