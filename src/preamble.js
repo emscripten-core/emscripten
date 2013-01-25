@@ -477,7 +477,7 @@ Module['ALLOC_NONE'] = ALLOC_NONE;
 var _memset = function(ptr, value, num) {
   var stop = ptr + num;
   while (ptr < stop) {
-    {{{ makeSetValueAsm('ptr++', 0, 'value', 'i8') }}};
+    {{{ makeSetValueAsm('ptr++', 0, 'value', 'i8', null, null, null, true) }}};
   }
 }
 
