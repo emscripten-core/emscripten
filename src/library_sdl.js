@@ -483,7 +483,7 @@ var LibrarySDL = {
             // correct.
             SDL.buttonState |= 1 << event.button;
           } else if (event.type == 'mouseup') {
-            SDL.buttonState = 0;
+            SDL.buttonState &= ~(1 << event.button);
           }
           // fall through
         case 'mousemove': {
@@ -883,7 +883,7 @@ var LibrarySDL = {
   SDL_GetMouseState: function(x, y) {
     if (x) {{{ makeSetValue('x', '0', 'SDL.mouseX', 'i32') }}};
     if (y) {{{ makeSetValue('y', '0', 'SDL.mouseY', 'i32') }}};
-    return 0;
+    return SDL.buttonState;
   },
 
   SDL_WarpMouse: function(x, y) {
