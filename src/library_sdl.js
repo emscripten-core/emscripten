@@ -896,7 +896,7 @@ var LibrarySDL = {
   },
 
   SDL_ShowCursor: function(toggle) {
-    if( toggle ){
+    if(toggle){
       Module['canvas'].exitPointerLock();
     } else {
       Module['canvas'].requestPointerLock();
@@ -1057,7 +1057,7 @@ var LibrarySDL = {
 
   SDL_WM_GrabInput: function() {},
   
-  SDL_WM_ToggleFullScreen: function( surf ) {
+  SDL_WM_ToggleFullScreen: function(surf) {
     Module['canvas'].cancelFullScreen();
   },
 
