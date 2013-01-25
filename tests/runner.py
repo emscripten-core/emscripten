@@ -10879,14 +10879,14 @@ elif 'benchmark' in str(sys.argv):
         #include<math.h>
         int main() {
           int N = 4100;
-          int M = 4100;
+          int M = 8000;
           unsigned int f = 0;
           unsigned short s = 0;
           for (int t = 0; t < M; t++) {
             for (int i = 0; i < N; i++) {
               f += i / ((t % 5)+1);
               if (f > 1000) f /= (t % 3)+1;
-              if (i % 4 == 0) f += sqrtf(i) * (i % 8 == 0 ? 1 : -1);
+              if (i % 4 == 0) f += i * (i % 8 == 0 ? 1 : -1);
               s += (short(f)*short(f)) % 256;
             }
           }
@@ -10894,7 +10894,7 @@ elif 'benchmark' in str(sys.argv):
           return 0;
         }      
       '''
-      self.do_benchmark('corrections', src, [], 'final: 826:14324.', emcc_args=['-s', 'CORRECT_SIGNS=1', '-s', 'CORRECT_OVERFLOWS=1', '-s', 'CORRECT_ROUNDINGS=1'])
+      self.do_benchmark('corrections', src, [], 'final: 132372:14147.', emcc_args=['-s', 'CORRECT_SIGNS=1', '-s', 'CORRECT_OVERFLOWS=1', '-s', 'CORRECT_ROUNDINGS=1'])
 
     def fasta(self, double_rep):
       src = open(path_from_root('tests', 'fasta.cpp'), 'r').read().replace('double', double_rep)
