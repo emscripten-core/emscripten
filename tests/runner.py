@@ -288,8 +288,9 @@ process(sys.argv[1])
     assert 'strict warning:' not in ret, 'We should pass all strict mode checks: ' + ret
     return ret
 
-  def build_native(self, filename):
-    process = Popen([CLANG, '-O2', '-fno-math-errno', filename, '-o', filename+'.native'], stdout=PIPE);
+  def build_native(self, filename, args=[]):
+    compiler = CLANG if filename.endswith('cpp') else CLANG_CC
+    process = Popen([compiler, '-O2', '-fno-math-errno', filename, '-o', filename+'.native'] + args, stdout=PIPE, stderr=self.stderr_redirect)
     output = process.communicate()
     if process.returncode is not 0:
       print >> sys.stderr, "Building native executable with command '%s' failed with a return code %d!" % (' '.join([CLANG, '-O2', filename, '-o', filename+'.native']), process.returncode)
@@ -301,6 +302,7 @@ process(sys.argv[1])
     if process.returncode is not 0:
       print >> sys.stderr, "Running native executable with command '%s' failed with a return code %d!" % (' '.join([filename+'.native'] + args), process.returncode)
       print "Output: " + output[0]
+    return output[0]
 
   def assertIdentical(self, values, y):
     if type(values) not in [list, tuple]: values = [values]
@@ -339,7 +341,7 @@ process(sys.argv[1])
       os.makedirs(ret)
     return ret
 
-  def get_library(self, name, generated_libs, configure=['sh', './configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=True, env_init={}, cache_name_extra=''):
+  def get_library(self, name, generated_libs, configure=['sh', './configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=True, env_init={}, cache_name_extra='', native=False):
     build_dir = self.get_build_dir()
     output_dir = self.get_dir()
 
@@ -359,7 +361,7 @@ process(sys.argv[1])
     print >> sys.stderr, '<building and saving %s into cache> ' % cache_name,
 
     return Building.build_library(name, build_dir, output_dir, generated_libs, configure, configure_args, make, make_args, self.library_cache, cache_name,
-                                  copy_project=True, env_init=env_init)
+                                  copy_project=True, env_init=env_init, native=native)
 
   def clear(self, in_curr=False):
     for name in os.listdir(self.get_dir()):
@@ -10681,9 +10683,9 @@ elif 'benchmark' in str(sys.argv):
       print '   JavaScript: mean: %.3f (+-%.3f) secs  median: %.3f  range: %.3f-%.3f  (noise: %3.3f%%)  (%d runs)' % (mean, std, median, min(times), max(times), 100*std/mean, TEST_REPS)
       print '   Native    : mean: %.3f (+-%.3f) secs  median: %.3f  range: %.3f-%.3f  (noise: %3.3f%%)  JS is %.2f X slower' % (mean_native, std_native, median_native, min(native_times), max(native_times), 100*std_native/mean_native, final)
 
-    def do_benchmark(self, name, src, args=[], expected_output='FAIL', emcc_args=[]):
+    def do_benchmark(self, name, src, args=[], expected_output='FAIL', emcc_args=[], native_args=[], force_c=False):
       dirname = self.get_dir()
-      filename = os.path.join(dirname, name + '.cpp')
+      filename = os.path.join(dirname, name + '.c' + ('' if force_c else 'pp'))
       f = open(filename, 'w')
       f.write(src)
       f.close()
@@ -10713,12 +10715,15 @@ elif 'benchmark' in str(sys.argv):
           self.assertContained(expected_output, js_output)
 
       # Run natively
-      self.build_native(filename)
+      self.build_native(filename, native_args)
       global total_native_times
       native_times = []
       for i in range(TEST_REPS):
         start = time.time()
-        self.run_native(filename, args)
+        native_output = self.run_native(filename, args)
+        if i == 0:
+          # Sanity check on output
+          self.assertContained(expected_output, native_output)
         curr = time.time()-start
         native_times.append(curr)
         total_native_times[tests_done] += curr
@@ -10909,6 +10914,18 @@ elif 'benchmark' in str(sys.argv):
       # XXX This seems to have regressed slightly with emcc. Are -g and the signs lines passed properly?
       src = open(path_from_root('system', 'lib', 'dlmalloc.c'), 'r').read() + '\n\n\n' + open(path_from_root('tests', 'dlmalloc_test.c'), 'r').read()
       self.do_benchmark('dlmalloc', src, ['400', '400'], '*400,0*', emcc_args=['-g', '-s', 'CORRECT_SIGNS=2', '-s', 'CORRECT_SIGNS_LINES=[4820, 4195, 4250, 4203, 4209, 4239, 4231]'])
+
+    def zzztest_zlib(self):
+      src = open(path_from_root('tests', 'zlib', 'benchmark.c'), 'r').read()
+      emcc_args = self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a']) + \
+                   ['-I' + path_from_root('tests', 'zlib')]
+      native_args = self.get_library('zlib_native', os.path.join('libz.a'), make_args=['libz.a'], native=True) + \
+                     ['-I' + path_from_root('tests', 'zlib')]
+      self.do_benchmark('zlib', src, ['100000', '100'], '''sum: 18710
+sizes: 100000,25906
+ok.
+''',
+                        force_c=True, emcc_args=emcc_args, native_args=native_args)
 
 elif 'sanity' in str(sys.argv):
 
