@@ -6857,10 +6857,11 @@ LibraryManager.library = {
     nextFd: 1,
     fds: {},
     sockaddr_in_layout: Runtime.generateStructInfo([
-      ['i16', 'sin_family'],
+      ['i32', 'sin_family'],
       ['i16', 'sin_port'],
       ['i32', 'sin_addr'],
-      ['i64', 'sin_zero'],
+      ['i32', 'sin_zero'],
+      ['i16', 'sin_zero_b'],
     ]),
     msghdr_layout: Runtime.generateStructInfo([
       ['*', 'msg_name'],
