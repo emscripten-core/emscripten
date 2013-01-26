@@ -10915,14 +10915,13 @@ elif 'benchmark' in str(sys.argv):
       src = open(path_from_root('system', 'lib', 'dlmalloc.c'), 'r').read() + '\n\n\n' + open(path_from_root('tests', 'dlmalloc_test.c'), 'r').read()
       self.do_benchmark('dlmalloc', src, ['400', '400'], '*400,0*', emcc_args=['-g', '-s', 'CORRECT_SIGNS=2', '-s', 'CORRECT_SIGNS_LINES=[4820, 4195, 4250, 4203, 4209, 4239, 4231]'])
 
-    def zzztest_zlib(self):
+    def test_zlib(self):
       src = open(path_from_root('tests', 'zlib', 'benchmark.c'), 'r').read()
       emcc_args = self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a']) + \
                    ['-I' + path_from_root('tests', 'zlib')]
       native_args = self.get_library('zlib_native', os.path.join('libz.a'), make_args=['libz.a'], native=True) + \
                      ['-I' + path_from_root('tests', 'zlib')]
-      self.do_benchmark('zlib', src, ['100000', '100'], '''sum: 18710
-sizes: 100000,25906
+      self.do_benchmark('zlib', src, ['100000', '500'], '''sizes: 100000,25906
 ok.
 ''',
                         force_c=True, emcc_args=emcc_args, native_args=native_args)
