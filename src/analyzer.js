@@ -1517,9 +1517,8 @@ function analyzer(data, sidePass) {
 
           for (var i = 0; i < lines.length; i++) {
             var item = lines[i];
-            if (!item.assignTo || item.intertype != 'alloca' || !isNumber(item.allocatedNum)) {
+            if (!finishedInitial && (!item.assignTo || item.intertype != 'alloca' || !isNumber(item.allocatedNum))) {
               finishedInitial = true;
-              continue;
             }
             if (item.intertype == 'alloca' && finishedInitial) {
               func.otherStackAllocations = true;

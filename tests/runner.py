@@ -3047,6 +3047,22 @@ Exiting setjmp function, level: 0, prev_jmp: -1
       '''
       self.do_run(src, '.ok.\n')
 
+    def test_life(self):
+      if self.emcc_args is None: return self.skip('need c99')
+      self.emcc_args += ['-std=c99']
+      src = open(path_from_root('tests', 'life.c'), 'r').read()
+      self.do_run(src, '''--------
+      [][][]    
+[][]            
+              []
+    []          
+[][]            
+                
+                
+                
+--------
+''', ['8', '8', '25000'], force_c=True)
+
     def test_array2(self):
         src = '''
           #include <stdio.h>
@@ -10683,7 +10699,7 @@ elif 'benchmark' in str(sys.argv):
       print '   JavaScript: mean: %.3f (+-%.3f) secs  median: %.3f  range: %.3f-%.3f  (noise: %3.3f%%)  (%d runs)' % (mean, std, median, min(times), max(times), 100*std/mean, TEST_REPS)
       print '   Native    : mean: %.3f (+-%.3f) secs  median: %.3f  range: %.3f-%.3f  (noise: %3.3f%%)  JS is %.2f X slower' % (mean_native, std_native, median_native, min(native_times), max(native_times), 100*std_native/mean_native, final)
 
-    def do_benchmark(self, name, src, args=[], expected_output='FAIL', emcc_args=[], native_args=[], force_c=False, reps=TEST_REPS):
+    def do_benchmark(self, name, src, args=[], expected_output='FAIL', emcc_args=[], native_args=[], shared_args=[], force_c=False, reps=TEST_REPS):
       dirname = self.get_dir()
       filename = os.path.join(dirname, name + '.c' + ('' if force_c else 'pp'))
       f = open(filename, 'w')
@@ -10696,7 +10712,7 @@ elif 'benchmark' in str(sys.argv):
                       '-O2', '-s', 'INLINING_LIMIT=0', '-s', 'DOUBLE_MODE=0', '-s', 'PRECISE_I64_MATH=0',
                       '-s', 'ASM_JS=1',# '-s', 'USE_MATH_IMUL=1',
                       '-s', 'TOTAL_MEMORY=128*1024*1024', '-s', 'FAST_MEMORY=10*1024*1024',
-                      '-o', final_filename] + emcc_args, stdout=PIPE, stderr=self.stderr_redirect).communicate()
+                      '-o', final_filename] + shared_args + emcc_args, stdout=PIPE, stderr=self.stderr_redirect).communicate()
       assert os.path.exists(final_filename), 'Failed to compile file: ' + output[0]
 
       # Run JS
@@ -10715,7 +10731,7 @@ elif 'benchmark' in str(sys.argv):
           self.assertContained(expected_output, js_output)
 
       # Run natively
-      self.build_native(filename, native_args)
+      self.build_native(filename, shared_args + native_args)
       global total_native_times
       native_times = []
       for i in range(reps):
@@ -10909,6 +10925,44 @@ elif 'benchmark' in str(sys.argv):
     def test_skinning(self):
       src = open(path_from_root('tests', 'skinning_test_no_simd.cpp'), 'r').read()
       self.do_benchmark('skinning', src, ['9500', '10000'], 'blah=0.000000')
+
+    def test_life(self):
+      src = open(path_from_root('tests', 'life.c'), 'r').read()
+      self.do_benchmark('life', src, ['32', '32', '7100'], '''--------------------------------
+                                                                
+                [][][][][]  []                                  
+                    []                                          
+                              []                                
+                            []                                  
+                  [][][][]  []                                  
+                [][][][][]  []                                  
+                []      []    []                                
+                [][][]  []  []                            [][]  
+[][][]            [][][]      []                      [][]    []
+[][][]            [][]      [][]                      [][][]    
+    [][][][][]                  []                              
+  [][][]  []  []      []      []                                
+      []      [][]    []    [][]    []                      [][]
+              []      []          [][][]                  []  []
+                        [][]      []                        [][]
+[][]  []                  []  [][]                            []
+[][]  []                []                                      
+[][]                                        [][]                
+                                            []  []              
+                              [][][]        [][][]              
+                                []            []  []            
+                                  [][][][][]    [][]            
+                                  [][]    [][]                  
+                                      [][]  []                  
+                                          []  []                
+              []  []                      [][]  [][]            
+                [][]                      [][]                  
+                []                      []      []  []          
+                                          []        []          
+                                                    []          
+                                              []  []            
+--------------------------------
+''', shared_args=['-std=c99'], force_c=True)
 
     def test_dlmalloc(self):
       # XXX This seems to have regressed slightly with emcc. Are -g and the signs lines passed properly?
