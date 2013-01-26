@@ -6,6 +6,11 @@
 
 {{RUNTIME}}
 
+#if BENCHMARK
+Module.realPrint = Module.print;
+Module.print = Module.printErr = function(){};
+#endif
+
 #if SAFE_HEAP
 //========================================
 // Debugging tools - Heap

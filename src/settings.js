@@ -317,6 +317,9 @@ var HEADLESS = 0; // If 1, will include shim code that tries to 'fake' a browser
                   // very partial - it is hard to fake a whole browser! - so
                   // keep your expectations low for this to work.
 
+var BENCHMARK = 0; // If 1, will just time how long main() takes to execute, and not
+                   // print out anything at all whatsover. This is useful for benchmarking.
+
 var ASM_JS = 0; // If 1, generate code in asm.js format. XXX This is highly experimental,
                 // and will not work on most codebases yet. It is NOT recommended that you
                 // try this yet.
