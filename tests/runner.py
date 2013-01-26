@@ -10683,7 +10683,7 @@ elif 'benchmark' in str(sys.argv):
       print '   JavaScript: mean: %.3f (+-%.3f) secs  median: %.3f  range: %.3f-%.3f  (noise: %3.3f%%)  (%d runs)' % (mean, std, median, min(times), max(times), 100*std/mean, TEST_REPS)
       print '   Native    : mean: %.3f (+-%.3f) secs  median: %.3f  range: %.3f-%.3f  (noise: %3.3f%%)  JS is %.2f X slower' % (mean_native, std_native, median_native, min(native_times), max(native_times), 100*std_native/mean_native, final)
 
-    def do_benchmark(self, name, src, args=[], expected_output='FAIL', emcc_args=[], native_args=[], force_c=False):
+    def do_benchmark(self, name, src, args=[], expected_output='FAIL', emcc_args=[], native_args=[], force_c=False, reps=TEST_REPS):
       dirname = self.get_dir()
       filename = os.path.join(dirname, name + '.c' + ('' if force_c else 'pp'))
       f = open(filename, 'w')
@@ -10702,7 +10702,7 @@ elif 'benchmark' in str(sys.argv):
       # Run JS
       global total_times, tests_done
       times = []
-      for i in range(TEST_REPS):
+      for i in range(reps):
         start = time.time()
         js_output = run_js(final_filename, engine=JS_ENGINE, args=args, stderr=PIPE, full_output=True)
         if i == 0 and 'Successfully compiled asm.js code' in js_output:
@@ -10718,7 +10718,7 @@ elif 'benchmark' in str(sys.argv):
       self.build_native(filename, native_args)
       global total_native_times
       native_times = []
-      for i in range(TEST_REPS):
+      for i in range(reps):
         start = time.time()
         native_output = self.run_native(filename, args)
         if i == 0:
@@ -10925,6 +10925,27 @@ elif 'benchmark' in str(sys.argv):
 ok.
 ''',
                         force_c=True, emcc_args=emcc_args, native_args=native_args)
+
+    def test_zzz_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
+      src = open(path_from_root('tests', 'bullet', 'Demos', 'Benchmarks', 'BenchmarkDemo.cpp'), 'r').read() + \
+            open(path_from_root('tests', 'bullet', 'Demos', 'Benchmarks', 'main.cpp'), 'r').read()
+
+      js_lib = self.get_library('bullet', [os.path.join('src', '.libs', 'libBulletDynamics.a'),
+                                           os.path.join('src', '.libs', 'libBulletCollision.a'),
+                                           os.path.join('src', '.libs', 'libLinearMath.a')],
+                                configure_args=['--disable-demos','--disable-dependency-tracking'])
+      native_lib = self.get_library('bullet_native', [os.path.join('src', '.libs', 'libBulletDynamics.a'),
+                                               os.path.join('src', '.libs', 'libBulletCollision.a'),
+                                               os.path.join('src', '.libs', 'libLinearMath.a')],
+                                    configure_args=['--disable-demos','--disable-dependency-tracking'],
+                                    native=True)
+
+      emcc_args = js_lib + ['-I' + path_from_root('tests', 'bullet', 'src'),
+                            '-I' + path_from_root('tests', 'bullet', 'Demos', 'Benchmarks')]
+      native_args = native_lib + ['-I' + path_from_root('tests', 'bullet', 'src'),
+                                  '-I' + path_from_root('tests', 'bullet', 'Demos', 'Benchmarks')]
+
+      self.do_benchmark('bullet', src, [], '\nok.\n', emcc_args=emcc_args, native_args=native_args, reps=1)
 
 elif 'sanity' in str(sys.argv):
 
