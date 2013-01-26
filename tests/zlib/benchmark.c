@@ -10,16 +10,16 @@ void __attribute__ ((noinline)) doit(char *buffer, int size, int i) {
   static char *buffer2 = NULL;
   static char *buffer3 = NULL;
 
-  int maxCompressedSize = compressBound(size);
+  unsigned long maxCompressedSize = compressBound(size);
 
   if (!buffer2) buffer2 = (char*)malloc(maxCompressedSize);
   if (!buffer3) buffer3 = (char*)malloc(size);
 
-  int compressedSize = maxCompressedSize;
+  unsigned long compressedSize = maxCompressedSize;
   compress(buffer2, &compressedSize, buffer, size);
   if (i == 0) printf("sizes: %d,%d\n", size, compressedSize);
 
-  int decompressedSize = size;
+  unsigned long decompressedSize = size;
   uncompress(buffer3, &decompressedSize, buffer2, compressedSize);
   assert(decompressedSize == size);
   if (i == 0) assert(strcmp(buffer, buffer3) == 0);
@@ -33,7 +33,6 @@ int main(int argc, char **argv) {
   int i = 0;
   int run = 0;
   char runChar = 17;
-  int sum = 0;
   while (i < size) {
     if (run > 0) {
       run--;
@@ -46,11 +45,8 @@ int main(int argc, char **argv) {
       }
     }
     buffer[i] = runChar;
-    sum += buffer[i];
-    if (argc == 100) printf("%d: %d\n", i, buffer[i]); // confuse llvm optimizer, work around possible bug, this is not speed-relevant anyhow
     i++;
   }
-  printf("sum: %d\n", sum);
 
   for (i = 0; i < iters; i++) {
     doit(buffer, size, i);
