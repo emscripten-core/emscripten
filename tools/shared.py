@@ -594,7 +594,7 @@ class Building:
       env['CC'] = CLANG_CC
       env['CXX'] = CLANG_CPP
       env['LD'] = CLANG
-      env['CFLAGS'] = '-O2'
+      env['CFLAGS'] = '-O2 -fno-math-errno'
       return env
     env['CC'] = EMCC if not WINDOWS else 'python %r' % EMCC
     env['CXX'] = EMXX if not WINDOWS else 'python %r' % EMXX
