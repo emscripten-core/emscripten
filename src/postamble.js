@@ -17,18 +17,30 @@ Module.callMain = function callMain(args) {
   argv.push(0);
   argv = allocate(argv, 'i32', ALLOC_STATIC);
 
+#if BENCHMARK
+  var start = Date.now();
+#endif
+
+  var ret;
+
 #if CATCH_EXIT_CODE
   var initialStackTop = STACKTOP;
   try {
-    return Module['_main'](argc, argv, 0);
+    ret = Module['_main'](argc, argv, 0);
   }
   catch(e) { if (e.name == "ExitStatus") return e.status; throw e; }
   finally {
     STACKTOP = initialStackTop;
   }
 #else
-  return Module['_main'](argc, argv, 0);
+  ret = Module['_main'](argc, argv, 0);
 #endif
+
+#if BENCHMARK
+  Module.realPrint('main() took ' + (Date.now() - start) + ' milliseconds');
+#endif
+
+  return ret;
 }
 
 {{GLOBAL_VARS}}
