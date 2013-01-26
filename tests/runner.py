@@ -6077,13 +6077,19 @@ localhost : 1 : 4
 * -84.29.3.0.
 ''')
 
+    def test_799(self):
+      src = open(path_from_root('tests', '799.cpp'), 'r').read()
+      self.do_run(src, '''Set PORT family: 100, port: 3979
+Get PORT family: 100
+PORT: 3979
+''')
+
     def test_ctype(self):
       # The bit fiddling done by the macros using __ctype_b_loc requires this.
       Settings.CORRECT_SIGNS = 1
       src = open(path_from_root('tests', 'ctype', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'ctype', 'output.txt'), 'r').read()
       self.do_run(src, expected)
-      CORRECT_SIGNS = 0
 
     def test_atomic(self):
       src = '''

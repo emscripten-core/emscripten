@@ -47,7 +47,10 @@ struct sockaddr {
 };
 
 struct sockaddr_storage {
-  sa_family_t ss_family;
+  sa_family_t    ss_family;
+  unsigned short ss_port;
+  unsigned long  ss_addr;
+  char           ss_zero[6];
 };
 
 ssize_t recvfrom(int socket, void *buffer, size_t length, int flags, struct sockaddr *address, socklen_t *address_len);
