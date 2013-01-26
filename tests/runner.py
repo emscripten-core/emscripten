@@ -10643,7 +10643,7 @@ elif 'benchmark' in str(sys.argv):
 
   Building.COMPILER_TEST_OPTS = []
 
-  TEST_REPS = 10
+  TEST_REPS = 4
   TOTAL_TESTS = 9
 
   tests_done = 0
@@ -10694,7 +10694,7 @@ elif 'benchmark' in str(sys.argv):
       try_delete(final_filename)
       output = Popen([PYTHON, EMCC, filename, #'-O3',
                       '-O2', '-s', 'INLINING_LIMIT=0', '-s', 'DOUBLE_MODE=0', '-s', 'PRECISE_I64_MATH=0',
-                      #'-s', 'ASM_JS=1', '-s', 'USE_MATH_IMUL=1',
+                      '-s', 'ASM_JS=1',# '-s', 'USE_MATH_IMUL=1',
                       '-s', 'TOTAL_MEMORY=128*1024*1024', '-s', 'FAST_MEMORY=10*1024*1024',
                       '-o', final_filename] + emcc_args, stdout=PIPE, stderr=self.stderr_redirect).communicate()
       assert os.path.exists(final_filename), 'Failed to compile file: ' + output[0]
@@ -10730,10 +10730,10 @@ elif 'benchmark' in str(sys.argv):
 
       self.print_stats(times, native_times)
 
-      tests_done += 1
-      if tests_done == TOTAL_TESTS:
-        print 'Total stats:',
-        self.print_stats(total_times, total_native_times, last=True)
+      #tests_done += 1
+      #if tests_done == TOTAL_TESTS:
+      #  print 'Total stats:',
+      #  self.print_stats(total_times, total_native_times, last=True)
 
     def test_primes(self):
       src = '''
@@ -10741,7 +10741,7 @@ elif 'benchmark' in str(sys.argv):
         #include<math.h>
         int main() {
           int primes = 0, curri = 2;
-          while (primes < 100000) {
+          while (primes < 220000) {
             int ok = true;
             for (int j = 2; j < sqrtf(curri); j++) {
               if (curri % j == 0) {
@@ -10758,7 +10758,7 @@ elif 'benchmark' in str(sys.argv):
           return 0;
         }
       '''
-      self.do_benchmark('primes', src, [], 'lastprime: 1297001.')
+      self.do_benchmark('primes', src, [], 'lastprime: 3043739.')
 
     def test_memops(self):
       src = '''
@@ -10767,7 +10767,7 @@ elif 'benchmark' in str(sys.argv):
         #include<stdlib.h>
         int main() {
           int N = 1024*1024;
-          int M = 190;
+          int M = 800;
           int final = 0;
           char *buf = (char*)malloc(N);
           for (int t = 0; t < M; t++) {
@@ -10781,7 +10781,7 @@ elif 'benchmark' in str(sys.argv):
           return 0;
         }      
       '''
-      self.do_benchmark('memops', src, [], 'final: 720.')
+      self.do_benchmark('memops', src, [], 'final: 400.')
 
     def zzztest_files(self):
       src = r'''
@@ -10849,7 +10849,7 @@ elif 'benchmark' in str(sys.argv):
         int main() {
           int total = 0;
           for (int i = 0; i < 1250; i++) {
-            for (int j = 0; j < 1000; j++) {
+            for (int j = 0; j < 50000; j++) {
               vec c(i, i+i%10, j*2, i%255, j%120, i%15);
               vec d(j+i%10, j*2, j%255, i%120, j%15, j);
               vec e = c;
@@ -10867,19 +10867,19 @@ elif 'benchmark' in str(sys.argv):
           return 0;
         }      
       '''
-      self.do_benchmark('copy', src, [], 'sum:9928\n', emcc_args=['-s', 'QUANTUM_SIZE=4', '-s', 'USE_TYPED_ARRAYS=2'])
+      self.do_benchmark('copy', src, [], 'sum:2836\n', emcc_args=['-s', 'QUANTUM_SIZE=4', '-s', 'USE_TYPED_ARRAYS=2'])
 
     def test_fannkuch(self):
       src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read()
-      self.do_benchmark('fannkuch', src, ['10'], 'Pfannkuchen(10) = 38.')
+      self.do_benchmark('fannkuch', src, ['11'], 'Pfannkuchen(11) = 51.')
 
     def test_corrections(self):
       src = r'''
         #include<stdio.h>
         #include<math.h>
         int main() {
-          int N = 4100;
-          int M = 8000;
+          int N = 20000;
+          int M = 7000;
           unsigned int f = 0;
           unsigned short s = 0;
           for (int t = 0; t < M; t++) {
@@ -10894,11 +10894,11 @@ elif 'benchmark' in str(sys.argv):
           return 0;
         }      
       '''
-      self.do_benchmark('corrections', src, [], 'final: 132372:14147.', emcc_args=['-s', 'CORRECT_SIGNS=1', '-s', 'CORRECT_OVERFLOWS=1', '-s', 'CORRECT_ROUNDINGS=1'])
+      self.do_benchmark('corrections', src, [], 'final: 40006013:10225.', emcc_args=['-s', 'CORRECT_SIGNS=1', '-s', 'CORRECT_OVERFLOWS=1', '-s', 'CORRECT_ROUNDINGS=1'])
 
     def fasta(self, double_rep):
       src = open(path_from_root('tests', 'fasta.cpp'), 'r').read().replace('double', double_rep)
-      self.do_benchmark('fasta', src, ['2100000'], '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA\nTCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACT\nAAAAATACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAG\nGCTGAGGCAGGAGAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCG\nCCACTGCACTCCAGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAAGGCCGGGCGCGGT\nGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGATCACCTGAGGTCA\nGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAATACAAAAA\nTTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAGGCTGAGGCAGGAG\nAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCCA\nGCCTGGGCGA''')
+      self.do_benchmark('fasta', src, ['19000000'], '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA\nTCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACT\nAAAAATACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAG\nGCTGAGGCAGGAGAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCG\nCCACTGCACTCCAGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAAGGCCGGGCGCGGT\nGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGATCACCTGAGGTCA\nGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAATACAAAAA\nTTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAGGCTGAGGCAGGAG\nAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCCA\nGCCTGGGCGA''')
 
     def test_fasta_float(self):
       self.fasta('float')
@@ -10908,12 +10908,12 @@ elif 'benchmark' in str(sys.argv):
 
     def test_skinning(self):
       src = open(path_from_root('tests', 'skinning_test_no_simd.cpp'), 'r').read()
-      self.do_benchmark('skinning', src, ['10000', '1000'], 'blah=0.000000')
+      self.do_benchmark('skinning', src, ['9500', '10000'], 'blah=0.000000')
 
     def test_dlmalloc(self):
       # XXX This seems to have regressed slightly with emcc. Are -g and the signs lines passed properly?
       src = open(path_from_root('system', 'lib', 'dlmalloc.c'), 'r').read() + '\n\n\n' + open(path_from_root('tests', 'dlmalloc_test.c'), 'r').read()
-      self.do_benchmark('dlmalloc', src, ['400', '400'], '*400,0*', emcc_args=['-g', '-s', 'CORRECT_SIGNS=2', '-s', 'CORRECT_SIGNS_LINES=[4820, 4195, 4250, 4203, 4209, 4239, 4231]'])
+      self.do_benchmark('dlmalloc', src, ['400', '3000'], '*3000,0*', emcc_args=['-g', '-s', 'CORRECT_SIGNS=2', '-s', 'CORRECT_SIGNS_LINES=[4820, 4195, 4250, 4203, 4209, 4239, 4231]'])
 
     def test_zlib(self):
       src = open(path_from_root('tests', 'zlib', 'benchmark.c'), 'r').read()
