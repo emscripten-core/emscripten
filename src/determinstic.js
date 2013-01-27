@@ -2,15 +2,11 @@
 var MAGIC = 0;
 Math.random = function() {
   MAGIC = Math.pow(MAGIC + 1.8912, 3) % 1;
-  return MAGIC + 10;
+  return MAGIC;
 };
-var TIME = 0;
+var TIME = 10000;
 Date.now = function() {
-  TIME += 0.05;
-  return TIME;
+  return TIME++;
 };
-performance.now = function() {
-  TIME += 0.05;
-  return TIME;
-};
+performance.now = Date.now;
 
