@@ -328,6 +328,7 @@ def emscript(infile, settings, outfile, libraries=[]):
     math_envs = ['Runtime.bitshift64', 'Math.min'] # TODO: move min to maths
     asm_setup = '\n'.join(['var %s = %s;' % (f.replace('.', '_'), f) for f in math_envs])
     basic_funcs = ['abort', 'assert', 'asmPrintInt', 'asmPrintFloat', 'copyTempDouble', 'copyTempFloat'] + [m.replace('.', '_') for m in math_envs]
+    if settings['SAFE_HEAP']: basic_funcs += ['SAFE_HEAP_LOAD', 'SAFE_HEAP_STORE', 'SAFE_HEAP_CLEAR']
     basic_vars = ['STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT']
     basic_float_vars = ['NaN', 'Infinity']
     if forwarded_json['Types']['preciseI64MathUsed']:
