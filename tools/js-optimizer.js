@@ -428,12 +428,13 @@ function simplifyExpressionsPre(ast) {
               if (stack[i] == 1) {
                 // we will replace ourselves with the non-zero side. Recursively process that node.
                 var result = jsonCompare(node[2], ZERO) ? node[3] : node[2], other;
-                // Great, we can eliminate
-                rerun = true;
-                while (other = process(result, result[0], stack)) {
-                  result = other;
+                // replace node in-place
+                node.length = result.length;
+                for (var j = 0; j < result.length; j++) {
+                  node[j] = result[j];
                 }
-                return result;
+                rerun = true;
+                return process(result, result[0], stack);
               } else if (stack[i] == -1) {
                 break; // Too bad, we can't
               } else if (asm) {
@@ -1415,7 +1416,7 @@ function registerize(ast) {
     // We also mark local variables - i.e., having a var definition
     var localVars = {};
     var hasSwitch = false; // we cannot optimize variables if there is a switch
-    var hasReturnValue = false;
+    var returnType = null; // for asm
     traverse(fun, function(node, type) {
       if (type == 'var') {
         node[1].forEach(function(defined) { localVars[defined[0]] = 1 });
@@ -1428,7 +1429,7 @@ function registerize(ast) {
       } else if (type == 'switch') {
         hasSwitch = true;
       } else if (asm && type == 'return' && node[1]) {
-        hasReturnValue = true;
+        returnType = detectAsmCoercion(node[1]);
       }
     });
     vacuum(fun);
@@ -1607,11 +1608,13 @@ function registerize(ast) {
       denormalizeAsm(fun, finalAsmData);
       // Add a final return if one is missing. This is not strictly a register operation, but
       // this pass traverses the entire AST anyhow so adding it here is efficient.
-      if (hasReturnValue) {
+      if (returnType !== null) {
         var stats = getStatements(fun);
         var last = stats[stats.length-1];
         if (last[0] != 'return') {
-          stats.push(['return', ['num', 0]]);
+          var returnValue = ['num', 0];
+          if (returnType == ASM_DOUBLE) returnValue = ['unary-prefix', '+', returnValue];
+          stats.push(['return', returnValue]);
         }
       }
     }
@@ -2148,6 +2151,32 @@ function eliminateMemSafe(ast) {
   eliminate(ast, true);
 }
 
+// Change +5 to DOT$ZERO(5). We then textually change 5 to 5.0 (uglify's ast cannot differentiate between 5 and 5.0 directly)
+function prepDotZero(ast) {
+  traverse(ast, function(node, type) {
+    if (type == 'unary-prefix' && node[1] == '+') {
+      if (node[2][0] == 'num') {
+        return ['call', ['name', 'DOT$ZERO'], [node[2]]];
+      } else if (node[2][0] == 'unary-prefix' && node[2][1] == '-' && node[2][2][0] == 'num') {
+        node[2][2][1] = -node[2][2][1];
+        return ['call', ['name', 'DOT$ZERO'], [node[2][2]]];
+      }
+    }
+  });
+}
+function fixDotZero(js) {
+  return js.replace(/DOT\$ZERO\(((0x)?[-+]?[0-9a-f]*\.?[0-9]+([eE][-+]?[0-9]+)?)\)/g, function(m, num) {
+    if (num.substr(0, 2) == '0x') {
+      if (num[2] == '-') num = '-0x' + num.substr(3); // uglify generates 0x-8000 for some reason
+      return eval(num) + '.0';
+    }
+    if (num.indexOf('.') >= 0) return num;
+    var e = num.indexOf('e');
+    if (e < 0) return num + '.0';
+    return num.substr(0, e) + '.0' + num.substr(e);
+  });
+}
+
 // Passes table
 
 var compress = false, printMetadata = true, asm = false, last = false;
@@ -2185,15 +2214,18 @@ if (metadata) setGeneratedFunctions(metadata);
 arguments_.slice(1).forEach(function(arg) {
   passes[arg](ast);
 });
+if (asm && last) {
+  prepDotZero(ast);
+}
 var js = astToSrc(ast, compress), old;
+if (asm && last) {
+  js = fixDotZero(js);
+}
 
 // remove unneeded newlines+spaces, and print
 do {
   old = js;
   js = js.replace(/\n *\n/g, '\n');
-  if (asm && last) {
-    js = js.replace(/ = \+0([,;])/g, function(m, end) { return ' = 0.0' + end }); // asm requires 0.0 in var definitions, not +0
-  }
 } while (js != old);
 print(js);
 print('\n');

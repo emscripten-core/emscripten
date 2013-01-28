@@ -114,10 +114,10 @@ class RunnerCore(unittest.TestCase):
       shutil.rmtree(self.get_dir())
 
       # Make sure we don't leave stuff around
-      if not self.has_prev_ll:
-        for temp_file in os.listdir(TEMP_DIR):
-          assert not temp_file.endswith('.ll'), temp_file
-          # TODO assert not temp_file.startswith('emscripten_'), temp_file
+      #if not self.has_prev_ll:
+      #  for temp_file in os.listdir(TEMP_DIR):
+      #    assert not temp_file.endswith('.ll'), temp_file
+      #    # TODO assert not temp_file.startswith('emscripten_'), temp_file
 
   def skip(self, why):
     print >> sys.stderr, '<skipping: %s> ' % why,
@@ -279,8 +279,8 @@ process(sys.argv[1])
     if engine == SPIDERMONKEY_ENGINE and Settings.ASM_JS:
       if 'Successfully compiled asm.js code' in err and 'asm.js link error' not in err:
         print >> sys.stderr, "[was asm.js'ified]"
-      else:
-        print >> sys.stderr, "[did NOT asm.js'ify]"
+      elif 'asm.js' in err: # if no asm.js error, then not an odin build
+        raise Exception("did NOT asm.js'ify")
     if output_nicerizer:
       ret = output_nicerizer(out, err)
     else:
@@ -495,6 +495,8 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
         self.do_run(src, 'hello, world!')
 
     def test_intvars(self):
+        if self.emcc_args == None: return self.skip('needs ta2')
+
         src = '''
           #include <stdio.h>
           int global = 20;
@@ -1138,6 +1140,47 @@ m_divisor is 1091269979
       '''
       self.do_run(src, '3217489085')
 
+    def test_i32_mul_semiprecise(self):
+      src = r'''
+        #include <stdio.h>
+
+        typedef unsigned int uint;
+
+        // from cube2, zlib licensed
+
+        #define N (624)             
+        #define M (397)                
+        #define K (0x9908B0DFU)       
+
+        static uint state[N];
+        static int next = N;
+
+        void seedMT(uint seed)
+        {
+            state[0] = seed;
+            for(uint i = 1; i < N; i++) // if we do not do this precisely, at least we should coerce to int immediately, not wait
+                state[i] = seed = 1812433253U * (seed ^ (seed >> 30)) + i;
+            next = 0;
+        }
+
+        int main() {
+          seedMT(5497);
+          for (int i = 0; i < 10; i++) printf("%d: %u\n", i, state[i]);
+          return 0;
+        }
+      '''
+      self.do_run(src, '''0: 5497
+1: 2916432318
+2: 2502517762
+3: 3151524867
+4: 2323729668
+5: 2053478917
+6: 2409490438
+7: 848473607
+8: 691103752
+9: 3915535113
+''')
+
     def test_i16_emcc_intrinsic(self):
       Settings.CORRECT_SIGNS = 1 # Relevant to this test
 
@@ -1166,6 +1209,8 @@ m_divisor is 1091269979
     def test_llvm_intrinsics(self):
       if self.emcc_args == None: return self.skip('needs ta2')
 
+      Settings.PRECISE_I64_MATH = 2 # for bswap64
+
       src = r'''
         #include <stdio.h>
         #include <sys/types.h>
@@ -1193,6 +1238,10 @@ m_divisor is 1091269979
 
             printf("%d\n", llvm_expect_i32(x % 27, 3));
 
+            int64_t a = 1;
+            a = __builtin_bswap64(a);
+            printf("%lld\n", a);
+
             return 0;
         }
       '''
@@ -1202,6 +1251,7 @@ c8,ef
 c5,de,15,8a
 23,21
 13
+72057594037927936
 ''')
 
     def test_bswap64(self):
@@ -1495,7 +1545,7 @@ Succeeded!
         src = '''
           #include <stdio.h>
           #include <math.h>
-          int main()
+          int main(int argc, char **argv)
           {
             float x = 1.234, y = 3.5, q = 0.00000001;
             y *= 3;
@@ -1503,6 +1553,8 @@ Succeeded!
             printf("*%d,%d,%.1f,%d,%.4f,%.2f*\\n", z, int(y), y, (int)x, x, q);
 
             printf("%.2f, %.2f, %.2f, %.2f\\n", fmin(0.5, 3.3), fmin(NAN, 3.3), fmax(0.5, 3.3), fmax(NAN, 3.3));
+
+            printf("small: %.10f\\n", argc * 0.000001);
 
             /*
             // Rounding behavior
@@ -1515,7 +1567,36 @@ Succeeded!
             return 0;
           }
         '''
-        self.do_run(src, '*1,10,10.5,1,1.2340,0.00*\n0.50, 3.30, 3.30, 3.30\n')
+        self.do_run(src, '*1,10,10.5,1,1.2340,0.00*\n0.50, 3.30, 3.30, 3.30\nsmall: 0.0000010000\n')
+
+    def test_isnan(self):
+      src = r'''
+        #include <stdio.h>
+
+        int IsNaN(double x){
+          int rc;   /* The value return */
+          volatile double y = x;
+          volatile double z = y;
+          rc = (y!=z);
+          return rc;
+        }
+
+        int main() {
+          double tests[] = { 1.0, 3.333, 1.0/0.0, 0.0/0.0, -1.0/0.0, -0, 0, -123123123, 12.0E200 };
+          for (int i = 0; i < sizeof(tests)/sizeof(double); i++)
+            printf("%d - %f - %d\n", i, tests[i], IsNaN(tests[i]));
+        }
+        '''
+      self.do_run(src, '''0 - 1.000000 - 0
+1 - 3.333000 - 0
+2 - inf - 0
+3 - nan - 1
+4 - -inf - 0
+5 - 0.000000 - 0
+6 - 0.000000 - 0
+7 - -123123123.000000 - 0
+8 - 1.2e+201 - 0
+''')
 
     def test_globaldoubles(self):
         src = r'''
@@ -2282,6 +2363,7 @@ Exception execution path of first function! 1
 ''')
 
     def test_exceptions(self):
+        if Settings.ASM_JS: return self.skip('no exceptions support in asm')
         if Settings.QUANTUM_SIZE == 1: return self.skip("we don't support libcxx in q1")
 
         Settings.EXCEPTION_DEBUG = 1
@@ -2321,7 +2403,7 @@ Exception execution path of first function! 1
         self.do_run(src, '*throw...caught!infunc...done!*')
 
         Settings.DISABLE_EXCEPTION_CATCHING = 1
-        self.do_run(src, 'Exception catching is disabled, this exception cannot be caught. Compile with -s DISABLE_EXCEPTION_CATCHING=0 to catch.')
+        self.do_run(src, 'Exception catching is disabled, this exception cannot be caught. Compile with -s DISABLE_EXCEPTION_CATCHING=0')
 
         src = '''
         #include <iostream>
@@ -2372,7 +2454,41 @@ Exception execution path of first function! 1
         Settings.DISABLE_EXCEPTION_CATCHING = 0
         self.do_run(src, 'Throw...Construct...Catched...Destruct...Throw...Construct...Copy...Catched...Destruct...Destruct...')
 
+    def test_white_list_exception(self):
+      if Settings.ASM_JS: return self.skip('no exceptions support in asm')
+      Settings.DISABLE_EXCEPTION_CATCHING = 2
+      Settings.EXCEPTION_CATCHING_WHITELIST = ["__Z12somefunctionv"]
+
+      src = '''
+          #include <stdio.h>
+          
+          void thrower() {
+            printf("infunc...");
+            throw(99);
+            printf("FAIL");
+          }
+
+          void somefunction() {
+            try {
+              thrower();
+            } catch(...) {
+              printf("done!*\\n");
+            }
+          }
+
+          int main() {
+            somefunction();
+            return 0;
+          }
+        '''
+      self.do_run(src, 'infunc...done!*')
+
+      Settings.DISABLE_EXCEPTION_CATCHING = 0
+      Settings.EXCEPTION_CATCHING_WHITELIST = []
+
+
     def test_uncaught_exception(self):
+        if Settings.ASM_JS: return self.skip('no exceptions support in asm')
         if self.emcc_args is None: return self.skip('no libcxx inclusion without emcc')
         if '-O2' in self.emcc_args:
           self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
@@ -2414,6 +2530,7 @@ Exception execution path of first function! 1
         self.do_run(src, 'success')
 
     def test_typed_exceptions(self):
+        if Settings.ASM_JS: return self.skip('no exceptions support in asm')
         Settings.DISABLE_EXCEPTION_CATCHING = 0
         Settings.SAFE_HEAP = 0  # Throwing null will cause an ignorable null pointer access.
         src = open(path_from_root('tests', 'exceptions', 'typed.cpp'), 'r').read()
@@ -2421,6 +2538,7 @@ Exception execution path of first function! 1
         self.do_run(src, expected)
 
     def test_multiexception(self):
+      if Settings.ASM_JS: return self.skip('no exceptions support in asm')
       Settings.DISABLE_EXCEPTION_CATCHING = 0
       src = r'''
 #include <stdio.h>
@@ -2774,6 +2892,26 @@ Exiting setjmp function, level: 0, prev_jmp: -1
           }
           '''
         self.do_run(src, 'fn2(-5) = 5, fn(10) = 3.16')
+
+    def test_funcptrfunc(self):
+      src = r'''
+        #include <stdio.h>
+
+        typedef void (*funcptr)(int, int);
+        typedef funcptr (*funcptrfunc)(int);
+
+        funcptr __attribute__ ((noinline)) getIt(int x) {
+          return (funcptr)x;
+        }
+
+        int main(int argc, char **argv)
+        {
+          funcptrfunc fpf = argc < 100 ? getIt : NULL;
+          printf("*%p*\n", fpf(argc));
+          return 0;
+        }
+      '''
+      self.do_run(src, '*0x1*')
 
     def test_emptyclass(self):
         if self.emcc_args is None: return self.skip('requires emcc')
@@ -3200,6 +3338,7 @@ def process(filename):
         self.do_run(src, 'hello world!\n*100*\n*fivesix*\nmann\n', post_build=check)
 
     def test_inlinejs(self):
+        if Settings.ASM_JS: return self.skip('asm does not support random code, TODO: something that works in asm')
         src = r'''
           #include <stdio.h>
 
@@ -3421,7 +3560,6 @@ def process(filename):
 
     def test_varargs(self):
         if Settings.QUANTUM_SIZE == 1: return self.skip('FIXME: Add support for this')
-        if Settings.ASM_JS: return self.skip('varargs by function pointer not yet supported')
 
         src = '''
           #include <stdio.h>
@@ -3472,7 +3610,7 @@ def process(filename):
           GETMAX(i, int);
           GETMAX(D, double);
 
-          int main() {
+          int main(int argc, char **argv) {
             vary("*cheez: %d+%d*", 0, 24); // Also tests that '0' is not special as an array ender
             vary("*albeit*"); // Should not fail with no var args in vararg function
             vary2('Q', "%d*", 85);
@@ -3483,7 +3621,7 @@ def process(filename):
             printf("maxxD:%.2f*\\n", (float)maxxD);
 
             // And, as a function pointer
-            void (*vfp)(const char *s, ...) = vary;
+            void (*vfp)(const char *s, ...) = argc == 1211 ? NULL : vary;
             vfp("*vfp:%d,%d*", 22, 199);
 
             return 0;
@@ -3789,6 +3927,7 @@ The current type of b is: 9
       self.do_run(src, '*0\n')
 
     def test_intentional_fault(self):
+      if Settings.ASM_JS: return self.skip('no throw support in asm')
       # Some programs intentionally segfault themselves, we should compile that into a throw
       src = r'''
         int main () {
@@ -4728,7 +4867,7 @@ at function.:blag
         '''
       self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected))
 
-    def test_snprintf0(self):
+    def test_printf_more(self):
       src = r'''
         #include <stdio.h>
         int main()  {
@@ -4736,10 +4875,13 @@ at function.:blag
           char buf[size];
           snprintf(buf, size, "%s %d %.2f\n", "me and myself", 25, 1.345);
           printf("%d : %s\n", size, buf);
+          char *buff = NULL;
+          asprintf(&buff, "%d waka %d\n", 21, 95);
+          puts(buff);
           return 0;
         }
         '''
-      self.do_run(src, '22 : me and myself 25 1.34\n')
+      self.do_run(src, '22 : me and myself 25 1.34\n21 waka 95\n')
 
     def test_atoX(self):
       if self.emcc_args is None: return self.skip('requires ta2')
@@ -4871,13 +5013,19 @@ at function.:blag
 
           printf("%f, %f\n", atof("1.234567"), atof("cheez"));
 
-          float n = -1;
-          sscanf(" 2.8208", "%f", &n);
-          printf("%.4f\n", n);
+          char float_formats[] = "fegE";
+          char format[] = "%_";
+          for(int i = 0; i < 4; ++i) {
+            format[1] = float_formats[i];
 
-          float a = -1;
-          sscanf("-3.03", "%f", &a);
-          printf("%.4f\n", a);
+            float n = -1;
+            sscanf(" 2.8208", format, &n);
+            printf("%.4f\n", n);
+
+            float a = -1;
+            sscanf("-3.03", format, &a);
+            printf("%.4f\n", a);
+          }
 
           char buffy[100];
           sscanf("cheez some thing moar 123\nyet more\n", "cheez %s", buffy);
@@ -4910,7 +5058,7 @@ at function.:blag
           return 0;
         }
         '''
-      self.do_run(src, 'en-us : 2\nen-r : 99\nen : 3\n1.234567, 0.000000\n2.8208\n-3.0300\n|some|\n|something|\n|somethingmoar|\n' +
+      self.do_run(src, 'en-us : 2\nen-r : 99\nen : 3\n1.234567, 0.000000\n2.8208\n-3.0300\n2.8208\n-3.0300\n2.8208\n-3.0300\n2.8208\n-3.0300\n|some|\n|something|\n|somethingmoar|\n' +
                        '1\n1499\n' +
                        '5\n87,0.481565,0.059481,0,1\n' +
                        '3\n-123,4294966531,-34\n' +
@@ -5514,7 +5662,7 @@ def process(filename):
         int main() {
           char *c = "μ†ℱ ╋ℯ╳╋";
           printf("%d %d %d %d %s\n", c[0]&0xff, c[1]&0xff, c[2]&0xff, c[3]&0xff, c);
-          emscripten_run_script("cheez = Module._malloc(100);"
+          emscripten_run_script("cheez = _malloc(100);"
                                 "Module.writeStringToMemory(\"μ†ℱ ╋ℯ╳╋\", cheez);"
                                 "Module.print([Pointer_stringify(cheez), Module.getValue(cheez, 'i8')&0xff, Module.getValue(cheez+1, 'i8')&0xff, Module.getValue(cheez+2, 'i8')&0xff, Module.getValue(cheez+3, 'i8')&0xff, ]);");
         }
@@ -6463,7 +6611,6 @@ void*:16
       Settings.CORRECT_OVERFLOWS = 1
       Settings.CHECK_OVERFLOWS = 0
       Settings.CORRECT_SIGNS = 1 # Not sure why, but needed
-      Settings.INIT_STACK = 1 # TODO: Investigate why this is necessary
 
       self.do_ll_run(path_from_root('tests', 'lua', 'lua.ll'),
                       'hello lua world!\n17\n1\n2\n3\n4\n7',
@@ -7427,30 +7574,6 @@ def process(filename):
           # This test *should* fail, by throwing this exception
           assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
 
-    def test_check_overflow(self):
-      if Settings.ASM_JS: return self.skip('asm always corrects, and cannot check')
-
-      Settings.CHECK_OVERFLOWS = 1
-      Settings.CORRECT_OVERFLOWS = 0
-
-      src = '''
-          #include<stdio.h>
-          int main() {
-            int t = 77;
-            for (int i = 0; i < 30; i++) {
-              //t = (t << 2) + t + 1; // This would have worked, since << forces into 32-bit int...
-              t = t*5 + 1; // Python lookdict_string has ~the above line, which turns into this one with optimizations...
-              printf("%d,%d\\n", t, t & 127);
-            }
-            return 0;
-          }
-      '''
-      try:
-        self.do_run(src, '*nothingatall*')
-      except Exception, e:
-        # This test *should* fail, by throwing this exception
-        assert 'Too many corrections' in str(e), str(e)
-
     def test_debug(self):
       if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
 
@@ -7539,7 +7662,7 @@ def process(filename):
         int main() {
           int t = 77;
           for (int i = 0; i < 30; i++) {
-            t = t*5 + 1;
+            t = t + t + t + t + t + 1;
           }
           printf("*%d,%d*\\n", t, t & 127);
           return 0;
@@ -7653,7 +7776,7 @@ def process(filename):
         int main() {
           int t = 77;
           for (int i = 0; i < 30; i++) {
-            t = t*5 + 1;
+            t = t + t + t + t + t + 1;
           }
           printf("*%d,%d*\\n", t, t & 127);
 
@@ -7670,7 +7793,7 @@ def process(filename):
       def check(output, err):
         # TODO: check the line #
         if self.emcc_args is None or self.emcc_args == []: # LLVM full opts optimize out some corrections
-          assert re.search('^Overflow\|.*src.cpp:6 : 60 hits, %20 failures$', output, re.M), 'no indication of Overflow corrections: ' + output
+          assert re.search('^Overflow\|.*src.cpp:6 : 150 hits, %21 failures$', output, re.M), 'no indication of Overflow corrections: ' + output
           assert re.search('^UnSign\|.*src.cpp:13 : 6 hits, %17 failures$', output, re.M), 'no indication of Sign corrections: ' + output
         return output
 
@@ -8999,6 +9122,8 @@ f.close()
          ['asm', 'registerize']),
         (path_from_root('tools', 'test-js-optimizer-asm-pre.js'), open(path_from_root('tools', 'test-js-optimizer-asm-pre-output.js')).read(),
          ['asm', 'simplifyExpressionsPre']),
+        (path_from_root('tools', 'test-js-optimizer-asm-last.js'), open(path_from_root('tools', 'test-js-optimizer-asm-last-output.js')).read(),
+         ['asm', 'last']),
       ]:
         output = Popen([NODE_JS, path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
         self.assertIdentical(expected, output.replace('\r\n', '\n').replace('\n\n', '\n'))
@@ -9794,7 +9919,7 @@ elif 'browser' in str(sys.argv):
       open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
         Module.postRun = function() {
           function doOne() {
-            _one();
+            Module._one();
             setTimeout(doOne, 1000/60);
           }
           setTimeout(doOne, 1000/60);
@@ -9815,7 +9940,7 @@ elif 'browser' in str(sys.argv):
       ''')
       open(os.path.join(self.get_dir(), 'sdl_key.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_key.c')).read()))
 
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_key.c'), '-o', 'page.html', '--pre-js', 'pre.js']).communicate()
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_key.c'), '-o', 'page.html', '--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']''']).communicate()
       self.run_browser('page.html', '', '/report_result?510510')
 
     def test_sdl_mouse(self):
@@ -10138,7 +10263,7 @@ elif 'browser' in str(sys.argv):
       self.run_browser('test.html', '.', ['/report_result?' + e for e in expected])
 
     def test_emscripten_api(self):
-      self.btest('emscripten_api_browser.cpp', '1')
+      self.btest('emscripten_api_browser.cpp', '1', args=['-s', '''EXPORTED_FUNCTIONS=['_main', '_third']'''])
 
     def test_emscripten_api_infloop(self):
       self.btest('emscripten_api_browser_infloop.cpp', '7')
@@ -10241,6 +10366,10 @@ elif 'browser' in str(sys.argv):
 
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_canvas_palette_2.c'), '-o', 'page.html', '--pre-js', 'pre.js']).communicate()
       self.run_browser('page.html', '')
+
+    def test_glbegin_points(self):
+      shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
+      self.btest('glbegin_points.c', reference='glbegin_points.png', args=['--preload-file', 'screenshot.png'])
 
     def test_s3tc(self):
       shutil.copyfile(path_from_root('tests', 'screenshot.dds'), os.path.join(self.get_dir(), 'screenshot.dds'))
@@ -10503,7 +10632,7 @@ elif 'benchmark' in str(sys.argv):
       JS_ENGINE = eval(arg)
       sys.argv[i] = None
   sys.argv = filter(lambda arg: arg is not None, sys.argv)
-  print 'Benchmarking JS engine:', JS_ENGINE
+  print 'Benchmarking JS engine:', ' '.join(JS_ENGINE)
 
   Building.COMPILER_TEST_OPTS = []
 
@@ -10557,7 +10686,8 @@ elif 'benchmark' in str(sys.argv):
 
       try_delete(final_filename)
       output = Popen([PYTHON, EMCC, filename, #'-O3',
-                      '-O2', '-s', 'INLINING_LIMIT=0', '-s', 'DOUBLE_MODE=0', '-s', 'PRECISE_I64_MATH=0',# '-s', 'ASM_JS=1',
+                      '-O2', '-s', 'INLINING_LIMIT=0', '-s', 'DOUBLE_MODE=0', '-s', 'PRECISE_I64_MATH=0',
+                      #'-s', 'ASM_JS=1', '-s', 'USE_MATH_IMUL=1',
                       '-s', 'TOTAL_MEMORY=128*1024*1024', '-s', 'FAST_MEMORY=10*1024*1024',
                       '-o', final_filename] + emcc_args, stdout=PIPE, stderr=self.stderr_redirect).communicate()
       assert os.path.exists(final_filename), 'Failed to compile file: ' + output[0]

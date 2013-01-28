@@ -162,6 +162,7 @@ typedef _off_t	off_t;
 typedef __dev_t dev_t;
 typedef __uid_t uid_t;
 typedef __gid_t gid_t;
+typedef __id_t  id_t ; /* can hold a uid_t or pid_t */
 #endif
 
 #if defined(__XMK__)

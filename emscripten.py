@@ -248,6 +248,11 @@ def emscript(infile, settings, outfile, libraries=[]):
     for key, value in curr_forwarded_json['Functions']['unimplementedFunctions'].iteritems():
       forwarded_json['Functions']['unimplementedFunctions'][key] = value
 
+  if settings.get('ASM_JS'):
+    parts = pre.split('// ASM_LIBRARY FUNCTIONS\n')
+    if len(parts) > 1:
+      pre = parts[0]
+      outputs.append([parts[1]])
   funcs_js = ''.join([output[0] for output in outputs])
 
   outputs = None
@@ -265,7 +270,7 @@ def emscript(infile, settings, outfile, libraries=[]):
 
   indexing = forwarded_json['Functions']['indexedFunctions']
   def indexize(js):
-    return re.sub(r'{{{ FI_([\w\d_$]+) }}}', lambda m: str(indexing[m.groups(0)[0]]), js)
+    return re.sub(r"'{{ FI_([\w\d_$]+) }}'", lambda m: str(indexing.get(m.groups(0)[0]) or 0), js)
 
   blockaddrs = forwarded_json['Functions']['blockAddresses']
   def blockaddrsize(js):
@@ -295,23 +300,34 @@ def emscript(infile, settings, outfile, libraries=[]):
     simple = os.environ.get('EMCC_SIMPLE_ASM')
     class Counter:
       i = 0
+    pre_tables = last_forwarded_json['Functions']['tables']['pre']
+    del last_forwarded_json['Functions']['tables']['pre']
+
+    # Find function table calls without function tables generated for them
+    for use in set(re.findall(r'{{{ FTM_[\w\d_$]+ }}}', funcs_js)):
+      sig = use[8:len(use)-4]
+      if sig not in last_forwarded_json['Functions']['tables']:
+        if DEBUG: print >> sys.stderr, 'add empty function table', sig
+        last_forwarded_json['Functions']['tables'][sig] = 'var FUNCTION_TABLE_' + sig + ' = [0,0];\n'
+
     def make_table(sig, raw):
       i = Counter.i
       Counter.i += 1
       bad = 'b' + str(i)
       params = ','.join(['p%d' % p for p in range(len(sig)-1)])
-      coercions = ';'.join(['p%d = %sp%d%s' % (p, '+' if sig[p+1] == 'd' else '', p, '' if sig[p+1] == 'd' else '|0') for p in range(len(sig)-1)]) + ';'
-      ret = '' if sig[0] == 'v' else ('return %s0' % ('+' if sig[0] == 'd' else ''))
-      return 'function %s(%s) { %s abort(%d); %s };\n' % (bad, params, coercions, i, ret) + raw.replace('[0,', '[' + bad + ',').replace(',0,', ',' + bad + ',').replace(',0,', ',' + bad + ',').replace(',0]', ',' + bad + ']').replace(',0]', ',' + bad + ']')
-    function_tables_defs = '\n'.join([make_table(sig, raw) for sig, raw in last_forwarded_json['Functions']['tables'].iteritems()])
+      coercions = ';'.join(['p%d = %sp%d%s' % (p, '+' if sig[p+1] != 'i' else '', p, '' if sig[p+1] != 'i' else '|0') for p in range(len(sig)-1)]) + ';'
+      ret = '' if sig[0] == 'v' else ('return %s0' % ('+' if sig[0] != 'i' else ''))
+      return ('function %s(%s) { %s abort(%d); %s };' % (bad, params, coercions, i, ret), raw.replace('[0,', '[' + bad + ',').replace(',0,', ',' + bad + ',').replace(',0,', ',' + bad + ',').replace(',0]', ',' + bad + ']').replace(',0]', ',' + bad + ']'))
+    infos = [make_table(sig, raw) for sig, raw in last_forwarded_json['Functions']['tables'].iteritems()]
+    function_tables_defs = '\n'.join([info[0] for info in infos] + [info[1] for info in infos])
 
-    maths = ['Runtime.bitshift64', 'Math.floor', 'Math.min', 'Math.abs', 'Math.sqrt', 'Math.pow', 'Math.cos', 'Math.sin', 'Math.tan', 'Math.acos', 'Math.asin', 'Math.atan', 'Math.atan2', 'Math.exp', 'Math.log', 'Math.ceil']
-
+    maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil']]
     if settings['USE_MATH_IMUL']:
       maths += ['Math.imul']
-    asm_setup = '\n'.join(['var %s = %s;' % (f.replace('.', '_'), f) for f in maths])
-    fundamentals = ['buffer', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
-    basic_funcs = ['abort', 'assert', 'asmPrintInt', 'asmPrintFloat'] + [m.replace('.', '_') for m in maths]
+    fundamentals = ['Math', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
+    math_envs = ['Runtime.bitshift64', 'Math.min'] # TODO: move min to maths
+    asm_setup = '\n'.join(['var %s = %s;' % (f.replace('.', '_'), f) for f in math_envs])
+    basic_funcs = ['abort', 'assert', 'asmPrintInt', 'asmPrintFloat'] + [m.replace('.', '_') for m in math_envs]
     basic_vars = ['STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT']
     basic_float_vars = ['NaN', 'Infinity']
     if forwarded_json['Types']['preciseI64MathUsed']:
@@ -325,18 +341,25 @@ var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
 '''
     asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore', 'setThrew'] + ['setTempRet%d' % i for i in range(10)]
     # function tables
+    def asm_coerce(value, sig):
+      if sig == 'v': return value
+      return ('+' if sig != 'i' else '') + value + ('|0' if sig == 'i' else '')
+        
     function_tables = ['dynCall_' + table for table in last_forwarded_json['Functions']['tables']]
     function_tables_impls = []
     for sig in last_forwarded_json['Functions']['tables'].iterkeys():
       args = ','.join(['a' + str(i) for i in range(1, len(sig))])
-      arg_coercions = ' '.join(['a' + str(i) + '=' + ('+' if sig[i] == 'd' else '') + 'a' + str(i) + ('|0' if sig[i] == 'i' else '') + ';' for i in range(1, len(sig))])
+      arg_coercions = ' '.join(['a' + str(i) + '=' + asm_coerce('a' + str(i), sig[i]) + ';' for i in range(1, len(sig))])
+      coerced_args = ','.join([asm_coerce('a' + str(i), sig[i]) for i in range(1, len(sig))])
+      ret = ('return ' if sig[0] != 'v' else '') + asm_coerce('FUNCTION_TABLE_%s[index&{{{ FTM_%s }}}](%s)' % (sig, sig, coerced_args), sig[0])
       function_tables_impls.append('''
   function dynCall_%s(index%s%s) {
     index = index|0;
     %s
-    %sFUNCTION_TABLE_%s[index&{{{ FTM_%s }}}](%s);
+    %s;
   }
-''' % (sig, ',' if len(sig) > 1 else '', args, arg_coercions, 'return ' if sig[0] != 'v' else '', sig, sig, args))
+''' % (sig, ',' if len(sig) > 1 else '', args, arg_coercions, ret))
+
     # calculate exports
     exported_implemented_functions = list(exported_implemented_functions)
     exports = []
@@ -356,11 +379,13 @@ var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
     global_funcs = ['_' + x for x in forwarded_json['Functions']['libraryFunctions'].keys()]
     def math_fix(g):
       return g if not g.startswith('Math_') else g.split('_')[1];
-    asm_global_funcs = ''.join(['  var ' + g + '=env.' + math_fix(g) + ';\n' for g in basic_funcs + global_funcs])
+    asm_global_funcs = ''.join(['  var ' + g.replace('.', '_') + '=global.' + g + ';\n' for g in maths]) + \
+                       ''.join(['  var ' + g + '=env.' + math_fix(g) + ';\n' for g in basic_funcs + global_funcs])
     asm_global_vars = ''.join(['  var ' + g + '=env.' + g + '|0;\n' for g in basic_vars + global_vars]) + \
                       ''.join(['  var ' + g + '=+env.' + g + ';\n' for g in basic_float_vars])
     # sent data
-    sending = '{ ' + ', '.join([math_fix(s) + ': ' + s for s in fundamentals + basic_funcs + global_funcs + basic_vars + basic_float_vars + global_vars]) + ' }'
+    the_global = '{ ' + ', '.join([math_fix(s) + ': ' + s for s in fundamentals]) + ' }'
+    sending = '{ ' + ', '.join([math_fix(s) + ': ' + s for s in basic_funcs + global_funcs + basic_vars + basic_float_vars + global_vars]) + ' }'
     # received
     if not simple:
       receiving = ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm.' + s for s in exported_implemented_functions + function_tables])
@@ -375,20 +400,20 @@ function asmPrintInt(x) {
 function asmPrintFloat(x) {
   Module.print('float ' + x);// + ' ' + new Error().stack);
 }
-var asmPre = (function(env, buffer) {
+var asm = (function(global, env, buffer) {
   'use asm';
-  var HEAP8 = new env.Int8Array(buffer);
-  var HEAP16 = new env.Int16Array(buffer);
-  var HEAP32 = new env.Int32Array(buffer);
-  var HEAPU8 = new env.Uint8Array(buffer);
-  var HEAPU16 = new env.Uint16Array(buffer);
-  var HEAPU32 = new env.Uint32Array(buffer);
-  var HEAPF32 = new env.Float32Array(buffer);
-  var HEAPF64 = new env.Float64Array(buffer);
+  var HEAP8 = new global.Int8Array(buffer);
+  var HEAP16 = new global.Int16Array(buffer);
+  var HEAP32 = new global.Int32Array(buffer);
+  var HEAPU8 = new global.Uint8Array(buffer);
+  var HEAPU16 = new global.Uint16Array(buffer);
+  var HEAPU32 = new global.Uint32Array(buffer);
+  var HEAPF32 = new global.Float32Array(buffer);
+  var HEAPF64 = new global.Float64Array(buffer);
 ''' % (asm_setup,) + '\n' + asm_global_vars + '''
   var __THREW__ = 0;
   var undef = 0;
-  var tempInt = 0, tempBigInt = 0, tempValue = 0;
+  var tempInt = 0, tempBigInt = 0, tempBigIntP = 0, tempBigIntS = 0, tempBigIntR = 0.0, tempBigIntI = 0, tempBigIntD = 0, tempValue = 0, tempDouble = 0.0;
 ''' + ''.join(['''
   var tempRet%d = 0;''' % i for i in range(10)]) + '\n' + asm_global_funcs + '''
   function stackAlloc(size) {
@@ -420,18 +445,12 @@ var asmPre = (function(env, buffer) {
   %s
 
   return %s;
-});
-if (asmPre.toSource) { // works in sm but not v8, so we get full coverage between those two
-  asmPre = asmPre.toSource();
-  asmPre = asmPre.substr(25, asmPre.length-28);
-  asmPre = new Function('env', 'buffer', asmPre);
-}
-var asm = asmPre(%s, buffer); // pass through Function to prevent seeing outside scope
+})(%s, %s, buffer);
 %s;
 Runtime.stackAlloc = function(size) { return asm.stackAlloc(size) };
 Runtime.stackSave = function() { return asm.stackSave() };
 Runtime.stackRestore = function(top) { asm.stackRestore(top) };
-''' % (function_tables_defs.replace('\n', '\n  ') + '\n' + '\n'.join(function_tables_impls), exports, sending, receiving)
+''' % (pre_tables + '\n'.join(function_tables_impls) + '\n' + function_tables_defs.replace('\n', '\n  '), exports, the_global, sending, receiving)
 
     # Set function table masks
     def function_table_maskize(js):
@@ -442,9 +461,6 @@ Runtime.stackRestore = function(top) { asm.stackRestore(top) };
         default = sig
       def fix(m):
         sig = m.groups(0)[0]
-        if not sig in masks:
-          print >> sys.stderr, 'warning: function table use without functions for it!', sig
-          return masks[default] # TODO: generate empty function tables for this case, even though it would fail at runtime if used
         return masks[sig]
       return re.sub(r'{{{ FTM_([\w\d_$]+) }}}', lambda m: fix(m), js) # masks[m.groups(0)[0]]
     funcs_js = function_table_maskize(funcs_js)

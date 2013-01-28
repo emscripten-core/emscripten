@@ -68,7 +68,7 @@ void second(void *arg) {
   printf("sacond! %d\n", now);
   assert(fabs(now - last - 500) < 250);
   last = now;
-  emscripten_async_run_script("_third()", 1000);
+  emscripten_async_run_script("Module._third()", 1000);
 }
 
 }
