@@ -83,6 +83,8 @@ int main(int argc,char** argv)
 		printf("Results for %s: %f\n",demoNames[d],totalTime[d]*(1.f/NUM_TESTS));
 	}
 
+  printf("ok.\n");
+
 #endif //USE_GRAPHICAL_BENCHMARK
 	return 0;
 }
