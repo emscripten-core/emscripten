@@ -395,11 +395,11 @@ var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
     # finalize
     funcs_js = '''
 %s
-function asmPrintInt(x) {
-  Module.print('int ' + x);// + ' ' + new Error().stack);
+function asmPrintInt(x, y) {
+  Module.print('int ' + x + ',' + y);// + ' ' + new Error().stack);
 }
-function asmPrintFloat(x) {
-  Module.print('float ' + x);// + ' ' + new Error().stack);
+function asmPrintFloat(x, y) {
+  Module.print('float ' + x + ',' + y);// + ' ' + new Error().stack);
 }
 var asm = (function(global, env, buffer) {
   'use asm';
