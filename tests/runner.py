@@ -10231,6 +10231,10 @@ elif 'browser' in str(sys.argv):
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'example.png'))
       self.btest('sdl_rotozoom.c', reference='sdl_rotozoom.png', args=['--preload-file', 'example.png'])
 
+    def test_opengles1_1(self):
+      Popen([PYTHON, EMCC, path_from_root('tests', 'opengles1_1.c'), '-o', 'opengles1_1.html']).communicate()
+      self.run_browser('opengles1_1.html', 'You should see no errors.', '/report_result?0')
+
     def zzztest_sdl_canvas_palette_2(self): # XXX disabled until we have proper automation
       open(os.path.join(self.get_dir(), 'sdl_canvas_palette_2.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_canvas_palette_2.c')).read()))
       open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('Module[\'preRun\'] = function() { SDL.defaults.copyOnLock = false }')
