@@ -1131,7 +1131,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
   if (SAFE_HEAP && !noSafe) {
     if (type !== 'null' && type[0] !== '#') type = '"' + safeQuote(type) + '"';
     if (type[0] === '#') type = type.substr(1);
-    return 'SAFE_HEAP_LOAD(' + offset + ', ' + type + ', ' + (!!unsigned+0) + ', ' + ((!checkSafeHeap() || ignore)|0) + ')';
+    return 'SAFE_HEAP_LOAD(' + asmCoercion(offset, 'i32') + ', ' + (ASM_JS ? 0 : type) + ', ' + (!!unsigned+0) + ', ' + ((!checkSafeHeap() || ignore)|0) + ')';
   } else {
     var ret = makeGetSlabs(ptr, type, false, unsigned)[0] + '[' + getHeapOffset(offset, type, forceAsm) + ']';
     if (ASM_JS && phase == 'funcs') {
@@ -1234,7 +1234,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
   if (SAFE_HEAP && !noSafe) {
     if (type !== 'null' && type[0] !== '#') type = '"' + safeQuote(type) + '"';
     if (type[0] === '#') type = type.substr(1);
-    return 'SAFE_HEAP_STORE(' + offset + ', ' + value + ', ' + type + ', ' + ((!checkSafeHeap() || ignore)|0) + ')';
+    return 'SAFE_HEAP_STORE(' + asmCoercion(offset, 'i32') + ', ' + asmCoercion(value, type) + ', ' + (ASM_JS ? 0 : type) + ', ' + ((!checkSafeHeap() || ignore)|0) + ')';
   } else {
     return makeGetSlabs(ptr, type, true).map(function(slab) { return slab + '[' + getHeapOffset(offset, type, forceAsm) + ']=' + value }).join(sep);
   }
