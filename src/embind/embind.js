@@ -5,7 +5,6 @@
 /*global Pointer_stringify, writeStringToMemory*/
 /*global __emval_register, _emval_handle_array, __emval_decref*/
 /*global ___getDynamicPointerType: false*/
-/*global ___dynamicPointerCast: false*/
 /*global ___typeName:false*/
 /*global ___staticPointerCast: false*/
 
@@ -968,100 +967,6 @@ function __embind_register_class_method(
             return rv;
         };
         classType.Handle.memberType[methodName] = "method";
-    });
-}
-
-// todo: cast methods should require binding of their target types
-function __embind_register_raw_cast_method(
-    rawClassType,
-    isPolymorphic,
-    methodName,
-    rawReturnType,
-    rawInvoker
-) {
-    requestDeferredRegistration(function() {
-        var classType = requireRegisteredType(rawClassType, 'class');
-        methodName = Pointer_stringify(methodName);
-        var humanName = classType.name + '.' + methodName;
-        var returnType = requireRegisteredType(rawReturnType, 'method ' + humanName + ' return value');
-        rawInvoker = FUNCTION_TABLE[rawInvoker];
-        classType.Handle.prototype[methodName] = function() {
-            if (!this.ptr) {
-                throw new BindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
-            }
-            if (arguments.length !== 0) {
-                throw new BindingError('emscripten binding method ' + humanName + ' called with arguments, none expected');
-            }
-            if (isPolymorphic) {
-                // todo: this is all only to validate the cast -- cache the result
-                var runtimeType = ___getDynamicPointerType(this.ptr);
-                var derivation = Module.__getDerivationPath(rawReturnType, runtimeType); // downcast is valid
-                var size = derivation.size();
-                derivation.delete();
-                if (size === 0) {
-                    derivation = Module.__getDerivationPath(runtimeType, rawReturnType); // upcast is valid
-                    size = derivation.size();
-                    derivation.delete();
-                    if (size === 0) {
-                        throw new CastError("Pointer conversion is not available");
-                    }
-                }
-            }
-            var args = new Array(1);
-            args[0] = this.ptr;
-            var ptr = rawInvoker.apply(null, args);
-            var rv = returnType.fromWireType(ptr);
-            rv.count = this.count;
-            this.count.value ++;
-            return rv;
-        };
-    });
-}
-
-// todo: cast methods should not be passed from the smart ptr to the contained object!!
-function __embind_register_smart_cast_method(
-    rawPointerType,
-    rawReturnType,
-    returnPointeeType,
-    isPolymorphic,
-    methodName,
-    rawInvoker
-) {
-    requestDeferredRegistration(function() {
-        var pointerType = requireRegisteredType(rawPointerType, 'smart pointer class');
-        methodName = Pointer_stringify(methodName);
-        var humanName = pointerType.name + '.' + methodName;
-        var returnType = requireRegisteredType(rawReturnType, 'method ' + humanName + ' return value');
-        rawInvoker = FUNCTION_TABLE[rawInvoker];
-        pointerType.Handle.prototype[methodName] = function() {
-            if (!this.ptr) {
-                throw new BindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
-            }
-            if (arguments.length !== 0) {
-                throw new BindingError('emscripten binding method ' + humanName + ' called with arguments, none expected');
-            }
-            if (isPolymorphic) {
-                // todo: just validating the cast -- cache the result
-                var runtimeType = ___getDynamicPointerType(this.ptr);
-                var derivation = Module.__getDerivationPath(returnPointeeType, runtimeType); // downcast is valid
-                var size = derivation.size();
-                derivation.delete();
-                if (size === 0) {
-                    derivation = Module.__getDerivationPath(runtimeType, returnPointeeType); // upcast is valid
-                    size = derivation.size();
-                    derivation.delete();
-                    if (size === 0) {
-                        throw new CastError("Pointer conversion is not available");
-                    }
-                }
-            }
-            var args = new Array(2);
-            var ptr = _malloc(8);
-            args[0] = ptr;
-            args[1] = this.smartPointer;
-            rawInvoker.apply(null,args);
-            return returnType.fromWireType(ptr);
-        };
     });
 }
 
