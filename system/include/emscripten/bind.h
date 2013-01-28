@@ -124,21 +124,6 @@ namespace emscripten {
                 size_t memberFunctionSize,
                 void* memberFunction);
 
-            void _embind_register_raw_cast_method(
-                TYPEID classType,
-                bool isPolymorphic,
-                const char* methodName,
-                TYPEID returnType,
-                GenericFunction invoker);
-
-            void _embind_register_smart_cast_method(
-                TYPEID pointerType,
-                TYPEID returnType,
-                TYPEID returnPointeeType,
-                bool isPolymorphic,
-                const char* methodName,
-                GenericFunction invoker);
-
             void _embind_register_class_field(
                 TYPEID classType,
                 const char* fieldName,
@@ -274,27 +259,7 @@ namespace emscripten {
 
     extern "C" {
         int __getDynamicPointerType(int p);
-        int __dynamicPointerCast(int p, int to);
     }
-
-    template<typename FromType, typename ToType>
-    ToType& performRawStaticCast(FromType& from) {
-        return *static_cast<ToType*>(&from);
-    };
-
-    template<typename FromRawType, typename ToRawType, bool isPolymorphic>
-    struct performShared {
-        static std::shared_ptr<ToRawType> cast(std::shared_ptr<FromRawType> from) {
-            return std::dynamic_pointer_cast<ToRawType>(from);
-        };
-    };
-
-    template<typename FromRawType, typename ToRawType>
-    struct performShared<FromRawType, ToRawType, false> {
-        static std::shared_ptr<ToRawType> cast(std::shared_ptr<FromRawType> from) {
-            return std::shared_ptr<ToRawType>(from, static_cast<ToRawType*>(from.get()));
-        };
-    };
 
     template<typename ReturnType, typename... Args, typename... Policies>
     void function(const char* name, ReturnType (fn)(Args...), Policies...) {
@@ -625,21 +590,6 @@ namespace emscripten {
                  reinterpret_cast<GenericFunction>(&get_pointee<PointerType>));
 
         }
-
-        template<typename ReturnType>
-        register_smart_ptr& cast(const char* methodName) {
-            using namespace internal;
-            typedef typename ReturnType::element_type ReturnPointeeType;
-            typedef typename PointerType::element_type PointeeType;
-            _embind_register_smart_cast_method(
-                 TypeID<PointerType>::get(),
-                 TypeID<ReturnType>::get(),
-                 TypeID<ReturnPointeeType>::get(),
-                 std::is_polymorphic<PointeeType>::value,
-                 methodName,
-                 reinterpret_cast<GenericFunction>(&performShared<PointeeType, ReturnPointeeType, std::is_polymorphic<PointeeType>::value>::cast));
-            return *this;
-        }
     };
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -771,19 +721,6 @@ namespace emscripten {
                 TypeID<ElementType>::get(),
                 TypeID<IndexType>::get(),
                 reinterpret_cast<internal::GenericFunction>(&internal::ArrayAccessSetInvoker<ClassType, ElementType, IndexType>::invoke));
-            return *this;
-        }
-
-        template<typename ReturnType>
-        class_& cast(const char* methodName) {
-            using namespace internal;
-
-            _embind_register_raw_cast_method(
-                TypeID<ClassType>::get(),
-                std::is_polymorphic<ClassType>::value,
-                methodName,
-                TypeID<ReturnType>::get(),
-                reinterpret_cast<GenericFunction>(&performRawStaticCast<ClassType,ReturnType>));
             return *this;
         }
     };
