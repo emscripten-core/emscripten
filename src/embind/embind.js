@@ -650,7 +650,7 @@ function __embind_register_smart_ptr(
     rawDestructor = FUNCTION_TABLE[rawDestructor];
     rawGetPointee = FUNCTION_TABLE[rawGetPointee];
 
-    if (name === "") {
+    if (name == "") {
         name = pointeeType.name + "Ptr";
     }
 
