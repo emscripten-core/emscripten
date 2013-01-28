@@ -5,6 +5,7 @@
 /*global Pointer_stringify, writeStringToMemory*/
 /*global __emval_register, _emval_handle_array, __emval_decref*/
 /*global ___getDynamicPointerType: false*/
+/*global ___dynamicPointerCast: false*/
 /*global ___typeName:false*/
 /*global ___staticPointerCast: false*/
 
@@ -307,12 +308,6 @@ function runDestructors(destructors) {
     }
 }
 
-function refreshSmartPointee(handle) {
-    if (handle && handle.smartPointer) {
-        handle.ptr = handle.type.smartPointerType.getPointee(handle.smartPointer);
-    }
-}
-
 function makeInvoker(name, argCount, argTypes, invoker, fn) {
     if (!FUNCTION_TABLE[fn]) {
         throw new BindingError('function '+name+' is not defined');
@@ -334,9 +329,6 @@ function makeInvoker(name, argCount, argTypes, invoker, fn) {
             rv = argTypes[0].fromWireType(rv);
         }
         runDestructors(destructors);
-        for (i = 1; i < argCount; i++) {
-            refreshSmartPointee(arguments[i-1]);
-        }
         return rv;
     };
 }
@@ -545,21 +537,21 @@ RegisteredPointer.prototype.toWireType = function(destructors, handle) {
     if (!handle) {
         return null;
     }
-    if (handle.type.isPolymorphic) {
-        fromRawType = handle.type.getDynamicRawPointerType(handle.ptr);
+    if (handle.pointeeType.isPolymorphic) {
+        fromRawType = handle.pointeeType.getDynamicRawPointerType(handle.ptr);
     } else {
-        fromRawType = handle.type.rawType;
+        fromRawType = handle.pointeeType.rawType;
     }
-    if (fromRawType === this.type.rawType) {
+    if (fromRawType === this.pointeeType.rawType) {
         return this.isSmartPointer ? handle.smartPointer : handle.ptr;
     }
-    var ptr = staticPointerCast(handle.ptr, fromRawType, this.type.rawType);
+    var ptr = staticPointerCast(handle.ptr, fromRawType, this.pointeeType.rawType);
     if (this.isSmartPointer) {
         // todo: if ptr == handle.ptr, there's no need to allocate a new smartPtr!
-        var smartPtr = _malloc(16); // todo: can we get C++ to tell us the size of the pointer?
-        handle.type.smartPointerType.rawConstructor(smartPtr, ptr, handle.smartPointer);
+        var smartPtr = _malloc(16);
+        handle.pointeeType.smartPointerType.rawConstructor(smartPtr, ptr, handle.smartPointer);
         ptr = smartPtr;
-        destructors.push(handle.type.smartPointerType.rawDestructor);
+        destructors.push(handle.pointeeType.smartPointerType.rawDestructor);
         destructors.push(ptr);
     }
     return ptr;
@@ -590,7 +582,7 @@ RegisteredPointer.prototype.fromWireType = function(ptr) {
 RegisteredPointer.prototype.getDynamicRawPointerType = function(ptr) {
     var type = null;
     if (this.isPolymorphic) {
-        if (this.rawGetPointee) { // todo: did you mean isSmartPtr?
+        if (this.rawGetPointee) {
             type = ___getDynamicPointerType(this.rawGetPointee(ptr));
         } else {
             type = ___getDynamicPointerType(ptr);
@@ -602,8 +594,8 @@ RegisteredPointer.prototype.getDynamicRawPointerType = function(ptr) {
 RegisteredPointer.prototype.getDynamicDowncastType = function(ptr) {
     var downcastType =  null;
     var type = this.getDynamicRawPointerType(ptr);
-    if (type && type !== this.type.rawType) {
-        var derivation = Module.__getDerivationPath(type, this.type.rawType);
+    if (type && type !== this.pointeeType.rawType) {
+        var derivation = Module.__getDerivationPath(type, this.pointeeType.rawType);
         for (var i = 0; i < derivation.size(); i++) {
             downcastType = typeRegistry[derivation.at(i)];
             if (downcastType) {
@@ -623,7 +615,7 @@ RegisteredPointer.prototype.fromWireTypeAutoDowncast = function(ptr) { // ptr is
     }
     var toType = this.getDynamicDowncastType(ptr);
     if (toType) {
-        var fromType = this.type;
+        var fromType = this.pointeeType;
         if (this.isSmartPointer) {
             handle = toType.smartPointerType.fromWireType(ptr);
         } else {
@@ -649,16 +641,12 @@ function __embind_register_smart_ptr(
     rawConstructor = FUNCTION_TABLE[rawConstructor];
     rawDestructor = FUNCTION_TABLE[rawDestructor];
     rawGetPointee = FUNCTION_TABLE[rawGetPointee];
-
-    if (name == "") {
-        name = pointeeType.name + "Ptr";
-    }
-
+    
     var Handle = createNamedFunction(name, function(ptr) {
         this.count = {value: 1};
         this.smartPointer = ptr; // std::shared_ptr<T>*
         this.ptr = rawGetPointee(ptr); // T*
-        this.type = pointeeType;
+        this.pointeeType = pointeeType;
     });
 
     // TODO: test for SmartPtr.prototype.constructor property?
@@ -692,7 +680,7 @@ function __embind_register_smart_ptr(
         this.ptr = undefined;
     };
     var registeredPointer = new RegisteredPointer(Handle, pointeeType.isPolymorphic, true, rawGetPointee, rawConstructor, rawDestructor);
-    registeredPointer.type = pointeeType;
+    registeredPointer.pointeeType = pointeeType;
     pointeeType.smartPointerType = registerType(rawType, name, registeredPointer);
 }
 
@@ -840,13 +828,11 @@ function __embind_register_class(
         
         h.count = {value: 1, ptr: ptr };
         h.ptr = ptr;
-        h.type = type; // set below
+        h.pointeeType = type; // set below
 
         for(var prop in Handle.prototype) {
-            if (Handle.prototype.hasOwnProperty(prop)) {
-                var dp = Object.getOwnPropertyDescriptor(Handle.prototype, prop);
-                Object.defineProperty(h, prop, dp);
-            }
+            var dp = Object.getOwnPropertyDescriptor(Handle.prototype, prop);
+            Object.defineProperty(h, prop, dp);
         }
 
         return h;
@@ -889,15 +875,15 @@ function __embind_register_class(
     // todo: clean this up!
     var registeredClass = new RegisteredPointer(Handle, isPolymorphic, false);
     var type = registerType(rawType, name, registeredClass);
-    registeredClass.type = type;
+    registeredClass.pointeeType = type;
 
-    registeredClass = new RegisteredPointer(Handle, isPolymorphic, false);
+    var registeredClass = new RegisteredPointer(Handle, isPolymorphic, false);
     registerType(rawPointerType, name + '*', registeredClass);
-    registeredClass.type = type;
+    registeredClass.pointeeType = type;
     // todo: implement const pointers (no modification Javascript side)
-    registeredClass = new RegisteredPointer(Handle, isPolymorphic, false);
+    var registeredClass = new RegisteredPointer(Handle, isPolymorphic, false);
     registerType(rawConstPointerType, name + ' const*', registeredClass);
-    registeredClass.type = type;
+    registeredClass.pointeeType = type;
 
     type.constructor = createNamedFunction(type.name, function() {
         var body = type.constructor.body;
@@ -979,32 +965,26 @@ function __embind_register_class_method(
                 rv = argTypes[0].fromWireType(rv);
             }
             runDestructors(destructors);
-            for (i = 1; i < argCount; i++) {
-                refreshSmartPointee(arguments[i-1]);
-            }
             return rv;
         };
         classType.Handle.memberType[methodName] = "method";
     });
 }
 
-function __embind_register_cast_method(
+// todo: cast methods should require binding of their target types
+function __embind_register_raw_cast_method(
     rawClassType,
     isPolymorphic,
     methodName,
-    rawRawReturnType,
-    rawSharedReturnType,
-    rawRawCaster,
-    rawSharedCaster
+    rawReturnType,
+    rawInvoker
 ) {
     requestDeferredRegistration(function() {
         var classType = requireRegisteredType(rawClassType, 'class');
         methodName = Pointer_stringify(methodName);
         var humanName = classType.name + '.' + methodName;
-        var rawReturnType = requireRegisteredType(rawRawReturnType, 'method ' + humanName + ' return value');
-        var sharedReturnType = requireRegisteredType(rawSharedReturnType, 'method ' + humanName + ' shared pointer return value');
-        var rawCaster = FUNCTION_TABLE[rawRawCaster];
-        var sharedCaster = FUNCTION_TABLE[rawSharedCaster];
+        var returnType = requireRegisteredType(rawReturnType, 'method ' + humanName + ' return value');
+        rawInvoker = FUNCTION_TABLE[rawInvoker];
         classType.Handle.prototype[methodName] = function() {
             if (!this.ptr) {
                 throw new BindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
@@ -1015,11 +995,11 @@ function __embind_register_cast_method(
             if (isPolymorphic) {
                 // todo: this is all only to validate the cast -- cache the result
                 var runtimeType = ___getDynamicPointerType(this.ptr);
-                var derivation = Module.__getDerivationPath(rawRawReturnType, runtimeType); // downcast is valid
+                var derivation = Module.__getDerivationPath(rawReturnType, runtimeType); // downcast is valid
                 var size = derivation.size();
                 derivation.delete();
                 if (size === 0) {
-                    derivation = Module.__getDerivationPath(runtimeType, rawRawReturnType); // upcast is valid
+                    derivation = Module.__getDerivationPath(runtimeType, rawReturnType); // upcast is valid
                     size = derivation.size();
                     derivation.delete();
                     if (size === 0) {
@@ -1027,25 +1007,60 @@ function __embind_register_cast_method(
                     }
                 }
             }
-            var args;
-            var ptr;
-            var rv;
-            if (this.smartPointer) {
-                args = new Array(2);
-                ptr = _malloc(8);
-                args[0] = ptr;
-                args[1] = this.smartPointer;
-                sharedCaster.apply(null,args); // need a smart pointer raw invoker
-                rv = sharedReturnType.fromWireType(ptr);
-            } else {
-                args = new Array(1);
-                args[0] = this.ptr;
-                ptr = rawCaster.apply(null, args);
-                rv = rawReturnType.fromWireType(ptr);
-                rv.count = this.count;
-                this.count.value ++;
-            }
+            var args = new Array(1);
+            args[0] = this.ptr;
+            var ptr = rawInvoker.apply(null, args);
+            var rv = returnType.fromWireType(ptr);
+            rv.count = this.count;
+            this.count.value ++;
             return rv;
+        };
+    });
+}
+
+// todo: cast methods should not be passed from the smart ptr to the contained object!!
+function __embind_register_smart_cast_method(
+    rawPointerType,
+    rawReturnType,
+    returnPointeeType,
+    isPolymorphic,
+    methodName,
+    rawInvoker
+) {
+    requestDeferredRegistration(function() {
+        var pointerType = requireRegisteredType(rawPointerType, 'smart pointer class');
+        methodName = Pointer_stringify(methodName);
+        var humanName = pointerType.name + '.' + methodName;
+        var returnType = requireRegisteredType(rawReturnType, 'method ' + humanName + ' return value');
+        rawInvoker = FUNCTION_TABLE[rawInvoker];
+        pointerType.Handle.prototype[methodName] = function() {
+            if (!this.ptr) {
+                throw new BindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
+            }
+            if (arguments.length !== 0) {
+                throw new BindingError('emscripten binding method ' + humanName + ' called with arguments, none expected');
+            }
+            if (isPolymorphic) {
+                // todo: just validating the cast -- cache the result
+                var runtimeType = ___getDynamicPointerType(this.ptr);
+                var derivation = Module.__getDerivationPath(returnPointeeType, runtimeType); // downcast is valid
+                var size = derivation.size();
+                derivation.delete();
+                if (size === 0) {
+                    derivation = Module.__getDerivationPath(runtimeType, returnPointeeType); // upcast is valid
+                    size = derivation.size();
+                    derivation.delete();
+                    if (size === 0) {
+                        throw new CastError("Pointer conversion is not available");
+                    }
+                }
+            }
+            var args = new Array(2);
+            var ptr = _malloc(8);
+            args[0] = ptr;
+            args[1] = this.smartPointer;
+            rawInvoker.apply(null,args);
+            return returnType.fromWireType(ptr);
         };
     });
 }
