@@ -124,14 +124,20 @@ namespace emscripten {
                 size_t memberFunctionSize,
                 void* memberFunction);
 
-            void _embind_register_cast_method(
+            void _embind_register_raw_cast_method(
                 TYPEID classType,
                 bool isPolymorphic,
                 const char* methodName,
                 TYPEID returnType,
-                TYPEID sharedReturnType,
-                GenericFunction rawInvoker,
-                GenericFunction sharedInvoker);
+                GenericFunction invoker);
+
+            void _embind_register_smart_cast_method(
+                TYPEID pointerType,
+                TYPEID returnType,
+                TYPEID returnPointeeType,
+                bool isPolymorphic,
+                const char* methodName,
+                GenericFunction invoker);
 
             void _embind_register_class_field(
                 TYPEID classType,
@@ -268,6 +274,7 @@ namespace emscripten {
 
     extern "C" {
         int __getDynamicPointerType(int p);
+        int __dynamicPointerCast(int p, int to);
     }
 
     template<typename FromType, typename ToType>
@@ -276,14 +283,14 @@ namespace emscripten {
     };
 
     template<typename FromRawType, typename ToRawType, bool isPolymorphic>
-    struct performSharedCast {
+    struct performShared {
         static std::shared_ptr<ToRawType> cast(std::shared_ptr<FromRawType> from) {
             return std::dynamic_pointer_cast<ToRawType>(from);
         };
     };
 
     template<typename FromRawType, typename ToRawType>
-    struct performSharedCast<FromRawType, ToRawType, false> {
+    struct performShared<FromRawType, ToRawType, false> {
         static std::shared_ptr<ToRawType> cast(std::shared_ptr<FromRawType> from) {
             return std::shared_ptr<ToRawType>(from, static_cast<ToRawType*>(from.get()));
         };
@@ -293,7 +300,7 @@ namespace emscripten {
     void function(const char* name, ReturnType (fn)(Args...), Policies...) {
         using namespace internal;
 
-        registerStandardTypes(); // todo: remove all
+        registerStandardTypes();
 
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
         _embind_register_function(
@@ -618,12 +625,21 @@ namespace emscripten {
                  reinterpret_cast<GenericFunction>(&get_pointee<PointerType>));
 
         }
-    };
 
-    template<typename PointeeType>
-    class shared_ptr: public register_smart_ptr<std::shared_ptr<PointeeType>> {
-    public:
-        shared_ptr(const char* name): register_smart_ptr<std::shared_ptr<PointeeType>>(name) {};
+        template<typename ReturnType>
+        register_smart_ptr& cast(const char* methodName) {
+            using namespace internal;
+            typedef typename ReturnType::element_type ReturnPointeeType;
+            typedef typename PointerType::element_type PointeeType;
+            _embind_register_smart_cast_method(
+                 TypeID<PointerType>::get(),
+                 TypeID<ReturnType>::get(),
+                 TypeID<ReturnPointeeType>::get(),
+                 std::is_polymorphic<PointeeType>::value,
+                 methodName,
+                 reinterpret_cast<GenericFunction>(&performShared<PointeeType, ReturnPointeeType, std::is_polymorphic<PointeeType>::value>::cast));
+            return *this;
+        }
     };
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -761,31 +777,13 @@ namespace emscripten {
         template<typename ReturnType>
         class_& cast(const char* methodName) {
             using namespace internal;
-            //typedef typename std::shared_ptr<ClassType> PointerType;
-            typedef typename std::shared_ptr<ReturnType> SharedReturnType;
 
-            _embind_register_cast_method(
+            _embind_register_raw_cast_method(
                 TypeID<ClassType>::get(),
                 std::is_polymorphic<ClassType>::value,
                 methodName,
                 TypeID<ReturnType>::get(),
-                TypeID<SharedReturnType>::get(),
-                reinterpret_cast<GenericFunction>(&performRawStaticCast<ClassType, ReturnType>),
-                reinterpret_cast<GenericFunction>(&performSharedCast<ClassType, ReturnType, std::is_polymorphic<ClassType>::value>::cast));
-            return *this;
-        }
-
-        class_& shared_ptr(const char* ptrName = "") {
-            using namespace internal;
-            typedef typename std::shared_ptr<ClassType> PointerType;
-
-            _embind_register_smart_ptr(
-                TypeID<PointerType>::get(),
-                TypeID<ClassType>::get(),
-                ptrName,
-                reinterpret_cast<GenericFunction>(&raw_smart_pointer_constructor<ClassType*>),
-                reinterpret_cast<GenericFunction>(&raw_destructor<PointerType>),
-                reinterpret_cast<GenericFunction>(&get_pointee<PointerType>));
+                reinterpret_cast<GenericFunction>(&performRawStaticCast<ClassType,ReturnType>));
             return *this;
         }
     };
