@@ -425,7 +425,10 @@ def try_delete(filename):
       pass
 
 class TempFiles:
-  def __init__(self):
+  def __init__(self, tmp, saveDebugFiles=False):
+    self.tmp = tmp
+    self.saveDebugFiles = saveDebugFiles
+    
     self.to_clean = []
 
   def note(self, filename):
@@ -433,13 +436,13 @@ class TempFiles:
 
   def get(self, suffix):
     """Returns a named temp file  with the given prefix."""
-    named_file = tempfile.NamedTemporaryFile(dir=TEMP_DIR if not DEBUG else EMSCRIPTEN_TEMP_DIR, suffix=suffix, delete=False)
+    named_file = tempfile.NamedTemporaryFile(dir=self.tmp, suffix=suffix, delete=False)
     self.note(named_file.name)
     return named_file
 
   def clean(self):
-    if os.environ.get('EMCC_DEBUG_SAVE'):
-      print >> sys.stderr, 'not cleaning up temp files since in debug-save mode, see them in %s' % EMSCRIPTEN_TEMP_DIR
+    if self.saveDebugFiles:
+      print >> sys.stderr, 'not cleaning up temp files since in debug-save mode, see them in %s' % (self.tmp,)
       return
     for filename in self.to_clean:
       try_delete(filename)
@@ -450,6 +453,11 @@ class TempFiles:
       return func()
     finally:
       self.clean()
+
+def ConfigureTempFiles():
+  return TempFiles(
+    tmp=TEMP_DIR if not DEBUG else EMSCRIPTEN_TEMP_DIR,
+    saveDebugFiles=os.environ.get('EMCC_DEBUG_SAVE'))
 
 # Utilities
 

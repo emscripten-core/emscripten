@@ -32,7 +32,7 @@ def path_from_root(*pathelems):
   """
   return os.path.join(__rootpath__, *pathelems)
 
-temp_files = shared.TempFiles()
+temp_files = shared.ConfigureTempFiles()
 
 compiler_engine = None
 jcache = False
@@ -574,7 +574,7 @@ def main(args):
 
   emscript(args.infile, settings, args.outfile, libraries)
 
-if __name__ == '__main__':
+def main():
   parser = optparse.OptionParser(
       usage='usage: %prog [-h] [-H HEADERS] [-o OUTFILE] [-c COMPILER_ENGINE] [-s FOO=BAR]* infile',
       description=('You should normally never use this! Use emcc instead. '
@@ -618,3 +618,5 @@ if __name__ == '__main__':
 
   temp_files.run_and_clean(lambda: main(keywords))
 
+if __name__ == '__main__':
+  main()
