@@ -13,11 +13,6 @@ import os, sys, json, optparse, subprocess, re, time, multiprocessing
 
 from tools import shared
 
-DEBUG = os.environ.get('EMCC_DEBUG')
-if DEBUG == "0":
-  DEBUG = None
-DEBUG_CACHE = DEBUG and "cache" in DEBUG
-
 __rootpath__ = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(*pathelems):
   """Returns the absolute path for which the given path elements are
@@ -53,7 +48,7 @@ def process_funcs(args):
   shared.try_delete(funcs_file)
   return out
 
-def emscript(infile, settings, outfile, libraries=[]):
+def emscript(configuration, infile, settings, outfile, libraries=[]):
   """Runs the emscripten LLVM-to-JS compiler. We parallelize as much as possible
 
   Args:
@@ -63,6 +58,8 @@ def emscript(infile, settings, outfile, libraries=[]):
     outfile: The file where the output is written.
   """
 
+  DEBUG = configuration.DEBUG
+  DEBUG_CACHE = configuration.DEBUG_CACHE
   compiler = path_from_root('src', 'compiler.js')
 
   # Parallelization: We run 3 phases:
@@ -70,7 +67,7 @@ def emscript(infile, settings, outfile, libraries=[]):
   #   2 aka 'funcs': Process functions. We can parallelize this, working on each function independently.
   #   3 aka 'post' : Process globals, generate postamble and finishing touches.
 
-  if DEBUG: print >> sys.stderr, 'emscript: ll=>js'
+  configuration.debug_log('emscript: ll=>js')
 
   if jcache: shared.JCache.ensure()
 
@@ -566,7 +563,7 @@ def main(args):
   # Compile the assembly to Javascript.
   if settings.get('RELOOP'): shared.Building.ensure_relooper()
 
-  emscript(args.infile, settings, args.outfile, libraries)
+  emscript(configuration, args.infile, settings, args.outfile, libraries)
 
 def _main(environ):
   parser = optparse.OptionParser(

@@ -304,6 +304,9 @@ CANONICAL_TEMP_DIR = os.path.join(TEMP_DIR, 'emscripten_temp')
 class Configuration:
   def __init__(self, environ):
     self.DEBUG = environ.get('EMCC_DEBUG')
+    if self.DEBUG == "0":
+      self.DEBUG = None
+    self.DEBUG_CACHE = self.DEBUG and "cache" in self.DEBUG
     self.EMSCRIPTEN_TEMP_DIR = None
 
     if self.DEBUG:
@@ -314,11 +317,15 @@ class Configuration:
       except Exception, e:
         print >> sys.stderr, e, 'Could not create canonical temp dir. Check definition of TEMP_DIR in ~/.emscripten'
 
+  def debug_log(self, msg):
+    if self.DEBUG:
+      print >> sys.stderr, msg
+
 configuration = Configuration(
   environ=os.environ)
 DEBUG = configuration.DEBUG
 EMSCRIPTEN_TEMP_DIR = configuration.EMSCRIPTEN_TEMP_DIR
-DEBUG_CACHE = DEBUG and "cache" in DEBUG
+DEBUG_CACHE = configuration.DEBUG_CACHE
 
 if not EMSCRIPTEN_TEMP_DIR:
   EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_', dir=TEMP_DIR)
