@@ -1268,9 +1268,9 @@ var LibrarySDL = {
 
     // Get the audio element associated with the ID
     var info = SDL.audios[id];
-    if (!info) return 0;
+    if (!info) return -1;
     var audio = info.audio;
-    if (!audio) return 0;
+    if (!audio) return -1;
 
     // If the user asks us to allocate a channel automatically, get the first
     // free one.
