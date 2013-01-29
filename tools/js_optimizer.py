@@ -2,7 +2,7 @@
 import os, sys, subprocess, multiprocessing, re
 import shared
 
-temp_files = shared.ConfigureTempFiles()
+temp_files = shared.make_temp_files()
 
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
