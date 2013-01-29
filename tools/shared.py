@@ -302,7 +302,7 @@ except:
 CANONICAL_TEMP_DIR = os.path.join(TEMP_DIR, 'emscripten_temp')
 
 class Configuration:
-  def __init__(self, environ=os.environ):
+  def __init__(self, environ):
     self.DEBUG = environ.get('EMCC_DEBUG')
     self.EMSCRIPTEN_TEMP_DIR = None
 
@@ -314,7 +314,8 @@ class Configuration:
       except Exception, e:
         print >> sys.stderr, e, 'Could not create canonical temp dir. Check definition of TEMP_DIR in ~/.emscripten'
 
-configuration = Configuration()
+configuration = Configuration(
+  environ=os.environ)
 DEBUG = configuration.DEBUG
 EMSCRIPTEN_TEMP_DIR = configuration.EMSCRIPTEN_TEMP_DIR
 DEBUG_CACHE = DEBUG and "cache" in DEBUG
@@ -429,9 +430,9 @@ def try_delete(filename):
       pass
 
 class TempFiles:
-  def __init__(self, tmp, saveDebugFiles=False):
+  def __init__(self, tmp, save_debug_files=False):
     self.tmp = tmp
-    self.saveDebugFiles = saveDebugFiles
+    self.save_debug_files = save_debug_files
     
     self.to_clean = []
 
@@ -445,7 +446,7 @@ class TempFiles:
     return named_file
 
   def clean(self):
-    if self.saveDebugFiles:
+    if self.save_debug_files:
       print >> sys.stderr, 'not cleaning up temp files since in debug-save mode, see them in %s' % (self.tmp,)
       return
     for filename in self.to_clean:
@@ -458,10 +459,10 @@ class TempFiles:
     finally:
       self.clean()
 
-def ConfigureTempFiles(configuration=configuration):
+def make_temp_files(configuration=configuration):
   return TempFiles(
     tmp=TEMP_DIR if not configuration.DEBUG else configuration.EMSCRIPTEN_TEMP_DIR,
-    saveDebugFiles=os.environ.get('EMCC_DEBUG_SAVE'))
+    save_debug_files=os.environ.get('EMCC_DEBUG_SAVE'))
 
 # Utilities
 
