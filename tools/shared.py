@@ -306,6 +306,10 @@ class Configuration:
       except Exception, e:
         print >> sys.stderr, e, 'Could not create canonical temp dir. Check definition of TEMP_DIR in ~/.emscripten'
 
+  def debug_log(self, msg):
+    if self.DEBUG:
+      print >> sys.stderr, msg
+
 configuration = Configuration(
   environ=os.environ)
 DEBUG = configuration.DEBUG
