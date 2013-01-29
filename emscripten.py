@@ -11,13 +11,6 @@ headers, for the libc implementation in JS).
 
 import os, sys, json, optparse, subprocess, re, time, multiprocessing
 
-if not os.environ.get('EMSCRIPTEN_SUPPRESS_USAGE_WARNING'):
-  print >> sys.stderr, '''
-==============================================================
-WARNING: You should normally never use this! Use emcc instead.
-==============================================================
-  '''
-
 from tools import shared
 
 DEBUG = os.environ.get('EMCC_DEBUG')
@@ -539,7 +532,7 @@ def main(args):
 
   emscript(args.infile, settings, args.outfile, libraries)
 
-def _main():
+def _main(environ):
   parser = optparse.OptionParser(
       usage='usage: %prog [-h] [-H HEADERS] [-o OUTFILE] [-c COMPILER_ENGINE] [-s FOO=BAR]* infile',
       description=('You should normally never use this! Use emcc instead. '
@@ -570,9 +563,21 @@ def _main():
                     action='store_true',
                     default=False,
                     help=('Enable jcache (ccache-like caching of compilation results, for faster incremental builds).'))
+  parser.add_option('--suppressUsageWarning',
+                    action='store_true',
+                    default=environ.get('EMSCRIPTEN_SUPPRESS_USAGE_WARNING'),
+                    help=('Suppress usage warning'))
 
   # Convert to the same format that argparse would have produced.
   keywords, positional = parser.parse_args()
+
+  if not keywords.suppressUsageWarning:
+    print >> sys.stderr, '''
+==============================================================
+WARNING: You should normally never use this! Use emcc instead.
+==============================================================
+  '''
+
   if len(positional) != 1:
     raise RuntimeError('Must provide exactly one positional argument.')
   keywords.infile = os.path.abspath(positional[0])
@@ -584,4 +589,4 @@ def _main():
   temp_files.run_and_clean(lambda: main(keywords))
 
 if __name__ == '__main__':
-  _main()
+  _main(environ=os.environ)
