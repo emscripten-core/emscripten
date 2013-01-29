@@ -478,10 +478,20 @@ def timeout_run(proc, timeout, note='unnamed process', full_output=False):
   return '\n'.join(out) if full_output else out[0]
 
 def run_js(filename, engine=None, args=[], check_timeout=False, stdout=PIPE, stderr=None, cwd=None, full_output=False):
-  if engine is None: engine = JS_ENGINES[0]
-  if type(engine) is not list: engine = [engine]
+  if engine is None:
+    engine = JS_ENGINES[0]
+  if type(engine) is not list:
+    engine = [engine]
   command = engine + [filename] + (['--'] if 'd8' in engine[0] else []) + args
-  return timeout_run(Popen(command, stdout=stdout, stderr=stderr, cwd=cwd), 15*60 if check_timeout else None, 'Execution', full_output=full_output)
+  return timeout_run(
+    Popen(
+      command,
+      stdout=stdout,
+      stderr=stderr,
+      cwd=cwd),
+    15*60 if check_timeout else None,
+    'Execution',
+    full_output=full_output)
 
 def to_cc(cxx):
   # By default, LLVM_GCC and CLANG are really the C++ versions. This gets an explicit C version
