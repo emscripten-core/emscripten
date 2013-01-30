@@ -310,8 +310,7 @@ class Configuration:
     if self.DEBUG:
       print >> sys.stderr, msg
 
-configuration = Configuration(
-  environ=os.environ)
+configuration = Configuration(environ=os.environ)
 DEBUG = configuration.DEBUG
 EMSCRIPTEN_TEMP_DIR = configuration.EMSCRIPTEN_TEMP_DIR
 
