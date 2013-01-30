@@ -1349,6 +1349,15 @@ function JSify(data, functionsOnly, givenFunctions) {
       } else {
         args = args.map(function(arg, i) { return asmEnsureFloat(arg, argsTypes[i]) });
       }
+
+      // remove unneeded arguments, which the asm sig can show us
+      var libsig = LibraryManager.library[shortident + '__sig'];
+      if (libsig) {
+        while (libsig.length - 1 < args.length) {
+          args.pop();
+          argsTypes.pop();
+        }
+      }
     }
 
     varargs = varargs.map(function(vararg, i) {
