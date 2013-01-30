@@ -58,6 +58,8 @@ var ALLOW_MEMORY_GROWTH = 0; // If false, we abort with an error if we try to al
 // Code embetterments
 var MICRO_OPTS = 1; // Various micro-optimizations, like nativizing variables
 var RELOOP = 0; // Recreate js native loops from llvm data
+var RELOOPER = 'relooper.js'; // Loads the relooper from this path relative to compiler.js
+
 var USE_TYPED_ARRAYS = 2; // Use typed arrays for the heap. See https://github.com/kripken/emscripten/wiki/Code-Generation-Modes/
                           // 0 means no typed arrays are used.
                           // 1 has two heaps, IHEAP (int32) and FHEAP (double),

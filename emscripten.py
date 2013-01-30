@@ -624,6 +624,9 @@ WARNING: You should normally never use this! Use emcc instead.
   keywords.infile = os.path.abspath(positional[0])
   if isinstance(keywords.outfile, basestring):
     keywords.outfile = open(keywords.outfile, 'w')
+  if keywords.relooper:
+    shared.RELOOPER = os.path.abspath(keywords.relooper)
+    keywords.settings.append("RELOOPER=" + json.dumps(shared.RELOOPER))
 
   global compiler_engine
   compiler_engine = keywords.compiler
