@@ -4236,16 +4236,20 @@ LibraryManager.library = {
   llvm_memcpy_p0i8_p0i8_i32: 'memcpy',
   llvm_memcpy_p0i8_p0i8_i64: 'memcpy',
 
+  memmove__sig: 'viii',
+  memmove__asm: true,
   memmove__deps: ['memcpy'],
-  memmove: function(dest, src, num, align) {
-    if (src < dest && dest < src + num) {
-      // Copy backwards in a safe manner
-      src += num;
-      dest += num;
-      while (num--) {
-        dest--;
-        src--;
-        {{{ makeCopyValues('dest', 'src', 1, 'null', null, 1) }}};
+  memmove: function(dest, src, num) {
+    dest = dest|0; src = src|0; num = num|0;
+    if ((src|0 < (dest|0)) & (dest|0 < ((src + num)|0))) {
+      // Unlikely case: Copy backwards in a safe manner
+      src = (src + num)|0;
+      dest = (dest + num)|0;
+      while (num|0 > 0) {
+        dest = (dest - 1)|0;
+        src = (src - 1)|0;
+        num = (num - 1)|0;
+        {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i8'), 'i8') }}};
       }
     } else {
       _memcpy(dest, src, num);
