@@ -7023,7 +7023,7 @@ LibraryManager.library = {
     if (!info) return -1;
     if (info.inQueue.length == 0) {
       ___setErrNo(ERRNO_CODES.EAGAIN); // no data, and all sockets are nonblocking, so this is the right behavior
-      return 0; // should this be -1 like the spec says?
+      return -1;
     }
     var buffer = info.inQueue.shift();
 #if SOCKET_DEBUG
