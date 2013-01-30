@@ -559,6 +559,9 @@ def _main(environ):
   parser.add_option('-c', '--compiler',
                     default=shared.COMPILER_ENGINE,
                     help='Which JS engine to use to run the compiler; defaults to the one in ~/.emscripten.')
+  parser.add_option('--relooper',
+                    default=shared.RELOOPER,
+                    help='Which relooper file to use if RELOOP is enabled')
   parser.add_option('-s', '--setting',
                     dest='settings',
                     default=[],
@@ -590,6 +593,8 @@ WARNING: You should normally never use this! Use emcc instead.
   keywords.infile = os.path.abspath(positional[0])
   if isinstance(keywords.outfile, basestring):
     keywords.outfile = open(keywords.outfile, 'w')
+  if keywords.relooper:
+    shared.RELOOPER = keywords.relooper
 
   global compiler_engine
   compiler_engine = keywords.compiler
