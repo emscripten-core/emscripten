@@ -6779,7 +6779,7 @@ LibraryManager.library = {
   // nonblocking
   // ==========================================================================
 
-  $Sockets__deps: ['__setErrNo', '$ERRNO_CODES', '$WebRTC'],
+  $Sockets__deps: ['__setErrNo', '$ERRNO_CODES', function() { return 'WebRTC = ' + read('webrtc.js') + ';\n' }],
   $Sockets: {
     BACKEND_WEBSOCKETS: 0,
     BACKEND_WEBRTC: 1,
@@ -6790,11 +6790,10 @@ LibraryManager.library = {
     nextFd: 1,
     fds: {},
     nextport: 1,
-    maxport: 65534,
+    maxport: 65535,
     peer: {
       pc: null,
-      binds: {},
-      pending: []
+      binds: {}
     },
     sockaddr_in_layout: Runtime.generateStructInfo([
       ['i16', 'sin_family'],
@@ -6833,25 +6832,24 @@ LibraryManager.library = {
     // Open the peer connection if we don't have it already
     if(null == Sockets.peer.pc) {
       var pc;
-      if(Module['remote']) {
-        console.log("preparing peer connection answer");
-        console.log("remote: ", Module['remote']);
-        pc = new WebRTC.DataPeer(null, Module['remote']);
+      var broker = Module['webrtc']['broker'] || 'http://webrtc-broker.herokuapp.com';
+      var sid = Module['webrtc']['session'];
+      if(sid) {
+        pc = new WebRTC.Peer(broker, sid);
       } else {        
-        console.log("preparing peer connection offer");
-        pc = new WebRTC.DataPeer();
+        pc = new WebRTC.Host(broker);
       }
       pc.onerror = function(error) {
         console.error(error);
-      }
-      pc.onoffercreated = function(url, offer_id) {
-        var url = "http://" + window.location.host + "/game.html?low,low,debug,remote=" + offer_id;
+      };
+      pc.onready = function(sid) {
+        var url = "http://" + window.location.host + "/game.html?low,low,debug,broker=" + broker + "sid=" + sid;
         console.log("connect to: ", url);
         var div = document.getElementById("remote-link");
         if(div) {
           div.innerHTML = '<a href="' + url + '">Open remote client</a>';
         }
-      }      
+      };      
       function handleMessage(message) {
 #if SOCKET_DEBUG        
         Module.print("received " + message.byteLength + " raw bytes");
@@ -6864,12 +6862,14 @@ LibraryManager.library = {
           console.log("unable to deliver message");
         }
       }
-      pc.onunreliablemessage = function(message) {
+      pc.unreliable.onmessage = function(message) {
         handleMessage(message.data);
       };
-      pc.onreliablemessage = function(message) {
+      /*
+      pc.reliable.onmessage = function(message) {
         handleMessage(message.data);
       };
+      */
       Sockets.peer.pc = pc;
     }
 
@@ -7026,7 +7026,7 @@ LibraryManager.library = {
     buffer.set(new Uint8Array(info.header.buffer));
     buffer.set(data, info.header.byteLength);    
     // Sockets.peer.pc.unreliable.send(blob);
-    Sockets.peer.pc.unreliable.send(buffer.buffer);
+    Sockets.peer.pc.unreliable.channel.send(buffer.buffer);
   },
 
   recvmsg__deps: ['$Sockets', 'bind', '__setErrNo', '$ERRNO_CODES', 'htons'],
