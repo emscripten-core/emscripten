@@ -23,8 +23,6 @@ def path_from_root(*pathelems):
 configuration = shared.Configuration(environ=os.environ)
 temp_files = shared.make_temp_files()
 
-jcache = False
-
 def scan(ll, settings):
   # blockaddress(@main, %23)
   blockaddrs = []
@@ -51,7 +49,9 @@ def process_funcs((i, funcs, meta, settings_file, compiler, forwarded_file, libr
   shared.try_delete(funcs_file)
   return out
 
-def emscript(configuration, infile, settings, outfile, libraries=[], compiler_engine=None):
+def emscript(configuration, infile, settings, outfile, libraries=[],
+             compiler_engine=None,
+             jcache=None):
   """Runs the emscripten LLVM-to-JS compiler. We parallelize as much as possible
 
   Args:
@@ -71,7 +71,7 @@ def emscript(configuration, infile, settings, outfile, libraries=[], compiler_en
 
   configuration.debug_log('emscript: ll=>js')
 
-  if jcache: shared.JCache.ensure()
+  if jcache: jcache.ensure()
 
   # Pre-scan ll and alter settings as necessary
   if DEBUG: t = time.time()
@@ -140,15 +140,15 @@ def emscript(configuration, infile, settings, outfile, libraries=[], compiler_en
   out = None
   if jcache:
     keys = [pre_input, settings_text, ','.join(libraries)]
-    shortkey = shared.JCache.get_shortkey(keys)
-    out = shared.JCache.get(shortkey, keys)
+    shortkey = jcache.get_shortkey(keys)
+    out = jcache.get(shortkey, keys)
     if out and DEBUG: print >> sys.stderr, '  loading pre from jcache'
   if not out:
     open(pre_file, 'w').write(pre_input)
     out = shared.run_js(compiler, compiler_engine, [settings_file, pre_file, 'pre'] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
     if jcache:
       if DEBUG: print >> sys.stderr, '  saving pre to jcache'
-      shared.JCache.set(shortkey, keys, out)
+      jcache.set(shortkey, keys, out)
   pre, forwarded_data = out.split('//FORWARDED_DATA:')
   forwarded_file = temp_files.get('.json').name
   open(forwarded_file, 'w').write(forwarded_data)
@@ -180,8 +180,8 @@ def emscript(configuration, infile, settings, outfile, libraries=[], compiler_en
     cached_outputs = []
     def load_from_cache(chunk):
       keys = [settings_text, forwarded_data, chunk]
-      shortkey = shared.JCache.get_shortkey(keys) # TODO: share shortkeys with later code
-      out = shared.JCache.get(shortkey, keys) # this is relatively expensive (pickling?)
+      shortkey = jcache.get_shortkey(keys) # TODO: share shortkeys with later code
+      out = jcache.get(shortkey, keys) # this is relatively expensive (pickling?)
       if out:
         cached_outputs.append(out)
         return False
@@ -221,8 +221,8 @@ def emscript(configuration, infile, settings, outfile, libraries=[], compiler_en
     for i in range(len(chunks)):
       chunk = chunks[i]
       keys = [settings_text, forwarded_data, chunk]
-      shortkey = shared.JCache.get_shortkey(keys)
-      shared.JCache.set(shortkey, keys, outputs[i])
+      shortkey = jcache.get_shortkey(keys)
+      jcache.set(shortkey, keys, outputs[i])
     if out and DEBUG and len(chunks) > 0: print >> sys.stderr, '  saving %d funcchunks to jcache' % len(chunks)
 
   if jcache: outputs += cached_outputs # TODO: preserve order
@@ -463,7 +463,7 @@ Runtime.stackRestore = function(top) { asm.stackRestore(top) };
   outfile.close()
 
 
-def main(args, compiler_engine=None):
+def main(args, compiler_engine=None, jcache=None):
   # Prepare settings for serialization to JSON.
   settings = {}
   for setting in args.settings:
@@ -539,7 +539,9 @@ def main(args, compiler_engine=None):
   # Compile the assembly to Javascript.
   if settings.get('RELOOP'): shared.Building.ensure_relooper()
 
-  emscript(configuration, args.infile, settings, args.outfile, libraries, compiler_engine=compiler_engine)
+  emscript(configuration, args.infile, settings, args.outfile, libraries,
+           compiler_engine=compiler_engine,
+           jcache=jcache)
 
 def _main(environ):
   parser = optparse.OptionParser(
@@ -599,12 +601,10 @@ WARNING: You should normally never use this! Use emcc instead.
     shared.RELOOPER = os.path.abspath(keywords.relooper)
     keywords.settings.append("RELOOPER=" + json.dumps(shared.RELOOPER))
 
-  global jcache
-  jcache = keywords.jcache
-
   temp_files.run_and_clean(lambda: main(
     keywords,
-    compiler_engine=os.path.abspath(keywords.compiler)))
+    compiler_engine=os.path.abspath(keywords.compiler),
+    jcache=shared.JCache if keywords.jcache else None))
 
 if __name__ == '__main__':
   _main(environ=os.environ)
