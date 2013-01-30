@@ -73,9 +73,11 @@ function createInheritedFunctionOrProperty(name, type, nameInBaseClass, baseClas
             get: upcastingWrapper(baseClassDescriptor.get),
             set: upcastingWrapper(baseClassDescriptor.set)
         });
+        type.Handle.memberType[name] = 'field';
     } else if (baseClassPrototype.constructor.memberType[nameInBaseClass] === 'method') {
         var baseClassMethod = baseClassPrototype[nameInBaseClass];
         type.Handle.prototype[name] = createNamedFunction(name, upcastingWrapper(baseClassMethod));
+        type.Handle.memberType[name] = 'method';
     }
 }
 
@@ -682,127 +684,6 @@ function __embind_register_smart_ptr(
     registeredPointer.pointeeType = pointeeType;
     pointeeType.smartPointerType = registerType(rawType, name, registeredPointer);
 }
-
-function RegisteredRawPointer(isPolymorphic, classType, Handle) {
-    this.isPolymorphic = isPolymorphic;
-    this.pointeeType = classType;
-    this.Handle = Handle;
-}
-
-RegisteredRawPointer.prototype.toWireType = function(destructors, o) {
-    return o.ptr;
-};
-
-RegisteredRawPointer.prototype.fromWireType = function(ptr) {
-    return new this.Handle(ptr);
-};
-
-RegisteredRawPointer.prototype.fromWireTypeAutoDowncast = function(ptr) {
-    if (this.isPolymorphic) {
-        var toRawType = ___getDynamicPointerType(ptr);
-        if (toRawType === null || toRawType === this.pointeeType.rawType) {
-            return new this.Handle(ptr);
-        }
-        var derivation = Module.__getDerivationPath(toRawType, this.pointeeType.rawType);
-        var candidateType = null;
-        for (var i = 0; i < derivation.size(); i++) {
-            candidateType = typeRegistry[derivation.at(i)];
-            if (candidateType) {
-                break;
-            }
-        }
-        derivation.delete();
-        if (candidateType === null) {
-            return new this.Handle(ptr);
-        }
-        var handle = candidateType.fromWireType(ptr);
-        handle.ptr = ___staticPointerCast(handle.ptr, this.pointeeType.rawType, candidateType.rawType);
-        // todo: can come back -1 or -2!! Throw appropriate exception
-        return handle;
-    } else {
-        return new this.Handle(ptr);
-    }
-};
-
-function RegisteredClassInstance(constructor, Handle) {
-    this.constructor = constructor;
-    this.Handle = Handle;
-}
-
-function __embind_register_vector(
-    vectorType,
-    elementType,
-    name,
-    constructor,
-    destructor,
-    length,
-    getter,
-    setter
-) {
-    name = Pointer_stringify(name);
-    elementType = requireRegisteredType(elementType, 'vector ' + name);
-    
-    constructor = FUNCTION_TABLE[constructor];
-    destructor = FUNCTION_TABLE[destructor];
-    length = FUNCTION_TABLE[length];
-    getter = FUNCTION_TABLE[getter];
-    setter = FUNCTION_TABLE[setter];
-
-    registerType(vectorType, name, {
-        name: name,
-        fromWireType: function(ptr) {
-            var arr = [];
-            Object.defineProperty(arr, 'delete', {
-                writable: false,
-                enumerable: false,
-                configurable: false,
-                value: function() {
-                    var needsToBeDeleted = elementType.hasOwnProperty('Handle');
-                    for (var i = 0; i < arr.length; i++) {
-                        if (needsToBeDeleted) {
-                            arr[i].delete();
-                        }
-                    }
-                }
-            });
-
-            var n = length(ptr);
-            for (var i = 0; i < n; i++) {
-                var v = elementType.fromWireType(getter(ptr, i));
-                arr.push(v);
-            }
-
-            destructor(ptr);
-            return arr;
-        },
-        toWireType: function(destructors, o) {
-            var vec = constructor();
-            for (var val in o) {
-                setter(vec, elementType.toWireType(destructors, o[val]));
-            }
-            runDestructors(destructors);
-
-            destructors.push(destructor);
-            destructors.push(vec);
-            return vec;
-        }
-    });
-}
-
-RegisteredClassInstance.prototype.toWireType = function(destructors, o) {
-    return o.ptr;
-};
-
-RegisteredClassInstance.prototype.fromWireType = function(ptr) {
-    return new this.Handle(ptr);
-};
-
-function RegisteredRawConstPointer() {
-}
-
-RegisteredRawConstPointer.prototype.toWireType = function(destructors, o) {
-    return o.ptr;
-};
 
 // TODO: null pointers are always zero (not a Handle) in Javascript
 function __embind_register_class(
