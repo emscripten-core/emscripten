@@ -3,7 +3,7 @@ if (GC_SUPPORT) {
   EXPORTED_FUNCTIONS['_calloc'] = 1;
 
   var LibraryGC = {
-    $GC__deps: ['sbrk'],
+    $GC__deps: ['sbrk', 'realloc'],
     $GC: {
       ALLOCATIONS_TO_GC: 1*1024*1024,
 
@@ -51,6 +51,41 @@ if (GC_SUPPORT) {
         GC.totalAllocations += bytes;
         GC.recentAllocations += bytes;
         return ptr;
+      },
+
+      realloc: function(ptr, newBytes) {
+        if (newBytes != 0) {
+          var oldBytes = GC.sizes[ptr];
+          var newPtr = _realloc(ptr, newBytes);
+          if (newBytes > oldBytes) {
+            _memset(newPtr + oldBytes, 0, newBytes - oldBytes);
+          }
+          delete GC.sizes[ptr];
+          GC.sizes[newPtr] = newBytes;
+          scannable = GC.scannables[ptr];
+          delete GC.scannables[ptr];
+          GC.scannables[newPtr] = scannable;
+          var finalizer = GC.finalizers[ptr];
+          if (finalizer) {
+            delete GC.finalizers[ptr];
+            GC.finalizers[newPtr] = finalizer;
+          }
+          var finalizerArgs = GC.finalizerArgs[ptr];
+          if (finalizerArgs) {
+            delete GC.finalizerArgs[ptr];
+            GC.finalizerArgs[newPtr] = finalizerArgs;
+          }
+          var uncollectable = GC.uncollectables[ptr];
+          if (uncollectable) {
+            delete GC.uncollectables[ptr];
+            GC.uncollectables[newPtr] = true;
+          }
+          GC.totalAllocations += (newBytes - oldBytes);
+          return newPtr;
+        } else {
+          GC.free(ptr);
+          return 0;
+        }
       },
 
       free: function(ptr) { // does not check if anything refers to it, this is a forced free
@@ -155,6 +190,11 @@ if (GC_SUPPORT) {
     GC_MALLOC_UNCOLLECTABLE__deps: ['$GC'],
     GC_MALLOC_UNCOLLECTABLE: function(bytes) {
       return GC.malloc(bytes, true, true, false);
+    },
+
+    GC_REALLOC__deps: ['$GC'],
+    GC_REALLOC: function(ptr, newBytes) {
+      return GC.realloc(ptr, newBytes);
     },
 
     GC_FREE__deps: ['$GC'],

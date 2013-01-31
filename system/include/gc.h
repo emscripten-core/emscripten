@@ -32,6 +32,9 @@ void *GC_MALLOC_ATOMIC(int bytes);
 /* Allocate memory that might container pointers but that can't be collected. */
 void *GC_MALLOC_UNCOLLECTABLE(int bytes);
 
+/* Reallocate a GC managed memory block to a new size. */
+void *GC_REALLOC(void *ptr, int newBytes);
+
 /* Explicitly deallocate an object. Dangerous as it forces a free and does not check if the object is reffed. */
 void GC_FREE(void *ptr);
 

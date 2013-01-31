@@ -7893,7 +7893,7 @@ def process(filename):
         int main() {
           GC_INIT();
 
-          void *local, *local2, *local3, *local4, *local5;
+          void *local, *local2, *local3, *local4, *local5, *local6;
 
           // Hold on to global, drop locals
 
@@ -7942,6 +7942,13 @@ def process(filename):
           // This should never trigger since local5 is uncollectable
           GC_REGISTER_FINALIZER_NO_ORDER(local5, finalizer, (void*)5, 0, 0);
 
+          local4 = GC_REALLOC(local4, 24);
+
+          local6 = GC_MALLOC(12);
+          GC_REGISTER_FINALIZER_NO_ORDER(local6, finalizer, (void*)6, 0, 0);
+          // This should be the same as a free
+          GC_REALLOC(local6, 0);
+
           void **globalData = (void**)global;
           globalData[0] = local;
           globalData[1] = local2;
@@ -7977,6 +7984,7 @@ finalizing2 2 (global == 0)
 finalizing2 3 (global == 0)
 *
 finalizing 0 (global == 1)
+finalizing 6 (global == 0)
 object scan test test
 finalizing 4 (global == 0)
 *
