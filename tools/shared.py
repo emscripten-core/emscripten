@@ -1281,11 +1281,11 @@ class Cache:
 class JCache:
   dirname = os.path.join(Cache.dirname, 'jcache')
 
-  @staticmethod
-  def ensure():
+  @classmethod
+  def ensure(self):
     Cache.ensure()
-    if not os.path.exists(JCache.dirname):
-      os.makedirs(JCache.dirname)
+    if not os.path.exists(self.dirname):
+      os.makedirs(self.dirname)
 
   @staticmethod
   def get_shortkey(keys):
@@ -1297,15 +1297,15 @@ class JCache:
       ret += hashlib.md5(key).hexdigest()
     return ret
 
-  @staticmethod
-  def get_cachename(shortkey):
-    return os.path.join(JCache.dirname, shortkey)
+  @classmethod
+  def get_cachename(self, shortkey):
+    return os.path.join(self.dirname, shortkey)
 
   # Returns a cached value, if it exists. Make sure the full key matches
-  @staticmethod
-  def get(shortkey, keys):
+  @classmethod
+  def get(self, shortkey, keys):
     if DEBUG_CACHE: print >> sys.stderr, 'jcache get?', shortkey
-    cachename = JCache.get_cachename(shortkey)
+    cachename = self.get_cachename(shortkey)
     if not os.path.exists(cachename):
       if DEBUG_CACHE: print >> sys.stderr, 'jcache none at all'
       return
@@ -1329,10 +1329,10 @@ class JCache:
     return data[1]
 
   # Sets the cached value for a key (from get_key)
-  @staticmethod
-  def set(shortkey, keys, value):
+  @classmethod
+  def set(self, shortkey, keys, value):
     if DEBUG_CACHE: print >> sys.stderr, 'save to cache', shortkey
-    cachename = JCache.get_cachename(shortkey)
+    cachename = self.get_cachename(shortkey)
     try:
       f = open(cachename, 'w')
       f.write(zlib.compress(cPickle.dumps([keys, value])))
@@ -1353,11 +1353,11 @@ class JCache:
   # generate the same chunks, barring big differences in function sizes that
   # violate our chunk size guideline. If caching is not used, chunking_file
   # should be None
-  @staticmethod
-  def chunkify(funcs, chunk_size, chunking_file):
+  @classmethod
+  def chunkify(self, funcs, chunk_size, chunking_file):
     previous_mapping = None
     if chunking_file:
-      chunking_file = JCache.get_cachename(chunking_file)
+      chunking_file = self.get_cachename(chunking_file)
       if os.path.exists(chunking_file):
         try:
           previous_mapping = cPickle.Unpickler(open(chunking_file, 'rb')).load() # maps a function identifier to the chunk number it will be in
