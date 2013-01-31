@@ -11,9 +11,7 @@ headers, for the libc implementation in JS).
 
 import os, sys, json, optparse, subprocess, re, time, multiprocessing, functools
 
-from tools import shared
-from tools import jsrun
-from tools import cache
+from tools import shared, jsrun, cache as cache_module
 
 __rootpath__ = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(*pathelems):
@@ -175,7 +173,7 @@ def emscript(configuration, infile, settings, outfile, libraries=[],
     settings['EXPORTED_FUNCTIONS'] = forwarded_json['EXPORTED_FUNCTIONS']
     save_settings()
 
-  chunks = shared.chunkify(
+  chunks = cache_module.chunkify(
     funcs, chunk_size,
     jcache.get_cachename('emscript_files') if jcache else None)
 
@@ -467,7 +465,7 @@ Runtime.stackRestore = function(top) { asm.stackRestore(top) };
   outfile.close()
 
 
-def main(args, compiler_engine, jcache, relooper):
+def main(args, compiler_engine, cache, jcache, relooper):
   # Prepare settings for serialization to JSON.
   settings = {}
   for setting in args.settings:
@@ -543,7 +541,7 @@ def main(args, compiler_engine, jcache, relooper):
   # Compile the assembly to Javascript.
   if settings.get('RELOOP'):
     if not relooper:
-      relooper = shared.Cache.get_path('relooper.js')
+      relooper = cache.get_path('relooper.js')
     settings.setdefault('RELOOPER', relooper)
     shared.Building.ensure_relooper(relooper)
 
@@ -611,10 +609,12 @@ WARNING: You should normally never use this! Use emcc instead.
   else:
     relooper = None # use the cache
 
+  cache = cache_module.Cache()
   temp_files.run_and_clean(lambda: main(
     keywords,
     compiler_engine=os.path.abspath(keywords.compiler),
-    jcache=shared.JCache if keywords.jcache else None,
+    cache=cache,
+    jcache=cache_module.JCache(cache) if keywords.jcache else None,
     relooper=relooper))
 
 if __name__ == '__main__':
