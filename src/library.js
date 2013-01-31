@@ -4228,14 +4228,14 @@ LibraryManager.library = {
         src = (src+1)|0;
         num = (num-1)|0;
       }
-      while (num|0 >= 4) {
+      while ((num|0) >= 4) {
         {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i32'), 'i32') }}};
         dest = (dest+4)|0;
         src = (src+4)|0;
         num = (num-4)|0;
       }
     }
-    while (num|0 > 0) {
+    while ((num|0) > 0) {
       {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i8'), 'i8') }}};
       dest = (dest+1)|0;
       src = (src+1)|0;
