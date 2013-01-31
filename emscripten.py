@@ -463,7 +463,7 @@ Runtime.stackRestore = function(top) { asm.stackRestore(top) };
   outfile.close()
 
 
-def main(args, compiler_engine=None, jcache=None):
+def main(args, compiler_engine, jcache, relooper):
   # Prepare settings for serialization to JSON.
   settings = {}
   for setting in args.settings:
@@ -537,7 +537,11 @@ def main(args, compiler_engine=None, jcache=None):
   libraries = args.libraries[0].split(',') if len(args.libraries) > 0 else []
 
   # Compile the assembly to Javascript.
-  if settings.get('RELOOP'): shared.Building.ensure_relooper()
+  if settings.get('RELOOP'):
+    if not relooper:
+      relooper = shared.Cache.get_path('relooper.js')
+    settings.setdefault('RELOOPER', relooper)
+    shared.Building.ensure_relooper(relooper)
 
   emscript(configuration, args.infile, settings, args.outfile, libraries,
            compiler_engine=compiler_engine,
@@ -564,7 +568,7 @@ def _main(environ):
                     default=shared.COMPILER_ENGINE,
                     help='Which JS engine to use to run the compiler; defaults to the one in ~/.emscripten.')
   parser.add_option('--relooper',
-                    default=shared.RELOOPER,
+                    default=None,
                     help='Which relooper file to use if RELOOP is enabled')
   parser.add_option('-s', '--setting',
                     dest='settings',
@@ -597,14 +601,17 @@ WARNING: You should normally never use this! Use emcc instead.
   keywords.infile = os.path.abspath(positional[0])
   if isinstance(keywords.outfile, basestring):
     keywords.outfile = open(keywords.outfile, 'w')
+
   if keywords.relooper:
-    shared.RELOOPER = os.path.abspath(keywords.relooper)
-    keywords.settings.append("RELOOPER=" + json.dumps(shared.RELOOPER))
+    relooper = os.path.abspath(keywords.relooper)
+  else:
+    relooper = None # use the cache
 
   temp_files.run_and_clean(lambda: main(
     keywords,
     compiler_engine=os.path.abspath(keywords.compiler),
-    jcache=shared.JCache if keywords.jcache else None))
+    jcache=shared.JCache if keywords.jcache else None,
+    relooper=relooper))
 
 if __name__ == '__main__':
   _main(environ=os.environ)
