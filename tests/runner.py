@@ -10389,12 +10389,28 @@ elif 'browser' in str(sys.argv):
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'example.png'))
       self.btest('sdl_rotozoom.c', reference='sdl_rotozoom.png', args=['--preload-file', 'example.png'])
 
-    def zzztest_sdl_canvas_palette_2(self): # XXX disabled until we have proper automation
-      open(os.path.join(self.get_dir(), 'sdl_canvas_palette_2.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_canvas_palette_2.c')).read()))
-      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('Module[\'preRun\'] = function() { SDL.defaults.copyOnLock = false }')
+    def test_sdl_canvas_palette_2(self):
+      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+        Module['preRun'].push(function() { 
+          SDL.defaults.copyOnLock = false;
+        });
+      ''')
 
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_canvas_palette_2.c'), '-o', 'page.html', '--pre-js', 'pre.js']).communicate()
-      self.run_browser('page.html', '')
+      open(os.path.join(self.get_dir(), 'args-r.js'), 'w').write('''
+        Module['arguments'] = ['-r'];
+      ''')
+
+      open(os.path.join(self.get_dir(), 'args-g.js'), 'w').write('''
+        Module['arguments'] = ['-g'];
+      ''')
+
+      open(os.path.join(self.get_dir(), 'args-b.js'), 'w').write('''
+        Module['arguments'] = ['-b'];
+      ''')
+        
+      self.btest('sdl_canvas_palette_2.c', reference='sdl_canvas_palette_r.png', args=['--pre-js', 'pre.js', '--pre-js', 'args-r.js'])
+      self.btest('sdl_canvas_palette_2.c', reference='sdl_canvas_palette_g.png', args=['--pre-js', 'pre.js', '--pre-js', 'args-g.js'])
+      self.btest('sdl_canvas_palette_2.c', reference='sdl_canvas_palette_b.png', args=['--pre-js', 'pre.js', '--pre-js', 'args-b.js'])
 
     def test_glbegin_points(self):
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
