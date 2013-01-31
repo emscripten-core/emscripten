@@ -289,7 +289,6 @@ AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
 BINDINGS_GENERATOR = path_from_root('tools', 'bindings_generator.py')
 EXEC_LLVM = path_from_root('tools', 'exec_llvm.py')
 FILE_PACKAGER = path_from_root('tools', 'file_packager.py')
-RELOOPER = path_from_root('src', 'relooper.js')
 
 # Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use TEMP_DIR/emscripten_temp
 
@@ -994,6 +993,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     os.environ['EMSCRIPTEN_SUPPRESS_USAGE_WARNING'] = '1'
 
     # Run Emscripten
+    Settings.RELOOPER = Cache.get_path('relooper.js')
     settings = Settings.serialize()
     compiler_output = timeout_run(Popen([PYTHON, EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE), None, 'Compiling')
     #print compiler_output
@@ -1187,25 +1187,26 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
   # Make sure the relooper exists. If it does not, check out the relooper code and bootstrap it
   @staticmethod
-  def ensure_relooper():
-    if os.path.exists(RELOOPER): return
+  def ensure_relooper(relooper):
+    if os.path.exists(relooper): return
+    Cache.ensure()
     curr = os.getcwd()
     try:
       ok = False
       print >> sys.stderr, '======================================='
       print >> sys.stderr, 'bootstrapping relooper...'
-      Cache.ensure()
       os.chdir(path_from_root('src'))
 
       def make(opt_level):
-        raw = RELOOPER + '.raw.js'
+        raw = relooper + '.raw.js'
         Building.emcc(os.path.join('relooper', 'Relooper.cpp'), ['-I' + os.path.join('relooper'), '--post-js',
           os.path.join('relooper', 'emscripten', 'glue.js'),
           '-s', 'TOTAL_MEMORY=52428800',
           '-s', 'EXPORTED_FUNCTIONS=["_rl_set_output_buffer","_rl_make_output_buffer","_rl_new_block","_rl_delete_block","_rl_block_add_branch_to","_rl_new_relooper","_rl_delete_relooper","_rl_relooper_add_block","_rl_relooper_calculate","_rl_relooper_render", "_rl_set_asm_js_mode"]',
           '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["memcpy", "memset", "malloc", "free", "puts"]',
+          '-s', 'RELOOPER="' + relooper + '"',
           '-O' + str(opt_level), '--closure', '0'], raw)
-        f = open(RELOOPER, 'w')
+        f = open(relooper, 'w')
         f.write("// Relooper, (C) 2012 Alon Zakai, MIT license, https://github.com/kripken/Relooper\n")
         f.write("var Relooper = (function() {\n");
         f.write(open(raw).read())
@@ -1225,7 +1226,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     finally:
       os.chdir(curr)
       if not ok:
-        print >> sys.stderr, 'bootstrapping relooper failed. You may need to manually create src/relooper.js by compiling it, see src/relooper/emscripten'
+        print >> sys.stderr, 'bootstrapping relooper failed. You may need to manually create relooper.js by compiling it, see src/relooper/emscripten'
         1/0
 
   @staticmethod
@@ -1260,15 +1261,15 @@ class Cache:
   if not dirname:
     dirname = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
 
-  @staticmethod
-  def ensure():
-    if not os.path.exists(Cache.dirname):
-      os.makedirs(Cache.dirname)
+  @classmethod
+  def ensure(self):
+    if not os.path.exists(self.dirname):
+      os.makedirs(self.dirname)
 
-  @staticmethod
-  def erase():
+  @classmethod
+  def erase(self):
     try:
-      shutil.rmtree(Cache.dirname)
+      shutil.rmtree(self.dirname)
     except:
       pass
     try_delete(RELOOPER)
@@ -1277,12 +1278,16 @@ class Cache:
     except:
       print >> sys.stderr, 'failed to save last clear time'
 
+  @classmethod
+  def get_path(self, shortname):
+    return os.path.join(self.dirname, shortname)
+
   # Request a cached file. If it isn't in the cache, it will be created with
   # the given creator function
-  @staticmethod
-  def get(shortname, creator):
-    if not shortname.endswith('.bc'): shortname += '.bc'
-    cachename = os.path.join(Cache.dirname, shortname)
+  @classmethod
+  def get(self, shortname, creator, extension='.bc'):
+    if not shortname.endswith(extension): shortname += extension
+    cachename = os.path.join(self.dirname, shortname)
     if os.path.exists(cachename):
       return cachename
     Cache.ensure()
