@@ -1,6 +1,7 @@
 import shutil, time, os, sys, json, tempfile, copy, shlex, atexit, subprocess, hashlib, cPickle
 from subprocess import Popen, PIPE, STDOUT
 from tempfile import mkstemp
+from . import jsrun
 
 # On Windows python suffers from a particularly nasty bug if python is spawning new processes while python itself is spawned from some other non-console process.
 # Use a custom replacement for Popen on Windows to avoid the "WindowsError: [Error 6] The handle is invalid" errors when emcc is driven through cmake or mingw32-make. 
@@ -464,32 +465,10 @@ def check_engine(engine):
     print 'Checking JS engine %s failed. Check %s. Details: %s' % (str(engine), EM_CONFIG, str(e))
     return False
 
-def timeout_run(proc, timeout, note='unnamed process', full_output=False):
-  start = time.time()
-  if timeout is not None:
-    while time.time() - start < timeout and proc.poll() is None:
-      time.sleep(0.1)
-    if proc.poll() is None:
-      proc.kill() # XXX bug: killing emscripten.py does not kill it's child process!
-      raise Exception("Timed out: " + note)
-  out = proc.communicate()
-  return '\n'.join(out) if full_output else out[0]
-
-def run_js(filename, engine=None, args=[], check_timeout=False, stdout=PIPE, stderr=None, cwd=None, full_output=False):
+def run_js(filename, engine=None, *args, **kw):
   if engine is None:
     engine = JS_ENGINES[0]
-  if type(engine) is not list:
-    engine = [engine]
-  command = engine + [filename] + (['--'] if 'd8' in engine[0] else []) + args
-  return timeout_run(
-    Popen(
-      command,
-      stdout=stdout,
-      stderr=stderr,
-      cwd=cwd),
-    15*60 if check_timeout else None,
-    'Execution',
-    full_output=full_output)
+  return jsrun.run_js(filename, engine, *args, **kw)
 
 def to_cc(cxx):
   # By default, LLVM_GCC and CLANG are really the C++ versions. This gets an explicit C version
@@ -931,7 +910,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     # Run Emscripten
     Settings.RELOOPER = Cache.get_path('relooper.js')
     settings = Settings.serialize()
-    compiler_output = timeout_run(Popen([PYTHON, EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE), None, 'Compiling')
+    compiler_output = jsrun.timeout_run(Popen([PYTHON, EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE), None, 'Compiling')
     #print compiler_output
 
     # Detect compilation crashes and errors
