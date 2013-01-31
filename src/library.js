@@ -4217,16 +4217,31 @@ LibraryManager.library = {
     return ret;
   },
 
+  memcpy__asm: 'true',
+  memcpy__sig: 'iiii',
   memcpy: function (dest, src, num) {
-    // simple version, in general it should not be used - we should pull it in from libc
-    if (!_memcpy.shown) {
-      _memcpy.shown = true;
-      Module.printErr('warning: library.js memcpy should not be running, it is only for testing!');
+    dest = dest|0; src = src|0; num = num|0;
+    if ((dest&3) == (src&3)) {
+      while (dest & 3 & num) {
+        {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i8'), 'i8') }}};
+        dest = (dest+1)|0;
+        src = (src+1)|0;
+        num = (num-1)|0;
+      }
+      while (num|0 >= 4) {
+        {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i32'), 'i32') }}};
+        dest = (dest+4)|0;
+        src = (src+4)|0;
+        num = (num-4)|0;
+      }
     }
-#endif
-    while (num--) {
-      HEAP8[dest++] = HEAP8[src++];
+    while (num|0 > 0) {
+      {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i8'), 'i8') }}};
+      dest = (dest+1)|0;
+      src = (src+1)|0;
+      num = (num-1)|0;
     }
+    return dest|0;
   },
 
   wmemcpy: function() { throw 'wmemcpy not implemented' },
@@ -5601,11 +5616,11 @@ LibraryManager.library = {
   // ==========================================================================
 
   __utsname_struct_layout: Runtime.generateStructInfo([
-	  'sysname',
-	  'nodename',
-	  'release',
-	  'version',
-	  'machine'], '%struct.utsname'),
+    'sysname',
+    'nodename',
+    'release',
+    'version',
+    'machine'], '%struct.utsname'),
   uname__deps: ['__utsname_struct_layout'],
   uname: function(name) {
     // int uname(struct utsname *name);
