@@ -13,6 +13,7 @@ import os, sys, json, optparse, subprocess, re, time, multiprocessing, functools
 
 from tools import shared
 from tools import jsrun
+from tools import cache
 
 __rootpath__ = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(*pathelems):
