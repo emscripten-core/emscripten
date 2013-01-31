@@ -1081,7 +1081,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       Building._is_ar_cache[filename] = sigcheck
       return sigcheck
     except Exception, e:
-      print >> sys.stderr, 'shared.Building.is_ar failed to test whether file \'%s\' is a llvm archive file! Failed on exception: %s' % (filename, e)
+      if DEBUG: print >> sys.stderr, 'shared.Building.is_ar failed to test whether file \'%s\' is a llvm archive file! Failed on exception: %s' % (filename, e)
       return False
 
   @staticmethod
@@ -1101,7 +1101,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
           assert os.path.exists(test_ll)
           try_delete(test_ll)
     except Exception, e:
-      print >> sys.stderr, 'shared.Building.is_bitcode failed to test whether file \'%s\' is a llvm bitcode file! Failed on exception: %s' % (filename, e)
+      if DEBUG: print >> sys.stderr, 'shared.Building.is_bitcode failed to test whether file \'%s\' is a llvm bitcode file! Failed on exception: %s' % (filename, e)
       return False
 
     # look for magic signature
