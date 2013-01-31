@@ -12,6 +12,7 @@ headers, for the libc implementation in JS).
 import os, sys, json, optparse, subprocess, re, time, multiprocessing, functools
 
 from tools import shared
+from tools import jsrun
 
 __rootpath__ = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(*pathelems):
@@ -40,7 +41,7 @@ def process_funcs((i, funcs, meta, settings_file, compiler, forwarded_file, libr
   ll = ''.join(funcs) + '\n' + meta
   funcs_file = temp_files.get('.func_%d.ll' % i).name
   open(funcs_file, 'w').write(ll)
-  out = shared.run_js(
+  out = jsrun.run_js(
     compiler,
     engine=compiler_engine,
     args=[settings_file, funcs_file, 'funcs', forwarded_file] + libraries,
@@ -160,7 +161,7 @@ def emscript(configuration, infile, settings, outfile, libraries=[],
     if out and DEBUG: print >> sys.stderr, '  loading pre from jcache'
   if not out:
     open(pre_file, 'w').write(pre_input)
-    out = shared.run_js(compiler, compiler_engine, [settings_file, pre_file, 'pre'] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
+    out = jsrun.run_js(compiler, compiler_engine, [settings_file, pre_file, 'pre'] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
     if jcache:
       if DEBUG: print >> sys.stderr, '  saving pre to jcache'
       jcache.set(shortkey, keys, out)
@@ -312,7 +313,7 @@ def emscript(configuration, infile, settings, outfile, libraries=[],
   if DEBUG: t = time.time()
   post_file = temp_files.get('.post.ll').name
   open(post_file, 'w').write('\n') # no input, just processing of forwarded data
-  out = shared.run_js(compiler, compiler_engine, [settings_file, post_file, 'post', forwarded_file] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
+  out = jsrun.run_js(compiler, compiler_engine, [settings_file, post_file, 'post', forwarded_file] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
   post, last_forwarded_data = out.split('//FORWARDED_DATA:') # if this fails, perhaps the process failed prior to printing forwarded data?
   last_forwarded_json = json.loads(last_forwarded_data)
 
