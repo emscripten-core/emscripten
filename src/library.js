@@ -7029,15 +7029,20 @@ LibraryManager.library = {
       ___setErrNo(ERRNO_CODES.EAGAIN); // no data, and all sockets are nonblocking, so this is the right behavior
       return -1;
     }
-    var buffer = info.inQueue.shift();
+    
+    var readed = info.inQueue[0].subarray(0, len);
+    info.inQueue[0] = info.inQueue[0].subarray(readed.length);
+    
+    if (info.inQueue[0].length == 0) {
+      info.inQueue.shift();
+    } 
+
 #if SOCKET_DEBUG
-    Module.print('recv: ' + [Array.prototype.slice.call(buffer)]);
+    Module.print('recv: ' + [Array.prototype.slice.call(readed)]);
 #endif
-    if (len < buffer.length) {
-      buffer = buffer.subarray(0, len);
-    }
-    HEAPU8.set(buffer, buf);
-    return buffer.length;
+    
+    HEAPU8.set(readed, buf);
+    return readed.length;
   },
 
   send__deps: ['$Sockets'],
