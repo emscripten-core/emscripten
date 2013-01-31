@@ -174,7 +174,9 @@ def emscript(configuration, infile, settings, outfile, libraries=[],
     settings['EXPORTED_FUNCTIONS'] = forwarded_json['EXPORTED_FUNCTIONS']
     save_settings()
 
-  chunks = shared.JCache.chunkify(funcs, chunk_size, 'emscript_files' if jcache else None)
+  chunks = shared.chunkify(
+    funcs, chunk_size,
+    jcache.get_cachename('emscript_files') if jcache else None)
 
   if jcache:
     # load chunks from cache where we can # TODO: ignore small chunks

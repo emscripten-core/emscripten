@@ -1175,10 +1175,7 @@ class Cache:
 
   @classmethod
   def erase(self):
-    try:
-      shutil.rmtree(self.dirname)
-    except:
-      pass
+    shutil.rmtree(self.dirname, ignore_errors=True)
 
   @classmethod
   def get_path(self, shortname):
@@ -1255,87 +1252,85 @@ class JCache:
     #    open(cachename + '.key' + str(i), 'w').write(keys[i])
     #  open(cachename + '.value', 'w').write(value)
 
-  # Given a set of functions of form (ident, text), and a preferred chunk size,
-  # generates a set of chunks for parallel processing and caching.
-  # It is very important to generate similar chunks in incremental builds, in
-  # order to maximize the chance of cache hits. To achieve that, we save the
-  # chunking used in the previous compilation of this phase, and we try to
-  # generate the same chunks, barring big differences in function sizes that
-  # violate our chunk size guideline. If caching is not used, chunking_file
-  # should be None
-  @classmethod
-  def chunkify(self, funcs, chunk_size, chunking_file):
-    previous_mapping = None
-    if chunking_file:
-      chunking_file = self.get_cachename(chunking_file)
-      if os.path.exists(chunking_file):
-        try:
-          previous_mapping = cPickle.Unpickler(open(chunking_file, 'rb')).load() # maps a function identifier to the chunk number it will be in
-        except:
-          pass
-    chunks = []
-    if previous_mapping:
-      # initialize with previous chunking
-      news = []
-      for func in funcs:
-        ident, data = func
-        if not ident in previous_mapping:
-          news.append(func)
-        else:
-          n = previous_mapping[ident]
-          while n >= len(chunks): chunks.append([])
-          chunks[n].append(func)
-      # add news and adjust for new sizes
-      spilled = news
-      for chunk in chunks:
-        size = sum([len(func[1]) for func in chunk])
-        while size > 1.5*chunk_size and len(chunk) > 0:
-          spill = chunk.pop()
-          spilled.append(spill)
-          size -= len(spill[1])
-      for chunk in chunks:
-        size = sum([len(func[1]) for func in chunk])
-        while size < 0.66*chunk_size and len(spilled) > 0:
-          spill = spilled.pop()
-          chunk.append(spill)
-          size += len(spill[1])
-      chunks = filter(lambda chunk: len(chunk) > 0, chunks) # might have empty ones, eliminate them
-      funcs = spilled # we will allocate these into chunks as if they were normal inputs
-    # initialize reasonably, the rest of the funcs we need to split out
-    curr = []
-    total_size = 0
-    for i in range(len(funcs)):
-      func = funcs[i]
-      curr_size = len(func[1])
-      if total_size + curr_size < chunk_size:
-        curr.append(func)
-        total_size += curr_size
+# Given a set of functions of form (ident, text), and a preferred chunk size,
+# generates a set of chunks for parallel processing and caching.
+# It is very important to generate similar chunks in incremental builds, in
+# order to maximize the chance of cache hits. To achieve that, we save the
+# chunking used in the previous compilation of this phase, and we try to
+# generate the same chunks, barring big differences in function sizes that
+# violate our chunk size guideline. If caching is not used, chunking_file
+# should be None
+def chunkify(funcs, chunk_size, chunking_file):
+  previous_mapping = None
+  if chunking_file:
+    if os.path.exists(chunking_file):
+      try:
+        previous_mapping = cPickle.Unpickler(open(chunking_file, 'rb')).load() # maps a function identifier to the chunk number it will be in
+      except:
+        pass
+  chunks = []
+  if previous_mapping:
+    # initialize with previous chunking
+    news = []
+    for func in funcs:
+      ident, data = func
+      if not ident in previous_mapping:
+        news.append(func)
       else:
-        chunks.append(curr)
-        curr = [func]
-        total_size = curr_size
-    if curr:
+        n = previous_mapping[ident]
+        while n >= len(chunks): chunks.append([])
+        chunks[n].append(func)
+    # add news and adjust for new sizes
+    spilled = news
+    for chunk in chunks:
+      size = sum([len(func[1]) for func in chunk])
+      while size > 1.5*chunk_size and len(chunk) > 0:
+        spill = chunk.pop()
+        spilled.append(spill)
+        size -= len(spill[1])
+    for chunk in chunks:
+      size = sum([len(func[1]) for func in chunk])
+      while size < 0.66*chunk_size and len(spilled) > 0:
+        spill = spilled.pop()
+        chunk.append(spill)
+        size += len(spill[1])
+    chunks = filter(lambda chunk: len(chunk) > 0, chunks) # might have empty ones, eliminate them
+    funcs = spilled # we will allocate these into chunks as if they were normal inputs
+  # initialize reasonably, the rest of the funcs we need to split out
+  curr = []
+  total_size = 0
+  for i in range(len(funcs)):
+    func = funcs[i]
+    curr_size = len(func[1])
+    if total_size + curr_size < chunk_size:
+      curr.append(func)
+      total_size += curr_size
+    else:
       chunks.append(curr)
-      curr = None
-    if chunking_file:
-      # sort within each chunk, to keep the order identical
-      for chunk in chunks:
-        chunk.sort(key=lambda func: func[0])
-      # save new mapping info
-      new_mapping = {}
-      for i in range(len(chunks)):
-        chunk = chunks[i]
-        for ident, data in chunk:
-          new_mapping[ident] = i
-      cPickle.Pickler(open(chunking_file, 'wb')).dump(new_mapping)
-      #if DEBUG:
-      #  if previous_mapping:
-      #    for ident in set(previous_mapping.keys() + new_mapping.keys()):
-      #      if previous_mapping.get(ident) != new_mapping.get(ident):
-      #        print >> sys.stderr, 'mapping inconsistency', ident, previous_mapping.get(ident), new_mapping.get(ident)
-      #  for key, value in new_mapping.iteritems():
-      #    print >> sys.stderr, 'mapping:', key, value
-    return [''.join([func[1] for func in chunk]) for chunk in chunks] # remove function names
+      curr = [func]
+      total_size = curr_size
+  if curr:
+    chunks.append(curr)
+    curr = None
+  if chunking_file:
+    # sort within each chunk, to keep the order identical
+    for chunk in chunks:
+      chunk.sort(key=lambda func: func[0])
+    # save new mapping info
+    new_mapping = {}
+    for i in range(len(chunks)):
+      chunk = chunks[i]
+      for ident, data in chunk:
+        new_mapping[ident] = i
+    cPickle.Pickler(open(chunking_file, 'wb')).dump(new_mapping)
+    #if DEBUG:
+    #  if previous_mapping:
+    #    for ident in set(previous_mapping.keys() + new_mapping.keys()):
+    #      if previous_mapping.get(ident) != new_mapping.get(ident):
+    #        print >> sys.stderr, 'mapping inconsistency', ident, previous_mapping.get(ident), new_mapping.get(ident)
+    #  for key, value in new_mapping.iteritems():
+    #    print >> sys.stderr, 'mapping:', key, value
+  return [''.join([func[1] for func in chunk]) for chunk in chunks] # remove function names
 
 class JS:
   @staticmethod
