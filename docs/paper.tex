@@ -114,7 +114,7 @@ main ones of which are Clang and LLVM-GCC) into the
 LLVM intermediary representation (which can be machine-readable
 bitcode, or human-readable assembly), and then passes it
 through a \emph{backend} which generates actual machine code for a particular
-architecure. Emscripten plays the role of a backend which targets JavaScript.
+architecture. Emscripten plays the role of a backend which targets JavaScript.
 
 By using Emscripten, potentially many languages can be
 run on the web, using one of the following methods:
@@ -138,7 +138,7 @@ run on the web, using one of the following methods:
 
 From a technical standpoint, one challenge in designing and implementing
 Emscripten is that it compiles a low-level language -- LLVM assembly -- into
-a high-level one -- JavaScript. This is somethat the reverse of the usual
+a high-level one -- JavaScript. This is somewhat the reverse of the usual
 situation one is in when building a compiler, and leads to some unique
 difficulties. For example, to get good performance in JavaScript one must
 use natural JavaScript code flow structures, like loops and ifs, but
@@ -475,7 +475,7 @@ a compilation option, SAFE\_HEAP, which generates code that checks that LSC hold
 doesn't. It also warns about other memory-related issues like
 reading from memory before a value was written (somewhat similarly to tools
 like Valgrind\footnote{\url{http://valgrind.org/}}). When such problems are detected, possible solutions are to ignore the issue (if it has no actual
-consqeuences), or alter the source code.
+consequences), or alter the source code.
 
 Note that it is somewhat wasteful to allocate 4 memory locations for
 a 32-bit integer, and use only one of them. It is possible to change
@@ -737,7 +737,7 @@ surprisingly easy to implement. For example, C++ exceptions are represented in
 LLVM by \emph{invoke} and \emph{unwind}, where \emph{invoke} is a call to a function that will
 potentially trigger an \emph{unwind}, and \emph{unwind} returns to the earliest invoke.
 If one were to implement those
-in a typical compiler, doing so would require careful work. In Emscripen, however,
+in a typical compiler, doing so would require careful work. In Emscripten, however,
 it is possible to do so using JavaScript exceptions in a straightforward manner:
 \emph{invoke} becomes a function call wrapped in a \emph{try} block, and \emph{unwind}
 becomes \emph{throw}. This is a case where compiling to a high-level language turns
