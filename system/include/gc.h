@@ -29,6 +29,9 @@ void *GC_MALLOC(int bytes);
 /* Allocate memory for an object that the user promises will not contain pointers. */
 void *GC_MALLOC_ATOMIC(int bytes);
 
+/* Allocate memory that might container pointers but that can't be collected. */
+void *GC_MALLOC_UNCOLLECTABLE(int bytes);
+
 /* Explicitly deallocate an object. Dangerous as it forces a free and does not check if the object is reffed. */
 void GC_FREE(void *ptr);
 

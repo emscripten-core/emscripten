@@ -9,6 +9,7 @@ if (GC_SUPPORT) {
 
       sizes: {}, // if in this map, then a live allocated object. this is iterable
       scannables: {},
+      uncollectables: {},
       finalizers: {},
       finalizerArgs: {},
 
@@ -34,13 +35,16 @@ if (GC_SUPPORT) {
         }
       },
 
-      malloc: function(bytes, clear, scannable) {
+      malloc: function(bytes, clear, scannable, collectable) {
         if (!bytes) return 0;
         var ptr;
         if (clear) {
           ptr = _calloc(1, bytes);
         } else {
           ptr = _malloc(bytes);
+        }
+        if (!collectable) {
+          GC.uncollectables[ptr] = true;
         }
         GC.scannables[ptr] = scannable;
         GC.sizes[ptr] = bytes;
@@ -123,7 +127,7 @@ if (GC_SUPPORT) {
       sweep: function() { // traverse all objects and free all unreachable
         var freeList = [];
         for (var ptr in GC.sizes) {
-          if (!GC.reachable[ptr]) {
+          if (!GC.reachable[ptr] && !GC.uncollectables[ptr]) {
             freeList.push(parseInt(ptr));
           }
         }
@@ -140,12 +144,17 @@ if (GC_SUPPORT) {
 
     GC_MALLOC__deps: ['$GC'],
     GC_MALLOC: function(bytes) {
-      return GC.malloc(bytes, true, true);
+      return GC.malloc(bytes, true, true, true);
     },
 
     GC_MALLOC_ATOMIC__deps: ['$GC'],
     GC_MALLOC_ATOMIC: function(bytes) {
-      return GC.malloc(bytes, false, false);
+      return GC.malloc(bytes, false, false, true);
+    },
+
+    GC_MALLOC_UNCOLLECTABLE__deps: ['$GC'],
+    GC_MALLOC_UNCOLLECTABLE: function(bytes) {
+      return GC.malloc(bytes, true, true, false);
     },
 
     GC_FREE__deps: ['$GC'],

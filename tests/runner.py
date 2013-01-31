@@ -7893,7 +7893,7 @@ def process(filename):
         int main() {
           GC_INIT();
 
-          void *local, *local2, *local3, *local4;
+          void *local, *local2, *local3, *local4, *local5;
 
           // Hold on to global, drop locals
 
@@ -7938,6 +7938,9 @@ def process(filename):
           GC_REGISTER_FINALIZER_NO_ORDER(local3, finalizer, (void*)3, 0, 0);
           local4 = GC_MALLOC(12);
           GC_REGISTER_FINALIZER_NO_ORDER(local4, finalizer, (void*)4, 0, 0);
+          local5 = GC_MALLOC_UNCOLLECTABLE(12);
+          // This should never trigger since local5 is uncollectable
+          GC_REGISTER_FINALIZER_NO_ORDER(local5, finalizer, (void*)5, 0, 0);
 
           void **globalData = (void**)global;
           globalData[0] = local;
