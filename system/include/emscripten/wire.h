@@ -8,6 +8,8 @@
 // We'll call the on-the-wire type WireType.
 
 #include <cstdlib>
+#include <memory>
+#include <string>
 
 namespace emscripten {
     namespace internal {
