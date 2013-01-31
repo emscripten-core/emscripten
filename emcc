@@ -1089,36 +1089,6 @@ try:
       shared.Building.llvm_opt(in_temp(target_basename + '.bc'), link_opts)
       if DEBUG: save_intermediate('linktime', 'bc')
 
-    # Optimization and lto can add new intrinsics like memcpy that were not present before. We
-    # are now *after* linking in libc, so we missed our chance to get memcpy - check and add it now
-    # if necessary
-    final_symbols = shared.Building.llvm_nm(final)
-    need_memcpy = False
-    for symbol in final_symbols.undefs:
-      if symbol in MEMCPY_ALIASES:
-        need_memcpy = True
-        break
-    has_memcpy = False
-    for symbol in final_symbols.defs:
-      if symbol in MEMCPY_ALIASES:
-        has_memcpy = True
-        break
-    if need_memcpy and not has_memcpy:
-      if DEBUG: print >> sys.stderr, 'memcpy intrinsic added in optimizations, linking in optimized memcpy'
-      memcpy = in_temp('memcpy.bc')
-      force_cxx = os.environ.get('EMMAKEN_CXX')
-      if force_cxx is not None: del os.environ['EMMAKEN_CXX'] # memcpy must be compiled as C
-      execute([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'libc', 'musl', 'memcpy.c'), '-o', memcpy], stdout=stdout, stderr=stderr)
-      if force_cxx is not None: os.environ['EMMAKEN_CXX'] = force_cxx
-      shared.Building.llvm_opt(memcpy, llvm_opts) # optimize it just like normal code; no point in lto though
-      next = final + '.postrinsics.bc'
-      shared.Building.link([final, memcpy], next)
-      final = next
-      if shared.Settings.ASM_JS: # export it so other library functions etc. can use it
-        if '_memcpy' not in shared.Settings.EXPORTED_FUNCTIONS:
-          shared.Settings.EXPORTED_FUNCTIONS.append('_memcpy')
-      if DEBUG: save_intermediate('postrinsics', 'bc')
-
   # Prepare .ll for Emscripten
   if not LEAVE_INPUTS_RAW:
     final = shared.Building.llvm_dis(final, final + '.ll')
