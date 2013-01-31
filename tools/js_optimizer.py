@@ -106,7 +106,7 @@ def run_on_js(filename, passes, js_engine, jcache):
   intended_num_chunks = int(round(cores * NUM_CHUNKS_PER_CORE))
   chunk_size = min(MAX_CHUNK_SIZE, max(MIN_CHUNK_SIZE, total_size / intended_num_chunks))
 
-  chunks = shared.JCache.chunkify(funcs, chunk_size, 'jsopt' if jcache else None)
+  chunks = shared.chunkify(funcs, chunk_size, jcache.get_cachename('jsopt') if jcache else None)
 
   if jcache:
     # load chunks from cache where we can # TODO: ignore small chunks
