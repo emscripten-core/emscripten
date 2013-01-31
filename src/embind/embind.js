@@ -81,24 +81,35 @@ function createInheritedFunctionOrProperty(name, type, nameInBaseClass, baseClas
     }
 }
 
+function collectRegisteredBaseClasses(rawType) {
+    var rawBaseTypes = Module.__getBaseClasses(rawType);
+    var baseTypes = [];
+    for (var i = 0; i < rawBaseTypes.size(); i++) {
+        var baseType = typeRegistry[rawBaseTypes.at(i)];
+        if (baseType) {
+            baseTypes.push(baseType);
+        } else {
+            baseTypes = baseTypes.concat(collectRegisteredBaseClasses(rawBaseTypes.at(i)));
+        }
+    }
+    return baseTypes;
+}
+
 function resolveType(type) {
     if (!type.resolved) {
         var baseClassType, name, baseProto;
         var inheritedNames = {};
-        var rawBaseClassTypes =  Module.__getBaseClasses(type.rawType);
-        for (var i = 0; i < rawBaseClassTypes.size(); i++) {
-            var rawBaseClassType = rawBaseClassTypes.at(i);
-            baseClassType = typeRegistry[rawBaseClassType];
-            if (baseClassType) {
-                resolveType(baseClassType);
-                baseProto = baseClassType.Handle.prototype;
-                for (name in baseProto) {
-                    if (baseProto.hasOwnProperty(name) && baseClassType.Handle.memberType[name]) {
-                        if (!(name in inheritedNames)) {
-                            inheritedNames[name] = [];
-                        }
-                        inheritedNames[name].push(baseClassType);
+        var baseTypes = collectRegisteredBaseClasses(type.rawType);
+        for (var i = 0; i < baseTypes.length; i++) {
+            var baseType = baseTypes[i];
+            resolveType(baseType);
+            baseProto = baseType.Handle.prototype;
+            for (name in baseProto) {
+                if (baseProto.hasOwnProperty(name) && baseType.Handle.memberType[name]) {
+                    if (!(name in inheritedNames)) {
+                        inheritedNames[name] = [];
                     }
+                    inheritedNames[name].push(baseType);
                 }
             }
         }
