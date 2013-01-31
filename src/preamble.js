@@ -35,8 +35,8 @@ function SAFE_HEAP_ACCESS(dest, type, store, ignore) {
   // When using typed arrays, reads over the top of TOTAL_MEMORY will fail silently, so we must
   // correct that by growing TOTAL_MEMORY as needed. Without typed arrays, memory is a normal
   // JS array so it will work (potentially slowly, depending on the engine).
-  assert(dest < STATICTOP);
-  assert(STATICTOP <= TOTAL_MEMORY);
+  assert(ignore || dest < STATICTOP);
+  assert(ignore || STATICTOP <= TOTAL_MEMORY);
 #endif
 
 #if USE_TYPED_ARRAYS == 2
@@ -482,7 +482,7 @@ Module['ALLOC_NONE'] = ALLOC_NONE;
 var _memset = function(ptr, value, num) {
   var stop = ptr + num;
   while (ptr < stop) {
-    {{{ makeSetValueAsm('ptr++', 0, 'value', 'i8', null, null, null, true) }}};
+    {{{ makeSetValue('ptr++', 0, 'value', 'i8', null, true) }}};
   }
 }
 
