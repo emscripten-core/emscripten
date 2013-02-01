@@ -21,7 +21,7 @@ def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
 
 configuration = shared.Configuration(environ=os.environ)
-temp_files = shared.make_temp_files()
+temp_files = configuration.get_temp_files()
 
 def scan(ll, settings):
   # blockaddress(@main, %23)
