@@ -238,7 +238,7 @@ process(sys.argv[1])
         os.remove(f + '.o')
       except:
         pass
-      args = [Building.COMPILER, '-emit-llvm'] + COMPILER_OPTS + Building.COMPILER_TEST_OPTS + \
+      args = [Building.COMPILER, '-emit-llvm', '-std=c++03'] + COMPILER_OPTS + Building.COMPILER_TEST_OPTS + \
              ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
              map(lambda include: '-I' + include, includes) + \
              ['-c', f, '-o', f + '.o']
@@ -3517,7 +3517,7 @@ def process(filename):
     # i.e. as if "-std=c++03" had been passed on the command line. On Linux with Clang 3.2 this is the case, but on Windows
     # with Clang 3.2 -std=c++11 has been chosen as default, because of
     # < jrose> clb: it's deliberate, with the idea that for people who don't care about the standard, they should be using the "best" thing we can offer on that platform
-    def test_cxx03(self):
+    def test_cxx03_do_run(self):
         src = '''
           #include <stdio.h>
           
@@ -8405,6 +8405,12 @@ f.close()
         process.communicate()
         assert process.returncode is not 0, 'Trying to compile a nonexisting file should return with a nonzero error code!'
         assert os.path.exists('this_output_file_should_never_exist.js') == False, 'Emcc should not produce an output file when build fails!'
+
+    def test_cxx03(self):
+      for compiler in [EMCC, EMXX]:
+        process = Popen([PYTHON, compiler, path_from_root('tests', 'hello_cxx03.cpp')], stdout=PIPE, stderr=PIPE)
+        process.communicate()
+        assert process.returncode is 0, 'By default, emscripten should build using -std=c++03!'
 
     def test_Os(self):
       for opt in ['s', '0']:
