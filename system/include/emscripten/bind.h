@@ -729,18 +729,6 @@ namespace emscripten {
     // VECTORS
     ////////////////////////////////////////////////////////////////////////////////
     template<typename T>
-    std::vector<T> vecFromJSArray(val v) {
-        auto l = v["length"].as<unsigned>();
-
-        std::vector<T> rv;
-        for(unsigned i = 0; i < l; ++i) {
-            rv.push_back(v[i].as<T>());
-        }
-
-        return rv;
-    };
-
-    template<typename T>
     class_<std::vector<T>> register_vector(const char* name) {
         using namespace std;
         typedef vector<T> VecType;
