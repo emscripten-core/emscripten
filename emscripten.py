@@ -46,8 +46,8 @@ def process_funcs((i, funcs, meta, settings_file, compiler, forwarded_file, libr
   tempfiles.try_delete(funcs_file)
   return out
 
-def emscript(configuration, infile, settings, outfile, libraries=[], compiler_engine=None,
-             jcache=None, temp_files=None):
+def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
+             jcache=None, temp_files=None, DEBUG=False):
   """Runs the emscripten LLVM-to-JS compiler. We parallelize as much as possible
 
   Args:
@@ -66,7 +66,7 @@ def emscript(configuration, infile, settings, outfile, libraries=[], compiler_en
   #   2 aka 'funcs': Process functions. We can parallelize this, working on each function independently.
   #   3 aka 'post' : Process globals, generate postamble and finishing touches.
 
-  configuration.debug_log('emscript: ll=>js')
+  if DEBUG: print >> sys.stderr, 'emscript: ll=>js'
 
   if jcache: jcache.ensure()
 
@@ -491,7 +491,7 @@ Runtime.stackRestore = function(top) { asm.stackRestore(top) };
 
   outfile.close()
 
-def main(args, compiler_engine, cache, jcache, relooper, temp_files, configuration):
+def main(args, compiler_engine, cache, jcache, relooper, temp_files, DEBUG):
   # Prepare settings for serialization to JSON.
   settings = {}
   for setting in args.settings:
@@ -572,10 +572,8 @@ def main(args, compiler_engine, cache, jcache, relooper, temp_files, configurati
     from tools import shared
     shared.Building.ensure_relooper(relooper)
 
-  emscript(configuration, args.infile, settings, args.outfile, libraries,
-           compiler_engine=compiler_engine,
-           jcache=jcache,
-          temp_files=temp_files)
+  emscript(args.infile, settings, args.outfile, libraries, compiler_engine=compiler_engine,
+           jcache=jcache, temp_files=temp_files, DEBUG=DEBUG)
 
 def _main(environ):
   parser = optparse.OptionParser(
@@ -599,7 +597,7 @@ def _main(environ):
                     help='Which JS engine to use to run the compiler; defaults to the one in ~/.emscripten.')
   parser.add_option('--relooper',
                     default=None,
-                    help='Which relooper file to use if RELOOP is enabled')
+                    help='Which relooper file to use if RELOOP is enabled.')
   parser.add_option('-s', '--setting',
                     dest='settings',
                     default=[],
@@ -611,6 +609,9 @@ def _main(environ):
                     action='store_true',
                     default=False,
                     help=('Enable jcache (ccache-like caching of compilation results, for faster incremental builds).'))
+  parser.add_option('-T', '--temp-dir',
+                    default=None,
+                    help=('Where to create temporary files.'))
   parser.add_option('--suppressUsageWarning',
                     action='store_true',
                     default=environ.get('EMSCRIPTEN_SUPPRESS_USAGE_WARNING'),
@@ -639,11 +640,20 @@ WARNING: You should normally never use this! Use emcc instead.
 
   from tools import shared
   configuration = shared.Configuration(environ=os.environ)
-  temp_files = configuration.get_temp_files()
+
+  if keywords.temp_dir is None:
+    temp_files = configuration.get_temp_files()
+  else:
+    temp_dir = os.path.abspath(keywords.temp_dir)
+    if not os.path.exists(temp_dir):
+      os.makedirs(temp_dir)
+    temp_files = tempfiles.TempFiles(temp_dir)
 
   if keywords.compiler is None:
     from tools import shared
     keywords.compiler = shared.COMPILER_ENGINE
+
+  DEBUG = configuration.DEBUG
 
   cache = cache_module.Cache()
   temp_files.run_and_clean(lambda: main(
@@ -653,7 +663,7 @@ WARNING: You should normally never use this! Use emcc instead.
     jcache=cache_module.JCache(cache) if keywords.jcache else None,
     relooper=relooper,
     temp_files=temp_files,
-    configuration=configuration
+    DEBUG=DEBUG
   ))
 
 if __name__ == '__main__':

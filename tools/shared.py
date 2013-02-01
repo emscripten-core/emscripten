@@ -1,7 +1,7 @@
 import shutil, time, os, sys, json, tempfile, copy, shlex, atexit, subprocess, hashlib, cPickle, zlib, re
 from subprocess import Popen, PIPE, STDOUT
 from tempfile import mkstemp
-from . import jsrun, cache
+from . import jsrun, cache, tempfiles
 
 def listify(x):
   if type(x) is not list: return [x]
@@ -318,43 +318,13 @@ class Configuration:
         print >> sys.stderr, e, 'Could not create canonical temp dir. Check definition of TEMP_DIR in ~/.emscripten'
 
   def get_temp_files(self):
-    return TempFiles(
+    return tempfiles.TempFiles(
       tmp=self.TEMP_DIR if not self.DEBUG else self.EMSCRIPTEN_TEMP_DIR,
       save_debug_files=os.environ.get('EMCC_DEBUG_SAVE'))
 
   def debug_log(self, msg):
     if self.DEBUG:
       print >> sys.stderr, msg
-
-class TempFiles:
-  def __init__(self, tmp, save_debug_files=False):
-    self.tmp = tmp
-    self.save_debug_files = save_debug_files
-    
-    self.to_clean = []
-
-  def note(self, filename):
-    self.to_clean.append(filename)
-
-  def get(self, suffix):
-    """Returns a named temp file  with the given prefix."""
-    named_file = tempfile.NamedTemporaryFile(dir=self.tmp, suffix=suffix, delete=False)
-    self.note(named_file.name)
-    return named_file
-
-  def clean(self):
-    if self.save_debug_files:
-      print >> sys.stderr, 'not cleaning up temp files since in debug-save mode, see them in %s' % (self.tmp,)
-      return
-    for filename in self.to_clean:
-      try_delete(filename)
-    self.to_clean = []
-
-  def run_and_clean(self, func):
-    try:
-      return func()
-    finally:
-      self.clean()
 
 configuration = Configuration(environ=os.environ)
 DEBUG = configuration.DEBUG
