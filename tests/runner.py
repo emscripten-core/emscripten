@@ -2196,7 +2196,7 @@ Succeeded!
           }
            
           int main() {
-              int x = 0;
+              volatile int x = 0;
               if ( ! setjmp(buf) ) {
                   x++;
                   first();                // when executed, setjmp returns 0
@@ -2207,11 +2207,7 @@ Succeeded!
               return 0;
           }
         '''
-        # gcc -O0 and -O2 differ in what they do with the saved state of local vars - and we match that
-        if self.emcc_args is None or ('-O1' not in self.emcc_args and '-O2' not in self.emcc_args):
-          self.do_run(src, 'second\nmain: 1\n')
-        else:
-          self.do_run(src, 'second\nmain: 0\n')
+        self.do_run(src, 'second\nmain: 1\n')
 
     def test_longjmp2(self):
       if Settings.ASM_JS: return self.skip('asm does not support longjmp')
