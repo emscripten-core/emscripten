@@ -258,7 +258,7 @@ mergeInto(LibraryManager.library, {
       }
       return ctx;
     },
-
+    destroyContext: function(canvas, useWebGL, setInModule) {},
     requestFullScreen: function() {
       var canvas = Module['canvas'];
       function fullScreenChange() {
