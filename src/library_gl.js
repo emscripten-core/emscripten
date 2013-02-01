@@ -2600,7 +2600,7 @@ var LibraryGL = {
 
   glTexGeni: function() { throw 'glTexGeni: TODO' },
   glTexGenfv: function() { throw 'glTexGenfv: TODO' },
-  glTexEnvi: function() { throw 'glTexEnvi: TODO' },
+  glTexEnvi: function() { console.log('glTexEnvi - unimplemented') },
   glTexEnvfv: function() { throw 'glTexEnvfv: TODO' },
 
   glTexImage1D: function() { throw 'glTexImage1D: TODO' },
@@ -2614,6 +2614,19 @@ var LibraryGL = {
   glVertexAttribPointer__sig: 'viiiiii',
   glCheckFramebufferStatus__sig: 'ii',
   glRenderbufferStorage__sig: 'viiii',
+  
+  // Open GLES1.1 compatibility
+  glGenFramebuffersOES : 'glGenFramebuffers',
+  glGenRenderbuffersOES : 'glGenRenderbuffers',
+  glBindFramebufferOES : 'glBindFramebuffer',
+  glBindRenderbufferOES : 'glBindRenderbuffer',
+  glGetRenderbufferParameterivOES : 'glGetRenderbufferParameteriv',
+  glFramebufferRenderbufferOES : 'glFramebufferRenderbuffer',
+  glRenderbufferStorageOES : 'glRenderbufferStorage',
+  glCheckFramebufferStatusOES : 'glCheckFramebufferStatus',
+  glDeleteFramebuffersOES : 'glDeleteFramebuffers',
+  glDeleteRenderbuffersOES : 'glDeleteRenderbuffers'
+  
 };
 
 // Simple pass-through functions. Starred ones have return values. [X] ones have X in the C name but not in the JS name
