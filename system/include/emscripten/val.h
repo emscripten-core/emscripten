@@ -2,6 +2,7 @@
 
 #include <stdint.h> // uintptr_t
 #include <emscripten/wire.h>
+#include <vector>
 
 namespace emscripten {
     namespace internal {
@@ -237,4 +238,16 @@ namespace emscripten {
             }
         };
     }
+
+    template<typename T>
+    std::vector<T> vecFromJSArray(val v) {
+        auto l = v["length"].as<unsigned>();
+
+        std::vector<T> rv;
+        for(unsigned i = 0; i < l; ++i) {
+            rv.push_back(v[i].as<T>());
+        }
+
+        return rv;
+    };
 }
