@@ -64,8 +64,11 @@ int main(int argc, char *argv[])
     // Create a texture
 
     GLuint texture;
+    assert(!glIsTexture(1)); // not a texture
     glGenTextures( 1, &texture );
+    assert(!glIsTexture(texture)); // not a texture until glBindTexture
     glBindTexture( GL_TEXTURE_2D, texture );
+    assert(glIsTexture(texture)); // NOW it is a texture
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
     GLubyte textureData[16*16*4];
@@ -222,6 +225,10 @@ int main(int argc, char *argv[])
     // END
 
     SDL_GL_SwapBuffers();
+
+    assert(glIsTexture(texture)); // still a texture
+    glDeleteTextures(1, &texture);
+    assert(!glIsTexture(texture)); // but not anymore
 
     verify();
    

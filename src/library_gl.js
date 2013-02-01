@@ -424,11 +424,9 @@ var LibraryGL = {
   },
 
   glIsTexture: function(texture) {
-    var fb = GL.textures[texture];
-    if (typeof(fb) == 'undefined') {
-      return 0;
-    }
-    return Module.ctx.isTexture(fb);
+    var texture = GL.textures[texture];
+    if (!texture) return 0;
+    return Module.ctx.isTexture(texture);
   },
 
   glGenBuffers__sig: 'vii',
