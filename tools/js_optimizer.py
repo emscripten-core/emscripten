@@ -2,7 +2,8 @@
 import os, sys, subprocess, multiprocessing, re
 import shared
 
-temp_files = shared.TempFiles()
+configuration = shared.configuration
+temp_files = configuration.get_temp_files()
 
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
@@ -97,7 +98,7 @@ def run_on_js(filename, passes, js_engine, jcache):
   total_size = len(js)
   js = None
 
-  chunks = shared.JCache.chunkify(funcs, BEST_JS_PROCESS_SIZE, 'jsopt' if jcache else None)
+  chunks = shared.chunkify(funcs, BEST_JS_PROCESS_SIZE, jcache.get_cachename('jsopt') if jcache else None)
 
   if jcache:
     # load chunks from cache where we can # TODO: ignore small chunks

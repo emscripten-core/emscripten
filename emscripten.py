@@ -9,18 +9,9 @@ header files (so that the JS compiler can see the constants in those
 headers, for the libc implementation in JS).
 '''
 
-import os, sys, json, optparse, subprocess, re, time, multiprocessing
+import os, sys, json, optparse, subprocess, re, time, multiprocessing, functools
 
-if not os.environ.get('EMSCRIPTEN_SUPPRESS_USAGE_WARNING'):
-  print >> sys.stderr, '''
-==============================================================
-WARNING: You should normally never use this! Use emcc instead.
-==============================================================
-  '''
-
-from tools import shared
-
-DEBUG = os.environ.get('EMCC_DEBUG')
+from tools import jsrun, cache as cache_module, tempfiles
 
 __rootpath__ = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(*pathelems):
@@ -28,11 +19,6 @@ def path_from_root(*pathelems):
   relative to the emscripten root.
   """
   return os.path.join(__rootpath__, *pathelems)
-
-temp_files = shared.TempFiles()
-
-compiler_engine = None
-jcache = False
 
 def scan(ll, settings):
   # blockaddress(@main, %23)
@@ -47,16 +33,21 @@ NUM_CHUNKS_PER_CORE = 5
 MIN_CHUNK_SIZE = 1024*1024
 MAX_CHUNK_SIZE = float(os.environ.get('EMSCRIPT_MAX_CHUNK_SIZE') or 'inf') # configuring this is just for debugging purposes
 
-def process_funcs(args):
-  i, funcs, meta, settings_file, compiler, forwarded_file, libraries = args
+def process_funcs((i, funcs, meta, settings_file, compiler, forwarded_file, libraries, compiler_engine, temp_files)):
   ll = ''.join(funcs) + '\n' + meta
   funcs_file = temp_files.get('.func_%d.ll' % i).name
   open(funcs_file, 'w').write(ll)
-  out = shared.run_js(compiler, compiler_engine, [settings_file, funcs_file, 'funcs', forwarded_file] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
-  shared.try_delete(funcs_file)
+  out = jsrun.run_js(
+    compiler,
+    engine=compiler_engine,
+    args=[settings_file, funcs_file, 'funcs', forwarded_file] + libraries,
+    stdout=subprocess.PIPE,
+    cwd=path_from_root('src'))
+  tempfiles.try_delete(funcs_file)
   return out
 
-def emscript(infile, settings, outfile, libraries=[]):
+def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
+             jcache=None, temp_files=None, DEBUG=False):
   """Runs the emscripten LLVM-to-JS compiler. We parallelize as much as possible
 
   Args:
@@ -75,7 +66,7 @@ def emscript(infile, settings, outfile, libraries=[]):
 
   if DEBUG: print >> sys.stderr, 'emscript: ll=>js'
 
-  if jcache: shared.JCache.ensure()
+  if jcache: jcache.ensure()
 
   # Pre-scan ll and alter settings as necessary
   if DEBUG: t = time.time()
@@ -144,15 +135,15 @@ def emscript(infile, settings, outfile, libraries=[]):
   out = None
   if jcache:
     keys = [pre_input, settings_text, ','.join(libraries)]
-    shortkey = shared.JCache.get_shortkey(keys)
-    out = shared.JCache.get(shortkey, keys)
+    shortkey = jcache.get_shortkey(keys)
+    out = jcache.get(shortkey, keys)
     if out and DEBUG: print >> sys.stderr, '  loading pre from jcache'
   if not out:
     open(pre_file, 'w').write(pre_input)
-    out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, pre_file, 'pre'] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
+    out = jsrun.run_js(compiler, compiler_engine, [settings_file, pre_file, 'pre'] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
     if jcache:
       if DEBUG: print >> sys.stderr, '  saving pre to jcache'
-      shared.JCache.set(shortkey, keys, out)
+      jcache.set(shortkey, keys, out)
   pre, forwarded_data = out.split('//FORWARDED_DATA:')
   forwarded_file = temp_files.get('.json').name
   open(forwarded_file, 'w').write(forwarded_data)
@@ -177,15 +168,17 @@ def emscript(infile, settings, outfile, libraries=[]):
     settings['EXPORTED_FUNCTIONS'] = forwarded_json['EXPORTED_FUNCTIONS']
     save_settings()
 
-  chunks = shared.JCache.chunkify(funcs, chunk_size, 'emscript_files' if jcache else None)
+  chunks = cache_module.chunkify(
+    funcs, chunk_size,
+    jcache.get_cachename('emscript_files') if jcache else None)
 
   if jcache:
     # load chunks from cache where we can # TODO: ignore small chunks
     cached_outputs = []
     def load_from_cache(chunk):
       keys = [settings_text, forwarded_data, chunk]
-      shortkey = shared.JCache.get_shortkey(keys) # TODO: share shortkeys with later code
-      out = shared.JCache.get(shortkey, keys) # this is relatively expensive (pickling?)
+      shortkey = jcache.get_shortkey(keys) # TODO: share shortkeys with later code
+      out = jcache.get(shortkey, keys) # this is relatively expensive (pickling?)
       if out:
         cached_outputs.append(out)
         return False
@@ -198,12 +191,16 @@ def emscript(infile, settings, outfile, libraries=[]):
 
   # TODO: minimize size of forwarded data from funcs to what we actually need
 
-  if cores == 1 and total_ll_size < MAX_CHUNK_SIZE: assert len(chunks) == 1, 'no point in splitting up without multiple cores'
+  if cores == 1 and total_ll_size < MAX_CHUNK_SIZE:
+    assert len(chunks) == 1, 'no point in splitting up without multiple cores'
 
   if len(chunks) > 0:
     if DEBUG: print >> sys.stderr, '  emscript: phase 2 working on %d chunks %s (intended chunk size: %.2f MB, meta: %.2f MB, forwarded: %.2f MB, total: %.2f MB)' % (len(chunks), ('using %d cores' % cores) if len(chunks) > 1 else '', chunk_size/(1024*1024.), len(meta)/(1024*1024.), len(forwarded_data)/(1024*1024.), total_ll_size/(1024*1024.))
 
-    commands = [(i, chunks[i], meta, settings_file, compiler, forwarded_file, libraries) for i in range(len(chunks))]
+    commands = [
+      (i, chunk, meta, settings_file, compiler, forwarded_file, libraries, compiler_engine, temp_files)
+      for i, chunk in enumerate(chunks)
+    ]
 
     if len(chunks) > 1:
       pool = multiprocessing.Pool(processes=cores)
@@ -218,8 +215,8 @@ def emscript(infile, settings, outfile, libraries=[]):
     for i in range(len(chunks)):
       chunk = chunks[i]
       keys = [settings_text, forwarded_data, chunk]
-      shortkey = shared.JCache.get_shortkey(keys)
-      shared.JCache.set(shortkey, keys, outputs[i])
+      shortkey = jcache.get_shortkey(keys)
+      jcache.set(shortkey, keys, outputs[i])
     if out and DEBUG and len(chunks) > 0: print >> sys.stderr, '  saving %d funcchunks to jcache' % len(chunks)
 
   if jcache: outputs += cached_outputs # TODO: preserve order
@@ -292,7 +289,7 @@ def emscript(infile, settings, outfile, libraries=[]):
   if DEBUG: t = time.time()
   post_file = temp_files.get('.post.ll').name
   open(post_file, 'w').write('\n') # no input, just processing of forwarded data
-  out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, post_file, 'post', forwarded_file] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
+  out = jsrun.run_js(compiler, compiler_engine, [settings_file, post_file, 'post', forwarded_file] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
   post, last_forwarded_data = out.split('//FORWARDED_DATA:')
   last_forwarded_json = json.loads(last_forwarded_data)
 
@@ -476,8 +473,7 @@ Runtime.stackRestore = function(top) { asm.stackRestore(top) };
 
   outfile.close()
 
-
-def main(args):
+def main(args, compiler_engine, cache, jcache, relooper, temp_files, DEBUG):
   # Prepare settings for serialization to JSON.
   settings = {}
   for setting in args.settings:
@@ -551,16 +547,23 @@ def main(args):
   libraries = args.libraries[0].split(',') if len(args.libraries) > 0 else []
 
   # Compile the assembly to Javascript.
-  if settings.get('RELOOP'): shared.Building.ensure_relooper()
+  if settings.get('RELOOP'):
+    if not relooper:
+      relooper = cache.get_path('relooper.js')
+    settings.setdefault('RELOOPER', relooper)
+    if not os.path.exists(relooper):
+      from tools import shared
+      shared.Building.ensure_relooper(relooper)
 
-  emscript(args.infile, settings, args.outfile, libraries)
+  emscript(args.infile, settings, args.outfile, libraries, compiler_engine=compiler_engine,
+           jcache=jcache, temp_files=temp_files, DEBUG=DEBUG)
 
-if __name__ == '__main__':
+def _main(environ):
   parser = optparse.OptionParser(
-      usage='usage: %prog [-h] [-H HEADERS] [-o OUTFILE] [-c COMPILER_ENGINE] [-s FOO=BAR]* infile',
-      description=('You should normally never use this! Use emcc instead. '
-                   'This is a wrapper around the JS compiler, converting .ll to .js.'),
-      epilog='')
+    usage='usage: %prog [-h] [-H HEADERS] [-o OUTFILE] [-c COMPILER_ENGINE] [-s FOO=BAR]* infile',
+    description=('You should normally never use this! Use emcc instead. '
+                 'This is a wrapper around the JS compiler, converting .ll to .js.'),
+    epilog='')
   parser.add_option('-H', '--headers',
                     default=[],
                     action='append',
@@ -573,8 +576,11 @@ if __name__ == '__main__':
                     default=sys.stdout,
                     help='Where to write the output; defaults to stdout.')
   parser.add_option('-c', '--compiler',
-                    default=shared.COMPILER_ENGINE,
+                    default=None,
                     help='Which JS engine to use to run the compiler; defaults to the one in ~/.emscripten.')
+  parser.add_option('--relooper',
+                    default=None,
+                    help='Which relooper file to use if RELOOP is enabled.')
   parser.add_option('-s', '--setting',
                     dest='settings',
                     default=[],
@@ -586,16 +592,78 @@ if __name__ == '__main__':
                     action='store_true',
                     default=False,
                     help=('Enable jcache (ccache-like caching of compilation results, for faster incremental builds).'))
+  parser.add_option('-T', '--temp-dir',
+                    default=None,
+                    help=('Where to create temporary files.'))
+  parser.add_option('-v', '--verbose',
+                    action='store_true',
+                    dest='verbose',
+                    help='Displays debug output')
+  parser.add_option('-q', '--quiet',
+                    action='store_false',
+                    dest='verbose',
+                    help='Hides debug output')
+  parser.add_option('--suppressUsageWarning',
+                    action='store_true',
+                    default=environ.get('EMSCRIPTEN_SUPPRESS_USAGE_WARNING'),
+                    help=('Suppress usage warning'))
 
   # Convert to the same format that argparse would have produced.
   keywords, positional = parser.parse_args()
+
+  if not keywords.suppressUsageWarning:
+    print >> sys.stderr, '''
+==============================================================
+WARNING: You should normally never use this! Use emcc instead.
+==============================================================
+  '''
+
   if len(positional) != 1:
     raise RuntimeError('Must provide exactly one positional argument.')
   keywords.infile = os.path.abspath(positional[0])
   if isinstance(keywords.outfile, basestring):
     keywords.outfile = open(keywords.outfile, 'w')
-  compiler_engine = keywords.compiler
-  jcache = keywords.jcache
 
-  temp_files.run_and_clean(lambda: main(keywords))
+  if keywords.relooper:
+    relooper = os.path.abspath(keywords.relooper)
+  else:
+    relooper = None # use the cache
 
+  def get_configuration():
+    if hasattr(get_configuration, 'configuration'):
+      return get_configuration.configuration
+    
+    from tools import shared
+    configuration = shared.Configuration(environ=os.environ)
+    get_configuration.configuration = configuration
+      
+  if keywords.temp_dir is None:
+    temp_files = get_configuration().get_temp_files()
+  else:
+    temp_dir = os.path.abspath(keywords.temp_dir)
+    if not os.path.exists(temp_dir):
+      os.makedirs(temp_dir)
+    temp_files = tempfiles.TempFiles(temp_dir)
+
+  if keywords.compiler is None:
+    from tools import shared
+    keywords.compiler = shared.COMPILER_ENGINE
+
+  if keywords.verbose is None:
+    DEBUG = get_configuration().DEBUG
+  else:
+    DEBUG = keywords.verbose
+
+  cache = cache_module.Cache()
+  temp_files.run_and_clean(lambda: main(
+    keywords,
+    compiler_engine=os.path.abspath(keywords.compiler),
+    cache=cache,
+    jcache=cache_module.JCache(cache) if keywords.jcache else None,
+    relooper=relooper,
+    temp_files=temp_files,
+    DEBUG=DEBUG
+  ))
+
+if __name__ == '__main__':
+  _main(environ=os.environ)
