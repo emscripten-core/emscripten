@@ -1,6 +1,7 @@
 
 if (GC_SUPPORT) {
   EXPORTED_FUNCTIONS['_calloc'] = 1;
+  EXPORTED_FUNCTIONS['_realloc'] = 1;
 
   var LibraryGC = {
     $GC__deps: ['sbrk', 'realloc'],
