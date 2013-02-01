@@ -8412,6 +8412,12 @@ f.close()
         process.communicate()
         assert process.returncode is 0, 'By default, emscripten should build using -std=c++03!'
 
+    def test_cxx11(self):
+      for compiler in [EMCC, EMXX]:
+        process = Popen([PYTHON, compiler, '-std=c++11', path_from_root('tests', 'hello_cxx11.cpp')], stdout=PIPE, stderr=PIPE)
+        process.communicate()
+        assert process.returncode is 0, 'User should be able to specify custom -std= on the command line!'
+
     def test_Os(self):
       for opt in ['s', '0']:
         output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O' + opt], stdout=PIPE, stderr=PIPE).communicate()
