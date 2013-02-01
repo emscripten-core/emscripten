@@ -3513,6 +3513,25 @@ def process(filename):
           '''
         self.do_run(src, '*96,97,98,-14,-14,101*')
 
+    # By default, when user has not specified a -std flag, Emscripten should always build .cpp files using the C++03 standard,
+    # i.e. as if "-std=c++03" had been passed on the command line. On Linux with Clang 3.2 this is the case, but on Windows
+    # with Clang 3.2 -std=c++11 has been chosen as default, because of
+    # < jrose> clb: it's deliberate, with the idea that for people who don't care about the standard, they should be using the "best" thing we can offer on that platform
+    def test_cxx03(self):
+        src = '''
+          #include <stdio.h>
+          
+          #if __cplusplus != 199711L
+          #error By default, if no -std is specified, emscripten should be compiling with -std=c++03!
+          #endif
+
+          int main( int argc, const char *argv[] ) {
+            printf("Hello world!\\n");
+            return 0;
+          }
+          '''
+        self.do_run(src, 'Hello world!')
+
     def test_bigswitch(self):
       if Settings.RELOOP: return self.skip('TODO: switch in relooper, issue #781')
 
