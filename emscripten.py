@@ -48,10 +48,8 @@ def process_funcs((i, funcs, meta, settings_file, compiler, forwarded_file, libr
   shared.try_delete(funcs_file)
   return out
 
-def emscript(configuration, infile, settings, outfile, libraries=[],
-             compiler_engine=None,
-             jcache=None,
-             temp_files=None):
+def emscript(configuration, infile, settings, outfile, libraries=[], compiler_engine=None,
+             jcache=None, temp_files=None):
   """Runs the emscripten LLVM-to-JS compiler. We parallelize as much as possible
 
   Args:
