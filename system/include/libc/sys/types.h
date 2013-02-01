@@ -24,12 +24,6 @@
 
 #include <machine/_types.h>
 
-#if EMSCRIPTEN
-  #define _POSIX_THREADS
-  #define _UNIX98_THREAD_MUTEX_ATTRIBUTES
-  #define _POSIX_READER_WRITER_LOCKS
-#endif
-
 #if defined(__rtems__) || defined(__XMK__) || defined(EMSCRIPTEN)
 /*
  *  The following section is RTEMS specific and is needed to more
