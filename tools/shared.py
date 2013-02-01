@@ -460,15 +460,7 @@ if not WINDOWS:
     pass
 
 # Temp file utilities
-
-def try_delete(filename):
-  try:
-    os.unlink(filename)
-  except:
-    try:
-      shutil.rmtree(filename)
-    except:
-      pass
+from .tempfiles import try_delete
 
 # Utilities
 

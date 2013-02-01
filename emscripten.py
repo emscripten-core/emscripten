@@ -11,7 +11,7 @@ headers, for the libc implementation in JS).
 
 import os, sys, json, optparse, subprocess, re, time, multiprocessing, functools
 
-from tools import shared, jsrun, cache as cache_module
+from tools import shared, jsrun, cache as cache_module, tempfiles
 
 __rootpath__ = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(*pathelems):
@@ -45,7 +45,7 @@ def process_funcs((i, funcs, meta, settings_file, compiler, forwarded_file, libr
     args=[settings_file, funcs_file, 'funcs', forwarded_file] + libraries,
     stdout=subprocess.PIPE,
     cwd=path_from_root('src'))
-  shared.try_delete(funcs_file)
+  tempfiles.try_delete(funcs_file)
   return out
 
 def emscript(configuration, infile, settings, outfile, libraries=[], compiler_engine=None,
@@ -596,7 +596,7 @@ def _main(environ):
                     default=sys.stdout,
                     help='Where to write the output; defaults to stdout.')
   parser.add_option('-c', '--compiler',
-                    default=shared.COMPILER_ENGINE,
+                    default=None,
                     help='Which JS engine to use to run the compiler; defaults to the one in ~/.emscripten.')
   parser.add_option('--relooper',
                     default=None,
@@ -639,6 +639,10 @@ WARNING: You should normally never use this! Use emcc instead.
     relooper = None # use the cache
 
   temp_files = configuration.get_temp_files()
+
+  if keywords.compiler is None:
+    from tools import shared
+    keywords.compiler = shared.COMPILER_ENGINE
 
   cache = cache_module.Cache()
   temp_files.run_and_clean(lambda: main(
