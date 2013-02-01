@@ -113,6 +113,10 @@ if (GC_SUPPORT) {
         GC.finalizerArgs[ptr] = arg;
       },
 
+      getHeapSize: function() {
+        return GC.totalAllocations;
+      },
+
       maybeCollect: function() {
         if (GC.needCollect()) GC.collect();
       },
@@ -205,6 +209,11 @@ if (GC_SUPPORT) {
     GC_REGISTER_FINALIZER_NO_ORDER__deps: ['$GC'],
     GC_REGISTER_FINALIZER_NO_ORDER: function(ptr, func, arg, old_func, old_arg) {
       GC.registerFinalizer(ptr, func, arg, old_func, old_arg);
+    },
+
+    GC_get_heap_size__deps: ['$GC'],
+    GC_get_heap_size: function() {
+      return GC.getHeapSize();
     },
 
     GC_MAYBE_COLLECT__deps: ['$GC'],

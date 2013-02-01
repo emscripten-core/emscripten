@@ -7942,7 +7942,11 @@ def process(filename):
           // This should never trigger since local5 is uncollectable
           GC_REGISTER_FINALIZER_NO_ORDER(local5, finalizer, (void*)5, 0, 0);
 
+          printf("heap size = %d\n", GC_get_heap_size());
+
           local4 = GC_REALLOC(local4, 24);
+
+          printf("heap size = %d\n", GC_get_heap_size());
 
           local6 = GC_MALLOC(12);
           GC_REGISTER_FINALIZER_NO_ORDER(local6, finalizer, (void*)6, 0, 0);
@@ -7984,6 +7988,8 @@ finalizing2 2 (global == 0)
 finalizing2 3 (global == 0)
 *
 finalizing 0 (global == 1)
+heap size = 72
+heap size = 84
 finalizing 6 (global == 0)
 object scan test test
 finalizing 4 (global == 0)

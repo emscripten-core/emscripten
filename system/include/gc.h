@@ -42,6 +42,9 @@ void GC_FREE(void *ptr);
 void GC_REGISTER_FINALIZER_NO_ORDER(void *ptr, void (*func)(void *, void *),      void *arg,
                                                void *(*old_func)(void *, void *), void *old_arg);
 
+/* Gets the bytes allocated and managed by the GC */
+int GC_get_heap_size();
+
 /* Non-Boehm additions */
 
 /* Call this once per frame or such, it will collect if necessary */
