@@ -95,8 +95,8 @@ if (GC_SUPPORT) {
           GC.finalizers[ptr] = 0;
         }
         _free(ptr);
-        delete GC.sizes[ptr];
         GC.totalAllocations -= GC.sizes[ptr];
+        delete GC.sizes[ptr];
       },
 
       registerFinalizer: function(ptr, func, arg, oldFunc, oldArg) {
