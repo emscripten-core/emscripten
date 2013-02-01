@@ -3498,7 +3498,7 @@ def process(filename):
               case 'b':
               case 'c':
                   return p-1;
-              case 0xfffffff1:
+              case -15:
                   return p+1;
             }
             return p;
