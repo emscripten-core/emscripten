@@ -222,10 +222,7 @@ def emscript(configuration, infile, settings, outfile, libraries=[], compiler_en
 
     if len(chunks) > 1:
       pool = multiprocessing.Pool(processes=cores)
-      outputs = pool.map(
-        process_funcs,
-        commands,
-        chunksize=1)
+      outputs = pool.map(process_funcs, commands, chunksize=1)
     elif len(chunks) == 1:
       outputs = [process_funcs(commands[0])]
   else:
