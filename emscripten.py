@@ -569,8 +569,9 @@ def main(args, compiler_engine, cache, jcache, relooper, temp_files, DEBUG):
     if not relooper:
       relooper = cache.get_path('relooper.js')
     settings.setdefault('RELOOPER', relooper)
-    from tools import shared
-    shared.Building.ensure_relooper(relooper)
+    if not os.path.exists(relooper):
+      from tools import shared
+      shared.Building.ensure_relooper(relooper)
 
   emscript(args.infile, settings, args.outfile, libraries, compiler_engine=compiler_engine,
            jcache=jcache, temp_files=temp_files, DEBUG=DEBUG)
@@ -612,6 +613,14 @@ def _main(environ):
   parser.add_option('-T', '--temp-dir',
                     default=None,
                     help=('Where to create temporary files.'))
+  parser.add_option('-v', '--verbose',
+                    action='store_true',
+                    dest='verbose',
+                    help='Displays debug output')
+  parser.add_option('-q', '--quiet',
+                    action='store_false',
+                    dest='verbose',
+                    help='Hides debug output')
   parser.add_option('--suppressUsageWarning',
                     action='store_true',
                     default=environ.get('EMSCRIPTEN_SUPPRESS_USAGE_WARNING'),
@@ -638,11 +647,16 @@ WARNING: You should normally never use this! Use emcc instead.
   else:
     relooper = None # use the cache
 
-  from tools import shared
-  configuration = shared.Configuration(environ=os.environ)
-
+  def get_configuration():
+    if hasattr(get_configuration, 'configuration'):
+      return get_configuration.configuration
+    
+    from tools import shared
+    configuration = shared.Configuration(environ=os.environ)
+    get_configuration.configuration = configuration
+      
   if keywords.temp_dir is None:
-    temp_files = configuration.get_temp_files()
+    temp_files = get_configuration().get_temp_files()
   else:
     temp_dir = os.path.abspath(keywords.temp_dir)
     if not os.path.exists(temp_dir):
@@ -653,7 +667,10 @@ WARNING: You should normally never use this! Use emcc instead.
     from tools import shared
     keywords.compiler = shared.COMPILER_ENGINE
 
-  DEBUG = configuration.DEBUG
+  if keywords.verbose is None:
+    DEBUG = get_configuration().DEBUG
+  else:
+    DEBUG = keywords.verbose
 
   cache = cache_module.Cache()
   temp_files.run_and_clean(lambda: main(
