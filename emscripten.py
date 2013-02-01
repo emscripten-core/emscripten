@@ -11,7 +11,7 @@ headers, for the libc implementation in JS).
 
 import os, sys, json, optparse, subprocess, re, time, multiprocessing, functools
 
-from tools import shared, jsrun, cache as cache_module, tempfiles
+from tools import jsrun, cache as cache_module, tempfiles
 
 __rootpath__ = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(*pathelems):
@@ -19,8 +19,6 @@ def path_from_root(*pathelems):
   relative to the emscripten root.
   """
   return os.path.join(__rootpath__, *pathelems)
-
-configuration = shared.Configuration(environ=os.environ)
 
 def scan(ll, settings):
   # blockaddress(@main, %23)
@@ -493,7 +491,7 @@ Runtime.stackRestore = function(top) { asm.stackRestore(top) };
 
   outfile.close()
 
-def main(args, compiler_engine, cache, jcache, relooper, temp_files):
+def main(args, compiler_engine, cache, jcache, relooper, temp_files, configuration):
   # Prepare settings for serialization to JSON.
   settings = {}
   for setting in args.settings:
@@ -571,6 +569,7 @@ def main(args, compiler_engine, cache, jcache, relooper, temp_files):
     if not relooper:
       relooper = cache.get_path('relooper.js')
     settings.setdefault('RELOOPER', relooper)
+    from tools import shared
     shared.Building.ensure_relooper(relooper)
 
   emscript(configuration, args.infile, settings, args.outfile, libraries,
@@ -638,6 +637,8 @@ WARNING: You should normally never use this! Use emcc instead.
   else:
     relooper = None # use the cache
 
+  from tools import shared
+  configuration = shared.Configuration(environ=os.environ)
   temp_files = configuration.get_temp_files()
 
   if keywords.compiler is None:
@@ -651,7 +652,9 @@ WARNING: You should normally never use this! Use emcc instead.
     cache=cache,
     jcache=cache_module.JCache(cache) if keywords.jcache else None,
     relooper=relooper,
-    temp_files=temp_files))
+    temp_files=temp_files,
+    configuration=configuration
+  ))
 
 if __name__ == '__main__':
   _main(environ=os.environ)
