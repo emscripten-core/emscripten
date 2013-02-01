@@ -238,7 +238,10 @@ process(sys.argv[1])
         os.remove(f + '.o')
       except:
         pass
-      args = [Building.COMPILER, '-emit-llvm', '-std=c++03'] + COMPILER_OPTS + Building.COMPILER_TEST_OPTS + \
+      compiler_flags = ['-emit-llvm']
+      if not f.endswith('.c'):
+         compiler_flags = compiler_flags + ['-std=c++03']
+      args = [Building.COMPILER] + compiler_flags + COMPILER_OPTS + Building.COMPILER_TEST_OPTS + \
              ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
              map(lambda include: '-I' + include, includes) + \
              ['-c', f, '-o', f + '.o']
