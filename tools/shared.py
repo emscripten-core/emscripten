@@ -285,18 +285,18 @@ FILE_PACKAGER = path_from_root('tools', 'file_packager.py')
 
 # Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use TEMP_DIR/emscripten_temp
 
-try:
-  TEMP_DIR
-except:
-  print >> sys.stderr, 'TEMP_DIR not defined in ~/.emscripten, using /tmp'
-  TEMP_DIR = '/tmp'
-
-CANONICAL_TEMP_DIR = os.path.join(TEMP_DIR, 'emscripten_temp')
-
 class Configuration:
   def __init__(self, environ):
     self.DEBUG = environ.get('EMCC_DEBUG')
     self.EMSCRIPTEN_TEMP_DIR = None
+
+    try:
+      self.TEMP_DIR = TEMP_DIR
+    except NameError:
+      print >> sys.stderr, 'TEMP_DIR not defined in ~/.emscripten, using /tmp'
+      self.TEMP_DIR = '/tmp'
+
+    CANONICAL_TEMP_DIR = os.path.join(self.TEMP_DIR, 'emscripten_temp')
 
     if self.DEBUG:
       try:
@@ -315,7 +315,7 @@ DEBUG = configuration.DEBUG
 EMSCRIPTEN_TEMP_DIR = configuration.EMSCRIPTEN_TEMP_DIR
 
 if not EMSCRIPTEN_TEMP_DIR:
-  EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_', dir=TEMP_DIR)
+  EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_', dir=configuration.TEMP_DIR)
   def clean_temp():
     try_delete(EMSCRIPTEN_TEMP_DIR)
   atexit.register(clean_temp)
@@ -450,7 +450,7 @@ class TempFiles:
 
 def make_temp_files(configuration=configuration):
   return TempFiles(
-    tmp=TEMP_DIR if not configuration.DEBUG else configuration.EMSCRIPTEN_TEMP_DIR,
+    tmp=configuration.TEMP_DIR if not configuration.DEBUG else configuration.EMSCRIPTEN_TEMP_DIR,
     save_debug_files=os.environ.get('EMCC_DEBUG_SAVE'))
 
 # Utilities
@@ -639,7 +639,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       .replace('$EMSCRIPTEN_ROOT', path_from_root('').replace('\\', '/')) \
       .replace('$CFLAGS', env['CFLAGS']) \
       .replace('$CXXFLAGS', env['CFLAGS'])
-    toolchainFile = mkstemp(suffix='.cmaketoolchain.txt', dir=TEMP_DIR)[1]
+    toolchainFile = mkstemp(suffix='.cmaketoolchain.txt', dir=configuration.TEMP_DIR)[1]
     open(toolchainFile, 'w').write(CMakeToolchain)
     args.append('-DCMAKE_TOOLCHAIN_FILE=%s' % os.path.abspath(toolchainFile))
     return args

@@ -551,10 +551,10 @@ def main(args, compiler_engine, cache, jcache, relooper):
 
 def _main(environ):
   parser = optparse.OptionParser(
-      usage='usage: %prog [-h] [-H HEADERS] [-o OUTFILE] [-c COMPILER_ENGINE] [-s FOO=BAR]* infile',
-      description=('You should normally never use this! Use emcc instead. '
-                   'This is a wrapper around the JS compiler, converting .ll to .js.'),
-      epilog='')
+    usage='usage: %prog [-h] [-H HEADERS] [-o OUTFILE] [-c COMPILER_ENGINE] [-s FOO=BAR]* infile',
+    description=('You should normally never use this! Use emcc instead. '
+                 'This is a wrapper around the JS compiler, converting .ll to .js.'),
+    epilog='')
   parser.add_option('-H', '--headers',
                     default=[],
                     action='append',
