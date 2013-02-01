@@ -1,6 +1,8 @@
 
 //== HEADLESS ==//
 
+// TODO: sync from bananabread headless.js
+
 var window = {
   location: {
     toString: function() {

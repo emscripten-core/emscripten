@@ -132,6 +132,8 @@ var SAFE_HEAP = 0; // Check each write to the heap, for example, this will give 
                    // that 3 is the option you usually want here.
 var SAFE_HEAP_LOG = 0; // Log out all SAFE_HEAP operations
 
+var ASM_HEAP_LOG = 0; // Simple heap logging, like SAFE_HEAP_LOG but cheaper, and in asm.js
+
 var LABEL_DEBUG = 0; // 1: Print out functions as we enter them
                      // 2: Also print out each label as we enter it
 var LABEL_FUNCTION_FILTERS = []; // Filters for function label debug.
@@ -316,6 +318,9 @@ var HEADLESS = 0; // If 1, will include shim code that tries to 'fake' a browser
                   // rendering is not the issue. Note that the shim code is
                   // very partial - it is hard to fake a whole browser! - so
                   // keep your expectations low for this to work.
+
+var BENCHMARK = 0; // If 1, will just time how long main() takes to execute, and not
+                   // print out anything at all whatsover. This is useful for benchmarking.
 
 var ASM_JS = 0; // If 1, generate code in asm.js format. XXX This is highly experimental,
                 // and will not work on most codebases yet. It is NOT recommended that you

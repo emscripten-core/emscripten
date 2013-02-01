@@ -4217,16 +4217,31 @@ LibraryManager.library = {
     return ret;
   },
 
+  memcpy__asm: 'true',
+  memcpy__sig: 'iiii',
   memcpy: function (dest, src, num) {
-    // simple version, in general it should not be used - we should pull it in from libc
-    if (!_memcpy.shown) {
-      _memcpy.shown = true;
-      Module.printErr('warning: library.js memcpy should not be running, it is only for testing!');
+    dest = dest|0; src = src|0; num = num|0;
+    if ((dest&3) == (src&3)) {
+      while (dest & 3 & num) {
+        {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i8'), 'i8') }}};
+        dest = (dest+1)|0;
+        src = (src+1)|0;
+        num = (num-1)|0;
+      }
+      while ((num|0) >= 4) {
+        {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i32'), 'i32') }}};
+        dest = (dest+4)|0;
+        src = (src+4)|0;
+        num = (num-4)|0;
+      }
     }
-#endif
-    while (num--) {
-      HEAP8[dest++] = HEAP8[src++];
+    while ((num|0) > 0) {
+      {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i8'), 'i8') }}};
+      dest = (dest+1)|0;
+      src = (src+1)|0;
+      num = (num-1)|0;
     }
+    return dest|0;
   },
 
   wmemcpy: function() { throw 'wmemcpy not implemented' },
@@ -4236,16 +4251,20 @@ LibraryManager.library = {
   llvm_memcpy_p0i8_p0i8_i32: 'memcpy',
   llvm_memcpy_p0i8_p0i8_i64: 'memcpy',
 
+  memmove__sig: 'viii',
+  memmove__asm: true,
   memmove__deps: ['memcpy'],
-  memmove: function(dest, src, num, align) {
-    if (src < dest && dest < src + num) {
-      // Copy backwards in a safe manner
-      src += num;
-      dest += num;
-      while (num--) {
-        dest--;
-        src--;
-        {{{ makeCopyValues('dest', 'src', 1, 'null', null, 1) }}};
+  memmove: function(dest, src, num) {
+    dest = dest|0; src = src|0; num = num|0;
+    if ((src|0 < (dest|0)) & (dest|0 < ((src + num)|0))) {
+      // Unlikely case: Copy backwards in a safe manner
+      src = (src + num)|0;
+      dest = (dest + num)|0;
+      while (num|0 > 0) {
+        dest = (dest - 1)|0;
+        src = (src - 1)|0;
+        num = (num - 1)|0;
+        {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i8'), 'i8') }}};
       }
     } else {
       _memcpy(dest, src, num);
@@ -4261,31 +4280,36 @@ LibraryManager.library = {
   memset__inline: function(ptr, value, num, align) {
     return makeSetValues(ptr, 0, value, 'null', num, align);
   },
-  memset: function(ptr, value, num, align) {
+  memset__sig: 'viii',
+  memset__asm: true,
+  memset: function(ptr, value, num) {
 #if USE_TYPED_ARRAYS == 2
-    // TODO: make these settings, and in memcpy, {{'s
-    if (num >= {{{ SEEK_OPTIMAL_ALIGN_MIN }}}) {
+    ptr = ptr|0; value = value|0; num = num|0;
+    var stop = 0, value4 = 0, stop4 = 0, unaligned = 0;
+    stop = (ptr + num)|0;
+    if (num|0 >= {{{ SEEK_OPTIMAL_ALIGN_MIN }}}) {
       // This is unaligned, but quite large, so work hard to get to aligned settings
-      var stop = ptr + num;
-      while (ptr % 4) { // no need to check for stop, since we have large num
-        HEAP8[ptr++] = value;
+      unaligned = ptr & 3;
+      value4 = value | (value << 8) | (value << 16) | (value << 24);
+      stop4 = stop & ~3;
+      if (unaligned) {
+        unaligned = (ptr + 4 - unaligned)|0;
+        while ((ptr|0) < (unaligned|0)) { // no need to check for stop, since we have large num
+          {{{ makeSetValueAsm('ptr', 0, 'value', 'i8') }}};
+          ptr = (ptr+1)|0;
+        }
       }
-      if (value < 0) value += 256; // make it unsigned
-      var ptr4 = ptr >> 2, stop4 = stop >> 2, value4 = value | (value << 8) | (value << 16) | (value << 24);
-      while (ptr4 < stop4) {
-        HEAP32[ptr4++] = value4;
-      }
-      ptr = ptr4 << 2;
-      while (ptr < stop) {
-        HEAP8[ptr++] = value;
-      }
-    } else {
-      while (num--) {
-        HEAP8[ptr++] = value;
+      while ((ptr|0) < (stop4|0)) {
+        {{{ makeSetValueAsm('ptr', 0, 'value4', 'i32') }}};
+        ptr = (ptr+4)|0;
       }
     }
+    while ((ptr|0) < (stop|0)) {
+      {{{ makeSetValueAsm('ptr', 0, 'value', 'i8') }}};
+      ptr = (ptr+1)|0;
+    }
 #else
-    {{{ makeSetValues('ptr', '0', 'value', 'null', 'num', 'align') }}};
+    {{{ makeSetValues('ptr', '0', 'value', 'null', 'num') }}};
 #endif
   },
   llvm_memset_i32: 'memset',
@@ -4857,19 +4881,63 @@ LibraryManager.library = {
 #endif
   },
 
-  llvm_ctlz_i32: function(x) {
-    for (var i=0; i<32; i++) {
-        if ( (x & (1 << (31-i))) != 0 ) {
-            return i;
+  llvm_ctlz_i32__deps: [function() {
+    function ctlz(x) {
+      for (var i = 0; i < 8; i++) {
+        if (x & (1 << (7-i))) {
+          return i;
         }
+      }
+      return 8;
     }
-    return 32;
+    return 'var ctlz_i8 = [' + range(256).map(function(x) { return ctlz(x) }).join(',') + '];';
+  }],
+  llvm_ctlz_i32: function(x) {
+    var ret = ctlz_i8[x >>> 24];
+    if (ret < 8) return ret;
+    var ret = ctlz_i8[(x >> 16)&0xff];
+    if (ret < 8) return ret + 8;
+    var ret = ctlz_i8[(x >> 8)&0xff];
+    if (ret < 8) return ret + 16;
+    return ctlz_i8[x&0xff] + 24;
   },
 
   llvm_ctlz_i64__deps: ['llvm_ctlz_i32'],
   llvm_ctlz_i64: function(l, h) {
     var ret = _llvm_ctlz_i32(h);
     if (ret == 32) ret += _llvm_ctlz_i32(l);
+#if USE_TYPED_ARRAYS == 2
+    {{{ makeStructuralReturn(['ret', '0']) }}};
+#else
+    return ret;
+#endif
+  },
+
+  llvm_cttz_i32__deps: [function() {
+    function cttz(x) {
+      for (var i = 0; i < 8; i++) {
+        if (x & (1 << i)) {
+          return i;
+        }
+      }
+      return 8;
+    }
+    return 'var cttz_i8 = [' + range(256).map(function(x) { return cttz(x) }).join(',') + '];';
+  }],
+  llvm_cttz_i32: function(x) {
+    var ret = cttz_i8[x & 0xff];
+    if (ret < 8) return ret;
+    var ret = cttz_i8[(x >> 8)&0xff];
+    if (ret < 8) return ret + 8;
+    var ret = cttz_i8[(x >> 16)&0xff];
+    if (ret < 8) return ret + 16;
+    return cttz_i8[x >>> 24] + 24;
+  },
+
+  llvm_cttz_i64__deps: ['llvm_cttz_i32'],
+  llvm_cttz_i64: function(l, h) {
+    var ret = _llvm_cttz_i32(l);
+    if (ret == 32) ret += _llvm_cttz_i32(h);
 #if USE_TYPED_ARRAYS == 2
     {{{ makeStructuralReturn(['ret', '0']) }}};
 #else
@@ -5548,11 +5616,11 @@ LibraryManager.library = {
   // ==========================================================================
 
   __utsname_struct_layout: Runtime.generateStructInfo([
-	  'sysname',
-	  'nodename',
-	  'release',
-	  'version',
-	  'machine'], '%struct.utsname'),
+    'sysname',
+    'nodename',
+    'release',
+    'version',
+    'machine'], '%struct.utsname'),
   uname__deps: ['__utsname_struct_layout'],
   uname: function(name) {
     // int uname(struct utsname *name);
@@ -5983,14 +6051,13 @@ LibraryManager.library = {
     return 0;
   },
 
-  // TODO: Implement remaining functions.
   // http://pubs.opengroup.org/onlinepubs/000095399/basedefs/sys/time.h.html
   gettimeofday: function(ptr) {
     // %struct.timeval = type { i32, i32 }
-    var indexes = Runtime.calculateStructAlignment({ fields: ['i32', 'i32'] });
+    {{{ (LibraryManager.structs.gettimeofday = Runtime.calculateStructAlignment({ fields: ['i32', 'i32'] }), null) }}}
     var now = Date.now();
-    {{{ makeSetValue('ptr', 'indexes[0]', 'Math.floor(now/1000)', 'i32') }}} // seconds
-    {{{ makeSetValue('ptr', 'indexes[1]', 'Math.floor((now-1000*Math.floor(now/1000))*1000)', 'i32') }}} // microseconds
+    {{{ makeSetValue('ptr', LibraryManager.structs.gettimeofday[0], 'Math.floor(now/1000)', 'i32') }}}; // seconds
+    {{{ makeSetValue('ptr', LibraryManager.structs.gettimeofday[1], 'Math.floor((now-1000*Math.floor(now/1000))*1000)', 'i32') }}}; // microseconds
     return 0;
   },
 
@@ -6809,10 +6876,11 @@ LibraryManager.library = {
     nextFd: 1,
     fds: {},
     sockaddr_in_layout: Runtime.generateStructInfo([
-      ['i16', 'sin_family'],
+      ['i32', 'sin_family'],
       ['i16', 'sin_port'],
       ['i32', 'sin_addr'],
-      ['i64', 'sin_zero'],
+      ['i32', 'sin_zero'],
+      ['i16', 'sin_zero_b'],
     ]),
     msghdr_layout: Runtime.generateStructInfo([
       ['*', 'msg_name'],
@@ -6974,7 +7042,7 @@ LibraryManager.library = {
     if (!info) return -1;
     if (info.inQueue.length == 0) {
       ___setErrNo(ERRNO_CODES.EAGAIN); // no data, and all sockets are nonblocking, so this is the right behavior
-      return 0; // should this be -1 like the spec says?
+      return -1;
     }
     var buffer = info.inQueue.shift();
 #if SOCKET_DEBUG

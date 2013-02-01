@@ -232,8 +232,8 @@ def emscript(infile, settings, outfile, libraries=[]):
   # merge forwarded data
   if settings.get('ASM_JS'):
     all_exported_functions = set(settings['EXPORTED_FUNCTIONS']) # both asm.js and otherwise
-    for additional_export in ['_malloc', '_free']: # additional functions to export from asm, if they are implemented
-      all_exported_functions.add(additional_export)
+    for additional_export in settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE']: # additional functions to export from asm, if they are implemented
+      all_exported_functions.add('_' + additional_export)
     exported_implemented_functions = set()
   for func_js, curr_forwarded_data in outputs:
     curr_forwarded_json = json.loads(curr_forwarded_data)
@@ -327,7 +327,8 @@ def emscript(infile, settings, outfile, libraries=[]):
     fundamentals = ['Math', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
     math_envs = ['Runtime.bitshift64', 'Math.min'] # TODO: move min to maths
     asm_setup = '\n'.join(['var %s = %s;' % (f.replace('.', '_'), f) for f in math_envs])
-    basic_funcs = ['abort', 'assert', 'asmPrintInt', 'asmPrintFloat'] + [m.replace('.', '_') for m in math_envs]
+    basic_funcs = ['abort', 'assert', 'asmPrintInt', 'asmPrintFloat', 'copyTempDouble', 'copyTempFloat'] + [m.replace('.', '_') for m in math_envs]
+    if settings['SAFE_HEAP']: basic_funcs += ['SAFE_HEAP_LOAD', 'SAFE_HEAP_STORE', 'SAFE_HEAP_CLEAR']
     basic_vars = ['STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT']
     basic_float_vars = ['NaN', 'Infinity']
     if forwarded_json['Types']['preciseI64MathUsed']:
@@ -394,11 +395,11 @@ var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
     # finalize
     funcs_js = '''
 %s
-function asmPrintInt(x) {
-  Module.print('int ' + x);// + ' ' + new Error().stack);
+function asmPrintInt(x, y) {
+  Module.print('int ' + x + ',' + y);// + ' ' + new Error().stack);
 }
-function asmPrintFloat(x) {
-  Module.print('float ' + x);// + ' ' + new Error().stack);
+function asmPrintFloat(x, y) {
+  Module.print('float ' + x + ',' + y);// + ' ' + new Error().stack);
 }
 var asm = (function(global, env, buffer) {
   'use asm';
@@ -440,7 +441,7 @@ var asm = (function(global, env, buffer) {
     value = value|0;
     tempRet%d = value;
   }
-''' % (i, i) for i in range(10)]) + funcs_js.replace('\n', '\n  ') + '''
+''' % (i, i) for i in range(10)]) + funcs_js + '''
 
   %s
 

@@ -288,8 +288,9 @@ process(sys.argv[1])
     assert 'strict warning:' not in ret, 'We should pass all strict mode checks: ' + ret
     return ret
 
-  def build_native(self, filename):
-    process = Popen([CLANG, '-O2', '-fno-math-errno', filename, '-o', filename+'.native'], stdout=PIPE);
+  def build_native(self, filename, args=[]):
+    compiler = CLANG if filename.endswith('cpp') else CLANG_CC
+    process = Popen([compiler, '-O2', '-fno-math-errno', filename, '-o', filename+'.native'] + args, stdout=PIPE, stderr=self.stderr_redirect)
     output = process.communicate()
     if process.returncode is not 0:
       print >> sys.stderr, "Building native executable with command '%s' failed with a return code %d!" % (' '.join([CLANG, '-O2', filename, '-o', filename+'.native']), process.returncode)
@@ -301,6 +302,7 @@ process(sys.argv[1])
     if process.returncode is not 0:
       print >> sys.stderr, "Running native executable with command '%s' failed with a return code %d!" % (' '.join([filename+'.native'] + args), process.returncode)
       print "Output: " + output[0]
+    return output[0]
 
   def assertIdentical(self, values, y):
     if type(values) not in [list, tuple]: values = [values]
@@ -339,7 +341,7 @@ process(sys.argv[1])
       os.makedirs(ret)
     return ret
 
-  def get_library(self, name, generated_libs, configure=['sh', './configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=True, env_init={}, cache_name_extra=''):
+  def get_library(self, name, generated_libs, configure=['sh', './configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=True, env_init={}, cache_name_extra='', native=False):
     build_dir = self.get_build_dir()
     output_dir = self.get_dir()
 
@@ -359,7 +361,7 @@ process(sys.argv[1])
     print >> sys.stderr, '<building and saving %s into cache> ' % cache_name,
 
     return Building.build_library(name, build_dir, output_dir, generated_libs, configure, configure_args, make, make_args, self.library_cache, cache_name,
-                                  copy_project=True, env_init=env_init)
+                                  copy_project=True, env_init=env_init, native=native)
 
   def clear(self, in_curr=False):
     for name in os.listdir(self.get_dir()):
@@ -1220,6 +1222,8 @@ m_divisor is 1091269979
           extern unsigned int llvm_bswap_i32(unsigned int x);
           extern int32_t llvm_ctlz_i32(int32_t x);
           extern int64_t llvm_ctlz_i64(int64_t x);
+          extern int32_t llvm_cttz_i32(int32_t x);
+          extern int64_t llvm_cttz_i64(int64_t x);
           extern int llvm_expect_i32(int x, int y);
         }
 
@@ -1235,6 +1239,7 @@ m_divisor is 1091269979
             printf("%x,%x,%x,%x\n", y&0xff, (y>>8)&0xff, (y>>16)&0xff, (y>>24)&0xff);
 
             printf("%d,%d\n", (int)llvm_ctlz_i64(((int64_t)1) << 40), llvm_ctlz_i32(1<<10));
+            printf("%d,%d\n", (int)llvm_cttz_i64(((int64_t)1) << 40), llvm_cttz_i32(1<<10));
 
             printf("%d\n", llvm_expect_i32(x % 27, 3));
 
@@ -1250,6 +1255,7 @@ c8,ef
 8a,15,de,c5
 c5,de,15,8a
 23,21
+40,10
 13
 72057594037927936
 ''')
@@ -3040,6 +3046,22 @@ Exiting setjmp function, level: 0, prev_jmp: -1
         }
       '''
       self.do_run(src, '.ok.\n')
+
+    def test_life(self):
+      if self.emcc_args is None: return self.skip('need c99')
+      self.emcc_args += ['-std=c99']
+      src = open(path_from_root('tests', 'life.c'), 'r').read()
+      self.do_run(src, '''--------
+      [][][]    
+[][]            
+              []
+    []          
+[][]            
+                
+                
+                
+--------
+''', ['8', '8', '25000'], force_c=True)
 
     def test_array2(self):
         src = '''
@@ -6055,13 +6077,19 @@ localhost : 1 : 4
 * -84.29.3.0.
 ''')
 
+    def test_799(self):
+      src = open(path_from_root('tests', '799.cpp'), 'r').read()
+      self.do_run(src, '''Set PORT family: 100, port: 3979
+Get PORT family: 100
+PORT: 3979
+''')
+
     def test_ctype(self):
       # The bit fiddling done by the macros using __ctype_b_loc requires this.
       Settings.CORRECT_SIGNS = 1
       src = open(path_from_root('tests', 'ctype', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'ctype', 'output.txt'), 'r').read()
       self.do_run(src, expected)
-      CORRECT_SIGNS = 0
 
     def test_atomic(self):
       src = '''
@@ -9140,9 +9168,14 @@ f.close()
       if multiprocessing.cpu_count() < 2: return self.skip('need multiple cores')
       try:
         os.environ['EMCC_DEBUG'] = '1'
-        output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O1'], stdout=PIPE, stderr=PIPE).communicate()
-        assert 'phase 2 working on 3 chunks' in err, err
-        assert 'splitting up js optimization into 2 chunks' in err, err
+        for asm, linkable, chunks, js_chunks in [
+            (0, 0, 3, 2), (0, 1, 7, 4),
+            (1, 0, 3, 2), (1, 1, 7, 5)
+          ]:
+          print asm, linkable, chunks, js_chunks
+          output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O1', '-s', 'LINKABLE=%d' % linkable, '-s', 'ASM_JS=%d' % asm], stdout=PIPE, stderr=PIPE).communicate()
+          assert 'phase 2 working on %d chunks' %chunks in err, err
+          assert 'splitting up js optimization into %d chunks' % js_chunks in err, err
       finally:
         del os.environ['EMCC_DEBUG']
 
@@ -10356,12 +10389,28 @@ elif 'browser' in str(sys.argv):
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'example.png'))
       self.btest('sdl_rotozoom.c', reference='sdl_rotozoom.png', args=['--preload-file', 'example.png'])
 
-    def zzztest_sdl_canvas_palette_2(self): # XXX disabled until we have proper automation
-      open(os.path.join(self.get_dir(), 'sdl_canvas_palette_2.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_canvas_palette_2.c')).read()))
-      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('Module[\'preRun\'] = function() { SDL.defaults.copyOnLock = false }')
+    def test_sdl_canvas_palette_2(self):
+      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+        Module['preRun'].push(function() { 
+          SDL.defaults.copyOnLock = false;
+        });
+      ''')
 
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_canvas_palette_2.c'), '-o', 'page.html', '--pre-js', 'pre.js']).communicate()
-      self.run_browser('page.html', '')
+      open(os.path.join(self.get_dir(), 'args-r.js'), 'w').write('''
+        Module['arguments'] = ['-r'];
+      ''')
+
+      open(os.path.join(self.get_dir(), 'args-g.js'), 'w').write('''
+        Module['arguments'] = ['-g'];
+      ''')
+
+      open(os.path.join(self.get_dir(), 'args-b.js'), 'w').write('''
+        Module['arguments'] = ['-b'];
+      ''')
+        
+      self.btest('sdl_canvas_palette_2.c', reference='sdl_canvas_palette_r.png', args=['--pre-js', 'pre.js', '--pre-js', 'args-r.js'])
+      self.btest('sdl_canvas_palette_2.c', reference='sdl_canvas_palette_g.png', args=['--pre-js', 'pre.js', '--pre-js', 'args-g.js'])
+      self.btest('sdl_canvas_palette_2.c', reference='sdl_canvas_palette_b.png', args=['--pre-js', 'pre.js', '--pre-js', 'args-b.js'])
 
     def test_glbegin_points(self):
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
@@ -10632,7 +10681,7 @@ elif 'benchmark' in str(sys.argv):
 
   Building.COMPILER_TEST_OPTS = []
 
-  TEST_REPS = 10
+  TEST_REPS = 4
   TOTAL_TESTS = 9
 
   tests_done = 0
@@ -10672,9 +10721,9 @@ elif 'benchmark' in str(sys.argv):
       print '   JavaScript: mean: %.3f (+-%.3f) secs  median: %.3f  range: %.3f-%.3f  (noise: %3.3f%%)  (%d runs)' % (mean, std, median, min(times), max(times), 100*std/mean, TEST_REPS)
       print '   Native    : mean: %.3f (+-%.3f) secs  median: %.3f  range: %.3f-%.3f  (noise: %3.3f%%)  JS is %.2f X slower' % (mean_native, std_native, median_native, min(native_times), max(native_times), 100*std_native/mean_native, final)
 
-    def do_benchmark(self, name, src, args=[], expected_output='FAIL', emcc_args=[]):
+    def do_benchmark(self, name, src, args=[], expected_output='FAIL', emcc_args=[], native_args=[], shared_args=[], force_c=False, reps=TEST_REPS):
       dirname = self.get_dir()
-      filename = os.path.join(dirname, name + '.cpp')
+      filename = os.path.join(dirname, name + '.c' + ('' if force_c else 'pp'))
       f = open(filename, 'w')
       f.write(src)
       f.close()
@@ -10683,15 +10732,15 @@ elif 'benchmark' in str(sys.argv):
       try_delete(final_filename)
       output = Popen([PYTHON, EMCC, filename, #'-O3',
                       '-O2', '-s', 'INLINING_LIMIT=0', '-s', 'DOUBLE_MODE=0', '-s', 'PRECISE_I64_MATH=0',
-                      #'-s', 'ASM_JS=1', '-s', 'USE_MATH_IMUL=1',
+                      '-s', 'ASM_JS=1',# '-s', 'USE_MATH_IMUL=1',
                       '-s', 'TOTAL_MEMORY=128*1024*1024', '-s', 'FAST_MEMORY=10*1024*1024',
-                      '-o', final_filename] + emcc_args, stdout=PIPE, stderr=self.stderr_redirect).communicate()
+                      '-o', final_filename] + shared_args + emcc_args, stdout=PIPE, stderr=self.stderr_redirect).communicate()
       assert os.path.exists(final_filename), 'Failed to compile file: ' + output[0]
 
       # Run JS
       global total_times, tests_done
       times = []
-      for i in range(TEST_REPS):
+      for i in range(reps):
         start = time.time()
         js_output = run_js(final_filename, engine=JS_ENGINE, args=args, stderr=PIPE, full_output=True)
         if i == 0 and 'Successfully compiled asm.js code' in js_output:
@@ -10704,22 +10753,25 @@ elif 'benchmark' in str(sys.argv):
           self.assertContained(expected_output, js_output)
 
       # Run natively
-      self.build_native(filename)
+      self.build_native(filename, shared_args + native_args)
       global total_native_times
       native_times = []
-      for i in range(TEST_REPS):
+      for i in range(reps):
         start = time.time()
-        self.run_native(filename, args)
+        native_output = self.run_native(filename, args)
+        if i == 0:
+          # Sanity check on output
+          self.assertContained(expected_output, native_output)
         curr = time.time()-start
         native_times.append(curr)
         total_native_times[tests_done] += curr
 
       self.print_stats(times, native_times)
 
-      tests_done += 1
-      if tests_done == TOTAL_TESTS:
-        print 'Total stats:',
-        self.print_stats(total_times, total_native_times, last=True)
+      #tests_done += 1
+      #if tests_done == TOTAL_TESTS:
+      #  print 'Total stats:',
+      #  self.print_stats(total_times, total_native_times, last=True)
 
     def test_primes(self):
       src = '''
@@ -10727,7 +10779,7 @@ elif 'benchmark' in str(sys.argv):
         #include<math.h>
         int main() {
           int primes = 0, curri = 2;
-          while (primes < 100000) {
+          while (primes < 220000) {
             int ok = true;
             for (int j = 2; j < sqrtf(curri); j++) {
               if (curri % j == 0) {
@@ -10744,7 +10796,7 @@ elif 'benchmark' in str(sys.argv):
           return 0;
         }
       '''
-      self.do_benchmark('primes', src, [], 'lastprime: 1297001.')
+      self.do_benchmark('primes', src, [], 'lastprime: 3043739.')
 
     def test_memops(self):
       src = '''
@@ -10753,7 +10805,7 @@ elif 'benchmark' in str(sys.argv):
         #include<stdlib.h>
         int main() {
           int N = 1024*1024;
-          int M = 190;
+          int M = 800;
           int final = 0;
           char *buf = (char*)malloc(N);
           for (int t = 0; t < M; t++) {
@@ -10767,7 +10819,7 @@ elif 'benchmark' in str(sys.argv):
           return 0;
         }      
       '''
-      self.do_benchmark('memops', src, [], 'final: 720.')
+      self.do_benchmark('memops', src, [], 'final: 400.')
 
     def zzztest_files(self):
       src = r'''
@@ -10835,7 +10887,7 @@ elif 'benchmark' in str(sys.argv):
         int main() {
           int total = 0;
           for (int i = 0; i < 1250; i++) {
-            for (int j = 0; j < 1000; j++) {
+            for (int j = 0; j < 50000; j++) {
               vec c(i, i+i%10, j*2, i%255, j%120, i%15);
               vec d(j+i%10, j*2, j%255, i%120, j%15, j);
               vec e = c;
@@ -10853,26 +10905,26 @@ elif 'benchmark' in str(sys.argv):
           return 0;
         }      
       '''
-      self.do_benchmark('copy', src, [], 'sum:9928\n', emcc_args=['-s', 'QUANTUM_SIZE=4', '-s', 'USE_TYPED_ARRAYS=2'])
+      self.do_benchmark('copy', src, [], 'sum:2836\n', emcc_args=['-s', 'QUANTUM_SIZE=4', '-s', 'USE_TYPED_ARRAYS=2'])
 
     def test_fannkuch(self):
       src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read()
-      self.do_benchmark('fannkuch', src, ['10'], 'Pfannkuchen(10) = 38.')
+      self.do_benchmark('fannkuch', src, ['11'], 'Pfannkuchen(11) = 51.')
 
     def test_corrections(self):
       src = r'''
         #include<stdio.h>
         #include<math.h>
         int main() {
-          int N = 4100;
-          int M = 4100;
+          int N = 20000;
+          int M = 7000;
           unsigned int f = 0;
           unsigned short s = 0;
           for (int t = 0; t < M; t++) {
             for (int i = 0; i < N; i++) {
               f += i / ((t % 5)+1);
               if (f > 1000) f /= (t % 3)+1;
-              if (i % 4 == 0) f += sqrtf(i) * (i % 8 == 0 ? 1 : -1);
+              if (i % 4 == 0) f += i * (i % 8 == 0 ? 1 : -1);
               s += (short(f)*short(f)) % 256;
             }
           }
@@ -10880,11 +10932,11 @@ elif 'benchmark' in str(sys.argv):
           return 0;
         }      
       '''
-      self.do_benchmark('corrections', src, [], 'final: 826:14324.', emcc_args=['-s', 'CORRECT_SIGNS=1', '-s', 'CORRECT_OVERFLOWS=1', '-s', 'CORRECT_ROUNDINGS=1'])
+      self.do_benchmark('corrections', src, [], 'final: 40006013:10225.', emcc_args=['-s', 'CORRECT_SIGNS=1', '-s', 'CORRECT_OVERFLOWS=1', '-s', 'CORRECT_ROUNDINGS=1'])
 
     def fasta(self, double_rep):
       src = open(path_from_root('tests', 'fasta.cpp'), 'r').read().replace('double', double_rep)
-      self.do_benchmark('fasta', src, ['2100000'], '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA\nTCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACT\nAAAAATACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAG\nGCTGAGGCAGGAGAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCG\nCCACTGCACTCCAGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAAGGCCGGGCGCGGT\nGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGATCACCTGAGGTCA\nGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAATACAAAAA\nTTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAGGCTGAGGCAGGAG\nAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCCA\nGCCTGGGCGA''')
+      self.do_benchmark('fasta', src, ['19000000'], '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA\nTCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACT\nAAAAATACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAG\nGCTGAGGCAGGAGAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCG\nCCACTGCACTCCAGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAAGGCCGGGCGCGGT\nGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGATCACCTGAGGTCA\nGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAATACAAAAA\nTTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAGGCTGAGGCAGGAG\nAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCCA\nGCCTGGGCGA''')
 
     def test_fasta_float(self):
       self.fasta('float')
@@ -10894,12 +10946,82 @@ elif 'benchmark' in str(sys.argv):
 
     def test_skinning(self):
       src = open(path_from_root('tests', 'skinning_test_no_simd.cpp'), 'r').read()
-      self.do_benchmark('skinning', src, ['10000', '1000'], 'blah=0.000000')
+      self.do_benchmark('skinning', src, ['9500', '10000'], 'blah=0.000000')
+
+    def test_life(self):
+      src = open(path_from_root('tests', 'life.c'), 'r').read()
+      self.do_benchmark('life', src, ['32', '32', '15000'], '''--------------------------------
+                  []  [][][]    []        []    [][]            
+                              []  [][]  []      []      []    []
+                                []    [][]    [][]      []      
+                                []            []  []      []    
+                    []      []  []  []      []      []  []  []  
+                    [][][][]      []      [][]      [][]        
+                                    []                          
+                                                          []    
+                                                        []  []  
+                        [][]          []                  []    
+                        [][]                            [][][]  
+                                                          []    
+                                                                
+                                              []                
+                                            []  []              
+                                            [][]                
+                        []              []  [][]        [][]    
+                                          []  []  []    []      
+                                          [][]    []            
+                                          [][][][]              
+                                                                
+                                            [][][]    [][]      
+                                          [][][]      [][]      
+                                            []                  
+                                          []                    
+                      []                [][][]        []        
+                                                []  []          
+                                        [][]      []            
+                                                [][][]          
+                        [][][]                            [][]  
+                      [][][][][]      []                  [][]  
+                      []      [][]  []  []                      
+--------------------------------
+''', shared_args=['-std=c99'], force_c=True)
 
     def test_dlmalloc(self):
       # XXX This seems to have regressed slightly with emcc. Are -g and the signs lines passed properly?
       src = open(path_from_root('system', 'lib', 'dlmalloc.c'), 'r').read() + '\n\n\n' + open(path_from_root('tests', 'dlmalloc_test.c'), 'r').read()
-      self.do_benchmark('dlmalloc', src, ['400', '400'], '*400,0*', emcc_args=['-g', '-s', 'CORRECT_SIGNS=2', '-s', 'CORRECT_SIGNS_LINES=[4820, 4195, 4250, 4203, 4209, 4239, 4231]'])
+      self.do_benchmark('dlmalloc', src, ['400', '3000'], '*3000,0*', emcc_args=['-g', '-s', 'CORRECT_SIGNS=2', '-s', 'CORRECT_SIGNS_LINES=[4820, 4195, 4250, 4203, 4209, 4239, 4231]'])
+
+    def test_zlib(self):
+      src = open(path_from_root('tests', 'zlib', 'benchmark.c'), 'r').read()
+      emcc_args = self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a']) + \
+                   ['-I' + path_from_root('tests', 'zlib')]
+      native_args = self.get_library('zlib_native', os.path.join('libz.a'), make_args=['libz.a'], native=True) + \
+                     ['-I' + path_from_root('tests', 'zlib')]
+      self.do_benchmark('zlib', src, ['100000', '500'], '''sizes: 100000,25906
+ok.
+''',
+                        force_c=True, emcc_args=emcc_args, native_args=native_args)
+
+    def test_zzz_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
+      src = open(path_from_root('tests', 'bullet', 'Demos', 'Benchmarks', 'BenchmarkDemo.cpp'), 'r').read() + \
+            open(path_from_root('tests', 'bullet', 'Demos', 'Benchmarks', 'main.cpp'), 'r').read()
+
+      js_lib = self.get_library('bullet', [os.path.join('src', '.libs', 'libBulletDynamics.a'),
+                                           os.path.join('src', '.libs', 'libBulletCollision.a'),
+                                           os.path.join('src', '.libs', 'libLinearMath.a')],
+                                configure_args=['--disable-demos','--disable-dependency-tracking'])
+      native_lib = self.get_library('bullet_native', [os.path.join('src', '.libs', 'libBulletDynamics.a'),
+                                               os.path.join('src', '.libs', 'libBulletCollision.a'),
+                                               os.path.join('src', '.libs', 'libLinearMath.a')],
+                                    configure_args=['--disable-demos','--disable-dependency-tracking'],
+                                    native=True)
+
+      emcc_args = js_lib + ['-I' + path_from_root('tests', 'bullet', 'src'),
+                            '-I' + path_from_root('tests', 'bullet', 'Demos', 'Benchmarks')]
+      native_args = native_lib + ['-I' + path_from_root('tests', 'bullet', 'src'),
+                                  '-I' + path_from_root('tests', 'bullet', 'Demos', 'Benchmarks')]
+
+      self.do_benchmark('bullet', src, [], '\nok.\n', emcc_args=emcc_args, native_args=native_args, reps=1)
 
 elif 'sanity' in str(sys.argv):
 

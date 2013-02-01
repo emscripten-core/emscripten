@@ -347,6 +347,7 @@ var Functions = {
 
 var LibraryManager = {
   library: null,
+  structs: {},
   loaded: false,
 
   load: function() {

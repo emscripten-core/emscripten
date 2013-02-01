@@ -6,6 +6,11 @@
 
 {{RUNTIME}}
 
+#if BENCHMARK
+Module.realPrint = Module.print;
+Module.print = Module.printErr = function(){};
+#endif
+
 #if SAFE_HEAP
 //========================================
 // Debugging tools - Heap
@@ -30,8 +35,8 @@ function SAFE_HEAP_ACCESS(dest, type, store, ignore) {
   // When using typed arrays, reads over the top of TOTAL_MEMORY will fail silently, so we must
   // correct that by growing TOTAL_MEMORY as needed. Without typed arrays, memory is a normal
   // JS array so it will work (potentially slowly, depending on the engine).
-  assert(dest < STATICTOP);
-  assert(STATICTOP <= TOTAL_MEMORY);
+  assert(ignore || dest < STATICTOP);
+  assert(ignore || STATICTOP <= TOTAL_MEMORY);
 #endif
 
 #if USE_TYPED_ARRAYS == 2
@@ -472,6 +477,14 @@ Module['ALLOC_NORMAL'] = ALLOC_NORMAL;
 Module['ALLOC_STACK'] = ALLOC_STACK;
 Module['ALLOC_STATIC'] = ALLOC_STATIC;
 Module['ALLOC_NONE'] = ALLOC_NONE;
+
+// Simple unoptimized memset - necessary during startup
+var _memset = function(ptr, value, num) {
+  var stop = ptr + num;
+  while (ptr < stop) {
+    {{{ makeSetValue('ptr++', 0, 'value', 'i8', null, true) }}};
+  }
+}
 
 // allocate(): This is for internal use. You can use it yourself as well, but the interface
 //             is a little tricky (see docs right below). The reason is that it is optimized

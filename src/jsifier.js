@@ -1394,6 +1394,19 @@ function JSify(data, functionsOnly, givenFunctions) {
       return inline.apply(null, args); // Warning: inlining does not prevent recalculation of the arguments. They should be simple identifiers
     }
 
+    if (ASM_JS) {
+      // remove unneeded arguments, which the asm sig can show us. this lets us alias memset with llvm.memset, we just
+      // drop the final 2 args so things validate properly in asm
+      var libsig = LibraryManager.library[shortident + '__sig'];
+      if (libsig) {
+        assert(!hasVarArgs);
+        while (libsig.length - 1 < args.length) {
+          args.pop();
+          argsTypes.pop();
+        }
+      }
+    }
+
     var returnType;
     if (byPointer || ASM_JS) {
       returnType = getReturnType(type);

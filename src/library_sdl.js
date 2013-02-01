@@ -483,7 +483,7 @@ var LibrarySDL = {
             // correct.
             SDL.buttonState |= 1 << event.button;
           } else if (event.type == 'mouseup') {
-            SDL.buttonState = 0;
+            SDL.buttonState &= ~(1 << event.button);
           }
           // fall through
         case 'mousemove': {
@@ -883,7 +883,7 @@ var LibrarySDL = {
   SDL_GetMouseState: function(x, y) {
     if (x) {{{ makeSetValue('x', '0', 'SDL.mouseX', 'i32') }}};
     if (y) {{{ makeSetValue('y', '0', 'SDL.mouseY', 'i32') }}};
-    return 0;
+    return SDL.buttonState;
   },
 
   SDL_WarpMouse: function(x, y) {
@@ -1260,9 +1260,9 @@ var LibrarySDL = {
 
     // Get the audio element associated with the ID
     var info = SDL.audios[id];
-    if (!info) return 0;
+    if (!info) return -1;
     var audio = info.audio;
-    if (!audio) return 0;
+    if (!audio) return -1;
 
     // If the user asks us to allocate a channel automatically, get the first
     // free one.
