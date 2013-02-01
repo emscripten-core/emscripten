@@ -111,7 +111,7 @@ function isStructPointerType(type) {
   // |%5()| as a function call (like |i32 (i8*)| etc.). So
   // we must check later on, in call(), where we have more
   // context, to differentiate such cases.
-  // A similar thing happns in isStructType()
+  // A similar thing happens in isStructType()
   return !Runtime.isNumberType(type) && type[0] == '%';
 }
 

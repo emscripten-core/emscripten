@@ -74,7 +74,7 @@ var LibraryJansson = {
         _free(node['stringValuePtr']);
       },
 
-      // Loads a string into the Javascript JSNON context
+      // Loads a string into the Javascript JSON context
       // Only the root node is loaded. Child nodes are loaded on demand via `loadChildNodes` method.
       load: function(string, flags, error) {
         // This is potentially a security problem.

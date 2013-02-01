@@ -252,7 +252,7 @@ LibraryManager.library = {
       var properties = {isFolder: true, isDevice: false, contents: {}};
       return FS.createObject(parent, name, properties, canRead, canWrite);
     },
-    // Creates a a folder and all its missing parents.
+    // Creates a folder and all its missing parents.
     createPath: function(parent, path, canRead, canWrite) {
       var current = FS.findObject(parent);
       if (current === null) throw new Error('Invalid parent.');
@@ -414,7 +414,7 @@ LibraryManager.library = {
         processData(url);
       }
     },
-    // Creates a link to a sepcific local path.
+    // Creates a link to a specific local path.
     createLink: function(parent, name, target, canRead, canWrite) {
       var properties = {isDevice: false, link: target};
       return FS.createFile(parent, name, properties, canRead, canWrite);
@@ -1120,7 +1120,7 @@ LibraryManager.library = {
   open: function(path, oflag, varargs) {
     // int open(const char *path, int oflag, ...);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/open.html
-    // NOTE: This implementation tries to mimic glibc rather that strictly
+    // NOTE: This implementation tries to mimic glibc rather than strictly
     // following the POSIX standard.
 
     var mode = {{{ makeGetValue('varargs', 0, 'i32') }}};
@@ -1341,7 +1341,7 @@ LibraryManager.library = {
   poll: function(fds, nfds, timeout) {
     // int poll(struct pollfd fds[], nfds_t nfds, int timeout);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/poll.html
-    // NOTE: This is pretty much a no-op mimicing glibc.
+    // NOTE: This is pretty much a no-op mimicking glibc.
     var offsets = ___pollfd_struct_layout;
     var nonzero = 0;
     for (var i = 0; i < nfds; i++) {
@@ -1505,7 +1505,7 @@ LibraryManager.library = {
     // long fpathconf(int fildes, int name);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/encrypt.html
     // NOTE: The first parameter is ignored, so pathconf == fpathconf.
-    // The constants here aren't real values. Just mimicing glibc.
+    // The constants here aren't real values. Just mimicking glibc.
     switch (name) {
       case {{{ cDefine('_PC_LINK_MAX') }}}:
         return 32000;
