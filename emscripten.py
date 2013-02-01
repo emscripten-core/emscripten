@@ -21,7 +21,6 @@ def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
 
 configuration = shared.Configuration(environ=os.environ)
-temp_files = configuration.get_temp_files()
 
 def scan(ll, settings):
   # blockaddress(@main, %23)
@@ -36,7 +35,7 @@ NUM_CHUNKS_PER_CORE = 1.25
 MIN_CHUNK_SIZE = 1024*1024
 MAX_CHUNK_SIZE = float(os.environ.get('EMSCRIPT_MAX_CHUNK_SIZE') or 'inf') # configuring this is just for debugging purposes
 
-def process_funcs((i, funcs, meta, settings_file, compiler, forwarded_file, libraries, compiler_engine)):
+def process_funcs((i, funcs, meta, settings_file, compiler, forwarded_file, libraries, compiler_engine, temp_files)):
   ll = ''.join(funcs) + '\n' + meta
   funcs_file = temp_files.get('.func_%d.ll' % i).name
   open(funcs_file, 'w').write(ll)
@@ -51,7 +50,8 @@ def process_funcs((i, funcs, meta, settings_file, compiler, forwarded_file, libr
 
 def emscript(configuration, infile, settings, outfile, libraries=[],
              compiler_engine=None,
-             jcache=None):
+             jcache=None,
+             temp_files=None):
   """Runs the emscripten LLVM-to-JS compiler. We parallelize as much as possible
 
   Args:
@@ -218,7 +218,7 @@ def emscript(configuration, infile, settings, outfile, libraries=[],
     if DEBUG: print >> sys.stderr, '  emscript: phase 2 working on %d chunks %s (intended chunk size: %.2f MB, meta: %.2f MB, forwarded: %.2f MB, total: %.2f MB)' % (len(chunks), ('using %d cores' % cores) if len(chunks) > 1 else '', chunk_size/(1024*1024.), len(meta)/(1024*1024.), len(forwarded_data)/(1024*1024.), total_ll_size/(1024*1024.))
 
     commands = [
-      (i, chunk, meta, settings_file, compiler, forwarded_file, libraries, compiler_engine)
+      (i, chunk, meta, settings_file, compiler, forwarded_file, libraries, compiler_engine, temp_files)
       for i, chunk in enumerate(chunks)
     ]
 
@@ -498,8 +498,7 @@ Runtime.stackRestore = function(top) { asm.stackRestore(top) };
 
   outfile.close()
 
-
-def main(args, compiler_engine, cache, jcache, relooper):
+def main(args, compiler_engine, cache, jcache, relooper, temp_files):
   # Prepare settings for serialization to JSON.
   settings = {}
   for setting in args.settings:
@@ -581,7 +580,8 @@ def main(args, compiler_engine, cache, jcache, relooper):
 
   emscript(configuration, args.infile, settings, args.outfile, libraries,
            compiler_engine=compiler_engine,
-           jcache=jcache)
+           jcache=jcache,
+          temp_files=temp_files)
 
 def _main(environ):
   parser = optparse.OptionParser(
@@ -643,13 +643,16 @@ WARNING: You should normally never use this! Use emcc instead.
   else:
     relooper = None # use the cache
 
+  temp_files = configuration.get_temp_files()
+
   cache = cache_module.Cache()
   temp_files.run_and_clean(lambda: main(
     keywords,
     compiler_engine=os.path.abspath(keywords.compiler),
     cache=cache,
     jcache=cache_module.JCache(cache) if keywords.jcache else None,
-    relooper=relooper))
+    relooper=relooper,
+    temp_files=temp_files))
 
 if __name__ == '__main__':
   _main(environ=os.environ)
