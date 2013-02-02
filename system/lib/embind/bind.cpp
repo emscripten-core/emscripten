@@ -138,7 +138,7 @@ namespace emscripten {
                 return derivationPath;
             }
 
-            void* __staticPointerCast(void* p, int from, int to) {
+            void* EMSCRIPTEN_KEEPALIVE __staticPointerCast(void* p, int from, int to) {
                 std::vector<std::vector<const __cxxabiv1::__class_type_info*>> paths;
                 int direction = 1;
 
@@ -176,7 +176,7 @@ namespace emscripten {
 
             // __getDynamicPointerType returns (for polymorphic types only!) the type of the instance actually
             // pointed to.
-            int __getDynamicPointerType(int p) {
+            int EMSCRIPTEN_KEEPALIVE __getDynamicPointerType(int p) {
                 void** vtable = *(void***)p;
                 return (int)static_cast<const std::type_info*>(vtable[-1]);
             }
@@ -189,7 +189,7 @@ namespace emscripten {
 
             // __dynamicPointerCast performs a C++ dynamic_cast<>() operation, but allowing run-time specification of
             // the from and to pointer types.
-            int __dynamicPointerCast(int p, int to) {
+            int EMSCRIPTEN_KEEPALIVE __dynamicPointerCast(int p, int to) {
                 int ret = (int)__staticPointerCast((void *)p, __getDynamicPointerType(p), to);
                 if (ret < 0) {
                     return 0;
@@ -197,7 +197,7 @@ namespace emscripten {
                 return ret;
             }
 
-            const char* __typeName(int p) {
+            const char* EMSCRIPTEN_KEEPALIVE __typeName(int p) {
                 const std::type_info* ti = (const std::type_info*)p;
                 size_t nameLen = std::min(strlen(ti->name()), (unsigned int)1024);
                 char* name = (char *)malloc(nameLen+1);
@@ -221,7 +221,7 @@ namespace emscripten {
                 return bases;
             }
 
-            int __peek32(int p) {
+            int EMSCRIPTEN_KEEPALIVE __peek32(int p) {
                 return *(int *)p;
             }
 
