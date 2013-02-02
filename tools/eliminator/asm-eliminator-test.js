@@ -130,5 +130,16 @@ function exc($this) {
     ___cxa_call_unexpected($9);
   }
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j", "_segment_holding", "__ZN5identC2EiPKcPci", "_vec2Length", "exc"]
+function label() {
+  var $1 = 0, $2 = 0;
+  $1 = f();
+  if ($1) {
+    g();
+  }
+  $2 = h();
+  L100: if ($2) {
+    i();
+  }
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j", "_segment_holding", "__ZN5identC2EiPKcPci", "_vec2Length", "exc", "label"]
 

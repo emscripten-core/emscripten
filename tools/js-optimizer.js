@@ -1653,7 +1653,7 @@ function registerize(ast) {
 // In memSafe mode, we are more careful and assume functions can replace HEAP and FUNCTION_TABLE, which
 // can happen in ALLOW_MEMORY_GROWTH mode
 
-var ELIMINATION_SAFE_NODES = set('var', 'assign', 'call', 'if', 'toplevel', 'do', 'return'); // do is checked carefully, however
+var ELIMINATION_SAFE_NODES = set('var', 'assign', 'call', 'if', 'toplevel', 'do', 'return', 'label'); // do is checked carefully, however
 var NODES_WITHOUT_ELIMINATION_SIDE_EFFECTS = set('name', 'num', 'string', 'binary', 'sub', 'unary-prefix');
 var IGNORABLE_ELIMINATOR_SCAN_NODES = set('num', 'toplevel', 'string', 'break', 'continue', 'dot'); // dot can only be STRING_TABLE.*
 var ABORTING_ELIMINATOR_SCAN_NODES = set('new', 'object', 'function', 'defun', 'switch', 'for', 'while', 'array', 'throw'); // we could handle some of these, TODO, but nontrivial (e.g. for while, the condition is hit multiple times after the body)
