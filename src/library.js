@@ -4221,8 +4221,11 @@ LibraryManager.library = {
   memcpy__sig: 'iiii',
   memcpy: function (dest, src, num) {
     dest = dest|0; src = src|0; num = num|0;
+    var ret = 0;
+    ret = dest|0;
     if ((dest&3) == (src&3)) {
-      while (dest & 3 & num) {
+      while (dest & 3) {
+        if ((num|0) == 0) return ret|0;
         {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i8'), 'i8') }}};
         dest = (dest+1)|0;
         src = (src+1)|0;
@@ -4241,7 +4244,7 @@ LibraryManager.library = {
       src = (src+1)|0;
       num = (num-1)|0;
     }
-    return dest|0;
+    return ret|0;
   },
 
   wmemcpy: function() { throw 'wmemcpy not implemented' },
