@@ -90,8 +90,6 @@ LLVM_OPT_LEVEL = {
   3: 3,
 }
 
-MEMCPY_ALIASES = ['memcpy', 'llvm.memcpy.i32', 'llvm.memcpy.i64', 'llvm.memcpy.p0i8.p0i8.i32', 'llvm.memcpy.p0i8.p0i8.i64']
-
 DEBUG = int(os.environ.get('EMCC_DEBUG') or 0)
 TEMP_DIR = os.environ.get('EMCC_TEMP_DIR')
 LEAVE_INPUTS_RAW = os.environ.get('EMCC_LEAVE_INPUTS_RAW') # Do not compile .ll files into .bc, just compile them with emscripten directly
@@ -949,7 +947,7 @@ try:
     def create_libc():
       if DEBUG: print >> sys.stderr, 'emcc: building libc for cache'
       o_s = []
-      for src in ['dlmalloc.c', os.path.join('libc', 'musl', 'memcpy.c'), os.path.join('libcxx', 'new.cpp')]:
+      for src in ['dlmalloc.c', os.path.join('libcxx', 'new.cpp')]:
         o = in_temp(os.path.basename(src) + '.o')
         execute([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o], stdout=stdout, stderr=stderr)
         o_s.append(o)
@@ -957,13 +955,6 @@ try:
       return in_temp('libc.bc')
 
     def fix_libc(need):
-      # If an intrinsic alias of memcpy is used, we need memcpy
-      for memcpy_alias in MEMCPY_ALIASES:
-        if memcpy_alias in need:
-          if '_memcpy' not in shared.Settings.EXPORTED_FUNCTIONS:
-            shared.Settings.EXPORTED_FUNCTIONS.append('_memcpy')
-            break
-
       # libc needs some sign correction. # If we are in mode 0, switch to 2. We will add our lines
       try:
         if shared.Settings.CORRECT_SIGNS == 0: raise Exception('we need to change to 2')
