@@ -7893,7 +7893,7 @@ def process(filename):
         int main() {
           GC_INIT();
 
-          void *local, *local2, *local3, *local4;
+          void *local, *local2, *local3, *local4, *local5, *local6;
 
           // Hold on to global, drop locals
 
@@ -7938,6 +7938,20 @@ def process(filename):
           GC_REGISTER_FINALIZER_NO_ORDER(local3, finalizer, (void*)3, 0, 0);
           local4 = GC_MALLOC(12);
           GC_REGISTER_FINALIZER_NO_ORDER(local4, finalizer, (void*)4, 0, 0);
+          local5 = GC_MALLOC_UNCOLLECTABLE(12);
+          // This should never trigger since local5 is uncollectable
+          GC_REGISTER_FINALIZER_NO_ORDER(local5, finalizer, (void*)5, 0, 0);
+
+          printf("heap size = %d\n", GC_get_heap_size());
+
+          local4 = GC_REALLOC(local4, 24);
+
+          printf("heap size = %d\n", GC_get_heap_size());
+
+          local6 = GC_MALLOC(12);
+          GC_REGISTER_FINALIZER_NO_ORDER(local6, finalizer, (void*)6, 0, 0);
+          // This should be the same as a free
+          GC_REALLOC(local6, 0);
 
           void **globalData = (void**)global;
           globalData[0] = local;
@@ -7974,6 +7988,9 @@ finalizing2 2 (global == 0)
 finalizing2 3 (global == 0)
 *
 finalizing 0 (global == 1)
+heap size = 72
+heap size = 84
+finalizing 6 (global == 0)
 object scan test test
 finalizing 4 (global == 0)
 *
