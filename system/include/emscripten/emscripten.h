@@ -24,7 +24,7 @@ extern "C" {
  *                 with closure, asm.js, etc. For example
  *                   -s EXPORTED_FUNCTIONS=["_main", "myfunc"]
  */
-/* #define EMSCRIPTEN_KEEPALIVE __attribute__((used)) */
+#define EMSCRIPTEN_KEEPALIVE __attribute__((used))
 
 /*
  * Interface to the underlying JS engine. This function will
