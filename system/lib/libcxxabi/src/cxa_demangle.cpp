@@ -5695,7 +5695,7 @@ public:
             if (__right_ != 0)
                 r += __right_->size();
             else if (__size_ != 0)
-                r += static_cast<size_t>(snprintf(0, 0, "%ld", __size_));
+                r += static_cast<size_t>(snprintf(0, 0, "%lu", static_cast<unsigned long>(__size_)));
             const_cast<long&>(__cached_size_) = static_cast<long>(r);
         }
         return static_cast<size_t>(__cached_size_);
@@ -5710,7 +5710,7 @@ public:
             buf = __right_->get_demangled_name(buf);
         else if (__size_ != 0)
         {
-            int rs = sprintf(buf, "%ld", __size_);
+            int rs = sprintf(buf, "%lu", static_cast<unsigned long>(__size_));
             buf += rs;
         }
         *buf++ = ']';
@@ -5735,7 +5735,7 @@ public:
         if (__right_ != 0)
             r += __right_->size();
         else if (__size_ != 0)
-            r += static_cast<size_t>(snprintf(0, 0, "%ld", __size_));
+            r += static_cast<size_t>(snprintf(0, 0, "%lu", static_cast<unsigned long>(__size_)));
         return r;
     }
 
@@ -5747,7 +5747,7 @@ public:
             buf = __right_->get_demangled_name(buf);
         else if (__size_ != 0)
         {
-            int off = sprintf(buf, "%ld", __size_);
+            int off = sprintf(buf, "%lu", static_cast<unsigned long>(__size_));
             buf += off;
         }
         char* t = buf;
