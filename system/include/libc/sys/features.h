@@ -26,7 +26,10 @@ extern "C" {
 #endif
 
 #if EMSCRIPTEN
-#define _POSIX_REALTIME_SIGNALS 1
+#define _POSIX_REALTIME_SIGNALS          1
+#define _POSIX_THREADS                   200112L
+#define _UNIX98_THREAD_MUTEX_ATTRIBUTES  1
+#define _POSIX_READER_WRITER_LOCKS       200112L
 #endif
 
 /* RTEMS adheres to POSIX -- 1003.1b with some features from annexes.  */
