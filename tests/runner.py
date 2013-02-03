@@ -10727,7 +10727,7 @@ elif 'benchmark' in str(sys.argv):
   total_native_times = map(lambda x: 0., range(TOTAL_TESTS))
 
   class benchmark(RunnerCore):
-    def print_stats(self, times, native_times, last=False):
+    def print_stats(self, times, native_times, last=False, reps=TEST_REPS):
       mean = sum(times)/len(times)
       squared_times = map(lambda x: x*x, times)
       mean_of_squared = sum(squared_times)/len(times)
@@ -10756,7 +10756,7 @@ elif 'benchmark' in str(sys.argv):
         return
 
       print
-      print '   JavaScript: mean: %.3f (+-%.3f) secs  median: %.3f  range: %.3f-%.3f  (noise: %3.3f%%)  (%d runs)' % (mean, std, median, min(times), max(times), 100*std/mean, TEST_REPS)
+      print '   JavaScript: mean: %.3f (+-%.3f) secs  median: %.3f  range: %.3f-%.3f  (noise: %3.3f%%)  (%d runs)' % (mean, std, median, min(times), max(times), 100*std/mean, reps)
       print '   Native    : mean: %.3f (+-%.3f) secs  median: %.3f  range: %.3f-%.3f  (noise: %3.3f%%)  JS is %.2f X slower' % (mean_native, std_native, median_native, min(native_times), max(native_times), 100*std_native/mean_native, final)
 
     def do_benchmark(self, name, src, args=[], expected_output='FAIL', emcc_args=[], native_args=[], shared_args=[], force_c=False, reps=TEST_REPS):
@@ -10804,7 +10804,7 @@ elif 'benchmark' in str(sys.argv):
         native_times.append(curr)
         total_native_times[tests_done] += curr
 
-      self.print_stats(times, native_times)
+      self.print_stats(times, native_times, reps=reps)
 
       #tests_done += 1
       #if tests_done == TOTAL_TESTS:
