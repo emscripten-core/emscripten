@@ -6136,7 +6136,7 @@ LibraryManager.library = {
 
   setjmp__inline: function(env) {
     // Save the label
-    return '(tempInt = setjmpId++, mySetjmpIds[tempInt] = 1, setjmpLabels[tempInt] = label,' + makeSetValue(env, '0', 'tempInt', 'i32') + ', 0)';
+    return '(tempInt = setjmpId++, mySetjmpIds[tempInt] = 1, setjmpLabels[tempInt] = label,' + makeSetValue(env, '0', 'tempInt', 'i32', undefined, undefined, undefined, undefined,  ',') + ', 0)';
   },
 
   longjmp: function(env, value) {
