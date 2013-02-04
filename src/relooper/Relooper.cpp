@@ -253,11 +253,20 @@ int Shape::IdCounter = 0;
 
 void MultipleShape::RenderLoopPrefix() {
   if (NeedLoop) {
-    PrintIndented("L%d: \n", Id);
+    if (Labeled) {
+      PrintIndented("L%d: do {\n", Id);
+    } else {
+      PrintIndented("do {\n");
+    }
+    Indenter::Indent();
   }
 }
 
 void MultipleShape::RenderLoopPostfix() {
+  if (NeedLoop) {
+    Indenter::Unindent();
+    PrintIndented("} while(0);\n");
+  }
 }
 
 void MultipleShape::Render(bool InLoop) {
@@ -912,10 +921,7 @@ void Relooper::Calculate(Block *Entry) {
           Branch *Details = iter->second;
           if (Details->Type != Branch::Direct) {
             assert(LoopStack.size() > 0);
-            // If the ancestor is not at the top of the stack, we need a labelled break. We also
-            // always need a labeled break for multiple blocks, which are always labeled.
-            MultipleShape *Multiple;
-            if (Details->Ancestor != LoopStack.top() || Shape::IsMultiple(Details->Ancestor)) {
+            if (Details->Ancestor != LoopStack.top()) {
               LabeledShape *Labeled = Shape::IsLabeled(Details->Ancestor);
               Labeled->Labeled = true;
               Details->Labeled = true;
