@@ -1045,9 +1045,14 @@ function asmCoercion(value, type, signedness) {
   }
 }
 
+var TWO_TWENTY = Math.pow(2, 20);
+
 function asmMultiplyI32(a, b) {
   // special-case: there is no integer multiply in asm, because there is no true integer
   // multiply in JS. While we wait for Math.imul, do double multiply
+  if ((isNumber(a) && Math.abs(a) < TWO_TWENTY) || (isNumber(b) && Math.abs(b) < TWO_TWENTY)) {
+    return '(((' + a + ')*(' + b + '))&-1)'; // small enough to emit directly as a multiply
+  }
   if (USE_MATH_IMUL) {
     return 'Math.imul(' + a + ',' + b + ')';
   }
