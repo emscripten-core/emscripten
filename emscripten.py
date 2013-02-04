@@ -41,8 +41,7 @@ def process_funcs((i, funcs, meta, settings_file, compiler, forwarded_file, libr
     compiler,
     engine=compiler_engine,
     args=[settings_file, funcs_file, 'funcs', forwarded_file] + libraries,
-    stdout=subprocess.PIPE,
-    cwd=path_from_root('src'))
+    stdout=subprocess.PIPE)
   tempfiles.try_delete(funcs_file)
   return out
 
@@ -676,7 +675,7 @@ WARNING: You should normally never use this! Use emcc instead.
   cache = cache_module.Cache()
   temp_files.run_and_clean(lambda: main(
     keywords,
-    compiler_engine=os.path.abspath(keywords.compiler),
+    compiler_engine=keywords.compiler,
     cache=cache,
     jcache=cache_module.JCache(cache) if keywords.jcache else None,
     relooper=relooper,
