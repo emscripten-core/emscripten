@@ -654,6 +654,7 @@ WARNING: You should normally never use this! Use emcc instead.
     from tools import shared
     configuration = shared.Configuration(environ=os.environ)
     get_configuration.configuration = configuration
+    return configuration
       
   if keywords.temp_dir is None:
     temp_files = get_configuration().get_temp_files()
