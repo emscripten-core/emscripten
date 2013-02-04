@@ -1,6 +1,8 @@
 /*
  * Boehm-compatible GC API
  */
+#ifndef _GC_H_INCLUDED
+#define _GC_H_INCLUDED
 
 #include <stdlib.h>
 
@@ -65,3 +67,4 @@ void GC_enable_incremental();
 }
 #endif
 
+#endif
