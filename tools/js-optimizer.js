@@ -486,6 +486,17 @@ function simplifyExpressionsPre(ast) {
         }
       }
     });
+
+    if (asm) {
+      // optimize num >> num, in asm we need this here since we do not run optimizeShifts
+      traverseGenerated(ast, function(node, type) {
+        if (type == 'binary' && node[1] == '>>' && node[2][0] == 'num' && node[3][0] == 'num') {
+          node[0] = 'num';
+          node[1] = node[2][1] >> node[3][1];
+          node.length = 2;
+        }
+      });
+    }
   }
 
   // The most common mathop is addition, e.g. in getelementptr done repeatedly. We can join all of those,

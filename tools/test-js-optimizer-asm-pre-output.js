@@ -4,6 +4,8 @@ function a() {
   f(347);
   f(351);
   f(8);
+  HEAP[1024] = 5;
+  HEAP[1024] = 5;
 }
 function b($this, $__n) {
   $this = $this | 0;
