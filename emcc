@@ -603,6 +603,10 @@ try:
   keep_debug = False
   bind = False
   jcache = False
+  if use_cxx:
+    default_cxx_std = '-std=c++03' # Enforce a consistent C++ standard when compiling .cpp files, if user does not specify one on the cmdline.
+  else:
+    default_cxx_std = '' # Compiling C code with .c files, don't enforce a default C++ std.
 
   def check_bad_eq(arg):
     assert '=' not in arg, 'Invalid parameter (do not use "=" with "--" options)'
@@ -666,7 +670,11 @@ try:
       keep_debug = True
     elif newargs[i] == '--bind':
       bind = True
-      newargs[i] = '-std=c++11' # Force C++11 for embind code
+      newargs[i] = ''
+      if default_cxx_std:
+        default_cxx_std = '-std=c++11' # Force C++11 for embind code, but only if user has not explicitly overridden a standard.
+    elif newargs[i].startswith('-std='):
+      default_cxx_std = '' # User specified a standard to use, clear Emscripten from specifying it.
     elif newargs[i].startswith('--embed-file'):
       check_bad_eq(newargs[i])
       embed_files.append(newargs[i+1])
@@ -723,6 +731,10 @@ try:
         print >> sys.stderr, 'emcc: warning: -I or -L of an absolute path encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript)' # Of course an absolute path to a non-system-specific library or header is fine, and you can ignore this warning. The danger are system headers that are e.g. x86 specific and nonportable. The emscripten bundled headers are modified to be portable, local system ones are generally not
         absolute_warning_shown = True
   newargs = [ arg for arg in newargs if arg is not '' ]
+
+  # If user did not specify a default -std for C++ code, specify the emscripten default.
+  if default_cxx_std:
+    newargs = newargs + [default_cxx_std]
 
   if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
   if llvm_lto is None: llvm_lto = llvm_opts > 0
