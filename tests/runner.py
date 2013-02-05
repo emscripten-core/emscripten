@@ -4197,6 +4197,19 @@ The current type of b is: 9
       '''
       self.do_run(src, 'final: -403200.');
 
+    def test_memmove3(self):
+      src = '''
+        #include <stdio.h>
+        #include <string.h>
+        int main() {
+          char str[] = "memmove can be vvery useful....!";
+          memmove(str+15, str+16, 17);
+          puts(str);
+          return 0;
+        }
+      '''
+      self.do_run(src, 'memmove can be very useful....!')
+
     def test_bsearch(self):
       if Settings.QUANTUM_SIZE == 1: return self.skip('Test cannot work with q1')
 
