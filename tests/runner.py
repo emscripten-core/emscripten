@@ -7836,63 +7836,6 @@ def process(filename):
         self.do_run(src.replace('TYPE', 'unsigned int'), '*2147483645**2**-5**5*')
         Settings.CORRECT_SIGNS = 0
 
-    def test_pgo(self):
-      if Settings.ASM_JS: return self.skip('asm does not support pgo')
-
-      if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
-      Settings.PGO = Settings.CHECK_OVERFLOWS = Settings.CORRECT_OVERFLOWS = Settings.CHECK_SIGNS = Settings.CORRECT_SIGNS = 1
-
-      src = '''
-        #include<stdio.h>
-        int main() {
-          int t = 77;
-          for (int i = 0; i < 30; i++) {
-            t = t + t + t + t + t + 1;
-          }
-          printf("*%d,%d*\\n", t, t & 127);
-
-          int varey = 100;
-          unsigned int MAXEY = -1;
-          for (int j = 0; j < 2; j++) {
-            printf("*%d*\\n", varey >= MAXEY); // 100 >= -1? not in unsigned!
-            MAXEY = 1; // So we succeed the second time around
-          }
-          return 0;
-        }
-      '''
-
-      def check(output, err):
-        # TODO: check the line #
-        if self.emcc_args is None or self.emcc_args == []: # LLVM full opts optimize out some corrections
-          assert re.search('^Overflow\|.*src.cpp:6 : 150 hits, %21 failures$', output, re.M), 'no indication of Overflow corrections: ' + output
-          assert re.search('^UnSign\|.*src.cpp:13 : 6 hits, %17 failures$', output, re.M), 'no indication of Sign corrections: ' + output
-        return output
-
-      print >>sys.stderr, '1'
-      self.do_run(src, '*186854335,63*\n', output_nicerizer=check)
-
-      Settings.PGO = Settings.CHECK_OVERFLOWS = Settings.CORRECT_OVERFLOWS = Settings.CHECK_SIGNS = Settings.CORRECT_SIGNS = 0
-
-      # Now, recompile with the PGO data, and it should work
-
-      pgo_data = read_pgo_data(self.get_stdout_path())
-
-      Settings.CORRECT_SIGNS = 2
-      Settings.CORRECT_SIGNS_LINES = pgo_data['signs_lines']
-      Settings.CORRECT_OVERFLOWS = 2
-      Settings.CORRECT_OVERFLOWS_LINES = pgo_data['overflows_lines']
-
-      print >>sys.stderr, '2'
-      self.do_run(src, '*186854335,63*\n')
-
-      # Sanity check: Without PGO, we will fail
-
-      print >>sys.stderr, '3'
-      try:
-        self.do_run(src, '*186854335,63*\n')
-      except:
-        pass
-
     def test_exit_status(self):
       Settings.CATCH_EXIT_CODE = 1
 
