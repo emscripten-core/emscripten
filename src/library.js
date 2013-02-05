@@ -6906,8 +6906,9 @@ LibraryManager.library = {
           var i8Temp = new Uint8Array(i32Temp.buffer);
 
           info.inQueue = [];
+          info.hasData = function() { return info.inQueue.length > 0 }
           if (!info.stream) {
-            var partialBuffer = null; // inQueue contains full dgram messages; this buffers incomplete data. Must begin with the beginning of a message
+            var partialBuffer = null; // in datagram mode, inQueue contains full dgram messages; this buffers incomplete data. Must begin with the beginning of a message
           }
 
           info.socket.onmessage = function(event) {
@@ -7043,7 +7044,7 @@ LibraryManager.library = {
   recv: function(fd, buf, len, flags) {
     var info = Sockets.fds[fd];
     if (!info) return -1;
-    if (info.inQueue.length == 0) {
+    if (!info.hasData()) {
       ___setErrNo(ERRNO_CODES.EAGAIN); // no data, and all sockets are nonblocking, so this is the right behavior
       return -1;
     }
@@ -7114,7 +7115,7 @@ LibraryManager.library = {
       assert(name, 'sendmsg on non-connected socket, and no name/address in the message');
       _connect(fd, name, {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_namelen', 'i32') }}});
     }
-    if (info.inQueue.length == 0) {
+    if (!info.hasData()) {
       ___setErrNo(ERRNO_CODES.EWOULDBLOCK);
       return -1;
     }
@@ -7179,7 +7180,7 @@ LibraryManager.library = {
     var info = Sockets.fds[fd];
     if (!info) return -1;
     var bytes = 0;
-    if (info.inQueue.length > 0) {
+    if (info.hasData()) {
       bytes = info.inQueue[0].length;
     }
     var dest = {{{ makeGetValue('varargs', '0', 'i32') }}};
@@ -7229,7 +7230,7 @@ LibraryManager.library = {
         // index is in the set, check if it is ready for read
         var info = Sockets.fds[fd];
         if (!info) continue;
-        if (info.inQueue.length > 0) ret++;
+        if (info.hasData()) ret++;
       }
     }
     return ret;
