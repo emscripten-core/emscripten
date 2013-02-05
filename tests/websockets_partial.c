@@ -46,6 +46,8 @@ void iter(void *arg) {
   packetLength = buffer[0];
   n = recv(SocketFD, buffer, packetLength, 0);
 
+  printf("got %d,%d\n", n, packetLength);
+
   if (n != packetLength) {
     fprintf(stderr, "lost packet data, expected: %d readed: %d", packetLength, n);
     exit(EXIT_FAILURE);
@@ -66,6 +68,7 @@ void iter(void *arg) {
     done = 1;
 
     #if EMSCRIPTEN
+        printf("sum: %d\n", sum);
         int result = sum;
         REPORT_RESULT();
     #endif

@@ -7053,6 +7053,13 @@ LibraryManager.library = {
     Module.print('recv: ' + [Array.prototype.slice.call(buffer)]);
 #endif
     if (len < buffer.length) {
+      if (info.stream) {
+        // This is tcp (reliable), so if not all was read, keep it
+        info.inQueue.unshift(buffer.subarray(len));
+#if SOCKET_DEBUG
+        Module.print('recv: put back: ' + (len - buffer.length));
+#endif
+      }
       buffer = buffer.subarray(0, len);
     }
     HEAPU8.set(buffer, buf);
@@ -7151,7 +7158,10 @@ LibraryManager.library = {
     if (info.stream) {
       // This is tcp (reliable), so if not all was read, keep it
       if (bufferPos < bytes) {
-        info.inQueue.unshift(buffer.subArray(bufferPos));
+        info.inQueue.unshift(buffer.subarray(bufferPos));
+#if SOCKET_DEBUG
+        Module.print('recvmsg: put back: ' + (bytes - bufferPos));
+#endif
       }
     }
     return ret;
