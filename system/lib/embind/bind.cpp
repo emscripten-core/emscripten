@@ -241,5 +241,3 @@ namespace emscripten {
     }
 }
 
-
-
