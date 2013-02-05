@@ -6831,25 +6831,64 @@ LibraryManager.library = {
 
     // Open the peer connection if we don't have it already
     if(null == Sockets.peer.pc) {
+      var Query = {
+        parse: function parse(queryString) {
+          var result = {};
+          var parts = queryString.split('&');
+          parts.forEach(function(part) {
+            var key = part.split('=')[0];
+            if(!result.hasOwnProperty(key))
+              result[key] = [];
+            var value = part.split('=')[1];
+            if(undefined !== value)
+              result[key].push(value);
+          });
+          return result;
+        },
+        defined: function defined(params, key) {
+          return (params.hasOwnProperty(key));
+        },
+        stringify: function stringify(params) {
+          var result = [];
+          Object.keys(params).forEach(function(param) {
+            var key = param;
+            var values = params[key];
+            if(values.length > 0) {
+              values.forEach(function(value) {
+                result.push(key + '=' + value);
+              });
+            } else {
+              result.push(key);
+            }
+          });
+          return result.join('&');
+        }
+      };
+
       var pc;
       var broker = Module['webrtc']['broker'] || 'http://webrtc-broker.herokuapp.com';
       var sid = Module['webrtc']['session'];
-      if(sid) {
+      if(sid) {      
         pc = new WebRTC.Peer(broker, sid);
-      } else {        
-        pc = new WebRTC.Host(broker);
+      } else {
+        var location = window.location.toString().split('?');
+        var params = Query.parse(location[1]);
+        delete params['serve'];
+        location[1] = Query.stringify(params);        
+        var options = {
+          url: location.join('?')
+        };
+        pc = new WebRTC.Host(broker, options);
       }
       pc.onerror = function(error) {
         console.error(error);
       };
       pc.onready = function(sid) {
-        var url = "http://" + window.location.host + "/game.html?low,low,debug,broker=" + broker + "sid=" + sid;
-        console.log("connect to: ", url);
-        var div = document.getElementById("remote-link");
-        if(div) {
-          div.innerHTML = '<a href="' + url + '">Open remote client</a>';
-        }
-      };      
+        console.log('host ready');
+      };
+      pc.onconnect = function() {
+        console.log('connected');
+      };
       function handleMessage(message) {
 #if SOCKET_DEBUG        
         Module.print("received " + message.byteLength + " raw bytes");
@@ -6858,9 +6897,14 @@ LibraryManager.library = {
         if(Sockets.peer.binds[header[1]]) {          
           Sockets.peer.binds[header[1]].inQueue.push(message);
           // console.log(Sockets.peer.binds[header[1]].inQueue.length + " messages queued for recv (onload)");
+
+          var queueLength = Sockets.peer.binds[header[1]].inQueue.length;
+          if(queueLength > 30) {
+            console.warn("message queue is getting long: ", queueLength);
+          }
         } else {
           console.log("unable to deliver message");
-        }
+        }        
       }
       pc.unreliable.onmessage = function(message) {
         handleMessage(message.data);
@@ -7043,11 +7087,11 @@ LibraryManager.library = {
       ___setErrNo(ERRNO_CODES.EWOULDBLOCK);
       return -1;
     }
-    console.log(info.inQueue.length + " messages queued for recv (recvmsg)");
+    // console.log(info.inQueue.length + " messages queued for recv (recvmsg)");
 
     var message = info.inQueue.shift();
     var header = new Uint16Array(message, 0, info.header.length);
-    console.log('recvmsg: header', header);
+    // console.log('recvmsg: header', header);
     var buffer = new Uint8Array(message, info.header.byteLength);
 
     var bytes = buffer.length;

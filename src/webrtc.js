@@ -293,6 +293,9 @@
           }
         };
       };
+      peerConnection.onstatechange = function(event) {
+        console.log('responder state change', event);
+      };
       peerConnection.connectDataConnection(8001, 8000);
     };
     responder.onready = function(sid) {
@@ -360,6 +363,9 @@
 
         peer.reliable.channel = reliable;
         peer.unreliable.channel = unreliable;
+      };
+      peerConnection.onstatechange = function(event) {
+        console.log('initiator state change', event);
       };
       peerConnection.connectDataConnection(8000, 8001);
     };
