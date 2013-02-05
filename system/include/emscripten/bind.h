@@ -710,6 +710,7 @@ namespace emscripten {
                 TypeID<ElementType>::get(),
                 TypeID<IndexType>::get(),
                 reinterpret_cast<internal::GenericFunction>(&internal::ArrayAccessGetInvoker<ClassType, ElementType, IndexType>::invoke));
+            return *this;
         }
 
         template<typename ElementType, typename IndexType>
@@ -842,6 +843,7 @@ namespace emscripten {
                     new(get()) T(*o);
                 }
                 initialized = o.initialized;
+                return *this;
             }
 
         private:
