@@ -93,50 +93,59 @@ namespace emscripten {
             }
         }
 
+        // __getDerivationPath returns an array of type_info pointers describing the derivation chain starting with
+        // the derived type and proceeding toward (and ending with) the base type. Types are only included if they
+        // appear on all possible derivation paths.
+        std::vector<int> __getDerivationPath(int dv, const int bs) {
+            std::vector<std::vector<const __cxxabiv1::__class_type_info*>> paths;
+
+            const std::type_info* dv1 = (std::type_info*)dv;
+            const std::type_info* bs1 = (std::type_info*)bs;
+            const __cxxabiv1::__class_type_info* dv2 = dynamic_cast<const __cxxabiv1::__class_type_info*>(dv1);
+            const __cxxabiv1::__class_type_info* bs2 = dynamic_cast<const __cxxabiv1::__class_type_info*>(bs1);
+
+            if (dv2 && bs2) {
+                __cxxabiv1::__getDerivationPaths(dv2, bs2, std::vector<const __cxxabiv1::__class_type_info*>(), paths);
+            }
+
+            std::vector<int> derivationPath;
+            if (paths.size() > 0) {
+                for (int j = 0; j < paths[0].size(); j++) {
+                    bool disqualified = false;
+                    for (int i = 1; i < paths.size(); i++) {
+                        bool found = false;
+                        for (int j2 = 0; j2 < paths[i].size(); j2++) {
+                            if (paths[i][j2] == paths[0][j]) {
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found) {
+                            disqualified = true;
+                            break;
+                        }
+                    }
+                    if (!disqualified) {
+                        derivationPath.emplace_back((int)paths[0][j]);
+                    }
+                }
+            }
+            return derivationPath;
+        }
+
+        std::vector<int> __getBaseClasses(int tp) {
+            std::vector<const __cxxabiv1::__class_type_info*> baseTypes = __internalGetBaseClasses((const __cxxabiv1::__class_type_info*)tp);
+            std::vector<int> bases;
+            for (int j = 0; j < baseTypes.size(); j++) {
+                bases.emplace_back((int)baseTypes[j]);
+            }
+            return bases;
+        }
+
         extern "C" {
             // These three routines constitute an extension to the compiler's support for dynamic type conversion.
             // They are used by embind.js to implement automatic downcasting of return values which are pointers to
             // polymorphic objects.
-
-            // __getDerivationPath returns an array of type_info pointers describing the derivation chain starting with
-            // the derived type and proceeding toward (and ending with) the base type. Types are only included if they
-            // appear on all possible derivation paths.
-            std::vector<int> __getDerivationPath(int dv, const int bs) {
-                std::vector<std::vector<const __cxxabiv1::__class_type_info*>> paths;
-
-                const std::type_info* dv1 = (std::type_info*)dv;
-                const std::type_info* bs1 = (std::type_info*)bs;
-                const __cxxabiv1::__class_type_info* dv2 = dynamic_cast<const __cxxabiv1::__class_type_info*>(dv1);
-                const __cxxabiv1::__class_type_info* bs2 = dynamic_cast<const __cxxabiv1::__class_type_info*>(bs1);
-
-                if (dv2 && bs2) {
-                    __cxxabiv1::__getDerivationPaths(dv2, bs2, std::vector<const __cxxabiv1::__class_type_info*>(), paths);
-                }
-
-                std::vector<int> derivationPath;
-                if (paths.size() > 0) {
-                    for (int j = 0; j < paths[0].size(); j++) {
-                        bool disqualified = false;
-                        for (int i = 1; i < paths.size(); i++) {
-                            bool found = false;
-                            for (int j2 = 0; j2 < paths[i].size(); j2++) {
-                                if (paths[i][j2] == paths[0][j]) {
-                                    found = true;
-                                    break;
-                                }
-                            }
-                            if (!found) {
-                                disqualified = true;
-                                break;
-                            }
-                        }
-                        if (!disqualified) {
-                            derivationPath.emplace_back((int)paths[0][j]);
-                        }
-                    }
-                }
-                return derivationPath;
-            }
 
             void* EMSCRIPTEN_KEEPALIVE __staticPointerCast(void* p, int from, int to) {
                 std::vector<std::vector<const __cxxabiv1::__class_type_info*>> paths;
@@ -210,15 +219,6 @@ namespace emscripten {
                     name[nameLen] = '\0';
                 }
                 return name;
-            }
-
-            std::vector<int> __getBaseClasses(int tp) {
-                std::vector<const __cxxabiv1::__class_type_info*> baseTypes = __internalGetBaseClasses((const __cxxabiv1::__class_type_info*)tp);
-                std::vector<int> bases;
-                for (int j = 0; j < baseTypes.size(); j++) {
-                    bases.emplace_back((int)baseTypes[j]);
-                }
-                return bases;
             }
 
             int EMSCRIPTEN_KEEPALIVE __peek32(int p) {
