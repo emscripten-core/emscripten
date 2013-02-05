@@ -10590,6 +10590,33 @@ elif 'browser' in str(sys.argv):
       finally:
         self.clean_pids()
 
+    def test_websockets_partial(self):
+      def partial(q):
+        import socket
+
+        q.put(None) # No sub-process to start
+        ssock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        ssock.bind(("127.0.0.1", 8990))
+        ssock.listen(2)
+        while True:
+          csock, addr = ssock.accept()
+          print "Connection from %s" % repr(addr)
+          csock.send("\x09\x01\x02\x03\x04\x05\x06\x07\x08\x09")
+          csock.send("\x08\x01\x02\x03\x04\x05\x06\x07\x08")
+          csock.send("\x07\x01\x02\x03\x04\x05\x06\x07")
+          csock.send("\x06\x01\x02\x03\x04\x05\x06")
+          csock.send("\x05\x01\x02\x03\x04\x05")
+          csock.send("\x04\x01\x02\x03\x04")
+          csock.send("\x03\x01\x02\x03")
+          csock.send("\x02\x01\x02")
+          csock.send("\x01\x01")
+
+      try:
+        with self.WebsockHarness(8990, partial):
+          self.btest('websockets_partial.c', expected='165')
+      finally:
+        self.clean_pids()
+
     def make_relay_server(self, port1, port2):
       def relay_server(q):
         print >> sys.stderr, 'creating relay server on ports %d,%d' % (port1, port2)
