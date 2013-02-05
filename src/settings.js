@@ -327,6 +327,8 @@ var ASM_JS = 0; // If 1, generate code in asm.js format. XXX This is highly expe
                 // try this yet.
 var USE_MATH_IMUL = 0; // If 1, use Math.imul when useful
 
+var EXPLICIT_ZEXT = 0; // If 1, generate an explicit conversion of zext i1 to i32, using ?:
+
 var NECESSARY_BLOCKADDRS = []; // List of (function, block) for all block addresses that are taken.
 
 // Compiler debugging options
