@@ -290,7 +290,7 @@ var Runtime = {
   //
   // When providing a typeName, you can generate information for nested
   // structs, for example, struct = ['field1', { field2: ['sub1', 'sub2', 'sub3'] }, 'field3']
-  // which repesents a structure whose 2nd field is another structure.
+  // which represents a structure whose 2nd field is another structure.
   generateStructInfo: function(struct, typeName, offset) {
     var type, alignment;
     if (typeName) {
