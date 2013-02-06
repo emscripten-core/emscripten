@@ -111,7 +111,7 @@ function isStructPointerType(type) {
   // |%5()| as a function call (like |i32 (i8*)| etc.). So
   // we must check later on, in call(), where we have more
   // context, to differentiate such cases.
-  // A similar thing happns in isStructType()
+  // A similar thing happens in isStructType()
   return !Runtime.isNumberType(type) && type[0] == '%';
 }
 
@@ -1045,9 +1045,14 @@ function asmCoercion(value, type, signedness) {
   }
 }
 
+var TWO_TWENTY = Math.pow(2, 20);
+
 function asmMultiplyI32(a, b) {
   // special-case: there is no integer multiply in asm, because there is no true integer
   // multiply in JS. While we wait for Math.imul, do double multiply
+  if ((isNumber(a) && Math.abs(a) < TWO_TWENTY) || (isNumber(b) && Math.abs(b) < TWO_TWENTY)) {
+    return '(((' + a + ')*(' + b + '))&-1)'; // small enough to emit directly as a multiply
+  }
   if (USE_MATH_IMUL) {
     return 'Math.imul(' + a + ',' + b + ')';
   }
@@ -1949,6 +1954,7 @@ function processMathop(item) {
   if (item.type[0] === 'i') {
     bits = parseInt(item.type.substr(1));
   }
+  var bitsBefore = parseInt((item.params[0] ? item.params[0].type : item.type).substr(1)); // remove i to leave the number of bits left after this
   var bitsLeft = parseInt(((item.params[1] && item.params[1].ident) ? item.params[1].ident : item.type).substr(1)); // remove i to leave the number of bits left after this operation
 
   function integerizeBignum(value) {
@@ -2230,7 +2236,14 @@ function processMathop(item) {
     }
     // Note that zext has sign checking, see above. We must guard against -33 in i8 turning into -33 in i32
     // then unsigning that i32... which would give something huge.
-    case 'zext': case 'fpext': case 'sext': return idents[0];
+    case 'zext': {
+      if (EXPLICIT_ZEXT && bitsBefore == 1 && bitsLeft > 1) {
+        return '(' + originalIdents[0] + '?1:0)'; // explicit bool-to-int conversion, work around v8 issue 2513
+        break;
+      }
+      // otherwise, fall through
+    }
+    case 'fpext': case 'sext': return idents[0];
     case 'fptrunc': return idents[0];
     case 'select': return idents[0] + ' ? ' + asmEnsureFloat(idents[1], item.type) + ' : ' + asmEnsureFloat(idents[2], item.type);
     case 'ptrtoint': case 'inttoptr': {

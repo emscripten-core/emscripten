@@ -1,17 +1,16 @@
 //19
-do {
-  if ( 1 ) {
-    //20
-    if (!( 1 )) {
-      label = 4;
-      break;
-    }
-    //21
-    break;
-  } else {
+L1: 
+if ( 1 ) {
+  //20
+  if (!( 1 )) {
     label = 4;
+    break L1;
   }
-} while(0);
+  //21
+  break L1;
+} else {
+  label = 4;
+}
 if (label == 4) {
   //22
 }

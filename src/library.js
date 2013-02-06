@@ -252,7 +252,7 @@ LibraryManager.library = {
       var properties = {isFolder: true, isDevice: false, contents: {}};
       return FS.createObject(parent, name, properties, canRead, canWrite);
     },
-    // Creates a a folder and all its missing parents.
+    // Creates a folder and all its missing parents.
     createPath: function(parent, path, canRead, canWrite) {
       var current = FS.findObject(parent);
       if (current === null) throw new Error('Invalid parent.');
@@ -414,7 +414,7 @@ LibraryManager.library = {
         processData(url);
       }
     },
-    // Creates a link to a sepcific local path.
+    // Creates a link to a specific local path.
     createLink: function(parent, name, target, canRead, canWrite) {
       var properties = {isDevice: false, link: target};
       return FS.createFile(parent, name, properties, canRead, canWrite);
@@ -1120,7 +1120,7 @@ LibraryManager.library = {
   open: function(path, oflag, varargs) {
     // int open(const char *path, int oflag, ...);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/open.html
-    // NOTE: This implementation tries to mimic glibc rather that strictly
+    // NOTE: This implementation tries to mimic glibc rather than strictly
     // following the POSIX standard.
 
     var mode = {{{ makeGetValue('varargs', 0, 'i32') }}};
@@ -1341,7 +1341,7 @@ LibraryManager.library = {
   poll: function(fds, nfds, timeout) {
     // int poll(struct pollfd fds[], nfds_t nfds, int timeout);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/poll.html
-    // NOTE: This is pretty much a no-op mimicing glibc.
+    // NOTE: This is pretty much a no-op mimicking glibc.
     var offsets = ___pollfd_struct_layout;
     var nonzero = 0;
     for (var i = 0; i < nfds; i++) {
@@ -1505,7 +1505,7 @@ LibraryManager.library = {
     // long fpathconf(int fildes, int name);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/encrypt.html
     // NOTE: The first parameter is ignored, so pathconf == fpathconf.
-    // The constants here aren't real values. Just mimicing glibc.
+    // The constants here aren't real values. Just mimicking glibc.
     switch (name) {
       case {{{ cDefine('_PC_LINK_MAX') }}}:
         return 32000;
@@ -4221,8 +4221,11 @@ LibraryManager.library = {
   memcpy__sig: 'iiii',
   memcpy: function (dest, src, num) {
     dest = dest|0; src = src|0; num = num|0;
+    var ret = 0;
+    ret = dest|0;
     if ((dest&3) == (src&3)) {
-      while (dest & 3 & num) {
+      while (dest & 3) {
+        if ((num|0) == 0) return ret|0;
         {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i8'), 'i8') }}};
         dest = (dest+1)|0;
         src = (src+1)|0;
@@ -4241,7 +4244,7 @@ LibraryManager.library = {
       src = (src+1)|0;
       num = (num-1)|0;
     }
-    return dest|0;
+    return ret|0;
   },
 
   wmemcpy: function() { throw 'wmemcpy not implemented' },
@@ -4256,11 +4259,11 @@ LibraryManager.library = {
   memmove__deps: ['memcpy'],
   memmove: function(dest, src, num) {
     dest = dest|0; src = src|0; num = num|0;
-    if ((src|0 < (dest|0)) & (dest|0 < ((src + num)|0))) {
+    if (((src|0) < (dest|0)) & ((dest|0) < ((src + num)|0))) {
       // Unlikely case: Copy backwards in a safe manner
       src = (src + num)|0;
       dest = (dest + num)|0;
-      while (num|0 > 0) {
+      while ((num|0) > 0) {
         dest = (dest - 1)|0;
         src = (src - 1)|0;
         num = (num - 1)|0;
@@ -6903,8 +6906,9 @@ LibraryManager.library = {
           var i8Temp = new Uint8Array(i32Temp.buffer);
 
           info.inQueue = [];
+          info.hasData = function() { return info.inQueue.length > 0 }
           if (!info.stream) {
-            var partialBuffer = null; // inQueue contains full dgram messages; this buffers incomplete data. Must begin with the beginning of a message
+            var partialBuffer = null; // in datagram mode, inQueue contains full dgram messages; this buffers incomplete data. Must begin with the beginning of a message
           }
 
           info.socket.onmessage = function(event) {
@@ -7040,7 +7044,7 @@ LibraryManager.library = {
   recv: function(fd, buf, len, flags) {
     var info = Sockets.fds[fd];
     if (!info) return -1;
-    if (info.inQueue.length == 0) {
+    if (!info.hasData()) {
       ___setErrNo(ERRNO_CODES.EAGAIN); // no data, and all sockets are nonblocking, so this is the right behavior
       return -1;
     }
@@ -7049,6 +7053,13 @@ LibraryManager.library = {
     Module.print('recv: ' + [Array.prototype.slice.call(buffer)]);
 #endif
     if (len < buffer.length) {
+      if (info.stream) {
+        // This is tcp (reliable), so if not all was read, keep it
+        info.inQueue.unshift(buffer.subarray(len));
+#if SOCKET_DEBUG
+        Module.print('recv: put back: ' + (len - buffer.length));
+#endif
+      }
       buffer = buffer.subarray(0, len);
     }
     HEAPU8.set(buffer, buf);
@@ -7111,7 +7122,7 @@ LibraryManager.library = {
       assert(name, 'sendmsg on non-connected socket, and no name/address in the message');
       _connect(fd, name, {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_namelen', 'i32') }}});
     }
-    if (info.inQueue.length == 0) {
+    if (!info.hasData()) {
       ___setErrNo(ERRNO_CODES.EWOULDBLOCK);
       return -1;
     }
@@ -7147,7 +7158,10 @@ LibraryManager.library = {
     if (info.stream) {
       // This is tcp (reliable), so if not all was read, keep it
       if (bufferPos < bytes) {
-        info.inQueue.unshift(buffer.subArray(bufferPos));
+        info.inQueue.unshift(buffer.subarray(bufferPos));
+#if SOCKET_DEBUG
+        Module.print('recvmsg: put back: ' + (bytes - bufferPos));
+#endif
       }
     }
     return ret;
@@ -7176,7 +7190,7 @@ LibraryManager.library = {
     var info = Sockets.fds[fd];
     if (!info) return -1;
     var bytes = 0;
-    if (info.inQueue.length > 0) {
+    if (info.hasData()) {
       bytes = info.inQueue[0].length;
     }
     var dest = {{{ makeGetValue('varargs', '0', 'i32') }}};
@@ -7226,7 +7240,7 @@ LibraryManager.library = {
         // index is in the set, check if it is ready for read
         var info = Sockets.fds[fd];
         if (!info) continue;
-        if (info.inQueue.length > 0) ret++;
+        if (info.hasData()) ret++;
       }
     }
     return ret;

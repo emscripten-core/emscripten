@@ -69,7 +69,7 @@ var USE_FHEAP = 1; // Relevant in USE_TYPED_ARRAYS == 1. If this is disabled, on
                    // not generated at all. This is useful if your code is 100% ints without floats or doubles
 var DOUBLE_MODE = 1; // How to load and store 64-bit doubles. Without typed arrays or in typed array mode 1,
                      // this doesn't matter - these values are just values like any other. In typed array mode 2,
-                     // a potentialy risk is that doubles may be only 32-bit aligned. Forcing 64-bit alignment
+                     // a potential risk is that doubles may be only 32-bit aligned. Forcing 64-bit alignment
                      // in Clang itself should be able to solve that, or as a workaround in DOUBLE_MODE 1 we
                      // will carefully load in parts, in a way that requires only 32-bit alignment. In DOUBLE_MODE
                      // 0 we will simply store and load doubles as 32-bit floats, so when they are stored/loaded
@@ -282,7 +282,7 @@ var LINKABLE = 0; // If set to 1, this file can be linked with others, either as
                   // we will not internalize all symbols and cull the unused ones, in other
                   // words, we will not remove unused functions and globals, which might be
                   // used by another module we are linked with.
-                  // BUILD_AS_SHARED_LIB > 0 implies this, so it is only importand to set this to 1
+                  // BUILD_AS_SHARED_LIB > 0 implies this, so it is only important to set this to 1
                   // when building the main file, and *if* that main file has symbols that
                   // the library it will open will then access through an extern.
                   // LINKABLE of 0 is very useful in that we can reduce the size of the
@@ -320,12 +320,14 @@ var HEADLESS = 0; // If 1, will include shim code that tries to 'fake' a browser
                   // keep your expectations low for this to work.
 
 var BENCHMARK = 0; // If 1, will just time how long main() takes to execute, and not
-                   // print out anything at all whatsover. This is useful for benchmarking.
+                   // print out anything at all whatsoever. This is useful for benchmarking.
 
 var ASM_JS = 0; // If 1, generate code in asm.js format. XXX This is highly experimental,
                 // and will not work on most codebases yet. It is NOT recommended that you
                 // try this yet.
 var USE_MATH_IMUL = 0; // If 1, use Math.imul when useful
+
+var EXPLICIT_ZEXT = 0; // If 1, generate an explicit conversion of zext i1 to i32, using ?:
 
 var NECESSARY_BLOCKADDRS = []; // List of (function, block) for all block addresses that are taken.
 

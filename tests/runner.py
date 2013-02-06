@@ -238,7 +238,10 @@ process(sys.argv[1])
         os.remove(f + '.o')
       except:
         pass
-      args = [Building.COMPILER, '-emit-llvm'] + COMPILER_OPTS + Building.COMPILER_TEST_OPTS + \
+      compiler_flags = ['-emit-llvm']
+      if not f.endswith('.c'):
+         compiler_flags = compiler_flags + ['-std=c++03']
+      args = [Building.COMPILER] + compiler_flags + COMPILER_OPTS + Building.COMPILER_TEST_OPTS + \
              ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
              map(lambda include: '-I' + include, includes) + \
              ['-c', f, '-o', f + '.o']
@@ -2196,7 +2199,7 @@ Succeeded!
           }
            
           int main() {
-              int x = 0;
+              volatile int x = 0;
               if ( ! setjmp(buf) ) {
                   x++;
                   first();                // when executed, setjmp returns 0
@@ -2207,11 +2210,7 @@ Succeeded!
               return 0;
           }
         '''
-        # gcc -O0 and -O2 differ in what they do with the saved state of local vars - and we match that
-        if self.emcc_args is None or ('-O1' not in self.emcc_args and '-O2' not in self.emcc_args):
-          self.do_run(src, 'second\nmain: 1\n')
-        else:
-          self.do_run(src, 'second\nmain: 0\n')
+        self.do_run(src, 'second\nmain: 1\n')
 
     def test_longjmp2(self):
       if Settings.ASM_JS: return self.skip('asm does not support longjmp')
@@ -3498,7 +3497,7 @@ def process(filename):
               case 'b':
               case 'c':
                   return p-1;
-              case 0xfffffff1:
+              case -15:
                   return p+1;
             }
             return p;
@@ -3512,6 +3511,25 @@ def process(filename):
           }
           '''
         self.do_run(src, '*96,97,98,-14,-14,101*')
+
+    # By default, when user has not specified a -std flag, Emscripten should always build .cpp files using the C++03 standard,
+    # i.e. as if "-std=c++03" had been passed on the command line. On Linux with Clang 3.2 this is the case, but on Windows
+    # with Clang 3.2 -std=c++11 has been chosen as default, because of
+    # < jrose> clb: it's deliberate, with the idea that for people who don't care about the standard, they should be using the "best" thing we can offer on that platform
+    def test_cxx03_do_run(self):
+        src = '''
+          #include <stdio.h>
+          
+          #if __cplusplus != 199711L
+          #error By default, if no -std is specified, emscripten should be compiling with -std=c++03!
+          #endif
+
+          int main( int argc, const char *argv[] ) {
+            printf("Hello world!\\n");
+            return 0;
+          }
+          '''
+        self.do_run(src, 'Hello world!')
 
     def test_bigswitch(self):
       if Settings.RELOOP: return self.skip('TODO: switch in relooper, issue #781')
@@ -4112,6 +4130,31 @@ The current type of b is: 9
         self.do_run(src, '6c9cdfe937383b79e52ca7a2cce83a21d9f5422c',
                     output_nicerizer = check)
 
+    def test_memcpy2(self):
+      src = r'''
+        #include <stdio.h>
+        #include <string.h>
+        #include <assert.h>
+        int main() {
+          char buffer[256];
+          for (int i = 0; i < 10; i++) {
+            for (int j = 0; j < 10; j++) {
+              for (int k = 0; k < 35; k++) {
+                for (int t = 0; t < 256; t++) buffer[t] = t;
+                char *dest = buffer + i + 128;
+                char *src = buffer+j;
+                //printf("%d, %d, %d\n", i, j, k);
+                assert(memcpy(dest, src, k) == dest);
+                assert(memcmp(dest, src, k) == 0);
+              }
+            }
+          }
+          printf("ok.\n");
+          return 1;
+        }
+      '''
+      self.do_run(src, 'ok.');
+
     def test_memmove(self):
       src = '''
         #include <stdio.h>
@@ -4124,6 +4167,35 @@ The current type of b is: 9
         }
       '''
       self.do_run(src, 'memmove can be very very useful')
+
+    def test_memmove2(self):
+      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('need ta2')
+
+      src = r'''
+        #include <stdio.h>
+        #include <string.h>
+        #include <assert.h>
+        int main() {
+          int sum = 0;
+          char buffer[256];
+          for (int i = 0; i < 10; i++) {
+            for (int j = 0; j < 10; j++) {
+              for (int k = 0; k < 35; k++) {
+                for (int t = 0; t < 256; t++) buffer[t] = t;
+                char *dest = buffer + i;
+                char *src = buffer + j;
+                if (dest == src) continue;
+                //printf("%d, %d, %d\n", i, j, k);
+                assert(memmove(dest, src, k) == dest);
+                for (int t = 0; t < 256; t++) sum += buffer[t];
+              }
+            }
+          }
+          printf("final: %d.\n", sum);
+          return 1;
+        }
+      '''
+      self.do_run(src, 'final: -403200.');
 
     def test_bsearch(self):
       if Settings.QUANTUM_SIZE == 1: return self.skip('Test cannot work with q1')
@@ -7793,63 +7865,6 @@ def process(filename):
         self.do_run(src.replace('TYPE', 'unsigned int'), '*2147483645**2**-5**5*')
         Settings.CORRECT_SIGNS = 0
 
-    def test_pgo(self):
-      if Settings.ASM_JS: return self.skip('asm does not support pgo')
-
-      if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
-      Settings.PGO = Settings.CHECK_OVERFLOWS = Settings.CORRECT_OVERFLOWS = Settings.CHECK_SIGNS = Settings.CORRECT_SIGNS = 1
-
-      src = '''
-        #include<stdio.h>
-        int main() {
-          int t = 77;
-          for (int i = 0; i < 30; i++) {
-            t = t + t + t + t + t + 1;
-          }
-          printf("*%d,%d*\\n", t, t & 127);
-
-          int varey = 100;
-          unsigned int MAXEY = -1;
-          for (int j = 0; j < 2; j++) {
-            printf("*%d*\\n", varey >= MAXEY); // 100 >= -1? not in unsigned!
-            MAXEY = 1; // So we succeed the second time around
-          }
-          return 0;
-        }
-      '''
-
-      def check(output, err):
-        # TODO: check the line #
-        if self.emcc_args is None or self.emcc_args == []: # LLVM full opts optimize out some corrections
-          assert re.search('^Overflow\|.*src.cpp:6 : 150 hits, %21 failures$', output, re.M), 'no indication of Overflow corrections: ' + output
-          assert re.search('^UnSign\|.*src.cpp:13 : 6 hits, %17 failures$', output, re.M), 'no indication of Sign corrections: ' + output
-        return output
-
-      print >>sys.stderr, '1'
-      self.do_run(src, '*186854335,63*\n', output_nicerizer=check)
-
-      Settings.PGO = Settings.CHECK_OVERFLOWS = Settings.CORRECT_OVERFLOWS = Settings.CHECK_SIGNS = Settings.CORRECT_SIGNS = 0
-
-      # Now, recompile with the PGO data, and it should work
-
-      pgo_data = read_pgo_data(self.get_stdout_path())
-
-      Settings.CORRECT_SIGNS = 2
-      Settings.CORRECT_SIGNS_LINES = pgo_data['signs_lines']
-      Settings.CORRECT_OVERFLOWS = 2
-      Settings.CORRECT_OVERFLOWS_LINES = pgo_data['overflows_lines']
-
-      print >>sys.stderr, '2'
-      self.do_run(src, '*186854335,63*\n')
-
-      # Sanity check: Without PGO, we will fail
-
-      print >>sys.stderr, '3'
-      try:
-        self.do_run(src, '*186854335,63*\n')
-      except:
-        pass
-
     def test_exit_status(self):
       Settings.CATCH_EXIT_CODE = 1
 
@@ -7893,7 +7908,7 @@ def process(filename):
         int main() {
           GC_INIT();
 
-          void *local, *local2, *local3, *local4;
+          void *local, *local2, *local3, *local4, *local5, *local6;
 
           // Hold on to global, drop locals
 
@@ -7938,6 +7953,20 @@ def process(filename):
           GC_REGISTER_FINALIZER_NO_ORDER(local3, finalizer, (void*)3, 0, 0);
           local4 = GC_MALLOC(12);
           GC_REGISTER_FINALIZER_NO_ORDER(local4, finalizer, (void*)4, 0, 0);
+          local5 = GC_MALLOC_UNCOLLECTABLE(12);
+          // This should never trigger since local5 is uncollectable
+          GC_REGISTER_FINALIZER_NO_ORDER(local5, finalizer, (void*)5, 0, 0);
+
+          printf("heap size = %d\n", GC_get_heap_size());
+
+          local4 = GC_REALLOC(local4, 24);
+
+          printf("heap size = %d\n", GC_get_heap_size());
+
+          local6 = GC_MALLOC(12);
+          GC_REGISTER_FINALIZER_NO_ORDER(local6, finalizer, (void*)6, 0, 0);
+          // This should be the same as a free
+          GC_REALLOC(local6, 0);
 
           void **globalData = (void**)global;
           globalData[0] = local;
@@ -7974,6 +8003,9 @@ finalizing2 2 (global == 0)
 finalizing2 3 (global == 0)
 *
 finalizing 0 (global == 1)
+heap size = 72
+heap size = 84
+finalizing 6 (global == 0)
 object scan test test
 finalizing 4 (global == 0)
 *
@@ -8234,7 +8266,7 @@ Options that are modified or new in %s include:
             assert ('assert(STACKTOP < STACK_MAX' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
             assert 'var $i;' in generated or 'var $i_0' in generated or 'var $storemerge3;' in generated or 'var $storemerge4;' in generated or 'var $i_04;' in generated, 'micro opts should always be on'
             if opt_level >= 2:
-              assert 'HEAP8[$0 + ($i_' in generated or 'HEAP8[$0 + (($i_0' in generated or 'HEAP8[HEAP32[' in generated or 'HEAP8[$vla1 + (($storemerge4 | 0) / 2 & -1) | 0]' in generated or 'HEAP8[$vla1 + (($storemerge4 | 0) / 2 & -1) | 0]' in generated or 'HEAP8[$vla1 + (($i_04 | 0) / 2 & -1) | 0]' in generated or 'HEAP8[$vla1 + ($i_04 / 2 & -1)]' in generated or 'HEAP8[$1 + (($i_01 | 0) / 2 & -1) | 0]' in generated or 'HEAP8[$1 + (($i_01 | 0) / 2 & -1) | 0]' in generated or 'HEAP8[$1 + ($i_01 / 2 & -1)]' in generated, 'eliminator should create compound expressions, and fewer one-time vars' # also in -O1, but easier to test in -O2
+              assert re.search('HEAP8\[\$\w+ \+ \(+\$\w+ ', generated) or re.search('HEAP8\[HEAP32\[', generated), 'eliminator should create compound expressions, and fewer one-time vars' # also in -O1, but easier to test in -O2
             assert ('_puts(' in generated) == (opt_level >= 1), 'with opt >= 1, llvm opts are run and they should optimize printf to puts'
             assert ('function _malloc(bytes) {' in generated) == (not has_malloc), 'If malloc is needed, it should be there, if not not'
             assert 'function _main() {' in generated, 'Should be unminified, including whitespace'
@@ -8386,6 +8418,18 @@ f.close()
         process.communicate()
         assert process.returncode is not 0, 'Trying to compile a nonexisting file should return with a nonzero error code!'
         assert os.path.exists('this_output_file_should_never_exist.js') == False, 'Emcc should not produce an output file when build fails!'
+
+    def test_cxx03(self):
+      for compiler in [EMCC, EMXX]:
+        process = Popen([PYTHON, compiler, path_from_root('tests', 'hello_cxx03.cpp')], stdout=PIPE, stderr=PIPE)
+        process.communicate()
+        assert process.returncode is 0, 'By default, emscripten should build using -std=c++03!'
+
+    def test_cxx11(self):
+      for compiler in [EMCC, EMXX]:
+        process = Popen([PYTHON, compiler, '-std=c++11', path_from_root('tests', 'hello_cxx11.cpp')], stdout=PIPE, stderr=PIPE)
+        process.communicate()
+        assert process.returncode is 0, 'User should be able to specify custom -std= on the command line!'
 
     def test_Os(self):
       for opt in ['s', '0']:
@@ -10575,6 +10619,33 @@ elif 'browser' in str(sys.argv):
       finally:
         self.clean_pids()
 
+    def test_websockets_partial(self):
+      def partial(q):
+        import socket
+
+        q.put(None) # No sub-process to start
+        ssock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        ssock.bind(("127.0.0.1", 8990))
+        ssock.listen(2)
+        while True:
+          csock, addr = ssock.accept()
+          print "Connection from %s" % repr(addr)
+          csock.send("\x09\x01\x02\x03\x04\x05\x06\x07\x08\x09")
+          csock.send("\x08\x01\x02\x03\x04\x05\x06\x07\x08")
+          csock.send("\x07\x01\x02\x03\x04\x05\x06\x07")
+          csock.send("\x06\x01\x02\x03\x04\x05\x06")
+          csock.send("\x05\x01\x02\x03\x04\x05")
+          csock.send("\x04\x01\x02\x03\x04")
+          csock.send("\x03\x01\x02\x03")
+          csock.send("\x02\x01\x02")
+          csock.send("\x01\x01")
+
+      try:
+        with self.WebsockHarness(8990, partial):
+          self.btest('websockets_partial.c', expected='165')
+      finally:
+        self.clean_pids()
+
     def make_relay_server(self, port1, port2):
       def relay_server(q):
         print >> sys.stderr, 'creating relay server on ports %d,%d' % (port1, port2)
@@ -10689,7 +10760,7 @@ elif 'benchmark' in str(sys.argv):
   total_native_times = map(lambda x: 0., range(TOTAL_TESTS))
 
   class benchmark(RunnerCore):
-    def print_stats(self, times, native_times, last=False):
+    def print_stats(self, times, native_times, last=False, reps=TEST_REPS):
       mean = sum(times)/len(times)
       squared_times = map(lambda x: x*x, times)
       mean_of_squared = sum(squared_times)/len(times)
@@ -10718,7 +10789,7 @@ elif 'benchmark' in str(sys.argv):
         return
 
       print
-      print '   JavaScript: mean: %.3f (+-%.3f) secs  median: %.3f  range: %.3f-%.3f  (noise: %3.3f%%)  (%d runs)' % (mean, std, median, min(times), max(times), 100*std/mean, TEST_REPS)
+      print '   JavaScript: mean: %.3f (+-%.3f) secs  median: %.3f  range: %.3f-%.3f  (noise: %3.3f%%)  (%d runs)' % (mean, std, median, min(times), max(times), 100*std/mean, reps)
       print '   Native    : mean: %.3f (+-%.3f) secs  median: %.3f  range: %.3f-%.3f  (noise: %3.3f%%)  JS is %.2f X slower' % (mean_native, std_native, median_native, min(native_times), max(native_times), 100*std_native/mean_native, final)
 
     def do_benchmark(self, name, src, args=[], expected_output='FAIL', emcc_args=[], native_args=[], shared_args=[], force_c=False, reps=TEST_REPS):
@@ -10766,7 +10837,7 @@ elif 'benchmark' in str(sys.argv):
         native_times.append(curr)
         total_native_times[tests_done] += curr
 
-      self.print_stats(times, native_times)
+      self.print_stats(times, native_times, reps=reps)
 
       #tests_done += 1
       #if tests_done == TOTAL_TESTS:
