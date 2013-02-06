@@ -248,6 +248,70 @@ var LibrarySDL = {
       return (r << 24) + (g << 16) + (b << 8) + a;
     },
 
+    makeSurfaceFrom: function(buffer, width, height, flags, usePageCanvas, source, pitch, rmask, gmask, bmask, amask) {
+      flags = flags || 0;
+      var surf = _malloc(14*Runtime.QUANTUM_SIZE);  // SDL_Surface has 14 fields of quantum size
+      var pixelFormat = _malloc(18*Runtime.QUANTUM_SIZE);
+      flags |= 1; // SDL_HWSURFACE - this tells SDL_MUSTLOCK that this needs to be locked
+
+      //surface with SDL_HWPALETTE flag is 8bpp surface (1 byte)
+      var is_SDL_HWPALETTE = flags & 0x00200000;  
+      var bpp = is_SDL_HWPALETTE ? 1 : 4;
+ 
+      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*0', '0', 'flags', 'i32') }}}         // SDL_Surface.flags
+      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*1', '0', 'pixelFormat', 'void*') }}} // SDL_Surface.format TODO
+      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*2', '0', 'width', 'i32') }}}         // SDL_Surface.w
+      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*3', '0', 'height', 'i32') }}}        // SDL_Surface.h
+      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*4', '0', 'width * bpp', 'i32') }}}       // SDL_Surface.pitch, assuming RGBA or indexed for now,
+                                                                               // since that is what ImageData gives us in browsers
+      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*5', '0', 'buffer', 'void*') }}}      // SDL_Surface.pixels
+      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*6', '0', '0', 'i32*') }}}      // SDL_Surface.offset
+
+      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.format', '0', '-2042224636', 'i32') }}} // SDL_PIXELFORMAT_RGBA8888
+      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.palette', '0', '0', 'i32') }}} // TODO
+      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.BitsPerPixel', '0', 'bpp * 8', 'i8') }}}
+      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.BytesPerPixel', '0', 'bpp', 'i8') }}}
+
+      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.Rmask', '0', 'rmask || 0x000000ff', 'i32') }}}
+      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.Gmask', '0', 'gmask || 0x0000ff00', 'i32') }}}
+      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.Bmask', '0', 'bmask || 0x00ff0000', 'i32') }}}
+      {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.Amask', '0', 'amask || 0xff000000', 'i32') }}}
+
+      // Decide if we want to use WebGL or not
+      var useWebGL = (flags & 0x04000000) != 0; // SDL_OPENGL
+      SDL.GL = SDL.GL || useWebGL;
+      var canvas;
+      if (!usePageCanvas) {
+        canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+      } else {
+        canvas = Module['canvas'];
+      }
+      var ctx = Browser.createContext(canvas, useWebGL, usePageCanvas);
+      SDL.surfaces[surf] = {
+        width: width,
+        height: height,
+        canvas: canvas,
+        ctx: ctx,
+        surf: surf,
+        buffer: buffer,
+        pixelFormat: pixelFormat,
+        alpha: 255,
+        flags: flags,
+        locked: 0,
+        usePageCanvas: usePageCanvas,
+        source: source,
+		pitch: pitch,
+
+        isFlagSet: function (flag) {
+          return flags & flag;
+        }
+      };
+
+      return surf;
+    },
+
     makeSurface: function(width, height, flags, usePageCanvas, source, rmask, gmask, bmask, amask) {
       flags = flags || 0;
       var surf = _malloc(14*Runtime.QUANTUM_SIZE);  // SDL_Surface has 14 fields of quantum size
@@ -905,6 +969,10 @@ var LibrarySDL = {
 
   SDL_CreateRGBSurface: function(flags, width, height, depth, rmask, gmask, bmask, amask) {
     return SDL.makeSurface(width, height, flags, false, 'CreateRGBSurface', rmask, gmask, bmask, amask);
+  },
+
+  SDL_CreateRGBSurfaceFrom: function(pixels,width, height, depth, pitch, rmask, gmask, bmask, amask) {
+    return SDL.makeSurfaceFrom(pixels,width, height, 0, false, 'CreateRGBSurfaceFrom', pitch, rmask, gmask, bmask, amask);
   },
 
   SDL_DisplayFormatAlpha: function(surf) {
@@ -1593,7 +1661,6 @@ var LibrarySDL = {
   Mix_FadeOutChannel: function() { throw 'Mix_FadeOutChannel' },
 
   Mix_Linked_Version: function() { throw 'Mix_Linked_Version: TODO' },
-  SDL_CreateRGBSurfaceFrom: function() { throw 'SDL_CreateRGBSurfaceFrom: TODO' },
   SDL_SaveBMP_RW: function() { throw 'SDL_SaveBMP_RW: TODO' },
 };
 
