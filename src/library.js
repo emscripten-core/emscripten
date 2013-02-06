@@ -4259,11 +4259,11 @@ LibraryManager.library = {
   memmove__deps: ['memcpy'],
   memmove: function(dest, src, num) {
     dest = dest|0; src = src|0; num = num|0;
-    if ((src|0 < (dest|0)) & (dest|0 < ((src + num)|0))) {
+    if (((src|0) < (dest|0)) & ((dest|0) < ((src + num)|0))) {
       // Unlikely case: Copy backwards in a safe manner
       src = (src + num)|0;
       dest = (dest + num)|0;
-      while (num|0 > 0) {
+      while ((num|0) > 0) {
         dest = (dest - 1)|0;
         src = (src - 1)|0;
         num = (num - 1)|0;
