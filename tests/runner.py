@@ -3966,6 +3966,18 @@ The current type of b is: 9
         '''
       self.do_run(src, '*0\n')
 
+    def test_time_c(self):
+      src = r'''
+        #include <time.h>
+        #include <stdio.h>
+
+        int main() {
+          time_t t = time(0);
+          printf("time: %s\n", ctime(&t));
+        }
+      '''
+      self.do_run(src, 'time: ') # compilation check, mainly
+
     def test_intentional_fault(self):
       if Settings.ASM_JS: return self.skip('no throw support in asm')
       # Some programs intentionally segfault themselves, we should compile that into a throw
