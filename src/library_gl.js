@@ -2464,8 +2464,9 @@ var LibraryGL = {
 
   gluPerspective: function(fov, aspect, near, far) {
     GL.immediate.matricesModified = true;
-    GL.immediate.matrix.lib.mat4.multiply(GL.immediate.matrix[GL.immediate.currentMatrix],
-        GL.immediate.matrix.lib.mat4.perspective(fov, aspect, near, far, GL.immediate.currentMatrix));
+    GL.immediate.matrix[GL.immediate.currentMatrix] =
+      GL.immediate.matrix.lib.mat4.perspective(fov, aspect, near, far,
+                                               GL.immediate.matrix[GL.immediate.currentMatrix]);
   },
 
   gluLookAt: function(ex, ey, ez, cx, cy, cz, ux, uy, uz) {
