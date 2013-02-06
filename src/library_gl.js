@@ -1997,6 +1997,7 @@ var LibraryGL = {
 #endif
         if (attribute.stride) stride = attribute.stride;
       }
+      assert(stride || beginEnd); // beginEnd can not have stride in the attributes, that is fine
 
       var bytes = 0;
       for (var i = 0; i < attributes.length; i++) {
@@ -2010,7 +2011,7 @@ var LibraryGL = {
         bytes += attribute.size * GL.immediate.byteSizeByType[attribute.type - GL.immediate.byteSizeByTypeRoot];
         if (bytes % 4 != 0) bytes += 4 - (bytes % 4); // XXX assuming 4-alignment
       }
-      assert(stride == 0 || bytes <= stride);
+      assert(beginEnd || bytes <= stride); // if not begin-end, explicit stride should make sense with total byte size
       if (bytes < stride) { // ensure the size is that of the stride
         bytes = stride;
       }
