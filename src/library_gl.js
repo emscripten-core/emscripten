@@ -2346,7 +2346,10 @@ var LibraryGL = {
       case 0x8076: // GL_COLOR_ARRAY
         attrib = GL.immediate.COLOR; break;
       default:
-        throw 'unhandled clientstate: ' + cap;
+#if ASSERTIONS
+        Module.printErr('WARNING: unhandled clientstate: ' + cap);
+#endif
+        return;
     }
     if (disable && GL.immediate.enabledClientAttributes[attrib]) {
       GL.immediate.enabledClientAttributes[attrib] = false;
