@@ -81,7 +81,7 @@ mergeInto(LibraryManager.library, {
 
       var imagePlugin = {};
       imagePlugin['canHandle'] = function(name) {
-        return name.substr(-4) in { '.jpg': 1, '.png': 1, '.bmp': 1 };
+        return !Module.noImageDecoding && name.substr(-4) in { '.jpg': 1, '.png': 1, '.bmp': 1 };
       };
       imagePlugin['handle'] = function(byteArray, name, onload, onerror) {
         var b = null;
@@ -123,7 +123,7 @@ mergeInto(LibraryManager.library, {
 
       var audioPlugin = {};
       audioPlugin['canHandle'] = function(name) {
-        return name.substr(-4) in { '.ogg': 1, '.wav': 1, '.mp3': 1 };
+        return !Module.noAudioDecoding && name.substr(-4) in { '.ogg': 1, '.wav': 1, '.mp3': 1 };
       };
       audioPlugin['handle'] = function(byteArray, name, onload, onerror) {
         var done = false;
