@@ -607,9 +607,11 @@ var LibrarySDL = {
   SDL_Init: function(what) {
     SDL.startTime = Date.now();
     // capture all key events. we just keep down and up, but also capture press to prevent default actions
-    document.onkeydown = SDL.receiveEvent;
-    document.onkeyup = SDL.receiveEvent;
-    document.onkeypress = SDL.receiveEvent;
+    if (!Module['doNotCaptureKeyboard']) {
+      document.onkeydown = SDL.receiveEvent;
+      document.onkeyup = SDL.receiveEvent;
+      document.onkeypress = SDL.receiveEvent;
+    }
     window.onunload = SDL.receiveEvent;
     SDL.keyboardState = _malloc(0x10000);
     _memset(SDL.keyboardState, 0, 0x10000);
