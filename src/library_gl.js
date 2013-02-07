@@ -1997,23 +1997,58 @@ var LibraryGL = {
 #endif
         if (attribute.stride) stride = attribute.stride;
       }
-      assert(stride || beginEnd); // beginEnd can not have stride in the attributes, that is fine
-
-      var bytes = 0;
-      for (var i = 0; i < attributes.length; i++) {
-        var attribute = attributes[i];
-        if (!attribute) break;
-        attribute.offset = attribute.pointer - start;
-        if (attribute.offset > bytes) { // ensure we start where we should
-          assert((attribute.offset - bytes)%4 == 0); // XXX assuming 4-alignment
-          bytes += attribute.offset - bytes;
+      var bytes = 0; // total size in bytes
+      if (!stride && !beginEnd) {
+        // beginEnd can not have stride in the attributes, that is fine. otherwise,
+        // no stride means that all attributes are in fact packed. to keep the rest of
+        // our emulation code simple, we perform unpacking/restriding here. this adds overhead, so
+        // it is a good idea to not hit this!
+#if ASSERTIONS
+        Runtime.warnOnce('Unpacking/restriding attributes, this is not fast');
+#endif
+        if (!GL.immediate.restrideBuffer) GL.immediate.restrideBuffer = _malloc(GL.immediate.MAX_TEMP_BUFFER_SIZE);
+        start = GL.immediate.restrideBuffer;
+#if ASSERTIONS
+        assert(start % 4 == 0);
+#endif
+        // calculate restrided offsets and total size
+        for (var i = 0; i < attributes.length; i++) {
+          var attribute = attributes[i];
+          if (!attribute) break;
+          var size = attribute.size * GL.immediate.byteSizeByType[attribute.type - GL.immediate.byteSizeByTypeRoot];
+          if (size % 4 != 0) size += 4 - (size % 4); // align everything
+          attribute.offset = bytes;
+          bytes += size;
         }
-        bytes += attribute.size * GL.immediate.byteSizeByType[attribute.type - GL.immediate.byteSizeByTypeRoot];
-        if (bytes % 4 != 0) bytes += 4 - (bytes % 4); // XXX assuming 4-alignment
-      }
-      assert(beginEnd || bytes <= stride); // if not begin-end, explicit stride should make sense with total byte size
-      if (bytes < stride) { // ensure the size is that of the stride
-        bytes = stride;
+        // copy out the data (we need to know the stride for that, and define attribute.pointer
+        for (var i = 0; i < attributes.length; i++) {
+          var attribute = attributes[i];
+          if (!attribute) break;
+          var size4 = Math.floor((attribute.size * GL.immediate.byteSizeByType[attribute.type - GL.immediate.byteSizeByTypeRoot])/4);
+          for (var j = 0; j < count; j++) {
+            for (var k = 0; k < size4; k++) { // copy in chunks of 4 bytes, our alignment makes this possible
+              HEAP32[((start + attribute.offset + bytes*j)>>2) + k] = HEAP32[(attribute.pointer>>2) + j*size4 + k];
+            }
+          }
+          attribute.pointer = start + attribute.offset;
+        }
+      } else {
+        // normal situation, everything is strided and in the same buffer
+        for (var i = 0; i < attributes.length; i++) {
+          var attribute = attributes[i];
+          if (!attribute) break;
+          attribute.offset = attribute.pointer - start;
+          if (attribute.offset > bytes) { // ensure we start where we should
+            assert((attribute.offset - bytes)%4 == 0); // XXX assuming 4-alignment
+            bytes += attribute.offset - bytes;
+          }
+          bytes += attribute.size * GL.immediate.byteSizeByType[attribute.type - GL.immediate.byteSizeByTypeRoot];
+          if (bytes % 4 != 0) bytes += 4 - (bytes % 4); // XXX assuming 4-alignment
+        }
+        assert(beginEnd || bytes <= stride); // if not begin-end, explicit stride should make sense with total byte size
+        if (bytes < stride) { // ensure the size is that of the stride
+          bytes = stride;
+        }
       }
       GL.immediate.stride = bytes;
 
