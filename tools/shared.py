@@ -569,9 +569,6 @@ class Settings:
           Settings.INLINING_LIMIT = 0
           Settings.DOUBLE_MODE = 0
           Settings.PRECISE_I64_MATH = 0
-          Settings.CORRECT_SIGNS = 0
-          Settings.CORRECT_OVERFLOWS = 0
-          Settings.CORRECT_ROUNDINGS = 0
           if noisy: print >> sys.stderr, 'Warning: Applying some potentially unsafe optimizations! (Use -O2 if this fails.)'
 
     global Settings
