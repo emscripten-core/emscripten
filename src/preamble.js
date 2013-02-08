@@ -354,12 +354,9 @@ function ccallFunc(func, returnType, argTypes, args) {
       if (value === null || value === undefined || value === 0) return 0; // null string
       // START Firefox workaround
       // It seems that Firefox optimizes sometimes too hard and therefore 'value' is some kind of unassigned.
-      // Then calling 'value.length' (see below) throws an exception. With the 'typeof value' check we can 
+      // Then calling 'value.length' (see below) throws an exception. With the concat of an empty string we can 
       // workaround that problem.
-      if (typeof value !== "string") {
-        console.error("Try to run ccallFunc with invalid argTypes/args mapping. valueType == ", type, "; value == ", value);
-        return 0;
-      }
+      value += ""; // Hope browsers can optimize that call to a no-op
       // END Firefox workaround
       if (!stack) stack = Runtime.stackSave();
       var ret = Runtime.stackAlloc(value.length+1);
