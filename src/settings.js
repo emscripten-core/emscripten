@@ -148,9 +148,11 @@ var LIBRARY_DEBUG = 0; // Print out when we enter a library call (library*.js). 
                        // Runtime.debug at runtime for logging to cease, and can set it when you
                        // want it back. A simple way to set it in C++ is
                        //   emscripten_run_script("Runtime.debug = ...;");
+var SOCKET_DEBUG = 0; // Log out socket/network data transfer.
+
 var GL_DEBUG = 0; // Print out all calls into WebGL. As with LIBRARY_DEBUG, you can set a runtime
                   // option, in this case GL.debug.
-var SOCKET_DEBUG = 0; // Log out socket/network data transfer.
+var GL_MAX_TEMP_BUFFER_SIZE = 2097152; // How large GL emulation temp buffers are
 
 var PROFILE_MAIN_LOOP = 0; // Profile the function called in set_main_loop
 

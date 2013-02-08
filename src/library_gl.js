@@ -1501,7 +1501,7 @@ var LibraryGL = {
     },
 
     // Temporary buffers
-    MAX_TEMP_BUFFER_SIZE: 2*1024*1024,
+    MAX_TEMP_BUFFER_SIZE: {{{ GL_MAX_TEMP_BUFFER_SIZE }}},
     tempBufferIndexLookup: null,
     tempVertexBuffers: null,
     tempIndexBuffers: null,
