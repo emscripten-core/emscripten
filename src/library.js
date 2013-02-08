@@ -6866,7 +6866,7 @@ LibraryManager.library = {
       };
 
       var pc;
-      var broker = Module['webrtc']['broker'] || 'http://webrtc-broker.herokuapp.com';
+      var broker = Module['webrtc']['broker'] || 'http://modeswit.ch:3000';
       var sid = Module['webrtc']['session'];
       if(sid) {      
         pc = new WebRTC.Peer(broker, sid);
