@@ -2020,6 +2020,9 @@ var LibraryGL = {
           attribute.offset = bytes;
           bytes += size;
         }
+#if ASSERTIONS
+        assert(count*bytes < GL.immediate.MAX_TEMP_BUFFER_SIZE);
+#endif
         // copy out the data (we need to know the stride for that, and define attribute.pointer
         for (var i = 0; i < attributes.length; i++) {
           var attribute = attributes[i];
