@@ -82,6 +82,14 @@
 
     function createChannel() {
       var channel = new EventSource(brokerUrl + '/channel');
+      channel.addEventListener('error', function(event)
+      {
+        if(event.target.readyState == EventSource.CLOSED || event.target.readyState == EventSource.CONNECTING) {
+          // Connection was closed.          
+          console.log('initiator: channel closed');
+          channel.close();
+        }
+      }, false);
       channel.addEventListener('channel', function(event)
       {
         console.log('initiator: channel message');
@@ -90,7 +98,7 @@
         initiator.key = data['key'];
 
         sendOffer(initiator.sid, initiator.cid, peerConnection);
-      });
+      }, false);
       channel.addEventListener('message', function(event)
       {
         console.log('initiator: application message');
@@ -100,7 +108,7 @@
         var message = data['message'];
 
         handleMessage(target, origin, message);
-      });
+      }, false);
       initiator.channel = channel;
     };
     
@@ -112,9 +120,14 @@
   {    
     var responder = this;
     options = options || {};
-    options['list'] = (undefined !== options['list']) ? options['list'] : false;
-    options['metadata'] = (undefined !== options['metadata']) ? options['metadata'] : {};
-    options['url'] = (undefined !== options['url']) ? options['url'] : window.location.toString();    
+    options['session'] = options['session'] || {};
+    var sessionOptions = options['session'];
+
+    sessionOptions['list'] = (undefined !== sessionOptions['list']) ? sessionOptions['list'] : false;
+    sessionOptions['metadata'] = (undefined !== sessionOptions['metadata']) ? sessionOptions['metadata'] : {};
+    sessionOptions['url'] = (undefined !== sessionOptions['url']) ? sessionOptions['url'] : window.location.toString();
+    sessionOptions['authenticate'] = (undefined !== sessionOptions['authenticate']) ? sessionOptions['authenticate'] : false;
+    sessionOptions['application'] = (undefined !== sessionOptions['application']) ? sessionOptions['application'] : '?';
 
     responder.channel = undefined;
     responder.cid = undefined;
@@ -192,9 +205,11 @@
       var request = {
         'cid': responder.cid,
         'key': responder.key,
-        'list': options['list'],
-        'metadata': options['metadata'],
-        'url': options['url']
+        'list': sessionOptions['list'],
+        'metadata': sessionOptions['metadata'],
+        'url': sessionOptions['url'],
+        'authenticate': sessionOptions['authenticate'],
+        'application': sessionOptions['application']
       };
 
       xhr.open('POST', url);
@@ -212,7 +227,15 @@
     };
 
     function createChannel() {
-      var channel = new EventSource(brokerUrl + '/channel');
+      var channel = new EventSource(brokerUrl + '/channel');      
+      channel.addEventListener('error', function(event)
+      {
+        if(event.target.readyState == EventSource.CLOSED || event.target.readyState == EventSource.CONNECTING) {
+          // Connection was closed.          
+          console.log('responder: channel closed');
+          channel.close();
+        }
+      }, false);
       channel.addEventListener('channel', function(event)
       {
         console.log('responder: channel message');
@@ -224,7 +247,7 @@
         responder.key = key;
 
         createSession();        
-      });
+      }, false);
       channel.addEventListener('message', function(event)
       {
         console.log('responder: application message');
@@ -234,7 +257,7 @@
         var message = data['message'];
 
         handleMessage(target, origin, message);
-      });
+      }, false);
       responder.channel = channel;
     };    
 

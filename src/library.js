@@ -6897,11 +6897,6 @@ LibraryManager.library = {
         if(Sockets.peer.binds[header[1]]) {          
           Sockets.peer.binds[header[1]].inQueue.push(message);
           // console.log(Sockets.peer.binds[header[1]].inQueue.length + " messages queued for recv (onload)");
-
-          var queueLength = Sockets.peer.binds[header[1]].inQueue.length;
-          if(queueLength > 30) {
-            console.warn("message queue is getting long: ", queueLength);
-          }
         } else {
           console.log("unable to deliver message");
         }        
@@ -6917,14 +6912,44 @@ LibraryManager.library = {
       Sockets.peer.pc = pc;
     }
 
+    var INCOMING_QUEUE_LENGTH = 64;
+
+    function CircularBuffer(max_length) {
+      var buffer = new Array(++ max_length);
+      var head = 0;
+      var tail = 0;
+      var length = 0;
+
+      return {
+        push: function(element) {
+          buffer[tail ++] = element;
+          length = Math.min(++ length, max_length - 1);
+          tail = tail % max_length;
+          if(tail === head)
+            head = (head + 1) % max_length;
+        },
+        shift: function(element) {
+          if(length < 1) return undefined;
+
+          var element = buffer[head];
+          -- length;
+          head = (head + 1) % max_length;
+          return element;
+        },
+        length: function() {
+          return length;
+        }
+      };
+    };
+
     Sockets.fds[fd] = {
       addr: 0x0100007f,
       host: '127.0.0.1',
       port: 0,
-      inQueue: [],
+      inQueue: new CircularBuffer(INCOMING_QUEUE_LENGTH),
       header: new Uint16Array(2),
       bound: false
-    };
+    };    
     return fd;
   },
 
@@ -7083,7 +7108,7 @@ LibraryManager.library = {
       assert(false, 'cannot receive on unbound socket');
     }    
 
-    if (info.inQueue.length == 0) {
+    if (info.inQueue.length() == 0) {
       ___setErrNo(ERRNO_CODES.EWOULDBLOCK);
       return -1;
     }
