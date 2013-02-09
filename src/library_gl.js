@@ -2344,6 +2344,7 @@ var LibraryGL = {
     var attrib;
     switch(cap) {
       case 0x8078: // GL_TEXTURE_COORD_ARRAY
+      case 0x0de1: // GL_TEXTURE_2D - XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support it
         attrib = GL.immediate.TEXTURE0 + GL.immediate.clientActiveTexture; break;
       case 0x8074: // GL_VERTEX_ARRAY
         attrib = GL.immediate.VERTEX; break;
