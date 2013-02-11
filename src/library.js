@@ -6876,7 +6876,11 @@ LibraryManager.library = {
         delete params['serve'];
         location[1] = Query.stringify(params);        
         var options = {
-          url: location.join('?')
+          'session': {
+            'url': location.join('?'),
+            'application': 'bananabread',
+            'list': true
+          }
         };
         pc = new WebRTC.Host(broker, options);
       }
