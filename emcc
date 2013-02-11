@@ -90,8 +90,6 @@ LLVM_OPT_LEVEL = {
   3: 3,
 }
 
-MEMCPY_ALIASES = ['memcpy', 'llvm.memcpy.i32', 'llvm.memcpy.i64', 'llvm.memcpy.p0i8.p0i8.i32', 'llvm.memcpy.p0i8.p0i8.i64']
-
 DEBUG = int(os.environ.get('EMCC_DEBUG') or 0)
 TEMP_DIR = os.environ.get('EMCC_TEMP_DIR')
 LEAVE_INPUTS_RAW = os.environ.get('EMCC_LEAVE_INPUTS_RAW') # Do not compile .ll files into .bc, just compile them with emscripten directly
@@ -247,6 +245,15 @@ Options that are modified or new in %s include:
                            where filename.html is the main file you
                            are compiling to. To run your code, you
                            will need both the .html and the .data.
+
+                           emcc runs tools/file_packager.py to do the
+                           actual packaging of embedded and preloaded
+                           files. You can run the file packager yourself
+                           if you want, see docs inside that file. You
+                           should then put the output of the file packager
+                           in an emcc --pre-js, so that it executes before
+                           your main compiled code (or run it before in
+                           some other way).
 
   --compression <codec>    Compress both the compiled code and embedded/
                            preloaded files. <codec> should be a triple,
@@ -596,6 +603,10 @@ try:
   keep_debug = False
   bind = False
   jcache = False
+  if use_cxx:
+    default_cxx_std = '-std=c++03' # Enforce a consistent C++ standard when compiling .cpp files, if user does not specify one on the cmdline.
+  else:
+    default_cxx_std = '' # Compiling C code with .c files, don't enforce a default C++ std.
 
   def check_bad_eq(arg):
     assert '=' not in arg, 'Invalid parameter (do not use "=" with "--" options)'
@@ -659,7 +670,11 @@ try:
       keep_debug = True
     elif newargs[i] == '--bind':
       bind = True
-      newargs[i] = '-std=c++11' # Force C++11 for embind code
+      newargs[i] = ''
+      if default_cxx_std:
+        default_cxx_std = '-std=c++11' # Force C++11 for embind code, but only if user has not explicitly overridden a standard.
+    elif newargs[i].startswith('-std='):
+      default_cxx_std = '' # User specified a standard to use, clear Emscripten from specifying it.
     elif newargs[i].startswith('--embed-file'):
       check_bad_eq(newargs[i])
       embed_files.append(newargs[i+1])
@@ -716,6 +731,10 @@ try:
         print >> sys.stderr, 'emcc: warning: -I or -L of an absolute path encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript)' # Of course an absolute path to a non-system-specific library or header is fine, and you can ignore this warning. The danger are system headers that are e.g. x86 specific and nonportable. The emscripten bundled headers are modified to be portable, local system ones are generally not
         absolute_warning_shown = True
   newargs = [ arg for arg in newargs if arg is not '' ]
+
+  # If user did not specify a default -std for C++ code, specify the emscripten default.
+  if default_cxx_std:
+    newargs = newargs + [default_cxx_std]
 
   if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
   if llvm_lto is None: llvm_lto = llvm_opts > 0
@@ -940,7 +959,7 @@ try:
     def create_libc():
       if DEBUG: print >> sys.stderr, 'emcc: building libc for cache'
       o_s = []
-      for src in ['dlmalloc.c', os.path.join('libc', 'musl', 'memcpy.c'), os.path.join('libcxx', 'new.cpp')]:
+      for src in ['dlmalloc.c', os.path.join('libcxx', 'new.cpp')]:
         o = in_temp(os.path.basename(src) + '.o')
         execute([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o], stdout=stdout, stderr=stderr)
         o_s.append(o)
@@ -948,13 +967,6 @@ try:
       return in_temp('libc.bc')
 
     def fix_libc(need):
-      # If an intrinsic alias of memcpy is used, we need memcpy
-      for memcpy_alias in MEMCPY_ALIASES:
-        if memcpy_alias in need:
-          if '_memcpy' not in shared.Settings.EXPORTED_FUNCTIONS:
-            shared.Settings.EXPORTED_FUNCTIONS.append('_memcpy')
-            break
-
       # libc needs some sign correction. # If we are in mode 0, switch to 2. We will add our lines
       try:
         if shared.Settings.CORRECT_SIGNS == 0: raise Exception('we need to change to 2')
@@ -1195,7 +1207,7 @@ try:
 
     js_optimizer_queue += [get_eliminate(), 'simplifyExpressionsPre']
 
-    if shared.Settings.RELOOP:
+    if shared.Settings.RELOOP and not shared.Settings.ASM_JS:
       js_optimizer_queue += ['optimizeShiftsAggressive', get_eliminate()] # aggressive shifts optimization requires loops, it breaks on switches
 
   if closure:

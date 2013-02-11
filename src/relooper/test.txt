@@ -54,7 +54,7 @@ while(1) {
   // code 2
   if (!($2)) {
     var $x_1 = $x_0; 
-    label = 19;
+    label = 18;
     break;
   }
   // code 3
@@ -64,7 +64,7 @@ while(1) {
     var $i_0 = $7;var $x_0 = $5; 
   }
 }
-if (label == 19) {
+if (label == 18) {
   // code 7
 }
 // code 4

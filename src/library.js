@@ -252,7 +252,7 @@ LibraryManager.library = {
       var properties = {isFolder: true, isDevice: false, contents: {}};
       return FS.createObject(parent, name, properties, canRead, canWrite);
     },
-    // Creates a a folder and all its missing parents.
+    // Creates a folder and all its missing parents.
     createPath: function(parent, path, canRead, canWrite) {
       var current = FS.findObject(parent);
       if (current === null) throw new Error('Invalid parent.');
@@ -414,7 +414,7 @@ LibraryManager.library = {
         processData(url);
       }
     },
-    // Creates a link to a sepcific local path.
+    // Creates a link to a specific local path.
     createLink: function(parent, name, target, canRead, canWrite) {
       var properties = {isDevice: false, link: target};
       return FS.createFile(parent, name, properties, canRead, canWrite);
@@ -624,7 +624,12 @@ LibraryManager.library = {
   // dirent.h
   // ==========================================================================
 
-  __dirent_struct_layout: Runtime.generateStructInfo(['d_ino', 'd_name', 'd_off', 'd_reclen', 'd_type'], '%struct.dirent'),
+  __dirent_struct_layout: Runtime.generateStructInfo([
+    ['i32', 'd_ino'],
+    ['b1024', 'd_name'],
+    ['i32', 'd_off'],
+    ['i32', 'd_reclen'],
+    ['i32', 'd_type']]),
   opendir__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '__dirent_struct_layout'],
   opendir: function(dirname) {
     // DIR *opendir(const char *dirname);
@@ -786,7 +791,9 @@ LibraryManager.library = {
   // utime.h
   // ==========================================================================
 
-  __utimbuf_struct_layout: Runtime.generateStructInfo(['actime', 'modtime'], '%struct.utimbuf'),
+  __utimbuf_struct_layout: Runtime.generateStructInfo([
+    ['i32', 'actime'],
+    ['i32', 'modtime']]),
   utime__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '__utimbuf_struct_layout'],
   utime: function(path, times) {
     // int utime(const char *path, const struct utimbuf *times);
@@ -877,23 +884,23 @@ LibraryManager.library = {
   // ==========================================================================
 
   __stat_struct_layout: Runtime.generateStructInfo([
-    'st_dev',
-    'st_ino',
-    'st_mode',
-    'st_nlink',
-    'st_uid',
-    'st_gid',
-    'st_rdev',
-    'st_size',
-    'st_atime',
-    'st_spare1',
-    'st_mtime',
-    'st_spare2',
-    'st_ctime',
-    'st_spare3',
-    'st_blksize',
-    'st_blocks',
-    'st_spare4'], '%struct.stat'),
+    ['i32', 'st_dev'],
+    ['i32', 'st_ino'],
+    ['i32', 'st_mode'],
+    ['i32', 'st_nlink'],
+    ['i32', 'st_uid'],
+    ['i32', 'st_gid'],
+    ['i32', 'st_rdev'],
+    ['i32', 'st_size'],
+    ['i32', 'st_atime'],
+    ['i32', 'st_spare1'],
+    ['i32', 'st_mtime'],
+    ['i32', 'st_spare2'],
+    ['i32', 'st_ctime'],
+    ['i32', 'st_spare3'],
+    ['i32', 'st_blksize'],
+    ['i32', 'st_blocks'],
+    ['i32', 'st_spare4']]),
   stat__deps: ['$FS', '__stat_struct_layout'],
   stat: function(path, buf, dontResolveLastLink) {
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/stat.html
@@ -1065,17 +1072,17 @@ LibraryManager.library = {
   // ==========================================================================
 
   __statvfs_struct_layout: Runtime.generateStructInfo([
-    'f_bsize',
-    'f_frsize',
-    'f_blocks',
-    'f_bfree',
-    'f_bavail',
-    'f_files',
-    'f_ffree',
-    'f_favail',
-    'f_fsid',
-    'f_flag',
-    'f_namemax'], '%struct.statvfs'),
+    ['i32', 'f_bsize'],
+    ['i32', 'f_frsize'],
+    ['i32', 'f_blocks'],
+    ['i32', 'f_bfree'],
+    ['i32', 'f_bavail'],
+    ['i32', 'f_files'],
+    ['i32', 'f_ffree'],
+    ['i32', 'f_favail'],
+    ['i32', 'f_fsid'],
+    ['i32', 'f_flag'],
+    ['i32', 'f_namemax']]),
   statvfs__deps: ['$FS', '__statvfs_struct_layout'],
   statvfs: function(path, buf) {
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/stat.html
@@ -1110,17 +1117,17 @@ LibraryManager.library = {
   // ==========================================================================
 
   __flock_struct_layout: Runtime.generateStructInfo([
-    'l_type',
-    'l_whence',
-    'l_start',
-    'l_len',
-    'l_pid',
-    'l_xxx'], '%struct.flock'),
+    ['i16', 'l_type'],
+    ['i16', 'l_whence'],
+    ['i32', 'l_start'],
+    ['i32', 'l_len'],
+    ['i16', 'l_pid'],
+    ['i16', 'l_xxx']]),
   open__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '__dirent_struct_layout'],
   open: function(path, oflag, varargs) {
     // int open(const char *path, int oflag, ...);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/open.html
-    // NOTE: This implementation tries to mimic glibc rather that strictly
+    // NOTE: This implementation tries to mimic glibc rather than strictly
     // following the POSIX standard.
 
     var mode = {{{ makeGetValue('varargs', 0, 'i32') }}};
@@ -1336,12 +1343,15 @@ LibraryManager.library = {
   // poll.h
   // ==========================================================================
 
-  __pollfd_struct_layout: Runtime.generateStructInfo(['fd', 'events', 'revents'], '%struct.pollfd'),
+  __pollfd_struct_layout: Runtime.generateStructInfo([
+    ['i32', 'fd'],
+    ['i16', 'events'],
+    ['i16', 'revents']]),
   poll__deps: ['$FS', '__pollfd_struct_layout'],
   poll: function(fds, nfds, timeout) {
     // int poll(struct pollfd fds[], nfds_t nfds, int timeout);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/poll.html
-    // NOTE: This is pretty much a no-op mimicing glibc.
+    // NOTE: This is pretty much a no-op mimicking glibc.
     var offsets = ___pollfd_struct_layout;
     var nonzero = 0;
     for (var i = 0; i < nfds; i++) {
@@ -1505,7 +1515,7 @@ LibraryManager.library = {
     // long fpathconf(int fildes, int name);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/encrypt.html
     // NOTE: The first parameter is ignored, so pathconf == fpathconf.
-    // The constants here aren't real values. Just mimicing glibc.
+    // The constants here aren't real values. Just mimicking glibc.
     switch (name) {
       case {{{ cDefine('_PC_LINK_MAX') }}}:
         return 32000;
@@ -4202,6 +4212,8 @@ LibraryManager.library = {
     return 1;
   },
 
+  arc4random: 'rand',
+
   // ==========================================================================
   // string.h
   // ==========================================================================
@@ -4221,8 +4233,11 @@ LibraryManager.library = {
   memcpy__sig: 'iiii',
   memcpy: function (dest, src, num) {
     dest = dest|0; src = src|0; num = num|0;
+    var ret = 0;
+    ret = dest|0;
     if ((dest&3) == (src&3)) {
-      while (dest & 3 & num) {
+      while (dest & 3) {
+        if ((num|0) == 0) return ret|0;
         {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i8'), 'i8') }}};
         dest = (dest+1)|0;
         src = (src+1)|0;
@@ -4241,7 +4256,7 @@ LibraryManager.library = {
       src = (src+1)|0;
       num = (num-1)|0;
     }
-    return dest|0;
+    return ret|0;
   },
 
   wmemcpy: function() { throw 'wmemcpy not implemented' },
@@ -4256,11 +4271,11 @@ LibraryManager.library = {
   memmove__deps: ['memcpy'],
   memmove: function(dest, src, num) {
     dest = dest|0; src = src|0; num = num|0;
-    if ((src|0 < (dest|0)) & (dest|0 < ((src + num)|0))) {
+    if (((src|0) < (dest|0)) & ((dest|0) < ((src + num)|0))) {
       // Unlikely case: Copy backwards in a safe manner
       src = (src + num)|0;
       dest = (dest + num)|0;
-      while (num|0 > 0) {
+      while ((num|0) > 0) {
         dest = (dest - 1)|0;
         src = (src - 1)|0;
         num = (num - 1)|0;
@@ -5616,11 +5631,11 @@ LibraryManager.library = {
   // ==========================================================================
 
   __utsname_struct_layout: Runtime.generateStructInfo([
-    'sysname',
-    'nodename',
-    'release',
-    'version',
-    'machine'], '%struct.utsname'),
+	  ['b32', 'sysname'],
+	  ['b32', 'nodename'],
+	  ['b32', 'release'],
+	  ['b32', 'version'],
+	  ['b32', 'machine']]),
   uname__deps: ['__utsname_struct_layout'],
   uname: function(name) {
     // int uname(struct utsname *name);
@@ -5820,17 +5835,17 @@ LibraryManager.library = {
   },
 
   __tm_struct_layout: Runtime.generateStructInfo([
-    'tm_sec',
-    'tm_min',
-    'tm_hour',
-    'tm_mday',
-    'tm_mon',
-    'tm_year',
-    'tm_wday',
-    'tm_yday',
-    'tm_isdst',
-    'tm_gmtoff',
-    'tm_zone'], '%struct.tm'),
+    ['i32', 'tm_sec'],
+    ['i32', 'tm_min'],
+    ['i32', 'tm_hour'],
+    ['i32', 'tm_mday'],
+    ['i32', 'tm_mon'],
+    ['i32', 'tm_year'],
+    ['i32', 'tm_wday'],
+    ['i32', 'tm_yday'],
+    ['i32', 'tm_isdst'],
+    ['i32', 'tm_gmtoff'],
+    ['i32', 'tm_zone']]),
   // Statically allocated time struct.
   __tm_current: 'allocate({{{ Runtime.QUANTUM_SIZE }}}*26, "i8", ALLOC_STACK)',
   // Statically allocated timezone strings.
@@ -6029,7 +6044,9 @@ LibraryManager.library = {
   // sys/time.h
   // ==========================================================================
 
-  __timespec_struct_layout: Runtime.generateStructInfo(['tv_sec', 'tv_nsec'], '%struct.timespec'),
+  __timespec_struct_layout: Runtime.generateStructInfo([
+    ['i32', 'tv_sec'],
+    ['i32', 'tv_nsec']]),
   // TODO: Implement these for real.
   clock_gettime__deps: ['__timespec_struct_layout'],
   clock_gettime: function(clk_id, tp) {
@@ -6086,10 +6103,10 @@ LibraryManager.library = {
   // ==========================================================================
 
   __tms_struct_layout: Runtime.generateStructInfo([
-    'tms_utime',
-    'tms_stime',
-    'tms_cutime',
-    'tms_cstime'], '%struct.tms'),
+    ['i32', 'tms_utime'],
+    ['i32', 'tms_stime'],
+    ['i32', 'tms_cutime'],
+    ['i32', 'tms_cstime']]),
   times__deps: ['__tms_struct_layout', 'memset'],
   times: function(buffer) {
     // clock_t times(struct tms *buffer);
@@ -6611,7 +6628,9 @@ LibraryManager.library = {
   // ==========================================================================
 
   // TODO: Implement for real.
-  __rlimit_struct_layout: Runtime.generateStructInfo(['rlim_cur', 'rlim_max'], '%struct.rlimit'),
+  __rlimit_struct_layout: Runtime.generateStructInfo([
+    ['i32', 'rlim_cur'],
+    ['i32', 'rlim_max']]),
   getrlimit__deps: ['__rlimit_struct_layout'],
   getrlimit: function(resource, rlp) {
     // int getrlimit(int resource, struct rlimit *rlp);
@@ -6627,22 +6646,22 @@ LibraryManager.library = {
 
   // TODO: Implement for real. We just do time used, and no useful data
   __rusage_struct_layout: Runtime.generateStructInfo([
-    'ru_utime',
-    'ru_stime',
-    'ru_maxrss',
-    'ru_ixrss',
-    'ru_idrss',
-    'ru_isrss',
-    'ru_minflt',
-    'ru_majflt',
-    'ru_nswap',
-    'ru_inblock',
-    'ru_oublock',
-    'ru_msgsnd',
-    'ru_msgrcv',
-    'ru_nsignals',
-    'ru_nvcsw',
-    'ru_nivcsw'], '%struct.rusage'),
+    ['i64', 'ru_utime'],
+    ['i64', 'ru_stime'],
+    ['i32', 'ru_maxrss'],
+    ['i32', 'ru_ixrss'],
+    ['i32', 'ru_idrss'],
+    ['i32', 'ru_isrss'],
+    ['i32', 'ru_minflt'],
+    ['i32', 'ru_majflt'],
+    ['i32', 'ru_nswap'],
+    ['i32', 'ru_inblock'],
+    ['i32', 'ru_oublock'],
+    ['i32', 'ru_msgsnd'],
+    ['i32', 'ru_msgrcv'],
+    ['i32', 'ru_nsignals'],
+    ['i32', 'ru_nvcsw'],
+    ['i32', 'ru_nivcsw']]),
   getrusage__deps: ['__rusage_struct_layout'],
   getrusage: function(resource, rlp) {
     // %struct.timeval = type { i32, i32 }
@@ -6903,8 +6922,9 @@ LibraryManager.library = {
           var i8Temp = new Uint8Array(i32Temp.buffer);
 
           info.inQueue = [];
+          info.hasData = function() { return info.inQueue.length > 0 }
           if (!info.stream) {
-            var partialBuffer = null; // inQueue contains full dgram messages; this buffers incomplete data. Must begin with the beginning of a message
+            var partialBuffer = null; // in datagram mode, inQueue contains full dgram messages; this buffers incomplete data. Must begin with the beginning of a message
           }
 
           info.socket.onmessage = function(event) {
@@ -7040,7 +7060,7 @@ LibraryManager.library = {
   recv: function(fd, buf, len, flags) {
     var info = Sockets.fds[fd];
     if (!info) return -1;
-    if (info.inQueue.length == 0) {
+    if (!info.hasData()) {
       ___setErrNo(ERRNO_CODES.EAGAIN); // no data, and all sockets are nonblocking, so this is the right behavior
       return -1;
     }
@@ -7049,6 +7069,13 @@ LibraryManager.library = {
     Module.print('recv: ' + [Array.prototype.slice.call(buffer)]);
 #endif
     if (len < buffer.length) {
+      if (info.stream) {
+        // This is tcp (reliable), so if not all was read, keep it
+        info.inQueue.unshift(buffer.subarray(len));
+#if SOCKET_DEBUG
+        Module.print('recv: put back: ' + (len - buffer.length));
+#endif
+      }
       buffer = buffer.subarray(0, len);
     }
     HEAPU8.set(buffer, buf);
@@ -7111,7 +7138,7 @@ LibraryManager.library = {
       assert(name, 'sendmsg on non-connected socket, and no name/address in the message');
       _connect(fd, name, {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_namelen', 'i32') }}});
     }
-    if (info.inQueue.length == 0) {
+    if (!info.hasData()) {
       ___setErrNo(ERRNO_CODES.EWOULDBLOCK);
       return -1;
     }
@@ -7147,7 +7174,10 @@ LibraryManager.library = {
     if (info.stream) {
       // This is tcp (reliable), so if not all was read, keep it
       if (bufferPos < bytes) {
-        info.inQueue.unshift(buffer.subArray(bufferPos));
+        info.inQueue.unshift(buffer.subarray(bufferPos));
+#if SOCKET_DEBUG
+        Module.print('recvmsg: put back: ' + (bytes - bufferPos));
+#endif
       }
     }
     return ret;
@@ -7176,7 +7206,7 @@ LibraryManager.library = {
     var info = Sockets.fds[fd];
     if (!info) return -1;
     var bytes = 0;
-    if (info.inQueue.length > 0) {
+    if (info.hasData()) {
       bytes = info.inQueue[0].length;
     }
     var dest = {{{ makeGetValue('varargs', '0', 'i32') }}};
@@ -7226,7 +7256,7 @@ LibraryManager.library = {
         // index is in the set, check if it is ready for read
         var info = Sockets.fds[fd];
         if (!info) continue;
-        if (info.inQueue.length > 0) ret++;
+        if (info.hasData()) ret++;
       }
     }
     return ret;

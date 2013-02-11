@@ -83,14 +83,13 @@ int main() {
 // === Optimizing shapes ===
 // Fusing Multiple to Simple
 ep
-do {
-  if (ep -> LBB1) {
-    LBB1
-    if (!(LBB1 -> LBB2)) {
-      break;
-    }
-    LBB2
+L1: 
+if (ep -> LBB1) {
+  LBB1
+  if (!(LBB1 -> LBB2)) {
+    break L1;
   }
-} while(0);
+  LBB2
+}
 LBB3
 

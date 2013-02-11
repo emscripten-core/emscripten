@@ -1,12 +1,11 @@
 //0
-do {
-  if (check(0)) {
-    //1
-    if (!(check(1))) {
-      break;
-    }
-    //2
+L1: 
+if (check(0)) {
+  //1
+  if (!(check(1))) {
+    break L1;
   }
-} while(0);
+  //2
+}
 //3
 

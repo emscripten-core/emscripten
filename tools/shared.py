@@ -172,7 +172,7 @@ def check_node_version():
 # we re-check sanity when the settings are changed)
 # We also re-check sanity and clear the cache when the version changes
 
-EMSCRIPTEN_VERSION = '1.2.3'
+EMSCRIPTEN_VERSION = '1.2.4'
 
 def check_sanity(force=False):
   try:
@@ -569,9 +569,6 @@ class Settings:
           Settings.INLINING_LIMIT = 0
           Settings.DOUBLE_MODE = 0
           Settings.PRECISE_I64_MATH = 0
-          Settings.CORRECT_SIGNS = 0
-          Settings.CORRECT_OVERFLOWS = 0
-          Settings.CORRECT_ROUNDINGS = 0
           if noisy: print >> sys.stderr, 'Warning: Applying some potentially unsafe optimizations! (Use -O2 if this fails.)'
 
     global Settings
