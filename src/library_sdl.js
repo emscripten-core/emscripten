@@ -640,8 +640,8 @@ var LibrarySDL = {
     {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*0', '0', '0', 'i32') }}} // TODO
     {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*1', '0', '0', 'i32') }}} // TODO
     {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*2', '0', '0', 'void*') }}}
-    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*3', '0', 'SDL.defaults.width', 'i32') }}}
-    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*4', '0', 'SDL.defaults.height', 'i32') }}}
+    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*3', '0', 'Module[\'canvas\'].width', 'i32') }}}
+    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*4', '0', 'Module[\'canvas\'].height', 'i32') }}}
     return ret;
   },
 
@@ -898,7 +898,11 @@ var LibrarySDL = {
   },
 
   SDL_ShowCursor: function(toggle) {
-    // TODO
+    if(toggle){
+      Module['canvas'].exitPointerLock();
+    } else {
+      Module['canvas'].requestPointerLock();
+    }
   },
 
   SDL_GetError: function() {
@@ -1054,6 +1058,10 @@ var LibrarySDL = {
   },
 
   SDL_WM_GrabInput: function() {},
+  
+  SDL_WM_ToggleFullScreen: function(surf) {
+    Module['canvas'].cancelFullScreen();
+  },
 
   // SDL_Image
 
