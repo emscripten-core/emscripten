@@ -3,7 +3,7 @@
 // Utilities for browser environments
 
 mergeInto(LibraryManager.library, {
-  $Browser__postset: 'Module["requestFullScreen"] = function() { Browser.requestFullScreen() };\n' + // exports
+  $Browser__postset: 'Module["requestFullScreen"] = function(doLockPointer, doResizeCanvas) { Browser.requestFullScreen(doLockPointer, doResizeCanvas) };\n' + // exports
                      'Module["requestAnimationFrame"] = function(func) { Browser.requestAnimationFrame(func) };\n' +
                      'Module["pauseMainLoop"] = function() { Browser.mainLoop.pause() };\n' +
                      'Module["resumeMainLoop"] = function() { Browser.mainLoop.resume() };\n',
@@ -273,8 +273,15 @@ mergeInto(LibraryManager.library, {
       }
       return ctx;
     },
+
     destroyContext: function(canvas, useWebGL, setInModule) {},
-    requestFullScreen: function() {
+
+    storedFullScreenHandler: null,
+    storedPointerLockHandler: null,
+    requestFullScreen: function(doLockPointer, doResizeCanvas) {
+      if(typeof(doLockPointer)==='undefined') doLockPointer = true;
+      if(typeof(doResizeCanvas)==='undefined') doResizeCanvas = false;
+  
       var canvas = Module['canvas'];
       function fullScreenChange() {
         var isFullScreen = false;
@@ -284,25 +291,51 @@ mergeInto(LibraryManager.library, {
           canvas.requestPointerLock = canvas['requestPointerLock'] ||
                                       canvas['mozRequestPointerLock'] ||
                                       canvas['webkitRequestPointerLock'];
-          canvas.requestPointerLock();
+          canvas.exitPointerLock = document['exitPointerLock'] ||
+                                   document['mozExitPointerLock'] ||
+                                   document['webkitExitPointerLock'];
+          canvas.exitPointerLock = canvas.exitPointerLock.bind( document );
+          canvas.cancelFullScreen = document['cancelFullScreen'] ||
+                                    document['mozCancelFullScreen'] ||
+                                    document['webkitCancelFullScreen'];
+          canvas.cancelFullScreen = canvas.cancelFullScreen.bind( document );
+          if (doLockPointer) canvas.requestPointerLock();
           isFullScreen = true;
+          if(doResizeCanvas) Browser.setFullScreenCanvasSize();
+        } else if(doResizeCanvas){
+          Browser.setWindowedCanvasSize();
         }
         if (Module['onFullScreen']) Module['onFullScreen'](isFullScreen);
       }
-
-      document.addEventListener('fullscreenchange', fullScreenChange, false);
-      document.addEventListener('mozfullscreenchange', fullScreenChange, false);
-      document.addEventListener('webkitfullscreenchange', fullScreenChange, false);
 
       function pointerLockChange() {
         Browser.pointerLock = document['pointerLockElement'] === canvas ||
                               document['mozPointerLockElement'] === canvas ||
                               document['webkitPointerLockElement'] === canvas;
       }
+      
+      if( !(this.storedFullScreenHandler == null) ){
+        document.removeEventListener('fullscreenchange', this.storedFullScreenHandler, false);
+        document.removeEventListener('mozfullscreenchange', this.storedFullScreenHandler, false);
+        document.removeEventListener('webkitfullscreenchange', this.storedFullScreenHandler, false);
+        this.storedFullScreenHandler = null;
+      }
+      if( !(this.storedPointerLockHandler == null) ){
+        document.addEventListener('pointerlockchange', this.storedPointerLockHandler, false);
+        document.addEventListener('mozpointerlockchange', this.storedPointerLockHandler, false);
+        document.addEventListener('webkitpointerlockchange', this.storedPointerLockHandler, false);
+        this.storedPointerLockHandler = null;
+      }
+      
+      this.storedFullScreenHandler = fullScreenChange;
+      document.addEventListener('fullscreenchange', this.storedFullScreenHandler, false);
+      document.addEventListener('mozfullscreenchange', this.storedFullScreenHandler, false);
+      document.addEventListener('webkitfullscreenchange', this.storedFullScreenHandler, false);
 
-      document.addEventListener('pointerlockchange', pointerLockChange, false);
-      document.addEventListener('mozpointerlockchange', pointerLockChange, false);
-      document.addEventListener('webkitpointerlockchange', pointerLockChange, false);
+      this.storedPointerLockHandler = pointerLockChange;
+      document.addEventListener('pointerlockchange', this.storedPointerLockHandler, false);
+      document.addEventListener('mozpointerlockchange', this.storedPointerLockHandler, false);
+      document.addEventListener('webkitpointerlockchange', this.storedPointerLockHandler, false);
 
       canvas.requestFullScreen = canvas['requestFullScreen'] ||
                                  canvas['mozRequestFullScreen'] ||
@@ -380,7 +413,32 @@ mergeInto(LibraryManager.library, {
       canvas.width = width;
       canvas.height = height;
       if (!noUpdates) Browser.updateResizeListeners();
+    },
+
+    windowedWidth: 0,
+    windowedHeight: 0,
+    setFullScreenCanvasSize: function() {
+      var canvas = Module['canvas'];
+      this.windowedWidth = canvas.width;
+      this.windowedHeight = canvas.height;
+      canvas.width = screen.width;
+      canvas.height = screen.height;
+      var flags = {{{ makeGetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'i32', 0, 1) }}};
+      flags = flags | 0x00800000;
+      {{{ makeSetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'flags', 'i32') }}}
+      Browser.updateResizeListeners();
+    },
+    
+    setWindowedCanvasSize: function() {
+      var canvas = Module['canvas'];
+      canvas.width = this.windowedWidth;
+      canvas.height = this.windowedHeight;
+      var flags = {{{ makeGetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'i32', 0, 1) }}};
+      flags = flags & ~0x00800000;
+      {{{ makeSetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'flags', 'i32') }}}
+      Browser.updateResizeListeners();
     }
+    
   },
 
   emscripten_async_wget: function(url, file, onload, onerror) {
