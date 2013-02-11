@@ -3363,14 +3363,15 @@ LibraryManager.library = {
     ___setErrNo(ERRNO_CODES.ECHILD);
     return -1;
   },
-  perror__deps: ['puts', 'putc', 'strerror', '__errno_location'],
+  perror__deps: ['puts', 'fputs', 'fputc', 'strerror', '__errno_location'],
   perror: function(s) {
     // void perror(const char *s);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/perror.html
+    var stdout = {{{ makeGetValue(makeGlobalUse('_stdout'), '0', 'void*') }}};
     if (s) {
-      _puts(s);
-      _putc(':'.charCodeAt(0));
-      _putc(' '.charCodeAt(0));
+      _fputs(s, stdout);
+      _fputc(':'.charCodeAt(0), stdout);
+      _fputc(' '.charCodeAt(0), stdout);
     }
     var errnum = {{{ makeGetValue('___errno_location()', '0', 'i32') }}};
     _puts(_strerror(errnum));
