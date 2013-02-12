@@ -6790,7 +6790,6 @@ def process(filename):
                              [os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/index.c.o'.split('/')),
                               os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/convert.c.o'.split('/')),
                               os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/__/common/color.c.o'.split('/')),
-                              os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/__/common/getopt.c.o'.split('/')),
                               os.path.join('bin', self.get_shared_library_name('libopenjpeg.so.1.4.0'))],
                              configure=['cmake', '.'],
                              #configure_args=['--enable-tiff=no', '--enable-jp3d=no', '--enable-png=no'],
