@@ -88,6 +88,8 @@ void		_warnx(const char *, ...)
 void		_vwarnx(const char *, va_list)
 			__attribute__((__format__ (printf, 1, 0)));
 
+#undef __dead
+
 __END_DECLS
 
 #endif /* !_ERR_H_ */
