@@ -10030,6 +10030,12 @@ elif 'browser' in str(sys.argv):
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_image.c'), '-O2', '--preload-file', 'screenshot.jpg', '-o', 'page.html']).communicate()
       self.run_browser('page.html', '', '/report_result?600')
 
+    def test_sdl_image_jpeg(self):
+      shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.jpeg'))
+      open(os.path.join(self.get_dir(), 'sdl_image_jpeg.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_image_jpeg.c')).read()))
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_image_jpeg.c'), '--preload-file', 'screenshot.jpeg', '-o', 'page.html']).communicate()
+      self.run_browser('page.html', '', '/report_result?600')
+
     def test_sdl_image_compressed(self):
       for image, width in [(path_from_root('tests', 'screenshot2.png'), 300),
                            (path_from_root('tests', 'screenshot.jpg'), 600)]:
@@ -10049,12 +10055,12 @@ elif 'browser' in str(sys.argv):
         self.run_browser('page.html', '', '/report_result?' + str(width))
 
     def test_sdl_image_prepare(self):
-      # load an image file, get pixel data. Also O2 coverage for --preload-file
+      # load an image file, get pixel data.
       shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.not'))
       self.btest('sdl_image_prepare.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.not'])
 
     def test_sdl_image_prepare_data(self):
-      # load an image file, get pixel data. Also O2 coverage for --preload-file
+      # load an image file, get pixel data.
       shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.not'))
       self.btest('sdl_image_prepare_data.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.not'])
 

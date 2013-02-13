@@ -68,6 +68,7 @@ mergeInto(LibraryManager.library, {
       function getMimetype(name) {
         return {
           'jpg': 'image/jpeg',
+          'jpeg': 'image/jpeg',
           'png': 'image/png',
           'bmp': 'image/bmp',
           'ogg': 'audio/ogg',
@@ -81,7 +82,7 @@ mergeInto(LibraryManager.library, {
 
       var imagePlugin = {};
       imagePlugin['canHandle'] = function(name) {
-        return !Module.noImageDecoding && name.substr(-4) in { '.jpg': 1, '.png': 1, '.bmp': 1 };
+        return !Module.noImageDecoding && /\.(jpg|jpeg|png|bmp)$/.exec(name);
       };
       imagePlugin['handle'] = function(byteArray, name, onload, onerror) {
         var b = null;
