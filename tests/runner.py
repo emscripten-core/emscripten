@@ -5341,8 +5341,29 @@ Pass: 0.000012 0.000012''')
           return(0);
         }
       '''
-
       self.do_run(src, '3\nday 19, month Nov, year 2012');
+
+    def test_sscanf_5(self):
+      src = r'''
+        #include "stdio.h"
+
+        static const char *colors[] = {
+          "  c black",
+          ". c #001100",
+          "X c #111100"
+        };
+
+        int main(){
+          unsigned char code;
+          char color[32];
+          int rcode;
+          for(int i = 0; i < 3; i++) {
+            rcode = sscanf(colors[i], "%c c %s", &code, color);
+            printf("%i, %c, %s\n", rcode, code, color);
+          }
+        }
+      '''
+      self.do_run(src, '2,  , black\n2, ., #001100\n2, X, #111100');
 
     def test_langinfo(self):
       src = open(path_from_root('tests', 'langinfo', 'test.c'), 'r').read()
