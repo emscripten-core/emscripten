@@ -2066,7 +2066,7 @@ var LibraryGL = {
 
     flush: function(numProvidedIndexes, startIndex, ptr) {
 #if ASSERTIONS
-      assert(numProvidedIndexes >= 0);
+      assert(numProvidedIndexes >= 0 || !numProvidedIndexes);
 #endif
       startIndex = startIndex || 0;
       ptr = ptr || 0;
