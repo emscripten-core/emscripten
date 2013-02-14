@@ -908,11 +908,9 @@ var LibraryGL = {
   },
 
   glIsProgram: function(program) {
-    var fb = GL.programs[program];
-    if (typeof(fb) == 'undefined') {
-      return 0;
-    }
-    return Module.ctx.isProgram(fb);
+    var program = GL.programs[program];
+    if (!program) return 0;
+    return Module.ctx.isProgram(program);
   },
 
   glBindAttribLocation__sig: 'viii',

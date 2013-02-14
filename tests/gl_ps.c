@@ -78,6 +78,8 @@ void shaders() {
   glLinkProgram(program);
   glGetProgramiv(program, GL_LINK_STATUS, &ok);
   assert(ok);
+  assert(glIsProgram(program));
+  assert(!glIsProgram(-1));
 
   glUseProgram(program);
 
