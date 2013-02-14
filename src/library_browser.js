@@ -201,8 +201,13 @@ mergeInto(LibraryManager.library, {
         return null;
       }
 #endif
+      var ctx;
       try {
-        var ctx = canvas.getContext(useWebGL ? 'experimental-webgl' : '2d');
+        if (useWebGL) {
+          ctx = canvas.getContext('experimental-webgl', { alpha: false });
+        } else {
+          ctx = canvas.getContext('2d');
+        }
         if (!ctx) throw ':(';
       } catch (e) {
         Module.print('Could not create canvas - ' + e);
