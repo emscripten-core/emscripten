@@ -79,7 +79,8 @@ void shaders() {
   glGetProgramiv(program, GL_LINK_STATUS, &ok);
   assert(ok);
   assert(glIsProgram(program));
-  assert(!glIsProgram(-1));
+  assert(!glIsProgram(0));
+  assert(!glIsProgram(program+1)); // a number that can't be a real shader
 
   glUseProgram(program);
 
