@@ -408,7 +408,19 @@ var LibraryGL = {
   },
 
   glReadPixels: function(x, y, width, height, format, type, pixels) {
-    Module.ctx.readPixels(x, y, width, height, format, type, HEAPU8.subarray(pixels));
+    assert(type == 0x1401 /* GL_UNSIGNED_BYTE */);
+    var sizePerPixel;
+    switch (format) {
+      case 0x1907 /* GL_RGB */:
+        sizePerPixel = 3;
+        break;
+      case 0x1908 /* GL_RGBA */:
+        sizePerPixel = 4;
+        break;
+      default: throw 'unsupported glReadPixels format';
+    }
+    var totalSize = width*height*sizePerPixel;
+    Module.ctx.readPixels(x, y, width, height, format, type, HEAPU8.subarray(pixels, pixels + totalSize));
   },
 
   glBindTexture: function(target, texture) {
