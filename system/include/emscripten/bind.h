@@ -278,6 +278,11 @@ namespace emscripten {
 
     namespace internal {
         template<typename ClassType, typename... Args>
+        ClassType* operator_new(Args... args) {
+            return new ClassType(args...);
+        }
+
+        template<typename ClassType, typename... Args>
         ClassType* raw_constructor(
             typename internal::BindingType<Args>::WireType... args
         ) {
@@ -595,7 +600,49 @@ namespace emscripten {
     ////////////////////////////////////////////////////////////////////////////////
     // CLASSES
     ////////////////////////////////////////////////////////////////////////////////
-    // TODO: support class definitions without constructors.
+
+    // abstract classes
+    template<typename T>
+    class wrapper : public T {
+    public:
+        wrapper(const val& wrapped)
+            : wrapped(wrapped)
+        {}
+
+        template<typename ReturnType, typename... Args>
+        ReturnType call(const char* name, Args... args) const {
+            return Caller<ReturnType, Args...>::call(wrapped, name, args...);
+        }
+
+    private:
+        // this class only exists because you can't partially specialize function templates
+        template<typename ReturnType, typename... Args>
+        struct Caller {
+            static ReturnType call(const val& v, const char* name, Args... args) {
+                return v.call(name, args...).template as<ReturnType>();
+            }
+        };
+
+        template<typename... Args>
+        struct Caller<void, Args...> {
+            static void call(const val& v, const char* name, Args... args) {
+                v.call_void(name, args...);
+            }
+        };
+
+        /*
+          void assertInitialized() {
+          if (!jsobj) {
+          internal::_embind_fatal_error(
+          "Cannot invoke call on uninitialized Javascript interface wrapper.", "JSInterface");
+          }
+          }*/
+        val wrapped;
+    };
+
+#define EMSCRIPTEN_WRAPPER(T) \
+    T(const ::emscripten::val& v): wrapper(v) {}
+
     // TODO: support external class constructors
     template<typename ClassType>
     class class_ {
@@ -624,6 +671,21 @@ namespace emscripten {
                 args.types,
                 reinterpret_cast<GenericFunction>(&raw_constructor<ClassType, ConstructorArgs...>));
             return *this;
+        }
+
+        template<typename WrapperType>
+        class_& allow_subclass() {
+            using namespace internal;
+
+            // TODO: unique or anonymous name
+            class_<WrapperType>("WrapperType")
+                .template constructor<val>()
+                ;
+
+            return classmethod(
+                "implement",
+                &operator_new<WrapperType, val>,
+                allow_raw_pointer<ret_val>());
         }
 
         template<typename ReturnType, typename... Args, typename... Policies>
