@@ -154,8 +154,6 @@ var GL_DEBUG = 0; // Print out all calls into WebGL. As with LIBRARY_DEBUG, you 
                   // option, in this case GL.debug.
 var GL_MAX_TEMP_BUFFER_SIZE = 2097152; // How large GL emulation temp buffers are
 
-var PROFILE_MAIN_LOOP = 0; // Profile the function called in set_main_loop
-
 var DISABLE_EXCEPTION_CATCHING = 0; // Disables generating code to actually catch exceptions. If the code you
                                     // are compiling does not actually rely on catching exceptions (but the
                                     // compiler generates code for it, maybe because of stdlibc++ stuff),
@@ -208,8 +206,6 @@ var FS_LOG = 0; // Log all FS operations.  This is especially helpful when you'r
 var NAMED_GLOBALS = 0; // If 1, we use global variables for globals. Otherwise
                        // they are referred to by a base plus an offset (called an indexed global),
                        // saving global variables but adding runtime overhead.
-
-var PROFILE = 0; // Enables runtime profiling. See test_profiling for a usage example.
 
 var EXPORT_ALL = 0; // If true, we export all the symbols
 var EXPORTED_FUNCTIONS = ['_main']; // Functions that are explicitly exported. These functions are kept alive

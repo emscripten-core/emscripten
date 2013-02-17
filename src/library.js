@@ -7305,36 +7305,6 @@ LibraryManager.library = {
   emscripten_random: function() {
     return Math.random();
   },
-
-  $Profiling: {
-    max_: 0,
-    times: null,
-    invalid: 0,
-    dump: function() {
-      if (Profiling.invalid) {
-        Module.printErr('Invalid # of calls to Profiling begin and end!');
-        return;
-      }
-      Module.printErr('Profiling data:')
-      for (var i = 0; i < Profiling.max_; i++) {
-        Module.printErr('Block ' + i + ': ' + Profiling.times[i]);
-      }
-    }
-  },
-  EMSCRIPTEN_PROFILE_INIT__deps: ['$Profiling'],
-  EMSCRIPTEN_PROFILE_INIT: function(max_) {
-    Profiling.max_ = max_;
-    Profiling.times = new Array(max_);
-    for (var i = 0; i < max_; i++) Profiling.times[i] = 0;
-  },
-  EMSCRIPTEN_PROFILE_BEGIN__inline: function(id) {
-    return 'Profiling.times[' + id + '] -= Date.now();'
-         + 'Profiling.invalid++;'
-  },
-  EMSCRIPTEN_PROFILE_END__inline: function(id) {
-    return 'Profiling.times[' + id + '] += Date.now();'
-         + 'Profiling.invalid--;'
-  }
 };
 
 function autoAddDeps(object, name) {

@@ -7185,41 +7185,6 @@ def process(filename):
         '''
       self.do_run(src, '''AD:-1,1''', build_ll_hook=self.do_autodebug)
 
-    def test_profiling(self):
-      if Settings.ASM_JS: return self.skip('asm does not support profiling')
-
-      src = '''
-          #include <emscripten.h>
-          #include <unistd.h>
-
-          int main()
-          {
-            EMSCRIPTEN_PROFILE_INIT(3);
-            EMSCRIPTEN_PROFILE_BEGIN(0);
-            usleep(10 * 1000);
-            EMSCRIPTEN_PROFILE_END(0);
-            EMSCRIPTEN_PROFILE_BEGIN(1);
-            usleep(50 * 1000);
-            EMSCRIPTEN_PROFILE_END(1);
-            EMSCRIPTEN_PROFILE_BEGIN(2);
-            usleep(250 * 1000);
-            EMSCRIPTEN_PROFILE_END(2);
-            return 0;
-          }
-        '''
-
-      post1 = '''
-def process(filename):
-  src = open(filename, 'a')
-  src.write(\'\'\'
-    Profiling.dump();
-  \'\'\')
-  src.close()
-'''
-
-      self.do_run(src, '''Profiling data:
-Block 0: ''', post_build=post1)
-
     ### Integration tests
 
     def test_ccall(self):
@@ -8132,7 +8097,6 @@ class %s(T):
     Settings.INIT_STACK = 0
     Settings.RUNTIME_TYPE_INFO = 0
     Settings.DISABLE_EXCEPTION_CATCHING = 0
-    Settings.PROFILE = 0
     Settings.INCLUDE_FULL_LIBRARY = 0
     Settings.BUILD_AS_SHARED_LIB = 0
     Settings.RUNTIME_LINKED_LIBS = []

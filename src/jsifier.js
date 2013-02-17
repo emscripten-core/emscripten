@@ -631,15 +631,6 @@ function JSify(data, functionsOnly, givenFunctions) {
         }
       }
 
-      if (PROFILE) {
-        func.JS += '  if (PROFILING) { '
-                +      'var __parentProfilingNode__ = PROFILING_NODE; PROFILING_NODE = PROFILING_NODE.children["' + func.ident + '"]; '
-                +      'if (!PROFILING_NODE) __parentProfilingNode__.children["' + func.ident + '"] = PROFILING_NODE = { time: 0, children: {}, calls: 0 };'
-                +      'PROFILING_NODE.calls++; '
-                +      'var __profilingStartTime__ = Date.now() '
-                +    '}\n';
-      }
-
       if (true) { // TODO: optimize away when not needed
         if (CLOSURE_ANNOTATIONS) func.JS += '/** @type {number} */';
         func.JS += '  var label = 0;\n';
@@ -1145,12 +1136,6 @@ function JSify(data, functionsOnly, givenFunctions) {
   });
   makeFuncLineActor('return', function(item) {
     var ret = RuntimeGenerator.stackExit(item.funcData.initialStack, item.funcData.otherStackAllocations) + ';\n';
-    if (PROFILE) {
-      ret += 'if (PROFILING) { '
-          +    'PROFILING_NODE.time += Date.now() - __profilingStartTime__; '
-          +    'PROFILING_NODE = __parentProfilingNode__ '
-          +  '}\n';
-    }
     if (LABEL_DEBUG && functionNameFilterTest(item.funcData.ident)) {
       ret += "Module.print(INDENT + 'Exiting: " + item.funcData.ident + "');\n"
           +  "INDENT = INDENT.substr(0, INDENT.length-2);\n";
