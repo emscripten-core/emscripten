@@ -976,12 +976,6 @@ function checkSafeHeap() {
   return SAFE_HEAP === 1 || checkSpecificSafeHeap();
 }
 
-if (ASM_JS) {
-  var hexMemoryMask = '0x' + (TOTAL_MEMORY-1).toString(16);
-  var decMemoryMask = (TOTAL_MEMORY-1).toString();
-  var memoryMask = hexMemoryMask.length <= decMemoryMask.length ? hexMemoryMask : decMemoryMask;
-}
-
 function getHeapOffset(offset, type, forceAsm) {
   if (USE_TYPED_ARRAYS !== 2) {
     return offset;
@@ -991,7 +985,6 @@ function getHeapOffset(offset, type, forceAsm) {
     }
     var shifts = Math.log(Runtime.getNativeTypeSize(type))/Math.LN2;
     offset = '(' + offset + ')';
-    if (ASM_JS && (phase == 'funcs' || forceAsm)) offset = '(' + offset + '&' + memoryMask + ')';
     if (shifts != 0) {
       return '(' + offset + '>>' + shifts + ')';
     } else {
@@ -1070,7 +1063,6 @@ function makeGetTempDouble(i, type, forSet) { // get an aliased part of the temp
   var ptr = getFastValue('tempDoublePtr', '+', Runtime.getNativeTypeSize(type)*i);
   var offset;
   if (type == 'double') {
-    if (ASM_JS) ptr = '(' + ptr + ')&' + memoryMask;
     offset = '(' + ptr + ')>>3';
   } else {
     offset = getHeapOffset(ptr, type);
