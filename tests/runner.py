@@ -8156,11 +8156,11 @@ TT = %s
   exec('o1 = make_run("o1", compiler=CLANG, emcc_args=["-O1", "-s", "SAFE_HEAP=1"])')
 
   # Make one run with -O2, but without closure (we enable closure in specific tests, otherwise on everything it is too slow)
-  exec('o2 = make_run("o2", compiler=CLANG, emcc_args=["-O2", "--closure", "0"])')
+  exec('o2 = make_run("o2", compiler=CLANG, emcc_args=["-O2"])')
 
   # asm.js
-  #exec('asm = make_run("asm", compiler=CLANG, emcc_args=["-O0", "--closure", "0", "-s", "ASM_JS=1"])')
-  exec('asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2", "--closure", "0", "-s", "ASM_JS=1"])')
+  #exec('asm = make_run("asm", compiler=CLANG, emcc_args=["-O0", "-s", "ASM_JS=1"])')
+  exec('asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=1"])')
 
   # Make custom runs with various options
   for compiler, quantum, embetter, typed_arrays, llvm_opts in [
@@ -9083,7 +9083,7 @@ f.close()
           return 0;
         }
       ''')
-      Popen([PYTHON, EMCC, '-O2', '--closure', '-0', os.path.join(self.get_dir(), 'main.cpp')]).communicate()
+      Popen([PYTHON, EMCC, '-O2', os.path.join(self.get_dir(), 'main.cpp')]).communicate()
       output = run_js(os.path.join(self.get_dir(), 'a.out.js'), full_output=True, stderr=PIPE)
       self.assertContained('''0:0
 1:1
@@ -10594,10 +10594,10 @@ elif 'browser' in str(sys.argv):
       main, supp = self.setup_runtimelink_test()
 
       open(self.in_dir('supp.cpp'), 'w').write(supp)
-      Popen([PYTHON, EMCC, self.in_dir('supp.cpp'), '-o', 'supp.js', '-s', 'LINKABLE=1', '-s', 'NAMED_GLOBALS=1', '-s', 'BUILD_AS_SHARED_LIB=2', '-O2', '--closure', '0']).communicate()
+      Popen([PYTHON, EMCC, self.in_dir('supp.cpp'), '-o', 'supp.js', '-s', 'LINKABLE=1', '-s', 'NAMED_GLOBALS=1', '-s', 'BUILD_AS_SHARED_LIB=2', '-O2']).communicate()
       shutil.move(self.in_dir('supp.js'), self.in_dir('supp.so'))
 
-      self.btest(main, args=['-s', 'LINKABLE=1', '-s', 'NAMED_GLOBALS=1', '-s', 'RUNTIME_LINKED_LIBS=["supp.so"]', '-DBROWSER=1', '-O2', '--closure', '0'], expected='76')
+      self.btest(main, args=['-s', 'LINKABLE=1', '-s', 'NAMED_GLOBALS=1', '-s', 'RUNTIME_LINKED_LIBS=["supp.so"]', '-DBROWSER=1', '-O2'], expected='76')
 
     def test_pre_run_deps(self):
       # Adding a dependency in preRun will delay run
@@ -11518,7 +11518,7 @@ fi
             try_delete(basebc_name) # we might need to check this file later
             try_delete(dcebc_name) # we might need to check this file later
             for ll_name in ll_names: try_delete(ll_name)
-            output = self.do([EMCC, '-O' + str(i), '--closure', '0', '-s', 'RELOOP=0', '--llvm-lto', '0', path_from_root('tests', filename)])
+            output = self.do([EMCC, '-O' + str(i), '-s', 'RELOOP=0', '--llvm-lto', '0', path_from_root('tests', filename)])
             #print output
             assert INCLUDING_MESSAGE.replace('X', libname) in output
             if libname == 'libc':
@@ -11566,7 +11566,7 @@ fi
           print >> sys.stderr, phase, i
           opt = min(i, 2)
           try_delete('a.out.js')
-          output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_loop.cpp'), '-O' + str(opt), '--closure', '0'],
+          output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_loop.cpp'), '-O' + str(opt)],
                          stdout=PIPE, stderr=PIPE).communicate()
           self.assertContained('hello, world!', run_js('a.out.js'))
           output = '\n'.join(output)
@@ -11626,7 +11626,7 @@ fi
         ]:
           print >> sys.stderr, args, input_file, expect_pre_save, expect_pre_load, expect_funcs_save, expect_funcs_load, expect_jsfuncs_save, expect_jsfuncs_load, expected
           self.clear()
-          out, err = Popen([PYTHON, EMCC, '-O2', '--closure', '0', path_from_root('tests', input_file)] + args, stdout=PIPE, stderr=PIPE).communicate()
+          out, err = Popen([PYTHON, EMCC, '-O2', path_from_root('tests', input_file)] + args, stdout=PIPE, stderr=PIPE).communicate()
           errtail = err.split('emcc invocation')[-1]
           self.assertContained('hello, world!', run_js('a.out.js'), errtail)
           assert (PRE_SAVE_MSG in err) == expect_pre_save, errtail
