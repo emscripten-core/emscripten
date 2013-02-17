@@ -74,6 +74,9 @@ int mbtowc(wchar_t* restrict pwc, const char* restrict s, size_t n);
 int wctomb(char* s, wchar_t wchar);
 size_t mbstowcs(wchar_t* restrict pwcs, const char* restrict s, size_t n);
 size_t wcstombs(char* restrict s, const wchar_t* restrict pwcs, size_t n);
+int at_quick_exit(void (*func)(void))                                     // C++11
+void quick_exit(int status);                                              // C++11
+void *aligned_alloc(size_t alignment, size_t size);                       // C11
 
 }  // std
 
@@ -81,26 +84,39 @@ size_t wcstombs(char* restrict s, const wchar_t* restrict pwcs, size_t n);
 
 #include <__config>
 #include <stdlib.h>
+#ifdef _MSC_VER
+#include "support/win32/locale_win32.h"
+#endif // _MSC_VER
 
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
+#endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 using ::size_t;
 using ::div_t;
 using ::ldiv_t;
+#ifndef _LIBCPP_HAS_NO_LONG_LONG
 using ::lldiv_t;
+#endif // _LIBCPP_HAS_NO_LONG_LONG
 using ::atof;
 using ::atoi;
 using ::atol;
+#ifndef _LIBCPP_HAS_NO_LONG_LONG
 using ::atoll;
+#endif // _LIBCPP_HAS_NO_LONG_LONG
 using ::strtod;
 using ::strtof;
 using ::strtold;
 using ::strtol;
+#ifndef _LIBCPP_HAS_NO_LONG_LONG
 using ::strtoll;
+#endif // _LIBCPP_HAS_NO_LONG_LONG
 using ::strtoul;
+#ifndef _LIBCPP_HAS_NO_LONG_LONG
 using ::strtoull;
+#endif // _LIBCPP_HAS_NO_LONG_LONG
 using ::rand;
 using ::srand;
 using ::calloc;
@@ -117,21 +133,39 @@ using ::bsearch;
 using ::qsort;
 using ::abs;
 using ::labs;
+#ifndef _LIBCPP_HAS_NO_LONG_LONG
 using ::llabs;
+#endif // _LIBCPP_HAS_NO_LONG_LONG
 using ::div;
 using ::ldiv;
+#ifndef _LIBCPP_HAS_NO_LONG_LONG
 using ::lldiv;
+#endif // _LIBCPP_HAS_NO_LONG_LONG
 using ::mblen;
 using ::mbtowc;
 using ::wctomb;
 using ::mbstowcs;
 using ::wcstombs;
+#ifdef _LIBCPP_HAS_QUICK_EXIT
+using ::at_quick_exit;
+using ::quick_exit;
+#endif
+#ifdef _LIBCPP_HAS_C11_FEATURES
+using ::aligned_alloc;
+#endif
 
-inline _LIBCPP_INLINE_VISIBILITY long      abs(     long __x) {return  labs(__x);}
-inline _LIBCPP_INLINE_VISIBILITY long long abs(long long __x) {return llabs(__x);}
+// MSVC already has the correct prototype in <stdlib.h.h> #ifdef __cplusplus
+#if !defined(_MSC_VER) && !defined(__sun__)
+inline _LIBCPP_INLINE_VISIBILITY long      abs(     long __x) _NOEXCEPT {return  labs(__x);}
+#ifndef _LIBCPP_HAS_NO_LONG_LONG
+inline _LIBCPP_INLINE_VISIBILITY long long abs(long long __x) _NOEXCEPT {return llabs(__x);}
+#endif // _LIBCPP_HAS_NO_LONG_LONG
 
-inline _LIBCPP_INLINE_VISIBILITY  ldiv_t div(     long __x,      long __y) {return  ldiv(__x, __y);}
-inline _LIBCPP_INLINE_VISIBILITY lldiv_t div(long long __x, long long __y) {return lldiv(__x, __y);}
+inline _LIBCPP_INLINE_VISIBILITY  ldiv_t div(     long __x,      long __y) _NOEXCEPT {return  ldiv(__x, __y);}
+#ifndef _LIBCPP_HAS_NO_LONG_LONG
+inline _LIBCPP_INLINE_VISIBILITY lldiv_t div(long long __x, long long __y) _NOEXCEPT {return lldiv(__x, __y);}
+#endif // _LIBCPP_HAS_NO_LONG_LONG
+#endif // _MSC_VER
 
 _LIBCPP_END_NAMESPACE_STD
 

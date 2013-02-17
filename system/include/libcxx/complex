@@ -249,7 +249,9 @@ template<class T, class charT, class traits>
     #include <cassert>
 #endif
 
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
+#endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
@@ -280,7 +282,8 @@ public:
     _LIBCPP_INLINE_VISIBILITY void real(value_type __re) {__re_ = __re;}
     _LIBCPP_INLINE_VISIBILITY void imag(value_type __im) {__im_ = __im;}
 
-    _LIBCPP_INLINE_VISIBILITY complex& operator= (const value_type& __re) {__re_ = __re; return *this;}
+    _LIBCPP_INLINE_VISIBILITY complex& operator= (const value_type& __re)
+        {__re_ = __re; __im_ = value_type(); return *this;}
     _LIBCPP_INLINE_VISIBILITY complex& operator+=(const value_type& __re) {__re_ += __re; return *this;}
     _LIBCPP_INLINE_VISIBILITY complex& operator-=(const value_type& __re) {__re_ -= __re; return *this;}
     _LIBCPP_INLINE_VISIBILITY complex& operator*=(const value_type& __re) {__re_ *= __re; __im_ *= __re; return *this;}
@@ -327,18 +330,19 @@ class _LIBCPP_VISIBLE complex<float>
 public:
     typedef float value_type;
 
-    /*constexpr*/ _LIBCPP_INLINE_VISIBILITY complex(float __re = 0.0f, float __im = 0.0f)
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR complex(float __re = 0.0f, float __im = 0.0f)
         : __re_(__re), __im_(__im) {}
-    explicit /*constexpr*/ complex(const complex<double>& __c);
-    explicit /*constexpr*/ complex(const complex<long double>& __c);
+    explicit _LIBCPP_CONSTEXPR complex(const complex<double>& __c);
+    explicit _LIBCPP_CONSTEXPR complex(const complex<long double>& __c);
 
-    /*constexpr*/ _LIBCPP_INLINE_VISIBILITY float real() const {return __re_;}
-    /*constexpr*/ _LIBCPP_INLINE_VISIBILITY float imag() const {return __im_;}
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR float real() const {return __re_;}
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR float imag() const {return __im_;}
 
     _LIBCPP_INLINE_VISIBILITY void real(value_type __re) {__re_ = __re;}
     _LIBCPP_INLINE_VISIBILITY void imag(value_type __im) {__im_ = __im;}
 
-    _LIBCPP_INLINE_VISIBILITY complex& operator= (float __re) {__re_ = __re; return *this;}
+    _LIBCPP_INLINE_VISIBILITY complex& operator= (float __re)
+        {__re_ = __re; __im_ = value_type(); return *this;}
     _LIBCPP_INLINE_VISIBILITY complex& operator+=(float __re) {__re_ += __re; return *this;}
     _LIBCPP_INLINE_VISIBILITY complex& operator-=(float __re) {__re_ -= __re; return *this;}
     _LIBCPP_INLINE_VISIBILITY complex& operator*=(float __re) {__re_ *= __re; __im_ *= __re; return *this;}
@@ -382,18 +386,19 @@ class _LIBCPP_VISIBLE complex<double>
 public:
     typedef double value_type;
 
-    /*constexpr*/ _LIBCPP_INLINE_VISIBILITY complex(double __re = 0.0, double __im = 0.0)
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR complex(double __re = 0.0, double __im = 0.0)
         : __re_(__re), __im_(__im) {}
-    /*constexpr*/ complex(const complex<float>& __c);
-    explicit /*constexpr*/ complex(const complex<long double>& __c);
+    _LIBCPP_CONSTEXPR complex(const complex<float>& __c);
+    explicit _LIBCPP_CONSTEXPR complex(const complex<long double>& __c);
 
-    /*constexpr*/ _LIBCPP_INLINE_VISIBILITY double real() const {return __re_;}
-    /*constexpr*/ _LIBCPP_INLINE_VISIBILITY double imag() const {return __im_;}
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR double real() const {return __re_;}
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR double imag() const {return __im_;}
 
     _LIBCPP_INLINE_VISIBILITY void real(value_type __re) {__re_ = __re;}
     _LIBCPP_INLINE_VISIBILITY void imag(value_type __im) {__im_ = __im;}
 
-    _LIBCPP_INLINE_VISIBILITY complex& operator= (double __re) {__re_ = __re; return *this;}
+    _LIBCPP_INLINE_VISIBILITY complex& operator= (double __re)
+        {__re_ = __re; __im_ = value_type(); return *this;}
     _LIBCPP_INLINE_VISIBILITY complex& operator+=(double __re) {__re_ += __re; return *this;}
     _LIBCPP_INLINE_VISIBILITY complex& operator-=(double __re) {__re_ -= __re; return *this;}
     _LIBCPP_INLINE_VISIBILITY complex& operator*=(double __re) {__re_ *= __re; __im_ *= __re; return *this;}
@@ -437,18 +442,19 @@ class _LIBCPP_VISIBLE complex<long double>
 public:
     typedef long double value_type;
 
-    /*constexpr*/ _LIBCPP_INLINE_VISIBILITY complex(long double __re = 0.0L, long double __im = 0.0L)
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR complex(long double __re = 0.0L, long double __im = 0.0L)
         : __re_(__re), __im_(__im) {}
-    /*constexpr*/ complex(const complex<float>& __c);
-    /*constexpr*/ complex(const complex<double>& __c);
+    _LIBCPP_CONSTEXPR complex(const complex<float>& __c);
+    _LIBCPP_CONSTEXPR complex(const complex<double>& __c);
 
-    /*constexpr*/ _LIBCPP_INLINE_VISIBILITY long double real() const {return __re_;}
-    /*constexpr*/ _LIBCPP_INLINE_VISIBILITY long double imag() const {return __im_;}
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR long double real() const {return __re_;}
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR long double imag() const {return __im_;}
 
     _LIBCPP_INLINE_VISIBILITY void real(value_type __re) {__re_ = __re;}
     _LIBCPP_INLINE_VISIBILITY void imag(value_type __im) {__im_ = __im;}
 
-    _LIBCPP_INLINE_VISIBILITY complex& operator= (long double __re) {__re_ = __re; return *this;}
+    _LIBCPP_INLINE_VISIBILITY complex& operator= (long double __re)
+        {__re_ = __re; __im_ = value_type(); return *this;}
     _LIBCPP_INLINE_VISIBILITY complex& operator+=(long double __re) {__re_ += __re; return *this;}
     _LIBCPP_INLINE_VISIBILITY complex& operator-=(long double __re) {__re_ -= __re; return *this;}
     _LIBCPP_INLINE_VISIBILITY complex& operator*=(long double __re) {__re_ *= __re; __im_ *= __re; return *this;}
@@ -484,33 +490,33 @@ public:
         }
 };
 
-//constexpr
 inline _LIBCPP_INLINE_VISIBILITY
+_LIBCPP_CONSTEXPR
 complex<float>::complex(const complex<double>& __c)
     : __re_(__c.real()), __im_(__c.imag()) {}
 
-//constexpr
 inline _LIBCPP_INLINE_VISIBILITY
+_LIBCPP_CONSTEXPR
 complex<float>::complex(const complex<long double>& __c)
     : __re_(__c.real()), __im_(__c.imag()) {}
 
-//constexpr
 inline _LIBCPP_INLINE_VISIBILITY
+_LIBCPP_CONSTEXPR
 complex<double>::complex(const complex<float>& __c)
     : __re_(__c.real()), __im_(__c.imag()) {}
 
-//constexpr
 inline _LIBCPP_INLINE_VISIBILITY
+_LIBCPP_CONSTEXPR
 complex<double>::complex(const complex<long double>& __c)
     : __re_(__c.real()), __im_(__c.imag()) {}
 
-//constexpr
 inline _LIBCPP_INLINE_VISIBILITY
+_LIBCPP_CONSTEXPR
 complex<long double>::complex(const complex<float>& __c)
     : __re_(__c.real()), __im_(__c.imag()) {}
 
-//constexpr
 inline _LIBCPP_INLINE_VISIBILITY
+_LIBCPP_CONSTEXPR
 complex<long double>::complex(const complex<double>& __c)
     : __re_(__c.real()), __im_(__c.imag()) {}
 
@@ -1243,10 +1249,12 @@ acosh(const complex<_Tp>& __x)
         if (isnan(__x.imag()))
             return complex<_Tp>(abs(__x.real()), __x.imag());
         if (isinf(__x.imag()))
+        {
             if (__x.real() > 0)
                 return complex<_Tp>(__x.real(), copysign(__pi * _Tp(0.25), __x.imag()));
             else
                 return complex<_Tp>(-__x.real(), copysign(__pi * _Tp(0.75), __x.imag()));
+        }
         if (__x.real() < 0)
             return complex<_Tp>(-__x.real(), copysign(__pi, __x.imag()));
         return complex<_Tp>(__x.real(), copysign(_Tp(0), __x.imag()));
@@ -1345,7 +1353,11 @@ tanh(const complex<_Tp>& __x)
     _Tp __2r(_Tp(2) * __x.real());
     _Tp __2i(_Tp(2) * __x.imag());
     _Tp __d(cosh(__2r) + cos(__2i));
-    return  complex<_Tp>(sinh(__2r)/__d, sin(__2i)/__d);
+    _Tp __2rsh(sinh(__2r));
+    if (isinf(__2rsh) && isinf(__d))
+        return complex<_Tp>(__2rsh > _Tp(0) ? _Tp(1) : _Tp(-1),
+                            __2i > _Tp(0) ? _Tp(0) : _Tp(-0.));
+    return  complex<_Tp>(__2rsh/__d, sin(__2i)/__d);
 }
 
 // asin

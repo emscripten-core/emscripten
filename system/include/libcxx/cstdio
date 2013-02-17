@@ -99,7 +99,21 @@ void perror(const char* s);
 #include <__config>
 #include <stdio.h>
 
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
+#endif
+
+#ifdef getc
+inline _LIBCPP_INLINE_VISIBILITY int __libcpp_getc(FILE* __stream) {return getc(__stream);}
+#undef getc
+inline _LIBCPP_INLINE_VISIBILITY int getc(FILE* __stream) {return __libcpp_getc(__stream);}
+#endif  // getc
+
+#ifdef putc
+inline _LIBCPP_INLINE_VISIBILITY int __libcpp_putc(int __c, FILE* __stream) {return putc(__c, __stream);}
+#undef putc
+inline _LIBCPP_INLINE_VISIBILITY int putc(int __c, FILE* __stream) {return __libcpp_putc(__c, __stream);}
+#endif  // putc
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
@@ -124,13 +138,15 @@ using ::scanf;
 using ::snprintf;
 using ::sprintf;
 using ::sscanf;
+#ifndef _MSC_VER
 using ::vfprintf;
 using ::vfscanf;
-using ::vprintf;
 using ::vscanf;
+using ::vsscanf;
+#endif // _MSC_VER
+using ::vprintf;
 using ::vsnprintf;
 using ::vsprintf;
-using ::vsscanf;
 using ::fgetc;
 using ::fgets;
 using ::fputc;

@@ -20,7 +20,7 @@ namespace std
 class mutex
 {
 public:
-     mutex();
+     constexpr mutex() noexcept;
      ~mutex();
 
     mutex(const mutex&) = delete;
@@ -44,7 +44,7 @@ public:
     recursive_mutex& operator=(const recursive_mutex&) = delete;
 
     void lock();
-    bool try_lock();
+    bool try_lock() noexcept;
     void unlock();
 
     typedef pthread_mutex_t* native_handle_type;
@@ -79,7 +79,7 @@ public:
     recursive_timed_mutex& operator=(const recursive_timed_mutex&) = delete;
 
     void lock();
-    bool try_lock();
+    bool try_lock() noexcept;
     template <class Rep, class Period>
         bool try_lock_for(const chrono::duration<Rep, Period>& rel_time);
     template <class Clock, class Duration>
@@ -114,9 +114,9 @@ class unique_lock
 {
 public:
     typedef Mutex mutex_type;
-    unique_lock();
+    unique_lock() noexcept;
     explicit unique_lock(mutex_type& m);
-    unique_lock(mutex_type& m, defer_lock_t);
+    unique_lock(mutex_type& m, defer_lock_t) noexcept;
     unique_lock(mutex_type& m, try_to_lock_t);
     unique_lock(mutex_type& m, adopt_lock_t);
     template <class Clock, class Duration>
@@ -128,8 +128,8 @@ public:
     unique_lock(unique_lock const&) = delete;
     unique_lock& operator=(unique_lock const&) = delete;
 
-    unique_lock(unique_lock&& u);
-    unique_lock& operator=(unique_lock&& u);
+    unique_lock(unique_lock&& u) noexcept;
+    unique_lock& operator=(unique_lock&& u) noexcept;
 
     void lock();
     bool try_lock();
@@ -141,16 +141,16 @@ public:
 
     void unlock();
 
-    void swap(unique_lock& u);
-    mutex_type* release();
+    void swap(unique_lock& u) noexcept;
+    mutex_type* release() noexcept;
 
-    bool owns_lock() const;
-    explicit operator bool () const;
-    mutex_type* mutex() const;
+    bool owns_lock() const noexcept;
+    explicit operator bool () const noexcept;
+    mutex_type* mutex() const noexcept;
 };
 
 template <class Mutex>
-  void swap(unique_lock<Mutex>& x, unique_lock<Mutex>& y);
+  void swap(unique_lock<Mutex>& x, unique_lock<Mutex>& y) noexcept;
 
 template <class L1, class L2, class... L3>
   int try_lock(L1&, L2&, L3&...);
@@ -159,7 +159,7 @@ template <class L1, class L2, class... L3>
 
 struct once_flag
 {
-    constexpr once_flag();
+    constexpr once_flag() noexcept;
 
     once_flag(const once_flag&) = delete;
     once_flag& operator=(const once_flag&) = delete;
@@ -179,7 +179,11 @@ template<class Callable, class ...Args>
 #include <tuple>
 #endif
 
+#include <__undef_min_max>
+
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
+#endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
@@ -197,8 +201,8 @@ private:
 
 public:
     void lock();
-    bool try_lock();
-    void unlock();
+    bool try_lock() _NOEXCEPT;
+    void unlock()  _NOEXCEPT;
 
     typedef pthread_mutex_t* native_handle_type;
     _LIBCPP_INLINE_VISIBILITY
@@ -220,14 +224,14 @@ private:
 
 public:
     void lock();
-    bool try_lock();
+    bool try_lock() _NOEXCEPT;
     template <class _Rep, class _Period>
         _LIBCPP_INLINE_VISIBILITY
         bool try_lock_for(const chrono::duration<_Rep, _Period>& __d)
             {return try_lock_until(chrono::steady_clock::now() + __d);}
     template <class _Clock, class _Duration>
         bool try_lock_until(const chrono::time_point<_Clock, _Duration>& __t);
-    void unlock();
+    void unlock() _NOEXCEPT;
 };
 
 template <class _Clock, class _Duration>
@@ -263,14 +267,14 @@ private:
 
 public:
     void lock();
-    bool try_lock();
+    bool try_lock() _NOEXCEPT;
     template <class _Rep, class _Period>
         _LIBCPP_INLINE_VISIBILITY
         bool try_lock_for(const chrono::duration<_Rep, _Period>& __d)
             {return try_lock_until(chrono::steady_clock::now() + __d);}
     template <class _Clock, class _Duration>
         bool try_lock_until(const chrono::time_point<_Clock, _Duration>& __t);
-    void unlock();
+    void unlock() _NOEXCEPT;
 };
 
 template <class _Clock, class _Duration>
@@ -421,25 +425,27 @@ lock(_L0& __l0, _L1& __l1, _L2& __l2, _L3& ...__l3)
 
 #endif  // _LIBCPP_HAS_NO_VARIADICS
 
-struct once_flag;
+struct _LIBCPP_VISIBLE once_flag;
 
 #ifndef _LIBCPP_HAS_NO_VARIADICS
 
 template<class _Callable, class... _Args>
-  void call_once(once_flag&, _Callable&&, _Args&&...);
+_LIBCPP_INLINE_VISIBILITY
+void call_once(once_flag&, _Callable&&, _Args&&...);
 
 #else  // _LIBCPP_HAS_NO_VARIADICS
 
 template<class _Callable>
-  void call_once(once_flag&, _Callable);
+_LIBCPP_INLINE_VISIBILITY
+void call_once(once_flag&, _Callable);
 
 #endif  // _LIBCPP_HAS_NO_VARIADICS
 
 struct _LIBCPP_VISIBLE once_flag
 {
     _LIBCPP_INLINE_VISIBILITY
-    // constexpr
-        once_flag() {}
+    _LIBCPP_CONSTEXPR
+        once_flag() _NOEXCEPT : __state_(0) {}
 
 private:
     once_flag(const once_flag&); // = delete;
@@ -460,23 +466,23 @@ private:
 
 #ifndef _LIBCPP_HAS_NO_VARIADICS
 
-template <class _F>
+template <class _Fp>
 class __call_once_param
 {
-    _F __f_;
+    _Fp __f_;
 public:
 #ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
     _LIBCPP_INLINE_VISIBILITY
-    explicit __call_once_param(_F&& __f) : __f_(_VSTD::move(__f)) {}
+    explicit __call_once_param(_Fp&& __f) : __f_(_VSTD::move(__f)) {}
 #else
     _LIBCPP_INLINE_VISIBILITY
-    explicit __call_once_param(const _F& __f) : __f_(__f) {}
+    explicit __call_once_param(const _Fp& __f) : __f_(__f) {}
 #endif
 
     _LIBCPP_INLINE_VISIBILITY
     void operator()()
     {
-        typedef typename __make_tuple_indices<tuple_size<_F>::value, 1>::type _Index;
+        typedef typename __make_tuple_indices<tuple_size<_Fp>::value, 1>::type _Index;
         __execute(_Index());
     }
 
@@ -491,17 +497,17 @@ private:
 
 #else
 
-template <class _F>
+template <class _Fp>
 class __call_once_param
 {
-    _F __f_;
+    _Fp __f_;
 public:
 #ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
     _LIBCPP_INLINE_VISIBILITY
-    explicit __call_once_param(_F&& __f) : __f_(_VSTD::move(__f)) {}
+    explicit __call_once_param(_Fp&& __f) : __f_(_VSTD::move(__f)) {}
 #else
     _LIBCPP_INLINE_VISIBILITY
-    explicit __call_once_param(const _F& __f) : __f_(__f) {}
+    explicit __call_once_param(const _Fp& __f) : __f_(__f) {}
 #endif
 
     _LIBCPP_INLINE_VISIBILITY
@@ -513,11 +519,11 @@ public:
 
 #endif
 
-template <class _F>
+template <class _Fp>
 void
 __call_once_proxy(void* __vp)
 {
-    __call_once_param<_F>* __p = static_cast<__call_once_param<_F>*>(__vp);
+    __call_once_param<_Fp>* __p = static_cast<__call_once_param<_Fp>*>(__vp);
     (*__p)();
 }
 
@@ -530,12 +536,12 @@ inline _LIBCPP_INLINE_VISIBILITY
 void
 call_once(once_flag& __flag, _Callable&& __func, _Args&&... __args)
 {
-    if (__builtin_expect(__flag.__state_ , ~0ul) != ~0ul)
+    if (__flag.__state_ != ~0ul)
     {
-        typedef tuple<typename decay<_Callable>::type, typename decay<_Args>::type...> _G;
-        __call_once_param<_G> __p(_G(__decay_copy(_VSTD::forward<_Callable>(__func)),
+        typedef tuple<typename decay<_Callable>::type, typename decay<_Args>::type...> _Gp;
+        __call_once_param<_Gp> __p(_Gp(__decay_copy(_VSTD::forward<_Callable>(__func)),
                                 __decay_copy(_VSTD::forward<_Args>(__args))...));
-        __call_once(__flag.__state_, &__p, &__call_once_proxy<_G>);
+        __call_once(__flag.__state_, &__p, &__call_once_proxy<_Gp>);
     }
 }
 

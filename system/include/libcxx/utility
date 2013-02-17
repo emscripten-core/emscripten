@@ -125,7 +125,9 @@ template<size_t I, class T1, class T2>
 #include <__tuple>
 #include <type_traits>
 
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
+#endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
@@ -178,12 +180,12 @@ swap_ranges(_ForwardIterator1 __first1, _ForwardIterator1 __last1, _ForwardItera
     return __first2;
 }
 
-template<class _Tp, size_t _N>
+template<class _Tp, size_t _Np>
 inline _LIBCPP_INLINE_VISIBILITY
 void
-swap(_Tp (&__a)[_N], _Tp (&__b)[_N]) _NOEXCEPT_(__is_nothrow_swappable<_Tp>::value)
+swap(_Tp (&__a)[_Np], _Tp (&__b)[_Np]) _NOEXCEPT_(__is_nothrow_swappable<_Tp>::value)
 {
-    _VSTD::swap_ranges(__a, __a + _N, __b);
+    _VSTD::swap_ranges(__a, __a + _Np, __b);
 }
 
 template <class _Tp>
@@ -204,8 +206,11 @@ move_if_noexcept(_Tp& __x) _NOEXCEPT
 }
 
 struct _LIBCPP_VISIBLE piecewise_construct_t { };
-//constexpr
+#if defined(_LIBCPP_HAS_NO_CONSTEXPR) || defined(_LIBCPP_BUILDING_UTILITY)
 extern const piecewise_construct_t piecewise_construct;// = piecewise_construct_t();
+#else
+constexpr piecewise_construct_t piecewise_construct = piecewise_construct_t();
+#endif
 
 template <class _T1, class _T2>
 struct _LIBCPP_VISIBLE pair
@@ -219,7 +224,7 @@ struct _LIBCPP_VISIBLE pair
     // pair(const pair&) = default;
     // pair(pair&&) = default;
 
-    _LIBCPP_INLINE_VISIBILITY pair() : first(), second() {}
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR pair() : first(), second() {}
 
     _LIBCPP_INLINE_VISIBILITY pair(const _T1& __x, const _T2& __y)
         : first(__x), second(__y) {}
@@ -228,8 +233,8 @@ struct _LIBCPP_VISIBLE pair
         _LIBCPP_INLINE_VISIBILITY
         pair(const pair<_U1, _U2>& __p
 #ifndef _LIBCPP_HAS_NO_ADVANCED_SFINAE
-                 ,typename enable_if<is_constructible<_T1, _U1>::value &&
-                                    is_constructible<_T2, _U2>::value>::type* = 0
+                 ,typename enable_if<is_convertible<const _U1&, _T1>::value &&
+                                    is_convertible<const _U2&, _T2>::value>::type* = 0
 #endif
                                       )
             : first(__p.first), second(__p.second) {}
@@ -256,8 +261,8 @@ struct _LIBCPP_VISIBLE pair
 #ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
 
     template <class _U1, class _U2,
-              class = typename enable_if<is_constructible<first_type, _U1 >::value &&
-                                         is_constructible<second_type, _U2>::value>::type>
+              class = typename enable_if<is_convertible<_U1, first_type>::value &&
+                                         is_convertible<_U2, second_type>::value>::type>
         _LIBCPP_INLINE_VISIBILITY
         pair(_U1&& __u1, _U2&& __u2)
             : first(_VSTD::forward<_U1>(__u1)),
@@ -267,8 +272,8 @@ struct _LIBCPP_VISIBLE pair
     template<class _U1, class _U2>
         _LIBCPP_INLINE_VISIBILITY
         pair(pair<_U1, _U2>&& __p,
-                 typename enable_if<is_constructible<_T1, _U1>::value &&
-                                    is_constructible<_T2, _U2>::value>::type* = 0)
+                 typename enable_if<is_convertible<_U1, _T1>::value &&
+                                    is_convertible<_U2, _T2>::value>::type* = 0)
             : first(_VSTD::forward<_U1>(__p.first)),
               second(_VSTD::forward<_U2>(__p.second)) {}
 
@@ -304,7 +309,7 @@ struct _LIBCPP_VISIBLE pair
 
 
 
-    template <class... _Args1, class... _Args2, size_t... _I1, size_t... _I2>
+    template <class... _Args1, class... _Args2>
         _LIBCPP_INLINE_VISIBILITY
         pair(piecewise_construct_t __pc, tuple<_Args1...> __first_args,
                                     tuple<_Args2...> __second_args)
@@ -414,7 +419,7 @@ swap(pair<_T1, _T2>& __x, pair<_T1, _T2>& __y)
 
 #ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
 
-template <class _Tp> class reference_wrapper;
+template <class _Tp> class _LIBCPP_VISIBLE reference_wrapper;
 
 template <class _Tp>
 struct ___make_pair_return
@@ -454,8 +459,6 @@ make_pair(_T1 __x, _T2 __y)
 }
 
 #endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
-
-#ifndef _LIBCPP_HAS_NO_VARIADICS
 
 template <class _T1, class _T2>
   class _LIBCPP_VISIBLE tuple_size<pair<_T1, _T2> >
@@ -574,8 +577,6 @@ get(pair<_T1, _T2>&& __p) _NOEXCEPT
 }
 
 #endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
-
-#endif  // _LIBCPP_HAS_NO_VARIADICS
 
 _LIBCPP_END_NAMESPACE_STD
 
