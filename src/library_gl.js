@@ -1018,6 +1018,10 @@ var LibraryGL = {
         if (cap == 0x0B60 /* GL_FOG */) {
           GLEmulation.fogEnabled = true;
           return;
+        } else if (cap == 0x0de1 /* GL_TEXTURE_2D */) {
+          // XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support
+          // it by forwarding to glEnableClientState
+          _glEnableClientState(cap);
         } else if (!(cap in validCapabilities)) {
           return;
         }
@@ -1028,6 +1032,10 @@ var LibraryGL = {
         if (cap == 0x0B60 /* GL_FOG */) {
           GLEmulation.fogEnabled = false;
           return;
+        } else if (cap == 0x0de1 /* GL_TEXTURE_2D */) {
+          // XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support
+          // it by forwarding to glDisableClientState
+          _glDisableClientState(cap);
         } else if (!(cap in validCapabilities)) {
           return;
         }
