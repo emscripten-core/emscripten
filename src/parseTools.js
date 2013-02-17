@@ -1709,9 +1709,7 @@ function handleOverflow(text, bits) {
   if (!bits) return text;
   var correct = correctOverflows();
   warnOnce(!correct || bits <= 32, 'Cannot correct overflows of this many bits: ' + bits);
-  if (CHECK_OVERFLOWS) return 'CHECK_OVERFLOW(' + text + ', ' + bits + ', ' + Math.floor(correctSpecificOverflow() && !PGO) + (
-    PGO ? ', "' + Debugging.getIdentifier() + '"' : ''
-  ) + ')';
+  if (CHECK_OVERFLOWS) return 'CHECK_OVERFLOW(' + text + ', ' + bits + ', ' + Math.floor(correctSpecificOverflow()) + ')';
   if (!correct) return text;
   if (bits == 32) {
     return '((' + text + ')|0)';
@@ -1819,9 +1817,7 @@ function makeSignOp(value, type, op, force, ignore) {
   var bits, full;
   if (type in Runtime.INT_TYPES) {
     bits = parseInt(type.substr(1));
-    full = op + 'Sign(' + value + ', ' + bits + ', ' + Math.floor(ignore || (correctSpecificSign() && !PGO)) + (
-      PGO ? ', "' + (ignore ? '' : Debugging.getIdentifier()) + '"' : ''
-    ) + ')';
+    full = op + 'Sign(' + value + ', ' + bits + ', ' + Math.floor(ignore || (correctSpecificSign())) + ')';
     // Always sign/unsign constants at compile time, regardless of CHECK/CORRECT
     if (isNumber(value)) {
       return eval(full).toString();

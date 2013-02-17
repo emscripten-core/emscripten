@@ -205,15 +205,6 @@ var FS_LOG = 0; // Log all FS operations.  This is especially helpful when you'r
                 // a new project and want to see a list of file system operations happening
                 // so that you can create a virtual file system with all of the required files.
 
-var PGO = 0; // Profile-guided optimization.
-             // When run with the CHECK_* options, will not fail on errors. Instead, will
-             // keep a record of which checks succeeded and which failed. On shutdown, will
-             // print out that information. This is useful for knowing which lines need
-             // checking enabled and which do not, that is, this is a way to automate the
-             // generation of line data for CORRECT_*_LINES options.
-             // All CORRECT_* options default to 1 with PGO builds.
-             // See https://github.com/kripken/emscripten/wiki/Optimizing-Code for more info
-
 var NAMED_GLOBALS = 0; // If 1, we use global variables for globals. Otherwise
                        // they are referred to by a base plus an offset (called an indexed global),
                        // saving global variables but adding runtime overhead.

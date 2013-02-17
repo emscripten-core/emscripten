@@ -150,52 +150,6 @@ function SAFE_HEAP_COPY_HISTORY(dest, src) {
 //==========================================
 #endif
 
-var CorrectionsMonitor = {
-#if PGO
-  MAX_ALLOWED: Infinity,
-#else
-  MAX_ALLOWED: 0, // XXX
-#endif
-  corrections: 0,
-  sigs: {},
-
-  note: function(type, succeed, sig) {
-    if (!succeed) {
-      this.corrections++;
-      if (this.corrections >= this.MAX_ALLOWED) abort('\n\nToo many corrections!');
-    }
-#if PGO
-    if (!sig)
-      sig = (new Error().stack).toString().split('\n')[2].split(':').slice(-1)[0]; // Spidermonkey-specific FIXME
-    sig = type + '|' + sig;
-    if (!this.sigs[sig]) {
-      //Module.print('Correction: ' + sig);
-      this.sigs[sig] = [0, 0]; // fail, succeed
-    }
-    this.sigs[sig][succeed ? 1 : 0]++;
-#endif
-  },
-
-  print: function() {
-#if PGO
-    var items = [];
-    for (var sig in this.sigs) {
-      items.push({
-        sig: sig,
-        fails: this.sigs[sig][0],
-        succeeds: this.sigs[sig][1],
-        total: this.sigs[sig][0] + this.sigs[sig][1]
-      });
-    }
-    items.sort(function(x, y) { return y.total - x.total; });
-    for (var i = 0; i < items.length; i++) {
-      var item = items[i];
-      Module.print(item.sig + ' : ' + item.total + ' hits, %' + (Math.ceil(100*item.fails/item.total)) + ' failures');
-    }
-#endif
-  }
-};
-
 #if CHECK_OVERFLOWS
 //========================================
 // Debugging tools - Mathop overflows
@@ -207,11 +161,11 @@ function CHECK_OVERFLOW(value, bits, ignore, sig) {
   // For signedness issue here, see settings.js, CHECK_SIGNED_OVERFLOWS
 #if CHECK_SIGNED_OVERFLOWS
   if (value === Infinity || value === -Infinity || value >= twopbits1 || value < -twopbits1) {
-    CorrectionsMonitor.note('SignedOverflow', 0, sig);
-    if (value === Infinity || value === -Infinity || Math.abs(value) >= twopbits) CorrectionsMonitor.note('Overflow');
+    throw 'SignedOverflow';
+    if (value === Infinity || value === -Infinity || Math.abs(value) >= twopbits) throw 'Overflow';
 #else
   if (value === Infinity || value === -Infinity || Math.abs(value) >= twopbits) {
-    CorrectionsMonitor.note('Overflow', 0, sig);
+    throw 'Overflow';
 #endif
 #if CORRECT_OVERFLOWS
     // Fail on >32 bits - we warned at compile time
@@ -219,12 +173,6 @@ function CHECK_OVERFLOW(value, bits, ignore, sig) {
       value = value & (twopbits - 1);
     }
 #endif
-  } else {
-#if CHECK_SIGNED_OVERFLOWS
-    CorrectionsMonitor.note('SignedOverflow', 1, sig);
-#endif
-    CorrectionsMonitor.note('Overflow', 1, sig);
-  }
   return value;
 }
 #endif
@@ -769,9 +717,6 @@ function preMain() {
 }
 function exitRuntime() {
   callRuntimeCallbacks(__ATEXIT__);
-
-  // Print summary of correction activity
-  CorrectionsMonitor.print();
 }
 
 // Tools
