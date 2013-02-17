@@ -8296,9 +8296,9 @@ Options that are modified or new in %s include:
           (['-o', 'something.js', '-O0'],                   0, None, 0, 0),
           (['-o', 'something.js', '-O1'],                   1, None, 0, 0),
           (['-o', 'something.js', '-O1', '--closure', '1'], 1, None, 1, 0),
-          (['-o', 'something.js', '-O2'],                   2, None, 1, 1),
+          (['-o', 'something.js', '-O2'],                   2, None, 0, 1),
           (['-o', 'something.js', '-O2', '--closure', '0'], 2, None, 0, 0),
-          (['-o', 'something.js', '-O3'],                   3, None, 1, 1),
+          (['-o', 'something.js', '-O3'],                   3, None, 0, 1),
           (['-o', 'something.js', '-O3', '--closure', '0'], 3, None, 0, 0),
           # and, test compiling to bitcode first
           (['-o', 'something.bc'], 0, [],      0, 0),

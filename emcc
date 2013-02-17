@@ -153,9 +153,7 @@ Options that are modified or new in %s include:
                            compiling to JavaScript, not to intermediate
                            bitcode.
   -O2                      As -O1, plus the relooper (loop recreation),
-                           plus closure compiler advanced opts, plus
-                           LLVM -O2 optimizations
-                           Warning: Compiling with this takes a long time!
+                           plus LLVM -O2 optimizations
   -O3                      As -O2, plus dangerous optimizations that may
                            break the generated code! This is not
                            recommended at all, see the wiki for more
@@ -204,8 +202,12 @@ Options that are modified or new in %s include:
                            (see --llvm-opts), setting this to 1 has no
                            effect.
 
-  --closure <on>           0: No closure compiler (default in -O0, -O1)
-                           1: Run closure compiler (default in -O2, -O3)
+  --closure <on>           0: No closure compiler (default)
+                           1: Run closure compiler. This greatly reduces
+                           code size and may in some cases increase
+                           runtime speed (although the opposite can also
+                           occur). Note that it takes time to run, and
+                           may require some changes to the code.
 
   --js-transform <cmd>     <cmd> will be called on the generated code
                            before it is optimized. This lets you modify
@@ -749,7 +751,6 @@ try:
 
   if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
   if llvm_lto is None: llvm_lto = llvm_opts > 0
-  if closure is None: closure = 1 if opt_level >= 2 else 0
   if opt_level <= 0: keep_debug = True # always keep debug in -O0
 
   if DEBUG: start_time = time.time() # done after parsing arguments, which might affect debug state
