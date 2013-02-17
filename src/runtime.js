@@ -357,7 +357,7 @@ var Runtime = {
   },
 
   addFunction: function(func, sig) {
-    assert(sig);
+    //assert(sig); // TODO: support asm
     var table = FUNCTION_TABLE; // TODO: support asm
     var ret = table.length;
     table.push(func);
