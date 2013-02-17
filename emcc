@@ -182,6 +182,12 @@ Options that are modified or new in %s include:
                            the last compilation phase from bitcode to
                            JavaScript, or else we will remove it by
                            default in -O1 and above.
+                           In -O0, line numbers wil be shown in the
+                           generated code. In -O1 and above, the optimizer
+                           removes those comments. This flag does however
+                           have the effect of disabling anything that
+                           causes name mangling or minification (closure
+                           or the registerize pass).
 
   --typed-arrays <mode>    0: No typed arrays
                            1: Parallel typed arrays
@@ -885,6 +891,10 @@ try:
 
   if shared.Settings.CORRECT_SIGNS >= 2 or shared.Settings.CORRECT_OVERFLOWS >= 2 or shared.Settings.CORRECT_ROUNDINGS >= 2:
     keep_debug = True # must keep debug info to do line-by-line operations 
+
+  if keep_debug and closure:
+    print >> sys.stderr, 'emcc: warning: disabling closure because debug info was requested'
+    closure = False
 
   if minify_whitespace is None:
     minify_whitespace = closure # if closure is run, minify whitespace
