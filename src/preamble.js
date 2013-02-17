@@ -576,37 +576,37 @@ var FAST_MEMORY = Module['FAST_MEMORY'] || {{{ FAST_MEMORY }}};
 // Initialize the runtime's memory
 #if USE_TYPED_ARRAYS
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
-  assert(!!Int32Array && !!Float64Array && !!(new Int32Array(1)['subarray']) && !!(new Int32Array(1)['set']),
-         'Cannot fallback to non-typed array case: Code is too specialized');
+assert(!!Int32Array && !!Float64Array && !!(new Int32Array(1)['subarray']) && !!(new Int32Array(1)['set']),
+       'Cannot fallback to non-typed array case: Code is too specialized');
 
 #if USE_TYPED_ARRAYS == 1
-  HEAP = IHEAP = new Int32Array(TOTAL_MEMORY);
-  IHEAPU = new Uint32Array(IHEAP.buffer);
+HEAP = IHEAP = new Int32Array(TOTAL_MEMORY);
+IHEAPU = new Uint32Array(IHEAP.buffer);
 #if USE_FHEAP
-  FHEAP = new Float64Array(TOTAL_MEMORY);
+FHEAP = new Float64Array(TOTAL_MEMORY);
 #endif
 #endif
 #if USE_TYPED_ARRAYS == 2
-  var buffer = new ArrayBuffer(TOTAL_MEMORY);
-  HEAP8 = new Int8Array(buffer);
-  HEAP16 = new Int16Array(buffer);
-  HEAP32 = new Int32Array(buffer);
-  HEAPU8 = new Uint8Array(buffer);
-  HEAPU16 = new Uint16Array(buffer);
-  HEAPU32 = new Uint32Array(buffer);
-  HEAPF32 = new Float32Array(buffer);
-  HEAPF64 = new Float64Array(buffer);
+var buffer = new ArrayBuffer(TOTAL_MEMORY);
+HEAP8 = new Int8Array(buffer);
+HEAP16 = new Int16Array(buffer);
+HEAP32 = new Int32Array(buffer);
+HEAPU8 = new Uint8Array(buffer);
+HEAPU16 = new Uint16Array(buffer);
+HEAPU32 = new Uint32Array(buffer);
+HEAPF32 = new Float32Array(buffer);
+HEAPF64 = new Float64Array(buffer);
 
-  // Endianness check (note: assumes compiler arch was little-endian)
-  HEAP32[0] = 255;
-  assert(HEAPU8[0] === 255 && HEAPU8[3] === 0, 'Typed arrays 2 must be run on a little-endian system');
+// Endianness check (note: assumes compiler arch was little-endian)
+HEAP32[0] = 255;
+assert(HEAPU8[0] === 255 && HEAPU8[3] === 0, 'Typed arrays 2 must be run on a little-endian system');
 #endif
 #else
-  // Make sure that our HEAP is implemented as a flat array.
-  HEAP = []; // Hinting at the size with |new Array(TOTAL_MEMORY)| should help in theory but makes v8 much slower
-  for (var i = 0; i < FAST_MEMORY; i++) {
-    HEAP[i] = 0; // XXX We do *not* use {{| makeSetValue(0, 'i', 0, 'null') |}} here, since this is done just to optimize runtime speed
-  }
+// Make sure that our HEAP is implemented as a flat array.
+HEAP = []; // Hinting at the size with |new Array(TOTAL_MEMORY)| should help in theory but makes v8 much slower
+for (var i = 0; i < FAST_MEMORY; i++) {
+  HEAP[i] = 0; // XXX We do *not* use {{| makeSetValue(0, 'i', 0, 'null') |}} here, since this is done just to optimize runtime speed
+}
 #endif
 
 Module['HEAP'] = HEAP;
