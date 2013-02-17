@@ -7186,6 +7186,9 @@ def process(filename):
       self.do_run(src, '''AD:-1,1''', build_ll_hook=self.do_autodebug)
 
     def test_corruption(self):
+      if Settings.ASM_JS: return self.skip('cannot use corruption checks in asm')
+      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2 for actual test')
+
       Settings.CORRUPTION_CHECK = 1
 
       src = r'''

@@ -142,7 +142,7 @@ var CORRUPTION_CHECK = 0; // When enabled, will emit a buffer area at the beginn
                           // 0 means not enabled, higher values mean the size of the
                           // buffer areas as a multiple of the allocated area (so
                           // 1 means 100%, or buffer areas equal to allocated area,
-                          // both before and after).
+                          // both before and after). This must be an integer.
 
 var LABEL_DEBUG = 0; // 1: Print out functions as we enter them
                      // 2: Also print out each label as we enter it

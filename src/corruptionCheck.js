@@ -2,7 +2,7 @@
 // See settings.js, CORRUPTION_CHECK
 
 var CorruptionChecker = {
-  BUFFER_FACTOR: {{{ CORRUPTION_CHECK }}},
+  BUFFER_FACTOR: Math.round({{{ CORRUPTION_CHECK }}}),
 
   ptrs: {},
   checks: 0,
@@ -19,6 +19,7 @@ var CorruptionChecker = {
     } });
   },
   malloc: function(size) {
+    CorruptionChecker.checkAll();
     assert(size > 0); // some mallocs accept zero - fix your code if you want to use this tool
     var allocation = CorruptionChecker.realMalloc(size*(1+2*CorruptionChecker.BUFFER_FACTOR));
     var ptr = allocation + size*CorruptionChecker.BUFFER_FACTOR;
@@ -29,7 +30,12 @@ var CorruptionChecker = {
     return ptr;
   },
   free: function(ptr) {
-    CorruptionChecker.checkPtr(ptr, true);
+    CorruptionChecker.checkAll();
+    var size = CorruptionChecker.ptrs[ptr];
+    assert(size);
+    var allocation = ptr - size*CorruptionChecker.BUFFER_FACTOR;
+    delete CorruptionChecker.ptrs[ptr];
+    CorruptionChecker.realFree(allocation);
   },
   canary: function(x) {
     return (x + (x << 3) + (x&75) - (x&47))&255;
@@ -45,16 +51,12 @@ var CorruptionChecker = {
     }
     CorruptionChecker.checks++;
   },
-  checkPtr: function(ptr, free) {
+  checkPtr: function(ptr) {
     var size = CorruptionChecker.ptrs[ptr];
     assert(size);
     var allocation = ptr - size*CorruptionChecker.BUFFER_FACTOR;
     CorruptionChecker.checkBuffer(allocation, size*CorruptionChecker.BUFFER_FACTOR);
     CorruptionChecker.checkBuffer(allocation + size*(1+CorruptionChecker.BUFFER_FACTOR), size*CorruptionChecker.BUFFER_FACTOR);
-    if (free) {
-      delete CorruptionChecker.ptrs[ptr];
-      CorruptionChecker.realFree(allocation);
-    }
   },
   checkAll: function() {
     for (var ptr in CorruptionChecker.ptrs) {
