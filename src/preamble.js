@@ -633,7 +633,7 @@ STACK_MAX = TOTAL_STACK; // we lose a little stack here, but TOTAL_STACK is nice
 #if USE_TYPED_ARRAYS == 2
 var tempDoublePtr = Runtime.alignMemory(allocate(12, 'i8', ALLOC_STACK), 8);
 assert(tempDoublePtr % 8 == 0);
-function copyTempFloat(ptr) { // functions, because inlining this code is increases code size too much
+function copyTempFloat(ptr) { // functions, because inlining this code increases code size too much
   HEAP8[tempDoublePtr] = HEAP8[ptr];
   HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];
   HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];
