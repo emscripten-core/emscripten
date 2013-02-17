@@ -1532,6 +1532,10 @@ function JSify(data, functionsOnly, givenFunctions) {
     // This is the main 'post' pass. Print out the generated code that we have here, together with the
     // rest of the output that we started to print out earlier (see comment on the
     // "Final shape that will be created").
+    if (CORRUPTION_CHECK) {
+      assert(!ASM_JS); // cannot monkeypatch asm!
+      print(processMacros(read('corruptionCheck.js')));
+    }
     if (PRECISE_I64_MATH && Types.preciseI64MathUsed) {
       print(read('long.js'));
     } else {

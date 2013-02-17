@@ -7185,6 +7185,32 @@ def process(filename):
         '''
       self.do_run(src, '''AD:-1,1''', build_ll_hook=self.do_autodebug)
 
+    def test_corruption(self):
+      Settings.CORRUPTION_CHECK = 1
+
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+        #include <string.h>
+        int main(int argc, char **argv) {
+          int size = 1024*argc;
+          char *buffer = (char*)malloc(size);
+        #if CORRUPT
+          memset(buffer, argc, size+15);
+        #else
+          memset(buffer, argc, size);
+        #endif
+          for (int x = 0; x < size; x += argc*3) buffer[x] = x/3;
+          int ret = 0;
+          for (int x = 0; x < size; x++) ret += buffer[x];
+          free(buffer);
+          printf("All ok, %d\n", ret);
+        }
+      '''
+
+      for corrupt in [1]:
+        self.do_run(src.replace('CORRUPT', str(corrupt)), 'Heap corruption detected!' if corrupt else 'All ok, 4209')
+
     ### Integration tests
 
     def test_ccall(self):
