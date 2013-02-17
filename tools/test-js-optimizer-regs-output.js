@@ -225,4 +225,8 @@ function switchey(r1) {
   r9 = r1 + 2;
   pp(r9);
 }
+function __ZN14NetworkAddressC1EPKcti(r1) {
+  __ZN14NetworkAddressC2EPKcti(r1);
+  return;
+}
 
