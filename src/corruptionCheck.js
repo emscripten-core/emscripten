@@ -5,6 +5,7 @@ var CorruptionChecker = {
   BUFFER_FACTOR: {{{ CORRUPTION_CHECK }}},
 
   ptrs: {},
+  checks: 0,
 
   init: function() {
     this.realMalloc = _malloc;
@@ -12,6 +13,10 @@ var CorruptionChecker = {
 
     this.realFree = _free;
     _free = Module['_free'] = this.free;
+
+    __ATEXIT__.push({ func: function() {
+      Module.printErr('No corruption detected, ran ' + CorruptionChecker.checks + ' checks.');
+    } });
   },
   malloc: function(size) {
     assert(size > 0); // some mallocs accept zero - fix your code if you want to use this tool
@@ -38,6 +43,7 @@ var CorruptionChecker = {
     for (var x = allocation; x < allocation + size; x++) {
       assert(({{{ makeGetValue('x', 0, 'i8') }}}&255) == CorruptionChecker.canary(x), 'Heap corruption detected!');
     }
+    CorruptionChecker.checks++;
   },
   checkPtr: function(ptr, free) {
     var size = CorruptionChecker.ptrs[ptr];
