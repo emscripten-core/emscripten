@@ -21,6 +21,7 @@ var CorruptionChecker = {
   malloc: function(size) {
     CorruptionChecker.checkAll();
     assert(size > 0); // some mallocs accept zero - fix your code if you want to use this tool
+    size = (size+7)&(~7);
     var allocation = CorruptionChecker.realMalloc(size*(1+2*CorruptionChecker.BUFFER_FACTOR));
     var ptr = allocation + size*CorruptionChecker.BUFFER_FACTOR;
     assert(!CorruptionChecker.ptrs[ptr]);
