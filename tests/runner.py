@@ -9289,6 +9289,26 @@ f.close()
       finally:
         del os.environ['EMCC_DEBUG']
 
+    def test_debuginfo(self):
+      if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
+      try:
+        os.environ['EMCC_DEBUG'] = '1'
+        # llvm debug info is kept only when we can see it, which is without the js optimize, -O0. js debug info is lost by registerize in -O2, so - g disables it
+        for args, expect_llvm, expect_js in [
+            (['-O0'], True, True),
+            (['-O0', '-g'], True, True),
+            (['-O1'], False, True),
+            (['-O1', '-g'], False, True),
+            (['-O2'], False, False),
+            (['-O2', '-g'], False, True),
+          ]:
+          print args, expect_llvm, expect_js
+          output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).communicate()
+          assert expect_llvm == ('strip-debug' not in err)
+          assert expect_js == ('registerize' not in err)
+      finally:
+        del os.environ['EMCC_DEBUG']
+
     def test_scons(self): # also incidentally tests c++11 integration in llvm 3.1
       try_delete(os.path.join(self.get_dir(), 'test'))
       shutil.copytree(path_from_root('tests', 'scons'), os.path.join(self.get_dir(), 'test'))

@@ -1104,7 +1104,7 @@ try:
 
   # Optimize, if asked to
   if not LEAVE_INPUTS_RAW:
-    link_opts = [] if keep_debug else ['-strip-debug']
+    link_opts = [] if keep_debug and opt_level == 0 else ['-strip-debug'] # remove LLVM debug info in -O1+, since the optimizer removes it anyhow
     if llvm_opts > 0:
       shared.Building.llvm_opt(in_temp(target_basename + '.bc'), llvm_opts)
       if DEBUG: save_intermediate('opt', 'bc')
