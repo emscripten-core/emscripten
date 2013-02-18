@@ -120,10 +120,14 @@ if len(sys.argv) == 1:
 
 if sys.argv[1] == '--version':
   revision = '(unknown revision)'
+  here = os.getcwd()
+  os.chdir(shared.path_from_root())
   try:
-    revision = execute(['git', 'show'], stdout=PIPE)[0].split('\n')[0]
+    revision = execute(['git', 'show'], stdout=PIPE, stderr=PIPE)[0].split('\n')[0]
   except:
     pass
+  finally:
+    os.chdir(here)
   print '''emcc (Emscripten GCC-like replacement) %s (%s)
 Copyright (C) 2013 the Emscripten authors (see AUTHORS.txt)
 This is free and open source software under the MIT license.
