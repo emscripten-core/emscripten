@@ -8292,14 +8292,14 @@ Options that are modified or new in %s include:
           (['-o', 'something.js', '-O2'],                   2, None, 0, 1),
           (['-o', 'something.js', '-O2', '--closure', '0'], 2, None, 0, 0),
           (['-o', 'something.js', '-O2', '-g'],             2, None, 0, 0),
-          (['-o', 'something.js', '-O3'],                   3, None, 0, 1),
+          (['-o', 'something.js', '-O3'],                   3, None, 1, 1),
           (['-o', 'something.js', '-O3', '--closure', '0'], 3, None, 0, 0),
           # and, test compiling to bitcode first
           (['-o', 'something.bc'], 0, [],      0, 0),
           (['-o', 'something.bc'], 0, ['-O0'], 0, 0),
           (['-o', 'something.bc'], 1, ['-O1'], 0, 0),
           (['-o', 'something.bc'], 2, ['-O2'], 0, 0),
-          (['-o', 'something.bc'], 3, ['-O3'], 0, 0),
+          (['-o', 'something.bc'], 3, ['-O3'], 1, 0),
           (['-O1', '-o', 'something.bc'], 0, [], 0, 0), # -Ox is ignored and warned about
         ]:
           print params, opt_level, bc_params, closure, has_malloc

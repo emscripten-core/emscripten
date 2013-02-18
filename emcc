@@ -159,10 +159,17 @@ Options that are modified or new in %s include:
   -O2                      As -O1, plus the relooper (loop recreation),
                            plus LLVM -O2 optimizations
   -O3                      As -O2, plus dangerous optimizations that may
-                           break the generated code! This is not
-                           recommended at all, see the wiki for more
-                           details (you can try -O2 and then add
-                           dangerous optimizations one by one).
+                           break the generated code! This turns on
+
+                              INLINING_LIMIT = 0
+                              DOUBLE_MODE = 0
+                              PRECISE_I64_MATH = 0
+                              and the closure compiler
+
+                           This is not recommended at all. A better idea
+                           is to try each of these separately on top of
+                           -O2 to see what works. See the wiki for more
+                           information.
 
   -s OPTION=VALUE          JavaScript code generation option passed
                            into the emscripten compiler. For the
@@ -206,12 +213,13 @@ Options that are modified or new in %s include:
                            (see --llvm-opts), setting this to 1 has no
                            effect.
 
-  --closure <on>           0: No closure compiler (default)
+  --closure <on>           0: No closure compiler (default in -O2 and below)
                            1: Run closure compiler. This greatly reduces
                            code size and may in some cases increase
                            runtime speed (although the opposite can also
                            occur). Note that it takes time to run, and
-                           may require some changes to the code.
+                           may require some changes to the code. This
+                           is run by default in -O3.
 
   --js-transform <cmd>     <cmd> will be called on the generated code
                            before it is optimized. This lets you modify
@@ -756,6 +764,7 @@ try:
   if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
   if llvm_lto is None: llvm_lto = llvm_opts > 0
   if opt_level <= 0: keep_debug = True # always keep debug in -O0
+  if closure is None and opt_level == 3: closure = True
 
   if DEBUG: start_time = time.time() # done after parsing arguments, which might affect debug state
 

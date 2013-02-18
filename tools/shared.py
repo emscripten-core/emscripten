@@ -566,6 +566,7 @@ class Settings:
         if opt_level >= 2:
           Settings.RELOOP = 1
         if opt_level >= 3:
+          # Aside from these, -O3 also runs closure compiler
           Settings.INLINING_LIMIT = 0
           Settings.DOUBLE_MODE = 0
           Settings.PRECISE_I64_MATH = 0
