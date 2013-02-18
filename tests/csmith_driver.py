@@ -4,7 +4,7 @@
 Runs csmith, a C fuzzer, and looks for bugs
 '''
 
-import os, sys
+import os, sys, difflib
 from subprocess import Popen, PIPE, STDOUT
 
 sys.path += [os.path.join(os.path.dirname(os.path.dirname(__file__)), 'tools')]
@@ -24,7 +24,7 @@ while 1:
   print 'Tried %d, valid: %d' % (tried, valid)
   tried += 1
   print '1) Generate C'
-  shared.execute([CSMITH, '--no-volatiles', '--no-math64'], stdout=open(filename + '.c', 'w'))
+  shared.execute([CSMITH, '--no-volatiles', '--no-math64', '--max-block-depth', '2', '--max-block-size', '2', '--max-expr-complexity', '2', '--max-funcs', '1'], stdout=open(filename + '.c', 'w'))
 
   print '2) Compile natively'
   shared.try_delete(filename)
