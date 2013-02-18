@@ -51,13 +51,13 @@ function performDeferredRegistrations(){
 function createInheritedFunctionOrProperty(name, type, nameInBaseClass, baseClassType) {
     function upcastingWrapper(method) {
         return function() {
-            var baseClassPtr = ___staticPointerCast(this.ptr, type.rawType, baseClassType.rawType);
-            if (baseClassPtr === this.ptr) {
+            var baseClassPtr = ___staticPointerCast(this.$$.ptr, type.rawType, baseClassType.rawType);
+            if (baseClassPtr === this.$$.ptr) {
                 return method.apply(this, arguments);
             } else {
                 var handle = this.clone();
                 try {
-                    handle.ptr = baseClassPtr;
+                    handle.$$.ptr = baseClassPtr;
                     return method.apply(handle, arguments);
                 } finally {
                     handle.delete();
@@ -549,21 +549,21 @@ RegisteredPointer.prototype.toWireType = function(destructors, handle) {
     if (!handle) {
         return null;
     }
-    if (handle.pointeeType.isPolymorphic) {
-        fromRawType = handle.pointeeType.getDynamicRawPointerType(handle.ptr);
+    if (handle.$$.pointeeType.isPolymorphic) {
+        fromRawType = handle.$$.pointeeType.getDynamicRawPointerType(handle.$$.ptr);
     } else {
-        fromRawType = handle.pointeeType.rawType;
+        fromRawType = handle.$$.pointeeType.rawType;
     }
     if (fromRawType === this.pointeeType.rawType) {
-        return this.isSmartPointer ? handle.smartPointer : handle.ptr;
+        return this.isSmartPointer ? handle.$$.smartPtr : handle.$$.ptr;
     }
-    var ptr = staticPointerCast(handle.ptr, fromRawType, this.pointeeType.rawType);
+    var ptr = staticPointerCast(handle.$$.ptr, fromRawType, this.pointeeType.rawType);
     if (this.isSmartPointer) {
-        // todo: if ptr == handle.ptr, there's no need to allocate a new smartPtr!
+        // todo: if ptr == handle.$$.ptr, there's no need to allocate a new smartPtr!
         var smartPtr = _malloc(16);
-        handle.pointeeType.smartPointerType.rawConstructor(smartPtr, ptr, handle.smartPointer);
+        handle.$$.pointeeType.smartPointerType.rawConstructor(smartPtr, ptr, handle.$$.smartPtr);
         ptr = smartPtr;
-        destructors.push(handle.pointeeType.smartPointerType.rawDestructor);
+        destructors.push(handle.$$.pointeeType.smartPointerType.rawDestructor);
         destructors.push(ptr);
     }
     return ptr;
@@ -633,7 +633,7 @@ RegisteredPointer.prototype.fromWireTypeAutoDowncast = function(ptr) { // ptr is
         } else {
             handle = toType.fromWireType(ptr);
         }
-        handle.ptr = staticPointerCast(handle.ptr, fromType.rawType, toType.rawType);
+        handle.$$.ptr = staticPointerCast(handle.$$.ptr, fromType.rawType, toType.rawType);
     } else {
         handle = this.fromWireType(ptr);
     }
@@ -655,10 +655,11 @@ function __embind_register_smart_ptr(
     rawGetPointee = FUNCTION_TABLE[rawGetPointee];
     
     var Handle = createNamedFunction(name, function(ptr) {
-        this.count = {value: 1};
-        this.smartPointer = ptr; // std::shared_ptr<T>*
-        this.ptr = rawGetPointee(ptr); // T*
-        this.pointeeType = pointeeType;
+        this.$$ = {};
+        this.$$.count = {value: 1};
+        this.$$.smartPtr = ptr; // std::shared_ptr<T>*
+        this.$$.ptr = rawGetPointee(ptr); // T*
+        this.$$.pointeeType = pointeeType;
     });
 
     // TODO: test for SmartPtr.prototype.constructor property?
@@ -666,30 +667,31 @@ function __embind_register_smart_ptr(
     Handle.prototype = Object.create(pointeeType.Handle.prototype);
     
     Handle.prototype.clone = function() {
-        if (!this.ptr) {
+        if (!this.$$.ptr) {
             throw new BindingError(pointeeType.name + ' instance already deleted');
         }
 
         var clone = Object.create(Handle.prototype);
-        clone.count = this.count;
-        clone.smartPointer = this.smartPointer;
-        clone.ptr = this.ptr;
+        clone.$$ = {};
+        clone.$$.count = this.$$.count;
+        clone.$$.smartPtr = this.$$.smartPtr;
+        clone.$$.ptr = this.$$.ptr;
         
-        clone.count.value += 1;
+        clone.$$.count.value += 1;
         return clone;
     };
     
     Handle.prototype['delete'] = function() {
-        if (!this.ptr) {
+        if (!this.$$.ptr) {
             throw new BindingError(pointeeType.name + ' instance already deleted');
         }
         
-        this.count.value -= 1;
-        if (0 === this.count.value) {
-            rawDestructor(this.smartPointer);
+        this.$$.count.value -= 1;
+        if (0 === this.$$.count.value) {
+            rawDestructor(this.$$.smartPtr);
         }
-        this.smartPointer = undefined;
-        this.ptr = undefined;
+        this.$$.smartPtr = undefined;
+        this.$$.ptr = undefined;
     };
     var registeredPointer = new RegisteredPointer(Handle, pointeeType.isPolymorphic, true, rawGetPointee, rawConstructor, rawDestructor);
     registeredPointer.pointeeType = pointeeType;
@@ -716,10 +718,10 @@ function __embind_register_class(
                 throw new BindingError(name + ' does not define call operator');
             }
         };
-        
-        h.count = {value: 1, ptr: ptr };
-        h.ptr = ptr;
-        h.pointeeType = type; // set below
+        h.$$ = {};
+        h.$$.count = {value: 1, ptr: ptr };
+        h.$$.ptr = ptr;
+        h.$$.pointeeType = type; // set below
 
         for(var prop in Handle.prototype) {
             var dp = Object.getOwnPropertyDescriptor(Handle.prototype, prop);
@@ -730,36 +732,31 @@ function __embind_register_class(
     });
 
     Handle.prototype.clone = function() {
-        if (!this.ptr) {
+        if (!this.$$.ptr) {
             throw new BindingError(type.name + ' instance already deleted');
         }
 
         var clone = Object.create(Handle.prototype);
-        clone.count = this.count;
-        clone.ptr = this.ptr;
+        clone.$$ = {};
+        clone.$$.count = this.$$.count;
+        clone.$$.ptr = this.$$.ptr;
 
-        clone.count.value += 1;
+        clone.$$.count.value += 1;
         return clone;
     };
 
-    Handle.prototype.move = function() {
-        var rv = this.clone();
-        this.delete();
-        return rv;
-    };
-
     // todo: test delete with upcast and downcast multiply derived pointers
-    // todo: then replace this.count.ptr below with this.ptr and make sure it fails
+    // todo: then replace this.$$.count.ptr below with this.$$.ptr and make sure it fails
     Handle.prototype['delete'] = function() {
-        if (!this.ptr) {
+        if (!this.$$.ptr) {
             throw new BindingError(type.name + ' instance already deleted'); // todo: but 'type' hasn't been resolved!?!
         }
 
-        this.count.value -= 1;
-        if (0 === this.count.value) {
-            rawDestructor(this.count.ptr);
+        this.$$.count.value -= 1;
+        if (0 === this.$$.count.value) {
+            rawDestructor(this.$$.count.ptr);
         }
-        this.ptr = undefined;
+        this.$$.ptr = undefined;
     };
     Handle.memberType = {};
 
@@ -834,8 +831,7 @@ function __embind_register_class_method(
         var humanName = classType.name + '.' + methodName;
         var argTypes = requireArgumentTypes(rawArgTypes, 'method ' + humanName);
         classType.Handle.prototype[methodName] = function() {
-
-            if (!this.ptr) {
+            if (!this.$$.ptr) {
                 throw new BindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
             }
             if (arguments.length !== argCount - 1) {
@@ -844,7 +840,7 @@ function __embind_register_class_method(
 
             var destructors = [];
             var args = new Array(argCount + 1);
-            args[0] = this.ptr;
+            args[0] = this.$$.ptr;
             args[1] = memberFunction;
             for (var i = 1; i < argCount; ++i) {
                 args[i + 1] = argTypes[i].toWireType(destructors, arguments[i-1]);
@@ -895,7 +891,7 @@ function __embind_register_class_operator_call(
         var argTypes = requireArgumentTypes(rawArgTypes, 'method ' + humanName);
 
         classType.Handle.prototype.operator_call = function() {
-            if (!this.ptr) {
+            if (!this.$$.ptr) {
                 throw new BindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
             }
             if (arguments.length !== argCount - 1) {
@@ -904,7 +900,7 @@ function __embind_register_class_operator_call(
 
             var destructors = [];
             var args = new Array(argCount);
-            args[0] = this.ptr;
+            args[0] = this.$$.ptr;
             for (var i = 1; i < argCount; ++i) {
                 args[i] = argTypes[i].toWireType(destructors, arguments[i-1]);
             }
@@ -929,7 +925,7 @@ function __embind_register_class_operator_array_get(
         elementType = requireRegisteredType(elementType, 'array access element' + classType.name);
         var humanName = classType.name + '.' + 'operator_array_get';
         classType.Handle.prototype.array_get = function() {
-            if (!this.ptr) {
+            if (!this.$$.ptr) {
                 throw new BindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
             }
 
@@ -939,7 +935,7 @@ function __embind_register_class_operator_array_get(
 
             var destructors = [];
             var args = new Array(2);
-            args[0] = this.ptr;
+            args[0] = this.$$.ptr;
             args[1] = indexType.toWireType(destructors, arguments[0]);
 
             var rv = elementType.fromWireType(rawInvoker.apply(null, args));
@@ -962,7 +958,7 @@ function __embind_register_class_operator_array_set(
         elementType = requireRegisteredType(elementType, 'array access element ' + classType.name);
         var humanName = classType.name + '.' + 'operator_array_get';
         classType.Handle.prototype.array_set = function() {
-            if (!this.ptr) {
+            if (!this.$$.ptr) {
                 throw new BindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
             }
 
@@ -972,7 +968,7 @@ function __embind_register_class_operator_array_set(
 
             var destructors = [];
             var args = new Array(2);
-            args[0] = this.ptr;
+            args[0] = this.$$.ptr;
             args[1] = indexType.toWireType(destructors, arguments[0]);
             args[2] = elementType.toWireType(destructors, arguments[1]);
 
@@ -1002,17 +998,17 @@ function __embind_register_class_field(
         var fieldType = requireRegisteredType(rawFieldType, 'field ' + humanName);
         Object.defineProperty(classType.Handle.prototype, fieldName, {
             get: function() {
-                if (!this.ptr) {
+                if (!this.$$.ptr) {
                     throw new BindingError('cannot access emscripten binding field ' + humanName + ' on deleted object');
                 }
-                return fieldType.fromWireType(getter(this.ptr, memberPointer));
+                return fieldType.fromWireType(getter(this.$$.ptr, memberPointer));
             },
             set: function(v) {
-                if (!this.ptr) {
+                if (!this.$$.ptr) {
                     throw new BindingError('cannot modify emscripten binding field ' + humanName + ' on deleted object');
                 }
                 var destructors = [];
-                setter(this.ptr, memberPointer, fieldType.toWireType(destructors, v));
+                setter(this.$$.ptr, memberPointer, fieldType.toWireType(destructors, v));
                 runDestructors(destructors);
             },
             enumerable: true
