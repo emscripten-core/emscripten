@@ -8178,11 +8178,12 @@ TT = %s
 
         # --version
         output = Popen([PYTHON, compiler, '--version'], stdout=PIPE, stderr=PIPE).communicate()
-        self.assertContained('''emcc (Emscripten GCC-like replacement) 2.0
-Copyright (C) 2012 the Emscripten authors.
+        output = output[0].replace('\r', '')
+        self.assertContained('''emcc (Emscripten GCC-like replacement)''', output)
+        self.assertContained('''Copyright (C) 2013 the Emscripten authors (see AUTHORS.txt)
 This is free and open source software under the MIT license.
 There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-''', output[0].replace('\r', ''), output[1].replace('\r', ''))
+''', output)
 
         # -v, without input files
         output = Popen([PYTHON, compiler, '-v'], stdout=PIPE, stderr=PIPE).communicate()
@@ -8290,18 +8291,20 @@ Options that are modified or new in %s include:
           (['-o', 'something.js', '-O1', '--closure', '1'], 1, None, 1, 0),
           (['-o', 'something.js', '-O2'],                   2, None, 0, 1),
           (['-o', 'something.js', '-O2', '--closure', '0'], 2, None, 0, 0),
+          (['-o', 'something.js', '-O2', '-g'],             2, None, 0, 0),
           (['-o', 'something.js', '-O3'],                   3, None, 0, 1),
           (['-o', 'something.js', '-O3', '--closure', '0'], 3, None, 0, 0),
           # and, test compiling to bitcode first
           (['-o', 'something.bc'], 0, [],      0, 0),
           (['-o', 'something.bc'], 0, ['-O0'], 0, 0),
           (['-o', 'something.bc'], 1, ['-O1'], 0, 0),
-          (['-o', 'something.bc'], 2, ['-O2'], 1, 0),
-          (['-o', 'something.bc'], 3, ['-O3'], 1, 0),
+          (['-o', 'something.bc'], 2, ['-O2'], 0, 0),
+          (['-o', 'something.bc'], 3, ['-O3'], 0, 0),
           (['-O1', '-o', 'something.bc'], 0, [], 0, 0), # -Ox is ignored and warned about
         ]:
-          #print params, opt_level, bc_params, closure
+          print params, opt_level, bc_params, closure, has_malloc
           self.clear()
+          keep_debug = '-g' in params
           output = Popen([PYTHON, compiler, path_from_root('tests', 'hello_world_loop' + ('_malloc' if has_malloc else '') + '.cpp')] + params,
                          stdout=PIPE, stderr=PIPE).communicate()
           assert len(output[0]) == 0, output[0]
@@ -8325,14 +8328,13 @@ Options that are modified or new in %s include:
           else:
             # closure has not been run, we can do some additional checks. TODO: figure out how to do these even with closure
             assert 'Module._main = ' not in generated, 'closure compiler should not have been run'
-            # XXX find a way to test this: assert ('& 255' in generated or '&255' in generated) == (opt_level <= 2), 'corrections should be in opt <= 2'
-            assert ('(label)' in generated) == (opt_level <= 1), 'relooping should be in opt >= 2'
-            assert ('assert(STACKTOP < STACK_MAX' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
-            assert 'var $i;' in generated or 'var $i_0' in generated or 'var $storemerge3;' in generated or 'var $storemerge4;' in generated or 'var $i_04;' in generated, 'micro opts should always be on'
+            if keep_debug:
+              assert ('(label)' in generated) == (opt_level <= 1), 'relooping should be in opt >= 2'
+              assert ('assert(STACKTOP < STACK_MAX' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
+              assert 'var $i;' in generated or 'var $i_0' in generated or 'var $storemerge3;' in generated or 'var $storemerge4;' in generated or 'var $i_04;' in generated, 'micro opts should always be on'
             if opt_level >= 2:
-              assert re.search('HEAP8\[\$\w+ \+ \(+\$\w+ ', generated) or re.search('HEAP8\[HEAP32\[', generated), 'eliminator should create compound expressions, and fewer one-time vars' # also in -O1, but easier to test in -O2
+              assert re.search('HEAP8\[\$?\w+ \+ \(+\$?\w+ ', generated) or re.search('HEAP8\[HEAP32\[', generated), 'eliminator should create compound expressions, and fewer one-time vars' # also in -O1, but easier to test in -O2
             assert ('_puts(' in generated) == (opt_level >= 1), 'with opt >= 1, llvm opts are run and they should optimize printf to puts'
-            assert ('function _malloc(bytes) {' in generated) == (not has_malloc), 'If malloc is needed, it should be there, if not not'
             assert 'function _main() {' in generated, 'Should be unminified, including whitespace'
             assert ('-O3' in (params+(bc_params or []))) or'function _dump' in generated, 'No inlining by default'
 
