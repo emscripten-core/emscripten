@@ -11328,12 +11328,12 @@ elif 'sanity' in str(sys.argv):
       f = open(CONFIG_FILE, 'a')
       f.write('CLOSURE_COMPILER = "/tmp/nowhere/nothingtoseehere/kjadsfkjwelkjsdfkqgas/nonexistent.txt"\n')
       f.close()
-      output = self.check_working([EMCC, '-O2', 'tests/hello_world.cpp'], CLOSURE_FATAL)
+      output = self.check_working([EMCC, '-O2', '--closure', '1', 'tests/hello_world.cpp'], CLOSURE_FATAL)
 
       # With a working path, all is well
       restore()
       try_delete('a.out.js')
-      output = self.check_working([EMCC, '-O2', 'tests/hello_world.cpp'], '')
+      output = self.check_working([EMCC, '-O2', '--closure', '1', 'tests/hello_world.cpp'], '')
       assert os.path.exists('a.out.js')
 
     def test_llvm(self):
