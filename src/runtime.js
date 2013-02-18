@@ -509,26 +509,19 @@ function getRuntime() {
 // example, -1 in int32 would be a very large number as unsigned.
 function unSign(value, bits, ignore, sig) {
   if (value >= 0) {
-#if CHECK_SIGNS
-    if (!ignore) CorrectionsMonitor.note('UnSign', 1, sig);
-#endif
     return value;
   }
 #if CHECK_SIGNS
-  if (!ignore) CorrectionsMonitor.note('UnSign', 0, sig);
+  if (!ignore) throw 'UnSign';
 #endif
   return bits <= 32 ? 2*Math.abs(1 << (bits-1)) + value // Need some trickery, since if bits == 32, we are right at the limit of the bits JS uses in bitshifts
                     : Math.pow(2, bits)         + value;
-  // TODO: clean up previous line
 }
 
 // Converts a value we have as unsigned, into a signed value. For
 // example, 200 in a uint8 would be a negative number.
 function reSign(value, bits, ignore, sig) {
   if (value <= 0) {
-#if CHECK_SIGNS
-    if (!ignore) CorrectionsMonitor.note('ReSign', 1, sig);
-#endif
     return value;
   }
   var half = bits <= 32 ? Math.abs(1 << (bits-1)) // abs is needed if bits == 32
@@ -540,10 +533,7 @@ function reSign(value, bits, ignore, sig) {
                                                        // but, in general there is no perfect solution here. With 64-bit ints, we get rounding and errors
                                                        // TODO: In i64 mode 1, resign the two parts separately and safely
 #if CHECK_SIGNS
-    if (!ignore) {
-      CorrectionsMonitor.note('ReSign', 0, sig);
-      noted = true;
-    }
+    if (!ignore) throw 'ReSign';
 #endif
     value = -2*half + value; // Cannot bitshift half, as it may be at the limit of the bits JS uses in bitshifts
   }
@@ -552,18 +542,9 @@ function reSign(value, bits, ignore, sig) {
   // without CHECK_SIGNS, we would just do the |0 shortcut, so check that that
   // would indeed give the exact same result.
   if (bits === 32 && (value|0) !== value && typeof value !== 'boolean') {
-    if (!ignore) {
-      CorrectionsMonitor.note('ReSign', 0, sig);
-      noted = true;
-    }
+    if (!ignore) throw 'ReSign';
   }
-  if (!noted) CorrectionsMonitor.note('ReSign', 1, sig);
 #endif
   return value;
 }
-
-// Just a stub. We don't care about noting compile-time corrections. But they are called.
-var CorrectionsMonitor = {
-  note: function(){}
-};
 
