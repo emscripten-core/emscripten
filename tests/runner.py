@@ -10918,6 +10918,10 @@ elif 'benchmark' in str(sys.argv):
                       '-o', final_filename] + shared_args + emcc_args, stdout=PIPE, stderr=self.stderr_redirect).communicate()
       assert os.path.exists(final_filename), 'Failed to compile file: ' + output[0]
 
+      # Hardcode in the arguments, so js is portable without manual commandlinearguments
+      js = open(final_filename).read()
+      open(final_filename, 'w').write(js.replace('var ret = run();', 'var ret = run(%s);' % str(args)))
+
       # Run JS
       global total_times, tests_done
       times = []
