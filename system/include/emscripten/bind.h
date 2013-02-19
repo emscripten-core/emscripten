@@ -579,9 +579,9 @@ namespace emscripten {
     ////////////////////////////////////////////////////////////////////////////////
 
     template<typename PointerType>
-    class register_smart_ptr {
+    class smart_ptr {
     public:
-        register_smart_ptr(const char* name) {
+        smart_ptr(const char* name) {
             using namespace internal;
             typedef typename PointerType::element_type PointeeType;
 
