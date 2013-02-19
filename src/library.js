@@ -5082,6 +5082,7 @@ LibraryManager.library = {
   },
 
   __cxa_call_unexpected: function(exception) {
+    Module.printErr('Unexpected exception thrown, this is not properly supported - aborting');
     ABORT = true;
     throw exception;
   },
