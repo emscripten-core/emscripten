@@ -7742,6 +7742,8 @@ def process(filename):
 
     def test_debug(self):
       if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
+      if self.emcc_args is not None:
+        if '-O1' in self.emcc_args or '-O2' in self.emcc_args: return self.skip('optimizations remove LLVM debug info')
 
       src = '''
         #include <stdio.h>
