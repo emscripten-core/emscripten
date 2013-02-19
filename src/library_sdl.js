@@ -1079,7 +1079,9 @@ var LibrarySDL = {
     }
     var surf = SDL.makeSurface(raw.width, raw.height, 0, false, 'load:' + filename);
     var surfData = SDL.surfaces[surf];
+    surfData.ctx.globalCompositeOperation = "copy";
     surfData.ctx.drawImage(raw, 0, 0, raw.width, raw.height, 0, 0, raw.width, raw.height);
+    surfData.ctx.globalCompositeOperation = "source-over";
     // XXX SDL does not specify that loaded images must have available pixel data, in fact
     //     there are cases where you just want to blit them, so you just need the hardware
     //     accelerated version. However, code everywhere seems to assume that the pixels
