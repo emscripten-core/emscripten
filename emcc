@@ -159,12 +159,12 @@ Options that are modified or new in %s include:
   -O2                      As -O1, plus the relooper (loop recreation),
                            plus LLVM -O2 optimizations
   -O3                      As -O2, plus dangerous optimizations that may
-                           break the generated code! This turns on
+                           break the generated code! This adds
 
-                              INLINING_LIMIT = 0
-                              DOUBLE_MODE = 0
-                              PRECISE_I64_MATH = 0
-                              and the closure compiler
+                              -s INLINING_LIMIT=0
+                              -s DOUBLE_MODE=0
+                              -s PRECISE_I64_MATH=0
+                              --closure 1
 
                            This is not recommended at all. A better idea
                            is to try each of these separately on top of
@@ -220,6 +220,10 @@ Options that are modified or new in %s include:
                            occur). Note that it takes time to run, and
                            may require some changes to the code. This
                            is run by default in -O3.
+
+                           Note: If closure compiler hits an out-of-memory,
+                           try adjusting JAVA_HEAP_SIZE in the environment
+                           (for example, to 4096m for 4GB).
 
   --js-transform <cmd>     <cmd> will be called on the generated code
                            before it is optimized. This lets you modify
