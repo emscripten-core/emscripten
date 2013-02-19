@@ -2600,8 +2600,8 @@ var LibraryGL = {
 
   glTexGeni: function() { throw 'glTexGeni: TODO' },
   glTexGenfv: function() { throw 'glTexGenfv: TODO' },
-  glTexEnvi: function() { console.log('glTexEnvi - unimplemented') },
-  glTexEnvfv: function() { throw 'glTexEnvfv: TODO' },
+  glTexEnvi: function() { Runtime.warnOnce('glTexEnvi: TODO') },
+  glTexEnvfv: function() { Runtime.warnOnce('glTexEnvfv: TODO') },
 
   glTexImage1D: function() { throw 'glTexImage1D: TODO' },
   glTexCoord3f: function() { throw 'glTexCoord3f: TODO' },
