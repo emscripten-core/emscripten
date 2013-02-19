@@ -7244,23 +7244,56 @@ LibraryManager.library = {
   },
 
   select: function(nfds, readfds, writefds, exceptfds, timeout) {
-    // only readfds are supported, not writefds or exceptfds
+    // readfds are supported,
+    // writefds checks socket open status
+    // exceptfds not supported
     // timeout is always 0 - fully async
-    assert(!writefds && !exceptfds);
-    var ret = 0;
-    var l = {{{ makeGetValue('readfds', 0, 'i32') }}};
-    var h = {{{ makeGetValue('readfds', 4, 'i32') }}};
-    nfds = Math.min(64, nfds); // fd sets have 64 bits
-    for (var fd = 0; fd < nfds; fd++) {
-      var bit = fd % 32, int = fd < 32 ? l : h;
-      if (int & (1 << bit)) {
-        // index is in the set, check if it is ready for read
-        var info = Sockets.fds[fd];
-        if (!info) continue;
-        if (info.hasData()) ret++;
-      }
+    assert(!exceptfds);
+
+    function canRead(info) {
+      // make sure hasData exists. 
+      // we do create it when the socket is connected, 
+      // but other implementations may create it lazily
+      return info.hasData && info.hasData();
     }
-    return ret;
+
+    function canWrite(info) {
+      // make sure socket exists. 
+      // we do create it when the socket is connected, 
+      // but other implementations may create it lazily
+      return info.socket && (info.socket.readyState == info.socket.OPEN);
+    }
+
+    function checkfds(nfds, fds, can) {
+      if (!fds) return 0;
+
+      var bitsSet = 0;
+      var dstLow  = 0;
+      var dstHigh = 0;
+      var srcLow  = {{{ makeGetValue('fds', 0, 'i32') }}};
+      var srcHigh = {{{ makeGetValue('fds', 4, 'i32') }}};
+      nfds = Math.min(64, nfds); // fd sets have 64 bits
+
+      for (var fd = 0; fd < nfds; fd++) {
+        var mask = 1 << (fd % 32), int = fd < 32 ? srcLow : srcHigh;
+        if (int & mask) {
+          // index is in the set, check if it is ready for read
+          var info = Sockets.fds[fd];
+          if (info && can(info)) {
+            // set bit
+            fd < 32 ? (dstLow = dstLow | mask) : (dstHigh = dstHigh | mask);
+            bitsSet++;
+          }
+        }
+      }
+
+      {{{ makeSetValue('fds', 0, 'dstLow', 'i32') }}};
+      {{{ makeSetValue('fds', 4, 'dstHigh', 'i32') }}};
+      return bitsSet;
+    }
+
+    return checkfds(nfds, readfds, canRead)
+         + checkfds(nfds, writefds, canWrite);
   },
 
   // pty.h
