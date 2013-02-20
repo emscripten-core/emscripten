@@ -1,4 +1,5 @@
 import os.path, shutil, hashlib, cPickle
+from . import tempfiles
 
 # Permanent cache for dlmalloc and stdlibc++
 class Cache:
@@ -14,7 +15,7 @@ class Cache:
       os.makedirs(self.dirname)
 
   def erase(self):
-    shutil.rmtree(self.dirname, ignore_errors=True)
+    tempfiles.try_delete(self.dirname)
 
   def get_path(self, shortname):
     return os.path.join(self.dirname, shortname)

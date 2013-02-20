@@ -6,7 +6,8 @@ def try_delete(filename):
   try:
     os.unlink(filename)
   except:
-    shutil.rmtree(filename, ignore_errors=True)
+    if os.path.exists(filename):
+      shutil.rmtree(filename, ignore_errors=True)
 
 class TempFiles:
   def __init__(self, tmp, save_debug_files=False):
