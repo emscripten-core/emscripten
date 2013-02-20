@@ -1180,6 +1180,10 @@ var LibrarySDL = {
 
   // SDL Mixer
 
+  Mix_Init: function(flags) {
+    return 8; /* MIX_INIT_OGG */
+  },
+
   Mix_OpenAudio: function(frequency, format, channels, chunksize) {
     SDL.allocateChannels(32);
     // Just record the values for a later call to Mix_QuickLoad_RAW
