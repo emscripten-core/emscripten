@@ -6,6 +6,7 @@ var CorruptionChecker = {
 
   ptrs: {},
   checks: 0,
+  checkFrequency: 1,
 
   init: function() {
     this.realMalloc = _malloc;
@@ -33,29 +34,29 @@ var CorruptionChecker = {
     CorruptionChecker.ptrs[ptr] = size;
     CorruptionChecker.fillBuffer(allocation, size*CorruptionChecker.BUFFER_FACTOR);
     CorruptionChecker.fillBuffer(allocation + size*(1+CorruptionChecker.BUFFER_FACTOR), size*CorruptionChecker.BUFFER_FACTOR);
-    //Module.print('malloc ' + size + ' ==> ' + [ptr, allocation]);
+    //Module.printErr('malloc ' + size + ' ==> ' + [ptr, allocation]);
     return ptr;
   },
   free: function(ptr) {
     if (!ptr) return; // ok to free(NULL), does nothing
     CorruptionChecker.checkAll();
     var size = CorruptionChecker.ptrs[ptr];
-    //Module.print('free ' + ptr + ' of size ' + size);
+    //Module.printErr('free ' + ptr + ' of size ' + size);
     assert(size);
     var allocation = ptr - size*CorruptionChecker.BUFFER_FACTOR;
-    //Module.print('free ' + ptr + ' of size ' + size + ' and allocation ' + allocation);
+    //Module.printErr('free ' + ptr + ' of size ' + size + ' and allocation ' + allocation);
     delete CorruptionChecker.ptrs[ptr];
     CorruptionChecker.realFree(allocation);
   },
   realloc: function(ptr, newSize) {
-    //Module.print('realloc ' + ptr + ' to size ' + newSize);
+    //Module.printErr('realloc ' + ptr + ' to size ' + newSize);
     if (newSize <= 0) newSize = 1; // like in malloc
     if (!ptr) return CorruptionChecker.malloc(newSize); // realloc(NULL, size) forwards to malloc according to the spec
     var size = CorruptionChecker.ptrs[ptr];
     assert(size);
     var allocation = ptr - size*CorruptionChecker.BUFFER_FACTOR;
     var newPtr = CorruptionChecker.malloc(newSize);
-    //Module.print('realloc ' + ptr + ' to size ' + newSize + ' is now ' + newPtr);
+    //Module.printErr('realloc ' + ptr + ' to size ' + newSize + ' is now ' + newPtr);
     var newAllocation = newPtr + newSize*CorruptionChecker.BUFFER_FACTOR;
     HEAPU8.set(HEAPU8.subarray(ptr, ptr + Math.min(size, newSize)), newPtr);
     CorruptionChecker.free(ptr);
@@ -75,7 +76,6 @@ var CorruptionChecker = {
         assert(0, 'Heap corruption detected!' + [x, buffer, size, {{{ makeGetValue('x', 0, 'i8') }}}&255, CorruptionChecker.canary(x)]);
       }
     }
-    CorruptionChecker.checks++;
   },
   checkPtr: function(ptr) {
     var size = CorruptionChecker.ptrs[ptr];
@@ -84,7 +84,10 @@ var CorruptionChecker = {
     CorruptionChecker.checkBuffer(allocation, size*CorruptionChecker.BUFFER_FACTOR);
     CorruptionChecker.checkBuffer(allocation + size*(1+CorruptionChecker.BUFFER_FACTOR), size*CorruptionChecker.BUFFER_FACTOR);
   },
-  checkAll: function() {
+  checkAll: function(force) {
+    CorruptionChecker.checks++;
+    if (!force && CorruptionChecker.checks % CorruptionChecker.checkFrequency != 0) return;
+    //Module.printErr('checking for corruption ' + (CorruptionChecker.checks/CorruptionChecker.checkFrequency));
     for (var ptr in CorruptionChecker.ptrs) {
       CorruptionChecker.checkPtr(ptr, false);
     }
