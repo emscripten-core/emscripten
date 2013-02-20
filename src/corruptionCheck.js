@@ -43,7 +43,7 @@ var CorruptionChecker = {
     CorruptionChecker.realFree(allocation);
   },
   canary: function(x) {
-    return (x + (x << 3) + (x&75) - (x&47))&255;
+    return (x&127) + 10;
   },
   fillBuffer: function(allocation, size) {
     for (var x = allocation; x < allocation + size; x++) {
