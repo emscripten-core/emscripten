@@ -207,6 +207,11 @@ int main(int argc, char *argv[])
     glNormalPointer(GL_BYTE, 32, (void*)12);
     glColorPointer(4, GL_UNSIGNED_BYTE, 32, (void*)28);
 
+    int temp; // test glGetPointerv
+    glGetPointerv(GL_VERTEX_ARRAY_POINTER, &temp); assert(temp == 0);
+    glGetPointerv(GL_COLOR_ARRAY_POINTER, &temp); assert(temp == 28);
+    glGetPointerv(GL_TEXTURE_COORD_ARRAY_POINTER, &temp); assert(temp == 16);
+
     glBindTexture(GL_TEXTURE_2D, texture); // diffuse?
     glActiveTexture(GL_TEXTURE0);
     glActiveTexture(GL_TEXTURE1);

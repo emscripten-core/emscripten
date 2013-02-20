@@ -1471,6 +1471,20 @@ var LibraryGL = {
     assert(id == 0);
   },
 
+  glGetPointerv: function(name, p) {
+    var attribute;
+    switch(name) {
+      case 0x808E: // GL_VERTEX_ARRAY_POINTER
+        attribute = GLImmediate.clientAttributes[GLImmediate.VERTEX]; break;
+      case 0x8090: // GL_COLOR_ARRAY_POINTER
+        attribute = GLImmediate.clientAttributes[GLImmediate.COLOR]; break;
+      case 0x8092: // GL_TEXTURE_COORD_ARRAY_POINTER
+        attribute = GLImmediate.clientAttributes[GLImmediate.TEXTURE0]; break;
+      default: throw 'TODO: glGetPointerv for ' + name;
+    }
+    {{{ makeSetValue('p', '0', 'attribute ? attribute.pointer : 0', 'i32') }}};
+  },
+
   // GL Immediate mode
 
   $GLImmediate__postset: 'GL.immediate.setupFuncs(); Browser.moduleContextCreatedCallbacks.push(function() { GL.immediate.init() });',
@@ -2688,7 +2702,7 @@ var LibraryGL = {
   glVertexAttribPointer__sig: 'viiiiii',
   glCheckFramebufferStatus__sig: 'ii',
   glRenderbufferStorage__sig: 'viiii',
-  
+
   // Open GLES1.1 compatibility
   glGenFramebuffersOES : 'glGenFramebuffers',
   glGenRenderbuffersOES : 'glGenRenderbuffers',
@@ -2700,7 +2714,7 @@ var LibraryGL = {
   glCheckFramebufferStatusOES : 'glCheckFramebufferStatus',
   glDeleteFramebuffersOES : 'glDeleteFramebuffers',
   glDeleteRenderbuffersOES : 'glDeleteRenderbuffers'
-  
+
 };
 
 // Simple pass-through functions. Starred ones have return values. [X] ones have X in the C name but not in the JS name
