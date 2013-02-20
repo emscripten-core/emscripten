@@ -1289,7 +1289,10 @@ var LibraryGL = {
         glBindBuffer(target, buffer);
         if (target == Module.ctx.ARRAY_BUFFER) {
           GL.currArrayBuffer = buffer;
-          if (GLEmulation.currentVao) GLEmulation.currentVao.arrayBuffer = buffer;
+          if (GLEmulation.currentVao) {
+            assert(GLEmulation.currentVao.arrayBuffer == buffer || GLEmulation.currentVao.arrayBuffer == 0 || buffer == 0, 'TODO: support for multiple array buffers in vao');
+            GLEmulation.currentVao.arrayBuffer = buffer;
+          }
         } else if (target == Module.ctx.ELEMENT_ARRAY_BUFFER) {
           GL.currElementArrayBuffer = buffer;
           if (GLEmulation.currentVao) GLEmulation.currentVao.elementArrayBuffer = buffer;
