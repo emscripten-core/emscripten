@@ -447,7 +447,7 @@ function allocate(slab, types, allocator, ptr) {
   }
 #endif
 
-  var i = 0, type;
+  var i = 0, type, typeSize, previousType;
   while (i < size) {
     var curr = slab[i];
 
@@ -469,7 +469,12 @@ function allocate(slab, types, allocator, ptr) {
 #endif
 
     setValue(ret+i, curr, type);
-    i += Runtime.getNativeTypeSize(type);
+
+    if (previousType !== type) {
+      typeSize = Runtime.getNativeTypeSize(type);
+      previousType = type;
+    }
+    i += typeSize;
   }
 
   return ret;
