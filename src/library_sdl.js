@@ -1096,7 +1096,12 @@ var LibrarySDL = {
   SDL_WM_GrabInput: function() {},
   
   SDL_WM_ToggleFullScreen: function(surf) {
-    Module['canvas'].cancelFullScreen();
+    if (Browser.isFullScreen) {
+      Module['canvas'].cancelFullScreen();
+      return 1;
+    } else {
+      return 0;
+    }
   },
 
   // SDL_Image
