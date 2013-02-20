@@ -3,7 +3,7 @@
 // Utilities for browser environments
 
 mergeInto(LibraryManager.library, {
-  $Browser__postset: 'Module["requestFullScreen"] = function(doLockPointer, doResizeCanvas) { Browser.requestFullScreen(doLockPointer, doResizeCanvas) };\n' + // exports
+  $Browser__postset: 'Module["requestFullScreen"] = function(lockPointer, resizeCanvas) { Browser.requestFullScreen(lockPointer, resizeCanvas) };\n' + // exports
                      'Module["requestAnimationFrame"] = function(func) { Browser.requestAnimationFrame(func) };\n' +
                      'Module["pauseMainLoop"] = function() { Browser.mainLoop.pause() };\n' +
                      'Module["resumeMainLoop"] = function() { Browser.mainLoop.resume() };\n',
@@ -40,6 +40,7 @@ mergeInto(LibraryManager.library, {
         }
       }
     },
+    isFullScreen: false,
     pointerLock: false,
     moduleContextCreatedCallbacks: [],
     workers: [],
@@ -278,13 +279,13 @@ mergeInto(LibraryManager.library, {
 
     storedFullScreenHandler: null,
     storedPointerLockHandler: null,
-    requestFullScreen: function(doLockPointer, doResizeCanvas) {
-      if(typeof(doLockPointer)==='undefined') doLockPointer = true;
-      if(typeof(doResizeCanvas)==='undefined') doResizeCanvas = false;
+    requestFullScreen: function(lockPointer, resizeCanvas) {
+      if (typeof lockPointer === 'undefined') lockPointer = true;
+      if (typeof resizeCanvas === 'undefined') resizeCanvas = false;
   
       var canvas = Module['canvas'];
       function fullScreenChange() {
-        var isFullScreen = false;
+	Browser.isFullScreen = false;
         if ((document['webkitFullScreenElement'] || document['webkitFullscreenElement'] ||
              document['mozFullScreenElement'] || document['mozFullscreenElement'] ||
              document['fullScreenElement'] || document['fullscreenElement']) === canvas) {
@@ -294,18 +295,18 @@ mergeInto(LibraryManager.library, {
           canvas.exitPointerLock = document['exitPointerLock'] ||
                                    document['mozExitPointerLock'] ||
                                    document['webkitExitPointerLock'];
-          canvas.exitPointerLock = canvas.exitPointerLock.bind( document );
+          canvas.exitPointerLock = canvas.exitPointerLock.bind(document);
           canvas.cancelFullScreen = document['cancelFullScreen'] ||
                                     document['mozCancelFullScreen'] ||
                                     document['webkitCancelFullScreen'];
-          canvas.cancelFullScreen = canvas.cancelFullScreen.bind( document );
-          if (doLockPointer) canvas.requestPointerLock();
-          isFullScreen = true;
-          if(doResizeCanvas) Browser.setFullScreenCanvasSize();
-        } else if(doResizeCanvas){
+          canvas.cancelFullScreen = canvas.cancelFullScreen.bind(document);
+          if (lockPointer) canvas.requestPointerLock();
+          Browser.isFullScreen = true;
+          if (resizeCanvas) Browser.setFullScreenCanvasSize();
+        } else if (resizeCanvas){
           Browser.setWindowedCanvasSize();
         }
-        if (Module['onFullScreen']) Module['onFullScreen'](isFullScreen);
+        if (Module['onFullScreen']) Module['onFullScreen'](Browser.isFullScreen);
       }
 
       function pointerLockChange() {
@@ -314,16 +315,16 @@ mergeInto(LibraryManager.library, {
                               document['webkitPointerLockElement'] === canvas;
       }
       
-      if( !(this.storedFullScreenHandler == null) ){
+      if (this.storedFullScreenHandler) {
         document.removeEventListener('fullscreenchange', this.storedFullScreenHandler, false);
         document.removeEventListener('mozfullscreenchange', this.storedFullScreenHandler, false);
         document.removeEventListener('webkitfullscreenchange', this.storedFullScreenHandler, false);
         this.storedFullScreenHandler = null;
       }
-      if( !(this.storedPointerLockHandler == null) ){
-        document.addEventListener('pointerlockchange', this.storedPointerLockHandler, false);
-        document.addEventListener('mozpointerlockchange', this.storedPointerLockHandler, false);
-        document.addEventListener('webkitpointerlockchange', this.storedPointerLockHandler, false);
+      if (this.storedPointerLockHandler) {
+        document.removeEventListener('pointerlockchange', this.storedPointerLockHandler, false);
+        document.removeEventListener('mozpointerlockchange', this.storedPointerLockHandler, false);
+        document.removeEventListener('webkitpointerlockchange', this.storedPointerLockHandler, false);
         this.storedPointerLockHandler = null;
       }
       
