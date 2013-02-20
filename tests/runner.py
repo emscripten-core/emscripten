@@ -7250,6 +7250,37 @@ def process(filename):
         '''
       self.do_run(src, 'missing!\nall ok\n')
 
+    def test_corruption_3(self):
+      if Settings.ASM_JS: return self.skip('cannot use corruption checks in asm')
+      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2 for actual test')
+
+      Settings.CORRUPTION_CHECK = 1
+
+      # realloc
+      src = r'''
+        #include <stdlib.h>
+        #include <stdio.h>
+        #include <assert.h>
+
+        void bye() {
+          printf("all ok\n");
+        }
+
+        int main(int argc, char **argv) {
+          atexit(bye);
+
+          char *buffer = (char*)malloc(100);
+          for (int i = 0; i < 100; i++) buffer[i] = (i*i)%256;
+          buffer = (char*)realloc(buffer, argc + 50);
+          for (int i = 0; i < argc + 50; i++) {
+            //printf("%d : %d : %d : %d\n", i, (int)(buffer + i), buffer[i], (char)((i*i)%256));
+            assert(buffer[i] == (char)((i*i)%256));
+          }
+          return 1;
+        }
+        '''
+      self.do_run(src, 'all ok\n')
+
     ### Integration tests
 
     def test_ccall(self):
