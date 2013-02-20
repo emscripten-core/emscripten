@@ -19,8 +19,8 @@ var CorruptionChecker = {
     } });
   },
   malloc: function(size) {
+    if (size <= 0) size = 1; // malloc(0) sometimes happens - just allocate a larger area, no harm
     CorruptionChecker.checkAll();
-    assert(size > 0); // some mallocs accept zero - fix your code if you want to use this tool
     size = (size+7)&(~7);
     var allocation = CorruptionChecker.realMalloc(size*(1+2*CorruptionChecker.BUFFER_FACTOR));
     var ptr = allocation + size*CorruptionChecker.BUFFER_FACTOR;
@@ -28,13 +28,17 @@ var CorruptionChecker = {
     CorruptionChecker.ptrs[ptr] = size;
     CorruptionChecker.fillBuffer(allocation, size*CorruptionChecker.BUFFER_FACTOR);
     CorruptionChecker.fillBuffer(allocation + size*(1+CorruptionChecker.BUFFER_FACTOR), size*CorruptionChecker.BUFFER_FACTOR);
+    //Module.print('malloc ' + size + ' ==> ' + [ptr, allocation]);
     return ptr;
   },
   free: function(ptr) {
+    if (!ptr) return; // ok to free(NULL), does nothing
     CorruptionChecker.checkAll();
     var size = CorruptionChecker.ptrs[ptr];
+    //Module.print('free ' + ptr + ' of size ' + size);
     assert(size);
     var allocation = ptr - size*CorruptionChecker.BUFFER_FACTOR;
+    //Module.print('free ' + ptr + ' of size ' + size + ' and allocation ' + allocation);
     delete CorruptionChecker.ptrs[ptr];
     CorruptionChecker.realFree(allocation);
   },

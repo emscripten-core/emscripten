@@ -7214,6 +7214,42 @@ def process(filename):
       for corrupt in [1]:
         self.do_run(src.replace('CORRUPT', str(corrupt)), 'Heap corruption detected!' if corrupt else 'All ok, 4209')
 
+    def test_corruption_2(self):
+      if Settings.ASM_JS: return self.skip('cannot use corruption checks in asm')
+      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2 for actual test')
+
+      Settings.SAFE_HEAP = 1
+      Settings.CORRUPTION_CHECK = 1
+
+      # test for free(0), malloc(0), etc.
+      src = r'''
+        #include <iostream>
+        #include <fstream>
+        #include <stdlib.h>
+        #include <stdio.h>
+
+        void bye() {
+          printf("all ok\n");
+        }
+
+        int main() {
+          atexit(bye);
+
+          std::string testPath = "/Script/WA-KA.txt";
+          std::fstream str(testPath.c_str(), std::ios::in | std::ios::binary);
+
+          if (str.is_open())
+          {
+            std::cout << "open!" << std::endl;
+          } else {
+            std::cout << "missing!" << std::endl;
+          }
+
+          return 1;
+        }
+        '''
+      self.do_run(src, 'missing!\nall ok\n')
+
     ### Integration tests
 
     def test_ccall(self):
