@@ -2491,6 +2491,7 @@ LibraryManager.library = {
         continue;
       }
 
+      // TODO: Support strings like "%5c" etc.
       if (format[formatIndex] === '%' && format[formatIndex+1] == 'c') {
         var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
         argIndex += Runtime.getNativeFieldSize('void*');
