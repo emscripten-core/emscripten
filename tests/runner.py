@@ -10591,6 +10591,9 @@ elif 'browser' in str(sys.argv):
     def test_cubegeom_fog(self):
       self.btest('cubegeom_fog.c', expected=['1617140399', '-898782526', '-946179526'])
 
+    def test_cubegeom_pre_vao(self):
+      self.btest('cubegeom_pre_vao.c', expected=['-1472804742', '-1626058463', '-2046234971'])
+
     def test_cube_explosion(self):
       self.btest('cube_explosion.c', expected=['667220544', '-1543354600', '-1485258415'])
 

@@ -993,6 +993,10 @@ var LibraryGL = {
     fogMode: 0x0800, // GL_EXP
     fogEnabled: false,
 
+    // VAO support
+    vaos: [],
+    currentVao: null,
+
     init: function() {
       GLEmulation.fogColor = new Float32Array(4);
 
@@ -1285,8 +1289,10 @@ var LibraryGL = {
         glBindBuffer(target, buffer);
         if (target == Module.ctx.ARRAY_BUFFER) {
           GL.currArrayBuffer = buffer;
+          if (GLEmulation.currentVao) GLEmulation.currentVao.arrayBuffer = buffer;
         } else if (target == Module.ctx.ELEMENT_ARRAY_BUFFER) {
           GL.currElementArrayBuffer = buffer;
+          if (GLEmulation.currentVao) GLEmulation.currentVao.elementArrayBuffer = buffer;
         }
       };
 
@@ -1329,6 +1335,26 @@ var LibraryGL = {
           return;
         }
         glHint(target, mode);
+      };
+
+      var glEnableVertexAttribArray = _glEnableVertexAttribArray;
+      _glEnableVertexAttribArray = function(index) {
+        glEnableVertexAttribArray(index);
+        if (GLEmulation.currentVao) GLEmulation.currentVao.enabledVertexAttribArrays[index] = 1;
+      };
+
+      var glDisableVertexAttribArray = _glDisableVertexAttribArray;
+      _glDisableVertexAttribArray = function(index) {
+        glDisableVertexAttribArray(index);
+        if (GLEmulation.currentVao) delete GLEmulation.currentVao.enabledVertexAttribArrays[index];
+      };
+
+      var glVertexAttribPointer = _glVertexAttribPointer;
+      _glVertexAttribPointer = function(index, size, type, normalized, stride, pointer) {
+        glVertexAttribPointer(index, size, type, normalized, stride, pointer);
+        if (GLEmulation.currentVao) { // TODO: avoid object creation here? likely not hot though
+          GLEmulation.currentVao.vertexAttribPointers[index] = [index, size, type, normalized, stride, pointer];
+        }
       };
     },
 
@@ -2406,6 +2432,54 @@ var LibraryGL = {
   glClientActiveTexture__sig: 'vi',
   glClientActiveTexture: function(texture) {
     GL.immediate.clientActiveTexture = texture - 0x84C0; // GL_TEXTURE0
+  },
+
+  // Vertex array object (VAO) support. TODO: when the WebGL extension is popular, use that and remove this code and GL.vaos
+  glGenVertexArrays__deps: ['$GLEMulation'],
+  glGenVertexArrays: function(n, vaos) {
+    for (var i = 0; i < n; i++) {
+      var id = GL.getNewId(GLEmulation.vaos); 
+      GLEmulation.vaos[id] = {
+        id: id,
+        arrayBuffer: 0,
+        elementArrayBuffer: 0,
+        enabledVertexAttribArrays: {},
+        vertexAttribPointers: {},
+      };
+      {{{ makeSetValue('vaos', 'i*4', 'id', 'i32') }}};
+    }
+  },
+  glDeleteVertexArrays: function(n, vaos) {
+    for (var i = 0; i < n; i++) {
+      var id = {{{ makeGetValue('vaos', 'i*4', 'i32') }}};
+      GLEmulation.vaos[id] = null;
+      if (GLEmulation.currentVao && GLEmulation.currentVao.id == id) GLEmulation.currentVao = null;
+    }
+  },
+  glBindVertexArray: function(vao) {
+    if (vao) {
+      // replay vao
+      if (GLEmulation.currentVao) _glBindVertexArray(0); // flush the old one out
+      var info = GLEmulation.vaos[vao];
+      _glBindBuffer(Module.ctx.ARRAY_BUFFER, info.arrayBuffer); // XXX overwrite current binding?
+      _glBindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, info.elementArrayBuffer);
+      for (var vaa in info.enabledVertexAttribArrays) {
+        _glEnableVertexAttribArray(vaa);
+      }
+      for (var vaa in info.vertexAttribPointers) {
+        _glVertexAttribPointer.apply(null, info.vertexAttribPointers[vaa]);
+      }
+      GLEmulation.currentVao = info; // set currentVao last, so the commands we ran here were not recorded
+    } else if (GLEmulation.currentVao) {
+      // undo vao
+      var info = GLEmulation.currentVao;
+      GLEmulation.currentVao = null; // set currentVao first, so the commands we run here are not recorded
+      _glBindBuffer(Module.ctx.ARRAY_BUFFER, 0); // XXX if one was there before we were bound?
+      _glBindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, 0);
+      for (var vaa in info.enabledVertexAttribArrays) {
+        _glDisableVertexAttribArray(vaa);
+      }
+    }
   },
 
   // OpenGL Immediate Mode matrix routines.
