@@ -207,10 +207,19 @@ int main(int argc, char *argv[])
     glNormalPointer(GL_BYTE, 32, (void*)12);
     glColorPointer(4, GL_UNSIGNED_BYTE, 32, (void*)28);
 
-    int temp; // test glGetPointerv
+    int temp; // test glGetPointerv, glGetIntegerv
     glGetPointerv(GL_VERTEX_ARRAY_POINTER, &temp); assert(temp == 0);
     glGetPointerv(GL_COLOR_ARRAY_POINTER, &temp); assert(temp == 28);
     glGetPointerv(GL_TEXTURE_COORD_ARRAY_POINTER, &temp); assert(temp == 16);
+    glGetIntegerv(GL_VERTEX_ARRAY_SIZE, &temp); assert(temp == 3);
+    glGetIntegerv(GL_VERTEX_ARRAY_TYPE, &temp); assert(temp == GL_FLOAT);
+    glGetIntegerv(GL_VERTEX_ARRAY_STRIDE, &temp); assert(temp == 32);
+    glGetIntegerv(GL_COLOR_ARRAY_SIZE, &temp); assert(temp == 4);
+    glGetIntegerv(GL_COLOR_ARRAY_TYPE, &temp); assert(temp == GL_UNSIGNED_BYTE);
+    glGetIntegerv(GL_COLOR_ARRAY_STRIDE, &temp); assert(temp == 32);
+    glGetIntegerv(GL_TEXTURE_COORD_ARRAY_SIZE, &temp); assert(temp == 2);
+    glGetIntegerv(GL_TEXTURE_COORD_ARRAY_TYPE, &temp); assert(temp == GL_FLOAT);
+    glGetIntegerv(GL_TEXTURE_COORD_ARRAY_STRIDE, &temp); assert(temp == 32);
 
     glBindTexture(GL_TEXTURE_2D, texture); // diffuse?
     glActiveTexture(GL_TEXTURE0);

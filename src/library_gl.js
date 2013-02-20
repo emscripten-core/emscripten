@@ -1074,6 +1074,51 @@ var LibraryGL = {
             return;
           }
           case 0x8871: pname = Module.ctx.MAX_COMBINED_TEXTURE_IMAGE_UNITS /* close enough */; break; // GL_MAX_TEXTURE_COORDS
+          case 0x807A: { // GL_VERTEX_ARRAY_SIZE
+            var attribute = GLImmediate.clientAttributes[GLImmediate.VERTEX];
+            {{{ makeSetValue('params', '0', 'attribute ? attribute.size : 0', 'i32') }}};
+            return;
+          }
+          case 0x807B: { // GL_VERTEX_ARRAY_TYPE
+            var attribute = GLImmediate.clientAttributes[GLImmediate.VERTEX];
+            {{{ makeSetValue('params', '0', 'attribute ? attribute.type : 0', 'i32') }}};
+            return;
+          }
+          case 0x807C: { // GL_VERTEX_ARRAY_STRIDE
+            var attribute = GLImmediate.clientAttributes[GLImmediate.VERTEX];
+            {{{ makeSetValue('params', '0', 'attribute ? attribute.stride : 0', 'i32') }}};
+            return;
+          }
+          case 0x8081: { // GL_COLOR_ARRAY_SIZE
+            var attribute = GLImmediate.clientAttributes[GLImmediate.COLOR];
+            {{{ makeSetValue('params', '0', 'attribute ? attribute.size : 0', 'i32') }}};
+            return;
+          }
+          case 0x8082: { // GL_COLOR_ARRAY_TYPE
+            var attribute = GLImmediate.clientAttributes[GLImmediate.COLOR];
+            {{{ makeSetValue('params', '0', 'attribute ? attribute.type : 0', 'i32') }}};
+            return;
+          }
+          case 0x8083: { // GL_COLOR_ARRAY_STRIDE
+            var attribute = GLImmediate.clientAttributes[GLImmediate.COLOR];
+            {{{ makeSetValue('params', '0', 'attribute ? attribute.stride : 0', 'i32') }}};
+            return;
+          }
+          case 0x8088: { // GL_TEXTURE_COORD_ARRAY_SIZE
+            var attribute = GLImmediate.clientAttributes[GLImmediate.TEXTURE0];
+            {{{ makeSetValue('params', '0', 'attribute ? attribute.size : 0', 'i32') }}};
+            return;
+          }
+          case 0x8089: { // GL_TEXTURE_COORD_ARRAY_TYPE
+            var attribute = GLImmediate.clientAttributes[GLImmediate.TEXTURE0];
+            {{{ makeSetValue('params', '0', 'attribute ? attribute.type : 0', 'i32') }}};
+            return;
+          }
+          case 0x808A: { // GL_TEXTURE_COORD_ARRAY_STRIDE
+            var attribute = GLImmediate.clientAttributes[GLImmediate.TEXTURE0];
+            {{{ makeSetValue('params', '0', 'attribute ? attribute.stride : 0', 'i32') }}};
+            return;
+          }
         }
         glGetIntegerv(pname, params);
       };
