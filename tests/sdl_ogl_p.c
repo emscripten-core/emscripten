@@ -28,6 +28,7 @@ REDISTRIBUTION OF THIS SOFTWARE.
 
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
 
 int main(int argc, char *argv[])
 {
@@ -135,6 +136,14 @@ int main(int argc, char *argv[])
     glEnableClientState(GL_TEXTURE_COORD_ARRAY);
     glTexCoordPointer(2, GL_FLOAT, 4*4, &vertexData[0]);
     glEnableClientState(GL_VERTEX_ARRAY);
+    // test to see that the state was set
+	GLboolean b = GL_FALSE;
+	glGetBooleanv(GL_VERTEX_ARRAY, &b);
+	if (b != GL_TRUE)
+	{
+		fprintf(stderr, "glGetBooleanv(GL_VERTEX_ARRAY) should return true!");
+	}
+	assert(b == GL_TRUE);
     glVertexPointer(2, GL_FLOAT, 4*4, &vertexData[2]);
 
     glDrawArrays(GL_QUADS, 0, 8);
