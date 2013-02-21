@@ -3719,6 +3719,8 @@
 			getUserMedia = navigator.mozGetUserMedia.bind(navigator);
 		else if(navigator.webkitGetUserMedia)
 			getUserMedia = navigator.webkitGetUserMedia.bind(navigator);
+		else
+			throw new Error('getUserMedia not supported');
 	} else {
 		getUserMedia = navigator.getUserMedia.bind(navigator);
 	}
@@ -3762,6 +3764,23 @@
   var UNRELIABLE_CHANNEL_OPTIONS = {
     outOfOrderAllowed: true,
     maxRetransmitNum: 0
+  };
+
+  function PendingConnectionAbortError(message) {
+    this.name = "PendingConnectionAbortError";
+    this.message = (message || "");
+	};
+	PendingConnectionAbortError.prototype = Error.prototype;
+
+	function ConnectionFailedError(message) {
+		this.name = "ConnectionFailedError";
+    this.message = (message || "");
+	};
+	ConnectionFailedError.prototype = Error.prototype;
+
+  var E = {
+  	PendingConnectionAbortError: PendingConnectionAbortError,
+  	ConnectionFailedError: ConnectionFailedError
   };
 
   function WebSocketBroker(brokerUrl) {
@@ -3891,6 +3910,9 @@
 	};
 	var nextDataConnectionPort = 1;
 	function WebRTCConnectProtocol(options) {
+		var that = this;
+		this.connectionTimeout = 10 * ONE_SECOND;
+		this.pingTimeout = 1 * ONE_SECOND;
 		this.onmessage = null;
 		this.oncomplete = null;
 		this.onerror = null;
@@ -3906,6 +3928,34 @@
 		};
 
 		this.peerConnection = null;
+
+		this.messageFlag = false;
+		this.connectionTimer = null;
+		this.pingTimer = null;
+
+		this.handleConnectionTimerExpired = function handleConnectionTimerExpired() {
+			if(that.complete)
+				return;
+	    that.connectionTimer = null;
+	    if(false === that.messageFlag) {
+	      callback(that, 'onmessage', {type: 'ping'});
+	      that.pingTimer = window.setTimeout(that.handlePingTimerExpired, that['pingTimeout']);
+	    } else {
+	      that.messageFlag = false;
+	      that.connectionTimer = window.setTimeout(handleConnectionTimerExpired, that['connectionTimeout']);
+	    }
+	  };
+	  this.handlePingTimerExpired = function handlePingTimerExpired() {
+	  	if(that.complete)
+	  		return;
+	    that.pingTimer = null;
+	    if(false === that.messageFlag) {
+	    	fail(that, 'onerror');
+	    } else {
+	      that.messageFlag = false;
+	      that.connectionTimer = window.setTimeout(that.handleConnectionTimerExpired, that['connectionTimeout']);
+	    }
+	  };
 	};
 	WebRTCConnectProtocol.prototype.initialize = function(cb) {
 		var that = this;
@@ -3938,6 +3988,7 @@
 				function(stream) {
 					that.peerConnection.addStream(stream);
 					that.options.streams['local'] = stream;
+					that.connectionTimer = window.setTimeout(that.handleConnectionTimerExpired, that['connectionTimeout']);
 					cb();
 				},
 				function(error) {
@@ -4031,6 +4082,7 @@
 					'port': that.options.ports.local
 				};
 				callback(that, 'onmessage', message);
+				that.complete = true;
 				var connection = new Connection(that.peerConnection, that.options, false);
 				callback(that, 'oncomplete', [connection]);
 			};
@@ -4050,15 +4102,20 @@
 		};
 
 		function complete() {
+			that.complete = true;
 			var connection = new Connection(that.peerConnection, that.options, true);
 			callback(that, 'oncomplete', [connection]);
 		};
 
 		this.initialize(setRemote);
 	};
+	WebRTCConnectProtocol.prototype.handleAbort = function handleAbort() {
+		fail(this, 'onerror', new Error(E.WebRTCConnectProtocolAbort));
+	};
 	WebRTCConnectProtocol.prototype.process = function process(message) {
 		var that = this;
 
+		this.messageFlag = true;
 		var type = message['type'];
 		switch(type) {
 			case 'ice':
@@ -4081,6 +4138,17 @@
 					'sdp': message['description']
 				};
 				this.handleAnswer(answer);
+				break;
+
+			case 'abort':
+				this.handleAbort();
+				break;
+
+			case 'ping':
+			  callback(that, 'onmessage', {type: 'pong'});
+			  break;
+
+			case 'pong':
 				break;
 
 			default:
@@ -4121,30 +4189,34 @@
 		var opened = 0;
 		function handleOpen(event) {
 			++ opened;
-			if(3 === opened) {
-				that.connected = true;
-				this.connectionTimer = window.setTimeout(handleConnectionTimeoutExpired, options['connectionTimeout']);
-				callback(that, 'onconnect', []);
-			}
+			if(3 === opened)
+        handleConnect();
 		};
+
+    function handleConnect() {
+      that.connected = true;
+      that.connectionTimer = window.setTimeout(handleConnectionTimerExpired, options['connectionTimeout']);
+      callback(that, 'onconnect', []);
+    };
 
 		var messageFlag = false;
 		this.connectionTimer = null;
 		this.pingTimer = null;
-		function handleConnectionTimeoutExpired() {
+		this.setupTimer = null;
+		function handleConnectionTimerExpired() {
 			if(!that.connected)
 				return
       this.connectionTimer = null;
       if(false === messageFlag) {
-        console.log('sending ping');
+        // console.log('sending ping');
         control.send('PING');
-        this.pingTimer = window.setTimeout(handlePingTimeoutExpired, options['pingTimeout']);
+        this.pingTimer = window.setTimeout(handlePingTimerExpired, options['pingTimeout']);
       } else {
         messageFlag = false;
-        this.connectionTimer = window.setTimeout(handleConnectionTimeoutExpired, options['connectionTimeout']);
+        this.connectionTimer = window.setTimeout(handleConnectionTimerExpired, options['connectionTimeout']);
       }
     };
-    function handlePingTimeoutExpired() {
+    function handlePingTimerExpired() {
     	if(!that.connected)
 				return
       this.pingTimer = null;
@@ -4153,8 +4225,14 @@
         that.close();
       } else {
         messageFlag = false;
-        this.connectionTimer = window.setTimeout(handleConnectionTimeoutExpired, options['connectionTimeout']);
+        this.connectionTimer = window.setTimeout(handleConnectionTimerExpired, options['connectionTimeout']);
       }
+    };
+    function handleSetupTimerExpired() {
+    	if(!that.connected) {
+    		that.close();
+    		fail(that, 'onerror', new ConnectionFailedError());
+    	}
     };
 
 		if(initiate) {
@@ -4199,12 +4277,12 @@
           if(that.connected) {
             var message = event.data;
             if('PING' === message) {
-              console.log('received ping, sending pong');
+              // console.log('received ping, sending pong');
               control.send('PONG');
             } else if('PONG' === message) {
-              console.log('received pong');
+              // console.log('received pong');
             } else if('QUIT' === message) {
-              console.log('received quit');
+              // console.log('received quit');
               that.close();
             }
           }
@@ -4242,12 +4320,12 @@
             if(that.connected) {
               var message = event.data;
               if('PING' === message) {
-                console.log('received ping, sending pong');
+                // console.log('received ping, sending pong');
                 control.send('PONG');
               } else if('PONG' === message) {
-                console.log('received pong');
+                // console.log('received pong');
               } else if('QUIT' === message) {
-                console.log('received quit');
+                // console.log('received quit');
                 that.connected = false;
                 that.close();
               }
@@ -4263,14 +4341,13 @@
           channel.binaryType = 'arraybuffer';
         }
 
-        if(reliable && unreliable && control) {
-          that.connected = true;
-          this.connectionTimer = window.setTimeout(handleConnectionTimeoutExpired, options['connectionTimeout']);
-          callback(that, 'onconnect', []);
-        }
+        if(reliable && unreliable && control)
+        	handleConnect();
 			};
 			that.peerConnection.connectDataConnection(options.ports.local, options.ports.remote);
 		}
+
+		this.setupTimer = window.setTimeout(handleSetupTimerExpired, 20 * ONE_SECOND);
 	};
 	Connection.prototype.close = function close() {
 		console.log('close connection');
@@ -4289,6 +4366,18 @@
 		}
 		this.peerConnection = null;
 		callback(this, 'ondisconnect', []);
+	};
+
+	function PendingConnection(route, incoming) {
+		this.route = route;
+		this.incoming = incoming;
+		this.proceed = true;
+	};
+	PendingConnection.prototype.accept = function accept() {
+		this.proceed = true;
+	};
+	PendingConnection.prototype.reject = function reject() {
+		this.proceed = false;
 	};
 
 	function Peer(brokerUrl, options) {
@@ -4331,13 +4420,23 @@
 					fail(that, 'onerror', 'pending connection but peer is not listening');
 					return;
 				}
-				callback(that, 'onpending', [from]);
+
+				var pendingConnection = new PendingConnection(from, /*incoming*/ true);
+				callback(that, 'onpending', [pendingConnection]);
+				if(!pendingConnection.accept)
+					return;
+
 				handshake = that.pending[from] = new WebRTCConnectProtocol(that.options);
 				handshake.oncomplete = function(connection) {
 					delete that.pending[from];
-					connection.route = from;
+					connection['route'] = from;
 					connection.onconnect = function() {
+						connection.onconnect = null;
+						connection.onerror = null;
 						callback(that, 'onconnection', [connection]);
+					};
+					connection.onerror = function(error) {
+						fail(that, 'onerror', error);
 					};
 				};
 				handshake.onmessage = function(message) {
@@ -4345,7 +4444,7 @@
 				};
 				handshake.onerror = function(error) {
 					delete that.pending[from];
-					callback(that, 'onerror', [error])
+					callback(that, 'onerror', [error]);
 				};
 			} else {
 				handshake = that.pending[from];
@@ -4378,11 +4477,15 @@
 		if(this.pending.hasOwnProperty(route))
 			throw new Error('already connecting to this host'); // FIXME: we can handle this better
 
-		callback(that, 'onpending', [route]);
+		var pendingConnection = new PendingConnection(route, /*incoming*/ false);
+		callback(that, 'onpending', [pendingConnection]);
+		if(!pendingConnection.accept)
+			return;
+
 		var handshake = this.pending[route] = new WebRTCConnectProtocol(this.options);
 		handshake.oncomplete = function(connection) {
 			delete that.pending[route];
-			connection.route = route;
+			connection['route'] = route;
 			connection.onconnect = function() {
 				callback(that, 'onconnection', [connection]);
 			};
@@ -4397,6 +4500,7 @@
 
 		handshake.initiate();
 	};
+	Peer.E = E;
 
 	return Peer;
 

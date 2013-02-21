@@ -6794,9 +6794,10 @@ LibraryManager.library = {
     peer: null,
     connections: {},
     portmap: {},
-    addrPool: [          , 0x0200000a, 0x0300000a, 0x0400000a, 0x0500000a,
+    localAddr: 0xfe00000a,
+    addrPool: [            0x0200000a, 0x0300000a, 0x0400000a, 0x0500000a,
                0x0600000a, 0x0700000a, 0x0800000a, 0x0900000a, 0x0a00000a,
-               0x0b00000a, 0x0c00000a, 0x0d00000a, 0x0e00000a],
+               0x0b00000a, 0x0c00000a, 0x0d00000a, 0x0e00000a], /* 0x0100000a is reserved */
     /*
     peer: {
       pc: null,
@@ -6870,26 +6871,44 @@ LibraryManager.library = {
 
     // Open the peer connection if we don't have it already
     if(null == Sockets.peer) {
+      var host = Module['host'];
       var broker = Module['webrtc']['broker'] || 'http://wrtcb.jit.su:80';
       var route = Module['webrtc']['session'];
       var peer = new Peer(broker);
+      var url = window.location.toString();
+      url = clearQuery(url, 'serve');
+      url = clearQuery(url, 'windowed');
+      var listenOptions = {
+        'url': url,
+        'listed': true,
+        'metadata': {
+          'name': 'BananaBread',
+          'connected': 1,
+          'connect-limit': Module['maxpeers']
+        }
+      };
       peer.onconnection = function(connection) {
         console.log('connected');
         var addr;
         // Assign 10.0.0.1 to the host
-        if(route && route === connection.route) {
+        if(route && route === connection['route']) {
           addr = 0x0100000a; // 10.0.0.1
         } else {
           addr = Sockets.addrPool.shift();
         }
-        connection.addr = addr;
+        connection['addr'] = addr;
         Sockets.connections[addr] = connection;
         connection.ondisconnect = function() {
           console.log('disconnect');
           // Don't return the host address (10.0.0.1) to the pool
-          if(!(route && route === Sockets.connections[addr].route))
+          if(!(route && route === Sockets.connections[addr]['route']))
             Sockets.addrPool.push(addr);
           delete Sockets.connections[addr];
+
+          if(host) {
+            -- listenOptions['metadata']['connected'];
+            peer.listen(listenOptions);
+          }
         };
         connection.onerror = function(error) {
           console.error(error);
@@ -6898,25 +6917,34 @@ LibraryManager.library = {
           handleMessage(addr, message.data);
         }
       };
-      peer.onpending = function(route) {
-        console.log('pending from: ', route);
-      };
-      if(route) {
-        peer.connect(route);
-      } else {
-        var url = window.location.toString();
-        url = clearQuery(url, 'serve');
-        url = clearQuery(url, 'windowed');
-        var options = {
-          'url': url,
-          'listed': true,
-          'metadata': {
-            'name': 'BananaBread'
+      peer.onpending = function(pending) {
+        console.log('pending from: ', pending['route'], '; initiated by: ', (pending['incoming']) ? 'remote' : 'local');
+        if(host) {
+          if(listenOptions['metadata']['connected'] < Module['maxpeers']) {
+            pending.accept();
+            ++ listenOptions['metadata']['connected'];
+            peer.listen(listenOptions);
+          } else {
+            pending.reject();
           }
-        };
+        }
+      };
+      peer.onerror = function(error) {
+        if(host) {
+          if(error instanceof Peer.E.PendingConnectionAbortError ||
+             error instanceof Peer.E.ConnectionFailedError) {
+            -- listenOptions['metadata']['connected'];
+            peer.listen(listenOptions);
+          }
+        }
+      };
+      if(!host && route) {
+        peer.connect(route);
+
+      } else {
         peer.onroute = function(route) {
           console.log(route);
-          peer.listen(options);
+          peer.listen(listenOptions);
         }
       }
       function handleMessage(addr, message) {
@@ -7019,13 +7047,13 @@ LibraryManager.library = {
     if (!info) return -1;
     if(addr) {
       info.port = _ntohs(getValue(addr + Sockets.sockaddr_in_layout.sin_port, 'i16'));
-      info.addr = 0x0f00000a; // 10.0.0.15
       // info.addr = getValue(addr + Sockets.sockaddr_in_layout.sin_addr, 'i32');
-      info.host = __inet_ntop_raw(info.addr);
     }
     if(!info.port) {
       info.port = _mkport();
     }
+    info.addr = Sockets.localAddr; // 10.0.0.254
+    info.host = __inet_ntop_raw(info.addr);
     info.close = function() {
       Sockets.portmap[info.port] = undefined;
     }
