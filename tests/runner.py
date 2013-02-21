@@ -100,14 +100,8 @@ class RunnerCore(unittest.TestCase):
       for temp_file in os.listdir(TEMP_DIR):
         if temp_file.endswith('.ll'):
           self.has_prev_ll = True
-    
+
   def tearDown(self):
-    if self.save_JS:
-      for name in os.listdir(self.get_dir()):
-        if name.endswith(('.o.js', '.cc.js')):
-          suff = '.'.join(name.split('.')[-2:])
-          shutil.copy(os.path.join(self.get_dir(), name),
-                      os.path.join(TEMP_DIR, self.id().replace('__main__.', '').replace('.test_', '.')+'.'+suff))
     if not self.save_dir:
       # rmtree() fails on Windows if the current working directory is inside the tree.
       os.chdir(os.path.join(self.get_dir(), '..'))
@@ -139,6 +133,12 @@ class RunnerCore(unittest.TestCase):
 
   def get_stdout_path(self):
     return os.path.join(self.get_dir(), 'stdout')
+
+  def hardcode_arguments(self, filename, args):
+    # Hardcode in the arguments, so js is portable without manual commandlinearguments
+    if not args: return
+    js = open(filename).read()
+    open(filename, 'w').write(js.replace('var ret = run();', 'var ret = run(%s);' % str(args)))
 
   def prep_ll_run(self, filename, ll_file, force_recompile=False, build_ll_hook=None):
     if ll_file.endswith(('.bc', '.o')):
@@ -435,6 +435,8 @@ process(sys.argv[1])
 
 sys.argv = map(lambda arg: arg if not arg.startswith('test_') else 'default.' + arg, sys.argv)
 
+test_index = 0
+
 if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'browser' not in str(sys.argv):
   # Tests
 
@@ -448,29 +450,35 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
   class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
     ## Does a complete test - builds, runs, checks output, etc.
     def do_run(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, additional_files=[], js_engines=None, post_build=None, basename='src.cpp', libraries=[], includes=[], force_c=False, build_ll_hook=None, extra_emscripten_args=[]):
-        if force_c or (main_file is not None and main_file[-2:]) == '.c':
-          basename = 'src.c'
-          Building.COMPILER = to_cc(Building.COMPILER)
+      if force_c or (main_file is not None and main_file[-2:]) == '.c':
+        basename = 'src.c'
+        Building.COMPILER = to_cc(Building.COMPILER)
 
-        dirname = self.get_dir()
-        filename = os.path.join(dirname, basename)
-        if not no_build:
-          self.build(src, dirname, filename, main_file=main_file, additional_files=additional_files, libraries=libraries, includes=includes,
-                     build_ll_hook=build_ll_hook, extra_emscripten_args=extra_emscripten_args, post_build=post_build)
+      dirname = self.get_dir()
+      filename = os.path.join(dirname, basename)
+      if not no_build:
+        self.build(src, dirname, filename, main_file=main_file, additional_files=additional_files, libraries=libraries, includes=includes,
+                   build_ll_hook=build_ll_hook, extra_emscripten_args=extra_emscripten_args, post_build=post_build)
 
-        # Run in both JavaScript engines, if optimizing - significant differences there (typed arrays)
-        if js_engines is None:
-          js_engines = JS_ENGINES
-        if Settings.USE_TYPED_ARRAYS:
-          js_engines = filter(lambda engine: engine != V8_ENGINE, js_engines) # V8 issue 1822
-        js_engines = filter(lambda engine: engine not in self.banned_js_engines, js_engines)
-        if len(js_engines) == 0: return self.skip('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
-        for engine in js_engines:
-          js_output = self.run_generated_code(engine, filename + '.o.js', args, output_nicerizer=output_nicerizer)
-          self.assertContained(expected_output, js_output.replace('\r\n', '\n'))
-          self.assertNotContained('ERROR', js_output)
+      # Run in both JavaScript engines, if optimizing - significant differences there (typed arrays)
+      if js_engines is None:
+        js_engines = JS_ENGINES
+      if Settings.USE_TYPED_ARRAYS:
+        js_engines = filter(lambda engine: engine != V8_ENGINE, js_engines) # V8 issue 1822
+      js_engines = filter(lambda engine: engine not in self.banned_js_engines, js_engines)
+      if len(js_engines) == 0: return self.skip('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
+      for engine in js_engines:
+        js_output = self.run_generated_code(engine, filename + '.o.js', args, output_nicerizer=output_nicerizer)
+        self.assertContained(expected_output, js_output.replace('\r\n', '\n'))
+        self.assertNotContained('ERROR', js_output)
 
-        #shutil.rmtree(dirname) # TODO: leave no trace in memory. But for now nice for debugging
+      #shutil.rmtree(dirname) # TODO: leave no trace in memory. But for now nice for debugging
+
+      if self.save_JS:
+        global test_index
+        self.hardcode_arguments(filename + '.o.js', args)
+        shutil.copyfile(filename + '.o.js', os.path.join(TEMP_DIR, str(test_index) + '.js'))
+        test_index += 1
 
     # No building - just process an existing .ll file (or .bc, which we turn into .ll)
     def do_ll_run(self, ll_file, expected_output=None, args=[], js_engines=None, output_nicerizer=None, post_build=None, force_recompile=False, build_ll_hook=None, extra_emscripten_args=[]):
@@ -11005,9 +11013,8 @@ elif 'benchmark' in str(sys.argv):
                       '-o', final_filename] + shared_args + emcc_args, stdout=PIPE, stderr=self.stderr_redirect).communicate()
       assert os.path.exists(final_filename), 'Failed to compile file: ' + output[0]
 
-      # Hardcode in the arguments, so js is portable without manual commandlinearguments
-      js = open(final_filename).read()
-      open(final_filename, 'w').write(js.replace('var ret = run();', 'var ret = run(%s);' % str(args)))
+      if self.save_JS:
+        self.hardcode_arguments(final_filename, args)
 
       # Run JS
       global total_times, tests_done
