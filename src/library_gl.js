@@ -1026,6 +1026,7 @@ var LibraryGL = {
           // XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support
           // it by forwarding to glEnableClientState
           _glEnableClientState(cap);
+          return;
         } else if (!(cap in validCapabilities)) {
           return;
         }
@@ -1040,6 +1041,7 @@ var LibraryGL = {
           // XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support
           // it by forwarding to glDisableClientState
           _glDisableClientState(cap);
+          return;
         } else if (!(cap in validCapabilities)) {
           return;
         }
