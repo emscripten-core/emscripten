@@ -470,6 +470,7 @@ function allocate(slab, types, allocator, ptr) {
 
     setValue(ret+i, curr, type);
 
+    // no need to look up size unless type changes, so cache it
     if (previousType !== type) {
       typeSize = Runtime.getNativeTypeSize(type);
       previousType = type;
