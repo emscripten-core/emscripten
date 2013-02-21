@@ -629,7 +629,8 @@ try:
   ignore_dynamic_linking = False
   shell_path = shared.path_from_root('src', 'shell.html')
   js_libraries = []
-  keep_debug = False
+  keep_llvm_debug = False
+  keep_js_debug = False
   bind = False
   jcache = False
   if use_cxx:
@@ -696,7 +697,8 @@ try:
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i] == '-g':
-      keep_debug = True
+      keep_llvm_debug = True
+      keep_js_debug = True
     elif newargs[i] == '--bind':
       bind = True
       newargs[i] = ''
@@ -767,7 +769,8 @@ try:
 
   if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
   if llvm_lto is None: llvm_lto = llvm_opts > 0
-  if opt_level <= 0: keep_debug = True # always keep debug in -O0
+  if opt_level <= 0: keep_llvm_debug = keep_js_debug = True # always keep debug in -O0
+  if opt_level > 0: keep_llvm_debug = False # JS optimizer wipes out llvm debug info from being visible
   if closure is None and opt_level == 3: closure = True
 
   if DEBUG: start_time = time.time() # done after parsing arguments, which might affect debug state
@@ -908,9 +911,9 @@ try:
       shared.Settings.CORRECT_OVERFLOWS = 1
 
   if shared.Settings.CORRECT_SIGNS >= 2 or shared.Settings.CORRECT_OVERFLOWS >= 2 or shared.Settings.CORRECT_ROUNDINGS >= 2:
-    keep_debug = True # must keep debug info to do line-by-line operations 
+    keep_llvm_debug = True # must keep debug info to do line-by-line operations 
 
-  if keep_debug and closure:
+  if (keep_llvm_debug or keep_js_debug) and closure:
     print >> sys.stderr, 'emcc: warning: disabling closure because debug info was requested'
     closure = False
 
@@ -1117,7 +1120,7 @@ try:
 
   # Optimize, if asked to
   if not LEAVE_INPUTS_RAW:
-    link_opts = [] if keep_debug and opt_level == 0 else ['-strip-debug'] # remove LLVM debug info in -O1+, since the optimizer removes it anyhow
+    link_opts = [] if keep_llvm_debug else ['-strip-debug'] # remove LLVM debug info in -O1+, since the optimizer removes it anyhow
     if llvm_opts > 0:
       shared.Building.llvm_opt(in_temp(target_basename + '.bc'), llvm_opts)
       if DEBUG: save_intermediate('opt', 'bc')
@@ -1249,7 +1252,7 @@ try:
     if DEBUG: print >> sys.stderr, 'emcc: running closure'
     final = shared.Building.closure_compiler(final)
     if DEBUG: save_intermediate('closure')
-  elif shared.Settings.RELOOP and not closure and not keep_debug:
+  elif shared.Settings.RELOOP and not closure and not keep_js_debug:
     # do this if closure is not enabled (it gives similar speedups), and we do not need to keep debug info around
     js_optimizer_queue += ['registerize']
 
