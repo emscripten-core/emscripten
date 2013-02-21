@@ -310,7 +310,7 @@ LibraryManager.library = {
         LazyUint8Array.prototype.setDataGetter = function(getter) {
           this.getter = getter;
         }
-  
+
         // Find length
         var xhr = new XMLHttpRequest();
         xhr.open('HEAD', url, false);
@@ -325,23 +325,23 @@ LibraryManager.library = {
         var chunkSize = 1024*1024; // Chunk size in bytes
 #endif
         if (!hasByteServing) chunkSize = datalength;
-  
+
         // Function to get a range from the remote URL.
         var doXHR = (function(from, to) {
           if (from > to) throw new Error("invalid range (" + from + ", " + to + ") or no bytes requested!");
           if (to > datalength-1) throw new Error("only " + datalength + " bytes available! programmer error!");
-  
+
           // TODO: Use mozResponseArrayBuffer, responseStream, etc. if available.
           var xhr = new XMLHttpRequest();
           xhr.open('GET', url, false);
           if (datalength !== chunkSize) xhr.setRequestHeader("Range", "bytes=" + from + "-" + to);
-  
+
           // Some hints to the browser that we want binary data.
           if (typeof Uint8Array != 'undefined') xhr.responseType = 'arraybuffer';
           if (xhr.overrideMimeType) {
             xhr.overrideMimeType('text/plain; charset=x-user-defined');
           }
-  
+
           xhr.send(null);
           if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
           if (xhr.response !== undefined) {
@@ -350,7 +350,7 @@ LibraryManager.library = {
             return intArrayFromString(xhr.responseText || '', true);
           }
         });
-  
+
         var lazyArray = new LazyUint8Array(chunkSize, datalength);
         lazyArray.setDataGetter(function(chunkNum) {
           var start = chunkNum * lazyArray.chunkSize;
@@ -4371,7 +4371,7 @@ LibraryManager.library = {
     }
     return pdest;
   },
-  
+
   strlwr__deps:['tolower'],
   strlwr: function(pstr){
     var i = 0;
@@ -4382,7 +4382,7 @@ LibraryManager.library = {
       i++;
     }
   },
-  
+
   strupr__deps:['toupper'],
   strupr: function(pstr){
     var i = 0;
@@ -4548,7 +4548,7 @@ LibraryManager.library = {
     if (size < 0) {
       size = 0;
     }
-    
+
     var newStr = _malloc(size + 1);
     {{{ makeCopyValues('newStr', 'ptr', 'size', 'null', null, 1) }}};
     {{{ makeSetValue('newStr', 'size', '0', 'i8') }}};
@@ -6736,7 +6736,7 @@ LibraryManager.library = {
   ]),
   /*
   gethostbyname__deps: ['__hostent_struct_layout'],
-  gethostbyname: function(name) {    
+  gethostbyname: function(name) {
     name = Pointer_stringify(name);
     console.log("gethostbyname: ", name);
       if (!_gethostbyname.id) {
@@ -6779,22 +6779,30 @@ LibraryManager.library = {
   // nonblocking
   // ==========================================================================
 
-  $Sockets__deps: ['__setErrNo', '$ERRNO_CODES', function() { return 'WebRTC = ' + read('webrtc.js') + ';\n' }],
+  $Sockets__deps: ['__setErrNo', '$ERRNO_CODES', function() { return 'Peer = ' + read('wrtcp.js') + ';\n' }],
   $Sockets: {
     BACKEND_WEBSOCKETS: 0,
     BACKEND_WEBRTC: 1,
     BUFFER_SIZE: 10*1024, // initial size
     MAX_BUFFER_SIZE: 10*1024*1024, // maximum size we will grow the buffer
-    
+
     backend: 1, // default to websockets
     nextFd: 1,
     fds: {},
     nextport: 1,
     maxport: 65535,
+    peer: null,
+    connections: {},
+    portmap: {},
+    addrPool: [0x0100000a, 0x0200000a, 0x0300000a, 0x0400000a, 0x0500000a,
+               0x0600000a, 0x0700000a, 0x0800000a, 0x0900000a, 0x0a00000a,
+               0x0b00000a, 0x0c00000a, 0x0d00000a, 0x0e00000a],
+    /*
     peer: {
       pc: null,
       binds: {}
     },
+    */
     sockaddr_in_layout: Runtime.generateStructInfo([
       ['i16', 'sin_family'],
       ['i16', 'sin_port'],
@@ -6829,91 +6837,98 @@ LibraryManager.library = {
       assert(!stream); // If WebRTC, we can only support datagram, not stream
     }
 
+    function setQuery(url, item) {
+      var urlParts = url.split('?');
+      if(urlParts.length < 2) {
+        urlParts[1] = item;
+      } else {
+        var query = urlParts[1].split('&');
+        query.push(item);
+        urlParts[1] = query.join('&');
+      }
+      return urlParts.join('?');
+    };
+
+    function clearQuery(url, item) {
+      var urlParts = url.split('?');
+      if(urlParts.length < 2) {
+        return url;
+      } else {
+        var query = urlParts[1].split('&');
+        var result = [];
+        query.forEach(function(queryPart) {
+          if(!queryPart.split('=')[0].match('^' + item + '$'))
+            result.push(queryPart);
+        });
+        urlParts[1] = result.join('&');
+        if(urlParts[1].length < 1)
+          return urlParts[0];
+        else
+          return urlParts.join('?');
+      }
+    };
+
     // Open the peer connection if we don't have it already
-    if(null == Sockets.peer.pc) {
-      var Query = {
-        parse: function parse(queryString) {
-          var result = {};
-          var parts = queryString.split('&');
-          parts.forEach(function(part) {
-            var key = part.split('=')[0];
-            if(!result.hasOwnProperty(key))
-              result[key] = [];
-            var value = part.split('=')[1];
-            if(undefined !== value)
-              result[key].push(value);
-          });
-          return result;
-        },
-        defined: function defined(params, key) {
-          return (params.hasOwnProperty(key));
-        },
-        stringify: function stringify(params) {
-          var result = [];
-          Object.keys(params).forEach(function(param) {
-            var key = param;
-            var values = params[key];
-            if(values.length > 0) {
-              values.forEach(function(value) {
-                result.push(key + '=' + value);
-              });
-            } else {
-              result.push(key);
-            }
-          });
-          return result.join('&');
+    if(null == Sockets.peer) {
+      var broker = Module['webrtc']['broker'] || 'http://wrtcb.jit.su:80';
+      var route = Module['webrtc']['session'];
+      var peer = new Peer(broker);
+      peer.onconnection = function(connection) {
+        console.log('connected');
+        var addr = Sockets.addrPool.shift();
+        connection.addr = addr;
+        Sockets.connections[addr] = connection;
+        connection.ondisconnect = function() {
+          console.log('disconnect');
+          delete Sockets.connections[connection['id']];
+          Sockets.addrPool.push(addr);
+        };
+        connection.onerror = function(error) {
+          console.error(error);
+        };
+        connection.unreliable.onmessage = function(message) {
+          handleMessage(addr, message.data);
         }
       };
-
-      var pc;
-      var broker = Module['webrtc']['broker'] || 'http://modeswit.ch:3000';
-      var sid = Module['webrtc']['session'];
-      if(sid) {      
-        pc = new WebRTC.Peer(broker, sid);
+      peer.onpending = function(route) {
+        console.log('pending from: ', route);
+      };
+      if(route) {
+        peer.connect(route);
       } else {
-        var location = window.location.toString().split('?');
-        var params = Query.parse(location[1]);
-        delete params['serve'];
-        location[1] = Query.stringify(params);        
+        var url = window.location.toString();
+        url = clearQuery(url, 'serve');
+        url = clearQuery(url, 'windowed');
         var options = {
-          'session': {
-            'url': location.join('?'),
-            'application': 'bananabread',
-            'list': true
+          'url': url,
+          'listed': true,
+          'metadata': {
+            'name': 'BananaBread'
           }
         };
-        pc = new WebRTC.Host(broker, options);
+        peer.onroute = function(route) {
+          console.log(route);
+          peer.listen(options);
+        }
       }
-      pc.onerror = function(error) {
-        console.error(error);
-      };
-      pc.onready = function(sid) {
-        console.log('host ready');
-      };
-      pc.onconnect = function() {
-        console.log('connected');
-      };
-      function handleMessage(message) {
-#if SOCKET_DEBUG        
+      function handleMessage(addr, message) {
+#if SOCKET_DEBUG
         Module.print("received " + message.byteLength + " raw bytes");
 #endif
         var header = new Uint16Array(message, 0, 2);
-        if(Sockets.peer.binds[header[1]]) {          
-          Sockets.peer.binds[header[1]].inQueue.push(message);
-          // console.log(Sockets.peer.binds[header[1]].inQueue.length + " messages queued for recv (onload)");
+        if(Sockets.portmap[header[1]]) {
+          Sockets.portmap[header[1]].inQueue.push([addr, message]);
         } else {
           console.log("unable to deliver message");
-        }        
+        }
       }
-      pc.unreliable.onmessage = function(message) {
-        handleMessage(message.data);
-      };
-      /*
-      pc.reliable.onmessage = function(message) {
-        handleMessage(message.data);
-      };
-      */
-      Sockets.peer.pc = pc;
+      window.onbeforeunload = function() {
+        var ids = Object.keys(Sockets.connections);
+        ids.forEach(function(id) {
+          Sockets.connections[id].close();
+        });
+      }
+      Sockets.peer = peer;
     }
 
     var INCOMING_QUEUE_LENGTH = 64;
@@ -6947,13 +6962,12 @@ LibraryManager.library = {
     };
 
     Sockets.fds[fd] = {
-      addr: 0x0100007f,
-      host: '127.0.0.1',
-      port: 0,
+      addr: null,
+      port: null,
       inQueue: new CircularBuffer(INCOMING_QUEUE_LENGTH),
       header: new Uint16Array(2),
       bound: false
-    };    
+    };
     return fd;
   },
 
@@ -6982,9 +6996,9 @@ LibraryManager.library = {
   mkport__deps: ['$Sockets'],
   mkport: function() {
     for(var i = 0; i < Sockets.maxport; ++ i) {
-      var port = Sockets.nextport ++;      
+      var port = Sockets.nextport ++;
       Sockets.nextport = (Sockets.nextport > Sockets.maxport) ? 1 : Sockets.nextport;
-      if(!Sockets.peer.binds[port]) {
+      if(!Sockets.portmap[port]) {
         return port;
       }
     }
@@ -6997,51 +7011,20 @@ LibraryManager.library = {
     if (!info) return -1;
     if(addr) {
       info.port = _ntohs(getValue(addr + Sockets.sockaddr_in_layout.sin_port, 'i16'));
-      // info.addr = getValue(addr + Sockets.sockaddr_in_layout.sin_addr, 'i32');      
-      // info.host = __inet_ntop_raw(info.addr);
+      info.addr = 0x0f00000a; // 10.0.0.15
+      // info.addr = getValue(addr + Sockets.sockaddr_in_layout.sin_addr, 'i32');
+      info.host = __inet_ntop_raw(info.addr);
     }
     if(!info.port) {
       info.port = _mkport();
     }
     info.close = function() {
-      Sockets.peer.binds[info.port] = undefined;
+      Sockets.portmap[info.port] = undefined;
     }
-    Sockets.peer.binds[info.port] = info;
+    Sockets.portmap[info.port] = info;
     console.log("bind: ", info.host, info.port);
     info.bound = true;
-    // Sockets.backends[Sockets.backend].connect(info, true);
   },
-
-  /*
-  recv__deps: ['$Sockets'],
-  recv: function(fd, buf, len, flags) {
-    var info = Sockets.fds[fd];
-    if (!info) return -1;
-    if (info.inQueue.length == 0) {
-      ___setErrNo(ERRNO_CODES.EAGAIN); // no data, and all sockets are nonblocking, so this is the right behavior
-      return 0; // should this be -1 like the spec says?
-    }
-    var buffer = info.inQueue.shift();
-#if SOCKET_DEBUG
-    Module.print('recv: ' + [Array.prototype.slice.call(buffer)]);
-#endif
-    if (len < buffer.length) {
-      buffer = buffer.subarray(0, len);
-    }
-    HEAPU8.set(buffer, buf);
-    return buffer.length;
-  },
-  */
-
-  /*
-  send__deps: ['$Sockets'],
-  send: function(fd, buf, len, flags) {
-    var info = Sockets.fds[fd];
-    if (!info) return -1;
-    info.sender(HEAPU8.subarray(buf, buf+len));
-    return len;
-  },
-  */
 
   sendmsg__deps: ['$Sockets', 'bind', '_inet_ntop_raw', 'ntohs'],
   sendmsg: function(fd, msg, flags) {
@@ -7050,19 +7033,19 @@ LibraryManager.library = {
     // if we are not connected, use the address info in the message
     if(!info.bound) {
       _bind(fd);
-    }    
-
-    if (!Sockets.peer.pc.connected) {
-      ___setErrNo(ERRNO_CODES.EWOULDBLOCK);
-      return -1;
     }
 
     var name = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_name', '*') }}};
-    assert(name, 'sendmsg on non-connected socket, and no name/address in the message');    
+    assert(name, 'sendmsg on non-connected socket, and no name/address in the message');
     var port = _ntohs(getValue(name + Sockets.sockaddr_in_layout.sin_port, 'i16'));
-    // var addr = getValue(name + Sockets.sockaddr_in_layout.sin_addr, 'i32');
+    var addr = getValue(name + Sockets.sockaddr_in_layout.sin_addr, 'i32');
+    var connection = Sockets.connections[addr];
     // var host = __inet_ntop_raw(addr);
-    // console.log("sendmsg: ", host, port);
+
+    if (!(connection && connection.connected)) {
+      ___setErrNo(ERRNO_CODES.EWOULDBLOCK);
+      return -1;
+    }
 
     var iov = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iov', 'i8*') }}};
     var num = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iovlen', 'i32') }}};
@@ -7085,54 +7068,49 @@ LibraryManager.library = {
       data.set(HEAPU8.subarray(currBuf, currBuf+currNum), ret);
       ret += currNum;
     }
-    // info.sender(buffer, port); // send all the iovs as a single message
+
     info.header[0] = info.port; // src port
     info.header[1] = port; // dst port
 #if SOCKET_DEBUG
       Module.print('sendmsg port: ' + info.header[0] + ' -> ' + info.header[1]);
       Module.print('sendmsg bytes: ' + data.length + ' | ' + Array.prototype.slice.call(data));
-#endif    
-    // console.log('sendmsg: header', info.header);
-    // console.log('sendmsg: actually sending ', Array.prototype.slice.call(data));
-    // console.log("sending " + data.buffer.byteLength + " bytes to port ", port);
+#endif
     var buffer = new Uint8Array(info.header.byteLength + data.byteLength);
     buffer.set(new Uint8Array(info.header.buffer));
-    buffer.set(data, info.header.byteLength);    
-    // Sockets.peer.pc.unreliable.send(blob);
-    Sockets.peer.pc.unreliable.channel.send(buffer.buffer);
+    buffer.set(data, info.header.byteLength);
+
+    connection.unreliable.send(buffer.buffer);
   },
 
   recvmsg__deps: ['$Sockets', 'bind', '__setErrNo', '$ERRNO_CODES', 'htons'],
   recvmsg: function(fd, msg, flags) {
     var info = Sockets.fds[fd];
     if (!info) return -1;
-    // if we are not connected, use the address info in the message    
+    // if we are not connected, use the address info in the message
     if (!info.port) {
       console.log('recvmsg on unbound socket');
       assert(false, 'cannot receive on unbound socket');
-    }    
+    }
 
     if (info.inQueue.length() == 0) {
       ___setErrNo(ERRNO_CODES.EWOULDBLOCK);
       return -1;
     }
-    // console.log(info.inQueue.length + " messages queued for recv (recvmsg)");
 
-    var message = info.inQueue.shift();
+    var entry = info.inQueue.shift();
+    var addr = entry[0];
+    var message = entry[1];
     var header = new Uint16Array(message, 0, info.header.length);
-    // console.log('recvmsg: header', header);
     var buffer = new Uint8Array(message, info.header.byteLength);
 
     var bytes = buffer.length;
-    // console.log("delivering " + bytes + " bytes on port " + header[1]);
-    // console.log('received', bytes, '|', Array.prototype.slice.call(buffer));
 #if SOCKET_DEBUG
     Module.print('recvmsg port: ' + header[1] + ' <- ' + header[0]);
     Module.print('recvmsg bytes: ' + bytes + ' | ' + Array.prototype.slice.call(buffer));
 #endif
     // write source
     var name = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_name', '*') }}};
-    {{{ makeSetValue('name', 'Sockets.sockaddr_in_layout.sin_addr', 'info.addr', 'i32') }}};
+    {{{ makeSetValue('name', 'Sockets.sockaddr_in_layout.sin_addr', 'addr', 'i32') }}};
     {{{ makeSetValue('name', 'Sockets.sockaddr_in_layout.sin_port', '_htons(header[0])', 'i16') }}};
     // write data
     var ret = bytes;
@@ -7157,20 +7135,6 @@ LibraryManager.library = {
     return ret;
   },
 
-  /*
-  recvfrom__deps: ['$Sockets', 'connect', 'recv'],
-  recvfrom: function(fd, buf, len, flags, addr, addrlen) {
-    var info = Sockets.fds[fd];
-    if (!info) return -1;
-    // if we are not connected, use the address info in the message
-    if (!info.connected) {
-      //var name = {{{ makeGetValue('addr', '0', '*') }}};
-      _connect(fd, addr, addrlen);
-    }
-    return _recv(fd, buf, len, flags);
-  },
-  */
-
   shutdown: function(fd, how) {
     var info = Sockets.fds[fd];
     if (!info) return -1;
@@ -7194,17 +7158,6 @@ LibraryManager.library = {
     console.log('ignoring setsockopt command');
     return 0;
   },
-
-  /*
-  bind__deps: ['connect'],
-  bind: function(fd, addr, addrlen) {
-    return _connect(fd, addr, addrlen);
-  },
-
-  listen: function(fd, backlog) {
-    return 0;
-  },
-  */
 
   accept: function(fd, addr, addrlen) {
     // TODO: webrtc queued incoming connections, etc.
