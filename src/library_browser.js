@@ -277,15 +277,18 @@ mergeInto(LibraryManager.library, {
 
     destroyContext: function(canvas, useWebGL, setInModule) {},
 
-    storedFullScreenHandler: null,
-    storedPointerLockHandler: null,
+    fullScreenHandlersInstalled: false,
+    lockPointer: undefined,
+    resizeCanvas: undefined,
     requestFullScreen: function(lockPointer, resizeCanvas) {
-      if (typeof lockPointer === 'undefined') lockPointer = true;
-      if (typeof resizeCanvas === 'undefined') resizeCanvas = false;
+      this.lockPointer = lockPointer;
+      this.resizeCanvas = resizeCanvas;
+      if (typeof this.lockPointer === 'undefined') this.lockPointer = true;
+      if (typeof this.resizeCanvas === 'undefined') this.resizeCanvas = false;
   
       var canvas = Module['canvas'];
       function fullScreenChange() {
-	Browser.isFullScreen = false;
+        Browser.isFullScreen = false;
         if ((document['webkitFullScreenElement'] || document['webkitFullscreenElement'] ||
              document['mozFullScreenElement'] || document['mozFullscreenElement'] ||
              document['fullScreenElement'] || document['fullscreenElement']) === canvas) {
@@ -300,10 +303,10 @@ mergeInto(LibraryManager.library, {
                                     document['mozCancelFullScreen'] ||
                                     document['webkitCancelFullScreen'];
           canvas.cancelFullScreen = canvas.cancelFullScreen.bind(document);
-          if (lockPointer) canvas.requestPointerLock();
+          if (Browser.lockPointer) canvas.requestPointerLock();
           Browser.isFullScreen = true;
-          if (resizeCanvas) Browser.setFullScreenCanvasSize();
-        } else if (resizeCanvas){
+          if (Browser.resizeCanvas) Browser.setFullScreenCanvasSize();
+        } else if (Browser.resizeCanvas){
           Browser.setWindowedCanvasSize();
         }
         if (Module['onFullScreen']) Module['onFullScreen'](Browser.isFullScreen);
@@ -314,29 +317,17 @@ mergeInto(LibraryManager.library, {
                               document['mozPointerLockElement'] === canvas ||
                               document['webkitPointerLockElement'] === canvas;
       }
-      
-      if (this.storedFullScreenHandler) {
-        document.removeEventListener('fullscreenchange', this.storedFullScreenHandler, false);
-        document.removeEventListener('mozfullscreenchange', this.storedFullScreenHandler, false);
-        document.removeEventListener('webkitfullscreenchange', this.storedFullScreenHandler, false);
-        this.storedFullScreenHandler = null;
-      }
-      if (this.storedPointerLockHandler) {
-        document.removeEventListener('pointerlockchange', this.storedPointerLockHandler, false);
-        document.removeEventListener('mozpointerlockchange', this.storedPointerLockHandler, false);
-        document.removeEventListener('webkitpointerlockchange', this.storedPointerLockHandler, false);
-        this.storedPointerLockHandler = null;
-      }
-      
-      this.storedFullScreenHandler = fullScreenChange;
-      document.addEventListener('fullscreenchange', this.storedFullScreenHandler, false);
-      document.addEventListener('mozfullscreenchange', this.storedFullScreenHandler, false);
-      document.addEventListener('webkitfullscreenchange', this.storedFullScreenHandler, false);
 
-      this.storedPointerLockHandler = pointerLockChange;
-      document.addEventListener('pointerlockchange', this.storedPointerLockHandler, false);
-      document.addEventListener('mozpointerlockchange', this.storedPointerLockHandler, false);
-      document.addEventListener('webkitpointerlockchange', this.storedPointerLockHandler, false);
+      if (!this.fullScreenHandlersInstalled) {
+        this.fullScreenHandlersInstalled = true;
+        document.addEventListener('fullscreenchange', fullScreenChange, false);
+        document.addEventListener('mozfullscreenchange', fullScreenChange, false);
+        document.addEventListener('webkitfullscreenchange', fullScreenChange, false);
+
+        document.addEventListener('pointerlockchange', pointerLockChange, false);
+        document.addEventListener('mozpointerlockchange', pointerLockChange, false);
+        document.addEventListener('webkitpointerlockchange', pointerLockChange, false);
+      }
 
       canvas.requestFullScreen = canvas['requestFullScreen'] ||
                                  canvas['mozRequestFullScreen'] ||
@@ -425,7 +416,7 @@ mergeInto(LibraryManager.library, {
       canvas.width = screen.width;
       canvas.height = screen.height;
       var flags = {{{ makeGetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'i32', 0, 1) }}};
-      flags = flags | 0x00800000;
+      flags = flags | 0x00800000; // set SDL_FULLSCREEN flag
       {{{ makeSetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'flags', 'i32') }}}
       Browser.updateResizeListeners();
     },
@@ -435,7 +426,7 @@ mergeInto(LibraryManager.library, {
       canvas.width = this.windowedWidth;
       canvas.height = this.windowedHeight;
       var flags = {{{ makeGetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'i32', 0, 1) }}};
-      flags = flags & ~0x00800000;
+      flags = flags & ~0x00800000; // clear SDL_FULLSCREEN flag
       {{{ makeSetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'flags', 'i32') }}}
       Browser.updateResizeListeners();
     }
