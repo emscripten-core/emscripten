@@ -6794,7 +6794,7 @@ LibraryManager.library = {
     peer: null,
     connections: {},
     portmap: {},
-    addrPool: [0x0100000a, 0x0200000a, 0x0300000a, 0x0400000a, 0x0500000a,
+    addrPool: [          , 0x0200000a, 0x0300000a, 0x0400000a, 0x0500000a,
                0x0600000a, 0x0700000a, 0x0800000a, 0x0900000a, 0x0a00000a,
                0x0b00000a, 0x0c00000a, 0x0d00000a, 0x0e00000a],
     /*
@@ -6875,13 +6875,21 @@ LibraryManager.library = {
       var peer = new Peer(broker);
       peer.onconnection = function(connection) {
         console.log('connected');
-        var addr = Sockets.addrPool.shift();
+        var addr;
+        // Assign 10.0.0.1 to the host
+        if(route && route === connection.route) {
+          addr = 0x0100000a; // 10.0.0.1
+        } else {
+          addr = Sockets.addrPool.shift();
+        }
         connection.addr = addr;
         Sockets.connections[addr] = connection;
         connection.ondisconnect = function() {
           console.log('disconnect');
-          delete Sockets.connections[connection['id']];
-          Sockets.addrPool.push(addr);
+          // Don't return the host address (10.0.0.1) to the pool
+          if(!(route && route === Sockets.connections[addr].route))
+            Sockets.addrPool.push(addr);
+          delete Sockets.connections[addr];
         };
         connection.onerror = function(error) {
           console.error(error);
