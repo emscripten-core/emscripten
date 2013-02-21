@@ -2845,6 +2845,23 @@ Exiting setjmp function, level: 0, prev_jmp: -1
         '''
         self.do_run(src, 'a1: 0\na2: 0\na3: 1\nb1: 0\nb2: 1\nb3: 1\nc1: 1\nc2: 1\nc3: 1\n')
 
+    def test_dynamic_cast_2(self):
+      if self.emcc_args is None: return self.skip('need libcxxabi')
+
+      src = r'''
+        #include <stdio.h>
+        #include <typeinfo>
+
+        class Class {};
+
+        int main() {
+            const Class* dp = dynamic_cast<const Class*>(&typeid(Class));
+            // should return dp == NULL,
+            printf("pointer: %p\n", dp);
+        }
+        '''
+      self.do_run(src, "pointer: (nil)")
+
     def test_funcptr(self):
         src = '''
           #include <stdio.h>

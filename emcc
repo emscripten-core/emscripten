@@ -1036,7 +1036,7 @@ try:
     def create_libcxxabi():
       if DEBUG: print >> sys.stderr, 'emcc: building libcxxabi for cache'
       os = []
-      for src in ['private_typeinfo.cpp']:
+      for src in ['private_typeinfo.cpp', 'typeinfo.cpp']:
         o = in_temp(src + '.o')
         execute([shared.PYTHON, shared.EMXX, shared.path_from_root('system', 'lib', 'libcxxabi', 'src', src), '-o', o], stdout=stdout, stderr=stderr)
         os.append(o)
