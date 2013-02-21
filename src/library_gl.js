@@ -2763,8 +2763,10 @@ var LibraryGL = {
   glRenderbufferStorageOES : 'glRenderbufferStorage',
   glCheckFramebufferStatusOES : 'glCheckFramebufferStatus',
   glDeleteFramebuffersOES : 'glDeleteFramebuffers',
-  glDeleteRenderbuffersOES : 'glDeleteRenderbuffers'
-
+  glDeleteRenderbuffersOES : 'glDeleteRenderbuffers',
+  glGenVertexArraysOES: 'glGenVertexArrays',
+  glDeleteVertexArraysOES: 'glDeleteVertexArrays',
+  glBindVertexArrayOES: 'glBindVertexArray',
 };
 
 // Simple pass-through functions. Starred ones have return values. [X] ones have X in the C name but not in the JS name
