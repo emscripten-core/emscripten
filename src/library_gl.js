@@ -118,6 +118,16 @@ var LibraryGL = {
                ((height - 1) * alignedRowSize + plainRowSize);
     },
 
+    getAttribute: function(cap) {
+      var result;
+      var attrib = GL.immediate.clientAttributeIndexForGLEnum(cap);
+      if ( attrib === null )
+        result = Module.ctx.getParameter(name_);
+      else
+        result = GL.immediate.enabledClientAttributes[attrib];
+      return result;
+    },
+
     getTexPixelData: function(type, format, width, height, pixels, internalFormat) {
       var sizePerPixel;
       switch (type) {
@@ -227,7 +237,7 @@ var LibraryGL = {
         {{{ makeSetValue('p', '0', '0', 'i32') }}};
         return;
     }
-    var result = Module.ctx.getParameter(name_);
+    var result = GL.getAttribute(name_);
     switch (typeof(result)) {
       case "number":
         {{{ makeSetValue('p', '0', 'result', 'i32') }}};
@@ -269,7 +279,7 @@ var LibraryGL = {
   },
 
   glGetFloatv: function(name_, p) {
-    var result = Module.ctx.getParameter(name_);
+    var result = GL.getAttribute(name_);
     switch (typeof(result)) {
       case "number":
         {{{ makeSetValue('p', '0', 'result', 'float') }}};
@@ -311,7 +321,8 @@ var LibraryGL = {
   },
 
   glGetBooleanv: function(name_, p) {
-    var result = Module.ctx.getParameter(name_);
+    var result = GL.getAttribute(name_);
+
     switch (typeof(result)) {
       case "number":
         {{{ makeSetValue('p', '0', 'result != 0', 'i8') }}};
@@ -1608,6 +1619,22 @@ var LibraryGL = {
       this.modifiedClientAttributes = true;
     },
 
+    clientAttributeIndexForGLEnum: function(cap) {
+      switch(cap) {
+        case 0x8078: // GL_TEXTURE_COORD_ARRAY
+        case 0x0de1: // GL_TEXTURE_2D - XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support it
+          return GL.immediate.TEXTURE0 + GL.immediate.clientActiveTexture; break;
+        case 0x8074: // GL_VERTEX_ARRAY
+          return GL.immediate.VERTEX; break;
+        case 0x8075: // GL_NORMAL_ARRAY
+          return GL.immediate.NORMAL; break;
+        case 0x8076: // GL_COLOR_ARRAY
+          return GL.immediate.COLOR; break;
+        default:
+          return null;
+        }
+    },
+
     // Temporary buffers
     MAX_TEMP_BUFFER_SIZE: {{{ GL_MAX_TEMP_BUFFER_SIZE }}},
     tempBufferIndexLookup: null,
@@ -2449,18 +2476,9 @@ var LibraryGL = {
   // ClientState/gl*Pointer
 
   glEnableClientState: function(cap, disable) {
-    var attrib;
-    switch(cap) {
-      case 0x8078: // GL_TEXTURE_COORD_ARRAY
-      case 0x0de1: // GL_TEXTURE_2D - XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support it
-        attrib = GL.immediate.TEXTURE0 + GL.immediate.clientActiveTexture; break;
-      case 0x8074: // GL_VERTEX_ARRAY
-        attrib = GL.immediate.VERTEX; break;
-      case 0x8075: // GL_NORMAL_ARRAY
-        attrib = GL.immediate.NORMAL; break;
-      case 0x8076: // GL_COLOR_ARRAY
-        attrib = GL.immediate.COLOR; break;
-      default:
+    var attrib = GL.immediate.clientAttributeIndexForGLEnum( cap );
+    if (attrib === null)
+    {
 #if ASSERTIONS
         Module.printErr('WARNING: unhandled clientstate: ' + cap);
 #endif
