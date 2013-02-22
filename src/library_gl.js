@@ -1056,6 +1056,18 @@ var LibraryGL = {
         return Module.ctx.isEnabled(cap);
       };
 
+      var glGetBooleanv = _glGetBooleanv;
+      _glGetBooleanv = function(pname, p) {
+      var result = null;
+        switch (pname) {
+          case 0x8074: // GL_VERTEX_ARRAY
+            result = GL.immediate.enabledClientAttributes[GL.immediate.VERTEX];
+            {{{ makeSetValue('p', '0', 'result === true ? 1 : 0', 'i8') }}};
+            return;
+        }
+        glGetBooleanv(pname, p);
+      };
+
       var glGetIntegerv = _glGetIntegerv;
       _glGetIntegerv = function(pname, params) {
         switch (pname) {
