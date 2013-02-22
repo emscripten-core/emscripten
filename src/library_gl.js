@@ -1469,6 +1469,9 @@ var LibraryGL = {
         case 'glIsFramebuffer': ret = {{{ Functions.getIndex('_glIsFramebuffer', true) }}}; break;
         case 'glCheckFramebufferStatus': ret = {{{ Functions.getIndex('_glCheckFramebufferStatus', true) }}}; break;
         case 'glRenderbufferStorage': ret = {{{ Functions.getIndex('_glRenderbufferStorage', true) }}}; break;
+        case 'glGenVertexArrays': ret = {{{ Functions.getIndex('_glGenVertexArrays', true) }}}; break;
+        case 'glDeleteVertexArrays': ret = {{{ Functions.getIndex('_glDeleteVertexArrays', true) }}}; break;
+        case 'glBindVertexArray': ret = {{{ Functions.getIndex('_glBindVertexArray', true) }}}; break;
       }
       if (!ret) Module.printErr('WARNING: getProcAddress failed for ' + name);
       return ret;
@@ -2469,9 +2472,11 @@ var LibraryGL = {
     if (disable && GL.immediate.enabledClientAttributes[attrib]) {
       GL.immediate.enabledClientAttributes[attrib] = false;
       GL.immediate.totalEnabledClientAttributes--;
+      if (GLEmulation.currentVao) delete GLEmulation.currentVao.enabledClientStates[cap];
     } else if (!disable && !GL.immediate.enabledClientAttributes[attrib]) {
       GL.immediate.enabledClientAttributes[attrib] = true;
       GL.immediate.totalEnabledClientAttributes++;
+      if (GLEmulation.currentVao) GLEmulation.currentVao.enabledClientStates[cap] = 1;
     }
     GL.immediate.modifiedClientAttributes = true;
   },
@@ -2509,6 +2514,7 @@ var LibraryGL = {
         elementArrayBuffer: 0,
         enabledVertexAttribArrays: {},
         vertexAttribPointers: {},
+        enabledClientStates: {},
       };
       {{{ makeSetValue('vaos', 'i*4', 'id', 'i32') }}};
     }
@@ -2533,6 +2539,9 @@ var LibraryGL = {
       for (var vaa in info.vertexAttribPointers) {
         _glVertexAttribPointer.apply(null, info.vertexAttribPointers[vaa]);
       }
+      for (var attrib in info.enabledClientStates) {
+        _glEnableClientState(attrib|0);
+      }
       GLEmulation.currentVao = info; // set currentVao last, so the commands we ran here were not recorded
     } else if (GLEmulation.currentVao) {
       // undo vao
@@ -2542,6 +2551,9 @@ var LibraryGL = {
       _glBindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, 0);
       for (var vaa in info.enabledVertexAttribArrays) {
         _glDisableVertexAttribArray(vaa);
+      }
+      for (var attrib in info.enabledClientStates) {
+        _glDisableClientState(attrib|0);
       }
     }
   },
