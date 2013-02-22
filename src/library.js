@@ -2491,6 +2491,17 @@ LibraryManager.library = {
         continue;
       }
 
+      // TODO: Support strings like "%5c" etc.
+      if (format[formatIndex] === '%' && format[formatIndex+1] == 'c') {
+        var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
+        argIndex += Runtime.getNativeFieldSize('void*');
+        fields++;
+        next = get();
+        {{{ makeSetValue('argPtr', 0, 'next', 'i8') }}}
+        formatIndex += 2;
+        continue;
+      }
+
       // remove whitespace
       while (1) {
         next = get();
