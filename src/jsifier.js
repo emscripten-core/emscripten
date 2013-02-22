@@ -478,8 +478,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           ident = '_' + ident;
         }
         var depsText = (deps ? '\n' + deps.map(addFromLibrary).filter(function(x) { return x != '' }).join('\n') : '');
-        // redirected idents just need a var, but no value assigned to them - it would be unused
-        var contentText = isFunction ? snippet : ('var ' + ident + (redirectedIdent ? '' : '=' + snippet) + ';');
+        var contentText = isFunction ? snippet : ('var ' + ident + '=' + snippet + ';');
         if (ASM_JS) {
           var sig = LibraryManager.library[ident.substr(1) + '__sig'];
           if (isFunction && sig && LibraryManager.library[ident.substr(1) + '__asm']) {
