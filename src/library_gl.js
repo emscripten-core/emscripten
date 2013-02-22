@@ -1898,27 +1898,35 @@ var LibraryGL = {
           }
 
           // If the array buffer is unchanged and the renderer as well, then we can avoid all the work here
-          // XXX We use some heuristics here, and this may not work in all cases. Try disabling this if you
-          // have odd glitches (by setting canSkip always to 0, or even cleaning up the renderer right
-          // after rendering)
+          // XXX We use some heuristics here, and this may not work in all cases. Try disabling GL_UNSAFE_OPTS if you
+          // have odd glitches
+#if GL_UNSAFE_OPTS
           var lastRenderer = GL.immediate.lastRenderer;
           var canSkip = this == lastRenderer &&
                         arrayBuffer == GL.immediate.lastArrayBuffer &&
                         (GL.currProgram || this.program) == GL.immediate.lastProgram &&
                         !GL.immediate.matricesModified;
           if (!canSkip && lastRenderer) lastRenderer.cleanup();
+#endif
           if (!GL.currArrayBuffer) {
             // Bind the array buffer and upload data after cleaning up the previous renderer
+#if GL_UNSAFE_OPTS
+            // Potentially unsafe, since lastArrayBuffer might not reflect the true array buffer in code that mixes immediate/non-immediate
             if (arrayBuffer != GL.immediate.lastArrayBuffer) {
+#endif
               Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, arrayBuffer);
+#if GL_UNSAFE_OPTS
             }
+#endif
             Module.ctx.bufferSubData(Module.ctx.ARRAY_BUFFER, start, GL.immediate.vertexData.subarray(start >> 2, end >> 2));
           }
+#if GL_UNSAFE_OPTS
           if (canSkip) return;
           GL.immediate.lastRenderer = this;
           GL.immediate.lastArrayBuffer = arrayBuffer;
           GL.immediate.lastProgram = GL.currProgram || this.program;
           GL.immediate.matricesModified = false;
+#endif
 
           if (!GL.currProgram) {
             Module.ctx.useProgram(this.program);
@@ -1994,9 +2002,11 @@ var LibraryGL = {
             Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, null);
           }
 
+#if GL_UNSAFE_OPTS
           GL.immediate.lastRenderer = null;
           GL.immediate.lastArrayBuffer = null;
           GL.immediate.lastProgram = null;
+#endif
           GL.immediate.matricesModified = true;
         }
       };
@@ -2241,6 +2251,10 @@ var LibraryGL = {
       if (emulatedElementArrayBuffer) {
         Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, GL.buffers[GL.currElementArrayBuffer] || null);
       }
+
+#if GL_UNSAFE_OPTS == 0
+      renderer.cleanUp();
+#endif
     }
   },
 
