@@ -1511,7 +1511,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         print('// ASM_LIBRARY FUNCTIONS');
         function fix(f) { // fix indenting to not confuse js optimizer
           f = f.substr(f.indexOf('f')); // remove initial spaces before 'function'
-          f = f.substr(0, f.lastIndexOf('\n')+1); // remove spaces and last }
+          f = f.substr(0, f.lastIndexOf('\n')+1); // remove spaces and last }  XXX assumes function has multiple lines
           return f + '}'; // add unindented } to match function
         }
         print(asmLibraryFunctions.map(fix).join('\n'));
