@@ -1434,8 +1434,70 @@ var LibrarySDL = {
     return (SDL.music.audio && !SDL.music.audio.paused) ? 1 : 0;
   },
 
+  // http://www.libsdl.org/projects/SDL_mixer/docs/SDL_mixer_38.html#SEC38
+  // "Note: Does not check if the channel has been paused."
+  Mix_Playing: function(id) {
+    if (id === -1)
+    {
+        var count = 0;
+        for (var i = 0; i<SDL.audios.length;i++)
+          count += SDL.Mix_Playing(i);
+        return count;
+    }
+    var info = SDL.audios[id];
+    if (info && info.audio && !info.audio.playing)
+      return 1;
+    return 0;
+  },
+  
+  Mix_Pause: function(id) {
+    if (id === -1)
+    {
+        for (var i = 0; i<SDL.audios.length;i++)
+          SDL.Mix_Pause(i);
+        return;
+    }
+    var info = SDL.audios[id];
+    if (info && info.audio)
+    {
+      console.log("paused " + id);
+      info.audio.pause();
+    }
+  },
+  
+  // http://www.libsdl.org/projects/SDL_mixer/docs/SDL_mixer_39.html#SEC39
+  Mix_Paused: function(id) {
+    if (id === -1)
+    {
+        var pausedCount = 0;
+        for (var i = 0; i<SDL.audios.length;i++)
+          pausedCount += SDL.Mix_Paused(i);
+        return pausedCount;
+    }
+    var info = SDL.audios[id];
+    if (info && info.audio && info.audio.paused)
+      return 1;
+    return 0;
+  },
+
   Mix_PausedMusic: function() {
     return (SDL.music.audio && SDL.music.audio.paused) ? 1 : 0;
+  },
+
+  // http://www.libsdl.org/projects/SDL_mixer/docs/SDL_mixer_33.html#SEC33
+  Mix_Resume: function(id) {
+    if (id === -1)
+    {
+        for (var i = 0; i<SDL.audios.length;i++)
+          SDL.Mix_Resume(i);
+        return;
+    }
+    var info = SDL.audios[id];
+    if (info && info.audio)
+    {
+      console.log("resumed " + id);
+      info.audio.play();
+    }
   },
 
   // SDL TTF
