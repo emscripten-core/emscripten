@@ -2253,7 +2253,7 @@ var LibraryGL = {
       }
 
 #if GL_UNSAFE_OPTS == 0
-      renderer.cleanUp();
+      renderer.cleanup();
 #endif
     }
   },
