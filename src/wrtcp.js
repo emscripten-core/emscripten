@@ -3911,6 +3911,7 @@
 	var nextDataConnectionPort = 1;
 	function WebRTCConnectProtocol(options) {
 		var that = this;
+		// FIXME: these timeouts should be configurable
 		this.connectionTimeout = 10 * ONE_SECOND;
 		this.pingTimeout = 1 * ONE_SECOND;
 		this.onmessage = null;
@@ -4347,7 +4348,8 @@
 			that.peerConnection.connectDataConnection(options.ports.local, options.ports.remote);
 		}
 
-		this.setupTimer = window.setTimeout(handleSetupTimerExpired, 20 * ONE_SECOND);
+		// FIXME: this timeout should be configurable
+		this.setupTimer = window.setTimeout(handleSetupTimerExpired, 90 * ONE_SECOND);
 	};
 	Connection.prototype.close = function close() {
 		console.log('close connection');
