@@ -507,7 +507,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         item.JS = addFromLibrary(shortident);
       } else {
         item.JS = 'var ' + item.ident + '; // stub for ' + item.ident;
-        if (WARN_ON_UNDEFINED_SYMBOLS) {
+        if (WARN_ON_UNDEFINED_SYMBOLS || ASM_JS) { // always warn on undefs in asm, since it breaks validation
           warn('Unresolved symbol: ' + item.ident);
         }
       }

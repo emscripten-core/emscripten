@@ -8771,6 +8771,21 @@ f.close()
 
       self.assertContained('result: 62', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+    def test_asm_undefined(self):
+      src = r'''
+        #include <stdio.h>
+        extern void doit();
+        int main(int argc, char **argv) {
+          if (argc == 121) doit();
+          printf("done\n");
+          return 1;
+        }
+      '''
+      filename = self.in_dir('src.cpp')
+      open(filename, 'w').write(src)
+      out, err = Popen([PYTHON, EMCC, filename, '-s', 'ASM_JS=1', '-O2'], stderr=PIPE).communicate()
+      assert 'Warning: Unresolved symbol' in err, 'always warn on undefs in asm, since it breaks validation'
+
     def test_redundant_link(self):
       lib = "int mult() { return 1; }"
       lib_name = os.path.join(self.get_dir(), 'libA.c')
