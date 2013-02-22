@@ -996,6 +996,7 @@ var LibraryGL = {
     // VAO support
     vaos: [],
     currentVao: null,
+    enabledVertexAttribArrays: {}, // helps with vao cleanups
 
     init: function() {
       GLEmulation.fogColor = new Float32Array(4);
@@ -1390,12 +1391,14 @@ var LibraryGL = {
       var glEnableVertexAttribArray = _glEnableVertexAttribArray;
       _glEnableVertexAttribArray = function(index) {
         glEnableVertexAttribArray(index);
+        GLEmulation.enabledVertexAttribArrays[index] = 1;
         if (GLEmulation.currentVao) GLEmulation.currentVao.enabledVertexAttribArrays[index] = 1;
       };
 
       var glDisableVertexAttribArray = _glDisableVertexAttribArray;
       _glDisableVertexAttribArray = function(index) {
         glDisableVertexAttribArray(index);
+        delete GLEmulation.enabledVertexAttribArrays[index];
         if (GLEmulation.currentVao) delete GLEmulation.currentVao.enabledVertexAttribArrays[index];
       };
 
@@ -2527,9 +2530,18 @@ var LibraryGL = {
     }
   },
   glBindVertexArray: function(vao) {
+    // undo vao-related things, wipe the slate clean, both for vao of 0 or an actual vao
+    GLEmulation.currentVao = null; // make sure the commands we run here are not recorded
+    _glBindBuffer(Module.ctx.ARRAY_BUFFER, 0); // XXX if one was there before we were bound?
+    _glBindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, 0);
+    for (var vaa in GLEmulation.enabledVertexAttribArrays) {
+      Module.ctx.disableVertexAttribArray(vaa);
+    }
+    GLEmulation.enabledVertexAttribArrays = {};
+    GL.immediate.enabledClientAttributes = [0, 0];
+    GL.immediate.totalEnabledClientAttributes = 0;
     if (vao) {
       // replay vao
-      if (GLEmulation.currentVao) _glBindVertexArray(0); // flush the old one out
       var info = GLEmulation.vaos[vao];
       _glBindBuffer(Module.ctx.ARRAY_BUFFER, info.arrayBuffer); // XXX overwrite current binding?
       _glBindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, info.elementArrayBuffer);
@@ -2543,18 +2555,6 @@ var LibraryGL = {
         _glEnableClientState(attrib|0);
       }
       GLEmulation.currentVao = info; // set currentVao last, so the commands we ran here were not recorded
-    } else if (GLEmulation.currentVao) {
-      // undo vao
-      var info = GLEmulation.currentVao;
-      GLEmulation.currentVao = null; // set currentVao first, so the commands we run here are not recorded
-      _glBindBuffer(Module.ctx.ARRAY_BUFFER, 0); // XXX if one was there before we were bound?
-      _glBindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, 0);
-      for (var vaa in info.enabledVertexAttribArrays) {
-        _glDisableVertexAttribArray(vaa);
-      }
-      for (var attrib in info.enabledClientStates) {
-        _glDisableClientState(attrib|0);
-      }
     }
   },
 
