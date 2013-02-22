@@ -332,7 +332,7 @@ function makeInvoker(name, argCount, argTypes, invoker, fn) {
         var args = new Array(argCount);
         args[0] = fn;
         for (var i = 1; i < argCount; ++i) {
-            args[i] = argTypes[i].toWireType(destructors, arguments[i-1]);
+            args[i] = argTypes[i].toWireType(destructors, arguments[i - 1]);
         }
         var rv = invoker.apply(null, args);
         if (argTypes[0].fromWireTypeAutoDowncast) {
@@ -800,9 +800,9 @@ function __embind_register_class_constructor(
                 throw new BindingError('emscripten binding ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
             }
             var destructors = [];
-            var args = new Array(argCount-1);
+            var args = new Array(argCount - 1);
             for (var i = 1; i < argCount; ++i) {
-                args[i-1] = argTypes[i].toWireType(destructors, arguments[i-1]);
+                args[i - 1] = argTypes[i].toWireType(destructors, arguments[i - 1]);
             }
 
             var ptr = rawConstructor.apply(null, args);
@@ -843,7 +843,7 @@ function __embind_register_class_method(
             args[0] = this.$$.ptr;
             args[1] = memberFunction;
             for (var i = 1; i < argCount; ++i) {
-                args[i + 1] = argTypes[i].toWireType(destructors, arguments[i-1]);
+                args[i + 1] = argTypes[i].toWireType(destructors, arguments[i - 1]);
             }
             var rv = rawInvoker.apply(null, args);
             if (argTypes[0].fromWireTypeAutoDowncast) {
@@ -902,7 +902,7 @@ function __embind_register_class_operator_call(
             var args = new Array(argCount);
             args[0] = this.$$.ptr;
             for (var i = 1; i < argCount; ++i) {
-                args[i] = argTypes[i].toWireType(destructors, arguments[i-1]);
+                args[i] = argTypes[i].toWireType(destructors, arguments[i - 1]);
             }
 
             var rv = argTypes[0].fromWireType(rawInvoker.apply(null, args));

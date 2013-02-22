@@ -579,22 +579,18 @@ namespace emscripten {
     ////////////////////////////////////////////////////////////////////////////////
 
     template<typename PointerType>
-    class smart_ptr {
-    public:
-        smart_ptr(const char* name) {
-            using namespace internal;
-            typedef typename PointerType::element_type PointeeType;
-
-            registerStandardTypes();
-            _embind_register_smart_ptr(
-                 TypeID<PointerType>::get(),
-                 TypeID<PointeeType>::get(),
-                 name,
-                 reinterpret_cast<GenericFunction>(&raw_smart_pointer_constructor<PointeeType*>),
-                 reinterpret_cast<GenericFunction>(&raw_destructor<PointerType>),
-                 reinterpret_cast<GenericFunction>(&get_pointee<PointerType>));
-
-        }
+    void smart_ptr(const char* name) {
+        using namespace internal;
+        typedef typename PointerType::element_type PointeeType;
+        
+        registerStandardTypes();
+        _embind_register_smart_ptr(
+            TypeID<PointerType>::get(),
+            TypeID<PointeeType>::get(),
+            name,
+            reinterpret_cast<GenericFunction>(&raw_smart_pointer_constructor<PointeeType*>),
+            reinterpret_cast<GenericFunction>(&raw_destructor<PointerType>),
+            reinterpret_cast<GenericFunction>(&get_pointee<PointerType>));
     };
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -630,13 +626,6 @@ namespace emscripten {
             }
         };
 
-        /*
-          void assertInitialized() {
-          if (!jsobj) {
-          internal::_embind_fatal_error(
-          "Cannot invoke call on uninitialized Javascript interface wrapper.", "JSInterface");
-          }
-          }*/
         val wrapped;
     };
 
@@ -670,6 +659,21 @@ namespace emscripten {
                 args.count,
                 args.types,
                 reinterpret_cast<GenericFunction>(&raw_constructor<ClassType, ConstructorArgs...>));
+            return *this;
+        }
+
+        template<typename SmartPtr, typename... Args>
+        class_& constructor(SmartPtr (*factory)(Args...)) {
+            using namespace internal;
+
+            smart_ptr<SmartPtr>("SmartPtr");
+
+            typename WithPolicies<>::template ArgTypeList<void, ConstructorArgs...> args;
+            _embind_register_class_smart_ptr_constructor(
+                TypeID<ClassType>::get(),
+                args.count,
+                args.types,
+                reinterpret_cast<GenericFunction>(&raw_smart_ptr_constructor
             return *this;
         }
 
