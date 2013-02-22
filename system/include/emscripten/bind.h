@@ -291,9 +291,6 @@ namespace emscripten {
             );
         }
 
-//        template<typename PointerType>
-//        void nullDeallocator(PointerType* p) {}
-
         template<typename PointerType>
         typename std::shared_ptr<PointerType> raw_smart_pointer_constructor(PointerType *ptr, std::shared_ptr<PointerType> basePtr, void (PointerType*)) {
             return std::shared_ptr<PointerType>(basePtr, ptr);
@@ -668,12 +665,14 @@ namespace emscripten {
 
             smart_ptr<SmartPtr>("SmartPtr");
 
-            typename WithPolicies<>::template ArgTypeList<void, ConstructorArgs...> args;
+            typename WithPolicies<>::template ArgTypeList<void, Args...> args;
+            /*
             _embind_register_class_smart_ptr_constructor(
                 TypeID<ClassType>::get(),
                 args.count,
                 args.types,
                 reinterpret_cast<GenericFunction>(&raw_smart_ptr_constructor
+            */
             return *this;
         }
 
