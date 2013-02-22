@@ -2546,6 +2546,7 @@ var LibraryGL = {
   glBindVertexArray: function(vao) {
     // undo vao-related things, wipe the slate clean, both for vao of 0 or an actual vao
     GLEmulation.currentVao = null; // make sure the commands we run here are not recorded
+    if (GL.immediate.lastRenderer) GL.immediate.lastRenderer.cleanup();
     _glBindBuffer(Module.ctx.ARRAY_BUFFER, 0); // XXX if one was there before we were bound?
     _glBindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, 0);
     for (var vaa in GLEmulation.enabledVertexAttribArrays) {
