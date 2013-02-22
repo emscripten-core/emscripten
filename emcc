@@ -646,7 +646,8 @@ try:
   for i in range(len(newargs)):
     newargs[i] = newargs[i].strip() # On Windows Vista (and possibly others), excessive spaces in the command line leak into the items in this array, so trim e.g. 'foo.cpp ' -> 'foo.cpp'
     if newargs[i].startswith('-O'):
-      requested_level = newargs[i][2]
+      # Let -O default to -O2, which is what gcc does.
+      requested_level = newargs[i][2:] or '2'
       if requested_level == 's':
         print >> sys.stderr, 'emcc: warning: -Os is ignored (use -O0, -O1, -O2)'
       else:
