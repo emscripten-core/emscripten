@@ -2540,6 +2540,7 @@ var LibraryGL = {
     GLEmulation.enabledVertexAttribArrays = {};
     GL.immediate.enabledClientAttributes = [0, 0];
     GL.immediate.totalEnabledClientAttributes = 0;
+    GL.immediate.modifiedClientAttributes = true;
     if (vao) {
       // replay vao
       var info = GLEmulation.vaos[vao];
