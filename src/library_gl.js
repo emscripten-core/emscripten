@@ -2522,6 +2522,7 @@ var LibraryGL = {
 
   // Vertex array object (VAO) support. TODO: when the WebGL extension is popular, use that and remove this code and GL.vaos
   glGenVertexArrays__deps: ['$GLEMulation'],
+  glGenVertexArrays__sig: ['vii'],
   glGenVertexArrays: function(n, vaos) {
     for (var i = 0; i < n; i++) {
       var id = GL.getNewId(GLEmulation.vaos); 
@@ -2536,6 +2537,7 @@ var LibraryGL = {
       {{{ makeSetValue('vaos', 'i*4', 'id', 'i32') }}};
     }
   },
+  glDeleteVertexArrays__sig: ['vii'],
   glDeleteVertexArrays: function(n, vaos) {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('vaos', 'i*4', 'i32') }}};
@@ -2543,6 +2545,7 @@ var LibraryGL = {
       if (GLEmulation.currentVao && GLEmulation.currentVao.id == id) GLEmulation.currentVao = null;
     }
   },
+  glBindVertexArray__sig: ['vi'],
   glBindVertexArray: function(vao) {
     // undo vao-related things, wipe the slate clean, both for vao of 0 or an actual vao
     GLEmulation.currentVao = null; // make sure the commands we run here are not recorded
