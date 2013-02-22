@@ -2767,6 +2767,7 @@ var LibraryGL = {
   glGenVertexArraysOES: 'glGenVertexArrays',
   glDeleteVertexArraysOES: 'glDeleteVertexArrays',
   glBindVertexArrayOES: 'glBindVertexArray',
+  glFramebufferTexture2DOES: 'glFramebufferTexture2D'
 };
 
 // Simple pass-through functions. Starred ones have return values. [X] ones have X in the C name but not in the JS name
