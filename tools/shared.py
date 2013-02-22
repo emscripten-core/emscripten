@@ -663,6 +663,9 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
   def make(args, stdout=None, stderr=None, env=None):
     if env is None:
       env = Building.get_building_env()
+    if not args:
+      print >> sys.stderr, 'Error: Executable to run not specified.'
+      sys.exit(1)
     #args += ['VERBOSE=1']
     try:
       Popen(args, stdout=stdout, stderr=stderr, env=env).communicate()
