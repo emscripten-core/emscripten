@@ -742,6 +742,8 @@ Module['writeArrayToMemory'] = writeArrayToMemory;
 {{{ unSign }}}
 {{{ reSign }}}
 
+if (!Math.imul) Math.imul = function(x, y) { return (x*y)|0 }; // # not a real polyfill since semantics not identical, but close and fast
+
 // A counter of dependencies for calling run(). If we need to
 // do asynchronous work before running, increment this and
 // decrement it. Incrementing must happen in a place like

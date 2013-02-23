@@ -1046,10 +1046,8 @@ function asmMultiplyI32(a, b) {
   if ((isNumber(a) && Math.abs(a) < TWO_TWENTY) || (isNumber(b) && Math.abs(b) < TWO_TWENTY)) {
     return '(((' + a + ')*(' + b + '))&-1)'; // small enough to emit directly as a multiply
   }
-  if (USE_MATH_IMUL) {
-    return 'Math.imul(' + a + ',' + b + ')';
-  }
-  return '(~~(+((' + a + ')|0) * +((' + b + ')|0)))';
+  return 'Math.imul(' + a + ',' + b + ')';
+  // non-imul version: return '(~~(+((' + a + ')|0) * +((' + b + ')|0)))';
 }
 
 function asmFloatToInt(x) {
