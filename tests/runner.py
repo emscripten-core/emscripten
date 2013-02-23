@@ -4134,10 +4134,12 @@ The current type of b is: 9
           '''
         self.do_run(src, '*0.00,0.00,0.00*\n*0,77,0*\n*0,77,0*\n*0,77,0*')
 
-    def test_memcpy(self):
+    def test_memcpy_memcmp(self):
         src = '''
           #include <stdio.h>
           #include <string.h>
+          #include <assert.h>
+
           #define MAXX 48
           void reset(unsigned char *buffer) {
             for (int i = 0; i < MAXX; i++) buffer[i] = i+1;
@@ -4158,6 +4160,20 @@ The current type of b is: 9
                   reset(buffer);
                   memcpy(buffer+i, buffer+j, k);
                   dump(buffer);
+                  assert(memcmp(buffer+i, buffer+j, k) == 0);
+                  buffer[i + k/2]++;
+                  if (buffer[i + k/2] != 0) {
+                    assert(memcmp(buffer+i, buffer+j, k) > 0);
+                  } else {
+                    assert(memcmp(buffer+i, buffer+j, k) < 0);
+                  }
+                  buffer[i + k/2]--;
+                  buffer[j + k/2]++;
+                  if (buffer[j + k/2] != 0) {
+                    assert(memcmp(buffer+i, buffer+j, k) < 0);
+                  } else {
+                    assert(memcmp(buffer+i, buffer+j, k) > 0);
+                  }
                 }
               }
             }

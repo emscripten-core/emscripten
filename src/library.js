@@ -4525,11 +4525,16 @@ LibraryManager.library = {
     return 0;
   },
 
+  memcmp__asm: 'true',
+  memcmp__sig: 'iiii',
   memcmp: function(p1, p2, num) {
-    for (var i = 0; i < num; i++) {
-      var v1 = {{{ makeGetValue('p1', 'i', 'i8', 0, 1) }}};
-      var v2 = {{{ makeGetValue('p2', 'i', 'i8', 0, 1) }}};
-      if (v1 != v2) return v1 > v2 ? 1 : -1;
+    p1 = p1|0; p2 = p2|0; num = num|0;
+    var i = 0, v1 = 0, v2 = 0;
+    while ((i|0) < (num|0)) {
+      var v1 = {{{ makeGetValueAsm('p1', 'i', 'i8', true) }}};
+      var v2 = {{{ makeGetValueAsm('p2', 'i', 'i8', true) }}};
+      if ((v1|0) != (v2|0)) return (v1|0) > (v2|0) ? 1 : -1;
+      i = (i+1)|0;
     }
     return 0;
   },

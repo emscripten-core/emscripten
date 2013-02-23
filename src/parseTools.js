@@ -1145,8 +1145,8 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
   }
 }
 
-function makeGetValueAsm(ptr, pos, type) {
-  return makeGetValue(ptr, pos, type, null, null, null, null, null, true);
+function makeGetValueAsm(ptr, pos, type, unsigned) {
+  return makeGetValue(ptr, pos, type, null, unsigned, null, null, null, true);
 }
 
 function indexizeFunctions(value, type) {
