@@ -2129,9 +2129,8 @@ function processMathop(item) {
     case 'sub': return handleOverflow(getFastValue(idents[0], '-', idents[1], item.type), bits);
     case 'sdiv': case 'udiv': return makeRounding(getFastValue(idents[0], '/', idents[1], item.type), bits, op[0] === 's');
     case 'mul': {
-      if (bits == 32 && PRECISE_I32_MUL) {
-        Types.preciseI64MathUsed = true;
-        return '(i64Math' + (ASM_JS ? '_' : '.') + 'multiply(' + asmCoercion(idents[0], 'i32') + ',0,' + asmCoercion(idents[1], 'i32') + ',0),' + makeGetValue('tempDoublePtr', 0, 'i32') + ')';
+      if (bits == 32) {
+        return 'Math.imul(' + idents[0] + ',' + idents[1] + ')';
       } else {
         return '((' +getFastValue(idents[0], '*', idents[1], item.type) + ')&-1)'; // force a non-eliminatable coercion here, to prevent a double result from leaking
       }

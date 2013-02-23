@@ -742,7 +742,17 @@ Module['writeArrayToMemory'] = writeArrayToMemory;
 {{{ unSign }}}
 {{{ reSign }}}
 
-if (!Math.imul) Math.imul = function(x, y) { return (x*y)|0 }; // # not a real polyfill since semantics not identical, but close and fast
+if (!Math.imul) Math.imul = function(a, b) {
+#if PRECISE_I32_MUL
+  var ah  = a >>> 16;
+  var al = a & 0xffff;
+  var bh  = b >>> 16;
+  var bl = b & 0xffff;
+  return (al*bl + ((ah*bl + al*bh) << 16))|0;
+#else
+  return (a*b)|0; // fast but imprecise
+#endif
+};
 
 // A counter of dependencies for calling run(). If we need to
 // do asynchronous work before running, increment this and
