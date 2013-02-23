@@ -1392,7 +1392,7 @@ function getFastValue(a, op, b, type) {
       }
       if (!(type in Runtime.FLOAT_TYPES)) {
         // if guaranteed small enough to not overflow into a double, do a normal multiply
-        var bits = getBits(type);
+        var bits = getBits(type) || 32; // default is 32-bit multiply for things like getelementptr indexes
         if ((isNumber(a) && Math.abs(a) < TWO_TWENTY) || (isNumber(b) && Math.abs(b) < TWO_TWENTY) || bits < 32) {
           return '(((' + a + ')*(' + b + '))&' + ((Math.pow(2, bits)-1)|0) + ')'; // keep a non-eliminatable coercion directly on this
         }
