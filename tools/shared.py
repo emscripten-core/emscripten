@@ -829,6 +829,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
   def llvm_opt(filename, opts):
     if type(opts) is int:
       opts = Building.pick_llvm_opts(opts)
+    #opts += ['-debug-pass=Arguments']
     if DEBUG: print >> sys.stderr, 'emcc: LLVM opts:', opts
     output = Popen([LLVM_OPT, filename] + opts + ['-o=' + filename + '.opt.bc'], stdout=PIPE).communicate()[0]
     assert os.path.exists(filename + '.opt.bc'), 'Failed to run llvm optimizations: ' + output
