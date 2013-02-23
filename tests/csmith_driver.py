@@ -24,7 +24,7 @@ while 1:
   print 'Tried %d, valid: %d' % (tried, valid)
   tried += 1
   print '1) Generate C'
-  shared.execute([CSMITH, '--no-volatiles', '--no-math64', '--max-block-depth', '2', '--max-block-size', '2', '--max-expr-complexity', '2', '--max-funcs', '1'], stdout=open(filename + '.c', 'w'))
+  shared.execute([CSMITH, '--no-volatiles', '--no-math64', '--max-block-depth', '2', '--max-block-size', '2', '--max-expr-complexity', '2', '--max-funcs', '2'], stdout=open(filename + '.c', 'w'))
 
   print '2) Compile natively'
   shared.try_delete(filename)
@@ -40,11 +40,11 @@ while 1:
 
   print '4) Compile JS-ly'
   shared.try_delete(filename + '.js')
-  shared.execute([shared.EMCC, '-O2', filename + '.c', '-o', filename + '.js'] + CSMITH_CFLAGS, stderr=PIPE)
+  shared.execute([shared.EMCC, '-O2', '-s', 'ASM_JS=1', '-s', 'PRECISE_I64_MATH=1', '-s', 'PRECISE_I32_MUL=1', filename + '.c', '-o', filename + '.js'] + CSMITH_CFLAGS, stderr=PIPE)
   assert os.path.exists(filename + '.js')
   print '5) Run JS-ly'
   js = shared.run_js(filename + '.js', stderr=PIPE) #, engine=...)
 
   print '6) Verify'
-  assert correct == js, ''.join([a.rstrip()+'\n' for a in difflib.unified_diff(x.split('\n'), y.split('\n'), fromfile='expected', tofile='actual')])
+  assert correct == js, ''.join([a.rstrip()+'\n' for a in difflib.unified_diff(correct.split('\n'), js.split('\n'), fromfile='expected', tofile='actual')])
 
