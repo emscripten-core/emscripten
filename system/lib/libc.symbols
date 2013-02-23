@@ -48,8 +48,3 @@ _ZNSt20bad_array_new_lengthC2Ev
 _ZNSt20bad_array_new_lengthD0Ev
 _ZNSt20bad_array_new_lengthD1Ev
 _ZNSt20bad_array_new_lengthD2Ev
-memcpy
-llvm.memcpy.i32
-llvm.memcpy.i64
-llvm.memcpy.p0i8.p0i8.i32
-llvm.memcpy.p0i8.p0i8.i64
