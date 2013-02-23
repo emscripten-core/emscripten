@@ -88,10 +88,11 @@ def run_on_js(filename, passes, js_engine, jcache):
     if i < len(parts)-1: func += '\n}\n' # last part needs no }
     m = func_sig.search(func)
     if m:
-      ident = m.group(1)
+      ident = m.group(2)
     else:
       if suffix: continue # ignore whitespace
       ident = 'anon_%d' % i
+    assert ident
     funcs.append((ident, func))
   parts = None
   total_size = len(js)
