@@ -1139,7 +1139,6 @@ m_divisor is 1091269979
     def test_i32_mul_precise(self):
       if self.emcc_args == None: return self.skip('needs ta2')
 
-      self.emcc_args += ['-s', 'PRECISE_I32_MUL=1']
       src = r'''
         #include <stdio.h>
 
@@ -1154,7 +1153,7 @@ m_divisor is 1091269979
       self.do_run(src, '3217489085')
 
     def test_i32_mul_semiprecise(self):
-      Settings.USE_MATH_IMUL = 0 # we want semiprecise here
+      Settings.PRECISE_I32_MUL = 0 # we want semiprecise here
 
       src = r'''
         #include <stdio.h>
