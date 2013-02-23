@@ -1038,18 +1038,6 @@ function asmCoercion(value, type, signedness) {
   }
 }
 
-var TWO_TWENTY = Math.pow(2, 20);
-
-function asmMultiplyI32(a, b) {
-  // special-case: there is no integer multiply in asm, because there is no true integer
-  // multiply in JS. While we wait for Math.imul, do double multiply
-  if ((isNumber(a) && Math.abs(a) < TWO_TWENTY) || (isNumber(b) && Math.abs(b) < TWO_TWENTY)) {
-    return '(((' + a + ')*(' + b + '))&-1)'; // small enough to emit directly as a multiply
-  }
-  return 'Math.imul(' + a + ',' + b + ')';
-  // non-imul version: return '(~~(+((' + a + ')|0) * +((' + b + ')|0)))';
-}
-
 function asmFloatToInt(x) {
   return '(~~(' + x + '))';
 }
@@ -1362,9 +1350,11 @@ function makeHEAPView(which, start, end) {
 var PLUS_MUL = set('+', '*');
 var MUL_DIV = set('*', '/');
 var PLUS_MINUS = set('+', '-');
+var TWO_TWENTY = Math.pow(2, 20);
 
 // Given two values and an operation, returns the result of that operation.
 // Tries to do as much as possible at compile time.
+// Leaves overflows etc. unhandled, *except* for integer multiply, in order to be efficient with Math.imul
 function getFastValue(a, op, b, type) {
   a = a.toString();
   b = b.toString();
@@ -1400,8 +1390,13 @@ function getFastValue(a, op, b, type) {
           return '(' + a + '<<' + shifts + ')';
         }
       }
-      if (ASM_JS && !(type in Runtime.FLOAT_TYPES)) {
-        return asmMultiplyI32(a, b); // unoptimized multiply, do it using asm.js's special multiply operation
+      if (!(type in Runtime.FLOAT_TYPES)) {
+        // if guaranteed small enough to not overflow into a double, do a normal multiply
+        var bits = getBits(type);
+        if ((isNumber(a) && Math.abs(a) < TWO_TWENTY) || (isNumber(b) && Math.abs(b) < TWO_TWENTY) || bits < 32) {
+          return '(((' + a + ')*(' + b + '))&' + ((Math.pow(2, bits)-1)|0) + ')'; // keep a non-eliminatable coercion directly on this
+        }
+        return 'Math.imul(' + a + ',' + b + ')';
       }
     } else {
       if (a == '0') {
@@ -2128,13 +2123,7 @@ function processMathop(item) {
     case 'add': return handleOverflow(getFastValue(idents[0], '+', idents[1], item.type), bits);
     case 'sub': return handleOverflow(getFastValue(idents[0], '-', idents[1], item.type), bits);
     case 'sdiv': case 'udiv': return makeRounding(getFastValue(idents[0], '/', idents[1], item.type), bits, op[0] === 's');
-    case 'mul': {
-      if (bits == 32) {
-        return 'Math.imul(' + idents[0] + ',' + idents[1] + ')';
-      } else {
-        return '((' +getFastValue(idents[0], '*', idents[1], item.type) + ')&-1)'; // force a non-eliminatable coercion here, to prevent a double result from leaking
-      }
-    }
+    case 'mul': return getFastValue(idents[0], '*', idents[1], item.type); // overflow handling is already done in getFastValue for '*'
     case 'urem': case 'srem': return getFastValue(idents[0], '%', idents[1], item.type);
     case 'or': {
       if (bits > 32) {
