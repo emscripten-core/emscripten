@@ -43,9 +43,8 @@ while 1:
 
   def try_js(args):
     shared.try_delete(filename + '.js')
-    shared.execute([shared.EMCC, '-O2', '-s', 'ASM_JS=1', '-s', 'PRECISE_I64_MATH=1', '-s', 'PRECISE_I32_MUL=1', filename + '.c', '-o', filename + '.js'] + CSMITH_CFLAGS, stderr=PIPE)
+    shared.execute([shared.EMCC, '-O2', '-s', 'ASM_JS=1', '-s', 'PRECISE_I64_MATH=1', '-s', 'PRECISE_I32_MUL=1', filename + '.c', '-o', filename + '.js'] + CSMITH_CFLAGS + args, stderr=PIPE)
     assert os.path.exists(filename + '.js')
-    print '5) Run JS-ly'
     js = shared.run_js(filename + '.js', stderr=PIPE) #, engine=...)
     assert correct == js, ''.join([a.rstrip()+'\n' for a in difflib.unified_diff(correct.split('\n'), js.split('\n'), fromfile='expected', tofile='actual')])
 
@@ -61,4 +60,15 @@ while 1:
     except Exception, e:
       print e
   if not ok: break
+  #if not ok:
+  #  try: # finally, try with safe heap. if that is triggered, this is nonportable code almost certainly
+  #    try_js(['-s', 'SAFE_HEAP=1'])
+  #  except Exception, e:
+  #    print e
+  #    js = shared.run_js(filename + '.js', stderr=PIPE, full_output=True)
+  #  print js
+  #  if 'SAFE_HEAP' in js:
+  #    notes['safeheap'] += 1
+  #  else:
+  #    break
 
