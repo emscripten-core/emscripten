@@ -10,6 +10,11 @@ from subprocess import Popen, PIPE, STDOUT
 sys.path += [os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'tools')]
 import shared
 
+engine1 = eval('shared.' + sys.argv[1]) if len(sys.argv) > 1 else shared.JS_ENGINES[0]
+engine2 = eval('shared.' + sys.argv[2]) if len(sys.argv) > 2 else None
+
+print 'testing js engines', engine1, engine2
+
 CSMITH = os.path.expanduser('~/Dev/csmith/src/csmith')
 CSMITH_CFLAGS = ['-I' + os.path.expanduser('~/Dev/csmith/runtime/')]
 
@@ -45,11 +50,12 @@ while 1:
     shared.try_delete(filename + '.js')
     shared.execute([shared.EMCC, '-O2', '-s', 'ASM_JS=1', '-s', 'PRECISE_I64_MATH=1', '-s', 'PRECISE_I32_MUL=1', filename + '.c', '-o', filename + '.js'] + CSMITH_CFLAGS + args, stderr=PIPE)
     assert os.path.exists(filename + '.js')
-    js = shared.run_js(filename + '.js', stderr=PIPE) #, engine=...)
+    js = shared.run_js(filename + '.js', stderr=PIPE, engine=engine1)
     assert correct == js, ''.join([a.rstrip()+'\n' for a in difflib.unified_diff(correct.split('\n'), js.split('\n'), fromfile='expected', tofile='actual')])
 
   # Try normally, then try unaligned because csmith does generate nonportable code that requires x86 alignment
   ok = False
+  normal = True
   for args, note in [([], None), (['-s', 'UNALIGNED_MEMORY=1'], 'unaligned')]:
     try:
       try_js(args)
@@ -59,6 +65,7 @@ while 1:
       break
     except Exception, e:
       print e
+      normal = False
   if not ok: break
   #if not ok:
   #  try: # finally, try with safe heap. if that is triggered, this is nonportable code almost certainly
@@ -71,4 +78,14 @@ while 1:
   #    notes['safeheap'] += 1
   #  else:
   #    break
+
+  # This is ok. Try in secondary JS engine too
+  if engine2 and normal:
+    js2 = shared.run_js(filename + '.js', stderr=PIPE, engine=engine2, full_output=True)
+
+    # asm.js testing
+    assert 'warning: Successfully compiled asm.js code' in js2, 'must validate'
+    js2 = js2.replace('\nwarning: Successfully compiled asm.js code\n', '')
+
+    assert js2 == correct, ''.join([a.rstrip()+'\n' for a in difflib.unified_diff(correct.split('\n'), js2.split('\n'), fromfile='expected', tofile='actual')])
 
