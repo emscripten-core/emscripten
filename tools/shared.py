@@ -28,7 +28,10 @@ class WindowsPopen:
         self.stderr_ = PIPE
   
     # Call the process with fixed streams.
-    self.process = subprocess.Popen(args, bufsize, executable, self.stdin_, self.stdout_, self.stderr_, preexec_fn, close_fds, shell, cwd, env, universal_newlines, startupinfo, creationflags)
+    try:
+      self.process = subprocess.Popen(args, bufsize, executable, self.stdin_, self.stdout_, self.stderr_, preexec_fn, close_fds, shell, cwd, env, universal_newlines, startupinfo, creationflags)
+    except Exception, e:
+      print >> sys.stderr, 'subprocess.Popen(args=%s) failed! Exception %s' % (' '.join(args), str(e))
 
   def communicate(self, input=None):
     output = self.process.communicate(input)
