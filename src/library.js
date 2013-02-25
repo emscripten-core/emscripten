@@ -4533,7 +4533,7 @@ LibraryManager.library = {
     while ((i|0) < (num|0)) {
       var v1 = {{{ makeGetValueAsm('p1', 'i', 'i8', true) }}};
       var v2 = {{{ makeGetValueAsm('p2', 'i', 'i8', true) }}};
-      if ((v1|0) != (v2|0)) return (v1|0) > (v2|0) ? 1 : -1;
+      if ((v1|0) != (v2|0)) return ((v1|0) > (v2|0) ? 1 : -1)|0;
       i = (i+1)|0;
     }
     return 0;
