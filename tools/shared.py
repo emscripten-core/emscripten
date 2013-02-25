@@ -1099,24 +1099,6 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
   @staticmethod
   def is_bitcode(filename):
-    # checks if a file contains LLVM bitcode
-    # if the file doesn't exist or doesn't have valid symbols, it isn't bitcode
-    try:
-      defs = Building.llvm_nm(filename, stderr=PIPE)
-      # If no symbols found, it might just be an empty bitcode file, try to dis it
-      if len(defs.defs) + len(defs.undefs) + len(defs.commons) == 0:
-        # llvm-nm 3.0 has a bug when reading symbols from ar files
-        # so try to see if we're dealing with an ar file, in which
-        # case we should try to dis it.
-        if not Building.is_ar(filename):
-          test_ll = os.path.join(EMSCRIPTEN_TEMP_DIR, 'test.ll')
-          Building.llvm_dis(filename, test_ll)
-          assert os.path.exists(test_ll)
-          try_delete(test_ll)
-    except Exception, e:
-      if DEBUG: print >> sys.stderr, 'shared.Building.is_bitcode failed to test whether file \'%s\' is a llvm bitcode file! Failed on exception: %s' % (filename, e)
-      return False
-
     # look for magic signature
     b = open(filename, 'r').read(4)
     if b[0] == 'B' and b[1] == 'C':
