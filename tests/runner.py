@@ -1153,6 +1153,8 @@ m_divisor is 1091269979
       self.do_run(src, '3217489085')
 
     def test_i32_mul_semiprecise(self):
+      if Settings.ASM_JS: return self.skip('asm is always fully precise')
+
       Settings.PRECISE_I32_MUL = 0 # we want semiprecise here
 
       src = r'''
