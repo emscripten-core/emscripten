@@ -875,7 +875,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
   @staticmethod
   def llvm_nm(filename, stdout=PIPE, stderr=None):
     if filename in Building.nm_cache:
-      if DEBUG: print >> sys.stderr, 'loading nm results for %s from cache' % filename
+      #if DEBUG: print >> sys.stderr, 'loading nm results for %s from cache' % filename
       return Building.nm_cache[filename]
 
     # LLVM binary ==> list of symbols
