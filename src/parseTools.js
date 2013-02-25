@@ -103,6 +103,11 @@ function isNiceIdent(ident, loose) {
   }
 }
 
+function isJSVar(ident) {
+  return /^\(?[$_]?[\w$_\d ]*\)+$/.test(ident);
+
+}
+
 function isStructPointerType(type) {
   // This test is necessary for clang - in llvm-gcc, we
   // could check for %struct. The downside is that %1 can
@@ -988,7 +993,8 @@ function getHeapOffset(offset, type, forceAsm) {
     if (shifts != 0) {
       return '(' + offset + '>>' + shifts + ')';
     } else {
-      return offset;
+      // we need to guard against overflows here, HEAP[U]8 expects a guaranteed int
+      return isJSVar(offset) ? offset : '(' + offset + '|0)';
     }
   }
 }
