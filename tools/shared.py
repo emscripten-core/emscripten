@@ -749,12 +749,16 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     resolved_symbols = set()
     temp_dirs = []
     files = map(os.path.abspath, files)
+    has_ar = False
+    for f in files:
+      has_ar = has_ar or Building.is_ar(f)
     for f in files:
       if not Building.is_ar(f):
         if Building.is_bitcode(f):
-          new_symbols = Building.llvm_nm(f)
-          resolved_symbols = resolved_symbols.union(new_symbols.defs)
-          unresolved_symbols = unresolved_symbols.union(new_symbols.undefs.difference(resolved_symbols)).difference(new_symbols.defs)
+          if has_ar:
+            new_symbols = Building.llvm_nm(f)
+            resolved_symbols = resolved_symbols.union(new_symbols.defs)
+            unresolved_symbols = unresolved_symbols.union(new_symbols.undefs.difference(resolved_symbols)).difference(new_symbols.defs)
           actual_files.append(f)
       else:
         # Extract object files from ar archives, and link according to gnu ld semantics
