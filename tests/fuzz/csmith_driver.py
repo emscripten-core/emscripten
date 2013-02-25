@@ -24,7 +24,7 @@ shared.DEFAULT_TIMEOUT = 1
 
 tried = 0
 
-notes = { 'invalid': 0, 'unaligned': 0 }
+notes = { 'invalid': 0, 'unaligned': 0, 'embug': 0 }
 
 while 1:
   print 'Tried %d, notes: %s' % (tried, notes)
@@ -50,7 +50,7 @@ while 1:
     shared.try_delete(filename + '.js')
     shared.execute([shared.EMCC, '-O2', '-s', 'ASM_JS=1', '-s', 'PRECISE_I64_MATH=1', '-s', 'PRECISE_I32_MUL=1', filename + '.c', '-o', filename + '.js'] + CSMITH_CFLAGS + args, stderr=PIPE)
     assert os.path.exists(filename + '.js')
-    js = shared.run_js(filename + '.js', stderr=PIPE, engine=engine1)
+    js = shared.run_js(filename + '.js', stderr=PIPE, engine=engine1, check_timeout=True)
     assert correct == js, ''.join([a.rstrip()+'\n' for a in difflib.unified_diff(correct.split('\n'), js.split('\n'), fromfile='expected', tofile='actual')])
 
   # Try normally, then try unaligned because csmith does generate nonportable code that requires x86 alignment
@@ -66,7 +66,10 @@ while 1:
     except Exception, e:
       print e
       normal = False
-  if not ok: break
+  if not ok:
+    print "EMSCRIPTEN BUG"
+    notes['embug'] += 1
+    continue #break
   #if not ok:
   #  try: # finally, try with safe heap. if that is triggered, this is nonportable code almost certainly
   #    try_js(['-s', 'SAFE_HEAP=1'])
@@ -81,7 +84,11 @@ while 1:
 
   # This is ok. Try in secondary JS engine too
   if engine2 and normal:
-    js2 = shared.run_js(filename + '.js', stderr=PIPE, engine=engine2, full_output=True)
+    try:
+      js2 = shared.run_js(filename + '.js', stderr=PIPE, engine=engine2, full_output=True, check_timeout=True)
+    except:
+      print 'failed to run in secondary', js2
+      break
 
     # asm.js testing
     assert 'warning: Successfully compiled asm.js code' in js2, 'must validate'
