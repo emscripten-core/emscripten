@@ -7130,6 +7130,14 @@ def process(filename):
           self.assertIdentical(clean(open('release.js').read()), clean(open('debug%d.js' % debug).read())) # EMCC_DEBUG=1 mode must not generate different code!
           print >> sys.stderr, 'debug check %d passed too' % debug
 
+        try:
+          os.environ['EMCC_FORCE_STDLIBS'] = '1'
+          print 'EMCC_FORCE_STDLIBS'
+          do_test()
+        finally:
+          del os.environ['EMCC_FORCE_STDLIBS']
+        print >> sys.stderr, 'EMCC_FORCE_STDLIBS ok'
+
         try_delete(CANONICAL_TEMP_DIR)
       else:
         print >> sys.stderr, 'not doing debug check'
