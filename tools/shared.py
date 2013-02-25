@@ -866,8 +866,14 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     assert os.path.exists(output_filename), 'Could not create bc file: ' + output
     return output_filename
 
+  nm_cache = {} # cache results of nm - it can be slow to run
+
   @staticmethod
   def llvm_nm(filename, stdout=PIPE, stderr=None):
+    if filename in Building.nm_cache:
+      if DEBUG: print >> sys.stderr, 'loading nm results for %s from cache' % filename
+      return Building.nm_cache[filename]
+
     # LLVM binary ==> list of symbols
     output = Popen([LLVM_NM, filename], stdout=stdout, stderr=stderr).communicate()[0]
     class ret:
@@ -888,6 +894,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     ret.defs = set(ret.defs)
     ret.undefs = set(ret.undefs)
     ret.commons = set(ret.commons)
+    Building.nm_cache[filename] = ret
     return ret
 
   @staticmethod
