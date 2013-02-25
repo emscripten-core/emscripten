@@ -87,5 +87,7 @@ while 1:
     assert 'warning: Successfully compiled asm.js code' in js2, 'must validate'
     js2 = js2.replace('\nwarning: Successfully compiled asm.js code\n', '')
 
-    assert js2 == correct, ''.join([a.rstrip()+'\n' for a in difflib.unified_diff(correct.split('\n'), js2.split('\n'), fromfile='expected', tofile='actual')])
+    assert js2 == correct, ''.join([a.rstrip()+'\n' for a in difflib.unified_diff(correct.split('\n'), js2.split('\n'), fromfile='expected', tofile='actual')]) + 'ODIN FAIL'
+    print 'odin ok'
+
 
