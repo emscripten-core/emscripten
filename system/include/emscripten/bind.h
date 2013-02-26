@@ -440,12 +440,24 @@ namespace emscripten {
 
         template<typename ClassType, typename ElementType, typename IndexType>
         struct ArrayAccess {
-            static ElementType get(ClassType& ptr, IndexType index) {
+            static ElementType get(const ClassType& ptr, IndexType index) {
                 return ptr[index];
             }
 
             static void set(ClassType& ptr, IndexType index, const ElementType& value) {
                 ptr[index] = value;
+            }
+        };
+
+        template<typename KeyType, typename ValueType>
+        struct MapAccess {
+            static ValueType get(const std::map<KeyType, ValueType>& m, const KeyType& k) {
+                auto i = m.find(k);
+                if (i == m.end()) {
+                    return ValueType();
+                } else {
+                    return i->second;
+                }
             }
         };
     }
@@ -735,6 +747,22 @@ namespace emscripten {
             return *this;
         }
 
+        template<typename ReturnType, typename... Args, typename... Policies>
+        class_& method(const char* methodName, ReturnType (*function)(const ClassType& ptr, Args...), Policies...) {
+            using namespace internal;
+
+            typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
+            _embind_register_class_method(
+                TypeID<ClassType>::get(),
+                methodName,
+                args.count,
+                args.types,
+                reinterpret_cast<GenericFunction>(&FunctionInvoker<ClassType, ReturnType, Args...>::invoke),
+                sizeof(function),
+                &function);
+            return *this;
+        }
+
         template<typename FieldType>
         class_& field(const char* fieldName, FieldType ClassType::*field) {
             using namespace internal;
@@ -795,7 +823,7 @@ namespace emscripten {
 
         void (VecType::*push_back)(const T&) = &VecType::push_back;
         const T& (VecType::*at)(size_t) const = &VecType::at;
-        auto c = class_<std::vector<T>>(name)
+        return class_<std::vector<T>>(name)
             .template constructor<>()
             .method("push_back", push_back)
             .method("at", at)
@@ -803,8 +831,6 @@ namespace emscripten {
             .template arrayoperatorget<T, size_t>()
             .template arrayoperatorset<T, size_t>()
             ;
-
-        return c;
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -815,13 +841,12 @@ namespace emscripten {
         using namespace std;
         typedef map<K,V> MapType;
 
-        auto c = class_<MapType>(name)
+        return class_<MapType>(name)
             .method("size", &MapType::size)
-            .template arrayoperatorget<V, K>()
+            // make this map_get?
+            .method("array_get", internal::MapAccess<K, V>::get)
             .template arrayoperatorset<V, K>()
-        ;
-
-        return c;
+            ;
     }
 
 
