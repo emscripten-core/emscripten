@@ -128,6 +128,8 @@ var SAFE_HEAP = 0; // Check each write to the heap, for example, this will give 
                    // that 3 is the option you usually want here.
 var SAFE_HEAP_LOG = 0; // Log out all SAFE_HEAP operations
 
+var SAFE_DYNCALLS = 0; // Show stack traces on missing function pointer/virtual method calls
+
 var ASM_HEAP_LOG = 0; // Simple heap logging, like SAFE_HEAP_LOG but cheaper, and in asm.js
 
 var CORRUPTION_CHECK = 0; // When enabled, will emit a buffer area at the beginning and

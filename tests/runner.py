@@ -2806,6 +2806,37 @@ Exiting setjmp function, level: 0, prev_jmp: -1
         ''' % addr
         self.do_run(src, 'segmentation fault' if addr.isdigit() else 'marfoosh')
 
+    def test_safe_dyncalls(self):
+      if Settings.ASM_JS: return self.skip('asm does not support missing function stack traces')
+      if Settings.SAFE_HEAP: return self.skip('safe heap warning will appear instead')
+      if self.emcc_args is None: return self.skip('need libc')
+
+      Settings.SAFE_DYNCALLS = 1
+
+      for cond, body, work in [(True, True, False), (True, False, False), (False, True, True), (False, False, False)]:
+        print cond, body, work
+        src = r'''
+          #include <stdio.h>
+
+          struct Classey {
+            virtual void doIt() = 0;
+          };
+
+          struct D1 : Classey {
+            virtual void doIt() BODY;
+          };
+
+          int main(int argc, char **argv)
+          {
+            Classey *p = argc COND 100 ? new D1() : NULL;
+            printf("%p\n", p);
+            p->doIt();
+
+            return 0;
+          }
+        '''.replace('COND', '==' if cond else '!=').replace('BODY', r'{ printf("all good\n"); }' if body else '')
+        self.do_run(src, 'dyncall error' if not work else 'all good')
+
     def test_dynamic_cast(self):
         if self.emcc_args is None: return self.skip('need libcxxabi')
 

@@ -1401,6 +1401,8 @@ function JSify(data, functionsOnly, givenFunctions) {
       if (ASM_JS) {
         assert(returnType.search(/\("'\[,/) == -1); // XXX need isFunctionType(type, out)
         callIdent = '(' + callIdent + ')&{{{ FTM_' + sig + ' }}}'; // the function table mask is set in emscripten.py
+      } else if (SAFE_DYNCALLS) {
+        callIdent = '(tempInt=' + callIdent + ',tempInt < 0 || tempInt >= FUNCTION_TABLE.length-1 ? abort("dyncall error") : tempInt)';
       }
       callIdent = Functions.getTable(sig) + '[' + callIdent + ']';
     }

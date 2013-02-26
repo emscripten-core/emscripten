@@ -330,9 +330,16 @@ var Functions = {
           }
         }
       }
+      if (SAFE_DYNCALLS) {
+        assert(!ASM_JS, 'cannot emit safe dyncalls in asm');
+        for (var j = 0; j < table.length; j++) {
+          if (table[j] == 0) {
+            table[j] = "function() { abort('dyncall error') }";
+          }
+        }
+      }
       if (table.length > 20) {
         // add some newlines in the table, for readability
-        table = table.slice(0);
         var j = 10;
         while (j+10 < table.length) {
           table[j] += '\n';
