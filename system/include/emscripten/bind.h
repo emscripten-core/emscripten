@@ -349,6 +349,32 @@ namespace emscripten {
         };
 
         template<typename ClassType, typename ReturnType, typename... Args>
+        struct FunctionInvoker {
+            typedef ReturnType (FunctionPointer)(ClassType& ct, Args...);
+            static typename internal::BindingType<ReturnType>::WireType invoke(
+                ClassType* ptr,
+                FunctionPointer** function,
+                typename internal::BindingType<Args>::WireType... args
+            ) {
+                return internal::BindingType<ReturnType>::toWireType(
+                    (*function)(*ptr, internal::BindingType<Args>::toWireType(args)...)
+                );
+            }
+        };
+
+        template<typename ClassType, typename... Args>
+        struct FunctionInvoker<ClassType, void, Args...> {
+            typedef void (FunctionPointer)(ClassType& ct, Args...);
+            static void invoke(
+                ClassType* ptr,
+                FunctionPointer** function,
+                typename internal::BindingType<Args>::WireType... args
+            ) {
+                (*function)(*ptr, internal::BindingType<Args>::toWireType(args)...);
+            }
+        };
+
+        template<typename ClassType, typename ReturnType, typename... Args>
         struct MethodInvoker {
             typedef ReturnType (ClassType::*MemberPointer)(Args...);
             static typename internal::BindingType<ReturnType>::WireType invoke(
@@ -714,6 +740,22 @@ namespace emscripten {
                 reinterpret_cast<GenericFunction>(&ConstMethodInvoker<ClassType, ReturnType, Args...>::invoke),
                 sizeof(memberFunction),
                 &memberFunction);
+            return *this;
+        }
+
+        template<typename ReturnType, typename... Args, typename... Policies>
+        class_& method(const char* methodName, ReturnType (*function)(ClassType& ptr, Args...), Policies...) {
+            using namespace internal;
+
+            typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
+            _embind_register_class_method(
+                TypeID<ClassType>::get(),
+                methodName,
+                args.count,
+                args.types,
+                reinterpret_cast<GenericFunction>(&FunctionInvoker<ClassType, ReturnType, Args...>::invoke),
+                sizeof(function),
+                &function);
             return *this;
         }
 
