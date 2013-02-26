@@ -294,7 +294,7 @@ except:
 CANONICAL_TEMP_DIR = os.path.join(TEMP_DIR, 'emscripten_temp')
 EMSCRIPTEN_TEMP_DIR = None
 
-DEBUG = os.environ.get('EMCC_DEBUG')
+DEBUG = int(os.environ.get('EMCC_DEBUG') or 0)
 if DEBUG:
   try:
     EMSCRIPTEN_TEMP_DIR = CANONICAL_TEMP_DIR
