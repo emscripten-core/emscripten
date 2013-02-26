@@ -769,6 +769,9 @@ function __embind_register_class(
     registeredClass.pointeeType = type;
 
     type.constructor = createNamedFunction(type.name, function() {
+        if (Object.getPrototypeOf(this) !== Handle.prototype) {
+            throw new BindingError("Use 'new' to construct " + name);
+        }
         var body = type.constructor.body;
         return body.apply(this, arguments);
     });
