@@ -140,7 +140,7 @@ def run_on_js(filename, passes, js_engine, jcache):
     commands = map(lambda filename: [js_engine, JS_OPTIMIZER, filename, 'noPrintMetadata'] + passes, filenames)
     #print [' '.join(command) for command in commands]
 
-    cores = min(multiprocessing.cpu_count(), filenames)
+    cores = min(cores, filenames)
     if len(chunks) > 1 and cores >= 2:
       # We can parallelize
       if DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks of size %d, using %d cores  (total: %.2f MB)' % (len(chunks), chunk_size, cores, total_size/(1024*1024.))
