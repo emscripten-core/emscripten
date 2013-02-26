@@ -10,7 +10,7 @@ def path_from_root(*pathelems):
 
 JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
 
-NUM_CHUNKS_PER_CORE = 1.25
+NUM_CHUNKS_PER_CORE = 1.5
 MIN_CHUNK_SIZE = 1024*1024
 MAX_CHUNK_SIZE = 20*1024*1024
 
