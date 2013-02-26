@@ -505,7 +505,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         item.JS = '';
       } else if (LibraryManager.library.hasOwnProperty(shortident)) {
         item.JS = addFromLibrary(shortident);
-      } else {
+      } else if (!LibraryManager.library.hasOwnProperty(shortident + '__inline')) {
         item.JS = 'var ' + item.ident + '; // stub for ' + item.ident;
         if (WARN_ON_UNDEFINED_SYMBOLS || ASM_JS) { // always warn on undefs in asm, since it breaks validation
           warn('Unresolved symbol: ' + item.ident);
