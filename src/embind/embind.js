@@ -2,7 +2,7 @@
 /*global Module*/
 /*global _malloc, _free, _memcpy*/
 /*global FUNCTION_TABLE, HEAP32, HEAP8*/
-/*global Pointer_stringify, writeStringToMemory*/
+/*global Pointer_stringify*/
 /*global __emval_register, _emval_handle_array, __emval_decref*/
 /*global ___getDynamicPointerType: false*/
 /*global ___typeName:false*/
@@ -274,7 +274,9 @@ RegisteredString.prototype.toWireType = function(destructors, value) {
     var length = value.length;
     var ptr = _malloc(4 + length);
     HEAP32[ptr >> 2] = length;
-    writeStringToMemory(value, ptr + 4);
+    for (var i = 0; i < length; ++i) {
+        HEAPU8[ptr + 4 + i] = value.charCodeAt(i);
+    }
     destructors.push(_free);
     destructors.push(ptr);
     return ptr;
