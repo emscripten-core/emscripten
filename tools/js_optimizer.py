@@ -10,7 +10,9 @@ def path_from_root(*pathelems):
 
 JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
 
-BEST_JS_PROCESS_SIZE = 1024*1024
+NUM_CHUNKS_PER_CORE = 1.25
+MIN_CHUNK_SIZE = 1024*1024
+MAX_CHUNK_SIZE = 20*1024*1024
 
 WINDOWS = sys.platform.startswith('win')
 
@@ -98,7 +100,11 @@ def run_on_js(filename, passes, js_engine, jcache):
   total_size = len(js)
   js = None
 
-  chunks = shared.JCache.chunkify(funcs, BEST_JS_PROCESS_SIZE, 'jsopt' if jcache else None)
+  cores = multiprocessing.cpu_count()
+  intended_num_chunks = int(round(cores * NUM_CHUNKS_PER_CORE))
+  chunk_size = min(MAX_CHUNK_SIZE, max(MIN_CHUNK_SIZE, total_size / intended_num_chunks))
+
+  chunks = shared.JCache.chunkify(funcs, chunk_size, 'jsopt' if jcache else None)
 
   if jcache:
     # load chunks from cache where we can # TODO: ignore small chunks
@@ -137,12 +143,12 @@ def run_on_js(filename, passes, js_engine, jcache):
     cores = min(multiprocessing.cpu_count(), filenames)
     if len(chunks) > 1 and cores >= 2:
       # We can parallelize
-      if DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks, using %d cores  (total: %.2f MB)' % (len(chunks), cores, total_size/(1024*1024.))
+      if DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks of size %d, using %d cores  (total: %.2f MB)' % (len(chunks), chunk_size, cores, total_size/(1024*1024.))
       pool = multiprocessing.Pool(processes=cores)
       filenames = pool.map(run_on_chunk, commands, chunksize=1)
     else:
       # We can't parallize, but still break into chunks to avoid uglify/node memory issues
-      if len(chunks) > 1 and DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks' % (len(chunks))
+      if len(chunks) > 1 and DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks of size %d' % (len(chunks), chunk_size)
       filenames = [run_on_chunk(command) for command in commands]
   else:
     filenames = []
