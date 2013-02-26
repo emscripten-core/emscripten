@@ -317,7 +317,7 @@ def emscript(infile, settings, outfile, libraries=[]):
       params = ','.join(['p%d' % p for p in range(len(sig)-1)])
       coercions = ';'.join(['p%d = %sp%d%s' % (p, '+' if sig[p+1] != 'i' else '', p, '' if sig[p+1] != 'i' else '|0') for p in range(len(sig)-1)]) + ';'
       ret = '' if sig[0] == 'v' else ('return %s0' % ('+' if sig[0] != 'i' else ''))
-      return ('function %s(%s) { %s abort(%d); %s };' % (bad, params, coercions, i, ret), raw.replace('[0,', '[' + bad + ',').replace(',0,', ',' + bad + ',').replace(',0,', ',' + bad + ',').replace(',0]', ',' + bad + ']').replace(',0]', ',' + bad + ']'))
+      return ('function %s(%s) { %s abort(%d); %s };' % (bad, params, coercions, i, ret), raw.replace('[0,', '[' + bad + ',').replace(',0,', ',' + bad + ',').replace(',0,', ',' + bad + ',').replace(',0]', ',' + bad + ']').replace(',0]', ',' + bad + ']').replace(',0\n', ',' + bad + '\n'))
     infos = [make_table(sig, raw) for sig, raw in last_forwarded_json['Functions']['tables'].iteritems()]
     function_tables_defs = '\n'.join([info[0] for info in infos] + [info[1] for info in infos])
 

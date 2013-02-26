@@ -330,6 +330,15 @@ var Functions = {
           }
         }
       }
+      if (table.length > 20) {
+        // add some newlines in the table, for readability
+        table = table.slice(0);
+        var j = 10;
+        while (j+10 < table.length) {
+          table[j] += '\n';
+          j += 10;
+        }
+      }
       var indices = table.toString().replace('"', '');
       if (BUILD_AS_SHARED_LIB) {
         // Shared libraries reuse the parent's function table.
