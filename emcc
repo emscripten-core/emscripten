@@ -1,4 +1,5 @@
 #!/usr/bin/env python2
+# -*- Mode: python -*-
 
 '''
 emcc - compiler helper script
@@ -117,6 +118,27 @@ shared.check_sanity(force=DEBUG)
 if len(sys.argv) == 1:
   print 'emcc: no input files'
   exit(1)
+
+# read response files very early on
+response_file = True
+while response_file:
+  response_file = None
+  for index in range(1, len(sys.argv)):
+    if sys.argv[index][0] == '@':
+      # found one, loop again next time
+      response_file = sys.argv[index][1:]
+      if not os.path.exists(response_file):
+        print >>sys.stderr, 'emcc: error: Response file not found: %s' % response_file
+        exit(1)
+
+      response_fd = open(response_file, 'r')
+      extra_args = shlex.split(response_fd.read())
+      response_fd.close()
+
+      # slice in extra_args in place of the response file arg
+      sys.argv[index:index+1] = extra_args
+      #if DEBUG: print >>sys.stderr, "Expanded response file: " + " | ".join(sys.argv)
+      break
 
 if sys.argv[1] == '--version':
   revision = '(unknown revision)'
