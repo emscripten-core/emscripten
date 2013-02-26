@@ -270,17 +270,24 @@ function RegisteredString(stringType, name) {
 }
 
 RegisteredString.prototype.toWireType = function(destructors, value) {
-    var ptr = _malloc(value.length + 1);
-    writeStringToMemory(value, ptr);
+    // assumes 4-byte alignment
+    var length = value.length;
+    var ptr = _malloc(4 + length);
+    HEAP32[ptr >> 2] = length;
+    writeStringToMemory(value, ptr + 4);
     destructors.push(_free);
     destructors.push(ptr);
     return ptr;
 };
 
 RegisteredString.prototype.fromWireType = function(value) {
-    var rv = Pointer_stringify(value);
+    var length = HEAP32[value >> 2];
+    var a = new Array(length);
+    for (var i = 0; i < length; ++i) {
+        a[i] = String.fromCharCode(HEAP8[value + 4 + i]);
+    }
     _free(value);
-    return rv;
+    return a.join('');
 };
 
 function __embind_register_cstring(rawType, name) {

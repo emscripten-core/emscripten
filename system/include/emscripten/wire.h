@@ -180,12 +180,18 @@ namespace emscripten {
 
         template<>
         struct BindingType<std::string> {
-            typedef char* WireType;
+            typedef struct {
+                size_t length;
+                char data[1]; // trailing data
+            }* WireType;
             static WireType toWireType(const std::string& v) {
-                return strdup(v.c_str());
+                WireType wt = (WireType)malloc(sizeof(size_t) + v.length());
+                wt->length = v.length();
+                memcpy(wt->data, v.data(), v.length());
+                return wt;
             }
-            static std::string fromWireType(char* v) {
-                return std::string(v);
+            static std::string fromWireType(WireType v) {
+                return std::string(v->data, v->length);
             }
             static void destroy(WireType v) {
                 free(v);
