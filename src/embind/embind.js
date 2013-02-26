@@ -773,6 +773,9 @@ function __embind_register_class(
             throw new BindingError("Use 'new' to construct " + name);
         }
         var body = type.constructor.body;
+        if (undefined === body) {
+            throw new BindingError(name + " has no accessible constructor");
+        }
         return body.apply(this, arguments);
     });
     type.constructor.prototype = type.Handle.prototype;
