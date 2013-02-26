@@ -43,7 +43,7 @@ def scan(ll, settings):
   if len(blockaddrs) > 0:
     settings['NECESSARY_BLOCKADDRS'] = blockaddrs
 
-NUM_CHUNKS_PER_CORE = 5
+NUM_CHUNKS_PER_CORE = 2
 MIN_CHUNK_SIZE = 1024*1024
 MAX_CHUNK_SIZE = float(os.environ.get('EMSCRIPT_MAX_CHUNK_SIZE') or 'inf') # configuring this is just for debugging purposes
 
@@ -163,9 +163,9 @@ def emscript(infile, settings, outfile, libraries=[]):
   cores = multiprocessing.cpu_count()
   assert cores >= 1
   if cores > 1:
-    intended_num_chunks = cores * NUM_CHUNKS_PER_CORE
+    intended_num_chunks = int(cores * NUM_CHUNKS_PER_CORE)
     chunk_size = max(MIN_CHUNK_SIZE, total_ll_size / intended_num_chunks)
-    chunk_size += 3*len(meta) # keep ratio of lots of function code to meta (expensive to process, and done in each parallel task)
+    chunk_size += 3*len(meta) + len(forwarded_data)/3 # keep ratio of lots of function code to meta (expensive to process, and done in each parallel task) and forwarded data (less expensive but potentially significant)
     chunk_size = min(MAX_CHUNK_SIZE, chunk_size)
   else:
     chunk_size = MAX_CHUNK_SIZE # if 1 core, just use the max chunk size
