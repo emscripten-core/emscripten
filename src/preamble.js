@@ -150,52 +150,6 @@ function SAFE_HEAP_COPY_HISTORY(dest, src) {
 //==========================================
 #endif
 
-var CorrectionsMonitor = {
-#if PGO
-  MAX_ALLOWED: Infinity,
-#else
-  MAX_ALLOWED: 0, // XXX
-#endif
-  corrections: 0,
-  sigs: {},
-
-  note: function(type, succeed, sig) {
-    if (!succeed) {
-      this.corrections++;
-      if (this.corrections >= this.MAX_ALLOWED) abort('\n\nToo many corrections!');
-    }
-#if PGO
-    if (!sig)
-      sig = (new Error().stack).toString().split('\n')[2].split(':').slice(-1)[0]; // Spidermonkey-specific FIXME
-    sig = type + '|' + sig;
-    if (!this.sigs[sig]) {
-      //Module.print('Correction: ' + sig);
-      this.sigs[sig] = [0, 0]; // fail, succeed
-    }
-    this.sigs[sig][succeed ? 1 : 0]++;
-#endif
-  },
-
-  print: function() {
-#if PGO
-    var items = [];
-    for (var sig in this.sigs) {
-      items.push({
-        sig: sig,
-        fails: this.sigs[sig][0],
-        succeeds: this.sigs[sig][1],
-        total: this.sigs[sig][0] + this.sigs[sig][1]
-      });
-    }
-    items.sort(function(x, y) { return y.total - x.total; });
-    for (var i = 0; i < items.length; i++) {
-      var item = items[i];
-      Module.print(item.sig + ' : ' + item.total + ' hits, %' + (Math.ceil(100*item.fails/item.total)) + ' failures');
-    }
-#endif
-  }
-};
-
 #if CHECK_OVERFLOWS
 //========================================
 // Debugging tools - Mathop overflows
@@ -207,24 +161,20 @@ function CHECK_OVERFLOW(value, bits, ignore, sig) {
   // For signedness issue here, see settings.js, CHECK_SIGNED_OVERFLOWS
 #if CHECK_SIGNED_OVERFLOWS
   if (value === Infinity || value === -Infinity || value >= twopbits1 || value < -twopbits1) {
-    CorrectionsMonitor.note('SignedOverflow', 0, sig);
-    if (value === Infinity || value === -Infinity || Math.abs(value) >= twopbits) CorrectionsMonitor.note('Overflow');
+    throw 'SignedOverflow';
+    if (value === Infinity || value === -Infinity || Math.abs(value) >= twopbits) throw 'Overflow';
+  }
 #else
   if (value === Infinity || value === -Infinity || Math.abs(value) >= twopbits) {
-    CorrectionsMonitor.note('Overflow', 0, sig);
+    throw 'Overflow';
+  }
 #endif
 #if CORRECT_OVERFLOWS
-    // Fail on >32 bits - we warned at compile time
-    if (bits <= 32) {
-      value = value & (twopbits - 1);
-    }
-#endif
-  } else {
-#if CHECK_SIGNED_OVERFLOWS
-    CorrectionsMonitor.note('SignedOverflow', 1, sig);
-#endif
-    CorrectionsMonitor.note('Overflow', 1, sig);
+  // Fail on >32 bits - we warned at compile time
+  if (bits <= 32) {
+    value = value & (twopbits - 1);
   }
+#endif
   return value;
 }
 #endif
@@ -241,39 +191,6 @@ var INDENT = '';
 // Debugging tools - Execution timeout
 //========================================
 var START_TIME = Date.now();
-#endif
-
-#if PROFILE
-var PROFILING = 0;
-var PROFILING_ROOT = { time: 0, children: {}, calls: 0 };
-var PROFILING_NODE;
-
-function startProfiling() {
-  PROFILING_NODE = PROFILING_ROOT;
-  PROFILING = 1;
-}
-Module['startProfiling'] = startProfiling;
-
-function stopProfiling() {
-  PROFILING = 0;
-  assert(PROFILING_NODE === PROFILING_ROOT, 'Must have popped all the profiling call stack');
-}
-Module['stopProfiling'] = stopProfiling;
-
-function printProfiling() {
-  function dumpData(name_, node, indent) {
-    Module.print(indent + ('________' + node.time).substr(-8) + ': ' + name_ + ' (' + node.calls + ')');
-    var children = [];
-    for (var child in node.children) {
-      children.push(node.children[child]);
-      children[children.length-1].name_ = child;
-    }
-    children.sort(function(x, y) { return y.time - x.time });
-    children.forEach(function(child) { dumpData(child.name_, child, indent + '  ') });
-  }
-  dumpData('root', PROFILING_ROOT, ' ');
-}
-Module['printProfiling'] = printProfiling;
 #endif
 
 //========================================
@@ -655,47 +572,43 @@ function enlargeMemory() {
 #endif
 
 var TOTAL_STACK = Module['TOTAL_STACK'] || {{{ TOTAL_STACK }}};
-#if ASM_JS == 0
 var TOTAL_MEMORY = Module['TOTAL_MEMORY'] || {{{ TOTAL_MEMORY }}};
-#else
-var TOTAL_MEMORY = {{{ TOTAL_MEMORY }}}; // in asm, we hardcode the mask, so cannot adjust memory at runtime
-#endif
 var FAST_MEMORY = Module['FAST_MEMORY'] || {{{ FAST_MEMORY }}};
 
 // Initialize the runtime's memory
 #if USE_TYPED_ARRAYS
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
-  assert(!!Int32Array && !!Float64Array && !!(new Int32Array(1)['subarray']) && !!(new Int32Array(1)['set']),
-         'Cannot fallback to non-typed array case: Code is too specialized');
+assert(!!Int32Array && !!Float64Array && !!(new Int32Array(1)['subarray']) && !!(new Int32Array(1)['set']),
+       'Cannot fallback to non-typed array case: Code is too specialized');
 
 #if USE_TYPED_ARRAYS == 1
-  HEAP = IHEAP = new Int32Array(TOTAL_MEMORY);
-  IHEAPU = new Uint32Array(IHEAP.buffer);
+HEAP = IHEAP = new Int32Array(TOTAL_MEMORY);
+IHEAPU = new Uint32Array(IHEAP.buffer);
 #if USE_FHEAP
-  FHEAP = new Float64Array(TOTAL_MEMORY);
+FHEAP = new Float64Array(TOTAL_MEMORY);
 #endif
 #endif
 #if USE_TYPED_ARRAYS == 2
-  var buffer = new ArrayBuffer(TOTAL_MEMORY);
-  HEAP8 = new Int8Array(buffer);
-  HEAP16 = new Int16Array(buffer);
-  HEAP32 = new Int32Array(buffer);
-  HEAPU8 = new Uint8Array(buffer);
-  HEAPU16 = new Uint16Array(buffer);
-  HEAPU32 = new Uint32Array(buffer);
-  HEAPF32 = new Float32Array(buffer);
-  HEAPF64 = new Float64Array(buffer);
+var buffer = new ArrayBuffer(TOTAL_MEMORY);
+HEAP8 = new Int8Array(buffer);
+HEAP16 = new Int16Array(buffer);
+HEAP32 = new Int32Array(buffer);
+HEAPU8 = new Uint8Array(buffer);
+HEAPU16 = new Uint16Array(buffer);
+HEAPU32 = new Uint32Array(buffer);
+HEAPF32 = new Float32Array(buffer);
+HEAPF64 = new Float64Array(buffer);
 
-  // Endianness check (note: assumes compiler arch was little-endian)
-  HEAP32[0] = 255;
-  assert(HEAPU8[0] === 255 && HEAPU8[3] === 0, 'Typed arrays 2 must be run on a little-endian system');
+// Endianness check (note: assumes compiler arch was little-endian)
+HEAP32[0] = 255;
+assert(HEAPU8[0] === 255 && HEAPU8[3] === 0, 'Typed arrays 2 must be run on a little-endian system');
 #endif
 #else
-  // Make sure that our HEAP is implemented as a flat array.
-  HEAP = []; // Hinting at the size with |new Array(TOTAL_MEMORY)| should help in theory but makes v8 much slower
-  for (var i = 0; i < FAST_MEMORY; i++) {
-    HEAP[i] = 0; // XXX We do *not* use {{| makeSetValue(0, 'i', 0, 'null') |}} here, since this is done just to optimize runtime speed
-  }
+// Make sure that our HEAP is implemented as a flat array.
+HEAP = []; // Hinting at the size with |new Array(TOTAL_MEMORY)| should help in theory but makes v8 much slower
+for (var i = 0; i < FAST_MEMORY; i++) {
+  HEAP[i] = 0; // XXX We do *not* use {{| makeSetValue(0, 'i', 0, 'null') |}} here, since this is done just to optimize runtime speed
+}
 #endif
 
 Module['HEAP'] = HEAP;
@@ -722,7 +635,7 @@ STACK_MAX = TOTAL_STACK; // we lose a little stack here, but TOTAL_STACK is nice
 #if USE_TYPED_ARRAYS == 2
 var tempDoublePtr = Runtime.alignMemory(allocate(12, 'i8', ALLOC_STACK), 8);
 assert(tempDoublePtr % 8 == 0);
-function copyTempFloat(ptr) { // functions, because inlining this code is increases code size too much
+function copyTempFloat(ptr) { // functions, because inlining this code increases code size too much
   HEAP8[tempDoublePtr] = HEAP8[ptr];
   HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];
   HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];
@@ -773,9 +686,6 @@ function preMain() {
 }
 function exitRuntime() {
   callRuntimeCallbacks(__ATEXIT__);
-
-  // Print summary of correction activity
-  CorrectionsMonitor.print();
 }
 
 // Tools
@@ -831,6 +741,20 @@ Module['writeArrayToMemory'] = writeArrayToMemory;
 
 {{{ unSign }}}
 {{{ reSign }}}
+
+#if PRECISE_I32_MUL
+if (!Math.imul) Math.imul = function(a, b) {
+  var ah  = a >>> 16;
+  var al = a & 0xffff;
+  var bh  = b >>> 16;
+  var bl = b & 0xffff;
+  return (al*bl + ((ah*bl + al*bh) << 16))|0;
+};
+#else
+Math.imul = function(a, b) {
+  return (a*b)|0; // fast but imprecise
+};
+#endif
 
 // A counter of dependencies for calling run(). If we need to
 // do asynchronous work before running, increment this and

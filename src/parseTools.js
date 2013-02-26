@@ -103,6 +103,11 @@ function isNiceIdent(ident, loose) {
   }
 }
 
+function isJSVar(ident) {
+  return /^\(?[$_]?[\w$_\d ]*\)+$/.test(ident);
+
+}
+
 function isStructPointerType(type) {
   // This test is necessary for clang - in llvm-gcc, we
   // could check for %struct. The downside is that %1 can
@@ -976,12 +981,6 @@ function checkSafeHeap() {
   return SAFE_HEAP === 1 || checkSpecificSafeHeap();
 }
 
-if (ASM_JS) {
-  var hexMemoryMask = '0x' + (TOTAL_MEMORY-1).toString(16);
-  var decMemoryMask = (TOTAL_MEMORY-1).toString();
-  var memoryMask = hexMemoryMask.length <= decMemoryMask.length ? hexMemoryMask : decMemoryMask;
-}
-
 function getHeapOffset(offset, type, forceAsm) {
   if (USE_TYPED_ARRAYS !== 2) {
     return offset;
@@ -991,11 +990,11 @@ function getHeapOffset(offset, type, forceAsm) {
     }
     var shifts = Math.log(Runtime.getNativeTypeSize(type))/Math.LN2;
     offset = '(' + offset + ')';
-    if (ASM_JS && (phase == 'funcs' || forceAsm)) offset = '(' + offset + '&' + memoryMask + ')';
     if (shifts != 0) {
       return '(' + offset + '>>' + shifts + ')';
     } else {
-      return offset;
+      // we need to guard against overflows here, HEAP[U]8 expects a guaranteed int
+      return isJSVar(offset) ? offset : '(' + offset + '|0)';
     }
   }
 }
@@ -1045,20 +1044,6 @@ function asmCoercion(value, type, signedness) {
   }
 }
 
-var TWO_TWENTY = Math.pow(2, 20);
-
-function asmMultiplyI32(a, b) {
-  // special-case: there is no integer multiply in asm, because there is no true integer
-  // multiply in JS. While we wait for Math.imul, do double multiply
-  if ((isNumber(a) && Math.abs(a) < TWO_TWENTY) || (isNumber(b) && Math.abs(b) < TWO_TWENTY)) {
-    return '(((' + a + ')*(' + b + '))&-1)'; // small enough to emit directly as a multiply
-  }
-  if (USE_MATH_IMUL) {
-    return 'Math.imul(' + a + ',' + b + ')';
-  }
-  return '(~~(+((' + a + ')|0) * +((' + b + ')|0)))';
-}
-
 function asmFloatToInt(x) {
   return '(~~(' + x + '))';
 }
@@ -1070,7 +1055,6 @@ function makeGetTempDouble(i, type, forSet) { // get an aliased part of the temp
   var ptr = getFastValue('tempDoublePtr', '+', Runtime.getNativeTypeSize(type)*i);
   var offset;
   if (type == 'double') {
-    if (ASM_JS) ptr = '(' + ptr + ')&' + memoryMask;
     offset = '(' + ptr + ')>>3';
   } else {
     offset = getHeapOffset(ptr, type);
@@ -1153,8 +1137,8 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
   }
 }
 
-function makeGetValueAsm(ptr, pos, type) {
-  return makeGetValue(ptr, pos, type, null, null, null, null, null, true);
+function makeGetValueAsm(ptr, pos, type, unsigned) {
+  return makeGetValue(ptr, pos, type, null, unsigned, null, null, null, true);
 }
 
 function indexizeFunctions(value, type) {
@@ -1372,9 +1356,11 @@ function makeHEAPView(which, start, end) {
 var PLUS_MUL = set('+', '*');
 var MUL_DIV = set('*', '/');
 var PLUS_MINUS = set('+', '-');
+var TWO_TWENTY = Math.pow(2, 20);
 
 // Given two values and an operation, returns the result of that operation.
 // Tries to do as much as possible at compile time.
+// Leaves overflows etc. unhandled, *except* for integer multiply, in order to be efficient with Math.imul
 function getFastValue(a, op, b, type) {
   a = a.toString();
   b = b.toString();
@@ -1410,8 +1396,14 @@ function getFastValue(a, op, b, type) {
           return '(' + a + '<<' + shifts + ')';
         }
       }
-      if (ASM_JS && !(type in Runtime.FLOAT_TYPES)) {
-        return asmMultiplyI32(a, b); // unoptimized multiply, do it using asm.js's special multiply operation
+      if (!(type in Runtime.FLOAT_TYPES)) {
+        // if guaranteed small enough to not overflow into a double, do a normal multiply
+        var bits = getBits(type) || 32; // default is 32-bit multiply for things like getelementptr indexes
+        // Note that we can emit simple multiple in non-asm.js mode, but asm.js will not parse "16-bit" multiple, so must do imul there
+        if ((isNumber(a) && Math.abs(a) < TWO_TWENTY) || (isNumber(b) && Math.abs(b) < TWO_TWENTY) || (bits < 32 && !ASM_JS)) {
+          return '(((' + a + ')*(' + b + '))&' + ((Math.pow(2, bits)-1)|0) + ')'; // keep a non-eliminatable coercion directly on this
+        }
+        return 'Math.imul(' + a + ',' + b + ')';
       }
     } else {
       if (a == '0') {
@@ -1717,9 +1709,7 @@ function handleOverflow(text, bits) {
   if (!bits) return text;
   var correct = correctOverflows();
   warnOnce(!correct || bits <= 32, 'Cannot correct overflows of this many bits: ' + bits);
-  if (CHECK_OVERFLOWS) return 'CHECK_OVERFLOW(' + text + ', ' + bits + ', ' + Math.floor(correctSpecificOverflow() && !PGO) + (
-    PGO ? ', "' + Debugging.getIdentifier() + '"' : ''
-  ) + ')';
+  if (CHECK_OVERFLOWS) return 'CHECK_OVERFLOW(' + text + ', ' + bits + ', ' + Math.floor(correctSpecificOverflow()) + ')';
   if (!correct) return text;
   if (bits == 32) {
     return '((' + text + ')|0)';
@@ -1827,9 +1817,7 @@ function makeSignOp(value, type, op, force, ignore) {
   var bits, full;
   if (type in Runtime.INT_TYPES) {
     bits = parseInt(type.substr(1));
-    full = op + 'Sign(' + value + ', ' + bits + ', ' + Math.floor(ignore || (correctSpecificSign() && !PGO)) + (
-      PGO ? ', "' + (ignore ? '' : Debugging.getIdentifier()) + '"' : ''
-    ) + ')';
+    full = op + 'Sign(' + value + ', ' + bits + ', ' + Math.floor(ignore || (correctSpecificSign())) + ')';
     // Always sign/unsign constants at compile time, regardless of CHECK/CORRECT
     if (isNumber(value)) {
       return eval(full).toString();
@@ -2142,14 +2130,7 @@ function processMathop(item) {
     case 'add': return handleOverflow(getFastValue(idents[0], '+', idents[1], item.type), bits);
     case 'sub': return handleOverflow(getFastValue(idents[0], '-', idents[1], item.type), bits);
     case 'sdiv': case 'udiv': return makeRounding(getFastValue(idents[0], '/', idents[1], item.type), bits, op[0] === 's');
-    case 'mul': {
-      if (bits == 32 && PRECISE_I32_MUL) {
-        Types.preciseI64MathUsed = true;
-        return '(i64Math' + (ASM_JS ? '_' : '.') + 'multiply(' + asmCoercion(idents[0], 'i32') + ',0,' + asmCoercion(idents[1], 'i32') + ',0),' + makeGetValue('tempDoublePtr', 0, 'i32') + ')';
-      } else {
-        return '((' +getFastValue(idents[0], '*', idents[1], item.type) + ')&-1)'; // force a non-eliminatable coercion here, to prevent a double result from leaking
-      }
-    }
+    case 'mul': return getFastValue(idents[0], '*', idents[1], item.type); // overflow handling is already done in getFastValue for '*'
     case 'urem': case 'srem': return getFastValue(idents[0], '%', idents[1], item.type);
     case 'or': {
       if (bits > 32) {

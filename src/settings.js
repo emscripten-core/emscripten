@@ -92,13 +92,9 @@ var PRECISE_I64_MATH = 1; // If enabled, i64 addition etc. is emulated - which i
                           // that we can't know at compile time that 64-bit math is needed. For example, if you
                           // print 64-bit values with printf, but never add them, we can't know at compile time
                           // and you need to set this to 2.
-var PRECISE_I32_MUL = 0; // If enabled, i64 math is done in i32 multiplication. This is necessary if the values
-                         // exceed the JS double-integer limit of ~52 bits. This option can normally be disabled
-                         // because generally i32 multiplication works ok without it, and enabling it has a big
-                         // impact on performance.
-                         // Note that you can hand-optimize your code to avoid the need for this: If you do
-                         // multiplications that actually need 64-bit precision inside 64-bit values, things
-                         // will work properly. (Unless the LLVM optimizer turns them into 32-bit values?)
+var PRECISE_I32_MUL = 1; // If enabled, i32 multiplication is done with full precision, which means it is
+                         // correct even if the value exceeds the JS double-integer limit of ~52 bits (otherwise,
+                         // rounding will occur above that range).
 
 var CLOSURE_ANNOTATIONS = 0; // If set, the generated code will be annotated for the closure
                              // compiler. This potentially lets closure optimize the code better.
@@ -134,6 +130,16 @@ var SAFE_HEAP_LOG = 0; // Log out all SAFE_HEAP operations
 
 var ASM_HEAP_LOG = 0; // Simple heap logging, like SAFE_HEAP_LOG but cheaper, and in asm.js
 
+var CORRUPTION_CHECK = 0; // When enabled, will emit a buffer area at the beginning and
+                          // end of each allocation on the heap, filled with canary
+                          // values that can be checked later. Corruption is checked for
+                          // at the end of each at each free() (see jsifier to add more, and you
+                          // can add more manual checks by calling CorruptionChecker.checkAll).
+                          // 0 means not enabled, higher values mean the size of the
+                          // buffer areas as a multiple of the allocated area (so
+                          // 1 means 100%, or buffer areas equal to allocated area,
+                          // both before and after). This must be an integer.
+
 var LABEL_DEBUG = 0; // 1: Print out functions as we enter them
                      // 2: Also print out each label as we enter it
 var LABEL_FUNCTION_FILTERS = []; // Filters for function label debug.
@@ -148,11 +154,13 @@ var LIBRARY_DEBUG = 0; // Print out when we enter a library call (library*.js). 
                        // Runtime.debug at runtime for logging to cease, and can set it when you
                        // want it back. A simple way to set it in C++ is
                        //   emscripten_run_script("Runtime.debug = ...;");
-var GL_DEBUG = 0; // Print out all calls into WebGL. As with LIBRARY_DEBUG, you can set a runtime
-                  // option, in this case GL.debug.
 var SOCKET_DEBUG = 0; // Log out socket/network data transfer.
 
-var PROFILE_MAIN_LOOP = 0; // Profile the function called in set_main_loop
+var GL_DEBUG = 0; // Print out all calls into WebGL. As with LIBRARY_DEBUG, you can set a runtime
+                  // option, in this case GL.debug.
+var GL_TESTING = 0; // When enabled, sets preserveDrawingBuffer in the context, to allow tests to work (but adds overhead)
+var GL_MAX_TEMP_BUFFER_SIZE = 2097152; // How large GL emulation temp buffers are
+var GL_UNSAFE_OPTS = 1; // Enables some potentially-unsafe optimizations in GL emulation code
 
 var DISABLE_EXCEPTION_CATCHING = 0; // Disables generating code to actually catch exceptions. If the code you
                                     // are compiling does not actually rely on catching exceptions (but the
@@ -203,20 +211,9 @@ var FS_LOG = 0; // Log all FS operations.  This is especially helpful when you'r
                 // a new project and want to see a list of file system operations happening
                 // so that you can create a virtual file system with all of the required files.
 
-var PGO = 0; // Profile-guided optimization.
-             // When run with the CHECK_* options, will not fail on errors. Instead, will
-             // keep a record of which checks succeeded and which failed. On shutdown, will
-             // print out that information. This is useful for knowing which lines need
-             // checking enabled and which do not, that is, this is a way to automate the
-             // generation of line data for CORRECT_*_LINES options.
-             // All CORRECT_* options default to 1 with PGO builds.
-             // See https://github.com/kripken/emscripten/wiki/Optimizing-Code for more info
-
 var NAMED_GLOBALS = 0; // If 1, we use global variables for globals. Otherwise
                        // they are referred to by a base plus an offset (called an indexed global),
                        // saving global variables but adding runtime overhead.
-
-var PROFILE = 0; // Enables runtime profiling. See test_profiling for a usage example.
 
 var EXPORT_ALL = 0; // If true, we export all the symbols
 var EXPORTED_FUNCTIONS = ['_main']; // Functions that are explicitly exported. These functions are kept alive
@@ -325,7 +322,6 @@ var BENCHMARK = 0; // If 1, will just time how long main() takes to execute, and
 var ASM_JS = 0; // If 1, generate code in asm.js format. XXX This is highly experimental,
                 // and will not work on most codebases yet. It is NOT recommended that you
                 // try this yet.
-var USE_MATH_IMUL = 0; // If 1, use Math.imul when useful
 
 var EXPLICIT_ZEXT = 0; // If 1, generate an explicit conversion of zext i1 to i32, using ?:
 

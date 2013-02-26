@@ -82,7 +82,7 @@ void iter(void *arg) {
     printf("sum: %d\n", sum);
 
 #if EMSCRIPTEN
-    assert(not_always_data == 1);
+    //assert(not_always_data == 1);
 
     int result = sum;
     REPORT_RESULT();

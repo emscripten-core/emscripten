@@ -100,14 +100,8 @@ class RunnerCore(unittest.TestCase):
       for temp_file in os.listdir(TEMP_DIR):
         if temp_file.endswith('.ll'):
           self.has_prev_ll = True
-    
+
   def tearDown(self):
-    if self.save_JS:
-      for name in os.listdir(self.get_dir()):
-        if name.endswith(('.o.js', '.cc.js')):
-          suff = '.'.join(name.split('.')[-2:])
-          shutil.copy(os.path.join(self.get_dir(), name),
-                      os.path.join(TEMP_DIR, self.id().replace('__main__.', '').replace('.test_', '.')+'.'+suff))
     if not self.save_dir:
       # rmtree() fails on Windows if the current working directory is inside the tree.
       os.chdir(os.path.join(self.get_dir(), '..'))
@@ -139,6 +133,12 @@ class RunnerCore(unittest.TestCase):
 
   def get_stdout_path(self):
     return os.path.join(self.get_dir(), 'stdout')
+
+  def hardcode_arguments(self, filename, args):
+    # Hardcode in the arguments, so js is portable without manual commandlinearguments
+    if not args: return
+    js = open(filename).read()
+    open(filename, 'w').write(js.replace('var ret = run();', 'var ret = run(%s);' % str(args)))
 
   def prep_ll_run(self, filename, ll_file, force_recompile=False, build_ll_hook=None):
     if ll_file.endswith(('.bc', '.o')):
@@ -435,6 +435,8 @@ process(sys.argv[1])
 
 sys.argv = map(lambda arg: arg if not arg.startswith('test_') else 'default.' + arg, sys.argv)
 
+test_index = 0
+
 if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'browser' not in str(sys.argv):
   # Tests
 
@@ -448,29 +450,35 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
   class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
     ## Does a complete test - builds, runs, checks output, etc.
     def do_run(self, src, expected_output, args=[], output_nicerizer=None, output_processor=None, no_build=False, main_file=None, additional_files=[], js_engines=None, post_build=None, basename='src.cpp', libraries=[], includes=[], force_c=False, build_ll_hook=None, extra_emscripten_args=[]):
-        if force_c or (main_file is not None and main_file[-2:]) == '.c':
-          basename = 'src.c'
-          Building.COMPILER = to_cc(Building.COMPILER)
+      if force_c or (main_file is not None and main_file[-2:]) == '.c':
+        basename = 'src.c'
+        Building.COMPILER = to_cc(Building.COMPILER)
 
-        dirname = self.get_dir()
-        filename = os.path.join(dirname, basename)
-        if not no_build:
-          self.build(src, dirname, filename, main_file=main_file, additional_files=additional_files, libraries=libraries, includes=includes,
-                     build_ll_hook=build_ll_hook, extra_emscripten_args=extra_emscripten_args, post_build=post_build)
+      dirname = self.get_dir()
+      filename = os.path.join(dirname, basename)
+      if not no_build:
+        self.build(src, dirname, filename, main_file=main_file, additional_files=additional_files, libraries=libraries, includes=includes,
+                   build_ll_hook=build_ll_hook, extra_emscripten_args=extra_emscripten_args, post_build=post_build)
 
-        # Run in both JavaScript engines, if optimizing - significant differences there (typed arrays)
-        if js_engines is None:
-          js_engines = JS_ENGINES
-        if Settings.USE_TYPED_ARRAYS:
-          js_engines = filter(lambda engine: engine != V8_ENGINE, js_engines) # V8 issue 1822
-        js_engines = filter(lambda engine: engine not in self.banned_js_engines, js_engines)
-        if len(js_engines) == 0: return self.skip('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
-        for engine in js_engines:
-          js_output = self.run_generated_code(engine, filename + '.o.js', args, output_nicerizer=output_nicerizer)
-          self.assertContained(expected_output, js_output.replace('\r\n', '\n'))
-          self.assertNotContained('ERROR', js_output)
+      # Run in both JavaScript engines, if optimizing - significant differences there (typed arrays)
+      if js_engines is None:
+        js_engines = JS_ENGINES
+      if Settings.USE_TYPED_ARRAYS:
+        js_engines = filter(lambda engine: engine != V8_ENGINE, js_engines) # V8 issue 1822
+      js_engines = filter(lambda engine: engine not in self.banned_js_engines, js_engines)
+      if len(js_engines) == 0: return self.skip('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
+      for engine in js_engines:
+        js_output = self.run_generated_code(engine, filename + '.o.js', args, output_nicerizer=output_nicerizer)
+        self.assertContained(expected_output, js_output.replace('\r\n', '\n'))
+        self.assertNotContained('ERROR', js_output)
 
-        #shutil.rmtree(dirname) # TODO: leave no trace in memory. But for now nice for debugging
+      #shutil.rmtree(dirname) # TODO: leave no trace in memory. But for now nice for debugging
+
+      if self.save_JS:
+        global test_index
+        self.hardcode_arguments(filename + '.o.js', args)
+        shutil.copyfile(filename + '.o.js', os.path.join(TEMP_DIR, str(test_index) + '.js'))
+        test_index += 1
 
     # No building - just process an existing .ll file (or .bc, which we turn into .ll)
     def do_ll_run(self, ll_file, expected_output=None, args=[], js_engines=None, output_nicerizer=None, post_build=None, force_recompile=False, build_ll_hook=None, extra_emscripten_args=[]):
@@ -1131,7 +1139,6 @@ m_divisor is 1091269979
     def test_i32_mul_precise(self):
       if self.emcc_args == None: return self.skip('needs ta2')
 
-      self.emcc_args += ['-s', 'PRECISE_I32_MUL=1']
       src = r'''
         #include <stdio.h>
 
@@ -1146,6 +1153,10 @@ m_divisor is 1091269979
       self.do_run(src, '3217489085')
 
     def test_i32_mul_semiprecise(self):
+      if Settings.ASM_JS: return self.skip('asm is always fully precise')
+
+      Settings.PRECISE_I32_MUL = 0 # we want semiprecise here
+
       src = r'''
         #include <stdio.h>
 
@@ -2845,6 +2856,23 @@ Exiting setjmp function, level: 0, prev_jmp: -1
         '''
         self.do_run(src, 'a1: 0\na2: 0\na3: 1\nb1: 0\nb2: 1\nb3: 1\nc1: 1\nc2: 1\nc3: 1\n')
 
+    def test_dynamic_cast_2(self):
+      if self.emcc_args is None: return self.skip('need libcxxabi')
+
+      src = r'''
+        #include <stdio.h>
+        #include <typeinfo>
+
+        class Class {};
+
+        int main() {
+            const Class* dp = dynamic_cast<const Class*>(&typeid(Class));
+            // should return dp == NULL,
+            printf("pointer: %p\n", dp);
+        }
+        '''
+      self.do_run(src, "pointer: (nil)")
+
     def test_funcptr(self):
         src = '''
           #include <stdio.h>
@@ -3966,6 +3994,18 @@ The current type of b is: 9
         '''
       self.do_run(src, '*0\n')
 
+    def test_time_c(self):
+      src = r'''
+        #include <time.h>
+        #include <stdio.h>
+
+        int main() {
+          time_t t = time(0);
+          printf("time: %s\n", ctime(&t));
+        }
+      '''
+      self.do_run(src, 'time: ') # compilation check, mainly
+
     def test_intentional_fault(self):
       if Settings.ASM_JS: return self.skip('no throw support in asm')
       # Some programs intentionally segfault themselves, we should compile that into a throw
@@ -4095,10 +4135,12 @@ The current type of b is: 9
           '''
         self.do_run(src, '*0.00,0.00,0.00*\n*0,77,0*\n*0,77,0*\n*0,77,0*')
 
-    def test_memcpy(self):
+    def test_memcpy_memcmp(self):
         src = '''
           #include <stdio.h>
           #include <string.h>
+          #include <assert.h>
+
           #define MAXX 48
           void reset(unsigned char *buffer) {
             for (int i = 0; i < MAXX; i++) buffer[i] = i+1;
@@ -4119,6 +4161,20 @@ The current type of b is: 9
                   reset(buffer);
                   memcpy(buffer+i, buffer+j, k);
                   dump(buffer);
+                  assert(memcmp(buffer+i, buffer+j, k) == 0);
+                  buffer[i + k/2]++;
+                  if (buffer[i + k/2] != 0) {
+                    assert(memcmp(buffer+i, buffer+j, k) > 0);
+                  } else {
+                    assert(memcmp(buffer+i, buffer+j, k) < 0);
+                  }
+                  buffer[i + k/2]--;
+                  buffer[j + k/2]++;
+                  if (buffer[j + k/2] != 0) {
+                    assert(memcmp(buffer+i, buffer+j, k) < 0);
+                  } else {
+                    assert(memcmp(buffer+i, buffer+j, k) > 0);
+                  }
                 }
               }
             }
@@ -4196,6 +4252,19 @@ The current type of b is: 9
         }
       '''
       self.do_run(src, 'final: -403200.');
+
+    def test_memmove3(self):
+      src = '''
+        #include <stdio.h>
+        #include <string.h>
+        int main() {
+          char str[] = "memmove can be vvery useful....!";
+          memmove(str+15, str+16, 17);
+          puts(str);
+          return 0;
+        }
+      '''
+      self.do_run(src, 'memmove can be very useful....!')
 
     def test_bsearch(self):
       if Settings.QUANTUM_SIZE == 1: return self.skip('Test cannot work with q1')
@@ -5299,8 +5368,29 @@ Pass: 0.000012 0.000012''')
           return(0);
         }
       '''
-
       self.do_run(src, '3\nday 19, month Nov, year 2012');
+
+    def test_sscanf_5(self):
+      src = r'''
+        #include "stdio.h"
+
+        static const char *colors[] = {
+          "  c black",
+          ". c #001100",
+          "X c #111100"
+        };
+
+        int main(){
+          unsigned char code;
+          char color[32];
+          int rcode;
+          for(int i = 0; i < 3; i++) {
+            rcode = sscanf(colors[i], "%c c %s", &code, color);
+            printf("%i, %c, %s\n", rcode, code, color);
+          }
+        }
+      '''
+      self.do_run(src, '2,  , black\n2, ., #001100\n2, X, #111100');
 
     def test_langinfo(self):
       src = open(path_from_root('tests', 'langinfo', 'test.c'), 'r').read()
@@ -6283,6 +6373,53 @@ int main(int argc, char **argv) {
 
       self.do_run(src, '789:123.46\n0:100.1')
 
+    def test_reinterpreted_ptrs(self):
+      if self.emcc_args is None: return self.skip('needs emcc and libc')
+
+      src = r'''
+#include <stdio.h>
+
+class Foo {
+private:
+    float bar;
+public:
+    int baz;
+
+    Foo(): bar(0), baz(4711) {};
+
+    int getBar() const;
+};
+
+int Foo::getBar() const {
+    return this->bar;
+};
+
+const Foo *magic1 = reinterpret_cast<Foo*>(0xDEAD111F);
+const Foo *magic2 = reinterpret_cast<Foo*>(0xDEAD888F);
+
+static void runTest() {
+
+    const Foo *a = new Foo();
+    const Foo *b = a;
+
+    if (a->getBar() == 0) {
+        if (a->baz == 4712)
+            b = magic1;
+        else
+            b = magic2;
+    }
+
+    printf("%s\n", (b == magic1 ? "magic1" : (b == magic2 ? "magic2" : "neither")));
+};
+
+extern "C" {
+    int main(int argc, char **argv) {
+        runTest();
+    }
+}
+'''
+      self.do_run(src, 'magic2')
+
     def test_jansson(self):
         return self.skip('currently broken')
 
@@ -6783,7 +6920,7 @@ def process(filename):
       if self.emcc_args is None: return self.skip('Very slow without ta2, and we would also need to include dlmalloc manually without emcc')
       if Settings.QUANTUM_SIZE == 1: return self.skip('TODO FIXME')
 
-      Settings.CORRECT_SIGNS = 1 # XXX: in default, we fail with 2 here, even though the pgo_data should be correct (and works in s_0_0). Investigate this.
+      Settings.CORRECT_SIGNS = 1
       Settings.CORRECT_OVERFLOWS = 0
       Settings.CORRECT_ROUNDINGS = 0
       if self.emcc_args is None: Settings.SAFE_HEAP = 0 # uses time.h to set random bytes, other stuff
@@ -6995,6 +7132,14 @@ def process(filename):
           self.assertIdentical(clean(open('release.js').read()), clean(open('debug%d.js' % debug).read())) # EMCC_DEBUG=1 mode must not generate different code!
           print >> sys.stderr, 'debug check %d passed too' % debug
 
+        try:
+          os.environ['EMCC_FORCE_STDLIBS'] = '1'
+          print 'EMCC_FORCE_STDLIBS'
+          do_test()
+        finally:
+          del os.environ['EMCC_FORCE_STDLIBS']
+        print >> sys.stderr, 'EMCC_FORCE_STDLIBS ok'
+
         try_delete(CANONICAL_TEMP_DIR)
       else:
         print >> sys.stderr, 'not doing debug check'
@@ -7062,6 +7207,16 @@ def process(filename):
       finally:
         del os.environ['EMCC_LEAVE_INPUTS_RAW']
 
+    def test_fuzz(self):
+      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
+
+      Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'fuzz')]
+
+      for name in glob.glob(path_from_root('tests', 'fuzz', '*.c')):
+        print name
+        self.do_run(open(path_from_root('tests', 'fuzz', name)).read(),
+                    open(path_from_root('tests', 'fuzz', name + '.txt')).read(), force_c=True)
+
     # Autodebug the code
     def do_autodebug(self, filename):
       output = Popen([PYTHON, AUTODEBUGGER, filename+'.o.ll', filename+'.o.ll.ll'], stdout=PIPE, stderr=self.stderr_redirect).communicate()[0]
@@ -7113,40 +7268,101 @@ def process(filename):
         '''
       self.do_run(src, '''AD:-1,1''', build_ll_hook=self.do_autodebug)
 
-    def test_profiling(self):
-      if Settings.ASM_JS: return self.skip('asm does not support profiling')
+    def test_corruption(self):
+      if Settings.ASM_JS: return self.skip('cannot use corruption checks in asm')
+      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2 for actual test')
 
-      src = '''
-          #include <emscripten.h>
-          #include <unistd.h>
+      Settings.CORRUPTION_CHECK = 1
 
-          int main()
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+        #include <string.h>
+        int main(int argc, char **argv) {
+          int size = 1024*argc;
+          char *buffer = (char*)malloc(size);
+        #if CORRUPT
+          memset(buffer, argc, size+15);
+        #else
+          memset(buffer, argc, size);
+        #endif
+          for (int x = 0; x < size; x += argc*3) buffer[x] = x/3;
+          int ret = 0;
+          for (int x = 0; x < size; x++) ret += buffer[x];
+          free(buffer);
+          printf("All ok, %d\n", ret);
+        }
+      '''
+
+      for corrupt in [1]:
+        self.do_run(src.replace('CORRUPT', str(corrupt)), 'Heap corruption detected!' if corrupt else 'All ok, 4209')
+
+    def test_corruption_2(self):
+      if Settings.ASM_JS: return self.skip('cannot use corruption checks in asm')
+      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2 for actual test')
+
+      Settings.SAFE_HEAP = 1
+      Settings.CORRUPTION_CHECK = 1
+
+      # test for free(0), malloc(0), etc.
+      src = r'''
+        #include <iostream>
+        #include <fstream>
+        #include <stdlib.h>
+        #include <stdio.h>
+
+        void bye() {
+          printf("all ok\n");
+        }
+
+        int main() {
+          atexit(bye);
+
+          std::string testPath = "/Script/WA-KA.txt";
+          std::fstream str(testPath.c_str(), std::ios::in | std::ios::binary);
+
+          if (str.is_open())
           {
-            EMSCRIPTEN_PROFILE_INIT(3);
-            EMSCRIPTEN_PROFILE_BEGIN(0);
-            usleep(10 * 1000);
-            EMSCRIPTEN_PROFILE_END(0);
-            EMSCRIPTEN_PROFILE_BEGIN(1);
-            usleep(50 * 1000);
-            EMSCRIPTEN_PROFILE_END(1);
-            EMSCRIPTEN_PROFILE_BEGIN(2);
-            usleep(250 * 1000);
-            EMSCRIPTEN_PROFILE_END(2);
-            return 0;
+            std::cout << "open!" << std::endl;
+          } else {
+            std::cout << "missing!" << std::endl;
           }
+
+          return 1;
+        }
         '''
+      self.do_run(src, 'missing!\nall ok\n')
 
-      post1 = '''
-def process(filename):
-  src = open(filename, 'a')
-  src.write(\'\'\'
-    Profiling.dump();
-  \'\'\')
-  src.close()
-'''
+    def test_corruption_3(self):
+      if Settings.ASM_JS: return self.skip('cannot use corruption checks in asm')
+      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2 for actual test')
 
-      self.do_run(src, '''Profiling data:
-Block 0: ''', post_build=post1)
+      Settings.CORRUPTION_CHECK = 1
+
+      # realloc
+      src = r'''
+        #include <stdlib.h>
+        #include <stdio.h>
+        #include <assert.h>
+
+        void bye() {
+          printf("all ok\n");
+        }
+
+        int main(int argc, char **argv) {
+          atexit(bye);
+
+          char *buffer = (char*)malloc(100);
+          for (int i = 0; i < 100; i++) buffer[i] = (i*i)%256;
+          buffer = (char*)realloc(buffer, argc + 50);
+          for (int i = 0; i < argc + 50; i++) {
+            //printf("%d : %d : %d : %d\n", i, (int)(buffer + i), buffer[i], (char)((i*i)%256));
+            assert(buffer[i] == (char)((i*i)%256));
+          }
+          return 1;
+        }
+        '''
+      self.do_run(src, 'all ok\n')
 
     ### Integration tests
 
@@ -7676,6 +7892,8 @@ def process(filename):
 
     def test_debug(self):
       if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
+      if self.emcc_args is not None:
+        if '-O1' in self.emcc_args or '-O2' in self.emcc_args: return self.skip('optimizations remove LLVM debug info')
 
       src = '''
         #include <stdio.h>
@@ -8051,7 +8269,6 @@ class %s(T):
     Settings.ASSERTIONS = 1-embetter
     Settings.SAFE_HEAP = 1-(embetter and llvm_opts)
     Building.LLVM_OPTS = llvm_opts
-    Settings.PGO = 0
     Settings.CHECK_OVERFLOWS = 1-(embetter or llvm_opts)
     Settings.CORRECT_OVERFLOWS = 1-(embetter and llvm_opts)
     Settings.CORRECT_SIGNS = 0
@@ -8061,7 +8278,6 @@ class %s(T):
     Settings.INIT_STACK = 0
     Settings.RUNTIME_TYPE_INFO = 0
     Settings.DISABLE_EXCEPTION_CATCHING = 0
-    Settings.PROFILE = 0
     Settings.INCLUDE_FULL_LIBRARY = 0
     Settings.BUILD_AS_SHARED_LIB = 0
     Settings.RUNTIME_LINKED_LIBS = []
@@ -8084,11 +8300,11 @@ TT = %s
   exec('o1 = make_run("o1", compiler=CLANG, emcc_args=["-O1", "-s", "SAFE_HEAP=1"])')
 
   # Make one run with -O2, but without closure (we enable closure in specific tests, otherwise on everything it is too slow)
-  exec('o2 = make_run("o2", compiler=CLANG, emcc_args=["-O2", "--closure", "0"])')
+  exec('o2 = make_run("o2", compiler=CLANG, emcc_args=["-O2"])')
 
   # asm.js
-  #exec('asm = make_run("asm", compiler=CLANG, emcc_args=["-O0", "--closure", "0", "-s", "ASM_JS=1"])')
-  exec('asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2", "--closure", "0", "-s", "ASM_JS=1"])')
+  #exec('asm = make_run("asm", compiler=CLANG, emcc_args=["-O0", "-s", "ASM_JS=1"])')
+  exec('asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=1"])')
 
   # Make custom runs with various options
   for compiler, quantum, embetter, typed_arrays, llvm_opts in [
@@ -8114,11 +8330,12 @@ TT = %s
 
         # --version
         output = Popen([PYTHON, compiler, '--version'], stdout=PIPE, stderr=PIPE).communicate()
-        self.assertContained('''emcc (Emscripten GCC-like replacement) 2.0
-Copyright (C) 2012 the Emscripten authors.
+        output = output[0].replace('\r', '')
+        self.assertContained('''emcc (Emscripten GCC-like replacement)''', output)
+        self.assertContained('''Copyright (C) 2013 the Emscripten authors (see AUTHORS.txt)
 This is free and open source software under the MIT license.
 There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-''', output[0].replace('\r', ''), output[1].replace('\r', ''))
+''', output)
 
         # -v, without input files
         output = Popen([PYTHON, compiler, '-v'], stdout=PIPE, stderr=PIPE).communicate()
@@ -8224,20 +8441,22 @@ Options that are modified or new in %s include:
           (['-o', 'something.js', '-O0'],                   0, None, 0, 0),
           (['-o', 'something.js', '-O1'],                   1, None, 0, 0),
           (['-o', 'something.js', '-O1', '--closure', '1'], 1, None, 1, 0),
-          (['-o', 'something.js', '-O2'],                   2, None, 1, 1),
+          (['-o', 'something.js', '-O2'],                   2, None, 0, 1),
           (['-o', 'something.js', '-O2', '--closure', '0'], 2, None, 0, 0),
+          (['-o', 'something.js', '-O2', '-g'],             2, None, 0, 0),
           (['-o', 'something.js', '-O3'],                   3, None, 1, 1),
           (['-o', 'something.js', '-O3', '--closure', '0'], 3, None, 0, 0),
           # and, test compiling to bitcode first
           (['-o', 'something.bc'], 0, [],      0, 0),
           (['-o', 'something.bc'], 0, ['-O0'], 0, 0),
           (['-o', 'something.bc'], 1, ['-O1'], 0, 0),
-          (['-o', 'something.bc'], 2, ['-O2'], 1, 0),
+          (['-o', 'something.bc'], 2, ['-O2'], 0, 0),
           (['-o', 'something.bc'], 3, ['-O3'], 1, 0),
           (['-O1', '-o', 'something.bc'], 0, [], 0, 0), # -Ox is ignored and warned about
         ]:
-          #print params, opt_level, bc_params, closure
+          print params, opt_level, bc_params, closure, has_malloc
           self.clear()
+          keep_debug = '-g' in params
           output = Popen([PYTHON, compiler, path_from_root('tests', 'hello_world_loop' + ('_malloc' if has_malloc else '') + '.cpp')] + params,
                          stdout=PIPE, stderr=PIPE).communicate()
           assert len(output[0]) == 0, output[0]
@@ -8261,14 +8480,13 @@ Options that are modified or new in %s include:
           else:
             # closure has not been run, we can do some additional checks. TODO: figure out how to do these even with closure
             assert 'Module._main = ' not in generated, 'closure compiler should not have been run'
-            # XXX find a way to test this: assert ('& 255' in generated or '&255' in generated) == (opt_level <= 2), 'corrections should be in opt <= 2'
-            assert ('(label)' in generated) == (opt_level <= 1), 'relooping should be in opt >= 2'
-            assert ('assert(STACKTOP < STACK_MAX' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
-            assert 'var $i;' in generated or 'var $i_0' in generated or 'var $storemerge3;' in generated or 'var $storemerge4;' in generated or 'var $i_04;' in generated, 'micro opts should always be on'
+            if keep_debug:
+              assert ('(label)' in generated) == (opt_level <= 1), 'relooping should be in opt >= 2'
+              assert ('assert(STACKTOP < STACK_MAX' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
+              assert 'var $i;' in generated or 'var $i_0' in generated or 'var $storemerge3;' in generated or 'var $storemerge4;' in generated or 'var $i_04;' in generated, 'micro opts should always be on'
             if opt_level >= 2:
-              assert re.search('HEAP8\[\$\w+ \+ \(+\$\w+ ', generated) or re.search('HEAP8\[HEAP32\[', generated), 'eliminator should create compound expressions, and fewer one-time vars' # also in -O1, but easier to test in -O2
+              assert re.search('HEAP8\[\$?\w+ \+ \(+\$?\w+ ', generated) or re.search('HEAP8\[HEAP32\[', generated), 'eliminator should create compound expressions, and fewer one-time vars' # also in -O1, but easier to test in -O2
             assert ('_puts(' in generated) == (opt_level >= 1), 'with opt >= 1, llvm opts are run and they should optimize printf to puts'
-            assert ('function _malloc(bytes) {' in generated) == (not has_malloc), 'If malloc is needed, it should be there, if not not'
             assert 'function _main() {' in generated, 'Should be unminified, including whitespace'
             assert ('-O3' in (params+(bc_params or []))) or'function _dump' in generated, 'No inlining by default'
 
@@ -8587,6 +8805,21 @@ f.close()
       Building.emcc(main_name, ['-L.', '-lLIB', a_name+'.o', c_name + '.o'], output_filename='a.out.js')
 
       self.assertContained('result: 62', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
+    def test_asm_undefined(self):
+      src = r'''
+        #include <stdio.h>
+        extern void doit();
+        int main(int argc, char **argv) {
+          if (argc == 121) doit();
+          printf("done\n");
+          return 1;
+        }
+      '''
+      filename = self.in_dir('src.cpp')
+      open(filename, 'w').write(src)
+      out, err = Popen([PYTHON, EMCC, filename, '-s', 'ASM_JS=1', '-O2'], stderr=PIPE).communicate()
+      assert 'Warning: Unresolved symbol' in err, 'always warn on undefs in asm, since it breaks validation'
 
     def test_redundant_link(self):
       lib = "int mult() { return 1; }"
@@ -9011,7 +9244,7 @@ f.close()
           return 0;
         }
       ''')
-      Popen([PYTHON, EMCC, '-O2', '--closure', '-0', os.path.join(self.get_dir(), 'main.cpp')]).communicate()
+      Popen([PYTHON, EMCC, '-O2', os.path.join(self.get_dir(), 'main.cpp')]).communicate()
       output = run_js(os.path.join(self.get_dir(), 'a.out.js'), full_output=True, stderr=PIPE)
       self.assertContained('''0:0
 1:1
@@ -9220,6 +9453,26 @@ f.close()
           output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O1', '-s', 'LINKABLE=%d' % linkable, '-s', 'ASM_JS=%d' % asm], stdout=PIPE, stderr=PIPE).communicate()
           assert 'phase 2 working on %d chunks' %chunks in err, err
           assert 'splitting up js optimization into %d chunks' % js_chunks in err, err
+      finally:
+        del os.environ['EMCC_DEBUG']
+
+    def test_debuginfo(self):
+      if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
+      try:
+        os.environ['EMCC_DEBUG'] = '1'
+        # llvm debug info is kept only when we can see it, which is without the js optimize, -O0. js debug info is lost by registerize in -O2, so - g disables it
+        for args, expect_llvm, expect_js in [
+            (['-O0'], True, True),
+            (['-O0', '-g'], True, True),
+            (['-O1'], False, True),
+            (['-O1', '-g'], False, True),
+            (['-O2'], False, False),
+            (['-O2', '-g'], False, True),
+          ]:
+          print args, expect_llvm, expect_js
+          output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).communicate()
+          assert expect_llvm == ('strip-debug' not in err)
+          assert expect_js == ('registerize' not in err)
       finally:
         del os.environ['EMCC_DEBUG']
 
@@ -9958,6 +10211,12 @@ elif 'browser' in str(sys.argv):
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_image.c'), '-O2', '--preload-file', 'screenshot.jpg', '-o', 'page.html']).communicate()
       self.run_browser('page.html', '', '/report_result?600')
 
+    def test_sdl_image_jpeg(self):
+      shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.jpeg'))
+      open(os.path.join(self.get_dir(), 'sdl_image_jpeg.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_image_jpeg.c')).read()))
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_image_jpeg.c'), '--preload-file', 'screenshot.jpeg', '-o', 'page.html']).communicate()
+      self.run_browser('page.html', '', '/report_result?600')
+
     def test_sdl_image_compressed(self):
       for image, width in [(path_from_root('tests', 'screenshot2.png'), 300),
                            (path_from_root('tests', 'screenshot.jpg'), 600)]:
@@ -9977,12 +10236,12 @@ elif 'browser' in str(sys.argv):
         self.run_browser('page.html', '', '/report_result?' + str(width))
 
     def test_sdl_image_prepare(self):
-      # load an image file, get pixel data. Also O2 coverage for --preload-file
+      # load an image file, get pixel data.
       shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.not'))
       self.btest('sdl_image_prepare.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.not'])
 
     def test_sdl_image_prepare_data(self):
-      # load an image file, get pixel data. Also O2 coverage for --preload-file
+      # load an image file, get pixel data.
       shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.not'))
       self.btest('sdl_image_prepare_data.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.not'])
 
@@ -10080,56 +10339,56 @@ elif 'browser' in str(sys.argv):
       # SDL, OpenGL, textures, immediate mode. Closure for more coverage
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
       self.reftest(path_from_root('tests', 'screenshot-gray-purple.png'))
-      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_ogl.c'), '-O2', '--minify', '0', '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
+      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_ogl.c'), '-O2', '--minify', '0', '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png', '-s', 'GL_TESTING=1']).communicate()
       self.run_browser('something.html', 'You should see an image with gray at the top.', '/report_result?0')
 
     def test_sdl_ogl_defaultmatrixmode(self):
       # SDL, OpenGL, textures, immediate mode. Closure for more coverage
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
       self.reftest(path_from_root('tests', 'screenshot-gray-purple.png'))
-      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_ogl_defaultMatrixMode.c'), '--minify', '0', '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
+      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_ogl_defaultMatrixMode.c'), '--minify', '0', '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png', '-s', 'GL_TESTING=1']).communicate()
       self.run_browser('something.html', 'You should see an image with gray at the top.', '/report_result?0')
 
     def test_sdl_ogl_p(self):
       # Immediate mode with pointers
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
       self.reftest(path_from_root('tests', 'screenshot-gray.png'))
-      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_ogl_p.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
+      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_ogl_p.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png', '-s', 'GL_TESTING=1']).communicate()
       self.run_browser('something.html', 'You should see an image with gray at the top.', '/report_result?0')
 
     def test_sdl_fog_simple(self):
       # SDL, OpenGL, textures, fog, immediate mode. Closure for more coverage
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
       self.reftest(path_from_root('tests', 'screenshot-fog-simple.png'))
-      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_fog_simple.c'), '-O2', '--minify', '0', '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
+      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_fog_simple.c'), '-O2', '--minify', '0', '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png', '-s', 'GL_TESTING=1']).communicate()
       self.run_browser('something.html', 'You should see an image with fog.', '/report_result?0')
 
     def test_sdl_fog_negative(self):
       # SDL, OpenGL, textures, fog, immediate mode. Closure for more coverage
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
       self.reftest(path_from_root('tests', 'screenshot-fog-negative.png'))
-      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_fog_negative.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
+      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_fog_negative.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png', '-s', 'GL_TESTING=1']).communicate()
       self.run_browser('something.html', 'You should see an image with fog.', '/report_result?0')
 
     def test_sdl_fog_density(self):
       # SDL, OpenGL, textures, fog, immediate mode. Closure for more coverage
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
       self.reftest(path_from_root('tests', 'screenshot-fog-density.png'))
-      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_fog_density.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
+      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_fog_density.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png', '-s', 'GL_TESTING=1']).communicate()
       self.run_browser('something.html', 'You should see an image with fog.', '/report_result?0')
 
     def test_sdl_fog_exp2(self):
       # SDL, OpenGL, textures, fog, immediate mode. Closure for more coverage
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
       self.reftest(path_from_root('tests', 'screenshot-fog-exp2.png'))
-      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_fog_exp2.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
+      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_fog_exp2.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png', '-s', 'GL_TESTING=1']).communicate()
       self.run_browser('something.html', 'You should see an image with fog.', '/report_result?0')
 
     def test_sdl_fog_linear(self):
       # SDL, OpenGL, textures, fog, immediate mode. Closure for more coverage
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
       self.reftest(path_from_root('tests', 'screenshot-fog-linear.png'))
-      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_fog_linear.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png']).communicate()
+      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_fog_linear.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png', '-s', 'GL_TESTING=1']).communicate()
       self.run_browser('something.html', 'You should see an image with fog.', '/report_result?0')
 
     def test_worker(self):
@@ -10269,26 +10528,26 @@ elif 'browser' in str(sys.argv):
     def test_glgears(self):
       self.reftest(path_from_root('tests', 'gears.png'))
       Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
-                                           '-DHAVE_BUILTIN_SINCOS', '--pre-js', 'reftest.js']).communicate()
+                                           '-DHAVE_BUILTIN_SINCOS', '--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']).communicate()
       self.run_browser('something.html', 'You should see animating gears.', '/report_result?0')
 
     def test_glgears_animation(self):
       Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
-                                           '-DHAVE_BUILTIN_SINCOS',
+                                           '-DHAVE_BUILTIN_SINCOS', '-s', 'GL_TESTING=1',
                                            '--shell-file', path_from_root('tests', 'hello_world_gles_shell.html')]).communicate()
       self.run_browser('something.html', 'You should see animating gears.', '/report_gl_result?true')
 
     def test_glgears_bad(self):
       # Make sure that OpenGL ES is not available if typed arrays are not used
       Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
-                                           '-DHAVE_BUILTIN_SINCOS',
+                                           '-DHAVE_BUILTIN_SINCOS', '-s', 'GL_TESTING=1',
                                            '-s', 'USE_TYPED_ARRAYS=0',
                                            '--shell-file', path_from_root('tests', 'hello_world_gles_shell.html')]).communicate()
       self.run_browser('something.html', 'You should not see animating gears.', '/report_gl_result?false')
 
     def test_glgears_deriv(self):
       self.reftest(path_from_root('tests', 'gears.png'))
-      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_gles_deriv.c'), '-o', 'something.html',
+      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_gles_deriv.c'), '-o', 'something.html', '-s', 'GL_TESTING=1',
                                            '-DHAVE_BUILTIN_SINCOS', '--pre-js', 'reftest.js']).communicate()
       self.run_browser('something.html', 'You should see animating gears.', '/report_result?0')
       src = open('something.html').read()
@@ -10319,7 +10578,7 @@ elif 'browser' in str(sys.argv):
           args = ['--preload-file', 'smoke.tga', '-O2'] # test optimizations and closure here as well for more coverage
 
         self.reftest(book_path(basename.replace('.bc', '.png')))
-        Popen([PYTHON, EMCC, program, '-o', 'program.html', '--pre-js', 'reftest.js'] + args).communicate()
+        Popen([PYTHON, EMCC, program, '-o', 'program.html', '--pre-js', 'reftest.js', '-s', 'GL_TESTING=1'] + args).communicate()
         self.run_browser('program.html', '', '/report_result?0')
 
     def btest(self, filename, expected=None, reference=None, reference_slack=0, args=[]): # TODO: use in all other tests
@@ -10334,7 +10593,7 @@ elif 'browser' in str(sys.argv):
         expected = [str(i) for i in range(0, reference_slack+1)]
         shutil.copyfile(path_from_root('tests', filename), os.path.join(self.get_dir(), filename))
         self.reftest(path_from_root('tests', reference))
-        args = args + ['--pre-js', 'reftest.js']
+        args = args + ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), filename), '-o', 'test.html'] + args).communicate()
       if type(expected) is str: expected = [expected]
       self.run_browser('test.html', '.', ['/report_result?' + e for e in expected])
@@ -10368,6 +10627,19 @@ elif 'browser' in str(sys.argv):
       # pointers and a shader
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
       self.btest('gl_ps.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png'])
+
+    def test_gl_ps_packed(self):
+      # packed data that needs to be strided
+      shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
+      self.btest('gl_ps_packed.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png'])
+
+    def test_gl_ps_workaround(self):
+      shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
+      self.btest('gl_ps_workaround.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png'])
+
+    def test_gl_ps_workaround2(self):
+      shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
+      self.btest('gl_ps_workaround2.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png'])
 
     def test_matrix_identity(self):
       self.btest('gl_matrix_identity.c', expected=['-1882984448', '460451840'])
@@ -10416,6 +10688,15 @@ elif 'browser' in str(sys.argv):
 
     def test_cubegeom_fog(self):
       self.btest('cubegeom_fog.c', expected=['1617140399', '-898782526', '-946179526'])
+
+    def test_cubegeom_pre_vao(self):
+      self.btest('cubegeom_pre_vao.c', expected=['-1472804742', '-1626058463', '-2046234971'])
+
+    def test_cubegeom_pre2_vao(self):
+      self.btest('cubegeom_pre2_vao.c', expected=['-1472804742', '-1626058463', '-2046234971'])
+
+    def test_cubegeom_pre2_vao2(self):
+      self.btest('cubegeom_pre2_vao2.c', expected=['-790445118'])
 
     def test_cube_explosion(self):
       self.btest('cube_explosion.c', expected=['667220544', '-1543354600', '-1485258415'])
@@ -10499,14 +10780,17 @@ elif 'browser' in str(sys.argv):
     def test_subdata(self):
       self.btest('gl_subdata.cpp', reference='float_tex.png')
 
+    def test_perspective(self):
+      self.btest('perspective.c', reference='perspective.png')
+
     def test_runtimelink(self):
       main, supp = self.setup_runtimelink_test()
 
       open(self.in_dir('supp.cpp'), 'w').write(supp)
-      Popen([PYTHON, EMCC, self.in_dir('supp.cpp'), '-o', 'supp.js', '-s', 'LINKABLE=1', '-s', 'NAMED_GLOBALS=1', '-s', 'BUILD_AS_SHARED_LIB=2', '-O2', '--closure', '0']).communicate()
+      Popen([PYTHON, EMCC, self.in_dir('supp.cpp'), '-o', 'supp.js', '-s', 'LINKABLE=1', '-s', 'NAMED_GLOBALS=1', '-s', 'BUILD_AS_SHARED_LIB=2', '-O2']).communicate()
       shutil.move(self.in_dir('supp.js'), self.in_dir('supp.so'))
 
-      self.btest(main, args=['-s', 'LINKABLE=1', '-s', 'NAMED_GLOBALS=1', '-s', 'RUNTIME_LINKED_LIBS=["supp.so"]', '-DBROWSER=1', '-O2', '--closure', '0'], expected='76')
+      self.btest(main, args=['-s', 'LINKABLE=1', '-s', 'NAMED_GLOBALS=1', '-s', 'RUNTIME_LINKED_LIBS=["supp.so"]', '-DBROWSER=1', '-O2'], expected='76')
 
     def test_pre_run_deps(self):
       # Adding a dependency in preRun will delay run
@@ -10802,11 +11086,14 @@ elif 'benchmark' in str(sys.argv):
 
       try_delete(final_filename)
       output = Popen([PYTHON, EMCC, filename, #'-O3',
-                      '-O2', '-s', 'INLINING_LIMIT=0', '-s', 'DOUBLE_MODE=0', '-s', 'PRECISE_I64_MATH=0',
-                      '-s', 'ASM_JS=1',# '-s', 'USE_MATH_IMUL=1',
+                      '-O2', '-s', 'INLINING_LIMIT=0', '-s', 'DOUBLE_MODE=0', '-s', 'PRECISE_I64_MATH=0',# '-s', 'EXPLICIT_ZEXT=1',
+                      '-s', 'ASM_JS=1', '-s', 'USE_MATH_IMUL=1',
                       '-s', 'TOTAL_MEMORY=128*1024*1024', '-s', 'FAST_MEMORY=10*1024*1024',
                       '-o', final_filename] + shared_args + emcc_args, stdout=PIPE, stderr=self.stderr_redirect).communicate()
       assert os.path.exists(final_filename), 'Failed to compile file: ' + output[0]
+
+      if self.save_JS:
+        self.hardcode_arguments(final_filename, args)
 
       # Run JS
       global total_times, tests_done
@@ -11060,7 +11347,7 @@ elif 'benchmark' in str(sys.argv):
     def test_dlmalloc(self):
       # XXX This seems to have regressed slightly with emcc. Are -g and the signs lines passed properly?
       src = open(path_from_root('system', 'lib', 'dlmalloc.c'), 'r').read() + '\n\n\n' + open(path_from_root('tests', 'dlmalloc_test.c'), 'r').read()
-      self.do_benchmark('dlmalloc', src, ['400', '3000'], '*3000,0*', emcc_args=['-g', '-s', 'CORRECT_SIGNS=2', '-s', 'CORRECT_SIGNS_LINES=[4820, 4195, 4250, 4203, 4209, 4239, 4231]'])
+      self.do_benchmark('dlmalloc', src, ['400', '3000'], '*3000,0*')
 
     def test_zlib(self):
       src = open(path_from_root('tests', 'zlib', 'benchmark.c'), 'r').read()
@@ -11220,12 +11507,12 @@ elif 'sanity' in str(sys.argv):
       f = open(CONFIG_FILE, 'a')
       f.write('CLOSURE_COMPILER = "/tmp/nowhere/nothingtoseehere/kjadsfkjwelkjsdfkqgas/nonexistent.txt"\n')
       f.close()
-      output = self.check_working([EMCC, '-O2', 'tests/hello_world.cpp'], CLOSURE_FATAL)
+      output = self.check_working([EMCC, '-O2', '--closure', '1', 'tests/hello_world.cpp'], CLOSURE_FATAL)
 
       # With a working path, all is well
       restore()
       try_delete('a.out.js')
-      output = self.check_working([EMCC, '-O2', 'tests/hello_world.cpp'], '')
+      output = self.check_working([EMCC, '-O2', '--closure', '1', 'tests/hello_world.cpp'], '')
       assert os.path.exists('a.out.js')
 
     def test_llvm(self):
@@ -11427,7 +11714,7 @@ fi
             try_delete(basebc_name) # we might need to check this file later
             try_delete(dcebc_name) # we might need to check this file later
             for ll_name in ll_names: try_delete(ll_name)
-            output = self.do([EMCC, '-O' + str(i), '--closure', '0', '-s', 'RELOOP=0', '--llvm-lto', '0', path_from_root('tests', filename)])
+            output = self.do([EMCC, '-O' + str(i), '-s', 'RELOOP=0', '--llvm-lto', '0', path_from_root('tests', filename)])
             #print output
             assert INCLUDING_MESSAGE.replace('X', libname) in output
             if libname == 'libc':
@@ -11475,7 +11762,7 @@ fi
           print >> sys.stderr, phase, i
           opt = min(i, 2)
           try_delete('a.out.js')
-          output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_loop.cpp'), '-O' + str(opt), '--closure', '0'],
+          output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_loop.cpp'), '-O' + str(opt)],
                          stdout=PIPE, stderr=PIPE).communicate()
           self.assertContained('hello, world!', run_js('a.out.js'))
           output = '\n'.join(output)
@@ -11530,12 +11817,12 @@ fi
           (['--jcache'], 'hello_libcxx.cpp', False, True, False, True, False, True, []),
           ([], 'hello_libcxx.cpp', False, False, False, False, False, False, []),
           # finally, build a file close to the previous, to see that some chunks are found in the cache and some not
-          (['--jcache'], 'hello_libcxx_mod1.cpp', False, True, True, True, True, False, []), # win on pre, mix on funcs, lose on jsfuncs
+          (['--jcache'], 'hello_libcxx_mod1.cpp', False, True, True, True, True, True, []), # win on pre, mix on funcs, mix on jsfuncs
           (['--jcache'], 'hello_libcxx_mod1.cpp', False, True, False, True, False, True, []),
         ]:
           print >> sys.stderr, args, input_file, expect_pre_save, expect_pre_load, expect_funcs_save, expect_funcs_load, expect_jsfuncs_save, expect_jsfuncs_load, expected
           self.clear()
-          out, err = Popen([PYTHON, EMCC, '-O2', '--closure', '0', path_from_root('tests', input_file)] + args, stdout=PIPE, stderr=PIPE).communicate()
+          out, err = Popen([PYTHON, EMCC, '-O2', path_from_root('tests', input_file)] + args, stdout=PIPE, stderr=PIPE).communicate()
           errtail = err.split('emcc invocation')[-1]
           self.assertContained('hello, world!', run_js('a.out.js'), errtail)
           assert (PRE_SAVE_MSG in err) == expect_pre_save, errtail

@@ -228,7 +228,7 @@ if has_preloaded:
     curr = open(file_['localname'], 'rb').read()
     file_['data_end'] = start + len(curr)
     if AV_WORKAROUND: curr += '\x00'
-    print >> sys.stderr, 'bundling', file_['name'], file_['localname'], file_['data_start'], file_['data_end']
+    #print >> sys.stderr, 'bundling', file_['name'], file_['localname'], file_['data_start'], file_['data_end']
     start += len(curr)
     data.write(curr)
   data.close()

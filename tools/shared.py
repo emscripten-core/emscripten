@@ -566,12 +566,10 @@ class Settings:
         if opt_level >= 2:
           Settings.RELOOP = 1
         if opt_level >= 3:
+          # Aside from these, -O3 also runs closure compiler
           Settings.INLINING_LIMIT = 0
           Settings.DOUBLE_MODE = 0
           Settings.PRECISE_I64_MATH = 0
-          Settings.CORRECT_SIGNS = 0
-          Settings.CORRECT_OVERFLOWS = 0
-          Settings.CORRECT_ROUNDINGS = 0
           if noisy: print >> sys.stderr, 'Warning: Applying some potentially unsafe optimizations! (Use -O2 if this fails.)'
 
     global Settings
@@ -665,6 +663,9 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
   def make(args, stdout=None, stderr=None, env=None):
     if env is None:
       env = Building.get_building_env()
+    if not args:
+      print >> sys.stderr, 'Error: Executable to run not specified.'
+      sys.exit(1)
     #args += ['VERBOSE=1']
     try:
       Popen(args, stdout=stdout, stderr=stderr, env=env).communicate()
@@ -748,12 +749,16 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     resolved_symbols = set()
     temp_dirs = []
     files = map(os.path.abspath, files)
+    has_ar = False
+    for f in files:
+      has_ar = has_ar or Building.is_ar(f)
     for f in files:
       if not Building.is_ar(f):
         if Building.is_bitcode(f):
-          new_symbols = Building.llvm_nm(f)
-          resolved_symbols = resolved_symbols.union(new_symbols.defs)
-          unresolved_symbols = unresolved_symbols.union(new_symbols.undefs.difference(resolved_symbols)).difference(new_symbols.defs)
+          if has_ar:
+            new_symbols = Building.llvm_nm(f)
+            resolved_symbols = resolved_symbols.union(new_symbols.defs)
+            unresolved_symbols = unresolved_symbols.union(new_symbols.undefs.difference(resolved_symbols)).difference(new_symbols.defs)
           actual_files.append(f)
       else:
         # Extract object files from ar archives, and link according to gnu ld semantics
@@ -828,6 +833,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
   def llvm_opt(filename, opts):
     if type(opts) is int:
       opts = Building.pick_llvm_opts(opts)
+    #opts += ['-debug-pass=Arguments']
     if DEBUG: print >> sys.stderr, 'emcc: LLVM opts:', opts
     output = Popen([LLVM_OPT, filename] + opts + ['-o=' + filename + '.opt.bc'], stdout=PIPE).communicate()[0]
     assert os.path.exists(filename + '.opt.bc'), 'Failed to run llvm optimizations: ' + output
@@ -864,8 +870,14 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     assert os.path.exists(output_filename), 'Could not create bc file: ' + output
     return output_filename
 
+  nm_cache = {} # cache results of nm - it can be slow to run
+
   @staticmethod
   def llvm_nm(filename, stdout=PIPE, stderr=None):
+    if filename in Building.nm_cache:
+      #if DEBUG: print >> sys.stderr, 'loading nm results for %s from cache' % filename
+      return Building.nm_cache[filename]
+
     # LLVM binary ==> list of symbols
     output = Popen([LLVM_NM, filename], stdout=stdout, stderr=stderr).communicate()[0]
     class ret:
@@ -886,6 +898,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     ret.defs = set(ret.defs)
     ret.undefs = set(ret.undefs)
     ret.commons = set(ret.commons)
+    Building.nm_cache[filename] = ret
     return ret
 
   @staticmethod
@@ -1086,24 +1099,6 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
   @staticmethod
   def is_bitcode(filename):
-    # checks if a file contains LLVM bitcode
-    # if the file doesn't exist or doesn't have valid symbols, it isn't bitcode
-    try:
-      defs = Building.llvm_nm(filename, stderr=PIPE)
-      # If no symbols found, it might just be an empty bitcode file, try to dis it
-      if len(defs.defs) + len(defs.undefs) + len(defs.commons) == 0:
-        # llvm-nm 3.0 has a bug when reading symbols from ar files
-        # so try to see if we're dealing with an ar file, in which
-        # case we should try to dis it.
-        if not Building.is_ar(filename):
-          test_ll = os.path.join(EMSCRIPTEN_TEMP_DIR, 'test.ll')
-          Building.llvm_dis(filename, test_ll)
-          assert os.path.exists(test_ll)
-          try_delete(test_ll)
-    except Exception, e:
-      if DEBUG: print >> sys.stderr, 'shared.Building.is_bitcode failed to test whether file \'%s\' is a llvm bitcode file! Failed on exception: %s' % (filename, e)
-      return False
-
     # look for magic signature
     b = open(filename, 'r').read(4)
     if b[0] == 'B' and b[1] == 'C':
@@ -1267,6 +1262,7 @@ class JCache:
       if os.path.exists(chunking_file):
         try:
           previous_mapping = cPickle.Unpickler(open(chunking_file, 'rb')).load() # maps a function identifier to the chunk number it will be in
+          #if DEBUG: print >> sys.stderr, 'jscache previous mapping', previous_mapping
         except:
           pass
     chunks = []
@@ -1275,20 +1271,25 @@ class JCache:
       news = []
       for func in funcs:
         ident, data = func
+        assert ident, 'need names for jcache chunking'
         if not ident in previous_mapping:
           news.append(func)
         else:
           n = previous_mapping[ident]
           while n >= len(chunks): chunks.append([])
           chunks[n].append(func)
+      if DEBUG: print >> sys.stderr, 'jscache not in previous chunking', len(news)
       # add news and adjust for new sizes
       spilled = news
-      for chunk in chunks:
+      for i in range(len(chunks)):
+        chunk = chunks[i]
         size = sum([len(func[1]) for func in chunk])
-        while size > 1.5*chunk_size and len(chunk) > 0:
+        #if DEBUG: print >> sys.stderr, 'need spilling?', i, size, len(chunk), 'vs', chunk_size, 1.5*chunk_size
+        while size > 1.5*chunk_size and len(chunk) > 1:
           spill = chunk.pop()
           spilled.append(spill)
           size -= len(spill[1])
+      #if DEBUG: print >> sys.stderr, 'jscache new + spilled', len(spilled)
       for chunk in chunks:
         size = sum([len(func[1]) for func in chunk])
         while size < 0.66*chunk_size and len(spilled) > 0:
@@ -1297,6 +1298,7 @@ class JCache:
           size += len(spill[1])
       chunks = filter(lambda chunk: len(chunk) > 0, chunks) # might have empty ones, eliminate them
       funcs = spilled # we will allocate these into chunks as if they were normal inputs
+      #if DEBUG: print >> sys.stderr, 'leftover spills', len(spilled)
     # initialize reasonably, the rest of the funcs we need to split out
     curr = []
     total_size = 0
@@ -1322,15 +1324,18 @@ class JCache:
       for i in range(len(chunks)):
         chunk = chunks[i]
         for ident, data in chunk:
+          assert ident not in new_mapping, 'cannot have duplicate names in jcache chunking'
           new_mapping[ident] = i
       cPickle.Pickler(open(chunking_file, 'wb')).dump(new_mapping)
       #if DEBUG:
+      #  for i in range(len(chunks)):
+      #    chunk = chunks[i]
+      #    print >> sys.stderr, 'final chunk', i, len(chunk)
+      #  print >> sys.stderr, 'new mapping:', new_mapping
       #  if previous_mapping:
       #    for ident in set(previous_mapping.keys() + new_mapping.keys()):
       #      if previous_mapping.get(ident) != new_mapping.get(ident):
       #        print >> sys.stderr, 'mapping inconsistency', ident, previous_mapping.get(ident), new_mapping.get(ident)
-      #  for key, value in new_mapping.iteritems():
-      #    print >> sys.stderr, 'mapping:', key, value
     return [''.join([func[1] for func in chunk]) for chunk in chunks] # remove function names
 
 class JS:

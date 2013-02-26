@@ -478,8 +478,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           ident = '_' + ident;
         }
         var depsText = (deps ? '\n' + deps.map(addFromLibrary).filter(function(x) { return x != '' }).join('\n') : '');
-        // redirected idents just need a var, but no value assigned to them - it would be unused
-        var contentText = isFunction ? snippet : ('var ' + ident + (redirectedIdent ? '' : '=' + snippet) + ';');
+        var contentText = isFunction ? snippet : ('var ' + ident + '=' + snippet + ';');
         if (ASM_JS) {
           var sig = LibraryManager.library[ident.substr(1) + '__sig'];
           if (isFunction && sig && LibraryManager.library[ident.substr(1) + '__asm']) {
@@ -508,7 +507,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         item.JS = addFromLibrary(shortident);
       } else {
         item.JS = 'var ' + item.ident + '; // stub for ' + item.ident;
-        if (WARN_ON_UNDEFINED_SYMBOLS) {
+        if (WARN_ON_UNDEFINED_SYMBOLS || ASM_JS) { // always warn on undefs in asm, since it breaks validation
           warn('Unresolved symbol: ' + item.ident);
         }
       }
@@ -629,15 +628,6 @@ function JSify(data, functionsOnly, givenFunctions) {
             }).join(', ') + ';\n';
           }
         }
-      }
-
-      if (PROFILE) {
-        func.JS += '  if (PROFILING) { '
-                +      'var __parentProfilingNode__ = PROFILING_NODE; PROFILING_NODE = PROFILING_NODE.children["' + func.ident + '"]; '
-                +      'if (!PROFILING_NODE) __parentProfilingNode__.children["' + func.ident + '"] = PROFILING_NODE = { time: 0, children: {}, calls: 0 };'
-                +      'PROFILING_NODE.calls++; '
-                +      'var __profilingStartTime__ = Date.now() '
-                +    '}\n';
       }
 
       if (true) { // TODO: optimize away when not needed
@@ -1145,12 +1135,6 @@ function JSify(data, functionsOnly, givenFunctions) {
   });
   makeFuncLineActor('return', function(item) {
     var ret = RuntimeGenerator.stackExit(item.funcData.initialStack, item.funcData.otherStackAllocations) + ';\n';
-    if (PROFILE) {
-      ret += 'if (PROFILING) { '
-          +    'PROFILING_NODE.time += Date.now() - __profilingStartTime__; '
-          +    'PROFILING_NODE = __parentProfilingNode__ '
-          +  '}\n';
-    }
     if (LABEL_DEBUG && functionNameFilterTest(item.funcData.ident)) {
       ret += "Module.print(INDENT + 'Exiting: " + item.funcData.ident + "');\n"
           +  "INDENT = INDENT.substr(0, INDENT.length-2);\n";
@@ -1527,7 +1511,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         print('// ASM_LIBRARY FUNCTIONS');
         function fix(f) { // fix indenting to not confuse js optimizer
           f = f.substr(f.indexOf('f')); // remove initial spaces before 'function'
-          f = f.substr(0, f.lastIndexOf('\n')+1); // remove spaces and last }
+          f = f.substr(0, f.lastIndexOf('\n')+1); // remove spaces and last }  XXX assumes function has multiple lines
           return f + '}'; // add unindented } to match function
         }
         print(asmLibraryFunctions.map(fix).join('\n'));
@@ -1547,6 +1531,10 @@ function JSify(data, functionsOnly, givenFunctions) {
     // This is the main 'post' pass. Print out the generated code that we have here, together with the
     // rest of the output that we started to print out earlier (see comment on the
     // "Final shape that will be created").
+    if (CORRUPTION_CHECK) {
+      assert(!ASM_JS); // cannot monkeypatch asm!
+      print(processMacros(read('corruptionCheck.js')));
+    }
     if (PRECISE_I64_MATH && Types.preciseI64MathUsed) {
       print(read('long.js'));
     } else {

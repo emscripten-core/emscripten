@@ -1598,7 +1598,7 @@ function registerize(ast) {
             fun[2].push(reg);
           }
         }
-        getStatements(fun).unshift(['var', vars]);
+        if (vars.length > 0) getStatements(fun).unshift(['var', vars]);
       }
     } else {
       //printErr('unfake params: \n\n' + astToSrc(fun) + '\n\n');

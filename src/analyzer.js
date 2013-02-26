@@ -223,6 +223,9 @@ function analyzer(data, sidePass) {
                   for (var i = 0; i < item.params.length; i++) {
                     if (item.params[i].type == 'i64') item.params[i].type = 'i32';
                   }
+                } else if (item.intertype == 'inttoptr') {
+                  var input = item.params[0];
+                  if (input.type == 'i64') input.type = 'i32'; // inttoptr can only care about 32 bits anyhow since pointers are 32-bit
                 }
                 if (isIllegalType(item.valueType) || isIllegalType(item.type)) {
                   isIllegal = true;
@@ -681,9 +684,9 @@ function analyzer(data, sidePass) {
                       params: [(signed && j + whole > sourceElements.length) ? signedKeepAlive : null],
                       type: 'i32',
                     };
-                    if (j == 0 && isUnsignedOp(value.op) && sourceBits < 32) {
+                    if (j == 0 && sourceBits < 32) {
                       // zext sign correction
-                      result.ident = makeSignOp(result.ident, 'i' + sourceBits, 'un', 1, 1);
+                      result.ident = makeSignOp(result.ident, 'i' + sourceBits, isUnsignedOp(value.op) ? 'un' : 're', 1, 1);
                     }
                     if (fraction != 0) {
                       var other = {

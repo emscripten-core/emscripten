@@ -408,7 +408,19 @@ var LibraryGL = {
   },
 
   glReadPixels: function(x, y, width, height, format, type, pixels) {
-    Module.ctx.readPixels(x, y, width, height, format, type, HEAPU8.subarray(pixels));
+    assert(type == 0x1401 /* GL_UNSIGNED_BYTE */);
+    var sizePerPixel;
+    switch (format) {
+      case 0x1907 /* GL_RGB */:
+        sizePerPixel = 3;
+        break;
+      case 0x1908 /* GL_RGBA */:
+        sizePerPixel = 4;
+        break;
+      default: throw 'unsupported glReadPixels format';
+    }
+    var totalSize = width*height*sizePerPixel;
+    Module.ctx.readPixels(x, y, width, height, format, type, HEAPU8.subarray(pixels, pixels + totalSize));
   },
 
   glBindTexture: function(target, texture) {
@@ -908,11 +920,9 @@ var LibraryGL = {
   },
 
   glIsProgram: function(program) {
-    var fb = GL.programs[program];
-    if (typeof(fb) == 'undefined') {
-      return 0;
-    }
-    return Module.ctx.isProgram(fb);
+    var program = GL.programs[program];
+    if (!program) return 0;
+    return Module.ctx.isProgram(program);
   },
 
   glBindAttribLocation__sig: 'viii',
@@ -983,6 +993,11 @@ var LibraryGL = {
     fogMode: 0x0800, // GL_EXP
     fogEnabled: false,
 
+    // VAO support
+    vaos: [],
+    currentVao: null,
+    enabledVertexAttribArrays: {}, // helps with vao cleanups
+
     init: function() {
       GLEmulation.fogColor = new Float32Array(4);
 
@@ -1008,6 +1023,11 @@ var LibraryGL = {
         if (cap == 0x0B60 /* GL_FOG */) {
           GLEmulation.fogEnabled = true;
           return;
+        } else if (cap == 0x0de1 /* GL_TEXTURE_2D */) {
+          // XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support
+          // it by forwarding to glEnableClientState
+          _glEnableClientState(cap);
+          return;
         } else if (!(cap in validCapabilities)) {
           return;
         }
@@ -1017,6 +1037,11 @@ var LibraryGL = {
         if (GL.immediate.lastRenderer) GL.immediate.lastRenderer.cleanup();
         if (cap == 0x0B60 /* GL_FOG */) {
           GLEmulation.fogEnabled = false;
+          return;
+        } else if (cap == 0x0de1 /* GL_TEXTURE_2D */) {
+          // XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support
+          // it by forwarding to glDisableClientState
+          _glDisableClientState(cap);
           return;
         } else if (!(cap in validCapabilities)) {
           return;
@@ -1052,6 +1077,51 @@ var LibraryGL = {
             return;
           }
           case 0x8871: pname = Module.ctx.MAX_COMBINED_TEXTURE_IMAGE_UNITS /* close enough */; break; // GL_MAX_TEXTURE_COORDS
+          case 0x807A: { // GL_VERTEX_ARRAY_SIZE
+            var attribute = GLImmediate.clientAttributes[GLImmediate.VERTEX];
+            {{{ makeSetValue('params', '0', 'attribute ? attribute.size : 0', 'i32') }}};
+            return;
+          }
+          case 0x807B: { // GL_VERTEX_ARRAY_TYPE
+            var attribute = GLImmediate.clientAttributes[GLImmediate.VERTEX];
+            {{{ makeSetValue('params', '0', 'attribute ? attribute.type : 0', 'i32') }}};
+            return;
+          }
+          case 0x807C: { // GL_VERTEX_ARRAY_STRIDE
+            var attribute = GLImmediate.clientAttributes[GLImmediate.VERTEX];
+            {{{ makeSetValue('params', '0', 'attribute ? attribute.stride : 0', 'i32') }}};
+            return;
+          }
+          case 0x8081: { // GL_COLOR_ARRAY_SIZE
+            var attribute = GLImmediate.clientAttributes[GLImmediate.COLOR];
+            {{{ makeSetValue('params', '0', 'attribute ? attribute.size : 0', 'i32') }}};
+            return;
+          }
+          case 0x8082: { // GL_COLOR_ARRAY_TYPE
+            var attribute = GLImmediate.clientAttributes[GLImmediate.COLOR];
+            {{{ makeSetValue('params', '0', 'attribute ? attribute.type : 0', 'i32') }}};
+            return;
+          }
+          case 0x8083: { // GL_COLOR_ARRAY_STRIDE
+            var attribute = GLImmediate.clientAttributes[GLImmediate.COLOR];
+            {{{ makeSetValue('params', '0', 'attribute ? attribute.stride : 0', 'i32') }}};
+            return;
+          }
+          case 0x8088: { // GL_TEXTURE_COORD_ARRAY_SIZE
+            var attribute = GLImmediate.clientAttributes[GLImmediate.TEXTURE0];
+            {{{ makeSetValue('params', '0', 'attribute ? attribute.size : 0', 'i32') }}};
+            return;
+          }
+          case 0x8089: { // GL_TEXTURE_COORD_ARRAY_TYPE
+            var attribute = GLImmediate.clientAttributes[GLImmediate.TEXTURE0];
+            {{{ makeSetValue('params', '0', 'attribute ? attribute.type : 0', 'i32') }}};
+            return;
+          }
+          case 0x808A: { // GL_TEXTURE_COORD_ARRAY_STRIDE
+            var attribute = GLImmediate.clientAttributes[GLImmediate.TEXTURE0];
+            {{{ makeSetValue('params', '0', 'attribute ? attribute.stride : 0', 'i32') }}};
+            return;
+          }
         }
         glGetIntegerv(pname, params);
       };
@@ -1267,8 +1337,13 @@ var LibraryGL = {
         glBindBuffer(target, buffer);
         if (target == Module.ctx.ARRAY_BUFFER) {
           GL.currArrayBuffer = buffer;
+          if (GLEmulation.currentVao) {
+            assert(GLEmulation.currentVao.arrayBuffer == buffer || GLEmulation.currentVao.arrayBuffer == 0 || buffer == 0, 'TODO: support for multiple array buffers in vao');
+            GLEmulation.currentVao.arrayBuffer = buffer;
+          }
         } else if (target == Module.ctx.ELEMENT_ARRAY_BUFFER) {
           GL.currElementArrayBuffer = buffer;
+          if (GLEmulation.currentVao) GLEmulation.currentVao.elementArrayBuffer = buffer;
         }
       };
 
@@ -1311,6 +1386,28 @@ var LibraryGL = {
           return;
         }
         glHint(target, mode);
+      };
+
+      var glEnableVertexAttribArray = _glEnableVertexAttribArray;
+      _glEnableVertexAttribArray = function(index) {
+        glEnableVertexAttribArray(index);
+        GLEmulation.enabledVertexAttribArrays[index] = 1;
+        if (GLEmulation.currentVao) GLEmulation.currentVao.enabledVertexAttribArrays[index] = 1;
+      };
+
+      var glDisableVertexAttribArray = _glDisableVertexAttribArray;
+      _glDisableVertexAttribArray = function(index) {
+        glDisableVertexAttribArray(index);
+        delete GLEmulation.enabledVertexAttribArrays[index];
+        if (GLEmulation.currentVao) delete GLEmulation.currentVao.enabledVertexAttribArrays[index];
+      };
+
+      var glVertexAttribPointer = _glVertexAttribPointer;
+      _glVertexAttribPointer = function(index, size, type, normalized, stride, pointer) {
+        glVertexAttribPointer(index, size, type, normalized, stride, pointer);
+        if (GLEmulation.currentVao) { // TODO: avoid object creation here? likely not hot though
+          GLEmulation.currentVao.vertexAttribPointers[index] = [index, size, type, normalized, stride, pointer];
+        }
       };
     },
 
@@ -1375,6 +1472,9 @@ var LibraryGL = {
         case 'glIsFramebuffer': ret = {{{ Functions.getIndex('_glIsFramebuffer', true) }}}; break;
         case 'glCheckFramebufferStatus': ret = {{{ Functions.getIndex('_glCheckFramebufferStatus', true) }}}; break;
         case 'glRenderbufferStorage': ret = {{{ Functions.getIndex('_glRenderbufferStorage', true) }}}; break;
+        case 'glGenVertexArrays': ret = {{{ Functions.getIndex('_glGenVertexArrays', true) }}}; break;
+        case 'glDeleteVertexArrays': ret = {{{ Functions.getIndex('_glDeleteVertexArrays', true) }}}; break;
+        case 'glBindVertexArray': ret = {{{ Functions.getIndex('_glBindVertexArray', true) }}}; break;
       }
       if (!ret) Module.printErr('WARNING: getProcAddress failed for ' + name);
       return ret;
@@ -1425,6 +1525,20 @@ var LibraryGL = {
   glBindProgram__sig: 'vii',
   glBindProgram: function(type, id) {
     assert(id == 0);
+  },
+
+  glGetPointerv: function(name, p) {
+    var attribute;
+    switch(name) {
+      case 0x808E: // GL_VERTEX_ARRAY_POINTER
+        attribute = GLImmediate.clientAttributes[GLImmediate.VERTEX]; break;
+      case 0x8090: // GL_COLOR_ARRAY_POINTER
+        attribute = GLImmediate.clientAttributes[GLImmediate.COLOR]; break;
+      case 0x8092: // GL_TEXTURE_COORD_ARRAY_POINTER
+        attribute = GLImmediate.clientAttributes[GLImmediate.TEXTURE0]; break;
+      default: throw 'TODO: glGetPointerv for ' + name;
+    }
+    {{{ makeSetValue('p', '0', 'attribute ? attribute.pointer : 0', 'i32') }}};
   },
 
   // GL Immediate mode
@@ -1501,7 +1615,7 @@ var LibraryGL = {
     },
 
     // Temporary buffers
-    MAX_TEMP_BUFFER_SIZE: 2*1024*1024,
+    MAX_TEMP_BUFFER_SIZE: {{{ GL_MAX_TEMP_BUFFER_SIZE }}},
     tempBufferIndexLookup: null,
     tempVertexBuffers: null,
     tempIndexBuffers: null,
@@ -1784,27 +1898,35 @@ var LibraryGL = {
           }
 
           // If the array buffer is unchanged and the renderer as well, then we can avoid all the work here
-          // XXX We use some heuristics here, and this may not work in all cases. Try disabling this if you
-          // have odd glitches (by setting canSkip always to 0, or even cleaning up the renderer right
-          // after rendering)
+          // XXX We use some heuristics here, and this may not work in all cases. Try disabling GL_UNSAFE_OPTS if you
+          // have odd glitches
+#if GL_UNSAFE_OPTS
           var lastRenderer = GL.immediate.lastRenderer;
           var canSkip = this == lastRenderer &&
                         arrayBuffer == GL.immediate.lastArrayBuffer &&
                         (GL.currProgram || this.program) == GL.immediate.lastProgram &&
                         !GL.immediate.matricesModified;
           if (!canSkip && lastRenderer) lastRenderer.cleanup();
+#endif
           if (!GL.currArrayBuffer) {
             // Bind the array buffer and upload data after cleaning up the previous renderer
+#if GL_UNSAFE_OPTS
+            // Potentially unsafe, since lastArrayBuffer might not reflect the true array buffer in code that mixes immediate/non-immediate
             if (arrayBuffer != GL.immediate.lastArrayBuffer) {
+#endif
               Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, arrayBuffer);
+#if GL_UNSAFE_OPTS
             }
+#endif
             Module.ctx.bufferSubData(Module.ctx.ARRAY_BUFFER, start, GL.immediate.vertexData.subarray(start >> 2, end >> 2));
           }
+#if GL_UNSAFE_OPTS
           if (canSkip) return;
           GL.immediate.lastRenderer = this;
           GL.immediate.lastArrayBuffer = arrayBuffer;
           GL.immediate.lastProgram = GL.currProgram || this.program;
           GL.immediate.matricesModified = false;
+#endif
 
           if (!GL.currProgram) {
             Module.ctx.useProgram(this.program);
@@ -1880,9 +2002,11 @@ var LibraryGL = {
             Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, null);
           }
 
+#if GL_UNSAFE_OPTS
           GL.immediate.lastRenderer = null;
           GL.immediate.lastArrayBuffer = null;
           GL.immediate.lastProgram = null;
+#endif
           GL.immediate.matricesModified = true;
         }
       };
@@ -1997,22 +2121,61 @@ var LibraryGL = {
 #endif
         if (attribute.stride) stride = attribute.stride;
       }
-
-      var bytes = 0;
-      for (var i = 0; i < attributes.length; i++) {
-        var attribute = attributes[i];
-        if (!attribute) break;
-        attribute.offset = attribute.pointer - start;
-        if (attribute.offset > bytes) { // ensure we start where we should
-          assert((attribute.offset - bytes)%4 == 0); // XXX assuming 4-alignment
-          bytes += attribute.offset - bytes;
+      var bytes = 0; // total size in bytes
+      if (!stride && !beginEnd) {
+        // beginEnd can not have stride in the attributes, that is fine. otherwise,
+        // no stride means that all attributes are in fact packed. to keep the rest of
+        // our emulation code simple, we perform unpacking/restriding here. this adds overhead, so
+        // it is a good idea to not hit this!
+#if ASSERTIONS
+        Runtime.warnOnce('Unpacking/restriding attributes, this is not fast');
+#endif
+        if (!GL.immediate.restrideBuffer) GL.immediate.restrideBuffer = _malloc(GL.immediate.MAX_TEMP_BUFFER_SIZE);
+        start = GL.immediate.restrideBuffer;
+#if ASSERTIONS
+        assert(start % 4 == 0);
+#endif
+        // calculate restrided offsets and total size
+        for (var i = 0; i < attributes.length; i++) {
+          var attribute = attributes[i];
+          if (!attribute) break;
+          var size = attribute.size * GL.immediate.byteSizeByType[attribute.type - GL.immediate.byteSizeByTypeRoot];
+          if (size % 4 != 0) size += 4 - (size % 4); // align everything
+          attribute.offset = bytes;
+          bytes += size;
         }
-        bytes += attribute.size * GL.immediate.byteSizeByType[attribute.type - GL.immediate.byteSizeByTypeRoot];
-        if (bytes % 4 != 0) bytes += 4 - (bytes % 4); // XXX assuming 4-alignment
-      }
-      assert(stride == 0 || bytes <= stride);
-      if (bytes < stride) { // ensure the size is that of the stride
-        bytes = stride;
+#if ASSERTIONS
+        assert(count*bytes <= GL.immediate.MAX_TEMP_BUFFER_SIZE);
+#endif
+        // copy out the data (we need to know the stride for that, and define attribute.pointer
+        for (var i = 0; i < attributes.length; i++) {
+          var attribute = attributes[i];
+          if (!attribute) break;
+          var size4 = Math.floor((attribute.size * GL.immediate.byteSizeByType[attribute.type - GL.immediate.byteSizeByTypeRoot])/4);
+          for (var j = 0; j < count; j++) {
+            for (var k = 0; k < size4; k++) { // copy in chunks of 4 bytes, our alignment makes this possible
+              HEAP32[((start + attribute.offset + bytes*j)>>2) + k] = HEAP32[(attribute.pointer>>2) + j*size4 + k];
+            }
+          }
+          attribute.pointer = start + attribute.offset;
+        }
+      } else {
+        // normal situation, everything is strided and in the same buffer
+        for (var i = 0; i < attributes.length; i++) {
+          var attribute = attributes[i];
+          if (!attribute) break;
+          attribute.offset = attribute.pointer - start;
+          if (attribute.offset > bytes) { // ensure we start where we should
+            assert((attribute.offset - bytes)%4 == 0); // XXX assuming 4-alignment
+            bytes += attribute.offset - bytes;
+          }
+          bytes += attribute.size * GL.immediate.byteSizeByType[attribute.type - GL.immediate.byteSizeByTypeRoot];
+          if (bytes % 4 != 0) bytes += 4 - (bytes % 4); // XXX assuming 4-alignment
+        }
+        assert(beginEnd || bytes <= stride); // if not begin-end, explicit stride should make sense with total byte size
+        if (bytes < stride) { // ensure the size is that of the stride
+          bytes = stride;
+        }
       }
       GL.immediate.stride = bytes;
 
@@ -2026,6 +2189,9 @@ var LibraryGL = {
     },
 
     flush: function(numProvidedIndexes, startIndex, ptr) {
+#if ASSERTIONS
+      assert(numProvidedIndexes >= 0 || !numProvidedIndexes);
+#endif
       startIndex = startIndex || 0;
       ptr = ptr || 0;
 
@@ -2085,6 +2251,10 @@ var LibraryGL = {
       if (emulatedElementArrayBuffer) {
         Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, GL.buffers[GL.currElementArrayBuffer] || null);
       }
+
+#if GL_UNSAFE_OPTS == 0
+      renderer.cleanup();
+#endif
     }
   },
 
@@ -2302,6 +2472,7 @@ var LibraryGL = {
     var attrib;
     switch(cap) {
       case 0x8078: // GL_TEXTURE_COORD_ARRAY
+      case 0x0de1: // GL_TEXTURE_2D - XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support it
         attrib = GL.immediate.TEXTURE0 + GL.immediate.clientActiveTexture; break;
       case 0x8074: // GL_VERTEX_ARRAY
         attrib = GL.immediate.VERTEX; break;
@@ -2310,14 +2481,19 @@ var LibraryGL = {
       case 0x8076: // GL_COLOR_ARRAY
         attrib = GL.immediate.COLOR; break;
       default:
-        throw 'unhandled clientstate: ' + cap;
+#if ASSERTIONS
+        Module.printErr('WARNING: unhandled clientstate: ' + cap);
+#endif
+        return;
     }
     if (disable && GL.immediate.enabledClientAttributes[attrib]) {
       GL.immediate.enabledClientAttributes[attrib] = false;
       GL.immediate.totalEnabledClientAttributes--;
+      if (GLEmulation.currentVao) delete GLEmulation.currentVao.enabledClientStates[cap];
     } else if (!disable && !GL.immediate.enabledClientAttributes[attrib]) {
       GL.immediate.enabledClientAttributes[attrib] = true;
       GL.immediate.totalEnabledClientAttributes++;
+      if (GLEmulation.currentVao) GLEmulation.currentVao.enabledClientStates[cap] = 1;
     }
     GL.immediate.modifiedClientAttributes = true;
   },
@@ -2342,6 +2518,63 @@ var LibraryGL = {
   glClientActiveTexture__sig: 'vi',
   glClientActiveTexture: function(texture) {
     GL.immediate.clientActiveTexture = texture - 0x84C0; // GL_TEXTURE0
+  },
+
+  // Vertex array object (VAO) support. TODO: when the WebGL extension is popular, use that and remove this code and GL.vaos
+  glGenVertexArrays__deps: ['$GLEMulation'],
+  glGenVertexArrays__sig: ['vii'],
+  glGenVertexArrays: function(n, vaos) {
+    for (var i = 0; i < n; i++) {
+      var id = GL.getNewId(GLEmulation.vaos); 
+      GLEmulation.vaos[id] = {
+        id: id,
+        arrayBuffer: 0,
+        elementArrayBuffer: 0,
+        enabledVertexAttribArrays: {},
+        vertexAttribPointers: {},
+        enabledClientStates: {},
+      };
+      {{{ makeSetValue('vaos', 'i*4', 'id', 'i32') }}};
+    }
+  },
+  glDeleteVertexArrays__sig: ['vii'],
+  glDeleteVertexArrays: function(n, vaos) {
+    for (var i = 0; i < n; i++) {
+      var id = {{{ makeGetValue('vaos', 'i*4', 'i32') }}};
+      GLEmulation.vaos[id] = null;
+      if (GLEmulation.currentVao && GLEmulation.currentVao.id == id) GLEmulation.currentVao = null;
+    }
+  },
+  glBindVertexArray__sig: ['vi'],
+  glBindVertexArray: function(vao) {
+    // undo vao-related things, wipe the slate clean, both for vao of 0 or an actual vao
+    GLEmulation.currentVao = null; // make sure the commands we run here are not recorded
+    if (GL.immediate.lastRenderer) GL.immediate.lastRenderer.cleanup();
+    _glBindBuffer(Module.ctx.ARRAY_BUFFER, 0); // XXX if one was there before we were bound?
+    _glBindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, 0);
+    for (var vaa in GLEmulation.enabledVertexAttribArrays) {
+      Module.ctx.disableVertexAttribArray(vaa);
+    }
+    GLEmulation.enabledVertexAttribArrays = {};
+    GL.immediate.enabledClientAttributes = [0, 0];
+    GL.immediate.totalEnabledClientAttributes = 0;
+    GL.immediate.modifiedClientAttributes = true;
+    if (vao) {
+      // replay vao
+      var info = GLEmulation.vaos[vao];
+      _glBindBuffer(Module.ctx.ARRAY_BUFFER, info.arrayBuffer); // XXX overwrite current binding?
+      _glBindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, info.elementArrayBuffer);
+      for (var vaa in info.enabledVertexAttribArrays) {
+        _glEnableVertexAttribArray(vaa);
+      }
+      for (var vaa in info.vertexAttribPointers) {
+        _glVertexAttribPointer.apply(null, info.vertexAttribPointers[vaa]);
+      }
+      for (var attrib in info.enabledClientStates) {
+        _glEnableClientState(attrib|0);
+      }
+      GLEmulation.currentVao = info; // set currentVao last, so the commands we ran here were not recorded
+    }
   },
 
   // OpenGL Immediate Mode matrix routines.
@@ -2434,6 +2667,7 @@ var LibraryGL = {
     GL.immediate.matrix.lib.mat4.multiply(GL.immediate.matrix[GL.immediate.currentMatrix],
         GL.immediate.matrix.lib.mat4.frustum(left, right, bottom, top_, nearVal, farVal));
   },
+  glFrustumf: 'glFrustum',
 
   glOrtho: function(left, right, bottom, top_, nearVal, farVal) {
     GL.immediate.matricesModified = true;
@@ -2464,8 +2698,9 @@ var LibraryGL = {
 
   gluPerspective: function(fov, aspect, near, far) {
     GL.immediate.matricesModified = true;
-    GL.immediate.matrix.lib.mat4.multiply(GL.immediate.matrix[GL.immediate.currentMatrix],
-        GL.immediate.matrix.lib.mat4.perspective(fov, aspect, near, far, GL.immediate.currentMatrix));
+    GL.immediate.matrix[GL.immediate.currentMatrix] =
+      GL.immediate.matrix.lib.mat4.perspective(fov, aspect, near, far,
+                                               GL.immediate.matrix[GL.immediate.currentMatrix]);
   },
 
   gluLookAt: function(ex, ey, ez, cx, cy, cz, ux, uy, uz) {
@@ -2534,8 +2769,8 @@ var LibraryGL = {
 
   glTexGeni: function() { throw 'glTexGeni: TODO' },
   glTexGenfv: function() { throw 'glTexGenfv: TODO' },
-  glTexEnvi: function() { throw 'glTexEnvi: TODO' },
-  glTexEnvfv: function() { throw 'glTexEnvfv: TODO' },
+  glTexEnvi: function() { Runtime.warnOnce('glTexEnvi: TODO') },
+  glTexEnvfv: function() { Runtime.warnOnce('glTexEnvfv: TODO') },
 
   glTexImage1D: function() { throw 'glTexImage1D: TODO' },
   glTexCoord3f: function() { throw 'glTexCoord3f: TODO' },
@@ -2548,6 +2783,22 @@ var LibraryGL = {
   glVertexAttribPointer__sig: 'viiiiii',
   glCheckFramebufferStatus__sig: 'ii',
   glRenderbufferStorage__sig: 'viiii',
+
+  // Open GLES1.1 compatibility
+  glGenFramebuffersOES : 'glGenFramebuffers',
+  glGenRenderbuffersOES : 'glGenRenderbuffers',
+  glBindFramebufferOES : 'glBindFramebuffer',
+  glBindRenderbufferOES : 'glBindRenderbuffer',
+  glGetRenderbufferParameterivOES : 'glGetRenderbufferParameteriv',
+  glFramebufferRenderbufferOES : 'glFramebufferRenderbuffer',
+  glRenderbufferStorageOES : 'glRenderbufferStorage',
+  glCheckFramebufferStatusOES : 'glCheckFramebufferStatus',
+  glDeleteFramebuffersOES : 'glDeleteFramebuffers',
+  glDeleteRenderbuffersOES : 'glDeleteRenderbuffers',
+  glGenVertexArraysOES: 'glGenVertexArrays',
+  glDeleteVertexArraysOES: 'glDeleteVertexArrays',
+  glBindVertexArrayOES: 'glBindVertexArray',
+  glFramebufferTexture2DOES: 'glFramebufferTexture2D'
 };
 
 // Simple pass-through functions. Starred ones have return values. [X] ones have X in the C name but not in the JS name

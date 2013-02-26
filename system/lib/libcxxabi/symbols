@@ -10,3 +10,10 @@
          D _ZTVN10__cxxabiv121__vmi_class_type_infoE
          D _ZTVN10__cxxabiv123__fundamental_type_infoE
          D _ZTVN10__cxxabiv129__pointer_to_member_type_infoE
+         D _ZTSSt9type_info
+         T _ZNKSt8bad_cast4whatEv
+         T _ZNSt8bad_castC1Ev
+         T _ZNSt8bad_castC2Ev
+         D _ZTISt8bad_cast
+         D _ZTSSt8bad_cast
+         D _ZTVSt8bad_cast

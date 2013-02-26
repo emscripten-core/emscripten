@@ -78,24 +78,8 @@ void shaders() {
   glLinkProgram(program);
   glGetProgramiv(program, GL_LINK_STATUS, &ok);
   assert(ok);
-  assert(glIsProgram(program));
-  assert(!glIsProgram(0));
-  assert(!glIsProgram(program+1)); // a number that can't be a real shader
 
   glUseProgram(program);
-
-  {
-    // Also, check getting the error log
-    const char *fakeVertexShader = "atbute ve4 blarg; ### AAA\n";
-    GLuint vs = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vs, 1, &fakeVertexShader, NULL);
-    glCompileShader(vs);
-    glGetShaderiv(vs, GL_COMPILE_STATUS, &ok);
-    assert(!ok);
-    GLint infoLen = 0;
-    glGetShaderiv(vs, GL_INFO_LOG_LENGTH, &infoLen);
-    assert(infoLen > 1);
-  }
 }
 
 int main(int argc, char *argv[])
@@ -193,24 +177,37 @@ int main(int argc, char *argv[])
     // Bind the texture to which subsequent calls refer to
     glBindTexture( GL_TEXTURE_2D, texture );
 
-    // Use clientside vertex pointers to render two items
-    GLfloat vertexData[] = { 0, 0, 10, 10, // texture2, position2
-                             1, 0, 300, 10,
-                             1, 1, 300, 128,
-                             0, 1, 10, 128,
-                             0, 0.5, 410, 10,
-                             1, 0.5, 600, 10,
-                             1, 1, 630, 200,
-                             0.5, 1, 310, 250,
-                             0, 0, 100, 300,
-                             1, 0, 300, 300,
-                             1, 1, 300, 400,
-                             0, 1, 100, 400 };
+    // Use clientside vertex pointers to render two items. In this test we have each
+    // attribute in a separate buffer, packed (i.e. stride == 0)
+    GLfloat vertexData[] = {  10,  10,
+                             300,  10,
+                             300, 128,
+                              10, 128,
+                             410,  10,
+                             600,  10,
+                             630, 200,
+                             310, 250,
+                             100, 300,
+                             300, 300,
+                             300, 400,
+                             100, 400 };
+    GLfloat textureData[] = { 0, 0,
+                              1, 0,
+                              1, 1,
+                              0, 1,
+                              0, 0.5,
+                              1, 0.5,
+                              1,   1,
+                              0.5, 1,
+                              0,   0,
+                              1,   0,
+                              1,   1,
+                              0,   1, };
 
     glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-    glTexCoordPointer(2, GL_FLOAT, 4*4, &vertexData[0]);
+    glTexCoordPointer(2, GL_FLOAT, 0, textureData);
     glEnableClientState(GL_VERTEX_ARRAY);
-    glVertexPointer(2, GL_FLOAT, 4*4, &vertexData[2]);
+    glVertexPointer(2, GL_FLOAT, 0, vertexData);
 
     glDrawArrays(GL_QUADS, 0, 12);
 

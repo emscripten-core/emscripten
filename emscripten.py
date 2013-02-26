@@ -322,10 +322,7 @@ def emscript(infile, settings, outfile, libraries=[]):
     function_tables_defs = '\n'.join([info[0] for info in infos] + [info[1] for info in infos])
 
     asm_setup = ''
-    maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil']]
-    if settings['USE_MATH_IMUL']:
-      maths += ['Math.imul']
-      asm_setup += 'if (!Math.imul) Math.imul = function(x, y) { return (x*y)|0 }; // # not a real polyfill since semantics not identical, but close and fairly fast\n'
+    maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul']]
     fundamentals = ['Math', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
     math_envs = ['Runtime.bitshift64', 'Math.min'] # TODO: move min to maths
     asm_setup += '\n'.join(['var %s = %s;' % (f.replace('.', '_'), f) for f in math_envs])

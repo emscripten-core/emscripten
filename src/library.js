@@ -624,7 +624,12 @@ LibraryManager.library = {
   // dirent.h
   // ==========================================================================
 
-  __dirent_struct_layout: Runtime.generateStructInfo(['d_ino', 'd_name', 'd_off', 'd_reclen', 'd_type'], '%struct.dirent'),
+  __dirent_struct_layout: Runtime.generateStructInfo([
+    ['i32', 'd_ino'],
+    ['b1024', 'd_name'],
+    ['i32', 'd_off'],
+    ['i32', 'd_reclen'],
+    ['i32', 'd_type']]),
   opendir__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '__dirent_struct_layout'],
   opendir: function(dirname) {
     // DIR *opendir(const char *dirname);
@@ -786,7 +791,9 @@ LibraryManager.library = {
   // utime.h
   // ==========================================================================
 
-  __utimbuf_struct_layout: Runtime.generateStructInfo(['actime', 'modtime'], '%struct.utimbuf'),
+  __utimbuf_struct_layout: Runtime.generateStructInfo([
+    ['i32', 'actime'],
+    ['i32', 'modtime']]),
   utime__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '__utimbuf_struct_layout'],
   utime: function(path, times) {
     // int utime(const char *path, const struct utimbuf *times);
@@ -877,23 +884,23 @@ LibraryManager.library = {
   // ==========================================================================
 
   __stat_struct_layout: Runtime.generateStructInfo([
-    'st_dev',
-    'st_ino',
-    'st_mode',
-    'st_nlink',
-    'st_uid',
-    'st_gid',
-    'st_rdev',
-    'st_size',
-    'st_atime',
-    'st_spare1',
-    'st_mtime',
-    'st_spare2',
-    'st_ctime',
-    'st_spare3',
-    'st_blksize',
-    'st_blocks',
-    'st_spare4'], '%struct.stat'),
+    ['i32', 'st_dev'],
+    ['i32', 'st_ino'],
+    ['i32', 'st_mode'],
+    ['i32', 'st_nlink'],
+    ['i32', 'st_uid'],
+    ['i32', 'st_gid'],
+    ['i32', 'st_rdev'],
+    ['i32', 'st_size'],
+    ['i32', 'st_atime'],
+    ['i32', 'st_spare1'],
+    ['i32', 'st_mtime'],
+    ['i32', 'st_spare2'],
+    ['i32', 'st_ctime'],
+    ['i32', 'st_spare3'],
+    ['i32', 'st_blksize'],
+    ['i32', 'st_blocks'],
+    ['i32', 'st_spare4']]),
   stat__deps: ['$FS', '__stat_struct_layout'],
   stat: function(path, buf, dontResolveLastLink) {
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/stat.html
@@ -1065,17 +1072,17 @@ LibraryManager.library = {
   // ==========================================================================
 
   __statvfs_struct_layout: Runtime.generateStructInfo([
-    'f_bsize',
-    'f_frsize',
-    'f_blocks',
-    'f_bfree',
-    'f_bavail',
-    'f_files',
-    'f_ffree',
-    'f_favail',
-    'f_fsid',
-    'f_flag',
-    'f_namemax'], '%struct.statvfs'),
+    ['i32', 'f_bsize'],
+    ['i32', 'f_frsize'],
+    ['i32', 'f_blocks'],
+    ['i32', 'f_bfree'],
+    ['i32', 'f_bavail'],
+    ['i32', 'f_files'],
+    ['i32', 'f_ffree'],
+    ['i32', 'f_favail'],
+    ['i32', 'f_fsid'],
+    ['i32', 'f_flag'],
+    ['i32', 'f_namemax']]),
   statvfs__deps: ['$FS', '__statvfs_struct_layout'],
   statvfs: function(path, buf) {
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/stat.html
@@ -1110,12 +1117,12 @@ LibraryManager.library = {
   // ==========================================================================
 
   __flock_struct_layout: Runtime.generateStructInfo([
-    'l_type',
-    'l_whence',
-    'l_start',
-    'l_len',
-    'l_pid',
-    'l_xxx'], '%struct.flock'),
+    ['i16', 'l_type'],
+    ['i16', 'l_whence'],
+    ['i32', 'l_start'],
+    ['i32', 'l_len'],
+    ['i16', 'l_pid'],
+    ['i16', 'l_xxx']]),
   open__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '__dirent_struct_layout'],
   open: function(path, oflag, varargs) {
     // int open(const char *path, int oflag, ...);
@@ -1336,7 +1343,10 @@ LibraryManager.library = {
   // poll.h
   // ==========================================================================
 
-  __pollfd_struct_layout: Runtime.generateStructInfo(['fd', 'events', 'revents'], '%struct.pollfd'),
+  __pollfd_struct_layout: Runtime.generateStructInfo([
+    ['i32', 'fd'],
+    ['i16', 'events'],
+    ['i16', 'revents']]),
   poll__deps: ['$FS', '__pollfd_struct_layout'],
   poll: function(fds, nfds, timeout) {
     // int poll(struct pollfd fds[], nfds_t nfds, int timeout);
@@ -2477,6 +2487,17 @@ LibraryManager.library = {
         var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
         argIndex += Runtime.getNativeFieldSize('void*');
         {{{ makeSetValue('argPtr', 0, 'soFar', 'i32') }}};
+        formatIndex += 2;
+        continue;
+      }
+
+      // TODO: Support strings like "%5c" etc.
+      if (format[formatIndex] === '%' && format[formatIndex+1] == 'c') {
+        var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
+        argIndex += Runtime.getNativeFieldSize('void*');
+        fields++;
+        next = get();
+        {{{ makeSetValue('argPtr', 0, 'next', 'i8') }}}
         formatIndex += 2;
         continue;
       }
@@ -4202,6 +4223,8 @@ LibraryManager.library = {
     return 1;
   },
 
+  arc4random: 'rand',
+
   // ==========================================================================
   // string.h
   // ==========================================================================
@@ -4502,11 +4525,16 @@ LibraryManager.library = {
     return 0;
   },
 
+  memcmp__asm: 'true',
+  memcmp__sig: 'iiii',
   memcmp: function(p1, p2, num) {
-    for (var i = 0; i < num; i++) {
-      var v1 = {{{ makeGetValue('p1', 'i', 'i8', 0, 1) }}};
-      var v2 = {{{ makeGetValue('p2', 'i', 'i8', 0, 1) }}};
-      if (v1 != v2) return v1 > v2 ? 1 : -1;
+    p1 = p1|0; p2 = p2|0; num = num|0;
+    var i = 0, v1 = 0, v2 = 0;
+    while ((i|0) < (num|0)) {
+      var v1 = {{{ makeGetValueAsm('p1', 'i', 'i8', true) }}};
+      var v2 = {{{ makeGetValueAsm('p2', 'i', 'i8', true) }}};
+      if ((v1|0) != (v2|0)) return ((v1|0) > (v2|0) ? 1 : -1)|0;
+      i = (i+1)|0;
     }
     return 0;
   },
@@ -4607,10 +4635,8 @@ LibraryManager.library = {
 
   __strtok_state: 0,
   strtok__deps: ['__strtok_state', 'strtok_r'],
+  strtok__postset: '___strtok_state = Runtime.staticAlloc(4);',
   strtok: function(s, delim) {
-    if (!___strtok_state) {
-      ___strtok_state = _malloc(4);
-    }
     return _strtok_r(s, delim, ___strtok_state);
   },
 
@@ -5070,6 +5096,7 @@ LibraryManager.library = {
   },
 
   __cxa_call_unexpected: function(exception) {
+    Module.printErr('Unexpected exception thrown, this is not properly supported - aborting');
     ABORT = true;
     throw exception;
   },
@@ -5619,11 +5646,11 @@ LibraryManager.library = {
   // ==========================================================================
 
   __utsname_struct_layout: Runtime.generateStructInfo([
-    'sysname',
-    'nodename',
-    'release',
-    'version',
-    'machine'], '%struct.utsname'),
+	  ['b32', 'sysname'],
+	  ['b32', 'nodename'],
+	  ['b32', 'release'],
+	  ['b32', 'version'],
+	  ['b32', 'machine']]),
   uname__deps: ['__utsname_struct_layout'],
   uname: function(name) {
     // int uname(struct utsname *name);
@@ -5823,17 +5850,17 @@ LibraryManager.library = {
   },
 
   __tm_struct_layout: Runtime.generateStructInfo([
-    'tm_sec',
-    'tm_min',
-    'tm_hour',
-    'tm_mday',
-    'tm_mon',
-    'tm_year',
-    'tm_wday',
-    'tm_yday',
-    'tm_isdst',
-    'tm_gmtoff',
-    'tm_zone'], '%struct.tm'),
+    ['i32', 'tm_sec'],
+    ['i32', 'tm_min'],
+    ['i32', 'tm_hour'],
+    ['i32', 'tm_mday'],
+    ['i32', 'tm_mon'],
+    ['i32', 'tm_year'],
+    ['i32', 'tm_wday'],
+    ['i32', 'tm_yday'],
+    ['i32', 'tm_isdst'],
+    ['i32', 'tm_gmtoff'],
+    ['i32', 'tm_zone']]),
   // Statically allocated time struct.
   __tm_current: 'allocate({{{ Runtime.QUANTUM_SIZE }}}*26, "i8", ALLOC_STACK)',
   // Statically allocated timezone strings.
@@ -6032,7 +6059,9 @@ LibraryManager.library = {
   // sys/time.h
   // ==========================================================================
 
-  __timespec_struct_layout: Runtime.generateStructInfo(['tv_sec', 'tv_nsec'], '%struct.timespec'),
+  __timespec_struct_layout: Runtime.generateStructInfo([
+    ['i32', 'tv_sec'],
+    ['i32', 'tv_nsec']]),
   // TODO: Implement these for real.
   clock_gettime__deps: ['__timespec_struct_layout'],
   clock_gettime: function(clk_id, tp) {
@@ -6089,10 +6118,10 @@ LibraryManager.library = {
   // ==========================================================================
 
   __tms_struct_layout: Runtime.generateStructInfo([
-    'tms_utime',
-    'tms_stime',
-    'tms_cutime',
-    'tms_cstime'], '%struct.tms'),
+    ['i32', 'tms_utime'],
+    ['i32', 'tms_stime'],
+    ['i32', 'tms_cutime'],
+    ['i32', 'tms_cstime']]),
   times__deps: ['__tms_struct_layout', 'memset'],
   times: function(buffer) {
     // clock_t times(struct tms *buffer);
@@ -6614,7 +6643,9 @@ LibraryManager.library = {
   // ==========================================================================
 
   // TODO: Implement for real.
-  __rlimit_struct_layout: Runtime.generateStructInfo(['rlim_cur', 'rlim_max'], '%struct.rlimit'),
+  __rlimit_struct_layout: Runtime.generateStructInfo([
+    ['i32', 'rlim_cur'],
+    ['i32', 'rlim_max']]),
   getrlimit__deps: ['__rlimit_struct_layout'],
   getrlimit: function(resource, rlp) {
     // int getrlimit(int resource, struct rlimit *rlp);
@@ -6630,22 +6661,22 @@ LibraryManager.library = {
 
   // TODO: Implement for real. We just do time used, and no useful data
   __rusage_struct_layout: Runtime.generateStructInfo([
-    'ru_utime',
-    'ru_stime',
-    'ru_maxrss',
-    'ru_ixrss',
-    'ru_idrss',
-    'ru_isrss',
-    'ru_minflt',
-    'ru_majflt',
-    'ru_nswap',
-    'ru_inblock',
-    'ru_oublock',
-    'ru_msgsnd',
-    'ru_msgrcv',
-    'ru_nsignals',
-    'ru_nvcsw',
-    'ru_nivcsw'], '%struct.rusage'),
+    ['i64', 'ru_utime'],
+    ['i64', 'ru_stime'],
+    ['i32', 'ru_maxrss'],
+    ['i32', 'ru_ixrss'],
+    ['i32', 'ru_idrss'],
+    ['i32', 'ru_isrss'],
+    ['i32', 'ru_minflt'],
+    ['i32', 'ru_majflt'],
+    ['i32', 'ru_nswap'],
+    ['i32', 'ru_inblock'],
+    ['i32', 'ru_oublock'],
+    ['i32', 'ru_msgsnd'],
+    ['i32', 'ru_msgrcv'],
+    ['i32', 'ru_nsignals'],
+    ['i32', 'ru_nvcsw'],
+    ['i32', 'ru_nivcsw']]),
   getrusage__deps: ['__rusage_struct_layout'],
   getrusage: function(resource, rlp) {
     // %struct.timeval = type { i32, i32 }
@@ -7289,36 +7320,6 @@ LibraryManager.library = {
   emscripten_random: function() {
     return Math.random();
   },
-
-  $Profiling: {
-    max_: 0,
-    times: null,
-    invalid: 0,
-    dump: function() {
-      if (Profiling.invalid) {
-        Module.printErr('Invalid # of calls to Profiling begin and end!');
-        return;
-      }
-      Module.printErr('Profiling data:')
-      for (var i = 0; i < Profiling.max_; i++) {
-        Module.printErr('Block ' + i + ': ' + Profiling.times[i]);
-      }
-    }
-  },
-  EMSCRIPTEN_PROFILE_INIT__deps: ['$Profiling'],
-  EMSCRIPTEN_PROFILE_INIT: function(max_) {
-    Profiling.max_ = max_;
-    Profiling.times = new Array(max_);
-    for (var i = 0; i < max_; i++) Profiling.times[i] = 0;
-  },
-  EMSCRIPTEN_PROFILE_BEGIN__inline: function(id) {
-    return 'Profiling.times[' + id + '] -= Date.now();'
-         + 'Profiling.invalid++;'
-  },
-  EMSCRIPTEN_PROFILE_END__inline: function(id) {
-    return 'Profiling.times[' + id + '] += Date.now();'
-         + 'Profiling.invalid--;'
-  }
 };
 
 function autoAddDeps(object, name) {

@@ -119,11 +119,20 @@ if len(sys.argv) == 1:
   exit(1)
 
 if sys.argv[1] == '--version':
-  print '''emcc (Emscripten GCC-like replacement) 2.0
-Copyright (C) 2012 the Emscripten authors.
+  revision = '(unknown revision)'
+  here = os.getcwd()
+  os.chdir(shared.path_from_root())
+  try:
+    revision = execute(['git', 'show'], stdout=PIPE, stderr=PIPE)[0].split('\n')[0]
+  except:
+    pass
+  finally:
+    os.chdir(here)
+  print '''emcc (Emscripten GCC-like replacement) %s (%s)
+Copyright (C) 2013 the Emscripten authors (see AUTHORS.txt)
 This is free and open source software under the MIT license.
 There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-  '''
+  ''' % (shared.EMSCRIPTEN_VERSION, revision)
   exit(0)
 elif sys.argv[1] == '--help':
   this = os.path.basename('em++' if os.environ.get('EMMAKEN_CXX') else 'emcc')
@@ -148,14 +157,19 @@ Options that are modified or new in %s include:
                            compiling to JavaScript, not to intermediate
                            bitcode.
   -O2                      As -O1, plus the relooper (loop recreation),
-                           plus closure compiler advanced opts, plus
-                           LLVM -O2 optimizations
-                           Warning: Compiling with this takes a long time!
+                           plus LLVM -O2 optimizations
   -O3                      As -O2, plus dangerous optimizations that may
-                           break the generated code! This is not
-                           recommended at all, see the wiki for more
-                           details (you can try -O2 and then add
-                           dangerous optimizations one by one).
+                           break the generated code! This adds
+
+                              -s INLINING_LIMIT=0
+                              -s DOUBLE_MODE=0
+                              -s PRECISE_I64_MATH=0
+                              --closure 1
+
+                           This is not recommended at all. A better idea
+                           is to try each of these separately on top of
+                           -O2 to see what works. See the wiki for more
+                           information.
 
   -s OPTION=VALUE          JavaScript code generation option passed
                            into the emscripten compiler. For the
@@ -177,6 +191,12 @@ Options that are modified or new in %s include:
                            the last compilation phase from bitcode to
                            JavaScript, or else we will remove it by
                            default in -O1 and above.
+                           In -O0, line numbers wil be shown in the
+                           generated code. In -O1 and above, the optimizer
+                           removes those comments. This flag does however
+                           have the effect of disabling anything that
+                           causes name mangling or minification (closure
+                           or the registerize pass).
 
   --typed-arrays <mode>    0: No typed arrays
                            1: Parallel typed arrays
@@ -193,8 +213,17 @@ Options that are modified or new in %s include:
                            (see --llvm-opts), setting this to 1 has no
                            effect.
 
-  --closure <on>           0: No closure compiler (default in -O0, -O1)
-                           1: Run closure compiler (default in -O2, -O3)
+  --closure <on>           0: No closure compiler (default in -O2 and below)
+                           1: Run closure compiler. This greatly reduces
+                           code size and may in some cases increase
+                           runtime speed (although the opposite can also
+                           occur). Note that it takes time to run, and
+                           may require some changes to the code. This
+                           is run by default in -O3.
+
+                           Note: If closure compiler hits an out-of-memory,
+                           try adjusting JAVA_HEAP_SIZE in the environment
+                           (for example, to 4096m for 4GB).
 
   --js-transform <cmd>     <cmd> will be called on the generated code
                            before it is optimized. This lets you modify
@@ -600,7 +629,8 @@ try:
   ignore_dynamic_linking = False
   shell_path = shared.path_from_root('src', 'shell.html')
   js_libraries = []
-  keep_debug = False
+  keep_llvm_debug = False
+  keep_js_debug = False
   bind = False
   jcache = False
   if use_cxx:
@@ -616,7 +646,8 @@ try:
   for i in range(len(newargs)):
     newargs[i] = newargs[i].strip() # On Windows Vista (and possibly others), excessive spaces in the command line leak into the items in this array, so trim e.g. 'foo.cpp ' -> 'foo.cpp'
     if newargs[i].startswith('-O'):
-      requested_level = newargs[i][2]
+      # Let -O default to -O2, which is what gcc does.
+      requested_level = newargs[i][2:] or '2'
       if requested_level == 's':
         print >> sys.stderr, 'emcc: warning: -Os is ignored (use -O0, -O1, -O2)'
       else:
@@ -667,7 +698,8 @@ try:
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i] == '-g':
-      keep_debug = True
+      keep_llvm_debug = True
+      keep_js_debug = True
     elif newargs[i] == '--bind':
       bind = True
       newargs[i] = ''
@@ -738,8 +770,9 @@ try:
 
   if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
   if llvm_lto is None: llvm_lto = llvm_opts > 0
-  if closure is None: closure = 1 if opt_level >= 2 else 0
-  if opt_level <= 0: keep_debug = True # always keep debug in -O0
+  if opt_level <= 0: keep_llvm_debug = keep_js_debug = True # always keep debug in -O0
+  if opt_level > 0: keep_llvm_debug = False # JS optimizer wipes out llvm debug info from being visible
+  if closure is None and opt_level == 3: closure = True
 
   if DEBUG: start_time = time.time() # done after parsing arguments, which might affect debug state
 
@@ -879,7 +912,11 @@ try:
       shared.Settings.CORRECT_OVERFLOWS = 1
 
   if shared.Settings.CORRECT_SIGNS >= 2 or shared.Settings.CORRECT_OVERFLOWS >= 2 or shared.Settings.CORRECT_ROUNDINGS >= 2:
-    keep_debug = True # must keep debug info to do line-by-line operations 
+    keep_llvm_debug = True # must keep debug info to do line-by-line operations 
+
+  if (keep_llvm_debug or keep_js_debug) and closure:
+    print >> sys.stderr, 'emcc: warning: disabling closure because debug info was requested'
+    closure = False
 
   if minify_whitespace is None:
     minify_whitespace = closure # if closure is run, minify whitespace
@@ -984,7 +1021,7 @@ try:
     def create_libcxx():
       if DEBUG: print >> sys.stderr, 'emcc: building libcxx for cache'
       os = []
-      for src in ['algorithm.cpp', 'condition_variable.cpp', 'future.cpp', 'iostream.cpp', 'memory.cpp', 'random.cpp', 'stdexcept.cpp', 'system_error.cpp', 'utility.cpp', 'bind.cpp', 'debug.cpp', 'hash.cpp', 'mutex.cpp', 'string.cpp', 'thread.cpp', 'valarray.cpp', 'chrono.cpp', 'exception.cpp', 'ios.cpp', 'locale.cpp', 'regex.cpp', 'strstream.cpp', 'typeinfo.cpp']:
+      for src in ['algorithm.cpp', 'condition_variable.cpp', 'future.cpp', 'iostream.cpp', 'memory.cpp', 'random.cpp', 'stdexcept.cpp', 'system_error.cpp', 'utility.cpp', 'bind.cpp', 'debug.cpp', 'hash.cpp', 'mutex.cpp', 'string.cpp', 'thread.cpp', 'valarray.cpp', 'chrono.cpp', 'exception.cpp', 'ios.cpp', 'locale.cpp', 'regex.cpp', 'strstream.cpp']:
         o = in_temp(src + '.o')
         execute([shared.PYTHON, shared.EMXX, shared.path_from_root('system', 'lib', 'libcxx', src), '-o', o], stdout=stdout, stderr=stderr)
         os.append(o)
@@ -1003,7 +1040,7 @@ try:
     def create_libcxxabi():
       if DEBUG: print >> sys.stderr, 'emcc: building libcxxabi for cache'
       os = []
-      for src in ['private_typeinfo.cpp']:
+      for src in ['private_typeinfo.cpp', 'typeinfo.cpp']:
         o = in_temp(src + '.o')
         execute([shared.PYTHON, shared.EMXX, shared.path_from_root('system', 'lib', 'libcxxabi', 'src', src), '-o', o], stdout=stdout, stderr=stderr)
         os.append(o)
@@ -1017,29 +1054,32 @@ try:
     libcxxabi_symbols = filter(lambda symbol: symbol not in libc_symbols, libcxxabi_symbols)
     libcxxabi_symbols = set(libcxxabi_symbols)
 
-    force = False # If we have libcxx, we must force inclusion of libc, since libcxx uses new internally. Note: this is kind of hacky
-
+    # If we have libcxx, we must force inclusion of libc, since libcxx uses new internally. Note: this is kind of hacky
+    # Settings this in the environment will avoid checking dependencies and make building big projects a little faster
+    force = os.environ.get('EMCC_FORCE_STDLIBS')
+    has = need = None
     for name, create, fix, library_symbols in [('libcxx',    create_libcxx,    fix_libcxx,    libcxx_symbols),
                                                ('libcxxabi', create_libcxxabi, fix_libcxxabi, libcxxabi_symbols),
                                                ('libc',      create_libc,      fix_libc,      libc_symbols)]:
-      need = set()
-      has = set()
-      for temp_file in temp_files:
-        symbols = shared.Building.llvm_nm(temp_file)
-        for library_symbol in library_symbols:
-          if library_symbol in symbols.undefs:
-            need.add(library_symbol)
-          if library_symbol in symbols.defs:
-            has.add(library_symbol)
-      for haz in has: # remove symbols that are supplied by another of the inputs
-        if haz in need:
-          need.remove(haz)
-      if DEBUG: print >> sys.stderr, 'emcc: considering including %s: we need %s and have %s' % (name, str(need), str(has))
+      if not force:
+        need = set()
+        has = set()
+        for temp_file in temp_files:
+          symbols = shared.Building.llvm_nm(temp_file)
+          for library_symbol in library_symbols:
+            if library_symbol in symbols.undefs:
+              need.add(library_symbol)
+            if library_symbol in symbols.defs:
+              has.add(library_symbol)
+        for haz in has: # remove symbols that are supplied by another of the inputs
+          if haz in need:
+            need.remove(haz)
+        if DEBUG: print >> sys.stderr, 'emcc: considering including %s: we need %s and have %s' % (name, str(need), str(has))
       if force or len(need) > 0:
         # We need to build and link the library in
         if DEBUG: print >> sys.stderr, 'emcc: including %s' % name
         libfile = shared.Cache.get(name, create)
-        if len(has) > 0:
+        if has and len(has) > 0:
           # remove the symbols we do not need
           fixed = in_temp(uniquename(libfile)) + '.bc'
           shutil.copyfile(libfile, fixed)
@@ -1049,7 +1089,7 @@ try:
           libfile = fixed
         extra_files_to_link.append(libfile)
         force = True
-        if fix:
+        if fix and need:
           fix(need)
 
   # First, combine the bitcode files if there are several. We must also link if we have a singleton .a
@@ -1084,7 +1124,7 @@ try:
 
   # Optimize, if asked to
   if not LEAVE_INPUTS_RAW:
-    link_opts = [] if keep_debug else ['-strip-debug']
+    link_opts = [] if keep_llvm_debug else ['-strip-debug'] # remove LLVM debug info in -O1+, since the optimizer removes it anyhow
     if llvm_opts > 0:
       shared.Building.llvm_opt(in_temp(target_basename + '.bc'), llvm_opts)
       if DEBUG: save_intermediate('opt', 'bc')
@@ -1216,8 +1256,9 @@ try:
     if DEBUG: print >> sys.stderr, 'emcc: running closure'
     final = shared.Building.closure_compiler(final)
     if DEBUG: save_intermediate('closure')
-  elif shared.Settings.ASM_JS and shared.Settings.RELOOP:
-    js_optimizer_queue += ['registerize'] # we can't use closure in asm, but this does much of the same
+  elif shared.Settings.RELOOP and not closure and not keep_js_debug:
+    # do this if closure is not enabled (it gives similar speedups), and we do not need to keep debug info around
+    js_optimizer_queue += ['registerize']
 
   if opt_level >= 1:
     if DEBUG: print >> sys.stderr, 'emcc: running post-closure post-opts'
