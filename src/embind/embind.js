@@ -619,7 +619,7 @@ RegisteredPointer.prototype.getDynamicDowncastType = function(ptr) {
         var derivation = Module.__getDerivationPath(type, this.pointeeType.rawType);
         for (var i = 0; i < derivation.size(); i++) {
             downcastType = typeRegistry[derivation.at(i)];
-            if (downcastType) {
+            if (downcastType && (!this.isSmartPointer || downcastType.smartPointerType)) {
                 break;
             }
         }
