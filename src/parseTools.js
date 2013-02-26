@@ -1548,7 +1548,7 @@ function makePointer(slab, pos, allocator, type, ptr) {
     var ret = '';
     var index = 0;
     while (index < array.length) {
-      ret = (ret ? ret + '.concat(' : '') + '[' + array.slice(index, index + chunkSize).map(JSON.stringify) + ']' + (ret ? ')' : '');
+      ret = (ret ? ret + '.concat(' : '') + '[' + array.slice(index, index + chunkSize).map(JSON.stringify) + ']' + (ret ? ')\n' : '');
       index += chunkSize;
     }
     return ret;
