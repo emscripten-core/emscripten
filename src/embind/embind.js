@@ -1,7 +1,7 @@
 /*global Module*/
 /*global Module*/
 /*global _malloc, _free, _memcpy*/
-/*global FUNCTION_TABLE, HEAP32, HEAP8*/
+/*global FUNCTION_TABLE, HEAP32, HEAPU8*/
 /*global Pointer_stringify*/
 /*global __emval_register, _emval_handle_array, __emval_decref*/
 /*global ___getDynamicPointerType: false*/
@@ -286,7 +286,7 @@ RegisteredString.prototype.fromWireType = function(value) {
     var length = HEAP32[value >> 2];
     var a = new Array(length);
     for (var i = 0; i < length; ++i) {
-        a[i] = String.fromCharCode(HEAP8[value + 4 + i]);
+        a[i] = String.fromCharCode(HEAPU8[value + 4 + i]);
     }
     _free(value);
     return a.join('');
