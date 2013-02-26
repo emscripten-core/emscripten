@@ -1262,9 +1262,11 @@ class JCache:
       if os.path.exists(chunking_file):
         try:
           previous_mapping = cPickle.Unpickler(open(chunking_file, 'rb')).load() # maps a function identifier to the chunk number it will be in
-          #if DEBUG: print >> sys.stderr, 'jscache previous mapping', previous_mapping
-        except:
-          pass
+          if DEBUG: print >> sys.stderr, 'jscache previous mapping of size %d loaded from %s' % (len(previous_mapping), chunking_file)
+        except Exception, e:
+          print >> sys.stderr, 'Failed to load and unpickle previous chunking file at %s: ' % chunking_file, e
+      else:
+        print >> sys.stderr, 'Previous chunking file not found at %s' % chunking_file
     chunks = []
     if previous_mapping:
       # initialize with previous chunking
@@ -1327,6 +1329,7 @@ class JCache:
           assert ident not in new_mapping, 'cannot have duplicate names in jcache chunking'
           new_mapping[ident] = i
       cPickle.Pickler(open(chunking_file, 'wb')).dump(new_mapping)
+      if DEBUG: print >> sys.stderr, 'jscache mapping of size %d saved to %s' % (len(new_mapping), chunking_file)
       #if DEBUG:
       #  for i in range(len(chunks)):
       #    chunk = chunks[i]
