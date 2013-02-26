@@ -563,6 +563,7 @@ class Settings:
         if opt_level >= 1:
           Settings.ASSERTIONS = 0
           Settings.DISABLE_EXCEPTION_CATCHING = 1
+          Settings.EMIT_GENERATED_FUNCTIONS = 1
         if opt_level >= 2:
           Settings.RELOOP = 1
         if opt_level >= 3:

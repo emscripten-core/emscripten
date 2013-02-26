@@ -1567,9 +1567,11 @@ function JSify(data, functionsOnly, givenFunctions) {
     var shellParts = read(shellFile).split('{{BODY}}');
     print(shellParts[1]);
     // Print out some useful metadata (for additional optimizations later, like the eliminator)
-    print('// EMSCRIPTEN_GENERATED_FUNCTIONS: ' + JSON.stringify(keys(Functions.implementedFunctions).filter(function(func) {
-      return IGNORED_FUNCTIONS.indexOf(func.ident) < 0;
-    })) + '\n');
+    if (EMIT_GENERATED_FUNCTIONS) {
+      print('// EMSCRIPTEN_GENERATED_FUNCTIONS: ' + JSON.stringify(keys(Functions.implementedFunctions).filter(function(func) {
+        return IGNORED_FUNCTIONS.indexOf(func.ident) < 0;
+      })) + '\n');
+    }
 
     PassManager.serialize();
 

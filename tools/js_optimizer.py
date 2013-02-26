@@ -76,6 +76,8 @@ def run_on_js(filename, passes, js_engine, jcache):
     assert gen_end > gen_start
     pre = js[:gen_start]
     post = js[gen_end:]
+    if 'last' in passes:
+      post = post.replace(suffix, '') # no need to write out the metadata - nothing after us needs it
     js = js[gen_start:gen_end]
   else:
     pre = ''

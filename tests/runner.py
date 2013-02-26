@@ -507,6 +507,8 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
         '''
         self.do_run(src, 'hello, world!')
 
+        assert 'EMSCRIPTEN_GENERATED_FUNCTIONS' not in open(self.in_dir('src.cpp.o.js')).read(), 'must not emit this unneeded internal thing'
+
     def test_intvars(self):
         if self.emcc_args == None: return self.skip('needs ta2')
 
