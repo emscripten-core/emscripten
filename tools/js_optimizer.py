@@ -100,7 +100,7 @@ def run_on_js(filename, passes, js_engine, jcache):
   total_size = len(js)
   js = None
 
-  cores = multiprocessing.cpu_count()
+  cores = int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
   intended_num_chunks = int(round(cores * NUM_CHUNKS_PER_CORE))
   chunk_size = min(MAX_CHUNK_SIZE, max(MIN_CHUNK_SIZE, total_size / intended_num_chunks))
 

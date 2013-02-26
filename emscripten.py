@@ -160,7 +160,7 @@ def emscript(infile, settings, outfile, libraries=[]):
 
   # Phase 2 - func
 
-  cores = multiprocessing.cpu_count()
+  cores = int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
   assert cores >= 1
   if cores > 1:
     intended_num_chunks = int(round(cores * NUM_CHUNKS_PER_CORE))
