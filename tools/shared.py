@@ -1174,6 +1174,10 @@ class Cache:
     except:
       pass
     try_delete(RELOOPER)
+    try:
+      open(Cache.dirname + '__last_clear', 'w').write('last clear: ' + time.asctime() + '\n')
+    except:
+      print >> sys.stderr, 'failed to save last clear time'
 
   # Request a cached file. If it isn't in the cache, it will be created with
   # the given creator function
