@@ -141,12 +141,6 @@ namespace emscripten {
                 GenericFunction invoker,
                 GenericFunction method);
 
-            void _embind_register_class_operator_call(
-                TYPEID classType,
-                unsigned argCount,
-                TYPEID argTypes[],
-                GenericFunction invoker);
-
             void _embind_register_class_operator_array_get(
                 TYPEID classType,
                 TYPEID elementType,
@@ -754,16 +748,8 @@ namespace emscripten {
         }
 
         template<typename ReturnType, typename... Args, typename... Policies>
-        class_& calloperator(Policies...) {
-            using namespace internal;
-
-            typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
-            _embind_register_class_operator_call(
-                TypeID<ClassType>::get(),
-                args.count,
-                args.types,
-                reinterpret_cast<internal::GenericFunction>(&internal::FunctorInvoker<ClassType, ReturnType, Args...>::invoke));
-            return *this;
+        class_& calloperator(const char* methodName, Policies... policies) {
+            return method(methodName, &ClassType::operator(), policies...);
         }
 
         template<typename ElementType, typename IndexType>
