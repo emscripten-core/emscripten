@@ -1,7 +1,7 @@
 /*global Module*/
 /*global Module*/
 /*global _malloc, _free, _memcpy*/
-/*global FUNCTION_TABLE, HEAP32*/
+/*global FUNCTION_TABLE, HEAP32, HEAP8*/
 /*global Pointer_stringify, writeStringToMemory*/
 /*global __emval_register, _emval_handle_array, __emval_decref*/
 /*global ___getDynamicPointerType: false*/
