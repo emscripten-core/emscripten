@@ -141,18 +141,6 @@ namespace emscripten {
                 GenericFunction invoker,
                 GenericFunction method);
 
-            void _embind_register_class_operator_array_get(
-                TYPEID classType,
-                TYPEID elementType,
-                TYPEID indexType,
-                GenericFunction invoker);
-
-            void _embind_register_class_operator_array_set(
-                TYPEID classType,
-                TYPEID elementType,
-                TYPEID indexType,
-                GenericFunction invoker);
-
             void _embind_register_enum(
                 TYPEID enumType,
                 const char* name);
@@ -325,29 +313,6 @@ namespace emscripten {
             }
         };
 
-        template<typename ClassType, typename ElementType, typename IndexType>
-        struct ArrayAccessGetInvoker {
-            static typename internal::BindingType<ElementType>::WireType invoke(
-                ClassType* ptr,
-                typename internal::BindingType<IndexType>::WireType index
-            ) {
-                return internal::BindingType<ElementType>::toWireType(
-                        (*ptr)[internal::BindingType<IndexType>::fromWireType(index)]
-                );
-            }
-        };
-
-        template<typename ClassType, typename ElementType, typename IndexType>
-        struct ArrayAccessSetInvoker {
-            static void invoke(
-                ClassType* ptr,
-                typename internal::BindingType<IndexType>::WireType index,
-                typename internal::BindingType<ElementType>::WireType item
-            ) {
-                (*ptr)[internal::BindingType<IndexType>::fromWireType(index)] = internal::BindingType<ElementType>::fromWireType(item);
-            }
-        };
-
         template<typename ClassType, typename ReturnType, typename... Args>
         struct FunctionInvoker {
             typedef ReturnType (FunctionPointer)(ClassType& ct, Args...);
@@ -357,7 +322,7 @@ namespace emscripten {
                 typename internal::BindingType<Args>::WireType... args
             ) {
                 return internal::BindingType<ReturnType>::toWireType(
-                    (*function)(*ptr, internal::BindingType<Args>::toWireType(args)...)
+                    (*function)(*ptr, internal::BindingType<Args>::fromWireType(args)...)
                 );
             }
         };
@@ -370,7 +335,7 @@ namespace emscripten {
                 FunctionPointer** function,
                 typename internal::BindingType<Args>::WireType... args
             ) {
-                (*function)(*ptr, internal::BindingType<Args>::toWireType(args)...);
+                (*function)(*ptr, internal::BindingType<Args>::fromWireType(args)...);
             }
         };
 
@@ -470,6 +435,17 @@ namespace emscripten {
                 WireType value
             ) {
                 setter(ptr, FieldBinding::fromWireType(value));
+            }
+        };
+
+        template<typename ClassType, typename ElementType, typename IndexType>
+        struct ArrayAccess {
+            static ElementType get(ClassType& ptr, IndexType index) {
+                return ptr[index];
+            }
+
+            static void set(ClassType& ptr, IndexType index, const ElementType& value) {
+                ptr[index] = value;
             }
         };
     }
@@ -796,26 +772,16 @@ namespace emscripten {
 
         template<typename ElementType, typename IndexType>
         class_& arrayoperatorget() {
-            using namespace internal;
-
-            _embind_register_class_operator_array_get(
-                TypeID<ClassType>::get(),
-                TypeID<ElementType>::get(),
-                TypeID<IndexType>::get(),
-                reinterpret_cast<internal::GenericFunction>(&internal::ArrayAccessGetInvoker<ClassType, ElementType, IndexType>::invoke));
-            return *this;
+            return method(
+                "array_get",
+                internal::ArrayAccess<ClassType, ElementType, IndexType>::get);
         }
 
         template<typename ElementType, typename IndexType>
         class_& arrayoperatorset() {
-            using namespace internal;
-
-            _embind_register_class_operator_array_set(
-                TypeID<ClassType>::get(),
-                TypeID<ElementType>::get(),
-                TypeID<IndexType>::get(),
-                reinterpret_cast<internal::GenericFunction>(&internal::ArrayAccessSetInvoker<ClassType, ElementType, IndexType>::invoke));
-            return *this;
+            return method(
+                "array_set",
+                internal::ArrayAccess<ClassType, ElementType, IndexType>::set);
         }
     };
 
