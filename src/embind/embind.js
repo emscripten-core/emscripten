@@ -711,24 +711,10 @@ function __embind_register_class(
     rawDestructor = FUNCTION_TABLE[rawDestructor];
 
     var Handle = createNamedFunction(name, function(ptr) {
-        var h = function() {
-            if(h.operator_call !== undefined) {
-                return h.operator_call.apply(h, arguments);
-            } else {
-                throw new BindingError(name + ' does not define call operator');
-            }
-        };
-        h.$$ = {};
-        h.$$.count = {value: 1, ptr: ptr };
-        h.$$.ptr = ptr;
-        h.$$.pointeeType = type; // set below
-
-        for(var prop in Handle.prototype) {
-            var dp = Object.getOwnPropertyDescriptor(Handle.prototype, prop);
-            Object.defineProperty(h, prop, dp);
-        }
-
-        return h;
+        this.$$ = {};
+        this.$$.count = {value: 1, ptr: ptr };
+        this.$$.ptr = ptr;
+        this.$$.pointeeType = type; // set below
     });
 
     Handle.prototype.clone = function() {
@@ -874,41 +860,6 @@ function __embind_register_class_classmethod(
         var humanName = classType.name + '.' + methodName;
         var argTypes = requireArgumentTypes(rawArgTypes, 'classmethod ' + humanName);
         classType.constructor[methodName] = makeInvoker(humanName, argCount, argTypes, rawInvoker, fn);
-    });
-}
-
-function __embind_register_class_operator_call(
-    rawClassType,
-    argCount,
-    rawArgTypesAddr,
-    rawInvoker
-) {
-    var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
-    rawInvoker = FUNCTION_TABLE[rawInvoker];
-    requestDeferredRegistration(function() {
-        var classType = requireRegisteredType(rawClassType, 'class');
-        var humanName = classType.name + '.' + 'operator_call';
-        var argTypes = requireArgumentTypes(rawArgTypes, 'method ' + humanName);
-
-        classType.Handle.prototype.operator_call = function() {
-            if (!this.$$.ptr) {
-                throw new BindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
-            }
-            if (arguments.length !== argCount - 1) {
-                throw new BindingError('emscripten binding method ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
-            }
-
-            var destructors = [];
-            var args = new Array(argCount);
-            args[0] = this.$$.ptr;
-            for (var i = 1; i < argCount; ++i) {
-                args[i] = argTypes[i].toWireType(destructors, arguments[i - 1]);
-            }
-
-            var rv = argTypes[0].fromWireType(rawInvoker.apply(null, args));
-            runDestructors(destructors);
-            return rv;
-        };
     });
 }
 
