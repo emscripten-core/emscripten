@@ -131,7 +131,7 @@ def emscript(infile, settings, outfile, libraries=[]):
   settings_file = temp_files.get('.txt').name
   def save_settings():
     global settings_text
-    settings_text = json.dumps(settings)
+    settings_text = json.dumps(settings, sort_keys=True)
     s = open(settings_file, 'w')
     s.write(settings_text)
     s.close()

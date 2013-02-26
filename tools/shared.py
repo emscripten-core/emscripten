@@ -554,7 +554,7 @@ class Settings:
         ret = []
         for key, value in Settings.__dict__.iteritems():
           if key == key.upper(): # this is a hack. all of our settings are ALL_CAPS, python internals are not
-            jsoned = json.dumps(value)
+            jsoned = json.dumps(value, sort_keys=True)
             ret += ['-s', key + '=' + jsoned]
         return ret
 
