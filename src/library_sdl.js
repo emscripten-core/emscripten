@@ -1181,6 +1181,7 @@ var LibrarySDL = {
   // SDL Mixer
 
   Mix_Init: function(flags) {
+    if (!flags) return 0;
     return 8; /* MIX_INIT_OGG */
   },
   Mix_Quit: function(){},
