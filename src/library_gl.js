@@ -1016,6 +1016,7 @@ var LibraryGL = {
         0x809E: 1, // GL_SAMPLE_ALPHA_TO_COVERAGE
         0x80A0: 1  // GL_SAMPLE_COVERAGE
       };
+
       _glEnable = function(cap) {
         // Clean up the renderer on any change to the rendering state. The optimization of
         // skipping renderer setup is aimed at the case of multiple glDraw* right after each other
@@ -1059,17 +1060,8 @@ var LibraryGL = {
 
       var glGetBooleanv = _glGetBooleanv;
       _glGetBooleanv = function(pname, p) {
-        var attrib = null;
-        switch (pname) {
-          case 0x8078: // GL_TEXTURE_COORD_ARRAY
-          case 0x0de1: // GL_TEXTURE_2D - XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support it
-            attrib = GL.immediate.TEXTURE0 + GL.immediate.clientActiveTexture; break;
-          case 0x8074: // GL_VERTEX_ARRAY
-            attrib = GL.immediate.VERTEX; break;
-          case 0x8076: // GL_COLOR_ARRAY
-            attrib = GL.immediate.COLOR; break;
-        }
-        if (attrib != null) {
+        var attrib = GLEmulation.getAttributeFromCapability(pname);
+        if (attrib !== null) {
           var result = GL.immediate.enabledClientAttributes[attrib];
           {{{ makeSetValue('p', '0', 'result === true ? 1 : 0', 'i8') }}};
           return;
@@ -1429,6 +1421,22 @@ var LibraryGL = {
           GLEmulation.currentVao.vertexAttribPointers[index] = [index, size, type, normalized, stride, pointer];
         }
       };
+    },
+
+    getAttributeFromCapability: function(cap) {
+      var attrib = null;
+      switch (cap) {
+        case 0x8078: // GL_TEXTURE_COORD_ARRAY
+        case 0x0de1: // GL_TEXTURE_2D - XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support it
+          attrib = GL.immediate.TEXTURE0 + GL.immediate.clientActiveTexture; break;
+        case 0x8074: // GL_VERTEX_ARRAY
+          attrib = GL.immediate.VERTEX; break;
+        case 0x8075: // GL_NORMAL_ARRAY
+          attrib = GL.immediate.NORMAL; break;
+        case 0x8076: // GL_COLOR_ARRAY
+          attrib = GL.immediate.COLOR; break;
+      }
+      return attrib;
     },
 
     getProcAddress: function(name) {
@@ -2489,22 +2497,12 @@ var LibraryGL = {
   // ClientState/gl*Pointer
 
   glEnableClientState: function(cap, disable) {
-    var attrib;
-    switch(cap) {
-      case 0x8078: // GL_TEXTURE_COORD_ARRAY
-      case 0x0de1: // GL_TEXTURE_2D - XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support it
-        attrib = GL.immediate.TEXTURE0 + GL.immediate.clientActiveTexture; break;
-      case 0x8074: // GL_VERTEX_ARRAY
-        attrib = GL.immediate.VERTEX; break;
-      case 0x8075: // GL_NORMAL_ARRAY
-        attrib = GL.immediate.NORMAL; break;
-      case 0x8076: // GL_COLOR_ARRAY
-        attrib = GL.immediate.COLOR; break;
-      default:
+    var attrib = GLEmulation.getAttributeFromCapability(cap);
+    if (attrib === null) {
 #if ASSERTIONS
-        Module.printErr('WARNING: unhandled clientstate: ' + cap);
+      Module.printErr('WARNING: unhandled clientstate: ' + cap);
 #endif
-        return;
+      return;
     }
     if (disable && GL.immediate.enabledClientAttributes[attrib]) {
       GL.immediate.enabledClientAttributes[attrib] = false;
