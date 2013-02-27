@@ -812,7 +812,25 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     # Finish link
     actual_files = unique_ordered(actual_files) # tolerate people trying to link a.so a.so etc.
     if DEBUG: print >>sys.stderr, 'emcc: llvm-linking:', actual_files
-    output = Popen([LLVM_LINK] + actual_files + ['-o', target], stdout=PIPE).communicate()[0]
+
+    # check for too-long command line
+    linkcmd = [LLVM_LINK] + actual_files + ['-o', target]
+    # 8k is a bit of an arbitrary limit, but a reasonable one
+    # for max command line size before we use a respose file
+    responseFile = None
+    if len(" ".join(linkcmd)) > 8192:
+      [responseFD, responseFile] = mkstemp(suffix='.response', dir=TEMP_DIR)
+      responseFH = os.fdopen(responseFD, 'w')
+      for arg in actual_files:
+        responseFH.write(arg + "\n")
+      responseFH.close()
+      linkcmd = [LLVM_LINK, "@" + responseFile, '-o', target]
+
+    output = Popen(linkcmd, stdout=PIPE).communicate()[0]
+
+    if responseFile:
+      os.unlink(responseFile)
+
     assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
     for temp_dir in temp_dirs:
       try_delete(temp_dir)
