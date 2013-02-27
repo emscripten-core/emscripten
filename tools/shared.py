@@ -294,7 +294,11 @@ except:
 CANONICAL_TEMP_DIR = os.path.join(TEMP_DIR, 'emscripten_temp')
 EMSCRIPTEN_TEMP_DIR = None
 
-DEBUG = int(os.environ.get('EMCC_DEBUG') or 0)
+DEBUG = os.environ.get('EMCC_DEBUG')
+if DEBUG == "0":
+  DEBUG = None
+DEBUG_CACHE = DEBUG and "cache" in DEBUG
+
 if DEBUG:
   try:
     EMSCRIPTEN_TEMP_DIR = CANONICAL_TEMP_DIR
@@ -1240,29 +1244,30 @@ class JCache:
   # Returns a cached value, if it exists. Make sure the full key matches
   @staticmethod
   def get(shortkey, keys):
-    #if DEBUG: print >> sys.stderr, 'jcache get?', shortkey
+    if DEBUG_CACHE: print >> sys.stderr, 'jcache get?', shortkey
     cachename = JCache.get_cachename(shortkey)
     if not os.path.exists(cachename):
-      #if DEBUG: print >> sys.stderr, 'jcache none at all'
+      if DEBUG_CACHE: print >> sys.stderr, 'jcache none at all'
       return
     data = cPickle.Unpickler(open(cachename, 'rb')).load()
     if len(data) != 2:
-      #if DEBUG: print >> sys.stderr, 'jcache error in get'
+      if DEBUG_CACHE: print >> sys.stderr, 'jcache error in get'
       return
     oldkeys = data[0]
     if len(oldkeys) != len(keys):
-      #if DEBUG: print >> sys.stderr, 'jcache collision (a)'
+      if DEBUG_CACHE: print >> sys.stderr, 'jcache collision (a)'
       return
     for i in range(len(oldkeys)):
       if oldkeys[i] != keys[i]:
-        #if DEBUG: print >> sys.stderr, 'jcache collision (b)'
+        if DEBUG_CACHE: print >> sys.stderr, 'jcache collision (b)'
         return
-    #if DEBUG: print >> sys.stderr, 'jcache win'
+    if DEBUG_CACHE: print >> sys.stderr, 'jcache win'
     return data[1]
 
   # Sets the cached value for a key (from get_key)
   @staticmethod
   def set(shortkey, keys, value):
+    if DEBUG_CACHE: print >> sys.stderr, 'save to cache', shortkey
     cachename = JCache.get_cachename(shortkey)
     cPickle.Pickler(open(cachename, 'wb')).dump([keys, value])
     #if DEBUG:
