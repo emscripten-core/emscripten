@@ -6743,11 +6743,12 @@ LibraryManager.library = {
 
   pthread_key_create: function(key, destructor) {
     if (!_pthread_key_create.keys) _pthread_key_create.keys = {};
-    _pthread_key_create.keys[key] = null;
+    // values start at 0
+    _pthread_key_create.keys[key] = 0;
   },
 
   pthread_getspecific: function(key) {
-    return _pthread_key_create.keys[key];
+    return _pthread_key_create.keys[key] || 0;
   },
 
   pthread_setspecific: function(key, value) {
