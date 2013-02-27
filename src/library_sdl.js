@@ -1183,6 +1183,7 @@ var LibrarySDL = {
   Mix_Init: function(flags) {
     return 8; /* MIX_INIT_OGG */
   },
+  Mix_Quit: function(){},
 
   Mix_OpenAudio: function(frequency, format, channels, chunksize) {
     SDL.allocateChannels(32);
