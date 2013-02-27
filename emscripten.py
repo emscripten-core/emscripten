@@ -152,7 +152,7 @@ def emscript(infile, settings, outfile, libraries=[]):
 
     out = shared.JCache.get(shortkey, keys)
 
-    if (not out) and DEBUG_CACHE:
+    if DEBUG_CACHE and not out:
       dfpath = os.path.join(shared.TEMP_DIR, "ems_" + shortkey)
       dfp = open(dfpath, 'w')
       dfp.write(pre_input);
