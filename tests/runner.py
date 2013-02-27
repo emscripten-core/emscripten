@@ -10520,7 +10520,6 @@ elif 'browser' in str(sys.argv):
 
       def chunked_server(support_byte_ranges):
         class ChunkedServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
-          @staticmethod
           def sendheaders(s, extra=[], length=len(data)):
             s.send_response(200)
             s.send_header("Content-Length", str(length))
@@ -10534,11 +10533,14 @@ elif 'browser' in str(sys.argv):
             s.end_headers()
 
           def do_HEAD(s):
-            ChunkedServerHandler.sendheaders(s)
-            
+            s.sendheaders()
+
+          def do_OPTIONS(s):
+            s.sendheaders([("Access-Control-Allow-Headers", "Range")], 0)
+
           def do_GET(s):
             if not support_byte_ranges:
-              ChunkedServerHandler.sendheaders(s)
+              s.sendheaders()
               s.wfile.write(data)
             else:
               (start, end) = s.headers.get("range").split("=")[1].split("-")
@@ -10546,7 +10548,7 @@ elif 'browser' in str(sys.argv):
               end = int(end)
               end = min(len(data)-1, end)
               length = end-start+1
-              ChunkedServerHandler.sendheaders(s,[],length)
+              s.sendheaders([],length)
               s.wfile.write(data[start:end+1])
             s.wfile.close()
         httpd = BaseHTTPServer.HTTPServer(('localhost', 11111), ChunkedServerHandler)
