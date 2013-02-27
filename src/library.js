@@ -6701,6 +6701,9 @@ LibraryManager.library = {
   pthread_mutexattr_destroy: function() {},
   pthread_mutex_lock: function() {},
   pthread_mutex_unlock: function() {},
+  pthread_mutex_trylock: function() {
+    return 0;
+  },
   pthread_cond_init: function() {},
   pthread_cond_destroy: function() {},
   pthread_cond_broadcast: function() {},
