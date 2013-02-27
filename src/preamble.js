@@ -251,11 +251,9 @@ Module["ccall"] = ccall;
 // Returns the C function with a specified identifier (for C++, you need to do manual name mangling)
 function getCFunc(ident) {
   try {
-    var func = eval('_' + ident);
+    var func = globalScope['Module']['_' + ident]; // closure exported function
+    if (!func) func = eval('_' + ident); // explicit lookup
   } catch(e) {
-    try {
-      func = globalScope['Module']['_' + ident]; // closure exported function
-    } catch(e) {}
   }
   assert(func, 'Cannot call unknown function ' + ident + ' (perhaps LLVM optimizations or closure removed it?)');
   return func;
