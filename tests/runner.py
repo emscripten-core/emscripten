@@ -9663,57 +9663,59 @@ seeked= file.
       assert not os.environ.get('EMCC_OPTIMIZE_NORMALLY')
       assert not os.environ.get('EMCC_DEBUG')
 
-      try:
-        os.environ['EMCC_OPTIMIZE_NORMALLY'] = '1'
-        os.environ['EMCC_DEBUG'] = '1'
+      for optimize_normally in [0, 1]:
+        print optimize_normally
+        try:
+          if optimize_normally: os.environ['EMCC_OPTIMIZE_NORMALLY'] = '1'
+          os.environ['EMCC_DEBUG'] = '1'
 
-        open(self.in_dir('main.cpp'), 'w').write(r'''
-          extern "C" {
-            void something();
-          }
-
-          int main() {
-            something();
-            return 0;
-          }
-        ''')
-        open(self.in_dir('supp.cpp'), 'w').write(r'''
-          #include <stdio.h>
-
-          extern "C" {
-            void something() {
-              printf("yello\n");
+          open(self.in_dir('main.cpp'), 'w').write(r'''
+            extern "C" {
+              void something();
             }
-          }
-        ''')
-        out, err = Popen([PYTHON, EMCC, self.in_dir('main.cpp'), '-O2', '-o', 'main.o'], stdout=PIPE, stderr=PIPE).communicate()
-        assert "emcc: LLVM opts: ['-disable-inlining', '-O3']" in err
-        assert ' with -O3 since EMCC_OPTIMIZE_NORMALLY defined' in err
 
-        out, err = Popen([PYTHON, EMCC, self.in_dir('supp.cpp'), '-O2', '-o', 'supp.o'], stdout=PIPE, stderr=PIPE).communicate()
-        assert "emcc: LLVM opts: ['-disable-inlining', '-O3']" in err
-        assert ' with -O3 since EMCC_OPTIMIZE_NORMALLY defined' in err
+            int main() {
+              something();
+              return 0;
+            }
+          ''')
+          open(self.in_dir('supp.cpp'), 'w').write(r'''
+            #include <stdio.h>
 
-        out, err = Popen([PYTHON, EMCC, self.in_dir('main.o'), self.in_dir('supp.o'), '-O2', '-o', 'both.o'], stdout=PIPE, stderr=PIPE).communicate()
-        assert "emcc: LLVM opts: ['-disable-inlining', '-O3']" not in err
-        assert ' with -O3 since EMCC_OPTIMIZE_NORMALLY defined' not in err
-        assert 'despite EMCC_OPTIMIZE_NORMALLY since not source code' in err, err
+            extern "C" {
+              void something() {
+                printf("yello\n");
+              }
+            }
+          ''')
+          out, err = Popen([PYTHON, EMCC, self.in_dir('main.cpp'), '-O2', '-o', 'main.o'], stdout=PIPE, stderr=PIPE).communicate()
+          assert ("emcc: LLVM opts: ['-disable-inlining', '-O3']" in err) == optimize_normally
+          assert (' with -O3 since EMCC_OPTIMIZE_NORMALLY defined' in err) == optimize_normally
 
-        out, err = Popen([PYTHON, EMCC, self.in_dir('main.cpp'), self.in_dir('supp.cpp'), '-O2', '-o', 'both2.o'], stdout=PIPE, stderr=PIPE).communicate()
-        assert "emcc: LLVM opts: ['-disable-inlining', '-O3']" in err
-        assert ' with -O3 since EMCC_OPTIMIZE_NORMALLY defined' in err
+          out, err = Popen([PYTHON, EMCC, self.in_dir('supp.cpp'), '-O2', '-o', 'supp.o'], stdout=PIPE, stderr=PIPE).communicate()
+          assert ("emcc: LLVM opts: ['-disable-inlining', '-O3']" in err) == optimize_normally
+          assert (' with -O3 since EMCC_OPTIMIZE_NORMALLY defined' in err) == optimize_normally
 
-        for last in ['both.o', 'both2.o']:
-          out, err = Popen([PYTHON, EMCC, self.in_dir('both.o'), '-O2', '-o', last + '.js'], stdout=PIPE, stderr=PIPE).communicate()
+          out, err = Popen([PYTHON, EMCC, self.in_dir('main.o'), self.in_dir('supp.o'), '-O2', '-o', 'both.o'], stdout=PIPE, stderr=PIPE).communicate()
           assert "emcc: LLVM opts: ['-disable-inlining', '-O3']" not in err
           assert ' with -O3 since EMCC_OPTIMIZE_NORMALLY defined' not in err
-          output = run_js(last + '.js')
-          assert 'yello' in output, 'code works'
-        assert open('both.o.js').read() == open('both2.o.js').read()
+          assert ('despite EMCC_OPTIMIZE_NORMALLY since not source code' in err) == optimize_normally
 
-      finally:
-        del os.environ['EMCC_OPTIMIZE_NORMALLY']
-        del os.environ['EMCC_DEBUG']
+          out, err = Popen([PYTHON, EMCC, self.in_dir('main.cpp'), self.in_dir('supp.cpp'), '-O2', '-o', 'both2.o'], stdout=PIPE, stderr=PIPE).communicate()
+          assert ("emcc: LLVM opts: ['-disable-inlining', '-O3']" in err) == optimize_normally
+          assert (' with -O3 since EMCC_OPTIMIZE_NORMALLY defined' in err) == optimize_normally
+
+          for last in ['both.o', 'both2.o']:
+            out, err = Popen([PYTHON, EMCC, self.in_dir('both.o'), '-O2', '-o', last + '.js'], stdout=PIPE, stderr=PIPE).communicate()
+            assert ("emcc: LLVM opts: ['-disable-inlining', '-O3']" not in err) == optimize_normally
+            assert ' with -O3 since EMCC_OPTIMIZE_NORMALLY defined' not in err
+            output = run_js(last + '.js')
+            assert 'yello' in output, 'code works'
+          assert open('both.o.js').read() == open('both2.o.js').read()
+
+        finally:
+          if optimize_normally: del os.environ['EMCC_OPTIMIZE_NORMALLY']
+          del os.environ['EMCC_DEBUG']
 
     def test_conftest_s_flag_passing(self):
       open(os.path.join(self.get_dir(), 'conftest.c'), 'w').write(r'''
