@@ -2794,6 +2794,8 @@ var LibraryGL = {
   glTexCoord3f: function() { throw 'glTexCoord3f: TODO' },
   glGetTexLevelParameteriv: function() { throw 'glGetTexLevelParameteriv: TODO' },
 
+  glShadeModel: function() { Runtime.warnOnce('TODO: glShadeModel') },
+
   // signatures of simple pass-through functions, see later
   glActiveTexture__sig: 'vi',
   glEnableVertexAttribArray__sig: 'vi',
@@ -2820,7 +2822,7 @@ var LibraryGL = {
 };
 
 // Simple pass-through functions. Starred ones have return values. [X] ones have X in the C name but not in the JS name
-[[0, 'shadeModel getError* finish flush'],
+[[0, 'getError* finish flush'],
  [1, 'clearDepth clearDepth[f] depthFunc enable disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask checkFramebufferStatus* generateMipmap activeTexture blendEquation sampleCoverage isEnabled*'],
  [2, 'blendFunc blendEquationSeparate depthRange depthRange[f] stencilMaskSeparate hint polygonOffset'],
  [3, 'texParameteri texParameterf drawArrays vertexAttrib2f stencilFunc stencilOp'],
@@ -2831,8 +2833,8 @@ var LibraryGL = {
   var num = data[0];
   var names = data[1];
   var args = range(num).map(function(i) { return 'x' + i }).join(', ');
-  var plainStub = '(function(' + args + ') { ' + (num > 0 ? 'Module.ctx.NAME(' + args + ')' : '') + ' })';
-  var returnStub = '(function(' + args + ') { ' + (num > 0 ? 'return Module.ctx.NAME(' + args + ')' : '') + ' })';
+  var plainStub = '(function(' + args + ') { Module.ctx.NAME(' + args + ') })';
+  var returnStub = '(function(' + args + ') { return Module.ctx.NAME(' + args + ') })';
   names.split(' ').forEach(function(name) {
     var stub = plainStub;
     if (name[name.length-1] == '*') {
