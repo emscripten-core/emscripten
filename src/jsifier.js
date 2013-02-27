@@ -1402,7 +1402,8 @@ function JSify(data, functionsOnly, givenFunctions) {
         assert(returnType.search(/\("'\[,/) == -1); // XXX need isFunctionType(type, out)
         callIdent = '(' + callIdent + ')&{{{ FTM_' + sig + ' }}}'; // the function table mask is set in emscripten.py
       } else if (SAFE_DYNCALLS) {
-        callIdent = '(tempInt=' + callIdent + ',tempInt < 0 || tempInt >= FUNCTION_TABLE.length-1 ? abort("dyncall error") : tempInt)';
+        assert(!ASM_JS, 'cannot emit safe dyncalls in asm');
+        callIdent = '(tempInt=' + callIdent + ',tempInt < 0 || tempInt >= FUNCTION_TABLE.length-1 || !FUNCTION_TABLE[tempInt] ? abort("dyncall error: ' + sig + '") : tempInt)';
       }
       callIdent = Functions.getTable(sig) + '[' + callIdent + ']';
     }

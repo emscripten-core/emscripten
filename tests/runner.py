@@ -2835,7 +2835,7 @@ Exiting setjmp function, level: 0, prev_jmp: -1
             return 0;
           }
         '''.replace('COND', '==' if cond else '!=').replace('BODY', r'{ printf("all good\n"); }' if body else '')
-        self.do_run(src, 'dyncall error' if not work else 'all good')
+        self.do_run(src, 'dyncall error: vi' if not work else 'all good')
 
     def test_dynamic_cast(self):
         if self.emcc_args is None: return self.skip('need libcxxabi')
