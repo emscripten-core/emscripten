@@ -6747,6 +6747,9 @@ LibraryManager.library = {
   },
 
   pthread_getspecific: function(key) {
+    if (!(key in _pthread_key_create.keys)) {
+      return 0;
+    }
     return _pthread_key_create.keys[key];
   },
 
