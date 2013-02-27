@@ -113,6 +113,7 @@ namespace emscripten {
                 TYPEID classType,
                 unsigned argCount,
                 TYPEID argTypes[],
+                GenericFunction invoker,
                 GenericFunction constructor);
 
             void _embind_register_class_method(
@@ -211,7 +212,7 @@ namespace emscripten {
         template<typename ReturnType, typename... Args>
         struct Invoker {
             static typename internal::BindingType<ReturnType>::WireType invoke(
-                ReturnType (fn)(Args...),
+                ReturnType (*fn)(Args...),
                 typename internal::BindingType<Args>::WireType... args
             ) {
                 return internal::BindingType<ReturnType>::toWireType(
@@ -225,7 +226,7 @@ namespace emscripten {
         template<typename... Args>
         struct Invoker<void, Args...> {
             static void invoke(
-                void (fn)(Args...),
+                void (*fn)(Args...),
                 typename internal::BindingType<Args>::WireType... args
             ) {
                 return fn(
@@ -655,15 +656,23 @@ namespace emscripten {
         }
 
         template<typename... ConstructorArgs, typename... Policies>
-        class_& constructor(Policies...) {
+        class_& constructor(Policies... policies) {
+            return constructor(
+                &internal::operator_new<ClassType, ConstructorArgs...>,
+                policies...);
+        }
+
+        template<typename... Args, typename... Policies>
+        class_& constructor(ClassType* (*factory)(Args...), Policies...) {
             using namespace internal;
 
-            typename WithPolicies<Policies...>::template ArgTypeList<void, ConstructorArgs...> args;
+            typename WithPolicies<Policies...>::template ArgTypeList<void, Args...> args;
             _embind_register_class_constructor(
                 TypeID<ClassType>::get(),
                 args.count,
                 args.types,
-                reinterpret_cast<GenericFunction>(&raw_constructor<ClassType, ConstructorArgs...>));
+                reinterpret_cast<GenericFunction>(&Invoker<ClassType*, Args...>::invoke),
+                reinterpret_cast<GenericFunction>(factory));
             return *this;
         }
 
