@@ -181,7 +181,9 @@ Options that are modified or new in %s include:
                            tools/shared.py and also src/settings.js.)
                            Note: Optimizations are only done when
                            compiling to JavaScript, not to intermediate
-                           bitcode.
+                           bitcode, *unless* you build with
+                           EMCC_OPTIMIZE_NORMALLY=1 (not recommended
+                           unless you know what you are doing!)
   -O2                      As -O1, plus the relooper (loop recreation),
                            plus LLVM -O2 optimizations
   -O3                      As -O2, plus dangerous optimizations that may
@@ -1009,7 +1011,15 @@ try:
   # If we were just asked to generate bitcode, stop there
   if final_suffix not in JS_CONTAINING_SUFFIXES:
     if llvm_opts > 0:
-      print >> sys.stderr, 'emcc: warning: -Ox flags ignored, since not generating JavaScript'
+      if not os.environ.get('EMCC_OPTIMIZE_NORMALLY'):
+        print >> sys.stderr, 'emcc: warning: -Ox flags ignored, since not generating JavaScript'
+      else:
+        for input_file in input_files:
+          if input_file.endswith(SOURCE_SUFFIXES):
+            if DEBUG: print >> sys.stderr, 'emcc: optimizing %s with -O%d since EMCC_OPTIMIZE_NORMALLY defined' % (input_file, llvm_opts)
+            shared.Building.llvm_opt(in_temp(unsuffixed(uniquename(input_file)) + '.o'), llvm_opts)
+          else:
+            if DEBUG: print >> sys.stderr, 'emcc: not optimizing %s despite EMCC_OPTIMIZE_NORMALLY since not source code' % (input_file)
     if not specified_target:
       for input_file in input_files:
         shutil.move(in_temp(unsuffixed(uniquename(input_file)) + '.o'), unsuffixed_basename(input_file) + '.' + final_suffix)
@@ -1174,9 +1184,12 @@ try:
   if not LEAVE_INPUTS_RAW:
     link_opts = [] if keep_llvm_debug else ['-strip-debug'] # remove LLVM debug info in -O1+, since the optimizer removes it anyhow
     if llvm_opts > 0:
-      shared.Building.llvm_opt(in_temp(target_basename + '.bc'), llvm_opts)
-      if DEBUG: save_intermediate('opt', 'bc')
-      # Do LTO in a separate pass to work around LLVM bug XXX (see failure e.g. in cubescript)
+      if not os.environ.get('EMCC_OPTIMIZE_NORMALLY'):
+        shared.Building.llvm_opt(in_temp(target_basename + '.bc'), llvm_opts)
+        if DEBUG: save_intermediate('opt', 'bc')
+        # Do LTO in a separate pass to work around LLVM bug XXX (see failure e.g. in cubescript)
+      else:
+        if DEBUG: print >> sys.stderr, 'emcc: not running opt because EMCC_OPTIMIZE_NORMALLY was specified, opt should have been run before'
     if shared.Building.can_build_standalone():
       # If we can LTO, do it before dce, since it opens up dce opportunities
       if llvm_lto and shared.Building.can_use_unsafe_opts():
