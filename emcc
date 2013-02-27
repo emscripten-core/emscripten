@@ -1244,7 +1244,7 @@ try:
   def flush_js_optimizer_queue():
     global final, js_optimizer_queue
     if len(js_optimizer_queue) > 0 and not(len(js_optimizer_queue) == 1 and js_optimizer_queue[0] == 'last'):
-      if DEBUG < 2:
+      if DEBUG != '2':
         if shared.Settings.ASM_JS:
           js_optimizer_queue = ['asm'] + js_optimizer_queue
         if DEBUG: print >> sys.stderr, 'emcc: applying js optimization passes:', js_optimizer_queue
@@ -1263,7 +1263,7 @@ try:
   if opt_level >= 1:
     if DEBUG: print >> sys.stderr, 'emcc: running pre-closure post-opts'
 
-    if DEBUG >= 2:
+    if DEBUG == '2':
       # Clean up the syntax a bit
       final = shared.Building.js_optimizer(final, [], jcache)
       if DEBUG: save_intermediate('pretty')
