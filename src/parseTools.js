@@ -984,18 +984,24 @@ function checkSafeHeap() {
 function getHeapOffset(offset, type, forceAsm) {
   if (USE_TYPED_ARRAYS !== 2) {
     return offset;
-  } else {
-    if (Runtime.getNativeFieldSize(type) > 4) {
-      type = 'i32'; // XXX we emulate 64-bit values as 32
-    }
-    var shifts = Math.log(Runtime.getNativeTypeSize(type))/Math.LN2;
-    offset = '(' + offset + ')';
-    if (shifts != 0) {
-      return '(' + offset + '>>' + shifts + ')';
+  }
+
+  if (Runtime.getNativeFieldSize(type) > 4) {
+    type = 'i32'; // XXX we emulate 64-bit values as 32
+  }
+
+  var sz = Runtime.getNativeTypeSize(type);
+  var shifts = Math.log(sz)/Math.LN2;
+  offset = '(' + offset + ')';
+  if (shifts != 0) {
+    if (CHECK_HEAP_ALIGN) {
+      return '(CHECK_ALIGN_' + sz + '(' + offset + ')>>' + shifts + ')';
     } else {
-      // we need to guard against overflows here, HEAP[U]8 expects a guaranteed int
-      return isJSVar(offset) ? offset : '(' + offset + '|0)';
+      return '(' + offset + '>>' + shifts + ')';
     }
+  } else {
+    // we need to guard against overflows here, HEAP[U]8 expects a guaranteed int
+    return isJSVar(offset) ? offset : '(' + offset + '|0)';
   }
 }
 
