@@ -400,6 +400,25 @@ Options that are modified or new in %s include:
                            for a later incremental build (where you also
                            enable it) to be sped up.
 
+                           Caching works separately on 4 parts of compilation:
+                           'pre' which is types and global variables; that
+                           information is then fed into 'funcs' which are
+                           the functions (which we parallelize), and then
+                           'post' which adds final information based on
+                           the functions (e.g., do we need long64 support
+                           code). Finally, 'jsfuncs' are JavaScript-level
+                           optimizations. Each of the 4 parts can be cached
+                           separately, but note that they can affect each
+                           other: If you recompile a single C++ file that
+                           changes a global variable - e.g., adds, removes
+                           or modifies a global variable, say by adding
+                           a printf or by adding a compile-time timestamp,
+                           then 'pre' cannot be loaded from the cache. And
+                           since 'pre's output is sent to 'funcs' and 'post',
+                           they will get invalidated as well, and only
+                           'jsfuncs' will be cached. So avoid modifying
+                           globals to let caching work fully.
+
   --clear-cache            Manually clears the cache of compiled
                            emscripten system libraries (libc++,
                            libc++abi, libc). This is normally
