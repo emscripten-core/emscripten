@@ -822,14 +822,25 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     # 8k is a bit of an arbitrary limit, but a reasonable one
     # for max command line size before we use a respose file
     response_file = None
-    if len(' '.join(link_cmd)) > 8192:
+    if WINDOWS and len(' '.join(link_cmd)) > 8192:
       if DEBUG: print >>sys.stderr, 'using response file for llvm-link'
       [response_fd, response_file] = mkstemp(suffix='.response', dir=TEMP_DIR)
+
+      link_cmd = [LLVM_LINK, "@" + response_file]
+
       response_fh = os.fdopen(response_fd, 'w')
       for arg in actual_files:
-        response_fh.write(arg + "\n")
+        # we can't put things with spaces in the response file
+        if " " in arg:
+          link_cmd.append(arg)
+        else:
+          response_fh.write(arg + "\n")
       response_fh.close()
-      link_cmd = [LLVM_LINK, "@" + response_file, '-o', target]
+      link_cmd.append("-o")
+      link_cmd.append(target)
+
+      if len(' '.join(link_cmd)) > 8192:
+        print >>sys.stderr, 'emcc: warning: link command line is very long, even with response file -- use paths with no spaces'
 
     output = Popen(link_cmd, stdout=PIPE).communicate()[0]
 
