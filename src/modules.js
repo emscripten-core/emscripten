@@ -344,6 +344,9 @@ var Functions = {
         tables[t] = Functions.getTable(t) + '.push.apply(' + Functions.getTable(t) + ', [' + indices + ']);\n';
       } else {
         tables[t] = 'var ' + Functions.getTable(t) + ' = [' + indices + '];\n';
+        if (SAFE_DYNCALLS) {
+          tables[t] += 'var FUNCTION_TABLE_NAMES = ' + JSON.stringify(table).replace(/\n/g, '').replace(/,0/g, ',0\n') + ';\n';
+        }
       }
     }
     if (!generated && !ASM_JS) {
