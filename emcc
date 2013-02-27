@@ -91,7 +91,10 @@ LLVM_OPT_LEVEL = {
   3: 3,
 }
 
-DEBUG = int(os.environ.get('EMCC_DEBUG') or 0)
+DEBUG = os.environ.get('EMCC_DEBUG')
+if DEBUG == "0":
+  DEBUG = None
+
 TEMP_DIR = os.environ.get('EMCC_TEMP_DIR')
 LEAVE_INPUTS_RAW = os.environ.get('EMCC_LEAVE_INPUTS_RAW') # Do not compile .ll files into .bc, just compile them with emscripten directly
                                                            # Not recommended, this is mainly for the test runner, or if you have some other
@@ -1120,7 +1123,10 @@ try:
      (not LEAVE_INPUTS_RAW and not (suffix(temp_files[0]) in BITCODE_SUFFIXES or suffix(temp_files[0]) in DYNAMICLIB_SUFFIXES) and shared.Building.is_ar(temp_files[0])):
     linker_inputs = temp_files + extra_files_to_link
     if DEBUG: print >> sys.stderr, 'emcc: linking: ', linker_inputs
+    t0 = time.time()
     shared.Building.link(linker_inputs, in_temp(target_basename + '.bc'))
+    t1 = time.time()
+    if DEBUG: print >> sys.stderr, 'emcc:    linking took %.2f seconds' % (t1 - t0)
     final = in_temp(target_basename + '.bc')
   else:
     if not LEAVE_INPUTS_RAW:

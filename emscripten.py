@@ -21,6 +21,9 @@ WARNING: You should normally never use this! Use emcc instead.
 from tools import shared
 
 DEBUG = os.environ.get('EMCC_DEBUG')
+if DEBUG == "0":
+  DEBUG = None
+DEBUG_CACHE = DEBUG and "cache" in DEBUG
 
 __rootpath__ = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(*pathelems):
@@ -145,7 +148,21 @@ def emscript(infile, settings, outfile, libraries=[]):
   if jcache:
     keys = [pre_input, settings_text, ','.join(libraries)]
     shortkey = shared.JCache.get_shortkey(keys)
+    if DEBUG_CACHE: print >>sys.stderr, 'shortkey', shortkey
+
     out = shared.JCache.get(shortkey, keys)
+
+    if (not out) and DEBUG_CACHE:
+      dfpath = os.path.join(shared.TEMP_DIR, "ems_" + shortkey)
+      dfp = open(dfpath, 'w')
+      dfp.write(pre_input);
+      dfp.write("\n\n========================== settings_text\n\n");
+      dfp.write(settings_text);
+      dfp.write("\n\n========================== libraries\n\n");
+      dfp.write("\n".join(libraries))
+      dfp.close()
+      print >>sys.stderr, '  cache miss, key data dumped to %s' % dfpath
+
     if out and DEBUG: print >> sys.stderr, '  loading pre from jcache'
   if not out:
     open(pre_file, 'w').write(pre_input)
