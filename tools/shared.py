@@ -814,22 +814,23 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     if DEBUG: print >>sys.stderr, 'emcc: llvm-linking:', actual_files
 
     # check for too-long command line
-    linkcmd = [LLVM_LINK] + actual_files + ['-o', target]
+    link_cmd = [LLVM_LINK] + actual_files + ['-o', target]
     # 8k is a bit of an arbitrary limit, but a reasonable one
     # for max command line size before we use a respose file
-    responseFile = None
-    if len(" ".join(linkcmd)) > 8192:
-      [responseFD, responseFile] = mkstemp(suffix='.response', dir=TEMP_DIR)
-      responseFH = os.fdopen(responseFD, 'w')
+    response_file = None
+    if len(' '.join(link_cmd)) > 8192:
+      if DEBUG: print >>sys.stderr, 'using response file for llvm-link'
+      [response_fd, response_file] = mkstemp(suffix='.response', dir=TEMP_DIR)
+      response_fh = os.fdopen(response_fd, 'w')
       for arg in actual_files:
-        responseFH.write(arg + "\n")
-      responseFH.close()
-      linkcmd = [LLVM_LINK, "@" + responseFile, '-o', target]
+        response_fh.write(arg + "\n")
+      response_fh.close()
+      link_cmd = [LLVM_LINK, "@" + response_file, '-o', target]
 
-    output = Popen(linkcmd, stdout=PIPE).communicate()[0]
+    output = Popen(link_cmd, stdout=PIPE).communicate()[0]
 
-    if responseFile:
-      os.unlink(responseFile)
+    if response_file:
+      os.unlink(response_file)
 
     assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
     for temp_dir in temp_dirs:
