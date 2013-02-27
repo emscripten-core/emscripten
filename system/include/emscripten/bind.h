@@ -290,36 +290,12 @@ namespace emscripten {
             return ptr.get();
         }
 
-        template<typename FunctorType, typename ReturnType, typename... Args>
-        struct FunctorInvoker {
-            static typename internal::BindingType<ReturnType>::WireType invoke(
-                const FunctorType& ptr,
-                typename internal::BindingType<Args>::WireType... args
-            ) {
-                return internal::BindingType<ReturnType>::toWireType(
-                    ptr(
-                        internal::BindingType<Args>::fromWireType(args)...
-                    )
-                );
-            }
-        };
-
-        template<typename FunctorType, typename... Args>
-        struct FunctorInvoker<FunctorType, void, Args...> {
-            static void invoke(
-                const FunctorType& ptr,
-                typename internal::BindingType<Args>::WireType... args
-            ) {
-                ptr(internal::BindingType<Args>::fromWireType(args)...);
-            }
-        };
-
         template<typename ClassType, typename ReturnType, typename... Args>
         struct FunctionInvoker {
-            typedef ReturnType (FunctionPointer)(ClassType& ct, Args...);
+            typedef ReturnType (*FunctionPointer)(ClassType& ct, Args...);
             static typename internal::BindingType<ReturnType>::WireType invoke(
                 ClassType* ptr,
-                FunctionPointer** function,
+                FunctionPointer* function,
                 typename internal::BindingType<Args>::WireType... args
             ) {
                 return internal::BindingType<ReturnType>::toWireType(
@@ -330,10 +306,10 @@ namespace emscripten {
 
         template<typename ClassType, typename... Args>
         struct FunctionInvoker<ClassType, void, Args...> {
-            typedef void (FunctionPointer)(ClassType& ct, Args...);
+            typedef void (*FunctionPointer)(ClassType& ct, Args...);
             static void invoke(
                 ClassType* ptr,
-                FunctionPointer** function,
+                FunctionPointer* function,
                 typename internal::BindingType<Args>::WireType... args
             ) {
                 (*function)(*ptr, internal::BindingType<Args>::fromWireType(args)...);
@@ -439,28 +415,6 @@ namespace emscripten {
             }
         };
 
-        template<typename ClassType, typename ElementType, typename IndexType>
-        struct ArrayAccess {
-            static ElementType get(const ClassType& ptr, IndexType index) {
-                return ptr[index];
-            }
-
-            static void set(ClassType& ptr, IndexType index, const ElementType& value) {
-                ptr[index] = value;
-            }
-        };
-
-        template<typename KeyType, typename ValueType>
-        struct MapAccess {
-            static ValueType get(const std::map<KeyType, ValueType>& m, const KeyType& k) {
-                auto i = m.find(k);
-                if (i == m.end()) {
-                    return ValueType();
-                } else {
-                    return i->second;
-                }
-            }
-        };
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -806,55 +760,89 @@ namespace emscripten {
         class_& calloperator(const char* methodName, Policies... policies) {
             return method(methodName, &ClassType::operator(), policies...);
         }
-
-        template<typename ElementType, typename IndexType>
-        class_& arrayoperatorget() {
-            return method(
-                "array_get",
-                internal::ArrayAccess<ClassType, ElementType, IndexType>::get);
-        }
-
-        template<typename ElementType, typename IndexType>
-        class_& arrayoperatorset() {
-            return method(
-                "array_set",
-                internal::ArrayAccess<ClassType, ElementType, IndexType>::set);
-        }
     };
 
     ////////////////////////////////////////////////////////////////////////////////
     // VECTORS
     ////////////////////////////////////////////////////////////////////////////////
+
+    namespace internal {
+        template<typename VectorType>
+        struct VectorAccess {
+            static val get(
+                const VectorType& v,
+                typename VectorType::size_type index
+            ) {
+                if (index < v.size()) {
+                    return val(v[index]);
+                } else {
+                    return val::undefined();
+                }
+            }
+
+            static bool set(
+                VectorType& v,
+                typename VectorType::size_type index,
+                const typename VectorType::value_type& value
+            ) {
+                v[index] = value;
+                return true;
+            }
+        };
+    }
+
     template<typename T>
     class_<std::vector<T>> register_vector(const char* name) {
-        using namespace std;
-        typedef vector<T> VecType;
+        typedef std::vector<T> VecType;
 
         void (VecType::*push_back)(const T&) = &VecType::push_back;
-        const T& (VecType::*at)(size_t) const = &VecType::at;
         return class_<std::vector<T>>(name)
             .template constructor<>()
             .method("push_back", push_back)
-            .method("at", at)
-            .method("size", &vector<T>::size)
-            .template arrayoperatorget<T, size_t>()
-            .template arrayoperatorset<T, size_t>()
+            .method("size", &VecType::size)
+            .method("get", &internal::VectorAccess<VecType>::get)
+            .method("set", &internal::VectorAccess<VecType>::set)
             ;
     }
 
     ////////////////////////////////////////////////////////////////////////////////
     // MAPS
     ////////////////////////////////////////////////////////////////////////////////
+
+    namespace internal {
+        template<typename MapType>
+        struct MapAccess {
+            static val get(
+                const MapType& m,
+                const typename MapType::key_type& k
+            ) {
+                auto i = m.find(k);
+                if (i == m.end()) {
+                    return val::undefined();
+                } else {
+                    return val(i->second);
+                }
+            }
+
+            static void set(
+                MapType& m,
+                const typename MapType::key_type& k,
+                const typename MapType::mapped_type& v
+            ) {
+                m[k] = v;
+            }
+        };
+    }
+
     template<typename K, typename V>
     class_<std::map<K, V>> register_map(const char* name) {
-        using namespace std;
-        typedef map<K,V> MapType;
+        typedef std::map<K,V> MapType;
 
         return class_<MapType>(name)
+            .template constructor<>()
             .method("size", &MapType::size)
-            // make this map_get?
-            .method("array_get", internal::MapAccess<K, V>::get)
-            .template arrayoperatorset<V, K>()
+            .method("get", internal::MapAccess<MapType>::get)
+            .method("set", internal::MapAccess<MapType>::set)
             ;
     }
 
