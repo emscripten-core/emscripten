@@ -1057,6 +1057,26 @@ var LibraryGL = {
         return Module.ctx.isEnabled(cap);
       };
 
+      var glGetBooleanv = _glGetBooleanv;
+      _glGetBooleanv = function(pname, p) {
+        var attrib = null;
+        switch (pname) {
+          case 0x8078: // GL_TEXTURE_COORD_ARRAY
+          case 0x0de1: // GL_TEXTURE_2D - XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support it
+            attrib = GL.immediate.TEXTURE0 + GL.immediate.clientActiveTexture; break;
+          case 0x8074: // GL_VERTEX_ARRAY
+            attrib = GL.immediate.VERTEX; break;
+          case 0x8076: // GL_COLOR_ARRAY
+            attrib = GL.immediate.COLOR; break;
+        }
+        if (attrib != null) {
+          var result = GL.immediate.enabledClientAttributes[attrib];
+          {{{ makeSetValue('p', '0', 'result === true ? 1 : 0', 'i8') }}};
+          return;
+        }
+        glGetBooleanv(pname, p);
+      };
+
       var glGetIntegerv = _glGetIntegerv;
       _glGetIntegerv = function(pname, params) {
         switch (pname) {
