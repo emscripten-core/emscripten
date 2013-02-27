@@ -85,11 +85,11 @@ function collectRegisteredBaseClasses(rawType) {
     var rawBaseTypes = Module.__getBaseClasses(rawType);
     var baseTypes = [];
     for (var i = 0; i < rawBaseTypes.size(); i++) {
-        var baseType = typeRegistry[rawBaseTypes.at(i)];
+        var baseType = typeRegistry[rawBaseTypes.get(i)];
         if (baseType) {
             baseTypes.push(baseType);
         } else {
-            baseTypes = baseTypes.concat(collectRegisteredBaseClasses(rawBaseTypes.at(i)));
+            baseTypes = baseTypes.concat(collectRegisteredBaseClasses(rawBaseTypes.get(i)));
         }
     }
     return baseTypes;
@@ -618,7 +618,7 @@ RegisteredPointer.prototype.getDynamicDowncastType = function(ptr) {
     if (type && type !== this.pointeeType.rawType) {
         var derivation = Module.__getDerivationPath(type, this.pointeeType.rawType);
         for (var i = 0; i < derivation.size(); i++) {
-            downcastType = typeRegistry[derivation.at(i)];
+            downcastType = typeRegistry[derivation.get(i)];
             if (downcastType && (!this.isSmartPointer || downcastType.smartPointerType)) {
                 break;
             }
