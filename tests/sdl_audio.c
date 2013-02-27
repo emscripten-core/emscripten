@@ -31,7 +31,7 @@ void play2() {
 
 int main(int argc, char **argv) {
   SDL_Init(SDL_INIT_AUDIO);
-
+  Mix_Init(MIX_INIT_OGG);
   int ret = Mix_OpenAudio(0, 0, 0, 0); // we ignore all these..
   assert(ret == 0);
 
@@ -51,6 +51,9 @@ int main(int argc, char **argv) {
 
   printf("you should hear two sounds. press the button to replay!\n");
 
+  while(Mix_Init(0))
+    Mix_Quit();
+  Mix_CloseAudio();
   return 0;
 }
 

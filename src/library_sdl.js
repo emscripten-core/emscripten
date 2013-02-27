@@ -38,7 +38,7 @@ var LibrarySDL = {
 
     GL: false, // Set to true if we call SDL_SetVideoMode with SDL_OPENGL, and if so, we do not create 2D canvases&contexts for blitting
                // Note that images loaded before SDL_SetVideoMode will not get this optimization
-
+    mixInitFlags: new Array(),
     keyboardState: null,
     shiftKey: false,
     ctrlKey: false,
@@ -1596,7 +1596,15 @@ var LibrarySDL = {
   SDL_CondBroadcast: function() { throw 'SDL_CondBroadcast: TODO' },
   SDL_CondWaitTimeout: function() { throw 'SDL_CondWaitTimeout: TODO' },
   SDL_WM_ToggleFullScreen: function() { throw 'SDL_WM_ToggleFullScreen: TODO' },
-
+  // This should keep a FIFO queue of flags pushed and if called with 0, should return the end element
+  Mix_Init: function(flags) {
+  	if (flags == 0)
+  		return SDL.mixInitFlags.length == 0 ? 0 : SDL.mixInitFlags[SDL.mixInitFlags.length];
+  	SDL.mixInitFlags.push(flags);
+  	return flags;
+  },
+  // This should pop the queue of flags created with Mix_Init() but return nothing
+  Mix_Quit: function() { mixInitFlags.pop(); }, // This should keep a FIFO queue of flags pushed
   Mix_SetPostMix: function() { throw 'Mix_SetPostMix: TODO' },
   Mix_QuerySpec: function() { throw 'Mix_QuerySpec: TODO' },
   Mix_FadeInChannelTimed: function() { throw 'Mix_FadeInChannelTimed' },
