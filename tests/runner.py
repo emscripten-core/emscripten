@@ -10370,6 +10370,28 @@ elif 'browser' in str(sys.argv):
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_key.c'), '-o', 'page.html', '--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']''']).communicate()
       self.run_browser('page.html', '', '/report_result?510510')
 
+    def test_sdl_text(self):
+      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+        Module.postRun = function() {
+          function doOne() {
+            Module._one();
+            setTimeout(doOne, 1000/60);
+          }
+          setTimeout(doOne, 1000/60);
+        }
+
+        function simulateKeyEvent(charCode) {
+          var event = document.createEvent("KeyboardEvent");
+          event.initKeyEvent("keypress", true, true, window,
+                             0, 0, 0, 0, 0, charCode);
+          document.body.dispatchEvent(event);
+        }
+      ''')
+      open(os.path.join(self.get_dir(), 'sdl_text.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_text.c')).read()))
+
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_text.c'), '-o', 'page.html', '--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']''']).communicate()
+      self.run_browser('page.html', '', '/report_result?1')
+
     def test_sdl_mouse(self):
       open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
         function simulateMouseEvent(x, y, button) {

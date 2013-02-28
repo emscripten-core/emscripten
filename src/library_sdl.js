@@ -44,6 +44,8 @@ var LibrarySDL = {
     ctrlKey: false,
     altKey: false,
 
+    textInput: false,
+
     startTime: null,
     mouseX: 0,
     mouseY: 0,
@@ -172,6 +174,11 @@ var LibrarySDL = {
         ['i32', 'sym'],
         ['i16', 'mod'],
         ['i32', 'unicode']
+      ]),
+      TextInputEvent: Runtime.generateStructInfo([
+        ['i32', 'type'],
+        ['i32', 'windowID'],
+        ['b256', 'text'],
       ]),
       MouseMotionEvent: Runtime.generateStructInfo([
         ['i32', 'type'],
@@ -373,7 +380,7 @@ var LibrarySDL = {
             }
           }
           // fall through
-        case 'keydown': case 'keyup': case 'mousedown': case 'mouseup': case 'DOMMouseScroll': case 'mousewheel':
+        case 'keydown': case 'keyup': case 'keypress': case 'mousedown': case 'mouseup': case 'DOMMouseScroll': case 'mousewheel':
           if (event.type == 'DOMMouseScroll' || event.type == 'mousewheel') {
             var button = (event.type == 'DOMMouseScroll' ? event.detail : -event.wheelDelta) > 0 ? 4 : 3;
             var event2 = {
@@ -395,6 +402,10 @@ var LibrarySDL = {
             if (!SDL.DOMButtons[event.button]) return false; // ignore extra ups, can happen if we leave the canvas while pressing down, then return,
                                                              // since we add a mouseup in that case
             SDL.DOMButtons[event.button] = 0;
+          }
+
+          if (event.type == 'keypress' && !SDL.textInput) {
+            break;
           }
 
           SDL.events.push(event);
@@ -474,6 +485,15 @@ var LibrarySDL = {
             SDL.altKey = event.type == "keydown";
           }
 
+          break;
+        }
+        case 'keypress': {
+          {{{ makeSetValue('ptr', 'SDL.structs.TextInputEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}}
+          // Not filling in windowID for now
+          var cStr = intArrayFromString(String.fromCharCode(event.charCode));
+          for (var i = 0; i < cStr.length; ++i) {
+            {{{ makeSetValue('ptr', 'SDL.structs.TextInputEvent.text + i', 'cStr[i]', 'i8') }}};
+          }
           break;
         }
         case 'mousedown': case 'mouseup':
@@ -618,6 +638,7 @@ var LibrarySDL = {
     // Initialize this structure carefully for closure
     SDL.DOMEventToSDLEvent['keydown'] = 0x300 /* SDL_KEYDOWN */;
     SDL.DOMEventToSDLEvent['keyup'] = 0x301 /* SDL_KEYUP */;
+    SDL.DOMEventToSDLEvent['keypress'] = 0x303 /* SDL_TEXTINPUT */;
     SDL.DOMEventToSDLEvent['mousedown'] = 0x401 /* SDL_MOUSEBUTTONDOWN */;
     SDL.DOMEventToSDLEvent['mouseup'] = 0x402 /* SDL_MOUSEBUTTONUP */;
     SDL.DOMEventToSDLEvent['mousemove'] = 0x400 /* SDL_MOUSEMOTION */;
@@ -1175,8 +1196,12 @@ var LibrarySDL = {
   SDL_CondWait: function() {},
   SDL_DestroyCond: function() {},
 
-  SDL_StartTextInput: function() {}, // TODO
-  SDL_StopTextInput: function() {}, // TODO
+  SDL_StartTextInput: function() {
+    SDL.textInput = true;
+  },
+  SDL_StopTextInput: function() {
+    SDL.textInput = false;
+  },
 
   // SDL Mixer
 
