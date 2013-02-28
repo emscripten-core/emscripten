@@ -261,33 +261,12 @@ namespace emscripten {
             typedef typename std::remove_reference<T>::type ActualT;
             typedef ActualT* WireType;
 
-            struct Marshaller {
-                explicit Marshaller(WireType wt)
-                : wireType(wt)
-                {}
-
-                Marshaller(Marshaller&& wt)
-                : wireType(wt.wireType)
-                {
-                    wt.wireType = 0;
-                }
-
-                operator ActualT&() const {
-                    return *wireType;
-                }
-
-            private:
-                Marshaller() = delete;
-                Marshaller(const Marshaller&) = delete;
-                ActualT* wireType;
-            };
-
             static WireType toWireType(T v) {
                 return new T(v);
             }
 
-            static Marshaller fromWireType(WireType p) {
-                return Marshaller(p);
+            static ActualT& fromWireType(WireType p) {
+                return *p;
             }
 
             static void destroy(WireType p) {
