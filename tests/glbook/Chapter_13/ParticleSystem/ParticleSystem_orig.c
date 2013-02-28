@@ -17,8 +17,15 @@
 #include <math.h>
 #include "esUtil.h"
 
-#define NUM_PARTICLES	1000
+#define NUM_PARTICLES	2000
 #define PARTICLE_SIZE   7
+
+int randomTemp = 8765;
+float myrandom() {
+  int curr = randomTemp;
+  randomTemp = (1140671485 * randomTemp + 12820163) % 4294967296;
+  return ((float)curr) / 4294967296;
+}
 
 typedef struct
 {
@@ -145,17 +152,17 @@ int Init ( ESContext *esContext )
       float *particleData = &userData->particleData[i * PARTICLE_SIZE];
    
       // Lifetime of particle
-      (*particleData++) = ( (float)(rand() % 10000) / 10000.0f );
+      (*particleData++) = myrandom();
 
       // End position of particle
-      (*particleData++) = ( (float)(rand() % 10000) / 5000.0f ) - 1.0f;
-      (*particleData++) = ( (float)(rand() % 10000) / 5000.0f ) - 1.0f;
-      (*particleData++) = ( (float)(rand() % 10000) / 5000.0f ) - 1.0f;
+      (*particleData++) = myrandom() * 2 - 1.0f;
+      (*particleData++) = myrandom() * 2 - 1.0f;
+      (*particleData++) = myrandom() * 2 - 1.0f;
 
       // Start position of particle
-      (*particleData++) = ( (float)(rand() % 10000) / 40000.0f ) - 0.125f;
-      (*particleData++) = ( (float)(rand() % 10000) / 40000.0f ) - 0.125f;
-      (*particleData++) = ( (float)(rand() % 10000) / 40000.0f ) - 0.125f;
+      (*particleData++) = myrandom() * 0.25 - 0.125f;
+      (*particleData++) = myrandom() * 0.25 - 0.125f;
+      (*particleData++) = myrandom() * 0.25 - 0.125f;
 
    }
 
@@ -188,17 +195,17 @@ void Update ( ESContext *esContext, float deltaTime )
       userData->time = 0.0f;
 
       // Pick a new start location and color
-      centerPos[0] = ( (float)(rand() % 10000) / 10000.0f ) - 0.5f;
-      centerPos[1] = ( (float)(rand() % 10000) / 10000.0f ) - 0.5f;
-      centerPos[2] = ( (float)(rand() % 10000) / 10000.0f ) - 0.5f;
+      centerPos[0] = myrandom() - 0.5f;
+      centerPos[1] = myrandom() - 0.5f;
+      centerPos[2] = myrandom() - 0.5f;
       
       glUniform3fv ( userData->centerPositionLoc, 1, &centerPos[0] );
 
       // Random color
-      color[0] = ( (float)(rand() % 10000) / 20000.0f ) + 0.5f;
-      color[1] = ( (float)(rand() % 10000) / 20000.0f ) + 0.5f;
-      color[2] = ( (float)(rand() % 10000) / 20000.0f ) + 0.5f;
-      color[3] = 0.5;
+      color[0] = myrandom() * 0.5 + 0.5f;
+      color[1] = myrandom() * 0.5 + 0.5f;
+      color[2] = myrandom() * 0.5 + 0.5f;
+      color[3] = 1.0;
 
       glUniform4fv ( userData->colorLoc, 1, &color[0] );
    }
@@ -252,6 +259,8 @@ void Draw ( ESContext *esContext )
    // Set the sampler texture unit to 0
    glUniform1i ( userData->samplerLoc, 0 );
 
+   Update ( esContext, 133 * 0.001125 );
+
    glDrawArrays( GL_POINTS, 0, NUM_PARTICLES );
    
    eglSwapBuffers ( esContext->eglDisplay, esContext->eglSurface );
@@ -280,15 +289,18 @@ int main ( int argc, char *argv[] )
    esInitContext ( &esContext );
    esContext.userData = &userData;
 
-   esCreateWindow ( &esContext, "ParticleSystem", 640, 480, ES_WINDOW_RGB );
+   esCreateWindow ( &esContext, "ParticleSystem", 320, 240, ES_WINDOW_RGB );
    
    if ( !Init ( &esContext ) )
       return 0;
 
    esRegisterDrawFunc ( &esContext, Draw );
-   esRegisterUpdateFunc ( &esContext, Update );
+   //esRegisterUpdateFunc ( &esContext, Update );
    
-   esMainLoop ( &esContext );
+   Draw (&esContext);
+  Draw (&esContext);
+
+   //esMainLoop ( &esContext );
 
    ShutDown ( &esContext );
 }
