@@ -2332,8 +2332,10 @@ var LibraryGL = {
   glVertex2fv: function(p) {
     _glVertex3f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}}, 0);
   },
+  
+  glVertex3i: 'glVertex3f',
 
-  glVertex2i: function() { throw 'glVertex2i: TODO' },
+  glVertex2i: 'glVertex3f',
 
   glTexCoord2i: function(u, v) {
 #if ASSERTIONS
