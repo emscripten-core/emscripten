@@ -6758,6 +6758,15 @@ LibraryManager.library = {
     _pthread_key_create.keys[key] = value;
   },
 
+  pthread_key_delete: ['$ERRNO_CODES'],
+  pthread_key_delete: function(key) {
+    if (_pthread_key_create.keys[key]) {
+      delete _pthread_key_create.keys[key];
+      return 0;
+    }
+    return ERRNO_CODES.EINVAL;
+  },
+
   pthread_cleanup_push: function(routine, arg) {
     __ATEXIT__.push({ func: function() { Runtime.dynCall('vi', routine, [arg]) } })
     _pthread_cleanup_push.level = __ATEXIT__.length;
