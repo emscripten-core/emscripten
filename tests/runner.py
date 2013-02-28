@@ -2625,6 +2625,7 @@ Exiting setjmp function, level: 0, prev_jmp: -1
       if self.emcc_args is None: return self.skip('requires emcc')
       if Settings.ASM_JS: return self.skip('uses report_stack without exporting')
 
+      Settings.INLINING_LIMIT = 50
       Settings.CATCH_EXIT_CODE = 1
 
       src = r'''
