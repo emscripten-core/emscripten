@@ -10688,12 +10688,18 @@ elif 'browser' in str(sys.argv):
         open(os.path.join(self.get_dir(), filename), 'w').write(self.with_report_result(src))
       else:
         expected = [str(i) for i in range(0, reference_slack+1)]
-        shutil.copyfile(path_from_root('tests', filename), os.path.join(self.get_dir(), filename))
+        shutil.copyfile(path_from_root('tests', filename), os.path.join(self.get_dir(), os.path.basename(filename)))
         self.reftest(path_from_root('tests', reference))
         args = args + ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), filename), '-o', 'test.html'] + args).communicate()
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), os.path.basename(filename)), '-o', 'test.html'] + args).communicate()
       if type(expected) is str: expected = [expected]
       self.run_browser('test.html', '.', ['/report_result?' + e for e in expected])
+
+    def zzztest_glbook_emulation(self):
+      self.btest(os.path.join('glbook', 'Chapter_2', 'Hello_Triangle', 'Hello_Triangle_orig.c'),
+                 reference=path_from_root('tests', 'glbook', 'CH02_HelloTriangle.png'),
+                 args=['-I' + path_from_root('tests', 'glbook', 'Common'),
+                       path_from_root('tests', 'glbook', 'Common', 'esUtil.c')])
 
     def test_emscripten_api(self):
       self.btest('emscripten_api_browser.cpp', '1', args=['-s', '''EXPORTED_FUNCTIONS=['_main', '_third']'''])
