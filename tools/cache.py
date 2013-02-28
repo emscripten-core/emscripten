@@ -1,5 +1,6 @@
 import os.path, shutil, hashlib, cPickle
-from . import tempfiles
+
+import tempfiles
 
 # Permanent cache for dlmalloc and stdlibc++
 class Cache:

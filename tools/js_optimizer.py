@@ -31,7 +31,7 @@ def run_on_chunk(command):
   return filename
 
 def run_on_js(filename, passes, js_engine, jcache):
-
+  if isinstance(jcache, bool) and jcache: jcache = shared.JCache
   if jcache: shared.JCache.ensure()
 
   if type(passes) == str:

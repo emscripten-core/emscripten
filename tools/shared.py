@@ -1,7 +1,7 @@
 import shutil, time, os, sys, json, tempfile, copy, shlex, atexit, subprocess, hashlib, cPickle, zlib, re
 from subprocess import Popen, PIPE, STDOUT
 from tempfile import mkstemp
-from . import jsrun, cache, tempfiles
+import jsrun, cache, tempfiles
 
 def listify(x):
   if type(x) is not list: return [x]
@@ -307,13 +307,13 @@ class Configuration:
       print >> sys.stderr, 'TEMP_DIR not defined in ~/.emscripten, using /tmp'
       self.TEMP_DIR = '/tmp'
 
-    CANONICAL_TEMP_DIR = os.path.join(self.TEMP_DIR, 'emscripten_temp')
+    self.CANONICAL_TEMP_DIR = os.path.join(self.TEMP_DIR, 'emscripten_temp')
 
     if self.DEBUG:
       try:
-        self.EMSCRIPTEN_TEMP_DIR = CANONICAL_TEMP_DIR
-        if not os.path.exists(EMSCRIPTEN_TEMP_DIR):
-          os.makedirs(EMSCRIPTEN_TEMP_DIR)
+        self.EMSCRIPTEN_TEMP_DIR = self.CANONICAL_TEMP_DIR
+        if not os.path.exists(self.EMSCRIPTEN_TEMP_DIR):
+          os.makedirs(self.EMSCRIPTEN_TEMP_DIR)
       except Exception, e:
         print >> sys.stderr, e, 'Could not create canonical temp dir. Check definition of TEMP_DIR in ~/.emscripten'
 
@@ -330,6 +330,7 @@ configuration = Configuration(environ=os.environ)
 DEBUG = configuration.DEBUG
 EMSCRIPTEN_TEMP_DIR = configuration.EMSCRIPTEN_TEMP_DIR
 DEBUG_CACHE = configuration.DEBUG_CACHE
+CANONICAL_TEMP_DIR = configuration.CANONICAL_TEMP_DIR
 
 if not EMSCRIPTEN_TEMP_DIR:
   EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_', dir=configuration.TEMP_DIR)
@@ -430,7 +431,7 @@ if not WINDOWS:
     pass
 
 # Temp file utilities
-from .tempfiles import try_delete
+from tempfiles import try_delete
 
 # Utilities
 

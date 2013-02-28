@@ -11943,6 +11943,8 @@ fi
       try_delete(CANONICAL_TEMP_DIR)
 
     def test_relooper(self):
+      RELOOPER = Cache.get_path('relooper.js')
+
       restore()
       for phase in range(2): # 0: we wipe the relooper dir. 1: we have it, so should just update
         if phase == 0: Cache.erase()
