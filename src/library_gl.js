@@ -22,9 +22,9 @@ var LibraryGL = {
 #if FULL_ES2
     clientBuffers: [],
     enabledClientBuffers: [],
+#endif
     currArrayBuffer: 0,
     currElementArrayBuffer: 0,
-#endif
 
     byteSizeByTypeRoot: 0x1400, // GL_BYTE
     byteSizeByType: [
@@ -210,8 +210,7 @@ var LibraryGL = {
     preDrawHandleClientVertexAttribBindings: function(count) {
       GL.resetBufferBinding = false;
       for (var i = 0; i < GL.maxVertexAttribs; ++i) {
-        if (!GL.enabledClientBuffers[i] || !GL.clientBuffers[i])
-          continue;
+        if (!GL.enabledClientBuffers[i] || !GL.clientBuffers[i]) continue;
   
         GL.resetBufferBinding = true;
   
