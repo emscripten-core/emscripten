@@ -26,6 +26,21 @@ var LibraryGL = {
     currElementArrayBuffer: 0,
 #endif
 
+    byteSizeByTypeRoot: 0x1400, // GL_BYTE
+    byteSizeByType: [
+      1, // GL_BYTE
+      1, // GL_UNSIGNED_BYTE
+      2, // GL_SHORT
+      2, // GL_UNSIGNED_SHORT
+      4, // GL_INT
+      4, // GL_UNSIGNED_INT
+      4, // GL_FLOAT
+      2, // GL_2_BYTES
+      3, // GL_3_BYTES
+      4, // GL_4_BYTES
+      8  // GL_DOUBLE
+    ],
+
     uniformTable: {}, // name => uniform ID. the uID must be identical until relinking, cannot create a new uID each call to glGetUniformLocation
 
     packAlignment: 4,   // default alignment is 4 bytes
@@ -188,27 +203,7 @@ var LibraryGL = {
       if (stride > 0) {
         return count * stride;  // XXXvlad this is not exactly correct I don't think
       }
-
-      var typeSize;
-      switch (type) {
-        case Module.ctx.UNSIGNED_BYTE:
-        case Module.ctx.BYTE:
-          typeSize = 1;
-          break;
-        case Module.ctx.UNSIGNED_SHORT:
-        case Module.ctx.SHORT:
-          typeSize = 2;
-          break;
-        case Module.ctx.UNSIGNED_INT:
-        case Module.ctx.INT:
-        case Module.ctx.FLOAT:
-          typeSize = 4;
-          break;
-        case Module.ctx.DOUBLE:
-          typeSize = 8;
-          break;
-        }
-
+      var typeSize = GL.byteSizeByType[type - GL.byteSizeByTypeRoot];
       return size * typeSize * count;
     },
 
@@ -1697,17 +1692,6 @@ var LibraryGL = {
     clientActiveTexture: 0,
     clientColor: null,
 
-    byteSizeByTypeRoot: 0x1400, // GL_BYTE
-    byteSizeByType: [
-      1, // GL_BYTE
-      1, // GL_UNSIGNED_BYTE
-      2, // GL_SHORT
-      2, // GL_UNSIGNED_SHORT
-      4, // GL_INT
-      4, // GL_UNSIGNED_INT
-      4  // GL_FLOAT
-    ],
-
     setClientAttribute: function(name, size, type, stride, pointer) {
       var attrib = this.clientAttributes[name];
       attrib.name = name;
@@ -1783,7 +1767,7 @@ var LibraryGL = {
 #endif
         this.enabledClientAttributes[name] = true;
         this.setClientAttribute(name, size, type, 0, this.rendererComponentPointer);
-        this.rendererComponentPointer += size * this.byteSizeByType[type - this.byteSizeByTypeRoot];
+        this.rendererComponentPointer += size * GL.byteSizeByType[type - GL.byteSizeByTypeRoot];
       } else {
         this.rendererComponents[name]++;
       }
@@ -1807,7 +1791,7 @@ var LibraryGL = {
         cacheItem = temp ? temp : (cacheItem[attribute.name] = GL.immediate.rendererCacheItemTemplate.slice());
         temp = cacheItem[attribute.size];
         cacheItem = temp ? temp : (cacheItem[attribute.size] = GL.immediate.rendererCacheItemTemplate.slice());
-        var typeIndex = attribute.type - GL.immediate.byteSizeByTypeRoot; // ensure it starts at 0 to keep the cache items dense
+        var typeIndex = attribute.type - GL.byteSizeByTypeRoot; // ensure it starts at 0 to keep the cache items dense
         temp = cacheItem[typeIndex];
         cacheItem = temp ? temp : (cacheItem[typeIndex] = GL.immediate.rendererCacheItemTemplate.slice());
       }
@@ -2243,7 +2227,7 @@ var LibraryGL = {
         for (var i = 0; i < attributes.length; i++) {
           var attribute = attributes[i];
           if (!attribute) break;
-          var size = attribute.size * GL.immediate.byteSizeByType[attribute.type - GL.immediate.byteSizeByTypeRoot];
+          var size = attribute.size * GL.byteSizeByType[attribute.type - GL.byteSizeByTypeRoot];
           if (size % 4 != 0) size += 4 - (size % 4); // align everything
           attribute.offset = bytes;
           bytes += size;
@@ -2255,7 +2239,7 @@ var LibraryGL = {
         for (var i = 0; i < attributes.length; i++) {
           var attribute = attributes[i];
           if (!attribute) break;
-          var size4 = Math.floor((attribute.size * GL.immediate.byteSizeByType[attribute.type - GL.immediate.byteSizeByTypeRoot])/4);
+          var size4 = Math.floor((attribute.size * GL.byteSizeByType[attribute.type - GL.byteSizeByTypeRoot])/4);
           for (var j = 0; j < count; j++) {
             for (var k = 0; k < size4; k++) { // copy in chunks of 4 bytes, our alignment makes this possible
               HEAP32[((start + attribute.offset + bytes*j)>>2) + k] = HEAP32[(attribute.pointer>>2) + j*size4 + k];
@@ -2273,7 +2257,7 @@ var LibraryGL = {
             assert((attribute.offset - bytes)%4 == 0); // XXX assuming 4-alignment
             bytes += attribute.offset - bytes;
           }
-          bytes += attribute.size * GL.immediate.byteSizeByType[attribute.type - GL.immediate.byteSizeByTypeRoot];
+          bytes += attribute.size * GL.byteSizeByType[attribute.type - GL.byteSizeByTypeRoot];
           if (bytes % 4 != 0) bytes += 4 - (bytes % 4); // XXX assuming 4-alignment
         }
         assert(beginEnd || bytes <= stride); // if not begin-end, explicit stride should make sense with total byte size
