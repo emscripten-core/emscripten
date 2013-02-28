@@ -2,6 +2,10 @@ import shutil, time, os, sys, json, tempfile, copy, shlex, atexit, subprocess, h
 from subprocess import Popen, PIPE, STDOUT
 from tempfile import mkstemp
 
+def listify(x):
+  if type(x) is not list: return [x]
+  return x
+
 # On Windows python suffers from a particularly nasty bug if python is spawning new processes while python itself is spawned from some other non-console process.
 # Use a custom replacement for Popen on Windows to avoid the "WindowsError: [Error 6] The handle is invalid" errors when emcc is driven through cmake or mingw32-make. 
 # See http://bugs.python.org/issue3905
@@ -158,7 +162,8 @@ EXPECTED_NODE_VERSION = (0,6,8)
 
 def check_node_version():
   try:
-    actual = Popen([NODE_JS, '--version'], stdout=PIPE).communicate()[0].strip()
+    node = listify(NODE_JS)
+    actual = Popen(node + ['--version'], stdout=PIPE).communicate()[0].strip()
     version = tuple(map(int, actual.replace('v', '').split('.')))
     if version >= EXPECTED_NODE_VERSION:
       return True
@@ -468,8 +473,8 @@ def timeout_run(proc, timeout, note='unnamed process', full_output=False):
 
 def run_js(filename, engine=None, args=[], check_timeout=False, stdout=PIPE, stderr=None, cwd=None, full_output=False):
   if engine is None: engine = JS_ENGINES[0]
-  if type(engine) is not list: engine = [engine]
-  if 'd8' in engine[0] or 'node' in engine[0]: engine += ['--stack_size=8192']
+  engine = listify(engine)
+  #if not WINDOWS: 'd8' in engine[0] or 'node' in engine[0]: engine += ['--stack_size=8192'] # needed for some big projects
   command = engine + [filename] + (['--'] if 'd8' in engine[0] else []) + args
   return timeout_run(Popen(command, stdout=stdout, stderr=stderr, cwd=cwd), 15*60 if check_timeout else None, 'Execution', full_output=full_output)
 
@@ -1092,7 +1097,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
   @staticmethod
   def js_optimizer(filename, passes, jcache):
-    return js_optimizer.run(filename, passes, NODE_JS, jcache)
+    return js_optimizer.run(filename, passes, listify(NODE_JS), jcache)
 
   @staticmethod
   def closure_compiler(filename):

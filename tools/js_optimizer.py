@@ -139,7 +139,7 @@ def run_on_js(filename, passes, js_engine, jcache):
 
   if len(filenames) > 0:
     # XXX Use '--nocrankshaft' to disable crankshaft to work around v8 bug 1895, needed for older v8/node (node 0.6.8+ should be ok)
-    commands = map(lambda filename: [js_engine, JS_OPTIMIZER, filename, 'noPrintMetadata'] + passes, filenames)
+    commands = map(lambda filename: js_engine + [JS_OPTIMIZER, filename, 'noPrintMetadata'] + passes, filenames)
     #print [' '.join(command) for command in commands]
 
     cores = min(cores, filenames)
