@@ -78,6 +78,7 @@ function toNiceIdent(ident) {
   assert(ident);
   if (parseFloat(ident) == ident) return ident;
   if (ident == 'null') return '0'; // see parseNumerical
+  if (ident == 'undef') return '0';
   return ident.replace('%', '$').replace(/["&\\ \.@:<>,\*\[\]\(\)-]/g, '_');
 }
 
