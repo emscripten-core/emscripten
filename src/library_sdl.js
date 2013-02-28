@@ -1315,8 +1315,8 @@ var LibrarySDL = {
     // the browser has already preloaded the audio file.
     var channelInfo = SDL.channels[channel];
     channelInfo.audio = audio = audio.cloneNode(true);
-    channelInfo.audio.numChannels = audio.numChannels = info.audio.numChannels;
-    channelInfo.audio.frequency = audio.frequency = info.audio.frequency;
+    audio.numChannels = info.audio.numChannels;
+    audio.frequency = info.audio.frequency;
     if (SDL.channelFinished) {
       audio['onended'] = function() { // TODO: cache these
         Runtime.getFuncWrapper(SDL.channelFinished, 'vi')(channel);
