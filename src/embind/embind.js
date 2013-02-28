@@ -588,6 +588,9 @@ RegisteredPointer.prototype.toWireType = function(destructors, handle) {
     if (!(handle instanceof ClassHandle)) {
         throwBindingError('Expected pointer or null, got ' + IMVU.repr(handle));
     }
+    if (this.isSmartPointer && undefined === handle.$$.smartPtr) {
+        throwBindingError('Passing raw pointer to smart pointer is illegal');
+    }
     if (handle.$$.pointeeType.isPolymorphic) {
         fromRawType = handle.$$.pointeeType.getDynamicRawPointerType(handle.$$.ptr);
     } else {
