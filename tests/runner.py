@@ -2479,6 +2479,7 @@ Exception execution path of first function! 1
       if Settings.ASM_JS: return self.skip('no exceptions support in asm')
       Settings.DISABLE_EXCEPTION_CATCHING = 2
       Settings.EXCEPTION_CATCHING_WHITELIST = ["__Z12somefunctionv"]
+      Settings.INLINING_LIMIT = 50 # otherwise it is inlined and not identified
 
       src = '''
           #include <stdio.h>
