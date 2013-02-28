@@ -6883,8 +6883,7 @@ LibraryManager.library = {
         'listed': true,
         'metadata': {
           'name': 'BananaBread',
-          'connected': 1,
-          'connect-limit': Module['maxpeers']
+          'connected': 1
         }
       };
       peer.onconnection = function(connection) {
@@ -6898,6 +6897,10 @@ LibraryManager.library = {
         }
         connection['addr'] = addr;
         Sockets.connections[addr] = connection;
+        if(host) {
+          ++ listenOptions['metadata']['connected'];
+          peer.listen(listenOptions);
+        }
         connection.ondisconnect = function() {
           console.log('disconnect');
           // Don't return the host address (10.0.0.1) to the pool
@@ -6919,28 +6922,12 @@ LibraryManager.library = {
       };
       peer.onpending = function(pending) {
         console.log('pending from: ', pending['route'], '; initiated by: ', (pending['incoming']) ? 'remote' : 'local');
-        if(host) {
-          if(listenOptions['metadata']['connected'] < Module['maxpeers']) {
-            pending.accept();
-            ++ listenOptions['metadata']['connected'];
-            peer.listen(listenOptions);
-          } else {
-            pending.reject();
-          }
-        }
       };
       peer.onerror = function(error) {
-        if(host) {
-          if(error instanceof Peer.E.PendingConnectionAbortError ||
-             error instanceof Peer.E.ConnectionFailedError) {
-            -- listenOptions['metadata']['connected'];
-            peer.listen(listenOptions);
-          }
-        }
+        console.error(error);
       };
       if(!host && route) {
         peer.connect(route);
-
       } else {
         peer.onroute = function(route) {
           console.log(route);
