@@ -650,7 +650,7 @@ namespace emscripten {
             // todo: generate unique name
             smart_ptr<SmartPtr>("SmartPtr");
 
-            typename WithPolicies<>::template ArgTypeList<void, Args...> args;
+            typename WithPolicies<>::template ArgTypeList<SmartPtr, Args...> args;
             _embind_register_class_smart_ptr_constructor(
                 TypeID<ClassType>::get(),
                 args.count,
