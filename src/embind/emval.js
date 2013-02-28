@@ -77,6 +77,7 @@ function __emval_new(handle) {
     return __emval_register(new (_emval_handle_array[handle].value));
 }
 
+// appease jshint (technically this code uses eval)
 var global = (function(){return Function;})()('return this')();
 
 function __emval_get_global(name) {
