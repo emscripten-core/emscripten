@@ -1820,6 +1820,8 @@ Succeeded!
         generated = open('src.cpp.o.js', 'r').read()
 
     def test_stack(self):
+        Settings.INLINING_LIMIT = 50
+
         src = '''
           #include <stdio.h>
           int test(int i) {
@@ -3069,6 +3071,8 @@ Exiting setjmp function, level: 0, prev_jmp: -1
     def test_stack_varargs(self):
       if self.emcc_args is None: return # too slow in other modes
 
+      Settings.INLINING_LIMIT = 50
+
       # We should not blow up the stack with numerous varargs
       src = r'''
         #include <stdio.h>
@@ -3089,6 +3093,8 @@ Exiting setjmp function, level: 0, prev_jmp: -1
       self.do_run(src, 'ok!')
 
     def test_stack_void(self):
+      Settings.INLINING_LIMIT = 50
+
       src = r'''
         #include <stdio.h>
 
@@ -6952,6 +6958,7 @@ def process(filename):
       # gcc -O3 -I/home/alon/Dev/emscripten/tests/sqlite -ldl src.c
       if self.emcc_args is None: return self.skip('Very slow without ta2, and we would also need to include dlmalloc manually without emcc')
       if Settings.QUANTUM_SIZE == 1: return self.skip('TODO FIXME')
+      self.banned_js_engines = [NODE_JS] # OOM in older node
 
       Settings.CORRECT_SIGNS = 1
       Settings.CORRECT_OVERFLOWS = 0
@@ -6997,7 +7004,8 @@ def process(filename):
 
       self.do_run(open(path_from_root('tests', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp'), 'r').read(),
                    [open(path_from_root('tests', 'bullet', 'output.txt'), 'r').read(), # different roundings
-                    open(path_from_root('tests', 'bullet', 'output2.txt'), 'r').read()],
+                    open(path_from_root('tests', 'bullet', 'output2.txt'), 'r').read(),
+                    open(path_from_root('tests', 'bullet', 'output3.txt'), 'r').read()],
                    libraries=self.get_library('bullet', [os.path.join('src', '.libs', 'libBulletDynamics.a'),
                                                           os.path.join('src', '.libs', 'libBulletCollision.a'),
                                                           os.path.join('src', '.libs', 'libLinearMath.a')],
@@ -8521,7 +8529,6 @@ Options that are modified or new in %s include:
               assert re.search('HEAP8\[\$?\w+ \+ \(+\$?\w+ ', generated) or re.search('HEAP8\[HEAP32\[', generated), 'eliminator should create compound expressions, and fewer one-time vars' # also in -O1, but easier to test in -O2
             assert ('_puts(' in generated) == (opt_level >= 1), 'with opt >= 1, llvm opts are run and they should optimize printf to puts'
             assert 'function _main() {' in generated, 'Should be unminified, including whitespace'
-            assert ('-O3' in (params+(bc_params or []))) or'function _dump' in generated, 'No inlining by default'
 
         # emcc -s RELOOP=1 src.cpp ==> should pass -s to emscripten.py. --typed-arrays is a convenient alias for -s USE_TYPED_ARRAYS
         for params, test, text in [
@@ -9689,25 +9696,25 @@ seeked= file.
             }
           ''')
           out, err = Popen([PYTHON, EMCC, self.in_dir('main.cpp'), '-O2', '-o', 'main.o'], stdout=PIPE, stderr=PIPE).communicate()
-          assert ("emcc: LLVM opts: ['-disable-inlining', '-O3']" in err) == optimize_normally
+          assert ("emcc: LLVM opts: ['-O3']" in err) == optimize_normally
           assert (' with -O3 since EMCC_OPTIMIZE_NORMALLY defined' in err) == optimize_normally
 
           out, err = Popen([PYTHON, EMCC, self.in_dir('supp.cpp'), '-O2', '-o', 'supp.o'], stdout=PIPE, stderr=PIPE).communicate()
-          assert ("emcc: LLVM opts: ['-disable-inlining', '-O3']" in err) == optimize_normally
+          assert ("emcc: LLVM opts: ['-O3']" in err) == optimize_normally
           assert (' with -O3 since EMCC_OPTIMIZE_NORMALLY defined' in err) == optimize_normally
 
           out, err = Popen([PYTHON, EMCC, self.in_dir('main.o'), self.in_dir('supp.o'), '-O2', '-o', 'both.o'], stdout=PIPE, stderr=PIPE).communicate()
-          assert "emcc: LLVM opts: ['-disable-inlining', '-O3']" not in err
+          assert "emcc: LLVM opts: ['-O3']" not in err
           assert ' with -O3 since EMCC_OPTIMIZE_NORMALLY defined' not in err
           assert ('despite EMCC_OPTIMIZE_NORMALLY since not source code' in err) == optimize_normally
 
           out, err = Popen([PYTHON, EMCC, self.in_dir('main.cpp'), self.in_dir('supp.cpp'), '-O2', '-o', 'both2.o'], stdout=PIPE, stderr=PIPE).communicate()
-          assert ("emcc: LLVM opts: ['-disable-inlining', '-O3']" in err) == optimize_normally
+          assert ("emcc: LLVM opts: ['-O3']" in err) == optimize_normally
           assert (' with -O3 since EMCC_OPTIMIZE_NORMALLY defined' in err) == optimize_normally
 
           for last in ['both.o', 'both2.o']:
             out, err = Popen([PYTHON, EMCC, self.in_dir('both.o'), '-O2', '-o', last + '.js'], stdout=PIPE, stderr=PIPE).communicate()
-            assert ("emcc: LLVM opts: ['-disable-inlining', '-O3']" not in err) == optimize_normally
+            assert ("emcc: LLVM opts: ['-O3']" not in err) == optimize_normally
             assert ' with -O3 since EMCC_OPTIMIZE_NORMALLY defined' not in err
             output = run_js(last + '.js')
             assert 'yello' in output, 'code works'
