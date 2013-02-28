@@ -2867,5 +2867,10 @@ LibraryGL.$GLEmulation__deps.push(function() {
   for (var func in Functions.getIndex.tentative) Functions.getIndex(func);
 });
 
+if (FORCE_GL_EMULATION) {
+  LibraryGL.glDrawElements__deps = LibraryGL.glDrawElements__deps.concat('$GLEmulation');
+  LibraryGL.glDrawArrays__deps = LibraryGL.glDrawArrays__deps.concat('$GLEmulation');
+}
+
 mergeInto(LibraryManager.library, LibraryGL);
 
