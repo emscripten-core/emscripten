@@ -5078,6 +5078,22 @@ at function.:blag
         }
         '''
       self.do_run(src, '22 : me and myself 25 1.34\n21 waka 95\n')
+      
+    def test_perror(self):
+      src = r'''
+        #include <sys/types.h>
+        #include <sys/stat.h>
+        #include <fcntl.h>
+        #include <stdio.h>
+
+        int main( int argc, char** argv ){
+          int retval = open( "NonExistingFile", O_RDONLY );
+          if( retval == -1 )
+          perror( "Cannot open NonExistingFile" );
+          return 0;
+        }
+        '''
+      self.do_run(src, 'Cannot open NonExistingFile: No such file or directory\n')
 
     def test_atoX(self):
       if self.emcc_args is None: return self.skip('requires ta2')
