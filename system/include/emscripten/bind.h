@@ -538,10 +538,16 @@ namespace emscripten {
     // SMART POINTERS
     ////////////////////////////////////////////////////////////////////////////////
 
+    // specialize if you have a different pointer type
+    template<typename PointerType>
+    struct get_element_type {
+        typedef typename PointerType::element_type type;
+    };
+
     template<typename PointerType>
     void smart_ptr(const char* name) {
         using namespace internal;
-        typedef typename PointerType::element_type PointeeType;
+        typedef typename get_element_type<PointerType>::type PointeeType;
         
         registerStandardTypes();
         _embind_register_smart_ptr(
@@ -646,6 +652,23 @@ namespace emscripten {
             */
             return *this;
         }
+
+        /*
+        template<typename SmartPtr, typename... Args>
+        class_& constructor(SmartPtr (*factory)(Args...)) {
+            using namespace internal;
+
+            smart_ptr<SmartPtr>("SmartPtr");
+
+            typename WithPolicies<>::template ArgTypeList<void, Args...> args;
+            _embind_register_class_smart_ptr_constructor(
+                TypeID<ClassType>::get(),
+                args.count,
+                args.types,
+                reinterpret_cast<GenericFunction>(&raw_smart_ptr_constructor
+            return *this;
+        }
+        */
 
         template<typename WrapperType>
         class_& allow_subclass() {
