@@ -166,10 +166,8 @@ var GL_DEBUG = 0; // Print out all calls into WebGL. As with LIBRARY_DEBUG, you 
 var GL_TESTING = 0; // When enabled, sets preserveDrawingBuffer in the context, to allow tests to work (but adds overhead)
 var GL_MAX_TEMP_BUFFER_SIZE = 2097152; // How large GL emulation temp buffers are
 var GL_UNSAFE_OPTS = 1; // Enables some potentially-unsafe optimizations in GL emulation code
-var FORCE_GL_EMULATION = 0; // Forces inclusion of GL emulation code. This lets you use non-WebGL features
-                            // like clientside data. GL commands that are not in WebGL will automatically
-                            // include this feature, but if you just use pure GLES commands *and* need
-                            // emualation, you will need to enable it manually with this flag.
+var FULL_ES2 = 0; // Forces support for all GLES2 features, not just the WebGL-friendly subset.
+var FORCE_GL_EMULATION = 0; // Forces inclusion of full GL emulation code.
 
 var DISABLE_EXCEPTION_CATCHING = 0; // Disables generating code to actually catch exceptions. If the code you
                                     // are compiling does not actually rely on catching exceptions (but the

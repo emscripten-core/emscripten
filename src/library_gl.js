@@ -19,10 +19,12 @@ var LibraryGL = {
     uniforms: [],
     shaders: [],
 
+#if FULL_ES2
     clientBuffers: [],
     enabledClientBuffers: [],
     currArrayBuffer: 0,
     currElementArrayBuffer: 0,
+#endif
 
     uniformTable: {}, // name => uniform ID. the uID must be identical until relinking, cannot create a new uID each call to glGetUniformLocation
 
@@ -182,34 +184,35 @@ var LibraryGL = {
     },
 
 #if FULL_ES2
-    calcBufLength: function (size, type, stride, cnt) {
-      if (stride > 0)
-        return cnt * stride;  // XXXvlad this is not exactly correct I don't think
+    calcBufLength: function(size, type, stride, count) {
+      if (stride > 0) {
+        return count * stride;  // XXXvlad this is not exactly correct I don't think
+      }
 
-      var typesz;
+      var typeSize;
       switch (type) {
         case Module.ctx.UNSIGNED_BYTE:
         case Module.ctx.BYTE:
-          typesz = 1;
+          typeSize = 1;
           break;
         case Module.ctx.UNSIGNED_SHORT:
         case Module.ctx.SHORT:
-          typesz = 2;
+          typeSize = 2;
           break;
         case Module.ctx.UNSIGNED_INT:
         case Module.ctx.INT:
         case Module.ctx.FLOAT:
-          typesz = 4;
+          typeSize = 4;
           break;
         case Module.ctx.DOUBLE:
-          typesz = 8;
+          typeSize = 8;
           break;
         }
 
-      return size * typesz * cnt;
+      return size * typeSize * count;
     },
 
-    preDrawHandleClientVertexAttribBindings: function(cnt) {
+    preDrawHandleClientVertexAttribBindings: function(count) {
       GL.resetBufferBinding = false;
       for (var i = 0; i < GL.maxVertexAttribs; ++i) {
         if (!GL.enabledClientBuffers[i] || !GL.clientBuffers[i])
@@ -222,7 +225,7 @@ var LibraryGL = {
         var buf = Module.ctx.createBuffer();
         Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, buf);
         Module.ctx.bufferData(Module.ctx.ARRAY_BUFFER,
-                              HEAPU8.subarray(cb.ptr, cb.ptr + GL.calcBufLength(cb.size, cb.type, cb.stride, cnt)),
+                              HEAPU8.subarray(cb.ptr, cb.ptr + GL.calcBufLength(cb.size, cb.type, cb.stride, count)),
                               Module.ctx.DYNAMIC_DRAW);
         Module.ctx.vertexAttribPointer(i, cb.size, cb.type, cb.normalized, cb.stride, 0);
       }
@@ -2898,40 +2901,40 @@ var LibraryGL = {
     Module.ctx.disableVertexAttribArray(index);
   },
 
-  glDrawArrays: function(mode, first, cnt) {
+  glDrawArrays: function(mode, first, count) {
 #if FULL_ES2
     // bind any client-side buffers
-    GL.preDrawHandleClientVertexAttribBindings(cnt);
+    GL.preDrawHandleClientVertexAttribBindings(count);
 #endif
 
-    Module.ctx.drawArrays(mode, first, cnt);
+    Module.ctx.drawArrays(mode, first, count);
 
 #if FULL_ES2
     GL.postDrawHandleClientVertexAttribBindings();
 #endif
   },
 
-  glDrawElements: function(mode, cnt, type, indices) {
+  glDrawElements: function(mode, count, type, indices) {
 #if FULL_ES2
     var buf;
     if (!GL.currElementArrayBuffer) {
       buf = Module.ctx.createBuffer();
       Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, buf);
       Module.ctx.bufferData(Module.ctx.ELEMENT_ARRAY_BUFFER,
-                            HEAPU8.subarray(indices, indices + GL.calcBufLength(1, type, 0, cnt)),
+                            HEAPU8.subarray(indices, indices + GL.calcBufLength(1, type, 0, count)),
                             Module.ctx.DYNAMIC_DRAW);
       // the index is now 0
       indices = 0;
     }
 
     // bind any client-side buffers
-    GL.preDrawHandleClientVertexAttribBindings(cnt);
+    GL.preDrawHandleClientVertexAttribBindings(count);
 #endif
 
-    Module.ctx.drawElements(mode, cnt, type, indices);
+    Module.ctx.drawElements(mode, count, type, indices);
 
 #if FULL_ES2
-    GL.postDrawHandleClientVertexAttribBindings(cnt);
+    GL.postDrawHandleClientVertexAttribBindings(count);
 
     if (!GL.currElementArrayBuffer) {
       Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, null);
