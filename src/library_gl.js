@@ -19,6 +19,11 @@ var LibraryGL = {
     uniforms: [],
     shaders: [],
 
+    clientBuffers: [],
+    enabledClientBuffers: [],
+    currArrayBuffer: 0,
+    currElementArrayBuffer: 0,
+
     uniformTable: {}, // name => uniform ID. the uID must be identical until relinking, cannot create a new uID each call to glGetUniformLocation
 
     packAlignment: 4,   // default alignment is 4 bytes
@@ -176,11 +181,67 @@ var LibraryGL = {
       }
     },
 
+#if FULL_ES2
+    calcBufLength: function (size, type, stride, cnt) {
+      if (stride > 0)
+        return cnt * stride;  // XXXvlad this is not exactly correct I don't think
+
+      var typesz;
+      switch (type) {
+        case Module.ctx.UNSIGNED_BYTE:
+        case Module.ctx.BYTE:
+          typesz = 1;
+          break;
+        case Module.ctx.UNSIGNED_SHORT:
+        case Module.ctx.SHORT:
+          typesz = 2;
+          break;
+        case Module.ctx.UNSIGNED_INT:
+        case Module.ctx.INT:
+        case Module.ctx.FLOAT:
+          typesz = 4;
+          break;
+        case Module.ctx.DOUBLE:
+          typesz = 8;
+          break;
+        }
+
+      return size * typesz * cnt;
+    },
+
+    preDrawHandleClientVertexAttribBindings: function(cnt) {
+      GL.resetBufferBinding = false;
+      for (var i = 0; i < GL.maxVertexAttribs; ++i) {
+        if (!GL.enabledClientBuffers[i] || !GL.clientBuffers[i])
+          continue;
+  
+        GL.resetBufferBinding = true;
+  
+        var cb = GL.clientBuffers[i];
+  
+        var buf = Module.ctx.createBuffer();
+        Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, buf);
+        Module.ctx.bufferData(Module.ctx.ARRAY_BUFFER,
+                              HEAPU8.subarray(cb.ptr, cb.ptr + GL.calcBufLength(cb.size, cb.type, cb.stride, cnt)),
+                              Module.ctx.DYNAMIC_DRAW);
+        Module.ctx.vertexAttribPointer(i, cb.size, cb.type, cb.normalized, cb.stride, 0);
+      }
+    },
+
+    postDrawHandleClientVertexAttribBindings: function() {
+      if (GL.resetBufferBinding) {
+        Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, GL.buffers[GL.currArrayBuffer]);
+      }
+    },
+#endif
+
     initExtensions: function() {
       if (GL.initExtensions.done) return;
       GL.initExtensions.done = true;
 
       if (!Module.useWebGL) return; // an app might link both gl and 2d backends
+
+      GL.maxVertexAttribs = Module.ctx.getParameter(Module.ctx.MAX_VERTEX_ATTRIBS);
 
       GL.compressionExt = Module.ctx.getExtension('WEBGL_compressed_texture_s3tc') ||
                           Module.ctx.getExtension('MOZ_WEBGL_compressed_texture_s3tc') ||
@@ -456,6 +517,9 @@ var LibraryGL = {
       var id = {{{ makeGetValue('buffers', 'i*4', 'i32') }}};
       Module.ctx.deleteBuffer(GL.buffers[id]);
       GL.buffers[id] = null;
+
+      if (id == GL.currArrayBuffer) GL.currArrayBuffer = 0;
+      if (id == GL.currElementArrayBuffer) GL.currElementArrayBuffer = 0;
     }
   },
 
@@ -554,6 +618,11 @@ var LibraryGL = {
   },
 
   glGetVertexAttribfv: function(index, pname, params) {
+#if FULL_ES2
+    if (GL.clientBuffers[index]) {
+      Module.printErr("glGetVertexAttribfv on client-side array: not supported, bad data returned");
+    }
+#endif
     var data = Module.ctx.getVertexAttrib(index, pname);
     if (typeof data == 'number') {
       {{{ makeSetValue('params', '0', 'data', 'float') }}};
@@ -565,6 +634,11 @@ var LibraryGL = {
   },
 
   glGetVertexAttribiv: function(index, pname, params) {
+#if FULL_ES2
+    if (GL.clientBuffers[index]) {
+      Module.printErr("glGetVertexAttribiv on client-side array: not supported, bad data returned");
+    }
+#endif
     var data = Module.ctx.getVertexAttrib(index, pname);
     if (typeof data == 'number' || typeof data == 'boolean') {
       {{{ makeSetValue('params', '0', 'data', 'i32') }}};
@@ -576,6 +650,11 @@ var LibraryGL = {
   },
 
   glGetVertexAttribPointerv: function(index, pname, pointer) {
+#if FULL_ES2
+    if (GL.clientBuffers[index]) {
+      Module.printErr("glGetVertexAttribPointer on client-side array: not supported, bad data returned");
+    }
+#endif
     {{{ makeSetValue('pointer', '0', 'Module.ctx.getVertexAttribOffset(index, pname)', 'i32') }}};
   },
 
@@ -731,6 +810,12 @@ var LibraryGL = {
 
   glBindBuffer__sig: 'vii',
   glBindBuffer: function(target, buffer) {
+    if (target == Module.ctx.ARRAY_BUFFER) {
+      GL.currArrayBuffer = buffer;
+    } else if (target == Module.ctx.ELEMENT_ARRAY_BUFFER) {
+      GL.currElementArrayBuffer = buffer;
+    }
+
     Module.ctx.bindBuffer(target, buffer ? GL.buffers[buffer] : null);
   },
 
@@ -1348,24 +1433,12 @@ var LibraryGL = {
       _glBindBuffer = function(target, buffer) {
         glBindBuffer(target, buffer);
         if (target == Module.ctx.ARRAY_BUFFER) {
-          GL.currArrayBuffer = buffer;
           if (GLEmulation.currentVao) {
             assert(GLEmulation.currentVao.arrayBuffer == buffer || GLEmulation.currentVao.arrayBuffer == 0 || buffer == 0, 'TODO: support for multiple array buffers in vao');
             GLEmulation.currentVao.arrayBuffer = buffer;
           }
         } else if (target == Module.ctx.ELEMENT_ARRAY_BUFFER) {
-          GL.currElementArrayBuffer = buffer;
           if (GLEmulation.currentVao) GLEmulation.currentVao.elementArrayBuffer = buffer;
-        }
-      };
-
-      var glDeleteBuffers = _glDeleteBuffers;
-      _glDeleteBuffers = function(n, buffers) {
-        glDeleteBuffers(n, buffers);
-        for (var i = 0; i < n; i++) {
-          var buffer = {{{ makeGetValue('buffers', 'i*4', 'i32') }}};
-          if (buffer == GL.currArrayBuffer) GL.currArrayBuffer = 0;
-          if (buffer == GL.currElementArrayBuffer) GL.currElementArrayBuffer = 0;
         }
       };
 
@@ -2796,11 +2869,79 @@ var LibraryGL = {
 
   glShadeModel: function() { Runtime.warnOnce('TODO: glShadeModel') },
 
+  glVertexAttribPointer__sig: 'viiiiii',
+  glVertexAttribPointer: function(index, size, type, normalized, stride, ptr) {
+#if FULL_ES2
+    if (!GL.currArrayBuffer) {
+      GL.clientBuffers[index] = { size: size, type: type, normalized: normalized, stride: stride, ptr: ptr };
+      return;
+    }
+
+    GL.clientBuffers[index] = null;
+#endif
+    Module.ctx.vertexAttribPointer(index, size, type, normalized, stride, ptr);
+  },
+
+  glEnableVertexAttribArray__sig: 'vi',
+  glEnableVertexAttribArray: function(index) {
+#if FULL_ES2
+    GL.enabledClientBuffers[index] = true;
+#endif
+    Module.ctx.enableVertexAttribArray(index);
+  },
+
+  glDisableVertexAttribArray__sig: 'vi',
+  glDisableVertexAttribArray: function(index) {
+#if FULL_ES2
+    GL.enabledClientBuffers[index] = false;
+#endif
+    Module.ctx.disableVertexAttribArray(index);
+  },
+
+  glDrawArrays: function(mode, first, cnt) {
+#if FULL_ES2
+    // bind any client-side buffers
+    GL.preDrawHandleClientVertexAttribBindings(cnt);
+#endif
+
+    Module.ctx.drawArrays(mode, first, cnt);
+
+#if FULL_ES2
+    GL.postDrawHandleClientVertexAttribBindings();
+#endif
+  },
+
+  glDrawElements: function(mode, cnt, type, indices) {
+#if FULL_ES2
+    var buf;
+    if (!GL.currElementArrayBuffer) {
+      buf = Module.ctx.createBuffer();
+      Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, buf);
+      Module.ctx.bufferData(Module.ctx.ELEMENT_ARRAY_BUFFER,
+                            HEAPU8.subarray(indices, indices + GL.calcBufLength(1, type, 0, cnt)),
+                            Module.ctx.DYNAMIC_DRAW);
+      // the index is now 0
+      indices = 0;
+    }
+
+    // bind any client-side buffers
+    GL.preDrawHandleClientVertexAttribBindings(cnt);
+#endif
+
+    Module.ctx.drawElements(mode, cnt, type, indices);
+
+#if FULL_ES2
+    GL.postDrawHandleClientVertexAttribBindings(cnt);
+
+    if (!GL.currElementArrayBuffer) {
+      Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, null);
+      Module.ctx.deleteBuffer(buf);
+    }
+#endif
+  },
+
   // signatures of simple pass-through functions, see later
   glActiveTexture__sig: 'vi',
-  glEnableVertexAttribArray__sig: 'vi',
-  glDisableVertexAttribArray__sig: 'vi',
-  glVertexAttribPointer__sig: 'viiiiii',
   glCheckFramebufferStatus__sig: 'ii',
   glRenderbufferStorage__sig: 'viiii',
 
@@ -2823,12 +2964,11 @@ var LibraryGL = {
 
 // Simple pass-through functions. Starred ones have return values. [X] ones have X in the C name but not in the JS name
 [[0, 'getError* finish flush'],
- [1, 'clearDepth clearDepth[f] depthFunc enable disable frontFace cullFace clear enableVertexAttribArray disableVertexAttribArray lineWidth clearStencil depthMask stencilMask checkFramebufferStatus* generateMipmap activeTexture blendEquation sampleCoverage isEnabled*'],
+ [1, 'clearDepth clearDepth[f] depthFunc enable disable frontFace cullFace clear lineWidth clearStencil depthMask stencilMask checkFramebufferStatus* generateMipmap activeTexture blendEquation sampleCoverage isEnabled*'],
  [2, 'blendFunc blendEquationSeparate depthRange depthRange[f] stencilMaskSeparate hint polygonOffset'],
- [3, 'texParameteri texParameterf drawArrays vertexAttrib2f stencilFunc stencilOp'],
- [4, 'viewport clearColor scissor vertexAttrib3f colorMask drawElements renderbufferStorage blendFuncSeparate blendColor stencilFuncSeparate stencilOpSeparate'],
+ [3, 'texParameteri texParameterf vertexAttrib2f stencilFunc stencilOp'],
+ [4, 'viewport clearColor scissor vertexAttrib3f colorMask renderbufferStorage blendFuncSeparate blendColor stencilFuncSeparate stencilOpSeparate'],
  [5, 'vertexAttrib4f'],
- [6, 'vertexAttribPointer'],
  [8, 'copyTexImage2D copyTexSubImage2D']].forEach(function(data) {
   var num = data[0];
   var names = data[1];
