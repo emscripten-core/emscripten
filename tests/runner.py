@@ -2472,7 +2472,8 @@ Exception execution path of first function! 1
         '''
         
         Settings.DISABLE_EXCEPTION_CATCHING = 0
-        self.emcc_args.pop() ; self.emcc_args.pop() # disable closure to work around a closure bug
+        if '-O2' in self.emcc_args:
+          self.emcc_args.pop() ; self.emcc_args.pop() # disable closure to work around a closure bug
         self.do_run(src, 'Throw...Construct...Catched...Destruct...Throw...Construct...Copy...Catched...Destruct...Destruct...')
 
     def test_white_list_exception(self):
