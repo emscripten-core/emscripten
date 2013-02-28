@@ -1375,7 +1375,9 @@ function getFastValue(a, op, b, type) {
     if (op == 'pow') {
       return Math.pow(a, b).toString();
     } else {
-      return eval(a + op + '(' + b + ')').toString(); // parens protect us from "5 - -12" being seen as "5--12" which is "(5--)12"
+      var value = eval(a + op + '(' + b + ')'); // parens protect us from "5 - -12" being seen as "5--12" which is "(5--)12"
+      if (op == '/' && type in Runtime.INT_TYPES) value = value|0; // avoid emitting floats
+      return value.toString();
     }
   }
   if (op == 'pow') {
