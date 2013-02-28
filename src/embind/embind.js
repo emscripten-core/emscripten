@@ -840,7 +840,7 @@ function __embind_register_class_constructor(
         var argTypes = requireArgumentTypes(rawArgTypes, humanName);
         classType.constructor.body = function() {
             if (arguments.length !== argCount - 1) {
-                throwBindingError('emscripten binding ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
+                throwBindingError(humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
             }
             var destructors = [];
             var args = new Array(argCount);
@@ -873,7 +873,7 @@ function __embind_register_class_smart_ptr_constructor(
         var argTypes = requireArgumentTypes(rawArgTypes, humanName);
         classType.constructor.body = function() {
             if (arguments.length !== argCount - 1) {
-                throwBindingError(humanName + ' + called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
+                throwBindingError(humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
             }
             var destructors = [];
             var args = new Array(argCount);
