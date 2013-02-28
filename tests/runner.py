@@ -11937,6 +11937,8 @@ fi
 
       try:
         os.environ['EMCC_DEBUG'] = '1'
+        os.environ['EMCC_JSOPT_MIN_CHUNK_SIZE'] = str(1024*512)
+
         self.working_dir = os.path.join(TEMP_DIR, 'emscripten_temp')
         if not os.path.exists(self.working_dir): os.makedirs(self.working_dir)
 
@@ -11963,7 +11965,7 @@ fi
           (['--jcache'], 'hello_malloc.cpp', False, True, False, True, False, True, []),
           ([], 'hello_malloc.cpp', False, False, False, False, False, False, []),
           # new, huge file
-          ([], 'hello_libcxx.cpp', False, False, False, False, False, False, ('2 chunks', '3 chunks')),
+          ([], 'hello_libcxx.cpp', False, False, False, False, False, False, ('3 chunks',)),
           (['--jcache'], 'hello_libcxx.cpp', True, False, True, False, True, False, []),
           (['--jcache'], 'hello_libcxx.cpp', False, True, False, True, False, True, []),
           ([], 'hello_libcxx.cpp', False, False, False, False, False, False, []),
@@ -11996,6 +11998,7 @@ fi
 
       finally:
         del os.environ['EMCC_DEBUG']
+        del os.environ['EMCC_JSOPT_MIN_CHUNK_SIZE']
 
 else:
   raise Exception('Test runner is confused: ' + str(sys.argv))
