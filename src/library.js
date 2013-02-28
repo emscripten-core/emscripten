@@ -6779,7 +6779,9 @@ LibraryManager.library = {
   // nonblocking
   // ==========================================================================
 
-  $Sockets__deps: ['__setErrNo', '$ERRNO_CODES', function() { return 'Peer = ' + read('wrtcp.js') + ';\n' }],
+  $Sockets__deps: ['__setErrNo', '$ERRNO_CODES',
+    function() { return 'io = ' + read('socket.io.js') + ';\n' },
+    function() { return 'Peer = ' + read('wrtcp.js') + ';\n' }],
   $Sockets: {
     BACKEND_WEBSOCKETS: 0,
     BACKEND_WEBRTC: 1,
