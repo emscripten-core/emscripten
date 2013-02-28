@@ -535,11 +535,9 @@ var LibraryGL = {
   },
 
   glIsBuffer: function(buffer) {
-    var fb = GL.buffers[buffer];
-    if (typeof(fb) == 'undefined') {
-      return 0;
-    }
-    return Module.ctx.isBuffer(fb);
+    var b = GL.buffers[buffer];
+    if (!b) return 0;
+    return Module.ctx.isBuffer(b);
   },
 
   glGenRenderbuffers__sig: 'vii',
@@ -570,11 +568,9 @@ var LibraryGL = {
   },
 
   glIsRenderbuffer: function(renderbuffer) {
-    var fb = GL.renderbuffers[renderbuffer];
-    if (typeof(fb) == 'undefined') {
-      return 0;
-    }
-    return Module.ctx.isRenderbuffer(fb);
+    var rb = GL.renderbuffers[renderbuffer];
+    if (!rb) return 0;
+    return Module.ctx.isRenderbuffer(rb);
   },
 
   glGetUniformfv: function(program, location, params) {
@@ -940,11 +936,9 @@ var LibraryGL = {
   },
 
   glIsShader: function(shader) {
-    var fb = GL.shaders[shader];
-    if (typeof(fb) == 'undefined') {
-      return 0;
-    }
-    return Module.ctx.isShader(fb);
+    var s = GL.shaders[shader];
+    if (!s) return 0;
+    return Module.ctx.isShader(s);
   },
 
   glCreateProgram__sig: 'i',
@@ -1057,9 +1051,7 @@ var LibraryGL = {
   glIsFramebuffer__sig: 'ii',
   glIsFramebuffer: function(framebuffer) {
     var fb = GL.framebuffers[framebuffer];
-    if (typeof(fb) == 'undefined') {
-      return 0;
-    }
+    if (!fb) return 0;
     return Module.ctx.isFramebuffer(fb);
   },
 
