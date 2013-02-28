@@ -2511,8 +2511,6 @@ Exception execution path of first function! 1
     def test_uncaught_exception(self):
         if Settings.ASM_JS: return self.skip('no exceptions support in asm')
         if self.emcc_args is None: return self.skip('no libcxx inclusion without emcc')
-        if '-O2' in self.emcc_args:
-          self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
 
         Settings.DISABLE_EXCEPTION_CATCHING = 0
 
