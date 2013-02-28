@@ -4,7 +4,7 @@ if (GC_SUPPORT) {
   EXPORTED_FUNCTIONS['_realloc'] = 1;
 
   var LibraryGC = {
-    $GC__deps: ['sbrk', 'realloc'],
+    $GC__deps: ['sbrk', 'realloc', 'calloc'],
     $GC: {
       ALLOCATIONS_TO_GC: 1*1024*1024,
 
