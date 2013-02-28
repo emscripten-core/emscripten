@@ -193,6 +193,7 @@ Options that are modified or new in %s include:
                               -s DOUBLE_MODE=0
                               -s PRECISE_I64_MATH=0
                               --closure 1
+                              --llvm-lto 1
 
                            This is not recommended at all. A better idea
                            is to try each of these separately on top of
@@ -235,8 +236,8 @@ Options that are modified or new in %s include:
                            2: -O2 LLVM optimizations
                            3: -O3 LLVM optimizations (default in -O2+)
 
-  --llvm-lto <level>       0: No LLVM LTO (default in -O0)
-                           1: LLVM LTO (default in -O1+)
+  --llvm-lto <level>       0: No LLVM LTO (default in -O2 and below)
+                           1: LLVM LTO (default in -O3)
                            Note: If LLVM optimizations are not run
                            (see --llvm-opts), setting this to 1 has no
                            effect.
@@ -816,7 +817,7 @@ try:
     newargs = newargs + [default_cxx_std]
 
   if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
-  if llvm_lto is None: llvm_lto = llvm_opts > 0
+  if llvm_lto is None: llvm_lto = opt_level >= 3
   if opt_level <= 0: keep_llvm_debug = keep_js_debug = True # always keep debug in -O0
   if opt_level > 0: keep_llvm_debug = False # JS optimizer wipes out llvm debug info from being visible
   if closure is None and opt_level == 3: closure = True
