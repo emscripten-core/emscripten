@@ -1,5 +1,4 @@
 /*global Module*/
-/*global Module*/
 /*global _malloc, _free, _memcpy*/
 /*global FUNCTION_TABLE, HEAP32, HEAPU8*/
 /*global Pointer_stringify*/
@@ -8,13 +7,47 @@
 /*global ___typeName:false*/
 /*global ___staticPointerCast: false*/
 
+var BindingError = Module.BindingError = extendError(Error, 'BindingError');
+var CastError = Module.CastError = extendError(Error, 'CastError');
+
+function throwBindingError(value) {
+    throw new BindingError(value);
+}
+
 function exposePublicSymbol(name, value) {
     if (Module.hasOwnProperty(name)) {
-        throw new BindingError("Cannot register public name '" + name + "' twice");
+        throwBindingError("Cannot register public name '" + name + "' twice");
     }
     Module[name] = value;
 }
 
+// from https://github.com/imvu/imvujs/blob/master/src/error.js
+function extendError(baseErrorType, errorName) {
+    var errorClass = createNamedFunction(errorName, function(message) {
+        this.name = errorName;
+        this.message = message;
+
+        var stack = (new Error(message)).stack;
+        if (stack !== undefined) {
+            this.stack = this.toString() + '\n' +
+                stack.replace(/^Error(:[^\n]*)?\n/, '');
+        }
+    });
+    errorClass.prototype = Object.create(baseErrorType.prototype);
+    errorClass.prototype.constructor = errorClass;
+    errorClass.prototype.toString = function() {
+        if (this.message === undefined) {
+            return this.name;
+        } else {
+            return this.name + ': ' + this.message;
+        }
+    };
+    
+    return errorClass;
+}
+
+
+// from https://github.com/imvu/imvujs/blob/master/src/function.js
 function createNamedFunction(name, body) {
     /*jshint evil:true*/
     return new Function(
@@ -141,10 +174,10 @@ function resolveBindings() {
 
 function registerType(rawType, name, registeredInstance) {
     if (!rawType) {
-        throw new BindingError('type "' + name + '" must have a positive integer typeid pointer');
+        throwBindingError('type "' + name + '" must have a positive integer typeid pointer');
     }
     if (typeRegistry.hasOwnProperty(rawType)) {
-        throw new BindingError("Cannot register type '" + name + "' twice");
+        throwBindingError("Cannot register type '" + name + "' twice");
     }
     registeredInstance.rawType = rawType;
     registeredInstance.name = name;
@@ -155,7 +188,7 @@ function registerType(rawType, name, registeredInstance) {
 function requireRegisteredType(rawType, humanName) {
     var impl = typeRegistry[rawType];
     if (undefined === impl) {
-        throw new BindingError(humanName + " has unknown type " + typeName(rawType));
+        throwBindingError(humanName + " has unknown type " + typeName(rawType));
     }
     return impl;
 }
@@ -315,12 +348,6 @@ function __embind_register_emval(rawType, name) {
     registerType(rawType, name, new RegisteredEmval());
 }
 
-var BindingError = Error;
-var CastError = Error;
-/** @expose */
-Module.BindingError = BindingError;
-Module.CastError = CastError;
-
 function runDestructors(destructors) {
     while (destructors.length) {
         var ptr = destructors.pop();
@@ -331,11 +358,11 @@ function runDestructors(destructors) {
 
 function makeInvoker(name, argCount, argTypes, invoker, fn) {
     if (!FUNCTION_TABLE[fn]) {
-        throw new BindingError('function '+name+' is not defined');
+        throwBindingError('function '+name+' is not defined');
     }
     return function() {
         if (arguments.length !== argCount - 1) {
-            throw new BindingError('function ' + name + ' called with ' + arguments.length + ' arguments, expected ' + (argCount - 1));
+            throwBindingError('function ' + name + ' called with ' + arguments.length + ' arguments, expected ' + (argCount - 1));
         }
         var destructors = [];
         var args = new Array(argCount);
@@ -555,8 +582,11 @@ function RegisteredPointer(Handle, isPolymorphic, isSmartPointer, rawGetPointee,
 
 RegisteredPointer.prototype.toWireType = function(destructors, handle) {
     var fromRawType;
-    if (!handle) {
-        return null;
+    if (handle === null) {
+        return 0; // todo: maybe this should return a zero-initialized smart pointer object
+    }
+    if (!(handle instanceof ClassHandle)) {
+        throwBindingError('Expected pointer or null, got ' + IMVU.repr(handle));
     }
     if (handle.$$.pointeeType.isPolymorphic) {
         fromRawType = handle.$$.pointeeType.getDynamicRawPointerType(handle.$$.ptr);
@@ -569,6 +599,7 @@ RegisteredPointer.prototype.toWireType = function(destructors, handle) {
     var ptr = staticPointerCast(handle.$$.ptr, fromRawType, this.pointeeType.rawType);
     if (this.isSmartPointer) {
         // todo: if ptr == handle.$$.ptr, there's no need to allocate a new smartPtr!
+        // todo: _malloc(16) is not big enough
         var smartPtr = _malloc(16);
         handle.$$.pointeeType.smartPointerType.rawConstructor(smartPtr, ptr, handle.$$.smartPtr);
         ptr = smartPtr;
@@ -677,7 +708,7 @@ function __embind_register_smart_ptr(
     
     Handle.prototype.clone = function() {
         if (!this.$$.ptr) {
-            throw new BindingError(pointeeType.name + ' instance already deleted');
+            throwBindingError(pointeeType.name + ' instance already deleted');
         }
 
         var clone = Object.create(Handle.prototype);
@@ -692,7 +723,7 @@ function __embind_register_smart_ptr(
     
     Handle.prototype['delete'] = function() {
         if (!this.$$.ptr) {
-            throw new BindingError(pointeeType.name + ' instance already deleted');
+            throwBindingError(pointeeType.name + ' instance already deleted');
         }
         
         this.$$.count.value -= 1;
@@ -705,6 +736,9 @@ function __embind_register_smart_ptr(
     var registeredPointer = new RegisteredPointer(Handle, pointeeType.isPolymorphic, true, rawGetPointee, rawConstructor, rawDestructor);
     registeredPointer.pointeeType = pointeeType;
     pointeeType.smartPointerType = registerType(rawType, name, registeredPointer);
+}
+
+function ClassHandle() {
 }
 
 // TODO: null pointers are always zero (not a Handle) in Javascript
@@ -726,9 +760,12 @@ function __embind_register_class(
         this.$$.pointeeType = type; // set below
     });
 
+    Handle.prototype = Object.create(ClassHandle.prototype, {
+        constructor: { value: Handle },
+    });
     Handle.prototype.clone = function() {
         if (!this.$$.ptr) {
-            throw new BindingError(type.name + ' instance already deleted');
+            throwBindingError(type.name + ' instance already deleted');
         }
 
         var clone = Object.create(Handle.prototype);
@@ -744,7 +781,7 @@ function __embind_register_class(
     // todo: then replace this.$$.count.ptr below with this.$$.ptr and make sure it fails
     Handle.prototype['delete'] = function() {
         if (!this.$$.ptr) {
-            throw new BindingError(type.name + ' instance already deleted'); // todo: but 'type' hasn't been resolved!?!
+            throwBindingError(type.name + ' instance already deleted'); // todo: but 'type' hasn't been resolved!?!
         }
 
         this.$$.count.value -= 1;
@@ -801,7 +838,7 @@ function __embind_register_class_constructor(
         var argTypes = requireArgumentTypes(rawArgTypes, humanName);
         classType.constructor.body = function() {
             if (arguments.length !== argCount - 1) {
-                throw new BindingError('emscripten binding ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
+                throwBindingError('emscripten binding ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
             }
             var destructors = [];
             var args = new Array(argCount);
@@ -837,10 +874,10 @@ function __embind_register_class_method(
         var argTypes = requireArgumentTypes(rawArgTypes, 'method ' + humanName);
         classType.Handle.prototype[methodName] = function() {
             if (!this.$$.ptr) {
-                throw new BindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
+                throwBindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
             }
             if (arguments.length !== argCount - 1) {
-                throw new BindingError('emscripten binding method ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
+                throwBindingError('emscripten binding method ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
             }
 
             var destructors = [];
@@ -902,13 +939,13 @@ function __embind_register_class_field(
         Object.defineProperty(classType.Handle.prototype, fieldName, {
             get: function() {
                 if (!this.$$.ptr) {
-                    throw new BindingError('cannot access emscripten binding field ' + humanName + ' on deleted object');
+                    throwBindingError('cannot access emscripten binding field ' + humanName + ' on deleted object');
                 }
                 return fieldType.fromWireType(getter(this.$$.ptr, memberPointer));
             },
             set: function(v) {
                 if (!this.$$.ptr) {
-                    throw new BindingError('cannot modify emscripten binding field ' + humanName + ' on deleted object');
+                    throwBindingError('cannot modify emscripten binding field ' + humanName + ' on deleted object');
                 }
                 var destructors = [];
                 setter(this.$$.ptr, memberPointer, fieldType.toWireType(destructors, v));
