@@ -11971,8 +11971,8 @@ fi
           if input_file not in srcs:
             srcs[input_file] = curr
           else:
-            open('/home/alon/Dev/emscripten/a', 'w').write(srcs[input_file])
-            open('/home/alon/Dev/emscripten/b', 'w').write(curr)
+            #open('/home/alon/Dev/emscripten/a', 'w').write(srcs[input_file])
+            #open('/home/alon/Dev/emscripten/b', 'w').write(curr)
             assert abs(len(curr)/float(len(srcs[input_file]))-1)<0.01, 'contents may shift in order, but must remain the same size  %d vs %d' % (len(curr), len(srcs[input_file])) + '\n' + errtail
           used_jcache = used_jcache or ('--jcache' in args)
           assert used_jcache == os.path.exists(JCache.get_cachename('emscript_files'))
