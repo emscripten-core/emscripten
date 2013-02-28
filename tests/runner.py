@@ -8664,7 +8664,7 @@ f.close()
             
             # Run through node, if CMake produced a .js file.
             if cmake_outputs[i].endswith('.js'):
-              ret = Popen([NODE_JS, tempdirname + '/' + cmake_outputs[i]], stdout=PIPE).communicate()[0]
+              ret = Popen(listify(NODE_JS) + [tempdirname + '/' + cmake_outputs[i]], stdout=PIPE).communicate()[0]
               assert 'hello, world!' in ret, 'Running cmake-based .js application failed!'
           finally:
             os.chdir(path_from_root('tests')) # Move away from the directory we are about to remove.
@@ -9471,7 +9471,7 @@ f.close()
         (path_from_root('tools', 'test-js-optimizer-asm-last.js'), open(path_from_root('tools', 'test-js-optimizer-asm-last-output.js')).read(),
          ['asm', 'last']),
       ]:
-        output = Popen([NODE_JS, path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
+        output = Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
         self.assertIdentical(expected, output.replace('\r\n', '\n').replace('\n\n', '\n'))
 
     def test_m_mm(self):
