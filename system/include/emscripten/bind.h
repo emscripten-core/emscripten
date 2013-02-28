@@ -116,6 +116,13 @@ namespace emscripten {
                 GenericFunction invoker,
                 GenericFunction constructor);
 
+            void _embind_register_class_smart_ptr_constructor(
+                TYPEID classType,
+                unsigned argCount,
+                TYPEID argTypes[],
+                GenericFunction invoker,
+                GenericFunction constructor);
+
             void _embind_register_class_method(
                 TYPEID classType,
                 const char* methodName,
@@ -241,11 +248,11 @@ namespace emscripten {
     ////////////////////////////////////////////////////////////////////////////////
 
     extern "C" {
-        int __getDynamicPointerType(int p);
+        void* __getDynamicPointerType(void* p);
     }
 
     template<typename ReturnType, typename... Args, typename... Policies>
-    void function(const char* name, ReturnType (fn)(Args...), Policies...) {
+    void function(const char* name, ReturnType (*fn)(Args...), Policies...) {
         using namespace internal;
 
         registerStandardTypes();
@@ -640,24 +647,7 @@ namespace emscripten {
         class_& constructor(SmartPtr (*factory)(Args...)) {
             using namespace internal;
 
-            smart_ptr<SmartPtr>("SmartPtr");
-
-            typename WithPolicies<>::template ArgTypeList<void, Args...> args;
-            /*
-            _embind_register_class_smart_ptr_constructor(
-                TypeID<ClassType>::get(),
-                args.count,
-                args.types,
-                reinterpret_cast<GenericFunction>(&raw_smart_ptr_constructor
-            */
-            return *this;
-        }
-
-        /*
-        template<typename SmartPtr, typename... Args>
-        class_& constructor(SmartPtr (*factory)(Args...)) {
-            using namespace internal;
-
+            // todo: generate unique name
             smart_ptr<SmartPtr>("SmartPtr");
 
             typename WithPolicies<>::template ArgTypeList<void, Args...> args;
@@ -665,10 +655,10 @@ namespace emscripten {
                 TypeID<ClassType>::get(),
                 args.count,
                 args.types,
-                reinterpret_cast<GenericFunction>(&raw_smart_ptr_constructor
+                reinterpret_cast<GenericFunction>(&Invoker<SmartPtr, Args...>::invoke),
+                reinterpret_cast<GenericFunction>(factory));
             return *this;
         }
-        */
 
         template<typename WrapperType>
         class_& allow_subclass() {
