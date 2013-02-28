@@ -1244,7 +1244,7 @@ function JSify(data, functionsOnly, givenFunctions) {
   makeFuncLineActor('insertvalue', function(item) {
     assert(item.indexes.length == 1); // TODO: see extractvalue
     var ret = '(', ident;
-    if (item.ident === 'undef') {
+    if (item.ident === '0') {
       item.ident = 'tempValue';
       ret += item.ident + ' = [' + makeEmptyStruct(item.type) + '], ';
     }
