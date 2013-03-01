@@ -4048,7 +4048,6 @@ The current type of b is: 9
       self.do_run(src, 'time: ') # compilation check, mainly
 
     def test_intentional_fault(self):
-      if Settings.ASM_JS: return self.skip('no throw support in asm')
       # Some programs intentionally segfault themselves, we should compile that into a throw
       src = r'''
         int main () {
@@ -4056,7 +4055,7 @@ The current type of b is: 9
           return 0;
         }
         '''
-      self.do_run(src, 'fault on write to 0')
+      self.do_run(src, 'fault on write to 0' if not Settings.ASM_JS else 'Assertion: 0')
 
     def test_trickystring(self):
       src = r'''
