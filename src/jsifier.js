@@ -1226,6 +1226,15 @@ function JSify(data, functionsOnly, givenFunctions) {
     var impl = item.ident ? getVarImpl(item.funcData, item.ident) : VAR_EMULATED;
     switch (impl) {
       case VAR_NATIVIZED: {
+        if (isNumber(item.ident)) {
+          item.assignTo = null;
+          // Direct read from a memory address; this may be an intentional segfault, if not, it is a bug in the source
+          if (ASM_JS) {
+            return 'abort(' + item.ident + ')';
+          } else {
+            return 'throw "fault on read from ' + item.ident + '";';
+          }
+        }
         return value; // We have the actual value here
       }
       case VAR_EMULATED: return makeGetValue(value, 0, item.type, 0, item.unsigned, 0, item.align);
