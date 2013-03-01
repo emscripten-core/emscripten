@@ -8534,6 +8534,8 @@ Options that are modified or new in %s include:
 
         # emcc -s RELOOP=1 src.cpp ==> should pass -s to emscripten.py. --typed-arrays is a convenient alias for -s USE_TYPED_ARRAYS
         for params, test, text in [
+          (['-s', 'ASM_JS=1', '-O2'], lambda generated: 'var i1 = 0' in generated, 'registerize is run by default in -O2'),
+          (['-s', 'ASM_JS=1', '-O2', '-g'], lambda generated: 'var i1 = 0' not in generated, 'registerize is cancelled by -g'),
           (['-s', 'INLINING_LIMIT=0'], lambda generated: 'function _dump' in generated, 'no inlining without opts'),
           (['-O3', '-s', 'INLINING_LIMIT=0', '--closure', '0'], lambda generated: 'function _dump' not in generated, 'lto/inlining'),
           (['-s', 'USE_TYPED_ARRAYS=0'], lambda generated: 'new Int32Array' not in generated, 'disable typed arrays'),
