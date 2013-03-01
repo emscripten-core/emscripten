@@ -3515,7 +3515,8 @@ LibraryManager.library = {
     // int sscanf(const char *restrict s, const char *restrict format, ... );
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/scanf.html
     var index = 0;
-    var get = function() { return {{{ makeGetValue('s', 'index++', 'i8') }}}; };
+    var js_str = Module.Pointer_stringify(s);
+    var get = function() { return js_str.charCodeAt(index++); };
     var unget = function() { index--; };
     return __scanString(format, get, unget, varargs);
   },
