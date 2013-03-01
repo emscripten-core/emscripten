@@ -637,7 +637,7 @@ namespace emscripten {
         }
 
         template<typename SmartPtr, typename... Args, typename... Policies>
-        class_& constructor(SmartPtr (*factory)(Args...), Policies...) {
+        class_& smart_ptr_constructor(SmartPtr (*factory)(Args...), Policies...) {
             using namespace internal;
 
             // TODO: generate unique name
