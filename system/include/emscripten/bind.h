@@ -116,13 +116,6 @@ namespace emscripten {
                 GenericFunction invoker,
                 GenericFunction constructor);
 
-            void _embind_register_class_smart_ptr_constructor(
-                TYPEID classType,
-                unsigned argCount,
-                TYPEID argTypes[],
-                GenericFunction invoker,
-                GenericFunction constructor);
-
             void _embind_register_class_method(
                 TYPEID classType,
                 const char* methodName,
@@ -633,7 +626,7 @@ namespace emscripten {
         class_& constructor(ClassType* (*factory)(Args...), Policies...) {
             using namespace internal;
 
-            typename WithPolicies<Policies...>::template ArgTypeList<void, Args...> args;
+            typename WithPolicies<Policies...>::template ArgTypeList<AllowedRawPointer<ClassType>, Args...> args;
             _embind_register_class_constructor(
                 TypeID<ClassType>::get(),
                 args.count,
@@ -643,15 +636,15 @@ namespace emscripten {
             return *this;
         }
 
-        template<typename SmartPtr, typename... Args>
-        class_& constructor(SmartPtr (*factory)(Args...)) {
+        template<typename SmartPtr, typename... Args, typename... Policies>
+        class_& constructor(SmartPtr (*factory)(Args...), Policies...) {
             using namespace internal;
 
-            // todo: generate unique name
+            // TODO: generate unique name
             smart_ptr<SmartPtr>("SmartPtr");
 
-            typename WithPolicies<>::template ArgTypeList<SmartPtr, Args...> args;
-            _embind_register_class_smart_ptr_constructor(
+            typename WithPolicies<Policies...>::template ArgTypeList<SmartPtr, Args...> args;
+            _embind_register_class_constructor(
                 TypeID<ClassType>::get(),
                 args.count,
                 args.types,

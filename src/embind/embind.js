@@ -852,39 +852,6 @@ function __embind_register_class_constructor(
             var ptr = invoker.apply(null, args);
             runDestructors(destructors);
 
-            return classType.Handle.call(this, ptr);
-        };
-    });
-}
-
-function __embind_register_class_smart_ptr_constructor(
-    rawClassType,
-    argCount,
-    rawArgTypesAddr,
-    invoker,
-    rawConstructor
-) {
-    var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
-    invoker = FUNCTION_TABLE[invoker];
-
-    requestDeferredRegistration(function() {
-        var classType = requireRegisteredType(rawClassType, 'class');
-        var humanName = 'constructor ' + classType.name;
-        var argTypes = requireArgumentTypes(rawArgTypes, humanName);
-        classType.constructor.body = function() {
-            if (arguments.length !== argCount - 1) {
-                throwBindingError(humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
-            }
-            var destructors = [];
-            var args = new Array(argCount);
-            args[0] = rawConstructor;
-            for (var i = 1; i < argCount; ++i) {
-                args[i] = argTypes[i].toWireType(destructors, arguments[i - 1]);
-            }
-
-            var ptr = invoker.apply(null, args);
-            runDestructors(destructors);
-
             return argTypes[0].fromWireType(ptr);
         };
     });
