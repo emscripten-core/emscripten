@@ -1373,6 +1373,7 @@ var LibrarySDL = {
       }
     } else {
       audio.play();
+      audio.paused = false;
     }
     audio.volume = channelInfo.volume;
     return channel;
@@ -1387,6 +1388,7 @@ var LibrarySDL = {
     var info = SDL.channels[channel];
     if (info.audio) {
       info.audio.pause();
+      info.audio.paused = true;
       info.audio = null;
     }
     if (SDL.channelFinished) {
@@ -1422,6 +1424,7 @@ var LibrarySDL = {
       audio["mozWriteAudio"](SDL.audios[id].buffer);
     } else {
       audio.play();
+      audio.paused = false;
     }
     audio.volume = SDL.music.volume;
     audio['onended'] = _Mix_HaltMusic; // will send callback
@@ -1433,6 +1436,7 @@ var LibrarySDL = {
     var audio = SDL.music.audio;
     if (!audio) return 0;
     audio.pause();
+    audio.paused = true;
     return 0;
   },
 
@@ -1440,6 +1444,7 @@ var LibrarySDL = {
     var audio = SDL.music.audio;
     if (!audio) return 0;
     audio.play();
+    audio.paused = false;
     return 0;
   },
 
@@ -1448,6 +1453,7 @@ var LibrarySDL = {
     if (!audio) return 0;
     audio.src = audio.src; // rewind
     audio.pause();
+    audio.paused = true;
     SDL.music.audio = null;
     if (SDL.hookMusicFinished) {
       Runtime.dynCall('v', SDL.hookMusicFinished);
@@ -1485,8 +1491,10 @@ var LibrarySDL = {
         return;
     }
     var info = SDL.audios[id];
-    if (info && info.audio)
+    if (info && info.audio) {
       info.audio.pause();
+      info.audio.paused = true;
+    }
   },
   
   // http://www.libsdl.org/projects/SDL_mixer/docs/SDL_mixer_39.html#SEC39
@@ -1517,9 +1525,9 @@ var LibrarySDL = {
         return;
     }
     var info = SDL.audios[id];
-    if (info && info.audio)
-    {
+    if (info && info.audio) {
       info.audio.play();
+      info.audio.paused = false;
     }
   },
 
