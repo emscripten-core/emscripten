@@ -718,10 +718,13 @@ function __embind_register_smart_ptr(
         }
 
         var clone = Object.create(Handle.prototype);
-        clone.$$ = {};
-        clone.$$.count = this.$$.count;
-        clone.$$.smartPtr = this.$$.smartPtr;
-        clone.$$.ptr = this.$$.ptr;
+        Object.defineProperty(clone, '$$', {
+            value: {
+                count: this.$$.count,
+                smartPtr: this.$$.smartPtr,
+                ptr: this.$$.ptr,
+            },
+        });
         
         clone.$$.count.value += 1;
         return clone;
@@ -760,10 +763,13 @@ function __embind_register_class(
     rawDestructor = FUNCTION_TABLE[rawDestructor];
 
     var Handle = createNamedFunction(name, function(ptr) {
-        this.$$ = {};
-        this.$$.count = {value: 1, ptr: ptr };
-        this.$$.ptr = ptr;
-        this.$$.pointeeType = type; // set below
+        Object.defineProperty(this, '$$', {
+            value: {
+                count: {value: 1, ptr: ptr},
+                ptr: ptr,
+                pointeeType: type,
+            }
+        });
     });
 
     Handle.prototype = Object.create(ClassHandle.prototype, {
@@ -775,9 +781,12 @@ function __embind_register_class(
         }
 
         var clone = Object.create(Handle.prototype);
-        clone.$$ = {};
-        clone.$$.count = this.$$.count;
-        clone.$$.ptr = this.$$.ptr;
+        Object.defineProperty(clone, '$$', {
+            value: {
+                count: this.$$.count,
+                ptr: this.$$.ptr,
+            },
+        });
 
         clone.$$.count.value += 1;
         return clone;
