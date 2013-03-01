@@ -284,12 +284,6 @@ namespace emscripten {
             delete ptr;
         }
 
-        template<typename PointerType>
-        typename PointerType::element_type* get_pointee(const PointerType& ptr) {
-            // TODO: replace with general pointer traits implementation
-            return ptr.get();
-        }
-
         template<typename ClassType, typename ReturnType, typename... Args>
         struct FunctionInvoker {
             typedef ReturnType (*FunctionPointer)(ClassType& ct, Args...);
@@ -540,14 +534,24 @@ namespace emscripten {
 
     // specialize if you have a different pointer type
     template<typename PointerType>
-    struct get_element_type {
-        typedef typename PointerType::element_type type;
+    struct smart_ptr_trait {
+        typedef typename PointerType::element_type element_type;
+        static element_type* get(const PointerType& ptr) {
+            return ptr.get();
+        }
     };
+
+    namespace internal {
+        template<typename PointerType>
+        typename smart_ptr_trait<PointerType>::element_type* get_pointee(const PointerType& ptr) {
+            return smart_ptr_trait<PointerType>::get(ptr);
+        }
+    }
 
     template<typename PointerType>
     void smart_ptr(const char* name) {
         using namespace internal;
-        typedef typename get_element_type<PointerType>::type PointeeType;
+        typedef typename smart_ptr_trait<PointerType>::element_type PointeeType;
         
         registerStandardTypes();
         _embind_register_smart_ptr(
