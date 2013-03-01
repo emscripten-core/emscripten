@@ -375,6 +375,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       var ret = [item];
       item.JS = 'var ' + item.ident + ';';
       // Set the actual value in a postset, since it may be a global variable. We also order by dependencies there
+      Variables.globals[item.ident].targetIdent = item.value.ident;
       var value = Variables.globals[item.ident].resolvedAlias = finalizeLLVMParameter(item.value);
       var fix = '';
       if (BUILD_AS_SHARED_LIB == 2 && !item.private_) {
@@ -1284,6 +1285,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     // We cannot compile assembly. See comment in intertyper.js:'Call'
     assert(ident != 'asm', 'Inline assembly cannot be compiled to JavaScript!');
 
+    ident = Variables.resolveAliasToIdent(ident);
     var shortident = ident.slice(1);
     var callIdent = LibraryManager.getRootIdent(shortident);
     if (callIdent) {

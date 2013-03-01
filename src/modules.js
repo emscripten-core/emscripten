@@ -179,7 +179,16 @@ var Variables = {
   globals: {},
   indexedGlobals: {}, // for indexed globals, ident ==> index
   // Used in calculation of indexed globals
-  nextIndexedOffset: 0
+  nextIndexedOffset: 0,
+
+  resolveAliasToIdent: function(ident) {
+    while (1) {
+      var varData = Variables.globals[ident];
+      if (!(varData && varData.targetIdent)) break;
+      ident = varData.targetIdent; // might need to eval to turn (6) into 6
+    }
+    return ident;
+  },
 };
 
 var Types = {
