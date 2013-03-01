@@ -698,11 +698,14 @@ function __embind_register_smart_ptr(
     rawGetPointee = FUNCTION_TABLE[rawGetPointee];
     
     var Handle = createNamedFunction(name, function(ptr) {
-        this.$$ = {};
-        this.$$.count = {value: 1};
-        this.$$.smartPtr = ptr; // std::shared_ptr<T>*
-        this.$$.ptr = rawGetPointee(ptr); // T*
-        this.$$.pointeeType = pointeeType;
+        Object.defineProperty(this, '$$', {
+            value: {
+                count: {value: 1},
+                smartPtr: ptr,
+                ptr: rawGetPointee(ptr),
+                pointeeType: pointeeType,
+            },
+        });
     });
 
     // TODO: test for SmartPtr.prototype.constructor property?
