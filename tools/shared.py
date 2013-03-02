@@ -388,6 +388,9 @@ if USE_EMSDK:
 else:
   EMSDK_OPTS = []
 
+#print >> sys.stderr, 'SDK opts', ' '.join(EMSDK_OPTS)
+#print >> sys.stderr, 'Compiler opts', ' '.join(COMPILER_OPTS)
+
 # Engine tweaks
 
 try:
