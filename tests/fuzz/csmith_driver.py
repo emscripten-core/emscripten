@@ -36,16 +36,16 @@ while 1:
 
   print '2) Compile natively'
   shared.try_delete(filename)
-  #shared.execute([shared.CLANG_CC, '-O2', filename + '.c', '-o', filename] + CSMITH_CFLAGS, stderr=PIPE) #  + shared.EMSDK_OPTS
+  shared.execute([shared.CLANG_CC, '-O2', filename + '.c', '-o', filename + '1'] + CSMITH_CFLAGS, stderr=PIPE) #  + shared.EMSDK_OPTS
   shared.execute([shared.CLANG_CC, '-O2', '-emit-llvm', '-c', '-Xclang', '-triple=i386-pc-linux-gnu', filename + '.c', '-o', filename + '.bc'] + CSMITH_CFLAGS + shared.EMSDK_OPTS, stderr=PIPE)
   shared.execute([shared.path_from_root('tools', 'nativize_llvm.py'), filename + '.bc'], stdout=PIPE, stderr=PIPE)
-  shutil.move(filename + '.bc.run', filename)
-
-  assert os.path.exists(filename)
+  shutil.move(filename + '.bc.run', filename + '2')
   print '3) Run natively'
   try:
-    correct = shared.timeout_run(Popen([filename], stdout=PIPE, stderr=PIPE), 3)
-    if 'Segmentation fault' in correct or len(correct) < 10: raise Exception('segfault')
+    correct1 = shared.timeout_run(Popen([filename + '1'], stdout=PIPE, stderr=PIPE), 3)
+    if 'Segmentation fault' in correct1 or len(correct1) < 10: raise Exception('segfault')
+    correct2 = shared.timeout_run(Popen([filename + '2'], stdout=PIPE, stderr=PIPE), 3)
+    if 'Segmentation fault' in correct2 or len(correct2) < 10: raise Exception('segfault')
   except Exception, e:
     print 'Failed or infinite looping in native, skipping', e
     notes['invalid'] += 1
@@ -60,7 +60,7 @@ while 1:
     assert os.path.exists(filename + '.js')
     print '(run)'
     js = shared.run_js(filename + '.js', stderr=PIPE, engine=engine1, check_timeout=True)
-    assert correct == js, ''.join([a.rstrip()+'\n' for a in difflib.unified_diff(correct.split('\n'), js.split('\n'), fromfile='expected', tofile='actual')])
+    assert correct1 == js or correct2 == js, ''.join([a.rstrip()+'\n' for a in difflib.unified_diff(correct1.split('\n'), js.split('\n'), fromfile='expected', tofile='actual')])
 
   # Try normally, then try unaligned because csmith does generate nonportable code that requires x86 alignment
   ok = False
@@ -103,6 +103,6 @@ while 1:
     assert 'warning: Successfully compiled asm.js code' in js2, 'must validate'
     js2 = js2.replace('\nwarning: Successfully compiled asm.js code\n', '')
 
-    assert js2 == correct, ''.join([a.rstrip()+'\n' for a in difflib.unified_diff(correct.split('\n'), js2.split('\n'), fromfile='expected', tofile='actual')]) + 'ODIN FAIL'
+    assert js2 == correct1 or js2 == correct2, ''.join([a.rstrip()+'\n' for a in difflib.unified_diff(correct1.split('\n'), js2.split('\n'), fromfile='expected', tofile='actual')]) + 'ODIN FAIL'
     print 'odin ok'
 
