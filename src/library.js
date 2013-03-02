@@ -7318,7 +7318,12 @@ LibraryManager.library = {
         if (int & mask) {
           // index is in the set, check if it is ready for read
           var info = Sockets.fds[fd];
-          if (info && can(info)) {
+          if (!info) continue;
+          if ((info.socket.readyState == WebSocket.CLOSING || info.socket.readyState == WebSocket.CLOSED) && info.inQueue.length == 0) {
+            ___setErrNo(ERRNO_CODES.EBADF);
+            return -1;
+          }
+          if (can(info)) {
             // set bit
             fd < 32 ? (dstLow = dstLow | mask) : (dstHigh = dstHigh | mask);
             bitsSet++;
@@ -7331,8 +7336,14 @@ LibraryManager.library = {
       return bitsSet;
     }
 
-    return checkfds(nfds, readfds, canRead)
-         + checkfds(nfds, writefds, canWrite);
+    var readHandles = checkfds(nfds, readfds, canRead);
+    var writeHandles = checkfds(nfds, writefds, canWrite);
+    console.log( "readHandles: " + readHandles + ", writeHandles: " + writeHandles );
+    if ((readHandles == -1) || (writeHandles == -1)){
+      return -1;
+    } else {
+      return readHandles + writeHandles;
+    }
   },
 
   // pty.h
