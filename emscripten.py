@@ -242,6 +242,8 @@ def emscript(infile, settings, outfile, libraries=[]):
   if jcache: outputs += cached_outputs # TODO: preserve order
 
   outputs = [output.split('//FORWARDED_DATA:') for output in outputs]
+  for output in outputs:
+    assert len(output) == 2, 'Did not receive forwarded data in an output - process failed? We only got: ' + output[1]
 
   if DEBUG: print >> sys.stderr, '  emscript: phase 2 took %s seconds' % (time.time() - t)
   if DEBUG: t = time.time()
@@ -310,7 +312,7 @@ def emscript(infile, settings, outfile, libraries=[]):
   post_file = temp_files.get('.post.ll').name
   open(post_file, 'w').write('\n') # no input, just processing of forwarded data
   out = shared.run_js(compiler, shared.COMPILER_ENGINE, [settings_file, post_file, 'post', forwarded_file] + libraries, stdout=subprocess.PIPE, cwd=path_from_root('src'))
-  post, last_forwarded_data = out.split('//FORWARDED_DATA:')
+  post, last_forwarded_data = out.split('//FORWARDED_DATA:') # if this fails, perhaps the process failed prior to printing forwarded data?
   last_forwarded_json = json.loads(last_forwarded_data)
 
   if settings.get('ASM_JS'):
