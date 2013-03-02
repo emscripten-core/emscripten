@@ -275,8 +275,11 @@ namespace emscripten {
         }
 
         template<typename PointerType>
-        typename std::shared_ptr<PointerType> raw_smart_pointer_constructor(PointerType *ptr, std::shared_ptr<PointerType> basePtr, void (PointerType*)) {
-            return std::shared_ptr<PointerType>(basePtr, ptr);
+        typename std::shared_ptr<PointerType>* raw_smart_pointer_constructor(
+            PointerType *ptr,
+            std::shared_ptr<PointerType>* basePtr
+        ) {
+            return new std::shared_ptr<PointerType>(*basePtr, ptr);
         }
 
         template<typename ClassType>
