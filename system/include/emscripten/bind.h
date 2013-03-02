@@ -274,14 +274,6 @@ namespace emscripten {
             );
         }
 
-        template<typename PointerType>
-        typename std::shared_ptr<PointerType>* raw_smart_pointer_constructor(
-            PointerType *ptr,
-            std::shared_ptr<PointerType>* basePtr
-        ) {
-            return new std::shared_ptr<PointerType>(*basePtr, ptr);
-        }
-
         template<typename ClassType>
         void raw_destructor(ClassType* ptr) {
             delete ptr;
@@ -539,12 +531,25 @@ namespace emscripten {
     template<typename PointerType>
     struct smart_ptr_trait {
         typedef typename PointerType::element_type element_type;
+
         static element_type* get(const PointerType& ptr) {
             return ptr.get();
+        }
+
+        static PointerType share(const PointerType& r, element_type* ptr) {
+            return PointerType(r, ptr);
         }
     };
 
     namespace internal {
+        template<typename SmartPointerType>
+        SmartPointerType* raw_smart_pointer_constructor(
+            typename smart_ptr_trait<SmartPointerType>::element_type* ptr,
+            SmartPointerType* basePtr
+        ) {
+            return new SmartPointerType(smart_ptr_trait<SmartPointerType>::share(*basePtr, ptr));
+        }
+
         template<typename PointerType>
         typename smart_ptr_trait<PointerType>::element_type* get_pointee(const PointerType& ptr) {
             return smart_ptr_trait<PointerType>::get(ptr);
@@ -561,7 +566,7 @@ namespace emscripten {
             TypeID<PointerType>::get(),
             TypeID<PointeeType>::get(),
             name,
-            reinterpret_cast<GenericFunction>(&raw_smart_pointer_constructor<PointeeType*>),
+            reinterpret_cast<GenericFunction>(&raw_smart_pointer_constructor<PointerType>),
             reinterpret_cast<GenericFunction>(&raw_destructor<PointerType>),
             reinterpret_cast<GenericFunction>(&get_pointee<PointerType>));
     };

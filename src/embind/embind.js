@@ -601,7 +601,13 @@ RegisteredPointer.prototype.toWireType = function(destructors, handle) {
     }
     var ptr = staticPointerCast(handle.$$.ptr, fromRawType, this.pointeeType.rawType);
     if (this.isSmartPointer) {
-        ptr = handle.$$.pointeeType.smartPointerType.rawConstructor(ptr, handle.$$.smartPtr);
+        // If this is for smart ptr type conversion, I think it
+        // assumes that smart_ptr<T> has an identical binary layout to
+        // smart_ptr<U>.  I wonder if that's untrue for any common
+        // smart pointer. - chad
+        ptr = handle.$$.pointeeType.smartPointerType.rawConstructor(
+            ptr,
+            handle.$$.smartPtr);
         destructors.push(handle.$$.pointeeType.smartPointerType.rawDestructor);
         destructors.push(ptr);
     }
