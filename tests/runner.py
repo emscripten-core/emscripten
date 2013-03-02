@@ -7254,10 +7254,18 @@ def process(filename):
 
       Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'fuzz')]
 
-      for name in glob.glob(path_from_root('tests', 'fuzz', '*.c')):
-        print name
-        self.do_run(open(path_from_root('tests', 'fuzz', name)).read(),
-                    open(path_from_root('tests', 'fuzz', name + '.txt')).read(), force_c=True)
+      def run_all(x):
+        print x
+        for name in glob.glob(path_from_root('tests', 'fuzz', '*.c')):
+          print name
+          self.do_run(open(path_from_root('tests', 'fuzz', name)).read(),
+                      open(path_from_root('tests', 'fuzz', name + '.txt')).read(), force_c=True)
+
+      run_all('normal')
+
+      self.emcc_args += ['--llvm-lto', '1']
+
+      run_all('lto')
 
     # Autodebug the code
     def do_autodebug(self, filename):

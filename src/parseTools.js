@@ -1371,6 +1371,8 @@ var TWO_TWENTY = Math.pow(2, 20);
 function getFastValue(a, op, b, type) {
   a = a.toString();
   b = b.toString();
+  a = a == 'true' ? '1' : (a == 'false' ? '0' : a);
+  b = b == 'true' ? '1' : (b == 'false' ? '0' : b);
   if (isNumber(a) && isNumber(b)) {
     if (op == 'pow') {
       return Math.pow(a, b).toString();
@@ -1838,9 +1840,10 @@ function makeSignOp(value, type, op, force, ignore) {
     if (!CHECK_SIGNS || ignore) {
       if (bits === 32) {
         if (op === 're') {
-          return '((' + value + ')|0)';
+          return '(' + getFastValue(value, '|', '0') + ')';
         } else {
-          return '((' + value + ')>>>0)';
+
+          return '(' + getFastValue(value, '>>>', '0') + ')';
           // Alternatively, we can consider the lengthier
           //    return makeInlineCalculation('VALUE >= 0 ? VALUE : ' + Math.pow(2, bits) + ' + VALUE', value, 'tempBigInt');
           // which does not always turn us into a 32-bit *un*signed value
@@ -1849,7 +1852,7 @@ function makeSignOp(value, type, op, force, ignore) {
         if (op === 're') {
           return makeInlineCalculation('(VALUE << ' + (32-bits) + ') >> ' + (32-bits), value, 'tempInt');
         } else {
-          return '((' + value + ')&' + (Math.pow(2, bits)-1) + ')';
+          return '(' + getFastValue(value, '&', Math.pow(2, bits)-1) + ')';
         }
       } else { // bits > 32
         if (op === 're') {
