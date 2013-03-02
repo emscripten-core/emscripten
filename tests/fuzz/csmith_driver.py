@@ -45,6 +45,7 @@ while 1:
   print '3) Run natively'
   try:
     correct = shared.timeout_run(Popen([filename], stdout=PIPE, stderr=PIPE), 3)
+    if 'Segmentation fault' in correct or len(correct) < 10: raise Exception('segfault')
   except Exception, e:
     print 'Failed or infinite looping in native, skipping', e
     notes['invalid'] += 1
