@@ -601,11 +601,7 @@ RegisteredPointer.prototype.toWireType = function(destructors, handle) {
     }
     var ptr = staticPointerCast(handle.$$.ptr, fromRawType, this.pointeeType.rawType);
     if (this.isSmartPointer) {
-        // todo: if ptr == handle.$$.ptr, there's no need to allocate a new smartPtr!
-        // todo: _malloc(16) is not big enough
-        var smartPtr = _malloc(16);
-        handle.$$.pointeeType.smartPointerType.rawConstructor(smartPtr, ptr, handle.$$.smartPtr);
-        ptr = smartPtr;
+        ptr = handle.$$.pointeeType.smartPointerType.rawConstructor(ptr, handle.$$.smartPtr);
         destructors.push(handle.$$.pointeeType.smartPointerType.rawDestructor);
         destructors.push(ptr);
     }
