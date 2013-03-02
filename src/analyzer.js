@@ -18,6 +18,7 @@ function recomputeLines(func) {
 // Handy sets
 
 var BRANCH_INVOKE = set('branch', 'invoke');
+var LABEL_ENDERS = set('branch', 'return');
 var SIDE_EFFECT_CAUSERS = set('call', 'invoke', 'atomic');
 var UNUNFOLDABLE = set('value', 'structvalue', 'type', 'phiparam');
 
@@ -88,7 +89,7 @@ function analyzer(data, sidePass) {
           // Internal line
           if (!currLabelFinished) {
             item.functions.slice(-1)[0].labels.slice(-1)[0].lines.push(subItem); // If this line fails, perhaps missing a label?
-            if (subItem.intertype === 'branch') {
+            if (subItem.intertype in LABEL_ENDERS) {
               currLabelFinished = true;
             }
           } else {
