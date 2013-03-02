@@ -30,11 +30,13 @@ while 1:
   print 'Tried %d, notes: %s' % (tried, notes)
   tried += 1
   print '1) Generate C'
-  shared.execute([CSMITH, '--no-volatiles', '--no-math64'], stdout=open(filename + '.c', 'w'))
+  shared.execute([CSMITH, '--no-volatiles', '--no-math64', '--no-packed-struct'] +
+                 ['--max-block-depth', '2', '--max-block-size', '2', '--max-expr-complexity', '2', '--max-funcs', '2'],
+                 stdout=open(filename + '.c', 'w'))
 
   print '2) Compile natively'
   shared.try_delete(filename)
-  shared.execute([shared.CLANG_CC, '-O2', filename + '.c', '-o', filename] + CSMITH_CFLAGS, stderr=PIPE)
+  shared.execute([shared.CLANG_CC, '-O2', filename + '.c', '-o', filename] + CSMITH_CFLAGS, stderr=PIPE) #  + shared.EMSDK_OPTS
   assert os.path.exists(filename)
   print '3) Run natively'
   try:
@@ -71,7 +73,7 @@ while 1:
   if not ok:
     print "EMSCRIPTEN BUG"
     notes['embug'] += 1
-    continue #break
+    break
   #if not ok:
   #  try: # finally, try with safe heap. if that is triggered, this is nonportable code almost certainly
   #    try_js(['-s', 'SAFE_HEAP=1'])
@@ -98,5 +100,4 @@ while 1:
 
     assert js2 == correct, ''.join([a.rstrip()+'\n' for a in difflib.unified_diff(correct.split('\n'), js2.split('\n'), fromfile='expected', tofile='actual')]) + 'ODIN FAIL'
     print 'odin ok'
-
 
