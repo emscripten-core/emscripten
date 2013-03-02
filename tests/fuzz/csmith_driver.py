@@ -4,7 +4,7 @@
 Runs csmith, a C fuzzer, and looks for bugs
 '''
 
-import os, sys, difflib
+import os, sys, difflib, shutil
 from subprocess import Popen, PIPE, STDOUT
 
 sys.path += [os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'tools')]
@@ -36,7 +36,11 @@ while 1:
 
   print '2) Compile natively'
   shared.try_delete(filename)
-  shared.execute([shared.CLANG_CC, '-O2', filename + '.c', '-o', filename] + CSMITH_CFLAGS, stderr=PIPE) #  + shared.EMSDK_OPTS
+  #shared.execute([shared.CLANG_CC, '-O2', filename + '.c', '-o', filename] + CSMITH_CFLAGS, stderr=PIPE) #  + shared.EMSDK_OPTS
+  shared.execute([shared.CLANG_CC, '-O2', '-emit-llvm', '-c', '-Xclang', '-triple=i386-pc-linux-gnu', filename + '.c', '-o', filename + '.bc'] + CSMITH_CFLAGS + shared.EMSDK_OPTS, stderr=PIPE)
+  shared.execute([shared.path_from_root('tools', 'nativize_llvm.py'), filename + '.bc'], stdout=PIPE, stderr=PIPE)
+  shutil.move(filename + '.bc.run', filename)
+
   assert os.path.exists(filename)
   print '3) Run natively'
   try:
