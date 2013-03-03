@@ -26,6 +26,8 @@ tried = 0
 
 notes = { 'invalid': 0, 'unaligned': 0, 'embug': 0 }
 
+fails = 0
+
 while 1:
   print 'Tried %d, notes: %s' % (tried, notes)
   tried += 1
@@ -83,7 +85,9 @@ while 1:
   if not ok:
     print "EMSCRIPTEN BUG"
     notes['embug'] += 1
-    break
+    fails += 1
+    shutil.copyfile('fuzzcode.c', 'newfail%d.c' % fails)
+    continue
   #if not ok:
   #  try: # finally, try with safe heap. if that is triggered, this is nonportable code almost certainly
   #    try_js(['-s', 'SAFE_HEAP=1'])
