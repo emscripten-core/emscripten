@@ -1634,7 +1634,7 @@ var LibraryGL = {
   // GL Immediate mode
 
   $GLImmediate__postset: 'GL.immediate.setupFuncs(); Browser.moduleContextCreatedCallbacks.push(function() { GL.immediate.init() });',
-  $GLImmediate__deps: ['$Browser', '$GL'],
+  $GLImmediate__deps: ['$Browser', '$GL', '$GLEmulation'],
   $GLImmediate: {
     MAX_TEXTURES: 7,
 
