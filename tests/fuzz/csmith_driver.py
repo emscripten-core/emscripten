@@ -41,12 +41,16 @@ while 1:
   shared.execute([shared.CLANG_CC, '-O2', '-emit-llvm', '-c', '-Xclang', '-triple=i386-pc-linux-gnu', filename + '.c', '-o', filename + '.bc'] + CSMITH_CFLAGS + shared.EMSDK_OPTS, stderr=PIPE)
   shared.execute([shared.path_from_root('tools', 'nativize_llvm.py'), filename + '.bc'], stdout=PIPE, stderr=PIPE)
   shutil.move(filename + '.bc.run', filename + '2')
+  shared.execute([shared.CLANG_CC, filename + '.c', '-o', filename + '3'] + CSMITH_CFLAGS, stderr=PIPE)
   print '3) Run natively'
   try:
     correct1 = shared.timeout_run(Popen([filename + '1'], stdout=PIPE, stderr=PIPE), 5)
     if 'Segmentation fault' in correct1 or len(correct1) < 10: raise Exception('segfault')
     correct2 = shared.timeout_run(Popen([filename + '2'], stdout=PIPE, stderr=PIPE), 5)
     if 'Segmentation fault' in correct2 or len(correct2) < 10: raise Exception('segfault')
+    correct3 = shared.timeout_run(Popen([filename + '3'], stdout=PIPE, stderr=PIPE), 5)
+    if 'Segmentation fault' in correct3 or len(correct3) < 10: raise Exception('segfault')
+    if correct1 != correct3: raise Exception('clang opts change result')
   except Exception, e:
     print 'Failed or infinite looping in native, skipping', e
     notes['invalid'] += 1
