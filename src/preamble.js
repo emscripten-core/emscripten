@@ -412,14 +412,6 @@ Module['ALLOC_STACK'] = ALLOC_STACK;
 Module['ALLOC_STATIC'] = ALLOC_STATIC;
 Module['ALLOC_NONE'] = ALLOC_NONE;
 
-// Simple unoptimized memset - necessary during startup
-var _memset = function(ptr, value, num) {
-  var stop = ptr + num;
-  while (ptr < stop) {
-    {{{ makeSetValue('ptr++', 0, 'value', 'i8', null, true) }}};
-  }
-}
-
 // allocate(): This is for internal use. You can use it yourself as well, but the interface
 //             is a little tricky (see docs right below). The reason is that it is optimized
 //             for multiple syntaxes to save space in generated code. So you should
@@ -453,7 +445,18 @@ function allocate(slab, types, allocator, ptr) {
   }
 
   if (zeroinit) {
-    _memset(ret, 0, size);
+    var ptr = ret, stop;
+#if USE_TYPED_ARRAYS == 2
+    assert((ret & 3) == 0);
+    stop = ret + (size & ~3);
+    for (; ptr < stop; ptr += 4) {
+      {{{ makeSetValue('ptr', '0', '0', 'i32', null, true) }}};
+    }
+#endif
+    stop = ret + size;
+    while (ptr < stop) {
+      {{{ makeSetValue('ptr++', '0', '0', 'i8', null, true) }}};
+    }
     return ret;
   }
 
