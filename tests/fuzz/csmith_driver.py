@@ -33,6 +33,7 @@ while 1:
   shared.execute([CSMITH, '--no-volatiles', '--no-math64', '--no-packed-struct'] +
                  ['--max-block-depth', '2', '--max-block-size', '2', '--max-expr-complexity', '2', '--max-funcs', '2'],
                  stdout=open(filename + '.c', 'w'))
+  print '1) Generate C... %.2f K of C source' % (len(open(filename + '.c').read())/1024.)
 
   print '2) Compile natively'
   shared.try_delete(filename)
