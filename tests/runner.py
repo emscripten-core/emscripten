@@ -11213,7 +11213,7 @@ elif 'benchmark' in str(sys.argv):
   Building.COMPILER_TEST_OPTS = []
 
   TEST_REPS = 4
-  TOTAL_TESTS = 9
+  TOTAL_TESTS = 8
 
   tests_done = 0
   total_times = map(lambda x: 0., range(TOTAL_TESTS))
@@ -11519,11 +11519,6 @@ elif 'benchmark' in str(sys.argv):
                       []      [][]  []  []                      
 --------------------------------
 ''', shared_args=['-std=c99'], force_c=True)
-
-    def test_dlmalloc(self):
-      # XXX This seems to have regressed slightly with emcc. Are -g and the signs lines passed properly?
-      src = open(path_from_root('system', 'lib', 'dlmalloc.c'), 'r').read() + '\n\n\n' + open(path_from_root('tests', 'dlmalloc_test.c'), 'r').read()
-      self.do_benchmark('dlmalloc', src, ['400', '3000'], '*3000,0*')
 
     def test_zlib(self):
       src = open(path_from_root('tests', 'zlib', 'benchmark.c'), 'r').read()
