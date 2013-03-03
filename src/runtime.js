@@ -365,7 +365,7 @@ var Runtime = {
     return ret;
   },
 
-  removeFunction: function(index, func) {
+  removeFunction: function(index) {
     var table = FUNCTION_TABLE; // TODO: support asm
     table[index] = null;
   },
