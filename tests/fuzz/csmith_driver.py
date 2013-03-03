@@ -30,8 +30,8 @@ while 1:
   print 'Tried %d, notes: %s' % (tried, notes)
   tried += 1
   print '1) Generate C'
-  shared.execute([CSMITH, '--no-volatiles', '--no-math64', '--no-packed-struct'] +
-                 ['--max-block-depth', '2', '--max-block-size', '2', '--max-expr-complexity', '2', '--max-funcs', '2'],
+  shared.execute([CSMITH, '--no-volatiles', '--no-math64', '--no-packed-struct'],# +
+                 #['--max-block-depth', '2', '--max-block-size', '2', '--max-expr-complexity', '2', '--max-funcs', '2'],
                  stdout=open(filename + '.c', 'w'))
   print '1) Generate C... %.2f K of C source' % (len(open(filename + '.c').read())/1024.)
 
@@ -43,9 +43,9 @@ while 1:
   shutil.move(filename + '.bc.run', filename + '2')
   print '3) Run natively'
   try:
-    correct1 = shared.timeout_run(Popen([filename + '1'], stdout=PIPE, stderr=PIPE), 3)
+    correct1 = shared.timeout_run(Popen([filename + '1'], stdout=PIPE, stderr=PIPE), 5)
     if 'Segmentation fault' in correct1 or len(correct1) < 10: raise Exception('segfault')
-    correct2 = shared.timeout_run(Popen([filename + '2'], stdout=PIPE, stderr=PIPE), 3)
+    correct2 = shared.timeout_run(Popen([filename + '2'], stdout=PIPE, stderr=PIPE), 5)
     if 'Segmentation fault' in correct2 or len(correct2) < 10: raise Exception('segfault')
   except Exception, e:
     print 'Failed or infinite looping in native, skipping', e
