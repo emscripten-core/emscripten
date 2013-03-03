@@ -365,6 +365,11 @@ var Runtime = {
     return ret;
   },
 
+  removeFunction: function(index, func) {
+    var table = FUNCTION_TABLE; // TODO: support asm
+    table[index] = null;
+  },
+
   warnOnce: function(text) {
     if (!Runtime.warnOnce.shown) Runtime.warnOnce.shown = {};
     if (!Runtime.warnOnce.shown[text]) {
