@@ -4316,6 +4316,7 @@ LibraryManager.library = {
     stop = (ptr + num)|0;
     if ((num|0) >= {{{ SEEK_OPTIMAL_ALIGN_MIN }}}) {
       // This is unaligned, but quite large, so work hard to get to aligned settings
+      value = value & 0xff;
       unaligned = ptr & 3;
       value4 = value | (value << 8) | (value << 16) | (value << 24);
       stop4 = stop & ~3;
