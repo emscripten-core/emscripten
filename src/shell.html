@@ -20,10 +20,11 @@
     <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
     <hr/>
     <div class="emscripten">
-      <input type="button" value="only fullscreen" onclick="Module.requestFullScreen(false, false)">
-      <input type="button" value="fullscreen + resize" onclick="Module.requestFullScreen(false, true)">
-      <input type="button" value="fullscreen + pointerLock" onclick="Module.requestFullScreen()"> <!--default-->
-      <input type="button" value="fullscreen + pointerLock + resize" onclick="Module.requestFullScreen(true, true)">
+      <input type="checkbox" id="resize">Resize canvas
+      <input type="checkbox" id="pointerLock">Lock/hide mouse pointer
+      &nbsp;&nbsp;&nbsp;
+      <input type="button" value="Fullscreen" onclick="Module.requestFullScreen(document.getElementById('pointerLock').checked, 
+                                                                                document.getElementById('resize').checked)">
     </div>
     
     <hr/>
