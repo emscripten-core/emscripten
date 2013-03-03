@@ -741,6 +741,7 @@ function intertyper(data, sidePass, baseLineNums) {
     processItem: function(item) {
       item.intertype = 'atomic';
       if (item.tokens[0].text == 'atomicrmw') {
+        if (item.tokens[1].text == 'volatile') item.tokens.splice(1, 1);
         item.op = item.tokens[1].text;
         item.tokens.splice(1, 1);
       } else {

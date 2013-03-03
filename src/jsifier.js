@@ -1204,6 +1204,9 @@ function JSify(data, functionsOnly, givenFunctions) {
     switch (item.op) {
       case 'add': return '(tempValue=' + makeGetValue(param1, 0, type) + ',' + makeSetValue(param1, 0, 'tempValue+' + param2, type, null, null, null, null, ',') + ',tempValue)';
       case 'sub': return '(tempValue=' + makeGetValue(param1, 0, type) + ',' + makeSetValue(param1, 0, 'tempValue-' + param2, type, null, null, null, null, ',') + ',tempValue)';
+      case 'or': return '(tempValue=' + makeGetValue(param1, 0, type) + ',' + makeSetValue(param1, 0, 'tempValue|' + param2, type, null, null, null, null, ',') + ',tempValue)';
+      case 'and': return '(tempValue=' + makeGetValue(param1, 0, type) + ',' + makeSetValue(param1, 0, 'tempValue&' + param2, type, null, null, null, null, ',') + ',tempValue)';
+      case 'xor': return '(tempValue=' + makeGetValue(param1, 0, type) + ',' + makeSetValue(param1, 0, 'tempValue^' + param2, type, null, null, null, null, ',') + ',tempValue)';
       case 'xchg': return '(tempValue=' + makeGetValue(param1, 0, type) + ',' + makeSetValue(param1, 0, param2, type, null, null, null, null, ',') + ',tempValue)';
       case 'cmpxchg': {
         var param3 = finalizeLLVMParameter(item.params[2]);
