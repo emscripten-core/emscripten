@@ -25,7 +25,7 @@ var RuntimeGenerator = {
     sep = sep || ';';
     if (USE_TYPED_ARRAYS === 2) 'STACKTOP = (STACKTOP + STACKTOP|0 % ' + ({{{ QUANTUM_SIZE }}} - (isNumber(size) ? Math.min(size, {{{ QUANTUM_SIZE }}}) : {{{ QUANTUM_SIZE }}})) + ')' + sep;
     //                                                               The stack is always QUANTUM SIZE aligned, so we may not need to force alignment here
-    var ret = RuntimeGenerator.alloc(size, 'STACK', INIT_STACK, sep, USE_TYPED_ARRAYS != 2 || (isNumber(size) && parseInt(size) % {{{ QUANTUM_SIZE }}} == 0));
+    var ret = RuntimeGenerator.alloc(size, 'STACK', false, sep, USE_TYPED_ARRAYS != 2 || (isNumber(size) && parseInt(size) % {{{ QUANTUM_SIZE }}} == 0));
     if (ASSERTIONS) {
       ret += sep + 'assert(STACKTOP|0 < STACK_MAX|0)';
     }
@@ -45,7 +45,7 @@ var RuntimeGenerator = {
     if (ASSERTIONS) {
       ret += '; assert(STACKTOP < STACK_MAX)';
     }
-    if (INIT_STACK) {
+    if (false) {
       ret += '; _memset(' + asmCoercion('__stackBase__', 'i32') + ', 0, ' + initial + ')';
     }
     return ret;

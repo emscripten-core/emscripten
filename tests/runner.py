@@ -6912,7 +6912,6 @@ void*:16
                       extra_emscripten_args=['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/langinfo.h,libc/time.h'])
 
     def get_freetype(self):
-      Settings.INIT_STACK = 1 # TODO: Investigate why this is necessary
       return self.get_library('freetype',
                               os.path.join('objs', '.libs', 'libfreetype.a'))
 
@@ -8341,7 +8340,6 @@ class %s(T):
     Settings.CORRECT_ROUNDINGS = 0
     Settings.CORRECT_OVERFLOWS_LINES = CORRECT_SIGNS_LINES = CORRECT_ROUNDINGS_LINES = SAFE_HEAP_LINES = []
     Settings.CHECK_SIGNS = 0 #1-(embetter or llvm_opts)
-    Settings.INIT_STACK = 0
     Settings.RUNTIME_TYPE_INFO = 0
     Settings.DISABLE_EXCEPTION_CATCHING = 0
     Settings.INCLUDE_FULL_LIBRARY = 0
