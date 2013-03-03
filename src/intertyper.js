@@ -746,6 +746,7 @@ function intertyper(data, sidePass, baseLineNums) {
         item.tokens.splice(1, 1);
       } else {
         assert(item.tokens[0].text == 'cmpxchg')
+        if (item.tokens[1].text == 'volatile') item.tokens.splice(1, 1);
         item.op = 'cmpxchg';
       }
       var last = getTokenIndexByText(item.tokens, ';');
