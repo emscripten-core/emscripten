@@ -6800,12 +6800,6 @@ LibraryManager.library = {
     addrPool: [            0x0200000a, 0x0300000a, 0x0400000a, 0x0500000a,
                0x0600000a, 0x0700000a, 0x0800000a, 0x0900000a, 0x0a00000a,
                0x0b00000a, 0x0c00000a, 0x0d00000a, 0x0e00000a], /* 0x0100000a is reserved */
-    /*
-    peer: {
-      pc: null,
-      binds: {}
-    },
-    */
     sockaddr_in_layout: Runtime.generateStructInfo([
       ['i16', 'sin_family'],
       ['i16', 'sin_port'],
@@ -6918,8 +6912,9 @@ LibraryManager.library = {
         connection.onerror = function(error) {
           console.error(error);
         };
-        connection.unreliable.onmessage = function(message) {
-          handleMessage(addr, message.data);
+        connection.onmessage = function(label, message) {
+          if('unreliable' === label)
+            handleMessage(addr, message.data);
         }
       };
       peer.onpending = function(pending) {
@@ -6944,7 +6939,7 @@ LibraryManager.library = {
         if(Sockets.portmap[header[1]]) {
           Sockets.portmap[header[1]].inQueue.push([addr, message]);
         } else {
-          console.log("unable to deliver message");
+          console.log("unable to deliver message: ", addr, header[1], message);
         }
       }
       window.onbeforeunload = function() {
@@ -7104,7 +7099,7 @@ LibraryManager.library = {
     buffer.set(new Uint8Array(info.header.buffer));
     buffer.set(data, info.header.byteLength);
 
-    connection.unreliable.send(buffer.buffer);
+    connection.send('unreliable', buffer.buffer);
   },
 
   recvmsg__deps: ['$Sockets', 'bind', '__setErrNo', '$ERRNO_CODES', 'htons'],
