@@ -30,12 +30,14 @@ fails = 0
 
 while 1:
   print 'Tried %d, notes: %s' % (tried, notes)
-  tried += 1
   print '1) Generate C'
   shared.execute([CSMITH, '--no-volatiles', '--no-math64', '--no-packed-struct'],# +
                  #['--max-block-depth', '2', '--max-block-size', '2', '--max-expr-complexity', '2', '--max-funcs', '2'],
                  stdout=open(filename + '.c', 'w'))
+  #shutil.copyfile(filename + '.c', 'testcase%d.c' % tried)
   print '1) Generate C... %.2f K of C source' % (len(open(filename + '.c').read())/1024.)
+
+  tried += 1
 
   print '2) Compile natively'
   shared.try_delete(filename)
@@ -46,11 +48,11 @@ while 1:
   shared.execute([shared.CLANG_CC, filename + '.c', '-o', filename + '3'] + CSMITH_CFLAGS, stderr=PIPE)
   print '3) Run natively'
   try:
-    correct1 = shared.timeout_run(Popen([filename + '1'], stdout=PIPE, stderr=PIPE), 5)
+    correct1 = shared.timeout_run(Popen([filename + '1'], stdout=PIPE, stderr=PIPE), 3)
     if 'Segmentation fault' in correct1 or len(correct1) < 10: raise Exception('segfault')
-    correct2 = shared.timeout_run(Popen([filename + '2'], stdout=PIPE, stderr=PIPE), 5)
+    correct2 = shared.timeout_run(Popen([filename + '2'], stdout=PIPE, stderr=PIPE), 3)
     if 'Segmentation fault' in correct2 or len(correct2) < 10: raise Exception('segfault')
-    correct3 = shared.timeout_run(Popen([filename + '3'], stdout=PIPE, stderr=PIPE), 5)
+    correct3 = shared.timeout_run(Popen([filename + '3'], stdout=PIPE, stderr=PIPE), 3)
     if 'Segmentation fault' in correct3 or len(correct3) < 10: raise Exception('segfault')
     if correct1 != correct3: raise Exception('clang opts change result')
   except Exception, e:
@@ -82,6 +84,9 @@ while 1:
     except Exception, e:
       print e
       normal = False
+  open('testcase%d.js' % tried, 'w').write(
+    open(filename + '.js').read().replace('  var ret = run();', '  var ret = run(["1"]);')
+  )
   if not ok:
     print "EMSCRIPTEN BUG"
     notes['embug'] += 1
