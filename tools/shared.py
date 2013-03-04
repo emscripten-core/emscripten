@@ -1,4 +1,4 @@
-import shutil, time, os, sys, json, tempfile, copy, shlex, atexit, subprocess, hashlib, cPickle
+import shutil, time, os, sys, json, tempfile, copy, shlex, atexit, subprocess, hashlib, cPickle, zlib
 from subprocess import Popen, PIPE, STDOUT
 from tempfile import mkstemp
 
@@ -1271,7 +1271,11 @@ class JCache:
     if not os.path.exists(cachename):
       if DEBUG_CACHE: print >> sys.stderr, 'jcache none at all'
       return
-    data = cPickle.Unpickler(open(cachename, 'rb')).load()
+    try:
+      data = cPickle.loads(zlib.decompress(open(cachename).read()))
+    except Exception, e:
+      if DEBUG_CACHE: print >> sys.stderr, 'jcache decompress/unpickle error:', e
+      return
     if len(data) != 2:
       if DEBUG_CACHE: print >> sys.stderr, 'jcache error in get'
       return
@@ -1291,7 +1295,13 @@ class JCache:
   def set(shortkey, keys, value):
     if DEBUG_CACHE: print >> sys.stderr, 'save to cache', shortkey
     cachename = JCache.get_cachename(shortkey)
-    cPickle.Pickler(open(cachename, 'wb')).dump([keys, value])
+    try:
+      f = open(cachename, 'w')
+      f.write(zlib.compress(cPickle.dumps([keys, value])))
+      f.close()
+    except Exception, e:
+      if DEBUG_CACHE: print >> sys.stderr, 'jcache compress/pickle error:', e
+      return
     #if DEBUG:
     #  for i in range(len(keys)):
     #    open(cachename + '.key' + str(i), 'w').write(keys[i])
