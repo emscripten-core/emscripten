@@ -1,4 +1,11 @@
 
+/* XXX Emscripten
+ * On linux in system stdlib.h, malloc et al. have certain symbol
+ * decorations. This version of dlmalloc has been modified to match
+ * those symbol decorations to not cause a mismatch in exception
+ * specification directives in declarations when dlmalloc replaces
+ * system stdlib.h malloc when compiling using this file natively.
+ */
 #define __THROW
 #define __attribute_malloc__
 #define __wur
@@ -865,7 +872,7 @@ extern "C" {
      maximum supported value of n differs across systems, but is in all
      cases less than the maximum representable value of a size_t.
      */
-    DLMALLOC_EXPORT void* dlmalloc(size_t);
+    DLMALLOC_EXPORT void* dlmalloc(size_t) __THROW __attribute_malloc__ __wur;
     
     /*
      free(void* p)
@@ -874,14 +881,14 @@ extern "C" {
      It has no effect if p is null. If p was not malloced or already
      freed, free(p) will by default cause the current program to abort.
      */
-    DLMALLOC_EXPORT void  dlfree(void*);
+    DLMALLOC_EXPORT void  dlfree(void*) __THROW;
     
     /*
      calloc(size_t n_elements, size_t element_size);
      Returns a pointer to n_elements * element_size bytes, with all locations
      set to zero.
      */
-    DLMALLOC_EXPORT void* dlcalloc(size_t, size_t);
+    DLMALLOC_EXPORT void* dlcalloc(size_t, size_t) __THROW __attribute_malloc__ __wur;
     
     /*
      realloc(void* p, size_t n)
@@ -905,7 +912,7 @@ extern "C" {
      The old unix realloc convention of allowing the last-free'd chunk
      to be used as an argument to realloc is not supported.
      */
-    DLMALLOC_EXPORT void* dlrealloc(void*, size_t);
+    DLMALLOC_EXPORT void* dlrealloc(void*, size_t) __THROW __attribute_malloc__ __wur;
     
     /*
      realloc_in_place(void* p, size_t n)
@@ -944,14 +951,14 @@ extern "C" {
      returns EINVAL if the alignment is not a power of two (3) fails and
      returns ENOMEM if memory cannot be allocated.
      */
-    DLMALLOC_EXPORT int dlposix_memalign(void**, size_t, size_t);
+    DLMALLOC_EXPORT int dlposix_memalign(void**, size_t, size_t) __THROW __attribute_malloc__ __wur;
     
     /*
      valloc(size_t n);
      Equivalent to memalign(pagesize, n), where pagesize is the page
      size of the system. If the pagesize is unknown, 4096 is used.
      */
-    DLMALLOC_EXPORT void* dlvalloc(size_t);
+    DLMALLOC_EXPORT void* dlvalloc(size_t) __THROW __attribute_malloc__ __wur;
     
     /*
      mallopt(int parameter_number, int parameter_value)
