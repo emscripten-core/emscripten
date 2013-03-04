@@ -2203,7 +2203,6 @@ function processMathop(item) {
         case 'ne': case 'eq': {
           // We must sign them, so we do not compare -1 to 255 (could have unsigned them both too)
           // since LLVM tells us if <=, >= etc. comparisons are signed, but not == and !=.
-          assert(paramTypes[0] == paramTypes[1]);
           idents[0] = makeSignOp(idents[0], paramTypes[0], 're');
           idents[1] = makeSignOp(idents[1], paramTypes[1], 're');
           return idents[0] + (variant === 'eq' ? '==' : '!=') + idents[1];

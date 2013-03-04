@@ -122,7 +122,8 @@ function analyzer(data, sidePass) {
       // Legalization
       if (USE_TYPED_ARRAYS == 2) {
         function getLegalVars(base, bits, allowLegal) {
-          if (allowLegal && bits <= 32) return [{ ident: base, bits: bits }];
+          bits = bits || 32; // things like pointers are all i32, but show up as 0 bits from getBits
+          if (allowLegal && bits <= 32) return [{ ident: base + ('i' + bits in Runtime.INT_TYPES ? '' : '$0'), bits: bits }];
           if (isNumber(base)) return getLegalLiterals(base, bits);
           var ret = new Array(Math.ceil(bits/32));
           var i = 0;
@@ -647,13 +648,7 @@ function analyzer(data, sidePass) {
                     default: throw 'Invalid mathop for legalization: ' + [value.op, item.lineNum, dump(item)];
                   }
                   // Do the legalization
-                  var sourceElements;
-                  if (sourceBits <= 32) {
-                    // The input is a legal type
-                    sourceElements = [{ ident: value.params[0].ident, bits: sourceBits }];
-                  } else {
-                    sourceElements = getLegalVars(value.params[0].ident, sourceBits);
-                  }
+                  var sourceElements = getLegalVars(value.params[0].ident, sourceBits, true);
                   if (!isNumber(shifts)) {
                     // We can't statically legalize this, do the operation at runtime TODO: optimize
                     assert(sourceBits == 64, 'TODO: handle nonconstant shifts on != 64 bits');
