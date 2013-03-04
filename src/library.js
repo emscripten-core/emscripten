@@ -5506,6 +5506,14 @@ LibraryManager.library = {
       return -a;
   },
   copysignf: 'copysign',
+  __signbit__deps: ['copysign'],
+  __signbit: function(x) {
+    // We implement using copysign so that we get support
+    // for negative zero (once copysign supports that).
+    return _copysign(1.0, x) < 0;
+  },
+  __signbitf: '__signbit',
+  __signbitd: '__signbit',
   hypot: function(a, b) {
      return Math.sqrt(a*a + b*b);
   },
