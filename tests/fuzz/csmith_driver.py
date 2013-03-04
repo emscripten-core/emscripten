@@ -84,9 +84,9 @@ while 1:
     except Exception, e:
       print e
       normal = False
-  open('testcase%d.js' % tried, 'w').write(
-    open(filename + '.js').read().replace('  var ret = run();', '  var ret = run(["1"]);')
-  )
+  #open('testcase%d.js' % tried, 'w').write(
+  #  open(filename + '.js').read().replace('  var ret = run();', '  var ret = run(["1"]);')
+  #)
   if not ok:
     print "EMSCRIPTEN BUG"
     notes['embug'] += 1
