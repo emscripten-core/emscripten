@@ -60,7 +60,7 @@ extern void emscripten_async_run_script(const char *script, int millis);
  *    that execution continues normally. Note that in both cases
  *    we do not run global destructors, atexit, etc., since we
  *    know the main loop will still be running, but if we do
- *    not simulate an infinite loop then the stack will be unwinded.
+ *    not simulate an infinite loop then the stack will be unwound.
  *    That means that if simulate_infinite_loop is false, and
  *    you created an object on the stack, it will be cleaned up
  *    before the main loop will be called the first time.
@@ -215,7 +215,7 @@ void emscripten_async_wget_data(const char* url, void *arg, void (*onload)(void*
  * More feature-complete version of emscripten_async_wget. Note:
  * this version is experimental.
  *
- * The requestype is 'GET' or 'POST',
+ * The requesttype is 'GET' or 'POST',
  * If is post request, param is the post parameter 
  * like key=value&key2=value2.
  * The param 'arg' is a pointer will be pass to the callback
