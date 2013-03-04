@@ -5086,7 +5086,7 @@ at function.:blag
         '''
       self.do_run(src, '22 : me and myself 25 1.34\n21 waka 95\n')
       
-    def test_perror(self):
+    def test_perrar(self):
       src = r'''
         #include <sys/types.h>
         #include <sys/stat.h>
