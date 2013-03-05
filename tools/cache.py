@@ -1,4 +1,4 @@
-import os.path, sys, shutil, hashlib, cPickle, zlib
+import os.path, sys, shutil, hashlib, cPickle, zlib, time
 
 import tempfiles
 
@@ -19,9 +19,9 @@ class Cache:
   def erase(self):
     tempfiles.try_delete(self.dirname)
     try:
-      open(Cache.dirname + '__last_clear', 'w').write('last clear: ' + time.asctime() + '\n')
-    except:
-      print >> sys.stderr, 'failed to save last clear time'
+      open(self.dirname + '__last_clear', 'w').write('last clear: ' + time.asctime() + '\n')
+    except Exception, e:
+      print >> sys.stderr, 'failed to save last clear time: ', e
 
   def get_path(self, shortname):
     return os.path.join(self.dirname, shortname)
