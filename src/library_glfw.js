@@ -1,7 +1,6 @@
 
 var LibraryGLFW = {
   $GLFW: {
-    initTime: null,
     keyboardFunc: null,
 	charFunc: null,
 	mouseButtonFunc: null,
@@ -10,23 +9,27 @@ var LibraryGLFW = {
     resizeFunc: null,
 	closeFunc: null,
 	refreshFunc: null,
-    motionFunc: null,
-    passiveMotionFunc: null,
     mouseFunc: null,
-	features: null,
 	params: null,
+    initTime: null,
     lastX: 0,
     lastY: 0,
     buttons: 0,
     modifiers: 0,
     initWindowWidth: 640,
     initWindowHeight: 480,
+
+/*******************************************************************************
+ * DOM EVENT CALLBACKS
+ ******************************************************************************/
+
+/*
     // Set when going fullscreen
     windowX: 0,
     windowY: 0,
     windowWidth: 0,
     windowHeight: 0,
-
+*/
     savePosition: function(event) {
       /* TODO maybe loop here ala http://www.quirksmode.org/js/findpos.html */
       GLFW.lastX = event['clientX'] - Module['canvas'].offsetLeft;
@@ -197,80 +200,61 @@ var LibraryGLFW = {
       return null;
     },
 
-    onKeydown: function(event) {
-/*
-      if (GLFW.specialFunc || GLFW.keyboardFunc) {
+	onKeyChanged: function(event, status){
+      if (GLFW.charFunc || GLFW.keyboardFunc) {
         var key = GLFW.getSpecialKey(event['keyCode']);
         if (key !== null) {
-          if( GLFW.specialFunc ) {
+          if( GLFW.keyboardFunc ) {
             event.preventDefault();
             GLFW.saveModifiers(event);
-            Runtime.dynCall('viii', GLFW.specialFunc, [key, GLFW.lastX, GLFW.lastY]);
+            Runtime.dynCall('vii', GLFW.keyboardFunc, [key, status]);
           }
         }
-        else
-        {
-          key = GLFW.getASCIIKey(event);
-          if( key !== null && GLFW.keyboardFunc ) {
-            event.preventDefault();
-            GLFW.saveModifiers(event);
-            Runtime.dynCall('viii', GLFW.keyboardFunc, [key, GLFW.lastX, GLFW.lastY]);
-          }
+ 
+        key = GLFW.getASCIIKey(event);
+        if( key !== null && GLFW.charFunc ) {
+          event.preventDefault();
+          GLFW.saveModifiers(event);
+          Runtime.dynCall('vii', GLFW.charFunc, [key, status]);
         }
       }
-*/
+	},
+
+    onKeydown: function(event) {
+		GLFW.onKeyChanged(event, 1);//GLFW_PRESS
     },
 
     onKeyup: function(event) {
-/*
-      if (GLFW.specialUpFunc || GLFW.keyboardUpFunc) {
-        var key = GLFW.getSpecialKey(event['keyCode']);
-        if (key !== null) {
-          if(GLFW.specialUpFunc) {
-            event.preventDefault ();
-            GLFW.saveModifiers(event);
-            Runtime.dynCall('viii', GLFW.specialUpFunc, [key, GLFW.lastX, GLFW.lastY]);
-          }
-        }
-        else
-        {
-          key = GLFW.getASCIIKey(event);
-          if( key !== null && GLFW.keyboardUpFunc ) {
-            event.preventDefault ();
-            GLFW.saveModifiers(event);
-            Runtime.dynCall('viii', GLFW.keyboardUpFunc, [key, GLFW.lastX, GLFW.lastY]);
-          }
-        }
-      }
-*/
+		GLFW.onKeyChanged(event, 0);//GLFW_RELEASE
     },
+
+	onMouseButtonChanged: function(event, status){
+	  if(GLFW.mouseButtonFunc == null)
+		return;
+
+      GLFW.savePosition(event);
+      if(event.target == Module["canvas"] || status == 0){//GLFW_RELEASE
+		if(status == 1){//GLFW_PRESS
+          try {
+            event.target.setCapture();
+          } catch (e) {}
+	    }
+        event.preventDefault();
+        GLFW.saveModifiers(event);
+		//DOM and glfw have the same button codes
+        Runtime.dynCall('vii', GLFW.mouseFunc, [event['button'], status]);
+	  }	
+	},
 
     onMouseButtonDown: function(event){
-/*
-      GLFW.savePosition(event);
       GLFW.buttons |= (1 << event['button']);
+	  GLFW.onMouseButtonChanged(event, 1);//GLFW_PRESS
+	},
 
-      if(event.target == Module["canvas"] && GLFW.mouseFunc){
-        try {
-          event.target.setCapture();
-        } catch (e) {}
-        event.preventDefault();
-        GLFW.saveModifiers(event);
-        Runtime.dynCall('viiii', GLFW.mouseFunc, [event['button'], 0, GLFW.lastX, GLFW.lastY]);
-      }
-    },
-
-    onMouseButtonUp: function(event){
-      GLFW.savePosition(event);
-      GLFW.buttons &= ~(1 << event['button']);
-
-      if(GLFW.mouseFunc) {
-        event.preventDefault();
-        GLFW.saveModifiers(event);
-        Runtime.dynCall('viiii', GLFW.mouseFunc, [event['button'], 1, GLFW.lastX, GLFW.lastY]);
-      }
-*/
-    },
+	onMouseButtonUp: function(event){
+	  GLFW.buttons &= ~(1 << event['button']);
+	  GLFW.onMouseButtonChanged(event, 0);//GLFW_RELEASE    
+	},
 
     // TODO add fullscreen API ala:
     // http://johndyer.name/native-fullscreen-javascript-api-plus-jquery-plugin/
@@ -318,14 +302,18 @@ var LibraryGLFW = {
     }
   },
 
+/*******************************************************************************
+ * GLFW FUNCTIONS
+ ******************************************************************************/
+
 	/* GLFW initialization, termination and version querying */
 	glfwInit : function() { 
 		GLFW.initTime = Date.now() / 1000;
-/*
+
 		window.addEventListener("keydown", GLFW.onKeydown, true);
 		window.addEventListener("keyup", GLFW.onKeyup, true);
-*/		window.addEventListener("mousemove", GLFW.onMousemove, true);
-/*		window.addEventListener("mousedown", GLFW.onMouseButtonDown, true);
+		window.addEventListener("mousemove", GLFW.onMousemove, true);
+		window.addEventListener("mousedown", GLFW.onMouseButtonDown, true);
 		window.addEventListener("mouseup", GLFW.onMouseButtonUp, true);
 
 		__ATEXIT__.push({ func: function() {
@@ -336,16 +324,14 @@ var LibraryGLFW = {
 		  window.removeEventListener("mouseup", GLFW.onMouseButtonUp, true);
 		  Module["canvas"].width = Module["canvas"].height = 1;
 		} });
-*/
-		GLFW.features = new Array();
-		GLFW.features[0x00030001] = true; //GLFW_MOUSE_CURSOR
-		GLFW.features[0x00030002] = false; //GLFW_STICKY_KEYS
-		GLFW.features[0x00030003] = true; //GLFW_STICKY_MOUSE_BUTTONS
-		GLFW.features[0x00030004] = false; //GLFW_SYSTEM_KEYS
-		GLFW.features[0x00030005] = false; //GLFW_KEY_REPEAT
-		GLFW.features[0x00030006] = true; //GLFW_AUTO_POLL_EVENTS
 
 		GLFW.params = new Array();
+		GLFW.params[0x00030001] = true; //GLFW_MOUSE_CURSOR
+		GLFW.params[0x00030002] = false; //GLFW_STICKY_KEYS
+		GLFW.params[0x00030003] = true; //GLFW_STICKY_MOUSE_BUTTONS
+		GLFW.params[0x00030004] = false; //GLFW_SYSTEM_KEYS
+		GLFW.params[0x00030005] = false; //GLFW_KEY_REPEAT
+		GLFW.params[0x00030006] = true; //GLFW_AUTO_POLL_EVENTS
 		GLFW.params[0x00020001] = true; //GLFW_OPENED
         GLFW.params[0x00020002] = true; //GLFW_ACTIVE
         GLFW.params[0x00020003] = false; //GLFW_ICONIFIED
@@ -400,10 +386,10 @@ var LibraryGLFW = {
 		if(mode == 0x00010001){//GLFW_WINDOW
 			Browser.setCanvasSize( GLFW.initWindowWidth = width,
                            GLFW.initWindowHeight = height );
-			GLFW.features[0x00030003] = true; //GLFW_STICKY_MOUSE_BUTTONS
+			GLFW.params[0x00030003] = true; //GLFW_STICKY_MOUSE_BUTTONS
 		}
 		else if(mode == 0x00010002){//GLFW_FULLSCREEN
-			GLFW.features[0x00030003] = false; //GLFW_STICKY_MOUSE_BUTTONS
+			GLFW.params[0x00030003] = false; //GLFW_STICKY_MOUSE_BUTTONS
 		}
 		else{
 			throw "Invalid glfwOpenWindow mode.";
@@ -419,6 +405,9 @@ var LibraryGLFW = {
 
 	glfwCloseWindow__deps: ['$Browser'],
 	glfwCloseWindow : function() {
+		if (GLFW.closeFunc) {
+    		Runtime.dynCall('v', GLUT.closeFunc, []);
+    	}
 		Module.ctx = Browser.destroyContext(Module['canvas'], true, true);
 	},
 
@@ -431,11 +420,20 @@ var LibraryGLFW = {
 		setValue(height, Module['canvas'].height, 'i32');
 	},
 
-	glfwSetWindowSize : function( width, height ) { throw "glfwSetWindowSize is not implemented yet."; },
+	glfwSetWindowSize : function( width, height ) {
+		GLFW.cancelFullScreen();
+    	Browser.setCanvasSize(width, height);
+    	if (GLFW.resizeFunc) {
+    		Runtime.dynCall('vii', GLUT.resizeFunc, [width, height]);
+    	}
+	},
+
 	glfwSetWindowPos : function( x, y ) { throw "glfwSetWindowPos is not implemented yet."; },
 	glfwIconifyWindow : function() { throw "glfwIconifyWindow is not implemented yet."; },
 	glfwRestoreWindow : function() { throw "glfwRestoreWindow is not implemented yet."; },
+
 	glfwSwapBuffers : function() {},
+
 	glfwSwapInterval : function( interval ) {},
 
 	glfwGetWindowParam : function( param ) {
@@ -467,17 +465,16 @@ var LibraryGLFW = {
 		return 0;//GLFW_RELEASE	
 	},
 
-	glfwGetMouseButton : function( button ) { throw "glfwGetMouseButton is not implemented yet."; },
+	glfwGetMouseButton : function( button ) {
+		return GLUT.buttons & button;
+	},
 
 	glfwGetMousePos : function( xpos, ypos ) { 
 		setValue(xpos, GLFW.lastX, 'i32');
 		setValue(ypos, GLFW.lastY, 'i32');
 	},
 
-	glfwSetMousePos : function( xpos, ypos ) { 
-		throw "glfwSetMousePos is not implemented yet."; 
-	},
-
+	glfwSetMousePos : function( xpos, ypos ) { throw "glfwSetMousePos is not implemented yet."; },
 	glfwGetMouseWheel : function() { throw "glfwGetMouseWheel is not implemented yet."; },
 	glfwSetMouseWheel : function( pos ) { throw "glfwSetMouseWheel is not implemented yet."; },
 
@@ -540,11 +537,11 @@ var LibraryGLFW = {
 
 	/* Enable/disable functions */
 	glfwEnable : function( token ) {
-		GLFW.features[token] = false;
+		GLFW.params[token] = false;
 	},
 
 	glfwDisable : function( token ) {
-		GLFW.features[token] = true;
+		GLFW.params[token] = true;
 	},
 
 	/* Image/texture I/O support */
