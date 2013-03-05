@@ -1200,7 +1200,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     return outfile
 
 # compatibility with existing emcc, etc. scripts
-Cache = cache.Cache()
+Cache = cache.Cache(debug=DEBUG_CACHE)
 JCache = cache.JCache(Cache)
 chunkify = cache.chunkify
 

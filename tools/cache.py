@@ -1,15 +1,16 @@
-import os.path, shutil, hashlib, cPickle, zlib
+import os.path, sys, shutil, hashlib, cPickle, zlib
 
 import tempfiles
 
 # Permanent cache for dlmalloc and stdlibc++
 class Cache:
-  def __init__(self, dirname=None):
+  def __init__(self, dirname=None, debug=False):
     if dirname is None:
       dirname = os.environ.get('EM_CACHE')
     if not dirname:
       dirname = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
     self.dirname = dirname
+    self.debug = debug
 
   def ensure(self):
     if not os.path.exists(self.dirname):
@@ -43,6 +44,7 @@ class JCache:
   def __init__(self, cache):
     self.cache = cache
     self.dirname = os.path.join(cache.dirname, 'jcache')
+    self.debug = cache.debug
 
   def ensure(self):
     self.cache.ensure()
@@ -63,27 +65,27 @@ class JCache:
 
   # Returns a cached value, if it exists. Make sure the full key matches
   def get(self, shortkey, keys):
-    #if DEBUG: print >> sys.stderr, 'jcache get?', shortkey
+    if self.debug: print >> sys.stderr, 'jcache get?', shortkey
     cachename = self.get_cachename(shortkey)
     if not os.path.exists(cachename):
-      #if DEBUG: print >> sys.stderr, 'jcache none at all'
+      if self.debug: print >> sys.stderr, 'jcache none at all'
       return
     try:
       data = cPickle.loads(zlib.decompress(open(cachename).read()))
     except Exception, e:
       if DEBUG_CACHE: print >> sys.stderr, 'jcache decompress/unpickle error:', e
     if len(data) != 2:
-      #if DEBUG: print >> sys.stderr, 'jcache error in get'
+      if self.debug: print >> sys.stderr, 'jcache error in get'
       return
     oldkeys = data[0]
     if len(oldkeys) != len(keys):
-      #if DEBUG: print >> sys.stderr, 'jcache collision (a)'
+      if self.debug: print >> sys.stderr, 'jcache collision (a)'
       return
     for i in range(len(oldkeys)):
       if oldkeys[i] != keys[i]:
-        #if DEBUG: print >> sys.stderr, 'jcache collision (b)'
+        if self.debug: print >> sys.stderr, 'jcache collision (b)'
         return
-    #if DEBUG: print >> sys.stderr, 'jcache win'
+    if self.debug: print >> sys.stderr, 'jcache win'
     return data[1]
 
   # Sets the cached value for a key (from get_key)
@@ -96,7 +98,6 @@ class JCache:
     except Exception, e:
       if DEBUG_CACHE: print >> sys.stderr, 'jcache compress/pickle error:', e
       return
-    #if DEBUG:
     #  for i in range(len(keys)):
     #    open(cachename + '.key' + str(i), 'w').write(keys[i])
     #  open(cachename + '.value', 'w').write(value)
