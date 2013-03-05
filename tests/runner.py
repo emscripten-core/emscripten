@@ -9749,6 +9749,23 @@ seeked= file.
           if optimize_normally: del os.environ['EMCC_OPTIMIZE_NORMALLY']
           del os.environ['EMCC_DEBUG']
 
+    def test_jcache_printf(self):
+      open(self.in_dir('src.cpp'), 'w').write(r'''
+        #include <stdio.h>
+        #include <stdint.h>
+        #include <emscripten.h>
+        int main() {
+          emscripten_jcache_printf("hello world\n");
+          emscripten_jcache_printf("hello %d world\n", 5);
+          emscripten_jcache_printf("hello %.3f world\n", 123.456789123);
+          emscripten_jcache_printf("hello %llx world\n", 0x1234567811223344ULL);
+          return 0;
+        }
+      ''')
+      Popen([PYTHON, EMCC, self.in_dir('src.cpp')]).communicate()
+      output = run_js('a.out.js')
+      self.assertIdentical('hello world\nhello 5 world\nhello 123.457 world\nhello 1234567811223300 world\n', output)
+
     def test_conftest_s_flag_passing(self):
       open(os.path.join(self.get_dir(), 'conftest.c'), 'w').write(r'''
         int main() {
@@ -11992,9 +12009,17 @@ fi
           # finally, build a file close to the previous, to see that some chunks are found in the cache and some not
           (['--jcache'], 'hello_libcxx_mod1.cpp', False, True, True, True, True, True, []), # win on pre, mix on funcs, mix on jsfuncs
           (['--jcache'], 'hello_libcxx_mod1.cpp', False, True, False, True, False, True, []),
+          (None, None, None, None, None, None, None, None, None), # clear
+          (['--jcache'], 'hello_libcxx_mod2.cpp', True, False, True, False, True, False, []), # load into cache
+          (['--jcache'], 'hello_libcxx_mod2a.cpp', False, True, True, True, True, True, []) # add a printf, do not lose everything
         ]:
-          print >> sys.stderr, args, input_file, expect_pre_save, expect_pre_load, expect_funcs_save, expect_funcs_load, expect_jsfuncs_save, expect_jsfuncs_load, expected
           self.clear()
+          if args is None:
+            Cache.erase()
+            continue
+
+          print >> sys.stderr, args, input_file, expect_pre_save, expect_pre_load, expect_funcs_save, expect_funcs_load, expect_jsfuncs_save, expect_jsfuncs_load, expected
+            
           out, err = Popen([PYTHON, EMCC, '-O2', path_from_root('tests', input_file)] + args, stdout=PIPE, stderr=PIPE).communicate()
           errtail = err.split('emcc invocation')[-1]
           self.assertContained('hello, world!', run_js('a.out.js'), errtail)

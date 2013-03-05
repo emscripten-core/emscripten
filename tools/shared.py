@@ -1,4 +1,4 @@
-import shutil, time, os, sys, json, tempfile, copy, shlex, atexit, subprocess, hashlib, cPickle, zlib
+import shutil, time, os, sys, json, tempfile, copy, shlex, atexit, subprocess, hashlib, cPickle, zlib, re
 from subprocess import Popen, PIPE, STDOUT
 from tempfile import mkstemp
 
@@ -1201,6 +1201,32 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       if not ok:
         print >> sys.stderr, 'bootstrapping relooper failed. You may need to manually create src/relooper.js by compiling it, see src/relooper/emscripten'
         1/0
+
+  @staticmethod
+  def preprocess(infile, outfile):
+    '''
+      Preprocess source C/C++ in some special ways that emscripten needs. Returns
+      a filename (potentially the same one if nothing was changed).
+
+      Currently this only does emscripten_jcache_printf(..) rewriting.
+    '''
+    src = open(infile).read() # stack warning on jcacheprintf! in docs # add jcache printf test separatrely, for content of printf
+    if 'emscripten_jcache_printf' not in src: return infile
+    def fix(m):
+      text = m.groups(0)[0]
+      assert text.count('(') == 1 and text.count(')') == 1, 'must have simple expressions in emscripten_jcache_printf calls, no parens'
+      assert text.count('"') == 2, 'must have simple expressions in emscripten_jcache_printf calls, no strings as varargs parameters'
+      start = text.index('(')
+      end = text.rindex(')')
+      args = text[start+1:end].split(',')
+      args = map(lambda x: x.strip(), args)
+      if args[0][0] == '"':
+        # flatten out
+        args = map(lambda x: str(ord(x)), args[0][1:len(args[0])-1]) + ['0'] + args[1:]
+      return 'emscripten_jcache_printf_(' + ','.join(args) + ')'
+    src = re.sub(r'(emscripten_jcache_printf\([^)]+\))', lambda m: fix(m), src)
+    open(outfile, 'w').write(src)
+    return outfile
 
 # Permanent cache for dlmalloc and stdlibc++
 class Cache:

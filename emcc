@@ -421,6 +421,22 @@ Options that are modified or new in %s include:
                            'jsfuncs' will be cached. So avoid modifying
                            globals to let caching work fully.
 
+                           To work around the problem mentioned in the
+                           previous paragraph, you can use
+
+                            emscripten_jcache_printf
+
+                           when adding debug printfs to your code. That
+                           function is specially preprocessed so that it
+                           does not create a constant string global for
+                           its first argument. See emscripten.h for more
+                           details. Note in particular that you need to
+                           already have a call to that function in your
+                           code *before* you add one and do an incremental
+                           build, so that adding an external reference
+                           (also a global property) does not invalidate
+                           everything.
+
   --clear-cache            Manually clears the cache of compiled
                            emscripten system libraries (libc++,
                            libc++abi, libc). This is normally
@@ -978,6 +994,7 @@ try:
   for input_file in input_files:
     if input_file.endswith(SOURCE_SUFFIXES):
       if DEBUG: print >> sys.stderr, 'emcc: compiling source file: ', input_file
+      input_file = shared.Building.preprocess(input_file, in_temp(uniquename(input_file)))
       output_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
       temp_files.append(output_file)
       args = newargs + ['-emit-llvm', '-c', input_file, '-o', output_file]

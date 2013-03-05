@@ -7368,6 +7368,23 @@ LibraryManager.library = {
   emscripten_random: function() {
     return Math.random();
   },
+
+  emscripten_jcache_printf___deps: ['_formatString'],
+  emscripten_jcache_printf_: function(varargs) {
+    var MAX = 10240;
+    if (!_emscripten_jcache_printf_.buffer) {
+      _emscripten_jcache_printf_.buffer = _malloc(MAX);
+    }
+    var i = 0;
+    do {
+      var curr = {{{ makeGetValue('varargs', 'i*4', 'i8') }}};
+      {{{ makeSetValue('_emscripten_jcache_printf_.buffer', 'i', 'curr', 'i8') }}};
+      i++;
+      assert(i*4 < MAX);
+    } while (curr != 0);
+    Module.print(intArrayToString(__formatString(_emscripten_jcache_printf_.buffer, varargs + i*4)).replace('\\n', ''));
+    Runtime.stackAlloc(-4*i); // free up the stack space we know is ok to free
+  },
 };
 
 function autoAddDeps(object, name) {
