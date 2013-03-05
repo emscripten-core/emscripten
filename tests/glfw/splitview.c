@@ -15,6 +15,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifdef EMSCRIPTEN
+#include <emscripten/emscripten.h>
+#endif
+
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -446,6 +450,23 @@ static void GLFWCALL mouseButtonFun( int button, int action )
 // main()
 //========================================================================
 
+void iteration(){
+        // Only redraw if we need to
+        if( do_redraw )
+        {
+            // Draw all views
+            drawAllViews();
+
+            // Swap buffers
+            glfwSwapBuffers();
+
+            do_redraw = 0;
+        }
+
+        // Wait for new events
+        glfwWaitEvents();
+}
+
 int main( void )
 {
     // Initialise GLFW
@@ -484,27 +505,17 @@ int main( void )
     glfwSetMousePosCallback( mousePosFun );
     glfwSetMouseButtonCallback( mouseButtonFun );
 
+#ifdef EMSCRIPTEN
+  emscripten_set_main_loop (iteration, 0, 1);
+#else
     // Main loop
-    do
+   	do
     {
-        // Only redraw if we need to
-        if( do_redraw )
-        {
-            // Draw all views
-            drawAllViews();
-
-            // Swap buffers
-            glfwSwapBuffers();
-
-            do_redraw = 0;
-        }
-
-        // Wait for new events
-        glfwWaitEvents();
-
+		iteration();
     } // Check if the ESC key was pressed or the window was closed
     while( glfwGetKey( GLFW_KEY_ESC ) != GLFW_PRESS &&
            glfwGetWindowParam( GLFW_OPENED ) );
+#endif
 
     // Close OpenGL window and terminate GLFW
     glfwTerminate();

@@ -10,6 +10,9 @@
 #include <stdlib.h>
 #include <math.h>
 
+#ifdef EMSCRIPTEN
+#include <emscripten/emscripten.h>
+#endif
 
 //========================================================================
 // Constants
@@ -719,20 +722,9 @@ void GameOver( void )
 // GameLoop() - Game loop
 //========================================================================
 
-void GameLoop( void )
-{
-    int playing, event;
+int playing, event;
 
-    // Initialize a new game
-    NewGame();
-
-    // Enable sticky keys
-    glfwEnable( GLFW_STICKY_KEYS );
-
-    // Loop until the game ends
-    playing = GL_TRUE;
-    while( playing && glfwGetWindowParam( GLFW_OPENED ) )
-    {
+void iteration(){
         // Frame timer
         oldtime = thistime;
         thistime = glfwGetTime();
@@ -784,7 +776,36 @@ void GameLoop( void )
 
         // Swap buffers
         glfwSwapBuffers();
+}
+
+void GameLoop( void )
+{
+    int menuoption;
+
+    // Initialize a new game
+    NewGame();
+
+    // Enable sticky keys
+    glfwEnable( GLFW_STICKY_KEYS );
+
+    // Loop until the game ends
+    playing = GL_TRUE;
+
+	menuoption = GameMenu();
+
+    // If the user wants to play, let him...
+    if( menuoption != MENU_PLAY)
+		playing = GL_FALSE;
+
+#ifdef EMSCRIPTEN
+  emscripten_set_main_loop (iteration, 0, 1);
+#else
+    // Main loop
+    while( playing && glfwGetWindowParam( GLFW_OPENED ) )
+    {
+		iteration();
     }
+#endif
 
     // Disable sticky keys
     glfwDisable( GLFW_STICKY_KEYS );
@@ -800,7 +821,6 @@ void GameLoop( void )
 
 int main( void )
 {
-    int menuoption;
 
     // Initialize GLFW
     if( !glfwInit() )
@@ -826,19 +846,7 @@ int main( void )
         exit( EXIT_FAILURE );
     }
 
-    // Main loop
-    do
-    {
-        // Get menu option
-        menuoption = GameMenu();
-
-        // If the user wants to play, let him...
-        if( menuoption == MENU_PLAY )
-        {
-            GameLoop();
-        }
-    }
-    while( menuoption != MENU_QUIT );
+    GameLoop();
 
     // Unload all textures
     if( glfwGetWindowParam( GLFW_OPENED ) )

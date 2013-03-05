@@ -32,6 +32,10 @@
 #define M_PI 3.141592654
 #endif
 
+#ifdef EMSCRIPTEN
+#include <emscripten/emscripten.h>
+#endif
+
 /* The program exits when this is zero.
  */
 static int running = 1;
@@ -317,6 +321,22 @@ static void init(int argc, char *argv[])
   }
 }
 
+void iteration(){
+        // Draw gears
+        draw();
+
+        // Update animation
+        animate();
+
+        // Swap buffers
+        glfwSwapBuffers();
+
+        // Was the window closed?
+        if( !glfwGetWindowParam( GLFW_OPENED ) )
+        {
+            running = 0;
+        }
+}
 
 /* program entry */
 int main(int argc, char *argv[])
@@ -345,25 +365,15 @@ int main(int argc, char *argv[])
     glfwSetWindowSizeCallback( reshape );
     glfwSetKeyCallback( key );
 
+#ifdef EMSCRIPTEN
+  emscripten_set_main_loop (iteration, 0, 1);
+#else
     // Main loop
     while( running )
     {
-        // Draw gears
-        draw();
-
-        // Update animation
-        animate();
-
-        // Swap buffers
-        glfwSwapBuffers();
-
-        // Was the window closed?
-        if( !glfwGetWindowParam( GLFW_OPENED ) )
-        {
-            running = 0;
-        }
+		iteration();
     }
-
+#endif
     // Terminate GLFW
     glfwTerminate();
 

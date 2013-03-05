@@ -43,6 +43,10 @@
 #include <math.h>
 #include <GL/glfw.h>
 
+#ifdef EMSCRIPTEN
+#include <emscripten/emscripten.h>
+#endif
+
 // Define tokens for GL_EXT_separate_specular_color if not already defined
 #ifndef GL_EXT_separate_specular_color
 #define GL_LIGHT_MODEL_COLOR_CONTROL_EXT  0x81F8
@@ -970,10 +974,34 @@ void GLFWCALL PhysicsThreadFun( void *arg )
 // main()
 //========================================================================
 
+double     t0, t;
+int frames, benchmark;
+void iteration(){
+        // Get frame time
+        t = glfwGetTime() - t0;
+
+        // Draw...
+        Draw( t );
+
+        // Swap buffers
+        glfwSwapBuffers();
+
+        // Check if window was closed
+        running = running && glfwGetWindowParam( GLFW_OPENED );
+
+        // Increase frame count
+        frames ++;
+
+        // End of benchmark?
+        if( benchmark && t >= 60.0 )
+        {
+            running = 0;
+        }
+}
+
 int main( int argc, char **argv )
 {
-    int        i, frames, benchmark;
-    double     t0, t;
+    int        i;
     GLFWthread physics_thread = 0;
 
     // Use multithreading by default, but don't benchmark
@@ -1108,29 +1136,15 @@ int main( int argc, char **argv )
     // Main loop
     t0 = glfwGetTime();
     frames = 0;
+#ifdef EMSCRIPTEN
+  emscripten_set_main_loop (iteration, 0, 1);
+#else
+    // Main loop
     while( running )
     {
-        // Get frame time
-        t = glfwGetTime() - t0;
-
-        // Draw...
-        Draw( t );
-
-        // Swap buffers
-        glfwSwapBuffers();
-
-        // Check if window was closed
-        running = running && glfwGetWindowParam( GLFW_OPENED );
-
-        // Increase frame count
-        frames ++;
-
-        // End of benchmark?
-        if( benchmark && t >= 60.0 )
-        {
-            running = 0;
-        }
+		iteration();
     }
+#endif
     t = glfwGetTime() - t0;
 
     // Wait for particle physics thread to die
