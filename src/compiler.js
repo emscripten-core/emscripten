@@ -199,7 +199,7 @@ load('parseTools.js');
 load('intertyper.js');
 load('analyzer.js');
 load('jsifier.js');
-if (RELOOP) load('relooper.js')
+if (RELOOP) load(RELOOPER)
 globalEval(processMacros(preprocess(read('runtime.js'))));
 Runtime.QUANTUM_SIZE = QUANTUM_SIZE;
 

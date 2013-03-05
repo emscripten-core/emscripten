@@ -1,6 +1,7 @@
 import shutil, time, os, sys, json, tempfile, copy, shlex, atexit, subprocess, hashlib, cPickle, zlib, re
 from subprocess import Popen, PIPE, STDOUT
 from tempfile import mkstemp
+import jsrun, cache, tempfiles
 
 def listify(x):
   if type(x) is not list: return [x]
@@ -289,34 +290,50 @@ AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
 BINDINGS_GENERATOR = path_from_root('tools', 'bindings_generator.py')
 EXEC_LLVM = path_from_root('tools', 'exec_llvm.py')
 FILE_PACKAGER = path_from_root('tools', 'file_packager.py')
-RELOOPER = path_from_root('src', 'relooper.js')
 
 # Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use TEMP_DIR/emscripten_temp
 
-try:
-  TEMP_DIR
-except:
-  print >> sys.stderr, 'TEMP_DIR not defined in ~/.emscripten, using /tmp'
-  TEMP_DIR = '/tmp'
+class Configuration:
+  def __init__(self, environ):
+    self.DEBUG = environ.get('EMCC_DEBUG')
+    if self.DEBUG == "0":
+      self.DEBUG = None
+    self.DEBUG_CACHE = self.DEBUG and "cache" in self.DEBUG
+    self.EMSCRIPTEN_TEMP_DIR = None
 
-CANONICAL_TEMP_DIR = os.path.join(TEMP_DIR, 'emscripten_temp')
-EMSCRIPTEN_TEMP_DIR = None
+    try:
+      self.TEMP_DIR = TEMP_DIR
+    except NameError:
+      print >> sys.stderr, 'TEMP_DIR not defined in ~/.emscripten, using /tmp'
+      self.TEMP_DIR = '/tmp'
 
-DEBUG = os.environ.get('EMCC_DEBUG')
-if DEBUG == "0":
-  DEBUG = None
-DEBUG_CACHE = DEBUG and "cache" in DEBUG
+    self.CANONICAL_TEMP_DIR = os.path.join(self.TEMP_DIR, 'emscripten_temp')
 
-if DEBUG:
-  try:
-    EMSCRIPTEN_TEMP_DIR = CANONICAL_TEMP_DIR
-    if not os.path.exists(EMSCRIPTEN_TEMP_DIR):
-      os.makedirs(EMSCRIPTEN_TEMP_DIR)
-  except Exception, e:
-    print >> sys.stderr, e, 'Could not create canonical temp dir. Check definition of TEMP_DIR in ~/.emscripten'
+    if self.DEBUG:
+      try:
+        self.EMSCRIPTEN_TEMP_DIR = self.CANONICAL_TEMP_DIR
+        if not os.path.exists(self.EMSCRIPTEN_TEMP_DIR):
+          os.makedirs(self.EMSCRIPTEN_TEMP_DIR)
+      except Exception, e:
+        print >> sys.stderr, e, 'Could not create canonical temp dir. Check definition of TEMP_DIR in ~/.emscripten'
+
+  def get_temp_files(self):
+    return tempfiles.TempFiles(
+      tmp=self.TEMP_DIR if not self.DEBUG else self.EMSCRIPTEN_TEMP_DIR,
+      save_debug_files=os.environ.get('EMCC_DEBUG_SAVE'))
+
+  def debug_log(self, msg):
+    if self.DEBUG:
+      print >> sys.stderr, msg
+
+configuration = Configuration(environ=os.environ)
+DEBUG = configuration.DEBUG
+EMSCRIPTEN_TEMP_DIR = configuration.EMSCRIPTEN_TEMP_DIR
+DEBUG_CACHE = configuration.DEBUG_CACHE
+CANONICAL_TEMP_DIR = configuration.CANONICAL_TEMP_DIR
 
 if not EMSCRIPTEN_TEMP_DIR:
-  EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_', dir=TEMP_DIR)
+  EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_', dir=configuration.TEMP_DIR)
   def clean_temp():
     try_delete(EMSCRIPTEN_TEMP_DIR)
   atexit.register(clean_temp)
@@ -414,42 +431,7 @@ if not WINDOWS:
     pass
 
 # Temp file utilities
-
-def try_delete(filename):
-  try:
-    os.unlink(filename)
-  except:
-    try:
-      shutil.rmtree(filename)
-    except:
-      pass
-
-class TempFiles:
-  def __init__(self):
-    self.to_clean = []
-
-  def note(self, filename):
-    self.to_clean.append(filename)
-
-  def get(self, suffix):
-    """Returns a named temp file  with the given prefix."""
-    named_file = tempfile.NamedTemporaryFile(dir=TEMP_DIR if not DEBUG else EMSCRIPTEN_TEMP_DIR, suffix=suffix, delete=False)
-    self.note(named_file.name)
-    return named_file
-
-  def clean(self):
-    if os.environ.get('EMCC_DEBUG_SAVE'):
-      print >> sys.stderr, 'not cleaning up temp files since in debug-save mode, see them in %s' % EMSCRIPTEN_TEMP_DIR
-      return
-    for filename in self.to_clean:
-      try_delete(filename)
-    self.to_clean = []
-
-  def run_and_clean(self, func):
-    try:
-      return func()
-    finally:
-      self.clean()
+from tempfiles import try_delete
 
 # Utilities
 
@@ -463,23 +445,10 @@ def check_engine(engine):
     print 'Checking JS engine %s failed. Check %s. Details: %s' % (str(engine), EM_CONFIG, str(e))
     return False
 
-def timeout_run(proc, timeout, note='unnamed process', full_output=False):
-  start = time.time()
-  if timeout is not None:
-    while time.time() - start < timeout and proc.poll() is None:
-      time.sleep(0.1)
-    if proc.poll() is None:
-      proc.kill() # XXX bug: killing emscripten.py does not kill it's child process!
-      raise Exception("Timed out: " + note)
-  out = proc.communicate()
-  return '\n'.join(out) if full_output else out[0]
-
-def run_js(filename, engine=None, args=[], check_timeout=False, stdout=PIPE, stderr=None, cwd=None, full_output=False):
-  if engine is None: engine = JS_ENGINES[0]
-  engine = listify(engine)
-  #if not WINDOWS: 'd8' in engine[0] or 'node' in engine[0]: engine += ['--stack_size=8192'] # needed for some big projects
-  command = engine + [filename] + (['--'] if 'd8' in engine[0] else []) + args
-  return timeout_run(Popen(command, stdout=stdout, stderr=stderr, cwd=cwd), 15*60 if check_timeout else None, 'Execution', full_output=full_output)
+def run_js(filename, engine=None, *args, **kw):
+  if engine is None:
+    engine = JS_ENGINES[0]
+  return jsrun.run_js(filename, engine, *args, **kw)
 
 def to_cc(cxx):
   # By default, LLVM_GCC and CLANG are really the C++ versions. This gets an explicit C version
@@ -654,7 +623,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       .replace('$EMSCRIPTEN_ROOT', path_from_root('').replace('\\', '/')) \
       .replace('$CFLAGS', env['CFLAGS']) \
       .replace('$CXXFLAGS', env['CFLAGS'])
-    toolchainFile = mkstemp(suffix='.cmaketoolchain.txt', dir=TEMP_DIR)[1]
+    toolchainFile = mkstemp(suffix='.cmaketoolchain.txt', dir=configuration.TEMP_DIR)[1]
     open(toolchainFile, 'w').write(CMakeToolchain)
     args.append('-DCMAKE_TOOLCHAIN_FILE=%s' % os.path.abspath(toolchainFile))
     return args
@@ -968,8 +937,9 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     os.environ['EMSCRIPTEN_SUPPRESS_USAGE_WARNING'] = '1'
 
     # Run Emscripten
+    Settings.RELOOPER = Cache.get_path('relooper.js')
     settings = Settings.serialize()
-    compiler_output = timeout_run(Popen([PYTHON, EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE), None, 'Compiling')
+    compiler_output = jsrun.timeout_run(Popen([PYTHON, EMSCRIPTEN, filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + settings + extra_args, stdout=PIPE), None, 'Compiling')
     #print compiler_output
 
     # Detect compilation crashes and errors
@@ -1161,25 +1131,26 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
   # Make sure the relooper exists. If it does not, check out the relooper code and bootstrap it
   @staticmethod
-  def ensure_relooper():
-    if os.path.exists(RELOOPER): return
+  def ensure_relooper(relooper):
+    if os.path.exists(relooper): return
+    Cache.ensure()
     curr = os.getcwd()
     try:
       ok = False
       print >> sys.stderr, '======================================='
       print >> sys.stderr, 'bootstrapping relooper...'
-      Cache.ensure()
       os.chdir(path_from_root('src'))
 
       def make(opt_level):
-        raw = RELOOPER + '.raw.js'
+        raw = relooper + '.raw.js'
         Building.emcc(os.path.join('relooper', 'Relooper.cpp'), ['-I' + os.path.join('relooper'), '--post-js',
           os.path.join('relooper', 'emscripten', 'glue.js'),
           '-s', 'TOTAL_MEMORY=52428800',
           '-s', 'EXPORTED_FUNCTIONS=["_rl_set_output_buffer","_rl_make_output_buffer","_rl_new_block","_rl_delete_block","_rl_block_add_branch_to","_rl_new_relooper","_rl_delete_relooper","_rl_relooper_add_block","_rl_relooper_calculate","_rl_relooper_render", "_rl_set_asm_js_mode"]',
           '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["memcpy", "memset", "malloc", "free", "puts"]',
+          '-s', 'RELOOPER="' + relooper + '"',
           '-O' + str(opt_level), '--closure', '0'], raw)
-        f = open(RELOOPER, 'w')
+        f = open(relooper, 'w')
         f.write("// Relooper, (C) 2012 Alon Zakai, MIT license, https://github.com/kripken/Relooper\n")
         f.write("var Relooper = (function() {\n");
         f.write(open(raw).read())
@@ -1199,7 +1170,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     finally:
       os.chdir(curr)
       if not ok:
-        print >> sys.stderr, 'bootstrapping relooper failed. You may need to manually create src/relooper.js by compiling it, see src/relooper/emscripten'
+        print >> sys.stderr, 'bootstrapping relooper failed. You may need to manually create relooper.js by compiling it, see src/relooper/emscripten'
         1/0
 
   @staticmethod
@@ -1228,205 +1199,10 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     open(outfile, 'w').write(src)
     return outfile
 
-# Permanent cache for dlmalloc and stdlibc++
-class Cache:
-  dirname = os.environ.get('EM_CACHE')
-  if not dirname:
-    dirname = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
-
-  @staticmethod
-  def ensure():
-    if not os.path.exists(Cache.dirname):
-      os.makedirs(Cache.dirname)
-
-  @staticmethod
-  def erase():
-    try:
-      shutil.rmtree(Cache.dirname)
-    except:
-      pass
-    try_delete(RELOOPER)
-    try:
-      open(Cache.dirname + '__last_clear', 'w').write('last clear: ' + time.asctime() + '\n')
-    except:
-      print >> sys.stderr, 'failed to save last clear time'
-
-  # Request a cached file. If it isn't in the cache, it will be created with
-  # the given creator function
-  @staticmethod
-  def get(shortname, creator):
-    if not shortname.endswith('.bc'): shortname += '.bc'
-    cachename = os.path.join(Cache.dirname, shortname)
-    if os.path.exists(cachename):
-      return cachename
-    Cache.ensure()
-    shutil.copyfile(creator(), cachename)
-    return cachename
-
-# JS-specific cache. We cache the results of compilation and optimization,
-# so that in incremental builds we can just load from cache.
-# We cache reasonably-large-sized chunks
-class JCache:
-  dirname = os.path.join(Cache.dirname, 'jcache')
-
-  @staticmethod
-  def ensure():
-    Cache.ensure()
-    if not os.path.exists(JCache.dirname):
-      os.makedirs(JCache.dirname)
-
-  @staticmethod
-  def get_shortkey(keys):
-    if type(keys) not in [list, tuple]:
-      keys = [keys]
-    ret = ''
-    for key in keys:
-      assert type(key) == str
-      ret += hashlib.md5(key).hexdigest()
-    return ret
-
-  @staticmethod
-  def get_cachename(shortkey):
-    return os.path.join(JCache.dirname, shortkey)
-
-  # Returns a cached value, if it exists. Make sure the full key matches
-  @staticmethod
-  def get(shortkey, keys):
-    if DEBUG_CACHE: print >> sys.stderr, 'jcache get?', shortkey
-    cachename = JCache.get_cachename(shortkey)
-    if not os.path.exists(cachename):
-      if DEBUG_CACHE: print >> sys.stderr, 'jcache none at all'
-      return
-    try:
-      data = cPickle.loads(zlib.decompress(open(cachename).read()))
-    except Exception, e:
-      if DEBUG_CACHE: print >> sys.stderr, 'jcache decompress/unpickle error:', e
-      return
-    if len(data) != 2:
-      if DEBUG_CACHE: print >> sys.stderr, 'jcache error in get'
-      return
-    oldkeys = data[0]
-    if len(oldkeys) != len(keys):
-      if DEBUG_CACHE: print >> sys.stderr, 'jcache collision (a)'
-      return
-    for i in range(len(oldkeys)):
-      if oldkeys[i] != keys[i]:
-        if DEBUG_CACHE: print >> sys.stderr, 'jcache collision (b)'
-        return
-    if DEBUG_CACHE: print >> sys.stderr, 'jcache win'
-    return data[1]
-
-  # Sets the cached value for a key (from get_key)
-  @staticmethod
-  def set(shortkey, keys, value):
-    if DEBUG_CACHE: print >> sys.stderr, 'save to cache', shortkey
-    cachename = JCache.get_cachename(shortkey)
-    try:
-      f = open(cachename, 'w')
-      f.write(zlib.compress(cPickle.dumps([keys, value])))
-      f.close()
-    except Exception, e:
-      if DEBUG_CACHE: print >> sys.stderr, 'jcache compress/pickle error:', e
-      return
-    #if DEBUG:
-    #  for i in range(len(keys)):
-    #    open(cachename + '.key' + str(i), 'w').write(keys[i])
-    #  open(cachename + '.value', 'w').write(value)
-
-  # Given a set of functions of form (ident, text), and a preferred chunk size,
-  # generates a set of chunks for parallel processing and caching.
-  # It is very important to generate similar chunks in incremental builds, in
-  # order to maximize the chance of cache hits. To achieve that, we save the
-  # chunking used in the previous compilation of this phase, and we try to
-  # generate the same chunks, barring big differences in function sizes that
-  # violate our chunk size guideline. If caching is not used, chunking_file
-  # should be None
-  @staticmethod
-  def chunkify(funcs, chunk_size, chunking_file):
-    previous_mapping = None
-    if chunking_file:
-      chunking_file = JCache.get_cachename(chunking_file)
-      if os.path.exists(chunking_file):
-        try:
-          previous_mapping = cPickle.Unpickler(open(chunking_file, 'rb')).load() # maps a function identifier to the chunk number it will be in
-          if DEBUG: print >> sys.stderr, 'jscache previous mapping of size %d loaded from %s' % (len(previous_mapping), chunking_file)
-        except Exception, e:
-          print >> sys.stderr, 'Failed to load and unpickle previous chunking file at %s: ' % chunking_file, e
-      else:
-        print >> sys.stderr, 'Previous chunking file not found at %s' % chunking_file
-    chunks = []
-    if previous_mapping:
-      # initialize with previous chunking
-      news = []
-      for func in funcs:
-        ident, data = func
-        assert ident, 'need names for jcache chunking'
-        if not ident in previous_mapping:
-          news.append(func)
-        else:
-          n = previous_mapping[ident]
-          while n >= len(chunks): chunks.append([])
-          chunks[n].append(func)
-      if DEBUG: print >> sys.stderr, 'jscache not in previous chunking', len(news)
-      # add news and adjust for new sizes
-      spilled = news
-      for i in range(len(chunks)):
-        chunk = chunks[i]
-        size = sum([len(func[1]) for func in chunk])
-        #if DEBUG: print >> sys.stderr, 'need spilling?', i, size, len(chunk), 'vs', chunk_size, 1.5*chunk_size
-        while size > 1.5*chunk_size and len(chunk) > 1:
-          spill = chunk.pop()
-          spilled.append(spill)
-          size -= len(spill[1])
-      #if DEBUG: print >> sys.stderr, 'jscache new + spilled', len(spilled)
-      for chunk in chunks:
-        size = sum([len(func[1]) for func in chunk])
-        while size < 0.66*chunk_size and len(spilled) > 0:
-          spill = spilled.pop()
-          chunk.append(spill)
-          size += len(spill[1])
-      chunks = filter(lambda chunk: len(chunk) > 0, chunks) # might have empty ones, eliminate them
-      funcs = spilled # we will allocate these into chunks as if they were normal inputs
-      #if DEBUG: print >> sys.stderr, 'leftover spills', len(spilled)
-    # initialize reasonably, the rest of the funcs we need to split out
-    curr = []
-    total_size = 0
-    for i in range(len(funcs)):
-      func = funcs[i]
-      curr_size = len(func[1])
-      if total_size + curr_size < chunk_size:
-        curr.append(func)
-        total_size += curr_size
-      else:
-        chunks.append(curr)
-        curr = [func]
-        total_size = curr_size
-    if curr:
-      chunks.append(curr)
-      curr = None
-    if chunking_file:
-      # sort within each chunk, to keep the order identical
-      for chunk in chunks:
-        chunk.sort(key=lambda func: func[0])
-      # save new mapping info
-      new_mapping = {}
-      for i in range(len(chunks)):
-        chunk = chunks[i]
-        for ident, data in chunk:
-          assert ident not in new_mapping, 'cannot have duplicate names in jcache chunking'
-          new_mapping[ident] = i
-      cPickle.Pickler(open(chunking_file, 'wb')).dump(new_mapping)
-      if DEBUG: print >> sys.stderr, 'jscache mapping of size %d saved to %s' % (len(new_mapping), chunking_file)
-      #if DEBUG:
-      #  for i in range(len(chunks)):
-      #    chunk = chunks[i]
-      #    print >> sys.stderr, 'final chunk', i, len(chunk)
-      #  print >> sys.stderr, 'new mapping:', new_mapping
-      #  if previous_mapping:
-      #    for ident in set(previous_mapping.keys() + new_mapping.keys()):
-      #      if previous_mapping.get(ident) != new_mapping.get(ident):
-      #        print >> sys.stderr, 'mapping inconsistency', ident, previous_mapping.get(ident), new_mapping.get(ident)
-    return [''.join([func[1] for func in chunk]) for chunk in chunks] # remove function names
+# compatibility with existing emcc, etc. scripts
+Cache = cache.Cache()
+JCache = cache.JCache(Cache)
+chunkify = cache.chunkify
 
 class JS:
   @staticmethod
