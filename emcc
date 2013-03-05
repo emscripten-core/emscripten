@@ -1068,7 +1068,21 @@ try:
     def create_libc():
       if DEBUG: print >> sys.stderr, 'emcc: building libc for cache'
       o_s = []
-      for src in ['dlmalloc.c', os.path.join('libcxx', 'new.cpp')]:
+      libc_files = [
+        'dlmalloc.c',
+        os.path.join('libcxx', 'new.cpp'),
+        os.path.join('libc', 'stdlib', 'getopt_long.c'),
+        os.path.join('libc', 'gen', 'err.c'),
+        os.path.join('libc', 'gen', 'errx.c'),
+        os.path.join('libc', 'gen', 'warn.c'),
+        os.path.join('libc', 'gen', 'warnx.c'),
+        os.path.join('libc', 'gen', 'verr.c'),
+        os.path.join('libc', 'gen', 'verrx.c'),
+        os.path.join('libc', 'gen', 'vwarn.c'),
+        os.path.join('libc', 'gen', 'vwarnx.c'),
+      ];
+
+      for src in libc_files:
         o = in_temp(os.path.basename(src) + '.o')
         execute([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o], stdout=stdout, stderr=stderr)
         o_s.append(o)

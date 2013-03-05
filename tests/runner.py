@@ -4253,6 +4253,139 @@ The current type of b is: 9
       '''
       self.do_run(src, 'ok.');
 
+    def test_getopt(self):
+        src = '''
+          #pragma clang diagnostic ignored "-Winvalid-pp-token"
+          #include <unistd.h>
+          #include <stdlib.h>
+          #include <stdio.h>
+
+          int
+          main(int argc, char *argv[])
+          {
+             int flags, opt;
+             int nsecs, tfnd;
+
+             nsecs = 0;
+             tfnd = 0;
+             flags = 0;
+             while ((opt = getopt(argc, argv, "nt:")) != -1) {
+                 switch (opt) {
+                 case 'n':
+                     flags = 1;
+                     break;
+                 case 't':
+                     nsecs = atoi(optarg);
+                     tfnd = 1;
+                     break;
+                 default: /* '?' */
+                     fprintf(stderr, "Usage: %s [-t nsecs] [-n] name\\n",
+                             argv[0]);
+                     exit(EXIT_FAILURE);
+                 }
+             }
+
+             printf("flags=%d; tfnd=%d; optind=%d\\n", flags, tfnd, optind);
+
+             if (optind >= argc) {
+                 fprintf(stderr, "Expected argument after options\\n");
+                 exit(EXIT_FAILURE);
+             }
+
+             printf("name argument = %s\\n", argv[optind]);
+
+             /* Other code omitted */
+
+             exit(EXIT_SUCCESS);
+          }
+        '''
+        self.do_run(src, 'flags=1; tfnd=1; optind=4\nname argument = foobar', args=['-t', '12', '-n', 'foobar'])
+
+    def test_getopt_long(self):
+        src = '''
+          #pragma clang diagnostic ignored "-Winvalid-pp-token"
+          #pragma clang diagnostic ignored "-Wdeprecated-writable-strings"
+          #include <stdio.h>     /* for printf */
+          #include <stdlib.h>    /* for exit */
+          #include <getopt.h>
+
+          int
+          main(int argc, char **argv)
+          {
+             int c;
+             int digit_optind = 0;
+
+             while (1) {
+                 int this_option_optind = optind ? optind : 1;
+                 int option_index = 0;
+                 static struct option long_options[] = {
+                     {"add",     required_argument, 0,  0 },
+                     {"append",  no_argument,       0,  0 },
+                     {"delete",  required_argument, 0,  0 },
+                     {"verbose", no_argument,       0,  0 },
+                     {"create",  required_argument, 0, 'c'},
+                     {"file",    required_argument, 0,  0 },
+                     {0,         0,                 0,  0 }
+                 };
+
+                 c = getopt_long(argc, argv, "abc:d:012",
+                          long_options, &option_index);
+                 if (c == -1)
+                     break;
+
+                 switch (c) {
+                 case 0:
+                     printf("option %s", long_options[option_index].name);
+                     if (optarg)
+                         printf(" with arg %s", optarg);
+                     printf("\\n");
+                     break;
+
+                 case '0':
+                 case '1':
+                 case '2':
+                     if (digit_optind != 0 && digit_optind != this_option_optind)
+                       printf("digits occur in two different argv-elements.\\n");
+                     digit_optind = this_option_optind;
+                     printf("option %c\\n", c);
+                     break;
+
+                 case 'a':
+                     printf("option a\\n");
+                     break;
+
+                 case 'b':
+                     printf("option b\\n");
+                     break;
+
+                 case 'c':
+                     printf("option c with value '%s'\\n", optarg);
+                     break;
+
+                 case 'd':
+                     printf("option d with value '%s'\\n", optarg);
+                     break;
+
+                 case '?':
+                     break;
+
+                 default:
+                     printf("?? getopt returned character code 0%o ??\\n", c);
+                 }
+             }
+
+             if (optind < argc) {
+                 printf("non-option ARGV-elements: ");
+                 while (optind < argc)
+                     printf("%s ", argv[optind++]);
+                 printf("\\n");
+             }
+
+             exit(EXIT_SUCCESS);
+          }
+        '''
+        self.do_run(src, 'option file with arg foobar\noption b', args=['--file', 'foobar', '-b'])
+
     def test_memmove(self):
       src = '''
         #include <stdio.h>
@@ -7114,7 +7247,6 @@ def process(filename):
                              [os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/index.c.o'.split('/')),
                               os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/convert.c.o'.split('/')),
                               os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/__/common/color.c.o'.split('/')),
-                              os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/__/common/getopt.c.o'.split('/')),
                               os.path.join('bin', self.get_shared_library_name('libopenjpeg.so.1.4.0'))],
                              configure=['cmake', '.'],
                              #configure_args=['--enable-tiff=no', '--enable-jp3d=no', '--enable-png=no'],
