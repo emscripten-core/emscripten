@@ -219,11 +219,13 @@ def check_sanity(force=False):
 
     if not check_engine(COMPILER_ENGINE):
       print >> sys.stderr, 'FATAL: The JavaScript shell used for compiling (%s) does not seem to work, check the paths in %s' % (COMPILER_ENGINE, EM_CONFIG)
+      if WINDOWS and V8_STACK_SIZE: print >>sys.stderr, 'V8_STACK_SIZE is set to %d kb; have you used editbin appropriately on your binary?' % (V8_STACK_SIZE)
       sys.exit(1)
 
     if NODE_JS != COMPILER_ENGINE:
       if not check_engine(NODE_JS):
         print >> sys.stderr, 'FATAL: Node.js (%s) does not seem to work, check the paths in %s' % (NODE_JS, EM_CONFIG)
+        if WINDOWS and V8_STACK_SIZE: print >>sys.stderr, 'V8_STACK_SIZE is set to %d kb; have you used editbin appropriately on your binary?' % (V8_STACK_SIZE)
         sys.exit(1)
 
     for cmd in [CLANG, LLVM_LINK, LLVM_AR, LLVM_OPT, LLVM_AS, LLVM_DIS, LLVM_NM]:
@@ -299,6 +301,7 @@ class Configuration:
     if self.DEBUG == "0":
       self.DEBUG = None
     self.DEBUG_CACHE = self.DEBUG and "cache" in self.DEBUG
+    self.DEBUG_SERIALIZE = self.DEBUG and "serialize" in self.DEBUG
     self.EMSCRIPTEN_TEMP_DIR = None
 
     try:
@@ -418,6 +421,11 @@ try:
 except NameError:
   pass
 
+# let the environment override anything in the configure file
+try:              V8_STACK_SIZE = os.getenv("EMCC_V8_STACK_SIZE") or V8_STACK_SIZE
+except NameError: V8_STACK_SIZE = os.getenv("EMCC_V8_STACK_SIZE")
+if V8_STACK_SIZE: V8_STACK_SIZE = int(V8_STACK_SIZE)
+
 WINDOWS = sys.platform.startswith('win')
 
 # If we have 'env', we should use that to find python, because |python| may fail while |env python| may work
@@ -448,7 +456,7 @@ def check_engine(engine):
 def run_js(filename, engine=None, *args, **kw):
   if engine is None:
     engine = JS_ENGINES[0]
-  return jsrun.run_js(filename, engine, *args, **kw)
+  return jsrun.run_js(filename, engine, v8_stack_size=V8_STACK_SIZE, DEBUG=DEBUG, *args, **kw)
 
 def to_cc(cxx):
   # By default, LLVM_GCC and CLANG are really the C++ versions. This gets an explicit C version

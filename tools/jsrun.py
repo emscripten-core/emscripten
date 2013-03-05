@@ -12,10 +12,18 @@ def timeout_run(proc, timeout, note='unnamed process', full_output=False):
   out = proc.communicate()
   return '\n'.join(out) if full_output else out[0]
 
-def run_js(filename, engine=None, args=[], check_timeout=False, stdout=PIPE, stderr=None, cwd=None, full_output=False):
+def run_js(filename, engine=None, args=[], check_timeout=False, stdout=PIPE, stderr=None, cwd=None, full_output=False, v8_stack_size=None, DEBUG=False):
   if type(engine) is not list:
     engine = [engine]
+
+  if v8_stack_size:
+    if 'node' in engine[0]: engine += ['--max-stack-size=%d' % (v8_stack_size * 1024)]
+    if 'node' in engine[0] or 'd8' in engine[0]: engine += ['--stack_size=%d' % (v8_stack_size)]
+
   command = engine + [filename] + (['--'] if 'd8' in engine[0] else []) + args
+
+  if DEBUG: print >>sys.stderr, "run_js: " + " ".join(command)
+    
   return timeout_run(
     Popen(
       command,
