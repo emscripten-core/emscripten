@@ -6710,6 +6710,7 @@ LibraryManager.library = {
   pthread_cond_destroy: function() {},
   pthread_cond_broadcast: function() {},
   pthread_cond_wait: function() {},
+  pthread_cond_timedwait: function() {},
   pthread_self: function() {
     //FIXME: assumes only a single thread
     return 0;
