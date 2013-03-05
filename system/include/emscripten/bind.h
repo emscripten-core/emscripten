@@ -105,6 +105,7 @@ namespace emscripten {
                 TYPEID classType,
                 TYPEID pointerType,
                 TYPEID constPointerType,
+                TYPEID baseClassType,
                 bool isPolymorphic,
                 const char* className,
                 GenericFunction destructor);
@@ -610,7 +611,7 @@ namespace emscripten {
 #define EMSCRIPTEN_WRAPPER(T) \
     T(const ::emscripten::val& v): wrapper(v) {}
 
-    // TODO: support external class constructors
+    // TODO: support base class
     template<typename ClassType>
     class class_ {
     public:
@@ -622,6 +623,7 @@ namespace emscripten {
                 TypeID<ClassType>::get(),
                 TypeID<AllowedRawPointer<ClassType>>::get(),
                 TypeID<AllowedRawPointer<const ClassType>>::get(),
+                0,
                 std::is_polymorphic<ClassType>::value,
                 name,
                 reinterpret_cast<GenericFunction>(&raw_destructor<ClassType>));

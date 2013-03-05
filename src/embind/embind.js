@@ -42,7 +42,7 @@ function extendError(baseErrorType, errorName) {
             return this.name + ': ' + this.message;
         }
     };
-    
+
     return errorClass;
 }
 
@@ -698,7 +698,7 @@ function __embind_register_smart_ptr(
     rawConstructor = FUNCTION_TABLE[rawConstructor];
     rawDestructor = FUNCTION_TABLE[rawDestructor];
     rawGetPointee = FUNCTION_TABLE[rawGetPointee];
-    
+
     var Handle = createNamedFunction(name, function(ptr) {
         Object.defineProperty(this, '$$', {
             value: {
@@ -713,7 +713,7 @@ function __embind_register_smart_ptr(
     // TODO: test for SmartPtr.prototype.constructor property?
     // We likely want it distinct from pointeeType.prototype.constructor
     Handle.prototype = Object.create(pointeeType.Handle.prototype);
-    
+
     Handle.prototype.clone = function() {
         if (!this.$$.ptr) {
             throwBindingError(pointeeType.name + ' instance already deleted');
@@ -727,16 +727,16 @@ function __embind_register_smart_ptr(
                 ptr: this.$$.ptr,
             },
         });
-        
+
         clone.$$.count.value += 1;
         return clone;
     };
-    
+
     Handle.prototype['delete'] = function() {
         if (!this.$$.ptr) {
             throwBindingError(pointeeType.name + ' instance already deleted');
         }
-        
+
         this.$$.count.value -= 1;
         if (0 === this.$$.count.value) {
             rawDestructor(this.$$.smartPtr);
@@ -757,6 +757,7 @@ function __embind_register_class(
     rawType,
     rawPointerType,
     rawConstPointerType,
+    baseClassType,
     isPolymorphic,
     name,
     rawDestructor
