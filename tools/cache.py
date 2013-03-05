@@ -17,6 +17,10 @@ class Cache:
 
   def erase(self):
     tempfiles.try_delete(self.dirname)
+    try:
+      open(Cache.dirname + '__last_clear', 'w').write('last clear: ' + time.asctime() + '\n')
+    except:
+      print >> sys.stderr, 'failed to save last clear time'
 
   def get_path(self, shortname):
     return os.path.join(self.dirname, shortname)
