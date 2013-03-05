@@ -3363,14 +3363,15 @@ LibraryManager.library = {
     ___setErrNo(ERRNO_CODES.ECHILD);
     return -1;
   },
-  perror__deps: ['puts', 'putc', 'strerror', '__errno_location'],
+  perror__deps: ['puts', 'fputs', 'fputc', 'strerror', '__errno_location'],
   perror: function(s) {
     // void perror(const char *s);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/perror.html
+    var stdout = {{{ makeGetValue(makeGlobalUse('_stdout'), '0', 'void*') }}};
     if (s) {
-      _puts(s);
-      _putc(':'.charCodeAt(0));
-      _putc(' '.charCodeAt(0));
+      _fputs(s, stdout);
+      _fputc(':'.charCodeAt(0), stdout);
+      _fputc(' '.charCodeAt(0), stdout);
     }
     var errnum = {{{ makeGetValue('___errno_location()', '0', 'i32') }}};
     _puts(_strerror(errnum));
@@ -4313,8 +4314,9 @@ LibraryManager.library = {
     ptr = ptr|0; value = value|0; num = num|0;
     var stop = 0, value4 = 0, stop4 = 0, unaligned = 0;
     stop = (ptr + num)|0;
-    if (num|0 >= {{{ SEEK_OPTIMAL_ALIGN_MIN }}}) {
+    if ((num|0) >= {{{ SEEK_OPTIMAL_ALIGN_MIN }}}) {
       // This is unaligned, but quite large, so work hard to get to aligned settings
+      value = value & 0xff;
       unaligned = ptr & 3;
       value4 = value | (value << 8) | (value << 16) | (value << 24);
       stop4 = stop & ~3;
@@ -6701,6 +6703,9 @@ LibraryManager.library = {
   pthread_mutexattr_destroy: function() {},
   pthread_mutex_lock: function() {},
   pthread_mutex_unlock: function() {},
+  pthread_mutex_trylock: function() {
+    return 0;
+  },
   pthread_cond_init: function() {},
   pthread_cond_destroy: function() {},
   pthread_cond_broadcast: function() {},
@@ -6743,15 +6748,25 @@ LibraryManager.library = {
 
   pthread_key_create: function(key, destructor) {
     if (!_pthread_key_create.keys) _pthread_key_create.keys = {};
-    _pthread_key_create.keys[key] = null;
+    // values start at 0
+    _pthread_key_create.keys[key] = 0;
   },
 
   pthread_getspecific: function(key) {
-    return _pthread_key_create.keys[key];
+    return _pthread_key_create.keys[key] || 0;
   },
 
   pthread_setspecific: function(key, value) {
     _pthread_key_create.keys[key] = value;
+  },
+
+  pthread_key_delete: ['$ERRNO_CODES'],
+  pthread_key_delete: function(key) {
+    if (_pthread_key_create.keys[key]) {
+      delete _pthread_key_create.keys[key];
+      return 0;
+    }
+    return ERRNO_CODES.EINVAL;
   },
 
   pthread_cleanup_push: function(routine, arg) {
@@ -7258,23 +7273,56 @@ LibraryManager.library = {
   },
 
   select: function(nfds, readfds, writefds, exceptfds, timeout) {
-    // only readfds are supported, not writefds or exceptfds
+    // readfds are supported,
+    // writefds checks socket open status
+    // exceptfds not supported
     // timeout is always 0 - fully async
-    assert(!writefds && !exceptfds);
-    var ret = 0;
-    var l = {{{ makeGetValue('readfds', 0, 'i32') }}};
-    var h = {{{ makeGetValue('readfds', 4, 'i32') }}};
-    nfds = Math.min(64, nfds); // fd sets have 64 bits
-    for (var fd = 0; fd < nfds; fd++) {
-      var bit = fd % 32, int = fd < 32 ? l : h;
-      if (int & (1 << bit)) {
-        // index is in the set, check if it is ready for read
-        var info = Sockets.fds[fd];
-        if (!info) continue;
-        if (info.hasData()) ret++;
-      }
+    assert(!exceptfds);
+
+    function canRead(info) {
+      // make sure hasData exists. 
+      // we do create it when the socket is connected, 
+      // but other implementations may create it lazily
+      return info.hasData && info.hasData();
     }
-    return ret;
+
+    function canWrite(info) {
+      // make sure socket exists. 
+      // we do create it when the socket is connected, 
+      // but other implementations may create it lazily
+      return info.socket && (info.socket.readyState == info.socket.OPEN);
+    }
+
+    function checkfds(nfds, fds, can) {
+      if (!fds) return 0;
+
+      var bitsSet = 0;
+      var dstLow  = 0;
+      var dstHigh = 0;
+      var srcLow  = {{{ makeGetValue('fds', 0, 'i32') }}};
+      var srcHigh = {{{ makeGetValue('fds', 4, 'i32') }}};
+      nfds = Math.min(64, nfds); // fd sets have 64 bits
+
+      for (var fd = 0; fd < nfds; fd++) {
+        var mask = 1 << (fd % 32), int = fd < 32 ? srcLow : srcHigh;
+        if (int & mask) {
+          // index is in the set, check if it is ready for read
+          var info = Sockets.fds[fd];
+          if (info && can(info)) {
+            // set bit
+            fd < 32 ? (dstLow = dstLow | mask) : (dstHigh = dstHigh | mask);
+            bitsSet++;
+          }
+        }
+      }
+
+      {{{ makeSetValue('fds', 0, 'dstLow', 'i32') }}};
+      {{{ makeSetValue('fds', 4, 'dstHigh', 'i32') }}};
+      return bitsSet;
+    }
+
+    return checkfds(nfds, readfds, canRead)
+         + checkfds(nfds, writefds, canWrite);
   },
 
   // pty.h
@@ -7319,6 +7367,23 @@ LibraryManager.library = {
 
   emscripten_random: function() {
     return Math.random();
+  },
+
+  emscripten_jcache_printf___deps: ['_formatString'],
+  emscripten_jcache_printf_: function(varargs) {
+    var MAX = 10240;
+    if (!_emscripten_jcache_printf_.buffer) {
+      _emscripten_jcache_printf_.buffer = _malloc(MAX);
+    }
+    var i = 0;
+    do {
+      var curr = {{{ makeGetValue('varargs', 'i*4', 'i8') }}};
+      {{{ makeSetValue('_emscripten_jcache_printf_.buffer', 'i', 'curr', 'i8') }}};
+      i++;
+      assert(i*4 < MAX);
+    } while (curr != 0);
+    Module.print(intArrayToString(__formatString(_emscripten_jcache_printf_.buffer, varargs + i*4)).replace('\\n', ''));
+    Runtime.stackAlloc(-4*i); // free up the stack space we know is ok to free
   },
 };
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env python2
+# -*- Mode: python -*-
 
 '''
 emcc - compiler helper script
@@ -90,7 +91,10 @@ LLVM_OPT_LEVEL = {
   3: 3,
 }
 
-DEBUG = int(os.environ.get('EMCC_DEBUG') or 0)
+DEBUG = os.environ.get('EMCC_DEBUG')
+if DEBUG == "0":
+  DEBUG = None
+
 TEMP_DIR = os.environ.get('EMCC_TEMP_DIR')
 LEAVE_INPUTS_RAW = os.environ.get('EMCC_LEAVE_INPUTS_RAW') # Do not compile .ll files into .bc, just compile them with emscripten directly
                                                            # Not recommended, this is mainly for the test runner, or if you have some other
@@ -117,6 +121,28 @@ shared.check_sanity(force=DEBUG)
 if len(sys.argv) == 1:
   print 'emcc: no input files'
   exit(1)
+
+# read response files very early on
+response_file = True
+while response_file:
+  response_file = None
+  for index in range(1, len(sys.argv)):
+    if sys.argv[index][0] == '@':
+      # found one, loop again next time
+      print >>sys.stderr, 'emcc: using response file: %s' % response_file
+      response_file = sys.argv[index][1:]
+      if not os.path.exists(response_file):
+        print >>sys.stderr, 'emcc: error: Response file not found: %s' % response_file
+        exit(1)
+
+      response_fd = open(response_file, 'r')
+      extra_args = shlex.split(response_fd.read())
+      response_fd.close()
+
+      # slice in extra_args in place of the response file arg
+      sys.argv[index:index+1] = extra_args
+      #if DEBUG: print >>sys.stderr, "Expanded response file: " + " | ".join(sys.argv)
+      break
 
 if sys.argv[1] == '--version':
   revision = '(unknown revision)'
@@ -155,16 +181,18 @@ Options that are modified or new in %s include:
                            tools/shared.py and also src/settings.js.)
                            Note: Optimizations are only done when
                            compiling to JavaScript, not to intermediate
-                           bitcode.
+                           bitcode, *unless* you build with
+                           EMCC_OPTIMIZE_NORMALLY=1 (not recommended
+                           unless you know what you are doing!)
   -O2                      As -O1, plus the relooper (loop recreation),
                            plus LLVM -O2 optimizations
   -O3                      As -O2, plus dangerous optimizations that may
                            break the generated code! This adds
 
-                              -s INLINING_LIMIT=0
                               -s DOUBLE_MODE=0
                               -s PRECISE_I64_MATH=0
                               --closure 1
+                              --llvm-lto 1
 
                            This is not recommended at all. A better idea
                            is to try each of these separately on top of
@@ -207,8 +235,8 @@ Options that are modified or new in %s include:
                            2: -O2 LLVM optimizations
                            3: -O3 LLVM optimizations (default in -O2+)
 
-  --llvm-lto <level>       0: No LLVM LTO (default in -O0)
-                           1: LLVM LTO (default in -O1+)
+  --llvm-lto <level>       0: No LLVM LTO (default in -O2 and below)
+                           1: LLVM LTO (default in -O3)
                            Note: If LLVM optimizations are not run
                            (see --llvm-opts), setting this to 1 has no
                            effect.
@@ -373,6 +401,41 @@ Options that are modified or new in %s include:
                            of data, so you must enable it on a full build
                            for a later incremental build (where you also
                            enable it) to be sped up.
+
+                           Caching works separately on 4 parts of compilation:
+                           'pre' which is types and global variables; that
+                           information is then fed into 'funcs' which are
+                           the functions (which we parallelize), and then
+                           'post' which adds final information based on
+                           the functions (e.g., do we need long64 support
+                           code). Finally, 'jsfuncs' are JavaScript-level
+                           optimizations. Each of the 4 parts can be cached
+                           separately, but note that they can affect each
+                           other: If you recompile a single C++ file that
+                           changes a global variable - e.g., adds, removes
+                           or modifies a global variable, say by adding
+                           a printf or by adding a compile-time timestamp,
+                           then 'pre' cannot be loaded from the cache. And
+                           since 'pre's output is sent to 'funcs' and 'post',
+                           they will get invalidated as well, and only
+                           'jsfuncs' will be cached. So avoid modifying
+                           globals to let caching work fully.
+
+                           To work around the problem mentioned in the
+                           previous paragraph, you can use
+
+                            emscripten_jcache_printf
+
+                           when adding debug printfs to your code. That
+                           function is specially preprocessed so that it
+                           does not create a constant string global for
+                           its first argument. See emscripten.h for more
+                           details. Note in particular that you need to
+                           already have a call to that function in your
+                           code *before* you add one and do an incremental
+                           build, so that adding an external reference
+                           (also a global property) does not invalidate
+                           everything.
 
   --clear-cache            Manually clears the cache of compiled
                            emscripten system libraries (libc++,
@@ -769,7 +832,7 @@ try:
     newargs = newargs + [default_cxx_std]
 
   if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
-  if llvm_lto is None: llvm_lto = llvm_opts > 0
+  if llvm_lto is None: llvm_lto = opt_level >= 3
   if opt_level <= 0: keep_llvm_debug = keep_js_debug = True # always keep debug in -O0
   if opt_level > 0: keep_llvm_debug = False # JS optimizer wipes out llvm debug info from being visible
   if closure is None and opt_level == 3: closure = True
@@ -931,6 +994,7 @@ try:
   for input_file in input_files:
     if input_file.endswith(SOURCE_SUFFIXES):
       if DEBUG: print >> sys.stderr, 'emcc: compiling source file: ', input_file
+      input_file = shared.Building.preprocess(input_file, in_temp(uniquename(input_file)))
       output_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
       temp_files.append(output_file)
       args = newargs + ['-emit-llvm', '-c', input_file, '-o', output_file]
@@ -964,7 +1028,15 @@ try:
   # If we were just asked to generate bitcode, stop there
   if final_suffix not in JS_CONTAINING_SUFFIXES:
     if llvm_opts > 0:
-      print >> sys.stderr, 'emcc: warning: -Ox flags ignored, since not generating JavaScript'
+      if not os.environ.get('EMCC_OPTIMIZE_NORMALLY'):
+        print >> sys.stderr, 'emcc: warning: -Ox flags ignored, since not generating JavaScript'
+      else:
+        for input_file in input_files:
+          if input_file.endswith(SOURCE_SUFFIXES):
+            if DEBUG: print >> sys.stderr, 'emcc: optimizing %s with -O%d since EMCC_OPTIMIZE_NORMALLY defined' % (input_file, llvm_opts)
+            shared.Building.llvm_opt(in_temp(unsuffixed(uniquename(input_file)) + '.o'), llvm_opts)
+          else:
+            if DEBUG: print >> sys.stderr, 'emcc: not optimizing %s despite EMCC_OPTIMIZE_NORMALLY since not source code' % (input_file)
     if not specified_target:
       for input_file in input_files:
         shutil.move(in_temp(unsuffixed(uniquename(input_file)) + '.o'), unsuffixed_basename(input_file) + '.' + final_suffix)
@@ -1097,7 +1169,10 @@ try:
      (not LEAVE_INPUTS_RAW and not (suffix(temp_files[0]) in BITCODE_SUFFIXES or suffix(temp_files[0]) in DYNAMICLIB_SUFFIXES) and shared.Building.is_ar(temp_files[0])):
     linker_inputs = temp_files + extra_files_to_link
     if DEBUG: print >> sys.stderr, 'emcc: linking: ', linker_inputs
+    t0 = time.time()
     shared.Building.link(linker_inputs, in_temp(target_basename + '.bc'))
+    t1 = time.time()
+    if DEBUG: print >> sys.stderr, 'emcc:    linking took %.2f seconds' % (t1 - t0)
     final = in_temp(target_basename + '.bc')
   else:
     if not LEAVE_INPUTS_RAW:
@@ -1126,9 +1201,12 @@ try:
   if not LEAVE_INPUTS_RAW:
     link_opts = [] if keep_llvm_debug else ['-strip-debug'] # remove LLVM debug info in -O1+, since the optimizer removes it anyhow
     if llvm_opts > 0:
-      shared.Building.llvm_opt(in_temp(target_basename + '.bc'), llvm_opts)
-      if DEBUG: save_intermediate('opt', 'bc')
-      # Do LTO in a separate pass to work around LLVM bug XXX (see failure e.g. in cubescript)
+      if not os.environ.get('EMCC_OPTIMIZE_NORMALLY'):
+        shared.Building.llvm_opt(in_temp(target_basename + '.bc'), llvm_opts)
+        if DEBUG: save_intermediate('opt', 'bc')
+        # Do LTO in a separate pass to work around LLVM bug XXX (see failure e.g. in cubescript)
+      else:
+        if DEBUG: print >> sys.stderr, 'emcc: not running opt because EMCC_OPTIMIZE_NORMALLY was specified, opt should have been run before'
     if shared.Building.can_build_standalone():
       # If we can LTO, do it before dce, since it opens up dce opportunities
       if llvm_lto and shared.Building.can_use_unsafe_opts():
@@ -1207,15 +1285,12 @@ try:
     execute(shlex.split(js_transform, posix=posix) + [os.path.abspath(final)])
     if DEBUG: save_intermediate('transformed')
 
-  if shared.Settings.ASM_JS: # XXX temporary wrapping for testing purposes
-    print >> sys.stderr, 'emcc: ASM_JS mode is highly experimental, and will not work on most codebases yet. It is NOT recommended that you try this yet.'
-
   # It is useful to run several js optimizer passes together, to save on unneeded unparsing/reparsing
   js_optimizer_queue = []
   def flush_js_optimizer_queue():
     global final, js_optimizer_queue
     if len(js_optimizer_queue) > 0 and not(len(js_optimizer_queue) == 1 and js_optimizer_queue[0] == 'last'):
-      if DEBUG < 2:
+      if DEBUG != '2':
         if shared.Settings.ASM_JS:
           js_optimizer_queue = ['asm'] + js_optimizer_queue
         if DEBUG: print >> sys.stderr, 'emcc: applying js optimization passes:', js_optimizer_queue
@@ -1234,7 +1309,7 @@ try:
   if opt_level >= 1:
     if DEBUG: print >> sys.stderr, 'emcc: running pre-closure post-opts'
 
-    if DEBUG >= 2:
+    if DEBUG == '2':
       # Clean up the syntax a bit
       final = shared.Building.js_optimizer(final, [], jcache)
       if DEBUG: save_intermediate('pretty')

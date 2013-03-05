@@ -172,20 +172,21 @@ assert(!(USE_TYPED_ARRAYS === 2 && QUANTUM_SIZE !== 4), 'For USE_TYPED_ARRAYS ==
 if (ASM_JS) {
   assert(!ALLOW_MEMORY_GROWTH, 'Cannot grow asm.js heap');
   assert((TOTAL_MEMORY&(TOTAL_MEMORY-1)) == 0, 'asm.js heap must be power of 2');
+  assert(DISABLE_EXCEPTION_CATCHING == 1, 'asm.js does not support C++ exceptions yet');
 }
 assert(!(!NAMED_GLOBALS && BUILD_AS_SHARED_LIB)); // shared libraries must have named globals
 
 // Output some info and warnings based on settings
 
 if (phase == 'pre') {
-  if (!MICRO_OPTS || !RELOOP || ASSERTIONS || CHECK_SIGNS || CHECK_OVERFLOWS || INIT_STACK || INIT_HEAP ||
+  if (!MICRO_OPTS || !RELOOP || ASSERTIONS || CHECK_SIGNS || CHECK_OVERFLOWS || INIT_HEAP ||
       !SKIP_STACK_IN_SMALL || SAFE_HEAP || !DISABLE_EXCEPTION_CATCHING) {
     print('// Note: Some Emscripten settings will significantly limit the speed of the generated code.');
   } else {
     print('// Note: For maximum-speed code, see "Optimizing Code" on the Emscripten wiki, https://github.com/kripken/emscripten/wiki/Optimizing-Code');
   }
 
-  if (DOUBLE_MODE || CORRECT_SIGNS || CORRECT_OVERFLOWS || CORRECT_ROUNDINGS) {
+  if (DOUBLE_MODE || CORRECT_SIGNS || CORRECT_OVERFLOWS || CORRECT_ROUNDINGS || CHECK_HEAP_ALIGN) {
     print('// Note: Some Emscripten settings may limit the speed of the generated code.');
   }
 }
@@ -198,7 +199,7 @@ load('parseTools.js');
 load('intertyper.js');
 load('analyzer.js');
 load('jsifier.js');
-if (RELOOP) load('relooper.js')
+if (RELOOP) load(RELOOPER)
 globalEval(processMacros(preprocess(read('runtime.js'))));
 Runtime.QUANTUM_SIZE = QUANTUM_SIZE;
 

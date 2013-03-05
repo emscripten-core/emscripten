@@ -11,6 +11,8 @@ import os, subprocess, sys
 from tools import shared
 
 DEBUG = os.environ.get('EMCC_DEBUG')
+if DEBUG == "0":
+   DEBUG = None
 
 newargs = [shared.LLVM_AR] + sys.argv[1:]
 

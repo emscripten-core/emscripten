@@ -78,6 +78,7 @@ function toNiceIdent(ident) {
   assert(ident);
   if (parseFloat(ident) == ident) return ident;
   if (ident == 'null') return '0'; // see parseNumerical
+  if (ident == 'undef') return '0';
   return ident.replace('%', '$').replace(/["&\\ \.@:<>,\*\[\]\(\)-]/g, '_');
 }
 
@@ -691,7 +692,7 @@ function makeCopyI64(value) {
 function parseArbitraryInt(str, bits) {
   // We parse the string into a vector of digits, base 10. This is convenient to work on.
 
-  assert(bits % 32 == 0 || ('i' + (bits % 32)) in Runtime.INT_TYPES, 'Arbitrary-sized ints must tails that are of legal size');
+  assert(bits > 0); // NB: we don't check that the value in str can fit in this amount of bits
 
   function str2vec(s) { // index 0 is the highest value
     var ret = [];
@@ -984,18 +985,24 @@ function checkSafeHeap() {
 function getHeapOffset(offset, type, forceAsm) {
   if (USE_TYPED_ARRAYS !== 2) {
     return offset;
-  } else {
-    if (Runtime.getNativeFieldSize(type) > 4) {
-      type = 'i32'; // XXX we emulate 64-bit values as 32
-    }
-    var shifts = Math.log(Runtime.getNativeTypeSize(type))/Math.LN2;
-    offset = '(' + offset + ')';
-    if (shifts != 0) {
-      return '(' + offset + '>>' + shifts + ')';
+  }
+
+  if (Runtime.getNativeFieldSize(type) > 4) {
+    type = 'i32'; // XXX we emulate 64-bit values as 32
+  }
+
+  var sz = Runtime.getNativeTypeSize(type);
+  var shifts = Math.log(sz)/Math.LN2;
+  offset = '(' + offset + ')';
+  if (shifts != 0) {
+    if (CHECK_HEAP_ALIGN) {
+      return '(CHECK_ALIGN_' + sz + '(' + offset + ')>>' + shifts + ')';
     } else {
-      // we need to guard against overflows here, HEAP[U]8 expects a guaranteed int
-      return isJSVar(offset) ? offset : '(' + offset + '|0)';
+      return '(' + offset + '>>' + shifts + ')';
     }
+  } else {
+    // we need to guard against overflows here, HEAP[U]8 expects a guaranteed int
+    return isJSVar(offset) ? offset : '(' + offset + '|0)';
   }
 }
 
@@ -1364,11 +1371,15 @@ var TWO_TWENTY = Math.pow(2, 20);
 function getFastValue(a, op, b, type) {
   a = a.toString();
   b = b.toString();
+  a = a == 'true' ? '1' : (a == 'false' ? '0' : a);
+  b = b == 'true' ? '1' : (b == 'false' ? '0' : b);
   if (isNumber(a) && isNumber(b)) {
     if (op == 'pow') {
       return Math.pow(a, b).toString();
     } else {
-      return eval(a + op + '(' + b + ')').toString(); // parens protect us from "5 - -12" being seen as "5--12" which is "(5--)12"
+      var value = eval(a + op + '(' + b + ')'); // parens protect us from "5 - -12" being seen as "5--12" which is "(5--)12"
+      if (op == '/' && type in Runtime.INT_TYPES) value = value|0; // avoid emitting floats
+      return value.toString();
     }
   }
   if (op == 'pow') {
@@ -1548,7 +1559,7 @@ function makePointer(slab, pos, allocator, type, ptr) {
     var ret = '';
     var index = 0;
     while (index < array.length) {
-      ret = (ret ? ret + '.concat(' : '') + '[' + array.slice(index, index + chunkSize).map(JSON.stringify) + ']' + (ret ? ')' : '');
+      ret = (ret ? ret + '.concat(' : '') + '[' + array.slice(index, index + chunkSize).map(JSON.stringify) + ']' + (ret ? ')\n' : '');
       index += chunkSize;
     }
     return ret;
@@ -1829,9 +1840,10 @@ function makeSignOp(value, type, op, force, ignore) {
     if (!CHECK_SIGNS || ignore) {
       if (bits === 32) {
         if (op === 're') {
-          return '((' + value + ')|0)';
+          return '(' + getFastValue(value, '|', '0') + ')';
         } else {
-          return '((' + value + ')>>>0)';
+
+          return '(' + getFastValue(value, '>>>', '0') + ')';
           // Alternatively, we can consider the lengthier
           //    return makeInlineCalculation('VALUE >= 0 ? VALUE : ' + Math.pow(2, bits) + ' + VALUE', value, 'tempBigInt');
           // which does not always turn us into a 32-bit *un*signed value
@@ -1840,7 +1852,7 @@ function makeSignOp(value, type, op, force, ignore) {
         if (op === 're') {
           return makeInlineCalculation('(VALUE << ' + (32-bits) + ') >> ' + (32-bits), value, 'tempInt');
         } else {
-          return '((' + value + ')&' + (Math.pow(2, bits)-1) + ')';
+          return '(' + getFastValue(value, '&', Math.pow(2, bits)-1) + ')';
         }
       } else { // bits > 32
         if (op === 're') {
@@ -2191,7 +2203,6 @@ function processMathop(item) {
         case 'ne': case 'eq': {
           // We must sign them, so we do not compare -1 to 255 (could have unsigned them both too)
           // since LLVM tells us if <=, >= etc. comparisons are signed, but not == and !=.
-          assert(paramTypes[0] == paramTypes[1]);
           idents[0] = makeSignOp(idents[0], paramTypes[0], 're');
           idents[1] = makeSignOp(idents[1], paramTypes[1], 're');
           return idents[0] + (variant === 'eq' ? '==' : '!=') + idents[1];

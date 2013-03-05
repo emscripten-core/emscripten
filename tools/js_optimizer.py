@@ -2,7 +2,8 @@
 import os, sys, subprocess, multiprocessing, re
 import shared
 
-temp_files = shared.TempFiles()
+configuration = shared.configuration
+temp_files = configuration.get_temp_files()
 
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
@@ -10,7 +11,9 @@ def path_from_root(*pathelems):
 
 JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
 
-BEST_JS_PROCESS_SIZE = 1024*1024
+NUM_CHUNKS_PER_CORE = 1.5
+MIN_CHUNK_SIZE = int(os.environ.get('EMCC_JSOPT_MIN_CHUNK_SIZE') or 1024*1024) # configuring this is just for debugging purposes
+MAX_CHUNK_SIZE = 20*1024*1024
 
 WINDOWS = sys.platform.startswith('win')
 
@@ -28,7 +31,7 @@ def run_on_chunk(command):
   return filename
 
 def run_on_js(filename, passes, js_engine, jcache):
-
+  if isinstance(jcache, bool) and jcache: jcache = shared.JCache
   if jcache: shared.JCache.ensure()
 
   if type(passes) == str:
@@ -74,6 +77,8 @@ def run_on_js(filename, passes, js_engine, jcache):
     assert gen_end > gen_start
     pre = js[:gen_start]
     post = js[gen_end:]
+    if 'last' in passes:
+      post = post.replace(suffix, '') # no need to write out the metadata - nothing after us needs it
     js = js[gen_start:gen_end]
   else:
     pre = ''
@@ -98,7 +103,11 @@ def run_on_js(filename, passes, js_engine, jcache):
   total_size = len(js)
   js = None
 
-  chunks = shared.JCache.chunkify(funcs, BEST_JS_PROCESS_SIZE, 'jsopt' if jcache else None)
+  cores = int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
+  intended_num_chunks = int(round(cores * NUM_CHUNKS_PER_CORE))
+  chunk_size = min(MAX_CHUNK_SIZE, max(MIN_CHUNK_SIZE, total_size / intended_num_chunks))
+
+  chunks = shared.chunkify(funcs, chunk_size, jcache.get_cachename('jsopt') if jcache else None)
 
   if jcache:
     # load chunks from cache where we can # TODO: ignore small chunks
@@ -131,18 +140,18 @@ def run_on_js(filename, passes, js_engine, jcache):
 
   if len(filenames) > 0:
     # XXX Use '--nocrankshaft' to disable crankshaft to work around v8 bug 1895, needed for older v8/node (node 0.6.8+ should be ok)
-    commands = map(lambda filename: [js_engine, JS_OPTIMIZER, filename, 'noPrintMetadata'] + passes, filenames)
+    commands = map(lambda filename: js_engine + [JS_OPTIMIZER, filename, 'noPrintMetadata'] + passes, filenames)
     #print [' '.join(command) for command in commands]
 
-    cores = min(multiprocessing.cpu_count(), filenames)
+    cores = min(cores, filenames)
     if len(chunks) > 1 and cores >= 2:
       # We can parallelize
-      if DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks, using %d cores  (total: %.2f MB)' % (len(chunks), cores, total_size/(1024*1024.))
+      if DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks of size %d, using %d cores  (total: %.2f MB)' % (len(chunks), chunk_size, cores, total_size/(1024*1024.))
       pool = multiprocessing.Pool(processes=cores)
       filenames = pool.map(run_on_chunk, commands, chunksize=1)
     else:
       # We can't parallize, but still break into chunks to avoid uglify/node memory issues
-      if len(chunks) > 1 and DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks' % (len(chunks))
+      if len(chunks) > 1 and DEBUG: print >> sys.stderr, 'splitting up js optimization into %d chunks of size %d' % (len(chunks), chunk_size)
       filenames = [run_on_chunk(command) for command in commands]
   else:
     filenames = []

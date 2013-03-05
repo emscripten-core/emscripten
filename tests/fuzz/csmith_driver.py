@@ -4,7 +4,7 @@
 Runs csmith, a C fuzzer, and looks for bugs
 '''
 
-import os, sys, difflib
+import os, sys, difflib, shutil
 from subprocess import Popen, PIPE, STDOUT
 
 sys.path += [os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'tools')]
@@ -26,19 +26,35 @@ tried = 0
 
 notes = { 'invalid': 0, 'unaligned': 0, 'embug': 0 }
 
+fails = 0
+
 while 1:
   print 'Tried %d, notes: %s' % (tried, notes)
-  tried += 1
   print '1) Generate C'
-  shared.execute([CSMITH, '--no-volatiles', '--no-math64'], stdout=open(filename + '.c', 'w'))
+  shared.execute([CSMITH, '--no-volatiles', '--no-math64', '--no-packed-struct'],# +
+                 #['--max-block-depth', '2', '--max-block-size', '2', '--max-expr-complexity', '2', '--max-funcs', '2'],
+                 stdout=open(filename + '.c', 'w'))
+  #shutil.copyfile(filename + '.c', 'testcase%d.c' % tried)
+  print '1) Generate C... %.2f K of C source' % (len(open(filename + '.c').read())/1024.)
+
+  tried += 1
 
   print '2) Compile natively'
   shared.try_delete(filename)
-  shared.execute([shared.CLANG_CC, '-O2', filename + '.c', '-o', filename] + CSMITH_CFLAGS, stderr=PIPE)
-  assert os.path.exists(filename)
+  shared.execute([shared.CLANG_CC, '-O2', filename + '.c', '-o', filename + '1'] + CSMITH_CFLAGS, stderr=PIPE) #  + shared.EMSDK_OPTS
+  shared.execute([shared.CLANG_CC, '-O2', '-emit-llvm', '-c', '-Xclang', '-triple=i386-pc-linux-gnu', filename + '.c', '-o', filename + '.bc'] + CSMITH_CFLAGS + shared.EMSDK_OPTS, stderr=PIPE)
+  shared.execute([shared.path_from_root('tools', 'nativize_llvm.py'), filename + '.bc'], stdout=PIPE, stderr=PIPE)
+  shutil.move(filename + '.bc.run', filename + '2')
+  shared.execute([shared.CLANG_CC, filename + '.c', '-o', filename + '3'] + CSMITH_CFLAGS, stderr=PIPE)
   print '3) Run natively'
   try:
-    correct = shared.timeout_run(Popen([filename], stdout=PIPE, stderr=PIPE), 3)
+    correct1 = shared.timeout_run(Popen([filename + '1'], stdout=PIPE, stderr=PIPE), 3)
+    if 'Segmentation fault' in correct1 or len(correct1) < 10: raise Exception('segfault')
+    correct2 = shared.timeout_run(Popen([filename + '2'], stdout=PIPE, stderr=PIPE), 3)
+    if 'Segmentation fault' in correct2 or len(correct2) < 10: raise Exception('segfault')
+    correct3 = shared.timeout_run(Popen([filename + '3'], stdout=PIPE, stderr=PIPE), 3)
+    if 'Segmentation fault' in correct3 or len(correct3) < 10: raise Exception('segfault')
+    if correct1 != correct3: raise Exception('clang opts change result')
   except Exception, e:
     print 'Failed or infinite looping in native, skipping', e
     notes['invalid'] += 1
@@ -48,10 +64,12 @@ while 1:
 
   def try_js(args):
     shared.try_delete(filename + '.js')
-    shared.execute([shared.EMCC, '-O2', '-s', 'ASM_JS=1', '-s', 'PRECISE_I64_MATH=1', '-s', 'PRECISE_I32_MUL=1', filename + '.c', '-o', filename + '.js'] + CSMITH_CFLAGS + args, stderr=PIPE)
+    print '(compile)'
+    shared.execute([shared.EMCC, '-O2', '-s', 'ASM_JS=1', filename + '.c', '-o', filename + '.js'] + CSMITH_CFLAGS + args, stderr=PIPE)
     assert os.path.exists(filename + '.js')
+    print '(run)'
     js = shared.run_js(filename + '.js', stderr=PIPE, engine=engine1, check_timeout=True)
-    assert correct == js, ''.join([a.rstrip()+'\n' for a in difflib.unified_diff(correct.split('\n'), js.split('\n'), fromfile='expected', tofile='actual')])
+    assert correct1 == js or correct2 == js, ''.join([a.rstrip()+'\n' for a in difflib.unified_diff(correct1.split('\n'), js.split('\n'), fromfile='expected', tofile='actual')])
 
   # Try normally, then try unaligned because csmith does generate nonportable code that requires x86 alignment
   ok = False
@@ -66,10 +84,15 @@ while 1:
     except Exception, e:
       print e
       normal = False
+  #open('testcase%d.js' % tried, 'w').write(
+  #  open(filename + '.js').read().replace('  var ret = run();', '  var ret = run(["1"]);')
+  #)
   if not ok:
     print "EMSCRIPTEN BUG"
     notes['embug'] += 1
-    continue #break
+    fails += 1
+    shutil.copyfile('fuzzcode.c', 'newfail%d.c' % fails)
+    continue
   #if not ok:
   #  try: # finally, try with safe heap. if that is triggered, this is nonportable code almost certainly
   #    try_js(['-s', 'SAFE_HEAP=1'])
@@ -94,7 +117,6 @@ while 1:
     assert 'warning: Successfully compiled asm.js code' in js2, 'must validate'
     js2 = js2.replace('\nwarning: Successfully compiled asm.js code\n', '')
 
-    assert js2 == correct, ''.join([a.rstrip()+'\n' for a in difflib.unified_diff(correct.split('\n'), js2.split('\n'), fromfile='expected', tofile='actual')]) + 'ODIN FAIL'
+    assert js2 == correct1 or js2 == correct2, ''.join([a.rstrip()+'\n' for a in difflib.unified_diff(correct1.split('\n'), js2.split('\n'), fromfile='expected', tofile='actual')]) + 'ODIN FAIL'
     print 'odin ok'
-
 

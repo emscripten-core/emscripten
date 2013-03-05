@@ -375,6 +375,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       var ret = [item];
       item.JS = 'var ' + item.ident + ';';
       // Set the actual value in a postset, since it may be a global variable. We also order by dependencies there
+      Variables.globals[item.ident].targetIdent = item.value.ident;
       var value = Variables.globals[item.ident].resolvedAlias = finalizeLLVMParameter(item.value);
       var fix = '';
       if (BUILD_AS_SHARED_LIB == 2 && !item.private_) {
@@ -505,7 +506,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         item.JS = '';
       } else if (LibraryManager.library.hasOwnProperty(shortident)) {
         item.JS = addFromLibrary(shortident);
-      } else {
+      } else if (!LibraryManager.library.hasOwnProperty(shortident + '__inline')) {
         item.JS = 'var ' + item.ident + '; // stub for ' + item.ident;
         if (WARN_ON_UNDEFINED_SYMBOLS || ASM_JS) { // always warn on undefs in asm, since it breaks validation
           warn('Unresolved symbol: ' + item.ident);
@@ -913,7 +914,11 @@ function JSify(data, functionsOnly, givenFunctions) {
       case VAR_NATIVIZED:
         if (isNumber(item.ident)) {
           // Direct write to a memory address; this may be an intentional segfault, if not, it is a bug in the source
-          return 'throw "fault on write to ' + item.ident + '";';
+          if (ASM_JS) {
+            return 'abort(' + item.ident + ')';
+          } else {
+            return 'throw "fault on write to ' + item.ident + '";';
+          }
         }
         return item.ident + '=' + value + ';'; // We have the actual value here
         break;
@@ -1199,10 +1204,13 @@ function JSify(data, functionsOnly, givenFunctions) {
     switch (item.op) {
       case 'add': return '(tempValue=' + makeGetValue(param1, 0, type) + ',' + makeSetValue(param1, 0, 'tempValue+' + param2, type, null, null, null, null, ',') + ',tempValue)';
       case 'sub': return '(tempValue=' + makeGetValue(param1, 0, type) + ',' + makeSetValue(param1, 0, 'tempValue-' + param2, type, null, null, null, null, ',') + ',tempValue)';
+      case 'or': return '(tempValue=' + makeGetValue(param1, 0, type) + ',' + makeSetValue(param1, 0, 'tempValue|' + param2, type, null, null, null, null, ',') + ',tempValue)';
+      case 'and': return '(tempValue=' + makeGetValue(param1, 0, type) + ',' + makeSetValue(param1, 0, 'tempValue&' + param2, type, null, null, null, null, ',') + ',tempValue)';
+      case 'xor': return '(tempValue=' + makeGetValue(param1, 0, type) + ',' + makeSetValue(param1, 0, 'tempValue^' + param2, type, null, null, null, null, ',') + ',tempValue)';
       case 'xchg': return '(tempValue=' + makeGetValue(param1, 0, type) + ',' + makeSetValue(param1, 0, param2, type, null, null, null, null, ',') + ',tempValue)';
       case 'cmpxchg': {
         var param3 = finalizeLLVMParameter(item.params[2]);
-        return '(tempValue=' + makeGetValue(param1, 0, type) + ',(' + makeGetValue(param1, 0, type) + '==' + param2 + ' ? ' + makeSetValue(param1, 0, param3, type, null, null, null, null, ',') + ' : 0),tempValue)';
+        return '(tempValue=' + makeGetValue(param1, 0, type) + ',(' + makeGetValue(param1, 0, type) + '==(' + param2 + '|0) ? ' + makeSetValue(param1, 0, param3, type, null, null, null, null, ',') + ' : 0),tempValue)';
       }
       default: throw 'unhandled atomic op: ' + item.op;
     }
@@ -1221,6 +1229,15 @@ function JSify(data, functionsOnly, givenFunctions) {
     var impl = item.ident ? getVarImpl(item.funcData, item.ident) : VAR_EMULATED;
     switch (impl) {
       case VAR_NATIVIZED: {
+        if (isNumber(item.ident)) {
+          item.assignTo = null;
+          // Direct read from a memory address; this may be an intentional segfault, if not, it is a bug in the source
+          if (ASM_JS) {
+            return 'abort(' + item.ident + ')';
+          } else {
+            return 'throw "fault on read from ' + item.ident + '";';
+          }
+        }
         return value; // We have the actual value here
       }
       case VAR_EMULATED: return makeGetValue(value, 0, item.type, 0, item.unsigned, 0, item.align);
@@ -1244,7 +1261,7 @@ function JSify(data, functionsOnly, givenFunctions) {
   makeFuncLineActor('insertvalue', function(item) {
     assert(item.indexes.length == 1); // TODO: see extractvalue
     var ret = '(', ident;
-    if (item.ident === 'undef') {
+    if (item.ident === '0') {
       item.ident = 'tempValue';
       ret += item.ident + ' = [' + makeEmptyStruct(item.type) + '], ';
     }
@@ -1284,6 +1301,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     // We cannot compile assembly. See comment in intertyper.js:'Call'
     assert(ident != 'asm', 'Inline assembly cannot be compiled to JavaScript!');
 
+    ident = Variables.resolveAliasToIdent(ident);
     var shortident = ident.slice(1);
     var callIdent = LibraryManager.getRootIdent(shortident);
     if (callIdent) {
@@ -1401,6 +1419,9 @@ function JSify(data, functionsOnly, givenFunctions) {
       if (ASM_JS) {
         assert(returnType.search(/\("'\[,/) == -1); // XXX need isFunctionType(type, out)
         callIdent = '(' + callIdent + ')&{{{ FTM_' + sig + ' }}}'; // the function table mask is set in emscripten.py
+      } else if (SAFE_DYNCALLS) {
+        assert(!ASM_JS, 'cannot emit safe dyncalls in asm');
+        callIdent = '(tempInt=' + callIdent + ',tempInt < 0 || tempInt >= FUNCTION_TABLE.length-1 || !FUNCTION_TABLE[tempInt] ? abort("dyncall error: ' + sig + ' " + FUNCTION_TABLE_NAMES[tempInt]) : tempInt)';
       }
       callIdent = Functions.getTable(sig) + '[' + callIdent + ']';
     }
@@ -1567,9 +1588,11 @@ function JSify(data, functionsOnly, givenFunctions) {
     var shellParts = read(shellFile).split('{{BODY}}');
     print(shellParts[1]);
     // Print out some useful metadata (for additional optimizations later, like the eliminator)
-    print('// EMSCRIPTEN_GENERATED_FUNCTIONS: ' + JSON.stringify(keys(Functions.implementedFunctions).filter(function(func) {
-      return IGNORED_FUNCTIONS.indexOf(func.ident) < 0;
-    })) + '\n');
+    if (EMIT_GENERATED_FUNCTIONS) {
+      print('// EMSCRIPTEN_GENERATED_FUNCTIONS: ' + JSON.stringify(keys(Functions.implementedFunctions).filter(function(func) {
+        return IGNORED_FUNCTIONS.indexOf(func.ident) < 0;
+      })) + '\n');
+    }
 
     PassManager.serialize();
 

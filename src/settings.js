@@ -37,7 +37,6 @@ var VERBOSE = 0; // When set to 1, will generate more verbose output during comp
 
 var INVOKE_RUN = 1; // Whether we will call run(). Disable if you embed the generated
                     // code in your own, and will call run() yourself at the right time
-var INIT_STACK = 0; // Whether to initialize memory on the stack to 0.
 var INIT_HEAP = 0; // Whether to initialize memory anywhere other than the stack to 0.
 var TOTAL_STACK = 5*1024*1024; // The total stack size. There is no way to enlarge the stack, so this
                                // value must be large enough for the program's requirements. If
@@ -59,6 +58,8 @@ var ALLOW_MEMORY_GROWTH = 0; // If false, we abort with an error if we try to al
 // Code embetterments
 var MICRO_OPTS = 1; // Various micro-optimizations, like nativizing variables
 var RELOOP = 0; // Recreate js native loops from llvm data
+var RELOOPER = 'relooper.js'; // Loads the relooper from this path relative to compiler.js
+
 var USE_TYPED_ARRAYS = 2; // Use typed arrays for the heap. See https://github.com/kripken/emscripten/wiki/Code-Generation-Modes/
                           // 0 means no typed arrays are used.
                           // 1 has two heaps, IHEAP (int32) and FHEAP (double),
@@ -107,10 +108,11 @@ var SKIP_STACK_IN_SMALL = 1; // When enabled, does not push/pop the stack at all
                              // In particular, be careful with the autodebugger! (We do turn
                              // this off automatically in that case, though.)
 var INLINE_LIBRARY_FUNCS = 1; // Will inline library functions that have __inline defined
-var INLINING_LIMIT = 50; // A limit on inlining. If 0, we will inline normally in LLVM and
+var INLINING_LIMIT = 0;  // A limit on inlining. If 0, we will inline normally in LLVM and
                          // closure. If greater than 0, we will *not* inline in LLVM, and
                          // we will prevent inlining of functions of this size or larger
-                         // in closure.
+                         // in closure. 50 is a reasonable setting if you do not want
+                         // inlining
 var CATCH_EXIT_CODE = 0; // If set, causes exit() to throw an exception object which is caught
                          // in a try..catch block and results in the exit status being
                          // returned from run(). If zero (the default), the program is just
@@ -127,6 +129,11 @@ var SAFE_HEAP = 0; // Check each write to the heap, for example, this will give 
                    // If equal to 3, checking all *but* the specified lines. Note
                    // that 3 is the option you usually want here.
 var SAFE_HEAP_LOG = 0; // Log out all SAFE_HEAP operations
+
+var CHECK_HEAP_ALIGN = 0; // Check heap accesses for alignment, but don't do as
+                          // near extensive (or slow) checks as SAFE_HEAP.
+
+var SAFE_DYNCALLS = 0; // Show stack traces on missing function pointer/virtual method calls
 
 var ASM_HEAP_LOG = 0; // Simple heap logging, like SAFE_HEAP_LOG but cheaper, and in asm.js
 
@@ -161,6 +168,8 @@ var GL_DEBUG = 0; // Print out all calls into WebGL. As with LIBRARY_DEBUG, you 
 var GL_TESTING = 0; // When enabled, sets preserveDrawingBuffer in the context, to allow tests to work (but adds overhead)
 var GL_MAX_TEMP_BUFFER_SIZE = 2097152; // How large GL emulation temp buffers are
 var GL_UNSAFE_OPTS = 1; // Enables some potentially-unsafe optimizations in GL emulation code
+var FULL_ES2 = 0; // Forces support for all GLES2 features, not just the WebGL-friendly subset.
+var FORCE_GL_EMULATION = 0; // Forces inclusion of full GL emulation code.
 
 var DISABLE_EXCEPTION_CATCHING = 0; // Disables generating code to actually catch exceptions. If the code you
                                     // are compiling does not actually rely on catching exceptions (but the
@@ -326,6 +335,8 @@ var ASM_JS = 0; // If 1, generate code in asm.js format. XXX This is highly expe
 var EXPLICIT_ZEXT = 0; // If 1, generate an explicit conversion of zext i1 to i32, using ?:
 
 var NECESSARY_BLOCKADDRS = []; // List of (function, block) for all block addresses that are taken.
+
+var EMIT_GENERATED_FUNCTIONS = 0; // whether to emit the list of generated functions, needed for external JS optimization passes
 
 // Compiler debugging options
 var DEBUG_TAGS_SHOWING = [];

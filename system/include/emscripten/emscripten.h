@@ -345,6 +345,30 @@ extern void EMSCRIPTEN_PROFILE_INIT(int max);
 extern void EMSCRIPTEN_PROFILE_BEGIN(int id);
 extern void EMSCRIPTEN_PROFILE_END(int id);
 
+/*
+ * jcache-friendly printf. printf in general will receive a string
+ * literal, which becomes a global constant, which invalidates all
+ * jcache entries. emscripten_jcache_printf is parsed before
+ * clang into something without any string literals, so you can
+ * add such printouts to your code and only the (chunk containing
+ * the) function you modify will be invalided and recompiled.
+ *
+ * Note in particular that you need to already have a call to this
+ * function in your code *before* you add one and do an incremental
+ * build, so that adding an external reference does not invalidate
+ * everything.
+ *
+ * This function assumes the first argument is a string literal
+ * (otherwise you don't need it), and the other arguments, if any,
+ * are neither strings nor complex expressions (but just simple
+ * variables). (You can create a variable to store a complex
+ * expression on the previous line, if necessary.)
+ */
+#ifdef __cplusplus
+void emscripten_jcache_printf(const char *format, ...);
+void emscripten_jcache_printf_(...); /* internal use */
+#endif
+
 #ifdef __cplusplus
 }
 #endif

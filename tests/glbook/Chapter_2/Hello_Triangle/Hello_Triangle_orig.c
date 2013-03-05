@@ -171,7 +171,7 @@ void Draw ( ESContext *esContext )
    glVertexAttribPointer ( 0, 3, GL_FLOAT, GL_FALSE, 0, vVertices );
    glEnableVertexAttribArray ( 0 );
 
-   glDrawArrays ( GL_TRIANGLES, 0, 3 );
+   glDrawArrays ( GL_TRIANGLES, 0, 3 ); // TODO: need glDrawElements!
 }
 
 int main ( int argc, char *argv[] )

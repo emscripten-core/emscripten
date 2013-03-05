@@ -179,7 +179,16 @@ var Variables = {
   globals: {},
   indexedGlobals: {}, // for indexed globals, ident ==> index
   // Used in calculation of indexed globals
-  nextIndexedOffset: 0
+  nextIndexedOffset: 0,
+
+  resolveAliasToIdent: function(ident) {
+    while (1) {
+      var varData = Variables.globals[ident];
+      if (!(varData && varData.targetIdent)) break;
+      ident = varData.targetIdent; // might need to eval to turn (6) into 6
+    }
+    return ident;
+  },
 };
 
 var Types = {
@@ -330,12 +339,23 @@ var Functions = {
           }
         }
       }
+      if (table.length > 20) {
+        // add some newlines in the table, for readability
+        var j = 10;
+        while (j+10 < table.length) {
+          table[j] += '\n';
+          j += 10;
+        }
+      }
       var indices = table.toString().replace('"', '');
       if (BUILD_AS_SHARED_LIB) {
         // Shared libraries reuse the parent's function table.
         tables[t] = Functions.getTable(t) + '.push.apply(' + Functions.getTable(t) + ', [' + indices + ']);\n';
       } else {
         tables[t] = 'var ' + Functions.getTable(t) + ' = [' + indices + '];\n';
+        if (SAFE_DYNCALLS) {
+          tables[t] += 'var FUNCTION_TABLE_NAMES = ' + JSON.stringify(table).replace(/\n/g, '').replace(/,0/g, ',0\n') + ';\n';
+        }
       }
     }
     if (!generated && !ASM_JS) {

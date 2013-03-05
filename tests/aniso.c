@@ -145,6 +145,11 @@ int main(int argc, char *argv[])
       glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
       glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso);
     }
+    {
+      assert(!glGetError());
+      glBindFramebuffer(GL_RENDERBUFFER, 0);
+      assert(glGetError());
+    }
 
     // Prepare and Render
 

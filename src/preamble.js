@@ -150,6 +150,25 @@ function SAFE_HEAP_COPY_HISTORY(dest, src) {
 //==========================================
 #endif
 
+#if CHECK_HEAP_ALIGN
+//========================================
+// Debugging tools - alignment check
+//========================================
+function CHECK_ALIGN_8(addr) {
+  assert((addr & 7) == 0, "address must be 8-byte aligned, is " + addr + "!");
+  return addr;
+}
+function CHECK_ALIGN_4(addr) {
+  assert((addr & 3) == 0, "address must be 4-byte aligned, is " + addr + "!");
+  return addr;
+}
+function CHECK_ALIGN_2(addr) {
+  assert((addr & 1) == 0, "address must be 2-byte aligned!");
+  return addr;
+}
+#endif
+
+
 #if CHECK_OVERFLOWS
 //========================================
 // Debugging tools - Mathop overflows
@@ -251,11 +270,9 @@ Module["ccall"] = ccall;
 // Returns the C function with a specified identifier (for C++, you need to do manual name mangling)
 function getCFunc(ident) {
   try {
-    var func = eval('_' + ident);
+    var func = globalScope['Module']['_' + ident]; // closure exported function
+    if (!func) func = eval('_' + ident); // explicit lookup
   } catch(e) {
-    try {
-      func = globalScope['Module']['_' + ident]; // closure exported function
-    } catch(e) {}
   }
   assert(func, 'Cannot call unknown function ' + ident + ' (perhaps LLVM optimizations or closure removed it?)');
   return func;
@@ -395,14 +412,6 @@ Module['ALLOC_STACK'] = ALLOC_STACK;
 Module['ALLOC_STATIC'] = ALLOC_STATIC;
 Module['ALLOC_NONE'] = ALLOC_NONE;
 
-// Simple unoptimized memset - necessary during startup
-var _memset = function(ptr, value, num) {
-  var stop = ptr + num;
-  while (ptr < stop) {
-    {{{ makeSetValue('ptr++', 0, 'value', 'i8', null, true) }}};
-  }
-}
-
 // allocate(): This is for internal use. You can use it yourself as well, but the interface
 //             is a little tricky (see docs right below). The reason is that it is optimized
 //             for multiple syntaxes to save space in generated code. So you should
@@ -436,7 +445,18 @@ function allocate(slab, types, allocator, ptr) {
   }
 
   if (zeroinit) {
-    _memset(ret, 0, size);
+    var ptr = ret, stop;
+#if USE_TYPED_ARRAYS == 2
+    assert((ret & 3) == 0);
+    stop = ret + (size & ~3);
+    for (; ptr < stop; ptr += 4) {
+      {{{ makeSetValue('ptr', '0', '0', 'i32', null, true) }}};
+    }
+#endif
+    stop = ret + size;
+    while (ptr < stop) {
+      {{{ makeSetValue('ptr++', '0', '0', 'i8', null, true) }}};
+    }
     return ret;
   }
 
@@ -447,7 +467,7 @@ function allocate(slab, types, allocator, ptr) {
   }
 #endif
 
-  var i = 0, type;
+  var i = 0, type, typeSize, previousType;
   while (i < size) {
     var curr = slab[i];
 
@@ -469,7 +489,13 @@ function allocate(slab, types, allocator, ptr) {
 #endif
 
     setValue(ret+i, curr, type);
-    i += Runtime.getNativeTypeSize(type);
+
+    // no need to look up size unless type changes, so cache it
+    if (previousType !== type) {
+      typeSize = Runtime.getNativeTypeSize(type);
+      previousType = type;
+    }
+    i += typeSize;
   }
 
   return ret;
@@ -543,6 +569,7 @@ function enlargeMemory() {
   while (TOTAL_MEMORY <= STATICTOP) { // Simple heuristic. Override enlargeMemory() if your program has something more optimal for it
     TOTAL_MEMORY = alignMemoryPage(2*TOTAL_MEMORY);
   }
+  assert(TOTAL_MEMORY <= Math.pow(2, 30)); // 2^30==1GB is a practical maximum - 2^31 is already close to possible negative numbers etc.
 #if USE_TYPED_ARRAYS == 1
   var oldIHEAP = IHEAP;
   Module['HEAP'] = Module['IHEAP'] = HEAP = IHEAP = new Int32Array(TOTAL_MEMORY);
