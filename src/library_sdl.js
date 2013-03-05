@@ -1467,35 +1467,40 @@ var LibrarySDL = {
   // "Note: Does not check if the channel has been paused."
   Mix_Playing: function(id) {
     if (id === -1) {
-        var count = 0;
-        for (var i = 0; i < SDL.audios.length; i++)
-          count += SDL.Mix_Playing(i);
-        return count;
+      var count = 0;
+      for (var i = 0; i < SDL.audios.length; i++) {
+        count += SDL.Mix_Playing(i);
+      }
+      return count;
     }
     var info = SDL.audios[id];
-    if (info && info.audio && !info.audio.paused)
+    if (info && info.audio && !info.audio.paused) {
       return 1;
+    }
     return 0;
   },
   
   Mix_Pause: function(id) {
     if (id === -1) {
-        for (var i = 0; i<SDL.audios.length;i++)
-          SDL.Mix_Pause(i);
-        return;
+      for (var i = 0; i<SDL.audios.length;i++) {
+        SDL.Mix_Pause(i);
+      }
+      return;
     }
     var info = SDL.audios[id];
-    if (info && info.audio)
+    if (info && info.audio) {
       info.audio.pause();
+    }
   },
   
   // http://www.libsdl.org/projects/SDL_mixer/docs/SDL_mixer_39.html#SEC39
   Mix_Paused: function(id) {
     if (id === -1) {
-        var pausedCount = 0;
-        for (var i = 0; i<SDL.audios.length;i++)
-          pausedCount += SDL.Mix_Paused(i);
-        return pausedCount;
+      var pausedCount = 0;
+      for (var i = 0; i<SDL.audios.length;i++) {
+        pausedCount += SDL.Mix_Paused(i);
+      }
+      return pausedCount;
     }
     var info = SDL.audios[id];
     if (info && info.audio && info.audio.paused) {
@@ -1510,15 +1515,14 @@ var LibrarySDL = {
 
   // http://www.libsdl.org/projects/SDL_mixer/docs/SDL_mixer_33.html#SEC33
   Mix_Resume: function(id) {
-    if (id === -1)
-    {
-        for (var i = 0; i<SDL.audios.length;i++)
-          SDL.Mix_Resume(i);
-        return;
+    if (id === -1) {
+      for (var i = 0; i<SDL.audios.length;i++) {
+        SDL.Mix_Resume(i);
+      }
+      return;
     }
     var info = SDL.audios[id];
-    if (info && info.audio)
-    {
+    if (info && info.audio) {
       info.audio.play();
     }
   },
