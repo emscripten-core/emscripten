@@ -909,48 +909,54 @@ void Relooper::Calculate(Block *Entry) {
       }
       std::stack<Shape*> &LoopStack = *((std::stack<Shape*>*)Closure);
 
-      SHAPE_SWITCH(Root, {
-        MultipleShape *Fused = Shape::IsMultiple(Root->Next);
-        // If we are fusing a Multiple with a loop into this Simple, then visit it now
-        if (Fused && Fused->NeedLoop) {
-          LoopStack.push(Fused);
-          RECURSE_MULTIPLE_MANUAL(FindLabeledLoops, Fused);
-        }
-        for (BlockBranchMap::iterator iter = Simple->Inner->ProcessedBranchesOut.begin(); iter != Simple->Inner->ProcessedBranchesOut.end(); iter++) {
-          Block *Target = iter->first;
-          Branch *Details = iter->second;
-          if (Details->Type != Branch::Direct) {
-            assert(LoopStack.size() > 0);
-            if (Details->Ancestor != LoopStack.top()) {
-              LabeledShape *Labeled = Shape::IsLabeled(Details->Ancestor);
-              Labeled->Labeled = true;
-              Details->Labeled = true;
-            } else {
-              Details->Labeled = false;
+      Shape *Next = Root;
+      while (Next) {
+        Root = Next;
+        Next = NULL;
+
+        SHAPE_SWITCH(Root, {
+          MultipleShape *Fused = Shape::IsMultiple(Root->Next);
+          // If we are fusing a Multiple with a loop into this Simple, then visit it now
+          if (Fused && Fused->NeedLoop) {
+            LoopStack.push(Fused);
+            RECURSE_MULTIPLE_MANUAL(FindLabeledLoops, Fused);
+          }
+          for (BlockBranchMap::iterator iter = Simple->Inner->ProcessedBranchesOut.begin(); iter != Simple->Inner->ProcessedBranchesOut.end(); iter++) {
+            Block *Target = iter->first;
+            Branch *Details = iter->second;
+            if (Details->Type != Branch::Direct) {
+              assert(LoopStack.size() > 0);
+              if (Details->Ancestor != LoopStack.top()) {
+                LabeledShape *Labeled = Shape::IsLabeled(Details->Ancestor);
+                Labeled->Labeled = true;
+                Details->Labeled = true;
+              } else {
+                Details->Labeled = false;
+              }
             }
           }
-        }
-        if (Fused && Fused->NeedLoop) {
+          if (Fused && Fused->NeedLoop) {
+            LoopStack.pop();
+            Next = Fused->Next;
+          } else {
+            Next = Root->Next;
+          }
+        }, {
+          if (Multiple->NeedLoop) {
+            LoopStack.push(Multiple);
+          }
+          RECURSE_MULTIPLE(FindLabeledLoops);
+          if (Multiple->NeedLoop) {
+            LoopStack.pop();
+          }
+          Next = Root->Next;
+        }, {
+          LoopStack.push(Loop);
+          RECURSE_LOOP(FindLabeledLoops);
           LoopStack.pop();
-          if (Fused->Next) FindLabeledLoops(Fused->Next);
-        } else {
-          if (Root->Next) FindLabeledLoops(Root->Next);
-        }
-      }, {
-        if (Multiple->NeedLoop) {
-          LoopStack.push(Multiple);
-        }
-        RECURSE_MULTIPLE(FindLabeledLoops);
-        if (Multiple->NeedLoop) {
-          LoopStack.pop();
-        }
-        if (Root->Next) FindLabeledLoops(Root->Next);
-      }, {
-        LoopStack.push(Loop);
-        RECURSE_LOOP(FindLabeledLoops);
-        LoopStack.pop();
-        if (Root->Next) FindLabeledLoops(Root->Next);
-      });
+          Next = Root->Next;
+        });
+      }
 
       if (First) {
         delete (std::stack<Shape*>*)Closure;
