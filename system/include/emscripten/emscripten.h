@@ -364,8 +364,10 @@ extern void EMSCRIPTEN_PROFILE_END(int id);
  * variables). (You can create a variable to store a complex
  * expression on the previous line, if necessary.)
  */
+#ifdef __cplusplus
 void emscripten_jcache_printf(const char *format, ...);
 void emscripten_jcache_printf_(...); /* internal use */
+#endif
 
 #ifdef __cplusplus
 }
