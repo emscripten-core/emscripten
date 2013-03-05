@@ -35,6 +35,17 @@ COMPILER_ENGINE = NODE_JS
 #COMPILER_ENGINE = V8_ENGINE
 #COMPILER_ENGINE = SPIDERMONKEY_ENGINE
 
+# The default stack size for d8/node needs to be increased for some large projects,
+# especially on Windows.
+#
+# On Windows, this requires a node/d8 binary modified via
+# 'editbin /stack:33554432 node.exe' or built with the same stack
+# flag (in bytes) passed to the linker.
+#
+# Stack size, in kb.  If not specified, the default is used.  The environment
+# variable EMCC_V8_STACK_SIZE can also be used to control this (env var takes
+# precedence).
+#V8_STACK_SIZE = 16384
 
 # All JS engines to use when running the automatic tests. Not all the engines in this list
 # must exist (if they don't, they will be skipped in the test runner).

@@ -46,7 +46,8 @@ def process_funcs((i, funcs, meta, settings_file, compiler, forwarded_file, libr
   return out
 
 def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
-             jcache=None, temp_files=None, DEBUG=None, DEBUG_CACHE=None):
+             jcache=None, temp_files=None,
+             DEBUG=None, DEBUG_CACHE=None, DEBUG_SERIALIZE=None):
   """Runs the emscripten LLVM-to-JS compiler. We parallelize as much as possible
 
   Args:
@@ -154,6 +155,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   if not out:
     open(pre_file, 'w').write(pre_input)
     out = jsrun.run_js(compiler, compiler_engine, [settings_file, pre_file, 'pre'] + libraries, stdout=subprocess.PIPE)
+    assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in an output - process failed?'
     if jcache:
       if DEBUG: print >> sys.stderr, '  saving pre to jcache'
       jcache.set(shortkey, keys, out)
@@ -215,11 +217,11 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       for i, chunk in enumerate(chunks)
     ]
 
-    if len(chunks) > 1:
+    if not DEBUG_SERIALIZE and len(chunks) > 1:
       pool = multiprocessing.Pool(processes=cores)
       outputs = pool.map(process_funcs, commands, chunksize=1)
-    elif len(chunks) == 1:
-      outputs = [process_funcs(commands[0])]
+    else:
+      outputs = map(lambda i: process_funcs(commands[i]), range(len(chunks)))
   else:
     outputs = []
 
@@ -229,14 +231,17 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       chunk = chunks[i]
       keys = [settings_text, forwarded_data, chunk]
       shortkey = jcache.get_shortkey(keys)
-      jcache.set(shortkey, keys, outputs[i])
+      if not '//FORWARDED_DATA:' in outputs[i]:
+        print >>sys.stderr, 'error: no forwarded data in chunk; not saving'
+      else:
+        shared.JCache.set(shortkey, keys, outputs[i])
     if out and DEBUG and len(chunks) > 0: print >> sys.stderr, '  saving %d funcchunks to jcache' % len(chunks)
 
   if jcache: outputs += cached_outputs # TODO: preserve order
 
   outputs = [output.split('//FORWARDED_DATA:') for output in outputs]
   for output in outputs:
-    assert len(output) == 2, 'Did not receive forwarded data in an output - process failed? We only got: ' + output[0]
+    assert len(output) == 2, 'Did not receive forwarded data in an output - process failed?'
 
   if DEBUG: print >> sys.stderr, '  emscript: phase 2 took %s seconds' % (time.time() - t)
   if DEBUG: t = time.time()
@@ -488,7 +493,7 @@ Runtime.stackRestore = function(top) { asm.stackRestore(top) };
 
   outfile.close()
 
-def main(args, compiler_engine, cache, jcache, relooper, temp_files, DEBUG, DEBUG_CACHE):
+def main(args, compiler_engine, cache, jcache, relooper, temp_files, DEBUG, DEBUG_CACHE, DEBUG_SERIALIZE):
   # Prepare settings for serialization to JSON.
   settings = {}
   for setting in args.settings:
@@ -571,7 +576,7 @@ def main(args, compiler_engine, cache, jcache, relooper, temp_files, DEBUG, DEBU
       shared.Building.ensure_relooper(relooper)
 
   emscript(args.infile, settings, args.outfile, libraries, compiler_engine=compiler_engine,
-           jcache=jcache, temp_files=temp_files, DEBUG=DEBUG, DEBUG_CACHE=DEBUG_CACHE)
+           jcache=jcache, temp_files=temp_files, DEBUG=DEBUG, DEBUG_CACHE=DEBUG_CACHE, DEBUG_SERIALIZE=DEBUG_SERIALIZE)
 
 def _main(environ):
   parser = optparse.OptionParser(
@@ -665,12 +670,9 @@ WARNING: You should normally never use this! Use emcc instead.
     from tools import shared
     keywords.compiler = shared.COMPILER_ENGINE
 
-  if keywords.verbose is None:
-    DEBUG = get_configuration().DEBUG
-    DEBUG_CACHE = get_configuration().DEBUG_CACHE
-  else:
-    DEBUG = keywords.verbose
-    DEBUG_CACHE = keywords.verbose
+  DEBUG = keywords.verbose or get_configuration().DEBUG
+  DEBUG_CACHE = get_configuration().DEBUG_CACHE
+  DEBUG_SERIALIZE = get_configuration().DEBUG_SERIALIZE
 
   cache = cache_module.Cache()
   temp_files.run_and_clean(lambda: main(
@@ -682,6 +684,7 @@ WARNING: You should normally never use this! Use emcc instead.
     temp_files=temp_files,
     DEBUG=DEBUG,
     DEBUG_CACHE=DEBUG_CACHE,
+    DEBUG_SERIALIZE=DEBUG_SERIALIZE,
   ))
 
 if __name__ == '__main__':
