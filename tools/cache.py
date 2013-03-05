@@ -96,18 +96,16 @@ class JCache:
 # generate the same chunks, barring big differences in function sizes that
 # violate our chunk size guideline. If caching is not used, chunking_file
 # should be None
-@classmethod
-def chunkify(funcs, chunk_size, chunking_file):
+def chunkify(funcs, chunk_size, chunking_file, DEBUG=False):
   previous_mapping = None
   if chunking_file:
+    chunking_file = chunking_file
     if os.path.exists(chunking_file):
       try:
         previous_mapping = cPickle.Unpickler(open(chunking_file, 'rb')).load() # maps a function identifier to the chunk number it will be in
-        if DEBUG: print >> sys.stderr, 'jscache previous mapping of size %d loaded from %s' % (len(previous_mapping), chunking_file)
-      except Exception, e:
-        print >> sys.stderr, 'Failed to load and unpickle previous chunking file at %s: ' % chunking_file, e
-    else:
-      print >> sys.stderr, 'Previous chunking file not found at %s' % chunking_file
+        #if DEBUG: print >> sys.stderr, 'jscache previous mapping', previous_mapping
+      except:
+        pass
   chunks = []
   if previous_mapping:
     # initialize with previous chunking
@@ -152,35 +150,10 @@ def chunkify(funcs, chunk_size, chunking_file):
       curr.append(func)
       total_size += curr_size
     else:
-      n = previous_mapping[ident]
-      while n >= len(chunks): chunks.append([])
-      chunks[n].append(func)
-  # add news and adjust for new sizes
-  spilled = news
-  for chunk in chunks:
-    size = sum([len(func[1]) for func in chunk])
-    while size > 1.5*chunk_size and len(chunk) > 0:
-      spill = chunk.pop()
-      spilled.append(spill)
-      size -= len(spill[1])
-  for chunk in chunks:
-    size = sum([len(func[1]) for func in chunk])
-    while size < 0.66*chunk_size and len(spilled) > 0:
-      spill = spilled.pop()
-      chunk.append(spill)
-      size += len(spill[1])
-  chunks = filter(lambda chunk: len(chunk) > 0, chunks) # might have empty ones, eliminate them
-  funcs = spilled # we will allocate these into chunks as if they were normal inputs
-# initialize reasonably, the rest of the funcs we need to split out
-curr = []
-total_size = 0
-for i in range(len(funcs)):
-  func = funcs[i]
-  curr_size = len(func[1])
-  if total_size + curr_size < chunk_size:
-    curr.append(func)
-    total_size += curr_size
-  else:
+      chunks.append(curr)
+      curr = [func]
+      total_size = curr_size
+  if curr:
     chunks.append(curr)
     curr = None
   if chunking_file:
@@ -195,7 +168,6 @@ for i in range(len(funcs)):
         assert ident not in new_mapping, 'cannot have duplicate names in jcache chunking'
         new_mapping[ident] = i
     cPickle.Pickler(open(chunking_file, 'wb')).dump(new_mapping)
-    if DEBUG: print >> sys.stderr, 'jscache mapping of size %d saved to %s' % (len(new_mapping), chunking_file)
     #if DEBUG:
     #  for i in range(len(chunks)):
     #    chunk = chunks[i]

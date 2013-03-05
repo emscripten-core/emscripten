@@ -46,7 +46,7 @@ def process_funcs((i, funcs, meta, settings_file, compiler, forwarded_file, libr
   return out
 
 def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
-             jcache=None, temp_files=None, DEBUG=False):
+             jcache=None, temp_files=None, DEBUG=None, DEBUG_CACHE=None):
   """Runs the emscripten LLVM-to-JS compiler. We parallelize as much as possible
 
   Args:
@@ -56,8 +56,6 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     outfile: The file where the output is written.
   """
 
-  DEBUG = configuration.DEBUG
-  DEBUG_CACHE = configuration.DEBUG_CACHE
   compiler = path_from_root('src', 'compiler.js')
 
   # Parallelization: We run 3 phases:
@@ -490,7 +488,7 @@ Runtime.stackRestore = function(top) { asm.stackRestore(top) };
 
   outfile.close()
 
-def main(args, compiler_engine, cache, jcache, relooper, temp_files, DEBUG):
+def main(args, compiler_engine, cache, jcache, relooper, temp_files, DEBUG, DEBUG_CACHE):
   # Prepare settings for serialization to JSON.
   settings = {}
   for setting in args.settings:
@@ -573,7 +571,7 @@ def main(args, compiler_engine, cache, jcache, relooper, temp_files, DEBUG):
       shared.Building.ensure_relooper(relooper)
 
   emscript(args.infile, settings, args.outfile, libraries, compiler_engine=compiler_engine,
-           jcache=jcache, temp_files=temp_files, DEBUG=DEBUG)
+           jcache=jcache, temp_files=temp_files, DEBUG=DEBUG, DEBUG_CACHE=DEBUG_CACHE)
 
 def _main(environ):
   parser = optparse.OptionParser(
@@ -669,8 +667,10 @@ WARNING: You should normally never use this! Use emcc instead.
 
   if keywords.verbose is None:
     DEBUG = get_configuration().DEBUG
+    DEBUG_CACHE = get_configuration().DEBUG_CACHE
   else:
     DEBUG = keywords.verbose
+    DEBUG_CACHE = keywords.verbose
 
   cache = cache_module.Cache()
   temp_files.run_and_clean(lambda: main(
@@ -680,7 +680,8 @@ WARNING: You should normally never use this! Use emcc instead.
     jcache=cache_module.JCache(cache) if keywords.jcache else None,
     relooper=relooper,
     temp_files=temp_files,
-    DEBUG=DEBUG
+    DEBUG=DEBUG,
+    DEBUG_CACHE=DEBUG_CACHE,
   ))
 
 if __name__ == '__main__':
