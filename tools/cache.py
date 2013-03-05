@@ -1,4 +1,4 @@
-import os.path, shutil, hashlib, cPickle
+import os.path, shutil, hashlib, cPickle, zlib
 
 import tempfiles
 
@@ -68,7 +68,10 @@ class JCache:
     if not os.path.exists(cachename):
       #if DEBUG: print >> sys.stderr, 'jcache none at all'
       return
-    data = cPickle.Unpickler(open(cachename, 'rb')).load()
+    try:
+      data = cPickle.loads(zlib.decompress(open(cachename).read()))
+    except Exception, e:
+      if DEBUG_CACHE: print >> sys.stderr, 'jcache decompress/unpickle error:', e
     if len(data) != 2:
       #if DEBUG: print >> sys.stderr, 'jcache error in get'
       return
@@ -86,7 +89,13 @@ class JCache:
   # Sets the cached value for a key (from get_key)
   def set(self, shortkey, keys, value):
     cachename = self.get_cachename(shortkey)
-    cPickle.Pickler(open(cachename, 'wb')).dump([keys, value])
+    try:
+      f = open(cachename, 'w')
+      f.write(zlib.compress(cPickle.dumps([keys, value])))
+      f.close()
+    except Exception, e:
+      if DEBUG_CACHE: print >> sys.stderr, 'jcache compress/pickle error:', e
+      return
     #if DEBUG:
     #  for i in range(len(keys)):
     #    open(cachename + '.key' + str(i), 'w').write(keys[i])
