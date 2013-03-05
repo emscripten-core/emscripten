@@ -30,6 +30,9 @@
 #include <stddef.h>
 #include "getopt.h"
 
+#ifdef EMSCRIPTEN
+#include <emscripten/emscripten.h>
+#endif
 
 #define GLFW_NO_GLU 1 
 #include <GL/glfw.h>
@@ -674,12 +677,16 @@ static void usage(void)
     printf("       heightmap [-h]\n");
 }
 
+void iteration();
+
+double dt;
+int frame;
+int iter;
+double last_update_time;
+
 int main(int argc, char** argv)
 {
-    int ch, iter;
-    double dt;
-    double last_update_time;
-    int frame;
+    int ch;
     float f;
     GLint uloc_modelview;
     GLint uloc_project;
@@ -820,9 +827,21 @@ int main(int argc, char** argv)
     iter = 0;
     dt = last_update_time = glfwGetTime();
 
-    while (running)
+#ifdef EMSCRIPTEN
+  emscripten_set_main_loop (iteration, 0, 1);
+#else
+    // Main loop
+    while( running )
     {
-        ++frame;
+		iteration();
+    }
+#endif
+
+    exit(EXIT_SUCCESS);
+}
+
+void iteration(){
+	        ++frame;
         /* render the next frame */
         glClear(GL_COLOR_BUFFER_BIT);
         glDrawElements(GL_LINES, 2* MAP_NUM_LINES , GL_UNSIGNED_INT, 0);
@@ -843,8 +862,5 @@ int main(int argc, char** argv)
             last_update_time = dt;
             frame = 0;
         }
-    }
-
-    exit(EXIT_SUCCESS);
 }
 

@@ -32,6 +32,10 @@
 #include <math.h>
 #include <GL/glfw.h>
 
+#ifdef EMSCRIPTEN
+#include <emscripten/emscripten.h>
+#endif
+
 
 /*****************************************************************************
  * Various declarations and macros
@@ -563,6 +567,19 @@ void DrawGrid( void )
  * main()
  *======================================================================*/
 
+void iteration(){
+       /* Timing */
+       t = glfwGetTime();
+       dt = t - t_old;
+       t_old = t;
+
+       /* Draw one frame */
+       display();
+
+       /* Swap buffers */
+       glfwSwapBuffers();
+}
+
 int main( void )
 {
    int running;
@@ -590,25 +607,18 @@ int main( void )
    init();
 
    /* Main loop */
+#ifdef EMSCRIPTEN
+  emscripten_set_main_loop (iteration, 0, 1);
+#else
    do
    {
-       /* Timing */
-       t = glfwGetTime();
-       dt = t - t_old;
-       t_old = t;
-
-       /* Draw one frame */
-       display();
-
-       /* Swap buffers */
-       glfwSwapBuffers();
-
+		iteration();
        /* Check if we are still running */
        running = !glfwGetKey( GLFW_KEY_ESC ) &&
                  glfwGetWindowParam( GLFW_OPENED );
    }
    while( running );
-
+#endif
    glfwTerminate();
    exit( EXIT_SUCCESS );
 }
