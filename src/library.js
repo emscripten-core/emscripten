@@ -6065,6 +6065,15 @@ LibraryManager.library = {
   __timespec_struct_layout: Runtime.generateStructInfo([
     ['i32', 'tv_sec'],
     ['i32', 'tv_nsec']]),
+  nanosleep__deps: ['usleep', '__timespec_struct_layout'],
+  nanosleep: function(rqtp, rmtp) {
+    // int nanosleep(const struct timespec  *rqtp, struct timespec *rmtp);
+    var seconds = {{{ makeGetValue('rqtp', '___timespec_struct_layout.tv_sec', 'i32') }}};
+    var nanoseconds = {{{ makeGetValue('rqtp', '___timespec_struct_layout.tv_nsec', 'i32') }}};
+    {{{ makeSetValue('rmtp', '___timespec_struct_layout.tv_sec', '0', 'i32') }}}
+    {{{ makeSetValue('rmtp', '___timespec_struct_layout.tv_nsec', '0', 'i32') }}}
+    return _usleep((seconds * 1e6) + (nanoseconds / 1000));
+  },
   // TODO: Implement these for real.
   clock_gettime__deps: ['__timespec_struct_layout'],
   clock_gettime: function(clk_id, tp) {
