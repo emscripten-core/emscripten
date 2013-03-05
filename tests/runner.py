@@ -3811,6 +3811,8 @@ The current type of b is: 9
 ''')
 
     def test_structbyval(self):
+        Settings.INLINING_LIMIT = 50
+
         # part 1: make sure that normally, passing structs by value works
 
         src = r'''
