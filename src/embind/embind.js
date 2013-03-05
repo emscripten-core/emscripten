@@ -182,7 +182,6 @@ function registerType(rawType, name, registeredInstance) {
     registeredInstance.rawType = rawType;
     registeredInstance.name = name;
     typeRegistry[rawType] = registeredInstance;
-    return registeredInstance;
 }
 
 function requireRegisteredType(rawType, humanName) {
@@ -746,10 +745,16 @@ function __embind_register_smart_ptr(
     };
     var registeredPointer = new RegisteredPointer(Handle, pointeeType.isPolymorphic, true, rawGetPointee, rawConstructor, rawDestructor);
     registeredPointer.pointeeType = pointeeType;
-    pointeeType.smartPointerType = registerType(rawType, name, registeredPointer);
+    registerType(rawType, name, registeredPointer);
+    pointeeType.smartPointerType = registeredPointer;
 }
 
 function ClassHandle() {
+}
+
+function RegisteredClass(name, isPolymorphic, baseClass) {
+    this.name = name;
+    this.isPolymorphic = isPolymorphic;
 }
 
 // TODO: null pointers are always zero (not a Handle) in Javascript
@@ -764,6 +769,8 @@ function __embind_register_class(
 ) {
     name = Pointer_stringify(name);
     rawDestructor = FUNCTION_TABLE[rawDestructor];
+
+    var registeredClass = new RegisteredClass(name, isPolymorphic);
 
     var Handle = createNamedFunction(name, function(ptr) {
         Object.defineProperty(this, '$$', {
@@ -812,8 +819,9 @@ function __embind_register_class(
 
     // todo: clean this up!
     var registeredClass = new RegisteredPointer(Handle, isPolymorphic, false);
-    var type = registerType(rawType, name, registeredClass);
-    registeredClass.pointeeType = type;
+    var type = registeredClass;
+    registerType(rawType, name, registeredClass);
+    registeredClass.pointeeType = registeredClass;
 
     var registeredClass = new RegisteredPointer(Handle, isPolymorphic, false);
     registerType(rawPointerType, name + '*', registeredClass);
