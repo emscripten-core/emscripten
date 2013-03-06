@@ -706,19 +706,21 @@ try:
 
   absolute_warning_shown = False
 
+  settings_changes = []
+
   for i in range(len(newargs)):
     newargs[i] = newargs[i].strip() # On Windows Vista (and possibly others), excessive spaces in the command line leak into the items in this array, so trim e.g. 'foo.cpp ' -> 'foo.cpp'
     if newargs[i].startswith('-O'):
       # Let -O default to -O2, which is what gcc does.
       requested_level = newargs[i][2:] or '2'
       if requested_level == 's':
-        print >> sys.stderr, 'emcc: warning: -Os is ignored (use -O0, -O1, -O2)'
-      else:
-        try:
-          opt_level = int(requested_level)
-          assert 0 <= opt_level <= 3
-        except:
-          raise Exception('Invalid optimization level: ' + newargs[i])
+        requested_level = 2
+        settings_changes.append('INLINING_LIMIT=50')
+      try:
+        opt_level = int(requested_level)
+        assert 0 <= opt_level <= 3
+      except:
+        raise Exception('Invalid optimization level: ' + newargs[i])
       newargs[i] = ''
     elif newargs[i].startswith('--llvm-opts'):
       check_bad_eq(newargs[i])
@@ -842,7 +844,6 @@ try:
   if closure:
     assert os.path.exists(shared.CLOSURE_COMPILER), 'emcc: fatal: Closure compiler (%s) does not exist' % shared.CLOSURE_COMPILER
 
-  settings_changes = []
   for i in range(len(newargs)):
     if newargs[i] == '-s':
       if is_minus_s_for_emcc(newargs, i):
