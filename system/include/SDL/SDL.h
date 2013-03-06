@@ -69,6 +69,10 @@
 #ifndef _SDL_H
 #define _SDL_H
 
+#undef __SSE__
+#undef __MMX__
+#undef __SSE2__
+
 #include "SDL_main.h"
 #include "SDL_stdinc.h"
 #include "SDL_assert.h"

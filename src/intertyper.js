@@ -185,7 +185,7 @@ function intertyper(data, sidePass, baseLineNums) {
           lastToken.text += ' ' + text;
         } else if (lastToken && text[0] == '}') { // }, }*, etc.
           var openBrace = tokens.length-1;
-          while (tokens[openBrace].text.substr(-1) != '{') openBrace --;
+          while (openBrace >= 0 && tokens[openBrace].text.substr(-1) != '{') openBrace --;
           token = combineTokens(tokens.slice(openBrace+1));
           tokens.splice(openBrace, tokens.length-openBrace+1);
           tokens.push(token);

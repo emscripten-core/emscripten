@@ -23,6 +23,7 @@ extern void freeaddrinfo(struct addrinfo *ai);
 extern int getnameinfo (struct sockaddr *sa, socklen_t salen, char *host, socklen_t hostlen, char *serv, socklen_t servlen, unsigned int flags);
 const char *gai_strerror(int ecode);
 
+#ifndef _NETDB_H
 struct hostent
 {
   char  *h_name;
@@ -31,6 +32,7 @@ struct hostent
   int    h_length;
   char **h_addr_list;
 };
+#endif
 
 #ifdef __cplusplus
 }
