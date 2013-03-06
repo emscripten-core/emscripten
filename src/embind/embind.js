@@ -115,6 +115,9 @@ function createInheritedFunctionOrProperty(name, type, nameInBaseClass, baseClas
 }
 
 function collectRegisteredBaseClasses(rawType) {
+    if (undefined === rawType) {
+        return [];
+    }
     var rawBaseTypes = Module.__getBaseClasses(rawType);
     var baseTypes = [];
     for (var i = 0; i < rawBaseTypes.size(); i++) {
@@ -180,7 +183,6 @@ function registerType(rawType, registeredInstance) {
     if (typeRegistry.hasOwnProperty(rawType)) {
         throwBindingError("Cannot register type '" + name + "' twice");
     }
-    registeredInstance.rawType = rawType;
     typeRegistry[rawType] = registeredInstance;
 }
 
@@ -549,8 +551,9 @@ function __embind_register_struct_field(
     });
 }
 
-function RegisteredPointer(name, registeredClass, pointeeType, Handle, isSmartPointer, rawGetPointee, rawConstructor, rawDestructor) {
+function RegisteredPointer(name, rawType, registeredClass, pointeeType, Handle, isSmartPointer, rawGetPointee, rawConstructor, rawDestructor) {
     this.name = name;
+    this.rawType = rawType;
     this.registeredClass = registeredClass;
     this.pointeeType = pointeeType;
     this.Handle = Handle; // <-- I think I can kill this
@@ -732,6 +735,7 @@ function __embind_register_smart_ptr(
 
     var registeredPointer = new RegisteredPointer(
         name,
+        rawType,
         pointeeType.registeredClass,
         pointeeType,
         Handle,
@@ -812,12 +816,19 @@ function __embind_register_class(
     Handle.memberType = {};
 
     // todo: clean this up!
-    var type = new RegisteredPointer(name, registeredClass, undefined, Handle, false);
-    type.pointeeType = type;
+    var type = new RegisteredPointer(
+        name,
+        rawType,
+        registeredClass,
+        undefined,
+        Handle,
+        false);
+    type.pointeeType = type; // :(
     registerType(rawType, type);
 
     registerType(rawPointerType, new RegisteredPointer(
         name + '*',
+        rawPointerType,
         registeredClass,
         type,
         Handle,
@@ -826,6 +837,7 @@ function __embind_register_class(
     // todo: implement const pointers (no modification Javascript side)
     registerType(rawConstPointerType, new RegisteredPointer(
         name + ' const*',
+        rawConstPointerType,
         registeredClass,
         type,
         Handle,
