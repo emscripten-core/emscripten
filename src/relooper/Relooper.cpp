@@ -879,33 +879,38 @@ void Relooper::Calculate(Block *Entry) {
     // A flow operation is trivially unneeded if the shape we naturally get to by normal code
     // execution is the same as the flow forces us to.
     void RemoveUnneededFlows(Shape *Root, Shape *Natural=NULL) {
-      SHAPE_SWITCH(Root, {
-        // If there is a next block, we already know at Simple creation time to make direct branches,
-        // and we can do nothing more. If there is no next however, then Natural is where we will
-        // go to by doing nothing, so we can potentially optimize some branches to direct.
-        if (Simple->Next) {
-          RemoveUnneededFlows(Simple->Next, Natural);
-        } else {
-          for (BlockBranchMap::iterator iter = Simple->Inner->ProcessedBranchesOut.begin(); iter != Simple->Inner->ProcessedBranchesOut.end(); iter++) {
-            Block *Target = iter->first;
-            Branch *Details = iter->second;
-            if (Details->Type != Branch::Direct && Target->Parent == Natural) {
-              Details->Type = Branch::Direct;
-              if (MultipleShape *Multiple = Shape::IsMultiple(Details->Ancestor)) {
-                Multiple->NeedLoop--;
+      Shape *Next = Root;
+      while (Next) {
+        Root = Next;
+        Next = NULL;
+        SHAPE_SWITCH(Root, {
+          // If there is a next block, we already know at Simple creation time to make direct branches,
+          // and we can do nothing more. If there is no next however, then Natural is where we will
+          // go to by doing nothing, so we can potentially optimize some branches to direct.
+          if (Simple->Next) {
+            Next = Simple->Next;
+          } else {
+            for (BlockBranchMap::iterator iter = Simple->Inner->ProcessedBranchesOut.begin(); iter != Simple->Inner->ProcessedBranchesOut.end(); iter++) {
+              Block *Target = iter->first;
+              Branch *Details = iter->second;
+              if (Details->Type != Branch::Direct && Target->Parent == Natural) {
+                Details->Type = Branch::Direct;
+                if (MultipleShape *Multiple = Shape::IsMultiple(Details->Ancestor)) {
+                  Multiple->NeedLoop--;
+                }
               }
             }
           }
-        }
-      }, {
-        for (BlockShapeMap::iterator iter = Multiple->InnerMap.begin(); iter != Multiple->InnerMap.end(); iter++) {
-          RemoveUnneededFlows(iter->second, Multiple->Next);
-        }
-        RemoveUnneededFlows(Multiple->Next, Natural);
-      }, {
-        RemoveUnneededFlows(Loop->Inner, Loop->Inner);
-        RemoveUnneededFlows(Loop->Next, Natural);
-      });
+        }, {
+          for (BlockShapeMap::iterator iter = Multiple->InnerMap.begin(); iter != Multiple->InnerMap.end(); iter++) {
+            RemoveUnneededFlows(iter->second, Multiple->Next);
+          }
+          Next = Multiple->Next;
+        }, {
+          RemoveUnneededFlows(Loop->Inner, Loop->Inner);
+          Next = Loop->Next;
+        });
+      }
     }
 
     // After we know which loops exist, we can calculate which need to be labeled
