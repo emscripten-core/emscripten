@@ -347,17 +347,25 @@ struct RelooperRecursor {
   RelooperRecursor(Relooper *ParentInit) : Parent(ParentInit) {}
 };
 
+typedef std::list<Block*> BlockList;
+
 void Relooper::Calculate(Block *Entry) {
   // Scan and optimize the input
   struct PreOptimizer : public RelooperRecursor {
     PreOptimizer(Relooper *Parent) : RelooperRecursor(Parent) {}
     BlockSet Live;
 
-    void FindLive(Block *Curr) {
-      if (Live.find(Curr) != Live.end()) return;
-      Live.insert(Curr);
-      for (BlockBranchMap::iterator iter = Curr->BranchesOut.begin(); iter != Curr->BranchesOut.end(); iter++) {
-        FindLive(iter->first);
+    void FindLive(Block *Root) {
+      BlockList ToInvestigate;
+      ToInvestigate.push_back(Root);
+      while (ToInvestigate.size() > 0) {
+        Block *Curr = ToInvestigate.front();
+        ToInvestigate.pop_front();
+        if (Live.find(Curr) != Live.end()) continue;
+        Live.insert(Curr);
+        for (BlockBranchMap::iterator iter = Curr->BranchesOut.begin(); iter != Curr->BranchesOut.end(); iter++) {
+          ToInvestigate.push_back(iter->first);
+        }
       }
     }
 
@@ -529,7 +537,6 @@ void Relooper::Calculate(Block *Entry) {
     // ignore directly reaching the entry itself by another entry.
     void FindIndependentGroups(BlockSet &Blocks, BlockSet &Entries, BlockBlockSetMap& IndependentGroups) {
       typedef std::map<Block*, Block*> BlockBlockMap;
-      typedef std::list<Block*> BlockList;
 
       struct HelperClass {
         BlockBlockSetMap& IndependentGroups;
