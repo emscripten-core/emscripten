@@ -206,10 +206,10 @@ mergeInto(LibraryManager.library, {
       try {
         if (useWebGL) {
           ctx = canvas.getContext('experimental-webgl', {
-            alpha: false,
 #if GL_TESTING
-            preserveDrawingBuffer: true
+            preserveDrawingBuffer: true,
 #endif
+            alpha: false
           });
         } else {
           ctx = canvas.getContext('2d');
