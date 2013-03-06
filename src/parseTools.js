@@ -1283,12 +1283,15 @@ function makeSetValues(ptr, pos, value, type, num, align) {
     [4, 2, 1].forEach(function(possibleAlign) {
       if (num == 0) return;
       if (align >= possibleAlign) {
-        if (num <= UNROLL_LOOP_MAX*possibleAlign || ASM_JS) { // XXX test asm performance
+        if (num <= UNROLL_LOOP_MAX*possibleAlign) {
           ret.push(unroll('i' + (possibleAlign*8), Math.floor(num/possibleAlign), possibleAlign, values[possibleAlign]));
         } else {
-          ret.push('for (var $$dest = ' + getFastValue(ptr, '+', pos) + (possibleAlign > 1 ? '>>' + log2(possibleAlign) : '') + ', ' +
-                            '$$stop = $$dest + ' + Math.floor(num/possibleAlign) + '; $$dest < $$stop; $$dest++) {\n' +
-                   '  HEAP' + (possibleAlign*8) + '[$$dest] = ' + values[possibleAlign] + '\n}');
+          ret.push('var $$dest = ' + getFastValue(ptr, '+', pos) + '; ' +
+                   'var $$stop = ($$dest + ' + num + ')|0; ' +
+                   'while (($$dest|0) < ($$stop|0)) {' +
+                   '  HEAP' + (possibleAlign*8) + '[$$dest' + (possibleAlign > 1 ? '>>' + log2(possibleAlign) : '') + '] = ' + values[possibleAlign] + '; ' +
+                   '  $$dest = ($$dest + ' + possibleAlign + ')|0; ' +
+                   '}');
         }
         pos = getFastValue(pos, '+', Math.floor(num/possibleAlign)*possibleAlign);
         num %= possibleAlign;
