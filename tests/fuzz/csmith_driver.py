@@ -48,11 +48,11 @@ while 1:
   shared.execute([shared.CLANG_CC, filename + '.c', '-o', filename + '3'] + CSMITH_CFLAGS, stderr=PIPE)
   print '3) Run natively'
   try:
-    correct1 = shared.timeout_run(Popen([filename + '1'], stdout=PIPE, stderr=PIPE), 3)
+    correct1 = shared.jsrun.timeout_run(Popen([filename + '1'], stdout=PIPE, stderr=PIPE), 3)
     if 'Segmentation fault' in correct1 or len(correct1) < 10: raise Exception('segfault')
-    correct2 = shared.timeout_run(Popen([filename + '2'], stdout=PIPE, stderr=PIPE), 3)
+    correct2 = shared.jsrun.timeout_run(Popen([filename + '2'], stdout=PIPE, stderr=PIPE), 3)
     if 'Segmentation fault' in correct2 or len(correct2) < 10: raise Exception('segfault')
-    correct3 = shared.timeout_run(Popen([filename + '3'], stdout=PIPE, stderr=PIPE), 3)
+    correct3 = shared.jsrun.timeout_run(Popen([filename + '3'], stdout=PIPE, stderr=PIPE), 3)
     if 'Segmentation fault' in correct3 or len(correct3) < 10: raise Exception('segfault')
     if correct1 != correct3: raise Exception('clang opts change result')
   except Exception, e:
