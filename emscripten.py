@@ -238,7 +238,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
 
   outputs = [output.split('//FORWARDED_DATA:') for output in outputs]
   for output in outputs:
-    assert len(output) == 2, 'Did not receive forwarded data in an output - process failed? We only got: ' + output[0][-300:]
+    assert len(output) == 2, 'Did not receive forwarded data in an output - process failed? We only got: ' + output[0][-3000:]
 
   if DEBUG: print >> sys.stderr, '  emscript: phase 2 took %s seconds' % (time.time() - t)
   if DEBUG: t = time.time()
