@@ -1380,7 +1380,7 @@ function analyzer(data, sidePass) {
           var label = func.labels[i];
           for (var j = 0; j < label.lines.length; j++) {
             var line = label.lines[j];
-            if (line.intertype == 'call' && line.ident == setjmp) {
+            if ((line.intertype == 'call' || line.intertype == 'invoke') && line.ident == setjmp) {
               // Add a new label
               var oldIdent = label.ident;
               var newIdent = func.labelIdCounter++;
