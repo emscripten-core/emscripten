@@ -1551,6 +1551,17 @@ var i64Math = (function() { // Emscripten wrapper
       HEAP32[tempDoublePtr>>2] = ret.low_;
       HEAP32[tempDoublePtr+4>>2] = ret.high_;
     },
+    abs: function(l, h) {
+      var x = new goog.math.Long(l, h);
+      var ret;
+      if (x.isNegative()) {
+        ret = x.negate();
+      } else {
+        ret = x;
+      }
+      HEAP32[tempDoublePtr>>2] = ret.low_;
+      HEAP32[tempDoublePtr+4>>2] = ret.high_;
+    },
     ensureTemps: function() {
       if (Wrapper.ensuredTemps) return;
       Wrapper.ensuredTemps = true;

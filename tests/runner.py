@@ -1054,6 +1054,19 @@ m_divisor is 1091269979
           }
         ''', 'c = 4ca38a6bd2973f97')
 
+    def test_i64_llabs(self):
+      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
+      Settings.PRECISE_I64_MATH = 2
+      self.do_run(r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        int main(int argc, char ** argv) {
+          printf("%lld,%lld\n", llabs(-576460752303423489), llabs(576460752303423489));
+          return 0;
+        }
+      ''', '576460752303423489,576460752303423489')
+
     def test_i64_zextneg(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
 
