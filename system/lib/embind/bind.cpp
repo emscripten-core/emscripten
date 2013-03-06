@@ -66,33 +66,6 @@ namespace __cxxabiv1 {
 
 namespace emscripten {
     namespace internal {
-        void registerStandardTypes() {
-            static bool first = true;
-            if (first) {
-                first = false;
-
-                _embind_register_void(TypeID<void>::get(), "void");
-
-                _embind_register_bool(TypeID<bool>::get(), "bool", true, false);
-
-                _embind_register_integer(TypeID<char>::get(), "char");
-                _embind_register_integer(TypeID<signed char>::get(), "signed char");
-                _embind_register_integer(TypeID<unsigned char>::get(), "unsigned char");
-                _embind_register_integer(TypeID<signed short>::get(), "short");
-                _embind_register_integer(TypeID<unsigned short>::get(), "unsigned short");
-                _embind_register_integer(TypeID<signed int>::get(), "int");
-                _embind_register_integer(TypeID<unsigned int>::get(), "unsigned int");
-                _embind_register_integer(TypeID<signed long>::get(), "long");
-                _embind_register_integer(TypeID<unsigned long>::get(), "unsigned long");
-
-                _embind_register_float(TypeID<float>::get(), "float");
-                _embind_register_float(TypeID<double>::get(), "double");
-
-                _embind_register_cstring(TypeID<std::string>::get(), "std::string");
-                _embind_register_emval(TypeID<val>::get(), "emscripten::val");
-            }
-        }
-
         // __getDerivationPath returns an array of type_info pointers describing the derivation chain starting with
         // the derived type and proceeding toward (and ending with) the base type. Types are only included if they
         // appear on all possible derivation paths.
@@ -216,6 +189,26 @@ namespace emscripten {
             }
 
             EMSCRIPTEN_BINDINGS(([]() {
+                _embind_register_void(TypeID<void>::get(), "void");
+
+                _embind_register_bool(TypeID<bool>::get(), "bool", true, false);
+
+                _embind_register_integer(TypeID<char>::get(), "char");
+                _embind_register_integer(TypeID<signed char>::get(), "signed char");
+                _embind_register_integer(TypeID<unsigned char>::get(), "unsigned char");
+                _embind_register_integer(TypeID<signed short>::get(), "short");
+                _embind_register_integer(TypeID<unsigned short>::get(), "unsigned short");
+                _embind_register_integer(TypeID<signed int>::get(), "int");
+                _embind_register_integer(TypeID<unsigned int>::get(), "unsigned int");
+                _embind_register_integer(TypeID<signed long>::get(), "long");
+                _embind_register_integer(TypeID<unsigned long>::get(), "unsigned long");
+
+                _embind_register_float(TypeID<float>::get(), "float");
+                _embind_register_float(TypeID<double>::get(), "double");
+
+                _embind_register_cstring(TypeID<std::string>::get(), "std::string");
+                _embind_register_emval(TypeID<val>::get(), "emscripten::val");
+
                 // We bind __getDerivationPath in order to take advantage of the std::vector to Javascript array
                 // conversion for the return value. This has the unfortunate side-effect of exposing it to third party
                 // developers, but perhaps the double underscore will scare them away from calling it.
