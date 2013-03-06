@@ -3670,6 +3670,17 @@ LibraryManager.library = {
 
   abs: 'Math.abs',
   labs: 'Math.abs',
+#if USE_TYPED_ARRAYS == 2
+  llabs__deps: [function() { Types.preciseI64MathUsed = 1 }],
+  llabs: function(lo, hi) {
+    i64Math.abs(lo, hi);
+    {{{ makeStructuralReturn([makeGetTempDouble(0, 'i32'), makeGetTempDouble(1, 'i32')]) }}};
+  },
+#else
+  llabs: function(lo, hi) {
+    throw 'unsupported llabs';
+  },
+#endif
 
   exit__deps: ['_exit'],
   exit: function(status) {
