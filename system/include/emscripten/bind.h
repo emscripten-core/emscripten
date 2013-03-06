@@ -106,6 +106,8 @@ namespace emscripten {
                 TYPEID pointerType,
                 TYPEID constPointerType,
                 TYPEID baseClassType,
+                GenericFunction upcast,
+                GenericFunction downcast,
                 bool isPolymorphic,
                 const char* className,
                 GenericFunction destructor);
@@ -158,8 +160,6 @@ namespace emscripten {
                 GenericFunction constructor,
                 GenericFunction destructor);
         }
-
-        extern void registerStandardTypes();
 
         class BindingsDefinition {
         public:
@@ -248,9 +248,6 @@ namespace emscripten {
     template<typename ReturnType, typename... Args, typename... Policies>
     void function(const char* name, ReturnType (*fn)(Args...), Policies...) {
         using namespace internal;
-
-        registerStandardTypes();
-
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
         _embind_register_function(
             name,
@@ -415,7 +412,6 @@ namespace emscripten {
     class value_tuple {
     public:
         value_tuple(const char* name) {
-            internal::registerStandardTypes();
             internal::_embind_register_tuple(
                 internal::TypeID<ClassType>::get(),
                 name,
@@ -501,7 +497,6 @@ namespace emscripten {
     class value_struct {
     public:
         value_struct(const char* name) {
-            internal::registerStandardTypes();
             internal::_embind_register_struct(
                 internal::TypeID<ClassType>::get(),
                 name,
@@ -562,7 +557,6 @@ namespace emscripten {
         using namespace internal;
         typedef typename smart_ptr_trait<PointerType>::element_type PointeeType;
         
-        registerStandardTypes();
         _embind_register_smart_ptr(
             TypeID<PointerType>::get(),
             TypeID<PointeeType>::get(),
@@ -613,26 +607,51 @@ namespace emscripten {
 
     namespace internal {
         struct NoBaseClass {
+            template<typename ClassType>
+            static void verify() {
+            }
+
             static TYPEID get() {
-                return 0;
+                return nullptr;
             }
 
             template<typename ClassType>
-            static void verify() {
+            static GenericFunction getUpcaster() {
+                return nullptr;
+            }
+
+            template<typename ClassType>
+            static GenericFunction getDowncaster() {
+                return nullptr;
             }
         };
     }
 
     template<typename BaseClass>
     struct base {
-        static internal::TYPEID get() {
-            return internal::TypeID<BaseClass>::get();
-        }
-
         template<typename ClassType>
         static void verify() {
             static_assert(!std::is_same<ClassType, BaseClass>::value, "Base must not have same type as class");
             static_assert(std::is_base_of<BaseClass, ClassType>::value, "Derived class must derive from base");
+        }
+
+        static internal::TYPEID get() {
+            return internal::TypeID<BaseClass>::get();
+        }
+        
+        template<typename ClassType>
+        static internal::GenericFunction getUpcaster() {
+            return reinterpret_cast<internal::GenericFunction>(&convertPointer<ClassType, BaseClass>);
+        }
+        
+        template<typename ClassType>
+        static internal::GenericFunction getDowncaster() {
+            return reinterpret_cast<internal::GenericFunction>(&convertPointer<BaseClass, ClassType>);
+        }
+
+        template<typename From, typename To>
+        static To* convertPointer(From* ptr) {
+            return static_cast<To*>(ptr);
         }
     };
 
@@ -644,12 +663,13 @@ namespace emscripten {
 
             BaseSpecifier::template verify<ClassType>();
 
-            registerStandardTypes();
             _embind_register_class(
                 TypeID<ClassType>::get(),
                 TypeID<AllowedRawPointer<ClassType>>::get(),
                 TypeID<AllowedRawPointer<const ClassType>>::get(),
                 BaseSpecifier::get(),
+                BaseSpecifier::template getUpcaster<ClassType>(),
+                BaseSpecifier::template getDowncaster<ClassType>(),
                 std::is_polymorphic<ClassType>::value,
                 name,
                 reinterpret_cast<GenericFunction>(&raw_destructor<ClassType>));
