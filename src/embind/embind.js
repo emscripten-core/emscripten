@@ -193,7 +193,10 @@ function requireRegisteredType(rawType, humanName) {
 }
 
 function typeName(rawType) {
-    return Pointer_stringify(___typeName(rawType));
+    var bt = ___typeName(rawType);
+    var rv = Pointer_stringify(bt);
+    _free(bt);
+    return rv;
 }
 
 function heap32VectorToArray(count, firstElement) {
@@ -222,7 +225,7 @@ function staticPointerCast(from, fromType, toType) {
     }
     var to = ___staticPointerCast(from, fromType, toType);
     if (to <= 0) {
-        throw new CastError("Pointer conversion is not available");
+        throw new CastError("Pointer conversion from " + typeName(fromType) + " to " + typeName(toType) + " is not available");
     }
     return to;
 }
@@ -546,9 +549,10 @@ function __embind_register_struct_field(
     });
 }
 
-function RegisteredPointer(name, registeredClass, Handle, isSmartPointer, rawGetPointee, rawConstructor, rawDestructor) {
+function RegisteredPointer(name, registeredClass, pointeeType, Handle, isSmartPointer, rawGetPointee, rawConstructor, rawDestructor) {
     this.name = name;
     this.registeredClass = registeredClass;
+    this.pointeeType = pointeeType;
     this.Handle = Handle; // <-- I think I can kill this
     this.isSmartPointer = isSmartPointer;
     this.rawGetPointee = rawGetPointee;
@@ -571,10 +575,11 @@ RegisteredPointer.prototype.toWireType = function(destructors, handle) {
     if (this.isSmartPointer && undefined === handle.$$.smartPtr) {
         throwBindingError('Passing raw pointer to smart pointer is illegal');
     }
-    if (handle.$$.pointeeType.isPolymorphic()) {
-        fromRawType = handle.$$.pointeeType.getDynamicRawPointerType(handle.$$.ptr);
+    var pointeeType = handle.$$.pointeeType;
+    if (pointeeType.isPolymorphic()) {
+        fromRawType = pointeeType.getDynamicRawPointerType(handle.$$.ptr);
     } else {
-        fromRawType = handle.$$.pointeeType.rawType;
+        fromRawType = pointeeType.rawType;
     }
     if (fromRawType === this.pointeeType.rawType) {
         return this.isSmartPointer ? handle.$$.smartPtr : handle.$$.ptr;
@@ -585,10 +590,10 @@ RegisteredPointer.prototype.toWireType = function(destructors, handle) {
         // assumes that smart_ptr<T> has an identical binary layout to
         // smart_ptr<U>.  I wonder if that's untrue for any common
         // smart pointer. - chad
-        ptr = handle.$$.pointeeType.smartPointerType.rawConstructor(
+        ptr = pointeeType.smartPointerType.rawConstructor(
             ptr,
             handle.$$.smartPtr);
-        destructors.push(handle.$$.pointeeType.smartPointerType.rawDestructor);
+        destructors.push(pointeeType.smartPointerType.rawDestructor);
         destructors.push(ptr);
     }
     return ptr;
@@ -724,15 +729,16 @@ function __embind_register_smart_ptr(
         this.$$.smartPtr = undefined;
         this.$$.ptr = undefined;
     };
+
     var registeredPointer = new RegisteredPointer(
         name,
         pointeeType.registeredClass,
+        pointeeType,
         Handle,
         true,
         rawGetPointee,
         rawConstructor,
         rawDestructor);
-    registeredPointer.pointeeType = pointeeType;
     registerType(rawType, registeredPointer);
     pointeeType.smartPointerType = registeredPointer;
 }
@@ -806,20 +812,26 @@ function __embind_register_class(
     Handle.memberType = {};
 
     // todo: clean this up!
-    var registeredClass = new RegisteredPointer(name, registeredClass, Handle, false);
-    var type = registeredClass;
-    registerType(rawType, registeredClass);
-    registeredClass.pointeeType = registeredClass;
+    var type = new RegisteredPointer(name, registeredClass, undefined, Handle, false);
+    type.pointeeType = type;
+    registerType(rawType, type);
 
-    var registeredClass = new RegisteredPointer(name + '*', registeredClass, Handle, false);
-    registerType(rawPointerType, registeredClass);
-    registeredClass.pointeeType = type;
+    registerType(rawPointerType, new RegisteredPointer(
+        name + '*',
+        registeredClass,
+        type,
+        Handle,
+        false));
+
     // todo: implement const pointers (no modification Javascript side)
-    var registeredClass = new RegisteredPointer(name + ' const*', registeredClass, Handle, false);
-    registerType(rawConstPointerType, registeredClass);
-    registeredClass.pointeeType = type;
+    registerType(rawConstPointerType, new RegisteredPointer(
+        name + ' const*',
+        registeredClass,
+        type,
+        Handle,
+        false));
 
-    type.constructor = createNamedFunction(type.name, function() {
+    type.constructor = createNamedFunction(name, function() {
         if (Object.getPrototypeOf(this) !== Handle.prototype) {
             throw new BindingError("Use 'new' to construct " + name);
         }
