@@ -172,7 +172,8 @@ function resolveBindings() {
     }
 }
 
-function registerType(rawType, name, registeredInstance) {
+function registerType(rawType, registeredInstance) {
+    var name = registeredInstance.name;
     if (!rawType) {
         throwBindingError('type "' + name + '" must have a positive integer typeid pointer');
     }
@@ -228,7 +229,7 @@ function staticPointerCast(from, fromType, toType) {
 
 function __embind_register_void(rawType, name) {
     name = Pointer_stringify(name);
-    registerType(rawType, name, {
+    registerType(rawType, {
         name: name,
         fromWireType: function() {
             return undefined;
@@ -238,7 +239,7 @@ function __embind_register_void(rawType, name) {
 
 function __embind_register_bool(rawType, name, trueValue, falseValue) {
     name = Pointer_stringify(name);
-    registerType(rawType, name, {
+    registerType(rawType, {
         name: name,
         fromWireType: function(wt) {
             // ambiguous emscripten ABI: sometimes return values are
@@ -253,7 +254,7 @@ function __embind_register_bool(rawType, name, trueValue, falseValue) {
 
 function __embind_register_integer(rawType, name) {
     name = Pointer_stringify(name);
-    registerType(rawType, name, {
+    registerType(rawType, {
         name: name,
         fromWireType: function(value) {
             return value;
@@ -269,7 +270,7 @@ function __embind_register_integer(rawType, name) {
 
 function __embind_register_float(rawType, name) {
     name = Pointer_stringify(name);
-    registerType(rawType, name, {
+    registerType(rawType, {
         name: name,
         fromWireType: function(value) {
             return value;
@@ -285,7 +286,7 @@ function __embind_register_float(rawType, name) {
 
 function __embind_register_cstring(rawType, name) {
     name = Pointer_stringify(name);
-    registerType(rawType, name, {
+    registerType(rawType, {
         name: name,
         fromWireType: function(value) {
             var length = HEAP32[value >> 2];
@@ -313,7 +314,7 @@ function __embind_register_cstring(rawType, name) {
 
 function __embind_register_emval(rawType, name) {
     name = Pointer_stringify(name);
-    registerType(rawType, name, {
+    registerType(rawType, {
         name: name,
         fromWireType: function(handle) {
             var rv = _emval_handle_array[handle].value;
@@ -373,7 +374,7 @@ function __embind_register_tuple(rawType, name, rawConstructor, rawDestructor) {
     name = Pointer_stringify(name);
     rawConstructor = FUNCTION_TABLE[rawConstructor];
     rawDestructor = FUNCTION_TABLE[rawDestructor];
-    registerType(rawType, name, {
+    registerType(rawType, {
         name: name,
         rawConstructor: rawConstructor,
         rawDestructor: rawDestructor,
@@ -483,7 +484,7 @@ function __embind_register_struct(
     rawConstructor = FUNCTION_TABLE[rawConstructor];
     rawDestructor = FUNCTION_TABLE[rawDestructor];
 
-    registerType(rawType, name, {
+    registerType(rawType, {
         name: name,
         rawConstructor: rawConstructor,
         rawDestructor: rawDestructor,
@@ -545,14 +546,19 @@ function __embind_register_struct_field(
     });
 }
 
-function RegisteredPointer(Handle, isPolymorphic, isSmartPointer, rawGetPointee, rawConstructor, rawDestructor) {
-    this.Handle = Handle;
-    this.isPolymorphic = isPolymorphic;
+function RegisteredPointer(name, registeredClass, Handle, isSmartPointer, rawGetPointee, rawConstructor, rawDestructor) {
+    this.name = name;
+    this.registeredClass = registeredClass;
+    this.Handle = Handle; // <-- I think I can kill this
     this.isSmartPointer = isSmartPointer;
     this.rawGetPointee = rawGetPointee;
     this.rawConstructor = rawConstructor;
     this.rawDestructor = rawDestructor;
 }
+
+RegisteredPointer.prototype.isPolymorphic = function() {
+    return this.registeredClass.isPolymorphic;
+};
 
 RegisteredPointer.prototype.toWireType = function(destructors, handle) {
     var fromRawType;
@@ -565,7 +571,7 @@ RegisteredPointer.prototype.toWireType = function(destructors, handle) {
     if (this.isSmartPointer && undefined === handle.$$.smartPtr) {
         throwBindingError('Passing raw pointer to smart pointer is illegal');
     }
-    if (handle.$$.pointeeType.isPolymorphic) {
+    if (handle.$$.pointeeType.isPolymorphic()) {
         fromRawType = handle.$$.pointeeType.getDynamicRawPointerType(handle.$$.ptr);
     } else {
         fromRawType = handle.$$.pointeeType.rawType;
@@ -586,7 +592,7 @@ RegisteredPointer.prototype.toWireType = function(destructors, handle) {
         destructors.push(ptr);
     }
     return ptr;
- };
+};
 
 RegisteredPointer.prototype.getPointee = function(ptr) {
     if (this.rawGetPointee) {
@@ -612,7 +618,7 @@ RegisteredPointer.prototype.fromWireType = function(ptr) {
 // todo: could this return the actual type if not polymorphic?
 RegisteredPointer.prototype.getDynamicRawPointerType = function(ptr) {
     var type = null;
-    if (this.isPolymorphic) {
+    if (this.isPolymorphic()) {
         if (this.rawGetPointee) {
             type = ___getDynamicPointerType(this.rawGetPointee(ptr));
         } else {
@@ -718,10 +724,16 @@ function __embind_register_smart_ptr(
         this.$$.smartPtr = undefined;
         this.$$.ptr = undefined;
     };
-    var registeredPointer = new RegisteredPointer(Handle, pointeeType.isPolymorphic, true, rawGetPointee, rawConstructor, rawDestructor);
+    var registeredPointer = new RegisteredPointer(
+        name,
+        pointeeType.registeredClass,
+        Handle,
+        true,
+        rawGetPointee,
+        rawConstructor,
+        rawDestructor);
     registeredPointer.pointeeType = pointeeType;
-    registeredPointer.name = name;
-    registerType(rawType, name, registeredPointer);
+    registerType(rawType, registeredPointer);
     pointeeType.smartPointerType = registeredPointer;
 }
 
@@ -794,20 +806,17 @@ function __embind_register_class(
     Handle.memberType = {};
 
     // todo: clean this up!
-    var registeredClass = new RegisteredPointer(Handle, isPolymorphic, false);
-    registeredClass.name = name;
+    var registeredClass = new RegisteredPointer(name, registeredClass, Handle, false);
     var type = registeredClass;
-    registerType(rawType, name, registeredClass);
+    registerType(rawType, registeredClass);
     registeredClass.pointeeType = registeredClass;
 
-    var registeredClass = new RegisteredPointer(Handle, isPolymorphic, false);
-    registeredClass.name = name;
-    registerType(rawPointerType, name + '*', registeredClass);
+    var registeredClass = new RegisteredPointer(name + '*', registeredClass, Handle, false);
+    registerType(rawPointerType, registeredClass);
     registeredClass.pointeeType = type;
     // todo: implement const pointers (no modification Javascript side)
-    var registeredClass = new RegisteredPointer(Handle, isPolymorphic, false);
-    registeredClass.name = name;
-    registerType(rawConstPointerType, name + ' const*', registeredClass);
+    var registeredClass = new RegisteredPointer(name + ' const*', registeredClass, Handle, false);
+    registerType(rawConstPointerType, registeredClass);
     registeredClass.pointeeType = type;
 
     type.constructor = createNamedFunction(type.name, function() {
@@ -971,7 +980,7 @@ function __embind_register_enum(
     }
     constructor.values = {};
 
-    registerType(rawType, name, {
+    registerType(rawType, {
         name: name,
         constructor: constructor,
         fromWireType: function(c) {
@@ -1012,7 +1021,7 @@ function __embind_register_interface(
     rawConstructor = FUNCTION_TABLE[rawConstructor];
     rawDestructor = FUNCTION_TABLE[rawDestructor];
 
-    registerType(rawType, name, {
+    registerType(rawType, {
         name: name,
         rawConstructor: rawConstructor,
         rawDestructor: rawDestructor,
