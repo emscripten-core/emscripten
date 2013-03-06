@@ -133,15 +133,6 @@ namespace emscripten {
             return derivationPath;
         }
 
-        std::vector<int> __getBaseClasses(int tp) {
-            std::vector<const __cxxabiv1::__class_type_info*> baseTypes = __internalGetBaseClasses((const __cxxabiv1::__class_type_info*)tp);
-            std::vector<int> bases;
-            for (int j = 0; j < baseTypes.size(); j++) {
-                bases.emplace_back((int)baseTypes[j]);
-            }
-            return bases;
-        }
-
         extern "C" {
             // These three routines constitute an extension to the compiler's support for dynamic type conversion.
             // They are used by embind.js to implement automatic downcasting of return values which are pointers to
@@ -229,7 +220,6 @@ namespace emscripten {
                 // conversion for the return value. This has the unfortunate side-effect of exposing it to third party
                 // developers, but perhaps the double underscore will scare them away from calling it.
                 function("__getDerivationPath", &__getDerivationPath);
-                function("__getBaseClasses", &__getBaseClasses);
                 function("__peek32", &__peek32, allow_raw_pointers());
             }));
         }
