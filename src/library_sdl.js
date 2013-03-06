@@ -661,8 +661,8 @@ var LibrarySDL = {
     {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*0', '0', '0', 'i32') }}} // TODO
     {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*1', '0', '0', 'i32') }}} // TODO
     {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*2', '0', '0', 'void*') }}}
-    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*3', '0', 'SDL.defaults.width', 'i32') }}}
-    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*4', '0', 'SDL.defaults.height', 'i32') }}}
+    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*3', '0', 'Module["canvas"].width', 'i32') }}}
+    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*4', '0', 'Module["canvas"].height', 'i32') }}}
     return ret;
   },
 
@@ -919,7 +919,26 @@ var LibrarySDL = {
   },
 
   SDL_ShowCursor: function(toggle) {
-    // TODO
+    switch (toggle) {
+      case 0: // SDL_DISABLE
+        if (Browser.isFullScreen) { // only try to lock the pointer when in full screen mode
+          Module['canvas'].requestPointerLock();
+          return 0;
+        } else { // else return SDL_ENABLE to indicate the failure
+          return 1;
+        }
+        break;
+      case 1: // SDL_ENABLE
+        Module['canvas'].exitPointerLock();
+        return 1;
+        break;
+      case -1: // SDL_QUERY
+        return !Browser.pointerLock;
+        break;
+      default:
+        console.log( "SDL_ShowCursor called with unknown toggle parameter value: " + toggle + "." );
+        break;
+    }
   },
 
   SDL_GetError: function() {
@@ -1075,6 +1094,15 @@ var LibrarySDL = {
   },
 
   SDL_WM_GrabInput: function() {},
+  
+  SDL_WM_ToggleFullScreen: function(surf) {
+    if (Browser.isFullScreen) {
+      Module['canvas'].cancelFullScreen();
+      return 1;
+    } else {
+      return 0;
+    }
+  },
 
   // SDL_Image
 
