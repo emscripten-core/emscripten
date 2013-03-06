@@ -6708,9 +6708,15 @@ LibraryManager.library = {
   },
   pthread_cond_init: function() {},
   pthread_cond_destroy: function() {},
-  pthread_cond_broadcast: function() {},
-  pthread_cond_wait: function() {},
-  pthread_cond_timedwait: function() {},
+  pthread_cond_broadcast: function() {
+    return 0;
+  },
+  pthread_cond_wait: function() {
+    return 0;
+  },
+  pthread_cond_timedwait: function() {
+    return 0;
+  },
   pthread_self: function() {
     //FIXME: assumes only a single thread
     return 0;
