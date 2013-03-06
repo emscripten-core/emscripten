@@ -115,28 +115,28 @@ function createInheritedFunctionOrProperty(name, type, nameInBaseClass, baseClas
     }
 }
 
-function collectRegisteredBaseClasses(rawType) {
+function collectRegisteredBaseClasses(type) {
+    var rawType = type.rawType;
     if (undefined === rawType) {
         return [];
     }
-    var rawBaseTypes = baseClasses[rawType] || [];
-    var baseTypes = [];
-    for (var i = 0; i < rawBaseTypes.length; i++) {
-        var baseType = typeRegistry[rawBaseTypes[i]];
-        if (baseType) {
-            baseTypes.push(baseType);
-        } else {
-            baseTypes = baseTypes.concat(collectRegisteredBaseClasses(rawBaseTypes.get(i)));
-        }
+    var rawBaseType = baseClasses[rawType];
+    if (!rawBaseType) {
+        return [];
     }
-    return baseTypes;
+    var baseType = typeRegistry[rawBaseType];
+    if (baseType) {
+        return [baseType];
+    } else {
+        return collectRegisteredBaseClasses(baseType);
+    }
 }
 
 function resolveType(type) {
     if (!type.resolved) {
         var baseClassType, name, baseProto;
         var inheritedNames = {};
-        var baseTypes = collectRegisteredBaseClasses(type.rawType);
+        var baseTypes = collectRegisteredBaseClasses(type);
         for (var i = 0; i < baseTypes.length; i++) {
             var baseType = baseTypes[i];
             resolveType(baseType);
@@ -754,6 +754,7 @@ function ClassHandle() {
 function RegisteredClass(name, isPolymorphic, baseClassRawType) {
     this.name = name;
     this.isPolymorphic = isPolymorphic;
+    this.baseClassRawType = baseClassRawType;
 }
 
 // TODO: null pointers are always zero (not a Handle) in Javascript
@@ -770,7 +771,7 @@ function __embind_register_class(
     rawDestructor = FUNCTION_TABLE[rawDestructor];
 
     if (baseClassRawType) {
-        baseClasses[rawType] = [baseClassRawType];
+        baseClasses[rawType] = baseClassRawType;
     }
 
     var registeredClass = new RegisteredClass(name, isPolymorphic, baseClassRawType);
