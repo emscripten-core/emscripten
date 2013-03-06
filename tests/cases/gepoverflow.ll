@@ -26,7 +26,7 @@ entry:
   %3 = sub i32 %1, %baseint                       ; [#uses=1]
   %4 = sub i32 %2, %baseint                       ; [#uses=1]
   %5 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([9 x i8]* @.str, i32 0, i32 0), i32 %1, i32 %2) ; [#uses=0]
-  %5 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([9 x i8]* @.str, i32 0, i32 0), i32 %3, i32 %4) ; [#uses=0]
+  %6 = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([9 x i8]* @.str, i32 0, i32 0), i32 %3, i32 %4) ; [#uses=0]
   br label %return
 
 return:                                           ; preds = %entry
