@@ -7338,7 +7338,6 @@ LibraryManager.library = {
 
     var readHandles = checkfds(nfds, readfds, canRead);
     var writeHandles = checkfds(nfds, writefds, canWrite);
-    console.log( "readHandles: " + readHandles + ", writeHandles: " + writeHandles );
     if ((readHandles == -1) || (writeHandles == -1)){
       return -1;
     } else {
