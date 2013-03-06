@@ -388,11 +388,11 @@ if USE_EMSDK:
   # Note that -nostdinc++ is not needed, since -nostdinc implies that!
   EMSDK_OPTS = ['-nostdinc', '-Xclang', '-nobuiltininc', '-Xclang', '-nostdsysteminc',
     '-Xclang', '-isystem' + path_from_root('system', 'local', 'include'),
+    '-Xclang', '-isystem' + path_from_root('system', 'include', 'libcxx'),
     '-Xclang', '-isystem' + path_from_root('system', 'include'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'emscripten'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'bsd'), # posix stuff
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'libc'),
-    '-Xclang', '-isystem' + path_from_root('system', 'include', 'libcxx'),
     '-Xclang', '-isystem' + path_from_root('system', 'lib', 'libcxxabi', 'include'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'gfx'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'net'),
