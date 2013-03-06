@@ -155,11 +155,6 @@ function resolveType(type) {
                 if (!type.Handle.prototype.hasOwnProperty(name) && inheritedNames[name].length === 1) {
                     baseClassType = inheritedNames[name][0];
                     createInheritedFunctionOrProperty(name, type, name, baseClassType);
-                } else {
-                    for (var j = 0; j < inheritedNames[name].length; j++) {
-                        baseClassType = inheritedNames[name][j];
-                        createInheritedFunctionOrProperty(baseClassType.name+"_"+name, type, name, baseClassType);
-                    }
                 }
             }
         }
