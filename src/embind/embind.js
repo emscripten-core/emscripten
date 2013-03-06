@@ -69,6 +69,7 @@ function _embind_repr(v) {
 
 var typeRegistry = {};
 var deferredRegistrations = [];
+var baseClasses = {}; // rawType -> rawBaseType
 
 function requestDeferredRegistration(registrationFunction) {
     deferredRegistrations.push(registrationFunction);
@@ -118,10 +119,10 @@ function collectRegisteredBaseClasses(rawType) {
     if (undefined === rawType) {
         return [];
     }
-    var rawBaseTypes = Module.__getBaseClasses(rawType);
+    var rawBaseTypes = baseClasses[rawType] || [];
     var baseTypes = [];
-    for (var i = 0; i < rawBaseTypes.size(); i++) {
-        var baseType = typeRegistry[rawBaseTypes.get(i)];
+    for (var i = 0; i < rawBaseTypes.length; i++) {
+        var baseType = typeRegistry[rawBaseTypes[i]];
         if (baseType) {
             baseTypes.push(baseType);
         } else {
@@ -750,7 +751,7 @@ function __embind_register_smart_ptr(
 function ClassHandle() {
 }
 
-function RegisteredClass(name, isPolymorphic, baseClass) {
+function RegisteredClass(name, isPolymorphic, baseClassRawType) {
     this.name = name;
     this.isPolymorphic = isPolymorphic;
 }
@@ -760,7 +761,7 @@ function __embind_register_class(
     rawType,
     rawPointerType,
     rawConstPointerType,
-    baseClassType,
+    baseClassRawType,
     isPolymorphic,
     name,
     rawDestructor
@@ -768,7 +769,11 @@ function __embind_register_class(
     name = Pointer_stringify(name);
     rawDestructor = FUNCTION_TABLE[rawDestructor];
 
-    var registeredClass = new RegisteredClass(name, isPolymorphic);
+    if (baseClassRawType) {
+        baseClasses[rawType] = [baseClassRawType];
+    }
+
+    var registeredClass = new RegisteredClass(name, isPolymorphic, baseClassRawType);
 
     var Handle = createNamedFunction(name, function(ptr) {
         Object.defineProperty(this, '$$', {

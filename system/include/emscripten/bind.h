@@ -611,19 +611,45 @@ namespace emscripten {
 #define EMSCRIPTEN_WRAPPER(T) \
     T(const ::emscripten::val& v): wrapper(v) {}
 
-    // TODO: support base class
-    template<typename ClassType>
+    namespace internal {
+        struct NoBaseClass {
+            static TYPEID get() {
+                return 0;
+            }
+
+            template<typename ClassType>
+            static void verify() {
+            }
+        };
+    }
+
+    template<typename BaseClass>
+    struct base {
+        static internal::TYPEID get() {
+            return internal::TypeID<BaseClass>::get();
+        }
+
+        template<typename ClassType>
+        static void verify() {
+            static_assert(!std::is_same<ClassType, BaseClass>::value, "Base must not have same type as class");
+            static_assert(std::is_base_of<BaseClass, ClassType>::value, "Derived class must derive from base");
+        }
+    };
+
+    template<typename ClassType, typename BaseSpecifier = internal::NoBaseClass>
     class class_ {
     public:
         class_(const char* name) {
             using namespace internal;
+
+            BaseSpecifier::template verify<ClassType>();
 
             registerStandardTypes();
             _embind_register_class(
                 TypeID<ClassType>::get(),
                 TypeID<AllowedRawPointer<ClassType>>::get(),
                 TypeID<AllowedRawPointer<const ClassType>>::get(),
-                0,
+                BaseSpecifier::get(),
                 std::is_polymorphic<ClassType>::value,
                 name,
                 reinterpret_cast<GenericFunction>(&raw_destructor<ClassType>));
@@ -672,7 +698,7 @@ namespace emscripten {
             using namespace internal;
 
             // TODO: unique or anonymous name
-            class_<WrapperType>("WrapperType")
+            class_<WrapperType, base<ClassType>>("WrapperType")
                 .template constructor<val>()
                 ;
 
