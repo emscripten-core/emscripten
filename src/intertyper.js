@@ -677,7 +677,7 @@ function intertyper(data, sidePass, baseLineNums) {
     item.type = item.tokens[1].text;
     Types.needAnalysis[item.type] = 0;
     while (['@', '%'].indexOf(item.tokens[2].text[0]) == -1 && !(item.tokens[2].text in PARSABLE_LLVM_FUNCTIONS) &&
-           item.tokens[2].text != 'null' && item.tokens[2].text != 'asm') {
+           item.tokens[2].text != 'null' && item.tokens[2].text != 'asm' && item.tokens[2].text != 'undef') {
       assert(item.tokens[2].text != 'asm', 'Inline assembly cannot be compiled to JavaScript!');
       item.tokens.splice(2, 1);
     }
