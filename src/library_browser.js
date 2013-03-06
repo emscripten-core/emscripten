@@ -285,7 +285,7 @@ mergeInto(LibraryManager.library, {
       this.resizeCanvas = resizeCanvas;
       if (typeof this.lockPointer === 'undefined') this.lockPointer = true;
       if (typeof this.resizeCanvas === 'undefined') this.resizeCanvas = false;
-  
+
       var canvas = Module['canvas'];
       function fullScreenChange() {
         Browser.isFullScreen = false;
