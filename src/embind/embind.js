@@ -688,10 +688,20 @@ function __embind_register_smart_ptr(
 function ClassHandle() {
 }
 
-function RegisteredClass(name, isPolymorphic, baseClassRawType) {
+function RegisteredClass(
+    name,
+    isPolymorphic,
+    baseClassRawType,
+    baseClass,
+    upcast,
+    downcast
+) {
     this.name = name;
     this.isPolymorphic = isPolymorphic;
     this.baseClassRawType = baseClassRawType;
+    this.baseClass = baseClass;
+    this.upcast = upcast;
+    this.downcast = downcast;
 }
 
 // TODO: null pointers are always zero (not a Handle) in Javascript
@@ -711,12 +721,15 @@ function __embind_register_class(
     upcast = FUNCTION_TABLE[upcast];
     downcast = FUNCTION_TABLE[downcast];
 
+    var baseClass;
     var basePrototype;
+    var depth;
     if (baseClassRawType) {
         baseClasses[rawType] = baseClassRawType;
 
         // TODO: allow registration of base after derived
         var base = requireRegisteredType(baseClassRawType, 'base class');
+        baseClass = base.registeredClass;
         basePrototype = base.Handle.prototype;
     } else {
         basePrototype = ClassHandle.prototype;
@@ -726,6 +739,7 @@ function __embind_register_class(
         name,
         isPolymorphic,
         baseClassRawType,
+        baseClass,
         upcast,
         downcast);
 
@@ -849,6 +863,14 @@ function __embind_register_class_constructor(
     });
 }
 
+function upcastPointer(ptr, ptrClass, desiredClass) {
+    while (ptrClass !== desiredClass) {
+        ptr = ptrClass.upcast(ptr);
+        ptrClass = ptrClass.baseClass;
+    }
+    return ptr;
+}
+
 function __embind_register_class_method(
     rawClassType,
     methodName,
@@ -873,9 +895,15 @@ function __embind_register_class_method(
                 throwBindingError('emscripten binding method ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
             }
 
+            // TODO: error if pointer type doesn't match signature
+            var ptr = upcastPointer(
+                this.$$.ptr,
+                this.$$.pointeeType.registeredClass,
+                classType.registeredClass);
+            
             var destructors = [];
             var args = new Array(argCount + 1);
-            args[0] = this.$$.ptr;
+            args[0] = ptr;
             args[1] = memberFunction;
             for (var i = 1; i < argCount; ++i) {
                 args[i + 1] = argTypes[i].toWireType(destructors, arguments[i - 1]);
@@ -900,6 +928,7 @@ function __embind_register_class_classmethod(
     rawInvoker,
     fn
 ) {
+    // todo: whenDependentTypesAreResolved
     var classType = requireRegisteredType(rawClassType, 'class');
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     methodName = Pointer_stringify(methodName);
@@ -919,6 +948,7 @@ function __embind_register_class_field(
     memberPointerSize,
     memberPointer
 ) {
+    // todo: whenDependentTypesAreResolved
     var classType = requireRegisteredType(rawClassType, 'class');
     fieldName = Pointer_stringify(fieldName);
     getter = FUNCTION_TABLE[getter];
