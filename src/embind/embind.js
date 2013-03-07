@@ -491,7 +491,13 @@ RegisteredPointer.prototype.isPolymorphic = function() {
 RegisteredPointer.prototype.toWireType = function(destructors, handle) {
     var fromRawType;
     if (handle === null) {
-        return 0; // todo: maybe this should return a zero-initialized smart pointer object
+        if (this.isSmartPointer) {
+            var ptr = this.rawConstructor(0, 0);
+            destructors.push(this.rawDestructor, ptr);
+            return ptr;
+        } else {
+            return 0;
+        }
     }
     if (!(handle instanceof ClassHandle)) {
         throwBindingError('Expected pointer or null, got ' + IMVU.repr(handle));
