@@ -543,7 +543,11 @@ namespace emscripten {
             typename smart_ptr_trait<SmartPointerType>::element_type* ptr,
             SmartPointerType* basePtr
         ) {
-            return new SmartPointerType(smart_ptr_trait<SmartPointerType>::share(*basePtr, ptr));
+            if (ptr) {
+                return new SmartPointerType(smart_ptr_trait<SmartPointerType>::share(*basePtr, ptr));
+            } else {
+                return new SmartPointerType;
+            }
         }
 
         template<typename PointerType>
