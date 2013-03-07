@@ -5054,6 +5054,9 @@ def process(filename):
           printf("%g\n", strtod(str, &endptr));
           printf("%d\n", endptr - str);
           printf("%g\n", strtod("84e+420", &endptr));
+
+          printf("%.12f\n", strtod("1.2345678900000000e+08", NULL));
+
           return 0;
         }
         '''
@@ -5081,6 +5084,7 @@ def process(filename):
         1.234e+57
         10
         inf
+        123456789.000000000000
         '''
 
       self.do_run(src, re.sub(r'\n\s+', '\n', expected))

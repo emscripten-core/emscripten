@@ -3738,87 +3738,136 @@ LibraryManager.library = {
     return ret;
   },
 
-  strtod__deps: ['isspace', 'isdigit'],
+  strtod__deps: ['isspace', 'isdigit', '__setErrNo', '$ERRNO_CODES'],
   strtod: function(str, endptr) {
-    var origin = str;
+    // Inspired from http://svn.ruby-lang.org/repos/ruby/branches/ruby_1_8/missing/strtod.c
+    var MAX_EXPONENT = 511;
+    var POWERS_OF_10 = [10.0, 100.0, 1.0e4, 1.0e8, 1.0e16,
+                        1.0e32, 1.0e64, 1.0e128, 1.0e256];
 
-    // Skip space.
-    while (_isspace({{{ makeGetValue('str', 0, 'i8') }}})) str++;
+    var sign, expSign = false;
+    var fraction = 0.0, dblExp, d;
+    var p, c;
+    var exp = 0;
+    var fracExp = 0;
+    var mantSize;
+    var decPt;
+    var pExp;
 
-    // Check for a plus/minus sign.
-    var multiplier = 1;
-    if ({{{ makeGetValue('str', 0, 'i8') }}} == '-'.charCodeAt(0)) {
-      multiplier = -1;
-      str++;
-    } else if ({{{ makeGetValue('str', 0, 'i8') }}} == '+'.charCodeAt(0)) {
-      str++;
+    p = str;
+    while (_isspace({{{ makeGetValue('p', 0, 'i8') }}})) p++;
+
+    if ({{{ makeGetValue('p', 0, 'i8') }}} === '-'.charCodeAt(0)) {
+      sign = true;
+      p++;
+    } else {
+      if ({{{ makeGetValue('p', 0, 'i8') }}} === '+'.charCodeAt(0)) {
+        p++;
+      }
+      sign = false;
     }
 
-    var chr;
-    var ret = 0;
-
-    // Get whole part.
-    var whole = false;
-    while(1) {
-      chr = {{{ makeGetValue('str', 0, 'i8') }}};
-      if (!_isdigit(chr)) break;
-      whole = true;
-      ret = ret*10 + chr - '0'.charCodeAt(0);
-      str++;
+    decPt = -1;
+    for (mantSize = 0; ; mantSize += 1) {
+      c = {{{ makeGetValue('p', 0, 'i8') }}};
+      if (!_isdigit(c)) {
+        if ((c !== '.'.charCodeAt(0)) || (decPt >= 0)) {
+          break;
+        }
+        decPt = mantSize;
+      }
+      p++;
     }
 
-    // Get fractional part.
-    var fraction = false;
-    if ({{{ makeGetValue('str', 0, 'i8') }}} == '.'.charCodeAt(0)) {
-      str++;
-      var mul = 1/10;
-      while(1) {
-        chr = {{{ makeGetValue('str', 0, 'i8') }}};
-        if (!_isdigit(chr)) break;
-        fraction = true;
-        ret += mul*(chr - '0'.charCodeAt(0));
-        mul /= 10;
-        str++;
+    pExp = p;
+    p -= mantSize;
+    if (decPt < 0) {
+      decPt = mantSize;
+    } else {
+      mantSize -= 1;
+    }
+    if (mantSize > 18) {
+      fracExp = decPt - 18;
+      mantSize = 18;
+    } else {
+      fracExp = decPt - mantSize;
+    }
+    if (mantSize === 0) {
+      p = str;
+      // goto done;
+    } else {
+      fraction = 0;
+      for (; mantSize > 0; mantSize -= 1) {
+        c = {{{ makeGetValue('p', 0, 'i8') }}};
+        p++;
+        if (c === '.'.charCodeAt(0)) {
+          c = {{{ makeGetValue('p', 0, 'i8') }}};
+          p++;
+        }
+        fraction = 10 * fraction + (c - '0'.charCodeAt(0));
+      }
+
+      // In the original c code, this part is skipped by goto
+      // in the first branch of if
+      p = pExp;
+      c = {{{ makeGetValue('p', 0, 'i8') }}};
+      if ((c === 'e'.charCodeAt(0)) || (c === 'E'.charCodeAt(0))) {
+        p++;
+        c = {{{ makeGetValue('p', 0, 'i8') }}};
+        if (c === '-'.charCodeAt(0)) {
+          expSign = true;
+          p++;
+        } else {
+          if (c === '+'.charCodeAt(0)) {
+            p++;
+          }
+          expSign = false;
+        }
+        c = {{{ makeGetValue('p', 0, 'i8') }}};
+        while (_isdigit(c)) {
+          exp = exp * 10 + (c - '0'.charCodeAt(0));
+          p++;
+          c = {{{ makeGetValue('p', 0, 'i8') }}};
+        }
+      }
+      if (expSign) {
+        exp = fracExp - exp;
+      } else {
+        exp = fracExp + exp;
+      }
+
+      if (exp < 0) {
+        expSign = true;
+        exp = - exp;
+      } else {
+        expSign = false;
+      }
+      if (exp > MAX_EXPONENT) {
+        exp = MAX_EXPONENT;
+        ___setErrNo(ERRNO_CODES.ERANGE);
+      }
+      dblExp = 1.0;
+      for (d = 0; exp != 0; exp >>=1, d+= 1) {
+        if (exp & 01) {
+          dblExp *= POWERS_OF_10[d];
+        }
+      }
+      if (expSign) {
+        fraction /= dblExp;
+      } else {
+        fraction *= dblExp;
       }
     }
 
-    if (!whole && !fraction) {
-      if (endptr) {
-        {{{ makeSetValue('endptr', 0, 'origin', '*') }}}
-      }
-      return 0;
-    }
-
-    // Get exponent part.
-    chr = {{{ makeGetValue('str', 0, 'i8') }}};
-    if (chr == 'e'.charCodeAt(0) || chr == 'E'.charCodeAt(0)) {
-      str++;
-      var exponent = 0;
-      var expNegative = false;
-      chr = {{{ makeGetValue('str', 0, 'i8') }}};
-      if (chr == '-'.charCodeAt(0)) {
-        expNegative = true;
-        str++;
-      } else if (chr == '+'.charCodeAt(0)) {
-        str++;
-      }
-      chr = {{{ makeGetValue('str', 0, 'i8') }}};
-      while(1) {
-        if (!_isdigit(chr)) break;
-        exponent = exponent*10 + chr - '0'.charCodeAt(0);
-        str++;
-        chr = {{{ makeGetValue('str', 0, 'i8') }}};
-      }
-      if (expNegative) exponent = -exponent;
-      ret *= Math.pow(10, exponent);
-    }
-
-    // Set end pointer.
+    // done:
     if (endptr) {
-      {{{ makeSetValue('endptr', 0, 'str', '*') }}}
+      {{{ makeSetValue('endptr', 0, 'p', '*') }}}
     }
 
-    return ret * multiplier;
+    if (sign) {
+      return - fraction;
+    }
+    return fraction;
   },
   strtod_l: 'strtod', // no locale support yet
   strtold: 'strtod', // XXX add real support for long double
