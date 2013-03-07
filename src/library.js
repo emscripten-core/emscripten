@@ -3738,93 +3738,6 @@ LibraryManager.library = {
     return ret;
   },
 
-  strtod__deps: ['isspace', 'isdigit'],
-  strtod: function(str, endptr) {
-    var origin = str;
-
-    // Skip space.
-    while (_isspace({{{ makeGetValue('str', 0, 'i8') }}})) str++;
-
-    // Check for a plus/minus sign.
-    var multiplier = 1;
-    if ({{{ makeGetValue('str', 0, 'i8') }}} == '-'.charCodeAt(0)) {
-      multiplier = -1;
-      str++;
-    } else if ({{{ makeGetValue('str', 0, 'i8') }}} == '+'.charCodeAt(0)) {
-      str++;
-    }
-
-    var chr;
-    var ret = 0;
-
-    // Get whole part.
-    var whole = false;
-    while(1) {
-      chr = {{{ makeGetValue('str', 0, 'i8') }}};
-      if (!_isdigit(chr)) break;
-      whole = true;
-      ret = ret*10 + chr - '0'.charCodeAt(0);
-      str++;
-    }
-
-    // Get fractional part.
-    var fraction = false;
-    if ({{{ makeGetValue('str', 0, 'i8') }}} == '.'.charCodeAt(0)) {
-      str++;
-      var mul = 1/10;
-      while(1) {
-        chr = {{{ makeGetValue('str', 0, 'i8') }}};
-        if (!_isdigit(chr)) break;
-        fraction = true;
-        ret += mul*(chr - '0'.charCodeAt(0));
-        mul /= 10;
-        str++;
-      }
-    }
-
-    if (!whole && !fraction) {
-      if (endptr) {
-        {{{ makeSetValue('endptr', 0, 'origin', '*') }}}
-      }
-      return 0;
-    }
-
-    // Get exponent part.
-    chr = {{{ makeGetValue('str', 0, 'i8') }}};
-    if (chr == 'e'.charCodeAt(0) || chr == 'E'.charCodeAt(0)) {
-      str++;
-      var exponent = 0;
-      var expNegative = false;
-      chr = {{{ makeGetValue('str', 0, 'i8') }}};
-      if (chr == '-'.charCodeAt(0)) {
-        expNegative = true;
-        str++;
-      } else if (chr == '+'.charCodeAt(0)) {
-        str++;
-      }
-      chr = {{{ makeGetValue('str', 0, 'i8') }}};
-      while(1) {
-        if (!_isdigit(chr)) break;
-        exponent = exponent*10 + chr - '0'.charCodeAt(0);
-        str++;
-        chr = {{{ makeGetValue('str', 0, 'i8') }}};
-      }
-      if (expNegative) exponent = -exponent;
-      ret *= Math.pow(10, exponent);
-    }
-
-    // Set end pointer.
-    if (endptr) {
-      {{{ makeSetValue('endptr', 0, 'str', '*') }}}
-    }
-
-    return ret * multiplier;
-  },
-  strtod_l: 'strtod', // no locale support yet
-  strtold: 'strtod', // XXX add real support for long double
-  strtold_l: 'strtold', // no locale support yet
-  strtof: 'strtod', // use stdtod to handle strtof
-
   _parseInt__deps: ['isspace', '__setErrNo', '$ERRNO_CODES'],
   _parseInt: function(str, endptr, base, min, max, bits, unsign) {
     // Skip space.
@@ -3982,11 +3895,6 @@ LibraryManager.library = {
     return __parseInt64(str, endptr, base, 0, '18446744073709551615', true);  // ULONG_MAX.
   },
   strtoull_l: 'strtoull', // no locale support yet
-
-  atof__deps: ['strtod'],
-  atof: function(ptr) {
-    return _strtod(ptr, null);
-  },
 
   atoi__deps: ['strtol'],
   atoi: function(ptr) {

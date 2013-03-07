@@ -67,3 +67,9 @@ _vwarn
 _vwarnx
 _verr
 _verrx
+strtod
+strtold
+strtof
+strtod_l
+strtold_l
+atof

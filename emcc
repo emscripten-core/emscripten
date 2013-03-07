@@ -1081,6 +1081,7 @@ try:
         os.path.join('libc', 'gen', 'verrx.c'),
         os.path.join('libc', 'gen', 'vwarn.c'),
         os.path.join('libc', 'gen', 'vwarnx.c'),
+        os.path.join('libc', 'stdlib', 'strtod.c'),
       ];
 
       for src in libc_files:
