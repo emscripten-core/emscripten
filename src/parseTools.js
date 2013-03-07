@@ -1248,7 +1248,6 @@ function makeSetValueAsm(ptr, pos, value, type, noNeedFirst, ignore, align, noSa
   return makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep, forcedAlign, true);
 }
 
-var SEEK_OPTIMAL_ALIGN_MIN = 20;
 var UNROLL_LOOP_MAX = 8;
 
 function makeSetValues(ptr, pos, value, type, num, align) {
@@ -1268,7 +1267,7 @@ function makeSetValues(ptr, pos, value, type, num, align) {
   } else { // USE_TYPED_ARRAYS == 2
     // If we don't know how to handle this at compile-time, or handling it is best done in a large amount of code, call memset
     // TODO: optimize the case of numeric num but non-numeric value
-    if (!isNumber(num) || !isNumber(value) || (align < 4 && parseInt(num) >= SEEK_OPTIMAL_ALIGN_MIN)) {
+    if (!isNumber(num) || !isNumber(value) || (parseInt(num)/align >= UNROLL_LOOP_MAX)) {
       return '_memset(' + asmCoercion(getFastValue(ptr, '+', pos), 'i32') + ', ' + asmCoercion(value, 'i32') + ', ' + asmCoercion(num, 'i32') + ')';
     }
     num = parseInt(num);
@@ -1283,16 +1282,7 @@ function makeSetValues(ptr, pos, value, type, num, align) {
     [4, 2, 1].forEach(function(possibleAlign) {
       if (num == 0) return;
       if (align >= possibleAlign) {
-        if (num <= UNROLL_LOOP_MAX*possibleAlign) {
-          ret.push(unroll('i' + (possibleAlign*8), Math.floor(num/possibleAlign), possibleAlign, values[possibleAlign]));
-        } else {
-          ret.push('var $$dest = ' + getFastValue(ptr, '+', pos) + '; ' +
-                   'var $$stop = ($$dest + ' + num + ')|0; ' +
-                   'while (($$dest|0) < ($$stop|0)) {' +
-                   '  HEAP' + (possibleAlign*8) + '[$$dest' + (possibleAlign > 1 ? '>>' + log2(possibleAlign) : '') + '] = ' + values[possibleAlign] + '; ' +
-                   '  $$dest = ($$dest + ' + possibleAlign + ')|0; ' +
-                   '}');
-        }
+        ret.push(unroll('i' + (possibleAlign*8), Math.floor(num/possibleAlign), possibleAlign, values[possibleAlign]));
         pos = getFastValue(pos, '+', Math.floor(num/possibleAlign)*possibleAlign);
         num %= possibleAlign;
       }
@@ -1329,7 +1319,7 @@ function makeCopyValues(dest, src, num, type, modifier, align, sep) {
             unroll(type, 1) + ' }';
   } else { // USE_TYPED_ARRAYS == 2
     // If we don't know how to handle this at compile-time, or handling it is best done in a large amount of code, call memset
-    if (!isNumber(num) || (align < 4 && parseInt(num) >= SEEK_OPTIMAL_ALIGN_MIN)) {
+    if (!isNumber(num) || (parseInt(num)/align >= UNROLL_LOOP_MAX)) {
       return '_memcpy(' + dest + ', ' + src + ', ' + num + ')';
     }
     num = parseInt(num);
@@ -1337,20 +1327,7 @@ function makeCopyValues(dest, src, num, type, modifier, align, sep) {
     [4, 2, 1].forEach(function(possibleAlign) {
       if (num == 0) return;
       if (align >= possibleAlign) {
-        // If we can unroll the loop, do so. Also do so if we must unroll it (we do not create real loops when inlined)
-        if (num <= UNROLL_LOOP_MAX*possibleAlign || sep == ',') {
-          ret.push(unroll('i' + (possibleAlign*8), Math.floor(num/possibleAlign), possibleAlign));
-        } else {
-          assert(sep == ';');
-          ret.push('var $$src = ' + src + '; ' +
-                   'var $$dest = ' + dest + '; ' +
-                   'var $$stop = ($$src + ' + num + ')|0; ' +
-                   'while (($$src|0) < ($$stop|0)) { ' +
-                   '  HEAP' + (possibleAlign*8) + '[' + getHeapOffset('$$dest', 'i' + (possibleAlign*8)) + '] = HEAP' + (possibleAlign*8) + '[' + getHeapOffset('$$src', 'i' + (possibleAlign*8)) + ']; ' +
-                   '  $$src = ($$src + ' + possibleAlign + ')|0; ' +
-                   '  $$dest = ($$dest + ' + possibleAlign + ')|0; ' +
-                   '}');
-        }
+        ret.push(unroll('i' + (possibleAlign*8), Math.floor(num/possibleAlign), possibleAlign));
         src = getFastValue(src, '+', Math.floor(num/possibleAlign)*possibleAlign);
         dest = getFastValue(dest, '+', Math.floor(num/possibleAlign)*possibleAlign);
         num %= possibleAlign;

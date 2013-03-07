@@ -4326,7 +4326,7 @@ LibraryManager.library = {
     ptr = ptr|0; value = value|0; num = num|0;
     var stop = 0, value4 = 0, stop4 = 0, unaligned = 0;
     stop = (ptr + num)|0;
-    if ((num|0) >= {{{ SEEK_OPTIMAL_ALIGN_MIN }}}) {
+    if ((num|0) >= {{{ Math.round(2.5*UNROLL_LOOP_MAX) }}}) {
       // This is unaligned, but quite large, so work hard to get to aligned settings
       value = value & 0xff;
       unaligned = ptr & 3;
