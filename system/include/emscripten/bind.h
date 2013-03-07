@@ -658,7 +658,9 @@ namespace emscripten {
     template<typename ClassType, typename BaseSpecifier = internal::NoBaseClass>
     class class_ {
     public:
-        class_(const char* name) {
+        class_() = delete;
+
+        explicit class_(const char* name) {
             using namespace internal;
 
             BaseSpecifier::template verify<ClassType>();

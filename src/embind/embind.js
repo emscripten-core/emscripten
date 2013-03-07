@@ -144,20 +144,6 @@ function requireRegisteredType(rawType, humanName) {
     return impl;
 }
 
-/*
-function requireArgumentTypes(rawArgTypes, name) {
-    var argTypes = [];
-    for (var i = 0; i < rawArgTypes.length; ++i) {
-        argTypes[i] = requireRegisteredType(
-            rawArgTypes[i],
-            i === 0 ?
-                name + " return value" :
-                name + " parameter " + i);
-    }
-    return argTypes;
-}
-*/
-
 function staticPointerCast(from, fromType, toType) {
     if (!from) {
         return from;
@@ -620,69 +606,72 @@ function __embind_register_smart_ptr(
     rawGetPointee
 ) {
     name = Pointer_stringify(name);
-    var pointeeType = requireRegisteredType(rawPointeeType, 'class');
     rawConstructor = FUNCTION_TABLE[rawConstructor];
     rawDestructor = FUNCTION_TABLE[rawDestructor];
     rawGetPointee = FUNCTION_TABLE[rawGetPointee];
 
-    var Handle = createNamedFunction(name, function(ptr) {
-        Object.defineProperty(this, '$$', {
-            value: {
-                count: {value: 1},
-                smartPtr: ptr,
-                ptr: rawGetPointee(ptr),
-                pointeeType: pointeeType,
-            },
+    whenDependentTypesAreResolved([rawPointeeType], function(pointeeType) {
+        pointeeType = pointeeType[0];
+
+        var Handle = createNamedFunction(name, function(ptr) {
+            Object.defineProperty(this, '$$', {
+                value: {
+                    count: {value: 1},
+                    smartPtr: ptr,
+                    ptr: rawGetPointee(ptr),
+                    pointeeType: pointeeType,
+                },
+            });
         });
+
+        // TODO: test for SmartPtr.prototype.constructor property?
+        // We likely want it distinct from pointeeType.prototype.constructor
+        Handle.prototype = Object.create(pointeeType.Handle.prototype);
+
+        Handle.prototype.clone = function() {
+            if (!this.$$.ptr) {
+                throwBindingError(pointeeType.name + ' instance already deleted');
+            }
+
+            var clone = Object.create(Handle.prototype);
+            Object.defineProperty(clone, '$$', {
+                value: {
+                    count: this.$$.count,
+                    smartPtr: this.$$.smartPtr,
+                    ptr: this.$$.ptr,
+                },
+            });
+
+            clone.$$.count.value += 1;
+            return clone;
+        };
+
+        Handle.prototype['delete'] = function() {
+            if (!this.$$.ptr) {
+                throwBindingError(pointeeType.name + ' instance already deleted');
+            }
+
+            this.$$.count.value -= 1;
+            if (0 === this.$$.count.value) {
+                rawDestructor(this.$$.smartPtr);
+            }
+            this.$$.smartPtr = undefined;
+            this.$$.ptr = undefined;
+        };
+        
+        var registeredPointer = new RegisteredPointer(
+            name,
+            rawType,
+            pointeeType.registeredClass,
+            pointeeType,
+            Handle,
+            true,
+            rawGetPointee,
+            rawConstructor,
+            rawDestructor);
+        registerType(rawType, registeredPointer);
+        pointeeType.smartPointerType = registeredPointer;
     });
-
-    // TODO: test for SmartPtr.prototype.constructor property?
-    // We likely want it distinct from pointeeType.prototype.constructor
-    Handle.prototype = Object.create(pointeeType.Handle.prototype);
-
-    Handle.prototype.clone = function() {
-        if (!this.$$.ptr) {
-            throwBindingError(pointeeType.name + ' instance already deleted');
-        }
-
-        var clone = Object.create(Handle.prototype);
-        Object.defineProperty(clone, '$$', {
-            value: {
-                count: this.$$.count,
-                smartPtr: this.$$.smartPtr,
-                ptr: this.$$.ptr,
-            },
-        });
-
-        clone.$$.count.value += 1;
-        return clone;
-    };
-
-    Handle.prototype['delete'] = function() {
-        if (!this.$$.ptr) {
-            throwBindingError(pointeeType.name + ' instance already deleted');
-        }
-
-        this.$$.count.value -= 1;
-        if (0 === this.$$.count.value) {
-            rawDestructor(this.$$.smartPtr);
-        }
-        this.$$.smartPtr = undefined;
-        this.$$.ptr = undefined;
-    };
-
-    var registeredPointer = new RegisteredPointer(
-        name,
-        rawType,
-        pointeeType.registeredClass,
-        pointeeType,
-        Handle,
-        true,
-        rawGetPointee,
-        rawConstructor,
-        rawDestructor);
-    registerType(rawType, registeredPointer);
-    pointeeType.smartPointerType = registeredPointer;
 }
 
 function ClassHandle() {
@@ -704,7 +693,6 @@ function RegisteredClass(
     this.downcast = downcast;
 }
 
-// TODO: null pointers are always zero (not a Handle) in Javascript
 function __embind_register_class(
     rawType,
     rawPointerType,
@@ -721,114 +709,116 @@ function __embind_register_class(
     upcast = FUNCTION_TABLE[upcast];
     downcast = FUNCTION_TABLE[downcast];
 
-    var baseClass;
-    var basePrototype;
-    var depth;
-    if (baseClassRawType) {
-        baseClasses[rawType] = baseClassRawType;
+    whenDependentTypesAreResolved(baseClassRawType ? [baseClassRawType] : [], function(base) {
+        base = base[0];
 
-        // TODO: allow registration of base after derived
-        var base = requireRegisteredType(baseClassRawType, 'base class');
-        baseClass = base.registeredClass;
-        basePrototype = base.Handle.prototype;
-    } else {
-        basePrototype = ClassHandle.prototype;
-    }
+        var baseClass;
+        var basePrototype;
+        var depth;
+        if (baseClassRawType) {
+            baseClasses[rawType] = baseClassRawType;
 
-    var registeredClass = new RegisteredClass(
-        name,
-        isPolymorphic,
-        baseClassRawType,
-        baseClass,
-        upcast,
-        downcast);
+            baseClass = base.registeredClass;
+            basePrototype = base.Handle.prototype;
+        } else {
+            basePrototype = ClassHandle.prototype;
+        }
 
-    var Handle = createNamedFunction(name, function(ptr) {
-        Object.defineProperty(this, '$$', {
-            value: {
-                count: {value: 1, ptr: ptr},
-                ptr: ptr,
-                pointeeType: type,
+        var registeredClass = new RegisteredClass(
+            name,
+            isPolymorphic,
+            baseClassRawType,
+            baseClass,
+            upcast,
+            downcast);
+
+        var Handle = createNamedFunction(name, function(ptr) {
+            Object.defineProperty(this, '$$', {
+                value: {
+                    count: {value: 1, ptr: ptr},
+                    ptr: ptr,
+                    pointeeType: type,
+                }
+            });
+        });
+        
+        Handle.prototype = Object.create(basePrototype, {
+            constructor: { value: Handle },
+        });
+        Handle.prototype.clone = function() {
+            if (!this.$$.ptr) {
+                throwBindingError(type.name + ' instance already deleted');
             }
+
+            var clone = Object.create(Handle.prototype);
+            Object.defineProperty(clone, '$$', {
+                value: {
+                    count: this.$$.count,
+                    ptr: this.$$.ptr,
+                },
+            });
+
+            clone.$$.count.value += 1;
+            return clone;
+        };
+
+        // todo: test delete with upcast and downcast multiply derived pointers
+        // todo: then replace this.$$.count.ptr below with this.$$.ptr and make sure it fails
+        Handle.prototype['delete'] = function() {
+            if (!this.$$.ptr) {
+                throwBindingError(type.name + ' instance already deleted'); // todo: but 'type' hasn't been resolved!?!
+            }
+            
+            this.$$.count.value -= 1;
+            if (0 === this.$$.count.value) {
+                rawDestructor(this.$$.count.ptr);
+            }
+            this.$$.ptr = undefined;
+        };
+
+        // todo: clean this up!
+        var type = new RegisteredPointer(
+            name,
+            rawType,
+            registeredClass,
+            undefined,
+            Handle,
+            false);
+        type.pointeeType = type; // :(
+        registerType(rawType, type);
+
+        registerType(rawPointerType, new RegisteredPointer(
+            name + '*',
+            rawPointerType,
+            registeredClass,
+            type,
+            Handle,
+            false));
+
+        // todo: implement const pointers (no modification Javascript side)
+        registerType(rawConstPointerType, new RegisteredPointer(
+            name + ' const*',
+            rawConstPointerType,
+            registeredClass,
+            type,
+            Handle,
+            false));
+
+        type.constructor = createNamedFunction(name, function() {
+            if (Object.getPrototypeOf(this) !== Handle.prototype) {
+                throw new BindingError("Use 'new' to construct " + name);
+            }
+            var body = type.constructor_body;
+            if (undefined === body) {
+                throw new BindingError(name + " has no accessible constructor");
+            }
+            return body.apply(this, arguments);
         });
+        type.constructor.prototype = type.Handle.prototype;
+        type.constructor.type = type;
+
+        exposePublicSymbol(name, type.constructor);
     });
-
-    Handle.prototype = Object.create(basePrototype, {
-        constructor: { value: Handle },
-    });
-    Handle.prototype.clone = function() {
-        if (!this.$$.ptr) {
-            throwBindingError(type.name + ' instance already deleted');
-        }
-
-        var clone = Object.create(Handle.prototype);
-        Object.defineProperty(clone, '$$', {
-            value: {
-                count: this.$$.count,
-                ptr: this.$$.ptr,
-            },
-        });
-
-        clone.$$.count.value += 1;
-        return clone;
-    };
-
-    // todo: test delete with upcast and downcast multiply derived pointers
-    // todo: then replace this.$$.count.ptr below with this.$$.ptr and make sure it fails
-    Handle.prototype['delete'] = function() {
-        if (!this.$$.ptr) {
-            throwBindingError(type.name + ' instance already deleted'); // todo: but 'type' hasn't been resolved!?!
-        }
-
-        this.$$.count.value -= 1;
-        if (0 === this.$$.count.value) {
-            rawDestructor(this.$$.count.ptr);
-        }
-        this.$$.ptr = undefined;
-    };
-
-    // todo: clean this up!
-    var type = new RegisteredPointer(
-        name,
-        rawType,
-        registeredClass,
-        undefined,
-        Handle,
-        false);
-    type.pointeeType = type; // :(
-    registerType(rawType, type);
-
-    registerType(rawPointerType, new RegisteredPointer(
-        name + '*',
-        rawPointerType,
-        registeredClass,
-        type,
-        Handle,
-        false));
-
-    // todo: implement const pointers (no modification Javascript side)
-    registerType(rawConstPointerType, new RegisteredPointer(
-        name + ' const*',
-        rawConstPointerType,
-        registeredClass,
-        type,
-        Handle,
-        false));
-
-    type.constructor = createNamedFunction(name, function() {
-        if (Object.getPrototypeOf(this) !== Handle.prototype) {
-            throw new BindingError("Use 'new' to construct " + name);
-        }
-        var body = type.constructor.body;
-        if (undefined === body) {
-            throw new BindingError(name + " has no accessible constructor");
-        }
-        return body.apply(this, arguments);
-    });
-    type.constructor.prototype = type.Handle.prototype;
-    type.constructor.type = type;
-
-    exposePublicSymbol(name, type.constructor);
 }
 
 function __embind_register_class_constructor(
@@ -838,13 +828,14 @@ function __embind_register_class_constructor(
     invoker,
     rawConstructor
 ) {
-    var classType = requireRegisteredType(rawClassType, 'class');
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     invoker = FUNCTION_TABLE[invoker];
 
-    whenDependentTypesAreResolved(rawArgTypes, function(argTypes) {
+    whenDependentTypesAreResolved([rawClassType].concat(rawArgTypes), function(argTypes) {
+        var classType = argTypes[0];
+        argTypes = argTypes.slice(1);
         var humanName = 'constructor ' + classType.name;
-        classType.constructor.body = function() {
+        classType.constructor_body = function() {
             if (arguments.length !== argCount - 1) {
                 throwBindingError(humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
             }
@@ -880,12 +871,14 @@ function __embind_register_class_method(
     memberFunctionSize,
     memberFunction
 ) {
-    var classType = requireRegisteredType(rawClassType, 'class');
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     methodName = Pointer_stringify(methodName);
     rawInvoker = FUNCTION_TABLE[rawInvoker];
     memberFunction = copyMemberPointer(memberFunction, memberFunctionSize);
-    whenDependentTypesAreResolved(rawArgTypes, function(argTypes) {
+
+    whenDependentTypesAreResolved([rawClassType].concat(rawArgTypes), function(argTypes) {
+        var classType = argTypes[0];
+        argTypes = argTypes.slice(1);
         var humanName = classType.name + '.' + methodName;
         classType.Handle.prototype[methodName] = function() {
             if (!this.$$.ptr) {
@@ -949,14 +942,14 @@ function __embind_register_class_field(
     memberPointer
 ) {
     // todo: whenDependentTypesAreResolved
-    var classType = requireRegisteredType(rawClassType, 'class');
     fieldName = Pointer_stringify(fieldName);
     getter = FUNCTION_TABLE[getter];
     setter = FUNCTION_TABLE[setter];
     memberPointer = copyMemberPointer(memberPointer, memberPointerSize);
-    whenDependentTypesAreResolved([rawFieldType], function(fieldType) {
+    whenDependentTypesAreResolved([rawClassType, rawFieldType], function(converters) {
+        var classType = converters[0];
+        var fieldType = converters[1];
         var humanName = classType.name + '.' + fieldName;
-        fieldType = fieldType[0];
         Object.defineProperty(classType.Handle.prototype, fieldName, {
             get: function() {
                 if (!this.$$.ptr) {
