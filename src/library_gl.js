@@ -2935,10 +2935,11 @@ var LibraryGL = {
 #if FULL_ES2
     var buf;
     if (!GL.currElementArrayBuffer) {
-      buf = Module.ctx.createBuffer();
+      var size = GL.calcBufLength(1, type, 0, count);
+      buf = GL.tempIndexBuffers[GL.tempBufferIndexLookup[size]];
       Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, buf);
       Module.ctx.bufferData(Module.ctx.ELEMENT_ARRAY_BUFFER,
-                            HEAPU8.subarray(indices, indices + GL.calcBufLength(1, type, 0, count)),
+                            HEAPU8.subarray(indices, indices + size),
                             Module.ctx.DYNAMIC_DRAW);
       // the index is now 0
       indices = 0;
@@ -2955,7 +2956,6 @@ var LibraryGL = {
 
     if (!GL.currElementArrayBuffer) {
       Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, null);
-      Module.ctx.deleteBuffer(buf);
     }
 #endif
   },
