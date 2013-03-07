@@ -21,7 +21,6 @@ var LibraryGL = {
 
 #if FULL_ES2
     clientBuffers: [],
-    enabledClientBuffers: [],
 #endif
     currArrayBuffer: 0,
     currElementArrayBuffer: 0,
@@ -210,11 +209,10 @@ var LibraryGL = {
     preDrawHandleClientVertexAttribBindings: function(count) {
       GL.resetBufferBinding = false;
       for (var i = 0; i < GL.maxVertexAttribs; ++i) {
-        if (!GL.enabledClientBuffers[i] || !GL.clientBuffers[i]) continue;
+        var cb = GL.clientBuffers[i];
+        if (!cb.enabled) continue;
 
         GL.resetBufferBinding = true;
-
-        var cb = GL.clientBuffers[i];
 
         var buf = Module.ctx.createBuffer();
         Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, buf);
@@ -239,6 +237,11 @@ var LibraryGL = {
       if (!Module.useWebGL) return; // an app might link both gl and 2d backends
 
       GL.maxVertexAttribs = Module.ctx.getParameter(Module.ctx.MAX_VERTEX_ATTRIBS);
+#if FULL_ES2
+      for (var i = 0; i < GL.maxVertexAttribs; i++) {
+        GL.clientBuffers[i] = { enabled: false, size: 0, type: 0, normalized: 0, stride: 0, ptr: 0 };
+      }
+#endif
 
       GL.compressionExt = Module.ctx.getExtension('WEBGL_compressed_texture_s3tc') ||
                           Module.ctx.getExtension('MOZ_WEBGL_compressed_texture_s3tc') ||
@@ -612,7 +615,7 @@ var LibraryGL = {
 
   glGetVertexAttribfv: function(index, pname, params) {
 #if FULL_ES2
-    if (GL.clientBuffers[index]) {
+    if (GL.clientBuffers[index].enabled) {
       Module.printErr("glGetVertexAttribfv on client-side array: not supported, bad data returned");
     }
 #endif
@@ -628,7 +631,7 @@ var LibraryGL = {
 
   glGetVertexAttribiv: function(index, pname, params) {
 #if FULL_ES2
-    if (GL.clientBuffers[index]) {
+    if (GL.clientBuffers[index].enabled) {
       Module.printErr("glGetVertexAttribiv on client-side array: not supported, bad data returned");
     }
 #endif
@@ -644,7 +647,7 @@ var LibraryGL = {
 
   glGetVertexAttribPointerv: function(index, pname, pointer) {
 #if FULL_ES2
-    if (GL.clientBuffers[index]) {
+    if (GL.clientBuffers[index].enabled) {
       Module.printErr("glGetVertexAttribPointer on client-side array: not supported, bad data returned");
     }
 #endif
@@ -2854,12 +2857,19 @@ var LibraryGL = {
   glVertexAttribPointer__sig: 'viiiiii',
   glVertexAttribPointer: function(index, size, type, normalized, stride, ptr) {
 #if FULL_ES2
+    var cb = GL.clientBuffers[index];
+#if ASSERTIONS
+    assert(cb, index);
+#endif
     if (!GL.currArrayBuffer) {
-      GL.clientBuffers[index] = { size: size, type: type, normalized: normalized, stride: stride, ptr: ptr };
+      cb.size = size;
+      cb.type = type;
+      cb.normalized = normalized;
+      cb.stride = stride;
+      cb.ptr = ptr;
       return;
     }
-
-    GL.clientBuffers[index] = null;
+    cb.enabled = false;
 #endif
     Module.ctx.vertexAttribPointer(index, size, type, normalized, stride, ptr);
   },
@@ -2867,7 +2877,11 @@ var LibraryGL = {
   glEnableVertexAttribArray__sig: 'vi',
   glEnableVertexAttribArray: function(index) {
 #if FULL_ES2
-    GL.enabledClientBuffers[index] = true;
+    var cb = GL.clientBuffers[index];
+#if ASSERTIONS
+    assert(cb, index);
+#endif
+    cb.enabled = true;
 #endif
     Module.ctx.enableVertexAttribArray(index);
   },
@@ -2875,7 +2889,11 @@ var LibraryGL = {
   glDisableVertexAttribArray__sig: 'vi',
   glDisableVertexAttribArray: function(index) {
 #if FULL_ES2
-    GL.enabledClientBuffers[index] = false;
+    var cb = GL.clientBuffers[index];
+#if ASSERTIONS
+    assert(cb, index);
+#endif
+    cb.enabled = false;
 #endif
     Module.ctx.disableVertexAttribArray(index);
   },
