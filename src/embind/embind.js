@@ -233,8 +233,7 @@ function __embind_register_cstring(rawType, name) {
             for (var i = 0; i < length; ++i) {
                 HEAPU8[ptr + 4 + i] = value.charCodeAt(i);
             }
-            destructors.push(_free);
-            destructors.push(ptr);
+            destructors.push(_free, ptr);
             return ptr;
         },
     });
@@ -324,8 +323,7 @@ function __embind_register_tuple(rawType, name, rawConstructor, rawDestructor) {
             for (var i = 0; i < len; ++i) {
                 this.elements[i].write(ptr, o[i]);
             }
-            destructors.push(rawDestructor);
-            destructors.push(ptr);
+            destructors.push(rawDestructor, ptr);
             return ptr;
         },
     });
@@ -438,8 +436,7 @@ function __embind_register_struct(
             for (fieldName in fields) {
                 fields[fieldName].write(ptr, o[fieldName]);
             }
-            destructors.push(rawDestructor);
-            destructors.push(ptr);
+            destructors.push(rawDestructor, ptr);
             return ptr;
         },
     });
@@ -520,8 +517,7 @@ RegisteredPointer.prototype.toWireType = function(destructors, handle) {
         ptr = this.rawConstructor(
             ptr,
             handle.$$.smartPtr);
-        destructors.push(this.rawDestructor);
-        destructors.push(ptr);
+        destructors.push(this.rawDestructor, ptr);
     }
     return ptr;
 };
@@ -1042,8 +1038,7 @@ function __embind_register_interface(
         toWireType: function(destructors, o) {
             var handle = __emval_register(o);
             var ptr = this.rawConstructor(handle);
-            destructors.push(this.rawDestructor);
-            destructors.push(ptr);
+            destructors.push(this.rawDestructor, ptr);
             return ptr;
         },
     });
