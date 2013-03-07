@@ -10837,14 +10837,18 @@ elif 'browser' in str(sys.argv):
       self.run_browser('something.html', 'You should see animating gears.', '/report_result?0')
 
     def test_glgears_animation(self):
-      for emulation in [0, 1]:
-        print emulation
-        Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
-                                             '-DHAVE_BUILTIN_SINCOS', '-s', 'GL_TESTING=1',
-                                             '--shell-file', path_from_root('tests', 'hello_world_gles_shell.html')] +
-              (['-s', 'FORCE_GL_EMULATION=1'] if emulation else [])).communicate()
-        self.run_browser('something.html', 'You should see animating gears.', '/report_gl_result?true')
-        assert ('var GLEmulation' in open(self.in_dir('something.html')).read()) == emulation, "emulation code should be added when asked for"
+      for full_es2 in [0, 1]:
+        for emulation in [0, 1]:
+          if full_es2 and emulation: continue
+          print full_es2, emulation
+          Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_gles%s.c' % ('' if not full_es2 else '_full')), '-o', 'something.html',
+                                               '-DHAVE_BUILTIN_SINCOS', '-s', 'GL_TESTING=1',
+                                               '--shell-file', path_from_root('tests', 'hello_world_gles_shell.html')] +
+                (['-s', 'FORCE_GL_EMULATION=1'] if emulation else []) +
+                (['-s', 'FULL_ES2=1'] if full_es2 else []),
+                ).communicate()
+          self.run_browser('something.html', 'You should see animating gears.', '/report_gl_result?true')
+          assert ('var GLEmulation' in open(self.in_dir('something.html')).read()) == emulation, "emulation code should be added when asked for"
 
     def test_glgears_bad(self):
       # Make sure that OpenGL ES is not available if typed arrays are not used
