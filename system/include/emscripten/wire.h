@@ -241,11 +241,7 @@ namespace emscripten {
             }
 
             static shared_ptr fromWireType(WireType wt) {
-                if (wt) {
-                    return shared_ptr(*wt);
-                } else {
-                    return shared_ptr();
-                }
+                return *wt;
             }
 
             static void destroy(WireType p) {
