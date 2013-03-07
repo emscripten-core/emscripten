@@ -1338,14 +1338,18 @@ function makeCopyValues(dest, src, num, type, modifier, align, sep) {
       if (num == 0) return;
       if (align >= possibleAlign) {
         // If we can unroll the loop, do so. Also do so if we must unroll it (we do not create real loops when inlined)
-        if (num <= UNROLL_LOOP_MAX*possibleAlign || sep == ',' || ASM_JS) { // XXX test asm performance
+        if (num <= UNROLL_LOOP_MAX*possibleAlign || sep == ',') {
           ret.push(unroll('i' + (possibleAlign*8), Math.floor(num/possibleAlign), possibleAlign));
         } else {
           assert(sep == ';');
-          ret.push('for (var $$src = ' + src + (possibleAlign > 1 ? '>>' + log2(possibleAlign) : '') + ', ' +
-                            '$$dest = ' + dest + (possibleAlign > 1 ? '>>' + log2(possibleAlign) : '') + ', ' +
-                            '$$stop = $$src + ' + Math.floor(num/possibleAlign) + '; $$src < $$stop; $$src++, $$dest++) {\n' +
-                   '  HEAP' + (possibleAlign*8) + '[$$dest] = HEAP' + (possibleAlign*8) + '[$$src]\n}');
+          ret.push('var $$src = ' + src + '; ' +
+                   'var $$dest = ' + dest + '; ' +
+                   'var $$stop = ($$src + ' + num + ')|0; ' +
+                   'while (($$src|0) < ($$stop|0)) { ' +
+                   '  HEAP' + (possibleAlign*8) + '[' + getHeapOffset('$$dest', 'i' + (possibleAlign*8)) + '] = HEAP' + (possibleAlign*8) + '[' + getHeapOffset('$$src', 'i' + (possibleAlign*8)) + ']; ' +
+                   '  $$src = ($$src + ' + possibleAlign + ')|0; ' +
+                   '  $$dest = ($$dest + ' + possibleAlign + ')|0; ' +
+                   '}');
         }
         src = getFastValue(src, '+', Math.floor(num/possibleAlign)*possibleAlign);
         dest = getFastValue(dest, '+', Math.floor(num/possibleAlign)*possibleAlign);
