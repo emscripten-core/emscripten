@@ -2883,7 +2883,7 @@ var LibraryGL = {
   glDrawArrays: function(mode, first, count) {
 #if FULL_ES2
     // bind any client-side buffers
-    GL.preDrawHandleClientVertexAttribBindings(count);
+    GL.preDrawHandleClientVertexAttribBindings(first + count);
 #endif
 
     Module.ctx.drawArrays(mode, first, count);
