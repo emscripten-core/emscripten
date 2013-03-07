@@ -962,14 +962,28 @@ function __embind_register_class_field(
                 if (!this.$$.ptr) {
                     throwBindingError('cannot access emscripten binding field ' + humanName + ' on deleted object');
                 }
-                return fieldType.fromWireType(getter(this.$$.ptr, memberPointer));
+
+                // TODO: error if pointer type doesn't match signature
+                var ptr = upcastPointer(
+                    this.$$.ptr,
+                    this.$$.pointeeType.registeredClass,
+                    classType.registeredClass);
+
+                return fieldType.fromWireType(getter(ptr, memberPointer));
             },
             set: function(v) {
                 if (!this.$$.ptr) {
                     throwBindingError('cannot modify emscripten binding field ' + humanName + ' on deleted object');
                 }
+
+                // TODO: error if pointer type doesn't match signature
+                var ptr = upcastPointer(
+                    this.$$.ptr,
+                    this.$$.pointeeType.registeredClass,
+                    classType.registeredClass);
+
                 var destructors = [];
-                setter(this.$$.ptr, memberPointer, fieldType.toWireType(destructors, v));
+                setter(ptr, memberPointer, fieldType.toWireType(destructors, v));
                 runDestructors(destructors);
             },
             enumerable: true
