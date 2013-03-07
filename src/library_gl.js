@@ -211,11 +211,11 @@ var LibraryGL = {
       GL.resetBufferBinding = false;
       for (var i = 0; i < GL.maxVertexAttribs; ++i) {
         if (!GL.enabledClientBuffers[i] || !GL.clientBuffers[i]) continue;
-  
+
         GL.resetBufferBinding = true;
-  
+
         var cb = GL.clientBuffers[i];
-  
+
         var buf = Module.ctx.createBuffer();
         Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, buf);
         Module.ctx.bufferData(Module.ctx.ARRAY_BUFFER,
