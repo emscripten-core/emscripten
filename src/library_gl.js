@@ -265,8 +265,13 @@ var LibraryGL = {
       return size * typeSize * count;
     },
 
+    usedTempBuffers: [],
+
     preDrawHandleClientVertexAttribBindings: function(count) {
       GL.resetBufferBinding = false;
+
+      var used = GL.usedTempBuffers;
+      used.length = 0;
 
       for (var i = 0; i < GL.maxVertexAttribs; ++i) {
         var cb = GL.clientBuffers[i];
@@ -274,10 +279,19 @@ var LibraryGL = {
 
         GL.resetBufferBinding = true;
 
-        var buf = Module.ctx.createBuffer();
+        var size = GL.calcBufLength(cb.size, cb.type, cb.stride, count);
+        var index = GL.tempBufferIndexLookup[size];
+        var buf;
+        do {
+#if ASSERTIONS
+          assert(index < GL.tempVertexBuffers.length);
+#endif
+          buf = GL.tempVertexBuffers[index++];
+        } while (used.indexOf(buf) >= 0);
+        used.push(buf);
         Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, buf);
         Module.ctx.bufferData(Module.ctx.ARRAY_BUFFER,
-                              HEAPU8.subarray(cb.ptr, cb.ptr + GL.calcBufLength(cb.size, cb.type, cb.stride, count)),
+                              HEAPU8.subarray(cb.ptr, cb.ptr + size),
                               Module.ctx.DYNAMIC_DRAW);
         Module.ctx.vertexAttribPointer(i, cb.size, cb.type, cb.normalized, cb.stride, 0);
       }
@@ -301,6 +315,8 @@ var LibraryGL = {
       for (var i = 0; i < GL.maxVertexAttribs; i++) {
         GL.clientBuffers[i] = { enabled: false, size: 0, type: 0, normalized: 0, stride: 0, ptr: 0 };
       }
+
+      GL.generateTempBuffers();
 #endif
 
       GL.compressionExt = Module.ctx.getExtension('WEBGL_compressed_texture_s3tc') ||
