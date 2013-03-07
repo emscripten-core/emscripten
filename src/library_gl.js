@@ -2849,6 +2849,8 @@ var LibraryGL = {
 
   glShadeModel: function() { Runtime.warnOnce('TODO: glShadeModel') },
 
+  // GLES2 emulation
+
   glVertexAttribPointer__sig: 'viiiiii',
   glVertexAttribPointer: function(index, size, type, normalized, stride, ptr) {
 #if FULL_ES2
@@ -2921,11 +2923,13 @@ var LibraryGL = {
   },
 
   // signatures of simple pass-through functions, see later
+
   glActiveTexture__sig: 'vi',
   glCheckFramebufferStatus__sig: 'ii',
   glRenderbufferStorage__sig: 'viiii',
 
   // Open GLES1.1 compatibility
+
   glGenFramebuffersOES : 'glGenFramebuffers',
   glGenRenderbuffersOES : 'glGenRenderbuffers',
   glBindFramebufferOES : 'glBindFramebuffer',
