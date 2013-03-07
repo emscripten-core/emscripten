@@ -517,10 +517,10 @@ RegisteredPointer.prototype.toWireType = function(destructors, handle) {
         // assumes that smart_ptr<T> has an identical binary layout to
         // smart_ptr<U>.  I wonder if that's untrue for any common
         // smart pointer. - chad
-        ptr = pointeeType.smartPointerType.rawConstructor(
+        ptr = this.rawConstructor(
             ptr,
             handle.$$.smartPtr);
-        destructors.push(pointeeType.smartPointerType.rawDestructor);
+        destructors.push(this.rawDestructor);
         destructors.push(ptr);
     }
     return ptr;
