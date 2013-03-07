@@ -58,6 +58,65 @@ var LibraryGL = {
       return ret;
     },
 
+    // Temporary buffers
+    MAX_TEMP_BUFFER_SIZE: {{{ GL_MAX_TEMP_BUFFER_SIZE }}},
+    tempBufferIndexLookup: null,
+    tempVertexBuffers: null,
+    tempIndexBuffers: null,
+    tempQuadIndexBuffer: null,
+
+    generateTempBuffers: function(quads) {
+      this.tempBufferIndexLookup = new Uint8Array(this.MAX_TEMP_BUFFER_SIZE+1);
+      this.tempVertexBuffers = [];
+      this.tempIndexBuffers = [];
+      var last = -1, curr = -1;
+      var size = 1;
+      for (var i = 0; i <= this.MAX_TEMP_BUFFER_SIZE; i++) {
+        if (i > size) {
+          size <<= 1;
+        }
+        if (size != last) {
+          curr++;
+          this.tempVertexBuffers[curr] = Module.ctx.createBuffer();
+          Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, this.tempVertexBuffers[curr]);
+          Module.ctx.bufferData(Module.ctx.ARRAY_BUFFER, size, Module.ctx.DYNAMIC_DRAW);
+          Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, null);
+          this.tempIndexBuffers[curr] = Module.ctx.createBuffer();
+          Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.tempIndexBuffers[curr]);
+          Module.ctx.bufferData(Module.ctx.ELEMENT_ARRAY_BUFFER, size, Module.ctx.DYNAMIC_DRAW);
+          Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, null);
+          last = size;
+        }
+        this.tempBufferIndexLookup[i] = curr;
+      }
+
+      if (quads) {
+        // GL_QUAD indexes can be precalculated
+        this.tempQuadIndexBuffer = Module.ctx.createBuffer();
+        Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.tempQuadIndexBuffer);
+        var numIndexes = this.MAX_TEMP_BUFFER_SIZE >> 1;
+        var quadIndexes = new Uint16Array(numIndexes);
+        var i = 0, v = 0;
+        while (1) {
+          quadIndexes[i++] = v;
+          if (i >= numIndexes) break;
+          quadIndexes[i++] = v+1;
+          if (i >= numIndexes) break;
+          quadIndexes[i++] = v+2;
+          if (i >= numIndexes) break;
+          quadIndexes[i++] = v;
+          if (i >= numIndexes) break;
+          quadIndexes[i++] = v+2;
+          if (i >= numIndexes) break;
+          quadIndexes[i++] = v+3;
+          if (i >= numIndexes) break;
+          v += 4;
+        }
+        Module.ctx.bufferData(Module.ctx.ELEMENT_ARRAY_BUFFER, quadIndexes, Module.ctx.STATIC_DRAW);
+        Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, null);
+      }
+    },
+
     // Linear lookup in one of the tables (buffers, programs, etc.). TODO: consider using a weakmap to make this faster, if it matters
     scan: function(table, object) {
       for (var item in table) {
@@ -208,6 +267,7 @@ var LibraryGL = {
 
     preDrawHandleClientVertexAttribBindings: function(count) {
       GL.resetBufferBinding = false;
+
       for (var i = 0; i < GL.maxVertexAttribs; ++i) {
         var cb = GL.clientBuffers[i];
         if (!cb.enabled) continue;
@@ -1696,62 +1756,6 @@ var LibraryGL = {
       this.modifiedClientAttributes = true;
     },
 
-    // Temporary buffers
-    MAX_TEMP_BUFFER_SIZE: {{{ GL_MAX_TEMP_BUFFER_SIZE }}},
-    tempBufferIndexLookup: null,
-    tempVertexBuffers: null,
-    tempIndexBuffers: null,
-    tempQuadIndexBuffer: null,
-
-    generateTempBuffers: function() {
-      this.tempBufferIndexLookup = new Uint8Array(this.MAX_TEMP_BUFFER_SIZE+1);
-      this.tempVertexBuffers = [];
-      this.tempIndexBuffers = [];
-      var last = -1, curr = -1;
-      var size = 1;
-      for (var i = 0; i <= this.MAX_TEMP_BUFFER_SIZE; i++) {
-        if (i > size) {
-          size <<= 1;
-        }
-        if (size != last) {
-          curr++;
-          this.tempVertexBuffers[curr] = Module.ctx.createBuffer();
-          Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, this.tempVertexBuffers[curr]);
-          Module.ctx.bufferData(Module.ctx.ARRAY_BUFFER, size, Module.ctx.DYNAMIC_DRAW);
-          Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, null);
-          this.tempIndexBuffers[curr] = Module.ctx.createBuffer();
-          Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.tempIndexBuffers[curr]);
-          Module.ctx.bufferData(Module.ctx.ELEMENT_ARRAY_BUFFER, size, Module.ctx.DYNAMIC_DRAW);
-          Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, null);
-          last = size;
-        }
-        this.tempBufferIndexLookup[i] = curr;
-      }
-      // GL_QUAD indexes can be precalculated
-      this.tempQuadIndexBuffer = Module.ctx.createBuffer();
-      Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.tempQuadIndexBuffer);
-      var numIndexes = this.MAX_TEMP_BUFFER_SIZE >> 1;
-      var quadIndexes = new Uint16Array(numIndexes);
-      var i = 0, v = 0;
-      while (1) {
-        quadIndexes[i++] = v;
-        if (i >= numIndexes) break;
-        quadIndexes[i++] = v+1;
-        if (i >= numIndexes) break;
-        quadIndexes[i++] = v+2;
-        if (i >= numIndexes) break;
-        quadIndexes[i++] = v;
-        if (i >= numIndexes) break;
-        quadIndexes[i++] = v+2;
-        if (i >= numIndexes) break;
-        quadIndexes[i++] = v+3;
-        if (i >= numIndexes) break;
-        v += 4;
-      }
-      Module.ctx.bufferData(Module.ctx.ELEMENT_ARRAY_BUFFER, quadIndexes, Module.ctx.STATIC_DRAW);
-      Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, null);
-    },
-
     // Renderers
     addRendererComponent: function(name, size, type) {
       if (!this.rendererComponents[name]) {
@@ -1972,8 +1976,8 @@ var LibraryGL = {
           if (!GL.currArrayBuffer) {
             var start = GL.immediate.firstVertex*GL.immediate.stride;
             var end = GL.immediate.lastVertex*GL.immediate.stride;
-            assert(end <= GL.immediate.MAX_TEMP_BUFFER_SIZE, 'too much vertex data');
-            arrayBuffer = GL.immediate.tempVertexBuffers[GL.immediate.tempBufferIndexLookup[end]];
+            assert(end <= GL.MAX_TEMP_BUFFER_SIZE, 'too much vertex data');
+            arrayBuffer = GL.tempVertexBuffers[GL.tempBufferIndexLookup[end]];
             // TODO: consider using the last buffer we bound, if it was larger. downside is larger buffer, but we might avoid rebinding and preparing
           } else {
             arrayBuffer = GL.currArrayBuffer;
@@ -2164,12 +2168,12 @@ var LibraryGL = {
       this.rendererCache = this.rendererCacheItemTemplate.slice();
 
       // Buffers for data
-      this.tempData = new Float32Array(this.MAX_TEMP_BUFFER_SIZE >> 2);
-      this.indexData = new Uint16Array(this.MAX_TEMP_BUFFER_SIZE >> 1);
+      this.tempData = new Float32Array(GL.MAX_TEMP_BUFFER_SIZE >> 2);
+      this.indexData = new Uint16Array(GL.MAX_TEMP_BUFFER_SIZE >> 1);
 
       this.vertexDataU8 = new Uint8Array(this.tempData.buffer);
 
-      this.generateTempBuffers();
+      GL.generateTempBuffers(true);
 
       this.clientColor = new Float32Array([1, 1, 1, 1]);
     },
@@ -2212,7 +2216,7 @@ var LibraryGL = {
 #if ASSERTIONS
         Runtime.warnOnce('Unpacking/restriding attributes, this is not fast');
 #endif
-        if (!GL.immediate.restrideBuffer) GL.immediate.restrideBuffer = _malloc(GL.immediate.MAX_TEMP_BUFFER_SIZE);
+        if (!GL.immediate.restrideBuffer) GL.immediate.restrideBuffer = _malloc(GL.MAX_TEMP_BUFFER_SIZE);
         start = GL.immediate.restrideBuffer;
 #if ASSERTIONS
         assert(start % 4 == 0);
@@ -2227,7 +2231,7 @@ var LibraryGL = {
           bytes += size;
         }
 #if ASSERTIONS
-        assert(count*bytes <= GL.immediate.MAX_TEMP_BUFFER_SIZE);
+        assert(count*bytes <= GL.MAX_TEMP_BUFFER_SIZE);
 #endif
         // copy out the data (we need to know the stride for that, and define attribute.pointer
         for (var i = 0; i < attributes.length; i++) {
@@ -2301,8 +2305,8 @@ var LibraryGL = {
         }
         if (!GL.currElementArrayBuffer) {
           // If no element array buffer is bound, then indices is a literal pointer to clientside data
-          assert(numProvidedIndexes << 1 <= GL.immediate.MAX_TEMP_BUFFER_SIZE, 'too many immediate mode indexes (a)');
-          var indexBuffer = GL.immediate.tempIndexBuffers[GL.immediate.tempBufferIndexLookup[numProvidedIndexes << 1]];
+          assert(numProvidedIndexes << 1 <= GL.MAX_TEMP_BUFFER_SIZE, 'too many immediate mode indexes (a)');
+          var indexBuffer = GL.tempIndexBuffers[GL.tempBufferIndexLookup[numProvidedIndexes << 1]];
           Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, indexBuffer);
           Module.ctx.bufferSubData(Module.ctx.ELEMENT_ARRAY_BUFFER, 0, {{{ makeHEAPView('U16', 'ptr', 'ptr + (numProvidedIndexes << 1)') }}});
           ptr = 0;
@@ -2317,8 +2321,8 @@ var LibraryGL = {
         ptr = GL.immediate.firstVertex*3;
         var numQuads = numVertexes / 4;
         numIndexes = numQuads * 6; // 0 1 2, 0 2 3 pattern
-        assert(ptr + (numIndexes << 1) <= GL.immediate.MAX_TEMP_BUFFER_SIZE, 'too many immediate mode indexes (b)');
-        Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.tempQuadIndexBuffer);
+        assert(ptr + (numIndexes << 1) <= GL.MAX_TEMP_BUFFER_SIZE, 'too many immediate mode indexes (b)');
+        Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, GL.tempQuadIndexBuffer);
         emulatedElementArrayBuffer = true;
       }
 
@@ -2372,7 +2376,7 @@ var LibraryGL = {
     GL.immediate.vertexData[GL.immediate.vertexCounter++] = y;
     GL.immediate.vertexData[GL.immediate.vertexCounter++] = z || 0;
 #if ASSERTIONS
-    assert(GL.immediate.vertexCounter << 2 < GL.immediate.MAX_TEMP_BUFFER_SIZE);
+    assert(GL.immediate.vertexCounter << 2 < GL.MAX_TEMP_BUFFER_SIZE);
 #endif
     GL.immediate.addRendererComponent(GL.immediate.VERTEX, 3, Module.ctx.FLOAT);
   },
