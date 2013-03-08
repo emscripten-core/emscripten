@@ -1333,10 +1333,10 @@ var LibrarySDL = {
     // If the user asks us to allocate a channel automatically, get the first
     // free one.
     if (channel == -1) {
-      channel = 0;
-      for (var i = 0; i < SDL.numChannels; i++) {
+      channel = SDL.channelMinimumNumber;
+      for (var i = SDL.channelMinimumNumber; i < SDL.numChannels; i++) {
         if (!SDL.channels[i].audio) {
-          channel = [Math.max(i, SDL.channelMinimumNumber)];
+          channel = i;
           break;
         }
       }
@@ -1406,6 +1406,7 @@ var LibrarySDL = {
       audio.play();
     }
     audio.volume = channelInfo.volume;
+    audio.paused = false;
     return channel;
   },
   Mix_PlayChannelTimed: 'Mix_PlayChannel', // XXX ignore Timing
@@ -1496,44 +1497,45 @@ var LibrarySDL = {
 
   // http://www.libsdl.org/projects/SDL_mixer/docs/SDL_mixer_38.html#SEC38
   // "Note: Does not check if the channel has been paused."
-  Mix_Playing: function(id) {
-    if (id === -1) {
+  Mix_Playing: function(channel) {
+    if (channel === -1) {
       var count = 0;
-      for (var i = 0; i < SDL.audios.length; i++) {
+      for (var i = 0; i < SDL.channels.length; i++) {
         count += _Mix_Playing(i);
       }
       return count;
     }
-    var info = SDL.audios[id];
+    var info = SDL.channels[channel];
     if (info && info.audio && !info.audio.paused) {
       return 1;
     }
     return 0;
   },
   
-  Mix_Pause: function(id) {
-    if (id === -1) {
-      for (var i = 0; i<SDL.audios.length;i++) {
+  Mix_Pause: function(channel) {
+    if (channel === -1) {
+      for (var i = 0; i<SDL.channels.length;i++) {
         _Mix_Pause(i);
       }
       return;
     }
-    var info = SDL.audios[id];
+    var info = SDL.channels[channel];
     if (info && info.audio) {
       info.audio.pause();
+      info.audio.paused = true;
     }
   },
   
   // http://www.libsdl.org/projects/SDL_mixer/docs/SDL_mixer_39.html#SEC39
-  Mix_Paused: function(id) {
-    if (id === -1) {
+  Mix_Paused: function(channel) {
+    if (channel === -1) {
       var pausedCount = 0;
-      for (var i = 0; i<SDL.audios.length;i++) {
+      for (var i = 0; i<SDL.channels.length;i++) {
         pausedCount += _Mix_Paused(i);
       }
       return pausedCount;
     }
-    var info = SDL.audios[id];
+    var info = SDL.channels[channel];
     if (info && info.audio && info.audio.paused) {
       return 1;
     }
@@ -1545,14 +1547,14 @@ var LibrarySDL = {
   },
 
   // http://www.libsdl.org/projects/SDL_mixer/docs/SDL_mixer_33.html#SEC33
-  Mix_Resume: function(id) {
-    if (id === -1) {
-      for (var i = 0; i<SDL.audios.length;i++) {
+  Mix_Resume: function(channel) {
+    if (channel === -1) {
+      for (var i = 0; i<SDL.channels.length;i++) {
         _Mix_Resume(i);
       }
       return;
     }
-    var info = SDL.audios[id];
+    var info = SDL.channels[channel];
     if (info && info.audio) {
       info.audio.play();
     }
