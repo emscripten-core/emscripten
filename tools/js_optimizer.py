@@ -98,6 +98,19 @@ def run_on_js(filename, passes, js_engine, jcache):
     # if there is metadata, we will run only on the generated functions. If there isn't, we will run on everything.
     generated = set(eval(suffix[len(suffix_marker)+1:]))
 
+  # Find markers
+  start_funcs_marker = '// EMSCRIPTEN_START_FUNCS\n'
+  end_funcs_marker = '// EMSCRIPTEN_END_FUNCS\n'
+  start_funcs = js.find(start_funcs_marker)
+  end_funcs = js.find(end_funcs_marker)
+  assert (start_funcs >= 0) == (end_funcs >= 0) == (not not suffix)
+  if 'asm' in passes:
+    start_asm_marker = '// EMSCRIPTEN_START_ASM\n'
+    end_asm_marker = '// EMSCRIPTEN_END_ASM\n'
+    start_asm = js.find(start_asm_marker)
+    end_asm = js.find(end_asm_marker)
+    assert (start_asm >= 0) == (end_asm >= 0)
+
   if not suffix and jcache:
     # JCache cannot be used without metadata, since it might reorder stuff, and that's dangerous since only generated can be reordered
     # This means jcache does not work after closure compiler runs, for example. But you won't get much benefit from jcache with closure
@@ -105,37 +118,24 @@ def run_on_js(filename, passes, js_engine, jcache):
     if DEBUG: print >>sys.stderr, 'js optimizer: no metadata, so disabling jcache'
     jcache = False
 
-  # If we process only generated code, find that and save the rest on the side
-  func_sig = re.compile('( *)function (_[\w$]+)\(')
   if suffix:
-    pos = 0
-    gen_start = 0
-    gen_end = 0
-    while 1:
-      m = func_sig.search(js, pos)
-      if not m: break
-      pos = m.end()
-      indent = m.group(1)
-      ident = m.group(2)
-      if ident in generated:
-        if not gen_start:
-          gen_start = m.start()
-          assert gen_start
-        gen_end = js.find('\n%s}\n' % indent, m.end()) + (3 + len(indent))
-    assert gen_end > gen_start
-    pre = js[:gen_start]
-    post = js[gen_end:]
-    if 'last' in passes:
-      post = post.replace(suffix, '') # no need to write out the metadata - nothing after us needs it
-    js = js[gen_start:gen_end]
+    pre = js[:start_funcs + len(start_funcs_marker)]
+    post = js[end_funcs:]
+    js = js[start_funcs + len(start_funcs_marker):end_funcs]
+    if 'asm' not in passes: # can have Module[..] and inlining prevention code, push those to post
+      for line in js.split('\n'):
+        if len(line) > 0 and not line.startswith((' ', 'function', '}')):
+          post = line + '\n' + post
   else:
     pre = ''
     post = ''
+    generated
 
   # Pick where to split into chunks, so that (1) they do not oom in node/uglify, and (2) we can run them in parallel
   # If we have metadata, we split only the generated code, and save the pre and post on the side (and do not optimize them)
   parts = map(lambda part: part, js.split('\n}\n'))
   funcs = []
+  func_sig = re.compile('( *)function ([_\w$]+)\(')
   for i in range(len(parts)):
     func = parts[i]
     if i < len(parts)-1: func += '\n}\n' # last part needs no }

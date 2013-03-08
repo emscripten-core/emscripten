@@ -332,9 +332,9 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       params = ','.join(['p%d' % p for p in range(len(sig)-1)])
       coercions = ';'.join(['p%d = %sp%d%s' % (p, '+' if sig[p+1] != 'i' else '', p, '' if sig[p+1] != 'i' else '|0') for p in range(len(sig)-1)]) + ';'
       ret = '' if sig[0] == 'v' else ('return %s0' % ('+' if sig[0] != 'i' else ''))
-      return ('function %s(%s) { %s abort(%d); %s };' % (bad, params, coercions, i, ret), raw.replace('[0,', '[' + bad + ',').replace(',0,', ',' + bad + ',').replace(',0,', ',' + bad + ',').replace(',0]', ',' + bad + ']').replace(',0]', ',' + bad + ']').replace(',0\n', ',' + bad + '\n'))
+      return ('function %s(%s) { %s abort(%d); %s }' % (bad, params, coercions, i, ret), raw.replace('[0,', '[' + bad + ',').replace(',0,', ',' + bad + ',').replace(',0,', ',' + bad + ',').replace(',0]', ',' + bad + ']').replace(',0]', ',' + bad + ']').replace(',0\n', ',' + bad + '\n'))
     infos = [make_table(sig, raw) for sig, raw in last_forwarded_json['Functions']['tables'].iteritems()]
-    function_tables_defs = '\n'.join([info[0] for info in infos] + [info[1] for info in infos])
+    function_tables_defs = '\n'.join([info[0] for info in infos]) + '\n// EMSCRIPTEN_END_FUNCS\n' + '\n'.join([info[1] for info in infos])
 
     asm_setup = ''
     maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul']]
@@ -416,6 +416,7 @@ function asmPrintInt(x, y) {
 function asmPrintFloat(x, y) {
   Module.print('float ' + x + ',' + y);// + ' ' + new Error().stack);
 }
+// EMSCRIPTEN_START_ASM
 var asm = (function(global, env, buffer) {
   'use asm';
   var HEAP8 = new global.Int8Array(buffer);
@@ -456,12 +457,15 @@ var asm = (function(global, env, buffer) {
     value = value|0;
     tempRet%d = value;
   }
-''' % (i, i) for i in range(10)]) + funcs_js + '''
-
+''' % (i, i) for i in range(10)]) + '''
+// EMSCRIPTEN_START_FUNCS
+''' + funcs_js + '''
   %s
 
   return %s;
-})(%s, %s, buffer);
+})
+// EMSCRIPTEN_END_ASM
+(%s, %s, buffer);
 %s;
 Runtime.stackAlloc = function(size) { return asm.stackAlloc(size) };
 Runtime.stackSave = function() { return asm.stackSave() };
@@ -483,6 +487,12 @@ Runtime.stackRestore = function(top) { asm.stackRestore(top) };
   else:
     function_tables_defs = '\n'.join([table for table in last_forwarded_json['Functions']['tables'].itervalues()])
     outfile.write(function_tables_defs)
+    funcs_js = '''
+// EMSCRIPTEN_START_FUNCS
+''' + funcs_js + '''
+// EMSCRIPTEN_END_FUNCS
+'''
+
   outfile.write(blockaddrsize(indexize(funcs_js)))
   funcs_js = None
 
