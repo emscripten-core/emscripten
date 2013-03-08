@@ -1347,13 +1347,14 @@ try:
     if DEBUG: print >> sys.stderr, 'emcc: running closure'
     final = shared.Building.closure_compiler(final)
     if DEBUG: save_intermediate('closure')
-  elif shared.Settings.RELOOP and not closure and not keep_js_debug:
-    # do this if closure is not enabled (it gives similar speedups), and we do not need to keep debug info around
-    js_optimizer_queue += ['registerize']
 
   if opt_level >= 1:
     if DEBUG: print >> sys.stderr, 'emcc: running post-closure post-opts'
     js_optimizer_queue += ['simplifyExpressionsPost']
+
+  if not closure and shared.Settings.RELOOP and not keep_js_debug:
+    # do this if closure is not enabled (it gives similar speedups), and we do not need to keep debug info around
+    js_optimizer_queue += ['registerize']
 
   if minify_whitespace:
     js_optimizer_queue += ['compress']
