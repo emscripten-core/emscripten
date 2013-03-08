@@ -887,6 +887,9 @@ function __embind_register_class_method(
         argTypes = argTypes.slice(1);
         var humanName = classType.name + '.' + methodName;
         classType.Handle.prototype[methodName] = function() {
+            if (!(this instanceof classType.constructor)) {
+                throwBindingError(humanName + ' incompatible with object of type ' + this.constructor.name);
+            }
             if (!this.$$.ptr) {
                 throwBindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
             }
