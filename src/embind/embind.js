@@ -868,6 +868,15 @@ function upcastPointer(ptr, ptrClass, desiredClass) {
     return ptr;
 }
 
+function validateThis(this_, classType, humanName) {
+    if (!(this_ instanceof classType.constructor)) {
+        throwBindingError(humanName + ' incompatible with object of type ' + this_.constructor.name);
+    }
+    if (!this_.$$.ptr) {
+        throwBindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
+    }
+}
+
 function __embind_register_class_method(
     rawClassType,
     methodName,
@@ -887,17 +896,11 @@ function __embind_register_class_method(
         argTypes = argTypes.slice(1);
         var humanName = classType.name + '.' + methodName;
         classType.Handle.prototype[methodName] = function() {
-            if (!(this instanceof classType.constructor)) {
-                throwBindingError(humanName + ' incompatible with object of type ' + this.constructor.name);
-            }
-            if (!this.$$.ptr) {
-                throwBindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
-            }
+            validateThis(this, classType, humanName);
             if (arguments.length !== argCount - 1) {
                 throwBindingError('emscripten binding method ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
             }
 
-            // TODO: error if pointer type doesn't match signature
             var ptr = upcastPointer(
                 this.$$.ptr,
                 this.$$.pointeeType.registeredClass,
@@ -930,7 +933,6 @@ function __embind_register_class_classmethod(
     rawInvoker,
     fn
 ) {
-    // todo: whenDependentTypesAreResolved
     var classType = requireRegisteredType(rawClassType, 'class');
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     methodName = Pointer_stringify(methodName);
@@ -950,7 +952,6 @@ function __embind_register_class_field(
     memberPointerSize,
     memberPointer
 ) {
-    // todo: whenDependentTypesAreResolved
     fieldName = Pointer_stringify(fieldName);
     getter = FUNCTION_TABLE[getter];
     setter = FUNCTION_TABLE[setter];
@@ -961,11 +962,8 @@ function __embind_register_class_field(
         var humanName = classType.name + '.' + fieldName;
         Object.defineProperty(classType.Handle.prototype, fieldName, {
             get: function() {
-                if (!this.$$.ptr) {
-                    throwBindingError('cannot access emscripten binding field ' + humanName + ' on deleted object');
-                }
+                validateThis(this, classType, humanName + ' getter');
 
-                // TODO: error if pointer type doesn't match signature
                 var ptr = upcastPointer(
                     this.$$.ptr,
                     this.$$.pointeeType.registeredClass,
@@ -974,11 +972,8 @@ function __embind_register_class_field(
                 return fieldType.fromWireType(getter(ptr, memberPointer));
             },
             set: function(v) {
-                if (!this.$$.ptr) {
-                    throwBindingError('cannot modify emscripten binding field ' + humanName + ' on deleted object');
-                }
+                validateThis(this, classType, humanName + ' setter');
 
-                // TODO: error if pointer type doesn't match signature
                 var ptr = upcastPointer(
                     this.$$.ptr,
                     this.$$.pointeeType.registeredClass,
