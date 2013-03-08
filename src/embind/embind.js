@@ -869,8 +869,11 @@ function upcastPointer(ptr, ptrClass, desiredClass) {
 }
 
 function validateThis(this_, classType, humanName) {
+    if (!(this_ instanceof Object)) {
+        throwBindingError(humanName + ' with invalid "this": ' + this_);
+    }
     if (!(this_ instanceof classType.constructor)) {
-        throwBindingError(humanName + ' incompatible with object of type ' + this_.constructor.name);
+        throwBindingError(humanName + ' incompatible with "this" of type ' + this_.constructor.name);
     }
     if (!this_.$$.ptr) {
         throwBindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
