@@ -26,12 +26,12 @@ class Minifier:
     during registerize perform minification of locals.
   '''
 
-  def __init__(self, globs):
+  def __init__(self):
     # Create list of valid short names
 
     MAX_NAMES = 200#60000
     INVALID_2 = set(['do', 'if', 'in'])
-    INVALID_3 = set(['for', 'new', 'try', 'var'])
+    INVALID_3 = set(['for', 'new', 'try', 'var', 'env'])
 
     self.names = []
     init_possibles = string.ascii_letters + '_$'
@@ -52,14 +52,14 @@ class Minifier:
           if curr not in INVALID_3: self.names.append(curr)
     #print >> sys.stderr, self.names
 
+    self.globs = {}
+
+  def add_glob(self, glob):
     # Minify the globals (initials - asm imports, etc. - and functions)
     # TODO: find how many times they are used and do this more optimally
-
-    self.globs = {}
-    i = 0
-    for g in globs:
-      self.globs[g] = self.names[i]
-      i += 1
+    ret = self.names[len(self.globs)]
+    self.globs[glob] = ret
+    return ret
 
   def serialize(self):
     return json.dumps({
@@ -182,14 +182,19 @@ def run_on_js(filename, passes, js_engine, jcache):
     assert asm_marker > 0
     asm_funcs = pre.find('function ', asm_marker)
     assert asm_funcs > asm_marker
-    globs = []
+    minifier = Minifier()
+    new_vars = ''
     for vardef in re.findall(r'var [^;]+;', pre[asm_marker:asm_funcs]):
       vs = vardef[4:-1].split(',')
       for v in vs:
-        v = v.split('=')[0].strip()
-        globs.append(v)
-    minify_info = Minifier(globs + list(generated)).serialize()
-    #print >> sys.stderr, 'm', minify_info
+        name, value = map(lambda x: x.strip(), v.split('='))
+        new_vars += 'var ' + minifier.add_glob(name) + '=' + value + ';'
+    for g in generated:
+      minifier.add_glob(g)
+    minify_info = minifier.serialize()
+    minifier = None
+    pre = pre[:asm_marker+11] + new_vars + pre[asm_funcs:]
+    print >> sys.stderr, 'm', minify_info
 
   if len(chunks) > 0:
     def write_chunk(chunk, i):
