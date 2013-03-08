@@ -1253,6 +1253,8 @@ m_divisor is 1091269979
           extern int64_t llvm_ctlz_i64(int64_t x);
           extern int32_t llvm_cttz_i32(int32_t x);
           extern int64_t llvm_cttz_i64(int64_t x);
+          extern int32_t llvm_ctpop_i32(int32_t x);
+          extern int64_t llvm_ctpop_i64(int64_t x);
           extern int llvm_expect_i32(int x, int y);
         }
 
@@ -1269,6 +1271,7 @@ m_divisor is 1091269979
 
             printf("%d,%d\n", (int)llvm_ctlz_i64(((int64_t)1) << 40), llvm_ctlz_i32(1<<10));
             printf("%d,%d\n", (int)llvm_cttz_i64(((int64_t)1) << 40), llvm_cttz_i32(1<<10));
+            printf("%d,%d\n", (int)llvm_ctpop_i64((0x3101ULL << 32) | 1), llvm_ctpop_i32(0x3101));
 
             printf("%d\n", llvm_expect_i32(x % 27, 3));
 
@@ -1285,6 +1288,7 @@ c8,ef
 c5,de,15,8a
 23,21
 40,10
+5,4
 13
 72057594037927936
 ''')

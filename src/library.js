@@ -4896,6 +4896,20 @@ LibraryManager.library = {
 #endif
   },
 
+  llvm_ctpop_i32: function(x) {
+    var ret = 0;
+    while (x) {
+      if (x&1) ret++;
+      x >>= 1;
+    }
+    return ret;
+  },
+
+  llvm_ctpop_i64__deps: ['llvm_ctpop_i32'],
+  llvm_ctpop_i64: function(l, h) {
+    return _llvm_ctpop_i32(l) + _llvm_ctpop_i32(h);
+  },
+
   llvm_trap: function() {
     throw 'trap! ' + new Error().stack;
   },
