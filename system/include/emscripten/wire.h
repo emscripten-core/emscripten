@@ -231,20 +231,6 @@ namespace emscripten {
             }
         };
 
-        template<typename Enum>
-        struct EnumBindingType {
-            typedef Enum WireType;
-
-            static WireType toWireType(Enum v) {
-                return v;
-            }
-            static Enum fromWireType(WireType v) {
-                return v;
-            }
-            static void destroy(WireType) {
-            }
-        };
-
         template<typename T>
         struct GenericBindingType {
             typedef typename std::remove_reference<T>::type ActualT;
@@ -263,6 +249,7 @@ namespace emscripten {
             }
         };
 
+        // Is this necessary?
         template<typename T>
         struct GenericBindingType<std::unique_ptr<T>> {
             typedef typename BindingType<T>::WireType WireType;
@@ -271,6 +258,33 @@ namespace emscripten {
                 return BindingType<T>::toWireType(*p);
             }
         };
+
+        template<typename Enum>
+        struct EnumBindingType {
+            typedef Enum WireType;
+
+            static WireType toWireType(Enum v) {
+                return v;
+            }
+            static Enum fromWireType(WireType v) {
+                return v;
+            }
+            static void destroy(WireType) {
+            }
+        };
+
+        // catch-all generic binding
+        template<typename T>
+        struct BindingType : std::conditional<
+            std::is_enum<T>::value,
+            EnumBindingType<T>,
+            GenericBindingType<T> >::type
+        {};
+
+        template<typename T>
+        auto toWireType(const T& v) -> typename BindingType<T>::WireType {
+            return BindingType<T>::toWireType(v);
+        }
 
         template<typename T>
         struct WireDeleter {
@@ -286,18 +300,5 @@ namespace emscripten {
             
             WireType wt;
         };
-
-        // catch-all generic binding
-        template<typename T>
-        struct BindingType : std::conditional<
-            std::is_enum<T>::value,
-            EnumBindingType<T>,
-            GenericBindingType<T> >::type
-        {};
-
-        template<typename T>
-        auto toWireType(const T& v) -> typename BindingType<T>::WireType {
-            return BindingType<T>::toWireType(v);
-        }
     }
 }
