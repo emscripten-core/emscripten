@@ -878,6 +878,11 @@ function validateThis(this_, classType, humanName) {
     if (!this_.$$.ptr) {
         throwBindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
     }
+    
+    return upcastPointer(
+        this_.$$.ptr,
+        this_.$$.pointeeType.registeredClass,
+        classType.registeredClass);
 }
 
 function __embind_register_class_function(
@@ -899,16 +904,12 @@ function __embind_register_class_function(
         argTypes = argTypes.slice(1);
         var humanName = classType.name + '.' + methodName;
         classType.Handle.prototype[methodName] = function() {
-            validateThis(this, classType, humanName);
             if (arguments.length !== argCount - 1) {
                 throwBindingError('emscripten binding method ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
             }
 
-            var ptr = upcastPointer(
-                this.$$.ptr,
-                this.$$.pointeeType.registeredClass,
-                classType.registeredClass);
-            
+            var ptr = validateThis(this, classType, humanName);
+
             var destructors = [];
             var args = new Array(argCount + 1);
             args[0] = ptr;
@@ -965,23 +966,11 @@ function __embind_register_class_field(
         var humanName = classType.name + '.' + fieldName;
         Object.defineProperty(classType.Handle.prototype, fieldName, {
             get: function() {
-                validateThis(this, classType, humanName + ' getter');
-
-                var ptr = upcastPointer(
-                    this.$$.ptr,
-                    this.$$.pointeeType.registeredClass,
-                    classType.registeredClass);
-
+                var ptr = validateThis(this, classType, humanName + ' getter');
                 return fieldType.fromWireType(getter(ptr, memberPointer));
             },
             set: function(v) {
-                validateThis(this, classType, humanName + ' setter');
-
-                var ptr = upcastPointer(
-                    this.$$.ptr,
-                    this.$$.pointeeType.registeredClass,
-                    classType.registeredClass);
-
+                var ptr = validateThis(this, classType, humanName + ' setter');
                 var destructors = [];
                 setter(ptr, memberPointer, fieldType.toWireType(destructors, v));
                 runDestructors(destructors);
