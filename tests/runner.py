@@ -8626,6 +8626,12 @@ Options that are modified or new in %s include:
         assert os.path.exists('a.out.js'), '\n'.join(output)
         self.assertContained('hello, world!', run_js('a.out.js'))
 
+        self.clear()
+        output = Popen([PYTHON, compiler, path_from_root('tests', 'hello_world_bang.ll')], stdout=PIPE, stderr=PIPE).communicate()
+        assert len(output[0]) == 0, output[0]
+        assert os.path.exists('a.out.js'), '\n'.join(output)
+        self.assertContained('hello, world!', run_js('a.out.js'))
+
         # emcc [..] -o [path] ==> should work with absolute paths
         try:
           os.mkdir('a_dir')
