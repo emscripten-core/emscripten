@@ -137,7 +137,7 @@ namespace emscripten {
                 size_t memberPointerSize,
                 void* memberPointer);
 
-            void _embind_register_class_classmethod(
+            void _embind_register_class_class_function(
                 TYPEID classType,
                 const char* methodName,
                 unsigned argCount,
@@ -728,7 +728,7 @@ namespace emscripten {
                 .template constructor<val>()
                 ;
 
-            return classmethod(
+            return class_function(
                 "implement",
                 &operator_new<WrapperType, val>,
                 allow_raw_pointer<ret_val>());
@@ -814,11 +814,11 @@ namespace emscripten {
         }
 
         template<typename ReturnType, typename... Args, typename... Policies>
-        class_& classmethod(const char* methodName, ReturnType (*classMethod)(Args...), Policies...) {
+        class_& class_function(const char* methodName, ReturnType (*classMethod)(Args...), Policies...) {
             using namespace internal;
 
             typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
-            _embind_register_class_classmethod(
+            _embind_register_class_class_function(
                 TypeID<ClassType>::get(),
                 methodName,
                 args.count,
