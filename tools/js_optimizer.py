@@ -131,7 +131,7 @@ def run_on_js(filename, passes, js_engine, jcache):
       temp_file = temp_files.get('.jsfunc_%d.js' % i).name
       f = open(temp_file, 'w')
       f.write(chunk)
-      f.write(suffix)
+      f.write(suffix_marker)
       f.close()
       return temp_file
     filenames = [write_chunk(chunks[i], i) for i in range(len(chunks))]

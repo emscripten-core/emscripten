@@ -140,15 +140,8 @@ var UNDEFINED_NODE = ['unary-prefix', 'void', ['num', 0]];
 var TRUE_NODE = ['unary-prefix', '!', ['num', 0]];
 var FALSE_NODE = ['unary-prefix', '!', ['num', 1]];
 
-var GENERATED_FUNCTIONS_MARKER = '// EMSCRIPTEN_GENERATED_FUNCTIONS:';
-var generatedFunctions = null;
-function setGeneratedFunctions(metadata) {
-  var start = metadata.indexOf(GENERATED_FUNCTIONS_MARKER);
-  generatedFunctions = set(eval(metadata.substr(start + GENERATED_FUNCTIONS_MARKER.length)));
-}
-function isGenerated(ident) {
-  return ident in generatedFunctions;
-}
+var GENERATED_FUNCTIONS_MARKER = '// EMSCRIPTEN_GENERATED_FUNCTIONS';
+var generatedFunctions = false; // whether we have received only generated functions
 
 function srcToAst(src) {
   return uglify.parser.parse(src);
@@ -216,7 +209,7 @@ function traverse(node, pre, post, stack) {
 function traverseGenerated(ast, pre, post, stack) {
   assert(generatedFunctions);
   traverse(ast, function(node) {
-    if (node[0] == 'defun' && isGenerated(node[1])) {
+    if (node[0] == 'defun') {
       traverse(node, pre, post, stack);
       return null;
     }
@@ -226,7 +219,7 @@ function traverseGenerated(ast, pre, post, stack) {
 function traverseGeneratedFunctions(ast, callback) {
   assert(generatedFunctions);
   traverse(ast, function(node) {
-    if (node[0] == 'defun' && isGenerated(node[1])) {
+    if (node[0] == 'defun') {
       callback(node);
       return null;
     }
@@ -2218,9 +2211,7 @@ var passes = {
 var src = read(arguments_[0]);
 var ast = srcToAst(src);
 //printErr(JSON.stringify(ast)); throw 1;
-var metadata = src.split('\n').filter(function(line) { return line.indexOf(GENERATED_FUNCTIONS_MARKER) >= 0 })[0];
-//assert(metadata, 'Must have EMSCRIPTEN_GENERATED_FUNCTIONS metadata');
-if (metadata) setGeneratedFunctions(metadata);
+generatedFunctions = src.indexOf(GENERATED_FUNCTIONS_MARKER) >= 0;
 
 arguments_.slice(1).forEach(function(arg) {
   passes[arg](ast);
