@@ -273,6 +273,7 @@ var LibraryGL = {
       var used = GL.usedTempBuffers;
       used.length = 0;
 
+      // TODO: initial pass to detect ranges we need to upload, might not need an upload per attrib
       for (var i = 0; i < GL.maxVertexAttribs; ++i) {
         var cb = GL.clientBuffers[i];
         if (!cb.enabled) continue;
