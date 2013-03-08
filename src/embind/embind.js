@@ -928,7 +928,7 @@ function __embind_register_class_function(
     });
 }
 
-function __embind_register_class_classmethod(
+function __embind_register_class_class_function(
     rawClassType,
     methodName,
     argCount,
