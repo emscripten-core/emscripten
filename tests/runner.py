@@ -7240,6 +7240,8 @@ def process(filename):
                      #, build_ll_hook=self.do_autodebug)
 
     def test_openjpeg(self):
+      if self.emcc_args is None: return self.skip('needs libc for getopt')
+
       if Settings.USE_TYPED_ARRAYS == 2:
         Settings.CORRECT_SIGNS = 1
       else:
