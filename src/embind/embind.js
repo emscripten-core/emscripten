@@ -666,9 +666,7 @@ function __embind_register_class(
             Object.defineProperty(this, '$$', {
                 value: {
                     registeredPointer: registeredPointer,
-                    count: {
-                        value: 1,
-                        ptr: ptr }, // todo: is this necessary?
+                    count: { value: 1 },
                     ptr: ptr,
                     pointeeType: type, // todo: is this necessary?
                 }
@@ -695,8 +693,6 @@ function __embind_register_class(
             return clone;
         };
 
-        // todo: test delete with upcast and downcast multiply derived pointers
-        // todo: then replace this.$$.count.ptr below with this.$$.ptr and make sure it fails
         Handle.prototype['delete'] = function() {
             if (!this.$$.ptr) {
                 throwBindingError(type.name + ' instance already deleted'); // todo: but 'type' hasn't been resolved!?!
@@ -704,7 +700,7 @@ function __embind_register_class(
             
             this.$$.count.value -= 1;
             if (0 === this.$$.count.value) {
-                rawDestructor(this.$$.count.ptr);
+                rawDestructor(this.$$.ptr);
             }
             this.$$.ptr = undefined;
         };
