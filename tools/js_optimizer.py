@@ -1,5 +1,5 @@
 
-import os, sys, subprocess, multiprocessing, re
+import os, sys, subprocess, multiprocessing, re, string, json
 import shared
 
 configuration = shared.configuration
@@ -18,6 +18,54 @@ MAX_CHUNK_SIZE = 20*1024*1024
 WINDOWS = sys.platform.startswith('win')
 
 DEBUG = os.environ.get('EMCC_DEBUG')
+
+class Minifier:
+  '''
+    asm.js minification support. We calculate possible names and minification of
+    globals here, then pass that into the parallel js-optimizer.js runners which
+    during registerize perform minification of locals.
+  '''
+
+  def __init__(self, globs):
+    # Create list of valid short names
+
+    MAX_NAMES = 200#60000
+    INVALID_2 = set(['do', 'if', 'in'])
+    INVALID_3 = set(['for', 'new', 'try', 'var'])
+
+    self.names = []
+    init_possibles = string.ascii_letters + '_$'
+    later_possibles = init_possibles + string.digits
+    for a in init_possibles:
+      if len(self.names) >= MAX_NAMES: break
+      self.names.append(a)
+    for a in init_possibles:
+      for b in later_possibles:
+        if len(self.names) >= MAX_NAMES: break
+        curr = a + b
+        if curr not in INVALID_2: self.names.append(curr)
+    for a in init_possibles:
+      for b in later_possibles:
+        for c in later_possibles:
+          if len(self.names) >= MAX_NAMES: break
+          curr = a + b + c
+          if curr not in INVALID_3: self.names.append(curr)
+    #print >> sys.stderr, self.names
+
+    # Minify the globals (initials - asm imports, etc. - and functions)
+    # TODO: find how many times they are used and do this more optimally
+
+    self.globs = {}
+    i = 0
+    for g in globs:
+      self.globs[g] = self.names[i]
+      i += 1
+
+  def serialize(self):
+    return json.dumps({
+      'names': self.names,
+      'globals': self.globs
+    })
 
 def run_on_chunk(command):
   filename = command[2] # XXX hackish
@@ -126,12 +174,32 @@ def run_on_js(filename, passes, js_engine, jcache):
     else:
       cached_outputs = []
 
+  if 'registerize' in passes:
+    assert suffix, 'need generated info for registerize'
+    # Find basic globals (initial asm.js imports, etc.)
+    asm_marker = pre.find("'use asm'")
+    if asm_marker < 0: asm_marker = pre.find('"use asm"')
+    assert asm_marker > 0
+    asm_funcs = pre.find('function ', asm_marker)
+    assert asm_funcs > asm_marker
+    globs = []
+    for vardef in re.findall(r'var [^;]+;', pre[asm_marker:asm_funcs]):
+      vs = vardef[4:-1].split(',')
+      for v in vs:
+        v = v.split('=')[0].strip()
+        globs.append(v)
+    minify_info = Minifier(globs + list(generated)).serialize()
+    #print >> sys.stderr, 'm', minify_info
+
   if len(chunks) > 0:
     def write_chunk(chunk, i):
       temp_file = temp_files.get('.jsfunc_%d.js' % i).name
       f = open(temp_file, 'w')
       f.write(chunk)
       f.write(suffix_marker)
+      if 'registerize' in passes:
+        f.write('\n')
+        f.write('// MINIFY_INFO:' + minify_info)
       f.close()
       return temp_file
     filenames = [write_chunk(chunks[i], i) for i in range(len(chunks))]

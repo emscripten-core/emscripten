@@ -143,6 +143,8 @@ var FALSE_NODE = ['unary-prefix', '!', ['num', 1]];
 var GENERATED_FUNCTIONS_MARKER = '// EMSCRIPTEN_GENERATED_FUNCTIONS';
 var generatedFunctions = false; // whether we have received only generated functions
 
+var minifierInfo = null;
+
 function srcToAst(src) {
   return uglify.parser.parse(src);
 }
@@ -2212,6 +2214,9 @@ var src = read(arguments_[0]);
 var ast = srcToAst(src);
 //printErr(JSON.stringify(ast)); throw 1;
 generatedFunctions = src.indexOf(GENERATED_FUNCTIONS_MARKER) >= 0;
+var minifierInfoStart = src.indexOf('// MINIFY_INFO:')
+if (minifierInfoStart > 0) minifierInfo = JSON.parse(src.substr(minifierInfoStart + 15));
+//printErr(JSON.stringify(minifierInfo));
 
 arguments_.slice(1).forEach(function(arg) {
   passes[arg](ast);
