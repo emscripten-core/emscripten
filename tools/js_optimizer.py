@@ -174,7 +174,7 @@ def run_on_js(filename, passes, js_engine, jcache):
     else:
       cached_outputs = []
 
-  if 'registerize' in passes:
+  if 'zzzregisterize' in passes:
     assert suffix, 'need generated info for registerize'
     # Find basic globals (initial asm.js imports, etc.)
     asm_marker = pre.find("'use asm'")
@@ -202,7 +202,7 @@ def run_on_js(filename, passes, js_engine, jcache):
       f = open(temp_file, 'w')
       f.write(chunk)
       f.write(suffix_marker)
-      if 'registerize' in passes:
+      if 'zzzregisterize' in passes:
         f.write('\n')
         f.write('// MINIFY_INFO:' + minify_info)
       f.close()
