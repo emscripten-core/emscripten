@@ -8,7 +8,7 @@
 /*global ___staticPointerCast: false*/
 
 var BindingError = Module.BindingError = extendError(Error, 'BindingError');
-var CastError = Module.CastError = extendError(Error, 'CastError');
+var CastError = Module.CastError = extendError(BindingError, 'CastError');
 
 function throwBindingError(value) {
     throw new BindingError(value);
