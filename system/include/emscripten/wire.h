@@ -52,21 +52,6 @@ namespace emscripten {
             }
         };
         
-        // count<>
-
-        template<typename... Args>
-        struct count;
-
-        template<>
-        struct count<> {
-            constexpr static unsigned value = 0;
-        };
-
-        template<typename T, typename... Args>
-        struct count<T, Args...> {
-            constexpr static unsigned value = 1 + count<Args...>::value;
-        };
-
         // ExecutePolicies<>
 
         template<typename... Policies>
@@ -118,15 +103,13 @@ namespace emscripten {
         struct WithPolicies {
             template<typename... Args>
             struct ArgTypeList {
-                enum { args_count = count<Args...>::value };
-
                 ArgTypeList() {
-                    count = args_count;
+                    count = sizeof...(Args);
                     ArgTypes<0, Args...>::template fill<Policies...>(types);
                 }
 
                 unsigned count;
-                TYPEID types[args_count];
+                TYPEID types[sizeof...(Args)];
             };
         };
 
