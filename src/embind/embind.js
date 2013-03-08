@@ -510,6 +510,9 @@ RegisteredPointer.prototype.toWireType = function(destructors, handle) {
     if (this.isSmartPointer && undefined === handle.$$.smartPtr) {
         throwBindingError('Passing raw pointer to smart pointer is illegal');
     }
+    if (!this.isConst && handle.$$.registeredPointer.isConst) {
+        throwBindingError('Cannot pass argument of type ' + handle.$$.registeredPointer.name + ' to parameter of type ' + this.name);
+    }
     var pointeeType = handle.$$.pointeeType;
     if (pointeeType.isPolymorphic()) {
         fromRawType = pointeeType.getDynamicRawPointerType(handle.$$.ptr);
