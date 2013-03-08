@@ -491,6 +491,10 @@ RegisteredPointer.prototype.isPolymorphic = function() {
 RegisteredPointer.prototype.toWireType = function(destructors, handle) {
     var fromRawType;
     if (handle === null) {
+        if (this.pointeeType === this) {
+            throwBindingError('null is not a valid ' + this.name);
+        }
+
         if (this.isSmartPointer) {
             var ptr = this.rawConstructor(0, 0);
             destructors.push(this.rawDestructor, ptr);
