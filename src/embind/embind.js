@@ -947,7 +947,7 @@ function __embind_register_class_class_function(
     });
 }
 
-function __embind_register_class_field(
+function __embind_register_class_property(
     rawClassType,
     fieldName,
     rawFieldType,
