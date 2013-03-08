@@ -87,7 +87,7 @@ var RuntimeGenerator = {
 };
 
 function unInline(name_, params) {
-  var src = '(function ' + name_ + '(' + params + ') { var ret = ' + RuntimeGenerator[name_].apply(null, params) + '; return ret; })';
+  var src = '(function(' + params + ') { var ret = ' + RuntimeGenerator[name_].apply(null, params) + '; return ret; })';
   var ret = eval(src);
   return ret;
 }
