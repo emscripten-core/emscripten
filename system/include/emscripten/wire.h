@@ -231,24 +231,6 @@ namespace emscripten {
             }
         };
 
-        template<typename T>
-        struct BindingType<std::shared_ptr<T>> {
-            typedef std::shared_ptr<T> shared_ptr;
-            typedef std::shared_ptr<T>* WireType;
-
-            static WireType toWireType(shared_ptr p) {
-                return new shared_ptr(p);
-            }
-
-            static shared_ptr fromWireType(WireType wt) {
-                return *wt;
-            }
-
-            static void destroy(WireType p) {
-                delete p;
-            }
-        };
-
         template<typename Enum>
         struct EnumBindingType {
             typedef Enum WireType;
