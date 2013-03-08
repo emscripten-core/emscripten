@@ -1,0 +1,336 @@
+diff --git a/emscripten.py b/emscripten.py
+index b698654..a7843c7 100755
+--- a/emscripten.py
++++ b/emscripten.py
+@@ -294,8 +294,6 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
+   outfile.write(blockaddrsize(indexize(pre)))
+   pre = None
+ 
+-  #if DEBUG: outfile.write('// funcs\n')
+-
+   # forward
+   forwarded_data = json.dumps(forwarded_json)
+   forwarded_file = temp_files.get('.2.json').name
+@@ -483,9 +481,14 @@ Runtime.stackRestore = function(top) { asm.stackRestore(top) };
+   else:
+     function_tables_defs = '\n'.join([table for table in last_forwarded_json['Functions']['tables'].itervalues()])
+     outfile.write(function_tables_defs)
++
++  outfile.write('// EMSCRIPTEN_START_FUNCS\n')
++
+   outfile.write(blockaddrsize(indexize(funcs_js)))
+   funcs_js = None
+ 
++  outfile.write('// EMSCRIPTEN_END_FUNCS\n')
++
+   outfile.write(indexize(post))
+   if DEBUG: print >> sys.stderr, '  emscript: phase 3 took %s seconds' % (time.time() - t)
+ 
+diff --git a/src/jsifier.js b/src/jsifier.js
+index ff58ece..d6aa110 100644
+--- a/src/jsifier.js
++++ b/src/jsifier.js
+@@ -1587,12 +1587,6 @@ function JSify(data, functionsOnly, givenFunctions) {
+ 
+     var shellParts = read(shellFile).split('{{BODY}}');
+     print(shellParts[1]);
+-    // Print out some useful metadata (for additional optimizations later, like the eliminator)
+-    if (EMIT_GENERATED_FUNCTIONS) {
+-      print('// EMSCRIPTEN_GENERATED_FUNCTIONS: ' + JSON.stringify(keys(Functions.implementedFunctions).filter(function(func) {
+-        return IGNORED_FUNCTIONS.indexOf(func.ident) < 0;
+-      })) + '\n');
+-    }
+ 
+     PassManager.serialize();
+ 
+diff --git a/src/settings.js b/src/settings.js
+index 1bfcf92..99c83f4 100644
+--- a/src/settings.js
++++ b/src/settings.js
+@@ -336,8 +336,6 @@ var EXPLICIT_ZEXT = 0; // If 1, generate an explicit conversion of zext i1 to i3
+ 
+ var NECESSARY_BLOCKADDRS = []; // List of (function, block) for all block addresses that are taken.
+ 
+-var EMIT_GENERATED_FUNCTIONS = 0; // whether to emit the list of generated functions, needed for external JS optimization passes
+-
+ // Compiler debugging options
+ var DEBUG_TAGS_SHOWING = [];
+   // Some useful items:
+diff --git a/tools/js-optimizer.js b/tools/js-optimizer.js
+index f2dc516..9fa038c 100644
+--- a/tools/js-optimizer.js
++++ b/tools/js-optimizer.js
+@@ -140,16 +140,6 @@ var UNDEFINED_NODE = ['unary-prefix', 'void', ['num', 0]];
+ var TRUE_NODE = ['unary-prefix', '!', ['num', 0]];
+ var FALSE_NODE = ['unary-prefix', '!', ['num', 1]];
+ 
+-var GENERATED_FUNCTIONS_MARKER = '// EMSCRIPTEN_GENERATED_FUNCTIONS:';
+-var generatedFunctions = null;
+-function setGeneratedFunctions(metadata) {
+-  var start = metadata.indexOf(GENERATED_FUNCTIONS_MARKER);
+-  generatedFunctions = set(eval(metadata.substr(start + GENERATED_FUNCTIONS_MARKER.length)));
+-}
+-function isGenerated(ident) {
+-  return ident in generatedFunctions;
+-}
+-
+ function srcToAst(src) {
+   return uglify.parser.parse(src);
+ }
+@@ -212,21 +202,9 @@ function traverse(node, pre, post, stack) {
+   return result;
+ }
+ 
+-// Only walk through the generated functions
+-function traverseGenerated(ast, pre, post, stack) {
+-  assert(generatedFunctions);
+-  traverse(ast, function(node) {
+-    if (node[0] == 'defun' && isGenerated(node[1])) {
+-      traverse(node, pre, post, stack);
+-      return null;
+-    }
+-  });
+-}
+-
+-function traverseGeneratedFunctions(ast, callback) {
+-  assert(generatedFunctions);
++function traverseFunctions(ast, callback) {
+   traverse(ast, function(node) {
+-    if (node[0] == 'defun' && isGenerated(node[1])) {
++    if (node[0] == 'defun') {
+       callback(node);
+       return null;
+     }
+@@ -418,7 +396,7 @@ function simplifyExpressionsPre(ast) {
+     var rerun = true;
+     while (rerun) {
+       rerun = false;
+-      traverseGenerated(ast, function process(node, type, stack) {
++      traverse(ast, function process(node, type, stack) {
+         if (type == 'binary' && node[1] == '|') {
+           if (node[2][0] == 'num' && node[3][0] == 'num') {
+             return ['num', node[2][1] | node[3][1]];
+@@ -455,7 +433,7 @@ function simplifyExpressionsPre(ast) {
+     }
+ 
+     // &-related optimizations
+-    traverseGenerated(ast, function(node, type) {
++    traverse(ast, function(node, type) {
+       if (type == 'binary' && node[1] == '&' && node[3][0] == 'num') {
+         if (node[2][0] == 'num') return ['num', node[2][1] & node[3][1]];
+         var input = node[2];
+@@ -489,7 +467,7 @@ function simplifyExpressionsPre(ast) {
+ 
+     if (asm) {
+       // optimize num >> num, in asm we need this here since we do not run optimizeShifts
+-      traverseGenerated(ast, function(node, type) {
++      traverse(ast, function(node, type) {
+         if (type == 'binary' && node[1] == '>>' && node[2][0] == 'num' && node[3][0] == 'num') {
+           node[0] = 'num';
+           node[1] = node[2][1] >> node[3][1];
+@@ -505,7 +483,7 @@ function simplifyExpressionsPre(ast) {
+     var rerun = true;
+     while (rerun) {
+       rerun = false;
+-      traverseGenerated(ast, function(node, type) {
++      traverse(ast, function(node, type) {
+         if (type == 'binary' && node[1] == '+') {
+           if (node[2][0] == 'num' && node[3][0] == 'num') {
+             rerun = true;
+@@ -528,7 +506,7 @@ function simplifyExpressionsPre(ast) {
+ 
+   // if (x == 0) can be if (!x), etc.
+   function simplifyZeroComp(ast) {
+-    traverseGenerated(ast, function(node, type) {
++    traverse(ast, function(node, type) {
+       var binary;
+       if (type == 'if' && (binary = node[1])[0] == 'binary') {
+         if ((binary[1] == '!=' || binary[1] == '!==') && binary[3][0] == 'num' && binary[3][1] == 0) {
+@@ -554,7 +532,7 @@ function simplifyExpressionsPre(ast) {
+ // TODO: when shifting a variable, if there are other uses, keep an unshifted version too, to prevent slowdowns?
+ function optimizeShiftsInternal(ast, conservative) {
+   var MAX_SHIFTS = 3;
+-  traverseGeneratedFunctions(ast, function(fun) {
++  traverseFunctions(ast, function(fun) {
+     var funMore = true;
+     var funFinished = {};
+     while (funMore) {
+@@ -999,7 +977,7 @@ function vacuum(ast) {
+       } break;
+     }
+   }
+-  traverseGeneratedFunctions(ast, function(node) {
++  traverseFunctions(ast, function(node) {
+     vacuumInternal(node);
+     simplifyNotComps(node);
+   });
+@@ -1021,7 +999,7 @@ function getStatements(node) {
+ //   if (condition) { label == x } else ..
+ // We can hoist the multiple block into the condition, thus removing code and one 'if' check
+ function hoistMultiples(ast) {
+-  traverseGeneratedFunctions(ast, function(node) {
++  traverseFunctions(ast, function(node) {
+     traverse(node, function(node, type) {
+       var statements = getStatements(node);
+       if (!statements) return;
+@@ -1135,7 +1113,7 @@ function hoistMultiples(ast) {
+   //    if (..) { .. break|continue } else { .. }
+   // to
+   //    if (..) { .. break|continue } ..
+-  traverseGenerated(ast, function(container, type) {
++  traverse(ast, function(container, type) {
+     var statements = getStatements(container);
+     if (!statements) return;
+     for (var i = 0; i < statements.length; i++) {
+@@ -1168,7 +1146,7 @@ function loopOptimizer(ast) {
+   function passTwo(ast) {
+     var neededDos = [];
+     // Find unneeded labels
+-    traverseGenerated(ast, function(node, type, stack) {
++    traverse(ast, function(node, type, stack) {
+       if (type == 'label' && node[2][0] in LOOP) {
+         // this is a labelled loop. we don't know if it's needed yet. Mark its label for removal for now now.
+         stack.push(node);
+@@ -1212,7 +1190,7 @@ function loopOptimizer(ast) {
+     // We return whether another pass is necessary
+     var more = false;
+     // Remove unneeded labels
+-    traverseGenerated(ast, function(node, type) {
++    traverse(ast, function(node, type) {
+       if (type == 'label' && node[1][0] == '+') {
+         more = true;
+         var ident = node[1].substr(1);
+@@ -1227,13 +1205,13 @@ function loopOptimizer(ast) {
+     });
+     // Remove unneeded one-time loops. We need such loops if (1) they have a label, or (2) they have a direct break so they are in neededDos.
+     // First, add all labeled loops of this nature to neededDos
+-    traverseGenerated(ast, function(node, type) {
++    traverse(ast, function(node, type) {
+       if (type == 'label' && node[2][0] == 'do') {
+         neededDos.push(node[2]);
+       }
+     });
+     // Remove unneeded dos, we know who they are now
+-    traverseGenerated(ast, function(node, type) {
++    traverse(ast, function(node, type) {
+       if (type == 'do' && neededDos.indexOf(node) < 0) {
+         assert(jsonCompare(node[1], ['num', 0]), 'Trying to remove a one-time do loop that is not one of our generated ones.;');
+         more = true;
+@@ -1407,7 +1385,7 @@ function denormalizeAsm(func, data) {
+ //       we still need the eliminator? Closure? And in what order? Perhaps just
+ //       closure simple?
+ function registerize(ast) {
+-  traverseGeneratedFunctions(ast, function(fun) {
++  traverseFunctions(ast, function(fun) {
+     if (asm) var asmData = normalizeAsm(fun);
+     // Add parameters as a first (fake) var (with assignment), so they get taken into consideration
+     var params = {}; // note: params are special, they can never share a register between them (see later)
+@@ -1671,7 +1649,7 @@ var ABORTING_ELIMINATOR_SCAN_NODES = set('new', 'object', 'function', 'defun', '
+ 
+ function eliminate(ast, memSafe) {
+   // Find variables that have a single use, and if they can be eliminated, do so
+-  traverseGeneratedFunctions(ast, function(func, type) {
++  traverseFunctions(ast, function(func, type) {
+     if (asm) var asmData = normalizeAsm(func);
+     //printErr('eliminate in ' + func[1]);
+ 
+@@ -2218,9 +2196,6 @@ var passes = {
+ var src = read(arguments_[0]);
+ var ast = srcToAst(src);
+ //printErr(JSON.stringify(ast)); throw 1;
+-var metadata = src.split('\n').filter(function(line) { return line.indexOf(GENERATED_FUNCTIONS_MARKER) >= 0 })[0];
+-//assert(metadata, 'Must have EMSCRIPTEN_GENERATED_FUNCTIONS metadata');
+-if (metadata) setGeneratedFunctions(metadata);
+ 
+ arguments_.slice(1).forEach(function(arg) {
+   passes[arg](ast);
+diff --git a/tools/js_optimizer.py b/tools/js_optimizer.py
+index 2fd2211..a253afb 100644
+--- a/tools/js_optimizer.py
++++ b/tools/js_optimizer.py
+@@ -41,17 +41,17 @@ def run_on_js(filename, passes, js_engine, jcache):
+   if os.linesep != '\n':
+     js = js.replace(os.linesep, '\n') # we assume \n in the splitting code
+ 
+-  # Find suffix
+-  suffix_marker = '// EMSCRIPTEN_GENERATED_FUNCTIONS'
+-  suffix_start = js.find(suffix_marker)
+-  suffix = ''
+-  if suffix_start >= 0:
+-    suffix = js[suffix_start:js.find('\n', suffix_start)] + '\n'
+-    # if there is metadata, we will run only on the generated functions. If there isn't, we will run on everything.
+-    generated = set(eval(suffix[len(suffix_marker)+1:]))
+-
+-  if not suffix and jcache:
+-    # JCache cannot be used without metadata, since it might reorder stuff, and that's dangerous since only generated can be reordered
++  # Find markers
++  start_marker = '// EMSCRIPTEN_START_FUNCS\n'
++  end_marker = '// EMSCRIPTEN_END_FUNCS\n'
++  start = js.find(start_marker)
++  end = js.find(end_marker)
++  assert (start >= 0) == (end >= 0), 'must have both markers or neither'
++  have_markers = start >= 0
++  # if there are markers, we will run only on the generated functions. If there isn't, we will run on everything.
++
++  if not have_markers and jcache:
++    # JCache cannot be used without markers, since it might reorder stuff, and that's dangerous since only generated can be reordered
+     # This means jcache does not work after closure compiler runs, for example. But you won't get much benefit from jcache with closure
+     # anyhow (since closure is likely the longest part of the build).
+     if DEBUG: print >>sys.stderr, 'js optimizer: no metadata, so disabling jcache'
+@@ -59,27 +59,10 @@ def run_on_js(filename, passes, js_engine, jcache):
+ 
+   # If we process only generated code, find that and save the rest on the side
+   func_sig = re.compile('( *)function (_[\w$]+)\(')
+-  if suffix:
+-    pos = 0
+-    gen_start = 0
+-    gen_end = 0
+-    while 1:
+-      m = func_sig.search(js, pos)
+-      if not m: break
+-      pos = m.end()
+-      indent = m.group(1)
+-      ident = m.group(2)
+-      if ident in generated:
+-        if not gen_start:
+-          gen_start = m.start()
+-          assert gen_start
+-        gen_end = js.find('\n%s}\n' % indent, m.end()) + (3 + len(indent))
+-    assert gen_end > gen_start
+-    pre = js[:gen_start]
+-    post = js[gen_end:]
+-    if 'last' in passes:
+-      post = post.replace(suffix, '') # no need to write out the metadata - nothing after us needs it
+-    js = js[gen_start:gen_end]
++  if have_markers:
++    pre = js[:start + len(start_marker)] # includes start marker
++    post = js[end:] # includes end marker
++    js = js[start + len(start_marker):end]
+   else:
+     pre = ''
+     post = ''
+@@ -95,7 +78,7 @@ def run_on_js(filename, passes, js_engine, jcache):
+     if m:
+       ident = m.group(2)
+     else:
+-      if suffix: continue # ignore whitespace
++      if have_markers: continue # ignore whitespace
+       ident = 'anon_%d' % i
+     assert ident
+     funcs.append((ident, func))
+@@ -131,7 +114,6 @@ def run_on_js(filename, passes, js_engine, jcache):
+       temp_file = temp_files.get('.jsfunc_%d.js' % i).name
+       f = open(temp_file, 'w')
+       f.write(chunk)
+-      f.write(suffix)
+       f.close()
+       return temp_file
+     filenames = [write_chunk(chunks[i], i) for i in range(len(chunks))]
+@@ -169,7 +151,6 @@ def run_on_js(filename, passes, js_engine, jcache):
+       f.write(cached); # TODO: preserve order
+       f.write('\n')
+   f.write(post);
+-  # No need to write suffix: if there was one, it is inside post which exists when suffix is there
+   f.write('\n')
+   f.close()
+ 
