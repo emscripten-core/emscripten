@@ -129,7 +129,6 @@ def run_on_js(filename, passes, js_engine, jcache):
   else:
     pre = ''
     post = ''
-    generated
 
   # Pick where to split into chunks, so that (1) they do not oom in node/uglify, and (2) we can run them in parallel
   # If we have metadata, we split only the generated code, and save the pre and post on the side (and do not optimize them)
