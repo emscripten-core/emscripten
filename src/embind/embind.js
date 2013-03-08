@@ -550,7 +550,7 @@ RegisteredPointer.prototype.fromWireType = function(ptr) {
         this.destructor(ptr);
         return null;
     }
-    return new this.Handle(ptr);
+    return new this.Handle(this, ptr);
 };
 
 // todo: could this return the actual type if not polymorphic?
@@ -603,83 +603,7 @@ RegisteredPointer.prototype.fromWireTypeAutoDowncast = function(ptr) { // ptr is
     return handle;
 };
 
-function __embind_register_smart_ptr(
-    rawType,
-    rawPointeeType,
-    name,
-    rawConstructor,
-    rawDestructor,
-    rawGetPointee
-) {
-    name = Pointer_stringify(name);
-    rawConstructor = FUNCTION_TABLE[rawConstructor];
-    rawDestructor = FUNCTION_TABLE[rawDestructor];
-    rawGetPointee = FUNCTION_TABLE[rawGetPointee];
-
-    whenDependentTypesAreResolved([rawPointeeType], function(pointeeType) {
-        pointeeType = pointeeType[0];
-
-        var Handle = createNamedFunction(name, function(ptr) {
-            Object.defineProperty(this, '$$', {
-                value: {
-                    count: {value: 1},
-                    smartPtr: ptr,
-                    ptr: rawGetPointee(ptr),
-                    pointeeType: pointeeType,
-                },
-            });
-        });
-
-        // TODO: test for SmartPtr.prototype.constructor property?
-        // We likely want it distinct from pointeeType.prototype.constructor
-        Handle.prototype = Object.create(pointeeType.Handle.prototype);
-
-        Handle.prototype.clone = function() {
-            if (!this.$$.ptr) {
-                throwBindingError(pointeeType.name + ' instance already deleted');
-            }
-
-            var clone = Object.create(Handle.prototype);
-            Object.defineProperty(clone, '$$', {
-                value: {
-                    count: this.$$.count,
-                    smartPtr: this.$$.smartPtr,
-                    ptr: this.$$.ptr,
-                },
-            });
-
-            clone.$$.count.value += 1;
-            return clone;
-        };
-
-        Handle.prototype['delete'] = function() {
-            if (!this.$$.ptr) {
-                throwBindingError(pointeeType.name + ' instance already deleted');
-            }
-
-            this.$$.count.value -= 1;
-            if (0 === this.$$.count.value) {
-                rawDestructor(this.$$.smartPtr);
-            }
-            this.$$.smartPtr = undefined;
-            this.$$.ptr = undefined;
-        };
-        
-        var registeredPointer = new RegisteredPointer(
-            name,
-            rawType,
-            pointeeType.registeredClass,
-            pointeeType,
-            Handle,
-            true,
-            rawGetPointee,
-            rawConstructor,
-            rawDestructor);
-        registerType(rawType, registeredPointer);
-        pointeeType.smartPointerType = registeredPointer;
-    });
-}
-
+// root of all class handles in embind
 function ClassHandle() {
 }
 
@@ -738,12 +662,15 @@ function __embind_register_class(
             upcast,
             downcast);
 
-        var Handle = createNamedFunction(name, function(ptr) {
+        var Handle = createNamedFunction(name, function(registeredPointer, ptr) {
             Object.defineProperty(this, '$$', {
                 value: {
-                    count: {value: 1, ptr: ptr},
+                    registeredPointer: registeredPointer,
+                    count: {
+                        value: 1,
+                        ptr: ptr }, // todo: is this necessary?
                     ptr: ptr,
-                    pointeeType: type,
+                    pointeeType: type, // todo: is this necessary?
                 }
             });
         });
@@ -977,6 +904,85 @@ function __embind_register_class_property(
             },
             enumerable: true
         });
+    });
+}
+
+function __embind_register_smart_ptr(
+    rawType,
+    rawPointeeType,
+    name,
+    rawConstructor,
+    rawDestructor,
+    rawGetPointee
+) {
+    name = Pointer_stringify(name);
+    rawConstructor = FUNCTION_TABLE[rawConstructor];
+    rawDestructor = FUNCTION_TABLE[rawDestructor];
+    rawGetPointee = FUNCTION_TABLE[rawGetPointee];
+
+    whenDependentTypesAreResolved([rawPointeeType], function(pointeeType) {
+        pointeeType = pointeeType[0];
+
+        var Handle = createNamedFunction(name, function(registeredPointer, ptr) {
+            Object.defineProperty(this, '$$', {
+                value: {
+                    registeredPointer: registeredPointer,
+                    count: {value: 1},
+                    smartPtr: ptr,
+                    ptr: rawGetPointee(ptr),
+                    // todo: is this necessary?
+                    pointeeType: pointeeType,
+                },
+            });
+        });
+
+        // TODO: test for SmartPtr.prototype.constructor property?
+        // We likely want it distinct from pointeeType.prototype.constructor
+        Handle.prototype = Object.create(pointeeType.Handle.prototype);
+
+        Handle.prototype.clone = function() {
+            if (!this.$$.ptr) {
+                throwBindingError(pointeeType.name + ' instance already deleted');
+            }
+
+            var clone = Object.create(Handle.prototype);
+            Object.defineProperty(clone, '$$', {
+                value: {
+                    count: this.$$.count,
+                    smartPtr: this.$$.smartPtr,
+                    ptr: this.$$.ptr,
+                },
+            });
+
+            clone.$$.count.value += 1;
+            return clone;
+        };
+
+        Handle.prototype['delete'] = function() {
+            if (!this.$$.ptr) {
+                throwBindingError(pointeeType.name + ' instance already deleted');
+            }
+
+            this.$$.count.value -= 1;
+            if (0 === this.$$.count.value) {
+                rawDestructor(this.$$.smartPtr);
+            }
+            this.$$.smartPtr = undefined;
+            this.$$.ptr = undefined;
+        };
+        
+        var registeredPointer = new RegisteredPointer(
+            name,
+            rawType,
+            pointeeType.registeredClass,
+            pointeeType,
+            Handle,
+            true,
+            rawGetPointee,
+            rawConstructor,
+            rawDestructor);
+        registerType(rawType, registeredPointer);
+        pointeeType.smartPointerType = registeredPointer;
     });
 }
 
