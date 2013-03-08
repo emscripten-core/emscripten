@@ -472,12 +472,13 @@ function __embind_register_struct_field(
     });
 }
 
-function RegisteredPointer(name, rawType, registeredClass, pointeeType, Handle, isSmartPointer, rawGetPointee, rawConstructor, rawDestructor) {
+function RegisteredPointer(name, rawType, registeredClass, pointeeType, Handle, isConst, isSmartPointer, rawGetPointee, rawConstructor, rawDestructor) {
     this.name = name;
     this.rawType = rawType;
     this.registeredClass = registeredClass;
     this.pointeeType = pointeeType;
     this.Handle = Handle; // <-- I think I can kill this
+    this.isConst = isConst;
     this.isSmartPointer = isSmartPointer;
     this.rawGetPointee = rawGetPointee;
     this.rawConstructor = rawConstructor;
@@ -712,6 +713,7 @@ function __embind_register_class(
             registeredClass,
             undefined,
             Handle,
+            false,
             false);
         type.pointeeType = type; // :(
         registerType(rawType, type);
@@ -722,6 +724,7 @@ function __embind_register_class(
             registeredClass,
             type,
             Handle,
+            false,
             false));
 
         // todo: implement const pointers (no modification Javascript side)
@@ -731,6 +734,7 @@ function __embind_register_class(
             registeredClass,
             type,
             Handle,
+            true,
             false));
 
         type.constructor = createNamedFunction(name, function() {
@@ -813,6 +817,7 @@ function __embind_register_class_function(
     methodName,
     argCount,
     rawArgTypesAddr,
+    isConst,
     rawInvoker,
     memberFunctionSize,
     memberFunction
@@ -832,6 +837,9 @@ function __embind_register_class_function(
             }
 
             var ptr = validateThis(this, classType, humanName);
+            if (!isConst && this.$$.registeredPointer.isConst) {
+                throwBindingError('Cannot call non-const method ' + humanName + ' on const reference');
+            }
 
             var destructors = [];
             var args = new Array(argCount + 1);
@@ -973,6 +981,7 @@ function __embind_register_smart_ptr(
             pointeeType.registeredClass,
             pointeeType,
             Handle,
+            false,
             true,
             rawGetPointee,
             rawConstructor,

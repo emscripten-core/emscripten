@@ -124,6 +124,7 @@ namespace emscripten {
                 const char* methodName,
                 unsigned argCount,
                 TYPEID argTypes[],
+                bool isConst,
                 GenericFunction invoker,
                 size_t memberFunctionSize,
                 void* memberFunction);
@@ -744,6 +745,7 @@ namespace emscripten {
                 methodName,
                 args.count,
                 args.types,
+                false,
                 reinterpret_cast<GenericFunction>(&MethodInvoker<ClassType, ReturnType, Args...>::invoke),
                 sizeof(memberFunction),
                 &memberFunction);
@@ -760,6 +762,7 @@ namespace emscripten {
                 methodName,
                 args.count,
                 args.types,
+                true,
                 reinterpret_cast<GenericFunction>(&ConstMethodInvoker<ClassType, ReturnType, Args...>::invoke),
                 sizeof(memberFunction),
                 &memberFunction);
@@ -776,6 +779,7 @@ namespace emscripten {
                 methodName,
                 args.count,
                 args.types,
+                false,
                 reinterpret_cast<GenericFunction>(&FunctionInvoker<ClassType, ReturnType, Args...>::invoke),
                 sizeof(function),
                 &function);
@@ -792,6 +796,7 @@ namespace emscripten {
                 methodName,
                 args.count,
                 args.types,
+                true,
                 reinterpret_cast<GenericFunction>(&FunctionInvoker<ClassType, ReturnType, Args...>::invoke),
                 sizeof(function),
                 &function);
