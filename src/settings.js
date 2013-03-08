@@ -15,7 +15,7 @@ var QUANTUM_SIZE = 4; // This is the size of an individual field in a structure.
                       // the normal value of 4 means all fields take 4 memory addresses,
                       // as per the norm on a 32-bit machine.
                       //
-                      // 1 is somewhat faster than 4, but dangerous.
+                      // Changing this from the default of 4 is deprecated.
 
 var CORRECT_SIGNS = 1; // Whether we make sure to convert unsigned values to signed values.
                        // Decreases performance with additional runtime checks. Might not be
@@ -63,7 +63,7 @@ var RELOOPER = 'relooper.js'; // Loads the relooper from this path relative to c
 var USE_TYPED_ARRAYS = 2; // Use typed arrays for the heap. See https://github.com/kripken/emscripten/wiki/Code-Generation-Modes/
                           // 0 means no typed arrays are used.
                           // 1 has two heaps, IHEAP (int32) and FHEAP (double),
-                          // and addresses there are a match for normal addresses.
+                          // and addresses there are a match for normal addresses. This is deprecated.
                           // 2 is a single heap, accessible through views as int8, int32, etc. This is
                           //   the recommended mode both for performance and for compatibility.
 var USE_FHEAP = 1; // Relevant in USE_TYPED_ARRAYS == 1. If this is disabled, only IHEAP will be used, and FHEAP
