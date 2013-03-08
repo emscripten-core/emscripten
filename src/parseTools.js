@@ -172,6 +172,7 @@ function getBits(type) {
   }
   if (isStructType(type)) {
     var typeData = Types.types[type];
+    if (typeData === undefined) return 0;
     return typeData.flatSize*8;
   }
   return 0;
@@ -583,7 +584,7 @@ function cleanOutTokens(filterOut, tokens, indexes) {
   if (typeof indexes !== 'object') indexes = [indexes];
   for (var i = indexes.length-1; i >=0; i--) {
     var index = indexes[i];
-    while (tokens[index].text in filterOut) {
+    while (index < tokens.length && tokens[index].text in filterOut) {
       tokens.splice(index, 1);
     }
   }

@@ -90,6 +90,7 @@ var Debugging = {
         lines[i] = ';';
         continue;
       }
+      if (line[0] == '!') skipLine = true;
       lines[i] = skipLine ? ';' : line;
     }
 
