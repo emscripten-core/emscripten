@@ -1235,6 +1235,7 @@ var LibrarySDL = {
 
   Mix_Init: function(flags) {
     if (!flags) return 0;
+    SDL.channelMinimumNumber = 0;
     return 8; /* MIX_INIT_OGG */
   },
   Mix_Quit: function(){},
@@ -1317,7 +1318,9 @@ var LibrarySDL = {
   Mix_FreeChunk: function(id) {
     SDL.audios[id] = null;
   },
-
+  Mix_ReserveChannels: function(num) {
+    SDL.channelMinimumNumber = num;
+  },
   Mix_PlayChannel: function(channel, id, loops) {
     // TODO: handle loops
 
@@ -1333,7 +1336,7 @@ var LibrarySDL = {
       channel = 0;
       for (var i = 0; i < SDL.numChannels; i++) {
         if (!SDL.channels[i].audio) {
-          channel = i;
+          channel = [Math.max(i, SDL.channelMinimumNumber)];
           break;
         }
       }
@@ -1497,7 +1500,7 @@ var LibrarySDL = {
     if (id === -1) {
       var count = 0;
       for (var i = 0; i < SDL.audios.length; i++) {
-        count += SDL.Mix_Playing(i);
+        count += _Mix_Playing(i);
       }
       return count;
     }
@@ -1511,7 +1514,7 @@ var LibrarySDL = {
   Mix_Pause: function(id) {
     if (id === -1) {
       for (var i = 0; i<SDL.audios.length;i++) {
-        SDL.Mix_Pause(i);
+        _Mix_Pause(i);
       }
       return;
     }
@@ -1526,7 +1529,7 @@ var LibrarySDL = {
     if (id === -1) {
       var pausedCount = 0;
       for (var i = 0; i<SDL.audios.length;i++) {
-        pausedCount += SDL.Mix_Paused(i);
+        pausedCount += _Mix_Paused(i);
       }
       return pausedCount;
     }
@@ -1545,7 +1548,7 @@ var LibrarySDL = {
   Mix_Resume: function(id) {
     if (id === -1) {
       for (var i = 0; i<SDL.audios.length;i++) {
-        SDL.Mix_Resume(i);
+        _Mix_Resume(i);
       }
       return;
     }
