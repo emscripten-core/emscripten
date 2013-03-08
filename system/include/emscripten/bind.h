@@ -119,7 +119,7 @@ namespace emscripten {
                 GenericFunction invoker,
                 GenericFunction constructor);
 
-            void _embind_register_class_method(
+            void _embind_register_class_function(
                 TYPEID classType,
                 const char* methodName,
                 unsigned argCount,
@@ -735,11 +735,11 @@ namespace emscripten {
         }
 
         template<typename ReturnType, typename... Args, typename... Policies>
-        class_& method(const char* methodName, ReturnType (ClassType::*memberFunction)(Args...), Policies...) {
+        class_& function(const char* methodName, ReturnType (ClassType::*memberFunction)(Args...), Policies...) {
             using namespace internal;
 
             typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
-            _embind_register_class_method(
+            _embind_register_class_function(
                 TypeID<ClassType>::get(),
                 methodName,
                 args.count,
@@ -751,11 +751,11 @@ namespace emscripten {
         }
 
         template<typename ReturnType, typename... Args, typename... Policies>
-        class_& method(const char* methodName, ReturnType (ClassType::*memberFunction)(Args...) const, Policies...) {
+        class_& function(const char* methodName, ReturnType (ClassType::*memberFunction)(Args...) const, Policies...) {
             using namespace internal;
 
             typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
-            _embind_register_class_method(
+            _embind_register_class_function(
                 TypeID<ClassType>::get(),
                 methodName,
                 args.count,
@@ -767,11 +767,11 @@ namespace emscripten {
         }
 
         template<typename ReturnType, typename... Args, typename... Policies>
-        class_& method(const char* methodName, ReturnType (*function)(ClassType& ptr, Args...), Policies...) {
+        class_& function(const char* methodName, ReturnType (*function)(ClassType& ptr, Args...), Policies...) {
             using namespace internal;
 
             typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
-            _embind_register_class_method(
+            _embind_register_class_function(
                 TypeID<ClassType>::get(),
                 methodName,
                 args.count,
@@ -783,11 +783,11 @@ namespace emscripten {
         }
 
         template<typename ReturnType, typename... Args, typename... Policies>
-        class_& method(const char* methodName, ReturnType (*function)(const ClassType& ptr, Args...), Policies...) {
+        class_& function(const char* methodName, ReturnType (*function)(const ClassType& ptr, Args...), Policies...) {
             using namespace internal;
 
             typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
-            _embind_register_class_method(
+            _embind_register_class_function(
                 TypeID<ClassType>::get(),
                 methodName,
                 args.count,
@@ -830,7 +830,7 @@ namespace emscripten {
 
         template<typename ReturnType, typename... Args, typename... Policies>
         class_& calloperator(const char* methodName, Policies... policies) {
-            return method(methodName, &ClassType::operator(), policies...);
+            return function(methodName, &ClassType::operator(), policies...);
         }
     };
 
@@ -870,10 +870,10 @@ namespace emscripten {
         void (VecType::*push_back)(const T&) = &VecType::push_back;
         return class_<std::vector<T>>(name)
             .template constructor<>()
-            .method("push_back", push_back)
-            .method("size", &VecType::size)
-            .method("get", &internal::VectorAccess<VecType>::get)
-            .method("set", &internal::VectorAccess<VecType>::set)
+            .function("push_back", push_back)
+            .function("size", &VecType::size)
+            .function("get", &internal::VectorAccess<VecType>::get)
+            .function("set", &internal::VectorAccess<VecType>::set)
             ;
     }
 
@@ -912,9 +912,9 @@ namespace emscripten {
 
         return class_<MapType>(name)
             .template constructor<>()
-            .method("size", &MapType::size)
-            .method("get", internal::MapAccess<MapType>::get)
-            .method("set", internal::MapAccess<MapType>::set)
+            .function("size", &MapType::size)
+            .function("get", internal::MapAccess<MapType>::get)
+            .function("set", internal::MapAccess<MapType>::set)
             ;
     }
 

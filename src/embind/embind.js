@@ -880,7 +880,7 @@ function validateThis(this_, classType, humanName) {
     }
 }
 
-function __embind_register_class_method(
+function __embind_register_class_function(
     rawClassType,
     methodName,
     argCount,
