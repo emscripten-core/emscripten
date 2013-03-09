@@ -34,7 +34,7 @@ class Minifier:
 
     # Create list of valid short names
 
-    MAX_NAMES = 200#60000
+    MAX_NAMES = 6000#0
     INVALID_2 = set(['do', 'if', 'in'])
     INVALID_3 = set(['for', 'new', 'try', 'var', 'env'])
 
@@ -161,8 +161,8 @@ EMSCRIPTEN_FUNCS();
       minifier = Minifier(js, js_engine)
       asm_shell_pre, asm_shell_post = minifier.minify_shell(asm_shell).split('EMSCRIPTEN_FUNCS();');
       asm_shell_post = asm_shell_post.replace('});', '})');
-      pre += asm_shell_pre
-      post = asm_shell_post + post
+      pre += asm_shell_pre + '\n' + start_funcs_marker
+      post = end_funcs_marker + asm_shell_post + post
 
       minify_info = minifier.serialize()
   else:
