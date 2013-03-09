@@ -159,11 +159,11 @@ EMSCRIPTEN_FUNCS();
       js = js[start_funcs + len(start_funcs_marker):end_funcs]
 
       minifier = Minifier(js, js_engine)
-      minified_asm_shell = minifier.minify_shell(asm_shell)
-
-      asm_shell_pre, asm_shell_post = minified_asm_shell.split('EMSCRIPTEN_FUNCS();');
+      asm_shell_pre, asm_shell_post = minifier.minify_shell(asm_shell).split('EMSCRIPTEN_FUNCS();');
       pre += asm_shell_pre
       post = asm_shell_post + post
+
+      minify_info = minifier.serialize()
   else:
     pre = ''
     post = ''
@@ -210,35 +210,13 @@ EMSCRIPTEN_FUNCS();
     else:
       cached_outputs = []
 
-  if 'zzzregisterize' in passes:
-    assert suffix, 'need generated info for registerize'
-    # Find basic globals (initial asm.js imports, etc.)
-    asm_marker = pre.find("'use asm'")
-    if asm_marker < 0: asm_marker = pre.find('"use asm"')
-    assert asm_marker > 0
-    asm_funcs = pre.find('function ', asm_marker)
-    assert asm_funcs > asm_marker
-    minifier = Minifier()
-    new_vars = ''
-    for vardef in re.findall(r'var [^;]+;', pre[asm_marker:asm_funcs]):
-      vs = vardef[4:-1].split(',')
-      for v in vs:
-        name, value = map(lambda x: x.strip(), v.split('='))
-        new_vars += 'var ' + minifier.add_glob(name) + '=' + value + ';'
-    for g in generated:
-      minifier.add_glob(g)
-    minify_info = minifier.serialize()
-    minifier = None
-    pre = pre[:asm_marker+11] + new_vars + pre[asm_funcs:]
-    print >> sys.stderr, 'm', minify_info
-
   if len(chunks) > 0:
     def write_chunk(chunk, i):
       temp_file = temp_files.get('.jsfunc_%d.js' % i).name
       f = open(temp_file, 'w')
       f.write(chunk)
       f.write(suffix_marker)
-      if 'zzzregisterize' in passes:
+      if asm_registerize:
         f.write('\n')
         f.write('// MINIFY_INFO:' + minify_info)
       f.close()

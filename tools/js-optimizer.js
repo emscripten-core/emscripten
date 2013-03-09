@@ -1397,14 +1397,26 @@ function denormalizeAsm(func, data) {
   //printErr('denormalized \n\n' + astToSrc(func) + '\n\n');
 }
 
-// Very simple 'registerization', coalescing of variables into a smaller number.
+// Very simple 'registerization', coalescing of variables into a smaller number,
+// as part of minification. Globals-level minification began in a previous pass,
+// we receive minifierInfo which tells us how to rename globals.
+//
 // We do not optimize when there are switches, so this pass only makes sense with
 // relooping.
 // TODO: Consider how this fits in with the rest of the optimization toolchain. Do
 //       we still need the eliminator? Closure? And in what order? Perhaps just
 //       closure simple?
 function registerize(ast) {
+  assert(minifierInfo);
+
   traverseGeneratedFunctions(ast, function(fun) {
+    // First, fix globals. Note that we know/assume that locals cannot shadow globals.
+    traverse(fun, function(node, type) {
+      if (type == 'name') {
+        var minified = minifierInfo.globals[node[1]];
+        if (minified) node[1] = minified;
+      }
+    });
     if (asm) var asmData = normalizeAsm(fun);
     // Add parameters as a first (fake) var (with assignment), so they get taken into consideration
     var params = {}; // note: params are special, they can never share a register between them (see later)
