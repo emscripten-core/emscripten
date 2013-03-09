@@ -80,7 +80,7 @@ class Minifier:
     #print >> sys.stderr, "minified SHELL 3333333333333333", output, "\n44444444444444444444"
     code, metadata = output.split('// MINIFY_INFO:')
     self.globs = json.loads(metadata)
-    return output
+    return code
 
   def serialize(self):
     return json.dumps({
@@ -160,6 +160,7 @@ EMSCRIPTEN_FUNCS();
 
       minifier = Minifier(js, js_engine)
       asm_shell_pre, asm_shell_post = minifier.minify_shell(asm_shell).split('EMSCRIPTEN_FUNCS();');
+      asm_shell_post = asm_shell_post.replace('});', '})');
       pre += asm_shell_pre
       post = asm_shell_post + post
 
