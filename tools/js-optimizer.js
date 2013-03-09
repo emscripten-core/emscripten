@@ -1445,16 +1445,69 @@ function registerize(ast) {
     });
     vacuum(fun);
     if (minifierInfo) {
-      // Fix globals. Note that we know/assume that locals cannot shadow globals.
+      assert(asm);
+      var usedGlobals = {};
+      var nextLocal = 0;
+      // Minify globals using the mapping we were given
       traverse(fun, function(node, type) {
         if (type == 'name') {
-          var minified = minifierInfo.globals[node[1]];
-          if (minified) node[1] = minified;
+          var name = node[1];
+          var minified = minifierInfo.globals[name];
+          if (minified) {
+            assert(!localVars[name]); // locals must not shadow globals, or else we don't know which is which
+            if (localVars[minified]) {
+              // trying to minify a global into a name used locally. rename all the locals
+              var newName = '$_newLocal_' + (nextLocal++);
+              assert(!localVars[newName]);
+              if (params[minified]) {
+                params[newName] = 1;
+                delete params[minified];
+              }
+              localVars[newName] = 1;
+              delete localVars[minified];
+              asmData.vars[newName] = asmData.vars[minified];
+              delete asmData.vars[minified];
+              asmData.params[newName] = asmData.params[minified];
+              delete asmData.params[minified];
+              traverse(fun, function(node, type) {
+                if (type == 'name' && node[1] == minified) {
+                  node[1] = newName;
+                }
+              });
+              if (fun[2]) {
+                for (var i = 0; i < fun[2].length; i++) {
+                  if (fun[2][i] == minified) fun[2][i] = newName;
+                }
+              }
+            }
+            node[1] = minified;
+            usedGlobals[minified] = 1;
+          }
         }
       });
       assert(fun[1] in minifierInfo.globals, fun[1]);
       fun[1] = minifierInfo.globals[fun[1]];
       assert(fun[1]);
+      var nextRegName = 0;
+    }
+    var regTypes = {};
+    function getNewRegName(num, name) {
+      if (!asm) return 'r' + num;
+      var type = asmData.vars[name];
+      if (!minifierInfo) {
+        var ret = (type ? 'd' : 'i') + num;
+        regTypes[ret] = type;
+        return ret;
+      }
+      // find the next free minified name that is not used by a global that shows up in this function
+      while (nextRegName < minifierInfo.names.length) {
+        var ret = minifierInfo.names[nextRegName++];
+        if (!usedGlobals[ret]) {
+          regTypes[ret] = type;
+          return ret;
+        }
+      }
+      assert('ran out of names');
     }
     // Find the # of uses of each variable.
     // While doing so, check if all a variable's uses are dominated in a simple
@@ -1540,7 +1593,7 @@ function registerize(ast) {
           saved++;
         } else {
           reg = nextReg++;
-          fullNames[reg] = (asm ? (asmData.vars[name] ? 'd' : 'i') : 'r') + reg; // XXX need to ensure we do not override used globals
+          fullNames[reg] = getNewRegName(reg, name);
           if (params[name]) paramRegs[reg] = 1;
         }
         varRegs[name] = reg;
@@ -1584,7 +1637,7 @@ function registerize(ast) {
         if (loopRegs[loops]) {
           if (asm) {
             loopRegs[loops].forEach(function(loopReg) {
-              freeRegsClasses[fullNames[loopReg][0] == 'i' ? ASM_INT : ASM_DOUBLE].push(loopReg);
+              freeRegsClasses[regTypes[fullNames[loopReg]]].push(loopReg);
             });
           } else {
             freeRegsClasses = freeRegsClasses.concat(loopRegs[loops]);
@@ -1620,7 +1673,7 @@ function registerize(ast) {
       };
       for (var i = 1; i < nextReg; i++) {
         var reg = fullNames[i];
-        var type = reg[0] == 'i' ? ASM_INT : ASM_DOUBLE
+        var type = regTypes[reg];
         if (!paramRegs[i]) {
           finalAsmData.vars[reg] = type;
         } else {
