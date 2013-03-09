@@ -1454,7 +1454,7 @@ function registerize(ast) {
           var name = node[1];
           var minified = minifierInfo.globals[name];
           if (minified) {
-            assert(!localVars[name]); // locals must not shadow globals, or else we don't know which is which
+            assert(!localVars[name], name); // locals must not shadow globals, or else we don't know which is which
             if (localVars[minified]) {
               // trying to minify a global into a name used locally. rename all the locals
               var newName = '$_newLocal_' + (nextLocal++);
