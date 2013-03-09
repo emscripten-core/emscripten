@@ -1540,7 +1540,7 @@ function registerize(ast) {
           saved++;
         } else {
           reg = nextReg++;
-          fullNames[reg] = (asm ? (asmData.vars[name] ? 'd' : 'i') : 'r') + reg; // TODO: even smaller names
+          fullNames[reg] = (asm ? (asmData.vars[name] ? 'd' : 'i') : 'r') + reg; // XXX need to ensure we do not override used globals
           if (params[name]) paramRegs[reg] = 1;
         }
         varRegs[name] = reg;

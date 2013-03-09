@@ -47,12 +47,14 @@ class Minifier:
     for a in init_possibles:
       for b in later_possibles:
         if len(self.names) >= MAX_NAMES: break
+        if a == 'r' and b in string.digits: continue # TODO: minify registerize names
         curr = a + b
         if curr not in INVALID_2: self.names.append(curr)
     for a in init_possibles:
       for b in later_possibles:
         for c in later_possibles:
           if len(self.names) >= MAX_NAMES: break
+          if a == 'r' and b in string.digits and c in string.digits: continue # TODO: minify registerize names
           curr = a + b + c
           if curr not in INVALID_3: self.names.append(curr)
     #print >> sys.stderr, self.names
