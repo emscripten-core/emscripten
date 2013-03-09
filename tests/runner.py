@@ -12024,66 +12024,69 @@ fi
 
       EMCC_CACHE = Cache.dirname
 
-      restore()
+      for compiler in [EMCC, EMXX]:
+        print compiler
 
-      Cache.erase()
-      assert not os.path.exists(EMCC_CACHE)
+        restore()
 
-      try:
-        os.environ['EMCC_DEBUG'] ='1'
-        self.working_dir = os.path.join(TEMP_DIR, 'emscripten_temp')
-
-        # Building a file that doesn't need cached stuff should not trigger cache generation
-        output = self.do([EMCC, path_from_root('tests', 'hello_world.cpp')])
-        assert INCLUDING_MESSAGE.replace('X', 'libc') not in output
-        assert BUILDING_MESSAGE.replace('X', 'libc') not in output
-        self.assertContained('hello, world!', run_js('a.out.js'))
+        Cache.erase()
         assert not os.path.exists(EMCC_CACHE)
-        try_delete('a.out.js')
 
-        basebc_name = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-0-basebc.bc')
-        dcebc_name1 = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-1-linktime.bc')
-        dcebc_name2 = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-2-linktime.bc')
-        ll_names = [os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-X-ll.ll').replace('X', str(x)) for x in range(2,5)]
+        try:
+          os.environ['EMCC_DEBUG'] ='1'
+          self.working_dir = os.path.join(TEMP_DIR, 'emscripten_temp')
 
-        # Building a file that *does* need dlmalloc *should* trigger cache generation, but only the first time
-        for filename, libname in [('hello_malloc.cpp', 'libc'), ('hello_libcxx.cpp', 'libcxx')]:
-          for i in range(3):
-            print filename, libname, i
-            self.clear()
-            dcebc_name = dcebc_name1 if i == 0 else dcebc_name2
-            try_delete(basebc_name) # we might need to check this file later
-            try_delete(dcebc_name) # we might need to check this file later
-            for ll_name in ll_names: try_delete(ll_name)
-            output = self.do([EMCC, '-O' + str(i), '-s', 'RELOOP=0', '--llvm-lto', '0', path_from_root('tests', filename)])
-            #print output
-            assert INCLUDING_MESSAGE.replace('X', libname) in output
-            if libname == 'libc':
-              assert INCLUDING_MESSAGE.replace('X', 'libcxx') not in output # we don't need libcxx in this code
-            else:
-              assert INCLUDING_MESSAGE.replace('X', 'libc') in output # libcxx always forces inclusion of libc
-            assert (BUILDING_MESSAGE.replace('X', libname) in output) == (i == 0), 'Must only build the first time'
-            self.assertContained('hello, world!', run_js('a.out.js'))
-            assert os.path.exists(EMCC_CACHE)
-            assert os.path.exists(os.path.join(EMCC_CACHE, libname + '.bc'))
-            if libname == 'libcxx':
-              print os.stat(os.path.join(EMCC_CACHE, libname + '.bc')).st_size, os.stat(basebc_name).st_size, os.stat(dcebc_name).st_size
-              assert os.stat(os.path.join(EMCC_CACHE, libname + '.bc')).st_size > 1800000, 'libc++ is big'
-              assert os.stat(basebc_name).st_size > 1800000, 'libc++ is indeed big'
-              assert os.stat(dcebc_name).st_size < 750000, 'Dead code elimination must remove most of libc++'
-            # should only have metadata in -O0, not 1 and 2
-            if i > 0:
-              for ll_name in ll_names:
-                ll = None
-                try:
-                  ll = open(ll_name).read()
-                  break
-                except:
-                  pass
-              assert ll
-              assert ll.count('\n!') < 10 # a few lines are left even in -O1 and -O2
-      finally:
-        del os.environ['EMCC_DEBUG']
+          # Building a file that doesn't need cached stuff should not trigger cache generation
+          output = self.do([compiler, path_from_root('tests', 'hello_world.cpp')])
+          assert INCLUDING_MESSAGE.replace('X', 'libc') not in output
+          assert BUILDING_MESSAGE.replace('X', 'libc') not in output
+          self.assertContained('hello, world!', run_js('a.out.js'))
+          assert not os.path.exists(EMCC_CACHE)
+          try_delete('a.out.js')
+
+          basebc_name = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-0-basebc.bc')
+          dcebc_name1 = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-1-linktime.bc')
+          dcebc_name2 = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-2-linktime.bc')
+          ll_names = [os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-X-ll.ll').replace('X', str(x)) for x in range(2,5)]
+
+          # Building a file that *does* need dlmalloc *should* trigger cache generation, but only the first time
+          for filename, libname in [('hello_malloc.cpp', 'libc'), ('hello_libcxx.cpp', 'libcxx')]:
+            for i in range(3):
+              print filename, libname, i
+              self.clear()
+              dcebc_name = dcebc_name1 if i == 0 else dcebc_name2
+              try_delete(basebc_name) # we might need to check this file later
+              try_delete(dcebc_name) # we might need to check this file later
+              for ll_name in ll_names: try_delete(ll_name)
+              output = self.do([compiler, '-O' + str(i), '-s', 'RELOOP=0', '--llvm-lto', '0', path_from_root('tests', filename)])
+              #print output
+              assert INCLUDING_MESSAGE.replace('X', libname) in output
+              if libname == 'libc':
+                assert INCLUDING_MESSAGE.replace('X', 'libcxx') not in output # we don't need libcxx in this code
+              else:
+                assert INCLUDING_MESSAGE.replace('X', 'libc') in output # libcxx always forces inclusion of libc
+              assert (BUILDING_MESSAGE.replace('X', libname) in output) == (i == 0), 'Must only build the first time'
+              self.assertContained('hello, world!', run_js('a.out.js'))
+              assert os.path.exists(EMCC_CACHE)
+              assert os.path.exists(os.path.join(EMCC_CACHE, libname + '.bc'))
+              if libname == 'libcxx':
+                print os.stat(os.path.join(EMCC_CACHE, libname + '.bc')).st_size, os.stat(basebc_name).st_size, os.stat(dcebc_name).st_size
+                assert os.stat(os.path.join(EMCC_CACHE, libname + '.bc')).st_size > 1800000, 'libc++ is big'
+                assert os.stat(basebc_name).st_size > 1800000, 'libc++ is indeed big'
+                assert os.stat(dcebc_name).st_size < 750000, 'Dead code elimination must remove most of libc++'
+              # should only have metadata in -O0, not 1 and 2
+              if i > 0:
+                for ll_name in ll_names:
+                  ll = None
+                  try:
+                    ll = open(ll_name).read()
+                    break
+                  except:
+                    pass
+                assert ll
+                assert ll.count('\n!') < 10 # a few lines are left even in -O1 and -O2
+        finally:
+          del os.environ['EMCC_DEBUG']
 
       # Manual cache clearing
       assert os.path.exists(EMCC_CACHE)
