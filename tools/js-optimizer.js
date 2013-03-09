@@ -1416,6 +1416,8 @@ function registerize(ast) {
           if (minified) node[1] = minified;
         }
       });
+      assert(fun[1] in minifierInfo.globals, fun[1]);
+      fun[1] = minifierInfo.globals[fun[1]];
     }
     if (asm) var asmData = normalizeAsm(fun);
     // Add parameters as a first (fake) var (with assignment), so they get taken into consideration
