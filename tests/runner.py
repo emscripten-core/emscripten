@@ -7311,6 +7311,8 @@ def process(filename):
 
         return output
 
+      self.emcc_args += ['--minify', '0'] # to compare the versions
+
       def do_test():
         self.do_run(open(path_from_root('tests', 'openjpeg', 'codec', 'j2k_to_image.c'), 'r').read(),
                      'Successfully generated', # The real test for valid output is in image_compare

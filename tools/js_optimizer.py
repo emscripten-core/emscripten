@@ -148,12 +148,19 @@ def run_on_js(filename, passes, js_engine, jcache):
   if suffix:
     if not asm_registerize:
       pre = js[:start_funcs + len(start_funcs_marker)]
-      post = js[end_funcs:]
+      post = js[end_funcs + len(end_funcs_marker):]
       js = js[start_funcs + len(start_funcs_marker):end_funcs]
       if 'asm' not in passes: # can have Module[..] and inlining prevention code, push those to post
-        for line in js.split('\n'):
+        class Finals:
+          buf = []
+        def process(line):
           if len(line) > 0 and not line.startswith((' ', 'function', '}')):
-            post = line + '\n' + post
+            Finals.buf.append(line)
+            return False
+          return True
+        js = '\n'.join(filter(process, js.split('\n')))
+        post = '\n'.join(Finals.buf) + '\n' + post
+      post = end_funcs_marker + post
     else:
       # We need to split out the asm shell as well, for minification
       pre = js[:start_asm + len(start_asm_marker)]
