@@ -1361,11 +1361,10 @@ try:
 
   flush_js_optimizer_queue()
 
-  if not minify_whitespace:
-    # Remove some trivial whitespace
-    src = open(final).read()
-    src = re.sub(r'\n+[ \n]*\n+', '\n', src)
-    open(final, 'w').write(src)
+  # Remove some trivial whitespace # TODO: do not run when compress has already been done on all parts of the code
+  src = open(final).read()
+  src = re.sub(r'\n+[ \n]*\n+', '\n', src)
+  open(final, 'w').write(src)
 
   # If we were asked to also generate HTML, do that
   if final_suffix == 'html':
