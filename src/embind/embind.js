@@ -730,7 +730,6 @@ function __embind_register_class(
             false,
             false));
 
-        // todo: implement const pointers (no modification Javascript side)
         registerType(rawConstPointerType, new RegisteredPointer(
             name + ' const*',
             rawConstPointerType,
