@@ -59,7 +59,7 @@ class Minifier:
           if curr not in INVALID_3: self.names.append(curr)
     #print >> sys.stderr, self.names
 
-  def minify_shell(self, shell):
+  def minify_shell(self, shell, compress):
     #print >> sys.stderr, "MINIFY SHELL 1111111111", shell, "\n222222222222222"
     # Run through js-optimizer.js to find and minify the global symbols
     # We send it the globals, which it parses at the proper time. JS decides how
@@ -79,7 +79,7 @@ class Minifier:
     f.write('// MINIFY_INFO:' + self.serialize())
     f.close()
 
-    output = subprocess.Popen(self.js_engine + [JS_OPTIMIZER, temp_file, 'minifyGlobals', 'noPrintMetadata'], stdout=subprocess.PIPE).communicate()[0]
+    output = subprocess.Popen(self.js_engine + [JS_OPTIMIZER, temp_file, 'minifyGlobals', 'noPrintMetadata'] + (['compress'] if compress else []), stdout=subprocess.PIPE).communicate()[0]
     assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + output
     #print >> sys.stderr, "minified SHELL 3333333333333333", output, "\n44444444444444444444"
     code, metadata = output.split('// MINIFY_INFO:')
@@ -171,7 +171,7 @@ EMSCRIPTEN_FUNCS();
       js = js[start_funcs + len(start_funcs_marker):end_funcs]
 
       minifier = Minifier(js, js_engine)
-      asm_shell_pre, asm_shell_post = minifier.minify_shell(asm_shell).split('EMSCRIPTEN_FUNCS();');
+      asm_shell_pre, asm_shell_post = minifier.minify_shell(asm_shell, 'compress' in passes).split('EMSCRIPTEN_FUNCS();');
       asm_shell_post = asm_shell_post.replace('});', '})');
       pre += asm_shell_pre + '\n' + start_funcs_marker
       post = end_funcs_marker + asm_shell_post + post
