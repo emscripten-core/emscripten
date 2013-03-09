@@ -102,13 +102,14 @@ def run_on_js(filename, passes, js_engine, jcache):
   start_funcs_marker = '// EMSCRIPTEN_START_FUNCS\n'
   end_funcs_marker = '// EMSCRIPTEN_END_FUNCS\n'
   start_funcs = js.find(start_funcs_marker)
-  end_funcs = js.find(end_funcs_marker)
+  end_funcs = js.rfind(end_funcs_marker)
   assert (start_funcs >= 0) == (end_funcs >= 0) == (not not suffix)
-  if 'asm' in passes:
+  asm_registerize = 'asm' in passes and 'registerize' in passes
+  if asm_registerize:
     start_asm_marker = '// EMSCRIPTEN_START_ASM\n'
     end_asm_marker = '// EMSCRIPTEN_END_ASM\n'
     start_asm = js.find(start_asm_marker)
-    end_asm = js.find(end_asm_marker)
+    end_asm = js.rfind(end_asm_marker)
     assert (start_asm >= 0) == (end_asm >= 0)
 
   if not suffix and jcache:
@@ -119,13 +120,26 @@ def run_on_js(filename, passes, js_engine, jcache):
     jcache = False
 
   if suffix:
-    pre = js[:start_funcs + len(start_funcs_marker)]
-    post = js[end_funcs:]
-    js = js[start_funcs + len(start_funcs_marker):end_funcs]
-    if 'asm' not in passes: # can have Module[..] and inlining prevention code, push those to post
-      for line in js.split('\n'):
-        if len(line) > 0 and not line.startswith((' ', 'function', '}')):
-          post = line + '\n' + post
+    if not asm_registerize:
+      pre = js[:start_funcs + len(start_funcs_marker)]
+      post = js[end_funcs:]
+      js = js[start_funcs + len(start_funcs_marker):end_funcs]
+      if 'asm' not in passes: # can have Module[..] and inlining prevention code, push those to post
+        for line in js.split('\n'):
+          if len(line) > 0 and not line.startswith((' ', 'function', '}')):
+            post = line + '\n' + post
+    else:
+      # We need to split out the asm shell as well, for minification
+      pre = js[:start_asm + len(start_asm_marker)]
+      post = js[end_asm:]
+      asm_shell = js[start_asm + len(start_asm_marker):start_funcs + len(start_funcs_marker)] + '''
+EMSCRIPTEN_FUNCS();
+''' + js[end_funcs + len(end_funcs_marker):end_asm + len(end_asm_marker)]
+      minified_asm_shell = asm_shell # TODO: minification of globals
+      asm_shell_pre, asm_shell_post = minified_asm_shell.split('EMSCRIPTEN_FUNCS();');
+      pre += asm_shell_pre
+      post = asm_shell_post + post
+      js = js[start_funcs + len(start_funcs_marker):end_funcs]
   else:
     pre = ''
     post = ''
