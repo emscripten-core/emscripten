@@ -607,13 +607,12 @@ RegisteredPointer.prototype.fromWireTypeAutoDowncast = function(ptr) { // ptr is
     }
     var toType = this.getDynamicDowncastType(ptr);
     if (toType) {
-        var fromType = this.pointeeType;
         if (this.isSmartPointer) {
             handle = toType.smartPointerType.fromWireType(ptr);
         } else {
             handle = toType.fromWireType(ptr);
         }
-        handle.$$.ptr = staticPointerCast(handle.$$.ptr, fromType.rawType, toType.rawType);
+        handle.$$.ptr = staticPointerCast(handle.$$.ptr, this.pointeeType.rawType, toType.rawType);
     } else {
         handle = this.fromWireType(ptr);
     }
