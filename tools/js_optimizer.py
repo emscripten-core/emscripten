@@ -171,6 +171,9 @@ EMSCRIPTEN_FUNCS();
 
       minify_info = minifier.serialize()
       #if DEBUG: print >> sys.stderr, 'minify info:', minify_info
+    # remove suffix if no longer needed
+    if 'last' in passes:
+      post = post.split(suffix_marker)[0]
   else:
     pre = ''
     post = ''
