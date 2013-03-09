@@ -47,14 +47,14 @@ class Minifier:
     for a in init_possibles:
       for b in later_possibles:
         if len(self.names) >= MAX_NAMES: break
-        if a in 'id' and b in string.digits: continue # TODO: minify registerize names
+        if a in 'ida' and b in string.digits: continue # TODO: minify registerize names
         curr = a + b
         if curr not in INVALID_2: self.names.append(curr)
     for a in init_possibles:
       for b in later_possibles:
         for c in later_possibles:
           if len(self.names) >= MAX_NAMES: break
-          if a in 'id' and b in string.digits and c in string.digits: continue # TODO: minify registerize names
+          if a in 'ida' and b in string.digits and c in string.digits: continue # TODO: minify registerize names
           curr = a + b + c
           if curr not in INVALID_3: self.names.append(curr)
     #print >> sys.stderr, self.names
@@ -167,6 +167,7 @@ EMSCRIPTEN_FUNCS();
       post = end_funcs_marker + asm_shell_post + post
 
       minify_info = minifier.serialize()
+      #if DEBUG: print >> sys.stderr, 'minify info:', minify_info
   else:
     pre = ''
     post = ''
