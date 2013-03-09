@@ -66,6 +66,8 @@ class Minifier:
     # to minify all global names, we receive a dictionary back, which is then
     # used by the function processors
 
+    shell = shell.replace('0.0', '13371337') # avoid uglify doing 0.0 => 0
+
     # Find all globals in the JS functions code
     self.globs = [m.group(2) for m in func_sig.finditer(self.js)]
 
@@ -82,7 +84,8 @@ class Minifier:
     #print >> sys.stderr, "minified SHELL 3333333333333333", output, "\n44444444444444444444"
     code, metadata = output.split('// MINIFY_INFO:')
     self.globs = json.loads(metadata)
-    return code
+    return code.replace('13371337', '0.0')
+
 
   def serialize(self):
     return json.dumps({
