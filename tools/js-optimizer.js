@@ -2159,6 +2159,37 @@ function eliminateMemSafe(ast) {
   eliminate(ast, true);
 }
 
+function minifyGlobals(ast) {
+  var minified = {};
+  var next = 0;
+  var first = true; // do not minify initial 'var asm ='
+  traverse(ast, function(node, type) {
+    if (type == 'var') {
+      if (first) {
+        first = false;
+        return;
+      }
+      var vars = node[1];
+      for (var i = 0; i < vars.length; i++) {
+        var name = vars[i][0];
+        vars[i][0] = minified[name] = minifierInfo.names[next++];
+      }
+    } else if (type == 'name') {
+      var name = node[1];
+      if (name in minified) {
+        node[1] = minified[name];
+      } else if (name == 'EMSCRIPTEN_FUNCS') {
+        // minify all the globals
+        for (var i = 0; i < minifierInfo.globals.length; i++) {
+          name = minifierInfo.globals[i];
+          minified[name] = minifierInfo.names[next++];
+        }
+      }
+    }
+  });
+  suffix = '// MINIFY_INFO:' + JSON.stringify(minified);
+}
+
 // Change +5 to DOT$ZERO(5). We then textually change 5 to 5.0 (uglify's ast cannot differentiate between 5 and 5.0 directly)
 function prepDotZero(ast) {
   traverse(ast, function(node, type) {
@@ -2204,6 +2235,7 @@ var passes = {
   registerize: registerize,
   eliminate: eliminate,
   eliminateMemSafe: eliminateMemSafe,
+  minifyGlobals: minifyGlobals,
   compress: function() { compress = true },
   noPrintMetadata: function() { printMetadata = false },
   asm: function() { asm = true },
@@ -2211,6 +2243,8 @@ var passes = {
 };
 
 // Main
+
+var suffix = '';
 
 var src = read(arguments_[0]);
 var ast = srcToAst(src);
@@ -2238,4 +2272,5 @@ do {
 } while (js != old);
 print(js);
 print('\n');
+print(suffix);
 

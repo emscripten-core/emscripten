@@ -19,6 +19,8 @@ WINDOWS = sys.platform.startswith('win')
 
 DEBUG = os.environ.get('EMCC_DEBUG')
 
+func_sig = re.compile('( *)function ([_\w$]+)\(')
+
 class Minifier:
   '''
     asm.js minification support. We calculate possible names and minification of
@@ -26,7 +28,10 @@ class Minifier:
     during registerize perform minification of locals.
   '''
 
-  def __init__(self):
+  def __init__(self, js, js_engine):
+    self.js = js
+    self.js_engine = js_engine
+
     # Create list of valid short names
 
     MAX_NAMES = 200#60000
@@ -52,14 +57,30 @@ class Minifier:
           if curr not in INVALID_3: self.names.append(curr)
     #print >> sys.stderr, self.names
 
-    self.globs = {}
+  def minify_shell(self, shell):
+    #print >> sys.stderr, "MINIFY SHELL 1111111111", shell, "\n222222222222222"
+    # Run through js-optimizer.js to find and minify the global symbols
+    # We send it the globals, which it parses at the proper time. JS decides how
+    # to minify all global names, we receive a dictionary back, which is then
+    # used by the function processors
 
-  def add_glob(self, glob):
-    # Minify the globals (initials - asm imports, etc. - and functions)
-    # TODO: find how many times they are used and do this more optimally
-    ret = self.names[len(self.globs)]
-    self.globs[glob] = ret
-    return ret
+    # Find all globals in the JS functions code
+    self.globs = [m.group(2) for m in func_sig.finditer(self.js)]
+
+    temp_file = temp_files.get('.minifyglobals.js').name
+    f = open(temp_file, 'w')
+    f.write(shell)
+    f.write('\n')
+    self
+    f.write('// MINIFY_INFO:' + self.serialize())
+    f.close()
+
+    output = subprocess.Popen(self.js_engine + [JS_OPTIMIZER, temp_file, 'minifyGlobals', 'noPrintMetadata'], stdout=subprocess.PIPE).communicate()[0]
+    assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + output
+    #print >> sys.stderr, "minified SHELL 3333333333333333", output, "\n44444444444444444444"
+    code, metadata = output.split('// MINIFY_INFO:')
+    self.globs = json.loads(metadata)
+    return output
 
   def serialize(self):
     return json.dumps({
@@ -135,11 +156,14 @@ def run_on_js(filename, passes, js_engine, jcache):
       asm_shell = js[start_asm + len(start_asm_marker):start_funcs + len(start_funcs_marker)] + '''
 EMSCRIPTEN_FUNCS();
 ''' + js[end_funcs + len(end_funcs_marker):end_asm + len(end_asm_marker)]
-      minified_asm_shell = asm_shell # TODO: minification of globals
+      js = js[start_funcs + len(start_funcs_marker):end_funcs]
+
+      minifier = Minifier(js, js_engine)
+      minified_asm_shell = minifier.minify_shell(asm_shell)
+
       asm_shell_pre, asm_shell_post = minified_asm_shell.split('EMSCRIPTEN_FUNCS();');
       pre += asm_shell_pre
       post = asm_shell_post + post
-      js = js[start_funcs + len(start_funcs_marker):end_funcs]
   else:
     pre = ''
     post = ''
@@ -148,7 +172,6 @@ EMSCRIPTEN_FUNCS();
   # If we have metadata, we split only the generated code, and save the pre and post on the side (and do not optimize them)
   parts = map(lambda part: part, js.split('\n}\n'))
   funcs = []
-  func_sig = re.compile('( *)function ([_\w$]+)\(')
   for i in range(len(parts)):
     func = parts[i]
     if i < len(parts)-1: func += '\n}\n' # last part needs no }
