@@ -472,12 +472,26 @@ function __embind_register_struct_field(
     });
 }
 
-function RegisteredPointer(name, rawType, registeredClass, pointeeType, Handle, isConst, isSmartPointer, rawGetPointee, rawConstructor, rawDestructor) {
+// I guarantee there is a way to simplify the following data structure.
+function RegisteredPointer(
+    name,
+    rawType,
+    registeredClass,
+    pointeeType,
+    Handle,
+    isReference,
+    isConst,
+    isSmartPointer,
+    rawGetPointee,
+    rawConstructor,
+    rawDestructor
+) {
     this.name = name;
     this.rawType = rawType;
     this.registeredClass = registeredClass;
     this.pointeeType = pointeeType;
     this.Handle = Handle; // <-- I think I can kill this
+    this.isReference = isReference;
     this.isConst = isConst;
     this.isSmartPointer = isSmartPointer;
     this.rawGetPointee = rawGetPointee;
@@ -492,7 +506,7 @@ RegisteredPointer.prototype.isPolymorphic = function() {
 RegisteredPointer.prototype.toWireType = function(destructors, handle) {
     var fromRawType;
     if (handle === null) {
-        if (this.pointeeType === this) {
+        if (this.isReference) {
             throwBindingError('null is not a valid ' + this.name);
         }
 
@@ -557,7 +571,6 @@ RegisteredPointer.prototype.fromWireType = function(ptr) {
     return new this.Handle(this, ptr);
 };
 
-// todo: could this return the actual type if not polymorphic?
 RegisteredPointer.prototype.getDynamicRawPointerType = function(ptr) {
     var type = null;
     if (this.isPolymorphic()) {
@@ -716,6 +729,7 @@ function __embind_register_class(
             registeredClass,
             undefined,
             Handle,
+            true,
             false,
             false);
         type.pointeeType = type; // :(
@@ -728,6 +742,7 @@ function __embind_register_class(
             type,
             Handle,
             false,
+            false,
             false));
 
         registerType(rawConstPointerType, new RegisteredPointer(
@@ -736,6 +751,7 @@ function __embind_register_class(
             registeredClass,
             type,
             Handle,
+            false,
             true,
             false));
 
@@ -810,7 +826,7 @@ function validateThis(this_, classType, humanName) {
     
     return upcastPointer(
         this_.$$.ptr,
-        this_.$$.pointeeType.registeredClass,
+        this_.$$.registeredPointer.registeredClass,
         classType.registeredClass);
 }
 
@@ -983,6 +999,7 @@ function __embind_register_smart_ptr(
             pointeeType.registeredClass,
             pointeeType,
             Handle,
+            false,
             false,
             true,
             rawGetPointee,
