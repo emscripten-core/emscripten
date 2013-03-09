@@ -1408,18 +1408,6 @@ function denormalizeAsm(func, data) {
 //       closure simple?
 function registerize(ast) {
   traverseGeneratedFunctions(ast, function(fun) {
-    if (minifierInfo) {
-      // First, fix globals. Note that we know/assume that locals cannot shadow globals.
-      traverse(fun, function(node, type) {
-        if (type == 'name') {
-          var minified = minifierInfo.globals[node[1]];
-          if (minified) node[1] = minified;
-        }
-      });
-      assert(fun[1] in minifierInfo.globals, fun[1]);
-      fun[1] = minifierInfo.globals[fun[1]];
-      assert(fun[1]);
-    }
     if (asm) var asmData = normalizeAsm(fun);
     // Add parameters as a first (fake) var (with assignment), so they get taken into consideration
     var params = {}; // note: params are special, they can never share a register between them (see later)
@@ -1456,6 +1444,18 @@ function registerize(ast) {
       }
     });
     vacuum(fun);
+    if (minifierInfo) {
+      // Fix globals. Note that we know/assume that locals cannot shadow globals.
+      traverse(fun, function(node, type) {
+        if (type == 'name') {
+          var minified = minifierInfo.globals[node[1]];
+          if (minified) node[1] = minified;
+        }
+      });
+      assert(fun[1] in minifierInfo.globals, fun[1]);
+      fun[1] = minifierInfo.globals[fun[1]];
+      assert(fun[1]);
+    }
     // Find the # of uses of each variable.
     // While doing so, check if all a variable's uses are dominated in a simple
     // way by a simple assign, if so, then we can assign its register to it
