@@ -8698,7 +8698,8 @@ Options that are modified or new in %s include:
           assert 'SAFE_HEAP' not in generated, 'safe heap should not be used by default'
           assert ': while(' not in generated, 'when relooping we also js-optimize, so there should be no labelled whiles'
           if closure:
-            assert 'Module._main=' in generated, 'closure compiler should have been run (and output should be minified)'
+            if opt_level <= 1: assert 'Module._main =' in generated, 'closure compiler should have been run'
+            elif opt_level >= 2: assert 'Module._main=' in generated, 'closure compiler should have been run (and output should be minified)'
           else:
             # closure has not been run, we can do some additional checks. TODO: figure out how to do these even with closure
             assert 'Module._main = ' not in generated, 'closure compiler should not have been run'
@@ -8707,14 +8708,15 @@ Options that are modified or new in %s include:
               assert ('assert(STACKTOP < STACK_MAX' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
               assert 'var $i;' in generated or 'var $i_0' in generated or 'var $storemerge3;' in generated or 'var $storemerge4;' in generated or 'var $i_04;' in generated, 'micro opts should always be on'
             if opt_level >= 2:
-              assert re.search('HEAP8\[\$?\w+ \+ \(+\$?\w+ ', generated) or re.search('HEAP8\[HEAP32\[', generated), 'eliminator should create compound expressions, and fewer one-time vars' # also in -O1, but easier to test in -O2
+              assert re.search('HEAP8\[\$?\w+ ?\+ ?\(+\$?\w+ ?', generated) or re.search('HEAP8\[HEAP32\[', generated), 'eliminator should create compound expressions, and fewer one-time vars' # also in -O1, but easier to test in -O2
             assert ('_puts(' in generated) == (opt_level >= 1), 'with opt >= 1, llvm opts are run and they should optimize printf to puts'
-            assert 'function _main() {' in generated, 'Should be unminified, including whitespace'
+            if opt_level <= 1 or '-g' in params: assert 'function _main() {' in generated, 'Should be unminified, including whitespace'
+            elif opt_level >= 2: assert 'function _main(){' in generated, 'Should be whitespace-minified'
 
         # emcc -s RELOOP=1 src.cpp ==> should pass -s to emscripten.py. --typed-arrays is a convenient alias for -s USE_TYPED_ARRAYS
         for params, test, text in [
-          (['-s', 'ASM_JS=1', '-O2'], lambda generated: 'var i1 = 0' in generated, 'registerize is run by default in -O2'),
-          (['-s', 'ASM_JS=1', '-O2', '-g'], lambda generated: 'var i1 = 0' not in generated, 'registerize is cancelled by -g'),
+          (['-s', 'ASM_JS=1', '-O2'], lambda generated: 'var i1=0' in generated, 'registerize is run by default in -O2'),
+          (['-s', 'ASM_JS=1', '-O2', '-g'], lambda generated: 'var i1=0' not in generated, 'registerize is cancelled by -g'),
           (['-s', 'INLINING_LIMIT=0'], lambda generated: 'function _dump' in generated, 'no inlining without opts'),
           (['-O3', '-s', 'INLINING_LIMIT=0', '--closure', '0'], lambda generated: 'function _dump' not in generated, 'lto/inlining'),
           (['-Os', '--llvm-lto', '1'], lambda generated: 'function _dump' in generated, '-Os disables inlining'),
