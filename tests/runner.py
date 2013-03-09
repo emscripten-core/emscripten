@@ -8927,6 +8927,32 @@ f.close()
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'test.cpp'), '-s', 'UNALIGNED_MEMORY=1']).communicate()
       self.assertContained('testString = Hello, World!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+    def test_asm_minify(self):
+      def test(args):
+        Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_loop_malloc.cpp')] + args).communicate()
+        self.assertContained('hello, world!', run_js(self.in_dir('a.out.js')))
+        return open(self.in_dir('a.out.js')).read()
+
+      src = test([])
+      assert 'function _malloc' in src
+
+      src = test(['-O2', '-s', 'ASM_JS=1'])
+      normal_size = len(src)
+      print 'normal', normal_size
+      assert 'function _malloc' not in src
+
+      src = test(['-O2', '-s', 'ASM_JS=1', '--minify', '0'])
+      unminified_size = len(src)
+      print 'unminified', unminified_size
+      assert unminified_size > normal_size
+      assert 'function _malloc' not in src
+
+      src = test(['-O2', '-s', 'ASM_JS=1', '-g'])
+      debug_size = len(src)
+      print 'debug', debug_size
+      assert debug_size > unminified_size
+      assert 'function _malloc' in src
+
     def test_l_link(self):
       # Linking with -lLIBNAME and -L/DIRNAME should work
 
