@@ -1418,6 +1418,7 @@ function registerize(ast) {
       });
       assert(fun[1] in minifierInfo.globals, fun[1]);
       fun[1] = minifierInfo.globals[fun[1]];
+      assert(fun[1]);
     }
     if (asm) var asmData = normalizeAsm(fun);
     // Add parameters as a first (fake) var (with assignment), so they get taken into consideration
@@ -2187,6 +2188,7 @@ function minifyGlobals(ast) {
       var vars = node[1];
       for (var i = 0; i < vars.length; i++) {
         var name = vars[i][0];
+        assert(next < minifierInfo.names.length);
         vars[i][0] = minified[name] = minifierInfo.names[next++];
       }
     }
@@ -2194,6 +2196,7 @@ function minifyGlobals(ast) {
   // add all globals in function chunks, i.e. not here but passed to us
   for (var i = 0; i < minifierInfo.globals.length; i++) {
     name = minifierInfo.globals[i];
+    assert(next < minifierInfo.names.length);
     minified[name] = minifierInfo.names[next++];
   }
   // apply minification
