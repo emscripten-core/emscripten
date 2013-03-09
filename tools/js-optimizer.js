@@ -2177,6 +2177,7 @@ function minifyGlobals(ast) {
   var minified = {};
   var next = 0;
   var first = true; // do not minify initial 'var asm ='
+  // find the globals
   traverse(ast, function(node, type) {
     if (type == 'var') {
       if (first) {
@@ -2188,16 +2189,19 @@ function minifyGlobals(ast) {
         var name = vars[i][0];
         vars[i][0] = minified[name] = minifierInfo.names[next++];
       }
-    } else if (type == 'name') {
+    }
+  });
+  // add all globals in function chunks, i.e. not here but passed to us
+  for (var i = 0; i < minifierInfo.globals.length; i++) {
+    name = minifierInfo.globals[i];
+    minified[name] = minifierInfo.names[next++];
+  }
+  // apply minification
+  traverse(ast, function(node, type) {
+    if (type == 'name') {
       var name = node[1];
       if (name in minified) {
         node[1] = minified[name];
-      } else if (name == 'EMSCRIPTEN_FUNCS') {
-        // minify all the globals
-        for (var i = 0; i < minifierInfo.globals.length; i++) {
-          name = minifierInfo.globals[i];
-          minified[name] = minifierInfo.names[next++];
-        }
       }
     }
   });
