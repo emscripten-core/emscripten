@@ -445,7 +445,7 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
   if len(sys.argv) == 2 and 'ALL.' in sys.argv[1]:
     ignore, test = sys.argv[1].split('.')
     print 'Running all test modes on test "%s"' % test
-    sys.argv = [sys.argv[0], 'default.'+test, 'o1.'+test, 'o2.'+test, 'asm2.'+test, 's_0_0.'+test, 's_0_1.'+test, 's_1_0.'+test, 's_1_1.'+test]
+    sys.argv = [sys.argv[0], 'default.'+test, 'o1.'+test, 'o2.'+test, 'asm2.'+test, 'asm2g.'+test, 's_0_0.'+test, 's_0_1.'+test, 's_1_0.'+test, 's_1_1.'+test]
 
   class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
     ## Does a complete test - builds, runs, checks output, etc.
@@ -7311,6 +7311,8 @@ def process(filename):
 
         return output
 
+      self.emcc_args += ['--minify', '0'] # to compare the versions
+
       def do_test():
         self.do_run(open(path_from_root('tests', 'openjpeg', 'codec', 'j2k_to_image.c'), 'r').read(),
                      'Successfully generated', # The real test for valid output is in image_compare
@@ -8524,8 +8526,8 @@ TT = %s
   exec('o2 = make_run("o2", compiler=CLANG, emcc_args=["-O2"])')
 
   # asm.js
-  #exec('asm = make_run("asm", compiler=CLANG, emcc_args=["-O0", "-s", "ASM_JS=1"])')
   exec('asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=1"])')
+  exec('asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=1", "-g"])')
 
   # Make custom runs with various options
   for compiler, quantum, embetter, typed_arrays, llvm_opts in [
@@ -8696,7 +8698,8 @@ Options that are modified or new in %s include:
           assert 'SAFE_HEAP' not in generated, 'safe heap should not be used by default'
           assert ': while(' not in generated, 'when relooping we also js-optimize, so there should be no labelled whiles'
           if closure:
-            assert 'Module._main=' in generated, 'closure compiler should have been run (and output should be minified)'
+            if opt_level <= 1: assert 'Module._main =' in generated, 'closure compiler should have been run'
+            elif opt_level >= 2: assert 'Module._main=' in generated, 'closure compiler should have been run (and output should be minified)'
           else:
             # closure has not been run, we can do some additional checks. TODO: figure out how to do these even with closure
             assert 'Module._main = ' not in generated, 'closure compiler should not have been run'
@@ -8705,14 +8708,16 @@ Options that are modified or new in %s include:
               assert ('assert(STACKTOP < STACK_MAX' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
               assert 'var $i;' in generated or 'var $i_0' in generated or 'var $storemerge3;' in generated or 'var $storemerge4;' in generated or 'var $i_04;' in generated, 'micro opts should always be on'
             if opt_level >= 2:
-              assert re.search('HEAP8\[\$?\w+ \+ \(+\$?\w+ ', generated) or re.search('HEAP8\[HEAP32\[', generated), 'eliminator should create compound expressions, and fewer one-time vars' # also in -O1, but easier to test in -O2
+              assert re.search('HEAP8\[\$?\w+ ?\+ ?\(+\$?\w+ ?', generated) or re.search('HEAP8\[HEAP32\[', generated), 'eliminator should create compound expressions, and fewer one-time vars' # also in -O1, but easier to test in -O2
             assert ('_puts(' in generated) == (opt_level >= 1), 'with opt >= 1, llvm opts are run and they should optimize printf to puts'
-            assert 'function _main() {' in generated, 'Should be unminified, including whitespace'
+            if opt_level <= 1 or '-g' in params: assert 'function _main() {' in generated, 'Should be unminified, including whitespace'
+            elif opt_level >= 2: assert 'function _main(){' in generated, 'Should be whitespace-minified'
 
         # emcc -s RELOOP=1 src.cpp ==> should pass -s to emscripten.py. --typed-arrays is a convenient alias for -s USE_TYPED_ARRAYS
         for params, test, text in [
-          (['-s', 'ASM_JS=1', '-O2'], lambda generated: 'var i1 = 0' in generated, 'registerize is run by default in -O2'),
-          (['-s', 'ASM_JS=1', '-O2', '-g'], lambda generated: 'var i1 = 0' not in generated, 'registerize is cancelled by -g'),
+          (['-s', 'ASM_JS=1', '-O2'], lambda generated: 'var b=0' in generated and not 'function _main' in generated, 'registerize/minify is run by default in -O2'),
+          (['-s', 'ASM_JS=1', '-O2', '--minify', '0'], lambda generated: 'var b = 0' in generated and not 'function _main' in generated, 'minify is cancelled, but not registerize'),
+          (['-s', 'ASM_JS=1', '-O2', '-g'], lambda generated: 'var b=0' not in generated and 'var b = 0' not in generated and 'function _main' in generated, 'registerize/minify is cancelled by -g'),
           (['-s', 'INLINING_LIMIT=0'], lambda generated: 'function _dump' in generated, 'no inlining without opts'),
           (['-O3', '-s', 'INLINING_LIMIT=0', '--closure', '0'], lambda generated: 'function _dump' not in generated, 'lto/inlining'),
           (['-Os', '--llvm-lto', '1'], lambda generated: 'function _dump' in generated, '-Os disables inlining'),
@@ -8926,6 +8931,32 @@ f.close()
         ''')
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'test.cpp'), '-s', 'UNALIGNED_MEMORY=1']).communicate()
       self.assertContained('testString = Hello, World!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
+    def test_asm_minify(self):
+      def test(args):
+        Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_loop_malloc.cpp')] + args).communicate()
+        self.assertContained('hello, world!', run_js(self.in_dir('a.out.js')))
+        return open(self.in_dir('a.out.js')).read()
+
+      src = test([])
+      assert 'function _malloc' in src
+
+      src = test(['-O2', '-s', 'ASM_JS=1'])
+      normal_size = len(src)
+      print 'normal', normal_size
+      assert 'function _malloc' not in src
+
+      src = test(['-O2', '-s', 'ASM_JS=1', '--minify', '0'])
+      unminified_size = len(src)
+      print 'unminified', unminified_size
+      assert unminified_size > normal_size
+      assert 'function _malloc' not in src
+
+      src = test(['-O2', '-s', 'ASM_JS=1', '-g'])
+      debug_size = len(src)
+      print 'debug', debug_size
+      assert debug_size > unminified_size
+      assert 'function _malloc' in src
 
     def test_l_link(self):
       # Linking with -lLIBNAME and -L/DIRNAME should work
@@ -9639,6 +9670,8 @@ f.close()
          ['asm', 'eliminate']),
         (path_from_root('tools', 'test-js-optimizer-asm-regs.js'), open(path_from_root('tools', 'test-js-optimizer-asm-regs-output.js')).read(),
          ['asm', 'registerize']),
+        (path_from_root('tools', 'test-js-optimizer-asm-regs-min.js'), open(path_from_root('tools', 'test-js-optimizer-asm-regs-min-output.js')).read(),
+         ['asm', 'registerize']),
         (path_from_root('tools', 'test-js-optimizer-asm-pre.js'), open(path_from_root('tools', 'test-js-optimizer-asm-pre-output.js')).read(),
          ['asm', 'simplifyExpressionsPre']),
         (path_from_root('tools', 'test-js-optimizer-asm-last.js'), open(path_from_root('tools', 'test-js-optimizer-asm-last-output.js')).read(),
@@ -9660,8 +9693,8 @@ f.close()
       try:
         os.environ['EMCC_DEBUG'] = '1'
         for asm, linkable, chunks, js_chunks in [
-            (0, 0, 3, 2), (0, 1, 4, 4),
-            (1, 0, 3, 2), (1, 1, 4, 5)
+            (0, 0, 3, 2), (0, 1, 3, 4),
+            (1, 0, 3, 2), (1, 1, 3, 4)
           ]:
           print asm, linkable, chunks, js_chunks
           output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O1', '-s', 'LINKABLE=%d' % linkable, '-s', 'ASM_JS=%d' % asm], stdout=PIPE, stderr=PIPE).communicate()

@@ -332,13 +332,11 @@ Options that are modified or new in %s include:
                            output HTML but with suffix .data.compress
 
   --minify <on>            0: Do not minify the generated JavaScript's
-                              whitespace (default if closure compiler
-                              will not be run)
+                              whitespace (default in -O0, -O1, or if
+                              -g is used)
                            1: Minify the generated JavaScript's
-                              whitespace (default if closure compiler
-                              will be run). Note that this by itself
-                              will not minify the code (closure does
-                              that)
+                              whitespace (default in -O2+, assuming
+                              -g is not used)
 
   --split <size>           Splits the resulting javascript file into pieces
                            to ease debugging. This option only works if
@@ -983,7 +981,7 @@ try:
     closure = False
 
   if minify_whitespace is None:
-    minify_whitespace = closure # if closure is run, minify whitespace
+    minify_whitespace = opt_level >= 2 and not keep_js_debug
 
   ## Compile source code to bitcode
 
@@ -1367,11 +1365,10 @@ try:
 
   flush_js_optimizer_queue()
 
-  if not minify_whitespace:
-    # Remove some trivial whitespace
-    src = open(final).read()
-    src = re.sub(r'\n+[ \n]*\n+', '\n', src)
-    open(final, 'w').write(src)
+  # Remove some trivial whitespace # TODO: do not run when compress has already been done on all parts of the code
+  src = open(final).read()
+  src = re.sub(r'\n+[ \n]*\n+', '\n', src)
+  open(final, 'w').write(src)
 
   # If we were asked to also generate HTML, do that
   if final_suffix == 'html':

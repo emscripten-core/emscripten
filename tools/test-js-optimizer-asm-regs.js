@@ -41,5 +41,9 @@ function retf() {
   }
   // missing final return, need it as a float
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "_doit", "rett", "ret2t", "retf"]
+function stackRestore(top) {
+  top = top|0;
+  STACKTOP = top;
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "_doit", "rett", "ret2t", "retf", "stackRestore"]
 

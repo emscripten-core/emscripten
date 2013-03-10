@@ -38,4 +38,8 @@ function retf() {
   }
   return +0;
 }
+function stackRestore(i1) {
+  i1 = i1 | 0;
+  STACKTOP = i1;
+}
 
