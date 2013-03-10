@@ -5029,6 +5029,8 @@ def process(filename):
       self.do_run(src, re.sub(r'(^|\n)\s+', r'\1', expected))
 
     def test_strtod(self):
+      if self.emcc_args is None: return self.skip('needs emcc for libc')
+
       src = r'''
         #include <stdio.h>
         #include <stdlib.h>
@@ -5372,6 +5374,8 @@ at function.:blag
 ''')
 
     def test_sscanf(self):
+      if self.emcc_args is None: return self.skip('needs emcc for libc')
+
       src = r'''
         #include <stdio.h>
         #include <string.h>
