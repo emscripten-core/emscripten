@@ -100,6 +100,7 @@ def run_on_chunk(command):
   f = open(filename, 'w')
   f.write(output)
   f.close()
+  if DEBUG: print >> sys.stderr, '.'
   return filename
 
 def run_on_js(filename, passes, js_engine, jcache):

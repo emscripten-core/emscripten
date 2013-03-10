@@ -33,7 +33,7 @@ NUM_CHUNKS_PER_CORE = 1.25
 MIN_CHUNK_SIZE = 1024*1024
 MAX_CHUNK_SIZE = float(os.environ.get('EMSCRIPT_MAX_CHUNK_SIZE') or 'inf') # configuring this is just for debugging purposes
 
-def process_funcs((i, funcs, meta, settings_file, compiler, forwarded_file, libraries, compiler_engine, temp_files)):
+def process_funcs((i, funcs, meta, settings_file, compiler, forwarded_file, libraries, compiler_engine, temp_files, DEBUG)):
   ll = ''.join(funcs) + '\n' + meta
   funcs_file = temp_files.get('.func_%d.ll' % i).name
   open(funcs_file, 'w').write(ll)
@@ -44,6 +44,7 @@ def process_funcs((i, funcs, meta, settings_file, compiler, forwarded_file, libr
     stdout=subprocess.PIPE,
     cwd=path_from_root('src'))
   tempfiles.try_delete(funcs_file)
+  if DEBUG: print >> sys.stderr, '.'
   return out
 
 def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
@@ -213,7 +214,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     if DEBUG: print >> sys.stderr, '  emscript: phase 2 working on %d chunks %s (intended chunk size: %.2f MB, meta: %.2f MB, forwarded: %.2f MB, total: %.2f MB)' % (len(chunks), ('using %d cores' % cores) if len(chunks) > 1 else '', chunk_size/(1024*1024.), len(meta)/(1024*1024.), len(forwarded_data)/(1024*1024.), total_ll_size/(1024*1024.))
 
     commands = [
-      (i, chunk, meta, settings_file, compiler, forwarded_file, libraries, compiler_engine, temp_files)
+      (i, chunk, meta, settings_file, compiler, forwarded_file, libraries, compiler_engine, temp_files, DEBUG)
       for i, chunk in enumerate(chunks)
     ]
 
