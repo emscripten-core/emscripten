@@ -4271,6 +4271,8 @@ The current type of b is: 9
       self.do_run(src, 'ok.');
 
     def test_getopt(self):
+        if self.emcc_args is None: return self.skip('needs emcc for libc')
+
         src = '''
           #pragma clang diagnostic ignored "-Winvalid-pp-token"
           #include <unistd.h>
@@ -4319,6 +4321,8 @@ The current type of b is: 9
         self.do_run(src, 'flags=1; tfnd=1; optind=4\nname argument = foobar', args=['-t', '12', '-n', 'foobar'])
 
     def test_getopt_long(self):
+        if self.emcc_args is None: return self.skip('needs emcc for libc')
+
         src = '''
           #pragma clang diagnostic ignored "-Winvalid-pp-token"
           #pragma clang diagnostic ignored "-Wdeprecated-writable-strings"
