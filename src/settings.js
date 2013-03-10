@@ -332,6 +332,14 @@ var ASM_JS = 0; // If 1, generate code in asm.js format. XXX This is highly expe
                 // and will not work on most codebases yet. It is NOT recommended that you
                 // try this yet.
 
+var PGO = 0; // Enables profile-guided optimization in the form of runtime checks for
+             // which functions are actually called. Emits a list during shutdown that you
+             // can pass to DEAD_FUNCTIONS (you can also emit the list manually by
+             // calling PGOMonitor.dump());
+var DEAD_FUNCTIONS = []; // A list of functions that no code will be emitted for, and
+                         // a runtime abort will happen if they are called
+                         // TODO: options to lazily load such functions
+
 var EXPLICIT_ZEXT = 0; // If 1, generate an explicit conversion of zext i1 to i32, using ?:
 
 var NECESSARY_BLOCKADDRS = []; // List of (function, block) for all block addresses that are taken.

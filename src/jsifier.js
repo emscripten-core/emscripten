@@ -600,6 +600,10 @@ function JSify(data, functionsOnly, givenFunctions) {
       
       func.JS += 'function ' + func.ident + '(' + paramIdents.join(', ') + ') {\n';
 
+      if (PGO) {
+        func.JS += '  PGOMonitor.called["' + func.ident + '"] = 1;\n';
+      }
+
       if (ASM_JS) {
         // spell out argument types
         func.params.forEach(function(param) {
@@ -1587,11 +1591,17 @@ function JSify(data, functionsOnly, givenFunctions) {
 
     var shellParts = read(shellFile).split('{{BODY}}');
     print(shellParts[1]);
-    // Print out some useful metadata (for additional optimizations later, like the eliminator)
-    if (EMIT_GENERATED_FUNCTIONS) {
-      print('// EMSCRIPTEN_GENERATED_FUNCTIONS: ' + JSON.stringify(keys(Functions.implementedFunctions).filter(function(func) {
+    // Print out some useful metadata
+    if (EMIT_GENERATED_FUNCTIONS || PGO) {
+      var generatedFunctions = JSON.stringify(keys(Functions.implementedFunctions).filter(function(func) {
         return IGNORED_FUNCTIONS.indexOf(func.ident) < 0;
-      })) + '\n');
+      }));
+      if (PGO) {
+        print('PGOMonitor.allGenerated = ' + generatedFunctions + ';\nremoveRunDependency("pgo");\n');
+      }
+      if (EMIT_GENERATED_FUNCTIONS) {
+        print('// EMSCRIPTEN_GENERATED_FUNCTIONS: ' + generatedFunctions + '\n');
+      }
     }
 
     PassManager.serialize();

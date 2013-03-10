@@ -7672,6 +7672,50 @@ def process(filename):
 
       self.do_run(src, '*\nnumber,5\nnumber,3.14\nstring,hello world\n12\nundefined\n14.56\nundefined\ncheez\nundefined\narr-ay\nundefined\nmore\nnumber,10\n650\nnumber,21\n*\natr\n10\nbret\n53\n*\nstack is ok.\n', post_build=post)
 
+    def test_pgo(self):
+      if Settings.ASM_JS: return self.skip('PGO does not work in asm mode')
+
+      src = r'''
+        #include <stdio.h>
+        extern "C" {
+        int used(int x) {
+          if (x == 0) return -1;
+          return used(x/3) + used(x/17) + x%5;
+        }
+        int unused(int x) {
+          if (x == 0) return -1;
+          return unused(x/4) + unused(x/23) + x%7;
+        }
+        }
+        int main(int argc, char **argv) {
+          printf("*%d*\n", argc == 3 ? unused(argv[0][0] + 1024) : used(argc + 1555));
+          return 0;
+        }
+      '''
+
+      def test(expected, args=[], no_build=False):
+        self.do_run(src, expected, args=args, no_build=no_build)
+        return open(self.in_dir('src.cpp.o.js')).read()
+
+      # Sanity check that it works and the dead function is emitted
+      js = test('*9*')
+      assert 'function _unused(' in js
+
+      # Run with PGO, see that unused is true to its name
+      Settings.PGO = 1
+      test("*9*\n-s DEAD_FUNCTIONS='[\"_unused\"]'")
+      Settings.PGO = 0
+
+      # Kill off the dead function, still works and it is not emitted
+      Settings.DEAD_FUNCTIONS = ['_unused']
+      js = test('*9*')
+      assert 'function _unused(' not in js
+
+      # Run the same code with argc that uses the dead function, see abort
+      test('ReferenceError: _unused is not defined', args=['a', 'b'], no_build=True)
+
+      # TODO: function pointers
+
     def test_scriptaclass(self):
         if self.emcc_args is None: return self.skip('requires emcc')
         if Settings.ASM_JS: return self.skip('asm does not bindings generator yet')

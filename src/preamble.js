@@ -848,5 +848,22 @@ Module['removeRunDependency'] = removeRunDependency;
 Module["preloadedImages"] = {}; // maps url to image data
 Module["preloadedAudios"] = {}; // maps url to audio data
 
+#if PGO
+var PGOMonitor = {
+  called: {},
+  dump: function() {
+    var dead = [];
+    for (var i = 0; i < this.allGenerated.length; i++) {
+      var func = this.allGenerated[i];
+      if (!this.called[func]) dead.push(func);
+    }
+    Module.print('-s DEAD_FUNCTIONS=\'' + JSON.stringify(dead) + '\'\n');
+  }
+};
+__ATEXIT__.push({ func: function() { PGOMonitor.dump() } });
+if (!Module.preRun) Module.preRun = [];
+Module.preRun.push(function() { addRunDependency('pgo') });
+#endif
+
 // === Body ===
 
