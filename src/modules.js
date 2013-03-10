@@ -315,7 +315,7 @@ var Functions = {
         }
         if (ASM_JS) {
           var curr = table[i];
-          if (curr && !Functions.implementedFunctions[curr]) {
+          if (curr && curr != '0' && !Functions.implementedFunctions[curr]) {
             // This is a library function, we can't just put it in the function table, need a wrapper
             if (!wrapped[curr]) {
               var args = '', arg_coercions = '', call = curr + '(', retPre = '', retPost = '';

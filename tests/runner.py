@@ -9039,6 +9039,22 @@ f.close()
       assert debug_size > unminified_size
       assert 'function _malloc' in src
 
+    def test_asm_pgo(self):
+      Popen([PYTHON, EMXX, '-O2', '-s', 'ASM_JS=1', path_from_root('tests', 'hello_libcxx.cpp'), '-o', 'normal.js']).communicate()
+      self.assertContained('hello, world!', run_js(self.in_dir('normal.js')))
+
+      Popen([PYTHON, EMXX, '-O2', '-s', 'PGO=1', path_from_root('tests', 'hello_libcxx.cpp'), '-o', 'pgo.js']).communicate()
+      pgo_output = run_js(self.in_dir('pgo.js'))
+      self.assertContained('hello, world!', pgo_output)
+
+      open('pgo_data', 'w').write(pgo_output.split('\n')[1])
+      Popen([PYTHON, EMXX, '-O2', '-s', 'ASM_JS=1', path_from_root('tests', 'hello_libcxx.cpp'), '-o', 'pgoed.js', '@pgo_data']).communicate()
+      self.assertContained('hello, world!', run_js(self.in_dir('pgoed.js')))
+
+      before = len(open('normal.js').read())
+      after = len(open('pgoed.js').read())
+      assert after < 0.66 * before, [before, after] # expect a big size reduction
+
     def test_l_link(self):
       # Linking with -lLIBNAME and -L/DIRNAME should work
 
