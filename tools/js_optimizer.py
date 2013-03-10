@@ -118,7 +118,8 @@ def run_on_js(filename, passes, js_engine, jcache):
   suffix_start = js.find(suffix_marker)
   suffix = ''
   if suffix_start >= 0:
-    suffix = js[suffix_start:js.find('\n', suffix_start)] + '\n'
+    suffix_end = js.find('\n', suffix_start)
+    suffix = js[suffix_start:suffix_end] + '\n'
     # if there is metadata, we will run only on the generated functions. If there isn't, we will run on everything.
     generated = set(eval(suffix[len(suffix_marker)+1:]))
 
@@ -178,7 +179,10 @@ EMSCRIPTEN_FUNCS();
       #if DEBUG: print >> sys.stderr, 'minify info:', minify_info
     # remove suffix if no longer needed
     if 'last' in passes:
-      post = post.split(suffix_marker)[0]
+      suffix_start = post.find(suffix_marker)
+      suffix_end = post.find('\n', suffix_start)
+      post = post[:suffix_start] + post[suffix_end:]
+
   else:
     pre = ''
     post = ''
