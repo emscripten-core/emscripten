@@ -220,12 +220,15 @@ function traverseGenerated(ast, pre, post, stack) {
 
 function traverseGeneratedFunctions(ast, callback) {
   assert(generatedFunctions);
-  traverse(ast, function(node) {
-    if (node[0] == 'defun') {
-      callback(node);
-      return null;
+  if (ast[0] == 'toplevel') {
+    var stats = ast[1];
+    for (var i = 0; i < stats.length; i++) {
+      var curr = stats[i];
+      if (curr[0] == 'defun') callback(curr);
     }
-  });
+  } else if (ast[0] == 'defun') {
+    callback(ast);
+  }
 }
 
 // Walk the ast in a simple way, with an understanding of which JS variables are defined)
