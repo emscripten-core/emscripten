@@ -540,12 +540,20 @@ function simplifyExpressionsPre(ast) {
     });
   }
 
-  function addFinalReturns(ast) {
+  function asmOpts(ast) {
+    // 1. Add final returns when necessary
+    // 2. Remove unneeded coercions on function calls that have no targets (eliminator removed it)
     traverseGeneratedFunctions(ast, function(fun) {
       var returnType = null;
       traverse(fun, function(node, type) {
         if (type == 'return' && node[1]) {
           returnType = detectAsmCoercion(node[1]);
+        } else if (type == 'stat') {
+          var inner = node[1];
+          if ((inner[0] == 'binary' && inner[1] in ASSOCIATIVE_BINARIES && inner[2][0] == 'call' && inner[3][0] == 'num') ||
+              (inner[0] == 'unary-prefix' && inner[1] == '+' && inner[2][0] == 'call')) {
+            node[1] = inner[2];
+          }
         }
       });
       // Add a final return if one is missing.
@@ -564,7 +572,7 @@ function simplifyExpressionsPre(ast) {
   simplifyBitops(ast);
   joinAdditions(ast);
   // simplifyZeroComp(ast); TODO: investigate performance
-  if (asm) addFinalReturns(ast);
+  if (asm) asmOpts(ast);
 }
 
 // In typed arrays mode 2, we can have

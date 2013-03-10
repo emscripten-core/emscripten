@@ -6,6 +6,8 @@ function a() {
   f(347 & 12);
   HEAP[4096 >> 2] = 5;
   HEAP[(4096 & 8191) >> 2] = 5;
+  whee(12, 13) | 0;
+  +whee(12, 13);
 }
 function b($this, $__n) {
   $this = $this | 0;
