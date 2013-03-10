@@ -972,6 +972,7 @@ try:
     if shared.Settings.CORRECT_OVERFLOWS != 1: 
       print >> sys.stderr, 'emcc: warning: setting CORRECT_OVERFLOWS to 1 for asm.js code generation'
       shared.Settings.CORRECT_OVERFLOWS = 1
+    assert not shared.Settings.PGO, 'cannot run PGO in ASM_JS mode'
 
   if shared.Settings.CORRECT_SIGNS >= 2 or shared.Settings.CORRECT_OVERFLOWS >= 2 or shared.Settings.CORRECT_ROUNDINGS >= 2:
     keep_llvm_debug = True # must keep debug info to do line-by-line operations 
