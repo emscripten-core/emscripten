@@ -7675,7 +7675,32 @@ def process(filename):
     def test_pgo(self):
       if Settings.ASM_JS: return self.skip('PGO does not work in asm mode')
 
-      src = r'''
+      def run_all(name, src):
+        print name
+        def test(expected, args=[], no_build=False):
+          self.do_run(src, expected, args=args, no_build=no_build)
+          return open(self.in_dir('src.cpp.o.js')).read()
+
+        # Sanity check that it works and the dead function is emitted
+        js = test('*9*')
+        assert 'function _unused(' in js
+
+        # Run with PGO, see that unused is true to its name
+        Settings.PGO = 1
+        test("*9*\n-s DEAD_FUNCTIONS='[\"_unused\"]'")
+        Settings.PGO = 0
+
+        # Kill off the dead function, still works and it is not emitted
+        Settings.DEAD_FUNCTIONS = ['_unused']
+        js = test('*9*')
+        assert 'function _unused(' not in js
+        Settings.DEAD_FUNCTIONS = []
+
+        # Run the same code with argc that uses the dead function, see abort
+        test(('ReferenceError: _unused is not defined', 'is not a function'), args=['a', 'b'], no_build=True)
+
+      # Normal stuff
+      run_all('normal', r'''
         #include <stdio.h>
         extern "C" {
         int used(int x) {
@@ -7691,30 +7716,31 @@ def process(filename):
           printf("*%d*\n", argc == 3 ? unused(argv[0][0] + 1024) : used(argc + 1555));
           return 0;
         }
-      '''
+      ''')
 
-      def test(expected, args=[], no_build=False):
-        self.do_run(src, expected, args=args, no_build=no_build)
-        return open(self.in_dir('src.cpp.o.js')).read()
-
-      # Sanity check that it works and the dead function is emitted
-      js = test('*9*')
-      assert 'function _unused(' in js
-
-      # Run with PGO, see that unused is true to its name
-      Settings.PGO = 1
-      test("*9*\n-s DEAD_FUNCTIONS='[\"_unused\"]'")
-      Settings.PGO = 0
-
-      # Kill off the dead function, still works and it is not emitted
-      Settings.DEAD_FUNCTIONS = ['_unused']
-      js = test('*9*')
-      assert 'function _unused(' not in js
-
-      # Run the same code with argc that uses the dead function, see abort
-      test('ReferenceError: _unused is not defined', args=['a', 'b'], no_build=True)
-
-      # TODO: function pointers
+      # Call by function pointer
+      run_all('function pointers', r'''
+        #include <stdio.h>
+        extern "C" {
+        int used(int x) {
+          if (x == 0) return -1;
+          return used(x/3) + used(x/17) + x%5;
+        }
+        int unused(int x) {
+          if (x == 0) return -1;
+          return unused(x/4) + unused(x/23) + x%7;
+        }
+        }
+        typedef int (*ii)(int);
+        int main(int argc, char **argv) {
+          ii pointers[256];
+          for (int i = 0; i < 256; i++) {
+            pointers[i] = (i == 3) ? unused : used;
+          }
+          printf("*%d*\n", pointers[argc](argc + 1555));
+          return 0;
+        }
+      ''')
 
     def test_scriptaclass(self):
         if self.emcc_args is None: return self.skip('requires emcc')
