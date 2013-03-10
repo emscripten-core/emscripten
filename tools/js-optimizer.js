@@ -540,9 +540,31 @@ function simplifyExpressionsPre(ast) {
     });
   }
 
+  function addFinalReturns(ast) {
+    traverseGeneratedFunctions(ast, function(fun) {
+      var returnType = null;
+      traverse(fun, function(node, type) {
+        if (type == 'return' && node[1]) {
+          returnType = detectAsmCoercion(node[1]);
+        }
+      });
+      // Add a final return if one is missing.
+      if (returnType !== null) {
+        var stats = getStatements(fun);
+        var last = stats[stats.length-1];
+        if (last[0] != 'return') {
+          var returnValue = ['num', 0];
+          if (returnType == ASM_DOUBLE) returnValue = ['unary-prefix', '+', returnValue];
+          stats.push(['return', returnValue]);
+        }
+      }
+    });
+  }
+
   simplifyBitops(ast);
   joinAdditions(ast);
   // simplifyZeroComp(ast); TODO: investigate performance
+  if (asm) addFinalReturns(ast);
 }
 
 // In typed arrays mode 2, we can have
@@ -1430,7 +1452,6 @@ function registerize(ast) {
     // We also mark local variables - i.e., having a var definition
     var localVars = {};
     var hasSwitch = false; // we cannot optimize variables if there is a switch
-    var returnType = null; // for asm
     traverse(fun, function(node, type) {
       if (type == 'var') {
         node[1].forEach(function(defined) { localVars[defined[0]] = 1 });
@@ -1442,8 +1463,6 @@ function registerize(ast) {
         }
       } else if (type == 'switch') {
         hasSwitch = true;
-      } else if (asm && type == 'return' && node[1]) {
-        returnType = detectAsmCoercion(node[1]);
       }
     });
     vacuum(fun);
@@ -1685,17 +1704,6 @@ function registerize(ast) {
         }
       }
       denormalizeAsm(fun, finalAsmData);
-      // Add a final return if one is missing. This is not strictly a register operation, but
-      // this pass traverses the entire AST anyhow so adding it here is efficient.
-      if (returnType !== null) {
-        var stats = getStatements(fun);
-        var last = stats[stats.length-1];
-        if (last[0] != 'return') {
-          var returnValue = ['num', 0];
-          if (returnType == ASM_DOUBLE) returnValue = ['unary-prefix', '+', returnValue];
-          stats.push(['return', returnValue]);
-        }
-      }
     }
   });
 }
