@@ -20,7 +20,7 @@ CSMITH_CFLAGS = ['-I' + os.path.expanduser('~/Dev/csmith/runtime/')]
 
 filename = os.path.join(shared.CANONICAL_TEMP_DIR, 'fuzzcode')
 
-shared.DEFAULT_TIMEOUT = 1
+shared.DEFAULT_TIMEOUT = 5
 
 tried = 0
 
