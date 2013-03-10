@@ -114,7 +114,13 @@ while 1:
       break
 
     # asm.js testing
-    assert 'warning: Successfully compiled asm.js code' in js2, 'must validate'
+    if 'warning: Successfully compiled asm.js code' not in js2:
+      print "ODIN VALIDATION BUG"
+      notes['embug'] += 1
+      fails += 1
+      shutil.copyfile('fuzzcode.c', 'newfail%d.c' % fails)
+      continue
+
     js2 = js2.replace('\nwarning: Successfully compiled asm.js code\n', '')
 
     assert js2 == correct1 or js2 == correct2, ''.join([a.rstrip()+'\n' for a in difflib.unified_diff(correct1.split('\n'), js2.split('\n'), fromfile='expected', tofile='actual')]) + 'ODIN FAIL'
