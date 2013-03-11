@@ -11000,11 +11000,12 @@ elif 'browser' in str(sys.argv):
       self.run_browser('something.html', 'You should see animating gears.', '/report_result?0')
 
     def test_glgears_animation(self):
-      for full_es2 in [0, 1]:
+      es2_suffix = ['', '_full', '_full_944']
+      for full_es2 in [0, 1, 2]:
         for emulation in [0, 1]:
           if full_es2 and emulation: continue
           print full_es2, emulation
-          Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_gles%s.c' % ('' if not full_es2 else '_full')), '-o', 'something.html',
+          Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_gles%s.c' % es2_suffix[full_es2]), '-o', 'something.html',
                                                '-DHAVE_BUILTIN_SINCOS', '-s', 'GL_TESTING=1',
                                                '--shell-file', path_from_root('tests', 'hello_world_gles_shell.html')] +
                 (['-s', 'FORCE_GL_EMULATION=1'] if emulation else []) +
