@@ -276,7 +276,7 @@ var LibraryGL = {
       // TODO: initial pass to detect ranges we need to upload, might not need an upload per attrib
       for (var i = 0; i < GL.maxVertexAttribs; ++i) {
         var cb = GL.clientBuffers[i];
-        if (!cb.enabled) continue;
+        if (!cb.clientside || !cb.enabled) continue;
 
         GL.resetBufferBinding = true;
 
@@ -314,7 +314,7 @@ var LibraryGL = {
       GL.maxVertexAttribs = Module.ctx.getParameter(Module.ctx.MAX_VERTEX_ATTRIBS);
 #if FULL_ES2
       for (var i = 0; i < GL.maxVertexAttribs; i++) {
-        GL.clientBuffers[i] = { enabled: false, size: 0, type: 0, normalized: 0, stride: 0, ptr: 0 };
+        GL.clientBuffers[i] = { enabled: false, clientside: false, size: 0, type: 0, normalized: 0, stride: 0, ptr: 0 };
       }
 
       GL.generateTempBuffers();
@@ -2888,9 +2888,10 @@ var LibraryGL = {
       cb.normalized = normalized;
       cb.stride = stride;
       cb.ptr = ptr;
+      cb.clientside = true;
       return;
     }
-    cb.enabled = false;
+    cb.clientside = false;
 #endif
     Module.ctx.vertexAttribPointer(index, size, type, normalized, stride, ptr);
   },
