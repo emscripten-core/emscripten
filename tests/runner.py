@@ -9737,6 +9737,22 @@ f.close()
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '--pre-js', 'pre2.js']).communicate()
       self.assertContained('prepre\npre-run\nhello from main\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+    def test_save_bc(self):
+      for save in [0, 1]:
+        self.clear()
+        Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_loop_malloc.cpp')] + ([] if not save else ['--save-bc', self.in_dir('my_bitcode.bc')])).communicate()
+        assert 'hello, world!' in run_js(self.in_dir('a.out.js'))
+        assert os.path.exists(self.in_dir('my_bitcode.bc')) == save
+        if save:
+          try_delete('a.out.js')
+          Building.llvm_dis(self.in_dir('my_bitcode.bc'), self.in_dir('my_ll.ll'))
+          try:
+            os.environ['EMCC_LEAVE_INPUTS_RAW'] = '1'
+            Popen([PYTHON, EMCC, 'my_ll.ll', '-o', 'two.js']).communicate()
+            assert 'hello, world!' in run_js(self.in_dir('two.js'))
+          finally:
+            del os.environ['EMCC_LEAVE_INPUTS_RAW']
+
     def test_fix_closure(self):
       input = path_from_root('tests', 'test-fix-closure.js')
       expected = path_from_root('tests', 'test-fix-closure.out.js')

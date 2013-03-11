@@ -449,6 +449,13 @@ Options that are modified or new in %s include:
                            the bootstrapped relooper. After the cache
                            is cleared, this process will exit.
 
+  --save-bc PATH           When compiling to JavaScript or HTML, this
+                           option will save a copy of the bitcode to
+                           the specified path. The bitcode will include
+                           all files being linked, including standard
+                           libraries, and after any link-time optimizations
+                           (if any).
+
 The target file, if specified (-o <target>), defines what will
 be generated:
 
@@ -694,6 +701,8 @@ try:
   keep_js_debug = False
   bind = False
   jcache = False
+  save_bc = False
+
   if use_cxx:
     default_cxx_std = '-std=c++03' # Enforce a consistent C++ standard when compiling .cpp files, if user does not specify one on the cmdline.
   else:
@@ -821,6 +830,11 @@ try:
       print >> sys.stderr, 'emcc: clearing cache'
       shared.Cache.erase()
       sys.exit(0)
+    elif newargs[i] == '--save-bc':
+      check_bad_eq(newargs[i])
+      save_bc = newargs[i+1]
+      newargs[i] = ''
+      newargs[i+1] = ''
     elif newargs[i].startswith(('-I/', '-L/')):
       if not absolute_warning_shown:
         print >> sys.stderr, 'emcc: warning: -I or -L of an absolute path encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript)' # Of course an absolute path to a non-system-specific library or header is fine, and you can ignore this warning. The danger are system headers that are e.g. x86 specific and nonportable. The emscripten bundled headers are modified to be portable, local system ones are generally not
@@ -1237,6 +1251,9 @@ try:
         link_opts += shared.Building.get_safe_internalize() + ['-globaldce']
       shared.Building.llvm_opt(in_temp(target_basename + '.bc'), link_opts)
       if DEBUG: save_intermediate('linktime', 'bc')
+
+  if save_bc:
+    shutil.copyfile(final, save_bc)
 
   # Prepare .ll for Emscripten
   if not LEAVE_INPUTS_RAW:
