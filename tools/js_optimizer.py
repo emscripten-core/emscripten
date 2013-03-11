@@ -34,7 +34,7 @@ class Minifier:
 
     # Create list of valid short names
 
-    MAX_NAMES = 6000#0
+    MAX_NAMES = 60000
     INVALID_2 = set(['do', 'if', 'in'])
     INVALID_3 = set(['for', 'new', 'try', 'var', 'env'])
 
