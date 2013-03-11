@@ -682,24 +682,22 @@ namespace emscripten {
     public:
         class_() = delete;
 
+        template<typename = typename std::enable_if<!internal::is_ptr<ClassType>::value>::type>
         explicit class_(const char* name) {
             using namespace internal;
 
             BaseSpecifier::template verify<ClassType>();
 
-            if (is_ptr<ClassType>::value) {
-            } else {
-                _embind_register_class(
-                    TypeID<ClassType>::get(),
-                    TypeID<AllowedRawPointer<ClassType>>::get(),
-                    TypeID<AllowedRawPointer<const ClassType>>::get(),
-                    BaseSpecifier::get(),
-                    BaseSpecifier::template getUpcaster<ClassType>(),
-                    BaseSpecifier::template getDowncaster<ClassType>(),
-                    std::is_polymorphic<ClassType>::value,
-                    name,
-                    reinterpret_cast<GenericFunction>(&raw_destructor<ClassType>));
-            }
+            _embind_register_class(
+                TypeID<ClassType>::get(),
+                TypeID<AllowedRawPointer<ClassType>>::get(),
+                TypeID<AllowedRawPointer<const ClassType>>::get(),
+                BaseSpecifier::get(),
+                BaseSpecifier::template getUpcaster<ClassType>(),
+                BaseSpecifier::template getDowncaster<ClassType>(),
+                std::is_polymorphic<ClassType>::value,
+                name,
+                reinterpret_cast<GenericFunction>(&raw_destructor<ClassType>));
         }
 
         template<typename... ConstructorArgs, typename... Policies>
