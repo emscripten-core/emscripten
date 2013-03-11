@@ -408,7 +408,11 @@ var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
       receiving = ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm.' + s for s in exported_implemented_functions + function_tables])
     else:
       receiving = 'var _main = Module["_main"] = asm;'
+
     # finalize
+
+    if DEBUG: print >> sys.stderr, 'asm text sizes', len(funcs_js), len(asm_setup), len(asm_global_vars), len(asm_global_funcs), len(pre_tables), len('\n'.join(function_tables_impls)), len(function_tables_defs.replace('\n', '\n  ')), len(exports), len(the_global), len(sending), len(receiving)
+
     funcs_js = '''
 %s
 function asmPrintInt(x, y) {
