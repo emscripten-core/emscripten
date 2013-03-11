@@ -660,6 +660,23 @@ namespace emscripten {
         }
     };
 
+    template<typename PointerType>
+    struct ptr {
+        typedef PointerType pointer_type;
+    };
+
+    namespace internal {
+        template<typename T>
+        struct is_ptr {
+            enum { value = false };
+        };
+
+        template<typename T>
+        struct is_ptr<ptr<T>> {
+            enum { value = true };
+        };
+    };
+
     template<typename ClassType, typename BaseSpecifier = internal::NoBaseClass>
     class class_ {
     public:
@@ -670,16 +687,19 @@ namespace emscripten {
 
             BaseSpecifier::template verify<ClassType>();
 
-            _embind_register_class(
-                TypeID<ClassType>::get(),
-                TypeID<AllowedRawPointer<ClassType>>::get(),
-                TypeID<AllowedRawPointer<const ClassType>>::get(),
-                BaseSpecifier::get(),
-                BaseSpecifier::template getUpcaster<ClassType>(),
-                BaseSpecifier::template getDowncaster<ClassType>(),
-                std::is_polymorphic<ClassType>::value,
-                name,
-                reinterpret_cast<GenericFunction>(&raw_destructor<ClassType>));
+            if (is_ptr<ClassType>::value) {
+            } else {
+                _embind_register_class(
+                    TypeID<ClassType>::get(),
+                    TypeID<AllowedRawPointer<ClassType>>::get(),
+                    TypeID<AllowedRawPointer<const ClassType>>::get(),
+                    BaseSpecifier::get(),
+                    BaseSpecifier::template getUpcaster<ClassType>(),
+                    BaseSpecifier::template getDowncaster<ClassType>(),
+                    std::is_polymorphic<ClassType>::value,
+                    name,
+                    reinterpret_cast<GenericFunction>(&raw_destructor<ClassType>));
+            }
         }
 
         template<typename... ConstructorArgs, typename... Policies>
