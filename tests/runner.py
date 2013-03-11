@@ -7697,7 +7697,7 @@ def process(filename):
         Settings.DEAD_FUNCTIONS = []
 
         # Run the same code with argc that uses the dead function, see abort
-        test(('ReferenceError: _unused is not defined', 'is not a function'), args=['a', 'b'], no_build=True)
+        test(('abort', 'is not a function'), args=['a', 'b'], no_build=True)
 
       # Normal stuff
       run_all('normal', r'''
@@ -7741,6 +7741,33 @@ def process(filename):
           return 0;
         }
       ''')
+
+    def test_asm_pgo(self):
+      if not Settings.ASM_JS: return self.skip('this is a test for PGO for asm (NB: not *in* asm)')
+
+      src = open(path_from_root('tests', 'hello_libcxx.cpp')).read()
+      output = 'hello, world!'
+
+      self.do_run(src, output)
+      shutil.move(self.in_dir('src.cpp.o.js'), self.in_dir('normal.js'))
+
+      self.emcc_args = map(lambda x: 'ASM_JS=0' if x == 'ASM_JS=1' else x, self.emcc_args)
+      Settings.PGO = 1
+      self.do_run(src, output)
+      Settings.PGO = 0
+      self.emcc_args = map(lambda x: 'ASM_JS=1' if x == 'ASM_JS=0' else x, self.emcc_args)
+
+      shutil.move(self.in_dir('src.cpp.o.js'), self.in_dir('pgo.js'))
+      pgo_output = run_js(self.in_dir('pgo.js'))
+
+      open('pgo_data', 'w').write(pgo_output.split('\n')[1])
+      self.emcc_args += ['@pgo_data']
+      self.do_run(src, output)
+      shutil.move(self.in_dir('src.cpp.o.js'), self.in_dir('pgoed.js'))
+
+      before = len(open('normal.js').read())
+      after = len(open('pgoed.js').read())
+      assert after < 0.66 * before, [before, after] # expect a big size reduction
 
     def test_scriptaclass(self):
         if self.emcc_args is None: return self.skip('requires emcc')
@@ -9038,22 +9065,6 @@ f.close()
       print 'debug', debug_size
       assert debug_size > unminified_size
       assert 'function _malloc' in src
-
-    def test_asm_pgo(self):
-      Popen([PYTHON, EMXX, '-O2', '-s', 'ASM_JS=1', path_from_root('tests', 'hello_libcxx.cpp'), '-o', 'normal.js']).communicate()
-      self.assertContained('hello, world!', run_js(self.in_dir('normal.js')))
-
-      Popen([PYTHON, EMXX, '-O2', '-s', 'PGO=1', path_from_root('tests', 'hello_libcxx.cpp'), '-o', 'pgo.js']).communicate()
-      pgo_output = run_js(self.in_dir('pgo.js'))
-      self.assertContained('hello, world!', pgo_output)
-
-      open('pgo_data', 'w').write(pgo_output.split('\n')[1])
-      Popen([PYTHON, EMXX, '-O2', '-s', 'ASM_JS=1', path_from_root('tests', 'hello_libcxx.cpp'), '-o', 'pgoed.js', '@pgo_data']).communicate()
-      self.assertContained('hello, world!', run_js(self.in_dir('pgoed.js')))
-
-      before = len(open('normal.js').read())
-      after = len(open('pgoed.js').read())
-      assert after < 0.66 * before, [before, after] # expect a big size reduction
 
     def test_l_link(self):
       # Linking with -lLIBNAME and -L/DIRNAME should work

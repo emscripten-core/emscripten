@@ -1316,6 +1316,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     } else {
       callIdent = ident;
     }
+
     var args = [];
     var argsTypes = [];
     var varargs = [];
@@ -1416,6 +1417,12 @@ function JSify(data, functionsOnly, givenFunctions) {
     var returnType;
     if (byPointer || ASM_JS) {
       returnType = getReturnType(type);
+    }
+
+    if (callIdent in DEAD_FUNCTIONS) {
+      var ret = 'abort(7)';
+      if (ASM_JS) ret = asmCoercion(ret, returnType);
+      return ret;
     }
 
     if (byPointer) {
