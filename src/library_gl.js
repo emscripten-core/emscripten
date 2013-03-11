@@ -291,9 +291,9 @@ var LibraryGL = {
         } while (used.indexOf(buf) >= 0);
         used.push(buf);
         Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, buf);
-        Module.ctx.bufferData(Module.ctx.ARRAY_BUFFER,
-                              HEAPU8.subarray(cb.ptr, cb.ptr + size),
-                              Module.ctx.DYNAMIC_DRAW);
+        Module.ctx.bufferSubData(Module.ctx.ARRAY_BUFFER,
+                                 0,
+                                 HEAPU8.subarray(cb.ptr, cb.ptr + size));
         Module.ctx.vertexAttribPointer(i, cb.size, cb.type, cb.normalized, cb.stride, 0);
       }
     },
@@ -2939,9 +2939,9 @@ var LibraryGL = {
       var size = GL.calcBufLength(1, type, 0, count);
       buf = GL.tempIndexBuffers[GL.tempBufferIndexLookup[size]];
       Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, buf);
-      Module.ctx.bufferData(Module.ctx.ELEMENT_ARRAY_BUFFER,
-                            HEAPU8.subarray(indices, indices + size),
-                            Module.ctx.DYNAMIC_DRAW);
+      Module.ctx.bufferSubData(Module.ctx.ELEMENT_ARRAY_BUFFER,
+                               0,
+                               HEAPU8.subarray(indices, indices + size));
       // the index is now 0
       indices = 0;
     }
