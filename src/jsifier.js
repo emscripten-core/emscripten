@@ -1420,7 +1420,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
 
     if (callIdent in DEAD_FUNCTIONS) {
-      var ret = 'abort(7)';
+      var ret = 'abort(' + DEAD_FUNCTIONS[callIdent] + ')';
       if (ASM_JS) ret = asmCoercion(ret, returnType);
       return ret;
     }
