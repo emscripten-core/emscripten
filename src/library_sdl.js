@@ -35,6 +35,7 @@ var LibrarySDL = {
     mixerFormat: 0x8010, // AUDIO_S16LSB
     mixerNumChannels: 2,
     mixerChunkSize: 1024,
+    channelMinimumNumber: 0,
 
     GL: false, // Set to true if we call SDL_SetVideoMode with SDL_OPENGL, and if so, we do not create 2D canvases&contexts for blitting
                // Note that images loaded before SDL_SetVideoMode will not get this optimization
@@ -1235,7 +1236,6 @@ var LibrarySDL = {
 
   Mix_Init: function(flags) {
     if (!flags) return 0;
-    SDL.channelMinimumNumber = 0;
     return 8; /* MIX_INIT_OGG */
   },
   Mix_Quit: function(){},
