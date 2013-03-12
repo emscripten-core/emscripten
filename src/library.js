@@ -3129,7 +3129,6 @@ LibraryManager.library = {
       	}
       	
       	return char.charCodeAt(0);
-      	// return {{{ makeGetValue('_fgetc.ret', '0', 'i8', null, 1) }}};
       }
     }
   },
@@ -3533,7 +3532,6 @@ LibraryManager.library = {
     // int ungetc(int c, FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/ungetc.html
     if (FS.streams[stream]) {
-      // c = unSign(c & 0xFF);
       if (c<128) {
       	// shortcut for ASCII-7 characters
       	FS.streams[stream].ungotten.push(c);
@@ -3592,8 +3590,8 @@ LibraryManager.library = {
     // int sscanf(const char *restrict s, const char *restrict format, ... );
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/scanf.html
     var index = 0;
-    var js_str = Module.Pointer_stringify(s);
-    var get = function() { return js_str.charCodeAt(index++); };
+    var jsStr = Module.Pointer_stringify(s);
+    var get = function() { return jsStr.charCodeAt(index++); };
     var unget = function() { index--; };
     return __scanString(format, get, unget, varargs);
   },
