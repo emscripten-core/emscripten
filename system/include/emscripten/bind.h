@@ -557,20 +557,6 @@ namespace emscripten {
         }
     }
 
-    template<typename PointerType>
-    void smart_ptr(const char* name) {
-        using namespace internal;
-        typedef typename smart_ptr_trait<PointerType>::element_type PointeeType;
-        
-        _embind_register_smart_ptr(
-            TypeID<PointerType>::get(),
-            TypeID<PointeeType>::get(),
-            name,
-            reinterpret_cast<GenericFunction>(&raw_smart_pointer_constructor<PointerType>),
-            reinterpret_cast<GenericFunction>(&raw_destructor<PointerType>),
-            reinterpret_cast<GenericFunction>(&get_pointee<PointerType>));
-    };
-
     ////////////////////////////////////////////////////////////////////////////////
     // CLASSES
     ////////////////////////////////////////////////////////////////////////////////
@@ -700,6 +686,23 @@ namespace emscripten {
                 reinterpret_cast<GenericFunction>(&raw_destructor<ClassType>));
         }
 
+        template<typename PointerType>
+        class_& smart_ptr() {
+            using namespace internal;
+            typedef typename smart_ptr_trait<PointerType>::element_type PointeeType;
+        
+            // TODO: assert that PointeeType is identical to ClassType
+
+            _embind_register_smart_ptr(
+                TypeID<PointerType>::get(),
+                TypeID<PointeeType>::get(),
+                "SmartPtr", // TODO: generate unique name
+                reinterpret_cast<GenericFunction>(&raw_smart_pointer_constructor<PointerType>),
+                reinterpret_cast<GenericFunction>(&raw_destructor<PointerType>),
+                reinterpret_cast<GenericFunction>(&get_pointee<PointerType>));
+            return *this;
+        };
+
         template<typename... ConstructorArgs, typename... Policies>
         class_& constructor(Policies... policies) {
             return constructor(
@@ -725,8 +728,7 @@ namespace emscripten {
         class_& smart_ptr_constructor(SmartPtr (*factory)(Args...), Policies...) {
             using namespace internal;
 
-            // TODO: generate unique name
-            smart_ptr<SmartPtr>("SmartPtr");
+            smart_ptr<SmartPtr>();
 
             typename WithPolicies<Policies...>::template ArgTypeList<SmartPtr, Args...> args;
             _embind_register_class_constructor(
