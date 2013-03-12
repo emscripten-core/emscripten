@@ -11,7 +11,7 @@ SO_LFLAGS = $(SOLIB)
 EXT = html
 
 BINARIES = triangle listmodes mthello pong3d mtbench particles splitview \
-		   mipmaps gears boing heightmap
+		   mipmaps gears boing heightmap glfwsample
 ## wave
 
 all: $(BINARIES)
@@ -51,6 +51,9 @@ wave: wave.c
 
 heightmap: heightmap.c 
 	$(CC) $(CFLAGS) heightmap.c $(LFLAGS) -o $@.$(EXT)
+	
+glfwsample: glfwsample.c 
+	$(CC) $(CFLAGS) glfwsample.c $(LFLAGS) -o $@.$(EXT)
 
 clean:
 	rm -f $(BINARIES)
