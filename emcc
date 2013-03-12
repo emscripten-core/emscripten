@@ -215,6 +215,20 @@ Options that are modified or new in %s include:
                            (without the external "s in either of those,
                            you would get an error)
 
+                           You can also specify a file from which the
+                           value would be read, for example,
+
+                            -s DEAD_FUNCTIONS=@/path/to/file
+
+                           The contents of /path/to/file will be read,
+                           JSON.parsed and set into DEAD_FUNCTIONS (so
+                           the file could contain
+
+                            ["_func1", "func2"]
+
+                           ). Note that the path must be absolute, not
+                           relative.
+
   -g                       Use debug info. Note that you need this during
                            the last compilation phase from bitcode to
                            JavaScript, or else we will remove it by
@@ -973,6 +987,8 @@ try:
   # Apply -s settings in newargs here (after optimization levels, so they can override them)
   for change in settings_changes:
     key, value = change.split('=')
+    if value[0] == '@':
+      value = '"' + value + '"'
     exec('shared.Settings.' + key + ' = ' + value)
 
   # Apply effects from settings

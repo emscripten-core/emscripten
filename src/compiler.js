@@ -141,8 +141,13 @@ if (phase == 'pre') {
 
 if (settings_file) {
   var settings = JSON.parse(read(settings_file));
-  for (setting in settings) {
-    eval(setting + ' = ' + JSON.stringify(settings[setting]));
+  for (key in settings) {
+    var value = settings[key];
+    if (value[0] == '@') {
+      // response file type thing, workaround for large inputs: value is @path-to-file
+      value = JSON.parse(read(value.substr(1)));
+    }
+    eval(key + ' = ' + JSON.stringify(value));
   }
 }
 

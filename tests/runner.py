@@ -7758,16 +7758,27 @@ def process(filename):
       self.emcc_args = map(lambda x: 'ASM_JS=1' if x == 'ASM_JS=0' else x, self.emcc_args)
 
       shutil.move(self.in_dir('src.cpp.o.js'), self.in_dir('pgo.js'))
-      pgo_output = run_js(self.in_dir('pgo.js'))
+      pgo_output = run_js(self.in_dir('pgo.js')).split('\n')[1]
+      open('pgo_data', 'w').write(pgo_output)
 
-      open('pgo_data', 'w').write(pgo_output.split('\n')[1])
+      # with response file
+
       self.emcc_args += ['@pgo_data']
       self.do_run(src, output)
+      self.emcc_args.pop()
       shutil.move(self.in_dir('src.cpp.o.js'), self.in_dir('pgoed.js'))
 
       before = len(open('normal.js').read())
       after = len(open('pgoed.js').read())
       assert after < 0.66 * before, [before, after] # expect a big size reduction
+
+      # with response in settings element itself
+
+      open('dead_funcs', 'w').write(pgo_output[pgo_output.find('['):-1])
+      self.emcc_args += ['-s', 'DEAD_FUNCTIONS=@' + self.in_dir('dead_funcs')]
+      self.do_run(src, output)
+      shutil.move(self.in_dir('src.cpp.o.js'), self.in_dir('pgoed2.js'))
+      assert open('pgoed.js').read() == open('pgoed2.js').read()
 
     def test_scriptaclass(self):
         if self.emcc_args is None: return self.skip('requires emcc')
