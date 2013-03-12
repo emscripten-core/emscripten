@@ -49,6 +49,8 @@ void one_iter() {
     case 120:
       Mix_HaltChannel(soundChannel);
       Mix_HaltMusic();
+      int result = 1;
+      REPORT_RESULT();
       break;
   };
 }
