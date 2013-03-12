@@ -8635,7 +8635,7 @@ TT = %s
 
   # asm.js
   exec('asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=1"])')
-  exec('asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=1", "-g"])')
+  exec('asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=1", "-g", "-s", "ASSERTIONS=1"])')
 
   # Make custom runs with various options
   for compiler, quantum, embetter, typed_arrays, llvm_opts in [

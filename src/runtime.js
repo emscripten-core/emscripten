@@ -27,7 +27,7 @@ var RuntimeGenerator = {
     //                                                               The stack is always QUANTUM SIZE aligned, so we may not need to force alignment here
     var ret = RuntimeGenerator.alloc(size, 'STACK', false, sep, USE_TYPED_ARRAYS != 2 || (isNumber(size) && parseInt(size) % {{{ QUANTUM_SIZE }}} == 0));
     if (ASSERTIONS) {
-      ret += sep + 'assert(STACKTOP|0 < STACK_MAX|0)';
+      ret += sep + 'assert(' + asmCoercion('(STACKTOP|0) < (STACK_MAX|0)', 'i32') + ')';
     }
     return ret;
   },
@@ -38,12 +38,12 @@ var RuntimeGenerator = {
     if (initial > 0) ret += '; STACKTOP = (STACKTOP + ' + initial + ')|0';
     if (USE_TYPED_ARRAYS == 2) {
       assert(initial % QUANTUM_SIZE == 0);
-      if (ASSERTIONS) {
-        ret += '; assert(STACKTOP|0 % {{{ QUANTUM_SIZE }}} == 0)';
+      if (ASSERTIONS && QUANTUM_SIZE == 4) {
+        ret += '; assert(' + asmCoercion('!(STACKTOP&3)', 'i32') + ')';
       }
     }
     if (ASSERTIONS) {
-      ret += '; assert(STACKTOP < STACK_MAX)';
+      ret += '; assert(' + asmCoercion('(STACKTOP|0) < (STACK_MAX|0)', 'i32') + ')';
     }
     if (false) {
       ret += '; _memset(' + asmCoercion('__stackBase__', 'i32') + ', 0, ' + initial + ')';

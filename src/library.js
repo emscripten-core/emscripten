@@ -4155,7 +4155,9 @@ LibraryManager.library = {
   memcpy__inline: function (dest, src, num, align) {
     var ret = '';
 #if ASSERTIONS
+#if ASM_JS == 0
     ret += "assert(" + num + " % 1 === 0);"; //, 'memcpy given ' + " + num + " + ' bytes to copy. Problem with quantum=1 corrections perhaps?');";
+#endif
 #endif
     ret += makeCopyValues(dest, src, num, 'null', null, align);
     return ret;

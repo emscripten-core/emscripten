@@ -735,7 +735,7 @@ function JSify(data, functionsOnly, givenFunctions) {
               return indent + '  case ' + getLabelId(label.ident) + ': ' + (SHOW_LABELS ? '// ' + getOriginalLabelId(label.ident) : '') + '\n'
                             + getLabelLines(label, indent + '    ');
             }).join('\n') + '\n';
-            if (ASSERTIONS) ret += indent + '  default: assert(0, "bad label: " + label);\n';
+            if (ASSERTIONS) ret += indent + '  default: assert(0' + (ASM_JS ? '' : ', "bad label: " + label') + ');\n';
             ret += indent + '}\n';
             if (func.setjmpTable) {
               ret += ' } catch(e) { if (!e.longjmp || !(e.id in mySetjmpIds)) throw(e); setjmpTable[setjmpLabels[e.id]](e.value) }';
@@ -1454,7 +1454,7 @@ function JSify(data, functionsOnly, givenFunctions) {
 
   makeFuncLineActor('unreachable', function(item) {
     if (ASSERTIONS) {
-      return 'throw "Reached an unreachable!"';
+      return ASM_JS ? 'abort()' : 'throw "Reached an unreachable!"';
     } else {
       return ';';
     }
