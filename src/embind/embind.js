@@ -482,8 +482,10 @@ function RegisteredPointer(
     isReference,
     isConst,
     isSmartPointer,
+    sharingPolicy,
     rawGetPointee,
     rawConstructor,
+    rawShare,
     rawDestructor
 ) {
     this.name = name;
@@ -494,8 +496,10 @@ function RegisteredPointer(
     this.isReference = isReference;
     this.isConst = isConst;
     this.isSmartPointer = isSmartPointer;
+    this.sharingPolicy = sharingPolicy;
     this.rawGetPointee = rawGetPointee;
     this.rawConstructor = rawConstructor;
+    this.rawShare = rawShare;
     this.rawDestructor = rawDestructor;
 }
 
@@ -511,7 +515,7 @@ RegisteredPointer.prototype.toWireType = function(destructors, handle) {
         }
 
         if (this.isSmartPointer) {
-            var ptr = this.rawConstructor(0, 0);
+            var ptr = this.rawConstructor();
             destructors.push(this.rawDestructor, ptr);
             return ptr;
         } else {
@@ -538,14 +542,30 @@ RegisteredPointer.prototype.toWireType = function(destructors, handle) {
     }
     var ptr = staticPointerCast(handle.$$.ptr, fromRawType, this.pointeeType.rawType);
     if (this.isSmartPointer) {
-        // If this is for smart ptr type conversion, I think it
-        // assumes that smart_ptr<T> has an identical binary layout to
-        // smart_ptr<U>.  I wonder if that's untrue for any common
-        // smart pointer. - chad
-        ptr = this.rawConstructor(
-            ptr,
-            handle.$$.smartPtr);
-        destructors.push(this.rawDestructor, ptr);
+        switch (this.sharingPolicy) {
+            case 0: // NONE
+                throwBindingError('NONE sharing policy not yet supported');
+                break;
+            
+            case 1: // INTRUSIVE
+                throwBindingError('INTRUSIVE sharing policy not yet supported');
+                break;
+            
+            case 2: // BY_EMVAL
+                var clonedHandle = handle.clone();
+                ptr = this.rawShare(
+                    ptr,
+                    __emval_register(function() {
+                        clonedHandle.delete();
+                    })
+                );
+                destructors.push(this.rawDestructor, ptr);
+            break;
+            
+            default:
+                throwBindingError('Unsupporting sharing policy');
+            
+        }
     }
     return ptr;
 };
@@ -932,14 +952,17 @@ function __embind_register_smart_ptr(
     rawType,
     rawPointeeType,
     name,
+    sharingPolicy,
+    rawGetPointee,
     rawConstructor,
-    rawDestructor,
-    rawGetPointee
+    rawShare,
+    rawDestructor
 ) {
     name = Pointer_stringify(name);
-    rawConstructor = FUNCTION_TABLE[rawConstructor];
-    rawDestructor = FUNCTION_TABLE[rawDestructor];
     rawGetPointee = FUNCTION_TABLE[rawGetPointee];
+    rawConstructor = FUNCTION_TABLE[rawConstructor];
+    rawShare = FUNCTION_TABLE[rawShare];
+    rawDestructor = FUNCTION_TABLE[rawDestructor];
 
     whenDependentTypesAreResolved([rawPointeeType], function(pointeeType) {
         pointeeType = pointeeType[0];
@@ -1001,8 +1024,10 @@ function __embind_register_smart_ptr(
             false,
             false,
             true,
+            sharingPolicy,
             rawGetPointee,
             rawConstructor,
+            rawShare,
             rawDestructor);
         registerType(rawType, registeredPointer);
         pointeeType.smartPointerType = registeredPointer;
