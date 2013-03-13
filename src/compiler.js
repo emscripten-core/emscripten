@@ -141,8 +141,13 @@ if (phase == 'pre') {
 
 if (settings_file) {
   var settings = JSON.parse(read(settings_file));
-  for (setting in settings) {
-    eval(setting + ' = ' + JSON.stringify(settings[setting]));
+  for (key in settings) {
+    var value = settings[key];
+    if (value[0] == '@') {
+      // response file type thing, workaround for large inputs: value is @path-to-file
+      value = JSON.parse(read(value.substr(1)));
+    }
+    eval(key + ' = ' + JSON.stringify(value));
   }
 }
 
@@ -163,6 +168,7 @@ if (SAFE_HEAP >= 2) {
 EXPORTED_FUNCTIONS = set(EXPORTED_FUNCTIONS);
 EXPORTED_GLOBALS = set(EXPORTED_GLOBALS);
 EXCEPTION_CATCHING_WHITELIST = set(EXCEPTION_CATCHING_WHITELIST);
+DEAD_FUNCTIONS = numberedSet(DEAD_FUNCTIONS);
 
 RUNTIME_DEBUG = LIBRARY_DEBUG || GL_DEBUG;
 
@@ -172,13 +178,14 @@ assert(!(USE_TYPED_ARRAYS === 2 && QUANTUM_SIZE !== 4), 'For USE_TYPED_ARRAYS ==
 if (ASM_JS) {
   assert(!ALLOW_MEMORY_GROWTH, 'Cannot grow asm.js heap');
   assert((TOTAL_MEMORY&(TOTAL_MEMORY-1)) == 0, 'asm.js heap must be power of 2');
+  assert(DISABLE_EXCEPTION_CATCHING == 1, 'asm.js does not support C++ exceptions yet');
 }
 assert(!(!NAMED_GLOBALS && BUILD_AS_SHARED_LIB)); // shared libraries must have named globals
 
 // Output some info and warnings based on settings
 
 if (phase == 'pre') {
-  if (!MICRO_OPTS || !RELOOP || ASSERTIONS || CHECK_SIGNS || CHECK_OVERFLOWS || INIT_STACK || INIT_HEAP ||
+  if (!MICRO_OPTS || !RELOOP || ASSERTIONS || CHECK_SIGNS || CHECK_OVERFLOWS || INIT_HEAP ||
       !SKIP_STACK_IN_SMALL || SAFE_HEAP || !DISABLE_EXCEPTION_CATCHING) {
     print('// Note: Some Emscripten settings will significantly limit the speed of the generated code.');
   } else {
@@ -198,7 +205,7 @@ load('parseTools.js');
 load('intertyper.js');
 load('analyzer.js');
 load('jsifier.js');
-if (RELOOP) load('relooper.js')
+if (RELOOP) load(RELOOPER)
 globalEval(processMacros(preprocess(read('runtime.js'))));
 Runtime.QUANTUM_SIZE = QUANTUM_SIZE;
 

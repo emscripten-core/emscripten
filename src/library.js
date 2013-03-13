@@ -1730,7 +1730,12 @@ LibraryManager.library = {
       }
       var contents = stream.object.contents;
       var size = Math.min(contents.length - offset, nbyte);
-      if (contents.subarray || contents.slice) { // typed array or normal array
+#if USE_TYPED_ARRAYS == 2
+      if (contents.subarray) { // typed array
+        HEAPU8.set(contents.subarray(offset, offset+size), buf);
+      } else
+#endif
+      if (contents.slice) { // normal array
         for (var i = 0; i < size; i++) {
           {{{ makeSetValue('buf', 'i', 'contents[offset + i]', 'i8') }}}
         }
@@ -2403,6 +2408,7 @@ LibraryManager.library = {
       case {{{ cDefine('_SC_STREAM_MAX') }}}: return 16;
       case {{{ cDefine('_SC_TZNAME_MAX') }}}: return 6;
       case {{{ cDefine('_SC_THREAD_DESTRUCTOR_ITERATIONS') }}}: return 4;
+      case {{{ cDefine('_SC_NPROCESSORS_ONLN') }}}: return 1;
     }
     ___setErrNo(ERRNO_CODES.EINVAL);
     return -1;
@@ -3363,14 +3369,15 @@ LibraryManager.library = {
     ___setErrNo(ERRNO_CODES.ECHILD);
     return -1;
   },
-  perror__deps: ['puts', 'putc', 'strerror', '__errno_location'],
+  perror__deps: ['puts', 'fputs', 'fputc', 'strerror', '__errno_location'],
   perror: function(s) {
     // void perror(const char *s);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/perror.html
+    var stdout = {{{ makeGetValue(makeGlobalUse('_stdout'), '0', 'void*') }}};
     if (s) {
-      _puts(s);
-      _putc(':'.charCodeAt(0));
-      _putc(' '.charCodeAt(0));
+      _fputs(s, stdout);
+      _fputc(':'.charCodeAt(0), stdout);
+      _fputc(' '.charCodeAt(0), stdout);
     }
     var errnum = {{{ makeGetValue('___errno_location()', '0', 'i32') }}};
     _puts(_strerror(errnum));
@@ -3668,6 +3675,17 @@ LibraryManager.library = {
 
   abs: 'Math.abs',
   labs: 'Math.abs',
+#if USE_TYPED_ARRAYS == 2
+  llabs__deps: [function() { Types.preciseI64MathUsed = 1 }],
+  llabs: function(lo, hi) {
+    i64Math.abs(lo, hi);
+    {{{ makeStructuralReturn([makeGetTempDouble(0, 'i32'), makeGetTempDouble(1, 'i32')]) }}};
+  },
+#else
+  llabs: function(lo, hi) {
+    throw 'unsupported llabs';
+  },
+#endif
 
   exit__deps: ['_exit'],
   exit: function(status) {
@@ -3724,93 +3742,6 @@ LibraryManager.library = {
     }
     return ret;
   },
-
-  strtod__deps: ['isspace', 'isdigit'],
-  strtod: function(str, endptr) {
-    var origin = str;
-
-    // Skip space.
-    while (_isspace({{{ makeGetValue('str', 0, 'i8') }}})) str++;
-
-    // Check for a plus/minus sign.
-    var multiplier = 1;
-    if ({{{ makeGetValue('str', 0, 'i8') }}} == '-'.charCodeAt(0)) {
-      multiplier = -1;
-      str++;
-    } else if ({{{ makeGetValue('str', 0, 'i8') }}} == '+'.charCodeAt(0)) {
-      str++;
-    }
-
-    var chr;
-    var ret = 0;
-
-    // Get whole part.
-    var whole = false;
-    while(1) {
-      chr = {{{ makeGetValue('str', 0, 'i8') }}};
-      if (!_isdigit(chr)) break;
-      whole = true;
-      ret = ret*10 + chr - '0'.charCodeAt(0);
-      str++;
-    }
-
-    // Get fractional part.
-    var fraction = false;
-    if ({{{ makeGetValue('str', 0, 'i8') }}} == '.'.charCodeAt(0)) {
-      str++;
-      var mul = 1/10;
-      while(1) {
-        chr = {{{ makeGetValue('str', 0, 'i8') }}};
-        if (!_isdigit(chr)) break;
-        fraction = true;
-        ret += mul*(chr - '0'.charCodeAt(0));
-        mul /= 10;
-        str++;
-      }
-    }
-
-    if (!whole && !fraction) {
-      if (endptr) {
-        {{{ makeSetValue('endptr', 0, 'origin', '*') }}}
-      }
-      return 0;
-    }
-
-    // Get exponent part.
-    chr = {{{ makeGetValue('str', 0, 'i8') }}};
-    if (chr == 'e'.charCodeAt(0) || chr == 'E'.charCodeAt(0)) {
-      str++;
-      var exponent = 0;
-      var expNegative = false;
-      chr = {{{ makeGetValue('str', 0, 'i8') }}};
-      if (chr == '-'.charCodeAt(0)) {
-        expNegative = true;
-        str++;
-      } else if (chr == '+'.charCodeAt(0)) {
-        str++;
-      }
-      chr = {{{ makeGetValue('str', 0, 'i8') }}};
-      while(1) {
-        if (!_isdigit(chr)) break;
-        exponent = exponent*10 + chr - '0'.charCodeAt(0);
-        str++;
-        chr = {{{ makeGetValue('str', 0, 'i8') }}};
-      }
-      if (expNegative) exponent = -exponent;
-      ret *= Math.pow(10, exponent);
-    }
-
-    // Set end pointer.
-    if (endptr) {
-      {{{ makeSetValue('endptr', 0, 'str', '*') }}}
-    }
-
-    return ret * multiplier;
-  },
-  strtod_l: 'strtod', // no locale support yet
-  strtold: 'strtod', // XXX add real support for long double
-  strtold_l: 'strtold', // no locale support yet
-  strtof: 'strtod', // use stdtod to handle strtof
 
   _parseInt__deps: ['isspace', '__setErrNo', '$ERRNO_CODES'],
   _parseInt: function(str, endptr, base, min, max, bits, unsign) {
@@ -3969,11 +3900,6 @@ LibraryManager.library = {
     return __parseInt64(str, endptr, base, 0, '18446744073709551615', true);  // ULONG_MAX.
   },
   strtoull_l: 'strtoull', // no locale support yet
-
-  atof__deps: ['strtod'],
-  atof: function(ptr) {
-    return _strtod(ptr, null);
-  },
 
   atoi__deps: ['strtol'],
   atoi: function(ptr) {
@@ -4234,7 +4160,9 @@ LibraryManager.library = {
   memcpy__inline: function (dest, src, num, align) {
     var ret = '';
 #if ASSERTIONS
+#if ASM_JS == 0
     ret += "assert(" + num + " % 1 === 0);"; //, 'memcpy given ' + " + num + " + ' bytes to copy. Problem with quantum=1 corrections perhaps?');";
+#endif
 #endif
     ret += makeCopyValues(dest, src, num, 'null', null, align);
     return ret;
@@ -4313,8 +4241,9 @@ LibraryManager.library = {
     ptr = ptr|0; value = value|0; num = num|0;
     var stop = 0, value4 = 0, stop4 = 0, unaligned = 0;
     stop = (ptr + num)|0;
-    if (num|0 >= {{{ SEEK_OPTIMAL_ALIGN_MIN }}}) {
+    if ((num|0) >= {{{ Math.round(2.5*UNROLL_LOOP_MAX) }}}) {
       // This is unaligned, but quite large, so work hard to get to aligned settings
+      value = value & 0xff;
       unaligned = ptr & 3;
       value4 = value | (value << 8) | (value << 16) | (value << 24);
       stop4 = stop & ~3;
@@ -4400,14 +4329,18 @@ LibraryManager.library = {
     }
   },
 
+  strcpy__asm: 'true',
+  strcpy__sig: 'iii',
   strcpy: function(pdest, psrc) {
+    pdest = pdest|0; psrc = psrc|0;
     var i = 0;
     do {
-      {{{ makeCopyValues('pdest+i', 'psrc+i', 1, 'i8', null, 1) }}};
-      i ++;
-    } while ({{{ makeGetValue('psrc', 'i-1', 'i8') }}} != 0);
-    return pdest;
+      {{{ makeCopyValues('(pdest+i)|0', '(psrc+i)|0', 1, 'i8', null, 1) }}};
+      i = (i+1)|0;
+    } while (({{{ makeGetValue('psrc', 'i-1', 'i8') }}})|0 != 0);
+    return pdest|0;
   },
+
   stpcpy: function(pdest, psrc) {
     var i = 0;
     do {
@@ -4417,14 +4350,18 @@ LibraryManager.library = {
     return pdest + i - 1;
   },
 
+  strncpy__asm: 'true',
+  strncpy__sig: 'iiii',
   strncpy: function(pdest, psrc, num) {
-    var padding = false, curr;
-    for (var i = 0; i < num; i++) {
-      curr = padding ? 0 : {{{ makeGetValue('psrc', 'i', 'i8') }}};
+    pdest = pdest|0; psrc = psrc|0; num = num|0;
+    var padding = 0, curr = 0, i = 0;
+    while ((i|0) < (num|0)) {
+      curr = padding ? 0 : {{{ makeGetValueAsm('psrc', 'i', 'i8') }}};
       {{{ makeSetValue('pdest', 'i', 'curr', 'i8') }}}
-      padding = padding || {{{ makeGetValue('psrc', 'i', 'i8') }}} == 0;
+      padding = padding | ({{{ makeGetValueAsm('psrc', 'i', 'i8') }}} == 0);
+      i = (i+1)|0;
     }
-    return pdest;
+    return pdest|0;
   },
   
   strlwr__deps:['tolower'],
@@ -4974,6 +4911,20 @@ LibraryManager.library = {
 #endif
   },
 
+  llvm_ctpop_i32: function(x) {
+    var ret = 0;
+    while (x) {
+      if (x&1) ret++;
+      x >>= 1;
+    }
+    return ret;
+  },
+
+  llvm_ctpop_i64__deps: ['llvm_ctpop_i32'],
+  llvm_ctpop_i64: function(l, h) {
+    return _llvm_ctpop_i32(l) + _llvm_ctpop_i32(h);
+  },
+
   llvm_trap: function() {
     throw 'trap! ' + new Error().stack;
   },
@@ -5268,13 +5219,6 @@ LibraryManager.library = {
     {{{ makeStructuralReturn(['(x*y)>>>0', 'x*y > 4294967295']) }}};
   },
 
-  llvm_uadd_with_overflow_i64__deps: [function() { Types.preciseI64MathUsed = 1 }],
-  llvm_uadd_with_overflow_i64: function(xl, xh, yl, yh) {
-    i64Math.add(xl, xh, yl, yh);
-    {{{ makeStructuralReturn([makeGetTempDouble(0, 'i32'), makeGetTempDouble(1, 'i32'), '0']) }}};
-    // XXX Need to hack support for second param in long.js
-  },
-
   llvm_umul_with_overflow_i64__deps: [function() { Types.preciseI64MathUsed = 1 }],
   llvm_umul_with_overflow_i64: function(xl, xh, yl, yh) {
     i64Math.multiply(xl, xh, yl, yh);
@@ -5504,6 +5448,14 @@ LibraryManager.library = {
       return -a;
   },
   copysignf: 'copysign',
+  __signbit__deps: ['copysign'],
+  __signbit: function(x) {
+    // We implement using copysign so that we get support
+    // for negative zero (once copysign supports that).
+    return _copysign(1.0, x) < 0;
+  },
+  __signbitf: '__signbit',
+  __signbitd: '__signbit',
   hypot: function(a, b) {
      return Math.sqrt(a*a + b*b);
   },
@@ -6062,6 +6014,15 @@ LibraryManager.library = {
   __timespec_struct_layout: Runtime.generateStructInfo([
     ['i32', 'tv_sec'],
     ['i32', 'tv_nsec']]),
+  nanosleep__deps: ['usleep', '__timespec_struct_layout'],
+  nanosleep: function(rqtp, rmtp) {
+    // int nanosleep(const struct timespec  *rqtp, struct timespec *rmtp);
+    var seconds = {{{ makeGetValue('rqtp', '___timespec_struct_layout.tv_sec', 'i32') }}};
+    var nanoseconds = {{{ makeGetValue('rqtp', '___timespec_struct_layout.tv_nsec', 'i32') }}};
+    {{{ makeSetValue('rmtp', '___timespec_struct_layout.tv_sec', '0', 'i32') }}}
+    {{{ makeSetValue('rmtp', '___timespec_struct_layout.tv_nsec', '0', 'i32') }}}
+    return _usleep((seconds * 1e6) + (nanoseconds / 1000));
+  },
   // TODO: Implement these for real.
   clock_gettime__deps: ['__timespec_struct_layout'],
   clock_gettime: function(clk_id, tp) {
@@ -6168,7 +6129,7 @@ LibraryManager.library = {
 
   setjmp__inline: function(env) {
     // Save the label
-    return '(tempInt = setjmpId++, mySetjmpIds[tempInt] = 1, setjmpLabels[tempInt] = label,' + makeSetValue(env, '0', 'tempInt', 'i32') + ', 0)';
+    return '(tempInt = setjmpId++, mySetjmpIds[tempInt] = 1, setjmpLabels[tempInt] = label,' + makeSetValue(env, '0', 'tempInt', 'i32', undefined, undefined, undefined, undefined,  ',') + ', 0)';
   },
 
   longjmp: function(env, value) {
@@ -6691,6 +6652,13 @@ LibraryManager.library = {
   },
 
   // ==========================================================================
+  // sched.h (stubs only - no thread support yet!)
+  // ==========================================================================
+  sched_yield: function() {
+    return 0;
+  },
+
+  // ==========================================================================
   // pthread.h (stubs for mutexes only - no thread support yet!)
   // ==========================================================================
 
@@ -6706,8 +6674,15 @@ LibraryManager.library = {
   },
   pthread_cond_init: function() {},
   pthread_cond_destroy: function() {},
-  pthread_cond_broadcast: function() {},
-  pthread_cond_wait: function() {},
+  pthread_cond_broadcast: function() {
+    return 0;
+  },
+  pthread_cond_wait: function() {
+    return 0;
+  },
+  pthread_cond_timedwait: function() {
+    return 0;
+  },
   pthread_self: function() {
     //FIXME: assumes only a single thread
     return 0;
@@ -6756,6 +6731,15 @@ LibraryManager.library = {
 
   pthread_setspecific: function(key, value) {
     _pthread_key_create.keys[key] = value;
+  },
+
+  pthread_key_delete: ['$ERRNO_CODES'],
+  pthread_key_delete: function(key) {
+    if (_pthread_key_create.keys[key]) {
+      delete _pthread_key_create.keys[key];
+      return 0;
+    }
+    return ERRNO_CODES.EINVAL;
   },
 
   pthread_cleanup_push: function(routine, arg) {
@@ -7356,6 +7340,58 @@ LibraryManager.library = {
 
   emscripten_random: function() {
     return Math.random();
+  },
+
+  emscripten_jcache_printf___deps: ['_formatString'],
+  emscripten_jcache_printf_: function(varargs) {
+    var MAX = 10240;
+    if (!_emscripten_jcache_printf_.buffer) {
+      _emscripten_jcache_printf_.buffer = _malloc(MAX);
+    }
+    var i = 0;
+    do {
+      var curr = {{{ makeGetValue('varargs', 'i*4', 'i8') }}};
+      {{{ makeSetValue('_emscripten_jcache_printf_.buffer', 'i', 'curr', 'i8') }}};
+      i++;
+      assert(i*4 < MAX);
+    } while (curr != 0);
+    Module.print(intArrayToString(__formatString(_emscripten_jcache_printf_.buffer, varargs + i*4)).replace('\\n', ''));
+    Runtime.stackAlloc(-4*i); // free up the stack space we know is ok to free
+  },
+
+  //============================
+  // i64 math
+  //============================
+
+  i64Add__asm: 'true',
+  i64Add__sig: 'iiiii',
+  i64Add: function(a, b, c, d) {
+    /*
+      x = a + b*2^32
+      y = c + d*2^32
+      result = l + h*2^32
+    */
+    a = a|0; b = b|0; c = c|0; d = d|0;
+    var l = 0, h = 0;
+    l = (a + c)>>>0;
+    h = (b + d)>>>0;
+    if ((l>>>0) < (a>>>0)) { // iff we overflowed
+      h = (h+1)>>>0;
+    }
+    {{{ makeStructuralReturn(['l|0', 'h'], true) }}};
+  },
+  llvm_uadd_with_overflow_i64__asm: 'true',
+  llvm_uadd_with_overflow_i64__sig: 'iiiii',
+  llvm_uadd_with_overflow_i64: function(a, b, c, d) {
+    a = a|0; b = b|0; c = c|0; d = d|0;
+    var l = 0, h = 0, overflow = 0;
+    l = (a + c)>>>0;
+    h = (b + d)>>>0;
+    if ((l>>>0) < (a>>>0)) { // iff we overflowed
+      h = (h+1)>>>0;
+      overflow = 1;
+    }
+    {{{ makeStructuralReturn(['l|0', 'h', 'overflow'], true) }}};
   },
 };
 

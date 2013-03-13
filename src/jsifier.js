@@ -375,6 +375,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       var ret = [item];
       item.JS = 'var ' + item.ident + ';';
       // Set the actual value in a postset, since it may be a global variable. We also order by dependencies there
+      Variables.globals[item.ident].targetIdent = item.value.ident;
       var value = Variables.globals[item.ident].resolvedAlias = finalizeLLVMParameter(item.value);
       var fix = '';
       if (BUILD_AS_SHARED_LIB == 2 && !item.private_) {
@@ -395,6 +396,20 @@ function JSify(data, functionsOnly, givenFunctions) {
       return ret;
     }
   });
+
+  function processLibraryFunction(snippet, ident) {
+    snippet = snippet.toString();
+    assert(snippet.indexOf('XXX missing C define') == -1,
+           'Trying to include a library function with missing C defines: ' + ident + ' | ' + snippet);
+
+    // name the function; overwrite if it's already named
+    snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function _' + ident + '(');
+    if (LIBRARY_DEBUG) {
+      snippet = snippet.replace('{', '{ var ret = (function() { if (Runtime.debug) Module.printErr("[library call:' + ident + ': " + Array.prototype.slice.call(arguments).map(Runtime.prettyPrint) + "]"); ');
+      snippet = snippet.substr(0, snippet.length-1) + '}).apply(this, arguments); if (Runtime.debug && typeof ret !== "undefined") Module.printErr("  [     return:" + Runtime.prettyPrint(ret)); return ret; \n}';
+    }
+    return snippet;
+  }
 
   // functionStub
   substrate.addActor('FunctionStub', {
@@ -433,16 +448,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           snippet = stringifyWithFunctions(snippet);
         } else if (typeof snippet === 'function') {
           isFunction = true;
-          snippet = snippet.toString();
-          assert(snippet.indexOf('XXX missing C define') == -1,
-                 'Trying to include a library function with missing C defines: ' + ident + ' | ' + snippet);
-
-          // name the function; overwrite if it's already named
-          snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function _' + ident + '(');
-          if (LIBRARY_DEBUG) {
-            snippet = snippet.replace('{', '{ var ret = (function() { if (Runtime.debug) Module.printErr("[library call:' + ident + ': " + Array.prototype.slice.call(arguments).map(Runtime.prettyPrint) + "]"); ');
-            snippet = snippet.substr(0, snippet.length-1) + '}).apply(this, arguments); if (Runtime.debug && typeof ret !== "undefined") Module.printErr("  [     return:" + Runtime.prettyPrint(ret)); return ret; \n}';
-          }
+          snippet = processLibraryFunction(snippet, ident);
           if (ASM_JS) Functions.libraryFunctions[ident] = 1;
         }
 
@@ -599,6 +605,10 @@ function JSify(data, functionsOnly, givenFunctions) {
       
       func.JS += 'function ' + func.ident + '(' + paramIdents.join(', ') + ') {\n';
 
+      if (PGO) {
+        func.JS += '  PGOMonitor.called["' + func.ident + '"] = 1;\n';
+      }
+
       if (ASM_JS) {
         // spell out argument types
         func.params.forEach(function(param) {
@@ -730,7 +740,7 @@ function JSify(data, functionsOnly, givenFunctions) {
               return indent + '  case ' + getLabelId(label.ident) + ': ' + (SHOW_LABELS ? '// ' + getOriginalLabelId(label.ident) : '') + '\n'
                             + getLabelLines(label, indent + '    ');
             }).join('\n') + '\n';
-            if (ASSERTIONS) ret += indent + '  default: assert(0, "bad label: " + label);\n';
+            if (ASSERTIONS) ret += indent + '  default: assert(0' + (ASM_JS ? '' : ', "bad label: " + label') + ');\n';
             ret += indent + '}\n';
             if (func.setjmpTable) {
               ret += ' } catch(e) { if (!e.longjmp || !(e.id in mySetjmpIds)) throw(e); setjmpTable[setjmpLabels[e.id]](e.value) }';
@@ -913,7 +923,11 @@ function JSify(data, functionsOnly, givenFunctions) {
       case VAR_NATIVIZED:
         if (isNumber(item.ident)) {
           // Direct write to a memory address; this may be an intentional segfault, if not, it is a bug in the source
-          return 'throw "fault on write to ' + item.ident + '";';
+          if (ASM_JS) {
+            return 'abort(' + item.ident + ')';
+          } else {
+            return 'throw "fault on write to ' + item.ident + '";';
+          }
         }
         return item.ident + '=' + value + ';'; // We have the actual value here
         break;
@@ -1199,10 +1213,13 @@ function JSify(data, functionsOnly, givenFunctions) {
     switch (item.op) {
       case 'add': return '(tempValue=' + makeGetValue(param1, 0, type) + ',' + makeSetValue(param1, 0, 'tempValue+' + param2, type, null, null, null, null, ',') + ',tempValue)';
       case 'sub': return '(tempValue=' + makeGetValue(param1, 0, type) + ',' + makeSetValue(param1, 0, 'tempValue-' + param2, type, null, null, null, null, ',') + ',tempValue)';
+      case 'or': return '(tempValue=' + makeGetValue(param1, 0, type) + ',' + makeSetValue(param1, 0, 'tempValue|' + param2, type, null, null, null, null, ',') + ',tempValue)';
+      case 'and': return '(tempValue=' + makeGetValue(param1, 0, type) + ',' + makeSetValue(param1, 0, 'tempValue&' + param2, type, null, null, null, null, ',') + ',tempValue)';
+      case 'xor': return '(tempValue=' + makeGetValue(param1, 0, type) + ',' + makeSetValue(param1, 0, 'tempValue^' + param2, type, null, null, null, null, ',') + ',tempValue)';
       case 'xchg': return '(tempValue=' + makeGetValue(param1, 0, type) + ',' + makeSetValue(param1, 0, param2, type, null, null, null, null, ',') + ',tempValue)';
       case 'cmpxchg': {
         var param3 = finalizeLLVMParameter(item.params[2]);
-        return '(tempValue=' + makeGetValue(param1, 0, type) + ',(' + makeGetValue(param1, 0, type) + '==' + param2 + ' ? ' + makeSetValue(param1, 0, param3, type, null, null, null, null, ',') + ' : 0),tempValue)';
+        return '(tempValue=' + makeGetValue(param1, 0, type) + ',(' + makeGetValue(param1, 0, type) + '==(' + param2 + '|0) ? ' + makeSetValue(param1, 0, param3, type, null, null, null, null, ',') + ' : 0),tempValue)';
       }
       default: throw 'unhandled atomic op: ' + item.op;
     }
@@ -1221,6 +1238,15 @@ function JSify(data, functionsOnly, givenFunctions) {
     var impl = item.ident ? getVarImpl(item.funcData, item.ident) : VAR_EMULATED;
     switch (impl) {
       case VAR_NATIVIZED: {
+        if (isNumber(item.ident)) {
+          item.assignTo = null;
+          // Direct read from a memory address; this may be an intentional segfault, if not, it is a bug in the source
+          if (ASM_JS) {
+            return 'abort(' + item.ident + ')';
+          } else {
+            return 'throw "fault on read from ' + item.ident + '";';
+          }
+        }
         return value; // We have the actual value here
       }
       case VAR_EMULATED: return makeGetValue(value, 0, item.type, 0, item.unsigned, 0, item.align);
@@ -1244,7 +1270,7 @@ function JSify(data, functionsOnly, givenFunctions) {
   makeFuncLineActor('insertvalue', function(item) {
     assert(item.indexes.length == 1); // TODO: see extractvalue
     var ret = '(', ident;
-    if (item.ident === 'undef') {
+    if (item.ident === '0') {
       item.ident = 'tempValue';
       ret += item.ident + ' = [' + makeEmptyStruct(item.type) + '], ';
     }
@@ -1284,6 +1310,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     // We cannot compile assembly. See comment in intertyper.js:'Call'
     assert(ident != 'asm', 'Inline assembly cannot be compiled to JavaScript!');
 
+    ident = Variables.resolveAliasToIdent(ident);
     var shortident = ident.slice(1);
     var callIdent = LibraryManager.getRootIdent(shortident);
     if (callIdent) {
@@ -1294,6 +1321,8 @@ function JSify(data, functionsOnly, givenFunctions) {
     } else {
       callIdent = ident;
     }
+    if (callIdent == '0') return 'abort(-2)';
+
     var args = [];
     var argsTypes = [];
     var varargs = [];
@@ -1396,6 +1425,12 @@ function JSify(data, functionsOnly, givenFunctions) {
       returnType = getReturnType(type);
     }
 
+    if (callIdent in DEAD_FUNCTIONS) {
+      var ret = 'abort(' + DEAD_FUNCTIONS[callIdent] + ')';
+      if (ASM_JS) ret = asmCoercion(ret, returnType);
+      return ret;
+    }
+
     if (byPointer) {
       var sig = Functions.getSignature(returnType, argsTypes, hasVarArgs);
       if (ASM_JS) {
@@ -1425,7 +1460,7 @@ function JSify(data, functionsOnly, givenFunctions) {
 
   makeFuncLineActor('unreachable', function(item) {
     if (ASSERTIONS) {
-      return 'throw "Reached an unreachable!"';
+      return ASM_JS ? 'abort()' : 'throw "Reached an unreachable!"';
     } else {
       return ';';
     }
@@ -1534,15 +1569,22 @@ function JSify(data, functionsOnly, givenFunctions) {
     // This is the main 'post' pass. Print out the generated code that we have here, together with the
     // rest of the output that we started to print out earlier (see comment on the
     // "Final shape that will be created").
+    if (PRECISE_I64_MATH && Types.preciseI64MathUsed) {
+      ['i64Add'].forEach(function(func) {
+        print(processLibraryFunction(LibraryManager.library[func], func)); // must be first to be close to generated code
+        Functions.implementedFunctions['_' + func] = LibraryManager.library[func + '__sig'];
+      });
+      print('// EMSCRIPTEN_END_FUNCS\n');
+      print(read('long.js'));
+    } else {
+      print('// EMSCRIPTEN_END_FUNCS\n');
+      print('// Warning: printing of i64 values may be slightly rounded! No deep i64 math used, so precise i64 code not included');
+      print('var i64Math = null;');
+    }
+
     if (CORRUPTION_CHECK) {
       assert(!ASM_JS); // cannot monkeypatch asm!
       print(processMacros(read('corruptionCheck.js')));
-    }
-    if (PRECISE_I64_MATH && Types.preciseI64MathUsed) {
-      print(read('long.js'));
-    } else {
-      print('// Warning: printing of i64 values may be slightly rounded! No deep i64 math used, so precise i64 code not included');
-      print('var i64Math = null;');
     }
     if (HEADLESS) {
       print('if (!ENVIRONMENT_IS_WEB) {');
@@ -1569,11 +1611,17 @@ function JSify(data, functionsOnly, givenFunctions) {
 
     var shellParts = read(shellFile).split('{{BODY}}');
     print(shellParts[1]);
-    // Print out some useful metadata (for additional optimizations later, like the eliminator)
-    if (EMIT_GENERATED_FUNCTIONS) {
-      print('// EMSCRIPTEN_GENERATED_FUNCTIONS: ' + JSON.stringify(keys(Functions.implementedFunctions).filter(function(func) {
+    // Print out some useful metadata
+    if (EMIT_GENERATED_FUNCTIONS || PGO) {
+      var generatedFunctions = JSON.stringify(keys(Functions.implementedFunctions).filter(function(func) {
         return IGNORED_FUNCTIONS.indexOf(func.ident) < 0;
-      })) + '\n');
+      }));
+      if (PGO) {
+        print('PGOMonitor.allGenerated = ' + generatedFunctions + ';\nremoveRunDependency("pgo");\n');
+      }
+      if (EMIT_GENERATED_FUNCTIONS) {
+        print('// EMSCRIPTEN_GENERATED_FUNCTIONS: ' + generatedFunctions + '\n');
+      }
     }
 
     PassManager.serialize();

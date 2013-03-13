@@ -347,17 +347,25 @@ struct RelooperRecursor {
   RelooperRecursor(Relooper *ParentInit) : Parent(ParentInit) {}
 };
 
+typedef std::list<Block*> BlockList;
+
 void Relooper::Calculate(Block *Entry) {
   // Scan and optimize the input
   struct PreOptimizer : public RelooperRecursor {
     PreOptimizer(Relooper *Parent) : RelooperRecursor(Parent) {}
     BlockSet Live;
 
-    void FindLive(Block *Curr) {
-      if (Live.find(Curr) != Live.end()) return;
-      Live.insert(Curr);
-      for (BlockBranchMap::iterator iter = Curr->BranchesOut.begin(); iter != Curr->BranchesOut.end(); iter++) {
-        FindLive(iter->first);
+    void FindLive(Block *Root) {
+      BlockList ToInvestigate;
+      ToInvestigate.push_back(Root);
+      while (ToInvestigate.size() > 0) {
+        Block *Curr = ToInvestigate.front();
+        ToInvestigate.pop_front();
+        if (Live.find(Curr) != Live.end()) continue;
+        Live.insert(Curr);
+        for (BlockBranchMap::iterator iter = Curr->BranchesOut.begin(); iter != Curr->BranchesOut.end(); iter++) {
+          ToInvestigate.push_back(iter->first);
+        }
       }
     }
 
@@ -529,7 +537,6 @@ void Relooper::Calculate(Block *Entry) {
     // ignore directly reaching the entry itself by another entry.
     void FindIndependentGroups(BlockSet &Blocks, BlockSet &Entries, BlockBlockSetMap& IndependentGroups) {
       typedef std::map<Block*, Block*> BlockBlockMap;
-      typedef std::list<Block*> BlockList;
 
       struct HelperClass {
         BlockBlockSetMap& IndependentGroups;
@@ -872,33 +879,38 @@ void Relooper::Calculate(Block *Entry) {
     // A flow operation is trivially unneeded if the shape we naturally get to by normal code
     // execution is the same as the flow forces us to.
     void RemoveUnneededFlows(Shape *Root, Shape *Natural=NULL) {
-      SHAPE_SWITCH(Root, {
-        // If there is a next block, we already know at Simple creation time to make direct branches,
-        // and we can do nothing more. If there is no next however, then Natural is where we will
-        // go to by doing nothing, so we can potentially optimize some branches to direct.
-        if (Simple->Next) {
-          RemoveUnneededFlows(Simple->Next, Natural);
-        } else {
-          for (BlockBranchMap::iterator iter = Simple->Inner->ProcessedBranchesOut.begin(); iter != Simple->Inner->ProcessedBranchesOut.end(); iter++) {
-            Block *Target = iter->first;
-            Branch *Details = iter->second;
-            if (Details->Type != Branch::Direct && Target->Parent == Natural) {
-              Details->Type = Branch::Direct;
-              if (MultipleShape *Multiple = Shape::IsMultiple(Details->Ancestor)) {
-                Multiple->NeedLoop--;
+      Shape *Next = Root;
+      while (Next) {
+        Root = Next;
+        Next = NULL;
+        SHAPE_SWITCH(Root, {
+          // If there is a next block, we already know at Simple creation time to make direct branches,
+          // and we can do nothing more. If there is no next however, then Natural is where we will
+          // go to by doing nothing, so we can potentially optimize some branches to direct.
+          if (Simple->Next) {
+            Next = Simple->Next;
+          } else {
+            for (BlockBranchMap::iterator iter = Simple->Inner->ProcessedBranchesOut.begin(); iter != Simple->Inner->ProcessedBranchesOut.end(); iter++) {
+              Block *Target = iter->first;
+              Branch *Details = iter->second;
+              if (Details->Type != Branch::Direct && Target->Parent == Natural) {
+                Details->Type = Branch::Direct;
+                if (MultipleShape *Multiple = Shape::IsMultiple(Details->Ancestor)) {
+                  Multiple->NeedLoop--;
+                }
               }
             }
           }
-        }
-      }, {
-        for (BlockShapeMap::iterator iter = Multiple->InnerMap.begin(); iter != Multiple->InnerMap.end(); iter++) {
-          RemoveUnneededFlows(iter->second, Multiple->Next);
-        }
-        RemoveUnneededFlows(Multiple->Next, Natural);
-      }, {
-        RemoveUnneededFlows(Loop->Inner, Loop->Inner);
-        RemoveUnneededFlows(Loop->Next, Natural);
-      });
+        }, {
+          for (BlockShapeMap::iterator iter = Multiple->InnerMap.begin(); iter != Multiple->InnerMap.end(); iter++) {
+            RemoveUnneededFlows(iter->second, Multiple->Next);
+          }
+          Next = Multiple->Next;
+        }, {
+          RemoveUnneededFlows(Loop->Inner, Loop->Inner);
+          Next = Loop->Next;
+        });
+      }
     }
 
     // After we know which loops exist, we can calculate which need to be labeled
@@ -909,48 +921,54 @@ void Relooper::Calculate(Block *Entry) {
       }
       std::stack<Shape*> &LoopStack = *((std::stack<Shape*>*)Closure);
 
-      SHAPE_SWITCH(Root, {
-        MultipleShape *Fused = Shape::IsMultiple(Root->Next);
-        // If we are fusing a Multiple with a loop into this Simple, then visit it now
-        if (Fused && Fused->NeedLoop) {
-          LoopStack.push(Fused);
-          RECURSE_MULTIPLE_MANUAL(FindLabeledLoops, Fused);
-        }
-        for (BlockBranchMap::iterator iter = Simple->Inner->ProcessedBranchesOut.begin(); iter != Simple->Inner->ProcessedBranchesOut.end(); iter++) {
-          Block *Target = iter->first;
-          Branch *Details = iter->second;
-          if (Details->Type != Branch::Direct) {
-            assert(LoopStack.size() > 0);
-            if (Details->Ancestor != LoopStack.top()) {
-              LabeledShape *Labeled = Shape::IsLabeled(Details->Ancestor);
-              Labeled->Labeled = true;
-              Details->Labeled = true;
-            } else {
-              Details->Labeled = false;
+      Shape *Next = Root;
+      while (Next) {
+        Root = Next;
+        Next = NULL;
+
+        SHAPE_SWITCH(Root, {
+          MultipleShape *Fused = Shape::IsMultiple(Root->Next);
+          // If we are fusing a Multiple with a loop into this Simple, then visit it now
+          if (Fused && Fused->NeedLoop) {
+            LoopStack.push(Fused);
+            RECURSE_MULTIPLE_MANUAL(FindLabeledLoops, Fused);
+          }
+          for (BlockBranchMap::iterator iter = Simple->Inner->ProcessedBranchesOut.begin(); iter != Simple->Inner->ProcessedBranchesOut.end(); iter++) {
+            Block *Target = iter->first;
+            Branch *Details = iter->second;
+            if (Details->Type != Branch::Direct) {
+              assert(LoopStack.size() > 0);
+              if (Details->Ancestor != LoopStack.top()) {
+                LabeledShape *Labeled = Shape::IsLabeled(Details->Ancestor);
+                Labeled->Labeled = true;
+                Details->Labeled = true;
+              } else {
+                Details->Labeled = false;
+              }
             }
           }
-        }
-        if (Fused && Fused->NeedLoop) {
+          if (Fused && Fused->NeedLoop) {
+            LoopStack.pop();
+            Next = Fused->Next;
+          } else {
+            Next = Root->Next;
+          }
+        }, {
+          if (Multiple->NeedLoop) {
+            LoopStack.push(Multiple);
+          }
+          RECURSE_MULTIPLE(FindLabeledLoops);
+          if (Multiple->NeedLoop) {
+            LoopStack.pop();
+          }
+          Next = Root->Next;
+        }, {
+          LoopStack.push(Loop);
+          RECURSE_LOOP(FindLabeledLoops);
           LoopStack.pop();
-          if (Fused->Next) FindLabeledLoops(Fused->Next);
-        } else {
-          if (Root->Next) FindLabeledLoops(Root->Next);
-        }
-      }, {
-        if (Multiple->NeedLoop) {
-          LoopStack.push(Multiple);
-        }
-        RECURSE_MULTIPLE(FindLabeledLoops);
-        if (Multiple->NeedLoop) {
-          LoopStack.pop();
-        }
-        if (Root->Next) FindLabeledLoops(Root->Next);
-      }, {
-        LoopStack.push(Loop);
-        RECURSE_LOOP(FindLabeledLoops);
-        LoopStack.pop();
-        if (Root->Next) FindLabeledLoops(Root->Next);
-      });
+          Next = Root->Next;
+        });
+      }
 
       if (First) {
         delete (std::stack<Shape*>*)Closure;

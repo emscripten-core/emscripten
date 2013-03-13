@@ -35,12 +35,6 @@ function loopy() {
   next();
   something();
 }
-function ignoreLoopy() {
-  b$for_cond$4 : while (1) {
-    if ($ok) break b$for_cond$4;
-    var $inc = $ok + 1;
-  }
-}
 function bits() {
   print(($s & 65535) + ((($f & 65535) << 16 >> 16) * (($f & 65535) << 16 >> 16) | 0) % 256 & 65535);
   z(HEAP32[$id + 40 >> 2]);

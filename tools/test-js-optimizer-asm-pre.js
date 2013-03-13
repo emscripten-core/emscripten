@@ -6,6 +6,8 @@ function a() {
   f(347 & 12);
   HEAP[4096 >> 2] = 5;
   HEAP[(4096 & 8191) >> 2] = 5;
+  whee(12, 13) | 0;
+  +whee(12, 13);
 }
 function b($this, $__n) {
   $this = $this | 0;
@@ -51,4 +53,25 @@ function b($this, $__n) {
   HEAP8[($38 + $40 | 0) & 16777215] = 0;
   return;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "b"]
+function rett() {
+  if (f()) {
+    g();
+    return 5;
+  }
+  // missing final return, need to add it
+}
+function ret2t() {
+  if (f()) {
+    g();
+    return;
+  }
+  // missing final return, but no need
+}
+function retf() {
+  if (f()) {
+    g();
+    return +h();
+  }
+  // missing final return, need it as a float
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "b", "rett", "ret2t", "retf"]

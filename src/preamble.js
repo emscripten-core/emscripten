@@ -412,14 +412,6 @@ Module['ALLOC_STACK'] = ALLOC_STACK;
 Module['ALLOC_STATIC'] = ALLOC_STATIC;
 Module['ALLOC_NONE'] = ALLOC_NONE;
 
-// Simple unoptimized memset - necessary during startup
-var _memset = function(ptr, value, num) {
-  var stop = ptr + num;
-  while (ptr < stop) {
-    {{{ makeSetValue('ptr++', 0, 'value', 'i8', null, true) }}};
-  }
-}
-
 // allocate(): This is for internal use. You can use it yourself as well, but the interface
 //             is a little tricky (see docs right below). The reason is that it is optimized
 //             for multiple syntaxes to save space in generated code. So you should
@@ -453,7 +445,18 @@ function allocate(slab, types, allocator, ptr) {
   }
 
   if (zeroinit) {
-    _memset(ret, 0, size);
+    var ptr = ret, stop;
+#if USE_TYPED_ARRAYS == 2
+    assert((ret & 3) == 0);
+    stop = ret + (size & ~3);
+    for (; ptr < stop; ptr += 4) {
+      {{{ makeSetValue('ptr', '0', '0', 'i32', null, true) }}};
+    }
+#endif
+    stop = ret + size;
+    while (ptr < stop) {
+      {{{ makeSetValue('ptr++', '0', '0', 'i8', null, true) }}};
+    }
     return ret;
   }
 
@@ -566,6 +569,7 @@ function enlargeMemory() {
   while (TOTAL_MEMORY <= STATICTOP) { // Simple heuristic. Override enlargeMemory() if your program has something more optimal for it
     TOTAL_MEMORY = alignMemoryPage(2*TOTAL_MEMORY);
   }
+  assert(TOTAL_MEMORY <= Math.pow(2, 30)); // 2^30==1GB is a practical maximum - 2^31 is already close to possible negative numbers etc.
 #if USE_TYPED_ARRAYS == 1
   var oldIHEAP = IHEAP;
   Module['HEAP'] = Module['IHEAP'] = HEAP = IHEAP = new Int32Array(TOTAL_MEMORY);
@@ -843,6 +847,23 @@ Module['removeRunDependency'] = removeRunDependency;
 
 Module["preloadedImages"] = {}; // maps url to image data
 Module["preloadedAudios"] = {}; // maps url to audio data
+
+#if PGO
+var PGOMonitor = {
+  called: {},
+  dump: function() {
+    var dead = [];
+    for (var i = 0; i < this.allGenerated.length; i++) {
+      var func = this.allGenerated[i];
+      if (!this.called[func]) dead.push(func);
+    }
+    Module.print('-s DEAD_FUNCTIONS=\'' + JSON.stringify(dead) + '\'\n');
+  }
+};
+__ATEXIT__.push({ func: function() { PGOMonitor.dump() } });
+if (!Module.preRun) Module.preRun = [];
+Module.preRun.push(function() { addRunDependency('pgo') });
+#endif
 
 // === Body ===
 

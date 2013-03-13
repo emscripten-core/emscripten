@@ -15,7 +15,7 @@ var QUANTUM_SIZE = 4; // This is the size of an individual field in a structure.
                       // the normal value of 4 means all fields take 4 memory addresses,
                       // as per the norm on a 32-bit machine.
                       //
-                      // 1 is somewhat faster than 4, but dangerous.
+                      // Changing this from the default of 4 is deprecated.
 
 var CORRECT_SIGNS = 1; // Whether we make sure to convert unsigned values to signed values.
                        // Decreases performance with additional runtime checks. Might not be
@@ -37,7 +37,6 @@ var VERBOSE = 0; // When set to 1, will generate more verbose output during comp
 
 var INVOKE_RUN = 1; // Whether we will call run(). Disable if you embed the generated
                     // code in your own, and will call run() yourself at the right time
-var INIT_STACK = 0; // Whether to initialize memory on the stack to 0.
 var INIT_HEAP = 0; // Whether to initialize memory anywhere other than the stack to 0.
 var TOTAL_STACK = 5*1024*1024; // The total stack size. There is no way to enlarge the stack, so this
                                // value must be large enough for the program's requirements. If
@@ -59,10 +58,12 @@ var ALLOW_MEMORY_GROWTH = 0; // If false, we abort with an error if we try to al
 // Code embetterments
 var MICRO_OPTS = 1; // Various micro-optimizations, like nativizing variables
 var RELOOP = 0; // Recreate js native loops from llvm data
+var RELOOPER = 'relooper.js'; // Loads the relooper from this path relative to compiler.js
+
 var USE_TYPED_ARRAYS = 2; // Use typed arrays for the heap. See https://github.com/kripken/emscripten/wiki/Code-Generation-Modes/
                           // 0 means no typed arrays are used.
                           // 1 has two heaps, IHEAP (int32) and FHEAP (double),
-                          // and addresses there are a match for normal addresses.
+                          // and addresses there are a match for normal addresses. This is deprecated.
                           // 2 is a single heap, accessible through views as int8, int32, etc. This is
                           //   the recommended mode both for performance and for compatibility.
 var USE_FHEAP = 1; // Relevant in USE_TYPED_ARRAYS == 1. If this is disabled, only IHEAP will be used, and FHEAP
@@ -330,6 +331,14 @@ var BENCHMARK = 0; // If 1, will just time how long main() takes to execute, and
 var ASM_JS = 0; // If 1, generate code in asm.js format. XXX This is highly experimental,
                 // and will not work on most codebases yet. It is NOT recommended that you
                 // try this yet.
+
+var PGO = 0; // Enables profile-guided optimization in the form of runtime checks for
+             // which functions are actually called. Emits a list during shutdown that you
+             // can pass to DEAD_FUNCTIONS (you can also emit the list manually by
+             // calling PGOMonitor.dump());
+var DEAD_FUNCTIONS = []; // A list of functions that no code will be emitted for, and
+                         // a runtime abort will happen if they are called
+                         // TODO: options to lazily load such functions
 
 var EXPLICIT_ZEXT = 0; // If 1, generate an explicit conversion of zext i1 to i32, using ?:
 

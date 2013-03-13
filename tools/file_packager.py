@@ -35,8 +35,8 @@ TODO:        You can also provide .crn files yourself, pre-crunched. With this o
 
 import os, sys, shutil, random
 
-from shared import Compression, execute, suffix, unsuffixed
 import shared
+from shared import Compression, execute, suffix, unsuffixed
 from subprocess import Popen, PIPE, STDOUT
 
 data_target = sys.argv[1]

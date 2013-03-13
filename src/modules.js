@@ -90,6 +90,7 @@ var Debugging = {
         lines[i] = ';';
         continue;
       }
+      if (line[0] == '!') skipLine = true;
       lines[i] = skipLine ? ';' : line;
     }
 
@@ -179,7 +180,16 @@ var Variables = {
   globals: {},
   indexedGlobals: {}, // for indexed globals, ident ==> index
   // Used in calculation of indexed globals
-  nextIndexedOffset: 0
+  nextIndexedOffset: 0,
+
+  resolveAliasToIdent: function(ident) {
+    while (1) {
+      var varData = Variables.globals[ident];
+      if (!(varData && varData.targetIdent)) break;
+      ident = varData.targetIdent; // might need to eval to turn (6) into 6
+    }
+    return ident;
+  },
 };
 
 var Types = {
@@ -281,7 +291,7 @@ var Functions = {
       var sig = ASM_JS ? Functions.implementedFunctions[ident] || Functions.unimplementedFunctions[ident] || LibraryManager.library[ident.substr(1) + '__sig'] : 'x';
       assert(sig, ident);
       if (!tables[sig]) tables[sig] = emptyTable(sig); // TODO: make them compact
-      tables[sig][this.indexedFunctions[ident]] = ident;
+      tables[sig][this.indexedFunctions[ident]] = ident in DEAD_FUNCTIONS ? '0' : ident;
     }
     var generated = false;
     var wrapped = {};
@@ -305,7 +315,7 @@ var Functions = {
         }
         if (ASM_JS) {
           var curr = table[i];
-          if (curr && !Functions.implementedFunctions[curr]) {
+          if (curr && curr != '0' && !Functions.implementedFunctions[curr]) {
             // This is a library function, we can't just put it in the function table, need a wrapper
             if (!wrapped[curr]) {
               var args = '', arg_coercions = '', call = curr + '(', retPre = '', retPost = '';

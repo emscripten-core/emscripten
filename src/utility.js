@@ -267,6 +267,15 @@ function set() {
 }
 var unset = keys;
 
+function numberedSet() {
+  var args = typeof arguments[0] === 'object' ? arguments[0] : arguments;
+  var ret = {};
+  for (var i = 0; i < args.length; i++) {
+    ret[args[i]] = i;
+  }
+  return ret;
+}
+
 function setSub(x, y) {
   var ret = set(keys(x));
   for (yy in y) {

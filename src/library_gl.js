@@ -21,7 +21,6 @@ var LibraryGL = {
 
 #if FULL_ES2
     clientBuffers: [],
-    enabledClientBuffers: [],
 #endif
     currArrayBuffer: 0,
     currElementArrayBuffer: 0,
@@ -57,6 +56,65 @@ var LibraryGL = {
         table[i] = null;
       }
       return ret;
+    },
+
+    // Temporary buffers
+    MAX_TEMP_BUFFER_SIZE: {{{ GL_MAX_TEMP_BUFFER_SIZE }}},
+    tempBufferIndexLookup: null,
+    tempVertexBuffers: null,
+    tempIndexBuffers: null,
+    tempQuadIndexBuffer: null,
+
+    generateTempBuffers: function(quads) {
+      this.tempBufferIndexLookup = new Uint8Array(this.MAX_TEMP_BUFFER_SIZE+1);
+      this.tempVertexBuffers = [];
+      this.tempIndexBuffers = [];
+      var last = -1, curr = -1;
+      var size = 1;
+      for (var i = 0; i <= this.MAX_TEMP_BUFFER_SIZE; i++) {
+        if (i > size) {
+          size <<= 1;
+        }
+        if (size != last) {
+          curr++;
+          this.tempVertexBuffers[curr] = Module.ctx.createBuffer();
+          Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, this.tempVertexBuffers[curr]);
+          Module.ctx.bufferData(Module.ctx.ARRAY_BUFFER, size, Module.ctx.DYNAMIC_DRAW);
+          Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, null);
+          this.tempIndexBuffers[curr] = Module.ctx.createBuffer();
+          Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.tempIndexBuffers[curr]);
+          Module.ctx.bufferData(Module.ctx.ELEMENT_ARRAY_BUFFER, size, Module.ctx.DYNAMIC_DRAW);
+          Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, null);
+          last = size;
+        }
+        this.tempBufferIndexLookup[i] = curr;
+      }
+
+      if (quads) {
+        // GL_QUAD indexes can be precalculated
+        this.tempQuadIndexBuffer = Module.ctx.createBuffer();
+        Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.tempQuadIndexBuffer);
+        var numIndexes = this.MAX_TEMP_BUFFER_SIZE >> 1;
+        var quadIndexes = new Uint16Array(numIndexes);
+        var i = 0, v = 0;
+        while (1) {
+          quadIndexes[i++] = v;
+          if (i >= numIndexes) break;
+          quadIndexes[i++] = v+1;
+          if (i >= numIndexes) break;
+          quadIndexes[i++] = v+2;
+          if (i >= numIndexes) break;
+          quadIndexes[i++] = v;
+          if (i >= numIndexes) break;
+          quadIndexes[i++] = v+2;
+          if (i >= numIndexes) break;
+          quadIndexes[i++] = v+3;
+          if (i >= numIndexes) break;
+          v += 4;
+        }
+        Module.ctx.bufferData(Module.ctx.ELEMENT_ARRAY_BUFFER, quadIndexes, Module.ctx.STATIC_DRAW);
+        Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, null);
+      }
     },
 
     // Linear lookup in one of the tables (buffers, programs, etc.). TODO: consider using a weakmap to make this faster, if it matters
@@ -207,20 +265,35 @@ var LibraryGL = {
       return size * typeSize * count;
     },
 
+    usedTempBuffers: [],
+
     preDrawHandleClientVertexAttribBindings: function(count) {
       GL.resetBufferBinding = false;
+
+      var used = GL.usedTempBuffers;
+      used.length = 0;
+
+      // TODO: initial pass to detect ranges we need to upload, might not need an upload per attrib
       for (var i = 0; i < GL.maxVertexAttribs; ++i) {
-        if (!GL.enabledClientBuffers[i] || !GL.clientBuffers[i]) continue;
-  
-        GL.resetBufferBinding = true;
-  
         var cb = GL.clientBuffers[i];
-  
-        var buf = Module.ctx.createBuffer();
+        if (!cb.clientside || !cb.enabled) continue;
+
+        GL.resetBufferBinding = true;
+
+        var size = GL.calcBufLength(cb.size, cb.type, cb.stride, count);
+        var index = GL.tempBufferIndexLookup[size];
+        var buf;
+        do {
+#if ASSERTIONS
+          assert(index < GL.tempVertexBuffers.length);
+#endif
+          buf = GL.tempVertexBuffers[index++];
+        } while (used.indexOf(buf) >= 0);
+        used.push(buf);
         Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, buf);
-        Module.ctx.bufferData(Module.ctx.ARRAY_BUFFER,
-                              HEAPU8.subarray(cb.ptr, cb.ptr + GL.calcBufLength(cb.size, cb.type, cb.stride, count)),
-                              Module.ctx.DYNAMIC_DRAW);
+        Module.ctx.bufferSubData(Module.ctx.ARRAY_BUFFER,
+                                 0,
+                                 HEAPU8.subarray(cb.ptr, cb.ptr + size));
         Module.ctx.vertexAttribPointer(i, cb.size, cb.type, cb.normalized, cb.stride, 0);
       }
     },
@@ -239,6 +312,13 @@ var LibraryGL = {
       if (!Module.useWebGL) return; // an app might link both gl and 2d backends
 
       GL.maxVertexAttribs = Module.ctx.getParameter(Module.ctx.MAX_VERTEX_ATTRIBS);
+#if FULL_ES2
+      for (var i = 0; i < GL.maxVertexAttribs; i++) {
+        GL.clientBuffers[i] = { enabled: false, clientside: false, size: 0, type: 0, normalized: 0, stride: 0, ptr: 0 };
+      }
+
+      GL.generateTempBuffers();
+#endif
 
       GL.compressionExt = Module.ctx.getExtension('WEBGL_compressed_texture_s3tc') ||
                           Module.ctx.getExtension('MOZ_WEBGL_compressed_texture_s3tc') ||
@@ -612,7 +692,7 @@ var LibraryGL = {
 
   glGetVertexAttribfv: function(index, pname, params) {
 #if FULL_ES2
-    if (GL.clientBuffers[index]) {
+    if (GL.clientBuffers[index].enabled) {
       Module.printErr("glGetVertexAttribfv on client-side array: not supported, bad data returned");
     }
 #endif
@@ -628,7 +708,7 @@ var LibraryGL = {
 
   glGetVertexAttribiv: function(index, pname, params) {
 #if FULL_ES2
-    if (GL.clientBuffers[index]) {
+    if (GL.clientBuffers[index].enabled) {
       Module.printErr("glGetVertexAttribiv on client-side array: not supported, bad data returned");
     }
 #endif
@@ -644,7 +724,7 @@ var LibraryGL = {
 
   glGetVertexAttribPointerv: function(index, pname, pointer) {
 #if FULL_ES2
-    if (GL.clientBuffers[index]) {
+    if (GL.clientBuffers[index].enabled) {
       Module.printErr("glGetVertexAttribPointer on client-side array: not supported, bad data returned");
     }
 #endif
@@ -1634,7 +1714,7 @@ var LibraryGL = {
   // GL Immediate mode
 
   $GLImmediate__postset: 'GL.immediate.setupFuncs(); Browser.moduleContextCreatedCallbacks.push(function() { GL.immediate.init() });',
-  $GLImmediate__deps: ['$Browser', '$GL'],
+  $GLImmediate__deps: ['$Browser', '$GL', '$GLEmulation'],
   $GLImmediate: {
     MAX_TEXTURES: 7,
 
@@ -1691,62 +1771,6 @@ var LibraryGL = {
       attrib.stride = stride;
       attrib.pointer = pointer;
       this.modifiedClientAttributes = true;
-    },
-
-    // Temporary buffers
-    MAX_TEMP_BUFFER_SIZE: {{{ GL_MAX_TEMP_BUFFER_SIZE }}},
-    tempBufferIndexLookup: null,
-    tempVertexBuffers: null,
-    tempIndexBuffers: null,
-    tempQuadIndexBuffer: null,
-
-    generateTempBuffers: function() {
-      this.tempBufferIndexLookup = new Uint8Array(this.MAX_TEMP_BUFFER_SIZE+1);
-      this.tempVertexBuffers = [];
-      this.tempIndexBuffers = [];
-      var last = -1, curr = -1;
-      var size = 1;
-      for (var i = 0; i <= this.MAX_TEMP_BUFFER_SIZE; i++) {
-        if (i > size) {
-          size <<= 1;
-        }
-        if (size != last) {
-          curr++;
-          this.tempVertexBuffers[curr] = Module.ctx.createBuffer();
-          Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, this.tempVertexBuffers[curr]);
-          Module.ctx.bufferData(Module.ctx.ARRAY_BUFFER, size, Module.ctx.DYNAMIC_DRAW);
-          Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, null);
-          this.tempIndexBuffers[curr] = Module.ctx.createBuffer();
-          Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.tempIndexBuffers[curr]);
-          Module.ctx.bufferData(Module.ctx.ELEMENT_ARRAY_BUFFER, size, Module.ctx.DYNAMIC_DRAW);
-          Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, null);
-          last = size;
-        }
-        this.tempBufferIndexLookup[i] = curr;
-      }
-      // GL_QUAD indexes can be precalculated
-      this.tempQuadIndexBuffer = Module.ctx.createBuffer();
-      Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.tempQuadIndexBuffer);
-      var numIndexes = this.MAX_TEMP_BUFFER_SIZE >> 1;
-      var quadIndexes = new Uint16Array(numIndexes);
-      var i = 0, v = 0;
-      while (1) {
-        quadIndexes[i++] = v;
-        if (i >= numIndexes) break;
-        quadIndexes[i++] = v+1;
-        if (i >= numIndexes) break;
-        quadIndexes[i++] = v+2;
-        if (i >= numIndexes) break;
-        quadIndexes[i++] = v;
-        if (i >= numIndexes) break;
-        quadIndexes[i++] = v+2;
-        if (i >= numIndexes) break;
-        quadIndexes[i++] = v+3;
-        if (i >= numIndexes) break;
-        v += 4;
-      }
-      Module.ctx.bufferData(Module.ctx.ELEMENT_ARRAY_BUFFER, quadIndexes, Module.ctx.STATIC_DRAW);
-      Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, null);
     },
 
     // Renderers
@@ -1969,8 +1993,8 @@ var LibraryGL = {
           if (!GL.currArrayBuffer) {
             var start = GL.immediate.firstVertex*GL.immediate.stride;
             var end = GL.immediate.lastVertex*GL.immediate.stride;
-            assert(end <= GL.immediate.MAX_TEMP_BUFFER_SIZE, 'too much vertex data');
-            arrayBuffer = GL.immediate.tempVertexBuffers[GL.immediate.tempBufferIndexLookup[end]];
+            assert(end <= GL.MAX_TEMP_BUFFER_SIZE, 'too much vertex data');
+            arrayBuffer = GL.tempVertexBuffers[GL.tempBufferIndexLookup[end]];
             // TODO: consider using the last buffer we bound, if it was larger. downside is larger buffer, but we might avoid rebinding and preparing
           } else {
             arrayBuffer = GL.currArrayBuffer;
@@ -2161,12 +2185,12 @@ var LibraryGL = {
       this.rendererCache = this.rendererCacheItemTemplate.slice();
 
       // Buffers for data
-      this.tempData = new Float32Array(this.MAX_TEMP_BUFFER_SIZE >> 2);
-      this.indexData = new Uint16Array(this.MAX_TEMP_BUFFER_SIZE >> 1);
+      this.tempData = new Float32Array(GL.MAX_TEMP_BUFFER_SIZE >> 2);
+      this.indexData = new Uint16Array(GL.MAX_TEMP_BUFFER_SIZE >> 1);
 
       this.vertexDataU8 = new Uint8Array(this.tempData.buffer);
 
-      this.generateTempBuffers();
+      GL.generateTempBuffers(true);
 
       this.clientColor = new Float32Array([1, 1, 1, 1]);
     },
@@ -2209,7 +2233,7 @@ var LibraryGL = {
 #if ASSERTIONS
         Runtime.warnOnce('Unpacking/restriding attributes, this is not fast');
 #endif
-        if (!GL.immediate.restrideBuffer) GL.immediate.restrideBuffer = _malloc(GL.immediate.MAX_TEMP_BUFFER_SIZE);
+        if (!GL.immediate.restrideBuffer) GL.immediate.restrideBuffer = _malloc(GL.MAX_TEMP_BUFFER_SIZE);
         start = GL.immediate.restrideBuffer;
 #if ASSERTIONS
         assert(start % 4 == 0);
@@ -2224,7 +2248,7 @@ var LibraryGL = {
           bytes += size;
         }
 #if ASSERTIONS
-        assert(count*bytes <= GL.immediate.MAX_TEMP_BUFFER_SIZE);
+        assert(count*bytes <= GL.MAX_TEMP_BUFFER_SIZE);
 #endif
         // copy out the data (we need to know the stride for that, and define attribute.pointer
         for (var i = 0; i < attributes.length; i++) {
@@ -2298,8 +2322,8 @@ var LibraryGL = {
         }
         if (!GL.currElementArrayBuffer) {
           // If no element array buffer is bound, then indices is a literal pointer to clientside data
-          assert(numProvidedIndexes << 1 <= GL.immediate.MAX_TEMP_BUFFER_SIZE, 'too many immediate mode indexes (a)');
-          var indexBuffer = GL.immediate.tempIndexBuffers[GL.immediate.tempBufferIndexLookup[numProvidedIndexes << 1]];
+          assert(numProvidedIndexes << 1 <= GL.MAX_TEMP_BUFFER_SIZE, 'too many immediate mode indexes (a)');
+          var indexBuffer = GL.tempIndexBuffers[GL.tempBufferIndexLookup[numProvidedIndexes << 1]];
           Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, indexBuffer);
           Module.ctx.bufferSubData(Module.ctx.ELEMENT_ARRAY_BUFFER, 0, {{{ makeHEAPView('U16', 'ptr', 'ptr + (numProvidedIndexes << 1)') }}});
           ptr = 0;
@@ -2314,8 +2338,8 @@ var LibraryGL = {
         ptr = GL.immediate.firstVertex*3;
         var numQuads = numVertexes / 4;
         numIndexes = numQuads * 6; // 0 1 2, 0 2 3 pattern
-        assert(ptr + (numIndexes << 1) <= GL.immediate.MAX_TEMP_BUFFER_SIZE, 'too many immediate mode indexes (b)');
-        Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.tempQuadIndexBuffer);
+        assert(ptr + (numIndexes << 1) <= GL.MAX_TEMP_BUFFER_SIZE, 'too many immediate mode indexes (b)');
+        Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, GL.tempQuadIndexBuffer);
         emulatedElementArrayBuffer = true;
       }
 
@@ -2369,7 +2393,7 @@ var LibraryGL = {
     GL.immediate.vertexData[GL.immediate.vertexCounter++] = y;
     GL.immediate.vertexData[GL.immediate.vertexCounter++] = z || 0;
 #if ASSERTIONS
-    assert(GL.immediate.vertexCounter << 2 < GL.immediate.MAX_TEMP_BUFFER_SIZE);
+    assert(GL.immediate.vertexCounter << 2 < GL.MAX_TEMP_BUFFER_SIZE);
 #endif
     GL.immediate.addRendererComponent(GL.immediate.VERTEX, 3, Module.ctx.FLOAT);
   },
@@ -2849,15 +2873,25 @@ var LibraryGL = {
 
   glShadeModel: function() { Runtime.warnOnce('TODO: glShadeModel') },
 
+  // GLES2 emulation
+
   glVertexAttribPointer__sig: 'viiiiii',
   glVertexAttribPointer: function(index, size, type, normalized, stride, ptr) {
 #if FULL_ES2
+    var cb = GL.clientBuffers[index];
+#if ASSERTIONS
+    assert(cb, index);
+#endif
     if (!GL.currArrayBuffer) {
-      GL.clientBuffers[index] = { size: size, type: type, normalized: normalized, stride: stride, ptr: ptr };
+      cb.size = size;
+      cb.type = type;
+      cb.normalized = normalized;
+      cb.stride = stride;
+      cb.ptr = ptr;
+      cb.clientside = true;
       return;
     }
-
-    GL.clientBuffers[index] = null;
+    cb.clientside = false;
 #endif
     Module.ctx.vertexAttribPointer(index, size, type, normalized, stride, ptr);
   },
@@ -2865,7 +2899,11 @@ var LibraryGL = {
   glEnableVertexAttribArray__sig: 'vi',
   glEnableVertexAttribArray: function(index) {
 #if FULL_ES2
-    GL.enabledClientBuffers[index] = true;
+    var cb = GL.clientBuffers[index];
+#if ASSERTIONS
+    assert(cb, index);
+#endif
+    cb.enabled = true;
 #endif
     Module.ctx.enableVertexAttribArray(index);
   },
@@ -2873,7 +2911,11 @@ var LibraryGL = {
   glDisableVertexAttribArray__sig: 'vi',
   glDisableVertexAttribArray: function(index) {
 #if FULL_ES2
-    GL.enabledClientBuffers[index] = false;
+    var cb = GL.clientBuffers[index];
+#if ASSERTIONS
+    assert(cb, index);
+#endif
+    cb.enabled = false;
 #endif
     Module.ctx.disableVertexAttribArray(index);
   },
@@ -2881,7 +2923,7 @@ var LibraryGL = {
   glDrawArrays: function(mode, first, count) {
 #if FULL_ES2
     // bind any client-side buffers
-    GL.preDrawHandleClientVertexAttribBindings(count);
+    GL.preDrawHandleClientVertexAttribBindings(first + count);
 #endif
 
     Module.ctx.drawArrays(mode, first, count);
@@ -2895,11 +2937,12 @@ var LibraryGL = {
 #if FULL_ES2
     var buf;
     if (!GL.currElementArrayBuffer) {
-      buf = Module.ctx.createBuffer();
+      var size = GL.calcBufLength(1, type, 0, count);
+      buf = GL.tempIndexBuffers[GL.tempBufferIndexLookup[size]];
       Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, buf);
-      Module.ctx.bufferData(Module.ctx.ELEMENT_ARRAY_BUFFER,
-                            HEAPU8.subarray(indices, indices + GL.calcBufLength(1, type, 0, count)),
-                            Module.ctx.DYNAMIC_DRAW);
+      Module.ctx.bufferSubData(Module.ctx.ELEMENT_ARRAY_BUFFER,
+                               0,
+                               HEAPU8.subarray(indices, indices + size));
       // the index is now 0
       indices = 0;
     }
@@ -2915,17 +2958,18 @@ var LibraryGL = {
 
     if (!GL.currElementArrayBuffer) {
       Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, null);
-      Module.ctx.deleteBuffer(buf);
     }
 #endif
   },
 
   // signatures of simple pass-through functions, see later
+
   glActiveTexture__sig: 'vi',
   glCheckFramebufferStatus__sig: 'ii',
   glRenderbufferStorage__sig: 'viiii',
 
   // Open GLES1.1 compatibility
+
   glGenFramebuffersOES : 'glGenFramebuffers',
   glGenRenderbuffersOES : 'glGenRenderbuffers',
   glBindFramebufferOES : 'glBindFramebuffer',

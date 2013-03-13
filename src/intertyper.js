@@ -122,16 +122,19 @@ function intertyper(data, sidePass, baseLineNums) {
               SKIP_STACK_IN_SMALL = 0;
             }
 
-            unparsedBundles.push({
-              intertype: 'unparsedFunction',
-              // We need this early, to know basic function info - ident, params, varargs
-              ident: toNiceIdent(func.ident),
-              params: func.params,
-              returnType: func.returnType,
-              hasVarArgs: func.hasVarArgs,
-              lineNum: currFunctionLineNum,
-              lines: currFunctionLines
-            });
+            var ident = toNiceIdent(func.ident);
+            if (!(ident in DEAD_FUNCTIONS)) {
+              unparsedBundles.push({
+                intertype: 'unparsedFunction',
+                // We need this early, to know basic function info - ident, params, varargs
+                ident: ident,
+                params: func.params,
+                returnType: func.returnType,
+                hasVarArgs: func.hasVarArgs,
+                lineNum: currFunctionLineNum,
+                lines: currFunctionLines
+              });
+            }
             currFunctionLines = [];
           }
         }
@@ -677,7 +680,7 @@ function intertyper(data, sidePass, baseLineNums) {
     item.type = item.tokens[1].text;
     Types.needAnalysis[item.type] = 0;
     while (['@', '%'].indexOf(item.tokens[2].text[0]) == -1 && !(item.tokens[2].text in PARSABLE_LLVM_FUNCTIONS) &&
-           item.tokens[2].text != 'null' && item.tokens[2].text != 'asm') {
+           item.tokens[2].text != 'null' && item.tokens[2].text != 'asm' && item.tokens[2].text != 'undef') {
       assert(item.tokens[2].text != 'asm', 'Inline assembly cannot be compiled to JavaScript!');
       item.tokens.splice(2, 1);
     }
@@ -741,10 +744,12 @@ function intertyper(data, sidePass, baseLineNums) {
     processItem: function(item) {
       item.intertype = 'atomic';
       if (item.tokens[0].text == 'atomicrmw') {
+        if (item.tokens[1].text == 'volatile') item.tokens.splice(1, 1);
         item.op = item.tokens[1].text;
         item.tokens.splice(1, 1);
       } else {
         assert(item.tokens[0].text == 'cmpxchg')
+        if (item.tokens[1].text == 'volatile') item.tokens.splice(1, 1);
         item.op = 'cmpxchg';
       }
       var last = getTokenIndexByText(item.tokens, ';');

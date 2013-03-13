@@ -25,9 +25,9 @@ var RuntimeGenerator = {
     sep = sep || ';';
     if (USE_TYPED_ARRAYS === 2) 'STACKTOP = (STACKTOP + STACKTOP|0 % ' + ({{{ QUANTUM_SIZE }}} - (isNumber(size) ? Math.min(size, {{{ QUANTUM_SIZE }}}) : {{{ QUANTUM_SIZE }}})) + ')' + sep;
     //                                                               The stack is always QUANTUM SIZE aligned, so we may not need to force alignment here
-    var ret = RuntimeGenerator.alloc(size, 'STACK', INIT_STACK, sep, USE_TYPED_ARRAYS != 2 || (isNumber(size) && parseInt(size) % {{{ QUANTUM_SIZE }}} == 0));
+    var ret = RuntimeGenerator.alloc(size, 'STACK', false, sep, USE_TYPED_ARRAYS != 2 || (isNumber(size) && parseInt(size) % {{{ QUANTUM_SIZE }}} == 0));
     if (ASSERTIONS) {
-      ret += sep + 'assert(STACKTOP|0 < STACK_MAX|0)';
+      ret += sep + 'assert(' + asmCoercion('(STACKTOP|0) < (STACK_MAX|0)', 'i32') + ')';
     }
     return ret;
   },
@@ -38,14 +38,14 @@ var RuntimeGenerator = {
     if (initial > 0) ret += '; STACKTOP = (STACKTOP + ' + initial + ')|0';
     if (USE_TYPED_ARRAYS == 2) {
       assert(initial % QUANTUM_SIZE == 0);
-      if (ASSERTIONS) {
-        ret += '; assert(STACKTOP|0 % {{{ QUANTUM_SIZE }}} == 0)';
+      if (ASSERTIONS && QUANTUM_SIZE == 4) {
+        ret += '; assert(' + asmCoercion('!(STACKTOP&3)', 'i32') + ')';
       }
     }
     if (ASSERTIONS) {
-      ret += '; assert(STACKTOP < STACK_MAX)';
+      ret += '; assert(' + asmCoercion('(STACKTOP|0) < (STACK_MAX|0)', 'i32') + ')';
     }
-    if (INIT_STACK) {
+    if (false) {
       ret += '; _memset(' + asmCoercion('__stackBase__', 'i32') + ', 0, ' + initial + ')';
     }
     return ret;
@@ -87,7 +87,7 @@ var RuntimeGenerator = {
 };
 
 function unInline(name_, params) {
-  var src = '(function ' + name_ + '(' + params + ') { var ret = ' + RuntimeGenerator[name_].apply(null, params) + '; return ret; })';
+  var src = '(function(' + params + ') { var ret = ' + RuntimeGenerator[name_].apply(null, params) + '; return ret; })';
   var ret = eval(src);
   return ret;
 }
@@ -363,6 +363,11 @@ var Runtime = {
     table.push(func);
     table.push(0);
     return ret;
+  },
+
+  removeFunction: function(index) {
+    var table = FUNCTION_TABLE; // TODO: support asm
+    table[index] = null;
   },
 
   warnOnce: function(text) {

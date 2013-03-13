@@ -13,6 +13,7 @@ entry:
   %1 = atomicrmw add i32* %t, i32 3 seq_cst, ; [#uses=0 type=i32] [debug line = 21:12]
   %2 = load i32* %t
   %call = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0), i32 %0, i32 %2) ; [#uses=0 type=i32]
+  %3 = atomicrmw volatile add i32* %t, i32 3 seq_cst, ; [#uses=0 type=i32] [debug line = 21:12]
   ret i32 1
 }
 

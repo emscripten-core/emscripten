@@ -35,6 +35,7 @@ var LibrarySDL = {
     mixerFormat: 0x8010, // AUDIO_S16LSB
     mixerNumChannels: 2,
     mixerChunkSize: 1024,
+    channelMinimumNumber: 0,
 
     GL: false, // Set to true if we call SDL_SetVideoMode with SDL_OPENGL, and if so, we do not create 2D canvases&contexts for blitting
                // Note that images loaded before SDL_SetVideoMode will not get this optimization
@@ -661,8 +662,8 @@ var LibrarySDL = {
     {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*0', '0', '0', 'i32') }}} // TODO
     {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*1', '0', '0', 'i32') }}} // TODO
     {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*2', '0', '0', 'void*') }}}
-    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*3', '0', 'SDL.defaults.width', 'i32') }}}
-    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*4', '0', 'SDL.defaults.height', 'i32') }}}
+    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*3', '0', 'Module["canvas"].width', 'i32') }}}
+    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*4', '0', 'Module["canvas"].height', 'i32') }}}
     return ret;
   },
 
@@ -919,7 +920,26 @@ var LibrarySDL = {
   },
 
   SDL_ShowCursor: function(toggle) {
-    // TODO
+    switch (toggle) {
+      case 0: // SDL_DISABLE
+        if (Browser.isFullScreen) { // only try to lock the pointer when in full screen mode
+          Module['canvas'].requestPointerLock();
+          return 0;
+        } else { // else return SDL_ENABLE to indicate the failure
+          return 1;
+        }
+        break;
+      case 1: // SDL_ENABLE
+        Module['canvas'].exitPointerLock();
+        return 1;
+        break;
+      case -1: // SDL_QUERY
+        return !Browser.pointerLock;
+        break;
+      default:
+        console.log( "SDL_ShowCursor called with unknown toggle parameter value: " + toggle + "." );
+        break;
+    }
   },
 
   SDL_GetError: function() {
@@ -1075,6 +1095,15 @@ var LibrarySDL = {
   },
 
   SDL_WM_GrabInput: function() {},
+  
+  SDL_WM_ToggleFullScreen: function(surf) {
+    if (Browser.isFullScreen) {
+      Module['canvas'].cancelFullScreen();
+      return 1;
+    } else {
+      return 0;
+    }
+  },
 
   // SDL_Image
 
@@ -1289,7 +1318,9 @@ var LibrarySDL = {
   Mix_FreeChunk: function(id) {
     SDL.audios[id] = null;
   },
-
+  Mix_ReserveChannels: function(num) {
+    SDL.channelMinimumNumber = num;
+  },
   Mix_PlayChannel: function(channel, id, loops) {
     // TODO: handle loops
 
@@ -1302,8 +1333,8 @@ var LibrarySDL = {
     // If the user asks us to allocate a channel automatically, get the first
     // free one.
     if (channel == -1) {
-      channel = 0;
-      for (var i = 0; i < SDL.numChannels; i++) {
+      channel = SDL.channelMinimumNumber;
+      for (var i = SDL.channelMinimumNumber; i < SDL.numChannels; i++) {
         if (!SDL.channels[i].audio) {
           channel = i;
           break;
@@ -1315,6 +1346,8 @@ var LibrarySDL = {
     // the browser has already preloaded the audio file.
     var channelInfo = SDL.channels[channel];
     channelInfo.audio = audio = audio.cloneNode(true);
+    audio.numChannels = info.audio.numChannels;
+    audio.frequency = info.audio.frequency;
     if (SDL.channelFinished) {
       audio['onended'] = function() { // TODO: cache these
         Runtime.getFuncWrapper(SDL.channelFinished, 'vi')(channel);
@@ -1373,6 +1406,7 @@ var LibrarySDL = {
       audio.play();
     }
     audio.volume = channelInfo.volume;
+    audio.paused = false;
     return channel;
   },
   Mix_PlayChannelTimed: 'Mix_PlayChannel', // XXX ignore Timing
@@ -1461,8 +1495,69 @@ var LibrarySDL = {
     return (SDL.music.audio && !SDL.music.audio.paused) ? 1 : 0;
   },
 
+  // http://www.libsdl.org/projects/SDL_mixer/docs/SDL_mixer_38.html#SEC38
+  // "Note: Does not check if the channel has been paused."
+  Mix_Playing: function(channel) {
+    if (channel === -1) {
+      var count = 0;
+      for (var i = 0; i < SDL.channels.length; i++) {
+        count += _Mix_Playing(i);
+      }
+      return count;
+    }
+    var info = SDL.channels[channel];
+    if (info && info.audio && !info.audio.paused) {
+      return 1;
+    }
+    return 0;
+  },
+  
+  Mix_Pause: function(channel) {
+    if (channel === -1) {
+      for (var i = 0; i<SDL.channels.length;i++) {
+        _Mix_Pause(i);
+      }
+      return;
+    }
+    var info = SDL.channels[channel];
+    if (info && info.audio) {
+      info.audio.pause();
+      info.audio.paused = true;
+    }
+  },
+  
+  // http://www.libsdl.org/projects/SDL_mixer/docs/SDL_mixer_39.html#SEC39
+  Mix_Paused: function(channel) {
+    if (channel === -1) {
+      var pausedCount = 0;
+      for (var i = 0; i<SDL.channels.length;i++) {
+        pausedCount += _Mix_Paused(i);
+      }
+      return pausedCount;
+    }
+    var info = SDL.channels[channel];
+    if (info && info.audio && info.audio.paused) {
+      return 1;
+    }
+    return 0;
+  },
+
   Mix_PausedMusic: function() {
     return (SDL.music.audio && SDL.music.audio.paused) ? 1 : 0;
+  },
+
+  // http://www.libsdl.org/projects/SDL_mixer/docs/SDL_mixer_33.html#SEC33
+  Mix_Resume: function(channel) {
+    if (channel === -1) {
+      for (var i = 0; i<SDL.channels.length;i++) {
+        _Mix_Resume(i);
+      }
+      return;
+    }
+    var info = SDL.channels[channel];
+    if (info && info.audio) {
+      info.audio.play();
+    }
   },
 
   // SDL TTF
