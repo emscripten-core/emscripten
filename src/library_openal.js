@@ -84,9 +84,11 @@ var LibraryOpenAL = {
     for (var i = 0; i < count; ++i) {
       var src = AL.currentContext.ctx.createBufferSource();
       var gain = AL.currentContext.ctx.createGain();
+      var panner = AL.currentContext.ctx.createPanner();
       src.connect(gain);
-      gain.connect(AL.currentContext.destination);
-      AL.currentContext.src.push({src: src, gain: gain});
+      gain.connect(panner);
+      panner.connect(AL.currentContext.destination);
+      AL.currentContext.src.push({src: src, gain: gain, panner: panner});
       {{{ makeSetValue('sources', 'i', 'AL.currentContext.src.length - 1', 'i32') }}};
     }
   },
