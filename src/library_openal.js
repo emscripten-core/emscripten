@@ -237,20 +237,20 @@ var LibraryOpenAL = {
       return;
     }
     AL.currentContext.buf[buffer - 1].buf = AL.currentContext.ctx.createBuffer(channels, size / (bytes * channels), freq);
-    var data = new Array(channels);
+    var buf = new Array(channels);
     for (var i = 0; i < channels; ++i) {
-      data[i] = AL.currentContext.buf[buffer - 1].buf.getChannelData(i);
+      buf[i] = AL.currentContext.buf[buffer - 1].buf.getChannelData(i);
     }
     for (var i = 0; i < size / (bytes * channels); ++i) {
       for (var j = 0; j < channels; ++j) {
         switch (bytes) {
         case 1:
           var val = {{{ makeGetValue('data', 'i+j', 'i8') }}};
-          data[j][i] = -1.0 + val * (2/256);
+          buf[j][i] = -1.0 + val * (2/256);
           break;
         case 2:
           var val = {{{ makeGetValue('data', 'i+j', 'i16') }}};
-          data[j][i] = -1.0 + (val + -32768) * (2/65536);
+          buf[j][i] = -1.0 + (val + -32768) * (2/65536);
           break;
         }
       }
