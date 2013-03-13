@@ -89,7 +89,7 @@ var LibraryOpenAL = {
       gain.connect(panner);
       panner.connect(AL.currentContext.destination);
       AL.currentContext.src.push({src: src, gain: gain, panner: panner});
-      {{{ makeSetValue('sources', 'i', 'AL.currentContext.src.length - 1', 'i32') }}};
+      {{{ makeSetValue('sources', 'i', 'AL.currentContext.src.length', 'i32') }}};
     }
   },
 
@@ -98,16 +98,20 @@ var LibraryOpenAL = {
       console.error("alSourcei called without a valid context");
       return;
     }
-    if (source >= AL.currentContext.src.length) {
+    if (source > AL.currentContext.src.length) {
       console.error("alSourcei called with an invalid source");
       return;
     }
     switch (param) {
     case 0x1007 /* AL_LOOPING */:
-      AL.currentContext.src[source].src.loop = (value != 0 /* AL_FALSE */);
+      AL.currentContext.src[source - 1].src.loop = (value != 0 /* AL_FALSE */);
       break;
     case 0x1009 /* AL_BUFFER */:
-      AL.currentContext.src[source].src.buffer = AL.currentContext.buf[value].buf;
+      if (value == 0) {
+        AL.currentContext.src[source - 1].src.buffer = null;
+      } else {
+        AL.currentContext.src[source - 1].src.buffer = AL.currentContext.buf[value - 1].buf;
+      }
       break;
     default:
       console.log("alSourcei with param " + param + " not implemented yet");
@@ -120,13 +124,13 @@ var LibraryOpenAL = {
       consoue.error("alSourcef called without a valid context");
       return;
     }
-    if (source >= AL.currentContext.src.length) {
+    if (source > AL.currentContext.src.length) {
       console.error("alSourcef called with an invalid source");
       return;
     }
     switch (param) {
     case 0x100A /* AL_GAIN */:
-      AL.currentContext.src[source].gain.gain.value = value;
+      AL.currentContext.src[source - 1].gain.gain.value = value;
       break;
     case 0x1003 /* AL_PITCH */:
       console.log("alSourcef was called with AL_PITCH, but Web Audio does not support static pitch changes");
@@ -142,20 +146,20 @@ var LibraryOpenAL = {
       consoue.error("alSourcefv called without a valid context");
       return;
     }
-    if (source >= AL.currentContext.src.length) {
+    if (source > AL.currentContext.src.length) {
       console.error("alSourcefv called with an invalid source");
       return;
     }
     switch (param) {
     case 0x1004 /* AL_POSITION */:
-      AL.currentContext.src[source].panner.setPosition(
+      AL.currentContext.src[source - 1].panner.setPosition(
           {{{ makeGetValue('value', '0', 'float') }}},
           {{{ makeGetValue('value', '1', 'float') }}},
           {{{ makeGetValue('value', '2', 'float') }}}
         );
       break;
     case 0x1006 /* AL_VELOCITY */:
-      AL.currentContext.src[source].panner.setVelocity(
+      AL.currentContext.src[source - 1].panner.setVelocity(
           {{{ makeGetValue('value', '0', 'float') }}},
           {{{ makeGetValue('value', '1', 'float') }}},
           {{{ makeGetValue('value', '2', 'float') }}}
@@ -172,7 +176,7 @@ var LibraryOpenAL = {
       console.error("alSourceQueueBuffers called without a valid context");
       return;
     }
-    if (source >= AL.currentContext.src.length) {
+    if (source > AL.currentContext.src.length) {
       console.error("alSourceQueueBuffers called with an invalid source");
       return;
     }
