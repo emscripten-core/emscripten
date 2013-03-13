@@ -1321,6 +1321,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     } else {
       callIdent = ident;
     }
+    if (callIdent == '0') return 'abort(-2)';
 
     var args = [];
     var argsTypes = [];
