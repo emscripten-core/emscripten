@@ -34,9 +34,13 @@ MIN_CHUNK_SIZE = 1024*1024
 MAX_CHUNK_SIZE = float(os.environ.get('EMSCRIPT_MAX_CHUNK_SIZE') or 'inf') # configuring this is just for debugging purposes
 
 def process_funcs((i, funcs, meta, settings_file, compiler, forwarded_file, libraries, compiler_engine, temp_files, DEBUG)):
-  ll = ''.join(funcs) + '\n' + meta
   funcs_file = temp_files.get('.func_%d.ll' % i).name
-  open(funcs_file, 'w').write(ll)
+  f = open(funcs_file, 'w')
+  f.write(funcs)
+  funcs = None
+  f.write('\n')
+  f.write(meta)
+  f.close()
   out = jsrun.run_js(
     compiler,
     engine=compiler_engine,
@@ -188,6 +192,8 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     funcs, chunk_size,
     jcache.get_cachename('emscript_files') if jcache else None)
 
+  funcs = None
+
   if jcache:
     # load chunks from cache where we can # TODO: ignore small chunks
     cached_outputs = []
@@ -223,6 +229,9 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       outputs = pool.map(process_funcs, commands, chunksize=1)
     elif len(chunks) == 1:
       outputs = [process_funcs(commands[0])]
+
+    commands = None
+
   else:
     outputs = []
 
@@ -234,6 +243,8 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       shortkey = jcache.get_shortkey(keys)
       jcache.set(shortkey, keys, outputs[i])
     if out and DEBUG and len(chunks) > 0: print >> sys.stderr, '  saving %d funcchunks to jcache' % len(chunks)
+
+  chunks = None
 
   if jcache: outputs += cached_outputs # TODO: preserve order
 
