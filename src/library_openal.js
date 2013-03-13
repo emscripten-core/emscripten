@@ -111,6 +111,8 @@ var LibraryOpenAL = {
       console.log("alSourcei with param " + param + " not implemented yet");
       break;
     }
+    // TODO: fill in the rest!
+  },
 
   alGenBuffers: function(count, buffers) {
     if (!AL.currentContext) {
