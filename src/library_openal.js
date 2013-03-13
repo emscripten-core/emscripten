@@ -87,7 +87,7 @@ var LibraryOpenAL = {
       var panner = AL.currentContext.ctx.createPanner();
       src.connect(gain);
       gain.connect(panner);
-      panner.connect(AL.currentContext.destination);
+      panner.connect(AL.currentContext.ctx.destination);
       AL.currentContext.src.push({src: src, gain: gain, panner: panner});
       {{{ makeSetValue('sources', 'i', 'AL.currentContext.src.length', 'i32') }}};
     }
