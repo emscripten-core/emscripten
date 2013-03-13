@@ -731,7 +731,7 @@ namespace emscripten {
             _embind_register_smart_ptr(
                 TypeID<PointerType>::get(),
                 TypeID<PointeeType>::get(),
-                "SmartPtr", // TODO: generate unique name, if one is needed at all
+                typeid(PointerType).name(),
                 PointerTrait::get_sharing_policy(),
                 reinterpret_cast<GenericFunction>(&PointerTrait::get),
                 reinterpret_cast<GenericFunction>(&operator_new<PointerType>),
