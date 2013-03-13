@@ -1141,6 +1141,9 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       print >> sys.stderr, 'bootstrapping relooper...'
       os.chdir(path_from_root('src'))
 
+      emcc_debug = os.environ.get('EMCC_DEBUG')
+      if emcc_debug: del os.environ['EMCC_DEBUG']
+
       def make(opt_level):
         raw = relooper + '.raw.js'
         Building.emcc(os.path.join('relooper', 'Relooper.cpp'), ['-I' + os.path.join('relooper'), '--post-js',
@@ -1169,6 +1172,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       ok = True
     finally:
       os.chdir(curr)
+      if emcc_debug: os.environ['EMCC_DEBUG'] = emcc_debug
       if not ok:
         print >> sys.stderr, 'bootstrapping relooper failed. You may need to manually create relooper.js by compiling it, see src/relooper/emscripten'
         1/0
