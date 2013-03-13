@@ -4329,14 +4329,18 @@ LibraryManager.library = {
     }
   },
 
+  strcpy__asm: 'true',
+  strcpy__sig: 'iii',
   strcpy: function(pdest, psrc) {
+    pdest = pdest|0; psrc = psrc|0;
     var i = 0;
     do {
-      {{{ makeCopyValues('pdest+i', 'psrc+i', 1, 'i8', null, 1) }}};
-      i ++;
-    } while ({{{ makeGetValue('psrc', 'i-1', 'i8') }}} != 0);
-    return pdest;
+      {{{ makeCopyValues('(pdest+i)|0', '(psrc+i)|0', 1, 'i8', null, 1) }}};
+      i = (i+1)|0;
+    } while (({{{ makeGetValue('psrc', 'i-1', 'i8') }}})|0 != 0);
+    return pdest|0;
   },
+
   stpcpy: function(pdest, psrc) {
     var i = 0;
     do {

@@ -4117,10 +4117,12 @@ The current type of b is: 9
 
           #define CONSTRLEN 32
 
+          char * (*func)(char *, const char *) = NULL;
+
           void conoutfv(const char *fmt)
           {
               static char buf[CONSTRLEN];
-              strcpy(buf, fmt);
+              func(buf, fmt); // call by function pointer to make sure we test strcpy here
               puts(buf);
           }
 
@@ -4142,6 +4144,7 @@ The current type of b is: 9
           };
 
           int main() {
+            func = &strcpy;
             conoutfv("*staticccz*");
             printf("*%.2f,%.2f,%.2f*\\n", S::getIdentity().x, S::getIdentity().y, S::getIdentity().z);
             return 0;
