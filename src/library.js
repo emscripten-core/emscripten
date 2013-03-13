@@ -4350,14 +4350,18 @@ LibraryManager.library = {
     return pdest + i - 1;
   },
 
+  strncpy__asm: 'true',
+  strncpy__sig: 'iiii',
   strncpy: function(pdest, psrc, num) {
-    var padding = false, curr;
-    for (var i = 0; i < num; i++) {
-      curr = padding ? 0 : {{{ makeGetValue('psrc', 'i', 'i8') }}};
+    pdest = pdest|0; psrc = psrc|0; num = num|0;
+    var padding = 0, curr = 0, i = 0;
+    while ((i|0) < (num|0)) {
+      curr = padding ? 0 : {{{ makeGetValueAsm('psrc', 'i', 'i8') }}};
       {{{ makeSetValue('pdest', 'i', 'curr', 'i8') }}}
-      padding = padding || {{{ makeGetValue('psrc', 'i', 'i8') }}} == 0;
+      padding = padding | ({{{ makeGetValueAsm('psrc', 'i', 'i8') }}} == 0);
+      i = (i+1)|0;
     }
-    return pdest;
+    return pdest|0;
   },
   
   strlwr__deps:['tolower'],

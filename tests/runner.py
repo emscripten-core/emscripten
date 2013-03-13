@@ -1890,13 +1890,24 @@ Succeeded!
             printf("%s\\n", strdup_val);
             free(strdup_val);
 
+            {
+              char *one = "one 1 ONE !";
+              char *two = "two 2 TWO ?";
+              char three[1024];
+              memset(three, '.', 1024);
+              three[50] = 0;
+              strncpy(three + argc, one + (argc/2), argc+1);
+              strncpy(three + argc*3, two + (argc/3), argc+2);
+              printf("waka %s\\n", three);
+            }
+
             return 0;
           }
         '''
         for named in (0, 1):
           print named
           Settings.NAMED_GLOBALS = named
-          self.do_run(src, '4:10,177,543,def\n4\nwowie\ntoo\n76\n5\n(null)\n/* a comment */\n// another\ntest\n', ['wowie', 'too', '74'])
+          self.do_run(src, '4:10,177,543,def\n4\nwowie\ntoo\n76\n5\n(null)\n/* a comment */\n// another\ntest\nwaka ....e 1 O...wo 2 T................................\n', ['wowie', 'too', '74'])
           if self.emcc_args == []:
             gen = open(self.in_dir('src.cpp.o.js')).read()
             assert ('var __str1;' in gen) == named
