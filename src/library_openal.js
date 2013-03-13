@@ -201,7 +201,7 @@ var LibraryOpenAL = {
     }
     for (var i = 0; i < count; ++i) {
       AL.currentContext.buf.push({buf: null});
-      {{{ makeSetValue('buffers', 'i', 'AL.currentContext.buf.length - 1', 'i32') }}};
+      {{{ makeSetValue('buffers', 'i', 'AL.currentContext.buf.length', 'i32') }}};
     }
   },
 
