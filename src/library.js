@@ -1730,7 +1730,12 @@ LibraryManager.library = {
       }
       var contents = stream.object.contents;
       var size = Math.min(contents.length - offset, nbyte);
-      if (contents.subarray || contents.slice) { // typed array or normal array
+#if USE_TYPED_ARRAYS == 2
+      if (contents.subarray) { // typed array
+        HEAPU8.set(contents.subarray(offset, offset+size), buf);
+      } else
+#endif
+      if (contents.slice) { // normal array
         for (var i = 0; i < size; i++) {
           {{{ makeSetValue('buf', 'i', 'contents[offset + i]', 'i8') }}}
         }
