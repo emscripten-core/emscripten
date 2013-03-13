@@ -210,25 +210,28 @@ extern int __signbitd (double x);
 	((sizeof(__x) == sizeof(float))  ?  __signbitf(__x) : \
 		__signbitd(__x))
 
+/* XXX: EMSCRIPTEN: We alter the names of __typeof__ declarations to
+   reduce the chance of them conflicting when expanded */
+
 #define isgreater(x,y) \
-          (__extension__ ({__typeof__(x) __x = (x); __typeof__(y) __y = (y); \
-                           !isunordered(__x,__y) && (__x > __y);}))
+          (__extension__ ({__typeof__(x) __isg_x = (x); __typeof__(y) __isg_y = (y); \
+                           !isunordered(__isg_x,__isg_y) && (__isg_x > __isg_y);}))
 #define isgreaterequal(x,y) \
-          (__extension__ ({__typeof__(x) __x = (x); __typeof__(y) __y = (y); \
-                           !isunordered(__x,__y) && (__x >= __y);}))
+          (__extension__ ({__typeof__(x) __isge_x = (x); __typeof__(y) __isge_y = (y); \
+                           !isunordered(__isge_x,__isge_y) && (__isge_x >= __isge_y);}))
 #define isless(x,y) \
-          (__extension__ ({__typeof__(x) __x = (x); __typeof__(y) __y = (y); \
-                           !isunordered(__x,__y) && (__x < __y);}))
+          (__extension__ ({__typeof__(x) __isl_x = (x); __typeof__(y) __isl_y = (y); \
+                           !isunordered(__isl_x,__isl_y) && (__isl_x < __isl_y);}))
 #define islessequal(x,y) \
-          (__extension__ ({__typeof__(x) __x = (x); __typeof__(y) __y = (y); \
-                           !isunordered(__x,__y) && (__x <= __y);}))
+          (__extension__ ({__typeof__(x) __isle_x = (x); __typeof__(y) __isle_y = (y); \
+                           !isunordered(__isle_x,__isle_y) && (__isle_x <= __isle_y);}))
 #define islessgreater(x,y) \
-          (__extension__ ({__typeof__(x) __x = (x); __typeof__(y) __y = (y); \
-                           !isunordered(__x,__y) && (__x < __y || __x > __y);}))
+          (__extension__ ({__typeof__(x) __islg_x = (x); __typeof__(y) __islg_y = (y); \
+                           !isunordered(__islg_x,__islg_y) && (__islg_x < __islg_y || __islg_x > __islg_y);}))
 
 #define isunordered(a,b) \
-          (__extension__ ({__typeof__(a) __a = (a); __typeof__(b) __b = (b); \
-                           fpclassify(__a) == FP_NAN || fpclassify(__b) == FP_NAN;}))
+          (__extension__ ({__typeof__(a) __isu_a = (a); __typeof__(b) __isu_b = (b); \
+                           fpclassify(__isu_a) == FP_NAN || fpclassify(__isu_b) == FP_NAN;}))
 
 /* Non ANSI double precision functions.  */
 
