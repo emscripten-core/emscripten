@@ -11,6 +11,12 @@
 #include <emscripten/wire.h>
 
 namespace emscripten {
+    enum class sharing_policy {
+        NONE = 0,
+        INTRUSIVE = 1,
+        BY_EMVAL = 2,
+    };
+
     namespace internal {
         typedef void (*GenericFunction)();
         typedef long GenericEnumValue;
@@ -97,9 +103,11 @@ namespace emscripten {
                 TYPEID pointerType,
                 TYPEID pointeeType,
                 const char* pointerName,
+                sharing_policy sharingPolicy,
+                GenericFunction getPointee,
                 GenericFunction constructor,
-                GenericFunction destructor,
-                GenericFunction getPointee);
+                GenericFunction share,
+                GenericFunction destructor);
 
             void _embind_register_class(
                 TYPEID classType,
@@ -524,38 +532,62 @@ namespace emscripten {
     // SMART POINTERS
     ////////////////////////////////////////////////////////////////////////////////
 
+    template<typename PointerType>
+    struct default_smart_ptr_trait {
+        static sharing_policy get_sharing_policy() {
+            return sharing_policy::NONE;
+        }
+
+        static void* share(void* v) {
+            return 0; // no sharing
+        }
+    };
+
     // specialize if you have a different pointer type
     template<typename PointerType>
-    struct smart_ptr_trait {
+    struct smart_ptr_trait : public default_smart_ptr_trait<PointerType> {
+        typedef typename PointerType::element_type element_type;
+
+        static element_type* get(const PointerType& ptr) {
+            return ptr.get();
+        }
+    };
+
+    template<typename PointeeType>
+    struct smart_ptr_trait<std::shared_ptr<PointeeType>> {
+        typedef std::shared_ptr<PointeeType> PointerType;
         typedef typename PointerType::element_type element_type;
 
         static element_type* get(const PointerType& ptr) {
             return ptr.get();
         }
 
-        static PointerType share(const PointerType& r, element_type* ptr) {
-            return PointerType(r, ptr);
+        static sharing_policy get_sharing_policy() {
+            return sharing_policy::BY_EMVAL;
         }
-    };
 
-    namespace internal {
-        template<typename SmartPointerType>
-        SmartPointerType* raw_smart_pointer_constructor(
-            typename smart_ptr_trait<SmartPointerType>::element_type* ptr,
-            SmartPointerType* basePtr
-        ) {
-            if (ptr) {
-                return new SmartPointerType(smart_ptr_trait<SmartPointerType>::share(*basePtr, ptr));
-            } else {
-                return new SmartPointerType;
+        static std::shared_ptr<PointeeType>* share(PointeeType* p, internal::EM_VAL v) {
+            return new std::shared_ptr<PointeeType>(
+                p,
+                val_deleter(val::take_ownership(v)));
+        }
+
+    private:
+        class val_deleter {
+        public:
+            val_deleter() = delete;
+            explicit val_deleter(val v)
+                : v(v)
+            {}
+            void operator()(void const*) {
+                v();
+                // eventually we'll need to support emptied out val
+                v = val::undefined();
             }
-        }
-
-        template<typename PointerType>
-        typename smart_ptr_trait<PointerType>::element_type* get_pointee(const PointerType& ptr) {
-            return smart_ptr_trait<PointerType>::get(ptr);
-        }
-    }
+        private:
+            val v;
+        };
+    };
 
     ////////////////////////////////////////////////////////////////////////////////
     // CLASSES
@@ -689,17 +721,22 @@ namespace emscripten {
         template<typename PointerType>
         class_& smart_ptr() {
             using namespace internal;
-            typedef typename smart_ptr_trait<PointerType>::element_type PointeeType;
-        
+
             // TODO: assert that PointeeType is identical to ClassType
+
+            typedef smart_ptr_trait<PointerType> PointerTrait;
+            typedef typename PointerTrait::element_type PointeeType;
+            
 
             _embind_register_smart_ptr(
                 TypeID<PointerType>::get(),
                 TypeID<PointeeType>::get(),
-                "SmartPtr", // TODO: generate unique name
-                reinterpret_cast<GenericFunction>(&raw_smart_pointer_constructor<PointerType>),
-                reinterpret_cast<GenericFunction>(&raw_destructor<PointerType>),
-                reinterpret_cast<GenericFunction>(&get_pointee<PointerType>));
+                "SmartPtr", // TODO: generate unique name, if one is needed at all
+                PointerTrait::get_sharing_policy(),
+                reinterpret_cast<GenericFunction>(&PointerTrait::get),
+                reinterpret_cast<GenericFunction>(&operator_new<PointerType>),
+                reinterpret_cast<GenericFunction>(&PointerTrait::share),
+                reinterpret_cast<GenericFunction>(&raw_destructor<PointerType>));
             return *this;
         };
 
