@@ -522,8 +522,8 @@ RegisteredPointer.prototype.toWireType = function(destructors, handle) {
             return 0;
         }
     }
-    if (!(handle instanceof ClassHandle)) {
-        throwBindingError('Expected pointer or null, got ' + IMVU.repr(handle));
+    if (!(handle instanceof this.registeredClass.constructor)) {
+        throwBindingError('Expected null or instance of ' + this.name + ', got ' + IMVU.repr(handle));
     }
     if (this.isSmartPointer && undefined === handle.$$.smartPtr) {
         throwBindingError('Passing raw pointer to smart pointer is illegal');
@@ -645,6 +645,7 @@ function ClassHandle() {
 
 function RegisteredClass(
     name,
+    constructor,
     isPolymorphic,
     baseClassRawType,
     baseClass,
@@ -652,6 +653,7 @@ function RegisteredClass(
     downcast
 ) {
     this.name = name;
+    this.constructor = constructor;
     this.isPolymorphic = isPolymorphic;
     this.baseClassRawType = baseClassRawType;
     this.baseClass = baseClass;
@@ -690,14 +692,6 @@ function __embind_register_class(
             basePrototype = ClassHandle.prototype;
         }
 
-        var registeredClass = new RegisteredClass(
-            name,
-            isPolymorphic,
-            baseClassRawType,
-            baseClass,
-            upcast,
-            downcast);
-
         var Handle = createNamedFunction(name, function(registeredPointer, ptr) {
             Object.defineProperty(this, '$$', {
                 value: {
@@ -709,6 +703,15 @@ function __embind_register_class(
             });
         });
         
+        var registeredClass = new RegisteredClass(
+            name,
+            Handle,
+            isPolymorphic,
+            baseClassRawType,
+            baseClass,
+            upcast,
+            downcast);
+
         Handle.prototype = Object.create(basePrototype, {
             constructor: { value: Handle },
         });
@@ -948,6 +951,10 @@ function __embind_register_class_property(
     });
 }
 
+function makeLegalFunctionName(name) {
+    return '_' + name.replace(/[^a-zA-Z0-9_]/g, '$');
+}
+
 function __embind_register_smart_ptr(
     rawType,
     rawPointeeType,
@@ -967,7 +974,7 @@ function __embind_register_smart_ptr(
     whenDependentTypesAreResolved([rawPointeeType], function(pointeeType) {
         pointeeType = pointeeType[0];
 
-        var Handle = createNamedFunction(name, function(registeredPointer, ptr) {
+        var Handle = createNamedFunction(makeLegalFunctionName(name), function(registeredPointer, ptr) {
             Object.defineProperty(this, '$$', {
                 value: {
                     registeredPointer: registeredPointer,
