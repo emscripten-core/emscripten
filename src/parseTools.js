@@ -1724,13 +1724,14 @@ function makeLLVMStruct(values) {
   }
 }
 
-function makeStructuralReturn(values) {
+function makeStructuralReturn(values, inAsm) {
   if (USE_TYPED_ARRAYS == 2) {
-    var i = 0;
-    return 'return (' + values.slice(1).map(function(value) {
-      return ASM_JS ? 'asm.setTempRet' + (i++) + '(' + value + ')'
+    var i = -1;
+    return 'return ' + asmCoercion(values.slice(1).map(function(value) {
+      i++;
+      return ASM_JS ? (inAsm ? 'tempRet' + i + ' = ' + value : 'asm.setTempRet' + i + '(' + value + ')')
                     : 'tempRet' + (i++) + ' = ' + value;
-    }).concat([values[0]]).join(',') + ')';
+    }).concat([values[0]]).join(','), 'i32');
   } else {
     var i = 0;
     return 'return { ' + values.map(function(value) {
@@ -1971,6 +1972,10 @@ function processMathop(item) {
       return finish(['(i64Math' + (ASM_JS ? '_' : '.') + type + '(' + asmCoercion(low1, 'i32') + ',' + asmCoercion(high1, 'i32') + ',' + asmCoercion(low2, 'i32') + ',' + asmCoercion(high2, 'i32') +
                      (lastArg ? ',' + asmCoercion(+lastArg, 'i32') : '') + '),' + makeGetValue('tempDoublePtr', 0, 'i32') + ')', makeGetValue('tempDoublePtr', Runtime.getNativeTypeSize('i32'), 'i32')]);
     }
+    function i64PreciseLib(type) {
+      Types.preciseI64MathUsed = true;
+      return finish(['_i64' + type[0].toUpperCase() + type.substr(1) + '(' + low1 + ',' + high1 + ',' + low2 + ',' + high2 + ')', 'tempRet0']);
+    }
     switch (op) {
       // basic integer ops
       case 'or': {
@@ -2059,7 +2064,7 @@ function processMathop(item) {
       // Dangerous, rounded operations. TODO: Fully emulate
       case 'add': {
         if (PRECISE_I64_MATH) {
-          return i64PreciseOp('add');
+          return i64PreciseLib('add');
         } else {
           warnI64_1();
           return finish(splitI64(mergeI64(idents[0]) + '+' + mergeI64(idents[1]), true));

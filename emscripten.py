@@ -313,6 +313,10 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   last_forwarded_json = json.loads(last_forwarded_data)
 
   if settings.get('ASM_JS'):
+    post_funcs, post_rest = post.split('// EMSCRIPTEN_END_FUNCS\n')
+    post = post_rest
+    funcs_js += '\n' + post_funcs + '// EMSCRIPTEN_END_FUNCS\n'
+
     simple = os.environ.get('EMCC_SIMPLE_ASM')
     class Counter:
       i = 0

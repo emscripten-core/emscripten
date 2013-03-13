@@ -397,6 +397,20 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
   });
 
+  function processLibraryFunction(snippet, ident) {
+    snippet = snippet.toString();
+    assert(snippet.indexOf('XXX missing C define') == -1,
+           'Trying to include a library function with missing C defines: ' + ident + ' | ' + snippet);
+
+    // name the function; overwrite if it's already named
+    snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function _' + ident + '(');
+    if (LIBRARY_DEBUG) {
+      snippet = snippet.replace('{', '{ var ret = (function() { if (Runtime.debug) Module.printErr("[library call:' + ident + ': " + Array.prototype.slice.call(arguments).map(Runtime.prettyPrint) + "]"); ');
+      snippet = snippet.substr(0, snippet.length-1) + '}).apply(this, arguments); if (Runtime.debug && typeof ret !== "undefined") Module.printErr("  [     return:" + Runtime.prettyPrint(ret)); return ret; \n}';
+    }
+    return snippet;
+  }
+
   // functionStub
   substrate.addActor('FunctionStub', {
     processItem: function(item) {
@@ -434,16 +448,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           snippet = stringifyWithFunctions(snippet);
         } else if (typeof snippet === 'function') {
           isFunction = true;
-          snippet = snippet.toString();
-          assert(snippet.indexOf('XXX missing C define') == -1,
-                 'Trying to include a library function with missing C defines: ' + ident + ' | ' + snippet);
-
-          // name the function; overwrite if it's already named
-          snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function _' + ident + '(');
-          if (LIBRARY_DEBUG) {
-            snippet = snippet.replace('{', '{ var ret = (function() { if (Runtime.debug) Module.printErr("[library call:' + ident + ': " + Array.prototype.slice.call(arguments).map(Runtime.prettyPrint) + "]"); ');
-            snippet = snippet.substr(0, snippet.length-1) + '}).apply(this, arguments); if (Runtime.debug && typeof ret !== "undefined") Module.printErr("  [     return:" + Runtime.prettyPrint(ret)); return ret; \n}';
-          }
+          snippet = processLibraryFunction(snippet, ident);
           if (ASM_JS) Functions.libraryFunctions[ident] = 1;
         }
 
@@ -1563,15 +1568,22 @@ function JSify(data, functionsOnly, givenFunctions) {
     // This is the main 'post' pass. Print out the generated code that we have here, together with the
     // rest of the output that we started to print out earlier (see comment on the
     // "Final shape that will be created").
+    if (PRECISE_I64_MATH && Types.preciseI64MathUsed) {
+      ['i64Add'].forEach(function(func) {
+        print(processLibraryFunction(LibraryManager.library[func], func)); // must be first to be close to generated code
+        Functions.implementedFunctions['_' + func] = LibraryManager.library[func + '__sig'];
+      });
+      print('// EMSCRIPTEN_END_FUNCS\n');
+      print(read('long.js'));
+    } else {
+      print('// EMSCRIPTEN_END_FUNCS\n');
+      print('// Warning: printing of i64 values may be slightly rounded! No deep i64 math used, so precise i64 code not included');
+      print('var i64Math = null;');
+    }
+
     if (CORRUPTION_CHECK) {
       assert(!ASM_JS); // cannot monkeypatch asm!
       print(processMacros(read('corruptionCheck.js')));
-    }
-    if (PRECISE_I64_MATH && Types.preciseI64MathUsed) {
-      print(read('long.js'));
-    } else {
-      print('// Warning: printing of i64 values may be slightly rounded! No deep i64 math used, so precise i64 code not included');
-      print('var i64Math = null;');
     }
     if (HEADLESS) {
       print('if (!ENVIRONMENT_IS_WEB) {');

@@ -5206,13 +5206,6 @@ LibraryManager.library = {
     {{{ makeStructuralReturn(['(x*y)>>>0', 'x*y > 4294967295']) }}};
   },
 
-  llvm_uadd_with_overflow_i64__deps: [function() { Types.preciseI64MathUsed = 1 }],
-  llvm_uadd_with_overflow_i64: function(xl, xh, yl, yh) {
-    i64Math.add(xl, xh, yl, yh);
-    {{{ makeStructuralReturn([makeGetTempDouble(0, 'i32'), makeGetTempDouble(1, 'i32'), '0']) }}};
-    // XXX Need to hack support for second param in long.js
-  },
-
   llvm_umul_with_overflow_i64__deps: [function() { Types.preciseI64MathUsed = 1 }],
   llvm_umul_with_overflow_i64: function(xl, xh, yl, yh) {
     i64Math.multiply(xl, xh, yl, yh);
@@ -7351,6 +7344,41 @@ LibraryManager.library = {
     } while (curr != 0);
     Module.print(intArrayToString(__formatString(_emscripten_jcache_printf_.buffer, varargs + i*4)).replace('\\n', ''));
     Runtime.stackAlloc(-4*i); // free up the stack space we know is ok to free
+  },
+
+  //============================
+  // i64 math
+  //============================
+
+  i64Add__asm: 'true',
+  i64Add__sig: 'iiiii',
+  i64Add: function(a, b, c, d) {
+    /*
+      x = a + b*2^32
+      y = c + d*2^32
+      result = l + h*2^32
+    */
+    a = a|0; b = b|0; c = c|0; d = d|0;
+    var l = 0, h = 0;
+    l = (a + c)>>>0;
+    h = (b + d)>>>0;
+    if ((l>>>0) < (a>>>0)) { // iff we overflowed
+      h = (h+1)>>>0;
+    }
+    {{{ makeStructuralReturn(['l|0', 'h'], true) }}};
+  },
+  llvm_uadd_with_overflow_i64__asm: 'true',
+  llvm_uadd_with_overflow_i64__sig: 'iiiii',
+  llvm_uadd_with_overflow_i64: function(a, b, c, d) {
+    a = a|0; b = b|0; c = c|0; d = d|0;
+    var l = 0, h = 0, overflow = 0;
+    l = (a + c)>>>0;
+    h = (b + d)>>>0;
+    if ((l>>>0) < (a>>>0)) { // iff we overflowed
+      h = (h+1)>>>0;
+      overflow = 1;
+    }
+    {{{ makeStructuralReturn(['l|0', 'h', 'overflow'], true) }}};
   },
 };
 
