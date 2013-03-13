@@ -253,6 +253,18 @@ var LibraryOpenAL = {
     }
   },
 
+  alSourcePlay: function(source) {
+    if (!AL.currentContext) {
+      console.error("alSourceQueueBuffers called without a valid context");
+      return;
+    }
+    if (source > AL.currentContext.src.length) {
+      console.error("alSourceQueueBuffers called with an invalid source");
+      return;
+    }
+    AL.currentContext.src[source - 1].src.start(0);
+  },
+
   alDistanceModel: function(model) {
     if (model != 0 /* AL_NONE */) {
       console.log("Only alDistanceModel(AL_NONE) is currently supported");
