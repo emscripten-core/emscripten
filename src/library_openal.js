@@ -218,12 +218,16 @@ var LibraryOpenAL = {
     switch (format) {
     case 0x1100 /* AL_FORMAT_MONO8 */:
       bytes = 1;
+      channels = 1;
+      break;
     case 0x1101 /* AL_FORMAT_MONO16 */:
       bytes = 2;
       channels = 1;
       break;
     case 0x1102 /* AL_FORMAT_STEREO8 */:
       bytes = 1;
+      channels = 2;
+      break;
     case 0x1103 /* AL_FORMAT_STEREO16 */:
       bytes = 2;
       channels = 2;
