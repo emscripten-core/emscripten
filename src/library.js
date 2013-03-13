@@ -3105,31 +3105,7 @@ LibraryManager.library = {
       streamObj.error = true;
       return -1;
     } else {
-      var byte = {{{ makeGetValue('_fgetc.ret', '0', 'i8', null, 1) }}};
-      if (byte < 128) {
-      	// shortcut for ASCII-7
-      	return byte;	
-      } else {
-      	// unfortunately, we cannot use Pointer_stringify, as it does not work with streams
-      	var utf8 = new Runtime.UTF8Processor();
-      	var char = utf8.processCChar(byte);
-      	while (char.length < 1) {
-      		ret = _read(stream, _fgetc.ret, 1);
-      		// check for half-finished UTF-8 chars in stream (corrupted file?)
-      		switch(ret) {
-      			case 0:
-      				streamObj.eof = true;
-      				return -1;
-      			case -1:
-      				streamObj.error = true;
-      				return -1;
-      			default:
-      				char += utf8.processCChar({{{ makeGetValue('_fgetc.ret', '0', 'i8', null, 1) }}});
-      		}
-      	}
-      	
-      	return char.charCodeAt(0);
-      }
+      return {{{ makeGetValue('_fgetc.ret', '0', 'i8', null, 1) }}};
     }
   },
   getc: 'fgetc',
@@ -3167,41 +3143,14 @@ LibraryManager.library = {
     if (!FS.streams[stream]) return 0;
     var streamObj = FS.streams[stream];
     if (streamObj.error || streamObj.eof) return 0;
-    var code;
-    for (var i = 0; i < n - 1 && code != '\n'.charCodeAt(0); i++) {
-      code = _fgetc(stream);
-      if (code == -1) {
+    var byte_;
+    for (var i = 0; i < n - 1 && byte_ != '\n'.charCodeAt(0); i++) {
+      byte_ = _fgetc(stream);
+      if (byte_ == -1) {
         if (streamObj.error) return 0;
         else if (streamObj.eof) break;
-      } else {
-      	if (code<128) {
-      		{{{ makeSetValue('s', 'i', 'code', 'i8') }}}
-      	} else if (code<2048) {
-      		if (i<n-2) {
-      			{{{ makeSetValue('s', 'i', 'code>>6 & 31 | 192', 'i8') }}};
-      			{{{ makeSetValue('s', '++i', 'code & 63 | 128', 'i8') }}};
-      		} else {
-      			break;
-      		}
-      	} else if (code<65536) {
-      		if (i<n-3) {
-      			{{{ makeSetValue('s', 'i', 'code>>12 & 15 | 224', 'i8') }}};
-      			{{{ makeSetValue('s', '++i', 'code>>6 & 63 | 128', 'i8') }}};
-      			{{{ makeSetValue('s', '++i', 'code & 63 | 128', 'i8') }}};
-      		} else {
-      			break;
-      		}
-      	} else {
-      		if (i<n-4) {
-      	    	{{{ makeSetValue('s', 'i', 'code>>18 & 7 | 240', 'i8') }}};
-      			{{{ makeSetValue('s', '++i', 'code>>12 & 63 | 128', 'i8') }}};
-      			{{{ makeSetValue('s', '++i', 'code>>6  & 63 | 128', 'i8') }}};
-      			{{{ makeSetValue('s', '++i', 'code & 63 | 128', 'i8') }}};
-      	    } else {
-      	    	break;
-      	    }
-      	}
       }
+      {{{ makeSetValue('s', 'i', 'byte_', 'i8') }}}
     }
     {{{ makeSetValue('s', 'i', '0', 'i8') }}}
     return s;
@@ -3532,25 +3481,8 @@ LibraryManager.library = {
     // int ungetc(int c, FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/ungetc.html
     if (FS.streams[stream]) {
-      if (c<128) {
-      	// shortcut for ASCII-7 characters
-      	FS.streams[stream].ungotten.push(c);
-      } else {
-      	var ungotten = FS.streams[stream].ungotten;
-      	if (c<2048) {
-      		ungotten.push(c & 63 | 128);
-      		ungotten.push(c>>6 & 31 | 192);
-      	} else if (c<65536) {
-      		ungotten.push(c & 63 | 128);
-      		ungotten.push(c>>6 & 63 | 128);
-      		ungotten.push(c>>12 & 15 | 224);
-      	} else {
-      		ungotten.push(c & 63 | 128);
-      		ungotten.push(c>>6  & 63 | 128);
-      		ungotten.push(c>>12 & 63 | 128);
-      	    ungotten.push(c>>18 & 7 | 240);
-      	}
-      }
+      c = unSign(c & 0xFF);
+      FS.streams[stream].ungotten.push(c);
       return c;
     } else {
       return -1;
@@ -3571,8 +3503,76 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/scanf.html
     if (FS.streams[stream]) {
       var stack = [];
-      var get = function() { var ret = _fgetc(stream); stack.push(ret); return ret };
-      var unget = function(c) { return _ungetc(stack.pop(), stream) };
+      
+      var fgetcUTF8 = function(stream) {
+    	if (!FS.streams[stream]) return -1;
+    	var streamObj = FS.streams[stream];
+    	if (streamObj.eof || streamObj.error) return -1;
+    	var ret = _read(stream, _fgetc.ret, 1);
+    	if (ret == 0) {
+      		streamObj.eof = true;
+      		return -1;
+    	} else if (ret == -1) {
+      		streamObj.error = true;
+		      return -1;
+	    } else {
+	      var byte = {{{ makeGetValue('_fgetc.ret', '0', 'i8', null, 1) }}};
+	      if (byte < 128) {
+	      	// shortcut for ASCII-7
+	      	return byte;	
+	      } else {
+	      	// unfortunately, we cannot use Pointer_stringify, as it does not work with streams
+	      	var utf8 = new Runtime.UTF8Processor();
+	      	var char = utf8.processCChar(byte);
+	      	while (char.length < 1) {
+	      		ret = _read(stream, _fgetc.ret, 1);
+	      		// check for half-finished UTF-8 chars in stream (corrupted file?)
+	      		switch(ret) {
+	      			case 0:
+	      				streamObj.eof = true;
+	      				return -1;
+	      			case -1:
+	      				streamObj.error = true;
+	      				return -1;
+	      			default:
+	      				char += utf8.processCChar({{{ makeGetValue('_fgetc.ret', '0', 'i8', null, 1) }}});
+	      		}
+	      	}
+	      	
+	      	return char.charCodeAt(0);
+	      }
+	    }
+	  };
+	  
+	  var ungetcUTF8 = function(c, stream) {
+	    if (FS.streams[stream]) {
+	      if (c<128) {
+	      	// shortcut for ASCII-7 characters
+	      	FS.streams[stream].ungotten.push(c);
+	      } else {
+	      	var ungotten = FS.streams[stream].ungotten;
+	      	if (c<2048) {
+	      		ungotten.push(c & 63 | 128);
+	      		ungotten.push(c>>6 & 31 | 192);
+	      	} else if (c<65536) {
+	      		ungotten.push(c & 63 | 128);
+	      		ungotten.push(c>>6 & 63 | 128);
+	      		ungotten.push(c>>12 & 15 | 224);
+	      	} else {
+	      		ungotten.push(c & 63 | 128);
+	      		ungotten.push(c>>6  & 63 | 128);
+	      		ungotten.push(c>>12 & 63 | 128);
+	      	    ungotten.push(c>>18 & 7 | 240);
+	      	}
+	      }
+	      return c;
+	    } else {
+	      return -1;
+	    }
+	  };
+	  
+      var get = function() { var ret = fgetcUTF8(stream); stack.push(ret); return ret };
+      var unget = function(c) { return ungetcUTF8(stack.pop(), stream) };
       return __scanString(format, get, unget, varargs);
     } else {
       return -1;
