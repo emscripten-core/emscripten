@@ -157,9 +157,9 @@ void Draw(void)
 
 void OnCharPressed( int character, int action ){
   if(action == GLFW_PRESS)
-    printf("'%c' is pressed\n", character);
+    printf("'%c' (%i) char is pressed\n", character, character);
   if(action == GLFW_RELEASE)
-    printf("'%c' is released\n", character);
+    printf("'%c' (%i) char is released\n", character, character);
 }
 
 char* GetKeyName(int key){
@@ -294,9 +294,9 @@ void OnKeyPressed( int key, int action ){
   if(key_name == 0)
     return;
   if(action == GLFW_PRESS)
-    printf("%s (%i) is pressed\n", key_name, key);
+    printf("%s (%i) key is pressed\n", key_name, key);
   if(action == GLFW_RELEASE)
-    printf("%s (%i) is released\n", key_name, key);
+    printf("%s (%i) key is released\n", key_name, key);
   if(action == GLFW_RELEASE && key == GLFW_KEY_ENTER)
     PullInfo();
 }
