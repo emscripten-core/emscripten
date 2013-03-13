@@ -12307,9 +12307,9 @@ fi
           assert ('bootstrapping relooper succeeded' in output) == (i == 2), 'only bootstrap on first O2: ' + output
           assert os.path.exists(RELOOPER) == (i >= 2), 'have relooper on O2: ' + output
           src = open('a.out.js').read()
-          main = src.split('function _main() {')[1].split('\n}\n')[0]
-          assert ('while (1) {' in main) == (i >= 2), 'reloop code on O2: ' + src
-          assert ('switch' not in main) == (i >= 2), 'reloop code on O2: ' + src
+          main = src.split('function _main()')[1].split('\n}\n')[0]
+          assert ('while (1) {' in main or 'while(1){' in main) == (i >= 2), 'reloop code on O2: ' + main
+          assert ('switch' not in main) == (i >= 2), 'reloop code on O2: ' + main
 
     def test_jcache(self):
       PRE_LOAD_MSG = 'loading pre from jcache'
