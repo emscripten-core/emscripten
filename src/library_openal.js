@@ -20,7 +20,7 @@ var LibraryOpenAL = {
     if (context == 0) {
       AL.currentContext = null;
     } else {
-      AL.currentContext = AL.contexts[context];
+      AL.currentContext = AL.contexts[context - 1];
     }
   },
 
@@ -62,7 +62,7 @@ var LibraryOpenAL = {
 
     if (ctx) {
       AL.contexts.push({ctx: ctx, err: 0, src: [], buf: []});
-      return AL.contexts.length - 1;
+      return AL.contexts.length;
     } else {
       return 0;
     }
