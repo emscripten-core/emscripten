@@ -137,6 +137,36 @@ var LibraryOpenAL = {
     }
   },
 
+  alSourcefv: function(source, param, value) {
+    if (!AL.currentContext) {
+      consoue.error("alSourcefv called without a valid context");
+      return;
+    }
+    if (source >= AL.currentContext.src.length) {
+      console.error("alSourcefv called with an invalid source");
+      return;
+    }
+    switch (param) {
+    case 0x1004 /* AL_POSITION */:
+      AL.currentContext.src[source].panner.setPosition(
+          {{{ makeGetValue('value', '0', 'float') }}},
+          {{{ makeGetValue('value', '1', 'float') }}},
+          {{{ makeGetValue('value', '2', 'float') }}}
+        );
+      break;
+    case 0x1006 /* AL_VELOCITY */:
+      AL.currentContext.src[source].panner.setVelocity(
+          {{{ makeGetValue('value', '0', 'float') }}},
+          {{{ makeGetValue('value', '1', 'float') }}},
+          {{{ makeGetValue('value', '2', 'float') }}}
+        );
+      break;
+    default:
+      console.log("alSourcefv with param " + param + " not implemented yet");
+      break;
+    }
+  },
+
   alSourceQueueBuffers: function(source, count, buffers) {
     if (!AL.currentContext) {
       console.error("alSourceQueueBuffers called without a valid context");
