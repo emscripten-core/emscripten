@@ -186,11 +186,11 @@ var LibraryOpenAL = {
     }
     for (var i = 0; i < count; ++i) {
       var buffer = {{{ makeGetValue('buffers', 'i', 'i32') }}};
-      if (buffer >= AL.currentContext.buf.length) {
+      if (buffer > AL.currentContext.buf.length) {
         console.error("alSourceQueueBuffers called with an invalid buffer");
         return;
       }
-      AL.currentCOntext.src[source].src.buffer = AL.currentContext.buf[buffer].buf;
+      AL.currentCOntext.src[source].src.buffer = AL.currentContext.buf[buffer - 1].buf;
     }
   },
 
@@ -210,7 +210,7 @@ var LibraryOpenAL = {
       console.error("alBufferData called without a valid context");
       return;
     }
-    if (buffer >= AL.currentContext.buf.length) {
+    if (buffer > AL.currentContext.buf.length) {
       console.error("alBufferData called with an invalid buffer");
       return;
     }
@@ -232,10 +232,10 @@ var LibraryOpenAL = {
       console.error("alBufferData called with invalid format " + format);
       return;
     }
-    AL.currentContext.buf[buffer].buf = AL.currentContext.ctx.createBuffer(channels, size / (bytes * channels), freq);
+    AL.currentContext.buf[buffer - 1].buf = AL.currentContext.ctx.createBuffer(channels, size / (bytes * channels), freq);
     var data = new Array(channels);
     for (var i = 0; i < channels; ++i) {
-      data[i] = AL.currentContext.buf[buffer].buf.getChannelData(i);
+      data[i] = AL.currentContext.buf[buffer - 1].buf.getChannelData(i);
     }
     for (var i = 0; i < size / (bytes * channels); ++i) {
       for (var j = 0; j < channels; ++j) {
