@@ -72,11 +72,14 @@ _CONST
 #define	isgraph(__c)	(__ctype_lookup(__c)&(CTYPE__P|CTYPE__U|CTYPE__L|CTYPE__N))
 #define iscntrl(__c)	(__ctype_lookup(__c)&CTYPE__C)
 
+/* XXX: EMSCRIPTEN: We alter the names of __typeof__ declarations to
+   reduce the chance of them conflicting when expanded */
+
 #if defined(__GNUC__) && \
     (!defined(__STRICT_ANSI__) || __STDC_VERSION__ >= 199901L)
 #define isblank(__c) \
-  __extension__ ({ __typeof__ (__c) __x = (__c);		\
-        (__ctype_lookup(__x)&_B) || (int) (__x) == '\t';})
+  __extension__ ({ __typeof__ (__c) __ctb_x = (__c);		\
+        (__ctype_lookup(__ctb_x)&_B) || (int) (__ctb_x) == '\t';})
 #endif
 
 
@@ -86,20 +89,20 @@ _CONST
 # if defined(__GNUC__)
 #  if !defined (_MB_EXTENDED_CHARSETS_ISO) && !defined (_MB_EXTENDED_CHARSETS_WINDOWS)
 #   define toupper(__c) \
-  __extension__ ({ __typeof__ (__c) __x = (__c);	\
-      islower (__x) ? (int) __x - 'a' + 'A' : (int) __x;})
+  __extension__ ({ __typeof__ (__c) __cttu_x = (__c);	\
+      islower (__cttu_x) ? (int) __cttu_x - 'a' + 'A' : (int) __cttu_x;})
 #   define tolower(__c) \
-  __extension__ ({ __typeof__ (__c) __x = (__c);	\
-      isupper (__x) ? (int) __x - 'A' + 'a' : (int) __x;})
+  __extension__ ({ __typeof__ (__c) __cttl_x = (__c);	\
+      isupper (__cttl_x) ? (int) __cttl_x - 'A' + 'a' : (int) __cttl_x;})
 #  else /* _MB_EXTENDED_CHARSETS* */
 /* Allow a gcc warning if the user passed 'char', but defer to the
    function.  */
 #   define toupper(__c) \
-  __extension__ ({ __typeof__ (__c) __x = (__c);	\
-      (void) __ctype_ptr__[__x]; (toupper) (__x);})
+  __extension__ ({ __typeof__ (__c) __cttu_x = (__c);	\
+      (void) __ctype_ptr__[__cttu_x]; (toupper) (__cttu_x);})
 #   define tolower(__c) \
-  __extension__ ({ __typeof__ (__c) __x = (__c);	\
-      (void) __ctype_ptr__[__x]; (tolower) (__x);})
+  __extension__ ({ __typeof__ (__c) __cttl_x = (__c);	\
+      (void) __ctype_ptr__[__cttl_x]; (tolower) (__cttl_x);})
 #  endif /* _MB_EXTENDED_CHARSETS* */
 # endif /* __GNUC__ */
 #endif /* !__cplusplus */
