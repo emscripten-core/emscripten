@@ -102,16 +102,60 @@ var LibraryOpenAL = {
     }
     switch (param) {
     case 0x1007 /* AL_LOOPING */:
-      AL.currentContext.src[source - 1].src.loop = (value != 0 /* AL_FALSE */);
+      AL.currentContext.src[source].src.loop = (value != 0 /* AL_FALSE */);
       break;
     case 0x1009 /* AL_BUFFER */:
-      AL.currentContext.src[source - 1].src.buffer = AL.currentContext.buf[value].buf;
+      AL.currentContext.src[source].src.buffer = AL.currentContext.buf[value].buf;
       break;
     default:
       console.log("alSourcei with param " + param + " not implemented yet");
       break;
     }
-    // TODO: fill in the rest!
+  },
+
+  alSourcef: function(source, param, value) {
+    if (!AL.currentContext) {
+      consoue.error("alSourcef called without a valid context");
+      return;
+    }
+    if (source >= AL.currentContext.src.length) {
+      console.error("alSourcef called with an invalid source");
+      return;
+    }
+    switch (param) {
+    case 0x100A /* AL_GAIN */:
+      AL.currentContext.src[source].gain.gain.value = value;
+      break;
+    case 0x1003 /* AL_PITCH */:
+      console.log("alSourcef was called with AL_PITCH, but Web Audio does not support static pitch changes");
+      break;
+    default:
+      console.log("alSourcef with param " + param + " not implemented yet");
+      break;
+    }
+  },
+
+  alSourceQueueBuffers: function(source, count, buffers) {
+    if (!AL.currentContext) {
+      console.error("alSourceQueueBuffers called without a valid context");
+      return;
+    }
+    if (source >= AL.currentContext.src.length) {
+      console.error("alSourceQueueBuffers called with an invalid source");
+      return;
+    }
+    if (count != 1) {
+      console.error("Queuing multiple buffers using alSourceQueueBuffers is not supported yet");
+      return;
+    }
+    for (var i = 0; i < count; ++i) {
+      var buffer = {{{ makeGetValue('buffers', 'i', 'i32') }}};
+      if (buffer >= AL.currentContext.buf.length) {
+        console.error("alSourceQueueBuffers called with an invalid buffer");
+        return;
+      }
+      AL.currentCOntext.src[source].src.buffer = AL.currentContext.buf[buffer].buf;
+    }
   },
 
   alGenBuffers: function(count, buffers) {
