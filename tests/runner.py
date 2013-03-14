@@ -10893,6 +10893,13 @@ elif 'browser' in str(sys.argv):
       Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_fog_linear.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png', '-s', 'GL_TESTING=1']).communicate()
       self.run_browser('something.html', 'You should see an image with fog.', '/report_result?0')
 
+    def test_openal_playback(self):
+      shutil.copyfile(path_from_root('tests', 'sounds', 'audio.wav'), os.path.join(self.get_dir(), 'audio.wav'))
+      open(os.path.join(self.get_dir(), 'openal_playback.cpp'), 'w').write(self.with_report_result(open(path_from_root('tests', 'openal_playback.cpp')).read()))
+
+      Popen([PYTHON, EMCC, '-O2', os.path.join(self.get_dir(), 'openal_playback.cpp'), '--preload-file', 'audio.wav', '-o', 'page.html']).communicate()
+      self.run_browser('page.html', '', '/report_result?1')
+
     def test_worker(self):
       # Test running in a web worker
       output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'], stdout=PIPE, stderr=PIPE).communicate()
