@@ -780,8 +780,7 @@ namespace emscripten {
         class_& allow_subclass() {
             using namespace internal;
 
-            // TODO: unique or anonymous name
-            class_<WrapperType, base<ClassType>>("WrapperType")
+            class_<WrapperType, base<ClassType>>(typeid(WrapperType).name())
                 .template constructor<val>()
                 ;
 
