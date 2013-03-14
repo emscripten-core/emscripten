@@ -1570,10 +1570,12 @@ function JSify(data, functionsOnly, givenFunctions) {
     // rest of the output that we started to print out earlier (see comment on the
     // "Final shape that will be created").
     if (PRECISE_I64_MATH && Types.preciseI64MathUsed) {
-      ['i64Add'].forEach(function(func) {
-        print(processLibraryFunction(LibraryManager.library[func], func)); // must be first to be close to generated code
-        Functions.implementedFunctions['_' + func] = LibraryManager.library[func + '__sig'];
-      });
+      if (!INCLUDE_FULL_LIBRARY) {
+        ['i64Add', 'bitshift64Shl', 'bitshift64Lshr', 'bitshift64Ashr'].forEach(function(func) {
+          print(processLibraryFunction(LibraryManager.library[func], func)); // must be first to be close to generated code
+          Functions.implementedFunctions['_' + func] = LibraryManager.library[func + '__sig'];
+        });
+      }
       print('// EMSCRIPTEN_END_FUNCS\n');
       print(read('long.js'));
     } else {

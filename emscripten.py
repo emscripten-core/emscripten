@@ -34,9 +34,13 @@ MIN_CHUNK_SIZE = 1024*1024
 MAX_CHUNK_SIZE = float(os.environ.get('EMSCRIPT_MAX_CHUNK_SIZE') or 'inf') # configuring this is just for debugging purposes
 
 def process_funcs((i, funcs, meta, settings_file, compiler, forwarded_file, libraries, compiler_engine, temp_files, DEBUG)):
-  ll = ''.join(funcs) + '\n' + meta
   funcs_file = temp_files.get('.func_%d.ll' % i).name
-  open(funcs_file, 'w').write(ll)
+  f = open(funcs_file, 'w')
+  f.write(funcs)
+  funcs = None
+  f.write('\n')
+  f.write(meta)
+  f.close()
   out = jsrun.run_js(
     compiler,
     engine=compiler_engine,
@@ -188,6 +192,8 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     funcs, chunk_size,
     jcache.get_cachename('emscript_files') if jcache else None)
 
+  funcs = None
+
   if jcache:
     # load chunks from cache where we can # TODO: ignore small chunks
     cached_outputs = []
@@ -223,6 +229,9 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       outputs = pool.map(process_funcs, commands, chunksize=1)
     elif len(chunks) == 1:
       outputs = [process_funcs(commands[0])]
+
+    commands = None
+
   else:
     outputs = []
 
@@ -234,6 +243,8 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       shortkey = jcache.get_shortkey(keys)
       jcache.set(shortkey, keys, outputs[i])
     if out and DEBUG and len(chunks) > 0: print >> sys.stderr, '  saving %d funcchunks to jcache' % len(chunks)
+
+  chunks = None
 
   if jcache: outputs += cached_outputs # TODO: preserve order
 
@@ -268,7 +279,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     if len(parts) > 1:
       pre = parts[0]
       outputs.append([parts[1]])
-  funcs_js = ''.join([output[0] for output in outputs])
+  funcs_js = [''.join([output[0] for output in outputs])] # this will be a list of things, so we do not do string appending as we add more
 
   outputs = None
   if DEBUG: print >> sys.stderr, '  emscript: phase 2b took %s seconds' % (time.time() - t)
@@ -315,7 +326,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   if settings.get('ASM_JS'):
     post_funcs, post_rest = post.split('// EMSCRIPTEN_END_FUNCS\n')
     post = post_rest
-    funcs_js += '\n' + post_funcs + '// EMSCRIPTEN_END_FUNCS\n'
+    funcs_js += ['\n' + post_funcs + '// EMSCRIPTEN_END_FUNCS\n']
 
     simple = os.environ.get('EMCC_SIMPLE_ASM')
     class Counter:
@@ -324,11 +335,12 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     del last_forwarded_json['Functions']['tables']['pre']
 
     # Find function table calls without function tables generated for them
-    for use in set(re.findall(r'{{{ FTM_[\w\d_$]+ }}}', funcs_js)):
-      sig = use[8:len(use)-4]
-      if sig not in last_forwarded_json['Functions']['tables']:
-        if DEBUG: print >> sys.stderr, 'add empty function table', sig
-        last_forwarded_json['Functions']['tables'][sig] = 'var FUNCTION_TABLE_' + sig + ' = [0,0];\n'
+    for funcs_js_item in funcs_js:
+      for use in set(re.findall(r'{{{ FTM_[\w\d_$]+ }}}', funcs_js_item)):
+        sig = use[8:len(use)-4]
+        if sig not in last_forwarded_json['Functions']['tables']:
+          if DEBUG: print >> sys.stderr, 'add empty function table', sig
+          last_forwarded_json['Functions']['tables'][sig] = 'var FUNCTION_TABLE_' + sig + ' = [0,0];\n'
 
     def make_table(sig, raw):
       i = Counter.i
@@ -344,7 +356,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     asm_setup = ''
     maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul']]
     fundamentals = ['Math', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
-    math_envs = ['Runtime.bitshift64', 'Math.min'] # TODO: move min to maths
+    math_envs = ['Math.min'] # TODO: move min to maths
     asm_setup += '\n'.join(['var %s = %s;' % (f.replace('.', '_'), f) for f in math_envs])
     basic_funcs = ['abort', 'assert', 'asmPrintInt', 'asmPrintFloat', 'copyTempDouble', 'copyTempFloat'] + [m.replace('.', '_') for m in math_envs]
     if settings['SAFE_HEAP']: basic_funcs += ['SAFE_HEAP_LOAD', 'SAFE_HEAP_STORE', 'SAFE_HEAP_CLEAR']
@@ -415,9 +427,9 @@ var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
 
     # finalize
 
-    if DEBUG: print >> sys.stderr, 'asm text sizes', len(funcs_js), len(asm_setup), len(asm_global_vars), len(asm_global_funcs), len(pre_tables), len('\n'.join(function_tables_impls)), len(function_tables_defs.replace('\n', '\n  ')), len(exports), len(the_global), len(sending), len(receiving)
+    if DEBUG: print >> sys.stderr, 'asm text sizes', map(len, funcs_js), len(asm_setup), len(asm_global_vars), len(asm_global_funcs), len(pre_tables), len('\n'.join(function_tables_impls)), len(function_tables_defs.replace('\n', '\n  ')), len(exports), len(the_global), len(sending), len(receiving)
 
-    funcs_js = '''
+    funcs_js = ['''
 %s
 function asmPrintInt(x, y) {
   Module.print('int ' + x + ',' + y);// + ' ' + new Error().stack);
@@ -467,7 +479,7 @@ var asm = (function(global, env, buffer) {
     value = value|0;
     tempRet%d = value;
   }
-''' % (i, i) for i in range(10)]) + funcs_js + '''
+''' % (i, i) for i in range(10)])] + funcs_js + ['''
   %s
 
   return %s;
@@ -478,7 +490,7 @@ var asm = (function(global, env, buffer) {
 Runtime.stackAlloc = function(size) { return asm.stackAlloc(size) };
 Runtime.stackSave = function() { return asm.stackSave() };
 Runtime.stackRestore = function(top) { asm.stackRestore(top) };
-''' % (pre_tables + '\n'.join(function_tables_impls) + '\n' + function_tables_defs.replace('\n', '\n  '), exports, the_global, sending, receiving)
+''' % (pre_tables + '\n'.join(function_tables_impls) + '\n' + function_tables_defs.replace('\n', '\n  '), exports, the_global, sending, receiving)]
 
     # Set function table masks
     def function_table_maskize(js):
@@ -491,17 +503,20 @@ Runtime.stackRestore = function(top) { asm.stackRestore(top) };
         sig = m.groups(0)[0]
         return masks[sig]
       return re.sub(r'{{{ FTM_([\w\d_$]+) }}}', lambda m: fix(m), js) # masks[m.groups(0)[0]]
-    funcs_js = function_table_maskize(funcs_js)
+    funcs_js = map(function_table_maskize, funcs_js)
   else:
     function_tables_defs = '\n'.join([table for table in last_forwarded_json['Functions']['tables'].itervalues()])
     outfile.write(function_tables_defs)
-    funcs_js = '''
+    funcs_js = ['''
 // EMSCRIPTEN_START_FUNCS
-''' + funcs_js + '''
+'''] + funcs_js + ['''
 // EMSCRIPTEN_END_FUNCS
-'''
+''']
 
-  outfile.write(blockaddrsize(indexize(funcs_js)))
+  for funcs_js_item in funcs_js: # do this loop carefully to save memory
+    funcs_js_item = indexize(funcs_js_item)
+    funcs_js_item = blockaddrsize(funcs_js_item)
+    outfile.write(funcs_js_item)
   funcs_js = None
 
   outfile.write(indexize(post))

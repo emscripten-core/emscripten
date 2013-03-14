@@ -4168,7 +4168,7 @@ LibraryManager.library = {
     return ret;
   },
 
-  memcpy__asm: 'true',
+  memcpy__asm: true,
   memcpy__sig: 'iiii',
   memcpy: function (dest, src, num) {
     dest = dest|0; src = src|0; num = num|0;
@@ -4329,7 +4329,7 @@ LibraryManager.library = {
     }
   },
 
-  strcpy__asm: 'true',
+  strcpy__asm: true,
   strcpy__sig: 'iii',
   strcpy: function(pdest, psrc) {
     pdest = pdest|0; psrc = psrc|0;
@@ -4350,7 +4350,7 @@ LibraryManager.library = {
     return pdest + i - 1;
   },
 
-  strncpy__asm: 'true',
+  strncpy__asm: true,
   strncpy__sig: 'iiii',
   strncpy: function(pdest, psrc, num) {
     pdest = pdest|0; psrc = psrc|0; num = num|0;
@@ -4358,7 +4358,7 @@ LibraryManager.library = {
     while ((i|0) < (num|0)) {
       curr = padding ? 0 : {{{ makeGetValueAsm('psrc', 'i', 'i8') }}};
       {{{ makeSetValue('pdest', 'i', 'curr', 'i8') }}}
-      padding = padding | ({{{ makeGetValueAsm('psrc', 'i', 'i8') }}} == 0);
+      padding = padding ? 1 : ({{{ makeGetValueAsm('psrc', 'i', 'i8') }}} == 0);
       i = (i+1)|0;
     }
     return pdest|0;
@@ -4386,15 +4386,18 @@ LibraryManager.library = {
     }
   },
 
+  strcat__asm: true,
+  strcat__sig: 'iii',
   strcat__deps: ['strlen'],
   strcat: function(pdest, psrc) {
-    var len = _strlen(pdest);
+    pdest = pdest|0; psrc = psrc|0;
     var i = 0;
+    pdest = (pdest + _strlen(pdest))|0;
     do {
-      {{{ makeCopyValues('pdest+len+i', 'psrc+i', 1, 'i8', null, 1) }}};
-      i ++;
-    } while ({{{ makeGetValue('psrc', 'i-1', 'i8') }}} != 0);
-    return pdest;
+      {{{ makeCopyValues('pdest+i', 'psrc+i', 1, 'i8', null, 1) }}};
+      i = (i+1)|0;
+    } while ({{{ makeGetValueAsm('psrc', 'i-1', 'i8') }}} != 0);
+    return pdest|0;
   },
 
   strncat__deps: ['strlen'],
@@ -4462,7 +4465,7 @@ LibraryManager.library = {
     return 0;
   },
 
-  memcmp__asm: 'true',
+  memcmp__asm: true,
   memcmp__sig: 'iiii',
   memcmp: function(p1, p2, num) {
     p1 = p1|0; p2 = p2|0; num = num|0;
@@ -7363,7 +7366,7 @@ LibraryManager.library = {
   // i64 math
   //============================
 
-  i64Add__asm: 'true',
+  i64Add__asm: true,
   i64Add__sig: 'iiiii',
   i64Add: function(a, b, c, d) {
     /*
@@ -7380,7 +7383,7 @@ LibraryManager.library = {
     }
     {{{ makeStructuralReturn(['l|0', 'h'], true) }}};
   },
-  llvm_uadd_with_overflow_i64__asm: 'true',
+  llvm_uadd_with_overflow_i64__asm: true,
   llvm_uadd_with_overflow_i64__sig: 'iiiii',
   llvm_uadd_with_overflow_i64: function(a, b, c, d) {
     a = a|0; b = b|0; c = c|0; d = d|0;
@@ -7392,6 +7395,46 @@ LibraryManager.library = {
       overflow = 1;
     }
     {{{ makeStructuralReturn(['l|0', 'h', 'overflow'], true) }}};
+  },
+
+  bitshift64Shl__asm: true,
+  bitshift64Shl__sig: 'iiii',
+  bitshift64Shl: function(low, high, bits) {
+    low = low|0; high = high|0; bits = bits|0;
+    var ander = 0;
+    if ((bits|0) < 32) {
+      ander = ((1 << bits) - 1)|0;
+      tempRet0 = (high << bits) | ((low&(ander << (32 - bits))) >>> (32 - bits));
+      return low << bits;
+    }
+    tempRet0 = low << (bits - 32);
+    return 0;
+  },
+  bitshift64Ashr__asm: true,
+  bitshift64Ashr__sig: 'iiii',
+  bitshift64Ashr: function(low, high, bits) {
+    low = low|0; high = high|0; bits = bits|0;
+    var ander = 0;
+    if ((bits|0) < 32) {
+      ander = ((1 << bits) - 1)|0;
+      tempRet0 = high >> bits;
+      return (low >>> bits) | ((high&ander) << (32 - bits));
+    }
+    tempRet0 = (high|0) < 0 ? -1 : 0;
+    return (high >> (bits - 32))|0;
+  },
+  bitshift64Lshr__asm: true,
+  bitshift64Lshr__sig: 'iiii',
+  bitshift64Lshr: function(low, high, bits) {
+    low = low|0; high = high|0; bits = bits|0;
+    var ander = 0;
+    if ((bits|0) < 32) {
+      ander = ((1 << bits) - 1)|0;
+      tempRet0 = high >>> bits;
+      return (low >>> bits) | ((high&ander) << (32 - bits));
+    }
+    tempRet0 = 0;
+    return (high >>> (bits - 32))|0;
   },
 };
 

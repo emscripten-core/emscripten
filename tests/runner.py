@@ -829,11 +829,14 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
               int add_low = add;
               int add_high = add >> 32;
               printf("*%lld,%lld,%u,%u*\n", mul, add, add_low, add_high);
+              int64 x = sec + (usec << 25);
+              x >>= argc*3;
+              printf("*%llu*\n", x);
               return 0;
           }
         '''
 
-        self.do_run(src, '*1329409676000000,1329412005509675,3663280683,309527*\n')
+        self.do_run(src, '*1329409676000000,1329412005509675,3663280683,309527*\n*9770671914067409*\n')
 
     def test_i64_cmp(self):
         if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
@@ -1002,12 +1005,6 @@ m_divisor is 1091269979
           }
         '''
         self.do_run(src, open(path_from_root('tests', 'i64_precise.txt')).read())
-
-        # Verify that without precision, we do not include the precision code
-        Settings.PRECISE_I64_MATH = 0
-        self.do_run(src, 'unsigned')
-        code = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
-        assert 'goog.math.Long' not in code, 'i64 precise math should not have been included if not asked for'
 
         # Verify that even if we ask for precision, if it is not needed it is not included
         Settings.PRECISE_I64_MATH = 1
@@ -1901,13 +1898,23 @@ Succeeded!
               printf("waka %s\\n", three);
             }
 
+            {
+              char *one = "string number one top notch";
+              char *two = "fa la sa ho fi FI FO FUM WHEN WHERE WHY HOW WHO";
+              char three[1000];
+              strcpy(three, &one[argc*2]);
+              strcat(three, &two[argc*3]);
+              printf("cat |%s|\\n", three);
+            }
+
             return 0;
           }
         '''
         for named in (0, 1):
           print named
           Settings.NAMED_GLOBALS = named
-          self.do_run(src, '4:10,177,543,def\n4\nwowie\ntoo\n76\n5\n(null)\n/* a comment */\n// another\ntest\nwaka ....e 1 O...wo 2 T................................\n', ['wowie', 'too', '74'])
+          self.do_run(src, '''4:10,177,543,def\n4\nwowie\ntoo\n76\n5\n(null)\n/* a comment */\n// another\ntest\nwaka ....e 1 O...wo 2 T................................
+cat |umber one top notchfi FI FO FUM WHEN WHERE WHY HOW WHO|''', ['wowie', 'too', '74'])
           if self.emcc_args == []:
             gen = open(self.in_dir('src.cpp.o.js')).read()
             assert ('var __str1;' in gen) == named
@@ -11647,7 +11654,8 @@ elif 'benchmark' in str(sys.argv):
         start = time.time()
         js_output = run_js(final_filename, engine=JS_ENGINE, args=args, stderr=PIPE, full_output=True)
         if i == 0 and 'Successfully compiled asm.js code' in js_output:
-          print "[%s was asm.js'ified]" % name
+          if 'asm.js link error' not in js_output:
+            print "[%s was asm.js'ified]" % name
         curr = time.time()-start
         times.append(curr)
         total_times[tests_done] += curr
