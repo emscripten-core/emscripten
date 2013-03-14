@@ -703,7 +703,6 @@ function __embind_register_class(
                     registeredPointer: registeredPointer,
                     count: { value: 1 },
                     ptr: ptr,
-                    pointeeType: type, // todo: is this necessary?
                 }
             });
         });
@@ -739,7 +738,7 @@ function __embind_register_class(
 
         Handle.prototype['delete'] = function() {
             if (!this.$$.ptr) {
-                throwBindingError(type.name + ' instance already deleted'); // todo: but 'type' hasn't been resolved!?!
+                throwBindingError(type.name + ' instance already deleted');
             }
             
             this.$$.count.value -= 1;
@@ -994,14 +993,10 @@ function __embind_register_smart_ptr(
                     count: {value: 1},
                     smartPtr: ptr,
                     ptr: rawGetPointee(ptr),
-                    // todo: is this necessary?
-                    pointeeType: pointeeType,
                 },
             });
         });
 
-        // TODO: test for SmartPtr.prototype.constructor property?
-        // We likely want it distinct from pointeeType.prototype.constructor
         Handle.prototype = Object.create(pointeeType.Handle.prototype);
 
         Handle.prototype.clone = function() {
