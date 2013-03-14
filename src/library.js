@@ -4358,7 +4358,7 @@ LibraryManager.library = {
     while ((i|0) < (num|0)) {
       curr = padding ? 0 : {{{ makeGetValueAsm('psrc', 'i', 'i8') }}};
       {{{ makeSetValue('pdest', 'i', 'curr', 'i8') }}}
-      padding = padding | ({{{ makeGetValueAsm('psrc', 'i', 'i8') }}} == 0);
+      padding = padding ? 1 : ({{{ makeGetValueAsm('psrc', 'i', 'i8') }}} == 0);
       i = (i+1)|0;
     }
     return pdest|0;
