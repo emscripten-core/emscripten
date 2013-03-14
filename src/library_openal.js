@@ -86,7 +86,15 @@ var LibraryOpenAL = {
         gain.connect(AL.currentContext.ctx.destination);
       }
       gain.gain.value = 1; // work around a Firefox bug (bug 850970)
-      AL.currentContext.src.push({loop: false, buffer: null, gain: gain, panner: panner});
+      AL.currentContext.src.push({
+        loop: false,
+        buffer: null,
+        gain: gain,
+        panner: panner,
+        paused: false,
+        playTime: 0,
+        pausedTime: 0
+      });
       {{{ makeSetValue('sources', 'i', 'AL.currentContext.src.length', 'i32') }}};
     }
   },
@@ -265,16 +273,23 @@ var LibraryOpenAL = {
       console.error("alSourcePlay called with an invalid source");
       return;
     }
+    var offset = 0;
     if ("src" in AL.currentContext.src[source - 1]) {
       // If the source is already playing, we need to resume from beginning.
       // We do that by stopping the current source and replaying it.
       _alSourceStop(source);
+    } else if (AL.currentContext.src[source - 1].paused) {
+      // So now we have to resume playback, remember the offset here.
+      offset = AL.currentContext.src[source - 1].pausedTime -
+               AL.currentContext.src[source - 1].playTime;
     }
     var src = AL.currentContext.ctx.createBufferSource();
     src.loop = AL.currentContext.src[source - 1].loop;
     src.buffer = AL.currentContext.src[source - 1].buffer;
     src.connect(AL.currentContext.src[source - 1].gain);
-    src.start(0);
+    src.start(0, offset);
+    AL.currentContext.src[source - 1].playTime = AL.currentContext.ctx.currentTime;
+    AL.currentContext.src[source - 1].paused = false;
     AL.currentContext.src[source - 1]['src'] = src;
   },
 
@@ -288,7 +303,25 @@ var LibraryOpenAL = {
       return;
     }
     if ("src" in AL.currentContext.src[source - 1]) {
-      AL.currentContext.src[source - 1].src.stop(0);
+      AL.currentContext.src[source - 1]["src"].stop(0);
+      delete AL.currentContext.src[source - 1]["src"];
+    }
+  },
+
+  alSourcePause: function(source) {
+    if (!AL.currentContext) {
+      console.error("alSourcePause called without a valid context");
+      return;
+    }
+    if (source > AL.currentContext.src.length) {
+      console.error("alSourcePause called with an invalid source");
+      return;
+    }
+    if ("src" in AL.currentContext.src[source - 1] &&
+        !AL.currentContext.src[source - 1].paused) {
+      AL.currentContext.src[source - 1].paused = true;
+      AL.currentContext.src[source - 1].pausedTime = AL.currentContext.ctx.currentTime;
+      AL.currentContext.src[source - 1]["src"].stop(0);
       delete AL.currentContext.src[source - 1].src;
     }
   },
