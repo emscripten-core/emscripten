@@ -2,6 +2,28 @@
 #include <stdlib.h>
 #include <AL/al.h>
 #include <AL/alc.h>
+#include <assert.h>
+#include <emscripten.h>
+
+void playSource(void* arg)
+{
+  ALuint source = reinterpret_cast<ALuint>(arg);
+  ALint state;
+  alGetSourcei(source, AL_SOURCE_STATE, &state);
+  assert(state == AL_PLAYING);
+  alSourcePause(source);
+  alGetSourcei(source, AL_SOURCE_STATE, &state);
+  assert(state == AL_PAUSED);
+  alSourcePlay(source);
+  alGetSourcei(source, AL_SOURCE_STATE, &state);
+  assert(state == AL_PLAYING);
+  alSourceStop(source);
+  alGetSourcei(source, AL_SOURCE_STATE, &state);
+  assert(state == AL_STOPPED);
+
+  int result = 1;
+  REPORT_RESULT();
+}
 
 int main() {
   ALCdevice* device = alcOpenDevice(NULL);
@@ -78,10 +100,16 @@ int main() {
 
   alSourcei(sources[0], AL_BUFFER, buffers[0]);
 
+  ALint state;
+  alGetSourcei(sources[0], AL_SOURCE_STATE, &state);
+  assert(state == AL_INITIAL);
+
   alSourcePlay(sources[0]);
 
-  int result = 1;
-  REPORT_RESULT();
+  alGetSourcei(sources[0], AL_SOURCE_STATE, &state);
+  assert(state == AL_PLAYING);
+
+  emscripten_async_call(playSource, reinterpret_cast<void*>(sources[0]), 700);
 
   return 0;
 }
