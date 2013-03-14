@@ -76,10 +76,8 @@ var LibraryOpenAL = {
       return;
     }
     for (var i = 0; i < count; ++i) {
-      var src = AL.currentContext.ctx.createBufferSource();
       var gain = AL.currentContext.ctx.createGain();
       var panner = AL.currentContext.ctx.createPanner();
-      src.connect(gain);
       if (typeof(webkitAudioContext) == 'function') {
         gain.connect(panner);
         panner.connect(AL.currentContext.ctx.destination);
@@ -88,7 +86,7 @@ var LibraryOpenAL = {
         gain.connect(AL.currentContext.ctx.destination);
       }
       gain.gain.value = 1; // work around a Firefox bug (bug 850970)
-      AL.currentContext.src.push({src: src, gain: gain, panner: panner});
+      AL.currentContext.src.push({loop: false, buffer: null, gain: gain, panner: panner});
       {{{ makeSetValue('sources', 'i', 'AL.currentContext.src.length', 'i32') }}};
     }
   },
@@ -104,13 +102,13 @@ var LibraryOpenAL = {
     }
     switch (param) {
     case 0x1007 /* AL_LOOPING */:
-      AL.currentContext.src[source - 1].src.loop = (value != 0 /* AL_FALSE */);
+      AL.currentContext.src[source - 1].loop = (value != 0 /* AL_FALSE */);
       break;
     case 0x1009 /* AL_BUFFER */:
       if (value == 0) {
-        AL.currentContext.src[source - 1].src.buffer = null;
+        AL.currentContext.src[source - 1].buffer = null;
       } else {
-        AL.currentContext.src[source - 1].src.buffer = AL.currentContext.buf[value - 1].buf;
+        AL.currentContext.src[source - 1].buffer = AL.currentContext.buf[value - 1].buf;
       }
       break;
     default:
@@ -190,7 +188,7 @@ var LibraryOpenAL = {
         console.error("alSourceQueueBuffers called with an invalid buffer");
         return;
       }
-      AL.currentCOntext.src[source - 1].src.buffer = AL.currentContext.buf[buffer - 1].buf;
+      AL.currentCOntext.src[source - 1].buffer = AL.currentContext.buf[buffer - 1].buf;
     }
   },
 
@@ -257,16 +255,42 @@ var LibraryOpenAL = {
     }
   },
 
+  alSourcePlay__deps: ["alSourceStop"],
   alSourcePlay: function(source) {
     if (!AL.currentContext) {
-      console.error("alSourceQueueBuffers called without a valid context");
+      console.error("alSourcePlay called without a valid context");
       return;
     }
     if (source > AL.currentContext.src.length) {
-      console.error("alSourceQueueBuffers called with an invalid source");
+      console.error("alSourcePlay called with an invalid source");
       return;
     }
-    AL.currentContext.src[source - 1].src.start(0);
+    if ("src" in AL.currentContext.src[source - 1]) {
+      // If the source is already playing, we need to resume from beginning.
+      // We do that by stopping the current source and replaying it.
+      _alSourceStop(source);
+    }
+    var src = AL.currentContext.ctx.createBufferSource();
+    src.loop = AL.currentContext.src[source - 1].loop;
+    src.buffer = AL.currentContext.src[source - 1].buffer;
+    src.connect(AL.currentContext.src[source - 1].gain);
+    src.start(0);
+    AL.currentContext.src[source - 1]['src'] = src;
+  },
+
+  alSourceStop: function(source) {
+    if (!AL.currentContext) {
+      console.error("alSourcePlay called without a valid context");
+      return;
+    }
+    if (source > AL.currentContext.src.length) {
+      console.error("alSourcePlay called with an invalid source");
+      return;
+    }
+    if ("src" in AL.currentContext.src[source - 1]) {
+      AL.currentContext.src[source - 1].src.stop(0);
+      delete AL.currentContext.src[source - 1].src;
+    }
   },
 
   alDistanceModel: function(model) {
