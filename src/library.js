@@ -7417,7 +7417,7 @@ LibraryManager.library = {
       tempRet0 = high >> bits;
       return (low >>> bits) | ((high&ander) << (32 - bits));
     }
-    tempRet0 = (high|0) < 0 ? ander : 0;
+    tempRet0 = (high|0) < 0 ? -1 : 0;
     return (high >> (bits - 32))|0;
   },
   bitshift64Lshr__asm: true,
