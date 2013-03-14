@@ -18,7 +18,7 @@ function recomputeLines(func) {
 // Handy sets
 
 var BRANCH_INVOKE = set('branch', 'invoke');
-var LABEL_ENDERS = set('branch', 'return');
+var LABEL_ENDERS = set('branch', 'return', 'switch');
 var SIDE_EFFECT_CAUSERS = set('call', 'invoke', 'atomic');
 var UNUNFOLDABLE = set('value', 'structvalue', 'type', 'phiparam');
 
