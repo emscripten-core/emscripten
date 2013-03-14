@@ -508,6 +508,11 @@ RegisteredPointer.prototype.isPolymorphic = function() {
 };
 
 RegisteredPointer.prototype.toWireType = function(destructors, handle) {
+    var self = this;
+    function throwCannotConvert() {
+        throwBindingError('Cannot convert argument of type ' + handle.$$.registeredPointer.name + ' to parameter type ' + self.name);
+    }
+
     if (handle === null) {
         if (this.isReference) {
             throwBindingError('null is not a valid ' + this.name);
@@ -528,7 +533,7 @@ RegisteredPointer.prototype.toWireType = function(destructors, handle) {
         throwBindingError('Passing raw pointer to smart pointer is illegal');
     }
     if (!this.isConst && handle.$$.registeredPointer.isConst) {
-        throwBindingError('Cannot pass argument of type ' + handle.$$.registeredPointer.name + ' to parameter of type ' + this.name);
+        throwCannotConvert();
     }
     var handleClass = handle.$$.registeredPointer.registeredClass;
     var ptr = upcastPointer(handle.$$.ptr, handleClass, this.registeredClass);
@@ -539,7 +544,7 @@ RegisteredPointer.prototype.toWireType = function(destructors, handle) {
                 if (handle.$$.registeredPointer === this) {
                     ptr = handle.$$.smartPtr;
                 } else {
-                    throwBindingError('NONE sharing policy not yet supported');
+                    throwCannotConvert();
                 }
                 break;
             
