@@ -11,8 +11,7 @@ PYTHON = os.path.expanduser(os.getenv('PYTHON') or '{{{ PYTHON }}}') # executabl
 
 # See below for notes on which JS engine(s) you need
 NODE_JS = os.path.expanduser(os.getenv('NODE') or '{{{ NODE }}}') # executable
-SPIDERMONKEY_ENGINE = [
-  os.path.expanduser(os.getenv('SPIDERMONKEY') or 'js'), '-m', '-n'] # executable
+SPIDERMONKEY_ENGINE = [os.path.expanduser(os.getenv('SPIDERMONKEY') or 'js')] # executable
 V8_ENGINE = os.path.expanduser(os.getenv('V8') or 'd8') # executable
 
 JAVA = 'java' # executable
