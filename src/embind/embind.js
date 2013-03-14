@@ -510,7 +510,7 @@ RegisteredPointer.prototype.isPolymorphic = function() {
 RegisteredPointer.prototype.toWireType = function(destructors, handle) {
     var self = this;
     function throwCannotConvert() {
-        throwBindingError('Cannot convert argument of type ' + handle.$$.registeredPointer.name + ' to parameter type ' + self.name);
+        throwBindingError('Cannot convert argument of type ' + handle.$$.ptrType.name + ' to parameter type ' + self.name);
     }
 
     if (handle === null) {
@@ -532,16 +532,16 @@ RegisteredPointer.prototype.toWireType = function(destructors, handle) {
     if (this.isSmartPointer && undefined === handle.$$.smartPtr) {
         throwBindingError('Passing raw pointer to smart pointer is illegal');
     }
-    if (!this.isConst && handle.$$.registeredPointer.isConst) {
+    if (!this.isConst && handle.$$.ptrType.isConst) {
         throwCannotConvert();
     }
-    var handleClass = handle.$$.registeredPointer.registeredClass;
+    var handleClass = handle.$$.ptrType.registeredClass;
     var ptr = upcastPointer(handle.$$.ptr, handleClass, this.registeredClass);
     if (this.isSmartPointer) {
         switch (this.sharingPolicy) {
             case 0: // NONE
                 // no upcasting
-                if (handle.$$.registeredPointer === this) {
+                if (handle.$$.ptrType === this) {
                     ptr = handle.$$.smartPtr;
                 } else {
                     throwCannotConvert();
@@ -553,7 +553,7 @@ RegisteredPointer.prototype.toWireType = function(destructors, handle) {
                 break;
             
             case 2: // BY_EMVAL
-                if (handle.$$.registeredPointer === this) {
+                if (handle.$$.ptrType === this) {
                     ptr = handle.$$.smartPtr;
                 } else {
                     var clonedHandle = handle.clone();
@@ -643,7 +643,7 @@ RegisteredPointer.prototype.fromWireTypeAutoDowncast = function(ptr) { // ptr is
     return handle;
 };
 
-// root of all class handles in embind
+// root of all pointer and smart pointer handles in embind
 function ClassHandle() {
 }
 
@@ -697,10 +697,10 @@ function __embind_register_class(
             basePrototype = ClassHandle.prototype;
         }
 
-        var Handle = createNamedFunction(legalFunctionName, function(registeredPointer, ptr) {
+        var Handle = createNamedFunction(legalFunctionName, function(ptrType, ptr) {
             Object.defineProperty(this, '$$', {
                 value: {
-                    registeredPointer: registeredPointer,
+                    ptrType: ptrType,
                     count: { value: 1 },
                     ptr: ptr,
                 }
@@ -852,7 +852,7 @@ function validateThis(this_, classType, humanName) {
     
     return upcastPointer(
         this_.$$.ptr,
-        this_.$$.registeredPointer.registeredClass,
+        this_.$$.ptrType.registeredClass,
         classType.registeredClass);
 }
 
@@ -881,7 +881,7 @@ function __embind_register_class_function(
             }
 
             var ptr = validateThis(this, classType, humanName);
-            if (!isConst && this.$$.registeredPointer.isConst) {
+            if (!isConst && this.$$.ptrType.isConst) {
                 throwBindingError('Cannot call non-const method ' + humanName + ' on const reference');
             }
 
@@ -986,10 +986,10 @@ function __embind_register_smart_ptr(
     whenDependentTypesAreResolved([rawPointeeType], function(pointeeType) {
         pointeeType = pointeeType[0];
 
-        var Handle = createNamedFunction(makeLegalFunctionName(name), function(registeredPointer, ptr) {
+        var Handle = createNamedFunction(makeLegalFunctionName(name), function(ptrType, ptr) {
             Object.defineProperty(this, '$$', {
                 value: {
-                    registeredPointer: registeredPointer,
+                    ptrType: ptrType,
                     count: {value: 1},
                     smartPtr: ptr,
                     ptr: rawGetPointee(ptr),
