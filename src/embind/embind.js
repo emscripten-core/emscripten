@@ -508,7 +508,6 @@ RegisteredPointer.prototype.isPolymorphic = function() {
 };
 
 RegisteredPointer.prototype.toWireType = function(destructors, handle) {
-    var fromRawType;
     if (handle === null) {
         if (this.isReference) {
             throwBindingError('null is not a valid ' + this.name);
@@ -531,20 +530,17 @@ RegisteredPointer.prototype.toWireType = function(destructors, handle) {
     if (!this.isConst && handle.$$.registeredPointer.isConst) {
         throwBindingError('Cannot pass argument of type ' + handle.$$.registeredPointer.name + ' to parameter of type ' + this.name);
     }
-    var pointeeType = handle.$$.pointeeType;
-    if (pointeeType.isPolymorphic()) {
-        fromRawType = pointeeType.getDynamicRawPointerType(handle.$$.ptr);
-    } else {
-        fromRawType = pointeeType.rawType;
-    }
-    if (fromRawType === this.pointeeType.rawType) {
-        return this.isSmartPointer ? handle.$$.smartPtr : handle.$$.ptr;
-    }
-    var ptr = staticPointerCast(handle.$$.ptr, fromRawType, this.pointeeType.rawType);
+    var handleClass = handle.$$.registeredPointer.registeredClass;
+    var ptr = upcastPointer(handle.$$.ptr, handleClass, this.registeredClass);
     if (this.isSmartPointer) {
         switch (this.sharingPolicy) {
             case 0: // NONE
-                throwBindingError('NONE sharing policy not yet supported');
+                // no upcasting
+                if (handle.$$.registeredPointer === this) {
+                    ptr = handle.$$.smartPtr;
+                } else {
+                    throwBindingError('NONE sharing policy not yet supported');
+                }
                 break;
             
             case 1: // INTRUSIVE
@@ -552,19 +548,22 @@ RegisteredPointer.prototype.toWireType = function(destructors, handle) {
                 break;
             
             case 2: // BY_EMVAL
-                var clonedHandle = handle.clone();
-                ptr = this.rawShare(
-                    ptr,
-                    __emval_register(function() {
-                        clonedHandle.delete();
-                    })
-                );
-                destructors.push(this.rawDestructor, ptr);
-            break;
+                if (handle.$$.registeredPointer === this) {
+                    ptr = handle.$$.smartPtr;
+                } else {
+                    var clonedHandle = handle.clone();
+                    ptr = this.rawShare(
+                        ptr,
+                        __emval_register(function() {
+                            clonedHandle.delete();
+                        })
+                    );
+                    destructors.push(this.rawDestructor, ptr);
+                }
+                break;
             
             default:
                 throwBindingError('Unsupporting sharing policy');
-            
         }
     }
     return ptr;
