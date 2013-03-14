@@ -529,6 +529,8 @@ RegisteredPointer.prototype.toWireType = function(destructors, handle) {
     if (!(handle instanceof this.registeredClass.constructor)) {
         throwBindingError('Expected null or instance of ' + this.name + ', got ' + IMVU.repr(handle));
     }
+    // TODO: this is not strictly true
+    // It seems legal to support BY_EMVAL and INTRUSIVE conversions from raw pointers to smart pointers
     if (this.isSmartPointer && undefined === handle.$$.smartPtr) {
         throwBindingError('Passing raw pointer to smart pointer is illegal');
     }
