@@ -4386,15 +4386,18 @@ LibraryManager.library = {
     }
   },
 
+  strcat__asm: true,
+  strcat__sig: 'iii',
   strcat__deps: ['strlen'],
   strcat: function(pdest, psrc) {
+    pdest = pdest|0; psrc = psrc|0;
+    var len = 0, i = 0;
     var len = _strlen(pdest);
-    var i = 0;
     do {
       {{{ makeCopyValues('pdest+len+i', 'psrc+i', 1, 'i8', null, 1) }}};
-      i ++;
-    } while ({{{ makeGetValue('psrc', 'i-1', 'i8') }}} != 0);
-    return pdest;
+      i = (i+1)|0;
+    } while ({{{ makeGetValueAsm('psrc', 'i-1', 'i8') }}} != 0);
+    return pdest|0;
   },
 
   strncat__deps: ['strlen'],
