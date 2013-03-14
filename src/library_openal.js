@@ -92,7 +92,7 @@ var LibraryOpenAL = {
         gain: gain,
         panner: panner,
         paused: false,
-        playTime: 0,
+        playTime: -1,
         pausedTime: 0
       });
       {{{ makeSetValue('sources', 'i', 'AL.currentContext.src.length', 'i32') }}};
@@ -323,6 +323,59 @@ var LibraryOpenAL = {
       AL.currentContext.src[source - 1].pausedTime = AL.currentContext.ctx.currentTime;
       AL.currentContext.src[source - 1]["src"].stop(0);
       delete AL.currentContext.src[source - 1].src;
+    }
+  },
+
+  alGetSourcei: function(source, param, value) {
+    if (!AL.currentContext) {
+      console.error("alGetSourcei called without a valid context");
+      return;
+    }
+    if (source > AL.currentContext.src.length) {
+      console.error("alGetSourcei called with an invalid source");
+      return;
+    }
+    switch (param) {
+    case 0x202 /* AL_SOURCE_RELATIVE */:
+      // Always return 1
+      {{{ makeSetValue('value', '0', '1', 'i32') }}};
+      break;
+    case 0x1009 /* AL_BUFFER */:
+      if (AL.currentContext.src[source - 1].buffer == null) {
+        {{{ makeSetValue('value', '0', '0', 'i32') }}};
+      } else {
+        var buf = AL.currentContext.src[source - 1].buffer;
+        for (var i = 0; i < AL.currentContext.buf.length; ++i) {
+          if (buf == AL.currentContext.buf[i].buf) {
+            {{{ makeSetValue('value', '0', 'i+1', 'i32') }}};
+            return;
+          }
+        }
+        {{{ makeSetValue('value', '0', '0', 'i32') }}};
+      }
+      break;
+    case 0x1010 /* AL_SOURCE_STATE */:
+      if ("src" in AL.currentContext.src[source - 1]) {
+        {{{ makeSetValue('value', '0', '0x1012', 'i32') }}} /* AL_PLAYING */;
+      } else if (AL.currentContext.src[source - 1].paused) {
+        {{{ makeSetValue('value', '0', '0x1013', 'i32') }}} /* AL_PAUSED */;
+      } else if (AL.currentContext.src[source - 1].playTime == -1) {
+        {{{ makeSetValue('value', '0', '0x1011', 'i32') }}} /* AL_INITIAL */;
+      } else {
+        {{{ makeSetValue('value', '0', '0x1014', 'i32') }}} /* AL_STOPPED */;
+      }
+      break;
+    case 0x1015 /* AL_BUFFERS_QUEUED */:
+      if (AL.currentContext.src[source - 1].buffer) {
+        {{{ makeSetValue('value', '0', '1', 'i32') }}}
+      } else {
+        {{{ makeSetValue('value', '0', '0', 'i32') }}}
+      }
+      break;
+    case 0x1016 /* AL_BUFFERS_PROCESSED */:
+      // Always return 1
+      {{{ makeSetValue('value', '0', '1', 'i32') }}}
+      break;
     }
   },
 
