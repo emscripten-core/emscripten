@@ -722,11 +722,10 @@ namespace emscripten {
         class_& smart_ptr() {
             using namespace internal;
 
-            // TODO: assert that PointeeType is identical to ClassType
-
             typedef smart_ptr_trait<PointerType> PointerTrait;
             typedef typename PointerTrait::element_type PointeeType;
             
+            static_assert(std::is_same<ClassType, typename std::remove_cv<PointeeType>::type>::value, "smart pointer must point to this class");
 
             _embind_register_smart_ptr(
                 TypeID<PointerType>::get(),
