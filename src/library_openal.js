@@ -86,8 +86,14 @@ var LibraryOpenAL = {
       var gain = AL.currentContext.ctx.createGain();
       var panner = AL.currentContext.ctx.createPanner();
       src.connect(gain);
-      gain.connect(panner);
-      panner.connect(AL.currentContext.ctx.destination);
+      if (typeof(webkitAudioContext) == 'function') {
+        gain.connect(panner);
+        panner.connect(AL.currentContext.ctx.destination);
+      } else {
+        // Work around a Firefox bug (bug 849916)
+        gain.connect(AL.currentContext.ctx.destination);
+      }
+      gain.gain.value = 1; // work around a Firefox bug (bug 850970)
       AL.currentContext.src.push({src: src, gain: gain, panner: panner});
       {{{ makeSetValue('sources', 'i', 'AL.currentContext.src.length', 'i32') }}};
     }
