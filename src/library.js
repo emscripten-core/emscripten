@@ -7399,8 +7399,8 @@ LibraryManager.library = {
   bitshift64Shl: function(low, high, bits) {
     low = low|0; high = high|0; bits = bits|0;
     var ander = 0;
-    ander = ((1 << bits) - 1)|0;
     if ((bits|0) < 32) {
+      ander = ((1 << bits) - 1)|0;
       tempRet0 = (high << bits) | ((low&(ander << (32 - bits))) >>> (32 - bits));
       return low << bits;
     }
@@ -7412,8 +7412,8 @@ LibraryManager.library = {
   bitshift64Ashr: function(low, high, bits) {
     low = low|0; high = high|0; bits = bits|0;
     var ander = 0;
-    ander = ((1 << bits) - 1)|0;
     if ((bits|0) < 32) {
+      ander = ((1 << bits) - 1)|0;
       tempRet0 = high >> bits;
       return (low >>> bits) | ((high&ander) << (32 - bits));
     }
@@ -7425,8 +7425,8 @@ LibraryManager.library = {
   bitshift64Lshr: function(low, high, bits) {
     low = low|0; high = high|0; bits = bits|0;
     var ander = 0;
-    ander = ((1 << bits) - 1)|0;
     if ((bits|0) < 32) {
+      ander = ((1 << bits) - 1)|0;
       tempRet0 = high >>> bits;
       return (low >>> bits) | ((high&ander) << (32 - bits));
     }
