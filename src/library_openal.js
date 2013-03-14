@@ -245,12 +245,12 @@ var LibraryOpenAL = {
       for (var j = 0; j < channels; ++j) {
         switch (bytes) {
         case 1:
-          var val = {{{ makeGetValue('data', 'i+j', 'i8') }}};
+          var val = {{{ makeGetValue('data', 'i*channels+j', 'i8') }}};
           buf[j][i] = -1.0 + val * (2/256);
           break;
         case 2:
-          var val = {{{ makeGetValue('data', 'i+j', 'i16') }}};
-          buf[j][i] = -1.0 + (val + -32768) * (2/65536);
+          var val = {{{ makeGetValue('data', '2*(i*channels+j)', 'i16') }}};
+          buf[j][i] = val/32768;
           break;
         }
       }
