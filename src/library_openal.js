@@ -280,11 +280,11 @@ var LibraryOpenAL = {
 
   alSourceStop: function(source) {
     if (!AL.currentContext) {
-      console.error("alSourcePlay called without a valid context");
+      console.error("alSourceStop called without a valid context");
       return;
     }
     if (source > AL.currentContext.src.length) {
-      console.error("alSourcePlay called with an invalid source");
+      console.error("alSourceStop called with an invalid source");
       return;
     }
     if ("src" in AL.currentContext.src[source - 1]) {
