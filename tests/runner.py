@@ -829,11 +829,14 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
               int add_low = add;
               int add_high = add >> 32;
               printf("*%lld,%lld,%u,%u*\n", mul, add, add_low, add_high);
+              int64 x = sec + (usec << 25);
+              x >>= argc*3;
+              printf("*%llu*\n", x);
               return 0;
           }
         '''
 
-        self.do_run(src, '*1329409676000000,1329412005509675,3663280683,309527*\n')
+        self.do_run(src, '*1329409676000000,1329412005509675,3663280683,309527*\n*9770671914067409*\n')
 
     def test_i64_cmp(self):
         if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')

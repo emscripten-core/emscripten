@@ -1990,43 +1990,7 @@ function processMathop(item) {
       case 'shl':
       case 'ashr':
       case 'lshr': {
-        if (!isNumber(idents[1])) {
-          return '(Runtime' + (ASM_JS ? '_' : '.') + 'bitshift64(' + idents[0] + '[0], ' + idents[0] + '[1],' + Runtime['BITSHIFT64_' + op.toUpperCase()] + ',' + stripCorrections(idents[1]) + '[0]|0),' +
-            '[' + makeGetTempDouble(0, 'i32') + ',' + makeGetTempDouble(1, 'i32') + '])';
-        }
-        bits = parseInt(idents[1]);
-        var ander = Math.pow(2, bits)-1;
-        if (bits < 32) {
-          switch (op) {
-            case 'shl':
-              return '[' + idents[0] + '[0] << ' + idents[1] + ', ' +
-                       '('+idents[0] + '[1] << ' + idents[1] + ') | ((' + idents[0] + '[0]&(' + ander + '<<' + (32 - bits) + ')) >>> (32-' + idents[1] + '))]';
-            case 'ashr':
-              return '[((('+idents[0] + '[0] >>> ' + idents[1] + ') | ((' + idents[0] + '[1]&' + ander + ')<<' + (32 - bits) + ')) >> 0) >>> 0,' +
-                          '(' + idents[0] + '[1] >> ' + idents[1] + ') >>> 0]';
-            case 'lshr':
-              return '[(('+idents[0] + '[0] >>> ' + idents[1] + ') | ((' + idents[0] + '[1]&' + ander + ')<<' + (32 - bits) + ')) >>> 0,' +
-                          idents[0] + '[1] >>> ' + idents[1] + ']';
-          }
-        } else if (bits == 32) {
-          switch (op) {
-            case 'shl':
-              return '[0, ' + idents[0] + '[0]]';
-            case 'ashr':
-              return '[' + idents[0] + '[1], (' + idents[0] + '[1]|0) < 0 ? ' + ander + ' : 0]';
-            case 'lshr':
-              return '[' + idents[0] + '[1], 0]';
-          }
-        } else { // bits > 32
-          switch (op) {
-            case 'shl':
-              return '[0, ' + idents[0] + '[0] << ' + (bits - 32) + ']';
-            case 'ashr':
-              return '[(' + idents[0] + '[1] >> ' + (bits - 32) + ') >>> 0, (' + idents[0] + '[1]|0) < 0 ? ' + ander + ' : 0]';
-            case 'lshr':
-              return '[' + idents[0] + '[1] >>> ' + (bits - 32) + ', 0]';
-          }
-        }
+				throw 'shifts should have been legalized!';
       }
       case 'uitofp': case 'sitofp': return RuntimeGenerator.makeBigInt(low1, high1, op[0] == 'u');
       case 'fptoui': case 'fptosi': return finish(splitI64(idents[0], true));
