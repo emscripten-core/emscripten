@@ -680,6 +680,7 @@ function __embind_register_class(
     rawDestructor = FUNCTION_TABLE[rawDestructor];
     upcast = FUNCTION_TABLE[upcast];
     downcast = FUNCTION_TABLE[downcast];
+    var legalFunctionName = makeLegalFunctionName(name);
 
     whenDependentTypesAreResolved(baseClassRawType ? [baseClassRawType] : [], function(base) {
         base = base[0];
@@ -696,7 +697,7 @@ function __embind_register_class(
             basePrototype = ClassHandle.prototype;
         }
 
-        var Handle = createNamedFunction(name, function(registeredPointer, ptr) {
+        var Handle = createNamedFunction(legalFunctionName, function(registeredPointer, ptr) {
             Object.defineProperty(this, '$$', {
                 value: {
                     registeredPointer: registeredPointer,
@@ -781,7 +782,7 @@ function __embind_register_class(
             true,
             false));
 
-        type.constructor = createNamedFunction(name, function() {
+        type.constructor = createNamedFunction(legalFunctionName, function() {
             if (Object.getPrototypeOf(this) !== Handle.prototype) {
                 throw new BindingError("Use 'new' to construct " + name);
             }
@@ -794,7 +795,7 @@ function __embind_register_class(
         type.constructor.prototype = type.Handle.prototype;
         type.constructor.type = type;
 
-        exposePublicSymbol(name, type.constructor);
+        exposePublicSymbol(legalFunctionName, type.constructor);
     });
 }
 
@@ -955,8 +956,16 @@ function __embind_register_class_property(
     });
 }
 
+var char_0 = '0'.charCodeAt(0);
+var char_9 = '9'.charCodeAt(0);
 function makeLegalFunctionName(name) {
-    return '_' + name.replace(/[^a-zA-Z0-9_]/g, '$');
+    var rv = name.replace(/[^a-zA-Z0-9_]/g, '$');
+    var f = rv.charCodeAt(0);
+    if (f >= char_0 && f <= char_9) {
+        return '_' + rv;
+    } else {
+        return rv;
+    }
 }
 
 function __embind_register_smart_ptr(
