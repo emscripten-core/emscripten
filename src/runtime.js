@@ -122,57 +122,6 @@ var Runtime = {
   INT_TYPES: set('i1', 'i8', 'i16', 'i32', 'i64'),
   FLOAT_TYPES: set('float', 'double'),
 
-  // Mirrors processMathop's treatment of constants (which we optimize directly)
-  BITSHIFT64_SHL: 0,
-  BITSHIFT64_ASHR: 1,
-  BITSHIFT64_LSHR: 2,
-  bitshift64: function(low, high, op, bits) {
-    var ret;
-    var ander = Math.pow(2, bits)-1;
-    if (bits < 32) {
-      switch (op) {
-        case Runtime.BITSHIFT64_SHL:
-          ret = [low << bits, (high << bits) | ((low&(ander << (32 - bits))) >>> (32 - bits))];
-          break;
-        case Runtime.BITSHIFT64_ASHR:
-          ret = [(((low >>> bits ) | ((high&ander) << (32 - bits))) >> 0) >>> 0, (high >> bits) >>> 0];
-          break;
-        case Runtime.BITSHIFT64_LSHR:
-          ret = [((low >>> bits) | ((high&ander) << (32 - bits))) >>> 0, high >>> bits];
-          break;
-      }
-    } else if (bits == 32) {
-      switch (op) {
-        case Runtime.BITSHIFT64_SHL:
-          ret = [0, low];
-          break;
-        case Runtime.BITSHIFT64_ASHR:
-          ret = [high, (high|0) < 0 ? ander : 0];
-          break;
-        case Runtime.BITSHIFT64_LSHR:
-          ret = [high, 0];
-          break;
-      }
-    } else { // bits > 32
-      switch (op) {
-        case Runtime.BITSHIFT64_SHL:
-          ret = [0, low << (bits - 32)];
-          break;
-        case Runtime.BITSHIFT64_ASHR:
-          ret = [(high >> (bits - 32)) >>> 0, (high|0) < 0 ? ander : 0];
-          break;
-        case Runtime.BITSHIFT64_LSHR:
-          ret = [high >>>  (bits - 32) , 0];
-          break;
-      }
-    }
-#if ASSERTIONS
-    assert(ret);
-#endif
-    HEAP32[tempDoublePtr>>2] = ret[0]; // cannot use utility functions since we are in runtime itself
-    HEAP32[tempDoublePtr+4>>2] = ret[1];
-  },
-
   // Imprecise bitops utilities
   or64: function(x, y) {
     var l = (x | 0) | (y | 0);

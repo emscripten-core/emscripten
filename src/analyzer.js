@@ -653,13 +653,14 @@ function analyzer(data, sidePass) {
                   if (!isNumber(shifts)) {
                     // We can't statically legalize this, do the operation at runtime TODO: optimize
                     assert(sourceBits == 64, 'TODO: handle nonconstant shifts on != 64 bits');
+                    assert(PRECISE_I64_MATH, 'Must have precise i64 math for non-constant 64-bit shifts');
+                    Types.preciseI64MathUsed = 1;
                     value.intertype = 'value';
-                    value.ident = 'Runtime' + (ASM_JS ? '_' : '.') + 'bitshift64(' + 
+                    value.ident = 'var ' + value.assignTo + '$0 = _bitshift64' + value.op[0].toUpperCase() + value.op.substr(1) + '(' + 
                         asmCoercion(sourceElements[0].ident, 'i32') + ',' +
                         asmCoercion(sourceElements[1].ident, 'i32') + ',' +
-                        Runtime['BITSHIFT64_' + value.op.toUpperCase()] + ',' +
                         asmCoercion(value.params[1].ident + '$0', 'i32') + ');' +
-                      'var ' + value.assignTo + '$0 = ' + makeGetTempDouble(0, 'i32') + ', ' + value.assignTo + '$1 = ' + makeGetTempDouble(1, 'i32') + ';';
+                        'var ' + value.assignTo + '$1 = tempRet0;';
                     value.assignTo = null;
                     i++;
                     continue;

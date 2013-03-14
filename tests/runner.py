@@ -1006,12 +1006,6 @@ m_divisor is 1091269979
         '''
         self.do_run(src, open(path_from_root('tests', 'i64_precise.txt')).read())
 
-        # Verify that without precision, we do not include the precision code
-        Settings.PRECISE_I64_MATH = 0
-        self.do_run(src, 'unsigned')
-        code = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
-        assert 'goog.math.Long' not in code, 'i64 precise math should not have been included if not asked for'
-
         # Verify that even if we ask for precision, if it is not needed it is not included
         Settings.PRECISE_I64_MATH = 1
         src = '''
