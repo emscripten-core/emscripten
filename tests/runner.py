@@ -11643,7 +11643,8 @@ elif 'benchmark' in str(sys.argv):
         start = time.time()
         js_output = run_js(final_filename, engine=JS_ENGINE, args=args, stderr=PIPE, full_output=True)
         if i == 0 and 'Successfully compiled asm.js code' in js_output:
-          print "[%s was asm.js'ified]" % name
+          if 'asm.js link error' not in js_output:
+            print "[%s was asm.js'ified]" % name
         curr = time.time()-start
         times.append(curr)
         total_times[tests_done] += curr
