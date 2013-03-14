@@ -1898,13 +1898,23 @@ Succeeded!
               printf("waka %s\\n", three);
             }
 
+            {
+              char *one = "string number one top notch";
+              char *two = "fa la sa ho fi FI FO FUM WHEN WHERE WHY HOW WHO";
+              char three[1000];
+              strcpy(three, &one[argc*2]);
+              strcat(three, &two[argc*3]);
+              printf("cat |%s|\\n", three);
+            }
+
             return 0;
           }
         '''
         for named in (0, 1):
           print named
           Settings.NAMED_GLOBALS = named
-          self.do_run(src, '4:10,177,543,def\n4\nwowie\ntoo\n76\n5\n(null)\n/* a comment */\n// another\ntest\nwaka ....e 1 O...wo 2 T................................\n', ['wowie', 'too', '74'])
+          self.do_run(src, '''4:10,177,543,def\n4\nwowie\ntoo\n76\n5\n(null)\n/* a comment */\n// another\ntest\nwaka ....e 1 O...wo 2 T................................
+cat |umber one top notchfi FI FO FUM WHEN WHERE WHY HOW WHO|''', ['wowie', 'too', '74'])
           if self.emcc_args == []:
             gen = open(self.in_dir('src.cpp.o.js')).read()
             assert ('var __str1;' in gen) == named
