@@ -4465,7 +4465,7 @@ LibraryManager.library = {
         i = (i + 1)|0;
         continue;
       } else {
-        return ((x|0) > (y|0) ? 1 : -1)|0;
+        return ((x>>>0) > (y>>>0) ? 1 : -1)|0;
       }
     }
     return 0;
