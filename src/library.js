@@ -4674,14 +4674,17 @@ LibraryManager.library = {
     }
   },
   _toupper: 'toupper',
+
+  tolower__asm: true,
+  tolower__sig: 'ii',
   tolower: function(chr) {
-    if (chr >= 'A'.charCodeAt(0) && chr <= 'Z'.charCodeAt(0)) {
-      return chr - 'A'.charCodeAt(0) + 'a'.charCodeAt(0);
-    } else {
-      return chr;
-    }
+    chr = chr|0;
+    if ((chr|0) < {{{ charCode('A') }}}) return chr|0;
+    if ((chr|0) > {{{ charCode('Z') }}}) return chr|0;
+    return (chr - {{{ charCode('A') }}} + {{{ charCode('a') }}})|0;
   },
   _tolower: 'tolower',
+
   // The following functions are defined as macros in glibc.
   islower: function(chr) {
     return chr >= 'a'.charCodeAt(0) && chr <= 'z'.charCodeAt(0);
