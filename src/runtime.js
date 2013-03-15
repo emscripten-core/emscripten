@@ -13,7 +13,7 @@ var RuntimeGenerator = {
     if (init) {
       ret += sep + '_memset(' + type + 'TOP, 0, ' + size + ')';
     }
-    ret += sep + type + 'TOP += ' + size;
+    ret += sep + type + 'TOP = (' + type + 'TOP + ' + size + ')|0';
     if ({{{ QUANTUM_SIZE }}} > 1 && !ignoreAlign) {
       ret += sep + RuntimeGenerator.alignMemory(type + 'TOP', {{{ QUANTUM_SIZE }}});
     }
@@ -23,30 +23,30 @@ var RuntimeGenerator = {
   // An allocation that lives as long as the current function call
   stackAlloc: function(size, sep) {
     sep = sep || ';';
-    if (USE_TYPED_ARRAYS === 2) 'STACKTOP += STACKTOP % ' + ({{{ QUANTUM_SIZE }}} - (isNumber(size) ? Math.min(size, {{{ QUANTUM_SIZE }}}) : {{{ QUANTUM_SIZE }}})) + sep;
+    if (USE_TYPED_ARRAYS === 2) 'STACKTOP = (STACKTOP + STACKTOP|0 % ' + ({{{ QUANTUM_SIZE }}} - (isNumber(size) ? Math.min(size, {{{ QUANTUM_SIZE }}}) : {{{ QUANTUM_SIZE }}})) + ')' + sep;
     //                                                               The stack is always QUANTUM SIZE aligned, so we may not need to force alignment here
-    var ret = RuntimeGenerator.alloc(size, 'STACK', INIT_STACK, sep, USE_TYPED_ARRAYS != 2 || (isNumber(size) && parseInt(size) % {{{ QUANTUM_SIZE }}} == 0));
+    var ret = RuntimeGenerator.alloc(size, 'STACK', false, sep, USE_TYPED_ARRAYS != 2 || (isNumber(size) && parseInt(size) % {{{ QUANTUM_SIZE }}} == 0));
     if (ASSERTIONS) {
-      ret += sep + 'assert(STACKTOP < STACK_ROOT + STACK_MAX, "Ran out of stack")';
+      ret += sep + 'assert(' + asmCoercion('(STACKTOP|0) < (STACK_MAX|0)', 'i32') + ')';
     }
     return ret;
   },
 
   stackEnter: function(initial, force) {
     if (initial === 0 && SKIP_STACK_IN_SMALL && !force) return '';
-    var ret = 'var __stackBase__  = STACKTOP';
-    if (initial > 0) ret += '; STACKTOP += ' + initial;
+    var ret = 'var __stackBase__  = ' + (ASM_JS ? '0; __stackBase__ = ' : '') + 'STACKTOP';
+    if (initial > 0) ret += '; STACKTOP = (STACKTOP + ' + initial + ')|0';
     if (USE_TYPED_ARRAYS == 2) {
       assert(initial % QUANTUM_SIZE == 0);
-      if (ASSERTIONS) {
-        ret += '; assert(STACKTOP % {{{ QUANTUM_SIZE }}} == 0, "Stack is unaligned")';
+      if (ASSERTIONS && QUANTUM_SIZE == 4) {
+        ret += '; assert(' + asmCoercion('!(STACKTOP&3)', 'i32') + ')';
       }
     }
     if (ASSERTIONS) {
-      ret += '; assert(STACKTOP < STACK_MAX, "Ran out of stack")';
+      ret += '; assert(' + asmCoercion('(STACKTOP|0) < (STACK_MAX|0)', 'i32') + ')';
     }
-    if (INIT_STACK) {
-      ret += '; _memset(__stackBase__, 0, ' + initial + ')';
+    if (false) {
+      ret += '; _memset(' + asmCoercion('__stackBase__', 'i32') + ', 0, ' + initial + ')';
     }
     return ret;
   },
@@ -55,7 +55,7 @@ var RuntimeGenerator = {
     if (initial === 0 && SKIP_STACK_IN_SMALL && !force) return '';
     var ret = '';
     if (SAFE_HEAP) {
-      ret += 'for (var i = __stackBase__; i < STACKTOP; i++) SAFE_HEAP_CLEAR(i);';
+      ret += 'var i = __stackBase__; while ((i|0) < (STACKTOP|0)) { SAFE_HEAP_CLEAR(i|0); i = (i+1)|0 }';
     }
     return ret += 'STACKTOP = __stackBase__';
   },
@@ -79,15 +79,15 @@ var RuntimeGenerator = {
   // Rounding is inevitable if the number is large. This is a particular problem for small negative numbers
   // (-1 will be rounded!), so handle negatives separately and carefully
   makeBigInt: function(low, high, unsigned) {
-    var unsignedRet = '(' + makeSignOp(low, 'i32', 'un', 1, 1) + '+(' + makeSignOp(high, 'i32', 'un', 1, 1) + '*4294967296))';
-    var signedRet = '(' + makeSignOp(low, 'i32', 'un', 1, 1) + '+(' + makeSignOp(high, 'i32', 're', 1, 1) + '*4294967296))';
+    var unsignedRet = '(' + asmCoercion(makeSignOp(low, 'i32', 'un', 1, 1), 'float') + '+(' + asmCoercion(makeSignOp(high, 'i32', 'un', 1, 1), 'float') + '*' + asmEnsureFloat(4294967296, 'float') + '))';
+    var signedRet = '(' + asmCoercion(makeSignOp(low, 'i32', 'un', 1, 1), 'float') + '+(' + asmCoercion(makeSignOp(high, 'i32', 're', 1, 1), 'float') + '*' + asmEnsureFloat(4294967296, 'float') + '))';
     if (typeof unsigned === 'string') return '(' + unsigned + ' ? ' + unsignedRet + ' : ' + signedRet + ')';
     return unsigned ? unsignedRet : signedRet;
   }
 };
 
 function unInline(name_, params) {
-  var src = '(function ' + name_ + '(' + params + ') { var ret = ' + RuntimeGenerator[name_].apply(null, params) + '; return ret; })';
+  var src = '(function(' + params + ') { var ret = ' + RuntimeGenerator[name_].apply(null, params) + '; return ret; })';
   var ret = eval(src);
   return ret;
 }
@@ -121,40 +121,6 @@ var Runtime = {
 
   INT_TYPES: set('i1', 'i8', 'i16', 'i32', 'i64'),
   FLOAT_TYPES: set('float', 'double'),
-
-  // Mirrors processMathop's treatment of constants (which we optimize directly)
-  bitshift64: function(low, high, op, bits) {
-    var ander = Math.pow(2, bits)-1;
-    if (bits < 32) {
-      switch (op) {
-        case 'shl':
-          return [low << bits, (high << bits) | ((low&(ander << (32 - bits))) >>> (32 - bits))];
-        case 'ashr':
-          return [(((low >>> bits ) | ((high&ander) << (32 - bits))) >> 0) >>> 0, (high >> bits) >>> 0];
-        case 'lshr':
-          return [((low >>> bits) | ((high&ander) << (32 - bits))) >>> 0, high >>> bits];
-      }
-    } else if (bits == 32) {
-      switch (op) {
-        case 'shl':
-          return [0, low];
-        case 'ashr':
-          return [high, (high|0) < 0 ? ander : 0];
-        case 'lshr':
-          return [high, 0];
-      }
-    } else { // bits > 32
-      switch (op) {
-        case 'shl':
-          return [0, low << (bits - 32)];
-        case 'ashr':
-          return [(high >> (bits - 32)) >>> 0, (high|0) < 0 ? ander : 0];
-        case 'lshr':
-          return [high >>>  (bits - 32) , 0];
-      }
-    }
-    abort('unknown bitshift64 op: ' + [value, op, bits]);
-  },
 
   // Imprecise bitops utilities
   or64: function(x, y) {
@@ -225,6 +191,10 @@ var Runtime = {
       } else if (Runtime.isStructType(field)) {
         size = Types.types[field].flatSize;
         alignSize = Types.types[field].alignSize;
+      } else if (field[0] == 'b') {
+        // bN, large number field, like a [N x i8]
+        size = field.substr(1)|0;
+        alignSize = 1;
       } else {
         throw 'Unclear type in struct: ' + field + ', in ' + type.name_ + ' :: ' + dump(Types.types[type.name_]);
       }
@@ -273,7 +243,7 @@ var Runtime = {
   //
   // When providing a typeName, you can generate information for nested
   // structs, for example, struct = ['field1', { field2: ['sub1', 'sub2', 'sub3'] }, 'field3']
-  // which repesents a structure whose 2nd field is another structure.
+  // which represents a structure whose 2nd field is another structure.
   generateStructInfo: function(struct, typeName, offset) {
     var type, alignment;
     if (typeName) {
@@ -311,11 +281,42 @@ var Runtime = {
     return ret;
   },
 
-  addFunction: function(func) {
-    var ret = FUNCTION_TABLE.length;
-    FUNCTION_TABLE.push(func);
-    FUNCTION_TABLE.push(0);
+  dynCall: function(sig, ptr, args) {
+    if (args && args.length) {
+#if ASSERTIONS
+      assert(args.length == sig.length-1);
+#endif
+#if ASM_JS
+      if (!args.splice) args = Array.prototype.slice.call(args);
+      args.splice(0, 0, ptr);
+      return Module['dynCall_' + sig].apply(null, args);
+#else
+      return FUNCTION_TABLE[ptr].apply(null, args);
+#endif
+    } else {
+#if ASSERTIONS
+      assert(sig.length == 1);
+#endif
+#if ASM_JS
+      return Module['dynCall_' + sig].call(null, ptr);
+#else
+      return FUNCTION_TABLE[ptr]();
+#endif
+    }
+  },
+
+  addFunction: function(func, sig) {
+    //assert(sig); // TODO: support asm
+    var table = FUNCTION_TABLE; // TODO: support asm
+    var ret = table.length;
+    table.push(func);
+    table.push(0);
     return ret;
+  },
+
+  removeFunction: function(index) {
+    var table = FUNCTION_TABLE; // TODO: support asm
+    table[index] = null;
   },
 
   warnOnce: function(text) {
@@ -328,10 +329,11 @@ var Runtime = {
 
   funcWrappers: {},
 
-  getFuncWrapper: function(func) {
+  getFuncWrapper: function(func, sig) {
+    assert(sig);
     if (!Runtime.funcWrappers[func]) {
       Runtime.funcWrappers[func] = function() {
-        FUNCTION_TABLE[func].apply(null, arguments);
+        Runtime.dynCall(sig, func, arguments);
       };
     }
     return Runtime.funcWrappers[func];
@@ -461,26 +463,19 @@ function getRuntime() {
 // example, -1 in int32 would be a very large number as unsigned.
 function unSign(value, bits, ignore, sig) {
   if (value >= 0) {
-#if CHECK_SIGNS
-    if (!ignore) CorrectionsMonitor.note('UnSign', 1, sig);
-#endif
     return value;
   }
 #if CHECK_SIGNS
-  if (!ignore) CorrectionsMonitor.note('UnSign', 0, sig);
+  if (!ignore) throw 'UnSign';
 #endif
   return bits <= 32 ? 2*Math.abs(1 << (bits-1)) + value // Need some trickery, since if bits == 32, we are right at the limit of the bits JS uses in bitshifts
                     : Math.pow(2, bits)         + value;
-  // TODO: clean up previous line
 }
 
 // Converts a value we have as unsigned, into a signed value. For
 // example, 200 in a uint8 would be a negative number.
 function reSign(value, bits, ignore, sig) {
   if (value <= 0) {
-#if CHECK_SIGNS
-    if (!ignore) CorrectionsMonitor.note('ReSign', 1, sig);
-#endif
     return value;
   }
   var half = bits <= 32 ? Math.abs(1 << (bits-1)) // abs is needed if bits == 32
@@ -492,10 +487,7 @@ function reSign(value, bits, ignore, sig) {
                                                        // but, in general there is no perfect solution here. With 64-bit ints, we get rounding and errors
                                                        // TODO: In i64 mode 1, resign the two parts separately and safely
 #if CHECK_SIGNS
-    if (!ignore) {
-      CorrectionsMonitor.note('ReSign', 0, sig);
-      noted = true;
-    }
+    if (!ignore) throw 'ReSign';
 #endif
     value = -2*half + value; // Cannot bitshift half, as it may be at the limit of the bits JS uses in bitshifts
   }
@@ -504,18 +496,9 @@ function reSign(value, bits, ignore, sig) {
   // without CHECK_SIGNS, we would just do the |0 shortcut, so check that that
   // would indeed give the exact same result.
   if (bits === 32 && (value|0) !== value && typeof value !== 'boolean') {
-    if (!ignore) {
-      CorrectionsMonitor.note('ReSign', 0, sig);
-      noted = true;
-    }
+    if (!ignore) throw 'ReSign';
   }
-  if (!noted) CorrectionsMonitor.note('ReSign', 1, sig);
 #endif
   return value;
 }
-
-// Just a stub. We don't care about noting compile-time corrections. But they are called.
-var CorrectionsMonitor = {
-  note: function(){}
-};
 

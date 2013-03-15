@@ -35,7 +35,7 @@ unsigned int get_all_buf(int sock, char* output, unsigned int maxsize)
     }
   }
 
-  if(n < 0) {
+  if(n < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
     fprintf(stderr, "error in get_all_buf!");
     exit(EXIT_FAILURE);
   }
@@ -81,7 +81,11 @@ int main(void)
 
   struct sockaddr_in stSockAddr;
   int Res;
+#if !TEST_DGRAM
   SocketFD = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+#else
+  SocketFD = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
+#endif
 
   if (-1 == SocketFD)
   {

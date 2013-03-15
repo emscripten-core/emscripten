@@ -76,9 +76,11 @@ if (ENVIRONMENT_IS_NODE) {
   }
 
 } else if (ENVIRONMENT_IS_WEB) {
-  this['print'] = printErr = function(x) {
+  printErr = function(x) {
     console.log(x);
   };
+
+  if (!this['print']) this['print'] = printErr;
 
   this['read'] = function(url) {
     var xhr = new XMLHttpRequest();
@@ -139,8 +141,13 @@ if (phase == 'pre') {
 
 if (settings_file) {
   var settings = JSON.parse(read(settings_file));
-  for (setting in settings) {
-    eval(setting + ' = ' + JSON.stringify(settings[setting]));
+  for (key in settings) {
+    var value = settings[key];
+    if (value[0] == '@') {
+      // response file type thing, workaround for large inputs: value is @path-to-file
+      value = JSON.parse(read(value.substr(1)));
+    }
+    eval(key + ' = ' + JSON.stringify(value));
   }
 }
 
@@ -158,32 +165,36 @@ if (SAFE_HEAP >= 2) {
   SAFE_HEAP_LINES = set(SAFE_HEAP_LINES); // for fast checking
 }
 
-if (PGO) { // by default, correct everything during PGO
-  CORRECT_SIGNS = CORRECT_SIGNS || 1;
-  CORRECT_OVERFLOWS = CORRECT_OVERFLOWS || 1;
-  CORRECT_ROUNDINGS = CORRECT_ROUNDINGS || 1;
-}
-
 EXPORTED_FUNCTIONS = set(EXPORTED_FUNCTIONS);
 EXPORTED_GLOBALS = set(EXPORTED_GLOBALS);
+EXCEPTION_CATCHING_WHITELIST = set(EXCEPTION_CATCHING_WHITELIST);
+DEAD_FUNCTIONS = numberedSet(DEAD_FUNCTIONS);
 
 RUNTIME_DEBUG = LIBRARY_DEBUG || GL_DEBUG;
 
 // Settings sanity checks
 
 assert(!(USE_TYPED_ARRAYS === 2 && QUANTUM_SIZE !== 4), 'For USE_TYPED_ARRAYS == 2, must have normal QUANTUM_SIZE of 4');
+if (ASM_JS) {
+  assert(!ALLOW_MEMORY_GROWTH, 'Cannot grow asm.js heap');
+  assert((TOTAL_MEMORY&(TOTAL_MEMORY-1)) == 0, 'asm.js heap must be power of 2');
+  assert(DISABLE_EXCEPTION_CATCHING == 1, 'asm.js does not support C++ exceptions yet');
+}
+assert(!(!NAMED_GLOBALS && BUILD_AS_SHARED_LIB)); // shared libraries must have named globals
 
 // Output some info and warnings based on settings
 
-if (!MICRO_OPTS || !RELOOP || ASSERTIONS || CHECK_SIGNS || CHECK_OVERFLOWS || INIT_STACK || INIT_HEAP ||
-    !SKIP_STACK_IN_SMALL || SAFE_HEAP || PGO || PROFILE || !DISABLE_EXCEPTION_CATCHING) {
-  print('// Note: Some Emscripten settings will significantly limit the speed of the generated code.');
-} else {
-  print('// Note: For maximum-speed code, see "Optimizing Code" on the Emscripten wiki, https://github.com/kripken/emscripten/wiki/Optimizing-Code');
-}
+if (phase == 'pre') {
+  if (!MICRO_OPTS || !RELOOP || ASSERTIONS || CHECK_SIGNS || CHECK_OVERFLOWS || INIT_HEAP ||
+      !SKIP_STACK_IN_SMALL || SAFE_HEAP || !DISABLE_EXCEPTION_CATCHING) {
+    print('// Note: Some Emscripten settings will significantly limit the speed of the generated code.');
+  } else {
+    print('// Note: For maximum-speed code, see "Optimizing Code" on the Emscripten wiki, https://github.com/kripken/emscripten/wiki/Optimizing-Code');
+  }
 
-if (DOUBLE_MODE || CORRECT_SIGNS || CORRECT_OVERFLOWS || CORRECT_ROUNDINGS) {
-  print('// Note: Some Emscripten settings may limit the speed of the generated code.');
+  if (DOUBLE_MODE || CORRECT_SIGNS || CORRECT_OVERFLOWS || CORRECT_ROUNDINGS || CHECK_HEAP_ALIGN) {
+    print('// Note: Some Emscripten settings may limit the speed of the generated code.');
+  }
 }
 
 // Load compiler code
@@ -194,7 +205,7 @@ load('parseTools.js');
 load('intertyper.js');
 load('analyzer.js');
 load('jsifier.js');
-if (RELOOP) load('relooper.js')
+if (RELOOP) load(RELOOPER)
 globalEval(processMacros(preprocess(read('runtime.js'))));
 Runtime.QUANTUM_SIZE = QUANTUM_SIZE;
 
@@ -213,42 +224,66 @@ NECESSARY_BLOCKADDRS = temp;
 
 // Read llvm
 
-var raw = read(ll_file);
-if (FAKE_X86_FP80) {
-  raw = raw.replace(/x86_fp80/g, 'double');
-}
-if (raw.search('\r\n') >= 0) {
-  raw = raw.replace(/\r\n/g, '\n'); // fix windows line endings
-}
-var lines = raw.split('\n');
-raw = null;
+function compile(raw) {
+  if (FAKE_X86_FP80) {
+    raw = raw.replace(/x86_fp80/g, 'double');
+  }
+  if (raw.search('\r\n') >= 0) {
+    raw = raw.replace(/\r\n/g, '\n'); // fix windows line endings
+  }
+  var lines = raw.split('\n');
+  raw = null;
 
-// Pre-process the LLVM assembly
+  // Pre-process the LLVM assembly
 
-//printErr('JS compiler in action, phase ' + phase);
+  Debugging.handleMetadata(lines);
 
-Debugging.handleMetadata(lines);
+  function runPhase(currPhase) {
+    //printErr('// JS compiler in action, phase ' + currPhase + typeof lines + (lines === null));
+    phase = currPhase;
+    if (phase != 'pre') {
+      if (singlePhase) PassManager.load(read(forwardedDataFile));
 
-if (phase != 'pre') {
-  PassManager.load(read(forwardedDataFile));
+      if (phase == 'funcs') {
+        PreProcessor.eliminateUnneededIntrinsics(lines);
+      }
+    }
 
-  if (phase == 'funcs') {
-    PreProcessor.eliminateUnneededIntrinsics(lines);
+    // Do it
+
+    var intertyped = intertyper(lines);
+    if (singlePhase) lines = null;
+    var analyzed = analyzer(intertyped);
+    intertyped = null;
+    JSify(analyzed);
+
+    phase = null;
+
+    if (DEBUG_MEMORY) {
+      print('zzz. last gc: ' + gc());
+      MemoryDebugger.dump();
+      print('zzz. hanging now!');
+      while(1){};
+    }
+  }
+
+  // Normal operation is for each execution of compiler.js to run a single phase. The calling script sends us exactly the information we need, and it is easy to parallelize operation that way. However, it is also possible to run in an unoptimal multiphase mode, where a single invocation goes from ll to js directly. This is not recommended and will likely do a lot of duplicate processing.
+  singlePhase = !!phase;
+
+  if (singlePhase) {
+    runPhase(phase);
+  } else {
+    runPhase('pre');
+    runPhase('funcs');
+    runPhase('post');
   }
 }
 
-// Do it
-
-var intertyped = intertyper(lines);
-lines = null;
-var analyzed = analyzer(intertyped);
-intertyped = null;
-JSify(analyzed);
-
-if (DEBUG_MEMORY) {
-  print('zzz. last gc: ' + gc());
-  MemoryDebugger.dump();
-  print('zzz. hanging now!');
-  while(1){};
+if (ll_file) {
+  if (ll_file.indexOf(String.fromCharCode(10)) == -1) {
+    compile(read(ll_file));
+  } else {
+    compile(ll_file); // we are given raw .ll
+  }
 }
 

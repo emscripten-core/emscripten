@@ -230,4 +230,8 @@ function switchey(x) {
   var aaa = x+2;
   pp(aaa);
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["test", "primes", "atomic", "fcntl_open", "ex", "switchey"]
+function __ZN14NetworkAddressC1EPKcti($this) {
+  __ZN14NetworkAddressC2EPKcti($this);
+  return;
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["test", "primes", "atomic", "fcntl_open", "ex", "switchey", "__ZN14NetworkAddressC1EPKcti"]

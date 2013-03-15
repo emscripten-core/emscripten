@@ -10,7 +10,7 @@ void main_loop() {
 #if EMSCRIPTEN
   counter++;
 #endif
-  if (counter == 10) {
+  if (counter == 100) {
     printf("stop!\n");
     emscripten_cancel_main_loop();
     return;

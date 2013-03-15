@@ -20,10 +20,11 @@ LibraryManager.library = {
   // File system base.
   // ==========================================================================
 
-  stdin: 0,
-  stdout: 0,
-  stderr: 0,
-  _impure_ptr: 0,
+  // keep this low in memory, because we flatten arrays with them in them
+  stdin: 'allocate(1, "i32*", ALLOC_STACK)',
+  stdout: 'allocate(1, "i32*", ALLOC_STACK)',
+  stderr: 'allocate(1, "i32*", ALLOC_STACK)',
+  _impure_ptr: 'allocate(1, "i32*", ALLOC_STACK)',
 
   $FS__deps: ['$ERRNO_CODES', '__setErrNo', 'stdin', 'stdout', 'stderr', '_impure_ptr'],
   $FS__postset: '__ATINIT__.unshift({ func: function() { if (!Module["noFSInit"] && !FS.init.initialized) FS.init() } });' +
@@ -51,7 +52,7 @@ LibraryManager.library = {
     streams: [null],
 #if ASSERTIONS
     checkStreams: function() {
-      for (var i in FS.streams) assert(i >= 0 && i < FS.streams.length); // no keys not in dense span
+      for (var i in FS.streams) if (FS.streams.hasOwnProperty(i)) assert(i >= 0 && i < FS.streams.length); // no keys not in dense span
       for (var i = 0; i < FS.streams.length; i++) assert(typeof FS.streams[i] == 'object'); // no non-null holes in dense span
     },
 #endif
@@ -251,7 +252,7 @@ LibraryManager.library = {
       var properties = {isFolder: true, isDevice: false, contents: {}};
       return FS.createObject(parent, name, properties, canRead, canWrite);
     },
-    // Creates a a folder and all its missing parents.
+    // Creates a folder and all its missing parents.
     createPath: function(parent, path, canRead, canWrite) {
       var current = FS.findObject(parent);
       if (current === null) throw new Error('Invalid parent.');
@@ -413,7 +414,7 @@ LibraryManager.library = {
         processData(url);
       }
     },
-    // Creates a link to a sepcific local path.
+    // Creates a link to a specific local path.
     createLink: function(parent, name, target, canRead, canWrite) {
       var properties = {isDevice: false, link: target};
       return FS.createFile(parent, name, properties, canRead, canWrite);
@@ -572,10 +573,10 @@ LibraryManager.library = {
         eof: false,
         ungotten: []
       };
-      // Allocate these on the stack (and never free, we are called from ATINIT or earlier), to keep their locations low
-      _stdin = allocate([1], 'void*', ALLOC_STACK);
-      _stdout = allocate([2], 'void*', ALLOC_STACK);
-      _stderr = allocate([3], 'void*', ALLOC_STACK);
+      assert(Math.max(_stdin, _stdout, _stderr) < 128); // make sure these are low, we flatten arrays with these
+      {{{ makeSetValue(makeGlobalUse('_stdin'), 0, 1, 'void*') }}};
+      {{{ makeSetValue(makeGlobalUse('_stdout'), 0, 2, 'void*') }}};
+      {{{ makeSetValue(makeGlobalUse('_stderr'), 0, 3, 'void*') }}};
 
       // Other system paths
       FS.createPath('/', 'dev/shm/tmp', true, true); // temp files
@@ -591,9 +592,9 @@ LibraryManager.library = {
       FS.checkStreams();
       assert(FS.streams.length < 1024); // at this early stage, we should not have a large set of file descriptors - just a few
 #endif
-      __impure_ptr = allocate([ allocate(
+      allocate([ allocate(
         {{{ Runtime.QUANTUM_SIZE === 4 ? '[0, 0, 0, 0, _stdin, 0, 0, 0, _stdout, 0, 0, 0, _stderr, 0, 0, 0]' : '[0, _stdin, _stdout, _stderr]' }}},
-        'void*', ALLOC_STATIC) ], 'void*', ALLOC_STATIC);
+        'void*', ALLOC_STATIC) ], 'void*', ALLOC_NONE, {{{ makeGlobalUse('__impure_ptr') }}});
     },
 
     quit: function() {
@@ -611,7 +612,7 @@ LibraryManager.library = {
     },
 
     deleteFile: function(path) {
-      var path = FS.analyzePath(path);
+      path = FS.analyzePath(path);
       if (!path.parentExists || !path.exists) {
         throw 'Invalid path ' + path;
       }
@@ -623,7 +624,12 @@ LibraryManager.library = {
   // dirent.h
   // ==========================================================================
 
-  __dirent_struct_layout: Runtime.generateStructInfo(['d_ino', 'd_name', 'd_off', 'd_reclen', 'd_type'], '%struct.dirent'),
+  __dirent_struct_layout: Runtime.generateStructInfo([
+    ['i32', 'd_ino'],
+    ['b1024', 'd_name'],
+    ['i32', 'd_off'],
+    ['i32', 'd_reclen'],
+    ['i32', 'd_type']]),
   opendir__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '__dirent_struct_layout'],
   opendir: function(dirname) {
     // DIR *opendir(const char *dirname);
@@ -785,7 +791,9 @@ LibraryManager.library = {
   // utime.h
   // ==========================================================================
 
-  __utimbuf_struct_layout: Runtime.generateStructInfo(['actime', 'modtime'], '%struct.utimbuf'),
+  __utimbuf_struct_layout: Runtime.generateStructInfo([
+    ['i32', 'actime'],
+    ['i32', 'modtime']]),
   utime__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '__utimbuf_struct_layout'],
   utime: function(path, times) {
     // int utime(const char *path, const struct utimbuf *times);
@@ -808,6 +816,8 @@ LibraryManager.library = {
     file.timestamp = time;
     return 0;
   },
+
+  utimes: function() { throw 'utimes not implemented' },
 
   // ==========================================================================
   // libgen.h
@@ -874,23 +884,23 @@ LibraryManager.library = {
   // ==========================================================================
 
   __stat_struct_layout: Runtime.generateStructInfo([
-    'st_dev',
-    'st_ino',
-    'st_mode',
-    'st_nlink',
-    'st_uid',
-    'st_gid',
-    'st_rdev',
-    'st_size',
-    'st_atime',
-    'st_spare1',
-    'st_mtime',
-    'st_spare2',
-    'st_ctime',
-    'st_spare3',
-    'st_blksize',
-    'st_blocks',
-    'st_spare4'], '%struct.stat'),
+    ['i32', 'st_dev'],
+    ['i32', 'st_ino'],
+    ['i32', 'st_mode'],
+    ['i32', 'st_nlink'],
+    ['i32', 'st_uid'],
+    ['i32', 'st_gid'],
+    ['i32', 'st_rdev'],
+    ['i32', 'st_size'],
+    ['i32', 'st_atime'],
+    ['i32', 'st_spare1'],
+    ['i32', 'st_mtime'],
+    ['i32', 'st_spare2'],
+    ['i32', 'st_ctime'],
+    ['i32', 'st_spare3'],
+    ['i32', 'st_blksize'],
+    ['i32', 'st_blocks'],
+    ['i32', 'st_spare4']]),
   stat__deps: ['$FS', '__stat_struct_layout'],
   stat: function(path, buf, dontResolveLastLink) {
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/stat.html
@@ -1037,6 +1047,8 @@ LibraryManager.library = {
       return _chmod(allocate(pathArray, 'i8', ALLOC_STACK), mode);
     }
   },
+  lchmod: function() { throw 'TODO: lchmod' },
+
   umask__deps: ['$FS'],
   umask: function(newMask) {
     // mode_t umask(mode_t cmask);
@@ -1060,17 +1072,17 @@ LibraryManager.library = {
   // ==========================================================================
 
   __statvfs_struct_layout: Runtime.generateStructInfo([
-    'f_bsize',
-    'f_frsize',
-    'f_blocks',
-    'f_bfree',
-    'f_bavail',
-    'f_files',
-    'f_ffree',
-    'f_favail',
-    'f_fsid',
-    'f_flag',
-    'f_namemax'], '%struct.statvfs'),
+    ['i32', 'f_bsize'],
+    ['i32', 'f_frsize'],
+    ['i32', 'f_blocks'],
+    ['i32', 'f_bfree'],
+    ['i32', 'f_bavail'],
+    ['i32', 'f_files'],
+    ['i32', 'f_ffree'],
+    ['i32', 'f_favail'],
+    ['i32', 'f_fsid'],
+    ['i32', 'f_flag'],
+    ['i32', 'f_namemax']]),
   statvfs__deps: ['$FS', '__statvfs_struct_layout'],
   statvfs: function(path, buf) {
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/stat.html
@@ -1105,17 +1117,17 @@ LibraryManager.library = {
   // ==========================================================================
 
   __flock_struct_layout: Runtime.generateStructInfo([
-    'l_type',
-    'l_whence',
-    'l_start',
-    'l_len',
-    'l_pid',
-    'l_xxx'], '%struct.flock'),
+    ['i16', 'l_type'],
+    ['i16', 'l_whence'],
+    ['i32', 'l_start'],
+    ['i32', 'l_len'],
+    ['i16', 'l_pid'],
+    ['i16', 'l_xxx']]),
   open__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '__dirent_struct_layout'],
   open: function(path, oflag, varargs) {
     // int open(const char *path, int oflag, ...);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/open.html
-    // NOTE: This implementation tries to mimic glibc rather that strictly
+    // NOTE: This implementation tries to mimic glibc rather than strictly
     // following the POSIX standard.
 
     var mode = {{{ makeGetValue('varargs', 0, 'i32') }}};
@@ -1226,6 +1238,15 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/creat.html
     return _open(path, {{{ cDefine('O_WRONLY') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_TRUNC') }}}, allocate([mode, 0, 0, 0], 'i32', ALLOC_STACK));
   },
+  mkstemp__deps: ['creat'],
+  mkstemp: function(template) {
+    if (!_mkstemp.counter) _mkstemp.counter = 0;
+    var c = (_mkstemp.counter++).toString();
+    var rep = 'XXXXXX';
+    while (c.length < rep.length) c = '0' + c;
+    writeArrayToMemory(intArrayFromString(c), template + Pointer_stringify(template).indexOf(rep));
+    return _creat(template, 0600);
+  },
   fcntl__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '__flock_struct_layout'],
   fcntl: function(fildes, cmd, varargs, dup2) {
     // int fcntl(int fildes, int cmd, ...);
@@ -1322,12 +1343,15 @@ LibraryManager.library = {
   // poll.h
   // ==========================================================================
 
-  __pollfd_struct_layout: Runtime.generateStructInfo(['fd', 'events', 'revents'], '%struct.pollfd'),
+  __pollfd_struct_layout: Runtime.generateStructInfo([
+    ['i32', 'fd'],
+    ['i16', 'events'],
+    ['i16', 'revents']]),
   poll__deps: ['$FS', '__pollfd_struct_layout'],
   poll: function(fds, nfds, timeout) {
     // int poll(struct pollfd fds[], nfds_t nfds, int timeout);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/poll.html
-    // NOTE: This is pretty much a no-op mimicing glibc.
+    // NOTE: This is pretty much a no-op mimicking glibc.
     var offsets = ___pollfd_struct_layout;
     var nonzero = 0;
     for (var i = 0; i < nfds; i++) {
@@ -1491,7 +1515,7 @@ LibraryManager.library = {
     // long fpathconf(int fildes, int name);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/encrypt.html
     // NOTE: The first parameter is ignored, so pathconf == fpathconf.
-    // The constants here aren't real values. Just mimicing glibc.
+    // The constants here aren't real values. Just mimicking glibc.
     switch (name) {
       case {{{ cDefine('_PC_LINK_MAX') }}}:
         return 32000;
@@ -1706,7 +1730,12 @@ LibraryManager.library = {
       }
       var contents = stream.object.contents;
       var size = Math.min(contents.length - offset, nbyte);
-      if (contents.subarray || contents.slice) { // typed array or normal array
+#if USE_TYPED_ARRAYS == 2
+      if (contents.subarray) { // typed array
+        HEAPU8.set(contents.subarray(offset, offset+size), buf);
+      } else
+#endif
+      if (contents.slice) { // normal array
         for (var i = 0; i < size; i++) {
           {{{ makeSetValue('buf', 'i', 'contents[offset + i]', 'i8') }}}
         }
@@ -2379,6 +2408,7 @@ LibraryManager.library = {
       case {{{ cDefine('_SC_STREAM_MAX') }}}: return 16;
       case {{{ cDefine('_SC_TZNAME_MAX') }}}: return 6;
       case {{{ cDefine('_SC_THREAD_DESTRUCTOR_ITERATIONS') }}}: return 4;
+      case {{{ cDefine('_SC_NPROCESSORS_ONLN') }}}: return 1;
     }
     ___setErrNo(ERRNO_CODES.EINVAL);
     return -1;
@@ -2467,6 +2497,17 @@ LibraryManager.library = {
         continue;
       }
 
+      // TODO: Support strings like "%5c" etc.
+      if (format[formatIndex] === '%' && format[formatIndex+1] == 'c') {
+        var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
+        argIndex += Runtime.getNativeFieldSize('void*');
+        fields++;
+        next = get();
+        {{{ makeSetValue('argPtr', 0, 'next', 'i8') }}}
+        formatIndex += 2;
+        continue;
+      }
+
       // remove whitespace
       while (1) {
         next = get();
@@ -2505,7 +2546,7 @@ LibraryManager.library = {
         var curr = 0;
         var buffer = [];
         // Read characters according to the format. floats are trickier, they may be in an unfloat state in the middle, then be a valid float later
-        if (type == 'f') {
+        if (type == 'f' || type == 'e' || type == 'g' || type == 'E') {
           var last = 0;
           next = get();
           while (next > 0) {
@@ -2559,6 +2600,10 @@ LibraryManager.library = {
             {{{ makeSetValue('argPtr', 0, 'parseInt(text, 16)', 'i32') }}}
             break;
           case 'f':
+          case 'e':
+          case 'g':
+          case 'E':
+            // fallthrough intended
             if (long_) {
               {{{ makeSetValue('argPtr', 0, 'parseFloat(text)', 'double') }}}
             } else {
@@ -2597,6 +2642,7 @@ LibraryManager.library = {
   //   format: A pointer to the format string.
   //   varargs: A pointer to the start of the arguments list.
   // Returns the resulting string string as a character array.
+  _formatString__deps: ['strlen'],
   _formatString: function(format, varargs) {
     var textIndex = format;
     var argIndex = 0;
@@ -2923,7 +2969,7 @@ LibraryManager.library = {
         } else if (next == 's'.charCodeAt(0)) {
           // String.
           var arg = getNextArg('i8*') || nullString;
-          var argLength = String_len(arg);
+          var argLength = _strlen(arg);
           if (precisionSet) argLength = Math.min(argLength, precision);
           if (!flagLeftAlign) {
             while (argLength < width--) {
@@ -3068,7 +3114,7 @@ LibraryManager.library = {
   getchar: function() {
     // int getchar(void);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/getchar.html
-    return _fgetc({{{ makeGetValue('_stdin', '0', 'void*') }}});
+    return _fgetc({{{ makeGetValue(makeGlobalUse('_stdin'), '0', 'void*') }}});
   },
   fgetpos__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   fgetpos: function(stream, pos) {
@@ -3113,7 +3159,7 @@ LibraryManager.library = {
   gets: function(s) {
     // char *gets(char *s);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/gets.html
-    return _fgets(s, 1e6, {{{ makeGetValue('_stdin', '0', 'void*') }}});
+    return _fgets(s, 1e6, {{{ makeGetValue(makeGlobalUse('_stdin'), '0', 'void*') }}});
   },
   fileno: function(stream) {
     // int fileno(FILE *stream);
@@ -3185,7 +3231,7 @@ LibraryManager.library = {
   putchar: function(c) {
     // int putchar(int c);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/putchar.html
-    return _fputc(c, {{{ makeGetValue('_stdout', '0', 'void*') }}});
+    return _fputc(c, {{{ makeGetValue(makeGlobalUse('_stdout'), '0', 'void*') }}});
   },
   putchar_unlocked: 'putchar',
   fputs__deps: ['write', 'strlen'],
@@ -3199,7 +3245,7 @@ LibraryManager.library = {
     // int puts(const char *s);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/puts.html
     // NOTE: puts() always writes an extra newline.
-    var stdout = {{{ makeGetValue('_stdout', '0', 'void*') }}};
+    var stdout = {{{ makeGetValue(makeGlobalUse('_stdout'), '0', 'void*') }}};
     var ret = _fputs(s, stdout);
     if (ret < 0) {
       return ret;
@@ -3323,14 +3369,15 @@ LibraryManager.library = {
     ___setErrNo(ERRNO_CODES.ECHILD);
     return -1;
   },
-  perror__deps: ['puts', 'putc', 'strerror', '__errno_location'],
+  perror__deps: ['puts', 'fputs', 'fputc', 'strerror', '__errno_location'],
   perror: function(s) {
     // void perror(const char *s);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/perror.html
+    var stdout = {{{ makeGetValue(makeGlobalUse('_stdout'), '0', 'void*') }}};
     if (s) {
-      _puts(s);
-      _putc(':'.charCodeAt(0));
-      _putc(' '.charCodeAt(0));
+      _fputs(s, stdout);
+      _fputc(':'.charCodeAt(0), stdout);
+      _fputc(' '.charCodeAt(0), stdout);
     }
     var errnum = {{{ makeGetValue('___errno_location()', '0', 'i32') }}};
     _puts(_strerror(errnum));
@@ -3467,7 +3514,7 @@ LibraryManager.library = {
   scanf: function(format, varargs) {
     // int scanf(const char *restrict format, ... );
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/scanf.html
-    var stdin = {{{ makeGetValue('_stdin', '0', 'void*') }}};
+    var stdin = {{{ makeGetValue(makeGlobalUse('_stdin'), '0', 'void*') }}};
     return _fscanf(stdin, format, varargs);
   },
   sscanf__deps: ['_scanString'],
@@ -3485,11 +3532,17 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
     var result = __formatString(format, varargs);
     var limit = (n === undefined) ? result.length
-                                  : Math.min(result.length, n - 1);
+                                  : Math.min(result.length, Math.max(n - 1, 0));
+    if (s < 0) {
+      s = -s;
+      var buf = _malloc(limit+1);
+      {{{ makeSetValue('s', '0', 'buf', 'i8*') }}};
+      s = buf;
+    }
     for (var i = 0; i < limit; i++) {
       {{{ makeSetValue('s', 'i', 'result[i]', 'i8') }}};
     }
-    {{{ makeSetValue('s', 'i', '0', 'i8') }}};
+    if (limit < n || (n === undefined)) {{{ makeSetValue('s', 'i', '0', 'i8') }}};
     return result.length;
   },
   fprintf__deps: ['fwrite', '_formatString'],
@@ -3506,7 +3559,7 @@ LibraryManager.library = {
   printf: function(format, varargs) {
     // int printf(const char *restrict format, ...);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
-    var stdout = {{{ makeGetValue('_stdout', '0', 'void*') }}};
+    var stdout = {{{ makeGetValue(makeGlobalUse('_stdout'), '0', 'void*') }}};
     return _fprintf(stdout, format, varargs);
   },
   sprintf__deps: ['snprintf'],
@@ -3515,10 +3568,15 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
     return _snprintf(s, undefined, format, varargs);
   },
+  asprintf__deps: ['sprintf'],
+  asprintf: function(s, format, varargs) {
+    return _sprintf(-s, format, varargs);
+  },
   vfprintf: 'fprintf',
   vsnprintf: 'snprintf',
   vprintf: 'printf',
   vsprintf: 'sprintf',
+  vasprintf: 'asprintf',
   vscanf: 'scanf',
   vfscanf: 'fscanf',
   vsscanf: 'sscanf',
@@ -3535,7 +3593,7 @@ LibraryManager.library = {
   _ZNSo3putEc: 'putchar',
   _ZNSo5flushEv__deps: ['fflush', 'stdout'],
   _ZNSo5flushEv: function() {
-    _fflush({{{ makeGetValue('_stdout', '0', 'void*') }}});
+    _fflush({{{ makeGetValue(makeGlobalUse('_stdout'), '0', 'void*') }}});
   },
 
   // ==========================================================================
@@ -3548,21 +3606,42 @@ LibraryManager.library = {
      * this implementation simply uses malloc underneath the call to
      * mmap.
      */
+    if (!_mmap.mappings) _mmap.mappings = {};
     if (stream == -1) {
       var ptr = _malloc(num);
-      _memset(ptr, 0, num);
-      return ptr;
+    } else {
+      var info = FS.streams[stream];
+      if (!info) return -1;
+      var contents = info.object.contents;
+      contents = Array.prototype.slice.call(contents, offset, offset+num);
+      ptr = allocate(contents, 'i8', ALLOC_NORMAL);
     }
-    var info = FS.streams[stream];
-    if (!info) return -1;
-    var contents = info.object.contents;
-    contents = Array.prototype.slice.call(contents, offset, offset+num);
-    return allocate(contents, 'i8', ALLOC_NORMAL);
+    // align to page size
+    var ret = ptr;
+    if (ptr % PAGE_SIZE != 0) {
+      var old = ptr;
+      ptr = _malloc(num + PAGE_SIZE);
+      ret = alignMemoryPage(ptr);
+      _memcpy(ret, old, num);
+      _free(old);
+    }
+    if (stream == -1) {
+      _memset(ret, 0, num);
+    }
+    _mmap.mappings[ret] = { malloc: ptr, num: num };
+    return ret;
   },
   __01mmap64_: 'mmap',
 
   munmap: function(start, num) {
-    _free(start);
+    if (!_mmap.mappings) _mmap.mappings = {};
+    // TODO: support unmmap'ing parts of allocations
+    var info = _mmap.mappings[start];
+    if (!info) return 0;
+    if (num == info.num) {
+      _mmap.mappings[start] = null;
+      _free(info.malloc);
+    }
     return 0;
   },
 
@@ -3572,23 +3651,20 @@ LibraryManager.library = {
   // stdlib.h
   // ==========================================================================
 
+  // tiny, fake malloc/free implementation. If the program actually uses malloc,
+  // a compiled version will be used; this will only be used if the runtime
+  // needs to allocate something, for which this is good enough if otherwise
+  // no malloc is needed.
   malloc: function(bytes) {
     /* Over-allocate to make sure it is byte-aligned by 8.
      * This will leak memory, but this is only the dummy
      * implementation (replaced by dlmalloc normally) so
      * not an issue.
      */
-    ptr = Runtime.staticAlloc(bytes + 8);
+    var ptr = Runtime.staticAlloc(bytes + 8);
     return (ptr+8) & 0xFFFFFFF8;
   },
-  _Znwj: 'malloc',
-  _Znaj: 'malloc',
-  _Znam: 'malloc',
-  _Znwm: 'malloc',
-
   free: function(){},
-  _ZdlPv: 'free',
-  _ZdaPv: 'free',
 
   calloc__deps: ['malloc'],
   calloc: function(n, s) {
@@ -3599,6 +3675,17 @@ LibraryManager.library = {
 
   abs: 'Math.abs',
   labs: 'Math.abs',
+#if USE_TYPED_ARRAYS == 2
+  llabs__deps: [function() { Types.preciseI64MathUsed = 1 }],
+  llabs: function(lo, hi) {
+    i64Math.abs(lo, hi);
+    {{{ makeStructuralReturn([makeGetTempDouble(0, 'i32'), makeGetTempDouble(1, 'i32')]) }}};
+  },
+#else
+  llabs: function(lo, hi) {
+    throw 'unsupported llabs';
+  },
+#endif
 
   exit__deps: ['_exit'],
   exit: function(status) {
@@ -3616,7 +3703,9 @@ LibraryManager.library = {
   },
 
   bsearch: function(key, base, num, size, compar) {
-    var cmp = FUNCTION_TABLE[compar];
+    var cmp = function(x, y) {
+      return Runtime.dynCall('iii', compar, [x, y])
+    };
     var left = 0;
     var right = num;
     var mid, test, addr;
@@ -3653,93 +3742,6 @@ LibraryManager.library = {
     }
     return ret;
   },
-
-  strtod__deps: ['isspace', 'isdigit'],
-  strtod: function(str, endptr) {
-    var origin = str;
-
-    // Skip space.
-    while (_isspace({{{ makeGetValue('str', 0, 'i8') }}})) str++;
-
-    // Check for a plus/minus sign.
-    var multiplier = 1;
-    if ({{{ makeGetValue('str', 0, 'i8') }}} == '-'.charCodeAt(0)) {
-      multiplier = -1;
-      str++;
-    } else if ({{{ makeGetValue('str', 0, 'i8') }}} == '+'.charCodeAt(0)) {
-      str++;
-    }
-
-    var chr;
-    var ret = 0;
-
-    // Get whole part.
-    var whole = false;
-    while(1) {
-      chr = {{{ makeGetValue('str', 0, 'i8') }}};
-      if (!_isdigit(chr)) break;
-      whole = true;
-      ret = ret*10 + chr - '0'.charCodeAt(0);
-      str++;
-    }
-
-    // Get fractional part.
-    var fraction = false;
-    if ({{{ makeGetValue('str', 0, 'i8') }}} == '.'.charCodeAt(0)) {
-      str++;
-      var mul = 1/10;
-      while(1) {
-        chr = {{{ makeGetValue('str', 0, 'i8') }}};
-        if (!_isdigit(chr)) break;
-        fraction = true;
-        ret += mul*(chr - '0'.charCodeAt(0));
-        mul /= 10;
-        str++;
-      }
-    }
-
-    if (!whole && !fraction) {
-      if (endptr) {
-        {{{ makeSetValue('endptr', 0, 'origin', '*') }}}
-      }
-      return 0;
-    }
-
-    // Get exponent part.
-    chr = {{{ makeGetValue('str', 0, 'i8') }}};
-    if (chr == 'e'.charCodeAt(0) || chr == 'E'.charCodeAt(0)) {
-      str++;
-      var exponent = 0;
-      var expNegative = false;
-      chr = {{{ makeGetValue('str', 0, 'i8') }}};
-      if (chr == '-'.charCodeAt(0)) {
-        expNegative = true;
-        str++;
-      } else if (chr == '+'.charCodeAt(0)) {
-        str++;
-      }
-      chr = {{{ makeGetValue('str', 0, 'i8') }}};
-      while(1) {
-        if (!_isdigit(chr)) break;
-        exponent = exponent*10 + chr - '0'.charCodeAt(0);
-        str++;
-        chr = {{{ makeGetValue('str', 0, 'i8') }}};
-      }
-      if (expNegative) exponent = -exponent;
-      ret *= Math.pow(10, exponent);
-    }
-
-    // Set end pointer.
-    if (endptr) {
-      {{{ makeSetValue('endptr', 0, 'str', '*') }}}
-    }
-
-    return ret * multiplier;
-  },
-  strtod_l: 'strtod', // no locale support yet
-  strtold: 'strtod', // XXX add real support for long double
-  strtold_l: 'strtold', // no locale support yet
-  strtof: 'strtod', // use stdtod to handle strtof
 
   _parseInt__deps: ['isspace', '__setErrNo', '$ERRNO_CODES'],
   _parseInt: function(str, endptr, base, min, max, bits, unsign) {
@@ -3810,15 +3812,77 @@ LibraryManager.library = {
 
 #if USE_TYPED_ARRAYS == 2
     if (bits == 64) {
-      ret = [{{{ splitI64('ret') }}}];
+      {{{ makeStructuralReturn(splitI64('ret')) }}};
     }
 #endif
 
     return ret;
   },
-  strtoll__deps: ['_parseInt'],
+#if USE_TYPED_ARRAYS == 2
+  _parseInt64__deps: ['isspace', '__setErrNo', '$ERRNO_CODES', function() { Types.preciseI64MathUsed = 1 }],
+  _parseInt64: function(str, endptr, base, min, max, unsign) {
+    var start = str;
+    // Skip space.
+    while (_isspace({{{ makeGetValue('str', 0, 'i8') }}})) str++;
+
+    // Check for a plus/minus sign.
+    if ({{{ makeGetValue('str', 0, 'i8') }}} == '-'.charCodeAt(0)) {
+      str++;
+    } else if ({{{ makeGetValue('str', 0, 'i8') }}} == '+'.charCodeAt(0)) {
+      str++;
+    }
+
+    // Find base.
+    var ok = false;
+    var finalBase = base;
+    if (!finalBase) {
+      if ({{{ makeGetValue('str', 0, 'i8') }}} == '0'.charCodeAt(0)) {
+        if ({{{ makeGetValue('str+1', 0, 'i8') }}} == 'x'.charCodeAt(0) ||
+            {{{ makeGetValue('str+1', 0, 'i8') }}} == 'X'.charCodeAt(0)) {
+          finalBase = 16;
+          str += 2;
+        } else {
+          finalBase = 8;
+          str++;
+          ok = true; // we saw an initial zero, perhaps the entire thing is just "0"
+        }
+      }
+    }
+    if (!finalBase) finalBase = 10;
+
+    // Get digits.
+    var chr;
+    while ((chr = {{{ makeGetValue('str', 0, 'i8') }}}) != 0) {
+      var digit = parseInt(String.fromCharCode(chr), finalBase);
+      if (isNaN(digit)) {
+        break;
+      } else {
+        str++;
+        ok = true;
+      }
+    }
+    if (!ok) {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      {{{ makeStructuralReturn(['0', '0']) }}};
+    }
+
+    // Set end pointer.
+    if (endptr) {
+      {{{ makeSetValue('endptr', 0, 'str', '*') }}}
+    }
+
+    try {
+      i64Math.fromString(Pointer_stringify(start, str - start), finalBase, min, max, unsign);
+    } catch(e) {
+      ___setErrNo(ERRNO_CODES.ERANGE); // not quite correct
+    }
+
+    {{{ makeStructuralReturn([makeGetTempDouble(0, 'i32'), makeGetTempDouble(1, 'i32')]) }}};
+  },
+#endif
+  strtoll__deps: ['_parseInt64'],
   strtoll: function(str, endptr, base) {
-    return __parseInt(str, endptr, base, -9223372036854775200, 9223372036854775200, 64);  // LLONG_MIN, LLONG_MAX; imprecise.
+    return __parseInt64(str, endptr, base, '-9223372036854775808', '9223372036854775807');  // LLONG_MIN, LLONG_MAX.
   },
   strtoll_l: 'strtoll', // no locale support yet
   strtol__deps: ['_parseInt'],
@@ -3831,16 +3895,11 @@ LibraryManager.library = {
     return __parseInt(str, endptr, base, 0, 4294967295, 32, true);  // ULONG_MAX.
   },
   strtoul_l: 'strtoul', // no locale support yet
-  strtoull__deps: ['_parseInt'],
+  strtoull__deps: ['_parseInt64'],
   strtoull: function(str, endptr, base) {
-    return __parseInt(str, endptr, base, 0, 18446744073709551615, 64, true);  // ULONG_MAX; imprecise.
+    return __parseInt64(str, endptr, base, 0, '18446744073709551615', true);  // ULONG_MAX.
   },
   strtoull_l: 'strtoull', // no locale support yet
-
-  atof__deps: ['strtod'],
-  atof: function(ptr) {
-    return _strtod(ptr, null);
-  },
 
   atoi__deps: ['strtol'],
   atoi: function(ptr) {
@@ -3854,11 +3913,13 @@ LibraryManager.library = {
   },
 
   qsort__deps: ['memcpy'],
-  qsort: function(base, num, size, comparator) {
+  qsort: function(base, num, size, cmp) {
     if (num == 0 || size == 0) return;
     // forward calls to the JavaScript sort method
     // first, sort the items logically
-    comparator = FUNCTION_TABLE[comparator];
+    var comparator = function(x, y) {
+      return Runtime.dynCall('iii', cmp, [x, y]);
+    }
     var keys = [];
     for (var i = 0; i < num; i++) keys.push(i);
     keys.sort(function(a, b) {
@@ -3874,9 +3935,10 @@ LibraryManager.library = {
     _free(temp);
   },
 
-  environ: null,
-  __environ: null,
-  __buildEnvironment__deps: ['environ', '__environ'],
+  environ: 'allocate(1, "i32*", ALLOC_STACK)',
+  __environ__deps: ['environ'],
+  __environ: '_environ',
+  __buildEnvironment__deps: ['__environ'],
   __buildEnvironment: function(env) {
     // WARNING: Arbitrary limit!
     var MAX_ENV_VALUES = 64;
@@ -3885,7 +3947,8 @@ LibraryManager.library = {
     // Statically allocate memory for the environment.
     var poolPtr;
     var envPtr;
-    if (_environ === null) {
+    if (!___buildEnvironment.called) {
+      ___buildEnvironment.called = true;
       // Set default values. Use string keys for Closure Compiler compatibility.
       ENV['USER'] = 'root';
       ENV['PATH'] = '/';
@@ -3898,11 +3961,9 @@ LibraryManager.library = {
       envPtr = allocate(MAX_ENV_VALUES * {{{ Runtime.QUANTUM_SIZE }}},
                         'i8*', ALLOC_STATIC);
       {{{ makeSetValue('envPtr', '0', 'poolPtr', 'i8*') }}}
-      _environ = allocate([envPtr], 'i8**', ALLOC_STATIC);
-      // Set up global variable alias.
-      ___environ = _environ;
+      {{{ makeSetValue(makeGlobalUse('_environ'), 0, 'envPtr', 'i8*') }}};
     } else {
-      envPtr = {{{ makeGetValue('_environ', '0', 'i8**') }}};
+      envPtr = {{{ makeGetValue(makeGlobalUse('_environ'), '0', 'i8**') }}};
       poolPtr = {{{ makeGetValue('envPtr', '0', 'i8*') }}};
     }
 
@@ -4088,6 +4149,8 @@ LibraryManager.library = {
     return 1;
   },
 
+  arc4random: 'rand',
+
   // ==========================================================================
   // string.h
   // ==========================================================================
@@ -4097,75 +4160,68 @@ LibraryManager.library = {
   memcpy__inline: function (dest, src, num, align) {
     var ret = '';
 #if ASSERTIONS
-    ret += "assert(" + num + " % 1 === 0, 'memcpy given ' + " + num + " + ' bytes to copy. Problem with quantum=1 corrections perhaps?');";
+#if ASM_JS == 0
+    ret += "assert(" + num + " % 1 === 0);"; //, 'memcpy given ' + " + num + " + ' bytes to copy. Problem with quantum=1 corrections perhaps?');";
+#endif
 #endif
     ret += makeCopyValues(dest, src, num, 'null', null, align);
     return ret;
   },
-  memcpy: function (dest, src, num, align) {
-#if ASSERTIONS
-    assert(num % 1 === 0, 'memcpy given ' + num + ' bytes to copy. Problem with quantum=1 corrections perhaps?');
-#endif
-#if USE_TYPED_ARRAYS == 2
-    if (num >= {{{ SEEK_OPTIMAL_ALIGN_MIN }}} && src % 2 == dest % 2) {
-      // This is unaligned, but quite large, and potentially alignable, so work hard to get to aligned settings
-      if (src % 4 == dest % 4) {
-        var stop = src + num;
-        while (src % 4) { // no need to check for stop, since we have large num
-          HEAP8[dest++] = HEAP8[src++];
-        }
-        var src4 = src >> 2, dest4 = dest >> 2, stop4 = stop >> 2;
-        while (src4 < stop4) {
-          HEAP32[dest4++] = HEAP32[src4++];
-        }
-        src = src4 << 2;
-        dest = dest4 << 2;
-        while (src < stop) {
-          HEAP8[dest++] = HEAP8[src++];
-        }
-      } else {
-        var stop = src + num;
-        if (src % 2) { // no need to check for stop, since we have large num
-          HEAP8[dest++] = HEAP8[src++];
-        }
-        var src2 = src >> 1, dest2 = dest >> 1, stop2 = stop >> 1;
-        while (src2 < stop2) {
-          HEAP16[dest2++] = HEAP16[src2++];
-        }
-        src = src2 << 1;
-        dest = dest2 << 1;
-        if (src < stop) {
-          HEAP8[dest++] = HEAP8[src++];
-        }
+
+  memcpy__asm: true,
+  memcpy__sig: 'iiii',
+  memcpy: function (dest, src, num) {
+    dest = dest|0; src = src|0; num = num|0;
+    var ret = 0;
+    ret = dest|0;
+    if ((dest&3) == (src&3)) {
+      while (dest & 3) {
+        if ((num|0) == 0) return ret|0;
+        {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i8'), 'i8') }}};
+        dest = (dest+1)|0;
+        src = (src+1)|0;
+        num = (num-1)|0;
       }
-    } else {
-      while (num--) {
-        HEAP8[dest++] = HEAP8[src++];
+      while ((num|0) >= 4) {
+        {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i32'), 'i32') }}};
+        dest = (dest+4)|0;
+        src = (src+4)|0;
+        num = (num-4)|0;
       }
     }
-#else
-    {{{ makeCopyValues('dest', 'src', 'num', 'null', null, 'align') }}};
-#endif
+    while ((num|0) > 0) {
+      {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i8'), 'i8') }}};
+      dest = (dest+1)|0;
+      src = (src+1)|0;
+      num = (num-1)|0;
+    }
+    return ret|0;
   },
+
+  wmemcpy: function() { throw 'wmemcpy not implemented' },
 
   llvm_memcpy_i32: 'memcpy',
   llvm_memcpy_i64: 'memcpy',
   llvm_memcpy_p0i8_p0i8_i32: 'memcpy',
   llvm_memcpy_p0i8_p0i8_i64: 'memcpy',
 
+  memmove__sig: 'viii',
+  memmove__asm: true,
   memmove__deps: ['memcpy'],
-  memmove: function(dest, src, num, align) {
-    if (src < dest && dest < src + num) {
-      // Copy backwards in a safe manner
-      src += num;
-      dest += num;
-      while (num--) {
-        dest--;
-        src--;
-        {{{ makeCopyValues('dest', 'src', 1, 'null', null, 1) }}};
+  memmove: function(dest, src, num) {
+    dest = dest|0; src = src|0; num = num|0;
+    if (((src|0) < (dest|0)) & ((dest|0) < ((src + num)|0))) {
+      // Unlikely case: Copy backwards in a safe manner
+      src = (src + num)|0;
+      dest = (dest + num)|0;
+      while ((num|0) > 0) {
+        dest = (dest - 1)|0;
+        src = (src - 1)|0;
+        num = (num - 1)|0;
+        {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i8'), 'i8') }}};
       }
     } else {
-      _memcpy(dest, src, num, align);
+      _memcpy(dest, src, num);
     }
   },
   llvm_memmove_i32: 'memmove',
@@ -4173,48 +4229,73 @@ LibraryManager.library = {
   llvm_memmove_p0i8_p0i8_i32: 'memmove',
   llvm_memmove_p0i8_p0i8_i64: 'memmove',
 
+  wmemmove: function() { throw 'wmemmove not implemented' },
+
   memset__inline: function(ptr, value, num, align) {
     return makeSetValues(ptr, 0, value, 'null', num, align);
   },
-  memset: function(ptr, value, num, align) {
+  memset__sig: 'viii',
+  memset__asm: true,
+  memset: function(ptr, value, num) {
 #if USE_TYPED_ARRAYS == 2
-    // TODO: make these settings, and in memcpy, {{'s
-    if (num >= {{{ SEEK_OPTIMAL_ALIGN_MIN }}}) {
+    ptr = ptr|0; value = value|0; num = num|0;
+    var stop = 0, value4 = 0, stop4 = 0, unaligned = 0;
+    stop = (ptr + num)|0;
+    if ((num|0) >= {{{ Math.round(2.5*UNROLL_LOOP_MAX) }}}) {
       // This is unaligned, but quite large, so work hard to get to aligned settings
-      var stop = ptr + num;
-      while (ptr % 4) { // no need to check for stop, since we have large num
-        HEAP8[ptr++] = value;
+      value = value & 0xff;
+      unaligned = ptr & 3;
+      value4 = value | (value << 8) | (value << 16) | (value << 24);
+      stop4 = stop & ~3;
+      if (unaligned) {
+        unaligned = (ptr + 4 - unaligned)|0;
+        while ((ptr|0) < (unaligned|0)) { // no need to check for stop, since we have large num
+          {{{ makeSetValueAsm('ptr', 0, 'value', 'i8') }}};
+          ptr = (ptr+1)|0;
+        }
       }
-      if (value < 0) value += 256; // make it unsigned
-      var ptr4 = ptr >> 2, stop4 = stop >> 2, value4 = value | (value << 8) | (value << 16) | (value << 24);
-      while (ptr4 < stop4) {
-        HEAP32[ptr4++] = value4;
-      }
-      ptr = ptr4 << 2;
-      while (ptr < stop) {
-        HEAP8[ptr++] = value;
-      }
-    } else {
-      while (num--) {
-        HEAP8[ptr++] = value;
+      while ((ptr|0) < (stop4|0)) {
+        {{{ makeSetValueAsm('ptr', 0, 'value4', 'i32') }}};
+        ptr = (ptr+4)|0;
       }
     }
+    while ((ptr|0) < (stop|0)) {
+      {{{ makeSetValueAsm('ptr', 0, 'value', 'i8') }}};
+      ptr = (ptr+1)|0;
+    }
 #else
-    {{{ makeSetValues('ptr', '0', 'value', 'null', 'num', 'align') }}};
+    {{{ makeSetValues('ptr', '0', 'value', 'null', 'num') }}};
 #endif
   },
   llvm_memset_i32: 'memset',
   llvm_memset_p0i8_i32: 'memset',
   llvm_memset_p0i8_i64: 'memset',
 
+  wmemset: function() { throw 'wmemset not implemented' },
+
+  strlen__sig: 'ii',
+  strlen__asm: true,
   strlen: function(ptr) {
-    return String_len(ptr);
+    ptr = ptr|0;
+    var curr = 0;
+    curr = ptr;
+    while ({{{ makeGetValueAsm('curr', '0', 'i8') }}}|0 != 0) {
+      curr = (curr + 1)|0;
+    }
+    return (curr - ptr)|0;
   },
 
   // TODO: Implement when we have real unicode support.
   mblen: function() {
     return 1;
   },
+
+  wcslen: function() { throw 'wcslen not implemented' },
+  mbrlen: function() { throw 'mbrlen not implemented' },
+  mbsrtowcs: function() { throw 'mbsrtowcs not implemented' },
+  wcsnrtombs: function() { throw 'wcsnrtombs not implemented' },
+  mbsnrtowcs: function() { throw 'mbsnrtowcs not implemented' },
+  mbrtowc: function() { throw 'mbrtowc not implemented' },
 
   strspn: function(pstr, pset) {
     var str = pstr, set, strcurr, setcurr;
@@ -4248,14 +4329,18 @@ LibraryManager.library = {
     }
   },
 
+  strcpy__asm: true,
+  strcpy__sig: 'iii',
   strcpy: function(pdest, psrc) {
+    pdest = pdest|0; psrc = psrc|0;
     var i = 0;
     do {
-      {{{ makeCopyValues('pdest+i', 'psrc+i', 1, 'i8', null, 1) }}};
-      i ++;
-    } while ({{{ makeGetValue('psrc', 'i-1', 'i8') }}} != 0);
-    return pdest;
+      {{{ makeCopyValues('(pdest+i)|0', '(psrc+i)|0', 1, 'i8', null, 1) }}};
+      i = (i+1)|0;
+    } while (({{{ makeGetValue('psrc', 'i-1', 'i8') }}})|0 != 0);
+    return pdest|0;
   },
+
   stpcpy: function(pdest, psrc) {
     var i = 0;
     do {
@@ -4265,14 +4350,18 @@ LibraryManager.library = {
     return pdest + i - 1;
   },
 
+  strncpy__asm: true,
+  strncpy__sig: 'iiii',
   strncpy: function(pdest, psrc, num) {
-    var padding = false, curr;
-    for (var i = 0; i < num; i++) {
-      curr = padding ? 0 : {{{ makeGetValue('psrc', 'i', 'i8') }}};
+    pdest = pdest|0; psrc = psrc|0; num = num|0;
+    var padding = 0, curr = 0, i = 0;
+    while ((i|0) < (num|0)) {
+      curr = padding ? 0 : {{{ makeGetValueAsm('psrc', 'i', 'i8') }}};
       {{{ makeSetValue('pdest', 'i', 'curr', 'i8') }}}
-      padding = padding || {{{ makeGetValue('psrc', 'i', 'i8') }}} == 0;
+      padding = padding ? 1 : ({{{ makeGetValueAsm('psrc', 'i', 'i8') }}} == 0);
+      i = (i+1)|0;
     }
-    return pdest;
+    return pdest|0;
   },
   
   strlwr__deps:['tolower'],
@@ -4297,15 +4386,18 @@ LibraryManager.library = {
     }
   },
 
+  strcat__asm: true,
+  strcat__sig: 'iii',
   strcat__deps: ['strlen'],
   strcat: function(pdest, psrc) {
-    var len = _strlen(pdest);
+    pdest = pdest|0; psrc = psrc|0;
     var i = 0;
+    pdest = (pdest + _strlen(pdest))|0;
     do {
-      {{{ makeCopyValues('pdest+len+i', 'psrc+i', 1, 'i8', null, 1) }}};
-      i ++;
-    } while ({{{ makeGetValue('psrc', 'i-1', 'i8') }}} != 0);
-    return pdest;
+      {{{ makeCopyValues('pdest+i', 'psrc+i', 1, 'i8', null, 1) }}};
+      i = (i+1)|0;
+    } while ({{{ makeGetValueAsm('psrc', 'i-1', 'i8') }}} != 0);
+    return pdest|0;
   },
 
   strncat__deps: ['strlen'],
@@ -4373,11 +4465,16 @@ LibraryManager.library = {
     return 0;
   },
 
+  memcmp__asm: true,
+  memcmp__sig: 'iiii',
   memcmp: function(p1, p2, num) {
-    for (var i = 0; i < num; i++) {
-      var v1 = {{{ makeGetValue('p1', 'i', 'i8', 0, 1) }}};
-      var v2 = {{{ makeGetValue('p2', 'i', 'i8', 0, 1) }}};
-      if (v1 != v2) return v1 > v2 ? 1 : -1;
+    p1 = p1|0; p2 = p2|0; num = num|0;
+    var i = 0, v1 = 0, v2 = 0;
+    while ((i|0) < (num|0)) {
+      var v1 = {{{ makeGetValueAsm('p1', 'i', 'i8', true) }}};
+      var v2 = {{{ makeGetValueAsm('p2', 'i', 'i8', true) }}};
+      if ((v1|0) != (v2|0)) return ((v1|0) > (v2|0) ? 1 : -1)|0;
+      i = (i+1)|0;
     }
     return 0;
   },
@@ -4419,6 +4516,7 @@ LibraryManager.library = {
     } while (val);
     return 0;
   },
+  index: 'strchr',
 
   strrchr__deps: ['strlen'],
   strrchr: function(ptr, chr) {
@@ -4429,18 +4527,20 @@ LibraryManager.library = {
     } while (ptr2 >= ptr);
     return 0;
   },
+  rindex: 'strrchr',
 
+  strdup__deps: ['strlen'],
   strdup: function(ptr) {
-    var len = String_len(ptr);
+    var len = _strlen(ptr);
     var newStr = _malloc(len + 1);
     {{{ makeCopyValues('newStr', 'ptr', 'len', 'null', null, 1) }}};
     {{{ makeSetValue('newStr', 'len', '0', 'i8') }}};
     return newStr;
   },
 
-  strndup__deps: ['strdup'],
+  strndup__deps: ['strdup', 'strlen'],
   strndup: function(ptr, size) {
-    var len = String_len(ptr);
+    var len = _strlen(ptr);
 
     if (size >= len) {
       return _strdup(ptr);
@@ -4475,10 +4575,8 @@ LibraryManager.library = {
 
   __strtok_state: 0,
   strtok__deps: ['__strtok_state', 'strtok_r'],
+  strtok__postset: '___strtok_state = Runtime.staticAlloc(4);',
   strtok: function(s, delim) {
-    if (!___strtok_state) {
-      ___strtok_state = _malloc(4);
-    }
     return _strtok_r(s, delim, ___strtok_state);
   },
 
@@ -4576,14 +4674,17 @@ LibraryManager.library = {
     }
   },
   _toupper: 'toupper',
+
+  tolower__asm: true,
+  tolower__sig: 'ii',
   tolower: function(chr) {
-    if (chr >= 'A'.charCodeAt(0) && chr <= 'Z'.charCodeAt(0)) {
-      return chr - 'A'.charCodeAt(0) + 'a'.charCodeAt(0);
-    } else {
-      return chr;
-    }
+    chr = chr|0;
+    if ((chr|0) < {{{ charCode('A') }}}) return chr|0;
+    if ((chr|0) > {{{ charCode('Z') }}}) return chr|0;
+    return (chr - {{{ charCode('A') }}} + {{{ charCode('a') }}})|0;
   },
   _tolower: 'tolower',
+
   // The following functions are defined as macros in glibc.
   islower: function(chr) {
     return chr >= 'a'.charCodeAt(0) && chr <= 'z'.charCodeAt(0);
@@ -4716,9 +4817,8 @@ LibraryManager.library = {
   // ==========================================================================
 
   llvm_va_start__inline: function(ptr) {
-    // varargs - we received a pointer to the varargs as a final 'extra' parameter
-    var data = 'arguments[' + Framework.currItem.funcData.ident + '.length]';
-    return makeSetValue(ptr, 0, data, 'void*');
+    // varargs - we received a pointer to the varargs as a final 'extra' parameter called 'varrp'
+    return makeSetValue(ptr, 0, 'varrp', 'void*');
   },
 
   llvm_va_end: function() {},
@@ -4742,13 +4842,93 @@ LibraryManager.library = {
     return ((x&0xff)<<24) | (((x>>8)&0xff)<<16) | (((x>>16)&0xff)<<8) | (x>>>24);
   },
 
-  llvm_ctlz_i32: function(x) {
-    for (var i=0; i<32; i++) {
-        if ( (x & (1 << (31-i))) != 0 ) {
-            return i;
+  llvm_bswap_i64__deps: ['llvm_bswap_i32'],
+  llvm_bswap_i64: function(l, h) {
+    var retl = _llvm_bswap_i32(h)>>>0;
+    var reth = _llvm_bswap_i32(l)>>>0;
+#if USE_TYPED_ARRAYS == 2
+    {{{ makeStructuralReturn(['retl', 'reth']) }}};
+#else
+    throw 'unsupported';
+#endif
+  },
+
+  llvm_ctlz_i32__deps: [function() {
+    function ctlz(x) {
+      for (var i = 0; i < 8; i++) {
+        if (x & (1 << (7-i))) {
+          return i;
         }
+      }
+      return 8;
     }
-    return 32;
+    return 'var ctlz_i8 = [' + range(256).map(function(x) { return ctlz(x) }).join(',') + '];';
+  }],
+  llvm_ctlz_i32: function(x) {
+    var ret = ctlz_i8[x >>> 24];
+    if (ret < 8) return ret;
+    var ret = ctlz_i8[(x >> 16)&0xff];
+    if (ret < 8) return ret + 8;
+    var ret = ctlz_i8[(x >> 8)&0xff];
+    if (ret < 8) return ret + 16;
+    return ctlz_i8[x&0xff] + 24;
+  },
+
+  llvm_ctlz_i64__deps: ['llvm_ctlz_i32'],
+  llvm_ctlz_i64: function(l, h) {
+    var ret = _llvm_ctlz_i32(h);
+    if (ret == 32) ret += _llvm_ctlz_i32(l);
+#if USE_TYPED_ARRAYS == 2
+    {{{ makeStructuralReturn(['ret', '0']) }}};
+#else
+    return ret;
+#endif
+  },
+
+  llvm_cttz_i32__deps: [function() {
+    function cttz(x) {
+      for (var i = 0; i < 8; i++) {
+        if (x & (1 << i)) {
+          return i;
+        }
+      }
+      return 8;
+    }
+    return 'var cttz_i8 = [' + range(256).map(function(x) { return cttz(x) }).join(',') + '];';
+  }],
+  llvm_cttz_i32: function(x) {
+    var ret = cttz_i8[x & 0xff];
+    if (ret < 8) return ret;
+    var ret = cttz_i8[(x >> 8)&0xff];
+    if (ret < 8) return ret + 8;
+    var ret = cttz_i8[(x >> 16)&0xff];
+    if (ret < 8) return ret + 16;
+    return cttz_i8[x >>> 24] + 24;
+  },
+
+  llvm_cttz_i64__deps: ['llvm_cttz_i32'],
+  llvm_cttz_i64: function(l, h) {
+    var ret = _llvm_cttz_i32(l);
+    if (ret == 32) ret += _llvm_cttz_i32(h);
+#if USE_TYPED_ARRAYS == 2
+    {{{ makeStructuralReturn(['ret', '0']) }}};
+#else
+    return ret;
+#endif
+  },
+
+  llvm_ctpop_i32: function(x) {
+    var ret = 0;
+    while (x) {
+      if (x&1) ret++;
+      x >>= 1;
+    }
+    return ret;
+  },
+
+  llvm_ctpop_i64__deps: ['llvm_ctpop_i32'],
+  llvm_ctpop_i64: function(l, h) {
+    return _llvm_ctpop_i32(l) + _llvm_ctpop_i32(h);
   },
 
   llvm_trap: function() {
@@ -4757,11 +4937,11 @@ LibraryManager.library = {
 
   __assert_fail: function(condition, file, line) {
     ABORT = true;
-    throw 'Assertion failed: ' + Pointer_stringify(condition);//JSON.stringify(arguments)//condition;
+    throw 'Assertion failed: ' + Pointer_stringify(condition) + ' at ' + new Error().stack;
   },
 
   __assert_func: function(filename, line, func, condition) {
-    throw 'Assertion failed: ' + (condition ? Pointer_stringify(condition) : 'unknown condition') + ', at: ' + [filename ? Pointer_stringify(filename) : 'unknown filename', line, func ? Pointer_stringify(func) : 'unknown function'];
+    throw 'Assertion failed: ' + (condition ? Pointer_stringify(condition) : 'unknown condition') + ', at: ' + [filename ? Pointer_stringify(filename) : 'unknown filename', line, func ? Pointer_stringify(func) : 'unknown function'] + ' at ' + new Error().stack;
   },
 
   __cxa_guard_acquire: function(variable) {
@@ -4789,13 +4969,13 @@ LibraryManager.library = {
   __cxa_throw: function(ptr, type, destructor) {
     if (!___cxa_throw.initialized) {
       try {
-        {{{ makeSetValue('__ZTVN10__cxxabiv119__pointer_type_infoE', '0', '0', 'i32') }}}; // Workaround for libcxxabi integration bug
+        {{{ makeSetValue(makeGlobalUse('__ZTVN10__cxxabiv119__pointer_type_infoE'), '0', '0', 'i32') }}}; // Workaround for libcxxabi integration bug
       } catch(e){}
       try {
-        {{{ makeSetValue('__ZTVN10__cxxabiv117__class_type_infoE', '0', '1', 'i32') }}}; // Workaround for libcxxabi integration bug
+        {{{ makeSetValue(makeGlobalUse('__ZTVN10__cxxabiv117__class_type_infoE'), '0', '1', 'i32') }}}; // Workaround for libcxxabi integration bug
       } catch(e){}
       try {
-        {{{ makeSetValue('__ZTVN10__cxxabiv120__si_class_type_infoE', '0', '2', 'i32') }}}; // Workaround for libcxxabi integration bug
+        {{{ makeSetValue(makeGlobalUse('__ZTVN10__cxxabiv120__si_class_type_infoE'), '0', '2', 'i32') }}}; // Workaround for libcxxabi integration bug
       } catch(e){}
       ___cxa_throw.initialized = true;
     }
@@ -4810,12 +4990,12 @@ LibraryManager.library = {
     } else {
       __ZSt18uncaught_exceptionv.uncaught_exception++;
     }
-    throw ptr;
+    {{{ makeThrow('ptr') }}};
   },
   __cxa_rethrow__deps: ['llvm_eh_exception', '__cxa_end_catch'],
   __cxa_rethrow: function() {
     ___cxa_end_catch.rethrown = true;
-    throw {{{ makeGetValue('_llvm_eh_exception.buf', '0', 'void*') }}};
+    {{{ makeThrow(makeGetValue('_llvm_eh_exception.buf', '0', 'void*')) }}};
   },
   llvm_eh_exception__postset: '_llvm_eh_exception.buf = allocate(12, "void*", ALLOC_STATIC);',
   llvm_eh_exception: function() {
@@ -4844,14 +5024,18 @@ LibraryManager.library = {
       return;
     }
     // Clear state flag.
-    __THREW__ = false;
+#if ASM_JS
+    asm.setThrew(0);
+#else
+    __THREW__ = 0;
+#endif
     // Clear type.
     {{{ makeSetValue('_llvm_eh_exception.buf', QUANTUM_SIZE, '0', 'void*') }}}
     // Call destructor if one is registered then clear it.
     var ptr = {{{ makeGetValue('_llvm_eh_exception.buf', '0', 'void*') }}};
     var destructor = {{{ makeGetValue('_llvm_eh_exception.buf', 2 * QUANTUM_SIZE, 'void*') }}};
     if (destructor) {
-      FUNCTION_TABLE[destructor](ptr);
+      Runtime.dynCall('vi', destructor, [ptr]);
       {{{ makeSetValue('_llvm_eh_exception.buf', 2 * QUANTUM_SIZE, '0', 'i32') }}}
     }
     // Free ptr if it isn't null.
@@ -4869,16 +5053,16 @@ LibraryManager.library = {
   },
 
   __cxa_call_unexpected: function(exception) {
+    Module.printErr('Unexpected exception thrown, this is not properly supported - aborting');
     ABORT = true;
     throw exception;
   },
 
   _Unwind_Resume_or_Rethrow: function(ptr) {
-    throw ptr;
+    {{{ makeThrow('ptr') }}};
   },
-  _Unwind_RaiseException__deps: ['llvm_eh_exception', '__cxa_find_matching_catch'],
   _Unwind_RaiseException: function(ptr) {
-    throw ptr;
+    {{{ makeThrow('ptr') }}};
   },
   _Unwind_DeleteException: function(ptr) {},
 
@@ -4889,20 +5073,20 @@ LibraryManager.library = {
 
   __cxa_is_number_type: function(type) {
     var isNumber = false;
-    try { if (type == __ZTIi) isNumber = true } catch(e){}
-    try { if (type == __ZTIj) isNumber = true } catch(e){}
-    try { if (type == __ZTIl) isNumber = true } catch(e){}
-    try { if (type == __ZTIm) isNumber = true } catch(e){}
-    try { if (type == __ZTIx) isNumber = true } catch(e){}
-    try { if (type == __ZTIy) isNumber = true } catch(e){}
-    try { if (type == __ZTIf) isNumber = true } catch(e){}
-    try { if (type == __ZTId) isNumber = true } catch(e){}
-    try { if (type == __ZTIe) isNumber = true } catch(e){}
-    try { if (type == __ZTIc) isNumber = true } catch(e){}
-    try { if (type == __ZTIa) isNumber = true } catch(e){}
-    try { if (type == __ZTIh) isNumber = true } catch(e){}
-    try { if (type == __ZTIs) isNumber = true } catch(e){}
-    try { if (type == __ZTIt) isNumber = true } catch(e){}
+    try { if (type == {{{ makeGlobalUse('__ZTIi') }}}) isNumber = true } catch(e){}
+    try { if (type == {{{ makeGlobalUse('__ZTIj') }}}) isNumber = true } catch(e){}
+    try { if (type == {{{ makeGlobalUse('__ZTIl') }}}) isNumber = true } catch(e){}
+    try { if (type == {{{ makeGlobalUse('__ZTIm') }}}) isNumber = true } catch(e){}
+    try { if (type == {{{ makeGlobalUse('__ZTIx') }}}) isNumber = true } catch(e){}
+    try { if (type == {{{ makeGlobalUse('__ZTIy') }}}) isNumber = true } catch(e){}
+    try { if (type == {{{ makeGlobalUse('__ZTIf') }}}) isNumber = true } catch(e){}
+    try { if (type == {{{ makeGlobalUse('__ZTId') }}}) isNumber = true } catch(e){}
+    try { if (type == {{{ makeGlobalUse('__ZTIe') }}}) isNumber = true } catch(e){}
+    try { if (type == {{{ makeGlobalUse('__ZTIc') }}}) isNumber = true } catch(e){}
+    try { if (type == {{{ makeGlobalUse('__ZTIa') }}}) isNumber = true } catch(e){}
+    try { if (type == {{{ makeGlobalUse('__ZTIh') }}}) isNumber = true } catch(e){}
+    try { if (type == {{{ makeGlobalUse('__ZTIs') }}}) isNumber = true } catch(e){}
+    try { if (type == {{{ makeGlobalUse('__ZTIt') }}}) isNumber = true } catch(e){}
     return isNumber;
   },
 
@@ -4933,12 +5117,12 @@ LibraryManager.library = {
     // return the type of the catch block which should be called.
     for (var i = 0; i < typeArray.length; i++) {
       if (___cxa_does_inherit(typeArray[i], throwntype, thrown))
-        return { f0:thrown, f1:typeArray[i] };
+        {{{ makeStructuralReturn(['thrown', 'typeArray[i]']) }}};
     }
     // Shouldn't happen unless we have bogus data in typeArray
     // or encounter a type for which emscripten doesn't have suitable
     // typeinfo defined. Best-efforts match just in case.
-    return { f0:thrown, f1 :throwntype };
+    {{{ makeStructuralReturn(['thrown', 'throwntype']) }}};
   },
 
   // Recursively walks up the base types of 'possibilityType'
@@ -4980,6 +5164,10 @@ LibraryManager.library = {
     }
   },
 
+  _ZNSt9exceptionD2Ev: function(){}, // XXX a dependency of dlmalloc, but not actually needed if libcxx is not anyhow included
+
+  _ZNSt9type_infoD2Ev: function(){},
+
   // RTTI hacks for exception handling, defining type_infos for common types.
   // The values are dummies. We simply use the addresses of these statically
   // allocated variables as unique identifiers.
@@ -5004,73 +5192,44 @@ LibraryManager.library = {
   llvm_uadd_with_overflow_i8: function(x, y) {
     x = x & 0xff;
     y = y & 0xff;
-    return {
-      f0: (x+y) & 0xff,
-      f1: x+y > 255
-    };
+    {{{ makeStructuralReturn(['(x+y) & 0xff', 'x+y > 255']) }}};
   },
 
   llvm_umul_with_overflow_i8: function(x, y) {
     x = x & 0xff;
     y = y & 0xff;
-    return {
-      f0: (x*y) & 0xff,
-      f1: x*y > 255
-    };
+    {{{ makeStructuralReturn(['(x*y) & 0xff', 'x*y > 255']) }}};
   },
 
   llvm_uadd_with_overflow_i16: function(x, y) {
     x = x & 0xffff;
     y = y & 0xffff;
-    return {
-      f0: (x+y) & 0xffff,
-      f1: x+y > 65535
-    };
+    {{{ makeStructuralReturn(['(x+y) & 0xffff', 'x+y > 65535']) }}};
   },
 
   llvm_umul_with_overflow_i16: function(x, y) {
     x = x & 0xffff;
     y = y & 0xffff;
-    return {
-      f0: (x*y) & 0xffff,
-      f1: x*y > 65535
-    };
+    {{{ makeStructuralReturn(['(x*y) & 0xffff', 'x*y > 65535']) }}};
   },
 
   llvm_uadd_with_overflow_i32: function(x, y) {
     x = x>>>0;
     y = y>>>0;
-    return {
-      f0: (x+y)>>>0,
-      f1: x+y > 4294967295
-    };
+    {{{ makeStructuralReturn(['(x+y)>>>0', 'x+y > 4294967295']) }}};
   },
 
   llvm_umul_with_overflow_i32: function(x, y) {
     x = x>>>0;
     y = y>>>0;
-    return {
-      f0: (x*y)>>>0,
-      f1: x*y > 4294967295
-    };
-  },
-
-  llvm_uadd_with_overflow_i64__deps: [function() { Types.preciseI64MathUsed = 1 }],
-  llvm_uadd_with_overflow_i64: function(xl, xh, yl, yh) {
-    i64Math.add(xl, xh, yl, yh);
-    return {
-      f0: i64Math.result,
-      f1: 0 // XXX Need to hack support for this in long.js
-    };
+    {{{ makeStructuralReturn(['(x*y)>>>0', 'x*y > 4294967295']) }}};
   },
 
   llvm_umul_with_overflow_i64__deps: [function() { Types.preciseI64MathUsed = 1 }],
   llvm_umul_with_overflow_i64: function(xl, xh, yl, yh) {
-    i64Math.mul(xl, xh, yl, yh);
-    return {
-      f0: i64Math.result,
-      f1: 0 // XXX Need to hack support for this in long.js
-    };
+    i64Math.multiply(xl, xh, yl, yh);
+    {{{ makeStructuralReturn([makeGetTempDouble(0, 'i32'), makeGetTempDouble(1, 'i32'), '0']) }}};
+    // XXX Need to hack support for second param in long.js
   },
 
   llvm_stacksave: function() {
@@ -5105,8 +5264,8 @@ LibraryManager.library = {
     return ret;
   },
 
-  llvm_expect_i32__inline: function(x, y) {
-    return '((' + x + ')==(' + y + '))';
+  llvm_expect_i32__inline: function(val, expected) {
+    return '(' + val + ')';
   },
 
   llvm_lifetime_start: function() {},
@@ -5295,6 +5454,14 @@ LibraryManager.library = {
       return -a;
   },
   copysignf: 'copysign',
+  __signbit__deps: ['copysign'],
+  __signbit: function(x) {
+    // We implement using copysign so that we get support
+    // for negative zero (once copysign supports that).
+    return _copysign(1.0, x) < 0;
+  },
+  __signbitf: '__signbit',
+  __signbitd: '__signbit',
   hypot: function(a, b) {
      return Math.sqrt(a*a + b*b);
   },
@@ -5437,11 +5604,11 @@ LibraryManager.library = {
   // ==========================================================================
 
   __utsname_struct_layout: Runtime.generateStructInfo([
-	  'sysname',
-	  'nodename',
-	  'release',
-	  'version',
-	  'machine'], '%struct.utsname'),
+	  ['b32', 'sysname'],
+	  ['b32', 'nodename'],
+	  ['b32', 'release'],
+	  ['b32', 'version'],
+	  ['b32', 'machine']]),
   uname__deps: ['__utsname_struct_layout'],
   uname: function(name) {
     // int uname(struct utsname *name);
@@ -5510,7 +5677,7 @@ LibraryManager.library = {
     }
 
     try {
-      var lib_module = eval(lib_data)(FUNCTION_TABLE.length);
+      var lib_module = eval(lib_data)({{{ Functions.getTable('x') }}}.length);
     } catch (e) {
 #if ASSERTIONS
       Module.printErr('Error in loading dynamic library: ' + e);
@@ -5583,9 +5750,9 @@ LibraryManager.library = {
         } else {
           var result = lib.module[symbol];
           if (typeof result == 'function') {
-            FUNCTION_TABLE.push(result);
-            FUNCTION_TABLE.push(0);
-            result = FUNCTION_TABLE.length - 2;
+            {{{ Functions.getTable('x') }}}.push(result);
+            {{{ Functions.getTable('x') }}}.push(0);
+            result = {{{ Functions.getTable('x') }}}.length - 2;
             lib.cached_functions = result;
           }
           return result;
@@ -5641,23 +5808,23 @@ LibraryManager.library = {
   },
 
   __tm_struct_layout: Runtime.generateStructInfo([
-    'tm_sec',
-    'tm_min',
-    'tm_hour',
-    'tm_mday',
-    'tm_mon',
-    'tm_year',
-    'tm_wday',
-    'tm_yday',
-    'tm_isdst',
-    'tm_gmtoff',
-    'tm_zone'], '%struct.tm'),
+    ['i32', 'tm_sec'],
+    ['i32', 'tm_min'],
+    ['i32', 'tm_hour'],
+    ['i32', 'tm_mday'],
+    ['i32', 'tm_mon'],
+    ['i32', 'tm_year'],
+    ['i32', 'tm_wday'],
+    ['i32', 'tm_yday'],
+    ['i32', 'tm_isdst'],
+    ['i32', 'tm_gmtoff'],
+    ['i32', 'tm_zone']]),
   // Statically allocated time struct.
-  __tm_current: 0,
+  __tm_current: 'allocate({{{ Runtime.QUANTUM_SIZE }}}*26, "i8", ALLOC_STACK)',
   // Statically allocated timezone strings.
   __tm_timezones: {},
   // Statically allocated time strings.
-  __tm_formatted: 0,
+  __tm_formatted: 'allocate({{{ Runtime.QUANTUM_SIZE }}}*26, "i8", ALLOC_STACK)',
 
   mktime__deps: ['__tm_struct_layout', 'tzset'],
   mktime: function(tmPtr) {
@@ -5680,7 +5847,6 @@ LibraryManager.library = {
 
   gmtime__deps: ['malloc', '__tm_struct_layout', '__tm_current', 'gmtime_r'],
   gmtime: function(time) {
-    if (!___tm_current) ___tm_current = _malloc(___tm_struct_layout.__size__);
     return _gmtime_r(time, ___tm_current);
   },
 
@@ -5714,8 +5880,8 @@ LibraryManager.library = {
   timegm__deps: ['mktime'],
   timegm: function(tmPtr) {
     _tzset();
-    var offset = {{{ makeGetValue('__timezone', 0, 'i32') }}};
-    var daylight = {{{ makeGetValue('__daylight', 0, 'i32') }}};
+    var offset = {{{ makeGetValue(makeGlobalUse('__timezone'), 0, 'i32') }}};
+    var daylight = {{{ makeGetValue(makeGlobalUse('__daylight'), 0, 'i32') }}};
     daylight = (daylight == 1) ? 60 * 60 : 0;
     var ret = _mktime(tmPtr) + offset - daylight;
     return ret;
@@ -5723,7 +5889,6 @@ LibraryManager.library = {
 
   localtime__deps: ['malloc', '__tm_struct_layout', '__tm_current', 'localtime_r'],
   localtime: function(time) {
-    if (!___tm_current) ___tm_current = _malloc(___tm_struct_layout.__size__);
     return _localtime_r(time, ___tm_current);
   },
 
@@ -5759,7 +5924,6 @@ LibraryManager.library = {
 
   asctime__deps: ['malloc', '__tm_formatted', 'asctime_r'],
   asctime: function(tmPtr) {
-    if (!___tm_formatted) ___tm_formatted = _malloc(26);
     return _asctime_r(tmPtr, ___tm_formatted);
   },
 
@@ -5794,29 +5958,27 @@ LibraryManager.library = {
 
   // TODO: Initialize these to defaults on startup from system settings.
   // Note: glibc has one fewer underscore for all of these. Also used in other related functions (timegm)
-  _tzname: null,
-  _daylight: null,
-  _timezone: null,
+  _tzname: 'allocate({{{ 2*Runtime.QUANTUM_SIZE }}}, "i32*", ALLOC_STACK)',
+  _daylight: 'allocate(1, "i32*", ALLOC_STACK)',
+  _timezone: 'allocate(1, "i32*", ALLOC_STACK)',
   tzset__deps: ['_tzname', '_daylight', '_timezone'],
   tzset: function() {
     // TODO: Use (malleable) environment variables instead of system settings.
-    if (__tzname) return; // glibc does not need the double __
+    if (_tzset.called) return;
+    _tzset.called = true;
 
-    __timezone = _malloc({{{ Runtime.QUANTUM_SIZE }}});
-    {{{ makeSetValue('__timezone', '0', '-(new Date()).getTimezoneOffset() * 60', 'i32') }}}
+    {{{ makeSetValue(makeGlobalUse('__timezone'), '0', '-(new Date()).getTimezoneOffset() * 60', 'i32') }}}
 
-    __daylight = _malloc({{{ Runtime.QUANTUM_SIZE }}});
     var winter = new Date(2000, 0, 1);
     var summer = new Date(2000, 6, 1);
-    {{{ makeSetValue('__daylight', '0', 'Number(winter.getTimezoneOffset() != summer.getTimezoneOffset())', 'i32') }}}
+    {{{ makeSetValue(makeGlobalUse('__daylight'), '0', 'Number(winter.getTimezoneOffset() != summer.getTimezoneOffset())', 'i32') }}}
 
     var winterName = 'GMT'; // XXX do not rely on browser timezone info, it is very unpredictable | winter.toString().match(/\(([A-Z]+)\)/)[1];
     var summerName = 'GMT'; // XXX do not rely on browser timezone info, it is very unpredictable | summer.toString().match(/\(([A-Z]+)\)/)[1];
     var winterNamePtr = allocate(intArrayFromString(winterName), 'i8', ALLOC_NORMAL);
     var summerNamePtr = allocate(intArrayFromString(summerName), 'i8', ALLOC_NORMAL);
-    __tzname = _malloc(2 * {{{ Runtime.QUANTUM_SIZE }}}); // glibc does not need the double __
-    {{{ makeSetValue('__tzname', '0', 'winterNamePtr', 'i32') }}}
-    {{{ makeSetValue('__tzname', Runtime.QUANTUM_SIZE, 'summerNamePtr', 'i32') }}}
+    {{{ makeSetValue(makeGlobalUse('__tzname'), '0', 'winterNamePtr', 'i32') }}}
+    {{{ makeSetValue(makeGlobalUse('__tzname'), Runtime.QUANTUM_SIZE, 'summerNamePtr', 'i32') }}}
   },
 
   stime__deps: ['$ERRNO_CODES', '__setErrNo'],
@@ -5848,11 +6010,25 @@ LibraryManager.library = {
     return 0;
   },
 
+  setitimer: function() { throw 'setitimer not implemented yet' },
+  getitimer: function() { throw 'getitimer not implemented yet' },
+
   // ==========================================================================
   // sys/time.h
   // ==========================================================================
 
-  __timespec_struct_layout: Runtime.generateStructInfo(['tv_sec', 'tv_nsec'], '%struct.timespec'),
+  __timespec_struct_layout: Runtime.generateStructInfo([
+    ['i32', 'tv_sec'],
+    ['i32', 'tv_nsec']]),
+  nanosleep__deps: ['usleep', '__timespec_struct_layout'],
+  nanosleep: function(rqtp, rmtp) {
+    // int nanosleep(const struct timespec  *rqtp, struct timespec *rmtp);
+    var seconds = {{{ makeGetValue('rqtp', '___timespec_struct_layout.tv_sec', 'i32') }}};
+    var nanoseconds = {{{ makeGetValue('rqtp', '___timespec_struct_layout.tv_nsec', 'i32') }}};
+    {{{ makeSetValue('rmtp', '___timespec_struct_layout.tv_sec', '0', 'i32') }}}
+    {{{ makeSetValue('rmtp', '___timespec_struct_layout.tv_nsec', '0', 'i32') }}}
+    return _usleep((seconds * 1e6) + (nanoseconds / 1000));
+  },
   // TODO: Implement these for real.
   clock_gettime__deps: ['__timespec_struct_layout'],
   clock_gettime: function(clk_id, tp) {
@@ -5874,14 +6050,33 @@ LibraryManager.library = {
     return 0;
   },
 
-  // TODO: Implement remaining functions.
   // http://pubs.opengroup.org/onlinepubs/000095399/basedefs/sys/time.h.html
   gettimeofday: function(ptr) {
     // %struct.timeval = type { i32, i32 }
-    var indexes = Runtime.calculateStructAlignment({ fields: ['i32', 'i32'] });
+    {{{ (LibraryManager.structs.gettimeofday = Runtime.calculateStructAlignment({ fields: ['i32', 'i32'] }), null) }}}
     var now = Date.now();
-    {{{ makeSetValue('ptr', 'indexes[0]', 'Math.floor(now/1000)', 'i32') }}} // seconds
-    {{{ makeSetValue('ptr', 'indexes[1]', 'Math.floor((now-1000*Math.floor(now/1000))*1000)', 'i32') }}} // microseconds
+    {{{ makeSetValue('ptr', LibraryManager.structs.gettimeofday[0], 'Math.floor(now/1000)', 'i32') }}}; // seconds
+    {{{ makeSetValue('ptr', LibraryManager.structs.gettimeofday[1], 'Math.floor((now-1000*Math.floor(now/1000))*1000)', 'i32') }}}; // microseconds
+    return 0;
+  },
+
+  // ==========================================================================
+  // sys/timeb.h
+  // ==========================================================================
+
+  __timeb_struct_layout: Runtime.generateStructInfo([
+    ['i32', 'time'],
+    ['i16', 'millitm'],
+    ['i16', 'timezone'],
+    ['i16', 'dstflag']
+  ]),
+  ftime__deps: ['__timeb_struct_layout'],
+  ftime: function(p) {
+    var millis = Date.now();
+    {{{ makeSetValue('p', '___timeb_struct_layout.time', 'Math.floor(millis/1000)', 'i32') }}};
+    {{{ makeSetValue('p', '___timeb_struct_layout.millitm', 'millis % 1000', 'i16') }}};
+    {{{ makeSetValue('p', '___timeb_struct_layout.timezone', '0', 'i16') }}}; // TODO
+    {{{ makeSetValue('p', '___timeb_struct_layout.dstflag', '0', 'i16') }}}; // TODO
     return 0;
   },
 
@@ -5890,10 +6085,10 @@ LibraryManager.library = {
   // ==========================================================================
 
   __tms_struct_layout: Runtime.generateStructInfo([
-    'tms_utime',
-    'tms_stime',
-    'tms_cutime',
-    'tms_cstime'], '%struct.tms'),
+    ['i32', 'tms_utime'],
+    ['i32', 'tms_stime'],
+    ['i32', 'tms_cutime'],
+    ['i32', 'tms_cstime']]),
   times__deps: ['__tms_struct_layout', 'memset'],
   times: function(buffer) {
     // clock_t times(struct tms *buffer);
@@ -5940,11 +6135,11 @@ LibraryManager.library = {
 
   setjmp__inline: function(env) {
     // Save the label
-    return '(setjmped = true, ' + makeSetValue(env, '0', 'label', 'i32') + ', 0)';
+    return '(tempInt = setjmpId++, mySetjmpIds[tempInt] = 1, setjmpLabels[tempInt] = label,' + makeSetValue(env, '0', 'tempInt', 'i32', undefined, undefined, undefined, undefined,  ',') + ', 0)';
   },
 
   longjmp: function(env, value) {
-    throw { longjmp: true, label: {{{ makeGetValue('env', '0', 'i32') }}}, value: value || 1 };
+    throw { longjmp: true, id: {{{ makeGetValue('env', '0', 'i32') }}}, value: value || 1 };
   },
 
   // ==========================================================================
@@ -5957,18 +6152,26 @@ LibraryManager.library = {
   },
   sigemptyset: function(set) {
     // int sigemptyset(sigset_t *set);
-    // TODO: Implement for real; don't hardcode offsets.
-    {{{ makeSetValue('set', '0', '0', 'i32') }}}
-    {{{ makeSetValue('set', '4', '0', 'i32') }}}
-    {{{ makeSetValue('set', '8', '0', 'i32') }}}
-    {{{ makeSetValue('set', '12', '0', 'i32') }}}
+    {{{ makeSetValue('set', '0', '0', 'i32') }}};
     return 0;
   },
-  sigfillset: 'sigemptyset',
-  sigdelset: 'sigemptyset',
+  sigfillset: function(set) {
+    {{{ makeSetValue('set', '0', '-1>>>0', 'i32') }}};
+    return 0;
+  },
+  sigaddset: function(set, signum) {
+    {{{ makeSetValue('set', '0', makeGetValue('set', '0', 'i32') + '| (1 << (signum-1))', 'i32') }}};
+    return 0;
+  },
+  sigdelset: function(set, signum) {
+    {{{ makeSetValue('set', '0', makeGetValue('set', '0', 'i32') + '& (~(1 << (signum-1)))', 'i32') }}};
+    return 0;
+  },
+  sigismember: function(set, signum) {
+    return {{{ makeGetValue('set', '0', 'i32') }}} & (1 << (signum-1));
+  },
   sigaction: function(set) {
-    // int sigemptyset(sigset_t *set);
-    // TODO: Implement for real.
+    // TODO:
     return 0;
   },
   sigprocmask: 'sigaction',
@@ -5987,6 +6190,8 @@ LibraryManager.library = {
     return -1;
   },
   killpg: 'kill',
+
+  siginterrupt: function() { throw 'siginterrupt not implemented' },
 
   // ==========================================================================
   // sys/wait.h
@@ -6014,6 +6219,8 @@ LibraryManager.library = {
     return 0;
   },
 
+  freelocale: function(locale) {},
+
   uselocale: function(locale) {
     return 0;
   },
@@ -6032,6 +6239,8 @@ LibraryManager.library = {
     }
     return me.ret;
   },
+
+  __locale_mb_cur_max: function() { throw '__locale_mb_cur_max not implemented' },
 
   // ==========================================================================
   // langinfo.h
@@ -6212,6 +6421,10 @@ LibraryManager.library = {
     {{{ makeSetValue('me.ret', 'i', '0', 'i8') }}}
     return me.ret;
   },
+
+  _Z7catopenPKci: function() { throw 'catopen not implemented' },
+  _Z7catgetsP8_nl_catdiiPKc: function() { throw 'catgets not implemented' },
+  _Z8catcloseP8_nl_catd: function() { throw 'catclose not implemented' },
 
   // ==========================================================================
   // errno.h
@@ -6397,7 +6610,9 @@ LibraryManager.library = {
   // ==========================================================================
 
   // TODO: Implement for real.
-  __rlimit_struct_layout: Runtime.generateStructInfo(['rlim_cur', 'rlim_max'], '%struct.rlimit'),
+  __rlimit_struct_layout: Runtime.generateStructInfo([
+    ['i32', 'rlim_cur'],
+    ['i32', 'rlim_max']]),
   getrlimit__deps: ['__rlimit_struct_layout'],
   getrlimit: function(resource, rlp) {
     // int getrlimit(int resource, struct rlimit *rlp);
@@ -6413,22 +6628,22 @@ LibraryManager.library = {
 
   // TODO: Implement for real. We just do time used, and no useful data
   __rusage_struct_layout: Runtime.generateStructInfo([
-    'ru_utime',
-    'ru_stime',
-    'ru_maxrss',
-    'ru_ixrss',
-    'ru_idrss',
-    'ru_isrss',
-    'ru_minflt',
-    'ru_majflt',
-    'ru_nswap',
-    'ru_inblock',
-    'ru_oublock',
-    'ru_msgsnd',
-    'ru_msgrcv',
-    'ru_nsignals',
-    'ru_nvcsw',
-    'ru_nivcsw'], '%struct.rusage'),
+    ['i64', 'ru_utime'],
+    ['i64', 'ru_stime'],
+    ['i32', 'ru_maxrss'],
+    ['i32', 'ru_ixrss'],
+    ['i32', 'ru_idrss'],
+    ['i32', 'ru_isrss'],
+    ['i32', 'ru_minflt'],
+    ['i32', 'ru_majflt'],
+    ['i32', 'ru_nswap'],
+    ['i32', 'ru_inblock'],
+    ['i32', 'ru_oublock'],
+    ['i32', 'ru_msgsnd'],
+    ['i32', 'ru_msgrcv'],
+    ['i32', 'ru_nsignals'],
+    ['i32', 'ru_nvcsw'],
+    ['i32', 'ru_nivcsw']]),
   getrusage__deps: ['__rusage_struct_layout'],
   getrusage: function(resource, rlp) {
     // %struct.timeval = type { i32, i32 }
@@ -6443,6 +6658,13 @@ LibraryManager.library = {
   },
 
   // ==========================================================================
+  // sched.h (stubs only - no thread support yet!)
+  // ==========================================================================
+  sched_yield: function() {
+    return 0;
+  },
+
+  // ==========================================================================
   // pthread.h (stubs for mutexes only - no thread support yet!)
   // ==========================================================================
 
@@ -6453,7 +6675,20 @@ LibraryManager.library = {
   pthread_mutexattr_destroy: function() {},
   pthread_mutex_lock: function() {},
   pthread_mutex_unlock: function() {},
-  pthread_cond_broadcast: function() {},
+  pthread_mutex_trylock: function() {
+    return 0;
+  },
+  pthread_cond_init: function() {},
+  pthread_cond_destroy: function() {},
+  pthread_cond_broadcast: function() {
+    return 0;
+  },
+  pthread_cond_wait: function() {
+    return 0;
+  },
+  pthread_cond_timedwait: function() {
+    return 0;
+  },
   pthread_self: function() {
     //FIXME: assumes only a single thread
     return 0;
@@ -6486,25 +6721,35 @@ LibraryManager.library = {
   pthread_once: function(ptr, func) {
     if (!_pthread_once.seen) _pthread_once.seen = {};
     if (ptr in _pthread_once.seen) return;
-    FUNCTION_TABLE[func]();
+    Runtime.dynCall('v', func);
     _pthread_once.seen[ptr] = 1;
   },
 
   pthread_key_create: function(key, destructor) {
     if (!_pthread_key_create.keys) _pthread_key_create.keys = {};
-    _pthread_key_create.keys[key] = null;
+    // values start at 0
+    _pthread_key_create.keys[key] = 0;
   },
 
   pthread_getspecific: function(key) {
-    return _pthread_key_create.keys[key];
+    return _pthread_key_create.keys[key] || 0;
   },
 
   pthread_setspecific: function(key, value) {
     _pthread_key_create.keys[key] = value;
   },
 
+  pthread_key_delete: ['$ERRNO_CODES'],
+  pthread_key_delete: function(key) {
+    if (_pthread_key_create.keys[key]) {
+      delete _pthread_key_create.keys[key];
+      return 0;
+    }
+    return ERRNO_CODES.EINVAL;
+  },
+
   pthread_cleanup_push: function(routine, arg) {
-    __ATEXIT__.push({ func: function() { FUNCTION_TABLE[routine](arg) } })
+    __ATEXIT__.push({ func: function() { Runtime.dynCall('vi', routine, [arg]) } })
     _pthread_cleanup_push.level = __ATEXIT__.length;
   },
 
@@ -6650,15 +6895,20 @@ LibraryManager.library = {
 
   $Sockets__deps: ['__setErrNo', '$ERRNO_CODES'],
   $Sockets: {
+    BACKEND_WEBSOCKETS: 0,
+    BACKEND_WEBRTC: 1,
     BUFFER_SIZE: 10*1024, // initial size
     MAX_BUFFER_SIZE: 10*1024*1024, // maximum size we will grow the buffer
+
+    backend: 0, // default to websockets
     nextFd: 1,
     fds: {},
     sockaddr_in_layout: Runtime.generateStructInfo([
-      ['i16', 'sin_family'],
+      ['i32', 'sin_family'],
       ['i16', 'sin_port'],
       ['i32', 'sin_addr'],
-      ['i64', 'sin_zero'],
+      ['i32', 'sin_zero'],
+      ['i16', 'sin_zero_b'],
     ]),
     msghdr_layout: Runtime.generateStructInfo([
       ['*', 'msg_name'],
@@ -6669,24 +6919,139 @@ LibraryManager.library = {
       ['i32', 'msg_controllen'],
       ['i32', 'msg_flags'],
     ]),
+
+    backends: {
+      0: { // websockets
+        connect: function(info) {
+          console.log('opening ws://' + info.host + ':' + info.port);
+          info.socket = new WebSocket('ws://' + info.host + ':' + info.port, ['binary']);
+          info.socket.binaryType = 'arraybuffer';
+
+          var i32Temp = new Uint32Array(1);
+          var i8Temp = new Uint8Array(i32Temp.buffer);
+
+          info.inQueue = [];
+          info.hasData = function() { return info.inQueue.length > 0 }
+          if (!info.stream) {
+            var partialBuffer = null; // in datagram mode, inQueue contains full dgram messages; this buffers incomplete data. Must begin with the beginning of a message
+          }
+
+          info.socket.onmessage = function(event) {
+            assert(typeof event.data !== 'string' && event.data.byteLength); // must get binary data!
+            var data = new Uint8Array(event.data); // make a typed array view on the array buffer
+#if SOCKET_DEBUG
+            Module.print(['onmessage', data.length, '|', Array.prototype.slice.call(data)]);
+#endif
+            if (info.stream) {
+              info.inQueue.push(data);
+            } else {
+              // we added headers with message sizes, read those to find discrete messages
+              if (partialBuffer) {
+                // append to the partial buffer
+                var newBuffer = new Uint8Array(partialBuffer.length + data.length);
+                newBuffer.set(partialBuffer);
+                newBuffer.set(data, partialBuffer.length);
+                // forget the partial buffer and work on data
+                data = newBuffer;
+                partialBuffer = null;
+              }
+              var currPos = 0;
+              while (currPos+4 < data.length) {
+                i8Temp.set(data.subarray(currPos, currPos+4));
+                var currLen = i32Temp[0];
+                assert(currLen > 0);
+                if (currPos + 4 + currLen > data.length) {
+                  break; // not enough data has arrived
+                }
+                currPos += 4;
+#if SOCKET_DEBUG
+                Module.print(['onmessage message', currLen, '|', Array.prototype.slice.call(data.subarray(currPos, currPos+currLen))]);
+#endif
+                info.inQueue.push(data.subarray(currPos, currPos+currLen));
+                currPos += currLen;
+              }
+              // If data remains, buffer it
+              if (currPos < data.length) {
+                partialBuffer = data.subarray(currPos);
+              }
+            }
+          }
+          function send(data) {
+            // TODO: if browser accepts views, can optimize this
+#if SOCKET_DEBUG
+            Module.print('sender actually sending ' + Array.prototype.slice.call(data));
+#endif
+            // ok to use the underlying buffer, we created data and know that the buffer starts at the beginning
+            info.socket.send(data.buffer);
+          }
+          var outQueue = [];
+          var intervalling = false, interval;
+          function trySend() {
+            if (info.socket.readyState != info.socket.OPEN) {
+              if (!intervalling) {
+                intervalling = true;
+                console.log('waiting for socket in order to send');
+                interval = setInterval(trySend, 100);
+              }
+              return;
+            }
+            for (var i = 0; i < outQueue.length; i++) {
+              send(outQueue[i]);
+            }
+            outQueue.length = 0;
+            if (intervalling) {
+              intervalling = false;
+              clearInterval(interval);
+            }
+          }
+          info.sender = function(data) {
+            if (!info.stream) {
+              // add a header with the message size
+              var header = new Uint8Array(4);
+              i32Temp[0] = data.length;
+              header.set(i8Temp);
+              outQueue.push(header);
+            }
+            outQueue.push(new Uint8Array(data));
+            trySend();
+          };
+        }
+      },
+      1: { // webrtc
+      }
+    }
+  },
+
+  emscripten_set_network_backend__deps: ['$Sockets'],
+  emscripten_set_network_backend: function(backend) {
+    Sockets.backend = backend;
   },
 
   socket__deps: ['$Sockets'],
   socket: function(family, type, protocol) {
     var fd = Sockets.nextFd++;
+    assert(fd < 64); // select() assumes socket fd values are in 0..63
+    var stream = type == {{{ cDefine('SOCK_STREAM') }}};
+    if (protocol) {
+      assert(stream == (protocol == {{{ cDefine('IPPROTO_TCP') }}})); // if stream, must be tcp
+    }
+    if (Sockets.backend == Sockets.BACKEND_WEBRTC) {
+      assert(!stream); // If WebRTC, we can only support datagram, not stream
+    }
     Sockets.fds[fd] = {
-      connected: false
+      connected: false,
+      stream: stream
     };
     return fd;
   },
 
-  connect__deps: ['$Sockets', '_inet_ntop_raw', 'ntohs', 'gethostbyname'],
+  connect__deps: ['$Sockets', '_inet_ntop_raw', 'htons', 'gethostbyname'],
   connect: function(fd, addr, addrlen) {
     var info = Sockets.fds[fd];
     if (!info) return -1;
     info.connected = true;
     info.addr = getValue(addr + Sockets.sockaddr_in_layout.sin_addr, 'i32');
-    info.port = _ntohs(getValue(addr + Sockets.sockaddr_in_layout.sin_port, 'i16'));
+    info.port = _htons(getValue(addr + Sockets.sockaddr_in_layout.sin_port, 'i16'));
     info.host = __inet_ntop_raw(info.addr);
     // Support 'fake' ips from gethostbyname
     var parts = info.host.split('.');
@@ -6696,69 +7061,7 @@ LibraryManager.library = {
       info.host = _gethostbyname.table[low + 0xff*high];
       assert(info.host, 'problem translating fake ip ' + parts);
     }
-    console.log('opening ws://' + info.host + ':' + info.port);
-    info.socket = new WebSocket('ws://' + info.host + ':' + info.port, ['binary']);
-    info.socket.binaryType = 'arraybuffer';
-    info.buffer = new Uint8Array(Sockets.BUFFER_SIZE);
-    info.bufferWrite = info.bufferRead = 0;
-    info.socket.onmessage = function (event) {
-      assert(typeof event.data !== 'string' && event.data.byteLength); // must get binary data!
-      var data = new Uint8Array(event.data); // make a typed array view on the array buffer
-      var len = data.length;
-#if SOCKET_DEBUG
-      Module.print(['onmessage', window.location, data, len, '|', Array.prototype.slice.call(data)]);
-#endif
-      for (var i = 0; i < len; i++) { // TODO: typed array set, carefully with ranges, or other trick
-        info.buffer[info.bufferWrite++] = data[i];
-        if (info.bufferWrite == info.buffer.length) info.bufferWrite = 0;
-        if (info.bufferWrite == info.bufferRead) {
-          // grow the buffer
-          var currLen = info.buffer.length;
-          if (currLen > Sockets.MAX_BUFFER_SIZE) throw 'socket buffer overflow';
-          var newBuffer = new Uint8Array(currLen*2);
-          for (var j = 0; j < currLen; j++) {
-            newBuffer[j] = info.buffer[(info.bufferRead + j)%currLen];
-          }
-          info.bufferRead = 0;
-          info.bufferWrite = currLen;
-          info.buffer = newBuffer;
-        }
-      }
-    }
-    info.sendQueue = new Uint8Array(1024);
-    info.sendQueueUsed = 0;
-    info.senderWaiting = false;
-    info.sender = function(data, justQueue) {
-      if (data) {
-#if SOCKET_DEBUG
-        Module.print(['sender', data, data.length, '|', Array.prototype.slice.call(data)]);
-#endif
-        if (info.sendQueueUsed + data.length >= info.sendQueue.length) {
-          var newQueue = new Uint8Array(2*Math.max(info.sendQueue.length, data.length));
-          newQueue.set(info.sendQueue);
-          info.sendQueue = newQueue;
-        }
-        info.sendQueue.set(data, info.sendQueueUsed); // must copy, because while this waits memory can change!
-        info.sendQueueUsed += data.length;
-      } else {
-        info.senderWaiting = false; // we are a setTimeout callback
-        if (info.sendQueueUsed == 0) return;
-      }
-      if (info.socket.readyState != info.socket.OPEN) {
-        if (!info.senderWaiting) {
-          console.log('waiting for socket in order to send');
-          setTimeout(info.sender, 100);
-          info.senderWaiting = true;
-        }
-        return;
-      }
-      if (justQueue) return;
-#if SOCKET_DEBUG
-      Module.print('sender actually sending ' + info.sendQueueUsed);
-#endif
-      info.socket.send(new Uint8Array(info.sendQueue.subarray(0, info.sendQueueUsed)).buffer); // TODO: if browser accepts views, can optimize this
-      info.sendQueueUsed = 0;
-    };
+    Sockets.backends[Sockets.backend].connect(info);
     return 0;
   },
 
@@ -6766,25 +7069,26 @@ LibraryManager.library = {
   recv: function(fd, buf, len, flags) {
     var info = Sockets.fds[fd];
     if (!info) return -1;
-    if (info.bufferWrite == info.bufferRead) {
+    if (!info.hasData()) {
       ___setErrNo(ERRNO_CODES.EAGAIN); // no data, and all sockets are nonblocking, so this is the right behavior
-      return 0; // should this be -1 like the spec says?
+      return -1;
     }
-    var ret = 0;
+    var buffer = info.inQueue.shift();
 #if SOCKET_DEBUG
-    Module.print('pre-recv: ' + [len, info.bufferWrite, info.bufferRead]);
+    Module.print('recv: ' + [Array.prototype.slice.call(buffer)]);
 #endif
-    while (info.bufferWrite != info.bufferRead && len > 0) {
-      // write out a byte
-      {{{ makeSetValue('buf++', '0', 'info.buffer[info.bufferRead++]', 'i8') }}};
-      if (info.bufferRead == info.buffer.length) info.bufferRead = 0;
-      len--;
-      ret++;
+    if (len < buffer.length) {
+      if (info.stream) {
+        // This is tcp (reliable), so if not all was read, keep it
+        info.inQueue.unshift(buffer.subarray(len));
+#if SOCKET_DEBUG
+        Module.print('recv: put back: ' + (len - buffer.length));
+#endif
+      }
+      buffer = buffer.subarray(0, len);
     }
-#if SOCKET_DEBUG
-    Module.print('recv: ' + [ret, len, buf] + ' : ' + Array.prototype.slice.call(HEAPU8.subarray(buf-ret, buf)));
-#endif
-    return ret;
+    HEAPU8.set(buffer, buf);
+    return buffer.length;
   },
 
   send__deps: ['$Sockets'],
@@ -6807,10 +7111,15 @@ LibraryManager.library = {
     }
     var iov = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iov', 'i8*') }}};
     var num = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iovlen', 'i32') }}};
-    var ret = 0;
 #if SOCKET_DEBUG
       Module.print('sendmsg vecs: ' + num);
 #endif
+    var totalSize = 0;
+    for (var i = 0; i < num; i++) {
+      totalSize += {{{ makeGetValue('iov', '8*i + 4', 'i32') }}};
+    }
+    var buffer = new Uint8Array(totalSize);
+    var ret = 0;
     for (var i = 0; i < num; i++) {
       var currNum = {{{ makeGetValue('iov', '8*i + 4', 'i32') }}};
 #if SOCKET_DEBUG
@@ -6818,10 +7127,10 @@ LibraryManager.library = {
 #endif
       if (!currNum) continue;
       var currBuf = {{{ makeGetValue('iov', '8*i', 'i8*') }}};
-      info.sender(HEAPU8.subarray(currBuf, currBuf+currNum), true);
+      buffer.set(HEAPU8.subarray(currBuf, currBuf+currNum), ret);
       ret += currNum;
     }
-    info.sender(null); // flush all of these together. Important they get sent as a single socket message
+    info.sender(buffer); // send all the iovs as a single message
     return ret;
   },
 
@@ -6838,12 +7147,12 @@ LibraryManager.library = {
       assert(name, 'sendmsg on non-connected socket, and no name/address in the message');
       _connect(fd, name, {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_namelen', 'i32') }}});
     }
-    var bytes = info.bufferWrite - info.bufferRead;
-    if (bytes < 0) bytes += info.buffer.length;
-    if (bytes == 0) {
+    if (!info.hasData()) {
       ___setErrNo(ERRNO_CODES.EWOULDBLOCK);
       return -1;
     }
+    var buffer = info.inQueue.shift();
+    var bytes = buffer.length;
 #if SOCKET_DEBUG
     Module.print('recvmsg bytes: ' + bytes);
 #endif
@@ -6855,7 +7164,7 @@ LibraryManager.library = {
     var ret = bytes;
     var iov = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iov', 'i8*') }}};
     var num = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iovlen', 'i32') }}};
-    var data = '';
+    var bufferPos = 0;
     for (var i = 0; i < num && bytes > 0; i++) {
       var currNum = {{{ makeGetValue('iov', '8*i + 4', 'i32') }}};
 #if SOCKET_DEBUG
@@ -6868,7 +7177,17 @@ LibraryManager.library = {
 #if SOCKET_DEBUG
       Module.print('recvmsg call recv ' + currNum);
 #endif
-      assert(_recv(fd, currBuf, currNum, 0) == currNum);
+      HEAPU8.set(buffer.subarray(bufferPos, bufferPos + currNum), currBuf);
+      bufferPos += currNum;
+    }
+    if (info.stream) {
+      // This is tcp (reliable), so if not all was read, keep it
+      if (bufferPos < bytes) {
+        info.inQueue.unshift(buffer.subarray(bufferPos));
+#if SOCKET_DEBUG
+        Module.print('recvmsg: put back: ' + (bytes - bufferPos));
+#endif
+      }
     }
     return ret;
   },
@@ -6895,11 +7214,12 @@ LibraryManager.library = {
   ioctl: function(fd, request, varargs) {
     var info = Sockets.fds[fd];
     if (!info) return -1;
-    var start = info.bufferRead;
-    var end = info.bufferWrite;
-    if (end < start) end += info.buffer.length;
+    var bytes = 0;
+    if (info.hasData()) {
+      bytes = info.inQueue[0].length;
+    }
     var dest = {{{ makeGetValue('varargs', '0', 'i32') }}};
-    {{{ makeSetValue('dest', '0', 'end - start', 'i32') }}};
+    {{{ makeSetValue('dest', '0', 'bytes', 'i32') }}};
     return 0;
   },
 
@@ -6931,6 +7251,75 @@ LibraryManager.library = {
     return fd;
   },
 
+  select: function(nfds, readfds, writefds, exceptfds, timeout) {
+    // readfds are supported,
+    // writefds checks socket open status
+    // exceptfds not supported
+    // timeout is always 0 - fully async
+    assert(!exceptfds);
+
+    function canRead(info) {
+      // make sure hasData exists. 
+      // we do create it when the socket is connected, 
+      // but other implementations may create it lazily
+      return info.hasData && info.hasData();
+    }
+
+    function canWrite(info) {
+      // make sure socket exists. 
+      // we do create it when the socket is connected, 
+      // but other implementations may create it lazily
+      return info.socket && (info.socket.readyState == info.socket.OPEN);
+    }
+
+    function checkfds(nfds, fds, can) {
+      if (!fds) return 0;
+
+      var bitsSet = 0;
+      var dstLow  = 0;
+      var dstHigh = 0;
+      var srcLow  = {{{ makeGetValue('fds', 0, 'i32') }}};
+      var srcHigh = {{{ makeGetValue('fds', 4, 'i32') }}};
+      nfds = Math.min(64, nfds); // fd sets have 64 bits
+
+      for (var fd = 0; fd < nfds; fd++) {
+        var mask = 1 << (fd % 32), int = fd < 32 ? srcLow : srcHigh;
+        if (int & mask) {
+          // index is in the set, check if it is ready for read
+          var info = Sockets.fds[fd];
+          if (info && can(info)) {
+            // set bit
+            fd < 32 ? (dstLow = dstLow | mask) : (dstHigh = dstHigh | mask);
+            bitsSet++;
+          }
+        }
+      }
+
+      {{{ makeSetValue('fds', 0, 'dstLow', 'i32') }}};
+      {{{ makeSetValue('fds', 4, 'dstHigh', 'i32') }}};
+      return bitsSet;
+    }
+
+    return checkfds(nfds, readfds, canRead)
+         + checkfds(nfds, writefds, canWrite);
+  },
+
+  // pty.h
+
+  openpty: function() { throw 'openpty: TODO' },
+  forkpty: function() { throw 'forkpty: TODO' },
+
+  // grp.h
+
+  initgroups: function() { throw 'initgroups: TODO' },
+
+  // pwd.h
+
+  getpwnam: function() { throw 'getpwnam: TODO' },
+  setpwent: function() { throw 'setpwent: TODO' },
+  getpwent: function() { throw 'getpwent: TODO' },
+  endpwent: function() { throw 'endpwent: TODO' },
+
   // ==========================================================================
   // emscripten.h
   // ==========================================================================
@@ -6959,35 +7348,97 @@ LibraryManager.library = {
     return Math.random();
   },
 
-  $Profiling: {
-    max_: 0,
-    times: null,
-    invalid: 0,
-    dump: function() {
-      if (Profiling.invalid) {
-        Module.printErr('Invalid # of calls to Profiling begin and end!');
-        return;
-      }
-      Module.printErr('Profiling data:')
-      for (var i = 0; i < Profiling.max_; i++) {
-        Module.printErr('Block ' + i + ': ' + Profiling.times[i]);
-      }
+  emscripten_jcache_printf___deps: ['_formatString'],
+  emscripten_jcache_printf_: function(varargs) {
+    var MAX = 10240;
+    if (!_emscripten_jcache_printf_.buffer) {
+      _emscripten_jcache_printf_.buffer = _malloc(MAX);
     }
+    var i = 0;
+    do {
+      var curr = {{{ makeGetValue('varargs', 'i*4', 'i8') }}};
+      {{{ makeSetValue('_emscripten_jcache_printf_.buffer', 'i', 'curr', 'i8') }}};
+      i++;
+      assert(i*4 < MAX);
+    } while (curr != 0);
+    Module.print(intArrayToString(__formatString(_emscripten_jcache_printf_.buffer, varargs + i*4)).replace('\\n', ''));
+    Runtime.stackAlloc(-4*i); // free up the stack space we know is ok to free
   },
-  EMSCRIPTEN_PROFILE_INIT__deps: ['$Profiling'],
-  EMSCRIPTEN_PROFILE_INIT: function(max_) {
-    Profiling.max_ = max_;
-    Profiling.times = new Array(max_);
-    for (var i = 0; i < max_; i++) Profiling.times[i] = 0;
+
+  //============================
+  // i64 math
+  //============================
+
+  i64Add__asm: true,
+  i64Add__sig: 'iiiii',
+  i64Add: function(a, b, c, d) {
+    /*
+      x = a + b*2^32
+      y = c + d*2^32
+      result = l + h*2^32
+    */
+    a = a|0; b = b|0; c = c|0; d = d|0;
+    var l = 0, h = 0;
+    l = (a + c)>>>0;
+    h = (b + d)>>>0;
+    if ((l>>>0) < (a>>>0)) { // iff we overflowed
+      h = (h+1)>>>0;
+    }
+    {{{ makeStructuralReturn(['l|0', 'h'], true) }}};
   },
-  EMSCRIPTEN_PROFILE_BEGIN__inline: function(id) {
-    return 'Profiling.times[' + id + '] -= Date.now();'
-         + 'Profiling.invalid++;'
+  llvm_uadd_with_overflow_i64__asm: true,
+  llvm_uadd_with_overflow_i64__sig: 'iiiii',
+  llvm_uadd_with_overflow_i64: function(a, b, c, d) {
+    a = a|0; b = b|0; c = c|0; d = d|0;
+    var l = 0, h = 0, overflow = 0;
+    l = (a + c)>>>0;
+    h = (b + d)>>>0;
+    if ((l>>>0) < (a>>>0)) { // iff we overflowed
+      h = (h+1)>>>0;
+      overflow = 1;
+    }
+    {{{ makeStructuralReturn(['l|0', 'h', 'overflow'], true) }}};
   },
-  EMSCRIPTEN_PROFILE_END__inline: function(id) {
-    return 'Profiling.times[' + id + '] += Date.now();'
-         + 'Profiling.invalid--;'
-  }
+
+  bitshift64Shl__asm: true,
+  bitshift64Shl__sig: 'iiii',
+  bitshift64Shl: function(low, high, bits) {
+    low = low|0; high = high|0; bits = bits|0;
+    var ander = 0;
+    if ((bits|0) < 32) {
+      ander = ((1 << bits) - 1)|0;
+      tempRet0 = (high << bits) | ((low&(ander << (32 - bits))) >>> (32 - bits));
+      return low << bits;
+    }
+    tempRet0 = low << (bits - 32);
+    return 0;
+  },
+  bitshift64Ashr__asm: true,
+  bitshift64Ashr__sig: 'iiii',
+  bitshift64Ashr: function(low, high, bits) {
+    low = low|0; high = high|0; bits = bits|0;
+    var ander = 0;
+    if ((bits|0) < 32) {
+      ander = ((1 << bits) - 1)|0;
+      tempRet0 = high >> bits;
+      return (low >>> bits) | ((high&ander) << (32 - bits));
+    }
+    tempRet0 = (high|0) < 0 ? -1 : 0;
+    return (high >> (bits - 32))|0;
+  },
+  bitshift64Lshr__asm: true,
+  bitshift64Lshr__sig: 'iiii',
+  bitshift64Lshr: function(low, high, bits) {
+    low = low|0; high = high|0; bits = bits|0;
+    var ander = 0;
+    if ((bits|0) < 32) {
+      ander = ((1 << bits) - 1)|0;
+      tempRet0 = high >>> bits;
+      return (low >>> bits) | ((high&ander) << (32 - bits));
+    }
+    tempRet0 = 0;
+    return (high >>> (bits - 32))|0;
+  },
 };
 
 function autoAddDeps(object, name) {

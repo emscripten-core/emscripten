@@ -10,6 +10,10 @@ function safeQuote(x) {
 
 function dump(item) {
   try {
+    if (typeof item == 'object' && item !== null && item.funcData) {
+      var funcData = item.funcData;
+      item.funcData = null;
+    }
     return '// ' + JSON.stringify(item, null, '  ').replace(/\n/g, '\n// ');
   } catch(e) {
     var ret = [];
@@ -22,6 +26,8 @@ function dump(item) {
       }
     }
     return ret.join(',\n');
+  } finally {
+    if (funcData) item.funcData = funcData;
   }
 }
 
@@ -261,6 +267,15 @@ function set() {
 }
 var unset = keys;
 
+function numberedSet() {
+  var args = typeof arguments[0] === 'object' ? arguments[0] : arguments;
+  var ret = {};
+  for (var i = 0; i < args.length; i++) {
+    ret[args[i]] = i;
+  }
+  return ret;
+}
+
 function setSub(x, y) {
   var ret = set(keys(x));
   for (yy in y) {
@@ -278,6 +293,14 @@ function setIntersect(x, y) {
     if (xx in y) {
       ret[xx] = true;
     }
+  }
+  return ret;
+}
+
+function invertArray(x) {
+  var ret = {};
+  for (var i = 0; i < x.length; i++) {
+    ret[x[i]] = i;
   }
   return ret;
 }
@@ -311,6 +334,12 @@ function log2(x) {
 
 function isPowerOfTwo(x) {
   return x > 0 && ((x & (x-1)) == 0);
+}
+
+function ceilPowerOfTwo(x) {
+  var ret = 1;
+  while (ret < x) ret <<= 1;
+  return ret;
 }
 
 function Benchmarker() {

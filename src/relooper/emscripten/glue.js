@@ -49,6 +49,9 @@
   RelooperGlue['setDebug'] = function(debug) {
     _rl_set_debugging(+!!debug);
   };
+  RelooperGlue['setAsmJSMode'] = function(on) {
+    _rl_set_asm_js_mode(on);
+  };
 
   Module['Relooper'] = RelooperGlue;
 

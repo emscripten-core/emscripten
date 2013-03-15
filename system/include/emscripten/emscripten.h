@@ -20,10 +20,11 @@ extern "C" {
  * closure may still eliminate it at the JS level, for which you
  * should use EXPORTED_FUNCTIONS (see settings.js).
  *
- * Example usage:
- *   void EMSCRIPTEN_KEEPALIVE my_function() { .. }
+ * **DEPRECATED**: Use EXPORTED_FUNCTIONS instead, which will work
+ *                 with closure, asm.js, etc. For example
+ *                   -s EXPORTED_FUNCTIONS=["_main", "myfunc"]
  */
-#define EMSCRIPTEN_KEEPALIVE __attribute__((used))
+/* #define EMSCRIPTEN_KEEPALIVE __attribute__((used)) */
 
 /*
  * Interface to the underlying JS engine. This function will
@@ -59,7 +60,7 @@ extern void emscripten_async_run_script(const char *script, int millis);
  *    that execution continues normally. Note that in both cases
  *    we do not run global destructors, atexit, etc., since we
  *    know the main loop will still be running, but if we do
- *    not simulate an infinite loop then the stack will be unwinded.
+ *    not simulate an infinite loop then the stack will be unwound.
  *    That means that if simulate_infinite_loop is false, and
  *    you created an object on the stack, it will be cleaned up
  *    before the main loop will be called the first time.
@@ -187,6 +188,47 @@ float emscripten_random();
 void emscripten_async_wget(const char* url, const char* file, void (*onload)(const char*), void (*onerror)(const char*));
 
 /*
+ * Data version of emscripten_async_wget. Instead of writing
+ * to a file, it writes to a buffer directly in memory.
+ * This avoids the overhead of using the emulated
+ * filesystem, note however that since files are not used,
+ * It cannot do the 'prepare' stage to set things up for
+ * IMG_Load and so forth (IMG_Load etc. work on files).
+ *
+ * @param arg User-defined data that is passed to the callbacks,
+ *
+ * @param onload Callback on success, with the @arg that
+ *               was provided to this function, a pointer
+ *               to a buffer with the data, and the size
+ *               of the buffer. As in the worker API, the
+ *               data buffer only lives during the
+ *               callback, so you should use it or copy
+ *               it during that time and not later.
+ *
+ * @param onerror An optional callback on failure, with the
+ *                @arg that was provided to this function.
+ *
+ */
+void emscripten_async_wget_data(const char* url, void *arg, void (*onload)(void*, void*, int), void (*onerror)(void*));
+
+/*
+ * More feature-complete version of emscripten_async_wget. Note:
+ * this version is experimental.
+ *
+ * The requesttype is 'GET' or 'POST',
+ * If is post request, param is the post parameter 
+ * like key=value&key2=value2.
+ * The param 'arg' is a pointer will be pass to the callback
+ * When file is ready then 'onload' callback will called.
+ * During the download 'onprogress' callback will called.
+ * If any error occurred 'onerror' will called.
+ * The callbacks are called with an object pointer give in parameter 
+ * and file if is a success, the progress value during progress
+ * and http status code if is an error.
+ */
+void emscripten_async_wget2(const char* url, const char* file,  const char* requesttype, const char* param, void *arg, void (*onload)(void*, const char*), void (*onerror)(void*, int), void (*onprogress)(void*, int));
+
+/*
  * Prepare a file in asynchronous way. This does just the
  * preparation part of emscripten_async_wget, that is, it
  * works on file data already present, and asynchronously
@@ -280,6 +322,17 @@ void emscripten_worker_respond(char *data, int size);
 int emscripten_get_worker_queue_size(worker_handle worker);
 
 /*
+ * Select the networking backend to use. By default emscripten's
+ * socket/networking implementation will use websockets, with this
+ * function you can change that to WebRTC.
+ * This function must be called before any network functions are
+ * called.
+ */
+#define EMSCRIPTEN_NETWORK_WEBSOCKETS 0
+#define EMSCRIPTEN_NETWORK_WEBRTC     1
+void emscripten_set_network_backend(int backend);
+
+/*
  * Profiling tools.
  * INIT must be called first, with the maximum identifier that
  * will be used. BEGIN will add some code that marks
@@ -291,6 +344,30 @@ int emscripten_get_worker_queue_size(worker_handle worker);
 extern void EMSCRIPTEN_PROFILE_INIT(int max);
 extern void EMSCRIPTEN_PROFILE_BEGIN(int id);
 extern void EMSCRIPTEN_PROFILE_END(int id);
+
+/*
+ * jcache-friendly printf. printf in general will receive a string
+ * literal, which becomes a global constant, which invalidates all
+ * jcache entries. emscripten_jcache_printf is parsed before
+ * clang into something without any string literals, so you can
+ * add such printouts to your code and only the (chunk containing
+ * the) function you modify will be invalided and recompiled.
+ *
+ * Note in particular that you need to already have a call to this
+ * function in your code *before* you add one and do an incremental
+ * build, so that adding an external reference does not invalidate
+ * everything.
+ *
+ * This function assumes the first argument is a string literal
+ * (otherwise you don't need it), and the other arguments, if any,
+ * are neither strings nor complex expressions (but just simple
+ * variables). (You can create a variable to store a complex
+ * expression on the previous line, if necessary.)
+ */
+#ifdef __cplusplus
+void emscripten_jcache_printf(const char *format, ...);
+void emscripten_jcache_printf_(...); /* internal use */
+#endif
 
 #ifdef __cplusplus
 }

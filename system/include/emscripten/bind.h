@@ -218,7 +218,7 @@ namespace emscripten {
         template<typename ClassType, typename ReturnType, typename... Args>
         struct MethodInvoker {
             typedef ReturnType (ClassType::*MemberPointer)(Args...);
-            typename internal::BindingType<ReturnType>::WireType invoke(
+            static typename internal::BindingType<ReturnType>::WireType invoke(
                 ClassType* ptr,
                 const MemberPointer& method,
                 typename internal::BindingType<Args>::WireType... args
@@ -445,6 +445,7 @@ namespace emscripten {
                 args.count,
                 args.types,
                 reinterpret_cast<internal::GenericFunction>(&internal::raw_constructor<ClassType, ConstructorArgs...>));
+            return *this;
         }
 
         template<typename ReturnType, typename... Args>
@@ -557,6 +558,7 @@ namespace emscripten {
                 }
                 new(get()) T(v);
                 initialized = true;
+                return *this;
             }
             
         private:

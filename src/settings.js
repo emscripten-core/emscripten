@@ -15,7 +15,7 @@ var QUANTUM_SIZE = 4; // This is the size of an individual field in a structure.
                       // the normal value of 4 means all fields take 4 memory addresses,
                       // as per the norm on a 32-bit machine.
                       //
-                      // 1 is somewhat faster than 4, but dangerous.
+                      // Changing this from the default of 4 is deprecated.
 
 var CORRECT_SIGNS = 1; // Whether we make sure to convert unsigned values to signed values.
                        // Decreases performance with additional runtime checks. Might not be
@@ -37,13 +37,12 @@ var VERBOSE = 0; // When set to 1, will generate more verbose output during comp
 
 var INVOKE_RUN = 1; // Whether we will call run(). Disable if you embed the generated
                     // code in your own, and will call run() yourself at the right time
-var INIT_STACK = 0; // Whether to initialize memory on the stack to 0.
 var INIT_HEAP = 0; // Whether to initialize memory anywhere other than the stack to 0.
 var TOTAL_STACK = 5*1024*1024; // The total stack size. There is no way to enlarge the stack, so this
                                // value must be large enough for the program's requirements. If
                                // assertions are on, we will assert on not exceeding this, otherwise,
                                // it will fail silently.
-var TOTAL_MEMORY = 10*1024*1024; // The total amount of memory to use. Using more memory than this will
+var TOTAL_MEMORY = 16777216;     // The total amount of memory to use. Using more memory than this will
                                  // cause us to expand the heap, which can be costly with typed arrays:
                                  // we need to copy the old heap into a new one in that case.
 var FAST_MEMORY = 2*1024*1024; // The amount of memory to initialize to 0. This ensures it will be
@@ -59,17 +58,19 @@ var ALLOW_MEMORY_GROWTH = 0; // If false, we abort with an error if we try to al
 // Code embetterments
 var MICRO_OPTS = 1; // Various micro-optimizations, like nativizing variables
 var RELOOP = 0; // Recreate js native loops from llvm data
+var RELOOPER = 'relooper.js'; // Loads the relooper from this path relative to compiler.js
+
 var USE_TYPED_ARRAYS = 2; // Use typed arrays for the heap. See https://github.com/kripken/emscripten/wiki/Code-Generation-Modes/
                           // 0 means no typed arrays are used.
                           // 1 has two heaps, IHEAP (int32) and FHEAP (double),
-                          // and addresses there are a match for normal addresses.
+                          // and addresses there are a match for normal addresses. This is deprecated.
                           // 2 is a single heap, accessible through views as int8, int32, etc. This is
                           //   the recommended mode both for performance and for compatibility.
 var USE_FHEAP = 1; // Relevant in USE_TYPED_ARRAYS == 1. If this is disabled, only IHEAP will be used, and FHEAP
                    // not generated at all. This is useful if your code is 100% ints without floats or doubles
 var DOUBLE_MODE = 1; // How to load and store 64-bit doubles. Without typed arrays or in typed array mode 1,
                      // this doesn't matter - these values are just values like any other. In typed array mode 2,
-                     // a potentialy risk is that doubles may be only 32-bit aligned. Forcing 64-bit alignment
+                     // a potential risk is that doubles may be only 32-bit aligned. Forcing 64-bit alignment
                      // in Clang itself should be able to solve that, or as a workaround in DOUBLE_MODE 1 we
                      // will carefully load in parts, in a way that requires only 32-bit alignment. In DOUBLE_MODE
                      // 0 we will simply store and load doubles as 32-bit floats, so when they are stored/loaded
@@ -92,13 +93,9 @@ var PRECISE_I64_MATH = 1; // If enabled, i64 addition etc. is emulated - which i
                           // that we can't know at compile time that 64-bit math is needed. For example, if you
                           // print 64-bit values with printf, but never add them, we can't know at compile time
                           // and you need to set this to 2.
-var PRECISE_I32_MUL = 0; // If enabled, i64 math is done in i32 multiplication. This is necessary if the values
-                         // exceed the JS double-integer limit of ~52 bits. This option can normally be disabled
-                         // because generally i32 multiplication works ok without it, and enabling it has a big
-                         // impact on performance.
-                         // Note that you can hand-optimize your code to avoid the need for this: If you do
-                         // multiplications that actually need 64-bit precision inside 64-bit values, things
-                         // will work properly. (Unless the LLVM optimizer turns them into 32-bit values?)
+var PRECISE_I32_MUL = 1; // If enabled, i32 multiplication is done with full precision, which means it is
+                         // correct even if the value exceeds the JS double-integer limit of ~52 bits (otherwise,
+                         // rounding will occur above that range).
 
 var CLOSURE_ANNOTATIONS = 0; // If set, the generated code will be annotated for the closure
                              // compiler. This potentially lets closure optimize the code better.
@@ -111,14 +108,17 @@ var SKIP_STACK_IN_SMALL = 1; // When enabled, does not push/pop the stack at all
                              // In particular, be careful with the autodebugger! (We do turn
                              // this off automatically in that case, though.)
 var INLINE_LIBRARY_FUNCS = 1; // Will inline library functions that have __inline defined
-var INLINING_LIMIT = 50; // A limit on inlining. If 0, we will inline normally in LLVM and
+var INLINING_LIMIT = 0;  // A limit on inlining. If 0, we will inline normally in LLVM and
                          // closure. If greater than 0, we will *not* inline in LLVM, and
                          // we will prevent inlining of functions of this size or larger
-                         // in closure.
+                         // in closure. 50 is a reasonable setting if you do not want
+                         // inlining
 var CATCH_EXIT_CODE = 0; // If set, causes exit() to throw an exception object which is caught
                          // in a try..catch block and results in the exit status being
                          // returned from run(). If zero (the default), the program is just
-                         // terminated with an error message.
+                         // terminated with an error message, that is, the exception thrown
+                         // by exit() is not handled in any way (in particular, the stack
+                         // position will not be reset).
 
 // Generated code debugging options
 var SAFE_HEAP = 0; // Check each write to the heap, for example, this will give a clear
@@ -130,19 +130,46 @@ var SAFE_HEAP = 0; // Check each write to the heap, for example, this will give 
                    // that 3 is the option you usually want here.
 var SAFE_HEAP_LOG = 0; // Log out all SAFE_HEAP operations
 
+var CHECK_HEAP_ALIGN = 0; // Check heap accesses for alignment, but don't do as
+                          // near extensive (or slow) checks as SAFE_HEAP.
+
+var SAFE_DYNCALLS = 0; // Show stack traces on missing function pointer/virtual method calls
+
+var ASM_HEAP_LOG = 0; // Simple heap logging, like SAFE_HEAP_LOG but cheaper, and in asm.js
+
+var CORRUPTION_CHECK = 0; // When enabled, will emit a buffer area at the beginning and
+                          // end of each allocation on the heap, filled with canary
+                          // values that can be checked later. Corruption is checked for
+                          // at the end of each at each free() (see jsifier to add more, and you
+                          // can add more manual checks by calling CorruptionChecker.checkAll).
+                          // 0 means not enabled, higher values mean the size of the
+                          // buffer areas as a multiple of the allocated area (so
+                          // 1 means 100%, or buffer areas equal to allocated area,
+                          // both before and after). This must be an integer.
+
 var LABEL_DEBUG = 0; // 1: Print out functions as we enter them
                      // 2: Also print out each label as we enter it
-var EXCEPTION_DEBUG = 1; // Print out exceptions in emscriptened code
+var LABEL_FUNCTION_FILTERS = []; // Filters for function label debug.
+                                 // The items for this array will be used
+                                 // as filters for function names. Only the
+                                 // labels of functions that is equaled to
+                                 // one of the filters are printed out
+                                 // When the array is empty, the filter is disabled.
+var EXCEPTION_DEBUG = 0; // Print out exceptions in emscriptened code
 
 var LIBRARY_DEBUG = 0; // Print out when we enter a library call (library*.js). You can also unset
                        // Runtime.debug at runtime for logging to cease, and can set it when you
                        // want it back. A simple way to set it in C++ is
                        //   emscripten_run_script("Runtime.debug = ...;");
-var GL_DEBUG = 0; // Print out all calls into WebGL. As with LIBRARY_DEBUG, you can set a runtime
-                  // option, in this case GL.debug.
 var SOCKET_DEBUG = 0; // Log out socket/network data transfer.
 
-var PROFILE_MAIN_LOOP = 0; // Profile the function called in set_main_loop
+var GL_DEBUG = 0; // Print out all calls into WebGL. As with LIBRARY_DEBUG, you can set a runtime
+                  // option, in this case GL.debug.
+var GL_TESTING = 0; // When enabled, sets preserveDrawingBuffer in the context, to allow tests to work (but adds overhead)
+var GL_MAX_TEMP_BUFFER_SIZE = 2097152; // How large GL emulation temp buffers are
+var GL_UNSAFE_OPTS = 1; // Enables some potentially-unsafe optimizations in GL emulation code
+var FULL_ES2 = 0; // Forces support for all GLES2 features, not just the WebGL-friendly subset.
+var FORCE_GL_EMULATION = 0; // Forces inclusion of full GL emulation code.
 
 var DISABLE_EXCEPTION_CATCHING = 0; // Disables generating code to actually catch exceptions. If the code you
                                     // are compiling does not actually rely on catching exceptions (but the
@@ -150,8 +177,16 @@ var DISABLE_EXCEPTION_CATCHING = 0; // Disables generating code to actually catc
                                     // then this can make it much faster. If an exception actually happens,
                                     // it will not be caught and the program will halt (so this will not
                                     // introduce silent failures, which is good).
+                                    // DISABLE_EXCEPTION_CATCHING = 0 - generate code to actually catch exceptions
+                                    // DISABLE_EXCEPTION_CATCHING = 1 - disable exception catching at all
+                                    // DISABLE_EXCEPTION_CATCHING = 2 - disable exception catching, but enables 
+                                    // catching in whitelist
                                     // TODO: Make this also remove cxa_begin_catch etc., optimize relooper
                                     //       for it, etc. (perhaps do all of this as preprocessing on .ll?)
+
+var EXCEPTION_CATCHING_WHITELIST = [];  // Enables catching exception in listed functions if
+                                        // DISABLE_EXCEPTION_CATCHING = 2 set
+
 var EXECUTION_TIMEOUT = -1; // Throw an exception after X seconds - useful to debug infinite loops
 var CHECK_OVERFLOWS = 0; // Add code that checks for overflows in integer math operations.
                          // There is currently not much to do to handle overflows if they occur.
@@ -185,21 +220,15 @@ var FS_LOG = 0; // Log all FS operations.  This is especially helpful when you'r
                 // a new project and want to see a list of file system operations happening
                 // so that you can create a virtual file system with all of the required files.
 
-var PGO = 0; // Profile-guided optimization.
-             // When run with the CHECK_* options, will not fail on errors. Instead, will
-             // keep a record of which checks succeeded and which failed. On shutdown, will
-             // print out that information. This is useful for knowing which lines need
-             // checking enabled and which do not, that is, this is a way to automate the
-             // generation of line data for CORRECT_*_LINES options.
-             // All CORRECT_* options default to 1 with PGO builds.
-             // See https://github.com/kripken/emscripten/wiki/Optimizing-Code for more info
-
-var PROFILE = 0; // Enables runtime profiling. See test_profiling for a usage example.
+var NAMED_GLOBALS = 0; // If 1, we use global variables for globals. Otherwise
+                       // they are referred to by a base plus an offset (called an indexed global),
+                       // saving global variables but adding runtime overhead.
 
 var EXPORT_ALL = 0; // If true, we export all the symbols
-var EXPORTED_FUNCTIONS = ['_main', '_malloc', '_free']; // Functions that are explicitly exported, so they are guaranteed to
-                                                        // be accessible outside of the generated code even after running closure compiler.
-                                                        // Note the necessary prefix of "_".
+var EXPORTED_FUNCTIONS = ['_main']; // Functions that are explicitly exported. These functions are kept alive
+                                    // through LLVM dead code elimination, and also made accessible outside of
+                                    // the generated code even after running closure compiler (on "Module").
+                                    // Note the necessary prefix of "_".
 
 var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = ['memcpy', 'memset', 'malloc', 'free', '$Browser']; // JS library functions (C functions implemented in JS)
                                                                                            // that we include by default. If you want to make sure
@@ -208,6 +237,12 @@ var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = ['memcpy', 'memset', 'malloc', 'free', '$
                                                                                            // C API call from C, but you want to call it from JS,
                                                                                            // add it here (and in EXPORTED FUNCTIONS with prefix
                                                                                            // "_", for closure).
+
+var LIBRARY_DEPS_TO_AUTOEXPORT = ['memcpy']; // This list is also used to determine
+                                             // auto-exporting of library dependencies (i.e., functions that
+                                             // might be dependencies of JS library functions, that if
+                                             // so we must export so that if they are implemented in C
+                                             // they will be accessible, in ASM_JS mode).
 
 var IGNORED_FUNCTIONS = []; // Functions that we should not generate, neither a stub nor a complete function.
                             // This is useful if your project code includes a function, and you want to replace
@@ -253,7 +288,7 @@ var LINKABLE = 0; // If set to 1, this file can be linked with others, either as
                   // we will not internalize all symbols and cull the unused ones, in other
                   // words, we will not remove unused functions and globals, which might be
                   // used by another module we are linked with.
-                  // BUILD_AS_SHARED_LIB > 0 implies this, so it is only importand to set this to 1
+                  // BUILD_AS_SHARED_LIB > 0 implies this, so it is only important to set this to 1
                   // when building the main file, and *if* that main file has symbols that
                   // the library it will open will then access through an extern.
                   // LINKABLE of 0 is very useful in that we can reduce the size of the
@@ -290,7 +325,26 @@ var HEADLESS = 0; // If 1, will include shim code that tries to 'fake' a browser
                   // very partial - it is hard to fake a whole browser! - so
                   // keep your expectations low for this to work.
 
+var BENCHMARK = 0; // If 1, will just time how long main() takes to execute, and not
+                   // print out anything at all whatsoever. This is useful for benchmarking.
+
+var ASM_JS = 0; // If 1, generate code in asm.js format. XXX This is highly experimental,
+                // and will not work on most codebases yet. It is NOT recommended that you
+                // try this yet.
+
+var PGO = 0; // Enables profile-guided optimization in the form of runtime checks for
+             // which functions are actually called. Emits a list during shutdown that you
+             // can pass to DEAD_FUNCTIONS (you can also emit the list manually by
+             // calling PGOMonitor.dump());
+var DEAD_FUNCTIONS = []; // A list of functions that no code will be emitted for, and
+                         // a runtime abort will happen if they are called
+                         // TODO: options to lazily load such functions
+
+var EXPLICIT_ZEXT = 0; // If 1, generate an explicit conversion of zext i1 to i32, using ?:
+
 var NECESSARY_BLOCKADDRS = []; // List of (function, block) for all block addresses that are taken.
+
+var EMIT_GENERATED_FUNCTIONS = 0; // whether to emit the list of generated functions, needed for external JS optimization passes
 
 // Compiler debugging options
 var DEBUG_TAGS_SHOWING = [];
@@ -1175,6 +1229,8 @@ var C_DEFINES = {'SI_MESGQ': '5',
    '_SC_TTY_NAME_MAX': '41',
    'AF_INET': '1',
    'AF_INET6': '6',
-   'FIONREAD': '1'
+   'FIONREAD': '1',
+   'SOCK_STREAM': '200',
+   'IPPROTO_TCP': 1
 };
 

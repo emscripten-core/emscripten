@@ -61,7 +61,7 @@ function intertyper(data, sidePass, baseLineNums) {
       var baseLineNumPosition = 0;
       for (var i = 0; i < lines.length; i++) {
         var line = lines[i];
-        lines[i] = null; // lines may be very very large. Allow GCing to occur in the loop by releasing refs here
+        if (singlePhase) lines[i] = null; // lines may be very very large. Allow GCing to occur in the loop by releasing refs here
 
         while (baseLineNumPosition < baseLineNums.length-1 && i >= baseLineNums[baseLineNumPosition+1][0]) {
           baseLineNumPosition++;
@@ -69,17 +69,17 @@ function intertyper(data, sidePass, baseLineNums) {
 
         if (mainPass && (line[0] == '%' || line[0] == '@')) {
           // If this isn't a type, it's a global variable, make a note of the information now, we will need it later
-          var testType = /[@%\w\d\.\" $-]+ = type .*/.exec(line);
+          var parts = line.split(' = ');
+          assert(parts.length >= 2);
+          var left = parts[0], right = parts.slice(1).join(' = ');
+          var testType = /^type .*/.exec(right);
           if (!testType) {
-            var global = /([@%\w\d\.\" $-]+) = .*/.exec(line);
-            var globalIdent = toNiceIdent(global[1]);
-            var testAlias = /[@%\w\d\.\" $-]+ = alias .*/.exec(line);
-            var testString = /[@%\w\d\.\" $-]+ = [\w ]+ \[\d+ x i8] c".*/.exec(line);
+            var globalIdent = toNiceIdent(left);
+            var testAlias = /^(hidden )?alias .*/.exec(right);
             Variables.globals[globalIdent] = {
               name: globalIdent,
               alias: !!testAlias,
-              impl: VAR_EMULATED,
-              isString : !!testString
+              impl: VAR_EMULATED
             };
             unparsedGlobals.lines.push(line);
           } else {
@@ -122,15 +122,19 @@ function intertyper(data, sidePass, baseLineNums) {
               SKIP_STACK_IN_SMALL = 0;
             }
 
-            unparsedBundles.push({
-              intertype: 'unparsedFunction',
-              // We need this early, to know basic function info - ident, params, varargs
-              ident: toNiceIdent(func.ident),
-              params: func.params,
-              hasVarArgs: func.hasVarArgs,
-              lineNum: currFunctionLineNum,
-              lines: currFunctionLines
-            });
+            var ident = toNiceIdent(func.ident);
+            if (!(ident in DEAD_FUNCTIONS)) {
+              unparsedBundles.push({
+                intertype: 'unparsedFunction',
+                // We need this early, to know basic function info - ident, params, varargs
+                ident: ident,
+                params: func.params,
+                returnType: func.returnType,
+                hasVarArgs: func.hasVarArgs,
+                lineNum: currFunctionLineNum,
+                lines: currFunctionLines
+              });
+            }
             currFunctionLines = [];
           }
         }
@@ -459,6 +463,9 @@ function intertyper(data, sidePass, baseLineNums) {
         };
         ret.type = ret.value.type;
         Types.needAnalysis[ret.type] = 0;
+        if (!NAMED_GLOBALS) {
+          Variables.globals[ret.ident].type = ret.type;
+        }
         return [ret];
       }
       if (item.tokens[2].text == 'type') {
@@ -509,13 +516,22 @@ function intertyper(data, sidePass, baseLineNums) {
           private_: private_,
           lineNum: item.lineNum
         };
+        if (!NAMED_GLOBALS) {
+          Variables.globals[ret.ident].type = ret.type;
+          Variables.globals[ret.ident].external = external;
+        }
         Types.needAnalysis[ret.type] = 0;
         if (ident == '@llvm.global_ctors') {
           ret.ctors = [];
           if (item.tokens[3].item) {
             var subTokens = item.tokens[3].item.tokens;
             splitTokenList(subTokens).forEach(function(segment) {
-              ret.ctors.push(segment[1].tokens.slice(-1)[0].text);
+              var ctor = toNiceIdent(segment[1].tokens.slice(-1)[0].text);
+              ret.ctors.push(ctor);
+              if (ASM_JS) { // must export the global constructors from asm.js module, so mark as implemented and exported
+                Functions.implementedFunctions[ctor] = 'v';
+                EXPORTED_FUNCTIONS[ctor] = 1;
+              }
             });
           }
         } else if (!external) {
@@ -664,7 +680,7 @@ function intertyper(data, sidePass, baseLineNums) {
     item.type = item.tokens[1].text;
     Types.needAnalysis[item.type] = 0;
     while (['@', '%'].indexOf(item.tokens[2].text[0]) == -1 && !(item.tokens[2].text in PARSABLE_LLVM_FUNCTIONS) &&
-           item.tokens[2].text != 'null' && item.tokens[2].text != 'asm') {
+           item.tokens[2].text != 'null' && item.tokens[2].text != 'asm' && item.tokens[2].text != 'undef') {
       assert(item.tokens[2].text != 'asm', 'Inline assembly cannot be compiled to JavaScript!');
       item.tokens.splice(2, 1);
     }
@@ -712,7 +728,7 @@ function intertyper(data, sidePass, baseLineNums) {
   substrate.addActor('Invoke', {
     processItem: function(item) {
       var result = makeCall.call(this, item, 'invoke');
-      if (DISABLE_EXCEPTION_CATCHING) {
+      if (DISABLE_EXCEPTION_CATCHING == 1) {
         result.item.intertype = 'call';
         result.ret.push({
           intertype: 'branch',
@@ -728,14 +744,17 @@ function intertyper(data, sidePass, baseLineNums) {
     processItem: function(item) {
       item.intertype = 'atomic';
       if (item.tokens[0].text == 'atomicrmw') {
+        if (item.tokens[1].text == 'volatile') item.tokens.splice(1, 1);
         item.op = item.tokens[1].text;
         item.tokens.splice(1, 1);
       } else {
         assert(item.tokens[0].text == 'cmpxchg')
+        if (item.tokens[1].text == 'volatile') item.tokens.splice(1, 1);
         item.op = 'cmpxchg';
       }
       var last = getTokenIndexByText(item.tokens, ';');
       item.params = splitTokenList(item.tokens.slice(1, last)).map(parseLLVMSegment);
+      item.type = item.params[1].type;
       this.forwardItem(item, 'Reintegrator');
     }
   });
@@ -820,15 +839,17 @@ function intertyper(data, sidePass, baseLineNums) {
           item.params[i-1] = parseLLVMSegment(segments[i-1]);
         }
       }
+      var setParamTypes = true;
       if (item.op === 'select') {
         assert(item.params[1].type === item.params[2].type);
         item.type = item.params[1].type;
-      } else if (item.op === 'inttoptr' || item.op === 'ptrtoint') {
+      } else if (item.op in LLVM.CONVERSIONS) {
         item.type = item.params[1].type;
+        setParamTypes = false;
       } else {
         item.type = item.params[0].type;
       }
-      if (item.op != 'ptrtoint') {
+      if (setParamTypes) {
         for (var i = 0; i < 4; i++) {
           if (item.params[i]) item.params[i].type = item.type; // All params have the same type, normally
         }
@@ -837,6 +858,8 @@ function intertyper(data, sidePass, baseLineNums) {
         item.type = item.params[1].ident;
         item.params[0].type = item.params[1].type;
         // TODO: also remove 2nd param?
+      } else if (item.op in LLVM.COMPS) {
+        item.type = 'i1';
       }
       if (USE_TYPED_ARRAYS == 2) {
         // Some specific corrections, since 'i64' is special
@@ -914,6 +937,7 @@ function intertyper(data, sidePass, baseLineNums) {
     processItem: function(item) {
       return [{
         intertype: 'resume',
+        ident: toNiceIdent(item.tokens[2].text),
         lineNum: item.lineNum
       }];
     }

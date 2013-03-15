@@ -27,9 +27,15 @@ typedef unsigned __dev_t; /* XXX Emscripten */
 
 #ifndef __uid_t_defined
 typedef unsigned __uid_t; /* XXX Emscripten */
+#define __uid_t_defined 1
 #endif
 #ifndef __gid_t_defined
 typedef unsigned __gid_t; /* XXX Emscripten */
+#define __gid_t_defined 1
+#endif
+#ifndef __id_t_defined
+typedef unsigned __id_t;  /* can hold a gid_t, pid_t, or uid_t XXX EMSCRIPTEN specific*/
+#define __id_t_defined 1
 #endif
 
 #ifndef __off64_t_defined

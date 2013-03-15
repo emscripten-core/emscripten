@@ -6,11 +6,10 @@
 // Does simple 'macro' substitution, using Django-like syntax,
 // {{{ code }}} will be replaced with |eval(code)|.
 function processMacros(text) {
-  return text.replace(/{{{[^}]+}}}/g, function(str) {
+  return text.replace(/{{{([^}]|}(?!}))+}}}/g, function(str) {
     str = str.substr(3, str.length-6);
     var ret = eval(str);
-    if (ret !== undefined) ret = ret.toString();
-    return ret;
+    return ret ? ret.toString() : '';
   });
 }
 
@@ -79,6 +78,7 @@ function toNiceIdent(ident) {
   assert(ident);
   if (parseFloat(ident) == ident) return ident;
   if (ident == 'null') return '0'; // see parseNumerical
+  if (ident == 'undef') return '0';
   return ident.replace('%', '$').replace(/["&\\ \.@:<>,\*\[\]\(\)-]/g, '_');
 }
 
@@ -104,6 +104,11 @@ function isNiceIdent(ident, loose) {
   }
 }
 
+function isJSVar(ident) {
+  return /^\(?[$_]?[\w$_\d ]*\)+$/.test(ident);
+
+}
+
 function isStructPointerType(type) {
   // This test is necessary for clang - in llvm-gcc, we
   // could check for %struct. The downside is that %1 can
@@ -112,7 +117,7 @@ function isStructPointerType(type) {
   // |%5()| as a function call (like |i32 (i8*)| etc.). So
   // we must check later on, in call(), where we have more
   // context, to differentiate such cases.
-  // A similar thing happns in isStructType()
+  // A similar thing happens in isStructType()
   return !Runtime.isNumberType(type) && type[0] == '%';
 }
 
@@ -128,16 +133,49 @@ function isStructType(type) {
   return type[0] == '%';
 }
 
+function isStructuralType(type) {
+  return /^{ ?[^}]* ?}$/.test(type); // { i32, i8 } etc. - anonymous struct types
+}
+
+function getStructuralTypeParts(type) { // split { i32, i8 } etc. into parts
+  return type.replace(/[ {}]/g, '').split(',');
+}
+
+function getStructureTypeParts(type) {
+  if (isStructuralType(type)) {
+    return type.replace(/[ {}]/g, '').split(',');
+  } else {
+    var typeData = Types.types[type];
+    assert(typeData, type);
+    return typeData.fields;
+  }
+}
+
+function getStructuralTypePartBits(part) {
+  return Math.ceil((getBits(part) || 32)/32)*32; // simple 32-bit alignment. || 32 is for pointers
+}
+
 function isIntImplemented(type) {
   return type[0] == 'i' || isPointerType(type);
 }
 
-// Note: works for iX types, not pointers (even though they are implemented as ints)
+// Note: works for iX types and structure types, not pointers (even though they are implemented as ints)
 function getBits(type) {
-  if (!type || type[0] != 'i') return 0;
-  var left = type.substr(1);
-  if (!isNumber(left)) return 0;
-  return parseInt(left);
+  if (!type) return 0;
+  if (type[0] == 'i') {
+    var left = type.substr(1);
+    if (!isNumber(left)) return 0;
+    return parseInt(left);
+  }
+  if (isStructuralType(type)) {
+    return sum(getStructuralTypeParts(type).map(getStructuralTypePartBits));
+  }
+  if (isStructType(type)) {
+    var typeData = Types.types[type];
+    if (typeData === undefined) return 0;
+    return typeData.flatSize*8;
+  }
+  return 0;
 }
 
 function isIllegalType(type) {
@@ -163,10 +201,12 @@ function isFunctionDef(token, out) {
     var subtext = segment[0].text;
     fail = fail || segment.length > 1 || !(isType(subtext) || subtext == '...');
   });
-  if (out) out.numArgs = segments.length;
+  if (out) {
+    out.segments = segments;
+    out.numArgs = segments.length;
+  }
   return !fail;
 }
-
 
 function isPossiblyFunctionType(type) {
   // A quick but unreliable way to see if something is a function type. Yes is just 'maybe', no is definite.
@@ -176,20 +216,29 @@ function isPossiblyFunctionType(type) {
 
 function isFunctionType(type, out) {
   if (!isPossiblyFunctionType(type)) return false;
+  type = type.substr(0, type.length-1); // remove final '*'
+  var firstOpen = type.indexOf('(');
+  if (firstOpen <= 0) return false;
   type = type.replace(/"[^"]+"/g, '".."');
-  var parts;
-  // hackish, but quick splitting of function def parts. this must be fast as it happens a lot
-  if (type[0] != '[') {
-    parts = type.split(' ');
+  var lastOpen = type.lastIndexOf('(');
+  var returnType;
+  if (firstOpen == lastOpen) {
+    returnType = getReturnType(type);
+    if (!isType(returnType)) return false;
   } else {
-    var index = type.search(']');
-    index += type.substr(index).search(' ');
-    parts = [type.substr(0, index), type.substr(index+1)];
+    returnType = 'i8*'; // some pointer type, no point in analyzing further
   }
-  if (pointingLevels(type) !== 1) return false;
-  var text = removeAllPointing(parts.slice(1).join(' '));
-  if (!text) return false;
-  return isType(parts[0]) && isFunctionDef({ text: text, item: tokenize(text.substr(1, text.length-2), true) }, out);
+  if (out) out.returnType = returnType;
+  var argText = type.substr(lastOpen);
+  return isFunctionDef({ text: argText, item: tokenize(argText.substr(1, argText.length-2), true) }, out);
+}
+
+function getReturnType(type) {
+  var lastOpen = type.lastIndexOf('(');
+  if (lastOpen > 0) {
+    return type.substr(0, lastOpen-1);
+  }
+  return type;
 }
 
 var isTypeCache = {}; // quite hot, optimize as much as possible
@@ -310,7 +359,9 @@ function parseParamTokens(params) {
     if (segment.length == 1) {
       if (segment[0].text == '...') {
         ret.push({
-          intertype: 'varargs'
+          intertype: 'varargs',
+          type: 'i8*',
+          ident: 'varrp' // the conventional name we have for this
         });
       } else {
         // Clang sometimes has a parameter with just a type,
@@ -356,6 +407,48 @@ function hasVarArgs(params) {
   return false;
 }
 
+var UNINDEXABLE_GLOBALS = set(
+  '_llvm_global_ctors' // special-cased
+);
+
+function isIndexableGlobal(ident) {
+  if (!(ident in Variables.globals)) return false;
+  if (ident in UNINDEXABLE_GLOBALS) {
+    Variables.globals[ident].unIndexable = true;
+    return false;
+  }
+  var data = Variables.globals[ident];
+  return !data.alias && !data.external;
+}
+
+function makeGlobalDef(ident) {
+  if (!NAMED_GLOBALS && isIndexableGlobal(ident)) return '';
+  return 'var ' + ident + ';';
+}
+
+function makeGlobalUse(ident) {
+  if (!NAMED_GLOBALS && isIndexableGlobal(ident)) {
+    var index = Variables.indexedGlobals[ident];
+    if (index === undefined) {
+      // we are accessing this before we index globals, likely from the library. mark as unindexable
+      UNINDEXABLE_GLOBALS[ident] = 1;
+      return ident;
+    }
+    // We know and assert on TOTAL_STACK being equal to GLOBAL_BASE
+    return (TOTAL_STACK + index).toString();
+  }
+  return ident;
+}
+
+function sortGlobals(globals) {
+  var ks = keys(globals);
+  ks.sort();
+  var inv = invertArray(ks);
+  return values(globals).sort(function(a, b) {
+    return inv[b.ident] - inv[a.ident];
+  });
+}
+
 function finalizeParam(param) {
   if (param.intertype in PARSABLE_LLVM_FUNCTIONS) {
     return finalizeLLVMFunctionCall(param);
@@ -368,10 +461,9 @@ function finalizeParam(param) {
       return parseI64Constant(param.ident);
     }
     var ret = toNiceIdent(param.ident);
-    if (ret in Variables.globals && Variables.globals[ret].isString) {
-      ret = "STRING_TABLE." + ret;
+    if (ret in Variables.globals) {
+      ret = makeGlobalUse(ret);
     }
-    
     return ret;
   }
 }
@@ -414,7 +506,7 @@ function parseLLVMSegment(segment) {
     return {
       intertype: 'value',
       ident: toNiceIdent(segment[1].text),
-      type: segment[0].text
+      type: type
     };
   }
 }
@@ -492,7 +584,7 @@ function cleanOutTokens(filterOut, tokens, indexes) {
   if (typeof indexes !== 'object') indexes = [indexes];
   for (var i = indexes.length-1; i >=0; i--) {
     var index = indexes[i];
-    while (tokens[index].text in filterOut) {
+    while (index < tokens.length && tokens[index].text in filterOut) {
       tokens.splice(index, 1);
     }
   }
@@ -563,14 +655,16 @@ function makeI64(low, high) {
 
 // Splits a number (an integer in a double, possibly > 32 bits) into an USE_TYPED_ARRAYS == 2 i64 value.
 // Will suffer from rounding. mergeI64 does the opposite.
-function splitI64(value) {
+function splitI64(value, floatConversion) {
   // We need to min here, since our input might be a double, and large values are rounded, so they can
   // be slightly higher than expected. And if we get 4294967296, that will turn into a 0 if put into a
   // HEAP32 or |0'd, etc.
+  var lowInput = legalizedI64s ? value : 'VALUE';
+  if (floatConversion && ASM_JS) lowInput = asmFloatToInt(lowInput);
   if (legalizedI64s) {
-    return [value + '>>>0', 'Math.min(Math.floor((' + value + ')/4294967296), 4294967295)'];
+    return [lowInput + '>>>0', 'Math.min(Math.floor((' + value + ')/' + asmEnsureFloat(4294967296, 'float') + '), ' + asmEnsureFloat(4294967295, 'float') + ')>>>0'];
   } else {
-    return makeInlineCalculation(makeI64('VALUE>>>0', 'Math.min(Math.floor(VALUE/4294967296), 4294967295)'), value, 'tempBigIntP');
+    return makeInlineCalculation(makeI64(lowInput + '>>>0', 'Math.min(Math.floor(VALUE/' + asmEnsureFloat(4294967296, 'float') + '), ' + asmEnsureFloat(4294967295, 'float') + ')>>>0'), value, 'tempBigIntP');
   }
 }
 function mergeI64(value, unsigned) {
@@ -599,7 +693,7 @@ function makeCopyI64(value) {
 function parseArbitraryInt(str, bits) {
   // We parse the string into a vector of digits, base 10. This is convenient to work on.
 
-  assert(bits % 32 == 0 || ('i' + (bits % 32)) in Runtime.INT_TYPES, 'Arbitrary-sized ints must tails that are of legal size');
+  assert(bits > 0); // NB: we don't check that the value in str can fit in this amount of bits
 
   function str2vec(s) { // index 0 is the highest value
     var ret = [];
@@ -889,24 +983,103 @@ function checkSafeHeap() {
   return SAFE_HEAP === 1 || checkSpecificSafeHeap();
 }
 
-function getHeapOffset(offset, type) {
+function getHeapOffset(offset, type, forceAsm) {
   if (USE_TYPED_ARRAYS !== 2) {
     return offset;
-  } else {
-    if (Runtime.getNativeFieldSize(type) > 4) {
-      type = 'i32'; // XXX we emulate 64-bit values as 32
-    }
-    var shifts = Math.log(Runtime.getNativeTypeSize(type))/Math.LN2;
-    if (shifts != 0) {
-      return '((' + offset + ')>>' + (shifts) + ')';
+  }
+
+  if (Runtime.getNativeFieldSize(type) > 4) {
+    type = 'i32'; // XXX we emulate 64-bit values as 32
+  }
+
+  var sz = Runtime.getNativeTypeSize(type);
+  var shifts = Math.log(sz)/Math.LN2;
+  offset = '(' + offset + ')';
+  if (shifts != 0) {
+    if (CHECK_HEAP_ALIGN) {
+      return '(CHECK_ALIGN_' + sz + '(' + offset + ')>>' + shifts + ')';
     } else {
-      return '(' + offset + ')';
+      return '(' + offset + '>>' + shifts + ')';
     }
+  } else {
+    // we need to guard against overflows here, HEAP[U]8 expects a guaranteed int
+    return isJSVar(offset) ? offset : '(' + offset + '|0)';
   }
 }
 
+function makeVarDef(js) {
+  if (!ASM_JS) js = 'var ' + js;
+  return js;
+}
+
+function asmEnsureFloat(value, type) { // ensures that a float type has either 5.5 (clearly a float) or +5 (float due to asm coercion)
+  if (!ASM_JS) return value;
+  // coerce if missing a '.', or if smaller than 1, so could be 1e-5 which has no .
+  if (type in Runtime.FLOAT_TYPES && isNumber(value) && (value.toString().indexOf('.') < 0 || Math.abs(value) < 1)) {
+    return '(+(' + value + '))';
+  } else {
+    return value;
+  }
+}
+
+function asmInitializer(type, impl) {
+  if (type in Runtime.FLOAT_TYPES) {
+    return '+0';
+  } else {
+    return '0';
+  }
+}
+
+function asmCoercion(value, type, signedness) {
+  if (!ASM_JS) return value;
+  if (type == 'void') {
+    return value;
+  } else if (type in Runtime.FLOAT_TYPES) {
+    if (isNumber(value)) {
+      return asmEnsureFloat(value, type);
+    } else {
+      if (signedness) {
+        if (signedness == 'u') {
+          value = '(' + value + ')>>>0';
+        } else {
+          value = '(' + value + ')|0';
+        }
+      }
+      return '(+(' + value + '))';
+    }
+  } else {
+    return '((' + value + ')|0)';
+  }
+}
+
+function asmFloatToInt(x) {
+  return '(~~(' + x + '))';
+}
+
+function makeGetTempDouble(i, type, forSet) { // get an aliased part of the tempDouble temporary storage
+  // Cannot use makeGetValue because it uses us
+  // this is a unique case where we *can* use HEAPF64
+  var slab = type == 'double' ? 'HEAPF64' : makeGetSlabs(null, type)[0];
+  var ptr = getFastValue('tempDoublePtr', '+', Runtime.getNativeTypeSize(type)*i);
+  var offset;
+  if (type == 'double') {
+    offset = '(' + ptr + ')>>3';
+  } else {
+    offset = getHeapOffset(ptr, type);
+  }
+  var ret = slab + '[' + offset + ']';
+  if (!forSet) ret = asmCoercion(ret, type);
+  return ret;
+}
+
+function makeSetTempDouble(i, type, value) {
+  return makeGetTempDouble(i, type, true) + '=' + asmEnsureFloat(value, type);
+}
+
+var asmPrintCounter = 0;
+
 // See makeSetValue
-function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSafe) {
+function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSafe, forceAsm) {
   if (UNALIGNED_MEMORY) align = 1;
   if (isStructType(type)) {
     var typeData = Types.types[type];
@@ -918,9 +1091,9 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
   }
 
   if (DOUBLE_MODE == 1 && USE_TYPED_ARRAYS == 2 && type == 'double') {
-    return '(tempDoubleI32[0]=' + makeGetValue(ptr, pos, 'i32', noNeedFirst, unsigned, ignore, align) + ',' +
-            'tempDoubleI32[1]=' + makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'i32', noNeedFirst, unsigned, ignore, align) + ',' +
-            'tempDoubleF64[0])';
+    return '(' + makeSetTempDouble(0, 'i32', makeGetValue(ptr, pos, 'i32', noNeedFirst, unsigned, ignore, align)) + ',' +
+                 makeSetTempDouble(1, 'i32', makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'i32', noNeedFirst, unsigned, ignore, align)) + ',' +
+            makeGetTempDouble(0, 'double') + ')';
   }
 
   if (USE_TYPED_ARRAYS == 2 && align) {
@@ -931,7 +1104,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
       if (isIntImplemented(type)) {
         if (bytes == 4 && align == 2) {
           // Special case that we can optimize
-          ret += makeGetValue(ptr, pos, 'i16', noNeedFirst, 2, ignore) + '+' +
+          ret += makeGetValue(ptr, pos, 'i16', noNeedFirst, 2, ignore) + '|' +
                  '(' + makeGetValue(ptr, getFastValue(pos, '+', 2), 'i16', noNeedFirst, 2, ignore) + '<<16)';
         } else { // XXX we cannot truly handle > 4...
           ret = '';
@@ -943,9 +1116,9 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
         }
       } else {
         if (type == 'float') {
-          ret += 'copyTempFloat(' + getFastValue(ptr, '+', pos) + '),tempDoubleF32[0]';
+          ret += 'copyTempFloat(' + asmCoercion(getFastValue(ptr, '+', pos), 'i32') + '),' + makeGetTempDouble(0, 'float');
         } else {
-          ret += 'copyTempDouble(' + getFastValue(ptr, '+', pos) + '),tempDoubleF64[0]';
+          ret += 'copyTempDouble(' + asmCoercion(getFastValue(ptr, '+', pos), 'i32') + '),' + makeGetTempDouble(0, 'double');
         }
       }
       ret += ')';
@@ -955,18 +1128,37 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
 
   var offset = calcFastOffset(ptr, pos, noNeedFirst);
   if (SAFE_HEAP && !noSafe) {
-    if (type !== 'null' && type[0] !== '#') type = '"' + safeQuote(type) + '"';
-    if (type[0] === '#') type = type.substr(1);
-    return 'SAFE_HEAP_LOAD(' + offset + ', ' + type + ', ' + (!!unsigned+0) + ', ' + ((!checkSafeHeap() || ignore)|0) + ')';
+    var printType = type;
+    if (printType !== 'null' && printType[0] !== '#') printType = '"' + safeQuote(printType) + '"';
+    if (printType[0] === '#') printType = printType.substr(1);
+    return asmCoercion('SAFE_HEAP_LOAD(' + asmCoercion(offset, 'i32') + ', ' + (ASM_JS ? 0 : printType) + ', ' + (!!unsigned+0) + ', ' + ((!checkSafeHeap() || ignore)|0) + ')', type);
   } else {
-    return makeGetSlabs(ptr, type, false, unsigned)[0] + '[' + getHeapOffset(offset, type) + ']';
+    var ret = makeGetSlabs(ptr, type, false, unsigned)[0] + '[' + getHeapOffset(offset, type, forceAsm) + ']';
+    if (ASM_JS && (phase == 'funcs' || forceAsm)) {
+      ret = asmCoercion(ret, type);
+    }
+    if (ASM_HEAP_LOG) {
+      ret = makeInlineCalculation('(asmPrint' + (type in Runtime.FLOAT_TYPES ? 'Float' : 'Int') + '(' + (asmPrintCounter++) + ',' + asmCoercion('VALUE', type) + '), VALUE)', ret,
+                                  'temp' + (type in Runtime.FLOAT_TYPES ? 'Double' : 'Int'));
+    }
+    return ret;
   }
+}
+
+function makeGetValueAsm(ptr, pos, type, unsigned) {
+  return makeGetValue(ptr, pos, type, null, unsigned, null, null, null, true);
 }
 
 function indexizeFunctions(value, type) {
   assert((type && type !== '?') || (typeof value === 'string' && value.substr(0, 6) === 'CHECK_'), 'No type given for function indexizing');
   assert(value !== type, 'Type set to value');
-  if (type && isFunctionType(type) && value[0] === '_') { // checking for _ differentiates from $ (local vars)
+  var out = {};
+  if (type && isFunctionType(type, out) && value[0] === '_') { // checking for _ differentiates from $ (local vars)
+    // add signature to library functions that we now know need indexing
+    if (!(value in Functions.implementedFunctions) && !(value in Functions.unimplementedFunctions)) {
+      Functions.unimplementedFunctions[value] = Functions.getSignature(out.returnType, out.segments ? out.segments.map(function(segment) { return segment[0].text }) : []);
+    }
+
     if (BUILD_AS_SHARED_LIB) {
       return '(FUNCTION_TABLE_OFFSET + ' + Functions.getIndex(value) + ')';
     } else {
@@ -986,7 +1178,7 @@ function indexizeFunctions(value, type) {
 //!             'null' means, in the context of SAFE_HEAP, that we should accept all types;
 //!             which means we should write to all slabs, ignore type differences if any on reads, etc.
 //! @param noNeedFirst Whether to ignore the offset in the pointer itself.
-function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep, forcedAlign) {
+function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep, forcedAlign, forceAsm) {
   if (UNALIGNED_MEMORY && !forcedAlign) align = 1;
   sep = sep || ';';
   if (isStructType(type)) {
@@ -1004,9 +1196,9 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
   }
 
   if (DOUBLE_MODE == 1 && USE_TYPED_ARRAYS == 2 && type == 'double') {
-    return '(tempDoubleF64[0]=' + value + ',' +
-            makeSetValue(ptr, pos, 'tempDoubleI32[0]', 'i32', noNeedFirst, ignore, align, noSafe, ',') + ',' +
-            makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'tempDoubleI32[1]', 'i32', noNeedFirst, ignore, align, noSafe, ',') + ')';
+    return '(' + makeSetTempDouble(0, 'double', value) + ',' +
+            makeSetValue(ptr, pos, makeGetTempDouble(0, 'i32'), 'i32', noNeedFirst, ignore, align, noSafe, ',') + ',' +
+            makeSetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), makeGetTempDouble(1, 'i32'), 'i32', noNeedFirst, ignore, align, noSafe, ',') + ')';
   } else if (USE_TYPED_ARRAYS == 2 && type == 'i64') {
     return '(tempI64 = [' + splitI64(value) + '],' +
             makeSetValue(ptr, pos, 'tempI64[0]', 'i32', noNeedFirst, ignore, align, noSafe, ',') + ',' +
@@ -1030,7 +1222,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
           ret += 'tempBigInt=' + value + sep;
           for (var i = 0; i < bytes; i++) {
             ret += makeSetValue(ptr, getFastValue(pos, '+', i), 'tempBigInt&0xff', 'i8', noNeedFirst, ignore, 1);
-            if (i < bytes-1) ret += sep + 'tempBigInt>>=8' + sep;
+            if (i < bytes-1) ret += sep + 'tempBigInt = tempBigInt>>8' + sep;
           }
         }
       } else {
@@ -1044,17 +1236,19 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
   value = indexizeFunctions(value, type);
   var offset = calcFastOffset(ptr, pos, noNeedFirst);
   if (SAFE_HEAP && !noSafe) {
-    if (type !== 'null' && type[0] !== '#') type = '"' + safeQuote(type) + '"';
-    if (type[0] === '#') type = type.substr(1);
-    return 'SAFE_HEAP_STORE(' + offset + ', ' + value + ', ' + type + ', ' + ((!checkSafeHeap() || ignore)|0) + ')';
+    var printType = type;
+    if (printType !== 'null' && printType[0] !== '#') printType = '"' + safeQuote(printType) + '"';
+    if (printType[0] === '#') printType = printType.substr(1);
+    return 'SAFE_HEAP_STORE(' + asmCoercion(offset, 'i32') + ', ' + asmCoercion(value, type) + ', ' + (ASM_JS ? 0 : printType) + ', ' + ((!checkSafeHeap() || ignore)|0) + ')';
   } else {
-    return makeGetSlabs(ptr, type, true).map(function(slab) { return slab + '[' + getHeapOffset(offset, type) + ']=' + value }).join(sep);
-    //return '(print("set:"+(' + value + ')+":"+(' + getHeapOffset(offset, type) + ')),' + 
-    //        makeGetSlabs(ptr, type, true).map(function(slab) { return slab + '[' + getHeapOffset(offset, type) + ']=' + value }).join('; ') + ')';
+    return makeGetSlabs(ptr, type, true).map(function(slab) { return slab + '[' + getHeapOffset(offset, type, forceAsm) + ']=' + value }).join(sep);
   }
 }
 
-var SEEK_OPTIMAL_ALIGN_MIN = 20;
+function makeSetValueAsm(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep, forcedAlign) {
+  return makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep, forcedAlign, true);
+}
+
 var UNROLL_LOOP_MAX = 8;
 
 function makeSetValues(ptr, pos, value, type, num, align) {
@@ -1074,8 +1268,8 @@ function makeSetValues(ptr, pos, value, type, num, align) {
   } else { // USE_TYPED_ARRAYS == 2
     // If we don't know how to handle this at compile-time, or handling it is best done in a large amount of code, call memset
     // TODO: optimize the case of numeric num but non-numeric value
-    if (!isNumber(num) || !isNumber(value) || (align < 4 && parseInt(num) >= SEEK_OPTIMAL_ALIGN_MIN)) {
-      return '_memset(' + getFastValue(ptr, '+', pos) + ', ' + value + ', ' + num + ', ' + align + ')';
+    if (!isNumber(num) || !isNumber(value) || (parseInt(num)/align >= UNROLL_LOOP_MAX)) {
+      return '_memset(' + asmCoercion(getFastValue(ptr, '+', pos), 'i32') + ', ' + asmCoercion(value, 'i32') + ', ' + asmCoercion(num, 'i32') + ')';
     }
     num = parseInt(num);
     value = parseInt(value);
@@ -1089,13 +1283,7 @@ function makeSetValues(ptr, pos, value, type, num, align) {
     [4, 2, 1].forEach(function(possibleAlign) {
       if (num == 0) return;
       if (align >= possibleAlign) {
-        if (num <= UNROLL_LOOP_MAX*possibleAlign) {
-          ret.push(unroll('i' + (possibleAlign*8), Math.floor(num/possibleAlign), possibleAlign, values[possibleAlign]));
-        } else {
-          ret.push('for (var $$dest = ' + getFastValue(ptr, '+', pos) + (possibleAlign > 1 ? '>>' + log2(possibleAlign) : '') + ', ' +
-                            '$$stop = $$dest + ' + Math.floor(num/possibleAlign) + '; $$dest < $$stop; $$dest++) {\n' +
-                   '  HEAP' + (possibleAlign*8) + '[$$dest] = ' + values[possibleAlign] + '\n}');
-        }
+        ret.push(unroll('i' + (possibleAlign*8), Math.floor(num/possibleAlign), possibleAlign, values[possibleAlign]));
         pos = getFastValue(pos, '+', Math.floor(num/possibleAlign)*possibleAlign);
         num %= possibleAlign;
       }
@@ -1132,24 +1320,15 @@ function makeCopyValues(dest, src, num, type, modifier, align, sep) {
             unroll(type, 1) + ' }';
   } else { // USE_TYPED_ARRAYS == 2
     // If we don't know how to handle this at compile-time, or handling it is best done in a large amount of code, call memset
-    if (!isNumber(num) || (align < 4 && parseInt(num) >= SEEK_OPTIMAL_ALIGN_MIN)) {
-      return '_memcpy(' + dest + ', ' + src + ', ' + num + ', ' + align + ')';
+    if (!isNumber(num) || (parseInt(num)/align >= UNROLL_LOOP_MAX)) {
+      return '_memcpy(' + dest + ', ' + src + ', ' + num + ')';
     }
     num = parseInt(num);
     var ret = [];
     [4, 2, 1].forEach(function(possibleAlign) {
       if (num == 0) return;
       if (align >= possibleAlign) {
-        // If we can unroll the loop, do so. Also do so if we must unroll it (we do not create real loops when inlined)
-        if (num <= UNROLL_LOOP_MAX*possibleAlign || sep == ',') {
-          ret.push(unroll('i' + (possibleAlign*8), Math.floor(num/possibleAlign), possibleAlign));
-        } else {
-          assert(sep == ';');
-          ret.push('for (var $$src = ' + src + (possibleAlign > 1 ? '>>' + log2(possibleAlign) : '') + ', ' +
-                            '$$dest = ' + dest + (possibleAlign > 1 ? '>>' + log2(possibleAlign) : '') + ', ' +
-                            '$$stop = $$src + ' + Math.floor(num/possibleAlign) + '; $$src < $$stop; $$src++, $$dest++) {\n' +
-                   '  HEAP' + (possibleAlign*8) + '[$$dest] = HEAP' + (possibleAlign*8) + '[$$src]\n}');
-        }
+        ret.push(unroll('i' + (possibleAlign*8), Math.floor(num/possibleAlign), possibleAlign));
         src = getFastValue(src, '+', Math.floor(num/possibleAlign)*possibleAlign);
         dest = getFastValue(dest, '+', Math.floor(num/possibleAlign)*possibleAlign);
         num %= possibleAlign;
@@ -1169,17 +1348,23 @@ function makeHEAPView(which, start, end) {
 var PLUS_MUL = set('+', '*');
 var MUL_DIV = set('*', '/');
 var PLUS_MINUS = set('+', '-');
+var TWO_TWENTY = Math.pow(2, 20);
 
 // Given two values and an operation, returns the result of that operation.
 // Tries to do as much as possible at compile time.
+// Leaves overflows etc. unhandled, *except* for integer multiply, in order to be efficient with Math.imul
 function getFastValue(a, op, b, type) {
   a = a.toString();
   b = b.toString();
+  a = a == 'true' ? '1' : (a == 'false' ? '0' : a);
+  b = b == 'true' ? '1' : (b == 'false' ? '0' : b);
   if (isNumber(a) && isNumber(b)) {
     if (op == 'pow') {
       return Math.pow(a, b).toString();
     } else {
-      return eval(a + op + '(' + b + ')').toString(); // parens protect us from "5 - -12" being seen as "5--12" which is "(5--)12"
+      var value = eval(a + op + '(' + b + ')'); // parens protect us from "5 - -12" being seen as "5--12" which is "(5--)12"
+      if (op == '/' && type in Runtime.INT_TYPES) value = value|0; // avoid emitting floats
+      return value.toString();
     }
   }
   if (op == 'pow') {
@@ -1206,6 +1391,15 @@ function getFastValue(a, op, b, type) {
         if (shifts % 1 == 0) {
           return '(' + a + '<<' + shifts + ')';
         }
+      }
+      if (!(type in Runtime.FLOAT_TYPES)) {
+        // if guaranteed small enough to not overflow into a double, do a normal multiply
+        var bits = getBits(type) || 32; // default is 32-bit multiply for things like getelementptr indexes
+        // Note that we can emit simple multiple in non-asm.js mode, but asm.js will not parse "16-bit" multiple, so must do imul there
+        if ((isNumber(a) && Math.abs(a) < TWO_TWENTY) || (isNumber(b) && Math.abs(b) < TWO_TWENTY) || (bits < 32 && !ASM_JS)) {
+          return '(((' + a + ')*(' + b + '))&' + ((Math.pow(2, bits)-1)|0) + ')'; // keep a non-eliminatable coercion directly on this
+        }
+        return 'Math.imul(' + a + ',' + b + ')';
       }
     } else {
       if (a == '0') {
@@ -1260,10 +1454,20 @@ function makeGetPos(ptr) {
 
 var IHEAP_FHEAP = set('IHEAP', 'IHEAPU', 'FHEAP');
 
-function makePointer(slab, pos, allocator, type) {
+function makePointer(slab, pos, allocator, type, ptr) {
   assert(type, 'makePointer requires type info');
-  if (slab.substr(0, 4) === 'HEAP' || (USE_TYPED_ARRAYS == 1 && slab in IHEAP_FHEAP)) return pos;
+  if (typeof slab == 'string' && (slab.substr(0, 4) === 'HEAP' || (USE_TYPED_ARRAYS == 1 && slab in IHEAP_FHEAP))) return pos;
   var types = generateStructTypes(type);
+  if (typeof slab == 'object') {
+    for (var i = 0; i < slab.length; i++) {
+      var curr = slab[i];
+      if (isNumber(curr)) {
+        slab[i] = parseFloat(curr); // fix "5" to 5 etc.
+      } else if (curr == 'undef') {
+        slab[i] = 0;
+      }
+    }
+  }
   // compress type info and data if possible
   var de;
   try {
@@ -1271,26 +1475,89 @@ function makePointer(slab, pos, allocator, type) {
     // note that we cannot always eval the slab, e.g., if it contains ident,0,0 etc. In that case, no compression TODO: ensure we get arrays here, not str
     var evaled = typeof slab === 'string' ? eval(slab) : slab;
     de = dedup(evaled);
-    if (de.length === 1 && de[0] === 0) {
+    if (de.length === 1 && de[0] == 0) {
       slab = types.length;
-      if (USE_TYPED_ARRAYS == 2) {
-        types = ['i8']; //  if data is zeros, we don't need type info
-      }
     }
     // TODO: if not all zeros, at least filter out items with type === 0. requires cleverness to know how to skip at runtime though. also
     //       be careful of structure padding
   } catch(e){}
-  de = dedup(types);
-  if (de.length === 1) {
-    types = de[0];
-  } else if (de.length === 2 && typeof slab === 'number') {
-    // If slab is all zeros, we can compress types even if we have i32,0,0,0,i32,0,0,0 etc. - we do not need the zeros
-    de = de.filter(function(x) { return x !== 0 });
+  if (USE_TYPED_ARRAYS != 2) {
+    de = dedup(types);
     if (de.length === 1) {
       types = de[0];
+    } else if (de.length === 2 && typeof slab === 'number') {
+      // If slab is all zeros, we can compress types even if we have i32,0,0,0,i32,0,0,0 etc. - we do not need the zeros
+      de = de.filter(function(x) { return x !== 0 });
+      if (de.length === 1) {
+        types = de[0];
+      }
     }
+  } else { // USE_TYPED_ARRAYS == 2
+    var fail = false;
+    if (typeof slab === 'object') {
+      // flatten out into i8 values, so we can just to typed array .set()
+      for (var i = 0; i < slab.length; i++) {
+        if (!isNumber(slab[i])) { fail = true; break }
+      }
+      if (!fail) {
+        // XXX This heavily assumes the target endianness is the same as our current endianness! XXX
+        var i = 0;
+        var temp64f = new Float64Array(1);
+        var temp32f = new Float32Array(temp64f.buffer);
+        var temp32 = new Uint32Array(temp64f.buffer);
+        var temp16 = new Uint16Array(temp64f.buffer);
+        var temp8 = new Uint8Array(temp64f.buffer);
+        while (i < slab.length) {
+          var currType = types[i];
+          if (!currType) { i++; continue }
+          var currSize = 0, currValue = slab[i];
+          switch (currType) {
+            case 'i8': i++; continue;
+            case 'i16': temp16[0] = currValue;     currSize = 2; break;
+            case 'i64': // fall through, i64 is two i32 chunks
+            case 'i32': temp32[0] = currValue;     currSize = 4; break;
+            case 'float': temp32f[0] = currValue;  currSize = 4; break;
+            case 'double': temp64f[0] = currValue; currSize = 8; break;
+            default: {
+              if (currType[currType.length-1] == '*') {
+                temp32[0] = currValue;
+                currSize = 4;
+              } else {
+                throw 'what? ' + types[i];
+              }
+            }
+          }
+          for (var j = 0; j < currSize; j++) {
+            slab[i+j] = temp8[j];
+          }
+          i += currSize;
+        }
+      }
+    }
+    if (!fail) types = 'i8';
   }
-  return 'allocate(' + slab + ', ' + JSON.stringify(types) + (allocator ? ', ' + allocator : '') + ')';
+  if (typeof slab == 'object') slab = '[' + slab.join(',') + ']';
+  // JS engines sometimes say array initializers are too large. Work around that by chunking and calling concat to combine at runtime
+  var chunkSize = 10240;
+  function chunkify(array) {
+    // break very large slabs into parts
+    var ret = '';
+    var index = 0;
+    while (index < array.length) {
+      ret = (ret ? ret + '.concat(' : '') + '[' + array.slice(index, index + chunkSize).map(JSON.stringify) + ']' + (ret ? ')\n' : '');
+      index += chunkSize;
+    }
+    return ret;
+  }
+  if (typeof slab == 'string' && evaled && evaled.length > chunkSize && slab.length > chunkSize) {
+    slab = chunkify(evaled);
+  }
+  if (typeof types != 'string' && types.length > chunkSize) {
+    types = chunkify(types);
+  } else {
+    types = JSON.stringify(types);
+  }
+  return 'allocate(' + slab + ', ' + types + (allocator ? ', ' + allocator : '') + (allocator == 'ALLOC_NONE' ? ', ' + ptr : '') + ')';
 }
 
 function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
@@ -1438,9 +1705,7 @@ function handleOverflow(text, bits) {
   if (!bits) return text;
   var correct = correctOverflows();
   warnOnce(!correct || bits <= 32, 'Cannot correct overflows of this many bits: ' + bits);
-  if (CHECK_OVERFLOWS) return 'CHECK_OVERFLOW(' + text + ', ' + bits + ', ' + Math.floor(correctSpecificOverflow() && !PGO) + (
-    PGO ? ', "' + Debugging.getIdentifier() + '"' : ''
-  ) + ')';
+  if (CHECK_OVERFLOWS) return 'CHECK_OVERFLOW(' + text + ', ' + bits + ', ' + Math.floor(correctSpecificOverflow()) + ')';
   if (!correct) return text;
   if (bits == 32) {
     return '((' + text + ')|0)';
@@ -1451,8 +1716,40 @@ function handleOverflow(text, bits) {
   }
 }
 
-function makeLLVMStruct(values) { // TODO: Use this everywhere
-  return '{ ' + values.map(function(value, i) { return 'f' + i + ': ' + value }).join(', ') + ' }'
+function makeLLVMStruct(values) {
+  if (USE_TYPED_ARRAYS == 2) {
+    return 'DEPRECATED' + (new Error().stack) + 'XXX';
+  } else {
+    return '{ ' + values.map(function(value, i) { return 'f' + i + ': ' + value }).join(', ') + ' }'
+  }
+}
+
+function makeStructuralReturn(values, inAsm) {
+  if (USE_TYPED_ARRAYS == 2) {
+    var i = -1;
+    return 'return ' + asmCoercion(values.slice(1).map(function(value) {
+      i++;
+      return ASM_JS ? (inAsm ? 'tempRet' + i + ' = ' + value : 'asm.setTempRet' + i + '(' + value + ')')
+                    : 'tempRet' + (i++) + ' = ' + value;
+    }).concat([values[0]]).join(','), 'i32');
+  } else {
+    var i = 0;
+    return 'return { ' + values.map(function(value) {
+      return 'f' + (i++) + ': ' + value;
+    }).join(', ') + ' }';
+  }
+}
+
+function makeStructuralAccess(ident, i) {
+  if (USE_TYPED_ARRAYS == 2) {
+    return ident + '$' + i;
+  } else {
+    return ident + '.f' + i;
+  }
+}
+
+function makeThrow(what) {
+  return 'throw ' + what + (DISABLE_EXCEPTION_CATCHING == 1 ? ' + " - Exception catching is disabled, this exception cannot be caught. Compile with -s DISABLE_EXCEPTION_CATCHING=0 or DISABLE_EXCEPTION_CATCHING=2 to catch."' : '') + ';';
 }
 
 // From parseLLVMSegment
@@ -1472,13 +1769,14 @@ function finalizeLLVMParameter(param, noIndexizeFunctions) {
     }
   } else if (param.intertype == 'value') {
     ret = param.ident;
-    if (ret in Variables.globals && Variables.globals[ret].isString) {
-      ret = "STRING_TABLE." + ret;
+    if (ret in Variables.globals) {
+      ret = makeGlobalUse(ret);
     }
     if (param.type == 'i64' && USE_TYPED_ARRAYS == 2) {
       ret = parseI64Constant(ret);
     }
     ret = parseNumerical(ret, param.type);
+    ret = asmEnsureFloat(ret, param.type);
   } else if (param.intertype == 'structvalue') {
     ret = makeLLVMStruct(param.params.map(function(value) { return finalizeLLVMParameter(value, noIndexizeFunctions) }));
   } else if (param.intertype === 'blockaddress') {
@@ -1495,12 +1793,14 @@ function finalizeLLVMParameter(param, noIndexizeFunctions) {
   return ret;
 }
 
-function makeComparison(a, b, type) {
+function makeComparison(a, op, b, type) {
+  assert(type);
   if (!isIllegalType(type)) {
-    return a + ' == ' + b;
+    return asmCoercion(a, type) + op + asmCoercion(b, type);
   } else {
     assert(type == 'i64');
-    return a + '$0 == ' + b + '$0 && ' + a + '$1 == ' + b + '$1';
+    return asmCoercion(a + '$0', 'i32') + op + asmCoercion(b + '$0', 'i32') + ' & ' +
+           asmCoercion(a + '$1', 'i32') + op + asmCoercion(b + '$1', 'i32');
   }
 }
 
@@ -1514,9 +1814,7 @@ function makeSignOp(value, type, op, force, ignore) {
   var bits, full;
   if (type in Runtime.INT_TYPES) {
     bits = parseInt(type.substr(1));
-    full = op + 'Sign(' + value + ', ' + bits + ', ' + Math.floor(ignore || (correctSpecificSign() && !PGO)) + (
-      PGO ? ', "' + (ignore ? '' : Debugging.getIdentifier()) + '"' : ''
-    ) + ')';
+    full = op + 'Sign(' + value + ', ' + bits + ', ' + Math.floor(ignore || (correctSpecificSign())) + ')';
     // Always sign/unsign constants at compile time, regardless of CHECK/CORRECT
     if (isNumber(value)) {
       return eval(full).toString();
@@ -1528,9 +1826,10 @@ function makeSignOp(value, type, op, force, ignore) {
     if (!CHECK_SIGNS || ignore) {
       if (bits === 32) {
         if (op === 're') {
-          return '((' + value + ')|0)';
+          return '(' + getFastValue(value, '|', '0') + ')';
         } else {
-          return '((' + value + ')>>>0)';
+
+          return '(' + getFastValue(value, '>>>', '0') + ')';
           // Alternatively, we can consider the lengthier
           //    return makeInlineCalculation('VALUE >= 0 ? VALUE : ' + Math.pow(2, bits) + ' + VALUE', value, 'tempBigInt');
           // which does not always turn us into a 32-bit *un*signed value
@@ -1539,7 +1838,7 @@ function makeSignOp(value, type, op, force, ignore) {
         if (op === 're') {
           return makeInlineCalculation('(VALUE << ' + (32-bits) + ') >> ' + (32-bits), value, 'tempInt');
         } else {
-          return '((' + value + ')&' + (Math.pow(2, bits)-1) + ')';
+          return '(' + getFastValue(value, '&', Math.pow(2, bits)-1) + ')';
         }
       } else { // bits > 32
         if (op === 're') {
@@ -1561,30 +1860,41 @@ function makeSignOp(value, type, op, force, ignore) {
 function makeRounding(value, bits, signed, floatConversion) {
   // TODO: handle roundings of i64s
   assert(bits);
-  // C rounds to 0 (-5.5 to -5, +5.5 to 5), while JS has no direct way to do that.
-  if (bits <= 32 && signed) return '((' + value + ')&-1)'; // This is fast and even correct, for all cases. Note that it is the same
-                                                           // as |0, but &-1 hints to the js optimizer that this is a rounding correction
-  // Do Math.floor, which is reasonably fast, if we either don't care, or if we can be sure
-  // the value is non-negative
-  if (!correctRoundings() || (!signed && !floatConversion)) return 'Math.floor(' + value + ')';
-  // We are left with >32 bits signed, or a float conversion. Check and correct inline
-  // Note that if converting a float, we may have the wrong sign at this point! But, we have
-  // been rounded properly regardless, and we will be sign-corrected later when actually used, if
-  // necessary.
-  return makeInlineCalculation('VALUE >= 0 ? Math.floor(VALUE) : Math.ceil(VALUE)', value, 'tempBigIntR');
-/* refactored version - needs perf testing TODO
-  if (bits <= 32) {
-    if (signed) {
-      return '((' + value + ')&-1)'; // &-1 (instead of |0) hints to the js optimizer that this is a rounding correction
-    } else {
-      return '((' + value + ')>>>0)';
+  if (!ASM_JS) {
+    // C rounds to 0 (-5.5 to -5, +5.5 to 5), while JS has no direct way to do that.
+    if (bits <= 32 && signed) return '((' + value + ')&-1)'; // This is fast and even correct, for all cases. Note that it is the same
+                                                             // as |0, but &-1 hints to the js optimizer that this is a rounding correction
+    // Do Math.floor, which is reasonably fast, if we either don't care, or if we can be sure
+    // the value is non-negative
+    if (!correctRoundings() || (!signed && !floatConversion)) return 'Math.floor(' + value + ')';
+    // We are left with >32 bits signed, or a float conversion. Check and correct inline
+    // Note that if converting a float, we may have the wrong sign at this point! But, we have
+    // been rounded properly regardless, and we will be sign-corrected later when actually used, if
+    // necessary.
+    return makeInlineCalculation(makeComparison('VALUE', '>=', '0', 'float') + ' ? Math.floor(VALUE) : Math.ceil(VALUE)', value, 'tempBigIntR');
+  } else {
+    // asm.js mode, cleaner refactoring of this function as well. TODO: use in non-asm case, most of this
+    if (floatConversion && bits <= 32) {
+      return '(~~(' + value + '))'; // explicit float-to-int conversion
     }
+
+    if (bits <= 32) {
+      if (signed) {
+        return '((' + value + ')&-1)'; // &-1 (instead of |0) hints to the js optimizer that this is a rounding correction
+      } else {
+        return '((' + value + ')>>>0)';
+      }
+    }
+    // Math.floor is reasonably fast if we don't care about corrections (and even correct if unsigned)
+    if (!correctRoundings() || !signed) return 'Math.floor(' + value + ')';
+    // We are left with >32 bits
+    return makeInlineCalculation(makeComparison('VALUE', '>=', '0', 'float') + ' ? Math.floor(VALUE) : Math.ceil(VALUE)', value, 'tempBigIntR');
   }
-  // Math.floor is reasonably fast if we don't care about corrections (and even correct if unsigned)
-  if (!correctRoundings() || !signed) return 'Math.floor(' + value + ')';
-  // We are left with >32 bits
-  return makeInlineCalculation('VALUE >= 0 ? Math.floor(VALUE) : Math.ceil(VALUE)', value, 'tempBigIntR');
-*/
+}
+
+function makeIsNaN(value) {
+  if (ASM_JS) return makeInlineCalculation('((VALUE) != (VALUE))', value, 'tempDouble');
+  return 'isNaN(' + value + ')';
 }
 
 // fptoui and fptosi are not in these, because we need to be careful about what we do there. We can't
@@ -1630,6 +1940,7 @@ function processMathop(item) {
   if (item.type[0] === 'i') {
     bits = parseInt(item.type.substr(1));
   }
+  var bitsBefore = parseInt((item.params[0] ? item.params[0].type : item.type).substr(1)); // remove i to leave the number of bits left after this
   var bitsLeft = parseInt(((item.params[1] && item.params[1].ident) ? item.params[1].ident : item.type).substr(1)); // remove i to leave the number of bits left after this operation
 
   function integerizeBignum(value) {
@@ -1658,8 +1969,12 @@ function processMathop(item) {
     }
     function i64PreciseOp(type, lastArg) {
       Types.preciseI64MathUsed = true;
-      return finish(['(i64Math.' + type + '(' + low1 + ',' + high1 + ',' + low2 + ',' + high2 +
-                     (lastArg ? ',' + lastArg : '') + '),i64Math.result[0])', 'i64Math.result[1]']);
+      return finish(['(i64Math' + (ASM_JS ? '_' : '.') + type + '(' + asmCoercion(low1, 'i32') + ',' + asmCoercion(high1, 'i32') + ',' + asmCoercion(low2, 'i32') + ',' + asmCoercion(high2, 'i32') +
+                     (lastArg ? ',' + asmCoercion(+lastArg, 'i32') : '') + '),' + makeGetValue('tempDoublePtr', 0, 'i32') + ')', makeGetValue('tempDoublePtr', Runtime.getNativeTypeSize('i32'), 'i32')]);
+    }
+    function i64PreciseLib(type) {
+      Types.preciseI64MathUsed = true;
+      return finish(['_i64' + type[0].toUpperCase() + type.substr(1) + '(' + low1 + ',' + high1 + ',' + low2 + ',' + high2 + ')', 'tempRet0']);
     }
     switch (op) {
       // basic integer ops
@@ -1675,65 +1990,30 @@ function processMathop(item) {
       case 'shl':
       case 'ashr':
       case 'lshr': {
-        if (!isNumber(idents[1])) {
-          return 'Runtime.bitshift64(' + idents[0] + '[0], ' + idents[0] + '[1],"' + op + '",' + stripCorrections(idents[1]) + '[0]|0)';
-        }
-        bits = parseInt(idents[1]);
-        var ander = Math.pow(2, bits)-1;
-        if (bits < 32) {
-          switch (op) {
-            case 'shl':
-              return '[' + idents[0] + '[0] << ' + idents[1] + ', ' +
-                       '('+idents[0] + '[1] << ' + idents[1] + ') | ((' + idents[0] + '[0]&(' + ander + '<<' + (32 - bits) + ')) >>> (32-' + idents[1] + '))]';
-            case 'ashr':
-              return '[((('+idents[0] + '[0] >>> ' + idents[1] + ') | ((' + idents[0] + '[1]&' + ander + ')<<' + (32 - bits) + ')) >> 0) >>> 0,' +
-                          '(' + idents[0] + '[1] >> ' + idents[1] + ') >>> 0]';
-            case 'lshr':
-              return '[(('+idents[0] + '[0] >>> ' + idents[1] + ') | ((' + idents[0] + '[1]&' + ander + ')<<' + (32 - bits) + ')) >>> 0,' +
-                          idents[0] + '[1] >>> ' + idents[1] + ']';
-          }
-        } else if (bits == 32) {
-          switch (op) {
-            case 'shl':
-              return '[0, ' + idents[0] + '[0]]';
-            case 'ashr':
-              return '[' + idents[0] + '[1], (' + idents[0] + '[1]|0) < 0 ? ' + ander + ' : 0]';
-            case 'lshr':
-              return '[' + idents[0] + '[1], 0]';
-          }
-        } else { // bits > 32
-          switch (op) {
-            case 'shl':
-              return '[0, ' + idents[0] + '[0] << ' + (bits - 32) + ']';
-            case 'ashr':
-              return '[(' + idents[0] + '[1] >> ' + (bits - 32) + ') >>> 0, (' + idents[0] + '[1]|0) < 0 ? ' + ander + ' : 0]';
-            case 'lshr':
-              return '[' + idents[0] + '[1] >>> ' + (bits - 32) + ', 0]';
-          }
-        }
+				throw 'shifts should have been legalized!';
       }
-      case 'uitofp': case 'sitofp': return low1 + ' + ' + high1 + '*4294967296';
-      case 'fptoui': case 'fptosi': return finish(splitI64(idents[0]));
+      case 'uitofp': case 'sitofp': return RuntimeGenerator.makeBigInt(low1, high1, op[0] == 'u');
+      case 'fptoui': case 'fptosi': return finish(splitI64(idents[0], true));
       case 'icmp': {
         switch (variant) {
-          case 'uge': return '(' + high1 + '>>>0) >= (' + high2 + '>>>0) && ((' + high1 + '>>>0) >  ('  + high2 + '>>>0) || ' +
-                                                                        '(' + low1 + '>>>0) >= ('  + low2 + '>>>0))';
-          case 'sge': return '(' + high1 + '|0) >= (' + high2 + '|0) && ((' + high1 + '|0) >  ('  + high2 + '|0) || ' +
-                                                                        '(' + low1 + '>>>0) >= ('  + low2 + '>>>0))';
-          case 'ule': return '(' + high1 + '>>>0) <= (' + high2 + '>>>0) && ((' + high1 + '>>>0) <  (' + high2 + '>>>0) || ' +
-                                                                        '(' + low1 + '>>>0) <= (' + low2 + '>>>0))';
-          case 'sle': return '(' + high1 + '|0) <= (' + high2 + '|0) && ((' + high1 + '|0) <  (' + high2 + '|0) || ' +
-                                                                        '(' + low1 + '>>>0) <= (' + low2 + '>>>0))';
-          case 'ugt': return '(' + high1 + '>>>0) > (' + high2 + '>>>0) || ((' + high1 + '>>>0) == (' + high2 + '>>>0) && ' +
-                                                                       '(' + low1 + '>>>0) >  (' + low2 + '>>>0))';
-          case 'sgt': return '(' + high1 + '|0) > (' + high2 + '|0) || ((' + high1 + '|0) == (' + high2 + '|0) && ' +
-                                                                       '(' + low1 + '>>>0) >  (' + low2 + '>>>0))';
-          case 'ult': return '(' + high1 + '>>>0) < (' + high2 + '>>>0) || ((' + high1 + '>>>0) == (' + high2 + '>>>0) && ' +
-                                                                       '(' + low1 + '>>>0) <  (' + low2 + '>>>0))';
-          case 'slt': return '(' + high1 + '|0) < (' + high2 + '|0) || ((' + high1 + '|0) == (' + high2 + '|0) && ' +
-                                                                       '(' + low1 + '>>>0) <  (' + low2 + '>>>0))';
-          case 'ne':  return low1 + ' != ' + low2 + ' || ' + high1 + ' != ' + high2 + '';
-          case 'eq':  return low1 + ' == ' + low2 + ' && ' + high1 + ' == ' + high2 + '';
+          case 'uge': return '((' + high1 + '>>>0) >= (' + high2 + '>>>0)) & ((((' + high1 + '>>>0) >  ('  + high2 + '>>>0)) | ' +
+                                                                        '(' + low1 + '>>>0) >= ('  + low2 + '>>>0)))';
+          case 'sge': return '((' + high1 + '|0) >= (' + high2 + '|0)) & ((((' + high1 + '|0) >  ('  + high2 + '|0)) | ' +
+                                                                        '(' + low1 + '>>>0) >= ('  + low2 + '>>>0)))';
+          case 'ule': return '((' + high1 + '>>>0) <= (' + high2 + '>>>0)) & ((((' + high1 + '>>>0) <  (' + high2 + '>>>0)) | ' +
+                                                                        '(' + low1 + '>>>0) <= (' + low2 + '>>>0)))';
+          case 'sle': return '((' + high1 + '|0) <= (' + high2 + '|0)) & ((((' + high1 + '|0) <  (' + high2 + '|0)) | ' +
+                                                                        '(' + low1 + '>>>0) <= (' + low2 + '>>>0)))';
+          case 'ugt': return '((' + high1 + '>>>0) > (' + high2 + '>>>0)) | ((((' + high1 + '>>>0) == (' + high2 + '>>>0) & ' +
+                                                                       '(' + low1 + '>>>0) >  (' + low2 + '>>>0))))';
+          case 'sgt': return '((' + high1 + '|0) > (' + high2 + '|0)) | ((((' + high1 + '|0) == (' + high2 + '|0) & ' +
+                                                                       '(' + low1 + '>>>0) >  (' + low2 + '>>>0))))';
+          case 'ult': return '((' + high1 + '>>>0) < (' + high2 + '>>>0)) | ((((' + high1 + '>>>0) == (' + high2 + '>>>0) & ' +
+                                                                       '(' + low1 + '>>>0) <  (' + low2 + '>>>0))))';
+          case 'slt': return '((' + high1 + '|0) < (' + high2 + '|0)) | ((((' + high1 + '|0) == (' + high2 + '|0) & ' +
+                                                                       '(' + low1 + '>>>0) <  (' + low2 + '>>>0))))';
+          case 'ne':  return '((' + low1 + '|0) != (' + low2 + '|0)) | ((' + high1 + '|0) != (' + high2 + '|0))';
+          case 'eq':  return '((' + low1 + '|0) == (' + low2 + '|0)) & ((' + high1 + '|0) == (' + high2 + '|0))';
           default: throw 'Unknown icmp variant: ' + variant;
         }
       }
@@ -1748,10 +2028,10 @@ function processMathop(item) {
       // Dangerous, rounded operations. TODO: Fully emulate
       case 'add': {
         if (PRECISE_I64_MATH) {
-          return i64PreciseOp('add');
+          return i64PreciseLib('add');
         } else {
           warnI64_1();
-          return finish(splitI64(mergeI64(idents[0]) + '+' + mergeI64(idents[1])));
+          return finish(splitI64(mergeI64(idents[0]) + '+' + mergeI64(idents[1]), true));
         }
       }
       case 'sub': {
@@ -1759,7 +2039,7 @@ function processMathop(item) {
           return i64PreciseOp('subtract');
         } else {
           warnI64_1();
-          return finish(splitI64(mergeI64(idents[0]) + '-' + mergeI64(idents[1])));
+          return finish(splitI64(mergeI64(idents[0]) + '-' + mergeI64(idents[1]), true));
         }
       }
       case 'sdiv': case 'udiv': {
@@ -1767,7 +2047,7 @@ function processMathop(item) {
           return i64PreciseOp('divide', op[0] === 'u');
         } else {
           warnI64_1();
-          return finish(splitI64(makeRounding(mergeI64(idents[0], op[0] === 'u') + '/' + mergeI64(idents[1], op[0] === 'u'), bits, op[0] === 's')));
+          return finish(splitI64(makeRounding(mergeI64(idents[0], op[0] === 'u') + '/' + mergeI64(idents[1], op[0] === 'u'), bits, op[0] === 's'), true));
         }
       }
       case 'mul': {
@@ -1775,7 +2055,7 @@ function processMathop(item) {
           return i64PreciseOp('multiply');
         } else {
           warnI64_1();
-          return finish(splitI64(mergeI64(idents[0], op[0] === 'u') + '*' + mergeI64(idents[1], op[0] === 'u')));
+          return finish(splitI64(mergeI64(idents[0], op[0] === 'u') + '*' + mergeI64(idents[1], op[0] === 'u'), true));
         }
       }
       case 'urem': case 'srem': {
@@ -1783,7 +2063,7 @@ function processMathop(item) {
           return i64PreciseOp('modulo', op[0] === 'u');
         } else {
           warnI64_1();
-          return finish(splitI64(mergeI64(idents[0], op[0] === 'u') + '%' + mergeI64(idents[1], op[0] === 'u')));
+          return finish(splitI64(mergeI64(idents[0], op[0] === 'u') + '%' + mergeI64(idents[1], op[0] === 'u'), true));
         }
       }
       case 'bitcast': {
@@ -1793,15 +2073,15 @@ function processMathop(item) {
         var outType = item.type;
         if (inType in Runtime.INT_TYPES && outType in Runtime.FLOAT_TYPES) {
           if (legalizedI64s) {
-            return '(tempDoubleI32[0]=' + idents[0] + '$0, tempDoubleI32[1]=' + idents[0] + '$1, tempDoubleF64[0])';
+            return '(' + makeSetTempDouble(0, 'i32', idents[0] + '$0') + ', ' + makeSetTempDouble(1, 'i32', idents[0] + '$1') + ', ' + makeGetTempDouble(0, 'double') + ')';
           } else {
-            return makeInlineCalculation('tempDoubleI32[0]=VALUE[0],tempDoubleI32[1]=VALUE[1],tempDoubleF64[0]', idents[0], 'tempI64');
+            return makeInlineCalculation(makeSetTempDouble(0, 'i32', 'VALUE[0]') + ',' + makeSetTempDouble(1, 'i32', 'VALUE[1]') + ',' + makeGetTempDouble(0, 'double'), idents[0], 'tempI64');
           }
         } else if (inType in Runtime.FLOAT_TYPES && outType in Runtime.INT_TYPES) {
           if (legalizedI64s) {
-            return 'tempDoubleF64[0]=' + idents[0] + '; ' + finish(['tempDoubleI32[0]','tempDoubleI32[1]']);
+            return makeSetTempDouble(0, 'double', idents[0]) + '; ' + finish([makeGetTempDouble(0, 'i32'), makeGetTempDouble(1, 'i32')]);
           } else {
-            return '(tempDoubleF64[0]=' + idents[0] + ',[tempDoubleI32[0],tempDoubleI32[1]])';
+            return '(' + makeSetTempDouble(0, 'double', idents[0]) + ',[' + makeGetTempDouble(0, 'i32') + ',' + makeGetTempDouble(1, 'i32') + '])';
           }
         } else {
           throw 'Invalid USE_TYPED_ARRAYS == 2 bitcast: ' + dump(item) + ' : ' + item.params[0].type;
@@ -1816,14 +2096,7 @@ function processMathop(item) {
     case 'add': return handleOverflow(getFastValue(idents[0], '+', idents[1], item.type), bits);
     case 'sub': return handleOverflow(getFastValue(idents[0], '-', idents[1], item.type), bits);
     case 'sdiv': case 'udiv': return makeRounding(getFastValue(idents[0], '/', idents[1], item.type), bits, op[0] === 's');
-    case 'mul': {
-      if (bits == 32 && PRECISE_I32_MUL) {
-        Types.preciseI64MathUsed = true;
-        return '(i64Math.multiply(' + idents[0] + ',0,' + idents[1] + ',0),i64Math.result[0])';
-      } else {
-        return handleOverflow(getFastValue(idents[0], '*', idents[1], item.type), bits);
-      }
-    }
+    case 'mul': return getFastValue(idents[0], '*', idents[1], item.type); // overflow handling is already done in getFastValue for '*'
     case 'urem': case 'srem': return getFastValue(idents[0], '%', idents[1], item.type);
     case 'or': {
       if (bits > 32) {
@@ -1869,7 +2142,7 @@ function processMathop(item) {
     case 'fdiv': return getFastValue(idents[0], '/', idents[1], item.type);
     case 'fmul': return getFastValue(idents[0], '*', idents[1], item.type);
     case 'frem': return getFastValue(idents[0], '%', idents[1], item.type);
-    case 'uitofp': case 'sitofp': return idents[0];
+    case 'uitofp': case 'sitofp': return asmCoercion(idents[0], 'double', op[0]);
     case 'fptoui': case 'fptosi': return makeRounding(idents[0], bitsLeft, op === 'fptosi', true);
 
     // TODO: We sometimes generate false instead of 0, etc., in the *cmps. It seemed slightly faster before, but worth rechecking
@@ -1884,7 +2157,6 @@ function processMathop(item) {
         case 'ne': case 'eq': {
           // We must sign them, so we do not compare -1 to 255 (could have unsigned them both too)
           // since LLVM tells us if <=, >= etc. comparisons are signed, but not == and !=.
-          assert(paramTypes[0] == paramTypes[1]);
           idents[0] = makeSignOp(idents[0], paramTypes[0], 're');
           idents[1] = makeSignOp(idents[1], paramTypes[1], 're');
           return idents[0] + (variant === 'eq' ? '==' : '!=') + idents[1];
@@ -1902,17 +2174,24 @@ function processMathop(item) {
         case 'ult': case 'olt': return idents[0] + ' < ' + idents[1];
         case 'une': case 'one': return idents[0] + ' != ' + idents[1];
         case 'ueq': case 'oeq': return idents[0] + ' == ' + idents[1];
-        case 'ord': return '!isNaN(' + idents[0] + ') && !isNaN(' + idents[1] + ')';
-        case 'uno': return 'isNaN(' + idents[0] + ') || isNaN(' + idents[1] + ')';
+        case 'ord': return '!' + makeIsNaN(idents[0]) + ' & !' + makeIsNaN(idents[1]);
+        case 'uno': return makeIsNaN(idents[0]) + ' | ' + makeIsNaN(idents[1]);
         case 'true': return '1';
         default: throw 'Unknown fcmp variant: ' + variant;
       }
     }
     // Note that zext has sign checking, see above. We must guard against -33 in i8 turning into -33 in i32
     // then unsigning that i32... which would give something huge.
-    case 'zext': case 'fpext': case 'sext': return idents[0];
+    case 'zext': {
+      if (EXPLICIT_ZEXT && bitsBefore == 1 && bitsLeft > 1) {
+        return '(' + originalIdents[0] + '?1:0)'; // explicit bool-to-int conversion, work around v8 issue 2513
+        break;
+      }
+      // otherwise, fall through
+    }
+    case 'fpext': case 'sext': return idents[0];
     case 'fptrunc': return idents[0];
-    case 'select': return idents[0] + ' ? ' + idents[1] + ' : ' + idents[2];
+    case 'select': return idents[0] + ' ? ' + asmEnsureFloat(idents[1], item.type) + ' : ' + asmEnsureFloat(idents[2], item.type);
     case 'ptrtoint': case 'inttoptr': {
       var ret = '';
       if (QUANTUM_SIZE == 1) {
@@ -1940,9 +2219,9 @@ function processMathop(item) {
           (inType in Runtime.FLOAT_TYPES && outType in Runtime.INT_TYPES)) {
         assert(USE_TYPED_ARRAYS == 2, 'Can only bitcast ints <-> floats with typed arrays mode 2');
         if (inType in Runtime.INT_TYPES) {
-          return '(tempDoubleI32[0] = ' + idents[0] + ',tempDoubleF32[0])';
+          return '(' + makeSetTempDouble(0, 'i32', idents[0]) + ',' + makeGetTempDouble(0, 'float') + ')';
         } else {
-          return '(tempDoubleF32[0] = ' + idents[0] + ',tempDoubleI32[0])';
+          return '(' + makeSetTempDouble(0, 'float', idents[0]) + ',' + makeGetTempDouble(0, 'i32') + ')';
         }
       }
       return idents[0];
@@ -2031,5 +2310,16 @@ function stripCorrections(param) {
     break;
   }
   return param;
+}
+
+function getImplementationType(varInfo) {
+  if (varInfo.impl == 'nativized') {
+    return removePointing(varInfo.type);
+  }
+  return varInfo.type;
+}
+
+function charCode(char) {
+  return char.charCodeAt(0);
 }
 

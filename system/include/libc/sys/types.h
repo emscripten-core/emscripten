@@ -24,12 +24,6 @@
 
 #include <machine/_types.h>
 
-#if EMSCRIPTEN
-  #define _POSIX_THREADS
-  #define _UNIX98_THREAD_MUTEX_ATTRIBUTES
-  #define _POSIX_READER_WRITER_LOCKS
-#endif
-
 #if defined(__rtems__) || defined(__XMK__) || defined(EMSCRIPTEN)
 /*
  *  The following section is RTEMS specific and is needed to more
@@ -162,6 +156,7 @@ typedef _off_t	off_t;
 typedef __dev_t dev_t;
 typedef __uid_t uid_t;
 typedef __gid_t gid_t;
+typedef __id_t  id_t ; /* can hold a uid_t or pid_t */
 #endif
 
 #if defined(__XMK__)

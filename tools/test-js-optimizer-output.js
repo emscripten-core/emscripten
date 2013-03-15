@@ -35,14 +35,8 @@ function loopy() {
   next();
   something();
 }
-function ignoreLoopy() {
-  b$for_cond$4 : while (1) {
-    if ($ok) break b$for_cond$4;
-    var $inc = $ok + 1;
-  }
-}
 function bits() {
-  print(($s & 65535) + (($f & 65535) << 16 >> 16) * (($f & 65535) << 16 >> 16) % 256 & 65535);
+  print(($s & 65535) + ((($f & 65535) << 16 >> 16) * (($f & 65535) << 16 >> 16) | 0) % 256 & 65535);
   z(HEAP32[$id + 40 >> 2]);
   z($f << 2);
   z($f | 255);
@@ -50,7 +44,7 @@ function bits() {
   z($f ^ 1);
   z($f << 2);
   z($f * 100 << 2);
-  z($f % 2 | 255);
+  z(($f | 0) % 2 | 255);
   z(($f | 0) / 55 & 255);
   z($f - 22 ^ 1);
   z($f + 15 << 2);
@@ -278,5 +272,20 @@ function notComps() {
 }
 function tricky() {
   var $conv642 = $conv6374 - (($132 << 16 >> 16 | 0) / 2 & -1) & 65535;
+}
+function asmy() {
+  f(HEAPU8[_buf + i6 & 16777215]);
+  f(HEAPU8[_buf + i6 & 16777215]);
+  f(HEAP8[_buf + i6 & 16777215] & 1);
+  f(HEAPU8[_buf + i6 & 16777215] & 1);
+  f(HEAP8[_buf + i6 & 16777215] & 1);
+  f(HEAPU8[_buf + i6 & 16777215] & 1);
+  f((HEAP8[_buf + i6 & 16777215] & 1) + i5 | 0);
+  f((HEAPU8[_buf + i6 & 16777215] & 1) + i5 | 0);
+  f((HEAP8[_buf + i6 & 16777215] & 1) + i5 | 0);
+  f((HEAPU8[_buf + i6 & 16777215] & 1) + i5 | 0);
+  if ((_sbrk($419 | 0) | 0) == -1) {
+    print("fleefl");
+  }
 }
 

@@ -35,8 +35,8 @@ TODO:        You can also provide .crn files yourself, pre-crunched. With this o
 
 import os, sys, shutil, random
 
-from shared import Compression, execute, suffix, unsuffixed
 import shared
+from shared import Compression, execute, suffix, unsuffixed
 from subprocess import Popen, PIPE, STDOUT
 
 data_target = sys.argv[1]
@@ -228,7 +228,7 @@ if has_preloaded:
     curr = open(file_['localname'], 'rb').read()
     file_['data_end'] = start + len(curr)
     if AV_WORKAROUND: curr += '\x00'
-    print >> sys.stderr, 'bundling', file_['name'], file_['localname'], file_['data_start'], file_['data_end']
+    #print >> sys.stderr, 'bundling', file_['name'], file_['localname'], file_['data_start'], file_['data_end']
     start += len(curr)
     data.write(curr)
   data.close()
@@ -252,7 +252,17 @@ for file_ in data_files:
   filename = file_['name']
   if file_['mode'] == 'embed':
     # Embed
-    code += '''Module['FS_createDataFile']('/%s', '%s', %s, true, true);\n''' % (os.path.dirname(filename), os.path.basename(filename), str(map(ord, open(file_['localname'], 'rb').read())))
+    data = map(ord, open(file_['localname'], 'rb').read())
+    str_data = ''
+    chunk_size = 10240
+    while len(data) > 0:
+      chunk = data[:chunk_size]
+      data = data[chunk_size:]
+      if not str_data:
+        str_data = str(chunk)
+      else:
+        str_data += '.concat(' + str(chunk) + ')'
+    code += '''Module['FS_createDataFile']('/%s', '%s', %s, true, true);\n''' % (os.path.dirname(filename), os.path.basename(filename), str_data)
   elif file_['mode'] == 'preload':
     # Preload
     varname = 'filePreload%d' % counter

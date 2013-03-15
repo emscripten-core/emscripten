@@ -45,6 +45,8 @@ void verify() {
 
 int main(int argc, char *argv[])
 {
+    int temp; // testing
+
     SDL_Surface *screen;
     if ( SDL_Init(SDL_INIT_VIDEO) != 0 ) {
         printf("Unable to initialize SDL: %s\n", SDL_GetError());
@@ -124,7 +126,9 @@ int main(int argc, char *argv[])
 
     glActiveTexture(GL_TEXTURE0);
 
+    glGetBooleanv(GL_VERTEX_ARRAY, &temp); assert(!temp);
     glEnableClientState(GL_VERTEX_ARRAY);
+    glGetBooleanv(GL_VERTEX_ARRAY, &temp); assert(temp);
 
     GLuint arrayBuffer, elementBuffer;
     glGenBuffers(1, &arrayBuffer);
@@ -206,6 +210,20 @@ int main(int argc, char *argv[])
     glClientActiveTexture(GL_TEXTURE0); // likely not needed, it is a cleanup
     glNormalPointer(GL_BYTE, 32, (void*)12);
     glColorPointer(4, GL_UNSIGNED_BYTE, 32, (void*)28);
+
+    glGetPointerv(GL_VERTEX_ARRAY_POINTER, &temp); assert(temp == 0);
+    glGetPointerv(GL_COLOR_ARRAY_POINTER, &temp); assert(temp == 28);
+    glGetPointerv(GL_TEXTURE_COORD_ARRAY_POINTER, &temp); assert(temp == 16);
+    glGetIntegerv(GL_VERTEX_ARRAY_SIZE, &temp); assert(temp == 3);
+    glGetIntegerv(GL_VERTEX_ARRAY_TYPE, &temp); assert(temp == GL_FLOAT);
+    glGetIntegerv(GL_VERTEX_ARRAY_STRIDE, &temp); assert(temp == 32);
+    glGetIntegerv(GL_COLOR_ARRAY_SIZE, &temp); assert(temp == 4);
+    glGetIntegerv(GL_COLOR_ARRAY_TYPE, &temp); assert(temp == GL_UNSIGNED_BYTE);
+    glGetIntegerv(GL_COLOR_ARRAY_STRIDE, &temp); assert(temp == 32);
+    glGetIntegerv(GL_TEXTURE_COORD_ARRAY_SIZE, &temp); assert(temp == 2);
+    glGetIntegerv(GL_TEXTURE_COORD_ARRAY_TYPE, &temp); assert(temp == GL_FLOAT);
+    glGetIntegerv(GL_TEXTURE_COORD_ARRAY_STRIDE, &temp); assert(temp == 32);
+    glGetBooleanv(GL_VERTEX_ARRAY, &temp); assert(temp);
 
     glBindTexture(GL_TEXTURE_2D, texture); // diffuse?
     glActiveTexture(GL_TEXTURE0);
