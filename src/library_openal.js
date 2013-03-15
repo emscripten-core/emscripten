@@ -200,6 +200,32 @@ var LibraryOpenAL = {
     }
   },
 
+  alSourceUnqueueBuffers: function(source, count, buffers)
+  {
+    if (!AL.currentContext) {
+      console.error("alSourceUnqueueBuffers called without a valid context");
+      return;
+    }
+    if (source > AL.currentContext.src.length) {
+      console.error("alSourceUnqueueBuffers called with an invalid source");
+      return;
+    }
+    if (count != 1) {
+      console.error("Queuing multiple buffers using alSourceUnqueueBuffers is not supported yet");
+      return;
+    }
+    for (var i = 0; i < count; ++i) {
+      var buffer = AL.currentContext.src[source - 1].buffer;
+      for (var j = 0; j < AL.currentContext.buf.length; ++j) {
+        if (buffer == AL.currentContext.buf[j].buf) {
+          {{{ makeSetValue('buffers', 'i', 'j+1', 'i32') }}};
+          AL.currentContext.src[source - 1].buffer = null;
+          break;
+        }
+      }
+    }
+  },
+
   alGenBuffers: function(count, buffers) {
     if (!AL.currentContext) {
       console.error("alGenBuffers called without a valid context");
