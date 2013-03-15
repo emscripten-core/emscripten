@@ -70,6 +70,18 @@ var LibraryOpenAL = {
     }
   },
 
+  alDeleteSources: function(count, sources)
+  {
+    if (!AL.currentContext) {
+      console.error("alDeleteSources called without a valid context");
+      return;
+    }
+    for (var i = 0; i < count; ++i) {
+      var sourceIdx = {{{ makeGetValue('sources', 'i', 'i32') }}} - 1;
+      delete AL.currentContext.src[sourceIdx];
+    }
+  },
+
   alGenSources: function(count, sources) {
     if (!AL.currentContext) {
       console.error("alGenSources called without a valid context");
