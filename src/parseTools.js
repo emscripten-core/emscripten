@@ -2319,3 +2319,7 @@ function getImplementationType(varInfo) {
   return varInfo.type;
 }
 
+function charCode(char) {
+  return char.charCodeAt(0);
+}
+
