@@ -6077,6 +6077,8 @@ def process(filename):
       self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=add_pre_run_and_checks)
 
     def test_utf(self):
+      if self.emcc_args and 'UTF_STRING_SUPPORT=0' in self.emcc_args: return self.skip('need utf support')
+
       self.banned_js_engines = [SPIDERMONKEY_ENGINE] # only node handles utf well
       Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc']
 
@@ -8751,7 +8753,7 @@ TT = %s
 
   # asm.js
   exec('asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=1"])')
-  exec('asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=1", "-g", "-s", "ASSERTIONS=1"])')
+  exec('asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=1", "-g", "-s", "ASSERTIONS=1", "-s", "UTF_STRING_SUPPORT=0"])')
 
   # Make custom runs with various options
   for compiler, quantum, embetter, typed_arrays, llvm_opts in [
