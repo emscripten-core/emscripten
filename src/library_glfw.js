@@ -6,17 +6,19 @@
  * What it does:
  * - Creates a GL context.
  * - Manage keyboard and mouse events.
+ * - GL Extensions support.
  *
  * What it does not but should do:
  * - Transmit events when glfwPollEvents, glfwWaitEvents or glfwSwapBuffers is
  *    called. Events callbacks are called as soon as event are received.
- * - Correctly handle unicode characters
+ * - Correctly handle unicode characters. To be tested.
  * - Thread emulation.
  * - Joystick support.
  * - Image/Texture I/O support.
- * - GL Extensions support.
  * - Video modes.
  *
+ * Authors:
+ * - Éloi Rivard <eloi.rivard@gmail.com>
  ******************************************************************************/
 
 var LibraryGLFW = {
@@ -112,13 +114,20 @@ var LibraryGLFW = {
       output += String.fromCharCode(value);
       return output;      
     },
-    
-    savePosition: function(event) {
-      /* TODO maybe loop here ala http://www.quirksmode.org/js/findpos.html */
-      GLFW.lastX = event['clientX'] - Module['canvas'].offsetLeft;
-      GLFW.lastY = event['clientY'] - Module['canvas'].offsetTop;
-    },
 
+    onKeyPress: function(event) {
+      //charCode is only available whith onKeyPress event
+      var char = GLFW.getUnicodeChar(event.charCode);
+      
+      if(event.charCode){
+        var char = GLFW.getUnicodeChar(event.charCode);
+        if( char !== null && GLFW.charFunc ) {
+          event.preventDefault();
+          Runtime.dynCall('vii', GLFW.charFunc, [event.charCode, 1]);
+        }
+      }
+    },
+    
 	  onKeyChanged: function(event, status){   	      
 	    var key = GLFW.DOMToGLFWKeyCode(event.keyCode);
       if(key && GLFW.keyFunc) {
@@ -135,17 +144,11 @@ var LibraryGLFW = {
     onKeyup: function(event) {
 		  GLFW.onKeyChanged(event, 0);//GLFW_RELEASE
     },
-
-    onKeyPress: function(event) {
-      var char = GLFW.getUnicodeChar(event.charCode);
-      Module.printErr(event.charCode + " - " + char);
-      if(event.charCode){
-        var char = GLFW.getUnicodeChar(event.charCode);
-        if( char !== null && GLFW.charFunc ) {
-          event.preventDefault();
-          Runtime.dynCall('vii', GLFW.charFunc, [event.charCode, status]);
-        }
-      }
+    
+    savePosition: function(event) {
+      /* TODO maybe loop here ala http://www.quirksmode.org/js/findpos.html */
+      GLFW.lastX = event['clientX'] - Module['canvas'].offsetLeft;
+      GLFW.lastY = event['clientY'] - Module['canvas'].offsetTop;
     },
 
     onMousemove: function(event) {
@@ -477,18 +480,25 @@ var LibraryGLFW = {
 		GLFW.initTime = Date.now()/1000 + time;
 	},
 
-	glfwSleep : function( time ) { throw "glfwSleep is not implemented yet."; },
+  glfwSleep__deps: ['sleep'],
+	glfwSleep : function( time ) {
+	  _sleep(time);
+	},
 
 	/* Extension support */
-	glfwExtensionSupported : function( extension ) { return 1; /*throw "glfwExtensionSupported is not implemented yet.";*/ },
-	glfwGetProcAddress : function( procname ) {	return null; /*throw "glfwGetProcAddress is not implemented yet.";*/ },
+	glfwExtensionSupported : function( extension ) {
+	  return Module.ctx.getSupportedExtensions().indexOf(Pointer_stringify(extension)) > -1;
+	},
+	
+	glfwGetProcAddress__deps: ['glfwGetProcAddress'],
+	glfwGetProcAddress : function( procname ) {	
+	  return _getProcAddress(procname); 
+	},
 	
 	glfwGetGLVersion : function( major, minor, rev ) {
-	  //TODO: Find something better here.
-	  Module.printErr("Fake GL version");
-		setValue(major, 4, 'i32');
-		setValue(minor, 2, 'i32');
-		setValue(rev, 0, 'i32');
+		setValue(major, 0, 'i32');
+		setValue(minor, 0, 'i32');
+		setValue(rev, 1, 'i32');
 	},
 
 	/* Threading support */
