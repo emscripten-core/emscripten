@@ -67,8 +67,8 @@ void Init()
   glfwSetWindowSizeCallback(OnResize);
   glfwSetWindowRefreshCallback(OnRefresh);
   glfwSetMouseWheelCallback(OnMouseWheel);
-  glfwSetMousePosCallback(OnMouseMove);
-  glfwSetMouseButtonCallback(OnMouseClick);
+  //glfwSetMousePosCallback(OnMouseMove);
+  //glfwSetMouseButtonCallback(OnMouseClick);
   
   // set the projection matrix to a normal frustum with a max depth of 50
   glMatrixMode(GL_PROJECTION);
@@ -289,14 +289,15 @@ char* GetParamName(int param){
     default                        : return "Invalid param";
   }
 }
+
 void OnKeyPressed( int key, int action ){
   const char* key_name = GetKeyName(key);
   if(key_name == 0)
     return;
   if(action == GLFW_PRESS)
-    printf("%s (%i) key is pressed\n", key_name, key);
+    printf("'%s' (%i) key is pressed\n", key_name, key);
   if(action == GLFW_RELEASE)
-    printf("%s (%i) key is released\n", key_name, key);
+    printf("'%s' (%i) key is released\n", key_name, key);
   if(action == GLFW_RELEASE && key == GLFW_KEY_ENTER)
     PullInfo();
 }
@@ -331,6 +332,7 @@ void OnMouseWheel( int pos ){
 
 void PullInfo(){
   printf("================================================================================\n");
+  
   int major, minor, rev;
   glfwGetVersion(&major, &minor, &rev);
   printf("GLFW version is %i.%i.%i\n", major, minor, rev);
@@ -370,6 +372,16 @@ void PullInfo(){
   unsigned int i;
   for(i = 0; i<nb_params; i++)
     printf(" - %-27s : %i\n", GetParamName(params[i]), glfwGetWindowParam(params[i]));
+  
+  const char* extension = "MOZ_WEBGL_compressed_texture_s3tc";
+  printf("'%s' extension is %s.\n", extension, glfwExtensionSupported(extension) ? "supported" : "not supported");  
+  
+  extension = "GL_EXT_framebuffer_object";
+  printf("'%s' extension is %s.\n", extension, glfwExtensionSupported(extension) ? "supported" : "not supported");
+  
+  printf("Sleeping 1 sec...\n");
+  glfwSleep(1);
+  printf("...Done.\n");
   
   printf("================================================================================\n");
 }
