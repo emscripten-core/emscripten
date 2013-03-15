@@ -522,15 +522,6 @@ function Pointer_stringify(ptr, /* optional */ length) {
 }
 Module['Pointer_stringify'] = Pointer_stringify;
 
-function Array_stringify(array) {
-  var ret = "";
-  for (var i = 0; i < array.length; i++) {
-    ret += String.fromCharCode(array[i]);
-  }
-  return ret;
-}
-Module['Array_stringify'] = Array_stringify;
-
 // Memory management
 
 var PAGE_SIZE = 4096;
