@@ -208,7 +208,7 @@ var LibraryOpenAL = {
         console.error("alSourceQueueBuffers called with an invalid buffer");
         return;
       }
-      AL.currentCOntext.src[source - 1].buffer = AL.currentContext.buf[buffer - 1].buf;
+      AL.currentContext.src[source - 1].buffer = AL.currentContext.buf[buffer - 1].buf;
     }
   },
 
