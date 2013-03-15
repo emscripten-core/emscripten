@@ -4446,20 +4446,23 @@ LibraryManager.library = {
     return 0;
   },
 
+  strncasecmp__asm: true,
+  strncasecmp__sig: 'iiii',
   strncasecmp__deps: ['tolower'],
   strncasecmp: function(px, py, n) {
-    var i = 0;
-    while (i < n) {
-      var x = _tolower({{{ makeGetValue('px', 'i', 'i8', 0, 1) }}});
-      var y = _tolower({{{ makeGetValue('py', 'i', 'i8', 0, 1) }}});
-      if (x == y && x == 0) return 0;
-      if (x == 0) return -1;
-      if (y == 0) return 1;
-      if (x == y) {
-        i ++;
+    px = px|0; py = py|0; n = n|0;
+    var i = 0, x = 0, y = 0;
+    while ((i|0) < (n|0)) {
+      x = _tolower({{{ makeGetValueAsm('px', 'i', 'i8', 0, 1) }}});
+      y = _tolower({{{ makeGetValueAsm('py', 'i', 'i8', 0, 1) }}});
+      if (((x|0) == (y|0)) & ((x|0) == 0)) return 0;
+      if ((x|0) == 0) return -1;
+      if ((y|0) == 0) return 1;
+      if ((x|0) == (y|0)) {
+        i = (i + 1)|0;
         continue;
       } else {
-        return x > y ? 1 : -1;
+        return ((x|0) > (y|0) ? 1 : -1)|0;
       }
     }
     return 0;
