@@ -1250,7 +1250,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         return value; // We have the actual value here
       }
       case VAR_EMULATED: return makeGetValue(value, 0, item.type, 0, item.unsigned, 0, item.align);
-      default: throw "unknown [load] impl: " + impl+ " for item\nident: "+item.ident+"\nindexes: "+JSON.stringify(item.indexes)+"\ntype: "+item.type+"\npointer: "+JSON.stringify(item.pointer)+"\nfuncData: "+item.funcData.ident;
+      default: throw "unknown [load] impl: " + impl;
     }
   });
   makeFuncLineActor('extractvalue', function(item) {
