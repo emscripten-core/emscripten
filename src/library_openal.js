@@ -226,6 +226,25 @@ var LibraryOpenAL = {
     }
   },
 
+  alDeleteBuffers: function(count, buffers)
+  {
+    if (!AL.currentContext) {
+      console.error("alDeleteBuffers called without a valid context");
+      return;
+    }
+    for (var i = 0; i < count; ++i) {
+      var bufferIdx = {{{ makeGetValue('buffers', 'i', 'i32') }}} - 1;
+      var buffer = AL.currentContext.buf[bufferIdx].buf;
+      for (var j = 0; j < AL.currentContext.src.length; ++j) {
+        if (buffer == AL.currentContext.src[j].buffer) {
+          AL.currentContext.err = 0xA004 /* AL_INVALID_OPERATION  */;
+          return;
+        }
+      }
+      delete AL.currentContext.buf[bufferIdx];
+    }
+  },
+
   alGenBuffers: function(count, buffers) {
     if (!AL.currentContext) {
       console.error("alGenBuffers called without a valid context");
