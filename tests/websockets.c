@@ -27,14 +27,19 @@ unsigned int get_all_buf(int sock, char* output, unsigned int maxsize)
   assert(select(64, &sett, NULL, NULL, NULL) == 0); // empty set
   FD_SET(sock, &sett);
   assert(select(0, &sett, NULL, NULL, NULL) == 0); // max FD to check is 0
+  assert(FD_ISSET(sock, &sett) == 0);
+  FD_SET(sock, &sett);
   int select_says_yes = select(64, &sett, NULL, NULL, NULL);
 
   // ioctl check for IO
   int bytes;
   if (ioctl(sock, FIONREAD, &bytes) || bytes == 0) {
     not_always_data = 1;
+    assert(FD_ISSET(sock, &sett) == 0);
     return 0;
   }
+
+  assert(FD_ISSET(sock, &sett));
   assert(select_says_yes); // ioctl must agree with select
 
   char buffer[1024];
@@ -50,7 +55,7 @@ unsigned int get_all_buf(int sock, char* output, unsigned int maxsize)
     }
   }
 
-  if(n < 0) {
+  if(n < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
     fprintf(stderr, "error in get_all_buf!");
     exit(EXIT_FAILURE);
   }
@@ -82,7 +87,7 @@ void iter(void *arg) {
     printf("sum: %d\n", sum);
 
 #if EMSCRIPTEN
-    assert(not_always_data == 1);
+    //assert(not_always_data == 1);
 
     int result = sum;
     REPORT_RESULT();

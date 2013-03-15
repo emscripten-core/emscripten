@@ -1,14 +1,16 @@
 
 if (GC_SUPPORT) {
   EXPORTED_FUNCTIONS['_calloc'] = 1;
+  EXPORTED_FUNCTIONS['_realloc'] = 1;
 
   var LibraryGC = {
-    $GC__deps: ['sbrk'],
+    $GC__deps: ['sbrk', 'realloc', 'calloc'],
     $GC: {
       ALLOCATIONS_TO_GC: 1*1024*1024,
 
       sizes: {}, // if in this map, then a live allocated object. this is iterable
       scannables: {},
+      uncollectables: {},
       finalizers: {},
       finalizerArgs: {},
 
@@ -34,7 +36,7 @@ if (GC_SUPPORT) {
         }
       },
 
-      malloc: function(bytes, clear, scannable) {
+      malloc: function(bytes, clear, scannable, collectable) {
         if (!bytes) return 0;
         var ptr;
         if (clear) {
@@ -42,11 +44,49 @@ if (GC_SUPPORT) {
         } else {
           ptr = _malloc(bytes);
         }
+        if (!collectable) {
+          GC.uncollectables[ptr] = true;
+        }
         GC.scannables[ptr] = scannable;
         GC.sizes[ptr] = bytes;
         GC.totalAllocations += bytes;
         GC.recentAllocations += bytes;
         return ptr;
+      },
+
+      realloc: function(ptr, newBytes) {
+        if (newBytes != 0) {
+          var oldBytes = GC.sizes[ptr];
+          var newPtr = _realloc(ptr, newBytes);
+          if (newBytes > oldBytes) {
+            _memset(newPtr + oldBytes, 0, newBytes - oldBytes);
+          }
+          delete GC.sizes[ptr];
+          GC.sizes[newPtr] = newBytes;
+          scannable = GC.scannables[ptr];
+          delete GC.scannables[ptr];
+          GC.scannables[newPtr] = scannable;
+          var finalizer = GC.finalizers[ptr];
+          if (finalizer) {
+            delete GC.finalizers[ptr];
+            GC.finalizers[newPtr] = finalizer;
+          }
+          var finalizerArgs = GC.finalizerArgs[ptr];
+          if (finalizerArgs) {
+            delete GC.finalizerArgs[ptr];
+            GC.finalizerArgs[newPtr] = finalizerArgs;
+          }
+          var uncollectable = GC.uncollectables[ptr];
+          if (uncollectable) {
+            delete GC.uncollectables[ptr];
+            GC.uncollectables[newPtr] = true;
+          }
+          GC.totalAllocations += (newBytes - oldBytes);
+          return newPtr;
+        } else {
+          GC.free(ptr);
+          return 0;
+        }
       },
 
       free: function(ptr) { // does not check if anything refers to it, this is a forced free
@@ -56,8 +96,8 @@ if (GC_SUPPORT) {
           GC.finalizers[ptr] = 0;
         }
         _free(ptr);
-        delete GC.sizes[ptr];
         GC.totalAllocations -= GC.sizes[ptr];
+        delete GC.sizes[ptr];
       },
 
       registerFinalizer: function(ptr, func, arg, oldFunc, oldArg) {
@@ -72,6 +112,10 @@ if (GC_SUPPORT) {
         }
         GC.finalizers[ptr] = func;
         GC.finalizerArgs[ptr] = arg;
+      },
+
+      getHeapSize: function() {
+        return GC.totalAllocations;
       },
 
       maybeCollect: function() {
@@ -123,7 +167,7 @@ if (GC_SUPPORT) {
       sweep: function() { // traverse all objects and free all unreachable
         var freeList = [];
         for (var ptr in GC.sizes) {
-          if (!GC.reachable[ptr]) {
+          if (!GC.reachable[ptr] && !GC.uncollectables[ptr]) {
             freeList.push(parseInt(ptr));
           }
         }
@@ -140,12 +184,22 @@ if (GC_SUPPORT) {
 
     GC_MALLOC__deps: ['$GC'],
     GC_MALLOC: function(bytes) {
-      return GC.malloc(bytes, true, true);
+      return GC.malloc(bytes, true, true, true);
     },
 
     GC_MALLOC_ATOMIC__deps: ['$GC'],
     GC_MALLOC_ATOMIC: function(bytes) {
-      return GC.malloc(bytes, false, false);
+      return GC.malloc(bytes, false, false, true);
+    },
+
+    GC_MALLOC_UNCOLLECTABLE__deps: ['$GC'],
+    GC_MALLOC_UNCOLLECTABLE: function(bytes) {
+      return GC.malloc(bytes, true, true, false);
+    },
+
+    GC_REALLOC__deps: ['$GC'],
+    GC_REALLOC: function(ptr, newBytes) {
+      return GC.realloc(ptr, newBytes);
     },
 
     GC_FREE__deps: ['$GC'],
@@ -156,6 +210,11 @@ if (GC_SUPPORT) {
     GC_REGISTER_FINALIZER_NO_ORDER__deps: ['$GC'],
     GC_REGISTER_FINALIZER_NO_ORDER: function(ptr, func, arg, old_func, old_arg) {
       GC.registerFinalizer(ptr, func, arg, old_func, old_arg);
+    },
+
+    GC_get_heap_size__deps: ['$GC'],
+    GC_get_heap_size: function() {
+      return GC.getHeapSize();
     },
 
     GC_MAYBE_COLLECT__deps: ['$GC'],

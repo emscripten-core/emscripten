@@ -18,6 +18,7 @@ function recomputeLines(func) {
 // Handy sets
 
 var BRANCH_INVOKE = set('branch', 'invoke');
+var LABEL_ENDERS = set('branch', 'return', 'switch');
 var SIDE_EFFECT_CAUSERS = set('call', 'invoke', 'atomic');
 var UNUNFOLDABLE = set('value', 'structvalue', 'type', 'phiparam');
 
@@ -88,7 +89,7 @@ function analyzer(data, sidePass) {
           // Internal line
           if (!currLabelFinished) {
             item.functions.slice(-1)[0].labels.slice(-1)[0].lines.push(subItem); // If this line fails, perhaps missing a label?
-            if (subItem.intertype === 'branch') {
+            if (subItem.intertype in LABEL_ENDERS) {
               currLabelFinished = true;
             }
           } else {
@@ -121,7 +122,8 @@ function analyzer(data, sidePass) {
       // Legalization
       if (USE_TYPED_ARRAYS == 2) {
         function getLegalVars(base, bits, allowLegal) {
-          if (allowLegal && bits <= 32) return [{ ident: base, bits: bits }];
+          bits = bits || 32; // things like pointers are all i32, but show up as 0 bits from getBits
+          if (allowLegal && bits <= 32) return [{ ident: base + ('i' + bits in Runtime.INT_TYPES ? '' : '$0'), bits: bits }];
           if (isNumber(base)) return getLegalLiterals(base, bits);
           var ret = new Array(Math.ceil(bits/32));
           var i = 0;
@@ -223,12 +225,16 @@ function analyzer(data, sidePass) {
                   for (var i = 0; i < item.params.length; i++) {
                     if (item.params[i].type == 'i64') item.params[i].type = 'i32';
                   }
+                } else if (item.intertype == 'inttoptr') {
+                  var input = item.params[0];
+                  if (input.type == 'i64') input.type = 'i32'; // inttoptr can only care about 32 bits anyhow since pointers are 32-bit
                 }
                 if (isIllegalType(item.valueType) || isIllegalType(item.type)) {
                   isIllegal = true;
-                }
-                if ((item.intertype == 'load' || item.intertype == 'store') && isStructType(item.valueType)) {
+                } else if ((item.intertype == 'load' || item.intertype == 'store') && isStructType(item.valueType)) {
                   isIllegal = true; // storing an entire structure is illegal
+                } else if (item.intertype == 'mathop' && item.op == 'trunc' && isIllegalType(item.params[1].ident)) { // trunc stores target value in second ident
+                  isIllegal = true;
                 }
               });
               if (!isIllegal) {
@@ -285,7 +291,7 @@ function analyzer(data, sidePass) {
                   var elements = getLegalParams([item.value], bits)[0];
                   var j = 0;
                   elements.forEach(function(element) {
-                    var tempVar = '$st$' + i + '$' + j;
+                    var tempVar = '$st$' + (tempId++) + '$' + j;
                     toAdd.push({
                       intertype: 'getelementptr',
                       assignTo: tempVar,
@@ -396,7 +402,7 @@ function analyzer(data, sidePass) {
                   var j = 0;
                   var toAdd = [];
                   elements.forEach(function(element) {
-                    var tempVar = '$st$' + i + '$' + j;
+                    var tempVar = '$ld$' + (tempId++) + '$' + j;
                     toAdd.push({
                       intertype: 'getelementptr',
                       assignTo: tempVar,
@@ -617,8 +623,8 @@ function analyzer(data, sidePass) {
                           for (var i = 0; i < targetElements.length; i++) {
                             if (i > 0) {
                               switch(value.variant) {
-                                case 'eq': ident += '&&'; break;
-                                case 'ne': ident += '||'; break;
+                                case 'eq': ident += '&'; break;
+                                case 'ne': ident += '|'; break;
                                 default: throw 'unhandleable illegal icmp: ' + value.variant;
                               }
                             }
@@ -635,7 +641,7 @@ function analyzer(data, sidePass) {
                       break;
                     }
                     case 'add': case 'sub': case 'sdiv': case 'udiv': case 'mul': case 'urem': case 'srem':
-                    case 'uitofp': case 'sitofp': {
+                    case 'uitofp': case 'sitofp': case 'fptosi': case 'fptoui': {
                       // We cannot do these in parallel chunks of 32-bit operations. We will handle these in processMathop
                       i++;
                       continue;
@@ -643,20 +649,18 @@ function analyzer(data, sidePass) {
                     default: throw 'Invalid mathop for legalization: ' + [value.op, item.lineNum, dump(item)];
                   }
                   // Do the legalization
-                  var sourceElements;
-                  if (sourceBits <= 32) {
-                    // The input is a legal type
-                    sourceElements = [{ ident: value.params[0].ident, bits: sourceBits }];
-                  } else {
-                    sourceElements = getLegalVars(value.params[0].ident, sourceBits);
-                  }
+                  var sourceElements = getLegalVars(value.params[0].ident, sourceBits, true);
                   if (!isNumber(shifts)) {
                     // We can't statically legalize this, do the operation at runtime TODO: optimize
                     assert(sourceBits == 64, 'TODO: handle nonconstant shifts on != 64 bits');
+                    assert(PRECISE_I64_MATH, 'Must have precise i64 math for non-constant 64-bit shifts');
+                    Types.preciseI64MathUsed = 1;
                     value.intertype = 'value';
-                    value.ident = 'Runtime' + (ASM_JS ? '_' : '.') + 'bitshift64(' + sourceElements[0].ident + ', ' +
-                                                          sourceElements[1].ident + ',"' + value.op + '",' + value.params[1].ident + '$0);' +
-                                  'var ' + value.assignTo + '$0 = ' + makeGetTempDouble(0) + ', ' + value.assignTo + '$1 = ' + makeGetTempDouble(1) + ';';
+                    value.ident = 'var ' + value.assignTo + '$0 = _bitshift64' + value.op[0].toUpperCase() + value.op.substr(1) + '(' + 
+                        asmCoercion(sourceElements[0].ident, 'i32') + ',' +
+                        asmCoercion(sourceElements[1].ident, 'i32') + ',' +
+                        asmCoercion(value.params[1].ident + '$0', 'i32') + ');' +
+                        'var ' + value.assignTo + '$1 = tempRet0;';
                     value.assignTo = null;
                     i++;
                     continue;
@@ -678,9 +682,9 @@ function analyzer(data, sidePass) {
                       params: [(signed && j + whole > sourceElements.length) ? signedKeepAlive : null],
                       type: 'i32',
                     };
-                    if (j == 0 && isUnsignedOp(value.op) && sourceBits < 32) {
+                    if (j == 0 && sourceBits < 32) {
                       // zext sign correction
-                      result.ident = makeSignOp(result.ident, 'i' + sourceBits, 'un', 1, 1);
+                      result.ident = makeSignOp(result.ident, 'i' + sourceBits, isUnsignedOp(value.op) ? 'un' : 're', 1, 1);
                     }
                     if (fraction != 0) {
                       var other = {
@@ -950,6 +954,7 @@ function analyzer(data, sidePass) {
         // Function parameters
         func.params.forEach(function(param) {
           if (param.intertype !== 'varargs') {
+            if (func.variables[param.ident]) warn('cannot have duplicate variable names: ' + param.ident); // toNiceIdent collisions?
             func.variables[param.ident] = {
               ident: param.ident,
               type: param.type,
@@ -963,6 +968,7 @@ function analyzer(data, sidePass) {
         // Normal variables
         func.lines.forEach(function(item, i) {
           if (item.assignTo) {
+            if (func.variables[item.assignTo]) warn('cannot have duplicate variable names: ' + item.assignTo); // toNiceIdent collisions?
             var variable = func.variables[item.assignTo] = {
               ident: item.assignTo,
               type: item.type,
@@ -1378,7 +1384,7 @@ function analyzer(data, sidePass) {
           var label = func.labels[i];
           for (var j = 0; j < label.lines.length; j++) {
             var line = label.lines[j];
-            if (line.intertype == 'call' && line.ident == setjmp) {
+            if ((line.intertype == 'call' || line.intertype == 'invoke') && line.ident == setjmp) {
               // Add a new label
               var oldIdent = label.ident;
               var newIdent = func.labelIdCounter++;
@@ -1514,9 +1520,8 @@ function analyzer(data, sidePass) {
 
           for (var i = 0; i < lines.length; i++) {
             var item = lines[i];
-            if (!item.assignTo || item.intertype != 'alloca' || !isNumber(item.allocatedNum)) {
+            if (!finishedInitial && (!item.assignTo || item.intertype != 'alloca' || !isNumber(item.allocatedNum))) {
               finishedInitial = true;
-              continue;
             }
             if (item.intertype == 'alloca' && finishedInitial) {
               func.otherStackAllocations = true;

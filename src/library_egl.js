@@ -71,7 +71,29 @@ var LibraryEGL = {
       return 0;
     }
   },
+
+  // EGLAPI EGLBoolean EGLAPIENTRY eglTerminate(EGLDisplay dpy);
+  eglTerminate: function(display) {
+    if (display != 62000 /* Magic ID for Emscripten 'default display' */) {
+      EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
+      return 0;
+    }
+    // TODO: Tear down EGL here. Currently a no-op since we don't need to actually do anything here for the browser.
+    EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
+    return 1;
+  },
   
+// EGLAPI EGLBoolean EGLAPIENTRY eglTerminate(EGLDisplay dpy);
+  eglTerminate: function(display) {
+    if (display != 62000 /* Magic ID for Emscripten 'default display' */) {
+      EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
+      return 0;
+    }
+    // TODO: Tear down EGL here. Currently a no-op since we don't need to actually do anything here for the browser.
+    EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
+    return 1;
+  },
+
   // EGLAPI EGLBoolean EGLAPIENTRY eglGetConfigs(EGLDisplay dpy, EGLConfig *configs, EGLint config_size, EGLint *num_config);
   eglGetConfigs: function(display, configs, config_size, numConfigs) { 
     return EGL.chooseConfig(display, 0, configs, config_size, numConfigs);
@@ -214,6 +236,20 @@ var LibraryEGL = {
     return 62006; /* Magic ID for Emscripten 'default surface' */
   },
 
+  // EGLAPI EGLBoolean EGLAPIENTRY eglDestroySurface(EGLDisplay display, EGLSurface surface);
+  eglDestroySurface: function(display, surface) { 
+    if (display != 62000 /* Magic ID for Emscripten 'default display' */) {
+      EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
+      return 0; 
+    }
+    if (surface != 62006 /* Magic ID for the only EGLSurface supported by Emscripten */) {
+      EGL.setErrorCode(0x300D /* EGL_BAD_SURFACE */);
+      return 1;
+    }
+    EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
+    return 1; /* Magic ID for Emscripten 'default surface' */
+  },
+
   eglCreateContext__deps: ['glutCreateWindow', '$GL'],
   
   // EGLAPI EGLContext EGLAPIENTRY eglCreateContext(EGLDisplay dpy, EGLConfig config, EGLContext share_context, const EGLint *attrib_list);
@@ -223,10 +259,40 @@ var LibraryEGL = {
       return 0;
     }
 
-    _glutCreateWindow();
+    EGL.windowID = _glutCreateWindow();
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
     return 62004; // Magic ID for Emscripten EGLContext
   },
+
+  eglDestroyContext__deps: ['glutDestroyWindow', '$GL'],
+  
+  // EGLAPI EGLBoolean EGLAPIENTRY eglDestroyContext(EGLDisplay dpy, EGLContext context);
+  eglDestroyContext: function(display, context) {
+    if (display != 62000 /* Magic ID for Emscripten 'default display' */) {
+      EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
+      return 0;
+    }
+
+    _glutDestroyWindow(EGL.windowID);
+    EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
+    return 62004; // Magic ID for Emscripten EGLContext
+  },
+
+  // EGLAPI EGLBoolean EGLAPIENTRY eglDestroyContext(EGLDisplay dpy, EGLContext ctx);
+  eglDestroyContext: function(display, context) {
+    if (display != 62000 /* Magic ID for Emscripten 'default display' */) {
+      EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
+      return 0;
+    }
+
+    if (context != 62004 /* Magic ID for Emscripten EGLContext */) {
+      EGL.setErrorCode(0x3006 /* EGL_BAD_CONTEXT */);
+      return 0;
+    }
+
+    EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
+    return 1;
+  }, 
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglQuerySurface(EGLDisplay dpy, EGLSurface surface, EGLint attribute, EGLint *value);
   eglQuerySurface: function(display, surface, attribute, value) { 
@@ -336,6 +402,7 @@ var LibraryEGL = {
     return EGL.eglErrorCode;
   },
 
+  // EGLAPI const char * EGLAPIENTRY eglQueryString(EGLDisplay dpy, EGLint name);
   eglQueryString: function(display, name) {
     if (display != 62000 /* Magic ID for Emscripten 'default display' */) {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
@@ -412,7 +479,8 @@ var LibraryEGL = {
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
     return 1;
   },
-  
+
+  // EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers(EGLDisplay dpy, EGLSurface surface);
   eglSwapBuffers: function() {
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
   },

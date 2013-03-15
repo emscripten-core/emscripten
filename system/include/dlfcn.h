@@ -1,3 +1,5 @@
+#ifndef _DLFCN_H_INCLUDED
+#define _DLFCN_H_INCLUDED
 
 #ifdef __cplusplus
 extern "C" {
@@ -26,3 +28,4 @@ int    dladdr(void *addr, Dl_info *info);
 }
 #endif
 
+#endif

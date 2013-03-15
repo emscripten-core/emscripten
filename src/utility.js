@@ -10,6 +10,10 @@ function safeQuote(x) {
 
 function dump(item) {
   try {
+    if (typeof item == 'object' && item !== null && item.funcData) {
+      var funcData = item.funcData;
+      item.funcData = null;
+    }
     return '// ' + JSON.stringify(item, null, '  ').replace(/\n/g, '\n// ');
   } catch(e) {
     var ret = [];
@@ -22,6 +26,8 @@ function dump(item) {
       }
     }
     return ret.join(',\n');
+  } finally {
+    if (funcData) item.funcData = funcData;
   }
 }
 
@@ -260,6 +266,15 @@ function set() {
   return ret;
 }
 var unset = keys;
+
+function numberedSet() {
+  var args = typeof arguments[0] === 'object' ? arguments[0] : arguments;
+  var ret = {};
+  for (var i = 0; i < args.length; i++) {
+    ret[args[i]] = i;
+  }
+  return ret;
+}
 
 function setSub(x, y) {
   var ret = set(keys(x));

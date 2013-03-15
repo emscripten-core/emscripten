@@ -35,6 +35,7 @@ var LibrarySDL = {
     mixerFormat: 0x8010, // AUDIO_S16LSB
     mixerNumChannels: 2,
     mixerChunkSize: 1024,
+    channelMinimumNumber: 0,
 
     GL: false, // Set to true if we call SDL_SetVideoMode with SDL_OPENGL, and if so, we do not create 2D canvases&contexts for blitting
                // Note that images loaded before SDL_SetVideoMode will not get this optimization
@@ -43,6 +44,8 @@ var LibrarySDL = {
     shiftKey: false,
     ctrlKey: false,
     altKey: false,
+
+    textInput: false,
 
     startTime: null,
     mouseX: 0,
@@ -172,6 +175,11 @@ var LibrarySDL = {
         ['i32', 'sym'],
         ['i16', 'mod'],
         ['i32', 'unicode']
+      ]),
+      TextInputEvent: Runtime.generateStructInfo([
+        ['i32', 'type'],
+        ['i32', 'windowID'],
+        ['b256', 'text'],
       ]),
       MouseMotionEvent: Runtime.generateStructInfo([
         ['i32', 'type'],
@@ -373,7 +381,7 @@ var LibrarySDL = {
             }
           }
           // fall through
-        case 'keydown': case 'keyup': case 'mousedown': case 'mouseup': case 'DOMMouseScroll': case 'mousewheel':
+        case 'keydown': case 'keyup': case 'keypress': case 'mousedown': case 'mouseup': case 'DOMMouseScroll': case 'mousewheel':
           if (event.type == 'DOMMouseScroll' || event.type == 'mousewheel') {
             var button = (event.type == 'DOMMouseScroll' ? event.detail : -event.wheelDelta) > 0 ? 4 : 3;
             var event2 = {
@@ -395,6 +403,10 @@ var LibrarySDL = {
             if (!SDL.DOMButtons[event.button]) return false; // ignore extra ups, can happen if we leave the canvas while pressing down, then return,
                                                              // since we add a mouseup in that case
             SDL.DOMButtons[event.button] = 0;
+          }
+
+          if (event.type == 'keypress' && !SDL.textInput) {
+            break;
           }
 
           SDL.events.push(event);
@@ -476,6 +488,15 @@ var LibrarySDL = {
 
           break;
         }
+        case 'keypress': {
+          {{{ makeSetValue('ptr', 'SDL.structs.TextInputEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}}
+          // Not filling in windowID for now
+          var cStr = intArrayFromString(String.fromCharCode(event.charCode));
+          for (var i = 0; i < cStr.length; ++i) {
+            {{{ makeSetValue('ptr', 'SDL.structs.TextInputEvent.text + i', 'cStr[i]', 'i8') }}};
+          }
+          break;
+        }
         case 'mousedown': case 'mouseup':
           if (event.type == 'mousedown') {
             // SDL_BUTTON(x) is defined as (1 << ((x)-1)).  SDL buttons are 1-3,
@@ -483,7 +504,7 @@ var LibrarySDL = {
             // correct.
             SDL.buttonState |= 1 << event.button;
           } else if (event.type == 'mouseup') {
-            SDL.buttonState = 0;
+            SDL.buttonState &= ~(1 << event.button);
           }
           // fall through
         case 'mousemove': {
@@ -607,15 +628,18 @@ var LibrarySDL = {
   SDL_Init: function(what) {
     SDL.startTime = Date.now();
     // capture all key events. we just keep down and up, but also capture press to prevent default actions
-    document.onkeydown = SDL.receiveEvent;
-    document.onkeyup = SDL.receiveEvent;
-    document.onkeypress = SDL.receiveEvent;
+    if (!Module['doNotCaptureKeyboard']) {
+      document.onkeydown = SDL.receiveEvent;
+      document.onkeyup = SDL.receiveEvent;
+      document.onkeypress = SDL.receiveEvent;
+    }
     window.onunload = SDL.receiveEvent;
     SDL.keyboardState = _malloc(0x10000);
     _memset(SDL.keyboardState, 0, 0x10000);
     // Initialize this structure carefully for closure
     SDL.DOMEventToSDLEvent['keydown'] = 0x300 /* SDL_KEYDOWN */;
     SDL.DOMEventToSDLEvent['keyup'] = 0x301 /* SDL_KEYUP */;
+    SDL.DOMEventToSDLEvent['keypress'] = 0x303 /* SDL_TEXTINPUT */;
     SDL.DOMEventToSDLEvent['mousedown'] = 0x401 /* SDL_MOUSEBUTTONDOWN */;
     SDL.DOMEventToSDLEvent['mouseup'] = 0x402 /* SDL_MOUSEBUTTONUP */;
     SDL.DOMEventToSDLEvent['mousemove'] = 0x400 /* SDL_MOUSEMOTION */;
@@ -638,8 +662,8 @@ var LibrarySDL = {
     {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*0', '0', '0', 'i32') }}} // TODO
     {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*1', '0', '0', 'i32') }}} // TODO
     {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*2', '0', '0', 'void*') }}}
-    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*3', '0', 'SDL.defaults.width', 'i32') }}}
-    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*4', '0', 'SDL.defaults.height', 'i32') }}}
+    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*3', '0', 'Module["canvas"].width', 'i32') }}}
+    {{{ makeSetValue('ret+Runtime.QUANTUM_SIZE*4', '0', 'Module["canvas"].height', 'i32') }}}
     return ret;
   },
 
@@ -883,7 +907,7 @@ var LibrarySDL = {
   SDL_GetMouseState: function(x, y) {
     if (x) {{{ makeSetValue('x', '0', 'SDL.mouseX', 'i32') }}};
     if (y) {{{ makeSetValue('y', '0', 'SDL.mouseY', 'i32') }}};
-    return 0;
+    return SDL.buttonState;
   },
 
   SDL_WarpMouse: function(x, y) {
@@ -896,7 +920,26 @@ var LibrarySDL = {
   },
 
   SDL_ShowCursor: function(toggle) {
-    // TODO
+    switch (toggle) {
+      case 0: // SDL_DISABLE
+        if (Browser.isFullScreen) { // only try to lock the pointer when in full screen mode
+          Module['canvas'].requestPointerLock();
+          return 0;
+        } else { // else return SDL_ENABLE to indicate the failure
+          return 1;
+        }
+        break;
+      case 1: // SDL_ENABLE
+        Module['canvas'].exitPointerLock();
+        return 1;
+        break;
+      case -1: // SDL_QUERY
+        return !Browser.pointerLock;
+        break;
+      default:
+        console.log( "SDL_ShowCursor called with unknown toggle parameter value: " + toggle + "." );
+        break;
+    }
   },
 
   SDL_GetError: function() {
@@ -1052,6 +1095,15 @@ var LibrarySDL = {
   },
 
   SDL_WM_GrabInput: function() {},
+  
+  SDL_WM_ToggleFullScreen: function(surf) {
+    if (Browser.isFullScreen) {
+      Module['canvas'].cancelFullScreen();
+      return 1;
+    } else {
+      return 0;
+    }
+  },
 
   // SDL_Image
 
@@ -1077,7 +1129,9 @@ var LibrarySDL = {
     }
     var surf = SDL.makeSurface(raw.width, raw.height, 0, false, 'load:' + filename);
     var surfData = SDL.surfaces[surf];
+    surfData.ctx.globalCompositeOperation = "copy";
     surfData.ctx.drawImage(raw, 0, 0, raw.width, raw.height, 0, 0, raw.width, raw.height);
+    surfData.ctx.globalCompositeOperation = "source-over";
     // XXX SDL does not specify that loaded images must have available pixel data, in fact
     //     there are cases where you just want to blit them, so you just need the hardware
     //     accelerated version. However, code everywhere seems to assume that the pixels
@@ -1171,10 +1225,20 @@ var LibrarySDL = {
   SDL_CondWait: function() {},
   SDL_DestroyCond: function() {},
 
-  SDL_StartTextInput: function() {}, // TODO
-  SDL_StopTextInput: function() {}, // TODO
+  SDL_StartTextInput: function() {
+    SDL.textInput = true;
+  },
+  SDL_StopTextInput: function() {
+    SDL.textInput = false;
+  },
 
   // SDL Mixer
+
+  Mix_Init: function(flags) {
+    if (!flags) return 0;
+    return 8; /* MIX_INIT_OGG */
+  },
+  Mix_Quit: function(){},
 
   Mix_OpenAudio: function(frequency, format, channels, chunksize) {
     SDL.allocateChannels(32);
@@ -1254,21 +1318,23 @@ var LibrarySDL = {
   Mix_FreeChunk: function(id) {
     SDL.audios[id] = null;
   },
-
+  Mix_ReserveChannels: function(num) {
+    SDL.channelMinimumNumber = num;
+  },
   Mix_PlayChannel: function(channel, id, loops) {
     // TODO: handle loops
 
     // Get the audio element associated with the ID
     var info = SDL.audios[id];
-    if (!info) return 0;
+    if (!info) return -1;
     var audio = info.audio;
-    if (!audio) return 0;
+    if (!audio) return -1;
 
     // If the user asks us to allocate a channel automatically, get the first
     // free one.
     if (channel == -1) {
-      channel = 0;
-      for (var i = 0; i < SDL.numChannels; i++) {
+      channel = SDL.channelMinimumNumber;
+      for (var i = SDL.channelMinimumNumber; i < SDL.numChannels; i++) {
         if (!SDL.channels[i].audio) {
           channel = i;
           break;
@@ -1280,6 +1346,8 @@ var LibrarySDL = {
     // the browser has already preloaded the audio file.
     var channelInfo = SDL.channels[channel];
     channelInfo.audio = audio = audio.cloneNode(true);
+    audio.numChannels = info.audio.numChannels;
+    audio.frequency = info.audio.frequency;
     if (SDL.channelFinished) {
       audio['onended'] = function() { // TODO: cache these
         Runtime.getFuncWrapper(SDL.channelFinished, 'vi')(channel);
@@ -1338,6 +1406,7 @@ var LibrarySDL = {
       audio.play();
     }
     audio.volume = channelInfo.volume;
+    audio.paused = false;
     return channel;
   },
   Mix_PlayChannelTimed: 'Mix_PlayChannel', // XXX ignore Timing
@@ -1371,6 +1440,7 @@ var LibrarySDL = {
   },
 
   Mix_LoadMUS: 'Mix_LoadWAV_RW',
+  Mix_LoadMUS_RW: 'Mix_LoadWAV_RW',
 
   Mix_FreeMusic: 'Mix_FreeChunk',
 
@@ -1425,8 +1495,69 @@ var LibrarySDL = {
     return (SDL.music.audio && !SDL.music.audio.paused) ? 1 : 0;
   },
 
+  // http://www.libsdl.org/projects/SDL_mixer/docs/SDL_mixer_38.html#SEC38
+  // "Note: Does not check if the channel has been paused."
+  Mix_Playing: function(channel) {
+    if (channel === -1) {
+      var count = 0;
+      for (var i = 0; i < SDL.channels.length; i++) {
+        count += _Mix_Playing(i);
+      }
+      return count;
+    }
+    var info = SDL.channels[channel];
+    if (info && info.audio && !info.audio.paused) {
+      return 1;
+    }
+    return 0;
+  },
+  
+  Mix_Pause: function(channel) {
+    if (channel === -1) {
+      for (var i = 0; i<SDL.channels.length;i++) {
+        _Mix_Pause(i);
+      }
+      return;
+    }
+    var info = SDL.channels[channel];
+    if (info && info.audio) {
+      info.audio.pause();
+      info.audio.paused = true;
+    }
+  },
+  
+  // http://www.libsdl.org/projects/SDL_mixer/docs/SDL_mixer_39.html#SEC39
+  Mix_Paused: function(channel) {
+    if (channel === -1) {
+      var pausedCount = 0;
+      for (var i = 0; i<SDL.channels.length;i++) {
+        pausedCount += _Mix_Paused(i);
+      }
+      return pausedCount;
+    }
+    var info = SDL.channels[channel];
+    if (info && info.audio && info.audio.paused) {
+      return 1;
+    }
+    return 0;
+  },
+
   Mix_PausedMusic: function() {
     return (SDL.music.audio && SDL.music.audio.paused) ? 1 : 0;
+  },
+
+  // http://www.libsdl.org/projects/SDL_mixer/docs/SDL_mixer_33.html#SEC33
+  Mix_Resume: function(channel) {
+    if (channel === -1) {
+      for (var i = 0; i<SDL.channels.length;i++) {
+        _Mix_Resume(i);
+      }
+      return;
+    }
+    var info = SDL.channels[channel];
+    if (info && info.audio) {
+      info.audio.play();
+    }
   },
 
   // SDL TTF
@@ -1575,7 +1706,25 @@ var LibrarySDL = {
 
   SDL_CreateThread: function() {
     throw 'SDL threads cannot be supported in the web platform because they assume shared state. See emscripten_create_worker etc. for a message-passing concurrency model that does let you run code in another thread.'
-  }
+  },
+
+  SDL_WaitThread: function() { throw 'SDL_WaitThread' },
+  SDL_GetThreadID: function() { throw 'SDL_GetThreadID' },
+  SDL_ThreadID: function() { throw 'SDL_ThreadID' },
+  SDL_AllocRW: function() { throw 'SDL_AllocRW: TODO' },
+  SDL_FreeRW: function() { throw 'SDL_FreeRW: TODO' },
+  SDL_CondBroadcast: function() { throw 'SDL_CondBroadcast: TODO' },
+  SDL_CondWaitTimeout: function() { throw 'SDL_CondWaitTimeout: TODO' },
+  SDL_WM_ToggleFullScreen: function() { throw 'SDL_WM_ToggleFullScreen: TODO' },
+
+  Mix_SetPostMix: function() { throw 'Mix_SetPostMix: TODO' },
+  Mix_QuerySpec: function() { throw 'Mix_QuerySpec: TODO' },
+  Mix_FadeInChannelTimed: function() { throw 'Mix_FadeInChannelTimed' },
+  Mix_FadeOutChannel: function() { throw 'Mix_FadeOutChannel' },
+
+  Mix_Linked_Version: function() { throw 'Mix_Linked_Version: TODO' },
+  SDL_CreateRGBSurfaceFrom: function() { throw 'SDL_CreateRGBSurfaceFrom: TODO' },
+  SDL_SaveBMP_RW: function() { throw 'SDL_SaveBMP_RW: TODO' },
 };
 
 autoAddDeps(LibrarySDL, '$SDL');

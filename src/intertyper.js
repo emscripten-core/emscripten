@@ -122,16 +122,19 @@ function intertyper(data, sidePass, baseLineNums) {
               SKIP_STACK_IN_SMALL = 0;
             }
 
-            unparsedBundles.push({
-              intertype: 'unparsedFunction',
-              // We need this early, to know basic function info - ident, params, varargs
-              ident: toNiceIdent(func.ident),
-              params: func.params,
-              returnType: func.returnType,
-              hasVarArgs: func.hasVarArgs,
-              lineNum: currFunctionLineNum,
-              lines: currFunctionLines
-            });
+            var ident = toNiceIdent(func.ident);
+            if (!(ident in DEAD_FUNCTIONS)) {
+              unparsedBundles.push({
+                intertype: 'unparsedFunction',
+                // We need this early, to know basic function info - ident, params, varargs
+                ident: ident,
+                params: func.params,
+                returnType: func.returnType,
+                hasVarArgs: func.hasVarArgs,
+                lineNum: currFunctionLineNum,
+                lines: currFunctionLines
+              });
+            }
             currFunctionLines = [];
           }
         }
@@ -677,7 +680,7 @@ function intertyper(data, sidePass, baseLineNums) {
     item.type = item.tokens[1].text;
     Types.needAnalysis[item.type] = 0;
     while (['@', '%'].indexOf(item.tokens[2].text[0]) == -1 && !(item.tokens[2].text in PARSABLE_LLVM_FUNCTIONS) &&
-           item.tokens[2].text != 'null' && item.tokens[2].text != 'asm') {
+           item.tokens[2].text != 'null' && item.tokens[2].text != 'asm' && item.tokens[2].text != 'undef') {
       assert(item.tokens[2].text != 'asm', 'Inline assembly cannot be compiled to JavaScript!');
       item.tokens.splice(2, 1);
     }
@@ -725,7 +728,7 @@ function intertyper(data, sidePass, baseLineNums) {
   substrate.addActor('Invoke', {
     processItem: function(item) {
       var result = makeCall.call(this, item, 'invoke');
-      if (DISABLE_EXCEPTION_CATCHING) {
+      if (DISABLE_EXCEPTION_CATCHING == 1) {
         result.item.intertype = 'call';
         result.ret.push({
           intertype: 'branch',
@@ -741,10 +744,12 @@ function intertyper(data, sidePass, baseLineNums) {
     processItem: function(item) {
       item.intertype = 'atomic';
       if (item.tokens[0].text == 'atomicrmw') {
+        if (item.tokens[1].text == 'volatile') item.tokens.splice(1, 1);
         item.op = item.tokens[1].text;
         item.tokens.splice(1, 1);
       } else {
         assert(item.tokens[0].text == 'cmpxchg')
+        if (item.tokens[1].text == 'volatile') item.tokens.splice(1, 1);
         item.op = 'cmpxchg';
       }
       var last = getTokenIndexByText(item.tokens, ';');
@@ -834,15 +839,17 @@ function intertyper(data, sidePass, baseLineNums) {
           item.params[i-1] = parseLLVMSegment(segments[i-1]);
         }
       }
+      var setParamTypes = true;
       if (item.op === 'select') {
         assert(item.params[1].type === item.params[2].type);
         item.type = item.params[1].type;
-      } else if (item.op === 'inttoptr' || item.op === 'ptrtoint') {
+      } else if (item.op in LLVM.CONVERSIONS) {
         item.type = item.params[1].type;
+        setParamTypes = false;
       } else {
         item.type = item.params[0].type;
       }
-      if (item.op != 'ptrtoint') {
+      if (setParamTypes) {
         for (var i = 0; i < 4; i++) {
           if (item.params[i]) item.params[i].type = item.type; // All params have the same type, normally
         }
@@ -851,6 +858,8 @@ function intertyper(data, sidePass, baseLineNums) {
         item.type = item.params[1].ident;
         item.params[0].type = item.params[1].type;
         // TODO: also remove 2nd param?
+      } else if (item.op in LLVM.COMPS) {
+        item.type = 'i1';
       }
       if (USE_TYPED_ARRAYS == 2) {
         // Some specific corrections, since 'i64' is special

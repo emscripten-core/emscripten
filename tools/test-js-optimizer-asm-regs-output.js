@@ -18,4 +18,8 @@ function _doit(i1, i2, i3) {
   STACKTOP = i1;
   return 0 | 0;
 }
+function stackRestore(i1) {
+  i1 = i1 | 0;
+  STACKTOP = i1;
+}
 

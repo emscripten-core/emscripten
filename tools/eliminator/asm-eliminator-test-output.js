@@ -100,4 +100,12 @@ function exc($this) {
     ___cxa_call_unexpected($8$0);
   }
 }
+function label() {
+  if (f()) {
+    g();
+  }
+  L100 : if (h()) {
+    i();
+  }
+}
 

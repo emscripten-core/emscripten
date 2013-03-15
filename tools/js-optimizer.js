@@ -140,15 +140,10 @@ var UNDEFINED_NODE = ['unary-prefix', 'void', ['num', 0]];
 var TRUE_NODE = ['unary-prefix', '!', ['num', 0]];
 var FALSE_NODE = ['unary-prefix', '!', ['num', 1]];
 
-var GENERATED_FUNCTIONS_MARKER = '// EMSCRIPTEN_GENERATED_FUNCTIONS:';
-var generatedFunctions = null;
-function setGeneratedFunctions(metadata) {
-  var start = metadata.indexOf(GENERATED_FUNCTIONS_MARKER);
-  generatedFunctions = set(eval(metadata.substr(start + GENERATED_FUNCTIONS_MARKER.length)));
-}
-function isGenerated(ident) {
-  return ident in generatedFunctions;
-}
+var GENERATED_FUNCTIONS_MARKER = '// EMSCRIPTEN_GENERATED_FUNCTIONS';
+var generatedFunctions = false; // whether we have received only generated functions
+
+var minifierInfo = null;
 
 function srcToAst(src) {
   return uglify.parser.parse(src);
@@ -216,7 +211,7 @@ function traverse(node, pre, post, stack) {
 function traverseGenerated(ast, pre, post, stack) {
   assert(generatedFunctions);
   traverse(ast, function(node) {
-    if (node[0] == 'defun' && isGenerated(node[1])) {
+    if (node[0] == 'defun') {
       traverse(node, pre, post, stack);
       return null;
     }
@@ -225,12 +220,15 @@ function traverseGenerated(ast, pre, post, stack) {
 
 function traverseGeneratedFunctions(ast, callback) {
   assert(generatedFunctions);
-  traverse(ast, function(node) {
-    if (node[0] == 'defun' && isGenerated(node[1])) {
-      callback(node);
-      return null;
+  if (ast[0] == 'toplevel') {
+    var stats = ast[1];
+    for (var i = 0; i < stats.length; i++) {
+      var curr = stats[i];
+      if (curr[0] == 'defun') callback(curr);
     }
-  });
+  } else if (ast[0] == 'defun') {
+    callback(ast);
+  }
 }
 
 // Walk the ast in a simple way, with an understanding of which JS variables are defined)
@@ -418,20 +416,32 @@ function simplifyExpressionsPre(ast) {
     var rerun = true;
     while (rerun) {
       rerun = false;
-      traverseGenerated(ast, function(node, type, stack) {
-        if (type == 'binary' && node[1] == '|' && (jsonCompare(node[2], ZERO) || jsonCompare(node[3], ZERO))) {
-          stack.push(1); // From here on up, no need for this kind of correction, it's done at the top
-
-          // We might be able to remove this correction
-          for (var i = stack.length-2; i >= 0; i--) {
-            if (stack[i] == 1) {
-              // Great, we can eliminate
-              rerun = true;
-              return jsonCompare(node[2], ZERO) ? node[3] : node[2];
-            } else if (stack[i] == -1) {
-              break; // Too bad, we can't
+      traverseGenerated(ast, function process(node, type, stack) {
+        if (type == 'binary' && node[1] == '|') {
+          if (node[2][0] == 'num' && node[3][0] == 'num') {
+            return ['num', node[2][1] | node[3][1]];
+          } else if (jsonCompare(node[2], ZERO) || jsonCompare(node[3], ZERO)) {
+            // We might be able to remove this correction
+            for (var i = stack.length-1; i >= 0; i--) {
+              if (stack[i] == 1) {
+                // we will replace ourselves with the non-zero side. Recursively process that node.
+                var result = jsonCompare(node[2], ZERO) ? node[3] : node[2], other;
+                // replace node in-place
+                node.length = result.length;
+                for (var j = 0; j < result.length; j++) {
+                  node[j] = result[j];
+                }
+                rerun = true;
+                return process(result, result[0], stack);
+              } else if (stack[i] == -1) {
+                break; // Too bad, we can't
+              } else if (asm) {
+                break; // we must keep a coercion right on top of a heap access in asm mode
+              }
             }
           }
+          stack.push(1); // From here on up, no need for this kind of correction, it's done at the top
+                         // (Add this at the end, so it is only added if we did not remove it)
         } else if (type == 'binary' && node[1] in USEFUL_BINARY_OPS) {
           stack.push(1);
         } else if ((type == 'binary' && node[1] in SAFE_BINARY_OPS) || type == 'num' || type == 'name') {
@@ -445,6 +455,7 @@ function simplifyExpressionsPre(ast) {
     // &-related optimizations
     traverseGenerated(ast, function(node, type) {
       if (type == 'binary' && node[1] == '&' && node[3][0] == 'num') {
+        if (node[2][0] == 'num') return ['num', node[2][1] & node[3][1]];
         var input = node[2];
         var amount = node[3][1];
         if (input[0] == 'binary' && input[1] == '&' && input[3][0] == 'num') {
@@ -461,12 +472,29 @@ function simplifyExpressionsPre(ast) {
               if (!unsigned) {
                 input[1][1] = 'HEAPU' + bits; // make unsigned
               }
+              if (asm) {
+                // we cannot return HEAPU8 without a coercion, but at least we do HEAP8 & 255 => HEAPU8 | 0
+                node[1] = '|';
+                node[3][1] = 0;
+                return node;
+              }
               return input;
             }
           }
         }
       }
     });
+
+    if (asm) {
+      // optimize num >> num, in asm we need this here since we do not run optimizeShifts
+      traverseGenerated(ast, function(node, type) {
+        if (type == 'binary' && node[1] == '>>' && node[2][0] == 'num' && node[3][0] == 'num') {
+          node[0] = 'num';
+          node[1] = node[2][1] >> node[3][1];
+          node.length = 2;
+        }
+      });
+    }
   }
 
   // The most common mathop is addition, e.g. in getelementptr done repeatedly. We can join all of those,
@@ -512,9 +540,39 @@ function simplifyExpressionsPre(ast) {
     });
   }
 
+  function asmOpts(ast) {
+    // 1. Add final returns when necessary
+    // 2. Remove unneeded coercions on function calls that have no targets (eliminator removed it)
+    traverseGeneratedFunctions(ast, function(fun) {
+      var returnType = null;
+      traverse(fun, function(node, type) {
+        if (type == 'return' && node[1]) {
+          returnType = detectAsmCoercion(node[1]);
+        } else if (type == 'stat') {
+          var inner = node[1];
+          if ((inner[0] == 'binary' && inner[1] in ASSOCIATIVE_BINARIES && inner[2][0] == 'call' && inner[3][0] == 'num') ||
+              (inner[0] == 'unary-prefix' && inner[1] == '+' && inner[2][0] == 'call')) {
+            node[1] = inner[2];
+          }
+        }
+      });
+      // Add a final return if one is missing.
+      if (returnType !== null) {
+        var stats = getStatements(fun);
+        var last = stats[stats.length-1];
+        if (last[0] != 'return') {
+          var returnValue = ['num', 0];
+          if (returnType == ASM_DOUBLE) returnValue = ['unary-prefix', '+', returnValue];
+          stats.push(['return', returnValue]);
+        }
+      }
+    });
+  }
+
   simplifyBitops(ast);
   joinAdditions(ast);
   // simplifyZeroComp(ast); TODO: investigate performance
+  if (asm) asmOpts(ast);
 }
 
 // In typed arrays mode 2, we can have
@@ -879,7 +937,7 @@ var NO_SIDE_EFFECTS = set('num', 'name');
 
 function hasSideEffects(node) { // this is 99% incomplete!
   if (node[0] in NO_SIDE_EFFECTS) return false;
-  if (node[0] == 'unary-prefix' && node[1] == '!') return hasSideEffects(node[2]);
+  if (node[0] == 'unary-prefix') return hasSideEffects(node[2]);
   if (node[0] == 'binary') return hasSideEffects(node[2]) || hasSideEffects(node[3]);
   return true;
 }
@@ -1277,7 +1335,9 @@ function normalizeAsm(func) {
     var node = stats[i];
     if (node[0] != 'stat' || node[1][0] != 'assign' || node[1][2][0] != 'name') break;
     node = node[1];
-    data.params[node[2][1]] = detectAsmCoercion(node[3]);
+    var name = node[2][1];
+    if (func[2] && func[2].indexOf(name) < 0) break; // not an assign into a parameter, but a global
+    data.params[name] = detectAsmCoercion(node[3]);
     stats[i] = emptyNode();
     i++;
   }
@@ -1304,6 +1364,14 @@ function normalizeAsm(func) {
   while (i < stats.length) {
     traverse(stats[i], function(node, type) {
       if (type == 'var') {
+        for (var j = 0; j < node[1].length; j++) {
+          var v = node[1][j];
+          var name = v[0];
+          var value = v[1];
+          if (!(name in data.vars)) {
+            data.vars[name] = detectAsmCoercion(value);
+          }
+        }
         unVarify(node[1], node);
       } else if (type == 'dot') {
         if (node[1][0] == 'name' && node[1][1] == 'Math') {
@@ -1362,13 +1430,16 @@ function denormalizeAsm(func, data) {
   //printErr('denormalized \n\n' + astToSrc(func) + '\n\n');
 }
 
-// Very simple 'registerization', coalescing of variables into a smaller number.
+// Very simple 'registerization', coalescing of variables into a smaller number,
+// as part of minification. Globals-level minification began in a previous pass,
+// we receive minifierInfo which tells us how to rename globals. (Only in asm.js.)
+//
 // We do not optimize when there are switches, so this pass only makes sense with
 // relooping.
 // TODO: Consider how this fits in with the rest of the optimization toolchain. Do
 //       we still need the eliminator? Closure? And in what order? Perhaps just
 //       closure simple?
-function registerize(ast, asm) {
+function registerize(ast) {
   traverseGeneratedFunctions(ast, function(fun) {
     if (asm) var asmData = normalizeAsm(fun);
     // Add parameters as a first (fake) var (with assignment), so they get taken into consideration
@@ -1403,6 +1474,71 @@ function registerize(ast, asm) {
       }
     });
     vacuum(fun);
+    if (minifierInfo) {
+      assert(asm);
+      var usedGlobals = {};
+      var nextLocal = 0;
+      // Minify globals using the mapping we were given
+      traverse(fun, function(node, type) {
+        if (type == 'name') {
+          var name = node[1];
+          var minified = minifierInfo.globals[name];
+          if (minified) {
+            assert(!localVars[name], name); // locals must not shadow globals, or else we don't know which is which
+            if (localVars[minified]) {
+              // trying to minify a global into a name used locally. rename all the locals
+              var newName = '$_newLocal_' + (nextLocal++);
+              assert(!localVars[newName]);
+              if (params[minified]) {
+                params[newName] = 1;
+                delete params[minified];
+              }
+              localVars[newName] = 1;
+              delete localVars[minified];
+              asmData.vars[newName] = asmData.vars[minified];
+              delete asmData.vars[minified];
+              asmData.params[newName] = asmData.params[minified];
+              delete asmData.params[minified];
+              traverse(fun, function(node, type) {
+                if (type == 'name' && node[1] == minified) {
+                  node[1] = newName;
+                }
+              });
+              if (fun[2]) {
+                for (var i = 0; i < fun[2].length; i++) {
+                  if (fun[2][i] == minified) fun[2][i] = newName;
+                }
+              }
+            }
+            node[1] = minified;
+            usedGlobals[minified] = 1;
+          }
+        }
+      });
+      assert(fun[1] in minifierInfo.globals, fun[1]);
+      fun[1] = minifierInfo.globals[fun[1]];
+      assert(fun[1]);
+      var nextRegName = 0;
+    }
+    var regTypes = {};
+    function getNewRegName(num, name) {
+      if (!asm) return 'r' + num;
+      var type = asmData.vars[name];
+      if (!minifierInfo) {
+        var ret = (type ? 'd' : 'i') + num;
+        regTypes[ret] = type;
+        return ret;
+      }
+      // find the next free minified name that is not used by a global that shows up in this function
+      while (nextRegName < minifierInfo.names.length) {
+        var ret = minifierInfo.names[nextRegName++];
+        if (!usedGlobals[ret]) {
+          regTypes[ret] = type;
+          return ret;
+        }
+      }
+      assert('ran out of names');
+    }
     // Find the # of uses of each variable.
     // While doing so, check if all a variable's uses are dominated in a simple
     // way by a simple assign, if so, then we can assign its register to it
@@ -1487,7 +1623,7 @@ function registerize(ast, asm) {
           saved++;
         } else {
           reg = nextReg++;
-          fullNames[reg] = (asm ? (asmData.vars[name] ? 'd' : 'i') : 'r') + reg; // TODO: even smaller names
+          fullNames[reg] = getNewRegName(reg, name);
           if (params[name]) paramRegs[reg] = 1;
         }
         varRegs[name] = reg;
@@ -1531,7 +1667,7 @@ function registerize(ast, asm) {
         if (loopRegs[loops]) {
           if (asm) {
             loopRegs[loops].forEach(function(loopReg) {
-              freeRegsClasses[fullNames[loopReg][0] == 'i' ? ASM_INT : ASM_DOUBLE].push(loopReg);
+              freeRegsClasses[regTypes[fullNames[loopReg]]].push(loopReg);
             });
           } else {
             freeRegsClasses = freeRegsClasses.concat(loopRegs[loops]);
@@ -1557,7 +1693,7 @@ function registerize(ast, asm) {
             fun[2].push(reg);
           }
         }
-        getStatements(fun).unshift(['var', vars]);
+        if (vars.length > 0) getStatements(fun).unshift(['var', vars]);
       }
     } else {
       //printErr('unfake params: \n\n' + astToSrc(fun) + '\n\n');
@@ -1567,7 +1703,7 @@ function registerize(ast, asm) {
       };
       for (var i = 1; i < nextReg; i++) {
         var reg = fullNames[i];
-        var type = reg[0] == 'i' ? ASM_INT : ASM_DOUBLE
+        var type = regTypes[reg];
         if (!paramRegs[i]) {
           finalAsmData.vars[reg] = type;
         } else {
@@ -1578,10 +1714,6 @@ function registerize(ast, asm) {
       denormalizeAsm(fun, finalAsmData);
     }
   });
-}
-
-function registerizeAsm(ast) {
-  registerize(ast, true);
 }
 
 // Eliminator aka Expressionizer
@@ -1616,12 +1748,12 @@ function registerizeAsm(ast) {
 // In memSafe mode, we are more careful and assume functions can replace HEAP and FUNCTION_TABLE, which
 // can happen in ALLOW_MEMORY_GROWTH mode
 
-var ELIMINATION_SAFE_NODES = set('var', 'assign', 'call', 'if', 'toplevel', 'do', 'return'); // do is checked carefully, however
+var ELIMINATION_SAFE_NODES = set('var', 'assign', 'call', 'if', 'toplevel', 'do', 'return', 'label'); // do is checked carefully, however
 var NODES_WITHOUT_ELIMINATION_SIDE_EFFECTS = set('name', 'num', 'string', 'binary', 'sub', 'unary-prefix');
 var IGNORABLE_ELIMINATOR_SCAN_NODES = set('num', 'toplevel', 'string', 'break', 'continue', 'dot'); // dot can only be STRING_TABLE.*
 var ABORTING_ELIMINATOR_SCAN_NODES = set('new', 'object', 'function', 'defun', 'switch', 'for', 'while', 'array', 'throw'); // we could handle some of these, TODO, but nontrivial (e.g. for while, the condition is hit multiple times after the body)
 
-function eliminate(ast, memSafe, asm) {
+function eliminate(ast, memSafe) {
   // Find variables that have a single use, and if they can be eliminated, do so
   traverseGeneratedFunctions(ast, function(func, type) {
     if (asm) var asmData = normalizeAsm(func);
@@ -2114,13 +2246,72 @@ function eliminateMemSafe(ast) {
   eliminate(ast, true);
 }
 
-function eliminateAsm(ast) {
-  eliminate(ast, false, true);
+function minifyGlobals(ast) {
+  var minified = {};
+  var next = 0;
+  var first = true; // do not minify initial 'var asm ='
+  // find the globals
+  traverse(ast, function(node, type) {
+    if (type == 'var') {
+      if (first) {
+        first = false;
+        return;
+      }
+      var vars = node[1];
+      for (var i = 0; i < vars.length; i++) {
+        var name = vars[i][0];
+        assert(next < minifierInfo.names.length);
+        vars[i][0] = minified[name] = minifierInfo.names[next++];
+      }
+    }
+  });
+  // add all globals in function chunks, i.e. not here but passed to us
+  for (var i = 0; i < minifierInfo.globals.length; i++) {
+    name = minifierInfo.globals[i];
+    assert(next < minifierInfo.names.length);
+    minified[name] = minifierInfo.names[next++];
+  }
+  // apply minification
+  traverse(ast, function(node, type) {
+    if (type == 'name') {
+      var name = node[1];
+      if (name in minified) {
+        node[1] = minified[name];
+      }
+    }
+  });
+  suffix = '// MINIFY_INFO:' + JSON.stringify(minified);
+}
+
+// Change +5 to DOT$ZERO(5). We then textually change 5 to 5.0 (uglify's ast cannot differentiate between 5 and 5.0 directly)
+function prepDotZero(ast) {
+  traverse(ast, function(node, type) {
+    if (type == 'unary-prefix' && node[1] == '+') {
+      if (node[2][0] == 'num') {
+        return ['call', ['name', 'DOT$ZERO'], [node[2]]];
+      } else if (node[2][0] == 'unary-prefix' && node[2][1] == '-' && node[2][2][0] == 'num') {
+        node[2][2][1] = -node[2][2][1];
+        return ['call', ['name', 'DOT$ZERO'], [node[2][2]]];
+      }
+    }
+  });
+}
+function fixDotZero(js) {
+  return js.replace(/DOT\$ZERO\(((0x)?[-+]?[0-9a-f]*\.?[0-9]+([eE][-+]?[0-9]+)?)\)/g, function(m, num) {
+    if (num.substr(0, 2) == '0x') {
+      if (num[2] == '-') num = '-0x' + num.substr(3); // uglify generates 0x-8000 for some reason
+      return eval(num) + '.0';
+    }
+    if (num.indexOf('.') >= 0) return num;
+    var e = num.indexOf('e');
+    if (e < 0) return num + '.0';
+    return num.substr(0, e) + '.0' + num.substr(e);
+  });
 }
 
 // Passes table
 
-var compress = false, printMetadata = true;
+var compress = false, printMetadata = true, asm = false, last = false;
 
 var passes = {
   dumpAst: dumpAst,
@@ -2135,27 +2326,37 @@ var passes = {
   hoistMultiples: hoistMultiples,
   loopOptimizer: loopOptimizer,
   registerize: registerize,
-  registerizeAsm: registerizeAsm,
   eliminate: eliminate,
   eliminateMemSafe: eliminateMemSafe,
-  eliminateAsm: eliminateAsm,
-  compress: function() { compress = true; },
-  noPrintMetadata: function() { printMetadata = false; }
+  minifyGlobals: minifyGlobals,
+  compress: function() { compress = true },
+  noPrintMetadata: function() { printMetadata = false },
+  asm: function() { asm = true },
+  last: function() { last = true }
 };
 
 // Main
 
+var suffix = '';
+
 var src = read(arguments_[0]);
 var ast = srcToAst(src);
 //printErr(JSON.stringify(ast)); throw 1;
-var metadata = src.split('\n').filter(function(line) { return line.indexOf(GENERATED_FUNCTIONS_MARKER) >= 0 })[0];
-//assert(metadata, 'Must have EMSCRIPTEN_GENERATED_FUNCTIONS metadata');
-if (metadata) setGeneratedFunctions(metadata);
+generatedFunctions = src.indexOf(GENERATED_FUNCTIONS_MARKER) >= 0;
+var minifierInfoStart = src.indexOf('// MINIFY_INFO:')
+if (minifierInfoStart > 0) minifierInfo = JSON.parse(src.substr(minifierInfoStart + 15));
+//printErr(JSON.stringify(minifierInfo));
 
 arguments_.slice(1).forEach(function(arg) {
   passes[arg](ast);
 });
+if (asm && last) {
+  prepDotZero(ast);
+}
 var js = astToSrc(ast, compress), old;
+if (asm && last) {
+  js = fixDotZero(js);
+}
 
 // remove unneeded newlines+spaces, and print
 do {
@@ -2164,4 +2365,5 @@ do {
 } while (js != old);
 print(js);
 print('\n');
+print(suffix);
 

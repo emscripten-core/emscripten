@@ -1,6 +1,8 @@
 /*
  * Boehm-compatible GC API
  */
+#ifndef _GC_H_INCLUDED
+#define _GC_H_INCLUDED
 
 #include <stdlib.h>
 
@@ -29,12 +31,21 @@ void *GC_MALLOC(int bytes);
 /* Allocate memory for an object that the user promises will not contain pointers. */
 void *GC_MALLOC_ATOMIC(int bytes);
 
+/* Allocate memory that might container pointers but that can't be collected. */
+void *GC_MALLOC_UNCOLLECTABLE(int bytes);
+
+/* Reallocate a GC managed memory block to a new size. */
+void *GC_REALLOC(void *ptr, int newBytes);
+
 /* Explicitly deallocate an object. Dangerous as it forces a free and does not check if the object is reffed. */
 void GC_FREE(void *ptr);
 
 /* Register a finalizer. func(ptr, arg) will be called. The old values are saved in old_func, old_arg */
 void GC_REGISTER_FINALIZER_NO_ORDER(void *ptr, void (*func)(void *, void *),      void *arg,
                                                void *(*old_func)(void *, void *), void *old_arg);
+
+/* Gets the bytes allocated and managed by the GC */
+int GC_get_heap_size();
 
 /* Non-Boehm additions */
 
@@ -56,3 +67,4 @@ void GC_enable_incremental();
 }
 #endif
 
+#endif

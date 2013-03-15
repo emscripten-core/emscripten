@@ -1,6 +1,8 @@
 
 //== HEADLESS ==//
 
+// TODO: sync from bananabread headless.js
+
 var window = {
   location: {
     toString: function() {
@@ -535,7 +537,7 @@ var document = {
                       case /* GL_MAX_FRAGMENT_UNIFORM_VECTORS     */ 0x8DFD: return 4096;
                       case /* GL_MAX_VARYING_VECTORS              */ 0x8DFC: return 32;
                       case /* GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS */ 0x8B4D: return 32;
-                      default: throw 'getParameter ' + pname;
+                      default: console.log('getParameter ' + pname + '?'); return 0;
                     }
                   },
                   getSupportedExtensions: function() {
@@ -684,6 +686,7 @@ var document = {
               document.callEventListeners('pointerlockchange');
             });
           },
+          exitPointerLock: function(){},
           style: {},
           eventListeners: {},
           addEventListener: document.addEventListener,
@@ -746,6 +749,8 @@ var document = {
   body: {
     appendChild: function(){},
   },
+  exitPointerLock: function(){},
+  cancelFullScreen: function(){},
 };
 var alert = function(x) {
   print(x);

@@ -1,5 +1,3 @@
-// TODO: " u s e   s t r i c t ";
-
 try {
   this['Module'] = Module;
 } catch(e) {

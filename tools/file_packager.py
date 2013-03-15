@@ -35,8 +35,8 @@ TODO:        You can also provide .crn files yourself, pre-crunched. With this o
 
 import os, sys, shutil, random
 
-from shared import Compression, execute, suffix, unsuffixed
 import shared
+from shared import Compression, execute, suffix, unsuffixed
 from subprocess import Popen, PIPE, STDOUT
 
 data_target = sys.argv[1]
@@ -228,7 +228,7 @@ if has_preloaded:
     curr = open(file_['localname'], 'rb').read()
     file_['data_end'] = start + len(curr)
     if AV_WORKAROUND: curr += '\x00'
-    print >> sys.stderr, 'bundling', file_['name'], file_['localname'], file_['data_start'], file_['data_end']
+    #print >> sys.stderr, 'bundling', file_['name'], file_['localname'], file_['data_start'], file_['data_end']
     start += len(curr)
     data.write(curr)
   data.close()

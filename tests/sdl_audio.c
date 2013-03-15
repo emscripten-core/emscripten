@@ -6,13 +6,14 @@
 
 Mix_Chunk *sound, *sound2;
 
-void play2();
+int play2();
 
-void play() {
+int play() {
   int channel = Mix_PlayChannel(-1, sound, 1);
   assert(channel == 0);
 
   emscripten_run_script("setTimeout(Module['_play2'], 500)");
+  return channel;
 }
 
 void done(int channel) {
@@ -22,11 +23,12 @@ void done(int channel) {
   REPORT_RESULT();
 }
 
-void play2() {
+int play2() {
   Mix_ChannelFinished(done);
 
   int channel2 = Mix_PlayChannel(-1, sound2, 1);
   assert(channel2 == 1);
+  return channel2;
 }
 
 int main(int argc, char **argv) {
@@ -40,7 +42,17 @@ int main(int argc, char **argv) {
   sound2 = Mix_LoadWAV("sound2.wav");
   assert(sound);
 
-  play();
+  int channel = play();
+  printf( "Pausing Channel %d", channel );
+  Mix_Pause(channel);
+  int paused = Mix_Paused(channel);
+  printf( "Channel %d %s", channel, paused ? "is paused" : "is NOT paused" );
+  assert(paused);
+  Mix_Resume(channel);
+  paused = Mix_Paused(channel);
+  printf( "Channel %d %s", channel, paused ? "is paused" : "is NOT paused" );
+  assert(paused == 0);
+
   if (argc == 12121) play2(); // keep it alive
 
   emscripten_run_script("element = document.createElement('input');"
