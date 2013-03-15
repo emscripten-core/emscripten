@@ -4423,9 +4423,12 @@ LibraryManager.library = {
   // We always assume ASCII locale.
   strcoll: 'strcmp',
 
+  strcasecmp__asm: true,
+  strcasecmp__sig: 'iii',
   strcasecmp__deps: ['strncasecmp'],
   strcasecmp: function(px, py) {
-    return _strncasecmp(px, py, TOTAL_MEMORY);
+    px = px|0; py = py|0;
+    return _strncasecmp(px, py, -1)|0;
   },
 
   strncmp: function(px, py, n) {
@@ -4452,7 +4455,7 @@ LibraryManager.library = {
   strncasecmp: function(px, py, n) {
     px = px|0; py = py|0; n = n|0;
     var i = 0, x = 0, y = 0;
-    while ((i|0) < (n|0)) {
+    while ((i>>>0) < (n>>>0)) {
       x = _tolower({{{ makeGetValueAsm('px', 'i', 'i8', 0, 1) }}});
       y = _tolower({{{ makeGetValueAsm('py', 'i', 'i8', 0, 1) }}});
       if (((x|0) == (y|0)) & ((x|0) == 0)) return 0;
