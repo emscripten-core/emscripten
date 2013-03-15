@@ -989,6 +989,10 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
           # -O1 does not have -gobaldce, which removes stuff that is needed for libraries and linkables
           optimization_level = min(1, optimization_level)
         opts.append('-O%d' % optimization_level)
+        if optimization_level > 1:
+          # Unfortunately, code sometimes comes out of -O2 / -O3 with invalid CFG and needs
+          # simplification. See http://llvm.org/bugs/show_bug.cgi?id=15518 for an example.
+          opts.append('-simplifycfg')
         #print '[unsafe: %s]' % ','.join(opts)
       else:
         allow_nonportable = False
