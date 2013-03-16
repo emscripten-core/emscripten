@@ -58,7 +58,12 @@ var LibraryGL = {
       return ret;
     },
 
-    // Temporary buffers
+    // Mini temp buffer
+    MINI_TEMP_BUFFER_SIZE: 16,
+    miniTempBuffer: null,
+    miniTempBufferViews: [0], // index i has the view of size i+1
+
+    // Large temporary buffers
     MAX_TEMP_BUFFER_SIZE: {{{ GL_MAX_TEMP_BUFFER_SIZE }}},
     tempBufferIndexLookup: null,
     tempVertexBuffers: null,
@@ -310,6 +315,11 @@ var LibraryGL = {
       GL.initExtensions.done = true;
 
       if (!Module.useWebGL) return; // an app might link both gl and 2d backends
+
+      GL.miniTempBuffer = new Float32Array(GL.MINI_TEMP_BUFFER_SIZE);
+      for (var i = 0; i < GL.MINI_TEMP_BUFFER_SIZE; i++) {
+        GL.miniTempBufferViews[i] = GL.miniTempBuffer.subarray(0, i+1);
+      }
 
       GL.maxVertexAttribs = Module.ctx.getParameter(Module.ctx.MAX_VERTEX_ATTRIBS);
 #if FULL_ES2
@@ -832,32 +842,63 @@ var LibraryGL = {
   glUniform1fv__sig: 'viii',
   glUniform1fv: function(location, count, value) {
     location = GL.uniforms[location];
-    value = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
-    Module.ctx.uniform1fv(location, value);
+    var view;
+    if (count == 1) {
+      // avoid allocation for the common case of uploading one uniform
+      view = GL.miniTempBufferViews[0];
+      view[0] = {{{ makeGetValue('value', '0', 'float') }}};
+    } else {
+      view = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
+    }
+    Module.ctx.uniform1fv(location, view);
   },
 
   glUniform2fv__sig: 'viii',
   glUniform2fv: function(location, count, value) {
     location = GL.uniforms[location];
-    count *= 2;
-    value = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
-    Module.ctx.uniform2fv(location, value);
+    var view;
+    if (count == 1) {
+      // avoid allocation for the common case of uploading one uniform
+      view = GL.miniTempBufferViews[1];
+      view[0] = {{{ makeGetValue('value', '0', 'float') }}};
+      view[1] = {{{ makeGetValue('value', '4', 'float') }}};
+    } else {
+      view = {{{ makeHEAPView('F32', 'value', 'value+count*8') }}};
+    }
+    Module.ctx.uniform2fv(location, view);
   },
 
   glUniform3fv__sig: 'viii',
   glUniform3fv: function(location, count, value) {
     location = GL.uniforms[location];
-    count *= 3;
-    value = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
-    Module.ctx.uniform3fv(location, value);
+    var view;
+    if (count == 1) {
+      // avoid allocation for the common case of uploading one uniform
+      view = GL.miniTempBufferViews[2];
+      view[0] = {{{ makeGetValue('value', '0', 'float') }}};
+      view[1] = {{{ makeGetValue('value', '4', 'float') }}};
+      view[2] = {{{ makeGetValue('value', '8', 'float') }}};
+    } else {
+      view = {{{ makeHEAPView('F32', 'value', 'value+count*12') }}};
+    }
+    Module.ctx.uniform3fv(location, view);
   },
 
   glUniform4fv__sig: 'viii',
   glUniform4fv: function(location, count, value) {
     location = GL.uniforms[location];
-    count *= 4;
-    value = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
-    Module.ctx.uniform4fv(location, value);
+    var view;
+    if (count == 1) {
+      // avoid allocation for the common case of uploading one uniform
+      view = GL.miniTempBufferViews[3];
+      view[0] = {{{ makeGetValue('value', '0', 'float') }}};
+      view[1] = {{{ makeGetValue('value', '4', 'float') }}};
+      view[2] = {{{ makeGetValue('value', '8', 'float') }}};
+      view[3] = {{{ makeGetValue('value', '12', 'float') }}};
+    } else {
+      view = {{{ makeHEAPView('F32', 'value', 'value+count*16') }}};
+    }
+    Module.ctx.uniform4fv(location, view);
   },
 
   glUniformMatrix2fv: function(location, count, transpose, value) {
