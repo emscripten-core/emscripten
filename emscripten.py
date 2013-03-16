@@ -269,8 +269,10 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     for key in curr_forwarded_json['Functions']['indexedFunctions'].iterkeys():
       indexed_functions.add(key)
     if settings.get('ASM_JS'):
+      export_bindings = settings['EXPORT_BINDINGS']
       for key in curr_forwarded_json['Functions']['implementedFunctions'].iterkeys():
-        if key in all_exported_functions: exported_implemented_functions.add(key)
+        if key in all_exported_functions or (export_bindings and key.startswith('_emscripten_bind')):
+          exported_implemented_functions.add(key)
     for key, value in curr_forwarded_json['Functions']['unimplementedFunctions'].iteritems():
       forwarded_json['Functions']['unimplementedFunctions'][key] = value
 

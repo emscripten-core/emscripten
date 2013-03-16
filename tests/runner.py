@@ -7924,7 +7924,8 @@ def process(filename):
 
     def test_scriptaclass(self):
         if self.emcc_args is None: return self.skip('requires emcc')
-        if Settings.ASM_JS: return self.skip('asm does not bindings generator yet')
+
+        Settings.EXPORT_BINDINGS = 1
 
         header_filename = os.path.join(self.get_dir(), 'header.h')
         header = '''
@@ -8099,6 +8100,7 @@ def process(filename):
           Module.Child2.prototype.runVirtualFunc(c2);
           c2.virtualFunc2();
 
+''' + ('' if Settings.ASM_JS else '''
           // extend the class from JS
           var c3 = new Module.Child2;
           Module.customizeVTable(c3, [{
@@ -8119,6 +8121,7 @@ def process(filename):
           c2.virtualFunc(); // original should remain the same
           Module.Child2.prototype.runVirtualFunc(c2);
           c2.virtualFunc2();
+''') + '''
 
           Module.print('*ok*');
         \'\'\'
@@ -8157,7 +8160,7 @@ Child2:9
 *static*
 *virtualf*
 *virtualf*
-*virtualf2*
+*virtualf2*''' + ('' if Settings.ASM_JS else '''
 Parent:9
 Child2:9
 *js virtualf replacement*
@@ -8165,7 +8168,7 @@ Child2:9
 *js virtualf2 replacement*
 *virtualf*
 *virtualf*
-*virtualf2*
+*virtualf2*''') + '''
 *ok*
 ''', post_build=[post2, post3])
 

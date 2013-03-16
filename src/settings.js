@@ -226,11 +226,13 @@ var NAMED_GLOBALS = 0; // If 1, we use global variables for globals. Otherwise
                        // they are referred to by a base plus an offset (called an indexed global),
                        // saving global variables but adding runtime overhead.
 
-var EXPORT_ALL = 0; // If true, we export all the symbols
 var EXPORTED_FUNCTIONS = ['_main']; // Functions that are explicitly exported. These functions are kept alive
                                     // through LLVM dead code elimination, and also made accessible outside of
                                     // the generated code even after running closure compiler (on "Module").
                                     // Note the necessary prefix of "_".
+var EXPORT_ALL = 0; // If true, we export all the symbols
+var EXPORT_BINDINGS = 0; // Export all bindings generator functions (prefixed with emscripten_bind_). This
+                         // is necessary to use the bindings generator with asm.js
 
 // JS library functions (C functions implemented in JS)
 // that we include by default. If you want to make sure
