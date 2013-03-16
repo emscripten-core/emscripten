@@ -903,23 +903,47 @@ var LibraryGL = {
 
   glUniformMatrix2fv: function(location, count, transpose, value) {
     location = GL.uniforms[location];
-    count *= 4;
-    value = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
-    Module.ctx.uniformMatrix2fv(location, transpose, value);
+    var view;
+    if (count == 1) {
+      // avoid allocation for the common case of uploading one uniform matrix
+      view = GL.miniTempBufferViews[3];
+      for (var i = 0; i < 4; i++) {
+        view[i] = {{{ makeGetValue('value', 'i*4', 'float') }}};
+      }
+    } else {
+      view = {{{ makeHEAPView('F32', 'value', 'value+count*16') }}};
+    }
+    Module.ctx.uniformMatrix2fv(location, transpose, view);
   },
 
   glUniformMatrix3fv: function(location, count, transpose, value) {
     location = GL.uniforms[location];
-    count *= 9;
-    value = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
-    Module.ctx.uniformMatrix3fv(location, transpose, value);
+    var view;
+    if (count == 1) {
+      // avoid allocation for the common case of uploading one uniform matrix
+      view = GL.miniTempBufferViews[8];
+      for (var i = 0; i < 9; i++) {
+        view[i] = {{{ makeGetValue('value', 'i*4', 'float') }}};
+      }
+    } else {
+      view = {{{ makeHEAPView('F32', 'value', 'value+count*36') }}};
+    }
+    Module.ctx.uniformMatrix3fv(location, transpose, view);
   },
 
   glUniformMatrix4fv: function(location, count, transpose, value) {
     location = GL.uniforms[location];
-    count *= 16;
-    value = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
-    Module.ctx.uniformMatrix4fv(location, transpose, value);
+    var view;
+    if (count == 1) {
+      // avoid allocation for the common case of uploading one uniform matrix
+      view = GL.miniTempBufferViews[15];
+      for (var i = 0; i < 16; i++) {
+        view[i] = {{{ makeGetValue('value', 'i*4', 'float') }}};
+      }
+    } else {
+      view = {{{ makeHEAPView('F32', 'value', 'value+count*64') }}};
+    }
+    Module.ctx.uniformMatrix4fv(location, transpose, view);
   },
 
   glBindBuffer__sig: 'vii',
