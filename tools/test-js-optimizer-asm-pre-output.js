@@ -6,6 +6,8 @@ function a() {
   f(8);
   HEAP[1024] = 5;
   HEAP[1024] = 5;
+  whee(12, 13);
+  whee(12, 13);
 }
 function b($this, $__n) {
   $this = $this | 0;
@@ -50,5 +52,25 @@ function b($this, $__n) {
   }
   HEAP8[$38 + $40 & 16777215] = 0;
   return;
+}
+function rett() {
+  if (f()) {
+    g();
+    return 5;
+  }
+  return 0;
+}
+function ret2t() {
+  if (f()) {
+    g();
+    return;
+  }
+}
+function retf() {
+  if (f()) {
+    g();
+    return +h();
+  }
+  return +0;
 }
 

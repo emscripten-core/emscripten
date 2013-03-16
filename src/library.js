@@ -504,7 +504,7 @@ LibraryManager.library = {
       }
       var utf8 = new Runtime.UTF8Processor();
       function simpleOutput(val) {
-        if (val === null || val === '\n'.charCodeAt(0)) {
+        if (val === null || val === {{{ charCode('\n') }}}) {
           output.printer(output.buffer.join(''));
           output.buffer = [];
         } else {
@@ -600,8 +600,8 @@ LibraryManager.library = {
     quit: function() {
       if (!FS.init.initialized) return;
       // Flush any partially-printed lines in stdout and stderr. Careful, they may have been closed
-      if (FS.streams[2] && FS.streams[2].object.output.buffer.length > 0) FS.streams[2].object.output('\n'.charCodeAt(0));
-      if (FS.streams[3] && FS.streams[3].object.output.buffer.length > 0) FS.streams[3].object.output('\n'.charCodeAt(0));
+      if (FS.streams[2] && FS.streams[2].object.output.buffer.length > 0) FS.streams[2].object.output({{{ charCode('\n') }}});
+      if (FS.streams[3] && FS.streams[3].object.output.buffer.length > 0) FS.streams[3].object.output({{{ charCode('\n') }}});
     },
 
     // Standardizes a path. Useful for making comparisons of pathnames work in a consistent manner.
@@ -828,11 +828,11 @@ LibraryManager.library = {
       // Null or empty results in '.'.
       var me = ___libgenSplitName;
       if (!me.ret) {
-        me.ret = allocate(['.'.charCodeAt(0), 0], 'i8', ALLOC_NORMAL);
+        me.ret = allocate([{{{ charCode('.') }}}, 0], 'i8', ALLOC_NORMAL);
       }
       return [me.ret, -1];
     } else {
-      var slash = '/'.charCodeAt(0);
+      var slash = {{{ charCode('/') }}};
       var allSlashes = true;
       var slashPositions = [];
       for (var i = 0; {{{ makeGetValue('path', 'i', 'i8') }}} !== 0; i++) {
@@ -1730,7 +1730,12 @@ LibraryManager.library = {
       }
       var contents = stream.object.contents;
       var size = Math.min(contents.length - offset, nbyte);
-      if (contents.subarray || contents.slice) { // typed array or normal array
+#if USE_TYPED_ARRAYS == 2
+      if (contents.subarray) { // typed array
+        HEAPU8.set(contents.subarray(offset, offset+size), buf);
+      } else
+#endif
+      if (contents.slice) { // normal array
         for (var i = 0; i < size; i++) {
           {{{ makeSetValue('buf', 'i', 'contents[offset + i]', 'i8') }}}
         }
@@ -2403,6 +2408,7 @@ LibraryManager.library = {
       case {{{ cDefine('_SC_STREAM_MAX') }}}: return 16;
       case {{{ cDefine('_SC_TZNAME_MAX') }}}: return 6;
       case {{{ cDefine('_SC_THREAD_DESTRUCTOR_ITERATIONS') }}}: return 4;
+      case {{{ cDefine('_SC_NPROCESSORS_ONLN') }}}: return 1;
     }
     ___setErrNo(ERRNO_CODES.EINVAL);
     return -1;
@@ -2451,9 +2457,9 @@ LibraryManager.library = {
   _scanString: function(format, get, unget, varargs) {
     if (!__scanString.whiteSpace) {
       __scanString.whiteSpace = {};
-      __scanString.whiteSpace[' '.charCodeAt(0)] = 1;
-      __scanString.whiteSpace['\t'.charCodeAt(0)] = 1;
-      __scanString.whiteSpace['\n'.charCodeAt(0)] = 1;
+      __scanString.whiteSpace[{{{ charCode(' ') }}}] = 1;
+      __scanString.whiteSpace[{{{ charCode('\t') }}}] = 1;
+      __scanString.whiteSpace[{{{ charCode('\n') }}}] = 1;
       __scanString.whiteSpace[' '] = 1;
       __scanString.whiteSpace['\t'] = 1;
       __scanString.whiteSpace['\n'] = 1;
@@ -2513,8 +2519,8 @@ LibraryManager.library = {
       if (format[formatIndex] === '%') {
         formatIndex++;
         var maxSpecifierStart = formatIndex;
-        while (format[formatIndex].charCodeAt(0) >= '0'.charCodeAt(0) &&
-               format[formatIndex].charCodeAt(0) <= '9'.charCodeAt(0)) {
+        while (format[formatIndex].charCodeAt(0) >= {{{ charCode('0') }}} &&
+               format[formatIndex].charCodeAt(0) <= {{{ charCode('9') }}}) {
           formatIndex++;
         }
         var max_;
@@ -2560,11 +2566,11 @@ LibraryManager.library = {
           while ((curr < max_ || isNaN(max_)) && next > 0) {
             if (!(next in __scanString.whiteSpace) && // stop on whitespace
                 (type == 's' ||
-                 ((type === 'd' || type == 'u' || type == 'i') && ((next >= '0'.charCodeAt(0) && next <= '9'.charCodeAt(0)) ||
-                                                                   (first && next == '-'.charCodeAt(0)))) ||
-                 (type === 'x' && (next >= '0'.charCodeAt(0) && next <= '9'.charCodeAt(0) ||
-                                   next >= 'a'.charCodeAt(0) && next <= 'f'.charCodeAt(0) ||
-                                   next >= 'A'.charCodeAt(0) && next <= 'F'.charCodeAt(0)))) &&
+                 ((type === 'd' || type == 'u' || type == 'i') && ((next >= {{{ charCode('0') }}} && next <= {{{ charCode('9') }}}) ||
+                                                                   (first && next == {{{ charCode('-') }}}))) ||
+                 (type === 'x' && (next >= {{{ charCode('0') }}} && next <= {{{ charCode('9') }}} ||
+                                   next >= {{{ charCode('a') }}} && next <= {{{ charCode('f') }}} ||
+                                   next >= {{{ charCode('A') }}} && next <= {{{ charCode('F') }}}))) &&
                 (formatIndex >= format.length || next !== format[formatIndex].charCodeAt(0))) { // Stop when we read something that is coming up
               buffer.push(String.fromCharCode(next));
               next = get();
@@ -2669,7 +2675,7 @@ LibraryManager.library = {
       curr = {{{ makeGetValue(0, 'textIndex', 'i8') }}};
       if (curr === 0) break;
       next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
-      if (curr == '%'.charCodeAt(0)) {
+      if (curr == {{{ charCode('%') }}}) {
         // Handle flags.
         var flagAlwaysSigned = false;
         var flagLeftAlign = false;
@@ -2677,16 +2683,16 @@ LibraryManager.library = {
         var flagZeroPad = false;
         flagsLoop: while (1) {
           switch (next) {
-            case '+'.charCodeAt(0):
+            case {{{ charCode('+') }}}:
               flagAlwaysSigned = true;
               break;
-            case '-'.charCodeAt(0):
+            case {{{ charCode('-') }}}:
               flagLeftAlign = true;
               break;
-            case '#'.charCodeAt(0):
+            case {{{ charCode('#') }}}:
               flagAlternative = true;
               break;
-            case '0'.charCodeAt(0):
+            case {{{ charCode('0') }}}:
               if (flagZeroPad) {
                 break flagsLoop;
               } else {
@@ -2702,13 +2708,13 @@ LibraryManager.library = {
 
         // Handle width.
         var width = 0;
-        if (next == '*'.charCodeAt(0)) {
+        if (next == {{{ charCode('*') }}}) {
           width = getNextArg('i32');
           textIndex++;
           next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
         } else {
-          while (next >= '0'.charCodeAt(0) && next <= '9'.charCodeAt(0)) {
-            width = width * 10 + (next - '0'.charCodeAt(0));
+          while (next >= {{{ charCode('0') }}} && next <= {{{ charCode('9') }}}) {
+            width = width * 10 + (next - {{{ charCode('0') }}});
             textIndex++;
             next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
           }
@@ -2716,20 +2722,20 @@ LibraryManager.library = {
 
         // Handle precision.
         var precisionSet = false;
-        if (next == '.'.charCodeAt(0)) {
+        if (next == {{{ charCode('.') }}}) {
           var precision = 0;
           precisionSet = true;
           textIndex++;
           next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
-          if (next == '*'.charCodeAt(0)) {
+          if (next == {{{ charCode('*') }}}) {
             precision = getNextArg('i32');
             textIndex++;
           } else {
             while(1) {
               var precisionChr = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
-              if (precisionChr < '0'.charCodeAt(0) ||
-                  precisionChr > '9'.charCodeAt(0)) break;
-              precision = precision * 10 + (precisionChr - '0'.charCodeAt(0));
+              if (precisionChr < {{{ charCode('0') }}} ||
+                  precisionChr > {{{ charCode('9') }}}) break;
+              precision = precision * 10 + (precisionChr - {{{ charCode('0') }}});
               textIndex++;
             }
           }
@@ -2743,7 +2749,7 @@ LibraryManager.library = {
         switch (String.fromCharCode(next)) {
           case 'h':
             var nextNext = {{{ makeGetValue(0, 'textIndex+2', 'i8') }}};
-            if (nextNext == 'h'.charCodeAt(0)) {
+            if (nextNext == {{{ charCode('h') }}}) {
               textIndex++;
               argSize = 1; // char (actually i32 in varargs)
             } else {
@@ -2752,7 +2758,7 @@ LibraryManager.library = {
             break;
           case 'l':
             var nextNext = {{{ makeGetValue(0, 'textIndex+2', 'i8') }}};
-            if (nextNext == 'l'.charCodeAt(0)) {
+            if (nextNext == {{{ charCode('l') }}}) {
               textIndex++;
               argSize = 8; // long long
             } else {
@@ -2778,7 +2784,7 @@ LibraryManager.library = {
         // Handle type specifier.
         if (['d', 'i', 'u', 'o', 'x', 'X', 'p'].indexOf(String.fromCharCode(next)) != -1) {
           // Integer.
-          var signed = next == 'd'.charCodeAt(0) || next == 'i'.charCodeAt(0);
+          var signed = next == {{{ charCode('d') }}} || next == {{{ charCode('i') }}};
           argSize = argSize || 4;
           var currArg = getNextArg('i' + (argSize * 8));
 #if PRECISE_I64_MATH
@@ -2788,7 +2794,7 @@ LibraryManager.library = {
 #if USE_TYPED_ARRAYS == 2
           // Flatten i64-1 [low, high] into a (slightly rounded) double
           if (argSize == 8) {
-            currArg = Runtime.makeBigInt(currArg[0], currArg[1], next == 'u'.charCodeAt(0));
+            currArg = Runtime.makeBigInt(currArg[0], currArg[1], next == {{{ charCode('u') }}});
           }
 #endif
           // Truncate to requested size.
@@ -2799,20 +2805,20 @@ LibraryManager.library = {
           // Format the number.
           var currAbsArg = Math.abs(currArg);
           var prefix = '';
-          if (next == 'd'.charCodeAt(0) || next == 'i'.charCodeAt(0)) {
+          if (next == {{{ charCode('d') }}} || next == {{{ charCode('i') }}}) {
 #if PRECISE_I64_MATH
             if (argSize == 8 && i64Math) argText = i64Math.stringify(origArg[0], origArg[1], null); else
 #endif
             argText = reSign(currArg, 8 * argSize, 1).toString(10);
-          } else if (next == 'u'.charCodeAt(0)) {
+          } else if (next == {{{ charCode('u') }}}) {
 #if PRECISE_I64_MATH
             if (argSize == 8 && i64Math) argText = i64Math.stringify(origArg[0], origArg[1], true); else
 #endif
             argText = unSign(currArg, 8 * argSize, 1).toString(10);
             currArg = Math.abs(currArg);
-          } else if (next == 'o'.charCodeAt(0)) {
+          } else if (next == {{{ charCode('o') }}}) {
             argText = (flagAlternative ? '0' : '') + currAbsArg.toString(8);
-          } else if (next == 'x'.charCodeAt(0) || next == 'X'.charCodeAt(0)) {
+          } else if (next == {{{ charCode('x') }}} || next == {{{ charCode('X') }}}) {
             prefix = flagAlternative ? '0x' : '';
 #if PRECISE_I64_MATH
             if (argSize == 8 && i64Math) argText = (origArg[1]>>>0).toString(16) + (origArg[0]>>>0).toString(16); else
@@ -2830,11 +2836,11 @@ LibraryManager.library = {
             } else {
               argText = currAbsArg.toString(16);
             }
-            if (next == 'X'.charCodeAt(0)) {
+            if (next == {{{ charCode('X') }}}) {
               prefix = prefix.toUpperCase();
               argText = argText.toUpperCase();
             }
-          } else if (next == 'p'.charCodeAt(0)) {
+          } else if (next == {{{ charCode('p') }}}) {
             if (currAbsArg === 0) {
               argText = '(nil)';
             } else {
@@ -2892,27 +2898,27 @@ LibraryManager.library = {
 
             // Convert g/G to f/F or e/E, as per:
             // http://pubs.opengroup.org/onlinepubs/9699919799/functions/printf.html
-            if (next == 'g'.charCodeAt(0) || next == 'G'.charCodeAt(0)) {
+            if (next == {{{ charCode('g') }}} || next == {{{ charCode('G') }}}) {
               isGeneral = true;
               precision = precision || 1;
               var exponent = parseInt(currArg.toExponential(effectivePrecision).split('e')[1], 10);
               if (precision > exponent && exponent >= -4) {
-                next = ((next == 'g'.charCodeAt(0)) ? 'f' : 'F').charCodeAt(0);
+                next = ((next == {{{ charCode('g') }}}) ? 'f' : 'F').charCodeAt(0);
                 precision -= exponent + 1;
               } else {
-                next = ((next == 'g'.charCodeAt(0)) ? 'e' : 'E').charCodeAt(0);
+                next = ((next == {{{ charCode('g') }}}) ? 'e' : 'E').charCodeAt(0);
                 precision--;
               }
               effectivePrecision = Math.min(precision, 20);
             }
 
-            if (next == 'e'.charCodeAt(0) || next == 'E'.charCodeAt(0)) {
+            if (next == {{{ charCode('e') }}} || next == {{{ charCode('E') }}}) {
               argText = currArg.toExponential(effectivePrecision);
               // Make sure the exponent has at least 2 digits.
               if (/[eE][-+]\d$/.test(argText)) {
                 argText = argText.slice(0, -1) + '0' + argText.slice(-1);
               }
-            } else if (next == 'f'.charCodeAt(0) || next == 'F'.charCodeAt(0)) {
+            } else if (next == {{{ charCode('f') }}} || next == {{{ charCode('F') }}}) {
               argText = currArg.toFixed(effectivePrecision);
             }
 
@@ -2932,7 +2938,7 @@ LibraryManager.library = {
             argText = parts[0] + (parts.length > 1 ? 'e' + parts[1] : '');
 
             // Capitalize 'E' if needed.
-            if (next == 'E'.charCodeAt(0)) argText = argText.toUpperCase();
+            if (next == {{{ charCode('E') }}}) argText = argText.toUpperCase();
 
             // Add sign.
             if (flagAlwaysSigned && currArg >= 0) {
@@ -2954,20 +2960,20 @@ LibraryManager.library = {
           }
 
           // Adjust case.
-          if (next < 'a'.charCodeAt(0)) argText = argText.toUpperCase();
+          if (next < {{{ charCode('a') }}}) argText = argText.toUpperCase();
 
           // Insert the result into the buffer.
           argText.split('').forEach(function(chr) {
             ret.push(chr.charCodeAt(0));
           });
-        } else if (next == 's'.charCodeAt(0)) {
+        } else if (next == {{{ charCode('s') }}}) {
           // String.
           var arg = getNextArg('i8*') || nullString;
           var argLength = _strlen(arg);
           if (precisionSet) argLength = Math.min(argLength, precision);
           if (!flagLeftAlign) {
             while (argLength < width--) {
-              ret.push(' '.charCodeAt(0));
+              ret.push({{{ charCode(' ') }}});
             }
           }
           for (var i = 0; i < argLength; i++) {
@@ -2975,21 +2981,21 @@ LibraryManager.library = {
           }
           if (flagLeftAlign) {
             while (argLength < width--) {
-              ret.push(' '.charCodeAt(0));
+              ret.push({{{ charCode(' ') }}});
             }
           }
-        } else if (next == 'c'.charCodeAt(0)) {
+        } else if (next == {{{ charCode('c') }}}) {
           // Character.
           if (flagLeftAlign) ret.push(getNextArg('i8'));
           while (--width > 0) {
-            ret.push(' '.charCodeAt(0));
+            ret.push({{{ charCode(' ') }}});
           }
           if (!flagLeftAlign) ret.push(getNextArg('i8'));
-        } else if (next == 'n'.charCodeAt(0)) {
+        } else if (next == {{{ charCode('n') }}}) {
           // Write the length written so far to the next parameter.
           var ptr = getNextArg('i32*');
           {{{ makeSetValue('ptr', '0', 'ret.length', 'i32') }}}
-        } else if (next == '%'.charCodeAt(0)) {
+        } else if (next == {{{ charCode('%') }}}) {
           // Literal percent sign.
           ret.push(curr);
         } else {
@@ -3138,7 +3144,7 @@ LibraryManager.library = {
     var streamObj = FS.streams[stream];
     if (streamObj.error || streamObj.eof) return 0;
     var byte_;
-    for (var i = 0; i < n - 1 && byte_ != '\n'.charCodeAt(0); i++) {
+    for (var i = 0; i < n - 1 && byte_ != {{{ charCode('\n') }}}; i++) {
       byte_ = _fgetc(stream);
       if (byte_ == -1) {
         if (streamObj.error) return 0;
@@ -3244,7 +3250,7 @@ LibraryManager.library = {
     if (ret < 0) {
       return ret;
     } else {
-      var newlineRet = _fputc('\n'.charCodeAt(0), stdout);
+      var newlineRet = _fputc({{{ charCode('\n') }}}, stdout);
       return (newlineRet < 0) ? -1 : ret + 1;
     }
   },
@@ -3370,8 +3376,8 @@ LibraryManager.library = {
     var stdout = {{{ makeGetValue(makeGlobalUse('_stdout'), '0', 'void*') }}};
     if (s) {
       _fputs(s, stdout);
-      _fputc(':'.charCodeAt(0), stdout);
-      _fputc(' '.charCodeAt(0), stdout);
+      _fputc({{{ charCode(':') }}}, stdout);
+      _fputc({{{ charCode(' ') }}}, stdout);
     }
     var errnum = {{{ makeGetValue('___errno_location()', '0', 'i32') }}};
     _puts(_strerror(errnum));
@@ -3669,6 +3675,17 @@ LibraryManager.library = {
 
   abs: 'Math.abs',
   labs: 'Math.abs',
+#if USE_TYPED_ARRAYS == 2
+  llabs__deps: [function() { Types.preciseI64MathUsed = 1 }],
+  llabs: function(lo, hi) {
+    i64Math.abs(lo, hi);
+    {{{ makeStructuralReturn([makeGetTempDouble(0, 'i32'), makeGetTempDouble(1, 'i32')]) }}};
+  },
+#else
+  llabs: function(lo, hi) {
+    throw 'unsupported llabs';
+  },
+#endif
 
   exit__deps: ['_exit'],
   exit: function(status) {
@@ -3726,93 +3743,6 @@ LibraryManager.library = {
     return ret;
   },
 
-  strtod__deps: ['isspace', 'isdigit'],
-  strtod: function(str, endptr) {
-    var origin = str;
-
-    // Skip space.
-    while (_isspace({{{ makeGetValue('str', 0, 'i8') }}})) str++;
-
-    // Check for a plus/minus sign.
-    var multiplier = 1;
-    if ({{{ makeGetValue('str', 0, 'i8') }}} == '-'.charCodeAt(0)) {
-      multiplier = -1;
-      str++;
-    } else if ({{{ makeGetValue('str', 0, 'i8') }}} == '+'.charCodeAt(0)) {
-      str++;
-    }
-
-    var chr;
-    var ret = 0;
-
-    // Get whole part.
-    var whole = false;
-    while(1) {
-      chr = {{{ makeGetValue('str', 0, 'i8') }}};
-      if (!_isdigit(chr)) break;
-      whole = true;
-      ret = ret*10 + chr - '0'.charCodeAt(0);
-      str++;
-    }
-
-    // Get fractional part.
-    var fraction = false;
-    if ({{{ makeGetValue('str', 0, 'i8') }}} == '.'.charCodeAt(0)) {
-      str++;
-      var mul = 1/10;
-      while(1) {
-        chr = {{{ makeGetValue('str', 0, 'i8') }}};
-        if (!_isdigit(chr)) break;
-        fraction = true;
-        ret += mul*(chr - '0'.charCodeAt(0));
-        mul /= 10;
-        str++;
-      }
-    }
-
-    if (!whole && !fraction) {
-      if (endptr) {
-        {{{ makeSetValue('endptr', 0, 'origin', '*') }}}
-      }
-      return 0;
-    }
-
-    // Get exponent part.
-    chr = {{{ makeGetValue('str', 0, 'i8') }}};
-    if (chr == 'e'.charCodeAt(0) || chr == 'E'.charCodeAt(0)) {
-      str++;
-      var exponent = 0;
-      var expNegative = false;
-      chr = {{{ makeGetValue('str', 0, 'i8') }}};
-      if (chr == '-'.charCodeAt(0)) {
-        expNegative = true;
-        str++;
-      } else if (chr == '+'.charCodeAt(0)) {
-        str++;
-      }
-      chr = {{{ makeGetValue('str', 0, 'i8') }}};
-      while(1) {
-        if (!_isdigit(chr)) break;
-        exponent = exponent*10 + chr - '0'.charCodeAt(0);
-        str++;
-        chr = {{{ makeGetValue('str', 0, 'i8') }}};
-      }
-      if (expNegative) exponent = -exponent;
-      ret *= Math.pow(10, exponent);
-    }
-
-    // Set end pointer.
-    if (endptr) {
-      {{{ makeSetValue('endptr', 0, 'str', '*') }}}
-    }
-
-    return ret * multiplier;
-  },
-  strtod_l: 'strtod', // no locale support yet
-  strtold: 'strtod', // XXX add real support for long double
-  strtold_l: 'strtold', // no locale support yet
-  strtof: 'strtod', // use stdtod to handle strtof
-
   _parseInt__deps: ['isspace', '__setErrNo', '$ERRNO_CODES'],
   _parseInt: function(str, endptr, base, min, max, bits, unsign) {
     // Skip space.
@@ -3820,19 +3750,19 @@ LibraryManager.library = {
 
     // Check for a plus/minus sign.
     var multiplier = 1;
-    if ({{{ makeGetValue('str', 0, 'i8') }}} == '-'.charCodeAt(0)) {
+    if ({{{ makeGetValue('str', 0, 'i8') }}} == {{{ charCode('-') }}}) {
       multiplier = -1;
       str++;
-    } else if ({{{ makeGetValue('str', 0, 'i8') }}} == '+'.charCodeAt(0)) {
+    } else if ({{{ makeGetValue('str', 0, 'i8') }}} == {{{ charCode('+') }}}) {
       str++;
     }
 
     // Find base.
     var finalBase = base;
     if (!finalBase) {
-      if ({{{ makeGetValue('str', 0, 'i8') }}} == '0'.charCodeAt(0)) {
-        if ({{{ makeGetValue('str+1', 0, 'i8') }}} == 'x'.charCodeAt(0) ||
-            {{{ makeGetValue('str+1', 0, 'i8') }}} == 'X'.charCodeAt(0)) {
+      if ({{{ makeGetValue('str', 0, 'i8') }}} == {{{ charCode('0') }}}) {
+        if ({{{ makeGetValue('str+1', 0, 'i8') }}} == {{{ charCode('x') }}} ||
+            {{{ makeGetValue('str+1', 0, 'i8') }}} == {{{ charCode('X') }}}) {
           finalBase = 16;
           str += 2;
         } else {
@@ -3896,9 +3826,9 @@ LibraryManager.library = {
     while (_isspace({{{ makeGetValue('str', 0, 'i8') }}})) str++;
 
     // Check for a plus/minus sign.
-    if ({{{ makeGetValue('str', 0, 'i8') }}} == '-'.charCodeAt(0)) {
+    if ({{{ makeGetValue('str', 0, 'i8') }}} == {{{ charCode('-') }}}) {
       str++;
-    } else if ({{{ makeGetValue('str', 0, 'i8') }}} == '+'.charCodeAt(0)) {
+    } else if ({{{ makeGetValue('str', 0, 'i8') }}} == {{{ charCode('+') }}}) {
       str++;
     }
 
@@ -3906,9 +3836,9 @@ LibraryManager.library = {
     var ok = false;
     var finalBase = base;
     if (!finalBase) {
-      if ({{{ makeGetValue('str', 0, 'i8') }}} == '0'.charCodeAt(0)) {
-        if ({{{ makeGetValue('str+1', 0, 'i8') }}} == 'x'.charCodeAt(0) ||
-            {{{ makeGetValue('str+1', 0, 'i8') }}} == 'X'.charCodeAt(0)) {
+      if ({{{ makeGetValue('str', 0, 'i8') }}} == {{{ charCode('0') }}}) {
+        if ({{{ makeGetValue('str+1', 0, 'i8') }}} == {{{ charCode('x') }}} ||
+            {{{ makeGetValue('str+1', 0, 'i8') }}} == {{{ charCode('X') }}}) {
           finalBase = 16;
           str += 2;
         } else {
@@ -3970,11 +3900,6 @@ LibraryManager.library = {
     return __parseInt64(str, endptr, base, 0, '18446744073709551615', true);  // ULONG_MAX.
   },
   strtoull_l: 'strtoull', // no locale support yet
-
-  atof__deps: ['strtod'],
-  atof: function(ptr) {
-    return _strtod(ptr, null);
-  },
 
   atoi__deps: ['strtol'],
   atoi: function(ptr) {
@@ -4235,13 +4160,15 @@ LibraryManager.library = {
   memcpy__inline: function (dest, src, num, align) {
     var ret = '';
 #if ASSERTIONS
+#if ASM_JS == 0
     ret += "assert(" + num + " % 1 === 0);"; //, 'memcpy given ' + " + num + " + ' bytes to copy. Problem with quantum=1 corrections perhaps?');";
+#endif
 #endif
     ret += makeCopyValues(dest, src, num, 'null', null, align);
     return ret;
   },
 
-  memcpy__asm: 'true',
+  memcpy__asm: true,
   memcpy__sig: 'iiii',
   memcpy: function (dest, src, num) {
     dest = dest|0; src = src|0; num = num|0;
@@ -4314,7 +4241,7 @@ LibraryManager.library = {
     ptr = ptr|0; value = value|0; num = num|0;
     var stop = 0, value4 = 0, stop4 = 0, unaligned = 0;
     stop = (ptr + num)|0;
-    if ((num|0) >= {{{ SEEK_OPTIMAL_ALIGN_MIN }}}) {
+    if ((num|0) >= {{{ Math.round(2.5*UNROLL_LOOP_MAX) }}}) {
       // This is unaligned, but quite large, so work hard to get to aligned settings
       value = value & 0xff;
       unaligned = ptr & 3;
@@ -4402,14 +4329,18 @@ LibraryManager.library = {
     }
   },
 
+  strcpy__asm: true,
+  strcpy__sig: 'iii',
   strcpy: function(pdest, psrc) {
+    pdest = pdest|0; psrc = psrc|0;
     var i = 0;
     do {
-      {{{ makeCopyValues('pdest+i', 'psrc+i', 1, 'i8', null, 1) }}};
-      i ++;
-    } while ({{{ makeGetValue('psrc', 'i-1', 'i8') }}} != 0);
-    return pdest;
+      {{{ makeCopyValues('(pdest+i)|0', '(psrc+i)|0', 1, 'i8', null, 1) }}};
+      i = (i+1)|0;
+    } while (({{{ makeGetValue('psrc', 'i-1', 'i8') }}})|0 != 0);
+    return pdest|0;
   },
+
   stpcpy: function(pdest, psrc) {
     var i = 0;
     do {
@@ -4419,14 +4350,18 @@ LibraryManager.library = {
     return pdest + i - 1;
   },
 
+  strncpy__asm: true,
+  strncpy__sig: 'iiii',
   strncpy: function(pdest, psrc, num) {
-    var padding = false, curr;
-    for (var i = 0; i < num; i++) {
-      curr = padding ? 0 : {{{ makeGetValue('psrc', 'i', 'i8') }}};
+    pdest = pdest|0; psrc = psrc|0; num = num|0;
+    var padding = 0, curr = 0, i = 0;
+    while ((i|0) < (num|0)) {
+      curr = padding ? 0 : {{{ makeGetValueAsm('psrc', 'i', 'i8') }}};
       {{{ makeSetValue('pdest', 'i', 'curr', 'i8') }}}
-      padding = padding || {{{ makeGetValue('psrc', 'i', 'i8') }}} == 0;
+      padding = padding ? 1 : ({{{ makeGetValueAsm('psrc', 'i', 'i8') }}} == 0);
+      i = (i+1)|0;
     }
-    return pdest;
+    return pdest|0;
   },
   
   strlwr__deps:['tolower'],
@@ -4451,15 +4386,18 @@ LibraryManager.library = {
     }
   },
 
+  strcat__asm: true,
+  strcat__sig: 'iii',
   strcat__deps: ['strlen'],
   strcat: function(pdest, psrc) {
-    var len = _strlen(pdest);
+    pdest = pdest|0; psrc = psrc|0;
     var i = 0;
+    pdest = (pdest + _strlen(pdest))|0;
     do {
-      {{{ makeCopyValues('pdest+len+i', 'psrc+i', 1, 'i8', null, 1) }}};
-      i ++;
-    } while ({{{ makeGetValue('psrc', 'i-1', 'i8') }}} != 0);
-    return pdest;
+      {{{ makeCopyValues('pdest+i', 'psrc+i', 1, 'i8', null, 1) }}};
+      i = (i+1)|0;
+    } while ({{{ makeGetValueAsm('psrc', 'i-1', 'i8') }}} != 0);
+    return pdest|0;
   },
 
   strncat__deps: ['strlen'],
@@ -4485,9 +4423,12 @@ LibraryManager.library = {
   // We always assume ASCII locale.
   strcoll: 'strcmp',
 
+  strcasecmp__asm: true,
+  strcasecmp__sig: 'iii',
   strcasecmp__deps: ['strncasecmp'],
   strcasecmp: function(px, py) {
-    return _strncasecmp(px, py, TOTAL_MEMORY);
+    px = px|0; py = py|0;
+    return _strncasecmp(px, py, -1)|0;
   },
 
   strncmp: function(px, py, n) {
@@ -4508,26 +4449,29 @@ LibraryManager.library = {
     return 0;
   },
 
+  strncasecmp__asm: true,
+  strncasecmp__sig: 'iiii',
   strncasecmp__deps: ['tolower'],
   strncasecmp: function(px, py, n) {
-    var i = 0;
-    while (i < n) {
-      var x = _tolower({{{ makeGetValue('px', 'i', 'i8', 0, 1) }}});
-      var y = _tolower({{{ makeGetValue('py', 'i', 'i8', 0, 1) }}});
-      if (x == y && x == 0) return 0;
-      if (x == 0) return -1;
-      if (y == 0) return 1;
-      if (x == y) {
-        i ++;
+    px = px|0; py = py|0; n = n|0;
+    var i = 0, x = 0, y = 0;
+    while ((i>>>0) < (n>>>0)) {
+      x = _tolower({{{ makeGetValueAsm('px', 'i', 'i8', 0, 1) }}});
+      y = _tolower({{{ makeGetValueAsm('py', 'i', 'i8', 0, 1) }}});
+      if (((x|0) == (y|0)) & ((x|0) == 0)) return 0;
+      if ((x|0) == 0) return -1;
+      if ((y|0) == 0) return 1;
+      if ((x|0) == (y|0)) {
+        i = (i + 1)|0;
         continue;
       } else {
-        return x > y ? 1 : -1;
+        return ((x>>>0) > (y>>>0) ? 1 : -1)|0;
       }
     }
     return 0;
   },
 
-  memcmp__asm: 'true',
+  memcmp__asm: true,
   memcmp__sig: 'iiii',
   memcmp: function(p1, p2, num) {
     p1 = p1|0; p2 = p2|0; num = num|0;
@@ -4729,58 +4673,61 @@ LibraryManager.library = {
     return chr & 0x7F;
   },
   toupper: function(chr) {
-    if (chr >= 'a'.charCodeAt(0) && chr <= 'z'.charCodeAt(0)) {
-      return chr - 'a'.charCodeAt(0) + 'A'.charCodeAt(0);
+    if (chr >= {{{ charCode('a') }}} && chr <= {{{ charCode('z') }}}) {
+      return chr - {{{ charCode('a') }}} + {{{ charCode('A') }}};
     } else {
       return chr;
     }
   },
   _toupper: 'toupper',
+
+  tolower__asm: true,
+  tolower__sig: 'ii',
   tolower: function(chr) {
-    if (chr >= 'A'.charCodeAt(0) && chr <= 'Z'.charCodeAt(0)) {
-      return chr - 'A'.charCodeAt(0) + 'a'.charCodeAt(0);
-    } else {
-      return chr;
-    }
+    chr = chr|0;
+    if ((chr|0) < {{{ charCode('A') }}}) return chr|0;
+    if ((chr|0) > {{{ charCode('Z') }}}) return chr|0;
+    return (chr - {{{ charCode('A') }}} + {{{ charCode('a') }}})|0;
   },
   _tolower: 'tolower',
+
   // The following functions are defined as macros in glibc.
   islower: function(chr) {
-    return chr >= 'a'.charCodeAt(0) && chr <= 'z'.charCodeAt(0);
+    return chr >= {{{ charCode('a') }}} && chr <= {{{ charCode('z') }}};
   },
   isupper: function(chr) {
-    return chr >= 'A'.charCodeAt(0) && chr <= 'Z'.charCodeAt(0);
+    return chr >= {{{ charCode('A') }}} && chr <= {{{ charCode('Z') }}};
   },
   isalpha: function(chr) {
-    return (chr >= 'a'.charCodeAt(0) && chr <= 'z'.charCodeAt(0)) ||
-           (chr >= 'A'.charCodeAt(0) && chr <= 'Z'.charCodeAt(0));
+    return (chr >= {{{ charCode('a') }}} && chr <= {{{ charCode('z') }}}) ||
+           (chr >= {{{ charCode('A') }}} && chr <= {{{ charCode('Z') }}});
   },
   isdigit: function(chr) {
-    return chr >= '0'.charCodeAt(0) && chr <= '9'.charCodeAt(0);
+    return chr >= {{{ charCode('0') }}} && chr <= {{{ charCode('9') }}};
   },
   isdigit_l: 'isdigit', // no locale support yet
   isxdigit: function(chr) {
-    return (chr >= '0'.charCodeAt(0) && chr <= '9'.charCodeAt(0)) ||
-           (chr >= 'a'.charCodeAt(0) && chr <= 'f'.charCodeAt(0)) ||
-           (chr >= 'A'.charCodeAt(0) && chr <= 'F'.charCodeAt(0));
+    return (chr >= {{{ charCode('0') }}} && chr <= {{{ charCode('9') }}}) ||
+           (chr >= {{{ charCode('a') }}} && chr <= {{{ charCode('f') }}}) ||
+           (chr >= {{{ charCode('A') }}} && chr <= {{{ charCode('F') }}});
   },
   isxdigit_l: 'isxdigit', // no locale support yet
   isalnum: function(chr) {
-    return (chr >= '0'.charCodeAt(0) && chr <= '9'.charCodeAt(0)) ||
-           (chr >= 'a'.charCodeAt(0) && chr <= 'z'.charCodeAt(0)) ||
-           (chr >= 'A'.charCodeAt(0) && chr <= 'Z'.charCodeAt(0));
+    return (chr >= {{{ charCode('0') }}} && chr <= {{{ charCode('9') }}}) ||
+           (chr >= {{{ charCode('a') }}} && chr <= {{{ charCode('z') }}}) ||
+           (chr >= {{{ charCode('A') }}} && chr <= {{{ charCode('Z') }}});
   },
   ispunct: function(chr) {
-    return (chr >= '!'.charCodeAt(0) && chr <= '/'.charCodeAt(0)) ||
-           (chr >= ':'.charCodeAt(0) && chr <= '@'.charCodeAt(0)) ||
-           (chr >= '['.charCodeAt(0) && chr <= '`'.charCodeAt(0)) ||
-           (chr >= '{'.charCodeAt(0) && chr <= '~'.charCodeAt(0));
+    return (chr >= {{{ charCode('!') }}} && chr <= {{{ charCode('/') }}}) ||
+           (chr >= {{{ charCode(':') }}} && chr <= {{{ charCode('@') }}}) ||
+           (chr >= {{{ charCode('[') }}} && chr <= {{{ charCode('`') }}}) ||
+           (chr >= {{{ charCode('{') }}} && chr <= {{{ charCode('~') }}});
   },
   isspace: function(chr) {
     return chr in { 32: 0, 9: 0, 10: 0, 11: 0, 12: 0, 13: 0 };
   },
   isblank: function(chr) {
-    return chr == ' '.charCodeAt(0) || chr == '\t'.charCodeAt(0);
+    return chr == {{{ charCode(' ') }}} || chr == {{{ charCode('\t') }}};
   },
   iscntrl: function(chr) {
     return (0 <= chr && chr <= 0x1F) || chr === 0x7F;
@@ -4974,6 +4921,20 @@ LibraryManager.library = {
 #else
     return ret;
 #endif
+  },
+
+  llvm_ctpop_i32: function(x) {
+    var ret = 0;
+    while (x) {
+      if (x&1) ret++;
+      x >>= 1;
+    }
+    return ret;
+  },
+
+  llvm_ctpop_i64__deps: ['llvm_ctpop_i32'],
+  llvm_ctpop_i64: function(l, h) {
+    return _llvm_ctpop_i32(l) + _llvm_ctpop_i32(h);
   },
 
   llvm_trap: function() {
@@ -5270,13 +5231,6 @@ LibraryManager.library = {
     {{{ makeStructuralReturn(['(x*y)>>>0', 'x*y > 4294967295']) }}};
   },
 
-  llvm_uadd_with_overflow_i64__deps: [function() { Types.preciseI64MathUsed = 1 }],
-  llvm_uadd_with_overflow_i64: function(xl, xh, yl, yh) {
-    i64Math.add(xl, xh, yl, yh);
-    {{{ makeStructuralReturn([makeGetTempDouble(0, 'i32'), makeGetTempDouble(1, 'i32'), '0']) }}};
-    // XXX Need to hack support for second param in long.js
-  },
-
   llvm_umul_with_overflow_i64__deps: [function() { Types.preciseI64MathUsed = 1 }],
   llvm_umul_with_overflow_i64: function(xl, xh, yl, yh) {
     i64Math.multiply(xl, xh, yl, yh);
@@ -5506,6 +5460,14 @@ LibraryManager.library = {
       return -a;
   },
   copysignf: 'copysign',
+  __signbit__deps: ['copysign'],
+  __signbit: function(x) {
+    // We implement using copysign so that we get support
+    // for negative zero (once copysign supports that).
+    return _copysign(1.0, x) < 0;
+  },
+  __signbitf: '__signbit',
+  __signbitd: '__signbit',
   hypot: function(a, b) {
      return Math.sqrt(a*a + b*b);
   },
@@ -6064,6 +6026,15 @@ LibraryManager.library = {
   __timespec_struct_layout: Runtime.generateStructInfo([
     ['i32', 'tv_sec'],
     ['i32', 'tv_nsec']]),
+  nanosleep__deps: ['usleep', '__timespec_struct_layout'],
+  nanosleep: function(rqtp, rmtp) {
+    // int nanosleep(const struct timespec  *rqtp, struct timespec *rmtp);
+    var seconds = {{{ makeGetValue('rqtp', '___timespec_struct_layout.tv_sec', 'i32') }}};
+    var nanoseconds = {{{ makeGetValue('rqtp', '___timespec_struct_layout.tv_nsec', 'i32') }}};
+    {{{ makeSetValue('rmtp', '___timespec_struct_layout.tv_sec', '0', 'i32') }}}
+    {{{ makeSetValue('rmtp', '___timespec_struct_layout.tv_nsec', '0', 'i32') }}}
+    return _usleep((seconds * 1e6) + (nanoseconds / 1000));
+  },
   // TODO: Implement these for real.
   clock_gettime__deps: ['__timespec_struct_layout'],
   clock_gettime: function(clk_id, tp) {
@@ -6170,7 +6141,7 @@ LibraryManager.library = {
 
   setjmp__inline: function(env) {
     // Save the label
-    return '(tempInt = setjmpId++, mySetjmpIds[tempInt] = 1, setjmpLabels[tempInt] = label,' + makeSetValue(env, '0', 'tempInt', 'i32') + ', 0)';
+    return '(tempInt = setjmpId++, mySetjmpIds[tempInt] = 1, setjmpLabels[tempInt] = label,' + makeSetValue(env, '0', 'tempInt', 'i32', undefined, undefined, undefined, undefined,  ',') + ', 0)';
   },
 
   longjmp: function(env, value) {
@@ -6693,6 +6664,13 @@ LibraryManager.library = {
   },
 
   // ==========================================================================
+  // sched.h (stubs only - no thread support yet!)
+  // ==========================================================================
+  sched_yield: function() {
+    return 0;
+  },
+
+  // ==========================================================================
   // pthread.h (stubs for mutexes only - no thread support yet!)
   // ==========================================================================
 
@@ -6708,8 +6686,15 @@ LibraryManager.library = {
   },
   pthread_cond_init: function() {},
   pthread_cond_destroy: function() {},
-  pthread_cond_broadcast: function() {},
-  pthread_cond_wait: function() {},
+  pthread_cond_broadcast: function() {
+    return 0;
+  },
+  pthread_cond_wait: function() {
+    return 0;
+  },
+  pthread_cond_timedwait: function() {
+    return 0;
+  },
   pthread_self: function() {
     //FIXME: assumes only a single thread
     return 0;
@@ -7385,6 +7370,81 @@ LibraryManager.library = {
     Module.print(intArrayToString(__formatString(_emscripten_jcache_printf_.buffer, varargs + i*4)).replace('\\n', ''));
     Runtime.stackAlloc(-4*i); // free up the stack space we know is ok to free
   },
+
+  //============================
+  // i64 math
+  //============================
+
+  i64Add__asm: true,
+  i64Add__sig: 'iiiii',
+  i64Add: function(a, b, c, d) {
+    /*
+      x = a + b*2^32
+      y = c + d*2^32
+      result = l + h*2^32
+    */
+    a = a|0; b = b|0; c = c|0; d = d|0;
+    var l = 0, h = 0;
+    l = (a + c)>>>0;
+    h = (b + d)>>>0;
+    if ((l>>>0) < (a>>>0)) { // iff we overflowed
+      h = (h+1)>>>0;
+    }
+    {{{ makeStructuralReturn(['l|0', 'h'], true) }}};
+  },
+  llvm_uadd_with_overflow_i64__asm: true,
+  llvm_uadd_with_overflow_i64__sig: 'iiiii',
+  llvm_uadd_with_overflow_i64: function(a, b, c, d) {
+    a = a|0; b = b|0; c = c|0; d = d|0;
+    var l = 0, h = 0, overflow = 0;
+    l = (a + c)>>>0;
+    h = (b + d)>>>0;
+    if ((l>>>0) < (a>>>0)) { // iff we overflowed
+      h = (h+1)>>>0;
+      overflow = 1;
+    }
+    {{{ makeStructuralReturn(['l|0', 'h', 'overflow'], true) }}};
+  },
+
+  bitshift64Shl__asm: true,
+  bitshift64Shl__sig: 'iiii',
+  bitshift64Shl: function(low, high, bits) {
+    low = low|0; high = high|0; bits = bits|0;
+    var ander = 0;
+    if ((bits|0) < 32) {
+      ander = ((1 << bits) - 1)|0;
+      tempRet0 = (high << bits) | ((low&(ander << (32 - bits))) >>> (32 - bits));
+      return low << bits;
+    }
+    tempRet0 = low << (bits - 32);
+    return 0;
+  },
+  bitshift64Ashr__asm: true,
+  bitshift64Ashr__sig: 'iiii',
+  bitshift64Ashr: function(low, high, bits) {
+    low = low|0; high = high|0; bits = bits|0;
+    var ander = 0;
+    if ((bits|0) < 32) {
+      ander = ((1 << bits) - 1)|0;
+      tempRet0 = high >> bits;
+      return (low >>> bits) | ((high&ander) << (32 - bits));
+    }
+    tempRet0 = (high|0) < 0 ? -1 : 0;
+    return (high >> (bits - 32))|0;
+  },
+  bitshift64Lshr__asm: true,
+  bitshift64Lshr__sig: 'iiii',
+  bitshift64Lshr: function(low, high, bits) {
+    low = low|0; high = high|0; bits = bits|0;
+    var ander = 0;
+    if ((bits|0) < 32) {
+      ander = ((1 << bits) - 1)|0;
+      tempRet0 = high >>> bits;
+      return (low >>> bits) | ((high&ander) << (32 - bits));
+    }
+    tempRet0 = 0;
+    return (high >>> (bits - 32))|0;
+  },
 };
 
 function autoAddDeps(object, name) {
@@ -7395,4 +7455,5 @@ function autoAddDeps(object, name) {
     }
   }
 }
+
 

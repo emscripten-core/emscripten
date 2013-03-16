@@ -18,7 +18,7 @@ function recomputeLines(func) {
 // Handy sets
 
 var BRANCH_INVOKE = set('branch', 'invoke');
-var LABEL_ENDERS = set('branch', 'return');
+var LABEL_ENDERS = set('branch', 'return', 'switch');
 var SIDE_EFFECT_CAUSERS = set('call', 'invoke', 'atomic');
 var UNUNFOLDABLE = set('value', 'structvalue', 'type', 'phiparam');
 
@@ -231,9 +231,10 @@ function analyzer(data, sidePass) {
                 }
                 if (isIllegalType(item.valueType) || isIllegalType(item.type)) {
                   isIllegal = true;
-                }
-                if ((item.intertype == 'load' || item.intertype == 'store') && isStructType(item.valueType)) {
+                } else if ((item.intertype == 'load' || item.intertype == 'store') && isStructType(item.valueType)) {
                   isIllegal = true; // storing an entire structure is illegal
+                } else if (item.intertype == 'mathop' && item.op == 'trunc' && isIllegalType(item.params[1].ident)) { // trunc stores target value in second ident
+                  isIllegal = true;
                 }
               });
               if (!isIllegal) {
@@ -290,7 +291,7 @@ function analyzer(data, sidePass) {
                   var elements = getLegalParams([item.value], bits)[0];
                   var j = 0;
                   elements.forEach(function(element) {
-                    var tempVar = '$st$' + i + '$' + j;
+                    var tempVar = '$st$' + (tempId++) + '$' + j;
                     toAdd.push({
                       intertype: 'getelementptr',
                       assignTo: tempVar,
@@ -401,7 +402,7 @@ function analyzer(data, sidePass) {
                   var j = 0;
                   var toAdd = [];
                   elements.forEach(function(element) {
-                    var tempVar = '$st$' + i + '$' + j;
+                    var tempVar = '$ld$' + (tempId++) + '$' + j;
                     toAdd.push({
                       intertype: 'getelementptr',
                       assignTo: tempVar,
@@ -652,13 +653,14 @@ function analyzer(data, sidePass) {
                   if (!isNumber(shifts)) {
                     // We can't statically legalize this, do the operation at runtime TODO: optimize
                     assert(sourceBits == 64, 'TODO: handle nonconstant shifts on != 64 bits');
+                    assert(PRECISE_I64_MATH, 'Must have precise i64 math for non-constant 64-bit shifts');
+                    Types.preciseI64MathUsed = 1;
                     value.intertype = 'value';
-                    value.ident = 'Runtime' + (ASM_JS ? '_' : '.') + 'bitshift64(' + 
+                    value.ident = 'var ' + value.assignTo + '$0 = _bitshift64' + value.op[0].toUpperCase() + value.op.substr(1) + '(' + 
                         asmCoercion(sourceElements[0].ident, 'i32') + ',' +
                         asmCoercion(sourceElements[1].ident, 'i32') + ',' +
-                        Runtime['BITSHIFT64_' + value.op.toUpperCase()] + ',' +
                         asmCoercion(value.params[1].ident + '$0', 'i32') + ');' +
-                      'var ' + value.assignTo + '$0 = ' + makeGetTempDouble(0, 'i32') + ', ' + value.assignTo + '$1 = ' + makeGetTempDouble(1, 'i32') + ';';
+                        'var ' + value.assignTo + '$1 = tempRet0;';
                     value.assignTo = null;
                     i++;
                     continue;
@@ -952,6 +954,7 @@ function analyzer(data, sidePass) {
         // Function parameters
         func.params.forEach(function(param) {
           if (param.intertype !== 'varargs') {
+            if (func.variables[param.ident]) warn('cannot have duplicate variable names: ' + param.ident); // toNiceIdent collisions?
             func.variables[param.ident] = {
               ident: param.ident,
               type: param.type,
@@ -965,6 +968,7 @@ function analyzer(data, sidePass) {
         // Normal variables
         func.lines.forEach(function(item, i) {
           if (item.assignTo) {
+            if (func.variables[item.assignTo]) warn('cannot have duplicate variable names: ' + item.assignTo); // toNiceIdent collisions?
             var variable = func.variables[item.assignTo] = {
               ident: item.assignTo,
               type: item.type,
@@ -1380,7 +1384,7 @@ function analyzer(data, sidePass) {
           var label = func.labels[i];
           for (var j = 0; j < label.lines.length; j++) {
             var line = label.lines[j];
-            if (line.intertype == 'call' && line.ident == setjmp) {
+            if ((line.intertype == 'call' || line.intertype == 'invoke') && line.ident == setjmp) {
               // Add a new label
               var oldIdent = label.ident;
               var newIdent = func.labelIdCounter++;

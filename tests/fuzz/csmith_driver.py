@@ -20,7 +20,7 @@ CSMITH_CFLAGS = ['-I' + os.path.expanduser('~/Dev/csmith/runtime/')]
 
 filename = os.path.join(shared.CANONICAL_TEMP_DIR, 'fuzzcode')
 
-shared.DEFAULT_TIMEOUT = 1
+shared.DEFAULT_TIMEOUT = 5
 
 tried = 0
 
@@ -48,11 +48,11 @@ while 1:
   shared.execute([shared.CLANG_CC, filename + '.c', '-o', filename + '3'] + CSMITH_CFLAGS, stderr=PIPE)
   print '3) Run natively'
   try:
-    correct1 = shared.timeout_run(Popen([filename + '1'], stdout=PIPE, stderr=PIPE), 3)
+    correct1 = shared.jsrun.timeout_run(Popen([filename + '1'], stdout=PIPE, stderr=PIPE), 3)
     if 'Segmentation fault' in correct1 or len(correct1) < 10: raise Exception('segfault')
-    correct2 = shared.timeout_run(Popen([filename + '2'], stdout=PIPE, stderr=PIPE), 3)
+    correct2 = shared.jsrun.timeout_run(Popen([filename + '2'], stdout=PIPE, stderr=PIPE), 3)
     if 'Segmentation fault' in correct2 or len(correct2) < 10: raise Exception('segfault')
-    correct3 = shared.timeout_run(Popen([filename + '3'], stdout=PIPE, stderr=PIPE), 3)
+    correct3 = shared.jsrun.timeout_run(Popen([filename + '3'], stdout=PIPE, stderr=PIPE), 3)
     if 'Segmentation fault' in correct3 or len(correct3) < 10: raise Exception('segfault')
     if correct1 != correct3: raise Exception('clang opts change result')
   except Exception, e:
@@ -114,7 +114,13 @@ while 1:
       break
 
     # asm.js testing
-    assert 'warning: Successfully compiled asm.js code' in js2, 'must validate'
+    if 'warning: Successfully compiled asm.js code' not in js2:
+      print "ODIN VALIDATION BUG"
+      notes['embug'] += 1
+      fails += 1
+      shutil.copyfile('fuzzcode.c', 'newfail%d.c' % fails)
+      continue
+
     js2 = js2.replace('\nwarning: Successfully compiled asm.js code\n', '')
 
     assert js2 == correct1 or js2 == correct2, ''.join([a.rstrip()+'\n' for a in difflib.unified_diff(correct1.split('\n'), js2.split('\n'), fromfile='expected', tofile='actual')]) + 'ODIN FAIL'

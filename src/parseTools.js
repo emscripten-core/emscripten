@@ -172,6 +172,7 @@ function getBits(type) {
   }
   if (isStructType(type)) {
     var typeData = Types.types[type];
+    if (typeData === undefined) return 0;
     return typeData.flatSize*8;
   }
   return 0;
@@ -583,7 +584,7 @@ function cleanOutTokens(filterOut, tokens, indexes) {
   if (typeof indexes !== 'object') indexes = [indexes];
   for (var i = indexes.length-1; i >=0; i--) {
     var index = indexes[i];
-    while (tokens[index].text in filterOut) {
+    while (index < tokens.length && tokens[index].text in filterOut) {
       tokens.splice(index, 1);
     }
   }
@@ -1248,7 +1249,6 @@ function makeSetValueAsm(ptr, pos, value, type, noNeedFirst, ignore, align, noSa
   return makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep, forcedAlign, true);
 }
 
-var SEEK_OPTIMAL_ALIGN_MIN = 20;
 var UNROLL_LOOP_MAX = 8;
 
 function makeSetValues(ptr, pos, value, type, num, align) {
@@ -1268,7 +1268,7 @@ function makeSetValues(ptr, pos, value, type, num, align) {
   } else { // USE_TYPED_ARRAYS == 2
     // If we don't know how to handle this at compile-time, or handling it is best done in a large amount of code, call memset
     // TODO: optimize the case of numeric num but non-numeric value
-    if (!isNumber(num) || !isNumber(value) || (align < 4 && parseInt(num) >= SEEK_OPTIMAL_ALIGN_MIN)) {
+    if (!isNumber(num) || !isNumber(value) || (parseInt(num)/align >= UNROLL_LOOP_MAX)) {
       return '_memset(' + asmCoercion(getFastValue(ptr, '+', pos), 'i32') + ', ' + asmCoercion(value, 'i32') + ', ' + asmCoercion(num, 'i32') + ')';
     }
     num = parseInt(num);
@@ -1283,13 +1283,7 @@ function makeSetValues(ptr, pos, value, type, num, align) {
     [4, 2, 1].forEach(function(possibleAlign) {
       if (num == 0) return;
       if (align >= possibleAlign) {
-        if (num <= UNROLL_LOOP_MAX*possibleAlign || ASM_JS) { // XXX test asm performance
-          ret.push(unroll('i' + (possibleAlign*8), Math.floor(num/possibleAlign), possibleAlign, values[possibleAlign]));
-        } else {
-          ret.push('for (var $$dest = ' + getFastValue(ptr, '+', pos) + (possibleAlign > 1 ? '>>' + log2(possibleAlign) : '') + ', ' +
-                            '$$stop = $$dest + ' + Math.floor(num/possibleAlign) + '; $$dest < $$stop; $$dest++) {\n' +
-                   '  HEAP' + (possibleAlign*8) + '[$$dest] = ' + values[possibleAlign] + '\n}');
-        }
+        ret.push(unroll('i' + (possibleAlign*8), Math.floor(num/possibleAlign), possibleAlign, values[possibleAlign]));
         pos = getFastValue(pos, '+', Math.floor(num/possibleAlign)*possibleAlign);
         num %= possibleAlign;
       }
@@ -1326,7 +1320,7 @@ function makeCopyValues(dest, src, num, type, modifier, align, sep) {
             unroll(type, 1) + ' }';
   } else { // USE_TYPED_ARRAYS == 2
     // If we don't know how to handle this at compile-time, or handling it is best done in a large amount of code, call memset
-    if (!isNumber(num) || (align < 4 && parseInt(num) >= SEEK_OPTIMAL_ALIGN_MIN)) {
+    if (!isNumber(num) || (parseInt(num)/align >= UNROLL_LOOP_MAX)) {
       return '_memcpy(' + dest + ', ' + src + ', ' + num + ')';
     }
     num = parseInt(num);
@@ -1334,16 +1328,7 @@ function makeCopyValues(dest, src, num, type, modifier, align, sep) {
     [4, 2, 1].forEach(function(possibleAlign) {
       if (num == 0) return;
       if (align >= possibleAlign) {
-        // If we can unroll the loop, do so. Also do so if we must unroll it (we do not create real loops when inlined)
-        if (num <= UNROLL_LOOP_MAX*possibleAlign || sep == ',' || ASM_JS) { // XXX test asm performance
-          ret.push(unroll('i' + (possibleAlign*8), Math.floor(num/possibleAlign), possibleAlign));
-        } else {
-          assert(sep == ';');
-          ret.push('for (var $$src = ' + src + (possibleAlign > 1 ? '>>' + log2(possibleAlign) : '') + ', ' +
-                            '$$dest = ' + dest + (possibleAlign > 1 ? '>>' + log2(possibleAlign) : '') + ', ' +
-                            '$$stop = $$src + ' + Math.floor(num/possibleAlign) + '; $$src < $$stop; $$src++, $$dest++) {\n' +
-                   '  HEAP' + (possibleAlign*8) + '[$$dest] = HEAP' + (possibleAlign*8) + '[$$src]\n}');
-        }
+        ret.push(unroll('i' + (possibleAlign*8), Math.floor(num/possibleAlign), possibleAlign));
         src = getFastValue(src, '+', Math.floor(num/possibleAlign)*possibleAlign);
         dest = getFastValue(dest, '+', Math.floor(num/possibleAlign)*possibleAlign);
         num %= possibleAlign;
@@ -1739,13 +1724,14 @@ function makeLLVMStruct(values) {
   }
 }
 
-function makeStructuralReturn(values) {
+function makeStructuralReturn(values, inAsm) {
   if (USE_TYPED_ARRAYS == 2) {
-    var i = 0;
-    return 'return (' + values.slice(1).map(function(value) {
-      return ASM_JS ? 'asm.setTempRet' + (i++) + '(' + value + ')'
+    var i = -1;
+    return 'return ' + asmCoercion(values.slice(1).map(function(value) {
+      i++;
+      return ASM_JS ? (inAsm ? 'tempRet' + i + ' = ' + value : 'asm.setTempRet' + i + '(' + value + ')')
                     : 'tempRet' + (i++) + ' = ' + value;
-    }).concat([values[0]]).join(',') + ')';
+    }).concat([values[0]]).join(','), 'i32');
   } else {
     var i = 0;
     return 'return { ' + values.map(function(value) {
@@ -1986,6 +1972,10 @@ function processMathop(item) {
       return finish(['(i64Math' + (ASM_JS ? '_' : '.') + type + '(' + asmCoercion(low1, 'i32') + ',' + asmCoercion(high1, 'i32') + ',' + asmCoercion(low2, 'i32') + ',' + asmCoercion(high2, 'i32') +
                      (lastArg ? ',' + asmCoercion(+lastArg, 'i32') : '') + '),' + makeGetValue('tempDoublePtr', 0, 'i32') + ')', makeGetValue('tempDoublePtr', Runtime.getNativeTypeSize('i32'), 'i32')]);
     }
+    function i64PreciseLib(type) {
+      Types.preciseI64MathUsed = true;
+      return finish(['_i64' + type[0].toUpperCase() + type.substr(1) + '(' + low1 + ',' + high1 + ',' + low2 + ',' + high2 + ')', 'tempRet0']);
+    }
     switch (op) {
       // basic integer ops
       case 'or': {
@@ -2000,43 +1990,7 @@ function processMathop(item) {
       case 'shl':
       case 'ashr':
       case 'lshr': {
-        if (!isNumber(idents[1])) {
-          return '(Runtime' + (ASM_JS ? '_' : '.') + 'bitshift64(' + idents[0] + '[0], ' + idents[0] + '[1],' + Runtime['BITSHIFT64_' + op.toUpperCase()] + ',' + stripCorrections(idents[1]) + '[0]|0),' +
-            '[' + makeGetTempDouble(0, 'i32') + ',' + makeGetTempDouble(1, 'i32') + '])';
-        }
-        bits = parseInt(idents[1]);
-        var ander = Math.pow(2, bits)-1;
-        if (bits < 32) {
-          switch (op) {
-            case 'shl':
-              return '[' + idents[0] + '[0] << ' + idents[1] + ', ' +
-                       '('+idents[0] + '[1] << ' + idents[1] + ') | ((' + idents[0] + '[0]&(' + ander + '<<' + (32 - bits) + ')) >>> (32-' + idents[1] + '))]';
-            case 'ashr':
-              return '[((('+idents[0] + '[0] >>> ' + idents[1] + ') | ((' + idents[0] + '[1]&' + ander + ')<<' + (32 - bits) + ')) >> 0) >>> 0,' +
-                          '(' + idents[0] + '[1] >> ' + idents[1] + ') >>> 0]';
-            case 'lshr':
-              return '[(('+idents[0] + '[0] >>> ' + idents[1] + ') | ((' + idents[0] + '[1]&' + ander + ')<<' + (32 - bits) + ')) >>> 0,' +
-                          idents[0] + '[1] >>> ' + idents[1] + ']';
-          }
-        } else if (bits == 32) {
-          switch (op) {
-            case 'shl':
-              return '[0, ' + idents[0] + '[0]]';
-            case 'ashr':
-              return '[' + idents[0] + '[1], (' + idents[0] + '[1]|0) < 0 ? ' + ander + ' : 0]';
-            case 'lshr':
-              return '[' + idents[0] + '[1], 0]';
-          }
-        } else { // bits > 32
-          switch (op) {
-            case 'shl':
-              return '[0, ' + idents[0] + '[0] << ' + (bits - 32) + ']';
-            case 'ashr':
-              return '[(' + idents[0] + '[1] >> ' + (bits - 32) + ') >>> 0, (' + idents[0] + '[1]|0) < 0 ? ' + ander + ' : 0]';
-            case 'lshr':
-              return '[' + idents[0] + '[1] >>> ' + (bits - 32) + ', 0]';
-          }
-        }
+				throw 'shifts should have been legalized!';
       }
       case 'uitofp': case 'sitofp': return RuntimeGenerator.makeBigInt(low1, high1, op[0] == 'u');
       case 'fptoui': case 'fptosi': return finish(splitI64(idents[0], true));
@@ -2074,7 +2028,7 @@ function processMathop(item) {
       // Dangerous, rounded operations. TODO: Fully emulate
       case 'add': {
         if (PRECISE_I64_MATH) {
-          return i64PreciseOp('add');
+          return i64PreciseLib('add');
         } else {
           warnI64_1();
           return finish(splitI64(mergeI64(idents[0]) + '+' + mergeI64(idents[1]), true));
@@ -2363,5 +2317,9 @@ function getImplementationType(varInfo) {
     return removePointing(varInfo.type);
   }
   return varInfo.type;
+}
+
+function charCode(char) {
+  return char.charCodeAt(0);
 }
 

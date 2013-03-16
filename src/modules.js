@@ -90,6 +90,7 @@ var Debugging = {
         lines[i] = ';';
         continue;
       }
+      if (line[0] == '!') skipLine = true;
       lines[i] = skipLine ? ';' : line;
     }
 
@@ -290,7 +291,7 @@ var Functions = {
       var sig = ASM_JS ? Functions.implementedFunctions[ident] || Functions.unimplementedFunctions[ident] || LibraryManager.library[ident.substr(1) + '__sig'] : 'x';
       assert(sig, ident);
       if (!tables[sig]) tables[sig] = emptyTable(sig); // TODO: make them compact
-      tables[sig][this.indexedFunctions[ident]] = ident;
+      tables[sig][this.indexedFunctions[ident]] = ident in DEAD_FUNCTIONS ? '0' : ident;
     }
     var generated = false;
     var wrapped = {};
@@ -314,7 +315,7 @@ var Functions = {
         }
         if (ASM_JS) {
           var curr = table[i];
-          if (curr && !Functions.implementedFunctions[curr]) {
+          if (curr && curr != '0' && !Functions.implementedFunctions[curr]) {
             // This is a library function, we can't just put it in the function table, need a wrapper
             if (!wrapped[curr]) {
               var args = '', arg_coercions = '', call = curr + '(', retPre = '', retPost = '';
@@ -373,7 +374,7 @@ var LibraryManager = {
   load: function() {
     if (this.library) return;
 
-    var libraries = ['library.js', 'library_browser.js', 'library_sdl.js', 'library_gl.js', 'library_glut.js', 'library_xlib.js', 'library_egl.js', 'library_gc.js', 'library_jansson.js'].concat(additionalLibraries);
+    var libraries = ['library.js', 'library_browser.js', 'library_sdl.js', 'library_gl.js', 'library_glut.js', 'library_xlib.js', 'library_egl.js', 'library_gc.js', 'library_jansson.js', 'library_openal.js'].concat(additionalLibraries);
     for (var i = 0; i < libraries.length; i++) {
       eval(processMacros(preprocess(read(libraries[i]))));
     }

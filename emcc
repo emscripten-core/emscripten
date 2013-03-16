@@ -75,7 +75,7 @@ emcc can be influenced by a few environment variables:
   EMMAKEN_COMPILER - The compiler to be used, if you don't want the default clang.
 '''
 
-import os, sys, shutil, tempfile, subprocess, shlex, time
+import os, sys, shutil, tempfile, subprocess, shlex, time, re
 from subprocess import PIPE, STDOUT
 from tools import shared
 from tools.shared import Compression, execute, suffix, unsuffixed, unsuffixed_basename
@@ -129,8 +129,8 @@ while response_file:
   for index in range(1, len(sys.argv)):
     if sys.argv[index][0] == '@':
       # found one, loop again next time
-      print >>sys.stderr, 'emcc: using response file: %s' % response_file
       response_file = sys.argv[index][1:]
+      print >>sys.stderr, 'emcc: using response file: %s' % response_file
       if not os.path.exists(response_file):
         print >>sys.stderr, 'emcc: error: Response file not found: %s' % response_file
         exit(1)
@@ -214,6 +214,20 @@ Options that are modified or new in %s include:
 
                            (without the external "s in either of those,
                            you would get an error)
+
+                           You can also specify a file from which the
+                           value would be read, for example,
+
+                            -s DEAD_FUNCTIONS=@/path/to/file
+
+                           The contents of /path/to/file will be read,
+                           JSON.parsed and set into DEAD_FUNCTIONS (so
+                           the file could contain
+
+                            ["_func1", "func2"]
+
+                           ). Note that the path must be absolute, not
+                           relative.
 
   -g                       Use debug info. Note that you need this during
                            the last compilation phase from bitcode to
@@ -332,13 +346,11 @@ Options that are modified or new in %s include:
                            output HTML but with suffix .data.compress
 
   --minify <on>            0: Do not minify the generated JavaScript's
-                              whitespace (default if closure compiler
-                              will not be run)
+                              whitespace (default in -O0, -O1, or if
+                              -g is used)
                            1: Minify the generated JavaScript's
-                              whitespace (default if closure compiler
-                              will be run). Note that this by itself
-                              will not minify the code (closure does
-                              that)
+                              whitespace (default in -O2+, assuming
+                              -g is not used)
 
   --split <size>           Splits the resulting javascript file into pieces
                            to ease debugging. This option only works if
@@ -450,6 +462,13 @@ Options that are modified or new in %s include:
                            other cached data like the jcache and
                            the bootstrapped relooper. After the cache
                            is cleared, this process will exit.
+
+  --save-bc PATH           When compiling to JavaScript or HTML, this
+                           option will save a copy of the bitcode to
+                           the specified path. The bitcode will include
+                           all files being linked, including standard
+                           libraries, and after any link-time optimizations
+                           (if any).
 
 The target file, if specified (-o <target>), defines what will
 be generated:
@@ -696,6 +715,8 @@ try:
   keep_js_debug = False
   bind = False
   jcache = False
+  save_bc = False
+
   if use_cxx:
     default_cxx_std = '-std=c++03' # Enforce a consistent C++ standard when compiling .cpp files, if user does not specify one on the cmdline.
   else:
@@ -706,19 +727,21 @@ try:
 
   absolute_warning_shown = False
 
+  settings_changes = []
+
   for i in range(len(newargs)):
     newargs[i] = newargs[i].strip() # On Windows Vista (and possibly others), excessive spaces in the command line leak into the items in this array, so trim e.g. 'foo.cpp ' -> 'foo.cpp'
     if newargs[i].startswith('-O'):
       # Let -O default to -O2, which is what gcc does.
       requested_level = newargs[i][2:] or '2'
       if requested_level == 's':
-        print >> sys.stderr, 'emcc: warning: -Os is ignored (use -O0, -O1, -O2)'
-      else:
-        try:
-          opt_level = int(requested_level)
-          assert 0 <= opt_level <= 3
-        except:
-          raise Exception('Invalid optimization level: ' + newargs[i])
+        requested_level = 2
+        settings_changes.append('INLINING_LIMIT=50')
+      try:
+        opt_level = int(requested_level)
+        assert 0 <= opt_level <= 3
+      except:
+        raise Exception('Invalid optimization level: ' + newargs[i])
       newargs[i] = ''
     elif newargs[i].startswith('--llvm-opts'):
       check_bad_eq(newargs[i])
@@ -821,6 +844,11 @@ try:
       print >> sys.stderr, 'emcc: clearing cache'
       shared.Cache.erase()
       sys.exit(0)
+    elif newargs[i] == '--save-bc':
+      check_bad_eq(newargs[i])
+      save_bc = newargs[i+1]
+      newargs[i] = ''
+      newargs[i+1] = ''
     elif newargs[i].startswith(('-I/', '-L/')):
       if not absolute_warning_shown:
         print >> sys.stderr, 'emcc: warning: -I or -L of an absolute path encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript)' # Of course an absolute path to a non-system-specific library or header is fine, and you can ignore this warning. The danger are system headers that are e.g. x86 specific and nonportable. The emscripten bundled headers are modified to be portable, local system ones are generally not
@@ -842,7 +870,6 @@ try:
   if closure:
     assert os.path.exists(shared.CLOSURE_COMPILER), 'emcc: fatal: Closure compiler (%s) does not exist' % shared.CLOSURE_COMPILER
 
-  settings_changes = []
   for i in range(len(newargs)):
     if newargs[i] == '-s':
       if is_minus_s_for_emcc(newargs, i):
@@ -960,6 +987,8 @@ try:
   # Apply -s settings in newargs here (after optimization levels, so they can override them)
   for change in settings_changes:
     key, value = change.split('=')
+    if value[0] == '@':
+      value = '"' + value + '"'
     exec('shared.Settings.' + key + ' = ' + value)
 
   # Apply effects from settings
@@ -973,6 +1002,7 @@ try:
     if shared.Settings.CORRECT_OVERFLOWS != 1: 
       print >> sys.stderr, 'emcc: warning: setting CORRECT_OVERFLOWS to 1 for asm.js code generation'
       shared.Settings.CORRECT_OVERFLOWS = 1
+    assert not shared.Settings.PGO, 'cannot run PGO in ASM_JS mode'
 
   if shared.Settings.CORRECT_SIGNS >= 2 or shared.Settings.CORRECT_OVERFLOWS >= 2 or shared.Settings.CORRECT_ROUNDINGS >= 2:
     keep_llvm_debug = True # must keep debug info to do line-by-line operations 
@@ -982,7 +1012,7 @@ try:
     closure = False
 
   if minify_whitespace is None:
-    minify_whitespace = closure # if closure is run, minify whitespace
+    minify_whitespace = opt_level >= 2 and not keep_js_debug
 
   ## Compile source code to bitcode
 
@@ -1068,10 +1098,29 @@ try:
     def create_libc():
       if DEBUG: print >> sys.stderr, 'emcc: building libc for cache'
       o_s = []
-      for src in ['dlmalloc.c', os.path.join('libcxx', 'new.cpp')]:
+      libc_files = [
+        'dlmalloc.c',
+        os.path.join('libcxx', 'new.cpp'),
+        os.path.join('libc', 'stdlib', 'getopt_long.c'),
+        os.path.join('libc', 'gen', 'err.c'),
+        os.path.join('libc', 'gen', 'errx.c'),
+        os.path.join('libc', 'gen', 'warn.c'),
+        os.path.join('libc', 'gen', 'warnx.c'),
+        os.path.join('libc', 'gen', 'verr.c'),
+        os.path.join('libc', 'gen', 'verrx.c'),
+        os.path.join('libc', 'gen', 'vwarn.c'),
+        os.path.join('libc', 'gen', 'vwarnx.c'),
+        os.path.join('libc', 'stdlib', 'strtod.c'),
+      ];
+
+      prev_cxx = os.environ.get('EMMAKEN_CXX')
+      if prev_cxx: os.environ['EMMAKEN_CXX'] = ''
+      for src in libc_files:
         o = in_temp(os.path.basename(src) + '.o')
         execute([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o], stdout=stdout, stderr=stderr)
         o_s.append(o)
+      if prev_cxx: os.environ['EMMAKEN_CXX'] = prev_cxx
+
       shared.Building.link(o_s, in_temp('libc.bc'))
       return in_temp('libc.bc')
 
@@ -1219,6 +1268,9 @@ try:
       shared.Building.llvm_opt(in_temp(target_basename + '.bc'), link_opts)
       if DEBUG: save_intermediate('linktime', 'bc')
 
+  if save_bc:
+    shutil.copyfile(final, save_bc)
+
   # Prepare .ll for Emscripten
   if not LEAVE_INPUTS_RAW:
     final = shared.Building.llvm_dis(final, final + '.ll')
@@ -1331,13 +1383,14 @@ try:
     if DEBUG: print >> sys.stderr, 'emcc: running closure'
     final = shared.Building.closure_compiler(final)
     if DEBUG: save_intermediate('closure')
-  elif shared.Settings.RELOOP and not closure and not keep_js_debug:
-    # do this if closure is not enabled (it gives similar speedups), and we do not need to keep debug info around
-    js_optimizer_queue += ['registerize']
 
   if opt_level >= 1:
     if DEBUG: print >> sys.stderr, 'emcc: running post-closure post-opts'
     js_optimizer_queue += ['simplifyExpressionsPost']
+
+  if not closure and shared.Settings.RELOOP and not keep_js_debug:
+    # do this if closure is not enabled (it gives similar speedups), and we do not need to keep debug info around
+    js_optimizer_queue += ['registerize']
 
   if minify_whitespace:
     js_optimizer_queue += ['compress']
@@ -1345,6 +1398,11 @@ try:
   js_optimizer_queue += ['last']
 
   flush_js_optimizer_queue()
+
+  # Remove some trivial whitespace # TODO: do not run when compress has already been done on all parts of the code
+  src = open(final).read()
+  src = re.sub(r'\n+[ \n]*\n+', '\n', src)
+  open(final, 'w').write(src)
 
   # If we were asked to also generate HTML, do that
   if final_suffix == 'html':

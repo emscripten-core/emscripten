@@ -503,6 +503,7 @@ function allocate(slab, types, allocator, ptr) {
 Module['allocate'] = allocate;
 
 function Pointer_stringify(ptr, /* optional */ length) {
+#if UTF_STRING_SUPPORT
   var utf8 = new Runtime.UTF8Processor();
   var nullTerminated = typeof(length) == "undefined";
   var ret = "";
@@ -519,17 +520,15 @@ function Pointer_stringify(ptr, /* optional */ length) {
     if (!nullTerminated && i == length) break;
   }
   return ret;
+#else
+#if USE_TYPED_ARRAYS == 2
+  return String.fromCharCode.apply(String, HEAPU8.subarray(ptr, ptr + (length || _strlen(ptr))));
+#else
+  throw 'unsupported combination';
+#endif
+#endif
 }
 Module['Pointer_stringify'] = Pointer_stringify;
-
-function Array_stringify(array) {
-  var ret = "";
-  for (var i = 0; i < array.length; i++) {
-    ret += String.fromCharCode(array[i]);
-  }
-  return ret;
-}
-Module['Array_stringify'] = Array_stringify;
 
 // Memory management
 
@@ -847,6 +846,23 @@ Module['removeRunDependency'] = removeRunDependency;
 
 Module["preloadedImages"] = {}; // maps url to image data
 Module["preloadedAudios"] = {}; // maps url to audio data
+
+#if PGO
+var PGOMonitor = {
+  called: {},
+  dump: function() {
+    var dead = [];
+    for (var i = 0; i < this.allGenerated.length; i++) {
+      var func = this.allGenerated[i];
+      if (!this.called[func]) dead.push(func);
+    }
+    Module.print('-s DEAD_FUNCTIONS=\'' + JSON.stringify(dead) + '\'\n');
+  }
+};
+__ATEXIT__.push({ func: function() { PGOMonitor.dump() } });
+if (!Module.preRun) Module.preRun = [];
+Module.preRun.push(function() { addRunDependency('pgo') });
+#endif
 
 // === Body ===
 

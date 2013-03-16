@@ -140,15 +140,10 @@ var UNDEFINED_NODE = ['unary-prefix', 'void', ['num', 0]];
 var TRUE_NODE = ['unary-prefix', '!', ['num', 0]];
 var FALSE_NODE = ['unary-prefix', '!', ['num', 1]];
 
-var GENERATED_FUNCTIONS_MARKER = '// EMSCRIPTEN_GENERATED_FUNCTIONS:';
-var generatedFunctions = null;
-function setGeneratedFunctions(metadata) {
-  var start = metadata.indexOf(GENERATED_FUNCTIONS_MARKER);
-  generatedFunctions = set(eval(metadata.substr(start + GENERATED_FUNCTIONS_MARKER.length)));
-}
-function isGenerated(ident) {
-  return ident in generatedFunctions;
-}
+var GENERATED_FUNCTIONS_MARKER = '// EMSCRIPTEN_GENERATED_FUNCTIONS';
+var generatedFunctions = false; // whether we have received only generated functions
+
+var minifierInfo = null;
 
 function srcToAst(src) {
   return uglify.parser.parse(src);
@@ -216,7 +211,7 @@ function traverse(node, pre, post, stack) {
 function traverseGenerated(ast, pre, post, stack) {
   assert(generatedFunctions);
   traverse(ast, function(node) {
-    if (node[0] == 'defun' && isGenerated(node[1])) {
+    if (node[0] == 'defun') {
       traverse(node, pre, post, stack);
       return null;
     }
@@ -225,12 +220,15 @@ function traverseGenerated(ast, pre, post, stack) {
 
 function traverseGeneratedFunctions(ast, callback) {
   assert(generatedFunctions);
-  traverse(ast, function(node) {
-    if (node[0] == 'defun' && isGenerated(node[1])) {
-      callback(node);
-      return null;
+  if (ast[0] == 'toplevel') {
+    var stats = ast[1];
+    for (var i = 0; i < stats.length; i++) {
+      var curr = stats[i];
+      if (curr[0] == 'defun') callback(curr);
     }
-  });
+  } else if (ast[0] == 'defun') {
+    callback(ast);
+  }
 }
 
 // Walk the ast in a simple way, with an understanding of which JS variables are defined)
@@ -542,9 +540,39 @@ function simplifyExpressionsPre(ast) {
     });
   }
 
+  function asmOpts(ast) {
+    // 1. Add final returns when necessary
+    // 2. Remove unneeded coercions on function calls that have no targets (eliminator removed it)
+    traverseGeneratedFunctions(ast, function(fun) {
+      var returnType = null;
+      traverse(fun, function(node, type) {
+        if (type == 'return' && node[1]) {
+          returnType = detectAsmCoercion(node[1]);
+        } else if (type == 'stat') {
+          var inner = node[1];
+          if ((inner[0] == 'binary' && inner[1] in ASSOCIATIVE_BINARIES && inner[2][0] == 'call' && inner[3][0] == 'num') ||
+              (inner[0] == 'unary-prefix' && inner[1] == '+' && inner[2][0] == 'call')) {
+            node[1] = inner[2];
+          }
+        }
+      });
+      // Add a final return if one is missing.
+      if (returnType !== null) {
+        var stats = getStatements(fun);
+        var last = stats[stats.length-1];
+        if (last[0] != 'return') {
+          var returnValue = ['num', 0];
+          if (returnType == ASM_DOUBLE) returnValue = ['unary-prefix', '+', returnValue];
+          stats.push(['return', returnValue]);
+        }
+      }
+    });
+  }
+
   simplifyBitops(ast);
   joinAdditions(ast);
   // simplifyZeroComp(ast); TODO: investigate performance
+  if (asm) asmOpts(ast);
 }
 
 // In typed arrays mode 2, we can have
@@ -1307,7 +1335,9 @@ function normalizeAsm(func) {
     var node = stats[i];
     if (node[0] != 'stat' || node[1][0] != 'assign' || node[1][2][0] != 'name') break;
     node = node[1];
-    data.params[node[2][1]] = detectAsmCoercion(node[3]);
+    var name = node[2][1];
+    if (func[2] && func[2].indexOf(name) < 0) break; // not an assign into a parameter, but a global
+    data.params[name] = detectAsmCoercion(node[3]);
     stats[i] = emptyNode();
     i++;
   }
@@ -1400,7 +1430,10 @@ function denormalizeAsm(func, data) {
   //printErr('denormalized \n\n' + astToSrc(func) + '\n\n');
 }
 
-// Very simple 'registerization', coalescing of variables into a smaller number.
+// Very simple 'registerization', coalescing of variables into a smaller number,
+// as part of minification. Globals-level minification began in a previous pass,
+// we receive minifierInfo which tells us how to rename globals. (Only in asm.js.)
+//
 // We do not optimize when there are switches, so this pass only makes sense with
 // relooping.
 // TODO: Consider how this fits in with the rest of the optimization toolchain. Do
@@ -1427,7 +1460,6 @@ function registerize(ast) {
     // We also mark local variables - i.e., having a var definition
     var localVars = {};
     var hasSwitch = false; // we cannot optimize variables if there is a switch
-    var returnType = null; // for asm
     traverse(fun, function(node, type) {
       if (type == 'var') {
         node[1].forEach(function(defined) { localVars[defined[0]] = 1 });
@@ -1439,11 +1471,74 @@ function registerize(ast) {
         }
       } else if (type == 'switch') {
         hasSwitch = true;
-      } else if (asm && type == 'return' && node[1]) {
-        returnType = detectAsmCoercion(node[1]);
       }
     });
     vacuum(fun);
+    if (minifierInfo) {
+      assert(asm);
+      var usedGlobals = {};
+      var nextLocal = 0;
+      // Minify globals using the mapping we were given
+      traverse(fun, function(node, type) {
+        if (type == 'name') {
+          var name = node[1];
+          var minified = minifierInfo.globals[name];
+          if (minified) {
+            assert(!localVars[name], name); // locals must not shadow globals, or else we don't know which is which
+            if (localVars[minified]) {
+              // trying to minify a global into a name used locally. rename all the locals
+              var newName = '$_newLocal_' + (nextLocal++);
+              assert(!localVars[newName]);
+              if (params[minified]) {
+                params[newName] = 1;
+                delete params[minified];
+              }
+              localVars[newName] = 1;
+              delete localVars[minified];
+              asmData.vars[newName] = asmData.vars[minified];
+              delete asmData.vars[minified];
+              asmData.params[newName] = asmData.params[minified];
+              delete asmData.params[minified];
+              traverse(fun, function(node, type) {
+                if (type == 'name' && node[1] == minified) {
+                  node[1] = newName;
+                }
+              });
+              if (fun[2]) {
+                for (var i = 0; i < fun[2].length; i++) {
+                  if (fun[2][i] == minified) fun[2][i] = newName;
+                }
+              }
+            }
+            node[1] = minified;
+            usedGlobals[minified] = 1;
+          }
+        }
+      });
+      assert(fun[1] in minifierInfo.globals, fun[1]);
+      fun[1] = minifierInfo.globals[fun[1]];
+      assert(fun[1]);
+      var nextRegName = 0;
+    }
+    var regTypes = {};
+    function getNewRegName(num, name) {
+      if (!asm) return 'r' + num;
+      var type = asmData.vars[name];
+      if (!minifierInfo) {
+        var ret = (type ? 'd' : 'i') + num;
+        regTypes[ret] = type;
+        return ret;
+      }
+      // find the next free minified name that is not used by a global that shows up in this function
+      while (nextRegName < minifierInfo.names.length) {
+        var ret = minifierInfo.names[nextRegName++];
+        if (!usedGlobals[ret]) {
+          regTypes[ret] = type;
+          return ret;
+        }
+      }
+      assert('ran out of names');
+    }
     // Find the # of uses of each variable.
     // While doing so, check if all a variable's uses are dominated in a simple
     // way by a simple assign, if so, then we can assign its register to it
@@ -1528,7 +1623,7 @@ function registerize(ast) {
           saved++;
         } else {
           reg = nextReg++;
-          fullNames[reg] = (asm ? (asmData.vars[name] ? 'd' : 'i') : 'r') + reg; // TODO: even smaller names
+          fullNames[reg] = getNewRegName(reg, name);
           if (params[name]) paramRegs[reg] = 1;
         }
         varRegs[name] = reg;
@@ -1572,7 +1667,7 @@ function registerize(ast) {
         if (loopRegs[loops]) {
           if (asm) {
             loopRegs[loops].forEach(function(loopReg) {
-              freeRegsClasses[fullNames[loopReg][0] == 'i' ? ASM_INT : ASM_DOUBLE].push(loopReg);
+              freeRegsClasses[regTypes[fullNames[loopReg]]].push(loopReg);
             });
           } else {
             freeRegsClasses = freeRegsClasses.concat(loopRegs[loops]);
@@ -1608,7 +1703,7 @@ function registerize(ast) {
       };
       for (var i = 1; i < nextReg; i++) {
         var reg = fullNames[i];
-        var type = reg[0] == 'i' ? ASM_INT : ASM_DOUBLE
+        var type = regTypes[reg];
         if (!paramRegs[i]) {
           finalAsmData.vars[reg] = type;
         } else {
@@ -1617,17 +1712,6 @@ function registerize(ast) {
         }
       }
       denormalizeAsm(fun, finalAsmData);
-      // Add a final return if one is missing. This is not strictly a register operation, but
-      // this pass traverses the entire AST anyhow so adding it here is efficient.
-      if (returnType !== null) {
-        var stats = getStatements(fun);
-        var last = stats[stats.length-1];
-        if (last[0] != 'return') {
-          var returnValue = ['num', 0];
-          if (returnType == ASM_DOUBLE) returnValue = ['unary-prefix', '+', returnValue];
-          stats.push(['return', returnValue]);
-        }
-      }
     }
   });
 }
@@ -2162,6 +2246,43 @@ function eliminateMemSafe(ast) {
   eliminate(ast, true);
 }
 
+function minifyGlobals(ast) {
+  var minified = {};
+  var next = 0;
+  var first = true; // do not minify initial 'var asm ='
+  // find the globals
+  traverse(ast, function(node, type) {
+    if (type == 'var') {
+      if (first) {
+        first = false;
+        return;
+      }
+      var vars = node[1];
+      for (var i = 0; i < vars.length; i++) {
+        var name = vars[i][0];
+        assert(next < minifierInfo.names.length);
+        vars[i][0] = minified[name] = minifierInfo.names[next++];
+      }
+    }
+  });
+  // add all globals in function chunks, i.e. not here but passed to us
+  for (var i = 0; i < minifierInfo.globals.length; i++) {
+    name = minifierInfo.globals[i];
+    assert(next < minifierInfo.names.length);
+    minified[name] = minifierInfo.names[next++];
+  }
+  // apply minification
+  traverse(ast, function(node, type) {
+    if (type == 'name') {
+      var name = node[1];
+      if (name in minified) {
+        node[1] = minified[name];
+      }
+    }
+  });
+  suffix = '// MINIFY_INFO:' + JSON.stringify(minified);
+}
+
 // Change +5 to DOT$ZERO(5). We then textually change 5 to 5.0 (uglify's ast cannot differentiate between 5 and 5.0 directly)
 function prepDotZero(ast) {
   traverse(ast, function(node, type) {
@@ -2207,6 +2328,7 @@ var passes = {
   registerize: registerize,
   eliminate: eliminate,
   eliminateMemSafe: eliminateMemSafe,
+  minifyGlobals: minifyGlobals,
   compress: function() { compress = true },
   noPrintMetadata: function() { printMetadata = false },
   asm: function() { asm = true },
@@ -2215,12 +2337,15 @@ var passes = {
 
 // Main
 
+var suffix = '';
+
 var src = read(arguments_[0]);
 var ast = srcToAst(src);
 //printErr(JSON.stringify(ast)); throw 1;
-var metadata = src.split('\n').filter(function(line) { return line.indexOf(GENERATED_FUNCTIONS_MARKER) >= 0 })[0];
-//assert(metadata, 'Must have EMSCRIPTEN_GENERATED_FUNCTIONS metadata');
-if (metadata) setGeneratedFunctions(metadata);
+generatedFunctions = src.indexOf(GENERATED_FUNCTIONS_MARKER) >= 0;
+var minifierInfoStart = src.indexOf('// MINIFY_INFO:')
+if (minifierInfoStart > 0) minifierInfo = JSON.parse(src.substr(minifierInfoStart + 15));
+//printErr(JSON.stringify(minifierInfo));
 
 arguments_.slice(1).forEach(function(arg) {
   passes[arg](ast);
@@ -2240,4 +2365,5 @@ do {
 } while (js != old);
 print(js);
 print('\n');
+print(suffix);
 

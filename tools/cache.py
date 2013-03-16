@@ -73,7 +73,8 @@ class JCache:
     try:
       data = cPickle.loads(zlib.decompress(open(cachename).read()))
     except Exception, e:
-      if DEBUG_CACHE: print >> sys.stderr, 'jcache decompress/unpickle error:', e
+      if self.debug: print >> sys.stderr, 'jcache decompress/unpickle error:', e
+      return
     if len(data) != 2:
       if self.debug: print >> sys.stderr, 'jcache error in get'
       return
@@ -96,7 +97,7 @@ class JCache:
       f.write(zlib.compress(cPickle.dumps([keys, value])))
       f.close()
     except Exception, e:
-      if DEBUG_CACHE: print >> sys.stderr, 'jcache compress/pickle error:', e
+      if self.debug: print >> sys.stderr, 'jcache compress/pickle error:', e
       return
     #  for i in range(len(keys)):
     #    open(cachename + '.key' + str(i), 'w').write(keys[i])

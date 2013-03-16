@@ -122,16 +122,19 @@ function intertyper(data, sidePass, baseLineNums) {
               SKIP_STACK_IN_SMALL = 0;
             }
 
-            unparsedBundles.push({
-              intertype: 'unparsedFunction',
-              // We need this early, to know basic function info - ident, params, varargs
-              ident: toNiceIdent(func.ident),
-              params: func.params,
-              returnType: func.returnType,
-              hasVarArgs: func.hasVarArgs,
-              lineNum: currFunctionLineNum,
-              lines: currFunctionLines
-            });
+            var ident = toNiceIdent(func.ident);
+            if (!(ident in DEAD_FUNCTIONS)) {
+              unparsedBundles.push({
+                intertype: 'unparsedFunction',
+                // We need this early, to know basic function info - ident, params, varargs
+                ident: ident,
+                params: func.params,
+                returnType: func.returnType,
+                hasVarArgs: func.hasVarArgs,
+                lineNum: currFunctionLineNum,
+                lines: currFunctionLines
+              });
+            }
             currFunctionLines = [];
           }
         }
