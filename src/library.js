@@ -2638,7 +2638,7 @@ LibraryManager.library = {
     }
     return fields;
   },
-  // Performs prtinf-style formatting.
+  // Performs printf-style formatting.
   //   format: A pointer to the format string.
   //   varargs: A pointer to the start of the arguments list.
   // Returns the resulting string string as a character array.
