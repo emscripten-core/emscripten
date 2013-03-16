@@ -2821,7 +2821,9 @@ LibraryManager.library = {
           } else if (next == {{{ charCode('x') }}} || next == {{{ charCode('X') }}}) {
             prefix = flagAlternative ? '0x' : '';
 #if PRECISE_I64_MATH
-            if (argSize == 8 && i64Math) argText = (origArg[1]>>>0).toString(16) + (origArg[0]>>>0).toString(16); else
+            if (argSize == 8 && i64Math) {
+              argText = (origArg[1] ? (origArg[1]>>>0).toString(16) : '') + (origArg[0]>>>0).toString(16);
+            } else
 #endif
             if (currArg < 0) {
               // Represent negative numbers in hex as 2's complement.
