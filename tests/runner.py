@@ -8174,7 +8174,8 @@ Child2:9
 
     def test_scriptaclass_2(self):
         if self.emcc_args is None: return self.skip('requires emcc')
-        if Settings.ASM_JS: return self.skip('asm does not bindings generator yet')
+
+        Settings.EXPORT_BINDINGS = 1
 
         header_filename = os.path.join(self.get_dir(), 'header.h')
         header = '''
