@@ -5805,6 +5805,21 @@ def process(filename):
       self.emcc_args += ['--embed-file', 'file_with_byte_234.txt']
       self.do_run(src, '*234\n')
 
+    def test_fscanf_utf8(self):
+      if self.emcc_args is None: return self.skip('requires emcc')
+      src = r'''
+        #include <stdio.h>
+        int main() {
+          FILE *file = fopen("file_with_non_ascii_chars.txt", "r");
+          char buffer1[100], buffer2[100], buffer3[100];
+          int num = fscanf(file, "%s %s %s", buffer1, buffer2, buffer3);
+          printf("%d %s %s %s\n", num, buffer1, buffer2, buffer3);
+        }
+      '''
+      open('file_with_non_ascii_chars.txt', 'w').write('100€<100£ »quote« ”“’‘ﬁﬂ—')
+      self.emcc_args += ['--embed-file', 'file_with_non_ascii_chars.txt']
+      self.do_run(src, '3 100€<100£ »quote« ”“’‘ﬁﬂ—\n')
+        
     def test_folders(self):
       add_pre_run = '''
 def process(filename):
