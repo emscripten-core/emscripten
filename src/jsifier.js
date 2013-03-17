@@ -513,7 +513,9 @@ function JSify(data, functionsOnly, givenFunctions) {
         item.JS = addFromLibrary(shortident);
       } else if (!LibraryManager.library.hasOwnProperty(shortident + '__inline')) {
         item.JS = 'var ' + item.ident + '; // stub for ' + item.ident;
-        if (WARN_ON_UNDEFINED_SYMBOLS || ASM_JS) { // always warn on undefs in asm, since it breaks validation
+        if (ASM_JS) {
+          throw 'Unresolved symbol: ' + item.ident + ', this must be corrected for asm.js validation to succeed';
+        } else if (WARN_ON_UNDEFINED_SYMBOLS) {
           warn('Unresolved symbol: ' + item.ident);
         }
       }

@@ -9329,7 +9329,7 @@ f.close()
       filename = self.in_dir('src.cpp')
       open(filename, 'w').write(src)
       out, err = Popen([PYTHON, EMCC, filename, '-s', 'ASM_JS=1', '-O2'], stderr=PIPE).communicate()
-      assert 'Warning: Unresolved symbol' in err, 'always warn on undefs in asm, since it breaks validation'
+      assert 'Unresolved symbol' in err, 'always warn on undefs in asm, since it breaks validation: ' + err
 
     def test_redundant_link(self):
       lib = "int mult() { return 1; }"
