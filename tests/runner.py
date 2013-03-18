@@ -5291,6 +5291,11 @@ at function.:blag
             uint64_t B = 0x12340000000000ULL;
             printy("0x%llx_0x%llx", A, B);
           }
+          {
+            uint64_t A = 0x000009182746756;
+            uint64_t B = 0x192837465631ACBDULL;
+            printy("0x%llx_0x%llx", A, B);
+          }
 
           return 0;
         }
@@ -5301,6 +5306,7 @@ at function.:blag
 0x400000_0x400000
 0x800000_0x800000000000
 0x800_0x12340000000000
+0x9182746756_0x192837465631acbd
 ''')
 
     def test_printf_more(self):
