@@ -173,8 +173,6 @@ var GL_UNSAFE_OPTS = 1; // Enables some potentially-unsafe optimizations in GL e
 var FULL_ES2 = 0; // Forces support for all GLES2 features, not just the WebGL-friendly subset.
 var FORCE_GL_EMULATION = 0; // Forces inclusion of full GL emulation code.
 
-var UTF_STRING_SUPPORT = 1; // Perform utf-8 conversion between C and JS strings (adds overhead in such conversions)
-
 var DISABLE_EXCEPTION_CATCHING = 0; // Disables generating code to actually catch exceptions. If the code you
                                     // are compiling does not actually rely on catching exceptions (but the
                                     // compiler generates code for it, maybe because of stdlibc++ stuff),

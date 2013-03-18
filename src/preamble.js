@@ -503,30 +503,35 @@ function allocate(slab, types, allocator, ptr) {
 Module['allocate'] = allocate;
 
 function Pointer_stringify(ptr, /* optional */ length) {
-#if UTF_STRING_SUPPORT
-  var utf8 = new Runtime.UTF8Processor();
-  var nullTerminated = !length;
-  var ret = "";
-  var i = 0;
+  // Find the length, and check for UTF while doing so
+  var hasUtf = false;
   var t;
+  var i = 0;
   while (1) {
+    t = {{{ makeGetValue('ptr', 'i', 'i8', 0, 1) }}};
+    if (t >= 128) hasUtf = true;
+    else if (t == 0 && !length) break;
+    i++;
+    if (length && i == length) break;
+  }
+  if (!length) length = i;
+
+#if USE_TYPED_ARRAYS == 2
+  if (!hasUtf) {
+    return String.fromCharCode.apply(String, HEAPU8.subarray(ptr, ptr + length));
+  }
+#endif
+
+  var utf8 = new Runtime.UTF8Processor();
+  var ret = '';
+  for (i = 0; i < length; i++) {
 #if ASSERTIONS
-  assert(i < TOTAL_MEMORY);
+    assert(ptr + i < TOTAL_MEMORY);
 #endif
     t = {{{ makeGetValue('ptr', 'i', 'i8', 0, 1) }}};
-    if (nullTerminated && t == 0) break;
     ret += utf8.processCChar(t);
-    i += 1;
-    if (!nullTerminated && i == length) break;
   }
   return ret;
-#else
-#if USE_TYPED_ARRAYS == 2
-  return String.fromCharCode.apply(String, HEAPU8.subarray(ptr, ptr + (length || _strlen(ptr))));
-#else
-  throw 'unsupported combination';
-#endif
-#endif
 }
 Module['Pointer_stringify'] = Pointer_stringify;
 
