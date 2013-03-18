@@ -69,7 +69,7 @@ function __emval_new_cstring(v) {
 
 function __emval_take_value(type, v) {
     type = requireRegisteredType(type, '_emval_take_value');
-    v = type.fromWireTypeAutoDowncast ? type.fromWireTypeAutoDowncast(v) : type.fromWireType(v);
+    v = type.fromWireType(v);
     return __emval_register(v);
 }
 

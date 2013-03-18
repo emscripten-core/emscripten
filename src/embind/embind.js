@@ -277,11 +277,7 @@ function makeInvoker(name, argCount, argTypes, invoker, fn) {
             args[i] = argTypes[i].toWireType(destructors, arguments[i - 1]);
         }
         var rv = invoker.apply(null, args);
-        if (argTypes[0].fromWireTypeAutoDowncast) {
-            rv = argTypes[0].fromWireTypeAutoDowncast(rv);
-        } else {
-            rv = argTypes[0].fromWireType(rv);
-        }
+        rv = argTypes[0].fromWireType(rv);
         runDestructors(destructors);
         return rv;
     };
@@ -589,7 +585,7 @@ RegisteredPointer.prototype.destructor = function(ptr) {
     }
 };
 
-RegisteredPointer.prototype.fromWireType = function(ptr) {
+RegisteredPointer.prototype._fromWireType = function(ptr) {
     if (!this.getPointee(ptr)) {
         this.destructor(ptr);
         return null;
@@ -625,7 +621,7 @@ RegisteredPointer.prototype.getDynamicDowncastType = function(ptr) {
     return downcastType;
 };
 
-RegisteredPointer.prototype.fromWireTypeAutoDowncast = function(ptr) { // ptr is a raw pointer (or a raw smartpointer)
+RegisteredPointer.prototype.fromWireType = function(ptr) { // ptr is a raw pointer (or a raw smartpointer)
     var handle;
     if (!this.getPointee(ptr)) {
         this.destructor(ptr);
@@ -634,13 +630,13 @@ RegisteredPointer.prototype.fromWireTypeAutoDowncast = function(ptr) { // ptr is
     var toType = this.getDynamicDowncastType(ptr);
     if (toType) {
         if (this.isSmartPointer) {
-            handle = toType.smartPointerType.fromWireType(ptr);
+            handle = toType.smartPointerType._fromWireType(ptr);
         } else {
-            handle = toType.fromWireType(ptr);
+            handle = toType._fromWireType(ptr);
         }
         handle.$$.ptr = staticPointerCast(handle.$$.ptr, this.pointeeType.rawType, toType.rawType);
     } else {
-        handle = this.fromWireType(ptr);
+        handle = this._fromWireType(ptr);
     }
     return handle;
 };
@@ -900,11 +896,7 @@ function __embind_register_class_function(
                 args[i + 1] = argTypes[i].toWireType(destructors, arguments[i - 1]);
             }
             var rv = rawInvoker.apply(null, args);
-            if (argTypes[0].fromWireTypeAutoDowncast) {
-                rv = argTypes[0].fromWireTypeAutoDowncast(rv);
-            } else {
-                rv = argTypes[0].fromWireType(rv);
-            }
+            rv = argTypes[0].fromWireType(rv);
             runDestructors(destructors);
             return rv;
         };
