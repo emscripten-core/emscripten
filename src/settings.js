@@ -171,6 +171,8 @@ var GL_UNSAFE_OPTS = 1; // Enables some potentially-unsafe optimizations in GL e
 var FULL_ES2 = 0; // Forces support for all GLES2 features, not just the WebGL-friendly subset.
 var FORCE_GL_EMULATION = 0; // Forces inclusion of full GL emulation code.
 
+var UTF_STRING_SUPPORT = 1; // Perform utf-8 conversion between C and JS strings (adds overhead in such conversions)
+
 var DISABLE_EXCEPTION_CATCHING = 0; // Disables generating code to actually catch exceptions. If the code you
                                     // are compiling does not actually rely on catching exceptions (but the
                                     // compiler generates code for it, maybe because of stdlibc++ stuff),
@@ -224,19 +226,22 @@ var NAMED_GLOBALS = 0; // If 1, we use global variables for globals. Otherwise
                        // they are referred to by a base plus an offset (called an indexed global),
                        // saving global variables but adding runtime overhead.
 
-var EXPORT_ALL = 0; // If true, we export all the symbols
 var EXPORTED_FUNCTIONS = ['_main']; // Functions that are explicitly exported. These functions are kept alive
                                     // through LLVM dead code elimination, and also made accessible outside of
                                     // the generated code even after running closure compiler (on "Module").
                                     // Note the necessary prefix of "_".
+var EXPORT_ALL = 0; // If true, we export all the symbols
+var EXPORT_BINDINGS = 0; // Export all bindings generator functions (prefixed with emscripten_bind_). This
+                         // is necessary to use the bindings generator with asm.js
 
-var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = ['memcpy', 'memset', 'malloc', 'free', '$Browser']; // JS library functions (C functions implemented in JS)
-                                                                                           // that we include by default. If you want to make sure
-                                                                                           // something is included by the JS compiler, add it here.
-                                                                                           // For example, if you do not use some emscripten_*
-                                                                                           // C API call from C, but you want to call it from JS,
-                                                                                           // add it here (and in EXPORTED FUNCTIONS with prefix
-                                                                                           // "_", for closure).
+// JS library functions (C functions implemented in JS)
+// that we include by default. If you want to make sure
+// something is included by the JS compiler, add it here.
+// For example, if you do not use some emscripten_*
+// C API call from C, but you want to call it from JS,
+// add it here (and in EXPORTED FUNCTIONS with prefix
+// "_", for closure).
+var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = ['memcpy', 'memset', 'malloc', 'free', 'strlen', '$Browser'];
 
 var LIBRARY_DEPS_TO_AUTOEXPORT = ['memcpy']; // This list is also used to determine
                                              // auto-exporting of library dependencies (i.e., functions that

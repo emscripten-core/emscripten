@@ -513,7 +513,9 @@ function JSify(data, functionsOnly, givenFunctions) {
         item.JS = addFromLibrary(shortident);
       } else if (!LibraryManager.library.hasOwnProperty(shortident + '__inline')) {
         item.JS = 'var ' + item.ident + '; // stub for ' + item.ident;
-        if (WARN_ON_UNDEFINED_SYMBOLS || ASM_JS) { // always warn on undefs in asm, since it breaks validation
+        if (ASM_JS) {
+          throw 'Unresolved symbol: ' + item.ident + ', this must be corrected for asm.js validation to succeed. Consider adding it to DEAD_FUNCTIONS.';
+        } else if (WARN_ON_UNDEFINED_SYMBOLS) {
           warn('Unresolved symbol: ' + item.ident);
         }
       }
@@ -722,6 +724,7 @@ function JSify(data, functionsOnly, givenFunctions) {
               ret += indent + 'label = ' + getLabelId(block.entries[0]) + '; ' + (SHOW_LABELS ? '/* ' + getOriginalLabelId(block.entries[0]) + ' */' : '') + '\n';
             } // otherwise, should have been set before!
             if (func.setjmpTable) {
+              assert(!ASM_JS, 'asm.js mode does not support setjmp yet');
               var setjmpTable = {};
               ret += indent + 'var mySetjmpIds = {};\n';
               ret += indent + 'var setjmpTable = {';

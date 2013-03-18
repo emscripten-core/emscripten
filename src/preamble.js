@@ -503,6 +503,7 @@ function allocate(slab, types, allocator, ptr) {
 Module['allocate'] = allocate;
 
 function Pointer_stringify(ptr, /* optional */ length) {
+#if UTF_STRING_SUPPORT
   var utf8 = new Runtime.UTF8Processor();
   var nullTerminated = typeof(length) == "undefined";
   var ret = "";
@@ -519,17 +520,15 @@ function Pointer_stringify(ptr, /* optional */ length) {
     if (!nullTerminated && i == length) break;
   }
   return ret;
+#else
+#if USE_TYPED_ARRAYS == 2
+  return String.fromCharCode.apply(String, HEAPU8.subarray(ptr, ptr + (length || _strlen(ptr))));
+#else
+  throw 'unsupported combination';
+#endif
+#endif
 }
 Module['Pointer_stringify'] = Pointer_stringify;
-
-function Array_stringify(array) {
-  var ret = "";
-  for (var i = 0; i < array.length; i++) {
-    ret += String.fromCharCode(array[i]);
-  }
-  return ret;
-}
-Module['Array_stringify'] = Array_stringify;
 
 // Memory management
 
@@ -557,7 +556,7 @@ function enlargeMemory() {
 #if ASM_JS == 0
   abort('Cannot enlarge memory arrays. Either (1) compile with -s TOTAL_MEMORY=X with X higher than the current value, (2) compile with ALLOW_MEMORY_GROWTH which adjusts the size at runtime but prevents some optimizations, or (3) set Module.TOTAL_MEMORY before the program runs.');
 #else
-  abort('Cannot enlarge memory arrays in asm.js. Compile with -s TOTAL_MEMORY=X with X higher than the current value.');
+  abort('Cannot enlarge memory arrays in asm.js. Either (1) compile with -s TOTAL_MEMORY=X with X higher than the current value, or (2) set Module.TOTAL_MEMORY before the program runs.');
 #endif
 #else
   // TOTAL_MEMORY is the current size of the actual array, and STATICTOP is the new top.

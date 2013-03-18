@@ -504,7 +504,7 @@ LibraryManager.library = {
       }
       var utf8 = new Runtime.UTF8Processor();
       function simpleOutput(val) {
-        if (val === null || val === '\n'.charCodeAt(0)) {
+        if (val === null || val === {{{ charCode('\n') }}}) {
           output.printer(output.buffer.join(''));
           output.buffer = [];
         } else {
@@ -600,8 +600,8 @@ LibraryManager.library = {
     quit: function() {
       if (!FS.init.initialized) return;
       // Flush any partially-printed lines in stdout and stderr. Careful, they may have been closed
-      if (FS.streams[2] && FS.streams[2].object.output.buffer.length > 0) FS.streams[2].object.output('\n'.charCodeAt(0));
-      if (FS.streams[3] && FS.streams[3].object.output.buffer.length > 0) FS.streams[3].object.output('\n'.charCodeAt(0));
+      if (FS.streams[2] && FS.streams[2].object.output.buffer.length > 0) FS.streams[2].object.output({{{ charCode('\n') }}});
+      if (FS.streams[3] && FS.streams[3].object.output.buffer.length > 0) FS.streams[3].object.output({{{ charCode('\n') }}});
     },
 
     // Standardizes a path. Useful for making comparisons of pathnames work in a consistent manner.
@@ -828,11 +828,11 @@ LibraryManager.library = {
       // Null or empty results in '.'.
       var me = ___libgenSplitName;
       if (!me.ret) {
-        me.ret = allocate(['.'.charCodeAt(0), 0], 'i8', ALLOC_NORMAL);
+        me.ret = allocate([{{{ charCode('.') }}}, 0], 'i8', ALLOC_NORMAL);
       }
       return [me.ret, -1];
     } else {
-      var slash = '/'.charCodeAt(0);
+      var slash = {{{ charCode('/') }}};
       var allSlashes = true;
       var slashPositions = [];
       for (var i = 0; {{{ makeGetValue('path', 'i', 'i8') }}} !== 0; i++) {
@@ -2457,9 +2457,9 @@ LibraryManager.library = {
   _scanString: function(format, get, unget, varargs) {
     if (!__scanString.whiteSpace) {
       __scanString.whiteSpace = {};
-      __scanString.whiteSpace[' '.charCodeAt(0)] = 1;
-      __scanString.whiteSpace['\t'.charCodeAt(0)] = 1;
-      __scanString.whiteSpace['\n'.charCodeAt(0)] = 1;
+      __scanString.whiteSpace[{{{ charCode(' ') }}}] = 1;
+      __scanString.whiteSpace[{{{ charCode('\t') }}}] = 1;
+      __scanString.whiteSpace[{{{ charCode('\n') }}}] = 1;
       __scanString.whiteSpace[' '] = 1;
       __scanString.whiteSpace['\t'] = 1;
       __scanString.whiteSpace['\n'] = 1;
@@ -2519,8 +2519,8 @@ LibraryManager.library = {
       if (format[formatIndex] === '%') {
         formatIndex++;
         var maxSpecifierStart = formatIndex;
-        while (format[formatIndex].charCodeAt(0) >= '0'.charCodeAt(0) &&
-               format[formatIndex].charCodeAt(0) <= '9'.charCodeAt(0)) {
+        while (format[formatIndex].charCodeAt(0) >= {{{ charCode('0') }}} &&
+               format[formatIndex].charCodeAt(0) <= {{{ charCode('9') }}}) {
           formatIndex++;
         }
         var max_;
@@ -2566,11 +2566,11 @@ LibraryManager.library = {
           while ((curr < max_ || isNaN(max_)) && next > 0) {
             if (!(next in __scanString.whiteSpace) && // stop on whitespace
                 (type == 's' ||
-                 ((type === 'd' || type == 'u' || type == 'i') && ((next >= '0'.charCodeAt(0) && next <= '9'.charCodeAt(0)) ||
-                                                                   (first && next == '-'.charCodeAt(0)))) ||
-                 (type === 'x' && (next >= '0'.charCodeAt(0) && next <= '9'.charCodeAt(0) ||
-                                   next >= 'a'.charCodeAt(0) && next <= 'f'.charCodeAt(0) ||
-                                   next >= 'A'.charCodeAt(0) && next <= 'F'.charCodeAt(0)))) &&
+                 ((type === 'd' || type == 'u' || type == 'i') && ((next >= {{{ charCode('0') }}} && next <= {{{ charCode('9') }}}) ||
+                                                                   (first && next == {{{ charCode('-') }}}))) ||
+                 (type === 'x' && (next >= {{{ charCode('0') }}} && next <= {{{ charCode('9') }}} ||
+                                   next >= {{{ charCode('a') }}} && next <= {{{ charCode('f') }}} ||
+                                   next >= {{{ charCode('A') }}} && next <= {{{ charCode('F') }}}))) &&
                 (formatIndex >= format.length || next !== format[formatIndex].charCodeAt(0))) { // Stop when we read something that is coming up
               buffer.push(String.fromCharCode(next));
               next = get();
@@ -2638,7 +2638,7 @@ LibraryManager.library = {
     }
     return fields;
   },
-  // Performs prtinf-style formatting.
+  // Performs printf-style formatting.
   //   format: A pointer to the format string.
   //   varargs: A pointer to the start of the arguments list.
   // Returns the resulting string string as a character array.
@@ -2675,7 +2675,7 @@ LibraryManager.library = {
       curr = {{{ makeGetValue(0, 'textIndex', 'i8') }}};
       if (curr === 0) break;
       next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
-      if (curr == '%'.charCodeAt(0)) {
+      if (curr == {{{ charCode('%') }}}) {
         // Handle flags.
         var flagAlwaysSigned = false;
         var flagLeftAlign = false;
@@ -2683,16 +2683,16 @@ LibraryManager.library = {
         var flagZeroPad = false;
         flagsLoop: while (1) {
           switch (next) {
-            case '+'.charCodeAt(0):
+            case {{{ charCode('+') }}}:
               flagAlwaysSigned = true;
               break;
-            case '-'.charCodeAt(0):
+            case {{{ charCode('-') }}}:
               flagLeftAlign = true;
               break;
-            case '#'.charCodeAt(0):
+            case {{{ charCode('#') }}}:
               flagAlternative = true;
               break;
-            case '0'.charCodeAt(0):
+            case {{{ charCode('0') }}}:
               if (flagZeroPad) {
                 break flagsLoop;
               } else {
@@ -2708,13 +2708,13 @@ LibraryManager.library = {
 
         // Handle width.
         var width = 0;
-        if (next == '*'.charCodeAt(0)) {
+        if (next == {{{ charCode('*') }}}) {
           width = getNextArg('i32');
           textIndex++;
           next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
         } else {
-          while (next >= '0'.charCodeAt(0) && next <= '9'.charCodeAt(0)) {
-            width = width * 10 + (next - '0'.charCodeAt(0));
+          while (next >= {{{ charCode('0') }}} && next <= {{{ charCode('9') }}}) {
+            width = width * 10 + (next - {{{ charCode('0') }}});
             textIndex++;
             next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
           }
@@ -2722,20 +2722,20 @@ LibraryManager.library = {
 
         // Handle precision.
         var precisionSet = false;
-        if (next == '.'.charCodeAt(0)) {
+        if (next == {{{ charCode('.') }}}) {
           var precision = 0;
           precisionSet = true;
           textIndex++;
           next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
-          if (next == '*'.charCodeAt(0)) {
+          if (next == {{{ charCode('*') }}}) {
             precision = getNextArg('i32');
             textIndex++;
           } else {
             while(1) {
               var precisionChr = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
-              if (precisionChr < '0'.charCodeAt(0) ||
-                  precisionChr > '9'.charCodeAt(0)) break;
-              precision = precision * 10 + (precisionChr - '0'.charCodeAt(0));
+              if (precisionChr < {{{ charCode('0') }}} ||
+                  precisionChr > {{{ charCode('9') }}}) break;
+              precision = precision * 10 + (precisionChr - {{{ charCode('0') }}});
               textIndex++;
             }
           }
@@ -2749,7 +2749,7 @@ LibraryManager.library = {
         switch (String.fromCharCode(next)) {
           case 'h':
             var nextNext = {{{ makeGetValue(0, 'textIndex+2', 'i8') }}};
-            if (nextNext == 'h'.charCodeAt(0)) {
+            if (nextNext == {{{ charCode('h') }}}) {
               textIndex++;
               argSize = 1; // char (actually i32 in varargs)
             } else {
@@ -2758,7 +2758,7 @@ LibraryManager.library = {
             break;
           case 'l':
             var nextNext = {{{ makeGetValue(0, 'textIndex+2', 'i8') }}};
-            if (nextNext == 'l'.charCodeAt(0)) {
+            if (nextNext == {{{ charCode('l') }}}) {
               textIndex++;
               argSize = 8; // long long
             } else {
@@ -2784,7 +2784,7 @@ LibraryManager.library = {
         // Handle type specifier.
         if (['d', 'i', 'u', 'o', 'x', 'X', 'p'].indexOf(String.fromCharCode(next)) != -1) {
           // Integer.
-          var signed = next == 'd'.charCodeAt(0) || next == 'i'.charCodeAt(0);
+          var signed = next == {{{ charCode('d') }}} || next == {{{ charCode('i') }}};
           argSize = argSize || 4;
           var currArg = getNextArg('i' + (argSize * 8));
 #if PRECISE_I64_MATH
@@ -2794,7 +2794,7 @@ LibraryManager.library = {
 #if USE_TYPED_ARRAYS == 2
           // Flatten i64-1 [low, high] into a (slightly rounded) double
           if (argSize == 8) {
-            currArg = Runtime.makeBigInt(currArg[0], currArg[1], next == 'u'.charCodeAt(0));
+            currArg = Runtime.makeBigInt(currArg[0], currArg[1], next == {{{ charCode('u') }}});
           }
 #endif
           // Truncate to requested size.
@@ -2805,23 +2805,25 @@ LibraryManager.library = {
           // Format the number.
           var currAbsArg = Math.abs(currArg);
           var prefix = '';
-          if (next == 'd'.charCodeAt(0) || next == 'i'.charCodeAt(0)) {
+          if (next == {{{ charCode('d') }}} || next == {{{ charCode('i') }}}) {
 #if PRECISE_I64_MATH
             if (argSize == 8 && i64Math) argText = i64Math.stringify(origArg[0], origArg[1], null); else
 #endif
             argText = reSign(currArg, 8 * argSize, 1).toString(10);
-          } else if (next == 'u'.charCodeAt(0)) {
+          } else if (next == {{{ charCode('u') }}}) {
 #if PRECISE_I64_MATH
             if (argSize == 8 && i64Math) argText = i64Math.stringify(origArg[0], origArg[1], true); else
 #endif
             argText = unSign(currArg, 8 * argSize, 1).toString(10);
             currArg = Math.abs(currArg);
-          } else if (next == 'o'.charCodeAt(0)) {
+          } else if (next == {{{ charCode('o') }}}) {
             argText = (flagAlternative ? '0' : '') + currAbsArg.toString(8);
-          } else if (next == 'x'.charCodeAt(0) || next == 'X'.charCodeAt(0)) {
+          } else if (next == {{{ charCode('x') }}} || next == {{{ charCode('X') }}}) {
             prefix = flagAlternative ? '0x' : '';
 #if PRECISE_I64_MATH
-            if (argSize == 8 && i64Math) argText = (origArg[1]>>>0).toString(16) + (origArg[0]>>>0).toString(16); else
+            if (argSize == 8 && i64Math) {
+              argText = (origArg[1] ? (origArg[1]>>>0).toString(16) : '') + (origArg[0]>>>0).toString(16);
+            } else
 #endif
             if (currArg < 0) {
               // Represent negative numbers in hex as 2's complement.
@@ -2836,11 +2838,11 @@ LibraryManager.library = {
             } else {
               argText = currAbsArg.toString(16);
             }
-            if (next == 'X'.charCodeAt(0)) {
+            if (next == {{{ charCode('X') }}}) {
               prefix = prefix.toUpperCase();
               argText = argText.toUpperCase();
             }
-          } else if (next == 'p'.charCodeAt(0)) {
+          } else if (next == {{{ charCode('p') }}}) {
             if (currAbsArg === 0) {
               argText = '(nil)';
             } else {
@@ -2898,27 +2900,27 @@ LibraryManager.library = {
 
             // Convert g/G to f/F or e/E, as per:
             // http://pubs.opengroup.org/onlinepubs/9699919799/functions/printf.html
-            if (next == 'g'.charCodeAt(0) || next == 'G'.charCodeAt(0)) {
+            if (next == {{{ charCode('g') }}} || next == {{{ charCode('G') }}}) {
               isGeneral = true;
               precision = precision || 1;
               var exponent = parseInt(currArg.toExponential(effectivePrecision).split('e')[1], 10);
               if (precision > exponent && exponent >= -4) {
-                next = ((next == 'g'.charCodeAt(0)) ? 'f' : 'F').charCodeAt(0);
+                next = ((next == {{{ charCode('g') }}}) ? 'f' : 'F').charCodeAt(0);
                 precision -= exponent + 1;
               } else {
-                next = ((next == 'g'.charCodeAt(0)) ? 'e' : 'E').charCodeAt(0);
+                next = ((next == {{{ charCode('g') }}}) ? 'e' : 'E').charCodeAt(0);
                 precision--;
               }
               effectivePrecision = Math.min(precision, 20);
             }
 
-            if (next == 'e'.charCodeAt(0) || next == 'E'.charCodeAt(0)) {
+            if (next == {{{ charCode('e') }}} || next == {{{ charCode('E') }}}) {
               argText = currArg.toExponential(effectivePrecision);
               // Make sure the exponent has at least 2 digits.
               if (/[eE][-+]\d$/.test(argText)) {
                 argText = argText.slice(0, -1) + '0' + argText.slice(-1);
               }
-            } else if (next == 'f'.charCodeAt(0) || next == 'F'.charCodeAt(0)) {
+            } else if (next == {{{ charCode('f') }}} || next == {{{ charCode('F') }}}) {
               argText = currArg.toFixed(effectivePrecision);
             }
 
@@ -2938,7 +2940,7 @@ LibraryManager.library = {
             argText = parts[0] + (parts.length > 1 ? 'e' + parts[1] : '');
 
             // Capitalize 'E' if needed.
-            if (next == 'E'.charCodeAt(0)) argText = argText.toUpperCase();
+            if (next == {{{ charCode('E') }}}) argText = argText.toUpperCase();
 
             // Add sign.
             if (flagAlwaysSigned && currArg >= 0) {
@@ -2960,20 +2962,20 @@ LibraryManager.library = {
           }
 
           // Adjust case.
-          if (next < 'a'.charCodeAt(0)) argText = argText.toUpperCase();
+          if (next < {{{ charCode('a') }}}) argText = argText.toUpperCase();
 
           // Insert the result into the buffer.
           argText.split('').forEach(function(chr) {
             ret.push(chr.charCodeAt(0));
           });
-        } else if (next == 's'.charCodeAt(0)) {
+        } else if (next == {{{ charCode('s') }}}) {
           // String.
           var arg = getNextArg('i8*') || nullString;
           var argLength = _strlen(arg);
           if (precisionSet) argLength = Math.min(argLength, precision);
           if (!flagLeftAlign) {
             while (argLength < width--) {
-              ret.push(' '.charCodeAt(0));
+              ret.push({{{ charCode(' ') }}});
             }
           }
           for (var i = 0; i < argLength; i++) {
@@ -2981,21 +2983,21 @@ LibraryManager.library = {
           }
           if (flagLeftAlign) {
             while (argLength < width--) {
-              ret.push(' '.charCodeAt(0));
+              ret.push({{{ charCode(' ') }}});
             }
           }
-        } else if (next == 'c'.charCodeAt(0)) {
+        } else if (next == {{{ charCode('c') }}}) {
           // Character.
           if (flagLeftAlign) ret.push(getNextArg('i8'));
           while (--width > 0) {
-            ret.push(' '.charCodeAt(0));
+            ret.push({{{ charCode(' ') }}});
           }
           if (!flagLeftAlign) ret.push(getNextArg('i8'));
-        } else if (next == 'n'.charCodeAt(0)) {
+        } else if (next == {{{ charCode('n') }}}) {
           // Write the length written so far to the next parameter.
           var ptr = getNextArg('i32*');
           {{{ makeSetValue('ptr', '0', 'ret.length', 'i32') }}}
-        } else if (next == '%'.charCodeAt(0)) {
+        } else if (next == {{{ charCode('%') }}}) {
           // Literal percent sign.
           ret.push(curr);
         } else {
@@ -3144,7 +3146,7 @@ LibraryManager.library = {
     var streamObj = FS.streams[stream];
     if (streamObj.error || streamObj.eof) return 0;
     var byte_;
-    for (var i = 0; i < n - 1 && byte_ != '\n'.charCodeAt(0); i++) {
+    for (var i = 0; i < n - 1 && byte_ != {{{ charCode('\n') }}}; i++) {
       byte_ = _fgetc(stream);
       if (byte_ == -1) {
         if (streamObj.error) return 0;
@@ -3250,7 +3252,7 @@ LibraryManager.library = {
     if (ret < 0) {
       return ret;
     } else {
-      var newlineRet = _fputc('\n'.charCodeAt(0), stdout);
+      var newlineRet = _fputc({{{ charCode('\n') }}}, stdout);
       return (newlineRet < 0) ? -1 : ret + 1;
     }
   },
@@ -3376,8 +3378,8 @@ LibraryManager.library = {
     var stdout = {{{ makeGetValue(makeGlobalUse('_stdout'), '0', 'void*') }}};
     if (s) {
       _fputs(s, stdout);
-      _fputc(':'.charCodeAt(0), stdout);
-      _fputc(' '.charCodeAt(0), stdout);
+      _fputc({{{ charCode(':') }}}, stdout);
+      _fputc({{{ charCode(' ') }}}, stdout);
     }
     var errnum = {{{ makeGetValue('___errno_location()', '0', 'i32') }}};
     _puts(_strerror(errnum));
@@ -3750,19 +3752,19 @@ LibraryManager.library = {
 
     // Check for a plus/minus sign.
     var multiplier = 1;
-    if ({{{ makeGetValue('str', 0, 'i8') }}} == '-'.charCodeAt(0)) {
+    if ({{{ makeGetValue('str', 0, 'i8') }}} == {{{ charCode('-') }}}) {
       multiplier = -1;
       str++;
-    } else if ({{{ makeGetValue('str', 0, 'i8') }}} == '+'.charCodeAt(0)) {
+    } else if ({{{ makeGetValue('str', 0, 'i8') }}} == {{{ charCode('+') }}}) {
       str++;
     }
 
     // Find base.
     var finalBase = base;
     if (!finalBase) {
-      if ({{{ makeGetValue('str', 0, 'i8') }}} == '0'.charCodeAt(0)) {
-        if ({{{ makeGetValue('str+1', 0, 'i8') }}} == 'x'.charCodeAt(0) ||
-            {{{ makeGetValue('str+1', 0, 'i8') }}} == 'X'.charCodeAt(0)) {
+      if ({{{ makeGetValue('str', 0, 'i8') }}} == {{{ charCode('0') }}}) {
+        if ({{{ makeGetValue('str+1', 0, 'i8') }}} == {{{ charCode('x') }}} ||
+            {{{ makeGetValue('str+1', 0, 'i8') }}} == {{{ charCode('X') }}}) {
           finalBase = 16;
           str += 2;
         } else {
@@ -3826,9 +3828,9 @@ LibraryManager.library = {
     while (_isspace({{{ makeGetValue('str', 0, 'i8') }}})) str++;
 
     // Check for a plus/minus sign.
-    if ({{{ makeGetValue('str', 0, 'i8') }}} == '-'.charCodeAt(0)) {
+    if ({{{ makeGetValue('str', 0, 'i8') }}} == {{{ charCode('-') }}}) {
       str++;
-    } else if ({{{ makeGetValue('str', 0, 'i8') }}} == '+'.charCodeAt(0)) {
+    } else if ({{{ makeGetValue('str', 0, 'i8') }}} == {{{ charCode('+') }}}) {
       str++;
     }
 
@@ -3836,9 +3838,9 @@ LibraryManager.library = {
     var ok = false;
     var finalBase = base;
     if (!finalBase) {
-      if ({{{ makeGetValue('str', 0, 'i8') }}} == '0'.charCodeAt(0)) {
-        if ({{{ makeGetValue('str+1', 0, 'i8') }}} == 'x'.charCodeAt(0) ||
-            {{{ makeGetValue('str+1', 0, 'i8') }}} == 'X'.charCodeAt(0)) {
+      if ({{{ makeGetValue('str', 0, 'i8') }}} == {{{ charCode('0') }}}) {
+        if ({{{ makeGetValue('str+1', 0, 'i8') }}} == {{{ charCode('x') }}} ||
+            {{{ makeGetValue('str+1', 0, 'i8') }}} == {{{ charCode('X') }}}) {
           finalBase = 16;
           str += 2;
         } else {
@@ -4423,9 +4425,12 @@ LibraryManager.library = {
   // We always assume ASCII locale.
   strcoll: 'strcmp',
 
+  strcasecmp__asm: true,
+  strcasecmp__sig: 'iii',
   strcasecmp__deps: ['strncasecmp'],
   strcasecmp: function(px, py) {
-    return _strncasecmp(px, py, TOTAL_MEMORY);
+    px = px|0; py = py|0;
+    return _strncasecmp(px, py, -1)|0;
   },
 
   strncmp: function(px, py, n) {
@@ -4446,20 +4451,23 @@ LibraryManager.library = {
     return 0;
   },
 
+  strncasecmp__asm: true,
+  strncasecmp__sig: 'iiii',
   strncasecmp__deps: ['tolower'],
   strncasecmp: function(px, py, n) {
-    var i = 0;
-    while (i < n) {
-      var x = _tolower({{{ makeGetValue('px', 'i', 'i8', 0, 1) }}});
-      var y = _tolower({{{ makeGetValue('py', 'i', 'i8', 0, 1) }}});
-      if (x == y && x == 0) return 0;
-      if (x == 0) return -1;
-      if (y == 0) return 1;
-      if (x == y) {
-        i ++;
+    px = px|0; py = py|0; n = n|0;
+    var i = 0, x = 0, y = 0;
+    while ((i>>>0) < (n>>>0)) {
+      x = _tolower({{{ makeGetValueAsm('px', 'i', 'i8', 0, 1) }}});
+      y = _tolower({{{ makeGetValueAsm('py', 'i', 'i8', 0, 1) }}});
+      if (((x|0) == (y|0)) & ((x|0) == 0)) return 0;
+      if ((x|0) == 0) return -1;
+      if ((y|0) == 0) return 1;
+      if ((x|0) == (y|0)) {
+        i = (i + 1)|0;
         continue;
       } else {
-        return x > y ? 1 : -1;
+        return ((x>>>0) > (y>>>0) ? 1 : -1)|0;
       }
     }
     return 0;
@@ -4667,8 +4675,8 @@ LibraryManager.library = {
     return chr & 0x7F;
   },
   toupper: function(chr) {
-    if (chr >= 'a'.charCodeAt(0) && chr <= 'z'.charCodeAt(0)) {
-      return chr - 'a'.charCodeAt(0) + 'A'.charCodeAt(0);
+    if (chr >= {{{ charCode('a') }}} && chr <= {{{ charCode('z') }}}) {
+      return chr - {{{ charCode('a') }}} + {{{ charCode('A') }}};
     } else {
       return chr;
     }
@@ -4687,41 +4695,41 @@ LibraryManager.library = {
 
   // The following functions are defined as macros in glibc.
   islower: function(chr) {
-    return chr >= 'a'.charCodeAt(0) && chr <= 'z'.charCodeAt(0);
+    return chr >= {{{ charCode('a') }}} && chr <= {{{ charCode('z') }}};
   },
   isupper: function(chr) {
-    return chr >= 'A'.charCodeAt(0) && chr <= 'Z'.charCodeAt(0);
+    return chr >= {{{ charCode('A') }}} && chr <= {{{ charCode('Z') }}};
   },
   isalpha: function(chr) {
-    return (chr >= 'a'.charCodeAt(0) && chr <= 'z'.charCodeAt(0)) ||
-           (chr >= 'A'.charCodeAt(0) && chr <= 'Z'.charCodeAt(0));
+    return (chr >= {{{ charCode('a') }}} && chr <= {{{ charCode('z') }}}) ||
+           (chr >= {{{ charCode('A') }}} && chr <= {{{ charCode('Z') }}});
   },
   isdigit: function(chr) {
-    return chr >= '0'.charCodeAt(0) && chr <= '9'.charCodeAt(0);
+    return chr >= {{{ charCode('0') }}} && chr <= {{{ charCode('9') }}};
   },
   isdigit_l: 'isdigit', // no locale support yet
   isxdigit: function(chr) {
-    return (chr >= '0'.charCodeAt(0) && chr <= '9'.charCodeAt(0)) ||
-           (chr >= 'a'.charCodeAt(0) && chr <= 'f'.charCodeAt(0)) ||
-           (chr >= 'A'.charCodeAt(0) && chr <= 'F'.charCodeAt(0));
+    return (chr >= {{{ charCode('0') }}} && chr <= {{{ charCode('9') }}}) ||
+           (chr >= {{{ charCode('a') }}} && chr <= {{{ charCode('f') }}}) ||
+           (chr >= {{{ charCode('A') }}} && chr <= {{{ charCode('F') }}});
   },
   isxdigit_l: 'isxdigit', // no locale support yet
   isalnum: function(chr) {
-    return (chr >= '0'.charCodeAt(0) && chr <= '9'.charCodeAt(0)) ||
-           (chr >= 'a'.charCodeAt(0) && chr <= 'z'.charCodeAt(0)) ||
-           (chr >= 'A'.charCodeAt(0) && chr <= 'Z'.charCodeAt(0));
+    return (chr >= {{{ charCode('0') }}} && chr <= {{{ charCode('9') }}}) ||
+           (chr >= {{{ charCode('a') }}} && chr <= {{{ charCode('z') }}}) ||
+           (chr >= {{{ charCode('A') }}} && chr <= {{{ charCode('Z') }}});
   },
   ispunct: function(chr) {
-    return (chr >= '!'.charCodeAt(0) && chr <= '/'.charCodeAt(0)) ||
-           (chr >= ':'.charCodeAt(0) && chr <= '@'.charCodeAt(0)) ||
-           (chr >= '['.charCodeAt(0) && chr <= '`'.charCodeAt(0)) ||
-           (chr >= '{'.charCodeAt(0) && chr <= '~'.charCodeAt(0));
+    return (chr >= {{{ charCode('!') }}} && chr <= {{{ charCode('/') }}}) ||
+           (chr >= {{{ charCode(':') }}} && chr <= {{{ charCode('@') }}}) ||
+           (chr >= {{{ charCode('[') }}} && chr <= {{{ charCode('`') }}}) ||
+           (chr >= {{{ charCode('{') }}} && chr <= {{{ charCode('~') }}});
   },
   isspace: function(chr) {
     return chr in { 32: 0, 9: 0, 10: 0, 11: 0, 12: 0, 13: 0 };
   },
   isblank: function(chr) {
-    return chr == ' '.charCodeAt(0) || chr == '\t'.charCodeAt(0);
+    return chr == {{{ charCode(' ') }}} || chr == {{{ charCode('\t') }}};
   },
   iscntrl: function(chr) {
     return (0 <= chr && chr <= 0x1F) || chr === 0x7F;
@@ -7449,4 +7457,5 @@ function autoAddDeps(object, name) {
     }
   }
 }
+
 

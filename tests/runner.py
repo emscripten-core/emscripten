@@ -5253,6 +5253,41 @@ at function.:blag
         '''
       self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected))
 
+    def test_vsnprintf(self):
+      src = r'''
+        #include <stdio.h>
+        #include <stdarg.h>
+        #include <stdint.h>
+
+        void printy(const char *f, ...)
+        {
+          char buffer[256];
+          va_list args;
+          va_start(args, f);
+          vsnprintf(buffer, 256, f, args);
+          puts(buffer);
+          va_end(args);
+        }
+
+        int main(int argc, char **argv) {
+          int64_t x = argc - 1;
+          int64_t y = argc - 1 + 0x400000;
+          if (x % 3 == 2) y *= 2;
+
+          printy("0x%llx_0x%llx", x, y);
+          printy("0x%llx_0x%llx", x, x);
+          printy("0x%llx_0x%llx", y, x);
+          printy("0x%llx_0x%llx", y, y);
+
+          return 0;
+        }
+      '''
+      self.do_run(src, '''0x0_0x400000
+0x0_0x0
+0x400000_0x0
+0x400000_0x400000
+''')
+
     def test_printf_more(self):
       src = r'''
         #include <stdio.h>
@@ -6077,6 +6112,8 @@ def process(filename):
       self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=add_pre_run_and_checks)
 
     def test_utf(self):
+      if self.emcc_args and 'UTF_STRING_SUPPORT=0' in self.emcc_args: return self.skip('need utf support')
+
       self.banned_js_engines = [SPIDERMONKEY_ENGINE] # only node handles utf well
       Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc']
 
@@ -7887,7 +7924,8 @@ def process(filename):
 
     def test_scriptaclass(self):
         if self.emcc_args is None: return self.skip('requires emcc')
-        if Settings.ASM_JS: return self.skip('asm does not bindings generator yet')
+
+        Settings.EXPORT_BINDINGS = 1
 
         header_filename = os.path.join(self.get_dir(), 'header.h')
         header = '''
@@ -8062,6 +8100,7 @@ def process(filename):
           Module.Child2.prototype.runVirtualFunc(c2);
           c2.virtualFunc2();
 
+''' + ('' if Settings.ASM_JS else '''
           // extend the class from JS
           var c3 = new Module.Child2;
           Module.customizeVTable(c3, [{
@@ -8082,6 +8121,7 @@ def process(filename):
           c2.virtualFunc(); // original should remain the same
           Module.Child2.prototype.runVirtualFunc(c2);
           c2.virtualFunc2();
+''') + '''
 
           Module.print('*ok*');
         \'\'\'
@@ -8120,7 +8160,7 @@ Child2:9
 *static*
 *virtualf*
 *virtualf*
-*virtualf2*
+*virtualf2*''' + ('' if Settings.ASM_JS else '''
 Parent:9
 Child2:9
 *js virtualf replacement*
@@ -8128,13 +8168,14 @@ Child2:9
 *js virtualf2 replacement*
 *virtualf*
 *virtualf*
-*virtualf2*
+*virtualf2*''') + '''
 *ok*
 ''', post_build=[post2, post3])
 
     def test_scriptaclass_2(self):
         if self.emcc_args is None: return self.skip('requires emcc')
-        if Settings.ASM_JS: return self.skip('asm does not bindings generator yet')
+
+        Settings.EXPORT_BINDINGS = 1
 
         header_filename = os.path.join(self.get_dir(), 'header.h')
         header = '''
@@ -8751,7 +8792,7 @@ TT = %s
 
   # asm.js
   exec('asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=1"])')
-  exec('asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=1", "-g", "-s", "ASSERTIONS=1"])')
+  exec('asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=1", "-g", "-s", "ASSERTIONS=1", "-s", "UTF_STRING_SUPPORT=0"])')
 
   # Make custom runs with various options
   for compiler, quantum, embetter, typed_arrays, llvm_opts in [
@@ -9288,7 +9329,7 @@ f.close()
       filename = self.in_dir('src.cpp')
       open(filename, 'w').write(src)
       out, err = Popen([PYTHON, EMCC, filename, '-s', 'ASM_JS=1', '-O2'], stderr=PIPE).communicate()
-      assert 'Warning: Unresolved symbol' in err, 'always warn on undefs in asm, since it breaks validation'
+      assert 'Unresolved symbol' in err, 'always warn on undefs in asm, since it breaks validation: ' + err
 
     def test_redundant_link(self):
       lib = "int mult() { return 1; }"
@@ -10983,6 +11024,13 @@ elif 'browser' in str(sys.argv):
       self.reftest(path_from_root('tests', 'screenshot-fog-linear.png'))
       Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_fog_linear.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png', '-s', 'GL_TESTING=1']).communicate()
       self.run_browser('something.html', 'You should see an image with fog.', '/report_result?0')
+
+    def test_openal_playback(self):
+      shutil.copyfile(path_from_root('tests', 'sounds', 'audio.wav'), os.path.join(self.get_dir(), 'audio.wav'))
+      open(os.path.join(self.get_dir(), 'openal_playback.cpp'), 'w').write(self.with_report_result(open(path_from_root('tests', 'openal_playback.cpp')).read()))
+
+      Popen([PYTHON, EMCC, '-O2', os.path.join(self.get_dir(), 'openal_playback.cpp'), '--preload-file', 'audio.wav', '-o', 'page.html']).communicate()
+      self.run_browser('page.html', '', '/report_result?1')
 
     def test_worker(self):
       # Test running in a web worker

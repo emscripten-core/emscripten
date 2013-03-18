@@ -443,6 +443,23 @@ var LibrarySDL = {
       return false;
     },
 
+    offsetsTemp: { left: 0, top: 0 }, // temporary object to avoid generating garbage in offsets(). assumes the object is not captured
+
+    offsets: function(element) {
+      var left = 0;
+      var top = 0;
+
+      do {
+        left += element.offsetLeft;
+        top += element.offsetTop;
+      } while (element = element.offsetParent)
+
+      var ret = SDL.offsetsTemp;
+      ret.left = left;
+      ret.top = top;
+      return ret;
+    },
+
     makeCEvent: function(event, ptr) {
       if (typeof event === 'number') {
         // This is a pointer to a native C event that was SDL_PushEvent'ed
@@ -524,8 +541,9 @@ var LibrarySDL = {
           } else {
             // Otherwise, calculate the movement based on the changes
             // in the coordinates.
-            var x = event.pageX - Module["canvas"].offsetLeft;
-            var y = event.pageY - Module["canvas"].offsetTop;
+            var offsets = SDL.offsets(Module["canvas"]);
+            var x = event.pageX - offsets.left;
+            var y = event.pageY - offsets.top;
             var movementX = x - SDL.mouseX;
             var movementY = y - SDL.mouseY;
           }
@@ -912,10 +930,11 @@ var LibrarySDL = {
 
   SDL_WarpMouse: function(x, y) {
     return; // TODO: implement this in a non-buggy way. Need to keep relative mouse movements correct after calling this
+    var offsets = SDL.offsets(Module["canvas"]);
     SDL.events.push({
       type: 'mousemove',
-      pageX: x + Module['canvas'].offsetLeft,
-      pageY: y + Module['canvas'].offsetTop
+      pageX: x + offsets.left,
+      pageY: y + offsets.top
     });
   },
 
