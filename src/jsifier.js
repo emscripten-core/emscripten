@@ -512,7 +512,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       } else if (LibraryManager.library.hasOwnProperty(shortident)) {
         item.JS = addFromLibrary(shortident);
       } else if (!LibraryManager.library.hasOwnProperty(shortident + '__inline')) {
-        if (!(item.ident in DEAD_FUNCTIONS)) {
+        if (!(item.ident in DEAD_FUNCTIONS) && !UNRESOLVED_AS_DEAD) {
           item.JS = 'var ' + item.ident + '; // stub for ' + item.ident;
           if (ASM_JS) {
             throw 'Unresolved symbol: ' + item.ident + ', this must be corrected for asm.js validation to succeed. Consider adding it to DEAD_FUNCTIONS.';

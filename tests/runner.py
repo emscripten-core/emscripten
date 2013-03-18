@@ -10001,7 +10001,7 @@ f.close()
             (1, 0, 3, 2), (1, 1, 4, 5)
           ]:
           print asm, linkable, chunks, js_chunks
-          output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O1', '-s', 'LINKABLE=%d' % linkable, '-s', 'ASM_JS=%d' % asm], stdout=PIPE, stderr=PIPE).communicate()
+          output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O1', '-s', 'LINKABLE=%d' % linkable, '-s', 'ASM_JS=%d' % asm, '-s', 'UNRESOLVED_AS_DEAD=1'], stdout=PIPE, stderr=PIPE).communicate()
           assert 'phase 2 working on %d chunks' %chunks in err, err
           assert 'splitting up js optimization into %d chunks' % js_chunks in err, err
       finally:

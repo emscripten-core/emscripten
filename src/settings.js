@@ -344,8 +344,14 @@ var PGO = 0; // Enables profile-guided optimization in the form of runtime check
              // can pass to DEAD_FUNCTIONS (you can also emit the list manually by
              // calling PGOMonitor.dump());
 var DEAD_FUNCTIONS = []; // A list of functions that no code will be emitted for, and
-                         // a runtime abort will happen if they are called
+                         // a runtime abort will happen if they are called. If
+                         // such a function is an unresolved reference, that is not
+                         // considered an error. 
                          // TODO: options to lazily load such functions
+var UNRESOLVED_AS_DEAD = 0; // Handle all unresolved functions as if they were in the
+                            // list of dead functions. This is a quick way to turn
+                            // all unresolved references into runtime aborts (and not
+                            // get compile-time warnings or errors on them).
 
 var EXPLICIT_ZEXT = 0; // If 1, generate an explicit conversion of zext i1 to i32, using ?:
 
