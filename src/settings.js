@@ -163,6 +163,8 @@ var LIBRARY_DEBUG = 0; // Print out when we enter a library call (library*.js). 
                        //   emscripten_run_script("Runtime.debug = ...;");
 var SOCKET_DEBUG = 0; // Log out socket/network data transfer.
 
+var OPENAL_DEBUG = 0; // Print out debugging information from our OpenAL implementation.
+
 var GL_DEBUG = 0; // Print out all calls into WebGL. As with LIBRARY_DEBUG, you can set a runtime
                   // option, in this case GL.debug.
 var GL_TESTING = 0; // When enabled, sets preserveDrawingBuffer in the context, to allow tests to work (but adds overhead)
