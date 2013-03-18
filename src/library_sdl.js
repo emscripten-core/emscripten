@@ -443,6 +443,8 @@ var LibrarySDL = {
       return false;
     },
 
+    offsetsTemp: { left: 0, top: 0 }, // temporary object to avoid generating garbage in offsets(). assumes the object is not captured
+
     offsets: function(element) {
       var left = 0;
       var top = 0;
@@ -452,10 +454,10 @@ var LibrarySDL = {
         top += element.offsetTop;
       } while (element = element.offsetParent)
 
-      return { 
-        left: left,
-        top: top
-      }
+      var ret = SDL.offsetsTemp;
+      ret.left = left;
+      ret.top = top;
+      return ret;
     },
 
     makeCEvent: function(event, ptr) {
