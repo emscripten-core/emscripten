@@ -7332,6 +7332,17 @@ LibraryManager.library = {
   // emscripten.h
   // ==========================================================================
 
+  emscripten_download_from_fs: function(ptr,size,mimetype) {
+	if (_emscripten_download_from_fs.mode) {
+      _emscripten_download_from_fs.mode = allocate(intArrayFromString('r'), 'i8', ALLOC_NORMAL);
+    }
+	var f =_fopen(Pointer_stringify(ptr),_emscripten_download_from_fs.mode);
+	var buffer = _malloc(size);
+	var readLen = _read(f,buffer,size);
+	var data = Pointer_dumpBase64(buffer,readLen)
+	window.open("data:"+Pointer_stringify(mimetype)+";charset=UTF-8;base64,"+data,'_blank');
+	_free(buffer)
+  }
   emscripten_run_script: function(ptr) {
     eval(Pointer_stringify(ptr));
   },

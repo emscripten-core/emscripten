@@ -11,3 +11,7 @@ src/relooper/*.o
 src/relooper/*.out
 
 tests/fake/
+/em++.exe
+/emar.exe
+/emcc.exe
+/emranlib.exe
