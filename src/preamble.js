@@ -505,7 +505,7 @@ Module['allocate'] = allocate;
 function Pointer_stringify(ptr, /* optional */ length) {
 #if UTF_STRING_SUPPORT
   var utf8 = new Runtime.UTF8Processor();
-  var nullTerminated = typeof(length) == "undefined";
+  var nullTerminated = !length;
   var ret = "";
   var i = 0;
   var t;
