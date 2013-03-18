@@ -12073,7 +12073,8 @@ ok.
                                     native=True)
 
       emcc_args = js_lib + ['-I' + path_from_root('tests', 'bullet', 'src'),
-                            '-I' + path_from_root('tests', 'bullet', 'Demos', 'Benchmarks')]
+                            '-I' + path_from_root('tests', 'bullet', 'Demos', 'Benchmarks'),
+                            '-s', 'DEAD_FUNCTIONS=["__ZSt9terminatev"]']
       native_args = native_lib + ['-I' + path_from_root('tests', 'bullet', 'src'),
                                   '-I' + path_from_root('tests', 'bullet', 'Demos', 'Benchmarks')]
 
