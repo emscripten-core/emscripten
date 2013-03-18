@@ -114,6 +114,7 @@ namespace emscripten {
                 TYPEID pointerType,
                 TYPEID constPointerType,
                 TYPEID baseClassType,
+                GenericFunction getActualType,
                 GenericFunction upcast,
                 GenericFunction downcast,
                 bool isPolymorphic,
@@ -648,6 +649,11 @@ namespace emscripten {
                 return nullptr;
             }
         };
+
+        template<typename T>
+        inline TYPEID getActualType(T* ptr) {
+            return reinterpret_cast<TYPEID>(&typeid(ptr));
+        };
     }
 
     template<typename BaseClass>
@@ -692,7 +698,7 @@ namespace emscripten {
         template<typename T>
         struct is_ptr<ptr<T>> {
             enum { value = true };
-        };
+        };        
     };
 
     template<typename ClassType, typename BaseSpecifier = internal::NoBaseClass>
@@ -711,9 +717,10 @@ namespace emscripten {
                 TypeID<AllowedRawPointer<ClassType>>::get(),
                 TypeID<AllowedRawPointer<const ClassType>>::get(),
                 BaseSpecifier::get(),
+                reinterpret_cast<GenericFunction>(&getActualType<ClassType>),
                 BaseSpecifier::template getUpcaster<ClassType>(),
                 BaseSpecifier::template getDowncaster<ClassType>(),
-                std::is_polymorphic<ClassType>::value,
+                std::is_polymorphic<ClassType>::value, // TODO: may not be necessary
                 name,
                 reinterpret_cast<GenericFunction>(&raw_destructor<ClassType>));
         }
