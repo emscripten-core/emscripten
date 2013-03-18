@@ -41,7 +41,9 @@ var LibraryOpenAL = {
     }
 
     if (attrList) {
+#if DEBUG_AL
       console.log("The attrList argument of alcCreateContext is not supported yet");
+#endif
       return 0;
     }
 
@@ -151,10 +153,14 @@ var LibraryOpenAL = {
       AL.currentContext.src[source - 1].gain.gain.value = value;
       break;
     case 0x1003 /* AL_PITCH */:
+#if DEBUG_AL
       console.log("alSourcef was called with AL_PITCH, but Web Audio does not support static pitch changes");
+#endif
       break;
     default:
+#if DEBUG_AL
       console.log("alSourcef with param " + param + " not implemented yet");
+#endif
       break;
     }
   },
@@ -184,7 +190,9 @@ var LibraryOpenAL = {
         );
       break;
     default:
+#if DEBUG_AL
       console.log("alSourcefv with param " + param + " not implemented yet");
+#endif
       break;
     }
   },
@@ -199,7 +207,9 @@ var LibraryOpenAL = {
       return;
     }
     if (count != 1) {
+#if DEBUG_AL
       console.error("Queuing multiple buffers using alSourceQueueBuffers is not supported yet");
+#endif
       return;
     }
     for (var i = 0; i < count; ++i) {
@@ -223,7 +233,9 @@ var LibraryOpenAL = {
       return;
     }
     if (count != 1) {
+#if DEBUG_AL
       console.error("Queuing multiple buffers using alSourceUnqueueBuffers is not supported yet");
+#endif
       return;
     }
     for (var i = 0; i < count; ++i) {
@@ -440,12 +452,16 @@ var LibraryOpenAL = {
 
   alDistanceModel: function(model) {
     if (model != 0 /* AL_NONE */) {
+#if DEBUG_AL
       console.log("Only alDistanceModel(AL_NONE) is currently supported");
+#endif
     }
   },
 
   alListenerfv: function(param, values) {
+#if DEBUG_AL
     console.log("alListenerfv is not supported yet");
+#endif
   },
 
   alIsExtensionPresent: function(extName) {
