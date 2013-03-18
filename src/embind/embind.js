@@ -655,6 +655,7 @@ function RegisteredClass(
     isPolymorphic,
     baseClassRawType,
     baseClass,
+    getActualType,
     upcast,
     downcast
 ) {
@@ -663,6 +664,7 @@ function RegisteredClass(
     this.isPolymorphic = isPolymorphic;
     this.baseClassRawType = baseClassRawType;
     this.baseClass = baseClass;
+    this.getActualType = getActualType;
     this.upcast = upcast;
     this.downcast = downcast;
 }
@@ -672,6 +674,7 @@ function __embind_register_class(
     rawPointerType,
     rawConstPointerType,
     baseClassRawType,
+    getActualType,
     upcast,
     downcast,
     isPolymorphic,
@@ -680,6 +683,7 @@ function __embind_register_class(
 ) {
     name = Pointer_stringify(name);
     rawDestructor = FUNCTION_TABLE[rawDestructor];
+    getActualType = FUNCTION_TABLE[getActualType];
     upcast = FUNCTION_TABLE[upcast];
     downcast = FUNCTION_TABLE[downcast];
     var legalFunctionName = makeLegalFunctionName(name);
@@ -715,6 +719,7 @@ function __embind_register_class(
             isPolymorphic,
             baseClassRawType,
             baseClass,
+            getActualType,
             upcast,
             downcast);
 
