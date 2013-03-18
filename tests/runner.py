@@ -5254,6 +5254,8 @@ at function.:blag
       self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected))
 
     def test_vsnprintf(self):
+      if self.emcc_args is None: return self.skip('needs i64 math')
+
       src = r'''
         #include <stdio.h>
         #include <stdarg.h>
@@ -5279,6 +5281,17 @@ at function.:blag
           printy("0x%llx_0x%llx", y, x);
           printy("0x%llx_0x%llx", y, y);
 
+          {
+            uint64_t A = 0x800000;
+            uint64_t B = 0x800000000000ULL;
+            printy("0x%llx_0x%llx", A, B);
+          }
+          {
+            uint64_t A = 0x800;
+            uint64_t B = 0x12340000000000ULL;
+            printy("0x%llx_0x%llx", A, B);
+          }
+
           return 0;
         }
       '''
@@ -5286,6 +5299,8 @@ at function.:blag
 0x0_0x0
 0x400000_0x0
 0x400000_0x400000
+0x800000_0x800000000000
+0x800_0x12340000000000
 ''')
 
     def test_printf_more(self):

@@ -2822,7 +2822,14 @@ LibraryManager.library = {
             prefix = flagAlternative ? '0x' : '';
 #if PRECISE_I64_MATH
             if (argSize == 8 && i64Math) {
-              argText = (origArg[1] ? (origArg[1]>>>0).toString(16) : '') + (origArg[0]>>>0).toString(16);
+              if (origArg[1]) {
+                argText = (origArg[1]>>>0).toString(16);
+                var lower = (origArg[0]>>>0).toString(16);
+                while (lower.length < 8) lower = '0' + lower;
+                argText += lower;
+              } else {
+                argText = (origArg[0]>>>0).toString(16);
+              }
             } else
 #endif
             if (currArg < 0) {
