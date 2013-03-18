@@ -1874,6 +1874,8 @@ var LibraryGL = {
         var typeIndex = attribute.type - GL.byteSizeByTypeRoot; // ensure it starts at 0 to keep the cache items dense
         temp = cacheItem[typeIndex];
         cacheItem = temp ? temp : (cacheItem[typeIndex] = GL.immediate.rendererCacheItemTemplate.slice());
+        temp = cacheItem[attribute.stride];
+        cacheItem = temp ? temp : (cacheItem[attribute.stride] = GL.immediate.rendererCacheItemTemplate.slice());
       }
       var fogParam;
       if (GLEmulation.fogEnabled) {
