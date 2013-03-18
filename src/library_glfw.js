@@ -19,6 +19,7 @@
  *
  * Authors:
  * - Éloi Rivard <eloi.rivard@gmail.com>
+ *
  ******************************************************************************/
 
 var LibraryGLFW = {
@@ -412,14 +413,14 @@ var LibraryGLFW = {
 	},
 
 	/* Video mode functions */
-	glfwGetVideoModes : function( list, maxcount ) { throw "glfwGetVideoModes is not implemented yet."; },
+	glfwGetVideoModes : function( list, maxcount ) { throw "glfwGetVideoModes is not implemented."; },
 	
-	glfwGetDesktopMode : function( mode ) { throw "glfwGetDesktopMode is not implemented yet."; },
+	glfwGetDesktopMode : function( mode ) { throw "glfwGetDesktopMode is not implemented."; },
 
 	/* Input handling */
 	glfwPollEvents : function() {},
 	
-	glfwWaitEvents : function() { throw "glfwWaitEvents is not implemented yet."; },
+	glfwWaitEvents : function() {},
 
 	glfwGetKey : function( key ) {
 		return GLFW.keys[key];
@@ -434,7 +435,8 @@ var LibraryGLFW = {
 		setValue(ypos, GLFW.lastY, 'i32');
 	},
 
-	glfwSetMousePos : function( xpos, ypos ) { throw "glfwSetMousePos is not implemented yet."; },
+  //I believe it is not possible to move the mouse with javascript
+	glfwSetMousePos : function( xpos, ypos ) {},
 	
 	glfwGetMouseWheel : function() {
 	  return GLFW.wheelPos;
@@ -465,11 +467,11 @@ var LibraryGLFW = {
 	},
 
 	/* Joystick input */
-	glfwGetJoystickParam : function( joy, param ) { throw "glfwGetJoystickParam is not implemented yet."; },
+	glfwGetJoystickParam : function( joy, param ) { throw "glfwGetJoystickParam is not implemented."; },
 	
-	glfwGetJoystickPos : function( joy, pos, numaxes ) { throw "glfwGetJoystickPos is not implemented yet."; },
+	glfwGetJoystickPos : function( joy, pos, numaxes ) { throw "glfwGetJoystickPos is not implemented."; },
 	
-	glfwGetJoystickButtons : function( joy, buttons, numbuttons ) { throw "glfwGetJoystickButtons is not implemented yet."; },
+	glfwGetJoystickButtons : function( joy, buttons, numbuttons ) { throw "glfwGetJoystickButtons is not implemented."; },
 
 	/* Time */
 	glfwGetTime : function() {
@@ -511,7 +513,7 @@ var LibraryGLFW = {
     return 0;  
 	},
 
-	glfwDestroyThread : function( ID ) { throw "glfwDestroyThread is not implemented yet."; },
+	glfwDestroyThread : function( ID ) {},
 	
 	glfwWaitThread : function( ID, waitmode ) {},
 	
@@ -520,23 +522,23 @@ var LibraryGLFW = {
 	  return 0;
 	},
 	
-	glfwCreateMutex : function() { throw "glfwCreateMutex is not implemented yet."; },
+	glfwCreateMutex : function() { throw "glfwCreateMutex is not implemented."; },
 	
-	glfwDestroyMutex : function( mutex ) { throw "glfwDestroyMutex is not implemented yet."; },
+	glfwDestroyMutex : function( mutex ) { throw "glfwDestroyMutex is not implemented."; },
 	
-	glfwLockMutex : function( mutex ) { throw "glfwLockMutex is not implemented yet."; },
+	glfwLockMutex : function( mutex ) { throw "glfwLockMutex is not implemented."; },
 	
-	glfwUnlockMutex : function( mutex ) { throw "glfwUnlockMutex is not implemented yet."; },
+	glfwUnlockMutex : function( mutex ) { throw "glfwUnlockMutex is not implemented."; },
 	
-	glfwCreateCond : function() { throw "glfwCreateCond is not implemented yet."; },
+	glfwCreateCond : function() { throw "glfwCreateCond is not implemented."; },
 	
-	glfwDestroyCond : function( cond ) { throw "glfwDestroyCond is not implemented yet."; },
+	glfwDestroyCond : function( cond ) { throw "glfwDestroyCond is not implemented."; },
 	
-	glfwWaitCond : function( cond, mutex, timeout ) { throw "glfwWaitCond is not implemented yet."; },
+	glfwWaitCond : function( cond, mutex, timeout ) { throw "glfwWaitCond is not implemented."; },
 	
-	glfwSignalCond : function( cond ) { throw "glfwSignalCond is not implemented yet."; },
+	glfwSignalCond : function( cond ) { throw "glfwSignalCond is not implemented."; },
 	
-	glfwBroadcastCond : function( cond ) { throw "glfwBroadcastCond is not implemented yet."; },
+	glfwBroadcastCond : function( cond ) { throw "glfwBroadcastCond is not implemented."; },
 	
 	glfwGetNumberOfProcessors : function() {
 	  //Threads are disabled anyway…
@@ -553,17 +555,17 @@ var LibraryGLFW = {
 	},
 
 	/* Image/texture I/O support */
-	glfwReadImage : function( name, img, flags ) { throw "glfwReadImage is not implemented yet."; },
+	glfwReadImage : function( name, img, flags ) { throw "glfwReadImage is not implemented."; },
 	
-	glfwReadMemoryImage : function( data, size, img, flags ) { throw "glfwReadMemoryImage is not implemented yet."; },
+	glfwReadMemoryImage : function( data, size, img, flags ) { throw "glfwReadMemoryImage is not implemented."; },
 	
-	glfwFreeImage : function( img ) { throw "glfwFreeImage is not implemented yet."; },
+	glfwFreeImage : function( img ) { throw "glfwFreeImage is not implemented."; },
 	
-	glfwLoadTexture2D : function( name, flags ) { throw "glfwLoadTexture2D is not implemented yet."; },
+	glfwLoadTexture2D : function( name, flags ) { throw "glfwLoadTexture2D is not implemented."; },
 	
-	glfwLoadMemoryTexture2D : function( data, size, flags ) { throw "glfwLoadMemoryTexture2D is not implemented yet."; },
+	glfwLoadMemoryTexture2D : function( data, size, flags ) { throw "glfwLoadMemoryTexture2D is not implemented."; },
 	
-	glfwLoadTextureImage2D : function( img, flags ) { throw "glfwLoadTextureImage2D is not implemented yet."; },
+	glfwLoadTextureImage2D : function( img, flags ) { throw "glfwLoadTextureImage2D is not implemented."; },
 };
 
 autoAddDeps(LibraryGLFW, '$GLFW');
