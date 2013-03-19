@@ -6856,7 +6856,7 @@ LibraryManager.library = {
     ['i32', 'h_length'],
     ['i8**', 'h_addr_list'],
   ]),
-  /*
+
   gethostbyname__deps: ['__hostent_struct_layout'],
   gethostbyname: function(name) {
     name = Pointer_stringify(name);
@@ -6895,7 +6895,7 @@ LibraryManager.library = {
     setValue(errnum, 0, 'i32');
     return 0;
   },
-  */
+
   // ==========================================================================
   // sockets. Note that the implementation assumes all sockets are always
   // nonblocking
@@ -7124,6 +7124,10 @@ LibraryManager.library = {
       }
     }
     assert(false, 'all available ports are in use!');
+  },
+
+  connect: function() {
+
   },
 
   bind__deps: ['$Sockets', '_inet_ntop_raw', 'ntohs', 'mkport'],
