@@ -544,6 +544,14 @@ function Pointer_stringify(ptr, /* optional */ length) {
 }
 Module['Pointer_stringify'] = Pointer_stringify;
 
+function Pointer_dumpBase64(ptr,size){
+#if USE_TYPED_ARRAYS == 2
+  return Base64.encode.apply(Base64, HEAPU8.subarray(ptr, ptr + (size || _strlen(ptr))));
+#else
+  throw 'Base64 Dump Heapdump unsupported in memory modes inconsistent with USED_TYPED_ARRAYS = 2';
+#endif
+}
+Module['Pointer_dumpBase64'] = Pointer_dumpBase64;
 // Memory management
 
 var PAGE_SIZE = 4096;

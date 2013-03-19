@@ -176,6 +176,15 @@ float emscripten_random();
  */
 
 /*
+ * Export a file from the virtual file system to the 
+ * browser as a data url. Some browsers may not support
+ * this. It will open a new tab or window. Takes a
+ * path to a file, the file's size and the MIME type
+ * of the file.
+ */
+void emscripten_download_from_fs(const char* file,size_t size,const char* MIMETYPE);
+
+/*
  * Load file from url in asynchronous way. In addition to
  * fetching the URL from the network, the contents are
  * prepared so that the data is usable in IMG_Load and
