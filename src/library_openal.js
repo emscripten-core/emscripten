@@ -385,14 +385,18 @@ var LibraryOpenAL = {
       return;
     }
     var offset = 0;
-    if ("src" in AL.currentContext.src[source - 1]) {
-      // If the source is already playing, we need to resume from beginning.
-      // We do that by stopping the current source and replaying it.
-      _alSourceStop(source);
-    } else if (AL.currentContext.src[source - 1].paused) {
-      // So now we have to resume playback, remember the offset here.
-      offset = AL.currentContext.src[source - 1].pausedTime -
-               AL.currentContext.src[source - 1].playTime;
+    if ("src" in AL.currentContext.src[source - 1] &&
+        AL.currentContext.src[source - 1]["src"].buffer ==
+        AL.currentContext.src[source - 1].buffer) {
+      if (AL.currentContext.src[source - 1].paused) {
+        // So now we have to resume playback, remember the offset here.
+        offset = AL.currentContext.src[source - 1].pausedTime -
+                 AL.currentContext.src[source - 1].playTime;
+      } else {
+        // If the source is already playing, we need to resume from beginning.
+        // We do that by stopping the current source and replaying it.
+        _alSourceStop(source);
+      }
     }
     var src = AL.currentContext.ctx.createBufferSource();
     src.loop = AL.currentContext.src[source - 1].loop;
