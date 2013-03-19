@@ -5630,6 +5630,51 @@ Pass: 0.000012 0.000012''')
       '''
       self.do_run(src, '''0:173,16 1:16,173 2:183,173 3:17,287 4:98,123''')      
 
+    def test_sscanf_utf8(self):
+      src = r'''
+        #include <stdio.h>
+        int main() {
+          int count;
+          char buf1[128], buf2[128], buf3[128];
+          
+          // Latin-1 Supplement (0x0080...0x00FF)
+          count = sscanf("foo €", "%s %s", buf1, buf2);
+          printf("%s:%s,%d ", buf1, buf2, count);
+          
+          count = sscanf("© foo", "%s %s", buf1, buf2);
+          printf("%s:%s,%d ", buf1, buf2, count);
+          count = sscanf("« quote »", "%s %s %s", buf1, buf2, buf3);
+          printf("%s:%s:%s,%d ", buf1, buf2, buf3, count);
+          
+          // Latin Extended-A (0x0100...0x017F)
+          count = sscanf("ĀćĎ", "%s", buf1);
+          printf("%s,%d ", buf1, count);
+          
+          // Latin Extended-B (0x0180...0x027F)
+          count = sscanf("Ɇ", "%s", buf1);
+          printf("%s,%d ", buf1, count);
+          
+          return 0;
+        }
+      '''    
+      self.do_run(src, '''foo:€,2 ©:foo,2 «:quote:»,3 ĀćĎ,1 Ɇ,1''')
+
+    def test_fscanf_utf8(self):
+      if self.emcc_args is None: return self.skip('requires emcc')
+      src = r'''
+        #include <stdio.h>
+        int main() {
+          FILE *file = fopen("file_with_non_ascii_chars.txt", "r");
+          char buffer1[100], buffer2[100], buffer3[100];
+          int num = fscanf(file, "%s %s %s", buffer1, buffer2, buffer3);
+          printf("%d %s %s %s\n", num, buffer1, buffer2, buffer3);
+        }
+      '''
+      open('file_with_non_ascii_chars.txt', 'w').write('100€<100£ »quote« ”“’‘ﬁﬂ—')
+      self.emcc_args += ['--embed-file', 'file_with_non_ascii_chars.txt']
+      self.do_run(src, '3 100€<100£ »quote« ”“’‘ﬁﬂ—\n')
+        
+
     def test_sscanf_3(self):
       # i64
       if not Settings.USE_TYPED_ARRAYS == 2: return self.skip('64-bit sscanf only supported in ta2')
