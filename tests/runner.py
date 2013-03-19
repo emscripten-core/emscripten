@@ -5254,6 +5254,8 @@ at function.:blag
       self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected))
 
     def test_vsnprintf(self):
+      if self.emcc_args is None: return self.skip('needs i64 math')
+
       src = r'''
         #include <stdio.h>
         #include <stdarg.h>
@@ -5279,6 +5281,22 @@ at function.:blag
           printy("0x%llx_0x%llx", y, x);
           printy("0x%llx_0x%llx", y, y);
 
+          {
+            uint64_t A = 0x800000;
+            uint64_t B = 0x800000000000ULL;
+            printy("0x%llx_0x%llx", A, B);
+          }
+          {
+            uint64_t A = 0x800;
+            uint64_t B = 0x12340000000000ULL;
+            printy("0x%llx_0x%llx", A, B);
+          }
+          {
+            uint64_t A = 0x000009182746756;
+            uint64_t B = 0x192837465631ACBDULL;
+            printy("0x%llx_0x%llx", A, B);
+          }
+
           return 0;
         }
       '''
@@ -5286,6 +5304,9 @@ at function.:blag
 0x0_0x0
 0x400000_0x0
 0x400000_0x400000
+0x800000_0x800000000000
+0x800_0x12340000000000
+0x9182746756_0x192837465631acbd
 ''')
 
     def test_printf_more(self):
@@ -6112,8 +6133,6 @@ def process(filename):
       self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=add_pre_run_and_checks)
 
     def test_utf(self):
-      if self.emcc_args and 'UTF_STRING_SUPPORT=0' in self.emcc_args: return self.skip('need utf support')
-
       self.banned_js_engines = [SPIDERMONKEY_ENGINE] # only node handles utf well
       Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc']
 
@@ -7319,6 +7338,8 @@ def process(filename):
     def test_the_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
       if self.emcc_args is None: return self.skip('requires emcc')
       if Building.LLVM_OPTS and self.emcc_args is None: Settings.SAFE_HEAP = 0 # Optimizations make it so we do not have debug info on the line we need to ignore
+
+      Settings.DEAD_FUNCTIONS = ['__ZSt9terminatev']
 
       # Note: this is also a good test of per-file and per-line changes (since we have multiple files, and correct specific lines)
       if Settings.SAFE_HEAP:
@@ -8792,7 +8813,7 @@ TT = %s
 
   # asm.js
   exec('asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=1"])')
-  exec('asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=1", "-g", "-s", "ASSERTIONS=1", "-s", "UTF_STRING_SUPPORT=0"])')
+  exec('asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=1", "-g", "-s", "ASSERTIONS=1"])')
 
   # Make custom runs with various options
   for compiler, quantum, embetter, typed_arrays, llvm_opts in [
@@ -9978,7 +9999,7 @@ f.close()
             (1, 0, 3, 2), (1, 1, 4, 5)
           ]:
           print asm, linkable, chunks, js_chunks
-          output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O1', '-s', 'LINKABLE=%d' % linkable, '-s', 'ASM_JS=%d' % asm], stdout=PIPE, stderr=PIPE).communicate()
+          output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O1', '-s', 'LINKABLE=%d' % linkable, '-s', 'ASM_JS=%d' % asm, '-s', 'UNRESOLVED_AS_DEAD=1'], stdout=PIPE, stderr=PIPE).communicate()
           assert 'phase 2 working on %d chunks' %chunks in err, err
           assert 'splitting up js optimization into %d chunks' % js_chunks in err, err
       finally:
@@ -11318,6 +11339,10 @@ elif 'browser' in str(sys.argv):
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
       self.btest('gl_ps_workaround2.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png'])
 
+    def test_gl_ps_strides(self):
+      shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
+      self.btest('gl_ps_strides.c', reference='gl_ps_strides.png', args=['--preload-file', 'screenshot.png'])
+
     def test_matrix_identity(self):
       self.btest('gl_matrix_identity.c', expected=['-1882984448', '460451840'])
 
@@ -12048,7 +12073,8 @@ ok.
                                     native=True)
 
       emcc_args = js_lib + ['-I' + path_from_root('tests', 'bullet', 'src'),
-                            '-I' + path_from_root('tests', 'bullet', 'Demos', 'Benchmarks')]
+                            '-I' + path_from_root('tests', 'bullet', 'Demos', 'Benchmarks'),
+                            '-s', 'DEAD_FUNCTIONS=["__ZSt9terminatev"]']
       native_args = native_lib + ['-I' + path_from_root('tests', 'bullet', 'src'),
                                   '-I' + path_from_root('tests', 'bullet', 'Demos', 'Benchmarks')]
 

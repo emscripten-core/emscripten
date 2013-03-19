@@ -15,9 +15,7 @@ entry:
   %saved_stack = alloca i8*                       ; [#uses=2 type=i8**]
   %cleanup.dest.slot = alloca i32                 ; [#uses=1 type=i32*]
   store i32 0, i32* %retval
-  call void @llvm.dbg.declare(metadata !{i8** %str}, metadata !12), !dbg !16 ; [debug line = 6:19] [debug variable = str]
   store i8* getelementptr inbounds ([13 x i8]* @.str, i32 0, i32 0), i8** %str, align 4, !dbg !17 ; [debug line = 6:39]
-  call void @llvm.dbg.declare(metadata !{i32* %len}, metadata !18), !dbg !19 ; [debug line = 7:17] [debug variable = len]
   %0 = load i8** %str, align 4, !dbg !20          ; [#uses=1 type=i8*] [debug line = 7:23]
   %call = call i32 @strlen(i8* %0), !dbg !20      ; [#uses=1 type=i32] [debug line = 7:23]
   store i32 %call, i32* %len, align 4, !dbg !20   ; [debug line = 7:23]
@@ -26,7 +24,6 @@ entry:
   %2 = call i8* @llvm.stacksave(), !dbg !21       ; [#uses=1 type=i8*] [debug line = 8:29]
   store i8* %2, i8** %saved_stack, !dbg !21       ; [debug line = 8:29]
   %vla = alloca i8, i32 %add, align 1, !dbg !21   ; [#uses=93 type=i8*] [debug line = 8:29]
-  call void @llvm.dbg.declare(metadata !{i8* %vla}, metadata !22), !dbg !26 ; [debug line = 8:18] [debug variable = curr]
   %3 = load i32* %len, align 4, !dbg !27          ; [#uses=1 type=i32] [debug line = 13:13]
   call void @llvm.memset.p0i8.i32(i8* %vla, i8 46, i32 %3, i32 4, i1 false), !dbg !27 ; [debug line = 13:13]
   %4 = load i32* %len, align 4, !dbg !27          ; [#uses=1 type=i32] [debug line = 13:13]
@@ -209,9 +206,6 @@ entry:
   %63 = load i32* %retval, !dbg !122              ; [#uses=1 type=i32] [debug line = 40:11]
   ret i32 %63, !dbg !122                          ; [debug line = 40:11]
 }
-
-; [#uses=3]
-declare void @llvm.dbg.declare(metadata, metadata) nounwind readnone
 
 ; [#uses=1]
 declare i32 @strlen(i8*)
