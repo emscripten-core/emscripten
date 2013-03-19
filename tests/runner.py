@@ -5795,6 +5795,30 @@ def process(filename):
       self.emcc_args += ['--embed-file', 'file_with_byte_234.txt']
       self.do_run(src, '*234\n')
 
+    def test_fgets_eol(self):
+      if self.emcc_args is None: return self.skip('requires emcc')
+      src = r'''
+        #include <stdio.h>
+        char buf[32];
+        int main()
+        {
+          char *r = "SUCCESS";
+          FILE *f = fopen("eol.txt", "r");
+          while (fgets(buf, 32, f) != NULL) {
+            if (buf[0] == '\0') {
+              r = "FAIL";
+              break;
+            }
+          }
+          printf("%s\n", r);
+          fclose(f);
+          return 0;
+        }
+      '''
+      open('eol.txt', 'wb').write('\n')
+      self.emcc_args += ['--embed-file', 'eol.txt']
+      self.do_run(src, 'SUCCESS\n')
+
     def test_folders(self):
       add_pre_run = '''
 def process(filename):
