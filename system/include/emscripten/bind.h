@@ -117,7 +117,6 @@ namespace emscripten {
                 GenericFunction getActualType,
                 GenericFunction upcast,
                 GenericFunction downcast,
-                bool isPolymorphic,
                 const char* className,
                 GenericFunction destructor);
 
@@ -650,9 +649,11 @@ namespace emscripten {
             }
         };
 
+        // NOTE: this returns the class type, not the pointer type
         template<typename T>
         inline TYPEID getActualType(T* ptr) {
-            return reinterpret_cast<TYPEID>(&typeid(ptr));
+            assert(ptr);
+            return reinterpret_cast<TYPEID>(&typeid(*ptr));
         };
     }
 
@@ -720,7 +721,6 @@ namespace emscripten {
                 reinterpret_cast<GenericFunction>(&getActualType<ClassType>),
                 BaseSpecifier::template getUpcaster<ClassType>(),
                 BaseSpecifier::template getDowncaster<ClassType>(),
-                std::is_polymorphic<ClassType>::value, // TODO: may not be necessary
                 name,
                 reinterpret_cast<GenericFunction>(&raw_destructor<ClassType>));
         }

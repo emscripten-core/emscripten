@@ -3,12 +3,14 @@
 /*global FUNCTION_TABLE, HEAP32, HEAPU8*/
 /*global Pointer_stringify*/
 /*global __emval_register, _emval_handle_array, __emval_decref*/
-/*global ___getDynamicPointerType: false*/
 /*global ___typeName:false*/
-/*global ___staticPointerCast: false*/
 
+var InternalError = Module.InternalError = extendError(Error, 'InternalError');
 var BindingError = Module.BindingError = extendError(Error, 'BindingError');
-var CastError = Module.CastError = extendError(BindingError, 'CastError');
+
+function throwInternalError(value) {
+    throw new InternalError(value);
+}
 
 function throwBindingError(value) {
     throw new BindingError(value);
@@ -74,6 +76,9 @@ var registeredTypes = {};
 
 // typeID -> [callback]
 var awaitingDependencies = {};
+
+// class typeID -> {pointerType: ..., constPointerType: ...}
+var registeredPointers = {};
 
 function registerType(rawType, registeredInstance) {
     var name = registeredInstance.name;
@@ -142,17 +147,6 @@ function requireRegisteredType(rawType, humanName) {
         throwBindingError(humanName + " has unknown type " + typeName(rawType));
     }
     return impl;
-}
-
-function staticPointerCast(from, fromType, toType) {
-    if (!from) {
-        return from;
-    }
-    var to = ___staticPointerCast(from, fromType, toType);
-    if (to <= 0) {
-        throw new CastError("Pointer conversion from " + typeName(fromType) + " to " + typeName(toType) + " is not available");
-    }
-    return to;
 }
 
 function __embind_register_void(rawType, name) {
@@ -468,7 +462,7 @@ function __embind_register_struct_field(
     });
 }
 
-// I guarantee there is a way to simplify the following data structure.
+// todo: I guarantee there is a way to simplify the following data structure.
 function RegisteredPointer(
     name,
     rawType,
@@ -477,6 +471,7 @@ function RegisteredPointer(
     isReference,
     isConst,
     isSmartPointer,
+    pointeeType,
     sharingPolicy,
     rawGetPointee,
     rawConstructor,
@@ -490,6 +485,7 @@ function RegisteredPointer(
     this.isReference = isReference;
     this.isConst = isConst;
     this.isSmartPointer = isSmartPointer;
+    this.pointeeType = pointeeType;
     this.sharingPolicy = sharingPolicy;
     this.rawGetPointee = rawGetPointee;
     this.rawConstructor = rawConstructor;
@@ -497,14 +493,16 @@ function RegisteredPointer(
     this.rawDestructor = rawDestructor;
 }
 
-RegisteredPointer.prototype.isPolymorphic = function() {
-    return this.registeredClass.isPolymorphic;
-};
-
 RegisteredPointer.prototype.toWireType = function(destructors, handle) {
     var self = this;
     function throwCannotConvert() {
-        throwBindingError('Cannot convert argument of type ' + handle.$$.ptrType.name + ' to parameter type ' + self.name);
+        var name;
+        if (handle.$$.smartPtrType) {
+            name = handle.$$.smartPtrType.name;
+        } else {
+            name = handle.$$.ptrType.name;
+        }
+        throwBindingError('Cannot convert argument of type ' + name + ' to parameter type ' + self.name);
     }
 
     if (handle === null) {
@@ -537,7 +535,7 @@ RegisteredPointer.prototype.toWireType = function(destructors, handle) {
         switch (this.sharingPolicy) {
             case 0: // NONE
                 // no upcasting
-                if (handle.$$.ptrType === this) {
+                if (handle.$$.smartPtrType === this) {
                     ptr = handle.$$.smartPtr;
                 } else {
                     throwCannotConvert();
@@ -549,7 +547,7 @@ RegisteredPointer.prototype.toWireType = function(destructors, handle) {
                 break;
             
             case 2: // BY_EMVAL
-                if (handle.$$.ptrType === this) {
+                if (handle.$$.smartPtrType === this) {
                     ptr = handle.$$.smartPtr;
                 } else {
                     var clonedHandle = handle.clone();
@@ -583,68 +581,133 @@ RegisteredPointer.prototype.destructor = function(ptr) {
     }
 };
 
-RegisteredPointer.prototype.getDynamicRawPointerType = function(ptr) {
-    var type = null;
-    if (this.isPolymorphic()) {
-        if (this.rawGetPointee) {
-            type = ___getDynamicPointerType(this.rawGetPointee(ptr));
-        } else {
-            type = ___getDynamicPointerType(ptr);
-        }
-    }
-    return type;
-};
+RegisteredPointer.prototype.fromWireType = function(ptr) {
+    // ptr is a raw pointer (or a raw smartpointer)
 
-RegisteredPointer.prototype.getDynamicDowncastType = function(ptr) {
-    var downcastType =  null;
-    var type = this.getDynamicRawPointerType(ptr);
-    if (type && type !== this.registeredClass.rawType) {
-        var derivation = Module.__getDerivationPath(type, this.registeredClass.rawType);
-        for (var i = 0; i < derivation.size(); i++) {
-            downcastType = registeredTypes[derivation.get(i)];
-            if (downcastType && (!this.isSmartPointer || downcastType.smartPointerType)) {
-                break;
-            }
-        }
-        derivation.delete();
-    }
-    return downcastType;
-};
-
-RegisteredPointer.prototype.fromWireType = function(ptr) { // ptr is a raw pointer (or a raw smartpointer)
-    function makeHandle(registeredType, ptr) {
-        return new registeredType.Handle(registeredType, ptr);
-    }
-
-    var handle;
-    if (!this.getPointee(ptr)) {
+    // rawPointer is a maybe-null raw pointer
+    var rawPointer = this.getPointee(ptr);
+    if (!rawPointer) {
         this.destructor(ptr);
         return null;
     }
-    var toType = this.getDynamicDowncastType(ptr);
-    if (toType) {
+
+    function makeDefaultHandle() {
         if (this.isSmartPointer) {
-            handle = makeHandle(toType.smartPointerType, ptr);
+            return makeClassHandle(this.Handle.prototype, {
+                ptrType: this.pointeeType,
+                ptr: rawPointer,
+                smartPtrType: this,
+                smartPtr: ptr,
+            });
         } else {
-            handle = makeHandle(toType, ptr);
+            return makeClassHandle(this.Handle.prototype, {
+                ptrType: this,
+                ptr: ptr,
+            });
         }
-        handle.$$.ptr = staticPointerCast(handle.$$.ptr, this.registeredClass.rawType, toType.rawType);
-    } else {
-        handle = makeHandle(this, ptr);
     }
-    return handle;
+
+    var actualType = this.registeredClass.getActualType(rawPointer);
+    var registeredPointerRecord = registeredPointers[actualType];
+    if (!registeredPointerRecord) {
+        return makeDefaultHandle.call(this);
+    }
+
+    var toType;
+    if (this.isConst) {
+        toType = registeredPointerRecord.constPointerType;
+    } else {
+        toType = registeredPointerRecord.pointerType;
+    }
+    var dp = downcastPointer(
+        rawPointer,
+        this.registeredClass,
+        toType.registeredClass);
+    if (dp === null) {
+        return makeDefaultHandle.call(this);
+    }
+    if (this.isSmartPointer) {
+        return makeClassHandle(toType.Handle.prototype, {
+            ptrType: toType,
+            ptr: dp,
+            smartPtrType: this,
+            smartPtr: ptr,
+        });
+    } else {
+        return makeClassHandle(toType.Handle.prototype, {
+            ptrType: toType,
+            ptr: dp,
+        });
+    }
 };
+
+function makeClassHandle(prototype, record) {
+    if (!record.ptrType || !record.ptr) {
+        throwInternalError('makeClassHandle requires ptr and ptrType');
+    }
+    var hasSmartPtrType = !!record.smartPtrType;
+    var hasSmartPtr = !!record.smartPtr;
+    if (hasSmartPtrType !== hasSmartPtr) {
+        throwInternalError('Both smartPtrType and smartPtr must be specified');
+    }
+    record.count = { value: 1 };
+    return Object.create(prototype, {
+        '$$': {
+            value: record,
+        },
+    });
+}
 
 // root of all pointer and smart pointer handles in embind
 function ClassHandle() {
 }
 
+function getInstanceTypeName(handle) {
+    return handle.$$.ptrType.registeredClass.name;
+}
+
+ClassHandle.prototype.clone = function() {
+    if (!this.$$.ptr) {
+        throwBindingError(getInstanceTypeName(this) + ' instance already deleted');
+    }
+
+    var clone = Object.create(Object.getPrototypeOf(this), {
+        '$$': {
+            value: shallowCopy(this.$$),
+        }
+    });
+
+    clone.$$.count.value += 1;
+    return clone;
+};
+
+function runDestructor(handle) {
+    var $$ = handle.$$;
+    if ($$.smartPtr) {
+        $$.smartPtrType.rawDestructor($$.smartPtr);
+    } else {
+        $$.ptrType.registeredClass.rawDestructor($$.ptr);
+    }
+}
+
+ClassHandle.prototype['delete'] = function() {
+    if (!this.$$.ptr) {
+        throwBindingError(getInstanceTypeName(this) + ' instance already deleted');
+    }
+
+    this.$$.count.value -= 1;
+    if (0 === this.$$.count.value) {
+        runDestructor(this);
+    }
+    this.$$.smartPtr = undefined;
+    this.$$.ptr = undefined;
+};
+        
 function RegisteredClass(
     name,
     rawType,
     constructor,
-    isPolymorphic,
-    baseClassRawType,
+    rawDestructor,
     baseClass,
     getActualType,
     upcast,
@@ -653,8 +716,7 @@ function RegisteredClass(
     this.name = name;
     this.rawType = rawType;
     this.constructor = constructor;
-    this.isPolymorphic = isPolymorphic;
-    this.baseClassRawType = baseClassRawType;
+    this.rawDestructor = rawDestructor;
     this.baseClass = baseClass;
     this.getActualType = getActualType;
     this.upcast = upcast;
@@ -677,7 +739,6 @@ function __embind_register_class(
     getActualType,
     upcast,
     downcast,
-    isPolymorphic,
     name,
     rawDestructor
 ) {
@@ -713,45 +774,19 @@ function __embind_register_class(
             });
         });
         
+        Handle.prototype = Object.create(basePrototype, {
+            constructor: { value: Handle },
+        });
+
         var registeredClass = new RegisteredClass(
             name,
             rawType,
             Handle,
-            isPolymorphic,
-            baseClassRawType,
+            rawDestructor,
             baseClass,
             getActualType,
             upcast,
             downcast);
-
-        Handle.prototype = Object.create(basePrototype, {
-            constructor: { value: Handle },
-        });
-        Handle.prototype.clone = function() {
-            if (!this.$$.ptr) {
-                throwBindingError(type.name + ' instance already deleted');
-            }
-
-            var clone = Object.create(Handle.prototype);
-            Object.defineProperty(clone, '$$', {
-                value: shallowCopy(this.$$),
-            });
-
-            clone.$$.count.value += 1;
-            return clone;
-        };
-
-        Handle.prototype['delete'] = function() {
-            if (!this.$$.ptr) {
-                throwBindingError(type.name + ' instance already deleted');
-            }
-            
-            this.$$.count.value -= 1;
-            if (0 === this.$$.count.value) {
-                rawDestructor(this.$$.ptr);
-            }
-            this.$$.ptr = undefined;
-        };
 
         // todo: clean this up!
         var type = new RegisteredPointer(
@@ -764,23 +799,30 @@ function __embind_register_class(
             false);
         registerType(rawType, type);
 
-        registerType(rawPointerType, new RegisteredPointer(
+        var pointerType = new RegisteredPointer(
             name + '*',
             rawPointerType,
             registeredClass,
             Handle,
             false,
             false,
-            false));
+            false);
+        registerType(rawPointerType, pointerType);
 
-        registerType(rawConstPointerType, new RegisteredPointer(
+        var constPointerType = new RegisteredPointer(
             name + ' const*',
             rawConstPointerType,
             registeredClass,
             Handle,
             false,
             true,
-            false));
+            false);
+        registerType(rawConstPointerType, constPointerType);
+
+        registeredPointers[rawType] = {
+            pointerType: pointerType,
+            constPointerType: constPointerType
+        };
 
         type.constructor = createNamedFunction(legalFunctionName, function() {
             if (Object.getPrototypeOf(this) !== Handle.prototype) {
@@ -830,6 +872,18 @@ function __embind_register_class_constructor(
             return argTypes[0].fromWireType(ptr);
         };
     });
+}
+
+function downcastPointer(ptr, ptrClass, desiredClass) {
+    if (ptrClass === desiredClass) {
+        return ptr;
+    }
+    if (undefined === desiredClass.baseClass) {
+        return null; // no conversion
+    }
+    // O(depth) stack space used
+    return desiredClass.downcast(
+        downcastPointer(ptr, ptrClass, desiredClass.baseClass));
 }
 
 function upcastPointer(ptr, ptrClass, desiredClass) {
@@ -983,46 +1037,23 @@ function __embind_register_smart_ptr(
     whenDependentTypesAreResolved([rawPointeeType], function(pointeeType) {
         pointeeType = pointeeType[0];
 
-        var Handle = createNamedFunction(makeLegalFunctionName(name), function(ptrType, ptr) {
+        var Handle = createNamedFunction(makeLegalFunctionName(name), function(smartPtrType, smartPtr, ptrType, ptr) {
+            if (arguments.length !== 4) {
+                throwBindingError("internal error");
+            }
             Object.defineProperty(this, '$$', {
                 value: {
-                    ptrType: ptrType,
                     count: {value: 1},
-                    smartPtr: ptr,
-                    ptr: rawGetPointee(ptr),
+                    ptrType: ptrType,
+                    ptr: ptr,
+                    smartPtrType: registeredPointer,
+                    smartPtr: smartPtr,
                 },
             });
         });
 
         Handle.prototype = Object.create(pointeeType.Handle.prototype);
 
-        Handle.prototype.clone = function() {
-            if (!this.$$.ptr) {
-                throwBindingError(pointeeType.name + ' instance already deleted');
-            }
-
-            var clone = Object.create(Handle.prototype);
-            Object.defineProperty(clone, '$$', {
-                value: shallowCopy(this.$$),
-            });
-
-            clone.$$.count.value += 1;
-            return clone;
-        };
-
-        Handle.prototype['delete'] = function() {
-            if (!this.$$.ptr) {
-                throwBindingError(pointeeType.name + ' instance already deleted');
-            }
-
-            this.$$.count.value -= 1;
-            if (0 === this.$$.count.value) {
-                rawDestructor(this.$$.smartPtr);
-            }
-            this.$$.smartPtr = undefined;
-            this.$$.ptr = undefined;
-        };
-        
         var registeredPointer = new RegisteredPointer(
             name,
             rawType,
@@ -1030,14 +1061,15 @@ function __embind_register_smart_ptr(
             Handle,
             false,
             false,
+            // smart pointer properties
             true,
+            pointeeType,
             sharingPolicy,
             rawGetPointee,
             rawConstructor,
             rawShare,
             rawDestructor);
         registerType(rawType, registeredPointer);
-        pointeeType.smartPointerType = registeredPointer;
     });
 }
 
