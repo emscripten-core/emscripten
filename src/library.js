@@ -3526,8 +3526,76 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/scanf.html
     if (FS.streams[stream]) {
       var stack = [];
-      var get = function() { var ret = _fgetc(stream); stack.push(ret); return ret };
-      var unget = function(c) { return _ungetc(stack.pop(), stream) };
+      
+      var fgetcUTF8 = function(stream) {
+        if (!FS.streams[stream]) return -1;
+        var streamObj = FS.streams[stream];
+        if (streamObj.eof || streamObj.error) return -1;
+        var ret = _read(stream, _fgetc.ret, 1);
+        if (ret == 0) {
+            streamObj.eof = true;
+            return -1;
+        } else if (ret == -1) {
+            streamObj.error = true;
+              return -1;
+        } else {
+          var byte = {{{ makeGetValue('_fgetc.ret', '0', 'i8', null, 1) }}};
+          if (byte < 128) {
+            // shortcut for ASCII-7
+            return byte;    
+          } else {
+            // unfortunately, we cannot use Pointer_stringify, as it does not work with streams
+            var utf8 = new Runtime.UTF8Processor();
+            var char = utf8.processCChar(byte);
+            while (char.length < 1) {
+                ret = _read(stream, _fgetc.ret, 1);
+                // check for half-finished UTF-8 chars in stream (corrupted file?)
+                switch(ret) {
+                    case 0:
+                        streamObj.eof = true;
+                        return -1;
+                    case -1:
+                        streamObj.error = true;
+                        return -1;
+                    default:
+                        char += utf8.processCChar({{{ makeGetValue('_fgetc.ret', '0', 'i8', null, 1) }}});
+                }
+            }
+            
+            return char.charCodeAt(0);
+          }
+        }
+      };
+      
+      var ungetcUTF8 = function(c, stream) {
+        if (FS.streams[stream]) {
+          if (c<128) {
+            // shortcut for ASCII-7 characters
+            FS.streams[stream].ungotten.push(c);
+          } else {
+            var ungotten = FS.streams[stream].ungotten;
+            if (c<2048) {
+                ungotten.push(c & 63 | 128);
+                ungotten.push(c>>6 & 31 | 192);
+            } else if (c<65536) {
+                ungotten.push(c & 63 | 128);
+                ungotten.push(c>>6 & 63 | 128);
+                ungotten.push(c>>12 & 15 | 224);
+            } else {
+                ungotten.push(c & 63 | 128);
+                ungotten.push(c>>6  & 63 | 128);
+                ungotten.push(c>>12 & 63 | 128);
+                ungotten.push(c>>18 & 7 | 240);
+            }
+          }
+          return c;
+        } else {
+          return -1;
+        }
+      };
+      
+      var get = function() { var ret = fgetcUTF8(stream); stack.push(ret); return ret };
+      var unget = function(c) { return ungetcUTF8(stack.pop(), stream) };
       return __scanString(format, get, unget, varargs);
     } else {
       return -1;
@@ -3545,7 +3613,8 @@ LibraryManager.library = {
     // int sscanf(const char *restrict s, const char *restrict format, ... );
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/scanf.html
     var index = 0;
-    var get = function() { return {{{ makeGetValue('s', 'index++', 'i8') }}}; };
+    var jsStr = Module.Pointer_stringify(s);
+    var get = function() { return jsStr.charCodeAt(index++); };
     var unget = function() { index--; };
     return __scanString(format, get, unget, varargs);
   },
