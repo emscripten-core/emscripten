@@ -465,7 +465,6 @@ function __embind_register_struct_field(
 // todo: I guarantee there is a way to simplify the following data structure.
 function RegisteredPointer(
     name,
-    rawType,
     registeredClass,
     isReference,
     isConst,
@@ -480,7 +479,6 @@ function RegisteredPointer(
     rawDestructor
 ) {
     this.name = name;
-    this.rawType = rawType;
     this.registeredClass = registeredClass;
     this.isReference = isReference;
     this.isConst = isConst;
@@ -707,7 +705,6 @@ ClassHandle.prototype['delete'] = function() {
         
 function RegisteredClass(
     name,
-    rawType,
     constructor,
     instancePrototype,
     rawDestructor,
@@ -717,7 +714,6 @@ function RegisteredClass(
     downcast
 ) {
     this.name = name;
-    this.rawType = rawType;
     this.constructor = constructor;
     this.instancePrototype = instancePrototype;
     this.rawDestructor = rawDestructor;
@@ -758,7 +754,6 @@ function __embind_register_class(
 
         var baseClass;
         var basePrototype;
-        var depth;
         if (baseClassRawType) {
             baseClasses[rawType] = baseClassRawType;
 
@@ -787,7 +782,6 @@ function __embind_register_class(
 
         var registeredClass = new RegisteredClass(
             name,
-            rawType,
             constructor,
             instancePrototype,
             rawDestructor,
@@ -796,19 +790,15 @@ function __embind_register_class(
             upcast,
             downcast);
 
-        // todo: clean this up!
-        var type = new RegisteredPointer(
+        registerType(rawType, new RegisteredPointer(
             name,
-            rawType,
             registeredClass,
             true,
             false,
-            false);
-        registerType(rawType, type);
+            false));
 
         var pointerType = new RegisteredPointer(
             name + '*',
-            rawPointerType,
             registeredClass,
             false,
             false,
@@ -817,7 +807,6 @@ function __embind_register_class(
 
         var constPointerType = new RegisteredPointer(
             name + ' const*',
-            rawConstPointerType,
             registeredClass,
             false,
             true,
@@ -1031,7 +1020,6 @@ function __embind_register_smart_ptr(
 
         var registeredPointer = new RegisteredPointer(
             name,
-            rawType,
             pointeeType.registeredClass,
             false,
             false,
