@@ -473,7 +473,6 @@ function RegisteredPointer(
     name,
     rawType,
     registeredClass,
-    pointeeType,
     Handle,
     isReference,
     isConst,
@@ -487,7 +486,6 @@ function RegisteredPointer(
     this.name = name;
     this.rawType = rawType;
     this.registeredClass = registeredClass;
-    this.pointeeType = pointeeType;
     this.Handle = Handle; // <-- I think I can kill this
     this.isReference = isReference;
     this.isConst = isConst;
@@ -608,8 +606,8 @@ RegisteredPointer.prototype.getDynamicRawPointerType = function(ptr) {
 RegisteredPointer.prototype.getDynamicDowncastType = function(ptr) {
     var downcastType =  null;
     var type = this.getDynamicRawPointerType(ptr);
-    if (type && type !== this.pointeeType.rawType) {
-        var derivation = Module.__getDerivationPath(type, this.pointeeType.rawType);
+    if (type && type !== this.registeredClass.rawType) {
+        var derivation = Module.__getDerivationPath(type, this.registeredClass.rawType);
         for (var i = 0; i < derivation.size(); i++) {
             downcastType = registeredTypes[derivation.get(i)];
             if (downcastType && (!this.isSmartPointer || downcastType.smartPointerType)) {
@@ -634,7 +632,7 @@ RegisteredPointer.prototype.fromWireType = function(ptr) { // ptr is a raw point
         } else {
             handle = toType._fromWireType(ptr);
         }
-        handle.$$.ptr = staticPointerCast(handle.$$.ptr, this.pointeeType.rawType, toType.rawType);
+        handle.$$.ptr = staticPointerCast(handle.$$.ptr, this.registeredClass.rawType, toType.rawType);
     } else {
         handle = this._fromWireType(ptr);
     }
@@ -647,6 +645,7 @@ function ClassHandle() {
 
 function RegisteredClass(
     name,
+    rawType,
     constructor,
     isPolymorphic,
     baseClassRawType,
@@ -656,6 +655,7 @@ function RegisteredClass(
     downcast
 ) {
     this.name = name;
+    this.rawType = rawType;
     this.constructor = constructor;
     this.isPolymorphic = isPolymorphic;
     this.baseClassRawType = baseClassRawType;
@@ -711,6 +711,7 @@ function __embind_register_class(
         
         var registeredClass = new RegisteredClass(
             name,
+            rawType,
             Handle,
             isPolymorphic,
             baseClassRawType,
@@ -756,19 +757,16 @@ function __embind_register_class(
             name,
             rawType,
             registeredClass,
-            undefined,
             Handle,
             true,
             false,
             false);
-        type.pointeeType = type; // :(
         registerType(rawType, type);
 
         registerType(rawPointerType, new RegisteredPointer(
             name + '*',
             rawPointerType,
             registeredClass,
-            type,
             Handle,
             false,
             false,
@@ -778,7 +776,6 @@ function __embind_register_class(
             name + ' const*',
             rawConstPointerType,
             registeredClass,
-            type,
             Handle,
             false,
             true,
@@ -1033,7 +1030,6 @@ function __embind_register_smart_ptr(
             name,
             rawType,
             pointeeType.registeredClass,
-            pointeeType,
             Handle,
             false,
             false,
