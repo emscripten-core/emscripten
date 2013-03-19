@@ -661,6 +661,14 @@ function RegisteredClass(
     this.downcast = downcast;
 }
 
+function shallowCopy(o) {
+    var rv = {};
+    for (var k in o) {
+        rv[k] = o[k];
+    }
+    return rv;
+}
+
 function __embind_register_class(
     rawType,
     rawPointerType,
@@ -726,10 +734,7 @@ function __embind_register_class(
 
             var clone = Object.create(Handle.prototype);
             Object.defineProperty(clone, '$$', {
-                value: {
-                    count: this.$$.count,
-                    ptr: this.$$.ptr,
-                },
+                value: shallowCopy(this.$$),
             });
 
             clone.$$.count.value += 1;
@@ -998,11 +1003,7 @@ function __embind_register_smart_ptr(
 
             var clone = Object.create(Handle.prototype);
             Object.defineProperty(clone, '$$', {
-                value: {
-                    count: this.$$.count,
-                    smartPtr: this.$$.smartPtr,
-                    ptr: this.$$.ptr,
-                },
+                value: shallowCopy(this.$$),
             });
 
             clone.$$.count.value += 1;
