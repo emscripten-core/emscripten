@@ -169,14 +169,6 @@ namespace emscripten {
                 GenericFunction constructor,
                 GenericFunction destructor);
         }
-
-        class BindingsDefinition {
-        public:
-            template<typename Function>
-            BindingsDefinition(Function fn) {
-                fn();
-            }
-        };
     }
 }
 
@@ -1155,4 +1147,20 @@ namespace emscripten {
     };
 }
 
-#define EMSCRIPTEN_BINDINGS(fn) static emscripten::internal::BindingsDefinition anon_symbol(fn);
+namespace emscripten {
+    namespace internal {
+        class BindingsDefinition {
+        public:
+            template<typename Function>
+            BindingsDefinition(Function fn) {
+                fn();
+            }
+        };
+    }
+}
+
+#define EMSCRIPTEN_BINDINGS(name)                                       \
+    static struct BindingInitializer_##name {                           \
+        BindingInitializer_##name();                                    \
+    } BindingInitializer_##name##_instance;                             \
+    BindingInitializer_##name::BindingInitializer_##name()

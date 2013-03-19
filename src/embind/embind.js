@@ -339,10 +339,12 @@ function __embind_register_tuple_element(
     memberPointer = copyMemberPointer(memberPointer, memberPointerSize);
     var tupleType = requireRegisteredType(rawTupleType, 'tuple');
 
-    // TODO: this could register elements out of order
+    var index = tupleType.elements.length;
+    tupleType.elements.push(undefined);
+
     whenDependentTypesAreResolved([rawType], function(type) {
         type = type[0];
-        tupleType.elements.push({
+        tupleType.elements[index] = {
             read: function(ptr) {
                 return type.fromWireType(getter(ptr, memberPointer));
             },
@@ -351,7 +353,7 @@ function __embind_register_tuple_element(
                 setter(ptr, memberPointer, type.toWireType(destructors, o));
                 runDestructors(destructors);
             }
-        });
+        };
     });
 }
 
