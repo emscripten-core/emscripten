@@ -38,7 +38,7 @@ namespace emscripten {
     }
 }
 
-EMSCRIPTEN_BINDINGS(([]() {
+EMSCRIPTEN_BINDINGS(native_and_builtin_types) {
     using namespace emscripten::internal;
 
     _embind_register_void(TypeID<void>::get(), "void");
@@ -60,4 +60,4 @@ EMSCRIPTEN_BINDINGS(([]() {
     
     _embind_register_cstring(TypeID<std::string>::get(), "std::string");
     _embind_register_emval(TypeID<val>::get(), "emscripten::val");
-}));
+}
