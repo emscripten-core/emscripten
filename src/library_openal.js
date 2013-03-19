@@ -57,6 +57,7 @@ var LibraryOpenAL = {
     }
 
     if (ctx) {
+      ctx.listener.panningModel = "equalpower";
       AL.contexts.push({ctx: ctx, err: 0, src: [], buf: []});
       return AL.contexts.length;
     } else {
