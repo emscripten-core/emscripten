@@ -467,7 +467,6 @@ function RegisteredPointer(
     name,
     rawType,
     registeredClass,
-    Handle,
     isReference,
     isConst,
 
@@ -483,7 +482,6 @@ function RegisteredPointer(
     this.name = name;
     this.rawType = rawType;
     this.registeredClass = registeredClass;
-    this.Handle = Handle; // <-- I think I can kill this
     this.isReference = isReference;
     this.isConst = isConst;
 
@@ -597,14 +595,14 @@ RegisteredPointer.prototype.fromWireType = function(ptr) {
 
     function makeDefaultHandle() {
         if (this.isSmartPointer) {
-            return makeClassHandle(this.Handle.prototype, {
+            return makeClassHandle(this.registeredClass.instancePrototype, {
                 ptrType: this.pointeeType,
                 ptr: rawPointer,
                 smartPtrType: this,
                 smartPtr: ptr,
             });
         } else {
-            return makeClassHandle(this.Handle.prototype, {
+            return makeClassHandle(this.registeredClass.instancePrototype, {
                 ptrType: this,
                 ptr: ptr,
             });
@@ -631,14 +629,14 @@ RegisteredPointer.prototype.fromWireType = function(ptr) {
         return makeDefaultHandle.call(this);
     }
     if (this.isSmartPointer) {
-        return makeClassHandle(toType.Handle.prototype, {
+        return makeClassHandle(toType.registeredClass.instancePrototype, {
             ptrType: toType,
             ptr: dp,
             smartPtrType: this,
             smartPtr: ptr,
         });
     } else {
-        return makeClassHandle(toType.Handle.prototype, {
+        return makeClassHandle(toType.registeredClass.instancePrototype, {
             ptrType: toType,
             ptr: dp,
         });
@@ -711,6 +709,7 @@ function RegisteredClass(
     name,
     rawType,
     constructor,
+    instancePrototype,
     rawDestructor,
     baseClass,
     getActualType,
@@ -720,6 +719,7 @@ function RegisteredClass(
     this.name = name;
     this.rawType = rawType;
     this.constructor = constructor;
+    this.instancePrototype = instancePrototype;
     this.rawDestructor = rawDestructor;
     this.baseClass = baseClass;
     this.getActualType = getActualType;
@@ -763,29 +763,33 @@ function __embind_register_class(
             baseClasses[rawType] = baseClassRawType;
 
             baseClass = base.registeredClass;
-            basePrototype = base.Handle.prototype;
+            basePrototype = baseClass.instancePrototype;
         } else {
             basePrototype = ClassHandle.prototype;
         }
 
-        var Handle = createNamedFunction(legalFunctionName, function(ptrType, ptr) {
-            Object.defineProperty(this, '$$', {
-                value: {
-                    ptrType: ptrType,
-                    count: { value: 1 },
-                    ptr: ptr,
-                }
-            });
+        var constructor = createNamedFunction(legalFunctionName, function() {
+            if (Object.getPrototypeOf(this) !== instancePrototype) {
+                throw new BindingError("Use 'new' to construct " + name);
+            }
+            var body = registeredClass.constructor_body;
+            if (undefined === body) {
+                throw new BindingError(name + " has no accessible constructor");
+            }
+            return body.apply(this, arguments);
         });
-        
-        Handle.prototype = Object.create(basePrototype, {
-            constructor: { value: Handle },
+
+        var instancePrototype = Object.create(basePrototype, {
+            constructor: { value: constructor },
         });
+
+        constructor.prototype = instancePrototype;
 
         var registeredClass = new RegisteredClass(
             name,
             rawType,
-            Handle,
+            constructor,
+            instancePrototype,
             rawDestructor,
             baseClass,
             getActualType,
@@ -797,7 +801,6 @@ function __embind_register_class(
             name,
             rawType,
             registeredClass,
-            Handle,
             true,
             false,
             false);
@@ -807,7 +810,6 @@ function __embind_register_class(
             name + '*',
             rawPointerType,
             registeredClass,
-            Handle,
             false,
             false,
             false);
@@ -817,7 +819,6 @@ function __embind_register_class(
             name + ' const*',
             rawConstPointerType,
             registeredClass,
-            Handle,
             false,
             true,
             false);
@@ -828,20 +829,7 @@ function __embind_register_class(
             constPointerType: constPointerType
         };
 
-        type.constructor = createNamedFunction(legalFunctionName, function() {
-            if (Object.getPrototypeOf(this) !== Handle.prototype) {
-                throw new BindingError("Use 'new' to construct " + name);
-            }
-            var body = type.constructor_body;
-            if (undefined === body) {
-                throw new BindingError(name + " has no accessible constructor");
-            }
-            return body.apply(this, arguments);
-        });
-        type.constructor.prototype = type.Handle.prototype;
-        type.constructor.type = type;
-
-        exposePublicSymbol(legalFunctionName, type.constructor);
+        exposePublicSymbol(legalFunctionName, constructor);
     });
 }
 
@@ -859,7 +847,7 @@ function __embind_register_class_constructor(
         var classType = argTypes[0];
         argTypes = argTypes.slice(1);
         var humanName = 'constructor ' + classType.name;
-        classType.constructor_body = function() {
+        classType.registeredClass.constructor_body = function() {
             if (arguments.length !== argCount - 1) {
                 throwBindingError(humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
             }
@@ -902,7 +890,7 @@ function validateThis(this_, classType, humanName) {
     if (!(this_ instanceof Object)) {
         throwBindingError(humanName + ' with invalid "this": ' + this_);
     }
-    if (!(this_ instanceof classType.constructor)) {
+    if (!(this_ instanceof classType.registeredClass.constructor)) {
         throwBindingError(humanName + ' incompatible with "this" of type ' + this_.constructor.name);
     }
     if (!this_.$$.ptr) {
@@ -934,7 +922,7 @@ function __embind_register_class_function(
         var classType = argTypes[0];
         argTypes = argTypes.slice(1);
         var humanName = classType.name + '.' + methodName;
-        classType.Handle.prototype[methodName] = function() {
+        classType.registeredClass.instancePrototype[methodName] = function() {
             if (arguments.length !== argCount - 1) {
                 throwBindingError('emscripten binding method ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
             }
@@ -973,7 +961,7 @@ function __embind_register_class_class_function(
     rawInvoker = FUNCTION_TABLE[rawInvoker];
     whenDependentTypesAreResolved(rawArgTypes, function(argTypes) {
         var humanName = classType.name + '.' + methodName;
-        classType.constructor[methodName] = makeInvoker(humanName, argCount, argTypes, rawInvoker, fn);
+        classType.registeredClass.constructor[methodName] = makeInvoker(humanName, argCount, argTypes, rawInvoker, fn);
     });
 }
 
@@ -994,7 +982,7 @@ function __embind_register_class_property(
         var classType = converters[0];
         var fieldType = converters[1];
         var humanName = classType.name + '.' + fieldName;
-        Object.defineProperty(classType.Handle.prototype, fieldName, {
+        Object.defineProperty(classType.registeredClass.instancePrototype, fieldName, {
             get: function() {
                 var ptr = validateThis(this, classType, humanName + ' getter');
                 return fieldType.fromWireType(getter(ptr, memberPointer));
@@ -1041,28 +1029,10 @@ function __embind_register_smart_ptr(
     whenDependentTypesAreResolved([rawPointeeType], function(pointeeType) {
         pointeeType = pointeeType[0];
 
-        var Handle = createNamedFunction(makeLegalFunctionName(name), function(smartPtrType, smartPtr, ptrType, ptr) {
-            if (arguments.length !== 4) {
-                throwBindingError("internal error");
-            }
-            Object.defineProperty(this, '$$', {
-                value: {
-                    count: {value: 1},
-                    ptrType: ptrType,
-                    ptr: ptr,
-                    smartPtrType: registeredPointer,
-                    smartPtr: smartPtr,
-                },
-            });
-        });
-
-        Handle.prototype = Object.create(pointeeType.Handle.prototype);
-
         var registeredPointer = new RegisteredPointer(
             name,
             rawType,
             pointeeType.registeredClass,
-            Handle,
             false,
             false,
             // smart pointer properties
