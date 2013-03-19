@@ -69,8 +69,6 @@ function _embind_repr(v) {
     }
 }
 
-var baseClasses = {}; // rawType -> rawBaseType
-
 // typeID -> { toWireType: ..., fromWireType: ... }
 var registeredTypes = {};
 
@@ -521,7 +519,8 @@ RegisteredPointer.prototype.toWireType = function(destructors, handle) {
         throwBindingError('Expected null or instance of ' + this.name + ', got ' + IMVU.repr(handle));
     }
     // TODO: this is not strictly true
-    // It seems legal to support BY_EMVAL and INTRUSIVE conversions from raw pointers to smart pointers
+    // We could support BY_EMVAL conversions from raw pointers to smart pointers
+    // because the smart pointer can hold a reference to the handle
     if (this.isSmartPointer && undefined === handle.$$.smartPtr) {
         throwBindingError('Passing raw pointer to smart pointer is illegal');
     }
@@ -754,8 +753,6 @@ function __embind_register_class(
         var baseClass;
         var basePrototype;
         if (baseClassRawType) {
-            baseClasses[rawType] = baseClassRawType;
-
             baseClass = base.registeredClass;
             basePrototype = baseClass.instancePrototype;
         } else {
