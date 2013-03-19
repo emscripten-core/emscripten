@@ -517,9 +517,43 @@ var LibraryOpenAL = {
   },
 
   alListenerfv: function(param, values) {
+    if (!AL.currentContext) {
 #if OPENAL_DEBUG
-    console.log("alListenerfv is not supported yet");
+      console.error("alListenerfv called without a valid context");
 #endif
+      return;
+    }
+    switch (param) {
+    case 0x1004 /* AL_POSITION */:
+      AL.currentContext.ctx.listener.setPosition(
+          {{{ makeGetValue('value', '0', 'float') }}},
+          {{{ makeGetValue('value', '1', 'float') }}},
+          {{{ makeGetValue('value', '2', 'float') }}}
+        );
+      break;
+    case 0x1006 /* AL_VELOCITY */:
+      AL.currentContext.ctx.listener.setVelocity(
+          {{{ makeGetValue('value', '0', 'float') }}},
+          {{{ makeGetValue('value', '1', 'float') }}},
+          {{{ makeGetValue('value', '2', 'float') }}}
+        );
+      break;
+    case 0x100F /* AL_ORIENTATION */:
+      AL.currentContext.ctx.listener.setOrientation(
+          {{{ makeGetValue('value', '0', 'float') }}},
+          {{{ makeGetValue('value', '1', 'float') }}},
+          {{{ makeGetValue('value', '2', 'float') }}},
+          {{{ makeGetValue('value', '3', 'float') }}},
+          {{{ makeGetValue('value', '4', 'float') }}},
+          {{{ makeGetValue('value', '5', 'float') }}}
+        );
+      break;
+    default:
+#if OPENAL_DEBUG
+      console.log("alListenerfv with param " + param + " not implemented yet");
+#endif
+      break;
+    }
   },
 
   alIsExtensionPresent: function(extName) {
