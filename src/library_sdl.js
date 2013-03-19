@@ -1497,11 +1497,11 @@ var LibrarySDL = {
                 SDL.audio.context = new webkitAudioContext();
             }
             SDL.audio.pushAudio=function(ptr,size){
-                SDL.audio.soundSource = SDL.audio.context.createBufferSource(SDL.audio.channels,SDL.audio.samples,SDL.audio.freq);
+                SDL.audio.soundSource = SDL.audio.context.createBufferSource(1,SDL.audio.samples,SDL.audio.freq);
                 if(typeof(SDL.audio.context.createScriptProcessor) === "function"){
-                SDL.audio.soundInjector = SDL.audio.context.createScriptProcessor(SDL.audio.samples,SDL.audio.channels,SDL.audio.channels);
+                SDL.audio.soundInjector = SDL.audio.context.createScriptProcessor(SDL.audio.samples,1,SDL.audio.channels);
                 }else{
-                    SDL.audio.soundInjector = SDL.audio.context.createJavaScriptNode(SDL.audio.samples,SDL.audio.channels,SDL.audio.channels);
+                    SDL.audio.soundInjector = SDL.audio.context.createJavaScriptNode(SDL.audio.samples,1,SDL.audio.channels);
                 }
                 SDL.audio.soundInjector.onaudioprocess = function(e) {
                     SDL.audio.webAudioFunc(SDL.audio.buffer,e);
