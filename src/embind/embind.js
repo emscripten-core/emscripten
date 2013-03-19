@@ -462,7 +462,6 @@ function __embind_register_struct_field(
     });
 }
 
-// todo: I guarantee there is a way to simplify the following data structure.
 function RegisteredPointer(
     name,
     registeredClass,
