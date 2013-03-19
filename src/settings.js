@@ -163,6 +163,8 @@ var LIBRARY_DEBUG = 0; // Print out when we enter a library call (library*.js). 
                        //   emscripten_run_script("Runtime.debug = ...;");
 var SOCKET_DEBUG = 0; // Log out socket/network data transfer.
 
+var OPENAL_DEBUG = 0; // Print out debugging information from our OpenAL implementation.
+
 var GL_DEBUG = 0; // Print out all calls into WebGL. As with LIBRARY_DEBUG, you can set a runtime
                   // option, in this case GL.debug.
 var GL_TESTING = 0; // When enabled, sets preserveDrawingBuffer in the context, to allow tests to work (but adds overhead)
@@ -170,8 +172,6 @@ var GL_MAX_TEMP_BUFFER_SIZE = 2097152; // How large GL emulation temp buffers ar
 var GL_UNSAFE_OPTS = 1; // Enables some potentially-unsafe optimizations in GL emulation code
 var FULL_ES2 = 0; // Forces support for all GLES2 features, not just the WebGL-friendly subset.
 var FORCE_GL_EMULATION = 0; // Forces inclusion of full GL emulation code.
-
-var UTF_STRING_SUPPORT = 1; // Perform utf-8 conversion between C and JS strings (adds overhead in such conversions)
 
 var DISABLE_EXCEPTION_CATCHING = 0; // Disables generating code to actually catch exceptions. If the code you
                                     // are compiling does not actually rely on catching exceptions (but the
@@ -226,11 +226,13 @@ var NAMED_GLOBALS = 0; // If 1, we use global variables for globals. Otherwise
                        // they are referred to by a base plus an offset (called an indexed global),
                        // saving global variables but adding runtime overhead.
 
-var EXPORT_ALL = 0; // If true, we export all the symbols
 var EXPORTED_FUNCTIONS = ['_main']; // Functions that are explicitly exported. These functions are kept alive
                                     // through LLVM dead code elimination, and also made accessible outside of
                                     // the generated code even after running closure compiler (on "Module").
                                     // Note the necessary prefix of "_".
+var EXPORT_ALL = 0; // If true, we export all the symbols
+var EXPORT_BINDINGS = 0; // Export all bindings generator functions (prefixed with emscripten_bind_). This
+                         // is necessary to use the bindings generator with asm.js
 
 // JS library functions (C functions implemented in JS)
 // that we include by default. If you want to make sure
@@ -340,8 +342,14 @@ var PGO = 0; // Enables profile-guided optimization in the form of runtime check
              // can pass to DEAD_FUNCTIONS (you can also emit the list manually by
              // calling PGOMonitor.dump());
 var DEAD_FUNCTIONS = []; // A list of functions that no code will be emitted for, and
-                         // a runtime abort will happen if they are called
+                         // a runtime abort will happen if they are called. If
+                         // such a function is an unresolved reference, that is not
+                         // considered an error. 
                          // TODO: options to lazily load such functions
+var UNRESOLVED_AS_DEAD = 0; // Handle all unresolved functions as if they were in the
+                            // list of dead functions. This is a quick way to turn
+                            // all unresolved references into runtime aborts (and not
+                            // get compile-time warnings or errors on them).
 
 var EXPLICIT_ZEXT = 0; // If 1, generate an explicit conversion of zext i1 to i32, using ?:
 
