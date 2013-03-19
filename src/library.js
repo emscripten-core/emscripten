@@ -3170,7 +3170,7 @@ LibraryManager.library = {
     for (var i = 0; i < n - 1 && byte_ != {{{ charCode('\n') }}}; i++) {
       byte_ = _fgetc(stream);
       if (byte_ == -1) {
-        if (streamObj.error) return 0;
+        if (streamObj.error || (streamObj.eof && i == 0)) return 0;
         else if (streamObj.eof) break;
       }
       {{{ makeSetValue('s', 'i', 'byte_', 'i8') }}}
