@@ -470,6 +470,8 @@ function RegisteredPointer(
     Handle,
     isReference,
     isConst,
+
+    // smart pointer properties
     isSmartPointer,
     pointeeType,
     sharingPolicy,
@@ -484,6 +486,8 @@ function RegisteredPointer(
     this.Handle = Handle; // <-- I think I can kill this
     this.isReference = isReference;
     this.isConst = isConst;
+
+    // smart pointer properties
     this.isSmartPointer = isSmartPointer;
     this.pointeeType = pointeeType;
     this.sharingPolicy = sharingPolicy;
