@@ -516,14 +516,23 @@ function Pointer_stringify(ptr, /* optional */ length) {
   }
   if (!length) length = i;
 
+  var ret = '';
+
 #if USE_TYPED_ARRAYS == 2
   if (!hasUtf) {
-    return String.fromCharCode.apply(String, HEAPU8.subarray(ptr, ptr + length));
+    var MAX_CHUNK = 1024; // split up into chunks, because .apply on a huge string can overflow the stack
+    var curr;
+    while (length > 0) {
+      curr = String.fromCharCode.apply(String, HEAPU8.subarray(ptr, ptr + Math.min(length, MAX_CHUNK)));
+      ret = ret ? ret + curr : curr;
+      ptr += MAX_CHUNK;
+      length -= MAX_CHUNK;
+    }
+    return ret;
   }
 #endif
 
   var utf8 = new Runtime.UTF8Processor();
-  var ret = '';
   for (i = 0; i < length; i++) {
 #if ASSERTIONS
     assert(ptr + i < TOTAL_MEMORY);
