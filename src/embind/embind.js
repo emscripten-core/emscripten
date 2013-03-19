@@ -583,14 +583,6 @@ RegisteredPointer.prototype.destructor = function(ptr) {
     }
 };
 
-RegisteredPointer.prototype._fromWireType = function(ptr) {
-    if (!this.getPointee(ptr)) {
-        this.destructor(ptr);
-        return null;
-    }
-    return new this.Handle(this, ptr);
-};
-
 RegisteredPointer.prototype.getDynamicRawPointerType = function(ptr) {
     var type = null;
     if (this.isPolymorphic()) {
@@ -620,6 +612,10 @@ RegisteredPointer.prototype.getDynamicDowncastType = function(ptr) {
 };
 
 RegisteredPointer.prototype.fromWireType = function(ptr) { // ptr is a raw pointer (or a raw smartpointer)
+    function makeHandle(registeredType, ptr) {
+        return new registeredType.Handle(registeredType, ptr);
+    }
+
     var handle;
     if (!this.getPointee(ptr)) {
         this.destructor(ptr);
@@ -628,13 +624,13 @@ RegisteredPointer.prototype.fromWireType = function(ptr) { // ptr is a raw point
     var toType = this.getDynamicDowncastType(ptr);
     if (toType) {
         if (this.isSmartPointer) {
-            handle = toType.smartPointerType._fromWireType(ptr);
+            handle = makeHandle(toType.smartPointerType, ptr);
         } else {
-            handle = toType._fromWireType(ptr);
+            handle = makeHandle(toType, ptr);
         }
         handle.$$.ptr = staticPointerCast(handle.$$.ptr, this.registeredClass.rawType, toType.rawType);
     } else {
-        handle = this._fromWireType(ptr);
+        handle = makeHandle(this, ptr);
     }
     return handle;
 };
