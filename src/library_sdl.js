@@ -528,13 +528,13 @@ var LibrarySDL = {
             var x = event.pageX - (window.scrollX + rect.left);
             var y = event.pageY - (window.scrollY + rect.top);
 
-	    // the canvas might be CSS-scaled compared to its backbuffer;
-	    // SDL-using content will want mouse coordinates in terms
-	    // of backbuffer units.
-	    var cw = Module["canvas"].width;
-	    var ch = Module["canvas"].height;
-	    x = x * (cw / rect.width);
-	    y = y * (ch / rect.height);
+            // the canvas might be CSS-scaled compared to its backbuffer;
+            // SDL-using content will want mouse coordinates in terms
+            // of backbuffer units.
+            var cw = Module["canvas"].width;
+            var ch = Module["canvas"].height;
+            x = x * (cw / rect.width);
+            y = y * (ch / rect.height);
 
             var movementX = x - SDL.mouseX;
             var movementY = y - SDL.mouseY;
