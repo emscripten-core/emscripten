@@ -73,6 +73,12 @@ var LibraryOpenAL = {
     }
   },
 
+  alcGetError__deps: ['alGetError'],
+  alcGetError: function(device) {
+    // We have only one audio device, so just return alGetError.
+    return _alGetError();
+  },
+
   alDeleteSources: function(count, sources)
   {
     if (!AL.currentContext) {
@@ -562,10 +568,6 @@ var LibraryOpenAL = {
   },
 
   alcGetProcAddress: function(device, fname) {
-    return 0;
-  },
-
-  alcGetError: function(device) {
     return 0;
   },
 };
