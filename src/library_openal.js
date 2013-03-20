@@ -573,6 +573,9 @@ var LibraryOpenAL = {
     return 0;
   },
 
+  alcGetError: function(device) {
+    return 0;
+  },
 };
 
 autoAddDeps(LibraryOpenAL, '$AL');
