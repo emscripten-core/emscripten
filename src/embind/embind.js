@@ -342,6 +342,7 @@ function __embind_register_tuple_element(
     var index = tupleType.elements.length;
     tupleType.elements.push(undefined);
 
+    // TODO: test incomplete registration of value tuples
     whenDependentTypesAreResolved([rawType], function(type) {
         type = type[0];
         tupleType.elements[index] = {
@@ -446,7 +447,7 @@ function __embind_register_struct_field(
     rawGetter = FUNCTION_TABLE[rawGetter];
     rawSetter = FUNCTION_TABLE[rawSetter];
     memberPointer = copyMemberPointer(memberPointer, memberPointerSize);
-    // TODO: this could register elements out of order
+    // TODO: test incomplete registration of value structs
     whenDependentTypesAreResolved([rawFieldType], function(fieldType) {
         fieldType = fieldType[0];
         structType.fields[fieldName] = {
