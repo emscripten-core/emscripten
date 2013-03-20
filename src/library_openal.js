@@ -114,7 +114,7 @@ var LibraryOpenAL = {
         playTime: -1,
         pausedTime: 0
       });
-      {{{ makeSetValue('sources', 'i', 'AL.currentContext.src.length', 'i32') }}};
+      {{{ makeSetValue('sources', 'i*4', 'AL.currentContext.src.length', 'i32') }}};
     }
   },
 
@@ -271,7 +271,7 @@ var LibraryOpenAL = {
       var buffer = AL.currentContext.src[source - 1].buffer;
       for (var j = 0; j < AL.currentContext.buf.length; ++j) {
         if (buffer == AL.currentContext.buf[j].buf) {
-          {{{ makeSetValue('buffers', 'i', 'j+1', 'i32') }}};
+          {{{ makeSetValue('buffers', 'i*4', 'j+1', 'i32') }}};
           AL.currentContext.src[source - 1].buffer = null;
           break;
         }
@@ -309,7 +309,7 @@ var LibraryOpenAL = {
     }
     for (var i = 0; i < count; ++i) {
       AL.currentContext.buf.push({buf: null});
-      {{{ makeSetValue('buffers', 'i', 'AL.currentContext.buf.length', 'i32') }}};
+      {{{ makeSetValue('buffers', 'i*4', 'AL.currentContext.buf.length', 'i32') }}};
     }
   },
 
