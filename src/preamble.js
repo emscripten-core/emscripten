@@ -503,30 +503,44 @@ function allocate(slab, types, allocator, ptr) {
 Module['allocate'] = allocate;
 
 function Pointer_stringify(ptr, /* optional */ length) {
-#if UTF_STRING_SUPPORT
-  var utf8 = new Runtime.UTF8Processor();
-  var nullTerminated = typeof(length) == "undefined";
-  var ret = "";
-  var i = 0;
+  // Find the length, and check for UTF while doing so
+  var hasUtf = false;
   var t;
+  var i = 0;
   while (1) {
+    t = {{{ makeGetValue('ptr', 'i', 'i8', 0, 1) }}};
+    if (t >= 128) hasUtf = true;
+    else if (t == 0 && !length) break;
+    i++;
+    if (length && i == length) break;
+  }
+  if (!length) length = i;
+
+  var ret = '';
+
+#if USE_TYPED_ARRAYS == 2
+  if (!hasUtf) {
+    var MAX_CHUNK = 1024; // split up into chunks, because .apply on a huge string can overflow the stack
+    var curr;
+    while (length > 0) {
+      curr = String.fromCharCode.apply(String, HEAPU8.subarray(ptr, ptr + Math.min(length, MAX_CHUNK)));
+      ret = ret ? ret + curr : curr;
+      ptr += MAX_CHUNK;
+      length -= MAX_CHUNK;
+    }
+    return ret;
+  }
+#endif
+
+  var utf8 = new Runtime.UTF8Processor();
+  for (i = 0; i < length; i++) {
 #if ASSERTIONS
-  assert(i < TOTAL_MEMORY);
+    assert(ptr + i < TOTAL_MEMORY);
 #endif
     t = {{{ makeGetValue('ptr', 'i', 'i8', 0, 1) }}};
-    if (nullTerminated && t == 0) break;
     ret += utf8.processCChar(t);
-    i += 1;
-    if (!nullTerminated && i == length) break;
   }
   return ret;
-#else
-#if USE_TYPED_ARRAYS == 2
-  return String.fromCharCode.apply(String, HEAPU8.subarray(ptr, ptr + (length || _strlen(ptr))));
-#else
-  throw 'unsupported combination';
-#endif
-#endif
 }
 Module['Pointer_stringify'] = Pointer_stringify;
 
@@ -556,7 +570,7 @@ function enlargeMemory() {
 #if ASM_JS == 0
   abort('Cannot enlarge memory arrays. Either (1) compile with -s TOTAL_MEMORY=X with X higher than the current value, (2) compile with ALLOW_MEMORY_GROWTH which adjusts the size at runtime but prevents some optimizations, or (3) set Module.TOTAL_MEMORY before the program runs.');
 #else
-  abort('Cannot enlarge memory arrays in asm.js. Compile with -s TOTAL_MEMORY=X with X higher than the current value.');
+  abort('Cannot enlarge memory arrays in asm.js. Either (1) compile with -s TOTAL_MEMORY=X with X higher than the current value, or (2) set Module.TOTAL_MEMORY before the program runs.');
 #endif
 #else
   // TOTAL_MEMORY is the current size of the actual array, and STATICTOP is the new top.

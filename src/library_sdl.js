@@ -524,8 +524,18 @@ var LibrarySDL = {
           } else {
             // Otherwise, calculate the movement based on the changes
             // in the coordinates.
-            var x = event.pageX - Module["canvas"].offsetLeft;
-            var y = event.pageY - Module["canvas"].offsetTop;
+            var rect = Module["canvas"].getBoundingClientRect();
+            var x = event.pageX - (window.scrollX + rect.left);
+            var y = event.pageY - (window.scrollY + rect.top);
+
+            // the canvas might be CSS-scaled compared to its backbuffer;
+            // SDL-using content will want mouse coordinates in terms
+            // of backbuffer units.
+            var cw = Module["canvas"].width;
+            var ch = Module["canvas"].height;
+            x = x * (cw / rect.width);
+            y = y * (ch / rect.height);
+
             var movementX = x - SDL.mouseX;
             var movementY = y - SDL.mouseY;
           }
@@ -912,10 +922,11 @@ var LibrarySDL = {
 
   SDL_WarpMouse: function(x, y) {
     return; // TODO: implement this in a non-buggy way. Need to keep relative mouse movements correct after calling this
+    var rect = Module["canvas"].getBoundingClientRect();
     SDL.events.push({
       type: 'mousemove',
-      pageX: x + Module['canvas'].offsetLeft,
-      pageY: y + Module['canvas'].offsetTop
+      pageX: x + (window.scrollX + rect.left),
+      pageY: y + (window.scrollY + rect.top)
     });
   },
 

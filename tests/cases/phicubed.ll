@@ -12,25 +12,16 @@ entry:
   %a = alloca %struct.worker_args, align 4        ; [#uses=3 type=%struct.worker_args*]
   %b = alloca %struct.worker_args, align 4        ; [#uses=4 type=%struct.worker_args*]
   %chunk = alloca [10 x %struct.worker_args], align 4 ; [#uses=30 type=[10 x %struct.worker_args]*]
-  call void @llvm.dbg.declare(metadata !{%struct.worker_args* %a}, metadata !12), !dbg !23 ; [debug line = 9:25] [debug variable = a]
-  call void @llvm.dbg.declare(metadata !{%struct.worker_args* %b}, metadata !24), !dbg !25 ; [debug line = 10:25] [debug variable = b]
   %value = getelementptr inbounds %struct.worker_args* %a, i32 0, i32 0, !dbg !26 ; [#uses=1 type=i32*] [debug line = 11:13]
   store i32 60, i32* %value, align 4, !dbg !26    ; [debug line = 11:13]
   call void @emscripten_autodebug_i32(i32 16, i32 60)
   %next = getelementptr inbounds %struct.worker_args* %a, i32 0, i32 1, !dbg !27 ; [#uses=1 type=%struct.worker_args**] [debug line = 12:13]
-  call void @llvm.dbg.value(metadata !{%struct.worker_args* %b}, i64 0, metadata !24), !dbg !27 ; [debug line = 12:13] [debug variable = b]
-  call void @llvm.dbg.value(metadata !{%struct.worker_args* %b}, i64 0, metadata !24), !dbg !27 ; [debug line = 12:13] [debug variable = b]
-  call void @llvm.dbg.value(metadata !{%struct.worker_args* %b}, i64 0, metadata !24), !dbg !27 ; [debug line = 12:13] [debug variable = b]
-  call void @llvm.dbg.value(metadata !{%struct.worker_args* %b}, i64 0, metadata !24), !dbg !27 ; [debug line = 12:13] [debug variable = b]
-  call void @llvm.dbg.value(metadata !{%struct.worker_args* %b}, i64 0, metadata !24), !dbg !27 ; [debug line = 12:13] [debug variable = b]
   store %struct.worker_args* %b, %struct.worker_args** %next, align 4, !dbg !27 ; [debug line = 12:13]
   %value1 = getelementptr inbounds %struct.worker_args* %b, i32 0, i32 0, !dbg !28 ; [#uses=1 type=i32*] [debug line = 13:13]
   store i32 900, i32* %value1, align 4, !dbg !28  ; [debug line = 13:13]
   call void @emscripten_autodebug_i32(i32 26, i32 900)
   %next2 = getelementptr inbounds %struct.worker_args* %b, i32 0, i32 1, !dbg !29 ; [#uses=1 type=%struct.worker_args**] [debug line = 14:13]
   store %struct.worker_args* null, %struct.worker_args** %next2, align 4, !dbg !29 ; [debug line = 14:13]
-  call void @llvm.dbg.value(metadata !{%struct.worker_args* %a}, i64 0, metadata !30), !dbg !31 ; [debug line = 15:32] [debug variable = c]
-  call void @llvm.dbg.value(metadata !2, i64 0, metadata !32), !dbg !33 ; [debug line = 16:26] [debug variable = total]
   br label %while.body, !dbg !34                  ; [debug line = 17:13]
 
 for.cond.preheader:                               ; preds = %while.body
@@ -40,70 +31,60 @@ for.cond.preheader:                               ; preds = %while.body
   %arrayidx7 = getelementptr inbounds [10 x %struct.worker_args]* %chunk, i32 0, i32 1, !dbg !38 ; [#uses=1 type=%struct.worker_args*] [debug line = 26:15]
   %next9 = getelementptr inbounds [10 x %struct.worker_args]* %chunk, i32 0, i32 0, i32 1, !dbg !38 ; [#uses=1 type=%struct.worker_args**] [debug line = 26:15]
   store %struct.worker_args* %arrayidx7, %struct.worker_args** %next9, align 4, !dbg !38 ; [debug line = 26:15]
-  call void @llvm.dbg.value(metadata !39, i64 0, metadata !40), !dbg !41 ; [debug line = 24:36] [debug variable = i]
   %value5.1 = getelementptr inbounds [10 x %struct.worker_args]* %chunk, i32 0, i32 1, i32 0, !dbg !35 ; [#uses=1 type=i32*] [debug line = 25:15]
   store i32 10, i32* %value5.1, align 4, !dbg !35 ; [debug line = 25:15]
   call void @emscripten_autodebug_i32(i32 43, i32 10)
   %arrayidx7.1 = getelementptr inbounds [10 x %struct.worker_args]* %chunk, i32 0, i32 2, !dbg !38 ; [#uses=1 type=%struct.worker_args*] [debug line = 26:15]
   %next9.1 = getelementptr inbounds [10 x %struct.worker_args]* %chunk, i32 0, i32 1, i32 1, !dbg !38 ; [#uses=1 type=%struct.worker_args**] [debug line = 26:15]
   store %struct.worker_args* %arrayidx7.1, %struct.worker_args** %next9.1, align 4, !dbg !38 ; [debug line = 26:15]
-  call void @llvm.dbg.value(metadata !39, i64 0, metadata !40), !dbg !41 ; [debug line = 24:36] [debug variable = i]
   %value5.2 = getelementptr inbounds [10 x %struct.worker_args]* %chunk, i32 0, i32 2, i32 0, !dbg !35 ; [#uses=1 type=i32*] [debug line = 25:15]
   store i32 20, i32* %value5.2, align 4, !dbg !35 ; [debug line = 25:15]
   call void @emscripten_autodebug_i32(i32 50, i32 20)
   %arrayidx7.2 = getelementptr inbounds [10 x %struct.worker_args]* %chunk, i32 0, i32 3, !dbg !38 ; [#uses=1 type=%struct.worker_args*] [debug line = 26:15]
   %next9.2 = getelementptr inbounds [10 x %struct.worker_args]* %chunk, i32 0, i32 2, i32 1, !dbg !38 ; [#uses=1 type=%struct.worker_args**] [debug line = 26:15]
   store %struct.worker_args* %arrayidx7.2, %struct.worker_args** %next9.2, align 4, !dbg !38 ; [debug line = 26:15]
-  call void @llvm.dbg.value(metadata !39, i64 0, metadata !40), !dbg !41 ; [debug line = 24:36] [debug variable = i]
   %value5.3 = getelementptr inbounds [10 x %struct.worker_args]* %chunk, i32 0, i32 3, i32 0, !dbg !35 ; [#uses=1 type=i32*] [debug line = 25:15]
   store i32 30, i32* %value5.3, align 4, !dbg !35 ; [debug line = 25:15]
   call void @emscripten_autodebug_i32(i32 57, i32 30)
   %arrayidx7.3 = getelementptr inbounds [10 x %struct.worker_args]* %chunk, i32 0, i32 4, !dbg !38 ; [#uses=1 type=%struct.worker_args*] [debug line = 26:15]
   %next9.3 = getelementptr inbounds [10 x %struct.worker_args]* %chunk, i32 0, i32 3, i32 1, !dbg !38 ; [#uses=1 type=%struct.worker_args**] [debug line = 26:15]
   store %struct.worker_args* %arrayidx7.3, %struct.worker_args** %next9.3, align 4, !dbg !38 ; [debug line = 26:15]
-  call void @llvm.dbg.value(metadata !39, i64 0, metadata !40), !dbg !41 ; [debug line = 24:36] [debug variable = i]
   %value5.4 = getelementptr inbounds [10 x %struct.worker_args]* %chunk, i32 0, i32 4, i32 0, !dbg !35 ; [#uses=1 type=i32*] [debug line = 25:15]
   store i32 40, i32* %value5.4, align 4, !dbg !35 ; [debug line = 25:15]
   call void @emscripten_autodebug_i32(i32 64, i32 40)
   %arrayidx7.4 = getelementptr inbounds [10 x %struct.worker_args]* %chunk, i32 0, i32 5, !dbg !38 ; [#uses=1 type=%struct.worker_args*] [debug line = 26:15]
   %next9.4 = getelementptr inbounds [10 x %struct.worker_args]* %chunk, i32 0, i32 4, i32 1, !dbg !38 ; [#uses=1 type=%struct.worker_args**] [debug line = 26:15]
   store %struct.worker_args* %arrayidx7.4, %struct.worker_args** %next9.4, align 4, !dbg !38 ; [debug line = 26:15]
-  call void @llvm.dbg.value(metadata !39, i64 0, metadata !40), !dbg !41 ; [debug line = 24:36] [debug variable = i]
   %value5.5 = getelementptr inbounds [10 x %struct.worker_args]* %chunk, i32 0, i32 5, i32 0, !dbg !35 ; [#uses=1 type=i32*] [debug line = 25:15]
   store i32 50, i32* %value5.5, align 4, !dbg !35 ; [debug line = 25:15]
   call void @emscripten_autodebug_i32(i32 71, i32 50)
   %arrayidx7.5 = getelementptr inbounds [10 x %struct.worker_args]* %chunk, i32 0, i32 6, !dbg !38 ; [#uses=1 type=%struct.worker_args*] [debug line = 26:15]
   %next9.5 = getelementptr inbounds [10 x %struct.worker_args]* %chunk, i32 0, i32 5, i32 1, !dbg !38 ; [#uses=1 type=%struct.worker_args**] [debug line = 26:15]
   store %struct.worker_args* %arrayidx7.5, %struct.worker_args** %next9.5, align 4, !dbg !38 ; [debug line = 26:15]
-  call void @llvm.dbg.value(metadata !39, i64 0, metadata !40), !dbg !41 ; [debug line = 24:36] [debug variable = i]
   %value5.6 = getelementptr inbounds [10 x %struct.worker_args]* %chunk, i32 0, i32 6, i32 0, !dbg !35 ; [#uses=1 type=i32*] [debug line = 25:15]
   store i32 60, i32* %value5.6, align 4, !dbg !35 ; [debug line = 25:15]
   call void @emscripten_autodebug_i32(i32 78, i32 60)
   %arrayidx7.6 = getelementptr inbounds [10 x %struct.worker_args]* %chunk, i32 0, i32 7, !dbg !38 ; [#uses=1 type=%struct.worker_args*] [debug line = 26:15]
   %next9.6 = getelementptr inbounds [10 x %struct.worker_args]* %chunk, i32 0, i32 6, i32 1, !dbg !38 ; [#uses=1 type=%struct.worker_args**] [debug line = 26:15]
   store %struct.worker_args* %arrayidx7.6, %struct.worker_args** %next9.6, align 4, !dbg !38 ; [debug line = 26:15]
-  call void @llvm.dbg.value(metadata !39, i64 0, metadata !40), !dbg !41 ; [debug line = 24:36] [debug variable = i]
   %value5.7 = getelementptr inbounds [10 x %struct.worker_args]* %chunk, i32 0, i32 7, i32 0, !dbg !35 ; [#uses=1 type=i32*] [debug line = 25:15]
   store i32 70, i32* %value5.7, align 4, !dbg !35 ; [debug line = 25:15]
   call void @emscripten_autodebug_i32(i32 85, i32 70)
   %arrayidx7.7 = getelementptr inbounds [10 x %struct.worker_args]* %chunk, i32 0, i32 8, !dbg !38 ; [#uses=1 type=%struct.worker_args*] [debug line = 26:15]
   %next9.7 = getelementptr inbounds [10 x %struct.worker_args]* %chunk, i32 0, i32 7, i32 1, !dbg !38 ; [#uses=1 type=%struct.worker_args**] [debug line = 26:15]
   store %struct.worker_args* %arrayidx7.7, %struct.worker_args** %next9.7, align 4, !dbg !38 ; [debug line = 26:15]
-  call void @llvm.dbg.value(metadata !39, i64 0, metadata !40), !dbg !41 ; [debug line = 24:36] [debug variable = i]
   %value5.8 = getelementptr inbounds [10 x %struct.worker_args]* %chunk, i32 0, i32 8, i32 0, !dbg !35 ; [#uses=1 type=i32*] [debug line = 25:15]
   store i32 80, i32* %value5.8, align 4, !dbg !35 ; [debug line = 25:15]
   call void @emscripten_autodebug_i32(i32 92, i32 80)
   %arrayidx7.8 = getelementptr inbounds [10 x %struct.worker_args]* %chunk, i32 0, i32 9, !dbg !38 ; [#uses=1 type=%struct.worker_args*] [debug line = 26:15]
   %next9.8 = getelementptr inbounds [10 x %struct.worker_args]* %chunk, i32 0, i32 8, i32 1, !dbg !38 ; [#uses=1 type=%struct.worker_args**] [debug line = 26:15]
   store %struct.worker_args* %arrayidx7.8, %struct.worker_args** %next9.8, align 4, !dbg !38 ; [debug line = 26:15]
-  call void @llvm.dbg.value(metadata !39, i64 0, metadata !40), !dbg !41 ; [debug line = 24:36] [debug variable = i]
   %value11 = getelementptr inbounds [10 x %struct.worker_args]* %chunk, i32 0, i32 9, i32 0, !dbg !42 ; [#uses=1 type=i32*] [debug line = 28:13]
   store i32 90, i32* %value11, align 4, !dbg !42  ; [debug line = 28:13]
   call void @emscripten_autodebug_i32(i32 99, i32 90)
   %arrayidx12 = getelementptr inbounds [10 x %struct.worker_args]* %chunk, i32 0, i32 0, !dbg !43 ; [#uses=3 type=%struct.worker_args*] [debug line = 29:13]
   %next14 = getelementptr inbounds [10 x %struct.worker_args]* %chunk, i32 0, i32 9, i32 1, !dbg !43 ; [#uses=1 type=%struct.worker_args**] [debug line = 29:13]
   store %struct.worker_args* %arrayidx12, %struct.worker_args** %next14, align 4, !dbg !43 ; [debug line = 29:13]
-  call void @llvm.dbg.value(metadata !{%struct.worker_args* %arrayidx12}, i64 0, metadata !30), !dbg !44 ; [debug line = 31:13] [debug variable = c]
   br label %do.body, !dbg !45                     ; [debug line = 32:13]
 
 while.body:                                       ; preds = %while.body.while.body_crit_edge, %entry
@@ -114,8 +95,6 @@ while.body:                                       ; preds = %while.body.while.bo
   %1 = load i32* %value3, align 4, !dbg !46       ; [#uses=2 type=i32] [debug line = 18:15]
   call void @emscripten_autodebug_i32(i32 112, i32 %1)
   %add = add nsw i32 %1, %total.02, !dbg !46      ; [#uses=2 type=i32] [debug line = 18:15]
-  call void @llvm.dbg.value(metadata !{i32 %add}, i64 0, metadata !32), !dbg !46 ; [debug line = 18:15] [debug variable = total]
-  call void @llvm.dbg.value(metadata !{%struct.worker_args* %0}, i64 0, metadata !30), !dbg !48 ; [debug line = 19:15] [debug variable = c]
   %tobool = icmp eq %struct.worker_args* %0, null, !dbg !34 ; [#uses=1 type=i1] [debug line = 17:13]
   br i1 %tobool, label %for.cond.preheader, label %while.body.while.body_crit_edge, !dbg !34 ; [debug line = 17:13]
 
@@ -131,10 +110,8 @@ do.body:                                          ; preds = %do.body, %for.cond.
   %2 = load i32* %value15, align 4, !dbg !49      ; [#uses=2 type=i32] [debug line = 33:15]
   call void @emscripten_autodebug_i32(i32 129, i32 %2)
   %add16 = add nsw i32 %2, %total.1, !dbg !49     ; [#uses=2 type=i32] [debug line = 33:15]
-  call void @llvm.dbg.value(metadata !{i32 %add16}, i64 0, metadata !32), !dbg !49 ; [debug line = 33:15] [debug variable = total]
   %next17 = getelementptr inbounds %struct.worker_args* %c.1, i32 0, i32 1, !dbg !51 ; [#uses=1 type=%struct.worker_args**] [debug line = 34:15]
   %3 = load %struct.worker_args** %next17, align 4, !dbg !51 ; [#uses=2 type=%struct.worker_args*] [debug line = 34:15]
-  call void @llvm.dbg.value(metadata !{%struct.worker_args* %3}, i64 0, metadata !30), !dbg !51 ; [debug line = 34:15] [debug variable = c]
   %cmp19 = icmp eq %struct.worker_args* %3, %arrayidx12, !dbg !52 ; [#uses=1 type=i1] [debug line = 35:13]
   br i1 %cmp19, label %do.end, label %do.body, !dbg !52 ; [debug line = 35:13]
 
@@ -143,14 +120,8 @@ do.end:                                           ; preds = %do.body
   ret i32 0, !dbg !54                             ; [debug line = 40:13]
 }
 
-; [#uses=2]
-declare void @llvm.dbg.declare(metadata, metadata) nounwind readnone
-
 ; [#uses=7]
 declare i32 @printf(i8* nocapture, ...) nounwind
-
-; [#uses=21]
-declare void @llvm.dbg.value(metadata, i64, metadata) nounwind readnone
 
 ; [#uses=0]
 define void @emscripten_autodebug_i64(i32 %line, i64 %value) {

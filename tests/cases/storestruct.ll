@@ -15,8 +15,6 @@ entry:
   %x = alloca %struct.X, align 4                  ; [#uses=2]
   %y = alloca %struct.X, align 4                  ; [#uses=2]
   store i32 0, i32* %retval
-  call void @llvm.dbg.declare(metadata !{%struct.X* %x}, metadata !6), !dbg !13
-  call void @llvm.dbg.declare(metadata !{%struct.X* %y}, metadata !14), !dbg !15
   %a = getelementptr inbounds %struct.X* %x, i32 0, i32 0, !dbg !16 ; [#uses=1]
   store i32 5, i32* %a, align 4, !dbg !16
   %b = getelementptr inbounds %struct.X* %x, i32 0, i32 1, !dbg !17 ; [#uses=1]
@@ -53,9 +51,6 @@ entry:
 
   ret i32 0, !dbg !19
 }
-
-; [#uses=2]
-declare void @llvm.dbg.declare(metadata, metadata) nounwind readnone
 
 ; [#uses=1]
 declare i32 @printf(i8*, ...)

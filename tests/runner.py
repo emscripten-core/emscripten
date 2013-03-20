@@ -1234,6 +1234,59 @@ m_divisor is 1091269979
       '''
       self.do_run(src, ',0,,2,C!,0,C!,0,,65535,C!,0,')
 
+    def test_negative_zero(self):
+      src = r'''
+        #include <stdio.h>
+        #include <math.h>
+
+        int main() {
+          #define TEST(x, y) \
+            printf("%.2f, %.2f ==> %.2f\n", x, y, copysign(x, y));
+          TEST( 5.0f,  5.0f);
+          TEST( 5.0f, -5.0f);
+          TEST(-5.0f,  5.0f);
+          TEST(-5.0f, -5.0f);
+          TEST( 5.0f,  4.0f);
+          TEST( 5.0f, -4.0f);
+          TEST(-5.0f,  4.0f);
+          TEST(-5.0f, -4.0f);
+          TEST( 0.0f,  5.0f);
+          TEST( 0.0f, -5.0f);
+          TEST(-0.0f,  5.0f);
+          TEST(-0.0f, -5.0f);
+          TEST( 5.0f,  0.0f);
+          TEST( 5.0f, -0.0f);
+          TEST(-5.0f,  0.0f);
+          TEST(-5.0f, -0.0f);
+          TEST( 0.0f,  0.0f);
+          TEST( 0.0f, -0.0f);
+          TEST(-0.0f,  0.0f);
+          TEST(-0.0f, -0.0f);
+          return 0;
+        }
+      '''
+      self.do_run(src, '''5.00, 5.00 ==> 5.00
+5.00, -5.00 ==> -5.00
+-5.00, 5.00 ==> 5.00
+-5.00, -5.00 ==> -5.00
+5.00, 4.00 ==> 5.00
+5.00, -4.00 ==> -5.00
+-5.00, 4.00 ==> 5.00
+-5.00, -4.00 ==> -5.00
+0.00, 5.00 ==> 0.00
+0.00, -5.00 ==> -0.00
+-0.00, 5.00 ==> 0.00
+-0.00, -5.00 ==> -0.00
+5.00, 0.00 ==> 5.00
+5.00, -0.00 ==> -5.00
+-5.00, 0.00 ==> 5.00
+-5.00, -0.00 ==> -5.00
+0.00, 0.00 ==> 0.00
+0.00, -0.00 ==> -0.00
+-0.00, 0.00 ==> 0.00
+-0.00, -0.00 ==> -0.00
+''')
+
     def test_llvm_intrinsics(self):
       if self.emcc_args == None: return self.skip('needs ta2')
 
@@ -1269,6 +1322,7 @@ m_divisor is 1091269979
             printf("%d,%d\n", (int)llvm_ctlz_i64(((int64_t)1) << 40), llvm_ctlz_i32(1<<10));
             printf("%d,%d\n", (int)llvm_cttz_i64(((int64_t)1) << 40), llvm_cttz_i32(1<<10));
             printf("%d,%d\n", (int)llvm_ctpop_i64((0x3101ULL << 32) | 1), llvm_ctpop_i32(0x3101));
+            printf("%d\n", (int)llvm_ctpop_i32(-594093059));
 
             printf("%d\n", llvm_expect_i32(x % 27, 3));
 
@@ -1286,6 +1340,7 @@ c5,de,15,8a
 23,21
 40,10
 5,4
+22
 13
 72057594037927936
 ''')
@@ -5095,7 +5150,7 @@ def process(filename):
         0
         0
         0
-        0
+        -0
         1
         1
         1
@@ -5252,6 +5307,62 @@ at function.:blag
         Call with 2 variable arguments.
         '''
       self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected))
+
+    def test_vsnprintf(self):
+      if self.emcc_args is None: return self.skip('needs i64 math')
+
+      src = r'''
+        #include <stdio.h>
+        #include <stdarg.h>
+        #include <stdint.h>
+
+        void printy(const char *f, ...)
+        {
+          char buffer[256];
+          va_list args;
+          va_start(args, f);
+          vsnprintf(buffer, 256, f, args);
+          puts(buffer);
+          va_end(args);
+        }
+
+        int main(int argc, char **argv) {
+          int64_t x = argc - 1;
+          int64_t y = argc - 1 + 0x400000;
+          if (x % 3 == 2) y *= 2;
+
+          printy("0x%llx_0x%llx", x, y);
+          printy("0x%llx_0x%llx", x, x);
+          printy("0x%llx_0x%llx", y, x);
+          printy("0x%llx_0x%llx", y, y);
+
+          {
+            uint64_t A = 0x800000;
+            uint64_t B = 0x800000000000ULL;
+            printy("0x%llx_0x%llx", A, B);
+          }
+          {
+            uint64_t A = 0x800;
+            uint64_t B = 0x12340000000000ULL;
+            printy("0x%llx_0x%llx", A, B);
+          }
+          {
+            uint64_t A = 0x000009182746756;
+            uint64_t B = 0x192837465631ACBDULL;
+            printy("0x%llx_0x%llx", A, B);
+          }
+
+          return 0;
+        }
+      '''
+      self.do_run(src, '''0x0_0x400000
+0x0_0x0
+0x400000_0x0
+0x400000_0x400000
+0x800000_0x800000000000
+0x800_0x12340000000000
+0x9182746756_0x192837465631acbd
+''')
 
     def test_printf_more(self):
       src = r'''
@@ -5739,6 +5850,30 @@ def process(filename):
       self.emcc_args += ['--embed-file', 'file_with_byte_234.txt']
       self.do_run(src, '*234\n')
 
+    def test_fgets_eol(self):
+      if self.emcc_args is None: return self.skip('requires emcc')
+      src = r'''
+        #include <stdio.h>
+        char buf[32];
+        int main()
+        {
+          char *r = "SUCCESS";
+          FILE *f = fopen("eol.txt", "r");
+          while (fgets(buf, 32, f) != NULL) {
+            if (buf[0] == '\0') {
+              r = "FAIL";
+              break;
+            }
+          }
+          printf("%s\n", r);
+          fclose(f);
+          return 0;
+        }
+      '''
+      open('eol.txt', 'wb').write('\n')
+      self.emcc_args += ['--embed-file', 'eol.txt']
+      self.do_run(src, 'SUCCESS\n')
+
     def test_folders(self):
       add_pre_run = '''
 def process(filename):
@@ -6077,8 +6212,6 @@ def process(filename):
       self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=add_pre_run_and_checks)
 
     def test_utf(self):
-      if self.emcc_args and 'UTF_STRING_SUPPORT=0' in self.emcc_args: return self.skip('need utf support')
-
       self.banned_js_engines = [SPIDERMONKEY_ENGINE] # only node handles utf well
       Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc']
 
@@ -7285,6 +7418,8 @@ def process(filename):
       if self.emcc_args is None: return self.skip('requires emcc')
       if Building.LLVM_OPTS and self.emcc_args is None: Settings.SAFE_HEAP = 0 # Optimizations make it so we do not have debug info on the line we need to ignore
 
+      Settings.DEAD_FUNCTIONS = ['__ZSt9terminatev']
+
       # Note: this is also a good test of per-file and per-line changes (since we have multiple files, and correct specific lines)
       if Settings.SAFE_HEAP:
         # Ignore bitfield warnings
@@ -7889,7 +8024,8 @@ def process(filename):
 
     def test_scriptaclass(self):
         if self.emcc_args is None: return self.skip('requires emcc')
-        if Settings.ASM_JS: return self.skip('asm does not bindings generator yet')
+
+        Settings.EXPORT_BINDINGS = 1
 
         header_filename = os.path.join(self.get_dir(), 'header.h')
         header = '''
@@ -8064,6 +8200,7 @@ def process(filename):
           Module.Child2.prototype.runVirtualFunc(c2);
           c2.virtualFunc2();
 
+''' + ('' if Settings.ASM_JS else '''
           // extend the class from JS
           var c3 = new Module.Child2;
           Module.customizeVTable(c3, [{
@@ -8084,6 +8221,7 @@ def process(filename):
           c2.virtualFunc(); // original should remain the same
           Module.Child2.prototype.runVirtualFunc(c2);
           c2.virtualFunc2();
+''') + '''
 
           Module.print('*ok*');
         \'\'\'
@@ -8122,7 +8260,7 @@ Child2:9
 *static*
 *virtualf*
 *virtualf*
-*virtualf2*
+*virtualf2*''' + ('' if Settings.ASM_JS else '''
 Parent:9
 Child2:9
 *js virtualf replacement*
@@ -8130,13 +8268,14 @@ Child2:9
 *js virtualf2 replacement*
 *virtualf*
 *virtualf*
-*virtualf2*
+*virtualf2*''') + '''
 *ok*
 ''', post_build=[post2, post3])
 
     def test_scriptaclass_2(self):
         if self.emcc_args is None: return self.skip('requires emcc')
-        if Settings.ASM_JS: return self.skip('asm does not bindings generator yet')
+
+        Settings.EXPORT_BINDINGS = 1
 
         header_filename = os.path.join(self.get_dir(), 'header.h')
         header = '''
@@ -8753,7 +8892,7 @@ TT = %s
 
   # asm.js
   exec('asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=1"])')
-  exec('asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=1", "-g", "-s", "ASSERTIONS=1", "-s", "UTF_STRING_SUPPORT=0"])')
+  exec('asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=1", "-g", "-s", "ASSERTIONS=1"])')
 
   # Make custom runs with various options
   for compiler, quantum, embetter, typed_arrays, llvm_opts in [
@@ -9290,7 +9429,7 @@ f.close()
       filename = self.in_dir('src.cpp')
       open(filename, 'w').write(src)
       out, err = Popen([PYTHON, EMCC, filename, '-s', 'ASM_JS=1', '-O2'], stderr=PIPE).communicate()
-      assert 'Warning: Unresolved symbol' in err, 'always warn on undefs in asm, since it breaks validation'
+      assert 'Unresolved symbol' in err, 'always warn on undefs in asm, since it breaks validation: ' + err
 
     def test_redundant_link(self):
       lib = "int mult() { return 1; }"
@@ -9919,6 +10058,7 @@ f.close()
         (path_from_root('tools', 'test-js-optimizer-asm-last.js'), open(path_from_root('tools', 'test-js-optimizer-asm-last-output.js')).read(),
          ['asm', 'last']),
       ]:
+        print input
         output = Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
         self.assertIdentical(expected, output.replace('\r\n', '\n').replace('\n\n', '\n'))
 
@@ -9935,13 +10075,19 @@ f.close()
       try:
         os.environ['EMCC_DEBUG'] = '1'
         for asm, linkable, chunks, js_chunks in [
-            (0, 0, 3, 2), (0, 1, 4, 4),
-            (1, 0, 3, 2), (1, 1, 4, 5)
+            (0, 0, 3, 2), (0, 1, 3, 4),
+            (1, 0, 3, 2), (1, 1, 3, 4)
           ]:
           print asm, linkable, chunks, js_chunks
-          output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O1', '-s', 'LINKABLE=%d' % linkable, '-s', 'ASM_JS=%d' % asm], stdout=PIPE, stderr=PIPE).communicate()
-          assert 'phase 2 working on %d chunks' %chunks in err, err
-          assert 'splitting up js optimization into %d chunks' % js_chunks in err, err
+          output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O1', '-s', 'LINKABLE=%d' % linkable, '-s', 'ASM_JS=%d' % asm, '-s', 'UNRESOLVED_AS_DEAD=1'], stdout=PIPE, stderr=PIPE).communicate()
+          ok = False
+          for c in range(chunks, chunks+2):
+            ok = ok or ('phase 2 working on %d chunks' % c in err)
+          assert ok, err
+          ok = False
+          for c in range(js_chunks, js_chunks+2):
+            ok = ok or ('splitting up js optimization into %d chunks' % c in err)
+          assert ok, err
       finally:
         del os.environ['EMCC_DEBUG']
 
@@ -11279,6 +11425,10 @@ elif 'browser' in str(sys.argv):
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
       self.btest('gl_ps_workaround2.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png'])
 
+    def test_gl_ps_strides(self):
+      shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
+      self.btest('gl_ps_strides.c', reference='gl_ps_strides.png', args=['--preload-file', 'screenshot.png'])
+
     def test_matrix_identity(self):
       self.btest('gl_matrix_identity.c', expected=['-1882984448', '460451840'])
 
@@ -12009,7 +12159,8 @@ ok.
                                     native=True)
 
       emcc_args = js_lib + ['-I' + path_from_root('tests', 'bullet', 'src'),
-                            '-I' + path_from_root('tests', 'bullet', 'Demos', 'Benchmarks')]
+                            '-I' + path_from_root('tests', 'bullet', 'Demos', 'Benchmarks'),
+                            '-s', 'DEAD_FUNCTIONS=["__ZSt9terminatev"]']
       native_args = native_lib + ['-I' + path_from_root('tests', 'bullet', 'src'),
                                   '-I' + path_from_root('tests', 'bullet', 'Demos', 'Benchmarks')]
 
