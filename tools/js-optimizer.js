@@ -2287,19 +2287,16 @@ function minifyGlobals(ast) {
 function prepDotZero(ast) {
   traverse(ast, function(node, type) {
     if (type == 'unary-prefix' && node[1] == '+') {
-      if (node[2][0] == 'num') {
+      if (node[2][0] == 'num' ||
+          (node[2][0] == 'unary-prefix' && node[2][1] == '-' && node[2][2][0] == 'num')) {
         return ['call', ['name', 'DOT$ZERO'], [node[2]]];
-      } else if (node[2][0] == 'unary-prefix' && node[2][1] == '-' && node[2][2][0] == 'num') {
-        node[2][2][1] = -node[2][2][1];
-        return ['call', ['name', 'DOT$ZERO'], [node[2][2]]];
       }
     }
   });
 }
 function fixDotZero(js) {
-  return js.replace(/DOT\$ZERO\(((0x)?[-+]?[0-9a-f]*\.?[0-9]+([eE][-+]?[0-9]+)?)\)/g, function(m, num) {
-    if (num.substr(0, 2) == '0x') {
-      if (num[2] == '-') num = '-0x' + num.substr(3); // uglify generates 0x-8000 for some reason
+  return js.replace(/DOT\$ZERO\(([-+]?(0x)?[0-9a-f]*\.?[0-9]+([eE][-+]?[0-9]+)?)\)/g, function(m, num) {
+    if (num.substr(0, 2) == '0x' || num.substr(0, 3) == '-0x') {
       return eval(num) + '.0';
     }
     if (num.indexOf('.') >= 0) return num;

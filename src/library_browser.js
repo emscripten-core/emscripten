@@ -45,9 +45,9 @@ mergeInto(LibraryManager.library, {
     moduleContextCreatedCallbacks: [],
     workers: [],
 
-    ensureObjects: function() {
-      if (Browser.ensured) return;
-      Browser.ensured = true;
+    init: function() {
+      if (Browser.initted) return;
+      Browser.initted = true;
       try {
         new Blob();
         Browser.hasBlobConstructor = true;
@@ -193,6 +193,36 @@ mergeInto(LibraryManager.library, {
         }
       };
       Module['preloadPlugins'].push(audioPlugin);
+
+      // Canvas event setup
+
+      var canvas = Module['canvas'];
+      canvas.requestPointerLock = canvas['requestPointerLock'] ||
+                                  canvas['mozRequestPointerLock'] ||
+                                  canvas['webkitRequestPointerLock'];
+      canvas.exitPointerLock = document['exitPointerLock'] ||
+                               document['mozExitPointerLock'] ||
+                               document['webkitExitPointerLock'];
+      canvas.exitPointerLock = canvas.exitPointerLock.bind(document);
+
+      function pointerLockChange() {
+        Browser.pointerLock = document['pointerLockElement'] === canvas ||
+                              document['mozPointerLockElement'] === canvas ||
+                              document['webkitPointerLockElement'] === canvas;
+      }
+
+      document.addEventListener('pointerlockchange', pointerLockChange, false);
+      document.addEventListener('mozpointerlockchange', pointerLockChange, false);
+      document.addEventListener('webkitpointerlockchange', pointerLockChange, false);
+
+      if (Module['elementPointerLock']) {
+        canvas.addEventListener("click", function(ev) {
+          if (!Browser.pointerLock && canvas.requestPointerLock) {
+            canvas.requestPointerLock();
+            ev.preventDefault();
+          }
+        }, false);
+      }
     },
 
     createContext: function(canvas, useWebGL, setInModule) {
@@ -271,6 +301,7 @@ mergeInto(LibraryManager.library, {
         Module.ctx = ctx;
         Module.useWebGL = useWebGL;
         Browser.moduleContextCreatedCallbacks.forEach(function(callback) { callback() });
+        Browser.init();
       }
       return ctx;
     },
@@ -292,13 +323,6 @@ mergeInto(LibraryManager.library, {
         if ((document['webkitFullScreenElement'] || document['webkitFullscreenElement'] ||
              document['mozFullScreenElement'] || document['mozFullscreenElement'] ||
              document['fullScreenElement'] || document['fullscreenElement']) === canvas) {
-          canvas.requestPointerLock = canvas['requestPointerLock'] ||
-                                      canvas['mozRequestPointerLock'] ||
-                                      canvas['webkitRequestPointerLock'];
-          canvas.exitPointerLock = document['exitPointerLock'] ||
-                                   document['mozExitPointerLock'] ||
-                                   document['webkitExitPointerLock'];
-          canvas.exitPointerLock = canvas.exitPointerLock.bind(document);
           canvas.cancelFullScreen = document['cancelFullScreen'] ||
                                     document['mozCancelFullScreen'] ||
                                     document['webkitCancelFullScreen'];
@@ -312,21 +336,11 @@ mergeInto(LibraryManager.library, {
         if (Module['onFullScreen']) Module['onFullScreen'](Browser.isFullScreen);
       }
 
-      function pointerLockChange() {
-        Browser.pointerLock = document['pointerLockElement'] === canvas ||
-                              document['mozPointerLockElement'] === canvas ||
-                              document['webkitPointerLockElement'] === canvas;
-      }
-
       if (!this.fullScreenHandlersInstalled) {
         this.fullScreenHandlersInstalled = true;
         document.addEventListener('fullscreenchange', fullScreenChange, false);
         document.addEventListener('mozfullscreenchange', fullScreenChange, false);
         document.addEventListener('webkitfullscreenchange', fullScreenChange, false);
-
-        document.addEventListener('pointerlockchange', pointerLockChange, false);
-        document.addEventListener('mozpointerlockchange', pointerLockChange, false);
-        document.addEventListener('webkitpointerlockchange', pointerLockChange, false);
       }
 
       canvas.requestFullScreen = canvas['requestFullScreen'] ||

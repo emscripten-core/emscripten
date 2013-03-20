@@ -443,23 +443,6 @@ var LibrarySDL = {
       return false;
     },
 
-    offsetsTemp: { left: 0, top: 0 }, // temporary object to avoid generating garbage in offsets(). assumes the object is not captured
-
-    offsets: function(element) {
-      var left = 0;
-      var top = 0;
-
-      do {
-        left += element.offsetLeft;
-        top += element.offsetTop;
-      } while (element = element.offsetParent)
-
-      var ret = SDL.offsetsTemp;
-      ret.left = left;
-      ret.top = top;
-      return ret;
-    },
-
     makeCEvent: function(event, ptr) {
       if (typeof event === 'number') {
         // This is a pointer to a native C event that was SDL_PushEvent'ed
@@ -541,9 +524,18 @@ var LibrarySDL = {
           } else {
             // Otherwise, calculate the movement based on the changes
             // in the coordinates.
-            var offsets = SDL.offsets(Module["canvas"]);
-            var x = event.pageX - offsets.left;
-            var y = event.pageY - offsets.top;
+            var rect = Module["canvas"].getBoundingClientRect();
+            var x = event.pageX - (window.scrollX + rect.left);
+            var y = event.pageY - (window.scrollY + rect.top);
+
+            // the canvas might be CSS-scaled compared to its backbuffer;
+            // SDL-using content will want mouse coordinates in terms
+            // of backbuffer units.
+            var cw = Module["canvas"].width;
+            var ch = Module["canvas"].height;
+            x = x * (cw / rect.width);
+            y = y * (ch / rect.height);
+
             var movementX = x - SDL.mouseX;
             var movementY = y - SDL.mouseY;
           }
@@ -930,11 +922,11 @@ var LibrarySDL = {
 
   SDL_WarpMouse: function(x, y) {
     return; // TODO: implement this in a non-buggy way. Need to keep relative mouse movements correct after calling this
-    var offsets = SDL.offsets(Module["canvas"]);
+    var rect = Module["canvas"].getBoundingClientRect();
     SDL.events.push({
       type: 'mousemove',
-      pageX: x + offsets.left,
-      pageY: y + offsets.top
+      pageX: x + (window.scrollX + rect.left),
+      pageY: y + (window.scrollY + rect.top)
     });
   },
 

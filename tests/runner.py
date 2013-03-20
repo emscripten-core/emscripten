@@ -1234,6 +1234,59 @@ m_divisor is 1091269979
       '''
       self.do_run(src, ',0,,2,C!,0,C!,0,,65535,C!,0,')
 
+    def test_negative_zero(self):
+      src = r'''
+        #include <stdio.h>
+        #include <math.h>
+
+        int main() {
+          #define TEST(x, y) \
+            printf("%.2f, %.2f ==> %.2f\n", x, y, copysign(x, y));
+          TEST( 5.0f,  5.0f);
+          TEST( 5.0f, -5.0f);
+          TEST(-5.0f,  5.0f);
+          TEST(-5.0f, -5.0f);
+          TEST( 5.0f,  4.0f);
+          TEST( 5.0f, -4.0f);
+          TEST(-5.0f,  4.0f);
+          TEST(-5.0f, -4.0f);
+          TEST( 0.0f,  5.0f);
+          TEST( 0.0f, -5.0f);
+          TEST(-0.0f,  5.0f);
+          TEST(-0.0f, -5.0f);
+          TEST( 5.0f,  0.0f);
+          TEST( 5.0f, -0.0f);
+          TEST(-5.0f,  0.0f);
+          TEST(-5.0f, -0.0f);
+          TEST( 0.0f,  0.0f);
+          TEST( 0.0f, -0.0f);
+          TEST(-0.0f,  0.0f);
+          TEST(-0.0f, -0.0f);
+          return 0;
+        }
+      '''
+      self.do_run(src, '''5.00, 5.00 ==> 5.00
+5.00, -5.00 ==> -5.00
+-5.00, 5.00 ==> 5.00
+-5.00, -5.00 ==> -5.00
+5.00, 4.00 ==> 5.00
+5.00, -4.00 ==> -5.00
+-5.00, 4.00 ==> 5.00
+-5.00, -4.00 ==> -5.00
+0.00, 5.00 ==> 0.00
+0.00, -5.00 ==> -0.00
+-0.00, 5.00 ==> 0.00
+-0.00, -5.00 ==> -0.00
+5.00, 0.00 ==> 5.00
+5.00, -0.00 ==> -5.00
+-5.00, 0.00 ==> 5.00
+-5.00, -0.00 ==> -5.00
+0.00, 0.00 ==> 0.00
+0.00, -0.00 ==> -0.00
+-0.00, 0.00 ==> 0.00
+-0.00, -0.00 ==> -0.00
+''')
+
     def test_llvm_intrinsics(self):
       if self.emcc_args == None: return self.skip('needs ta2')
 
@@ -5097,7 +5150,7 @@ def process(filename):
         0
         0
         0
-        0
+        -0
         1
         1
         1
@@ -10005,6 +10058,7 @@ f.close()
         (path_from_root('tools', 'test-js-optimizer-asm-last.js'), open(path_from_root('tools', 'test-js-optimizer-asm-last-output.js')).read(),
          ['asm', 'last']),
       ]:
+        print input
         output = Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
         self.assertIdentical(expected, output.replace('\r\n', '\n').replace('\n\n', '\n'))
 
@@ -10021,13 +10075,19 @@ f.close()
       try:
         os.environ['EMCC_DEBUG'] = '1'
         for asm, linkable, chunks, js_chunks in [
-            (0, 0, 3, 2), (0, 1, 4, 4),
-            (1, 0, 3, 2), (1, 1, 4, 5)
+            (0, 0, 3, 2), (0, 1, 3, 4),
+            (1, 0, 3, 2), (1, 1, 3, 4)
           ]:
           print asm, linkable, chunks, js_chunks
           output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O1', '-s', 'LINKABLE=%d' % linkable, '-s', 'ASM_JS=%d' % asm, '-s', 'UNRESOLVED_AS_DEAD=1'], stdout=PIPE, stderr=PIPE).communicate()
-          assert 'phase 2 working on %d chunks' %chunks in err, err
-          assert 'splitting up js optimization into %d chunks' % js_chunks in err, err
+          ok = False
+          for c in range(chunks, chunks+2):
+            ok = ok or ('phase 2 working on %d chunks' % c in err)
+          assert ok, err
+          ok = False
+          for c in range(js_chunks, js_chunks+2):
+            ok = ok or ('splitting up js optimization into %d chunks' % c in err)
+          assert ok, err
       finally:
         del os.environ['EMCC_DEBUG']
 

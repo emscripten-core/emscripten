@@ -382,7 +382,7 @@ LibraryManager.library = {
     // do preloading for the Image/Audio part, as if the typed array were the
     // result of an XHR that you did manually.
     createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile) {
-      Browser.ensureObjects();
+      Browser.init();
       var fullname = FS.joinPath([parent, name], true);
       function processData(byteArray) {
         function finish(byteArray) {
@@ -2642,7 +2642,7 @@ LibraryManager.library = {
   //   format: A pointer to the format string.
   //   varargs: A pointer to the start of the arguments list.
   // Returns the resulting string string as a character array.
-  _formatString__deps: ['strlen'],
+  _formatString__deps: ['strlen', '_reallyNegative'],
   _formatString: function(format, varargs) {
     var textIndex = format;
     var argIndex = 0;
@@ -2897,7 +2897,6 @@ LibraryManager.library = {
             // Float.
             var currArg = getNextArg('double');
             var argText;
-
             if (isNaN(currArg)) {
               argText = 'nan';
               flagZeroPad = false;
@@ -2932,6 +2931,9 @@ LibraryManager.library = {
                 }
               } else if (next == {{{ charCode('f') }}} || next == {{{ charCode('F') }}}) {
                 argText = currArg.toFixed(effectivePrecision);
+                if (currArg === 0 && __reallyNegative(currArg)) {
+                  argText = '-' + argText;
+                }
               }
 
               var parts = argText.split('e');
@@ -5478,9 +5480,14 @@ LibraryManager.library = {
     return isNaN(x);
   },
   __isnan: 'isnan',
+
+  _reallyNegative: function(x) {
+    return x < 0 || (x === 0 && (1/x) === -Infinity);
+  },
+
+  copysign__deps: ['_reallyNegative'],
   copysign: function(a, b) {
-      if (a < 0 === b < 0) return a;
-      return -a;
+    return __reallyNegative(a) === __reallyNegative(b) ? a : -a;
   },
   copysignf: 'copysign',
   __signbit__deps: ['copysign'],
