@@ -45,9 +45,9 @@ mergeInto(LibraryManager.library, {
     moduleContextCreatedCallbacks: [],
     workers: [],
 
-    ensureObjects: function() {
-      if (Browser.ensured) return;
-      Browser.ensured = true;
+    init: function() {
+      if (Browser.initted) return;
+      Browser.initted = true;
       try {
         new Blob();
         Browser.hasBlobConstructor = true;
@@ -194,7 +194,8 @@ mergeInto(LibraryManager.library, {
       };
       Module['preloadPlugins'].push(audioPlugin);
 
-      // is this the right place?
+      // Canvas event setup
+
       var canvas = Module['canvas'];
       canvas.requestPointerLock = canvas['requestPointerLock'] ||
                                   canvas['mozRequestPointerLock'] ||
@@ -300,6 +301,7 @@ mergeInto(LibraryManager.library, {
         Module.ctx = ctx;
         Module.useWebGL = useWebGL;
         Browser.moduleContextCreatedCallbacks.forEach(function(callback) { callback() });
+        Browser.init();
       }
       return ctx;
     },
