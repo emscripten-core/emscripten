@@ -462,7 +462,11 @@ function allocate(slab, types, allocator, ptr) {
 
 #if USE_TYPED_ARRAYS == 2
   if (singleType === 'i8') {
-    HEAPU8.set(new Uint8Array(slab), ret);
+    if (slab.subarray || slab.slice) {
+      HEAPU8.set(slab, ret);
+    } else {
+      HEAPU8.set(new Uint8Array(slab), ret);
+    }
     return ret;
   }
 #endif
