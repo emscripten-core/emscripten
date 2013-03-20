@@ -182,6 +182,17 @@ namespace emscripten {
         };
 
         template<typename T>
+        struct BindingType<const T> {
+            typedef typename BindingType<T>::WireType WireType;
+            static WireType toWireType(const T& v) {
+                return BindingType<T>::toWireType(v);
+            }
+            static T fromWireType(WireType wt) {
+                return BindingType<T>::fromWireType(wt);
+            }
+        };
+
+        template<typename T>
         struct BindingType<const T&> {
             typedef typename BindingType<T>::WireType WireType;
             static WireType toWireType(const T& v) {
