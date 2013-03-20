@@ -30,7 +30,9 @@ Module.callMain = function callMain(args) {
   catch(e) {
     if (e.name == 'ExitStatus') {
       return e.status;
-    } else if (e !== 'SimulateInfiniteLoop') {
+    } else if (e == 'SimulateInfiniteLoop') {
+      Module['noExitRuntime'] = true;
+    } else {
       throw e;
     }
   } finally {
