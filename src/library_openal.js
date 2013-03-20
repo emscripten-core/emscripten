@@ -398,8 +398,7 @@ var LibraryOpenAL = {
     src.buffer = AL.currentContext.src[source - 1].buffer;
     src.connect(AL.currentContext.src[source - 1].gain);
     src.start(0, offset);
-    // Work around Firefox bug 851338
-    AL.currentContext.src[source - 1].playTime = AL.currentContext.ctx.currentTime || 0;
+    AL.currentContext.src[source - 1].playTime = AL.currentContext.ctx.currentTime;
     AL.currentContext.src[source - 1].paused = false;
     AL.currentContext.src[source - 1]['src'] = src;
   },
@@ -439,8 +438,7 @@ var LibraryOpenAL = {
     if ("src" in AL.currentContext.src[source - 1] &&
         !AL.currentContext.src[source - 1].paused) {
       AL.currentContext.src[source - 1].paused = true;
-      // Work around Firefox bug 851338
-      AL.currentContext.src[source - 1].pausedTime = AL.currentContext.ctx.currentTime || 0;
+      AL.currentContext.src[source - 1].pausedTime = AL.currentContext.ctx.currentTime;
       AL.currentContext.src[source - 1]["src"].stop(0);
       delete AL.currentContext.src[source - 1].src;
     }
