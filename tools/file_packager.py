@@ -321,9 +321,12 @@ if has_preloaded:
     if file_['mode'] == 'preload':
       use_data += '''
         curr = DataRequest.prototype.requests['%s'];
-        curr.response = byteArray.subarray(%d,%d);
+        var data = byteArray.subarray(%d, %d);
+        ptr = _valloc(%d);
+        HEAPU8.set(data, ptr);
+        curr.response = HEAPU8.subarray(ptr, ptr + %d);
         curr.onload();
-      ''' % (file_['name'], file_['data_start'], file_['data_end'])
+      ''' % (file_['name'], file_['data_start'], file_['data_end'], file_['data_end'] - file_['data_start'], file_['data_end'] - file_['data_start'])
   use_data += "          Module['removeRunDependency']('datafile_%s');\n" % data_target
 
   if Compression.on:
