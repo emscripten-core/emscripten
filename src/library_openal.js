@@ -97,14 +97,8 @@ var LibraryOpenAL = {
     for (var i = 0; i < count; ++i) {
       var gain = AL.currentContext.ctx.createGain();
       var panner = AL.currentContext.ctx.createPanner();
-      if (typeof(webkitAudioContext) == 'function') {
-        gain.connect(panner);
-        panner.connect(AL.currentContext.ctx.destination);
-      } else {
-        // Work around a Firefox bug (bug 849916)
-        gain.connect(AL.currentContext.ctx.destination);
-      }
-      gain.gain.value = 1; // work around a Firefox bug (bug 850970)
+      gain.connect(panner);
+      panner.connect(AL.currentContext.ctx.destination);
       AL.currentContext.src.push({
         loop: false,
         buffer: null,
