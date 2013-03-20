@@ -82,7 +82,7 @@ var LibraryOpenAL = {
       return;
     }
     for (var i = 0; i < count; ++i) {
-      var sourceIdx = {{{ makeGetValue('sources', 'i', 'i32') }}} - 1;
+      var sourceIdx = {{{ makeGetValue('sources', 'i*4', 'i32') }}} - 1;
       delete AL.currentContext.src[sourceIdx];
     }
   },
@@ -197,15 +197,15 @@ var LibraryOpenAL = {
     case 0x1004 /* AL_POSITION */:
       AL.currentContext.src[source - 1].panner.setPosition(
           {{{ makeGetValue('value', '0', 'float') }}},
-          {{{ makeGetValue('value', '1', 'float') }}},
-          {{{ makeGetValue('value', '2', 'float') }}}
+          {{{ makeGetValue('value', '4', 'float') }}},
+          {{{ makeGetValue('value', '8', 'float') }}}
         );
       break;
     case 0x1006 /* AL_VELOCITY */:
       AL.currentContext.src[source - 1].panner.setVelocity(
           {{{ makeGetValue('value', '0', 'float') }}},
-          {{{ makeGetValue('value', '1', 'float') }}},
-          {{{ makeGetValue('value', '2', 'float') }}}
+          {{{ makeGetValue('value', '4', 'float') }}},
+          {{{ makeGetValue('value', '8', 'float') }}}
         );
       break;
     default:
@@ -236,7 +236,7 @@ var LibraryOpenAL = {
       return;
     }
     for (var i = 0; i < count; ++i) {
-      var buffer = {{{ makeGetValue('buffers', 'i', 'i32') }}};
+      var buffer = {{{ makeGetValue('buffers', 'i*4', 'i32') }}};
       if (buffer > AL.currentContext.buf.length) {
 #if OPENAL_DEBUG
         console.error("alSourceQueueBuffers called with an invalid buffer");
@@ -288,7 +288,7 @@ var LibraryOpenAL = {
       return;
     }
     for (var i = 0; i < count; ++i) {
-      var bufferIdx = {{{ makeGetValue('buffers', 'i', 'i32') }}} - 1;
+      var bufferIdx = {{{ makeGetValue('buffers', 'i*4', 'i32') }}} - 1;
       var buffer = AL.currentContext.buf[bufferIdx].buf;
       for (var j = 0; j < AL.currentContext.src.length; ++j) {
         if (buffer == AL.currentContext.src[j].buffer) {
@@ -528,25 +528,25 @@ var LibraryOpenAL = {
     case 0x1004 /* AL_POSITION */:
       AL.currentContext.ctx.listener.setPosition(
           {{{ makeGetValue('values', '0', 'float') }}},
-          {{{ makeGetValue('values', '1', 'float') }}},
-          {{{ makeGetValue('values', '2', 'float') }}}
+          {{{ makeGetValue('values', '4', 'float') }}},
+          {{{ makeGetValue('values', '8', 'float') }}}
         );
       break;
     case 0x1006 /* AL_VELOCITY */:
       AL.currentContext.ctx.listener.setVelocity(
           {{{ makeGetValue('values', '0', 'float') }}},
-          {{{ makeGetValue('values', '1', 'float') }}},
-          {{{ makeGetValue('values', '2', 'float') }}}
+          {{{ makeGetValue('values', '4', 'float') }}},
+          {{{ makeGetValue('values', '8', 'float') }}}
         );
       break;
     case 0x100F /* AL_ORIENTATION */:
       AL.currentContext.ctx.listener.setOrientation(
           {{{ makeGetValue('values', '0', 'float') }}},
-          {{{ makeGetValue('values', '1', 'float') }}},
-          {{{ makeGetValue('values', '2', 'float') }}},
-          {{{ makeGetValue('values', '3', 'float') }}},
           {{{ makeGetValue('values', '4', 'float') }}},
-          {{{ makeGetValue('values', '5', 'float') }}}
+          {{{ makeGetValue('values', '8', 'float') }}},
+          {{{ makeGetValue('values', '12', 'float') }}},
+          {{{ makeGetValue('values', '16', 'float') }}},
+          {{{ makeGetValue('values', '20', 'float') }}}
         );
       break;
     default:
