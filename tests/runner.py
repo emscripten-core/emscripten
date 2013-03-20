@@ -1234,6 +1234,59 @@ m_divisor is 1091269979
       '''
       self.do_run(src, ',0,,2,C!,0,C!,0,,65535,C!,0,')
 
+    def test_negative_zero(self):
+      src = r'''
+        #include <stdio.h>
+        #include <math.h>
+
+        int main() {
+          #define TEST(x, y) \
+            printf("%.2f, %.2f ==> %.2f\n", x, y, copysign(x, y));
+          TEST( 5.0f,  5.0f);
+          TEST( 5.0f, -5.0f);
+          TEST(-5.0f,  5.0f);
+          TEST(-5.0f, -5.0f);
+          TEST( 5.0f,  4.0f);
+          TEST( 5.0f, -4.0f);
+          TEST(-5.0f,  4.0f);
+          TEST(-5.0f, -4.0f);
+          TEST( 0.0f,  5.0f);
+          TEST( 0.0f, -5.0f);
+          TEST(-0.0f,  5.0f);
+          TEST(-0.0f, -5.0f);
+          TEST( 5.0f,  0.0f);
+          TEST( 5.0f, -0.0f);
+          TEST(-5.0f,  0.0f);
+          TEST(-5.0f, -0.0f);
+          TEST( 0.0f,  0.0f);
+          TEST( 0.0f, -0.0f);
+          TEST(-0.0f,  0.0f);
+          TEST(-0.0f, -0.0f);
+          return 0;
+        }
+      '''
+      self.do_run(src, '''5.00, 5.00 ==> 5.00
+5.00, -5.00 ==> -5.00
+-5.00, 5.00 ==> 5.00
+-5.00, -5.00 ==> -5.00
+5.00, 4.00 ==> 5.00
+5.00, -4.00 ==> -5.00
+-5.00, 4.00 ==> 5.00
+-5.00, -4.00 ==> -5.00
+0.00, 5.00 ==> 0.00
+0.00, -5.00 ==> -0.00
+-0.00, 5.00 ==> 0.00
+-0.00, -5.00 ==> -0.00
+5.00, 0.00 ==> 5.00
+5.00, -0.00 ==> -5.00
+-5.00, 0.00 ==> 5.00
+-5.00, -0.00 ==> -5.00
+0.00, 0.00 ==> 0.00
+0.00, -0.00 ==> -0.00
+-0.00, 0.00 ==> 0.00
+-0.00, -0.00 ==> -0.00
+''')
+
     def test_llvm_intrinsics(self):
       if self.emcc_args == None: return self.skip('needs ta2')
 
@@ -10005,6 +10058,7 @@ f.close()
         (path_from_root('tools', 'test-js-optimizer-asm-last.js'), open(path_from_root('tools', 'test-js-optimizer-asm-last-output.js')).read(),
          ['asm', 'last']),
       ]:
+        print input
         output = Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
         self.assertIdentical(expected, output.replace('\r\n', '\n').replace('\n\n', '\n'))
 
