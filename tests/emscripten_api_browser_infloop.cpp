@@ -8,17 +8,15 @@ struct Class {
   int x;
 
   Class() : x(0) {}
+  ~Class() { x = -9999; }
 
   void print() {
-    char buf[18];
-    memset(buf, 0, 18); // clear stack. if we did not simulate infinite loop, this clears x and is a bug!
-    x += buf[7];
-
     printf("waka %d\n", x++);
 
-    if (x == 7) {
+    if (x == 7 || x < 0) {
       int result = x;
       REPORT_RESULT();
+      emscripten_cancel_main_loop();
     }
   }
 
@@ -28,7 +26,9 @@ struct Class {
 
   void start() {
     instance = this;
-    emscripten_set_main_loop(Class::callback, 3, 1); // important if we simulate an infinite loop here or not
+    // important if we simulate an infinite loop here or not. With an infinite loop, the
+    // destructor should *NOT* have been called
+    emscripten_set_main_loop(Class::callback, 3, 1);
   }
 };
 
