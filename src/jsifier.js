@@ -1170,7 +1170,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     if (item.ident == 0) {
       // No exception to resume, so we can just bail.
       // This is related to issue #917 and http://llvm.org/PR15518
-      return ';';
+      return (EXCEPTION_DEBUG ? 'Module.print("no exception to resume")' : '') + ';';
     }
     // If there is no current exception, set this one as it (during a resume, the current exception can be wiped out)
     var ptr = makeStructuralAccess(item.ident, 0);
