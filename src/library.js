@@ -6957,46 +6957,12 @@ LibraryManager.library = {
       assert(!stream); // If WebRTC, we can only support datagram, not stream
     }
 
-    function setQuery(url, item) {
-      var urlParts = url.split('?');
-      if(urlParts.length < 2) {
-        urlParts[1] = item;
-      } else {
-        var query = urlParts[1].split('&');
-        query.push(item);
-        urlParts[1] = query.join('&');
-      }
-      return urlParts.join('?');
-    };
-
-    function clearQuery(url, item) {
-      var urlParts = url.split('?');
-      if(urlParts.length < 2) {
-        return url;
-      } else {
-        var query = urlParts[1].split('&');
-        var result = [];
-        query.forEach(function(queryPart) {
-          if(!queryPart.split('=')[0].match('^' + item + '$'))
-            result.push(queryPart);
-        });
-        urlParts[1] = result.join('&');
-        if(urlParts[1].length < 1)
-          return urlParts[0];
-        else
-          return urlParts.join('?');
-      }
-    };
-
     // Open the peer connection if we don't have it already
     if(null == Sockets.peer) {
       var host = Module['host'];
       var broker = Module['webrtc']['broker'] || 'http://wrtcb.jit.su:80';
       var route = Module['webrtc']['session'];
       var peer = new Peer(broker);
-      var url = window.location.toString();
-      url = clearQuery(url, 'serve');
-      url = clearQuery(url, 'windowed');
       var listenOptions = Module['webrtc']['hostOptions'] || {};
       peer.onconnection = function(connection) {
         console.log('connected');
