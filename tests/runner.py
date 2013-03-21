@@ -11040,6 +11040,84 @@ elif 'browser' in str(sys.argv):
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_mouse.c'), '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js']).communicate()
       self.run_browser('page.html', '', '/report_result?740')
 
+    def test_sdl_mouse_offsets(self):
+      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+        function simulateMouseEvent(x, y, button) {
+          var event = document.createEvent("MouseEvents");
+          if (button >= 0) {
+            var event1 = document.createEvent("MouseEvents");
+            event1.initMouseEvent('mousedown', true, true, window,
+                       1, x, y, x, y,
+                       0, 0, 0, 0,
+                       button, null);
+            Module['canvas'].dispatchEvent(event1);
+            var event2 = document.createEvent("MouseEvents");
+            event2.initMouseEvent('mouseup', true, true, window,
+                       1, x, y, x, y,
+                       0, 0, 0, 0,
+                       button, null);
+            Module['canvas'].dispatchEvent(event2);
+          } else {
+            var event1 = document.createEvent("MouseEvents");
+            event1.initMouseEvent('mousemove', true, true, window,
+                       0, x, y, x, y,
+                       0, 0, 0, 0,
+                       0, null);
+            Module['canvas'].dispatchEvent(event1);
+          }
+        }
+        window['simulateMouseEvent'] = simulateMouseEvent;
+      ''')
+      open(os.path.join(self.get_dir(), 'page.html'), 'w').write('''
+        <html>
+          <head>
+            <style type="text/css">
+              html, body { margin: 0; padding: 0; }
+              #container {
+                position: absolute;
+                left: 5px; right: 0;
+                top: 5px; bottom: 0;
+              }
+              #canvas {
+                position: absolute;
+                left: 0; width: 600px;
+                top: 0; height: 450px;
+              }
+              textarea {
+                margin-top: 500px;
+                margin-left: 5px;
+                width: 600px;
+              }
+            </style>
+          </head>
+          <body>
+            <div id="container">
+              <canvas id="canvas"></canvas>
+            </div>
+            <textarea id="output" rows="8"></textarea>
+            <script type="text/javascript">
+              var Module = {
+                canvas: document.getElementById('canvas'),
+                print: (function() {
+                  var element = document.getElementById('output');
+                  element.value = ''; // clear browser cache
+                  return function(text) {
+                    text = Array.prototype.slice.call(arguments).join(' ');
+                    element.value += text + "\\n";
+                    element.scrollTop = 99999; // focus on bottom
+                  };
+                })()
+              };
+            </script>
+            <script type="text/javascript" src="sdl_mouse.js"></script>
+          </body>
+        </html>
+      ''')
+      open(os.path.join(self.get_dir(), 'sdl_mouse.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_mouse.c')).read()))
+
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_mouse.c'), '-O2', '--minify', '0', '-o', 'sdl_mouse.js', '--pre-js', 'pre.js']).communicate()
+      self.run_browser('page.html', '', '/report_result?600')
+
     def test_sdl_audio(self):
       shutil.copyfile(path_from_root('tests', 'sounds', 'alarmvictory_1.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
       shutil.copyfile(path_from_root('tests', 'sounds', 'alarmcreatemiltaryfoot_1.wav'), os.path.join(self.get_dir(), 'sound2.wav'))
