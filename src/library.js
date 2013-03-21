@@ -6997,14 +6997,7 @@ LibraryManager.library = {
       var url = window.location.toString();
       url = clearQuery(url, 'serve');
       url = clearQuery(url, 'windowed');
-      var listenOptions = {
-        'url': url,
-        'listed': true,
-        'metadata': {
-          'name': 'BananaBread',
-          'connected': 1
-        }
-      };
+      var listenOptions = Module['webrtc']['hostOptions'] || {};
       peer.onconnection = function(connection) {
         console.log('connected');
         var addr;
