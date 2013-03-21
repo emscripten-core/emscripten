@@ -279,7 +279,7 @@ function __embind_register_function(name, argCount, rawArgTypesAddr, rawInvoker,
 
     var invoker = function() {
         throw new UnboundTypeError('Cannot call ' + name + ' due to unbound types: UnboundFoo');
-    }
+    };
 
     exposePublicSymbol(name, function() {
         return invoker.apply(this, arguments);
