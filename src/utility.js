@@ -85,6 +85,13 @@ function warnOnce(a, msg) {
   }
 }
 
+var abortExecution = false;
+
+function error(msg) {
+  abortExecution = true;
+  printErr('Error: ' + msg);
+}
+
 function dedup(items, ident) {
   var seen = {};
   if (ident) {

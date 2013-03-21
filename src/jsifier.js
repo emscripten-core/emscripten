@@ -515,7 +515,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         if (!(item.ident in DEAD_FUNCTIONS) && !UNRESOLVED_AS_DEAD) {
           item.JS = 'var ' + item.ident + '; // stub for ' + item.ident;
           if (ASM_JS) {
-            throw 'Unresolved symbol: ' + item.ident + ', this must be corrected for asm.js validation to succeed. Consider adding it to DEAD_FUNCTIONS.';
+            error('Unresolved symbol: ' + item.ident + ', this must be corrected for asm.js validation to succeed. Consider adding it to DEAD_FUNCTIONS.');
           } else if (WARN_ON_UNDEFINED_SYMBOLS) {
             warn('Unresolved symbol: ' + item.ident);
           }
@@ -1570,6 +1570,8 @@ function JSify(data, functionsOnly, givenFunctions) {
         assert(itemsDict.functionStub.length == 0, dump([phase, itemsDict.functionStub]));
       }
     }
+
+    if (abortExecution) throw 'Aborting compilation due to previous warnings';
 
     if (phase == 'pre' || phase == 'funcs') {
       PassManager.serialize();
