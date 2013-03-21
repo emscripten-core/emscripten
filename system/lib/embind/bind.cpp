@@ -12,6 +12,12 @@ static std::string _embind_getTypeName(intptr_t ti_raw) {
     auto ti = reinterpret_cast<const std::type_info*>(ti_raw);
     int stat;
     char* demangled = abi::__cxa_demangle(ti->name(), NULL, NULL, &stat);
+    if (stat == 0) {
+        std::string rv(demangled);
+        free(demangled);
+        return rv;
+    }
+
     switch (stat) {
         case -1:
             return "<allocation failure>";
@@ -19,11 +25,9 @@ static std::string _embind_getTypeName(intptr_t ti_raw) {
             return "<invalid C++ symbol>";
         case -3:
             return "<invalid argument>";
+        default:
+            return "<unknown error>";
     }
-    
-    std::string rv(demangled);
-    free(demangled);
-    return rv;
 }
 
 namespace emscripten {
