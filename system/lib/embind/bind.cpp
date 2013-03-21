@@ -8,25 +8,24 @@
 
 using namespace emscripten;
 
-static std::string _embind_getTypeName(intptr_t ti_raw) {
-    auto ti = reinterpret_cast<const std::type_info*>(ti_raw);
-    int stat;
-    char* demangled = abi::__cxa_demangle(ti->name(), NULL, NULL, &stat);
-    if (stat == 0) {
-        std::string rv(demangled);
-        free(demangled);
-        return rv;
-    }
+extern "C" {
+    const char* EMSCRIPTEN_KEEPALIVE __getTypeName(const std::type_info* ti) {
+        int stat;
+        char* demangled = abi::__cxa_demangle(ti->name(), NULL, NULL, &stat);
+        if (stat == 0 && demangled) {
+            return demangled;
+        }
 
-    switch (stat) {
-        case -1:
-            return "<allocation failure>";
-        case -2:
-            return "<invalid C++ symbol>";
-        case -3:
-            return "<invalid argument>";
-        default:
-            return "<unknown error>";
+        switch (stat) {
+            case -1:
+                return strdup("<allocation failure>");
+            case -2:
+                return strdup("<invalid C++ symbol>");
+            case -3:
+                return strdup("<invalid argument>");
+            default:
+                return strdup("<unknown error>");
+        }
     }
 }
 
@@ -60,6 +59,4 @@ EMSCRIPTEN_BINDINGS(native_and_builtin_types) {
     
     _embind_register_cstring(TypeID<std::string>::get(), "std::string");
     _embind_register_emval(TypeID<val>::get(), "emscripten::val");
-
-    function("_embind_getTypeName", &_embind_getTypeName);
 }
