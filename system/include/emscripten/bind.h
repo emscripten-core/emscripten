@@ -370,14 +370,14 @@ namespace emscripten {
             typedef internal::BindingType<MemberType> MemberBinding;
             typedef typename MemberBinding::WireType WireType;
             
-            static WireType get(
-                ClassType& ptr,
+            static WireType getWire(
+                const ClassType& ptr,
                 const MemberPointer& field
             ) {
                 return MemberBinding::toWireType(ptr.*field);
             }
             
-            static void set(
+            static void setWire(
                 ClassType& ptr,
                 const MemberPointer& field,
                 WireType value
@@ -387,7 +387,7 @@ namespace emscripten {
 
             template<typename Getter>
             static WireType propertyGet(
-                ClassType& ptr,
+                const ClassType& ptr,
                 const Getter& getter
             ) {
                 return MemberBinding::toWireType(getter(ptr));
@@ -425,8 +425,8 @@ namespace emscripten {
             internal::_embind_register_tuple_element(
                 internal::TypeID<ClassType>::get(),
                 internal::TypeID<ElementType>::get(),
-                reinterpret_cast<internal::GenericFunction>(&internal::MemberAccess<ClassType, ElementType>::get),
-                reinterpret_cast<internal::GenericFunction>(&internal::MemberAccess<ClassType, ElementType>::set),
+                reinterpret_cast<internal::GenericFunction>(&internal::MemberAccess<ClassType, ElementType>::getWire),
+                reinterpret_cast<internal::GenericFunction>(&internal::MemberAccess<ClassType, ElementType>::setWire),
                 sizeof(field),
                 &field);
                                 
@@ -511,8 +511,8 @@ namespace emscripten {
                 internal::TypeID<ClassType>::get(),
                 fieldName,
                 internal::TypeID<FieldType>::get(),
-                reinterpret_cast<internal::GenericFunction>(&internal::MemberAccess<ClassType, FieldType>::get),
-                reinterpret_cast<internal::GenericFunction>(&internal::MemberAccess<ClassType, FieldType>::set),
+                reinterpret_cast<internal::GenericFunction>(&internal::MemberAccess<ClassType, FieldType>::getWire),
+                reinterpret_cast<internal::GenericFunction>(&internal::MemberAccess<ClassType, FieldType>::setWire),
                 sizeof(field),
                 &field);
                                 
@@ -865,8 +865,8 @@ namespace emscripten {
                 TypeID<ClassType>::get(),
                 fieldName,
                 TypeID<FieldType>::get(),
-                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, FieldType>::get),
-                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, FieldType>::set),
+                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, FieldType>::getWire),
+                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, FieldType>::setWire),
                 sizeof(field),
                 &field);
             return *this;
