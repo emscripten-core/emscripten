@@ -8,12 +8,34 @@ var InternalError = Module.InternalError = extendError(Error, 'InternalError');
 var BindingError = Module.BindingError = extendError(Error, 'BindingError');
 var UnboundTypeError = Module.UnboundTypeError = extendError(BindingError, 'UnboundTypeError');
 
-function throwInternalError(value) {
-    throw new InternalError(value);
+function throwInternalError(message) {
+    throw new InternalError(message);
 }
 
-function throwBindingError(value) {
-    throw new BindingError(value);
+function throwBindingError(message) {
+    throw new BindingError(message);
+}
+
+function throwUnboundTypeError(message, types) {
+    var unboundTypes = [];
+    var seen = {};
+    function visit(type) {
+        if (seen[type]) {
+            return;
+        }
+        if (registeredTypes[type]) {
+            return;
+        }
+        if (typeDependencies[type]) {
+            typeDependencies[type].forEach(visit);
+            return;
+        }
+        unboundTypes.push(type);
+        seen[type] = true;
+    }
+    types.forEach(visit);
+    
+    throw new UnboundTypeError(message + ': ' + unboundTypes.map(getTypeName).join([', ']));
 }
 
 function exposePublicSymbol(name, value) {
@@ -75,6 +97,9 @@ var registeredTypes = {};
 // typeID -> [callback]
 var awaitingDependencies = {};
 
+// typeID -> [dependentTypes]
+var typeDependencies = {};
+
 // class typeID -> {pointerType: ..., constPointerType: ...}
 var registeredPointers = {};
 
@@ -88,6 +113,7 @@ function registerType(rawType, registeredInstance) {
     }
 
     registeredTypes[rawType] = registeredInstance;
+    delete typeDependencies[rawType];
 
     if (awaitingDependencies.hasOwnProperty(rawType)) {
         var callbacks = awaitingDependencies[rawType];
@@ -98,7 +124,21 @@ function registerType(rawType, registeredInstance) {
     }
 }
 
-function whenDependentTypesAreResolved(dependentTypes, onComplete) {
+function whenDependentTypesAreResolved(myTypes, dependentTypes, getTypeConverters) {
+    myTypes.forEach(function(type) {
+        typeDependencies[type] = dependentTypes;
+    });
+
+    function onComplete(typeConverters) {
+        var myTypeConverters = getTypeConverters(typeConverters);
+        if (myTypeConverters.length !== myTypes.length) {
+            throwInternalError('Mismatched type converter count');
+        }
+        for (var i = 0; i < myTypes.length; ++i) {
+            registerType(myTypes[i], myTypeConverters[i]);
+        }
+    }
+
     var typeConverters = new Array(dependentTypes.length);
     var unregisteredTypes = [];
     var registered = 0;
@@ -278,15 +318,16 @@ function __embind_register_function(name, argCount, rawArgTypesAddr, rawInvoker,
     rawInvoker = FUNCTION_TABLE[rawInvoker];
 
     var invoker = function() {
-        throw new UnboundTypeError('Cannot call ' + name + ' due to unbound types: UnboundFoo');
+        throwUnboundTypeError('Cannot call ' + name + ' due to unbound types', argTypes);
     };
 
     exposePublicSymbol(name, function() {
         return invoker.apply(this, arguments);
     });
 
-    whenDependentTypesAreResolved(argTypes, function(argTypes) {
+    whenDependentTypesAreResolved([], argTypes, function(argTypes) {
         invoker = makeInvoker(name, argCount, argTypes, rawInvoker, fn);
+        return [];
     });
 }
 
@@ -349,7 +390,7 @@ function __embind_register_tuple_element(
     tupleType.elements.push(undefined);
 
     // TODO: test incomplete registration of value tuples
-    whenDependentTypesAreResolved([rawType], function(type) {
+    whenDependentTypesAreResolved([], [rawType], function(type) {
         type = type[0];
         tupleType.elements[index] = {
             read: function(ptr) {
@@ -361,6 +402,7 @@ function __embind_register_tuple_element(
                 runDestructors(destructors);
             }
         };
+        return [];
     });
 }
 
@@ -380,7 +422,7 @@ function __embind_register_tuple_element_accessor(
     rawStaticSetter = FUNCTION_TABLE[rawStaticSetter];
     setter = copyMemberPointer(setter, setterSize);
 
-    whenDependentTypesAreResolved([rawElementType], function(elementType) {
+    whenDependentTypesAreResolved([], [rawElementType], function(elementType) {
         elementType = elementType[0];
         tupleType.elements.push({
             read: function(ptr) {
@@ -395,6 +437,7 @@ function __embind_register_tuple_element_accessor(
                 runDestructors(destructors);
             }
         });
+        return [];
     });
 }
 
@@ -454,7 +497,7 @@ function __embind_register_struct_field(
     rawSetter = FUNCTION_TABLE[rawSetter];
     memberPointer = copyMemberPointer(memberPointer, memberPointerSize);
     // TODO: test incomplete registration of value structs
-    whenDependentTypesAreResolved([rawFieldType], function(fieldType) {
+    whenDependentTypesAreResolved([], [rawFieldType], function(fieldType) {
         fieldType = fieldType[0];
         structType.fields[fieldName] = {
             read: function(ptr) {
@@ -466,6 +509,7 @@ function __embind_register_struct_field(
                 runDestructors(destructors);
             }
         };
+        return [];
     });
 }
 
@@ -756,75 +800,79 @@ function __embind_register_class(
     downcast = FUNCTION_TABLE[downcast];
     var legalFunctionName = makeLegalFunctionName(name);
 
-    whenDependentTypesAreResolved(baseClassRawType ? [baseClassRawType] : [], function(base) {
-        base = base[0];
+    whenDependentTypesAreResolved(
+        [rawType, rawPointerType, rawConstPointerType],
+        baseClassRawType ? [baseClassRawType] : [],
+        function(base) {
+            base = base[0];
 
-        var baseClass;
-        var basePrototype;
-        if (baseClassRawType) {
-            baseClass = base.registeredClass;
-            basePrototype = baseClass.instancePrototype;
-        } else {
-            basePrototype = ClassHandle.prototype;
+            var baseClass;
+            var basePrototype;
+            if (baseClassRawType) {
+                baseClass = base.registeredClass;
+                basePrototype = baseClass.instancePrototype;
+            } else {
+                basePrototype = ClassHandle.prototype;
+            }
+
+            var constructor = createNamedFunction(legalFunctionName, function() {
+                if (Object.getPrototypeOf(this) !== instancePrototype) {
+                    throw new BindingError("Use 'new' to construct " + name);
+                }
+                var body = registeredClass.constructor_body;
+                if (undefined === body) {
+                    throw new BindingError(name + " has no accessible constructor");
+                }
+                return body.apply(this, arguments);
+            });
+
+            var instancePrototype = Object.create(basePrototype, {
+                constructor: { value: constructor },
+            });
+
+            constructor.prototype = instancePrototype;
+
+            var registeredClass = new RegisteredClass(
+                name,
+                constructor,
+                instancePrototype,
+                rawDestructor,
+                baseClass,
+                getActualType,
+                upcast,
+                downcast);
+
+            var referenceConverter = new RegisteredPointer(
+                name,
+                registeredClass,
+                true,
+                false,
+                false);
+        
+            var pointerConverter = new RegisteredPointer(
+                name + '*',
+                registeredClass,
+                false,
+                false,
+                false);
+
+            var constPointerConverter = new RegisteredPointer(
+                name + ' const*',
+                registeredClass,
+                false,
+                true,
+                false);
+
+            registeredPointers[rawType] = {
+                pointerType: pointerConverter,
+                constPointerType: constPointerConverter
+            };
+
+            exposePublicSymbol(legalFunctionName, constructor);
+
+            return [referenceConverter, pointerConverter, constPointerConverter];
         }
-
-        var constructor = createNamedFunction(legalFunctionName, function() {
-            if (Object.getPrototypeOf(this) !== instancePrototype) {
-                throw new BindingError("Use 'new' to construct " + name);
-            }
-            var body = registeredClass.constructor_body;
-            if (undefined === body) {
-                throw new BindingError(name + " has no accessible constructor");
-            }
-            return body.apply(this, arguments);
-        });
-
-        var instancePrototype = Object.create(basePrototype, {
-            constructor: { value: constructor },
-        });
-
-        constructor.prototype = instancePrototype;
-
-        var registeredClass = new RegisteredClass(
-            name,
-            constructor,
-            instancePrototype,
-            rawDestructor,
-            baseClass,
-            getActualType,
-            upcast,
-            downcast);
-
-        registerType(rawType, new RegisteredPointer(
-            name,
-            registeredClass,
-            true,
-            false,
-            false));
-
-        var pointerType = new RegisteredPointer(
-            name + '*',
-            registeredClass,
-            false,
-            false,
-            false);
-        registerType(rawPointerType, pointerType);
-
-        var constPointerType = new RegisteredPointer(
-            name + ' const*',
-            registeredClass,
-            false,
-            true,
-            false);
-        registerType(rawConstPointerType, constPointerType);
-
-        registeredPointers[rawType] = {
-            pointerType: pointerType,
-            constPointerType: constPointerType
-        };
-
-        exposePublicSymbol(legalFunctionName, constructor);
-    });
+    );
 }
 
 function __embind_register_class_constructor(
@@ -837,7 +885,7 @@ function __embind_register_class_constructor(
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     invoker = FUNCTION_TABLE[invoker];
 
-    whenDependentTypesAreResolved([rawClassType].concat(rawArgTypes), function(argTypes) {
+    whenDependentTypesAreResolved([], [rawClassType].concat(rawArgTypes), function(argTypes) {
         var classType = argTypes[0];
         argTypes = argTypes.slice(1);
         var humanName = 'constructor ' + classType.name;
@@ -857,6 +905,7 @@ function __embind_register_class_constructor(
 
             return argTypes[0].fromWireType(ptr);
         };
+        return [];
     });
 }
 
@@ -912,7 +961,7 @@ function __embind_register_class_function(
     rawInvoker = FUNCTION_TABLE[rawInvoker];
     memberFunction = copyMemberPointer(memberFunction, memberFunctionSize);
 
-    whenDependentTypesAreResolved([rawClassType].concat(rawArgTypes), function(argTypes) {
+    whenDependentTypesAreResolved([], [rawClassType].concat(rawArgTypes), function(argTypes) {
         var classType = argTypes[0];
         argTypes = argTypes.slice(1);
         var humanName = classType.name + '.' + methodName;
@@ -938,6 +987,7 @@ function __embind_register_class_function(
             runDestructors(destructors);
             return rv;
         };
+        return [];
     });
 }
 
@@ -953,9 +1003,10 @@ function __embind_register_class_class_function(
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     methodName = Pointer_stringify(methodName);
     rawInvoker = FUNCTION_TABLE[rawInvoker];
-    whenDependentTypesAreResolved(rawArgTypes, function(argTypes) {
+    whenDependentTypesAreResolved([], rawArgTypes, function(argTypes) {
         var humanName = classType.name + '.' + methodName;
         classType.registeredClass.constructor[methodName] = makeInvoker(humanName, argCount, argTypes, rawInvoker, fn);
+        return [];
     });
 }
 
@@ -972,7 +1023,7 @@ function __embind_register_class_property(
     getter = FUNCTION_TABLE[getter];
     setter = FUNCTION_TABLE[setter];
     memberPointer = copyMemberPointer(memberPointer, memberPointerSize);
-    whenDependentTypesAreResolved([rawClassType, rawFieldType], function(converters) {
+    whenDependentTypesAreResolved([], [rawClassType, rawFieldType], function(converters) {
         var classType = converters[0];
         var fieldType = converters[1];
         var humanName = classType.name + '.' + fieldName;
@@ -989,6 +1040,7 @@ function __embind_register_class_property(
             },
             enumerable: true
         });
+        return [];
     });
 }
 
@@ -1020,7 +1072,7 @@ function __embind_register_smart_ptr(
     rawShare = FUNCTION_TABLE[rawShare];
     rawDestructor = FUNCTION_TABLE[rawDestructor];
 
-    whenDependentTypesAreResolved([rawPointeeType], function(pointeeType) {
+    whenDependentTypesAreResolved([rawType], [rawPointeeType], function(pointeeType) {
         pointeeType = pointeeType[0];
 
         var registeredPointer = new RegisteredPointer(
@@ -1036,7 +1088,7 @@ function __embind_register_smart_ptr(
             rawConstructor,
             rawShare,
             rawDestructor);
-        registerType(rawType, registeredPointer);
+        return [registeredPointer];
     });
 }
 
