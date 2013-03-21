@@ -3,6 +3,7 @@
 /*global FUNCTION_TABLE, HEAP32, HEAPU8*/
 /*global Pointer_stringify*/
 /*global __emval_register, _emval_handle_array, __emval_decref*/
+/*global ___getTypeName*/
 
 var InternalError = Module.InternalError = extendError(Error, 'InternalError');
 var BindingError = Module.BindingError = extendError(Error, 'BindingError');
@@ -41,6 +42,13 @@ function throwUnboundTypeError(message, types) {
 function exposePublicSymbol(name, value) {
     if (Module.hasOwnProperty(name)) {
         throwBindingError("Cannot register public name '" + name + "' twice");
+    }
+    Module[name] = value;
+}
+
+function replacePublicSymbol(name, value) {
+    if (!Module.hasOwnProperty(name)) {
+        throwInternalError('Replacing nonexistant public symbol');
     }
     Module[name] = value;
 }
@@ -165,7 +173,10 @@ function whenDependentTypesAreResolved(myTypes, dependentTypes, getTypeConverter
 }
 
 function getTypeName(type) {
-    return Module._embind_getTypeName(type);
+    var ptr = ___getTypeName(type);
+    var rv = Pointer_stringify(ptr);
+    _free(ptr);
+    return rv;
 }
 
 function heap32VectorToArray(count, firstElement) {
@@ -317,16 +328,12 @@ function __embind_register_function(name, argCount, rawArgTypesAddr, rawInvoker,
     name = Pointer_stringify(name);
     rawInvoker = FUNCTION_TABLE[rawInvoker];
 
-    var invoker = function() {
-        throwUnboundTypeError('Cannot call ' + name + ' due to unbound types', argTypes);
-    };
-
     exposePublicSymbol(name, function() {
-        return invoker.apply(this, arguments);
+        throwUnboundTypeError('Cannot call ' + name + ' due to unbound types', argTypes);
     });
 
     whenDependentTypesAreResolved([], argTypes, function(argTypes) {
-        invoker = makeInvoker(name, argCount, argTypes, rawInvoker, fn);
+        replacePublicSymbol(name, makeInvoker(name, argCount, argTypes, rawInvoker, fn));
         return [];
     });
 }
@@ -800,6 +807,11 @@ function __embind_register_class(
     downcast = FUNCTION_TABLE[downcast];
     var legalFunctionName = makeLegalFunctionName(name);
 
+    exposePublicSymbol(legalFunctionName, function() {
+        // this code cannot run if baseClassRawType is zero
+        throwUnboundTypeError('Cannot construct ' + name + ' due to unbound types', [baseClassRawType]);
+    });
+
     whenDependentTypesAreResolved(
         [rawType, rawPointerType, rawConstPointerType],
         baseClassRawType ? [baseClassRawType] : [],
@@ -868,7 +880,7 @@ function __embind_register_class(
                 constPointerType: constPointerConverter
             };
 
-            exposePublicSymbol(legalFunctionName, constructor);
+            replacePublicSymbol(legalFunctionName, constructor);
 
             return [referenceConverter, pointerConverter, constPointerConverter];
         }
@@ -885,26 +897,33 @@ function __embind_register_class_constructor(
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     invoker = FUNCTION_TABLE[invoker];
 
-    whenDependentTypesAreResolved([], [rawClassType].concat(rawArgTypes), function(argTypes) {
-        var classType = argTypes[0];
-        argTypes = argTypes.slice(1);
+    whenDependentTypesAreResolved([], [rawClassType], function(classType) {
+        classType = classType[0];
         var humanName = 'constructor ' + classType.name;
+
         classType.registeredClass.constructor_body = function() {
-            if (arguments.length !== argCount - 1) {
-                throwBindingError(humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
-            }
-            var destructors = [];
-            var args = new Array(argCount);
-            args[0] = rawConstructor;
-            for (var i = 1; i < argCount; ++i) {
-                args[i] = argTypes[i].toWireType(destructors, arguments[i - 1]);
-            }
-
-            var ptr = invoker.apply(null, args);
-            runDestructors(destructors);
-
-            return argTypes[0].fromWireType(ptr);
+            throwUnboundTypeError('Cannot construct ' + classType.name + ' due to unbound types', rawArgTypes);
         };
+
+        whenDependentTypesAreResolved([], rawArgTypes, function(argTypes) {
+            classType.registeredClass.constructor_body = function() {
+                if (arguments.length !== argCount - 1) {
+                    throwBindingError(humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
+                }
+                var destructors = [];
+                var args = new Array(argCount);
+                args[0] = rawConstructor;
+                for (var i = 1; i < argCount; ++i) {
+                    args[i] = argTypes[i].toWireType(destructors, arguments[i - 1]);
+                }
+                
+                var ptr = invoker.apply(null, args);
+                runDestructors(destructors);
+                
+                return argTypes[0].fromWireType(ptr);
+            };
+            return [];
+        });
         return [];
     });
 }
@@ -961,32 +980,39 @@ function __embind_register_class_function(
     rawInvoker = FUNCTION_TABLE[rawInvoker];
     memberFunction = copyMemberPointer(memberFunction, memberFunctionSize);
 
-    whenDependentTypesAreResolved([], [rawClassType].concat(rawArgTypes), function(argTypes) {
-        var classType = argTypes[0];
-        argTypes = argTypes.slice(1);
+    whenDependentTypesAreResolved([], [rawClassType], function(classType) {
+        classType = classType[0];
         var humanName = classType.name + '.' + methodName;
+
         classType.registeredClass.instancePrototype[methodName] = function() {
-            if (arguments.length !== argCount - 1) {
-                throwBindingError('emscripten binding method ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
-            }
-
-            var ptr = validateThis(this, classType, humanName);
-            if (!isConst && this.$$.ptrType.isConst) {
-                throwBindingError('Cannot call non-const method ' + humanName + ' on const reference');
-            }
-
-            var destructors = [];
-            var args = new Array(argCount + 1);
-            args[0] = ptr;
-            args[1] = memberFunction;
-            for (var i = 1; i < argCount; ++i) {
-                args[i + 1] = argTypes[i].toWireType(destructors, arguments[i - 1]);
-            }
-            var rv = rawInvoker.apply(null, args);
-            rv = argTypes[0].fromWireType(rv);
-            runDestructors(destructors);
-            return rv;
+            throwUnboundTypeError('Cannot call ' + humanName + ' due to unbound types', rawArgTypes);
         };
+
+        whenDependentTypesAreResolved([], rawArgTypes, function(argTypes) {
+            classType.registeredClass.instancePrototype[methodName] = function() {
+                if (arguments.length !== argCount - 1) {
+                    throwBindingError('emscripten binding method ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
+                }
+
+                var ptr = validateThis(this, classType, humanName);
+                if (!isConst && this.$$.ptrType.isConst) {
+                    throwBindingError('Cannot call non-const method ' + humanName + ' on const reference');
+                }
+
+                var destructors = [];
+                var args = new Array(argCount + 1);
+                args[0] = ptr;
+                args[1] = memberFunction;
+                for (var i = 1; i < argCount; ++i) {
+                    args[i + 1] = argTypes[i].toWireType(destructors, arguments[i - 1]);
+                }
+                var rv = rawInvoker.apply(null, args);
+                rv = argTypes[0].fromWireType(rv);
+                runDestructors(destructors);
+                return rv;
+            };
+            return [];
+        });
         return [];
     });
 }
@@ -999,13 +1025,21 @@ function __embind_register_class_class_function(
     rawInvoker,
     fn
 ) {
-    var classType = requireRegisteredType(rawClassType, 'class');
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     methodName = Pointer_stringify(methodName);
     rawInvoker = FUNCTION_TABLE[rawInvoker];
-    whenDependentTypesAreResolved([], rawArgTypes, function(argTypes) {
+    whenDependentTypesAreResolved([], [rawClassType], function(classType) {
+        classType = classType[0];
         var humanName = classType.name + '.' + methodName;
-        classType.registeredClass.constructor[methodName] = makeInvoker(humanName, argCount, argTypes, rawInvoker, fn);
+
+        classType.registeredClass.constructor[methodName] = function() {
+            throwUnboundTypeError('Cannot call ' + humanName + ' due to unbound types', rawArgTypes);
+        };
+
+        whenDependentTypesAreResolved([], rawArgTypes, function(argTypes) {
+            classType.registeredClass.constructor[methodName] = makeInvoker(humanName, argCount, argTypes, rawInvoker, fn);
+            return [];
+        });
         return [];
     });
 }
@@ -1023,23 +1057,39 @@ function __embind_register_class_property(
     getter = FUNCTION_TABLE[getter];
     setter = FUNCTION_TABLE[setter];
     memberPointer = copyMemberPointer(memberPointer, memberPointerSize);
-    whenDependentTypesAreResolved([], [rawClassType, rawFieldType], function(converters) {
-        var classType = converters[0];
-        var fieldType = converters[1];
+    whenDependentTypesAreResolved([], [rawClassType], function(classType) {
+        classType = classType[0];
         var humanName = classType.name + '.' + fieldName;
+
         Object.defineProperty(classType.registeredClass.instancePrototype, fieldName, {
             get: function() {
-                var ptr = validateThis(this, classType, humanName + ' getter');
-                return fieldType.fromWireType(getter(ptr, memberPointer));
+                throwUnboundTypeError('Cannot access ' + humanName + ' due to unbound types', [rawFieldType]);
             },
-            set: function(v) {
-                var ptr = validateThis(this, classType, humanName + ' setter');
-                var destructors = [];
-                setter(ptr, memberPointer, fieldType.toWireType(destructors, v));
-                runDestructors(destructors);
+            set: function() {
+                throwUnboundTypeError('Cannot access ' + humanName + ' due to unbound types', [rawFieldType]);
             },
-            enumerable: true
+            enumerable: true,
+            configurable: true
         });
+
+        whenDependentTypesAreResolved([], [rawFieldType], function(fieldType) {
+            fieldType = fieldType[0];
+            Object.defineProperty(classType.registeredClass.instancePrototype, fieldName, {
+                get: function() {
+                    var ptr = validateThis(this, classType, humanName + ' getter');
+                    return fieldType.fromWireType(getter(ptr, memberPointer));
+                },
+                set: function(v) {
+                    var ptr = validateThis(this, classType, humanName + ' setter');
+                    var destructors = [];
+                    setter(ptr, memberPointer, fieldType.toWireType(destructors, v));
+                    runDestructors(destructors);
+                },
+                enumerable: true
+            });
+            return [];
+        });
+
         return [];
     });
 }
