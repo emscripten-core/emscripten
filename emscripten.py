@@ -161,6 +161,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     open(pre_file, 'w').write(pre_input)
     out = jsrun.run_js(compiler, compiler_engine, [settings_file, pre_file, 'pre'] + libraries, stdout=subprocess.PIPE,
                        cwd=path_from_root('src'))
+    assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
     if jcache:
       if DEBUG: print >> sys.stderr, '  saving pre to jcache'
       jcache.set(shortkey, keys, out)
