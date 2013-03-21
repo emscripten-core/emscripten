@@ -1,5 +1,4 @@
 #include <emscripten/bind.h>
-#include <../lib/libcxxabi/src/private_typeinfo.h>
 #include <../lib/libcxxabi/include/cxxabi.h>
 #include <list>
 #include <vector>
@@ -9,29 +8,26 @@
 
 using namespace emscripten;
 
+static std::string _embind_getTypeName(intptr_t ti_raw) {
+    auto ti = reinterpret_cast<const std::type_info*>(ti_raw);
+    int stat;
+    char* demangled = abi::__cxa_demangle(ti->name(), NULL, NULL, &stat);
+    switch (stat) {
+        case -1:
+            return "<allocation failure>";
+        case -2:
+            return "<invalid C++ symbol>";
+        case -3:
+            return "<invalid argument>";
+    }
+    
+    std::string rv(demangled);
+    free(demangled);
+    return rv;
+}
+
 namespace emscripten {
     namespace internal {
-        extern "C" {
-            const char* EMSCRIPTEN_KEEPALIVE __typeName(const std::type_info* ti) {
-                size_t nameLen = std::min(strlen(ti->name()), 1024U);
-                char* name = (char *)malloc(nameLen+1);
-                int stat;
-
-                __cxxabiv1::__cxa_demangle(ti->name(), name, &nameLen, &stat);
-
-                if (stat != 0) {
-                    strncpy(name, ti->name(), nameLen);
-                    name[nameLen] = '\0';
-                }
-                return name;
-            }
-
-            size_t EMSCRIPTEN_KEEPALIVE __peek32(size_t p) {
-                return *reinterpret_cast<size_t*>(p);
-            }
-
-        }
-
         JSInterface* create_js_interface(EM_VAL e) {
             return new JSInterface(e);
         }
@@ -60,4 +56,6 @@ EMSCRIPTEN_BINDINGS(native_and_builtin_types) {
     
     _embind_register_cstring(TypeID<std::string>::get(), "std::string");
     _embind_register_emval(TypeID<val>::get(), "emscripten::val");
+
+    function("_embind_getTypeName", &_embind_getTypeName);
 }
