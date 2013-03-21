@@ -1228,7 +1228,8 @@ try:
       shutil.move(temp_files[0], in_temp(target_basename + '.bc'))
       final = in_temp(target_basename + '.bc')
     else:
-      final = input_files[0]
+      final = in_temp(input_files[0])
+      shutil.copyfile(input_files[0], final)
 
   if DEBUG:
     print >> sys.stderr, 'emcc: saving intermediate processing steps to %s' % shared.EMSCRIPTEN_TEMP_DIR
