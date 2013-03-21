@@ -3,10 +3,10 @@
 /*global FUNCTION_TABLE, HEAP32, HEAPU8*/
 /*global Pointer_stringify*/
 /*global __emval_register, _emval_handle_array, __emval_decref*/
-/*global ___typeName:false*/
 
 var InternalError = Module.InternalError = extendError(Error, 'InternalError');
 var BindingError = Module.BindingError = extendError(Error, 'BindingError');
+var UnboundTypeError = Module.UnboundTypeError = extendError(BindingError, 'UnboundTypeError');
 
 function throwInternalError(value) {
     throw new InternalError(value);
@@ -124,11 +124,8 @@ function whenDependentTypesAreResolved(dependentTypes, onComplete) {
     }
 }
 
-function typeName(rawType) {
-    var bt = ___typeName(rawType);
-    var rv = Pointer_stringify(bt);
-    _free(bt);
-    return rv;
+function getTypeName(type) {
+    return Module._embind_getTypeName(type);
 }
 
 function heap32VectorToArray(count, firstElement) {
@@ -142,7 +139,7 @@ function heap32VectorToArray(count, firstElement) {
 function requireRegisteredType(rawType, humanName) {
     var impl = registeredTypes[rawType];
     if (undefined === impl) {
-        throwBindingError(humanName + " has unknown type " + typeName(rawType));
+        throwBindingError(humanName + " has unknown type " + getTypeName(rawType));
     }
     return impl;
 }
@@ -279,8 +276,17 @@ function __embind_register_function(name, argCount, rawArgTypesAddr, rawInvoker,
     var argTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     name = Pointer_stringify(name);
     rawInvoker = FUNCTION_TABLE[rawInvoker];
+
+    var invoker = function() {
+        throw new UnboundTypeError('Cannot call ' + name + ' due to unbound types: UnboundFoo');
+    }
+
+    exposePublicSymbol(name, function() {
+        return invoker.apply(this, arguments);
+    });
+
     whenDependentTypesAreResolved(argTypes, function(argTypes) {
-        exposePublicSymbol(name, makeInvoker(name, argCount, argTypes, rawInvoker, fn));
+        invoker = makeInvoker(name, argCount, argTypes, rawInvoker, fn);
     });
 }
 
