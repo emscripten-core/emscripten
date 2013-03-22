@@ -11757,6 +11757,71 @@ elif 'browser' in str(sys.argv):
       finally:
         self.clean_pids()
 
+    def test_websockets_select_server_down(self):
+      def closedServer(q):
+        import socket
+
+        q.put(None) # No sub-process to start
+        ssock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        ssock.bind(("127.0.0.1", 8994))
+      try:
+        with self.WebsockHarness(8994, closedServer):
+          self.btest('websockets_select.c', expected='266')
+      finally:
+        self.clean_pids()
+
+    def test_websockets_select_server_closes_connection(self):
+      def closingServer(q):
+        import socket
+
+        q.put(None) # No sub-process to start
+        ssock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        ssock.bind(("127.0.0.1", 8994))
+        ssock.listen(2)
+        while True:
+          csock, addr = ssock.accept()
+          print "Connection from %s" % repr(addr)
+          csock.send("1234567")
+          csock.close()
+
+      try:
+        with self.WebsockHarness(8994, closingServer):
+          self.btest('websockets_select_server_closes_connection.c', expected='266')
+      finally:
+        self.clean_pids()
+
+    def test_websockets_select_server_closes_connection_rw(self):
+      def closingServer_rw(q):
+        import socket
+
+        q.put(None) # No sub-process to start
+        ssock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        ssock.bind(("127.0.0.1", 8998))
+        ssock.listen(2)
+        while True:
+          csock, addr = ssock.accept()
+          print "Connection from %s" % repr(addr)
+          readArray = bytearray(10)
+          #readBuffer = buffer(readArray)
+          bytesRead = 0
+          # Let the client start to write data
+          while (bytesRead < 10):
+            (readBytes, address) = csock.recvfrom_into( readArray, 10 )
+            bytesRead += readBytes
+          print "server: 10 bytes read"
+          # Now we write a message on our own ...
+          csock.send("0123456789")
+          print "server: 10 bytes written"
+          # And immediately close the connection
+          csock.close()
+          print "server: connection closed"
+
+      try:
+        with self.WebsockHarness(8998, closingServer_rw):
+          self.btest('websockets_select_server_closes_connection_rw.c', expected='266')
+      finally:
+        self.clean_pids()
+
     def test_enet(self):
       try_delete(self.in_dir('enet'))
       shutil.copytree(path_from_root('tests', 'enet'), self.in_dir('enet'))

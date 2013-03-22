@@ -7306,6 +7306,10 @@ LibraryManager.library = {
       // make sure socket exists. 
       // we do create it when the socket is connected, 
       // but other implementations may create it lazily
+      if ((info.socket.readyState == WebSocket.CLOSING || info.socket.readyState == WebSocket.CLOSED)) {
+        errorCondition = -1;
+        return false;
+      }
       return info.socket && (info.socket.readyState == info.socket.OPEN);
     }
 
