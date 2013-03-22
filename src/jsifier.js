@@ -495,10 +495,10 @@ function JSify(data, functionsOnly, givenFunctions) {
             EXPORTED_FUNCTIONS[ident] = 1;
             delete Functions.libraryFunctions[ident.substr(1)];
           }
-        } else {
-          if (EXPORT_ALL || (ident in EXPORTED_FUNCTIONS)) {
-            contentText += '\nModule["' + ident + '"] = ' + ident + ';';
-          }
+        }
+        if ((!ASM_JS || phase == 'pre') &&
+            (EXPORT_ALL || (ident in EXPORTED_FUNCTIONS))) {
+          contentText += '\nModule["' + ident + '"] = ' + ident + ';';
         }
         return depsText + contentText;
       }
