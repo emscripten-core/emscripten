@@ -181,7 +181,7 @@ def check_node_version():
 # we re-check sanity when the settings are changed)
 # We also re-check sanity and clear the cache when the version changes
 
-EMSCRIPTEN_VERSION = '1.3.1'
+EMSCRIPTEN_VERSION = '1.3.2'
 
 def check_sanity(force=False):
   try:
