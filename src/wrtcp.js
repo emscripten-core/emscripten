@@ -219,7 +219,8 @@
   WebSocketBroker.prototype.connect = function connect() {
     var that = this;
     var socket = io.connect(this.brokerUrl + '/peer', {
-      'sync disconnect on unload': true // partially fixes 'interrupted while page loading' warning
+      'sync disconnect on unload': true, // partially fixes 'interrupted while page loading' warning
+      'secure': true
     });
 
     socket.on('connecting', function onconnecting() {
