@@ -3712,6 +3712,11 @@ LibraryManager.library = {
     __exit(status);
   },
 
+  _ZSt9terminatev__deps: ['exit'],
+  _ZSt9terminatev: function() {
+    _exit(-1234);
+  },
+
   atexit: function(func, arg) {
     __ATEXIT__.unshift({ func: func, arg: arg });
   },
