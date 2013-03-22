@@ -57,7 +57,6 @@ var LibraryOpenAL = {
     }
 
     if (ctx) {
-      ctx.listener.panningModel = "equalpower";
       AL.contexts.push({ctx: ctx, err: 0, src: [], buf: []});
       return AL.contexts.length;
     } else {
@@ -103,6 +102,7 @@ var LibraryOpenAL = {
     for (var i = 0; i < count; ++i) {
       var gain = AL.currentContext.ctx.createGain();
       var panner = AL.currentContext.ctx.createPanner();
+      panner.panningModel = "equalpower";
       gain.connect(panner);
       panner.connect(AL.currentContext.ctx.destination);
       AL.currentContext.src.push({
