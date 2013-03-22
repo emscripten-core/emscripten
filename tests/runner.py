@@ -2716,7 +2716,6 @@ Exiting setjmp function, level: 0, prev_jmp: -1
       if Settings.ASM_JS: return self.skip('uses report_stack without exporting')
 
       Settings.INLINING_LIMIT = 50
-      Settings.CATCH_EXIT_CODE = 1
 
       src = r'''
         #include <stdio.h>
@@ -2757,7 +2756,7 @@ Exiting setjmp function, level: 0, prev_jmp: -1
       ''')
 
       self.emcc_args += ['--pre-js', 'pre.js']
-      self.do_run(src, '''reported\npostRun\nok.\nExit Status: 1\n''')
+      self.do_run(src, '''reported\nExit Status: 1\npostRun\nok.\n''')
 
     def test_class(self):
         src = '''
@@ -8673,8 +8672,6 @@ def process(filename):
         Settings.CORRECT_SIGNS = 0
 
     def test_exit_status(self):
-      Settings.CATCH_EXIT_CODE = 1
-
       src = r'''
         #include <stdio.h>
         #include <stdlib.h>
@@ -8869,7 +8866,6 @@ class %s(T):
     Settings.INCLUDE_FULL_LIBRARY = 0
     Settings.BUILD_AS_SHARED_LIB = 0
     Settings.RUNTIME_LINKED_LIBS = []
-    Settings.CATCH_EXIT_CODE = 0
     Settings.EMULATE_UNALIGNED_ACCESSES = int(Settings.USE_TYPED_ARRAYS == 2 and Building.LLVM_OPTS == 2)
     Settings.DOUBLE_MODE = 1 if Settings.USE_TYPED_ARRAYS and Building.LLVM_OPTS == 0 else 0
     Settings.PRECISE_I64_MATH = 0
@@ -10079,7 +10075,7 @@ f.close()
             (1, 0, 3, 2), (1, 1, 3, 4)
           ]:
           print asm, linkable, chunks, js_chunks
-          output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O1', '-s', 'LINKABLE=%d' % linkable, '-s', 'ASM_JS=%d' % asm, '-s', 'UNRESOLVED_AS_DEAD=1'], stdout=PIPE, stderr=PIPE).communicate()
+          output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O1', '-s', 'LINKABLE=%d' % linkable, '-s', 'ASM_JS=%d' % asm, '-s', 'UNRESOLVED_AS_DEAD=1'] + (['-O2'] if asm else []), stdout=PIPE, stderr=PIPE).communicate()
           ok = False
           for c in range(chunks, chunks+2):
             ok = ok or ('phase 2 working on %d chunks' % c in err)

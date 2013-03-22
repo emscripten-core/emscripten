@@ -2061,24 +2061,19 @@ LibraryManager.library = {
     // void _exit(int status);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/exit.html
 
-#if CATCH_EXIT_CODE
     function ExitStatus() {
       this.name = "ExitStatus";
       this.message = "Program terminated with exit(" + status + ")";
       this.status = status;
+      Module.print('Exit Status: ' + status);
     };
     ExitStatus.prototype = new Error();
     ExitStatus.prototype.constructor = ExitStatus;
-#endif
 
     exitRuntime();
     ABORT = true;
 
-#if CATCH_EXIT_CODE
     throw new ExitStatus();
-#else
-    throw 'exit(' + status + ') called, at ' + new Error().stack;
-#endif
   },
   fork__deps: ['__setErrNo', '$ERRNO_CODES'],
   fork: function() {
@@ -3715,6 +3710,11 @@ LibraryManager.library = {
   exit__deps: ['_exit'],
   exit: function(status) {
     __exit(status);
+  },
+
+  _ZSt9terminatev__deps: ['exit'],
+  _ZSt9terminatev: function() {
+    _exit(-1234);
   },
 
   atexit: function(func, arg) {

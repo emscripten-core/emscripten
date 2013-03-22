@@ -999,7 +999,7 @@ function getHeapOffset(offset, type, forceAsm) {
   offset = '(' + offset + ')';
   if (shifts != 0) {
     if (CHECK_HEAP_ALIGN) {
-      return '(CHECK_ALIGN_' + sz + '(' + offset + ')>>' + shifts + ')';
+      return '(CHECK_ALIGN_' + sz + '(' + offset + '|0)>>' + shifts + ')';
     } else {
       return '(' + offset + '>>' + shifts + ')';
     }

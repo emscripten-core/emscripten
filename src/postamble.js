@@ -23,18 +23,21 @@ Module.callMain = function callMain(args) {
 
   var ret;
 
-#if CATCH_EXIT_CODE
   var initialStackTop = STACKTOP;
   try {
     ret = Module['_main'](argc, argv, 0);
   }
-  catch(e) { if (e.name == "ExitStatus") return e.status; throw e; }
-  finally {
+  catch(e) {
+    if (e.name == 'ExitStatus') {
+      return e.status;
+    } else if (e == 'SimulateInfiniteLoop') {
+      Module['noExitRuntime'] = true;
+    } else {
+      throw e;
+    }
+  } finally {
     STACKTOP = initialStackTop;
   }
-#else
-  ret = Module['_main'](argc, argv, 0);
-#endif
 
 #if BENCHMARK
   Module.realPrint('main() took ' + (Date.now() - start) + ' milliseconds');
@@ -121,10 +124,7 @@ if (Module['noInitialRun']) {
 }
 
 if (shouldRunNow) {
-  var ret = run();
-#if CATCH_EXIT_CODE
-  Module.print('Exit Status: ' + ret);
-#endif
+  run();
 }
 
 // {{POST_RUN_ADDITIONS}}

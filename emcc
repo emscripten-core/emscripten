@@ -993,6 +993,8 @@ try:
 
   # Apply effects from settings
   if shared.Settings.ASM_JS:
+    assert opt_level == 2, 'asm.js requires -O2'
+
     if closure:
       print >> sys.stderr, 'emcc: warning: disabling closure because it is not compatible with asm.js code generation'
       closure = False
@@ -1228,7 +1230,8 @@ try:
       shutil.move(temp_files[0], in_temp(target_basename + '.bc'))
       final = in_temp(target_basename + '.bc')
     else:
-      final = input_files[0]
+      final = in_temp(input_files[0])
+      shutil.copyfile(input_files[0], final)
 
   if DEBUG:
     print >> sys.stderr, 'emcc: saving intermediate processing steps to %s' % shared.EMSCRIPTEN_TEMP_DIR

@@ -637,7 +637,7 @@ mergeInto(LibraryManager.library, {
     Browser.mainLoop.scheduler();
 
     if (simulateInfiniteLoop) {
-      throw 'emscripten_set_main_loop simulating infinite loop by throwing so we get right into the JS event loop';
+      throw 'SimulateInfiniteLoop';
     }
   },
 

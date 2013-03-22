@@ -57,7 +57,6 @@ var LibraryOpenAL = {
     }
 
     if (ctx) {
-      ctx.listener.panningModel = "equalpower";
       AL.contexts.push({ctx: ctx, err: 0, src: [], buf: []});
       return AL.contexts.length;
     } else {
@@ -71,6 +70,12 @@ var LibraryOpenAL = {
     } else {
       return AL.currentContext.err;
     }
+  },
+
+  alcGetError__deps: ['alGetError'],
+  alcGetError: function(device) {
+    // We have only one audio device, so just return alGetError.
+    return _alGetError();
   },
 
   alDeleteSources: function(count, sources)
@@ -97,14 +102,9 @@ var LibraryOpenAL = {
     for (var i = 0; i < count; ++i) {
       var gain = AL.currentContext.ctx.createGain();
       var panner = AL.currentContext.ctx.createPanner();
-      if (typeof(webkitAudioContext) == 'function') {
-        gain.connect(panner);
-        panner.connect(AL.currentContext.ctx.destination);
-      } else {
-        // Work around a Firefox bug (bug 849916)
-        gain.connect(AL.currentContext.ctx.destination);
-      }
-      gain.gain.value = 1; // work around a Firefox bug (bug 850970)
+      panner.panningModel = "equalpower";
+      gain.connect(panner);
+      panner.connect(AL.currentContext.ctx.destination);
       AL.currentContext.src.push({
         loop: false,
         buffer: null,
@@ -404,8 +404,7 @@ var LibraryOpenAL = {
     src.buffer = AL.currentContext.src[source - 1].buffer;
     src.connect(AL.currentContext.src[source - 1].gain);
     src.start(0, offset);
-    // Work around Firefox bug 851338
-    AL.currentContext.src[source - 1].playTime = AL.currentContext.ctx.currentTime || 0;
+    AL.currentContext.src[source - 1].playTime = AL.currentContext.ctx.currentTime;
     AL.currentContext.src[source - 1].paused = false;
     AL.currentContext.src[source - 1]['src'] = src;
   },
@@ -445,8 +444,7 @@ var LibraryOpenAL = {
     if ("src" in AL.currentContext.src[source - 1] &&
         !AL.currentContext.src[source - 1].paused) {
       AL.currentContext.src[source - 1].paused = true;
-      // Work around Firefox bug 851338
-      AL.currentContext.src[source - 1].pausedTime = AL.currentContext.ctx.currentTime || 0;
+      AL.currentContext.src[source - 1].pausedTime = AL.currentContext.ctx.currentTime;
       AL.currentContext.src[source - 1]["src"].stop(0);
       delete AL.currentContext.src[source - 1].src;
     }
@@ -570,10 +568,6 @@ var LibraryOpenAL = {
   },
 
   alcGetProcAddress: function(device, fname) {
-    return 0;
-  },
-
-  alcGetError: function(device) {
     return 0;
   },
 };

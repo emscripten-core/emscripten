@@ -495,10 +495,10 @@ function JSify(data, functionsOnly, givenFunctions) {
             EXPORTED_FUNCTIONS[ident] = 1;
             delete Functions.libraryFunctions[ident.substr(1)];
           }
-        } else {
-          if (EXPORT_ALL || (ident in EXPORTED_FUNCTIONS)) {
-            contentText += '\nModule["' + ident + '"] = ' + ident + ';';
-          }
+        }
+        if ((!ASM_JS || phase == 'pre') &&
+            (EXPORT_ALL || (ident in EXPORTED_FUNCTIONS))) {
+          contentText += '\nModule["' + ident + '"] = ' + ident + ';';
         }
         return depsText + contentText;
       }
@@ -515,7 +515,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         if (!(item.ident in DEAD_FUNCTIONS) && !UNRESOLVED_AS_DEAD) {
           item.JS = 'var ' + item.ident + '; // stub for ' + item.ident;
           if (ASM_JS) {
-            throw 'Unresolved symbol: ' + item.ident + ', this must be corrected for asm.js validation to succeed. Consider adding it to DEAD_FUNCTIONS.';
+            error('Unresolved symbol: ' + item.ident + ', this must be corrected for asm.js validation to succeed. Consider adding it to DEAD_FUNCTIONS.');
           } else if (WARN_ON_UNDEFINED_SYMBOLS) {
             warn('Unresolved symbol: ' + item.ident);
           }
@@ -1167,6 +1167,11 @@ function JSify(data, functionsOnly, givenFunctions) {
     return ret + ';';
   });
   makeFuncLineActor('resume', function(item) {
+    if (item.ident == 0) {
+      // No exception to resume, so we can just bail.
+      // This is related to issue #917 and http://llvm.org/PR15518
+      return (EXCEPTION_DEBUG ? 'Module.print("no exception to resume")' : '') + ';';
+    }
     // If there is no current exception, set this one as it (during a resume, the current exception can be wiped out)
     var ptr = makeStructuralAccess(item.ident, 0);
     return (EXCEPTION_DEBUG ? 'Module.print("Resuming exception");' : '') + 
@@ -1565,6 +1570,8 @@ function JSify(data, functionsOnly, givenFunctions) {
         assert(itemsDict.functionStub.length == 0, dump([phase, itemsDict.functionStub]));
       }
     }
+
+    if (abortExecution) throw 'Aborting compilation due to previous warnings';
 
     if (phase == 'pre' || phase == 'funcs') {
       PassManager.serialize();

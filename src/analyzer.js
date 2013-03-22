@@ -979,6 +979,9 @@ function analyzer(data, sidePass) {
             if (variable.origin === 'alloca') {
               variable.allocatedNum = item.allocatedNum;
             }
+            if (variable.origin === 'call') {
+              variable.type = getReturnType(variable.type);
+            }
           }
         });
 
