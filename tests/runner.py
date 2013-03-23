@@ -2478,7 +2478,6 @@ Exception execution path of first function! 1
 
         Settings.EXCEPTION_DEBUG = 1
 
-        self.banned_js_engines = [NODE_JS] # node issue 1669, exception causes stdout not to be flushed
         Settings.DISABLE_EXCEPTION_CATCHING = 0
         if self.emcc_args is None:
           if Building.LLVM_OPTS: return self.skip('optimizing bitcode before emcc can confuse libcxx inclusion')
@@ -7193,7 +7192,6 @@ void*:16
 
     def test_mmap(self):
       if self.emcc_args is None: return self.skip('requires emcc')
-      self.banned_js_engines = [NODE_JS] # slower, and fail on 64-bit
 
       Settings.TOTAL_MEMORY = 128*1024*1024
 
@@ -7642,7 +7640,6 @@ def process(filename):
 
       try:
         os.environ['EMCC_LEAVE_INPUTS_RAW'] = '1'
-        #self.banned_js_engines = [NODE_JS] # node issue 1669, exception causes stdout not to be flushed
         Settings.CHECK_OVERFLOWS = 0
 
         for name in glob.glob(path_from_root('tests', 'cases', '*.ll')):
