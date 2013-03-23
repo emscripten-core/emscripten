@@ -132,7 +132,6 @@ namespace emscripten {
                 const char* methodName,
                 unsigned argCount,
                 TYPEID argTypes[],
-                bool isConst,
                 GenericFunction invoker,
                 size_t memberFunctionSize,
                 void* memberFunction);
@@ -186,6 +185,7 @@ namespace emscripten {
         static constexpr int index = 0;
     };
 
+    /*
     template<typename Slot>
     struct allow_raw_pointer {
         template<typename InputType, int Index>
@@ -197,6 +197,7 @@ namespace emscripten {
             >::type type;
         };
     };
+    */
 
     // whitelist all raw pointers
     struct allow_raw_pointers {
@@ -208,6 +209,11 @@ namespace emscripten {
                 InputType
             >::type type;
         };
+    };
+
+    // this is temporary until arg policies are reworked
+    template<typename Slot>
+    struct allow_raw_pointer : public allow_raw_pointers {
     };
 
     namespace internal {
@@ -278,87 +284,62 @@ namespace emscripten {
             delete ptr;
         }
 
-        template<typename ClassType, typename ReturnType, typename... Args>
+        template<typename FunctionPointerType, typename ReturnType, typename ThisType, typename... Args>
         struct FunctionInvoker {
-            typedef ReturnType (*FunctionPointer)(ClassType& ct, Args...);
             static typename internal::BindingType<ReturnType>::WireType invoke(
-                ClassType* ptr,
-                FunctionPointer* function,
+                FunctionPointerType* function,
+                typename internal::BindingType<ThisType>::WireType wireThis,
                 typename internal::BindingType<Args>::WireType... args
             ) {
                 return internal::BindingType<ReturnType>::toWireType(
-                    (*function)(*ptr, internal::BindingType<Args>::fromWireType(args)...)
+                    (*function)(
+                        internal::BindingType<ThisType>::fromWireType(wireThis),
+                        internal::BindingType<Args>::fromWireType(args)...)
                 );
             }
         };
 
-        template<typename ClassType, typename... Args>
-        struct FunctionInvoker<ClassType, void, Args...> {
-            typedef void (*FunctionPointer)(ClassType& ct, Args...);
+        template<typename FunctionPointerType, typename ThisType, typename... Args>
+        struct FunctionInvoker<FunctionPointerType, void, ThisType, Args...> {
             static void invoke(
-                ClassType* ptr,
-                FunctionPointer* function,
+                FunctionPointerType* function,
+                typename internal::BindingType<ThisType>::WireType wireThis,
                 typename internal::BindingType<Args>::WireType... args
             ) {
-                (*function)(*ptr, internal::BindingType<Args>::fromWireType(args)...);
+                (*function)(
+                    internal::BindingType<ThisType>::fromWireType(wireThis),
+                    internal::BindingType<Args>::fromWireType(args)...);
             }
         };
 
-        template<typename ClassType, typename ReturnType, typename... Args>
+        template<typename MemberPointer,
+                 typename ReturnType,
+                 typename ThisType,
+                 typename... Args>
         struct MethodInvoker {
-            typedef ReturnType (ClassType::*MemberPointer)(Args...);
             static typename internal::BindingType<ReturnType>::WireType invoke(
-                ClassType* ptr,
                 const MemberPointer& method,
+                typename internal::BindingType<ThisType>::WireType wireThis,
                 typename internal::BindingType<Args>::WireType... args
             ) {
                 return internal::BindingType<ReturnType>::toWireType(
-                    (ptr->*method)(
+                    (internal::BindingType<ThisType>::fromWireType(wireThis)->*method)(
                         internal::BindingType<Args>::fromWireType(args)...
                     )
                 );
             }
         };
 
-        template<typename ClassType, typename... Args>
-        struct MethodInvoker<ClassType, void, Args...> {
-            typedef void (ClassType::*MemberPointer)(Args...);
+        template<typename MemberPointer,
+                 typename ThisType,
+                 typename... Args>
+        struct MethodInvoker<MemberPointer, void, ThisType, Args...> {
             static void invoke(
-                ClassType* ptr,
                 const MemberPointer& method,
+                typename internal::BindingType<ThisType>::WireType wireThis,
                 typename internal::BindingType<Args>::WireType... args
             ) {
-                return (ptr->*method)(
-                    internal::BindingType<Args>::fromWireType(args)...
-                );
-            }
-        };
-
-        template<typename ClassType, typename ReturnType, typename... Args>
-        struct ConstMethodInvoker {
-            typedef ReturnType (ClassType::*MemberPointer)(Args...) const;
-            static typename internal::BindingType<ReturnType>::WireType invoke(
-                const ClassType* ptr,
-                const MemberPointer& method,
-                typename internal::BindingType<Args>::WireType... args
-            ) {
-                return internal::BindingType<ReturnType>::toWireType(
-                    (ptr->*method)(
-                        internal::BindingType<Args>::fromWireType(args)...
-                    )
-                );
-            }
-        };
-
-        template<typename ClassType, typename... Args>
-        struct ConstMethodInvoker<ClassType, void, Args...> {
-            typedef void (ClassType::*MemberPointer)(Args...) const;
-            static void invoke(
-                const ClassType* ptr,
-                const MemberPointer& method,
-                typename internal::BindingType<Args>::WireType... args
-            ) {
-                return (ptr->*method)(
+                return (internal::BindingType<ThisType>::fromWireType(wireThis)->*method)(
                     internal::BindingType<Args>::fromWireType(args)...
                 );
             }
@@ -793,14 +774,13 @@ namespace emscripten {
         class_& function(const char* methodName, ReturnType (ClassType::*memberFunction)(Args...), Policies...) {
             using namespace internal;
 
-            typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
+            typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, AllowedRawPointer<ClassType>, Args...> args;
             _embind_register_class_function(
                 TypeID<ClassType>::get(),
                 methodName,
                 args.count,
                 args.types,
-                false,
-                reinterpret_cast<GenericFunction>(&MethodInvoker<ClassType, ReturnType, Args...>::invoke),
+                reinterpret_cast<GenericFunction>(&MethodInvoker<decltype(memberFunction), ReturnType, ClassType*, Args...>::invoke),
                 sizeof(memberFunction),
                 &memberFunction);
             return *this;
@@ -810,48 +790,29 @@ namespace emscripten {
         class_& function(const char* methodName, ReturnType (ClassType::*memberFunction)(Args...) const, Policies...) {
             using namespace internal;
 
-            typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
+            typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, AllowedRawPointer<const ClassType>, Args...> args;
             _embind_register_class_function(
                 TypeID<ClassType>::get(),
                 methodName,
                 args.count,
                 args.types,
-                true,
-                reinterpret_cast<GenericFunction>(&ConstMethodInvoker<ClassType, ReturnType, Args...>::invoke),
+                reinterpret_cast<GenericFunction>(&MethodInvoker<decltype(memberFunction), ReturnType, const ClassType*, Args...>::invoke),
                 sizeof(memberFunction),
                 &memberFunction);
             return *this;
         }
 
-        template<typename ReturnType, typename... Args, typename... Policies>
-        class_& function(const char* methodName, ReturnType (*function)(ClassType& ptr, Args...), Policies...) {
+        template<typename ReturnType, typename ThisType, typename... Args, typename... Policies>
+        class_& function(const char* methodName, ReturnType (*function)(ThisType, Args...), Policies...) {
             using namespace internal;
 
-            typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
+            typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, ThisType, Args...> args;
             _embind_register_class_function(
                 TypeID<ClassType>::get(),
                 methodName,
                 args.count,
                 args.types,
-                false,
-                reinterpret_cast<GenericFunction>(&FunctionInvoker<ClassType, ReturnType, Args...>::invoke),
-                sizeof(function),
-                &function);
-            return *this;
-        }
-
-        template<typename ReturnType, typename... Args, typename... Policies>
-        class_& function(const char* methodName, ReturnType (*function)(const ClassType& ptr, Args...), Policies...) {
-            using namespace internal;
-
-            typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
-            _embind_register_class_function(
-                TypeID<ClassType>::get(),
-                methodName,
-                args.count,
-                args.types,
-                true,
-                reinterpret_cast<GenericFunction>(&FunctionInvoker<ClassType, ReturnType, Args...>::invoke),
+                reinterpret_cast<GenericFunction>(&FunctionInvoker<decltype(function), ReturnType, ClassType, Args...>::invoke),
                 sizeof(function),
                 &function);
             return *this;

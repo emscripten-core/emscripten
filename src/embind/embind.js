@@ -958,7 +958,8 @@ function validateThis(this_, classType, humanName) {
     if (!this_.$$.ptr) {
         throwBindingError('cannot call emscripten binding method ' + humanName + ' on deleted object');
     }
-    
+
+    // todo: kill this
     return upcastPointer(
         this_.$$.ptr,
         this_.$$.ptrType.registeredClass,
@@ -969,8 +970,7 @@ function __embind_register_class_function(
     rawClassType,
     methodName,
     argCount,
-    rawArgTypesAddr,
-    isConst,
+    rawArgTypesAddr, // [ReturnType, ThisType, Args...]
     rawInvoker,
     memberFunctionSize,
     memberFunction
@@ -990,21 +990,18 @@ function __embind_register_class_function(
 
         whenDependentTypesAreResolved([], rawArgTypes, function(argTypes) {
             classType.registeredClass.instancePrototype[methodName] = function() {
-                if (arguments.length !== argCount - 1) {
-                    throwBindingError('emscripten binding method ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
+                if (arguments.length !== argCount - 2) {
+                    throwBindingError(humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
                 }
 
-                var ptr = validateThis(this, classType, humanName);
-                if (!isConst && this.$$.ptrType.isConst) {
-                    throwBindingError('Cannot call non-const method ' + humanName + ' on const reference');
-                }
+                validateThis(this, classType, humanName);
 
                 var destructors = [];
                 var args = new Array(argCount + 1);
-                args[0] = ptr;
-                args[1] = memberFunction;
-                for (var i = 1; i < argCount; ++i) {
-                    args[i + 1] = argTypes[i].toWireType(destructors, arguments[i - 1]);
+                args[0] = memberFunction;
+                args[1] = argTypes[1].toWireType(destructors, this);
+                for (var i = 2; i < argCount; ++i) {
+                    args[i] = argTypes[i].toWireType(destructors, arguments[i - 2]);
                 }
                 var rv = rawInvoker.apply(null, args);
                 rv = argTypes[0].fromWireType(rv);
