@@ -105,9 +105,9 @@
 
 #ifndef _ATTRIBUTE /* XXX Emscripten */
 #ifdef __GNUC__
-#define _ATTRIBUTE(attrs) __attribute__ (attrs)
+#define _ATTRIBUTE(attr) __attribute__ ((attr))
 #else
-#define _ATTRIBUTE(attrs)
+#define _ATTRIBUTE(attr)
 #endif
 #endif /* XXX Emscripten */
 
