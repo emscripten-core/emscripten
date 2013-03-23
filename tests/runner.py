@@ -7192,7 +7192,6 @@ void*:16
 
     def test_mmap(self):
       if self.emcc_args is None: return self.skip('requires emcc')
-      self.banned_js_engines = [NODE_JS] # slower, and fail on 64-bit
 
       Settings.TOTAL_MEMORY = 128*1024*1024
 
