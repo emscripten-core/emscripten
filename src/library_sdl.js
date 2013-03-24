@@ -1193,8 +1193,8 @@ var LibrarySDL = {
     // Mozilla Audio API/WebAudioAPI
     try {
       SDL.audio.audioOutput = new Audio();
-      SDL.audio.hasWebAudio = ((typeof(AudioContext) === "function")||(typeof(webkitAudioContext) === "function"));
-      if(!SDL.audio.hasWebAudio&&(typeof(SDL.audio.audioOutput['mozSetup'])==="function")){
+      SDL.audio.hasWebAudio = ((typeof(AudioContext) === 'function')||(typeof(webkitAudioContext) === 'function'));
+      if(!SDL.audio.hasWebAudio&&(typeof(SDL.audio.audioOutput['mozSetup'])==='function')){
           SDL.audio.audioOutput['mozSetup'](SDL.audio.channels, SDL.audio.freq); // use string attributes on mozOutput for closure compiler
           SDL.audio.mozBuffer = new Float32Array(totalSamples);
           SDL.audio.pushAudio = function(ptr, size) {
@@ -1205,12 +1205,12 @@ var LibrarySDL = {
             SDL.audio.audioOutput['mozWriteAudio'](mozBuffer);
           }
       }else{
-            if (typeof(AudioContext) === "function") {
+            if (typeof(AudioContext) === 'function') {
                 SDL.audio.context = new AudioContext();
-            } else if (typeof(webkitAudioContext) === "function") {
+            } else if (typeof(webkitAudioContext) === 'function') {
                 SDL.audio.context = new webkitAudioContext();
             } else {
-				throw "no sound!";
+				throw 'no sound!';
 			}
 			SDL.audio.nextSoundSource = 0;
 			SDL.audio.soundSource = new Array();
@@ -1262,7 +1262,7 @@ var LibrarySDL = {
     if (SDL.audio) {
         try{
 			for(var i = 0; i<SDL.audio.soundSource.length;i++){
-				if(!(typeof(SDL.audio.soundSource[i]==="undefined"))){
+				if(!(typeof(SDL.audio.soundSource[i]==='undefined'))){
 					SDL.audio.soundSource[i].stop(0);
 				}
 			}
