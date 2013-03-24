@@ -812,7 +812,7 @@ namespace emscripten {
                 methodName,
                 args.count,
                 args.types,
-                reinterpret_cast<GenericFunction>(&FunctionInvoker<decltype(function), ReturnType, ClassType, Args...>::invoke),
+                reinterpret_cast<GenericFunction>(&FunctionInvoker<decltype(function), ReturnType, ThisType, Args...>::invoke),
                 sizeof(function),
                 &function);
             return *this;
