@@ -32,8 +32,6 @@
          T _ZN10__cxxabiv129__pointer_to_member_type_infoD1Ev
          T _ZN10__cxxabiv129__pointer_to_member_type_infoD2Ev
          C _ZN10__cxxabiv18is_equalEPKSt9type_infoS2_b
-         t _ZN12_GLOBAL__N_114__libcpp_nmstrD1Ev
-         t _ZN12_GLOBAL__N_114__libcpp_nmstrD2Ev
          T _ZNK10__cxxabiv116__enum_type_info9can_catchEPKNS_16__shim_type_infoERPv
          T _ZNK10__cxxabiv116__shim_type_info5noop1Ev
          T _ZNK10__cxxabiv116__shim_type_info5noop2Ev
@@ -58,80 +56,21 @@
          T _ZNK10__cxxabiv122__base_class_type_info16search_below_dstEPNS_19__dynamic_cast_infoEPKvib
          T _ZNK10__cxxabiv122__base_class_type_info27has_unambiguous_public_baseEPNS_19__dynamic_cast_infoEPvi
          T _ZNK10__cxxabiv123__fundamental_type_info9can_catchEPKNS_16__shim_type_infoERPv
-         t _ZNK12_GLOBAL__N_114__libcpp_nmstr5c_strEv
-         t _ZNK12_GLOBAL__N_114__libcpp_nmstr5countEv
          T _ZNKSt10bad_typeid4whatEv
-         T _ZNKSt11logic_error4whatEv
-         T _ZNKSt13bad_exception4whatEv
-         T _ZNKSt13runtime_error4whatEv
-         T _ZNKSt20bad_array_new_length4whatEv
          T _ZNKSt8bad_cast4whatEv
-         T _ZNKSt9bad_alloc4whatEv
-         T _ZNKSt9exception4whatEv
          T _ZNSt10bad_typeidC1Ev
          T _ZNSt10bad_typeidC2Ev
          T _ZNSt10bad_typeidD0Ev
          T _ZNSt10bad_typeidD1Ev
          T _ZNSt10bad_typeidD2Ev
-         T _ZNSt11logic_errorD0Ev
-         T _ZNSt11logic_errorD1Ev
-         T _ZNSt11logic_errorD2Ev
-         T _ZNSt11range_errorD0Ev
-         T _ZNSt11range_errorD1Ev
-         T _ZNSt11range_errorD2Ev
-         T _ZNSt12domain_errorD0Ev
-         T _ZNSt12domain_errorD1Ev
-         T _ZNSt12domain_errorD2Ev
-         T _ZNSt12length_errorD0Ev
-         T _ZNSt12length_errorD1Ev
-         T _ZNSt12length_errorD2Ev
-         T _ZNSt12out_of_rangeD0Ev
-         T _ZNSt12out_of_rangeD1Ev
-         T _ZNSt12out_of_rangeD2Ev
-         T _ZNSt13bad_exceptionD0Ev
-         T _ZNSt13bad_exceptionD1Ev
-         T _ZNSt13bad_exceptionD2Ev
-         T _ZNSt13runtime_errorD0Ev
-         T _ZNSt13runtime_errorD1Ev
-         T _ZNSt13runtime_errorD2Ev
-         T _ZNSt14overflow_errorD0Ev
-         T _ZNSt14overflow_errorD1Ev
-         T _ZNSt14overflow_errorD2Ev
-         T _ZNSt15underflow_errorD0Ev
-         T _ZNSt15underflow_errorD1Ev
-         T _ZNSt15underflow_errorD2Ev
-         T _ZNSt16invalid_argumentD0Ev
-         T _ZNSt16invalid_argumentD1Ev
-         T _ZNSt16invalid_argumentD2Ev
-         T _ZNSt20bad_array_new_lengthC1Ev
-         T _ZNSt20bad_array_new_lengthC2Ev
-         T _ZNSt20bad_array_new_lengthD0Ev
-         T _ZNSt20bad_array_new_lengthD1Ev
-         T _ZNSt20bad_array_new_lengthD2Ev
          T _ZNSt8bad_castC1Ev
          T _ZNSt8bad_castC2Ev
          T _ZNSt8bad_castD0Ev
          T _ZNSt8bad_castD1Ev
          T _ZNSt8bad_castD2Ev
-         T _ZNSt9bad_allocC1Ev
-         T _ZNSt9bad_allocC2Ev
-         T _ZNSt9bad_allocD0Ev
-         T _ZNSt9bad_allocD1Ev
-         T _ZNSt9bad_allocD2Ev
-         T _ZNSt9exceptionD0Ev
-         T _ZNSt9exceptionD1Ev
-         T _ZNSt9exceptionD2Ev
          T _ZNSt9type_infoD0Ev
          T _ZNSt9type_infoD1Ev
          T _ZNSt9type_infoD2Ev
-         T _ZSt10unexpectedv
-         T _ZSt11__terminatePFvvE
-         T _ZSt12__unexpectedPFvvE
-         T _ZSt13get_terminatev
-         T _ZSt14get_unexpectedv
-         T _ZSt15get_new_handlerv
-         T _ZSt15set_new_handlerPFvvE
-         T _ZSt9terminatev
          D _ZTIDi
          D _ZTIDn
          D _ZTIDs
@@ -146,7 +85,6 @@
          D _ZTIN10__cxxabiv121__vmi_class_type_infoE
          D _ZTIN10__cxxabiv123__fundamental_type_infoE
          D _ZTIN10__cxxabiv129__pointer_to_member_type_infoE
-         C _ZTINSt3__19nullptr_tE
          D _ZTIPDi
          D _ZTIPDn
          D _ZTIPDs
@@ -188,20 +126,7 @@
          D _ZTIPx
          D _ZTIPy
          D _ZTISt10bad_typeid
-         D _ZTISt11logic_error
-         D _ZTISt11range_error
-         D _ZTISt12domain_error
-         D _ZTISt12length_error
-         D _ZTISt12out_of_range
-         D _ZTISt13bad_exception
-         D _ZTISt13runtime_error
-         D _ZTISt14overflow_error
-         D _ZTISt15underflow_error
-         D _ZTISt16invalid_argument
-         D _ZTISt20bad_array_new_length
          D _ZTISt8bad_cast
-         D _ZTISt9bad_alloc
-         D _ZTISt9exception
          D _ZTISt9type_info
          D _ZTIa
          D _ZTIb
@@ -234,7 +159,6 @@
          D _ZTSN10__cxxabiv121__vmi_class_type_infoE
          D _ZTSN10__cxxabiv123__fundamental_type_infoE
          D _ZTSN10__cxxabiv129__pointer_to_member_type_infoE
-         C _ZTSNSt3__19nullptr_tE
          D _ZTSPDi
          D _ZTSPDn
          D _ZTSPDs
@@ -276,20 +200,7 @@
          D _ZTSPx
          D _ZTSPy
          D _ZTSSt10bad_typeid
-         D _ZTSSt11logic_error
-         D _ZTSSt11range_error
-         D _ZTSSt12domain_error
-         D _ZTSSt12length_error
-         D _ZTSSt12out_of_range
-         D _ZTSSt13bad_exception
-         D _ZTSSt13runtime_error
-         D _ZTSSt14overflow_error
-         D _ZTSSt15underflow_error
-         D _ZTSSt16invalid_argument
-         D _ZTSSt20bad_array_new_length
          D _ZTSSt8bad_cast
-         D _ZTSSt9bad_alloc
-         D _ZTSSt9exception
          D _ZTSSt9type_info
          D _ZTSa
          D _ZTSb
@@ -320,28 +231,6 @@
          D _ZTVN10__cxxabiv123__fundamental_type_infoE
          D _ZTVN10__cxxabiv129__pointer_to_member_type_infoE
          D _ZTVSt10bad_typeid
-         D _ZTVSt11logic_error
-         D _ZTVSt11range_error
-         D _ZTVSt12domain_error
-         D _ZTVSt12length_error
-         D _ZTVSt12out_of_range
-         D _ZTVSt13bad_exception
-         D _ZTVSt13runtime_error
-         D _ZTVSt14overflow_error
-         D _ZTVSt15underflow_error
-         D _ZTVSt16invalid_argument
-         D _ZTVSt20bad_array_new_length
          D _ZTVSt8bad_cast
-         D _ZTVSt9bad_alloc
-         D _ZTVSt9exception
          D _ZTVSt9type_info
-         W _ZdaPv
-         W _ZdaPvRKSt9nothrow_t
-         W _ZdlPv
-         W _ZdlPvRKSt9nothrow_t
-         W _Znaj
-         W _ZnajRKSt9nothrow_t
-         W _Znwj
-         W _ZnwjRKSt9nothrow_t
-         D __cxa_new_handler
          T __dynamic_cast

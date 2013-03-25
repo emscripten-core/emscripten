@@ -1102,6 +1102,7 @@ try:
       o_s = []
       libc_files = [
         'dlmalloc.c',
+        os.path.join('libcxx', 'new.cpp'),
         os.path.join('libc', 'stdlib', 'getopt_long.c'),
         os.path.join('libc', 'gen', 'err.c'),
         os.path.join('libc', 'gen', 'errx.c'),
@@ -1165,8 +1166,7 @@ try:
         'ios.cpp',
         'locale.cpp',
         'regex.cpp',
-        'strstream.cpp',
-        'typeinfo.cpp'
+        'strstream.cpp'
       ]
       for src in libcxx_files:
         o = in_temp(src + '.o')
@@ -1189,14 +1189,8 @@ try:
       if DEBUG: print >> sys.stderr, 'emcc: building libcxxabi for cache'
       os = []
       libcxxabi_files = [
-        'abort_message.cpp',
-        'private_typeinfo.cpp',
         'typeinfo.cpp',
-        'cxa_new_delete.cpp',
-        'cxa_handlers.cpp',
-        'stdexcept.cpp',
-        'exception.cpp',
-        'cxa_exception_storage.cpp']:
+        'private_typeinfo.cpp'
       ]
       for src in libcxxabi_files:
         o = in_temp(src + '.o')
