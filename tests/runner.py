@@ -2475,17 +2475,14 @@ Exception execution path of first function! 1
     def test_exceptions(self):
         if Settings.ASM_JS: return self.skip('no exceptions support in asm')
         if Settings.QUANTUM_SIZE == 1: return self.skip("we don't support libcxx in q1")
+        if self.emcc_args is None: return self.skip('need emcc to add in libcxx properly')
 
         Settings.EXCEPTION_DEBUG = 1
 
         self.banned_js_engines = [NODE_JS] # node issue 1669, exception causes stdout not to be flushed
         Settings.DISABLE_EXCEPTION_CATCHING = 0
-        if self.emcc_args is None:
-          if Building.LLVM_OPTS: return self.skip('optimizing bitcode before emcc can confuse libcxx inclusion')
-          self.emcc_args = [] # libc++ auto-inclusion is only done if we use emcc
-        else:
-          if '-O2' in self.emcc_args:
-            self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
+        if '-O2' in self.emcc_args:
+          self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
 
         src = '''
           #include <stdio.h>
@@ -6247,6 +6244,8 @@ def process(filename):
       self.do_run(src, "some string constant")
 
     def test_std_cout_new(self):
+      if self.emcc_args is None: return self.skip('requires emcc')
+
       src = '''
         #include <iostream>
 
