@@ -284,7 +284,7 @@ strtold(const char* nptr, char **endptr)
 float
 strtof(const char* nptr, char **endptr)
 {
-  return (float) strtof(nptr, endptr);
+  return (float) strtod(nptr, endptr);
 }
 
 // XXX no locale support yet
