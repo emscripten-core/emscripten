@@ -9,7 +9,6 @@ var VAR_NATIVIZED = 'nativized';
 var VAR_EMULATED = 'emulated';
 
 var ENTRY_IDENT = toNiceIdent('%0');
-var ENTRY_IDENT_IDS = set(0, 1); // XXX
 
 function recomputeLines(func) {
   func.lines = func.labels.map(function(label) { return label.lines }).reduce(concatenator, []);
@@ -1326,14 +1325,14 @@ function analyzer(data, sidePass) {
         func.labelsDict = {};
         func.labelIds = {};
         func.labelIdsInverse = {};
-        func.labelIds[toNiceIdent('%0')] = 0;
+        func.labelIds[toNiceIdent('%0')] = 1;
         func.labelIdsInverse[0] = toNiceIdent('%0');
-        func.labelIds[toNiceIdent('%1')] = 1;
-        func.labelIdsInverse[1] = toNiceIdent('%1');
         func.labelIdCounter = 2;
         func.labels.forEach(function(label) {
-          func.labelIds[label.ident] = func.labelIdCounter++;
-          func.labelIdsInverse[func.labelIdCounter-1] = label.ident;
+          if (!(label.ident in func.labelIds)) {
+            func.labelIds[label.ident] = func.labelIdCounter++;
+            func.labelIdsInverse[func.labelIdCounter-1] = label.ident;
+          }
         });
 
         // Minify label ids to numeric ids.
@@ -1368,16 +1367,12 @@ function analyzer(data, sidePass) {
           }
         });
 
-        // The entry might not have an explicit label, and there is no consistent naming convention for it - it can be %0 or %1
-        // So we need to handle that in a special way here.
         function getActualLabelId(labelId) {
           if (func.labelsDict[labelId]) return labelId;
-          if (labelId in ENTRY_IDENT_IDS) {
-            labelId = func.labelIds[ENTRY_IDENT];
-            assert(func.labelsDict[labelId]);
-            return labelId;
-          }
-          return null;
+          // If not present, it must be a surprisingly-named entry (or undefined behavior, in which case, still ok to use the entry)
+          labelId = func.labelIds[ENTRY_IDENT];
+          assert(func.labelsDict[labelId]);
+          return labelId;
         }
 
         // Basic longjmp support, see library.js setjmp/longjmp
@@ -1573,7 +1568,7 @@ function analyzer(data, sidePass) {
       }
       item.functions.forEach(function(func) {
         dprint('relooping', "// relooping function: " + func.ident);
-        func.block = makeBlock(func.labels, [toNiceIdent(func.labels[0].ident)], func.labelsDict, func.forceEmulated);
+        func.block = makeBlock(func.labels, [func.labels[0].ident], func.labelsDict, func.forceEmulated);
       });
 
       return finish();
