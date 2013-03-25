@@ -50,6 +50,8 @@ var LibrarySDL = {
     startTime: null,
     mouseX: 0,
     mouseY: 0,
+    deltaX: 0,
+    deltaY: 0,
     buttonState: 0,
     DOMButtons: [0, 0, 0],
 
@@ -556,6 +558,8 @@ var LibrarySDL = {
           }
           SDL.mouseX = x;
           SDL.mouseY = y;
+          SDL.deltaX += movementX;
+          SDL.deltaY += movementY;
           break;
         }
         case 'unload': {
@@ -917,6 +921,14 @@ var LibrarySDL = {
   SDL_GetMouseState: function(x, y) {
     if (x) {{{ makeSetValue('x', '0', 'SDL.mouseX', 'i32') }}};
     if (y) {{{ makeSetValue('y', '0', 'SDL.mouseY', 'i32') }}};
+    return SDL.buttonState;
+  },
+
+  SDL_GetRelativeMouseState: function(x, y) {
+    if (x) {{{ makeSetValue('x', '0', 'SDL.deltaX', 'i32') }}};
+    if (y) {{{ makeSetValue('y', '0', 'SDL.deltaY', 'i32') }}};
+    SDL.deltaX = 0;
+    SDL.deltaY = 0;
     return SDL.buttonState;
   },
 
