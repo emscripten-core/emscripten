@@ -106,8 +106,13 @@ size_t wcsrtombs(char* restrict dst, const wchar_t** restrict src, size_t len,
 #include <__config>
 #include <cwctype>
 #include <wchar.h>
+#if _WIN32
+#include <support/win32/support.h> // pull in *swprintf defines
+#endif // _WIN32
 
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
+#endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
@@ -119,13 +124,15 @@ using ::FILE;
 using ::fwprintf;
 using ::fwscanf;
 using ::swprintf;
-using ::swscanf;
 using ::vfwprintf;
-using ::vfwscanf;
 using ::vswprintf;
-using ::vswscanf;
 using ::vwprintf;
+#ifndef _MSC_VER
+using ::swscanf;
+using ::vfwscanf;
+using ::vswscanf;
 using ::vwscanf;
+#endif // _MSC_VER
 using ::wprintf;
 using ::wscanf;
 using ::fgetwc;
@@ -139,12 +146,18 @@ using ::putwc;
 using ::putwchar;
 using ::ungetwc;
 using ::wcstod;
+#ifndef _MSC_VER
 using ::wcstof;
 using ::wcstold;
+#endif // _MSC_VER
 using ::wcstol;
+#ifndef _LIBCPP_HAS_NO_LONG_LONG
 using ::wcstoll;
+#endif // _LIBCPP_HAS_NO_LONG_LONG
 using ::wcstoul;
+#ifndef _LIBCPP_HAS_NO_LONG_LONG
 using ::wcstoull;
+#endif // _LIBCPP_HAS_NO_LONG_LONG
 using ::wcscpy;
 using ::wcsncpy;
 using ::wcscat;

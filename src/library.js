@@ -5082,6 +5082,10 @@ LibraryManager.library = {
   _ZSt18uncaught_exceptionv: function() { // std::uncaught_exception()
     return !!__ZSt18uncaught_exceptionv.uncaught_exception;
   },
+  __cxa_uncaught_exception__deps: ['_Zst18uncaught_exceptionv'],
+  __cxa_uncaught_exception: function() {
+    return !!__ZSt18uncaught_exceptionv.uncaught_exception;
+  },
 
   __cxa_call_unexpected: function(exception) {
     Module.printErr('Unexpected exception thrown, this is not properly supported - aborting');

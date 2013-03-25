@@ -60,7 +60,7 @@ struct _LIBCPP_VISIBLE __c_node
     virtual bool __addable(const void*, ptrdiff_t) const = 0;
     virtual bool __subscriptable(const void*, ptrdiff_t) const = 0;
 
-    _LIBCPP_HIDDEN void __add(__i_node* __i);
+    void __add(__i_node* __i);
     _LIBCPP_HIDDEN void __remove(__i_node* __i);
 };
 
@@ -83,8 +83,8 @@ _C_node<_Cont>::__dereferenceable(const void* __i) const
 {
     typedef typename _Cont::const_iterator iterator;
     const iterator* __j = static_cast<const iterator*>(__i);
-    _Cont* _C = static_cast<_Cont*>(__c_);
-    return _C->__dereferenceable(__j);
+    _Cont* _Cp = static_cast<_Cont*>(__c_);
+    return _Cp->__dereferenceable(__j);
 }
 
 template <class _Cont>
@@ -93,8 +93,8 @@ _C_node<_Cont>::__decrementable(const void* __i) const
 {
     typedef typename _Cont::const_iterator iterator;
     const iterator* __j = static_cast<const iterator*>(__i);
-    _Cont* _C = static_cast<_Cont*>(__c_);
-    return _C->__decrementable(__j);
+    _Cont* _Cp = static_cast<_Cont*>(__c_);
+    return _Cp->__decrementable(__j);
 }
 
 template <class _Cont>
@@ -103,8 +103,8 @@ _C_node<_Cont>::__addable(const void* __i, ptrdiff_t __n) const
 {
     typedef typename _Cont::const_iterator iterator;
     const iterator* __j = static_cast<const iterator*>(__i);
-    _Cont* _C = static_cast<_Cont*>(__c_);
-    return _C->__addable(__j, __n);
+    _Cont* _Cp = static_cast<_Cont*>(__c_);
+    return _Cp->__addable(__j, __n);
 }
 
 template <class _Cont>
@@ -113,8 +113,8 @@ _C_node<_Cont>::__subscriptable(const void* __i, ptrdiff_t __n) const
 {
     typedef typename _Cont::const_iterator iterator;
     const iterator* __j = static_cast<const iterator*>(__i);
-    _Cont* _C = static_cast<_Cont*>(__c_);
-    return _C->__subscriptable(__j, __n);
+    _Cont* _Cp = static_cast<_Cont*>(__c_);
+    return _Cp->__subscriptable(__j, __n);
 }
 
 class _LIBCPP_VISIBLE __libcpp_db
@@ -159,6 +159,7 @@ public:
     void* __find_c_from_i(void* __i) const;
     void __invalidate_all(void* __c);
     __c_node* __find_c_and_lock(void* __c) const;
+    __c_node* __find_c(void* __c) const;
     void unlock() const;
 
     void swap(void* __c1, void* __c2);

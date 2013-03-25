@@ -1144,9 +1144,34 @@ try:
     def create_libcxx():
       if DEBUG: print >> sys.stderr, 'emcc: building libcxx for cache'
       os = []
-      for src in ['algorithm.cpp', 'condition_variable.cpp', 'future.cpp', 'iostream.cpp', 'memory.cpp', 'random.cpp', 'stdexcept.cpp', 'system_error.cpp', 'utility.cpp', 'bind.cpp', 'debug.cpp', 'hash.cpp', 'mutex.cpp', 'string.cpp', 'thread.cpp', 'valarray.cpp', 'chrono.cpp', 'exception.cpp', 'ios.cpp', 'locale.cpp', 'regex.cpp', 'strstream.cpp']:
+      libcxx_files = [
+        'algorithm.cpp',
+        'condition_variable.cpp',
+        'future.cpp',
+        'iostream.cpp',
+        'memory.cpp',
+        'random.cpp',
+        'stdexcept.cpp',
+        'system_error.cpp',
+        'utility.cpp',
+        'bind.cpp',
+        'debug.cpp',
+        'hash.cpp',
+        'mutex.cpp',
+        'string.cpp',
+        'thread.cpp',
+        'valarray.cpp',
+        'chrono.cpp',
+        'exception.cpp',
+        'ios.cpp',
+        'locale.cpp',
+        'regex.cpp',
+        'strstream.cpp'
+      ]
+      for src in libcxx_files:
         o = in_temp(src + '.o')
-        execute([shared.PYTHON, shared.EMXX, shared.path_from_root('system', 'lib', 'libcxx', src), '-o', o], stdout=stdout, stderr=stderr)
+        srcfile = shared.path_from_root('system', 'lib', 'libcxx', src)
+        execute([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11'], stdout=stdout, stderr=stderr)
         os.append(o)
       shared.Building.link(os, in_temp('libcxx.bc'))
       return in_temp('libcxx.bc')
@@ -1163,9 +1188,14 @@ try:
     def create_libcxxabi():
       if DEBUG: print >> sys.stderr, 'emcc: building libcxxabi for cache'
       os = []
-      for src in ['private_typeinfo.cpp', 'typeinfo.cpp']:
+      libcxxabi_files = [
+        'typeinfo.cpp',
+        'private_typeinfo.cpp'
+      ]
+      for src in libcxxabi_files:
         o = in_temp(src + '.o')
-        execute([shared.PYTHON, shared.EMXX, shared.path_from_root('system', 'lib', 'libcxxabi', 'src', src), '-o', o], stdout=stdout, stderr=stderr)
+        srcfile = shared.path_from_root('system', 'lib', 'libcxxabi', 'src', src)
+        execute([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11'], stdout=stdout, stderr=stderr)
         os.append(o)
       shared.Building.link(os, in_temp('libcxxabi.bc'))
       return in_temp('libcxxabi.bc')

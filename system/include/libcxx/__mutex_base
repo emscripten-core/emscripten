@@ -16,7 +16,9 @@
 #include <system_error>
 #include <pthread.h>
 
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
+#endif
 
 #ifdef _LIBCPP_SHARED_LOCK
 
@@ -36,7 +38,11 @@ class _LIBCPP_VISIBLE mutex
 
 public:
     _LIBCPP_INLINE_VISIBILITY
-     mutex() {__m_ = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;}
+#ifndef _LIBCPP_HAS_NO_CONSTEXPR
+     constexpr mutex() _NOEXCEPT : __m_(PTHREAD_MUTEX_INITIALIZER) {}
+#else
+     mutex() _NOEXCEPT {__m_ = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;}
+#endif
      ~mutex();
 
 private:
@@ -45,8 +51,8 @@ private:
 
 public:
     void lock();
-    bool try_lock();
-    void unlock();
+    bool try_lock() _NOEXCEPT;
+    void unlock() _NOEXCEPT;
 
     typedef pthread_mutex_t* native_handle_type;
     _LIBCPP_INLINE_VISIBILITY native_handle_type native_handle() {return &__m_;}
@@ -56,17 +62,19 @@ struct _LIBCPP_VISIBLE defer_lock_t {};
 struct _LIBCPP_VISIBLE try_to_lock_t {};
 struct _LIBCPP_VISIBLE adopt_lock_t {};
 
-//constexpr
-extern const
-defer_lock_t  defer_lock;
+#if defined(_LIBCPP_HAS_NO_CONSTEXPR) || defined(_LIBCPP_BUILDING_MUTEX)
 
-//constexpr
-extern const
-try_to_lock_t try_to_lock;
+extern const defer_lock_t  defer_lock;
+extern const try_to_lock_t try_to_lock;
+extern const adopt_lock_t  adopt_lock;
 
-//constexpr
-extern const
-adopt_lock_t  adopt_lock;
+#else
+
+constexpr defer_lock_t  defer_lock  = defer_lock_t();
+constexpr try_to_lock_t try_to_lock = try_to_lock_t();
+constexpr adopt_lock_t  adopt_lock  = adopt_lock_t();
+
+#endif
 
 template <class _Mutex>
 class _LIBCPP_VISIBLE lock_guard
@@ -104,12 +112,12 @@ private:
 
 public:
     _LIBCPP_INLINE_VISIBILITY
-    unique_lock() : __m_(nullptr), __owns_(false) {}
+    unique_lock() _NOEXCEPT : __m_(nullptr), __owns_(false) {}
     _LIBCPP_INLINE_VISIBILITY
     explicit unique_lock(mutex_type& __m)
         : __m_(&__m), __owns_(true) {__m_->lock();}
     _LIBCPP_INLINE_VISIBILITY
-    unique_lock(mutex_type& __m, defer_lock_t)
+    unique_lock(mutex_type& __m, defer_lock_t) _NOEXCEPT
         : __m_(&__m), __owns_(false) {}
     _LIBCPP_INLINE_VISIBILITY
     unique_lock(mutex_type& __m, try_to_lock_t)
@@ -139,11 +147,11 @@ private:
 public:
 #ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
     _LIBCPP_INLINE_VISIBILITY
-    unique_lock(unique_lock&& __u)
+    unique_lock(unique_lock&& __u) _NOEXCEPT
         : __m_(__u.__m_), __owns_(__u.__owns_)
         {__u.__m_ = nullptr; __u.__owns_ = false;}
     _LIBCPP_INLINE_VISIBILITY
-    unique_lock& operator=(unique_lock&& __u)
+    unique_lock& operator=(unique_lock&& __u) _NOEXCEPT
         {
             if (__owns_)
                 __m_->unlock();
@@ -188,13 +196,13 @@ public:
     void unlock();
 
     _LIBCPP_INLINE_VISIBILITY
-    void swap(unique_lock& __u)
+    void swap(unique_lock& __u) _NOEXCEPT
     {
         _VSTD::swap(__m_, __u.__m_);
         _VSTD::swap(__owns_, __u.__owns_);
     }
     _LIBCPP_INLINE_VISIBILITY
-    mutex_type* release()
+    mutex_type* release() _NOEXCEPT
     {
         mutex_type* __m = __m_;
         __m_ = nullptr;
@@ -203,12 +211,12 @@ public:
     }
 
     _LIBCPP_INLINE_VISIBILITY
-    bool owns_lock() const {return __owns_;}
+    bool owns_lock() const _NOEXCEPT {return __owns_;}
     _LIBCPP_INLINE_VISIBILITY
-//    explicit
-        operator bool () const {return __owns_;}
+    _LIBCPP_EXPLICIT
+        operator bool () const _NOEXCEPT {return __owns_;}
     _LIBCPP_INLINE_VISIBILITY
-    mutex_type* mutex() const {return __m_;}
+    mutex_type* mutex() const _NOEXCEPT {return __m_;}
 };
 
 template <class _Mutex>
@@ -274,18 +282,19 @@ unique_lock<_Mutex>::unlock()
 template <class _Mutex>
 inline _LIBCPP_INLINE_VISIBILITY
 void
-swap(unique_lock<_Mutex>& __x, unique_lock<_Mutex>& __y) {__x.swap(__y);}
+swap(unique_lock<_Mutex>& __x, unique_lock<_Mutex>& __y) _NOEXCEPT
+    {__x.swap(__y);}
 
 struct _LIBCPP_VISIBLE cv_status
 {
-    enum _ {
+    enum __lx {
         no_timeout,
         timeout
     };
 
-    _ __v_;
+    __lx __v_;
 
-    _LIBCPP_INLINE_VISIBILITY cv_status(_ __v) : __v_(__v) {}
+    _LIBCPP_INLINE_VISIBILITY cv_status(__lx __v) : __v_(__v) {}
     _LIBCPP_INLINE_VISIBILITY operator int() const {return __v_;}
 
 };
@@ -295,7 +304,11 @@ class _LIBCPP_VISIBLE condition_variable
     pthread_cond_t __cv_;
 public:
     _LIBCPP_INLINE_VISIBILITY
+#ifndef _LIBCPP_HAS_NO_CONSTEXPR
+    constexpr condition_variable() : __cv_(PTHREAD_COND_INITIALIZER) {}
+#else
     condition_variable() {__cv_ = (pthread_cond_t)PTHREAD_COND_INITIALIZER;}
+#endif
     ~condition_variable();
 
 private:
@@ -303,17 +316,12 @@ private:
     condition_variable& operator=(const condition_variable&); // = delete;
 
 public:
-    void notify_one();
-    void notify_all();
+    void notify_one() _NOEXCEPT;
+    void notify_all() _NOEXCEPT;
 
     void wait(unique_lock<mutex>& __lk);
     template <class _Predicate>
         void wait(unique_lock<mutex>& __lk, _Predicate __pred);
-
-    template <class _Duration>
-        cv_status
-        wait_until(unique_lock<mutex>& __lk,
-                   const chrono::time_point<chrono::system_clock, _Duration>& __t);
 
     template <class _Clock, class _Duration>
         cv_status
@@ -369,28 +377,13 @@ condition_variable::wait(unique_lock<mutex>& __lk, _Predicate __pred)
         wait(__lk);
 }
 
-template <class _Duration>
-cv_status
-condition_variable::wait_until(unique_lock<mutex>& __lk,
-                 const chrono::time_point<chrono::system_clock, _Duration>& __t)
-{
-    using namespace chrono;
-    typedef time_point<system_clock, nanoseconds> __nano_sys_tmpt;
-    __do_timed_wait(__lk,
-                  __nano_sys_tmpt(__ceil<nanoseconds>(__t.time_since_epoch())));
-    return system_clock::now() < __t ? cv_status::no_timeout :
-                                       cv_status::timeout;
-}
-
 template <class _Clock, class _Duration>
 cv_status
 condition_variable::wait_until(unique_lock<mutex>& __lk,
                                const chrono::time_point<_Clock, _Duration>& __t)
 {
     using namespace chrono;
-    system_clock::time_point     __s_now = system_clock::now();
-    typename _Clock::time_point  __c_now = _Clock::now();
-    __do_timed_wait(__lk, __s_now + __ceil<nanoseconds>(__t - __c_now));
+    wait_for(__lk, __t - _Clock::now());
     return _Clock::now() < __t ? cv_status::no_timeout : cv_status::timeout;
 }
 
@@ -414,9 +407,17 @@ condition_variable::wait_for(unique_lock<mutex>& __lk,
                              const chrono::duration<_Rep, _Period>& __d)
 {
     using namespace chrono;
+    if (__d <= __d.zero())
+        return cv_status::timeout;
+    typedef time_point<system_clock, duration<long double, nano> > __sys_tpf;
+    typedef time_point<system_clock, nanoseconds> __sys_tpi;
+    __sys_tpf _Max = __sys_tpi::max();
     system_clock::time_point __s_now = system_clock::now();
     steady_clock::time_point __c_now = steady_clock::now();
-    __do_timed_wait(__lk, __s_now + __ceil<nanoseconds>(__d));
+    if (_Max - __d > __s_now)
+        __do_timed_wait(__lk, __s_now + __ceil<nanoseconds>(__d));
+    else
+        __do_timed_wait(__lk, __sys_tpi::max());
     return steady_clock::now() - __c_now < __d ? cv_status::no_timeout :
                                                  cv_status::timeout;
 }

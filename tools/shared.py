@@ -181,7 +181,7 @@ def check_node_version():
 # we re-check sanity when the settings are changed)
 # We also re-check sanity and clear the cache when the version changes
 
-EMSCRIPTEN_VERSION = '1.3.3'
+EMSCRIPTEN_VERSION = '1.3.4'
 
 def check_sanity(force=False):
   try:
@@ -393,13 +393,11 @@ if USE_EMSDK:
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'emscripten'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'bsd'), # posix stuff
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'libc'),
-    '-Xclang', '-isystem' + path_from_root('system', 'lib', 'libcxxabi', 'include'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'gfx'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'net'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'SDL'),
   ] + [
-    '-U__APPLE__', '-U__linux__',
-    '-D_LIBCPP_HAS_NO_DELETED_FUNCTIONS' # otherwise libc++ has errors with --std=c++11
+    '-U__APPLE__', '-U__linux__'
   ]
   COMPILER_OPTS += EMSDK_OPTS
 else:
