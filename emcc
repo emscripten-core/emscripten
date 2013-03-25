@@ -1232,14 +1232,6 @@ try:
         # We need to build and link the library in
         if DEBUG: print >> sys.stderr, 'emcc: including %s' % name
         libfile = shared.Cache.get(name, create)
-        if has and len(has) > 0:
-          # remove the symbols we do not need
-          fixed = in_temp(uniquename(libfile)) + '.bc'
-          shutil.copyfile(libfile, fixed)
-          for haz in has:
-            if DEBUG: print >> sys.stderr, 'emcc: including: removing symbol "%s" that we have' % haz
-            shared.Building.remove_symbol(fixed, haz)
-          libfile = fixed
         extra_files_to_link.append(libfile)
         force = True
         if fix and need:
