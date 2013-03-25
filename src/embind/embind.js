@@ -85,6 +85,7 @@ function createNamedFunction(name, body) {
     return new Function(
         "body",
         "return function " + name + "() {\n" +
+        "    \"use strict\";" +
         "    return body.apply(this, arguments);\n" +
         "};\n"
     )(body);
@@ -306,7 +307,7 @@ function makeInvoker(name, argCount, argTypes, invoker, fn) {
     if (!FUNCTION_TABLE[fn]) {
         throwBindingError('function '+name+' is not defined');
     }
-    return function() {
+    return createNamedFunction(makeLegalFunctionName(name), function() {
         if (arguments.length !== argCount - 1) {
             throwBindingError('function ' + name + ' called with ' + arguments.length + ' arguments, expected ' + (argCount - 1));
         }
@@ -320,7 +321,7 @@ function makeInvoker(name, argCount, argTypes, invoker, fn) {
         rv = argTypes[0].fromWireType(rv);
         runDestructors(destructors);
         return rv;
-    };
+    });
 }
 
 function __embind_register_function(name, argCount, rawArgTypesAddr, rawInvoker, fn) {
@@ -989,7 +990,7 @@ function __embind_register_class_function(
         };
 
         whenDependentTypesAreResolved([], rawArgTypes, function(argTypes) {
-            classType.registeredClass.instancePrototype[methodName] = function() {
+            classType.registeredClass.instancePrototype[methodName] = createNamedFunction(makeLegalFunctionName(humanName), function() {
                 if (arguments.length !== argCount - 2) {
                     throwBindingError(humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
                 }
@@ -1007,7 +1008,7 @@ function __embind_register_class_function(
                 rv = argTypes[0].fromWireType(rv);
                 runDestructors(destructors);
                 return rv;
-            };
+            });
             return [];
         });
         return [];
@@ -1094,12 +1095,12 @@ function __embind_register_class_property(
 var char_0 = '0'.charCodeAt(0);
 var char_9 = '9'.charCodeAt(0);
 function makeLegalFunctionName(name) {
-    var rv = name.replace(/[^a-zA-Z0-9_]/g, '$');
-    var f = rv.charCodeAt(0);
+    name = name.replace(/[^a-zA-Z0-9_]/g, '$');
+    var f = name.charCodeAt(0);
     if (f >= char_0 && f <= char_9) {
-        return '_' + rv;
+        return '_' + name;
     } else {
-        return rv;
+        return name;
     }
 }
 
