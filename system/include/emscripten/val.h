@@ -27,6 +27,7 @@ namespace emscripten {
                 /*, ... */);
 
             EM_VAL _emval_get_global(const char* name);
+            EM_VAL _emval_get_module_property(const char* name);
             EM_VAL _emval_get_property(EM_VAL object, EM_VAL key);
             void _emval_set_property(EM_VAL object, EM_VAL key, EM_VAL value);
             void _emval_as(EM_VAL value, TYPEID returnType);
@@ -90,6 +91,10 @@ namespace emscripten {
 
         static val global(const char* name) {
             return val(internal::_emval_get_global(name));
+        }
+
+        static val module_property(const char* name) {
+            return val(internal::_emval_get_module_property(name));
         }
 
         template<typename T>

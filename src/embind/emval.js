@@ -99,6 +99,11 @@ function __emval_get_global(name) {
     return __emval_register(global[name]);
 }
 
+function __emval_get_module_property(name) {
+    name = Pointer_stringify(name);
+    return __emval_register(Module[name]);
+}
+
 function __emval_get_property(handle, key) {
     return __emval_register(_emval_handle_array[handle].value[_emval_handle_array[key].value]);
 }
