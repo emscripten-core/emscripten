@@ -7297,11 +7297,17 @@ LibraryManager.library = {
     // exceptfds not supported
     // timeout is always 0 - fully async
     assert(!exceptfds);
+    
+    var errorCondition = 0;
 
     function canRead(info) {
       // make sure hasData exists. 
       // we do create it when the socket is connected, 
       // but other implementations may create it lazily
+      if ((info.socket.readyState == WebSocket.CLOSING || info.socket.readyState == WebSocket.CLOSED) && info.inQueue.length == 0) {
+        errorCondition = -1;
+        return false;
+      }
       return info.hasData && info.hasData();
     }
 
@@ -7309,6 +7315,10 @@ LibraryManager.library = {
       // make sure socket exists. 
       // we do create it when the socket is connected, 
       // but other implementations may create it lazily
+      if ((info.socket.readyState == WebSocket.CLOSING || info.socket.readyState == WebSocket.CLOSED)) {
+        errorCondition = -1;
+        return false;
+      }
       return info.socket && (info.socket.readyState == info.socket.OPEN);
     }
 
@@ -7340,8 +7350,13 @@ LibraryManager.library = {
       return bitsSet;
     }
 
-    return checkfds(nfds, readfds, canRead)
-         + checkfds(nfds, writefds, canWrite);
+    var totalHandles = checkfds(nfds, readfds, canRead) + checkfds(nfds, writefds, canWrite);
+    if (errorCondition) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    } else {
+      return totalHandles;
+    }
   },
 
   // pty.h
