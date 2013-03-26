@@ -221,16 +221,23 @@ function __embind_register_bool(rawType, name, trueValue, falseValue) {
     });
 }
 
-function __embind_register_integer(rawType, name) {
+// When converting a number from JS to C++ side, the valid range of the number is
+// [minRange, maxRange], inclusive.
+function __embind_register_integer(primitiveType, name, minRange, maxRange) {
     name = Pointer_stringify(name);
     registerType(rawType, {
         name: name,
+        minRange: minRange,
+        maxRange: maxRange,
         fromWireType: function(value) {
             return value;
         },
         toWireType: function(destructors, value) {
             if (typeof value !== "number") {
                 throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
+            }
+            if (value < minRange || value > maxRange) {
+                throw new TypeError('Passing a number "' + _embind_repr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ', ' + maxRange + ']!');
             }
             return value | 0;
         },
