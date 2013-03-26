@@ -73,14 +73,35 @@ function __emval_take_value(type, v) {
     return __emval_register(v);
 }
 
+var __newers = {}; // arity -> function
+
 function __emval_new(handle, argCount, argTypes) {
     var args = parseParameters(
         argCount,
         argTypes,
         Array.prototype.slice.call(arguments, 3));
 
-    // implement what amounts to operator new
+    // Alas, we are forced to use operator new until WebKit enables
+    // constructing typed arrays without new.
+    // In WebKit, Uint8Array(10) throws an error.
+    // In every other browser, it's identical to new Uint8Array(10).
+
+    var newer = __newers[argCount];
+    if (!newer) {
+        var parameters = new Array(argCount);
+        for (var i = 0; i < argCount; ++i) {
+            parameters[i] = 'a' + i;
+        }
+        /*jshint evil:true*/
+        newer = __newers[argCount] = new Function(
+            ['c'].concat(parameters),
+            "return new c(" + parameters.join(',') + ");");
+    }
+    
     var constructor = _emval_handle_array[handle].value;
+    var obj = newer.apply(undefined, [constructor].concat(args));
+/*
+    // implement what amounts to operator new
     function dummy(){}
     dummy.prototype = constructor.prototype;
     var obj = new constructor;
@@ -88,6 +109,7 @@ function __emval_new(handle, argCount, argTypes) {
     if (typeof rv === 'object') {
         obj = rv;
     }
+*/
     return __emval_register(obj);
 }
 
