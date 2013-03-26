@@ -103,6 +103,8 @@ var LibraryOpenAL = {
       var gain = AL.currentContext.ctx.createGain();
       var panner = AL.currentContext.ctx.createPanner();
       panner.panningModel = "equalpower";
+      panner.distanceModel = "linear";
+      panner.rolloffFactor = 0.3;
       gain.connect(panner);
       panner.connect(AL.currentContext.ctx.destination);
       AL.currentContext.src.push({
