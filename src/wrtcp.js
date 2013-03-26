@@ -67,6 +67,8 @@
 	 *
 	 */
 
+  var webrtcSupported = true;
+
   var RTCPeerConnection;
   if(window.mozRTCPeerConnection)
     RTCPeerConnection = window.mozRTCPeerConnection;
@@ -75,7 +77,7 @@
   else if(window.RTCPeerConnection)
     RTCPeerConnection = window.RTCPeerConnection
   else
-    throw new Error('RTCPeerConnection not supported');
+    webrtcSupported = false;
 
   var RTCSessionDescription;
   if(window.mozRTCSessionDescription)
@@ -85,7 +87,7 @@
   else if(window.RTCSessionDescription)
     RTCSessionDescription = window.RTCSessionDescription
   else
-    throw new Error('RTCSessionDescription not supported');
+    webrtcSupported = false;
 
   var RTCIceCandidate;
   if(window.mozRTCIceCandidate)
@@ -95,7 +97,7 @@
   else if(window.RTCIceCandidate)
     RTCIceCandidate = window.RTCIceCandidate;
   else
-    throw new Error('RTCIceCandidate not supported');
+    webrtcSupported = false;
 
   var getUserMedia;
   if(!navigator.getUserMedia) {
@@ -104,7 +106,7 @@
     else if(navigator.webkitGetUserMedia)
       getUserMedia = navigator.webkitGetUserMedia.bind(navigator);
     else
-      throw new Error('getUserMedia not supported');
+      webrtcSupported = false;
   } else {
     getUserMedia = navigator.getUserMedia.bind(navigator);
   }
@@ -116,7 +118,7 @@
   } else if(window.webkitRTCPeerConnection) {
     RTCConnectProtocol = webkitRTCConnectProtocol;
   } else {
-    throw Error('unable to determine correct connection protocol');
+    webrtcSupported = false;
   }
 
   function callback(object, method, args) {
@@ -874,6 +876,9 @@
   };
 
   function Peer(brokerUrl, options) {
+    if(!webrtcSupported)
+      throw new Error("WebRTC not supported");
+
     var that = this;
     this.brokerUrl = brokerUrl;
     this.options = options = options || {};
