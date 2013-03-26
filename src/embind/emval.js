@@ -73,8 +73,22 @@ function __emval_take_value(type, v) {
     return __emval_register(v);
 }
 
-function __emval_new(handle) {
-    return __emval_register(new (_emval_handle_array[handle].value));
+function __emval_new(handle, argCount, argTypes) {
+    var args = parseParameters(
+        argCount,
+        argTypes,
+        Array.prototype.slice.call(arguments, 3));
+
+    // implement what amounts to operator new
+    var constructor = _emval_handle_array[handle].value;
+    function dummy(){}
+    dummy.prototype = constructor.prototype;
+    var obj = new constructor;
+    var rv = constructor.apply(obj, args);
+    if (typeof rv === 'object') {
+        obj = rv;
+    }
+    return __emval_register(obj);
 }
 
 // appease jshint (technically this code uses eval)

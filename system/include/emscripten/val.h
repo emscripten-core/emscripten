@@ -20,7 +20,11 @@ namespace emscripten {
             EM_VAL _emval_new_cstring(const char*);
             void _emval_take_value(TYPEID type/*, ...*/);
 
-            EM_VAL _emval_new(EM_VAL value);
+            EM_VAL _emval_new(
+                EM_VAL value,
+                unsigned argCount,
+                internal::TYPEID argTypes[]
+                /*, ... */);
 
             EM_VAL _emval_get_global(const char* name);
             EM_VAL _emval_get_property(EM_VAL object, EM_VAL key);
@@ -122,8 +126,25 @@ namespace emscripten {
             return val::global("Object")["prototype"]["hasOwnProperty"].call("call", *this, val(key)).as<bool>();
         }
 
-        val new_() const {
-            return val(internal::_emval_new(handle));
+        template<typename... Args>
+        val new_(Args... args) const {
+            using namespace internal;
+
+            WithPolicies<>::ArgTypeList<Args...> argList;
+            // todo: this is awfully similar to operator(), can we
+            // merge them somehow?
+            typedef EM_VAL (*TypedNew)(
+                EM_VAL,
+                unsigned,
+                TYPEID argTypes[],
+                typename BindingType<Args>::WireType...);
+            TypedNew typedNew = reinterpret_cast<TypedNew>(&_emval_new);
+            return val(
+                typedNew(
+                    handle,
+                    argList.count,
+                    argList.types,
+                    toWireType(args)...));
         }
         
         template<typename T>
@@ -136,7 +157,7 @@ namespace emscripten {
             internal::_emval_set_property(handle, val(key).handle, v.handle);
         }
 
-        template<typename ...Args>
+        template<typename... Args>
         val operator()(Args... args) {
             using namespace internal;
 
