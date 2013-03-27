@@ -67,8 +67,8 @@ void Init()
   glfwSetWindowSizeCallback(OnResize);
   glfwSetWindowRefreshCallback(OnRefresh);
   glfwSetMouseWheelCallback(OnMouseWheel);
-  //glfwSetMousePosCallback(OnMouseMove);
-  //glfwSetMouseButtonCallback(OnMouseClick);
+  glfwSetMousePosCallback(OnMouseMove);
+  glfwSetMouseButtonCallback(OnMouseClick);
   
   // set the projection matrix to a normal frustum with a max depth of 50
   glMatrixMode(GL_PROJECTION);
@@ -323,7 +323,12 @@ void OnMouseClick( int button, int action ){
 }
 
 void OnMouseMove( int x, int y ){
-  printf("Mouse has been moved to %i %i\n", x, y);
+  int lState = glfwGetMouseButton(GLFW_MOUSE_BUTTON_LEFT);
+
+	if (lState == GLFW_PRESS)
+    printf("Dragged %i to %i %i\n", GLFW_MOUSE_BUTTON_LEFT, x, y);
+  if(lState == GLFW_RELEASE)
+    printf("Moved %i to %i %i\n", GLFW_MOUSE_BUTTON_LEFT, x, y);
 }
 
 void OnMouseWheel( int pos ){

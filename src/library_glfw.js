@@ -175,16 +175,18 @@ var LibraryGLFW = {
         return;
 
       GLFW.savePosition(event);
-      if(event.target == Module["canvas"] || status == 0){//GLFW_RELEASE
-		    if(status == 1){//GLFW_PRESS
-          try {
-            event.target.setCapture();
-          } catch (e) {}
-        }
-        event.preventDefault();
-		    //DOM and glfw have the same button codes
-        Runtime.dynCall('vii', GLFW.mouseButtonFunc, [event['button'], status]);
-	    }	
+      if(event.target != Module["canvas"])
+        return;
+		  
+		  if(status == 1){//GLFW_PRESS
+        try {
+          event.target.setCapture();
+        } catch (e) {}
+      }
+
+      event.preventDefault();
+		  //DOM and glfw have the same button codes
+      Runtime.dynCall('vii', GLFW.mouseButtonFunc, [event['button'], status]);
 	  },
 
     onMouseButtonDown: function(event){
@@ -427,7 +429,7 @@ var LibraryGLFW = {
 	},
 
 	glfwGetMouseButton : function( button ) {
-		return GLFW.buttons & button;
+		return (GLFW.buttons & (1 << button)) > 0;
 	},
 
 	glfwGetMousePos : function( xpos, ypos ) { 
