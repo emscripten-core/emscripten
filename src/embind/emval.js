@@ -19,6 +19,16 @@ Module.count_emval_handles = function() {
     return count;
 };
 
+/** @expose */
+Module.get_first_emval = function() {
+    for (var i = 0; i < _emval_handle_array.length; ++i) {
+        if (_emval_handle_array[i] !== undefined) {
+            return _emval_handle_array[i];
+        }
+    }
+    return null;
+};
+
 // Private C++ API
 
 function __emval_register(value) {
