@@ -146,7 +146,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     out = jcache.get(shortkey, keys)
 
     if DEBUG_CACHE and not out:
-      dfpath = os.path.join(configuration.TEMP_DIR, "ems_" + shortkey)
+      dfpath = os.path.join(get_configuration().TEMP_DIR, "ems_" + shortkey)
       dfp = open(dfpath, 'w')
       dfp.write(pre_input);
       dfp.write("\n\n========================== settings_text\n\n");
