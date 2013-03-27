@@ -236,6 +236,8 @@ function __embind_register_integer(primitiveType, name, minRange, maxRange) {
             return value;
         },
         toWireType: function(destructors, value) {
+            // todo: Here we have an opportunity for -O3 level "unsafe" optimizations: we could
+            // avoid the following two if()s and assume value is of proper type.
             if (typeof value !== "number") {
                 throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
             }
@@ -255,6 +257,8 @@ function __embind_register_float(rawType, name) {
             return value;
         },
         toWireType: function(destructors, value) {
+            // todo: Here we have an opportunity for -O3 level "unsafe" optimizations: we could
+            // avoid the following if() and assume value is of proper type.
             if (typeof value !== "number") {
                 throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' +this.name);
             }
@@ -485,6 +489,8 @@ function __embind_register_struct(
         },
         toWireType: function(destructors, o) {
             var fields = this.fields;
+            // todo: Here we have an opportunity for -O3 level "unsafe" optimizations:
+            // assume all fields are present without checking.
             for (var fieldName in fields) {
                 if (!(fieldName in o)) {
                     throw new TypeError('Missing field');
