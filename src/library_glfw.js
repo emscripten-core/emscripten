@@ -1,6 +1,6 @@
 /*******************************************************************************
  * EMSCRIPTEN GLFW 2.7.7 emulation.
- * It tries to copy the behavior described in 
+ * It tries to emulate the behavior described in 
  * http://www.glfw.org/GLFWReference277.pdf
  *
  * What it does:
@@ -8,14 +8,13 @@
  * - Manage keyboard and mouse events.
  * - GL Extensions support.
  *
- * What it does not but should do:
+ * What it does not but should probably do:
  * - Transmit events when glfwPollEvents, glfwWaitEvents or glfwSwapBuffers is
  *    called. Events callbacks are called as soon as event are received.
- * - Correctly handle unicode characters. To be tested.
  * - Thread emulation.
  * - Joystick support.
- * - Image/Texture I/O support.
- * - Video modes.
+ * - Image/Texture I/O support (that is deleted in GLFW 3).
+ * - Video modes detection.
  *
  * Authors:
  * - Éloi Rivard <eloi.rivard@gmail.com>
@@ -105,6 +104,7 @@ var LibraryGLFW = {
       };
     },
 
+    //UCS-2 to UTF16 (ISO 10646)
     getUnicodeChar: function(value) {
       var output = '';
       if (value > 0xFFFF) {
