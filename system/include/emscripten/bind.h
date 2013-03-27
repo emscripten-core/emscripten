@@ -40,8 +40,8 @@ namespace emscripten {
             void _embind_register_integer(
                 TYPEID integerType,
                 const char* name,
-                int minRange,
-                int maxRange);
+                long minRange,
+                unsigned long maxRange);
 
             void _embind_register_float(
                 TYPEID floatType,
