@@ -36,10 +36,10 @@ extern "C" {
 # endif /* !__ASSERT_FUNC */
 #endif /* !NDEBUG */
 
-void _EXFUN(__assert, (const char *, int, const char *));
-/*	    _ATTRIBUTE ((__noreturn__))); */
-void _EXFUN(__assert_func, (const char *, int, const char *, const char *));
-/*	    _ATTRIBUTE ((__noreturn__))); */
+void _EXFUN(__assert, (const char *, int, const char *)
+            _ATTRIBUTE(noreturn));
+void _EXFUN(__assert_func, (const char *, int, const char *, const char *)
+            _ATTRIBUTE(noreturn));
 
 #ifdef __cplusplus
 }

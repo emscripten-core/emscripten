@@ -7,11 +7,20 @@
 //
 //===----------------------------------------------------------------------===//
 #include <stdlib.h>
+
+#ifndef __has_include
+#define __has_include(inc) 0
+#endif
+
 #if __APPLE__
+#include <cxxabi.h>
+#elif defined(LIBCXXRT) || __has_include(<cxxabi.h>)
 #include <cxxabi.h>
 #endif
 
 #include "typeinfo"
+
+#if !(defined(_LIBCPPABI_VERSION) || defined(LIBCXXRT))
 
 std::bad_cast::bad_cast() _NOEXCEPT
 {
@@ -48,3 +57,4 @@ std::bad_typeid::what() const _NOEXCEPT
   void __cxxabiv1::__cxa_bad_cast() { throw std::bad_cast(); }
 #endif
 
+#endif  // _LIBCPPABI_VERSION

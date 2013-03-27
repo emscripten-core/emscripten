@@ -89,11 +89,13 @@ typedef fpos<char_traits<wchar_t>::state_type> wstreampos;
 #include <__config>
 #include <wchar.h>  // for mbstate_t
 
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
+#endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
-class ios_base;
+class _LIBCPP_VISIBLE ios_base;
 
 template<class _CharT>  struct _LIBCPP_VISIBLE char_traits;
 template<class _Tp>     class _LIBCPP_VISIBLE allocator;

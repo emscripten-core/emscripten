@@ -11,14 +11,26 @@
 
 #include "new"
 
+#ifndef __has_include
+#define __has_include(inc) 0
+#endif
+
 #if __APPLE__
     #include <cxxabi.h>
-    // On Darwin, there are two STL shared libraries and a lower level ABI
-    // shared libray.  The global holding the current new handler is
-    // in the ABI library and named __cxa_new_handler.
-    #define __new_handler __cxxabiapple::__cxa_new_handler
+
+    #ifndef _LIBCPPABI_VERSION
+        // On Darwin, there are two STL shared libraries and a lower level ABI
+        // shared libray.  The global holding the current new handler is
+        // in the ABI library and named __cxa_new_handler.
+        #define __new_handler __cxxabiapple::__cxa_new_handler
+    #endif
 #else  // __APPLE__
-    static std::new_handler __new_handler;
+    #if defined(LIBCXXRT) || __has_include(<cxxabi.h>)
+        #include <cxxabi.h>
+    #endif  // __has_include(<cxxabi.h>)
+    #ifndef _LIBCPPABI_VERSION
+        static std::new_handler __new_handler;
+    #endif  // _LIBCPPABI_VERSION
 #endif
 
 // Implement all new and delete operators as weak definitions
@@ -83,7 +95,7 @@ operator new[](size_t size)
 
 __attribute__((__weak__, __visibility__("default")))
 void*
-operator new[](size_t size, const std::nothrow_t& nothrow) _NOEXCEPT
+operator new[](size_t size, const std::nothrow_t&) _NOEXCEPT
 {
     void* p = 0;
 #ifndef _LIBCPP_NO_EXCEPTIONS
@@ -134,6 +146,8 @@ namespace std
 
 const nothrow_t nothrow = {};
 
+#ifndef _LIBCPPABI_VERSION
+
 new_handler
 set_new_handler(new_handler handler) _NOEXCEPT
 {
@@ -145,6 +159,8 @@ get_new_handler() _NOEXCEPT
 {
     return __sync_fetch_and_add(&__new_handler, (new_handler)0);
 }
+
+#ifndef LIBCXXRT
 
 bad_alloc::bad_alloc() _NOEXCEPT
 {
@@ -160,6 +176,8 @@ bad_alloc::what() const _NOEXCEPT
     return "std::bad_alloc";
 }
 
+#endif //LIBCXXRT
+
 bad_array_new_length::bad_array_new_length() _NOEXCEPT
 {
 }
@@ -173,6 +191,8 @@ bad_array_new_length::what() const _NOEXCEPT
 {
     return "bad_array_new_length";
 }
+
+#endif
 
 void
 __throw_bad_alloc()

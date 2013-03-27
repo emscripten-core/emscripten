@@ -2475,17 +2475,14 @@ Exception execution path of first function! 1
     def test_exceptions(self):
         if Settings.ASM_JS: return self.skip('no exceptions support in asm')
         if Settings.QUANTUM_SIZE == 1: return self.skip("we don't support libcxx in q1")
+        if self.emcc_args is None: return self.skip('need emcc to add in libcxx properly')
 
         Settings.EXCEPTION_DEBUG = 1
 
         self.banned_js_engines = [NODE_JS] # node issue 1669, exception causes stdout not to be flushed
         Settings.DISABLE_EXCEPTION_CATCHING = 0
-        if self.emcc_args is None:
-          if Building.LLVM_OPTS: return self.skip('optimizing bitcode before emcc can confuse libcxx inclusion')
-          self.emcc_args = [] # libc++ auto-inclusion is only done if we use emcc
-        else:
-          if '-O2' in self.emcc_args:
-            self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
+        if '-O2' in self.emcc_args:
+          self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
 
         src = '''
           #include <stdio.h>
@@ -6244,6 +6241,36 @@ def process(filename):
           return 0;
         }
       '''
+      self.do_run(src, "some string constant")
+
+    def test_std_cout_new(self):
+      if self.emcc_args is None: return self.skip('requires emcc')
+
+      src = '''
+        #include <iostream>
+
+        struct NodeInfo { //structure that we want to transmit to our shaders
+            float x;
+            float y;
+            float s;
+            float c;
+        };
+        const int nbNodes = 100;
+        NodeInfo * data = new NodeInfo[nbNodes]; //our data that will be transmitted using float texture.
+
+        template<int i>
+        void printText( const char (&text)[ i ] )
+        {
+           std::cout << text << std::endl;
+        }
+
+        int main()
+        {
+          printText( "some string constant" );
+          return 0;
+        }
+      '''
+
       self.do_run(src, "some string constant")
       
     def test_istream(self):
@@ -11040,6 +11067,84 @@ elif 'browser' in str(sys.argv):
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_mouse.c'), '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js']).communicate()
       self.run_browser('page.html', '', '/report_result?740')
 
+    def test_sdl_mouse_offsets(self):
+      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+        function simulateMouseEvent(x, y, button) {
+          var event = document.createEvent("MouseEvents");
+          if (button >= 0) {
+            var event1 = document.createEvent("MouseEvents");
+            event1.initMouseEvent('mousedown', true, true, window,
+                       1, x, y, x, y,
+                       0, 0, 0, 0,
+                       button, null);
+            Module['canvas'].dispatchEvent(event1);
+            var event2 = document.createEvent("MouseEvents");
+            event2.initMouseEvent('mouseup', true, true, window,
+                       1, x, y, x, y,
+                       0, 0, 0, 0,
+                       button, null);
+            Module['canvas'].dispatchEvent(event2);
+          } else {
+            var event1 = document.createEvent("MouseEvents");
+            event1.initMouseEvent('mousemove', true, true, window,
+                       0, x, y, x, y,
+                       0, 0, 0, 0,
+                       0, null);
+            Module['canvas'].dispatchEvent(event1);
+          }
+        }
+        window['simulateMouseEvent'] = simulateMouseEvent;
+      ''')
+      open(os.path.join(self.get_dir(), 'page.html'), 'w').write('''
+        <html>
+          <head>
+            <style type="text/css">
+              html, body { margin: 0; padding: 0; }
+              #container {
+                position: absolute;
+                left: 5px; right: 0;
+                top: 5px; bottom: 0;
+              }
+              #canvas {
+                position: absolute;
+                left: 0; width: 600px;
+                top: 0; height: 450px;
+              }
+              textarea {
+                margin-top: 500px;
+                margin-left: 5px;
+                width: 600px;
+              }
+            </style>
+          </head>
+          <body>
+            <div id="container">
+              <canvas id="canvas"></canvas>
+            </div>
+            <textarea id="output" rows="8"></textarea>
+            <script type="text/javascript">
+              var Module = {
+                canvas: document.getElementById('canvas'),
+                print: (function() {
+                  var element = document.getElementById('output');
+                  element.value = ''; // clear browser cache
+                  return function(text) {
+                    text = Array.prototype.slice.call(arguments).join(' ');
+                    element.value += text + "\\n";
+                    element.scrollTop = 99999; // focus on bottom
+                  };
+                })()
+              };
+            </script>
+            <script type="text/javascript" src="sdl_mouse.js"></script>
+          </body>
+        </html>
+      ''')
+      open(os.path.join(self.get_dir(), 'sdl_mouse.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_mouse.c')).read()))
+
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_mouse.c'), '-O2', '--minify', '0', '-o', 'sdl_mouse.js', '--pre-js', 'pre.js']).communicate()
+      self.run_browser('page.html', '', '/report_result?600')
+
     def test_sdl_audio(self):
       shutil.copyfile(path_from_root('tests', 'sounds', 'alarmvictory_1.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
       shutil.copyfile(path_from_root('tests', 'sounds', 'alarmcreatemiltaryfoot_1.wav'), os.path.join(self.get_dir(), 'sound2.wav'))
@@ -11754,6 +11859,71 @@ elif 'browser' in str(sys.argv):
           with self.WebsockHarness(3994, no_server=True):
             Popen([PYTHON, EMCC, path_from_root('tests', 'websockets_bi_side_bigdata.c'), '-o', 'side.html', '-DSOCKK=3995', '-s', 'SOCKET_DEBUG=0', '-I' + path_from_root('tests')]).communicate()
             self.btest('websockets_bi_bigdata.c', expected='0', args=['-s', 'SOCKET_DEBUG=0', '-I' + path_from_root('tests')])
+      finally:
+        self.clean_pids()
+
+    def test_websockets_select_server_down(self):
+      def closedServer(q):
+        import socket
+
+        q.put(None) # No sub-process to start
+        ssock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        ssock.bind(("127.0.0.1", 8994))
+      try:
+        with self.WebsockHarness(8994, closedServer):
+          self.btest('websockets_select.c', expected='266')
+      finally:
+        self.clean_pids()
+
+    def test_websockets_select_server_closes_connection(self):
+      def closingServer(q):
+        import socket
+
+        q.put(None) # No sub-process to start
+        ssock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        ssock.bind(("127.0.0.1", 8994))
+        ssock.listen(2)
+        while True:
+          csock, addr = ssock.accept()
+          print "Connection from %s" % repr(addr)
+          csock.send("1234567")
+          csock.close()
+
+      try:
+        with self.WebsockHarness(8994, closingServer):
+          self.btest('websockets_select_server_closes_connection.c', expected='266')
+      finally:
+        self.clean_pids()
+
+    def test_websockets_select_server_closes_connection_rw(self):
+      def closingServer_rw(q):
+        import socket
+
+        q.put(None) # No sub-process to start
+        ssock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        ssock.bind(("127.0.0.1", 8998))
+        ssock.listen(2)
+        while True:
+          csock, addr = ssock.accept()
+          print "Connection from %s" % repr(addr)
+          readArray = bytearray(10)
+          #readBuffer = buffer(readArray)
+          bytesRead = 0
+          # Let the client start to write data
+          while (bytesRead < 10):
+            (readBytes, address) = csock.recvfrom_into( readArray, 10 )
+            bytesRead += readBytes
+          print "server: 10 bytes read"
+          # Now we write a message on our own ...
+          csock.send("0123456789")
+          print "server: 10 bytes written"
+          # And immediately close the connection
+          csock.close()
+          print "server: connection closed"
+
+      try:
+        with self.WebsockHarness(8998, closingServer_rw):
+          self.btest('websockets_select_server_closes_connection_rw.c', expected='266')
       finally:
         self.clean_pids()
 

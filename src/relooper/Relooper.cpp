@@ -499,8 +499,7 @@ void Relooper::Calculate(Block *Entry) {
         Block *Curr = *iter;
         for (BlockBranchMap::iterator iter = Curr->BranchesOut.begin(); iter != Curr->BranchesOut.end(); iter++) {
           Block *Possible = iter->first;
-          if (InnerBlocks.find(Possible) == InnerBlocks.end() &&
-              NextEntries.find(Possible) == NextEntries.find(Possible)) {
+          if (InnerBlocks.find(Possible) == InnerBlocks.end()) {
             NextEntries.insert(Possible);
           }
         }
