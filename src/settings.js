@@ -335,10 +335,14 @@ var PGO = 0; // Enables profile-guided optimization in the form of runtime check
              // which functions are actually called. Emits a list during shutdown that you
              // can pass to DEAD_FUNCTIONS (you can also emit the list manually by
              // calling PGOMonitor.dump());
-var DEAD_FUNCTIONS = []; // A list of functions that no code will be emitted for, and
-                         // a runtime abort will happen if they are called. If
-                         // such a function is an unresolved reference, that is not
-                         // considered an error. 
+var DEAD_FUNCTIONS = []; // ASM.js requires all declared functions to have a
+                         // corresponding implementation (even if the function is never
+                         // called) and will emit an error during linking if no
+                         // implementation can be found
+                         // If you know a function will never be called, you can stub it
+                         // out with a call to abort() by adding it to this list. This
+                         // will subsequently pass ASM.js validation, but allows for a
+                         // runtime error should anything else call that function.
                          // TODO: options to lazily load such functions
 var UNRESOLVED_AS_DEAD = 0; // Handle all unresolved functions as if they were in the
                             // list of dead functions. This is a quick way to turn
