@@ -225,7 +225,7 @@ function __embind_register_bool(rawType, name, trueValue, falseValue) {
 // [minRange, maxRange], inclusive.
 function __embind_register_integer(primitiveType, name, minRange, maxRange) {
     name = Pointer_stringify(name);
-    if (maxRange == -1) { // LLVM doesn't have signed and unsigned 32-bit types, so u32 literals come out as 'i32 -1'. Always treat those as max u32.
+    if (maxRange === -1) { // LLVM doesn't have signed and unsigned 32-bit types, so u32 literals come out as 'i32 -1'. Always treat those as max u32.
         maxRange = 4294967295;
     }
     registerType(primitiveType, {
