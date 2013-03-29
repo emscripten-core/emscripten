@@ -13,9 +13,21 @@ var LibraryOpenAL = {
   alcMakeContextCurrent: function(context) {
     if (context == 0) {
       AL.currentContext = null;
+      return 0;
     } else {
       AL.currentContext = AL.contexts[context - 1];
+      return 1;
     }
+  },
+
+  alcGetContextsDevice: function(context){
+    if(context < Al.contexts.length && context >= 0)
+      return 1;
+    return 0;
+  },
+
+  alcGetCurrentContext: function(){
+    return AL.currentContext;
   },
 
   alcDestroyContext: function(context) {
