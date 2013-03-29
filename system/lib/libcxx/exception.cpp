@@ -14,7 +14,7 @@
 #define __has_include(inc) 0
 #endif
 
-#if __APPLE__
+#ifdef __APPLE__
   #include <cxxabi.h>
 
   using namespace __cxxabiv1;
@@ -77,7 +77,6 @@ get_terminate() _NOEXCEPT
     return __sync_fetch_and_add(&__terminate_handler, (terminate_handler)0);
 }
 
-#ifndef EMSCRIPTEN // We provide this in JS
 _LIBCPP_NORETURN
 void
 terminate() _NOEXCEPT
@@ -98,13 +97,12 @@ terminate() _NOEXCEPT
     }
 #endif  // _LIBCPP_NO_EXCEPTIONS
 }
-#endif // !EMSCRIPTEN
 #endif // !defined(LIBCXXRT) && !defined(_LIBCPPABI_VERSION)
 
-#if !defined(LIBCXXRT) && !defined(__GLIBCXX__) && !defined(EMSCRIPTEN)
+#if !defined(LIBCXXRT) && !defined(__GLIBCXX__)
 bool uncaught_exception() _NOEXCEPT
 {
-#if __APPLE__ || defined(_LIBCPPABI_VERSION)
+#if defined(__APPLE__) || defined(_LIBCPPABI_VERSION)
     // on Darwin, there is a helper function so __cxa_get_globals is private
     return __cxa_uncaught_exception();
 #else  // __APPLE__

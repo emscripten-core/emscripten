@@ -164,7 +164,7 @@ template <class charT, class traits, class T>
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 template <class _CharT, class _Traits>
-class _LIBCPP_VISIBLE basic_istream
+class _LIBCPP_TYPE_VIS basic_istream
     : virtual public basic_ios<_CharT, _Traits>
 {
     streamsize __gc_;
@@ -194,7 +194,7 @@ protected:
 public:
 
     // 27.7.1.1.3 Prefix/suffix:
-    class _LIBCPP_VISIBLE sentry;
+    class _LIBCPP_TYPE_VIS sentry;
 
     // 27.7.1.2 Formatted input:
     basic_istream& operator>>(basic_istream& (*__pf)(basic_istream&));
@@ -244,7 +244,7 @@ public:
 };
 
 template <class _CharT, class _Traits>
-class _LIBCPP_VISIBLE basic_istream<_CharT, _Traits>::sentry
+class _LIBCPP_TYPE_VIS basic_istream<_CharT, _Traits>::sentry
 {
     bool __ok_;
 
@@ -1216,16 +1216,9 @@ basic_istream<_CharT, _Traits>::read(char_type* __s, streamsize __n)
         sentry __sen(*this, true);
         if (__sen)
         {
-            for (; __gc_ < __n; ++__gc_)
-            {
-                typename traits_type::int_type __i = this->rdbuf()->sbumpc();
-                if (traits_type::eq_int_type(__i, traits_type::eof()))
-                {
-                   this->setstate(ios_base::failbit | ios_base::eofbit);
-                   break;
-                }
-                *__s++ = traits_type::to_char_type(__i);
-            }
+            __gc_ = this->rdbuf()->sgetn(__s, __n);
+            if (__gc_ != __n)
+                this->setstate(ios_base::failbit | ios_base::eofbit);
         }
         else
             this->setstate(ios_base::failbit);
@@ -1460,7 +1453,7 @@ operator>>(basic_istream<_CharT, _Traits>&& __is, _Tp& __x)
 #endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
 
 template <class _CharT, class _Traits>
-class _LIBCPP_VISIBLE basic_iostream
+class _LIBCPP_TYPE_VIS basic_iostream
     : public basic_istream<_CharT, _Traits>,
       public basic_ostream<_CharT, _Traits>
 {

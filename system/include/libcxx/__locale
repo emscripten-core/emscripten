@@ -19,11 +19,11 @@
 #include <cstdint>
 #include <cctype>
 #include <locale.h>
-#if _WIN32
+#ifdef _WIN32
 # include <support/win32/locale_win32.h>
-#elif (__GLIBC__ || __APPLE__ || __FreeBSD__ || __sun__ || EMSCRIPTEN)
+#elif (defined(__GLIBC__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__sun__))
 # include <xlocale.h>
-#endif  // _WIN32 || __GLIBC__ || __APPLE__ || __FreeBSD__ || EMSCRIPTEN
+#endif  // _WIN32 || __GLIBC__ || __APPLE__ || __FreeBSD_
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
@@ -31,7 +31,7 @@
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
-class _LIBCPP_VISIBLE locale;
+class _LIBCPP_TYPE_VIS locale;
 
 template <class _Facet>
 _LIBCPP_INLINE_VISIBILITY
@@ -43,12 +43,12 @@ _LIBCPP_INLINE_VISIBILITY
 const _Facet&
 use_facet(const locale&);
 
-class _LIBCPP_VISIBLE locale
+class _LIBCPP_TYPE_VIS locale
 {
 public:
     // types:
-    class _LIBCPP_VISIBLE facet;
-    class _LIBCPP_VISIBLE id;
+    class _LIBCPP_TYPE_VIS facet;
+    class _LIBCPP_TYPE_VIS id;
 
     typedef int category;
     static const category // values assigned here are for exposition only
@@ -103,7 +103,7 @@ private:
     template <class _Facet> friend const _Facet& use_facet(const locale&);
 };
 
-class _LIBCPP_VISIBLE locale::facet
+class _LIBCPP_TYPE_VIS locale::facet
     : public __shared_count
 {
 protected:
@@ -119,7 +119,7 @@ private:
     virtual void __on_zero_shared() _NOEXCEPT;
 };
 
-class _LIBCPP_VISIBLE locale::id
+class _LIBCPP_TYPE_VIS locale::id
 {
     once_flag      __flag_;
     int32_t        __id_;
@@ -175,7 +175,7 @@ use_facet(const locale& __l)
 // template <class _CharT> class collate;
 
 template <class _CharT>
-class _LIBCPP_VISIBLE collate
+class _LIBCPP_TYPE_VIS collate
     : public locale::facet
 {
 public:
@@ -254,15 +254,15 @@ collate<_CharT>::do_hash(const char_type* __lo, const char_type* __hi) const
     return static_cast<long>(__h);
 }
 
-_LIBCPP_EXTERN_TEMPLATE(class _LIBCPP_VISIBLE collate<char>)
-_LIBCPP_EXTERN_TEMPLATE(class _LIBCPP_VISIBLE collate<wchar_t>)
+_LIBCPP_EXTERN_TEMPLATE(class _LIBCPP_TYPE_VIS collate<char>)
+_LIBCPP_EXTERN_TEMPLATE(class _LIBCPP_TYPE_VIS collate<wchar_t>)
 
 // template <class CharT> class collate_byname;
 
-template <class _CharT> class _LIBCPP_VISIBLE collate_byname;
+template <class _CharT> class _LIBCPP_TYPE_VIS collate_byname;
 
 template <>
-class _LIBCPP_VISIBLE collate_byname<char>
+class _LIBCPP_TYPE_VIS collate_byname<char>
     : public collate<char>
 {
     locale_t __l;
@@ -281,7 +281,7 @@ protected:
 };
 
 template <>
-class _LIBCPP_VISIBLE collate_byname<wchar_t>
+class _LIBCPP_TYPE_VIS collate_byname<wchar_t>
     : public collate<wchar_t>
 {
     locale_t __l;
@@ -312,10 +312,10 @@ locale::operator()(const basic_string<_CharT, _Traits, _Allocator>& __x,
 
 // template <class charT> class ctype
 
-class _LIBCPP_VISIBLE ctype_base
+class _LIBCPP_TYPE_VIS ctype_base
 {
 public:
-#if __GLIBC__
+#ifdef __GLIBC__
     typedef unsigned short mask;
     static const mask space  = _ISspace;
     static const mask print  = _ISprint;
@@ -327,7 +327,7 @@ public:
     static const mask punct  = _ISpunct;
     static const mask xdigit = _ISxdigit;
     static const mask blank  = _ISblank;
-#elif _WIN32
+#elif defined(_WIN32)
     typedef unsigned short mask;
     static const mask space  = _SPACE;
     static const mask print  = _BLANK|_PUNCT|_ALPHA|_DIGIT;
@@ -339,13 +339,11 @@ public:
     static const mask punct  = _PUNCT;
     static const mask xdigit = _HEX;
     static const mask blank  = _BLANK;
-#elif (__APPLE__ || __FreeBSD__ || EMSCRIPTEN)
-#if __APPLE__
+#elif (defined(__APPLE__) || defined(__FreeBSD__))
+#ifdef __APPLE__
     typedef __uint32_t mask;
-#elif __FreeBSD__
+#elif defined(__FreeBSD__)
     typedef unsigned long mask;
-#elif EMSCRIPTEN
-    typedef unsigned short mask;
 #endif
     static const mask space  = _CTYPE_S;
     static const mask print  = _CTYPE_R;
@@ -357,7 +355,7 @@ public:
     static const mask punct  = _CTYPE_P;
     static const mask xdigit = _CTYPE_X;
     static const mask blank  = _CTYPE_B;
-#elif __sun__
+#elif defined(__sun__)
     typedef unsigned int mask;
     static const mask space  = _ISSPACE;
     static const mask print  = _ISPRINT;
@@ -369,7 +367,7 @@ public:
     static const mask punct  = _ISPUNCT;
     static const mask xdigit = _ISXDIGIT;
     static const mask blank  = _ISBLANK;
-#else  // __GLIBC__ || _WIN32 || __APPLE__ || __FreeBSD__ || EMSCRIPTEN || __sun__
+#else  // __GLIBC__ || _WIN32 || __APPLE__ || __FreeBSD__ || __sun__
     typedef unsigned long mask;
     static const mask space  = 1<<0;
     static const mask print  = 1<<1;
@@ -388,10 +386,10 @@ public:
     _LIBCPP_ALWAYS_INLINE ctype_base() {}
 };
 
-template <class _CharT> class _LIBCPP_VISIBLE ctype;
+template <class _CharT> class _LIBCPP_TYPE_VIS ctype;
 
 template <>
-class _LIBCPP_VISIBLE ctype<wchar_t>
+class _LIBCPP_TYPE_VIS ctype<wchar_t>
     : public locale::facet,
       public ctype_base
 {
@@ -493,7 +491,7 @@ protected:
 };
 
 template <>
-class _LIBCPP_VISIBLE ctype<char>
+class _LIBCPP_TYPE_VIS ctype<char>
     : public locale::facet, public ctype_base
 {
     const mask* __tab_;
@@ -592,7 +590,7 @@ public:
 #endif
     _LIBCPP_ALWAYS_INLINE const mask* table() const  _NOEXCEPT {return __tab_;}
     static const mask* classic_table()  _NOEXCEPT;
-#if defined(__GLIBC__) || defined(EMSCRIPTEN)
+#if defined(__GLIBC__)
     static const int* __classic_upper_table() _NOEXCEPT;
     static const int* __classic_lower_table() _NOEXCEPT;
 #endif
@@ -611,10 +609,10 @@ protected:
 
 // template <class CharT> class ctype_byname;
 
-template <class _CharT> class _LIBCPP_VISIBLE ctype_byname;
+template <class _CharT> class _LIBCPP_TYPE_VIS ctype_byname;
 
 template <>
-class _LIBCPP_VISIBLE ctype_byname<char>
+class _LIBCPP_TYPE_VIS ctype_byname<char>
     : public ctype<char>
 {
     locale_t __l;
@@ -632,7 +630,7 @@ protected:
 };
 
 template <>
-class _LIBCPP_VISIBLE ctype_byname<wchar_t>
+class _LIBCPP_TYPE_VIS ctype_byname<wchar_t>
     : public ctype<wchar_t>
 {
     locale_t __l;
@@ -763,7 +761,7 @@ tolower(_CharT __c, const locale& __loc)
 
 // codecvt_base
 
-class _LIBCPP_VISIBLE codecvt_base
+class _LIBCPP_TYPE_VIS codecvt_base
 {
 public:
     _LIBCPP_ALWAYS_INLINE codecvt_base() {}
@@ -772,12 +770,12 @@ public:
 
 // template <class internT, class externT, class stateT> class codecvt;
 
-template <class _InternT, class _ExternT, class _StateT> class _LIBCPP_VISIBLE codecvt;
+template <class _InternT, class _ExternT, class _StateT> class _LIBCPP_TYPE_VIS codecvt;
 
 // template <> class codecvt<char, char, mbstate_t>
 
 template <>
-class _LIBCPP_VISIBLE codecvt<char, char, mbstate_t>
+class _LIBCPP_TYPE_VIS codecvt<char, char, mbstate_t>
     : public locale::facet,
       public codecvt_base
 {
@@ -863,7 +861,7 @@ protected:
 // template <> class codecvt<wchar_t, char, mbstate_t>
 
 template <>
-class _LIBCPP_VISIBLE codecvt<wchar_t, char, mbstate_t>
+class _LIBCPP_TYPE_VIS codecvt<wchar_t, char, mbstate_t>
     : public locale::facet,
       public codecvt_base
 {
@@ -946,7 +944,7 @@ protected:
 // template <> class codecvt<char16_t, char, mbstate_t>
 
 template <>
-class _LIBCPP_VISIBLE codecvt<char16_t, char, mbstate_t>
+class _LIBCPP_TYPE_VIS codecvt<char16_t, char, mbstate_t>
     : public locale::facet,
       public codecvt_base
 {
@@ -1032,7 +1030,7 @@ protected:
 // template <> class codecvt<char32_t, char, mbstate_t>
 
 template <>
-class _LIBCPP_VISIBLE codecvt<char32_t, char, mbstate_t>
+class _LIBCPP_TYPE_VIS codecvt<char32_t, char, mbstate_t>
     : public locale::facet,
       public codecvt_base
 {
@@ -1118,7 +1116,7 @@ protected:
 // template <class _InternT, class _ExternT, class _StateT> class codecvt_byname
 
 template <class _InternT, class _ExternT, class _StateT>
-class _LIBCPP_VISIBLE codecvt_byname
+class _LIBCPP_TYPE_VIS codecvt_byname
     : public codecvt<_InternT, _ExternT, _StateT>
 {
 public:
@@ -1142,7 +1140,7 @@ _LIBCPP_EXTERN_TEMPLATE(class codecvt_byname<wchar_t, char, mbstate_t>)
 _LIBCPP_EXTERN_TEMPLATE(class codecvt_byname<char16_t, char, mbstate_t>)
 _LIBCPP_EXTERN_TEMPLATE(class codecvt_byname<char32_t, char, mbstate_t>)
 
-_LIBCPP_VISIBLE void __throw_runtime_error(const char*);
+_LIBCPP_FUNC_VIS void __throw_runtime_error(const char*);
 
 template <size_t _Np>
 struct __narrow_to_utf8
@@ -1326,10 +1324,10 @@ struct __widen_from_utf8<32>
 
 // template <class charT> class numpunct
 
-template <class _CharT> class _LIBCPP_VISIBLE numpunct;
+template <class _CharT> class _LIBCPP_TYPE_VIS numpunct;
 
 template <>
-class _LIBCPP_VISIBLE numpunct<char>
+class _LIBCPP_TYPE_VIS numpunct<char>
     : public locale::facet
 {
 public:
@@ -1360,7 +1358,7 @@ protected:
 };
 
 template <>
-class _LIBCPP_VISIBLE numpunct<wchar_t>
+class _LIBCPP_TYPE_VIS numpunct<wchar_t>
     : public locale::facet
 {
 public:
@@ -1392,10 +1390,10 @@ protected:
 
 // template <class charT> class numpunct_byname
 
-template <class charT> class _LIBCPP_VISIBLE numpunct_byname;
+template <class charT> class _LIBCPP_TYPE_VIS numpunct_byname;
 
 template <>
-class _LIBCPP_VISIBLE numpunct_byname<char>
+class _LIBCPP_TYPE_VIS numpunct_byname<char>
 : public numpunct<char>
 {
 public:
@@ -1413,7 +1411,7 @@ private:
 };
 
 template <>
-class _LIBCPP_VISIBLE numpunct_byname<wchar_t>
+class _LIBCPP_TYPE_VIS numpunct_byname<wchar_t>
 : public numpunct<wchar_t>
 {
 public:
