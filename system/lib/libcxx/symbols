@@ -766,8 +766,8 @@
          C _ZNSt3__110__stdinbufIcE9__getcharEb
          C _ZNSt3__110__stdinbufIcE9pbackfailEi
          C _ZNSt3__110__stdinbufIcE9underflowEv
-         C _ZNSt3__110__stdinbufIcEC1EP7__sFILE
-         C _ZNSt3__110__stdinbufIcEC2EP7__sFILE
+         C _ZNSt3__110__stdinbufIcEC1EP7__sFILEP10_mbstate_t
+         C _ZNSt3__110__stdinbufIcEC2EP7__sFILEP10_mbstate_t
          C _ZNSt3__110__stdinbufIcED0Ev
          C _ZNSt3__110__stdinbufIcED1Ev
          C _ZNSt3__110__stdinbufIcED2Ev
@@ -776,8 +776,8 @@
          C _ZNSt3__110__stdinbufIwE9__getcharEb
          C _ZNSt3__110__stdinbufIwE9pbackfailEj
          C _ZNSt3__110__stdinbufIwE9underflowEv
-         C _ZNSt3__110__stdinbufIwEC1EP7__sFILE
-         C _ZNSt3__110__stdinbufIwEC2EP7__sFILE
+         C _ZNSt3__110__stdinbufIwEC1EP7__sFILEP10_mbstate_t
+         C _ZNSt3__110__stdinbufIwEC2EP7__sFILEP10_mbstate_t
          C _ZNSt3__110__stdinbufIwED0Ev
          C _ZNSt3__110__stdinbufIwED1Ev
          C _ZNSt3__110__stdinbufIwED2Ev
@@ -882,16 +882,16 @@
          C _ZNSt3__111__stdoutbufIcE4syncEv
          C _ZNSt3__111__stdoutbufIcE5imbueERKNS_6localeE
          C _ZNSt3__111__stdoutbufIcE8overflowEi
-         C _ZNSt3__111__stdoutbufIcEC1EP7__sFILE
-         C _ZNSt3__111__stdoutbufIcEC2EP7__sFILE
+         C _ZNSt3__111__stdoutbufIcEC1EP7__sFILEP10_mbstate_t
+         C _ZNSt3__111__stdoutbufIcEC2EP7__sFILEP10_mbstate_t
          C _ZNSt3__111__stdoutbufIcED0Ev
          C _ZNSt3__111__stdoutbufIcED1Ev
          C _ZNSt3__111__stdoutbufIcED2Ev
          C _ZNSt3__111__stdoutbufIwE4syncEv
          C _ZNSt3__111__stdoutbufIwE5imbueERKNS_6localeE
          C _ZNSt3__111__stdoutbufIwE8overflowEj
-         C _ZNSt3__111__stdoutbufIwEC1EP7__sFILE
-         C _ZNSt3__111__stdoutbufIwEC2EP7__sFILE
+         C _ZNSt3__111__stdoutbufIwEC1EP7__sFILEP10_mbstate_t
+         C _ZNSt3__111__stdoutbufIwEC2EP7__sFILEP10_mbstate_t
          C _ZNSt3__111__stdoutbufIwED0Ev
          C _ZNSt3__111__stdoutbufIwED1Ev
          C _ZNSt3__111__stdoutbufIwED2Ev
@@ -2146,7 +2146,7 @@
          C _ZNSt3__16vectorIPNS_6locale5facetENS_15__sso_allocatorIS3_Lj28EEEE18__construct_at_endEj
          C _ZNSt3__16vectorIPNS_6locale5facetENS_15__sso_allocatorIS3_Lj28EEEE18__construct_at_endIPS3_EENS_9enable_ifIXsr21__is_forward_iteratorIT_EE5valueEvE4typeESA_SA_
          C _ZNSt3__16vectorIPNS_6locale5facetENS_15__sso_allocatorIS3_Lj28EEEE26__swap_out_circular_bufferERNS_14__split_bufferIS3_RS5_EE
-         C _ZNSt3__16vectorIPNS_6locale5facetENS_15__sso_allocatorIS3_Lj28EEEE6assignIPS3_EENS_9enable_ifIXsr21__is_forward_iteratorIT_EE5valueEvE4typeESA_SA_
+         C _ZNSt3__16vectorIPNS_6locale5facetENS_15__sso_allocatorIS3_Lj28EEEE6assignIPS3_EENS_9enable_ifIXaasr21__is_forward_iteratorIT_EE5valuesr16is_constructibleIS3_NS_15iterator_traitsISA_E9referenceEEE5valueEvE4typeESA_SA_
          C _ZNSt3__16vectorIPNS_6locale5facetENS_15__sso_allocatorIS3_Lj28EEEE6resizeEj
          C _ZNSt3__16vectorIPNS_6locale5facetENS_15__sso_allocatorIS3_Lj28EEEE8__appendEj
          C _ZNSt3__16vectorIPNS_6locale5facetENS_15__sso_allocatorIS3_Lj28EEEE8allocateEj
