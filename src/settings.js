@@ -335,14 +335,16 @@ var PGO = 0; // Enables profile-guided optimization in the form of runtime check
              // which functions are actually called. Emits a list during shutdown that you
              // can pass to DEAD_FUNCTIONS (you can also emit the list manually by
              // calling PGOMonitor.dump());
-var DEAD_FUNCTIONS = []; // ASM.js requires all declared functions to have a
-                         // corresponding implementation (even if the function is never
-                         // called) and will emit an error during linking if no
-                         // implementation can be found
-                         // If you know a function will never be called, you can stub it
-                         // out with a call to abort() by adding it to this list. This
-                         // will subsequently pass ASM.js validation, but allows for a
-                         // runtime error should anything else call that function.
+var DEAD_FUNCTIONS = []; // Functions on this list are not converted to JS, and calls to
+                         // them are turned into abort()s. This is potentially useful for
+                         // (1) reducing code size, if you know some function will never
+                         // be called (see PGO), and also (2) ASM.js requires all declared
+                         // functions to have a corresponding implementation (even if the
+                         // function is never called) and will emit an error during linking if no
+                         // implementation can be found; with this option, asm.js validation will
+                         // succeed for that function and calls to it.
+                         // If a dead function is actually called, you will get a runtime
+                         // error.
                          // TODO: options to lazily load such functions
 var UNRESOLVED_AS_DEAD = 0; // Handle all unresolved functions as if they were in the
                             // list of dead functions. This is a quick way to turn
