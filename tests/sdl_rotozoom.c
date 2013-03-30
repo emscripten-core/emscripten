@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
     sprite[1] = SDL_CreateRGBSurface(SDL_SWSURFACE, 100, 100, 32, 0xFF000000, 0xFF0000, 0xFF00, 0xFF);
     SDL_FillRect(sprite[1], 0, 0xA0A0A0A0);
     sprite[2] = zoomSurface(sprite[0], 0.5, 0.5, SMOOTHING_ON);
-    sprite[3] = zoomSurface(sprite[1], 0.5, 0.5, SMOOTHING_ON);
+    sprite[3] = rotozoomSurface(sprite[1], 45, 0.5, SMOOTHING_ON);
 
     mainloop();
 

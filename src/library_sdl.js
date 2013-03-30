@@ -1032,6 +1032,19 @@ var LibrarySDL = {
     return ret;
   },
 
+  rotozoomSurface: function(src, angle, zoom, smooth) {
+    var srcData = SDL.surfaces[src];
+    var w = srcData.width * zoom;
+    var h = srcData.height * zoom;
+    var diagonal = Math.ceil(Math.sqrt(Math.pow(w, 2) + Math.pow(h, 2)));
+    var ret = SDL.makeSurface(diagonal, diagonal, srcData.flags, false, 'rotozoomSurface');
+    var dstData = SDL.surfaces[ret];
+    dstData.ctx.translate(diagonal / 2, diagonal / 2);
+    dstData.ctx.rotate(angle * Math.PI / 180);
+    dstData.ctx.drawImage(srcData.canvas, -w / 2, -h / 2, w, h);
+    return ret;
+  },
+
   SDL_SetAlpha: function(surf, flag, alpha) {
     SDL.surfaces[surf].alpha = alpha;
   },
