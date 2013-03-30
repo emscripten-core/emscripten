@@ -274,7 +274,6 @@ LLVM_DIS=os.path.expanduser(build_llvm_tool_path('llvm-dis'))
 LLVM_NM=os.path.expanduser(build_llvm_tool_path('llvm-nm'))
 LLVM_INTERPRETER=os.path.expanduser(build_llvm_tool_path('lli'))
 LLVM_COMPILER=os.path.expanduser(build_llvm_tool_path('llc'))
-LLVM_EXTRACT=os.path.expanduser(build_llvm_tool_path('llvm-extract'))
 
 EMSCRIPTEN = path_from_root('emscripten.py')
 DEMANGLER = path_from_root('third_party', 'demangler.py')
@@ -719,11 +718,6 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     if old_dir:
       os.chdir(old_dir)
     return generated_libs
-
-  @staticmethod
-  def remove_symbol(filename, symbol):
-    Popen([LLVM_EXTRACT, filename, '-delete', '-glob=' + symbol, '-o', filename], stderr=PIPE).communicate()
-    Popen([LLVM_EXTRACT, filename, '-delete', '-func=' + symbol, '-o', filename], stderr=PIPE).communicate()
 
   @staticmethod
   def link(files, target):
