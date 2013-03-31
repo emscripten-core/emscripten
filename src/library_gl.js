@@ -1874,8 +1874,6 @@ var LibraryGL = {
         var typeIndex = attribute.type - GL.byteSizeByTypeRoot; // ensure it starts at 0 to keep the cache items dense
         temp = cacheItem[typeIndex];
         cacheItem = temp ? temp : (cacheItem[typeIndex] = GL.immediate.rendererCacheItemTemplate.slice());
-        temp = cacheItem[attribute.stride];
-        cacheItem = temp ? temp : (cacheItem[attribute.stride] = GL.immediate.rendererCacheItemTemplate.slice());
       }
       var fogParam;
       if (GLEmulation.fogEnabled) {
@@ -1919,7 +1917,6 @@ var LibraryGL = {
           hasTextures = true;
         }
       }
-      var stride = GL.immediate.stride;
       var positionSize = GL.immediate.clientAttributes[GL.immediate.VERTEX].size;
       var positionType = GL.immediate.clientAttributes[GL.immediate.VERTEX].type;
       var positionOffset = GL.immediate.clientAttributes[GL.immediate.VERTEX].offset;
@@ -2106,13 +2103,13 @@ var LibraryGL = {
           if (this.projectionLocation) Module.ctx.uniformMatrix4fv(this.projectionLocation, false, GL.immediate.matrix['p']);
 
           Module.ctx.vertexAttribPointer(this.positionLocation, positionSize, positionType, false,
-                                         stride, positionOffset);
+                                         GL.immediate.stride, positionOffset);
           Module.ctx.enableVertexAttribArray(this.positionLocation);
           if (this.hasTextures) {
             for (var i = 0; i < textureSizes.length; i++) {
               if (textureSizes[i] && this.texCoordLocations[i] >= 0) {
                 Module.ctx.vertexAttribPointer(this.texCoordLocations[i], textureSizes[i], textureTypes[i], false,
-                                               stride, textureOffsets[i]);
+                                               GL.immediate.stride, textureOffsets[i]);
                 Module.ctx.enableVertexAttribArray(this.texCoordLocations[i]);
               }
             }
@@ -2124,7 +2121,7 @@ var LibraryGL = {
           }
           if (this.hasColorAttrib) {
             Module.ctx.vertexAttribPointer(this.colorLocation, colorSize, colorType, true,
-                                           stride, colorOffset);
+                                           GL.immediate.stride, colorOffset);
             Module.ctx.enableVertexAttribArray(this.colorLocation);
             Module.ctx.uniform1i(this.hasColorAttribLocation, 1);
           } else if (this.hasColorUniform) {
@@ -2133,7 +2130,7 @@ var LibraryGL = {
           }
           if (this.hasNormal) {
             Module.ctx.vertexAttribPointer(this.normalLocation, normalSize, normalType, true,
-                                           stride, normalOffset);
+                                           GL.immediate.stride, normalOffset);
             Module.ctx.enableVertexAttribArray(this.normalLocation);
           }
           if (!useCurrProgram) { // otherwise, the user program will set the sampler2D binding and uniform itself
