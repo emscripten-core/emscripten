@@ -1635,7 +1635,11 @@ Succeeded!
     def test_floatvars(self):
         src = '''
           #include <stdio.h>
-          #include <math.h>
+
+          // headers test, see issue #1013
+          #include<cfloat>
+          #include<cmath>
+
           int main(int argc, char **argv)
           {
             float x = 1.234, y = 3.5, q = 0.00000001;

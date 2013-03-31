@@ -145,9 +145,10 @@ extern double fmod _PARAMS((double, double));
 
 #ifndef FLT_EVAL_METHOD
 #define FLT_EVAL_METHOD 0
+#endif /* FLT_EVAL_METHOD */
+/* XXX EMSCRIPTEN: moved these out of previous if */
 typedef float float_t;
 typedef double double_t;
-#endif /* FLT_EVAL_METHOD */
 
 #define FP_NAN         0
 #define FP_INFINITE    1
