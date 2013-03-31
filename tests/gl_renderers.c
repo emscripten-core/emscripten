@@ -23,7 +23,7 @@ REDISTRIBUTION OF THIS SOFTWARE.
 */
 
 #if !EMSCRIPTEN
-#define USE_GLEW 1
+#define USE_GLEW 0
 #endif
 
 #if USE_GLEW
@@ -127,6 +127,8 @@ int main(int argc, char *argv[])
     
     // DRAW
     
+    GLbyte * pointer;
+
     // Clear the screen before drawing
     glClear( GL_COLOR_BUFFER_BIT );
     
@@ -143,14 +145,14 @@ int main(int argc, char *argv[])
     // point to the buffer's location data
     glVertexPointer(2, GL_FLOAT, sizeof(Type1), NULL);
     
-    GLbyte * pointer = (GLbyte*)(((GLbyte*)&first[0].color) - ((GLbyte*)&first[0].location));
+    pointer = (GLbyte*)(((GLbyte*)&first[0].color) - ((GLbyte*)&first[0].location));
 
     printf("location = %p\n", pointer);
     // point to the buffer's color data
     glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(Type1), pointer);
     
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 3);
-    
+
     // SECOND
     
     // load the first into the context
