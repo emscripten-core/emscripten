@@ -1175,6 +1175,10 @@ var LibrarySDL = {
       samples: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.samples', 'i16', 0, 1) }}},
       callback: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.callback', 'void*', 0, 1) }}},
       userdata: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.userdata', 'void*', 0, 1) }}},
+	  soundSource: new Array(),
+	  nextSoundSource: 0,
+	  lastSoundSource: -1,
+	  nextPlayTime: 0,
       paused: true,
       timer: null
     };
@@ -1186,17 +1190,58 @@ var LibrarySDL = {
       Runtime.dynCall('viii', SDL.audio.callback, [SDL.audio.userdata, SDL.audio.buffer, SDL.audio.bufferSize]);
       SDL.audio.pushAudio(SDL.audio.buffer, SDL.audio.bufferSize);
     };
-    // Mozilla Audio API. TODO: Other audio APIs
+    // Mozilla Audio API/WebAudioAPI
     try {
-      SDL.audio.mozOutput = new Audio();
-      SDL.audio.mozOutput['mozSetup'](SDL.audio.channels, SDL.audio.freq); // use string attributes on mozOutput for closure compiler
-      SDL.audio.mozBuffer = new Float32Array(totalSamples);
-      SDL.audio.pushAudio = function(ptr, size) {
-        var mozBuffer = SDL.audio.mozBuffer;
-        for (var i = 0; i < totalSamples; i++) {
-          mozBuffer[i] = ({{{ makeGetValue('ptr', 'i*2', 'i16', 0, 0) }}}) / 0x8000; // hardcoded 16-bit audio, signed (TODO: reSign if not ta2?)
-        }
-        SDL.audio.mozOutput['mozWriteAudio'](mozBuffer);
+      SDL.audio.audioOutput = new Audio();
+      SDL.audio.hasWebAudio = ((typeof(AudioContext) === 'function')||(typeof(webkitAudioContext) === 'function'));
+      if(!SDL.audio.hasWebAudio&&(typeof(SDL.audio.audioOutput['mozSetup'])==='function')){
+          SDL.audio.audioOutput['mozSetup'](SDL.audio.channels, SDL.audio.freq); // use string attributes on mozOutput for closure compiler
+          SDL.audio.mozBuffer = new Float32Array(totalSamples);
+          SDL.audio.pushAudio = function(ptr, size) {
+            var mozBuffer = SDL.audio.mozBuffer;
+            for (var i = 0; i < totalSamples; i++) {
+              mozBuffer[i] = ({{{ makeGetValue('ptr', 'i*2', 'i16', 0, 0) }}}) / 0x8000; // hardcoded 16-bit audio, signed (TODO: reSign if not ta2?)
+            }
+            SDL.audio.audioOutput['mozWriteAudio'](mozBuffer);
+          }
+      }else{
+            if (typeof(AudioContext) === 'function') {
+                SDL.audio.context = new AudioContext();
+            } else if (typeof(webkitAudioContext) === 'function') {
+                SDL.audio.context = new webkitAudioContext();
+            } else {
+				throw 'no sound!';
+			}
+			SDL.audio.nextSoundSource = 0;
+			SDL.audio.soundSource = new Array();
+			SDL.audio.nextPlayTime = 0;
+            SDL.audio.pushAudio=function(ptr,size){
+				if(SDL.audio.lastSoundSource>-1){
+					if(SDL.audio.soundSource[SDL.audio.lastSoundSource].playbackState === 3){
+						SDL.audio.soundSource = new Array();
+						SDL.audio.nextPlayTime = 0;
+						SDL.audio.lastSoundSource = -1;
+						SDL.audio.nextSoundSource = 0;
+					}
+				}
+				SDL.audio.soundSource[SDL.audio.nextSoundSource] = SDL.audio.context.createBufferSource();
+				SDL.audio.soundSource[SDL.audio.nextSoundSource].connect(SDL.audio.context.destination);
+				SDL.audio.soundSource[SDL.audio.nextSoundSource].buffer = SDL.audio.context.createBuffer(SDL.audio.channels,(size / totalSamples),SDL.audio.freq);
+				for(var j = 0; j<SDL.audio.channels; j++){
+					var channelData = SDL.audio.SoundSource[SDL.audio.nextSoundSource].buffer.getChannelData(j);
+					var samples = SDL.audio.samples;
+					for(var i = 0; i<samples; i++){
+						channelData[i] = ({{{ makeGetValue('ptr', '(i+samples*j)*2', 'i16', 0, 0) }}}) / 0x8000; // hardcoded 16-bit audio, signed (TODO: reSign if not ta2?)
+					}
+				}
+				SDL.audio.nextPlayTime = SDL.audio.context.currentTime+SDL.audio.soundSource[SDL.audio.nextSoundSource].buffer.duration;
+				
+				
+				SDL.audio.soundSource[SDL.audio.nextSoundSource].start(SDL.audio.nextPlayTime);
+				
+				SDL.audio.lastSoundSource = SDL.Audio.nextSoundSource;
+                SDL.Audio.nextSoundSource++;
+            }
       }
     } catch(e) {
       SDL.audio = null;
@@ -1215,6 +1260,14 @@ var LibrarySDL = {
   SDL_CloseAudio__deps: ['SDL_PauseAudio', 'free'],
   SDL_CloseAudio: function() {
     if (SDL.audio) {
+        try{
+			for(var i = 0; i<SDL.audio.soundSource.length;i++){
+				if(!(typeof(SDL.audio.soundSource[i]==='undefined'))){
+					SDL.audio.soundSource[i].stop(0);
+				}
+			}
+        }catch(e){}
+	  SDL.audo.soundSource = null;
       _SDL_PauseAudio(1);
       _free(SDL.audio.buffer);
       SDL.audio = null;
