@@ -1801,6 +1801,7 @@ var LibraryGL = {
     lastRenderer: null, // used to avoid cleaning up and re-preparing the same renderer
     lastArrayBuffer: null, // used in conjunction with lastRenderer
     lastProgram: null, // ""
+    lastStride: -1, // ""
 
     // The following data structures are used for OpenGL Immediate Mode matrix routines.
     matrix: {},
@@ -2071,6 +2072,7 @@ var LibraryGL = {
           var canSkip = this == lastRenderer &&
                         arrayBuffer == GL.immediate.lastArrayBuffer &&
                         (GL.currProgram || this.program) == GL.immediate.lastProgram &&
+                        GL.immediate.stride == GL.immediate.lastStride &&
                         !GL.immediate.matricesModified;
           if (!canSkip && lastRenderer) lastRenderer.cleanup();
 #endif
@@ -2091,6 +2093,7 @@ var LibraryGL = {
           GL.immediate.lastRenderer = this;
           GL.immediate.lastArrayBuffer = arrayBuffer;
           GL.immediate.lastProgram = GL.currProgram || this.program;
+          GL.immediate.lastStride == GL.immediate.stride;
           GL.immediate.matricesModified = false;
 #endif
 
