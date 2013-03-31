@@ -2279,7 +2279,7 @@ var LibraryGL = {
         if (GL.immediate.enabledClientAttributes[i]) attributes.push(GL.immediate.clientAttributes[i]);
       }
       attributes.sort(function(x, y) { return !x ? (!y ? 0 : 1) : (!y ? -1 : (x.pointer - y.pointer)) });
-      start = attributes[0].pointer;
+      start = GL.currArrayBuffer ? 0 : attributes[0].pointer;
       for (var i = 0; i < attributes.length; i++) {
         var attribute = attributes[i];
         if (!attribute) break;
