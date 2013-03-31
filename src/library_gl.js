@@ -1908,29 +1908,25 @@ var LibraryGL = {
 
     createRenderer: function(renderer) {
       var useCurrProgram = !!GL.currProgram;
-      var hasTextures = false, textureSizes = [], textureTypes = [], textureOffsets = [];
+      var hasTextures = false, textureSizes = [], textureTypes = [];
       for (var i = 0; i < GL.immediate.NUM_TEXTURES; i++) {
         if (GL.immediate.enabledClientAttributes[GL.immediate.TEXTURE0 + i]) {
           textureSizes[i] = GL.immediate.clientAttributes[GL.immediate.TEXTURE0 + i].size;
           textureTypes[i] = GL.immediate.clientAttributes[GL.immediate.TEXTURE0 + i].type;
-          textureOffsets[i] = GL.immediate.clientAttributes[GL.immediate.TEXTURE0 + i].offset;
           hasTextures = true;
         }
       }
       var positionSize = GL.immediate.clientAttributes[GL.immediate.VERTEX].size;
       var positionType = GL.immediate.clientAttributes[GL.immediate.VERTEX].type;
-      var positionOffset = GL.immediate.clientAttributes[GL.immediate.VERTEX].offset;
-      var colorSize = 0, colorType, colorOffset;
+      var colorSize = 0, colorType;
       if (GL.immediate.enabledClientAttributes[GL.immediate.COLOR]) {
         colorSize = GL.immediate.clientAttributes[GL.immediate.COLOR].size;
         colorType = GL.immediate.clientAttributes[GL.immediate.COLOR].type;
-        colorOffset = GL.immediate.clientAttributes[GL.immediate.COLOR].offset;
       }
-      var normalSize = 0, normalType, normalOffset;
+      var normalSize = 0, normalType;
       if (GL.immediate.enabledClientAttributes[GL.immediate.NORMAL]) {
         normalSize = GL.immediate.clientAttributes[GL.immediate.NORMAL].size;
         normalType = GL.immediate.clientAttributes[GL.immediate.NORMAL].type;
-        normalOffset = GL.immediate.clientAttributes[GL.immediate.NORMAL].offset;
       }
       var ret = {
         init: function() {
@@ -2103,13 +2099,13 @@ var LibraryGL = {
           if (this.projectionLocation) Module.ctx.uniformMatrix4fv(this.projectionLocation, false, GL.immediate.matrix['p']);
 
           Module.ctx.vertexAttribPointer(this.positionLocation, positionSize, positionType, false,
-                                         GL.immediate.stride, positionOffset);
+                                         GL.immediate.stride, GL.immediate.clientAttributes[GL.immediate.VERTEX].offset);
           Module.ctx.enableVertexAttribArray(this.positionLocation);
           if (this.hasTextures) {
             for (var i = 0; i < textureSizes.length; i++) {
               if (textureSizes[i] && this.texCoordLocations[i] >= 0) {
                 Module.ctx.vertexAttribPointer(this.texCoordLocations[i], textureSizes[i], textureTypes[i], false,
-                                               GL.immediate.stride, textureOffsets[i]);
+                                               GL.immediate.stride, GL.immediate.clientAttributes[GL.immediate.TEXTURE0 + i].offset);
                 Module.ctx.enableVertexAttribArray(this.texCoordLocations[i]);
               }
             }
@@ -2121,7 +2117,7 @@ var LibraryGL = {
           }
           if (this.hasColorAttrib) {
             Module.ctx.vertexAttribPointer(this.colorLocation, colorSize, colorType, true,
-                                           GL.immediate.stride, colorOffset);
+                                           GL.immediate.stride, GL.immediate.clientAttributes[GL.immediate.COLOR].offset);
             Module.ctx.enableVertexAttribArray(this.colorLocation);
             Module.ctx.uniform1i(this.hasColorAttribLocation, 1);
           } else if (this.hasColorUniform) {
@@ -2130,7 +2126,7 @@ var LibraryGL = {
           }
           if (this.hasNormal) {
             Module.ctx.vertexAttribPointer(this.normalLocation, normalSize, normalType, true,
-                                           GL.immediate.stride, normalOffset);
+                                           GL.immediate.stride, GL.immediate.clientAttributes[GL.immediate.NORMAL].offset);
             Module.ctx.enableVertexAttribArray(this.normalLocation);
           }
           if (!useCurrProgram) { // otherwise, the user program will set the sampler2D binding and uniform itself
