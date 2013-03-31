@@ -1175,6 +1175,10 @@ var LibrarySDL = {
       samples: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.samples', 'i16', 0, 1) }}},
       callback: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.callback', 'void*', 0, 1) }}},
       userdata: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.userdata', 'void*', 0, 1) }}},
+	  soundSource: new Array(),
+	  nextSoundSource: 0,
+	  lastSoundSource: -1,
+	  nextPlayTime: 0,
       paused: true,
       timer: null
     };
@@ -1203,10 +1207,11 @@ var LibrarySDL = {
       }else{
             if (typeof(AudioContext) === "function") {
                 SDL.audio.context = new AudioContext();
-				SDL.audio.soundSource = SDL.audio.context.createBufferSource();
             } else if (typeof(webkitAudioContext) === "function") {
                 SDL.audio.context = new webkitAudioContext();
-            }
+            } else {
+				throw "no sound!";
+			}
 			SDL.audio.nextSoundSource = 0;
 			SDL.audio.soundSource = new Array();
 			SDL.audio.nextPlayTime = 0;
@@ -1231,11 +1236,8 @@ var LibrarySDL = {
 				}
 				SDL.audio.nextPlayTime = SDL.audio.context.currentTime+SDL.audio.soundSource[SDL.audio.nextSoundSource].buffer.duration;
 				
-				if(typeof(SDL.audio.soundSource.start)=== "function"){
-					SDL.audio.soundSource[SDL.audio.nextSoundSource].start(SDL.audio.nextPlayTime);
-				}else{
-					SDL.audio.soundSource[SDL.audio.nextSoundSource].noteOn(SDL.audio.nextPlayTime);
-				}
+				
+				SDL.audio.soundSource[SDL.audio.nextSoundSource].start(SDL.audio.nextPlayTime);
 				
 				SDL.audio.lastSoundSource = SDL.Audio.nextSoundSource;
                 SDL.Audio.nextSoundSource++;
@@ -1259,12 +1261,13 @@ var LibrarySDL = {
   SDL_CloseAudio: function() {
     if (SDL.audio) {
         try{
-            if(typeof(SDL.audio.soundSource.stop)=== "function"){
-                SDL.audio.soundSource.stop(0);
-            }else{
-                SDL.audio.soundSource.noteOff(0);
-            }
+			for(var i = 0; i<SDL.audio.soundSource.length;i++){
+				if(!(typeof(SDL.audio.soundSource[i]==="undefined"))){
+					SDL.audio.soundSource[i].stop(0);
+				}
+			}
         }catch(e){}
+	  SDL.audo.soundSource = null;
       _SDL_PauseAudio(1);
       _free(SDL.audio.buffer);
       SDL.audio = null;
