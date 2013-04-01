@@ -441,7 +441,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           }
           // In asm, we need to know about library functions. If there is a target, though, then no
           // need to consider this a library function - we will call directly to it anyhow
-          if (ASM_JS && !redirectedIdent && (typeof target == 'function' || /Math\..+/.exec(snippet))) {
+          if (ASM_JS && !redirectedIdent && (typeof target == 'function' || /Math\.\w+/.exec(snippet))) {
             Functions.libraryFunctions[ident] = 1;
           }
         } else if (typeof snippet === 'object') {
@@ -1322,9 +1322,10 @@ function JSify(data, functionsOnly, givenFunctions) {
 
     ident = Variables.resolveAliasToIdent(ident);
     var shortident = ident.slice(1);
-    var callIdent = LibraryManager.getRootIdent(shortident);
+    var simpleIdent = shortident;
+    var callIdent = LibraryManager.getRootIdent(simpleIdent);
     if (callIdent) {
-      shortident = callIdent; // ident may not be in library, if all there is is ident__inline, but in this case it is
+      simpleIdent = callIdent; // ident may not be in library, if all there is is ident__inline, but in this case it is
       if (callIdent.indexOf('.') < 0) {
         callIdent = '_' + callIdent; // Not Math.*, so add the normal prefix
       }
@@ -1339,7 +1340,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     var varargsTypes = [];
     var varargsByVals = {};
     var ignoreFunctionIndexizing = [];
-    var useJSArgs = (shortident + '__jsargs') in LibraryManager.library;
+    var useJSArgs = (simpleIdent + '__jsargs') in LibraryManager.library;
     var hasVarArgs = isVarArgsFunctionType(type);
     var normalArgs = (hasVarArgs && !useJSArgs) ? countNormalArgs(type) : -1;
     var byPointer = getVarData(funcData, ident);
@@ -1367,7 +1368,7 @@ function JSify(data, functionsOnly, givenFunctions) {
 
     args = args.map(function(arg, i) { return indexizeFunctions(arg, argsTypes[i]) });
     if (ASM_JS) {
-      if (shortident in Functions.libraryFunctions) {
+      if (shortident in Functions.libraryFunctions || simpleIdent in Functions.libraryFunctions) {
         args = args.map(function(arg, i) { return asmCoercion(arg, argsTypes[i]) });
       } else {
         args = args.map(function(arg, i) { return asmEnsureFloat(arg, argsTypes[i]) });
@@ -1411,8 +1412,8 @@ function JSify(data, functionsOnly, givenFunctions) {
     var argsText = args.join(', ');
 
     // Inline if either we inline whenever we can (and we can), or if there is no noninlined version
-    var inline = LibraryManager.library[shortident + '__inline'];
-    var nonInlined = shortident in LibraryManager.library;
+    var inline = LibraryManager.library[simpleIdent + '__inline'];
+    var nonInlined = simpleIdent in LibraryManager.library;
     if (inline && (INLINE_LIBRARY_FUNCS || !nonInlined)) {
       return inline.apply(null, args); // Warning: inlining does not prevent recalculation of the arguments. They should be simple identifiers
     }
@@ -1420,7 +1421,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     if (ASM_JS) {
       // remove unneeded arguments, which the asm sig can show us. this lets us alias memset with llvm.memset, we just
       // drop the final 2 args so things validate properly in asm
-      var libsig = LibraryManager.library[shortident + '__sig'];
+      var libsig = LibraryManager.library[simpleIdent + '__sig'];
       if (libsig) {
         assert(!hasVarArgs);
         while (libsig.length - 1 < args.length) {
@@ -1454,9 +1455,9 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
 
     var ret = callIdent + '(' + args.join(', ') + ')';
-    if (ASM_JS) { // TODO: do only when needed (library functions and Math.*?) XXX && shortident in Functions.libraryFunctions) {
+    if (ASM_JS) { // TODO: do only when needed (library functions and Math.*?) XXX && simpleIdent in Functions.libraryFunctions) {
       ret = asmCoercion(ret, returnType);
-      if (shortident == 'abort' && funcData.returnType != 'void') {
+      if (simpleIdent == 'abort' && funcData.returnType != 'void') {
         ret += '; return 0'; // special case: abort() can happen without return, breaking the return type of asm functions. ensure a return
       }
     }

@@ -56,7 +56,9 @@ void  operator delete[](void* ptr, void*) noexcept;
 #include <exception>
 #include <cstddef>
 
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
+#endif
 
 namespace std  // purposefully not using versioning namespace
 {
@@ -94,7 +96,7 @@ _LIBCPP_VISIBLE void* operator new(std::size_t __sz)
     throw(std::bad_alloc)
 #endif
 ;
-_LIBCPP_VISIBLE void* operator new(std::size_t __sz, const std::nothrow_t&) _NOEXCEPT;
+_LIBCPP_VISIBLE void* operator new(std::size_t __sz, const std::nothrow_t&) _NOEXCEPT _NOALIAS;
 _LIBCPP_VISIBLE void  operator delete(void* __p) _NOEXCEPT;
 _LIBCPP_VISIBLE void  operator delete(void* __p, const std::nothrow_t&) _NOEXCEPT;
 
@@ -103,7 +105,7 @@ _LIBCPP_VISIBLE void* operator new[](std::size_t __sz)
     throw(std::bad_alloc)
 #endif
 ;
-_LIBCPP_VISIBLE void* operator new[](std::size_t __sz, const std::nothrow_t&) _NOEXCEPT;
+_LIBCPP_VISIBLE void* operator new[](std::size_t __sz, const std::nothrow_t&) _NOEXCEPT _NOALIAS;
 _LIBCPP_VISIBLE void  operator delete[](void* __p) _NOEXCEPT;
 _LIBCPP_VISIBLE void  operator delete[](void* __p, const std::nothrow_t&) _NOEXCEPT;
 

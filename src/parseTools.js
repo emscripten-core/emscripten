@@ -65,7 +65,7 @@ function pointingLevels(type) {
   var ret = 0;
   var len1 = type.length - 1;
   while (type[len1-ret] && type[len1-ret] === '*') {
-    ret ++;
+    ret++;
   }
   return ret;
 }
@@ -234,6 +234,7 @@ function isFunctionType(type, out) {
 }
 
 function getReturnType(type) {
+  if (pointingLevels(type) > 1) return '*'; // the type of a call can be either the return value, or the entire function. ** or more means it is a return value
   var lastOpen = type.lastIndexOf('(');
   if (lastOpen > 0) {
     return type.substr(0, lastOpen-1);

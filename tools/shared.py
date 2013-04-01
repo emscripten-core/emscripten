@@ -181,7 +181,7 @@ def check_node_version():
 # we re-check sanity when the settings are changed)
 # We also re-check sanity and clear the cache when the version changes
 
-EMSCRIPTEN_VERSION = '1.3.2'
+EMSCRIPTEN_VERSION = '1.3.5'
 
 def check_sanity(force=False):
   try:
@@ -274,7 +274,6 @@ LLVM_DIS=os.path.expanduser(build_llvm_tool_path('llvm-dis'))
 LLVM_NM=os.path.expanduser(build_llvm_tool_path('llvm-nm'))
 LLVM_INTERPRETER=os.path.expanduser(build_llvm_tool_path('lli'))
 LLVM_COMPILER=os.path.expanduser(build_llvm_tool_path('llc'))
-LLVM_EXTRACT=os.path.expanduser(build_llvm_tool_path('llvm-extract'))
 
 EMSCRIPTEN = path_from_root('emscripten.py')
 DEMANGLER = path_from_root('third_party', 'demangler.py')
@@ -385,21 +384,18 @@ USE_EMSDK = not os.environ.get('EMMAKEN_NO_SDK')
 if USE_EMSDK:
   # Disable system C and C++ include directories, and add our own (using -idirafter so they are last, like system dirs, which
   # allows projects to override them)
-  # Note that -nostdinc++ is not needed, since -nostdinc implies that!
-  EMSDK_OPTS = ['-nostdinc', '-Xclang', '-nobuiltininc', '-Xclang', '-nostdsysteminc',
+  EMSDK_OPTS = ['-nostdinc', '-nostdinc++', '-Xclang', '-nobuiltininc', '-Xclang', '-nostdsysteminc',
     '-Xclang', '-isystem' + path_from_root('system', 'local', 'include'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'libcxx'),
     '-Xclang', '-isystem' + path_from_root('system', 'include'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'emscripten'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'bsd'), # posix stuff
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'libc'),
-    '-Xclang', '-isystem' + path_from_root('system', 'lib', 'libcxxabi', 'include'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'gfx'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'net'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'SDL'),
   ] + [
-    '-U__APPLE__', '-U__linux__',
-    '-D_LIBCPP_HAS_NO_DELETED_FUNCTIONS' # otherwise libc++ has errors with --std=c++11
+    '-U__APPLE__', '-U__linux__'
   ]
   COMPILER_OPTS += EMSDK_OPTS
 else:
@@ -721,11 +717,6 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     if old_dir:
       os.chdir(old_dir)
     return generated_libs
-
-  @staticmethod
-  def remove_symbol(filename, symbol):
-    Popen([LLVM_EXTRACT, filename, '-delete', '-glob=' + symbol, '-o', filename], stderr=PIPE).communicate()
-    Popen([LLVM_EXTRACT, filename, '-delete', '-func=' + symbol, '-o', filename], stderr=PIPE).communicate()
 
   @staticmethod
   def link(files, target):

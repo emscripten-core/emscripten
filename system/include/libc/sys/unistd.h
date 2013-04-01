@@ -14,7 +14,7 @@ extern "C" {
 
 extern char **environ;
 
-void	_EXFUN(_exit, (int __status )); /* _ATTRIBUTE ((noreturn))); */
+void	_EXFUN(_exit, (int __status ) _ATTRIBUTE(noreturn));
 
 int	_EXFUN(access,(const char *__path, int __amode ));
 unsigned  _EXFUN(alarm, (unsigned __secs ));

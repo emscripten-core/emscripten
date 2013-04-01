@@ -146,7 +146,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     out = jcache.get(shortkey, keys)
 
     if DEBUG_CACHE and not out:
-      dfpath = os.path.join(configuration.TEMP_DIR, "ems_" + shortkey)
+      dfpath = os.path.join(get_configuration().TEMP_DIR, "ems_" + shortkey)
       dfp = open(dfpath, 'w')
       dfp.write(pre_input);
       dfp.write("\n\n========================== settings_text\n\n");
@@ -282,7 +282,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     if len(parts) > 1:
       pre = parts[0]
       outputs.append([parts[1]])
-  funcs_js = [''.join([output[0] for output in outputs])] # this will be a list of things, so we do not do string appending as we add more
+  funcs_js = [output[0] for output in outputs]
 
   outputs = None
   if DEBUG: print >> sys.stderr, '  emscript: phase 2b took %s seconds' % (time.time() - t)

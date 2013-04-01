@@ -228,4 +228,15 @@ bad_array_new_length::what() const _NOEXCEPT
     return "bad_array_new_length";
 }
 
+#ifdef EMSCRIPTEN
+// We don't build the new.cpp from libcxx, so we need to define this.
+void
+__throw_bad_alloc()
+{
+#ifndef _LIBCPP_NO_EXCEPTIONS
+    throw bad_alloc();
+#endif
+}
+#endif
+
 }  // std

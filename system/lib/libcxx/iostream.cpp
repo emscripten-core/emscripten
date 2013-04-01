@@ -9,45 +9,58 @@
 
 #include "__std_stream"
 #include "string"
+#include "new"
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
-static __stdinbuf<char>  __cin(stdin);
-static __stdoutbuf<char> __cout(stdout);
-static __stdoutbuf<char> __cerr(stderr);
-static __stdinbuf<wchar_t>  __wcin(stdin);
-static __stdoutbuf<wchar_t> __wcout(stdout);
-static __stdoutbuf<wchar_t> __wcerr(stderr);
+_ALIGNAS_TYPE (__stdinbuf<char> ) static char __cin [sizeof(__stdinbuf <char>)];
+_ALIGNAS_TYPE (__stdoutbuf<char>) static char __cout[sizeof(__stdoutbuf<char>)];
+_ALIGNAS_TYPE (__stdoutbuf<char>) static char __cerr[sizeof(__stdoutbuf<char>)];
+_ALIGNAS_TYPE (__stdinbuf<wchar_t> ) static char __wcin [sizeof(__stdinbuf <wchar_t>)];
+_ALIGNAS_TYPE (__stdoutbuf<wchar_t>) static char __wcout[sizeof(__stdoutbuf<wchar_t>)];
+_ALIGNAS_TYPE (__stdoutbuf<wchar_t>) static char __wcerr[sizeof(__stdoutbuf<wchar_t>)];
 
-istream cin(&__cin);
-ostream cout(&__cout);
-ostream cerr(&__cerr);
-ostream clog(&__cerr);
-wistream wcin(&__wcin);
-wostream wcout(&__wcout);
-wostream wcerr(&__wcerr);
-wostream wclog(&__wcerr);
+_ALIGNAS_TYPE (istream) char cin [sizeof(istream)];
+_ALIGNAS_TYPE (ostream) char cout[sizeof(ostream)];
+_ALIGNAS_TYPE (ostream) char cerr[sizeof(ostream)];
+_ALIGNAS_TYPE (ostream) char clog[sizeof(ostream)];
+_ALIGNAS_TYPE (wistream) char wcin [sizeof(wistream)];
+_ALIGNAS_TYPE (wostream) char wcout[sizeof(wostream)];
+_ALIGNAS_TYPE (wostream) char wcerr[sizeof(wostream)];
+_ALIGNAS_TYPE (wostream) char wclog[sizeof(wostream)];
 
 ios_base::Init __start_std_streams;
 
 ios_base::Init::Init()
 {
-    cin.tie(&cout);
-    _VSTD::unitbuf(cerr);
-    cerr.tie(&cout);
+    istream* cin_ptr  = ::new(cin)  istream(::new(__cin)  __stdinbuf <char>(stdin) );
+    ostream* cout_ptr = ::new(cout) ostream(::new(__cout) __stdoutbuf<char>(stdout));
+    ostream* cerr_ptr = ::new(cerr) ostream(::new(__cerr) __stdoutbuf<char>(stderr));
+                        ::new(clog) ostream(cerr_ptr->rdbuf());
+    cin_ptr->tie(cout_ptr);
+    _VSTD::unitbuf(*cerr_ptr);
+    cerr_ptr->tie(cout_ptr);
 
-    wcin.tie(&wcout);
-    _VSTD::unitbuf(wcerr);
-    wcerr.tie(&wcout);
+    wistream* wcin_ptr  = ::new(wcin)  wistream(::new(__wcin)  __stdinbuf <wchar_t>(stdin) );
+    wostream* wcout_ptr = ::new(wcout) wostream(::new(__wcout) __stdoutbuf<wchar_t>(stdout));
+    wostream* wcerr_ptr = ::new(wcerr) wostream(::new(__wcerr) __stdoutbuf<wchar_t>(stderr));
+                          ::new(wclog) wostream(wcerr_ptr->rdbuf());
+    wcin_ptr->tie(wcout_ptr);
+    _VSTD::unitbuf(*wcerr_ptr);
+    wcerr_ptr->tie(wcout_ptr);
 }
 
 ios_base::Init::~Init()
 {
-    cout.flush();
-    clog.flush();
+    ostream* cout_ptr = (ostream*)cout;
+    ostream* clog_ptr = (ostream*)clog;
+    cout_ptr->flush();
+    clog_ptr->flush();
 
-    wcout.flush();
-    wclog.flush();
+    wostream* wcout_ptr = (wostream*)wcout;
+    wostream* wclog_ptr = (wostream*)wclog;
+    wcout_ptr->flush();
+    wclog_ptr->flush();
 }
 
 _LIBCPP_END_NAMESPACE_STD

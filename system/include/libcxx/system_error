@@ -223,7 +223,9 @@ template <> struct hash<std::error_code>;
 #include <stdexcept>
 #include <__functional_base>
 
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
+#endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
@@ -243,9 +245,8 @@ struct _LIBCPP_VISIBLE is_error_condition_enum
 // for them:
 
 //enum class errc
-struct errc
+_LIBCPP_DECLARE_STRONG_ENUM(errc)
 {
-enum _ {
     address_family_not_supported        = EAFNOSUPPORT,
     address_in_use                      = EADDRINUSE,
     address_not_available               = EADDRNOTAVAIL,
@@ -341,38 +342,32 @@ enum _ {
     value_too_large                     = EOVERFLOW,
     wrong_protocol_type                 = EPROTOTYPE
 };
-
-    _ __v_;
-
-    _LIBCPP_ALWAYS_INLINE
-    errc(_ __v) : __v_(__v) {}
-    _LIBCPP_ALWAYS_INLINE
-    operator int() const {return __v_;}
-
-};
+_LIBCPP_DECLARE_STRONG_ENUM_EPILOG(errc)
 
 template <>
 struct _LIBCPP_VISIBLE is_error_condition_enum<errc>
     : true_type { };
 
+#ifdef _LIBCPP_HAS_NO_STRONG_ENUMS
 template <>
-struct _LIBCPP_VISIBLE is_error_condition_enum<errc::_>
+struct _LIBCPP_VISIBLE is_error_condition_enum<errc::__lx>
     : true_type { };
+#endif
 
-class error_condition;
-class error_code;
+class _LIBCPP_VISIBLE error_condition;
+class _LIBCPP_VISIBLE error_code;
 
 // class error_category
 
-class __do_message;
+class _LIBCPP_HIDDEN __do_message;
 
 class _LIBCPP_VISIBLE error_category
 {
 public:
     virtual ~error_category() _NOEXCEPT;
 
-private:
     error_category() _NOEXCEPT;
+private:
     error_category(const error_category&);// = delete;
     error_category& operator=(const error_category&);// = delete;
 
@@ -392,7 +387,7 @@ public:
     _LIBCPP_ALWAYS_INLINE
     bool operator< (const error_category& __rhs) const _NOEXCEPT {return this < &__rhs;}
 
-    friend class __do_message;
+    friend class _LIBCPP_HIDDEN __do_message;
 };
 
 class _LIBCPP_HIDDEN __do_message
@@ -417,10 +412,10 @@ public:
     error_condition(int __val, const error_category& __cat) _NOEXCEPT
         : __val_(__val), __cat_(&__cat) {}
 
-    template <class _E>
+    template <class _Ep>
         _LIBCPP_ALWAYS_INLINE
-        error_condition(_E __e,
-              typename enable_if<is_error_condition_enum<_E>::value>::type* = 0
+        error_condition(_Ep __e,
+              typename enable_if<is_error_condition_enum<_Ep>::value>::type* = 0
                                                                      ) _NOEXCEPT
             {*this = make_error_condition(__e);}
 
@@ -431,14 +426,14 @@ public:
         __cat_ = &__cat;
     }
 
-    template <class _E>
+    template <class _Ep>
         _LIBCPP_ALWAYS_INLINE
         typename enable_if
         <
-            is_error_condition_enum<_E>::value,
+            is_error_condition_enum<_Ep>::value,
             error_condition&
         >::type
-        operator=(_E __e) _NOEXCEPT
+        operator=(_Ep __e) _NOEXCEPT
             {*this = make_error_condition(__e); return *this;}
 
     _LIBCPP_ALWAYS_INLINE
@@ -456,7 +451,7 @@ public:
     string message() const;
 
     _LIBCPP_ALWAYS_INLINE
-    //explicit
+        _LIBCPP_EXPLICIT
         operator bool() const _NOEXCEPT {return __val_ != 0;}
 };
 
@@ -472,7 +467,7 @@ bool
 operator<(const error_condition& __x, const error_condition& __y) _NOEXCEPT
 {
     return __x.category() < __y.category()
-        || __x.category() == __y.category() && __x.value() < __y.value();
+        || (__x.category() == __y.category() && __x.value() < __y.value());
 }
 
 // error_code
@@ -489,10 +484,10 @@ public:
     error_code(int __val, const error_category& __cat) _NOEXCEPT
         : __val_(__val), __cat_(&__cat) {}
 
-    template <class _E>
+    template <class _Ep>
         _LIBCPP_ALWAYS_INLINE
-        error_code(_E __e,
-                   typename enable_if<is_error_code_enum<_E>::value>::type* = 0
+        error_code(_Ep __e,
+                   typename enable_if<is_error_code_enum<_Ep>::value>::type* = 0
                                                                      ) _NOEXCEPT
             {*this = make_error_code(__e);}
 
@@ -503,14 +498,14 @@ public:
         __cat_ = &__cat;
     }
 
-    template <class _E>
+    template <class _Ep>
         _LIBCPP_ALWAYS_INLINE
         typename enable_if
         <
-            is_error_code_enum<_E>::value,
+            is_error_code_enum<_Ep>::value,
             error_code&
         >::type
-        operator=(_E __e) _NOEXCEPT
+        operator=(_Ep __e) _NOEXCEPT
             {*this = make_error_code(__e); return *this;}
 
     _LIBCPP_ALWAYS_INLINE
@@ -533,7 +528,7 @@ public:
     string message() const;
 
     _LIBCPP_ALWAYS_INLINE
-    //explicit
+        _LIBCPP_EXPLICIT
         operator bool() const _NOEXCEPT {return __val_ != 0;}
 };
 
@@ -549,7 +544,7 @@ bool
 operator<(const error_code& __x, const error_code& __y) _NOEXCEPT
 {
     return __x.category() < __y.category()
-        || __x.category() == __y.category() && __x.value() < __y.value();
+        || (__x.category() == __y.category() && __x.value() < __y.value());
 }
 
 inline _LIBCPP_INLINE_VISIBILITY

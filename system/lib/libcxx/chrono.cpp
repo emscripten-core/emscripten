@@ -24,6 +24,8 @@ namespace chrono
 
 // system_clock
 
+const bool system_clock::is_steady;
+
 system_clock::time_point
 system_clock::now() _NOEXCEPT
 {
@@ -46,6 +48,8 @@ system_clock::from_time_t(time_t t) _NOEXCEPT
 
 // steady_clock
 
+const bool steady_clock::is_steady;
+
 #if __APPLE__
 //   mach_absolute_time() * MachInfo.numer / MachInfo.denom is the number of
 //   nanoseconds since the computer booted up.  MachInfo.numer and MachInfo.denom
@@ -61,7 +65,7 @@ static
 steady_clock::rep
 steady_simplified()
 {
-    return mach_absolute_time();
+    return static_cast<steady_clock::rep>(mach_absolute_time());
 }
 
 static

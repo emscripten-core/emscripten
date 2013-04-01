@@ -1222,6 +1222,9 @@ var LibraryGL = {
 
       // Add some emulation workarounds
       Module.printErr('WARNING: using emscripten GL emulation. This is a collection of limited workarounds, do not expect it to work');
+#if GL_UNSAFE_OPTS == 0
+      Module.printErr('WARNING: using emscripten GL emulation unsafe opts. If weirdness happens, try -s GL_UNSAFE_OPTS=0');
+#endif
 
       // XXX some of the capabilities we don't support may lead to incorrect rendering, if we do not emulate them in shaders
       var validCapabilities = {
@@ -1798,6 +1801,7 @@ var LibraryGL = {
     lastRenderer: null, // used to avoid cleaning up and re-preparing the same renderer
     lastArrayBuffer: null, // used in conjunction with lastRenderer
     lastProgram: null, // ""
+    lastStride: -1, // ""
 
     // The following data structures are used for OpenGL Immediate Mode matrix routines.
     matrix: {},
@@ -1874,8 +1878,6 @@ var LibraryGL = {
         var typeIndex = attribute.type - GL.byteSizeByTypeRoot; // ensure it starts at 0 to keep the cache items dense
         temp = cacheItem[typeIndex];
         cacheItem = temp ? temp : (cacheItem[typeIndex] = GL.immediate.rendererCacheItemTemplate.slice());
-        temp = cacheItem[attribute.stride];
-        cacheItem = temp ? temp : (cacheItem[attribute.stride] = GL.immediate.rendererCacheItemTemplate.slice());
       }
       var fogParam;
       if (GLEmulation.fogEnabled) {
@@ -1910,30 +1912,25 @@ var LibraryGL = {
 
     createRenderer: function(renderer) {
       var useCurrProgram = !!GL.currProgram;
-      var hasTextures = false, textureSizes = [], textureTypes = [], textureOffsets = [];
+      var hasTextures = false, textureSizes = [], textureTypes = [];
       for (var i = 0; i < GL.immediate.NUM_TEXTURES; i++) {
         if (GL.immediate.enabledClientAttributes[GL.immediate.TEXTURE0 + i]) {
           textureSizes[i] = GL.immediate.clientAttributes[GL.immediate.TEXTURE0 + i].size;
           textureTypes[i] = GL.immediate.clientAttributes[GL.immediate.TEXTURE0 + i].type;
-          textureOffsets[i] = GL.immediate.clientAttributes[GL.immediate.TEXTURE0 + i].offset;
           hasTextures = true;
         }
       }
-      var stride = GL.immediate.stride;
       var positionSize = GL.immediate.clientAttributes[GL.immediate.VERTEX].size;
       var positionType = GL.immediate.clientAttributes[GL.immediate.VERTEX].type;
-      var positionOffset = GL.immediate.clientAttributes[GL.immediate.VERTEX].offset;
-      var colorSize = 0, colorType, colorOffset;
+      var colorSize = 0, colorType;
       if (GL.immediate.enabledClientAttributes[GL.immediate.COLOR]) {
         colorSize = GL.immediate.clientAttributes[GL.immediate.COLOR].size;
         colorType = GL.immediate.clientAttributes[GL.immediate.COLOR].type;
-        colorOffset = GL.immediate.clientAttributes[GL.immediate.COLOR].offset;
       }
-      var normalSize = 0, normalType, normalOffset;
+      var normalSize = 0, normalType;
       if (GL.immediate.enabledClientAttributes[GL.immediate.NORMAL]) {
         normalSize = GL.immediate.clientAttributes[GL.immediate.NORMAL].size;
         normalType = GL.immediate.clientAttributes[GL.immediate.NORMAL].type;
-        normalOffset = GL.immediate.clientAttributes[GL.immediate.NORMAL].offset;
       }
       var ret = {
         init: function() {
@@ -2075,6 +2072,7 @@ var LibraryGL = {
           var canSkip = this == lastRenderer &&
                         arrayBuffer == GL.immediate.lastArrayBuffer &&
                         (GL.currProgram || this.program) == GL.immediate.lastProgram &&
+                        GL.immediate.stride == GL.immediate.lastStride &&
                         !GL.immediate.matricesModified;
           if (!canSkip && lastRenderer) lastRenderer.cleanup();
 #endif
@@ -2095,6 +2093,7 @@ var LibraryGL = {
           GL.immediate.lastRenderer = this;
           GL.immediate.lastArrayBuffer = arrayBuffer;
           GL.immediate.lastProgram = GL.currProgram || this.program;
+          GL.immediate.lastStride == GL.immediate.stride;
           GL.immediate.matricesModified = false;
 #endif
 
@@ -2106,13 +2105,13 @@ var LibraryGL = {
           if (this.projectionLocation) Module.ctx.uniformMatrix4fv(this.projectionLocation, false, GL.immediate.matrix['p']);
 
           Module.ctx.vertexAttribPointer(this.positionLocation, positionSize, positionType, false,
-                                         stride, positionOffset);
+                                         GL.immediate.stride, GL.immediate.clientAttributes[GL.immediate.VERTEX].offset);
           Module.ctx.enableVertexAttribArray(this.positionLocation);
           if (this.hasTextures) {
             for (var i = 0; i < textureSizes.length; i++) {
               if (textureSizes[i] && this.texCoordLocations[i] >= 0) {
                 Module.ctx.vertexAttribPointer(this.texCoordLocations[i], textureSizes[i], textureTypes[i], false,
-                                               stride, textureOffsets[i]);
+                                               GL.immediate.stride, GL.immediate.clientAttributes[GL.immediate.TEXTURE0 + i].offset);
                 Module.ctx.enableVertexAttribArray(this.texCoordLocations[i]);
               }
             }
@@ -2124,7 +2123,7 @@ var LibraryGL = {
           }
           if (this.hasColorAttrib) {
             Module.ctx.vertexAttribPointer(this.colorLocation, colorSize, colorType, true,
-                                           stride, colorOffset);
+                                           GL.immediate.stride, GL.immediate.clientAttributes[GL.immediate.COLOR].offset);
             Module.ctx.enableVertexAttribArray(this.colorLocation);
             Module.ctx.uniform1i(this.hasColorAttribLocation, 1);
           } else if (this.hasColorUniform) {
@@ -2133,7 +2132,7 @@ var LibraryGL = {
           }
           if (this.hasNormal) {
             Module.ctx.vertexAttribPointer(this.normalLocation, normalSize, normalType, true,
-                                           stride, normalOffset);
+                                           GL.immediate.stride, GL.immediate.clientAttributes[GL.immediate.NORMAL].offset);
             Module.ctx.enableVertexAttribArray(this.normalLocation);
           }
           if (!useCurrProgram) { // otherwise, the user program will set the sampler2D binding and uniform itself
@@ -2282,7 +2281,7 @@ var LibraryGL = {
         if (GL.immediate.enabledClientAttributes[i]) attributes.push(GL.immediate.clientAttributes[i]);
       }
       attributes.sort(function(x, y) { return !x ? (!y ? 0 : 1) : (!y ? -1 : (x.pointer - y.pointer)) });
-      start = attributes[0].pointer;
+      start = GL.currArrayBuffer ? 0 : attributes[0].pointer;
       for (var i = 0; i < attributes.length; i++) {
         var attribute = attributes[i];
         if (!attribute) break;
