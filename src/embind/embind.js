@@ -386,26 +386,15 @@ function __embind_register_tuple(rawType, name, rawConstructor, rawDestructor) {
     });
 }
 
-function copyMemberPointer(memberPointer, memberPointerSize) {
-    var copy = _malloc(memberPointerSize);
-    if (!copy) {
-        throw new Error('Failed to allocate member pointer copy');
-    }
-    _memcpy(copy, memberPointer, memberPointerSize);
-    return copy;
-}
-
 function __embind_register_tuple_element(
     rawTupleType,
     rawType,
     getter,
     setter,
-    memberPointerSize,
-    memberPointer
+    context
 ) {
     getter = FUNCTION_TABLE[getter];
     setter = FUNCTION_TABLE[setter];
-    memberPointer = copyMemberPointer(memberPointer, memberPointerSize);
     var tupleType = requireRegisteredType(rawTupleType, 'tuple');
 
     var index = tupleType.elements.length;
@@ -416,11 +405,11 @@ function __embind_register_tuple_element(
         type = type[0];
         tupleType.elements[index] = {
             read: function(ptr) {
-                return type.fromWireType(getter(ptr, memberPointer));
+                return type.fromWireType(getter(context, ptr));
             },
             write: function(ptr, o) {
                 var destructors = [];
-                setter(ptr, memberPointer, type.toWireType(destructors, o));
+                setter(context, ptr, type.toWireType(destructors, o));
                 runDestructors(destructors);
             }
         };
@@ -432,29 +421,27 @@ function __embind_register_tuple_element_accessor(
     rawTupleType,
     rawElementType,
     rawStaticGetter,
-    getterSize,
-    getter,
+    getterContext,
     rawStaticSetter,
-    setterSize,
-    setter
+    setterContext
 ) {
     var tupleType = requireRegisteredType(rawTupleType, 'tuple');
     rawStaticGetter = FUNCTION_TABLE[rawStaticGetter];
-    getter = copyMemberPointer(getter, getterSize);
     rawStaticSetter = FUNCTION_TABLE[rawStaticSetter];
-    setter = copyMemberPointer(setter, setterSize);
 
     whenDependentTypesAreResolved([], [rawElementType], function(elementType) {
         elementType = elementType[0];
         tupleType.elements.push({
             read: function(ptr) {
-                return elementType.fromWireType(rawStaticGetter(ptr, HEAP32[getter >> 2]));
+                return elementType.fromWireType(rawStaticGetter(
+                    getterContext,
+                    ptr));
             },
             write: function(ptr, o) {
                 var destructors = [];
                 rawStaticSetter(
+                    setterContext,
                     ptr,
-                    HEAP32[setter >> 2],
                     elementType.toWireType(destructors, o));
                 runDestructors(destructors);
             }
@@ -512,24 +499,22 @@ function __embind_register_struct_field(
     rawFieldType,
     rawGetter,
     rawSetter,
-    memberPointerSize,
-    memberPointer
+    context
 ) {
     var structType = requireRegisteredType(rawStructType, 'struct');
     fieldName = Pointer_stringify(fieldName);
     rawGetter = FUNCTION_TABLE[rawGetter];
     rawSetter = FUNCTION_TABLE[rawSetter];
-    memberPointer = copyMemberPointer(memberPointer, memberPointerSize);
     // TODO: test incomplete registration of value structs
     whenDependentTypesAreResolved([], [rawFieldType], function(fieldType) {
         fieldType = fieldType[0];
         structType.fields[fieldName] = {
             read: function(ptr) {
-                return fieldType.fromWireType(rawGetter(ptr, memberPointer));
+                return fieldType.fromWireType(rawGetter(context, ptr));
             },
             write: function(ptr, o) {
                 var destructors = [];
-                rawSetter(ptr, memberPointer, fieldType.toWireType(destructors, o));
+                rawSetter(context, ptr, fieldType.toWireType(destructors, o));
                 runDestructors(destructors);
             }
         };
@@ -989,13 +974,11 @@ function __embind_register_class_function(
     argCount,
     rawArgTypesAddr, // [ReturnType, ThisType, Args...]
     rawInvoker,
-    memberFunctionSize,
-    memberFunction
+    context
 ) {
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     methodName = Pointer_stringify(methodName);
     rawInvoker = FUNCTION_TABLE[rawInvoker];
-    memberFunction = copyMemberPointer(memberFunction, memberFunctionSize);
 
     whenDependentTypesAreResolved([], [rawClassType], function(classType) {
         classType = classType[0];
@@ -1015,7 +998,7 @@ function __embind_register_class_function(
 
                 var destructors = [];
                 var args = new Array(argCount + 1);
-                args[0] = memberFunction;
+                args[0] = context;
                 args[1] = argTypes[1].toWireType(destructors, this);
                 for (var i = 2; i < argCount; ++i) {
                     args[i] = argTypes[i].toWireType(destructors, arguments[i - 2]);
@@ -1064,13 +1047,11 @@ function __embind_register_class_property(
     rawFieldType,
     getter,
     setter,
-    memberPointerSize,
-    memberPointer
+    context
 ) {
     fieldName = Pointer_stringify(fieldName);
     getter = FUNCTION_TABLE[getter];
     setter = FUNCTION_TABLE[setter];
-    memberPointer = copyMemberPointer(memberPointer, memberPointerSize);
     whenDependentTypesAreResolved([], [rawClassType], function(classType) {
         classType = classType[0];
         var humanName = classType.name + '.' + fieldName;
@@ -1091,12 +1072,12 @@ function __embind_register_class_property(
             Object.defineProperty(classType.registeredClass.instancePrototype, fieldName, {
                 get: function() {
                     var ptr = validateThis(this, classType, humanName + ' getter');
-                    return fieldType.fromWireType(getter(ptr, memberPointer));
+                    return fieldType.fromWireType(getter(context, ptr));
                 },
                 set: function(v) {
                     var ptr = validateThis(this, classType, humanName + ' setter');
                     var destructors = [];
-                    setter(ptr, memberPointer, fieldType.toWireType(destructors, v));
+                    setter(context, ptr, fieldType.toWireType(destructors, v));
                     runDestructors(destructors);
                 },
                 enumerable: true

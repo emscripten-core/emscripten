@@ -73,18 +73,15 @@ namespace emscripten {
                 TYPEID elementType,
                 GenericFunction getter,
                 GenericFunction setter,
-                size_t memberPointerSize,
-                void* memberPointer);
+                void* context);
 
             void _embind_register_tuple_element_accessor(
                 TYPEID tupleType,
                 TYPEID elementType,
                 GenericFunction staticGetter,
-                size_t getterSize,
-                void* getter,
+                void* getterContext,
                 GenericFunction staticSetter,
-                size_t setterSize,
-                void* setter);
+                void* setterContext);
 
             void _embind_register_struct(
                 TYPEID structType,
@@ -98,8 +95,7 @@ namespace emscripten {
                 TYPEID fieldType,
                 GenericFunction getter,
                 GenericFunction setter,
-                size_t memberPointerSize,
-                void* memberPointer);
+                void* context);
 
             void _embind_register_smart_ptr(
                 TYPEID pointerType,
@@ -135,8 +131,7 @@ namespace emscripten {
                 unsigned argCount,
                 TYPEID argTypes[],
                 GenericFunction invoker,
-                size_t memberFunctionSize,
-                void* memberFunction);
+                void* context);
 
             void _embind_register_class_property(
                 TYPEID classType,
@@ -144,8 +139,7 @@ namespace emscripten {
                 TYPEID fieldType,
                 GenericFunction getter,
                 GenericFunction setter,
-                size_t memberPointerSize,
-                void* memberPointer);
+                void* context);
 
             void _embind_register_class_class_function(
                 TYPEID classType,
@@ -354,15 +348,15 @@ namespace emscripten {
             typedef typename MemberBinding::WireType WireType;
             
             static WireType getWire(
-                const ClassType& ptr,
-                const MemberPointer& field
+                const MemberPointer& field,
+                const ClassType& ptr
             ) {
                 return MemberBinding::toWireType(ptr.*field);
             }
             
             static void setWire(
-                ClassType& ptr,
                 const MemberPointer& field,
+                ClassType& ptr,
                 WireType value
             ) {
                 ptr.*field = MemberBinding::fromWireType(value);
@@ -370,22 +364,31 @@ namespace emscripten {
 
             template<typename Getter>
             static WireType propertyGet(
-                const ClassType& ptr,
-                const Getter& getter
+                const Getter& getter,
+                const ClassType& ptr
             ) {
                 return MemberBinding::toWireType(getter(ptr));
             }
 
             template<typename Setter>
             static void propertySet(
-                ClassType& ptr,
                 const Setter& setter,
+                ClassType& ptr,
                 WireType value
             ) {
                 setter(ptr, MemberBinding::fromWireType(value));
             }
         };
 
+        // TODO: This could do a reinterpret-cast if sizeof(T) === sizeof(void*)
+        template<typename T>
+        inline void* getContext(const T& t) {
+            // not a leak because this is called once per binding
+            void* p = malloc(sizeof(T));
+            assert(p);
+            memcpy(p, &t, sizeof(T));
+            return p;
+        }
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -396,79 +399,75 @@ namespace emscripten {
     class value_tuple {
     public:
         value_tuple(const char* name) {
-            internal::_embind_register_tuple(
-                internal::TypeID<ClassType>::get(),
+            using namespace internal;
+            _embind_register_tuple(
+                TypeID<ClassType>::get(),
                 name,
-                reinterpret_cast<internal::GenericFunction>(&internal::raw_constructor<ClassType>),
-                reinterpret_cast<internal::GenericFunction>(&internal::raw_destructor<ClassType>));
+                reinterpret_cast<GenericFunction>(&raw_constructor<ClassType>),
+                reinterpret_cast<GenericFunction>(&raw_destructor<ClassType>));
         }
 
         template<typename ElementType>
         value_tuple& element(ElementType ClassType::*field) {
-            internal::_embind_register_tuple_element(
-                internal::TypeID<ClassType>::get(),
-                internal::TypeID<ElementType>::get(),
-                reinterpret_cast<internal::GenericFunction>(&internal::MemberAccess<ClassType, ElementType>::getWire),
-                reinterpret_cast<internal::GenericFunction>(&internal::MemberAccess<ClassType, ElementType>::setWire),
-                sizeof(field),
-                &field);
-                                
+            using namespace internal;
+            _embind_register_tuple_element(
+                TypeID<ClassType>::get(),
+                TypeID<ElementType>::get(),
+                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, ElementType>::getWire),
+                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, ElementType>::setWire),
+                getContext(field));
             return *this;
         }
 
         template<typename ElementType>
         value_tuple& element(ElementType (*getter)(const ClassType&), void (*setter)(ClassType&, ElementType)) {
-            internal::_embind_register_tuple_element_accessor(
-                internal::TypeID<ClassType>::get(),
-                internal::TypeID<ElementType>::get(),
-                reinterpret_cast<internal::GenericFunction>(&internal::MemberAccess<ClassType, ElementType>::template propertyGet<ElementType(const ClassType&)>),
-                sizeof(getter),
-                &getter,
-                reinterpret_cast<internal::GenericFunction>(&internal::MemberAccess<ClassType, ElementType>::template propertySet<void(ClassType&, ElementType)>),
-                sizeof(setter),
-                &setter);
+            using namespace internal;
+            _embind_register_tuple_element_accessor(
+                TypeID<ClassType>::get(),
+                TypeID<ElementType>::get(),
+                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, ElementType>::template propertyGet<ElementType(*)(const ClassType&)>),
+                getContext(getter),
+                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, ElementType>::template propertySet<void(*)(ClassType&, ElementType)>),
+                getContext(setter));
             return *this;
         }
 
         template<typename ElementType>
         value_tuple& element(ElementType (*getter)(const ClassType&), void (*setter)(ClassType&, const ElementType&)) {
-            internal::_embind_register_tuple_element_accessor(
-                internal::TypeID<ClassType>::get(),
-                internal::TypeID<ElementType>::get(),
-                reinterpret_cast<internal::GenericFunction>(&internal::MemberAccess<ClassType, ElementType>::template propertyGet<ElementType(const ClassType&)>),
-                sizeof(getter),
-                &getter,
-                reinterpret_cast<internal::GenericFunction>(&internal::MemberAccess<ClassType, ElementType>::template propertySet<void(ClassType&, ElementType)>),
-                sizeof(setter),
-                &setter);
+            using namespace internal;
+            _embind_register_tuple_element_accessor(
+                TypeID<ClassType>::get(),
+                TypeID<ElementType>::get(),
+                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, ElementType>::template propertyGet<ElementType(*)(const ClassType&)>),
+                getContext(getter),
+                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, ElementType>::template propertySet<void(*)(ClassType&, ElementType)>),
+                getContext(setter));
             return *this;
         }
 
         template<typename ElementType>
         value_tuple& element(ElementType (*getter)(const ClassType&), void (*setter)(ClassType&, const ElementType&&)) {
-            internal::_embind_register_tuple_element_accessor(
-                internal::TypeID<ClassType>::get(),
-                internal::TypeID<ElementType>::get(),
-                reinterpret_cast<internal::GenericFunction>(&internal::MemberAccess<ClassType, ElementType>::template propertyGet<ElementType(const ClassType&)>),
-                sizeof(getter),
-                &getter,
-                reinterpret_cast<internal::GenericFunction>(&internal::MemberAccess<ClassType, ElementType>::template propertySet<void(ClassType&, ElementType)>),
-                sizeof(setter),
-                &setter);
+            using namespace internal;
+            _embind_register_tuple_element_accessor(
+                TypeID<ClassType>::get(),
+                TypeID<ElementType>::get(),
+                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, ElementType>::template propertyGet<ElementType(*)(const ClassType&)>),
+                getContext(getter),
+                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, ElementType>::template propertySet<void(*)(ClassType&, ElementType)>),
+                getContext(setter));
             return *this;
         }
 
         template<typename ElementType>
         value_tuple& element(ElementType (*getter)(const ClassType&), void (*setter)(ClassType&, ElementType&)) {
-            internal::_embind_register_tuple_element_accessor(
-                internal::TypeID<ClassType>::get(),
-                internal::TypeID<ElementType>::get(),
-                reinterpret_cast<internal::GenericFunction>(&internal::MemberAccess<ClassType, ElementType>::template propertyGet<ElementType(const ClassType&)>),
-                sizeof(getter),
-                &getter,
-                reinterpret_cast<internal::GenericFunction>(&internal::MemberAccess<ClassType, ElementType>::template propertySet<void(ClassType&, ElementType)>),
-                sizeof(setter),
-                &setter);
+            using namespace internal;
+            _embind_register_tuple_element_accessor(
+                TypeID<ClassType>::get(),
+                TypeID<ElementType>::get(),
+                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, ElementType>::template propertyGet<ElementType(*)(const ClassType&)>),
+                getContext(getter),
+                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, ElementType>::template propertySet<void(*)(ClassType&, ElementType)>),
+                getContext(setter));
             return *this;
         }
     };
@@ -481,24 +480,24 @@ namespace emscripten {
     class value_struct {
     public:
         value_struct(const char* name) {
-            internal::_embind_register_struct(
-                internal::TypeID<ClassType>::get(),
+            using namespace internal;
+            _embind_register_struct(
+                TypeID<ClassType>::get(),
                 name,
-                reinterpret_cast<internal::GenericFunction>(&internal::raw_constructor<ClassType>),
-                reinterpret_cast<internal::GenericFunction>(&internal::raw_destructor<ClassType>));
+                reinterpret_cast<GenericFunction>(&raw_constructor<ClassType>),
+                reinterpret_cast<GenericFunction>(&raw_destructor<ClassType>));
         }
 
         template<typename FieldType>
         value_struct& field(const char* fieldName, FieldType ClassType::*field) {
-            internal::_embind_register_struct_field(
-                internal::TypeID<ClassType>::get(),
+            using namespace internal;
+            _embind_register_struct_field(
+                TypeID<ClassType>::get(),
                 fieldName,
-                internal::TypeID<FieldType>::get(),
-                reinterpret_cast<internal::GenericFunction>(&internal::MemberAccess<ClassType, FieldType>::getWire),
-                reinterpret_cast<internal::GenericFunction>(&internal::MemberAccess<ClassType, FieldType>::setWire),
-                sizeof(field),
-                &field);
-                                
+                TypeID<FieldType>::get(),
+                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, FieldType>::getWire),
+                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, FieldType>::setWire),
+                getContext(field));
             return *this;
         }
     };
@@ -783,8 +782,7 @@ namespace emscripten {
                 args.count,
                 args.types,
                 reinterpret_cast<GenericFunction>(&MethodInvoker<decltype(memberFunction), ReturnType, ClassType*, Args...>::invoke),
-                sizeof(memberFunction),
-                &memberFunction);
+                getContext(memberFunction));
             return *this;
         }
 
@@ -799,8 +797,7 @@ namespace emscripten {
                 args.count,
                 args.types,
                 reinterpret_cast<GenericFunction>(&MethodInvoker<decltype(memberFunction), ReturnType, const ClassType*, Args...>::invoke),
-                sizeof(memberFunction),
-                &memberFunction);
+                getContext(memberFunction));
             return *this;
         }
 
@@ -815,8 +812,7 @@ namespace emscripten {
                 args.count,
                 args.types,
                 reinterpret_cast<GenericFunction>(&FunctionInvoker<decltype(function), ReturnType, ThisType, Args...>::invoke),
-                sizeof(function),
-                &function);
+                getContext(function));
             return *this;
         }
 
@@ -830,8 +826,7 @@ namespace emscripten {
                 TypeID<FieldType>::get(),
                 reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, FieldType>::getWire),
                 reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, FieldType>::setWire),
-                sizeof(field),
-                &field);
+                getContext(field));
             return *this;
         }
 
