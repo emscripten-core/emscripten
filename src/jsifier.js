@@ -266,105 +266,83 @@ function JSify(data, functionsOnly, givenFunctions) {
                     item.ctors.map(function(ctor) { return '  { func: function() { ' + ctor + '() } }' }).join(',\n') +
                   '\n]);\n';
         return ret;
-      } else {
-        var constant = null;
-        var allocator = (BUILD_AS_SHARED_LIB && !item.external) ? 'ALLOC_NORMAL' : 'ALLOC_STATIC';
-        var index = null;
-        if (item.external && BUILD_AS_SHARED_LIB) {
-          // External variables in shared libraries should not be declared as
-          // they would shadow similarly-named globals in the parent.
-          item.JS = '';
-        } else {
-        	item.JS = makeGlobalDef(item.ident);
-        }
+      }
 
-        if (item.external && !ASM_JS) { // ASM_JS considers externs to be globals
-          // Import external global variables from the library if available.
-          var shortident = item.ident.slice(1);
-          if (LibraryManager.library[shortident] &&
-              LibraryManager.library[shortident].length &&
-              !BUILD_AS_SHARED_LIB) {
-            if (addedLibraryItems[shortident]) return ret;
-            var val = LibraryManager.library[shortident];
-            var padding;
-            if (Runtime.isNumberType(item.type) || isPointerType(item.type)) {
-              padding = [item.type].concat(zeros(Runtime.getNativeFieldSize(item.type)-1));
-            } else {
-              padding = makeEmptyStruct(item.type);
-            }
-            var padded = val.concat(padding.slice(val.length));
-            var js = item.ident + '=' + makePointer(padded, null, allocator, item.type, index) + ';'
-            if (LibraryManager.library[shortident + '__postset']) {
-              js += '\n' + LibraryManager.library[shortident + '__postset'];
-            }
+      var constant = null;
+      var allocator = (BUILD_AS_SHARED_LIB && !item.external) ? 'ALLOC_NORMAL' : 'ALLOC_STATIC';
+      var index = null;
+      if (item.external && BUILD_AS_SHARED_LIB) {
+        // External variables in shared libraries should not be declared as
+        // they would shadow similarly-named globals in the parent.
+        item.JS = '';
+      } else {
+      	item.JS = makeGlobalDef(item.ident);
+      }
+
+      if (!NAMED_GLOBALS && isIndexableGlobal(item.ident)) {
+        index = makeGlobalUse(item.ident); // index !== null indicates we are indexing this
+        allocator = 'ALLOC_NONE';
+      }
+      if (item.external) {
+        if (Runtime.isNumberType(item.type) || isPointerType(item.type)) {
+          constant = zeros(Runtime.getNativeFieldSize(item.type));
+        } else {
+          constant = makeEmptyStruct(item.type);
+        }
+        constant = JSON.stringify(constant);
+      } else {
+        constant = parseConst(item.value, item.type, item.ident);
+      }
+      if (typeof constant === 'string' && constant[0] != '[') {
+        constant = [constant]; // A single item. We may need a postset for it.
+      }
+      if (typeof constant === 'object') {
+        // This is a flattened object. We need to find its idents, so they can be assigned to later
+        constant.forEach(function(value, i) {
+          if (needsPostSet(value)) { // ident, or expression containing an ident
             ret.push({
               intertype: 'GlobalVariablePostSet',
-              JS: js
+              JS: makeSetValue(makeGlobalUse(item.ident), i, value, 'i32', false, true) + ';' // ignore=true, since e.g. rtti and statics cause lots of safe_heap errors
             });
+            constant[i] = '0';
           }
-          return ret;
-        } else {
-          if (!NAMED_GLOBALS && isIndexableGlobal(item.ident)) {
-            index = makeGlobalUse(item.ident); // index !== null indicates we are indexing this
-            allocator = 'ALLOC_NONE';
-          }
-          if (item.external) {
-            assert(ASM_JS);
-            if (Runtime.isNumberType(item.type) || isPointerType(item.type)) {
-              constant = zeros(Runtime.getNativeFieldSize(item.type));
-            } else {
-              constant = makeEmptyStruct(item.type);
-            }
-            constant = JSON.stringify(constant);
-          } else {
-            constant = parseConst(item.value, item.type, item.ident);
-          }
-          if (typeof constant === 'string' && constant[0] != '[') {
-            constant = [constant]; // A single item. We may need a postset for it.
-          }
-          if (typeof constant === 'object') {
-            // This is a flattened object. We need to find its idents, so they can be assigned to later
-            constant.forEach(function(value, i) {
-              if (needsPostSet(value)) { // ident, or expression containing an ident
-                ret.push({
-                  intertype: 'GlobalVariablePostSet',
-                  JS: makeSetValue(makeGlobalUse(item.ident), i, value, 'i32', false, true) + ';' // ignore=true, since e.g. rtti and statics cause lots of safe_heap errors
-                });
-                constant[i] = '0';
-              }
-            });
-          }
-          // NOTE: This is the only place that could potentially create static
-          //       allocations in a shared library.
-          constant = makePointer(constant, null, allocator, item.type, index);
-          var js;
-
-        	js = (index !== null ? '' : item.ident + '=') + constant + ';'; // \n Module.print("' + item.ident + ' :" + ' + makeGlobalUse(item.ident) + ');';
-
-          // Special case: class vtables. We make sure they are null-terminated, to allow easy runtime operations
-          if (item.ident.substr(0, 5) == '__ZTV') {
-            if (index !== null) {
-              index = getFastValue(index, '+', Runtime.alignMemory(calcAllocatedSize(Variables.globals[item.ident].type)));
-            }
-            js += '\n' + makePointer([0], null, allocator, ['void*'], index) + ';';
-          }
-          if (!ASM_JS && (EXPORT_ALL || (item.ident in EXPORTED_GLOBALS))) {
-            js += '\nModule["' + item.ident + '"] = ' + item.ident + ';';
-          }
-          if (BUILD_AS_SHARED_LIB == 2 && !item.private_) {
-            // TODO: make the assert conditional on ASSERTIONS
-            js += 'if (globalScope) { assert(!globalScope["' + item.ident + '"]); globalScope["' + item.ident + '"] = ' + item.ident + ' }';
-          }
-          if (item.external && !NAMED_GLOBALS) {
-            assert(ASM_JS);
-            js = 'var ' + item.ident + ' = ' + js; // force an explicit naming, even if unnamed globals, for asm forwarding
-          }
-          return ret.concat({
-            intertype: 'GlobalVariable',
-            JS: js,
-          });
-        }
+        });
       }
+
+      if (item.external && BUILD_AS_SHARED_LIB) {
+        // External variables in shared libraries should not be declared as
+        // they would shadow similarly-named globals in the parent, so do nothing here.
+        return ret;
+      }
+
+      // NOTE: This is the only place that could potentially create static
+      //       allocations in a shared library.
+      constant = makePointer(constant, null, allocator, item.type, index);
+      var js;
+
+    	js = (index !== null ? '' : item.ident + '=') + constant + ';'; // \n Module.print("' + item.ident + ' :" + ' + makeGlobalUse(item.ident) + ');';
+
+      // Special case: class vtables. We make sure they are null-terminated, to allow easy runtime operations
+      if (item.ident.substr(0, 5) == '__ZTV') {
+        if (index !== null) {
+          index = getFastValue(index, '+', Runtime.alignMemory(calcAllocatedSize(Variables.globals[item.ident].type)));
+        }
+        js += '\n' + makePointer([0], null, allocator, ['void*'], index) + ';';
+      }
+      if (!ASM_JS && (EXPORT_ALL || (item.ident in EXPORTED_GLOBALS))) {
+        js += '\nModule["' + item.ident + '"] = ' + item.ident + ';';
+      }
+      if (BUILD_AS_SHARED_LIB == 2 && !item.private_) {
+        // TODO: make the assert conditional on ASSERTIONS
+        js += 'if (globalScope) { assert(!globalScope["' + item.ident + '"]); globalScope["' + item.ident + '"] = ' + item.ident + ' }';
+      }
+      if (item.external && !NAMED_GLOBALS) {
+        js = 'var ' + item.ident + ' = ' + js; // force an explicit naming, even if unnamed globals, for asm forwarding
+      }
+      return ret.concat({
+        intertype: 'GlobalVariable',
+        JS: js,
+      });
     }
   });
 
