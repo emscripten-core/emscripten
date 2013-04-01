@@ -13,8 +13,8 @@
 #include "future"
 #include "limits"
 #include <sys/types.h>
-#if !_WIN32
-#if !__sun__ && !__linux__
+#if !defined(_WIN32)
+#if !defined(__sun__) && !defined(__linux__)
 #include <sys/sysctl.h>
 #else
 #include <unistd.h>
