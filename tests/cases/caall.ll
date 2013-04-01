@@ -15,7 +15,11 @@ entry:
   ret i32 1
 }
 
-declare (i32*)** @_ZNSt3__13mapINS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEPFvP6ObjectENS_4lessIS6_EENS4_INS_4pairIKS6_SA_EEEEEixERSE_(i32 %x)
+define (i32*)** @_ZNSt3__13mapINS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEPFvP6ObjectENS_4lessIS6_EENS4_INS_4pairIKS6_SA_EEEEEixERSE_(i32 %x) {
+entry:
+  %ret = inttoptr i32 0 to (i32*)**
+  ret %ret
+}
 
 ; [#uses=1]
 declare i32 @printf(i8*, ...)
