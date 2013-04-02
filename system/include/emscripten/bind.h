@@ -71,25 +71,27 @@ namespace emscripten {
             void _embind_register_tuple_element(
                 TYPEID tupleType,
                 TYPEID getterReturnType,
-                GenericFunction staticGetter,
+                GenericFunction getter,
                 void* getterContext,
                 TYPEID setterArgumentType,
-                GenericFunction staticSetter,
+                GenericFunction setter,
                 void* setterContext);
 
             void _embind_register_struct(
                 TYPEID structType,
-                const char* name,
+                const char* fieldName,
                 GenericFunction constructor,
                 GenericFunction destructor);
             
             void _embind_register_struct_field(
                 TYPEID structType,
-                const char* name,
-                TYPEID fieldType,
+                const char* fieldName,
+                TYPEID getterReturnType,
                 GenericFunction getter,
+                void* getterContext,
+                TYPEID setterArgumentType,
                 GenericFunction setter,
-                void* context);
+                void* setterContext);
 
             void _embind_register_smart_ptr(
                 TYPEID pointerType,
@@ -462,9 +464,36 @@ namespace emscripten {
                 TypeID<ClassType>::get(),
                 fieldName,
                 TypeID<FieldType>::get(),
-                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, FieldType>::getWire),
-                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, FieldType>::setWire),
+                reinterpret_cast<GenericFunction>(
+                    &MemberAccess<ClassType, FieldType>::getWire),
+                getContext(field),
+                TypeID<FieldType>::get(),
+                reinterpret_cast<GenericFunction>(
+                    &MemberAccess<ClassType, FieldType>::setWire),
                 getContext(field));
+            return *this;
+        }
+    
+        template<typename GetterReturnType, typename SetterArgumentType>
+        value_struct& field(
+            const char* fieldName,
+            GetterReturnType (*getter)(const ClassType&),
+            void (*setter)(ClassType&, SetterArgumentType)
+        ) {
+            using namespace internal;
+            _embind_register_struct_field(
+                TypeID<ClassType>::get(),
+                fieldName,
+                TypeID<GetterReturnType>::get(),
+                reinterpret_cast<GenericFunction>(
+                    &MemberAccess<ClassType, GetterReturnType>
+                    ::template propertyGet<GetterReturnType(*)(const ClassType&)>),
+                getContext(getter),
+                TypeID<SetterArgumentType>::get(),
+                reinterpret_cast<GenericFunction>(
+                    &MemberAccess<ClassType, SetterArgumentType>
+                    ::template propertySet<void(*)(ClassType&, SetterArgumentType)>),
+                getContext(setter));
             return *this;
         }
     };
