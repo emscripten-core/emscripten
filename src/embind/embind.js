@@ -419,30 +419,34 @@ function __embind_register_tuple_element(
 
 function __embind_register_tuple_element_accessor(
     rawTupleType,
-    rawElementType,
-    rawStaticGetter,
+    getterReturnType,
+    getter,
     getterContext,
-    rawStaticSetter,
+    setterArgumentType,
+    setter,
     setterContext
 ) {
     var tupleType = requireRegisteredType(rawTupleType, 'tuple');
-    rawStaticGetter = FUNCTION_TABLE[rawStaticGetter];
-    rawStaticSetter = FUNCTION_TABLE[rawStaticSetter];
+    getter = FUNCTION_TABLE[getter];
+    setter = FUNCTION_TABLE[setter];
 
-    whenDependentTypesAreResolved([], [rawElementType], function(elementType) {
-        elementType = elementType[0];
+    // TODO: test incomplete registration of value tuples
+    whenDependentTypesAreResolved([], [getterReturnType, setterArgumentType], function(types) {
+        var getterReturnType = types[0];
+        var setterArgumentType = types[1];
         tupleType.elements.push({
             read: function(ptr) {
-                return elementType.fromWireType(rawStaticGetter(
-                    getterContext,
-                    ptr));
+                return getterReturnType.fromWireType(
+                    getter(
+                        getterContext,
+                        ptr));
             },
             write: function(ptr, o) {
                 var destructors = [];
-                rawStaticSetter(
+                setter(
                     setterContext,
                     ptr,
-                    elementType.toWireType(destructors, o));
+                    setterArgumentType.toWireType(destructors, o));
                 runDestructors(destructors);
             }
         });
