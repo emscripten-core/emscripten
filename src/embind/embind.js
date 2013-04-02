@@ -39,18 +39,72 @@ function throwUnboundTypeError(message, types) {
     throw new UnboundTypeError(message + ': ' + unboundTypes.map(getTypeName).join([', ']));
 }
 
-function exposePublicSymbol(name, value) {
+/* Registers a symbol (function, class, enum, ...) as part of the Module JS object so that
+   hand-written code is able to access that symbol via 'Module.name'.
+   name: The name of the symbol that's being exposed.
+   value: The object itself to expose (function, class, ...)
+   numArguments: For functions, specifies the number of arguments the function takes in. For other types, unused and undefined.
+
+   To implement support for multiple overloads of a function, an 'overload selector' function is used. That selector function chooses
+   the appropriate overload to call from an function overload table. This selector function is only used if multiple overloads are
+   actually registered, since it carries a slight performance penalty. */
+function exposePublicSymbol(name, value, numArguments) {
     if (Module.hasOwnProperty(name)) {
-        throwBindingError("Cannot register public name '" + name + "' twice");
+        if (undefined === numArguments || (undefined !== Module[name].overloadTable && undefined !== Module[name].overloadTable[numArguments])) {
+            throwBindingError("Cannot register public name '" + name + "' twice");
+        }
+        
+        // We are exposing a function with the same name as an existing function. Create an overload table and a function selector
+        // that routes between the two.
+        
+        // If we don't yet have an overload selector, install an overload selector that routes the function call to a table of overloads based on # of arguments to function.
+        if (undefined === Module[name].overloadTable) {
+            var prevFunc = Module[name];
+            
+            // Inject an overload selector in place of the previous function.
+            Module[name] = function() {
+                // TODO This check can be removed in -O3 level "unsafe" optimizations.
+                if (!Module[name].overloadTable.hasOwnProperty(arguments.length)) {
+                    throwBindingError("Function '" + name + "' called with an invalid number of arguments (" + arguments.length + ") - expects one of (" + Object.keys(Module[name].overloadTable) + ")!");
+                }
+                return Module[name].overloadTable[arguments.length].apply(this, arguments);
+            };
+            // An overloadTable maintains a registry of all function overloads.
+            Module[name].overloadTable = [];
+            // Move the old function into the overload table.
+            Module[name].overloadTable[prevFunc.numArguments] = prevFunc;
+        }
+        
+        if (Module.hasOwnProperty(numArguments)) {
+            throwBindingError("Cannot register multiple overloads of a function with the same number of arguments (" + numArguments + ")!");
+        }
+        // Add the new function into the overload table.
+        Module[name].overloadTable[numArguments] = value;
     }
-    Module[name] = value;
+    else {
+        Module[name] = value;
+        if (undefined !== numArguments) {
+            Module[name].numArguments = numArguments;
+        }
+    }
 }
 
-function replacePublicSymbol(name, value) {
+function replacePublicSymbol(name, value, numArguments) {
     if (!Module.hasOwnProperty(name)) {
         throwInternalError('Replacing nonexistant public symbol');
     }
-    Module[name] = value;
+    // If there's an overload table for this symbol, replace the symbol in the overload table instead.
+    if (undefined !== Module[name].overloadTable && undefined !== numArguments) {
+        Module[name].overloadTable[numArguments] = value;
+    }
+    else {
+        Module[name] = value;
+        /* XXX TODO unneeded?!
+        if (undefined !== numArguments) {
+            Module[name].numArguments = numArguments;
+        }
+        */
+    }
 }
 
 // from https://github.com/imvu/imvujs/blob/master/src/error.js
@@ -345,10 +399,10 @@ function __embind_register_function(name, argCount, rawArgTypesAddr, rawInvoker,
 
     exposePublicSymbol(name, function() {
         throwUnboundTypeError('Cannot call ' + name + ' due to unbound types', argTypes);
-    });
+    }, argCount - 1);
 
     whenDependentTypesAreResolved([], argTypes, function(argTypes) {
-        replacePublicSymbol(name, makeInvoker(name, argCount, argTypes, rawInvoker, fn));
+        replacePublicSymbol(name, makeInvoker(name, argCount, argTypes, rawInvoker, fn), argCount - 1);
         return [];
     });
 }
