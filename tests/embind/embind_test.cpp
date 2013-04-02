@@ -720,15 +720,25 @@ std::map<std::string, int> embind_test_get_string_int_map() {
     return m;
 };
 
-struct TupleVector {
+struct Vector {
     float x, y, z;
 };
 
-float readTupleVectorZ(const TupleVector& v) {
+struct DummyDataToTestPointerAdjustment {
+    std::string dummy;
+};
+
+struct TupleVector : DummyDataToTestPointerAdjustment, Vector {
+};
+
+struct StructVector : DummyDataToTestPointerAdjustment, Vector {
+};
+
+float readVectorZ(const Vector& v) {
     return v.z;
 }
 
-void writeTupleVectorZ(TupleVector& v, float z) {
+void writeVectorZ(Vector& v, float z) {
     v.z = z;
 }
 
@@ -752,18 +762,6 @@ TupleVectorTuple emval_test_return_TupleVectorTuple() {
     TupleVectorTuple cvt;
     cvt.v = emval_test_return_TupleVector();
     return cvt;
-}
-
-struct StructVector {
-    float x, y, z;
-};
-
-float readStructVectorZ(const StructVector& v) {
-    return v.z;
-}
-
-void writeStructVectorZ(StructVector& v, float z) {
-    v.z = z;
 }
 
 StructVector emval_test_return_StructVector() {
@@ -1347,7 +1345,7 @@ EMSCRIPTEN_BINDINGS(tests) {
         .element(&TupleVector::x)
         .element(&TupleVector::y)
         //.element(&TupleVector::z)
-        .element(&readTupleVectorZ, &writeTupleVectorZ)
+        .element(&readVectorZ, &writeVectorZ)
         ;
 
     function("emval_test_return_TupleVector", &emval_test_return_TupleVector);
@@ -1362,7 +1360,7 @@ EMSCRIPTEN_BINDINGS(tests) {
     value_struct<StructVector>("StructVector")
         .field("x", &StructVector::x)
         .field("y", &StructVector::y)
-        .field("z", &readStructVectorZ, &writeStructVectorZ)
+        .field("z", &readVectorZ, &writeVectorZ)
         ;
 
     function("emval_test_return_StructVector", &emval_test_return_StructVector);
