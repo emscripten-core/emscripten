@@ -470,27 +470,32 @@ function __embind_register_struct(
 }
 
 function __embind_register_struct_field(
-    rawStructType,
+    structType,
     fieldName,
-    rawFieldType,
-    rawGetter,
-    rawSetter,
-    context
+    getterReturnType,
+    getter,
+    getterContext,
+    setterArgumentType,
+    setter,
+    setterContext
 ) {
-    var structType = requireRegisteredType(rawStructType, 'struct');
+    structType = requireRegisteredType(structType, 'struct');
     fieldName = Pointer_stringify(fieldName);
-    rawGetter = FUNCTION_TABLE[rawGetter];
-    rawSetter = FUNCTION_TABLE[rawSetter];
+    getter = FUNCTION_TABLE[getter];
+    setter = FUNCTION_TABLE[setter];
+
     // TODO: test incomplete registration of value structs
-    whenDependentTypesAreResolved([], [rawFieldType], function(fieldType) {
-        fieldType = fieldType[0];
+    whenDependentTypesAreResolved([], [getterReturnType, setterArgumentType], function(types) {
+        var getterReturnType = types[0];
+        var setterArgumentType = types[1];
         structType.fields[fieldName] = {
             read: function(ptr) {
-                return fieldType.fromWireType(rawGetter(context, ptr));
+                return getterReturnType.fromWireType(
+                    getter(getterContext, ptr));
             },
             write: function(ptr, o) {
                 var destructors = [];
-                rawSetter(context, ptr, fieldType.toWireType(destructors, o));
+                setter(setterContext, ptr, setterArgumentType.toWireType(destructors, o));
                 runDestructors(destructors);
             }
         };

@@ -758,6 +758,14 @@ struct StructVector {
     float x, y, z;
 };
 
+float readStructVectorZ(const StructVector& v) {
+    return v.z;
+}
+
+void writeStructVectorZ(StructVector& v, float z) {
+    v.z = z;
+}
+
 StructVector emval_test_return_StructVector() {
     StructVector v;
     v.x = 1;
@@ -1354,7 +1362,7 @@ EMSCRIPTEN_BINDINGS(tests) {
     value_struct<StructVector>("StructVector")
         .field("x", &StructVector::x)
         .field("y", &StructVector::y)
-        .field("z", &StructVector::z)
+        .field("z", &readStructVectorZ, &writeStructVectorZ)
         ;
 
     function("emval_test_return_StructVector", &emval_test_return_StructVector);
