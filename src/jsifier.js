@@ -309,10 +309,12 @@ function JSify(data, functionsOnly, givenFunctions) {
         });
       }
 
-      if (item.external && BUILD_AS_SHARED_LIB) {
+      if (item.external) {
         // External variables in shared libraries should not be declared as
         // they would shadow similarly-named globals in the parent, so do nothing here.
-        return ret;
+        if (BUILD_AS_SHARED_LIB) return ret;
+        // Library items need us to emit something, but everything else requires nothing.
+        if (!LibraryManager.library[item.ident.slice(1)]) return ret;
       }
 
       // NOTE: This is the only place that could potentially create static
