@@ -608,6 +608,18 @@ module({
             assert.throws(cm.BindingError, function() { new cm.MultipleCtors(1,2,3,4); });
         });
 
+        test("overloading of free functions", function() {
+            var a = cm.overloaded_function(10);
+            assert.equal(a, 1);
+            var b = cm.overloaded_function(20, 20);
+            assert.equal(b, 2);
+        });
+
+        test("wrong number of arguments to an overloaded free function", function() {
+            assert.throws(cm.BindingError, function() { cm.overloaded_function(); });
+            assert.throws(cm.BindingError, function() { cm.overloaded_function(30, 30, 30); });
+        });
+
 /*
         test("can get templated member classes then call its member functions", function() {
             var p = new cm.ContainsTemplatedMemberClass();

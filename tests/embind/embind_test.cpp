@@ -1339,6 +1339,19 @@ public:
     }
 };
 
+int overloaded_function(int i)
+{
+    assert(i == 10);
+    return 1;
+}
+
+int overloaded_function(int i, int j)
+{
+    assert(i == 20);
+    assert(j == 20);
+    return 2;
+}
+
 EMSCRIPTEN_BINDINGS(tests) {
     register_js_interface();
         
@@ -1784,6 +1797,9 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("unsigned_int_to_string", &unsigned_int_to_string);
     function("long_to_string", &long_to_string);
     function("unsigned_long_to_string", &unsigned_long_to_string);
+
+    function("overloaded_function", (int(*)(int))&overloaded_function);
+    function("overloaded_function", (int(*)(int, int))&overloaded_function);
 
     class_<MultipleCtors>("MultipleCtors")
         .constructor<int>()
