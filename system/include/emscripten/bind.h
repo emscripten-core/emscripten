@@ -208,6 +208,11 @@ namespace emscripten {
     struct allow_raw_pointer : public allow_raw_pointers {
     };
 
+    template<typename Signature>
+    typename std::add_pointer<Signature>::type select_overload(typename std::add_pointer<Signature>::type fn) {
+        return fn;
+    }
+
     namespace internal {
         template<typename ReturnType, typename... Args>
         struct Invoker {
