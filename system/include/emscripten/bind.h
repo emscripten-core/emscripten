@@ -367,20 +367,37 @@ namespace emscripten {
             typedef typename MemberBinding::WireType WireType;
 
             template<typename Getter>
-            static WireType propertyGet(
+            static WireType getByFunction(
                 const Getter& getter,
                 const ClassType& ptr
             ) {
                 return MemberBinding::toWireType(getter(ptr));
             }
 
+            template<typename Getter>
+            static WireType getByMemberFunction(
+                const Getter& getter,
+                const ClassType& ptr
+            ) {
+                return MemberBinding::toWireType((ptr.*getter)());
+            }
+
             template<typename Setter>
-            static void propertySet(
+            static void setByFunction(
                 const Setter& setter,
                 ClassType& ptr,
                 WireType value
             ) {
                 setter(ptr, MemberBinding::fromWireType(value));
+            }
+
+            template<typename Setter>
+            static void setByMemberFunction(
+                const Setter& setter,
+                ClassType& ptr,
+                WireType value
+            ) {
+                (ptr.*setter)(MemberBinding::fromWireType(value));
             }
         };
 
@@ -435,6 +452,31 @@ namespace emscripten {
             typename SetterArgumentType,
             typename SetterThisType>
         value_tuple& element(
+            GetterReturnType (GetterThisType::*getter)() const,
+            void (SetterThisType::*setter)(SetterArgumentType)
+        ) {
+            using namespace internal;
+            _embind_register_tuple_element(
+                TypeID<ClassType>::get(),
+                TypeID<GetterReturnType>::get(),
+                reinterpret_cast<GenericFunction>(
+                    &PropertyAccess<ClassType, GetterReturnType>
+                    ::template getByMemberFunction<decltype(getter)>),
+                getContext(getter),
+                TypeID<SetterArgumentType>::get(),
+                reinterpret_cast<GenericFunction>(
+                    &PropertyAccess<ClassType, SetterArgumentType>
+                    ::template setByMemberFunction<decltype(setter)>),
+                getContext(setter));
+            return *this;
+        }        
+
+        template<
+            typename GetterReturnType,
+            typename GetterThisType,
+            typename SetterArgumentType,
+            typename SetterThisType>
+        value_tuple& element(
             GetterReturnType (*getter)(const GetterThisType&),
             void (*setter)(SetterThisType&, SetterArgumentType)
         ) {
@@ -444,12 +486,12 @@ namespace emscripten {
                 TypeID<GetterReturnType>::get(),
                 reinterpret_cast<GenericFunction>(
                     &PropertyAccess<ClassType, GetterReturnType>
-                    ::template propertyGet<decltype(getter)>),
+                    ::template getByFunction<decltype(getter)>),
                 getContext(getter),
                 TypeID<SetterArgumentType>::get(),
                 reinterpret_cast<GenericFunction>(
                     &PropertyAccess<ClassType, SetterArgumentType>
-                    ::template propertySet<decltype(setter)>),
+                    ::template setByFunction<decltype(setter)>),
                 getContext(setter));
             return *this;
         }
@@ -497,6 +539,33 @@ namespace emscripten {
             typename SetterThisType>
         value_struct& field(
             const char* fieldName,
+            GetterReturnType (GetterThisType::*getter)() const,
+            void (SetterThisType::*setter)(SetterArgumentType)
+        ) {
+            using namespace internal;
+            _embind_register_struct_field(
+                TypeID<ClassType>::get(),
+                fieldName,
+                TypeID<GetterReturnType>::get(),
+                reinterpret_cast<GenericFunction>(
+                    &PropertyAccess<ClassType, GetterReturnType>
+                    ::template getByMemberFunction<decltype(getter)>),
+                getContext(getter),
+                TypeID<SetterArgumentType>::get(),
+                reinterpret_cast<GenericFunction>(
+                    &PropertyAccess<ClassType, SetterArgumentType>
+                    ::template setByMemberFunction<decltype(setter)>),
+                getContext(setter));
+            return *this;
+        }
+
+        template<
+            typename GetterReturnType,
+            typename GetterThisType,
+            typename SetterArgumentType,
+            typename SetterThisType>
+        value_struct& field(
+            const char* fieldName,
             GetterReturnType (*getter)(const GetterThisType&),
             void (*setter)(SetterThisType&, SetterArgumentType)
         ) {
@@ -507,12 +576,12 @@ namespace emscripten {
                 TypeID<GetterReturnType>::get(),
                 reinterpret_cast<GenericFunction>(
                     &PropertyAccess<ClassType, GetterReturnType>
-                    ::template propertyGet<decltype(getter)>),
+                    ::template getByFunction<decltype(getter)>),
                 getContext(getter),
                 TypeID<SetterArgumentType>::get(),
                 reinterpret_cast<GenericFunction>(
                     &PropertyAccess<ClassType, SetterArgumentType>
-                    ::template propertySet<decltype(setter)>),
+                    ::template setByFunction<decltype(setter)>),
                 getContext(setter));
             return *this;
         }
