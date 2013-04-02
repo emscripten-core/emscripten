@@ -589,8 +589,24 @@ module({
             assert.throws(TypeError, function() { cm.long_to_string(2147483648); });
             assert.throws(TypeError, function() { cm.unsigned_long_to_string(-1); });
             assert.throws(TypeError, function() { cm.unsigned_long_to_string(4294967296); });
+        });
 
-            });
+        test("access multiple class ctors", function() {
+            var a = new cm.MultipleCtors(10);
+            assert.equal(a.WhichCtorCalled(), 1);
+            var b = new cm.MultipleCtors(20, 20);
+            assert.equal(b.WhichCtorCalled(), 2);
+            var c = new cm.MultipleCtors(30, 30, 30);
+            assert.equal(c.WhichCtorCalled(), 3);
+            a.delete();
+            b.delete();
+            c.delete();
+        });
+
+        test("wrong number of constructor arguments throws", function() {
+            assert.throws(cm.BindingError, function() { new cm.MultipleCtors(); });
+            assert.throws(cm.BindingError, function() { new cm.MultipleCtors(1,2,3,4); });
+        });
 
 /*
         test("can get templated member classes then call its member functions", function() {
@@ -1424,7 +1440,7 @@ module({
         test("unbound constructor argument", function() {
             assertMessage(
                 function() {
-                    new cm.HasConstructorUsingUnboundArgument;
+                    new cm.HasConstructorUsingUnboundArgument(1);
                 },
                 'Cannot construct HasConstructorUsingUnboundArgument due to unbound types: UnboundClass');
         });

@@ -1314,6 +1314,31 @@ std::string unsigned_long_to_string(unsigned long val) {
     return str;
 }
 
+class MultipleCtors {
+public:
+    int value;
+
+    MultipleCtors(int i) {
+        value = 1;
+        assert(i == 10);
+    }
+    MultipleCtors(int i, int j) {
+        value = 2;
+        assert(i == 20);
+        assert(j == 20);
+    }
+    MultipleCtors(int i, int j, int k) {
+        value = 3;
+        assert(i == 30);
+        assert(j == 30);
+        assert(k == 30);
+    }
+
+    int WhichCtorCalled() const {
+        return value;
+    }
+};
+
 EMSCRIPTEN_BINDINGS(tests) {
     register_js_interface();
         
@@ -1759,6 +1784,12 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("unsigned_int_to_string", &unsigned_int_to_string);
     function("long_to_string", &long_to_string);
     function("unsigned_long_to_string", &unsigned_long_to_string);
+
+    class_<MultipleCtors>("MultipleCtors")
+        .constructor<int>()
+        .constructor<int, int>()
+        .constructor<int, int, int>()
+        .function("WhichCtorCalled", &MultipleCtors::WhichCtorCalled);
 }
 
 // tests for out-of-order registration

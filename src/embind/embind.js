@@ -814,9 +814,12 @@ function __embind_register_class(
                 if (Object.getPrototypeOf(this) !== instancePrototype) {
                     throw new BindingError("Use 'new' to construct " + name);
                 }
-                var body = registeredClass.constructor_body;
-                if (undefined === body) {
+                if (undefined === registeredClass.constructor_body) {
                     throw new BindingError(name + " has no accessible constructor");
+                }
+                var body = registeredClass.constructor_body[arguments.length];
+                if (undefined === body) {
+                    throw new BindingError("Tried to invoke ctor of " + name + " with invalid number of parameters (" + arguments.length + ") - expected (" + Object.keys(registeredClass.constructor_body).toString() + ") parameters instead!");
                 }
                 return body.apply(this, arguments);
             });
@@ -884,12 +887,18 @@ function __embind_register_class_constructor(
         classType = classType[0];
         var humanName = 'constructor ' + classType.name;
 
-        classType.registeredClass.constructor_body = function() {
+        if (undefined === classType.registeredClass.constructor_body) {
+            classType.registeredClass.constructor_body = [];
+        }
+        if (undefined !== classType.registeredClass.constructor_body[argCount - 1]) {
+            throw new BindingError("Cannot register multiple constructors with identical number of parameters (" + (argCount-1) + ") for class '" + classType.name + "'! Overload resolution is currently only performed using the parameter count, not actual type info!");
+        }
+        classType.registeredClass.constructor_body[argCount - 1] = function() {
             throwUnboundTypeError('Cannot construct ' + classType.name + ' due to unbound types', rawArgTypes);
         };
 
         whenDependentTypesAreResolved([], rawArgTypes, function(argTypes) {
-            classType.registeredClass.constructor_body = function() {
+            classType.registeredClass.constructor_body[argCount - 1] = function() {
                 if (arguments.length !== argCount - 1) {
                     throwBindingError(humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
                 }
