@@ -1,14 +1,11 @@
 #include <stdlib.h>
 #include <GL/glfw.h>
 #include <stdio.h>
-
-#ifdef EMSCRIPTEN
 #include <emscripten/emscripten.h>
-#endif
 
 void Init(void);
 void Shut_Down(int return_code);
-int Iteration(void);
+void Iteration(void);
 void Draw_Square(float red, float green, float blue);
 void Draw(void);
 void OnKeyPressed( int key, int action );
@@ -22,7 +19,6 @@ void OnMouseClick( int button, int action );
 void OnMouseMove( int x, int y );
 void OnMouseWheel( int pos );
 void PullInfo();
-void Iteration_void();
 
 int params[] = {GLFW_OPENED, GLFW_ACTIVE, GLFW_ICONIFIED, GLFW_ACCELERATED, GLFW_RED_BITS, GLFW_GREEN_BITS, GLFW_BLUE_BITS, GLFW_ALPHA_BITS, GLFW_DEPTH_BITS, GLFW_STENCIL_BITS, GLFW_REFRESH_RATE, GLFW_ACCUM_RED_BITS, GLFW_ACCUM_GREEN_BITS, GLFW_ACCUM_BLUE_BITS, GLFW_ACCUM_ALPHA_BITS, GLFW_AUX_BUFFERS, GLFW_STEREO, GLFW_WINDOW_NO_RESIZE, GLFW_FSAA_SAMPLES, GLFW_OPENGL_VERSION_MAJOR, GLFW_OPENGL_VERSION_MINOR, GLFW_OPENGL_FORWARD_COMPAT, GLFW_OPENGL_DEBUG_CONTEXT, GLFW_OPENGL_PROFILE};
 unsigned int nb_params = sizeof(params) / sizeof(int);
@@ -40,11 +36,7 @@ int main(void)
 {
   Init();
   old_time = glfwGetTime();
-#ifdef EMSCRIPTEN
-  emscripten_set_main_loop (Iteration_void, 0, 1);
-#else
-  while(Iteration());
-#endif
+  emscripten_set_main_loop (Iteration, 0, 1);
   Shut_Down(0);
 }
  
@@ -86,14 +78,12 @@ void Shut_Down(int return_code)
   exit(return_code);
 }
  
-int Iteration()
+void Iteration()
 {
     // calculate time elapsed, and the amount by which stuff rotates
     double current_time = glfwGetTime(),
           delta_rotate = (current_time - old_time) * rotations_per_tick * 360;
     old_time = current_time;
-    // escape to quit, arrow keys to rotate view
-    if (glfwGetKey(GLFW_KEY_ESC) == GLFW_PRESS) return 0;
     if (glfwGetKey(GLFW_KEY_LEFT) == GLFW_PRESS)
       rotate_y += delta_rotate;
     if (glfwGetKey(GLFW_KEY_RIGHT) == GLFW_PRESS)
@@ -107,52 +97,54 @@ int Iteration()
     Draw();
     // swap back and front buffers
     glfwSwapBuffers();
-	return 1;
-}
- 
-void Iteration_void(){
-  Iteration();
-}
- 
-void Draw_Square(float red, float green, float blue)
-{
-#ifndef EMSCRIPTEN
-  // Draws a square with a gradient color at coordinates 0, 10
-  glBegin(GL_QUADS);
-  {
-    glColor3f(red, green, blue);
-    glVertex2i(1, 11);
-    glColor3f(red * .8, green * .8, blue * .8);
-    glVertex2i(-1, 11);
-    glColor3f(red * .5, green * .5, blue * .5);
-    glVertex2i(-1, 9);
-    glColor3f(red * .8, green * .8, blue * .8);
-    glVertex2i(1, 9);
-  }
-  glEnd();
-#endif
 }
  
 void Draw(void)
 {
-  // reset view matrix
-  glLoadIdentity();
-  // move view back a bit
-  glTranslatef(0, 0, -30);
-  // apply the current rotation
-  glRotatef(rotate_y, 0, 1, 0);
-  glRotatef(rotate_z, 0, 0, 1);
-  // by repeatedly rotating the view matrix during drawing, the
-  // squares end up in a circle
-  int i = 0, squares = 15;
-  float red = 0, blue = 1;
-  for (; i < squares; ++i){
-    glRotatef(360.0/squares, 0, 0, 1);
-    // colors change for each square
-    red += 1.0/12;
-    blue -= 1.0/12;
-    Draw_Square(red, .6, blue);
-  }
+  int width, height, x;
+  double t;
+
+  t = glfwGetTime ();
+  glfwGetMousePos (&x, NULL);
+
+  // Get window size (may be different than the requested size)
+  glfwGetWindowSize (&width, &height);
+
+  // Special case: avoid division by zero below
+  height = height > 0 ? height : 1;
+
+  glViewport (0, 0, width, height);
+  // Clear color buffer to black
+  glClearColor (0.1f, 0.2f, 0.3f, 0.0f);
+  glClear (GL_COLOR_BUFFER_BIT);
+
+  // Select and setup the projection matrix
+  glMatrixMode (GL_PROJECTION);
+  glLoadIdentity ();
+  gluPerspective (65.0f, (GLfloat) width / (GLfloat) height, 1.0f, 100.0f);
+
+  // Select and setup the modelview matrix
+  glMatrixMode (GL_MODELVIEW);
+  glLoadIdentity ();
+  gluLookAt (0.0f, 1.0f, 0.0f,	// Eye-position
+	     0.0f, 20.0f, 0.0f,	// View-point
+	     0.0f, 0.0f, 1.0f);	// Up-vector
+
+  // Draw a rotating colorful triangle
+  //glTranslatef (0.0f, 14.0f, 0.0f);
+  glTranslatef (0.0f, 1.0f, 0.0f);
+  glRotatef (0.3f * (GLfloat) x + (GLfloat) t * 100.0f, 0.0f, 0.0f, 1.0f);
+  glBegin (GL_TRIANGLES);
+  glColor3f (1.0f, 0.0f, 0.0f);
+  glVertex3f (-5.0f, 0.0f, -4.0f);
+  glColor3f (0.0f, 1.0f, 0.0f);
+  glVertex3f (5.0f, 0.0f, -4.0f);
+  glColor3f (0.0f, 0.0f, 1.0f);
+  glVertex3f (0.0f, 0.0f, 6.0f);
+  glEnd ();
+
+  // Swap buffers
+  glfwSwapBuffers ();
 }
 
 void OnCharPressed( int character, int action ){
@@ -389,4 +381,9 @@ void PullInfo(){
   printf("...Done.\n");
   
   printf("================================================================================\n");
+  
+#ifdef REPORT_RESULT  
+  int result = 1;
+  REPORT_RESULT();
+#endif
 }

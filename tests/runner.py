@@ -11241,6 +11241,12 @@ elif 'browser' in str(sys.argv):
       Popen([PYTHON, EMCC, '-O2', os.path.join(self.get_dir(), 'openal_playback.cpp'), '--preload-file', 'audio.wav', '-o', 'page.html']).communicate()
       self.run_browser('page.html', '', '/report_result?1')
 
+    def test_glfw(self):
+      open(os.path.join(self.get_dir(), 'glfw.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'glfw.c')).read()))
+
+      Popen([PYTHON, EMCC, '-O2', os.path.join(self.get_dir(), 'glfw.c'), '-o', 'page.html']).communicate()
+      self.run_browser('page.html', '', '/report_result?1')
+
     def test_worker(self):
       # Test running in a web worker
       output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'], stdout=PIPE, stderr=PIPE).communicate()
