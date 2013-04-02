@@ -337,12 +337,13 @@ namespace emscripten {
             }
         };
 
-        template<typename ClassType, typename MemberType>
+        template<typename InstanceType, typename MemberType>
         struct MemberAccess {
-            typedef MemberType ClassType::*MemberPointer;
+            typedef MemberType InstanceType::*MemberPointer;
             typedef internal::BindingType<MemberType> MemberBinding;
             typedef typename MemberBinding::WireType WireType;
             
+            template<typename ClassType>
             static WireType getWire(
                 const MemberPointer& field,
                 const ClassType& ptr
@@ -350,6 +351,7 @@ namespace emscripten {
                 return MemberBinding::toWireType(ptr.*field);
             }
             
+            template<typename ClassType>
             static void setWire(
                 const MemberPointer& field,
                 ClassType& ptr,
@@ -357,6 +359,12 @@ namespace emscripten {
             ) {
                 ptr.*field = MemberBinding::fromWireType(value);
             }
+        };
+
+        template<typename ClassType, typename PropertyType>
+        struct PropertyAccess {
+            typedef internal::BindingType<PropertyType> MemberBinding;
+            typedef typename MemberBinding::WireType WireType;
 
             template<typename Getter>
             static WireType propertyGet(
@@ -403,39 +411,45 @@ namespace emscripten {
                 reinterpret_cast<GenericFunction>(&raw_destructor<ClassType>));
         }
 
-        template<typename ElementType>
-        value_tuple& element(ElementType ClassType::*field) {
+        template<typename InstanceType, typename ElementType>
+        value_tuple& element(ElementType InstanceType::*field) {
             using namespace internal;
             _embind_register_tuple_element(
                 TypeID<ClassType>::get(),
                 TypeID<ElementType>::get(),
                 reinterpret_cast<GenericFunction>(
-                    &MemberAccess<ClassType, ElementType>::getWire),
+                    &MemberAccess<InstanceType, ElementType>
+                    ::template getWire<ClassType>),
                 getContext(field),
                 TypeID<ElementType>::get(),
                 reinterpret_cast<GenericFunction>(
-                    &MemberAccess<ClassType, ElementType>::setWire),
+                    &MemberAccess<InstanceType, ElementType>
+                    ::template setWire<ClassType>),
                 getContext(field));
             return *this;
         }
 
-        template<typename GetterReturnType, typename SetterArgumentType>
+        template<
+            typename GetterReturnType,
+            typename GetterThisType,
+            typename SetterArgumentType,
+            typename SetterThisType>
         value_tuple& element(
-            GetterReturnType (*getter)(const ClassType&),
-            void (*setter)(ClassType&, SetterArgumentType)
+            GetterReturnType (*getter)(const GetterThisType&),
+            void (*setter)(SetterThisType&, SetterArgumentType)
         ) {
             using namespace internal;
             _embind_register_tuple_element(
                 TypeID<ClassType>::get(),
                 TypeID<GetterReturnType>::get(),
                 reinterpret_cast<GenericFunction>(
-                    &MemberAccess<ClassType, GetterReturnType>
-                    ::template propertyGet<GetterReturnType(*)(const ClassType&)>),
+                    &PropertyAccess<ClassType, GetterReturnType>
+                    ::template propertyGet<decltype(getter)>),
                 getContext(getter),
                 TypeID<SetterArgumentType>::get(),
                 reinterpret_cast<GenericFunction>(
-                    &MemberAccess<ClassType, SetterArgumentType>
-                    ::template propertySet<void(*)(ClassType&, SetterArgumentType)>),
+                    &PropertyAccess<ClassType, SetterArgumentType>
+                    ::template propertySet<decltype(setter)>),
                 getContext(setter));
             return *this;
         }
@@ -457,28 +471,34 @@ namespace emscripten {
                 reinterpret_cast<GenericFunction>(&raw_destructor<ClassType>));
         }
 
-        template<typename FieldType>
-        value_struct& field(const char* fieldName, FieldType ClassType::*field) {
+        template<typename InstanceType, typename FieldType>
+        value_struct& field(const char* fieldName, FieldType InstanceType::*field) {
             using namespace internal;
             _embind_register_struct_field(
                 TypeID<ClassType>::get(),
                 fieldName,
                 TypeID<FieldType>::get(),
                 reinterpret_cast<GenericFunction>(
-                    &MemberAccess<ClassType, FieldType>::getWire),
+                    &MemberAccess<InstanceType, FieldType>
+                    ::template getWire<ClassType>),
                 getContext(field),
                 TypeID<FieldType>::get(),
                 reinterpret_cast<GenericFunction>(
-                    &MemberAccess<ClassType, FieldType>::setWire),
+                    &MemberAccess<InstanceType, FieldType>
+                    ::template setWire<ClassType>),
                 getContext(field));
             return *this;
         }
     
-        template<typename GetterReturnType, typename SetterArgumentType>
+        template<
+            typename GetterReturnType,
+            typename GetterThisType,
+            typename SetterArgumentType,
+            typename SetterThisType>
         value_struct& field(
             const char* fieldName,
-            GetterReturnType (*getter)(const ClassType&),
-            void (*setter)(ClassType&, SetterArgumentType)
+            GetterReturnType (*getter)(const GetterThisType&),
+            void (*setter)(SetterThisType&, SetterArgumentType)
         ) {
             using namespace internal;
             _embind_register_struct_field(
@@ -486,13 +506,13 @@ namespace emscripten {
                 fieldName,
                 TypeID<GetterReturnType>::get(),
                 reinterpret_cast<GenericFunction>(
-                    &MemberAccess<ClassType, GetterReturnType>
-                    ::template propertyGet<GetterReturnType(*)(const ClassType&)>),
+                    &PropertyAccess<ClassType, GetterReturnType>
+                    ::template propertyGet<decltype(getter)>),
                 getContext(getter),
                 TypeID<SetterArgumentType>::get(),
                 reinterpret_cast<GenericFunction>(
-                    &MemberAccess<ClassType, SetterArgumentType>
-                    ::template propertySet<void(*)(ClassType&, SetterArgumentType)>),
+                    &PropertyAccess<ClassType, SetterArgumentType>
+                    ::template propertySet<decltype(setter)>),
                 getContext(setter));
             return *this;
         }
@@ -820,8 +840,8 @@ namespace emscripten {
                 TypeID<ClassType>::get(),
                 fieldName,
                 TypeID<FieldType>::get(),
-                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, FieldType>::getWire),
-                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, FieldType>::setWire),
+                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, FieldType>::template getWire<ClassType>),
+                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, FieldType>::template setWire<ClassType>),
                 getContext(field));
             return *this;
         }
