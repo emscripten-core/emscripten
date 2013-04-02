@@ -77,9 +77,10 @@ namespace emscripten {
 
             void _embind_register_tuple_element_accessor(
                 TYPEID tupleType,
-                TYPEID elementType,
+                TYPEID getterReturnType,
                 GenericFunction staticGetter,
                 void* getterContext,
+                TYPEID setterArgumentType,
                 GenericFunction staticSetter,
                 void* setterContext);
 
@@ -419,54 +420,23 @@ namespace emscripten {
             return *this;
         }
 
-        template<typename ElementType>
-        value_tuple& element(ElementType (*getter)(const ClassType&), void (*setter)(ClassType&, ElementType)) {
+        template<typename GetterReturnType, typename SetterArgumentType>
+        value_tuple& element(
+            GetterReturnType (*getter)(const ClassType&),
+            void (*setter)(ClassType&, SetterArgumentType)
+        ) {
             using namespace internal;
             _embind_register_tuple_element_accessor(
                 TypeID<ClassType>::get(),
-                TypeID<ElementType>::get(),
-                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, ElementType>::template propertyGet<ElementType(*)(const ClassType&)>),
+                TypeID<GetterReturnType>::get(),
+                reinterpret_cast<GenericFunction>(
+                    &MemberAccess<ClassType, GetterReturnType>
+                    ::template propertyGet<GetterReturnType(*)(const ClassType&)>),
                 getContext(getter),
-                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, ElementType>::template propertySet<void(*)(ClassType&, ElementType)>),
-                getContext(setter));
-            return *this;
-        }
-
-        template<typename ElementType>
-        value_tuple& element(ElementType (*getter)(const ClassType&), void (*setter)(ClassType&, const ElementType&)) {
-            using namespace internal;
-            _embind_register_tuple_element_accessor(
-                TypeID<ClassType>::get(),
-                TypeID<ElementType>::get(),
-                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, ElementType>::template propertyGet<ElementType(*)(const ClassType&)>),
-                getContext(getter),
-                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, ElementType>::template propertySet<void(*)(ClassType&, ElementType)>),
-                getContext(setter));
-            return *this;
-        }
-
-        template<typename ElementType>
-        value_tuple& element(ElementType (*getter)(const ClassType&), void (*setter)(ClassType&, const ElementType&&)) {
-            using namespace internal;
-            _embind_register_tuple_element_accessor(
-                TypeID<ClassType>::get(),
-                TypeID<ElementType>::get(),
-                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, ElementType>::template propertyGet<ElementType(*)(const ClassType&)>),
-                getContext(getter),
-                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, ElementType>::template propertySet<void(*)(ClassType&, ElementType)>),
-                getContext(setter));
-            return *this;
-        }
-
-        template<typename ElementType>
-        value_tuple& element(ElementType (*getter)(const ClassType&), void (*setter)(ClassType&, ElementType&)) {
-            using namespace internal;
-            _embind_register_tuple_element_accessor(
-                TypeID<ClassType>::get(),
-                TypeID<ElementType>::get(),
-                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, ElementType>::template propertyGet<ElementType(*)(const ClassType&)>),
-                getContext(getter),
-                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, ElementType>::template propertySet<void(*)(ClassType&, ElementType)>),
+                TypeID<SetterArgumentType>::get(),
+                reinterpret_cast<GenericFunction>(
+                    &MemberAccess<ClassType, SetterArgumentType>
+                    ::template propertySet<void(*)(ClassType&, SetterArgumentType)>),
                 getContext(setter));
             return *this;
         }
