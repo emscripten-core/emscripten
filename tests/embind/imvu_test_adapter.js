@@ -8,6 +8,8 @@
    To run the Embind tests using the Emscripten test runner, invoke 'python tests/runner.py other.test_embind' in the Emscripten root directory.
 */
 
+/* global Module, console, global, process */
+
 //=== testing glue
 
 function module(ignore, func) {
@@ -383,7 +385,7 @@ function module(ignore, func) {
         ////////////////////////////////////////////////////////////////////////////////
         // EXCEPTIONS
 
-        assert['throws'] = function(exception, fn) {
+        assert.throws = function(exception, fn) {
             try {
                 fn();
             } catch (e) {
@@ -537,7 +539,7 @@ function module(ignore, func) {
                     fail(new AssertionError(decipherDomElement(el) + ' expected NOT to be empty'));
                 }
             }
-        }
+        };
 //    };
 
     function decipherDomElement(selectorOrJQueryObject) {
@@ -603,7 +605,7 @@ function module(ignore, func) {
 // IMVU runner uses a separate runner & reporting mechanism.
 function run_all_tests() {
     function report_to_stdout(msg) {
-        if (msg.type == "test-complete")
+        if (msg.type === "test-complete")
             console.log(msg.name + ": " + msg.verdict);
     }
     run_all(report_to_stdout);

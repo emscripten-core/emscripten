@@ -1505,6 +1505,7 @@ module({
     });
 });
 
+/* global run_all_tests */
 // If running as part of the emscripten test runner suite, and not as part of the IMVU suite,
 // we launch the test execution from here. IMVU suite uses its own dedicated mechanism instead of this.
 if (typeof run_all_tests !== "undefined")
