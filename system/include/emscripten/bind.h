@@ -70,13 +70,6 @@ namespace emscripten {
             
             void _embind_register_tuple_element(
                 TYPEID tupleType,
-                TYPEID elementType,
-                GenericFunction getter,
-                GenericFunction setter,
-                void* context);
-
-            void _embind_register_tuple_element_accessor(
-                TYPEID tupleType,
                 TYPEID getterReturnType,
                 GenericFunction staticGetter,
                 void* getterContext,
@@ -414,8 +407,12 @@ namespace emscripten {
             _embind_register_tuple_element(
                 TypeID<ClassType>::get(),
                 TypeID<ElementType>::get(),
-                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, ElementType>::getWire),
-                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, ElementType>::setWire),
+                reinterpret_cast<GenericFunction>(
+                    &MemberAccess<ClassType, ElementType>::getWire),
+                getContext(field),
+                TypeID<ElementType>::get(),
+                reinterpret_cast<GenericFunction>(
+                    &MemberAccess<ClassType, ElementType>::setWire),
                 getContext(field));
             return *this;
         }
@@ -426,7 +423,7 @@ namespace emscripten {
             void (*setter)(ClassType&, SetterArgumentType)
         ) {
             using namespace internal;
-            _embind_register_tuple_element_accessor(
+            _embind_register_tuple_element(
                 TypeID<ClassType>::get(),
                 TypeID<GetterReturnType>::get(),
                 reinterpret_cast<GenericFunction>(

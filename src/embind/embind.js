@@ -388,37 +388,6 @@ function __embind_register_tuple(rawType, name, rawConstructor, rawDestructor) {
 
 function __embind_register_tuple_element(
     rawTupleType,
-    rawType,
-    getter,
-    setter,
-    context
-) {
-    getter = FUNCTION_TABLE[getter];
-    setter = FUNCTION_TABLE[setter];
-    var tupleType = requireRegisteredType(rawTupleType, 'tuple');
-
-    var index = tupleType.elements.length;
-    tupleType.elements.push(undefined);
-
-    // TODO: test incomplete registration of value tuples
-    whenDependentTypesAreResolved([], [rawType], function(type) {
-        type = type[0];
-        tupleType.elements[index] = {
-            read: function(ptr) {
-                return type.fromWireType(getter(context, ptr));
-            },
-            write: function(ptr, o) {
-                var destructors = [];
-                setter(context, ptr, type.toWireType(destructors, o));
-                runDestructors(destructors);
-            }
-        };
-        return [];
-    });
-}
-
-function __embind_register_tuple_element_accessor(
-    rawTupleType,
     getterReturnType,
     getter,
     getterContext,
@@ -430,11 +399,14 @@ function __embind_register_tuple_element_accessor(
     getter = FUNCTION_TABLE[getter];
     setter = FUNCTION_TABLE[setter];
 
+    var index = tupleType.elements.length;
+    tupleType.elements.push(undefined);
+
     // TODO: test incomplete registration of value tuples
     whenDependentTypesAreResolved([], [getterReturnType, setterArgumentType], function(types) {
         var getterReturnType = types[0];
         var setterArgumentType = types[1];
-        tupleType.elements.push({
+        tupleType.elements[index] = {
             read: function(ptr) {
                 return getterReturnType.fromWireType(
                     getter(
@@ -449,7 +421,7 @@ function __embind_register_tuple_element_accessor(
                     setterArgumentType.toWireType(destructors, o));
                 runDestructors(destructors);
             }
-        });
+        };
         return [];
     });
 }
