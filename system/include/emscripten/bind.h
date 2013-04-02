@@ -361,46 +361,6 @@ namespace emscripten {
             }
         };
 
-        template<typename ClassType, typename PropertyType>
-        struct PropertyAccess {
-            typedef internal::BindingType<PropertyType> MemberBinding;
-            typedef typename MemberBinding::WireType WireType;
-
-            template<typename Getter>
-            static WireType getByFunction(
-                const Getter& getter,
-                const ClassType& ptr
-            ) {
-                return MemberBinding::toWireType(getter(ptr));
-            }
-
-            template<typename Getter>
-            static WireType getByMemberFunction(
-                const Getter& getter,
-                const ClassType& ptr
-            ) {
-                return MemberBinding::toWireType((ptr.*getter)());
-            }
-
-            template<typename Setter>
-            static void setByFunction(
-                const Setter& setter,
-                ClassType& ptr,
-                WireType value
-            ) {
-                setter(ptr, MemberBinding::fromWireType(value));
-            }
-
-            template<typename Setter>
-            static void setByMemberFunction(
-                const Setter& setter,
-                ClassType& ptr,
-                WireType value
-            ) {
-                (ptr.*setter)(MemberBinding::fromWireType(value));
-            }
-        };
-
         // TODO: This could do a reinterpret-cast if sizeof(T) === sizeof(void*)
         template<typename T>
         inline void* getContext(const T& t) {
@@ -410,6 +370,84 @@ namespace emscripten {
             memcpy(p, &t, sizeof(T));
             return p;
         }
+
+        template<typename T>
+        struct GetterPolicy;
+
+        template<typename GetterReturnType, typename GetterThisType>
+        struct GetterPolicy<GetterReturnType (GetterThisType::*)() const> {
+            typedef GetterReturnType ReturnType;
+            typedef GetterReturnType (GetterThisType::*Context)() const;
+
+            typedef internal::BindingType<ReturnType> Binding;
+            typedef typename Binding::WireType WireType;
+
+            template<typename ClassType>
+            static WireType get(const Context& context, const ClassType& ptr) {
+                return Binding::toWireType((ptr.*context)());
+            }
+
+            static void* getContext(Context context) {
+                return internal::getContext(context);
+            }
+        };
+
+        template<typename GetterReturnType, typename GetterThisType>
+        struct GetterPolicy<GetterReturnType (*)(const GetterThisType&)> {
+            typedef GetterReturnType ReturnType;
+            typedef GetterReturnType (*Context)(const GetterThisType&);
+
+            typedef internal::BindingType<ReturnType> Binding;
+            typedef typename Binding::WireType WireType;
+
+            template<typename ClassType>
+            static WireType get(const Context& context, const ClassType& ptr) {
+                return Binding::toWireType(context(ptr));
+            }
+
+            static void* getContext(Context context) {
+                return internal::getContext(context);
+            }
+        };
+
+        template<typename T>
+        struct SetterPolicy;
+
+        template<typename SetterThisType, typename SetterArgumentType>
+        struct SetterPolicy<void (SetterThisType::*)(SetterArgumentType)> {
+            typedef SetterArgumentType ArgumentType;
+            typedef void (SetterThisType::*Context)(SetterArgumentType);
+
+            typedef internal::BindingType<SetterArgumentType> Binding;
+            typedef typename Binding::WireType WireType;
+
+            template<typename ClassType>
+            static void set(const Context& context, ClassType& ptr, WireType wt) {
+                (ptr.*context)(Binding::fromWireType(wt));
+            }
+
+            static void* getContext(Context context) {
+                return internal::getContext(context);
+            }
+        };
+
+        template<typename SetterThisType, typename SetterArgumentType>
+        struct SetterPolicy<void (*)(SetterThisType&, SetterArgumentType)> {
+            typedef SetterArgumentType ArgumentType;
+            typedef void (*Context)(SetterThisType&, SetterArgumentType);
+
+            typedef internal::BindingType<SetterArgumentType> Binding;
+            typedef typename Binding::WireType WireType;
+
+            template<typename ClassType>
+            static void set(const Context& context, ClassType& ptr, WireType wt) {
+                context(ptr, Binding::fromWireType(wt));
+            }
+
+            static void* getContext(Context context) {
+                return internal::getContext(context);
+            }
+        };
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -446,55 +484,21 @@ namespace emscripten {
             return *this;
         }
 
-        template<
-            typename GetterReturnType,
-            typename GetterThisType,
-            typename SetterArgumentType,
-            typename SetterThisType>
-        value_tuple& element(
-            GetterReturnType (GetterThisType::*getter)() const,
-            void (SetterThisType::*setter)(SetterArgumentType)
-        ) {
+        template<typename Getter, typename Setter>
+        value_tuple& element(Getter getter, Setter setter) {
             using namespace internal;
+            typedef GetterPolicy<Getter> GP;
+            typedef SetterPolicy<Setter> SP;
             _embind_register_tuple_element(
                 TypeID<ClassType>::get(),
-                TypeID<GetterReturnType>::get(),
-                reinterpret_cast<GenericFunction>(
-                    &PropertyAccess<ClassType, GetterReturnType>
-                    ::template getByMemberFunction<decltype(getter)>),
-                getContext(getter),
-                TypeID<SetterArgumentType>::get(),
-                reinterpret_cast<GenericFunction>(
-                    &PropertyAccess<ClassType, SetterArgumentType>
-                    ::template setByMemberFunction<decltype(setter)>),
-                getContext(setter));
+                TypeID<typename GP::ReturnType>::get(),
+                reinterpret_cast<GenericFunction>(&GP::template get<ClassType>),
+                GP::getContext(getter),
+                TypeID<typename SP::ArgumentType>::get(),
+                reinterpret_cast<GenericFunction>(&SP::template set<ClassType>),
+                SP::getContext(setter));
             return *this;
         }        
-
-        template<
-            typename GetterReturnType,
-            typename GetterThisType,
-            typename SetterArgumentType,
-            typename SetterThisType>
-        value_tuple& element(
-            GetterReturnType (*getter)(const GetterThisType&),
-            void (*setter)(SetterThisType&, SetterArgumentType)
-        ) {
-            using namespace internal;
-            _embind_register_tuple_element(
-                TypeID<ClassType>::get(),
-                TypeID<GetterReturnType>::get(),
-                reinterpret_cast<GenericFunction>(
-                    &PropertyAccess<ClassType, GetterReturnType>
-                    ::template getByFunction<decltype(getter)>),
-                getContext(getter),
-                TypeID<SetterArgumentType>::get(),
-                reinterpret_cast<GenericFunction>(
-                    &PropertyAccess<ClassType, SetterArgumentType>
-                    ::template setByFunction<decltype(setter)>),
-                getContext(setter));
-            return *this;
-        }
     };
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -532,57 +536,24 @@ namespace emscripten {
             return *this;
         }
     
-        template<
-            typename GetterReturnType,
-            typename GetterThisType,
-            typename SetterArgumentType,
-            typename SetterThisType>
+        template<typename Getter, typename Setter>
         value_struct& field(
             const char* fieldName,
-            GetterReturnType (GetterThisType::*getter)() const,
-            void (SetterThisType::*setter)(SetterArgumentType)
+            Getter getter,
+            Setter setter
         ) {
             using namespace internal;
+            typedef GetterPolicy<Getter> GP;
+            typedef SetterPolicy<Setter> SP;
             _embind_register_struct_field(
                 TypeID<ClassType>::get(),
                 fieldName,
-                TypeID<GetterReturnType>::get(),
-                reinterpret_cast<GenericFunction>(
-                    &PropertyAccess<ClassType, GetterReturnType>
-                    ::template getByMemberFunction<decltype(getter)>),
-                getContext(getter),
-                TypeID<SetterArgumentType>::get(),
-                reinterpret_cast<GenericFunction>(
-                    &PropertyAccess<ClassType, SetterArgumentType>
-                    ::template setByMemberFunction<decltype(setter)>),
-                getContext(setter));
-            return *this;
-        }
-
-        template<
-            typename GetterReturnType,
-            typename GetterThisType,
-            typename SetterArgumentType,
-            typename SetterThisType>
-        value_struct& field(
-            const char* fieldName,
-            GetterReturnType (*getter)(const GetterThisType&),
-            void (*setter)(SetterThisType&, SetterArgumentType)
-        ) {
-            using namespace internal;
-            _embind_register_struct_field(
-                TypeID<ClassType>::get(),
-                fieldName,
-                TypeID<GetterReturnType>::get(),
-                reinterpret_cast<GenericFunction>(
-                    &PropertyAccess<ClassType, GetterReturnType>
-                    ::template getByFunction<decltype(getter)>),
-                getContext(getter),
-                TypeID<SetterArgumentType>::get(),
-                reinterpret_cast<GenericFunction>(
-                    &PropertyAccess<ClassType, SetterArgumentType>
-                    ::template setByFunction<decltype(setter)>),
-                getContext(setter));
+                TypeID<typename GP::ReturnType>::get(),
+                reinterpret_cast<GenericFunction>(&GP::template get<ClassType>),
+                GP::getContext(getter),
+                TypeID<typename SP::ArgumentType>::get(),
+                reinterpret_cast<GenericFunction>(&SP::template set<ClassType>),
+                SP::getContext(setter));
             return *this;
         }
     };
