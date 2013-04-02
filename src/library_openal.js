@@ -20,13 +20,15 @@ var LibraryOpenAL = {
     }
   },
 
-  alcGetContextsDevice: function(context){
-    if(context < Al.contexts.length && context >= 0)
+  alcGetContextsDevice: function(context) {
+    if (context < AL.contexts.length && context >= 0) {
+      // Returns the only one audio device
       return 1;
+    }
     return 0;
   },
 
-  alcGetCurrentContext: function(){
+  alcGetCurrentContext: function() {
     return AL.currentContext;
   },
 
