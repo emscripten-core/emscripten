@@ -722,6 +722,13 @@ std::map<std::string, int> embind_test_get_string_int_map() {
 
 struct Vector {
     float x, y, z;
+
+    float getY() const {
+        return y;
+    }
+    void setY(float _y) {
+        y = _y;
+    }
 };
 
 struct DummyDataToTestPointerAdjustment {
@@ -1343,8 +1350,7 @@ EMSCRIPTEN_BINDINGS(tests) {
 
     value_tuple<TupleVector>("TupleVector")
         .element(&TupleVector::x)
-        .element(&TupleVector::y)
-        //.element(&TupleVector::z)
+        .element(&Vector::getY, &Vector::setY)
         .element(&readVectorZ, &writeVectorZ)
         ;
 
@@ -1359,7 +1365,7 @@ EMSCRIPTEN_BINDINGS(tests) {
 
     value_struct<StructVector>("StructVector")
         .field("x", &StructVector::x)
-        .field("y", &StructVector::y)
+        .field("y", &Vector::getY, &Vector::setY)
         .field("z", &readVectorZ, &writeVectorZ)
         ;
 
