@@ -6816,6 +6816,20 @@ LibraryManager.library = {
   // pthread.h (stubs for mutexes only - no thread support yet!)
   // ==========================================================================
 
+  pthread_create: function(__newthread, __attr, __start_routine, __arg) {
+    //extern int pthread_create (pthread_t *__restrict __newthread,
+		//	   const pthread_attr_t *__restrict __attr,
+		//	   void *(*__start_routine) (void *),
+		//	   void *__restrict __arg) __THROWNL __nonnull ((1, 3));
+    return 0;
+  },
+  pthread_detach: function(__th) {
+    //extern int pthread_detach (pthread_t __th) __THROW;
+    return 0;
+  },
+  pthread_exit: function(__retval) {
+    //extern void pthread_exit (void *__retval) __attribute__ ((__noreturn__));
+  },
   pthread_mutex_init: function() {},
   pthread_mutex_destroy: function() {},
   pthread_mutexattr_init: function() {},
@@ -6905,6 +6919,51 @@ LibraryManager.library = {
     assert(_pthread_cleanup_push.level == __ATEXIT__.length, 'cannot pop if something else added meanwhile!');
     __ATEXIT__.pop();
     _pthread_cleanup_push.level = __ATEXIT__.length;
+  },
+
+  // ==========================================================================
+  // semaphore.h (stubs only - no thread support yet!)
+  // ==========================================================================
+
+  sem_init: function(__sem, __pshared, __value) {
+    //extern int sem_init (sem_t *__sem, int __pshared, unsigned int __value);
+    return 0;
+  },
+  sem_destroy: function(__sem) {
+    //extern int sem_destroy (sem_t *__sem);
+    return 0;
+  },
+  sem_open: function(__name, __oflag, vaargs) {
+    //extern sem_t *sem_open (const char *__name, int __oflag, ...);
+    return null;
+  },
+  sem_close: function(__sem) {
+    //extern int sem_close (sem_t *__sem);
+    return 0;
+  },
+  sem_unlink: function(__name) {
+    //extern int sem_unlink (const char *__name);
+    return 0;
+  },
+  sem_wait: function(__sem) {
+    //extern int sem_wait (sem_t *__sem);
+    return 0;
+  },
+  sem_timedwait: function(__sem, __abstime) {
+    //extern int sem_timedwait (sem_t *__restrict __sem, const struct timespec *__restrict __abstime);
+    return 0;
+  },
+  sem_trywait: function(__sem) {
+    //extern int sem_trywait (sem_t *__sem);
+    return 0;
+  },
+  sem_post: function(__sem) {
+    //extern int sem_post (sem_t *__sem);
+    return 0;
+  },
+  sem_getvalue: function(__sem, __sval) {
+    //extern int sem_getvalue (sem_t *__restrict __sem, int *__restrict __sval);
+    return 0;
   },
 
   // ==========================================================================
@@ -7247,6 +7306,13 @@ LibraryManager.library = {
     return len;
   },
 
+  sendto: function(sockfd, buf, len, flags, dest_addr, addrlen) {
+    //ssize_t sendto(int sockfd, const void *buf, size_t len, int flags,
+    //                  const struct sockaddr *dest_addr, socklen_t addrlen);
+    //FIXME
+    return 0;
+  },
+
   sendmsg__deps: ['$Sockets', 'connect'],
   sendmsg: function(fd, msg, flags) {
     var info = Sockets.fds[fd];
@@ -7473,6 +7539,43 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/socketpair.html
     ___setErrNo(ERRNO_CODES.EOPNOTSUPP);
     return -1;
+  }
+  
+  getpeername: function(socket, address, address_len) {
+    //int getpeername(int socket, struct sockaddr *address, socklen_t *address_len);
+    return 0;
+  },
+
+  getsockname: function(socket, address, address_len) {
+    //int getsockname(int socket, struct sockaddr *address, socklen_t *address_len);
+    return 0;
+  },
+
+  getsockopt: function(s, level, optname, optval, optlen) {
+    //int getsockopt(int s, int level, int optname, void *optval, socklen_t *optlen);
+    return 0;
+  },
+
+  // ifaddrs.h
+
+  getifaddrs: function(ifaddrs) {
+    //extern int getifaddrs(struct ifaddrs **);
+    return 0;
+  },
+
+  freeifaddrs: function(ifaddrs) {
+    //extern void freeifaddrs(struct ifaddrs *);
+    return 0;
+  },
+
+  getifmaddrs: function(ifmaddrs) {
+    //extern int getifmaddrs(struct ifmaddrs **);
+    return 0;
+  },
+
+  freeifmaddrs: function(ifmaddrs) {
+    //extern void freeifmaddrs(struct ifmaddrs *);
+    return 0;
   },
 
   // pty.h
