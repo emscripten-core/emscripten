@@ -4225,10 +4225,10 @@ LibraryManager.library = {
 
   wmemcpy: function() { throw 'wmemcpy not implemented' },
 
-  llvm_memcpy_i32: 'memcpy',
-  llvm_memcpy_i64: 'memcpy',
-  llvm_memcpy_p0i8_p0i8_i32: 'memcpy',
-  llvm_memcpy_p0i8_p0i8_i64: 'memcpy',
+  {{{ toNiceIdent('llvm.memcpy.i32') }}}: 'memcpy',
+  {{{ toNiceIdent('llvm.memcpy.i64') }}}: 'memcpy',
+  {{{ toNiceIdent('llvm.memcpy.p0i8.p0i8.i32') }}}: 'memcpy',
+  {{{ toNiceIdent('llvm.memcpy.p0i8.p0i8.i64') }}}: 'memcpy',
 
   memmove__sig: 'viii',
   memmove__asm: true,
@@ -4249,10 +4249,10 @@ LibraryManager.library = {
       _memcpy(dest, src, num);
     }
   },
-  llvm_memmove_i32: 'memmove',
-  llvm_memmove_i64: 'memmove',
-  llvm_memmove_p0i8_p0i8_i32: 'memmove',
-  llvm_memmove_p0i8_p0i8_i64: 'memmove',
+  {{{ toNiceIdent('llvm.memmove.i32') }}}: 'memmove',
+  {{{ toNiceIdent('llvm.memmove.i64') }}}: 'memmove',
+  {{{ toNiceIdent('llvm.memmove.p0i8.p0i8.i32') }}}: 'memmove',
+  {{{ toNiceIdent('llvm.memmove.p0i8.p0i8.i64') }}}: 'memmove',
 
   wmemmove: function() { throw 'wmemmove not implemented' },
 
@@ -4292,9 +4292,9 @@ LibraryManager.library = {
     {{{ makeSetValues('ptr', '0', 'value', 'null', 'num') }}};
 #endif
   },
-  llvm_memset_i32: 'memset',
-  llvm_memset_p0i8_i32: 'memset',
-  llvm_memset_p0i8_i64: 'memset',
+  {{{ toNiceIdent('llvm.memset.i32') }}}: 'memset',
+  {{{ toNiceIdent('llvm.memset.p0i8.i32') }}}: 'memset',
+  {{{ toNiceIdent('llvm.memset.p0i8.i64') }}}: 'memset',
 
   wmemset: function() { throw 'wmemset not implemented' },
 
@@ -4847,14 +4847,14 @@ LibraryManager.library = {
   // LLVM specifics
   // ==========================================================================
 
-  llvm_va_start__inline: function(ptr) {
+  {{{ toNiceIdent('llvm.va_start') + '__inline' }}}: function(ptr) {
     // varargs - we received a pointer to the varargs as a final 'extra' parameter called 'varrp'
     return makeSetValue(ptr, 0, 'varrp', 'void*');
   },
 
-  llvm_va_end: function() {},
+  {{{ toNiceIdent('llvm.va_end') }}}: function() {},
 
-  llvm_va_copy: function(ppdest, ppsrc) {
+  {{{ toNiceIdent('llvm.va_copy') }}}: function(ppdest, ppsrc) {
     {{{ makeCopyValues('ppdest', 'ppsrc', Runtime.QUANTUM_SIZE, 'null', null, 1) }}};
     /* Alternate implementation that copies the actual DATA; it assumes the va_list is prefixed by its size
     var psrc = IHEAP[ppsrc]-1;
@@ -4865,16 +4865,16 @@ LibraryManager.library = {
     */
   },
 
-  llvm_bswap_i16: function(x) {
+  {{{ toNiceIdent('llvm.bswap.i16') }}}: function(x) {
     return ((x&0xff)<<8) | ((x>>8)&0xff);
   },
 
-  llvm_bswap_i32: function(x) {
+  {{{ toNiceIdent('llvm.bswap.i32') }}}: function(x) {
     return ((x&0xff)<<24) | (((x>>8)&0xff)<<16) | (((x>>16)&0xff)<<8) | (x>>>24);
   },
 
-  llvm_bswap_i64__deps: ['llvm_bswap_i32'],
-  llvm_bswap_i64: function(l, h) {
+  {{{ toNiceIdent('llvm.bswap.i64') + '__deps' }}}: ['llvm_bswap_i32'],
+  {{{ toNiceIdent('llvm.bswap.i64') }}}: function(l, h) {
     var retl = _llvm_bswap_i32(h)>>>0;
     var reth = _llvm_bswap_i32(l)>>>0;
 #if USE_TYPED_ARRAYS == 2
@@ -4884,7 +4884,7 @@ LibraryManager.library = {
 #endif
   },
 
-  llvm_ctlz_i32__deps: [function() {
+  {{{ toNiceIdent('llvm.ctlz.i32') + '__deps' }}}: [function() {
     function ctlz(x) {
       for (var i = 0; i < 8; i++) {
         if (x & (1 << (7-i))) {
@@ -4895,7 +4895,7 @@ LibraryManager.library = {
     }
     return 'var ctlz_i8 = [' + range(256).map(function(x) { return ctlz(x) }).join(',') + '];';
   }],
-  llvm_ctlz_i32: function(x) {
+  {{{ toNiceIdent('llvm.ctlz.i32') }}}: function(x) {
     var ret = ctlz_i8[x >>> 24];
     if (ret < 8) return ret;
     var ret = ctlz_i8[(x >> 16)&0xff];
@@ -4905,10 +4905,10 @@ LibraryManager.library = {
     return ctlz_i8[x&0xff] + 24;
   },
 
-  llvm_ctlz_i64__deps: ['llvm_ctlz_i32'],
-  llvm_ctlz_i64: function(l, h) {
-    var ret = _llvm_ctlz_i32(h);
-    if (ret == 32) ret += _llvm_ctlz_i32(l);
+  {{{ toNiceIdent('llvm.ctlz.i64') + '__deps' }}}: ['llvm_ctlz_i32'],
+  {{{ toNiceIdent('llvm.ctlz.i64') }}}: function(l, h) {
+    var ret = {{{ toNiceIdent('@llvm.ctlz.i32') }}}(h);
+    if (ret == 32) ret += {{{ toNiceIdent('@llvm.ctlz.i32') }}}(l);
 #if USE_TYPED_ARRAYS == 2
     {{{ makeStructuralReturn(['ret', '0']) }}};
 #else
@@ -4916,7 +4916,7 @@ LibraryManager.library = {
 #endif
   },
 
-  llvm_cttz_i32__deps: [function() {
+  {{{ toNiceIdent('llvm.cttz.i32') + '__deps' }}}: [function() {
     function cttz(x) {
       for (var i = 0; i < 8; i++) {
         if (x & (1 << i)) {
@@ -4927,7 +4927,7 @@ LibraryManager.library = {
     }
     return 'var cttz_i8 = [' + range(256).map(function(x) { return cttz(x) }).join(',') + '];';
   }],
-  llvm_cttz_i32: function(x) {
+  {{{ toNiceIdent('llvm.cttz.i32') }}}: function(x) {
     var ret = cttz_i8[x & 0xff];
     if (ret < 8) return ret;
     var ret = cttz_i8[(x >> 8)&0xff];
@@ -4937,10 +4937,10 @@ LibraryManager.library = {
     return cttz_i8[x >>> 24] + 24;
   },
 
-  llvm_cttz_i64__deps: ['llvm_cttz_i32'],
-  llvm_cttz_i64: function(l, h) {
-    var ret = _llvm_cttz_i32(l);
-    if (ret == 32) ret += _llvm_cttz_i32(h);
+  {{{ toNiceIdent('llvm.cttz.i64') + '__deps' }}}: ['llvm_cttz_i32'],
+  {{{ toNiceIdent('llvm.cttz.i64') }}}: function(l, h) {
+    var ret = {{{ toNiceIdent('@llvm.cttz.i32') }}}(l);
+    if (ret == 32) ret += {{{ toNiceIdent('@llvm.cttz.i32') }}}(h);
 #if USE_TYPED_ARRAYS == 2
     {{{ makeStructuralReturn(['ret', '0']) }}};
 #else
@@ -4948,7 +4948,7 @@ LibraryManager.library = {
 #endif
   },
 
-  llvm_ctpop_i32: function(x) {
+  {{{ toNiceIdent('llvm.ctpop.i32') }}}: function(x) {
     var ret = 0;
     while (x) {
       if (x&1) ret++;
@@ -4957,12 +4957,12 @@ LibraryManager.library = {
     return ret;
   },
 
-  llvm_ctpop_i64__deps: ['llvm_ctpop_i32'],
-  llvm_ctpop_i64: function(l, h) {
-    return _llvm_ctpop_i32(l) + _llvm_ctpop_i32(h);
+  {{{ toNiceIdent('llvm.ctpop.i64') + '__deps' }}}: ['llvm_ctpop_i32'],
+  {{{ toNiceIdent('llvm.ctpop.i64') }}}: function(l, h) {
+    return {{{ toNiceIdent('@llvm.ctpop.i32') }}}(l) + {{{ toNiceIdent('@llvm.ctpop.i32') }}}(h);
   },
 
-  llvm_trap: function() {
+  {{{ toNiceIdent('llvm.trap') }}}: function() {
     throw 'trap! ' + new Error().stack;
   },
 
@@ -5224,59 +5224,59 @@ LibraryManager.library = {
   _ZTIv: [0], // void
   _ZTIPv: [0], // void*
 
-  llvm_uadd_with_overflow_i8: function(x, y) {
+  {{{ toNiceIdent('llvm.uadd.with.overflow.i8') }}}: function(x, y) {
     x = x & 0xff;
     y = y & 0xff;
     {{{ makeStructuralReturn(['(x+y) & 0xff', 'x+y > 255']) }}};
   },
 
-  llvm_umul_with_overflow_i8: function(x, y) {
+  {{{ toNiceIdent('llvm.umul.with.overflow.i8') }}}: function(x, y) {
     x = x & 0xff;
     y = y & 0xff;
     {{{ makeStructuralReturn(['(x*y) & 0xff', 'x*y > 255']) }}};
   },
 
-  llvm_uadd_with_overflow_i16: function(x, y) {
+  {{{ toNiceIdent('llvm.uadd.with.overflow.i16') }}}: function(x, y) {
     x = x & 0xffff;
     y = y & 0xffff;
     {{{ makeStructuralReturn(['(x+y) & 0xffff', 'x+y > 65535']) }}};
   },
 
-  llvm_umul_with_overflow_i16: function(x, y) {
+  {{{ toNiceIdent('llvm.umul.with.overflow.i16') }}}: function(x, y) {
     x = x & 0xffff;
     y = y & 0xffff;
     {{{ makeStructuralReturn(['(x*y) & 0xffff', 'x*y > 65535']) }}};
   },
 
-  llvm_uadd_with_overflow_i32: function(x, y) {
+  {{{ toNiceIdent('llvm.uadd.with.overflow.i32') }}}: function(x, y) {
     x = x>>>0;
     y = y>>>0;
     {{{ makeStructuralReturn(['(x+y)>>>0', 'x+y > 4294967295']) }}};
   },
 
-  llvm_umul_with_overflow_i32: function(x, y) {
+  {{{ toNiceIdent('llvm.umul.with.overflow.i32') }}}: function(x, y) {
     x = x>>>0;
     y = y>>>0;
     {{{ makeStructuralReturn(['(x*y)>>>0', 'x*y > 4294967295']) }}};
   },
 
-  llvm_umul_with_overflow_i64__deps: [function() { Types.preciseI64MathUsed = 1 }],
-  llvm_umul_with_overflow_i64: function(xl, xh, yl, yh) {
+  {{{ toNiceIdent('llvm.umul.with.overflow.i64') + '__deps' }}}: [function() { Types.preciseI64MathUsed = 1 }],
+  {{{ toNiceIdent('llvm.umul.with.overflow.i64') }}}: function(xl, xh, yl, yh) {
     i64Math.multiply(xl, xh, yl, yh);
     {{{ makeStructuralReturn([makeGetTempDouble(0, 'i32'), makeGetTempDouble(1, 'i32'), '0']) }}};
     // XXX Need to hack support for second param in long.js
   },
 
-  llvm_stacksave: function() {
-    var self = _llvm_stacksave;
+  {{{ toNiceIdent('llvm.stacksave') }}}: function() {
+    var self = {{{ toNiceIdent('@llvm.stacksave') }}};
     if (!self.LLVM_SAVEDSTACKS) {
       self.LLVM_SAVEDSTACKS = [];
     }
     self.LLVM_SAVEDSTACKS.push(Runtime.stackSave());
     return self.LLVM_SAVEDSTACKS.length-1;
   },
-  llvm_stackrestore: function(p) {
-    var self = _llvm_stacksave;
+  {{{ toNiceIdent('llvm.stackrestore') }}}: function(p) {
+    var self = {{{ toNiceIdent('@llvm.stacksave') }}};
     var ret = self.LLVM_SAVEDSTACKS[p];
     self.LLVM_SAVEDSTACKS.splice(p, 1);
     Runtime.stackRestore(ret);
@@ -5287,29 +5287,29 @@ LibraryManager.library = {
     throw 'Pure virtual function called!';
   },
 
-  llvm_flt_rounds: function() {
+  {{{ toNiceIdent('llvm.flt.rounds') }}}: function() {
     return -1; // 'indeterminable' for FLT_ROUNDS
   },
 
-  llvm_memory_barrier: function(){},
+  {{{ toNiceIdent('llvm.memory.barrier') }}}: function(){},
 
-  llvm_atomic_load_add_i32_p0i32: function(ptr, delta) {
+  {{{ toNiceIdent('llvm.atomic.load.add.i32.p0i32') }}}: function(ptr, delta) {
     var ret = {{{ makeGetValue('ptr', '0', 'i32') }}};
     {{{ makeSetValue('ptr', '0', 'ret+delta', 'i32') }}};
     return ret;
   },
 
-  llvm_expect_i32__inline: function(val, expected) {
+  {{{ toNiceIdent('llvm.expect.i32') + '__inline' }}}: function(val, expected) {
     return '(' + val + ')';
   },
 
-  llvm_lifetime_start: function() {},
-  llvm_lifetime_end: function() {},
+  {{{ toNiceIdent('llvm.lifetime.start') }}}: function() {},
+  {{{ toNiceIdent('llvm.lifetime.end') }}}: function() {},
 
-  llvm_invariant_start: function() {},
-  llvm_invariant_end: function() {},
+  {{{ toNiceIdent('llvm.invariant.start') }}}: function() {},
+  {{{ toNiceIdent('llvm.invariant.end') }}}: function() {},
 
-  llvm_objectsize_i32: function() { return -1 }, // TODO: support this
+  {{{ toNiceIdent('llvm.objectsize.i32') }}}: function() { return -1 }, // TODO: support this
 
   // ==========================================================================
   // llvm-mono integration
@@ -5429,14 +5429,14 @@ LibraryManager.library = {
   floorf: 'Math.floor',
   pow: 'Math.pow',
   powf: 'Math.pow',
-  llvm_sqrt_f32: 'Math.sqrt',
-  llvm_sqrt_f64: 'Math.sqrt',
-  llvm_pow_f32: 'Math.pow',
-  llvm_pow_f64: 'Math.pow',
-  llvm_log_f32: 'Math.log',
-  llvm_log_f64: 'Math.log',
-  llvm_exp_f32: 'Math.exp',
-  llvm_exp_f64: 'Math.exp',
+  {{{ toNiceIdent('llvm.sqrt.f32') }}}: 'Math.sqrt',
+  {{{ toNiceIdent('llvm.sqrt.f64') }}}: 'Math.sqrt',
+  {{{ toNiceIdent('llvm.pow.f32') }}}: 'Math.pow',
+  {{{ toNiceIdent('llvm.pow.f64') }}}: 'Math.pow',
+  {{{ toNiceIdent('llvm.log.f32') }}}: 'Math.log',
+  {{{ toNiceIdent('llvm.log.f64') }}}: 'Math.log',
+  {{{ toNiceIdent('llvm.exp.f32') }}}: 'Math.exp',
+  {{{ toNiceIdent('llvm.exp.f64') }}}: 'Math.exp',
   ldexp: function(x, exp_) {
     return x * Math.pow(2, exp_);
   },

@@ -74,14 +74,6 @@ function removeAllPointing(type) {
   return removePointing(type, pointingLevels(type));
 }
 
-function toNiceIdent(ident) {
-  assert(ident);
-  if (parseFloat(ident) == ident) return ident;
-  if (ident == 'null') return '0'; // see parseNumerical
-  if (ident == 'undef') return '0';
-  return ident.replace('%', '$').replace(/["&\\ \.@:<>,\*\[\]\(\)-]/g, '_');
-}
-
 // Kind of a hack. In some cases we have strings that we do not want
 // to |toNiceIdent|, as they are the output of previous processing. We
 // should refactor everything into an object, with an explicit flag
@@ -409,7 +401,7 @@ function hasVarArgs(params) {
 }
 
 var UNINDEXABLE_GLOBALS = set(
-  '_llvm_global_ctors' // special-cased
+  toNiceIdent('@llvm.global_ctors') // special-cased
 );
 
 function isIndexableGlobal(ident) {

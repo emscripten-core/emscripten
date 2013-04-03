@@ -227,7 +227,6 @@ function JSify(data, functionsOnly, givenFunctions) {
       return tokens.map(handleSegment)
     }
 
-    //dprint('jsifier const: ' + JSON.stringify(value) + ',' + type + '\n');
     if (value.intertype in PARSABLE_LLVM_FUNCTIONS) {
       return [finalizeLLVMFunctionCall(value)];
     } else if (Runtime.isNumberType(type) || pointingLevels(type) >= 1) {
@@ -261,7 +260,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       item.intertype = 'GlobalVariableStub';
       assert(!item.lines); // FIXME remove this, after we are sure it isn't needed
       var ret = [item];
-      if (item.ident == '_llvm_global_ctors') {
+      if (item.ident == toNiceIdent('@llvm.global_ctors')) {
         item.JS = '\n__ATINIT__ = __ATINIT__.concat([\n' +
                     item.ctors.map(function(ctor) { return '  { func: function() { ' + ctor + '() } }' }).join(',\n') +
                   '\n]);\n';

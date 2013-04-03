@@ -2,6 +2,14 @@
 
 // Various namespace-like modules
 
+function toNiceIdent(ident) {
+  assert(ident);
+  if (parseFloat(ident) == ident) return ident;
+  if (ident == 'null') return '0'; // see parseNumerical
+  if (ident == 'undef') return '0';
+  return ident.replace('%', '$').replace(/\./g, '$$').replace(/["&\\ @:<>,\*\[\]\(\)-]/g, '_');
+}
+
 var LLVM = {
   LINKAGES: set('private', 'linker_private', 'linker_private_weak', 'linker_private_weak_def_auto', 'internal',
                 'available_externally', 'linkonce', 'common', 'weak', 'appending', 'extern_weak', 'linkonce_odr',
@@ -17,7 +25,7 @@ var LLVM = {
   EXTENDS: set('sext', 'zext'),
   COMPS: set('icmp', 'fcmp'),
   CONVERSIONS: set('inttoptr', 'ptrtoint', 'uitofp', 'sitofp', 'fptosi', 'fptoui'),
-  INTRINSICS_32: set('_llvm_memcpy_p0i8_p0i8_i64', '_llvm_memmove_p0i8_p0i8_i64', '_llvm_memset_p0i8_i64'), // intrinsics that need args converted to i32 in USE_TYPED_ARRAYS == 2
+  INTRINSICS_32: set(toNiceIdent('@llvm.memcpy.p0i8.p0i8.i64'), toNiceIdent('@llvm.memmove.p0i8.p0i8.i64'), toNiceIdent('@llvm.memset.p0i8.i64')), // intrinsics that need args converted to i32 in USE_TYPED_ARRAYS == 2
 };
 LLVM.GLOBAL_MODIFIERS = set(keys(LLVM.LINKAGES).concat(['constant', 'global', 'hidden']));
 
