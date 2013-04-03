@@ -254,6 +254,7 @@ def check_sanity(force=False):
 # Tools/paths
 
 LLVM_ADD_VERSION = os.getenv('LLVM_ADD_VERSION')
+CLANG_ADD_VERSION = os.getenv('CLANG_ADD_VERSION')
 
 # Some distributions ship with multiple llvm versions so they add
 # the version to the binaries, cope with that
@@ -263,8 +264,16 @@ def build_llvm_tool_path(tool):
   else:
     return os.path.join(LLVM_ROOT, tool)
 
-CLANG_CC=os.path.expanduser(os.path.join(LLVM_ROOT, 'clang'))
-CLANG_CPP=os.path.expanduser(os.path.join(LLVM_ROOT, 'clang++'))
+# Some distributions ship with multiple clang versions so they add
+# the version to the binaries, cope with that
+def build_clang_tool_path(tool):
+  if CLANG_ADD_VERSION:
+    return os.path.join(LLVM_ROOT, tool + "-" + CLANG_ADD_VERSION)
+  else:
+    return os.path.join(LLVM_ROOT, tool)
+
+CLANG_CC=os.path.expanduser(build_clang_tool_path('clang'))
+CLANG_CPP=os.path.expanduser(build_clang_tool_path('clang++'))
 CLANG=CLANG_CPP
 LLVM_LINK=build_llvm_tool_path('llvm-link')
 LLVM_AR=build_llvm_tool_path('llvm-ar')
