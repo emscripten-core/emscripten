@@ -74,7 +74,7 @@ var LibraryOpenAL = {
   },
 
   alGetError: function() {
-    if (AL.currentContext == 0) {
+    if (AL.currentContext == 0 || !AL.contexts[AL.currentContext -1]) {
       return 0xA004 /* AL_INVALID_OPERATION */;
     } else {
       return AL.contexts[AL.currentContext -1].err;
@@ -89,7 +89,7 @@ var LibraryOpenAL = {
 
   alDeleteSources: function(count, sources)
   {
-    if (AL.currentContext == 0) {
+    if (AL.currentContext == 0 || !AL.contexts[AL.currentContext -1]) {
 #if OPENAL_DEBUG
       console.error("alDeleteSources called without a valid context");
 #endif
@@ -102,7 +102,7 @@ var LibraryOpenAL = {
   },
 
   alGenSources: function(count, sources) {
-    if (AL.currentContext == 0) {
+    if (AL.currentContext == 0 || !AL.contexts[AL.currentContext -1]) {
 #if OPENAL_DEBUG
       console.error("alGenSources called without a valid context");
 #endif
@@ -130,7 +130,7 @@ var LibraryOpenAL = {
   },
 
   alSourcei: function(source, param, value) {
-    if (AL.currentContext == 0) {
+    if (AL.currentContext == 0 || !AL.contexts[AL.currentContext -1]) {
 #if OPENAL_DEBUG
       console.error("alSourcei called without a valid context");
 #endif
@@ -162,7 +162,7 @@ var LibraryOpenAL = {
   },
 
   alSourcef: function(source, param, value) {
-    if (AL.currentContext == 0) {
+    if (AL.currentContext == 0 || !AL.contexts[AL.currentContext -1]) {
 #if OPENAL_DEBUG
       console.error("alSourcef called without a valid context");
 #endif
@@ -176,7 +176,9 @@ var LibraryOpenAL = {
     }
     switch (param) {
     case 0x100A /* AL_GAIN */:
-      AL.contexts[AL.currentContext -1].src[source - 1].gain.gain.value = value;
+      if (AL.contexts[AL.currentContext -1].src[source - 1]) {
+        AL.contexts[AL.currentContext -1].src[source - 1].gain.gain.value = value;
+      }
       break;
     case 0x1003 /* AL_PITCH */:
 #if OPENAL_DEBUG
@@ -192,7 +194,7 @@ var LibraryOpenAL = {
   },
 
   alSourcefv: function(source, param, value) {
-    if (AL.currentContext == 0) {
+    if (AL.currentContext == 0 || !AL.contexts[AL.currentContext -1]) {
 #if OPENAL_DEBUG
       console.error("alSourcefv called without a valid context");
 #endif
@@ -228,7 +230,7 @@ var LibraryOpenAL = {
   },
 
   alSourceQueueBuffers: function(source, count, buffers) {
-    if (AL.currentContext == 0) {
+    if (AL.currentContext == 0 || !AL.contexts[AL.currentContext -1]) {
 #if OPENAL_DEBUG
       console.error("alSourceQueueBuffers called without a valid context");
 #endif
@@ -260,7 +262,7 @@ var LibraryOpenAL = {
 
   alSourceUnqueueBuffers: function(source, count, buffers)
   {
-    if (AL.currentContext == 0) {
+    if (AL.currentContext == 0 || !AL.contexts[AL.currentContext -1]) {
 #if OPENAL_DEBUG
       console.error("alSourceUnqueueBuffers called without a valid context");
 #endif
@@ -292,7 +294,7 @@ var LibraryOpenAL = {
 
   alDeleteBuffers: function(count, buffers)
   {
-    if (AL.currentContext == 0) {
+    if (AL.currentContext == 0 || !AL.contexts[AL.currentContext -1]) {
 #if OPENAL_DEBUG
       console.error("alDeleteBuffers called without a valid context");
 #endif
@@ -300,19 +302,21 @@ var LibraryOpenAL = {
     }
     for (var i = 0; i < count; ++i) {
       var bufferIdx = {{{ makeGetValue('buffers', 'i*4', 'i32') }}} - 1;
-      var buffer = AL.contexts[AL.currentContext -1].buf[bufferIdx].buf;
-      for (var j = 0; j < AL.contexts[AL.currentContext -1].src.length; ++j) {
-        if (buffer == AL.contexts[AL.currentContext -1].src[j].buffer) {
-          AL.contexts[AL.currentContext -1].err = 0xA004 /* AL_INVALID_OPERATION  */;
-          return;
+      if (bufferIdx < AL.contexts[AL.currentContext -1].buf.length && AL.contexts[AL.currentContext -1].buf[bufferIdx]) {
+        var buffer = AL.contexts[AL.currentContext -1].buf[bufferIdx].buf;
+        for (var j = 0; j < AL.contexts[AL.currentContext -1].src.length; ++j) {
+          if (buffer == AL.contexts[AL.currentContext -1].src[j].buffer) {
+            AL.contexts[AL.currentContext -1].err = 0xA004 /* AL_INVALID_OPERATION  */;
+            return;
+          }
         }
+        delete AL.contexts[AL.currentContext -1].buf[bufferIdx];
       }
-      delete AL.contexts[AL.currentContext -1].buf[bufferIdx];
     }
   },
 
   alGenBuffers: function(count, buffers) {
-    if (AL.currentContext == 0) {
+    if (AL.currentContext == 0 || !AL.contexts[AL.currentContext -1]) {
 #if OPENAL_DEBUG
       console.error("alGenBuffers called without a valid context");
 #endif
@@ -325,7 +329,7 @@ var LibraryOpenAL = {
   },
 
   alBufferData: function(buffer, format, data, size, freq) {
-    if (AL.currentContext == 0) {
+    if (AL.currentContext == 0 || !AL.contexts[AL.currentContext -1]) {
 #if OPENAL_DEBUG
       console.error("alBufferData called without a valid context");
 #endif
@@ -384,7 +388,7 @@ var LibraryOpenAL = {
 
   alSourcePlay__deps: ["alSourceStop"],
   alSourcePlay: function(source) {
-    if (AL.currentContext == 0) {
+    if (AL.currentContext == 0 || !AL.contexts[AL.currentContext -1]) {
 #if OPENAL_DEBUG
       console.error("alSourcePlay called without a valid context");
 #endif
@@ -421,7 +425,7 @@ var LibraryOpenAL = {
   },
 
   alSourceStop: function(source) {
-    if (AL.currentContext == 0) {
+    if (AL.currentContext == 0|| !AL.contexts[AL.currentContext -1]) {
 #if OPENAL_DEBUG
       console.error("alSourceStop called without a valid context");
 #endif
@@ -433,14 +437,14 @@ var LibraryOpenAL = {
 #endif
       return;
     }
-    if ("src" in AL.contexts[AL.currentContext -1].src[source - 1]) {
+    if (AL.contexts[AL.currentContext -1].src[source - 1] && "src" in AL.contexts[AL.currentContext -1].src[source - 1]) {
       AL.contexts[AL.currentContext -1].src[source - 1]["src"].stop(0);
       delete AL.contexts[AL.currentContext -1].src[source - 1]["src"];
     }
   },
 
   alSourcePause: function(source) {
-    if (AL.currentContext == 0) {
+    if (AL.currentContext == 0 || !AL.contexts[AL.currentContext -1]) {
 #if OPENAL_DEBUG
       console.error("alSourcePause called without a valid context");
 #endif
@@ -462,7 +466,7 @@ var LibraryOpenAL = {
   },
 
   alGetSourcei: function(source, param, value) {
-    if (AL.currentContext == 0) {
+    if (AL.currentContext == 0 || !AL.contexts[AL.currentContext -1]) {
 #if OPENAL_DEBUG
       console.error("alGetSourcei called without a valid context");
 #endif
@@ -527,7 +531,7 @@ var LibraryOpenAL = {
   },
 
   alListenerfv: function(param, values) {
-    if (AL.currentContext == 0) {
+    if (AL.currentContext == 0 || !AL.contexts[AL.currentContext -1]) {
 #if OPENAL_DEBUG
       console.error("alListenerfv called without a valid context");
 #endif
@@ -581,6 +585,10 @@ var LibraryOpenAL = {
   alcGetProcAddress: function(device, fname) {
     return 0;
   },
+  
+  alSourceRewind: function(source) {
+  
+  }
 };
 
 autoAddDeps(LibraryOpenAL, '$AL');
