@@ -641,7 +641,7 @@ RegisteredPointer.prototype.toWireType = function(destructors, handle) {
         }
     }
     if (!(handle instanceof this.registeredClass.constructor)) {
-        throwBindingError('Expected null or instance of ' + this.name + ', got ' + IMVU.repr(handle));
+        throwBindingError('Expected null or instance of ' + this.name + ', got ' + _embind_repr(handle));
     }
     // TODO: this is not strictly true
     // We could support BY_EMVAL conversions from raw pointers to smart pointers
