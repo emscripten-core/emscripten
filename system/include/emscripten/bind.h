@@ -472,14 +472,6 @@ namespace emscripten {
             const noncopyable& operator=(const noncopyable&) = delete;
         };
 
-        template<typename T>
-        struct ReturnType;
-
-        template<typename RT, typename ClassType, typename... Args>
-        struct ReturnType<RT (ClassType::*)(Args...)> {
-            typedef RT type;
-        };
-
         template<typename ClassType, typename ElementType>
         typename BindingType<ElementType>::WireType get_by_index(int index, ClassType& ptr) {
             return BindingType<ElementType>::toWireType(ptr[index]);
@@ -553,11 +545,8 @@ namespace emscripten {
         template<int Index>
         value_tuple& element(index<Index>) {
             using namespace internal;
-            typedef
-                typename std::remove_reference<
-                    typename ReturnType<decltype(&ClassType::operator[])>::type
-                >::type
-                ElementType;
+            ClassType* null = 0;
+            typedef typename std::remove_reference<decltype((*null)[Index])>::type ElementType;
             _embind_register_tuple_element(
                 TypeID<ClassType>::get(),
                 TypeID<ElementType>::get(),
@@ -633,11 +622,8 @@ namespace emscripten {
         template<int Index>
         value_struct& field(const char* fieldName, index<Index>) {
             using namespace internal;
-            typedef
-                typename std::remove_reference<
-                    typename ReturnType<decltype(&ClassType::operator[])>::type
-                >::type
-                ElementType;
+            ClassType* null = 0;
+            typedef typename std::remove_reference<decltype((*null)[Index])>::type ElementType;
             _embind_register_struct_field(
                 TypeID<ClassType>::get(),
                 fieldName,

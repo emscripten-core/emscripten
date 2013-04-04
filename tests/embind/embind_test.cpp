@@ -736,6 +736,10 @@ struct Vector {
         return (&x)[i];
     }
 
+    const float& operator[](int i) const {
+        return (&x)[i];
+    }
+
     float getY() const {
         return y;
     }
