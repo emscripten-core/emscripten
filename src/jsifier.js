@@ -1504,7 +1504,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       if (phase == 'pre') {
         if (memoryInitialization.length > 0) {
           // write out the singleton big memory initialization value
-          print('/* teh global */ ' + makePointer(memoryInitialization, null, 'ALLOC_NONE', 'i8', 'TOTAL_STACK', true)); // we assert on TOTAL_STACK == GLOBAL_BASE
+          print('/* memory initializer */ ' + makePointer(memoryInitialization, null, 'ALLOC_NONE', 'i8', 'TOTAL_STACK', true)); // we assert on TOTAL_STACK == GLOBAL_BASE
         }
       }
 
