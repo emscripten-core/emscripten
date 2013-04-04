@@ -1498,49 +1498,46 @@ function makePointer(slab, pos, allocator, type, ptr, finalMemoryInitialization)
       }
     }
   } else { // USE_TYPED_ARRAYS == 2
-    var fail = false;
-    if (typeof slab === 'object') {
-      // flatten out into i8 values, so we can just to typed array .set()
-      for (var i = 0; i < slab.length; i++) {
-        if (!isNumber(slab[i])) { fail = true; break }
-      }
-      if (!fail) {
-        // XXX This heavily assumes the target endianness is the same as our current endianness! XXX
-        var i = 0;
-        var temp64f = new Float64Array(1);
-        var temp32f = new Float32Array(temp64f.buffer);
-        var temp32 = new Uint32Array(temp64f.buffer);
-        var temp16 = new Uint16Array(temp64f.buffer);
-        var temp8 = new Uint8Array(temp64f.buffer);
-        while (i < slab.length) {
-          var currType = types[i];
-          if (!currType) { i++; continue }
-          var currSize = 0, currValue = slab[i];
-          switch (currType) {
-            case 'i1':
-            case 'i8': i++; continue;
-            case 'i16': temp16[0] = currValue;     currSize = 2; break;
-            case 'i64': // fall through, i64 is two i32 chunks
-            case 'i32': temp32[0] = currValue;     currSize = 4; break;
-            case 'float': temp32f[0] = currValue;  currSize = 4; break;
-            case 'double': temp64f[0] = currValue; currSize = 8; break;
-            default: {
-              if (currType[currType.length-1] == '*') {
-                temp32[0] = currValue;
-                currSize = 4;
-              } else {
-                throw 'what? ' + types[i];
-              }
+    // XXX This heavily assumes the target endianness is the same as our current endianness! XXX
+    var i = 0;
+    var temp64f = new Float64Array(1);
+    var temp32f = new Float32Array(temp64f.buffer);
+    var temp32 = new Uint32Array(temp64f.buffer);
+    var temp16 = new Uint16Array(temp64f.buffer);
+    var temp8 = new Uint8Array(temp64f.buffer);
+    while (i < slab.length) {
+      var currType = types[i];
+      if (!currType) { i++; continue }
+      var currSize = 0, currValue = slab[i];
+      switch (currType) {
+        case 'i1':
+        case 'i8': i++; continue;
+        case 'i16': temp16[0] = currValue;     currSize = 2; break;
+        case 'i64': // fall through, i64 is two i32 chunks
+        case 'i32': temp32[0] = currValue;     currSize = 4; break;
+        case 'float': temp32f[0] = currValue;  currSize = 4; break;
+        case 'double': temp64f[0] = currValue; currSize = 8; break;
+        default: {
+          if (currType[currType.length-1] == '*') {
+            if (!isNumber(currValue)) { // function table stuff, etc.
+              slab[i] = currValue;
+              slab[i+1] = slab[i+2] = slab[i+3] = 0;
+              i += 4;
+              continue;
             }
+            temp32[0] = currValue;
+            currSize = 4;
+          } else {
+            throw 'what? ' + types[i];
           }
-          for (var j = 0; j < currSize; j++) {
-            slab[i+j] = temp8[j];
-          }
-          i += currSize;
         }
       }
+      for (var j = 0; j < currSize; j++) {
+        slab[i+j] = temp8[j];
+      }
+      i += currSize;
     }
-    if (!fail) types = 'i8';
+    types = 'i8';
   }
   if (allocator == 'ALLOC_NONE') {
     if (!finalMemoryInitialization) {
