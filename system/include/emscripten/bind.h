@@ -471,7 +471,29 @@ namespace emscripten {
             noncopyable(const noncopyable&) = delete;
             const noncopyable& operator=(const noncopyable&) = delete;
         };
+
+        template<typename T>
+        struct ReturnType;
+
+        template<typename RT, typename ClassType, typename... Args>
+        struct ReturnType<RT (ClassType::*)(Args...)> {
+            typedef RT type;
+        };
+
+        template<typename ClassType, typename ElementType>
+        typename BindingType<ElementType>::WireType get_by_index(int index, ClassType& ptr) {
+            return BindingType<ElementType>::toWireType(ptr[index]);
+        }
+
+        template<typename ClassType, typename ElementType>
+        void set_by_index(int index, ClassType& ptr, typename BindingType<ElementType>::WireType wt) {
+            ptr[index] = BindingType<ElementType>::fromWireType(wt);
+        }
     }
+
+    template<int Index>
+    struct index {
+    };
 
     ////////////////////////////////////////////////////////////////////////////////
     // VALUE TUPLES
@@ -526,7 +548,26 @@ namespace emscripten {
                 reinterpret_cast<GenericFunction>(&SP::template set<ClassType>),
                 SP::getContext(setter));
             return *this;
-        }        
+        }
+
+        template<int Index>
+        value_tuple& element(index<Index>) {
+            using namespace internal;
+            typedef
+                typename std::remove_reference<
+                    typename ReturnType<decltype(&ClassType::operator[])>::type
+                >::type
+                ElementType;
+            _embind_register_tuple_element(
+                TypeID<ClassType>::get(),
+                TypeID<ElementType>::get(),
+                reinterpret_cast<GenericFunction>(&internal::get_by_index<ClassType, ElementType>),
+                reinterpret_cast<void*>(Index),
+                TypeID<ElementType>::get(),
+                reinterpret_cast<GenericFunction>(&internal::set_by_index<ClassType, ElementType>),
+                reinterpret_cast<void*>(Index));
+            return *this;
+        }
     };
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -586,6 +627,26 @@ namespace emscripten {
                 TypeID<typename SP::ArgumentType>::get(),
                 reinterpret_cast<GenericFunction>(&SP::template set<ClassType>),
                 SP::getContext(setter));
+            return *this;
+        }
+
+        template<int Index>
+        value_struct& field(const char* fieldName, index<Index>) {
+            using namespace internal;
+            typedef
+                typename std::remove_reference<
+                    typename ReturnType<decltype(&ClassType::operator[])>::type
+                >::type
+                ElementType;
+            _embind_register_struct_field(
+                TypeID<ClassType>::get(),
+                fieldName,
+                TypeID<ElementType>::get(),
+                reinterpret_cast<GenericFunction>(&internal::get_by_index<ClassType, ElementType>),
+                reinterpret_cast<void*>(Index),
+                TypeID<ElementType>::get(),
+                reinterpret_cast<GenericFunction>(&internal::set_by_index<ClassType, ElementType>),
+                reinterpret_cast<void*>(Index));
             return *this;
         }
     };

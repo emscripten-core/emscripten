@@ -977,32 +977,32 @@ module({
 
         test("can return tuples by value", function() {
             var c = cm.emval_test_return_TupleVector();
-            assert.deepEqual([1, 2, 3], c);
+            assert.deepEqual([1, 2, 3, 4], c);
         });
 
         test("tuples can contain tuples", function() {
             var c = cm.emval_test_return_TupleVectorTuple();
-            assert.deepEqual([[1, 2, 3]], c);
+            assert.deepEqual([[1, 2, 3, 4]], c);
         });
 
         test("can pass tuples by value", function() {
-            var c = cm.emval_test_take_and_return_TupleVector([4, 5, 6]);
-            assert.deepEqual([4, 5, 6], c);
+            var c = cm.emval_test_take_and_return_TupleVector([4, 5, 6, 7]);
+            assert.deepEqual([4, 5, 6, 7], c);
         });
 
         test("can return structs by value", function() {
             var c = cm.emval_test_return_StructVector();
-            assert.deepEqual({x: 1, y: 2, z: 3}, c);
+            assert.deepEqual({x: 1, y: 2, z: 3, w: 4}, c);
         });
 
         test("can pass structs by value", function() {
-            var c = cm.emval_test_take_and_return_StructVector({x: 4, y: 5, z: 6});
-            assert.deepEqual({x: 4, y: 5, z: 6}, c);
+            var c = cm.emval_test_take_and_return_StructVector({x: 4, y: 5, z: 6, w: 7});
+            assert.deepEqual({x: 4, y: 5, z: 6, w: 7}, c);
         });
 
         test("can pass and return tuples in structs", function() {
-            var d = cm.emval_test_take_and_return_TupleInStruct({field: [1, 2, 3]});
-            assert.deepEqual({field: [1, 2, 3]}, d);
+            var d = cm.emval_test_take_and_return_TupleInStruct({field: [1, 2, 3, 4]});
+            assert.deepEqual({field: [1, 2, 3, 4]}, d);
         });
 
         test("can clone handles", function() {
@@ -1364,9 +1364,9 @@ module({
                 called = true;
                 assert.equal(10, i);
                 assert.equal(1.5, f);
-                assert.deepEqual([1.25, 2.5, 3.75], tv);
-                assert.deepEqual({x: 1.25, y: 2.5, z: 3.75}, sv);
-            }, 10, 1.5, [1.25, 2.5, 3.75], {x: 1.25, y: 2.5, z: 3.75});
+                assert.deepEqual([1.25, 2.5, 3.75, 4], tv);
+                assert.deepEqual({x: 1.25, y: 2.5, z: 3.75, w:4}, sv);
+            }, 10, 1.5, [1.25, 2.5, 3.75, 4], {x: 1.25, y: 2.5, z: 3.75, w:4});
             assert.true(called);
         });
     });
@@ -1575,8 +1575,8 @@ module({
     BaseFixture.extend("constants", function() {
         assert.equal(10, cm.INT_CONSTANT);
         assert.equal("some string", cm.STRING_CONSTANT);
-        assert.deepEqual([1, 2, 3], cm.VALUE_TUPLE_CONSTANT);
-        assert.deepEqual({x:1,y:2,z:3}, cm.VALUE_STRUCT_CONSTANT);
+        assert.deepEqual([1, 2, 3, 4], cm.VALUE_TUPLE_CONSTANT);
+        assert.deepEqual({x:1,y:2,z:3,w:4}, cm.VALUE_STRUCT_CONSTANT);
     });
 });
 
