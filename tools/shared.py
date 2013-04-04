@@ -7,6 +7,9 @@ def listify(x):
   if type(x) is not list: return [x]
   return x
 
+# Temp file utilities
+from tempfiles import try_delete
+
 # On Windows python suffers from a particularly nasty bug if python is spawning new processes while python itself is spawned from some other non-console process.
 # Use a custom replacement for Popen on Windows to avoid the "WindowsError: [Error 6] The handle is invalid" errors when emcc is driven through cmake or mingw32-make. 
 # See http://bugs.python.org/issue3905
@@ -426,9 +429,6 @@ if not WINDOWS:
     ENV_PREFIX = ['env']
   except:
     pass
-
-# Temp file utilities
-from tempfiles import try_delete
 
 # Utilities
 
