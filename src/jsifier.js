@@ -311,20 +311,17 @@ function JSify(data, functionsOnly, givenFunctions) {
         if (!LibraryManager.library[item.ident.slice(1)]) return ret;
       }
 
+      // Special case: class vtables. We make sure they are null-terminated, to allow easy runtime operations
+      if (item.ident.substr(0, 5) == '__ZTV') {
+        constant = constant.concat(zeros(Runtime.alignMemory(constant.length + QUANTUM_SIZE) - constant.length));
+      }
+
       // NOTE: This is the only place that could potentially create static
       //       allocations in a shared library.
       constant = makePointer(constant, null, allocator, item.type, index);
-      var js;
 
-    	js = (index !== null ? '' : item.ident + '=') + constant + ';';
+      var js = (index !== null ? '' : item.ident + '=') + constant + ';';
 
-      // Special case: class vtables. We make sure they are null-terminated, to allow easy runtime operations
-      if (item.ident.substr(0, 5) == '__ZTV') {
-        if (index !== null) {
-          index = getFastValue(index, '+', Runtime.alignMemory(calcAllocatedSize(Variables.globals[item.ident].type)));
-        }
-        js += '\n' + makePointer([0], null, allocator, ['void*'], index) + ';';
-      }
       if (!ASM_JS && (EXPORT_ALL || (item.ident in EXPORTED_GLOBALS))) {
         js += '\nModule["' + item.ident + '"] = ' + item.ident + ';';
       }
