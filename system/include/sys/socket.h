@@ -17,7 +17,7 @@ extern "C" {
 #define SO_BROADCAST 6
 #define AF_UNIX PF_UNIX
 
-#define AF_UNSPEC 100
+#define AF_UNSPEC 0
 #define SOCK_STREAM 200
 #define SOL_SOCKET 50
 #define SO_ERROR 10
