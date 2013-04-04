@@ -1487,7 +1487,7 @@ module({
                 function() {
                     cm.getUnboundClass();
                 },
-                'Cannot call getUnboundClass due to unbound types: UnboundClass');
+                'Cannot call getUnboundClass due to unbound types: 12UnboundClass');
         });
 
         test("unbound base class produces error", function() {
@@ -1495,14 +1495,14 @@ module({
                 function() {
                     cm.getHasUnboundBase();
                 },
-                'Cannot call getHasUnboundBase due to unbound types: UnboundClass');
+                'Cannot call getHasUnboundBase due to unbound types: 12UnboundClass');
         });
 
         test("construct of class with unbound base", function() {
             assertMessage(
                 function() {
                     new cm.HasUnboundBase;
-                }, 'Cannot construct HasUnboundBase due to unbound types: UnboundClass');
+                }, 'Cannot construct HasUnboundBase due to unbound types: 12UnboundClass');
         });
 
         test("unbound constructor argument", function() {
@@ -1510,7 +1510,7 @@ module({
                 function() {
                     new cm.HasConstructorUsingUnboundArgument(1);
                 },
-                'Cannot construct HasConstructorUsingUnboundArgument due to unbound types: UnboundClass');
+                'Cannot construct HasConstructorUsingUnboundArgument due to unbound types: 12UnboundClass');
         });
 
         test("unbound constructor argument of class with unbound base", function() {
@@ -1518,7 +1518,7 @@ module({
                 function() {
                     new cm.HasConstructorUsingUnboundArgumentAndUnboundBase;
                 },
-                'Cannot construct HasConstructorUsingUnboundArgumentAndUnboundBase due to unbound types: SecondUnboundClass');
+                'Cannot construct HasConstructorUsingUnboundArgumentAndUnboundBase due to unbound types: 18SecondUnboundClass');
         });
         
         test('class function with unbound argument', function() {
@@ -1526,7 +1526,7 @@ module({
             assertMessage(
                 function() {
                     x.method();
-                }, 'Cannot call BoundClass.method due to unbound types: UnboundClass');
+                }, 'Cannot call BoundClass.method due to unbound types: 12UnboundClass');
             x.delete();
         });
 
@@ -1534,7 +1534,7 @@ module({
             assertMessage(
                 function() {
                     cm.BoundClass.classfunction();
-                }, 'Cannot call BoundClass.classfunction due to unbound types: UnboundClass');
+                }, 'Cannot call BoundClass.classfunction due to unbound types: 12UnboundClass');
         });
 
         test('class property of unbound type', function() {
@@ -1543,11 +1543,11 @@ module({
             assertMessage(
                 function() {
                     y = x.property;
-                }, 'Cannot access BoundClass.property due to unbound types: UnboundClass');
+                }, 'Cannot access BoundClass.property due to unbound types: 12UnboundClass');
             assertMessage(
                 function() {
                     x.property = 10;
-                }, 'Cannot access BoundClass.property due to unbound types: UnboundClass');
+                }, 'Cannot access BoundClass.property due to unbound types: 12UnboundClass');
             x.delete();
         });
         

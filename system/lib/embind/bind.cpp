@@ -1,5 +1,7 @@
 #include <emscripten/bind.h>
+#ifdef USE_CXA_DEMANGLE
 #include <../lib/libcxxabi/include/cxxabi.h>
+#endif
 #include <list>
 #include <vector>
 #include <typeinfo>
@@ -11,6 +13,7 @@ using namespace emscripten;
 
 extern "C" {
     const char* EMSCRIPTEN_KEEPALIVE __getTypeName(const std::type_info* ti) {
+#ifdef USE_CXA_DEMANGLE
         int stat;
         char* demangled = abi::__cxa_demangle(ti->name(), NULL, NULL, &stat);
         if (stat == 0 && demangled) {
@@ -27,6 +30,9 @@ extern "C" {
             default:
                 return strdup("<unknown error>");
         }
+#else
+        return strdup(ti->name());
+#endif
     }
 }
 
