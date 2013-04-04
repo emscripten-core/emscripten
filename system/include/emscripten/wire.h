@@ -122,7 +122,7 @@ namespace emscripten {
         template<>                                                  \
         struct BindingType<type> {                                  \
             typedef type WireType;                                  \
-            constexpr static WireType toWireType(const type&  v) {  \
+            constexpr static WireType toWireType(const type& v) {   \
                 return v;                                           \
             }                                                       \
             constexpr static type fromWireType(WireType v) {        \

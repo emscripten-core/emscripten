@@ -159,6 +159,11 @@ namespace emscripten {
                 const char* name,
                 GenericFunction constructor,
                 GenericFunction destructor);
+
+            void _embind_register_constant(
+                const char* name,
+                TYPEID constantType,
+                uintptr_t value);
         }
     }
 }
@@ -1022,6 +1027,32 @@ namespace emscripten {
             return *this;
         }
     };
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // CONSTANTS
+    ////////////////////////////////////////////////////////////////////////////////
+
+    namespace internal {
+        template<typename T>
+        uintptr_t asGenericValue(T t) {
+            return static_cast<uintptr_t>(t);
+        }
+
+        template<typename T>
+        uintptr_t asGenericValue(T* p) {
+            return reinterpret_cast<uintptr_t>(p);
+        }
+    }
+
+    template<typename ConstantType>
+    void constant(const char* name, const ConstantType& v) {
+        using namespace internal;
+        typedef BindingType<const ConstantType&> BT;
+        _embind_register_constant(
+            name,
+            TypeID<const ConstantType&>::get(),
+            asGenericValue(BindingType<const ConstantType&>::toWireType(v)));
+    }
 
     namespace internal {
         template<typename T>

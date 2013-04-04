@@ -1352,6 +1352,16 @@ int overloaded_function(int i, int j)
     return 2;
 }
 
+EMSCRIPTEN_BINDINGS(constants) {
+    constant("INT_CONSTANT", 10);
+    constant("STRING_CONSTANT", std::string("some string"));
+    TupleVector tv;
+    tv.x = 1;
+    tv.y = 2;
+    tv.z = 3;
+    constant("VALUE_TUPLE_CONSTANT", tv);
+}
+
 EMSCRIPTEN_BINDINGS(tests) {
     register_js_interface();
         

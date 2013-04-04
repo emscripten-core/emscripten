@@ -1515,6 +1515,12 @@ module({
         assert.equal('ValHolder$setVal', cm.ValHolder.prototype.setVal.name);
         assert.equal('ValHolder$makeConst', cm.ValHolder.makeConst.name);
     });
+
+    BaseFixture.extend("constants", function() {
+        assert.equal(10, cm.INT_CONSTANT);
+        assert.equal("some string", cm.STRING_CONSTANT);
+        //assert.deepEqual([1, 2, 3], cm.VALUE_TUPLE_CONSTANT);
+    });
 });
 
 /* global run_all_tests */
