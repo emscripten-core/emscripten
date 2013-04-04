@@ -1457,7 +1457,9 @@ function makeGetPos(ptr) {
 
 var IHEAP_FHEAP = set('IHEAP', 'IHEAPU', 'FHEAP');
 
-function makePointer(slab, pos, allocator, type, ptr) {
+var memoryInitialization = [];
+
+function makePointer(slab, pos, allocator, type, ptr, finalMemoryInitialization) {
   assert(type, 'makePointer requires type info');
   if (typeof slab == 'string' && (slab.substr(0, 4) === 'HEAP' || (USE_TYPED_ARRAYS == 1 && slab in IHEAP_FHEAP))) return pos;
   var types = generateStructTypes(type);
@@ -1515,6 +1517,7 @@ function makePointer(slab, pos, allocator, type, ptr) {
           if (!currType) { i++; continue }
           var currSize = 0, currValue = slab[i];
           switch (currType) {
+            case 'i1':
             case 'i8': i++; continue;
             case 'i16': temp16[0] = currValue;     currSize = 2; break;
             case 'i64': // fall through, i64 is two i32 chunks
@@ -1539,6 +1542,22 @@ function makePointer(slab, pos, allocator, type, ptr) {
     }
     if (!fail) types = 'i8';
   }
+  if (allocator == 'ALLOC_NONE') {
+    if (!finalMemoryInitialization) {
+      // writing out into memory, without a normal allocation. We put all of these into a single big chunk.
+      assert(USE_TYPED_ARRAYS == 2);
+      assert(typeof slab == 'object');
+      assert(slab.length % QUANTUM_SIZE == 0, slab.length); // must be aligned already
+      var offset = ptr - TOTAL_STACK; // we assert on GLOBAL_BASE being equal to TOTAL_STACK
+      for (var i = 0; i < slab.length; i++) {
+        memoryInitialization[offset + i] = slab[i];
+      }
+      return '';
+    }
+    // This is the final memory initialization
+    types = 'i8';
+  }
+
   // JS engines sometimes say array initializers are too large. Work around that by chunking and calling concat to combine at runtime
   var chunkSize = 10240;
   function chunkify(array) {
@@ -1554,12 +1573,12 @@ function makePointer(slab, pos, allocator, type, ptr) {
   if (typeof slab == 'object' && slab.length > chunkSize) {
     slab = chunkify(slab);
   }
-  if (typeof slab == 'object') slab = '[' + slab.join(',') + ']';
   if (typeof types != 'string' && types.length > chunkSize) {
     types = chunkify(types);
   } else {
     types = JSON.stringify(types);
   }
+  if (typeof slab == 'object') slab = '[' + slab.join(',') + ']';
   return 'allocate(' + slab + ', ' + types + (allocator ? ', ' + allocator : '') + (allocator == 'ALLOC_NONE' ? ', ' + ptr : '') + ')';
 }
 

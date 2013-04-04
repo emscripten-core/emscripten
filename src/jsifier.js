@@ -323,7 +323,8 @@ function JSify(data, functionsOnly, givenFunctions) {
       //       allocations in a shared library.
       constant = makePointer(constant, null, allocator, item.type, index);
 
-      var js = (index !== null ? '' : item.ident + '=') + constant + ';';
+      var js = (index !== null ? '' : item.ident + '=') + constant;
+      if (js) js += ';';
 
       if (!ASM_JS && (EXPORT_ALL || (item.ident in EXPORTED_GLOBALS))) {
         js += '\nModule["' + item.ident + '"] = ' + item.ident + ';';
@@ -1497,8 +1498,17 @@ function JSify(data, functionsOnly, givenFunctions) {
           print('assert(STATICTOP < TOTAL_MEMORY);\n');
         }
       }
-      var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable).concat(itemsDict.GlobalVariablePostSet);
+      var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable);
       if (!DEBUG_MEMORY) print(generated.map(function(item) { return item.JS }).join('\n'));
+
+      if (phase == 'pre') {
+        if (memoryInitialization.length > 0) {
+          // write out the singleton big memory initialization value
+          print('/* teh global */ ' + makePointer(memoryInitialization, null, 'ALLOC_NONE', 'i8', 'TOTAL_STACK', true)); // we assert on TOTAL_STACK == GLOBAL_BASE
+        }
+      }
+
+      if (!DEBUG_MEMORY) print(itemsDict.GlobalVariablePostSet.map(function(item) { return item.JS }).join('\n'));
       return;
     }
 
@@ -1520,7 +1530,6 @@ function JSify(data, functionsOnly, givenFunctions) {
           }
         });
       }
-
       JSify(globalsData, true, Functions);
       globalsData = null;
       data.unparsedGlobalss = null;
