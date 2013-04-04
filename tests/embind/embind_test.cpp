@@ -1339,6 +1339,83 @@ public:
     }
 };
 
+class MultipleOverloads {
+public:
+    MultipleOverloads() {}
+    
+    int value;
+    static int staticValue;
+    
+    int Func(int i) {
+        assert(i == 10);
+        value = 1;
+        return 1;
+    }
+    int Func(int i, int j) {
+        assert(i == 20);
+        assert(j == 20);
+        value = 2;
+        return 2;
+    }
+
+    int WhichFuncCalled() const {
+        return value;
+    }
+    
+    static int StaticFunc(int i) {
+        assert(i == 10);
+        staticValue = 1;
+        return 1;
+    }
+    static int StaticFunc(int i, int j) {
+        assert(i == 20);
+        assert(j == 20);
+        staticValue = 2;
+        return 2;
+    }
+
+    static int WhichStaticFuncCalled() {
+        return staticValue;
+    }
+};
+
+class MultipleOverloadsDerived : public MultipleOverloads {
+public:
+    MultipleOverloadsDerived() {}
+        
+    int Func(int i, int j, int k) {
+        assert(i == 30);
+        assert(j == 30);
+        assert(k == 30);
+        value = 3;
+        return 3;
+    }
+    int Func(int i, int j, int k, int l) {
+        assert(i == 40);
+        assert(j == 40);
+        assert(k == 40);
+        assert(l == 40);
+        value = 4;
+        return 4;
+    }
+    
+    static int StaticFunc(int i, int j, int k) {
+        assert(i == 30);
+        assert(j == 30);
+        assert(k == 30);
+        staticValue = 3;
+        return 3;
+    }
+    static int StaticFunc(int i, int j, int k, int l) {
+        assert(i == 40);
+        assert(j == 40);
+        assert(k == 40);
+        assert(l == 40);
+        staticValue = 4;
+        return 4;
+    }
+};
+
 int overloaded_function(int i)
 {
     assert(i == 10);
@@ -1823,6 +1900,22 @@ EMSCRIPTEN_BINDINGS(tests) {
         .constructor<int, int>()
         .constructor<int, int, int>()
         .function("WhichCtorCalled", &MultipleCtors::WhichCtorCalled);
+        
+    class_<MultipleOverloads>("MultipleOverloads")
+        .constructor<>()
+        .function("Func", (int(MultipleOverloads::*)(int))&MultipleOverloads::Func)
+        .function("Func", (int(MultipleOverloads::*)(int,int))&MultipleOverloads::Func)
+        .function("WhichFuncCalled", &MultipleOverloads::WhichFuncCalled)
+        .class_function("StaticFunc", (int(*)(int))&MultipleOverloads::StaticFunc)
+        .class_function("StaticFunc", (int(*)(int,int))&MultipleOverloads::StaticFunc)
+        .class_function("WhichStaticFuncCalled", &MultipleOverloads::WhichStaticFuncCalled);
+
+    class_<MultipleOverloadsDerived, base<MultipleOverloads> >("MultipleOverloadsDerived")
+        .constructor<>()
+        .function("Func", (int(MultipleOverloadsDerived::*)(int,int,int))&MultipleOverloadsDerived::Func)
+        .function("Func", (int(MultipleOverloadsDerived::*)(int,int,int,int))&MultipleOverloadsDerived::Func)
+        .class_function("StaticFunc", (int(*)(int,int,int))&MultipleOverloadsDerived::StaticFunc)
+        .class_function("StaticFunc", (int(*)(int,int,int,int))&MultipleOverloadsDerived::StaticFunc);
 }
 
 // tests for out-of-order registration

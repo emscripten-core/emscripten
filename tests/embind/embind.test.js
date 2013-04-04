@@ -620,6 +620,62 @@ module({
             assert.throws(cm.BindingError, function() { cm.overloaded_function(30, 30, 30); });
         });
 
+        test("overloading of class member functions", function() {
+            var foo = new cm.MultipleOverloads();
+            assert.equal(foo.Func(10), 1);
+            assert.equal(foo.WhichFuncCalled(), 1);
+            assert.equal(foo.Func(20, 20), 2);
+            assert.equal(foo.WhichFuncCalled(), 2);
+            foo.delete();
+        });
+
+        test("wrong number of arguments to an overloaded class member function", function() {
+            var foo = new cm.MultipleOverloads();
+            assert.throws(cm.BindingError, function() { foo.Func(); });
+            assert.throws(cm.BindingError, function() { foo.Func(30, 30, 30); });
+            foo.delete();
+        });
+
+        test("wrong number of arguments to an overloaded class static function", function() {
+            assert.throws(cm.BindingError, function() { cm.MultipleOverloads.StaticFunc(); });
+            assert.throws(cm.BindingError, function() { cm.MultipleOverloads.StaticFunc(30, 30, 30); });
+        });
+
+        test("overloading of derived class member functions", function() {
+            var foo = new cm.MultipleOverloadsDerived();
+            
+            // NOTE: In C++, default lookup rules will hide overloads from base class if derived class creates them.
+            // In JS, we make the base class overloads implicitly available. In C++, they would need to be explicitly
+            // invoked, like foo.MultipleOverloads::Func(10);
+            assert.equal(foo.Func(10), 1);
+            assert.equal(foo.WhichFuncCalled(), 1);
+            assert.equal(foo.Func(20, 20), 2);
+            assert.equal(foo.WhichFuncCalled(), 2);
+
+            assert.equal(foo.Func(30, 30, 30), 3);
+            assert.equal(foo.WhichFuncCalled(), 3);
+            assert.equal(foo.Func(40, 40, 40, 40), 4);
+            assert.equal(foo.WhichFuncCalled(), 4);
+            foo.delete();
+        });
+        
+        test("overloading of class static functions", function() {
+            assert.equal(cm.MultipleOverloads.StaticFunc(10), 1);
+            assert.equal(cm.MultipleOverloads.WhichStaticFuncCalled(), 1);
+            assert.equal(cm.MultipleOverloads.StaticFunc(20, 20), 2);
+            assert.equal(cm.MultipleOverloads.WhichStaticFuncCalled(), 2);
+        });
+
+        test("overloading of derived class static functions", function() {
+            assert.equal(cm.MultipleOverloadsDerived.StaticFunc(30, 30, 30), 3);
+            // TODO: Cannot access static member functions of a Base class via Derived.
+//            assert.equal(cm.MultipleOverloadsDerived.WhichStaticFuncCalled(), 3);
+            assert.equal(cm.MultipleOverloads.WhichStaticFuncCalled(), 3);
+            assert.equal(cm.MultipleOverloadsDerived.StaticFunc(40, 40, 40, 40), 4);
+            // TODO: Cannot access static member functions of a Base class via Derived.
+//            assert.equal(cm.MultipleOverloadsDerived.WhichStaticFuncCalled(), 4);
+            assert.equal(cm.MultipleOverloads.WhichStaticFuncCalled(), 4);
+        });
 /*
         test("can get templated member classes then call its member functions", function() {
             var p = new cm.ContainsTemplatedMemberClass();
