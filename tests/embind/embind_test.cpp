@@ -721,7 +721,20 @@ std::map<std::string, int> embind_test_get_string_int_map() {
 };
 
 struct Vector {
-    float x, y, z;
+    Vector() = delete;
+
+    Vector(float x_, float y_, float z_, float w_)
+        : x(x_)
+        , y(y_)
+        , z(z_)
+        , w(w_)
+    {}
+
+    float x, y, z, w;
+
+    float& operator[](int i) {
+        return (&x)[i];
+    }
 
     float getY() const {
         return y;
@@ -736,9 +749,13 @@ struct DummyDataToTestPointerAdjustment {
 };
 
 struct TupleVector : DummyDataToTestPointerAdjustment, Vector {
+    TupleVector(): Vector(0, 0, 0, 0) {}
+    TupleVector(float x, float y, float z, float w): Vector(x, y, z, w) {}
 };
 
 struct StructVector : DummyDataToTestPointerAdjustment, Vector {
+    StructVector(): Vector(0, 0, 0, 0) {}
+    StructVector(float x, float y, float z, float w): Vector(x, y, z, w) {}
 };
 
 float readVectorZ(const Vector& v) {
@@ -750,15 +767,11 @@ void writeVectorZ(Vector& v, float z) {
 }
 
 struct TupleVectorTuple {
-    TupleVector v;
+    TupleVector v = TupleVector(0, 0, 0, 0);
 };
 
 TupleVector emval_test_return_TupleVector() {
-    TupleVector cv;
-    cv.x = 1;
-    cv.y = 2;
-    cv.z = 3;
-    return cv;
+    return TupleVector(1, 2, 3, 4);
 }
 
 TupleVector emval_test_take_and_return_TupleVector(TupleVector v) {
@@ -772,11 +785,7 @@ TupleVectorTuple emval_test_return_TupleVectorTuple() {
 }
 
 StructVector emval_test_return_StructVector() {
-    StructVector v;
-    v.x = 1;
-    v.y = 2;
-    v.z = 3;
-    return v;
+    return StructVector(1, 2, 3, 4);
 }
 
 StructVector emval_test_take_and_return_StructVector(StructVector v) {
@@ -1433,16 +1442,10 @@ EMSCRIPTEN_BINDINGS(constants) {
     constant("INT_CONSTANT", 10);
     constant("STRING_CONSTANT", std::string("some string"));
 
-    TupleVector tv;
-    tv.x = 1;
-    tv.y = 2;
-    tv.z = 3;
+    TupleVector tv(1, 2, 3, 4);
     constant("VALUE_TUPLE_CONSTANT", tv);
 
-    StructVector sv;
-    sv.x = 1;
-    sv.y = 2;
-    sv.z = 3;
+    StructVector sv(1, 2, 3, 4);
     constant("VALUE_STRUCT_CONSTANT", sv);
 }
 
@@ -1484,6 +1487,7 @@ EMSCRIPTEN_BINDINGS(tests) {
         .element(&TupleVector::x)
         .element(&Vector::getY, &Vector::setY)
         .element(&readVectorZ, &writeVectorZ)
+        .element(index<3>())
         ;
 
     function("emval_test_return_TupleVector", &emval_test_return_TupleVector);
@@ -1499,6 +1503,7 @@ EMSCRIPTEN_BINDINGS(tests) {
         .field("x", &StructVector::x)
         .field("y", &Vector::getY, &Vector::setY)
         .field("z", &readVectorZ, &writeVectorZ)
+        .field("w", index<3>())
         ;
 
     function("emval_test_return_StructVector", &emval_test_return_StructVector);
