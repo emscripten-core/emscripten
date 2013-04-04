@@ -1569,6 +1569,9 @@ function makePointer(slab, pos, allocator, type, ptr, finalMemoryInitialization)
   if (typeof slab == 'object' && slab.length > chunkSize) {
     slab = chunkify(slab);
   }
+  if (typeof types == 'object') {
+    while (types.length < slab.length) types.push(0);
+  }
   if (typeof types != 'string' && types.length > chunkSize) {
     types = chunkify(types);
   } else {
