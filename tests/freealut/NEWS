@@ -1,0 +1,34 @@
+Release 1.1.0 (2006-05-22, tag "freealut_1_1_0")
+------------------------------------------------
+
+   * Improved build under Visual Studio (warnings and paths to OpenAL SDK).
+
+   * Added some fragile logic to find the right path to the OpenAL headers.
+
+   * To guarantee version consistency, generate .spec file via configure.
+
+   * Bumped the package version to 1.1.0 and the library version to 1:0:1
+     (i.e. a backwards compatible version, only with new features).
+
+   * Conforms to the ALUT specification 1.1.0 now (added two memory loaders).
+
+   * Fixed build on old Linux distros.
+
+Release 1.0.1 (2006-02-11, tag "freealut_1_0_1")
+------------------------------------------------
+
+Bugfix release only, no change in functionality.
+
+   * Install freealut.pc into the correct directory.
+
+   * Fixed CR/LF vs. LF issue in configure on Windows.
+
+   * Added symbol visibility support when using GCC 4.x.
+
+   * When nanosleep returns early due to a signal, continue sleeping, otherwise
+     return AL_FALSE from alutSleep.
+
+Release 1.0.0 (2005-12-16, CVS "freealut_1_0_0")
+------------------------------------------------
+
+Initial release.

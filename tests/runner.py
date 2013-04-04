@@ -11246,6 +11246,12 @@ elif 'browser' in str(sys.argv):
       Popen([PYTHON, EMCC, '-O2', os.path.join(self.get_dir(), 'glfw.c'), '-o', 'page.html']).communicate()
       self.run_browser('page.html', '', '/report_result?1')
 
+    def test_freealut(self):
+      programs = self.get_library('freealut', os.path.join('examples', 'hello_world.bc'), make_args=['EXEEXT=.bc'])
+      for program in programs:
+        Popen([PYTHON, EMCC, '-O2', program, '-o', 'page.html']).communicate()
+        self.run_browser('page.html', 'You should hear "Hello World!"')
+
     def test_worker(self):
       # Test running in a web worker
       output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'], stdout=PIPE, stderr=PIPE).communicate()
