@@ -51,8 +51,8 @@ struct char_traits
     typedef mbstate_t state_type;
 
     static void assign(char_type& c1, const char_type& c2) noexcept;
-    static bool eq(char_type c1, char_type c2) noexcept;
-    static bool lt(char_type c1, char_type c2) noexcept;
+    static constexpr bool eq(char_type c1, char_type c2) noexcept;
+    static constexpr bool lt(char_type c1, char_type c2) noexcept;
 
     static int              compare(const char_type* s1, const char_type* s2, size_t n);
     static size_t           length(const char_type* s);
@@ -61,11 +61,11 @@ struct char_traits
     static char_type*       copy(char_type* s1, const char_type* s2, size_t n);
     static char_type*       assign(char_type* s, size_t n, char_type a);
 
-    static int_type  not_eof(int_type c) noexcept;
-    static char_type to_char_type(int_type c) noexcept;
-    static int_type  to_int_type(char_type c) noexcept;
-    static bool      eq_int_type(int_type c1, int_type c2) noexcept;
-    static int_type  eof() noexcept;
+    static constexpr int_type  not_eof(int_type c) noexcept;
+    static constexpr char_type to_char_type(int_type c) noexcept;
+    static constexpr int_type  to_int_type(char_type c) noexcept;
+    static constexpr bool      eq_int_type(int_type c1, int_type c2) noexcept;
+    static constexpr int_type  eof() noexcept;
 };
 
 template <> struct char_traits<char>;
@@ -446,14 +446,18 @@ template <> struct hash<wstring>;
 #include <cassert>
 #endif
 
+#include <__undef_min_max>
+
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
+#endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 // fpos
 
 template <class _StateT>
-class _LIBCPP_VISIBLE fpos
+class _LIBCPP_TYPE_VIS fpos
 {
 private:
     _StateT __st_;
@@ -490,7 +494,7 @@ bool operator!=(const fpos<_StateT>& __x, const fpos<_StateT>& __y)
 // char_traits
 
 template <class _CharT>
-struct _LIBCPP_VISIBLE char_traits
+struct _LIBCPP_TYPE_VIS char_traits
 {
     typedef _CharT    char_type;
     typedef int       int_type;
@@ -502,10 +506,10 @@ struct _LIBCPP_VISIBLE char_traits
     static void assign(char_type& __c1, const char_type& __c2) _NOEXCEPT
         {__c1 = __c2;}
     _LIBCPP_INLINE_VISIBILITY
-    static bool eq(char_type __c1, char_type __c2) _NOEXCEPT
+    static _LIBCPP_CONSTEXPR bool eq(char_type __c1, char_type __c2) _NOEXCEPT
         {return __c1 == __c2;}
     _LIBCPP_INLINE_VISIBILITY
-    static bool lt(char_type __c1, char_type __c2) _NOEXCEPT
+    static _LIBCPP_CONSTEXPR bool lt(char_type __c1, char_type __c2) _NOEXCEPT
         {return __c1 < __c2;}
 
     static int              compare(const char_type* __s1, const char_type* __s2, size_t __n);
@@ -515,19 +519,20 @@ struct _LIBCPP_VISIBLE char_traits
     static char_type*       copy(char_type* __s1, const char_type* __s2, size_t __n);
     static char_type*       assign(char_type* __s, size_t __n, char_type __a);
 
-    _LIBCPP_INLINE_VISIBILITY static int_type  not_eof(int_type __c) _NOEXCEPT
+    _LIBCPP_INLINE_VISIBILITY
+    static _LIBCPP_CONSTEXPR int_type  not_eof(int_type __c) _NOEXCEPT
         {return eq_int_type(__c, eof()) ? ~eof() : __c;}
     _LIBCPP_INLINE_VISIBILITY
-    static char_type to_char_type(int_type __c) _NOEXCEPT
+    static _LIBCPP_CONSTEXPR char_type to_char_type(int_type __c) _NOEXCEPT
         {return char_type(__c);}
     _LIBCPP_INLINE_VISIBILITY
-    static int_type  to_int_type(char_type __c) _NOEXCEPT
+    static _LIBCPP_CONSTEXPR int_type  to_int_type(char_type __c) _NOEXCEPT
         {return int_type(__c);}
     _LIBCPP_INLINE_VISIBILITY
-    static bool      eq_int_type(int_type __c1, int_type __c2) _NOEXCEPT
+    static _LIBCPP_CONSTEXPR bool      eq_int_type(int_type __c1, int_type __c2) _NOEXCEPT
         {return __c1 == __c2;}
     _LIBCPP_INLINE_VISIBILITY
-    static int_type  eof() _NOEXCEPT
+    static _LIBCPP_CONSTEXPR int_type  eof() _NOEXCEPT
         {return int_type(EOF);}
 };
 
@@ -615,7 +620,7 @@ char_traits<_CharT>::assign(char_type* __s, size_t __n, char_type __a)
 // char_traits<char>
 
 template <>
-struct _LIBCPP_VISIBLE char_traits<char>
+struct _LIBCPP_TYPE_VIS char_traits<char>
 {
     typedef char      char_type;
     typedef int       int_type;
@@ -627,10 +632,10 @@ struct _LIBCPP_VISIBLE char_traits<char>
     static void assign(char_type& __c1, const char_type& __c2) _NOEXCEPT
         {__c1 = __c2;}
     _LIBCPP_INLINE_VISIBILITY
-    static bool eq(char_type __c1, char_type __c2) _NOEXCEPT
+    static _LIBCPP_CONSTEXPR bool eq(char_type __c1, char_type __c2) _NOEXCEPT
             {return __c1 == __c2;}
     _LIBCPP_INLINE_VISIBILITY
-    static bool lt(char_type __c1, char_type __c2) _NOEXCEPT
+    static _LIBCPP_CONSTEXPR bool lt(char_type __c1, char_type __c2) _NOEXCEPT
         {return (unsigned char)__c1 < (unsigned char)__c2;}
 
     _LIBCPP_INLINE_VISIBILITY
@@ -651,26 +656,27 @@ struct _LIBCPP_VISIBLE char_traits<char>
     static char_type* assign(char_type* __s, size_t __n, char_type __a)
         {return (char_type*)memset(__s, to_int_type(__a), __n);}
 
-    _LIBCPP_INLINE_VISIBILITY static int_type  not_eof(int_type __c) _NOEXCEPT
+    _LIBCPP_INLINE_VISIBILITY
+    static _LIBCPP_CONSTEXPR int_type  not_eof(int_type __c) _NOEXCEPT
         {return eq_int_type(__c, eof()) ? ~eof() : __c;}
     _LIBCPP_INLINE_VISIBILITY
-    static char_type to_char_type(int_type __c) _NOEXCEPT
+    static _LIBCPP_CONSTEXPR char_type to_char_type(int_type __c) _NOEXCEPT
         {return char_type(__c);}
     _LIBCPP_INLINE_VISIBILITY
-    static int_type to_int_type(char_type __c) _NOEXCEPT
+    static _LIBCPP_CONSTEXPR int_type to_int_type(char_type __c) _NOEXCEPT
         {return int_type((unsigned char)__c);}
     _LIBCPP_INLINE_VISIBILITY
-    static bool eq_int_type(int_type __c1, int_type __c2) _NOEXCEPT
+    static _LIBCPP_CONSTEXPR bool eq_int_type(int_type __c1, int_type __c2) _NOEXCEPT
         {return __c1 == __c2;}
     _LIBCPP_INLINE_VISIBILITY
-    static int_type  eof() _NOEXCEPT
+    static _LIBCPP_CONSTEXPR int_type  eof() _NOEXCEPT
         {return int_type(EOF);}
 };
 
 // char_traits<wchar_t>
 
 template <>
-struct _LIBCPP_VISIBLE char_traits<wchar_t>
+struct _LIBCPP_TYPE_VIS char_traits<wchar_t>
 {
     typedef wchar_t   char_type;
     typedef wint_t    int_type;
@@ -682,10 +688,10 @@ struct _LIBCPP_VISIBLE char_traits<wchar_t>
     static void assign(char_type& __c1, const char_type& __c2) _NOEXCEPT
         {__c1 = __c2;}
     _LIBCPP_INLINE_VISIBILITY
-    static bool eq(char_type __c1, char_type __c2) _NOEXCEPT
+    static _LIBCPP_CONSTEXPR bool eq(char_type __c1, char_type __c2) _NOEXCEPT
         {return __c1 == __c2;}
     _LIBCPP_INLINE_VISIBILITY
-    static bool lt(char_type __c1, char_type __c2) _NOEXCEPT
+    static _LIBCPP_CONSTEXPR bool lt(char_type __c1, char_type __c2) _NOEXCEPT
         {return __c1 < __c2;}
 
     _LIBCPP_INLINE_VISIBILITY
@@ -708,26 +714,26 @@ struct _LIBCPP_VISIBLE char_traits<wchar_t>
         {return (char_type*)wmemset(__s, __a, __n);}
 
     _LIBCPP_INLINE_VISIBILITY
-    static int_type  not_eof(int_type __c) _NOEXCEPT
+    static _LIBCPP_CONSTEXPR int_type  not_eof(int_type __c) _NOEXCEPT
         {return eq_int_type(__c, eof()) ? ~eof() : __c;}
     _LIBCPP_INLINE_VISIBILITY
-    static char_type to_char_type(int_type __c) _NOEXCEPT
+    static _LIBCPP_CONSTEXPR char_type to_char_type(int_type __c) _NOEXCEPT
         {return char_type(__c);}
     _LIBCPP_INLINE_VISIBILITY
-    static int_type to_int_type(char_type __c) _NOEXCEPT
+    static _LIBCPP_CONSTEXPR int_type to_int_type(char_type __c) _NOEXCEPT
         {return int_type(__c);}
     _LIBCPP_INLINE_VISIBILITY
-    static bool eq_int_type(int_type __c1, int_type __c2) _NOEXCEPT
+    static _LIBCPP_CONSTEXPR bool eq_int_type(int_type __c1, int_type __c2) _NOEXCEPT
         {return __c1 == __c2;}
     _LIBCPP_INLINE_VISIBILITY
-    static int_type eof() _NOEXCEPT
+    static _LIBCPP_CONSTEXPR int_type eof() _NOEXCEPT
         {return int_type(WEOF);}
 };
 
 #ifndef _LIBCPP_HAS_NO_UNICODE_CHARS
 
 template <>
-struct _LIBCPP_VISIBLE char_traits<char16_t>
+struct _LIBCPP_TYPE_VIS char_traits<char16_t>
 {
     typedef char16_t       char_type;
     typedef uint_least16_t int_type;
@@ -739,10 +745,10 @@ struct _LIBCPP_VISIBLE char_traits<char16_t>
     static void assign(char_type& __c1, const char_type& __c2) _NOEXCEPT
         {__c1 = __c2;}
     _LIBCPP_INLINE_VISIBILITY
-    static bool eq(char_type __c1, char_type __c2) _NOEXCEPT
+    static _LIBCPP_CONSTEXPR bool eq(char_type __c1, char_type __c2) _NOEXCEPT
         {return __c1 == __c2;}
     _LIBCPP_INLINE_VISIBILITY
-    static bool lt(char_type __c1, char_type __c2) _NOEXCEPT
+    static _LIBCPP_CONSTEXPR bool lt(char_type __c1, char_type __c2) _NOEXCEPT
         {return __c1 < __c2;}
 
     static int              compare(const char_type* __s1, const char_type* __s2, size_t __n);
@@ -753,19 +759,19 @@ struct _LIBCPP_VISIBLE char_traits<char16_t>
     static char_type*       assign(char_type* __s, size_t __n, char_type __a);
 
     _LIBCPP_INLINE_VISIBILITY
-    static int_type  not_eof(int_type __c) _NOEXCEPT
+    static _LIBCPP_CONSTEXPR int_type  not_eof(int_type __c) _NOEXCEPT
         {return eq_int_type(__c, eof()) ? ~eof() : __c;}
     _LIBCPP_INLINE_VISIBILITY
-    static char_type to_char_type(int_type __c) _NOEXCEPT
+    static _LIBCPP_CONSTEXPR char_type to_char_type(int_type __c) _NOEXCEPT
         {return char_type(__c);}
     _LIBCPP_INLINE_VISIBILITY
-    static int_type to_int_type(char_type __c) _NOEXCEPT
+    static _LIBCPP_CONSTEXPR int_type to_int_type(char_type __c) _NOEXCEPT
         {return int_type(__c);}
     _LIBCPP_INLINE_VISIBILITY
-    static bool eq_int_type(int_type __c1, int_type __c2) _NOEXCEPT
+    static _LIBCPP_CONSTEXPR bool eq_int_type(int_type __c1, int_type __c2) _NOEXCEPT
         {return __c1 == __c2;}
     _LIBCPP_INLINE_VISIBILITY
-    static int_type eof() _NOEXCEPT
+    static _LIBCPP_CONSTEXPR int_type eof() _NOEXCEPT
         {return int_type(0xDFFF);}
 };
 
@@ -847,7 +853,7 @@ char_traits<char16_t>::assign(char_type* __s, size_t __n, char_type __a)
 }
 
 template <>
-struct _LIBCPP_VISIBLE char_traits<char32_t>
+struct _LIBCPP_TYPE_VIS char_traits<char32_t>
 {
     typedef char32_t       char_type;
     typedef uint_least32_t int_type;
@@ -859,10 +865,10 @@ struct _LIBCPP_VISIBLE char_traits<char32_t>
     static void assign(char_type& __c1, const char_type& __c2) _NOEXCEPT
         {__c1 = __c2;}
     _LIBCPP_INLINE_VISIBILITY
-    static bool eq(char_type __c1, char_type __c2) _NOEXCEPT
+    static _LIBCPP_CONSTEXPR bool eq(char_type __c1, char_type __c2) _NOEXCEPT
         {return __c1 == __c2;}
     _LIBCPP_INLINE_VISIBILITY
-    static bool lt(char_type __c1, char_type __c2) _NOEXCEPT
+    static _LIBCPP_CONSTEXPR bool lt(char_type __c1, char_type __c2) _NOEXCEPT
         {return __c1 < __c2;}
 
     static int              compare(const char_type* __s1, const char_type* __s2, size_t __n);
@@ -873,19 +879,19 @@ struct _LIBCPP_VISIBLE char_traits<char32_t>
     static char_type*       assign(char_type* __s, size_t __n, char_type __a);
 
     _LIBCPP_INLINE_VISIBILITY
-    static int_type  not_eof(int_type __c) _NOEXCEPT
+    static _LIBCPP_CONSTEXPR int_type  not_eof(int_type __c) _NOEXCEPT
         {return eq_int_type(__c, eof()) ? ~eof() : __c;}
     _LIBCPP_INLINE_VISIBILITY
-    static char_type to_char_type(int_type __c) _NOEXCEPT
+    static _LIBCPP_CONSTEXPR char_type to_char_type(int_type __c) _NOEXCEPT
         {return char_type(__c);}
     _LIBCPP_INLINE_VISIBILITY
-    static int_type to_int_type(char_type __c) _NOEXCEPT
+    static _LIBCPP_CONSTEXPR int_type to_int_type(char_type __c) _NOEXCEPT
         {return int_type(__c);}
     _LIBCPP_INLINE_VISIBILITY
-    static bool eq_int_type(int_type __c1, int_type __c2) _NOEXCEPT
+    static _LIBCPP_CONSTEXPR bool eq_int_type(int_type __c1, int_type __c2) _NOEXCEPT
         {return __c1 == __c2;}
     _LIBCPP_INLINE_VISIBILITY
-    static int_type eof() _NOEXCEPT
+    static _LIBCPP_CONSTEXPR int_type eof() _NOEXCEPT
         {return int_type(0xFFFFFFFF);}
 };
 
@@ -1021,10 +1027,17 @@ __basic_string_common<__b>::__throw_out_of_range() const
 #endif
 }
 
-extern template class __basic_string_common<true>;
+#ifdef _MSC_VER
+#pragma warning( push )
+#pragma warning( disable: 4231 )
+#endif // _MSC_VER
+_LIBCPP_EXTERN_TEMPLATE(class __basic_string_common<true>)
+#ifdef _MSC_VER
+#pragma warning( pop )
+#endif // _MSC_VER
 
 template<class _CharT, class _Traits, class _Allocator>
-class _LIBCPP_VISIBLE basic_string
+class _LIBCPP_TYPE_VIS basic_string
     : private __basic_string_common<true>
 {
 public:
@@ -1068,7 +1081,7 @@ private:
     enum {__long_mask  = ~(size_type(~0) >> 1)};
 #else  // _LIBCPP_BIG_ENDIAN
     enum {__short_mask = 0x01};
-    enum {__long_mask  = 0x1};
+    enum {__long_mask  = 0x1ul};
 #endif  // _LIBCPP_BIG_ENDIAN
 
     enum {__mask = size_type(~0) >> 1};
@@ -1081,14 +1094,14 @@ private:
         union
         {
             unsigned char __size_;
-            value_type _;
+            value_type __lx;
         };
         value_type __data_[__min_cap];
     };
 
-    union _{__long _; __short __;};
+    union __lx{__long __lx; __short __lxx;};
 
-    enum {__n_words = sizeof(_) / sizeof(size_type)};
+    enum {__n_words = sizeof(__lx) / sizeof(size_type)};
 
     struct __raw
     {
@@ -1490,7 +1503,7 @@ private:
         {__r_.first().__l.__cap_  = __long_mask | __s;}
     _LIBCPP_INLINE_VISIBILITY
     size_type __get_long_cap() const _NOEXCEPT
-        {return __r_.first().__l.__cap_ & ~__long_mask;}
+        {return __r_.first().__l.__cap_ & size_type(~__long_mask);}
 
     _LIBCPP_INLINE_VISIBILITY
     void __set_long_pointer(pointer __p) _NOEXCEPT
@@ -1580,7 +1593,7 @@ private:
         }
 
     _LIBCPP_INLINE_VISIBILITY
-    void __copy_assign_alloc(const basic_string& __str, false_type) _NOEXCEPT
+    void __copy_assign_alloc(const basic_string&, false_type) _NOEXCEPT
         {}
 
 #ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
@@ -1608,7 +1621,7 @@ private:
         }
 
     _LIBCPP_INLINE_VISIBILITY
-    void __move_assign_alloc(basic_string& __c, false_type)
+    void __move_assign_alloc(basic_string&, false_type)
         _NOEXCEPT
         {}
 
@@ -1627,7 +1640,7 @@ private:
             swap(__x, __y);
         }
     _LIBCPP_INLINE_VISIBILITY
-    static void __swap_alloc(allocator_type& __x, allocator_type& __y, false_type) _NOEXCEPT
+    static void __swap_alloc(allocator_type&, allocator_type&, false_type) _NOEXCEPT
         {}
 
     _LIBCPP_INLINE_VISIBILITY void __invalidate_all_iterators();
@@ -1658,7 +1671,11 @@ template <class _CharT, class _Traits, class _Allocator>
 _LIBCPP_INLINE_VISIBILITY inline
 #endif
 void
-basic_string<_CharT, _Traits, _Allocator>::__invalidate_iterators_past(size_type __pos)
+basic_string<_CharT, _Traits, _Allocator>::__invalidate_iterators_past(size_type
+#ifdef _LIBCPP_DEBUG
+                                                                        __pos
+#endif
+                                                                      )
 {
 #ifdef _LIBCPP_DEBUG
     const_iterator __beg = begin();
@@ -2191,6 +2208,7 @@ basic_string<_CharT, _Traits, _Allocator>::assign(_InputIterator __first, _Input
     clear();
     for (; __first != __last; ++__first)
         push_back(*__first);
+    return *this;
 }
 
 template <class _CharT, class _Traits, class _Allocator>
@@ -2774,7 +2792,7 @@ basic_string<_CharT, _Traits, _Allocator>::erase(const_iterator __pos)
     iterator __b = begin();
     size_type __r = static_cast<size_type>(__pos - __b);
     erase(__r, 1);
-    return __b + __r;
+    return __b + static_cast<difference_type>(__r);
 }
 
 template <class _CharT, class _Traits, class _Allocator>
@@ -2785,7 +2803,7 @@ basic_string<_CharT, _Traits, _Allocator>::erase(const_iterator __first, const_i
     iterator __b = begin();
     size_type __r = static_cast<size_type>(__first - __b);
     erase(__r, static_cast<size_type>(__last - __first));
-    return __b + __r;
+    return __b + static_cast<difference_type>(__r);
 }
 
 template <class _CharT, class _Traits, class _Allocator>
@@ -3356,7 +3374,7 @@ basic_string<_CharT, _Traits, _Allocator>::find_first_not_of(value_type __c,
     {
         const_pointer __p = data();
         const_pointer __pe = __p + __sz;
-        for (const_pointer __ps = __p + __pos; __p != __pe; ++__ps)
+        for (const_pointer __ps = __p + __pos; __ps != __pe; ++__ps)
             if (!traits_type::eq(*__ps, __c))
                 return static_cast<size_type>(__ps - __p);
     }
@@ -3472,7 +3490,7 @@ basic_string<_CharT, _Traits, _Allocator>::compare(size_type __pos1,
 
 template <class _CharT, class _Traits, class _Allocator>
 int
-basic_string<_CharT, _Traits, _Allocator>::compare(const_pointer __s) const
+basic_string<_CharT, _Traits, _Allocator>::compare(const_pointer __s) const _NOEXCEPT
 {
 #ifdef _LIBCPP_DEBUG
     assert(__s != 0);
@@ -3900,20 +3918,12 @@ template<class _CharT, class _Traits, class _Allocator>
 template<class _Ptr>
 size_t _LIBCPP_INLINE_VISIBILITY __do_string_hash(_Ptr __p, _Ptr __e)
 {
-    size_t __r = 0;
-    const size_t __sr = __CHAR_BIT__ * sizeof(size_t) - 8;
-    const size_t __m = size_t(0xF) << (__sr + 4);
-    for (; __p != __e; ++__p)
-    {
-        __r = (__r << 4) + *__p;
-        size_t __g = __r & __m;
-        __r ^= __g | (__g >> __sr);
-    }
-    return __r;
+    typedef typename iterator_traits<_Ptr>::value_type value_type;
+    return __murmur2_or_cityhash<size_t>()(__p, (__e-__p)*sizeof(value_type));
 }
 
 template<class _CharT, class _Traits, class _Allocator>
-struct _LIBCPP_VISIBLE hash<basic_string<_CharT, _Traits, _Allocator> >
+struct _LIBCPP_TYPE_VIS hash<basic_string<_CharT, _Traits, _Allocator> >
     : public unary_function<basic_string<_CharT, _Traits, _Allocator>, size_t>
 {
     size_t
@@ -3965,8 +3975,8 @@ getline(basic_istream<_CharT, _Traits>&& __is,
 
 #endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
 
-extern template class basic_string<char>;
-extern template class basic_string<wchar_t>;
+_LIBCPP_EXTERN_TEMPLATE(class basic_string<char>)
+_LIBCPP_EXTERN_TEMPLATE(class basic_string<wchar_t>)
 
 extern template
     string

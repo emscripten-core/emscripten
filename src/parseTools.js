@@ -65,7 +65,7 @@ function pointingLevels(type) {
   var ret = 0;
   var len1 = type.length - 1;
   while (type[len1-ret] && type[len1-ret] === '*') {
-    ret ++;
+    ret++;
   }
   return ret;
 }
@@ -234,6 +234,7 @@ function isFunctionType(type, out) {
 }
 
 function getReturnType(type) {
+  if (pointingLevels(type) > 1) return '*'; // the type of a call can be either the return value, or the entire function. ** or more means it is a return value
   var lastOpen = type.lastIndexOf('(');
   if (lastOpen > 0) {
     return type.substr(0, lastOpen-1);
@@ -818,7 +819,9 @@ function parseNumerical(value, type) {
     return '0';
   }
   if (isNumber(value)) {
-    return parseFloat(value).toString(); // will change e.g. 5.000000e+01 to 50
+    var ret = parseFloat(value); // will change e.g. 5.000000e+01 to 50
+    if (type in Runtime.FLOAT_TYPES && value[0] == '-' && ret === 0) return '-0'; // fix negative 0, toString makes it 0
+    return ret.toString();
   } else {
     return value;
   }
@@ -997,7 +1000,7 @@ function getHeapOffset(offset, type, forceAsm) {
   offset = '(' + offset + ')';
   if (shifts != 0) {
     if (CHECK_HEAP_ALIGN) {
-      return '(CHECK_ALIGN_' + sz + '(' + offset + ')>>' + shifts + ')';
+      return '(CHECK_ALIGN_' + sz + '(' + offset + '|0)>>' + shifts + ')';
     } else {
       return '(' + offset + '>>' + shifts + ')';
     }
@@ -1469,19 +1472,19 @@ function makePointer(slab, pos, allocator, type, ptr) {
     }
   }
   // compress type info and data if possible
-  var de;
-  try {
-    // compress all-zeros into a number (which will become zeros(..)).
-    // note that we cannot always eval the slab, e.g., if it contains ident,0,0 etc. In that case, no compression TODO: ensure we get arrays here, not str
-    var evaled = typeof slab === 'string' ? eval(slab) : slab;
-    de = dedup(evaled);
-    if (de.length === 1 && de[0] == 0) {
-      slab = types.length;
-    }
-    // TODO: if not all zeros, at least filter out items with type === 0. requires cleverness to know how to skip at runtime though. also
-    //       be careful of structure padding
-  } catch(e){}
   if (USE_TYPED_ARRAYS != 2) {
+    var de;
+    try {
+      // compress all-zeros into a number (which will become zeros(..)).
+      // note that we cannot always eval the slab, e.g., if it contains ident,0,0 etc. In that case, no compression TODO: ensure we get arrays here, not str
+      var evaled = typeof slab === 'string' ? eval(slab) : slab;
+      de = dedup(evaled);
+      if (de.length === 1 && de[0] == 0) {
+        slab = types.length;
+      }
+      // TODO: if not all zeros, at least filter out items with type === 0. requires cleverness to know how to skip at runtime though. also
+      //       be careful of structure padding
+    } catch(e){}
     de = dedup(types);
     if (de.length === 1) {
       types = de[0];
@@ -1536,7 +1539,6 @@ function makePointer(slab, pos, allocator, type, ptr) {
     }
     if (!fail) types = 'i8';
   }
-  if (typeof slab == 'object') slab = '[' + slab.join(',') + ']';
   // JS engines sometimes say array initializers are too large. Work around that by chunking and calling concat to combine at runtime
   var chunkSize = 10240;
   function chunkify(array) {
@@ -1549,9 +1551,10 @@ function makePointer(slab, pos, allocator, type, ptr) {
     }
     return ret;
   }
-  if (typeof slab == 'string' && evaled && evaled.length > chunkSize && slab.length > chunkSize) {
-    slab = chunkify(evaled);
+  if (typeof slab == 'object' && slab.length > chunkSize) {
+    slab = chunkify(slab);
   }
+  if (typeof slab == 'object') slab = '[' + slab.join(',') + ']';
   if (typeof types != 'string' && types.length > chunkSize) {
     types = chunkify(types);
   } else {

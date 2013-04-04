@@ -55,7 +55,7 @@ struct array
     // capacity:
     constexpr size_type size() const noexcept;
     constexpr size_type max_size() const noexcept;
-    bool empty() const noexcept;
+    constexpr bool empty() const noexcept;
 
     // element access:
     reference operator[](size_type n);
@@ -111,12 +111,14 @@ template <int I, class T, size_t N> T&& get(array<T, N>&&) noexcept;
     #include <cassert>
 #endif
 
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
+#endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 template <class _Tp, size_t _Size>
-struct _LIBCPP_VISIBLE array
+struct _LIBCPP_TYPE_VIS array
 {
     // types:
     typedef array __self;
@@ -171,11 +173,11 @@ struct _LIBCPP_VISIBLE array
 
     // capacity:
     _LIBCPP_INLINE_VISIBILITY
-    /*constexpr*/ size_type size() const _NOEXCEPT {return _Size;}
+    _LIBCPP_CONSTEXPR size_type size() const _NOEXCEPT {return _Size;}
     _LIBCPP_INLINE_VISIBILITY
-    /*constexpr*/ size_type max_size() const _NOEXCEPT {return _Size;}
+    _LIBCPP_CONSTEXPR size_type max_size() const _NOEXCEPT {return _Size;}
     _LIBCPP_INLINE_VISIBILITY
-    bool empty() const _NOEXCEPT {return _Size == 0;}
+    _LIBCPP_CONSTEXPR bool empty() const _NOEXCEPT {return _Size == 0;}
 
     // element access:
     _LIBCPP_INLINE_VISIBILITY reference operator[](size_type __n)             {return __elems_[__n];}
@@ -282,22 +284,22 @@ swap(const array<_Tp, _Size>& __x, const array<_Tp, _Size>& __y)
 }
 
 template <class _Tp, size_t _Size>
-class _LIBCPP_VISIBLE tuple_size<array<_Tp, _Size> >
+class _LIBCPP_TYPE_VIS tuple_size<array<_Tp, _Size> >
     : public integral_constant<size_t, _Size> {};
 
 template <class _Tp, size_t _Size>
-class _LIBCPP_VISIBLE tuple_size<const array<_Tp, _Size> >
+class _LIBCPP_TYPE_VIS tuple_size<const array<_Tp, _Size> >
     : public integral_constant<size_t, _Size> {};
 
 template <size_t _Ip, class _Tp, size_t _Size>
-class _LIBCPP_VISIBLE tuple_element<_Ip, array<_Tp, _Size> >
+class _LIBCPP_TYPE_VIS tuple_element<_Ip, array<_Tp, _Size> >
 {
 public:
     typedef _Tp type;
 };
 
 template <size_t _Ip, class _Tp, size_t _Size>
-class _LIBCPP_VISIBLE tuple_element<_Ip, const array<_Tp, _Size> >
+class _LIBCPP_TYPE_VIS tuple_element<_Ip, const array<_Tp, _Size> >
 {
 public:
     typedef const _Tp type;
@@ -308,6 +310,7 @@ _LIBCPP_INLINE_VISIBILITY inline
 _Tp&
 get(array<_Tp, _Size>& __a) _NOEXCEPT
 {
+    static_assert(_Ip < _Size, "Index out of bounds in std::get<> (std::array)");
     return __a[_Ip];
 }
 
@@ -316,6 +319,7 @@ _LIBCPP_INLINE_VISIBILITY inline
 const _Tp&
 get(const array<_Tp, _Size>& __a) _NOEXCEPT
 {
+    static_assert(_Ip < _Size, "Index out of bounds in std::get<> (const std::array)");
     return __a[_Ip];
 }
 
@@ -326,6 +330,7 @@ _LIBCPP_INLINE_VISIBILITY inline
 _Tp&&
 get(array<_Tp, _Size>&& __a) _NOEXCEPT
 {
+    static_assert(_Ip < _Size, "Index out of bounds in std::get<> (std::array &&)");
     return _VSTD::move(__a[_Ip]);
 }
 

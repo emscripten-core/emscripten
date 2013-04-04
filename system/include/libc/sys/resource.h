@@ -3,6 +3,10 @@
 
 #include <sys/time.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define	RUSAGE_SELF	0		/* calling process */
 #define	RUSAGE_CHILDREN	-1		/* terminated child processes */
 
@@ -46,6 +50,10 @@ struct rlimit {
 };
 int getrlimit(int resource, struct rlimit *rlim);
 int setrlimit(int resource, const struct rlimit *rlim);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

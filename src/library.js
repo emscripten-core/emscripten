@@ -382,7 +382,7 @@ LibraryManager.library = {
     // do preloading for the Image/Audio part, as if the typed array were the
     // result of an XHR that you did manually.
     createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile) {
-      Browser.ensureObjects();
+      Browser.init();
       var fullname = FS.joinPath([parent, name], true);
       function processData(byteArray) {
         function finish(byteArray) {
@@ -2061,24 +2061,19 @@ LibraryManager.library = {
     // void _exit(int status);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/exit.html
 
-#if CATCH_EXIT_CODE
     function ExitStatus() {
       this.name = "ExitStatus";
       this.message = "Program terminated with exit(" + status + ")";
       this.status = status;
+      Module.print('Exit Status: ' + status);
     };
     ExitStatus.prototype = new Error();
     ExitStatus.prototype.constructor = ExitStatus;
-#endif
 
     exitRuntime();
     ABORT = true;
 
-#if CATCH_EXIT_CODE
     throw new ExitStatus();
-#else
-    throw 'exit(' + status + ') called, at ' + new Error().stack;
-#endif
   },
   fork__deps: ['__setErrNo', '$ERRNO_CODES'],
   fork: function() {
@@ -2638,11 +2633,11 @@ LibraryManager.library = {
     }
     return fields;
   },
-  // Performs prtinf-style formatting.
+  // Performs printf-style formatting.
   //   format: A pointer to the format string.
   //   varargs: A pointer to the start of the arguments list.
   // Returns the resulting string string as a character array.
-  _formatString__deps: ['strlen'],
+  _formatString__deps: ['strlen', '_reallyNegative'],
   _formatString: function(format, varargs) {
     var textIndex = format;
     var argIndex = 0;
@@ -2782,226 +2777,251 @@ LibraryManager.library = {
         next = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
 
         // Handle type specifier.
-        if (['d', 'i', 'u', 'o', 'x', 'X', 'p'].indexOf(String.fromCharCode(next)) != -1) {
-          // Integer.
-          var signed = next == {{{ charCode('d') }}} || next == {{{ charCode('i') }}};
-          argSize = argSize || 4;
-          var currArg = getNextArg('i' + (argSize * 8));
+        switch (String.fromCharCode(next)) {
+          case 'd': case 'i': case 'u': case 'o': case 'x': case 'X': case 'p': {
+            // Integer.
+            var signed = next == {{{ charCode('d') }}} || next == {{{ charCode('i') }}};
+            argSize = argSize || 4;
+            var currArg = getNextArg('i' + (argSize * 8));
 #if PRECISE_I64_MATH
-          var origArg = currArg;
+            var origArg = currArg;
 #endif
-          var argText;
+            var argText;
 #if USE_TYPED_ARRAYS == 2
-          // Flatten i64-1 [low, high] into a (slightly rounded) double
-          if (argSize == 8) {
-            currArg = Runtime.makeBigInt(currArg[0], currArg[1], next == {{{ charCode('u') }}});
-          }
+            // Flatten i64-1 [low, high] into a (slightly rounded) double
+            if (argSize == 8) {
+              currArg = Runtime.makeBigInt(currArg[0], currArg[1], next == {{{ charCode('u') }}});
+            }
 #endif
-          // Truncate to requested size.
-          if (argSize <= 4) {
-            var limit = Math.pow(256, argSize) - 1;
-            currArg = (signed ? reSign : unSign)(currArg & limit, argSize * 8);
-          }
-          // Format the number.
-          var currAbsArg = Math.abs(currArg);
-          var prefix = '';
-          if (next == {{{ charCode('d') }}} || next == {{{ charCode('i') }}}) {
+            // Truncate to requested size.
+            if (argSize <= 4) {
+              var limit = Math.pow(256, argSize) - 1;
+              currArg = (signed ? reSign : unSign)(currArg & limit, argSize * 8);
+            }
+            // Format the number.
+            var currAbsArg = Math.abs(currArg);
+            var prefix = '';
+            if (next == {{{ charCode('d') }}} || next == {{{ charCode('i') }}}) {
 #if PRECISE_I64_MATH
-            if (argSize == 8 && i64Math) argText = i64Math.stringify(origArg[0], origArg[1], null); else
+              if (argSize == 8 && i64Math) argText = i64Math.stringify(origArg[0], origArg[1], null); else
 #endif
-            argText = reSign(currArg, 8 * argSize, 1).toString(10);
-          } else if (next == {{{ charCode('u') }}}) {
+              argText = reSign(currArg, 8 * argSize, 1).toString(10);
+            } else if (next == {{{ charCode('u') }}}) {
 #if PRECISE_I64_MATH
-            if (argSize == 8 && i64Math) argText = i64Math.stringify(origArg[0], origArg[1], true); else
+              if (argSize == 8 && i64Math) argText = i64Math.stringify(origArg[0], origArg[1], true); else
 #endif
-            argText = unSign(currArg, 8 * argSize, 1).toString(10);
-            currArg = Math.abs(currArg);
-          } else if (next == {{{ charCode('o') }}}) {
-            argText = (flagAlternative ? '0' : '') + currAbsArg.toString(8);
-          } else if (next == {{{ charCode('x') }}} || next == {{{ charCode('X') }}}) {
-            prefix = flagAlternative ? '0x' : '';
+              argText = unSign(currArg, 8 * argSize, 1).toString(10);
+              currArg = Math.abs(currArg);
+            } else if (next == {{{ charCode('o') }}}) {
+              argText = (flagAlternative ? '0' : '') + currAbsArg.toString(8);
+            } else if (next == {{{ charCode('x') }}} || next == {{{ charCode('X') }}}) {
+              prefix = flagAlternative ? '0x' : '';
 #if PRECISE_I64_MATH
-            if (argSize == 8 && i64Math) argText = (origArg[1]>>>0).toString(16) + (origArg[0]>>>0).toString(16); else
+              if (argSize == 8 && i64Math) {
+                if (origArg[1]) {
+                  argText = (origArg[1]>>>0).toString(16);
+                  var lower = (origArg[0]>>>0).toString(16);
+                  while (lower.length < 8) lower = '0' + lower;
+                  argText += lower;
+                } else {
+                  argText = (origArg[0]>>>0).toString(16);
+                }
+              } else
 #endif
-            if (currArg < 0) {
-              // Represent negative numbers in hex as 2's complement.
-              currArg = -currArg;
-              argText = (currAbsArg - 1).toString(16);
-              var buffer = [];
-              for (var i = 0; i < argText.length; i++) {
-                buffer.push((0xF - parseInt(argText[i], 16)).toString(16));
+              if (currArg < 0) {
+                // Represent negative numbers in hex as 2's complement.
+                currArg = -currArg;
+                argText = (currAbsArg - 1).toString(16);
+                var buffer = [];
+                for (var i = 0; i < argText.length; i++) {
+                  buffer.push((0xF - parseInt(argText[i], 16)).toString(16));
+                }
+                argText = buffer.join('');
+                while (argText.length < argSize * 2) argText = 'f' + argText;
+              } else {
+                argText = currAbsArg.toString(16);
               }
-              argText = buffer.join('');
-              while (argText.length < argSize * 2) argText = 'f' + argText;
-            } else {
-              argText = currAbsArg.toString(16);
+              if (next == {{{ charCode('X') }}}) {
+                prefix = prefix.toUpperCase();
+                argText = argText.toUpperCase();
+              }
+            } else if (next == {{{ charCode('p') }}}) {
+              if (currAbsArg === 0) {
+                argText = '(nil)';
+              } else {
+                prefix = '0x';
+                argText = currAbsArg.toString(16);
+              }
             }
-            if (next == {{{ charCode('X') }}}) {
-              prefix = prefix.toUpperCase();
-              argText = argText.toUpperCase();
-            }
-          } else if (next == {{{ charCode('p') }}}) {
-            if (currAbsArg === 0) {
-              argText = '(nil)';
-            } else {
-              prefix = '0x';
-              argText = currAbsArg.toString(16);
-            }
-          }
-          if (precisionSet) {
-            while (argText.length < precision) {
-              argText = '0' + argText;
-            }
-          }
-
-          // Add sign if needed
-          if (flagAlwaysSigned) {
-            if (currArg < 0) {
-              prefix = '-' + prefix;
-            } else {
-              prefix = '+' + prefix;
-            }
-          }
-
-          // Add padding.
-          while (prefix.length + argText.length < width) {
-            if (flagLeftAlign) {
-              argText += ' ';
-            } else {
-              if (flagZeroPad) {
+            if (precisionSet) {
+              while (argText.length < precision) {
                 argText = '0' + argText;
-              } else {
-                prefix = ' ' + prefix;
               }
             }
+
+            // Add sign if needed
+            if (flagAlwaysSigned) {
+              if (currArg < 0) {
+                prefix = '-' + prefix;
+              } else {
+                prefix = '+' + prefix;
+              }
+            }
+
+            // Add padding.
+            while (prefix.length + argText.length < width) {
+              if (flagLeftAlign) {
+                argText += ' ';
+              } else {
+                if (flagZeroPad) {
+                  argText = '0' + argText;
+                } else {
+                  prefix = ' ' + prefix;
+                }
+              }
+            }
+
+            // Insert the result into the buffer.
+            argText = prefix + argText;
+            argText.split('').forEach(function(chr) {
+              ret.push(chr.charCodeAt(0));
+            });
+            break;
           }
-
-          // Insert the result into the buffer.
-          argText = prefix + argText;
-          argText.split('').forEach(function(chr) {
-            ret.push(chr.charCodeAt(0));
-          });
-        } else if (['f', 'F', 'e', 'E', 'g', 'G'].indexOf(String.fromCharCode(next)) != -1) {
-          // Float.
-          var currArg = getNextArg('double');
-          var argText;
-
-          if (isNaN(currArg)) {
-            argText = 'nan';
-            flagZeroPad = false;
-          } else if (!isFinite(currArg)) {
-            argText = (currArg < 0 ? '-' : '') + 'inf';
-            flagZeroPad = false;
-          } else {
-            var isGeneral = false;
-            var effectivePrecision = Math.min(precision, 20);
-
-            // Convert g/G to f/F or e/E, as per:
-            // http://pubs.opengroup.org/onlinepubs/9699919799/functions/printf.html
-            if (next == {{{ charCode('g') }}} || next == {{{ charCode('G') }}}) {
-              isGeneral = true;
-              precision = precision || 1;
-              var exponent = parseInt(currArg.toExponential(effectivePrecision).split('e')[1], 10);
-              if (precision > exponent && exponent >= -4) {
-                next = ((next == {{{ charCode('g') }}}) ? 'f' : 'F').charCodeAt(0);
-                precision -= exponent + 1;
-              } else {
-                next = ((next == {{{ charCode('g') }}}) ? 'e' : 'E').charCodeAt(0);
-                precision--;
-              }
-              effectivePrecision = Math.min(precision, 20);
-            }
-
-            if (next == {{{ charCode('e') }}} || next == {{{ charCode('E') }}}) {
-              argText = currArg.toExponential(effectivePrecision);
-              // Make sure the exponent has at least 2 digits.
-              if (/[eE][-+]\d$/.test(argText)) {
-                argText = argText.slice(0, -1) + '0' + argText.slice(-1);
-              }
-            } else if (next == {{{ charCode('f') }}} || next == {{{ charCode('F') }}}) {
-              argText = currArg.toFixed(effectivePrecision);
-            }
-
-            var parts = argText.split('e');
-            if (isGeneral && !flagAlternative) {
-              // Discard trailing zeros and periods.
-              while (parts[0].length > 1 && parts[0].indexOf('.') != -1 &&
-                     (parts[0].slice(-1) == '0' || parts[0].slice(-1) == '.')) {
-                parts[0] = parts[0].slice(0, -1);
-              }
+          case 'f': case 'F': case 'e': case 'E': case 'g': case 'G': {
+            // Float.
+            var currArg = getNextArg('double');
+            var argText;
+            if (isNaN(currArg)) {
+              argText = 'nan';
+              flagZeroPad = false;
+            } else if (!isFinite(currArg)) {
+              argText = (currArg < 0 ? '-' : '') + 'inf';
+              flagZeroPad = false;
             } else {
-              // Make sure we have a period in alternative mode.
-              if (flagAlternative && argText.indexOf('.') == -1) parts[0] += '.';
-              // Zero pad until required precision.
-              while (precision > effectivePrecision++) parts[0] += '0';
-            }
-            argText = parts[0] + (parts.length > 1 ? 'e' + parts[1] : '');
+              var isGeneral = false;
+              var effectivePrecision = Math.min(precision, 20);
 
-            // Capitalize 'E' if needed.
-            if (next == {{{ charCode('E') }}}) argText = argText.toUpperCase();
+              // Convert g/G to f/F or e/E, as per:
+              // http://pubs.opengroup.org/onlinepubs/9699919799/functions/printf.html
+              if (next == {{{ charCode('g') }}} || next == {{{ charCode('G') }}}) {
+                isGeneral = true;
+                precision = precision || 1;
+                var exponent = parseInt(currArg.toExponential(effectivePrecision).split('e')[1], 10);
+                if (precision > exponent && exponent >= -4) {
+                  next = ((next == {{{ charCode('g') }}}) ? 'f' : 'F').charCodeAt(0);
+                  precision -= exponent + 1;
+                } else {
+                  next = ((next == {{{ charCode('g') }}}) ? 'e' : 'E').charCodeAt(0);
+                  precision--;
+                }
+                effectivePrecision = Math.min(precision, 20);
+              }
 
-            // Add sign.
-            if (flagAlwaysSigned && currArg >= 0) {
-              argText = '+' + argText;
+              if (next == {{{ charCode('e') }}} || next == {{{ charCode('E') }}}) {
+                argText = currArg.toExponential(effectivePrecision);
+                // Make sure the exponent has at least 2 digits.
+                if (/[eE][-+]\d$/.test(argText)) {
+                  argText = argText.slice(0, -1) + '0' + argText.slice(-1);
+                }
+              } else if (next == {{{ charCode('f') }}} || next == {{{ charCode('F') }}}) {
+                argText = currArg.toFixed(effectivePrecision);
+                if (currArg === 0 && __reallyNegative(currArg)) {
+                  argText = '-' + argText;
+                }
+              }
+
+              var parts = argText.split('e');
+              if (isGeneral && !flagAlternative) {
+                // Discard trailing zeros and periods.
+                while (parts[0].length > 1 && parts[0].indexOf('.') != -1 &&
+                       (parts[0].slice(-1) == '0' || parts[0].slice(-1) == '.')) {
+                  parts[0] = parts[0].slice(0, -1);
+                }
+              } else {
+                // Make sure we have a period in alternative mode.
+                if (flagAlternative && argText.indexOf('.') == -1) parts[0] += '.';
+                // Zero pad until required precision.
+                while (precision > effectivePrecision++) parts[0] += '0';
+              }
+              argText = parts[0] + (parts.length > 1 ? 'e' + parts[1] : '');
+
+              // Capitalize 'E' if needed.
+              if (next == {{{ charCode('E') }}}) argText = argText.toUpperCase();
+
+              // Add sign.
+              if (flagAlwaysSigned && currArg >= 0) {
+                argText = '+' + argText;
+              }
             }
+
+            // Add padding.
+            while (argText.length < width) {
+              if (flagLeftAlign) {
+                argText += ' ';
+              } else {
+                if (flagZeroPad && (argText[0] == '-' || argText[0] == '+')) {
+                  argText = argText[0] + '0' + argText.slice(1);
+                } else {
+                  argText = (flagZeroPad ? '0' : ' ') + argText;
+                }
+              }
+            }
+
+            // Adjust case.
+            if (next < {{{ charCode('a') }}}) argText = argText.toUpperCase();
+
+            // Insert the result into the buffer.
+            argText.split('').forEach(function(chr) {
+              ret.push(chr.charCodeAt(0));
+            });
+            break;
           }
-
-          // Add padding.
-          while (argText.length < width) {
+          case 's': {
+            // String.
+            var arg = getNextArg('i8*') || nullString;
+            var argLength = _strlen(arg);
+            if (precisionSet) argLength = Math.min(argLength, precision);
+            if (!flagLeftAlign) {
+              while (argLength < width--) {
+                ret.push({{{ charCode(' ') }}});
+              }
+            }
+            for (var i = 0; i < argLength; i++) {
+              ret.push({{{ makeGetValue('arg++', 0, 'i8', null, true) }}});
+            }
             if (flagLeftAlign) {
-              argText += ' ';
-            } else {
-              if (flagZeroPad && (argText[0] == '-' || argText[0] == '+')) {
-                argText = argText[0] + '0' + argText.slice(1);
-              } else {
-                argText = (flagZeroPad ? '0' : ' ') + argText;
+              while (argLength < width--) {
+                ret.push({{{ charCode(' ') }}});
               }
             }
+            break;
           }
-
-          // Adjust case.
-          if (next < {{{ charCode('a') }}}) argText = argText.toUpperCase();
-
-          // Insert the result into the buffer.
-          argText.split('').forEach(function(chr) {
-            ret.push(chr.charCodeAt(0));
-          });
-        } else if (next == {{{ charCode('s') }}}) {
-          // String.
-          var arg = getNextArg('i8*') || nullString;
-          var argLength = _strlen(arg);
-          if (precisionSet) argLength = Math.min(argLength, precision);
-          if (!flagLeftAlign) {
-            while (argLength < width--) {
+          case 'c': {
+            // Character.
+            if (flagLeftAlign) ret.push(getNextArg('i8'));
+            while (--width > 0) {
               ret.push({{{ charCode(' ') }}});
             }
+            if (!flagLeftAlign) ret.push(getNextArg('i8'));
+            break;
           }
-          for (var i = 0; i < argLength; i++) {
-            ret.push({{{ makeGetValue('arg++', 0, 'i8', null, true) }}});
+          case 'n': {
+            // Write the length written so far to the next parameter.
+            var ptr = getNextArg('i32*');
+            {{{ makeSetValue('ptr', '0', 'ret.length', 'i32') }}}
+            break;
           }
-          if (flagLeftAlign) {
-            while (argLength < width--) {
-              ret.push({{{ charCode(' ') }}});
+          case '%': {
+            // Literal percent sign.
+            ret.push(curr);
+            break;
+          }
+          default: {
+            // Unknown specifiers remain untouched.
+            for (var i = startTextIndex; i < textIndex + 2; i++) {
+              ret.push({{{ makeGetValue(0, 'i', 'i8') }}});
             }
-          }
-        } else if (next == {{{ charCode('c') }}}) {
-          // Character.
-          if (flagLeftAlign) ret.push(getNextArg('i8'));
-          while (--width > 0) {
-            ret.push({{{ charCode(' ') }}});
-          }
-          if (!flagLeftAlign) ret.push(getNextArg('i8'));
-        } else if (next == {{{ charCode('n') }}}) {
-          // Write the length written so far to the next parameter.
-          var ptr = getNextArg('i32*');
-          {{{ makeSetValue('ptr', '0', 'ret.length', 'i32') }}}
-        } else if (next == {{{ charCode('%') }}}) {
-          // Literal percent sign.
-          ret.push(curr);
-        } else {
-          // Unknown specifiers remain untouched.
-          for (var i = startTextIndex; i < textIndex + 2; i++) {
-            ret.push({{{ makeGetValue(0, 'i', 'i8') }}});
           }
         }
         textIndex += 2;
@@ -3147,7 +3167,7 @@ LibraryManager.library = {
     for (var i = 0; i < n - 1 && byte_ != {{{ charCode('\n') }}}; i++) {
       byte_ = _fgetc(stream);
       if (byte_ == -1) {
-        if (streamObj.error) return 0;
+        if (streamObj.error || (streamObj.eof && i == 0)) return 0;
         else if (streamObj.eof) break;
       }
       {{{ makeSetValue('s', 'i', 'byte_', 'i8') }}}
@@ -3690,6 +3710,11 @@ LibraryManager.library = {
   exit__deps: ['_exit'],
   exit: function(status) {
     __exit(status);
+  },
+
+  _ZSt9terminatev__deps: ['exit'],
+  _ZSt9terminatev: function() {
+    _exit(-1234);
   },
 
   atexit: function(func, arg) {
@@ -4927,7 +4952,7 @@ LibraryManager.library = {
     var ret = 0;
     while (x) {
       if (x&1) ret++;
-      x >>= 1;
+      x >>>= 1;
     }
     return ret;
   },
@@ -5055,6 +5080,10 @@ LibraryManager.library = {
     return ptr;
   },
   _ZSt18uncaught_exceptionv: function() { // std::uncaught_exception()
+    return !!__ZSt18uncaught_exceptionv.uncaught_exception;
+  },
+  __cxa_uncaught_exception__deps: ['_Zst18uncaught_exceptionv'],
+  __cxa_uncaught_exception: function() {
     return !!__ZSt18uncaught_exceptionv.uncaught_exception;
   },
 
@@ -5455,9 +5484,14 @@ LibraryManager.library = {
     return isNaN(x);
   },
   __isnan: 'isnan',
+
+  _reallyNegative: function(x) {
+    return x < 0 || (x === 0 && (1/x) === -Infinity);
+  },
+
+  copysign__deps: ['_reallyNegative'],
   copysign: function(a, b) {
-      if (a < 0 === b < 0) return a;
-      return -a;
+    return __reallyNegative(a) === __reallyNegative(b) ? a : -a;
   },
   copysignf: 'copysign',
   __signbit__deps: ['copysign'],
@@ -7262,11 +7296,17 @@ LibraryManager.library = {
     // exceptfds not supported
     // timeout is always 0 - fully async
     assert(!exceptfds);
+    
+    var errorCondition = 0;
 
     function canRead(info) {
       // make sure hasData exists.
       // we do create it when the socket is connected,
       // but other implementations may create it lazily
+      if ((info.socket.readyState == WebSocket.CLOSING || info.socket.readyState == WebSocket.CLOSED) && info.inQueue.length == 0) {
+        errorCondition = -1;
+        return false;
+      }
       return info.hasData && info.hasData();
     }
 
@@ -7274,6 +7314,10 @@ LibraryManager.library = {
       // make sure socket exists.
       // we do create it when the socket is connected,
       // but other implementations may create it lazily
+      if ((info.socket.readyState == WebSocket.CLOSING || info.socket.readyState == WebSocket.CLOSED)) {
+        errorCondition = -1;
+        return false;
+      }
       return info.socket && (info.socket.readyState == info.socket.OPEN);
     }
 
@@ -7305,8 +7349,13 @@ LibraryManager.library = {
       return bitsSet;
     }
 
-    return checkfds(nfds, readfds, canRead)
-         + checkfds(nfds, writefds, canWrite);
+    var totalHandles = checkfds(nfds, readfds, canRead) + checkfds(nfds, writefds, canWrite);
+    if (errorCondition) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    } else {
+      return totalHandles;
+    }
   },
 
   // pty.h

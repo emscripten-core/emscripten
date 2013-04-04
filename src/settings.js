@@ -113,12 +113,6 @@ var INLINING_LIMIT = 0;  // A limit on inlining. If 0, we will inline normally i
                          // we will prevent inlining of functions of this size or larger
                          // in closure. 50 is a reasonable setting if you do not want
                          // inlining
-var CATCH_EXIT_CODE = 0; // If set, causes exit() to throw an exception object which is caught
-                         // in a try..catch block and results in the exit status being
-                         // returned from run(). If zero (the default), the program is just
-                         // terminated with an error message, that is, the exception thrown
-                         // by exit() is not handled in any way (in particular, the stack
-                         // position will not be reset).
 
 // Generated code debugging options
 var SAFE_HEAP = 0; // Check each write to the heap, for example, this will give a clear
@@ -162,6 +156,8 @@ var LIBRARY_DEBUG = 0; // Print out when we enter a library call (library*.js). 
                        // want it back. A simple way to set it in C++ is
                        //   emscripten_run_script("Runtime.debug = ...;");
 var SOCKET_DEBUG = 0; // Log out socket/network data transfer.
+
+var OPENAL_DEBUG = 0; // Print out debugging information from our OpenAL implementation.
 
 var GL_DEBUG = 0; // Print out all calls into WebGL. As with LIBRARY_DEBUG, you can set a runtime
                   // option, in this case GL.debug.
@@ -224,19 +220,22 @@ var NAMED_GLOBALS = 0; // If 1, we use global variables for globals. Otherwise
                        // they are referred to by a base plus an offset (called an indexed global),
                        // saving global variables but adding runtime overhead.
 
-var EXPORT_ALL = 0; // If true, we export all the symbols
 var EXPORTED_FUNCTIONS = ['_main']; // Functions that are explicitly exported. These functions are kept alive
                                     // through LLVM dead code elimination, and also made accessible outside of
                                     // the generated code even after running closure compiler (on "Module").
                                     // Note the necessary prefix of "_".
+var EXPORT_ALL = 0; // If true, we export all the symbols
+var EXPORT_BINDINGS = 0; // Export all bindings generator functions (prefixed with emscripten_bind_). This
+                         // is necessary to use the bindings generator with asm.js
 
-var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = ['memcpy', 'memset', 'malloc', 'free', '$Browser']; // JS library functions (C functions implemented in JS)
-                                                                                           // that we include by default. If you want to make sure
-                                                                                           // something is included by the JS compiler, add it here.
-                                                                                           // For example, if you do not use some emscripten_*
-                                                                                           // C API call from C, but you want to call it from JS,
-                                                                                           // add it here (and in EXPORTED FUNCTIONS with prefix
-                                                                                           // "_", for closure).
+// JS library functions (C functions implemented in JS)
+// that we include by default. If you want to make sure
+// something is included by the JS compiler, add it here.
+// For example, if you do not use some emscripten_*
+// C API call from C, but you want to call it from JS,
+// add it here (and in EXPORTED FUNCTIONS with prefix
+// "_", for closure).
+var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = ['memcpy', 'memset', 'malloc', 'free', 'strlen', '$Browser'];
 
 var LIBRARY_DEPS_TO_AUTOEXPORT = ['memcpy']; // This list is also used to determine
                                              // auto-exporting of library dependencies (i.e., functions that
@@ -336,9 +335,21 @@ var PGO = 0; // Enables profile-guided optimization in the form of runtime check
              // which functions are actually called. Emits a list during shutdown that you
              // can pass to DEAD_FUNCTIONS (you can also emit the list manually by
              // calling PGOMonitor.dump());
-var DEAD_FUNCTIONS = []; // A list of functions that no code will be emitted for, and
-                         // a runtime abort will happen if they are called
+var DEAD_FUNCTIONS = []; // Functions on this list are not converted to JS, and calls to
+                         // them are turned into abort()s. This is potentially useful for
+                         // (1) reducing code size, if you know some function will never
+                         // be called (see PGO), and also (2) ASM.js requires all declared
+                         // functions to have a corresponding implementation (even if the
+                         // function is never called) and will emit an error during linking if no
+                         // implementation can be found; with this option, asm.js validation will
+                         // succeed for that function and calls to it.
+                         // If a dead function is actually called, you will get a runtime
+                         // error.
                          // TODO: options to lazily load such functions
+var UNRESOLVED_AS_DEAD = 0; // Handle all unresolved functions as if they were in the
+                            // list of dead functions. This is a quick way to turn
+                            // all unresolved references into runtime aborts (and not
+                            // get compile-time warnings or errors on them).
 
 var EXPLICIT_ZEXT = 0; // If 1, generate an explicit conversion of zext i1 to i32, using ?:
 

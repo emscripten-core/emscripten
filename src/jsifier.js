@@ -231,12 +231,11 @@ function JSify(data, functionsOnly, givenFunctions) {
     if (value.intertype in PARSABLE_LLVM_FUNCTIONS) {
       return [finalizeLLVMFunctionCall(value)];
     } else if (Runtime.isNumberType(type) || pointingLevels(type) >= 1) {
-      return makeGlobalUse(indexizeFunctions(parseNumerical(value.value), type));
+      return [makeGlobalUse(indexizeFunctions(parseNumerical(value.value), type))];
     } else if (value.intertype === 'emptystruct') {
       return makeEmptyStruct(type);
     } else if (value.intertype === 'string') {
-      return JSON.stringify(parseLLVMString(value.text)) +
-             ' /* ' + value.text.substr(0, 20).replace(/[*<>]/g, '_') + ' */'; // make string safe for inclusion in comment
+      return parseLLVMString(value.text);
     } else {
       return alignStruct(handleSegments(value.contents), type);
     }
@@ -244,9 +243,7 @@ function JSify(data, functionsOnly, givenFunctions) {
 
   function parseConst(value, type, ident) {
     var constant = makeConst(value, type);
-    if (typeof constant === 'object') {
-      constant = flatten(constant).map(function(x) { return parseNumerical(x) })
-    }
+    constant = flatten(constant).map(function(x) { return parseNumerical(x) })
     return constant;
   }
 
@@ -254,6 +251,7 @@ function JSify(data, functionsOnly, givenFunctions) {
   substrate.addActor('GlobalVariable', {
     processItem: function(item) {
       function needsPostSet(value) {
+        if (typeof value !== 'string') return false;
         return value[0] in UNDERSCORE_OPENPARENS || value.substr(0, 14) === 'CHECK_OVERFLOW'
                                                  || value.substr(0, 6) === 'GLOBAL';
       }
@@ -266,105 +264,81 @@ function JSify(data, functionsOnly, givenFunctions) {
                     item.ctors.map(function(ctor) { return '  { func: function() { ' + ctor + '() } }' }).join(',\n') +
                   '\n]);\n';
         return ret;
-      } else {
-        var constant = null;
-        var allocator = (BUILD_AS_SHARED_LIB && !item.external) ? 'ALLOC_NORMAL' : 'ALLOC_STATIC';
-        var index = null;
-        if (item.external && BUILD_AS_SHARED_LIB) {
-          // External variables in shared libraries should not be declared as
-          // they would shadow similarly-named globals in the parent.
-          item.JS = '';
-        } else {
-        	item.JS = makeGlobalDef(item.ident);
-        }
-
-        if (item.external && !ASM_JS) { // ASM_JS considers externs to be globals
-          // Import external global variables from the library if available.
-          var shortident = item.ident.slice(1);
-          if (LibraryManager.library[shortident] &&
-              LibraryManager.library[shortident].length &&
-              !BUILD_AS_SHARED_LIB) {
-            if (addedLibraryItems[shortident]) return ret;
-            var val = LibraryManager.library[shortident];
-            var padding;
-            if (Runtime.isNumberType(item.type) || isPointerType(item.type)) {
-              padding = [item.type].concat(zeros(Runtime.getNativeFieldSize(item.type)-1));
-            } else {
-              padding = makeEmptyStruct(item.type);
-            }
-            var padded = val.concat(padding.slice(val.length));
-            var js = item.ident + '=' + makePointer(padded, null, allocator, item.type, index) + ';'
-            if (LibraryManager.library[shortident + '__postset']) {
-              js += '\n' + LibraryManager.library[shortident + '__postset'];
-            }
-            ret.push({
-              intertype: 'GlobalVariablePostSet',
-              JS: js
-            });
-          }
-          return ret;
-        } else {
-          if (!NAMED_GLOBALS && isIndexableGlobal(item.ident)) {
-            index = makeGlobalUse(item.ident); // index !== null indicates we are indexing this
-            allocator = 'ALLOC_NONE';
-          }
-          if (item.external) {
-            assert(ASM_JS);
-            if (Runtime.isNumberType(item.type) || isPointerType(item.type)) {
-              constant = zeros(Runtime.getNativeFieldSize(item.type));
-            } else {
-              constant = makeEmptyStruct(item.type);
-            }
-            constant = JSON.stringify(constant);
-          } else {
-            constant = parseConst(item.value, item.type, item.ident);
-          }
-          if (typeof constant === 'string' && constant[0] != '[') {
-            constant = [constant]; // A single item. We may need a postset for it.
-          }
-          if (typeof constant === 'object') {
-            // This is a flattened object. We need to find its idents, so they can be assigned to later
-            constant.forEach(function(value, i) {
-              if (needsPostSet(value)) { // ident, or expression containing an ident
-                ret.push({
-                  intertype: 'GlobalVariablePostSet',
-                  JS: makeSetValue(makeGlobalUse(item.ident), i, value, 'i32', false, true) + ';' // ignore=true, since e.g. rtti and statics cause lots of safe_heap errors
-                });
-                constant[i] = '0';
-              }
-            });
-          }
-          // NOTE: This is the only place that could potentially create static
-          //       allocations in a shared library.
-          constant = makePointer(constant, null, allocator, item.type, index);
-          var js;
-
-        	js = (index !== null ? '' : item.ident + '=') + constant + ';'; // \n Module.print("' + item.ident + ' :" + ' + makeGlobalUse(item.ident) + ');';
-
-          // Special case: class vtables. We make sure they are null-terminated, to allow easy runtime operations
-          if (item.ident.substr(0, 5) == '__ZTV') {
-            if (index !== null) {
-              index = getFastValue(index, '+', Runtime.alignMemory(calcAllocatedSize(Variables.globals[item.ident].type)));
-            }
-            js += '\n' + makePointer([0], null, allocator, ['void*'], index) + ';';
-          }
-          if (!ASM_JS && (EXPORT_ALL || (item.ident in EXPORTED_GLOBALS))) {
-            js += '\nModule["' + item.ident + '"] = ' + item.ident + ';';
-          }
-          if (BUILD_AS_SHARED_LIB == 2 && !item.private_) {
-            // TODO: make the assert conditional on ASSERTIONS
-            js += 'if (globalScope) { assert(!globalScope["' + item.ident + '"]); globalScope["' + item.ident + '"] = ' + item.ident + ' }';
-          }
-          if (item.external && !NAMED_GLOBALS) {
-            assert(ASM_JS);
-            js = 'var ' + item.ident + ' = ' + js; // force an explicit naming, even if unnamed globals, for asm forwarding
-          }
-          return ret.concat({
-            intertype: 'GlobalVariable',
-            JS: js,
-          });
-        }
       }
+
+      var constant = null;
+      var allocator = (BUILD_AS_SHARED_LIB && !item.external) ? 'ALLOC_NORMAL' : 'ALLOC_STATIC';
+      var index = null;
+      if (item.external && BUILD_AS_SHARED_LIB) {
+        // External variables in shared libraries should not be declared as
+        // they would shadow similarly-named globals in the parent.
+        item.JS = '';
+      } else {
+      	item.JS = makeGlobalDef(item.ident);
+      }
+
+      if (!NAMED_GLOBALS && isIndexableGlobal(item.ident)) {
+        index = makeGlobalUse(item.ident); // index !== null indicates we are indexing this
+        allocator = 'ALLOC_NONE';
+      }
+      if (item.external) {
+        if (Runtime.isNumberType(item.type) || isPointerType(item.type)) {
+          constant = zeros(Runtime.getNativeFieldSize(item.type));
+        } else {
+          constant = makeEmptyStruct(item.type);
+        }
+      } else {
+        constant = parseConst(item.value, item.type, item.ident);
+      }
+      assert(typeof constant === 'object');//, [typeof constant, JSON.stringify(constant), item.external]);
+
+      // This is a flattened object. We need to find its idents, so they can be assigned to later
+      constant.forEach(function(value, i) {
+        if (needsPostSet(value)) { // ident, or expression containing an ident
+          ret.push({
+            intertype: 'GlobalVariablePostSet',
+            JS: makeSetValue(makeGlobalUse(item.ident), i, value, 'i32', false, true) + ';' // ignore=true, since e.g. rtti and statics cause lots of safe_heap errors
+          });
+          constant[i] = '0';
+        }
+      });
+
+      if (item.external) {
+        // External variables in shared libraries should not be declared as
+        // they would shadow similarly-named globals in the parent, so do nothing here.
+        if (BUILD_AS_SHARED_LIB) return ret;
+        // Library items need us to emit something, but everything else requires nothing.
+        if (!LibraryManager.library[item.ident.slice(1)]) return ret;
+      }
+
+      // ensure alignment
+      constant = constant.concat(zeros(Runtime.alignMemory(constant.length) - constant.length));
+
+      // Special case: class vtables. We make sure they are null-terminated, to allow easy runtime operations
+      if (item.ident.substr(0, 5) == '__ZTV') {
+        constant = constant.concat(zeros(Runtime.alignMemory(QUANTUM_SIZE)));
+      }
+
+      // NOTE: This is the only place that could potentially create static
+      //       allocations in a shared library.
+      constant = makePointer(constant, null, allocator, item.type, index);
+
+      var js = (index !== null ? '' : item.ident + '=') + constant + ';';
+
+      if (!ASM_JS && (EXPORT_ALL || (item.ident in EXPORTED_GLOBALS))) {
+        js += '\nModule["' + item.ident + '"] = ' + item.ident + ';';
+      }
+      if (BUILD_AS_SHARED_LIB == 2 && !item.private_) {
+        // TODO: make the assert conditional on ASSERTIONS
+        js += 'if (globalScope) { assert(!globalScope["' + item.ident + '"]); globalScope["' + item.ident + '"] = ' + item.ident + ' }';
+      }
+      if (item.external && !NAMED_GLOBALS) {
+        js = 'var ' + item.ident + ' = ' + js; // force an explicit naming, even if unnamed globals, for asm forwarding
+      }
+      return ret.concat({
+        intertype: 'GlobalVariable',
+        JS: js,
+      });
     }
   });
 
@@ -441,7 +415,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           }
           // In asm, we need to know about library functions. If there is a target, though, then no
           // need to consider this a library function - we will call directly to it anyhow
-          if (ASM_JS && !redirectedIdent && (typeof target == 'function' || /Math\..+/.exec(snippet))) {
+          if (ASM_JS && !redirectedIdent && (typeof target == 'function' || /Math\.\w+/.exec(snippet))) {
             Functions.libraryFunctions[ident] = 1;
           }
         } else if (typeof snippet === 'object') {
@@ -495,10 +469,10 @@ function JSify(data, functionsOnly, givenFunctions) {
             EXPORTED_FUNCTIONS[ident] = 1;
             delete Functions.libraryFunctions[ident.substr(1)];
           }
-        } else {
-          if (EXPORT_ALL || (ident in EXPORTED_FUNCTIONS)) {
-            contentText += '\nModule["' + ident + '"] = ' + ident + ';';
-          }
+        }
+        if ((!ASM_JS || phase == 'pre') &&
+            (EXPORT_ALL || (ident in EXPORTED_FUNCTIONS))) {
+          contentText += '\nModule["' + ident + '"] = ' + ident + ';';
         }
         return depsText + contentText;
       }
@@ -512,9 +486,13 @@ function JSify(data, functionsOnly, givenFunctions) {
       } else if (LibraryManager.library.hasOwnProperty(shortident)) {
         item.JS = addFromLibrary(shortident);
       } else if (!LibraryManager.library.hasOwnProperty(shortident + '__inline')) {
-        item.JS = 'var ' + item.ident + '; // stub for ' + item.ident;
-        if (WARN_ON_UNDEFINED_SYMBOLS || ASM_JS) { // always warn on undefs in asm, since it breaks validation
-          warn('Unresolved symbol: ' + item.ident);
+        if (!(item.ident in DEAD_FUNCTIONS) && !UNRESOLVED_AS_DEAD) {
+          item.JS = 'var ' + item.ident + '; // stub for ' + item.ident;
+          if (ASM_JS) {
+            error('Unresolved symbol: ' + item.ident + ', this must be corrected for asm.js validation to succeed. Consider adding it to DEAD_FUNCTIONS.');
+          } else if (WARN_ON_UNDEFINED_SYMBOLS) {
+            warn('Unresolved symbol: ' + item.ident);
+          }
         }
       }
       return ret;
@@ -722,6 +700,7 @@ function JSify(data, functionsOnly, givenFunctions) {
               ret += indent + 'label = ' + getLabelId(block.entries[0]) + '; ' + (SHOW_LABELS ? '/* ' + getOriginalLabelId(block.entries[0]) + ' */' : '') + '\n';
             } // otherwise, should have been set before!
             if (func.setjmpTable) {
+              assert(!ASM_JS, 'asm.js mode does not support setjmp yet');
               var setjmpTable = {};
               ret += indent + 'var mySetjmpIds = {};\n';
               ret += indent + 'var setjmpTable = {';
@@ -1162,6 +1141,11 @@ function JSify(data, functionsOnly, givenFunctions) {
     return ret + ';';
   });
   makeFuncLineActor('resume', function(item) {
+    if (item.ident == 0) {
+      // No exception to resume, so we can just bail.
+      // This is related to issue #917 and http://llvm.org/PR15518
+      return (EXCEPTION_DEBUG ? 'Module.print("no exception to resume")' : '') + ';';
+    }
     // If there is no current exception, set this one as it (during a resume, the current exception can be wiped out)
     var ptr = makeStructuralAccess(item.ident, 0);
     return (EXCEPTION_DEBUG ? 'Module.print("Resuming exception");' : '') + 
@@ -1312,9 +1296,10 @@ function JSify(data, functionsOnly, givenFunctions) {
 
     ident = Variables.resolveAliasToIdent(ident);
     var shortident = ident.slice(1);
-    var callIdent = LibraryManager.getRootIdent(shortident);
+    var simpleIdent = shortident;
+    var callIdent = LibraryManager.getRootIdent(simpleIdent);
     if (callIdent) {
-      shortident = callIdent; // ident may not be in library, if all there is is ident__inline, but in this case it is
+      simpleIdent = callIdent; // ident may not be in library, if all there is is ident__inline, but in this case it is
       if (callIdent.indexOf('.') < 0) {
         callIdent = '_' + callIdent; // Not Math.*, so add the normal prefix
       }
@@ -1329,7 +1314,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     var varargsTypes = [];
     var varargsByVals = {};
     var ignoreFunctionIndexizing = [];
-    var useJSArgs = (shortident + '__jsargs') in LibraryManager.library;
+    var useJSArgs = (simpleIdent + '__jsargs') in LibraryManager.library;
     var hasVarArgs = isVarArgsFunctionType(type);
     var normalArgs = (hasVarArgs && !useJSArgs) ? countNormalArgs(type) : -1;
     var byPointer = getVarData(funcData, ident);
@@ -1357,7 +1342,7 @@ function JSify(data, functionsOnly, givenFunctions) {
 
     args = args.map(function(arg, i) { return indexizeFunctions(arg, argsTypes[i]) });
     if (ASM_JS) {
-      if (shortident in Functions.libraryFunctions) {
+      if (shortident in Functions.libraryFunctions || simpleIdent in Functions.libraryFunctions) {
         args = args.map(function(arg, i) { return asmCoercion(arg, argsTypes[i]) });
       } else {
         args = args.map(function(arg, i) { return asmEnsureFloat(arg, argsTypes[i]) });
@@ -1401,8 +1386,8 @@ function JSify(data, functionsOnly, givenFunctions) {
     var argsText = args.join(', ');
 
     // Inline if either we inline whenever we can (and we can), or if there is no noninlined version
-    var inline = LibraryManager.library[shortident + '__inline'];
-    var nonInlined = shortident in LibraryManager.library;
+    var inline = LibraryManager.library[simpleIdent + '__inline'];
+    var nonInlined = simpleIdent in LibraryManager.library;
     if (inline && (INLINE_LIBRARY_FUNCS || !nonInlined)) {
       return inline.apply(null, args); // Warning: inlining does not prevent recalculation of the arguments. They should be simple identifiers
     }
@@ -1410,7 +1395,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     if (ASM_JS) {
       // remove unneeded arguments, which the asm sig can show us. this lets us alias memset with llvm.memset, we just
       // drop the final 2 args so things validate properly in asm
-      var libsig = LibraryManager.library[shortident + '__sig'];
+      var libsig = LibraryManager.library[simpleIdent + '__sig'];
       if (libsig) {
         assert(!hasVarArgs);
         while (libsig.length - 1 < args.length) {
@@ -1444,9 +1429,9 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
 
     var ret = callIdent + '(' + args.join(', ') + ')';
-    if (ASM_JS) { // TODO: do only when needed (library functions and Math.*?) XXX && shortident in Functions.libraryFunctions) {
+    if (ASM_JS) { // TODO: do only when needed (library functions and Math.*?) XXX && simpleIdent in Functions.libraryFunctions) {
       ret = asmCoercion(ret, returnType);
-      if (shortident == 'abort' && funcData.returnType != 'void') {
+      if (simpleIdent == 'abort' && funcData.returnType != 'void') {
         ret += '; return 0'; // special case: abort() can happen without return, breaking the return type of asm functions. ensure a return
       }
     }
@@ -1560,6 +1545,8 @@ function JSify(data, functionsOnly, givenFunctions) {
         assert(itemsDict.functionStub.length == 0, dump([phase, itemsDict.functionStub]));
       }
     }
+
+    if (abortExecution) throw 'Aborting compilation due to previous warnings';
 
     if (phase == 'pre' || phase == 'funcs') {
       PassManager.serialize();

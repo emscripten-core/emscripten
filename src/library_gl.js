@@ -58,7 +58,12 @@ var LibraryGL = {
       return ret;
     },
 
-    // Temporary buffers
+    // Mini temp buffer
+    MINI_TEMP_BUFFER_SIZE: 16,
+    miniTempBuffer: null,
+    miniTempBufferViews: [0], // index i has the view of size i+1
+
+    // Large temporary buffers
     MAX_TEMP_BUFFER_SIZE: {{{ GL_MAX_TEMP_BUFFER_SIZE }}},
     tempBufferIndexLookup: null,
     tempVertexBuffers: null,
@@ -310,6 +315,11 @@ var LibraryGL = {
       GL.initExtensions.done = true;
 
       if (!Module.useWebGL) return; // an app might link both gl and 2d backends
+
+      GL.miniTempBuffer = new Float32Array(GL.MINI_TEMP_BUFFER_SIZE);
+      for (var i = 0; i < GL.MINI_TEMP_BUFFER_SIZE; i++) {
+        GL.miniTempBufferViews[i] = GL.miniTempBuffer.subarray(0, i+1);
+      }
 
       GL.maxVertexAttribs = Module.ctx.getParameter(Module.ctx.MAX_VERTEX_ATTRIBS);
 #if FULL_ES2
@@ -832,53 +842,108 @@ var LibraryGL = {
   glUniform1fv__sig: 'viii',
   glUniform1fv: function(location, count, value) {
     location = GL.uniforms[location];
-    value = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
-    Module.ctx.uniform1fv(location, value);
+    var view;
+    if (count == 1) {
+      // avoid allocation for the common case of uploading one uniform
+      view = GL.miniTempBufferViews[0];
+      view[0] = {{{ makeGetValue('value', '0', 'float') }}};
+    } else {
+      view = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
+    }
+    Module.ctx.uniform1fv(location, view);
   },
 
   glUniform2fv__sig: 'viii',
   glUniform2fv: function(location, count, value) {
     location = GL.uniforms[location];
-    count *= 2;
-    value = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
-    Module.ctx.uniform2fv(location, value);
+    var view;
+    if (count == 1) {
+      // avoid allocation for the common case of uploading one uniform
+      view = GL.miniTempBufferViews[1];
+      view[0] = {{{ makeGetValue('value', '0', 'float') }}};
+      view[1] = {{{ makeGetValue('value', '4', 'float') }}};
+    } else {
+      view = {{{ makeHEAPView('F32', 'value', 'value+count*8') }}};
+    }
+    Module.ctx.uniform2fv(location, view);
   },
 
   glUniform3fv__sig: 'viii',
   glUniform3fv: function(location, count, value) {
     location = GL.uniforms[location];
-    count *= 3;
-    value = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
-    Module.ctx.uniform3fv(location, value);
+    var view;
+    if (count == 1) {
+      // avoid allocation for the common case of uploading one uniform
+      view = GL.miniTempBufferViews[2];
+      view[0] = {{{ makeGetValue('value', '0', 'float') }}};
+      view[1] = {{{ makeGetValue('value', '4', 'float') }}};
+      view[2] = {{{ makeGetValue('value', '8', 'float') }}};
+    } else {
+      view = {{{ makeHEAPView('F32', 'value', 'value+count*12') }}};
+    }
+    Module.ctx.uniform3fv(location, view);
   },
 
   glUniform4fv__sig: 'viii',
   glUniform4fv: function(location, count, value) {
     location = GL.uniforms[location];
-    count *= 4;
-    value = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
-    Module.ctx.uniform4fv(location, value);
+    var view;
+    if (count == 1) {
+      // avoid allocation for the common case of uploading one uniform
+      view = GL.miniTempBufferViews[3];
+      view[0] = {{{ makeGetValue('value', '0', 'float') }}};
+      view[1] = {{{ makeGetValue('value', '4', 'float') }}};
+      view[2] = {{{ makeGetValue('value', '8', 'float') }}};
+      view[3] = {{{ makeGetValue('value', '12', 'float') }}};
+    } else {
+      view = {{{ makeHEAPView('F32', 'value', 'value+count*16') }}};
+    }
+    Module.ctx.uniform4fv(location, view);
   },
 
   glUniformMatrix2fv: function(location, count, transpose, value) {
     location = GL.uniforms[location];
-    count *= 4;
-    value = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
-    Module.ctx.uniformMatrix2fv(location, transpose, value);
+    var view;
+    if (count == 1) {
+      // avoid allocation for the common case of uploading one uniform matrix
+      view = GL.miniTempBufferViews[3];
+      for (var i = 0; i < 4; i++) {
+        view[i] = {{{ makeGetValue('value', 'i*4', 'float') }}};
+      }
+    } else {
+      view = {{{ makeHEAPView('F32', 'value', 'value+count*16') }}};
+    }
+    Module.ctx.uniformMatrix2fv(location, transpose, view);
   },
 
   glUniformMatrix3fv: function(location, count, transpose, value) {
     location = GL.uniforms[location];
-    count *= 9;
-    value = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
-    Module.ctx.uniformMatrix3fv(location, transpose, value);
+    var view;
+    if (count == 1) {
+      // avoid allocation for the common case of uploading one uniform matrix
+      view = GL.miniTempBufferViews[8];
+      for (var i = 0; i < 9; i++) {
+        view[i] = {{{ makeGetValue('value', 'i*4', 'float') }}};
+      }
+    } else {
+      view = {{{ makeHEAPView('F32', 'value', 'value+count*36') }}};
+    }
+    Module.ctx.uniformMatrix3fv(location, transpose, view);
   },
 
   glUniformMatrix4fv: function(location, count, transpose, value) {
     location = GL.uniforms[location];
-    count *= 16;
-    value = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
-    Module.ctx.uniformMatrix4fv(location, transpose, value);
+    var view;
+    if (count == 1) {
+      // avoid allocation for the common case of uploading one uniform matrix
+      view = GL.miniTempBufferViews[15];
+      for (var i = 0; i < 16; i++) {
+        view[i] = {{{ makeGetValue('value', 'i*4', 'float') }}};
+      }
+    } else {
+      view = {{{ makeHEAPView('F32', 'value', 'value+count*64') }}};
+    }
+    Module.ctx.uniformMatrix4fv(location, transpose, view);
   },
 
   glBindBuffer__sig: 'vii',
@@ -1157,6 +1222,9 @@ var LibraryGL = {
 
       // Add some emulation workarounds
       Module.printErr('WARNING: using emscripten GL emulation. This is a collection of limited workarounds, do not expect it to work');
+#if GL_UNSAFE_OPTS == 0
+      Module.printErr('WARNING: using emscripten GL emulation unsafe opts. If weirdness happens, try -s GL_UNSAFE_OPTS=0');
+#endif
 
       // XXX some of the capabilities we don't support may lead to incorrect rendering, if we do not emulate them in shaders
       var validCapabilities = {
@@ -1733,6 +1801,7 @@ var LibraryGL = {
     lastRenderer: null, // used to avoid cleaning up and re-preparing the same renderer
     lastArrayBuffer: null, // used in conjunction with lastRenderer
     lastProgram: null, // ""
+    lastStride: -1, // ""
 
     // The following data structures are used for OpenGL Immediate Mode matrix routines.
     matrix: {},
@@ -1843,30 +1912,25 @@ var LibraryGL = {
 
     createRenderer: function(renderer) {
       var useCurrProgram = !!GL.currProgram;
-      var hasTextures = false, textureSizes = [], textureTypes = [], textureOffsets = [];
+      var hasTextures = false, textureSizes = [], textureTypes = [];
       for (var i = 0; i < GL.immediate.NUM_TEXTURES; i++) {
         if (GL.immediate.enabledClientAttributes[GL.immediate.TEXTURE0 + i]) {
           textureSizes[i] = GL.immediate.clientAttributes[GL.immediate.TEXTURE0 + i].size;
           textureTypes[i] = GL.immediate.clientAttributes[GL.immediate.TEXTURE0 + i].type;
-          textureOffsets[i] = GL.immediate.clientAttributes[GL.immediate.TEXTURE0 + i].offset;
           hasTextures = true;
         }
       }
-      var stride = GL.immediate.stride;
       var positionSize = GL.immediate.clientAttributes[GL.immediate.VERTEX].size;
       var positionType = GL.immediate.clientAttributes[GL.immediate.VERTEX].type;
-      var positionOffset = GL.immediate.clientAttributes[GL.immediate.VERTEX].offset;
-      var colorSize = 0, colorType, colorOffset;
+      var colorSize = 0, colorType;
       if (GL.immediate.enabledClientAttributes[GL.immediate.COLOR]) {
         colorSize = GL.immediate.clientAttributes[GL.immediate.COLOR].size;
         colorType = GL.immediate.clientAttributes[GL.immediate.COLOR].type;
-        colorOffset = GL.immediate.clientAttributes[GL.immediate.COLOR].offset;
       }
-      var normalSize = 0, normalType, normalOffset;
+      var normalSize = 0, normalType;
       if (GL.immediate.enabledClientAttributes[GL.immediate.NORMAL]) {
         normalSize = GL.immediate.clientAttributes[GL.immediate.NORMAL].size;
         normalType = GL.immediate.clientAttributes[GL.immediate.NORMAL].type;
-        normalOffset = GL.immediate.clientAttributes[GL.immediate.NORMAL].offset;
       }
       var ret = {
         init: function() {
@@ -2008,6 +2072,7 @@ var LibraryGL = {
           var canSkip = this == lastRenderer &&
                         arrayBuffer == GL.immediate.lastArrayBuffer &&
                         (GL.currProgram || this.program) == GL.immediate.lastProgram &&
+                        GL.immediate.stride == GL.immediate.lastStride &&
                         !GL.immediate.matricesModified;
           if (!canSkip && lastRenderer) lastRenderer.cleanup();
 #endif
@@ -2028,6 +2093,7 @@ var LibraryGL = {
           GL.immediate.lastRenderer = this;
           GL.immediate.lastArrayBuffer = arrayBuffer;
           GL.immediate.lastProgram = GL.currProgram || this.program;
+          GL.immediate.lastStride == GL.immediate.stride;
           GL.immediate.matricesModified = false;
 #endif
 
@@ -2039,13 +2105,13 @@ var LibraryGL = {
           if (this.projectionLocation) Module.ctx.uniformMatrix4fv(this.projectionLocation, false, GL.immediate.matrix['p']);
 
           Module.ctx.vertexAttribPointer(this.positionLocation, positionSize, positionType, false,
-                                         stride, positionOffset);
+                                         GL.immediate.stride, GL.immediate.clientAttributes[GL.immediate.VERTEX].offset);
           Module.ctx.enableVertexAttribArray(this.positionLocation);
           if (this.hasTextures) {
             for (var i = 0; i < textureSizes.length; i++) {
               if (textureSizes[i] && this.texCoordLocations[i] >= 0) {
                 Module.ctx.vertexAttribPointer(this.texCoordLocations[i], textureSizes[i], textureTypes[i], false,
-                                               stride, textureOffsets[i]);
+                                               GL.immediate.stride, GL.immediate.clientAttributes[GL.immediate.TEXTURE0 + i].offset);
                 Module.ctx.enableVertexAttribArray(this.texCoordLocations[i]);
               }
             }
@@ -2057,7 +2123,7 @@ var LibraryGL = {
           }
           if (this.hasColorAttrib) {
             Module.ctx.vertexAttribPointer(this.colorLocation, colorSize, colorType, true,
-                                           stride, colorOffset);
+                                           GL.immediate.stride, GL.immediate.clientAttributes[GL.immediate.COLOR].offset);
             Module.ctx.enableVertexAttribArray(this.colorLocation);
             Module.ctx.uniform1i(this.hasColorAttribLocation, 1);
           } else if (this.hasColorUniform) {
@@ -2066,7 +2132,7 @@ var LibraryGL = {
           }
           if (this.hasNormal) {
             Module.ctx.vertexAttribPointer(this.normalLocation, normalSize, normalType, true,
-                                           stride, normalOffset);
+                                           GL.immediate.stride, GL.immediate.clientAttributes[GL.immediate.NORMAL].offset);
             Module.ctx.enableVertexAttribArray(this.normalLocation);
           }
           if (!useCurrProgram) { // otherwise, the user program will set the sampler2D binding and uniform itself
@@ -2215,7 +2281,7 @@ var LibraryGL = {
         if (GL.immediate.enabledClientAttributes[i]) attributes.push(GL.immediate.clientAttributes[i]);
       }
       attributes.sort(function(x, y) { return !x ? (!y ? 0 : 1) : (!y ? -1 : (x.pointer - y.pointer)) });
-      start = attributes[0].pointer;
+      start = GL.currArrayBuffer ? 0 : attributes[0].pointer;
       for (var i = 0; i < attributes.length; i++) {
         var attribute = attributes[i];
         if (!attribute) break;

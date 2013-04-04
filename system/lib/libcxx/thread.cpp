@@ -11,10 +11,15 @@
 #include "exception"
 #include "vector"
 #include "future"
+#include "limits"
 #include <sys/types.h>
-#if !_WIN32
+#if !defined(_WIN32)
+#if !defined(__sun__) && !defined(__linux__)
 #include <sys/sysctl.h>
-#endif // _WIN32
+#else
+#include <unistd.h>
+#endif // !__sun__ && !__linux__
+#endif // !_WIN32
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
@@ -52,14 +57,23 @@ thread::detach()
 }
 
 unsigned
-thread::hardware_concurrency()
+thread::hardware_concurrency() _NOEXCEPT
 {
 #if defined(CTL_HW) && defined(HW_NCPU)
-    int n;
+    unsigned n;
     int mib[2] = {CTL_HW, HW_NCPU};
     std::size_t s = sizeof(n);
     sysctl(mib, 2, &n, &s, 0, 0);
     return n;
+#elif (defined(_POSIX_C_SOURCE) && (_POSIX_C_SOURCE >= 200112L) && defined(_SC_NPROCESSORS_ONLN)) || defined(EMSCRIPTEN)
+    long result = sysconf(_SC_NPROCESSORS_ONLN);
+    // sysconf returns -1 if the name is invalid, the option does not exist or
+    // does not have a definite limit.
+    // if sysconf returns some other negative number, we have no idea
+    // what is going on. Default to something safe.
+    if (result < 0)
+        return 0;
+    return static_cast<unsigned>(result);
 #else  // defined(CTL_HW) && defined(HW_NCPU)
     // TODO: grovel through /proc or check cpuid on x86 and similar
     // instructions on other architectures.
@@ -74,11 +88,22 @@ void
 sleep_for(const chrono::nanoseconds& ns)
 {
     using namespace chrono;
-    if (ns >= nanoseconds::zero())
+    if (ns > nanoseconds::zero())
     {
+        seconds s = duration_cast<seconds>(ns);
         timespec ts;
-        ts.tv_sec = static_cast<decltype(ts.tv_sec)>(duration_cast<seconds>(ns).count());
-        ts.tv_nsec = static_cast<decltype(ts.tv_nsec)>((ns - seconds(ts.tv_sec)).count());
+        typedef decltype(ts.tv_sec) ts_sec;
+        _LIBCPP_CONSTEXPR ts_sec ts_sec_max = numeric_limits<ts_sec>::max();
+        if (s.count() < ts_sec_max)
+        {
+            ts.tv_sec = static_cast<ts_sec>(s.count());
+            ts.tv_nsec = static_cast<decltype(ts.tv_nsec)>((ns-s).count());
+        }
+        else
+        {
+            ts.tv_sec = ts_sec_max;
+            ts.tv_nsec = giga::num - 1;
+        }
         nanosleep(&ts, 0);
     }
 }

@@ -181,7 +181,7 @@ def check_node_version():
 # we re-check sanity when the settings are changed)
 # We also re-check sanity and clear the cache when the version changes
 
-EMSCRIPTEN_VERSION = '1.3.0'
+EMSCRIPTEN_VERSION = '1.3.6'
 
 def check_sanity(force=False):
   try:
@@ -274,7 +274,6 @@ LLVM_DIS=os.path.expanduser(build_llvm_tool_path('llvm-dis'))
 LLVM_NM=os.path.expanduser(build_llvm_tool_path('llvm-nm'))
 LLVM_INTERPRETER=os.path.expanduser(build_llvm_tool_path('lli'))
 LLVM_COMPILER=os.path.expanduser(build_llvm_tool_path('llc'))
-LLVM_EXTRACT=os.path.expanduser(build_llvm_tool_path('llvm-extract'))
 
 EMSCRIPTEN = path_from_root('emscripten.py')
 DEMANGLER = path_from_root('third_party', 'demangler.py')
@@ -375,31 +374,29 @@ except:
 # Force a simple, standard target as much as possible: target 32-bit linux, and disable various flags that hint at other platforms
 # -fno-ms-compatibility is passed, since on Windows, Clang enables a 'MS compatibility mode' by default, that disables char16_t and char32_t 
 #                       to be MSVC header -compatible. This would cause build errors in libcxx file __config.
+# -fno-delayed-template-parsing is needed on Windows due to http://llvm.org/PR15651
 COMPILER_OPTS = COMPILER_OPTS + ['-m32', '-U__i386__', '-U__x86_64__', '-U__i386', '-U__x86_64', '-Ui386', '-Ux86_64', '-U__SSE__', '-U__SSE2__', '-U__MMX__',
                                  '-UX87_DOUBLE_ROUNDING', '-UHAVE_GCC_ASM_FOR_X87', '-DEMSCRIPTEN', '-U__STRICT_ANSI__', '-U__CYGWIN__',
                                  '-D__STDC__', '-Xclang', '-triple=i386-pc-linux-gnu', '-D__IEEE_LITTLE_ENDIAN', '-fno-math-errno', 
-                                 '-fno-ms-compatibility']
+                                 '-fno-ms-compatibility', '-fno-delayed-template-parsing']
 
 USE_EMSDK = not os.environ.get('EMMAKEN_NO_SDK')
 
 if USE_EMSDK:
   # Disable system C and C++ include directories, and add our own (using -idirafter so they are last, like system dirs, which
   # allows projects to override them)
-  # Note that -nostdinc++ is not needed, since -nostdinc implies that!
-  EMSDK_OPTS = ['-nostdinc', '-Xclang', '-nobuiltininc', '-Xclang', '-nostdsysteminc',
+  EMSDK_OPTS = ['-nostdinc', '-nostdinc++', '-Xclang', '-nobuiltininc', '-Xclang', '-nostdsysteminc',
     '-Xclang', '-isystem' + path_from_root('system', 'local', 'include'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'libcxx'),
     '-Xclang', '-isystem' + path_from_root('system', 'include'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'emscripten'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'bsd'), # posix stuff
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'libc'),
-    '-Xclang', '-isystem' + path_from_root('system', 'lib', 'libcxxabi', 'include'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'gfx'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'net'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'SDL'),
   ] + [
-    '-U__APPLE__', '-U__linux__',
-    '-D_LIBCPP_HAS_NO_DELETED_FUNCTIONS' # otherwise libc++ has errors with --std=c++11
+    '-U__APPLE__', '-U__linux__'
   ]
   COMPILER_OPTS += EMSDK_OPTS
 else:
@@ -721,11 +718,6 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     if old_dir:
       os.chdir(old_dir)
     return generated_libs
-
-  @staticmethod
-  def remove_symbol(filename, symbol):
-    Popen([LLVM_EXTRACT, filename, '-delete', '-glob=' + symbol, '-o', filename], stderr=PIPE).communicate()
-    Popen([LLVM_EXTRACT, filename, '-delete', '-func=' + symbol, '-o', filename], stderr=PIPE).communicate()
 
   @staticmethod
   def link(files, target):

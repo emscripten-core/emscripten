@@ -532,6 +532,10 @@
 #define DLMALLOC_VERSION 20806
 #endif /* DLMALLOC_VERSION */
 
+#if EMSCRIPTEN
+#define DLMALLOC_EXPORT __attribute__((__weak__, __visibility__("default")))
+#endif
+
 #ifndef DLMALLOC_EXPORT
 #define DLMALLOC_EXPORT extern
 #endif

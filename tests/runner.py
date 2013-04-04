@@ -1234,6 +1234,59 @@ m_divisor is 1091269979
       '''
       self.do_run(src, ',0,,2,C!,0,C!,0,,65535,C!,0,')
 
+    def test_negative_zero(self):
+      src = r'''
+        #include <stdio.h>
+        #include <math.h>
+
+        int main() {
+          #define TEST(x, y) \
+            printf("%.2f, %.2f ==> %.2f\n", x, y, copysign(x, y));
+          TEST( 5.0f,  5.0f);
+          TEST( 5.0f, -5.0f);
+          TEST(-5.0f,  5.0f);
+          TEST(-5.0f, -5.0f);
+          TEST( 5.0f,  4.0f);
+          TEST( 5.0f, -4.0f);
+          TEST(-5.0f,  4.0f);
+          TEST(-5.0f, -4.0f);
+          TEST( 0.0f,  5.0f);
+          TEST( 0.0f, -5.0f);
+          TEST(-0.0f,  5.0f);
+          TEST(-0.0f, -5.0f);
+          TEST( 5.0f,  0.0f);
+          TEST( 5.0f, -0.0f);
+          TEST(-5.0f,  0.0f);
+          TEST(-5.0f, -0.0f);
+          TEST( 0.0f,  0.0f);
+          TEST( 0.0f, -0.0f);
+          TEST(-0.0f,  0.0f);
+          TEST(-0.0f, -0.0f);
+          return 0;
+        }
+      '''
+      self.do_run(src, '''5.00, 5.00 ==> 5.00
+5.00, -5.00 ==> -5.00
+-5.00, 5.00 ==> 5.00
+-5.00, -5.00 ==> -5.00
+5.00, 4.00 ==> 5.00
+5.00, -4.00 ==> -5.00
+-5.00, 4.00 ==> 5.00
+-5.00, -4.00 ==> -5.00
+0.00, 5.00 ==> 0.00
+0.00, -5.00 ==> -0.00
+-0.00, 5.00 ==> 0.00
+-0.00, -5.00 ==> -0.00
+5.00, 0.00 ==> 5.00
+5.00, -0.00 ==> -5.00
+-5.00, 0.00 ==> 5.00
+-5.00, -0.00 ==> -5.00
+0.00, 0.00 ==> 0.00
+0.00, -0.00 ==> -0.00
+-0.00, 0.00 ==> 0.00
+-0.00, -0.00 ==> -0.00
+''')
+
     def test_llvm_intrinsics(self):
       if self.emcc_args == None: return self.skip('needs ta2')
 
@@ -1269,6 +1322,7 @@ m_divisor is 1091269979
             printf("%d,%d\n", (int)llvm_ctlz_i64(((int64_t)1) << 40), llvm_ctlz_i32(1<<10));
             printf("%d,%d\n", (int)llvm_cttz_i64(((int64_t)1) << 40), llvm_cttz_i32(1<<10));
             printf("%d,%d\n", (int)llvm_ctpop_i64((0x3101ULL << 32) | 1), llvm_ctpop_i32(0x3101));
+            printf("%d\n", (int)llvm_ctpop_i32(-594093059));
 
             printf("%d\n", llvm_expect_i32(x % 27, 3));
 
@@ -1286,6 +1340,7 @@ c5,de,15,8a
 23,21
 40,10
 5,4
+22
 13
 72057594037927936
 ''')
@@ -1580,7 +1635,11 @@ Succeeded!
     def test_floatvars(self):
         src = '''
           #include <stdio.h>
-          #include <math.h>
+
+          // headers test, see issue #1013
+          #include<cfloat>
+          #include<cmath>
+
           int main(int argc, char **argv)
           {
             float x = 1.234, y = 3.5, q = 0.00000001;
@@ -2420,17 +2479,13 @@ Exception execution path of first function! 1
     def test_exceptions(self):
         if Settings.ASM_JS: return self.skip('no exceptions support in asm')
         if Settings.QUANTUM_SIZE == 1: return self.skip("we don't support libcxx in q1")
+        if self.emcc_args is None: return self.skip('need emcc to add in libcxx properly')
 
         Settings.EXCEPTION_DEBUG = 1
 
-        self.banned_js_engines = [NODE_JS] # node issue 1669, exception causes stdout not to be flushed
         Settings.DISABLE_EXCEPTION_CATCHING = 0
-        if self.emcc_args is None:
-          if Building.LLVM_OPTS: return self.skip('optimizing bitcode before emcc can confuse libcxx inclusion')
-          self.emcc_args = [] # libc++ auto-inclusion is only done if we use emcc
-        else:
-          if '-O2' in self.emcc_args:
-            self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
+        if '-O2' in self.emcc_args:
+          self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
 
         src = '''
           #include <stdio.h>
@@ -2661,7 +2716,6 @@ Exiting setjmp function, level: 0, prev_jmp: -1
       if Settings.ASM_JS: return self.skip('uses report_stack without exporting')
 
       Settings.INLINING_LIMIT = 50
-      Settings.CATCH_EXIT_CODE = 1
 
       src = r'''
         #include <stdio.h>
@@ -2702,7 +2756,7 @@ Exiting setjmp function, level: 0, prev_jmp: -1
       ''')
 
       self.emcc_args += ['--pre-js', 'pre.js']
-      self.do_run(src, '''reported\npostRun\nok.\nExit Status: 1\n''')
+      self.do_run(src, '''reported\nExit Status: 1\npostRun\nok.\n''')
 
     def test_class(self):
         src = '''
@@ -5095,7 +5149,7 @@ def process(filename):
         0
         0
         0
-        0
+        -0
         1
         1
         1
@@ -5252,6 +5306,62 @@ at function.:blag
         Call with 2 variable arguments.
         '''
       self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected))
+
+    def test_vsnprintf(self):
+      if self.emcc_args is None: return self.skip('needs i64 math')
+
+      src = r'''
+        #include <stdio.h>
+        #include <stdarg.h>
+        #include <stdint.h>
+
+        void printy(const char *f, ...)
+        {
+          char buffer[256];
+          va_list args;
+          va_start(args, f);
+          vsnprintf(buffer, 256, f, args);
+          puts(buffer);
+          va_end(args);
+        }
+
+        int main(int argc, char **argv) {
+          int64_t x = argc - 1;
+          int64_t y = argc - 1 + 0x400000;
+          if (x % 3 == 2) y *= 2;
+
+          printy("0x%llx_0x%llx", x, y);
+          printy("0x%llx_0x%llx", x, x);
+          printy("0x%llx_0x%llx", y, x);
+          printy("0x%llx_0x%llx", y, y);
+
+          {
+            uint64_t A = 0x800000;
+            uint64_t B = 0x800000000000ULL;
+            printy("0x%llx_0x%llx", A, B);
+          }
+          {
+            uint64_t A = 0x800;
+            uint64_t B = 0x12340000000000ULL;
+            printy("0x%llx_0x%llx", A, B);
+          }
+          {
+            uint64_t A = 0x000009182746756;
+            uint64_t B = 0x192837465631ACBDULL;
+            printy("0x%llx_0x%llx", A, B);
+          }
+
+          return 0;
+        }
+      '''
+      self.do_run(src, '''0x0_0x400000
+0x0_0x0
+0x400000_0x0
+0x400000_0x400000
+0x800000_0x800000000000
+0x800_0x12340000000000
+0x9182746756_0x192837465631acbd
+''')
 
     def test_printf_more(self):
       src = r'''
@@ -5739,6 +5849,30 @@ def process(filename):
       self.emcc_args += ['--embed-file', 'file_with_byte_234.txt']
       self.do_run(src, '*234\n')
 
+    def test_fgets_eol(self):
+      if self.emcc_args is None: return self.skip('requires emcc')
+      src = r'''
+        #include <stdio.h>
+        char buf[32];
+        int main()
+        {
+          char *r = "SUCCESS";
+          FILE *f = fopen("eol.txt", "r");
+          while (fgets(buf, 32, f) != NULL) {
+            if (buf[0] == '\0') {
+              r = "FAIL";
+              break;
+            }
+          }
+          printf("%s\n", r);
+          fclose(f);
+          return 0;
+        }
+      '''
+      open('eol.txt', 'wb').write('\n')
+      self.emcc_args += ['--embed-file', 'eol.txt']
+      self.do_run(src, 'SUCCESS\n')
+
     def test_folders(self):
       add_pre_run = '''
 def process(filename):
@@ -6110,6 +6244,36 @@ def process(filename):
           return 0;
         }
       '''
+      self.do_run(src, "some string constant")
+
+    def test_std_cout_new(self):
+      if self.emcc_args is None: return self.skip('requires emcc')
+
+      src = '''
+        #include <iostream>
+
+        struct NodeInfo { //structure that we want to transmit to our shaders
+            float x;
+            float y;
+            float s;
+            float c;
+        };
+        const int nbNodes = 100;
+        NodeInfo * data = new NodeInfo[nbNodes]; //our data that will be transmitted using float texture.
+
+        template<int i>
+        void printText( const char (&text)[ i ] )
+        {
+           std::cout << text << std::endl;
+        }
+
+        int main()
+        {
+          printText( "some string constant" );
+          return 0;
+        }
+      '''
+
       self.do_run(src, "some string constant")
       
     def test_istream(self):
@@ -7059,7 +7223,6 @@ void*:16
 
     def test_mmap(self):
       if self.emcc_args is None: return self.skip('requires emcc')
-      self.banned_js_engines = [NODE_JS] # slower, and fail on 64-bit
 
       Settings.TOTAL_MEMORY = 128*1024*1024
 
@@ -7282,6 +7445,8 @@ def process(filename):
     def test_the_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
       if self.emcc_args is None: return self.skip('requires emcc')
       if Building.LLVM_OPTS and self.emcc_args is None: Settings.SAFE_HEAP = 0 # Optimizations make it so we do not have debug info on the line we need to ignore
+
+      Settings.DEAD_FUNCTIONS = ['__ZSt9terminatev']
 
       # Note: this is also a good test of per-file and per-line changes (since we have multiple files, and correct specific lines)
       if Settings.SAFE_HEAP:
@@ -7506,7 +7671,6 @@ def process(filename):
 
       try:
         os.environ['EMCC_LEAVE_INPUTS_RAW'] = '1'
-        #self.banned_js_engines = [NODE_JS] # node issue 1669, exception causes stdout not to be flushed
         Settings.CHECK_OVERFLOWS = 0
 
         for name in glob.glob(path_from_root('tests', 'cases', '*.ll')):
@@ -7887,7 +8051,8 @@ def process(filename):
 
     def test_scriptaclass(self):
         if self.emcc_args is None: return self.skip('requires emcc')
-        if Settings.ASM_JS: return self.skip('asm does not bindings generator yet')
+
+        Settings.EXPORT_BINDINGS = 1
 
         header_filename = os.path.join(self.get_dir(), 'header.h')
         header = '''
@@ -8062,6 +8227,7 @@ def process(filename):
           Module.Child2.prototype.runVirtualFunc(c2);
           c2.virtualFunc2();
 
+''' + ('' if Settings.ASM_JS else '''
           // extend the class from JS
           var c3 = new Module.Child2;
           Module.customizeVTable(c3, [{
@@ -8082,6 +8248,7 @@ def process(filename):
           c2.virtualFunc(); // original should remain the same
           Module.Child2.prototype.runVirtualFunc(c2);
           c2.virtualFunc2();
+''') + '''
 
           Module.print('*ok*');
         \'\'\'
@@ -8120,7 +8287,7 @@ Child2:9
 *static*
 *virtualf*
 *virtualf*
-*virtualf2*
+*virtualf2*''' + ('' if Settings.ASM_JS else '''
 Parent:9
 Child2:9
 *js virtualf replacement*
@@ -8128,13 +8295,14 @@ Child2:9
 *js virtualf2 replacement*
 *virtualf*
 *virtualf*
-*virtualf2*
+*virtualf2*''') + '''
 *ok*
 ''', post_build=[post2, post3])
 
     def test_scriptaclass_2(self):
         if self.emcc_args is None: return self.skip('requires emcc')
-        if Settings.ASM_JS: return self.skip('asm does not bindings generator yet')
+
+        Settings.EXPORT_BINDINGS = 1
 
         header_filename = os.path.join(self.get_dir(), 'header.h')
         header = '''
@@ -8532,8 +8700,6 @@ def process(filename):
         Settings.CORRECT_SIGNS = 0
 
     def test_exit_status(self):
-      Settings.CATCH_EXIT_CODE = 1
-
       src = r'''
         #include <stdio.h>
         #include <stdlib.h>
@@ -8728,7 +8894,6 @@ class %s(T):
     Settings.INCLUDE_FULL_LIBRARY = 0
     Settings.BUILD_AS_SHARED_LIB = 0
     Settings.RUNTIME_LINKED_LIBS = []
-    Settings.CATCH_EXIT_CODE = 0
     Settings.EMULATE_UNALIGNED_ACCESSES = int(Settings.USE_TYPED_ARRAYS == 2 and Building.LLVM_OPTS == 2)
     Settings.DOUBLE_MODE = 1 if Settings.USE_TYPED_ARRAYS and Building.LLVM_OPTS == 0 else 0
     Settings.PRECISE_I64_MATH = 0
@@ -9288,7 +9453,7 @@ f.close()
       filename = self.in_dir('src.cpp')
       open(filename, 'w').write(src)
       out, err = Popen([PYTHON, EMCC, filename, '-s', 'ASM_JS=1', '-O2'], stderr=PIPE).communicate()
-      assert 'Warning: Unresolved symbol' in err, 'always warn on undefs in asm, since it breaks validation'
+      assert 'Unresolved symbol' in err, 'always warn on undefs in asm, since it breaks validation: ' + err
 
     def test_redundant_link(self):
       lib = "int mult() { return 1; }"
@@ -9917,6 +10082,7 @@ f.close()
         (path_from_root('tools', 'test-js-optimizer-asm-last.js'), open(path_from_root('tools', 'test-js-optimizer-asm-last-output.js')).read(),
          ['asm', 'last']),
       ]:
+        print input
         output = Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
         self.assertIdentical(expected, output.replace('\r\n', '\n').replace('\n\n', '\n'))
 
@@ -9934,12 +10100,18 @@ f.close()
         os.environ['EMCC_DEBUG'] = '1'
         for asm, linkable, chunks, js_chunks in [
             (0, 0, 3, 2), (0, 1, 4, 4),
-            (1, 0, 3, 2), (1, 1, 4, 5)
+            (1, 0, 3, 2), (1, 1, 4, 4)
           ]:
           print asm, linkable, chunks, js_chunks
-          output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O1', '-s', 'LINKABLE=%d' % linkable, '-s', 'ASM_JS=%d' % asm], stdout=PIPE, stderr=PIPE).communicate()
-          assert 'phase 2 working on %d chunks' %chunks in err, err
-          assert 'splitting up js optimization into %d chunks' % js_chunks in err, err
+          output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O1', '-s', 'LINKABLE=%d' % linkable, '-s', 'ASM_JS=%d' % asm, '-s', 'UNRESOLVED_AS_DEAD=1'] + (['-O2'] if asm else []), stdout=PIPE, stderr=PIPE).communicate()
+          ok = False
+          for c in range(chunks, chunks+2):
+            ok = ok or ('phase 2 working on %d chunks' % c in err)
+          assert ok, err
+          ok = False
+          for c in range(js_chunks, js_chunks+2):
+            ok = ok or ('splitting up js optimization into %d chunks' % c in err)
+          assert ok, err
       finally:
         del os.environ['EMCC_DEBUG']
 
@@ -10896,6 +11068,84 @@ elif 'browser' in str(sys.argv):
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_mouse.c'), '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js']).communicate()
       self.run_browser('page.html', '', '/report_result?740')
 
+    def test_sdl_mouse_offsets(self):
+      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+        function simulateMouseEvent(x, y, button) {
+          var event = document.createEvent("MouseEvents");
+          if (button >= 0) {
+            var event1 = document.createEvent("MouseEvents");
+            event1.initMouseEvent('mousedown', true, true, window,
+                       1, x, y, x, y,
+                       0, 0, 0, 0,
+                       button, null);
+            Module['canvas'].dispatchEvent(event1);
+            var event2 = document.createEvent("MouseEvents");
+            event2.initMouseEvent('mouseup', true, true, window,
+                       1, x, y, x, y,
+                       0, 0, 0, 0,
+                       button, null);
+            Module['canvas'].dispatchEvent(event2);
+          } else {
+            var event1 = document.createEvent("MouseEvents");
+            event1.initMouseEvent('mousemove', true, true, window,
+                       0, x, y, x, y,
+                       0, 0, 0, 0,
+                       0, null);
+            Module['canvas'].dispatchEvent(event1);
+          }
+        }
+        window['simulateMouseEvent'] = simulateMouseEvent;
+      ''')
+      open(os.path.join(self.get_dir(), 'page.html'), 'w').write('''
+        <html>
+          <head>
+            <style type="text/css">
+              html, body { margin: 0; padding: 0; }
+              #container {
+                position: absolute;
+                left: 5px; right: 0;
+                top: 5px; bottom: 0;
+              }
+              #canvas {
+                position: absolute;
+                left: 0; width: 600px;
+                top: 0; height: 450px;
+              }
+              textarea {
+                margin-top: 500px;
+                margin-left: 5px;
+                width: 600px;
+              }
+            </style>
+          </head>
+          <body>
+            <div id="container">
+              <canvas id="canvas"></canvas>
+            </div>
+            <textarea id="output" rows="8"></textarea>
+            <script type="text/javascript">
+              var Module = {
+                canvas: document.getElementById('canvas'),
+                print: (function() {
+                  var element = document.getElementById('output');
+                  element.value = ''; // clear browser cache
+                  return function(text) {
+                    text = Array.prototype.slice.call(arguments).join(' ');
+                    element.value += text + "\\n";
+                    element.scrollTop = 99999; // focus on bottom
+                  };
+                })()
+              };
+            </script>
+            <script type="text/javascript" src="sdl_mouse.js"></script>
+          </body>
+        </html>
+      ''')
+      open(os.path.join(self.get_dir(), 'sdl_mouse.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_mouse.c')).read()))
+
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_mouse.c'), '-O2', '--minify', '0', '-o', 'sdl_mouse.js', '--pre-js', 'pre.js']).communicate()
+      self.run_browser('page.html', '', '/report_result?600')
+
     def test_sdl_audio(self):
       shutil.copyfile(path_from_root('tests', 'sounds', 'alarmvictory_1.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
       shutil.copyfile(path_from_root('tests', 'sounds', 'alarmcreatemiltaryfoot_1.wav'), os.path.join(self.get_dir(), 'sound2.wav'))
@@ -11277,6 +11527,13 @@ elif 'browser' in str(sys.argv):
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
       self.btest('gl_ps_workaround2.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png'])
 
+    def test_gl_ps_strides(self):
+      shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
+      self.btest('gl_ps_strides.c', reference='gl_ps_strides.png', args=['--preload-file', 'screenshot.png'])
+
+    def test_gl_renderers(self):
+      self.btest('gl_renderers.c', reference='gl_renderers.png', args=['-s', 'GL_UNSAFE_OPTS=0'])
+
     def test_matrix_identity(self):
       self.btest('gl_matrix_identity.c', expected=['-1882984448', '460451840'])
 
@@ -11606,6 +11863,71 @@ elif 'browser' in str(sys.argv):
           with self.WebsockHarness(3994, no_server=True):
             Popen([PYTHON, EMCC, path_from_root('tests', 'websockets_bi_side_bigdata.c'), '-o', 'side.html', '-DSOCKK=3995', '-s', 'SOCKET_DEBUG=0', '-I' + path_from_root('tests')]).communicate()
             self.btest('websockets_bi_bigdata.c', expected='0', args=['-s', 'SOCKET_DEBUG=0', '-I' + path_from_root('tests')])
+      finally:
+        self.clean_pids()
+
+    def test_websockets_select_server_down(self):
+      def closedServer(q):
+        import socket
+
+        q.put(None) # No sub-process to start
+        ssock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        ssock.bind(("127.0.0.1", 8994))
+      try:
+        with self.WebsockHarness(8994, closedServer):
+          self.btest('websockets_select.c', expected='266')
+      finally:
+        self.clean_pids()
+
+    def test_websockets_select_server_closes_connection(self):
+      def closingServer(q):
+        import socket
+
+        q.put(None) # No sub-process to start
+        ssock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        ssock.bind(("127.0.0.1", 8994))
+        ssock.listen(2)
+        while True:
+          csock, addr = ssock.accept()
+          print "Connection from %s" % repr(addr)
+          csock.send("1234567")
+          csock.close()
+
+      try:
+        with self.WebsockHarness(8994, closingServer):
+          self.btest('websockets_select_server_closes_connection.c', expected='266')
+      finally:
+        self.clean_pids()
+
+    def test_websockets_select_server_closes_connection_rw(self):
+      def closingServer_rw(q):
+        import socket
+
+        q.put(None) # No sub-process to start
+        ssock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        ssock.bind(("127.0.0.1", 8998))
+        ssock.listen(2)
+        while True:
+          csock, addr = ssock.accept()
+          print "Connection from %s" % repr(addr)
+          readArray = bytearray(10)
+          #readBuffer = buffer(readArray)
+          bytesRead = 0
+          # Let the client start to write data
+          while (bytesRead < 10):
+            (readBytes, address) = csock.recvfrom_into( readArray, 10 )
+            bytesRead += readBytes
+          print "server: 10 bytes read"
+          # Now we write a message on our own ...
+          csock.send("0123456789")
+          print "server: 10 bytes written"
+          # And immediately close the connection
+          csock.close()
+          print "server: connection closed"
+
+      try:
+        with self.WebsockHarness(8998, closingServer_rw):
+          self.btest('websockets_select_server_closes_connection_rw.c', expected='266')
       finally:
         self.clean_pids()
 
@@ -12007,7 +12329,8 @@ ok.
                                     native=True)
 
       emcc_args = js_lib + ['-I' + path_from_root('tests', 'bullet', 'src'),
-                            '-I' + path_from_root('tests', 'bullet', 'Demos', 'Benchmarks')]
+                            '-I' + path_from_root('tests', 'bullet', 'Demos', 'Benchmarks'),
+                            '-s', 'DEAD_FUNCTIONS=["__ZSt9terminatev"]']
       native_args = native_lib + ['-I' + path_from_root('tests', 'bullet', 'src'),
                                   '-I' + path_from_root('tests', 'bullet', 'Demos', 'Benchmarks')]
 

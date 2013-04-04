@@ -70,7 +70,11 @@ typedef ratio<1000000000000000000000000, 1> yotta;  // not supported
 #include <climits>
 #include <type_traits>
 
+#include <__undef_min_max>
+
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
+#endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
@@ -86,6 +90,12 @@ template <intmax_t _Xp>
 struct __static_gcd<_Xp, 0>
 {
     static const intmax_t value = _Xp;
+};
+
+template <>
+struct __static_gcd<0, 0>
+{
+    static const intmax_t value = 1;
 };
 
 // __static_lcm
@@ -221,7 +231,7 @@ public:
 };
 
 template <intmax_t _Num, intmax_t _Den = 1>
-class _LIBCPP_VISIBLE ratio
+class _LIBCPP_TYPE_VIS ratio
 {
     static_assert(__static_abs<_Num>::value >= 0, "ratio numerator is out of range");
     static_assert(_Den != 0, "ratio divide by 0");
@@ -282,7 +292,7 @@ template <class _R1, class _R2> using ratio_multiply
 #else  // _LIBCPP_HAS_NO_TEMPLATE_ALIASES
 
 template <class _R1, class _R2>
-struct _LIBCPP_VISIBLE ratio_multiply
+struct _LIBCPP_TYPE_VIS ratio_multiply
     : public __ratio_multiply<_R1, _R2>::type {};
 
 #endif  // _LIBCPP_HAS_NO_TEMPLATE_ALIASES
@@ -309,7 +319,7 @@ template <class _R1, class _R2> using ratio_divide
 #else  // _LIBCPP_HAS_NO_TEMPLATE_ALIASES
 
 template <class _R1, class _R2>
-struct _LIBCPP_VISIBLE ratio_divide
+struct _LIBCPP_TYPE_VIS ratio_divide
     : public __ratio_divide<_R1, _R2>::type {};
 
 #endif  // _LIBCPP_HAS_NO_TEMPLATE_ALIASES
@@ -344,7 +354,7 @@ template <class _R1, class _R2> using ratio_add
 #else  // _LIBCPP_HAS_NO_TEMPLATE_ALIASES
 
 template <class _R1, class _R2>
-struct _LIBCPP_VISIBLE ratio_add
+struct _LIBCPP_TYPE_VIS ratio_add
     : public __ratio_add<_R1, _R2>::type {};
 
 #endif  // _LIBCPP_HAS_NO_TEMPLATE_ALIASES
@@ -379,7 +389,7 @@ template <class _R1, class _R2> using ratio_subtract
 #else  // _LIBCPP_HAS_NO_TEMPLATE_ALIASES
 
 template <class _R1, class _R2>
-struct _LIBCPP_VISIBLE ratio_subtract
+struct _LIBCPP_TYPE_VIS ratio_subtract
     : public __ratio_subtract<_R1, _R2>::type {};
 
 #endif  // _LIBCPP_HAS_NO_TEMPLATE_ALIASES
@@ -387,11 +397,11 @@ struct _LIBCPP_VISIBLE ratio_subtract
 // ratio_equal
 
 template <class _R1, class _R2>
-struct _LIBCPP_VISIBLE ratio_equal
+struct _LIBCPP_TYPE_VIS ratio_equal
     : public integral_constant<bool, _R1::num == _R2::num && _R1::den == _R2::den> {};
 
 template <class _R1, class _R2>
-struct _LIBCPP_VISIBLE ratio_not_equal
+struct _LIBCPP_TYPE_VIS ratio_not_equal
     : public integral_constant<bool, !ratio_equal<_R1, _R2>::value> {};
 
 // ratio_less
@@ -404,27 +414,27 @@ struct __ratio_less1
     static const bool value = _Odd ? _Q2 < _Q1 : _Q1 < _Q2;
 };
 
-template <class _R1, class _R2, bool _Odd, intmax_t _Q>
-struct __ratio_less1<_R1, _R2, _Odd, _Q, 0, _Q, 0>
+template <class _R1, class _R2, bool _Odd, intmax_t _Qp>
+struct __ratio_less1<_R1, _R2, _Odd, _Qp, 0, _Qp, 0>
 {
     static const bool value = false;
 };
 
-template <class _R1, class _R2, bool _Odd, intmax_t _Q, intmax_t _M2>
-struct __ratio_less1<_R1, _R2, _Odd, _Q, 0, _Q, _M2>
+template <class _R1, class _R2, bool _Odd, intmax_t _Qp, intmax_t _M2>
+struct __ratio_less1<_R1, _R2, _Odd, _Qp, 0, _Qp, _M2>
 {
     static const bool value = !_Odd;
 };
 
-template <class _R1, class _R2, bool _Odd, intmax_t _Q, intmax_t _M1>
-struct __ratio_less1<_R1, _R2, _Odd, _Q, _M1, _Q, 0>
+template <class _R1, class _R2, bool _Odd, intmax_t _Qp, intmax_t _M1>
+struct __ratio_less1<_R1, _R2, _Odd, _Qp, _M1, _Qp, 0>
 {
     static const bool value = _Odd;
 };
 
-template <class _R1, class _R2, bool _Odd, intmax_t _Q, intmax_t _M1,
+template <class _R1, class _R2, bool _Odd, intmax_t _Qp, intmax_t _M1,
                                                         intmax_t _M2>
-struct __ratio_less1<_R1, _R2, _Odd, _Q, _M1, _Q, _M2>
+struct __ratio_less1<_R1, _R2, _Odd, _Qp, _M1, _Qp, _M2>
 {
     static const bool value = __ratio_less1<ratio<_R1::den, _M1>,
                                             ratio<_R2::den, _M2>, !_Odd>::value;
@@ -450,19 +460,19 @@ struct __ratio_less<_R1, _R2, -1LL, -1LL>
 };
 
 template <class _R1, class _R2>
-struct _LIBCPP_VISIBLE ratio_less
+struct _LIBCPP_TYPE_VIS ratio_less
     : public integral_constant<bool, __ratio_less<_R1, _R2>::value> {};
 
 template <class _R1, class _R2>
-struct _LIBCPP_VISIBLE ratio_less_equal
+struct _LIBCPP_TYPE_VIS ratio_less_equal
     : public integral_constant<bool, !ratio_less<_R2, _R1>::value> {};
 
 template <class _R1, class _R2>
-struct _LIBCPP_VISIBLE ratio_greater
+struct _LIBCPP_TYPE_VIS ratio_greater
     : public integral_constant<bool, ratio_less<_R2, _R1>::value> {};
 
 template <class _R1, class _R2>
-struct _LIBCPP_VISIBLE ratio_greater_equal
+struct _LIBCPP_TYPE_VIS ratio_greater_equal
     : public integral_constant<bool, !ratio_less<_R1, _R2>::value> {};
 
 template <class _R1, class _R2>

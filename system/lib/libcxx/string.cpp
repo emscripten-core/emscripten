@@ -11,7 +11,7 @@
 #include "cstdlib"
 #include "cwchar"
 #include "cerrno"
-#if _WIN32
+#ifdef _WIN32
 #include "support/win32/support.h"
 #endif // _WIN32
 
@@ -31,17 +31,17 @@ stoi(const string& str, size_t* idx, int base)
 {
     char* ptr;
     const char* const p = str.c_str();
+    typename remove_reference<decltype(errno)>::type errno_save = errno;
+    errno = 0;
     long r = strtol(p, &ptr, base);
-    if (r < numeric_limits<int>::min() || numeric_limits<int>::max() < r)
-        ptr = const_cast<char*>(p);
-    if (ptr == p)
-    {
+    swap(errno, errno_save);
 #ifndef _LIBCPP_NO_EXCEPTIONS
-        if (r == 0)
-            throw invalid_argument("stoi: no conversion");
+    if (errno_save == ERANGE || r < numeric_limits<int>::min() ||
+                                numeric_limits<int>::max() < r)
         throw out_of_range("stoi: out of range");
+    if (ptr == p)
+        throw invalid_argument("stoi: no conversion");
 #endif  // _LIBCPP_NO_EXCEPTIONS
-    }
     if (idx)
         *idx = static_cast<size_t>(ptr - p);
     return static_cast<int>(r);
@@ -52,17 +52,17 @@ stoi(const wstring& str, size_t* idx, int base)
 {
     wchar_t* ptr;
     const wchar_t* const p = str.c_str();
+    typename remove_reference<decltype(errno)>::type errno_save = errno;
+    errno = 0;
     long r = wcstol(p, &ptr, base);
-    if (r < numeric_limits<int>::min() || numeric_limits<int>::max() < r)
-        ptr = const_cast<wchar_t*>(p);
-    if (ptr == p)
-    {
+    swap(errno, errno_save);
 #ifndef _LIBCPP_NO_EXCEPTIONS
-        if (r == 0)
-            throw invalid_argument("stoi: no conversion");
+    if (errno_save == ERANGE || r < numeric_limits<int>::min() ||
+                                numeric_limits<int>::max() < r)
         throw out_of_range("stoi: out of range");
+    if (ptr == p)
+        throw invalid_argument("stoi: no conversion");
 #endif  // _LIBCPP_NO_EXCEPTIONS
-    }
     if (idx)
         *idx = static_cast<size_t>(ptr - p);
     return static_cast<int>(r);
@@ -73,15 +73,16 @@ stol(const string& str, size_t* idx, int base)
 {
     char* ptr;
     const char* const p = str.c_str();
+    typename remove_reference<decltype(errno)>::type errno_save = errno;
+    errno = 0;
     long r = strtol(p, &ptr, base);
-    if (ptr == p)
-    {
+    swap(errno, errno_save);
 #ifndef _LIBCPP_NO_EXCEPTIONS
-        if (r == 0)
-            throw invalid_argument("stol: no conversion");
+    if (errno_save == ERANGE)
         throw out_of_range("stol: out of range");
+    if (ptr == p)
+        throw invalid_argument("stol: no conversion");
 #endif  // _LIBCPP_NO_EXCEPTIONS
-    }
     if (idx)
         *idx = static_cast<size_t>(ptr - p);
     return r;
@@ -92,15 +93,16 @@ stol(const wstring& str, size_t* idx, int base)
 {
     wchar_t* ptr;
     const wchar_t* const p = str.c_str();
+    typename remove_reference<decltype(errno)>::type errno_save = errno;
+    errno = 0;
     long r = wcstol(p, &ptr, base);
-    if (ptr == p)
-    {
+    swap(errno, errno_save);
 #ifndef _LIBCPP_NO_EXCEPTIONS
-        if (r == 0)
-            throw invalid_argument("stol: no conversion");
+    if (errno_save == ERANGE)
         throw out_of_range("stol: out of range");
+    if (ptr == p)
+        throw invalid_argument("stol: no conversion");
 #endif  // _LIBCPP_NO_EXCEPTIONS
-    }
     if (idx)
         *idx = static_cast<size_t>(ptr - p);
     return r;
@@ -111,15 +113,16 @@ stoul(const string& str, size_t* idx, int base)
 {
     char* ptr;
     const char* const p = str.c_str();
+    typename remove_reference<decltype(errno)>::type errno_save = errno;
+    errno = 0;
     unsigned long r = strtoul(p, &ptr, base);
-    if (ptr == p)
-    {
+    swap(errno, errno_save);
 #ifndef _LIBCPP_NO_EXCEPTIONS
-        if (r == 0)
-            throw invalid_argument("stoul: no conversion");
+    if (errno_save == ERANGE)
         throw out_of_range("stoul: out of range");
+    if (ptr == p)
+        throw invalid_argument("stoul: no conversion");
 #endif  // _LIBCPP_NO_EXCEPTIONS
-    }
     if (idx)
         *idx = static_cast<size_t>(ptr - p);
     return r;
@@ -130,15 +133,16 @@ stoul(const wstring& str, size_t* idx, int base)
 {
     wchar_t* ptr;
     const wchar_t* const p = str.c_str();
+    typename remove_reference<decltype(errno)>::type errno_save = errno;
+    errno = 0;
     unsigned long r = wcstoul(p, &ptr, base);
-    if (ptr == p)
-    {
+    swap(errno, errno_save);
 #ifndef _LIBCPP_NO_EXCEPTIONS
-        if (r == 0)
-            throw invalid_argument("stoul: no conversion");
+    if (errno_save == ERANGE)
         throw out_of_range("stoul: out of range");
+    if (ptr == p)
+        throw invalid_argument("stoul: no conversion");
 #endif  // _LIBCPP_NO_EXCEPTIONS
-    }
     if (idx)
         *idx = static_cast<size_t>(ptr - p);
     return r;
@@ -149,15 +153,16 @@ stoll(const string& str, size_t* idx, int base)
 {
     char* ptr;
     const char* const p = str.c_str();
+    typename remove_reference<decltype(errno)>::type errno_save = errno;
+    errno = 0;
     long long r = strtoll(p, &ptr, base);
-    if (ptr == p)
-    {
+    swap(errno, errno_save);
 #ifndef _LIBCPP_NO_EXCEPTIONS
-        if (r == 0)
-            throw invalid_argument("stoll: no conversion");
+    if (errno_save == ERANGE)
         throw out_of_range("stoll: out of range");
+    if (ptr == p)
+        throw invalid_argument("stoll: no conversion");
 #endif  // _LIBCPP_NO_EXCEPTIONS
-    }
     if (idx)
         *idx = static_cast<size_t>(ptr - p);
     return r;
@@ -168,15 +173,16 @@ stoll(const wstring& str, size_t* idx, int base)
 {
     wchar_t* ptr;
     const wchar_t* const p = str.c_str();
+    typename remove_reference<decltype(errno)>::type errno_save = errno;
+    errno = 0;
     long long r = wcstoll(p, &ptr, base);
-    if (ptr == p)
-    {
+    swap(errno, errno_save);
 #ifndef _LIBCPP_NO_EXCEPTIONS
-        if (r == 0)
-            throw invalid_argument("stoll: no conversion");
+    if (errno_save == ERANGE)
         throw out_of_range("stoll: out of range");
+    if (ptr == p)
+        throw invalid_argument("stoll: no conversion");
 #endif  // _LIBCPP_NO_EXCEPTIONS
-    }
     if (idx)
         *idx = static_cast<size_t>(ptr - p);
     return r;
@@ -187,15 +193,16 @@ stoull(const string& str, size_t* idx, int base)
 {
     char* ptr;
     const char* const p = str.c_str();
+    typename remove_reference<decltype(errno)>::type errno_save = errno;
+    errno = 0;
     unsigned long long r = strtoull(p, &ptr, base);
-    if (ptr == p)
-    {
+    swap(errno, errno_save);
 #ifndef _LIBCPP_NO_EXCEPTIONS
-        if (r == 0)
-            throw invalid_argument("stoull: no conversion");
+    if (errno_save == ERANGE)
         throw out_of_range("stoull: out of range");
+    if (ptr == p)
+        throw invalid_argument("stoull: no conversion");
 #endif  // _LIBCPP_NO_EXCEPTIONS
-    }
     if (idx)
         *idx = static_cast<size_t>(ptr - p);
     return r;
@@ -206,15 +213,16 @@ stoull(const wstring& str, size_t* idx, int base)
 {
     wchar_t* ptr;
     const wchar_t* const p = str.c_str();
+    typename remove_reference<decltype(errno)>::type errno_save = errno;
+    errno = 0;
     unsigned long long r = wcstoull(p, &ptr, base);
-    if (ptr == p)
-    {
+    swap(errno, errno_save);
 #ifndef _LIBCPP_NO_EXCEPTIONS
-        if (r == 0)
-            throw invalid_argument("stoull: no conversion");
+    if (errno_save == ERANGE)
         throw out_of_range("stoull: out of range");
+    if (ptr == p)
+        throw invalid_argument("stoull: no conversion");
 #endif  // _LIBCPP_NO_EXCEPTIONS
-    }
     if (idx)
         *idx = static_cast<size_t>(ptr - p);
     return r;
@@ -225,9 +233,9 @@ stof(const string& str, size_t* idx)
 {
     char* ptr;
     const char* const p = str.c_str();
-    int errno_save = errno;
+    typename remove_reference<decltype(errno)>::type errno_save = errno;
     errno = 0;
-    double r = strtod(p, &ptr);
+    float r = strtof(p, &ptr);
     swap(errno, errno_save);
 #ifndef _LIBCPP_NO_EXCEPTIONS
     if (errno_save == ERANGE)
@@ -237,7 +245,7 @@ stof(const string& str, size_t* idx)
 #endif  // _LIBCPP_NO_EXCEPTIONS
     if (idx)
         *idx = static_cast<size_t>(ptr - p);
-    return static_cast<float>(r);
+    return r;
 }
 
 float
@@ -245,9 +253,9 @@ stof(const wstring& str, size_t* idx)
 {
     wchar_t* ptr;
     const wchar_t* const p = str.c_str();
-    int errno_save = errno;
+    typename remove_reference<decltype(errno)>::type errno_save = errno;
     errno = 0;
-    double r = wcstod(p, &ptr);
+    float r = wcstof(p, &ptr);
     swap(errno, errno_save);
 #ifndef _LIBCPP_NO_EXCEPTIONS
     if (errno_save == ERANGE)
@@ -257,7 +265,7 @@ stof(const wstring& str, size_t* idx)
 #endif  // _LIBCPP_NO_EXCEPTIONS
     if (idx)
         *idx = static_cast<size_t>(ptr - p);
-    return static_cast<float>(r);
+    return r;
 }
 
 double
@@ -265,7 +273,7 @@ stod(const string& str, size_t* idx)
 {
     char* ptr;
     const char* const p = str.c_str();
-    int errno_save = errno;
+    typename remove_reference<decltype(errno)>::type errno_save = errno;
     errno = 0;
     double r = strtod(p, &ptr);
     swap(errno, errno_save);
@@ -285,7 +293,7 @@ stod(const wstring& str, size_t* idx)
 {
     wchar_t* ptr;
     const wchar_t* const p = str.c_str();
-    int errno_save = errno;
+    typename remove_reference<decltype(errno)>::type errno_save = errno;
     errno = 0;
     double r = wcstod(p, &ptr);
     swap(errno, errno_save);
@@ -305,7 +313,7 @@ stold(const string& str, size_t* idx)
 {
     char* ptr;
     const char* const p = str.c_str();
-    int errno_save = errno;
+    typename remove_reference<decltype(errno)>::type errno_save = errno;
     errno = 0;
     long double r = strtold(p, &ptr);
     swap(errno, errno_save);
@@ -325,7 +333,7 @@ stold(const wstring& str, size_t* idx)
 {
     wchar_t* ptr;
     const wchar_t* const p = str.c_str();
-    int errno_save = errno;
+    typename remove_reference<decltype(errno)>::type errno_save = errno;
     errno = 0;
     long double r = wcstold(p, &ptr);
     swap(errno, errno_save);
@@ -346,7 +354,7 @@ string to_string(int val)
     s.resize(s.capacity());
     while (true)
     {
-        int n2 = snprintf(&s[0], s.size()+1, "%d", val);
+        size_t n2 = static_cast<size_t>(snprintf(&s[0], s.size()+1, "%d", val));
         if (n2 <= s.size())
         {
             s.resize(n2);
@@ -363,7 +371,7 @@ string to_string(unsigned val)
     s.resize(s.capacity());
     while (true)
     {
-        int n2 = snprintf(&s[0], s.size()+1, "%u", val);
+        size_t n2 = static_cast<size_t>(snprintf(&s[0], s.size()+1, "%u", val));
         if (n2 <= s.size())
         {
             s.resize(n2);
@@ -380,7 +388,7 @@ string to_string(long val)
     s.resize(s.capacity());
     while (true)
     {
-        int n2 = snprintf(&s[0], s.size()+1, "%ld", val);
+        size_t n2 = static_cast<size_t>(snprintf(&s[0], s.size()+1, "%ld", val));
         if (n2 <= s.size())
         {
             s.resize(n2);
@@ -397,7 +405,7 @@ string to_string(unsigned long val)
     s.resize(s.capacity());
     while (true)
     {
-        int n2 = snprintf(&s[0], s.size()+1, "%lu", val);
+        size_t n2 = static_cast<size_t>(snprintf(&s[0], s.size()+1, "%lu", val));
         if (n2 <= s.size())
         {
             s.resize(n2);
@@ -414,7 +422,7 @@ string to_string(long long val)
     s.resize(s.capacity());
     while (true)
     {
-        int n2 = snprintf(&s[0], s.size()+1, "%lld", val);
+        size_t n2 = static_cast<size_t>(snprintf(&s[0], s.size()+1, "%lld", val));
         if (n2 <= s.size())
         {
             s.resize(n2);
@@ -431,7 +439,7 @@ string to_string(unsigned long long val)
     s.resize(s.capacity());
     while (true)
     {
-        int n2 = snprintf(&s[0], s.size()+1, "%llu", val);
+        size_t n2 = static_cast<size_t>(snprintf(&s[0], s.size()+1, "%llu", val));
         if (n2 <= s.size())
         {
             s.resize(n2);
@@ -448,7 +456,7 @@ string to_string(float val)
     s.resize(s.capacity());
     while (true)
     {
-        int n2 = snprintf(&s[0], s.size()+1, "%f", val);
+        size_t n2 = static_cast<size_t>(snprintf(&s[0], s.size()+1, "%f", val));
         if (n2 <= s.size())
         {
             s.resize(n2);
@@ -465,7 +473,7 @@ string to_string(double val)
     s.resize(s.capacity());
     while (true)
     {
-        int n2 = snprintf(&s[0], s.size()+1, "%f", val);
+        size_t n2 = static_cast<size_t>(snprintf(&s[0], s.size()+1, "%f", val));
         if (n2 <= s.size())
         {
             s.resize(n2);
@@ -482,7 +490,7 @@ string to_string(long double val)
     s.resize(s.capacity());
     while (true)
     {
-        int n2 = snprintf(&s[0], s.size()+1, "%Lf", val);
+        size_t n2 = static_cast<size_t>(snprintf(&s[0], s.size()+1, "%Lf", val));
         if (n2 <= s.size())
         {
             s.resize(n2);
@@ -505,7 +513,7 @@ wstring to_wstring(int val)
         int n2 = swprintf(&s[0], s.size()+1, L"%d", val);
         if (n2 > 0)
         {
-            s.resize(n2);
+            s.resize(static_cast<size_t>(n2));
             break;
         }
         s.resize(2*s.size());
@@ -526,7 +534,7 @@ wstring to_wstring(unsigned val)
         int n2 = swprintf(&s[0], s.size()+1, L"%u", val);
         if (n2 > 0)
         {
-            s.resize(n2);
+            s.resize(static_cast<size_t>(n2));
             break;
         }
         s.resize(2*s.size());
@@ -547,7 +555,7 @@ wstring to_wstring(long val)
         int n2 = swprintf(&s[0], s.size()+1, L"%ld", val);
         if (n2 > 0)
         {
-            s.resize(n2);
+            s.resize(static_cast<size_t>(n2));
             break;
         }
         s.resize(2*s.size());
@@ -568,7 +576,7 @@ wstring to_wstring(unsigned long val)
         int n2 = swprintf(&s[0], s.size()+1, L"%lu", val);
         if (n2 > 0)
         {
-            s.resize(n2);
+            s.resize(static_cast<size_t>(n2));
             break;
         }
         s.resize(2*s.size());
@@ -589,7 +597,7 @@ wstring to_wstring(long long val)
         int n2 = swprintf(&s[0], s.size()+1, L"%lld", val);
         if (n2 > 0)
         {
-            s.resize(n2);
+            s.resize(static_cast<size_t>(n2));
             break;
         }
         s.resize(2*s.size());
@@ -610,7 +618,7 @@ wstring to_wstring(unsigned long long val)
         int n2 = swprintf(&s[0], s.size()+1, L"%llu", val);
         if (n2 > 0)
         {
-            s.resize(n2);
+            s.resize(static_cast<size_t>(n2));
             break;
         }
         s.resize(2*s.size());
@@ -629,7 +637,7 @@ wstring to_wstring(float val)
         int n2 = swprintf(&s[0], s.size()+1, L"%f", val);
         if (n2 > 0)
         {
-            s.resize(n2);
+            s.resize(static_cast<size_t>(n2));
             break;
         }
         s.resize(2*s.size());
@@ -648,7 +656,7 @@ wstring to_wstring(double val)
         int n2 = swprintf(&s[0], s.size()+1, L"%f", val);
         if (n2 > 0)
         {
-            s.resize(n2);
+            s.resize(static_cast<size_t>(n2));
             break;
         }
         s.resize(2*s.size());
@@ -667,7 +675,7 @@ wstring to_wstring(long double val)
         int n2 = swprintf(&s[0], s.size()+1, L"%Lf", val);
         if (n2 > 0)
         {
-            s.resize(n2);
+            s.resize(static_cast<size_t>(n2));
             break;
         }
         s.resize(2*s.size());

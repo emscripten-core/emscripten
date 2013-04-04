@@ -146,7 +146,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     out = jcache.get(shortkey, keys)
 
     if DEBUG_CACHE and not out:
-      dfpath = os.path.join(configuration.TEMP_DIR, "ems_" + shortkey)
+      dfpath = os.path.join(get_configuration().TEMP_DIR, "ems_" + shortkey)
       dfp = open(dfpath, 'w')
       dfp.write(pre_input);
       dfp.write("\n\n========================== settings_text\n\n");
@@ -161,6 +161,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     open(pre_file, 'w').write(pre_input)
     out = jsrun.run_js(compiler, compiler_engine, [settings_file, pre_file, 'pre'] + libraries, stdout=subprocess.PIPE,
                        cwd=path_from_root('src'))
+    assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
     if jcache:
       if DEBUG: print >> sys.stderr, '  saving pre to jcache'
       jcache.set(shortkey, keys, out)
@@ -269,8 +270,10 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     for key in curr_forwarded_json['Functions']['indexedFunctions'].iterkeys():
       indexed_functions.add(key)
     if settings.get('ASM_JS'):
+      export_bindings = settings['EXPORT_BINDINGS']
       for key in curr_forwarded_json['Functions']['implementedFunctions'].iterkeys():
-        if key in all_exported_functions: exported_implemented_functions.add(key)
+        if key in all_exported_functions or (export_bindings and key.startswith('_emscripten_bind')):
+          exported_implemented_functions.add(key)
     for key, value in curr_forwarded_json['Functions']['unimplementedFunctions'].iteritems():
       forwarded_json['Functions']['unimplementedFunctions'][key] = value
 
@@ -279,7 +282,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     if len(parts) > 1:
       pre = parts[0]
       outputs.append([parts[1]])
-  funcs_js = [''.join([output[0] for output in outputs])] # this will be a list of things, so we do not do string appending as we add more
+  funcs_js = [output[0] for output in outputs]
 
   outputs = None
   if DEBUG: print >> sys.stderr, '  emscript: phase 2b took %s seconds' % (time.time() - t)
