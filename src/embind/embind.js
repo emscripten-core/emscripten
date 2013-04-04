@@ -39,6 +39,25 @@ function throwUnboundTypeError(message, types) {
     throw new UnboundTypeError(message + ': ' + unboundTypes.map(getTypeName).join([', ']));
 }
 
+// Creates a function overload resolution table to the given method 'methodName' in the given prototype,
+// if the overload table doesn't yet exist.
+function ensureOverloadTable(proto, methodName, humanName) {
+    if (undefined === proto[methodName].overloadTable) {
+        var prevFunc = proto[methodName];
+        // Inject an overload resolver function that routes to the appropriate overload based on the number of arguments.
+        proto[methodName] = function() {
+            // TODO This check can be removed in -O3 level "unsafe" optimizations.
+            if (!proto[methodName].overloadTable.hasOwnProperty(arguments.length)) {
+                throwBindingError("Function '" + humanName + "' called with an invalid number of arguments (" + arguments.length + ") - expects one of (" + proto[methodName].overloadTable + ")!");
+            }
+            return proto[methodName].overloadTable[arguments.length].apply(this, arguments);
+        };
+        // Move the previous function into the overload table.
+        proto[methodName].overloadTable = [];
+        proto[methodName].overloadTable[prevFunc.argCount] = prevFunc;
+    }            
+}
+
 /* Registers a symbol (function, class, enum, ...) as part of the Module JS object so that
    hand-written code is able to access that symbol via 'Module.name'.
    name: The name of the symbol that's being exposed.
@@ -56,25 +75,7 @@ function exposePublicSymbol(name, value, numArguments) {
         
         // We are exposing a function with the same name as an existing function. Create an overload table and a function selector
         // that routes between the two.
-        
-        // If we don't yet have an overload selector, install an overload selector that routes the function call to a table of overloads based on # of arguments to function.
-        if (undefined === Module[name].overloadTable) {
-            var prevFunc = Module[name];
-            
-            // Inject an overload selector in place of the previous function.
-            Module[name] = function() {
-                // TODO This check can be removed in -O3 level "unsafe" optimizations.
-                if (!Module[name].overloadTable.hasOwnProperty(arguments.length)) {
-                    throwBindingError("Function '" + name + "' called with an invalid number of arguments (" + arguments.length + ") - expects one of (" + Object.keys(Module[name].overloadTable) + ")!");
-                }
-                return Module[name].overloadTable[arguments.length].apply(this, arguments);
-            };
-            // An overloadTable maintains a registry of all function overloads.
-            Module[name].overloadTable = [];
-            // Move the old function into the overload table.
-            Module[name].overloadTable[prevFunc.numArguments] = prevFunc;
-        }
-        
+        ensureOverloadTable(Module, name, name);
         if (Module.hasOwnProperty(numArguments)) {
             throwBindingError("Cannot register multiple overloads of a function with the same number of arguments (" + numArguments + ")!");
         }
@@ -99,11 +100,6 @@ function replacePublicSymbol(name, value, numArguments) {
     }
     else {
         Module[name] = value;
-        /* XXX TODO unneeded?!
-        if (undefined !== numArguments) {
-            Module[name].numArguments = numArguments;
-        }
-        */
     }
 }
 
@@ -1042,25 +1038,6 @@ function validateThis(this_, classType, humanName) {
         this_.$$.ptr,
         this_.$$.ptrType.registeredClass,
         classType.registeredClass);
-}
-
-// Creates a function overload resolution table to the given method 'methodName' in the given prototype,
-// if the overload table doesn't yet exist.
-function ensureOverloadTable(proto, methodName, humanName) {
-    if (undefined === proto[methodName].overloadTable) {
-        var prevFunc = proto[methodName];
-        // Inject an overload resolver function that routes to the appropriate overload based on the number of arguments.
-        proto[methodName] = function() {
-            // TODO This check can be removed in -O3 level "unsafe" optimizations.
-            if (!proto[methodName].overloadTable.hasOwnProperty(arguments.length)) {
-                throwBindingError("Function '" + humanName + "' called with an invalid number of arguments (" + arguments.length + ") - expects one of (" + proto[methodName].overloadTable + ")!");
-            }
-            return proto[methodName].overloadTable[arguments.length].apply(this, arguments);
-        };
-        // Move the previous function into the overload table.
-        proto[methodName].overloadTable = [];
-        proto[methodName].overloadTable[prevFunc.argCount] = prevFunc;
-    }            
 }
 
 function __embind_register_class_function(
