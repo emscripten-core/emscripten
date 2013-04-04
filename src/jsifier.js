@@ -231,12 +231,11 @@ function JSify(data, functionsOnly, givenFunctions) {
     if (value.intertype in PARSABLE_LLVM_FUNCTIONS) {
       return [finalizeLLVMFunctionCall(value)];
     } else if (Runtime.isNumberType(type) || pointingLevels(type) >= 1) {
-      return makeGlobalUse(indexizeFunctions(parseNumerical(value.value), type));
+      return [makeGlobalUse(indexizeFunctions(parseNumerical(value.value), type))];
     } else if (value.intertype === 'emptystruct') {
       return makeEmptyStruct(type);
     } else if (value.intertype === 'string') {
-      return JSON.stringify(parseLLVMString(value.text)) +
-             ' /* ' + value.text.substr(0, 20).replace(/[*<>]/g, '_') + ' */'; // make string safe for inclusion in comment
+      return parseLLVMString(value.text);
     } else {
       return alignStruct(handleSegments(value.contents), type);
     }
@@ -244,9 +243,7 @@ function JSify(data, functionsOnly, givenFunctions) {
 
   function parseConst(value, type, ident) {
     var constant = makeConst(value, type);
-    if (typeof constant === 'object') {
-      constant = flatten(constant).map(function(x) { return parseNumerical(x) })
-    }
+    constant = flatten(constant).map(function(x) { return parseNumerical(x) })
     return constant;
   }
 
@@ -254,6 +251,7 @@ function JSify(data, functionsOnly, givenFunctions) {
   substrate.addActor('GlobalVariable', {
     processItem: function(item) {
       function needsPostSet(value) {
+        if (typeof value !== 'string') return false;
         return value[0] in UNDERSCORE_OPENPARENS || value.substr(0, 14) === 'CHECK_OVERFLOW'
                                                  || value.substr(0, 6) === 'GLOBAL';
       }
@@ -289,25 +287,21 @@ function JSify(data, functionsOnly, givenFunctions) {
         } else {
           constant = makeEmptyStruct(item.type);
         }
-        constant = JSON.stringify(constant);
       } else {
         constant = parseConst(item.value, item.type, item.ident);
       }
-      if (typeof constant === 'string' && constant[0] != '[') {
-        constant = [constant]; // A single item. We may need a postset for it.
-      }
-      if (typeof constant === 'object') {
-        // This is a flattened object. We need to find its idents, so they can be assigned to later
-        constant.forEach(function(value, i) {
-          if (needsPostSet(value)) { // ident, or expression containing an ident
-            ret.push({
-              intertype: 'GlobalVariablePostSet',
-              JS: makeSetValue(makeGlobalUse(item.ident), i, value, 'i32', false, true) + ';' // ignore=true, since e.g. rtti and statics cause lots of safe_heap errors
-            });
-            constant[i] = '0';
-          }
-        });
-      }
+      assert(typeof constant === 'object');//, [typeof constant, JSON.stringify(constant), item.external]);
+
+      // This is a flattened object. We need to find its idents, so they can be assigned to later
+      constant.forEach(function(value, i) {
+        if (needsPostSet(value)) { // ident, or expression containing an ident
+          ret.push({
+            intertype: 'GlobalVariablePostSet',
+            JS: makeSetValue(makeGlobalUse(item.ident), i, value, 'i32', false, true) + ';' // ignore=true, since e.g. rtti and statics cause lots of safe_heap errors
+          });
+          constant[i] = '0';
+        }
+      });
 
       if (item.external) {
         // External variables in shared libraries should not be declared as
@@ -322,7 +316,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       constant = makePointer(constant, null, allocator, item.type, index);
       var js;
 
-    	js = (index !== null ? '' : item.ident + '=') + constant + ';'; // \n Module.print("' + item.ident + ' :" + ' + makeGlobalUse(item.ident) + ');';
+    	js = (index !== null ? '' : item.ident + '=') + constant + ';';
 
       // Special case: class vtables. We make sure they are null-terminated, to allow easy runtime operations
       if (item.ident.substr(0, 5) == '__ZTV') {
