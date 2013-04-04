@@ -1277,15 +1277,11 @@ function __embind_register_interface(
     });
 }
 
-function __embind_register_constant(name, type, value, destructor) {
+function __embind_register_constant(name, type, value) {
     name = Pointer_stringify(name);
     whenDependentTypesAreResolved([], [type], function(type) {
         type = type[0];
-        /*global console*/
-        //console.log('type', type);
-        //console.log('value', value);
         Module[name] = type.fromWireType(value);
-        // todo: I need to natively destruct 'value' here
         return [];
     });
 }
