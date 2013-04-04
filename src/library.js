@@ -6960,7 +6960,7 @@ LibraryManager.library = {
     // Open the peer connection if we don't have it already
     if(null == Sockets.peer) {
       var host = Module['host'];
-      var broker = Module['webrtc']['broker'] || 'http://wrtcb.jit.su:80';
+      var broker = Module['webrtc']['broker'];
       var route = Module['webrtc']['session'];
       var peer = new Peer(broker);
       var listenOptions = Module['webrtc']['hostOptions'] || {};
