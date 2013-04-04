@@ -407,37 +407,15 @@ function __embind_register_function(name, argCount, rawArgTypesAddr, rawInvoker,
     });
 }
 
+var tupleRegistrations = {};
+
 function __embind_register_tuple(rawType, name, rawConstructor, rawDestructor) {
-    name = Pointer_stringify(name);
-    rawConstructor = FUNCTION_TABLE[rawConstructor];
-    rawDestructor = FUNCTION_TABLE[rawDestructor];
-    registerType(rawType, {
-        name: name,
-        rawConstructor: rawConstructor,
-        rawDestructor: rawDestructor,
+    tupleRegistrations[rawType] = {
+        name: Pointer_stringify(name),
+        rawConstructor: FUNCTION_TABLE[rawConstructor],
+        rawDestructor: FUNCTION_TABLE[rawDestructor],
         elements: [],
-        fromWireType: function(ptr) {
-            var len = this.elements.length;
-            var rv = new Array(len);
-            for (var i = 0; i < len; ++i) {
-                rv[i] = this.elements[i].read(ptr);
-            }
-            this.rawDestructor(ptr);
-            return rv;
-        },
-        toWireType: function(destructors, o) {
-            var len = this.elements.length;
-            if (len !== o.length) {
-                throw new TypeError("Incorrect number of tuple elements");
-            }
-            var ptr = this.rawConstructor();
-            for (var i = 0; i < len; ++i) {
-                this.elements[i].write(ptr, o[i]);
-            }
-            destructors.push(rawDestructor, ptr);
-            return ptr;
-        },
-    });
+    };
 }
 
 function __embind_register_tuple_element(
@@ -449,36 +427,71 @@ function __embind_register_tuple_element(
     setter,
     setterContext
 ) {
-    var tupleType = requireRegisteredType(rawTupleType, 'tuple');
-    getter = FUNCTION_TABLE[getter];
-    setter = FUNCTION_TABLE[setter];
-
-    var index = tupleType.elements.length;
-    tupleType.elements.push(undefined);
-
-    // TODO: test incomplete registration of value tuples
-    whenDependentTypesAreResolved([], [getterReturnType, setterArgumentType], function(types) {
-        var getterReturnType = types[0];
-        var setterArgumentType = types[1];
-        tupleType.elements[index] = {
-            read: function(ptr) {
-                return getterReturnType.fromWireType(
-                    getter(
-                        getterContext,
-                        ptr));
-            },
-            write: function(ptr, o) {
-                var destructors = [];
-                setter(
-                    setterContext,
-                    ptr,
-                    setterArgumentType.toWireType(destructors, o));
-                runDestructors(destructors);
-            }
-        };
-        return [];
+    tupleRegistrations[rawTupleType].elements.push({
+        getterReturnType: getterReturnType,
+        getter: FUNCTION_TABLE[getter],
+        getterContext: getterContext,
+        setterArgumentType: setterArgumentType,
+        setter: FUNCTION_TABLE[setter],
+        setterContext: setterContext,
     });
 }
+
+function __embind_finalize_tuple(rawTupleType) {
+    var reg = tupleRegistrations[rawTupleType];
+    delete tupleRegistrations[rawTupleType];
+    var elements = reg.elements;
+    var elementsLength = elements.length;
+    var elementTypes = elements.map(function(elt) { return elt.getterReturnType; }).
+                concat(elements.map(function(elt) { return elt.setterArgumentType; }));
+
+    var rawConstructor = reg.rawConstructor;
+    var rawDestructor = reg.rawDestructor;
+ 
+    whenDependentTypesAreResolved([rawTupleType], elementTypes, function(elementTypes) {
+        elements.forEach(function(elt, i) {
+            var getterReturnType = elementTypes[i];
+            var getter = elt.getter;
+            var getterContext = elt.getterContext;
+            var setterArgumentType = elementTypes[i + elementsLength];
+            var setter = elt.setter;
+            var setterContext = elt.setterContext;
+            elt.read = function(ptr) {
+                return getterReturnType.fromWireType(getter(getterContext, ptr));
+            };
+            elt.write = function(ptr, o) {
+                var destructors = [];
+                setter(setterContext, ptr, setterArgumentType.toWireType(destructors, o));
+                runDestructors(destructors);
+            };
+        });
+
+        return [{
+            name: reg.name,
+            fromWireType: function(ptr) {
+                var rv = new Array(elementsLength);
+                for (var i = 0; i < elementsLength; ++i) {
+                    rv[i] = elements[i].read(ptr);
+                }
+                rawDestructor(ptr);
+                return rv;
+            },
+            toWireType: function(destructors, o) {
+                if (elementsLength !== o.length) {
+                    throw new TypeError("Incorrect number of tuple elements");
+                }
+                var ptr = rawConstructor();
+                for (var i = 0; i < elementsLength; ++i) {
+                    elements[i].write(ptr, o[i]);
+                }
+                destructors.push(rawDestructor, ptr);
+                return ptr;
+            },
+        }];
+    });
+}
+
+var structRegistrations = {};
 
 function __embind_register_struct(
     rawType,
@@ -486,41 +499,12 @@ function __embind_register_struct(
     rawConstructor,
     rawDestructor
 ) {
-    name = Pointer_stringify(name);
-    rawConstructor = FUNCTION_TABLE[rawConstructor];
-    rawDestructor = FUNCTION_TABLE[rawDestructor];
-
-    registerType(rawType, {
-        name: name,
-        rawConstructor: rawConstructor,
-        rawDestructor: rawDestructor,
-        fields: {},
-        fromWireType: function(ptr) {
-            var fields = this.fields;
-            var rv = {};
-            for (var i in fields) {
-                rv[i] = fields[i].read(ptr);
-            }
-            this.rawDestructor(ptr);
-            return rv;
-        },
-        toWireType: function(destructors, o) {
-            var fields = this.fields;
-            // todo: Here we have an opportunity for -O3 level "unsafe" optimizations:
-            // assume all fields are present without checking.
-            for (var fieldName in fields) {
-                if (!(fieldName in o)) {
-                    throw new TypeError('Missing field');
-                }
-            }
-            var ptr = this.rawConstructor();
-            for (fieldName in fields) {
-                fields[fieldName].write(ptr, o[fieldName]);
-            }
-            destructors.push(rawDestructor, ptr);
-            return ptr;
-        },
-    });
+    structRegistrations[rawType] = {
+        name: Pointer_stringify(name),
+        rawConstructor: FUNCTION_TABLE[rawConstructor],
+        rawDestructor: FUNCTION_TABLE[rawDestructor],
+        fields: [],
+    };
 }
 
 function __embind_register_struct_field(
@@ -533,27 +517,75 @@ function __embind_register_struct_field(
     setter,
     setterContext
 ) {
-    structType = requireRegisteredType(structType, 'struct');
-    fieldName = Pointer_stringify(fieldName);
-    getter = FUNCTION_TABLE[getter];
-    setter = FUNCTION_TABLE[setter];
+    structRegistrations[structType].fields.push({
+        fieldName: Pointer_stringify(fieldName),
+        getterReturnType: getterReturnType,
+        getter: FUNCTION_TABLE[getter],
+        getterContext: getterContext,
+        setterArgumentType: setterArgumentType,
+        setter: FUNCTION_TABLE[setter],
+        setterContext: setterContext,
+    });
+}
 
-    // TODO: test incomplete registration of value structs
-    whenDependentTypesAreResolved([], [getterReturnType, setterArgumentType], function(types) {
-        var getterReturnType = types[0];
-        var setterArgumentType = types[1];
-        structType.fields[fieldName] = {
-            read: function(ptr) {
-                return getterReturnType.fromWireType(
-                    getter(getterContext, ptr));
+function __embind_finalize_struct(structType) {
+    var reg = structRegistrations[structType];
+    delete structRegistrations[structType];
+
+    var rawConstructor = reg.rawConstructor;
+    var rawDestructor = reg.rawDestructor;
+    var fieldRecords = reg.fields;
+    var fieldTypes = fieldRecords.map(function(field) { return field.getterReturnType; }).
+              concat(fieldRecords.map(function(field) { return field.setterArgumentType; }));
+    whenDependentTypesAreResolved([structType], fieldTypes, function(fieldTypes) {
+        var fields = {};
+        fieldRecords.forEach(function(field, i) {
+            var fieldName = field.fieldName;
+            var getterReturnType = fieldTypes[i];
+            var getter = field.getter;
+            var getterContext = field.getterContext;
+            var setterArgumentType = fieldTypes[i + fieldRecords.length];
+            var setter = field.setter;
+            var setterContext = field.setterContext;
+            fields[fieldName] = {
+                read: function(ptr) {
+                    return getterReturnType.fromWireType(
+                        getter(getterContext, ptr));
+                },
+                write: function(ptr, o) {
+                    var destructors = [];
+                    setter(setterContext, ptr, setterArgumentType.toWireType(destructors, o));
+                    runDestructors(destructors);
+                }
+            };
+        });
+
+        return [{
+            name: reg.name,
+            fromWireType: function(ptr) {
+                var rv = {};
+                for (var i in fields) {
+                    rv[i] = fields[i].read(ptr);
+                }
+                rawDestructor(ptr);
+                return rv;
             },
-            write: function(ptr, o) {
-                var destructors = [];
-                setter(setterContext, ptr, setterArgumentType.toWireType(destructors, o));
-                runDestructors(destructors);
-            }
-        };
-        return [];
+            toWireType: function(destructors, o) {
+                // todo: Here we have an opportunity for -O3 level "unsafe" optimizations:
+                // assume all fields are present without checking.
+                for (var fieldName in fields) {
+                    if (!(fieldName in o)) {
+                        throw new TypeError('Missing field');
+                    }
+                }
+                var ptr = rawConstructor();
+                for (fieldName in fields) {
+                    fields[fieldName].write(ptr, o[fieldName]);
+                }
+                destructors.push(rawDestructor, ptr);
+                return ptr;
+            },
+        }];
     });
 }
 
