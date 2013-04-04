@@ -6,6 +6,8 @@
 extern "C" {
 #endif
 
+#include <arpa/inet.h>
+
 enum {
     IPPROTO_IP = 0,
 #define IPPROTO_IP IPPROTO_IP
