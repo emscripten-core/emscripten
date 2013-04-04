@@ -1539,7 +1539,6 @@ function makePointer(slab, pos, allocator, type, ptr) {
     }
     if (!fail) types = 'i8';
   }
-  if (typeof slab == 'object') slab = '[' + slab.join(',') + ']';
   // JS engines sometimes say array initializers are too large. Work around that by chunking and calling concat to combine at runtime
   var chunkSize = 10240;
   function chunkify(array) {
@@ -1552,9 +1551,10 @@ function makePointer(slab, pos, allocator, type, ptr) {
     }
     return ret;
   }
-  if (typeof slab == 'string' && evaled && evaled.length > chunkSize && slab.length > chunkSize) {
-    slab = chunkify(evaled);
+  if (typeof slab == 'object' && slab.length > chunkSize) {
+    slab = chunkify(slab);
   }
+  if (typeof slab == 'object') slab = '[' + slab.join(',') + ']';
   if (typeof types != 'string' && types.length > chunkSize) {
     types = chunkify(types);
   } else {
