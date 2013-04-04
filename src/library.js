@@ -6934,7 +6934,7 @@ LibraryManager.library = {
   // sockets. Note that the implementation assumes all sockets are always
   // nonblocking
   // ==========================================================================
-
+#if SOCKET_BACKEND=='webrtc'
   $Sockets__deps: ['__setErrNo', '$ERRNO_CODES',
     function() { return 'io = ' + read('socket.io.js') + ';\n' },
     function() { return 'Peer = ' + read('wrtcp.js') + ';\n' }],
@@ -7296,7 +7296,7 @@ LibraryManager.library = {
     // exceptfds not supported
     // timeout is always 0 - fully async
     assert(!exceptfds);
-    
+
     var errorCondition = 0;
 
     function canRead(info) {
@@ -7357,6 +7357,299 @@ LibraryManager.library = {
       return totalHandles;
     }
   },
+#elif SOCKET_BACKEND == 'websockets'
+  socket__deps: ['$Sockets'],
+  socket: function(family, type, protocol) {
+    var fd = Sockets.nextFd++;
+    assert(fd < 64); // select() assumes socket fd values are in 0..63
+    var stream = type == {{{ cDefine('SOCK_STREAM') }}};
+    if (protocol) {
+      assert(stream == (protocol == {{{ cDefine('IPPROTO_TCP') }}})); // if stream, must be tcp
+    }
+    if (Sockets.backend == Sockets.BACKEND_WEBRTC) {
+      assert(!stream); // If WebRTC, we can only support datagram, not stream
+    }
+    Sockets.fds[fd] = {
+      connected: false,
+      stream: stream
+    };
+    return fd;
+  },
+
+  connect__deps: ['$Sockets', '_inet_ntop_raw', 'htons', 'gethostbyname'],
+  connect: function(fd, addr, addrlen) {
+    var info = Sockets.fds[fd];
+    if (!info) return -1;
+    info.connected = true;
+    info.addr = getValue(addr + Sockets.sockaddr_in_layout.sin_addr, 'i32');
+    info.port = _htons(getValue(addr + Sockets.sockaddr_in_layout.sin_port, 'i16'));
+    info.host = __inet_ntop_raw(info.addr);
+    // Support 'fake' ips from gethostbyname
+    var parts = info.host.split('.');
+    if (parts[0] == '172' && parts[1] == '29') {
+      var low = Number(parts[2]);
+      var high = Number(parts[3]);
+      info.host = _gethostbyname.table[low + 0xff*high];
+      assert(info.host, 'problem translating fake ip ' + parts);
+    }
+    Sockets.backends[Sockets.backend].connect(info);
+    return 0;
+  },
+
+  recv__deps: ['$Sockets'],
+  recv: function(fd, buf, len, flags) {
+    var info = Sockets.fds[fd];
+    if (!info) return -1;
+    if (!info.hasData()) {
+      ___setErrNo(ERRNO_CODES.EAGAIN); // no data, and all sockets are nonblocking, so this is the right behavior
+      return -1;
+    }
+    var buffer = info.inQueue.shift();
+#if SOCKET_DEBUG
+    Module.print('recv: ' + [Array.prototype.slice.call(buffer)]);
+#endif
+    if (len < buffer.length) {
+      if (info.stream) {
+        // This is tcp (reliable), so if not all was read, keep it
+        info.inQueue.unshift(buffer.subarray(len));
+#if SOCKET_DEBUG
+        Module.print('recv: put back: ' + (len - buffer.length));
+#endif
+      }
+      buffer = buffer.subarray(0, len);
+    }
+    HEAPU8.set(buffer, buf);
+    return buffer.length;
+  },
+
+  send__deps: ['$Sockets'],
+  send: function(fd, buf, len, flags) {
+    var info = Sockets.fds[fd];
+    if (!info) return -1;
+    info.sender(HEAPU8.subarray(buf, buf+len));
+    return len;
+  },
+
+  sendmsg__deps: ['$Sockets', 'connect'],
+  sendmsg: function(fd, msg, flags) {
+    var info = Sockets.fds[fd];
+    if (!info) return -1;
+    // if we are not connected, use the address info in the message
+    if (!info.connected) {
+      var name = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_name', '*') }}};
+      assert(name, 'sendmsg on non-connected socket, and no name/address in the message');
+      _connect(fd, name, {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_namelen', 'i32') }}});
+    }
+    var iov = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iov', 'i8*') }}};
+    var num = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iovlen', 'i32') }}};
+#if SOCKET_DEBUG
+      Module.print('sendmsg vecs: ' + num);
+#endif
+    var totalSize = 0;
+    for (var i = 0; i < num; i++) {
+      totalSize += {{{ makeGetValue('iov', '8*i + 4', 'i32') }}};
+    }
+    var buffer = new Uint8Array(totalSize);
+    var ret = 0;
+    for (var i = 0; i < num; i++) {
+      var currNum = {{{ makeGetValue('iov', '8*i + 4', 'i32') }}};
+#if SOCKET_DEBUG
+      Module.print('sendmsg curr size: ' + currNum);
+#endif
+      if (!currNum) continue;
+      var currBuf = {{{ makeGetValue('iov', '8*i', 'i8*') }}};
+      buffer.set(HEAPU8.subarray(currBuf, currBuf+currNum), ret);
+      ret += currNum;
+    }
+    info.sender(buffer); // send all the iovs as a single message
+    return ret;
+  },
+
+  recvmsg__deps: ['$Sockets', 'connect', 'recv', '__setErrNo', '$ERRNO_CODES', 'htons'],
+  recvmsg: function(fd, msg, flags) {
+    var info = Sockets.fds[fd];
+    if (!info) return -1;
+    // if we are not connected, use the address info in the message
+    if (!info.connected) {
+#if SOCKET_DEBUG
+      Module.print('recvmsg connecting');
+#endif
+      var name = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_name', '*') }}};
+      assert(name, 'sendmsg on non-connected socket, and no name/address in the message');
+      _connect(fd, name, {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_namelen', 'i32') }}});
+    }
+    if (!info.hasData()) {
+      ___setErrNo(ERRNO_CODES.EWOULDBLOCK);
+      return -1;
+    }
+    var buffer = info.inQueue.shift();
+    var bytes = buffer.length;
+#if SOCKET_DEBUG
+    Module.print('recvmsg bytes: ' + bytes);
+#endif
+    // write source
+    var name = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_name', '*') }}};
+    {{{ makeSetValue('name', 'Sockets.sockaddr_in_layout.sin_addr', 'info.addr', 'i32') }}};
+    {{{ makeSetValue('name', 'Sockets.sockaddr_in_layout.sin_port', '_htons(info.port)', 'i16') }}};
+    // write data
+    var ret = bytes;
+    var iov = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iov', 'i8*') }}};
+    var num = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iovlen', 'i32') }}};
+    var bufferPos = 0;
+    for (var i = 0; i < num && bytes > 0; i++) {
+      var currNum = {{{ makeGetValue('iov', '8*i + 4', 'i32') }}};
+#if SOCKET_DEBUG
+      Module.print('recvmsg loop ' + [i, num, bytes, currNum]);
+#endif
+      if (!currNum) continue;
+      currNum = Math.min(currNum, bytes); // XXX what should happen when we partially fill a buffer..?
+      bytes -= currNum;
+      var currBuf = {{{ makeGetValue('iov', '8*i', 'i8*') }}};
+#if SOCKET_DEBUG
+      Module.print('recvmsg call recv ' + currNum);
+#endif
+      HEAPU8.set(buffer.subarray(bufferPos, bufferPos + currNum), currBuf);
+      bufferPos += currNum;
+    }
+    if (info.stream) {
+      // This is tcp (reliable), so if not all was read, keep it
+      if (bufferPos < bytes) {
+        info.inQueue.unshift(buffer.subarray(bufferPos));
+#if SOCKET_DEBUG
+        Module.print('recvmsg: put back: ' + (bytes - bufferPos));
+#endif
+      }
+    }
+    return ret;
+  },
+
+  recvfrom__deps: ['$Sockets', 'connect', 'recv'],
+  recvfrom: function(fd, buf, len, flags, addr, addrlen) {
+    var info = Sockets.fds[fd];
+    if (!info) return -1;
+    // if we are not connected, use the address info in the message
+    if (!info.connected) {
+      //var name = {{{ makeGetValue('addr', '0', '*') }}};
+      _connect(fd, addr, addrlen);
+    }
+    return _recv(fd, buf, len, flags);
+  },
+
+  shutdown: function(fd, how) {
+    var info = Sockets.fds[fd];
+    if (!info) return -1;
+    info.socket.close();
+    Sockets.fds[fd] = null;
+  },
+
+  ioctl: function(fd, request, varargs) {
+    var info = Sockets.fds[fd];
+    if (!info) return -1;
+    var bytes = 0;
+    if (info.hasData()) {
+      bytes = info.inQueue[0].length;
+    }
+    var dest = {{{ makeGetValue('varargs', '0', 'i32') }}};
+    {{{ makeSetValue('dest', '0', 'bytes', 'i32') }}};
+    return 0;
+  },
+
+  setsockopt: function(d, level, optname, optval, optlen) {
+    console.log('ignoring setsockopt command');
+    return 0;
+  },
+
+  bind__deps: ['connect'],
+  bind: function(fd, addr, addrlen) {
+    return _connect(fd, addr, addrlen);
+  },
+
+  listen: function(fd, backlog) {
+    return 0;
+  },
+
+  accept: function(fd, addr, addrlen) {
+    // TODO: webrtc queued incoming connections, etc.
+    // For now, the model is that bind does a connect, and we "accept" that one connection,
+    // which has host:port the same as ours. We also return the same socket fd.
+    var info = Sockets.fds[fd];
+    if (!info) return -1;
+    if (addr) {
+      setValue(addr + Sockets.sockaddr_in_layout.sin_addr, info.addr, 'i32');
+      setValue(addr + Sockets.sockaddr_in_layout.sin_port, info.port, 'i32');
+      setValue(addrlen, Sockets.sockaddr_in_layout.__size__, 'i32');
+    }
+    return fd;
+  },
+
+  select: function(nfds, readfds, writefds, exceptfds, timeout) {
+    // readfds are supported,
+    // writefds checks socket open status
+    // exceptfds not supported
+    // timeout is always 0 - fully async
+    assert(!exceptfds);
+
+    var errorCondition = 0;
+
+    function canRead(info) {
+      // make sure hasData exists.
+      // we do create it when the socket is connected,
+      // but other implementations may create it lazily
+      if ((info.socket.readyState == WebSocket.CLOSING || info.socket.readyState == WebSocket.CLOSED) && info.inQueue.length == 0) {
+        errorCondition = -1;
+        return false;
+      }
+      return info.hasData && info.hasData();
+    }
+
+    function canWrite(info) {
+      // make sure socket exists.
+      // we do create it when the socket is connected,
+      // but other implementations may create it lazily
+      if ((info.socket.readyState == WebSocket.CLOSING || info.socket.readyState == WebSocket.CLOSED)) {
+        errorCondition = -1;
+        return false;
+      }
+      return info.socket && (info.socket.readyState == info.socket.OPEN);
+    }
+
+    function checkfds(nfds, fds, can) {
+      if (!fds) return 0;
+
+      var bitsSet = 0;
+      var dstLow  = 0;
+      var dstHigh = 0;
+      var srcLow  = {{{ makeGetValue('fds', 0, 'i32') }}};
+      var srcHigh = {{{ makeGetValue('fds', 4, 'i32') }}};
+      nfds = Math.min(64, nfds); // fd sets have 64 bits
+
+      for (var fd = 0; fd < nfds; fd++) {
+        var mask = 1 << (fd % 32), int = fd < 32 ? srcLow : srcHigh;
+        if (int & mask) {
+          // index is in the set, check if it is ready for read
+          var info = Sockets.fds[fd];
+          if (info && can(info)) {
+            // set bit
+            fd < 32 ? (dstLow = dstLow | mask) : (dstHigh = dstHigh | mask);
+            bitsSet++;
+          }
+        }
+      }
+
+      {{{ makeSetValue('fds', 0, 'dstLow', 'i32') }}};
+      {{{ makeSetValue('fds', 4, 'dstHigh', 'i32') }}};
+      return bitsSet;
+    }
+
+    var totalHandles = checkfds(nfds, readfds, canRead) + checkfds(nfds, writefds, canWrite);
+    if (errorCondition) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    } else {
+      return totalHandles;
+    }
+  }
+#endif
 
   // pty.h
 
