@@ -77,6 +77,8 @@ namespace emscripten {
                 GenericFunction setter,
                 void* setterContext);
 
+            void _embind_finalize_tuple(TYPEID tupleType);
+
             void _embind_register_struct(
                 TYPEID structType,
                 const char* fieldName,
@@ -92,6 +94,8 @@ namespace emscripten {
                 TYPEID setterArgumentType,
                 GenericFunction setter,
                 void* setterContext);
+
+            void _embind_finalize_struct(TYPEID structType);
 
             void _embind_register_smart_ptr(
                 TYPEID pointerType,
@@ -458,6 +462,15 @@ namespace emscripten {
                 return internal::getContext(context);
             }
         };
+
+        class noncopyable {
+        protected:
+            noncopyable() {}
+            ~noncopyable() {}
+        private:
+            noncopyable(const noncopyable&) = delete;
+            const noncopyable& operator=(const noncopyable&) = delete;
+        };
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -465,7 +478,7 @@ namespace emscripten {
     ////////////////////////////////////////////////////////////////////////////////
 
     template<typename ClassType>
-    class value_tuple {
+    class value_tuple : public internal::noncopyable {
     public:
         value_tuple(const char* name) {
             using namespace internal;
@@ -474,6 +487,11 @@ namespace emscripten {
                 name,
                 reinterpret_cast<GenericFunction>(&raw_constructor<ClassType>),
                 reinterpret_cast<GenericFunction>(&raw_destructor<ClassType>));
+        }
+
+        ~value_tuple() {
+            using namespace internal;
+            _embind_finalize_tuple(TypeID<ClassType>::get());
         }
 
         template<typename InstanceType, typename ElementType>
@@ -516,7 +534,7 @@ namespace emscripten {
     ////////////////////////////////////////////////////////////////////////////////
 
     template<typename ClassType>
-    class value_struct {
+    class value_struct : public internal::noncopyable {
     public:
         value_struct(const char* name) {
             using namespace internal;
@@ -525,6 +543,10 @@ namespace emscripten {
                 name,
                 reinterpret_cast<GenericFunction>(&raw_constructor<ClassType>),
                 reinterpret_cast<GenericFunction>(&raw_destructor<ClassType>));
+        }
+
+        ~value_struct() {
+            _embind_finalize_struct(internal::TypeID<ClassType>::get());
         }
 
         template<typename InstanceType, typename FieldType>

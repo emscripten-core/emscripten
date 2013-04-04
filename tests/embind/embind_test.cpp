@@ -1355,11 +1355,18 @@ int overloaded_function(int i, int j)
 EMSCRIPTEN_BINDINGS(constants) {
     constant("INT_CONSTANT", 10);
     constant("STRING_CONSTANT", std::string("some string"));
+
     TupleVector tv;
     tv.x = 1;
     tv.y = 2;
     tv.z = 3;
     constant("VALUE_TUPLE_CONSTANT", tv);
+
+    StructVector sv;
+    sv.x = 1;
+    sv.y = 2;
+    sv.z = 3;
+    constant("VALUE_STRUCT_CONSTANT", sv);
 }
 
 EMSCRIPTEN_BINDINGS(tests) {
