@@ -1064,30 +1064,29 @@ function __embind_register_class_function(
                 throwUnboundTypeError('Cannot call ' + humanName + ' due to unbound types', rawArgTypes);
             };
 
-        var method = classType.registeredClass.instancePrototype[methodName];
+        var proto = classType.registeredClass.instancePrototype;
+        var method = proto[methodName];
         if (undefined === method || (undefined === method.overloadTable && method.className !== classType.name && method.argCount === argCount-2)) {
             // This is the first overload to be registered, OR we are replacing a function in the base class with a function in the derived class.
-            classType.registeredClass.instancePrototype[methodName] = unboundTypesHandler;
-            classType.registeredClass.instancePrototype[methodName].argCount = argCount-2;
-            classType.registeredClass.instancePrototype[methodName].className = classType.name;
+            unboundTypesHandler.argCount = argCount-2;
+            unboundTypesHandler.className = classType.name;
+            proto[methodName] = unboundTypesHandler;
         } else {
             // There was an existing function with the same name registered. Set up a function overload routing table.
-            if (undefined === classType.registeredClass.instancePrototype[methodName].overloadTable) {
-                var prevFunc = classType.registeredClass.instancePrototype[methodName];
-                
+            if (undefined === method.overloadTable) {
                 // Inject an overload resolver function that routes to the appropriate overload based on the number of arguments.
-                classType.registeredClass.instancePrototype[methodName] = function() {
+                proto[methodName] = function() {
                     // TODO This check can be removed in -O3 level "unsafe" optimizations.
-                    if (!classType.registeredClass.instancePrototype[methodName].overloadTable.hasOwnProperty(arguments.length)) {
-                        throwBindingError("Member function '" + humanName + "' called with an invalid number of arguments (" + arguments.length + ") - expects one of (" + classType.registeredClass.instancePrototype[methodName].overloadTable + ")!");
+                    if (!proto[methodName].overloadTable.hasOwnProperty(arguments.length)) {
+                        throwBindingError("Member function '" + humanName + "' called with an invalid number of arguments (" + arguments.length + ") - expects one of (" + proto[methodName].overloadTable + ")!");
                     }
-                    return classType.registeredClass.instancePrototype[methodName].overloadTable[arguments.length].apply(this, arguments);
+                    return proto[methodName].overloadTable[arguments.length].apply(this, arguments);
                 };
                 // Move the previous function into the overload table.
-                classType.registeredClass.instancePrototype[methodName].overloadTable = [];
-                classType.registeredClass.instancePrototype[methodName].overloadTable[prevFunc.argCount] = prevFunc;
+                proto[methodName].overloadTable = [];
+                proto[methodName].overloadTable[method.argCount] = method;
             }            
-            classType.registeredClass.instancePrototype[methodName].overloadTable[argCount-2] = unboundTypesHandler;
+            proto[methodName].overloadTable[argCount-2] = unboundTypesHandler;
         }
 
         whenDependentTypesAreResolved([], rawArgTypes, function(argTypes) {
@@ -1113,10 +1112,10 @@ function __embind_register_class_function(
 
             // Replace the initial unbound-handler-stub function with the appropriate member function, now that all types
             // are resolved. If multiple overloads are registered for this function, the function goes into an overload table.
-            if (undefined === classType.registeredClass.instancePrototype[methodName].overloadTable) {
-                classType.registeredClass.instancePrototype[methodName] = memberFunction;
+            if (undefined === proto[methodName].overloadTable) {
+                proto[methodName] = memberFunction;
             } else {
-                classType.registeredClass.instancePrototype[methodName].overloadTable[argCount-2] = memberFunction;
+                proto[methodName].overloadTable[argCount-2] = memberFunction;
             }
 
             return [];
@@ -1144,41 +1143,42 @@ function __embind_register_class_class_function(
                 throwUnboundTypeError('Cannot call ' + humanName + ' due to unbound types', rawArgTypes);
             };
 
-        if (undefined === classType.registeredClass.constructor[methodName]) {
+        var proto = classType.registeredClass.constructor;
+        if (undefined === proto[methodName]) {
             // This is the first function to be registered with this name.
-            classType.registeredClass.constructor[methodName] = unboundTypesHandler;
-            classType.registeredClass.constructor[methodName].argCount = argCount-1;
+            unboundTypesHandler.argCount = argCount-1;
+            proto[methodName] = unboundTypesHandler;
         } else {
             // There was an existing function to be registered with this name. Set up an overload table to
             // resolve between them.
-            if (undefined === classType.registeredClass.constructor[methodName].overloadTable) {
-                var prevFunc = classType.registeredClass.constructor[methodName];
+            if (undefined === proto[methodName].overloadTable) {
+                var prevFunc = proto[methodName];
 
                 // Inject an overload handler function that resolves the proper function to call based on the
                 // number of parameters passed to the function.
-                classType.registeredClass.constructor[methodName] = function() {
+                proto[methodName] = function() {
                     // TODO This check can be removed in -O3 level "unsafe" optimizations.
-                    if (!classType.registeredClass.constructor[methodName].overloadTable.hasOwnProperty(arguments.length)) {
-                        throwBindingError("Static member function '" + humanName + "' called with an invalid number of arguments (" + arguments.length + ") - expects one of (" + classType.registeredClass.constructor[methodName].overloadTable + ")!");
+                    if (!proto[methodName].overloadTable.hasOwnProperty(arguments.length)) {
+                        throwBindingError("Static member function '" + humanName + "' called with an invalid number of arguments (" + arguments.length + ") - expects one of (" + proto[methodName].overloadTable + ")!");
                     }
-                    return classType.registeredClass.constructor[methodName].overloadTable[arguments.length].apply(this, arguments);
+                    return proto[methodName].overloadTable[arguments.length].apply(this, arguments);
                 };
                 
-                classType.registeredClass.constructor[methodName].overloadTable = [];
+                proto[methodName].overloadTable = [];
                 // Move the old function into the overload table.
-                classType.registeredClass.constructor[methodName].overloadTable[prevFunc.argCount] = prevFunc;
+                proto[methodName].overloadTable[prevFunc.argCount] = prevFunc;
             }
-            classType.registeredClass.constructor[methodName].overloadTable[argCount-1] = unboundTypesHandler;
+            proto[methodName].overloadTable[argCount-1] = unboundTypesHandler;
         }
 
         whenDependentTypesAreResolved([], rawArgTypes, function(argTypes) {
             // Replace the initial unbound-types-handler stub with the proper function. If multiple overloads are registered,
             // the function handlers go into an overload table.
             var func = makeInvoker(humanName, argCount, argTypes, rawInvoker, fn);
-            if (undefined === classType.registeredClass.constructor[methodName].overloadTable) {
-                classType.registeredClass.constructor[methodName] = func;
+            if (undefined === proto[methodName].overloadTable) {
+                proto[methodName] = func;
             } else {
-                classType.registeredClass.constructor[methodName].overloadTable[argCount-1] = func;
+                proto[methodName].overloadTable[argCount-1] = func;
             }
             return [];
         });
