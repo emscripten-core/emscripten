@@ -1044,6 +1044,25 @@ function validateThis(this_, classType, humanName) {
         classType.registeredClass);
 }
 
+// Creates a function overload resolution table to the given method 'methodName' in the given prototype,
+// if the overload table doesn't yet exist.
+function ensureOverloadTable(proto, methodName, humanName) {
+    if (undefined === proto[methodName].overloadTable) {
+        var prevFunc = proto[methodName];
+        // Inject an overload resolver function that routes to the appropriate overload based on the number of arguments.
+        proto[methodName] = function() {
+            // TODO This check can be removed in -O3 level "unsafe" optimizations.
+            if (!proto[methodName].overloadTable.hasOwnProperty(arguments.length)) {
+                throwBindingError("Function '" + humanName + "' called with an invalid number of arguments (" + arguments.length + ") - expects one of (" + proto[methodName].overloadTable + ")!");
+            }
+            return proto[methodName].overloadTable[arguments.length].apply(this, arguments);
+        };
+        // Move the previous function into the overload table.
+        proto[methodName].overloadTable = [];
+        proto[methodName].overloadTable[prevFunc.argCount] = prevFunc;
+    }            
+}
+
 function __embind_register_class_function(
     rawClassType,
     methodName,
@@ -1073,19 +1092,7 @@ function __embind_register_class_function(
             proto[methodName] = unboundTypesHandler;
         } else {
             // There was an existing function with the same name registered. Set up a function overload routing table.
-            if (undefined === method.overloadTable) {
-                // Inject an overload resolver function that routes to the appropriate overload based on the number of arguments.
-                proto[methodName] = function() {
-                    // TODO This check can be removed in -O3 level "unsafe" optimizations.
-                    if (!proto[methodName].overloadTable.hasOwnProperty(arguments.length)) {
-                        throwBindingError("Member function '" + humanName + "' called with an invalid number of arguments (" + arguments.length + ") - expects one of (" + proto[methodName].overloadTable + ")!");
-                    }
-                    return proto[methodName].overloadTable[arguments.length].apply(this, arguments);
-                };
-                // Move the previous function into the overload table.
-                proto[methodName].overloadTable = [];
-                proto[methodName].overloadTable[method.argCount] = method;
-            }            
+            ensureOverloadTable(proto, methodName, humanName);
             proto[methodName].overloadTable[argCount-2] = unboundTypesHandler;
         }
 
@@ -1149,25 +1156,8 @@ function __embind_register_class_class_function(
             unboundTypesHandler.argCount = argCount-1;
             proto[methodName] = unboundTypesHandler;
         } else {
-            // There was an existing function to be registered with this name. Set up an overload table to
-            // resolve between them.
-            if (undefined === proto[methodName].overloadTable) {
-                var prevFunc = proto[methodName];
-
-                // Inject an overload handler function that resolves the proper function to call based on the
-                // number of parameters passed to the function.
-                proto[methodName] = function() {
-                    // TODO This check can be removed in -O3 level "unsafe" optimizations.
-                    if (!proto[methodName].overloadTable.hasOwnProperty(arguments.length)) {
-                        throwBindingError("Static member function '" + humanName + "' called with an invalid number of arguments (" + arguments.length + ") - expects one of (" + proto[methodName].overloadTable + ")!");
-                    }
-                    return proto[methodName].overloadTable[arguments.length].apply(this, arguments);
-                };
-                
-                proto[methodName].overloadTable = [];
-                // Move the old function into the overload table.
-                proto[methodName].overloadTable[prevFunc.argCount] = prevFunc;
-            }
+            // There was an existing function with the same name registered. Set up a function overload routing table.
+            ensureOverloadTable(proto, methodName, humanName);
             proto[methodName].overloadTable[argCount-1] = unboundTypesHandler;
         }
 
