@@ -1472,19 +1472,19 @@ function makePointer(slab, pos, allocator, type, ptr) {
     }
   }
   // compress type info and data if possible
-  var de;
-  try {
-    // compress all-zeros into a number (which will become zeros(..)).
-    // note that we cannot always eval the slab, e.g., if it contains ident,0,0 etc. In that case, no compression TODO: ensure we get arrays here, not str
-    var evaled = typeof slab === 'string' ? eval(slab) : slab;
-    de = dedup(evaled);
-    if (de.length === 1 && de[0] == 0) {
-      slab = types.length;
-    }
-    // TODO: if not all zeros, at least filter out items with type === 0. requires cleverness to know how to skip at runtime though. also
-    //       be careful of structure padding
-  } catch(e){}
   if (USE_TYPED_ARRAYS != 2) {
+    var de;
+    try {
+      // compress all-zeros into a number (which will become zeros(..)).
+      // note that we cannot always eval the slab, e.g., if it contains ident,0,0 etc. In that case, no compression TODO: ensure we get arrays here, not str
+      var evaled = typeof slab === 'string' ? eval(slab) : slab;
+      de = dedup(evaled);
+      if (de.length === 1 && de[0] == 0) {
+        slab = types.length;
+      }
+      // TODO: if not all zeros, at least filter out items with type === 0. requires cleverness to know how to skip at runtime though. also
+      //       be careful of structure padding
+    } catch(e){}
     de = dedup(types);
     if (de.length === 1) {
       types = de[0];
