@@ -20,6 +20,15 @@ def path_from_root(*pathelems):
   """
   return os.path.join(__rootpath__, *pathelems)
 
+def get_configuration():
+  if hasattr(get_configuration, 'configuration'):
+    return get_configuration.configuration
+
+  from tools import shared
+  configuration = shared.Configuration(environ=os.environ)
+  get_configuration.configuration = configuration
+  return configuration
+
 def scan(ll, settings):
   # blockaddress(@main, %23)
   blockaddrs = []
@@ -683,15 +692,6 @@ WARNING: You should normally never use this! Use emcc instead.
   else:
     relooper = None # use the cache
 
-  def get_configuration():
-    if hasattr(get_configuration, 'configuration'):
-      return get_configuration.configuration
-    
-    from tools import shared
-    configuration = shared.Configuration(environ=os.environ)
-    get_configuration.configuration = configuration
-    return configuration
-      
   if keywords.temp_dir is None:
     temp_files = get_configuration().get_temp_files()
   else:
