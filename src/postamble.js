@@ -55,8 +55,6 @@ Module.callMain = function callMain(args) {
 function run(args) {
   args = args || Module['arguments'];
 
-  ensureInitRuntime();
-
   if (runDependencies > 0) {
     Module.printErr('run() called, but dependencies remain, so not running');
     return 0;
@@ -76,6 +74,8 @@ function run(args) {
   }
 
   function doRun() {
+    ensureInitRuntime();
+
     var ret = 0;
     calledRun = true;
     if (Module['_main']) {
