@@ -718,7 +718,11 @@ var __ATINIT__ = []; // functions called during startup
 var __ATMAIN__ = []; // functions called when main() is to be run
 var __ATEXIT__ = []; // functions called during shutdown
 
-function initRuntime() {
+var runtimeInitialized = false;
+
+function ensureInitRuntime() {
+  if (runtimeInitialized) return;
+  runtimeInitialized = true;
   callRuntimeCallbacks(__ATINIT__);
 }
 function preMain() {

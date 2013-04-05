@@ -4,10 +4,7 @@
 Module.callMain = function callMain(args) {
   args = args || [];
 
-  if (!calledInit) {
-    initRuntime();
-    calledInit = true;
-  }
+  ensureInitRuntime();
 
   var argc = args.length+1;
   function pad() {
@@ -58,10 +55,7 @@ Module.callMain = function callMain(args) {
 function run(args) {
   args = args || Module['arguments'];
 
-  if (!calledInit) {
-    initRuntime();
-    calledInit = true;
-  }
+  ensureInitRuntime();
 
   if (runDependencies > 0) {
     Module.printErr('run() called, but dependencies remain, so not running');
