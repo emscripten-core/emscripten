@@ -470,7 +470,7 @@ var LibraryGLFW = {
   },
 
   glfwSetMousePosCallback: function(cbfun) {
-    GLFW.mouse  Func = cbfun;
+    GLFW.mouseFunc = cbfun;
   },
 
   glfwSetMouseWheelCallback: function(cbfun) {
