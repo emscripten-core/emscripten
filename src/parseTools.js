@@ -1533,14 +1533,16 @@ function makePointer(slab, pos, allocator, type, ptr, finalMemoryInitialization)
       }
     }
   } else { // USE_TYPED_ARRAYS == 2
-    // XXX This heavily assumes the target endianness is the same as our current endianness! XXX
-    var i = 0;
-    while (i < slab.length) {
-      var currType = types[i];
-      if (!currType) { i++; continue }
-      i += writeInt8s(slab, i, slab[i], currType);
+    if (!finalMemoryInitialization) {
+      // XXX This heavily assumes the target endianness is the same as our current endianness! XXX
+      var i = 0;
+      while (i < slab.length) {
+        var currType = types[i];
+        if (!currType) { i++; continue }
+        i += writeInt8s(slab, i, slab[i], currType);
+      }
+      types = 'i8';
     }
-    types = 'i8';
   }
   if (allocator == 'ALLOC_NONE' && USE_TYPED_ARRAYS == 2) {
     if (!finalMemoryInitialization) {
