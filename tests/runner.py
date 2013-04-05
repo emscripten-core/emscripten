@@ -10094,12 +10094,14 @@ f.close()
 
     def test_chunking(self):
       if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
+      if os.environ.get('EMCC_CORES'): return self.skip('cannot run if cores are altered')
       if multiprocessing.cpu_count() < 2: return self.skip('need multiple cores')
       try:
         os.environ['EMCC_DEBUG'] = '1'
+        os.environ['EMCC_CORES'] = '2'
         for asm, linkable, chunks, js_chunks in [
-            (0, 0, 3, 2), (0, 1, 4, 4),
-            (1, 0, 3, 2), (1, 1, 4, 4)
+            (0, 0, 3, 2), (0, 1, 3, 4),
+            (1, 0, 3, 2), (1, 1, 3, 4)
           ]:
           print asm, linkable, chunks, js_chunks
           output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O1', '-s', 'LINKABLE=%d' % linkable, '-s', 'ASM_JS=%d' % asm, '-s', 'UNRESOLVED_AS_DEAD=1'] + (['-O2'] if asm else []), stdout=PIPE, stderr=PIPE).communicate()
@@ -10113,6 +10115,7 @@ f.close()
           assert ok, err
       finally:
         del os.environ['EMCC_DEBUG']
+        del os.environ['EMCC_CORES']
 
     def test_debuginfo(self):
       if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
