@@ -1447,7 +1447,7 @@ try:
       if DEBUG:
         # Copy into temp dir as well, so can be run there too
         shutil.copyfile(memfile, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, os.path.basename(memfile)))
-      return 'Module["preRun"].push(function() { loadMemoryInitializer("%s") })' % os.path.basename(memfile)
+      return 'addPreRun(function() { loadMemoryInitializer("%s") });' % os.path.basename(memfile)
     src = re.sub('/\* memory initializer \*/ allocate\(\[([\d,]+)\], "i8", ALLOC_NONE, TOTAL_STACK\)', repl, src, count=1)
     open(final + '.mem.js', 'w').write(src)
     final += '.mem.js'

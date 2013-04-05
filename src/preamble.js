@@ -865,6 +865,12 @@ Module['removeRunDependency'] = removeRunDependency;
 Module["preloadedImages"] = {}; // maps url to image data
 Module["preloadedAudios"] = {}; // maps url to audio data
 
+function addPreRun(func) {
+  if (!Module['preRun']) Module['preRun'] = [];
+  else if (typeof Module['preRun'] == 'function') Module['preRun'] = [Module['preRun']];
+  Module['preRun'].push(func);
+}
+
 #if PGO
 var PGOMonitor = {
   called: {},
@@ -878,8 +884,7 @@ var PGOMonitor = {
   }
 };
 __ATEXIT__.push({ func: function() { PGOMonitor.dump() } });
-if (!Module.preRun) Module.preRun = [];
-Module.preRun.push(function() { addRunDependency('pgo') });
+addPreRun(function() { addRunDependency('pgo') });
 #endif
 
 function loadMemoryInitializer(filename) {
