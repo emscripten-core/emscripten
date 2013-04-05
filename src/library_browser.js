@@ -75,8 +75,7 @@ mergeInto(LibraryManager.library, {
           'ogg': 'audio/ogg',
           'wav': 'audio/wav',
           'mp3': 'audio/mpeg'
-        }[name.substr(-3)];
-        return ret;
+        }[name.substr(name.lastIndexOf('.')+1)];
       }
 
       if (!Module["preloadPlugins"]) Module["preloadPlugins"] = [];
