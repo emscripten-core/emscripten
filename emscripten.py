@@ -54,8 +54,7 @@ def process_funcs((i, funcs, meta, settings_file, compiler, forwarded_file, libr
     compiler,
     engine=compiler_engine,
     args=[settings_file, funcs_file, 'funcs', forwarded_file] + libraries,
-    stdout=subprocess.PIPE,
-    cwd=path_from_root('src'))
+    stdout=subprocess.PIPE)
   tempfiles.try_delete(funcs_file)
   if DEBUG: print >> sys.stderr, '.'
   return out
@@ -170,8 +169,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     if out and DEBUG: print >> sys.stderr, '  loading pre from jcache'
   if not out:
     open(pre_file, 'w').write(pre_input)
-    out = jsrun.run_js(compiler, compiler_engine, [settings_file, pre_file, 'pre'] + libraries, stdout=subprocess.PIPE,
-                       cwd=path_from_root('src'))
+    out = jsrun.run_js(compiler, compiler_engine, [settings_file, pre_file, 'pre'] + libraries, stdout=subprocess.PIPE)
     assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
     if jcache:
       if DEBUG: print >> sys.stderr, '  saving pre to jcache'
@@ -339,8 +337,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   if DEBUG: t = time.time()
   post_file = os.path.relpath(temp_files.get('.post.ll').name, os.getcwd())
   open(post_file, 'w').write('\n') # no input, just processing of forwarded data
-  out = jsrun.run_js(compiler, compiler_engine, [settings_file, post_file, 'post', forwarded_file] + libraries, stdout=subprocess.PIPE,
-                     cwd=path_from_root('src'))
+  out = jsrun.run_js(compiler, compiler_engine, [settings_file, post_file, 'post', forwarded_file] + libraries, stdout=subprocess.PIPE)
   post, last_forwarded_data = out.split('//FORWARDED_DATA:') # if this fails, perhaps the process failed prior to printing forwarded data?
   last_forwarded_json = json.loads(last_forwarded_data)
 
