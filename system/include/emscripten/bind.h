@@ -276,6 +276,11 @@ namespace emscripten {
             return new ClassType(args...);
         }
 
+        template<typename WrapperType, typename ClassType, typename... Args>
+        WrapperType wrapped_new(Args... args) {
+            return WrapperType(new ClassType(args...));
+        }
+
         template<typename ClassType, typename... Args>
         ClassType* raw_constructor(
             typename internal::BindingType<Args>::WireType... args
@@ -808,7 +813,22 @@ namespace emscripten {
         template<typename T>
         struct is_ptr<ptr<T>> {
             enum { value = true };
-        };        
+        };
+
+        template<typename T>
+        struct SmartPtrIfNeeded {
+            template<typename U>
+            SmartPtrIfNeeded(U& cls) {
+                cls.template smart_ptr<T>();
+            }
+        };
+
+        template<typename T>
+        struct SmartPtrIfNeeded<T*> {
+            template<typename U>
+            SmartPtrIfNeeded(U&) {
+            }
+        };
     };
 
     template<typename ClassType, typename BaseSpecifier = internal::NoBaseClass>
@@ -892,17 +912,17 @@ namespace emscripten {
             return *this;
         }
 
-        template<typename WrapperType>
+        template<typename WrapperType, typename PointerType = WrapperType*>
         class_& allow_subclass() {
             using namespace internal;
 
-            class_<WrapperType, base<ClassType>>(typeid(WrapperType).name())
-                .template constructor<val>()
+            auto cls = class_<WrapperType, base<ClassType>>(typeid(WrapperType).name())
                 ;
+            SmartPtrIfNeeded<PointerType> _(cls);
 
             return class_function(
                 "implement",
-                &operator_new<WrapperType, val>,
+                &wrapped_new<PointerType, WrapperType, val>,
                 allow_raw_pointer<ret_val>());
         }
 
