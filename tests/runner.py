@@ -9975,6 +9975,7 @@ f.close()
 
         if no_initial_run:
           # Calling main later should still work, filesystem etc. must be set up.
+          print 'call main later'
           src = open(os.path.join(self.get_dir(), 'a.out.js')).read() + '\nModule.callMain();\n';
           open(os.path.join(self.get_dir(), 'a.out.js'), 'w').write(src)
           assert 'hello from main' in run_js(os.path.join(self.get_dir(), 'a.out.js')), 'main should print when called manually'
