@@ -1505,12 +1505,18 @@ function JSify(data, functionsOnly, givenFunctions) {
         if (memoryInitialization.length > 0) {
           // apply postsets directly into the big memory initialization
           itemsDict.GlobalVariablePostSet = itemsDict.GlobalVariablePostSet.filter(function(item) {
-            var m
-            if (m = /^HEAP([\dFU]+)\[([()>\d]+)\] *= *([()|\d]+);?$/.exec(item.JS)) {
+            var m;
+            if (m = /^HEAP([\dFU]+)\[([()>\d]+)\] *= *([()|\d{}\w_' ]+);?$/.exec(item.JS)) {
               var type = getTypeFromHeap(m[1]);
               var bytes = Runtime.getNativeTypeSize(type);
               var target = eval(m[2]) << log2(bytes);
-              var value = eval(m[3]);
+              var value = m[3];
+              try {
+                value = eval(value);
+              } catch(e) {
+                // possibly function table {{{ FT_* }}} etc.
+                if (value.indexOf('{{ ') < 0) return true;
+              }
               writeInt8s(memoryInitialization, target - TOTAL_STACK, value, type);
               return false;
             }

@@ -312,7 +312,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     def split_32(x):
       x = int(x)
       return '%d,%d,%d,%d' % (x&255, (x >> 8)&255, (x >> 16)&255, (x >> 24)&255)
-    ret = re.sub(r"\"'{{ FI_([\w\d_$]+) }}'\",0,0,0", lambda m: split_32(indexing.get(m.groups(0)[0]) or 0), js)
+    ret = re.sub(r"\"?'?{{ FI_([\w\d_$]+) }}'?\"?,0,0,0", lambda m: split_32(indexing.get(m.groups(0)[0]) or 0), js)
     return re.sub(r"'{{ FI_([\w\d_$]+) }}'", lambda m: str(indexing.get(m.groups(0)[0]) or 0), ret)
 
   blockaddrs = forwarded_json['Functions']['blockAddresses']

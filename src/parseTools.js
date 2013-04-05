@@ -1470,12 +1470,12 @@ function writeInt8s(slab, i, value, type) {
     case 'i1':
     case 'i8': temp8[0] = value;       currSize = 1; break;
     case 'i16': temp16[0] = value;     currSize = 2; break;
-    case 'i64': // fall through, i64 is two i32 chunks
-    case 'i32': temp32[0] = value;     currSize = 4; break;
     case 'float': temp32f[0] = value;  currSize = 4; break;
     case 'double': temp64f[0] = value; currSize = 8; break;
+    case 'i64': // fall through, i64 is two i32 chunks
+    case 'i32': // fall through, i32 can be a pointer
     default: {
-      if (type[type.length-1] == '*') {
+      if (type == 'i32' || type == 'i64' || type[type.length-1] == '*') {
         if (!isNumber(value)) { // function table stuff, etc.
           slab[i] = value;
           slab[i+1] = slab[i+2] = slab[i+3] = 0;
