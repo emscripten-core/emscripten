@@ -379,7 +379,7 @@ mergeInto(LibraryManager.library, {
       xhr.open('GET', url, true);
       xhr.responseType = 'arraybuffer';
       xhr.onload = function() {
-        if (xhr.status == 200) {
+        if (xhr.status == 200 || (xhr.status == 0 && xhr.response)) { // file URLs can return 0
           onload(xhr.response);
         } else {
           onerror();
