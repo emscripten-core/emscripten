@@ -1499,16 +1499,30 @@ function JSify(data, functionsOnly, givenFunctions) {
         }
       }
       var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable);
-      if (!DEBUG_MEMORY) print(generated.map(function(item) { return item.JS }).join('\n'));
+      print(generated.map(function(item) { return item.JS }).join('\n'));
 
       if (phase == 'pre') {
         if (memoryInitialization.length > 0) {
+          /*
+          // apply postsets directly into the big memory initialization
+          itemsDict.GlobalVariablePostSet = itemsDict.GlobalVariablePostSet.filter(function(item) {
+            var m
+            if (m = /^HEAPU?(\d+)\[([()>\d]+)\] *= *([()|\d]+);?$/.exec(item.JS)) {
+              var bits = +m[1];
+              var target = eval(m[2]) << log2(bits/8);
+              var value = eval(m[3]);
+              writeInt8s(memoryInitialization, target - TOTAL_STACK, value, 'i' + bits); // XXX floats
+              return false;
+            }
+            return true;
+          });
+          */
           // write out the singleton big memory initialization value
           print('/* memory initializer */ ' + makePointer(memoryInitialization, null, 'ALLOC_NONE', 'i8', 'TOTAL_STACK', true)); // we assert on TOTAL_STACK == GLOBAL_BASE
         }
       }
 
-      if (!DEBUG_MEMORY) print(itemsDict.GlobalVariablePostSet.map(function(item) { return item.JS }).join('\n'));
+      print(itemsDict.GlobalVariablePostSet.map(function(item) { return item.JS }).join('\n'));
       return;
     }
 
