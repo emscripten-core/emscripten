@@ -51,6 +51,11 @@ Module.callMain = function callMain(args) {
 function run(args) {
   args = args || Module['arguments'];
 
+  if (!calledInit) {
+    initRuntime();
+    calledInit = true;
+  }
+
   if (runDependencies > 0) {
     Module.printErr('run() called, but dependencies remain, so not running');
     return 0;
@@ -111,8 +116,6 @@ if (Module['preInit']) {
     Module['preInit'].pop()();
   }
 }
-
-initRuntime();
 
 #if INVOKE_RUN
 var shouldRunNow = true;

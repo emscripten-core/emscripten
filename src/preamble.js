@@ -805,7 +805,7 @@ Math.imul = function(a, b) {
 // the dependencies are met.
 var runDependencies = 0;
 var runDependencyTracking = {};
-var calledRun = false;
+var calledInit = false, calledRun = false;
 var runDependencyWatcher = null;
 function addRunDependency(id) {
   runDependencies++;
