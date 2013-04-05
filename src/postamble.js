@@ -2,6 +2,8 @@
 // === Auto-generated postamble setup entry stuff ===
 
 Module.callMain = function callMain(args) {
+  assert(runDependencies == 0, 'cannot call main when async dependencies remain! (listen on __ATMAIN__)');
+
   args = args || [];
 
   ensureInitRuntime();
