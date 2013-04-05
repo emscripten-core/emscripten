@@ -24,16 +24,19 @@ if (ENVIRONMENT_IS_NODE) {
   var nodeFS = require('fs');
   var nodePath = require('path');
 
-  Module['read'] = function(filename) {
+  Module['read'] = function(filename, binary) {
     filename = nodePath['normalize'](filename);
-    var ret = nodeFS['readFileSync'](filename).toString();
+    var ret = nodeFS['readFileSync'](filename);
     // The path is absolute if the normalized version is the same as the resolved.
     if (!ret && filename != nodePath['resolve'](filename)) {
       filename = path.join(__dirname, '..', 'src', filename);
-      ret = nodeFS['readFileSync'](filename).toString();
+      ret = nodeFS['readFileSync'](filename);
     }
+    if (ret && !binary) ret = ret.toString();
     return ret;
   };
+
+  Module['readBinary'] = function(filename) { return Module['read'](filename, true) };
 
   Module['load'] = function(f) {
     globalEval(read(f));
@@ -48,12 +51,10 @@ if (ENVIRONMENT_IS_SHELL) {
   Module['print'] = print;
   if (typeof printErr != 'undefined') Module['printErr'] = printErr; // not present in v8 or older sm
 
-  // Polyfill over SpiderMonkey/V8 differences
-  if (typeof read != 'undefined') {
-    Module['read'] = read;
-  } else {
-    Module['read'] = function(f) { snarf(f) };
-  }
+  Module['read'] = read;
+  Module['readBinary'] = function(f) {
+    return read(f, 'binary');
+  };
 
   if (!Module['arguments']) {
     if (typeof scriptArgs != 'undefined') {
