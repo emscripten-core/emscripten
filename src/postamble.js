@@ -2,6 +2,13 @@
 // === Auto-generated postamble setup entry stuff ===
 
 Module.callMain = function callMain(args) {
+  args = args || [];
+
+  if (!calledInit) {
+    initRuntime();
+    calledInit = true;
+  }
+
   var argc = args.length+1;
   function pad() {
     for (var i = 0; i < {{{ QUANTUM_SIZE }}}-1; i++) {
