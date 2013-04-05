@@ -144,7 +144,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   #  logging.debug('=========================\n')
 
   # Save settings to a file to work around v8 issue 1579
-  settings_file = os.path.relpath(temp_files.get('.txt').name)
+  settings_file = os.path.relpath(temp_files.get('.txt').name, os.getcwd())
   def save_settings():
     global settings_text
     settings_text = json.dumps(settings, sort_keys=True)
@@ -155,7 +155,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
 
   # Phase 1 - pre
   if DEBUG: t = time.time()
-  pre_file = os.path.relpath(temp_files.get('.pre.ll').name)
+  pre_file = os.path.relpath(temp_files.get('.pre.ll').name, os.getcwd())
   pre_input = ''.join(pre) + '\n' + meta
   out = None
   if jcache:
@@ -386,13 +386,13 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
 
   # forward
   forwarded_data = json.dumps(forwarded_json)
-  forwarded_file = os.path.relpath(temp_files.get('.2.json').name)
+  forwarded_file = os.path.relpath(temp_files.get('.2.json').name, os.getcwd())
   open(forwarded_file, 'w').write(indexize(forwarded_data))
   if DEBUG: logging.debug('  emscript: phase 2c took %s seconds' % (time.time() - t))
 
   # Phase 3 - post
   if DEBUG: t = time.time()
-  post_file = os.path.relpath(temp_files.get('.post.ll').name)
+  post_file = os.path.relpath(temp_files.get('.post.ll').name, os.getcwd())
   open(post_file, 'w').write('\n') # no input, just processing of forwarded data
   out = jsrun.run_js(compiler, compiler_engine, [settings_file, post_file, 'post', forwarded_file] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE)
   post, last_forwarded_data = out.split('//FORWARDED_DATA:') # if this fails, perhaps the process failed prior to printing forwarded data?
@@ -1608,7 +1608,7 @@ WARNING: You should normally never use this! Use emcc instead.
 
   if len(positional) != 1:
     raise RuntimeError('Must provide exactly one positional argument. Got ' + str(len(positional)) + ': "' + '", "'.join(positional) + '"')
-  keywords.infile = os.path.abspath(positional[0])
+  keywords.infile = positional[0]
   if isinstance(keywords.outfile, basestring):
     keywords.outfile = open(keywords.outfile, 'w')
 
