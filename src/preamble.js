@@ -882,5 +882,23 @@ if (!Module.preRun) Module.preRun = [];
 Module.preRun.push(function() { addRunDependency('pgo') });
 #endif
 
+function loadMemoryInitializer(filename) {
+  function applyData(data) {
+    HEAPU8.set(data, TOTAL_STACK);
+  }
+
+  if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
+    // synchronous
+    applyData(Module['readBinary'](filename));
+  } else {
+    // asynchronous
+    Browser.asyncLoad(filename, function(data) {
+      applyData(data);
+    }, function(data) {
+      throw 'could not load memory initializer ' + filename;
+    });
+  }
+}
+
 // === Body ===
 
