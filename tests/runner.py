@@ -1977,7 +1977,6 @@ cat |umber one top notchfi FI FO FUM WHEN WHERE WHY HOW WHO|''', ['wowie', 'too'
           if self.emcc_args == []:
             gen = open(self.in_dir('src.cpp.o.js')).read()
             assert ('var __str1;' in gen) == named
-            assert (gen.count('ALLOC_NONE') < 8) == named
 
     def test_strcmp_uni(self):
       src = '''
