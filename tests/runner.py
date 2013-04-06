@@ -8079,11 +8079,11 @@ def process(filename):
 
       shutil.move(self.in_dir('src.cpp.o.js'), self.in_dir('pgo.js'))
       pgo_output = run_js(self.in_dir('pgo.js')).split('\n')[1]
-      open('pgo_data', 'w').write(pgo_output)
+      open('pgo_data.rsp', 'w').write(pgo_output)
 
       # with response file
 
-      self.emcc_args += ['@pgo_data']
+      self.emcc_args += ['@pgo_data.rsp']
       self.do_run(src, output)
       self.emcc_args.pop()
       shutil.move(self.in_dir('src.cpp.o.js'), self.in_dir('pgoed.js'))

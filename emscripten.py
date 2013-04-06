@@ -12,6 +12,7 @@ headers, for the libc implementation in JS).
 import os, sys, json, optparse, subprocess, re, time, multiprocessing, functools
 
 from tools import jsrun, cache as cache_module, tempfiles
+from tools.response_file import read_and_delete_response_file
 
 __rootpath__ = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(*pathelems):
@@ -629,6 +630,18 @@ def main(args, compiler_engine, cache, jcache, relooper, temp_files, DEBUG, DEBU
            jcache=jcache, temp_files=temp_files, DEBUG=DEBUG, DEBUG_CACHE=DEBUG_CACHE)
 
 def _main(environ):
+  response_file = True
+  while response_file:
+    response_file = None
+    for index in range(1, len(sys.argv)):
+      if sys.argv[index][0] == '@':
+        # found one, loop again next time
+        response_file = True
+        response_file_args = read_and_delete_response_file(sys.argv[index])
+        # slice in extra_args in place of the response file arg
+        sys.argv[index:index+1] = response_file_args
+        break
+
   parser = optparse.OptionParser(
     usage='usage: %prog [-h] [-H HEADERS] [-o OUTFILE] [-c COMPILER_ENGINE] [-s FOO=BAR]* infile',
     description=('You should normally never use this! Use emcc instead. '
