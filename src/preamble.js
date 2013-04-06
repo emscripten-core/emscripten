@@ -897,10 +897,12 @@ function loadMemoryInitializer(filename) {
     applyData(Module['readBinary'](filename));
   } else {
     // asynchronous
-    Browser.asyncLoad(filename, function(data) {
-      applyData(data);
-    }, function(data) {
-      throw 'could not load memory initializer ' + filename;
+    addPreRun(function() {
+      Browser.asyncLoad(filename, function(data) {
+        applyData(data);
+      }, function(data) {
+        throw 'could not load memory initializer ' + filename;
+      });
     });
   }
 }
