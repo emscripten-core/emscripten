@@ -266,7 +266,7 @@ process(sys.argv[1])
     if output_processor is not None:
       output_processor(open(filename + '.o.js').read())
 
-    if self.emcc_args is not None:
+    if 0:# XXX TODO self.emcc_args is not None:
       if '--memory-init-file' in self.emcc_args:
         memory_init_file = int(self.emcc_args[self.emcc_args.index('--memory-init-file')+1])
       else:
