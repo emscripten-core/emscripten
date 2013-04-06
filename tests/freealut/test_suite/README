@@ -1,0 +1,33 @@
+
+ALUT Test Suite
+~~~~~~~~~~~~~~~
+
+These programs are not intended to be particularly excellent
+programming style (some of them are downright terrible!) - but
+they do provide a reasonable way to test out that ALUT is working
+correctly.
+
+test_version     : Tests that the ALUT header file version agrees with
+                   the ALUT library version.
+
+test_waveforms   : Plays a second of 440Hz audio using a variety of waveforms
+                   in order to exercise the ALUT sound synthesis routines.
+
+test_errorstuff  : Tries to load a non-existant file in order to test ALUT's
+                   error handler.
+
+test_fileloader  : Loads three files (in different formats) using ALUT's
+                   'standard' file loader.
+
+test_memoryloader: Loads a WAV file into memory - then uses ALUT's
+                   'File Image' loader.
+
+test_retrostuff  : Loads a WAV file using the two old-fashioned methods from
+                   ALUT 0.x.x
+
+If compiling these programs produces lots of errors, then you've probably
+got an old ALUT header file lying around somewhere.  If that's the case
+then the 'test_version' program should at least have compiled.  You
+can run it to verify the version numbers of both header and ALUT library
+binary.
+
