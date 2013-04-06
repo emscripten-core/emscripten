@@ -9018,20 +9018,23 @@ Options that are modified or new in %s include:
 
         # emcc [..] -o [path] ==> should work with absolute paths
         try:
-          os.mkdir('a_dir')
-          os.chdir('a_dir')
-          os.mkdir('b_dir')
           for path in [os.path.abspath(os.path.join('..', 'file1.js')), os.path.join('b_dir', 'file2.js')]:
+            print path
             self.clear(in_curr=True)
+            os.chdir(self.get_dir())
+            if not os.path.exists('a_dir'): os.mkdir('a_dir')
+            os.chdir('a_dir')
+            if not os.path.exists('b_dir'): os.mkdir('b_dir')
             output = Popen([PYTHON, compiler, path_from_root('tests', 'hello_world.ll'), '-o', path], stdout=PIPE, stderr=PIPE).communicate()
+            print output
             assert os.path.exists(path), path + ' does not exist; ' + '\n'.join(output)
-            self.assertContained('hello, world!', run_js(path))
+            last = os.getcwd()
+            os.chdir(os.path.dirname(path))
+            self.assertContained('hello, world!', run_js(os.path.basename(path)))
+            os.chdir(last)
         finally:
           os.chdir(self.get_dir())
-          try:
-            shutil.rmtree('a_dir')
-          except:
-            pass
+        self.clear()
 
         # dlmalloc. dlmalloc is special in that it is the only part of libc that is (1) hard to write well, and
         # very speed-sensitive. So we do not implement it in JS in library.js, instead we compile it from source
