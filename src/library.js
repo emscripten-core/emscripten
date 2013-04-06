@@ -2513,6 +2513,11 @@ LibraryManager.library = {
 
       if (format[formatIndex] === '%') {
         formatIndex++;
+        var suppressAssignment = false;
+        if (format[formatIndex] == '*') {
+          suppressAssignment = true;
+          formatIndex++;
+        }
         var maxSpecifierStart = formatIndex;
         while (format[formatIndex].charCodeAt(0) >= {{{ charCode('0') }}} &&
                format[formatIndex].charCodeAt(0) <= {{{ charCode('9') }}}) {
@@ -2578,6 +2583,8 @@ LibraryManager.library = {
           unget();
         }
         if (buffer.length === 0) return 0;  // Failure.
+        if (suppressAssignment) continue;
+
         var text = buffer.join('');
         var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
         argIndex += Runtime.getNativeFieldSize('void*');
