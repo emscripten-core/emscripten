@@ -1446,7 +1446,9 @@ try:
       open(memfile, 'wb').write(''.join(map(lambda x: chr(int(x or '0')), m.groups(0)[0].split(','))))
       if DEBUG:
         # Copy into temp dir as well, so can be run there too
-        shutil.copyfile(memfile, os.path.join(shared.EMSCRIPTEN_TEMP_DIR, os.path.basename(memfile)))
+        temp_memfile = os.path.join(shared.EMSCRIPTEN_TEMP_DIR, os.path.basename(memfile))
+        if os.path.abspath(memfile) != os.path.abspath(memfile):
+          shutil.copyfile(memfile, temp_memfile)
       return 'loadMemoryInitializer("%s");' % os.path.basename(memfile)
     src = re.sub('/\* memory initializer \*/ allocate\(\[([\d,]+)\], "i8", ALLOC_NONE, TOTAL_STACK\)', repl, src, count=1)
     open(final + '.mem.js', 'w').write(src)
