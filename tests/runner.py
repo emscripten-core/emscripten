@@ -10335,11 +10335,11 @@ seeked= file.
           assert (' with -O3 since EMCC_OPTIMIZE_NORMALLY defined' in err) == optimize_normally
 
           for last in ['both.o', 'both2.o']:
-            out, err = Popen([PYTHON, EMCC, self.in_dir('both.o'), '-O2', '-o', last + '.js'], stdout=PIPE, stderr=PIPE).communicate()
+            out, err = Popen([PYTHON, EMCC, self.in_dir('both.o'), '-O2', '-o', last + '.js', '--memory-init-file', '0'], stdout=PIPE, stderr=PIPE).communicate()
             assert ("emcc: LLVM opts: ['-O3']" not in err) == optimize_normally
             assert ' with -O3 since EMCC_OPTIMIZE_NORMALLY defined' not in err
             output = run_js(last + '.js')
-            assert 'yello' in output, 'code works'
+            assert 'yello' in output, 'code works ' + err
           assert open('both.o.js').read() == open('both2.o.js').read()
 
         finally:
