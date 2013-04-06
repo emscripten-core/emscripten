@@ -357,6 +357,8 @@ var NECESSARY_BLOCKADDRS = []; // List of (function, block) for all block addres
 
 var EMIT_GENERATED_FUNCTIONS = 0; // whether to emit the list of generated functions, needed for external JS optimization passes
 
+var JS_CHUNK_SIZE = 10240; // Used as a maximum size before breaking up expressions and lines into smaller pieces
+
 // Compiler debugging options
 var DEBUG_TAGS_SHOWING = [];
   // Some useful items:

@@ -8918,7 +8918,7 @@ TT = %s
   exec('o1 = make_run("o1", compiler=CLANG, emcc_args=["-O1", "-s", "SAFE_HEAP=1"])')
 
   # Make one run with -O2, but without closure (we enable closure in specific tests, otherwise on everything it is too slow)
-  exec('o2 = make_run("o2", compiler=CLANG, emcc_args=["-O2"])')
+  exec('o2 = make_run("o2", compiler=CLANG, emcc_args=["-O2", "-s", "JS_CHUNK_SIZE=10"])')
 
   # asm.js
   exec('asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=1"])')

@@ -1560,7 +1560,7 @@ function makePointer(slab, pos, allocator, type, ptr, finalMemoryInitialization)
   }
 
   // JS engines sometimes say array initializers are too large. Work around that by chunking and calling concat to combine at runtime
-  var chunkSize = 10240;
+  var chunkSize = JS_CHUNK_SIZE;
   function chunkify(array) {
     // break very large slabs into parts
     var ret = '';
