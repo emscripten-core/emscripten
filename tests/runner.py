@@ -11417,14 +11417,6 @@ elif 'browser' in str(sys.argv):
           self.run_browser('something.html', 'You should see animating gears.', '/report_gl_result?true')
           assert ('var GLEmulation' in open(self.in_dir('something.html')).read()) == emulation, "emulation code should be added when asked for"
 
-    def test_glgears_bad(self):
-      # Make sure that OpenGL ES is not available if typed arrays are not used
-      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
-                                           '-DHAVE_BUILTIN_SINCOS', '-s', 'GL_TESTING=1',
-                                           '-s', 'USE_TYPED_ARRAYS=0',
-                                           '--shell-file', path_from_root('tests', 'hello_world_gles_shell.html')]).communicate()
-      self.run_browser('something.html', 'You should not see animating gears.', '/report_gl_result?false')
-
     def test_glgears_deriv(self):
       self.reftest(path_from_root('tests', 'gears.png'))
       Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_gles_deriv.c'), '-o', 'something.html', '-s', 'GL_TESTING=1',
