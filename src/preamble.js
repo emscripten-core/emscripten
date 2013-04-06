@@ -889,7 +889,11 @@ addPreRun(function() { addRunDependency('pgo') });
 
 function loadMemoryInitializer(filename) {
   function applyData(data) {
+#if USE_TYPED_ARRAYS == 2
     HEAPU8.set(data, TOTAL_STACK);
+#else
+    allocate(data, 'i8', ALLOC_NONE, TOTAL_STACK);
+#endif
   }
 
   if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
