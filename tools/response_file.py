@@ -9,7 +9,7 @@ def create_response_file(args, directory):
   #print >> sys.stderr, "Creating response file '%s'" % response_filename
   args = map(lambda p: p.replace(' ', '').replace('\\', '\\\\').replace('"', '\\"'), args)
   response_fd.write(' '.join(args))
-  response_fd.close
+  response_fd.close()
   return '@' + response_filename
 
 # Reads and deletes a .rsp file, and returns the list of cmdline params found in the file.
