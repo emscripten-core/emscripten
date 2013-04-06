@@ -1442,20 +1442,29 @@ try:
 
   if memory_init_file:
     memfile = target + '.mem' 
+    seen_memory_init = False
     def repl(m):
-      open(memfile, 'wb').write(''.join(map(lambda x: chr(int(x or '0')), m.groups(0)[0].split(','))))
+      seen_memory_init = True
+      # handle chunking of the memory initializer
+      s = re.sub('[\[\]\n\(\)\. ]', '', m.groups(0)[0])
+      s = s.replace('concat', ',')
+      if s[-1] == ',': s = s[:-1]
+      open(memfile, 'wb').write(''.join(map(lambda x: chr(int(x or '0')), s.split(','))))
       if DEBUG:
         # Copy into temp dir as well, so can be run there too
         temp_memfile = os.path.join(shared.EMSCRIPTEN_TEMP_DIR, os.path.basename(memfile))
         if os.path.abspath(memfile) != os.path.abspath(memfile):
           shutil.copyfile(memfile, temp_memfile)
       return 'loadMemoryInitializer("%s");' % os.path.basename(memfile)
-    src = re.sub('/\* memory initializer \*/ allocate\(\[([\d,]+)\], "i8", ALLOC_NONE, TOTAL_STACK\)', repl, src, count=1)
+    src = re.sub('/\* memory initializer \*/ allocate\(([\d,\.concat\(\)\[\]\\n ]+)"i8", ALLOC_NONE, TOTAL_STACK\)', repl, src, count=1)
     open(final + '.mem.js', 'w').write(src)
     final += '.mem.js'
     if DEBUG:
-      save_intermediate('meminit')
-      print >> sys.stderr, 'emcc: wrote memory initialization to %s' % memfile
+      if seen_memory_init:
+        save_intermediate('meminit')
+        print >> sys.stderr, 'emcc: wrote memory initialization to %s' % memfile
+      else:
+        print >> sys.stderr, 'emcc: did not see memory initialization'
 
   # If we were asked to also generate HTML, do that
   if final_suffix == 'html':
