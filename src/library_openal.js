@@ -475,6 +475,12 @@ var LibraryOpenAL = {
     }
   },
 
+  alSourceRewind: function(source) {
+#if OPENAL_DEBUG
+    console.error("alSourceRewind is not implemented yet");
+#endif
+  },
+
   alGetSourcei: function(source, param, value) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
