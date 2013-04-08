@@ -143,7 +143,7 @@ module({
             var e = assert.throws(cm.BindingError, function() {
                 cm.Derived.prototype.setMember.call(a, "foo");
             });
-            assert.equal('Derived.setMember incompatible with "this" of type HasTwoBases', e.message);
+            assert.equal('Expected null or instance of Derived*, got [object Object]', e.message);
             a.delete();
         });
 
@@ -153,7 +153,7 @@ module({
             });
             if (typeof INVOKED_FROM_EMSCRIPTEN_TEST_RUNNER === "undefined") { // TODO: Enable this to work in Emscripten runner as well!
                 // got Error: expected: Derived.setMember with invalid "this": undefined, actual: Derived.setMember incompatible with "this" of type Object
-                assert.equal('Derived.setMember with invalid "this": undefined', e.message);
+                assert.equal('Expected null or instance of Derived*, got undefined', e.message);
             }
 
             var e = assert.throws(cm.BindingError, function() {
@@ -161,14 +161,14 @@ module({
             });
             if (typeof INVOKED_FROM_EMSCRIPTEN_TEST_RUNNER === "undefined") { // TODO: Enable this to work in Emscripten runner as well!
                 // TODO got 'Derived.setMember incompatible with "this" of type Object'
-                assert.equal('Derived.setMember with invalid "this": this', e.message);
+                assert.equal('Expected null or instance of Derived*, got this', e.message);
             }
 
             var e = assert.throws(cm.BindingError, function() {
                 cm.Derived.prototype.setMember.call({}, "foo");
             });
             if (typeof INVOKED_FROM_EMSCRIPTEN_TEST_RUNNER === "undefined") { // TODO: Enable this to work in Emscripten runner as well!
-                assert.equal('Derived.setMember incompatible with "this" of type Object', e.message);
+                assert.equal('Expected null or instance of Derived*, got [object Object]', e.message);
             }
         });
 

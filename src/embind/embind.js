@@ -640,9 +640,15 @@ RegisteredPointer.prototype.toWireType = function(destructors, handle) {
             return 0;
         }
     }
+
     if (!(handle instanceof this.registeredClass.constructor)) {
         throwBindingError('Expected null or instance of ' + this.name + ', got ' + _embind_repr(handle));
     }
+
+    if (!handle.$$.ptr) {
+        throwBindingError('Cannot pass deleted object');
+    }
+
     // TODO: this is not strictly true
     // We could support BY_EMVAL conversions from raw pointers to smart pointers
     // because the smart pointer can hold a reference to the handle
@@ -1078,8 +1084,6 @@ function __embind_register_class_function(
                 if (arguments.length !== argCount - 2) {
                     throwBindingError(humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-2));
                 }
-
-                validateThis(this, classType, humanName);
 
                 var destructors = [];
                 var args = new Array(argCount + 1);
