@@ -837,6 +837,16 @@ module({
             assert.equal(0, cm.count_emval_handles());
         });
 
+        test("class properties can be methods", function() {
+            var a = {};
+            var b = {foo: 'foo'};
+            var c = new cm.ValHolder(a);
+            assert.equal(a, c.val);
+            c.val = b;
+            assert.equal(b, c.val);
+            c.delete();
+        });
+
         test("class instance $$ property is non-enumerable", function() {
             var c = new cm.ValHolder(undefined);
             assert.deepEqual([], Object.keys(c));

@@ -1527,6 +1527,7 @@ EMSCRIPTEN_BINDINGS(tests) {
         .function("getConstVal", &ValHolder::getConstVal)
         .function("getValConstRef", &ValHolder::getValConstRef)
         .function("setVal", &ValHolder::setVal)
+        .property("val", &ValHolder::getVal, &ValHolder::setVal)
         .class_function("makeConst", &ValHolder::makeConst, allow_raw_pointer<ret_val>())
         .class_function("makeValHolder", &ValHolder::makeValHolder)
         .class_function("some_class_method", &ValHolder::some_class_method)

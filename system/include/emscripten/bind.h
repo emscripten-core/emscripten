@@ -136,10 +136,12 @@ namespace emscripten {
             void _embind_register_class_property(
                 TYPEID classType,
                 const char* fieldName,
-                TYPEID fieldType,
+                TYPEID getterReturnType,
                 GenericFunction getter,
+                void* getterContext,
+                TYPEID setterArgumentType,
                 GenericFunction setter,
-                void* context);
+                void* setterContext);
 
             void _embind_register_class_class_function(
                 TYPEID classType,
@@ -980,8 +982,27 @@ namespace emscripten {
                 fieldName,
                 TypeID<FieldType>::get(),
                 reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, FieldType>::template getWire<ClassType>),
+                getContext(field),
+                TypeID<FieldType>::get(),
                 reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, FieldType>::template setWire<ClassType>),
                 getContext(field));
+            return *this;
+        }
+
+        template<typename Getter, typename Setter>
+        class_& property(const char* fieldName, Getter getter, Setter setter) {
+            using namespace internal;
+            typedef GetterPolicy<Getter> GP;
+            typedef SetterPolicy<Setter> SP;
+            _embind_register_class_property(
+                TypeID<ClassType>::get(),
+                fieldName,
+                TypeID<typename GP::ReturnType>::get(),
+                reinterpret_cast<GenericFunction>(&GP::template get<ClassType>),
+                GP::getContext(getter),
+                TypeID<typename SP::ArgumentType>::get(),
+                reinterpret_cast<GenericFunction>(&SP::template set<ClassType>),
+                SP::getContext(setter));
             return *this;
         }
 
