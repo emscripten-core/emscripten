@@ -6652,8 +6652,8 @@ localhost : 1 : 4
 
     def test_799(self):
       src = open(path_from_root('tests', '799.cpp'), 'r').read()
-      self.do_run(src, '''Set PORT family: 100, port: 3979
-Get PORT family: 100
+      self.do_run(src, '''Set PORT family: 0, port: 3979
+Get PORT family: 0
 PORT: 3979
 ''')
 
