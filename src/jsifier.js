@@ -1527,12 +1527,15 @@ function JSify(data, functionsOnly, givenFunctions) {
         } else {
           print('/* no memory initializer */'); // test purposes
         }
+
+        // Run postsets right before main, and after the memory initializer has been set up
+        if (itemsDict.GlobalVariablePostSet.length > 0) {
+          print('__ATMAIN__.push(function() {\n');
+          print(itemsDict.GlobalVariablePostSet.map(function(item) { return item.JS }).join('\n'));
+          print('});\n');
+        }
       }
 
-      // Run postsets right before main, and after the memory initializer has been set up
-      print('__ATMAIN__.push(function() {\n');
-      print(itemsDict.GlobalVariablePostSet.map(function(item) { return item.JS }).join('\n'));
-      print('});\n');
       return;
     }
 
