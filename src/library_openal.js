@@ -82,6 +82,40 @@ var LibraryOpenAL = {
       return 0;
     }
   },
+  
+  alIsBuffer: function(buffer) {
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alIsBuffer called without a valid context");
+#endif
+      return 0;
+    }
+    if (source > AL.currentContext.buf.length) {
+#if OPENAL_DEBUG
+      console.error("alSourcePause called with an invalid buffer");
+#endif
+      return 0;
+    }
+    
+	  return AL.currentContext.buf[buffer - 1].buf != null;
+  },
+  
+  alIsSource: function(source) {
+    if (!AL.currentContext) {
+#if OPENAL_DEBUG
+      console.error("alSourcePause called without a valid context");
+#endif
+      return;
+    }
+    if (source > AL.currentContext.src.length) {
+#if OPENAL_DEBUG
+      console.error("alSourcePause called with an invalid source");
+#endif
+      return;
+    }
+    
+    return AL.currentContext.src[source - 1] != 0;
+  },
 
   alGetError: function() {
     if (!AL.currentContext) {
