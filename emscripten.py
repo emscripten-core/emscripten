@@ -306,18 +306,20 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     i += 2
   forwarded_json['Functions']['nextIndex'] = i
 
+  def split_32(x):
+    x = int(x)
+    return '%d,%d,%d,%d' % (x&255, (x >> 8)&255, (x >> 16)&255, (x >> 24)&255)
+
   indexing = forwarded_json['Functions']['indexedFunctions']
   def indexize(js):
     # In the global initial allocation, we need to split up into Uint8 format
-    def split_32(x):
-      x = int(x)
-      return '%d,%d,%d,%d' % (x&255, (x >> 8)&255, (x >> 16)&255, (x >> 24)&255)
     ret = re.sub(r"\"?'?{{ FI_([\w\d_$]+) }}'?\"?,0,0,0", lambda m: split_32(indexing.get(m.groups(0)[0]) or 0), js)
     return re.sub(r"'{{ FI_([\w\d_$]+) }}'", lambda m: str(indexing.get(m.groups(0)[0]) or 0), ret)
 
   blockaddrs = forwarded_json['Functions']['blockAddresses']
   def blockaddrsize(js):
-    return re.sub(r'{{{ BA_([\w\d_$]+)\|([\w\d_$]+) }}}', lambda m: str(blockaddrs[m.groups(0)[0]][m.groups(0)[1]]), js)
+    ret = re.sub(r'"?{{{ BA_([\w\d_$]+)\|([\w\d_$]+) }}}"?,0,0,0', lambda m: split_32(blockaddrs[m.groups(0)[0]][m.groups(0)[1]]), js)
+    return re.sub(r'"?{{{ BA_([\w\d_$]+)\|([\w\d_$]+) }}}"?', lambda m: str(blockaddrs[m.groups(0)[0]][m.groups(0)[1]]), ret)
 
   #if DEBUG: outfile.write('// pre\n')
   outfile.write(blockaddrsize(indexize(pre)))
