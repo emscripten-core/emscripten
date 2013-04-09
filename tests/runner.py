@@ -2961,6 +2961,9 @@ Exiting setjmp function, level: 0, prev_jmp: -1
         '''
         self.do_run(src, 'f()\n')
 
+    def test_dynamic_cast_b(self):
+        if self.emcc_args is None: return self.skip('need libcxxabi')
+
         src = '''
           #include <stdio.h>
 
