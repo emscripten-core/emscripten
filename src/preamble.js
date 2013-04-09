@@ -896,19 +896,18 @@ function loadMemoryInitializer(filename) {
 #endif
   }
 
-  if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
-    // synchronous
-    applyData(Module['readBinary'](filename));
-  } else {
-    // asynchronous
-    addPreRun(function() {
+  // always do this asynchronously, to keep shell and web as similar as possible
+  addPreRun(function() {
+    if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
+      applyData(Module['readBinary'](filename));
+    } else {
       Browser.asyncLoad(filename, function(data) {
         applyData(data);
       }, function(data) {
         throw 'could not load memory initializer ' + filename;
       });
-    });
-  }
+    }
+  });
 }
 
 // === Body ===
