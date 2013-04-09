@@ -5749,6 +5749,24 @@ Pass: 0.000012 0.000012''')
       '''
       self.do_run(src, '2,  , black\n2, ., #001100\n2, X, #111100');
 
+    def test_sscanf_skip(self):
+      src = r'''
+        #include <stdio.h>
+
+        int main(){
+            int val1;
+            printf("%d\n", sscanf("10 20 30 40", "%*lld %*d %d", &val1));
+            printf("%d\n", val1);
+
+            int64_t large, val2;
+            printf("%d\n", sscanf("1000000 -1125899906842620 -123 -1073741823", "%lld %*lld %ld %*d", &large, &val2));
+            printf("%lld,%d\n", large, val2);
+
+            return 0;
+        }
+      '''
+      self.do_run(src, '1\n30\n2\n1000000,-123\n')
+
     def test_langinfo(self):
       src = open(path_from_root('tests', 'langinfo', 'test.c'), 'r').read()
       expected = open(path_from_root('tests', 'langinfo', 'output.txt'), 'r').read()
