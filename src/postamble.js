@@ -78,10 +78,11 @@ function run(args) {
   function doRun() {
     ensureInitRuntime();
 
+    preMain();
+
     var ret = 0;
     calledRun = true;
     if (Module['_main']) {
-      preMain();
       ret = Module.callMain(args);
       if (!Module['noExitRuntime']) {
         exitRuntime();

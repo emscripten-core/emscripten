@@ -701,6 +701,10 @@ var nullString = allocate(intArrayFromString('(null)'), 'i8', ALLOC_STACK);
 function callRuntimeCallbacks(callbacks) {
   while(callbacks.length > 0) {
     var callback = callbacks.shift();
+    if (typeof callback == 'function') {
+      callback();
+      continue;
+    }
     var func = callback.func;
     if (typeof func === 'number') {
       if (callback.arg === undefined) {
