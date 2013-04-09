@@ -672,7 +672,7 @@ RegisteredPointer.prototype.toWireType = function(destructors, handle) {
                 break;
             
             case 1: // INTRUSIVE
-                throwBindingError('INTRUSIVE sharing policy not yet supported');
+                ptr = handle.$$.smartPtr;
                 break;
             
             case 2: // BY_EMVAL
