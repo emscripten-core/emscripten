@@ -24,10 +24,10 @@ endif()
 
 # Specify the compilers to use for C and C++
 if ("${CMAKE_C_COMPILER}" STREQUAL "")
-	set(CMAKE_C_COMPILER "emcc.exe")
-	set(CMAKE_CXX_COMPILER "em++.exe")
-	set(CMAKE_AR "emar.exe")
-	set(CMAKE_RANLIB "emranlib.exe")
+	set(CMAKE_C_COMPILER "emcc.bat")
+	set(CMAKE_CXX_COMPILER "em++.bat")
+	set(CMAKE_AR "emar.bat")
+	set(CMAKE_RANLIB "emranlib.bat")
 endif()
 
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
