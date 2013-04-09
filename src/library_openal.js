@@ -585,6 +585,7 @@ var LibraryOpenAL = {
       // Always return 1
       {{{ makeSetValue('value', '0', '1', 'float') }}};
       break;
+    }
   },
   
   alGetSourcei: function(source, param, value) {
