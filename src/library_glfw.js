@@ -32,7 +32,6 @@ var LibraryGLFW = {
     resizeFunc: null,
     closeFunc: null,
     refreshFunc: null,
-    mouseFunc: null,
     params: null,
     initTime: null,
     wheelPos: 0,
@@ -470,7 +469,7 @@ var LibraryGLFW = {
   },
 
   glfwSetMousePosCallback: function(cbfun) {
-    GLFW.mouseFunc = cbfun;
+    GLFW.mousePosFunc = cbfun;
   },
 
   glfwSetMouseWheelCallback: function(cbfun) {
