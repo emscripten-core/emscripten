@@ -1394,6 +1394,7 @@ function analyzer(data, sidePass) {
                 lineNum: label.lineNum + 0.5,
                 lines: label.lines.slice(j+1)
               });
+              func.labelsDict[newIdent] = func.labels[i+1];
               label.lines = label.lines.slice(0, j+1);
               label.lines.push({
                 intertype: 'branch',
