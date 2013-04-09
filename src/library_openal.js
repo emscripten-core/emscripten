@@ -756,7 +756,7 @@ var LibraryOpenAL = {
   },
   
   alcGetIntegerv: function(device, param, size, data) {
-    return 0;
+
   },
   
 };
