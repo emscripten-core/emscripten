@@ -11,6 +11,22 @@ extern "C" {
 #define NO_DATA 4
 #define NO_ADDRESS 5
 
+#define EAI_ADDRFAMILY 1
+#define EAI_AGAIN 2
+#define EAI_BADFLAGS 3
+#define EAI_FAIL 4
+#define EAI_FAMILY 5
+#define EAI_MEMORY 6
+#define EAI_NODATA 7
+#define EAI_NONAME 8
+#define EAI_SERVICE 9
+#define EAI_SOCKTYPE 10
+#define EAI_SYSTEM 11
+#define EAI_BADHINTS 12
+#define EAI_PROTOCOL 13
+#define EAI_OVERFLOW 14
+#define EAI_MAX 15
+
 #define IP_TOS 1
 #define IP_TTL 2
 #define IP_HDRINCL 3

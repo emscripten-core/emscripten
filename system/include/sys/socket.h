@@ -40,6 +40,7 @@ extern "C" {
 typedef unsigned int sa_family_t;
 #define AF_INET 1
 #define AF_INET6 6
+#define PF_INET6 AF_INET6
 
 struct sockaddr {
   sa_family_t sa_family; 
