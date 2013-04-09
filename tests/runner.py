@@ -266,12 +266,15 @@ process(sys.argv[1])
     if output_processor is not None:
       output_processor(open(filename + '.o.js').read())
 
-    if 0:# XXX TODO self.emcc_args is not None:
+    if self.emcc_args is not None:
       if '--memory-init-file' in self.emcc_args:
         memory_init_file = int(self.emcc_args[self.emcc_args.index('--memory-init-file')+1])
       else:
         memory_init_file = 1
-      assert ('/* memory initializer */' in open(filename + '.o.js').read()) == (not memory_init_file)
+      if memory_init_file:
+        assert '/* memory initializer */' not in open(filename + '.o.js').read()
+      else:
+        assert 'memory initializer */' in open(filename + '.o.js').read()
 
   def run_generated_code(self, engine, filename, args=[], check_timeout=True, output_nicerizer=None):
     stdout = os.path.join(self.get_dir(), 'stdout') # use files, as PIPE can get too full and hang us

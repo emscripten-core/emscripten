@@ -1525,7 +1525,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           // write out the singleton big memory initialization value
           print('/* memory initializer */ ' + makePointer(memoryInitialization, null, 'ALLOC_NONE', 'i8', 'TOTAL_STACK', true)); // we assert on TOTAL_STACK == GLOBAL_BASE
         } else {
-          print('/* memory initializer */'); // test purposes
+          print('/* no memory initializer */'); // test purposes
         }
       }
 
