@@ -5775,6 +5775,8 @@ Pass: 0.000012 0.000012''')
       self.do_run(src, '2,  , black\n2, ., #001100\n2, X, #111100');
 
     def test_sscanf_skip(self):
+      if Settings.USE_TYPED_ARRAYS != 2: return self.skip("need ta2 for full i64")
+
       src = r'''
         #include <stdio.h>
 
