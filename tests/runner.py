@@ -12688,7 +12688,12 @@ fi
       ''')
       Popen([PYTHON, EMCC, os.path.join(dirname, 'main.cpp'), '-o', os.path.join(dirname, 'a.out.js')]).communicate()
       del os.environ['EM_CONFIG']
-      self.assertContained('hello from emcc with no config file', run_js(os.path.join(dirname, 'a.out.js')))
+      old_dir = os.getcwd()
+      try:
+        os.chdir(dirname)
+        self.assertContained('hello from emcc with no config file', run_js('a.out.js'))
+      finally:
+        os.chdir(old_dir)
       shutil.rmtree(dirname)
 
       try_delete(CANONICAL_TEMP_DIR)
