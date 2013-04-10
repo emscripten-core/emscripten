@@ -39,7 +39,8 @@ class WindowsPopen:
     try:
       self.process = subprocess.Popen(args, bufsize, executable, self.stdin_, self.stdout_, self.stderr_, preexec_fn, close_fds, shell, cwd, env, universal_newlines, startupinfo, creationflags)
     except Exception, e:
-      print >> sys.stderr, 'subprocess.Popen(args=%s) failed! Exception %s' % (' '.join(args), str(e))
+      print >> sys.stderr, '\nsubprocess.Popen(args=%s) failed! Exception %s\n' % (' '.join(args), str(e))
+      raise e
 
   def communicate(self, input=None):
     output = self.process.communicate(input)
