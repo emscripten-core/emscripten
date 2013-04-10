@@ -61,11 +61,11 @@
     return out.join('');
   }
 
-/* Notes
-	 *
-	 * - Continue using prefixed names for now.
-	 *
-	 */
+  /* Notes
+   *
+   * - Continue using prefixed names for now.
+   *
+   */
 
   var webrtcSupported = true;
 
@@ -421,214 +421,7 @@
 
     this.initialize(setIce);
   };
-
-  function mozRTCConnectProtocol(options) {
-    this.options = options;
-    this.onmessage = null;
-    this.oncomplete = null;
-    this.onerror = null;
-
-    this.complete = false;
-    this.ports = {
-      local: nextDataConnectionPort ++,
-      remote: null
-    };
-    this.streams = {
-      local: null,
-      remote: null
-    };
-    this.initiator = false;
-
-    this.peerConnection = null;
-    this.channels = {};
-    this._pending = {};
-    this.connectionServers = null;
-    this.connectionOptions = null;
-    this.channelOptions = {
-      RELIABLE: {
-        // defaults
-      },
-      UNRELIABLE: {
-        outOfOrderAllowed: true,
-        maxRetransmitNum: 0
-      }
-    };
-  };
-  mozRTCConnectProtocol.prototype = new CommonRTCConnectProtocol();
-  mozRTCConnectProtocol.prototype.constructor = mozRTCConnectProtocol;
-  mozRTCConnectProtocol.prototype.initiate = function initiate() {
-    var that = this;
-    this.initiator = true;
-
-    function createOffer() {
-      that.peerConnection.createOffer(setLocal,
-        function(error) {
-          fail(that, 'onerror', error);
-        }
-      );
-    };
-
-    function setLocal(description) {
-      that.peerConnection.setLocalDescription(new RTCSessionDescription(description), complete,
-        function(error) {
-          fail(that, 'onerror', error);
-        }
-      );
-
-      function complete() {
-        var message = {
-          'type': 'offer',
-          'description': description['sdp'],
-          'port': that.ports.local
-        };
-        callback(that, 'onmessage', message);
-      };
-    };
-
-    this.initialize(createOffer);
-  };
-  mozRTCConnectProtocol.prototype.handleOffer = function handleOffer(offer) {
-    var that = this;
-
-    function setRemote() {
-      that.peerConnection.setRemoteDescription(new RTCSessionDescription(offer), createAnswer,
-        function(error) {
-          fail(that, 'onerror', error);
-        }
-      );
-    };
-
-    function createAnswer() {
-      that.peerConnection.createAnswer(setLocal,
-        function(error) {
-          fail(that, 'onerror', error);
-        }
-      );
-    };
-
-    function setLocal(description) {
-      that.peerConnection.setLocalDescription(new RTCSessionDescription(description), complete,
-        function(error) {
-          fail(that, 'onerror', error);
-        }
-      );
-
-      function complete() {
-        var message = {
-          'type': 'answer',
-          'description': description['sdp'],
-          'port': that.ports.local
-        };
-        handleDataChannels();
-        if(that.peerConnection.connectDataConnection)
-          that.peerConnection.connectDataConnection(that.ports.local, that.ports.remote);
-        callback(that, 'onmessage', message);
-      };
-    };
-
-    function handleDataChannels() {
-      var labels = Object.keys(dataChannels);
-      that.peerConnection.ondatachannel = function(channel) {
-        if(that.complete)
-          console.log("ondatachannel after complete!");
-        var label = channel.label;
-        that.channels[label] = channel;
-        channel.binaryType = that.options['binaryType'];
-        if(Object.keys(that.channels).length === labels.length) {
-          that.complete = true;
-          callback(that, 'oncomplete', []);
-        }
-        channel.onerror = function(error) {
-          console.error(error);
-          fail(that, 'onerror', error);
-        };
-      };
-    };
-
-    this.initialize(setRemote);
-  };
-  mozRTCConnectProtocol.prototype.handleAnswer = function handleAnswer(answer) {
-    var that = this;
-
-    function setRemote() {
-      that.peerConnection.setRemoteDescription(new RTCSessionDescription(answer), complete,
-        function(error) {
-          fail(that, 'onerror', error);
-        }
-      );
-    };
-
-    function complete() {
-      that.peerConnection.onconnection = createDataChannels;
-      if(that.peerConnection.connectDataConnection)
-        that.peerConnection.connectDataConnection(that.ports.local, that.ports.remote);
-    };
-
-    function createDataChannels() {
-      var labels = Object.keys(dataChannels);
-      labels.forEach(function(label) {
-        var channelOptions = that.channelOptions[dataChannels[label]];
-        try {
-          var channel = that._pending[label] = that.peerConnection.createDataChannel(label, {});
-        } catch(e) {
-          console.error(label, e);
-        }
-        channel.binaryType = that.options['binaryType'];
-        channel.onopen = function() {
-          that.channels[label] = channel;
-          delete that._pending[label];
-          if(Object.keys(that.channels).length === labels.length) {
-            that.complete = true;
-            callback(that, 'oncomplete', []);
-          }
-        };
-        channel.onerror = function(error) {
-          console.error(error);
-          fail(that, 'onerror', error);
-        };
-      });
-    };
-
-    this.initialize(setRemote);
-  };
-
-  function webkitRTCConnectProtocol(options) {
-    this.options = options;
-    this.onmessage = null;
-    this.oncomplete = null;
-    this.onerror = null;
-
-    this.complete = false;
-    this.ports = {
-      local: nextDataConnectionPort ++,
-      remote: null
-    };
-    this.streams = {
-      local: null,
-      remote: null
-    };
-    this.initiator = false;
-
-    this.peerConnection = null;
-    this.channels = {};
-    this._pending = {};
-    this.connectionServers = {iceServers:[{url:'stun:23.21.150.121'}]};
-    this.connectionOptions = {
-      'optional': [{ 'RtpDataChannels': true }]
-    };
-    this.channelOptions = {
-      RELIABLE: {
-        // FIXME: reliable channels do not work in chrome yet
-        reliable: false
-      },
-      UNRELIABLE: {
-        reliable: false
-      }
-    };
-  };
-  webkitRTCConnectProtocol.prototype = new CommonRTCConnectProtocol();
-  webkitRTCConnectProtocol.prototype.constructor = webkitRTCConnectProtocol;
-  webkitRTCConnectProtocol.prototype.initiate = function initiate() {
+  CommonRTCConnectProtocol.prototype.initiate = function initiate() {
     var that = this;
     this.initiator = true;
 
@@ -681,7 +474,7 @@
 
     this.initialize(createDataChannels);
   };
-  webkitRTCConnectProtocol.prototype.handleOffer = function handleOffer(offer) {
+  CommonRTCConnectProtocol.prototype.handleOffer = function handleOffer(offer) {
     var that = this;
 
     function handleDataChannels() {
@@ -690,6 +483,7 @@
         var channel = event.channel;
         var label = channel.label;
         that._pending[label] = channel;
+        channel.binaryType = that.options['binaryType'];
         channel.onopen = function() {
           that.channels[label] = channel;
           delete that._pending[label];
@@ -736,17 +530,12 @@
           'port': that.ports.local
         };
         callback(that, 'onmessage', message);
-        /*
-        that.complete = true;
-        var connection = new Connection(that.peerConnection, that.options, false);
-        callback(that, 'oncomplete', [connection]);
-        */
       };
     };
 
     this.initialize(handleDataChannels);
   };
-  webkitRTCConnectProtocol.prototype.handleAnswer = function handleAnswer(answer) {
+  CommonRTCConnectProtocol.prototype.handleAnswer = function handleAnswer(answer) {
     var that = this;
 
     function setRemote() {
@@ -758,15 +547,82 @@
     };
 
     function complete() {
-      /*
-      that.complete = true;
-      var connection = new Connection(that.peerConnection, that.options, true);
-      callback(that, 'oncomplete', [connection]);
-      */
     };
 
     this.initialize(setRemote);
   };
+
+  function mozRTCConnectProtocol(options) {
+    this.options = options;
+    this.onmessage = null;
+    this.oncomplete = null;
+    this.onerror = null;
+
+    this.complete = false;
+    this.ports = {
+      local: nextDataConnectionPort ++,
+      remote: null
+    };
+    this.streams = {
+      local: null,
+      remote: null
+    };
+    this.initiator = false;
+
+    this.peerConnection = null;
+    this.channels = {};
+    this._pending = {};
+    this.connectionServers = null;
+    this.connectionOptions = null;
+    this.channelOptions = {
+      RELIABLE: {
+        // defaults
+      },
+      UNRELIABLE: {
+        outOfOrderAllowed: true,
+        maxRetransmitNum: 0
+      }
+    };
+  };
+  mozRTCConnectProtocol.prototype = new CommonRTCConnectProtocol();
+  mozRTCConnectProtocol.prototype.constructor = mozRTCConnectProtocol;
+
+  function webkitRTCConnectProtocol(options) {
+    this.options = options;
+    this.onmessage = null;
+    this.oncomplete = null;
+    this.onerror = null;
+
+    this.complete = false;
+    this.ports = {
+      local: nextDataConnectionPort ++,
+      remote: null
+    };
+    this.streams = {
+      local: null,
+      remote: null
+    };
+    this.initiator = false;
+
+    this.peerConnection = null;
+    this.channels = {};
+    this._pending = {};
+    this.connectionServers = {iceServers:[{url:'stun:23.21.150.121'}]};
+    this.connectionOptions = {
+      'optional': [{ 'RtpDataChannels': true }]
+    };
+    this.channelOptions = {
+      RELIABLE: {
+        // FIXME: reliable channels do not work in chrome yet
+        reliable: false
+      },
+      UNRELIABLE: {
+        reliable: false
+      }
+    };
+  };
+  webkitRTCConnectProtocol.prototype = new CommonRTCConnectProtocol();
+  webkitRTCConnectProtocol.prototype.constructor = webkitRTCConnectProtocol;
 
   // FIXME: this could use a cleanup
   var nextConnectionId = 1;

@@ -6934,7 +6934,6 @@ LibraryManager.library = {
   // sockets. Note that the implementation assumes all sockets are always
   // nonblocking
   // ==========================================================================
-#if SOCKET_BACKEND=='webrtc'
   $Sockets__deps: ['__setErrNo', '$ERRNO_CODES',
     function() { return 'io = ' + read('socket.io.js') + ';\n' },
     function() { return 'Peer = ' + read('wrtcp.js') + ';\n' }],
@@ -7300,25 +7299,11 @@ LibraryManager.library = {
     var errorCondition = 0;
 
     function canRead(info) {
-      // make sure hasData exists.
-      // we do create it when the socket is connected,
-      // but other implementations may create it lazily
-      if ((info.socket.readyState == WebSocket.CLOSING || info.socket.readyState == WebSocket.CLOSED) && info.inQueue.length == 0) {
-        errorCondition = -1;
-        return false;
-      }
-      return info.hasData && info.hasData();
+      return info.inQueue.length() > 0;
     }
 
     function canWrite(info) {
-      // make sure socket exists.
-      // we do create it when the socket is connected,
-      // but other implementations may create it lazily
-      if ((info.socket.readyState == WebSocket.CLOSING || info.socket.readyState == WebSocket.CLOSED)) {
-        errorCondition = -1;
-        return false;
-      }
-      return info.socket && (info.socket.readyState == info.socket.OPEN);
+      return true;
     }
 
     function checkfds(nfds, fds, can) {
@@ -7357,7 +7342,7 @@ LibraryManager.library = {
       return totalHandles;
     }
   },
-#elif SOCKET_BACKEND == 'websockets'
+/*
   socket__deps: ['$Sockets'],
   socket: function(family, type, protocol) {
     var fd = Sockets.nextFd++;
@@ -7648,8 +7633,8 @@ LibraryManager.library = {
     } else {
       return totalHandles;
     }
-  }
-#endif
+  },
+*/
 
   // pty.h
 
