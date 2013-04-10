@@ -1074,6 +1074,9 @@ class AbstractClass {
 public:
     virtual ~AbstractClass() {}
     virtual std::string abstractMethod() const = 0;
+    virtual std::string optionalMethod(std::string s) const {
+        return "optional" + s;
+    }
 };
 
 class AbstractClassWrapper : public wrapper<AbstractClass> {
@@ -1082,6 +1085,11 @@ public:
 
     std::string abstractMethod() const {
         return call<std::string>("abstractMethod");
+    }
+    std::string optionalMethod(std::string s) const {
+        return optional_call<std::string>("optionalMethod", [&] {
+            return AbstractClass::optionalMethod(s);
+        }, s);
     }
 };
 
@@ -1097,6 +1105,10 @@ std::shared_ptr<AbstractClass> getAbstractClass() {
 
 std::string callAbstractMethod(AbstractClass& ac) {
     return ac.abstractMethod();
+}
+
+std::string callOptionalMethod(AbstractClass& ac, std::string s) {
+    return ac.optionalMethod(s);
 }
 
 class HasExternalConstructor {
@@ -1859,10 +1871,12 @@ EMSCRIPTEN_BINDINGS(tests) {
         .smart_ptr<std::shared_ptr<AbstractClass>>()
         .allow_subclass<AbstractClassWrapper>()
         .function("abstractMethod", &AbstractClass::abstractMethod)
+        .function("optionalMethod", &AbstractClass::optionalMethod)
         ;
     
     function("getAbstractClass", &getAbstractClass);
     function("callAbstractMethod", &callAbstractMethod);
+    function("callOptionalMethod", &callOptionalMethod);
 
     class_<HasExternalConstructor>("HasExternalConstructor")
         .constructor(&createHasExternalConstructor)

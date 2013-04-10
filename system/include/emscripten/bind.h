@@ -713,7 +713,7 @@ namespace emscripten {
     template<typename T>
     class wrapper : public T {
     public:
-        wrapper(const val& wrapped)
+        explicit wrapper(const val& wrapped)
             : wrapped(wrapped)
         {}
 
@@ -722,7 +722,20 @@ namespace emscripten {
             return Caller<ReturnType, Args...>::call(wrapped, name, args...);
         }
 
+        template<typename ReturnType, typename... Args, typename Default>
+        ReturnType optional_call(const char* name, Default def, Args... args) const {
+            if (has_function(name)) {
+                return Caller<ReturnType>::call(wrapped, name);
+            } else {
+                return def();
+            }
+        }
+
     private:
+        bool has_function(const char* name) const {
+            return wrapped.has_function(name);
+        }
+
         // this class only exists because you can't partially specialize function templates
         template<typename ReturnType, typename... Args>
         struct Caller {

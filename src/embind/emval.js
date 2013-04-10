@@ -194,3 +194,8 @@ function __emval_call_void_method(handle, name, argCount, argTypes) {
     var obj = _emval_handle_array[handle].value;
     obj[name].apply(obj, args);
 }
+
+function __emval_has_function(handle, name) {
+    name = Pointer_stringify(name);
+    return _emval_handle_array[handle].value[name] instanceof Function;
+}

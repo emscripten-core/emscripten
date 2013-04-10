@@ -48,6 +48,9 @@ namespace emscripten {
                 unsigned argCount,
                 internal::TYPEID argTypes[]
                 /*, ...*/);
+            bool _emval_has_function(
+                EM_VAL value,
+                const char* methodName);
         }
     }
 
@@ -220,6 +223,10 @@ namespace emscripten {
                 argList.count,
                 argList.types,
                 toWireType(args)...);
+        }
+
+        bool has_function(const char* name) const {
+            return _emval_has_function(handle, name);
         }
 
         template<typename T>

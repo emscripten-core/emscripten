@@ -1464,6 +1464,28 @@ module({
             assert.equal(expected, cm.callAbstractMethod(impl));
             impl.delete();
         });
+
+        test("can implement optional methods in JavaScript", function() {
+            var expected = "my JS string";
+            function MyImplementation() {
+                this.rv = expected;
+            }
+            MyImplementation.prototype.optionalMethod = function() {
+                return this.rv;
+            };
+
+            var impl = cm.AbstractClass.implement(new MyImplementation);
+            assert.equal(expected, impl.optionalMethod(expected));
+            assert.equal(expected, cm.callOptionalMethod(impl, expected));
+            impl.delete();
+        });
+
+        test("if not implemented then optional method runs default", function() {
+            var impl = cm.AbstractClass.implement({});
+            assert.equal("optionalfoo", impl.optionalMethod("foo"));
+            assert.equal("optionalfoo", cm.callOptionalMethod(impl, "foo"));
+            impl.delete();
+        });
     });
 
     BaseFixture.extend("registration order", function() {
