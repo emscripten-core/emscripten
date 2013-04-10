@@ -154,7 +154,7 @@ int     _EXFUN(seteuid, (uid_t __uid ));
 int     _EXFUN(setgid, (gid_t __gid ));
 #endif
 #if defined(EMSCRIPTEN) || defined(__CYGWIN__)
-int	_EXFUN(setgroups, (int ngroups, const gid_t *grouplist ));
+int	_EXFUN(setgroups, (int ngroups, const gid_t *gidset));
 #endif
 int     _EXFUN(setpgid, (pid_t __pid, pid_t __pgid ));
 int     _EXFUN(setpgrp, (void ));
