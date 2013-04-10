@@ -725,7 +725,7 @@ namespace emscripten {
         template<typename ReturnType, typename... Args, typename Default>
         ReturnType optional_call(const char* name, Default def, Args... args) const {
             if (has_function(name)) {
-                return Caller<ReturnType>::call(wrapped, name);
+                return Caller<ReturnType, Args...>::call(wrapped, name, args...);
             } else {
                 return def();
             }
