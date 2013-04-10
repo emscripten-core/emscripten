@@ -9,7 +9,6 @@
 #include <type_traits>
 #include <emscripten/val.h>
 #include <emscripten/wire.h>
-#include "northstar/Pointer.h"
 
 namespace emscripten {
     enum class sharing_policy {
@@ -704,24 +703,6 @@ namespace emscripten {
         private:
             val v;
         };
-    };
-
-    template<typename PointeeType>
-    struct smart_ptr_trait<northstar::IntrusivePointer<PointeeType>> {
-        typedef northstar::IntrusivePointer<PointeeType> PointerType;
-        typedef typename PointerType::element_type element_type;
-
-        static element_type* get(const PointerType& ptr) {
-            return ptr.get();
-        }
-
-        static northstar::IntrusivePointer<PointeeType>* share(PointeeType* p, internal::EM_VAL v) {
-            return new northstar::IntrusivePointer<PointeeType>(p);
-        }
-
-        static sharing_policy get_sharing_policy() {
-            return sharing_policy::INTRUSIVE;
-        }
     };
 
     ////////////////////////////////////////////////////////////////////////////////
