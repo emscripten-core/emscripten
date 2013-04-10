@@ -1,6 +1,6 @@
 # Makefile for generating a Box2D library using Emscripten.
 
-O = Box2D_v2.2.1/Box2D
+O = Box2D
 OBJECTS = \
   $(O)/Collision/b2BroadPhase.o \
   $(O)/Collision/b2CollideCircle.o \
@@ -53,7 +53,7 @@ all: box2d.o
 OPTS = -O2
 
 %.o: %.cpp
-	$(CXX) -IBox2D_v2.2.1 $< -o $@ $(OPTS)
+	$(CXX) -I. $< -o $@ $(OPTS)
 
 box2d.o: $(OBJECTS)
 	$(CXX) -o $@ $(OBJECTS) $(OPTS)
