@@ -12379,8 +12379,8 @@ ok.
     def zzztest_yyy_box2d(self): # Called thus so it runs late in the alphabetical cycle... it is long
       src = open(path_from_root('tests', 'box2d', 'Benchmark.cpp'), 'r').read()
 
-      js_lib = self.get_library('box2d', [os.path.join('box2d.o')], configure=None)
-      js_lib = self.get_library('box2d_native', [os.path.join('box2d.o')], configure=None, native=True)
+      js_lib = self.get_library('box2d', [os.path.join('box2d.a')], configure=None)
+      native_lib = self.get_library('box2d_native', [os.path.join('box2d.a')], configure=None, native=True)
 
       emcc_args = js_lib + ['-I' + path_from_root('tests', 'box2d')]
       native_args = native_lib + ['-I' + path_from_root('tests', 'box2d')]

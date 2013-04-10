@@ -26,7 +26,6 @@ typedef struct {
 #include <math.h>
 
 #include "Box2D/Box2D.h"
-#include "Bench2d.h"
 
 using namespace std;
 

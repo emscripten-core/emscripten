@@ -48,16 +48,14 @@ OBJECTS = \
   $(O)/Dynamics/Joints/b2WheelJoint.o \
   $(O)/Rope/b2Rope.o
 
-all: box2d.o
-
-OPTS = -O2
+all: box2d.a
 
 %.o: %.cpp
-	$(CXX) -I. $< -o $@ $(OPTS)
+	$(CXX) -I. $< -o $@ -O2 -c
 
-box2d.o: $(OBJECTS)
-	$(CXX) -o $@ $(OBJECTS) $(OPTS)
+box2d.a: $(OBJECTS)
+	$(AR) rvs $@ $(OBJECTS)
 
 clean:
-	rm box2d.o
+	rm box2d.a
 
