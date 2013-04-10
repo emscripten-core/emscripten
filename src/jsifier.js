@@ -1529,11 +1529,10 @@ function JSify(data, functionsOnly, givenFunctions) {
         }
 
         // Run postsets right before main, and after the memory initializer has been set up
-        if (itemsDict.GlobalVariablePostSet.length > 0) {
-          print('__ATMAIN__.push(function() {\n');
-          print(itemsDict.GlobalVariablePostSet.map(function(item) { return item.JS }).join('\n'));
-          print('});\n');
-        }
+        print('function runPostSets() {\n');
+        print(itemsDict.GlobalVariablePostSet.map(function(item) { return item.JS }).join('\n'));
+        print('}\n');
+        print('if (!awaitingMemoryInitializer) runPostSets();\n'); // if we load the memory initializer, this is done later
       }
 
       return;

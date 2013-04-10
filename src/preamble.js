@@ -891,6 +891,8 @@ __ATEXIT__.push({ func: function() { PGOMonitor.dump() } });
 addPreRun(function() { addRunDependency('pgo') });
 #endif
 
+var awaitingMemoryInitializer = false;
+
 function loadMemoryInitializer(filename) {
   function applyData(data) {
 #if USE_TYPED_ARRAYS == 2
@@ -898,6 +900,7 @@ function loadMemoryInitializer(filename) {
 #else
     allocate(data, 'i8', ALLOC_NONE, TOTAL_STACK);
 #endif
+    runPostSets();
   }
 
   // always do this asynchronously, to keep shell and web as similar as possible
@@ -912,6 +915,8 @@ function loadMemoryInitializer(filename) {
       });
     }
   });
+
+  awaitingMemoryInitializer = false;
 }
 
 // === Body ===
