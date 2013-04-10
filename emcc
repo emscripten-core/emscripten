@@ -483,6 +483,9 @@ be generated:
   <name>.bc                LLVM bitcode (default)
   <name>.o                 LLVM bitcode (same as .bc)
 
+Note that if --memory-init-file is used, then in addition to a
+.js or .html file that is generated, a .mem file will also appear.
+
 The -c option (which tells gcc not to run the linker) will
 cause LLVM bitcode to be generated, as %s only generates
 JavaScript in the final linking stage of building.
