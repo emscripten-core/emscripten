@@ -11,7 +11,7 @@
 #define DEBUG 0
 
 #define WARMUP 64
-#define FRAMES 256
+#define FRAMES 333
 
 typedef struct {
   float mean;
@@ -52,7 +52,7 @@ result_t measure(clock_t times[FRAMES]) {
   return r;
 }
 
-result_t bench() {
+int main() {
 	// Define the gravity vector.
 	b2Vec2 gravity(0.0f, -10.0f);
 
@@ -116,6 +116,10 @@ result_t bench() {
 #endif
 	}
 
-  return measure(times);
+  result_t result = measure(times);
+
+  printf("frame averages: %.3f +- %.3f\n", result.mean, result.stddev);
+
+  return 0;
 }
 

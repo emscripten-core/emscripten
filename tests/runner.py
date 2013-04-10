@@ -12376,7 +12376,7 @@ ok.
 ''',
                         force_c=True, emcc_args=emcc_args, native_args=native_args)
 
-    def zzztest_yyy_box2d(self): # Called thus so it runs late in the alphabetical cycle... it is long
+    def test_yyy_box2d(self): # Called thus so it runs late in the alphabetical cycle... it is long
       src = open(path_from_root('tests', 'box2d', 'Benchmark.cpp'), 'r').read()
 
       js_lib = self.get_library('box2d', [os.path.join('box2d.a')], configure=None)
@@ -12385,7 +12385,7 @@ ok.
       emcc_args = js_lib + ['-I' + path_from_root('tests', 'box2d')]
       native_args = native_lib + ['-I' + path_from_root('tests', 'box2d')]
 
-      self.do_benchmark('box2d', src, [], '\nok.\n', emcc_args=emcc_args, native_args=native_args)
+      self.do_benchmark('box2d', src, [], 'frame averages', emcc_args=emcc_args, native_args=native_args)
 
     def test_zzz_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
       src = open(path_from_root('tests', 'bullet', 'Demos', 'Benchmarks', 'BenchmarkDemo.cpp'), 'r').read() + \
