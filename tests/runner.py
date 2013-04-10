@@ -10016,7 +10016,7 @@ f.close()
       self.assertNotContained('pre-run\nhello from main\npost-run\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
       # noInitialRun prevents run
-      for no_initial_run, run_dep in [(0, 0), (1, 0), (0, 1), (1, 1)]:
+      for no_initial_run, run_dep in [(0, 0), (1, 0), (0, 1)]:
         print no_initial_run, run_dep
         Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp')]).communicate()
         src = 'var Module = { noInitialRun: %d };\n' % no_initial_run + open(os.path.join(self.get_dir(), 'a.out.js')).read()

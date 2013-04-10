@@ -3,6 +3,7 @@
 
 Module.callMain = function callMain(args) {
   assert(runDependencies == 0, 'cannot call main when async dependencies remain! (listen on __ATMAIN__)');
+  assert(!Module['preRun'] || Module['preRun'].length == 0, 'cannot call main when preRun functions remain to be called');
 
   args = args || [];
 
@@ -82,7 +83,7 @@ function run(args) {
 
     var ret = 0;
     calledRun = true;
-    if (Module['_main']) {
+    if (Module['_main'] && shouldRunNow) {
       ret = Module.callMain(args);
       if (!Module['noExitRuntime']) {
         exitRuntime();
@@ -121,6 +122,7 @@ if (Module['preInit']) {
   }
 }
 
+// shouldRunNow refers to calling main(), not run().
 #if INVOKE_RUN
 var shouldRunNow = true;
 #else
@@ -130,9 +132,7 @@ if (Module['noInitialRun']) {
   shouldRunNow = false;
 }
 
-if (shouldRunNow) {
-  run();
-}
+run();
 
 // {{POST_RUN_ADDITIONS}}
 

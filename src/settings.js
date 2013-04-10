@@ -35,8 +35,8 @@ var ASSERTIONS = 1; // Whether we should add runtime assertions, for example to
                     // if code flow runs into a fault
 var VERBOSE = 0; // When set to 1, will generate more verbose output during compilation.
 
-var INVOKE_RUN = 1; // Whether we will call run(). Disable if you embed the generated
-                    // code in your own, and will call run() yourself at the right time
+var INVOKE_RUN = 1; // Whether we will run the main() function. Disable if you embed the generated
+                    // code in your own, and will call main() yourself at the right time.
 var INIT_HEAP = 0; // Whether to initialize memory anywhere other than the stack to 0.
 var TOTAL_STACK = 5*1024*1024; // The total stack size. There is no way to enlarge the stack, so this
                                // value must be large enough for the program's requirements. If
