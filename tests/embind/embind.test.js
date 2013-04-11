@@ -388,6 +388,14 @@ module({
         });
     });
 
+    BaseFixture.extend("string", function() {
+        var expected = '';
+        for (var i = 0; i < 128; ++i) {
+            expected += String.fromCharCode(128 + i);
+        }
+        assert.equal(expected, cm.get_non_ascii_string());
+    });
+
     BaseFixture.extend("embind", function() {
         test("value creation", function() {
             assert.equal(15, cm.emval_test_new_integer());

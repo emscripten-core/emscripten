@@ -79,6 +79,15 @@ unsigned emval_test_sum(val v) {
     return rv;
 }
 
+std::string get_non_ascii_string() {
+    char c[128 + 1];
+    c[128] = 0;
+    for (int i = 0; i < 128; ++i) {
+        c[i] = 128 + i;
+    }
+    return c;
+}
+
 std::string emval_test_take_and_return_const_char_star(const char* str) {
     return str;
 }
@@ -1493,6 +1502,7 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("const_ref_adder", &const_ref_adder);
     function("emval_test_sum", &emval_test_sum);
 
+    function("get_non_ascii_string", &get_non_ascii_string);
     //function("emval_test_take_and_return_const_char_star", &emval_test_take_and_return_const_char_star);
     function("emval_test_take_and_return_std_string", &emval_test_take_and_return_std_string);
     function("emval_test_take_and_return_std_string_const_ref", &emval_test_take_and_return_std_string_const_ref);
