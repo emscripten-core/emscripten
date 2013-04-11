@@ -39,8 +39,8 @@ class WindowsPopen:
     # emscripten.py supports reading args from a response file instead of cmdline.
     # Use .rsp to avoid cmdline length limitations on Windows.
     if len(args) >= 2 and args[1].endswith("emscripten.py"):
-      response_filename = create_response_file(args[2:], TEMP_DIR)
-      args = args[0:2] + [response_filename]
+      self.response_filename = create_response_file(args[2:], TEMP_DIR)
+      args = args[0:2] + ['@' + self.response_filename]
       
     try:
       # Call the process with fixed streams.
@@ -75,6 +75,13 @@ class WindowsPopen:
 
   def kill(self):
     return self.process.kill()
+  
+  def __del__(self):
+    try:
+      # Clean up the temporary response file that was used to spawn this process, so that we don't leave temp files around.
+      tempfiles.try_delete(self.response_filename)
+    except:
+      pass # Mute all exceptions in dtor, particularly if we didn't use a response file, self.response_filename doesn't exist.
 
 # Install our replacement Popen handler if we are running on Windows to avoid python spawn process function.
 if os.name == 'nt':

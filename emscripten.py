@@ -12,7 +12,7 @@ headers, for the libc implementation in JS).
 import os, sys, json, optparse, subprocess, re, time, multiprocessing, functools
 
 from tools import jsrun, cache as cache_module, tempfiles
-from tools.response_file import read_and_delete_response_file
+from tools.response_file import read_response_file
 
 __rootpath__ = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(*pathelems):
@@ -656,7 +656,7 @@ def _main(environ):
       if sys.argv[index][0] == '@':
         # found one, loop again next time
         response_file = True
-        response_file_args = read_and_delete_response_file(sys.argv[index])
+        response_file_args = read_response_file(sys.argv[index])
         # slice in extra_args in place of the response file arg
         sys.argv[index:index+1] = response_file_args
         break
