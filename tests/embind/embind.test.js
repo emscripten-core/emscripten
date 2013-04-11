@@ -397,6 +397,12 @@ module({
             assert.equal(expected, cm.get_non_ascii_string());
         });
 
+        test("passing non-8-bit strings from JS to std::string throws", function() {
+            assert.throws(cm.BindingError, function() {
+                cm.emval_test_take_and_return_std_string("\u1234");
+            });
+        });
+
         test("non-ascii wstrings", function() {
             var expected = String.fromCharCode(10) +
                 String.fromCharCode(1234) +

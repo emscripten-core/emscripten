@@ -336,7 +336,12 @@ function __embind_register_std_string(rawType, name) {
             var ptr = _malloc(4 + length);
             HEAPU32[ptr >> 2] = length;
             for (var i = 0; i < length; ++i) {
-                HEAPU8[ptr + 4 + i] = value.charCodeAt(i);
+                var charCode = value.charCodeAt(i);
+                if (charCode > 255) {
+                    _free(ptr);
+                    throwBindingError('String has UTF-16 code units that do not fit in 8 bits');
+                }
+                HEAPU8[ptr + 4 + i] = charCode;
             }
             destructors.push(_free, ptr);
             return ptr;
