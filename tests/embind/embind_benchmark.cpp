@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <emscripten.h>
 #include <bind.h>
+#include <memory>
 
 int counter = 0;
 
@@ -43,6 +44,54 @@ extern void sum_int_benchmark_embind_js();
 extern void sum_float_benchmark_embind_js();
 
 extern void increment_class_counter_benchmark_embind_js(int N);
+extern void move_gameobjects_benchmark_embind_js();
+}
+
+class Vec3
+{
+public:
+    Vec3():x(0),y(0),z(0) {}
+    Vec3(float x_, float y_, float z_):x(x_),y(y_),z(z_) {}
+    float x,y,z;
+};
+
+Vec3 add(const Vec3 &lhs, const Vec3 &rhs) { return Vec3(lhs.x+rhs.x, lhs.y+rhs.y, lhs.z+rhs.z); }
+
+class Transform
+{
+public:
+    Transform():scale(1) {}
+
+    Vec3 pos;
+    Vec3 rot;
+    float scale;
+
+    Vec3 GetPosition() { return pos; }
+    Vec3 GetRotation() { return rot; }
+    float GetScale() { return scale; }
+    
+    void SetPosition(const Vec3 &pos_) { pos = pos_; }
+    void SetRotation(const Vec3 &rot_) { rot = rot_; }
+    void SetScale(float scale_) { scale = scale_; }
+};
+typedef std::shared_ptr<Transform> TransformPtr;
+
+class GameObject
+{
+public:
+    GameObject()
+    {
+        transform = std::make_shared<Transform>();
+    }
+    std::shared_ptr<Transform> transform;
+    
+    TransformPtr GetTransform() { return transform; }
+};
+typedef std::shared_ptr<GameObject> GameObjectPtr;
+
+GameObjectPtr create_game_object()
+{
+    return std::make_shared<GameObject>();
 }
 
 class Foo
@@ -74,6 +123,27 @@ public:
 EMSCRIPTEN_BINDINGS(benchmark)
 {
     using namespace emscripten;
+    
+    class_<GameObject>("GameObject")
+        .smart_ptr<GameObjectPtr>()
+        .function("GetTransform", &GameObject::GetTransform);
+        
+    class_<Transform>("Transform")
+        .smart_ptr<TransformPtr>()
+        .function("GetPosition", &Transform::GetPosition)
+        .function("GetRotation", &Transform::GetRotation)
+        .function("GetScale", &Transform::GetScale)
+        .function("SetPosition", &Transform::SetPosition)
+        .function("SetRotation", &Transform::SetRotation)
+        .function("SetScale", &Transform::SetScale);
+        
+    value_tuple<Vec3>("Vec3")
+        .element(&Vec3::x)
+        .element(&Vec3::y)
+        .element(&Vec3::z);
+        
+    function("create_game_object", &create_game_object);
+    function("add", &add);
     
     function("get_counter", &get_counter);
     function("increment_counter", &increment_counter);
@@ -212,6 +282,30 @@ void __attribute__((noinline)) sum_float_benchmark()
     printf("C++ sum_float 100000 iters: %f msecs.\n", 1000.f*(t2-t));
 }
 
+void __attribute__((noinline)) move_gameobjects_benchmark()
+{
+    const int N = 100000;
+    GameObjectPtr objects[N];
+    for(int i = 0; i < N; ++i)
+        objects[i] = create_game_object();
+    
+    volatile float t = emscripten_get_now();
+    for(int i = 0; i < N; ++i)
+    {
+        TransformPtr t = objects[i]->GetTransform();
+        Vec3 pos = add(t->GetPosition(), Vec3(2.f, 0.f, 1.f));
+        Vec3 rot = add(t->GetRotation(), Vec3(0.1f, 0.2f, 0.3f));
+        t->SetPosition(pos);
+        t->SetRotation(rot);
+    }
+    volatile float t2 = emscripten_get_now();
+
+    Vec3 accum;
+    for(int i = 0; i < N; ++i)
+        accum = add(add(accum, objects[i]->GetTransform()->GetPosition()), objects[i]->GetTransform()->GetRotation());
+    printf("C++ move_gameobjects %d iters: %f msecs. Result: %f\n", N, 1000.f*(t2-t), accum.x+accum.y+accum.z);
+}
+
 int main()
 {
     for(int i = 1000; i <= 100000; i *= 10)
@@ -244,4 +338,7 @@ int main()
     sum_float_benchmark();
     sum_float_benchmark_js();
     sum_float_benchmark_embind_js();
+    printf("\n");
+    move_gameobjects_benchmark();
+    move_gameobjects_benchmark_embind_js();
 }

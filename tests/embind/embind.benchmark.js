@@ -171,3 +171,31 @@ function _sum_float_benchmark_embind_js() {
     var b = _emscripten_get_now();
     Module.print("JS embind sum_float 100000 iters: " + (b-a)*1000 + " msecs. result: " + r);
 }
+
+function _move_gameobjects_benchmark_embind_js() {
+    var N = 100000;
+    var objects = [];
+    for(i = 0; i < N; ++i) {
+        objects.push(Module['create_game_object']());
+    }
+    
+    var a = _emscripten_get_now();
+    for(i = 0; i < N; ++i) {
+        var t = objects[i].GetTransform();
+        var pos = Module.add(t.GetPosition(), [2, 0, 1]);
+        var rot = Module.add(t.GetRotation(), [0.1, 0.2, 0.3]);
+        t.SetPosition(pos);
+        t.SetRotation(rot);
+        t.delete();
+    }
+    var b = _emscripten_get_now();
+    
+    var accum = [0,0,0];
+    for(i = 0; i < N; ++i) {
+        var t = objects[i].GetTransform();
+        accum = Module.add(Module.add(accum, t.GetPosition()), t.GetRotation());
+        t.delete();
+    }
+    
+    Module.print("JS embind move_gameobjects " + N + " iters: " + 1000*(b-a) + " msecs. Result: " + (accum[0] + accum[1] + accum[2]));
+}
