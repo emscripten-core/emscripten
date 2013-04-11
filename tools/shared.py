@@ -39,7 +39,8 @@ class WindowsPopen:
     try:
       self.process = subprocess.Popen(args, bufsize, executable, self.stdin_, self.stdout_, self.stderr_, preexec_fn, close_fds, shell, cwd, env, universal_newlines, startupinfo, creationflags)
     except Exception, e:
-      print >> sys.stderr, 'subprocess.Popen(args=%s) failed! Exception %s' % (' '.join(args), str(e))
+      print >> sys.stderr, '\nsubprocess.Popen(args=%s) failed! Exception %s\n' % (' '.join(args), str(e))
+      raise e
 
   def communicate(self, input=None):
     output = self.process.communicate(input)
@@ -257,6 +258,7 @@ def check_sanity(force=False):
 # Tools/paths
 
 LLVM_ADD_VERSION = os.getenv('LLVM_ADD_VERSION')
+CLANG_ADD_VERSION = os.getenv('CLANG_ADD_VERSION')
 
 # Some distributions ship with multiple llvm versions so they add
 # the version to the binaries, cope with that
@@ -266,8 +268,16 @@ def build_llvm_tool_path(tool):
   else:
     return os.path.join(LLVM_ROOT, tool)
 
-CLANG_CC=os.path.expanduser(os.path.join(LLVM_ROOT, 'clang'))
-CLANG_CPP=os.path.expanduser(os.path.join(LLVM_ROOT, 'clang++'))
+# Some distributions ship with multiple clang versions so they add
+# the version to the binaries, cope with that
+def build_clang_tool_path(tool):
+  if CLANG_ADD_VERSION:
+    return os.path.join(LLVM_ROOT, tool + "-" + CLANG_ADD_VERSION)
+  else:
+    return os.path.join(LLVM_ROOT, tool)
+
+CLANG_CC=os.path.expanduser(build_clang_tool_path('clang'))
+CLANG_CPP=os.path.expanduser(build_clang_tool_path('clang++'))
 CLANG=CLANG_CPP
 LLVM_LINK=build_llvm_tool_path('llvm-link')
 LLVM_AR=build_llvm_tool_path('llvm-ar')
@@ -1140,6 +1150,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
         raw = relooper + '.raw.js'
         Building.emcc(os.path.join('relooper', 'Relooper.cpp'), ['-I' + os.path.join('relooper'), '--post-js',
           os.path.join('relooper', 'emscripten', 'glue.js'),
+          '--memory-init-file', '0',
           '-s', 'TOTAL_MEMORY=52428800',
           '-s', 'EXPORTED_FUNCTIONS=["_rl_set_output_buffer","_rl_make_output_buffer","_rl_new_block","_rl_delete_block","_rl_block_add_branch_to","_rl_new_relooper","_rl_delete_relooper","_rl_relooper_add_block","_rl_relooper_calculate","_rl_relooper_render", "_rl_set_asm_js_mode"]',
           '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["memcpy", "memset", "malloc", "free", "puts"]',

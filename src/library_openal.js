@@ -13,9 +13,28 @@ var LibraryOpenAL = {
   alcMakeContextCurrent: function(context) {
     if (context == 0) {
       AL.currentContext = null;
+      return 0;
     } else {
       AL.currentContext = AL.contexts[context - 1];
+      return 1;
     }
+  },
+
+  alcGetContextsDevice: function(context) {
+    if (context <= AL.contexts.length && context > 0) {
+      // Returns the only one audio device
+      return 1;
+    }
+    return 0;
+  },
+
+  alcGetCurrentContext: function() {
+    for (var i = 0; i < AL.contexts.length; ++i) {
+      if (AL.contexts[i] == AL.currentContext) {
+        return i + 1;
+      }
+    }
+    return 0;
   },
 
   alcDestroyContext: function(context) {
@@ -167,7 +186,9 @@ var LibraryOpenAL = {
     }
     switch (param) {
     case 0x100A /* AL_GAIN */:
-      AL.currentContext.src[source - 1].gain.gain.value = value;
+      if (AL.currentContext.src[source - 1]) {
+        AL.currentContext.src[source - 1].gain.gain.value = value;
+      }
       break;
     case 0x1003 /* AL_PITCH */:
 #if OPENAL_DEBUG
@@ -291,14 +312,16 @@ var LibraryOpenAL = {
     }
     for (var i = 0; i < count; ++i) {
       var bufferIdx = {{{ makeGetValue('buffers', 'i*4', 'i32') }}} - 1;
-      var buffer = AL.currentContext.buf[bufferIdx].buf;
-      for (var j = 0; j < AL.currentContext.src.length; ++j) {
-        if (buffer == AL.currentContext.src[j].buffer) {
-          AL.currentContext.err = 0xA004 /* AL_INVALID_OPERATION  */;
-          return;
+      if (bufferIdx < AL.currentContext.buf.length && AL.currentContext.buf[bufferIdx]) {
+        var buffer = AL.currentContext.buf[bufferIdx].buf;
+        for (var j = 0; j < AL.currentContext.src.length; ++j) {
+          if (buffer == AL.currentContext.src[j].buffer) {
+            AL.currentContext.err = 0xA004 /* AL_INVALID_OPERATION  */;
+            return;
+          }
         }
+        delete AL.currentContext.buf[bufferIdx];
       }
-      delete AL.currentContext.buf[bufferIdx];
     }
   },
 
@@ -424,7 +447,7 @@ var LibraryOpenAL = {
 #endif
       return;
     }
-    if ("src" in AL.currentContext.src[source - 1]) {
+    if (AL.currentContext.src[source - 1] && "src" in AL.currentContext.src[source - 1]) {
       AL.currentContext.src[source - 1]["src"].stop(0);
       delete AL.currentContext.src[source - 1]["src"];
     }

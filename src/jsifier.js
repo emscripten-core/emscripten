@@ -1499,16 +1499,42 @@ function JSify(data, functionsOnly, givenFunctions) {
         }
       }
       var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable);
-      if (!DEBUG_MEMORY) print(generated.map(function(item) { return item.JS }).join('\n'));
+      print(generated.map(function(item) { return item.JS }).join('\n'));
 
       if (phase == 'pre') {
         if (memoryInitialization.length > 0) {
+          // apply postsets directly into the big memory initialization
+          itemsDict.GlobalVariablePostSet = itemsDict.GlobalVariablePostSet.filter(function(item) {
+            var m;
+            if (m = /^HEAP([\dFU]+)\[([()>\d]+)\] *= *([()|\d{}\w_' ]+);?$/.exec(item.JS)) {
+              var type = getTypeFromHeap(m[1]);
+              var bytes = Runtime.getNativeTypeSize(type);
+              var target = eval(m[2]) << log2(bytes);
+              var value = m[3];
+              try {
+                value = eval(value);
+              } catch(e) {
+                // possibly function table {{{ FT_* }}} etc.
+                if (value.indexOf('{{ ') < 0) return true;
+              }
+              writeInt8s(memoryInitialization, target - TOTAL_STACK, value, type);
+              return false;
+            }
+            return true;
+          });
           // write out the singleton big memory initialization value
-          print('/* teh global */ ' + makePointer(memoryInitialization, null, 'ALLOC_NONE', 'i8', 'TOTAL_STACK', true)); // we assert on TOTAL_STACK == GLOBAL_BASE
+          print('/* memory initializer */ ' + makePointer(memoryInitialization, null, 'ALLOC_NONE', 'i8', 'TOTAL_STACK', true)); // we assert on TOTAL_STACK == GLOBAL_BASE
+        } else {
+          print('/* no memory initializer */'); // test purposes
         }
+
+        // Run postsets right before main, and after the memory initializer has been set up
+        print('function runPostSets() {\n');
+        print(itemsDict.GlobalVariablePostSet.map(function(item) { return item.JS }).join('\n'));
+        print('}\n');
+        print('if (!awaitingMemoryInitializer) runPostSets();\n'); // if we load the memory initializer, this is done later
       }
 
-      if (!DEBUG_MEMORY) print(itemsDict.GlobalVariablePostSet.map(function(item) { return item.JS }).join('\n'));
       return;
     }
 

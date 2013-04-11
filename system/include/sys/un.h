@@ -35,6 +35,7 @@
 
 #include <sys/cdefs.h>
 #include <sys/_types.h>
+#include <sys/socket.h>
 
 /*
  * Definitions for UNIX IPC domain.

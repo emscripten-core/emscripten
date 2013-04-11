@@ -100,7 +100,7 @@ def run_on_chunk(command):
   f = open(filename, 'w')
   f.write(output)
   f.close()
-  if DEBUG: print >> sys.stderr, '.'
+  if DEBUG and not shared.WINDOWS: print >> sys.stderr, '.' # Skip debug progress indicator on Windows, since it doesn't buffer well with multiple threads printing to console.
   return filename
 
 def run_on_js(filename, passes, js_engine, jcache):

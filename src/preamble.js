@@ -701,6 +701,10 @@ var nullString = allocate(intArrayFromString('(null)'), 'i8', ALLOC_STACK);
 function callRuntimeCallbacks(callbacks) {
   while(callbacks.length > 0) {
     var callback = callbacks.shift();
+    if (typeof callback == 'function') {
+      callback();
+      continue;
+    }
     var func = callback.func;
     if (typeof func === 'number') {
       if (callback.arg === undefined) {
@@ -718,7 +722,11 @@ var __ATINIT__ = []; // functions called during startup
 var __ATMAIN__ = []; // functions called when main() is to be run
 var __ATEXIT__ = []; // functions called during shutdown
 
-function initRuntime() {
+var runtimeInitialized = false;
+
+function ensureInitRuntime() {
+  if (runtimeInitialized) return;
+  runtimeInitialized = true;
   callRuntimeCallbacks(__ATINIT__);
 }
 function preMain() {
@@ -805,7 +813,7 @@ Math.imul = function(a, b) {
 // the dependencies are met.
 var runDependencies = 0;
 var runDependencyTracking = {};
-var calledRun = false;
+var calledInit = false, calledRun = false;
 var runDependencyWatcher = null;
 function addRunDependency(id) {
   runDependencies++;
@@ -861,6 +869,12 @@ Module['removeRunDependency'] = removeRunDependency;
 Module["preloadedImages"] = {}; // maps url to image data
 Module["preloadedAudios"] = {}; // maps url to audio data
 
+function addPreRun(func) {
+  if (!Module['preRun']) Module['preRun'] = [];
+  else if (typeof Module['preRun'] == 'function') Module['preRun'] = [Module['preRun']];
+  Module['preRun'].push(func);
+}
+
 #if PGO
 var PGOMonitor = {
   called: {},
@@ -874,9 +888,36 @@ var PGOMonitor = {
   }
 };
 __ATEXIT__.push({ func: function() { PGOMonitor.dump() } });
-if (!Module.preRun) Module.preRun = [];
-Module.preRun.push(function() { addRunDependency('pgo') });
+addPreRun(function() { addRunDependency('pgo') });
 #endif
+
+var awaitingMemoryInitializer = false;
+
+function loadMemoryInitializer(filename) {
+  function applyData(data) {
+#if USE_TYPED_ARRAYS == 2
+    HEAPU8.set(data, TOTAL_STACK);
+#else
+    allocate(data, 'i8', ALLOC_NONE, TOTAL_STACK);
+#endif
+    runPostSets();
+  }
+
+  // always do this asynchronously, to keep shell and web as similar as possible
+  addPreRun(function() {
+    if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
+      applyData(Module['readBinary'](filename));
+    } else {
+      Browser.asyncLoad(filename, function(data) {
+        applyData(data);
+      }, function(data) {
+        throw 'could not load memory initializer ' + filename;
+      });
+    }
+  });
+
+  awaitingMemoryInitializer = false;
+}
 
 // === Body ===
 

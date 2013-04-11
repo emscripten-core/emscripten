@@ -76,8 +76,7 @@ mergeInto(LibraryManager.library, {
           'ogg': 'audio/ogg',
           'wav': 'audio/wav',
           'mp3': 'audio/mpeg'
-        }[name.substr(-3)];
-        return ret;
+        }[name.substr(name.lastIndexOf('.')+1)];
       }
 
       if (!Module["preloadPlugins"]) Module["preloadPlugins"] = [];
@@ -389,7 +388,7 @@ mergeInto(LibraryManager.library, {
       xhr.open('GET', url, true);
       xhr.responseType = 'arraybuffer';
       xhr.onload = function() {
-        if (xhr.status == 200) {
+        if (xhr.status == 200 || (xhr.status == 0 && xhr.response)) { // file URLs can return 0
           onload(xhr.response);
         } else {
           onerror();
