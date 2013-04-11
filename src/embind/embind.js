@@ -1,6 +1,6 @@
 /*global Module*/
 /*global _malloc, _free, _memcpy*/
-/*global FUNCTION_TABLE, HEAP32, HEAPU8*/
+/*global FUNCTION_TABLE, HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32*/
 /*global Pointer_stringify*/
 /*global __emval_register, _emval_handle_array, __emval_decref*/
 /*global ___getTypeName*/
@@ -352,10 +352,10 @@ function __embind_register_std_string(rawType, name) {
 function __embind_register_std_wstring(rawType, charSize, name) {
     name = Pointer_stringify(name);
     var HEAP, shift;
-    if (charSize == 2) {
+    if (charSize === 2) {
         HEAP = HEAPU16;
         shift = 1;
-    } else if (charSize == 4) {
+    } else if (charSize === 4) {
         HEAP = HEAPU32;
         shift = 2;
     }
