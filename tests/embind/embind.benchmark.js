@@ -18,6 +18,26 @@ function _increment_counter_benchmark_js(N) {
     Module.print("JS increment_counter " + N + " iters: " + (b-a)*1000 + " msecs. result: " + (ctr2-ctr));
 }
 
+function _increment_class_counter_benchmark_embind_js(N) {
+    var foo = new Module.Foo();
+    var a = _emscripten_get_now();
+    for(i = 0; i < N; ++i) {
+        foo.incr_class_counter();
+        foo.incr_class_counter();
+        foo.incr_class_counter();
+        foo.incr_class_counter();
+        foo.incr_class_counter();
+        foo.incr_class_counter();
+        foo.incr_class_counter();
+        foo.incr_class_counter();
+        foo.incr_class_counter();
+        foo.incr_class_counter();
+    }
+    var b = _emscripten_get_now();
+    Module.print("JS increment_class_counter_embind " + N + " iters: " + (b-a)*1000 + " msecs. result: " + foo.class_counter_val());
+    foo.delete();
+}
+
 function _returns_input_benchmark_js() {
     var a = _emscripten_get_now();
     var t = 0;
