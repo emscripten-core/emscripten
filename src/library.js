@@ -2118,7 +2118,20 @@ LibraryManager.library = {
       return 1;
     }
   },
-  // TODO: Implement initgroups, setgroups (grp.h).
+  // TODO: Implement initgroups (grp.h).
+  setgroups__deps: ['__setErrNo', '$ERRNO_CODES', 'sysconf'],
+  setgroups: function (ngroups, gidset) {
+    // int setgroups(int ngroups, const gid_t *gidset);
+    // https://developer.apple.com/library/mac/#documentation/Darwin/Reference/ManPages/man2/setgroups.2.html
+    if (ngroups < 1 || ngroups > _sysconf({{{ cDefine('_SC_NGROUPS_MAX') }}})) {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return -1;
+    } else {
+      // We have just one process/user/group, so it makes no sense to set groups.
+      ___setErrNo(ERRNO_CODES.EPERM);
+      return -1;
+    }
+  },
   gethostid: function() {
     // long gethostid(void);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/gethostid.html
