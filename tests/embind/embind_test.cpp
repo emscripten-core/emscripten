@@ -88,6 +88,15 @@ std::string get_non_ascii_string() {
     return c;
 }
 
+std::wstring get_non_ascii_wstring() {
+    std::wstring ws(4, 0);
+    ws[0] = 10;
+    ws[1] = 1234;
+    ws[2] = 2345;
+    ws[3] = 65535;
+    return ws;
+}
+
 std::string emval_test_take_and_return_const_char_star(const char* str) {
     return str;
 }
@@ -1503,6 +1512,7 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("emval_test_sum", &emval_test_sum);
 
     function("get_non_ascii_string", &get_non_ascii_string);
+    function("get_non_ascii_wstring", &get_non_ascii_wstring);
     //function("emval_test_take_and_return_const_char_star", &emval_test_take_and_return_const_char_star);
     function("emval_test_take_and_return_std_string", &emval_test_take_and_return_std_string);
     function("emval_test_take_and_return_std_string_const_ref", &emval_test_take_and_return_std_string_const_ref);

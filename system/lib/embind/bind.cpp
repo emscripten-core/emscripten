@@ -44,6 +44,24 @@ namespace emscripten {
     }
 }
 
+// TODO: fix in library.js or a proper emscripten libc
+extern "C" wchar_t *wmemset(wchar_t *dest, wchar_t c, size_t count) {
+    wchar_t *o = dest;
+    while (count--) {
+        *o++ = c;
+    }
+    return dest;
+}
+
+// TODO: fix in library.js or a proper emscripten libc
+extern "C" wchar_t *wmemcpy(wchar_t *dest, const wchar_t *src, size_t count) {
+    wchar_t *o = dest;
+    while (count--) {
+        *dest++ = *src++;
+    }
+    return dest;
+}
+
 EMSCRIPTEN_BINDINGS(native_and_builtin_types) {
     using namespace emscripten::internal;
 
@@ -64,6 +82,7 @@ EMSCRIPTEN_BINDINGS(native_and_builtin_types) {
     _embind_register_float(TypeID<float>::get(), "float");
     _embind_register_float(TypeID<double>::get(), "double");
     
-    _embind_register_cstring(TypeID<std::string>::get(), "std::string");
+    _embind_register_std_string(TypeID<std::string>::get(), "std::string");
+    _embind_register_std_wstring(TypeID<std::wstring>::get(), sizeof(wchar_t), "std::wstring");
     _embind_register_emval(TypeID<val>::get(), "emscripten::val");
 }

@@ -317,12 +317,12 @@ function __embind_register_float(rawType, name) {
     });
 }
 
-function __embind_register_cstring(rawType, name) {
+function __embind_register_std_string(rawType, name) {
     name = Pointer_stringify(name);
     registerType(rawType, {
         name: name,
         fromWireType: function(value) {
-            var length = HEAP32[value >> 2];
+            var length = HEAPU32[value >> 2];
             var a = new Array(length);
             for (var i = 0; i < length; ++i) {
                 a[i] = String.fromCharCode(HEAPU8[value + 4 + i]);
@@ -334,12 +334,37 @@ function __embind_register_cstring(rawType, name) {
             // assumes 4-byte alignment
             var length = value.length;
             var ptr = _malloc(4 + length);
-            HEAP32[ptr >> 2] = length;
+            HEAPU32[ptr >> 2] = length;
             for (var i = 0; i < length; ++i) {
                 HEAPU8[ptr + 4 + i] = value.charCodeAt(i);
             }
             destructors.push(_free, ptr);
             return ptr;
+        },
+    });
+}
+
+function __embind_register_std_wstring(rawType, charSize, name) {
+    name = Pointer_stringify(name);
+    var HEAP, shift;
+    if (charSize == 2) {
+        HEAP = HEAPU16;
+        shift = 1;
+    } else if (charSize == 4) {
+        HEAP = HEAPU32;
+        shift = 2;
+    }
+    registerType(rawType, {
+        name: name,
+        fromWireType: function(value) {
+            var length = HEAPU32[value >> 2];
+            var a = new Array(length);
+            var start = (value + 4) >> shift;
+            for (var i = 0; i < length; ++i) {
+                a[i] = String.fromCharCode(HEAP[start + i]);
+            }
+            _free(value);
+            return a.join('');
         },
     });
 }

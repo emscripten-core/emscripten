@@ -389,11 +389,21 @@ module({
     });
 
     BaseFixture.extend("string", function() {
-        var expected = '';
-        for (var i = 0; i < 128; ++i) {
-            expected += String.fromCharCode(128 + i);
-        }
-        assert.equal(expected, cm.get_non_ascii_string());
+        test("non-ascii strings", function() {
+            var expected = '';
+            for (var i = 0; i < 128; ++i) {
+                expected += String.fromCharCode(128 + i);
+            }
+            assert.equal(expected, cm.get_non_ascii_string());
+        });
+
+        test("non-ascii wstrings", function() {
+            var expected = String.fromCharCode(10) +
+                String.fromCharCode(1234) +
+                String.fromCharCode(2345) +
+                String.fromCharCode(65535);
+            assert.equal(expected, cm.get_non_ascii_wstring());
+        });
     });
 
     BaseFixture.extend("embind", function() {

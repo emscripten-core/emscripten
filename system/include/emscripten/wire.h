@@ -181,6 +181,26 @@ namespace emscripten {
             }
         };
 
+        template<>
+        struct BindingType<std::wstring> {
+            typedef struct {
+                size_t length;
+                wchar_t data[1]; // trailing data
+            }* WireType;
+            static WireType toWireType(const std::wstring& v) {
+                WireType wt = (WireType)malloc(sizeof(size_t) + v.length() * sizeof(wchar_t));
+                wt->length = v.length();
+                wmemcpy(wt->data, v.data(), v.length());
+                return wt;
+            }
+            static std::wstring fromWireType(WireType v) {
+                return std::wstring(v->data, v->length);
+            }
+            static void destroy(WireType v) {
+                free(v);
+            }
+        };
+
         template<typename T>
         struct BindingType<const T> : public BindingType<T> {
         };
