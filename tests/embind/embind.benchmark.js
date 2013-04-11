@@ -34,7 +34,7 @@ function _increment_class_counter_benchmark_embind_js(N) {
         foo.incr_class_counter();
     }
     var b = _emscripten_get_now();
-    Module.print("JS increment_class_counter_embind " + N + " iters: " + (b-a)*1000 + " msecs. result: " + foo.class_counter_val());
+    Module.print("JS embind increment_class_counter " + N + " iters: " + (b-a)*1000 + " msecs. result: " + foo.class_counter_val());
     foo.delete();
 }
 
