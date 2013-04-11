@@ -493,8 +493,8 @@ function makeInvoker(name, argCount, argTypes, invoker, fn) {
             "var destructors = [];";
 
     var argsList = "";
-    var args1 = ["throwBindingError", "invoker", "fn", "runDestructors", "retType" ];
-    var args2 = [throwBindingError, invoker, fn, runDestructors, argTypes[0] ];
+    var args1 = ["throwBindingError", "invoker", "fn", "runDestructors", "retType"];
+    var args2 = [throwBindingError, invoker, fn, runDestructors, argTypes[0]];
 
     for(i = 0; i < argCount-1; ++i) {
         invokerFnBody += "var arg"+i+" = argType"+i+".toWireType(destructors, arguments["+i+"]);";
@@ -1206,23 +1206,35 @@ function __embind_register_class_function(
         }
 
         whenDependentTypesAreResolved([], rawArgTypes, function(argTypes) {
-            var memberFunction = createNamedFunction(makeLegalFunctionName(humanName), function() {
-                if (arguments.length !== argCount - 2) {
-                    throwBindingError(humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-2));
-                }
+            var invokerFnBody =
+                "return function "+makeLegalFunctionName(humanName)+"() { " +
+                "if (arguments.length !== "+(argCount - 2)+") {" +
+                    "throwBindingError('function "+humanName+" called with ' + arguments.length + ' arguments, expected "+(argCount - 2)+" args!');" +
+                "}" +
+                "validateThis(this, classType, '"+humanName+"');" +
+                "var destructors = [];";
 
-                var destructors = [];
-                var args = new Array(argCount + 1);
-                args[0] = context;
-                args[1] = argTypes[1].toWireType(destructors, this);
-                for (var i = 2; i < argCount; ++i) {
-                    args[i] = argTypes[i].toWireType(destructors, arguments[i - 2]);
-                }
-                var rv = rawInvoker.apply(null, args);
-                rv = argTypes[0].fromWireType(rv);
-                runDestructors(destructors);
-                return rv;
-            });
+            var argsList = "";
+            var args1 = ["throwBindingError", "validateThis", "classType", "invoker", "fn", "runDestructors", "retType", "classParam"];
+            var args2 = [throwBindingError, validateThis, classType, rawInvoker, context, runDestructors, argTypes[0], argTypes[1]];
+
+            for(i = 0; i < argCount-2; ++i) {
+                invokerFnBody += "var arg"+i+" = argType"+i+".toWireType(destructors, arguments["+i+"]);";
+                argsList += ", arg"+i;
+                args1.push("argType"+i);
+                args2.push(argTypes[i+2]);
+            }
+
+            invokerFnBody +=
+                    "var thisWired = classParam.toWireType(destructors, this);" +
+                    "var rv = invoker(fn, thisWired"+argsList+");" +
+                    "runDestructors(destructors);" +
+                    "return retType.fromWireType(rv);" +
+                "}";
+
+            args1.push(invokerFnBody);
+
+            var memberFunction = new_(Function, args1).apply(null, args2);
 
             // Replace the initial unbound-handler-stub function with the appropriate member function, now that all types
             // are resolved. If multiple overloads are registered for this function, the function goes into an overload table.
