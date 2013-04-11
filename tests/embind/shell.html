@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Emscripten-Generated Code</title>
+    <style>
+      .emscripten { padding-right: 0; margin-left: auto; margin-right: auto; display: block; }
+      textarea.emscripten { font-family: monospace; width: 80%; }
+      div.emscripten { text-align: center; }
+      div.emscripten_border { border: 1px solid black; }
+      /* the canvas *must not* have any border or padding, or mouse coords will be wrong */
+      canvas.emscripten { border: 0px none; }
+    </style>
+  </head>
+  <body>
+    <div class="emscripten" id="status">Downloading...</div>
+    <div class="emscripten">
+      <progress value="0" max="100" id="progress" hidden=1></progress>  
+    </div>
+    <div class="emscripten_border" style="display:none;">
+      <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+    </div>
+    <div class="emscripten" style="display:none;">
+      <input type="checkbox" id="resize">Resize canvas
+      <input type="checkbox" id="pointerLock" checked>Lock/hide mouse pointer
+      &nbsp;&nbsp;&nbsp;
+      <input type="button" value="Fullscreen" onclick="Module.requestFullScreen(document.getElementById('pointerLock').checked, 
+                                                                                document.getElementById('resize').checked)">
+    </div>
+    
+    <hr/>
+    <textarea class="emscripten" id="output" rows="45"></textarea>
+    <hr>
+    <script type='text/javascript'>
+      // connect to canvas
+      var Module = {
+        preRun: [],
+        postRun: [],
+        print: (function() {
+          var element = document.getElementById('output');
+          element.value = ''; // clear browser cache
+          return function(text) {
+            text = Array.prototype.slice.call(arguments).join(' ');
+            // These replacements are necessary if you render to raw HTML
+            //text = text.replace(/&/g, "&amp;");
+            //text = text.replace(/</g, "&lt;");
+            //text = text.replace(/>/g, "&gt;");
+            //text = text.replace('\n', '<br>', 'g');
+            element.value += text + "\n";
+            element.scrollTop = 99999; // focus on bottom
+          };
+        })(),
+        printErr: function(text) {
+          text = Array.prototype.slice.call(arguments).join(' ');
+          if (0) { // XXX disabled for safety typeof dump == 'function') {
+            dump(text + '\n'); // fast, straight to the real console
+          } else {
+            console.log(text);
+          }
+        },
+        canvas: document.getElementById('canvas'),
+        setStatus: function(text) {
+          if (Module.setStatus.interval) clearInterval(Module.setStatus.interval);
+          var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
+          var statusElement = document.getElementById('status');
+          var progressElement = document.getElementById('progress');
+          if (m) {
+            text = m[1];
+            progressElement.value = parseInt(m[2])*100;
+            progressElement.max = parseInt(m[4])*100;
+            progressElement.hidden = false;
+          } else {
+            progressElement.value = null;
+            progressElement.max = null;
+            progressElement.hidden = true;
+          }
+          statusElement.innerHTML = text;
+        },
+        totalDependencies: 0,
+        monitorRunDependencies: function(left) {
+          this.totalDependencies = Math.max(this.totalDependencies, left);
+          Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
+        }
+      };
+      Module.setStatus('Downloading...');
+    </script>      
+    <script type='text/javascript'>
+
+      {{{ SCRIPT_CODE }}}
+
+    </script>
+  </body>
+</html>
