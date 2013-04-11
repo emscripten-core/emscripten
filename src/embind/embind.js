@@ -366,6 +366,18 @@ function __embind_register_std_wstring(rawType, charSize, name) {
             _free(value);
             return a.join('');
         },
+        toWireType: function(destructors, value) {
+            // assumes 4-byte alignment
+            var length = value.length;
+            var ptr = _malloc(4 + length * charSize);
+            HEAPU32[ptr >> 2] = length;
+            var start = (ptr + 4) >> shift;
+            for (var i = 0; i < length; ++i) {
+                HEAP[start + i] = value.charCodeAt(i);
+            }
+            destructors.push(_free, ptr);
+            return ptr;
+        },
     });
 }
 

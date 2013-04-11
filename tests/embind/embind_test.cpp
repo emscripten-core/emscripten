@@ -109,6 +109,10 @@ std::string emval_test_take_and_return_std_string_const_ref(const std::string& s
     return str;
 }
 
+std::wstring take_and_return_std_wstring(std::wstring str) {
+    return str;
+}
+
 std::function<std::string (std::string)> emval_test_get_function_ptr() {
     return emval_test_take_and_return_std_string;
 }
@@ -1516,6 +1520,7 @@ EMSCRIPTEN_BINDINGS(tests) {
     //function("emval_test_take_and_return_const_char_star", &emval_test_take_and_return_const_char_star);
     function("emval_test_take_and_return_std_string", &emval_test_take_and_return_std_string);
     function("emval_test_take_and_return_std_string_const_ref", &emval_test_take_and_return_std_string_const_ref);
+    function("take_and_return_std_wstring", &take_and_return_std_wstring);
 
     //function("emval_test_take_and_return_CustomStruct", &emval_test_take_and_return_CustomStruct);
 

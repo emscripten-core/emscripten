@@ -404,6 +404,14 @@ module({
                 String.fromCharCode(65535);
             assert.equal(expected, cm.get_non_ascii_wstring());
         });
+
+        test("passing unicode string into C++", function() {
+            var expected = String.fromCharCode(10) +
+                String.fromCharCode(1234) +
+                String.fromCharCode(2345) +
+                String.fromCharCode(65535);
+            assert.equal(expected, cm.take_and_return_std_wstring(expected));
+        });
     });
 
     BaseFixture.extend("embind", function() {
