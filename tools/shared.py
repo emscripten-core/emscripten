@@ -48,7 +48,6 @@ class WindowsPopen:
     except Exception, e:
       print >> sys.stderr, '\nsubprocess.Popen(args=%s) failed! Exception %s\n' % (' '.join(args), str(e))
       raise e
-      raise
 
   def communicate(self, input=None):
     output = self.process.communicate(input)
