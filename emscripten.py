@@ -93,7 +93,6 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   # Split input into the relevant parts for each phase
   pre = []
   funcs = [] # split up functions here, for parallelism later
-  func_idents = []
   meta = [] # needed by each function XXX
 
   if DEBUG: t = time.time()
