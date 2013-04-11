@@ -478,18 +478,23 @@ function makeInvoker(name, argCount, argTypes, invoker, fn) {
     if (!FUNCTION_TABLE[fn]) {
         throwBindingError('function '+name+' is not defined');
     }
+
     // Functions with signature "void function()" do not need an invoker that marshalls between wire types.
-    if (argCount == 1 && argTypes[0].name == "void") {
-        return FUNCTION_TABLE[fn];
-    }
+// TODO: This omits argument count check - enable only at -O3 or similar.
+//    if (ENABLE_UNSAFE_OPTS && argCount == 1 && argTypes[0].name == "void") {
+//       return FUNCTION_TABLE[fn];
+//    }
 
     var invokerFnBody = 
         "return function "+makeLegalFunctionName(name)+"() { " +
+            "if (arguments.length !== "+(argCount - 1)+") {" +
+                "throwBindingError('function "+name+" called with ' + arguments.length + ' arguments, expected "+(argCount - 1)+" args!');" +
+            "}" +
             "var destructors = [];";
 
     var argsList = "";
-    var args1 = ["invoker", "fn", "runDestructors", "retType" ];
-    var args2 = [invoker, fn, runDestructors, argTypes[0] ];
+    var args1 = ["throwBindingError", "invoker", "fn", "runDestructors", "retType" ];
+    var args2 = [throwBindingError, invoker, fn, runDestructors, argTypes[0] ];
 
     for(i = 0; i < argCount-1; ++i) {
         invokerFnBody += "var arg"+i+" = argType"+i+".toWireType(destructors, arguments["+i+"]);";
