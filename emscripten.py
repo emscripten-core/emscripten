@@ -98,19 +98,22 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   if DEBUG: t = time.time()
   in_func = False
   ll_lines = open(infile).readlines()
+  curr_func = None
   for line in ll_lines:
     if in_func:
-      funcs[-1][1].append(line)
+      curr_func.append(line)
       if line.startswith('}'):
         in_func = False
-        funcs[-1] = (funcs[-1][0], ''.join(funcs[-1][1]))
-        pre.append(line) # pre needs it to, so we know about all implemented functions
+        funcs.append((curr_func[0], ''.join(curr_func))) # use the entire line as the identifier
+        # pre needs to know about all implemented functions, even for non-pre func
+        pre.append(curr_func[0])
+        pre.append(line)
+        curr_func = None
     else:
       if line.startswith(';'): continue
       if line.startswith('define '):
         in_func = True
-        funcs.append((line, [line])) # use the entire line as the identifier
-        pre.append(line) # pre needs it to, so we know about all implemented functions
+        curr_func = [line]
       elif line.find(' = type { ') > 0:
         pre.append(line) # type
       elif line.startswith('!'):

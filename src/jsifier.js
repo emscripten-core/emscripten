@@ -108,7 +108,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
   });
 
-  if (phase == 'funcs') { // pre has function shells, just to defined implementedFunctions
+  if (phase == 'funcs') { // || phase == 'pre') { // pre has function shells, just to defined implementedFunctions
     var MAX_BATCH_FUNC_LINES = 1000;
     while (data.unparsedFunctions.length > 0) {
       var currFuncLines = [];
