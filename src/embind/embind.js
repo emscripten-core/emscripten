@@ -447,25 +447,66 @@ function runDestructors(destructors) {
     }
 }
 
+// Function implementation of operator new, per
+// http://www.ecma-international.org/publications/files/ECMA-ST/Ecma-262.pdf
+// 13.2.2
+// ES3
+function new_(constructor, argumentList) {
+    if (!(constructor instanceof Function)) {
+        throw new TypeError('new_ called with constructor type ' + typeof(constructor) + " which is not a function");
+    }
+
+    /*
+     * Previously, the following line was just:
+
+     function dummy() {};
+
+     * Unfortunately, Chrome was preserving 'dummy' as the object's name, even though at creation, the 'dummy' has the
+     * correct constructor name.  Thus, objects created with IMVU.new would show up in the debugger as 'dummy', which
+     * isn't very helpful.  Using IMVU.createNamedFunction addresses the issue.  Doublely-unfortunately, there's no way
+     * to write a test for this behavior.  -NRD 2013.02.22
+     */
+    var dummy = createNamedFunction(constructor.name, function(){});
+    dummy.prototype = constructor.prototype;
+    var obj = new dummy;
+
+    var r = constructor.apply(obj, argumentList);
+    return (r instanceof Object) ? r : obj;
+};
+
 function makeInvoker(name, argCount, argTypes, invoker, fn) {
     if (!FUNCTION_TABLE[fn]) {
         throwBindingError('function '+name+' is not defined');
     }
-    return createNamedFunction(makeLegalFunctionName(name), function() {
-        if (arguments.length !== argCount - 1) {
-            throwBindingError('function ' + name + ' called with ' + arguments.length + ' arguments, expected ' + (argCount - 1));
-        }
-        var destructors = [];
-        var args = new Array(argCount);
-        args[0] = fn;
-        for (var i = 1; i < argCount; ++i) {
-            args[i] = argTypes[i].toWireType(destructors, arguments[i - 1]);
-        }
-        var rv = invoker.apply(null, args);
-        rv = argTypes[0].fromWireType(rv);
-        runDestructors(destructors);
-        return rv;
-    });
+    // Functions with signature "void function()" do not need an invoker that marshalls between wire types.
+    if (argCount == 1 && argTypes[0].name == "void") {
+        return FUNCTION_TABLE[fn];
+    }
+
+    var invokerFnBody = 
+        "return function "+makeLegalFunctionName(name)+"() { " +
+            "var destructors = [];";
+
+    var argsList = "";
+    var args1 = ["invoker", "fn", "runDestructors", "retType" ];
+    var args2 = [invoker, fn, runDestructors, argTypes[0] ];
+
+    for(i = 0; i < argCount-1; ++i) {
+        invokerFnBody += "var arg"+i+" = argType"+i+".toWireType(destructors, arguments["+i+"]);";
+        argsList += ", arg"+i;
+        args1.push("argType"+i);
+        args2.push(argTypes[i+1]);
+    }
+
+    invokerFnBody += 
+            "var rv = invoker(fn"+argsList+");" +
+            "runDestructors(destructors);" +
+            "return retType.fromWireType(rv);" +
+        "}";
+
+    args1.push(invokerFnBody);
+
+    return new_(Function, args1).apply(null, args2);
 }
 
 function __embind_register_function(name, argCount, rawArgTypesAddr, rawInvoker, fn) {
