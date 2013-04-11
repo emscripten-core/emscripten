@@ -66,13 +66,13 @@ public:
     Vec3 rot;
     float scale;
 
-    Vec3 GetPosition() { return pos; }
-    Vec3 GetRotation() { return rot; }
-    float GetScale() { return scale; }
+    Vec3 __attribute__((noinline)) GetPosition() const { return pos; }
+    Vec3 __attribute__((noinline)) GetRotation() const { return rot; }
+    float __attribute__((noinline)) GetScale() const { return scale; }
     
-    void SetPosition(const Vec3 &pos_) { pos = pos_; }
-    void SetRotation(const Vec3 &rot_) { rot = rot_; }
-    void SetScale(float scale_) { scale = scale_; }
+    void __attribute__((noinline)) SetPosition(const Vec3 &pos_) { pos = pos_; }
+    void __attribute__((noinline)) SetRotation(const Vec3 &rot_) { rot = rot_; }
+    void __attribute__((noinline)) SetScale(float scale_) { scale = scale_; }
 };
 typedef std::shared_ptr<Transform> TransformPtr;
 
@@ -85,7 +85,7 @@ public:
     }
     std::shared_ptr<Transform> transform;
     
-    TransformPtr GetTransform() { return transform; }
+    TransformPtr __attribute__((noinline)) GetTransform() const { return transform; }
 };
 typedef std::shared_ptr<GameObject> GameObjectPtr;
 
