@@ -711,6 +711,7 @@ WARNING: You should normally never use this! Use emcc instead.
     relooper = None # use the cache
 
   if keywords.temp_dir is None:
+    temp_dir = get_configuration().get_temp_dir()
     temp_files = get_configuration().get_temp_files()
   else:
     temp_dir = keywords.temp_dir
