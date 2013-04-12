@@ -5156,7 +5156,7 @@ LibraryManager.library = {
   // functionality boils down to picking a suitable 'catch' block.
   // We'll do that here, instead, to keep things simpler.
 
-  __cxa_find_matching_catch__deps: ['__cxa_does_inherit', '__cxa_is_number_type'],
+  __cxa_find_matching_catch__deps: ['__cxa_does_inherit', '__cxa_is_number_type', '__resumeException'],
   __cxa_find_matching_catch: function(thrown, throwntype) {
     if (thrown == -1) thrown = {{{ makeGetValue('_llvm_eh_exception.buf', '0', 'void*') }}};
     if (throwntype == -1) throwntype = {{{ makeGetValue('_llvm_eh_exception.buf', QUANTUM_SIZE, 'void*') }}};
@@ -5183,6 +5183,15 @@ LibraryManager.library = {
     // or encounter a type for which emscripten doesn't have suitable
     // typeinfo defined. Best-efforts match just in case.
     {{{ makeStructuralReturn(['thrown', 'throwntype']) }}};
+  },
+
+  __resumeException__deps: [function() { Functions.libraryFunctions['__resumeException'] = 1 }], // will be called directly from compiled code
+  __resumeException: function(ptr) {
+#if EXCEPTION_DEBUG
+    Module.print("Resuming exception");
+#endif
+    if ({{{ makeGetValue('_llvm_eh_exception.buf', 0, 'void*') }}} == 0) {{{ makeSetValue('_llvm_eh_exception.buf', 0, 'ptr', 'void*') }}};
+    {{{ makeThrow('ptr') }}};
   },
 
   // Recursively walks up the base types of 'possibilityType'
