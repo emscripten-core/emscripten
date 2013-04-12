@@ -5158,6 +5158,8 @@ LibraryManager.library = {
 
   __cxa_find_matching_catch__deps: ['__cxa_does_inherit', '__cxa_is_number_type'],
   __cxa_find_matching_catch: function(thrown, throwntype) {
+    if (thrown == -1) thrown = {{{ makeGetValue('_llvm_eh_exception.buf', '0', 'void*') }}};
+    if (throwntype == -1) throwntype = {{{ makeGetValue('_llvm_eh_exception.buf', QUANTUM_SIZE, 'void*') }}};
     var typeArray = Array.prototype.slice.call(arguments, 2);
 
     // If throwntype is a pointer, this means a pointer has been
