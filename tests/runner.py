@@ -2646,7 +2646,6 @@ Exception execution path of first function! 1
         self.do_run(src, 'success')
 
     def test_typed_exceptions(self):
-        if Settings.ASM_JS: return self.skip('no exceptions support in asm')
         Settings.DISABLE_EXCEPTION_CATCHING = 0
         Settings.SAFE_HEAP = 0  # Throwing null will cause an ignorable null pointer access.
         src = open(path_from_root('tests', 'exceptions', 'typed.cpp'), 'r').read()
@@ -2654,7 +2653,6 @@ Exception execution path of first function! 1
         self.do_run(src, expected)
 
     def test_multiexception(self):
-      if Settings.ASM_JS: return self.skip('no exceptions support in asm')
       Settings.DISABLE_EXCEPTION_CATCHING = 0
       src = r'''
 #include <stdio.h>
