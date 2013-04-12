@@ -5016,6 +5016,7 @@ LibraryManager.library = {
   __cxa_free_exception: function(ptr) {
     return _free(ptr);
   },
+  __cxa_throw__sig: 'viii',
   __cxa_throw__deps: ['llvm_eh_exception', '_ZSt18uncaught_exceptionv', '__cxa_find_matching_catch'],
   __cxa_throw: function(ptr, type, destructor) {
     if (!___cxa_throw.initialized) {

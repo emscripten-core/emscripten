@@ -1156,12 +1156,13 @@ function JSify(data, functionsOnly, givenFunctions) {
   makeFuncLineActor('invoke', function(item) {
     // Wrapping in a function lets us easily return values if we are
     // in an assignment
+    var disabled = DISABLE_EXCEPTION_CATCHING == 2  && !(item.funcData.ident in EXCEPTION_CATCHING_WHITELIST); 
     var phiSets = calcPhiSets(item);
-    var call_ = makeFunctionCall(item.ident, item.params, item.funcData, item.type);
-  
+    var call_ = makeFunctionCall(item.ident, item.params, item.funcData, item.type, ASM_JS && !disabled);
+
     var ret;
 
-    if (DISABLE_EXCEPTION_CATCHING == 2  && !(item.funcData.ident in EXCEPTION_CATCHING_WHITELIST)) {
+    if (disabled || ASM_JS) { // TODO: EXCEPTION_DEBUG for asm.js
       ret = call_ + ';';
     } else {
       ret = '(function() { try { __THREW__ = 0; return '
@@ -1172,7 +1173,6 @@ function JSify(data, functionsOnly, givenFunctions) {
           + (EXCEPTION_DEBUG ? 'Module.print("Exception: " + e + ", currently at: " + (new Error().stack)); ' : '')
           + 'return null } })();';
     }
-
 
     if (item.assignTo) {
       ret = 'var ' + item.assignTo + ' = ' + ret;
@@ -1291,7 +1291,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     return ret;
   });
 
-  function makeFunctionCall(ident, params, funcData, type) {
+  function makeFunctionCall(ident, params, funcData, type, forceByPointer) {
     // We cannot compile assembly. See comment in intertyper.js:'Call'
     assert(ident != 'asm', 'Inline assembly cannot be compiled to JavaScript!');
 
@@ -1319,6 +1319,11 @@ function JSify(data, functionsOnly, givenFunctions) {
     var hasVarArgs = isVarArgsFunctionType(type);
     var normalArgs = (hasVarArgs && !useJSArgs) ? countNormalArgs(type) : -1;
     var byPointer = getVarData(funcData, ident);
+    var byPointerForced = false;
+
+    if (forceByPointer && !byPointer) {
+      byPointer = byPointerForced = true;
+    }
 
     params.forEach(function(param, i) {
       var val = finalizeParam(param);
@@ -1421,12 +1426,18 @@ function JSify(data, functionsOnly, givenFunctions) {
       var sig = Functions.getSignature(returnType, argsTypes, hasVarArgs);
       if (ASM_JS) {
         assert(returnType.search(/\("'\[,/) == -1); // XXX need isFunctionType(type, out)
-        callIdent = '(' + callIdent + ')&{{{ FTM_' + sig + ' }}}'; // the function table mask is set in emscripten.py
+        if (!forceByPointer) {
+          callIdent = '(' + callIdent + ')&{{{ FTM_' + sig + ' }}}'; // the function table mask is set in emscripten.py
+        } else {
+          // add initial argument for invoke. note: no need to update argsTypes at this point
+          args.unshift(byPointerForced ? Functions.getIndex(callIdent) : callIdent);
+          callIdent = 'invoke_' + sig;
+        }
       } else if (SAFE_DYNCALLS) {
         assert(!ASM_JS, 'cannot emit safe dyncalls in asm');
         callIdent = '(tempInt=' + callIdent + ',tempInt < 0 || tempInt >= FUNCTION_TABLE.length-1 || !FUNCTION_TABLE[tempInt] ? abort("dyncall error: ' + sig + ' " + FUNCTION_TABLE_NAMES[tempInt]) : tempInt)';
       }
-      callIdent = Functions.getTable(sig) + '[' + callIdent + ']';
+      if (!byPointerForced) callIdent = Functions.getTable(sig) + '[' + callIdent + ']';
     }
 
     var ret = callIdent + '(' + args.join(', ') + ')';

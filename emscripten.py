@@ -414,12 +414,13 @@ var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
   }
 ''' % (sig, ',' if len(sig) > 1 else '', args, arg_coercions, ret))
       args = ','.join(['a' + str(i) for i in range(1, len(sig))])
+      args = 'index' + (',' if args else '') + args
       asm_setup += '''
 function invoke_%s(%s) {
   try {
     %sModule.dynCall_%s(%s);
   } catch(e) {
-    Module.setThrew(1);
+    asm.setThrew(1);
   }
 }
 ''' % (sig, args, 'return ' if sig[0] != 'v' else '', sig, args)
