@@ -2486,7 +2486,6 @@ Exception execution path of first function! 1
 ''')
 
     def test_exceptions(self):
-        if Settings.ASM_JS: return self.skip('no exceptions support in asm')
         if Settings.QUANTUM_SIZE == 1: return self.skip("we don't support libcxx in q1")
         if self.emcc_args is None: return self.skip('need emcc to add in libcxx properly')
 

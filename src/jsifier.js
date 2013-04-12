@@ -1160,8 +1160,10 @@ function JSify(data, functionsOnly, givenFunctions) {
 
     var ret;
 
-    if (disabled || ASM_JS) { // TODO: EXCEPTION_DEBUG for asm.js
+    if (disabled) {
       ret = call_ + ';';
+    } else if (ASM_JS) {
+      ret = '(__THREW__ = 0,' +  call_ + ');';
     } else {
       ret = '(function() { try { __THREW__ = 0; return '
           + call_ + ' '
