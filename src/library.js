@@ -7004,43 +7004,41 @@ LibraryManager.library = {
     if(null == Sockets.peer) {
       var host = Module['host'];
       var broker = Module['webrtc']['broker'];
-      var route = Module['webrtc']['session'];
+      var session = Module['webrtc']['session'];
       var peer = new Peer(broker);
       var listenOptions = Module['webrtc']['hostOptions'] || {};
       peer.onconnection = function(connection) {
         console.log('connected');
         var addr;
         // Assign 10.0.0.1 to the host
-        if(route && route === connection['route']) {
+        if(session && session === connection['route']) {
           addr = 0x0100000a; // 10.0.0.1
         } else {
           addr = Sockets.addrPool.shift();
         }
         connection['addr'] = addr;
         Sockets.connections[addr] = connection;
-        if(host) {
-          ++ listenOptions['metadata']['connected'];
-          peer.listen(listenOptions);
-        }
         connection.ondisconnect = function() {
           console.log('disconnect');
           // Don't return the host address (10.0.0.1) to the pool
-          if(!(route && route === Sockets.connections[addr]['route']))
+          if(!(session && session === Sockets.connections[addr]['route']))
             Sockets.addrPool.push(addr);
           delete Sockets.connections[addr];
 
-          if(host) {
-            -- listenOptions['metadata']['connected'];
-            peer.listen(listenOptions);
-          }
+          if(Module['webrtc']['ondisconnect'] && 'function' === typeof Module['webrtc']['ondisconnect'])
+            Module['webrtc']['ondisconnect'](peer);
         };
         connection.onerror = function(error) {
-          console.error(error);
+          if(Module['webrtc']['onerror'] && 'function' === typeof Module['webrtc']['onerror'])
+            Module['webrtc']['onerror'](error);
         };
         connection.onmessage = function(label, message) {
           if('unreliable' === label)
             handleMessage(addr, message.data);
         }
+
+        if(Module['webrtc']['onconnect'] && 'function' === typeof Module['webrtc']['onconnect'])
+          Module['webrtc']['onconnect'](peer);
       };
       peer.onpending = function(pending) {
         console.log('pending from: ', pending['route'], '; initiated by: ', (pending['incoming']) ? 'remote' : 'local');
@@ -7048,14 +7046,10 @@ LibraryManager.library = {
       peer.onerror = function(error) {
         console.error(error);
       };
-      if(!host && route) {
-        peer.connect(route);
-      } else {
-        peer.onroute = function(route) {
-          console.log(route);
-          peer.listen(listenOptions);
-        }
-      }
+      peer.onroute = function(route) {
+        if(Module['webrtc']['onpeer'] && 'function' === typeof Module['webrtc']['onpeer'])
+          Module['webrtc']['onpeer'](peer, route);
+      };
       function handleMessage(addr, message) {
 #if SOCKET_DEBUG
         Module.print("received " + message.byteLength + " raw bytes");
