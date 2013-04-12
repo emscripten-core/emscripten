@@ -5157,7 +5157,9 @@ LibraryManager.library = {
   // We'll do that here, instead, to keep things simpler.
 
   __cxa_find_matching_catch__deps: ['__cxa_does_inherit', '__cxa_is_number_type'],
-  __cxa_find_matching_catch: function(thrown, throwntype, typeArray) {
+  __cxa_find_matching_catch: function(thrown, throwntype) {
+    var typeArray = Array.prototype.slice.call(arguments, 2);
+
     // If throwntype is a pointer, this means a pointer has been
     // thrown. When a pointer is thrown, actually what's thrown
     // is a pointer to the pointer. We'll dereference it.
