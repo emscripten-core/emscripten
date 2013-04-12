@@ -8100,6 +8100,35 @@ def process(filename):
       shutil.move(self.in_dir('src.cpp.o.js'), self.in_dir('pgoed2.js'))
       assert open('pgoed.js').read() == open('pgoed2.js').read()
 
+    def test_add_function(self):
+      if self.emcc_args is None: return self.skip('requires emcc')
+      if Settings.ASM_JS: return self.skip('needs a singleton function table')
+
+      Settings.INVOKE_RUN = 0
+
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        int main(int argc, char **argv) {
+          int fp = atoi(argv[1]);
+          printf("fp: %d\n", fp);
+          void (*f)() = reinterpret_cast<void (*)()>(fp);
+          f();
+          return 0;
+        }
+      '''
+
+      open(os.path.join(self.get_dir(), 'post.js'), 'w').write('''
+        var newFuncPtr = Runtime.addFunction(function() {
+          Module.print('Hello from JS!');
+        });
+        Module.callMain([newFuncPtr.toString()]);
+      ''')
+
+      self.emcc_args += ['--post-js', 'post.js']
+      self.do_run(src, '''Hello from JS!''')
+
     def test_scriptaclass(self):
         if self.emcc_args is None: return self.skip('requires emcc')
 
