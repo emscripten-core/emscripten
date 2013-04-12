@@ -43,6 +43,10 @@ set(CMAKE_C_ARCHIVE_CREATE "${CMAKE_C_COMPILER} -o <TARGET> -emit-llvm <LINK_FLA
 # There seems to be some kind of bug with CMake, so you might need to define this manually on the command line with "-DEMSCRIPTEN=1".
 set(EMSCRIPTEN 1)
 
+set(CMAKE_C_OUTPUT_EXTENSION ".bc")
+set(CMAKE_CXX_OUTPUT_EXTENSION ".bc")
+set(CMAKE_EXECUTABLE_SUFFIX ".js")
+
 set(CMAKE_C_FLAGS_RELEASE "-DNDEBUG" CACHE STRING "Emscripten-overridden CMAKE_C_FLAGS_RELEASE")
 set(CMAKE_C_FLAGS_MINSIZEREL "-DNDEBUG" CACHE STRING "Emscripten-overridden CMAKE_C_FLAGS_MINSIZEREL")
 set(CMAKE_C_FLAGS_RELWITHDEBINFO "" CACHE STRING "Emscripten-overridden CMAKE_C_FLAGS_RELWITHDEBINFO")
