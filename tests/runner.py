@@ -2575,7 +2575,6 @@ Exception execution path of first function! 1
         self.do_run(src, 'Throw...Construct...Catched...Destruct...Throw...Construct...Copy...Catched...Destruct...Destruct...')
 
     def test_white_list_exception(self):
-      if Settings.ASM_JS: return self.skip('no exceptions support in asm')
       Settings.DISABLE_EXCEPTION_CATCHING = 2
       Settings.EXCEPTION_CATCHING_WHITELIST = ["__Z12somefunctionv"]
       Settings.INLINING_LIMIT = 50 # otherwise it is inlined and not identified
@@ -2607,9 +2606,7 @@ Exception execution path of first function! 1
       Settings.DISABLE_EXCEPTION_CATCHING = 0
       Settings.EXCEPTION_CATCHING_WHITELIST = []
 
-
     def test_uncaught_exception(self):
-        if Settings.ASM_JS: return self.skip('no exceptions support in asm')
         if self.emcc_args is None: return self.skip('no libcxx inclusion without emcc')
 
         Settings.DISABLE_EXCEPTION_CATCHING = 0
