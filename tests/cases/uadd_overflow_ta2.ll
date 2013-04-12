@@ -33,6 +33,12 @@ entry:
   %64ba2 = zext i1 %64ba1 to i32
   call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([9 x i8]* @.str2, i32 0, i32 0), i32 %64ba0, i32 %64ba2) ; [#uses=0]
 
+  %zbuadd1 = insertvalue { i32, i1 } { i32 undef, i1 false }, i32 10, 0 ; undef and explicit
+  %zba0 = extractvalue { i32, i1 } %zbuadd1, 0
+  %zba1 = extractvalue { i32, i1 } %zbuadd1, 1
+  %zba2 = zext i1 %ba1 to i32
+  call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([9 x i8]* @.str2, i32 0, i32 0), i32 %zba0, i32 %zba2) ; [#uses=0]
+
   ret i32 1
 }
 

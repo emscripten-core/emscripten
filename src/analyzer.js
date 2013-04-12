@@ -124,6 +124,10 @@ function analyzer(data, sidePass) {
           bits = bits || 32; // things like pointers are all i32, but show up as 0 bits from getBits
           if (allowLegal && bits <= 32) return [{ ident: base + ('i' + bits in Runtime.INT_TYPES ? '' : '$0'), bits: bits }];
           if (isNumber(base)) return getLegalLiterals(base, bits);
+          if (base[0] == '{') {
+            warnOnce('seeing source of illegal data ' + base + ', likely an inline struct - assuming zeroinit');
+            return getLegalLiterals('0', bits);
+          }
           var ret = new Array(Math.ceil(bits/32));
           var i = 0;
           if (base == 'zeroinitializer' || base == 'undef') base = 0;
