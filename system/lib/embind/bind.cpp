@@ -12,7 +12,7 @@
 using namespace emscripten;
 
 extern "C" {
-    const char* EMSCRIPTEN_KEEPALIVE __getTypeName(const std::type_info* ti) {
+    const char* __attribute__((used)) __getTypeName(const std::type_info* ti) {
 #ifdef USE_CXA_DEMANGLE
         int stat;
         char* demangled = abi::__cxa_demangle(ti->name(), NULL, NULL, &stat);
