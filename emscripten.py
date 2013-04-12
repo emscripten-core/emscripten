@@ -413,6 +413,15 @@ var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
     %s;
   }
 ''' % (sig, ',' if len(sig) > 1 else '', args, arg_coercions, ret))
+      asm_setup += '''
+function invoke_%s(%s) {
+  try {
+  } catch(e) {
+    Module.setThrew(1);
+  }
+}
+''' % (sig, ','.join(['a' + str(i) for i in range(1, len(sig))]))
+      basic_funcs.append('invoke_%s' % sig)
 
     # calculate exports
     exported_implemented_functions = list(exported_implemented_functions)
