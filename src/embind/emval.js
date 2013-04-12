@@ -1,6 +1,6 @@
 /*global Module*/
 /*global HEAP32*/
-/*global Pointer_stringify, writeStringToMemory*/
+/*global readLatin1String, writeStringToMemory*/
 /*global requireRegisteredType*/
 
 var _emval_handle_array = [];
@@ -74,7 +74,7 @@ function __emval_null() {
 }
 
 function __emval_new_cstring(v) {
-    return __emval_register(Pointer_stringify(v));
+    return __emval_register(readLatin1String(v));
 }
 
 function __emval_take_value(type, v) {
@@ -127,12 +127,12 @@ function __emval_new(handle, argCount, argTypes) {
 var global = (function(){return Function;})()('return this')();
 
 function __emval_get_global(name) {
-    name = Pointer_stringify(name);
+    name = readLatin1String(name);
     return __emval_register(global[name]);
 }
 
 function __emval_get_module_property(name) {
-    name = Pointer_stringify(name);
+    name = readLatin1String(name);
     return __emval_register(Module[name]);
 }
 
@@ -173,7 +173,7 @@ function __emval_call(handle, argCount, argTypes) {
 }
 
 function __emval_call_method(handle, name, argCount, argTypes) {
-    name = Pointer_stringify(name);
+    name = readLatin1String(name);
 
     var args = parseParameters(
         argCount,
@@ -185,7 +185,7 @@ function __emval_call_method(handle, name, argCount, argTypes) {
 }
 
 function __emval_call_void_method(handle, name, argCount, argTypes) {
-    name = Pointer_stringify(name);
+    name = readLatin1String(name);
 
     var args = parseParameters(
         argCount,
@@ -196,6 +196,6 @@ function __emval_call_void_method(handle, name, argCount, argTypes) {
 }
 
 function __emval_has_function(handle, name) {
-    name = Pointer_stringify(name);
+    name = readLatin1String(name);
     return _emval_handle_array[handle].value[name] instanceof Function;
 }

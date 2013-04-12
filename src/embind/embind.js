@@ -1,7 +1,7 @@
 /*global Module*/
 /*global _malloc, _free, _memcpy*/
 /*global FUNCTION_TABLE, HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32*/
-/*global Pointer_stringify*/
+/*global readLatin1String*/
 /*global __emval_register, _emval_handle_array, __emval_decref*/
 /*global ___getTypeName*/
 
@@ -223,9 +223,26 @@ function whenDependentTypesAreResolved(myTypes, dependentTypes, getTypeConverter
     }
 }
 
+var __charCodes = [];
+
+function readLatin1String(ptr) {
+  if (__charCodes.length === 0) {
+    for (var charCodeI = 0; charCodeI < 127; charCodeI++) {
+      __charCodes.push(String.fromCharCode(charCodeI));
+    }
+  }
+  
+  var ret = "";
+  var c = ptr;
+  while (HEAPU8[c]) {
+    ret += __charCodes[HEAPU8[c++]];
+  }
+  return ret;
+}
+
 function getTypeName(type) {
     var ptr = ___getTypeName(type);
-    var rv = Pointer_stringify(ptr);
+    var rv = readLatin1String(ptr);
     _free(ptr);
     return rv;
 }
@@ -247,7 +264,7 @@ function requireRegisteredType(rawType, humanName) {
 }
 
 function __embind_register_void(rawType, name) {
-    name = Pointer_stringify(name);
+    name = readLatin1String(name);
     registerType(rawType, {
         name: name,
         fromWireType: function() {
@@ -257,7 +274,7 @@ function __embind_register_void(rawType, name) {
 }
 
 function __embind_register_bool(rawType, name, trueValue, falseValue) {
-    name = Pointer_stringify(name);
+    name = readLatin1String(name);
     registerType(rawType, {
         name: name,
         fromWireType: function(wt) {
@@ -274,7 +291,7 @@ function __embind_register_bool(rawType, name, trueValue, falseValue) {
 // When converting a number from JS to C++ side, the valid range of the number is
 // [minRange, maxRange], inclusive.
 function __embind_register_integer(primitiveType, name, minRange, maxRange) {
-    name = Pointer_stringify(name);
+    name = readLatin1String(name);
     if (maxRange === -1) { // LLVM doesn't have signed and unsigned 32-bit types, so u32 literals come out as 'i32 -1'. Always treat those as max u32.
         maxRange = 4294967295;
     }
@@ -300,7 +317,7 @@ function __embind_register_integer(primitiveType, name, minRange, maxRange) {
 }
 
 function __embind_register_float(rawType, name) {
-    name = Pointer_stringify(name);
+    name = readLatin1String(name);
     registerType(rawType, {
         name: name,
         fromWireType: function(value) {
@@ -318,7 +335,7 @@ function __embind_register_float(rawType, name) {
 }
 
 function __embind_register_std_string(rawType, name) {
-    name = Pointer_stringify(name);
+    name = readLatin1String(name);
     registerType(rawType, {
         name: name,
         fromWireType: function(value) {
@@ -350,7 +367,7 @@ function __embind_register_std_string(rawType, name) {
 }
 
 function __embind_register_std_wstring(rawType, charSize, name) {
-    name = Pointer_stringify(name);
+    name = readLatin1String(name);
     var HEAP, shift;
     if (charSize === 2) {
         HEAP = HEAPU16;
@@ -387,7 +404,7 @@ function __embind_register_std_wstring(rawType, charSize, name) {
 }
 
 function __embind_register_emval(rawType, name) {
-    name = Pointer_stringify(name);
+    name = readLatin1String(name);
     registerType(rawType, {
         name: name,
         fromWireType: function(handle) {
@@ -432,7 +449,7 @@ function makeInvoker(name, argCount, argTypes, invoker, fn) {
 
 function __embind_register_function(name, argCount, rawArgTypesAddr, rawInvoker, fn) {
     var argTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
-    name = Pointer_stringify(name);
+    name = readLatin1String(name);
     rawInvoker = FUNCTION_TABLE[rawInvoker];
 
     exposePublicSymbol(name, function() {
@@ -449,7 +466,7 @@ var tupleRegistrations = {};
 
 function __embind_register_tuple(rawType, name, rawConstructor, rawDestructor) {
     tupleRegistrations[rawType] = {
-        name: Pointer_stringify(name),
+        name: readLatin1String(name),
         rawConstructor: FUNCTION_TABLE[rawConstructor],
         rawDestructor: FUNCTION_TABLE[rawDestructor],
         elements: [],
@@ -538,7 +555,7 @@ function __embind_register_struct(
     rawDestructor
 ) {
     structRegistrations[rawType] = {
-        name: Pointer_stringify(name),
+        name: readLatin1String(name),
         rawConstructor: FUNCTION_TABLE[rawConstructor],
         rawDestructor: FUNCTION_TABLE[rawDestructor],
         fields: [],
@@ -556,7 +573,7 @@ function __embind_register_struct_field(
     setterContext
 ) {
     structRegistrations[structType].fields.push({
-        fieldName: Pointer_stringify(fieldName),
+        fieldName: readLatin1String(fieldName),
         getterReturnType: getterReturnType,
         getter: FUNCTION_TABLE[getter],
         getterContext: getterContext,
@@ -913,7 +930,7 @@ function __embind_register_class(
     name,
     rawDestructor
 ) {
-    name = Pointer_stringify(name);
+    name = readLatin1String(name);
     rawDestructor = FUNCTION_TABLE[rawDestructor];
     getActualType = FUNCTION_TABLE[getActualType];
     upcast = FUNCTION_TABLE[upcast];
@@ -1097,7 +1114,7 @@ function __embind_register_class_function(
     context
 ) {
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
-    methodName = Pointer_stringify(methodName);
+    methodName = readLatin1String(methodName);
     rawInvoker = FUNCTION_TABLE[rawInvoker];
 
     whenDependentTypesAreResolved([], [rawClassType], function(classType) {
@@ -1163,7 +1180,7 @@ function __embind_register_class_class_function(
     fn
 ) {
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
-    methodName = Pointer_stringify(methodName);
+    methodName = readLatin1String(methodName);
     rawInvoker = FUNCTION_TABLE[rawInvoker];
     whenDependentTypesAreResolved([], [rawClassType], function(classType) {
         classType = classType[0];
@@ -1209,7 +1226,7 @@ function __embind_register_class_property(
     setter,
     setterContext
 ) {
-    fieldName = Pointer_stringify(fieldName);
+    fieldName = readLatin1String(fieldName);
     getter = FUNCTION_TABLE[getter];
     setter = FUNCTION_TABLE[setter];
 
@@ -1274,7 +1291,7 @@ function __embind_register_smart_ptr(
     rawShare,
     rawDestructor
 ) {
-    name = Pointer_stringify(name);
+    name = readLatin1String(name);
     rawGetPointee = FUNCTION_TABLE[rawGetPointee];
     rawConstructor = FUNCTION_TABLE[rawConstructor];
     rawShare = FUNCTION_TABLE[rawShare];
@@ -1304,7 +1321,7 @@ function __embind_register_enum(
     rawType,
     name
 ) {
-    name = Pointer_stringify(name);
+    name = readLatin1String(name);
 
     function constructor() {
     }
@@ -1329,7 +1346,7 @@ function __embind_register_enum_value(
     enumValue
 ) {
     var enumType = requireRegisteredType(rawEnumType, 'enum');
-    name = Pointer_stringify(name);
+    name = readLatin1String(name);
 
     var Enum = enumType.constructor;
 
@@ -1347,7 +1364,7 @@ function __embind_register_interface(
     rawConstructor,
     rawDestructor
 ) {
-    name = Pointer_stringify(name);
+    name = readLatin1String(name);
     rawConstructor = FUNCTION_TABLE[rawConstructor];
     rawDestructor = FUNCTION_TABLE[rawDestructor];
 
@@ -1365,7 +1382,7 @@ function __embind_register_interface(
 }
 
 function __embind_register_constant(name, type, value) {
-    name = Pointer_stringify(name);
+    name = readLatin1String(name);
     whenDependentTypesAreResolved([], [type], function(type) {
         type = type[0];
         Module[name] = type.fromWireType(value);
