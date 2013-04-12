@@ -730,7 +730,7 @@ WARNING: You should normally never use this! Use emcc instead.
     DEBUG = keywords.verbose
     DEBUG_CACHE = keywords.verbose
 
-  cache = cache_module.Cache(dirname=os.path.join(temp_dir, 'cache'))
+  cache = cache_module.Cache()
   temp_files.run_and_clean(lambda: main(
     keywords,
     compiler_engine=keywords.compiler,
