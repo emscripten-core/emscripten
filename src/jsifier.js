@@ -1426,10 +1426,12 @@ function JSify(data, functionsOnly, givenFunctions) {
       var sig = Functions.getSignature(returnType, argsTypes, hasVarArgs);
       if (ASM_JS) {
         assert(returnType.search(/\("'\[,/) == -1); // XXX need isFunctionType(type, out)
-        if (!forceByPointer) {
+        if (!byPointerForced) {
           callIdent = '(' + callIdent + ')&{{{ FTM_' + sig + ' }}}'; // the function table mask is set in emscripten.py
         } else {
-          // add initial argument for invoke. note: no need to update argsTypes at this point
+          // This is a forced call, through an invoke_*.
+          // note: no need to update argsTypes at this point
+          Functions.unimplementedFunctions[callIdent] = sig;
           args.unshift(byPointerForced ? Functions.getIndex(callIdent) : callIdent);
           callIdent = 'invoke_' + sig;
         }
