@@ -324,12 +324,13 @@ function analyzer(data, sidePass) {
                 }
                 // call, return: Return the first 32 bits, the rest are in temp
                 case 'call': {
-                  bits = getBits(value.type);
-                  var elements = getLegalVars(item.assignTo, bits);
                   var toAdd = [value];
                   // legalize parameters
                   legalizeFunctionParameters(value.params);
+                  // legalize return value, if any
                   if (value.assignTo && isIllegalType(item.type)) {
+                    bits = getBits(value.type);
+                    var elements = getLegalVars(item.assignTo, bits);
                     // legalize return value
                     value.assignTo = elements[0].ident;
                     for (var j = 1; j < elements.length; j++) {
