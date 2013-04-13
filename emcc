@@ -519,7 +519,7 @@ CONFIGURE_CONFIG = (os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in 
 CMAKE_CONFIG = 'CMakeFiles/cmTryCompileExec.dir' in ' '.join(sys.argv)# or 'CMakeCCompilerId' in ' '.join(sys.argv)
 if CONFIGURE_CONFIG or CMAKE_CONFIG:
   debug_configure = 0 # XXX use this to debug configure stuff. ./configure's generally hide our normal output including stderr so we write to a file
-  use_clang = 1 # whether we fake configure tests using clang - the local, native compiler - or not. if not we generate JS and use node with a shebang
+  use_js = os.environ.get('EMCONFIGURE_JS') # whether we fake configure tests using clang - the local, native compiler - or not. if not we generate JS and use node with a shebang
                    # neither approach is perfect, you can try both, but may need to edit configure scripts in some cases
                    # XXX False is not fully tested yet
 
@@ -536,13 +536,16 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
         if debug_configure: open(tempout, 'a').write('============= ' + sys.argv[i] + '\n' + src + '\n=============\n\n')
       except:
         pass
+    if sys.argv[i].endswith('.s'):
+      if debug_configure: open(tempout, 'a').write('(compiling .s assembly, must use clang\n')
+      use_js = 0
 
   if src:
     if 'fopen' in src and '"w"' in src:
-      use_clang = True # we cannot write to files from js!
+      use_js = 0 # we cannot write to files from js!
       if debug_configure: open(tempout, 'a').write('Forcing clang since uses fopen to write\n')
 
-  compiler = os.environ.get('CONFIGURE_CC') or (shared.CLANG if use_clang else shared.EMCC) # if CONFIGURE_CC is defined, use that. let's you use local gcc etc. if you need that
+  compiler = os.environ.get('CONFIGURE_CC') or (shared.CLANG if not use_js else shared.EMCC) # if CONFIGURE_CC is defined, use that. let's you use local gcc etc. if you need that
   if not ('CXXCompiler' in ' '.join(sys.argv) or os.environ.get('EMMAKEN_CXX')):
     compiler = shared.to_cc(compiler)
 
@@ -561,12 +564,12 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
       idx += 1
 
   cmd = [compiler] + list(filter_emscripten_options(sys.argv[1:]))
-  if use_clang: cmd += shared.EMSDK_OPTS + ['-DEMSCRIPTEN']
+  if not use_js: cmd += shared.EMSDK_OPTS + ['-DEMSCRIPTEN']
 
   if DEBUG: print >> sys.stderr, 'emcc, just configuring: ', ' '.join(cmd)
   if debug_configure: open(tempout, 'a').write('emcc, just configuring: ' + ' '.join(cmd) + '\n\n')
 
-  if use_clang:
+  if not use_js:
     exit(subprocess.call(cmd))
   else:
     only_object = '-c' in cmd
@@ -589,7 +592,7 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
       shutil.copyfile(target, target[:-3])
       target = target[:-3]
     src = open(target).read()
-    full_node = shared.NODE_JS
+    full_node = ' '.join(shared.listify(shared.NODE_JS))
     if os.path.sep not in full_node:
       full_node = '/usr/bin/' + full_node # TODO: use whereis etc. And how about non-*NIX?
     open(target, 'w').write('#!' + full_node + '\n' + src) # add shebang
