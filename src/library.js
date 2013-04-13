@@ -6568,6 +6568,7 @@ LibraryManager.library = {
     ENOTSUP: 95,
     ENOTTY: 25,
     ENXIO: 6,
+    EOPNOTSUPP: 45,
     EOVERFLOW: 75,
     EOWNERDEAD: 130,
     EPERM: 1,
@@ -6649,6 +6650,7 @@ LibraryManager.library = {
     95: 'Operation not supported',
     25: 'Inappropriate ioctl for device',
     6: 'No such device or address',
+    45: 'Op not supported on transport endpoint',
     75: 'Value too large for defined data type',
     130: 'Owner died',
     1: 'Operation not permitted',
@@ -7390,6 +7392,19 @@ LibraryManager.library = {
       return -1;
     } else {
       return totalHandles;
+    }
+  },
+
+  socketpair__deps: ['__setErrNo', '$ERRNO_CODES', 'pipe'],
+  socketpair: function(domain, type, protocol, sv) {
+    // int socketpair(int domain, int type, int protocol, int sv[2]);
+    // http://sources.iwp9.org/files/plan9/sys/src/ape/lib/bsd/socketpair.c
+    switch (domain) {
+      case {{{ cDefine('PF_UNIX') }}}:
+        return _pipe(sv);
+      default:
+        ___setErrNo(ERRNO_CODES.EOPNOTSUPP);
+        return -1;
     }
   },
 
