@@ -1127,11 +1127,48 @@ try:
         os.path.join('libc', 'stdlib', 'strtod.c'),
       ];
 
+      musl_files = [
+         ['string', [
+           'wcpcpy.c',
+           'wcpncpy.c',
+           'wcscasecmp.c',
+           # 'wcscasecmp_l.c', # XXX: alltypes.h issue
+           'wcscat.c',
+           'wcschr.c',
+           'wcscmp.c',
+           'wcscpy.c',
+           'wcscspn.c',
+           'wcsdup.c',
+           'wcslen.c',
+           'wcsncasecmp.c',
+           # 'wcsncasecmp_l.c', # XXX: alltypes.h issue
+           'wcsncat.c',
+           'wcsncmp.c',
+           'wcsncpy.c',
+           'wcsnlen.c',
+           'wcspbrk.c',
+           'wcsrchr.c',
+           'wcsspn.c',
+           'wcsstr.c',
+           'wcstok.c',
+           'wcswcs.c',
+           'wmemchr.c',
+           'wmemcmp.c',
+           'wmemcpy.c',
+           'wmemmove.c',
+           'wmemset.c',
+         ]]
+      ]
+
+      for directory, sources in musl_files:
+        libc_files += [os.path.join('libc', 'musl', 'src', directory, source) for source in sources]
+
       prev_cxx = os.environ.get('EMMAKEN_CXX')
       if prev_cxx: os.environ['EMMAKEN_CXX'] = ''
+      musl_internal_includes = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'internal')
       for src in libc_files:
         o = in_temp(os.path.basename(src) + '.o')
-        execute([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o], stdout=stdout, stderr=stderr)
+        execute([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o, '-I', musl_internal_includes], stdout=stdout, stderr=stderr)
         o_s.append(o)
       if prev_cxx: os.environ['EMMAKEN_CXX'] = prev_cxx
 

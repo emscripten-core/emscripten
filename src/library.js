@@ -4243,8 +4243,6 @@ LibraryManager.library = {
     return ret|0;
   },
 
-  wmemcpy: function() { throw 'wmemcpy not implemented' },
-
   llvm_memcpy_i32: 'memcpy',
   llvm_memcpy_i64: 'memcpy',
   llvm_memcpy_p0i8_p0i8_i32: 'memcpy',
@@ -4273,8 +4271,6 @@ LibraryManager.library = {
   llvm_memmove_i64: 'memmove',
   llvm_memmove_p0i8_p0i8_i32: 'memmove',
   llvm_memmove_p0i8_p0i8_i64: 'memmove',
-
-  wmemmove: function() { throw 'wmemmove not implemented' },
 
   memset__inline: function(ptr, value, num, align) {
     return makeSetValues(ptr, 0, value, 'null', num, align);
@@ -4316,8 +4312,6 @@ LibraryManager.library = {
   llvm_memset_p0i8_i32: 'memset',
   llvm_memset_p0i8_i64: 'memset',
 
-  wmemset: function() { throw 'wmemset not implemented' },
-
   strlen__sig: 'ii',
   strlen__asm: true,
   strlen: function(ptr) {
@@ -4335,7 +4329,6 @@ LibraryManager.library = {
     return 1;
   },
 
-  wcslen: function() { throw 'wcslen not implemented' },
   mbrlen: function() { throw 'mbrlen not implemented' },
   mbsrtowcs: function() { throw 'mbsrtowcs not implemented' },
   wcsnrtombs: function() { throw 'wcsnrtombs not implemented' },
