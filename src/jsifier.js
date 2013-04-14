@@ -1606,7 +1606,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     // "Final shape that will be created").
     if (PRECISE_I64_MATH && Types.preciseI64MathUsed) {
       if (!INCLUDE_FULL_LIBRARY) {
-        ['i64Add', 'bitshift64Shl', 'bitshift64Lshr', 'bitshift64Ashr'].forEach(function(func) {
+        ['i64Add', 'i64Subtract', 'bitshift64Shl', 'bitshift64Lshr', 'bitshift64Ashr'].forEach(function(func) {
           print(processLibraryFunction(LibraryManager.library[func], func)); // must be first to be close to generated code
           Functions.implementedFunctions['_' + func] = LibraryManager.library[func + '__sig'];
         });

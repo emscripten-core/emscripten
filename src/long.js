@@ -1530,13 +1530,6 @@ var i64Math = (function() { // Emscripten wrapper
 
   // Emscripten wrapper
   var Wrapper = {
-    subtract: function(xl, xh, yl, yh) {
-      var x = new goog.math.Long(xl, xh);
-      var y = new goog.math.Long(yl, yh);
-      var ret = x.subtract(y);
-      HEAP32[tempDoublePtr>>2] = ret.low_;
-      HEAP32[tempDoublePtr+4>>2] = ret.high_;
-    },
     multiply: function(xl, xh, yl, yh) {
       var x = new goog.math.Long(xl, xh);
       var y = new goog.math.Long(yl, yh);

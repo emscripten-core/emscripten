@@ -2062,7 +2062,7 @@ function processMathop(item) {
       }
       case 'sub': {
         if (PRECISE_I64_MATH) {
-          return i64PreciseOp('subtract');
+          return i64PreciseLib('subtract');
         } else {
           warnI64_1();
           return finish(splitI64(mergeI64(idents[0]) + '-' + mergeI64(idents[1]), true));

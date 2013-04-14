@@ -7490,6 +7490,19 @@ LibraryManager.library = {
     {{{ makeStructuralReturn(['l|0', 'h', 'overflow'], true) }}};
   },
 
+  i64Subtract__asm: true,
+  i64Subtract__sig: 'iiiii',
+  i64Subtract: function(a, b, c, d) {
+    a = a|0; b = b|0; c = c|0; d = d|0;
+    var l = 0, h = 0;
+    l = (a - c)>>>0;
+    h = (b - d)>>>0;
+    if ((l>>>0) > (a>>>0)) { // iff we overflowed
+      h = (h-1)>>>0;
+    }
+    {{{ makeStructuralReturn(['l|0', 'h'], true) }}};
+  },
+
   bitshift64Shl__asm: true,
   bitshift64Shl__sig: 'iiii',
   bitshift64Shl: function(low, high, bits) {
