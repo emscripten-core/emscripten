@@ -4913,16 +4913,20 @@ LibraryManager.library = {
       }
       return 8;
     }
-    return 'var ctlz_i8 = [' + range(256).map(function(x) { return ctlz(x) }).join(',') + '];';
+    return 'var ctlz_i8 = allocate([' + range(256).map(function(x) { return ctlz(x) }).join(',') + '], "i8", ALLOC_STACK);';
   }],
+  llvm_ctlz_i32__asm: true,
+  llvm_ctlz_i32__sig: 'ii',
   llvm_ctlz_i32: function(x) {
-    var ret = ctlz_i8[x >>> 24];
-    if (ret < 8) return ret;
-    var ret = ctlz_i8[(x >> 16)&0xff];
-    if (ret < 8) return ret + 8;
-    var ret = ctlz_i8[(x >> 8)&0xff];
-    if (ret < 8) return ret + 16;
-    return ctlz_i8[x&0xff] + 24;
+    x = x|0;
+    var ret = 0;
+    ret = {{{ makeGetValueAsm('ctlz_i8', 'x >>> 24', 'i8') }}};
+    if ((ret|0) < 8) return ret|0;
+    var ret = {{{ makeGetValueAsm('ctlz_i8', '(x >> 16)&0xff', 'i8') }}};
+    if ((ret|0) < 8) return (ret + 8)|0;
+    var ret = {{{ makeGetValueAsm('ctlz_i8', '(x >> 8)&0xff', 'i8') }}};
+    if ((ret|0) < 8) return (ret + 16)|0;
+    return ({{{ makeGetValueAsm('ctlz_i8', 'x&0xff', 'i8') }}} + 24)|0;
   },
 
   llvm_ctlz_i64__deps: ['llvm_ctlz_i32'],
@@ -4945,16 +4949,20 @@ LibraryManager.library = {
       }
       return 8;
     }
-    return 'var cttz_i8 = [' + range(256).map(function(x) { return cttz(x) }).join(',') + '];';
+    return 'var cttz_i8 = allocate([' + range(256).map(function(x) { return cttz(x) }).join(',') + '], "i8", ALLOC_STACK);';
   }],
+  llvm_cttz_i32__asm: true,
+  llvm_cttz_i32__sig: 'ii',
   llvm_cttz_i32: function(x) {
-    var ret = cttz_i8[x & 0xff];
-    if (ret < 8) return ret;
-    var ret = cttz_i8[(x >> 8)&0xff];
-    if (ret < 8) return ret + 8;
-    var ret = cttz_i8[(x >> 16)&0xff];
-    if (ret < 8) return ret + 16;
-    return cttz_i8[x >>> 24] + 24;
+    x = x|0;
+    var ret = 0;
+    ret = {{{ makeGetValueAsm('cttz_i8', 'x & 0xff', 'i8') }}};
+    if ((ret|0) < 8) return ret|0;
+    var ret = {{{ makeGetValueAsm('cttz_i8', '(x >> 8)&0xff', 'i8') }}};
+    if ((ret|0) < 8) return (ret + 8)|0;
+    var ret = {{{ makeGetValueAsm('cttz_i8', '(x >> 16)&0xff', 'i8') }}};
+    if ((ret|0) < 8) return (ret + 16)|0;
+    return ({{{ makeGetValueAsm('cttz_i8', 'x >>> 24', 'i8') }}} + 24)|0;
   },
 
   llvm_cttz_i64__deps: ['llvm_cttz_i32'],

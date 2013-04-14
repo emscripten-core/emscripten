@@ -391,6 +391,13 @@ var i64Math_multiply = function(a, b, c, d) { i64Math.multiply(a, b, c, d) };
 var i64Math_divide = function(a, b, c, d, e) { i64Math.divide(a, b, c, d, e) };
 var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
 '''
+
+    if forwarded_json['Functions']['libraryFunctions'].get('llvm_cttz_i32') or \
+       forwarded_json['Functions']['libraryFunctions'].get('llvm_ctlz_i32') or \
+       forwarded_json['Functions']['libraryFunctions'].get('llvm_cttz_i64') or \
+       forwarded_json['Functions']['libraryFunctions'].get('llvm_ctlz_i64'):
+      basic_vars += ['cttz_i8', 'ctlz_i8']
+
     asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore', 'setThrew'] + ['setTempRet%d' % i for i in range(10)]
     # function tables
     def asm_coerce(value, sig):
