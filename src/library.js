@@ -5304,9 +5304,11 @@ LibraryManager.library = {
 
   llvm_umul_with_overflow_i64__deps: [function() { Types.preciseI64MathUsed = 1 }],
   llvm_umul_with_overflow_i64: function(xl, xh, yl, yh) {
-    i64Math.multiply(xl, xh, yl, yh);
-    {{{ makeStructuralReturn([makeGetTempDouble(0, 'i32'), makeGetTempDouble(1, 'i32'), '0']) }}};
-    // XXX Need to hack support for second param in long.js
+#if ASSERTIONS
+    Runtime.warnOnce('no overflow support in llvm_umul_with_overflow_i64');
+#endif
+    var low = ___muldi3(xl, xh, yl, yh);
+    {{{ makeStructuralReturn(['low', 'tempRet0', '0']) }}};
   },
 
   llvm_stacksave: function() {

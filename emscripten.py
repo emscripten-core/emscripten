@@ -347,14 +347,15 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   if settings.get('ASM_JS'):
     post_funcs, post_rest = post.split('// EMSCRIPTEN_END_FUNCS\n')
     post = post_rest
-    funcs_js += ['\n' + post_funcs + '// EMSCRIPTEN_END_FUNCS\n']
 
     # Move preAsms to their right place
     def move_preasm(m):
       contents = m.groups(0)[0]
       outfile.write(contents + '\n')
       return ''
-    post = re.sub(r'/\* PRE_ASM \*/(.*)\n', lambda m: move_preasm(m), post)
+    post_funcs = re.sub(r'/\* PRE_ASM \*/(.*)\n', lambda m: move_preasm(m), post_funcs)
+
+    funcs_js += ['\n' + post_funcs + '// EMSCRIPTEN_END_FUNCS\n']
 
     simple = os.environ.get('EMCC_SIMPLE_ASM')
     class Counter:
@@ -392,17 +393,15 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     basic_vars = ['STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT']
     basic_float_vars = ['NaN', 'Infinity']
     if forwarded_json['Types']['preciseI64MathUsed']:
-      basic_funcs += ['i64Math_' + op for op in ['multiply', 'divide', 'modulo']]
+      basic_funcs += ['i64Math_' + op for op in ['divide', 'modulo']]
       asm_setup += '''
-var i64Math_multiply = function(a, b, c, d) { i64Math.multiply(a, b, c, d) };
 var i64Math_divide = function(a, b, c, d, e) { i64Math.divide(a, b, c, d, e) };
 var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
 '''
 
-    if forwarded_json['Functions']['libraryFunctions'].get('llvm_cttz_i32') or \
-       forwarded_json['Functions']['libraryFunctions'].get('llvm_ctlz_i32') or \
-       forwarded_json['Functions']['libraryFunctions'].get('llvm_cttz_i64') or \
-       forwarded_json['Functions']['libraryFunctions'].get('llvm_ctlz_i64'):
+    if forwarded_json['Types']['preciseI64MathUsed'] or \
+       forwarded_json['Functions']['libraryFunctions'].get('llvm_cttz_i32') or \
+       forwarded_json['Functions']['libraryFunctions'].get('llvm_ctlz_i32'):
       basic_vars += ['cttz_i8', 'ctlz_i8']
 
     asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore', 'setThrew'] + ['setTempRet%d' % i for i in range(10)]
@@ -454,7 +453,7 @@ function invoke_%s(%s) {
       pass
     # If no named globals, only need externals
     global_vars = map(lambda g: g['name'], filter(lambda g: settings['NAMED_GLOBALS'] or g.get('external') or g.get('unIndexable'), forwarded_json['Variables']['globals'].values()))
-    global_funcs = ['_' + x for x in forwarded_json['Functions']['libraryFunctions'].keys()]
+    global_funcs = ['_' + key for key, value in forwarded_json['Functions']['libraryFunctions'].iteritems() if value != 2]
     def math_fix(g):
       return g if not g.startswith('Math_') else g.split('_')[1];
     asm_global_funcs = ''.join(['  var ' + g.replace('.', '_') + '=global.' + g + ';\n' for g in maths]) + \

@@ -1998,9 +1998,12 @@ function processMathop(item) {
       return finish(['(i64Math' + (ASM_JS ? '_' : '.') + type + '(' + asmCoercion(low1, 'i32') + ',' + asmCoercion(high1, 'i32') + ',' + asmCoercion(low2, 'i32') + ',' + asmCoercion(high2, 'i32') +
                      (lastArg ? ',' + asmCoercion(+lastArg, 'i32') : '') + '),' + makeGetValue('tempDoublePtr', 0, 'i32') + ')', makeGetValue('tempDoublePtr', Runtime.getNativeTypeSize('i32'), 'i32')]);
     }
-    function i64PreciseLib(type) {
+    function preciseCall(name) {
       Types.preciseI64MathUsed = true;
-      return finish(['_i64' + type[0].toUpperCase() + type.substr(1) + '(' + low1 + ',' + high1 + ',' + low2 + ',' + high2 + ')', 'tempRet0']);
+      return finish([name + '(' + low1 + ',' + high1 + ',' + low2 + ',' + high2 + ')', 'tempRet0']);
+    }
+    function i64PreciseLib(type) {
+      return preciseCall('_i64' + type[0].toUpperCase() + type.substr(1));
     }
     switch (op) {
       // basic integer ops
@@ -2078,7 +2081,7 @@ function processMathop(item) {
       }
       case 'mul': {
         if (PRECISE_I64_MATH) {
-          return i64PreciseOp('multiply');
+          return preciseCall('___muldi3');
         } else {
           warnI64_1();
           return finish(splitI64(mergeI64(idents[0], op[0] === 'u') + '*' + mergeI64(idents[1], op[0] === 'u'), true));

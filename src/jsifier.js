@@ -468,7 +468,7 @@ function JSify(data, functionsOnly, givenFunctions) {
             asmLibraryFunctions.push(contentText);
             contentText = ' ';
             EXPORTED_FUNCTIONS[ident] = 1;
-            delete Functions.libraryFunctions[ident.substr(1)];
+            Functions.libraryFunctions[ident.substr(1)] = 2;
           }
         }
         if ((!ASM_JS || phase == 'pre') &&
@@ -1606,10 +1606,26 @@ function JSify(data, functionsOnly, givenFunctions) {
     // "Final shape that will be created").
     if (PRECISE_I64_MATH && Types.preciseI64MathUsed) {
       if (!INCLUDE_FULL_LIBRARY) {
-        ['i64Add', 'i64Subtract', 'bitshift64Shl', 'bitshift64Lshr', 'bitshift64Ashr'].forEach(function(func) {
-          print(processLibraryFunction(LibraryManager.library[func], func)); // must be first to be close to generated code
-          Functions.implementedFunctions['_' + func] = LibraryManager.library[func + '__sig'];
+        // first row are utilities called from generated code, second are needed from fastLong
+        ['i64Add', 'i64Subtract', 'bitshift64Shl', 'bitshift64Lshr', 'bitshift64Ashr',
+         'llvm_ctlz_i32', 'llvm_cttz_i32'].forEach(function(func) {
+          if (!Functions.libraryFunctions[func]) {
+            print(processLibraryFunction(LibraryManager.library[func], func)); // must be first to be close to generated code
+            Functions.implementedFunctions['_' + func] = LibraryManager.library[func + '__sig'];
+            Functions.libraryFunctions[func] = 1;
+            // limited dependency handling
+            var deps = LibraryManager.library[func + '__deps'];
+            if (deps) {
+              deps.forEach(function(dep) {
+                assert(typeof dep == 'function');
+                var text = dep();
+                assert(text.indexOf('\n') < 0);
+                print('/* PRE_ASM */ ' + text + '\n');
+              });
+            }
+          }
         });
+        print(read('fastLong.js'));
       }
       print('// EMSCRIPTEN_END_FUNCS\n');
       print(read('long.js'));

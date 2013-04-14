@@ -230,7 +230,7 @@ var Types = {
 var Functions = {
   // All functions that will be implemented in this file. Maps id to signature
   implementedFunctions: {},
-  libraryFunctions: {}, // functions added from the library
+  libraryFunctions: {}, // functions added from the library. value 2 means asmLibraryFunction
   unimplementedFunctions: {}, // library etc. functions that we need to index, maps id to signature
 
   indexedFunctions: {},
