@@ -349,6 +349,13 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     post = post_rest
     funcs_js += ['\n' + post_funcs + '// EMSCRIPTEN_END_FUNCS\n']
 
+    # Move preAsms to their right place
+    def move_preasm(m):
+      contents = m.groups(0)[0]
+      outfile.write(contents + '\n')
+      return ''
+    post = re.sub(r'/\* PRE_ASM \*/(.*)\n', lambda m: move_preasm(m), post)
+
     simple = os.environ.get('EMCC_SIMPLE_ASM')
     class Counter:
       i = 0
