@@ -1756,7 +1756,7 @@ function makeStructuralReturn(values, inAsm) {
     return 'return ' + asmCoercion(values.slice(1).map(function(value) {
       i++;
       return ASM_JS ? (inAsm ? 'tempRet' + i + ' = ' + value : 'asm.setTempRet' + i + '(' + value + ')')
-                    : 'tempRet' + (i++) + ' = ' + value;
+                    : 'tempRet' + i + ' = ' + value;
     }).concat([values[0]]).join(','), 'i32');
   } else {
     var i = 0;
