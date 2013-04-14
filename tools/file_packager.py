@@ -11,7 +11,7 @@ data downloads.
 
 Usage:
 
-  file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--compress COMPRESSION_DATA] [--pre-run] [--crunch[=X]] [--js-output=OUTPUT.js]
+  file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--compress COMPRESSION_DATA] [--pre-run] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force]
 
   --pre-run Will generate wrapper code that does preloading in Module.preRun. This is necessary if you add this
             code before the main file has been loading, which includes necessary components like addRunDependency.
@@ -23,6 +23,10 @@ Usage:
              packaging your site.
              DDS files will not be crunched if the .crn is more recent than the .dds. This prevents a lot of
              unneeded computation.
+
+  --js-output=FILE Writes output in FILE, if not specified, standard output is used.
+
+  --no-force Don't create output if no valid input file is specified.
 
 Notes:
 
@@ -40,7 +44,7 @@ from shared import Compression, execute, suffix, unsuffixed
 from subprocess import Popen, PIPE, STDOUT
 
 if len(sys.argv) == 1:
-  print '''Usage: file_packager.py TARGET [--preload A...] [--embed C...] [--compress COMPRESSION_DATA] [--pre-run] [--crunch[=X]] [--js-output=OUTPUT.js]
+  print '''Usage: file_packager.py TARGET [--preload A...] [--embed B...] [--compress COMPRESSION_DATA] [--pre-run] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force]
 See the source for more details.'''
   sys.exit(0)
 
@@ -65,6 +69,7 @@ pre_run = False
 crunch = 0
 plugins = []
 jsoutput = None
+force = True
 
 for arg in sys.argv[1:]:
   if arg == '--preload':
@@ -86,6 +91,8 @@ for arg in sys.argv[1:]:
     in_preload = False
     in_embed = False
     in_compress = 0
+  elif arg == '--no-force':
+    force = False
   elif arg.startswith('--js-output'):
     jsoutput = arg.split('=')[1] if '=' in arg else None
   elif arg.startswith('--crunch'):
@@ -101,10 +108,10 @@ for arg in sys.argv[1:]:
     in_embed = False
     in_compress = 0
   elif in_preload:
-    if os.path.isfile(arg):
+    if os.path.isfile(arg) or os.path.isdir(arg):
       data_files.append({ 'name': arg, 'mode': 'preload' })
   elif in_embed:
-    if os.path.isfile(arg):
+    if os.path.isfile(arg) or os.path.isdir(arg):
       data_files.append({ 'name': arg, 'mode': 'embed' })
   elif in_compress:
     if in_compress == 1:
@@ -116,6 +123,9 @@ for arg in sys.argv[1:]:
     elif in_compress == 3:
       Compression.js_name = arg
       in_compress = 0
+
+if (not force) and len(data_files) == 0:
+  has_preloaded = False
 
 ret = '''
 (function() {
@@ -417,9 +427,9 @@ if crunch:
 ret += '''
 })();
 '''
-
-if jsoutput == None:
-  print ret
-else:
-  f = open(jsoutput, 'w')
-  f.write(ret)
+if force or len(data_files) > 0:
+  if jsoutput == None:
+    print ret
+  else:
+    f = open(jsoutput, 'w')
+    f.write(ret)
