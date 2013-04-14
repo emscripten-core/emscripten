@@ -735,7 +735,8 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
               uint64_t a = 5;
               double b = 6.8;
               uint64_t c = a * b;
-              printf("*prod:%llu*\n*%d,%d,%d*\n", c, (int)&a, (int)&b, (int)&c); // printing addresses prevents optimizations
+              if (truthy()) printf("*%d,%d,%d*\n", (int)&a, (int)&b, (int)&c); // printing addresses prevents optimizations
+              printf("*prod:%llu*\n", c);
             }
 
             // Basic (rounded, for now) math. Just check compilation.
@@ -764,7 +765,8 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
                          '*-1,34359738367,4294967295,1073741823*\n' +
                          '*-1,-1,-1,-1*\n' +
                          '*-1,34359738367,4294967295,1073741823*\n' +
-                         '*prod:34*')
+                         '*prod:34*\n' +
+                         '*524718382041609,49025451137,787151111239120,52476740749274*')
 
         src = r'''
           #include <stdio.h>
