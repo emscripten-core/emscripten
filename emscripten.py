@@ -387,7 +387,6 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     if forwarded_json['Types']['preciseI64MathUsed']:
       basic_funcs += ['i64Math_' + op for op in ['subtract', 'multiply', 'divide', 'modulo']]
       asm_setup += '''
-var i64Math_add = function(a, b, c, d) { i64Math.add(a, b, c, d) };
 var i64Math_subtract = function(a, b, c, d) { i64Math.subtract(a, b, c, d) };
 var i64Math_multiply = function(a, b, c, d) { i64Math.multiply(a, b, c, d) };
 var i64Math_divide = function(a, b, c, d, e) { i64Math.divide(a, b, c, d, e) };
