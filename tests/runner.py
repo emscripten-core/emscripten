@@ -746,6 +746,14 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
             b++; if (truthy()) b--; // confuse optimizer
             printf("*%Ld,%Ld,%Ld,%Ld*\n",   (a+b)/5000, (a-b)/5000, (a*3)/5000, (a/5)/5000);
 
+            a -= 17; if (truthy()) a += 5; // confuse optimizer
+            b -= 17; if (truthy()) b += 121; // confuse optimizer
+            printf("*%Lx,%Lx,%Lx,%Lx*\n", b - a, b - a/2, b/2 - a, b - 20);
+
+            if (truthy()) a += 5/b; // confuse optimizer
+            if (truthy()) b += 121*(3+a/b); // confuse optimizer
+            printf("*%Lx,%Lx,%Lx,%Lx*\n", a - b, a - b/2, a/2 - b, a - 20);
+
             return 0;
           }
         '''
@@ -766,7 +774,9 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
                          '*-1,-1,-1,-1*\n' +
                          '*-1,34359738367,4294967295,1073741823*\n' +
                          '*prod:34*\n' +
-                         '*524718382041609,49025451137,787151111239120,52476740749274*')
+                         '*524718382041609,49025451137,787151111239120,52476740749274*\n' +
+                         '*ffff210edd000002,91990876ea283be,f6e5210edcdd7c45,1234000000450765*\n' +
+                         '*def122fffffe,91adef1232283bb,f6e66f78915d7c42,1234def123450763*\n')
 
         src = r'''
           #include <stdio.h>
