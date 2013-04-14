@@ -7482,9 +7482,10 @@ LibraryManager.library = {
     var l = 0, h = 0, overflow = 0;
     l = (a + c)>>>0;
     h = (b + d)>>>0;
-    if ((l>>>0) < (a>>>0)) { // iff we overflowed
+    if ((h>>>0) < (b>>>0)) overflow = 1;
+    if ((l>>>0) < (a>>>0)) {
       h = (h+1)>>>0;
-      overflow = 1;
+      if ((h>>>0) == 0) overflow = 1; // two possibilities to overflow here
     }
     {{{ makeStructuralReturn(['l|0', 'h', 'overflow'], true) }}};
   },
