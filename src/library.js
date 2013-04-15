@@ -3740,8 +3740,10 @@ LibraryManager.library = {
       var info = FS.streams[stream];
       if (!info) return -1;
       var contents = info.object.contents;
-      // Only make a new copy when the file is not in HEAP or MAP_PRIVATE is specified.
-      if (contents.buffer === HEAPU8.buffer && flags & MAP_PRIVATE == 0) {
+      // Only make a new copy when MAP_PRIVATE is specified.
+      if (flags & MAP_PRIVATE == 0) {
+        // We can't emulate MAP_SHARED when the file is not backed by HEAP.
+        assert(contents.buffer === HEAPU8.buffer);
         ptr = contents.byteOffset;
         allocated = false;
       } else {
