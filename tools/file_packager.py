@@ -352,7 +352,7 @@ if has_preloaded:
       use_data += '''
         curr = DataRequest.prototype.requests['%s'];
         var data = byteArray.subarray(%d, %d);
-        ptr = _valloc(%d);
+        ptr = _malloc(%d);
         HEAPU8.set(data, ptr);
         curr.response = HEAPU8.subarray(ptr, ptr + %d);
         curr.onload();

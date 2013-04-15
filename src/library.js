@@ -3732,7 +3732,7 @@ LibraryManager.library = {
     if (!_mmap.mappings) _mmap.mappings = {};
 
     if (stream == -1) {
-      var ptr = _valloc(num);
+      var ptr = _malloc(num);
       if (!ptr) return -1;
       _memset(ptr, 0, num);
       allocated = true;
@@ -3755,7 +3755,7 @@ LibraryManager.library = {
             contents = Array.prototype.slice.call(contents, offset, offset+num);
           }
         }
-        ptr = _valloc(num);
+        ptr = _malloc(num);
         if (!ptr) return -1;
         HEAPU8.set(contents, ptr);
         allocated = true;
