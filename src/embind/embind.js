@@ -711,37 +711,7 @@ function __embind_finalize_struct(structType) {
     });
 }
 
-function RegisteredPointer(
-    name,
-    registeredClass,
-    isReference,
-    isConst,
-
-    // smart pointer properties
-    isSmartPointer,
-    pointeeType,
-    sharingPolicy,
-    rawGetPointee,
-    rawConstructor,
-    rawShare,
-    rawDestructor
-) {
-    this.name = name;
-    this.registeredClass = registeredClass;
-    this.isReference = isReference;
-    this.isConst = isConst;
-
-    // smart pointer properties
-    this.isSmartPointer = isSmartPointer;
-    this.pointeeType = pointeeType;
-    this.sharingPolicy = sharingPolicy;
-    this.rawGetPointee = rawGetPointee;
-    this.rawConstructor = rawConstructor;
-    this.rawShare = rawShare;
-    this.rawDestructor = rawDestructor;
-}
-
-RegisteredPointer.prototype.toWireType = function(destructors, handle) {
+genericPointerToWireType = function(destructors, handle) {
     var self = this;
     function throwCannotConvert() {
         var name;
@@ -786,6 +756,7 @@ RegisteredPointer.prototype.toWireType = function(destructors, handle) {
     }
     var handleClass = handle.$$.ptrType.registeredClass;
     var ptr = upcastPointer(handle.$$.ptr, handleClass, this.registeredClass);
+
     if (this.isSmartPointer) {
         switch (this.sharingPolicy) {
             case 0: // NONE
@@ -822,6 +793,79 @@ RegisteredPointer.prototype.toWireType = function(destructors, handle) {
     }
     return ptr;
 };
+
+nonConstNoSmartPtrRawPointerToWireType = function(destructors, handle) {
+    if (handle === null) {
+        if (this.isReference) {
+            throwBindingError('null is not a valid ' + this.name);
+        }
+        return 0;
+    }
+//    if (!(handle instanceof this.registeredClass.constructor)) {
+//        throwBindingError('Expected null or instance of ' + this.name + ', got ' + _embind_repr(handle));
+//    }
+    if (handle.$$.ptrType.isConst) {
+        throwBindingError('Cannot convert argument of type ' + handle.$$.ptrType.name + ' to parameter type ' + this.name);
+    }
+    var handleClass = handle.$$.ptrType.registeredClass;
+    var ptr = upcastPointer(handle.$$.ptr, handleClass, this.registeredClass);
+    return ptr;
+};
+
+constNoSmartPtrRawPointerToWireType = function(destructors, handle) {
+    if (handle === null) {
+        if (this.isReference) {
+            throwBindingError('null is not a valid ' + this.name);
+        }
+        return 0;
+    }
+//    if (!(handle instanceof this.registeredClass.constructor)) {
+//        throwBindingError('Expected null or instance of ' + this.name + ', got ' + _embind_repr(handle));
+//    }
+    var handleClass = handle.$$.ptrType.registeredClass;
+    var ptr = upcastPointer(handle.$$.ptr, handleClass, this.registeredClass);
+    return ptr;
+};
+
+function RegisteredPointer(
+    name,
+    registeredClass,
+    isReference,
+    isConst,
+
+    // smart pointer properties
+    isSmartPointer,
+    pointeeType,
+    sharingPolicy,
+    rawGetPointee,
+    rawConstructor,
+    rawShare,
+    rawDestructor
+) {
+    this.name = name;
+    this.registeredClass = registeredClass;
+    this.isReference = isReference;
+    this.isConst = isConst;
+
+    // smart pointer properties
+    this.isSmartPointer = isSmartPointer;
+    this.pointeeType = pointeeType;
+    this.sharingPolicy = sharingPolicy;
+    this.rawGetPointee = rawGetPointee;
+    this.rawConstructor = rawConstructor;
+    this.rawShare = rawShare;
+    this.rawDestructor = rawDestructor;
+
+    if (!isSmartPointer && registeredClass.baseClass === undefined) {
+        if (isConst) {
+            this.toWireType = constNoInheritanceNoSmartPtrRawPointerToWireType;
+        } else {
+            this.toWireType = nonConstNoInheritanceNoSmartPtrRawPointerToWireType;
+        }
+    } else {
+        this.toWireType = genericPointerToWireType;
+    }
+}
 
 RegisteredPointer.prototype.getPointee = function(ptr) {
     if (this.rawGetPointee) {
@@ -1207,30 +1251,39 @@ function __embind_register_class_function(
 
         whenDependentTypesAreResolved([], rawArgTypes, function(argTypes) {
             var invokerFnBody =
-                "return function "+makeLegalFunctionName(humanName)+"() { " +
-                "if (arguments.length !== "+(argCount - 2)+") {" +
-                    "throwBindingError('function "+humanName+" called with ' + arguments.length + ' arguments, expected "+(argCount - 2)+" args!');" +
-                "}" +
-                "validateThis(this, classType, '"+humanName+"');" +
-                "var destructors = [];";
+                "return function "+makeLegalFunctionName(humanName)+"() {\n" +
+                "if (arguments.length !== "+(argCount - 2)+") {\n" +
+                    "throwBindingError('function "+humanName+" called with ' + arguments.length + ' arguments, expected "+(argCount - 2)+" args!');\n" +
+                "}\n" +
+                "validateThis(this, classType, '"+humanName+"');\n" +
+                "var destructors = [];\n";
 
             var argsList = "";
             var args1 = ["throwBindingError", "validateThis", "classType", "invoker", "fn", "runDestructors", "retType", "classParam"];
             var args2 = [throwBindingError, validateThis, classType, rawInvoker, context, runDestructors, argTypes[0], argTypes[1]];
 
             for(i = 0; i < argCount-2; ++i) {
-                invokerFnBody += "var arg"+i+" = argType"+i+".toWireType(destructors, arguments["+i+"]);";
+                invokerFnBody += "var arg"+i+" = argType"+i+".toWireType(destructors, arguments["+i+"]);\n";
                 argsList += ", arg"+i;
                 args1.push("argType"+i);
                 args2.push(argTypes[i+2]);
             }
 
             invokerFnBody +=
-                    "var thisWired = classParam.toWireType(destructors, this);" +
-                    "var rv = invoker(fn, thisWired"+argsList+");" +
-                    "runDestructors(destructors);" +
-                    "return retType.fromWireType(rv);" +
-                "}";
+                    "var thisWired = classParam.toWireType(destructors, this);\n"
+
+            if (argTypes[0].name !== "void") {
+                invokerFnBody +=
+                    "var rv = invoker(fn, thisWired"+argsList+");\n" +
+                    "runDestructors(destructors);\n" +
+                    "return retType.fromWireType(rv);\n" +
+                "}\n";
+            } else {
+                invokerFnBody +=
+                    "invoker(fn, thisWired"+argsList+");\n" +
+                    "runDestructors(destructors);\n" +
+                "}\n";
+            }
 
             args1.push(invokerFnBody);
 
