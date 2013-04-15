@@ -1128,6 +1128,23 @@ try:
       ];
 
       musl_files = [
+         ['multibyte', [
+          'btowc.c',
+          'mblen.c',
+          'mbrlen.c',
+          'mbrtowc.c',
+          'mbsinit.c',
+          'mbsnrtowcs.c',
+          'mbsrtowcs.c',
+          'mbstowcs.c',
+          'mbtowc.c',
+          'wcrtomb.c',
+          'wcsnrtombs.c',
+          'wcsrtombs.c',
+          'wcstombs.c',
+          'wctob.c',
+          'wctomb.c',
+         ]],
          ['string', [
            'wcpcpy.c',
            'wcpncpy.c',
