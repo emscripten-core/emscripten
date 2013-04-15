@@ -29,7 +29,7 @@ alarm: 0, errno: 0
 ualarm: 0, errno: 0
 fork: -1, errno: 11
 vfork: -1, errno: 11
-crypt: 0, errno: 38
+crypt: (null), errno: 38
 encrypt, errno: 38
 getgid: 0, errno: 0
 getegid: 0, errno: 0
