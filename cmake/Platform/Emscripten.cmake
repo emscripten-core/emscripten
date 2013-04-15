@@ -1,65 +1,90 @@
 # This file is a 'toolchain description file' for CMake.
-# It teaches CMake about the Emscripten compiler, so that CMake can generate Unix Makefiles
+# It teaches CMake about the Emscripten compiler, so that CMake can generate Windows/Unix Makefiles
 # from CMakeLists.txt that invoke emcc.
 
-# To use this toolchain file with CMake, invoke CMake with the following command line parameters
-# cmake -DEMSCRIPTEN=1 
-#       -DCMAKE_TOOLCHAIN_FILE=<EmscriptenRoot>/cmake/Platform/Emscripten.cmake
-#       -DCMAKE_MODULE_PATH=<EmscriptenRoot>/cmake
-#       -DCMAKE_BUILD_TYPE=<Debug|RelWithDebInfo|Release|MinSizeRel>
-#       -G "Unix Makefiles"
-#       <path/to/CMakeLists.txt> # Note, pass in here ONLY the path to the file, not the filename 'CMakeLists.txt' itself.
+# To use this toolchain file with CMake, add the following to your project CMakeLists.txt:
+#  set(CMAKE_TOOLCHAIN_FILE "YOUR_EMSCRIPTEN_ROOT_PATH_HERE/cmake/Platform/Emscripten.cmake")
+#  include(${CMAKE_TOOLCHAIN_FILE})
 
-# After that, build the generated Makefile with the command 'make'. On Windows, you may download and use 'mingw32-make' instead.
-
-# the name of the target operating system
-set(CMAKE_SYSTEM_NAME Emscripten)
-set(CMAKE_SYSTEM_VERSION 1)
-
-if ("${EMSCRIPTEN_ROOT_PATH}" STREQUAL "")
-	set(CMAKE_FIND_ROOT_PATH "$ENV{EMSCRIPTEN}")
-else()
-	set(CMAKE_FIND_ROOT_PATH "${EMSCRIPTEN_ROOT_PATH}")
-endif()
-
-# Specify the compilers to use for C and C++
-if ("${CMAKE_C_COMPILER}" STREQUAL "")
-	set(CMAKE_C_COMPILER "emcc.exe")
-	set(CMAKE_CXX_COMPILER "em++.exe")
-	set(CMAKE_AR "emar.exe")
-	set(CMAKE_RANLIB "emranlib.exe")
-endif()
+# Also you will need to change the extension of your final output on a per project level:
+#  add_executable(bar some.cpp)
+#  set_target_properties(bar PROPERTIES SUFFIX ".js")
 
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE BOTH)
 set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 
-# Specify the program to use when building static libraries. Force Emscripten-related command line options to clang.
-set(CMAKE_CXX_ARCHIVE_CREATE "${CMAKE_CXX_COMPILER} -o <TARGET> -emit-llvm <LINK_FLAGS> <OBJECTS>")
-set(CMAKE_C_ARCHIVE_CREATE "${CMAKE_C_COMPILER} -o <TARGET> -emit-llvm <LINK_FLAGS> <OBJECTS>")
+unset(CMAKE_C_COMPILER CACHE)
+unset(CMAKE_CXX_COMPILER CACHE)
+unset(CMAKE_LINKER CACHE)
 
-# Set a global EMSCRIPTEN variable that can be used in client CMakeLists.txt to detect when building using Emscripten.
-# There seems to be some kind of bug with CMake, so you might need to define this manually on the command line with "-DEMSCRIPTEN=1".
-set(EMSCRIPTEN 1)
+if(WIN32)
+	set(COMPILER_EXT ".cmd")
+else()
+	set(COMPILER_EXT "")
+endif()
 
-set(CMAKE_C_OUTPUT_EXTENSION ".bc")
-set(CMAKE_CXX_OUTPUT_EXTENSION ".bc")
-set(CMAKE_EXECUTABLE_SUFFIX ".js")
+set(CMAKE_SYSTEM_NAME Emscripten)
+set(CMAKE_SYSTEM_VERSION 1)
 
-set(CMAKE_C_FLAGS_RELEASE "-DNDEBUG" CACHE STRING "Emscripten-overridden CMAKE_C_FLAGS_RELEASE")
-set(CMAKE_C_FLAGS_MINSIZEREL "-DNDEBUG" CACHE STRING "Emscripten-overridden CMAKE_C_FLAGS_MINSIZEREL")
-set(CMAKE_C_FLAGS_RELWITHDEBINFO "" CACHE STRING "Emscripten-overridden CMAKE_C_FLAGS_RELWITHDEBINFO")
-set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG" CACHE STRING "Emscripten-overridden CMAKE_CXX_FLAGS_RELEASE")
-set(CMAKE_CXX_FLAGS_MINSIZEREL "-DNDEBUG" CACHE STRING "Emscripten-overridden CMAKE_CXX_FLAGS_MINSIZEREL")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "" CACHE STRING "Emscripten-overridden CMAKE_CXX_FLAGS_RELWITHDEBINFO")
+get_filename_component(CURRENT_LIST_PATH ${CMAKE_CURRENT_LIST_FILE} PATH)
+get_filename_component(ROOT_PATH "${CURRENT_LIST_PATH}/../../" ABSOLUTE)
 
-set(CMAKE_EXE_LINKER_FLAGS_RELEASE "-O2" CACHE STRING "Emscripten-overridden CMAKE_EXE_LINKER_FLAGS_RELEASE")
-set(CMAKE_EXE_LINKER_FLAGS_MINSIZEREL "-O2" CACHE STRING "Emscripten-overridden CMAKE_EXE_LINKER_FLAGS_MINSIZEREL")
-set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "-O2" CACHE STRING "Emscripten-overridden CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO")
-set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "-O2" CACHE STRING "Emscripten-overridden CMAKE_SHARED_LINKER_FLAGS_RELEASE")
-set(CMAKE_SHARED_LINKER_FLAGS_MINSIZEREL "-O2" CACHE STRING "Emscripten-overridden CMAKE_SHARED_LINKER_FLAGS_MINSIZEREL")
-set(CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO "-O2" CACHE STRING "Emscripten-overridden CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO")
-set(CMAKE_MODULE_LINKER_FLAGS_RELEASE "-O2" CACHE STRING "Emscripten-overridden CMAKE_MODULE_LINKER_FLAGS_RELEASE")
-set(CMAKE_MODULE_LINKER_FLAGS_MINSIZEREL "-O2" CACHE STRING "Emscripten-overridden CMAKE_MODULE_LINKER_FLAGS_MINSIZEREL")
-set(CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO "-O2" CACHE STRING "Emscripten-overridden CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO")
+set(EMSCRIPTEN_ROOT_PATH ${ROOT_PATH} CACHE PATH "Emscripten root path")
+
+find_file(
+	EMSCRIPTEN_EMCC emcc${COMPILER_EXT}
+	PATHS ${EMSCRIPTEN_ROOT_PATH}
+)
+
+find_file(
+	EMSCRIPTEN_EM em++${COMPILER_EXT}
+	PATHS ${EMSCRIPTEN_ROOT_PATH}
+)
+
+find_file(
+	EMSCRIPTEN_EMAR emar${COMPILER_EXT}
+	PATHS ${EMSCRIPTEN_ROOT_PATH}
+)
+
+find_file(
+	EMSCRIPTEN_EMRANLIB emranlib${COMPILER_EXT}
+	PATHS ${EMSCRIPTEN_ROOT_PATH}
+)
+
+if(EMSCRIPTEN_EMCC)
+	if(EMSCRIPTEN_EM)
+		set(EMSCRIPTEN_FOUND 1)
+	endif()
+endif()
+
+if(EMSCRIPTEN_FOUND)
+	set(CMAKE_C_COMPILER ${EMSCRIPTEN_EMCC})
+	set(CMAKE_CXX_COMPILER ${EMSCRIPTEN_EM})
+	set(CMAKE_LINKER ${EMSCRIPTEN_EMCC})
+
+	set(CMAKE_C_ARCHIVE_CREATE "${CMAKE_C_COMPILER} -o <TARGET> -emit-llvm <LINK_FLAGS> <OBJECTS>")
+	set(CMAKE_CXX_ARCHIVE_CREATE "${CMAKE_CXX_COMPILER} -o <TARGET> -emit-llvm <LINK_FLAGS> <OBJECTS>")
+
+	set(CMAKE_C_FLAGS_RELEASE "-DNDEBUG" CACHE STRING "Emscripten-overridden CMAKE_C_FLAGS_RELEASE")
+	set(CMAKE_C_FLAGS_MINSIZEREL "-DNDEBUG" CACHE STRING "Emscripten-overridden CMAKE_C_FLAGS_MINSIZEREL")
+	set(CMAKE_C_FLAGS_RELWITHDEBINFO "" CACHE STRING "Emscripten-overridden CMAKE_C_FLAGS_RELWITHDEBINFO")
+	set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG" CACHE STRING "Emscripten-overridden CMAKE_CXX_FLAGS_RELEASE")
+	set(CMAKE_CXX_FLAGS_MINSIZEREL "-DNDEBUG" CACHE STRING "Emscripten-overridden CMAKE_CXX_FLAGS_MINSIZEREL")
+	set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "" CACHE STRING "Emscripten-overridden CMAKE_CXX_FLAGS_RELWITHDEBINFO")
+
+	set(CMAKE_EXE_LINKER_FLAGS_RELEASE "-O2" CACHE STRING "Emscripten-overridden CMAKE_EXE_LINKER_FLAGS_RELEASE")
+	set(CMAKE_EXE_LINKER_FLAGS_MINSIZEREL "-O2" CACHE STRING "Emscripten-overridden CMAKE_EXE_LINKER_FLAGS_MINSIZEREL")
+	set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "-O2" CACHE STRING "Emscripten-overridden CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO")
+	set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "-O2" CACHE STRING "Emscripten-overridden CMAKE_SHARED_LINKER_FLAGS_RELEASE")
+	set(CMAKE_SHARED_LINKER_FLAGS_MINSIZEREL "-O2" CACHE STRING "Emscripten-overridden CMAKE_SHARED_LINKER_FLAGS_MINSIZEREL")
+	set(CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO "-O2" CACHE STRING "Emscripten-overridden CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO")
+	set(CMAKE_MODULE_LINKER_FLAGS_RELEASE "-O2" CACHE STRING "Emscripten-overridden CMAKE_MODULE_LINKER_FLAGS_RELEASE")
+	set(CMAKE_MODULE_LINKER_FLAGS_MINSIZEREL "-O2" CACHE STRING "Emscripten-overridden CMAKE_MODULE_LINKER_FLAGS_MINSIZEREL")
+	set(CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO "-O2" CACHE STRING "Emscripten-overridden CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO")
+
+	mark_as_advanced(EMSCRIPTEN_EMCC EMSCRIPTEN_EM EMSCRIPTEN_EMAR EMSCRIPTEN_EMRANLIB)
+
+	set(EMSCRIPTEN 1)
+endif()
