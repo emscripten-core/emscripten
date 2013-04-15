@@ -1275,8 +1275,8 @@ function __embind_register_class_function(
                 "return function "+makeLegalFunctionName(humanName)+"("+argsList+") {\n" +
                 "if (arguments.length !== "+(argCount - 2)+") {\n" +
                     "throwBindingError('function "+humanName+" called with ' + arguments.length + ' arguments, expected "+(argCount - 2)+" args!');\n" +
-                "}\n" +
-                "validateThis(this, classType, '"+humanName+"');\n";
+                "}\n";// +
+                //"validateThis(this, classType, '"+humanName+"');\n";
 
             // Determine if we need to use a dynamic stack to store the destructors for the function parameters.
             // TODO: Remove this completely once all function invokers are being dynamically generated.
