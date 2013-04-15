@@ -31,6 +31,28 @@ function ___divdi3($a$0, $a$1, $b$0, $b$1) {
   $10$0 = _i64Subtract($8$0 ^ $7$0, tempRet0 ^ $7$1, $7$0, $7$1);
   return (tempRet0 = tempRet0, $10$0) | 0;
 }
+function ___remdi3($a$0, $a$1, $b$0, $b$1) {
+  $a$0 = $a$0 | 0;
+  $a$1 = $a$1 | 0;
+  $b$0 = $b$0 | 0;
+  $b$1 = $b$1 | 0;
+  var $rem = 0, $1$0 = 0, $1$1 = 0, $2$0 = 0, $2$1 = 0, $4$0 = 0, $4$1 = 0, $6$0 = 0, $10$0 = 0, $10$1 = 0, __stackBase__ = 0;
+  __stackBase__ = STACKTOP;
+  STACKTOP = STACKTOP + 8 | 0;
+  $rem = __stackBase__ | 0;
+  $1$0 = $a$1 >> 31 | (($a$1 | 0) < 0 ? -1 : 0) << 1;
+  $1$1 = (($a$1 | 0) < 0 ? -1 : 0) >> 31 | (($a$1 | 0) < 0 ? -1 : 0) << 1;
+  $2$0 = $b$1 >> 31 | (($b$1 | 0) < 0 ? -1 : 0) << 1;
+  $2$1 = (($b$1 | 0) < 0 ? -1 : 0) >> 31 | (($b$1 | 0) < 0 ? -1 : 0) << 1;
+  $4$0 = _i64Subtract($1$0 ^ $a$0, $1$1 ^ $a$1, $1$0, $1$1);
+  $4$1 = tempRet0;
+  $6$0 = _i64Subtract($2$0 ^ $b$0, $2$1 ^ $b$1, $2$0, $2$1);
+  ___udivmoddi4($4$0, $4$1, $6$0, tempRet0, $rem);
+  $10$0 = _i64Subtract(HEAP32[$rem >> 2] ^ $1$0, HEAP32[$rem + 4 >> 2] ^ $1$1, $1$0, $1$1);
+  $10$1 = tempRet0;
+  STACKTOP = __stackBase__;
+  return (tempRet0 = $10$1, $10$0) | 0;
+}
 function ___muldi3($a$0, $a$1, $b$0, $b$1) {
   $a$0 = $a$0 | 0;
   $a$1 = $a$1 | 0;
@@ -52,6 +74,19 @@ function ___udivdi3($a$0, $a$1, $b$0, $b$1) {
   var $1$0 = 0;
   $1$0 = ___udivmoddi4($a$0, $a$1, $b$0, $b$1, 0) | 0;
   return (tempRet0 = tempRet0, $1$0) | 0;
+}
+function ___uremdi3($a$0, $a$1, $b$0, $b$1) {
+  $a$0 = $a$0 | 0;
+  $a$1 = $a$1 | 0;
+  $b$0 = $b$0 | 0;
+  $b$1 = $b$1 | 0;
+  var $rem = 0, __stackBase__ = 0;
+  __stackBase__ = STACKTOP;
+  STACKTOP = STACKTOP + 8 | 0;
+  $rem = __stackBase__ | 0;
+  ___udivmoddi4($a$0, $a$1, $b$0, $b$1, $rem);
+  STACKTOP = __stackBase__;
+  return (tempRet0 = HEAP32[$rem + 4 >> 2] | 0, HEAP32[$rem >> 2] | 0) | 0;
 }
 function ___udivmoddi4($a$0, $a$1, $b$0, $b$1, $rem) {
   $a$0 = $a$0 | 0;
@@ -117,11 +152,11 @@ function ___udivmoddi4($a$0, $a$1, $b$0, $b$1, $rem) {
           HEAP32[$rem + 4 >> 2] = $37 & $n_sroa_1_4_extract_trunc | $a$1 & 0;
         }
         $_0$1 = 0;
-        $_0$0 = $n_sroa_1_4_extract_trunc >>> ((_llvm_cttz_i32($d_sroa_1_4_extract_trunc) | 0) >>> 0);
+        $_0$0 = $n_sroa_1_4_extract_trunc >>> ((_llvm_cttz_i32($d_sroa_1_4_extract_trunc | 0) | 0) >>> 0);
         return (tempRet0 = $_0$1, $_0$0) | 0;
       }
-      $49 = _llvm_ctlz_i32($d_sroa_1_4_extract_trunc) | 0;
-      $51 = $49 - (_llvm_ctlz_i32($n_sroa_1_4_extract_trunc) | 0) | 0;
+      $49 = _llvm_ctlz_i32($d_sroa_1_4_extract_trunc | 0) | 0;
+      $51 = $49 - (_llvm_ctlz_i32($n_sroa_1_4_extract_trunc | 0) | 0) | 0;
       if ($51 >>> 0 <= 30) {
         $57 = $51 + 1 | 0;
         $58 = 31 - $51 | 0;
@@ -144,8 +179,8 @@ function ___udivmoddi4($a$0, $a$1, $b$0, $b$1, $rem) {
       return (tempRet0 = $_0$1, $_0$0) | 0;
     } else {
       if (!$17) {
-        $117 = _llvm_ctlz_i32($d_sroa_1_4_extract_trunc) | 0;
-        $119 = $117 - (_llvm_ctlz_i32($n_sroa_1_4_extract_trunc) | 0) | 0;
+        $117 = _llvm_ctlz_i32($d_sroa_1_4_extract_trunc | 0) | 0;
+        $119 = $117 - (_llvm_ctlz_i32($n_sroa_1_4_extract_trunc | 0) | 0) | 0;
         if ($119 >>> 0 <= 31) {
           $125 = $119 + 1 | 0;
           $126 = 31 - $119 | 0;
@@ -170,8 +205,8 @@ function ___udivmoddi4($a$0, $a$1, $b$0, $b$1, $rem) {
       }
       $66 = $d_sroa_0_0_extract_trunc - 1 | 0;
       if (($66 & $d_sroa_0_0_extract_trunc | 0) != 0) {
-        $86 = (_llvm_ctlz_i32($d_sroa_0_0_extract_trunc) | 0) + 33 | 0;
-        $88 = $86 - (_llvm_ctlz_i32($n_sroa_1_4_extract_trunc) | 0) | 0;
+        $86 = (_llvm_ctlz_i32($d_sroa_0_0_extract_trunc | 0) | 0) + 33 | 0;
+        $88 = $86 - (_llvm_ctlz_i32($n_sroa_1_4_extract_trunc | 0) | 0) | 0;
         $89 = 64 - $88 | 0;
         $91 = 32 - $88 | 0;
         $92 = $91 >> 31;
@@ -193,7 +228,7 @@ function ___udivmoddi4($a$0, $a$1, $b$0, $b$1, $rem) {
         $_0$0 = 0 | $a$0 & -1;
         return (tempRet0 = $_0$1, $_0$0) | 0;
       } else {
-        $78 = _llvm_cttz_i32($d_sroa_0_0_extract_trunc) | 0;
+        $78 = _llvm_cttz_i32($d_sroa_0_0_extract_trunc | 0) | 0;
         $_0$1 = 0 | $n_sroa_1_4_extract_trunc >>> ($78 >>> 0);
         $_0$0 = $n_sroa_1_4_extract_trunc << 32 - $78 | $n_sroa_0_0_extract_trunc >>> ($78 >>> 0) | 0;
         return (tempRet0 = $_0$1, $_0$0) | 0;

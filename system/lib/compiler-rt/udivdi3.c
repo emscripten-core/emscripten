@@ -23,3 +23,14 @@ __udivdi3(du_int a, du_int b)
 {
     return __udivmoddi4(a, b, 0);
 }
+
+/* XXX EMSCRIPTEN */
+
+COMPILER_RT_ABI du_int
+__uremdi3(du_int a, du_int b)
+{
+    du_int rem;
+    __udivmoddi4(a, b, &rem);
+    return rem;
+}
+

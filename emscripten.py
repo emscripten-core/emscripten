@@ -392,12 +392,6 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     if settings['CHECK_HEAP_ALIGN']: basic_funcs += ['CHECK_ALIGN_2', 'CHECK_ALIGN_4', 'CHECK_ALIGN_8']
     basic_vars = ['STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT']
     basic_float_vars = ['NaN', 'Infinity']
-    if forwarded_json['Types']['preciseI64MathUsed']:
-      basic_funcs += ['i64Math_' + op for op in ['divide', 'modulo']]
-      asm_setup += '''
-var i64Math_divide = function(a, b, c, d, e) { i64Math.divide(a, b, c, d, e) };
-var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
-'''
 
     if forwarded_json['Types']['preciseI64MathUsed'] or \
        forwarded_json['Functions']['libraryFunctions'].get('llvm_cttz_i32') or \

@@ -5,7 +5,10 @@ Last Changed Date: 2013-04-12 07:57:03 -0700 (Fri, 12 Apr 2013)
 
 ===========================================================================
 
-Changes: add emscripten endianness to int_endianness.h
+Changes:
+
+  * add emscripten endianness to int_endianness.h
+  * add rem functions
 
 ===========================================================================
 

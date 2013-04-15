@@ -2073,7 +2073,7 @@ function processMathop(item) {
       }
       case 'sdiv': case 'udiv': {
         if (PRECISE_I64_MATH) {
-          return i64PreciseOp('divide', op[0] === 'u');
+          return preciseCall(op[0] === 'u' ? '___udivdi3' : '___divdi3');
         } else {
           warnI64_1();
           return finish(splitI64(makeRounding(mergeI64(idents[0], op[0] === 'u') + '/' + mergeI64(idents[1], op[0] === 'u'), bits, op[0] === 's'), true));
@@ -2089,7 +2089,7 @@ function processMathop(item) {
       }
       case 'urem': case 'srem': {
         if (PRECISE_I64_MATH) {
-          return i64PreciseOp('modulo', op[0] === 'u');
+          return preciseCall(op[0] === 'u' ? '___uremdi3' : '___remdi3');
         } else {
           warnI64_1();
           return finish(splitI64(mergeI64(idents[0], op[0] === 'u') + '%' + mergeI64(idents[1], op[0] === 'u'), true));
