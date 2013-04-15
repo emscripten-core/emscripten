@@ -266,11 +266,11 @@ process(sys.argv[1])
     if output_processor is not None:
       output_processor(open(filename + '.o.js').read())
 
-    if self.emcc_args is not None:
+    if self.emcc_args is not None and 'ASM_JS=1' in self.emcc_args:
       if '--memory-init-file' in self.emcc_args:
         memory_init_file = int(self.emcc_args[self.emcc_args.index('--memory-init-file')+1])
       else:
-        memory_init_file = 1
+        memory_init_file = 0
       if memory_init_file:
         assert '/* memory initializer */' not in open(filename + '.o.js').read()
       else:
@@ -9002,7 +9002,7 @@ TT = %s
 
   # asm.js
   exec('asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=1"])')
-  exec('asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=1", "-g", "-s", "ASSERTIONS=1", "--memory-init-file", "0"])')
+  exec('asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=1", "-g", "-s", "ASSERTIONS=1", "--memory-init-file", "1"])')
 
   # Make custom runs with various options
   for compiler, quantum, embetter, typed_arrays, llvm_opts in [
@@ -11031,12 +11031,13 @@ elif 'browser' in str(sys.argv):
       self.run_browser('page.html', '', '/report_result?1')
 
     def test_sdl_image(self):
-      # load an image file, get pixel data. Also O2 coverage for --preload-file
+      # load an image file, get pixel data. Also O2 coverage for --preload-file, and memory-init
       shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.jpg'))
       open(os.path.join(self.get_dir(), 'sdl_image.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_image.c')).read()))
 
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_image.c'), '-O2', '--preload-file', 'screenshot.jpg', '-o', 'page.html']).communicate()
-      self.run_browser('page.html', '', '/report_result?600')
+      for mem in [0, 1]:
+        Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_image.c'), '-O2', '--preload-file', 'screenshot.jpg', '-o', 'page.html', '--memory-init-file', str(mem)]).communicate()
+        self.run_browser('page.html', '', '/report_result?600')
 
     def test_sdl_image_jpeg(self):
       shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.jpeg'))

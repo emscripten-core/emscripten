@@ -473,7 +473,7 @@ Options that are modified or new in %s include:
   --memory-init-file <on>  If on, we generate a separate memory initialization
                            file. This is more efficient than storing the
                            memory initialization data embedded inside
-                           JavaScript as text. (default is on)
+                           JavaScript as text. (default is off)
 
 The target file, if specified (-o <target>), defines what will
 be generated:
@@ -483,8 +483,8 @@ be generated:
   <name>.bc                LLVM bitcode (default)
   <name>.o                 LLVM bitcode (same as .bc)
 
-Note that if --memory-init-file is used, then in addition to a
-.js or .html file that is generated, a .mem file will also appear.
+(Note that if --memory-init-file is used, then in addition to a
+.js or .html file that is generated, a .mem file will also appear.)
 
 The -c option (which tells gcc not to run the linker) will
 cause LLVM bitcode to be generated, as %s only generates
@@ -727,7 +727,7 @@ try:
   bind = False
   jcache = False
   save_bc = False
-  memory_init_file = True
+  memory_init_file = False
 
   if use_cxx:
     default_cxx_std = '-std=c++03' # Enforce a consistent C++ standard when compiling .cpp files, if user does not specify one on the cmdline.
