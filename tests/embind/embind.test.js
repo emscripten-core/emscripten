@@ -143,7 +143,7 @@ module({
             var e = assert.throws(cm.BindingError, function() {
                 cm.Derived.prototype.setMember.call(a, "foo");
             });
-            assert.equal('Expected null or instance of Derived*, got [object Object]', e.message);
+            assert.equal('Expected null or instance of Derived, got an instance of Base2', e.message);
             a.delete();
         });
 
@@ -154,7 +154,7 @@ module({
             var e = assert.throws(cm.BindingError, function() {
                 cm.Base2.prototype.getField.call(a);
             });
-            assert.equal('Expected null or instance of Base2 const*, got [object Object]', e.message);
+            assert.equal('Expected null or instance of Base2, got an instance of Base1', e.message);
             a.delete();
         });
 

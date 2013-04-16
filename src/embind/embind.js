@@ -820,12 +820,8 @@ var genericPointerToWireType = function(destructors, handle) {
         }
     }
 
-    if (!(handle instanceof this.registeredClass.constructor)) {
-        throwBindingError('Expected null or instance of ' + this.name + ', got ' + _embind_repr(handle));
-    }
-
-    if (!handle.$$.ptr) {
-        throwBindingError('Cannot pass deleted object');
+    if (!handle.$$ || !handle.$$.ptr) {
+        throwBindingError('Cannot pass deleted or null object');
     }
 
     // TODO: this is not strictly true
@@ -884,11 +880,9 @@ var nonConstNoSmartPtrRawPointerToWireType = function(destructors, handle) {
         }
         return 0;
     }
-    if (!(handle instanceof this.registeredClass.constructor)) {
-        throwBindingError('Expected null or instance of ' + this.name + ', got ' + _embind_repr(handle));
-    }
-    if (!handle.$$.ptr) {
-        throwBindingError('Cannot pass deleted object');
+
+    if (!handle.$$ || !handle.$$.ptr) {
+        throwBindingError('Cannot pass deleted or null object');
     }
     if (handle.$$.ptrType.isConst) {
         throwBindingError('Cannot convert argument of type ' + handle.$$.ptrType.name + ' to parameter type ' + this.name);
@@ -905,11 +899,9 @@ var constNoSmartPtrRawPointerToWireType = function(destructors, handle) {
         }
         return 0;
     }
-    if (!(handle instanceof this.registeredClass.constructor)) {
-        throwBindingError('Expected null or instance of ' + this.name + ', got ' + _embind_repr(handle));
-    }
-    if (!handle.$$.ptr) {
-        throwBindingError('Cannot pass deleted object');
+
+   if (!handle.$$ || !handle.$$.ptr) {
+        throwBindingError('Cannot pass deleted or null object');
     }
     var handleClass = handle.$$.ptrType.registeredClass;
     var ptr = upcastPointer(handle.$$.ptr, handleClass, this.registeredClass);
@@ -1283,6 +1275,9 @@ function downcastPointer(ptr, ptrClass, desiredClass) {
 
 function upcastPointer(ptr, ptrClass, desiredClass) {
     while (ptrClass !== desiredClass) {
+        if (!ptrClass.upcast) {
+            throwBindingError("Expected null or instance of " + desiredClass.name + ", got an instance of " + ptrClass.name);
+        }
         ptr = ptrClass.upcast(ptr);
         ptrClass = ptrClass.baseClass;
     }
