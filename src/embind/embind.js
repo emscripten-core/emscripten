@@ -520,8 +520,11 @@ function craftInvokerFunction(humanName, argTypes, classType, cppInvokerFunc, cp
         "return function "+makeLegalFunctionName(humanName)+"("+argsList+") {\n" +
         "if (arguments.length !== "+(argCount - 2)+") {\n" +
             "throwBindingError('function "+humanName+" called with ' + arguments.length + ' arguments, expected "+(argCount - 2)+" args!');\n" +
-        "}\n";// +
-        //"validateThis(this, classType, '"+humanName+"');\n";
+        "}\n";
+
+    if (isClassMethodFunc) {
+        invokerFnBody += "validateThis(this, classType, '"+humanName+"');\n";
+    }
 
     // Determine if we need to use a dynamic stack to store the destructors for the function parameters.
     // TODO: Remove this completely once all function invokers are being dynamically generated.
@@ -543,6 +546,10 @@ function craftInvokerFunction(humanName, argTypes, classType, cppInvokerFunc, cp
     var args1 = ["throwBindingError", "validateThis", "classType", "invoker", "fn", "runDestructors", "retType", "classParam"];
     var args2 = [throwBindingError, validateThis, classType, cppInvokerFunc, cppTargetFunc, runDestructors, argTypes[0], argTypes[1]];
 
+    if (isClassMethodFunc) {
+        invokerFnBody += "var thisWired = classParam.toWireType("+dtorStack+", this);\n";
+    }
+
     for(var i = 0; i < argCount-2; ++i) {
         invokerFnBody += "var arg"+i+" = argType"+i+".toWireType("+dtorStack+", arg"+i+"); // "+argTypes[i+2].name+"\n";
        // argsList += ", arg"+i;
@@ -551,7 +558,6 @@ function craftInvokerFunction(humanName, argTypes, classType, cppInvokerFunc, cp
     }
 
     if (isClassMethodFunc) {
-        invokerFnBody += "var thisWired = classParam.toWireType("+dtorStack+", this);\n";
         argsList = "thisWired" + (argsList.length > 0 ? ", " : "") + argsList;
     }
 
@@ -932,7 +938,7 @@ function RegisteredPointer(
     this.rawConstructor = rawConstructor;
     this.rawShare = rawShare;
     this.rawDestructor = rawDestructor;
-
+/*
     if (!isSmartPointer && registeredClass.baseClass === undefined) {
         if (isConst) {
             this.toWireType = constNoSmartPtrRawPointerToWireType;
@@ -941,9 +947,9 @@ function RegisteredPointer(
             this.toWireType = nonConstNoSmartPtrRawPointerToWireType;
             this.destructorFunction = null;
         }
-    } else {
+    } else {*/
         this.toWireType = genericPointerToWireType;
-    }
+    //}
 }
 
 RegisteredPointer.prototype.getPointee = function(ptr) {
