@@ -110,9 +110,13 @@ for arg in sys.argv[1:]:
   elif in_preload:
     if os.path.isfile(arg) or os.path.isdir(arg):
       data_files.append({ 'name': arg, 'mode': 'preload' })
+    else:
+      print >> sys.stderr, 'Warning: ' + arg + ' does not exist, ignoring.'
   elif in_embed:
     if os.path.isfile(arg) or os.path.isdir(arg):
       data_files.append({ 'name': arg, 'mode': 'embed' })
+    else:
+      print >> sys.stderr, 'Warning:' + arg + ' does not exist, ignoring.'
   elif in_compress:
     if in_compress == 1:
       Compression.encoder = arg
