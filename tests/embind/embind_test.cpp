@@ -2088,15 +2088,26 @@ class Noncopyable {
     
 public:
     Noncopyable() {}
+    Noncopyable(Noncopyable&& other) {
+        other.valid = false;
+    }
 
     std::string method() const {
         return "foo";
     }
+
+    bool valid = true;
 };
+
+Noncopyable getNoncopyable() {
+    return Noncopyable();
+}
 
 EMSCRIPTEN_BINDINGS(noncopyable) {
     class_<Noncopyable>("Noncopyable")
         .constructor<>()
         .function("method", &Noncopyable::method)
         ;
+
+    function("getNoncopyable", &getNoncopyable);
 }

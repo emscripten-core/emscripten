@@ -206,6 +206,10 @@ namespace emscripten {
         };
 
         template<typename T>
+        struct BindingType<T&> : public BindingType<T> {
+        };
+
+        template<typename T>
         struct BindingType<const T&> : public BindingType<T> {
         };
 
@@ -236,8 +240,12 @@ namespace emscripten {
             typedef typename std::remove_reference<T>::type ActualT;
             typedef ActualT* WireType;
 
-            static WireType toWireType(T v) {
+            static WireType toWireType(const T& v) {
                 return new T(v);
+            }
+
+            static WireType toWireType(T&& v) {
+                return new T(std::forward<T>(v));
             }
 
             static ActualT& fromWireType(WireType p) {
@@ -282,8 +290,8 @@ namespace emscripten {
         {};
 
         template<typename T>
-        auto toWireType(const T& v) -> typename BindingType<T>::WireType {
-            return BindingType<T>::toWireType(v);
+        auto toWireType(T&& v) -> typename BindingType<T>::WireType {
+            return BindingType<T>::toWireType(std::forward<T>(v));
         }
 
         template<typename T>
