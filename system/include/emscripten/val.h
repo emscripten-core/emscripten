@@ -135,7 +135,7 @@ namespace emscripten {
         }
 
         template<typename... Args>
-        val new_(Args... args) const {
+        val new_(Args&&... args) const {
             using namespace internal;
 
             WithPolicies<>::ArgTypeList<Args...> argList;
@@ -152,7 +152,7 @@ namespace emscripten {
                     handle,
                     argList.count,
                     argList.types,
-                    toWireType(args)...));
+                    toWireType(std::forward<Args>(args))...));
         }
         
         template<typename T>
@@ -166,7 +166,7 @@ namespace emscripten {
         }
 
         template<typename... Args>
-        val operator()(Args... args) {
+        val operator()(Args&&... args) {
             using namespace internal;
 
             WithPolicies<>::ArgTypeList<Args...> argList;
@@ -181,11 +181,11 @@ namespace emscripten {
                     handle,
                     argList.count,
                     argList.types,
-                    toWireType(args)...));
+                    toWireType(std::forward<Args>(args))...));
         }
 
         template<typename ...Args>
-        val call(const char* name, Args... args) const {
+        val call(const char* name, Args&&... args) const {
             using namespace internal;
 
             WithPolicies<>::ArgTypeList<Args...> argList;
@@ -202,11 +202,11 @@ namespace emscripten {
                     name,
                     argList.count,
                     argList.types,
-                    toWireType(args)...));
+                    toWireType(std::forward<Args>(args))...));
         }
 
         template<typename ...Args>
-        void call_void(const char* name, Args... args) const {
+        void call_void(const char* name, Args&&... args) const {
             using namespace internal;
 
             WithPolicies<>::ArgTypeList<Args...> argList;
@@ -222,7 +222,7 @@ namespace emscripten {
                 name,
                 argList.count,
                 argList.types,
-                toWireType(args)...);
+                toWireType(std::forward<Args>(args))...);
         }
 
         bool has_function(const char* name) const {

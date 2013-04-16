@@ -723,14 +723,14 @@ namespace emscripten {
         {}
 
         template<typename ReturnType, typename... Args>
-        ReturnType call(const char* name, Args... args) const {
-            return Caller<ReturnType, Args...>::call(wrapped, name, args...);
+        ReturnType call(const char* name, Args&&... args) const {
+            return Caller<ReturnType, Args...>::call(wrapped, name, std::forward<Args>(args)...);
         }
 
         template<typename ReturnType, typename... Args, typename Default>
-        ReturnType optional_call(const char* name, Default def, Args... args) const {
+        ReturnType optional_call(const char* name, Default def, Args&&... args) const {
             if (has_function(name)) {
-                return Caller<ReturnType, Args...>::call(wrapped, name, args...);
+                return Caller<ReturnType, Args...>::call(wrapped, name, std::forward<Args>(args)...);
             } else {
                 return def();
             }
@@ -744,15 +744,15 @@ namespace emscripten {
         // this class only exists because you can't partially specialize function templates
         template<typename ReturnType, typename... Args>
         struct Caller {
-            static ReturnType call(const val& v, const char* name, Args... args) {
-                return v.call(name, args...).template as<ReturnType>();
+            static ReturnType call(const val& v, const char* name, Args&&... args) {
+                return v.call(name, std::forward<Args>(args)...).template as<ReturnType>();
             }
         };
 
         template<typename... Args>
         struct Caller<void, Args...> {
-            static void call(const val& v, const char* name, Args... args) {
-                v.call_void(name, args...);
+            static void call(const val& v, const char* name, Args&&... args) {
+                v.call_void(name, std::forward<Args>(args)...);
             }
         };
 
