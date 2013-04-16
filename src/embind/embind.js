@@ -348,7 +348,20 @@ function __embind_register_std_string(rawType, name) {
             return a.join('');
         },
         toWireType: function(destructors, value) {
-            if (typeof value !== "string") {
+            function getTAElement(ta, index) {
+                return ta[index];
+            }
+            function getStringElement(string, index) {
+                return string.charCodeAt(index);
+            }
+            var getElement;
+            if (value instanceof Uint8Array) {
+                getElement = getTAElement;
+            } else if (value instanceof Int8Array) {
+                getElement = getTAElement;
+            } else if (typeof value === 'string') {
+                getElement = getStringElement;
+            } else {
                 throwBindingError('Cannot pass non-string to std::string');
             }
 
@@ -357,7 +370,7 @@ function __embind_register_std_string(rawType, name) {
             var ptr = _malloc(4 + length);
             HEAPU32[ptr >> 2] = length;
             for (var i = 0; i < length; ++i) {
-                var charCode = value.charCodeAt(i);
+                var charCode = getElement(value, i);
                 if (charCode > 255) {
                     _free(ptr);
                     throwBindingError('String has UTF-16 code units that do not fit in 8 bits');
