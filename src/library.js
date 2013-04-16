@@ -7116,8 +7116,8 @@ LibraryManager.library = {
   // nonblocking
   // ==========================================================================
   $Sockets__deps: ['__setErrNo', '$ERRNO_CODES',
-    function() { return 'SocketIO = ' + read('socket.io.js') + ';\n' },
-    function() { return 'Peer = ' + read('wrtcp.js') + ';\n' }],
+    function() { return 'var SocketIO = ' + read('socket.io.js') + ';\n' },
+    function() { return 'var Peer = ' + read('wrtcp.js') + ';\n' }],
   $Sockets: {
     BUFFER_SIZE: 10*1024, // initial size
     MAX_BUFFER_SIZE: 10*1024*1024, // maximum size we will grow the buffer
