@@ -1379,29 +1379,6 @@ function __embind_register_enum_value(
     Enum[name] = Value;
 }
 
-function __embind_register_interface(
-    rawType,
-    name,
-    rawConstructor,
-    rawDestructor
-) {
-    name = readLatin1String(name);
-    rawConstructor = FUNCTION_TABLE[rawConstructor];
-    rawDestructor = FUNCTION_TABLE[rawDestructor];
-
-    registerType(rawType, {
-        name: name,
-        rawConstructor: rawConstructor,
-        rawDestructor: rawDestructor,
-        toWireType: function(destructors, o) {
-            var handle = __emval_register(o);
-            var ptr = this.rawConstructor(handle);
-            destructors.push(this.rawDestructor, ptr);
-            return ptr;
-        },
-    });
-}
-
 function __embind_register_constant(name, type, value) {
     name = readLatin1String(name);
     whenDependentTypesAreResolved([], [type], function(type) {

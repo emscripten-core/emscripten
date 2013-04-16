@@ -1065,20 +1065,6 @@ std::vector<std::shared_ptr<StringHolder>> emval_test_return_shared_ptr_vector()
     return sharedStrVector;
 }
 
-class JSInterfaceHolder {
-public:
-    JSInterfaceHolder(JSInterface &jsobj) : jsobj_(jsobj) {
-        ptr_ = JSInterface::cloneToSharedPtr(jsobj_);
-    }
-
-    int callMethod(std::string method) { return jsobj_.call<int>(method.c_str()); }
-    int callMethodUsingSharedPtr(std::string method) { return ptr_->call<int>(method.c_str()); }
-
-private:
-    JSInterface jsobj_;
-    std::shared_ptr<JSInterface> ptr_;
-};
-
 void test_string_with_vec(const std::string& p1, std::vector<std::string>& v1) {
     // THIS DOES NOT WORK -- need to get as val and then call vecFromJSArray
     printf("%s\n", p1.c_str());
@@ -1488,8 +1474,6 @@ EMSCRIPTEN_BINDINGS(constants) {
 }
 
 EMSCRIPTEN_BINDINGS(tests) {
-    register_js_interface();
-        
     register_vector<int>("IntegerVector");
     register_vector<char>("CharVector");
     register_vector<unsigned>("VectorUnsigned");
@@ -1882,12 +1866,6 @@ EMSCRIPTEN_BINDINGS(tests) {
 
     register_map<std::string, int>("StringIntMap");
     function("embind_test_get_string_int_map", embind_test_get_string_int_map);
-
-    class_<JSInterfaceHolder>("JSInterfaceHolder")
-        .constructor<JSInterface&>()
-        .function("callMethod", &JSInterfaceHolder::callMethod)
-        .function("callMethodUsingSharedPtr", &JSInterfaceHolder::callMethodUsingSharedPtr)
-        ;
 
     function("embind_test_new_Object", &embind_test_new_Object);
     function("embind_test_new_factory", &embind_test_new_factory);

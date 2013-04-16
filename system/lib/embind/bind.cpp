@@ -36,14 +36,6 @@ extern "C" {
     }
 }
 
-namespace emscripten {
-    namespace internal {
-        JSInterface* create_js_interface(EM_VAL e) {
-            return new JSInterface(e);
-        }
-    }
-}
-
 // TODO: fix in library.js or a proper emscripten libc
 extern "C" wchar_t *wmemset(wchar_t *dest, wchar_t c, size_t count) {
     wchar_t *o = dest;

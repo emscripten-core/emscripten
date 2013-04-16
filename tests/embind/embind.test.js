@@ -1478,24 +1478,6 @@ module({
         });
     });
 
-    BaseFixture.extend("JavaScript interface", function() {
-        this.setUp(function() {
-            this.testobj = {
-                "method1": function() { return 111; },
-                "method2": function() { return 222; }
-            };
-        });
-
-        test("pass js object to c++ and call its method", function() {
-            var obj = new cm.JSInterfaceHolder(this.testobj);
-            assert.equal(111, obj.callMethod("method1"));
-            assert.equal(222, obj.callMethod("method2"));
-            assert.equal(111, obj.callMethodUsingSharedPtr("method1"));
-            assert.equal(222, obj.callMethodUsingSharedPtr("method2"));
-            obj.delete();
-        });
-    });
-
     BaseFixture.extend("abstract methods", function() {
         test("can call abstract methods", function() {
             var obj = cm.getAbstractClass();
