@@ -936,7 +936,7 @@ function RegisteredPointer(
     this.rawConstructor = rawConstructor;
     this.rawShare = rawShare;
     this.rawDestructor = rawDestructor;
-/*
+
     if (!isSmartPointer && registeredClass.baseClass === undefined) {
         if (isConst) {
             this.toWireType = constNoSmartPtrRawPointerToWireType;
@@ -945,9 +945,9 @@ function RegisteredPointer(
             this.toWireType = nonConstNoSmartPtrRawPointerToWireType;
             this.destructorFunction = null;
         }
-    } else {*/
+    } else {
         this.toWireType = genericPointerToWireType;
-    //}
+    }
 }
 
 RegisteredPointer.prototype.getPointee = function(ptr) {
