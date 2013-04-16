@@ -1,34 +1,69 @@
 #include <emscripten/bind.h>
+#ifdef USE_CXA_DEMANGLE
+#include <../lib/libcxxabi/include/cxxabi.h>
+#endif
+#include <list>
+#include <vector>
+#include <typeinfo>
+#include <algorithm>
+#include <emscripten/emscripten.h>
+#include <climits>
 
 using namespace emscripten;
 
+extern "C" {
+    const char* __attribute__((used)) __getTypeName(const std::type_info* ti) {
+#ifdef USE_CXA_DEMANGLE
+        int stat;
+        char* demangled = abi::__cxa_demangle(ti->name(), NULL, NULL, &stat);
+        if (stat == 0 && demangled) {
+            return demangled;
+        }
+
+        switch (stat) {
+            case -1:
+                return strdup("<allocation failure>");
+            case -2:
+                return strdup("<invalid C++ symbol>");
+            case -3:
+                return strdup("<invalid argument>");
+            default:
+                return strdup("<unknown error>");
+        }
+#else
+        return strdup(ti->name());
+#endif
+    }
+}
+
 namespace emscripten {
     namespace internal {
-        void registerStandardTypes() {
-            static bool first = true;
-            if (first) {
-                first = false;
-
-                _embind_register_void(getTypeID<void>(), "void");
-
-                _embind_register_bool(getTypeID<bool>(), "bool", true, false);
-
-                _embind_register_integer(getTypeID<char>(), "char");
-                _embind_register_integer(getTypeID<signed char>(), "signed char");
-                _embind_register_integer(getTypeID<unsigned char>(), "unsigned char");
-                _embind_register_integer(getTypeID<signed short>(), "short");
-                _embind_register_integer(getTypeID<unsigned short>(), "unsigned short");
-                _embind_register_integer(getTypeID<signed int>(), "int");
-                _embind_register_integer(getTypeID<unsigned int>(), "unsigned int");
-                _embind_register_integer(getTypeID<signed long>(), "long");
-                _embind_register_integer(getTypeID<unsigned long>(), "unsigned long");
-
-                _embind_register_float(getTypeID<float>(), "float");
-                _embind_register_float(getTypeID<double>(), "double");
-
-                _embind_register_cstring(getTypeID<std::string>(), "std::string");
-                _embind_register_emval(getTypeID<val>(), "emscripten::val");
-            }
+        JSInterface* create_js_interface(EM_VAL e) {
+            return new JSInterface(e);
         }
     }
+}
+
+EMSCRIPTEN_BINDINGS(native_and_builtin_types) {
+    using namespace emscripten::internal;
+
+    _embind_register_void(TypeID<void>::get(), "void");
+    
+    _embind_register_bool(TypeID<bool>::get(), "bool", true, false);
+
+    _embind_register_integer(TypeID<char>::get(), "char", CHAR_MIN, CHAR_MAX);
+    _embind_register_integer(TypeID<signed char>::get(), "signed char", SCHAR_MIN, SCHAR_MAX);
+    _embind_register_integer(TypeID<unsigned char>::get(), "unsigned char", 0, UCHAR_MAX);
+    _embind_register_integer(TypeID<signed short>::get(), "short", SHRT_MIN, SHRT_MAX);
+    _embind_register_integer(TypeID<unsigned short>::get(), "unsigned short", 0, USHRT_MAX);
+    _embind_register_integer(TypeID<signed int>::get(), "int", INT_MIN, INT_MAX);
+    _embind_register_integer(TypeID<unsigned int>::get(), "unsigned int", 0, UINT_MAX);
+    _embind_register_integer(TypeID<signed long>::get(), "long", LONG_MIN, LONG_MAX);
+    _embind_register_integer(TypeID<unsigned long>::get(), "unsigned long", 0, ULONG_MAX);
+    
+    _embind_register_float(TypeID<float>::get(), "float");
+    _embind_register_float(TypeID<double>::get(), "double");
+    
+    _embind_register_cstring(TypeID<std::string>::get(), "std::string");
+    _embind_register_emval(TypeID<val>::get(), "emscripten::val");
 }
