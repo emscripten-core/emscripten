@@ -7,6 +7,7 @@
    *
    */
 
+  var io = SocketIO;
   var webrtcSupported = true;
 
   var RTCPeerConnection;
