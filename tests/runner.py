@@ -6991,7 +6991,9 @@ void*:16
             for (int i = 0; i < 10; i++) {
               int* map = (int*)mmap(0, 5000, PROT_READ | PROT_WRITE,
                       MAP_SHARED | MAP_ANON, -1, 0);
+              /* TODO: Should we align to 4k?
               assert(((int)map) % 4096 == 0); // aligned
+              */
               assert(munmap(map, 5000) == 0);
             }
 
