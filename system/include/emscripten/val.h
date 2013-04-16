@@ -101,17 +101,23 @@ namespace emscripten {
         }
 
         template<typename T>
-        explicit val(const T& value) {
+        explicit val(T&& value) {
             typedef internal::BindingType<T> BT;
             auto taker = reinterpret_cast<internal::EM_VAL (*)(internal::TYPEID, typename BT::WireType)>(&internal::_emval_take_value);
-            handle = taker(internal::TypeID<T>::get(), BT::toWireType(value));
+            handle = taker(internal::TypeID<T>::get(), BT::toWireType(std::forward<T>(value)));
         }
 
         val() = delete;
 
-        val(const char* v)
+        explicit val(const char* v)
             : handle(internal::_emval_new_cstring(v)) 
         {}
+
+        val(val&& v)
+            : handle(v.handle)
+        {
+            v.handle = 0;
+        }
 
         val(const val& v)
             : handle(v.handle)
@@ -121,6 +127,13 @@ namespace emscripten {
 
         ~val() {
             internal::_emval_decref(handle);
+        }
+
+        val& operator=(val&& v) {
+            internal::_emval_decref(handle);
+            handle = v.handle;
+            v.handle = 0;
+            return *this;
         }
 
         val& operator=(const val& v) {
@@ -260,7 +273,7 @@ namespace emscripten {
         template<>
         struct BindingType<val> {
             typedef internal::EM_VAL WireType;
-            static WireType toWireType(val v) {
+            static WireType toWireType(const val& v) {
                 _emval_incref(v.handle);
                 return v.handle;
             }

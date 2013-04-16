@@ -1,9 +1,9 @@
 /*global Module*/
 /*global HEAP32*/
 /*global readLatin1String, writeStringToMemory*/
-/*global requireRegisteredType*/
+/*global requireRegisteredType, throwBindingError*/
 
-var _emval_handle_array = [];
+var _emval_handle_array = [{}]; // reserve zero
 var _emval_free_list = [];
 
 // Public JS API
@@ -11,7 +11,7 @@ var _emval_free_list = [];
 /** @expose */
 Module.count_emval_handles = function() {
     var count = 0;
-    for (var i = 0; i < _emval_handle_array.length; ++i) {
+    for (var i = 1; i < _emval_handle_array.length; ++i) {
         if (_emval_handle_array[i] !== undefined) {
             ++count;
         }
@@ -21,7 +21,7 @@ Module.count_emval_handles = function() {
 
 /** @expose */
 Module.get_first_emval = function() {
-    for (var i = 0; i < _emval_handle_array.length; ++i) {
+    for (var i = 1; i < _emval_handle_array.length; ++i) {
         if (_emval_handle_array[i] !== undefined) {
             return _emval_handle_array[i];
         }
@@ -30,6 +30,12 @@ Module.get_first_emval = function() {
 };
 
 // Private C++ API
+
+function requireHandle(handle) {
+    if (!handle) {
+        throwBindingError('Cannot use deleted val. handle = ' + handle);
+    }
+}
 
 function __emval_register(value) {
     var handle = _emval_free_list.length ?
@@ -41,11 +47,13 @@ function __emval_register(value) {
 }
 
 function __emval_incref(handle) {
-    _emval_handle_array[handle].refcount += 1;
+    if (handle) {
+        _emval_handle_array[handle].refcount += 1;
+    }
 }
 
 function __emval_decref(handle) {
-    if (0 === --_emval_handle_array[handle].refcount) {
+    if (handle && 0 === --_emval_handle_array[handle].refcount) {
         delete _emval_handle_array[handle];
         _emval_free_list.push(handle);
 
@@ -86,6 +94,8 @@ function __emval_take_value(type, v) {
 var __newers = {}; // arity -> function
 
 function __emval_new(handle, argCount, argTypes) {
+    requireHandle(handle);
+
     var args = parseParameters(
         argCount,
         argTypes,
@@ -137,14 +147,17 @@ function __emval_get_module_property(name) {
 }
 
 function __emval_get_property(handle, key) {
+    requireHandle(handle);
     return __emval_register(_emval_handle_array[handle].value[_emval_handle_array[key].value]);
 }
 
 function __emval_set_property(handle, key, value) {
+    requireHandle(handle);
     _emval_handle_array[handle].value[_emval_handle_array[key].value] = _emval_handle_array[value].value;
 }
 
 function __emval_as(handle, returnType) {
+    requireHandle(handle);
     returnType = requireRegisteredType(returnType, 'emval::as');
     var destructors = [];
     // caller owns destructing
@@ -163,6 +176,7 @@ function parseParameters(argCount, argTypes, argWireTypes) {
 }
 
 function __emval_call(handle, argCount, argTypes) {
+    requireHandle(handle);
     var fn = _emval_handle_array[handle].value;
     var args = parseParameters(
         argCount,
@@ -173,6 +187,7 @@ function __emval_call(handle, argCount, argTypes) {
 }
 
 function __emval_call_method(handle, name, argCount, argTypes) {
+    requireHandle(handle);
     name = readLatin1String(name);
 
     var args = parseParameters(
@@ -185,6 +200,7 @@ function __emval_call_method(handle, name, argCount, argTypes) {
 }
 
 function __emval_call_void_method(handle, name, argCount, argTypes) {
+    requireHandle(handle);
     name = readLatin1String(name);
 
     var args = parseParameters(

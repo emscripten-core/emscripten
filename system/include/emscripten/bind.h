@@ -284,8 +284,8 @@ namespace emscripten {
         }
 
         template<typename WrapperType, typename ClassType, typename... Args>
-        WrapperType wrapped_new(Args... args) {
-            return WrapperType(new ClassType(args...));
+        WrapperType wrapped_new(Args&&... args) {
+            return WrapperType(new ClassType(std::forward<Args>(args)...));
         }
 
         template<typename ClassType, typename... Args>
@@ -718,8 +718,8 @@ namespace emscripten {
     template<typename T>
     class wrapper : public T {
     public:
-        explicit wrapper(const val& wrapped)
-            : wrapped(wrapped)
+        explicit wrapper(val&& wrapped)
+            : wrapped(std::forward<val>(wrapped))
         {}
 
         template<typename ReturnType, typename... Args>
@@ -760,7 +760,7 @@ namespace emscripten {
     };
 
 #define EMSCRIPTEN_WRAPPER(T) \
-    T(const ::emscripten::val& v): wrapper(v) {}
+    T(::emscripten::val&& v): wrapper(std::forward<::emscripten::val>(v)) {}
 
     namespace internal {
         struct NoBaseClass {
