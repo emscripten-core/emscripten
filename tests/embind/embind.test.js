@@ -147,6 +147,17 @@ module({
             a.delete();
         });
 
+        test("calling method on unrelated class throws error (2)", function() {
+            // Base1 and Base2 both have the method 'getField()' exposed - make sure
+            // that calling the Base2 function with a 'this' instance of Base1 doesn't accidentally work!
+            var a = new cm.Base1;
+            var e = assert.throws(cm.BindingError, function() {
+                cm.Base2.prototype.getField.call(a);
+            });
+            assert.equal('Expected null or instance of Base2 const*, got [object Object]', e.message);
+            a.delete();
+        });
+
         test("calling method with invalid this throws error", function() {
             var e = assert.throws(cm.BindingError, function() {
                 cm.Derived.prototype.setMember.call(undefined, "foo");

@@ -1814,6 +1814,11 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("embind_attempt_to_modify_smart_pointer_when_passed_by_value", embind_attempt_to_modify_smart_pointer_when_passed_by_value);
     function("embind_save_smart_base_pointer", embind_save_smart_base_pointer);
 
+    class_<Base1>("Base1")
+        .constructor()
+        .function("getField", &Base1::getField)
+        ;
+
     class_<Base2>("Base2")
         .function("getField", &Base2::getField)
         .property("field", &Base2::field2)
