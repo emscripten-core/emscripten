@@ -20,7 +20,7 @@ unset(CMAKE_CXX_COMPILER CACHE)
 unset(CMAKE_LINKER CACHE)
 
 if(WIN32)
-	set(COMPILER_EXT ".cmd")
+	set(COMPILER_EXT ".bat")
 else()
 	set(COMPILER_EXT "")
 endif()
