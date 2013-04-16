@@ -153,7 +153,7 @@ module({
             });
             if (typeof INVOKED_FROM_EMSCRIPTEN_TEST_RUNNER === "undefined") { // TODO: Enable this to work in Emscripten runner as well!
                 // got Error: expected: Derived.setMember with invalid "this": undefined, actual: Derived.setMember incompatible with "this" of type Object
-                assert.equal('Expected null or instance of Derived*, got undefined', e.message);
+                assert.equal('Expected null or instance of Derived*, got [object global]', e.message);
             }
 
             var e = assert.throws(cm.BindingError, function() {
