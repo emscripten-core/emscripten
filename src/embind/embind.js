@@ -384,9 +384,12 @@ function __embind_register_std_string(rawType, name) {
                 }
                 HEAPU8[ptr + 4 + i] = charCode;
             }
-            destructors.push(_free, ptr);
+            if (destructors !== null) {
+                destructors.push(_free, ptr);
+            }
             return ptr;
         },
+        destructorFunction: function(ptr) { _free(ptr); },
     });
 }
 
@@ -426,7 +429,7 @@ function __embind_register_std_wstring(rawType, charSize, name) {
             }
             return ptr;
         },
-        destructorFunction: _free,
+        destructorFunction: function(ptr) { _free(ptr); },
     });
 }
 
@@ -512,8 +515,10 @@ function craftInvokerFunction(humanName, argTypes, classType, cppInvokerFunc, cp
 //    }
 
     var argsList = "";
+    var argsListWired = "";
     for(var i = 0; i < argCount-2; ++i) {
         argsList += (i!==0?", ":"")+"arg"+i;
+        argsListWired += (i!==0?", ":"")+"arg"+i+"Wired";
     }
 
     var invokerFnBody =
@@ -547,26 +552,25 @@ function craftInvokerFunction(humanName, argTypes, classType, cppInvokerFunc, cp
     }
 
     for(var i = 0; i < argCount-2; ++i) {
-        invokerFnBody += "var arg"+i+" = argType"+i+".toWireType("+dtorStack+", arg"+i+"); // "+argTypes[i+2].name+"\n";
-       // argsList += ", arg"+i;
+        invokerFnBody += "var arg"+i+"Wired = argType"+i+".toWireType("+dtorStack+", arg"+i+"); // "+argTypes[i+2].name+"\n";
         args1.push("argType"+i);
         args2.push(argTypes[i+2]);
     }
 
     if (isClassMethodFunc) {
-        argsList = "thisWired" + (argsList.length > 0 ? ", " : "") + argsList;
+        argsListWired = "thisWired" + (argsListWired.length > 0 ? ", " : "") + argsListWired;
     }
 
     var returns = (argTypes[0].name !== "void");
 
     invokerFnBody +=
-        (returns?"var rv = ":"") + "invoker(fn"+(argsList.length>0?", ":"")+argsList+");\n";
+        (returns?"var rv = ":"") + "invoker(fn"+(argsListWired.length>0?", ":"")+argsListWired+");\n";
     
     if (needsDestructorStack) {
         invokerFnBody += "runDestructors(destructors);\n";
     } else {
         for(var i = isClassMethodFunc?1:2; i < argTypes.length; ++i) { // Skip return value at index 0 - it's not deleted here. Also skip class type if not a method.
-            var paramName = (i === 1 ? "thisWired" : ("argType"+(i-2)));
+            var paramName = (i === 1 ? "thisWired" : ("arg"+(i-2)+"Wired"));
             if (argTypes[i].destructorFunction !== null) {
                 invokerFnBody += paramName+"_dtor("+paramName+"); // "+argTypes[i].name+"\n";
                 args1.push(paramName+"_dtor");
