@@ -522,10 +522,6 @@ function craftInvokerFunction(humanName, argTypes, classType, cppInvokerFunc, cp
             "throwBindingError('function "+humanName+" called with ' + arguments.length + ' arguments, expected "+(argCount - 2)+" args!');\n" +
         "}\n";
 
-    if (isClassMethodFunc) {
-        invokerFnBody += "validateThis(this, classType, '"+humanName+"');\n";
-    }
-
     // Determine if we need to use a dynamic stack to store the destructors for the function parameters.
     // TODO: Remove this completely once all function invokers are being dynamically generated.
     var needsDestructorStack = false;
@@ -543,8 +539,8 @@ function craftInvokerFunction(humanName, argTypes, classType, cppInvokerFunc, cp
     }
 
     var dtorStack = needsDestructorStack ? "destructors" : "null";
-    var args1 = ["throwBindingError", "validateThis", "classType", "invoker", "fn", "runDestructors", "retType", "classParam"];
-    var args2 = [throwBindingError, validateThis, classType, cppInvokerFunc, cppTargetFunc, runDestructors, argTypes[0], argTypes[1]];
+    var args1 = ["throwBindingError", "classType", "invoker", "fn", "runDestructors", "retType", "classParam"];
+    var args2 = [throwBindingError, classType, cppInvokerFunc, cppTargetFunc, runDestructors, argTypes[0], argTypes[1]];
 
     if (isClassMethodFunc) {
         invokerFnBody += "var thisWired = classParam.toWireType("+dtorStack+", this);\n";
@@ -887,6 +883,9 @@ var nonConstNoSmartPtrRawPointerToWireType = function(destructors, handle) {
     if (!(handle instanceof this.registeredClass.constructor)) {
         throwBindingError('Expected null or instance of ' + this.name + ', got ' + _embind_repr(handle));
     }
+    if (!handle.$$.ptr) {
+        throwBindingError('Cannot pass deleted object');
+    }
     if (handle.$$.ptrType.isConst) {
         throwBindingError('Cannot convert argument of type ' + handle.$$.ptrType.name + ' to parameter type ' + this.name);
     }
@@ -904,6 +903,9 @@ var constNoSmartPtrRawPointerToWireType = function(destructors, handle) {
     }
     if (!(handle instanceof this.registeredClass.constructor)) {
         throwBindingError('Expected null or instance of ' + this.name + ', got ' + _embind_repr(handle));
+    }
+    if (!handle.$$.ptr) {
+        throwBindingError('Cannot pass deleted object');
     }
     var handleClass = handle.$$.ptrType.registeredClass;
     var ptr = upcastPointer(handle.$$.ptr, handleClass, this.registeredClass);
