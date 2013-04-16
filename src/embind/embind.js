@@ -348,6 +348,10 @@ function __embind_register_std_string(rawType, name) {
             return a.join('');
         },
         toWireType: function(destructors, value) {
+            if (typeof value !== "string") {
+                throwBindingError('Cannot pass non-string to std::string');
+            }
+
             // assumes 4-byte alignment
             var length = value.length;
             var ptr = _malloc(4 + length);

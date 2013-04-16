@@ -403,6 +403,12 @@ module({
             });
         });
 
+        test("can't pass integers as strings", function() {
+            var e = assert.throws(cm.BindingError, function() {
+                cm.emval_test_take_and_return_std_string(10);
+            });
+        });
+
         test("non-ascii wstrings", function() {
             var expected = String.fromCharCode(10) +
                 String.fromCharCode(1234) +
