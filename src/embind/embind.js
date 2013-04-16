@@ -348,6 +348,10 @@ function __embind_register_std_string(rawType, name) {
             return a.join('');
         },
         toWireType: function(destructors, value) {
+            if (value instanceof ArrayBuffer) {
+                value = new Uint8Array(value);
+            }
+
             function getTAElement(ta, index) {
                 return ta[index];
             }

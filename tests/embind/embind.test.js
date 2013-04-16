@@ -419,6 +419,11 @@ module({
             assert.equal('ABCD', e);
         });
 
+        test("can pass ArrayBuffer to std::string", function() {
+            var e = cm.emval_test_take_and_return_std_string((new Int8Array([65, 66, 67, 68])).buffer);
+            assert.equal('ABCD', e);
+        });
+
         test("non-ascii wstrings", function() {
             var expected = String.fromCharCode(10) +
                 String.fromCharCode(1234) +
