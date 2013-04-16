@@ -284,7 +284,7 @@ void __attribute__((noinline)) sum_float_benchmark()
 
 void __attribute__((noinline)) move_gameobjects_benchmark()
 {
-    const int N = 100000;
+    const int N = 10000;
     GameObjectPtr objects[N];
     for(int i = 0; i < N; ++i)
         objects[i] = create_game_object();

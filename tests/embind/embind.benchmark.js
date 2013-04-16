@@ -173,7 +173,7 @@ function _sum_float_benchmark_embind_js() {
 }
 
 function _move_gameobjects_benchmark_embind_js() {
-    var N = 100000;
+    var N = 10000;
     var objects = [];
     for(i = 0; i < N; ++i) {
         objects.push(Module['create_game_object']());
