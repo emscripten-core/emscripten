@@ -1458,11 +1458,12 @@ function JSify(data, functionsOnly, givenFunctions) {
   });
 
   makeFuncLineActor('unreachable', function(item) {
+    var ret = '';
+    if (ASM_JS && item.funcData.returnType != 'void') ret = 'return ' + asmCoercion('0', item.funcData.returnType) + ';';
     if (ASSERTIONS) {
-      return ASM_JS ? 'abort()' : 'throw "Reached an unreachable!"';
-    } else {
-      return ';';
+      ret = (ASM_JS ? 'abort()' : 'throw "Reached an unreachable!"') + ';' + ret;
     }
+    return ret || ';';
   });
 
   // Final combiner
