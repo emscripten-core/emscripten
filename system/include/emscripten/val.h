@@ -56,24 +56,16 @@ namespace emscripten {
         }
     }
 
-    class symbol {
-    public:
-        symbol() = delete;
-        
-        // I so wish I could require the argument to be a string literal
-        symbol(const char* address)
-            : address(address)
-        {
+    template<const char* address> 
+    struct symbol_registrar {
+        symbol_registrar() {
             internal::_emval_register_symbol(address);
         }
-
-        operator const char*() const {
-            return address;
-        }
-
-    private:
-        const char* address;
     };
+
+#define EMSCRIPTEN_SYMBOL(name)                                         \
+    static const char name##_symbol[] = #name;                          \
+    static const symbol_registrar<name##_symbol> name##_registrar
 
     class val {
     public:
