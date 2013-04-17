@@ -11587,6 +11587,9 @@ elif 'browser' in str(sys.argv):
     def test_gl_renderers(self):
       self.btest('gl_renderers.c', reference='gl_renderers.png', args=['-s', 'GL_UNSAFE_OPTS=0'])
 
+    def test_gl_stride(self):
+      self.btest('gl_stride.c', reference='gl_stride.png', args=['-s', 'GL_UNSAFE_OPTS=0'])
+
     def test_matrix_identity(self):
       self.btest('gl_matrix_identity.c', expected=['-1882984448', '460451840'])
 
