@@ -3541,7 +3541,7 @@ def process(filename):
 
           double get() {
             double ret = 0;
-            __asm __volatile__("12/3.3":"=a"(ret));
+            __asm __volatile__("12/3.3":"=r"(ret));
             return ret;
           }
 
