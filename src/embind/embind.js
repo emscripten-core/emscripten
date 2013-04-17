@@ -1417,40 +1417,54 @@ function __embind_register_class_property(
 ) {
     fieldName = readLatin1String(fieldName);
     getter = FUNCTION_TABLE[getter];
-    setter = FUNCTION_TABLE[setter];
 
     whenDependentTypesAreResolved([], [classType], function(classType) {
         classType = classType[0];
         var humanName = classType.name + '.' + fieldName;
-
-        Object.defineProperty(classType.registeredClass.instancePrototype, fieldName, {
+        var desc = {
             get: function() {
-                throwUnboundTypeError('Cannot access ' + humanName + ' due to unbound types', [getterReturnType, setterArgumentType]);
-            },
-            set: function() {
                 throwUnboundTypeError('Cannot access ' + humanName + ' due to unbound types', [getterReturnType, setterArgumentType]);
             },
             enumerable: true,
             configurable: true
-        });
+        };
+        if (setter) {
+            desc.set = function() {
+                throwUnboundTypeError('Cannot access ' + humanName + ' due to unbound types', [getterReturnType, setterArgumentType]);
+            };
+        } else {
+            desc.set = function(v) {
+                throwBindingError(humanName + ' is a read-only property');
+            };
+        }
 
-        whenDependentTypesAreResolved([], [getterReturnType, setterArgumentType], function(types) {
+        Object.defineProperty(classType.registeredClass.instancePrototype, fieldName, desc);
+
+        whenDependentTypesAreResolved(
+            [],
+            (setter ? [getterReturnType, setterArgumentType] : [getterReturnType]),
+        function(types) {
             var getterReturnType = types[0];
-            var setterArgumentType = types[1];
-
-            Object.defineProperty(classType.registeredClass.instancePrototype, fieldName, {
+            var desc = {
                 get: function() {
                     var ptr = validateThis(this, classType, humanName + ' getter');
                     return getterReturnType.fromWireType(getter(getterContext, ptr));
                 },
-                set: function(v) {
+                enumerable: true
+            };
+
+            if (setter) {
+                setter = FUNCTION_TABLE[setter];
+                var setterArgumentType = types[1];
+                desc.set = function(v) {
                     var ptr = validateThis(this, classType, humanName + ' setter');
                     var destructors = [];
                     setter(setterContext, ptr, setterArgumentType.toWireType(destructors, v));
                     runDestructors(destructors);
-                },
-                enumerable: true
-            });
+                };
+            }
+
+            Object.defineProperty(classType.registeredClass.instancePrototype, fieldName, desc);
             return [];
         });
 

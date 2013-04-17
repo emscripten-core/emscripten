@@ -916,6 +916,27 @@ module({
             c.delete();
         });
 
+        test("class properties can be read-only", function() {
+            var a = {};
+            var h = new cm.ValHolder(a);
+            assert.equal(a, h.val_readonly);
+            var e = assert.throws(cm.BindingError, function() {
+                h.val_readonly = 10;
+            });
+            assert.equal('ValHolder.val_readonly is a read-only property', e.message);
+            h.delete();
+        });
+
+        test("read-only member field", function() {
+            var a = new cm.HasReadOnlyProperty(10);
+            assert.equal(10, a.i);
+            var e = assert.throws(cm.BindingError, function() {
+                a.i = 20;
+            });
+            assert.equal('HasReadOnlyProperty.i is a read-only property', e.message);
+            a.delete();
+        });
+
         test("class instance $$ property is non-enumerable", function() {
             var c = new cm.ValHolder(undefined);
             assert.deepEqual([], Object.keys(c));

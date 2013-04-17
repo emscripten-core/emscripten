@@ -991,7 +991,23 @@ namespace emscripten {
             return *this;
         }
 
-        template<typename FieldType>
+        template<typename FieldType, typename = typename std::enable_if<!std::is_function<FieldType>::value>::type>
+        class_& property(const char* fieldName, const FieldType ClassType::*field) {
+            using namespace internal;
+
+            _embind_register_class_property(
+                TypeID<ClassType>::get(),
+                fieldName,
+                TypeID<FieldType>::get(),
+                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, FieldType>::template getWire<ClassType>),
+                getContext(field),
+                0,
+                0,
+                0);
+            return *this;
+        }
+
+        template<typename FieldType, typename = typename std::enable_if<!std::is_function<FieldType>::value>::type>
         class_& property(const char* fieldName, FieldType ClassType::*field) {
             using namespace internal;
 
@@ -1004,6 +1020,22 @@ namespace emscripten {
                 TypeID<FieldType>::get(),
                 reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, FieldType>::template setWire<ClassType>),
                 getContext(field));
+            return *this;
+        }
+
+        template<typename Getter>
+        class_& property(const char* fieldName, Getter getter) {
+            using namespace internal;
+            typedef GetterPolicy<Getter> GP;
+            _embind_register_class_property(
+                TypeID<ClassType>::get(),
+                fieldName,
+                TypeID<typename GP::ReturnType>::get(),
+                reinterpret_cast<GenericFunction>(&GP::template get<ClassType>),
+                GP::getContext(getter),
+                0,
+                0,
+                0);
             return *this;
         }
 

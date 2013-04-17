@@ -673,8 +673,6 @@ private:
     std::string name_;
 };
 
-// todo: does it need to be polymorphic?
-// todo: virtual diamond pattern
 class PolyDiamondBase {
 public:
     PolyDiamondBase():
@@ -1551,6 +1549,7 @@ EMSCRIPTEN_BINDINGS(tests) {
         .function("getValConstRef", &ValHolder::getValConstRef)
         .function("setVal", &ValHolder::setVal)
         .property("val", &ValHolder::getVal, &ValHolder::setVal)
+        .property("val_readonly", &ValHolder::getVal)
         .class_function("makeConst", &ValHolder::makeConst, allow_raw_pointer<ret_val>())
         .class_function("makeValHolder", &ValHolder::makeValHolder)
         .class_function("some_class_method", &ValHolder::some_class_method)
@@ -2095,4 +2094,19 @@ EMSCRIPTEN_BINDINGS(noncopyable) {
         ;
 
     function("getNoncopyable", &getNoncopyable);
+}
+
+struct HasReadOnlyProperty {
+    HasReadOnlyProperty(int i)
+        : i(i)
+    {}
+
+    const int i;
+};
+
+EMSCRIPTEN_BINDINGS(read_only_properties) {
+    class_<HasReadOnlyProperty>("HasReadOnlyProperty")
+        .constructor<int>()
+        .property("i", &HasReadOnlyProperty::i)
+        ;
 }
