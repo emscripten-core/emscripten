@@ -404,7 +404,7 @@ except:
 # -fno-delayed-template-parsing is needed on Windows due to http://llvm.org/PR15651
 COMPILER_OPTS = COMPILER_OPTS + ['-m32', '-U__i386__', '-U__x86_64__', '-U__i386', '-U__x86_64', '-Ui386', '-Ux86_64', '-U__SSE__', '-U__SSE2__', '-U__MMX__',
                                  '-UX87_DOUBLE_ROUNDING', '-UHAVE_GCC_ASM_FOR_X87', '-DEMSCRIPTEN', '-U__STRICT_ANSI__', '-U__CYGWIN__',
-                                 '-D__STDC__', '-Xclang', '-triple=i386-pc-linux-gnu', '-D__IEEE_LITTLE_ENDIAN', '-fno-math-errno', 
+                                 '-D__STDC__', '-target', 'i386-pc-linux-gnu', '-D__IEEE_LITTLE_ENDIAN', '-fno-math-errno',
                                  '-fno-ms-compatibility', '-fno-delayed-template-parsing']
 
 USE_EMSDK = not os.environ.get('EMMAKEN_NO_SDK')
