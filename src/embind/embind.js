@@ -795,17 +795,6 @@ function __embind_finalize_struct(structType) {
 }
 
 var genericPointerToWireType = function(destructors, handle) {
-    var self = this;
-    function throwCannotConvert() {
-        var name;
-        if (handle.$$.smartPtrType) {
-            name = handle.$$.smartPtrType.name;
-        } else {
-            name = handle.$$.ptrType.name;
-        }
-        throwBindingError('Cannot convert argument of type ' + name + ' to parameter type ' + self.name);
-    }
-
     if (handle === null) {
         if (this.isReference) {
             throwBindingError('null is not a valid ' + this.name);
@@ -826,27 +815,27 @@ var genericPointerToWireType = function(destructors, handle) {
     if (!handle.$$.ptr) {
         throwBindingError('Cannot pass deleted object as a pointer of type ' + this.name);
     }
-
-    // TODO: this is not strictly true
-    // We could support BY_EMVAL conversions from raw pointers to smart pointers
-    // because the smart pointer can hold a reference to the handle
-    if (this.isSmartPointer && undefined === handle.$$.smartPtr) {
-        throwBindingError('Passing raw pointer to smart pointer is illegal');
-    }
     if (!this.isConst && handle.$$.ptrType.isConst) {
-        throwCannotConvert();
+        throwBindingError('Cannot convert argument of type ' + (handle.$$.smartPtrType ? handle.$$.smartPtrType.name : handle.$$.ptrType.name) + ' to parameter type ' + this.name);
     }
     var handleClass = handle.$$.ptrType.registeredClass;
     var ptr = upcastPointer(handle.$$.ptr, handleClass, this.registeredClass);
 
     if (this.isSmartPointer) {
+        // TODO: this is not strictly true
+        // We could support BY_EMVAL conversions from raw pointers to smart pointers
+        // because the smart pointer can hold a reference to the handle
+        if (undefined === handle.$$.smartPtr) {
+            throwBindingError('Passing raw pointer to smart pointer is illegal');
+        }
+        
         switch (this.sharingPolicy) {
             case 0: // NONE
                 // no upcasting
                 if (handle.$$.smartPtrType === this) {
                     ptr = handle.$$.smartPtr;
                 } else {
-                    throwCannotConvert();
+                    throwBindingError('Cannot convert argument of type ' + (handle.$$.smartPtrType ? handle.$$.smartPtrType.name : handle.$$.ptrType.name) + ' to parameter type ' + this.name);
                 }
                 break;
             
@@ -960,6 +949,10 @@ function RegisteredPointer(
         }
     } else {
         this.toWireType = genericPointerToWireType;
+        // Here we must leave this.destructorFunction undefined, since whether genericPointerToWireType returns
+        // a pointer that needs to be freed up is runtime-dependent, and cannot be evaluated at registration time.
+        // TODO: Create an alternative mechanism that allows removing the use of var destructors = []; array in 
+        //       craftInvokerFunction altogether.
     }
 }
 
