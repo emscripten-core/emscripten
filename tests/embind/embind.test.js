@@ -145,42 +145,47 @@ module({
             });
             assert.equal('Expected null or instance of Derived, got an instance of Base2', e.message);
             a.delete();
-        });
 
-        test("calling method on unrelated class throws error (2)", function() {
             // Base1 and Base2 both have the method 'getField()' exposed - make sure
             // that calling the Base2 function with a 'this' instance of Base1 doesn't accidentally work!
-            var a = new cm.Base1;
+            var b = new cm.Base1;
             var e = assert.throws(cm.BindingError, function() {
-                cm.Base2.prototype.getField.call(a);
+                cm.Base2.prototype.getField.call(b);
             });
             assert.equal('Expected null or instance of Base2, got an instance of Base1', e.message);
-            a.delete();
+            b.delete();
         });
 
         test("calling method with invalid this throws error", function() {
             var e = assert.throws(cm.BindingError, function() {
                 cm.Derived.prototype.setMember.call(undefined, "foo");
             });
-            if (typeof INVOKED_FROM_EMSCRIPTEN_TEST_RUNNER === "undefined") { // TODO: Enable this to work in Emscripten runner as well!
-                // got Error: expected: Derived.setMember with invalid "this": undefined, actual: Derived.setMember incompatible with "this" of type Object
-                assert.equal('Expected null or instance of Derived*, got [object global]', e.message);
-            }
+            assert.equal('Cannot pass "[object global]" as a Derived*', e.message);
+
+            var e = assert.throws(cm.BindingError, function() {
+                cm.Derived.prototype.setMember.call(true, "foo");
+            });
+            assert.equal('Cannot pass "true" as a Derived*', e.message);
+
+            var e = assert.throws(cm.BindingError, function() {
+                cm.Derived.prototype.setMember.call(null, "foo");
+            });
+            assert.equal('Cannot pass "[object global]" as a Derived*', e.message);
+
+            var e = assert.throws(cm.BindingError, function() {
+                cm.Derived.prototype.setMember.call(42, "foo");
+            });
+            assert.equal('Cannot pass "42" as a Derived*', e.message);
 
             var e = assert.throws(cm.BindingError, function() {
                 cm.Derived.prototype.setMember.call("this", "foo");
             });
-            if (typeof INVOKED_FROM_EMSCRIPTEN_TEST_RUNNER === "undefined") { // TODO: Enable this to work in Emscripten runner as well!
-                // TODO got 'Derived.setMember incompatible with "this" of type Object'
-                assert.equal('Expected null or instance of Derived*, got this', e.message);
-            }
+            assert.equal('Cannot pass "this" as a Derived*', e.message);
 
             var e = assert.throws(cm.BindingError, function() {
                 cm.Derived.prototype.setMember.call({}, "foo");
             });
-            if (typeof INVOKED_FROM_EMSCRIPTEN_TEST_RUNNER === "undefined") { // TODO: Enable this to work in Emscripten runner as well!
-                assert.equal('Expected null or instance of Derived*, got [object Object]', e.message);
-            }
+            assert.equal('Cannot pass "[object Object]" as a Derived*', e.message);
         });
 
         test("setting and getting property on unrelated class throws error", function() {
