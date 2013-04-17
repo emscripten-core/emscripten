@@ -254,16 +254,16 @@ function analyzer(data, sidePass) {
                 // accessible through ident$x, and not constants we need to parse then and there)
                 if (subItem != item && (!(subItem.intertype in UNUNFOLDABLE) ||
                                        (subItem.intertype == 'value' && isNumber(subItem.ident) && isIllegalType(subItem.type)))) {
-                  if (item.intertype == 'phi') {
-                    assert(subItem.intertype == 'value' || subItem.intertype == 'structvalue', 'We can only unfold illegal constants in phis');
+                  //if (item.intertype == 'phi') {
+                    //assert(subItem.intertype == 'value' || subItem.intertype == 'structvalue', 'We can only unfold illegal constants in phis');
                     // we must handle this in the phi itself, if we unfold normally it will not be pushed back with the phi
-                  } else {
+                  //} else {
                     var tempIdent = '$$etemp$' + (tempId++);
                     subItem.assignTo = tempIdent;
                     unfolded.unshift(subItem);
                     fixUnfolded(subItem);
                     return { intertype: 'value', ident: tempIdent, type: subItem.type };
-                  }
+                  //}
                 } else if (subItem.intertype == 'switch' && isIllegalType(subItem.type)) {
                   subItem.switchLabels.forEach(function(switchLabel) {
                     if (switchLabel.value[0] != '$') {
