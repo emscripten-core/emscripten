@@ -108,4 +108,19 @@ function label() {
     i();
   }
 }
+function switchy() {
+  var no = 0, yes = 0;
+  while (1) switch (label | 0) {
+   case x:
+    no = 100;
+    break;
+   case y:
+    yes = 111;
+    yes = yes * 2;
+    print(yes);
+    yes--;
+    print(yes / 2);
+    continue;
+  }
+}
 
