@@ -202,7 +202,9 @@ mergeInto(LibraryManager.library, {
       canvas.exitPointerLock = document['exitPointerLock'] ||
                                document['mozExitPointerLock'] ||
                                document['webkitExitPointerLock'];
-      canvas.exitPointerLock = canvas.exitPointerLock.bind(document);
+      if(canvas.exitPointerLock) {
+        canvas.exitPointerLock = canvas.exitPointerLock.bind(document);
+      }
 
       function pointerLockChange() {
         Browser.pointerLock = document['pointerLockElement'] === canvas ||
