@@ -876,6 +876,29 @@ var genericPointerToWireType = function(destructors, handle) {
     return ptr;
 };
 
+// If we know a pointer type is not going to have SmartPtr logic in it, we can
+// special-case optimize it a bit (compare to genericPointerToWireType)
+var constNoSmartPtrRawPointerToWireType = function(destructors, handle) {
+    if (handle === null) {
+        if (this.isReference) {
+            throwBindingError('null is not a valid ' + this.name);
+        }
+        return 0;
+    }
+
+    if (!handle.$$) {
+        throwBindingError('Cannot pass "' + _embind_repr(handle) + '" as a ' + this.name);
+    }
+    if (!handle.$$.ptr) {
+        throwBindingError('Cannot pass deleted object as a pointer of type ' + this.name);
+    }
+    var handleClass = handle.$$.ptrType.registeredClass;
+    var ptr = upcastPointer(handle.$$.ptr, handleClass, this.registeredClass);
+    return ptr;
+};
+
+// An optimized version for non-const method accesses - there we must additionally restrict that
+// the pointer is not a const-pointer.
 var nonConstNoSmartPtrRawPointerToWireType = function(destructors, handle) {
     if (handle === null) {
         if (this.isReference) {
@@ -892,25 +915,6 @@ var nonConstNoSmartPtrRawPointerToWireType = function(destructors, handle) {
     }
     if (handle.$$.ptrType.isConst) {
         throwBindingError('Cannot convert argument of type ' + handle.$$.ptrType.name + ' to parameter type ' + this.name);
-    }
-    var handleClass = handle.$$.ptrType.registeredClass;
-    var ptr = upcastPointer(handle.$$.ptr, handleClass, this.registeredClass);
-    return ptr;
-};
-
-var constNoSmartPtrRawPointerToWireType = function(destructors, handle) {
-    if (handle === null) {
-        if (this.isReference) {
-            throwBindingError('null is not a valid ' + this.name);
-        }
-        return 0;
-    }
-
-    if (!handle.$$) {
-        throwBindingError('Cannot pass "' + _embind_repr(handle) + '" as a ' + this.name);
-    }
-    if (!handle.$$.ptr) {
-        throwBindingError('Cannot pass deleted object as a pointer of type ' + this.name);
     }
     var handleClass = handle.$$.ptrType.registeredClass;
     var ptr = upcastPointer(handle.$$.ptr, handleClass, this.registeredClass);
