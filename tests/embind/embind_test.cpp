@@ -1087,6 +1087,8 @@ public:
     }
 };
 
+symbol optionalMethodSymbol = "optionalMethod";
+
 class AbstractClassWrapper : public wrapper<AbstractClass> {
 public:
     EMSCRIPTEN_WRAPPER(AbstractClassWrapper);
@@ -1095,7 +1097,7 @@ public:
         return call<std::string>("abstractMethod");
     }
     std::string optionalMethod(std::string s) const {
-        return optional_call<std::string>("optionalMethod", [&] {
+        return optional_call<std::string>(optionalMethodSymbol, [&] {
             return AbstractClass::optionalMethod(s);
         }, s);
     }

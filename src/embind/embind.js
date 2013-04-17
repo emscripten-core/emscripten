@@ -223,21 +223,21 @@ function whenDependentTypesAreResolved(myTypes, dependentTypes, getTypeConverter
     }
 }
 
-var __charCodes = [];
+var __charCodes = (function() {
+    var codes = new Array(256);
+    for (var i = 0; i < 256; ++i) {
+        codes[i] = String.fromCharCode(i);
+    }
+    return codes;
+})();
 
 function readLatin1String(ptr) {
-  if (__charCodes.length === 0) {
-    for (var charCodeI = 0; charCodeI < 127; charCodeI++) {
-      __charCodes.push(String.fromCharCode(charCodeI));
+    var ret = "";
+    var c = ptr;
+    while (HEAPU8[c]) {
+        ret += __charCodes[HEAPU8[c++]];
     }
-  }
-  
-  var ret = "";
-  var c = ptr;
-  while (HEAPU8[c]) {
-    ret += __charCodes[HEAPU8[c++]];
-  }
-  return ret;
+    return ret;
 }
 
 function getTypeName(type) {
@@ -1143,8 +1143,8 @@ function __embind_register_class_function(
         var humanName = classType.name + '.' + methodName;
 
         var unboundTypesHandler = function() {
-                throwUnboundTypeError('Cannot call ' + humanName + ' due to unbound types', rawArgTypes);
-            };
+            throwUnboundTypeError('Cannot call ' + humanName + ' due to unbound types', rawArgTypes);
+        };
 
         var proto = classType.registeredClass.instancePrototype;
         var method = proto[methodName];

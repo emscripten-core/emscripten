@@ -31,6 +31,21 @@ Module.get_first_emval = function() {
 
 // Private C++ API
 
+var _emval_symbols = {}; // address -> string
+
+function __emval_register_symbol(address) {
+    _emval_symbols[address] = readLatin1String(address);
+}
+
+function getStringOrSymbol(address) {
+    var symbol = _emval_symbols[address];
+    if (symbol === undefined) {
+        return readLatin1String(address);
+    } else {
+        return symbol;
+    }
+}
+
 function requireHandle(handle) {
     if (!handle) {
         throwBindingError('Cannot use deleted val. handle = ' + handle);
@@ -82,7 +97,7 @@ function __emval_null() {
 }
 
 function __emval_new_cstring(v) {
-    return __emval_register(readLatin1String(v));
+    return __emval_register(getStringOrSymbol(v));
 }
 
 function __emval_take_value(type, v) {
@@ -137,12 +152,12 @@ function __emval_new(handle, argCount, argTypes) {
 var global = (function(){return Function;})()('return this')();
 
 function __emval_get_global(name) {
-    name = readLatin1String(name);
+    name = getStringOrSymbol(name);
     return __emval_register(global[name]);
 }
 
 function __emval_get_module_property(name) {
-    name = readLatin1String(name);
+    name = getStringOrSymbol(name);
     return __emval_register(Module[name]);
 }
 
@@ -188,7 +203,7 @@ function __emval_call(handle, argCount, argTypes) {
 
 function __emval_call_method(handle, name, argCount, argTypes) {
     requireHandle(handle);
-    name = readLatin1String(name);
+    name = getStringOrSymbol(name);
 
     var args = parseParameters(
         argCount,
@@ -201,7 +216,7 @@ function __emval_call_method(handle, name, argCount, argTypes) {
 
 function __emval_call_void_method(handle, name, argCount, argTypes) {
     requireHandle(handle);
-    name = readLatin1String(name);
+    name = getStringOrSymbol(name);
 
     var args = parseParameters(
         argCount,
@@ -212,6 +227,6 @@ function __emval_call_void_method(handle, name, argCount, argTypes) {
 }
 
 function __emval_has_function(handle, name) {
-    name = readLatin1String(name);
+    name = getStringOrSymbol(name);
     return _emval_handle_array[handle].value[name] instanceof Function;
 }

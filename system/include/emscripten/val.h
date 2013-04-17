@@ -8,6 +8,8 @@ namespace emscripten {
     namespace internal {
         // Implemented in JavaScript.  Don't call these directly.
         extern "C" {
+            void _emval_register_symbol(const char*);
+
             typedef struct _EM_VAL* EM_VAL;
         
             void _emval_incref(EM_VAL value);
@@ -53,6 +55,25 @@ namespace emscripten {
                 const char* methodName);
         }
     }
+
+    class symbol {
+    public:
+        symbol() = delete;
+        
+        // I so wish I could require the argument to be a string literal
+        symbol(const char* address)
+            : address(address)
+        {
+            internal::_emval_register_symbol(address);
+        }
+
+        operator const char*() const {
+            return address;
+        }
+
+    private:
+        const char* address;
+    };
 
     class val {
     public:
