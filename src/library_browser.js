@@ -55,9 +55,34 @@ mergeInto(LibraryManager.library, {
         Browser.hasBlobConstructor = false;
         console.log("warning: no blob constructor, cannot create blobs with mimetypes");
       }
-      Browser.BlobBuilder = typeof MozBlobBuilder != "undefined" ? MozBlobBuilder : (typeof WebKitBlobBuilder != "undefined" ? WebKitBlobBuilder : (!Browser.hasBlobConstructor ? console.log("warning: no BlobBuilder") : null));
+      Browser.BlobBuilder = typeof BlobBuilder != "undefined" ? BlobBuilder : (typeof MozBlobBuilder != "undefined" ? MozBlobBuilder : (typeof WebKitBlobBuilder != "undefined" ? WebKitBlobBuilder : (!Browser.hasBlobConstructor ? console.log("warning: no BlobBuilder") : null)));
       Browser.URLObject = typeof window != "undefined" ? (window.URL ? window.URL : window.webkitURL) : console.log("warning: cannot create object URLs");
-
+      
+      Browser.encode64 = function(data) {
+        var BASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+        var PAD = '=';
+        var ret = '';
+        var leftchar = 0;
+        var leftbits = 0;
+        for (var i = 0; i < data.length; i++) {
+          leftchar = (leftchar << 8) | data[i];
+          leftbits += 8;
+          while (leftbits >= 6) {
+            var curr = (leftchar >> (leftbits-6)) & 0x3f;
+            leftbits -= 6;
+            ret += BASE[curr];
+          }
+        }
+        if (leftbits == 2) {
+          ret += BASE[(leftchar&3) << 4];
+          ret += PAD + PAD;
+        } else if (leftbits == 4) {
+          ret += BASE[(leftchar&0xf) << 2];
+          ret += PAD;
+        }
+        return ret;
+      }
+      
       // Support for plugins that can process preloaded files. You can add more of these to
       // your app by creating and appending to Module.preloadPlugins.
       //
@@ -86,19 +111,24 @@ mergeInto(LibraryManager.library, {
       };
       imagePlugin['handle'] = function(byteArray, name, onload, onerror) {
         var b = null;
-        if (Browser.hasBlobConstructor) {
-          try {
-            b = new Blob([byteArray], { type: getMimetype(name) });
-          } catch(e) {
-            Runtime.warnOnce('Blob constructor present but fails: ' + e + '; falling back to blob builder');
+        var url = null;
+        if (Browser.URLObject) {
+          if (Browser.hasBlobConstructor) {
+            try {
+              b = new Blob([byteArray], { type: getMimetype(name) });
+            } catch(e) {
+              Runtime.warnOnce('Blob constructor present but fails: ' + e + '; falling back to blob builder');
+            }
           }
+          if (!b) {
+            var bb = new Browser.BlobBuilder();
+            bb.append((new Uint8Array(byteArray)).buffer); // we need to pass a buffer, and must copy the array to get the right data range
+            b = bb.getBlob();
+          }
+          url = Browser.URLObject.createObjectURL(b);
+        } else {
+          url = 'data:image/x-' + name.substr(-3) + ';base64,' + Browser.encode64(byteArray);
         }
-        if (!b) {
-          var bb = new Browser.BlobBuilder();
-          bb.append((new Uint8Array(byteArray)).buffer); // we need to pass a buffer, and must copy the array to get the right data range
-          b = bb.getBlob();
-        }
-        var url = Browser.URLObject.createObjectURL(b);
 #if ASSERTIONS
         assert(typeof url == 'string', 'createObjectURL must return a url as a string');
 #endif
@@ -111,7 +141,7 @@ mergeInto(LibraryManager.library, {
           var ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0);
           Module["preloadedImages"][name] = canvas;
-          Browser.URLObject.revokeObjectURL(url);
+          if (Browser.URLObject) Browser.URLObject.revokeObjectURL(url);
           if (onload) onload(byteArray);
         };
         img.onerror = function(event) {
@@ -140,57 +170,36 @@ mergeInto(LibraryManager.library, {
           Module["preloadedAudios"][name] = new Audio(); // empty shim
           if (onerror) onerror();
         }
-        if (Browser.hasBlobConstructor) {
+        var url = null;
+        if (Browser.hasBlobConstructor && Browser.URLObject) {
           try {
             var b = new Blob([byteArray], { type: getMimetype(name) });
+            var url = Browser.URLObject.createObjectURL(b); // XXX we never revoke this!
           } catch(e) {
             return fail();
           }
-          var url = Browser.URLObject.createObjectURL(b); // XXX we never revoke this!
-#if ASSERTIONS
-          assert(typeof url == 'string', 'createObjectURL must return a url as a string');
-#endif
-          var audio = new Audio();
-          audio.addEventListener('canplaythrough', function() { finish(audio) }, false); // use addEventListener due to chromium bug 124926
-          audio.onerror = function(event) {
-            if (done) return;
-            console.log('warning: browser could not fully decode audio ' + name + ', trying slower base64 approach');
-            function encode64(data) {
-              var BASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-              var PAD = '=';
-              var ret = '';
-              var leftchar = 0;
-              var leftbits = 0;
-              for (var i = 0; i < data.length; i++) {
-                leftchar = (leftchar << 8) | data[i];
-                leftbits += 8;
-                while (leftbits >= 6) {
-                  var curr = (leftchar >> (leftbits-6)) & 0x3f;
-                  leftbits -= 6;
-                  ret += BASE[curr];
-                }
-              }
-              if (leftbits == 2) {
-                ret += BASE[(leftchar&3) << 4];
-                ret += PAD + PAD;
-              } else if (leftbits == 4) {
-                ret += BASE[(leftchar&0xf) << 2];
-                ret += PAD;
-              }
-              return ret;
-            }
-            audio.src = 'data:audio/x-' + name.substr(-3) + ';base64,' + encode64(byteArray);
-            finish(audio); // we don't wait for confirmation this worked - but it's worth trying
-          };
-          audio.src = url;
-          // workaround for chrome bug 124926 - we do not always get oncanplaythrough or onerror
-          setTimeout(function() {
-            finish(audio); // try to use it even though it is not necessarily ready to play
-          }, 10000);
         } else {
-          return fail();
+          url = 'data:audio/x-' + name.substr(-3) + ';base64,' + Browser.encode64(byteArray);
         }
-      };
+#if ASSERTIONS
+        assert(typeof url == 'string', 'createObjectURL must return a url as a string');
+#endif
+        var audio = new Audio();
+        audio.addEventListener('canplaythrough', function() { finish(audio) }, false); // use addEventListener due to chromium bug 124926
+        audio.onerror = function(event) {
+          if (done) return;
+          if (Browser.URLObject) {
+            console.log('warning: browser could not fully decode audio ' + name + ', trying slower base64 approach');
+            audio.src = 'data:audio/x-' + name.substr(-3) + ';base64,' + Browser.encode64(byteArray);
+            finish(audio); // we don't wait for confirmation this worked - but it's worth trying
+          }
+        };
+        audio.src = url;
+        // workaround for chrome bug 124926 - we do not always get oncanplaythrough or onerror
+        setTimeout(function() {
+          finish(audio); // try to use it even though it is not necessarily ready to play
+        }, 10000);
+      }
       Module['preloadPlugins'].push(audioPlugin);
 
       // Canvas event setup
@@ -198,10 +207,10 @@ mergeInto(LibraryManager.library, {
       var canvas = Module['canvas'];
       canvas.requestPointerLock = canvas['requestPointerLock'] ||
                                   canvas['mozRequestPointerLock'] ||
-                                  canvas['webkitRequestPointerLock'];
+                                  canvas['webkitRequestPointerLock'] || function () {};
       canvas.exitPointerLock = document['exitPointerLock'] ||
                                document['mozExitPointerLock'] ||
-                               document['webkitExitPointerLock'];
+                               document['webkitExitPointerLock'] || function () {};
       canvas.exitPointerLock = canvas.exitPointerLock.bind(document);
 
       function pointerLockChange() {
