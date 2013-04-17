@@ -7075,7 +7075,6 @@ LibraryManager.library = {
   gethostbyname__deps: ['__hostent_struct_layout'],
   gethostbyname: function(name) {
     name = Pointer_stringify(name);
-    console.log("gethostbyname: ", name);
       if (!_gethostbyname.id) {
         _gethostbyname.id = 1;
         _gethostbyname.table = {};
