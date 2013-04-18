@@ -700,7 +700,7 @@ function JSify(data, functionsOnly, givenFunctions) {
             if (block.entries.length == 1) {
               ret += indent + 'label = ' + getLabelId(block.entries[0]) + '; ' + (SHOW_LABELS ? '/* ' + getOriginalLabelId(block.entries[0]) + ' */' : '') + '\n';
             } // otherwise, should have been set before!
-            if (func.setjmpTable && !ASM_JS) {
+            if (func.setjmpTable) {
               assert(!ASM_JS, 'asm.js mode does not support setjmp yet');
               var setjmpTable = {};
               ret += indent + 'var mySetjmpIds = {};\n';
