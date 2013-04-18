@@ -359,7 +359,7 @@ if has_preloaded:
         byteArray = new Uint8Array(decompressed);
         %s
       });
-''' % use_data
+    ''' % use_data
 
   code += r'''
     if (!Module.expectedDataFileDownloads) {
@@ -376,76 +376,101 @@ if has_preloaded:
     var PACKAGE_STORE_NAME = 'PACKAGES';
     var PACKAGE_NAME = '%s';
     var REMOTE_PACKAGE_NAME = '%s';
+  ''' % (data_target, os.path.basename(Compression.compressed_name(data_target) if Compression.on else data_target))
 
-    function openDatabase(callback, errback) {
-      var openRequest = indexedDB.open(DB_NAME);
-      openRequest.onupgradeneeded = function(event) {
-        var db = event.target.result;
+  if use_preload_cache:
+    code += r'''
+      function openDatabase(callback, errback) {
+        var openRequest = indexedDB.open(DB_NAME);
+        openRequest.onupgradeneeded = function(event) {
+          var db = event.target.result;
 
-        if(db.objectStoreNames.contains(PACKAGE_STORE_NAME)) {
-          db.deleteObjectStore(PACKAGE_STORE_NAME);
-        }
-        var packages = db.createObjectStore(PACKAGE_STORE_NAME);
-
-        if(db.objectStoreNames.contains(METADATA_STORE_NAME)) {
-          db.deleteObjectStore(METADATA_STORE_NAME);
-        }
-        var metadata = db.createObjectStore(METADATA_STORE_NAME);
-      };
-      openRequest.onsuccess = function(event) {
-        var db = event.target.result;
-        callback(db);
-      };
-      openRequest.onerror = function(error) {
-        errback(error);
-      };
-    };
-
-    /* Check if there's a cached package, and if so whether it's the latest available */
-    function checkCachedPackage(db, packageName, callback, errback) {
-      var transaction = db.transaction([METADATA_STORE_NAME], IDB_RO);
-      var metadata = transaction.objectStore(METADATA_STORE_NAME);
-
-      var getRequest = metadata.get(packageName);
-      getRequest.onsuccess = function(event) {
-        var result = event.target.result;
-        if(!result) {
-          return callback(false);
-        }
-        var mtime = result.mtime;
-        var xhr = new XMLHttpRequest();
-        xhr.open('HEAD', packageName, true);
-        xhr.setRequestHeader('If-Modified-Since', mtime);
-        xhr.setRequestHeader('Cache-Control', 'no-cache');
-        xhr.onreadystatechange = function() {
-          if(4 === xhr.readyState) {
-            console.log('DEBUG', packageName, mtime, xhr.getResponseHeader('Last-Modified'), xhr.status);
-            var useCached = (304 === xhr.status);
-            return callback(useCached);
+          if(db.objectStoreNames.contains(PACKAGE_STORE_NAME)) {
+            db.deleteObjectStore(PACKAGE_STORE_NAME);
           }
+          var packages = db.createObjectStore(PACKAGE_STORE_NAME);
+
+          if(db.objectStoreNames.contains(METADATA_STORE_NAME)) {
+            db.deleteObjectStore(METADATA_STORE_NAME);
+          }
+          var metadata = db.createObjectStore(METADATA_STORE_NAME);
         };
-        xhr.send(null);
+        openRequest.onsuccess = function(event) {
+          var db = event.target.result;
+          callback(db);
+        };
+        openRequest.onerror = function(error) {
+          errback(error);
+        };
       };
-      getRequest.onerror = function(error) {
-        errback(error);
-      };
-    };
 
-    function fetchCachedPackage(db, packageName, callback, errback) {
-      var transaction = db.transaction([PACKAGE_STORE_NAME], IDB_RO);
-      var packages = transaction.objectStore(PACKAGE_STORE_NAME);
+      /* Check if there's a cached package, and if so whether it's the latest available */
+      function checkCachedPackage(db, packageName, callback, errback) {
+        var transaction = db.transaction([METADATA_STORE_NAME], IDB_RO);
+        var metadata = transaction.objectStore(METADATA_STORE_NAME);
 
-      var getRequest = packages.get(packageName);
-      getRequest.onsuccess = function(event) {
-        var result = event.target.result;
-        callback(result);
+        var getRequest = metadata.get(packageName);
+        getRequest.onsuccess = function(event) {
+          var result = event.target.result;
+          if(!result) {
+            return callback(false);
+          }
+          var mtime = result.mtime;
+          var xhr = new XMLHttpRequest();
+          xhr.open('HEAD', packageName, true);
+          xhr.setRequestHeader('If-Modified-Since', mtime);
+          xhr.setRequestHeader('Cache-Control', 'no-cache');
+          xhr.onreadystatechange = function() {
+            if(4 === xhr.readyState) {
+              console.log('DEBUG', packageName, mtime, xhr.getResponseHeader('Last-Modified'), xhr.status);
+              var useCached = (304 === xhr.status);
+              return callback(useCached);
+            }
+          };
+          xhr.send(null);
+        };
+        getRequest.onerror = function(error) {
+          errback(error);
+        };
       };
-      getRequest.onerror = function(error) {
-        errback(error);
-      };
-    };
 
-    function fetchRemotePackage(db, packageName, callback, errback) {
+      function fetchCachedPackage(db, packageName, callback, errback) {
+        var transaction = db.transaction([PACKAGE_STORE_NAME], IDB_RO);
+        var packages = transaction.objectStore(PACKAGE_STORE_NAME);
+
+        var getRequest = packages.get(packageName);
+        getRequest.onsuccess = function(event) {
+          var result = event.target.result;
+          callback(result);
+        };
+        getRequest.onerror = function(error) {
+          errback(error);
+        };
+      };
+
+      function cacheRemotePackage(db, packageName, packageData, packageMeta, callback, errback) {
+        var transaction = db.transaction([PACKAGE_STORE_NAME, METADATA_STORE_NAME], IDB_RW);
+        var packages = transaction.objectStore(PACKAGE_STORE_NAME);
+        var metadata = transaction.objectStore(METADATA_STORE_NAME);
+
+        var putPackageRequest = packages.put(packageData, packageName);
+        putPackageRequest.onsuccess = function(event) {
+          var putMetadataRequest = metadata.put(packageMeta, packageName);
+          putMetadataRequest.onsuccess = function(event) {
+            callback(packageData);
+          };
+          putMetadataRequest.onerror = function(error) {
+            errback(error);
+          };
+        };
+        putPackageRequest.onerror = function(error) {
+          errback(error);
+        };
+      };
+    '''
+
+  code += r'''
+    function fetchRemotePackage(packageName, callback, errback) {
       var xhr = new XMLHttpRequest();
       xhr.open('GET', packageName, true);
       xhr.responseType = 'arraybuffer';
@@ -466,7 +491,7 @@ if has_preloaded:
           var loaded = 0;
           var num = 0;
           for (var download in Module.dataFileDownloads) {
-            var data = Module.dataFileDownloads[download];
+          var data = Module.dataFileDownloads[download];
             total += data.total;
             loaded += data.loaded;
             num++;
@@ -482,24 +507,7 @@ if has_preloaded:
         var packageMeta = {
           'mtime': xhr.getResponseHeader('Last-Modified')
         };
-
-        var transaction = db.transaction([PACKAGE_STORE_NAME, METADATA_STORE_NAME], IDB_RW);
-        var packages = transaction.objectStore(PACKAGE_STORE_NAME);
-        var metadata = transaction.objectStore(METADATA_STORE_NAME);
-
-        var putPackageRequest = packages.put(packageData, packageName);
-        putPackageRequest.onsuccess = function(event) {
-          var putMetadataRequest = metadata.put(packageMeta, packageName);
-          putMetadataRequest.onsuccess = function(event) {
-            callback(packageData);
-          };
-          putMetadataRequest.onerror = function(error) {
-            errback(error);
-          };
-        };
-        putPackageRequest.onerror = function(error) {
-          errback(error);
-        };
+        callback(packageData, packageMeta);
       };
       xhr.send(null);
     };
@@ -516,25 +524,40 @@ if has_preloaded:
     function handleError(error) {
       console.error('package error:', error);
     };
+  ''' % (use_data, data_target) # use basename because from the browser's point of view, we need to find the datafile in the same dir as the html file
 
-    openDatabase(
-      function(db) {
-        checkCachedPackage(db, PACKAGE_NAME,
-          function(useCached) {
-            if(useCached) {
-              console.info('loading ' + PACKAGE_NAME + ' from cache');
-              fetchCachedPackage(db, PACKAGE_NAME, processPackageData, handleError);
-            } else {
-              console.info('loading ' + PACKAGE_NAME + ' from remote');
-              fetchRemotePackage(db, PACKAGE_NAME, processPackageData, handleError);
+  if use_preload_cache:
+    code += r'''
+      openDatabase(
+        function(db) {
+          checkCachedPackage(db, PACKAGE_NAME,
+            function(useCached) {
+              if(useCached) {
+                console.info('loading ' + PACKAGE_NAME + ' from cache');
+                fetchCachedPackage(db, PACKAGE_NAME,
+                  function(packageData, packageMeta) {
+                    cacheRemotePackage(packageData, packageMeta, processPackageData, handleError);
+                  }
+                , handleError);
+              } else {
+                console.info('loading ' + PACKAGE_NAME + ' from remote');
+                fetchRemotePackage(PACKAGE_NAME,
+                  function(packageData, packageMeta) {
+                    cacheRemotePackage(db, PACKAGE_NAME, packageData, packageMeta, processPackageData, handleError);
+                  }
+                , handleError);
+              }
             }
-          }
-        , handleError);
-      }
-    , handleError);
+          , handleError);
+        }
+      , handleError);
 
-    if (Module['setStatus']) Module['setStatus']('Downloading...');
-  ''' % (data_target, os.path.basename(Compression.compressed_name(data_target) if Compression.on else data_target), use_data, data_target) # use basename because from the browser's point of view, we need to find the datafile in the same dir as the html file
+      if (Module['setStatus']) Module['setStatus']('Downloading...');
+    '''
+  else:
+    code += r'''
+      fetchRemotePackage(PACKAGE_NAME, processPackageData, handleError);
+    '''
 
 if pre_run:
   ret += '''
