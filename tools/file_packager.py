@@ -70,6 +70,7 @@ crunch = 0
 plugins = []
 jsoutput = None
 force = True
+use_preload_cache = False
 
 for arg in sys.argv[1:]:
   if arg == '--preload':
@@ -93,6 +94,8 @@ for arg in sys.argv[1:]:
     in_compress = 0
   elif arg == '--no-force':
     force = False
+  elif arg == '--use-preload-cache':
+    use_preload_cache = True
   elif arg.startswith('--js-output'):
     jsoutput = arg.split('=')[1] if '=' in arg else None
   elif arg.startswith('--crunch'):
@@ -413,6 +416,7 @@ if has_preloaded:
         var xhr = new XMLHttpRequest();
         xhr.open('HEAD', packageName, true);
         xhr.setRequestHeader('If-Modified-Since', mtime);
+        xhr.setRequestHeader('Cache-Control', 'no-cache');
         xhr.onreadystatechange = function() {
           if(4 === xhr.readyState) {
             console.log('DEBUG', packageName, mtime, xhr.getResponseHeader('Last-Modified'), xhr.status);
@@ -518,10 +522,10 @@ if has_preloaded:
         checkCachedPackage(db, PACKAGE_NAME,
           function(useCached) {
             if(useCached) {
-              console.info('loading package from cache');
+              console.info('loading ' + PACKAGE_NAME + ' from cache');
               fetchCachedPackage(db, PACKAGE_NAME, processPackageData, handleError);
             } else {
-              console.info('loading package from remote');
+              console.info('loading ' + PACKAGE_NAME + ' from remote');
               fetchRemotePackage(db, PACKAGE_NAME, processPackageData, handleError);
             }
           }
