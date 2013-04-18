@@ -706,10 +706,10 @@ mergeInto(LibraryManager.library, {
   emscripten_get_now: function() {
     if (ENVIRONMENT_IS_NODE) {
         var t = process['hrtime']();
-        return t[0] + t[1] / 1e9;
+        return t[0] * 1e3 + t[1] / 1e6;
     }
     else if (window['performance'] && window['performance']['now']) {
-      return window['performance']['now']() / 1000.0;
+      return window['performance']['now']();
     } else {
       return Date.now();
     }
