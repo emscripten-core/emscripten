@@ -6876,6 +6876,9 @@ LibraryManager.library = {
   },
   pthread_cond_init: function() {},
   pthread_cond_destroy: function() {},
+  pthread_cond_signal: function() {
+    return 0;
+  },
   pthread_cond_broadcast: function() {
     return 0;
   },
