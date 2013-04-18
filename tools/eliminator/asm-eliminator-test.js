@@ -141,5 +141,20 @@ function label() {
     i();
   }
 }
+function switchy() {
+  var no = 0, yes = 0;
+  while (1) switch (label | 0) {
+    case x:
+      no = 100; // eliminatable in theory, but eliminator does not look into switch. must leave def above as well.
+      break;
+    case y:
+      yes = 111;
+      yes = yes*2;
+      print(yes);
+      yes--;
+      print(yes/2);
+      continue;
+  }
+}
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j", "_segment_holding", "__ZN5identC2EiPKcPci", "_vec2Length", "exc", "label"]
 

@@ -124,7 +124,7 @@ function analyzer(data, sidePass) {
           bits = bits || 32; // things like pointers are all i32, but show up as 0 bits from getBits
           if (allowLegal && bits <= 32) return [{ ident: base + ('i' + bits in Runtime.INT_TYPES ? '' : '$0'), bits: bits }];
           if (isNumber(base)) return getLegalLiterals(base, bits);
-          if (base[0] == '{') {
+          if (base != undefined && base[0] == '{') {
             warnOnce('seeing source of illegal data ' + base + ', likely an inline struct - assuming zeroinit');
             return getLegalLiterals('0', bits);
           }
@@ -254,16 +254,13 @@ function analyzer(data, sidePass) {
                 // accessible through ident$x, and not constants we need to parse then and there)
                 if (subItem != item && (!(subItem.intertype in UNUNFOLDABLE) ||
                                        (subItem.intertype == 'value' && isNumber(subItem.ident) && isIllegalType(subItem.type)))) {
-                  if (item.intertype == 'phi') {
-                    assert(subItem.intertype == 'value' || subItem.intertype == 'structvalue', 'We can only unfold illegal constants in phis');
-                    // we must handle this in the phi itself, if we unfold normally it will not be pushed back with the phi
-                  } else {
-                    var tempIdent = '$$etemp$' + (tempId++);
-                    subItem.assignTo = tempIdent;
-                    unfolded.unshift(subItem);
-                    fixUnfolded(subItem);
-                    return { intertype: 'value', ident: tempIdent, type: subItem.type };
-                  }
+                  if (item.intertype == 'phi' && (subItem.intertype == 'value' || subItem.intertype == 'structvalue'))
+                    warnOnce('We can only unfold illegal constants in phis');
+                  var tempIdent = '$$etemp$' + (tempId++);
+                  subItem.assignTo = tempIdent;
+                  unfolded.unshift(subItem);
+                  fixUnfolded(subItem);
+                  return { intertype: 'value', ident: tempIdent, type: subItem.type };
                 } else if (subItem.intertype == 'switch' && isIllegalType(subItem.type)) {
                   subItem.switchLabels.forEach(function(switchLabel) {
                     if (switchLabel.value[0] != '$') {

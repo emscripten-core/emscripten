@@ -3566,6 +3566,15 @@ LibraryManager.library = {
     var unget = function() { index--; };
     return __scanString(format, get, unget, varargs);
   },
+  swscanf__deps: ['_scanString'],
+  swscanf: function(s, format, varargs) {
+    // int sscanf(const char *restrict s, const char *restrict format, ... );
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/scanf.html
+    var index = 0;
+    var get = function() { return {{{ makeGetValue('s', 'index++', 'i32') }}}; };
+    var unget = function() { index--; };
+    return __scanString(format, get, unget, varargs);
+  },
   snprintf__deps: ['_formatString'],
   snprintf: function(s, n, format, varargs) {
     // int snprintf(char *restrict s, size_t n, const char *restrict format, ...);
@@ -3585,6 +3594,25 @@ LibraryManager.library = {
     if (limit < n || (n === undefined)) {{{ makeSetValue('s', 'i', '0', 'i8') }}};
     return result.length;
   },
+  snwprintf__deps: ['_formatString'],
+  snwprintf: function(s, n, format, varargs) {
+    // int snprintf(char *restrict s, size_t n, const char *restrict format, ...);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
+    var result = __formatString(format, varargs);
+    var limit = (n === undefined) ? result.length
+                                  : Math.min(result.length, Math.max(n - 1, 0));
+    if (s < 0) {
+      s = -s;
+      var buf = _malloc(limit+1);
+      {{{ makeSetValue('s', '0', 'buf', 'i32*') }}};
+      s = buf;
+    }
+    for (var i = 0; i < limit; i++) {
+      {{{ makeSetValue('s', 'i', 'result[i]', 'i32') }}};
+    }
+    if (limit < n || (n === undefined)) {{{ makeSetValue('s', 'i', '0', 'i32') }}};
+    return result.length;
+  },
   fprintf__deps: ['fwrite', '_formatString'],
   fprintf: function(stream, format, varargs) {
     // int fprintf(FILE *restrict stream, const char *restrict format, ...);
@@ -3592,6 +3620,16 @@ LibraryManager.library = {
     var result = __formatString(format, varargs);
     var stack = Runtime.stackSave();
     var ret = _fwrite(allocate(result, 'i8', ALLOC_STACK), 1, result.length, stream);
+    Runtime.stackRestore(stack);
+    return ret;
+  },
+  fwprintf__deps: ['fwrite', '_formatString'],
+  fwprintf: function(stream, format, varargs) {
+    // int fprintf(FILE *restrict stream, const char *restrict format, ...);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
+    var result = __formatString(format, varargs);
+    var stack = Runtime.stackSave();
+    var ret = _fwrite(allocate(result, 'i32', ALLOC_STACK), 1, result.length, stream);
     Runtime.stackRestore(stack);
     return ret;
   },
@@ -3607,6 +3645,12 @@ LibraryManager.library = {
     // int sprintf(char *restrict s, const char *restrict format, ...);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
     return _snprintf(s, undefined, format, varargs);
+  },
+  swprintf__deps: ['snprintf'],
+  swprintf: function(s, format, varargs) {
+    // int sprintf(char *restrict s, const char *restrict format, ...);
+    // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
+    return _snwprintf(s, undefined, format, varargs);
   },
   asprintf__deps: ['sprintf'],
   asprintf: function(s, format, varargs) {
@@ -4243,7 +4287,15 @@ LibraryManager.library = {
     return ret|0;
   },
 
-  wmemcpy: function() { throw 'wmemcpy not implemented' },
+  wmemcpy__deps: ['memcpy'],
+  wmemcpy: function (dest, src, num) {
+    _memcpy(dest, src, num*4);
+  },
+  
+  wmemcmp__deps: ['memcmp'],
+  wmemcmp: function (p1, p2, num) {
+    _memcmp(p1, p2, num*4);
+  },
 
   llvm_memcpy_i32: 'memcpy',
   llvm_memcpy_i64: 'memcpy',
@@ -4274,7 +4326,10 @@ LibraryManager.library = {
   llvm_memmove_p0i8_p0i8_i32: 'memmove',
   llvm_memmove_p0i8_p0i8_i64: 'memmove',
 
-  wmemmove: function() { throw 'wmemmove not implemented' },
+  wmemmove__deps: ['memmove'],
+  wmemmove: function(dest, src, num) {
+    _memmove(dest, src, num*4);
+  },
 
   memset__inline: function(ptr, value, num, align) {
     return makeSetValues(ptr, 0, value, 'null', num, align);
@@ -4335,7 +4390,11 @@ LibraryManager.library = {
     return 1;
   },
 
-  wcslen: function() { throw 'wcslen not implemented' },
+  wcslen__deps: ['strlen'],
+  wcslen: function(ptr) {
+    return _strlen(ptr) / 4;
+  },
+  
   mbrlen: function() { throw 'mbrlen not implemented' },
   mbsrtowcs: function() { throw 'mbsrtowcs not implemented' },
   wcsnrtombs: function() { throw 'wcsnrtombs not implemented' },
@@ -4465,6 +4524,10 @@ LibraryManager.library = {
   strcmp: function(px, py) {
     return _strncmp(px, py, TOTAL_MEMORY);
   },
+  wcscmp__deps: ['wcsncmp'],
+  wcscmp: function(px, py) {
+    return _wcsncmp(px, py, TOTAL_MEMORY);
+  },
   // We always assume ASCII locale.
   strcoll: 'strcmp',
 
@@ -4481,6 +4544,24 @@ LibraryManager.library = {
     while (i < n) {
       var x = {{{ makeGetValue('px', 'i', 'i8', 0, 1) }}};
       var y = {{{ makeGetValue('py', 'i', 'i8', 0, 1) }}};
+      if (x == y && x == 0) return 0;
+      if (x == 0) return -1;
+      if (y == 0) return 1;
+      if (x == y) {
+        i ++;
+        continue;
+      } else {
+        return x > y ? 1 : -1;
+      }
+    }
+    return 0;
+  },
+  
+  wcsncmp: function(px, py, n) {
+    var i = 0;
+    while (i < n) {
+      var x = {{{ makeGetValue('px', 'i', 'i32', 0, 1) }}};
+      var y = {{{ makeGetValue('py', 'i', 'i32', 0, 1) }}};
       if (x == y && x == 0) return 0;
       if (x == 0) return -1;
       if (y == 0) return 1;
@@ -4538,6 +4619,14 @@ LibraryManager.library = {
     }
     return 0;
   },
+  wmemchr: function(ptr, chr, num) {
+    chr = unSign(chr);
+    for (var i = 0; i < num; i++) {
+      if ({{{ makeGetValue('ptr', 0, 'i32') }}} == chr) return ptr;
+      ptr++;
+    }
+    return 0;
+  },
 
   strstr: function(ptr1, ptr2) {
     var check = 0, start;
@@ -4567,6 +4656,15 @@ LibraryManager.library = {
     } while (val);
     return 0;
   },
+  wcschr: function(ptr, chr) {
+    ptr--;
+    do {
+      ptr++;
+      var val = {{{ makeGetValue('ptr', 0, 'i32') }}};
+      if (val == chr) return ptr;
+    } while (val);
+    return 0;
+  },
   index: 'strchr',
 
   strrchr__deps: ['strlen'],
@@ -4574,6 +4672,15 @@ LibraryManager.library = {
     var ptr2 = ptr + _strlen(ptr);
     do {
       if ({{{ makeGetValue('ptr2', 0, 'i8') }}} == chr) return ptr2;
+      ptr2--;
+    } while (ptr2 >= ptr);
+    return 0;
+  },
+  wcsrchr__deps: ['wcslen'],
+  wcsrchr: function(ptr, chr) {
+    var ptr2 = ptr + _wcslen(ptr);
+    do {
+      if ({{{ makeGetValue('ptr2', 0, 'i32') }}} == chr) return ptr2;
       ptr2--;
     } while (ptr2 >= ptr);
     return 0;
@@ -4771,16 +4878,21 @@ LibraryManager.library = {
   isspace: function(chr) {
     return chr in { 32: 0, 9: 0, 10: 0, 11: 0, 12: 0, 13: 0 };
   },
+  iswspace: 'isspace',
   isblank: function(chr) {
     return chr == {{{ charCode(' ') }}} || chr == {{{ charCode('\t') }}};
   },
+  iswblank: 'isblank',
   iscntrl: function(chr) {
     return (0 <= chr && chr <= 0x1F) || chr === 0x7F;
   },
+  iswcntrl: 'iscntrl',
   isprint: function(chr) {
     return 0x1F < chr && chr < 0x7F;
   },
+  iswprint: 'isprint',
   isgraph: 'isprint',
+  iswgraph: 'isprint',
   // Lookup tables for glibc ctype implementation.
   __ctype_b_loc: function() {
     // http://refspecs.freestandards.org/LSB_3.0.0/LSB-Core-generic/LSB-Core-generic/baselib---ctype-b-loc.html
@@ -6764,6 +6876,9 @@ LibraryManager.library = {
   },
   pthread_cond_init: function() {},
   pthread_cond_destroy: function() {},
+  pthread_cond_signal: function() {
+    return 0;
+  },
   pthread_cond_broadcast: function() {
     return 0;
   },

@@ -700,7 +700,7 @@ function JSify(data, functionsOnly, givenFunctions) {
             if (block.entries.length == 1) {
               ret += indent + 'label = ' + getLabelId(block.entries[0]) + '; ' + (SHOW_LABELS ? '/* ' + getOriginalLabelId(block.entries[0]) + ' */' : '') + '\n';
             } // otherwise, should have been set before!
-            if (func.setjmpTable) {
+            if (func.setjmpTable && !ASM_JS) {
               assert(!ASM_JS, 'asm.js mode does not support setjmp yet');
               var setjmpTable = {};
               ret += indent + 'var mySetjmpIds = {};\n';
@@ -1210,6 +1210,12 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
   });
   makeFuncLineActor('landingpad', function(item) {
+    if (DISABLE_EXCEPTION_CATCHING && USE_TYPED_ARRAYS == 2) {
+      ret = makeVarDef(item.assignTo) + '$0 = 0; ' + item.assignTo + '$1 = 0;';
+      item.assignTo = null;
+      if (ASSERTIONS) warnOnce('landingpad, but exceptions are disabled!');
+      return ret;
+    }
     var catchTypeArray = item.catchables.map(finalizeLLVMParameter).map(function(element) { return asmCoercion(element, 'i32') }).join(',');
     var ret = asmCoercion('___cxa_find_matching_catch(-1, -1' + (catchTypeArray.length > 0 ? ',' + catchTypeArray : '') +')', 'i32');
     if (USE_TYPED_ARRAYS == 2) {
@@ -1458,11 +1464,12 @@ function JSify(data, functionsOnly, givenFunctions) {
   });
 
   makeFuncLineActor('unreachable', function(item) {
+    var ret = '';
+    if (ASM_JS && item.funcData.returnType != 'void') ret = 'return ' + asmCoercion('0', item.funcData.returnType) + ';';
     if (ASSERTIONS) {
-      return ASM_JS ? 'abort()' : 'throw "Reached an unreachable!"';
-    } else {
-      return ';';
+      ret = (ASM_JS ? 'abort()' : 'throw "Reached an unreachable!"') + ';' + ret;
     }
+    return ret || ';';
   });
 
   // Final combiner

@@ -1765,6 +1765,7 @@ function eliminate(ast, memSafe) {
     var values = {};
     var locals = {};
     var varsToRemove = {}; // variables being removed, that we can eliminate all 'var x;' of (this refers to 'var' nodes we should remove)
+                           // 1 means we should remove it, 2 means we successfully removed it
     var varsToTryToRemove = {}; // variables that have 0 uses, but have side effects - when we scan we can try to remove them
     // add arguments as locals
     if (func[2]) {
@@ -1822,7 +1823,7 @@ function eliminate(ast, memSafe) {
           });
         }
         if (!hasSideEffects) {
-          varsToRemove[name] = 1; // remove it normally
+          varsToRemove[name] = !definitions[name] ? 2 : 1; // remove it normally
           sideEffectFree[name] = true;
         } else {
           varsToTryToRemove[name] = 1; // try to remove it later during scanning
@@ -1979,7 +1980,7 @@ function eliminate(ast, memSafe) {
                 for (var i = 0; i < value.length; i++) {
                   node[i] = value[i];
                 }
-                varsToRemove[name] = 1;
+                varsToRemove[name] = 2;
               }
             } else {
               if (allowTracking) track(name, node[3], node);
@@ -2019,7 +2020,7 @@ function eliminate(ast, memSafe) {
                 for (var i = 0; i < value.length; i++) {
                   node[i] = value[i];
                 }
-                varsToRemove[name] = 1;
+                varsToRemove[name] = 2;
               }
             }
           }
@@ -2123,7 +2124,7 @@ function eliminate(ast, memSafe) {
     function doEliminate(name, node) {
       //printErr('elim!!!!! ' + name);
       // yes, eliminate!
-      varsToRemove[name] = 1; // both assign and var definitions can have other vars we must clean up
+      varsToRemove[name] = 2; // both assign and var definitions can have other vars we must clean up
       var info = tracked[name];
       delete tracked[name];
       var defNode = info.defNode;
@@ -2181,7 +2182,7 @@ function eliminate(ast, memSafe) {
     //printErr('cleaning up ' + JSON.stringify(varsToRemove));
     traverse(func, function(node, type) {
       if (type === 'var') {
-        node[1] = node[1].filter(function(pair) { return !(pair[0] in varsToRemove) });
+        node[1] = node[1].filter(function(pair) { return !varsToRemove[pair[0]] });
         if (node[1].length == 0) {
           // wipe out an empty |var;|
           node[0] = 'toplevel';
@@ -2192,7 +2193,7 @@ function eliminate(ast, memSafe) {
 
     if (asm) {
       for (var v in varsToRemove) {
-        delete asmData.vars[v];
+        if (varsToRemove[v] == 2) delete asmData.vars[v];
       }
       denormalizeAsm(func, asmData);
     }
