@@ -7395,17 +7395,12 @@ LibraryManager.library = {
     }
   },
 
-  socketpair__deps: ['__setErrNo', '$ERRNO_CODES', 'pipe'],
+  socketpair__deps: ['__setErrNo', '$ERRNO_CODES'],
   socketpair: function(domain, type, protocol, sv) {
     // int socketpair(int domain, int type, int protocol, int sv[2]);
-    // http://sources.iwp9.org/files/plan9/sys/src/ape/lib/bsd/socketpair.c
-    switch (domain) {
-      case {{{ cDefine('PF_UNIX') }}}:
-        return _pipe(sv);
-      default:
-        ___setErrNo(ERRNO_CODES.EOPNOTSUPP);
-        return -1;
-    }
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/socketpair.html
+    ___setErrNo(ERRNO_CODES.EOPNOTSUPP);
+    return -1;
   },
 
   // pty.h
