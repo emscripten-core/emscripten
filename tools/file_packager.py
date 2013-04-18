@@ -422,7 +422,6 @@ if has_preloaded:
           xhr.setRequestHeader('Cache-Control', 'no-cache');
           xhr.onreadystatechange = function() {
             if(4 === xhr.readyState) {
-              console.log('DEBUG', packageName, mtime, xhr.getResponseHeader('Last-Modified'), xhr.status);
               var useCached = (304 === xhr.status);
               return callback(useCached);
             }
@@ -536,7 +535,7 @@ if has_preloaded:
                 console.info('loading ' + PACKAGE_NAME + ' from cache');
                 fetchCachedPackage(db, PACKAGE_NAME,
                   function(packageData, packageMeta) {
-                    cacheRemotePackage(packageData, packageMeta, processPackageData, handleError);
+                    cacheRemotePackage(db, packageData, packageMeta, processPackageData, handleError);
                   }
                 , handleError);
               } else {
