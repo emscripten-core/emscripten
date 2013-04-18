@@ -175,7 +175,7 @@ void __attribute__((noinline)) emscripten_get_now_benchmark(int N)
         emscripten_get_now();
     }
     volatile float t2 = emscripten_get_now();
-    printf("C++ emscripten_get_now %d iters: %f msecs.\n", N, 1000.f*(t2-t));
+    printf("C++ emscripten_get_now %d iters: %f msecs.\n", N, (t2-t));
 }
 
 void __attribute__((noinline)) increment_counter_benchmark(int N)
@@ -195,7 +195,7 @@ void __attribute__((noinline)) increment_counter_benchmark(int N)
         increment_counter();
     }
     volatile float t2 = emscripten_get_now();
-    printf("C++ increment_counter %d iters: %f msecs.\n", N, 1000.f*(t2-t));
+    printf("C++ increment_counter %d iters: %f msecs.\n", N, (t2-t));
 }
 
 void __attribute__((noinline)) increment_class_counter_benchmark(int N)
@@ -216,7 +216,7 @@ void __attribute__((noinline)) increment_class_counter_benchmark(int N)
         foo.incr_class_counter();
     }
     volatile float t2 = emscripten_get_now();
-    printf("C++ increment_class_counter %d iters: %f msecs. result: %d\n", N, 1000.f*(t2-t), foo.class_counter);
+    printf("C++ increment_class_counter %d iters: %f msecs. result: %d\n", N, (t2-t), foo.class_counter);
 }
 
 void __attribute__((noinline)) returns_input_benchmark()
@@ -237,7 +237,7 @@ void __attribute__((noinline)) returns_input_benchmark()
         r += returns_input(i);
     }
     volatile float t2 = emscripten_get_now();
-    printf("C++ returns_input 100000 iters: %f msecs.\n", 1000.f*(t2-t));
+    printf("C++ returns_input 100000 iters: %f msecs.\n", (t2-t));
 }
 
 void __attribute__((noinline)) sum_int_benchmark()
@@ -258,7 +258,7 @@ void __attribute__((noinline)) sum_int_benchmark()
         r += sum_int(i,2,3,4,5,6,7,8,9);
     }
     volatile float t2 = emscripten_get_now();
-    printf("C++ sum_int 100000 iters: %f msecs.\n", 1000.f*(t2-t));
+    printf("C++ sum_int 100000 iters: %f msecs.\n", (t2-t));
 }
 
 void __attribute__((noinline)) sum_float_benchmark()
@@ -279,7 +279,7 @@ void __attribute__((noinline)) sum_float_benchmark()
         f += sum_float((float)i,2.f,3.f,4.f,5.f,6.f,7.f,8.f,9.f);
     }
     volatile float t2 = emscripten_get_now();
-    printf("C++ sum_float 100000 iters: %f msecs.\n", 1000.f*(t2-t));
+    printf("C++ sum_float 100000 iters: %f msecs.\n", (t2-t));
 }
 
 void __attribute__((noinline)) move_gameobjects_benchmark()
@@ -303,7 +303,7 @@ void __attribute__((noinline)) move_gameobjects_benchmark()
     Vec3 accum;
     for(int i = 0; i < N; ++i)
         accum = add(add(accum, objects[i]->GetTransform()->GetPosition()), objects[i]->GetTransform()->GetRotation());
-    printf("C++ move_gameobjects %d iters: %f msecs. Result: %f\n", N, 1000.f*(t2-t), accum.x+accum.y+accum.z);
+    printf("C++ move_gameobjects %d iters: %f msecs. Result: %f\n", N, (t2-t), accum.x+accum.y+accum.z);
 }
 
 int main()

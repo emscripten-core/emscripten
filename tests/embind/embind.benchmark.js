@@ -15,7 +15,7 @@ function _increment_counter_benchmark_js(N) {
     }
     var b = _emscripten_get_now();
     var ctr2 = _get_counter();
-    Module.print("JS increment_counter " + N + " iters: " + (b-a)*1000 + " msecs. result: " + (ctr2-ctr));
+    Module.print("JS increment_counter " + N + " iters: " + (b-a) + " msecs. result: " + (ctr2-ctr));
 }
 
 function _increment_class_counter_benchmark_embind_js(N) {
@@ -34,7 +34,7 @@ function _increment_class_counter_benchmark_embind_js(N) {
         foo['incr_class_counter']();
     }
     var b = _emscripten_get_now();
-    Module.print("JS embind increment_class_counter " + N + " iters: " + (b-a)*1000 + " msecs. result: " + foo['class_counter_val']());
+    Module.print("JS embind increment_class_counter " + N + " iters: " + (b-a) + " msecs. result: " + foo['class_counter_val']());
     foo['delete']();
 }
 
@@ -54,7 +54,7 @@ function _returns_input_benchmark_js() {
         t += _returns_input(i);
     }
     var b = _emscripten_get_now();
-    Module.print("JS returns_input 100000 iters: " + (b-a)*1000 + " msecs. result: " + t);
+    Module.print("JS returns_input 100000 iters: " + (b-a) + " msecs. result: " + t);
 }
 
 function _sum_int_benchmark_js() {
@@ -73,7 +73,7 @@ function _sum_int_benchmark_js() {
         r += _sum_int(i, 2, 3, 4, 5, 6, 7, 8, 9);
     }
     var b = _emscripten_get_now();
-    Module.print("JS sum_int 100000 iters: " + (b-a)*1000 + " msecs. result: " + r);
+    Module.print("JS sum_int 100000 iters: " + (b-a) + " msecs. result: " + r);
 }
 
 function _sum_float_benchmark_js() {
@@ -92,7 +92,7 @@ function _sum_float_benchmark_js() {
         r += _sum_float(i, 2, 3, 4, 5, 6, 7, 8, 9);
     }
     var b = _emscripten_get_now();
-    Module.print("JS sum_float 100000 iters: " + (b-a)*1000 + " msecs. result: " + r);
+    Module.print("JS sum_float 100000 iters: " + (b-a) + " msecs. result: " + r);
 }
 
 function _increment_counter_benchmark_embind_js(N) {
@@ -112,7 +112,7 @@ function _increment_counter_benchmark_embind_js(N) {
     }
     var b = _emscripten_get_now();
     var ctr2 = _get_counter();
-    Module.print("JS embind increment_counter " + N + " iters: " + (b-a)*1000 + " msecs. result: " + (ctr2-ctr));
+    Module.print("JS embind increment_counter " + N + " iters: " + (b-a) + " msecs. result: " + (ctr2-ctr));
 }
 
 function _returns_input_benchmark_embind_js() {
@@ -131,7 +131,7 @@ function _returns_input_benchmark_embind_js() {
         t += Module['returns_input'](i);
     }
     var b = _emscripten_get_now();
-    Module.print("JS embind returns_input 100000 iters: " + (b-a)*1000 + " msecs. result: " + t);
+    Module.print("JS embind returns_input 100000 iters: " + (b-a) + " msecs. result: " + t);
 }
 
 function _sum_int_benchmark_embind_js() {
@@ -150,7 +150,7 @@ function _sum_int_benchmark_embind_js() {
         r += Module['sum_int'](i, 2, 3, 4, 5, 6, 7, 8, 9);
     }
     var b = _emscripten_get_now();
-    Module.print("JS embind sum_int 100000 iters: " + (b-a)*1000 + " msecs. result: " + r);
+    Module.print("JS embind sum_int 100000 iters: " + (b-a) + " msecs. result: " + r);
 }
 
 function _sum_float_benchmark_embind_js() {
@@ -169,7 +169,7 @@ function _sum_float_benchmark_embind_js() {
         r += Module['sum_float'](i, 2, 3, 4, 5, 6, 7, 8, 9);
     }
     var b = _emscripten_get_now();
-    Module.print("JS embind sum_float 100000 iters: " + (b-a)*1000 + " msecs. result: " + r);
+    Module.print("JS embind sum_float 100000 iters: " + (b-a) + " msecs. result: " + r);
 }
 
 function _move_gameobjects_benchmark_embind_js() {
@@ -197,5 +197,5 @@ function _move_gameobjects_benchmark_embind_js() {
         t['delete']();
     }
     
-    Module.print("JS embind move_gameobjects " + N + " iters: " + 1000*(b-a) + " msecs. Result: " + (accum[0] + accum[1] + accum[2]));
+    Module.print("JS embind move_gameobjects " + N + " iters: " + (b-a) + " msecs. Result: " + (accum[0] + accum[1] + accum[2]));
 }
