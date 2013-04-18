@@ -1347,132 +1347,6 @@ std::string unsigned_long_to_string(unsigned long val) {
     return str;
 }
 
-class MultipleCtors {
-public:
-    int value;
-
-    MultipleCtors(int i) {
-        value = 1;
-        assert(i == 10);
-    }
-    MultipleCtors(int i, int j) {
-        value = 2;
-        assert(i == 20);
-        assert(j == 20);
-    }
-    MultipleCtors(int i, int j, int k) {
-        value = 3;
-        assert(i == 30);
-        assert(j == 30);
-        assert(k == 30);
-    }
-
-    int WhichCtorCalled() const {
-        return value;
-    }
-};
-
-class MultipleOverloads {
-public:
-    MultipleOverloads() {}
-    
-    int value;
-    static int staticValue;
-    
-    int Func(int i) {
-        assert(i == 10);
-        value = 1;
-        return 1;
-    }
-    int Func(int i, int j) {
-        assert(i == 20);
-        assert(j == 20);
-        value = 2;
-        return 2;
-    }
-
-    int WhichFuncCalled() const {
-        return value;
-    }
-    
-    static int StaticFunc(int i) {
-        assert(i == 10);
-        staticValue = 1;
-        return 1;
-    }
-    static int StaticFunc(int i, int j) {
-        assert(i == 20);
-        assert(j == 20);
-        staticValue = 2;
-        return 2;
-    }
-
-    static int WhichStaticFuncCalled() {
-        return staticValue;
-    }
-};
-
-class MultipleOverloadsDerived : public MultipleOverloads {
-public:
-    MultipleOverloadsDerived() {}
-        
-    int Func(int i, int j, int k) {
-        assert(i == 30);
-        assert(j == 30);
-        assert(k == 30);
-        value = 3;
-        return 3;
-    }
-    int Func(int i, int j, int k, int l) {
-        assert(i == 40);
-        assert(j == 40);
-        assert(k == 40);
-        assert(l == 40);
-        value = 4;
-        return 4;
-    }
-    
-    static int StaticFunc(int i, int j, int k) {
-        assert(i == 30);
-        assert(j == 30);
-        assert(k == 30);
-        staticValue = 3;
-        return 3;
-    }
-    static int StaticFunc(int i, int j, int k, int l) {
-        assert(i == 40);
-        assert(j == 40);
-        assert(k == 40);
-        assert(l == 40);
-        staticValue = 4;
-        return 4;
-    }
-};
-
-int overloaded_function(int i)
-{
-    assert(i == 10);
-    return 1;
-}
-
-int overloaded_function(int i, int j)
-{
-    assert(i == 20);
-    assert(j == 20);
-    return 2;
-}
-
-EMSCRIPTEN_BINDINGS(constants) {
-    constant("INT_CONSTANT", 10);
-    constant("STRING_CONSTANT", std::string("some string"));
-
-    TupleVector tv(1, 2, 3, 4);
-    constant("VALUE_TUPLE_CONSTANT", tv);
-
-    StructVector sv(1, 2, 3, 4);
-    constant("VALUE_STRUCT_CONSTANT", sv);
-}
-
 EMSCRIPTEN_BINDINGS(tests) {
     register_vector<int>("IntegerVector");
     register_vector<char>("CharVector");
@@ -1924,7 +1798,143 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("unsigned_int_to_string", &unsigned_int_to_string);
     function("long_to_string", &long_to_string);
     function("unsigned_long_to_string", &unsigned_long_to_string);
+}
 
+int overloaded_function(int i) {
+    assert(i == 10);
+    return 1;
+}
+
+int overloaded_function(int i, int j) {
+    assert(i == 20);
+    assert(j == 20);
+    return 2;
+}
+
+class MultipleCtors {
+public:
+    int value;
+
+    MultipleCtors(int i) {
+        value = 1;
+        assert(i == 10);
+    }
+    MultipleCtors(int i, int j) {
+        value = 2;
+        assert(i == 20);
+        assert(j == 20);
+    }
+    MultipleCtors(int i, int j, int k) {
+        value = 3;
+        assert(i == 30);
+        assert(j == 30);
+        assert(k == 30);
+    }
+
+    int WhichCtorCalled() const {
+        return value;
+    }
+};
+
+class MultipleOverloads {
+public:
+    MultipleOverloads() {}
+    
+    int value;
+    static int staticValue;
+    
+    int Func(int i) {
+        assert(i == 10);
+        value = 1;
+        return 1;
+    }
+    int Func(int i, int j) {
+        assert(i == 20);
+        assert(j == 20);
+        value = 2;
+        return 2;
+    }
+
+    int WhichFuncCalled() const {
+        return value;
+    }
+    
+    static int StaticFunc(int i) {
+        assert(i == 10);
+        staticValue = 1;
+        return 1;
+    }
+    static int StaticFunc(int i, int j) {
+        assert(i == 20);
+        assert(j == 20);
+        staticValue = 2;
+        return 2;
+    }
+
+    static int WhichStaticFuncCalled() {
+        return staticValue;
+    }
+};
+
+class MultipleOverloadsDerived : public MultipleOverloads {
+public:
+    MultipleOverloadsDerived() {}
+        
+    int Func(int i, int j, int k) {
+        assert(i == 30);
+        assert(j == 30);
+        assert(k == 30);
+        value = 3;
+        return 3;
+    }
+    int Func(int i, int j, int k, int l) {
+        assert(i == 40);
+        assert(j == 40);
+        assert(k == 40);
+        assert(l == 40);
+        value = 4;
+        return 4;
+    }
+    
+    static int StaticFunc(int i, int j, int k) {
+        assert(i == 30);
+        assert(j == 30);
+        assert(k == 30);
+        staticValue = 3;
+        return 3;
+    }
+    static int StaticFunc(int i, int j, int k, int l) {
+        assert(i == 40);
+        assert(j == 40);
+        assert(k == 40);
+        assert(l == 40);
+        staticValue = 4;
+        return 4;
+    }
+};
+
+struct MultipleAccessors {
+    int getConst() {
+        return 1;
+    }
+    int getConst() const {
+        return 2;
+    }
+    int getConst(int i) const {
+        return i;
+    }
+};
+
+struct ConstAndNonConst {
+    void method(int) {
+    }
+
+    int method() const {
+        return 10;
+    }
+};
+
+EMSCRIPTEN_BINDINGS(overloads) {
     function("overloaded_function", select_overload<int(int)>(&overloaded_function));
     function("overloaded_function", select_overload<int(int, int)>(&overloaded_function));
 
@@ -1950,6 +1960,14 @@ EMSCRIPTEN_BINDINGS(tests) {
         .function("Func", select_overload<int(int,int,int,int)>(&MultipleOverloadsDerived::Func))
         .class_function("StaticFunc", select_overload<int(int,int,int)>(&MultipleOverloadsDerived::StaticFunc))
         .class_function("StaticFunc", select_overload<int(int,int,int,int)>(&MultipleOverloadsDerived::StaticFunc))
+        ;
+
+    class_<MultipleAccessors>("MultipleAccessors")
+        .function("getConst", select_overload<int(int)const>(&MultipleAccessors::getConst))
+        ;
+
+    class_<ConstAndNonConst>("ConstAndNonConst")
+        .function("method", select_const(&ConstAndNonConst::method))
         ;
 }
 
@@ -2111,4 +2129,15 @@ EMSCRIPTEN_BINDINGS(read_only_properties) {
         .constructor<int>()
         .property("i", &HasReadOnlyProperty::i)
         ;
+}
+
+EMSCRIPTEN_BINDINGS(constants) {
+    constant("INT_CONSTANT", 10);
+    constant("STRING_CONSTANT", std::string("some string"));
+
+    TupleVector tv(1, 2, 3, 4);
+    constant("VALUE_TUPLE_CONSTANT", tv);
+
+    StructVector sv(1, 2, 3, 4);
+    constant("VALUE_STRUCT_CONSTANT", sv);
 }

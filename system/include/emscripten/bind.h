@@ -224,6 +224,10 @@ namespace emscripten {
     struct allow_raw_pointer : public allow_raw_pointers {
     };
 
+    ////////////////////////////////////////////////////////////////////////////////
+    // select_overload and select_const
+    ////////////////////////////////////////////////////////////////////////////////
+
     template<typename Signature>
     typename std::add_pointer<Signature>::type select_overload(typename std::add_pointer<Signature>::type fn) {
         return fn;
@@ -240,6 +244,15 @@ namespace emscripten {
     typename internal::MemberFunctionType<ClassType, Signature>::type select_overload(Signature (ClassType::*fn)) {
         return fn;
     }
+
+    template<typename ClassType, typename ReturnType, typename... Args>
+    auto select_const(ReturnType (ClassType::*method)(Args...) const) -> decltype(method) {
+        return method;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // Invoker
+    ////////////////////////////////////////////////////////////////////////////////
 
     namespace internal {
         template<typename ReturnType, typename... Args>
