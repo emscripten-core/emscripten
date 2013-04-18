@@ -79,6 +79,7 @@ import os, sys, shutil, tempfile, subprocess, shlex, time, re
 from subprocess import PIPE, STDOUT
 from tools import shared
 from tools.shared import Compression, execute, suffix, unsuffixed, unsuffixed_basename
+from tools.response_file import read_response_file
 
 # Mapping of emcc opt levels to llvm opt levels. We use llvm opt level 3 in emcc opt
 # levels 2 and 3 (emcc 3 is unsafe opts, so unsuitable for the only level to get
@@ -129,19 +130,10 @@ while response_file:
   for index in range(1, len(sys.argv)):
     if sys.argv[index][0] == '@':
       # found one, loop again next time
-      response_file = sys.argv[index][1:]
-      print >>sys.stderr, 'emcc: using response file: %s' % response_file
-      if not os.path.exists(response_file):
-        print >>sys.stderr, 'emcc: error: Response file not found: %s' % response_file
-        exit(1)
-
-      response_fd = open(response_file, 'r')
-      extra_args = shlex.split(response_fd.read())
-      response_fd.close()
-
+      response_file = True
+      extra_args = read_response_file(sys.argv[index])
       # slice in extra_args in place of the response file arg
       sys.argv[index:index+1] = extra_args
-      #if DEBUG: print >>sys.stderr, "Expanded response file: " + " | ".join(sys.argv)
       break
 
 if sys.argv[1] == '--version':
@@ -1010,7 +1002,7 @@ try:
 
   # Apply effects from settings
   if shared.Settings.ASM_JS:
-    assert opt_level == 2, 'asm.js requires -O2'
+    assert opt_level >= 1, 'asm.js requires -O1 or above'
 
     if closure:
       print >> sys.stderr, 'emcc: warning: disabling closure because it is not compatible with asm.js code generation'

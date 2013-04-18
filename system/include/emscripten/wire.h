@@ -7,66 +7,110 @@
 //
 // We'll call the on-the-wire type WireType.
 
+#include <cstdlib>
+#include <memory>
+#include <string>
+
 namespace emscripten {
     namespace internal {
-        typedef const struct _TypeID* TypeID;
+        typedef const struct _TYPEID* TYPEID;
 
         // This implementation is technically not legal, as it's not
         // required that two calls to typeid produce the same exact
-        // std::type_info instance.  That said, it's likely to work.
-        // Should it not work in the future: replace TypeID with
-        // an int, and store all TypeInfo we see in a map, allocating
-        // new TypeIDs as we add new items to the map.
+        // std::type_info instance.  That said, it's likely to work
+        // given Emscripten compiles everything into one binary.
+        // Should it not work in the future: replace TypeID with an
+        // int, and store all TypeInfo we see in a map, allocating new
+        // TypeIDs as we add new items to the map.
         template<typename T>
-        inline TypeID getTypeID() {
-            return reinterpret_cast<TypeID>(&typeid(T));
-        }
+        struct TypeID {
+            static TYPEID get() {
+                return reinterpret_cast<TYPEID>(&typeid(T));
+            }
+        };
 
-        // count<>
+        template<typename T>
+        struct TypeID<std::unique_ptr<T>> {
+            static TYPEID get() {
+                return TypeID<T>::get();
+            }
+        };
 
-        template<typename... Args>
-        struct count;
+        template<typename T>
+        struct TypeID<T*> {
+            static_assert(!std::is_pointer<T*>::value, "Implicitly binding raw pointers is illegal.  Specify allow_raw_pointer<arg<?>>");
+        };
+
+        template<typename T>
+        struct AllowedRawPointer {
+        };
+
+        template<typename T>
+        struct TypeID<AllowedRawPointer<T>> {
+            static TYPEID get() {
+                return reinterpret_cast<TYPEID>(&typeid(T*));
+            }
+        };
+        
+        // ExecutePolicies<>
+
+        template<typename... Policies>
+        struct ExecutePolicies;
 
         template<>
-        struct count<> {
-            enum { value = 0 };
+        struct ExecutePolicies<> {
+            template<typename T, int Index>
+            struct With {
+                typedef T type;
+            };
+        };
+        
+        template<typename Policy, typename... Remaining>
+        struct ExecutePolicies<Policy, Remaining...> {
+            template<typename T, int Index>
+            struct With {
+                typedef typename Policy::template Transform<
+                    typename ExecutePolicies<Remaining...>::template With<T, Index>::type,
+                    Index
+                >::type type;
+            };
         };
 
-        template<typename T, typename... Args>
-        struct count<T, Args...> {
-            enum { value = 1 + count<Args...>::value };
-        };
+        // ArgTypes<>
 
-        // ArgTypeList<>
-
-        template<typename... Args>
+        template<int Index, typename... Args>
         struct ArgTypes;
 
-        template<>
-        struct ArgTypes<> {
-            static void fill(TypeID* argTypes) {
+        template<int Index>
+        struct ArgTypes<Index> {
+            template<typename... Policies>
+            static void fill(TYPEID* argTypes) {
             }
         };
 
-        template<typename T, typename... Args>
-        struct ArgTypes<T, Args...> {
-            static void fill(TypeID* argTypes) {
-                *argTypes = getTypeID<T>();
-                return ArgTypes<Args...>::fill(argTypes + 1);
+        template<int Index, typename T, typename... Remaining>
+        struct ArgTypes<Index, T, Remaining...> {
+            template<typename... Policies>
+            static void fill(TYPEID* argTypes) {
+                typedef typename ExecutePolicies<Policies...>::template With<T, Index>::type TransformT;
+                *argTypes = TypeID<TransformT>::get();
+                return ArgTypes<Index + 1, Remaining...>::template fill<Policies...>(argTypes + 1);
             }
         };
 
-        template<typename... Args>
-        struct ArgTypeList {
-            enum { args_count = count<Args...>::value };
+        // WithPolicies<...>::ArgTypeList<...>
+        template<typename... Policies>
+        struct WithPolicies {
+            template<typename... Args>
+            struct ArgTypeList {
+                ArgTypeList() {
+                    count = sizeof...(Args);
+                    ArgTypes<0, Args...>::template fill<Policies...>(types);
+                }
 
-            ArgTypeList() {
-                count = args_count;
-                ArgTypes<Args...>::fill(types);
-            }
-
-            unsigned count;
-            TypeID types[args_count];
+                unsigned count;
+                TYPEID types[sizeof...(Args)];
+            };
         };
 
         // BindingType<T>
@@ -74,19 +118,18 @@ namespace emscripten {
         template<typename T>
         struct BindingType;
 
-#define EMSCRIPTEN_DEFINE_NATIVE_BINDING_TYPE(type)             \
-        template<>                                              \
-        struct BindingType<type> {                              \
-            typedef type WireType;                              \
-                                                                \
-            constexpr static WireType toWireType(type v) {      \
-                return v;                                       \
-            }                                                   \
-            constexpr static type fromWireType(WireType v) {    \
-                return v;                                       \
-            }                                                   \
-            static void destroy(WireType) {                     \
-            }                                                   \
+#define EMSCRIPTEN_DEFINE_NATIVE_BINDING_TYPE(type)                 \
+        template<>                                                  \
+        struct BindingType<type> {                                  \
+            typedef type WireType;                                  \
+            constexpr static WireType toWireType(const type& v) {   \
+                return v;                                           \
+            }                                                       \
+            constexpr static type fromWireType(WireType v) {        \
+                return v;                                           \
+            }                                                       \
+            static void destroy(WireType) {                         \
+            }                                                       \
         }
 
         EMSCRIPTEN_DEFINE_NATIVE_BINDING_TYPE(char);
@@ -120,23 +163,79 @@ namespace emscripten {
 
         template<>
         struct BindingType<std::string> {
-            typedef char* WireType;
-            static WireType toWireType(std::string v) {
-                return strdup(v.c_str());
+            typedef struct {
+                size_t length;
+                char data[1]; // trailing data
+            }* WireType;
+            static WireType toWireType(const std::string& v) {
+                WireType wt = (WireType)malloc(sizeof(size_t) + v.length());
+                wt->length = v.length();
+                memcpy(wt->data, v.data(), v.length());
+                return wt;
             }
-            static std::string fromWireType(char* v) {
-                return std::string(v);
+            static std::string fromWireType(WireType v) {
+                return std::string(v->data, v->length);
+            }
+            static void destroy(WireType v) {
+                free(v);
             }
         };
 
-        template<>
-        struct BindingType<const std::string&> {
-            typedef char* WireType;
-            static WireType toWireType(std::string v) {
-                return strdup(v.c_str());
+        template<typename T>
+        struct BindingType<const T> : public BindingType<T> {
+        };
+
+        template<typename T>
+        struct BindingType<const T&> : public BindingType<T> {
+        };
+
+        template<typename T>
+        struct BindingType<T&&> {
+            typedef typename BindingType<T>::WireType WireType;
+            static WireType toWireType(const T& v) {
+                return BindingType<T>::toWireType(v);
             }
-            static std::string fromWireType(char* v) {
-                return std::string(v);
+            static T fromWireType(WireType wt) {
+                return BindingType<T>::fromWireType(wt);
+            }
+        };
+
+        template<typename T>
+        struct BindingType<T*> {
+            typedef T* WireType;
+            static WireType toWireType(T* p) {
+                return p;
+            }
+            static T* fromWireType(WireType wt) {
+                return wt;
+            }
+        };
+
+        template<typename T>
+        struct GenericBindingType {
+            typedef typename std::remove_reference<T>::type ActualT;
+            typedef ActualT* WireType;
+
+            static WireType toWireType(T v) {
+                return new T(v);
+            }
+
+            static ActualT& fromWireType(WireType p) {
+                return *p;
+            }
+
+            static void destroy(WireType p) {
+                delete p;
+            }
+        };
+
+        // Is this necessary?
+        template<typename T>
+        struct GenericBindingType<std::unique_ptr<T>> {
+            typedef typename BindingType<T>::WireType WireType;
+
+            static WireType toWireType(std::unique_ptr<T> p) {
+                return BindingType<T>::toWireType(*p);
             }
         };
 
@@ -150,60 +249,8 @@ namespace emscripten {
             static Enum fromWireType(WireType v) {
                 return v;
             }
-        };
-
-        template<typename T>
-        struct GenericBindingType {
-            typedef typename std::remove_reference<T>::type ActualT;
-            typedef ActualT* WireType;
-
-            struct Marshaller {
-                explicit Marshaller(WireType wt)
-                : wireType(wt)
-                {}
-
-                Marshaller(Marshaller&& wt)
-                : wireType(wt.wireType)
-                {
-                    wt.wireType = 0;
-                }
-
-                operator ActualT&() const {
-                    return *wireType;
-                }
-
-            private:
-                Marshaller() = delete;
-                Marshaller(const Marshaller&) = delete;
-                ActualT* wireType;
-            };
-
-            static WireType toWireType(T v) {
-                return new T(v);
+            static void destroy(WireType) {
             }
-
-            static Marshaller fromWireType(WireType p) {
-                return Marshaller(p);
-            }
-
-            static void destroy(WireType p) {
-                delete p;
-            }
-        };
-
-        template<typename T>
-        struct WireDeleter {
-            typedef typename BindingType<T>::WireType WireType;
-            
-            WireDeleter(WireType wt)
-                : wt(wt)
-            {}
-            
-            ~WireDeleter() {
-                BindingType<T>::destroy(wt);
-            }
-            
-            WireType wt;
         };
 
         // catch-all generic binding
@@ -219,5 +266,19 @@ namespace emscripten {
             return BindingType<T>::toWireType(v);
         }
 
+        template<typename T>
+        struct WireDeleter {
+            typedef typename BindingType<T>::WireType WireType;
+            
+            WireDeleter(WireType wt)
+                : wt(wt)
+            {}
+            
+            ~WireDeleter() {
+                BindingType<T>::destroy(wt);
+            }
+            
+            WireType wt;
+        };
     }
 }

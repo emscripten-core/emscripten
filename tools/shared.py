@@ -2,6 +2,7 @@ import shutil, time, os, sys, json, tempfile, copy, shlex, atexit, subprocess, h
 from subprocess import Popen, PIPE, STDOUT
 from tempfile import mkstemp
 import jsrun, cache, tempfiles
+from response_file import create_response_file
 
 def listify(x):
   if type(x) is not list: return [x]
@@ -34,9 +35,15 @@ class WindowsPopen:
         self.stdout_ = PIPE
       if self.stderr_ == None:
         self.stderr_ = PIPE
-  
-    # Call the process with fixed streams.
+
+    # emscripten.py supports reading args from a response file instead of cmdline.
+    # Use .rsp to avoid cmdline length limitations on Windows.
+    if len(args) >= 2 and args[1].endswith("emscripten.py"):
+      self.response_filename = create_response_file(args[2:], TEMP_DIR)
+      args = args[0:2] + ['@' + self.response_filename]
+      
     try:
+      # Call the process with fixed streams.
       self.process = subprocess.Popen(args, bufsize, executable, self.stdin_, self.stdout_, self.stderr_, preexec_fn, close_fds, shell, cwd, env, universal_newlines, startupinfo, creationflags)
     except Exception, e:
       print >> sys.stderr, '\nsubprocess.Popen(args=%s) failed! Exception %s\n' % (' '.join(args), str(e))
@@ -67,6 +74,13 @@ class WindowsPopen:
 
   def kill(self):
     return self.process.kill()
+  
+  def __del__(self):
+    try:
+      # Clean up the temporary response file that was used to spawn this process, so that we don't leave temp files around.
+      tempfiles.try_delete(self.response_filename)
+    except:
+      pass # Mute all exceptions in dtor, particularly if we didn't use a response file, self.response_filename doesn't exist.
 
 # Install our replacement Popen handler if we are running on Windows to avoid python spawn process function.
 if os.name == 'nt':

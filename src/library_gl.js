@@ -2282,14 +2282,14 @@ var LibraryGL = {
       }
       attributes.sort(function(x, y) { return !x ? (!y ? 0 : 1) : (!y ? -1 : (x.pointer - y.pointer)) });
       start = GL.currArrayBuffer ? 0 : attributes[0].pointer;
+      var multiStrides = false;
       for (var i = 0; i < attributes.length; i++) {
         var attribute = attributes[i];
         if (!attribute) break;
-#if ASSERTIONS
-        assert(stride == 0 || stride == attribute.stride); // must all be in the same buffer
-#endif
+        if (stride != 0 && stride != attribute.stride) multiStrides = true;
         if (attribute.stride) stride = attribute.stride;
       }
+      if (multiStrides) stride = 0; // we will need to restride
       var bytes = 0; // total size in bytes
       if (!stride && !beginEnd) {
         // beginEnd can not have stride in the attributes, that is fine. otherwise,
@@ -2297,7 +2297,7 @@ var LibraryGL = {
         // our emulation code simple, we perform unpacking/restriding here. this adds overhead, so
         // it is a good idea to not hit this!
 #if ASSERTIONS
-        Runtime.warnOnce('Unpacking/restriding attributes, this is not fast');
+        Runtime.warnOnce('Unpacking/restriding attributes, this is slow and dangerous');
 #endif
         if (!GL.immediate.restrideBuffer) GL.immediate.restrideBuffer = _malloc(GL.MAX_TEMP_BUFFER_SIZE);
         start = GL.immediate.restrideBuffer;

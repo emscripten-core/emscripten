@@ -11,7 +11,7 @@ data downloads.
 
 Usage:
 
-  file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--compress COMPRESSION_DATA] [--pre-run] [--crunch[=X]]
+  file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--compress COMPRESSION_DATA] [--pre-run] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force]
 
   --pre-run Will generate wrapper code that does preloading in Module.preRun. This is necessary if you add this
             code before the main file has been loading, which includes necessary components like addRunDependency.
@@ -23,6 +23,10 @@ Usage:
              packaging your site.
              DDS files will not be crunched if the .crn is more recent than the .dds. This prevents a lot of
              unneeded computation.
+
+  --js-output=FILE Writes output in FILE, if not specified, standard output is used.
+
+  --no-force Don't create output if no valid input file is specified.
 
 Notes:
 
@@ -38,6 +42,11 @@ import os, sys, shutil, random
 import shared
 from shared import Compression, execute, suffix, unsuffixed
 from subprocess import Popen, PIPE, STDOUT
+
+if len(sys.argv) == 1:
+  print '''Usage: file_packager.py TARGET [--preload A...] [--embed B...] [--compress COMPRESSION_DATA] [--pre-run] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force]
+See the source for more details.'''
+  sys.exit(0)
 
 data_target = sys.argv[1]
 
@@ -59,6 +68,8 @@ in_compress = 0
 pre_run = False
 crunch = 0
 plugins = []
+jsoutput = None
+force = True
 
 for arg in sys.argv[1:]:
   if arg == '--preload':
@@ -80,6 +91,10 @@ for arg in sys.argv[1:]:
     in_preload = False
     in_embed = False
     in_compress = 0
+  elif arg == '--no-force':
+    force = False
+  elif arg.startswith('--js-output'):
+    jsoutput = arg.split('=')[1] if '=' in arg else None
   elif arg.startswith('--crunch'):
     from shared import CRUNCH
     crunch = arg.split('=')[1] if '=' in arg else '128'
@@ -93,9 +108,15 @@ for arg in sys.argv[1:]:
     in_embed = False
     in_compress = 0
   elif in_preload:
-    data_files.append({ 'name': arg, 'mode': 'preload' })
+    if os.path.isfile(arg) or os.path.isdir(arg):
+      data_files.append({ 'name': arg, 'mode': 'preload' })
+    else:
+      print >> sys.stderr, 'Warning: ' + arg + ' does not exist, ignoring.'
   elif in_embed:
-    data_files.append({ 'name': arg, 'mode': 'embed' })
+    if os.path.isfile(arg) or os.path.isdir(arg):
+      data_files.append({ 'name': arg, 'mode': 'embed' })
+    else:
+      print >> sys.stderr, 'Warning:' + arg + ' does not exist, ignoring.'
   elif in_compress:
     if in_compress == 1:
       Compression.encoder = arg
@@ -107,7 +128,10 @@ for arg in sys.argv[1:]:
       Compression.js_name = arg
       in_compress = 0
 
-print '''
+if (not force) and len(data_files) == 0:
+  has_preloaded = False
+
+ret = '''
 (function() {
 '''
 
@@ -152,7 +176,7 @@ for file_ in data_files:
 # Crunch files
 if crunch:
   shutil.copyfile(shared.path_from_root('tools', 'crunch-worker.js'), 'crunch-worker.js')
-  print '''
+  ret += '''
     var decrunchWorker = new Worker('crunch-worker.js');
     var decrunchCallbacks = [];
     decrunchWorker.onmessage = function(msg) {
@@ -386,26 +410,30 @@ if has_preloaded:
   ''' % (data_target, os.path.basename(Compression.compressed_name(data_target) if Compression.on else data_target), use_data, data_target) # use basename because from the browser's point of view, we need to find the datafile in the same dir as the html file
 
 if pre_run:
-  print '''
+  ret += '''
   if (typeof Module == 'undefined') Module = {};
   if (!Module['preRun']) Module['preRun'] = [];
   Module["preRun"].push(function() {
 '''
-
-print code
+ret += code
 
 if pre_run:
-  print '  });\n'
+  ret += '  });\n'
 
 if crunch:
-  print '''
+  ret += '''
   if (!Module['postRun']) Module['postRun'] = [];
   Module["postRun"].push(function() {
     decrunchWorker.terminate();
   });
 '''
 
-print '''
+ret += '''
 })();
 '''
-
+if force or len(data_files) > 0:
+  if jsoutput == None:
+    print ret
+  else:
+    f = open(jsoutput, 'w')
+    f.write(ret)

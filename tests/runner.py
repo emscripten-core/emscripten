@@ -455,7 +455,7 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
   if len(sys.argv) == 2 and 'ALL.' in sys.argv[1]:
     ignore, test = sys.argv[1].split('.')
     print 'Running all test modes on test "%s"' % test
-    sys.argv = [sys.argv[0], 'default.'+test, 'o1.'+test, 'o2.'+test, 'asm2.'+test, 'asm2g.'+test, 's_0_0.'+test, 's_0_1.'+test, 's_1_0.'+test, 's_1_1.'+test]
+    sys.argv = [sys.argv[0], 'default.'+test, 'o1.'+test, 'o2.'+test, 'asm1.'+test, 'asm2.'+test, 'asm2g.'+test, 's_0_0.'+test, 's_0_1.'+test, 's_1_0.'+test, 's_1_1.'+test]
 
   class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
     ## Does a complete test - builds, runs, checks output, etc.
@@ -3541,7 +3541,7 @@ def process(filename):
 
           double get() {
             double ret = 0;
-            __asm __volatile__("12/3.3":"=a"(ret));
+            __asm __volatile__("12/3.3":"=r"(ret));
             return ret;
           }
 
@@ -3709,6 +3709,7 @@ def process(filename):
 
     def test_bigswitch(self):
       if Settings.RELOOP: return self.skip('TODO: switch in relooper, issue #781')
+      if Settings.ASM_JS: return self.skip('TODO: switch too large for asm')
 
       src = open(path_from_root('tests', 'bigswitch.cpp')).read()
       self.do_run(src, '''34962: GL_ARRAY_BUFFER (0x8892)
@@ -8085,11 +8086,11 @@ def process(filename):
 
       shutil.move(self.in_dir('src.cpp.o.js'), self.in_dir('pgo.js'))
       pgo_output = run_js(self.in_dir('pgo.js')).split('\n')[1]
-      open('pgo_data', 'w').write(pgo_output)
+      open('pgo_data.rsp', 'w').write(pgo_output)
 
       # with response file
 
-      self.emcc_args += ['@pgo_data']
+      self.emcc_args += ['@pgo_data.rsp']
       self.do_run(src, output)
       self.emcc_args.pop()
       shutil.move(self.in_dir('src.cpp.o.js'), self.in_dir('pgoed.js'))
@@ -9001,6 +9002,7 @@ TT = %s
   exec('o2 = make_run("o2", compiler=CLANG, emcc_args=["-O2", "-s", "JS_CHUNK_SIZE=1024"])')
 
   # asm.js
+  exec('asm1 = make_run("asm1", compiler=CLANG, emcc_args=["-O1", "-s", "ASM_JS=1"])')
   exec('asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=1"])')
   exec('asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=1", "-g", "-s", "ASSERTIONS=1", "--memory-init-file", "1"])')
 
@@ -10247,58 +10249,12 @@ f.close()
         print args, fail
         self.clear()
         try_delete(self.in_dir('a.out.js'))
-        Popen([PYTHON, EMCC, path_from_root('tests', 'embind', 'embind_test.cpp'), '--post-js', path_from_root('tests', 'embind', 'embind_test.js')] + args, stderr=PIPE if fail else None).communicate()
+        Popen([PYTHON, EMCC, path_from_root('tests', 'embind', 'embind_test.cpp'), '--post-js', path_from_root('tests', 'embind', 'underscore-1.4.2.js'), '--post-js', path_from_root('tests', 'embind', 'imvu_test_adapter.js'), '--post-js', path_from_root('tests', 'embind', 'embind.test.js')] + args, stderr=PIPE if fail else None).communicate()
         assert os.path.exists(self.in_dir('a.out.js')) == (not fail)
         if not fail:
-          output = run_js(self.in_dir('a.out.js'))
-          self.assertContained('''fixture: embind
---test: test value creation
---test: test passthrough
---test: test void return converts to undefined
---test: test booleans can be marshalled
---test: test convert double to unsigned
---test: test get length of array
---test: test add a bunch of things
---test: test sum array
---test: test strings
---test: test no memory leak when passing strings in by const reference
-fixture: classes
---test: test class instance
---test: test class methods
---test: test can't call methods on deleted class instances
---test: test isinstance
---test: test can return class instances by value
---test: test can pass class instances to functions by reference
---test: test can access struct fields
---test: test can set struct fields
---test: test assignment returns value
---test: test assigning string to integer raises TypeError
---test: test can return tuples by value
---test: test tuples can contain tuples
---test: test can pass tuples by value
---test: test can return structs by value
---test: test can pass structs by value
---test: test can pass and return tuples in structs
---test: test can clone handles
---test: test can't clone if already deleted
---test: test moving handles is a clone+delete
---test: test StringHolder
-fixture: embind enumerations
---test: test can compare enumeration values
---test: test repr includes enum value
---test: test instanceof
---test: test can pass and return enumeration values to functions
-fixture: C++11 enum class
---test: test can compare enumeration values
---test: test repr includes enum value
---test: test instanceof
---test: test can pass and return enumeration values to functions
-fixture: emval call tests
---test: test can call functions from C++
-fixture: interfaces
---test: test can wrap JS object in native interface
---test: test can pass arguments and return complicated values
---test: test can call interface methods that return nothing''', output)
+          output = run_js(self.in_dir('a.out.js'), stdout=PIPE, stderr=PIPE, full_output=True)
+          print >> sys.stderr, output
+          assert "FAIL" not in output
 
     def test_llvm_nativizer(self):
       try:
@@ -11631,6 +11587,9 @@ elif 'browser' in str(sys.argv):
 
     def test_gl_renderers(self):
       self.btest('gl_renderers.c', reference='gl_renderers.png', args=['-s', 'GL_UNSAFE_OPTS=0'])
+
+    def test_gl_stride(self):
+      self.btest('gl_stride.c', reference='gl_stride.png', args=['-s', 'GL_UNSAFE_OPTS=0'])
 
     def test_matrix_identity(self):
       self.btest('gl_matrix_identity.c', expected=['-1882984448', '460451840'])
