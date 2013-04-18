@@ -12099,8 +12099,7 @@ elif 'benchmark' in str(sys.argv):
                       '-o', final_filename] + shared_args + emcc_args, stdout=PIPE, stderr=self.stderr_redirect).communicate()
       assert os.path.exists(final_filename), 'Failed to compile file: ' + output[0]
 
-      if self.save_JS:
-        self.hardcode_arguments(final_filename, args)
+      self.hardcode_arguments(final_filename, args)
 
       # Run JS
       global total_times, tests_done
