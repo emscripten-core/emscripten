@@ -230,6 +230,18 @@ namespace emscripten {
     }
 
     namespace internal {
+        template<typename ClassType, typename Signature>
+        struct MemberFunctionType {
+            typedef Signature (ClassType::*type);
+        };
+    }
+
+    template<typename Signature, typename ClassType>
+    typename internal::MemberFunctionType<ClassType, Signature>::type select_overload(Signature (ClassType::*fn)) {
+        return fn;
+    }
+
+    namespace internal {
         template<typename ReturnType, typename... Args>
         struct Invoker {
             static typename internal::BindingType<ReturnType>::WireType invoke(

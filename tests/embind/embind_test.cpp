@@ -1925,8 +1925,8 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("long_to_string", &long_to_string);
     function("unsigned_long_to_string", &unsigned_long_to_string);
 
-    function("overloaded_function", (int(*)(int))&overloaded_function);
-    function("overloaded_function", (int(*)(int, int))&overloaded_function);
+    function("overloaded_function", select_overload<int(int)>(&overloaded_function));
+    function("overloaded_function", select_overload<int(int, int)>(&overloaded_function));
 
     class_<MultipleCtors>("MultipleCtors")
         .constructor<int>()
@@ -1936,19 +1936,21 @@ EMSCRIPTEN_BINDINGS(tests) {
         
     class_<MultipleOverloads>("MultipleOverloads")
         .constructor<>()
-        .function("Func", (int(MultipleOverloads::*)(int))&MultipleOverloads::Func)
-        .function("Func", (int(MultipleOverloads::*)(int,int))&MultipleOverloads::Func)
+        .function("Func", select_overload<int(int)>(&MultipleOverloads::Func))
+        .function("Func", select_overload<int(int, int)>(&MultipleOverloads::Func))
         .function("WhichFuncCalled", &MultipleOverloads::WhichFuncCalled)
-        .class_function("StaticFunc", (int(*)(int))&MultipleOverloads::StaticFunc)
-        .class_function("StaticFunc", (int(*)(int,int))&MultipleOverloads::StaticFunc)
-        .class_function("WhichStaticFuncCalled", &MultipleOverloads::WhichStaticFuncCalled);
+        .class_function("StaticFunc", select_overload<int(int)>(&MultipleOverloads::StaticFunc))
+        .class_function("StaticFunc", select_overload<int(int,int)>(&MultipleOverloads::StaticFunc))
+        .class_function("WhichStaticFuncCalled", &MultipleOverloads::WhichStaticFuncCalled)
+        ;
 
     class_<MultipleOverloadsDerived, base<MultipleOverloads> >("MultipleOverloadsDerived")
         .constructor<>()
-        .function("Func", (int(MultipleOverloadsDerived::*)(int,int,int))&MultipleOverloadsDerived::Func)
-        .function("Func", (int(MultipleOverloadsDerived::*)(int,int,int,int))&MultipleOverloadsDerived::Func)
-        .class_function("StaticFunc", (int(*)(int,int,int))&MultipleOverloadsDerived::StaticFunc)
-        .class_function("StaticFunc", (int(*)(int,int,int,int))&MultipleOverloadsDerived::StaticFunc);
+        .function("Func", select_overload<int(int,int,int)>(&MultipleOverloadsDerived::Func))
+        .function("Func", select_overload<int(int,int,int,int)>(&MultipleOverloadsDerived::Func))
+        .class_function("StaticFunc", select_overload<int(int,int,int)>(&MultipleOverloadsDerived::StaticFunc))
+        .class_function("StaticFunc", select_overload<int(int,int,int,int)>(&MultipleOverloadsDerived::StaticFunc))
+        ;
 }
 
 // tests for out-of-order registration
