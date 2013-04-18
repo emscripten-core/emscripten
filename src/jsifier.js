@@ -1210,10 +1210,11 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
   });
   makeFuncLineActor('landingpad', function(item) {
-    if (DISABLE_EXCEPTION_CATCHING) {
+    if (DISABLE_EXCEPTION_CATCHING && USE_TYPED_ARRAYS == 2) {
+      ret = makeVarDef(item.assignTo) + '$0 = 0; ' + item.assignTo + '$1 = 0;';
       item.assignTo = null;
       if (ASSERTIONS) warnOnce('landingpad, but exceptions are disabled!');
-      return ';'
+      return ret;
     }
     var catchTypeArray = item.catchables.map(finalizeLLVMParameter).map(function(element) { return asmCoercion(element, 'i32') }).join(',');
     var ret = asmCoercion('___cxa_find_matching_catch(-1, -1' + (catchTypeArray.length > 0 ? ',' + catchTypeArray : '') +')', 'i32');
