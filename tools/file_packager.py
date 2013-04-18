@@ -365,47 +365,170 @@ if has_preloaded:
     }
     Module.expectedDataFileDownloads++;
 
-    var dataFile = new XMLHttpRequest();
-    dataFile.onprogress = function(event) {
-      var url = '%s';
-      if (event.loaded && event.total) {
-        if (!dataFile.addedTotal) {
-          dataFile.addedTotal = true;
-          if (!Module.dataFileDownloads) Module.dataFileDownloads = {};
-          Module.dataFileDownloads[url] = {
-            loaded: event.loaded,
-            total: event.total
+    var indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
+    var IDB_RO = "readonly";
+    var IDB_RW = "readwrite";
+    var DB_NAME = 'EM_PRELOAD_CACHE';
+    var METADATA_STORE_NAME = 'METADATA';
+    var PACKAGE_STORE_NAME = 'PACKAGES';
+    var PACKAGE_NAME = '%s';
+    var REMOTE_PACKAGE_NAME = '%s';
+
+    function openDatabase(callback, errback) {
+      var openRequest = indexedDB.open(DB_NAME);
+      openRequest.onupgradeneeded = function(event) {
+        var db = event.target.result;
+
+        if(db.objectStoreNames.contains(PACKAGE_STORE_NAME)) {
+          db.deleteObjectStore(PACKAGE_STORE_NAME);
+        }
+        var packages = db.createObjectStore(PACKAGE_STORE_NAME);
+
+        if(db.objectStoreNames.contains(METADATA_STORE_NAME)) {
+          db.deleteObjectStore(METADATA_STORE_NAME);
+        }
+        var metadata = db.createObjectStore(METADATA_STORE_NAME);
+      };
+      openRequest.onsuccess = function(event) {
+        var db = event.target.result;
+        callback(db);
+      };
+      openRequest.onerror = function(error) {
+        errback(error);
+      };
+    };
+
+    /* Check if there's a cached package, and if so whether it's the latest available */
+    function checkCachedPackage(db, packageName, callback, errback) {
+      var transaction = db.transaction([METADATA_STORE_NAME], IDB_RO);
+      var metadata = transaction.objectStore(METADATA_STORE_NAME);
+
+      var getRequest = metadata.get(packageName);
+      getRequest.onsuccess = function(event) {
+        var result = event.target.result;
+        if(!result) {
+          return callback(false);
+        }
+        var mtime = result.mtime;
+        var xhr = new XMLHttpRequest();
+        xhr.open('HEAD', packageName, true);
+        xhr.setRequestHeader('If-Modified-Since', mtime);
+        xhr.onreadystatechange = function() {
+          if(4 === xhr.readyState) {
+            console.log('DEBUG', packageName, mtime, xhr.getResponseHeader('Last-Modified'), xhr.status);
+            var useCached = (304 === xhr.status);
+            return callback(useCached);
+          }
+        };
+        xhr.send(null);
+      };
+      getRequest.onerror = function(error) {
+        errback(error);
+      };
+    };
+
+    function fetchCachedPackage(db, packageName, callback, errback) {
+      var transaction = db.transaction([PACKAGE_STORE_NAME], IDB_RO);
+      var packages = transaction.objectStore(PACKAGE_STORE_NAME);
+
+      var getRequest = packages.get(packageName);
+      getRequest.onsuccess = function(event) {
+        var result = event.target.result;
+        callback(result);
+      };
+      getRequest.onerror = function(error) {
+        errback(error);
+      };
+    };
+
+    function fetchRemotePackage(db, packageName, callback, errback) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', packageName, true);
+      xhr.responseType = 'arraybuffer';
+      xhr.onprogress = function(event) {
+        var url = packageName;
+        if (event.loaded && event.total) {
+          if (!xhr.addedTotal) {
+            xhr.addedTotal = true;
+            if (!Module.dataFileDownloads) Module.dataFileDownloads = {};
+            Module.dataFileDownloads[url] = {
+              loaded: event.loaded,
+              total: event.total
+            };
+          } else {
+            Module.dataFileDownloads[url].loaded = event.loaded;
+          }
+          var total = 0;
+          var loaded = 0;
+          var num = 0;
+          for (var download in Module.dataFileDownloads) {
+            var data = Module.dataFileDownloads[download];
+            total += data.total;
+            loaded += data.loaded;
+            num++;
+          }
+          total = Math.ceil(total * Module.expectedDataFileDownloads/num);
+          Module['setStatus']('Downloading data... (' + loaded + '/' + total + ')');
+        } else if (!Module.dataFileDownloads) {
+          Module['setStatus']('Downloading data...');
+        }
+      };
+      xhr.onload = function(event) {
+        var packageData = xhr.response;
+        var packageMeta = {
+          'mtime': xhr.getResponseHeader('Last-Modified')
+        };
+
+        var transaction = db.transaction([PACKAGE_STORE_NAME, METADATA_STORE_NAME], IDB_RW);
+        var packages = transaction.objectStore(PACKAGE_STORE_NAME);
+        var metadata = transaction.objectStore(METADATA_STORE_NAME);
+
+        var putPackageRequest = packages.put(packageData, packageName);
+        putPackageRequest.onsuccess = function(event) {
+          var putMetadataRequest = metadata.put(packageMeta, packageName);
+          putMetadataRequest.onsuccess = function(event) {
+            callback(packageData);
           };
-        } else {
-          Module.dataFileDownloads[url].loaded = event.loaded;
-        }
-        var total = 0;
-        var loaded = 0;
-        var num = 0;
-        for (var download in Module.dataFileDownloads) {
-          var data = Module.dataFileDownloads[download];
-          total += data.total;
-          loaded += data.loaded;
-          num++;
-        }
-        total = Math.ceil(total * Module.expectedDataFileDownloads/num);
-        Module['setStatus']('Downloading data... (' + loaded + '/' + total + ')');
-      } else if (!Module.dataFileDownloads) {
-        Module['setStatus']('Downloading data...');
-      }
-    }
-    dataFile.open('GET', '%s', true);
-    dataFile.responseType = 'arraybuffer';
-    dataFile.onload = function() {
+          putMetadataRequest.onerror = function(error) {
+            errback(error);
+          };
+        };
+        putPackageRequest.onerror = function(error) {
+          errback(error);
+        };
+      };
+      xhr.send(null);
+    };
+
+    function processPackageData(arrayBuffer) {
       Module.finishedDataFileDownloads++;
-      var arrayBuffer = dataFile.response;
       assert(arrayBuffer, 'Loading data file failed.');
       var byteArray = new Uint8Array(arrayBuffer);
       var curr;
       %s
     };
     Module['addRunDependency']('datafile_%s');
-    dataFile.send(null);
+
+    function handleError(error) {
+      console.error('package error:', error);
+    };
+
+    openDatabase(
+      function(db) {
+        checkCachedPackage(db, PACKAGE_NAME,
+          function(useCached) {
+            if(useCached) {
+              console.info('loading package from cache');
+              fetchCachedPackage(db, PACKAGE_NAME, processPackageData, handleError);
+            } else {
+              console.info('loading package from remote');
+              fetchRemotePackage(db, PACKAGE_NAME, processPackageData, handleError);
+            }
+          }
+        , handleError);
+      }
+    , handleError);
+
     if (Module['setStatus']) Module['setStatus']('Downloading...');
   ''' % (data_target, os.path.basename(Compression.compressed_name(data_target) if Compression.on else data_target), use_data, data_target) # use basename because from the browser's point of view, we need to find the datafile in the same dir as the html file
 
