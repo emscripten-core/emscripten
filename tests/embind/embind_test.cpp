@@ -1573,7 +1573,7 @@ EMSCRIPTEN_BINDINGS(tests) {
 
     class_<std::function<std::string(std::string)>>("StringFunctorString")
         .constructor<>()
-        .calloperator<std::string, std::string>("opcall")
+        .function("opcall", &std::function<std::string(std::string)>::operator())
         ;
 
     function("emval_test_get_function_ptr", &emval_test_get_function_ptr);

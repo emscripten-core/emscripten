@@ -1070,11 +1070,6 @@ namespace emscripten {
                 reinterpret_cast<GenericFunction>(classMethod));
             return *this;
         }
-
-        template<typename ReturnType, typename... Args, typename... Policies>
-        class_& calloperator(const char* methodName, Policies... policies) {
-            return function(methodName, &ClassType::operator(), policies...);
-        }
     };
 
     ////////////////////////////////////////////////////////////////////////////////
