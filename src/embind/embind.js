@@ -4,7 +4,7 @@
 /*global readLatin1String*/
 /*global __emval_register, _emval_handle_array, __emval_decref*/
 /*global ___getTypeName*/
-
+/*jslint sub:true*/ /* The symbols 'fromWireType' and 'toWireType' must be accessed via array notation to be closure-safe since craftInvokerFunction crafts functions as strings that can't be closured. */
 var InternalError = Module.InternalError = extendError(Error, 'InternalError');
 var BindingError = Module.BindingError = extendError(Error, 'BindingError');
 var UnboundTypeError = Module.UnboundTypeError = extendError(BindingError, 'UnboundTypeError');
