@@ -573,7 +573,7 @@ LibraryManager.library = {
         eof: false,
         ungotten: []
       };
-      assert(Math.max(_stdin, _stdout, _stderr) < 128); // make sure these are low, we flatten arrays with these
+      assert(Math.max(_stdin, _stdout, _stderr) < 1024); // make sure these are low, we flatten arrays with these
       {{{ makeSetValue(makeGlobalUse('_stdin'), 0, 1, 'void*') }}};
       {{{ makeSetValue(makeGlobalUse('_stdout'), 0, 2, 'void*') }}};
       {{{ makeSetValue(makeGlobalUse('_stderr'), 0, 3, 'void*') }}};
