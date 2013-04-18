@@ -10243,8 +10243,8 @@ f.close()
       for args, fail in [
         ([], True), # without --bind, we fail
         (['--bind'], False),
-        (['--bind', '-O1'], False)
-        # XXX TODO (['--bind', '-O2'], False)
+        (['--bind', '-O1'], False),
+        (['--bind', '-O2'], False)
       ]:
         print args, fail
         self.clear()
