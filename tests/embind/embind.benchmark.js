@@ -19,23 +19,23 @@ function _increment_counter_benchmark_js(N) {
 }
 
 function _increment_class_counter_benchmark_embind_js(N) {
-    var foo = new Module.Foo();
+    var foo = new Module['Foo']();
     var a = _emscripten_get_now();
     for(i = 0; i < N; ++i) {
-        foo.incr_class_counter();
-        foo.incr_class_counter();
-        foo.incr_class_counter();
-        foo.incr_class_counter();
-        foo.incr_class_counter();
-        foo.incr_class_counter();
-        foo.incr_class_counter();
-        foo.incr_class_counter();
-        foo.incr_class_counter();
-        foo.incr_class_counter();
+        foo['incr_class_counter']();
+        foo['incr_class_counter']();
+        foo['incr_class_counter']();
+        foo['incr_class_counter']();
+        foo['incr_class_counter']();
+        foo['incr_class_counter']();
+        foo['incr_class_counter']();
+        foo['incr_class_counter']();
+        foo['incr_class_counter']();
+        foo['incr_class_counter']();
     }
     var b = _emscripten_get_now();
-    Module.print("JS embind increment_class_counter " + N + " iters: " + (b-a)*1000 + " msecs. result: " + foo.class_counter_val());
-    foo.delete();
+    Module.print("JS embind increment_class_counter " + N + " iters: " + (b-a)*1000 + " msecs. result: " + foo['class_counter_val']());
+    foo['delete']();
 }
 
 function _returns_input_benchmark_js() {
@@ -181,20 +181,20 @@ function _move_gameobjects_benchmark_embind_js() {
     
     var a = _emscripten_get_now();
     for(i = 0; i < N; ++i) {
-        var t = objects[i].GetTransform();
-        var pos = Module.add(t.GetPosition(), [2, 0, 1]);
-        var rot = Module.add(t.GetRotation(), [0.1, 0.2, 0.3]);
-        t.SetPosition(pos);
-        t.SetRotation(rot);
-        t.delete();
+        var t = objects[i]['GetTransform']();
+        var pos = Module['add'](t['GetPosition'](), [2, 0, 1]);
+        var rot = Module['add'](t['GetRotation'](), [0.1, 0.2, 0.3]);
+        t['SetPosition'](pos);
+        t['SetRotation'](rot);
+        t['delete']();
     }
     var b = _emscripten_get_now();
     
     var accum = [0,0,0];
     for(i = 0; i < N; ++i) {
-        var t = objects[i].GetTransform();
-        accum = Module.add(Module.add(accum, t.GetPosition()), t.GetRotation());
-        t.delete();
+        var t = objects[i]['GetTransform']();
+        accum = Module['add'](Module['add'](accum, t['GetPosition']()), t['GetRotation']());
+        t['delete']();
     }
     
     Module.print("JS embind move_gameobjects " + N + " iters: " + 1000*(b-a) + " msecs. Result: " + (accum[0] + accum[1] + accum[2]));

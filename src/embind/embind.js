@@ -267,7 +267,7 @@ function __embind_register_void(rawType, name) {
     name = readLatin1String(name);
     registerType(rawType, {
         name: name,
-        fromWireType: function() {
+        'fromWireType': function() {
             return undefined;
         },
     });
@@ -277,12 +277,12 @@ function __embind_register_bool(rawType, name, trueValue, falseValue) {
     name = readLatin1String(name);
     registerType(rawType, {
         name: name,
-        fromWireType: function(wt) {
+        'fromWireType': function(wt) {
             // ambiguous emscripten ABI: sometimes return values are
             // true or false, and sometimes integers (0 or 1)
             return !!wt;
         },
-        toWireType: function(destructors, o) {
+        'toWireType': function(destructors, o) {
             return o ? trueValue : falseValue;
         },
         destructorFunction: null, // This type does not need a destructor
@@ -300,10 +300,10 @@ function __embind_register_integer(primitiveType, name, minRange, maxRange) {
         name: name,
         minRange: minRange,
         maxRange: maxRange,
-        fromWireType: function(value) {
+        'fromWireType': function(value) {
             return value;
         },
-        toWireType: function(destructors, value) {
+        'toWireType': function(destructors, value) {
             // todo: Here we have an opportunity for -O3 level "unsafe" optimizations: we could
             // avoid the following two if()s and assume value is of proper type.
             if (typeof value !== "number") {
@@ -322,10 +322,10 @@ function __embind_register_float(rawType, name) {
     name = readLatin1String(name);
     registerType(rawType, {
         name: name,
-        fromWireType: function(value) {
+        'fromWireType': function(value) {
             return value;
         },
-        toWireType: function(destructors, value) {
+        'toWireType': function(destructors, value) {
             // todo: Here we have an opportunity for -O3 level "unsafe" optimizations: we could
             // avoid the following if() and assume value is of proper type.
             if (typeof value !== "number") {
@@ -341,7 +341,7 @@ function __embind_register_std_string(rawType, name) {
     name = readLatin1String(name);
     registerType(rawType, {
         name: name,
-        fromWireType: function(value) {
+        'fromWireType': function(value) {
             var length = HEAPU32[value >> 2];
             var a = new Array(length);
             for (var i = 0; i < length; ++i) {
@@ -350,7 +350,7 @@ function __embind_register_std_string(rawType, name) {
             _free(value);
             return a.join('');
         },
-        toWireType: function(destructors, value) {
+        'toWireType': function(destructors, value) {
             if (value instanceof ArrayBuffer) {
                 value = new Uint8Array(value);
             }
@@ -405,7 +405,7 @@ function __embind_register_std_wstring(rawType, charSize, name) {
     }
     registerType(rawType, {
         name: name,
-        fromWireType: function(value) {
+        'fromWireType': function(value) {
             var length = HEAPU32[value >> 2];
             var a = new Array(length);
             var start = (value + 4) >> shift;
@@ -415,7 +415,7 @@ function __embind_register_std_wstring(rawType, charSize, name) {
             _free(value);
             return a.join('');
         },
-        toWireType: function(destructors, value) {
+        'toWireType': function(destructors, value) {
             // assumes 4-byte alignment
             var length = value.length;
             var ptr = _malloc(4 + length * charSize);
@@ -437,12 +437,12 @@ function __embind_register_emval(rawType, name) {
     name = readLatin1String(name);
     registerType(rawType, {
         name: name,
-        fromWireType: function(handle) {
+        'fromWireType': function(handle) {
             var rv = _emval_handle_array[handle].value;
             __emval_decref(handle);
             return rv;
         },
-        toWireType: function(destructors, value) {
+        'toWireType': function(destructors, value) {
             return __emval_register(value);
         },
         destructorFunction: null, // This type does not need a destructor
@@ -656,18 +656,18 @@ function __embind_finalize_tuple(rawTupleType) {
             var setter = elt.setter;
             var setterContext = elt.setterContext;
             elt.read = function(ptr) {
-                return getterReturnType.fromWireType(getter(getterContext, ptr));
+                return getterReturnType['fromWireType'](getter(getterContext, ptr));
             };
             elt.write = function(ptr, o) {
                 var destructors = [];
-                setter(setterContext, ptr, setterArgumentType.toWireType(destructors, o));
+                setter(setterContext, ptr, setterArgumentType['toWireType'](destructors, o));
                 runDestructors(destructors);
             };
         });
 
         return [{
             name: reg.name,
-            fromWireType: function(ptr) {
+            'fromWireType': function(ptr) {
                 var rv = new Array(elementsLength);
                 for (var i = 0; i < elementsLength; ++i) {
                     rv[i] = elements[i].read(ptr);
@@ -675,7 +675,7 @@ function __embind_finalize_tuple(rawTupleType) {
                 rawDestructor(ptr);
                 return rv;
             },
-            toWireType: function(destructors, o) {
+            'toWireType': function(destructors, o) {
                 if (elementsLength !== o.length) {
                     throw new TypeError("Incorrect number of tuple elements");
                 }
@@ -751,12 +751,12 @@ function __embind_finalize_struct(structType) {
             var setterContext = field.setterContext;
             fields[fieldName] = {
                 read: function(ptr) {
-                    return getterReturnType.fromWireType(
+                    return getterReturnType['fromWireType'](
                         getter(getterContext, ptr));
                 },
                 write: function(ptr, o) {
                     var destructors = [];
-                    setter(setterContext, ptr, setterArgumentType.toWireType(destructors, o));
+                    setter(setterContext, ptr, setterArgumentType['toWireType'](destructors, o));
                     runDestructors(destructors);
                 }
             };
@@ -764,7 +764,7 @@ function __embind_finalize_struct(structType) {
 
         return [{
             name: reg.name,
-            fromWireType: function(ptr) {
+            'fromWireType': function(ptr) {
                 var rv = {};
                 for (var i in fields) {
                     rv[i] = fields[i].read(ptr);
@@ -772,7 +772,7 @@ function __embind_finalize_struct(structType) {
                 rawDestructor(ptr);
                 return rv;
             },
-            toWireType: function(destructors, o) {
+            'toWireType': function(destructors, o) {
                 // todo: Here we have an opportunity for -O3 level "unsafe" optimizations:
                 // assume all fields are present without checking.
                 for (var fieldName in fields) {
@@ -941,14 +941,14 @@ function RegisteredPointer(
 
     if (!isSmartPointer && registeredClass.baseClass === undefined) {
         if (isConst) {
-            this.toWireType = constNoSmartPtrRawPointerToWireType;
+            this['toWireType'] = constNoSmartPtrRawPointerToWireType;
             this.destructorFunction = null;
         } else {
-            this.toWireType = nonConstNoSmartPtrRawPointerToWireType;
+            this['toWireType'] = nonConstNoSmartPtrRawPointerToWireType;
             this.destructorFunction = null;
         }
     } else {
-        this.toWireType = genericPointerToWireType;
+        this['toWireType'] = genericPointerToWireType;
         // Here we must leave this.destructorFunction undefined, since whether genericPointerToWireType returns
         // a pointer that needs to be freed up is runtime-dependent, and cannot be evaluated at registration time.
         // TODO: Create an alternative mechanism that allows removing the use of var destructors = []; array in 
@@ -969,7 +969,7 @@ RegisteredPointer.prototype.destructor = function(ptr) {
     }
 };
 
-RegisteredPointer.prototype.fromWireType = function(ptr) {
+RegisteredPointer.prototype['fromWireType'] = function(ptr) {
     // ptr is a raw pointer (or a raw smartpointer)
 
     // rawPointer is a maybe-null raw pointer
@@ -1040,7 +1040,7 @@ function makeClassHandle(prototype, record) {
     }
     record.count = { value: 1 };
     return Object.create(prototype, {
-        '$$': {
+        $$: {
             value: record,
         },
     });
@@ -1060,7 +1060,7 @@ ClassHandle.prototype.clone = function() {
     }
 
     var clone = Object.create(Object.getPrototypeOf(this), {
-        '$$': {
+        $$: {
             value: shallowCopy(this.$$),
         }
     });
@@ -1253,13 +1253,13 @@ function __embind_register_class_constructor(
                 var args = new Array(argCount);
                 args[0] = rawConstructor;
                 for (var i = 1; i < argCount; ++i) {
-                    args[i] = argTypes[i].toWireType(destructors, arguments[i - 1]);
+                    args[i] = argTypes[i]['toWireType'](destructors, arguments[i - 1]);
                 }
                 
                 var ptr = invoker.apply(null, args);
                 runDestructors(destructors);
                 
-                return argTypes[0].fromWireType(ptr);
+                return argTypes[0]['fromWireType'](ptr);
             };
             return [];
         });
@@ -1448,7 +1448,7 @@ function __embind_register_class_property(
             var desc = {
                 get: function() {
                     var ptr = validateThis(this, classType, humanName + ' getter');
-                    return getterReturnType.fromWireType(getter(getterContext, ptr));
+                    return getterReturnType['fromWireType'](getter(getterContext, ptr));
                 },
                 enumerable: true
             };
@@ -1459,7 +1459,7 @@ function __embind_register_class_property(
                 desc.set = function(v) {
                     var ptr = validateThis(this, classType, humanName + ' setter');
                     var destructors = [];
-                    setter(setterContext, ptr, setterArgumentType.toWireType(destructors, v));
+                    setter(setterContext, ptr, setterArgumentType['toWireType'](destructors, v));
                     runDestructors(destructors);
                 };
             }
@@ -1533,10 +1533,10 @@ function __embind_register_enum(
     registerType(rawType, {
         name: name,
         constructor: constructor,
-        fromWireType: function(c) {
+        'fromWireType': function(c) {
             return this.constructor.values[c];
         },
-        toWireType: function(destructors, c) {
+        'toWireType': function(destructors, c) {
             return c.value;
         },
         destructorFunction: null,
@@ -1566,7 +1566,7 @@ function __embind_register_constant(name, type, value) {
     name = readLatin1String(name);
     whenDependentTypesAreResolved([], [type], function(type) {
         type = type[0];
-        Module[name] = type.fromWireType(value);
+        Module[name] = type['fromWireType'](value);
         return [];
     });
 }
