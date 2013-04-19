@@ -564,6 +564,7 @@ class Settings:
       @classmethod
       def apply_opt_level(self, opt_level, noisy=False):
         if opt_level >= 1:
+          Settings.ASM_JS = 1
           Settings.ASSERTIONS = 0
           Settings.DISABLE_EXCEPTION_CATCHING = 1
           Settings.EMIT_GENERATED_FUNCTIONS = 1

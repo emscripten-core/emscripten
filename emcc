@@ -163,7 +163,7 @@ Most normal gcc/g++ options will work, for example:
 
 Options that are modified or new in %s include:
   -O0                      No optimizations (default)
-  -O1                      Simple optimizations, including LLVM -O1
+  -O1                      Simple optimizations, including asm.js, LLVM -O1
                            optimizations, and no runtime assertions
                            or C++ exception catching (to re-enable
                            C++ exception catching, use
