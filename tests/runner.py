@@ -8072,11 +8072,13 @@ def process(filename):
       self.do_run(src, output)
       shutil.move(self.in_dir('src.cpp.o.js'), self.in_dir('normal.js'))
 
-      self.emcc_args = map(lambda x: 'ASM_JS=0' if x == 'ASM_JS=1' else x, self.emcc_args)
+      self.emcc_args.append('-s')
+      self.emcc_args.append('ASM_JS=0')
       Settings.PGO = 1
       self.do_run(src, output)
       Settings.PGO = 0
-      self.emcc_args = map(lambda x: 'ASM_JS=1' if x == 'ASM_JS=0' else x, self.emcc_args)
+      self.emcc_args.append('-s')
+      self.emcc_args.append('ASM_JS=1')
 
       shutil.move(self.in_dir('src.cpp.o.js'), self.in_dir('pgo.js'))
       pgo_output = run_js(self.in_dir('pgo.js')).split('\n')[1]
