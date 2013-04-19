@@ -6281,6 +6281,7 @@ LibraryManager.library = {
   longjmp: function(env, value) {
 #if ASM_JS
     asm.setThrew(env, value || 1);
+    throw 'longjmp';
 #else
     throw { longjmp: true, id: {{{ makeGetValue('env', '0', 'i32') }}}, value: value || 1 };
 #endif

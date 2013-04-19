@@ -2310,8 +2310,6 @@ cat |umber one top notchfi FI FO FUM WHEN WHERE WHY HOW WHO|''', ['wowie', 'too'
         self.do_run(src, 'Assertion failed: 1 == false')
 
     def test_longjmp(self):
-        if Settings.ASM_JS: return self.skip('asm does not support longjmp')
-
         src = r'''
           #include <stdio.h>
           #include <setjmp.h>
