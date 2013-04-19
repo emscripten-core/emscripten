@@ -79,6 +79,24 @@ unsigned emval_test_sum(val v) {
     return rv;
 }
 
+std::string get_non_ascii_string() {
+    char c[128 + 1];
+    c[128] = 0;
+    for (int i = 0; i < 128; ++i) {
+        c[i] = 128 + i;
+    }
+    return c;
+}
+
+std::wstring get_non_ascii_wstring() {
+    std::wstring ws(4, 0);
+    ws[0] = 10;
+    ws[1] = 1234;
+    ws[2] = 2345;
+    ws[3] = 65535;
+    return ws;
+}
+
 std::string emval_test_take_and_return_const_char_star(const char* str) {
     return str;
 }
@@ -88,6 +106,10 @@ std::string emval_test_take_and_return_std_string(std::string str) {
 }
 
 std::string emval_test_take_and_return_std_string_const_ref(const std::string& str) {
+    return str;
+}
+
+std::wstring take_and_return_std_wstring(std::wstring str) {
     return str;
 }
 
@@ -651,8 +673,6 @@ private:
     std::string name_;
 };
 
-// todo: does it need to be polymorphic?
-// todo: virtual diamond pattern
 class PolyDiamondBase {
 public:
     PolyDiamondBase():
@@ -1043,20 +1063,6 @@ std::vector<std::shared_ptr<StringHolder>> emval_test_return_shared_ptr_vector()
     return sharedStrVector;
 }
 
-class JSInterfaceHolder {
-public:
-    JSInterfaceHolder(JSInterface &jsobj) : jsobj_(jsobj) {
-        ptr_ = JSInterface::cloneToSharedPtr(jsobj_);
-    }
-
-    int callMethod(std::string method) { return jsobj_.call<int>(method.c_str()); }
-    int callMethodUsingSharedPtr(std::string method) { return ptr_->call<int>(method.c_str()); }
-
-private:
-    JSInterface jsobj_;
-    std::shared_ptr<JSInterface> ptr_;
-};
-
 void test_string_with_vec(const std::string& p1, std::vector<std::string>& v1) {
     // THIS DOES NOT WORK -- need to get as val and then call vecFromJSArray
     printf("%s\n", p1.c_str());
@@ -1074,7 +1080,12 @@ class AbstractClass {
 public:
     virtual ~AbstractClass() {}
     virtual std::string abstractMethod() const = 0;
+    virtual std::string optionalMethod(std::string s) const {
+        return "optional" + s;
+    }
 };
+
+EMSCRIPTEN_SYMBOL(optionalMethod);
 
 class AbstractClassWrapper : public wrapper<AbstractClass> {
 public:
@@ -1082,6 +1093,11 @@ public:
 
     std::string abstractMethod() const {
         return call<std::string>("abstractMethod");
+    }
+    std::string optionalMethod(std::string s) const {
+        return optional_call<std::string>(optionalMethod_symbol, [&] {
+            return AbstractClass::optionalMethod(s);
+        }, s);
     }
 };
 
@@ -1097,6 +1113,10 @@ std::shared_ptr<AbstractClass> getAbstractClass() {
 
 std::string callAbstractMethod(AbstractClass& ac) {
     return ac.abstractMethod();
+}
+
+std::string callOptionalMethod(AbstractClass& ac, std::string s) {
+    return ac.optionalMethod(s);
 }
 
 class HasExternalConstructor {
@@ -1454,8 +1474,6 @@ EMSCRIPTEN_BINDINGS(constants) {
 }
 
 EMSCRIPTEN_BINDINGS(tests) {
-    register_js_interface();
-        
     register_vector<int>("IntegerVector");
     register_vector<char>("CharVector");
     register_vector<unsigned>("VectorUnsigned");
@@ -1481,9 +1499,12 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("const_ref_adder", &const_ref_adder);
     function("emval_test_sum", &emval_test_sum);
 
+    function("get_non_ascii_string", &get_non_ascii_string);
+    function("get_non_ascii_wstring", &get_non_ascii_wstring);
     //function("emval_test_take_and_return_const_char_star", &emval_test_take_and_return_const_char_star);
     function("emval_test_take_and_return_std_string", &emval_test_take_and_return_std_string);
     function("emval_test_take_and_return_std_string_const_ref", &emval_test_take_and_return_std_string_const_ref);
+    function("take_and_return_std_wstring", &take_and_return_std_wstring);
 
     //function("emval_test_take_and_return_CustomStruct", &emval_test_take_and_return_CustomStruct);
 
@@ -1527,6 +1548,8 @@ EMSCRIPTEN_BINDINGS(tests) {
         .function("getConstVal", &ValHolder::getConstVal)
         .function("getValConstRef", &ValHolder::getValConstRef)
         .function("setVal", &ValHolder::setVal)
+        .property("val", &ValHolder::getVal, &ValHolder::setVal)
+        .property("val_readonly", &ValHolder::getVal)
         .class_function("makeConst", &ValHolder::makeConst, allow_raw_pointer<ret_val>())
         .class_function("makeValHolder", &ValHolder::makeValHolder)
         .class_function("some_class_method", &ValHolder::some_class_method)
@@ -1550,7 +1573,7 @@ EMSCRIPTEN_BINDINGS(tests) {
 
     class_<std::function<std::string(std::string)>>("StringFunctorString")
         .constructor<>()
-        .calloperator<std::string, std::string>("opcall")
+        .function("opcall", &std::function<std::string(std::string)>::operator())
         ;
 
     function("emval_test_get_function_ptr", &emval_test_get_function_ptr);
@@ -1790,6 +1813,11 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("embind_attempt_to_modify_smart_pointer_when_passed_by_value", embind_attempt_to_modify_smart_pointer_when_passed_by_value);
     function("embind_save_smart_base_pointer", embind_save_smart_base_pointer);
 
+    class_<Base1>("Base1")
+        .constructor()
+        .function("getField", &Base1::getField)
+        ;
+
     class_<Base2>("Base2")
         .function("getField", &Base2::getField)
         .property("field", &Base2::field2)
@@ -1845,12 +1873,6 @@ EMSCRIPTEN_BINDINGS(tests) {
     register_map<std::string, int>("StringIntMap");
     function("embind_test_get_string_int_map", embind_test_get_string_int_map);
 
-    class_<JSInterfaceHolder>("JSInterfaceHolder")
-        .constructor<JSInterface&>()
-        .function("callMethod", &JSInterfaceHolder::callMethod)
-        .function("callMethodUsingSharedPtr", &JSInterfaceHolder::callMethodUsingSharedPtr)
-        ;
-
     function("embind_test_new_Object", &embind_test_new_Object);
     function("embind_test_new_factory", &embind_test_new_factory);
 
@@ -1858,10 +1880,12 @@ EMSCRIPTEN_BINDINGS(tests) {
         .smart_ptr<std::shared_ptr<AbstractClass>>()
         .allow_subclass<AbstractClassWrapper>()
         .function("abstractMethod", &AbstractClass::abstractMethod)
+        .function("optionalMethod", &AbstractClass::optionalMethod)
         ;
     
     function("getAbstractClass", &getAbstractClass);
     function("callAbstractMethod", &callAbstractMethod);
+    function("callOptionalMethod", &callOptionalMethod);
 
     class_<HasExternalConstructor>("HasExternalConstructor")
         .constructor(&createHasExternalConstructor)
@@ -1901,8 +1925,8 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("long_to_string", &long_to_string);
     function("unsigned_long_to_string", &unsigned_long_to_string);
 
-    function("overloaded_function", (int(*)(int))&overloaded_function);
-    function("overloaded_function", (int(*)(int, int))&overloaded_function);
+    function("overloaded_function", select_overload<int(int)>(&overloaded_function));
+    function("overloaded_function", select_overload<int(int, int)>(&overloaded_function));
 
     class_<MultipleCtors>("MultipleCtors")
         .constructor<int>()
@@ -1912,19 +1936,21 @@ EMSCRIPTEN_BINDINGS(tests) {
         
     class_<MultipleOverloads>("MultipleOverloads")
         .constructor<>()
-        .function("Func", (int(MultipleOverloads::*)(int))&MultipleOverloads::Func)
-        .function("Func", (int(MultipleOverloads::*)(int,int))&MultipleOverloads::Func)
+        .function("Func", select_overload<int(int)>(&MultipleOverloads::Func))
+        .function("Func", select_overload<int(int, int)>(&MultipleOverloads::Func))
         .function("WhichFuncCalled", &MultipleOverloads::WhichFuncCalled)
-        .class_function("StaticFunc", (int(*)(int))&MultipleOverloads::StaticFunc)
-        .class_function("StaticFunc", (int(*)(int,int))&MultipleOverloads::StaticFunc)
-        .class_function("WhichStaticFuncCalled", &MultipleOverloads::WhichStaticFuncCalled);
+        .class_function("StaticFunc", select_overload<int(int)>(&MultipleOverloads::StaticFunc))
+        .class_function("StaticFunc", select_overload<int(int,int)>(&MultipleOverloads::StaticFunc))
+        .class_function("WhichStaticFuncCalled", &MultipleOverloads::WhichStaticFuncCalled)
+        ;
 
     class_<MultipleOverloadsDerived, base<MultipleOverloads> >("MultipleOverloadsDerived")
         .constructor<>()
-        .function("Func", (int(MultipleOverloadsDerived::*)(int,int,int))&MultipleOverloadsDerived::Func)
-        .function("Func", (int(MultipleOverloadsDerived::*)(int,int,int,int))&MultipleOverloadsDerived::Func)
-        .class_function("StaticFunc", (int(*)(int,int,int))&MultipleOverloadsDerived::StaticFunc)
-        .class_function("StaticFunc", (int(*)(int,int,int,int))&MultipleOverloadsDerived::StaticFunc);
+        .function("Func", select_overload<int(int,int,int)>(&MultipleOverloadsDerived::Func))
+        .function("Func", select_overload<int(int,int,int,int)>(&MultipleOverloadsDerived::Func))
+        .class_function("StaticFunc", select_overload<int(int,int,int)>(&MultipleOverloadsDerived::StaticFunc))
+        .class_function("StaticFunc", select_overload<int(int,int,int,int)>(&MultipleOverloadsDerived::StaticFunc))
+        ;
 }
 
 // tests for out-of-order registration
@@ -2048,15 +2074,41 @@ class Noncopyable {
     
 public:
     Noncopyable() {}
+    Noncopyable(Noncopyable&& other) {
+        other.valid = false;
+    }
 
     std::string method() const {
         return "foo";
     }
+
+    bool valid = true;
 };
+
+Noncopyable getNoncopyable() {
+    return Noncopyable();
+}
 
 EMSCRIPTEN_BINDINGS(noncopyable) {
     class_<Noncopyable>("Noncopyable")
         .constructor<>()
         .function("method", &Noncopyable::method)
+        ;
+
+    function("getNoncopyable", &getNoncopyable);
+}
+
+struct HasReadOnlyProperty {
+    HasReadOnlyProperty(int i)
+        : i(i)
+    {}
+
+    const int i;
+};
+
+EMSCRIPTEN_BINDINGS(read_only_properties) {
+    class_<HasReadOnlyProperty>("HasReadOnlyProperty")
+        .constructor<int>()
+        .property("i", &HasReadOnlyProperty::i)
         ;
 }

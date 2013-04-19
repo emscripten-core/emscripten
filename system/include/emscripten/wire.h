@@ -181,8 +181,32 @@ namespace emscripten {
             }
         };
 
+        template<>
+        struct BindingType<std::wstring> {
+            typedef struct {
+                size_t length;
+                wchar_t data[1]; // trailing data
+            }* WireType;
+            static WireType toWireType(const std::wstring& v) {
+                WireType wt = (WireType)malloc(sizeof(size_t) + v.length() * sizeof(wchar_t));
+                wt->length = v.length();
+                wmemcpy(wt->data, v.data(), v.length());
+                return wt;
+            }
+            static std::wstring fromWireType(WireType v) {
+                return std::wstring(v->data, v->length);
+            }
+            static void destroy(WireType v) {
+                free(v);
+            }
+        };
+
         template<typename T>
         struct BindingType<const T> : public BindingType<T> {
+        };
+
+        template<typename T>
+        struct BindingType<T&> : public BindingType<T> {
         };
 
         template<typename T>
@@ -212,42 +236,16 @@ namespace emscripten {
         };
 
         template<typename T>
-        struct BindingType<std::shared_ptr<T>> {
-            typedef std::shared_ptr<T> shared_ptr;
-            typedef std::shared_ptr<T>* WireType;
-
-            static WireType toWireType(shared_ptr p) {
-                return new shared_ptr(p);
-            }
-
-            static shared_ptr fromWireType(WireType wt) {
-                if (wt) {
-                    return shared_ptr(*wt);
-                } else {
-                    return shared_ptr();
-                }
-            }
-        };
-
-        template<typename Enum>
-        struct EnumBindingType {
-            typedef Enum WireType;
-
-            static WireType toWireType(Enum v) {
-                return v;
-            }
-            static Enum fromWireType(WireType v) {
-                return v;
-            }
-        };
-
-        template<typename T>
         struct GenericBindingType {
             typedef typename std::remove_reference<T>::type ActualT;
             typedef ActualT* WireType;
 
-            static WireType toWireType(T v) {
+            static WireType toWireType(const T& v) {
                 return new T(v);
+            }
+
+            static WireType toWireType(T&& v) {
+                return new T(std::forward<T>(v));
             }
 
             static ActualT& fromWireType(WireType p) {
@@ -292,8 +290,8 @@ namespace emscripten {
         {};
 
         template<typename T>
-        auto toWireType(const T& v) -> typename BindingType<T>::WireType {
-            return BindingType<T>::toWireType(v);
+        auto toWireType(T&& v) -> typename BindingType<T>::WireType {
+            return BindingType<T>::toWireType(std::forward<T>(v));
         }
 
         template<typename T>

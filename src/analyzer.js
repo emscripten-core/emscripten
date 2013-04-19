@@ -1389,21 +1389,21 @@ function analyzer(data, sidePass) {
             var line = label.lines[j];
             if ((line.intertype == 'call' || line.intertype == 'invoke') && line.ident == setjmp) {
               // Add a new label
-              var oldIdent = label.ident;
-              var newIdent = func.labelIdCounter++;
+              var oldLabel = label.ident;
+              var newLabel = func.labelIdCounter++;
               if (!func.setjmpTable) func.setjmpTable = [];
-              func.setjmpTable.push([oldIdent, newIdent, line.assignTo]);
+              func.setjmpTable.push({ oldLabel: oldLabel, newLabel: newLabel, assignTo: line.assignTo });
               func.labels.splice(i+1, 0, {
                 intertype: 'label',
-                ident: newIdent,
+                ident: newLabel,
                 lineNum: label.lineNum + 0.5,
                 lines: label.lines.slice(j+1)
               });
-              func.labelsDict[newIdent] = func.labels[i+1];
+              func.labelsDict[newLabel] = func.labels[i+1];
               label.lines = label.lines.slice(0, j+1);
               label.lines.push({
                 intertype: 'branch',
-                label: toNiceIdent(newIdent),
+                label: toNiceIdent(newLabel),
                 lineNum: line.lineNum + 0.01, // XXX legalizing might confuse this
               });
               // Correct phis
@@ -1412,8 +1412,8 @@ function analyzer(data, sidePass) {
                   if (phi.intertype == 'phi') {
                     for (var i = 0; i < phi.params.length; i++) {
                       var sourceLabelId = getActualLabelId(phi.params[i].label);
-                      if (sourceLabelId == oldIdent) {
-                        phi.params[i].label = newIdent;
+                      if (sourceLabelId == oldLabel) {
+                        phi.params[i].label = newLabel;
                       }
                     }
                   }

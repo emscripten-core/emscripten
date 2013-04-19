@@ -1,9 +1,9 @@
 /*global Module*/
 /*global HEAP32*/
-/*global Pointer_stringify, writeStringToMemory*/
-/*global requireRegisteredType*/
+/*global readLatin1String, writeStringToMemory*/
+/*global requireRegisteredType, throwBindingError*/
 
-var _emval_handle_array = [];
+var _emval_handle_array = [{}]; // reserve zero
 var _emval_free_list = [];
 
 // Public JS API
@@ -11,7 +11,7 @@ var _emval_free_list = [];
 /** @expose */
 Module.count_emval_handles = function() {
     var count = 0;
-    for (var i = 0; i < _emval_handle_array.length; ++i) {
+    for (var i = 1; i < _emval_handle_array.length; ++i) {
         if (_emval_handle_array[i] !== undefined) {
             ++count;
         }
@@ -21,7 +21,7 @@ Module.count_emval_handles = function() {
 
 /** @expose */
 Module.get_first_emval = function() {
-    for (var i = 0; i < _emval_handle_array.length; ++i) {
+    for (var i = 1; i < _emval_handle_array.length; ++i) {
         if (_emval_handle_array[i] !== undefined) {
             return _emval_handle_array[i];
         }
@@ -30,6 +30,27 @@ Module.get_first_emval = function() {
 };
 
 // Private C++ API
+
+var _emval_symbols = {}; // address -> string
+
+function __emval_register_symbol(address) {
+    _emval_symbols[address] = readLatin1String(address);
+}
+
+function getStringOrSymbol(address) {
+    var symbol = _emval_symbols[address];
+    if (symbol === undefined) {
+        return readLatin1String(address);
+    } else {
+        return symbol;
+    }
+}
+
+function requireHandle(handle) {
+    if (!handle) {
+        throwBindingError('Cannot use deleted val. handle = ' + handle);
+    }
+}
 
 function __emval_register(value) {
     var handle = _emval_free_list.length ?
@@ -41,11 +62,13 @@ function __emval_register(value) {
 }
 
 function __emval_incref(handle) {
-    _emval_handle_array[handle].refcount += 1;
+    if (handle) {
+        _emval_handle_array[handle].refcount += 1;
+    }
 }
 
 function __emval_decref(handle) {
-    if (0 === --_emval_handle_array[handle].refcount) {
+    if (handle && 0 === --_emval_handle_array[handle].refcount) {
         delete _emval_handle_array[handle];
         _emval_free_list.push(handle);
 
@@ -74,7 +97,7 @@ function __emval_null() {
 }
 
 function __emval_new_cstring(v) {
-    return __emval_register(Pointer_stringify(v));
+    return __emval_register(getStringOrSymbol(v));
 }
 
 function __emval_take_value(type, v) {
@@ -86,6 +109,8 @@ function __emval_take_value(type, v) {
 var __newers = {}; // arity -> function
 
 function __emval_new(handle, argCount, argTypes) {
+    requireHandle(handle);
+
     var args = parseParameters(
         argCount,
         argTypes,
@@ -127,24 +152,27 @@ function __emval_new(handle, argCount, argTypes) {
 var global = (function(){return Function;})()('return this')();
 
 function __emval_get_global(name) {
-    name = Pointer_stringify(name);
+    name = getStringOrSymbol(name);
     return __emval_register(global[name]);
 }
 
 function __emval_get_module_property(name) {
-    name = Pointer_stringify(name);
+    name = getStringOrSymbol(name);
     return __emval_register(Module[name]);
 }
 
 function __emval_get_property(handle, key) {
+    requireHandle(handle);
     return __emval_register(_emval_handle_array[handle].value[_emval_handle_array[key].value]);
 }
 
 function __emval_set_property(handle, key, value) {
+    requireHandle(handle);
     _emval_handle_array[handle].value[_emval_handle_array[key].value] = _emval_handle_array[value].value;
 }
 
 function __emval_as(handle, returnType) {
+    requireHandle(handle);
     returnType = requireRegisteredType(returnType, 'emval::as');
     var destructors = [];
     // caller owns destructing
@@ -163,6 +191,7 @@ function parseParameters(argCount, argTypes, argWireTypes) {
 }
 
 function __emval_call(handle, argCount, argTypes) {
+    requireHandle(handle);
     var fn = _emval_handle_array[handle].value;
     var args = parseParameters(
         argCount,
@@ -173,7 +202,8 @@ function __emval_call(handle, argCount, argTypes) {
 }
 
 function __emval_call_method(handle, name, argCount, argTypes) {
-    name = Pointer_stringify(name);
+    requireHandle(handle);
+    name = getStringOrSymbol(name);
 
     var args = parseParameters(
         argCount,
@@ -185,7 +215,8 @@ function __emval_call_method(handle, name, argCount, argTypes) {
 }
 
 function __emval_call_void_method(handle, name, argCount, argTypes) {
-    name = Pointer_stringify(name);
+    requireHandle(handle);
+    name = getStringOrSymbol(name);
 
     var args = parseParameters(
         argCount,
@@ -193,4 +224,9 @@ function __emval_call_void_method(handle, name, argCount, argTypes) {
         Array.prototype.slice.call(arguments, 4));
     var obj = _emval_handle_array[handle].value;
     obj[name].apply(obj, args);
+}
+
+function __emval_has_function(handle, name) {
+    name = getStringOrSymbol(name);
+    return _emval_handle_array[handle].value[name] instanceof Function;
 }

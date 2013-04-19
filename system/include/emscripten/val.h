@@ -8,6 +8,8 @@ namespace emscripten {
     namespace internal {
         // Implemented in JavaScript.  Don't call these directly.
         extern "C" {
+            void _emval_register_symbol(const char*);
+
             typedef struct _EM_VAL* EM_VAL;
         
             void _emval_incref(EM_VAL value);
@@ -48,8 +50,22 @@ namespace emscripten {
                 unsigned argCount,
                 internal::TYPEID argTypes[]
                 /*, ...*/);
+            bool _emval_has_function(
+                EM_VAL value,
+                const char* methodName);
         }
     }
+
+    template<const char* address> 
+    struct symbol_registrar {
+        symbol_registrar() {
+            internal::_emval_register_symbol(address);
+        }
+    };
+
+#define EMSCRIPTEN_SYMBOL(name)                                         \
+    static const char name##_symbol[] = #name;                          \
+    static const symbol_registrar<name##_symbol> name##_registrar
 
     class val {
     public:
@@ -98,17 +114,23 @@ namespace emscripten {
         }
 
         template<typename T>
-        explicit val(const T& value) {
+        explicit val(T&& value) {
             typedef internal::BindingType<T> BT;
             auto taker = reinterpret_cast<internal::EM_VAL (*)(internal::TYPEID, typename BT::WireType)>(&internal::_emval_take_value);
-            handle = taker(internal::TypeID<T>::get(), BT::toWireType(value));
+            handle = taker(internal::TypeID<T>::get(), BT::toWireType(std::forward<T>(value)));
         }
 
         val() = delete;
 
-        val(const char* v)
+        explicit val(const char* v)
             : handle(internal::_emval_new_cstring(v)) 
         {}
+
+        val(val&& v)
+            : handle(v.handle)
+        {
+            v.handle = 0;
+        }
 
         val(const val& v)
             : handle(v.handle)
@@ -118,6 +140,13 @@ namespace emscripten {
 
         ~val() {
             internal::_emval_decref(handle);
+        }
+
+        val& operator=(val&& v) {
+            internal::_emval_decref(handle);
+            handle = v.handle;
+            v.handle = 0;
+            return *this;
         }
 
         val& operator=(const val& v) {
@@ -132,7 +161,7 @@ namespace emscripten {
         }
 
         template<typename... Args>
-        val new_(Args... args) const {
+        val new_(Args&&... args) const {
             using namespace internal;
 
             WithPolicies<>::ArgTypeList<Args...> argList;
@@ -149,7 +178,7 @@ namespace emscripten {
                     handle,
                     argList.count,
                     argList.types,
-                    toWireType(args)...));
+                    toWireType(std::forward<Args>(args))...));
         }
         
         template<typename T>
@@ -163,7 +192,7 @@ namespace emscripten {
         }
 
         template<typename... Args>
-        val operator()(Args... args) {
+        val operator()(Args&&... args) {
             using namespace internal;
 
             WithPolicies<>::ArgTypeList<Args...> argList;
@@ -178,11 +207,11 @@ namespace emscripten {
                     handle,
                     argList.count,
                     argList.types,
-                    toWireType(args)...));
+                    toWireType(std::forward<Args>(args))...));
         }
 
         template<typename ...Args>
-        val call(const char* name, Args... args) const {
+        val call(const char* name, Args&&... args) const {
             using namespace internal;
 
             WithPolicies<>::ArgTypeList<Args...> argList;
@@ -199,11 +228,11 @@ namespace emscripten {
                     name,
                     argList.count,
                     argList.types,
-                    toWireType(args)...));
+                    toWireType(std::forward<Args>(args))...));
         }
 
         template<typename ...Args>
-        void call_void(const char* name, Args... args) const {
+        void call_void(const char* name, Args&&... args) const {
             using namespace internal;
 
             WithPolicies<>::ArgTypeList<Args...> argList;
@@ -219,7 +248,11 @@ namespace emscripten {
                 name,
                 argList.count,
                 argList.types,
-                toWireType(args)...);
+                toWireType(std::forward<Args>(args))...);
+        }
+
+        bool has_function(const char* name) const {
+            return _emval_has_function(handle, name);
         }
 
         template<typename T>
@@ -253,7 +286,7 @@ namespace emscripten {
         template<>
         struct BindingType<val> {
             typedef internal::EM_VAL WireType;
-            static WireType toWireType(val v) {
+            static WireType toWireType(const val& v) {
                 _emval_incref(v.handle);
                 return v.handle;
             }

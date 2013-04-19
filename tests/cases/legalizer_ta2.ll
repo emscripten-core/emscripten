@@ -188,4 +188,5 @@ done:
 
 declare i32 @puts(i8*)
 declare i32 @__gxx_personality_v0(...)
+declare void @__cxa_throw(i32, i32, i32) ; for asm1, where exceptions are enabled but this test needs a throw to bring in lib stuff
 

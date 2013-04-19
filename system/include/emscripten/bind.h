@@ -47,8 +47,13 @@ namespace emscripten {
                 TYPEID floatType,
                 const char* name);
             
-            void _embind_register_cstring(
+            void _embind_register_std_string(
                 TYPEID stringType,
+                const char* name);
+
+            void _embind_register_std_wstring(
+                TYPEID stringType,
+                size_t charSize,
                 const char* name);
 
             void _embind_register_emval(
@@ -136,10 +141,12 @@ namespace emscripten {
             void _embind_register_class_property(
                 TYPEID classType,
                 const char* fieldName,
-                TYPEID fieldType,
+                TYPEID getterReturnType,
                 GenericFunction getter,
+                void* getterContext,
+                TYPEID setterArgumentType,
                 GenericFunction setter,
-                void* context);
+                void* setterContext);
 
             void _embind_register_class_class_function(
                 TYPEID classType,
@@ -223,6 +230,18 @@ namespace emscripten {
     }
 
     namespace internal {
+        template<typename ClassType, typename Signature>
+        struct MemberFunctionType {
+            typedef Signature (ClassType::*type);
+        };
+    }
+
+    template<typename Signature, typename ClassType>
+    typename internal::MemberFunctionType<ClassType, Signature>::type select_overload(Signature (ClassType::*fn)) {
+        return fn;
+    }
+
+    namespace internal {
         template<typename ReturnType, typename... Args>
         struct Invoker {
             static typename internal::BindingType<ReturnType>::WireType invoke(
@@ -277,8 +296,8 @@ namespace emscripten {
         }
 
         template<typename WrapperType, typename ClassType, typename... Args>
-        WrapperType wrapped_new(Args... args) {
-            return WrapperType(new ClassType(args...));
+        WrapperType wrapped_new(Args&&... args) {
+            return WrapperType(new ClassType(std::forward<Args>(args)...));
         }
 
         template<typename ClassType, typename... Args>
@@ -711,28 +730,41 @@ namespace emscripten {
     template<typename T>
     class wrapper : public T {
     public:
-        wrapper(const val& wrapped)
-            : wrapped(wrapped)
+        explicit wrapper(val&& wrapped)
+            : wrapped(std::forward<val>(wrapped))
         {}
 
         template<typename ReturnType, typename... Args>
-        ReturnType call(const char* name, Args... args) const {
-            return Caller<ReturnType, Args...>::call(wrapped, name, args...);
+        ReturnType call(const char* name, Args&&... args) const {
+            return Caller<ReturnType, Args...>::call(wrapped, name, std::forward<Args>(args)...);
+        }
+
+        template<typename ReturnType, typename... Args, typename Default>
+        ReturnType optional_call(const char* name, Default def, Args&&... args) const {
+            if (has_function(name)) {
+                return Caller<ReturnType, Args...>::call(wrapped, name, std::forward<Args>(args)...);
+            } else {
+                return def();
+            }
         }
 
     private:
+        bool has_function(const char* name) const {
+            return wrapped.has_function(name);
+        }
+
         // this class only exists because you can't partially specialize function templates
         template<typename ReturnType, typename... Args>
         struct Caller {
-            static ReturnType call(const val& v, const char* name, Args... args) {
-                return v.call(name, args...).template as<ReturnType>();
+            static ReturnType call(const val& v, const char* name, Args&&... args) {
+                return v.call(name, std::forward<Args>(args)...).template as<ReturnType>();
             }
         };
 
         template<typename... Args>
         struct Caller<void, Args...> {
-            static void call(const val& v, const char* name, Args... args) {
-                v.call_void(name, args...);
+            static void call(const val& v, const char* name, Args&&... args) {
+                v.call_void(name, std::forward<Args>(args)...);
             }
         };
 
@@ -740,7 +772,7 @@ namespace emscripten {
     };
 
 #define EMSCRIPTEN_WRAPPER(T) \
-    T(const ::emscripten::val& v): wrapper(v) {}
+    T(::emscripten::val&& v): wrapper(std::forward<::emscripten::val>(v)) {}
 
     namespace internal {
         struct NoBaseClass {
@@ -971,7 +1003,23 @@ namespace emscripten {
             return *this;
         }
 
-        template<typename FieldType>
+        template<typename FieldType, typename = typename std::enable_if<!std::is_function<FieldType>::value>::type>
+        class_& property(const char* fieldName, const FieldType ClassType::*field) {
+            using namespace internal;
+
+            _embind_register_class_property(
+                TypeID<ClassType>::get(),
+                fieldName,
+                TypeID<FieldType>::get(),
+                reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, FieldType>::template getWire<ClassType>),
+                getContext(field),
+                0,
+                0,
+                0);
+            return *this;
+        }
+
+        template<typename FieldType, typename = typename std::enable_if<!std::is_function<FieldType>::value>::type>
         class_& property(const char* fieldName, FieldType ClassType::*field) {
             using namespace internal;
 
@@ -980,8 +1028,43 @@ namespace emscripten {
                 fieldName,
                 TypeID<FieldType>::get(),
                 reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, FieldType>::template getWire<ClassType>),
+                getContext(field),
+                TypeID<FieldType>::get(),
                 reinterpret_cast<GenericFunction>(&MemberAccess<ClassType, FieldType>::template setWire<ClassType>),
                 getContext(field));
+            return *this;
+        }
+
+        template<typename Getter>
+        class_& property(const char* fieldName, Getter getter) {
+            using namespace internal;
+            typedef GetterPolicy<Getter> GP;
+            _embind_register_class_property(
+                TypeID<ClassType>::get(),
+                fieldName,
+                TypeID<typename GP::ReturnType>::get(),
+                reinterpret_cast<GenericFunction>(&GP::template get<ClassType>),
+                GP::getContext(getter),
+                0,
+                0,
+                0);
+            return *this;
+        }
+
+        template<typename Getter, typename Setter>
+        class_& property(const char* fieldName, Getter getter, Setter setter) {
+            using namespace internal;
+            typedef GetterPolicy<Getter> GP;
+            typedef SetterPolicy<Setter> SP;
+            _embind_register_class_property(
+                TypeID<ClassType>::get(),
+                fieldName,
+                TypeID<typename GP::ReturnType>::get(),
+                reinterpret_cast<GenericFunction>(&GP::template get<ClassType>),
+                GP::getContext(getter),
+                TypeID<typename SP::ArgumentType>::get(),
+                reinterpret_cast<GenericFunction>(&SP::template set<ClassType>),
+                SP::getContext(setter));
             return *this;
         }
 
@@ -998,11 +1081,6 @@ namespace emscripten {
                 reinterpret_cast<internal::GenericFunction>(&internal::Invoker<ReturnType, Args...>::invoke),
                 reinterpret_cast<GenericFunction>(classMethod));
             return *this;
-        }
-
-        template<typename ReturnType, typename... Args, typename... Policies>
-        class_& calloperator(const char* methodName, Policies... policies) {
-            return function(methodName, &ClassType::operator(), policies...);
         }
     };
 
@@ -1210,80 +1288,6 @@ namespace emscripten {
             typename std::aligned_storage<sizeof(T)>::type data;
         };
     }
-
-    ////////////////////////////////////////////////////////////////////////////////
-    // NEW INTERFACE
-    ////////////////////////////////////////////////////////////////////////////////
-
-    class JSInterface {
-    public:
-        JSInterface(internal::EM_VAL handle) {
-            initialize(handle);
-        }
-
-        JSInterface(const JSInterface& obj)
-            : jsobj(obj.jsobj)
-        {}
-
-        template<typename ReturnType, typename... Args>
-        ReturnType call(const char* name, Args... args) {
-            assertInitialized();
-            return Caller<ReturnType, Args...>::call(*jsobj, name, args...);
-        }
-
-        static std::shared_ptr<JSInterface> cloneToSharedPtr(const JSInterface& i) {
-            return std::make_shared<JSInterface>(i);
-        }
-
-    private:
-        void initialize(internal::EM_VAL handle) {
-            if (jsobj) {
-                internal::_embind_fatal_error(
-                    "Cannot initialize interface wrapper twice",
-                    "JSInterface");
-            }
-            jsobj = val::take_ownership(handle);
-        }
-
-        // this class only exists because you can't partially specialize function templates
-        template<typename ReturnType, typename... Args>
-        struct Caller {
-            static ReturnType call(val& v, const char* name, Args... args) {
-                return v.call(name, args...).template as<ReturnType>();
-            }
-        };
-
-        template<typename... Args>
-        struct Caller<void, Args...> {
-            static void call(val& v, const char* name, Args... args) {
-                v.call_void(name, args...);
-            }
-        };
-
-        void assertInitialized() {
-            if (!jsobj) {
-                internal::_embind_fatal_error(
-                    "Cannot invoke call on uninitialized Javascript interface wrapper.", "JSInterface");
-            }
-        }
-
-        internal::optional<val> jsobj;
-    };
-
-    namespace internal {
-        extern JSInterface* create_js_interface(EM_VAL e);
-    }
-
-    class register_js_interface {
-    public:
-        register_js_interface() {
-            _embind_register_interface(
-                internal::TypeID<JSInterface>::get(),
-                "JSInterface",
-                reinterpret_cast<internal::GenericFunction>(&internal::create_js_interface),
-                reinterpret_cast<internal::GenericFunction>(&internal::raw_destructor<JSInterface>));
-        }
-    };
 }
 
 namespace emscripten {

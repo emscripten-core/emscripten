@@ -701,18 +701,22 @@ function JSify(data, functionsOnly, givenFunctions) {
               ret += indent + 'label = ' + getLabelId(block.entries[0]) + '; ' + (SHOW_LABELS ? '/* ' + getOriginalLabelId(block.entries[0]) + ' */' : '') + '\n';
             } // otherwise, should have been set before!
             if (func.setjmpTable) {
-              assert(!ASM_JS, 'asm.js mode does not support setjmp yet');
-              var setjmpTable = {};
-              ret += indent + 'var mySetjmpIds = {};\n';
-              ret += indent + 'var setjmpTable = {';
-              func.setjmpTable.forEach(function(triple) { // original label, label we created for right after the setjmp, variable setjmp result goes into
-                ret += '"' + getLabelId(triple[0]) + '": ' + 'function(value) { label = ' + getLabelId(triple[1]) + '; ' + triple[2] + ' = value },';
-              });
-              ret += 'dummy: 0';
-              ret += '};\n';
+              if (!ASM_JS) {
+                var setjmpTable = {};
+                ret += indent + 'var mySetjmpIds = {};\n';
+                ret += indent + 'var setjmpTable = {';
+                func.setjmpTable.forEach(function(triple) { // original label, label we created for right after the setjmp, variable setjmp result goes into
+                  ret += '"' + getLabelId(triple.oldLabel) + '": ' + 'function(value) { label = ' + getLabelId(triple.newLabel) + '; ' + triple.assignTo + ' = value },';
+                });
+                ret += 'dummy: 0';
+                ret += '};\n';
+              } else {
+                ret += 'var setjmpLabel = 0;\n';
+                ret += 'var setjmpTable = ' + RuntimeGenerator.stackAlloc(4 * (MAX_SETJMPS + 1) * 2) + ';\n';
+              }
             }
             ret += indent + 'while(1) ';
-            if (func.setjmpTable) {
+            if (func.setjmpTable && !ASM_JS) {
               ret += 'try { ';
             }
             ret += 'switch(' + asmCoercion('label', 'i32') + ') {\n';
@@ -720,9 +724,19 @@ function JSify(data, functionsOnly, givenFunctions) {
               return indent + '  case ' + getLabelId(label.ident) + ': ' + (SHOW_LABELS ? '// ' + getOriginalLabelId(label.ident) : '') + '\n'
                             + getLabelLines(label, indent + '    ');
             }).join('\n') + '\n';
+            if (func.setjmpTable && ASM_JS) {
+              // emit a label in which we write to the proper local variable, before jumping to the actual label
+              ret += '  case -1111: ';
+              ret += func.setjmpTable.map(function(triple) { // original label, label we created for right after the setjmp, variable setjmp result goes into
+                return 'if ((setjmpLabel|0) == ' + getLabelId(triple.oldLabel) + ') { ' + triple.assignTo + ' = threwValue; label = ' + triple.newLabel + ' }\n';
+              }).join(' else ');
+              if (ASSERTIONS) ret += 'else abort(-3);\n';
+              ret += '__THREW__ = threwValue = 0;\n';
+              ret += 'break;\n';
+            }
             if (ASSERTIONS) ret += indent + '  default: assert(0' + (ASM_JS ? '' : ', "bad label: " + label') + ');\n';
             ret += indent + '}\n';
-            if (func.setjmpTable) {
+            if (func.setjmpTable && !ASM_JS) {
               ret += ' } catch(e) { if (!e.longjmp || !(e.id in mySetjmpIds)) throw(e); setjmpTable[setjmpLabels[e.id]](e.value) }';
             }
           } else {
@@ -1210,6 +1224,12 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
   });
   makeFuncLineActor('landingpad', function(item) {
+    if (DISABLE_EXCEPTION_CATCHING && USE_TYPED_ARRAYS == 2) {
+      ret = makeVarDef(item.assignTo) + '$0 = 0; ' + item.assignTo + '$1 = 0;';
+      item.assignTo = null;
+      if (ASSERTIONS) warnOnce('landingpad, but exceptions are disabled!');
+      return ret;
+    }
     var catchTypeArray = item.catchables.map(finalizeLLVMParameter).map(function(element) { return asmCoercion(element, 'i32') }).join(',');
     var ret = asmCoercion('___cxa_find_matching_catch(-1, -1' + (catchTypeArray.length > 0 ? ',' + catchTypeArray : '') +')', 'i32');
     if (USE_TYPED_ARRAYS == 2) {
@@ -1294,6 +1314,8 @@ function JSify(data, functionsOnly, givenFunctions) {
   function makeFunctionCall(ident, params, funcData, type, forceByPointer) {
     // We cannot compile assembly. See comment in intertyper.js:'Call'
     assert(ident != 'asm', 'Inline assembly cannot be compiled to JavaScript!');
+
+    if (ASM_JS && funcData.setjmpTable) forceByPointer = true; // in asm.js mode, we must do an invoke for each call
 
     ident = Variables.resolveAliasToIdent(ident);
     var shortident = ident.slice(1);
@@ -1449,6 +1471,13 @@ function JSify(data, functionsOnly, givenFunctions) {
         ret += '; return 0'; // special case: abort() can happen without return, breaking the return type of asm functions. ensure a return
       }
     }
+
+    if (ASM_JS && funcData.setjmpTable) {
+      // check if a longjmp was done. If a setjmp happened, check if ours. If ours, go to -111 to handle it.
+      // otherwise, just return - the call to us must also have been an invoke, so the setjmp propagates that way
+      ret += '; if (((__THREW__|0) != 0) & ((threwValue|0) > 0)) { setjmpLabel = _testSetjmp(' + makeGetValue('__THREW__', 0, 'i32') + ', setjmpTable); if ((setjmpLabel|0) > 0) { label = -1111; break } else return ' + (funcData.returnType != 'void' ? asmCoercion('0', funcData.returnType) : '') + ' } __THREW__ = threwValue = 0;\n';
+    }
+
     return ret;
   }
   makeFuncLineActor('getelementptr', function(item) { return finalizeLLVMFunctionCall(item) });
@@ -1458,11 +1487,12 @@ function JSify(data, functionsOnly, givenFunctions) {
   });
 
   makeFuncLineActor('unreachable', function(item) {
+    var ret = '';
+    if (ASM_JS && item.funcData.returnType != 'void') ret = 'return ' + asmCoercion('0', item.funcData.returnType) + ';';
     if (ASSERTIONS) {
-      return ASM_JS ? 'abort()' : 'throw "Reached an unreachable!"';
-    } else {
-      return ';';
+      ret = (ASM_JS ? 'abort()' : 'throw "Reached an unreachable!"') + ';' + ret;
     }
+    return ret || ';';
   });
 
   // Final combiner

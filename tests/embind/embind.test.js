@@ -143,33 +143,49 @@ module({
             var e = assert.throws(cm.BindingError, function() {
                 cm.Derived.prototype.setMember.call(a, "foo");
             });
-            assert.equal('Derived.setMember incompatible with "this" of type HasTwoBases', e.message);
+            assert.equal('Expected null or instance of Derived, got an instance of Base2', e.message);
             a.delete();
+
+            // Base1 and Base2 both have the method 'getField()' exposed - make sure
+            // that calling the Base2 function with a 'this' instance of Base1 doesn't accidentally work!
+            var b = new cm.Base1;
+            var e = assert.throws(cm.BindingError, function() {
+                cm.Base2.prototype.getField.call(b);
+            });
+            assert.equal('Expected null or instance of Base2, got an instance of Base1', e.message);
+            b.delete();
         });
 
         test("calling method with invalid this throws error", function() {
             var e = assert.throws(cm.BindingError, function() {
                 cm.Derived.prototype.setMember.call(undefined, "foo");
             });
-            if (typeof INVOKED_FROM_EMSCRIPTEN_TEST_RUNNER === "undefined") { // TODO: Enable this to work in Emscripten runner as well!
-                // got Error: expected: Derived.setMember with invalid "this": undefined, actual: Derived.setMember incompatible with "this" of type Object
-                assert.equal('Derived.setMember with invalid "this": undefined', e.message);
-            }
+            assert.equal('Cannot pass "[object global]" as a Derived*', e.message);
+
+            var e = assert.throws(cm.BindingError, function() {
+                cm.Derived.prototype.setMember.call(true, "foo");
+            });
+            assert.equal('Cannot pass "true" as a Derived*', e.message);
+
+            var e = assert.throws(cm.BindingError, function() {
+                cm.Derived.prototype.setMember.call(null, "foo");
+            });
+            assert.equal('Cannot pass "[object global]" as a Derived*', e.message);
+
+            var e = assert.throws(cm.BindingError, function() {
+                cm.Derived.prototype.setMember.call(42, "foo");
+            });
+            assert.equal('Cannot pass "42" as a Derived*', e.message);
 
             var e = assert.throws(cm.BindingError, function() {
                 cm.Derived.prototype.setMember.call("this", "foo");
             });
-            if (typeof INVOKED_FROM_EMSCRIPTEN_TEST_RUNNER === "undefined") { // TODO: Enable this to work in Emscripten runner as well!
-                // TODO got 'Derived.setMember incompatible with "this" of type Object'
-                assert.equal('Derived.setMember with invalid "this": this', e.message);
-            }
+            assert.equal('Cannot pass "this" as a Derived*', e.message);
 
             var e = assert.throws(cm.BindingError, function() {
                 cm.Derived.prototype.setMember.call({}, "foo");
             });
-            if (typeof INVOKED_FROM_EMSCRIPTEN_TEST_RUNNER === "undefined") { // TODO: Enable this to work in Emscripten runner as well!
-                assert.equal('Derived.setMember incompatible with "this" of type Object', e.message);
-            }
+            assert.equal('Cannot pass "[object Object]" as a Derived*', e.message);
         });
 
         test("setting and getting property on unrelated class throws error", function() {
@@ -385,6 +401,59 @@ module({
 
             siblingDerived.delete();
             derived.delete();
+        });
+    });
+
+    BaseFixture.extend("string", function() {
+        test("non-ascii strings", function() {
+            var expected = '';
+            for (var i = 0; i < 128; ++i) {
+                expected += String.fromCharCode(128 + i);
+            }
+            assert.equal(expected, cm.get_non_ascii_string());
+        });
+
+        test("passing non-8-bit strings from JS to std::string throws", function() {
+            assert.throws(cm.BindingError, function() {
+                cm.emval_test_take_and_return_std_string("\u1234");
+            });
+        });
+
+        test("can't pass integers as strings", function() {
+            var e = assert.throws(cm.BindingError, function() {
+                cm.emval_test_take_and_return_std_string(10);
+            });
+        });
+
+        test("can pass Uint8Array to std::string", function() {
+            var e = cm.emval_test_take_and_return_std_string(new Uint8Array([65, 66, 67, 68]));
+            assert.equal('ABCD', e);
+        });
+
+        test("can pass Int8Array to std::string", function() {
+            var e = cm.emval_test_take_and_return_std_string(new Int8Array([65, 66, 67, 68]));
+            assert.equal('ABCD', e);
+        });
+
+        test("can pass ArrayBuffer to std::string", function() {
+            var e = cm.emval_test_take_and_return_std_string((new Int8Array([65, 66, 67, 68])).buffer);
+            assert.equal('ABCD', e);
+        });
+
+        test("non-ascii wstrings", function() {
+            var expected = String.fromCharCode(10) +
+                String.fromCharCode(1234) +
+                String.fromCharCode(2345) +
+                String.fromCharCode(65535);
+            assert.equal(expected, cm.get_non_ascii_wstring());
+        });
+
+        test("passing unicode string into C++", function() {
+            var expected = String.fromCharCode(10) +
+                String.fromCharCode(1234) +
+                String.fromCharCode(2345) +
+                String.fromCharCode(65535);
+            assert.equal(expected, cm.take_and_return_std_wstring(expected));
         });
     });
 
@@ -835,6 +904,37 @@ module({
 
             c.delete();
             assert.equal(0, cm.count_emval_handles());
+        });
+
+        test("class properties can be methods", function() {
+            var a = {};
+            var b = {foo: 'foo'};
+            var c = new cm.ValHolder(a);
+            assert.equal(a, c.val);
+            c.val = b;
+            assert.equal(b, c.val);
+            c.delete();
+        });
+
+        test("class properties can be read-only", function() {
+            var a = {};
+            var h = new cm.ValHolder(a);
+            assert.equal(a, h.val_readonly);
+            var e = assert.throws(cm.BindingError, function() {
+                h.val_readonly = 10;
+            });
+            assert.equal('ValHolder.val_readonly is a read-only property', e.message);
+            h.delete();
+        });
+
+        test("read-only member field", function() {
+            var a = new cm.HasReadOnlyProperty(10);
+            assert.equal(10, a.i);
+            var e = assert.throws(cm.BindingError, function() {
+                a.i = 20;
+            });
+            assert.equal('HasReadOnlyProperty.i is a read-only property', e.message);
+            a.delete();
         });
 
         test("class instance $$ property is non-enumerable", function() {
@@ -1415,24 +1515,6 @@ module({
         });
     });
 
-    BaseFixture.extend("JavaScript interface", function() {
-        this.setUp(function() {
-            this.testobj = {
-                "method1": function() { return 111; },
-                "method2": function() { return 222; }
-            };
-        });
-
-        test("pass js object to c++ and call its method", function() {
-            var obj = new cm.JSInterfaceHolder(this.testobj);
-            assert.equal(111, obj.callMethod("method1"));
-            assert.equal(222, obj.callMethod("method2"));
-            assert.equal(111, obj.callMethodUsingSharedPtr("method1"));
-            assert.equal(222, obj.callMethodUsingSharedPtr("method2"));
-            obj.delete();
-        });
-    });
-
     BaseFixture.extend("abstract methods", function() {
         test("can call abstract methods", function() {
             var obj = cm.getAbstractClass();
@@ -1452,6 +1534,28 @@ module({
             var impl = cm.AbstractClass.implement(new MyImplementation);
             assert.equal(expected, impl.abstractMethod());
             assert.equal(expected, cm.callAbstractMethod(impl));
+            impl.delete();
+        });
+
+        test("can implement optional methods in JavaScript", function() {
+            var expected = "my JS string";
+            function MyImplementation() {
+                this.rv = expected;
+            }
+            MyImplementation.prototype.optionalMethod = function() {
+                return this.rv;
+            };
+
+            var impl = cm.AbstractClass.implement(new MyImplementation);
+            assert.equal(expected, impl.optionalMethod(expected));
+            assert.equal(expected, cm.callOptionalMethod(impl, expected));
+            impl.delete();
+        });
+
+        test("if not implemented then optional method runs default", function() {
+            var impl = cm.AbstractClass.implement({});
+            assert.equal("optionalfoo", impl.optionalMethod("foo"));
+            assert.equal("optionalfoo", cm.callOptionalMethod(impl, "foo"));
             impl.delete();
         });
     });

@@ -217,8 +217,10 @@ var START_TIME = Date.now();
 //========================================
 
 var __THREW__ = 0; // Used in checking for thrown exceptions.
+#if ASM_JS == 0
 var setjmpId = 1; // Used in setjmp/longjmp
 var setjmpLabels = {};
+#endif
 
 var ABORT = false;
 

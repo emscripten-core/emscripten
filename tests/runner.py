@@ -455,7 +455,7 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
   if len(sys.argv) == 2 and 'ALL.' in sys.argv[1]:
     ignore, test = sys.argv[1].split('.')
     print 'Running all test modes on test "%s"' % test
-    sys.argv = [sys.argv[0], 'default.'+test, 'o1.'+test, 'o2.'+test, 'asm2.'+test, 'asm2g.'+test, 's_0_0.'+test, 's_0_1.'+test, 's_1_0.'+test, 's_1_1.'+test]
+    sys.argv = [sys.argv[0], 'default.'+test, 'o1.'+test, 'o2.'+test, 'asm1.'+test, 'asm2.'+test, 'asm2g.'+test, 's_0_0.'+test, 's_0_1.'+test, 's_1_0.'+test, 's_1_1.'+test]
 
   class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
     ## Does a complete test - builds, runs, checks output, etc.
@@ -2310,8 +2310,6 @@ cat |umber one top notchfi FI FO FUM WHEN WHERE WHY HOW WHO|''', ['wowie', 'too'
         self.do_run(src, 'Assertion failed: 1 == false')
 
     def test_longjmp(self):
-        if Settings.ASM_JS: return self.skip('asm does not support longjmp')
-
         src = r'''
           #include <stdio.h>
           #include <setjmp.h>
@@ -2343,8 +2341,6 @@ cat |umber one top notchfi FI FO FUM WHEN WHERE WHY HOW WHO|''', ['wowie', 'too'
         self.do_run(src, 'second\nmain: 1\n')
 
     def test_longjmp2(self):
-      if Settings.ASM_JS: return self.skip('asm does not support longjmp')
-
       src = r'''
         #include <setjmp.h>
         #include <stdio.h>
@@ -2391,8 +2387,6 @@ Exiting stack_manipulate_func, level: 0
 ''')
 
     def test_longjmp3(self):
-      if Settings.ASM_JS: return self.skip('asm does not support longjmp')
-
       src = r'''
         #include <setjmp.h>
         #include <stdio.h>
@@ -2445,8 +2439,6 @@ Exiting setjmp function, level: 0
 ''')
 
     def test_longjmp4(self):
-      if Settings.ASM_JS: return self.skip('asm does not support longjmp')
-
       src = r'''
         #include <setjmp.h>
         #include <stdio.h>
@@ -3541,7 +3533,7 @@ def process(filename):
 
           double get() {
             double ret = 0;
-            __asm __volatile__("12/3.3":"=a"(ret));
+            __asm __volatile__("12/3.3":"=r"(ret));
             return ret;
           }
 
@@ -3709,6 +3701,7 @@ def process(filename):
 
     def test_bigswitch(self):
       if Settings.RELOOP: return self.skip('TODO: switch in relooper, issue #781')
+      if Settings.ASM_JS: return self.skip('TODO: switch too large for asm')
 
       src = open(path_from_root('tests', 'bigswitch.cpp')).read()
       self.do_run(src, '''34962: GL_ARRAY_BUFFER (0x8892)
@@ -9001,6 +8994,7 @@ TT = %s
   exec('o2 = make_run("o2", compiler=CLANG, emcc_args=["-O2", "-s", "JS_CHUNK_SIZE=1024"])')
 
   # asm.js
+  exec('asm1 = make_run("asm1", compiler=CLANG, emcc_args=["-O1", "-s", "ASM_JS=1"])')
   exec('asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=1"])')
   exec('asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=1", "-g", "-s", "ASSERTIONS=1", "--memory-init-file", "1"])')
 
@@ -10241,8 +10235,8 @@ f.close()
       for args, fail in [
         ([], True), # without --bind, we fail
         (['--bind'], False),
-        (['--bind', '-O1'], False)
-        # XXX TODO (['--bind', '-O2'], False)
+        (['--bind', '-O1'], False),
+        (['--bind', '-O2'], False)
       ]:
         print args, fail
         self.clear()
@@ -11585,6 +11579,9 @@ elif 'browser' in str(sys.argv):
 
     def test_gl_renderers(self):
       self.btest('gl_renderers.c', reference='gl_renderers.png', args=['-s', 'GL_UNSAFE_OPTS=0'])
+
+    def test_gl_stride(self):
+      self.btest('gl_stride.c', reference='gl_stride.png', args=['-s', 'GL_UNSAFE_OPTS=0'])
 
     def test_matrix_identity(self):
       self.btest('gl_matrix_identity.c', expected=['-1882984448', '460451840'])
