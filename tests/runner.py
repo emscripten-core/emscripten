@@ -2341,8 +2341,6 @@ cat |umber one top notchfi FI FO FUM WHEN WHERE WHY HOW WHO|''', ['wowie', 'too'
         self.do_run(src, 'second\nmain: 1\n')
 
     def test_longjmp2(self):
-      if Settings.ASM_JS: return self.skip('asm does not support longjmp')
-
       src = r'''
         #include <setjmp.h>
         #include <stdio.h>
@@ -2389,8 +2387,6 @@ Exiting stack_manipulate_func, level: 0
 ''')
 
     def test_longjmp3(self):
-      if Settings.ASM_JS: return self.skip('asm does not support longjmp')
-
       src = r'''
         #include <setjmp.h>
         #include <stdio.h>

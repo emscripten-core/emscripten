@@ -6253,10 +6253,10 @@ LibraryManager.library = {
     table = table|0;
     var i = 0, curr = 0;
     while ((i|0) < {{{ MAX_SETJMPS }}}) {
-      curr = {{{ makeGetValueAsm('table', 'i', 'i32') }}};
+      curr = {{{ makeGetValueAsm('table', 'i*4', 'i32') }}};
       if ((curr|0) == 0) break;
       if ((curr|0) == (id|0)) {
-        return {{{ makeGetValueAsm('table', 'i+1', 'i32') }}};
+        return {{{ makeGetValueAsm('table', 'i*4+4', 'i32') }}};
       }
       i = (i+2)|0;
     }
