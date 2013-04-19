@@ -901,6 +901,7 @@ var LibraryGL = {
     Module.ctx.uniform4fv(location, view);
   },
 
+  glUniformMatrix2fv__sig: 'viiii',
   glUniformMatrix2fv: function(location, count, transpose, value) {
     location = GL.uniforms[location];
     var view;
