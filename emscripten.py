@@ -426,7 +426,7 @@ function invoke_%s(%s) {
   try {
     %sModule.dynCall_%s(%s);
   } catch(e) {
-    asm.setThrew(1);
+    asm.setThrew(1, 0);
   }
 }
 ''' % (sig, args, 'return ' if sig[0] != 'v' else '', sig, args)
@@ -489,6 +489,8 @@ var asm = (function(global, env, buffer) {
   var HEAPF64 = new global.Float64Array(buffer);
 ''' % (asm_setup,) + '\n' + asm_global_vars + '''
   var __THREW__ = 0;
+  var threwValue = 0;
+  var setjmpId = 0;
   var undef = 0;
   var tempInt = 0, tempBigInt = 0, tempBigIntP = 0, tempBigIntS = 0, tempBigIntR = 0.0, tempBigIntI = 0, tempBigIntD = 0, tempValue = 0, tempDouble = 0.0;
 ''' + ''.join(['''
@@ -509,9 +511,11 @@ var asm = (function(global, env, buffer) {
     top = top|0;
     STACKTOP = top;
   }
-  function setThrew(threw) {
+  function setThrew(threw, value) {
     threw = threw|0;
+    value = value|0;
     __THREW__ = threw;
+    threwValue = value;
   }
 ''' + ''.join(['''
   function setTempRet%d(value) {

@@ -6217,13 +6217,73 @@ LibraryManager.library = {
   // related functionality so the slowdown is more limited.
   // ==========================================================================
 
-  setjmp__inline: function(env) {
-    // Save the label
-    return '(tempInt = setjmpId++, mySetjmpIds[tempInt] = 1, setjmpLabels[tempInt] = label,' + makeSetValue(env, '0', 'tempInt', 'i32', undefined, undefined, undefined, undefined,  ',') + ', 0)';
+  saveSetjmp__asm: true,
+  saveSetjmp__sig: 'iii',
+  saveSetjmp: function(env, label, table) {
+    // Not particularly fast: slow table lookup of setjmpId to label. But setjmp
+    // prevents relooping anyhow, so slowness is to be expected. And typical case
+    // is 1 setjmp per invocation, or less.
+    env = env|0;
+    label = label|0;
+    table = table|0;
+    var i = 0;
+#if ASSERTIONS
+    if ((label|0) == 0) abort(121);
+#endif
+    setjmpId = (setjmpId+1)|0;
+    {{{ makeSetValueAsm('env', '0', 'setjmpId', 'i32') }}};
+    while ((i|0) < {{{ MAX_SETJMPS }}}) {
+      if ({{{ makeGetValueAsm('table', 'i*4', 'i32') }}} == 0) {
+        {{{ makeSetValueAsm('table', 'i*4', 'setjmpId', 'i32') }}};
+        {{{ makeSetValueAsm('table', 'i*4+4', 'label', 'i32') }}};
+        // prepare next slot
+        {{{ makeSetValueAsm('table', 'i*4+8', '0', 'i32') }}};
+        return 0;
+      }
+      i = (i+2)|0;
+    }
+    abort(987); // if you hit this, adjust MAX_SETJMPS
+    return 0;
   },
 
+  testSetjmp__asm: true,
+  testSetjmp__sig: 'iii',
+  testSetjmp: function(id, table) {
+    id = id|0;
+    table = table|0;
+    var i = 0, curr = 0;
+    while ((i|0) < {{{ MAX_SETJMPS }}}) {
+      curr = {{{ makeGetValueAsm('table', 'i', 'i32') }}};
+      if ((curr|0) == 0) break;
+      if ((curr|0) == (id|0)) {
+        return {{{ makeGetValueAsm('table', 'i+1', 'i32') }}};
+      }
+      i = (i+2)|0;
+    }
+    return 0;
+  },
+
+#if ASM_JS
+  setjmp__deps: ['saveSetjmp', 'testSetjmp'],
+#endif
+  setjmp__inline: function(env) {
+    // Save the label
+#if ASM_JS
+    return '_saveSetjmp(' + env + ', label, setjmpTable)';
+#else
+    return '(tempInt = setjmpId++, mySetjmpIds[tempInt] = 1, setjmpLabels[tempInt] = label,' + makeSetValue(env, '0', 'tempInt', 'i32', undefined, undefined, undefined, undefined,  ',') + ', 0)';
+#endif
+  },
+
+#if ASM_JS
+  longjmp__deps: ['saveSetjmp', 'testSetjmp'],
+#endif
   longjmp: function(env, value) {
+#if ASM_JS
+    asm.setThrew(env, value || 1);
+#else
     throw { longjmp: true, id: {{{ makeGetValue('env', '0', 'i32') }}}, value: value || 1 };
+#endif
   },
 
   // ==========================================================================
