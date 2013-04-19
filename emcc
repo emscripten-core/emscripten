@@ -1004,6 +1004,10 @@ try:
   if shared.Settings.ASM_JS:
     assert opt_level >= 1, 'asm.js requires -O1 or above'
 
+    if bind:
+      shared.Settings.ASM_JS = 0
+      print >> sys.stderr, 'emcc: warning: disabling asm.js because it is not compatible with embind yet'
+
     if closure:
       print >> sys.stderr, 'emcc: warning: disabling closure because it is not compatible with asm.js code generation'
       closure = False
