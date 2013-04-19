@@ -7402,7 +7402,7 @@ void*:16
     def test_freetype(self):
       if self.emcc_args is None: return self.skip('requires emcc')
       if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: Figure out and try to fix')
-      if Settings.ASM_JS: return self.skip('asm does not support longjmp')
+      if Settings.ASM_JS and '-O2' not in self.emcc_args: return self.skip('mozilla bug 863867')
 
       if Settings.CORRECT_SIGNS == 0: Settings.CORRECT_SIGNS = 1 # Not sure why, but needed
 
