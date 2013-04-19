@@ -732,13 +732,13 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
             basename = os.path.basename(f)
             cache[cache_name].append((basename, open(f, 'rb').read()))
         break
-      except:
+      except Exception, e:
         if i > 0:
           # Due to the ugly hack above our best guess is to output the first run
           with open_make_err(0) as ferr:
             for line in ferr:
               sys.stderr.write(line)
-          raise Exception('could not build library ' + name)
+          raise Exception('could not build library ' + name + ' due to exception ' + str(e))
     if old_dir:
       os.chdir(old_dir)
     return generated_libs
