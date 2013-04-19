@@ -2443,8 +2443,6 @@ Exiting setjmp function, level: 0
 ''')
 
     def test_longjmp4(self):
-      if Settings.ASM_JS: return self.skip('asm does not support longjmp')
-
       src = r'''
         #include <setjmp.h>
         #include <stdio.h>
