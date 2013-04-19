@@ -1180,7 +1180,7 @@ try:
       for src in libcxx_files:
         o = in_temp(src + '.o')
         srcfile = shared.path_from_root('system', 'lib', 'libcxx', src)
-        execute([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11'], stdout=stdout, stderr=stderr)
+        execute([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11', '-fno-delayed-template-parsing'], stdout=stdout, stderr=stderr)
         os.append(o)
       shared.Building.link(os, in_temp('libcxx.bc'))
       return in_temp('libcxx.bc')
@@ -1204,7 +1204,7 @@ try:
       for src in libcxxabi_files:
         o = in_temp(src + '.o')
         srcfile = shared.path_from_root('system', 'lib', 'libcxxabi', 'src', src)
-        execute([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11'], stdout=stdout, stderr=stderr)
+        execute([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11', '-fno-delayed-template-parsing'], stdout=stdout, stderr=stderr)
         os.append(o)
       shared.Building.link(os, in_temp('libcxxabi.bc'))
       return in_temp('libcxxabi.bc')

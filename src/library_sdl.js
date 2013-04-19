@@ -716,7 +716,12 @@ var LibrarySDL = {
     ['mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll', 'mousewheel', 'mouseout'].forEach(function(event) {
       Module['canvas'].addEventListener(event, SDL.receiveEvent, true);
     });
-    Browser.setCanvasSize(width, height, true);
+    if (width == 0 && height == 0) {
+      width = Module['canvas'].width;
+      height = Module['canvas'].height;
+    } else {
+      Browser.setCanvasSize(width, height, true);
+    }
     SDL.screen = SDL.makeSurface(width, height, flags, true, 'screen');
     if (!SDL.addedResizeListener) {
       SDL.addedResizeListener = true;
