@@ -44,7 +44,7 @@ unsigned int get_all_buf(int sock, char* output, unsigned int maxsize)
 
 int done = 0;
 
-void iter(void *arg) {
+void iter() {
   /* perform read write operations ... */
   static char out[1024*2];
   static int pos = 0;
@@ -124,7 +124,7 @@ int main(void)
 #if EMSCRIPTEN
   emscripten_set_main_loop(iter, 0, 0);
 #else
-  while (!done) iter(NULL);
+  while (!done) iter();
 #endif
 
   return EXIT_SUCCESS;
