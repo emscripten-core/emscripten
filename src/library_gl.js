@@ -956,7 +956,11 @@ var LibraryGL = {
 
     Module.ctx.bindBuffer(target, buffer ? GL.buffers[buffer] : null);
   },
-
+  
+  glVertexAttrib1f: function(index, v) {
+    Module.ctx.vertexAttrib1fv(index, v);
+  },
+  
   glVertexAttrib1fv: function(index, v) {
     v = {{{ makeHEAPView('F32', 'v', 'v+' + (1*4)) }}};
     Module.ctx.vertexAttrib1fv(index, v);
