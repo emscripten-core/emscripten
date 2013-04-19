@@ -10250,8 +10250,7 @@ f.close()
         assert os.path.exists(self.in_dir('a.out.js')) == (not fail)
         if not fail:
           output = run_js(self.in_dir('a.out.js'), stdout=PIPE, stderr=PIPE, full_output=True)
-          print >> sys.stderr, output
-          assert "FAIL" not in output
+          assert "FAIL" not in output, output
 
     def test_llvm_nativizer(self):
       try:
