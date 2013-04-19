@@ -5439,6 +5439,7 @@ LibraryManager.library = {
     return (ONE_SQRTPI * Math.exp(- x * x) * q2);
   },
   erfcf: 'erfcf',
+  erf__deps: ['erfc'],
   erf: function (x) {
     var MATH_TOLERANCE = 1E-12;
     var TWO_SQRTPI = 1.128379167095512574;

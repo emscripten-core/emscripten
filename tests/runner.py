@@ -3056,11 +3056,12 @@ Exiting setjmp function, level: 0, prev_jmp: -1
           main(void) {
            float (*fn)(float) = &sqrtf;
            float (*fn2)(float) = &fabsf;
-           printf("fn2(-5) = %d, fn(10) = %f\\n", (int)fn2(-5), fn(10));
+           float (*fn3)(float) = &erff;
+           printf("fn2(-5) = %d, fn(10) = %.2f, erf(10) = %.2f\\n", (int)fn2(-5), fn(10), fn3(10));
            return 0;
           }
           '''
-        self.do_run(src, 'fn2(-5) = 5, fn(10) = 3.16')
+        self.do_run(src, 'fn2(-5) = 5, fn(10) = 3.16, erf(10) = 1.00')
 
     def test_funcptrfunc(self):
       src = r'''
