@@ -1200,7 +1200,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
     item.reloopingJS = ret; // everything but the actual branching (which the relooper will do for us)
     item.toLabelJS = getPhiSetsForLabel(phiSets, item.toLabel);
-    item.unwindLabelJS = getPhiSetsForLabel(phiSets, item.unwindLabel);
+    item.unwindLabelJS = (ASM_JS ? '__THREW__ = 0;' : '') + getPhiSetsForLabel(phiSets, item.unwindLabel);
     ret += 'if (!__THREW__) { ' + item.toLabelJS + makeBranch(item.toLabel, item.currLabelId)
             + ' } else { ' + item.unwindLabelJS + makeBranch(item.unwindLabel, item.currLabelId) + ' }';
     return ret;
