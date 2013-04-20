@@ -452,7 +452,16 @@ function simplifyExpressionsPre(ast) {
       }, null, []);
     }
 
-    // &-related optimizations
+    // & and heap-related optimizations
+
+    var heapBits, heapUnsigned;
+    function parseHeap(name) {
+      if (name.substr(0, 4) != 'HEAP') return false;
+      heapUnsigned = name[4] == 'U';
+      heapBits = parseInt(name.substr(heapUnsigned ? 5 : 4));
+      return true;
+    }
+
     traverseGenerated(ast, function(node, type) {
       if (type == 'binary' && node[1] == '&' && node[3][0] == 'num') {
         if (node[2][0] == 'num') return ['num', node[2][1] & node[3][1]];
@@ -465,12 +474,10 @@ function simplifyExpressionsPre(ast) {
         } else if (input[0] == 'sub' && input[1][0] == 'name') {
           // HEAP8[..] & 255 => HEAPU8[..]
           var name = input[1][1];
-          if (name.substr(0, 4) == 'HEAP') {
-            var unsigned = name[4] == 'U';
-            var bits = parseInt(name.substr(unsigned ? 5 : 4));
-            if (amount == Math.pow(2, bits)-1) {
-              if (!unsigned) {
-                input[1][1] = 'HEAPU' + bits; // make unsigned
+          if (parseHeap(name)) {
+            if (amount == Math.pow(2, heapBits)-1) {
+              if (!heapUnsigned) {
+                input[1][1] = 'HEAPU' + heapBits; // make unsigned
               }
               if (asm) {
                 // we cannot return HEAPU8 without a coercion, but at least we do HEAP8 & 255 => HEAPU8 | 0
@@ -480,6 +487,21 @@ function simplifyExpressionsPre(ast) {
               }
               return input;
             }
+          }
+        }
+      } else if (type       == 'binary' && node[1]    == '>>' && node[3][0]    == 'num' &&
+                 node[2][0] == 'binary' && node[2][1] == '<<' && node[2][3][0] == 'num' &&
+                 node[2][2][0] == 'sub' && node[2][2][1][0] == 'name') {
+        // collapse HEAPU?8[..] << 24 >> 24 etc. into HEAP8[..] | 0
+        var amount = node[3][1];
+        var name = node[2][2][1][1];
+        if (amount == node[2][3][1] && parseHeap(name)) {
+          if (heapBits == 32 - amount) {
+            node[2][2][1][1] = 'HEAP' + heapBits;
+            node[1] = '|';
+            node[2] = node[2][2];
+            node[3][1] = 0;
+            return node;
           }
         }
       }
