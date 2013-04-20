@@ -305,18 +305,35 @@ var Runtime = {
     }
   },
 
-  addFunction: function(func, sig) {
-    //assert(sig); // TODO: support asm
-    var table = FUNCTION_TABLE; // TODO: support asm
+#if ASM_JS
+  functionPointers: new Array(RESERVED_FUNCTION_POINTERS),
+#endif
+
+  addFunction: function(func) {
+#if ASM_JS
+    for (var i = 0; i < Runtime.functionPointers.length; i++) {
+      if (!Runtime.functionPointers[i]) {
+        Runtime.functionPointers[i] = func;
+        return 2 + 2*i;
+      }
+    }
+    throw 'Finished up all reserved function pointers. Use a higher value for RESERVED_FUNCTION_POINTERS.';
+#else
+    var table = FUNCTION_TABLE;
     var ret = table.length;
     table.push(func);
     table.push(0);
     return ret;
+#endif
   },
 
   removeFunction: function(index) {
-    var table = FUNCTION_TABLE; // TODO: support asm
+#if ASM_JS
+    Runtime.functionPointers[(index-2)/2] = null;
+#else
+    var table = FUNCTION_TABLE;
     table[index] = null;
+#endif
   },
 
   warnOnce: function(text) {

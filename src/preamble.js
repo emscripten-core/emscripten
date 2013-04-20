@@ -6,6 +6,15 @@
 
 {{RUNTIME}}
 
+#if ASM_JS
+#if RESERVED_FUNCTION_POINTERS
+function jsCall() {
+  var args = Array.prototype.slice.call(arguments);
+  return Runtime.functionPointers[args[0]].apply(null, args.slice(1));
+}
+#endif
+#endif
+
 #if BENCHMARK
 Module.realPrint = Module.print;
 Module.print = Module.printErr = function(){};

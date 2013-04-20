@@ -303,6 +303,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   # calculations on merged forwarded data
   forwarded_json['Functions']['indexedFunctions'] = {}
   i = 2
+  if settings['ASM_JS']: i += 2*settings['RESERVED_FUNCTION_POINTERS']
   for indexed in indexed_functions:
     #print >> sys.stderr, 'indaxx', indexed, i
     forwarded_json['Functions']['indexedFunctions'][indexed] = i # make sure not to modify this python object later - we use it in indexize
@@ -379,7 +380,16 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       params = ','.join(['p%d' % p for p in range(len(sig)-1)])
       coercions = ';'.join(['p%d = %sp%d%s' % (p, '+' if sig[p+1] != 'i' else '', p, '' if sig[p+1] != 'i' else '|0') for p in range(len(sig)-1)]) + ';'
       ret = '' if sig[0] == 'v' else ('return %s0' % ('+' if sig[0] != 'i' else ''))
-      return ('function %s(%s) { %s abort(%d); %s }' % (bad, params, coercions, i, ret), raw.replace('[0,', '[' + bad + ',').replace(',0,', ',' + bad + ',').replace(',0,', ',' + bad + ',').replace(',0]', ',' + bad + ']').replace(',0]', ',' + bad + ']').replace(',0\n', ',' + bad + '\n'))
+      start = raw.index('[')
+      end = raw.rindex(']')
+      body = raw[start+1:end].split(',')
+      for j in range(settings['RESERVED_FUNCTION_POINTERS']):
+        body[2 + 2*j] = 'jsCall_%s_%s' % (sig, j)
+      def fix_item(item):
+        newline = '\n' in item
+        return (bad if item.replace('\n', '') == '0' else item) + ('\n' if newline else '')
+      body = ','.join(map(fix_item, body))
+      return ('function %s(%s) { %s abort(%d); %s }' % (bad, params, coercions, i, ret), raw[:start+1] + body + raw[end:])
     infos = [make_table(sig, raw) for sig, raw in last_forwarded_json['Functions']['tables'].iteritems()]
     function_tables_defs = '\n'.join([info[0] for info in infos]) + '\n// EMSCRIPTEN_END_FUNCS\n' + '\n'.join([info[1] for info in infos])
 
@@ -389,6 +399,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     math_envs = ['Math.min'] # TODO: move min to maths
     asm_setup += '\n'.join(['var %s = %s;' % (f.replace('.', '_'), f) for f in math_envs])
     basic_funcs = ['abort', 'assert', 'asmPrintInt', 'asmPrintFloat', 'copyTempDouble', 'copyTempFloat'] + [m.replace('.', '_') for m in math_envs]
+    if settings['RESERVED_FUNCTION_POINTERS'] > 0: basic_funcs.append('jsCall')
     if settings['SAFE_HEAP']: basic_funcs += ['SAFE_HEAP_LOAD', 'SAFE_HEAP_STORE', 'SAFE_HEAP_CLEAR']
     if settings['CHECK_HEAP_ALIGN']: basic_funcs += ['CHECK_ALIGN_2', 'CHECK_ALIGN_4', 'CHECK_ALIGN_8']
     basic_vars = ['STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT']
@@ -404,7 +415,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     def asm_coerce(value, sig):
       if sig == 'v': return value
       return ('+' if sig != 'i' else '') + value + ('|0' if sig == 'i' else '')
-        
+
     function_tables = ['dynCall_' + table for table in last_forwarded_json['Functions']['tables']]
     function_tables_impls = []
     for sig in last_forwarded_json['Functions']['tables'].iterkeys():
@@ -419,6 +430,16 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     %s;
   }
 ''' % (sig, ',' if len(sig) > 1 else '', args, arg_coercions, ret))
+
+      for i in range(settings['RESERVED_FUNCTION_POINTERS']):
+        jsret = ('return ' if sig[0] != 'v' else '') + asm_coerce('jsCall(%d%s%s)' % (i, ',' if coerced_args else '', coerced_args), sig[0])
+        function_tables_impls.append('''
+  function jsCall_%s_%s(%s) {
+    %s
+    %s;
+  }
+
+''' % (sig, i, args, arg_coercions, jsret))
       args = ','.join(['a' + str(i) for i in range(1, len(sig))])
       args = 'index' + (',' if args else '') + args
       asm_setup += '''

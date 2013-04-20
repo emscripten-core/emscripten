@@ -131,6 +131,9 @@ var CHECK_HEAP_ALIGN = 0; // Check heap accesses for alignment, but don't do as
 
 var SAFE_DYNCALLS = 0; // Show stack traces on missing function pointer/virtual method calls
 
+var RESERVED_FUNCTION_POINTERS = 0; // In asm.js mode, we cannot simply add function pointers to
+                                    // function tables, so we reserve some slots for them.
+
 var ASM_HEAP_LOG = 0; // Simple heap logging, like SAFE_HEAP_LOG but cheaper, and in asm.js
 
 var CORRUPTION_CHECK = 0; // When enabled, will emit a buffer area at the beginning and

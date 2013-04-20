@@ -8106,9 +8106,9 @@ def process(filename):
 
     def test_add_function(self):
       if self.emcc_args is None: return self.skip('requires emcc')
-      if Settings.ASM_JS: return self.skip('needs a singleton function table')
 
       Settings.INVOKE_RUN = 0
+      Settings.RESERVED_FUNCTION_POINTERS = 1
 
       src = r'''
         #include <stdio.h>
@@ -8117,21 +8117,27 @@ def process(filename):
         int main(int argc, char **argv) {
           int fp = atoi(argv[1]);
           printf("fp: %d\n", fp);
-          void (*f)() = reinterpret_cast<void (*)()>(fp);
-          f();
+          void (*f)(int) = reinterpret_cast<void (*)(int)>(fp);
+          f(7);
           return 0;
         }
       '''
 
       open(os.path.join(self.get_dir(), 'post.js'), 'w').write('''
-        var newFuncPtr = Runtime.addFunction(function() {
-          Module.print('Hello from JS!');
+        var newFuncPtr = Runtime.addFunction(function(num) {
+          Module.print('Hello ' + num + ' from JS!');
         });
         Module.callMain([newFuncPtr.toString()]);
       ''')
 
       self.emcc_args += ['--post-js', 'post.js']
-      self.do_run(src, '''Hello from JS!''')
+      self.do_run(src, '''Hello 7 from JS!''')
+
+      if Settings.ASM_JS:
+        Settings.RESERVED_FUNCTION_POINTERS = 0
+        self.do_run(src, '''Finished up all reserved function pointers. Use a higher value for RESERVED_FUNCTION_POINTERS.''')
+        generated = open('src.cpp.o.js').read()
+        assert 'jsCall' not in generated
 
     def test_scriptaclass(self):
         if self.emcc_args is None: return self.skip('requires emcc')

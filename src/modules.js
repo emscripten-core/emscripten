@@ -234,7 +234,7 @@ var Functions = {
   unimplementedFunctions: {}, // library etc. functions that we need to index, maps id to signature
 
   indexedFunctions: {},
-  nextIndex: 2, // Start at a non-0 (even, see below) value
+  nextIndex: (ASM_JS ? 2*RESERVED_FUNCTION_POINTERS : 0) + 2, // Start at a non-0 (even, see below) value
 
   blockAddresses: {}, // maps functions to a map of block labels to label ids
 
