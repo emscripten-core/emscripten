@@ -469,6 +469,23 @@ function analyzer(data, sidePass) {
                   i++;
                   continue; // special case, handled in makeComparison
                 }
+                case 'va_arg': {
+                  assert(value.type == 'i64');
+                  assert(value.value.type == 'i32*', value.value.type);
+                  i += removeAndAdd(label.lines, i, range(2).map(function(x) {
+                    return {
+                      intertype: 'va_arg',
+                      assignTo: value.assignTo + '$' + x,
+                      type: 'i32',
+                      value: {
+                        intertype: 'value',
+                        ident: value.value.ident, // We read twice from the same i32* var, incrementing // + '$' + x,
+                        type: 'i32*'
+                      }
+                    };
+                  }));
+                  continue;
+                }
                 case 'extractvalue': { // XXX we assume 32-bit alignment in extractvalue/insertvalue,
                                        // but in theory they can run on packed structs too (see use getStructuralTypePartBits)
                   // potentially legalize the actual extracted value too if it is >32 bits, not just the extraction in general
