@@ -195,7 +195,30 @@ function _move_gameobjects_benchmark_embind_js() {
         var t = objects[i]['GetTransform']();
         accum = Module['add'](Module['add'](accum, t['GetPosition']()), t['GetRotation']());
         t['delete']();
+        objects[i]['delete']();
     }
     
     Module.print("JS embind move_gameobjects " + N + " iters: " + (b-a) + " msecs. Result: " + (accum[0] + accum[1] + accum[2]));
 }
+
+function _pass_gameobject_ptr_benchmark_embind_js() {
+    var N = 100000;
+    var objects = [];
+    for(i = 0; i < N; ++i) {
+        objects.push(Module['create_game_object']());
+    }
+    
+    var a = _emscripten_get_now();
+    for(i = 0; i < N; ++i) {
+        var t = Module['pass_gameobject_ptr'](objects[i]);
+        t['delete']();
+    }
+    var b = _emscripten_get_now();
+    
+    for(i = 0; i < N; ++i) {
+        objects[i]['delete']();
+    }
+    
+    Module.print("JS embind pass_gameobject_ptr " + N + " iters: " + (b-a) + " msecs.");
+}
+

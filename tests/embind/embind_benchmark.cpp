@@ -45,6 +45,9 @@ extern void sum_float_benchmark_embind_js();
 
 extern void increment_class_counter_benchmark_embind_js(int N);
 extern void move_gameobjects_benchmark_embind_js();
+
+extern void pass_gameobject_ptr_benchmark();
+extern void pass_gameobject_ptr_benchmark_embind_js();
 }
 
 class Vec3
@@ -92,6 +95,11 @@ typedef std::shared_ptr<GameObject> GameObjectPtr;
 GameObjectPtr create_game_object()
 {
     return std::make_shared<GameObject>();
+}
+
+GameObjectPtr __attribute__((noinline)) pass_gameobject_ptr(GameObjectPtr p)
+{
+    return p;
 }
 
 class Foo
@@ -143,6 +151,7 @@ EMSCRIPTEN_BINDINGS(benchmark)
         .element(&Vec3::z);
         
     function("create_game_object", &create_game_object);
+    function("pass_gameobject_ptr", &pass_gameobject_ptr);
     function("add", &add);
     
     function("get_counter", &get_counter);
@@ -306,6 +315,23 @@ void __attribute__((noinline)) move_gameobjects_benchmark()
     printf("C++ move_gameobjects %d iters: %f msecs. Result: %f\n", N, (t2-t), accum.x+accum.y+accum.z);
 }
 
+void __attribute__((noinline)) pass_gameobject_ptr_benchmark()
+{
+    const int N = 100000;
+    GameObjectPtr objects[N];
+    for(int i = 0; i < N; ++i)
+        objects[i] = create_game_object();
+    
+    volatile float t = emscripten_get_now();
+    for(int i = 0; i < N; ++i)
+    {
+        objects[i] = pass_gameobject_ptr(objects[i]);
+    }
+    volatile float t2 = emscripten_get_now();
+
+    printf("C++ pass_gameobject_ptr %d iters: %f msecs.\n", N, (t2-t));
+}
+
 int main()
 {
     for(int i = 1000; i <= 100000; i *= 10)
@@ -341,4 +367,7 @@ int main()
     printf("\n");
     move_gameobjects_benchmark();
     move_gameobjects_benchmark_embind_js();
+    printf("\n");
+    pass_gameobject_ptr_benchmark();
+    pass_gameobject_ptr_benchmark_embind_js();
 }
