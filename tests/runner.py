@@ -4084,6 +4084,7 @@ def process(filename):
 
     def test_varargs_byval(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('FIXME: Add support for this')
+      if 'le32-unknown-nacl' in COMPILER_OPTS: return self.skip('clang cannot compile this code with that target yet')
 
       src = r'''
         #include <stdio.h>
