@@ -187,10 +187,10 @@ var Runtime = {
       var size, alignSize;
       if (Runtime.isNumberType(field) || Runtime.isPointerType(field)) {
         size = Runtime.getNativeTypeSize(field); // pack char; char; in structs, also char[X]s.
-        alignSize = size;
+        alignSize = size; // we align i64s and doubles on 64-bit boundaries, unlike x86
       } else if (Runtime.isStructType(field)) {
         size = Types.types[field].flatSize;
-        alignSize = Types.types[field].alignSize;
+        alignSize = Math.min(Types.types[field].alignSize, Runtime.QUANTUM_SIZE);
       } else if (field[0] == 'b') {
         // bN, large number field, like a [N x i8]
         size = field.substr(1)|0;
@@ -198,7 +198,7 @@ var Runtime = {
       } else {
         throw 'Unclear type in struct: ' + field + ', in ' + type.name_ + ' :: ' + dump(Types.types[type.name_]);
       }
-      alignSize = type.packed ? 1 : Math.min(alignSize, Runtime.QUANTUM_SIZE);
+      if (type.packed) alignSize = 1;
       type.alignSize = Math.max(type.alignSize, alignSize);
       var curr = Runtime.alignMemory(type.flatSize, alignSize); // if necessary, place this on aligned memory
       type.flatSize = curr + size;
