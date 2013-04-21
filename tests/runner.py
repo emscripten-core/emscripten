@@ -1500,7 +1500,13 @@ Succeeded!
           '''
 
         # TODO: A version of this with int64s as well
-        self.do_run(src, '*12 : 1 : 12\n328157500735811.0,23,416012775903557.0,99\n')
+
+        if 'le32-unknown-nacl' in COMPILER_OPTS:
+          self.do_run(src, '*16 : 0 : 16\n328157500735811.0,23,416012775903557.0,99\n')
+        elif 'i386-pc-linux-gnu' in COMPILER_OPTS:
+          self.do_run(src, '*12 : 1 : 12\n328157500735811.0,23,416012775903557.0,99\n')
+        else:
+          raise Exception('unknown arch')
 
         return # TODO: continue to the next part here
 
