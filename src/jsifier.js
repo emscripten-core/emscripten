@@ -1295,6 +1295,9 @@ function JSify(data, functionsOnly, givenFunctions) {
       return RuntimeGenerator.stackAlloc(getFastValue(calcAllocatedSize(item.allocatedType), '*', item.allocatedNum));
     }
   });
+  makeFuncLineActor('va_arg', function(item) {
+    return makeGetValue(item.value.ident, 0, item.type);
+  });
 
   makeFuncLineActor('mathop', processMathop);
 

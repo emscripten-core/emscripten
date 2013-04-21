@@ -3612,6 +3612,8 @@ LibraryManager.library = {
   asprintf: function(s, format, varargs) {
     return _sprintf(-s, format, varargs);
   },
+
+#if TARGET_X86
   vfprintf: 'fprintf',
   vsnprintf: 'snprintf',
   vprintf: 'printf',
@@ -3620,6 +3622,44 @@ LibraryManager.library = {
   vscanf: 'scanf',
   vfscanf: 'fscanf',
   vsscanf: 'sscanf',
+#endif
+
+#if TARGET_LE32
+  vfprintf__deps: ['fprintf'],
+  vfprintf: function(s, f, varargs) {
+    return _fprintf(s, f, {{{ makeGetValue('varargs', 0, '*') }}});
+  },
+  vsnprintf__deps: ['snprintf'],
+  vsnprintf: function(s, n, format, varargs) {
+    return _snprintf(s, n, format, {{{ makeGetValue('varargs', 0, '*') }}});
+  },
+  vprintf__deps: ['printf'],
+  vprintf: function(format, varargs) {
+    return _printf(format, {{{ makeGetValue('varargs', 0, '*') }}});
+  },
+  vsprintf__deps: ['sprintf'],
+  vsprintf: function(s, format, varargs) {
+    return _sprintf(s, format, {{{ makeGetValue('varargs', 0, '*') }}});
+  },
+  vasprintf__deps: ['asprintf'],
+  vasprintf: function(s, format, varargs) {
+    return _asprintf(s, format, {{{ makeGetValue('varargs', 0, '*') }}});
+  },
+  vscanf__deps: ['scanf'],
+  vscanf: function(format, varargs) {
+    return _scanf(format, {{{ makeGetValue('varargs', 0, '*') }}});
+  },
+  vfscanf__deps: ['fscanf'],
+  vfscanf: function(s, format, varargs) {
+    return _fscanf(s, format, {{{ makeGetValue('varargs', 0, '*') }}});
+  },
+  vsscanf__deps: ['sscanf'],
+  vsscanf: function(s, format, varargs) {
+    return _sscanf(s, format, {{{ makeGetValue('varargs', 0, '*') }}});
+  },
+  // TODO: others
+#endif
+
   fopen64: 'fopen',
   __01fopen64_: 'fopen',
   __01freopen64_: 'freopen',
