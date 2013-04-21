@@ -175,6 +175,13 @@ var Runtime = {
 
   set: set,
 
+  // type can be a native type or a struct (or null, for structs we only look at size here)
+  getAlignSize: function(type, size) {
+    // we align i64s and doubles on 64-bit boundaries, unlike x86
+    if (type == 'i64' || type == 'double') return 8;
+    return Math.min(size, Runtime.QUANTUM_SIZE);
+  },
+
   // Calculate aligned size, just like C structs should be. TODO: Consider
   // requesting that compilation be done with #pragma pack(push) /n #pragma pack(1),
   // which would remove much of the complexity here.
@@ -187,10 +194,10 @@ var Runtime = {
       var size, alignSize;
       if (Runtime.isNumberType(field) || Runtime.isPointerType(field)) {
         size = Runtime.getNativeTypeSize(field); // pack char; char; in structs, also char[X]s.
-        alignSize = size; // we align i64s and doubles on 64-bit boundaries, unlike x86
+        alignSize = Runtime.getAlignSize(field, size);
       } else if (Runtime.isStructType(field)) {
         size = Types.types[field].flatSize;
-        alignSize = Math.min(Types.types[field].alignSize, Runtime.QUANTUM_SIZE);
+        alignSize = Runtime.getAlignSize(null, Types.types[field].alignSize);
       } else if (field[0] == 'b') {
         // bN, large number field, like a [N x i8]
         size = field.substr(1)|0;
