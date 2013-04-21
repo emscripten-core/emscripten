@@ -1032,6 +1032,9 @@ try:
   if minify_whitespace is None:
     minify_whitespace = opt_level >= 2 and not keep_js_debug
 
+  if shared.Settings.TARGET_X86: assert 'i386-pc-linux-gnu' in shared.COMPILER_OPTS
+  if shared.Settings.TARGET_LE32: assert 'le32-unknown-nacl' in shared.COMPILER_OPTS
+
   ## Compile source code to bitcode
 
   if DEBUG: print >> sys.stderr, 'emcc: compiling to bitcode'

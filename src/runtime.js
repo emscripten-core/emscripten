@@ -178,7 +178,9 @@ var Runtime = {
   // type can be a native type or a struct (or null, for structs we only look at size here)
   getAlignSize: function(type, size) {
     // we align i64s and doubles on 64-bit boundaries, unlike x86
+#if TARGET_LE32
     if (type == 'i64' || type == 'double') return 8;
+#endif
     return Math.min(size, Runtime.QUANTUM_SIZE);
   },
 
