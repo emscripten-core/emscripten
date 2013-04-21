@@ -1150,7 +1150,8 @@ try:
       # so all is well anyhow too.
     # XXX We also need to add libc symbols that use malloc, for example strdup. It's very rare to use just them and not
     #     a normal malloc symbol (like free, after calling strdup), so we haven't hit this yet, but it is possible.
-    libc_symbols = open(shared.path_from_root('system', 'lib', 'libc.symbols')).read().split('\n')
+    libc_symbols = map(lambda line: line.strip().split(' ')[1], open(shared.path_from_root('system', 'lib', 'libc.symbols')).readlines())
+    libc_symbols = set(libc_symbols)
 
     # libcxx
     def create_libcxx():
