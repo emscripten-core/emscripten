@@ -1296,7 +1296,12 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
   });
   makeFuncLineActor('va_arg', function(item) {
-    return makeGetValue(item.value.ident, 0, item.type);
+    assert(TARGET_LE32);
+    var ident = item.value.ident;
+    var move = Runtime.getNativeTypeSize(item.type);
+    return '(tempInt=' + makeGetValue(ident, 4, '*') + ',' +
+                         makeSetValue(ident, 4, 'tempInt + ' + move, '*') + ',' +
+                         makeGetValue(makeGetValue(ident, 0, '*'), 'tempInt', item.type) + ')';
   });
 
   makeFuncLineActor('mathop', processMathop);

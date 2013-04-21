@@ -4865,7 +4865,13 @@ LibraryManager.library = {
 
   llvm_va_start__inline: function(ptr) {
     // varargs - we received a pointer to the varargs as a final 'extra' parameter called 'varrp'
+#if TARGET_X86
     return makeSetValue(ptr, 0, 'varrp', 'void*');
+#endif
+#if TARGET_LE32
+    // 4-word structure: start, current offset
+    return makeSetValue(ptr, 0, 'varrp', 'void*') + ';' + makeSetValue(ptr, 4, 0, 'void*');
+#endif
   },
 
   llvm_va_end: function() {},
