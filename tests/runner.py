@@ -3650,7 +3650,12 @@ Exiting setjmp function, level: 0, prev_jmp: -1
           # Compressed memory. Note that sizeof() does give the fat sizes, however!
           self.do_run(src, '*0,0,0,1,2,3,4,5*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*12,20,5*')
         else:
-          self.do_run(src, '*0,0,0,4,8,12,16,20*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*12,20,20*')
+          if 'le32-unknown-nacl' in COMPILER_OPTS:
+            self.do_run(src, '*0,0,0,4,8,16,20,24*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*16,24,24*')
+          elif 'i386-pc-linux-gnu' in COMPILER_OPTS:
+            self.do_run(src, '*0,0,0,4,8,12,16,20*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*12,20,20*')
+          else:
+            raise Exception('unknown arch')
 
     def test_ptrtoint(self):
         if self.emcc_args is None: return self.skip('requires emcc')
