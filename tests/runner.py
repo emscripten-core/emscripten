@@ -7923,6 +7923,7 @@ def process(filename):
     def test_python(self):
       if self.emcc_args is None: return self.skip('requires emcc')
       if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: make this work')
+      if 'le32-unknown-nacl' in COMPILER_OPTS: return self.skip('cannot use our existing bitcode file which is of a different target')
 
       # Overflows in string_hash
       Settings.CORRECT_OVERFLOWS = 1
