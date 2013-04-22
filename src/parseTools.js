@@ -1020,7 +1020,9 @@ function getHeapOffset(offset, type, forceAsm) {
   }
 
   if (Runtime.getNativeFieldSize(type) > 4) {
-    type = 'i32'; // XXX we emulate 64-bit values as 32
+    if (type == 'i64' || TARGET_X86) {
+      type = 'i32'; // XXX we emulate 64-bit values as 32 in x86, and also in le32 but only i64, not double
+    }
   }
 
   var sz = Runtime.getNativeTypeSize(type);
@@ -1121,7 +1123,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
     return '{ ' + ret.join(', ') + ' }';
   }
 
-  if (DOUBLE_MODE == 1 && USE_TYPED_ARRAYS == 2 && type == 'double') {
+  if (DOUBLE_MODE == 1 && USE_TYPED_ARRAYS == 2 && type == 'double' && TARGET_X86) {
     return '(' + makeSetTempDouble(0, 'i32', makeGetValue(ptr, pos, 'i32', noNeedFirst, unsigned, ignore, align)) + ',' +
                  makeSetTempDouble(1, 'i32', makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'i32', noNeedFirst, unsigned, ignore, align)) + ',' +
             makeGetTempDouble(0, 'double') + ')';
@@ -1638,7 +1640,11 @@ function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
       case 'i1': case 'i8': return [unsigned ? 'HEAPU8' : 'HEAP8']; break;
       case 'i16': return [unsigned ? 'HEAPU16' : 'HEAP16']; break;
       case 'i32': case 'i64': return [unsigned ? 'HEAPU32' : 'HEAP32']; break;
-      case 'float': case 'double': return ['HEAPF32']; break;
+      case 'double': {
+        if (TARGET_LE32) return ['HEAPF64']; // in le32, we do have the ability to assume 64-bit alignment
+        // otherwise, fall through to float
+      }
+      case 'float': return ['HEAPF32'];
       default: {
         throw 'what, exactly, can we do for unknown types in TA2?! ' + new Error().stack;
       }
