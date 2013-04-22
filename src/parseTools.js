@@ -1130,6 +1130,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
   if (USE_TYPED_ARRAYS == 2 && align) {
     // Alignment is important here. May need to split this up
     var bytes = Runtime.getNativeTypeSize(type);
+    if (DOUBLE_MODE == 0 && type == 'double') bytes = 4; // we will really only read 4 bytes here
     if (bytes > align) {
       var ret = '(';
       if (isIntImplemented(type)) {
