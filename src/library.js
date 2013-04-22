@@ -3614,6 +3614,7 @@ LibraryManager.library = {
   },
 
 #if TARGET_X86
+  // va_arg is just like our varargs
   vfprintf: 'fprintf',
   vsnprintf: 'snprintf',
   vprintf: 'printf',
@@ -3625,39 +3626,39 @@ LibraryManager.library = {
 #endif
 
 #if TARGET_LE32
+  // convert va_arg into varargs
   vfprintf__deps: ['fprintf'],
-  vfprintf: function(s, f, varargs) {
-    return _fprintf(s, f, {{{ makeGetValue('varargs', 0, '*') }}});
+  vfprintf: function(s, f, va_arg) {
+    return _fprintf(s, f, {{{ makeGetValue('va_arg', 0, '*') }}});
   },
   vsnprintf__deps: ['snprintf'],
-  vsnprintf: function(s, n, format, varargs) {
-    return _snprintf(s, n, format, {{{ makeGetValue('varargs', 0, '*') }}});
+  vsnprintf: function(s, n, format, va_arg) {
+    return _snprintf(s, n, format, {{{ makeGetValue('va_arg', 0, '*') }}});
   },
   vprintf__deps: ['printf'],
-  vprintf: function(format, varargs) {
-    return _printf(format, {{{ makeGetValue('varargs', 0, '*') }}});
+  vprintf: function(format, va_arg) {
+    return _printf(format, {{{ makeGetValue('va_arg', 0, '*') }}});
   },
   vsprintf__deps: ['sprintf'],
-  vsprintf: function(s, format, varargs) {
-    return _sprintf(s, format, {{{ makeGetValue('varargs', 0, '*') }}});
+  vsprintf: function(s, format, va_arg) {
+    return _sprintf(s, format, {{{ makeGetValue('va_arg', 0, '*') }}});
   },
   vasprintf__deps: ['asprintf'],
-  vasprintf: function(s, format, varargs) {
-    return _asprintf(s, format, {{{ makeGetValue('varargs', 0, '*') }}});
+  vasprintf: function(s, format, va_arg) {
+    return _asprintf(s, format, {{{ makeGetValue('va_arg', 0, '*') }}});
   },
   vscanf__deps: ['scanf'],
-  vscanf: function(format, varargs) {
-    return _scanf(format, {{{ makeGetValue('varargs', 0, '*') }}});
+  vscanf: function(format, va_arg) {
+    return _scanf(format, {{{ makeGetValue('va_arg', 0, '*') }}});
   },
   vfscanf__deps: ['fscanf'],
-  vfscanf: function(s, format, varargs) {
-    return _fscanf(s, format, {{{ makeGetValue('varargs', 0, '*') }}});
+  vfscanf: function(s, format, va_arg) {
+    return _fscanf(s, format, {{{ makeGetValue('va_arg', 0, '*') }}});
   },
   vsscanf__deps: ['sscanf'],
-  vsscanf: function(s, format, varargs) {
-    return _sscanf(s, format, {{{ makeGetValue('varargs', 0, '*') }}});
+  vsscanf: function(s, format, va_arg) {
+    return _sscanf(s, format, {{{ makeGetValue('va_arg', 0, '*') }}});
   },
-  // TODO: others
 #endif
 
   fopen64: 'fopen',
