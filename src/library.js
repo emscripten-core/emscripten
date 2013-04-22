@@ -2679,7 +2679,7 @@ LibraryManager.library = {
         type = 'i32'; // varargs are always i32, i64, or double
         ret = {{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}};
       }
-      argIndex += Runtime.getAlignSize(type);
+      argIndex += {{{ STACK_ALIGN }}};
       return ret;
     }
 
