@@ -55,7 +55,7 @@ var ALLOW_MEMORY_GROWTH = 0; // If false, we abort with an error if we try to al
                              // that case we must be careful about optimizations, in particular the
                              // eliminator). Note that memory growth is only supported with typed
                              // arrays.
-var MAX_SETJMPS = 10; // size of setjmp table allocated in each function invocation (that has setjmp)
+var MAX_SETJMPS = 20; // size of setjmp table allocated in each function invocation (that has setjmp)
 
 // Code embetterments
 var MICRO_OPTS = 1; // Various micro-optimizations, like nativizing variables

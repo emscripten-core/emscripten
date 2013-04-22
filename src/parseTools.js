@@ -2363,3 +2363,13 @@ function getTypeFromHeap(suffix) {
   }
 }
 
+// Generates code that prints without printf(), but just putchar (so can be directly inline)
+function makePrintChars(s) {
+  var ret = '';
+  for (var i = 0; i < s.length; i++) {
+    ret += '_putchar(' + s.charCodeAt(i) + ');';
+  }
+  ret += '_putchar(10);';
+  return ret;
+}
+

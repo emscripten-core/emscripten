@@ -6220,6 +6220,7 @@ LibraryManager.library = {
 
   saveSetjmp__asm: true,
   saveSetjmp__sig: 'iii',
+  saveSetjmp__deps: ['putchar'],
   saveSetjmp: function(env, label, table) {
     // Not particularly fast: slow table lookup of setjmpId to label. But setjmp
     // prevents relooping anyhow, so slowness is to be expected. And typical case
@@ -6233,7 +6234,7 @@ LibraryManager.library = {
 #endif
     setjmpId = (setjmpId+1)|0;
     {{{ makeSetValueAsm('env', '0', 'setjmpId', 'i32') }}};
-    while ((i|0) < {{{ MAX_SETJMPS }}}) {
+    while ((i|0) < {{{ 2*MAX_SETJMPS }}}) {
       if ({{{ makeGetValueAsm('table', 'i*4', 'i32') }}} == 0) {
         {{{ makeSetValueAsm('table', 'i*4', 'setjmpId', 'i32') }}};
         {{{ makeSetValueAsm('table', 'i*4+4', 'label', 'i32') }}};
@@ -6243,7 +6244,8 @@ LibraryManager.library = {
       }
       i = (i+2)|0;
     }
-    abort(987); // if you hit this, adjust MAX_SETJMPS
+    {{{ makePrintChars('too many setjmps in a function call, build with a higher value for MAX_SETJMPS') }}};
+    abort(0);
     return 0;
   },
 

@@ -2489,6 +2489,22 @@ Calling longjmp the second time!
 Exception execution path of first function! 1
 ''')
 
+    def test_setjmp_many(self):
+      src = r'''
+        #include <stdio.h>
+        #include <setjmp.h>
+
+        int main(int argc) {
+          jmp_buf buf;
+          for (int i = 0; i < NUM; i++) printf("%d\n", setjmp(buf));
+          if (argc-- == 1131) longjmp(buf, 11);
+          return 0;
+        }
+      '''
+      for num in [Settings.MAX_SETJMPS, Settings.MAX_SETJMPS+1]:
+        print num
+        self.do_run(src.replace('NUM', str(num)), '0\n' * num if num <= Settings.MAX_SETJMPS or not Settings.ASM_JS else 'build with a higher value for MAX_SETJMPS')
+
     def test_exceptions(self):
         if Settings.QUANTUM_SIZE == 1: return self.skip("we don't support libcxx in q1")
         if self.emcc_args is None: return self.skip('need emcc to add in libcxx properly')
