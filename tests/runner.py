@@ -12684,7 +12684,7 @@ elif 'benchmark' in str(sys.argv):
       '''
       self.do_benchmark('corrections', src, [], 'final: 40006013:10225.', emcc_args=['-s', 'CORRECT_SIGNS=1', '-s', 'CORRECT_OVERFLOWS=1', '-s', 'CORRECT_ROUNDINGS=1'])
 
-    def fasta(self, double_rep):
+    def fasta(self, double_rep, emcc_args=[]):
       src = open(path_from_root('tests', 'fasta.cpp'), 'r').read().replace('double', double_rep)
       src = src.replace('   const size_t n = ( argc > 1 ) ? atoi( argv[1] ) : 512;', '''
         int n;
@@ -12707,6 +12707,9 @@ elif 'benchmark' in str(sys.argv):
 
     def test_fasta_double(self):
       self.fasta('double')
+
+    def test_fasta_double_full(self):
+      self.fasta('double', emcc_args=['-s', 'DOUBLE_MODE=1'])
 
     def test_skinning(self):
       src = open(path_from_root('tests', 'skinning_test_no_simd.cpp'), 'r').read()
