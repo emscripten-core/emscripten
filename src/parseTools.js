@@ -1123,7 +1123,9 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
     return '{ ' + ret.join(', ') + ' }';
   }
 
-  if (DOUBLE_MODE == 1 && USE_TYPED_ARRAYS == 2 && type == 'double' && TARGET_X86) {
+  // In double mode 1, in x86 we always assume unaligned because we can't trust that; otherwise in le32
+  // we need this code path if we are not fully aligned.
+  if (DOUBLE_MODE == 1 && USE_TYPED_ARRAYS == 2 && type == 'double' && (TARGET_X86 || align < 8)) {
     return '(' + makeSetTempDouble(0, 'i32', makeGetValue(ptr, pos, 'i32', noNeedFirst, unsigned, ignore, align)) + ',' +
                  makeSetTempDouble(1, 'i32', makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'i32', noNeedFirst, unsigned, ignore, align)) + ',' +
             makeGetTempDouble(0, 'double') + ')';
@@ -1140,7 +1142,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
           // Special case that we can optimize
           ret += makeGetValue(ptr, pos, 'i16', noNeedFirst, 2, ignore) + '|' +
                  '(' + makeGetValue(ptr, getFastValue(pos, '+', 2), 'i16', noNeedFirst, 2, ignore) + '<<16)';
-        } else { // XXX we cannot truly handle > 4...
+        } else { // XXX we cannot truly handle > 4... (in x86)
           ret = '';
           for (var i = 0; i < bytes; i++) {
             ret += '(' + makeGetValue(ptr, getFastValue(pos, '+', i), 'i8', noNeedFirst, 1, ignore) + (i > 0 ? '<<' + (8*i) : '') + ')';
