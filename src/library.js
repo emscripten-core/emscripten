@@ -3774,8 +3774,9 @@ LibraryManager.library = {
     if (!info) return 0;
     if (num == info.num) {
       _mmap.mappings[start] = null;
-      if (info.allocated)
+      if (info.allocated) {
         _free(info.malloc);
+      }
     }
     return 0;
   },
