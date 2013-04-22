@@ -1231,6 +1231,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
     return ret.join('; ');
   }
 
+  // TODO: optimize like get for le32
   if (DOUBLE_MODE == 1 && USE_TYPED_ARRAYS == 2 && type == 'double') {
     return '(' + makeSetTempDouble(0, 'double', value) + ',' +
             makeSetValue(ptr, pos, makeGetTempDouble(0, 'i32'), 'i32', noNeedFirst, ignore, align, noSafe, ',') + ',' +
