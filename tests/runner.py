@@ -9236,7 +9236,7 @@ TT = %s
   exec('o2 = make_run("o2", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=0", "-s", "JS_CHUNK_SIZE=1024"])')
 
   # asm.js
-  exec('asm1 = make_run("asm1", compiler=CLANG, emcc_args=["-O1"])')
+  exec('asm1 = make_run("asm1", compiler=CLANG, emcc_args=["-O1", "-s", "CHECK_HEAP_ALIGN=1"])')
   exec('asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2"])')
   exec('asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTIONS=1", "--memory-init-file", "1"])')
 
