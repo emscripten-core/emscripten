@@ -1400,11 +1400,11 @@ function JSify(data, functionsOnly, givenFunctions) {
                   var type = varargsTypes[i];
                   if (type == 0) return null;
                   var ret;
+                  assert(offset % Runtime.STACK_ALIGN == 0); // varargs must be aligned
                   if (!varargsByVals[i]) {
                     ret = makeSetValue(getFastValue('tempInt', '+', offset), 0, arg, type, null, null, QUANTUM_SIZE, null, ',');
-                    offset += Runtime.getNativeFieldSize(type);
+                    offset += Runtime.alignMemory(Runtime.getNativeFieldSize(type), Runtime.STACK_ALIGN);
                   } else {
-                    assert(offset % Runtime.STACK_ALIGN == 0); // varargs must be aligned
                     var size = calcAllocatedSize(removeAllPointing(type));
                     ret = makeCopyValues(getFastValue('tempInt', '+', offset), arg, size, null, null, varargsByVals[i], ',');
                     offset += Runtime.forceAlign(size, Runtime.STACK_ALIGN);
