@@ -3646,30 +3646,44 @@ LibraryManager.library = {
      * this implementation simply uses malloc underneath the call to
      * mmap.
      */
+    var MAP_PRIVATE = 2;
+    var allocated = false;
+
     if (!_mmap.mappings) _mmap.mappings = {};
+
     if (stream == -1) {
       var ptr = _malloc(num);
+      if (!ptr) return -1;
+      _memset(ptr, 0, num);
+      allocated = true;
     } else {
       var info = FS.streams[stream];
       if (!info) return -1;
       var contents = info.object.contents;
-      contents = Array.prototype.slice.call(contents, offset, offset+num);
-      ptr = allocate(contents, 'i8', ALLOC_NORMAL);
+      // Only make a new copy when MAP_PRIVATE is specified.
+      if (flags & MAP_PRIVATE == 0) {
+        // We can't emulate MAP_SHARED when the file is not backed by HEAP.
+        assert(contents.buffer === HEAPU8.buffer);
+        ptr = contents.byteOffset;
+        allocated = false;
+      } else {
+        // Try to avoid unnecessary slices.
+        if (offset > 0 || offset + num < contents.length) {
+          if (contents.subarray) {
+            contents = contents.subarray(offset, offset+num);
+          } else {
+            contents = Array.prototype.slice.call(contents, offset, offset+num);
+          }
+        }
+        ptr = _malloc(num);
+        if (!ptr) return -1;
+        HEAPU8.set(contents, ptr);
+        allocated = true;
+      }
     }
-    // align to page size
-    var ret = ptr;
-    if (ptr % PAGE_SIZE != 0) {
-      var old = ptr;
-      ptr = _malloc(num + PAGE_SIZE);
-      ret = alignMemoryPage(ptr);
-      _memcpy(ret, old, num);
-      _free(old);
-    }
-    if (stream == -1) {
-      _memset(ret, 0, num);
-    }
-    _mmap.mappings[ret] = { malloc: ptr, num: num };
-    return ret;
+
+    _mmap.mappings[ptr] = { malloc: ptr, num: num, allocated: allocated };
+    return ptr;
   },
   __01mmap64_: 'mmap',
 
@@ -3680,7 +3694,9 @@ LibraryManager.library = {
     if (!info) return 0;
     if (num == info.num) {
       _mmap.mappings[start] = null;
-      _free(info.malloc);
+      if (info.allocated) {
+        _free(info.malloc);
+      }
     }
     return 0;
   },

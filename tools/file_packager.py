@@ -345,9 +345,12 @@ if has_preloaded:
     if file_['mode'] == 'preload':
       use_data += '''
         curr = DataRequest.prototype.requests['%s'];
-        curr.response = byteArray.subarray(%d,%d);
+        var data = byteArray.subarray(%d, %d);
+        var ptr = _malloc(%d);
+        HEAPU8.set(data, ptr);
+        curr.response = HEAPU8.subarray(ptr, ptr + %d);
         curr.onload();
-      ''' % (file_['name'], file_['data_start'], file_['data_end'])
+      ''' % (file_['name'], file_['data_start'], file_['data_end'], file_['data_end'] - file_['data_start'], file_['data_end'] - file_['data_start'])
   use_data += "          Module['removeRunDependency']('datafile_%s');\n" % data_target
 
   if Compression.on:
@@ -389,9 +392,9 @@ if has_preloaded:
           num++;
         }
         total = Math.ceil(total * Module.expectedDataFileDownloads/num);
-        Module['setStatus']('Downloading data... (' + loaded + '/' + total + ')');
+        if (Module['setStatus']) Module['setStatus']('Downloading data... (' + loaded + '/' + total + ')');
       } else if (!Module.dataFileDownloads) {
-        Module['setStatus']('Downloading data...');
+        if (Module['setStatus']) Module['setStatus']('Downloading data...');
       }
     }
     dataFile.open('GET', '%s', true);
