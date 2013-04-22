@@ -14,8 +14,8 @@ var RuntimeGenerator = {
       ret += sep + '_memset(' + type + 'TOP, 0, ' + size + ')';
     }
     ret += sep + type + 'TOP = (' + type + 'TOP + ' + size + ')|0';
-    if ({{{ QUANTUM_SIZE }}} > 1 && !ignoreAlign) {
-      ret += sep + RuntimeGenerator.alignMemory(type + 'TOP', {{{ QUANTUM_SIZE }}});
+    if ({{{ STACK_ALIGN }}} > 1 && !ignoreAlign) {
+      ret += sep + RuntimeGenerator.alignMemory(type + 'TOP', {{{ STACK_ALIGN }}});
     }
     return ret;
   },
@@ -23,9 +23,8 @@ var RuntimeGenerator = {
   // An allocation that lives as long as the current function call
   stackAlloc: function(size, sep) {
     sep = sep || ';';
-    if (USE_TYPED_ARRAYS === 2) 'STACKTOP = (STACKTOP + STACKTOP|0 % ' + ({{{ QUANTUM_SIZE }}} - (isNumber(size) ? Math.min(size, {{{ QUANTUM_SIZE }}}) : {{{ QUANTUM_SIZE }}})) + ')' + sep;
-    //                                                               The stack is always QUANTUM SIZE aligned, so we may not need to force alignment here
-    var ret = RuntimeGenerator.alloc(size, 'STACK', false, sep, USE_TYPED_ARRAYS != 2 || (isNumber(size) && parseInt(size) % {{{ QUANTUM_SIZE }}} == 0));
+    if (USE_TYPED_ARRAYS === 2) 'STACKTOP = (STACKTOP + STACKTOP|0 % ' + ({{{ STACK_ALIGN }}} - (isNumber(size) ? Math.min(size, {{{ STACK_ALIGN }}}) : {{{ STACK_ALIGN }}})) + ')' + sep;
+    var ret = RuntimeGenerator.alloc(size, 'STACK', false, sep, USE_TYPED_ARRAYS != 2 || (isNumber(size) && parseInt(size) % {{{ STACK_ALIGN }}} == 0));
     if (ASSERTIONS) {
       ret += sep + 'assert(' + asmCoercion('(STACKTOP|0) < (STACK_MAX|0)', 'i32') + ')';
     }
@@ -37,8 +36,8 @@ var RuntimeGenerator = {
     var ret = 'var __stackBase__  = ' + (ASM_JS ? '0; __stackBase__ = ' : '') + 'STACKTOP';
     if (initial > 0) ret += '; STACKTOP = (STACKTOP + ' + initial + ')|0';
     if (USE_TYPED_ARRAYS == 2) {
-      assert(initial % QUANTUM_SIZE == 0);
-      if (ASSERTIONS && QUANTUM_SIZE == 4) {
+      assert(initial % Runtime.STACK_ALIGN == 0);
+      if (ASSERTIONS && Runtime.STACK_ALIGN == 4) {
         ret += '; assert(' + asmCoercion('!(STACKTOP&3)', 'i32') + ')';
       }
     }
@@ -70,7 +69,7 @@ var RuntimeGenerator = {
 
   alignMemory: function(target, quantum) {
     if (typeof quantum !== 'number') {
-      quantum = '(quantum ? quantum : {{{ QUANTUM_SIZE }}})';
+      quantum = '(quantum ? quantum : {{{ STACK_ALIGN }}})';
     }
     return target + ' = ' + Runtime.forceAlign(target, quantum);
   },
@@ -174,6 +173,8 @@ var Runtime = {
   dedup: dedup,
 
   set: set,
+
+  STACK_ALIGN: {{{ STACK_ALIGN }}},
 
   // type can be a native type or a struct (or null, for structs we only look at size here)
   getAlignSize: function(type, size) {

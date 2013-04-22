@@ -1403,11 +1403,10 @@ function JSify(data, functionsOnly, givenFunctions) {
                     ret = makeSetValue(getFastValue('tempInt', '+', offset), 0, arg, type, null, null, QUANTUM_SIZE, null, ',');
                     offset += Runtime.getNativeFieldSize(type);
                   } else {
-                    assert(offset % 4 == 0); // varargs must be aligned
+                    assert(offset % Runtime.STACK_ALIGN == 0); // varargs must be aligned
                     var size = calcAllocatedSize(removeAllPointing(type));
-                    assert(size % 4 == 0); // varargs must stay aligned
                     ret = makeCopyValues(getFastValue('tempInt', '+', offset), arg, size, null, null, varargsByVals[i], ',');
-                    offset += size;
+                    offset += Runtime.forceAlign(size, Runtime.STACK_ALIGN);
                   }
                   return ret;
                 }).filter(function(arg) {

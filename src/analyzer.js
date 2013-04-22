@@ -1509,7 +1509,7 @@ function analyzer(data, sidePass) {
             calcAllocatedSize(item.allocatedType)*item.allocatedNum: 0;
           if (USE_TYPED_ARRAYS === 2) {
             // We need to keep the stack aligned
-            item.allocatedSize = Runtime.forceAlign(item.allocatedSize, QUANTUM_SIZE);
+            item.allocatedSize = Runtime.forceAlign(item.allocatedSize, Runtime.STACK_ALIGN);
           }
         }
         var index = 0;
