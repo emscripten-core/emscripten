@@ -12705,7 +12705,7 @@ elif 'benchmark' in str(sys.argv):
     def test_fasta_float(self):
       self.fasta('float')
 
-    def zzztest_fasta_double(self):
+    def test_fasta_double(self):
       self.fasta('double')
 
     def test_skinning(self):
