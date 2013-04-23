@@ -19,6 +19,12 @@ entry:
   %b2 = zext i1 %b1 to i32
   call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([11 x i8]* @.str2, i32 0, i32 0), i64 %b0, i32 %b2) ; [#uses=0]
 
+  %uadd3 = tail call { i64, i1 } @llvm.uadd.with.overflow.i64(i64 4294967297, i64 18446744073709551615)
+  %c0 = extractvalue { i64, i1 } %uadd3, 0
+  %c1 = extractvalue { i64, i1 } %uadd3, 1
+  %c2 = zext i1 %c1 to i32
+  call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([11 x i8]* @.str2, i32 0, i32 0), i64 %c0, i32 %c2) ; [#uses=0]
+
   ret i32 1
 }
 
