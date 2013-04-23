@@ -7560,8 +7560,10 @@ LibraryManager.library = {
     a = a|0; b = b|0; c = c|0; d = d|0;
     var l = 0, h = 0, overflow = 0;
     l = (a + c)>>>0;
-    h = (((b + d)>>>0) + (((l>>>0) < (a>>>0))>>>0))>>>0; // Add carry from low word to high word on overflow.
-    overflow = (((h>>>0) < (b>>>0))>>>0); // Return whether addition overflowed even the high word.
+    h = (b + d)>>>0;
+    overflow = ((h>>>0) < (b>>>0))>>>0; // Return whether addition overflowed even the high word.
+    h = h + (((l>>>0) < (a>>>0))>>>0)>>>0; // Add carry from low word to high word on overflow.
+    overflow = (overflow | ((h == 0)>>>0))>>>0; // Check again for overflow.
     {{{ makeStructuralReturn(['l|0', 'h', 'overflow'], true) }}};
   },
 
