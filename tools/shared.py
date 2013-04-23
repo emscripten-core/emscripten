@@ -111,7 +111,7 @@ else:
     config_file = config_file.replace('{{{ EMSCRIPTEN_ROOT }}}', __rootpath__)
     llvm_root = '/usr/bin'
     try:
-      llvm_root = os.path.dirname(Popen(['which', 'clang'], stdout=PIPE).communicate()[0].replace('\n', ''))
+      llvm_root = os.path.dirname(Popen(['which', 'llvm-dis'], stdout=PIPE).communicate()[0].replace('\n', ''))
     except:
       pass
     config_file = config_file.replace('{{{ LLVM_ROOT }}}', llvm_root)
