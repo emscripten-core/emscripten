@@ -7551,10 +7551,7 @@ LibraryManager.library = {
     a = a|0; b = b|0; c = c|0; d = d|0;
     var l = 0, h = 0;
     l = (a + c)>>>0;
-    h = (b + d)>>>0;
-    if ((l>>>0) < (a>>>0)) { // iff we overflowed
-      h = (h+1)>>>0;
-    }
+    h = (((b + d)>>>0) + (((l>>>0) < (a>>>0))>>>0))>>>0; // Add carry from low word to high word on overflow.
     {{{ makeStructuralReturn(['l|0', 'h'], true) }}};
   },
   llvm_uadd_with_overflow_i64__asm: true,
@@ -7563,12 +7560,8 @@ LibraryManager.library = {
     a = a|0; b = b|0; c = c|0; d = d|0;
     var l = 0, h = 0, overflow = 0;
     l = (a + c)>>>0;
-    h = (b + d)>>>0;
-    if ((h>>>0) < (b>>>0)) overflow = 1;
-    if ((l>>>0) < (a>>>0)) {
-      h = (h+1)>>>0;
-      if ((h>>>0) == 0) overflow = 1; // two possibilities to overflow here
-    }
+    h = (((b + d)>>>0) + (((l>>>0) < (a>>>0))>>>0))>>>0; // Add carry from low word to high word on overflow.
+    overflow = (((h>>>0) < (b>>>0))>>>0); // Return whether addition overflowed even the high word.
     {{{ makeStructuralReturn(['l|0', 'h', 'overflow'], true) }}};
   },
 
@@ -7579,9 +7572,7 @@ LibraryManager.library = {
     var l = 0, h = 0;
     l = (a - c)>>>0;
     h = (b - d)>>>0;
-    if ((l>>>0) > (a>>>0)) { // iff we overflowed
-      h = (h-1)>>>0;
-    }
+    h = (((b - d)>>>0) - (((c>>>0) > (a>>>0))>>>0))>>>0; // Borrow one from high word to low word on underflow.
     {{{ makeStructuralReturn(['l|0', 'h'], true) }}};
   },
 
