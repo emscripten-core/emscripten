@@ -1108,10 +1108,45 @@ try:
     # Note that we assume a single symbol is enough to know if we have/do not have dlmalloc etc. If you
     # include just a few symbols but want the rest, this will not work.
 
+    def read_symbols(path, exclude=None):
+      symbols = map(lambda line: line.strip().split(' ')[1], open(path).readlines())
+      if exclude:
+        symbols = filter(lambda symbol: symbol not in exclude, symbols)
+      return set(symbols)
+
+    # XXX We also need to add libc symbols that use malloc, for example strdup. It's very rare to use just them and not
+    #     a normal malloc symbol (like free, after calling strdup), so we haven't hit this yet, but it is possible.
+    libc_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libc.symbols'))
+    libcextra_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcextra.symbols'))
+    libcxx_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxx', 'symbols'), exclude=libc_symbols)
+    libcxxabi_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxxabi', 'symbols'), exclude=libc_symbols)
+
+    def build_libc(lib_filename, files):
+      o_s = []
+      prev_cxx = os.environ.get('EMMAKEN_CXX')
+      if prev_cxx: os.environ['EMMAKEN_CXX'] = ''
+      musl_internal_includes = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'internal')
+      for src in files:
+        o = in_temp(os.path.basename(src) + '.o')
+        execute([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o, '-I', musl_internal_includes], stdout=stdout, stderr=stderr)
+        o_s.append(o)
+      if prev_cxx: os.environ['EMMAKEN_CXX'] = prev_cxx
+      shared.Building.link(o_s, in_temp(lib_filename))
+      return in_temp(lib_filename)
+
+    def build_libcxx(src_dirname, lib_filename, files):
+      o_s = []
+      for src in files:
+        o = in_temp(src + '.o')
+        srcfile = shared.path_from_root(src_dirname, src)
+        execute([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11'], stdout=stdout, stderr=stderr)
+        o_s.append(o)
+      shared.Building.link(o_s, in_temp(lib_filename))
+      return in_temp(lib_filename)
+
     # libc
     def create_libc():
       if DEBUG: print >> sys.stderr, 'emcc: building libc for cache'
-      o_s = []
       libc_files = [
         'dlmalloc.c',
         os.path.join('libcxx', 'new.cpp'),
@@ -1126,23 +1161,7 @@ try:
         os.path.join('libc', 'gen', 'vwarnx.c'),
         os.path.join('libc', 'stdlib', 'strtod.c'),
       ];
-
-      musl_files = []
-
-      for directory, sources in musl_files:
-        libc_files += [os.path.join('libc', 'musl', 'src', directory, source) for source in sources]
-
-      prev_cxx = os.environ.get('EMMAKEN_CXX')
-      if prev_cxx: os.environ['EMMAKEN_CXX'] = ''
-      musl_internal_includes = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'internal')
-      for src in libc_files:
-        o = in_temp(os.path.basename(src) + '.o')
-        execute([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o, '-I', musl_internal_includes], stdout=stdout, stderr=stderr)
-        o_s.append(o)
-      if prev_cxx: os.environ['EMMAKEN_CXX'] = prev_cxx
-
-      shared.Building.link(o_s, in_temp('libc.bc'))
-      return in_temp('libc.bc')
+      return build_libc('libc.bc', libc_files)
 
     def fix_libc(need):
       # libc needs some sign correction. # If we are in mode 0, switch to 2. We will add our lines
@@ -1154,17 +1173,10 @@ try:
         shared.Settings.CORRECT_SIGNS_LINES = [shared.path_from_root('src', 'dlmalloc.c') + ':' + str(i+4) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
       # If we are in mode 1, we are correcting everything anyhow. If we are in mode 3, we will be corrected
       # so all is well anyhow too.
-    # XXX We also need to add libc symbols that use malloc, for example strdup. It's very rare to use just them and not
-    #     a normal malloc symbol (like free, after calling strdup), so we haven't hit this yet, but it is possible.
-    libc_symbols = map(lambda line: line.strip().split(' ')[1], open(shared.path_from_root('system', 'lib', 'libc.symbols')).readlines())
-    libc_symbols = set(libc_symbols)
 
     # libcextra
     def create_libcextra():
       if DEBUG: print >> sys.stderr, 'emcc: building libcextra for cache'
-      o_s = []
-      libcextra_files = []
-
       musl_files = [
          ['multibyte', [
           'btowc.c',
@@ -1214,32 +1226,17 @@ try:
            'wmemset.c',
          ]]
       ]
-
       libcextra_files = []
       for directory, sources in musl_files:
         libcextra_files += [os.path.join('libc', 'musl', 'src', directory, source) for source in sources]
-
-      prev_cxx = os.environ.get('EMMAKEN_CXX')
-      if prev_cxx: os.environ['EMMAKEN_CXX'] = ''
-      musl_internal_includes = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'internal')
-      for src in libcextra_files:
-        o = in_temp(os.path.basename(src) + '.o')
-        execute([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o, '-I', musl_internal_includes], stdout=stdout, stderr=stderr)
-        o_s.append(o)
-      if prev_cxx: os.environ['EMMAKEN_CXX'] = prev_cxx
-
-      shared.Building.link(o_s, in_temp('libcextra.bc'))
-      return in_temp('libcextra.bc')
+      return build_libc('libcextra.bc', libcextra_files)
 
     def fix_libcextra(need):
       pass
-    libcextra_symbols = map(lambda line: line.strip().split(' ')[1], open(shared.path_from_root('system', 'lib', 'libcextra.symbols')).readlines())
-    libcextra_symbols = set(libcextra_symbols)
 
     # libcxx
     def create_libcxx():
       if DEBUG: print >> sys.stderr, 'emcc: building libcxx for cache'
-      os = []
       libcxx_files = [
         'algorithm.cpp',
         'condition_variable.cpp',
@@ -1264,44 +1261,27 @@ try:
         'regex.cpp',
         'strstream.cpp'
       ]
-      for src in libcxx_files:
-        o = in_temp(src + '.o')
-        srcfile = shared.path_from_root('system', 'lib', 'libcxx', src)
-        execute([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11'], stdout=stdout, stderr=stderr)
-        os.append(o)
-      shared.Building.link(os, in_temp('libcxx.bc'))
-      return in_temp('libcxx.bc')
+      return build_libcxx(os.path.join('system', 'lib', 'libcxx'), 'libcxx.bc', libcxx_files)
+
     def fix_libcxx(need):
       assert shared.Settings.QUANTUM_SIZE == 4, 'We do not support libc++ with QUANTUM_SIZE == 1'
       # libcxx might need corrections, so turn them all on. TODO: check which are actually needed
       shared.Settings.CORRECT_SIGNS = shared.Settings.CORRECT_OVERFLOWS = shared.Settings.CORRECT_ROUNDINGS = 1
       #print >> sys.stderr, 'emcc: info: using libcxx turns on CORRECT_* options'
-    libcxx_symbols = map(lambda line: line.strip().split(' ')[1], open(shared.path_from_root('system', 'lib', 'libcxx', 'symbols')).readlines())
-    libcxx_symbols = filter(lambda symbol: symbol not in libc_symbols, libcxx_symbols)
-    libcxx_symbols = set(libcxx_symbols)
 
     # libcxxabi - just for dynamic_cast for now
     def create_libcxxabi():
       if DEBUG: print >> sys.stderr, 'emcc: building libcxxabi for cache'
-      os = []
       libcxxabi_files = [
         'typeinfo.cpp',
         'private_typeinfo.cpp'
       ]
-      for src in libcxxabi_files:
-        o = in_temp(src + '.o')
-        srcfile = shared.path_from_root('system', 'lib', 'libcxxabi', 'src', src)
-        execute([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11'], stdout=stdout, stderr=stderr)
-        os.append(o)
-      shared.Building.link(os, in_temp('libcxxabi.bc'))
-      return in_temp('libcxxabi.bc')
+      return build_libcxx(os.path.join('system', 'lib', 'libcxxabi', 'src'), 'libcxxabi.bc', libcxxabi_files)
+
     def fix_libcxxabi(need):
       assert shared.Settings.QUANTUM_SIZE == 4, 'We do not support libc++abi with QUANTUM_SIZE == 1'
       #print >> sys.stderr, 'emcc: info: using libcxxabi, this may need CORRECT_* options'
       #shared.Settings.CORRECT_SIGNS = shared.Settings.CORRECT_OVERFLOWS = shared.Settings.CORRECT_ROUNDINGS = 1
-    libcxxabi_symbols = map(lambda line: line.strip().split(' ')[1], open(shared.path_from_root('system', 'lib', 'libcxxabi', 'symbols')).readlines())
-    libcxxabi_symbols = filter(lambda symbol: symbol not in libc_symbols, libcxxabi_symbols)
-    libcxxabi_symbols = set(libcxxabi_symbols)
 
     # If we have libcxx, we must force inclusion of libc, since libcxx uses new internally. Note: this is kind of hacky
     # Settings this in the environment will avoid checking dependencies and make building big projects a little faster
