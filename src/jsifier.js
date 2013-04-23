@@ -1441,6 +1441,10 @@ function JSify(data, functionsOnly, givenFunctions) {
     if (callIdent in DEAD_FUNCTIONS) {
       var ret = 'abort(' + DEAD_FUNCTIONS[callIdent] + ')';
       if (ASM_JS) ret = asmCoercion(ret, returnType);
+      if (ASSERTIONS) {
+        assert(DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.indexOf('putchar') >= 0, 'need putchar for DEAD_FUNCTIONS + ASSERTIONS output');
+        ret = '(' + makePrintChars('dead:' + callIdent, ',') + ',' + ret + ')';
+      }
       return ret;
     }
 

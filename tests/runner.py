@@ -8070,7 +8070,7 @@ def process(filename):
         Settings.DEAD_FUNCTIONS = []
 
         # Run the same code with argc that uses the dead function, see abort
-        test(('abort', 'is not a function'), args=['a', 'b'], no_build=True)
+        test(('dead:_unused' if Settings.ASSERTIONS else 'abort', 'is not a function'), args=['a', 'b'], no_build=True)
 
       # Normal stuff
       run_all('normal', r'''
