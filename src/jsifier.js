@@ -713,6 +713,7 @@ function JSify(data, functionsOnly, givenFunctions) {
               } else {
                 ret += 'var setjmpLabel = 0;\n';
                 ret += 'var setjmpTable = ' + RuntimeGenerator.stackAlloc(4 * (MAX_SETJMPS + 1) * 2) + ';\n';
+                ret += makeSetValue('setjmpTable', '0', '0', 'i32') + ';'; // initialize first entry to 0
               }
             }
             ret += indent + 'while(1) ';
