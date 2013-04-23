@@ -401,7 +401,7 @@ except:
 # Force a simple, standard target as much as possible: target 32-bit linux, and disable various flags that hint at other platforms
 COMPILER_OPTS = COMPILER_OPTS + ['-m32', '-U__i386__', '-U__i386', '-Ui386',
                                  '-U__SSE__', '-U__SSE_MATH__', '-U__SSE2__', '-U__SSE2_MATH__', '-U__MMX__',
-                                 '-DEMSCRIPTEN', '-U__STRICT_ANSI__',
+                                 '-DEMSCRIPTEN', '-D__EMSCRIPTEN__', '-U__STRICT_ANSI__',
                                  '-target', 'i386-pc-linux-gnu', '-D__IEEE_LITTLE_ENDIAN', '-fno-math-errno']
 
 USE_EMSDK = not os.environ.get('EMMAKEN_NO_SDK')
