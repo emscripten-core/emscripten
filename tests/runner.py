@@ -8251,7 +8251,7 @@ def process(filename):
 
       before = len(open('normal.js').read())
       after = len(open('pgoed.js').read())
-      assert after < 0.66 * before, [before, after] # expect a big size reduction
+      assert after < 0.90 * before, [before, after] # expect a size reduction
 
       # with response in settings element itself
 
@@ -10358,7 +10358,7 @@ f.close()
             (1, 0, 3, 2), (1, 1, 3, 4)
           ]:
           print asm, linkable, chunks, js_chunks
-          output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O1', '-s', 'LINKABLE=%d' % linkable, '-s', 'ASM_JS=%d' % asm, '-s', 'UNRESOLVED_AS_DEAD=1'] + (['-O2'] if asm else []), stdout=PIPE, stderr=PIPE).communicate()
+          output, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O1', '-s', 'LINKABLE=%d' % linkable, '-s', 'ASM_JS=%d' % asm] + (['-O2'] if asm else []), stdout=PIPE, stderr=PIPE).communicate()
           ok = False
           for c in range(chunks, chunks+2):
             ok = ok or ('phase 2 working on %d chunks' % c in err)
