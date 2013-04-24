@@ -8171,11 +8171,12 @@ def process(filename):
         # Kill off the dead function, still works and it is not emitted
         Settings.DEAD_FUNCTIONS = ['_unused']
         js = test('*9*')
-        assert 'function _unused(' not in js
+        assert 'function _unused($' not in js # no compiled code
+        assert 'function _unused(' in js # lib-generated stub
         Settings.DEAD_FUNCTIONS = []
 
         # Run the same code with argc that uses the dead function, see abort
-        test(('dead:_unused' if Settings.ASSERTIONS else 'abort', 'is not a function'), args=['a', 'b'], no_build=True)
+        test(('missing library function: unused'), args=['a', 'b'], no_build=True)
 
       # Normal stuff
       run_all('normal', r'''
