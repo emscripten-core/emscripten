@@ -2310,6 +2310,7 @@ cat |umber one top notchfi FI FO FUM WHEN WHERE WHY HOW WHO|''', ['wowie', 'too'
         self.do_run(src, 'Assertion failed: 1 == false')
 
     def test_libcextra(self):
+        if self.emcc_args is None: return self.skip('needs emcc for libcextra')
         src = r'''
           #include <stdio.h>
           #include <wchar.h>
