@@ -28,6 +28,8 @@ Usage:
 
   --no-force Don't create output if no valid input file is specified.
 
+  --use-preload-cache Stores package in IndexedDB so that subsequent loads don't need to do XHR. Checks package version.
+
 Notes:
 
   * The file packager generates unix-style file paths. So if you are on windows and a file is accessed at
@@ -44,7 +46,7 @@ from shared import Compression, execute, suffix, unsuffixed
 from subprocess import Popen, PIPE, STDOUT
 
 if len(sys.argv) == 1:
-  print '''Usage: file_packager.py TARGET [--preload A...] [--embed B...] [--compress COMPRESSION_DATA] [--pre-run] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force]
+  print '''Usage: file_packager.py TARGET [--preload A...] [--embed B...] [--compress COMPRESSION_DATA] [--pre-run] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache]
 See the source for more details.'''
   sys.exit(0)
 
