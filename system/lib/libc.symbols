@@ -1,81 +1,81 @@
-_ZNKSt20bad_array_new_length4whatEv
-_ZNKSt9bad_alloc4whatEv
-_ZNSt20bad_array_new_lengthC1Ev
-_ZNSt20bad_array_new_lengthC2Ev
-_ZNSt20bad_array_new_lengthD0Ev
-_ZNSt20bad_array_new_lengthD1Ev
-_ZNSt20bad_array_new_lengthD2Ev
-_ZNSt9bad_allocC1Ev
-_ZNSt9bad_allocC2Ev
-_ZNSt9bad_allocD0Ev
-_ZNSt9bad_allocD1Ev
-_ZNSt9bad_allocD2Ev
-_ZSt15get_new_handlerv
-_ZSt15set_new_handlerPFvvE
-_ZSt17__throw_bad_allocv
-_ZSt7nothrow
-_ZTISt20bad_array_new_length
-_ZTISt9bad_alloc
-_ZTSSt20bad_array_new_length
-_ZTSSt9bad_alloc
-_ZTVSt20bad_array_new_length
-_ZTVSt9bad_alloc
-_ZdaPv
-_ZdaPvRKSt9nothrow_t
-_ZdlPv
-_ZdlPvRKSt9nothrow_t
-_Znaj
-_ZnajRKSt9nothrow_t
-_Znwj
-_ZnwjRKSt9nothrow_t
-_err
-_errx
-_verr
-_verrx
-_vwarn
-_vwarnx
-_warn
-_warnx
-atof
-bulk_free
-calloc
-err
-errx
-free
-getopt
-getopt_long
-getopt_long_only
-independent_calloc
-independent_comalloc
-mallinfo
-malloc
-malloc_footprint
-malloc_footprint_limit
-malloc_max_footprint
-malloc_set_footprint_limit
-malloc_stats
-malloc_trim
-malloc_usable_size
-mallopt
-memalign
-optarg
-opterr
-optind
-optopt
-optreset
-posix_memalign
-pvalloc
-realloc
-realloc_in_place
-strtod
-strtod_l
-strtof
-strtold
-strtold_l
-valloc
-verr
-verrx
-vwarn
-vwarnx
-warn1
-warnx
+         T _ZNKSt20bad_array_new_length4whatEv
+         T _ZNKSt9bad_alloc4whatEv
+         T _ZNSt20bad_array_new_lengthC1Ev
+         T _ZNSt20bad_array_new_lengthC2Ev
+         T _ZNSt20bad_array_new_lengthD0Ev
+         ? _ZNSt20bad_array_new_lengthD1Ev
+         T _ZNSt20bad_array_new_lengthD2Ev
+         T _ZNSt9bad_allocC1Ev
+         T _ZNSt9bad_allocC2Ev
+         T _ZNSt9bad_allocD0Ev
+         T _ZNSt9bad_allocD1Ev
+         T _ZNSt9bad_allocD2Ev
+         T _ZSt15get_new_handlerv
+         T _ZSt15set_new_handlerPFvvE
+         T _ZSt17__throw_bad_allocv
+         D _ZSt7nothrow
+         D _ZTISt20bad_array_new_length
+         D _ZTISt9bad_alloc
+         D _ZTSSt20bad_array_new_length
+         D _ZTSSt9bad_alloc
+         D _ZTVSt20bad_array_new_length
+         D _ZTVSt9bad_alloc
+         W _ZdaPv
+         W _ZdaPvRKSt9nothrow_t
+         W _ZdlPv
+         W _ZdlPvRKSt9nothrow_t
+         W _Znaj
+         W _ZnajRKSt9nothrow_t
+         W _Znwj
+         W _ZnwjRKSt9nothrow_t
+         T _err
+         T _errx
+         T _verr
+         T _verrx
+         T _vwarn
+         T _vwarnx
+         T _warn
+         T _warnx
+         T atof
+         W bulk_free
+         W calloc
+         W err
+         W errx
+         W free
+         T getopt
+         T getopt_long
+         T getopt_long_only
+         W independent_calloc
+         W independent_comalloc
+         W mallinfo
+         W malloc
+         W malloc_footprint
+         W malloc_footprint_limit
+         W malloc_max_footprint
+         W malloc_set_footprint_limit
+         W malloc_stats
+         W malloc_trim
+         T malloc_usable_size
+         W mallopt
+         W memalign
+         C optarg
+         D opterr
+         D optind
+         D optopt
+         C optreset
+         W posix_memalign
+         W pvalloc
+         W realloc
+         W realloc_in_place
+         T strtod
+         T strtod_l
+         T strtof
+         T strtold
+         T strtold_l
+         W valloc
+         W verr
+         W verrx
+         W vwarn
+         W vwarnx
+         W warn1
+         W warnx
