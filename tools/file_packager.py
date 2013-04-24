@@ -381,10 +381,11 @@ if has_preloaded:
       var IDB_RO = "readonly";
       var IDB_RW = "readwrite";
       var DB_NAME = 'EM_PRELOAD_CACHE';
+      var DB_VERSION = 1;
       var METADATA_STORE_NAME = 'METADATA';
       var PACKAGE_STORE_NAME = 'PACKAGES';
       function openDatabase(callback, errback) {
-        var openRequest = indexedDB.open(DB_NAME);
+        var openRequest = indexedDB.open(DB_NAME, DB_VERSION);
         openRequest.onupgradeneeded = function(event) {
           var db = event.target.result;
 
@@ -454,7 +455,7 @@ if has_preloaded:
         var transaction = db.transaction([PACKAGE_STORE_NAME, METADATA_STORE_NAME], IDB_RW);
         var packages = transaction.objectStore(PACKAGE_STORE_NAME);
         var metadata = transaction.objectStore(METADATA_STORE_NAME);
-
+console.log(packageData, packageName);
         var putPackageRequest = packages.put(packageData, packageName);
         putPackageRequest.onsuccess = function(event) {
           var putMetadataRequest = metadata.put(packageMeta, packageName);
@@ -530,17 +531,17 @@ if has_preloaded:
 
   if use_preload_cache:
     code += r'''
+      if (!Module.preloadResults)
+        Module.preloadResults = {};
+
       openDatabase(
         function(db) {
           checkCachedPackage(db, PACKAGE_NAME,
             function(useCached) {
+              Module.preloadResults[PACKAGE_NAME] = {fromCache: useCached};
               if (useCached) {
                 console.info('loading ' + PACKAGE_NAME + ' from cache');
-                fetchCachedPackage(db, PACKAGE_NAME,
-                  function(packageData, packageMeta) {
-                    cacheRemotePackage(db, packageData, packageMeta, processPackageData, handleError);
-                  }
-                , handleError);
+                fetchCachedPackage(db, PACKAGE_NAME, processPackageData, handleError);
               } else {
                 console.info('loading ' + PACKAGE_NAME + ' from remote');
                 fetchRemotePackage(REMOTE_PACKAGE_NAME,
