@@ -2000,7 +2000,7 @@ function processMathop(item) {
     }
     function preciseCall(name) {
       Types.preciseI64MathUsed = true;
-      return finish([name + '(' + low1 + ',' + high1 + ',' + low2 + ',' + high2 + ')', 'tempRet0']);
+      return finish([asmCoercion(name + '(' + low1 + ',' + high1 + ',' + low2 + ',' + high2 + ')', 'i32'), 'tempRet0']);
     }
     function i64PreciseLib(type) {
       return preciseCall('_i64' + type[0].toUpperCase() + type.substr(1));
