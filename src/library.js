@@ -4168,32 +4168,6 @@ LibraryManager.library = {
     }
   },
 
-  mbtowc: function(pwc, pmb, maxx) {
-    // XXX doesn't really handle multibyte at all
-    if (!pmb) return 0;
-    maxx = Math.min({{{ cDefine('_NL_CTYPE_MB_CUR_MAX') }}}, maxx);
-    var i;
-    for (i = 0; i < maxx; i++) {
-      var curr = {{{ makeGetValue('pmb', 0, 'i8') }}};
-      if (pwc) {
-        {{{ makeSetValue('pwc', '0', 'curr', 'i8') }}};
-        {{{ makeSetValue('pwc', '1', '0', 'i8') }}};
-        pwc += 2;
-      }
-      pmb++;
-      if (!curr) break;
-    }
-    return i;
-  },
-
-  wcrtomb: function(s, wc, ps) {
-    // XXX doesn't really handle multibyte at all
-    if (s) {
-      {{{ makeSetValue('s', '0', 'wc', 'i8') }}};
-    }
-    return 1;
-  },
-
   arc4random: 'rand',
 
   // ==========================================================================
@@ -4243,8 +4217,6 @@ LibraryManager.library = {
     return ret|0;
   },
 
-  wmemcpy: function() { throw 'wmemcpy not implemented' },
-
   llvm_memcpy_i32: 'memcpy',
   llvm_memcpy_i64: 'memcpy',
   llvm_memcpy_p0i8_p0i8_i32: 'memcpy',
@@ -4273,8 +4245,6 @@ LibraryManager.library = {
   llvm_memmove_i64: 'memmove',
   llvm_memmove_p0i8_p0i8_i32: 'memmove',
   llvm_memmove_p0i8_p0i8_i64: 'memmove',
-
-  wmemmove: function() { throw 'wmemmove not implemented' },
 
   memset__inline: function(ptr, value, num, align) {
     return makeSetValues(ptr, 0, value, 'null', num, align);
@@ -4316,8 +4286,6 @@ LibraryManager.library = {
   llvm_memset_p0i8_i32: 'memset',
   llvm_memset_p0i8_i64: 'memset',
 
-  wmemset: function() { throw 'wmemset not implemented' },
-
   strlen__sig: 'ii',
   strlen__asm: true,
   strlen: function(ptr) {
@@ -4329,18 +4297,6 @@ LibraryManager.library = {
     }
     return (curr - ptr)|0;
   },
-
-  // TODO: Implement when we have real unicode support.
-  mblen: function() {
-    return 1;
-  },
-
-  wcslen: function() { throw 'wcslen not implemented' },
-  mbrlen: function() { throw 'mbrlen not implemented' },
-  mbsrtowcs: function() { throw 'mbsrtowcs not implemented' },
-  wcsnrtombs: function() { throw 'wcsnrtombs not implemented' },
-  mbsnrtowcs: function() { throw 'mbsnrtowcs not implemented' },
-  mbrtowc: function() { throw 'mbrtowc not implemented' },
 
   strspn: function(pstr, pset) {
     var str = pstr, set, strcurr, setcurr;
