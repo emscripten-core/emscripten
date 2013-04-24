@@ -1248,7 +1248,7 @@ namespace emscripten {
 }
 
 #define EMSCRIPTEN_BINDINGS(name)                                       \
-    static struct BindingInitializer_##name {                           \
-        BindingInitializer_##name();                                    \
-    } BindingInitializer_##name##_instance;                             \
-    BindingInitializer_##name::BindingInitializer_##name()
+    static struct EmscriptenBindingInitializer_##name {                 \
+        EmscriptenBindingInitializer_##name();                          \
+    } EmscriptenBindingInitializer_##name##_instance;                   \
+    EmscriptenBindingInitializer_##name::EmscriptenBindingInitializer_##name()
