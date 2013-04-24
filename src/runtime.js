@@ -350,7 +350,7 @@ var Runtime = {
     assert(sig);
     if (!Runtime.funcWrappers[func]) {
       Runtime.funcWrappers[func] = function() {
-        Runtime.dynCall(sig, func, arguments);
+        return Runtime.dynCall(sig, func, arguments);
       };
     }
     return Runtime.funcWrappers[func];
