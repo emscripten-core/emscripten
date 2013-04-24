@@ -259,6 +259,7 @@ if has_preloaded:
     start += len(curr)
     data.write(curr)
   data.close()
+  # TODO: sha256sum on data_target
   if Compression.on:
     Compression.compress(data_target)
 
@@ -368,18 +369,18 @@ if has_preloaded:
     }
     Module.expectedDataFileDownloads++;
 
-    var indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
-    var IDB_RO = "readonly";
-    var IDB_RW = "readwrite";
-    var DB_NAME = 'EM_PRELOAD_CACHE';
-    var METADATA_STORE_NAME = 'METADATA';
-    var PACKAGE_STORE_NAME = 'PACKAGES';
     var PACKAGE_NAME = '%s';
     var REMOTE_PACKAGE_NAME = '%s';
   ''' % (data_target, os.path.basename(Compression.compressed_name(data_target) if Compression.on else data_target))
 
   if use_preload_cache:
     code += r'''
+      var indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
+      var IDB_RO = "readonly";
+      var IDB_RW = "readwrite";
+      var DB_NAME = 'EM_PRELOAD_CACHE';
+      var METADATA_STORE_NAME = 'METADATA';
+      var PACKAGE_STORE_NAME = 'PACKAGES';
       function openDatabase(callback, errback) {
         var openRequest = indexedDB.open(DB_NAME);
         openRequest.onupgradeneeded = function(event) {
@@ -412,7 +413,7 @@ if has_preloaded:
         var getRequest = metadata.get(packageName);
         getRequest.onsuccess = function(event) {
           var result = event.target.result;
-          if(!result) {
+          if (!result) {
             return callback(false);
           }
           var mtime = result.mtime;
@@ -421,7 +422,7 @@ if has_preloaded:
           xhr.setRequestHeader('If-Modified-Since', mtime);
           xhr.setRequestHeader('Cache-Control', 'no-cache');
           xhr.onreadystatechange = function() {
-            if(4 === xhr.readyState) {
+            if (4 === xhr.readyState) {
               var useCached = (304 === xhr.status);
               return callback(useCached);
             }
@@ -531,7 +532,7 @@ if has_preloaded:
         function(db) {
           checkCachedPackage(db, PACKAGE_NAME,
             function(useCached) {
-              if(useCached) {
+              if (useCached) {
                 console.info('loading ' + PACKAGE_NAME + ' from cache');
                 fetchCachedPackage(db, PACKAGE_NAME,
                   function(packageData, packageMeta) {
@@ -540,7 +541,7 @@ if has_preloaded:
                 , handleError);
               } else {
                 console.info('loading ' + PACKAGE_NAME + ' from remote');
-                fetchRemotePackage(PACKAGE_NAME,
+                fetchRemotePackage(REMOTE_PACKAGE_NAME,
                   function(packageData, packageMeta) {
                     cacheRemotePackage(db, PACKAGE_NAME, packageData, packageMeta, processPackageData, handleError);
                   }
@@ -555,7 +556,7 @@ if has_preloaded:
     '''
   else:
     code += r'''
-      fetchRemotePackage(PACKAGE_NAME, processPackageData, handleError);
+      fetchRemotePackage(REMOTE_PACKAGE_NAME, processPackageData, handleError);
     '''
 
 if pre_run:
