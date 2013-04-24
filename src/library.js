@@ -4292,7 +4292,7 @@ LibraryManager.library = {
     ptr = ptr|0;
     var curr = 0;
     curr = ptr;
-    while ({{{ makeGetValueAsm('curr', '0', 'i8') }}}|0 != 0) {
+    while ({{{ makeGetValueAsm('curr', '0', 'i8') }}}) {
       curr = (curr + 1)|0;
     }
     return (curr - ptr)|0;
@@ -4338,7 +4338,7 @@ LibraryManager.library = {
     do {
       {{{ makeCopyValues('(pdest+i)|0', '(psrc+i)|0', 1, 'i8', null, 1) }}};
       i = (i+1)|0;
-    } while (({{{ makeGetValue('psrc', 'i-1', 'i8') }}})|0 != 0);
+    } while ({{{ makeGetValueAsm('psrc', 'i-1', 'i8') }}});
     return pdest|0;
   },
 
@@ -4397,7 +4397,7 @@ LibraryManager.library = {
     do {
       {{{ makeCopyValues('pdest+i', 'psrc+i', 1, 'i8', null, 1) }}};
       i = (i+1)|0;
-    } while ({{{ makeGetValueAsm('psrc', 'i-1', 'i8') }}} != 0);
+    } while ({{{ makeGetValueAsm('psrc', 'i-1', 'i8') }}});
     return pdest|0;
   },
 
