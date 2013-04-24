@@ -4501,8 +4501,8 @@ LibraryManager.library = {
     px = px|0; py = py|0; n = n|0;
     var i = 0, x = 0, y = 0;
     while ((i>>>0) < (n>>>0)) {
-      x = _tolower({{{ makeGetValueAsm('px', 'i', 'i8', 0, 1) }}});
-      y = _tolower({{{ makeGetValueAsm('py', 'i', 'i8', 0, 1) }}});
+      x = _tolower({{{ makeGetValueAsm('px', 'i', 'i8', 0, 1) }}})|0;
+      y = _tolower({{{ makeGetValueAsm('py', 'i', 'i8', 0, 1) }}})|0;
       if (((x|0) == (y|0)) & ((x|0) == 0)) return 0;
       if ((x|0) == 0) return -1;
       if ((y|0) == 0) return 1;
