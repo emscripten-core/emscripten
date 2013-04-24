@@ -5311,6 +5311,8 @@ LibraryManager.library = {
 
   llvm_objectsize_i32: function() { return -1 }, // TODO: support this
 
+  llvm_dbg_declare__inline: function() { throw 'llvm_debug_declare' }, // avoid warning
+
   // ==========================================================================
   // llvm-mono integration
   // ==========================================================================
