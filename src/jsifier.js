@@ -485,8 +485,9 @@ function JSify(data, functionsOnly, givenFunctions) {
         // Shared libraries reuse the runtime of their parents.
         item.JS = '';
       } else {
-        if (!LibraryManager.library.hasOwnProperty(shortident)) {
-          LibraryManager.library[shortident] = new Function("Module['printErr']('missing library function: " + shortident + "'); abort(-1);");
+        if (!LibraryManager.library.hasOwnProperty(shortident) && !LibraryManager.library.hasOwnProperty(shortident + '__inline')) {
+          if (ASSERTIONS) printErr('warning: missing function: ' + shortident);
+          LibraryManager.library[shortident] = new Function("Module['printErr']('missing function: " + shortident + "'); abort(-1);");
         }
         item.JS = addFromLibrary(shortident);
       }

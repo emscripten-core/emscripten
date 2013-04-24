@@ -8176,7 +8176,7 @@ def process(filename):
         Settings.DEAD_FUNCTIONS = []
 
         # Run the same code with argc that uses the dead function, see abort
-        test(('missing library function: unused'), args=['a', 'b'], no_build=True)
+        test(('missing function: unused'), args=['a', 'b'], no_build=True)
 
       # Normal stuff
       run_all('normal', r'''
