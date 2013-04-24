@@ -351,10 +351,6 @@ var DEAD_FUNCTIONS = []; // Functions on this list are not converted to JS, and 
                          // If a dead function is actually called, you will get a runtime
                          // error.
                          // TODO: options to lazily load such functions
-var UNRESOLVED_AS_DEAD = 0; // Handle all unresolved functions as if they were in the
-                            // list of dead functions. This is a quick way to turn
-                            // all unresolved references into runtime aborts (and not
-                            // get compile-time warnings or errors on them).
 
 var EXPLICIT_ZEXT = 0; // If 1, generate an explicit conversion of zext i1 to i32, using ?:
 
