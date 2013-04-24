@@ -1481,7 +1481,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     if (ASM_JS && funcData.setjmpTable) {
       // check if a longjmp was done. If a setjmp happened, check if ours. If ours, go to -111 to handle it.
       // otherwise, just return - the call to us must also have been an invoke, so the setjmp propagates that way
-      ret += '; if (((__THREW__|0) != 0) & ((threwValue|0) > 0)) { setjmpLabel = _testSetjmp(' + makeGetValue('__THREW__', 0, 'i32') + ', setjmpTable); if ((setjmpLabel|0) > 0) { label = -1111; break } else return ' + (funcData.returnType != 'void' ? asmCoercion('0', funcData.returnType) : '') + ' } __THREW__ = threwValue = 0;\n';
+      ret += '; if (((__THREW__|0) != 0) & ((threwValue|0) > 0)) { setjmpLabel = ' + asmCoercion('_testSetjmp(' + makeGetValue('__THREW__', 0, 'i32') + ', setjmpTable)', 'i32') + '; if ((setjmpLabel|0) > 0) { label = -1111; break } else return ' + (funcData.returnType != 'void' ? asmCoercion('0', funcData.returnType) : '') + ' } __THREW__ = threwValue = 0;\n';
     }
 
     return ret;

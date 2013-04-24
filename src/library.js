@@ -6272,7 +6272,7 @@ LibraryManager.library = {
   setjmp__inline: function(env) {
     // Save the label
 #if ASM_JS
-    return '_saveSetjmp(' + env + ', label, setjmpTable)';
+    return '_saveSetjmp(' + env + ', label, setjmpTable)|0';
 #else
     return '(tempInt = setjmpId++, mySetjmpIds[tempInt] = 1, setjmpLabels[tempInt] = label,' + makeSetValue(env, '0', 'tempInt', 'i32', undefined, undefined, undefined, undefined,  ',') + ', 0)';
 #endif
