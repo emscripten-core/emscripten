@@ -660,10 +660,12 @@ function analyzer(data, sidePass) {
                     assert(PRECISE_I64_MATH, 'Must have precise i64 math for non-constant 64-bit shifts');
                     Types.preciseI64MathUsed = 1;
                     value.intertype = 'value';
-                    value.ident = 'var ' + value.assignTo + '$0 = _bitshift64' + value.op[0].toUpperCase() + value.op.substr(1) + '(' + 
-                        asmCoercion(sourceElements[0].ident, 'i32') + ',' +
-                        asmCoercion(sourceElements[1].ident, 'i32') + ',' +
-                        asmCoercion(value.params[1].ident + '$0', 'i32') + ');' +
+                    value.ident = 'var ' + value.assignTo + '$0 = ' +
+                        asmCoercion('_bitshift64' + value.op[0].toUpperCase() + value.op.substr(1) + '(' + 
+                          asmCoercion(sourceElements[0].ident, 'i32') + ',' +
+                          asmCoercion(sourceElements[1].ident, 'i32') + ',' +
+                          asmCoercion(value.params[1].ident + '$0', 'i32') + ')', 'i32'
+                        ) + ';' +
                         'var ' + value.assignTo + '$1 = tempRet0;';
                     value.assignTo = null;
                     i++;
