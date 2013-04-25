@@ -39,7 +39,7 @@ TODO:        You can also provide .crn files yourself, pre-crunched. With this o
              to dds files in the browser, exactly the same as if this tool compressed them.
 '''
 
-import os, sys, shutil, random
+import os, sys, shutil, random, uuid
 
 import shared
 from shared import Compression, execute, suffix, unsuffixed
@@ -364,6 +364,7 @@ if has_preloaded:
       });
     ''' % use_data
 
+  package_uuid = uuid.uuid4();
   code += r'''
     if (!Module.expectedDataFileDownloads) {
       Module.expectedDataFileDownloads = 0;
@@ -371,9 +372,11 @@ if has_preloaded:
     }
     Module.expectedDataFileDownloads++;
 
+    var PACKAGE_PATH = window.encodeURIComponent(window.location.pathname.toString().substring(0, window.location.pathname.toString().lastIndexOf('/')) + '/');
     var PACKAGE_NAME = '%s';
     var REMOTE_PACKAGE_NAME = '%s';
-  ''' % (data_target, os.path.basename(Compression.compressed_name(data_target) if Compression.on else data_target))
+    var PACKAGE_UUID = '%s';
+  ''' % (data_target, os.path.basename(Compression.compressed_name(data_target) if Compression.on else data_target), package_uuid)
 
   if use_preload_cache:
     code += r'''
@@ -418,19 +421,9 @@ if has_preloaded:
           var result = event.target.result;
           if (!result) {
             return callback(false);
+          } else {
+            return callback(PACKAGE_UUID === result.uuid);
           }
-          var mtime = result.mtime;
-          var xhr = new XMLHttpRequest();
-          xhr.open('HEAD', packageName, true);
-          xhr.setRequestHeader('If-Modified-Since', mtime);
-          xhr.setRequestHeader('Cache-Control', 'no-cache');
-          xhr.onreadystatechange = function() {
-            if (4 === xhr.readyState) {
-              var useCached = (304 === xhr.status);
-              return callback(useCached);
-            }
-          };
-          xhr.send(null);
         };
         getRequest.onerror = function(error) {
           errback(error);
@@ -455,7 +448,7 @@ if has_preloaded:
         var transaction = db.transaction([PACKAGE_STORE_NAME, METADATA_STORE_NAME], IDB_RW);
         var packages = transaction.objectStore(PACKAGE_STORE_NAME);
         var metadata = transaction.objectStore(METADATA_STORE_NAME);
-console.log(packageData, packageName);
+
         var putPackageRequest = packages.put(packageData, packageName);
         putPackageRequest.onsuccess = function(event) {
           var putMetadataRequest = metadata.put(packageMeta, packageName);
@@ -507,10 +500,7 @@ console.log(packageData, packageName);
       };
       xhr.onload = function(event) {
         var packageData = xhr.response;
-        var packageMeta = {
-          'mtime': xhr.getResponseHeader('Last-Modified')
-        };
-        callback(packageData, packageMeta);
+        callback(packageData);
       };
       xhr.send(null);
     };
@@ -529,24 +519,26 @@ console.log(packageData, packageName);
     };
   ''' % (use_data, data_target) # use basename because from the browser's point of view, we need to find the datafile in the same dir as the html file
 
+  code += r'''
+    if (!Module.preloadResults)
+      Module.preloadResults = {};
+  '''
+
   if use_preload_cache:
     code += r'''
-      if (!Module.preloadResults)
-        Module.preloadResults = {};
-
       openDatabase(
         function(db) {
-          checkCachedPackage(db, PACKAGE_NAME,
+          checkCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME,
             function(useCached) {
               Module.preloadResults[PACKAGE_NAME] = {fromCache: useCached};
               if (useCached) {
                 console.info('loading ' + PACKAGE_NAME + ' from cache');
-                fetchCachedPackage(db, PACKAGE_NAME, processPackageData, handleError);
+                fetchCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME, processPackageData, handleError);
               } else {
                 console.info('loading ' + PACKAGE_NAME + ' from remote');
                 fetchRemotePackage(REMOTE_PACKAGE_NAME,
-                  function(packageData, packageMeta) {
-                    cacheRemotePackage(db, PACKAGE_NAME, packageData, packageMeta, processPackageData, handleError);
+                  function(packageData) {
+                    cacheRemotePackage(db, PACKAGE_PATH + PACKAGE_NAME, packageData, {uuid:PACKAGE_UUID}, processPackageData, handleError);
                   }
                 , handleError);
               }
@@ -559,6 +551,7 @@ console.log(packageData, packageName);
     '''
   else:
     code += r'''
+      Module.preloadResults[PACKAGE_NAME] = {fromCache: false};
       fetchRemotePackage(REMOTE_PACKAGE_NAME, processPackageData, handleError);
     '''
 
