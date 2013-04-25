@@ -36,24 +36,6 @@ extern "C" {
     }
 }
 
-// TODO: fix in library.js or a proper emscripten libc
-extern "C" wchar_t *wmemset(wchar_t *dest, wchar_t c, size_t count) {
-    wchar_t *o = dest;
-    while (count--) {
-        *o++ = c;
-    }
-    return dest;
-}
-
-// TODO: fix in library.js or a proper emscripten libc
-extern "C" wchar_t *wmemcpy(wchar_t *dest, const wchar_t *src, size_t count) {
-    wchar_t *o = dest;
-    while (count--) {
-        *dest++ = *src++;
-    }
-    return dest;
-}
-
 EMSCRIPTEN_BINDINGS(native_and_builtin_types) {
     using namespace emscripten::internal;
 
