@@ -1510,10 +1510,9 @@ try:
     if shared.Settings.USE_TYPED_ARRAYS != 2:
       if type(memory_init_file) == int: print >> sys.stderr, 'emcc: warning: memory init file requires typed arrays mode 2'
     else:
-      memfile = target + '.mem' 
-      seen_memory_init = False
+      memfile = target + '.mem'
+      shared.try_delete(memfile)
       def repl(m):
-        seen_memory_init = True
         # handle chunking of the memory initializer
         s = re.sub('[\[\]\n\(\)\. ]', '', m.groups(0)[0])
         s = s.replace('concat', ',')
@@ -1529,7 +1528,7 @@ try:
       open(final + '.mem.js', 'w').write(src)
       final += '.mem.js'
       if DEBUG:
-        if seen_memory_init:
+        if os.path.exists(memfile):
           save_intermediate('meminit')
           print >> sys.stderr, 'emcc: wrote memory initialization to %s' % memfile
         else:
