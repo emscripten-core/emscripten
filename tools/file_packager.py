@@ -388,7 +388,11 @@ if has_preloaded:
       var METADATA_STORE_NAME = 'METADATA';
       var PACKAGE_STORE_NAME = 'PACKAGES';
       function openDatabase(callback, errback) {
-        var openRequest = indexedDB.open(DB_NAME, DB_VERSION);
+        try {
+          var openRequest = indexedDB.open(DB_NAME, DB_VERSION);
+        } catch (e) {
+          return errback(e);
+        }
         openRequest.onupgradeneeded = function(event) {
           var db = event.target.result;
 
