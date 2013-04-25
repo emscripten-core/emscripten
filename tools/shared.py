@@ -664,7 +664,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       raise
     del env['EMMAKEN_JUST_CONFIGURE']
     if process.returncode is not 0:
-      raise subprocess.CalledProcessError( cmd=args, returncode=process.returncode )
+      raise subprocess.CalledProcessError(cmd=args, returncode=process.returncode)
 
   @staticmethod
   def make(args, stdout=None, stderr=None, env=None):
@@ -681,7 +681,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       print >> sys.stderr, 'Error: Exception thrown when invoking Popen in make with args: "%s"!' % ' '.join(args)
       raise
     if process.returncode is not 0:
-      raise subprocess.CalledProcessError( cmd=args, returncode=process.returncode )
+      raise subprocess.CalledProcessError(cmd=args, returncode=process.returncode)
 
 
   @staticmethod

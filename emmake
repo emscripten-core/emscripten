@@ -25,5 +25,5 @@ from subprocess import CalledProcessError
 try:
 	shared.Building.make(sys.argv[1:])
 except CalledProcessError, e:
-	sys.exit( e.returncode )
+	sys.exit(e.returncode)
 
