@@ -544,7 +544,11 @@ if has_preloaded:
                 console.info('loading ' + PACKAGE_NAME + ' from remote');
                 fetchRemotePackage(REMOTE_PACKAGE_NAME,
                   function(packageData) {
-                    cacheRemotePackage(db, PACKAGE_PATH + PACKAGE_NAME, packageData, {uuid:PACKAGE_UUID}, processPackageData, handleError);
+                    cacheRemotePackage(db, PACKAGE_PATH + PACKAGE_NAME, packageData, {uuid:PACKAGE_UUID}, processPackageData,
+                      function(error) {
+                        console.error(error);
+                        processPackageData(packageData);
+                      });
                   }
                 , preloadFallback);
               }
