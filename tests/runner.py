@@ -9619,13 +9619,16 @@ f.close()
       def test(args, expected, err_expected=None):
         out, err = Popen([PYTHON, EMCC, 'src.c'] + args, stderr=PIPE).communicate()
         if err_expected: self.assertContained(err_expected, err)
-        self.assertContained(expected, run_js(self.in_dir('a.out.js'), stderr=PIPE))
+        self.assertContained(expected, run_js(self.in_dir('a.out.js'), stderr=PIPE, full_output=True))
         return open(self.in_dir('a.out.js')).read()
 
       test([], 'my func') # no asm, so casting func works
       test(['-O2'], 'abort', ['Casting potentially incompatible function pointer i32 ()* to void (...)*, for my_func',
                               'Incompatible function pointer casts are very dangerous with ASM_JS=1, you should investigate and correct these']) # asm, so failure
-      #test(['-O2', '-g'], 'abort') # asm -g gives better message, so failure
+      test(['-O2', '-s', 'ASSERTIONS=1'],
+           'Invalid function pointer called. Perhaps a miscast function pointer (check compilation warnings) or bad vtable lookup (maybe due to derefing a bad pointer, like NULL)?',
+           ['Casting potentially incompatible function pointer i32 ()* to void (...)*, for my_func',
+           'Incompatible function pointer casts are very dangerous with ASM_JS=1, you should investigate and correct these']) # asm, so failure
 
     def test_l_link(self):
       # Linking with -lLIBNAME and -L/DIRNAME should work

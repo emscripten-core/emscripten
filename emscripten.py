@@ -389,7 +389,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
         newline = '\n' in item
         return (bad if item.replace('\n', '') == '0' else item) + ('\n' if newline else '')
       body = ','.join(map(fix_item, body))
-      return ('function %s(%s) { %s abort(%d); %s }' % (bad, params, coercions, i, ret), raw[:start+1] + body + raw[end:])
+      return ('function %s(%s) { %s %s(%d); %s }' % (bad, params, coercions, 'abort' if not settings['ASSERTIONS'] else 'nullFunc', i, ret), raw[:start+1] + body + raw[end:])
     infos = [make_table(sig, raw) for sig, raw in last_forwarded_json['Functions']['tables'].iteritems()]
     function_tables_defs = '\n'.join([info[0] for info in infos]) + '\n// EMSCRIPTEN_END_FUNCS\n' + '\n'.join([info[1] for info in infos])
 
@@ -398,10 +398,15 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     fundamentals = ['Math', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
     math_envs = ['Math.min'] # TODO: move min to maths
     asm_setup += '\n'.join(['var %s = %s;' % (f.replace('.', '_'), f) for f in math_envs])
+
     basic_funcs = ['abort', 'assert', 'asmPrintInt', 'asmPrintFloat', 'copyTempDouble', 'copyTempFloat'] + [m.replace('.', '_') for m in math_envs]
     if settings['RESERVED_FUNCTION_POINTERS'] > 0: basic_funcs.append('jsCall')
     if settings['SAFE_HEAP']: basic_funcs += ['SAFE_HEAP_LOAD', 'SAFE_HEAP_STORE', 'SAFE_HEAP_CLEAR']
     if settings['CHECK_HEAP_ALIGN']: basic_funcs += ['CHECK_ALIGN_2', 'CHECK_ALIGN_4', 'CHECK_ALIGN_8']
+    if settings['ASSERTIONS']:
+      basic_funcs += ['nullFunc']
+      asm_setup += 'function nullFunc(x) { Module["printErr"]("Invalid function pointer called. Perhaps a miscast function pointer (check compilation warnings) or bad vtable lookup (maybe due to derefing a bad pointer, like NULL)?"); abort(x) }\n'
+
     basic_vars = ['STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT']
     basic_float_vars = ['NaN', 'Infinity']
 
