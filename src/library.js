@@ -7522,8 +7522,10 @@ LibraryManager.library = {
     l = (a + c)>>>0;
     h = (b + d)>>>0;
     overflow = ((h>>>0) < (b>>>0))|0; // Return whether addition overflowed even the high word.
-    h = (h + (((l>>>0) < (a>>>0))|0))>>>0; // Add carry from low word to high word on overflow.
-    overflow = overflow | (!h); // Check again for overflow.
+    if ((l>>>0) < (a>>>0)) {
+      h = (h + 1)>>>0; // Add carry from low word to high word on overflow.
+      overflow = overflow | (!h); // Check again for overflow.
+    }
     {{{ makeStructuralReturn(['l|0', 'h', 'overflow'], true) }}};
   },
 

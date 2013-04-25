@@ -1118,6 +1118,7 @@ m_divisor is 1091269979
         {
             a = argc;
             b = argv[1][0];
+            printf("%d,%d\n", a, b);
             if (a > a + b || a > a + b + 1) {
                 printf("one %lld, %lld", a, b);
                 return 0;
