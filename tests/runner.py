@@ -9600,6 +9600,33 @@ f.close()
       assert debug_size > unminified_size
       assert 'function _malloc' in src
 
+    def test_dangerous_func_cast(self):
+      src = r'''
+        #include <stdio.h>
+        typedef void (*voidfunc)();
+        int my_func() {
+          printf("my func\n");
+          return 10;
+        }
+        int main(int argc, char **argv) {
+          voidfunc fps[10];
+          for (int i = 0; i < 10; i++) fps[i] = (i == argc) ? (void (*)())my_func : NULL;
+          fps[2*(argc-1) + 1]();
+          return 0;
+        }
+      '''
+      open('src.c', 'w').write(src)
+      def test(args, expected, err_expected=None):
+        out, err = Popen([PYTHON, EMCC, 'src.c'] + args, stderr=PIPE).communicate()
+        if err_expected: self.assertContained(err_expected, err)
+        self.assertContained(expected, run_js(self.in_dir('a.out.js'), stderr=PIPE))
+        return open(self.in_dir('a.out.js')).read()
+
+      test([], 'my func') # no asm, so casting func works
+      test(['-O2'], 'abort', ['Casting potentially incompatible function pointer i32 ()* to void (...)*, for my_func',
+                              'Incompatible function pointer casts are very dangerous with ASM_JS=1, you should investigate and correct these']) # asm, so failure
+      #test(['-O2', '-g'], 'abort') # asm -g gives better message, so failure
+
     def test_l_link(self):
       # Linking with -lLIBNAME and -L/DIRNAME should work
 
