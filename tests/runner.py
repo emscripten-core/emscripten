@@ -3377,14 +3377,14 @@ Exiting setjmp function, level: 0, prev_jmp: -1
       self.emcc_args += ['-std=c99']
       src = open(path_from_root('tests', 'life.c'), 'r').read()
       self.do_run(src, '''--------
-      [][][]
-[][]
+      [][][]    
+[][]            
               []
-    []
-[][]
-
-
-
+    []          
+[][]            
+                
+                
+                
 --------
 ''', ['8', '8', '25000'], force_c=True)
 
