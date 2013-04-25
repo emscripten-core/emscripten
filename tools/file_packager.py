@@ -526,6 +526,12 @@ if has_preloaded:
 
   if use_preload_cache:
     code += r'''
+      function preloadFallback(error) {
+        console.error(error);
+        console.error('falling back to default preload behavior');
+        fetchRemotePackage(REMOTE_PACKAGE_NAME, processPackageData, handleError);
+      };
+
       openDatabase(
         function(db) {
           checkCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME,
@@ -533,19 +539,19 @@ if has_preloaded:
               Module.preloadResults[PACKAGE_NAME] = {fromCache: useCached};
               if (useCached) {
                 console.info('loading ' + PACKAGE_NAME + ' from cache');
-                fetchCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME, processPackageData, handleError);
+                fetchCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME, processPackageData, preloadFallback);
               } else {
                 console.info('loading ' + PACKAGE_NAME + ' from remote');
                 fetchRemotePackage(REMOTE_PACKAGE_NAME,
                   function(packageData) {
                     cacheRemotePackage(db, PACKAGE_PATH + PACKAGE_NAME, packageData, {uuid:PACKAGE_UUID}, processPackageData, handleError);
                   }
-                , handleError);
+                , preloadFallback);
               }
             }
-          , handleError);
+          , preloadFallback);
         }
-      , handleError);
+      , preloadFallback);
 
       if (Module['setStatus']) Module['setStatus']('Downloading...');
     '''
