@@ -1651,10 +1651,14 @@ function finalizeLLVMFunctionCall(item, noIndexizeFunctions) {
         } else {
           warnOnce('Casting a function pointer type to a potentially incompatible one (use VERBOSE=1 to see more)');
         }
-        if (ASM_JS) warnOnce('Incompatible function pointer casts are very dangerous with ASM_JS=1');
+        if (ASM_JS) warnOnce('Incompatible function pointer casts are very dangerous with ASM_JS=1, you should investigate and correct these');
       }
       if (oldCount != newCount && oldCount && newCount) {
         showWarning();
+
+        // General concerns
+        // ================
+        //
         // This may be dangerous as clang generates different code for C and C++ calling conventions. The only problem
         // case appears to be passing a structure by value, C will have (field1, field2) as function args, and the
         // function will internally create a structure with that data, while C++ will have (struct* byVal) and it
@@ -1676,8 +1680,14 @@ function finalizeLLVMFunctionCall(item, noIndexizeFunctions) {
         //
         // Note that removing all arguments is acceptable, as a vast to void ()*.
         //
-        // asm must be even more careful, any change in number of args can make
-        // function calls simply fail (since they will look in the wrong table)
+
+        // asm.js concerns
+        // ===============
+        //
+        // asm must be even more careful, any change in number of args can make function calls simply fail (since
+        // they will look in the wrong table). You should investigate each one to see if it is problematic, and
+        // adjust the source code to avoid potential issues. The warnings will tell you which types and variables
+        // are involved, look in the LLVM IR to see what is going on, and to connect that to the original source.
       }
       if (ASM_JS) {
         if (oldCount != newCount) showWarning();
