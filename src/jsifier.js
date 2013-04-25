@@ -485,7 +485,8 @@ function JSify(data, functionsOnly, givenFunctions) {
         // Shared libraries reuse the runtime of their parents.
         item.JS = '';
       } else {
-        if (!LibraryManager.library.hasOwnProperty(shortident) && !LibraryManager.library.hasOwnProperty(shortident + '__inline')) {
+        // If this is not linkable, anything not in the library is definitely missing
+        if (!LINKABLE && !LibraryManager.library.hasOwnProperty(shortident) && !LibraryManager.library.hasOwnProperty(shortident + '__inline')) {
           if (ASSERTIONS) printErr('warning: missing function: ' + shortident);
           LibraryManager.library[shortident] = new Function("Module['printErr']('missing function: " + shortident + "'); abort(-1);");
         }
