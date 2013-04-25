@@ -1235,18 +1235,6 @@ namespace emscripten {
     }
 }
 
-namespace emscripten {
-    namespace internal {
-        class BindingsDefinition {
-        public:
-            template<typename Function>
-            BindingsDefinition(Function fn) {
-                fn();
-            }
-        };
-    }
-}
-
 #define EMSCRIPTEN_BINDINGS(name)                                       \
     static struct EmscriptenBindingInitializer_##name {                 \
         EmscriptenBindingInitializer_##name();                          \
