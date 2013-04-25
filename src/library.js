@@ -6776,6 +6776,21 @@ LibraryManager.library = {
   // pthread.h (stubs for mutexes only - no thread support yet!)
   // ==========================================================================
 
+  pthread_create: function(__newthread, __attr, __start_routine, __arg) {
+    //extern int pthread_create (pthread_t *__restrict __newthread,
+		//	   const pthread_attr_t *__restrict __attr,
+		//	   void *(*__start_routine) (void *),
+		//	   void *__restrict __arg) __THROWNL __nonnull ((1, 3));
+    throw "pthread_create is not implemented.";
+  },
+  pthread_detach: function(__th) {
+    //extern int pthread_detach (pthread_t __th) __THROW;
+    throw "pthread_detach is not implemented.";
+  },
+  pthread_exit: function(__retval) {
+    //extern void pthread_exit (void *__retval) __attribute__ ((__noreturn__));
+    throw "pthread_exit is not implemented.";
+  },
   pthread_mutex_init: function() {},
   pthread_mutex_destroy: function() {},
   pthread_mutexattr_init: function() {},
@@ -6865,6 +6880,51 @@ LibraryManager.library = {
     assert(_pthread_cleanup_push.level == __ATEXIT__.length, 'cannot pop if something else added meanwhile!');
     __ATEXIT__.pop();
     _pthread_cleanup_push.level = __ATEXIT__.length;
+  },
+
+  // ==========================================================================
+  // semaphore.h (stubs only - no thread support yet!)
+  // ==========================================================================
+
+  sem_init: function(__sem, __pshared, __value) {
+    //extern int sem_init (sem_t *__sem, int __pshared, unsigned int __value);
+    throw "sem_init is not implemented.";
+  },
+  sem_destroy: function(__sem) {
+    //extern int sem_destroy (sem_t *__sem);
+    throw "sem_destroy is not implemented.";
+  },
+  sem_open: function(__name, __oflag, vaargs) {
+    //extern sem_t *sem_open (const char *__name, int __oflag, ...);
+    throw "sem_open is not implemented.";
+  },
+  sem_close: function(__sem) {
+    //extern int sem_close (sem_t *__sem);
+    throw "sem_close is not implemented.";
+  },
+  sem_unlink: function(__name) {
+    //extern int sem_unlink (const char *__name);
+    throw "sem_unlink is not implemented.";
+  },
+  sem_wait: function(__sem) {
+    //extern int sem_wait (sem_t *__sem);
+    throw "sem_wait is not implemented.";
+  },
+  sem_timedwait: function(__sem, __abstime) {
+    //extern int sem_timedwait (sem_t *__restrict __sem, const struct timespec *__restrict __abstime);
+    throw "sem_timedwait is not implemented.";
+  },
+  sem_trywait: function(__sem) {
+    //extern int sem_trywait (sem_t *__sem);
+    throw "sem_trywait is not implemented.";
+  },
+  sem_post: function(__sem) {
+    //extern int sem_post (sem_t *__sem);
+    throw "sem_post is not implemented.";
+  },
+  sem_getvalue: function(__sem, __sval) {
+    //extern int sem_getvalue (sem_t *__restrict __sem, int *__restrict __sval);
+    throw "sem_getvalue is not implemented.";
   },
 
   // ==========================================================================
@@ -7207,6 +7267,13 @@ LibraryManager.library = {
     return len;
   },
 
+  sendto: function(sockfd, buf, len, flags, dest_addr, addrlen) {
+    //ssize_t sendto(int sockfd, const void *buf, size_t len, int flags,
+    //                  const struct sockaddr *dest_addr, socklen_t addrlen);
+    throw "sendto is not implemented.";
+    return 0;
+  },
+
   sendmsg__deps: ['$Sockets', 'connect'],
   sendmsg: function(fd, msg, flags) {
     var info = Sockets.fds[fd];
@@ -7433,6 +7500,43 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/socketpair.html
     ___setErrNo(ERRNO_CODES.EOPNOTSUPP);
     return -1;
+  },
+  
+  getpeername: function(socket, address, address_len) {
+    //int getpeername(int socket, struct sockaddr *address, socklen_t *address_len);
+    throw "getpeername is not implemented.";
+  },
+
+  getsockname: function(socket, address, address_len) {
+    //int getsockname(int socket, struct sockaddr *address, socklen_t *address_len);
+    throw "getsockname is not implemented.";
+  },
+
+  getsockopt: function(s, level, optname, optval, optlen) {
+    //int getsockopt(int s, int level, int optname, void *optval, socklen_t *optlen);
+    throw "getsockopt is not implemented.";
+  },
+
+  // ifaddrs.h
+
+  getifaddrs: function(ifaddrs) {
+    //extern int getifaddrs(struct ifaddrs **);
+    throw "getifaddrs is not implemented.";
+  },
+
+  freeifaddrs: function(ifaddrs) {
+    //extern void freeifaddrs(struct ifaddrs *);
+    throw "freeifaddrs is not implemented.";
+  },
+
+  getifmaddrs: function(ifmaddrs) {
+    //extern int getifmaddrs(struct ifmaddrs **);
+    throw "getifmaddrs is not implemented.";
+  },
+
+  freeifmaddrs: function(ifmaddrs) {
+    //extern void freeifmaddrs(struct ifmaddrs *);
+    throw "freeifmaddrs is not implemented.";
   },
 
   // pty.h
