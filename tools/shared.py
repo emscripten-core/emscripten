@@ -657,11 +657,14 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     if 'cmake' in args[0]:
       args = Building.handle_CMake_toolchain(args, env)
     try:
-      Popen(args, stdout=stdout, stderr=stderr, env=env).communicate()
+      process = Popen(args, stdout=stdout, stderr=stderr, env=env)
+      process.communicate()
     except Exception, e:
       print >> sys.stderr, 'Error: Exception thrown when invoking Popen in configure with args: "%s"!' % ' '.join(args)
       raise
     del env['EMMAKEN_JUST_CONFIGURE']
+    if process.returncode is not 0:
+      raise subprocess.CalledProcessError( cmd=args, returncode=process.returncode )
 
   @staticmethod
   def make(args, stdout=None, stderr=None, env=None):
@@ -672,10 +675,14 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       sys.exit(1)
     #args += ['VERBOSE=1']
     try:
-      Popen(args, stdout=stdout, stderr=stderr, env=env).communicate()
+      process = Popen(args, stdout=stdout, stderr=stderr, env=env)
+      process.communicate()
     except Exception, e:
       print >> sys.stderr, 'Error: Exception thrown when invoking Popen in make with args: "%s"!' % ' '.join(args)
       raise
+    if process.returncode is not 0:
+      raise subprocess.CalledProcessError( cmd=args, returncode=process.returncode )
+
 
   @staticmethod
   def build_library(name, build_dir, output_dir, generated_libs, configure=['sh', './configure'], configure_args=[], make=['make'], make_args=['-j', '2'], cache=None, cache_name=None, copy_project=False, env_init={}, source_dir=None, native=False):
@@ -710,8 +717,11 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     for k, v in env_init.iteritems():
       env[k] = v
     if configure: # Useful in debugging sometimes to comment this out (and the lines below up to and including the |link| call)
-      Building.configure(configure + configure_args, stdout=open(os.path.join(project_dir, 'configure_'), 'w'),
-                                                     stderr=open(os.path.join(project_dir, 'configure_err'), 'w'), env=env)
+      try:
+        Building.configure(configure + configure_args, stdout=open(os.path.join(project_dir, 'configure_'), 'w'),
+                                                       stderr=open(os.path.join(project_dir, 'configure_err'), 'w'), env=env)
+      except CalledProcessError, e:
+        pass # Ignore exit code != 0
     def open_make_out(i, mode='r'):
       return open(os.path.join(project_dir, 'make_' + str(i)), mode)
     
@@ -721,8 +731,11 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     for i in range(2): # FIXME: Sad workaround for some build systems that need to be run twice to succeed (e.g. poppler)
       with open_make_out(i, 'w') as make_out:
         with open_make_err(i, 'w') as make_err:
-          Building.make(make + make_args, stdout=make_out,
-                                          stderr=make_err, env=env)
+          try:
+            Building.make(make + make_args, stdout=make_out,
+                                            stderr=make_err, env=env)
+          except CalledProcessError, e:
+            pass # Ignore exit code != 0
       try:
         if cache is not None:
           cache[cache_name] = []
