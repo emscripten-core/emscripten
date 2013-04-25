@@ -1198,9 +1198,9 @@ m_divisor is 1091269979
 
         // from cube2, zlib licensed
 
-        #define N (624)             
-        #define M (397)                
-        #define K (0x9908B0DFU)       
+        #define N (624)
+        #define M (397)
+        #define K (0x9908B0DFU)
 
         static uint state[N];
         static int next = N;
@@ -1378,7 +1378,7 @@ c5,de,15,8a
         #include <string>
         #include <sstream>
 
-        typedef unsigned long long quint64;   
+        typedef unsigned long long quint64;
 
         using namespace std;
 
@@ -1406,14 +1406,14 @@ c5,de,15,8a
           printf("1\n");
 	        s >> hex >> int64bitInt;
           printf("2\n");
-	
+
 	        stringstream out;
 	        out << hex << qbswap(int64bitInt);
-	
+
 	        cout << out.str() << endl;
 	        cout << hex << int64bitInt << endl;
 	        cout << string64bitInt << endl;
-	
+
 	        if (out.str() != "bbccddeeff3344")
 	        {
 		        cout << "Failed!" << endl;
@@ -1455,7 +1455,7 @@ Succeeded!
         # A good test of i64 math
         if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2 C-style memory aliasing')
         self.do_run('', 'Usage: hashstring <seed>',
-                    libraries=self.get_library('cube2hash', ['cube2hash.bc'], configure=None),  
+                    libraries=self.get_library('cube2hash', ['cube2hash.bc'], configure=None),
                     includes=[path_from_root('tests', 'cube2hash')])
 
         for text, output in [('fleefl', '892BDB6FD3F62E863D63DA55851700FDE3ACF30204798CE9'),
@@ -2238,7 +2238,7 @@ cat |umber one top notchfi FI FO FUM WHEN WHERE WHY HOW WHO|''', ['wowie', 'too'
               total += c->value;
               c = c->next;
             } while (c != chunk);
- 
+
             printf("*%d,%d*\\n", total, b.next);
             // NULL *is* 0, in C/C++. No JS null! (null == 0 is false, etc.)
 
@@ -2330,19 +2330,19 @@ cat |umber one top notchfi FI FO FUM WHEN WHERE WHY HOW WHO|''', ['wowie', 'too'
         src = r'''
           #include <stdio.h>
           #include <setjmp.h>
-           
+
           static jmp_buf buf;
-           
+
           void second(void) {
               printf("second\n");         // prints
               longjmp(buf,1);             // jumps back to where setjmp was called - making setjmp now return 1
           }
-           
+
           void first(void) {
               second();
               printf("first\n");          // does not print
           }
-           
+
           int main() {
               volatile int x = 0;
               if ( ! setjmp(buf) ) {
@@ -2351,7 +2351,7 @@ cat |umber one top notchfi FI FO FUM WHEN WHERE WHY HOW WHO|''', ['wowie', 'too'
               } else {                    // when longjmp jumps back, setjmp returns 1
                   printf("main: %d\n", x);       // prints
               }
-           
+
               return 0;
           }
         '''
@@ -2510,7 +2510,7 @@ Exception execution path of first function! 1
         src = r'''
           #include <stdio.h>
           #include <setjmp.h>
-           
+
           static jmp_buf buf;
 
           void (*fp)() = NULL;
@@ -2519,12 +2519,12 @@ Exception execution path of first function! 1
               printf("second\n");         // prints
               longjmp(buf,1);             // jumps back to where setjmp was called - making setjmp now return 1
           }
-           
+
           void first(void) {
               fp();
               printf("first\n");          // does not print
           }
-           
+
           int main(int argc, char **argv) {
               fp = argc == 200 ? NULL : second;
 
@@ -2535,7 +2535,7 @@ Exception execution path of first function! 1
               } else {                    // when longjmp jumps back, setjmp returns 1
                   printf("main: %d\n", x);       // prints
               }
-           
+
               return 0;
           }
         '''
@@ -2547,15 +2547,15 @@ Exception execution path of first function! 1
         src = r'''
           #include <stdio.h>
           #include <setjmp.h>
-           
+
           static jmp_buf buf;
-           
+
           int main() {
             volatile int x = 0;
             printf("setjmp:%d\n", setjmp(buf));
             x++;
             printf("x:%d\n", x);
-            if (x < 4) longjmp(buf, x*2);         
+            if (x < 4) longjmp(buf, x*2);
             return 0;
           }
         '''
@@ -2685,7 +2685,7 @@ back
 
         src = '''
         #include <iostream>
-        
+
         class MyException
         {
         public:
@@ -2693,21 +2693,21 @@ back
             MyException( const MyException & ) { std::cout << "Copy..."; }
             ~MyException(){ std::cout << "Destruct..."; }
         };
-        
+
         int function()
         {
             std::cout << "Throw...";
             throw MyException();
         }
-        
+
         int function2()
         {
             return function();
         }
-        
+
         int main()
         {
-            try 
+            try
             {
                 function2();
             }
@@ -2715,8 +2715,8 @@ back
             {
                 std::cout << "Catched...";
             }
-             
-            try 
+
+            try
             {
                 function2();
             }
@@ -2724,11 +2724,11 @@ back
             {
                 std::cout << "Catched...";
             }
-        
+
             return 0;
         }
         '''
-        
+
         Settings.DISABLE_EXCEPTION_CATCHING = 0
         if '-O2' in self.emcc_args:
           self.emcc_args.pop() ; self.emcc_args.pop() # disable closure to work around a closure bug
@@ -2741,7 +2741,7 @@ back
 
       src = '''
           #include <stdio.h>
-          
+
           void thrower() {
             printf("infunc...");
             throw(99);
@@ -3358,7 +3358,7 @@ Exiting setjmp function, level: 0, prev_jmp: -1
 
         static char s[100]="aaaaa";
         static int func(void) {
-          if(s[0]!='a') return 0; 
+          if(s[0]!='a') return 0;
           printf("iso open %s\n", s, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001, 1.001);
           return 0;
         }
@@ -3376,14 +3376,14 @@ Exiting setjmp function, level: 0, prev_jmp: -1
       self.emcc_args += ['-std=c99']
       src = open(path_from_root('tests', 'life.c'), 'r').read()
       self.do_run(src, '''--------
-      [][][]    
-[][]            
+      [][][]
+[][]
               []
-    []          
-[][]            
-                
-                
-                
+    []
+[][]
+
+
+
 --------
 ''', ['8', '8', '25000'], force_c=True)
 
@@ -3844,7 +3844,7 @@ def process(filename):
     def test_cxx03_do_run(self):
         src = '''
           #include <stdio.h>
-          
+
           #if __cplusplus != 199711L
           #error By default, if no -std is specified, emscripten should be compiling with -std=c++03!
           #endif
@@ -3916,7 +3916,7 @@ def process(filename):
 
           #pragma pack(push,1)
           typedef struct header
-          {                           
+          {
               unsigned char  id;
               unsigned short colour;
               unsigned char  desc;
@@ -3924,7 +3924,7 @@ def process(filename):
           #pragma pack(pop)
 
           typedef struct fatheader
-          {                           
+          {
               unsigned char  id;
               unsigned short colour;
               unsigned char  desc;
@@ -4269,14 +4269,14 @@ The current type of b is: 9
       src = r'''
         #include <stdio.h>
         #include <stdlib.h>
-        
+
         static void cleanA() {
           printf("A");
         }
         static void cleanB() {
           printf("B");
         }
-        
+
         int main() {
           atexit(cleanA);
           atexit(cleanB);
@@ -4810,9 +4810,9 @@ The current type of b is: 9
               chain *c = NULL;
               printf("*%d,%d,%d,%d,%d,%d|%d,%d,%d,%d,%d,%d,%d,%d|%d,%d,%d,%d,%d,%d,%d,%d,%d,%d*\\n",
                 sizeof(base),
-                int(&(b->x)), int(&(b->y)), int(&(b->a)), int(&(b->b)), int(&(b->c)), 
+                int(&(b->x)), int(&(b->y)), int(&(b->a)), int(&(b->b)), int(&(b->c)),
                 sizeof(hashtableentry),
-                int(&(e->key)), int(&(e->data)), int(&(e->data.x)), int(&(e->data.y)), int(&(e->data.a)), int(&(e->data.b)), int(&(e->data.c)), 
+                int(&(e->key)), int(&(e->data)), int(&(e->data.x)), int(&(e->data.y)), int(&(e->data.a)), int(&(e->data.b)), int(&(e->data.c)),
                 sizeof(hashset::chain),
                 int(&(c->elem)), int(&(c->next)), int(&(c->elem.key)), int(&(c->elem.data)), int(&(c->elem.data.x)), int(&(c->elem.data.y)), int(&(c->elem.data.a)), int(&(c->elem.data.b)), int(&(c->elem.data.c))
               );
@@ -5425,7 +5425,7 @@ at function.:blag
       src = open(path_from_root('tests', 'parseInt', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'parseInt', 'output.txt'), 'r').read()
       self.do_run(src, expected)
-      
+
     def test_transtrcase(self):
       src = '''
         #include <stdio.h>
@@ -5565,7 +5565,7 @@ at function.:blag
         }
         '''
       self.do_run(src, '22 : me and myself 25 1.34\n21 waka 95\n')
-      
+
     def test_perrar(self):
       src = r'''
         #include <sys/types.h>
@@ -5869,7 +5869,7 @@ Pass: 0.000012 0.000012''')
           return 0;
         }
       '''
-      self.do_run(src, '''0:173,16 1:16,173 2:183,173 3:17,287 4:98,123''')      
+      self.do_run(src, '''0:173,16 1:16,173 2:183,173 3:17,287 4:98,123''')
 
     def test_sscanf_3(self):
       # i64
@@ -5878,11 +5878,11 @@ Pass: 0.000012 0.000012''')
         #include <stdio.h>
 
         int main(){
-            
+
             int64_t s, m, l;
             printf("%d\n", sscanf("123 1073741823 1125899906842620", "%lld %lld %lld", &s, &m, &l));
             printf("%lld,%lld,%lld\n", s, m, l);
-   
+
             int64_t negS, negM, negL;
             printf("%d\n", sscanf("-123 -1073741823 -1125899906842620", "%lld %lld %lld", &negS, &negM, &negL));
             printf("%lld,%lld,%lld\n", negS, negM, negL);
@@ -5890,8 +5890,8 @@ Pass: 0.000012 0.000012''')
             return 0;
         }
       '''
-      
-      self.do_run(src, '3\n123,1073741823,1125899906842620\n' + 
+
+      self.do_run(src, '3\n123,1073741823,1125899906842620\n' +
                      '3\n-123,-1073741823,-1125899906842620\n')
 
     def test_sscanf_4(self):
@@ -6482,7 +6482,7 @@ def process(filename):
       '''
 
       self.do_run(src, "some string constant")
-      
+
     def test_istream(self):
       if self.emcc_args is None: return self.skip('requires libcxx')
 
@@ -6490,15 +6490,15 @@ def process(filename):
         #include <string>
         #include <sstream>
         #include <iostream>
-        
+
         int main()
         {
             std::string mystring("1 2 3");
             std::istringstream is(mystring);
             int one, two, three;
-            
+
             is >> one >> two >> three;
-            
+
             printf( "%i %i %i", one, two, three );
         }
       '''
@@ -6520,19 +6520,19 @@ def process(filename):
       src = '''
         #include <dirent.h>
         #include <stdio.h>
-        
+
         int main()
         {
             DIR * dir;
             dirent * entity;
-        
+
             dir = opendir( "test" );
-        
+
             while( ( entity = readdir( dir ) ) )
             {
                 printf( "%s is a %s\\n", entity->d_name, entity->d_type & DT_DIR ? "directory" : "file" );
             }
-        
+
             return 0;
         }
 
@@ -7051,7 +7051,7 @@ int main(int argc, char **argv) {
 
         int main ( int argc, char *argv[] )
         {
-          std::vector<S> ar;  
+          std::vector<S> ar;
           S s;
 
           s.a = 789;
@@ -7130,7 +7130,7 @@ extern "C" {
           int main()
           {
             const char* jsonString = "{\\"key\\": \\"value\\",\\"array\\": [\\"array_item1\\",\\"array_item2\\",\\"array_item3\\"],\\"dict\\":{\\"number\\": 3,\\"float\\": 2.2}}";
-            
+
             json_error_t error;
             json_t *root = json_loadb(jsonString, strlen(jsonString), 0, &error);
 
@@ -7145,7 +7145,7 @@ extern "C" {
             }
 
             printf("%s\\n", json_string_value(json_object_get(root, "key")));
-    
+
             json_t *array = json_object_get(root, "array");
             if(!array) {
               printf("Node `array` is `null`.");
@@ -7171,7 +7171,7 @@ extern "C" {
 
             json_t *numberNode = json_object_get(dict, "number");
             json_t *floatNode = json_object_get(dict, "float");
-            
+
             if(!numberNode || !json_is_number(numberNode) ||
                !floatNode || !json_is_real(floatNode))
               return 0;
@@ -7261,7 +7261,7 @@ extern "C" {
     def test_dlmalloc_partial(self):
       if self.emcc_args is None: return self.skip('only emcc will link in dlmalloc')
       # present part of the symbols of dlmalloc, not all
-      src = open(path_from_root('tests', 'new.cpp')).read().replace('{{{ NEW }}}', 'new int').replace('{{{ DELETE }}}', 'delete') + '''    
+      src = open(path_from_root('tests', 'new.cpp')).read().replace('{{{ NEW }}}', 'new int').replace('{{{ DELETE }}}', 'delete') + '''
 void *
 operator new(size_t size)
 {
@@ -7393,7 +7393,7 @@ void*:16
         struct DATA
         {
             int value;
-    
+
             DATA()
             {
                 value = 0;
@@ -7403,7 +7403,7 @@ void*:16
         DATA & GetData()
         {
             static DATA data;
-    
+
             return data;
         }
 
@@ -7437,7 +7437,7 @@ void*:16
         #include <stdio.h>
         #include <sys/mman.h>
         #include <assert.h>
-        
+
         int main(int argc, char *argv[]) {
             for (int i = 0; i < 10; i++) {
               int* map = (int*)mmap(0, 5000, PROT_READ | PROT_WRITE,
@@ -7448,23 +7448,23 @@ void*:16
 
             const int NUM_BYTES = 8 * 1024 * 1024;
             const int NUM_INTS = NUM_BYTES / sizeof(int);
-        
+
             int* map = (int*)mmap(0, NUM_BYTES, PROT_READ | PROT_WRITE,
                     MAP_SHARED | MAP_ANON, -1, 0);
             assert(map != MAP_FAILED);
 
             int i;
-        
+
             for (i = 0; i < NUM_INTS; i++) {
                 map[i] = i;
             }
-        
+
             for (i = 0; i < NUM_INTS; i++) {
                 assert(map[i] == i);
             }
-        
+
             assert(munmap(map, NUM_BYTES) == 0);
-            
+
             printf("hello,world");
             return 0;
         }
@@ -7577,7 +7577,7 @@ def process(filename):
 '''
 
       # Not needed for js, but useful for debugging
-      shutil.copyfile(path_from_root('tests', 'freetype', 'LiberationSansBold.ttf'), os.path.join(self.get_dir(), 'font.ttf')) 
+      shutil.copyfile(path_from_root('tests', 'freetype', 'LiberationSansBold.ttf'), os.path.join(self.get_dir(), 'font.ttf'))
 
       # Main
       self.do_run(open(path_from_root('tests', 'freetype', 'main.c'), 'r').read(),
@@ -8329,7 +8329,7 @@ def process(filename):
         script_src = '''
           var sme = Module._.ScriptMe.__new__(83);          // malloc(sizeof(ScriptMe)), ScriptMe::ScriptMe(sme, 83) / new ScriptMe(83) (at addr sme)
           Module._.ScriptMe.mulVal(sme, 2);                 // ScriptMe::mulVal(sme, 2)       sme.mulVal(2)
-          Module.print('*' + Module._.ScriptMe.getVal(sme) + '*'); 
+          Module.print('*' + Module._.ScriptMe.getVal(sme) + '*');
           _free(sme);
           Module.print('*ok*');
         '''
@@ -9102,7 +9102,7 @@ finalizing 3 (global == 0)
 class %s(T):
   def tearDown(self):
     super(%s, self).tearDown()
-    
+
   def setUp(self):
     super(%s, self).setUp()
 
@@ -9457,16 +9457,16 @@ f.close()
       cmake_outputs = ['hello_world.js', 'hello_world_gles.html']
       for i in range(0, 2):
         for configuration in ['Debug', 'Release']:
-        
+
           # Create a temp workspace folder
           cmakelistsdir = path_from_root('tests', 'cmake', cmake_cases[i])
           tempdirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=TEMP_DIR)
           try:
             os.chdir(tempdirname)
-            
+
             # Run Cmake
-            cmd = ['cmake', '-DCMAKE_TOOLCHAIN_FILE='+emscriptencmaketoolchain, 
-                            '-DCMAKE_BUILD_TYPE=' + configuration, 
+            cmd = ['cmake', '-DCMAKE_TOOLCHAIN_FILE='+emscriptencmaketoolchain,
+                            '-DCMAKE_BUILD_TYPE=' + configuration,
                             '-DCMAKE_MODULE_PATH=' + path_from_root('cmake').replace('\\', '/'),
                             '-G' 'Unix Makefiles', cmakelistsdir]
             ret = Popen(cmd, stdout=PIPE, stderr=PIPE).communicate()
@@ -9477,7 +9477,7 @@ f.close()
               print >> sys.stderr, 'Result:\n' + ret[1]
               raise Exception('cmake call failed!')
             assert os.path.exists(tempdirname + '/Makefile'), 'CMake call did not produce a Makefile!'
-            
+
             # Build
             cmd = [make_command]
             ret = Popen(cmd, stdout=PIPE).communicate()
@@ -9488,7 +9488,7 @@ f.close()
               print >> sys.stderr, 'Result:\n' + ret[0]
               raise Exception('make failed!')
             assert os.path.exists(tempdirname + '/' + cmake_outputs[i]), 'Building a cmake-generated Makefile failed to produce an output file %s!' % tempdirname + '/' + cmake_outputs[i]
-            
+
             # Run through node, if CMake produced a .js file.
             if cmake_outputs[i].endswith('.js'):
               ret = Popen(listify(NODE_JS) + [tempdirname + '/' + cmake_outputs[i]], stdout=PIPE).communicate()[0]
@@ -9521,14 +9521,14 @@ f.close()
       open(os.path.join(self.get_dir(), 'test.cpp'), 'w').write(r'''
         #include <vector>
         #include <stdio.h>
-         
+
         class Test {
         public:
           std::vector<int> vector;
         };
-         
+
         Test globalInstance;
-         
+
         int main() {
           printf("hello, world!\n");
           return 0;
@@ -9802,7 +9802,7 @@ f.close()
         #include <testa.h>
 
         TestA::TestA() {
-	        printf("TestA\n");	
+	        printf("TestA\n");
         }
       ''')
       open('testb.cpp', 'w').write(r'''
@@ -9812,7 +9812,7 @@ f.close()
         /*
         */
         TestB::TestB() {
-	        printf("TestB\n");	
+	        printf("TestB\n");
 	        TestA* testa = new TestA();
         }
       ''')
@@ -10120,7 +10120,7 @@ f.close()
           }
           for (int i = 0; i < num; i++) {
             buf2[i] = buf[i];
-          }          
+          }
           for (int i = 1; i < num; i++) {
             buf2[i] += buf2[i-1];
           }
@@ -10432,7 +10432,7 @@ f.close()
       output = Popen([os.path.join(self.get_dir(), 'files.o.run')], stdin=open(os.path.join(self.get_dir(), 'stdin')), stdout=PIPE, stderr=PIPE).communicate()
       self.assertContained('''size: 37
 data: 119,97,107,97,32,119,97,107,97,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35
-loop: 119 97 107 97 32 119 97 107 97 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 
+loop: 119 97 107 97 32 119 97 107 97 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35
 input:inter-active
 texto
 $
@@ -10690,7 +10690,7 @@ elif 'browser' in str(sys.argv):
       # On Windows, shutil.rmtree() in tearDown() raises this exception if we do not wait a bit:
       # WindowsError: [Error 32] The process cannot access the file because it is being used by another process.
       time.sleep(0.1)
-      
+
     def run_browser(self, html_file, message, expectedResult=None):
       if expectedResult is not None:
         try:
@@ -10814,9 +10814,9 @@ elif 'browser' in str(sys.argv):
       assert os.path.exists(os.path.join(self.get_dir(), 'something.js')), 'must be main js file'
       assert os.path.exists(os.path.join(self.get_dir(), 'something_functions.js')), 'must be functions js file'
       assert os.path.exists(os.path.join(self.get_dir(), 'something.include.html')), 'must be js include file'
-      
+
       open(os.path.join(self.get_dir(), 'something.html'), 'w').write('''
-      
+
       <!doctype html>
       <html lang="en-us">
         <head>
@@ -10834,7 +10834,7 @@ elif 'browser' in str(sys.argv):
           <hr/>
           <div class="emscripten" id="status">Downloading...</div>
           <div class="emscripten">
-            <progress value="0" max="100" id="progress" hidden=1></progress>  
+            <progress value="0" max="100" id="progress" hidden=1></progress>
           </div>
           <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
           <hr/>
@@ -10896,7 +10896,7 @@ elif 'browser' in str(sys.argv):
         </body>
       </html>
       ''')
-      
+
       self.run_browser('something.html', 'You should see "hello, world!" and a colored cube.', '/report_result?0')
 
     def test_split_in_source_filenames(self):
@@ -10925,7 +10925,7 @@ elif 'browser' in str(sys.argv):
           <hr/>
           <div class="emscripten" id="status">Downloading...</div>
           <div class="emscripten">
-            <progress value="0" max="100" id="progress" hidden=1></progress>  
+            <progress value="0" max="100" id="progress" hidden=1></progress>
           </div>
           <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
           <hr/>
@@ -11065,6 +11065,57 @@ elif 'browser' in str(sys.argv):
       make_main('someotherfile.txt')
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '-o', 'page.html']).communicate()
       self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
+
+    def test_preload_caching(self):
+      open(os.path.join(self.get_dir(), 'somefile.txt'), 'w').write('''load me right before running the code please''')
+      def make_main(path):
+        print path
+        open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
+          #include <stdio.h>
+          #include <string.h>
+          #include <emscripten.h>
+
+          extern "C" {
+            extern int checkPreloadResults();
+          }
+
+          int main(int argc, char** argv) {
+            FILE *f = fopen("%s", "r");
+            char buf[100];
+            fread(buf, 1, 20, f);
+            buf[20] = 0;
+            fclose(f);
+            printf("|%%s|\n", buf);
+
+            int result = 0;
+
+            result += !strcmp("load me right before", buf);
+            result += checkPreloadResults();
+
+            REPORT_RESULT();
+            return 0;
+          }
+        ''' % path))
+
+      open(os.path.join(self.get_dir(), 'test.js'), 'w').write('''
+        mergeInto(LibraryManager.library, {
+          checkPreloadResults: function() {
+            var cached = 0;
+            var packages = Object.keys(Module['preloadResults']);
+            packages.forEach(function(package) {
+              var fromCache = Module['preloadResults'][package]['fromCache'];
+              if (fromCache)
+                ++ cached;
+            });
+            return cached;
+          }
+        });
+      ''')
+
+      make_main('somefile.txt')
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--use-preload-cache', '--js-library', os.path.join(self.get_dir(), 'test.js'), '--preload-file', 'somefile.txt', '-o', 'page.html']).communicate()
+      self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
+      self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?2')
 
     def test_multifile(self):
       # a few files inside a directory
@@ -11826,7 +11877,7 @@ elif 'browser' in str(sys.argv):
 
     def test_sdl_canvas_palette_2(self):
       open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
-        Module['preRun'].push(function() { 
+        Module['preRun'].push(function() {
           SDL.defaults.copyOnLock = false;
         });
       ''')
@@ -11842,7 +11893,7 @@ elif 'browser' in str(sys.argv):
       open(os.path.join(self.get_dir(), 'args-b.js'), 'w').write('''
         Module['arguments'] = ['-b'];
       ''')
-        
+
       self.btest('sdl_canvas_palette_2.c', reference='sdl_canvas_palette_r.png', args=['--pre-js', 'pre.js', '--pre-js', 'args-r.js'])
       self.btest('sdl_canvas_palette_2.c', reference='sdl_canvas_palette_g.png', args=['--pre-js', 'pre.js', '--pre-js', 'args-g.js'])
       self.btest('sdl_canvas_palette_2.c', reference='sdl_canvas_palette_b.png', args=['--pre-js', 'pre.js', '--pre-js', 'args-b.js'])
@@ -12178,7 +12229,7 @@ elif 'benchmark' in str(sys.argv):
   try:
     d = os.getcwd()
     os.chdir(os.path.expanduser('~/Dev/mozilla-central'))
-    fingerprint.append('sm: ' + filter(lambda line: 'changeset' in line, 
+    fingerprint.append('sm: ' + filter(lambda line: 'changeset' in line,
                                        Popen(['hg', 'tip'], stdout=PIPE).communicate()[0].split('\n'))[0])
   except:
     pass
@@ -12350,7 +12401,7 @@ elif 'benchmark' in str(sys.argv):
           }
           printf("final: %d.\\n", final);
           return 0;
-        }      
+        }
       '''
       self.do_benchmark('memops', src, [], 'final: 400.')
 
@@ -12393,7 +12444,7 @@ elif 'benchmark' in str(sys.argv):
           }
           printf("ok");
           return 0;
-        }      
+        }
       '''
       self.do_benchmark(src, [], 'ok')
 
@@ -12436,7 +12487,7 @@ elif 'benchmark' in str(sys.argv):
           }
           printf("sum:%d\n", total);
           return 0;
-        }      
+        }
       '''
       self.do_benchmark('copy', src, [], 'sum:2836\n', emcc_args=['-s', 'QUANTUM_SIZE=4', '-s', 'USE_TYPED_ARRAYS=2'])
 
@@ -12463,7 +12514,7 @@ elif 'benchmark' in str(sys.argv):
           }
           printf("final: %d:%d.\n", f, s);
           return 0;
-        }      
+        }
       '''
       self.do_benchmark('corrections', src, [], 'final: 40006013:10225.', emcc_args=['-s', 'CORRECT_SIGNS=1', '-s', 'CORRECT_OVERFLOWS=1', '-s', 'CORRECT_ROUNDINGS=1'])
 
@@ -12484,38 +12535,38 @@ elif 'benchmark' in str(sys.argv):
     def test_life(self):
       src = open(path_from_root('tests', 'life.c'), 'r').read()
       self.do_benchmark('life', src, ['32', '32', '15000'], '''--------------------------------
-                  []  [][][]    []        []    [][]            
+                  []  [][][]    []        []    [][]
                               []  [][]  []      []      []    []
-                                []    [][]    [][]      []      
-                                []            []  []      []    
-                    []      []  []  []      []      []  []  []  
-                    [][][][]      []      [][]      [][]        
-                                    []                          
-                                                          []    
-                                                        []  []  
-                        [][]          []                  []    
-                        [][]                            [][][]  
-                                                          []    
-                                                                
-                                              []                
-                                            []  []              
-                                            [][]                
-                        []              []  [][]        [][]    
-                                          []  []  []    []      
-                                          [][]    []            
-                                          [][][][]              
-                                                                
-                                            [][][]    [][]      
-                                          [][][]      [][]      
-                                            []                  
-                                          []                    
-                      []                [][][]        []        
-                                                []  []          
-                                        [][]      []            
-                                                [][][]          
-                        [][][]                            [][]  
-                      [][][][][]      []                  [][]  
-                      []      [][]  []  []                      
+                                []    [][]    [][]      []
+                                []            []  []      []
+                    []      []  []  []      []      []  []  []
+                    [][][][]      []      [][]      [][]
+                                    []
+                                                          []
+                                                        []  []
+                        [][]          []                  []
+                        [][]                            [][][]
+                                                          []
+
+                                              []
+                                            []  []
+                                            [][]
+                        []              []  [][]        [][]
+                                          []  []  []    []
+                                          [][]    []
+                                          [][][][]
+
+                                            [][][]    [][]
+                                          [][][]      [][]
+                                            []
+                                          []
+                      []                [][][]        []
+                                                []  []
+                                        [][]      []
+                                                [][][]
+                        [][][]                            [][]
+                      [][][][][]      []                  [][]
+                      []      [][]  []  []
 --------------------------------
 ''', shared_args=['-std=c99'], force_c=True)
 
@@ -13023,7 +13074,7 @@ fi
             continue
 
           print >> sys.stderr, args, input_file, expect_pre_save, expect_pre_load, expect_funcs_save, expect_funcs_load, expect_jsfuncs_save, expect_jsfuncs_load, expected
-            
+
           out, err = Popen([PYTHON, EMCC, '-O2', path_from_root('tests', input_file)] + args, stdout=PIPE, stderr=PIPE).communicate()
           errtail = err.split('emcc invocation')[-1]
           self.assertContained('hello, world!', run_js('a.out.js'), errtail)

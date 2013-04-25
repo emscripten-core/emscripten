@@ -28,6 +28,8 @@ Usage:
 
   --no-force Don't create output if no valid input file is specified.
 
+  --use-preload-cache Stores package in IndexedDB so that subsequent loads don't need to do XHR. Checks package version.
+
 Notes:
 
   * The file packager generates unix-style file paths. So if you are on windows and a file is accessed at
@@ -37,14 +39,14 @@ TODO:        You can also provide .crn files yourself, pre-crunched. With this o
              to dds files in the browser, exactly the same as if this tool compressed them.
 '''
 
-import os, sys, shutil, random
+import os, sys, shutil, random, uuid
 
 import shared
 from shared import Compression, execute, suffix, unsuffixed
 from subprocess import Popen, PIPE, STDOUT
 
 if len(sys.argv) == 1:
-  print '''Usage: file_packager.py TARGET [--preload A...] [--embed B...] [--compress COMPRESSION_DATA] [--pre-run] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force]
+  print '''Usage: file_packager.py TARGET [--preload A...] [--embed B...] [--compress COMPRESSION_DATA] [--pre-run] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache]
 See the source for more details.'''
   sys.exit(0)
 
@@ -70,6 +72,7 @@ crunch = 0
 plugins = []
 jsoutput = None
 force = True
+use_preload_cache = False
 
 for arg in sys.argv[1:]:
   if arg == '--preload':
@@ -93,6 +96,8 @@ for arg in sys.argv[1:]:
     in_compress = 0
   elif arg == '--no-force':
     force = False
+  elif arg == '--use-preload-cache':
+    use_preload_cache = True
   elif arg.startswith('--js-output'):
     jsoutput = arg.split('=')[1] if '=' in arg else None
   elif arg.startswith('--crunch'):
@@ -256,6 +261,7 @@ if has_preloaded:
     start += len(curr)
     data.write(curr)
   data.close()
+  # TODO: sha256sum on data_target
   if Compression.on:
     Compression.compress(data_target)
 
@@ -356,8 +362,9 @@ if has_preloaded:
         byteArray = new Uint8Array(decompressed);
         %s
       });
-''' % use_data
+    ''' % use_data
 
+  package_uuid = uuid.uuid4();
   code += r'''
     if (!Module.expectedDataFileDownloads) {
       Module.expectedDataFileDownloads = 0;
@@ -365,49 +372,202 @@ if has_preloaded:
     }
     Module.expectedDataFileDownloads++;
 
-    var dataFile = new XMLHttpRequest();
-    dataFile.onprogress = function(event) {
-      var url = '%s';
-      if (event.loaded && event.total) {
-        if (!dataFile.addedTotal) {
-          dataFile.addedTotal = true;
-          if (!Module.dataFileDownloads) Module.dataFileDownloads = {};
-          Module.dataFileDownloads[url] = {
-            loaded: event.loaded,
-            total: event.total
+    var PACKAGE_PATH = window.encodeURIComponent(window.location.pathname.toString().substring(0, window.location.pathname.toString().lastIndexOf('/')) + '/');
+    var PACKAGE_NAME = '%s';
+    var REMOTE_PACKAGE_NAME = '%s';
+    var PACKAGE_UUID = '%s';
+  ''' % (data_target, os.path.basename(Compression.compressed_name(data_target) if Compression.on else data_target), package_uuid)
+
+  if use_preload_cache:
+    code += r'''
+      var indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
+      var IDB_RO = "readonly";
+      var IDB_RW = "readwrite";
+      var DB_NAME = 'EM_PRELOAD_CACHE';
+      var DB_VERSION = 1;
+      var METADATA_STORE_NAME = 'METADATA';
+      var PACKAGE_STORE_NAME = 'PACKAGES';
+      function openDatabase(callback, errback) {
+        try {
+          var openRequest = indexedDB.open(DB_NAME, DB_VERSION);
+        } catch (e) {
+          return errback(e);
+        }
+        openRequest.onupgradeneeded = function(event) {
+          var db = event.target.result;
+
+          if(db.objectStoreNames.contains(PACKAGE_STORE_NAME)) {
+            db.deleteObjectStore(PACKAGE_STORE_NAME);
+          }
+          var packages = db.createObjectStore(PACKAGE_STORE_NAME);
+
+          if(db.objectStoreNames.contains(METADATA_STORE_NAME)) {
+            db.deleteObjectStore(METADATA_STORE_NAME);
+          }
+          var metadata = db.createObjectStore(METADATA_STORE_NAME);
+        };
+        openRequest.onsuccess = function(event) {
+          var db = event.target.result;
+          callback(db);
+        };
+        openRequest.onerror = function(error) {
+          errback(error);
+        };
+      };
+
+      /* Check if there's a cached package, and if so whether it's the latest available */
+      function checkCachedPackage(db, packageName, callback, errback) {
+        var transaction = db.transaction([METADATA_STORE_NAME], IDB_RO);
+        var metadata = transaction.objectStore(METADATA_STORE_NAME);
+
+        var getRequest = metadata.get(packageName);
+        getRequest.onsuccess = function(event) {
+          var result = event.target.result;
+          if (!result) {
+            return callback(false);
+          } else {
+            return callback(PACKAGE_UUID === result.uuid);
+          }
+        };
+        getRequest.onerror = function(error) {
+          errback(error);
+        };
+      };
+
+      function fetchCachedPackage(db, packageName, callback, errback) {
+        var transaction = db.transaction([PACKAGE_STORE_NAME], IDB_RO);
+        var packages = transaction.objectStore(PACKAGE_STORE_NAME);
+
+        var getRequest = packages.get(packageName);
+        getRequest.onsuccess = function(event) {
+          var result = event.target.result;
+          callback(result);
+        };
+        getRequest.onerror = function(error) {
+          errback(error);
+        };
+      };
+
+      function cacheRemotePackage(db, packageName, packageData, packageMeta, callback, errback) {
+        var transaction = db.transaction([PACKAGE_STORE_NAME, METADATA_STORE_NAME], IDB_RW);
+        var packages = transaction.objectStore(PACKAGE_STORE_NAME);
+        var metadata = transaction.objectStore(METADATA_STORE_NAME);
+
+        var putPackageRequest = packages.put(packageData, packageName);
+        putPackageRequest.onsuccess = function(event) {
+          var putMetadataRequest = metadata.put(packageMeta, packageName);
+          putMetadataRequest.onsuccess = function(event) {
+            callback(packageData);
           };
-        } else {
-          Module.dataFileDownloads[url].loaded = event.loaded;
-        }
-        var total = 0;
-        var loaded = 0;
-        var num = 0;
-        for (var download in Module.dataFileDownloads) {
+          putMetadataRequest.onerror = function(error) {
+            errback(error);
+          };
+        };
+        putPackageRequest.onerror = function(error) {
+          errback(error);
+        };
+      };
+    '''
+
+  code += r'''
+    function fetchRemotePackage(packageName, callback, errback) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', packageName, true);
+      xhr.responseType = 'arraybuffer';
+      xhr.onprogress = function(event) {
+        var url = packageName;
+        if (event.loaded && event.total) {
+          if (!xhr.addedTotal) {
+            xhr.addedTotal = true;
+            if (!Module.dataFileDownloads) Module.dataFileDownloads = {};
+            Module.dataFileDownloads[url] = {
+              loaded: event.loaded,
+              total: event.total
+            };
+          } else {
+            Module.dataFileDownloads[url].loaded = event.loaded;
+          }
+          var total = 0;
+          var loaded = 0;
+          var num = 0;
+          for (var download in Module.dataFileDownloads) {
           var data = Module.dataFileDownloads[download];
-          total += data.total;
-          loaded += data.loaded;
-          num++;
+            total += data.total;
+            loaded += data.loaded;
+            num++;
+          }
+          total = Math.ceil(total * Module.expectedDataFileDownloads/num);
+          Module['setStatus']('Downloading data... (' + loaded + '/' + total + ')');
+        } else if (!Module.dataFileDownloads) {
+          Module['setStatus']('Downloading data...');
         }
-        total = Math.ceil(total * Module.expectedDataFileDownloads/num);
-        Module['setStatus']('Downloading data... (' + loaded + '/' + total + ')');
-      } else if (!Module.dataFileDownloads) {
-        Module['setStatus']('Downloading data...');
-      }
-    }
-    dataFile.open('GET', '%s', true);
-    dataFile.responseType = 'arraybuffer';
-    dataFile.onload = function() {
+      };
+      xhr.onload = function(event) {
+        var packageData = xhr.response;
+        callback(packageData);
+      };
+      xhr.send(null);
+    };
+
+    function processPackageData(arrayBuffer) {
       Module.finishedDataFileDownloads++;
-      var arrayBuffer = dataFile.response;
       assert(arrayBuffer, 'Loading data file failed.');
       var byteArray = new Uint8Array(arrayBuffer);
       var curr;
       %s
     };
     Module['addRunDependency']('datafile_%s');
-    dataFile.send(null);
-    if (Module['setStatus']) Module['setStatus']('Downloading...');
-  ''' % (data_target, os.path.basename(Compression.compressed_name(data_target) if Compression.on else data_target), use_data, data_target) # use basename because from the browser's point of view, we need to find the datafile in the same dir as the html file
+
+    function handleError(error) {
+      console.error('package error:', error);
+    };
+  ''' % (use_data, data_target) # use basename because from the browser's point of view, we need to find the datafile in the same dir as the html file
+
+  code += r'''
+    if (!Module.preloadResults)
+      Module.preloadResults = {};
+  '''
+
+  if use_preload_cache:
+    code += r'''
+      function preloadFallback(error) {
+        console.error(error);
+        console.error('falling back to default preload behavior');
+        fetchRemotePackage(REMOTE_PACKAGE_NAME, processPackageData, handleError);
+      };
+
+      openDatabase(
+        function(db) {
+          checkCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME,
+            function(useCached) {
+              Module.preloadResults[PACKAGE_NAME] = {fromCache: useCached};
+              if (useCached) {
+                console.info('loading ' + PACKAGE_NAME + ' from cache');
+                fetchCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME, processPackageData, preloadFallback);
+              } else {
+                console.info('loading ' + PACKAGE_NAME + ' from remote');
+                fetchRemotePackage(REMOTE_PACKAGE_NAME,
+                  function(packageData) {
+                    cacheRemotePackage(db, PACKAGE_PATH + PACKAGE_NAME, packageData, {uuid:PACKAGE_UUID}, processPackageData,
+                      function(error) {
+                        console.error(error);
+                        processPackageData(packageData);
+                      });
+                  }
+                , preloadFallback);
+              }
+            }
+          , preloadFallback);
+        }
+      , preloadFallback);
+
+      if (Module['setStatus']) Module['setStatus']('Downloading...');
+    '''
+  else:
+    code += r'''
+      Module.preloadResults[PACKAGE_NAME] = {fromCache: false};
+      fetchRemotePackage(REMOTE_PACKAGE_NAME, processPackageData, handleError);
+    '''
 
 if pre_run:
   ret += '''
