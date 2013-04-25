@@ -160,7 +160,8 @@ function isIntImplemented(type) {
 }
 
 // Note: works for iX types and structure types, not pointers (even though they are implemented as ints)
-function getBits(type) {
+function getBits(type, allowPointers) {
+  if (allowPointers && isPointerType(type)) return 32;
   if (!type) return 0;
   if (type[0] == 'i') {
     var left = type.substr(1);
@@ -176,6 +177,17 @@ function getBits(type) {
     return typeData.flatSize*8;
   }
   return 0;
+}
+
+function getNumIntChunks(type) {
+  return Math.ceil(getBits(type, true)/32);
+}
+
+function isIdenticallyImplemented(type1, type2) {
+  var floats = +(type1 in Runtime.FLOAT_TYPES) + +(type2 in Runtime.FLOAT_TYPES);
+  if (floats == 2) return true;
+  if (floats == 1) return false;
+  return getNumIntChunks(type1) == getNumIntChunks(type2);
 }
 
 function isIllegalType(type) {
@@ -256,8 +268,8 @@ function isVarArgsFunctionType(type) {
   return type.substr(-varArgsSuffix.length) == varArgsSuffix;
 }
 
-function countNormalArgs(type) {
-  var out = {};
+function countNormalArgs(type, out) {
+  out = out || {};
   if (!isFunctionType(type, out)) return -1;
   if (isVarArgsFunctionType(type)) out.numArgs--;
   return out.numArgs;
@@ -1627,19 +1639,28 @@ function finalizeLLVMFunctionCall(item, noIndexizeFunctions) {
     var oldType = item.params[0].type;
     var newType = item.type;
     if (isPossiblyFunctionType(oldType) && isPossiblyFunctionType(newType)) {
-      var oldCount = countNormalArgs(oldType);
-      var newCount = countNormalArgs(newType);
-      if (oldCount != newCount && oldCount && newCount) {
-        warnOnce('Casting a function pointer type to another with a different number of arguments. See more info in the compiler source');
-        if (VERBOSE) {
-          warnOnce('Casting a function pointer type to another with a different number of arguments: ' + oldType + ' vs. ' + newType + ', on ' + item.params[0].ident);
+      var oldInfo = {}, newInfo = {};
+      var oldCount = countNormalArgs(oldType, oldInfo);
+      var newCount = countNormalArgs(newType, newInfo);
+      var warned = false;
+      function showWarning() {
+        if (warned) return;
+        warned = true;
+        if (VERBOSE || ASM_JS) {
+          warnOnce('Casting potentially incompatible function pointer ' + oldType + ' to ' + newType + ', for ' + item.params[0].ident.slice(1));
+        } else {
+          warnOnce('Casting a function pointer type to a potentially incompatible one (use VERBOSE=1 to see more)');
         }
+        if (ASM_JS) warnOnce('Incompatible function pointer casts are very dangerous with ASM_JS=1');
+      }
+      if (oldCount != newCount && oldCount && newCount) {
+        showWarning();
         // This may be dangerous as clang generates different code for C and C++ calling conventions. The only problem
         // case appears to be passing a structure by value, C will have (field1, field2) as function args, and the
         // function will internally create a structure with that data, while C++ will have (struct* byVal) and it
         // will create a copy before calling the function, then call it with a pointer to the copy. Mixing the two
         // first of all leads to two copies being made, so this is a bad idea even regardless of Emscripten. But,
-        // what is a problem for Emscr ipten is that mixing these two calling conventions (say, calling a C one from
+        // what is a problem for Emscripten is that mixing these two calling conventions (say, calling a C one from
         // C++) will then assume that (struct* byVal) is actually the same as (field1, field2). In native code, this
         // is easily possible, you place the two fields on the stack and call the function (you know to place the
         // values since there is 'byVal'). In Emscripten, though, this means we would need to always do one or the
@@ -1654,6 +1675,22 @@ function finalizeLLVMFunctionCall(item, noIndexizeFunctions) {
         // is inefficient, and worth avoiding if you can).
         //
         // Note that removing all arguments is acceptable, as a vast to void ()*.
+        //
+        // asm must be even more careful, any change in number of args can make
+        // function calls simply fail (since they will look in the wrong table)
+      }
+      if (ASM_JS) {
+        if (oldCount != newCount) showWarning();
+        else if (!isIdenticallyImplemented(oldInfo.returnType, newInfo.returnType)) {
+          showWarning();
+        } else {
+          for (var i = 0; i < oldCount; i++) {
+            if (!isIdenticallyImplemented(oldInfo.segments[i][0].text, newInfo.segments[i][0].text)) {
+              showWarning();
+              break;
+            }
+          }
+        }
       }
     }
   }
