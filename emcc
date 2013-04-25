@@ -16,7 +16,7 @@ Example uses:
    with that command as an argument, for example
 
     emconfigure.py ./configure [options]
-  
+
    emconfigure.py is a tiny script that just sets some environment vars
    as a convenience. The command just shown is equivalent to
 
@@ -47,7 +47,7 @@ Example uses:
       return os.path.join(__rootpath__, *pathelems)
     sys.path += [path_from_root('')]
     from tools.shared import *
-    
+
    For using the Emscripten compilers/linkers/etc. you can do:
     env = Environment()
     ...
@@ -720,6 +720,7 @@ try:
   jcache = False
   save_bc = False
   memory_init_file = False
+  use_preload_cache = False
 
   if use_cxx:
     default_cxx_std = '-std=c++03' # Enforce a consistent C++ standard when compiling .cpp files, if user does not specify one on the cmdline.
@@ -819,6 +820,9 @@ try:
       Compression.on = True
       newargs[i] = ''
       newargs[i+1] = ''
+    elif newargs[i].startswith('--use-preload-cache'):
+      use_preload_cache = True;
+      newargs[i] = ''
     elif newargs[i] == '--ignore-dynamic-linking':
       ignore_dynamic_linking = True
       newargs[i] = ''
@@ -1010,16 +1014,16 @@ try:
     if closure:
       print >> sys.stderr, 'emcc: warning: disabling closure because it is not compatible with asm.js code generation'
       closure = False
-    if shared.Settings.CORRECT_SIGNS != 1: 
+    if shared.Settings.CORRECT_SIGNS != 1:
       print >> sys.stderr, 'emcc: warning: setting CORRECT_SIGNS to 1 for asm.js code generation'
       shared.Settings.CORRECT_SIGNS = 1
-    if shared.Settings.CORRECT_OVERFLOWS != 1: 
+    if shared.Settings.CORRECT_OVERFLOWS != 1:
       print >> sys.stderr, 'emcc: warning: setting CORRECT_OVERFLOWS to 1 for asm.js code generation'
       shared.Settings.CORRECT_OVERFLOWS = 1
     assert not shared.Settings.PGO, 'cannot run PGO in ASM_JS mode'
 
   if shared.Settings.CORRECT_SIGNS >= 2 or shared.Settings.CORRECT_OVERFLOWS >= 2 or shared.Settings.CORRECT_ROUNDINGS >= 2:
-    keep_llvm_debug = True # must keep debug info to do line-by-line operations 
+    keep_llvm_debug = True # must keep debug info to do line-by-line operations
 
   if (keep_llvm_debug or keep_js_debug) and closure:
     print >> sys.stderr, 'emcc: warning: disabling closure because debug info was requested'
@@ -1405,6 +1409,8 @@ try:
       file_args += embed_files
     if Compression.on:
       file_args += ['--compress', Compression.encoder, Compression.decoder, Compression.js_name]
+    if use_preload_cache:
+      file_args.append('--use-preload-cache')
     code = execute([shared.PYTHON, shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE)[0]
     src = open(final).read().replace('// {{PRE_RUN_ADDITIONS}}', '// {{PRE_RUN_ADDITIONS}}\n' + code)
     final += '.files.js'
