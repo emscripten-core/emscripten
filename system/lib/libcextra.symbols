@@ -1,19 +1,12 @@
-         U __errno
-         U __fsmu8
          T btowc
-         U malloc
          T mblen
          T mbrlen
-         d mbrlen.internal
          T mbrtowc
-         d mbrtowc.internal_state
          T mbsinit
          T mbsnrtowcs
          T mbsrtowcs
          T mbstowcs
          T mbtowc
-         U towlower
-         t twoway_wcsstr
          T wcpcpy
          T wcpncpy
          T wcrtomb
