@@ -27,12 +27,20 @@ subject to the following restrictions:
 
 
 #define NUM_DEMOS 7
-#define NUM_TESTS 200
 
 extern bool gDisableDeactivation;
 
-int main(int argc,char** argv)
-{
+int main(int argc, char **argv) {
+  int NUM_TESTS;
+  int arg = argc > 1 ? argv[1][0] - '0' : 1;
+  switch(arg) {
+    case 0: NUM_TESTS = 7; break;
+    case 1: NUM_TESTS = 33; break;
+    case 2: NUM_TESTS = 5*33; break;
+    case 3: NUM_TESTS = 7*35; break;
+    default: printf("error: %d\\n", arg); return -1;
+  }
+
 	gDisableDeactivation = true;
 
 	BenchmarkDemo1 benchmarkDemo1;

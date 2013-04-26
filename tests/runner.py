@@ -12389,12 +12389,21 @@ elif 'benchmark' in str(sys.argv):
       #  self.print_stats(total_times, total_native_times, last=True)
 
     def test_primes(self):
-      src = '''
+      src = r'''
         #include<stdio.h>
         #include<math.h>
-        int main() {
+        int main(int argc, char **argv) {
+          int arg = argc > 1 ? argv[1][0] - '0' : 1;
+          switch(arg) {
+            case 0: arg = 130000; break;
+            case 1: arg = 220000; break;
+            case 2: arg = 610000; break;
+            case 3: arg = 1010000; break;
+            default: printf("error: %d\\n", arg); return -1;
+          }
+
           int primes = 0, curri = 2;
-          while (primes < 220000) {
+          while (primes < arg) {
             int ok = true;
             for (int j = 2; j < sqrtf(curri); j++) {
               if (curri % j == 0) {
@@ -12407,7 +12416,7 @@ elif 'benchmark' in str(sys.argv):
             }
             curri++;
           }
-          printf("lastprime: %d.\\n", curri-1);
+          printf("lastprime: %d.\n", curri-1);
           return 0;
         }
       '''
@@ -12418,9 +12427,17 @@ elif 'benchmark' in str(sys.argv):
         #include<stdio.h>
         #include<string.h>
         #include<stdlib.h>
-        int main() {
-          int N = 1024*1024;
-          int M = 800;
+        int main(int argc, char **argv) {
+          int N, M;
+          int arg = argc > 1 ? argv[1][0] - '0' : 1;
+          switch(arg) {
+            case 0: N = 1024*1024; M = 400; break;
+            case 1: N = 1024*1024; M = 800; break;
+            case 2: N = 1024*1024; M = 4000; break;
+            case 3: N = 1024*1024; M = 8000; break;
+            default: printf("error: %d\\n", arg); return -1;
+          }
+
           int final = 0;
           char *buf = (char*)malloc(N);
           for (int t = 0; t < M; t++) {
@@ -12499,9 +12516,18 @@ elif 'benchmark' in str(sys.argv):
           }
           int sum() { return x + y + z + r + g + b; }
         };
-        int main() {
+        int main(int argc, char **argv) {
+          int arg = argc > 1 ? argv[1][0] - '0' : 1;
+          switch(arg) {
+            case 0: arg = 625; break;
+            case 1: arg = 1250; break;
+            case 2: arg = 5*1250; break;
+            case 3: arg = 10*1250; break;
+            default: printf("error: %d\\n", arg); return -1;
+          }
+
           int total = 0;
-          for (int i = 0; i < 1250; i++) {
+          for (int i = 0; i < arg; i++) {
             for (int j = 0; j < 50000; j++) {
               vec c(i, i+i%10, j*2, i%255, j%120, i%15);
               vec d(j+i%10, j*2, j%255, i%120, j%15, j);
@@ -12520,19 +12546,41 @@ elif 'benchmark' in str(sys.argv):
           return 0;
         }
       '''
-      self.do_benchmark('copy', src, [], 'sum:2836\n', emcc_args=['-s', 'QUANTUM_SIZE=4', '-s', 'USE_TYPED_ARRAYS=2'])
+      self.do_benchmark('copy', src, [], 'sum:2836\n')
 
     def test_fannkuch(self):
-      src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read()
+      src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read().replace(
+        'int n = argc > 1 ? atoi(argv[1]) : 0;',
+        '''
+          int n;
+          int arg = argc > 1 ? argv[1][0] - '0' : 1;
+          switch(arg) {
+            case 0: n = 10; break;
+            case 1: n = 11; break;
+            case 2: n = 11; break;
+            case 3: n = 12; break;
+            default: printf("error: %d\\n", arg); return -1;
+          }
+        '''
+      )
+      assert 'switch(arg)' in src
       self.do_benchmark('fannkuch', src, ['11'], 'Pfannkuchen(11) = 51.')
 
     def test_corrections(self):
       src = r'''
         #include<stdio.h>
         #include<math.h>
-        int main() {
-          int N = 20000;
-          int M = 7000;
+        int main(int argc, char **argv) {
+          int N, M;
+          int arg = argc > 1 ? argv[1][0] - '0' : 1;
+          switch(arg) {
+            case 0: N = 20000; M = 3500; break;
+            case 1: N = 20000; M = 7000; break;
+            case 2: N = 20000; M = 5*7000; break;
+            case 3: N = 20000; M = 10*7000; break;
+            default: printf("error: %d\\n", arg); return -1;
+          }
+
           unsigned int f = 0;
           unsigned short s = 0;
           for (int t = 0; t < M; t++) {
@@ -12551,7 +12599,19 @@ elif 'benchmark' in str(sys.argv):
 
     def fasta(self, double_rep):
       src = open(path_from_root('tests', 'fasta.cpp'), 'r').read().replace('double', double_rep)
-      self.do_benchmark('fasta', src, ['19000000'], '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA\nTCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACT\nAAAAATACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAG\nGCTGAGGCAGGAGAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCG\nCCACTGCACTCCAGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAAGGCCGGGCGCGGT\nGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGATCACCTGAGGTCA\nGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAATACAAAAA\nTTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAGGCTGAGGCAGGAG\nAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCCA\nGCCTGGGCGA''')
+      src = src.replace('   const size_t n = ( argc > 1 ) ? atoi( argv[1] ) : 512;', '''
+        int n;
+        int arg = argc > 1 ? argv[1][0] - '0' : 1;
+        switch(arg) {
+          case 0: n = 19000000/2; break;
+          case 1: n = 19000000; break;
+          case 2: n = 19000000*5; break;
+          case 3: n = 19000000*10; break;
+          default: printf("error: %d\\n", arg); return -1;
+        }
+      ''')
+      assert 'switch(arg)' in src
+      self.do_benchmark('fasta', src, [], '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA\nTCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACT\nAAAAATACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAG\nGCTGAGGCAGGAGAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCG\nCCACTGCACTCCAGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAAGGCCGGGCGCGGT\nGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGATCACCTGAGGTCA\nGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAATACAAAAA\nTTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAGGCTGAGGCAGGAG\nAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCCA\nGCCTGGGCGA''')
 
     def test_fasta_float(self):
       self.fasta('float')
@@ -12561,45 +12621,44 @@ elif 'benchmark' in str(sys.argv):
 
     def test_skinning(self):
       src = open(path_from_root('tests', 'skinning_test_no_simd.cpp'), 'r').read()
-      self.do_benchmark('skinning', src, ['9500', '10000'], 'blah=0.000000')
+      self.do_benchmark('skinning', src, [], 'blah=0.000000')
 
     def test_life(self):
       src = open(path_from_root('tests', 'life.c'), 'r').read()
-      self.do_benchmark('life', src, ['32', '32', '15000'], '''--------------------------------
-                  []  [][][]    []        []    [][]
-                              []  [][]  []      []      []    []
-                                []    [][]    [][]      []
-                                []            []  []      []
-                    []      []  []  []      []      []  []  []
-                    [][][][]      []      [][]      [][]
-                                    []
-                                                          []
-                                                        []  []
-                        [][]          []                  []
-                        [][]                            [][][]
-                                                          []
-
-                                              []
-                                            []  []
-                                            [][]
-                        []              []  [][]        [][]
-                                          []  []  []    []
-                                          [][]    []
-                                          [][][][]
-
-                                            [][][]    [][]
-                                          [][][]      [][]
-                                            []
-                                          []
-                      []                [][][]        []
-                                                []  []
-                                        [][]      []
-                                                [][][]
-                        [][][]                            [][]
-                      [][][][][]      []                  [][]
-                      []      [][]  []  []
---------------------------------
-''', shared_args=['-std=c99'], force_c=True)
+      self.do_benchmark('life', src, [], '''--------------------------------
+                          [][]      []              []          
+                              [][]          [][]    []      []  
+                                            [][]    []    []    
+                                [][]                  []  []    
+                                []    [][]                []    
+  [][]                            []    []            []  []    
+  [][]                          []        []          []  []    
+                                []      [][]            []      
+                                [][]    [][]                    
+                  [][]          [][]  []                      []
+                  [][]          [][]    [][]                  []
+                                  [][]  []                      
+                                        []                      
+                                    []                          
+                                  []    []                      
+[]                      [][][]            []                  []
+  []                                  [][][][][][]  []      [][]
+  []                    [][]            []  []      [][]  []  []
+[]                                      []          [][]  []  []
+                                          [][]  []  [][][]  [][]
+                                            []    []    [][][]  
+                                        [][]        [][][][]    
+                      [][]      [][]                  []        
+                    []      [][]        []                      
+                                            [][]                
+                      [][]                  []                  
+                        []        [][][][][]                    
+[][][]                    [][]                                  
+                        [][]    []  [][][]                      
+                        []    []          [][]                  
+                                              []                
+                                []          [][]      [][][]    
+--------------------------------''', shared_args=['-std=c99'], force_c=True)
 
     def test_zlib(self):
       src = open(path_from_root('tests', 'zlib', 'benchmark.c'), 'r').read()
@@ -12607,7 +12666,7 @@ elif 'benchmark' in str(sys.argv):
                    ['-I' + path_from_root('tests', 'zlib')]
       native_args = self.get_library('zlib_native', os.path.join('libz.a'), make_args=['libz.a'], native=True) + \
                      ['-I' + path_from_root('tests', 'zlib')]
-      self.do_benchmark('zlib', src, ['100000', '500'], '''sizes: 100000,25906
+      self.do_benchmark('zlib', src, [], '''sizes: 100000,25906
 ok.
 ''',
                         force_c=True, emcc_args=emcc_args, native_args=native_args)
@@ -12643,7 +12702,7 @@ ok.
       native_args = native_lib + ['-I' + path_from_root('tests', 'bullet', 'src'),
                                   '-I' + path_from_root('tests', 'bullet', 'Demos', 'Benchmarks')]
 
-      self.do_benchmark('bullet', src, [], '\nok.\n', emcc_args=emcc_args, native_args=native_args, reps=1)
+      self.do_benchmark('bullet', src, [], '\nok.\n', emcc_args=emcc_args, native_args=native_args)
 
 elif 'sanity' in str(sys.argv):
 

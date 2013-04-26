@@ -26,8 +26,16 @@ void __attribute__ ((noinline)) doit(char *buffer, int size, int i) {
 }
 
 int main(int argc, char **argv) {
-  int size = atoi(argv[1]);
-  int iters = atoi(argv[2]);
+  int size, iters;
+  int arg = argc > 1 ? argv[1][0] - '0' : 1;
+  switch(arg) {
+    case 0: size = 100000; iters = 250; break;
+    case 1: size = 100000; iters = 500; break;
+    case 2: size = 100000; iters = 5*500; break;
+    case 3: size = 100000; iters = 10*500; break;
+    default: printf("error: %d\\n", arg); return -1;
+  }
+
   char *buffer = malloc(size);
 
   int i = 0;

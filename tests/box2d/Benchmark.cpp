@@ -10,8 +10,8 @@
 // Turn this on to include the y-position of the top box in the output.
 #define DEBUG 0
 
-#define WARMUP 64
-#define FRAMES 333
+int WARMUP;
+int FRAMES;
 
 typedef struct {
   float mean;
@@ -52,7 +52,16 @@ result_t measure(clock_t times[FRAMES]) {
   return r;
 }
 
-int main() {
+int main(int argc, char **argv) {
+  int arg = argc > 1 ? argv[1][0] - '0' : 1;
+  switch(arg) {
+    case 0: WARMUP = 32; FRAMES = 161; break;
+    case 1: WARMUP = 64; FRAMES = 333; break;
+    case 2: WARMUP = 5*64; FRAMES = 7*333; break;
+    case 3: WARMUP = 10*64; FRAMES = 17*333; break;
+    default: printf("error: %d\\n", arg); return -1;
+  }
+
 	// Define the gravity vector.
 	b2Vec2 gravity(0.0f, -10.0f);
 
