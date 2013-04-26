@@ -1039,7 +1039,7 @@ var LibraryGL = {
 
   glGetShaderSource: function(shader, bufSize, length, source) {
     var result = Module.ctx.getShaderSource(GL.shaders[shader]);
-    result.slice(0, bufSize - 1);
+    result = result.slice(0, bufSize - 1);
     writeStringToMemory(result, source);
     if (length) {
       {{{ makeSetValue('length', '0', 'result.length', 'i32') }}};
