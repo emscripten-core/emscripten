@@ -11,6 +11,8 @@ src/relooper/*.o
 src/relooper/*.out
 
 tests/fake/
+tests/freetype/objs/*.o
+tests/freetype/objs/*.lo
 
 third_party/lzma.js/lzip/*.o
 third_party/lzma.js/lzma-native
