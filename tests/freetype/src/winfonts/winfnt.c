@@ -591,11 +591,11 @@
 
 
   static FT_Error
-  fnt_cmap_init( FNT_CMap  cmap )
+  fnt_cmap_init( FNT_CMap  cmap, FT_Pointer init_data ) /* XXX EMSCRIPTEN */
   {
     FNT_Face  face = (FNT_Face)FT_CMAP_FACE( cmap );
     FNT_Font  font = face->font;
-
+    FT_UNUSED(init_data); /* XXX EMSCRIPTEN */
 
     cmap->first = (FT_UInt32)  font->header.first_char;
     cmap->count = (FT_UInt32)( font->header.last_char - cmap->first + 1 );
@@ -882,13 +882,14 @@
 
 
   static FT_Error
-  FNT_Size_Select( FT_Size  size )
+  FNT_Size_Select( FT_Size  size, FT_ULong  size_index ) /* XXX EMSCRIPTEN */
   {
     FNT_Face          face   = (FNT_Face)size->face;
     FT_WinFNT_Header  header = &face->font->header;
 
 
     FT_Select_Metrics( size->face, 0 );
+    FT_UNUSED(size_index); /* XXX EMSCRIPTEN */
 
     size->metrics.ascender    = header->ascent * 64;
     size->metrics.descender   = -( header->pixel_height -
@@ -933,7 +934,7 @@
     if ( error )
       return error;
     else
-      return FNT_Size_Select( size );
+      return FNT_Size_Select( size, 0 ); /* XXX EMSCRIPTEN */
   }
 
 
