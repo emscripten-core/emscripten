@@ -9428,7 +9428,7 @@ Options that are modified or new in %s include:
           output = Popen([PYTHON, compiler, 'twopart_main.o'] + args, stdout=PIPE, stderr=PIPE).communicate()
           assert os.path.exists(target), '\n'.join(output)
           #print '\n'.join(output)
-          self.assertContained('is not a function', run_js(target, stderr=STDOUT))
+          self.assertContained('missing function', run_js(target, stderr=STDOUT))
           try_delete(target)
 
           # Combining those bc files into js should work
