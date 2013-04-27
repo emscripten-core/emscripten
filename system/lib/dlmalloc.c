@@ -1275,7 +1275,8 @@ extern "C" {
      p = malloc(n);
      assert(malloc_usable_size(p) >= 256);
      */
-    size_t dlmalloc_usable_size(void*);
+    /* XXX EMSCRIPTEN: mark for export (and therefore weak) */
+    DLMALLOC_EXPORT size_t dlmalloc_usable_size(void*);
     
 #endif /* ONLY_MSPACES */
     

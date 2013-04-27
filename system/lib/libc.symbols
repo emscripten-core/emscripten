@@ -55,7 +55,7 @@
          W malloc_set_footprint_limit
          W malloc_stats
          W malloc_trim
-         T malloc_usable_size
+         W malloc_usable_size
          W mallopt
          W memalign
          C optarg
