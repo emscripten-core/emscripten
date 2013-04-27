@@ -10214,10 +10214,10 @@ f.close()
         }
       ''')
       output = Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-s', 'WARN_ON_UNDEFINED_SYMBOLS=1'], stderr=PIPE).communicate()
-      self.assertContained('Unresolved symbol: _something', output[1])
+      self.assertContained('unresolved symbol: something', output[1])
 
       output = Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp')], stderr=PIPE).communicate()
-      self.assertNotContained('Unresolved symbol: _something\n', output[1])
+      self.assertNotContained('unresolved symbol: something\n', output[1])
 
     def test_toobig(self):
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''

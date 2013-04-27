@@ -487,7 +487,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       } else {
         // If this is not linkable, anything not in the library is definitely missing
         if (!LINKABLE && !LibraryManager.library.hasOwnProperty(shortident) && !LibraryManager.library.hasOwnProperty(shortident + '__inline')) {
-          if (VERBOSE) printErr('warning: missing function: ' + shortident);
+          if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) printErr('warning: unresolved symbol: ' + shortident);
           LibraryManager.library[shortident] = new Function("Module['printErr']('missing function: " + shortident + "'); abort(-1);");
         }
         item.JS = addFromLibrary(shortident);
