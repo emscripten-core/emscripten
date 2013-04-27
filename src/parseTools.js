@@ -241,7 +241,21 @@ function isFunctionType(type, out) {
     returnType = 'i8*'; // some pointer type, no point in analyzing further
   }
   if (out) out.returnType = returnType;
-  var argText = type.substr(lastOpen);
+  // find ( that starts the arguments
+  var depth = 0, i = type.length-1, argText = null;
+  while (i >= 0) {
+    var curr = type[i];
+    if (curr == ')') depth++;
+    else if (curr == '(') {
+      depth--;
+      if (depth == 0) {
+        argText = type.substr(i);
+        break;
+      }
+    }
+    i--;
+  }
+  assert(argText);
   return isFunctionDef({ text: argText, item: tokenize(argText.substr(1, argText.length-2), true) }, out);
 }
 
@@ -1649,6 +1663,7 @@ function checkBitcast(item) {
       } else {
         warnOnce('Casting a function pointer type to a potentially incompatible one (use VERBOSE=1 to see more)');
       }
+      warnOnce('See checkBitcast in src/parseTools.js for more information on dangerous function pointer casts');
       if (ASM_JS) warnOnce('Incompatible function pointer casts are very dangerous with ASM_JS=1, you should investigate and correct these');
     }
     if (oldCount != newCount && oldCount && newCount) {
