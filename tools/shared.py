@@ -720,7 +720,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       try:
         Building.configure(configure + configure_args, stdout=open(os.path.join(project_dir, 'configure_'), 'w'),
                                                        stderr=open(os.path.join(project_dir, 'configure_err'), 'w'), env=env)
-      except CalledProcessError, e:
+      except subprocess.CalledProcessError, e:
         pass # Ignore exit code != 0
     def open_make_out(i, mode='r'):
       return open(os.path.join(project_dir, 'make_' + str(i)), mode)
@@ -734,7 +734,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
           try:
             Building.make(make + make_args, stdout=make_out,
                                             stderr=make_err, env=env)
-          except CalledProcessError, e:
+          except subprocess.CalledProcessError, e:
             pass # Ignore exit code != 0
       try:
         if cache is not None:
