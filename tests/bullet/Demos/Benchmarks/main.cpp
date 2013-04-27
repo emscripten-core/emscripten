@@ -32,12 +32,13 @@ extern bool gDisableDeactivation;
 
 int main(int argc, char **argv) {
   int NUM_TESTS;
-  int arg = argc > 1 ? argv[1][0] - '0' : 1;
+  int arg = argc > 1 ? argv[1][0] - '0' : 2;
   switch(arg) {
-    case 0: NUM_TESTS = 7; break;
-    case 1: NUM_TESTS = 33; break;
-    case 2: NUM_TESTS = 5*33; break;
-    case 3: NUM_TESTS = 7*35; break;
+    case 0: return 0; break;
+    case 1: NUM_TESTS = 7; break;
+    case 2: NUM_TESTS = 33; break;
+    case 3: NUM_TESTS = 5*33; break;
+    case 4: NUM_TESTS = 7*35; break;
     default: printf("error: %d\\n", arg); return -1;
   }
 
