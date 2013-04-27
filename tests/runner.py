@@ -9746,21 +9746,6 @@ f.close()
 
       self.assertContained('result: 62', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
-    def test_asm_undefined(self):
-      src = r'''
-        #include <stdio.h>
-        extern void doit();
-        int main(int argc, char **argv) {
-          if (argc == 121) doit();
-          printf("done\n");
-          return 1;
-        }
-      '''
-      filename = self.in_dir('src.cpp')
-      open(filename, 'w').write(src)
-      out, err = Popen([PYTHON, EMCC, filename, '-s', 'ASM_JS=1', '-O2'], stderr=PIPE).communicate()
-      assert 'Unresolved symbol' in err, 'always warn on undefs in asm, since it breaks validation: ' + err
-
     def test_redundant_link(self):
       lib = "int mult() { return 1; }"
       lib_name = os.path.join(self.get_dir(), 'libA.c')
@@ -10213,11 +10198,14 @@ f.close()
           return 0;
         }
       ''')
-      output = Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-s', 'WARN_ON_UNDEFINED_SYMBOLS=1'], stderr=PIPE).communicate()
-      self.assertContained('unresolved symbol: something', output[1])
 
-      output = Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp')], stderr=PIPE).communicate()
-      self.assertNotContained('unresolved symbol: something\n', output[1])
+      for args in [[], ['-O2']]:
+        print args
+        output = Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-s', 'WARN_ON_UNDEFINED_SYMBOLS=1'] + args, stderr=PIPE).communicate()
+        self.assertContained('unresolved symbol: something', output[1])
+
+        output = Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp')] + args, stderr=PIPE).communicate()
+        self.assertNotContained('unresolved symbol: something\n', output[1])
 
     def test_toobig(self):
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
