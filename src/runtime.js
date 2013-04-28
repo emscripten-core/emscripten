@@ -180,6 +180,7 @@ var Runtime = {
     // we align i64s and doubles on 64-bit boundaries, unlike x86
 #if TARGET_LE32
     if (type == 'i64' || type == 'double' || vararg) return 8;
+    if (!type) return Math.min(size, 8); // align structures internally to 64 bits
 #endif
     return Math.min(size || (type ? Runtime.getNativeFieldSize(type) : 0), Runtime.QUANTUM_SIZE);
   },

@@ -1540,6 +1540,64 @@ Succeeded!
         except Exception, e:
           assert 'must be aligned' in str(e), e # expected to fail without emulation
 
+    def test_align64(self):
+      src = r'''
+        #include <stdio.h>
+
+        // inspired by poppler
+
+        enum Type {
+          A = 10,
+          B = 20
+        };
+
+        struct Object {
+          Type type;
+          union {
+            int intg;
+            double real;
+            char *name;
+          };
+        };
+
+        struct Principal {
+          double x;
+          Object a;
+          double y;
+        };
+
+        int main(int argc, char **argv)
+        {
+          int base = argc-1;
+          Object *o = NULL;
+          printf("%d,%d\n", sizeof(Object), sizeof(Principal));
+          printf("%d,%d,%d,%d\n", (int)&o[base].type, (int)&o[base].intg, (int)&o[base].real, (int)&o[base].name);
+          printf("%d,%d,%d,%d\n", (int)&o[base+1].type, (int)&o[base+1].intg, (int)&o[base+1].real, (int)&o[base+1].name);
+          Principal p, q;
+          p.x = p.y = q.x = q.y = 0;
+          p.a.type = A;
+          p.a.real = 123.456;
+          *(&q.a) = p.a;
+          printf("%.2f,%d,%.2f,%.2f : %.2f,%d,%.2f,%.2f\n", p.x, p.a.type, p.a.real, p.y, q.x, q.a.type, q.a.real, q.y);
+          return 0;
+        }
+      '''
+
+      if 'le32-unknown-nacl' in COMPILER_OPTS:
+        self.do_run(src, '''16,32
+0,8,8,8
+16,24,24,24
+0.00,10,123.46,0.00 : 0.00,10,123.46,0.00
+''')
+      elif 'i386-pc-linux-gnu' in COMPILER_OPTS:
+        self.do_run(src, '''12,28
+0,4,4,4
+12,16,16,16
+0.00,10,123.46,0.00 : 0.00,10,123.46,0.00
+''')
+      else:
+        raise Exception('unknown arch')
+
     def test_unsigned(self):
         Settings.CORRECT_SIGNS = 1 # We test for exactly this sort of thing here
         Settings.CHECK_SIGNS = 0
