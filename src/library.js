@@ -2669,8 +2669,16 @@ LibraryManager.library = {
         ret = {{{ makeGetValue('varargs', 'argIndex', 'double', undefined, undefined, true) }}};
 #if USE_TYPED_ARRAYS == 2
       } else if (type == 'i64') {
+
+#if TARGET_LE32
+        ret = [{{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}},
+               {{{ makeGetValue('varargs', 'argIndex+8', 'i32', undefined, undefined, true) }}}];
+        argIndex += {{{ STACK_ALIGN }}}; // each 32-bit chunk is in a 64-bit block
+#else
         ret = [{{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}},
                {{{ makeGetValue('varargs', 'argIndex+4', 'i32', undefined, undefined, true) }}}];
+#endif
+
 #else
       } else if (type == 'i64') {
         ret = {{{ makeGetValue('varargs', 'argIndex', 'i64', undefined, undefined, true) }}};
