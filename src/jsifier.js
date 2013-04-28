@@ -1298,7 +1298,7 @@ function JSify(data, functionsOnly, givenFunctions) {
   makeFuncLineActor('va_arg', function(item) {
     assert(TARGET_LE32);
     var ident = item.value.ident;
-    var move = Runtime.getNativeTypeSize(item.type);
+    var move = Runtime.STACK_ALIGN;
     return '(tempInt=' + makeGetValue(ident, 4, '*') + ',' +
                          makeSetValue(ident, 4, 'tempInt + ' + move, '*') + ',' +
                          makeGetValue(makeGetValue(ident, 0, '*'), 'tempInt', item.type) + ')';
