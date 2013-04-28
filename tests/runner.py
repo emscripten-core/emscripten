@@ -9487,7 +9487,7 @@ f.close()
             os.chdir(tempdirname)
 
             # Run Cmake
-            cmd = [path_from_root('emcmake'), 'cmake', '-DCMAKE_BUILD_TYPE=' + configuration,
+            cmd = [PYTHON, path_from_root('emcmake'), 'cmake', '-DCMAKE_BUILD_TYPE=' + configuration,
                    cmakelistsdir]
             ret = Popen(cmd, stdout=PIPE, stderr=PIPE).communicate()
             if ret[1] != None and len(ret[1].strip()) > 0:
