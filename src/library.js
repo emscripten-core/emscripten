@@ -2499,7 +2499,7 @@ LibraryManager.library = {
     for (var formatIndex = 0; formatIndex < format.length;) {
       if (format[formatIndex] === '%' && format[formatIndex+1] == 'n') {
         var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
-        argIndex += Runtime.getAlignSize('void*');
+        argIndex += Runtime.getAlignSize('void*', null, true);
         {{{ makeSetValue('argPtr', 0, 'soFar', 'i32') }}};
         formatIndex += 2;
         continue;
@@ -2508,7 +2508,7 @@ LibraryManager.library = {
       // TODO: Support strings like "%5c" etc.
       if (format[formatIndex] === '%' && format[formatIndex+1] == 'c') {
         var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
-        argIndex += Runtime.getAlignSize('void*');
+        argIndex += Runtime.getAlignSize('void*', null, true);
         fields++;
         next = get();
         {{{ makeSetValue('argPtr', 0, 'next', 'i8') }}}
@@ -2600,7 +2600,7 @@ LibraryManager.library = {
 
         var text = buffer.join('');
         var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
-        argIndex += Runtime.getAlignSize('void*');
+        argIndex += Runtime.getAlignSize('void*', null, true);
         switch (type) {
           case 'd': case 'u': case 'i':
             if (half) {

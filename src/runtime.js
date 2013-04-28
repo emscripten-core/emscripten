@@ -176,10 +176,10 @@ var Runtime = {
   STACK_ALIGN: {{{ STACK_ALIGN }}},
 
   // type can be a native type or a struct (or null, for structs we only look at size here)
-  getAlignSize: function(type, size) {
+  getAlignSize: function(type, size, vararg) {
     // we align i64s and doubles on 64-bit boundaries, unlike x86
 #if TARGET_LE32
-    if (type == 'i64' || type == 'double') return 8;
+    if (type == 'i64' || type == 'double' || vararg) return 8;
 #endif
     return Math.min(size || (type ? Runtime.getNativeFieldSize(type) : 0), Runtime.QUANTUM_SIZE);
   },
