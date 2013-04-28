@@ -447,11 +447,13 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
 ''' % (sig, i, args, arg_coercions, jsret))
       args = ','.join(['a' + str(i) for i in range(1, len(sig))])
       args = 'index' + (',' if args else '') + args
+      # C++ exceptions are numbers, and longjmp is a string 'longjmp'
       asm_setup += '''
 function invoke_%s(%s) {
   try {
     %sModule.dynCall_%s(%s);
   } catch(e) {
+    if (typeof e !== 'number' && e !== 'longjmp') throw e;
     asm.setThrew(1, 0);
   }
 }
