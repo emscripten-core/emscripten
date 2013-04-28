@@ -42,7 +42,7 @@ var CorruptionChecker = {
     CorruptionChecker.checkAll();
     var size = CorruptionChecker.ptrs[ptr];
     //Module.printErr('free ' + ptr + ' of size ' + size);
-    assert(size);
+    assert(size, ptr);
     var allocation = ptr - size*CorruptionChecker.BUFFER_FACTOR;
     //Module.printErr('free ' + ptr + ' of size ' + size + ' and allocation ' + allocation);
     delete CorruptionChecker.ptrs[ptr];
