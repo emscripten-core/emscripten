@@ -35,8 +35,8 @@ function SAFE_HEAP_CLEAR(dest) {
 var SAFE_HEAP_ERRORS = 0;
 var ACCEPTABLE_SAFE_HEAP_ERRORS = 0;
 
-function SAFE_HEAP_ACCESS(dest, type, store, ignore) {
-  //if (dest === A_NUMBER) Module.print ([dest, type, store] + ' ' + new Error().stack); // Something like this may be useful, in debugging
+function SAFE_HEAP_ACCESS(dest, type, store, ignore, storeValue) {
+  //if (dest === A_NUMBER) Module.print ([dest, type, store, ignore, storeValue] + ' ' + new Error().stack); // Something like this may be useful, in debugging
 
   assert(dest >= STACK_ROOT, 'segmentation fault: null pointer, or below normal memory');
 
@@ -97,7 +97,7 @@ function SAFE_HEAP_STORE(dest, value, type, ignore) {
   }
   //if (!ignore && (value === Infinity || value === -Infinity || isNaN(value))) throw [value, typeof value, new Error().stack];
 
-  SAFE_HEAP_ACCESS(dest, type, true, ignore);
+  SAFE_HEAP_ACCESS(dest, type, true, ignore, value);
   if (dest in HEAP_WATCHED) {
     Module.print((new Error()).stack);
     throw "Bad store!" + dest;
