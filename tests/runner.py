@@ -7667,6 +7667,7 @@ void*:16
 
     def test_lua(self):
       if self.emcc_args is None: return self.skip('requires emcc')
+      if 'le32-unknown-nacl' in COMPILER_OPTS: return self.skip('cannot use our existing bitcode file which is of a different target')
 
       if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: make this work')
 
