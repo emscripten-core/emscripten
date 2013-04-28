@@ -1502,8 +1502,7 @@ Succeeded!
         # TODO: A version of this with int64s as well
 
         if 'le32-unknown-nacl' in COMPILER_OPTS:
-          raise Exception('LLVM marks the reads of s as fully aligned, making this test invalid') # TODO investigate
-          self.do_run(src, '*16 : 0 : 16\n328157500735811.0,23,416012775903557.0,99\n')
+          return self.skip('LLVM marks the reads of s as fully aligned, making this test invalid')
         elif 'i386-pc-linux-gnu' in COMPILER_OPTS:
           self.do_run(src, '*12 : 1 : 12\n328157500735811.0,23,416012775903557.0,99\n')
         else:
