@@ -9472,10 +9472,8 @@ f.close()
 
       if os.name == 'nt':
         make_command = 'mingw32-make'
-        emscriptencmaketoolchain = path_from_root('cmake', 'Platform', 'Emscripten.cmake')
       else:
         make_command = 'make'
-        emscriptencmaketoolchain = path_from_root('cmake', 'Platform', 'Emscripten_unix.cmake')
 
       cmake_cases = ['target_js', 'target_html']
       cmake_outputs = ['hello_world.js', 'hello_world_gles.html']
@@ -9489,10 +9487,8 @@ f.close()
             os.chdir(tempdirname)
 
             # Run Cmake
-            cmd = ['cmake', '-DCMAKE_TOOLCHAIN_FILE='+emscriptencmaketoolchain,
-                            '-DCMAKE_BUILD_TYPE=' + configuration,
-                            '-DCMAKE_MODULE_PATH=' + path_from_root('cmake').replace('\\', '/'),
-                            '-G' 'Unix Makefiles', cmakelistsdir]
+            cmd = [path_from_root('emcmake'), 'cmake', '-DCMAKE_BUILD_TYPE=' + configuration,
+                   cmakelistsdir]
             ret = Popen(cmd, stdout=PIPE, stderr=PIPE).communicate()
             if ret[1] != None and len(ret[1].strip()) > 0:
               print >> sys.stderr, ret[1] # If there were any errors, print them directly to console for diagnostics.
