@@ -67,12 +67,12 @@ var CorruptionChecker = {
   },
   fillBuffer: function(buffer, size) {
     for (var x = buffer; x < buffer + size; x++) {
-      {{{ makeSetValue('x', 0, 'CorruptionChecker.canary(x)', 'i8') }}};
+      {{{ makeSetValue('x', 0, 'CorruptionChecker.canary(x)', 'i8', null, null, null, 1) }}};
     }
   },
   checkBuffer: function(buffer, size) {
     for (var x = buffer; x < buffer + size; x++) {
-      if (({{{ makeGetValue('x', 0, 'i8') }}}&255) != CorruptionChecker.canary(x)) {
+      if (({{{ makeGetValue('x', 0, 'i8', null, null, null, null, 1) }}}&255) != CorruptionChecker.canary(x)) {
         assert(0, 'Heap corruption detected!' + [x, buffer, size, {{{ makeGetValue('x', 0, 'i8') }}}&255, CorruptionChecker.canary(x)]);
       }
     }
