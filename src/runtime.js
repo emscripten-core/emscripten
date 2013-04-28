@@ -181,7 +181,7 @@ var Runtime = {
 #if TARGET_LE32
     if (type == 'i64' || type == 'double') return 8;
 #endif
-    return Math.min(size || Runtime.getNativeFieldSize(type), Runtime.QUANTUM_SIZE);
+    return Math.min(size || (type ? Runtime.getNativeFieldSize(type) : 0), Runtime.QUANTUM_SIZE);
   },
 
   // Calculate aligned size, just like C structs should be. TODO: Consider
