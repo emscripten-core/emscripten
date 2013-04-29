@@ -48,10 +48,12 @@
          T wcstok
          T wcstombs
          T wcswcs
+         T wcswidth
          T wctob
          T wctomb
          T wctrans
          T wctype
+         T wcwidth
          T wmemchr
          T wmemcmp
          T wmemcpy

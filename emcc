@@ -1197,7 +1197,9 @@ try:
           'iswupper.c',
           'iswxdigit.c',
           'towctrans.c',
+          'wcswidth.c',
           'wctrans.c',
+          'wcwidth.c',
          ]],
          ['multibyte', [
           'btowc.c',
