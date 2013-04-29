@@ -7542,12 +7542,13 @@ LibraryManager.library = {
     }
     var i = 0;
     do {
-      var curr = {{{ makeGetValue('varargs', 'i*4', 'i8') }}};
+      var curr = {{{ makeGetValue('varargs', '0', 'i8') }}};
+      varargs += {{{ STACK_ALIGN }}};
       {{{ makeSetValue('_emscripten_jcache_printf_.buffer', 'i', 'curr', 'i8') }}};
       i++;
-      assert(i*4 < MAX);
+      assert(i*{{{ STACK_ALIGN }}} < MAX);
     } while (curr != 0);
-    Module.print(intArrayToString(__formatString(_emscripten_jcache_printf_.buffer, varargs + i*4)).replace('\\n', ''));
+    Module.print(intArrayToString(__formatString(_emscripten_jcache_printf_.buffer, varargs)).replace('\\n', ''));
     Runtime.stackAlloc(-4*i); // free up the stack space we know is ok to free
   },
 
