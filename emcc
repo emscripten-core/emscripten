@@ -1196,6 +1196,8 @@ try:
           'iswspace.c',
           'iswupper.c',
           'iswxdigit.c',
+          'towctrans.c',
+          'wctrans.c',
          ]],
          ['multibyte', [
           'btowc.c',

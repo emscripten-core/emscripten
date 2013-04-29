@@ -20,6 +20,9 @@
          T mbsrtowcs
          T mbstowcs
          T mbtowc
+         T towctrans
+         T towlower
+         T towupper
          T wcpcpy
          T wcpncpy
          T wcrtomb
@@ -47,6 +50,7 @@
          T wcswcs
          T wctob
          T wctomb
+         T wctrans
          T wctype
          T wmemchr
          T wmemcmp
