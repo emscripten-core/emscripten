@@ -5931,6 +5931,7 @@ Pass: 0.000012 0.000012''')
       # i64
       if not Settings.USE_TYPED_ARRAYS == 2: return self.skip('64-bit sscanf only supported in ta2')
       src = r'''
+        #include <stdint.h>
         #include <stdio.h>
 
         int main(){
@@ -5990,6 +5991,7 @@ Pass: 0.000012 0.000012''')
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip("need ta2 for full i64")
 
       src = r'''
+        #include <stdint.h>
         #include <stdio.h>
 
         int main(){
