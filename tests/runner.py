@@ -3441,7 +3441,7 @@ Exiting setjmp function, level: 0, prev_jmp: -1
                                   []                            
                               [][][]                          []
 --------------------------------
-''', ['1'], force_c=True)
+''', ['2'], force_c=True)
 
     def test_array2(self):
         src = '''
@@ -12435,13 +12435,14 @@ elif 'benchmark' in str(sys.argv):
         #include<stdio.h>
         #include<math.h>
         int main(int argc, char **argv) {
-          int arg = argc > 1 ? argv[1][0] - '0' : 2;
+          int arg = argc > 1 ? argv[1][0] - '0' : 3;
           switch(arg) {
             case 0: return 0; break;
-            case 1: arg = 130000; break;
-            case 2: arg = 220000; break;
-            case 3: arg = 610000; break;
-            case 4: arg = 1010000; break;
+            case 1: arg = 33000; break;
+            case 2: arg = 130000; break;
+            case 3: arg = 220000; break;
+            case 4: arg = 610000; break;
+            case 5: arg = 1010000; break;
             default: printf("error: %d\\n", arg); return -1;
           }
 
@@ -12472,13 +12473,14 @@ elif 'benchmark' in str(sys.argv):
         #include<stdlib.h>
         int main(int argc, char **argv) {
           int N, M;
-          int arg = argc > 1 ? argv[1][0] - '0' : 2;
+          int arg = argc > 1 ? argv[1][0] - '0' : 3;
           switch(arg) {
             case 0: return 0; break;
-            case 1: N = 1024*1024; M = 400; break;
-            case 2: N = 1024*1024; M = 800; break;
-            case 3: N = 1024*1024; M = 4000; break;
-            case 4: N = 1024*1024; M = 8000; break;
+            case 1: N = 1024*1024; M = 55; break;
+            case 2: N = 1024*1024; M = 400; break;
+            case 3: N = 1024*1024; M = 800; break;
+            case 4: N = 1024*1024; M = 4000; break;
+            case 5: N = 1024*1024; M = 8000; break;
             default: printf("error: %d\\n", arg); return -1;
           }
 
@@ -12561,13 +12563,14 @@ elif 'benchmark' in str(sys.argv):
           int sum() { return x + y + z + r + g + b; }
         };
         int main(int argc, char **argv) {
-          int arg = argc > 1 ? argv[1][0] - '0' : 2;
+          int arg = argc > 1 ? argv[1][0] - '0' : 3;
           switch(arg) {
             case 0: return 0; break;
-            case 1: arg = 625; break;
-            case 2: arg = 1250; break;
-            case 3: arg = 5*1250; break;
-            case 4: arg = 10*1250; break;
+            case 1: arg = 75; break;
+            case 2: arg = 625; break;
+            case 3: arg = 1250; break;
+            case 4: arg = 5*1250; break;
+            case 5: arg = 10*1250; break;
             default: printf("error: %d\\n", arg); return -1;
           }
 
@@ -12598,13 +12601,14 @@ elif 'benchmark' in str(sys.argv):
         'int n = argc > 1 ? atoi(argv[1]) : 0;',
         '''
           int n;
-          int arg = argc > 1 ? argv[1][0] - '0' : 2;
+          int arg = argc > 1 ? argv[1][0] - '0' : 3;
           switch(arg) {
             case 0: return 0; break;
-            case 1: n = 10; break;
-            case 2: n = 11; break;
+            case 1: n = 9; break;
+            case 2: n = 10; break;
             case 3: n = 11; break;
-            case 4: n = 12; break;
+            case 4: n = 11; break;
+            case 5: n = 12; break;
             default: printf("error: %d\\n", arg); return -1;
           }
         '''
@@ -12618,13 +12622,14 @@ elif 'benchmark' in str(sys.argv):
         #include<math.h>
         int main(int argc, char **argv) {
           int N, M;
-          int arg = argc > 1 ? argv[1][0] - '0' : 2;
+          int arg = argc > 1 ? argv[1][0] - '0' : 3;
           switch(arg) {
             case 0: return 0; break;
-            case 1: N = 20000; M = 3500; break;
-            case 2: N = 20000; M = 7000; break;
-            case 3: N = 20000; M = 5*7000; break;
-            case 4: N = 20000; M = 10*7000; break;
+            case 1: N = 20000; M = 550; break;
+            case 2: N = 20000; M = 3500; break;
+            case 3: N = 20000; M = 7000; break;
+            case 4: N = 20000; M = 5*7000; break;
+            case 5: N = 20000; M = 10*7000; break;
             default: printf("error: %d\\n", arg); return -1;
           }
 
@@ -12648,13 +12653,14 @@ elif 'benchmark' in str(sys.argv):
       src = open(path_from_root('tests', 'fasta.cpp'), 'r').read().replace('double', double_rep)
       src = src.replace('   const size_t n = ( argc > 1 ) ? atoi( argv[1] ) : 512;', '''
         int n;
-        int arg = argc > 1 ? argv[1][0] - '0' : 2;
+        int arg = argc > 1 ? argv[1][0] - '0' : 3;
         switch(arg) {
           case 0: return 0; break;
-          case 1: n = 19000000/2; break;
-          case 2: n = 19000000; break;
-          case 3: n = 19000000*5; break;
-          case 4: n = 19000000*10; break;
+          case 1: n = 19000000/20; break;
+          case 2: n = 19000000/2; break;
+          case 3: n = 19000000; break;
+          case 4: n = 19000000*5; break;
+          case 5: n = 19000000*10; break;
           default: printf("error: %d\\n", arg); return -1;
         }
       ''')

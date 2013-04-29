@@ -27,13 +27,14 @@ void __attribute__ ((noinline)) doit(char *buffer, int size, int i) {
 
 int main(int argc, char **argv) {
   int size, iters;
-  int arg = argc > 1 ? argv[1][0] - '0' : 2;
+  int arg = argc > 1 ? argv[1][0] - '0' : 3;
   switch(arg) {
     case 0: return 0; break;
-    case 1: size = 100000; iters = 250; break;
-    case 2: size = 100000; iters = 500; break;
-    case 3: size = 100000; iters = 5*500; break;
-    case 4: size = 100000; iters = 10*500; break;
+    case 1: size = 100000; iters = 60; break;
+    case 2: size = 100000; iters = 250; break;
+    case 3: size = 100000; iters = 500; break;
+    case 4: size = 100000; iters = 5*500; break;
+    case 5: size = 100000; iters = 10*500; break;
     default: printf("error: %d\\n", arg); return -1;
   }
 

@@ -53,13 +53,14 @@ result_t measure(clock_t times[FRAMES]) {
 }
 
 int main(int argc, char **argv) {
-  int arg = argc > 1 ? argv[1][0] - '0' : 2;
+  int arg = argc > 1 ? argv[1][0] - '0' : 3;
   switch(arg) {
     case 0: return 0; break;
-    case 1: WARMUP = 32; FRAMES = 161; break;
-    case 2: WARMUP = 64; FRAMES = 333; break;
-    case 3: WARMUP = 5*64; FRAMES = 7*333; break;
-    case 4: WARMUP = 10*64; FRAMES = 17*333; break;
+    case 1: WARMUP = 5; FRAMES = 35; break;
+    case 2: WARMUP = 32; FRAMES = 161; break;
+    case 3: WARMUP = 64; FRAMES = 333; break;
+    case 4: WARMUP = 5*64; FRAMES = 7*333; break;
+    case 5: WARMUP = 10*64; FRAMES = 17*333; break;
     default: printf("error: %d\\n", arg); return -1;
   }
 
