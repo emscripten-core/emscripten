@@ -4016,7 +4016,7 @@ def process(filename):
 
             // Try it with copying
             va_list tempva;
-            __va_copy(tempva, v);
+            va_copy(tempva, v);
             vsnprintf(d, 20, s, tempva);
             puts(d);
 
