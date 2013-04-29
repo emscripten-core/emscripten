@@ -7,7 +7,7 @@
 #include <netinet/in.h>
 
 #ifdef EMSCRIPTEN
-#include <net/arpa/inet.h>
+#include <arpa/inet.h>
 #endif
 
 #define uint16 uint16_t
