@@ -7978,16 +7978,15 @@ def process(filename):
     def test_python(self):
       if self.emcc_args is None: return self.skip('requires emcc')
       if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: make this work')
-      if 'le32-unknown-nacl' in COMPILER_OPTS: return self.skip('cannot use our existing bitcode file which is of a different target')
 
-      # Overflows in string_hash
-      Settings.CORRECT_OVERFLOWS = 1
-      Settings.CHECK_OVERFLOWS = 0
-      if self.emcc_args is None: Settings.SAFE_HEAP = 0 # Has bitfields which are false positives. Also the PyFloat_Init tries to detect endianness.
-      Settings.CORRECT_SIGNS = 1 # Not sure why, but needed
-      Settings.EXPORTED_FUNCTIONS += ['_PyRun_SimpleStringFlags'] # for the demo
+      #Settings.EXPORTED_FUNCTIONS += ['_PyRun_SimpleStringFlags'] # for the demo
 
-      self.do_ll_run(path_from_root('tests', 'python', 'python.small.bc'),
+      if 'le32-unknown-nacl' in COMPILER_OPTS:
+        bitcode = path_from_root('tests', 'python', 'python.le32.bc')
+      else:
+        bitcode = path_from_root('tests', 'python', 'python.small.bc')
+
+      self.do_ll_run(bitcode,
                       'hello python world!\n[0, 2, 4, 6]\n5\n22\n5.470000',
                       args=['-S', '-c' '''print "hello python world!"; print [x*2 for x in range(4)]; t=2; print 10-3-t; print (lambda x: x*2)(11); print '%f' % 5.47'''])
 
