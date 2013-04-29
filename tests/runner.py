@@ -7404,7 +7404,7 @@ operator new(size_t size)
       self.do_run(src, 'new 4!\n*1,0*')
 
     def test_dlmalloc_partial_2(self):
-      if self.emcc_args is None or 'SAFE_HEAP' in str(self.emcc_args): return self.skip('only emcc will link in dlmalloc, and we do unsafe stuff')
+      if self.emcc_args is None or 'SAFE_HEAP' in str(self.emcc_args) or 'CHECK_HEAP_ALIGN' in str(self.emcc_args): return self.skip('only emcc will link in dlmalloc, and we do unsafe stuff')
       # present part of the symbols of dlmalloc, not all. malloc is harder to link than new which is weak.
       src = r'''
         #include <stdio.h>
