@@ -1133,10 +1133,11 @@ m_divisor is 1091269979
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('full i64 stuff only in ta2')
 
       src = r'''
+        #include <stdint.h>
         #include <stdio.h>
         int main(int argc, char ** argv){
             int y=-133;
-            __int64_t x= ((__int64_t)((short)(y)))*(100 + argc);
+            int64_t x= ((int64_t)((short)(y)))*(100 + argc);
             if(x>0)
                 printf(">0\n");
             else
