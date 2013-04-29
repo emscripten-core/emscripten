@@ -1182,6 +1182,25 @@ try:
     def create_libcextra():
       if DEBUG: print >> sys.stderr, 'emcc: building libcextra for cache'
       musl_files = [
+         ['ctype', [
+          'iswalnum.c',
+          'iswalpha.c',
+          'iswblank.c',
+          'iswcntrl.c',
+          'iswctype.c',
+          'iswdigit.c',
+          'iswgraph.c',
+          'iswlower.c',
+          'iswprint.c',
+          'iswpunct.c',
+          'iswspace.c',
+          'iswupper.c',
+          'iswxdigit.c',
+          'towctrans.c',
+          'wcswidth.c',
+          'wctrans.c',
+          'wcwidth.c',
+         ]],
          ['multibyte', [
           'btowc.c',
           'mblen.c',

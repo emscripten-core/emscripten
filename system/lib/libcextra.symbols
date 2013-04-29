@@ -1,4 +1,17 @@
          T btowc
+         T iswalnum
+         T iswalpha
+         T iswblank
+         T iswcntrl
+         T iswctype
+         T iswdigit
+         T iswgraph
+         T iswlower
+         T iswprint
+         T iswpunct
+         T iswspace
+         T iswupper
+         T iswxdigit
          T mblen
          T mbrlen
          T mbrtowc
@@ -7,6 +20,9 @@
          T mbsrtowcs
          T mbstowcs
          T mbtowc
+         T towctrans
+         T towlower
+         T towupper
          T wcpcpy
          T wcpncpy
          T wcrtomb
@@ -32,8 +48,12 @@
          T wcstok
          T wcstombs
          T wcswcs
+         T wcswidth
          T wctob
          T wctomb
+         T wctrans
+         T wctype
+         T wcwidth
          T wmemchr
          T wmemcmp
          T wmemcpy
