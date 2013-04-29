@@ -1224,7 +1224,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     if (DISABLE_EXCEPTION_CATCHING && USE_TYPED_ARRAYS == 2) {
       ret = makeVarDef(item.assignTo) + '$0 = 0; ' + item.assignTo + '$1 = 0;';
       item.assignTo = null;
-      if (ASSERTIONS) warnOnce('landingpad, but exceptions are disabled!');
+      if (VERBOSE) warnOnce('landingpad, but exceptions are disabled!');
       return ret;
     }
     var catchTypeArray = item.catchables.map(finalizeLLVMParameter).map(function(element) { return asmCoercion(element, 'i32') }).join(',');
