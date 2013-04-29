@@ -10230,13 +10230,29 @@ f.close()
         }
       ''')
 
+      def clear(): try_delete('a.out.js')
+
       for args in [[], ['-O2']]:
-        print args
+        clear()
+        print 'warn', args
         output = Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-s', 'WARN_ON_UNDEFINED_SYMBOLS=1'] + args, stderr=PIPE).communicate()
         self.assertContained('unresolved symbol: something', output[1])
 
+        clear()
         output = Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp')] + args, stderr=PIPE).communicate()
         self.assertNotContained('unresolved symbol: something\n', output[1])
+
+      for args in [[], ['-O2']]:
+        clear()
+        print 'error', args
+        output = Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'] + args, stderr=PIPE).communicate()
+        self.assertContained('unresolved symbol: something', output[1])
+        assert not os.path.exists('a.out.js')
+
+        clear()
+        output = Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp')] + args, stderr=PIPE).communicate()
+        self.assertNotContained('unresolved symbol: something\n', output[1])
+        assert os.path.exists('a.out.js')
 
     def test_toobig(self):
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''

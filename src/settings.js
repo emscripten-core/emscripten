@@ -317,6 +317,9 @@ var WARN_ON_UNDEFINED_SYMBOLS = 0; // If set to 1, we will warn on any undefined
                                    // the existing buildsystem), and (2) functions might be
                                    // implemented later on, say in --pre-js
 
+var ERROR_ON_UNDEFINED_SYMBOLS = 0; // If set to 1, we will give a compile-time error on any
+                                    // undefined symbols (see WARN_ON_UNDEFINED_SYMBOLS).
+
 var SMALL_XHR_CHUNKS = 0; // Use small chunk size for binary synchronous XHR's in Web Workers.
                           // Used for testing.
                           // See test_chunked_synchronous_xhr in runner.py and library.js.
