@@ -1033,8 +1033,17 @@ try:
   if minify_whitespace is None:
     minify_whitespace = opt_level >= 2 and not keep_js_debug
 
-  if shared.Settings.TARGET_X86: assert 'i386-pc-linux-gnu' in shared.COMPILER_OPTS
-  if shared.Settings.TARGET_LE32: assert 'le32-unknown-nacl' in shared.COMPILER_OPTS
+  assert shared.LLVM_TARGET in shared.COMPILER_OPTS
+  if shared.LLVM_TARGET == 'i386-pc-linux-gnu':
+    shared.Settings.TARGET_X86 = 1
+    shared.Settings.TARGET_LE32 = 0
+    assert 'le32-unknown-nacl' not in shared.COMPILER_OPTS
+  elif shared.LLVM_TARGET == 'le32-unknown-nacl':
+    shared.Settings.TARGET_LE32 = 1
+    shared.Settings.TARGET_X86 = 0
+    assert 'i386-pc-linux-gnu' not in shared.COMPILER_OPTS
+  else:
+    raise Exception('unknown llvm target: ' + str(shared.LLVM_TARGET))
 
   ## Compile source code to bitcode
 

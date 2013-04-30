@@ -397,9 +397,8 @@ except:
 
 # Additional compiler options
 
-# Target choice. Only one of these must be enabled, and synced with src/settings.js (TARGET_*)
-#LLVM_TARGET = 'le32-unknown-nacl'
-LLVM_TARGET = 'i386-pc-linux-gnu'
+# Target choice. Must be synced with src/settings.js (TARGET_*)
+LLVM_TARGET = os.environ.get('EMCC_LLVM_TARGET') or 'i386-pc-linux-gnu' # 'le32-unknown-nacl'
 
 try:
   COMPILER_OPTS # Can be set in EM_CONFIG, optionally
