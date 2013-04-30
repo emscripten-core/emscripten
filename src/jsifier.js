@@ -1598,10 +1598,11 @@ function JSify(data, functionsOnly, givenFunctions) {
         sortGlobals(globalsData.globalVariables).forEach(function(g) {
           var ident = g.ident;
           if (!isIndexableGlobal(ident)) return;
+          assert(Variables.nextIndexedOffset % Runtime.STACK_ALIGN == 0);
           Variables.indexedGlobals[ident] = Variables.nextIndexedOffset;
           Variables.nextIndexedOffset += Runtime.alignMemory(calcAllocatedSize(Variables.globals[ident].type));
           if (ident.substr(0, 5) == '__ZTV') { // leave room for null-terminating the vtable
-            Variables.nextIndexedOffset += Runtime.getNativeTypeSize('i32');
+            Variables.nextIndexedOffset += Runtime.alignMemory(QUANTUM_SIZE);
           }
         });
       }
