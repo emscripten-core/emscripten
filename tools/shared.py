@@ -398,8 +398,8 @@ except:
 # Additional compiler options
 
 # Target choice. Only one of these must be enabled, and synced with src/settings.js (TARGET_*)
-LLVM_TARGET = 'le32-unknown-nacl'
-#LLVM_TARGET = 'i386-pc-linux-gnu'
+#LLVM_TARGET = 'le32-unknown-nacl'
+LLVM_TARGET = 'i386-pc-linux-gnu'
 
 try:
   COMPILER_OPTS # Can be set in EM_CONFIG, optionally
