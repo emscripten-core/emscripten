@@ -109,6 +109,10 @@ function isJSVar(ident) {
 
 }
 
+function isLocalVar(ident) {
+  return ident[0] == '$';
+}
+
 function isStructPointerType(type) {
   // This test is necessary for clang - in llvm-gcc, we
   // could check for %struct. The downside is that %1 can

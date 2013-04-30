@@ -1326,16 +1326,21 @@ function JSify(data, functionsOnly, givenFunctions) {
     ident = Variables.resolveAliasToIdent(ident);
     var shortident = ident.slice(1);
     var simpleIdent = shortident;
-    var callIdent = LibraryManager.getRootIdent(simpleIdent);
-    if (callIdent) {
-      simpleIdent = callIdent; // ident may not be in library, if all there is is ident__inline, but in this case it is
-      if (callIdent.indexOf('.') < 0) {
-        callIdent = '_' + callIdent; // Not Math.*, so add the normal prefix
-      }
+    if (isLocalVar(ident)) {
+      var callIdent = ident;
     } else {
-      callIdent = ident;
+      // Not a local var, check if in library
+      var callIdent = LibraryManager.getRootIdent(simpleIdent);
+      if (callIdent) {
+        simpleIdent = callIdent; // ident may not be in library, if all there is is ident__inline, but in this case it is
+        if (callIdent.indexOf('.') < 0) {
+          callIdent = '_' + callIdent; // Not Math.*, so add the normal prefix
+        }
+      } else {
+        callIdent = ident;
+      }
+      if (callIdent == '0') return 'abort(-2)';
     }
-    if (callIdent == '0') return 'abort(-2)';
 
     var args = [];
     var argsTypes = [];
