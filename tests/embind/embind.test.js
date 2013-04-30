@@ -1682,6 +1682,26 @@ module({
         assert.deepEqual([1, 2, 3, 4], cm.VALUE_TUPLE_CONSTANT);
         assert.deepEqual({x:1,y:2,z:3,w:4}, cm.VALUE_STRUCT_CONSTANT);
     });
+
+    BaseFixture.extend("object handle comparison", function() {
+        var e = new cm.ValHolder("foo");
+        var f = new cm.ValHolder("foo");
+        assert.false(e.isAliasOf(undefined));
+        assert.false(e.isAliasOf(10));
+        assert.true(e.isAliasOf(e));
+        assert.false(e.isAliasOf(f));
+        assert.false(f.isAliasOf(e));
+        e.delete();
+        f.delete();
+    });
+
+    BaseFixture.extend("smart pointers compare with raw", function() {
+        // todo
+    });
+
+    BaseFixture.extend("derived-with-offset types compare with base", function() {
+        // todo
+    });
 });
 
 /* global run_all_tests */

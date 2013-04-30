@@ -1054,6 +1054,16 @@ function getInstanceTypeName(handle) {
     return handle.$$.ptrType.registeredClass.name;
 }
 
+ClassHandle.prototype.isAliasOf = function(other) {
+    if (!(this instanceof ClassHandle)) {
+        return false;
+    }
+    if (!(other instanceof ClassHandle)) {
+        return false;
+    }
+    return this.$$.ptr == other.$$.ptr;
+}
+
 ClassHandle.prototype.clone = function() {
     if (!this.$$.ptr) {
         throwBindingError(getInstanceTypeName(this) + ' instance already deleted');
