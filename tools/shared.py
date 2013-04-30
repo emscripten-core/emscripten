@@ -201,6 +201,9 @@ def check_node_version():
 
 EMSCRIPTEN_VERSION = '1.4.1'
 
+def generate_sanity():
+  return EMSCRIPTEN_VERSION + '|' + LLVM_TARGET
+
 def check_sanity(force=False):
   try:
     if not force:
@@ -214,9 +217,9 @@ def check_sanity(force=False):
         if sanity_mtime <= settings_mtime:
           reason = 'settings file has changed'
         else:
-          sanity_version = open(sanity_file).read()
-          if sanity_version != EMSCRIPTEN_VERSION:
-            reason = 'version bump'
+          sanity_data = open(sanity_file).read()
+          if sanity_data != generate_sanity():
+            reason = 'system change: %s vs %s' % (generate_sanity(), sanity_data)
           else:
             return # all is well
       except:
@@ -262,7 +265,7 @@ def check_sanity(force=False):
     if not force:
       # Only create/update this file if the sanity check succeeded, i.e., we got here
       f = open(sanity_file, 'w')
-      f.write(EMSCRIPTEN_VERSION)
+      f.write(generate_sanity())
       f.close()
 
   except Exception, e:
@@ -394,6 +397,10 @@ except:
 
 # Additional compiler options
 
+# Target choice. Only one of these must be enabled, and synced with src/settings.js (TARGET_*)
+LLVM_TARGET = 'le32-unknown-nacl'
+#LLVM_TARGET = 'i386-pc-linux-gnu'
+
 try:
   COMPILER_OPTS # Can be set in EM_CONFIG, optionally
 except:
@@ -402,7 +409,8 @@ except:
 COMPILER_OPTS = COMPILER_OPTS + ['-m32', '-U__i386__', '-U__i386', '-Ui386',
                                  '-U__SSE__', '-U__SSE_MATH__', '-U__SSE2__', '-U__SSE2_MATH__', '-U__MMX__',
                                  '-DEMSCRIPTEN', '-D__EMSCRIPTEN__', '-U__STRICT_ANSI__',
-                                 '-target', 'le32-unknown-nacl', '-D__IEEE_LITTLE_ENDIAN', '-fno-math-errno']
+                                 '-D__IEEE_LITTLE_ENDIAN', '-fno-math-errno',
+                                 '-target', LLVM_TARGET]
 
 USE_EMSDK = not os.environ.get('EMMAKEN_NO_SDK')
 
