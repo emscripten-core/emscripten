@@ -1754,10 +1754,10 @@ Succeeded!
           int main()
           {
             printf("*%.2f,%.2f,%d", M_PI, -M_PI, (1/0.0) > 1e300); // could end up as infinity, or just a very very big number
-            printf(",%d", finite(NAN) != 0);
-            printf(",%d", finite(INFINITY) != 0);
-            printf(",%d", finite(-INFINITY) != 0);
-            printf(",%d", finite(12.3) != 0);
+            printf(",%d", isfinite(NAN) != 0);
+            printf(",%d", isfinite(INFINITY) != 0);
+            printf(",%d", isfinite(-INFINITY) != 0);
+            printf(",%d", isfinite(12.3) != 0);
             printf(",%d", isinf(NAN) != 0);
             printf(",%d", isinf(INFINITY) != 0);
             printf(",%d", isinf(-INFINITY) != 0);
