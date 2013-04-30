@@ -2141,3 +2141,18 @@ EMSCRIPTEN_BINDINGS(constants) {
     StructVector sv(1, 2, 3, 4);
     constant("VALUE_STRUCT_CONSTANT", sv);
 }
+
+class DerivedWithOffset : public DummyDataToTestPointerAdjustment, public Base {    
+};
+
+std::shared_ptr<Base> return_Base_from_DerivedWithOffset(std::shared_ptr<DerivedWithOffset> ptr) {
+    return ptr;
+}
+
+EMSCRIPTEN_BINDINGS(with_adjustment) {
+    class_<DerivedWithOffset, base<Base>>("DerivedWithOffset")
+        .smart_ptr_constructor(&std::make_shared<DerivedWithOffset>)
+        ;
+
+    function("return_Base_from_DerivedWithOffset", &return_Base_from_DerivedWithOffset);
+}

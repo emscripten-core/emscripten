@@ -1695,12 +1695,13 @@ module({
         f.delete();
     });
 
-    BaseFixture.extend("smart pointers compare with raw", function() {
-        // todo
-    });
-
     BaseFixture.extend("derived-with-offset types compare with base", function() {
-        // todo
+        var e = new cm.DerivedWithOffset;
+        var f = cm.return_Base_from_DerivedWithOffset(e);
+        assert.true(e.isAliasOf(f));
+        assert.true(f.isAliasOf(e));
+        e.delete();
+        f.delete();
     });
 });
 
