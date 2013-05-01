@@ -408,10 +408,6 @@ var LibrarySDL = {
           }
 
           SDL.events.push(event);
-          if (SDL.events.length >= 10000) {
-            Module.printErr('SDL event queue full, dropping earliest event');
-            SDL.events.shift();
-          }
           break;
         case 'mouseout':
           // Un-press all pressed mouse buttons, because we might miss the release outside of the canvas
@@ -430,6 +426,12 @@ var LibrarySDL = {
         case 'blur':
         case 'visibilitychange': {
           // Un-press all pressed keys: TODO
+          for (var code in SDL.keyboardMap) {
+            SDL.events.push({
+              type: 'keyup',
+              keyCode: SDL.keyboardMap[code]
+            });
+          }
           break;
         }
         case 'unload':
@@ -442,6 +444,10 @@ var LibrarySDL = {
         case 'resize':
           SDL.events.push(event);
           break;
+      }
+      if (SDL.events.length >= 10000) {
+        Module.printErr('SDL event queue full, dropping events');
+        SDL.events = SDL.events.slice(0, 10000);
       }
       return false;
     },
@@ -480,10 +486,9 @@ var LibrarySDL = {
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.unicode', 'key', 'i32') }}}
 
           var code = SDL.keyCodes[event.keyCode] || event.keyCode;
-          var down = event.type == "keydown";
           {{{ makeSetValue('SDL.keyboardState', 'code', 'down', 'i8') }}};
           if (down) {
-            SDL.keyboardMap[code] = 1;
+            SDL.keyboardMap[code] = event.keyCode; // save the DOM input, which we can use to unpress it during blur
           } else {
             delete SDL.keyboardMap[code];
           }
