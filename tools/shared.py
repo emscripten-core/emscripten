@@ -206,25 +206,26 @@ def generate_sanity():
 
 def check_sanity(force=False):
   try:
-    if not force:
-      if not CONFIG_FILE:
-        return # config stored directly in EM_CONFIG => skip sanity checks
+    reason = None
+    if not CONFIG_FILE:
+      if not force: return # config stored directly in EM_CONFIG => skip sanity checks
+    else:
       settings_mtime = os.stat(CONFIG_FILE).st_mtime
       sanity_file = CONFIG_FILE + '_sanity'
-      reason = 'unknown'
-      try:
-        sanity_mtime = os.stat(sanity_file).st_mtime
-        if sanity_mtime <= settings_mtime:
-          reason = 'settings file has changed'
-        else:
-          sanity_data = open(sanity_file).read()
-          if sanity_data != generate_sanity():
-            reason = 'system change: %s vs %s' % (generate_sanity(), sanity_data)
+      if os.path.exists(sanity_file):
+        try:
+          sanity_mtime = os.stat(sanity_file).st_mtime
+          if sanity_mtime <= settings_mtime:
+            reason = 'settings file has changed'
           else:
-            return # all is well
-      except:
-        pass
-
+            sanity_data = open(sanity_file).read()
+            if sanity_data != generate_sanity():
+              reason = 'system change: %s vs %s' % (generate_sanity(), sanity_data)
+            else:
+              if not force: return # all is well
+        except Exception, e:
+          reason = 'unknown: ' + str(e)
+    if reason:
       print >> sys.stderr, '(Emscripten: %s, clearing cache)' % reason
       Cache.erase()
 
