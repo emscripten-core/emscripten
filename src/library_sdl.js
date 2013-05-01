@@ -41,9 +41,7 @@ var LibrarySDL = {
                // Note that images loaded before SDL_SetVideoMode will not get this optimization
 
     keyboardState: null,
-    shiftKey: false,
-    ctrlKey: false,
-    altKey: false,
+    keyboardMap: {},
 
     textInput: false,
 
@@ -429,6 +427,11 @@ var LibrarySDL = {
             }
           }
           break;
+        case 'blur':
+        case 'visibilitychange': {
+          // Un-press all pressed keys: TODO
+          break;
+        }
         case 'unload':
           if (Browser.mainLoop.runner) {
             SDL.events.push(event);
@@ -476,14 +479,13 @@ var LibrarySDL = {
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.mod', '0', 'i32') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.unicode', 'key', 'i32') }}}
 
-          {{{ makeSetValue('SDL.keyboardState', 'SDL.keyCodes[event.keyCode] || event.keyCode', 'event.type == "keydown"', 'i8') }}};
-
-          if (event.keyCode == 16) { //shift
-            SDL.shiftKey = event.type == "keydown";
-          } else if (event.keyCode == 17) { //control
-            SDL.ctrlKey = event.type == "keydown";
-          } else if (event.keyCode == 18) { //alt
-            SDL.altKey = event.type == "keydown";
+          var code = SDL.keyCodes[event.keyCode] || event.keyCode;
+          var down = event.type == "keydown";
+          {{{ makeSetValue('SDL.keyboardState', 'code', 'down', 'i8') }}};
+          if (down) {
+            SDL.keyboardMap[code] = 1;
+          } else {
+            delete SDL.keyboardMap[code];
           }
 
           break;
@@ -642,10 +644,12 @@ var LibrarySDL = {
       document.onkeydown = SDL.receiveEvent;
       document.onkeyup = SDL.receiveEvent;
       document.onkeypress = SDL.receiveEvent;
+      document.onblur = SDL.receiveEvent;
+      document.addEventListener("visibilitychange", SDL.receiveEvent);
     }
     window.onunload = SDL.receiveEvent;
-    SDL.keyboardState = _malloc(0x10000);
-    _memset(SDL.keyboardState, 0, 0x10000);
+    SDL.keyboardState = _malloc(1024); // SDL needs 512, add some buffer to be safe
+    _memset(SDL.keyboardState, 0, 1024);
     // Initialize this structure carefully for closure
     SDL.DOMEventToSDLEvent['keydown'] = 0x300 /* SDL_KEYDOWN */;
     SDL.DOMEventToSDLEvent['keyup'] = 0x301 /* SDL_KEYUP */;
@@ -909,9 +913,9 @@ var LibrarySDL = {
 
   SDL_GetModState: function() {
     // TODO: numlock, capslock, etc.
-    return (SDL.shiftKey ? 0x0001 | 0x0002 : 0) | // KMOD_LSHIFT & KMOD_RSHIFT
-           (SDL.ctrlKey ? 0x0040 | 0x0080 : 0) | // KMOD_LCTRL & KMOD_RCTRL
-           (SDL.altKey ? 0x0100 | 0x0200 : 0); // KMOD_LALT & KMOD_RALT
+    return (SDL.keyboardState[16] ? 0x0001 | 0x0002 : 0) | // KMOD_LSHIFT & KMOD_RSHIFT
+           (SDL.keyboardState[17] ? 0x0040 | 0x0080 : 0) | // KMOD_LCTRL & KMOD_RCTRL
+           (SDL.keyboardState[18] ? 0x0100 | 0x0200 : 0); // KMOD_LALT & KMOD_RALT
   },
 
   SDL_GetMouseState: function(x, y) {
