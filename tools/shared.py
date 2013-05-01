@@ -124,7 +124,8 @@ else:
     config_file = config_file.replace('{{{ NODE }}}', node)
     python = 'python'
     try:
-      python = Popen(['which', 'python'], stdout=PIPE).communicate()[0].replace('\n', '')
+      python = Popen(['which', 'python2'], stdout=PIPE).communicate()[0].replace('\n', '') or \
+               Popen(['which', 'python'], stdout=PIPE).communicate()[0].replace('\n', '') or python
     except:
       pass
     config_file = config_file.replace('{{{ PYTHON }}}', python)    
