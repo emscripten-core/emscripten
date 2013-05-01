@@ -121,10 +121,6 @@ shared.check_sanity(force=DEBUG)
 
 # Handle some global flags
 
-if len(sys.argv) == 1:
-  logging.error('no input files')
-  exit(1)
-
 # read response files very early on
 response_file = True
 while response_file:
@@ -138,23 +134,7 @@ while response_file:
       sys.argv[index:index+1] = extra_args
       break
 
-if sys.argv[1] == '--version':
-  revision = '(unknown revision)'
-  here = os.getcwd()
-  os.chdir(shared.path_from_root())
-  try:
-    revision = execute(['git', 'show'], stdout=PIPE, stderr=PIPE)[0].split('\n')[0]
-  except:
-    pass
-  finally:
-    os.chdir(here)
-  print '''emcc (Emscripten GCC-like replacement) %s (%s)
-Copyright (C) 2013 the Emscripten authors (see AUTHORS.txt)
-This is free and open source software under the MIT license.
-There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-  ''' % (shared.EMSCRIPTEN_VERSION, revision)
-  exit(0)
-elif sys.argv[1] == '--help':
+if len(sys.argv) == 1 or sys.argv[1] == '--help':
   this = os.path.basename('em++' if os.environ.get('EMMAKEN_CXX') else 'emcc')
 
   print '''%s [options] file...
@@ -499,6 +479,24 @@ emcc: supported targets: llvm bitcode, javascript, NOT elf
 (autoconf likes to see elf above to enable shared object support)
 ''' % (this, this, this)
   exit(0)
+
+elif sys.argv[1] == '--version':
+  revision = '(unknown revision)'
+  here = os.getcwd()
+  os.chdir(shared.path_from_root())
+  try:
+    revision = execute(['git', 'show'], stdout=PIPE, stderr=PIPE)[0].split('\n')[0]
+  except:
+    pass
+  finally:
+    os.chdir(here)
+  print '''emcc (Emscripten GCC-like replacement) %s (%s)
+Copyright (C) 2013 the Emscripten authors (see AUTHORS.txt)
+This is free and open source software under the MIT license.
+There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  ''' % (shared.EMSCRIPTEN_VERSION, revision)
+  exit(0)  
+
 elif len(sys.argv) == 2 and sys.argv[1] == '-v': # -v with no inputs
   print 'emcc (Emscripten GCC-like replacement + linker emulating GNU ld ) 2.0'
   exit(subprocess.call([shared.CLANG, '-v']))
