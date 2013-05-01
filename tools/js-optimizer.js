@@ -493,6 +493,7 @@ function simplifyExpressionsPre(ast) {
                  node[2][0] == 'binary' && node[2][1] == '<<' && node[2][3][0] == 'num' &&
                  node[2][2][0] == 'sub' && node[2][2][1][0] == 'name') {
         // collapse HEAPU?8[..] << 24 >> 24 etc. into HEAP8[..] | 0
+        // TODO: run this before | 0 | 0 removal, because we generate | 0
         var amount = node[3][1];
         var name = node[2][2][1][1];
         if (amount == node[2][3][1] && parseHeap(name)) {
