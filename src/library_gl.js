@@ -2262,14 +2262,16 @@ var LibraryGL = {
           if (this.modelViewLocation) Module.ctx.uniformMatrix4fv(this.modelViewLocation, false, GL.immediate.matrix['m']);
           if (this.projectionLocation) Module.ctx.uniformMatrix4fv(this.projectionLocation, false, GL.immediate.matrix['p']);
 
+          var clientAttributes = GL.immediate.clientAttributes;
+
           Module.ctx.vertexAttribPointer(this.positionLocation, positionSize, positionType, false,
-                                         GL.immediate.stride, GL.immediate.clientAttributes[GL.immediate.VERTEX].offset);
+                                         GL.immediate.stride, clientAttributes[GL.immediate.VERTEX].offset);
           Module.ctx.enableVertexAttribArray(this.positionLocation);
           if (this.hasTextures) {
             for (var i = 0; i < textureSizes.length; i++) {
               if (textureSizes[i] && this.texCoordLocations[i] >= 0) {
                 Module.ctx.vertexAttribPointer(this.texCoordLocations[i], textureSizes[i], textureTypes[i], false,
-                                               GL.immediate.stride, GL.immediate.clientAttributes[GL.immediate.TEXTURE0 + i].offset);
+                                               GL.immediate.stride, clientAttributes[GL.immediate.TEXTURE0 + i].offset);
                 Module.ctx.enableVertexAttribArray(this.texCoordLocations[i]);
               }
             }
@@ -2281,7 +2283,7 @@ var LibraryGL = {
           }
           if (this.hasColorAttrib) {
             Module.ctx.vertexAttribPointer(this.colorLocation, colorSize, colorType, true,
-                                           GL.immediate.stride, GL.immediate.clientAttributes[GL.immediate.COLOR].offset);
+                                           GL.immediate.stride, clientAttributes[GL.immediate.COLOR].offset);
             Module.ctx.enableVertexAttribArray(this.colorLocation);
             Module.ctx.uniform1i(this.hasColorAttribLocation, 1);
           } else if (this.hasColorUniform) {
@@ -2290,7 +2292,7 @@ var LibraryGL = {
           }
           if (this.hasNormal) {
             Module.ctx.vertexAttribPointer(this.normalLocation, normalSize, normalType, true,
-                                           GL.immediate.stride, GL.immediate.clientAttributes[GL.immediate.NORMAL].offset);
+                                           GL.immediate.stride, clientAttributes[GL.immediate.NORMAL].offset);
             Module.ctx.enableVertexAttribArray(this.normalLocation);
           }
           if (!useCurrProgram) { // otherwise, the user program will set the sampler2D binding and uniform itself
