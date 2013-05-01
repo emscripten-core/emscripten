@@ -503,6 +503,9 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
                    output_nicerizer=output_nicerizer,
                    post_build=None) # post_build was already done in ll_to_js, this do_run call is just to test the output
 
+    def is_le32(self):
+      return 'le32-unknown-nacl' in COMPILER_OPTS or self.env.get('EMCC_LLVM_TARGET') == 'le32-unknown-nacl'
+
     def test_hello_world(self):
         src = '''
           #include <stdio.h>
@@ -1498,12 +1501,10 @@ Succeeded!
 
         # TODO: A version of this with int64s as well
 
-        if 'le32-unknown-nacl' in COMPILER_OPTS:
+        if self.is_le32():
           return self.skip('LLVM marks the reads of s as fully aligned, making this test invalid')
-        elif 'i386-pc-linux-gnu' in COMPILER_OPTS:
-          self.do_run(src, '*12 : 1 : 12\n328157500735811.0,23,416012775903557.0,99\n')
         else:
-          raise Exception('unknown arch')
+          self.do_run(src, '*12 : 1 : 12\n328157500735811.0,23,416012775903557.0,99\n')
 
         return # TODO: continue to the next part here
 
@@ -1580,20 +1581,18 @@ Succeeded!
         }
       '''
 
-      if 'le32-unknown-nacl' in COMPILER_OPTS:
+      if self.is_le32():
         self.do_run(src, '''16,32
 0,8,8,8
 16,24,24,24
 0.00,10,123.46,0.00 : 0.00,10,123.46,0.00
 ''')
-      elif 'i386-pc-linux-gnu' in COMPILER_OPTS:
+      else:
         self.do_run(src, '''12,28
 0,4,4,4
 12,16,16,16
 0.00,10,123.46,0.00 : 0.00,10,123.46,0.00
 ''')
-      else:
-        raise Exception('unknown arch')
 
     def test_unsigned(self):
         Settings.CORRECT_SIGNS = 1 # We test for exactly this sort of thing here
@@ -3741,12 +3740,10 @@ Exiting setjmp function, level: 0, prev_jmp: -1
           # Compressed memory. Note that sizeof() does give the fat sizes, however!
           self.do_run(src, '*0,0,0,1,2,3,4,5*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*12,20,5*')
         else:
-          if 'le32-unknown-nacl' in COMPILER_OPTS:
+          if self.is_le32():
             self.do_run(src, '*0,0,0,4,8,16,20,24*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*16,24,24*')
-          elif 'i386-pc-linux-gnu' in COMPILER_OPTS:
-            self.do_run(src, '*0,0,0,4,8,12,16,20*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*12,20,20*')
           else:
-            raise Exception('unknown arch')
+            self.do_run(src, '*0,0,0,4,8,12,16,20*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*12,20,20*')
 
     def test_ptrtoint(self):
         if self.emcc_args is None: return self.skip('requires emcc')
@@ -4169,7 +4166,7 @@ def process(filename):
 
     def test_varargs_byval(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('FIXME: Add support for this')
-      if 'le32-unknown-nacl' in COMPILER_OPTS: return self.skip('clang cannot compile this code with that target yet')
+      if self.is_le32(): return self.skip('clang cannot compile this code with that target yet')
 
       src = r'''
         #include <stdio.h>
@@ -8008,7 +8005,7 @@ def process(filename):
 
       #Settings.EXPORTED_FUNCTIONS += ['_PyRun_SimpleStringFlags'] # for the demo
 
-      if 'le32-unknown-nacl' in COMPILER_OPTS:
+      if self.is_le32():
         bitcode = path_from_root('tests', 'python', 'python.le32.bc')
       else:
         bitcode = path_from_root('tests', 'python', 'python.small.bc')
