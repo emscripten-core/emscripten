@@ -20,6 +20,10 @@ generate JavaScript.
 
 import os, sys
 from tools import shared
+from subprocess import CalledProcessError
 
-shared.Building.make(sys.argv[1:])
+try:
+	shared.Building.make(sys.argv[1:])
+except CalledProcessError, e:
+	sys.exit(e.returncode)
 
