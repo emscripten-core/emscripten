@@ -14,8 +14,8 @@ var RuntimeGenerator = {
       ret += sep + '_memset(' + type + 'TOP, 0, ' + size + ')';
     }
     ret += sep + type + 'TOP = (' + type + 'TOP + ' + size + ')|0';
-    if ({{{ QUANTUM_SIZE }}} > 1 && !ignoreAlign) {
-      ret += sep + RuntimeGenerator.alignMemory(type + 'TOP', {{{ QUANTUM_SIZE }}});
+    if ({{{ STACK_ALIGN }}} > 1 && !ignoreAlign) {
+      ret += sep + RuntimeGenerator.alignMemory(type + 'TOP', {{{ STACK_ALIGN }}});
     }
     return ret;
   },
@@ -23,9 +23,7 @@ var RuntimeGenerator = {
   // An allocation that lives as long as the current function call
   stackAlloc: function(size, sep) {
     sep = sep || ';';
-    if (USE_TYPED_ARRAYS === 2) 'STACKTOP = (STACKTOP + STACKTOP|0 % ' + ({{{ QUANTUM_SIZE }}} - (isNumber(size) ? Math.min(size, {{{ QUANTUM_SIZE }}}) : {{{ QUANTUM_SIZE }}})) + ')' + sep;
-    //                                                               The stack is always QUANTUM SIZE aligned, so we may not need to force alignment here
-    var ret = RuntimeGenerator.alloc(size, 'STACK', false, sep, USE_TYPED_ARRAYS != 2 || (isNumber(size) && parseInt(size) % {{{ QUANTUM_SIZE }}} == 0));
+    var ret = RuntimeGenerator.alloc(size, 'STACK', false, sep, USE_TYPED_ARRAYS != 2 || (isNumber(size) && parseInt(size) % {{{ STACK_ALIGN }}} == 0));
     if (ASSERTIONS) {
       ret += sep + 'assert(' + asmCoercion('(STACKTOP|0) < (STACK_MAX|0)', 'i32') + ')';
     }
@@ -37,8 +35,8 @@ var RuntimeGenerator = {
     var ret = 'var __stackBase__  = ' + (ASM_JS ? '0; __stackBase__ = ' : '') + 'STACKTOP';
     if (initial > 0) ret += '; STACKTOP = (STACKTOP + ' + initial + ')|0';
     if (USE_TYPED_ARRAYS == 2) {
-      assert(initial % QUANTUM_SIZE == 0);
-      if (ASSERTIONS && QUANTUM_SIZE == 4) {
+      assert(initial % Runtime.STACK_ALIGN == 0);
+      if (ASSERTIONS && Runtime.STACK_ALIGN == 4) {
         ret += '; assert(' + asmCoercion('!(STACKTOP&3)', 'i32') + ')';
       }
     }
@@ -70,7 +68,7 @@ var RuntimeGenerator = {
 
   alignMemory: function(target, quantum) {
     if (typeof quantum !== 'number') {
-      quantum = '(quantum ? quantum : {{{ QUANTUM_SIZE }}})';
+      quantum = '(quantum ? quantum : {{{ STACK_ALIGN }}})';
     }
     return target + ' = ' + Runtime.forceAlign(target, quantum);
   },
@@ -175,6 +173,18 @@ var Runtime = {
 
   set: set,
 
+  STACK_ALIGN: {{{ STACK_ALIGN }}},
+
+  // type can be a native type or a struct (or null, for structs we only look at size here)
+  getAlignSize: function(type, size, vararg) {
+    // we align i64s and doubles on 64-bit boundaries, unlike x86
+#if TARGET_LE32
+    if (type == 'i64' || type == 'double' || vararg) return 8;
+    if (!type) return Math.min(size, 8); // align structures internally to 64 bits
+#endif
+    return Math.min(size || (type ? Runtime.getNativeFieldSize(type) : 0), Runtime.QUANTUM_SIZE);
+  },
+
   // Calculate aligned size, just like C structs should be. TODO: Consider
   // requesting that compilation be done with #pragma pack(push) /n #pragma pack(1),
   // which would remove much of the complexity here.
@@ -187,10 +197,10 @@ var Runtime = {
       var size, alignSize;
       if (Runtime.isNumberType(field) || Runtime.isPointerType(field)) {
         size = Runtime.getNativeTypeSize(field); // pack char; char; in structs, also char[X]s.
-        alignSize = size;
+        alignSize = Runtime.getAlignSize(field, size);
       } else if (Runtime.isStructType(field)) {
         size = Types.types[field].flatSize;
-        alignSize = Types.types[field].alignSize;
+        alignSize = Runtime.getAlignSize(null, Types.types[field].alignSize);
       } else if (field[0] == 'b') {
         // bN, large number field, like a [N x i8]
         size = field.substr(1)|0;
@@ -198,7 +208,7 @@ var Runtime = {
       } else {
         throw 'Unclear type in struct: ' + field + ', in ' + type.name_ + ' :: ' + dump(Types.types[type.name_]);
       }
-      alignSize = type.packed ? 1 : Math.min(alignSize, Runtime.QUANTUM_SIZE);
+      if (type.packed) alignSize = 1;
       type.alignSize = Math.max(type.alignSize, alignSize);
       var curr = Runtime.alignMemory(type.flatSize, alignSize); // if necessary, place this on aligned memory
       type.flatSize = curr + size;

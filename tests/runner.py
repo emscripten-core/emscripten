@@ -78,6 +78,8 @@ class RunnerCore(unittest.TestCase):
   stderr_redirect = STDOUT # This avoids cluttering the test runner output, which is stderr too, with compiler warnings etc.
                            # Change this to None to get stderr reporting, for debugging purposes
 
+  env = {}
+
   def skipme(self): # used by tests we ask on the commandline to be skipped, see right before call to unittest.main
     return self.skip('requested to be skipped')
 
@@ -238,10 +240,7 @@ process(sys.argv[1])
         os.remove(f + '.o')
       except:
         pass
-      compiler_flags = ['-emit-llvm']
-      if not f.endswith('.c'):
-         compiler_flags = compiler_flags + ['-std=c++03']
-      args = [Building.COMPILER] + compiler_flags + COMPILER_OPTS + Building.COMPILER_TEST_OPTS + \
+      args = [PYTHON, EMCC] + Building.COMPILER_TEST_OPTS + \
              ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
              map(lambda include: '-I' + include, includes) + \
              ['-c', f, '-o', f + '.o']
@@ -358,7 +357,8 @@ process(sys.argv[1])
     build_dir = self.get_build_dir()
     output_dir = self.get_dir()
 
-    cache_name = name + cache_name_extra
+    cache_name = name + cache_name_extra + (self.env.get('EMCC_LLVM_TARGET') or '')
+
     if self.library_cache is not None:
       if cache and self.library_cache.get(cache_name):
         print >> sys.stderr,  '<load %s from cache> ' % cache_name,
@@ -455,7 +455,7 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
   if len(sys.argv) == 2 and 'ALL.' in sys.argv[1]:
     ignore, test = sys.argv[1].split('.')
     print 'Running all test modes on test "%s"' % test
-    sys.argv = [sys.argv[0], 'default.'+test, 'o1.'+test, 'o2.'+test, 'asm1.'+test, 'asm2.'+test, 'asm2g.'+test, 's_0_0.'+test, 's_0_1.'+test, 's_1_0.'+test, 's_1_1.'+test]
+    sys.argv = [sys.argv[0], 'default.'+test, 'o1.'+test, 'o2.'+test, 'asm1.'+test, 'asm2.'+test, 'asm2g.'+test, 'asm2le32.'+test, 's_0_0.'+test, 's_0_1.'+test, 's_1_0.'+test, 's_1_1.'+test]
 
   class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
     ## Does a complete test - builds, runs, checks output, etc.
@@ -505,6 +505,9 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
                    js_engines=js_engines,
                    output_nicerizer=output_nicerizer,
                    post_build=None) # post_build was already done in ll_to_js, this do_run call is just to test the output
+
+    def is_le32(self):
+      return 'le32-unknown-nacl' in COMPILER_OPTS or self.env.get('EMCC_LLVM_TARGET') == 'le32-unknown-nacl'
 
     def test_hello_world(self):
         src = '''
@@ -1500,7 +1503,11 @@ Succeeded!
           '''
 
         # TODO: A version of this with int64s as well
-        self.do_run(src, '*12 : 1 : 12\n328157500735811.0,23,416012775903557.0,99\n')
+
+        if self.is_le32():
+          return self.skip('LLVM marks the reads of s as fully aligned, making this test invalid')
+        else:
+          self.do_run(src, '*12 : 1 : 12\n328157500735811.0,23,416012775903557.0,99\n')
 
         return # TODO: continue to the next part here
 
@@ -1533,6 +1540,62 @@ Succeeded!
           self.do_run(src, '*300:1*\n*515559*\n*42949672960*\n')
         except Exception, e:
           assert 'must be aligned' in str(e), e # expected to fail without emulation
+
+    def test_align64(self):
+      src = r'''
+        #include <stdio.h>
+
+        // inspired by poppler
+
+        enum Type {
+          A = 10,
+          B = 20
+        };
+
+        struct Object {
+          Type type;
+          union {
+            int intg;
+            double real;
+            char *name;
+          };
+        };
+
+        struct Principal {
+          double x;
+          Object a;
+          double y;
+        };
+
+        int main(int argc, char **argv)
+        {
+          int base = argc-1;
+          Object *o = NULL;
+          printf("%d,%d\n", sizeof(Object), sizeof(Principal));
+          printf("%d,%d,%d,%d\n", (int)&o[base].type, (int)&o[base].intg, (int)&o[base].real, (int)&o[base].name);
+          printf("%d,%d,%d,%d\n", (int)&o[base+1].type, (int)&o[base+1].intg, (int)&o[base+1].real, (int)&o[base+1].name);
+          Principal p, q;
+          p.x = p.y = q.x = q.y = 0;
+          p.a.type = A;
+          p.a.real = 123.456;
+          *(&q.a) = p.a;
+          printf("%.2f,%d,%.2f,%.2f : %.2f,%d,%.2f,%.2f\n", p.x, p.a.type, p.a.real, p.y, q.x, q.a.type, q.a.real, q.y);
+          return 0;
+        }
+      '''
+
+      if self.is_le32():
+        self.do_run(src, '''16,32
+0,8,8,8
+16,24,24,24
+0.00,10,123.46,0.00 : 0.00,10,123.46,0.00
+''')
+      else:
+        self.do_run(src, '''12,28
+0,4,4,4
+12,16,16,16
+0.00,10,123.46,0.00 : 0.00,10,123.46,0.00
+''')
 
     def test_unsigned(self):
         Settings.CORRECT_SIGNS = 1 # We test for exactly this sort of thing here
@@ -3272,6 +3335,36 @@ Exiting setjmp function, level: 0, prev_jmp: -1
       '''
       self.do_run(src, '*0x1*')
 
+    def test_funcptr_namecollide(self):
+      src = r'''
+        #include <stdio.h>
+
+        void do_call(void (*puts)(const char *), const char *str);
+
+        void do_print(const char *str) {
+          if (!str) do_call(NULL, "delusion");
+          if ((int)str == -1) do_print(str+10);
+          puts("====");
+          puts(str);
+          puts("====");
+        }
+
+        void do_call(void (*puts)(const char *), const char *str) {
+          if (!str) do_print("confusion");
+          if ((int)str == -1) do_call(NULL, str-10);
+          (*puts)(str);
+        }
+
+        int main(int argc, char **argv)
+        {
+          for (int i = 0; i < argc; i++) {
+            do_call(i != 10 ? do_print : NULL, i != 15 ? "waka waka" : NULL);
+          }
+          return 0;
+        }
+      '''
+      self.do_run(src, 'waka', force_c=True)
+
     def test_emptyclass(self):
         if self.emcc_args is None: return self.skip('requires emcc')
         src = '''
@@ -3650,7 +3743,10 @@ Exiting setjmp function, level: 0, prev_jmp: -1
           # Compressed memory. Note that sizeof() does give the fat sizes, however!
           self.do_run(src, '*0,0,0,1,2,3,4,5*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*12,20,5*')
         else:
-          self.do_run(src, '*0,0,0,4,8,12,16,20*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*12,20,20*')
+          if self.is_le32():
+            self.do_run(src, '*0,0,0,4,8,16,20,24*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*16,24,24*')
+          else:
+            self.do_run(src, '*0,0,0,4,8,12,16,20*\n*1,0,0*\n*0*\n0:1,1\n1:1,1\n2:1,1\n*12,20,20*')
 
     def test_ptrtoint(self):
         if self.emcc_args is None: return self.skip('requires emcc')
@@ -4073,6 +4169,7 @@ def process(filename):
 
     def test_varargs_byval(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('FIXME: Add support for this')
+      if self.is_le32(): return self.skip('clang cannot compile this code with that target yet')
 
       src = r'''
         #include <stdio.h>
@@ -4247,7 +4344,10 @@ The current type of b is: 9
         output = Popen([PYTHON, EMCC, all_name], stderr=PIPE).communicate()
         # Check for warning in the generated code
         generated = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
-        assert 'Casting a function pointer type to another with a different number of arguments' in output[1], 'Missing expected warning'
+        if 'i386-pc-linux-gnu' in COMPILER_OPTS:
+          assert 'Casting a function pointer type to another with a different number of arguments' in output[1], 'Missing expected warning'
+        else:
+          print >> sys.stderr, 'skipping C/C++ conventions warning check, since not i386-pc-linux-gnu'
 
     def test_stdlibs(self):
         if self.emcc_args is None: return self.skip('requires emcc')
@@ -7331,7 +7431,7 @@ operator new(size_t size)
       self.do_run(src, 'new 4!\n*1,0*')
 
     def test_dlmalloc_partial_2(self):
-      if self.emcc_args is None or 'SAFE_HEAP' in str(self.emcc_args): return self.skip('only emcc will link in dlmalloc, and we do unsafe stuff')
+      if self.emcc_args is None or 'SAFE_HEAP' in str(self.emcc_args) or 'CHECK_HEAP_ALIGN' in str(self.emcc_args): return self.skip('only emcc will link in dlmalloc, and we do unsafe stuff')
       # present part of the symbols of dlmalloc, not all. malloc is harder to link than new which is weak.
       src = r'''
         #include <stdio.h>
@@ -7594,20 +7694,14 @@ void*:16
 
     def test_lua(self):
       if self.emcc_args is None: return self.skip('requires emcc')
-
       if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: make this work')
 
-      # Overflows in luaS_newlstr hash loop
-      if self.emcc_args is None: Settings.SAFE_HEAP = 0 # Has various warnings, with copied HEAP_HISTORY values (fixed if we copy 'null' as the type)
-      Settings.CORRECT_OVERFLOWS = 1
-      Settings.CHECK_OVERFLOWS = 0
-      Settings.CORRECT_SIGNS = 1 # Not sure why, but needed
-
-      self.do_ll_run(path_from_root('tests', 'lua', 'lua.ll'),
-                      'hello lua world!\n17\n1\n2\n3\n4\n7',
-                      args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
-                      output_nicerizer=lambda string, err: (string + err).replace('\n\n', '\n').replace('\n\n', '\n'),
-                      extra_emscripten_args=['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/langinfo.h,libc/time.h'])
+      self.do_run('',
+                  'hello lua world!\n17\n1\n2\n3\n4\n7',
+                  args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
+                  libraries=self.get_library('lua', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None),
+                  includes=[path_from_root('tests', 'lua')],
+                  output_nicerizer=lambda string, err: (string + err).replace('\n\n', '\n').replace('\n\n', '\n'))
 
     def get_freetype(self):
       Settings.DEAD_FUNCTIONS += ['_inflateEnd', '_inflate', '_inflateReset', '_inflateInit2_']
@@ -7912,14 +8006,14 @@ def process(filename):
       if self.emcc_args is None: return self.skip('requires emcc')
       if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: make this work')
 
-      # Overflows in string_hash
-      Settings.CORRECT_OVERFLOWS = 1
-      Settings.CHECK_OVERFLOWS = 0
-      if self.emcc_args is None: Settings.SAFE_HEAP = 0 # Has bitfields which are false positives. Also the PyFloat_Init tries to detect endianness.
-      Settings.CORRECT_SIGNS = 1 # Not sure why, but needed
-      Settings.EXPORTED_FUNCTIONS += ['_PyRun_SimpleStringFlags'] # for the demo
+      #Settings.EXPORTED_FUNCTIONS += ['_PyRun_SimpleStringFlags'] # for the demo
 
-      self.do_ll_run(path_from_root('tests', 'python', 'python.small.bc'),
+      if self.is_le32():
+        bitcode = path_from_root('tests', 'python', 'python.le32.bc')
+      else:
+        bitcode = path_from_root('tests', 'python', 'python.small.bc')
+
+      self.do_ll_run(bitcode,
                       'hello python world!\n[0, 2, 4, 6]\n5\n22\n5.470000',
                       args=['-S', '-c' '''print "hello python world!"; print [x*2 for x in range(4)]; t=2; print 10-3-t; print (lambda x: x*2)(11); print '%f' % 5.47'''])
 
@@ -9155,14 +9249,23 @@ finalizing 3 (global == 0)
 ''')
 
   # Generate tests for everything
-  def make_run(fullname, name=-1, compiler=-1, llvm_opts=0, embetter=0, quantum_size=0, typed_arrays=0, emcc_args=None):
+  def make_run(fullname, name=-1, compiler=-1, llvm_opts=0, embetter=0, quantum_size=0, typed_arrays=0, emcc_args=None, env='{}'):
     exec('''
 class %s(T):
+  env = %s
+
   def tearDown(self):
     super(%s, self).tearDown()
 
+    for k, v in self.env.iteritems():
+      del os.environ[k]
+
   def setUp(self):
     super(%s, self).setUp()
+
+    for k, v in self.env.iteritems():
+      assert k not in os.environ, k + ' should not be in environment'
+      os.environ[k] = v
 
     Building.COMPILER_TEST_OPTS = ['-g']
     os.chdir(self.get_dir()) # Ensure the directory exists and go there
@@ -9207,7 +9310,7 @@ class %s(T):
     Building.pick_llvm_opts(3)
 
 TT = %s
-''' % (fullname, fullname, fullname, compiler, str(emcc_args), llvm_opts, embetter, quantum_size, typed_arrays, fullname))
+''' % (fullname, env, fullname, fullname, compiler, str(emcc_args), llvm_opts, embetter, quantum_size, typed_arrays, fullname))
     return TT
 
   # Make one run with the defaults
@@ -9220,9 +9323,10 @@ TT = %s
   exec('o2 = make_run("o2", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=0", "-s", "JS_CHUNK_SIZE=1024"])')
 
   # asm.js
-  exec('asm1 = make_run("asm1", compiler=CLANG, emcc_args=["-O1"])')
+  exec('asm1 = make_run("asm1", compiler=CLANG, emcc_args=["-O1", "-s", "CHECK_HEAP_ALIGN=1"])')
   exec('asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2"])')
   exec('asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTIONS=1", "--memory-init-file", "1"])')
+  exec('''asm2le32 = make_run("asm2le32", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "CHECK_HEAP_ALIGN=1"], env='{"EMCC_LLVM_TARGET": "le32-unknown-nacl"}')''')
 
   # Make custom runs with various options
   for compiler, quantum, embetter, typed_arrays, llvm_opts in [
@@ -12671,7 +12775,7 @@ elif 'benchmark' in str(sys.argv):
       '''
       self.do_benchmark('corrections', src, [], 'final: 40006013:10225.', emcc_args=['-s', 'CORRECT_SIGNS=1', '-s', 'CORRECT_OVERFLOWS=1', '-s', 'CORRECT_ROUNDINGS=1'])
 
-    def fasta(self, double_rep):
+    def fasta(self, name, double_rep, emcc_args=[]):
       src = open(path_from_root('tests', 'fasta.cpp'), 'r').read().replace('double', double_rep)
       src = src.replace('   const size_t n = ( argc > 1 ) ? atoi( argv[1] ) : 512;', '''
         int n;
@@ -12690,10 +12794,13 @@ elif 'benchmark' in str(sys.argv):
       self.do_benchmark('fasta', src, [], '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA\nTCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACT\nAAAAATACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAG\nGCTGAGGCAGGAGAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCG\nCCACTGCACTCCAGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAAGGCCGGGCGCGGT\nGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGATCACCTGAGGTCA\nGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAATACAAAAA\nTTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAGGCTGAGGCAGGAG\nAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCCA\nGCCTGGGCGA''')
 
     def test_fasta_float(self):
-      self.fasta('float')
+      self.fasta('fasta_float', 'float')
 
-    def zzztest_fasta_double(self):
-      self.fasta('double')
+    def test_fasta_double(self):
+      self.fasta('fasta_double', 'double')
+
+    def test_fasta_double_full(self):
+      self.fasta('fasta_double_full', 'double', emcc_args=['-s', 'DOUBLE_MODE=1'])
 
     def test_skinning(self):
       src = open(path_from_root('tests', 'skinning_test_no_simd.cpp'), 'r').read()
@@ -13008,7 +13115,7 @@ fi
       self.assertContained(SANITY_MESSAGE, output)
       assert os.path.exists(SANITY_FILE) # EMCC should have checked sanity successfully
       assert mtime(SANITY_FILE) >= mtime(CONFIG_FILE)
-      assert open(SANITY_FILE).read() == EMSCRIPTEN_VERSION
+      assert generate_sanity() == open(SANITY_FILE).read()
       self.assertNotContained(SANITY_FAIL_MESSAGE, output)
 
       # emcc run again should not sanity check, because the sanity file is newer
@@ -13017,7 +13124,7 @@ fi
       self.assertNotContained(SANITY_FAIL_MESSAGE, output)
 
       # correct sanity contents mean we need not check
-      open(SANITY_FILE, 'w').write(EMSCRIPTEN_VERSION)
+      open(SANITY_FILE, 'w').write(generate_sanity())
       output = self.check_working(EMCC)
       self.assertNotContained(SANITY_MESSAGE, output)
 

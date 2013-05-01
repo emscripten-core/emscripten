@@ -336,6 +336,8 @@ function intertyper(data, sidePass, baseLineNums) {
             return 'InsertValue';
           if (tokensLength >= 3 && token0Text == 'phi')
             return 'Phi';
+          if (tokensLength >= 3 && token0Text == 'va_arg')
+            return 'va_arg';
           if (tokensLength >= 3 && token0Text == 'landingpad')
             return 'Landingpad';
           if (token0Text == 'fence')
@@ -814,6 +816,16 @@ function intertyper(data, sidePass, baseLineNums) {
         };
         return ret;
       }).filter(function(param) { return param.value && param.value.ident != 'undef' });
+      this.forwardItem(item, 'Reintegrator');
+    }
+  });
+  // 'phi'
+  substrate.addActor('va_arg', {
+    processItem: function(item) {
+      item.intertype = 'va_arg';
+      var segments = splitTokenList(item.tokens.slice(1));
+      item.type = segments[1][0].text;
+      item.value = parseLLVMSegment(segments[0]);
       this.forwardItem(item, 'Reintegrator');
     }
   });

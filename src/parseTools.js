@@ -109,6 +109,10 @@ function isJSVar(ident) {
 
 }
 
+function isLocalVar(ident) {
+  return ident[0] == '$';
+}
+
 function isStructPointerType(type) {
   // This test is necessary for clang - in llvm-gcc, we
   // could check for %struct. The downside is that %1 can
@@ -1020,7 +1024,9 @@ function getHeapOffset(offset, type, forceAsm) {
   }
 
   if (Runtime.getNativeFieldSize(type) > 4) {
-    type = 'i32'; // XXX we emulate 64-bit values as 32
+    if (type == 'i64' || TARGET_X86) {
+      type = 'i32'; // XXX we emulate 64-bit values as 32 in x86, and also in le32 but only i64, not double
+    }
   }
 
   var sz = Runtime.getNativeTypeSize(type);
@@ -1121,7 +1127,9 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
     return '{ ' + ret.join(', ') + ' }';
   }
 
-  if (DOUBLE_MODE == 1 && USE_TYPED_ARRAYS == 2 && type == 'double') {
+  // In double mode 1, in x86 we always assume unaligned because we can't trust that; otherwise in le32
+  // we need this code path if we are not fully aligned.
+  if (DOUBLE_MODE == 1 && USE_TYPED_ARRAYS == 2 && type == 'double' && (TARGET_X86 || align < 8)) {
     return '(' + makeSetTempDouble(0, 'i32', makeGetValue(ptr, pos, 'i32', noNeedFirst, unsigned, ignore, align)) + ',' +
                  makeSetTempDouble(1, 'i32', makeGetValue(ptr, getFastValue(pos, '+', Runtime.getNativeTypeSize('i32')), 'i32', noNeedFirst, unsigned, ignore, align)) + ',' +
             makeGetTempDouble(0, 'double') + ')';
@@ -1130,6 +1138,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
   if (USE_TYPED_ARRAYS == 2 && align) {
     // Alignment is important here. May need to split this up
     var bytes = Runtime.getNativeTypeSize(type);
+    if (DOUBLE_MODE == 0 && type == 'double') bytes = 4; // we will really only read 4 bytes here
     if (bytes > align) {
       var ret = '(';
       if (isIntImplemented(type)) {
@@ -1137,7 +1146,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSa
           // Special case that we can optimize
           ret += makeGetValue(ptr, pos, 'i16', noNeedFirst, 2, ignore) + '|' +
                  '(' + makeGetValue(ptr, getFastValue(pos, '+', 2), 'i16', noNeedFirst, 2, ignore) + '<<16)';
-        } else { // XXX we cannot truly handle > 4...
+        } else { // XXX we cannot truly handle > 4... (in x86)
           ret = '';
           for (var i = 0; i < bytes; i++) {
             ret += '(' + makeGetValue(ptr, getFastValue(pos, '+', i), 'i8', noNeedFirst, 1, ignore) + (i > 0 ? '<<' + (8*i) : '') + ')';
@@ -1226,6 +1235,7 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe,
     return ret.join('; ');
   }
 
+  // TODO: optimize like get for le32
   if (DOUBLE_MODE == 1 && USE_TYPED_ARRAYS == 2 && type == 'double') {
     return '(' + makeSetTempDouble(0, 'double', value) + ',' +
             makeSetValue(ptr, pos, makeGetTempDouble(0, 'i32'), 'i32', noNeedFirst, ignore, align, noSafe, ',') + ',' +
@@ -1637,7 +1647,11 @@ function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
       case 'i1': case 'i8': return [unsigned ? 'HEAPU8' : 'HEAP8']; break;
       case 'i16': return [unsigned ? 'HEAPU16' : 'HEAP16']; break;
       case 'i32': case 'i64': return [unsigned ? 'HEAPU32' : 'HEAP32']; break;
-      case 'float': case 'double': return ['HEAPF32']; break;
+      case 'double': {
+        if (TARGET_LE32) return ['HEAPF64']; // in le32, we do have the ability to assume 64-bit alignment
+        // otherwise, fall through to float
+      }
+      case 'float': return ['HEAPF32'];
       default: {
         throw 'what, exactly, can we do for unknown types in TA2?! ' + new Error().stack;
       }

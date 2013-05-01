@@ -557,6 +557,7 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
 
   cmd = [compiler] + list(filter_emscripten_options(sys.argv[1:]))
   if not use_js: cmd += shared.EMSDK_OPTS + ['-DEMSCRIPTEN']
+  if use_js: cmd += ['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'] # configure tests should fail when an undefined symbol exists
 
   if DEBUG: print >> sys.stderr, 'emcc, just configuring: ', ' '.join(cmd)
   if debug_configure: open(tempout, 'a').write('emcc, just configuring: ' + ' '.join(cmd) + '\n\n')
@@ -1031,6 +1032,18 @@ try:
 
   if minify_whitespace is None:
     minify_whitespace = opt_level >= 2 and not keep_js_debug
+
+  assert shared.LLVM_TARGET in shared.COMPILER_OPTS
+  if shared.LLVM_TARGET == 'i386-pc-linux-gnu':
+    shared.Settings.TARGET_X86 = 1
+    shared.Settings.TARGET_LE32 = 0
+    assert 'le32-unknown-nacl' not in shared.COMPILER_OPTS
+  elif shared.LLVM_TARGET == 'le32-unknown-nacl':
+    shared.Settings.TARGET_LE32 = 1
+    shared.Settings.TARGET_X86 = 0
+    assert 'i386-pc-linux-gnu' not in shared.COMPILER_OPTS
+  else:
+    raise Exception('unknown llvm target: ' + str(shared.LLVM_TARGET))
 
   ## Compile source code to bitcode
 

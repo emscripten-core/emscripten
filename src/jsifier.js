@@ -1295,6 +1295,14 @@ function JSify(data, functionsOnly, givenFunctions) {
       return RuntimeGenerator.stackAlloc(getFastValue(calcAllocatedSize(item.allocatedType), '*', item.allocatedNum));
     }
   });
+  makeFuncLineActor('va_arg', function(item) {
+    assert(TARGET_LE32);
+    var ident = item.value.ident;
+    var move = Runtime.STACK_ALIGN;
+    return '(tempInt=' + makeGetValue(ident, 4, '*') + ',' +
+                         makeSetValue(ident, 4, 'tempInt + ' + move, '*') + ',' +
+                         makeGetValue(makeGetValue(ident, 0, '*'), 'tempInt', item.type) + ')';
+  });
 
   makeFuncLineActor('mathop', processMathop);
 
@@ -1318,16 +1326,21 @@ function JSify(data, functionsOnly, givenFunctions) {
     ident = Variables.resolveAliasToIdent(ident);
     var shortident = ident.slice(1);
     var simpleIdent = shortident;
-    var callIdent = LibraryManager.getRootIdent(simpleIdent);
-    if (callIdent) {
-      simpleIdent = callIdent; // ident may not be in library, if all there is is ident__inline, but in this case it is
-      if (callIdent.indexOf('.') < 0) {
-        callIdent = '_' + callIdent; // Not Math.*, so add the normal prefix
-      }
+    if (isLocalVar(ident)) {
+      var callIdent = ident;
     } else {
-      callIdent = ident;
+      // Not a local var, check if in library
+      var callIdent = LibraryManager.getRootIdent(simpleIdent);
+      if (callIdent) {
+        simpleIdent = callIdent; // ident may not be in library, if all there is is ident__inline, but in this case it is
+        if (callIdent.indexOf('.') < 0) {
+          callIdent = '_' + callIdent; // Not Math.*, so add the normal prefix
+        }
+      } else {
+        callIdent = ident;
+      }
+      if (callIdent == '0') return 'abort(-2)';
     }
-    if (callIdent == '0') return 'abort(-2)';
 
     var args = [];
     var argsTypes = [];
@@ -1358,6 +1371,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         } else {
           size = Runtime.getNativeFieldSize(param.type);
         }
+        size = Runtime.alignMemory(size, Runtime.STACK_ALIGN);
         varargs.push(val);
         varargs = varargs.concat(zeros(size-1));
         // TODO: replace concats like this with push
@@ -1391,15 +1405,14 @@ function JSify(data, functionsOnly, givenFunctions) {
                   var type = varargsTypes[i];
                   if (type == 0) return null;
                   var ret;
+                  assert(offset % Runtime.STACK_ALIGN == 0); // varargs must be aligned
                   if (!varargsByVals[i]) {
                     ret = makeSetValue(getFastValue('tempInt', '+', offset), 0, arg, type, null, null, QUANTUM_SIZE, null, ',');
-                    offset += Runtime.getNativeFieldSize(type);
+                    offset += Runtime.alignMemory(Runtime.getNativeFieldSize(type), Runtime.STACK_ALIGN);
                   } else {
-                    assert(offset % 4 == 0); // varargs must be aligned
                     var size = calcAllocatedSize(removeAllPointing(type));
-                    assert(size % 4 == 0); // varargs must stay aligned
                     ret = makeCopyValues(getFastValue('tempInt', '+', offset), arg, size, null, null, varargsByVals[i], ',');
-                    offset += size;
+                    offset += Runtime.forceAlign(size, Runtime.STACK_ALIGN);
                   }
                   return ret;
                 }).filter(function(arg) {
@@ -1585,10 +1598,11 @@ function JSify(data, functionsOnly, givenFunctions) {
         sortGlobals(globalsData.globalVariables).forEach(function(g) {
           var ident = g.ident;
           if (!isIndexableGlobal(ident)) return;
+          assert(Variables.nextIndexedOffset % Runtime.STACK_ALIGN == 0);
           Variables.indexedGlobals[ident] = Variables.nextIndexedOffset;
           Variables.nextIndexedOffset += Runtime.alignMemory(calcAllocatedSize(Variables.globals[ident].type));
           if (ident.substr(0, 5) == '__ZTV') { // leave room for null-terminating the vtable
-            Variables.nextIndexedOffset += Runtime.getNativeTypeSize('i32');
+            Variables.nextIndexedOffset += Runtime.alignMemory(QUANTUM_SIZE);
           }
         });
       }

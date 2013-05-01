@@ -2499,7 +2499,7 @@ LibraryManager.library = {
     for (var formatIndex = 0; formatIndex < format.length;) {
       if (format[formatIndex] === '%' && format[formatIndex+1] == 'n') {
         var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
-        argIndex += Runtime.getNativeFieldSize('void*');
+        argIndex += Runtime.getAlignSize('void*', null, true);
         {{{ makeSetValue('argPtr', 0, 'soFar', 'i32') }}};
         formatIndex += 2;
         continue;
@@ -2508,7 +2508,7 @@ LibraryManager.library = {
       // TODO: Support strings like "%5c" etc.
       if (format[formatIndex] === '%' && format[formatIndex+1] == 'c') {
         var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
-        argIndex += Runtime.getNativeFieldSize('void*');
+        argIndex += Runtime.getAlignSize('void*', null, true);
         fields++;
         next = get();
         {{{ makeSetValue('argPtr', 0, 'next', 'i8') }}}
@@ -2600,7 +2600,7 @@ LibraryManager.library = {
 
         var text = buffer.join('');
         var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
-        argIndex += Runtime.getNativeFieldSize('void*');
+        argIndex += Runtime.getAlignSize('void*', null, true);
         switch (type) {
           case 'd': case 'u': case 'i':
             if (half) {
@@ -2669,8 +2669,16 @@ LibraryManager.library = {
         ret = {{{ makeGetValue('varargs', 'argIndex', 'double', undefined, undefined, true) }}};
 #if USE_TYPED_ARRAYS == 2
       } else if (type == 'i64') {
+
+#if TARGET_LE32
+        ret = [{{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}},
+               {{{ makeGetValue('varargs', 'argIndex+8', 'i32', undefined, undefined, true) }}}];
+        argIndex += {{{ STACK_ALIGN }}}; // each 32-bit chunk is in a 64-bit block
+#else
         ret = [{{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}},
                {{{ makeGetValue('varargs', 'argIndex+4', 'i32', undefined, undefined, true) }}}];
+#endif
+
 #else
       } else if (type == 'i64') {
         ret = {{{ makeGetValue('varargs', 'argIndex', 'i64', undefined, undefined, true) }}};
@@ -2679,7 +2687,7 @@ LibraryManager.library = {
         type = 'i32'; // varargs are always i32, i64, or double
         ret = {{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}};
       }
-      argIndex += Runtime.getNativeFieldSize(type);
+      argIndex += Math.max(Runtime.getNativeFieldSize(type), Runtime.getAlignSize(type, null, true));
       return ret;
     }
 
@@ -3612,6 +3620,9 @@ LibraryManager.library = {
   asprintf: function(s, format, varargs) {
     return _sprintf(-s, format, varargs);
   },
+
+#if TARGET_X86
+  // va_arg is just like our varargs
   vfprintf: 'fprintf',
   vsnprintf: 'snprintf',
   vprintf: 'printf',
@@ -3620,6 +3631,44 @@ LibraryManager.library = {
   vscanf: 'scanf',
   vfscanf: 'fscanf',
   vsscanf: 'sscanf',
+#endif
+
+#if TARGET_LE32
+  // convert va_arg into varargs
+  vfprintf__deps: ['fprintf'],
+  vfprintf: function(s, f, va_arg) {
+    return _fprintf(s, f, {{{ makeGetValue('va_arg', 0, '*') }}});
+  },
+  vsnprintf__deps: ['snprintf'],
+  vsnprintf: function(s, n, format, va_arg) {
+    return _snprintf(s, n, format, {{{ makeGetValue('va_arg', 0, '*') }}});
+  },
+  vprintf__deps: ['printf'],
+  vprintf: function(format, va_arg) {
+    return _printf(format, {{{ makeGetValue('va_arg', 0, '*') }}});
+  },
+  vsprintf__deps: ['sprintf'],
+  vsprintf: function(s, format, va_arg) {
+    return _sprintf(s, format, {{{ makeGetValue('va_arg', 0, '*') }}});
+  },
+  vasprintf__deps: ['asprintf'],
+  vasprintf: function(s, format, va_arg) {
+    return _asprintf(s, format, {{{ makeGetValue('va_arg', 0, '*') }}});
+  },
+  vscanf__deps: ['scanf'],
+  vscanf: function(format, va_arg) {
+    return _scanf(format, {{{ makeGetValue('va_arg', 0, '*') }}});
+  },
+  vfscanf__deps: ['fscanf'],
+  vfscanf: function(s, format, va_arg) {
+    return _fscanf(s, format, {{{ makeGetValue('va_arg', 0, '*') }}});
+  },
+  vsscanf__deps: ['sscanf'],
+  vsscanf: function(s, format, va_arg) {
+    return _sscanf(s, format, {{{ makeGetValue('va_arg', 0, '*') }}});
+  },
+#endif
+
   fopen64: 'fopen',
   __01fopen64_: 'fopen',
   __01freopen64_: 'freopen',
@@ -4825,7 +4874,13 @@ LibraryManager.library = {
 
   llvm_va_start__inline: function(ptr) {
     // varargs - we received a pointer to the varargs as a final 'extra' parameter called 'varrp'
+#if TARGET_X86
     return makeSetValue(ptr, 0, 'varrp', 'void*');
+#endif
+#if TARGET_LE32
+    // 4-word structure: start, current offset
+    return makeSetValue(ptr, 0, 'varrp', 'void*') + ';' + makeSetValue(ptr, 4, 0, 'void*');
+#endif
   },
 
   llvm_va_end: function() {},
@@ -7487,12 +7542,13 @@ LibraryManager.library = {
     }
     var i = 0;
     do {
-      var curr = {{{ makeGetValue('varargs', 'i*4', 'i8') }}};
+      var curr = {{{ makeGetValue('varargs', '0', 'i8') }}};
+      varargs += {{{ STACK_ALIGN }}};
       {{{ makeSetValue('_emscripten_jcache_printf_.buffer', 'i', 'curr', 'i8') }}};
       i++;
-      assert(i*4 < MAX);
+      assert(i*{{{ STACK_ALIGN }}} < MAX);
     } while (curr != 0);
-    Module.print(intArrayToString(__formatString(_emscripten_jcache_printf_.buffer, varargs + i*4)).replace('\\n', ''));
+    Module.print(intArrayToString(__formatString(_emscripten_jcache_printf_.buffer, varargs)).replace('\\n', ''));
     Runtime.stackAlloc(-4*i); // free up the stack space we know is ok to free
   },
 
