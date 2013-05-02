@@ -1404,6 +1404,7 @@ function JSify(data, functionsOnly, givenFunctions) {
                 varargs.map(function(arg, i) {
                   var type = varargsTypes[i];
                   if (type == 0) return null;
+                  arg = asmEnsureFloat(arg, type);
                   var ret;
                   assert(offset % Runtime.STACK_ALIGN == 0); // varargs must be aligned
                   if (!varargsByVals[i]) {

@@ -4157,7 +4157,7 @@ def process(filename):
 
             int maxxi = getMaxi(6,        2, 5, 21, 4, -10, 19);
             printf("maxxi:%d*\\n", maxxi);
-            double maxxD = getMaxD(6,        (double)2.1, (double)5.1, (double)22.1, (double)4.1, (double)-10.1, (double)19.1);
+            double maxxD = getMaxD(6,        (double)2.1, (double)5.1, (double)22.1, (double)4.1, (double)-10.1, (double)19.1, (double)2);
             printf("maxxD:%.2f*\\n", (float)maxxD);
 
             // And, as a function pointer
