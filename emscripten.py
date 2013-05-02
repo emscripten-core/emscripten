@@ -767,6 +767,7 @@ WARNING: You should normally never use this! Use emcc instead.
 
   if keywords.temp_dir is None:
     temp_files = get_configuration().get_temp_files()
+    temp_dir = get_configuration().TEMP_DIR
   else:
     temp_dir = os.path.abspath(keywords.temp_dir)
     if not os.path.exists(temp_dir):
