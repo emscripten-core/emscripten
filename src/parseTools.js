@@ -1367,6 +1367,10 @@ function makeCopyValues(dest, src, num, type, modifier, align, sep) {
       return '_memcpy(' + dest + ', ' + src + ', ' + num + ')';
     }
     num = parseInt(num);
+    if (ASM_JS) {
+      dest = stripCorrections(dest); // remove corrections, since we will be correcting after we add anyhow,
+      src = stripCorrections(src);   // and in the heap assignment expression
+    }
     var ret = [];
     [4, 2, 1].forEach(function(possibleAlign) {
       if (num == 0) return;
