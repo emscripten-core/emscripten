@@ -1984,7 +1984,7 @@ var LibraryGL = {
 
     totalEnabledClientAttributes: 0,
     enabledClientAttributes: [0, 0],
-    clientAttributes: [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}], // raw data, including possible unneeded ones
+    clientAttributes: [], // raw data, including possible unneeded ones
     liveClientAttributes: [], // the ones actually alive in the current computation, sorted
     modifiedClientAttributes: false,
     clientActiveTexture: 0,
@@ -1992,11 +1992,27 @@ var LibraryGL = {
 
     setClientAttribute: function(name, size, type, stride, pointer) {
       var attrib = this.clientAttributes[name];
-      attrib.name = name;
-      attrib.size = size;
-      attrib.type = type;
-      attrib.stride = stride;
-      attrib.pointer = pointer;
+      if (!attrib) {
+        for (var i = 0; i <= name; i++) { // keep flat
+          if (!this.clientAttributes[i]) {
+            this.clientAttributes[i] = {
+              name: name,
+              size: size,
+              type: type,
+              stride: stride,
+              pointer: pointer,
+              offset: 0
+            };
+          }
+        }
+      } else {
+        attrib.name = name;
+        attrib.size = size;
+        attrib.type = type;
+        attrib.stride = stride;
+        attrib.pointer = pointer;
+        attrib.offset = 0;
+      }
       this.modifiedClientAttributes = true;
     },
 
