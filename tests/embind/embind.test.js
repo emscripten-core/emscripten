@@ -1558,6 +1558,29 @@ module({
             assert.equal("optionalfoo", cm.callOptionalMethod(impl, "foo"));
             impl.delete();
         });
+
+        test("void methods work", function() {
+            var saved = {};
+            var impl = cm.AbstractClass.implement({
+                differentArguments: function(i, d, f, q, s) {
+                    saved.i = i;
+                    saved.d = d;
+                    saved.f = f;
+                    saved.q = q;
+                    saved.s = s;
+                }
+            });
+
+            cm.callDifferentArguments(impl, 1, 2, 3, 4, "foo");
+
+            assert.deepEqual(saved, {
+                i: 1,
+                d: 2,
+                f: 3,
+                q: 4,
+                s: "foo",
+            });
+        });
     });
 
     BaseFixture.extend("registration order", function() {

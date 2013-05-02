@@ -1083,6 +1083,8 @@ public:
     virtual std::string optionalMethod(std::string s) const {
         return "optional" + s;
     }
+
+    virtual void differentArguments(int i, double d, unsigned char f, double q, std::string) = 0;
 };
 
 EMSCRIPTEN_SYMBOL(optionalMethod);
@@ -1094,16 +1096,25 @@ public:
     std::string abstractMethod() const {
         return call<std::string>("abstractMethod");
     }
+
     std::string optionalMethod(std::string s) const {
         return optional_call<std::string>(optionalMethod_symbol, [&] {
             return AbstractClass::optionalMethod(s);
         }, s);
+    }
+
+    void differentArguments(int i, double d, unsigned char f, double q, std::string s) {
+        return call<void>("differentArguments", i, d, f, q, s);
     }
 };
 
 class ConcreteClass : public AbstractClass {
     std::string abstractMethod() const {
         return "from concrete";
+    }
+
+
+    void differentArguments(int i, double d, unsigned char f, double q, std::string s) {
     }
 };
 
@@ -1117,6 +1128,24 @@ std::string callAbstractMethod(AbstractClass& ac) {
 
 std::string callOptionalMethod(AbstractClass& ac, std::string s) {
     return ac.optionalMethod(s);
+}
+
+void callDifferentArguments(AbstractClass& ac, int i, double d, unsigned char f, double q, std::string s) {
+    return ac.differentArguments(i, d, f, q, s);
+}
+
+EMSCRIPTEN_BINDINGS(interface_tests) {
+    class_<AbstractClass>("AbstractClass")
+        .smart_ptr<std::shared_ptr<AbstractClass>>()
+        .allow_subclass<AbstractClassWrapper>()
+        .function("abstractMethod", &AbstractClass::abstractMethod)
+        .function("optionalMethod", &AbstractClass::optionalMethod)
+        ;
+    
+    function("getAbstractClass", &getAbstractClass);
+    function("callAbstractMethod", &callAbstractMethod);
+    function("callOptionalMethod", &callOptionalMethod);
+    function("callDifferentArguments", &callDifferentArguments);
 }
 
 class HasExternalConstructor {
@@ -1749,17 +1778,6 @@ EMSCRIPTEN_BINDINGS(tests) {
 
     function("embind_test_new_Object", &embind_test_new_Object);
     function("embind_test_new_factory", &embind_test_new_factory);
-
-    class_<AbstractClass>("AbstractClass")
-        .smart_ptr<std::shared_ptr<AbstractClass>>()
-        .allow_subclass<AbstractClassWrapper>()
-        .function("abstractMethod", &AbstractClass::abstractMethod)
-        .function("optionalMethod", &AbstractClass::optionalMethod)
-        ;
-    
-    function("getAbstractClass", &getAbstractClass);
-    function("callAbstractMethod", &callAbstractMethod);
-    function("callOptionalMethod", &callOptionalMethod);
 
     class_<HasExternalConstructor>("HasExternalConstructor")
         .constructor(&createHasExternalConstructor)
