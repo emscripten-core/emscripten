@@ -71,9 +71,7 @@ var LibraryOpenAL = {
     } catch (e) {
       try {
         ctx = new webkitAudioContext();
-      } catch (e) {
- 
-      }
+      } catch (e) {}
     }
 
     if (ctx) {
@@ -210,7 +208,7 @@ var LibraryOpenAL = {
       {{{ makeSetValue('sources', 'i*4', 'AL.currentContext.src.length', 'i32') }}};
     }
   },
-  
+
   alSourcei: function(source, param, value) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
