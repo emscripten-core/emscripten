@@ -75,9 +75,7 @@ var LibraryOpenAL = {
     } catch (e) {
       try {
         ctx = new webkitAudioContext();
-      } catch (e) {
- 
-      }
+      } catch (e) {}
     }
 
     if (ctx) {
@@ -383,11 +381,15 @@ var LibraryOpenAL = {
     }
   },
 <<<<<<< HEAD
+<<<<<<< HEAD
 
   alSourcei__deps: ['updateSource'],
 =======
   
 >>>>>>> Add some function openal
+=======
+
+>>>>>>> Indent and line correction
   alSourcei: function(source, param, value) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
