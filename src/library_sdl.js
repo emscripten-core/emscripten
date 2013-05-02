@@ -653,8 +653,8 @@ var LibrarySDL = {
       document.addEventListener("visibilitychange", SDL.receiveEvent);
     }
     window.onunload = SDL.receiveEvent;
-    SDL.keyboardState = _malloc(1024); // SDL needs 512, add some buffer to be safe
-    _memset(SDL.keyboardState, 0, 1024);
+    SDL.keyboardState = _malloc(0x10000); // Our SDL needs 512, but 64K is safe for older SDLs
+    _memset(SDL.keyboardState, 0, 0x10000);
     // Initialize this structure carefully for closure
     SDL.DOMEventToSDLEvent['keydown'] = 0x300 /* SDL_KEYDOWN */;
     SDL.DOMEventToSDLEvent['keyup'] = 0x301 /* SDL_KEYUP */;
