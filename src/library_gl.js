@@ -1009,11 +1009,6 @@ var LibraryGL = {
 
     Module.ctx.bindBuffer(target, bufferObj);
   },
-  
-  glVertexAttrib1f__sig: 'vii',
-  glVertexAttrib1f: function(index, v) {
-    Module.ctx.vertexAttrib1fv(index, v);
-  },
 
   glVertexAttrib1fv__sig: 'vii',
   glVertexAttrib1fv: function(index, v) {
