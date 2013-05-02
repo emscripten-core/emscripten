@@ -1988,36 +1988,36 @@ var LibraryGL = {
   $GLImmediate__deps: ['$Browser', '$GL', '$GLEmulation'],
   $GLImmediate: {
     MapTreeLib: null,
-    SpawnMapTreeLib: function() {
+    spawnMapTreeLib: function() {
       /* A naive implementation of a map backed by an array, and accessed by
        * naive iteration along the array. (hashmap with only one bucket)
        */
-      var NaiveListMap = function() {
+      var CNaiveListMap = function() {
         "use strict";
         var list = [];
 
-        this.Insert = function(key, val) {
-          if (this.Contains(key|0))
+        this.insert = function(key, val) {
+          if (this.contains(key|0))
             return false;
 
           list.push([key, val]);
           return true;
         };
 
-        var __Contains_i;
-        this.Contains = function(key) {
-          for (__Contains_i = 0; __Contains_i < list.length; ++__Contains_i)
-            if (list[__Contains_i][0] === key)
+        var __contains_i;
+        this.contains = function(key) {
+          for (__contains_i = 0; __contains_i < list.length; ++__contains_i)
+            if (list[__contains_i][0] === key)
               return true;
 
           return false;
         };
 
-        var __Get_i;
-        this.Get = function(key) {
-          for (__Get_i = 0; __Get_i < list.length; ++__Get_i)
-            if (list[__Get_i][0] === key)
-              return list[__Get_i][1];
+        var __get_i;
+        this.get = function(key) {
+          for (__get_i = 0; __get_i < list.length; ++__get_i)
+            if (list[__get_i][0] === key)
+              return list[__get_i][1];
 
           return undefined;
         };
@@ -2045,81 +2045,81 @@ var LibraryGL = {
           keyView.Reset().Next(1).Next(2).Next(3).Set("Three!");
         }
       */
-      var MapTree = function() {
+      var CMapTree = function() {
         "use strict";
 
-        var NLNode = function() {
-          var map = new NaiveListMap();
+        var CNLNode = function() {
+          var map = new CNaiveListMap();
 
-          this.Child = function(keyFrag) {
-            if (!map.Contains(keyFrag|0))
-              map.Insert(keyFrag|0, new NLNode());
+          this.child = function(keyFrag) {
+            if (!map.contains(keyFrag|0))
+              map.insert(keyFrag|0, new CNLNode());
 
-            return map.Get(keyFrag|0);
+            return map.get(keyFrag|0);
           };
 
           this.value = undefined;
-          this.Get = function() {
+          this.get = function() {
             return this.value;
           };
 
-          this.Set = function(val) {
+          this.set = function(val) {
             this.value = val;
           };
         }
 
-        var KeyView = function(root) {
+        var CKeyView = function(root) {
           var cur;
 
-          this.Reset = function() {
+          this.reset = function() {
             cur = root;
             return this;
           };
-          this.Reset();
+          this.reset();
 
-          this.Next = function(keyFrag) {
-            cur = cur.Child(keyFrag);
+          this.next = function(keyFrag) {
+            cur = cur.child(keyFrag);
             return this;
           };
 
-          this.Get = function() {
-            return cur.Get();
+          this.get = function() {
+            return cur.get();
           };
 
-          this.Set = function(val) {
-            cur.Set(val);
+          this.set = function(val) {
+            cur.set(val);
           };
         };
 
         var root;
         var staticKeyView;
 
-        this.CreateKeyView = function() {
-          return new KeyView(root);
+        this.createKeyView = function() {
+          return new CKeyView(root);
         }
 
-        this.Clear = function() {
-          root = new NLNode();
-          staticKeyView = this.CreateKeyView();
+        this.clear = function() {
+          root = new CNLNode();
+          staticKeyView = this.createKeyView();
         };
-        this.Clear();
+        this.clear();
 
-        this.GetStaticKeyView = function() {
-          staticKeyView.Reset();
+        this.getStaticKeyView = function() {
+          staticKeyView.reset();
           return staticKeyView;
         };
       };
 
       // Exports:
       return {
-        Create: function() {
-          return new MapTree();
+        create: function() {
+          return new CMapTree();
         },
       };
     },
 
     TexEnvJIT: null,
-    SpawnTexEnvJIT: function() {
+    spawnTexEnvJIT: function() {
       // GL defs:
       var GL_TEXTURE0 = 0x84C0;
       var GL_TEXTURE_1D = 0x0DE0;
@@ -2203,22 +2203,21 @@ var LibraryGL = {
       var s_requiredTexUnitsForPass = [];
 
       // Static funcs:
-      function Abort(info) {
+      function abort(info) {
         assert(false, "[TexEnvJIT] ABORT: " + info);
       }
 
-      function Abort_NoSupport(info) {
-        console.log("[TexEnvJIT] ABORT: No support: " + info);
-        Abort();
+      function abort_noSupport(info) {
+        abort("No support: " + info);
       }
 
-      function Abort_Sanity(info) {
-        Abort("Sanity failure: " + info);
+      function abort_sanity(info) {
+        abort("Sanity failure: " + info);
       }
 
-      function GenTexUnitSampleExpr(texUnitID) {
+      function genTexUnitSampleExpr(texUnitID) {
         var texUnit = s_texUnits[texUnitID];
-        var texType = texUnit.GetTexType();
+        var texType = texUnit.getTexType();
 
         var func = null;
         switch (texType) {
@@ -2229,12 +2228,12 @@ var LibraryGL = {
             func = "texture2D";
             break;
           case GL_TEXTURE_3D:
-            return Abort_NoSupport("No support for 3D textures.");
+            return abort_noSupport("No support for 3D textures.");
           case GL_TEXTURE_CUBE_MAP:
             func = "textureCube";
             break;
           default:
-            return Abort_Sanity("Unknown texType: 0x" + texType.toString(16));
+            return abort_sanity("Unknown texType: 0x" + texType.toString(16));
         }
 
         var texCoordExpr = TEX_COORD_VARYING_PREFIX + texUnitID;
@@ -2244,7 +2243,7 @@ var LibraryGL = {
         return func + "(" + TEX_UNIT_UNIFORM_PREFIX + texUnitID + ", " + texCoordExpr + ".xy)";
       }
 
-      function GetTypeFromCombineOp(op) {
+      function getTypeFromCombineOp(op) {
         switch (op) {
           case GL_SRC_COLOR:
           case GL_ONE_MINUS_SRC_COLOR:
@@ -2257,17 +2256,17 @@ var LibraryGL = {
         return Abort_NoSupport("Unsupported combiner op: 0x" + op.toString(16));
       }
 
-      function GetCurTexUnit() {
+      function getCurTexUnit() {
         return s_texUnits[s_activeTexture];
       }
 
-      function GenCombinerSourceExpr(texUnitID, constantExpr, previousVar,
+      function genCombinerSourceExpr(texUnitID, constantExpr, previousVar,
                                      src, op)
       {
         var srcExpr = null;
         switch (src) {
           case GL_TEXTURE:
-            srcExpr = GenTexUnitSampleExpr(texUnitID);
+            srcExpr = genTexUnitSampleExpr(texUnitID);
             break;
           case GL_CONSTANT:
             srcExpr = constantExpr;
@@ -2279,7 +2278,7 @@ var LibraryGL = {
             srcExpr = previousVar;
             break;
           default:
-              return Abort_NoSupport("Unsupported combiner src: 0x" + src.toString(16));
+              return abort_noSupport("Unsupported combiner src: 0x" + src.toString(16));
         }
 
         var expr = null;
@@ -2297,13 +2296,13 @@ var LibraryGL = {
             expr = "(1.0 - " + srcExpr + ".a)";
             break;
           default:
-            return Abort_NoSupport("Unsupported combiner op: 0x" + op.toString(16));
+            return abort_noSupport("Unsupported combiner op: 0x" + op.toString(16));
         }
 
         return expr;
       }
 
-      function ValToFloatLiteral(val) {
+      function valToFloatLiteral(val) {
         if (val == Math.round(val))
           return val + ".0";
 
@@ -2341,32 +2340,32 @@ var LibraryGL = {
           GL_SRC_ALPHA
         ];
 
-        this.TraverseState = function(keyView) {
-          keyView.Next(this.mode);
-          keyView.Next(this.colorCombiner);
-          keyView.Next(this.alphaCombiner);
-          keyView.Next(this.colorCombiner);
-          keyView.Next(this.alphaScale);
-          keyView.Next(this.envColor[0]);
-          keyView.Next(this.envColor[1]);
-          keyView.Next(this.envColor[2]);
-          keyView.Next(this.envColor[3]);
+        this.traverseState = function(keyView) {
+          keyView.next(this.mode);
+          keyView.next(this.colorCombiner);
+          keyView.next(this.alphaCombiner);
+          keyView.next(this.colorCombiner);
+          keyView.next(this.alphaScale);
+          keyView.next(this.envColor[0]);
+          keyView.next(this.envColor[1]);
+          keyView.next(this.envColor[2]);
+          keyView.next(this.envColor[3]);
 
-          keyView.Next(this.colorSrc[0]);
-          keyView.Next(this.colorSrc[1]);
-          keyView.Next(this.colorSrc[2]);
+          keyView.next(this.colorSrc[0]);
+          keyView.next(this.colorSrc[1]);
+          keyView.next(this.colorSrc[2]);
 
-          keyView.Next(this.alphaSrc[0]);
-          keyView.Next(this.alphaSrc[1]);
-          keyView.Next(this.alphaSrc[2]);
+          keyView.next(this.alphaSrc[0]);
+          keyView.next(this.alphaSrc[1]);
+          keyView.next(this.alphaSrc[2]);
 
-          keyView.Next(this.colorOp[0]);
-          keyView.Next(this.colorOp[1]);
-          keyView.Next(this.colorOp[2]);
+          keyView.next(this.colorOp[0]);
+          keyView.next(this.colorOp[1]);
+          keyView.next(this.colorOp[2]);
 
-          keyView.Next(this.alphaOp[0]);
-          keyView.Next(this.alphaOp[1]);
-          keyView.Next(this.alphaOp[2]);
+          keyView.next(this.alphaOp[0]);
+          keyView.next(this.alphaOp[1]);
+          keyView.next(this.alphaOp[2]);
         };
       }
 
@@ -2377,30 +2376,30 @@ var LibraryGL = {
         this.enabled_tex3D   = false;
         this.enabled_texCube = false;
 
-        this.TraverseState = function(keyView) {
-          var texUnitType = this.GetTexType();
-          keyView.Next(texUnitType);
+        this.traverseState = function(keyView) {
+          var texUnitType = this.getTexType();
+          keyView.next(texUnitType);
           if (!texUnitType)
             return;
 
-          this.env.TraverseState(keyView);
+          this.env.traverseState(keyView);
         };
       };
 
       // Class impls:
-      CTexUnit.prototype.Enabled = function() {
-        return this.GetTexType() != 0;
+      CTexUnit.prototype.enabled = function() {
+        return this.getTexType() != 0;
       }
 
-      CTexUnit.prototype.GenPassLines = function(passOutputVar, passInputVar, texUnitID) {
-        if (!this.Enabled()) {
+      CTexUnit.prototype.genPassLines = function(passOutputVar, passInputVar, texUnitID) {
+        if (!this.enabled()) {
           return ["vec4 " + passOutputVar + " = " + passInputVar + ";"];
         }
 
-        return this.env.GenPassLines(passOutputVar, passInputVar, texUnitID);
+        return this.env.genPassLines(passOutputVar, passInputVar, texUnitID);
       }
 
-      CTexUnit.prototype.GetTexType = function() {
+      CTexUnit.prototype.getTexType = function() {
         if (this.enabled_texCube)
           return GL_TEXTURE_CUBE_MAP;
         else if (this.enabled_tex3D)
@@ -2413,7 +2412,7 @@ var LibraryGL = {
         return 0;
       }
 
-      CTexEnv.prototype.GenPassLines = function(passOutputVar, passInputVar, texUnitID) {
+      CTexEnv.prototype.genPassLines = function(passOutputVar, passInputVar, texUnitID) {
         switch (this.mode) {
           case GL_REPLACE: {
             /* RGB:
@@ -2427,7 +2426,7 @@ var LibraryGL = {
              * Av = As
              */
             return [
-              "vec4 " + passOutputVar + " = " + GenTexUnitSampleExpr(texUnitID) + ";",
+              "vec4 " + passOutputVar + " = " + genTexUnitSampleExpr(texUnitID) + ";",
             ];
           }
           case GL_ADD: {
@@ -2441,7 +2440,7 @@ var LibraryGL = {
             var alphaVar = prefix + "alpha";
 
             return [
-              "vec4 " + texVar + " = " + GenTexUnitSampleExpr(texUnitID) + ";",
+              "vec4 " + texVar + " = " + genTexUnitSampleExpr(texUnitID) + ";",
               "vec3 " + colorVar + " = " + passInputVar + ".rgb + " + texVar + ".rgb;",
               "float " + alphaVar + " = " + passInputVar + ".a * " + texVar + ".a;",
               "vec4 " + passOutputVar + " = vec4(" + colorVar + ", " + alphaVar + ");",
@@ -2457,7 +2456,7 @@ var LibraryGL = {
               " = ",
                 passInputVar,
                 " * ",
-                GenTexUnitSampleExpr(texUnitID),
+                genTexUnitSampleExpr(texUnitID),
               ";",
             ];
             return [line.join("")];
@@ -2473,7 +2472,7 @@ var LibraryGL = {
             var alphaVar = prefix + "alpha";
 
             return [
-              "vec4 " + texVar + " = " + GenTexUnitSampleExpr(texUnitID) + ";",
+              "vec4 " + texVar + " = " + genTexUnitSampleExpr(texUnitID) + ";",
               [
                 "vec3 " + colorVar + " = ",
                   passInputVar + ".rgb * (1.0 - " + texVar + ".a)",
@@ -2496,7 +2495,7 @@ var LibraryGL = {
             var alphaVar = prefix + "alpha";
 
             return [
-              "vec4 " + texVar + " = " + GenTexUnitSampleExpr(texUnitID) + ";",
+              "vec4 " + texVar + " = " + genTexUnitSampleExpr(texUnitID) + ";",
               [
                 "vec3 " + colorVar + " = ",
                   passInputVar + ".rgb * (1.0 - " + texVar + ".rgb)",
@@ -2512,19 +2511,19 @@ var LibraryGL = {
             var prefix = TEXENVJIT_NAMESPACE_PREFIX + 'env' + texUnitID + "_";
             var colorVar = prefix + "color";
             var alphaVar = prefix + "alpha";
-            var colorLines = this.GenCombinerLines(true, colorVar,
+            var colorLines = this.genCombinerLines(true, colorVar,
                                                    passInputVar, texUnitID,
                                                    this.colorCombiner, this.colorSrc, this.colorOp);
-            var alphaLines = this.GenCombinerLines(false, alphaVar,
+            var alphaLines = this.genCombinerLines(false, alphaVar,
                                                    passInputVar, texUnitID,
                                                    this.alphaCombiner, this.alphaSrc, this.alphaOp);
             var line = [
               "vec4 " + passOutputVar,
               " = ",
                 "vec4(",
-                    colorVar + " * " + ValToFloatLiteral(this.colorScale),
+                    colorVar + " * " + valToFloatLiteral(this.colorScale),
                     ", ",
-                    alphaVar + " * " + ValToFloatLiteral(this.alphaScale),
+                    alphaVar + " * " + valToFloatLiteral(this.alphaScale),
                 ")",
               ";",
             ].join("");
@@ -2535,7 +2534,7 @@ var LibraryGL = {
         return Abort_NoSupport("Unsupported TexEnv mode: 0x" + this.mode.toString(16));
       }
 
-      CTexEnv.prototype.GenCombinerLines = function(isColor, outputVar,
+      CTexEnv.prototype.genCombinerLines = function(isColor, outputVar,
                                                     passInputVar, texUnitID,
                                                     combiner, srcArr, opArr)
       {
@@ -2556,25 +2555,25 @@ var LibraryGL = {
             break;
 
           default:
-            return Abort_NoSupport("Unsupported combiner: 0x" + combiner.toString(16));
+            return abort_noSupport("Unsupported combiner: 0x" + combiner.toString(16));
         }
 
         var constantExpr = [
           "vec4(",
-            ValToFloatLiteral(this.envColor[0]),
+            valToFloatLiteral(this.envColor[0]),
             ", ",
-            ValToFloatLiteral(this.envColor[1]),
+            valToFloatLiteral(this.envColor[1]),
             ", ",
-            ValToFloatLiteral(this.envColor[2]),
+            valToFloatLiteral(this.envColor[2]),
             ", ",
-            ValToFloatLiteral(this.envColor[3]),
+            valToFloatLiteral(this.envColor[3]),
           ")",
         ].join("");
-        var src0Expr = (argsNeeded >= 1) ? GenCombinerSourceExpr(texUnitID, constantExpr, passInputVar, srcArr[0], opArr[0])
+        var src0Expr = (argsNeeded >= 1) ? genCombinerSourceExpr(texUnitID, constantExpr, passInputVar, srcArr[0], opArr[0])
                                          : null;
-        var src1Expr = (argsNeeded >= 2) ? GenCombinerSourceExpr(texUnitID, constantExpr, passInputVar, srcArr[1], opArr[1])
+        var src1Expr = (argsNeeded >= 2) ? genCombinerSourceExpr(texUnitID, constantExpr, passInputVar, srcArr[1], opArr[1])
                                          : null;
-        var src2Expr = (argsNeeded >= 3) ? GenCombinerSourceExpr(texUnitID, constantExpr, passInputVar, srcArr[2], opArr[2])
+        var src2Expr = (argsNeeded >= 3) ? genCombinerSourceExpr(texUnitID, constantExpr, passInputVar, srcArr[2], opArr[2])
                                          : null;
 
         var outputType = isColor ? "vec3" : "float";
@@ -2620,7 +2619,7 @@ var LibraryGL = {
           case GL_INTERPOLATE: {
             var prefix = TEXENVJIT_NAMESPACE_PREFIX + 'env' + texUnitID + "_";
             var arg2Var = prefix + "colorSrc2";
-            var arg2Line = GetTypeFromCombineOp(this.colorOp[2]) + " " + arg2Var + " = " + src2Expr + ";";
+            var arg2Line = getTypeFromCombineOp(this.colorOp[2]) + " " + arg2Var + " = " + src2Expr + ";";
 
             var line = [
               outputType + " " + outputVar,
@@ -2638,7 +2637,7 @@ var LibraryGL = {
           }
 
           default:
-            return Abort_Sanity("Unmatched TexEnv.colorCombiner?");
+            return abort_sanity("Unmatched TexEnv.colorCombiner?");
         }
 
         return lines;
@@ -2646,7 +2645,7 @@ var LibraryGL = {
 
       return {
         // Exports:
-        Init: function(gl, specifiedMaxTextureImageUnits) {
+        init: function(gl, specifiedMaxTextureImageUnits) {
           var maxTexUnits = 0;
           if (specifiedMaxTextureImageUnits) {
               maxTexUnits = specifiedMaxTextureImageUnits;
@@ -2662,21 +2661,21 @@ var LibraryGL = {
           }
         },
 
-        SetGLSLVars: function(uTexUnitPrefix, vTexCoordPrefix, vPrimColor, uTexMatrixPrefix) {
+        setGLSLVars: function(uTexUnitPrefix, vTexCoordPrefix, vPrimColor, uTexMatrixPrefix) {
           TEX_UNIT_UNIFORM_PREFIX   = uTexUnitPrefix;
           TEX_COORD_VARYING_PREFIX  = vTexCoordPrefix;
           PRIM_COLOR_VARYING        = vPrimColor;
           TEX_MATRIX_UNIFORM_PREFIX = uTexMatrixPrefix;
         },
 
-        GenAllPassLines: function(resultDest, indentSize) {
+        genAllPassLines: function(resultDest, indentSize) {
           indentSize = indentSize || 0;
 
           s_requiredTexUnitsForPass.length = 0; // Clear the list.
           var lines = [];
           var lastPassVar = PRIM_COLOR_VARYING;
           for (var i = 0; i < s_texUnits.length; i++) {
-            if (!s_texUnits[i].Enabled())
+            if (!s_texUnits[i].enabled())
               continue;
 
             s_requiredTexUnitsForPass.push(i);
@@ -2684,7 +2683,7 @@ var LibraryGL = {
             var prefix = TEXENVJIT_NAMESPACE_PREFIX + 'env' + i + "_";
             var passOutputVar = prefix + "result";
 
-            var newLines = s_texUnits[i].GenPassLines(passOutputVar, lastPassVar, i);
+            var newLines = s_texUnits[i].genPassLines(passOutputVar, lastPassVar, i);
             lines = lines.concat(newLines, [""]);
 
             lastPassVar = passOutputVar;
@@ -2700,35 +2699,35 @@ var LibraryGL = {
           return output;
         },
 
-        GetUsedTexUnitList: function() {
+        getUsedTexUnitList: function() {
           return s_requiredTexUnitsForPass;
         },
 
-        TraverseState: function(keyView) {
+        traverseState: function(keyView) {
           for (var i = 0; i < s_texUnits.length; i++) {
             var texUnit = s_texUnits[i];
-            var enabled = texUnit.Enabled();
-            keyView.Next(enabled);
+            var enabled = texUnit.enabled();
+            keyView.next(enabled);
             if (enabled) {
-              texUnit.TraverseState(keyView);
+              texUnit.traverseState(keyView);
             }
           }
         },
 
-        GetTexUnitType: function(texUnitID) {
+        getTexUnitType: function(texUnitID) {
           assert(texUnitID >= 0 &&
                  texUnitID < s_texUnits.length);
 
-          return s_texUnits[texUnitID].GetTexType();
+          return s_texUnits[texUnitID].getTexType();
         },
 
         // Hooks:
-        Hook_ActiveTexture: function(texture) {
+        hook_activeTexture: function(texture) {
           s_activeTexture = texture - GL_TEXTURE0;
         },
 
-        Hook_Enable: function(cap) {
-          var cur = GetCurTexUnit();
+        hook_enable: function(cap) {
+          var cur = getCurTexUnit();
           switch (cap) {
             case GL_TEXTURE_1D:
               cur.enabled_tex1D = true;
@@ -2745,8 +2744,8 @@ var LibraryGL = {
           }
         },
 
-        Hook_Disable: function(cap) {
-          var cur = GetCurTexUnit();
+        hook_disable: function(cap) {
+          var cur = getCurTexUnit();
           switch (cap) {
             case GL_TEXTURE_1D:
               cur.enabled_tex1D = false;
@@ -2763,11 +2762,11 @@ var LibraryGL = {
           }
         },
 
-        Hook_TexEnvf: function(target, pname, param) {
+        hook_texEnvf: function(target, pname, param) {
           if (target != GL_TEXTURE_ENV)
             return;
 
-          var env = GetCurTexUnit().env;
+          var env = getCurTexUnit().env;
           switch (pname) {
             case GL_RGB_SCALE:
               env.colorScale = param;
@@ -2781,11 +2780,11 @@ var LibraryGL = {
           }
         },
 
-        Hook_TexEnvi: function(target, pname, param) {
+        hook_texEnvi: function(target, pname, param) {
           if (target != GL_TEXTURE_ENV)
             return;
 
-          var env = GetCurTexUnit().env;
+          var env = getCurTexUnit().env;
           switch (pname) {
             case GL_TEXTURE_ENV_MODE:
               env.mode = param;
@@ -2850,11 +2849,11 @@ var LibraryGL = {
           }
         },
 
-        Hook_TexEnvfv: function(target, pname, params) {
+        hook_texEnvfv: function(target, pname, params) {
           if (target != GL_TEXTURE_ENV)
             return;
 
-          var env = GetCurTexUnit().env;
+          var env = getCurTexUnit().env;
           switch (pname) {
             case GL_TEXTURE_ENV_COLOR: {
               for (var i = 0; i < 4; i++) {
@@ -2973,12 +2972,12 @@ var LibraryGL = {
       var attributes = GL.immediate.liveClientAttributes;
       var cacheMap = GL.immediate.rendererCache;
       var temp;
-      var keyView = cacheMap.GetStaticKeyView().Reset();
+      var keyView = cacheMap.getStaticKeyView().reset();
 
       // By attrib state:
       for (var i = 0; i < attributes.length; i++) {
         var attribute = attributes[i];
-        keyView.Next(attribute.name).Next(attribute.size).Next(attribute.type);
+        keyView.next(attribute.name).next(attribute.size).next(attribute.type);
       }
 
       // By fog state:
@@ -2996,22 +2995,22 @@ var LibraryGL = {
             break;
         }
       }
-      keyView.Next(fogParam);
+      keyView.next(fogParam);
 
       // By cur program:
-      keyView.Next(GL.currProgram);
+      keyView.next(GL.currProgram);
       if (!GL.currProgram) {
-        GL.immediate.TexEnvJIT.TraverseState(keyView);
+        GL.immediate.TexEnvJIT.traverseState(keyView);
       }
 
       // If we don't already have it, create it.
-      if (!keyView.Get()) {
+      if (!keyView.get()) {
 #if GL_DEBUG
         Module.printErr('generating renderer for ' + JSON.stringify(attributes));
 #endif
-        keyView.Set(this.createRenderer());
+        keyView.set(this.createRenderer());
       }
-      return keyView.Get();
+      return keyView.get();
     },
 
     createRenderer: function(renderer) {
@@ -3023,7 +3022,7 @@ var LibraryGL = {
           continue;
 
         if (!useCurrProgram) {
-          assert(GL.immediate.TexEnvJIT.GetTexUnitType(i) != 0, "GL_TEXTURE" + i + " coords are supplied, but that texture unit is disabled in the fixed-function pipeline.");
+          assert(GL.immediate.TexEnvJIT.getTexUnitType(i) != 0, "GL_TEXTURE" + i + " coords are supplied, but that texture unit is disabled in the fixed-function pipeline.");
         }
 
         textureSizes[i] = GL.immediate.clientAttributes[texAttribName].size;
@@ -3083,14 +3082,14 @@ var LibraryGL = {
               }
             }
 
-            GL.immediate.TexEnvJIT.SetGLSLVars(uTexUnitPrefix, vTexCoordPrefix, vPrimColor, uTexMatrixPrefix);
-            var fsTexEnvPass = GL.immediate.TexEnvJIT.GenAllPassLines('gl_FragColor', 2);
+            GL.immediate.TexEnvJIT.setGLSLVars(uTexUnitPrefix, vTexCoordPrefix, vPrimColor, uTexMatrixPrefix);
+            var fsTexEnvPass = GL.immediate.TexEnvJIT.genAllPassLines('gl_FragColor', 2);
 
             var texUnitAttribList = '';
             var texUnitVaryingList = '';
             var texUnitUniformList = '';
             var vsTexCoordInits = '';
-            this.usedTexUnitList = GL.immediate.TexEnvJIT.GetUsedTexUnitList();
+            this.usedTexUnitList = GL.immediate.TexEnvJIT.getUsedTexUnitList();
             for (var i = 0; i < this.usedTexUnitList.length; i++) {
               var texUnit = this.usedTexUnitList[i];
               texUnitAttribList += 'attribute vec4 ' + aTexCoordPrefix + texUnit + ';\n';
@@ -3420,11 +3419,11 @@ var LibraryGL = {
       // TexEnv stuff needs to be prepared early, so do it here.
       // init() is too late for -O2, since it freezes the GL functions
       // by that point.
-      GL.immediate.MapTreeLib = GL.immediate.SpawnMapTreeLib();
-      GL.immediate.SpawnMapTreeLib = null;
+      GL.immediate.MapTreeLib = GL.immediate.spawnMapTreeLib();
+      GL.immediate.spawnMapTreeLib = null;
 
-      GL.immediate.TexEnvJIT = GL.immediate.SpawnTexEnvJIT();
-      GL.immediate.SpawnTexEnvJIT = null;
+      GL.immediate.TexEnvJIT = GL.immediate.spawnTexEnvJIT();
+      GL.immediate.spawnTexEnvJIT = null;
 
       GL.immediate.setupHooks();
     },
@@ -3435,36 +3434,36 @@ var LibraryGL = {
 
       var glActiveTexture = _glActiveTexture;
       _glActiveTexture = function(texture) {
-        GL.immediate.TexEnvJIT.Hook_ActiveTexture(texture);
+        GL.immediate.TexEnvJIT.hook_activeTexture(texture);
         glActiveTexture(texture);
       };
 
       var glEnable = _glEnable;
       _glEnable = function(cap) {
-        GL.immediate.TexEnvJIT.Hook_Enable(cap);
+        GL.immediate.TexEnvJIT.hook_enable(cap);
         glEnable(cap);
       };
       var glDisable = _glDisable;
       _glDisable = function(cap) {
-        GL.immediate.TexEnvJIT.Hook_Disable(cap);
+        GL.immediate.TexEnvJIT.hook_disable(cap);
         glDisable(cap);
       };
 
       var glTexEnvf = (typeof(_glTexEnvf) != 'undefined') ? _glTexEnvf : function(){};
       _glTexEnvf = function(target, pname, param) {
-        GL.immediate.TexEnvJIT.Hook_TexEnvf(target, pname, param);
+        GL.immediate.TexEnvJIT.hook_texEnvf(target, pname, param);
         // Don't call old func, since we are the implementor.
         //glTexEnvf(target, pname, param);
       };
       var glTexEnvi = (typeof(_glTexEnvi) != 'undefined') ? _glTexEnvi : function(){};
       _glTexEnvi = function(target, pname, param) {
-        GL.immediate.TexEnvJIT.Hook_TexEnvi(target, pname, param);
+        GL.immediate.TexEnvJIT.hook_texEnvi(target, pname, param);
         // Don't call old func, since we are the implementor.
         //glTexEnvi(target, pname, param);
       };
       var glTexEnvfv = (typeof(_glTexEnvfv) != 'undefined') ? _glTexEnvfv : function(){};
       _glTexEnvfv = function(target, pname, param) {
-        GL.immediate.TexEnvJIT.Hook_TexEnvfv(target, pname, param);
+        GL.immediate.TexEnvJIT.hook_texEnvfv(target, pname, param);
         // Don't call old func, since we are the implementor.
         //glTexEnvfv(target, pname, param);
       };
@@ -3495,7 +3494,7 @@ var LibraryGL = {
 
       if (!Module.useWebGL) return; // a 2D canvas may be currently used TODO: make sure we are actually called in that case
 
-      this.TexEnvJIT.Init(Module.ctx);
+      this.TexEnvJIT.init(Module.ctx);
 
       GL.immediate.MAX_TEXTURES = Module.ctx.getParameter(Module.ctx.MAX_TEXTURE_IMAGE_UNITS);
       GL.immediate.NUM_ATTRIBUTES = GL.immediate.TEXTURE0 + GL.immediate.MAX_TEXTURES;
@@ -3521,7 +3520,7 @@ var LibraryGL = {
       }
 
       // Renderer cache
-      this.rendererCache = this.MapTreeLib.Create();
+      this.rendererCache = this.MapTreeLib.create();
 
       // Buffers for data
       this.tempData = new Float32Array(GL.MAX_TEMP_BUFFER_SIZE >> 2);
