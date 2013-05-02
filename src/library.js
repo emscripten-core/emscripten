@@ -7224,7 +7224,13 @@ LibraryManager.library = {
       info.host = _gethostbyname.table[low + 0xff*high];
       assert(info.host, 'problem translating fake ip ' + parts);
     }
-    Sockets.backends[Sockets.backend].connect(info);
+    try {
+      Sockets.backends[Sockets.backend].connect(info);
+    } catch(e) {
+      Module.printErr('Error in connect(): ' + e);
+      ___setErrNo(ERRNO_CODES.EACCES);
+      return -1;
+    }
     return 0;
   },
 
