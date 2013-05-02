@@ -441,7 +441,7 @@ Options that are modified or new in %s include:
                            (also a global property) does not invalidate
                            everything.
 
-                           Note that you must add -g during the linking
+                           Note that you should use -g during the linking
                            stage (bitcode to JS), for jcache to work
                            (otherwise, JS minification can confuse it).
 
@@ -1034,8 +1034,7 @@ try:
     print >> sys.stderr, 'emcc: warning: disabling closure because debug info was requested'
     closure = False
 
-  if jcache:
-    assert keep_js_debug, 'must run jcache with -g during link stage' # js minification can confuse jcache
+  if jcache and not keep_js_debug: print >> sys.stderr, 'emcc: warning: it is recommended to run jcache with -g when compiling bitcode to JS'
 
   if minify_whitespace is None:
     minify_whitespace = opt_level >= 2 and not keep_js_debug
