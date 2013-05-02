@@ -72,6 +72,8 @@ except:
 
 # Core test runner class, shared between normal tests and benchmarks
 
+checked_sanity = False
+
 class RunnerCore(unittest.TestCase):
   save_dir = os.environ.get('EM_SAVE_DIR')
   save_JS = 0
@@ -9267,6 +9269,12 @@ class %s(T):
       assert k not in os.environ, k + ' should not be in environment'
       os.environ[k] = v
 
+    global checked_sanity
+    if not checked_sanity:
+      print '(checking sanity from test runner)' # do this after we set env stuff
+      check_sanity(force=True)
+      checked_sanity = True
+
     Building.COMPILER_TEST_OPTS = ['-g']
     os.chdir(self.get_dir()) # Ensure the directory exists and go there
     Building.COMPILER = %r
@@ -13380,8 +13388,6 @@ if __name__ == '__main__':
   sys.argv = [sys.argv[0]] + ['-v'] + sys.argv[1:] # Verbose output by default
 
   # Sanity checks
-
-  check_sanity(force=True)
 
   total_engines = len(JS_ENGINES)
   JS_ENGINES = filter(check_engine, JS_ENGINES)

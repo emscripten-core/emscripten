@@ -203,7 +203,7 @@ def check_node_version():
 EMSCRIPTEN_VERSION = '1.4.1'
 
 def generate_sanity():
-  return EMSCRIPTEN_VERSION + '|' + LLVM_TARGET
+  return EMSCRIPTEN_VERSION + '|' + get_llvm_target()
 
 def check_sanity(force=False):
   try:
@@ -400,7 +400,9 @@ except:
 # Additional compiler options
 
 # Target choice. Must be synced with src/settings.js (TARGET_*)
-LLVM_TARGET = os.environ.get('EMCC_LLVM_TARGET') or 'i386-pc-linux-gnu' # 'le32-unknown-nacl'
+def get_llvm_target():
+  return os.environ.get('EMCC_LLVM_TARGET') or 'i386-pc-linux-gnu' # 'le32-unknown-nacl'
+LLVM_TARGET = get_llvm_target()
 
 try:
   COMPILER_OPTS # Can be set in EM_CONFIG, optionally
