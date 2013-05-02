@@ -1580,6 +1580,8 @@ module({
                 q: 4,
                 s: "foo",
             });
+
+            impl.delete();
         });
     });
 
