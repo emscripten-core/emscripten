@@ -1407,7 +1407,7 @@ function JSify(data, functionsOnly, givenFunctions) {
                   var ret;
                   assert(offset % Runtime.STACK_ALIGN == 0); // varargs must be aligned
                   if (!varargsByVals[i]) {
-                    ret = makeSetValue(getFastValue('tempInt', '+', offset), 0, arg, type, null, null, QUANTUM_SIZE, null, ',');
+                    ret = makeSetValue(getFastValue('tempInt', '+', offset), 0, arg, type, null, null, Runtime.STACK_ALIGN, null, ',');
                     offset += Runtime.alignMemory(Runtime.getNativeFieldSize(type), Runtime.STACK_ALIGN);
                   } else {
                     var size = calcAllocatedSize(removeAllPointing(type));
