@@ -10,6 +10,7 @@ namespace emscripten {
         extern "C" {
             void _emval_register_symbol(const char*);
 
+            typedef struct _EM_SIG* EM_SIG;
             typedef struct _EM_VAL* EM_VAL;
         
             void _emval_incref(EM_VAL value);

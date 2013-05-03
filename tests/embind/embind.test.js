@@ -1558,6 +1558,31 @@ module({
             assert.equal("optionalfoo", cm.callOptionalMethod(impl, "foo"));
             impl.delete();
         });
+
+        test("void methods work", function() {
+            var saved = {};
+            var impl = cm.AbstractClass.implement({
+                differentArguments: function(i, d, f, q, s) {
+                    saved.i = i;
+                    saved.d = d;
+                    saved.f = f;
+                    saved.q = q;
+                    saved.s = s;
+                }
+            });
+
+            cm.callDifferentArguments(impl, 1, 2, 3, 4, "foo");
+
+            assert.deepEqual(saved, {
+                i: 1,
+                d: 2,
+                f: 3,
+                q: 4,
+                s: "foo",
+            });
+
+            impl.delete();
+        });
     });
 
     BaseFixture.extend("registration order", function() {
@@ -1681,6 +1706,27 @@ module({
         assert.equal("some string", cm.STRING_CONSTANT);
         assert.deepEqual([1, 2, 3, 4], cm.VALUE_TUPLE_CONSTANT);
         assert.deepEqual({x:1,y:2,z:3,w:4}, cm.VALUE_STRUCT_CONSTANT);
+    });
+
+    BaseFixture.extend("object handle comparison", function() {
+        var e = new cm.ValHolder("foo");
+        var f = new cm.ValHolder("foo");
+        assert.false(e.isAliasOf(undefined));
+        assert.false(e.isAliasOf(10));
+        assert.true(e.isAliasOf(e));
+        assert.false(e.isAliasOf(f));
+        assert.false(f.isAliasOf(e));
+        e.delete();
+        f.delete();
+    });
+
+    BaseFixture.extend("derived-with-offset types compare with base", function() {
+        var e = new cm.DerivedWithOffset;
+        var f = cm.return_Base_from_DerivedWithOffset(e);
+        assert.true(e.isAliasOf(f));
+        assert.true(f.isAliasOf(e));
+        e.delete();
+        f.delete();
     });
 });
 
