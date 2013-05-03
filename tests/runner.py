@@ -13151,11 +13151,6 @@ fi
       output = self.check_working(EMCC)
       self.assertNotContained(SANITY_MESSAGE, output)
 
-      # But the test runner should
-      output = self.check_working(commands[1])
-      self.assertContained(SANITY_MESSAGE, output)
-      self.assertNotContained(SANITY_FAIL_MESSAGE, output)
-
       # Make sure the test runner didn't do anything to the setup
       output = self.check_working(EMCC)
       self.assertNotContained(SANITY_MESSAGE, output)
