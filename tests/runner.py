@@ -413,7 +413,7 @@ process(sys.argv[1])
 
       int suppInt = 76;
     '''
-    supp_name = os.path.join(self.get_dir(), 'supp.c')
+    supp_name = os.path.join(self.get_dir(), 'supp.cpp')
     open(supp_name, 'w').write(supp)
 
     main = r'''
@@ -5025,8 +5025,8 @@ The current type of b is: 9
       Settings.BUILD_AS_SHARED_LIB = 2
       Settings.NAMED_GLOBALS = 1
 
-      self.build(supp, self.get_dir(), self.in_dir('supp.c'))
-      shutil.move(self.in_dir('supp.c.o.js'), self.in_dir('liblib.so'))
+      self.build(supp, self.get_dir(), self.in_dir('supp.cpp'))
+      shutil.move(self.in_dir('supp.cpp.o.js'), self.in_dir('liblib.so'))
       Settings.BUILD_AS_SHARED_LIB = 0
 
       Settings.RUNTIME_LINKED_LIBS = ['liblib.so'];
