@@ -217,7 +217,7 @@ else:
     except:
       pass
     config_file = config_file.replace('{{{ NODE }}}', node)
-    python = 'python'
+    python = sys.executable or 'python'
     try:
       python = Popen(['which', 'python2'], stdout=PIPE).communicate()[0].replace('\n', '') or \
                Popen(['which', 'python'], stdout=PIPE).communicate()[0].replace('\n', '') or python
