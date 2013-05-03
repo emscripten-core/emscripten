@@ -4442,9 +4442,10 @@ LibraryManager.library = {
   strcat: function(pdest, psrc) {
     pdest = pdest|0; psrc = psrc|0;
     var i = 0;
-    pdest = (pdest + (_strlen(pdest)|0))|0;
+    var pdestEnd = 0;
+    pdestEnd = (pdest + _strlen(pdest))|0;
     do {
-      {{{ makeCopyValues('pdest+i', 'psrc+i', 1, 'i8', null, 1) }}};
+      {{{ makeCopyValues('pdestEnd+i', 'psrc+i', 1, 'i8', null, 1) }}};
       i = (i+1)|0;
     } while ({{{ makeGetValueAsm('psrc', 'i-1', 'i8') }}});
     return pdest|0;
