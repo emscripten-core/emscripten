@@ -294,74 +294,97 @@ LibraryManager.library = {
       if (typeof XMLHttpRequest !== 'undefined') {
         if (!ENVIRONMENT_IS_WORKER) throw 'Cannot do synchronous binary XHRs outside webworkers in modern browsers. Use --embed-file or --preload-file in emcc';
         // Lazy chunked Uint8Array (implements get and length from Uint8Array). Actual getting is abstracted away for eventual reuse.
-        var LazyUint8Array = function(chunkSize, length) {
-          this.length = length;
-          this.chunkSize = chunkSize;
+        var LazyUint8Array = function() {
+          this.lengthKnown = false;
           this.chunks = []; // Loaded chunks. Index is the chunk number
         }
         LazyUint8Array.prototype.get = function(idx) {
           if (idx > this.length-1 || idx < 0) {
             return undefined;
           }
-          var chunkOffset = idx % chunkSize;
-          var chunkNum = Math.floor(idx / chunkSize);
+          var chunkOffset = idx % this.chunkSize;
+          var chunkNum = Math.floor(idx / this.chunkSize);
           return this.getter(chunkNum)[chunkOffset];
         }
         LazyUint8Array.prototype.setDataGetter = function(getter) {
           this.getter = getter;
         }
-  
-        // Find length
-        var xhr = new XMLHttpRequest();
-        xhr.open('HEAD', url, false);
-        xhr.send(null);
-        if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
-        var datalength = Number(xhr.getResponseHeader("Content-length"));
-        var header;
-        var hasByteServing = (header = xhr.getResponseHeader("Accept-Ranges")) && header === "bytes";
+
+        LazyUint8Array.prototype.getLength = function() {
+            // Find length
+            var xhr = new XMLHttpRequest();
+            xhr.open('HEAD', url, false);
+            xhr.send(null);
+            if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
+            var datalength = Number(xhr.getResponseHeader("Content-length"));
+            var header;
+            var hasByteServing = (header = xhr.getResponseHeader("Accept-Ranges")) && header === "bytes";
 #if SMALL_XHR_CHUNKS
-        var chunkSize = 1024; // Chunk size in bytes
+            var chunkSize = 1024; // Chunk size in bytes
 #else
-        var chunkSize = 1024*1024; // Chunk size in bytes
+            var chunkSize = 1024*1024; // Chunk size in bytes
 #endif
-        if (!hasByteServing) chunkSize = datalength;
+            if (!hasByteServing) chunkSize = datalength;
+      
+            // Function to get a range from the remote URL.
+            var doXHR = (function(from, to) {
+              if (from > to) throw new Error("invalid range (" + from + ", " + to + ") or no bytes requested!");
+              if (to > datalength-1) throw new Error("only " + datalength + " bytes available! programmer error!");
+      
+              // TODO: Use mozResponseArrayBuffer, responseStream, etc. if available.
+              var xhr = new XMLHttpRequest();
+              xhr.open('GET', url, false);
+              if (datalength !== chunkSize) xhr.setRequestHeader("Range", "bytes=" + from + "-" + to);
+      
+              // Some hints to the browser that we want binary data.
+              if (typeof Uint8Array != 'undefined') xhr.responseType = 'arraybuffer';
+              if (xhr.overrideMimeType) {
+                xhr.overrideMimeType('text/plain; charset=x-user-defined');
+              }
+      
+              xhr.send(null);
+              if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
+              if (xhr.response !== undefined) {
+                return new Uint8Array(xhr.response || []);
+              } else {
+                return intArrayFromString(xhr.responseText || '', true);
+              }
+            });
+            var lazyArray = this;
+            lazyArray.setDataGetter(function(chunkNum) {
+              var start = chunkNum * chunkSize;
+              var end = (chunkNum+1) * chunkSize - 1; // including this byte
+              end = Math.min(end, datalength-1); // if datalength-1 is selected, this is the last block
+              if (typeof(lazyArray.chunks[chunkNum]) === "undefined") {
+                lazyArray.chunks[chunkNum] = doXHR(start, end);
+              }
+              if (typeof(lazyArray.chunks[chunkNum]) === "undefined") throw new Error("doXHR failed!");
+              return lazyArray.chunks[chunkNum];
+            });
+
+            this._length = datalength;
+            this._chunkSize = chunkSize;
+            this.lengthKnown = true;
+        }
   
-        // Function to get a range from the remote URL.
-        var doXHR = (function(from, to) {
-          if (from > to) throw new Error("invalid range (" + from + ", " + to + ") or no bytes requested!");
-          if (to > datalength-1) throw new Error("only " + datalength + " bytes available! programmer error!");
-  
-          // TODO: Use mozResponseArrayBuffer, responseStream, etc. if available.
-          var xhr = new XMLHttpRequest();
-          xhr.open('GET', url, false);
-          if (datalength !== chunkSize) xhr.setRequestHeader("Range", "bytes=" + from + "-" + to);
-  
-          // Some hints to the browser that we want binary data.
-          if (typeof Uint8Array != 'undefined') xhr.responseType = 'arraybuffer';
-          if (xhr.overrideMimeType) {
-            xhr.overrideMimeType('text/plain; charset=x-user-defined');
-          }
-  
-          xhr.send(null);
-          if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
-          if (xhr.response !== undefined) {
-            return new Uint8Array(xhr.response || []);
-          } else {
-            return intArrayFromString(xhr.responseText || '', true);
-          }
+        var lazyArray = new LazyUint8Array();
+        Object.defineProperty(lazyArray, "length", {
+            get: function() {
+                if(!this.lengthKnown) {
+                    this.getLength();
+                }
+                return this._length;
+            }
         });
-  
-        var lazyArray = new LazyUint8Array(chunkSize, datalength);
-        lazyArray.setDataGetter(function(chunkNum) {
-          var start = chunkNum * lazyArray.chunkSize;
-          var end = (chunkNum+1) * lazyArray.chunkSize - 1; // including this byte
-          end = Math.min(end, datalength-1); // if datalength-1 is selected, this is the last block
-          if (typeof(lazyArray.chunks[chunkNum]) === "undefined") {
-            lazyArray.chunks[chunkNum] = doXHR(start, end);
-          }
-          if (typeof(lazyArray.chunks[chunkNum]) === "undefined") throw new Error("doXHR failed!");
-          return lazyArray.chunks[chunkNum];
+        Object.defineProperty(lazyArray, "chunkSize", {
+            get: function() {
+                if(!this.lengthKnown) {
+                    this.getLength();
+                }
+                return this._chunkSize;
+            }
         });
+
         var properties = { isDevice: false, contents: lazyArray };
       } else {
         var properties = { isDevice: false, url: url };
@@ -573,7 +596,7 @@ LibraryManager.library = {
         eof: false,
         ungotten: []
       };
-      assert(Math.max(_stdin, _stdout, _stderr) < 1024); // make sure these are low, we flatten arrays with these
+      assert(Math.max(_stdin, _stdout, _stderr) < 128); // make sure these are low, we flatten arrays with these
       {{{ makeSetValue(makeGlobalUse('_stdin'), 0, 1, 'void*') }}};
       {{{ makeSetValue(makeGlobalUse('_stdout'), 0, 2, 'void*') }}};
       {{{ makeSetValue(makeGlobalUse('_stderr'), 0, 3, 'void*') }}};
@@ -2499,7 +2522,7 @@ LibraryManager.library = {
     for (var formatIndex = 0; formatIndex < format.length;) {
       if (format[formatIndex] === '%' && format[formatIndex+1] == 'n') {
         var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
-        argIndex += Runtime.getAlignSize('void*', null, true);
+        argIndex += Runtime.getNativeFieldSize('void*');
         {{{ makeSetValue('argPtr', 0, 'soFar', 'i32') }}};
         formatIndex += 2;
         continue;
@@ -2508,7 +2531,7 @@ LibraryManager.library = {
       // TODO: Support strings like "%5c" etc.
       if (format[formatIndex] === '%' && format[formatIndex+1] == 'c') {
         var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
-        argIndex += Runtime.getAlignSize('void*', null, true);
+        argIndex += Runtime.getNativeFieldSize('void*');
         fields++;
         next = get();
         {{{ makeSetValue('argPtr', 0, 'next', 'i8') }}}
@@ -2600,7 +2623,7 @@ LibraryManager.library = {
 
         var text = buffer.join('');
         var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
-        argIndex += Runtime.getAlignSize('void*', null, true);
+        argIndex += Runtime.getNativeFieldSize('void*');
         switch (type) {
           case 'd': case 'u': case 'i':
             if (half) {
@@ -2669,16 +2692,8 @@ LibraryManager.library = {
         ret = {{{ makeGetValue('varargs', 'argIndex', 'double', undefined, undefined, true) }}};
 #if USE_TYPED_ARRAYS == 2
       } else if (type == 'i64') {
-
-#if TARGET_LE32
-        ret = [{{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}},
-               {{{ makeGetValue('varargs', 'argIndex+8', 'i32', undefined, undefined, true) }}}];
-        argIndex += {{{ STACK_ALIGN }}}; // each 32-bit chunk is in a 64-bit block
-#else
         ret = [{{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}},
                {{{ makeGetValue('varargs', 'argIndex+4', 'i32', undefined, undefined, true) }}}];
-#endif
-
 #else
       } else if (type == 'i64') {
         ret = {{{ makeGetValue('varargs', 'argIndex', 'i64', undefined, undefined, true) }}};
@@ -2687,7 +2702,7 @@ LibraryManager.library = {
         type = 'i32'; // varargs are always i32, i64, or double
         ret = {{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}};
       }
-      argIndex += Math.max(Runtime.getNativeFieldSize(type), Runtime.getAlignSize(type, null, true));
+      argIndex += Runtime.getNativeFieldSize(type);
       return ret;
     }
 
@@ -3620,9 +3635,6 @@ LibraryManager.library = {
   asprintf: function(s, format, varargs) {
     return _sprintf(-s, format, varargs);
   },
-
-#if TARGET_X86
-  // va_arg is just like our varargs
   vfprintf: 'fprintf',
   vsnprintf: 'snprintf',
   vprintf: 'printf',
@@ -3631,44 +3643,6 @@ LibraryManager.library = {
   vscanf: 'scanf',
   vfscanf: 'fscanf',
   vsscanf: 'sscanf',
-#endif
-
-#if TARGET_LE32
-  // convert va_arg into varargs
-  vfprintf__deps: ['fprintf'],
-  vfprintf: function(s, f, va_arg) {
-    return _fprintf(s, f, {{{ makeGetValue('va_arg', 0, '*') }}});
-  },
-  vsnprintf__deps: ['snprintf'],
-  vsnprintf: function(s, n, format, va_arg) {
-    return _snprintf(s, n, format, {{{ makeGetValue('va_arg', 0, '*') }}});
-  },
-  vprintf__deps: ['printf'],
-  vprintf: function(format, va_arg) {
-    return _printf(format, {{{ makeGetValue('va_arg', 0, '*') }}});
-  },
-  vsprintf__deps: ['sprintf'],
-  vsprintf: function(s, format, va_arg) {
-    return _sprintf(s, format, {{{ makeGetValue('va_arg', 0, '*') }}});
-  },
-  vasprintf__deps: ['asprintf'],
-  vasprintf: function(s, format, va_arg) {
-    return _asprintf(s, format, {{{ makeGetValue('va_arg', 0, '*') }}});
-  },
-  vscanf__deps: ['scanf'],
-  vscanf: function(format, va_arg) {
-    return _scanf(format, {{{ makeGetValue('va_arg', 0, '*') }}});
-  },
-  vfscanf__deps: ['fscanf'],
-  vfscanf: function(s, format, va_arg) {
-    return _fscanf(s, format, {{{ makeGetValue('va_arg', 0, '*') }}});
-  },
-  vsscanf__deps: ['sscanf'],
-  vsscanf: function(s, format, va_arg) {
-    return _sscanf(s, format, {{{ makeGetValue('va_arg', 0, '*') }}});
-  },
-#endif
-
   fopen64: 'fopen',
   __01fopen64_: 'fopen',
   __01freopen64_: 'freopen',
@@ -4217,6 +4191,32 @@ LibraryManager.library = {
     }
   },
 
+  mbtowc: function(pwc, pmb, maxx) {
+    // XXX doesn't really handle multibyte at all
+    if (!pmb) return 0;
+    maxx = Math.min({{{ cDefine('_NL_CTYPE_MB_CUR_MAX') }}}, maxx);
+    var i;
+    for (i = 0; i < maxx; i++) {
+      var curr = {{{ makeGetValue('pmb', 0, 'i8') }}};
+      if (pwc) {
+        {{{ makeSetValue('pwc', '0', 'curr', 'i8') }}};
+        {{{ makeSetValue('pwc', '1', '0', 'i8') }}};
+        pwc += 2;
+      }
+      pmb++;
+      if (!curr) break;
+    }
+    return i;
+  },
+
+  wcrtomb: function(s, wc, ps) {
+    // XXX doesn't really handle multibyte at all
+    if (s) {
+      {{{ makeSetValue('s', '0', 'wc', 'i8') }}};
+    }
+    return 1;
+  },
+
   arc4random: 'rand',
 
   // ==========================================================================
@@ -4266,6 +4266,8 @@ LibraryManager.library = {
     return ret|0;
   },
 
+  wmemcpy: function() { throw 'wmemcpy not implemented' },
+
   llvm_memcpy_i32: 'memcpy',
   llvm_memcpy_i64: 'memcpy',
   llvm_memcpy_p0i8_p0i8_i32: 'memcpy',
@@ -4294,6 +4296,8 @@ LibraryManager.library = {
   llvm_memmove_i64: 'memmove',
   llvm_memmove_p0i8_p0i8_i32: 'memmove',
   llvm_memmove_p0i8_p0i8_i64: 'memmove',
+
+  wmemmove: function() { throw 'wmemmove not implemented' },
 
   memset__inline: function(ptr, value, num, align) {
     return makeSetValues(ptr, 0, value, 'null', num, align);
@@ -4335,17 +4339,31 @@ LibraryManager.library = {
   llvm_memset_p0i8_i32: 'memset',
   llvm_memset_p0i8_i64: 'memset',
 
+  wmemset: function() { throw 'wmemset not implemented' },
+
   strlen__sig: 'ii',
   strlen__asm: true,
   strlen: function(ptr) {
     ptr = ptr|0;
     var curr = 0;
     curr = ptr;
-    while ({{{ makeGetValueAsm('curr', '0', 'i8') }}}) {
+    while ({{{ makeGetValueAsm('curr', '0', 'i8') }}}|0 != 0) {
       curr = (curr + 1)|0;
     }
     return (curr - ptr)|0;
   },
+
+  // TODO: Implement when we have real unicode support.
+  mblen: function() {
+    return 1;
+  },
+
+  wcslen: function() { throw 'wcslen not implemented' },
+  mbrlen: function() { throw 'mbrlen not implemented' },
+  mbsrtowcs: function() { throw 'mbsrtowcs not implemented' },
+  wcsnrtombs: function() { throw 'wcsnrtombs not implemented' },
+  mbsnrtowcs: function() { throw 'mbsnrtowcs not implemented' },
+  mbrtowc: function() { throw 'mbrtowc not implemented' },
 
   strspn: function(pstr, pset) {
     var str = pstr, set, strcurr, setcurr;
@@ -4387,7 +4405,7 @@ LibraryManager.library = {
     do {
       {{{ makeCopyValues('(pdest+i)|0', '(psrc+i)|0', 1, 'i8', null, 1) }}};
       i = (i+1)|0;
-    } while ({{{ makeGetValueAsm('psrc', 'i-1', 'i8') }}});
+    } while (({{{ makeGetValue('psrc', 'i-1', 'i8') }}})|0 != 0);
     return pdest|0;
   },
 
@@ -4442,11 +4460,11 @@ LibraryManager.library = {
   strcat: function(pdest, psrc) {
     pdest = pdest|0; psrc = psrc|0;
     var i = 0;
-    pdest = (pdest + (_strlen(pdest)|0))|0;
+    pdest = (pdest + _strlen(pdest))|0;
     do {
       {{{ makeCopyValues('pdest+i', 'psrc+i', 1, 'i8', null, 1) }}};
       i = (i+1)|0;
-    } while ({{{ makeGetValueAsm('psrc', 'i-1', 'i8') }}});
+    } while ({{{ makeGetValueAsm('psrc', 'i-1', 'i8') }}} != 0);
     return pdest|0;
   },
 
@@ -4506,8 +4524,8 @@ LibraryManager.library = {
     px = px|0; py = py|0; n = n|0;
     var i = 0, x = 0, y = 0;
     while ((i>>>0) < (n>>>0)) {
-      x = _tolower({{{ makeGetValueAsm('px', 'i', 'i8', 0, 1) }}})|0;
-      y = _tolower({{{ makeGetValueAsm('py', 'i', 'i8', 0, 1) }}})|0;
+      x = _tolower({{{ makeGetValueAsm('px', 'i', 'i8', 0, 1) }}});
+      y = _tolower({{{ makeGetValueAsm('py', 'i', 'i8', 0, 1) }}});
       if (((x|0) == (y|0)) & ((x|0) == 0)) return 0;
       if ((x|0) == 0) return -1;
       if ((y|0) == 0) return 1;
@@ -4874,13 +4892,7 @@ LibraryManager.library = {
 
   llvm_va_start__inline: function(ptr) {
     // varargs - we received a pointer to the varargs as a final 'extra' parameter called 'varrp'
-#if TARGET_X86
     return makeSetValue(ptr, 0, 'varrp', 'void*');
-#endif
-#if TARGET_LE32
-    // 4-word structure: start, current offset
-    return makeSetValue(ptr, 0, 'varrp', 'void*') + ';' + makeSetValue(ptr, 4, 0, 'void*');
-#endif
   },
 
   llvm_va_end: function() {},
@@ -5366,8 +5378,6 @@ LibraryManager.library = {
 
   llvm_objectsize_i32: function() { return -1 }, // TODO: support this
 
-  llvm_dbg_declare__inline: function() { throw 'llvm_debug_declare' }, // avoid warning
-
   // ==========================================================================
   // llvm-mono integration
   // ==========================================================================
@@ -5452,7 +5462,6 @@ LibraryManager.library = {
     return (ONE_SQRTPI * Math.exp(- x * x) * q2);
   },
   erfcf: 'erfcf',
-  erf__deps: ['erfc'],
   erf: function (x) {
     var MATH_TOLERANCE = 1E-12;
     var TWO_SQRTPI = 1.128379167095512574;
@@ -6231,76 +6240,13 @@ LibraryManager.library = {
   // related functionality so the slowdown is more limited.
   // ==========================================================================
 
-  saveSetjmp__asm: true,
-  saveSetjmp__sig: 'iii',
-  saveSetjmp__deps: ['putchar'],
-  saveSetjmp: function(env, label, table) {
-    // Not particularly fast: slow table lookup of setjmpId to label. But setjmp
-    // prevents relooping anyhow, so slowness is to be expected. And typical case
-    // is 1 setjmp per invocation, or less.
-    env = env|0;
-    label = label|0;
-    table = table|0;
-    var i = 0;
-#if ASSERTIONS
-    if ((label|0) == 0) abort(121);
-#endif
-    setjmpId = (setjmpId+1)|0;
-    {{{ makeSetValueAsm('env', '0', 'setjmpId', 'i32') }}};
-    while ((i|0) < {{{ 2*MAX_SETJMPS }}}) {
-      if ({{{ makeGetValueAsm('table', 'i*4', 'i32') }}} == 0) {
-        {{{ makeSetValueAsm('table', 'i*4', 'setjmpId', 'i32') }}};
-        {{{ makeSetValueAsm('table', 'i*4+4', 'label', 'i32') }}};
-        // prepare next slot
-        {{{ makeSetValueAsm('table', 'i*4+8', '0', 'i32') }}};
-        return 0;
-      }
-      i = (i+2)|0;
-    }
-    {{{ makePrintChars('too many setjmps in a function call, build with a higher value for MAX_SETJMPS') }}};
-    abort(0);
-    return 0;
-  },
-
-  testSetjmp__asm: true,
-  testSetjmp__sig: 'iii',
-  testSetjmp: function(id, table) {
-    id = id|0;
-    table = table|0;
-    var i = 0, curr = 0;
-    while ((i|0) < {{{ MAX_SETJMPS }}}) {
-      curr = {{{ makeGetValueAsm('table', 'i*4', 'i32') }}};
-      if ((curr|0) == 0) break;
-      if ((curr|0) == (id|0)) {
-        return {{{ makeGetValueAsm('table', 'i*4+4', 'i32') }}};
-      }
-      i = (i+2)|0;
-    }
-    return 0;
-  },
-
-#if ASM_JS
-  setjmp__deps: ['saveSetjmp', 'testSetjmp'],
-#endif
   setjmp__inline: function(env) {
     // Save the label
-#if ASM_JS
-    return '_saveSetjmp(' + env + ', label, setjmpTable)|0';
-#else
     return '(tempInt = setjmpId++, mySetjmpIds[tempInt] = 1, setjmpLabels[tempInt] = label,' + makeSetValue(env, '0', 'tempInt', 'i32', undefined, undefined, undefined, undefined,  ',') + ', 0)';
-#endif
   },
 
-#if ASM_JS
-  longjmp__deps: ['saveSetjmp', 'testSetjmp'],
-#endif
   longjmp: function(env, value) {
-#if ASM_JS
-    asm.setThrew(env, value || 1);
-    throw 'longjmp';
-#else
     throw { longjmp: true, id: {{{ makeGetValue('env', '0', 'i32') }}}, value: value || 1 };
-#endif
   },
 
   // ==========================================================================
@@ -6655,7 +6601,6 @@ LibraryManager.library = {
     ENOTSUP: 95,
     ENOTTY: 25,
     ENXIO: 6,
-    EOPNOTSUPP: 45,
     EOVERFLOW: 75,
     EOWNERDEAD: 130,
     EPERM: 1,
@@ -6737,7 +6682,6 @@ LibraryManager.library = {
     95: 'Operation not supported',
     25: 'Inappropriate ioctl for device',
     6: 'No such device or address',
-    45: 'Op not supported on transport endpoint',
     75: 'Value too large for defined data type',
     130: 'Owner died',
     1: 'Operation not permitted',
@@ -7224,13 +7168,7 @@ LibraryManager.library = {
       info.host = _gethostbyname.table[low + 0xff*high];
       assert(info.host, 'problem translating fake ip ' + parts);
     }
-    try {
-      Sockets.backends[Sockets.backend].connect(info);
-    } catch(e) {
-      Module.printErr('Error in connect(): ' + e);
-      ___setErrNo(ERRNO_CODES.EACCES);
-      return -1;
-    }
+    Sockets.backends[Sockets.backend].connect(info);
     return 0;
   },
 
@@ -7488,14 +7426,6 @@ LibraryManager.library = {
     }
   },
 
-  socketpair__deps: ['__setErrNo', '$ERRNO_CODES'],
-  socketpair: function(domain, type, protocol, sv) {
-    // int socketpair(int domain, int type, int protocol, int sv[2]);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/socketpair.html
-    ___setErrNo(ERRNO_CODES.EOPNOTSUPP);
-    return -1;
-  },
-
   // pty.h
 
   openpty: function() { throw 'openpty: TODO' },
@@ -7548,13 +7478,12 @@ LibraryManager.library = {
     }
     var i = 0;
     do {
-      var curr = {{{ makeGetValue('varargs', '0', 'i8') }}};
-      varargs += {{{ STACK_ALIGN }}};
+      var curr = {{{ makeGetValue('varargs', 'i*4', 'i8') }}};
       {{{ makeSetValue('_emscripten_jcache_printf_.buffer', 'i', 'curr', 'i8') }}};
       i++;
-      assert(i*{{{ STACK_ALIGN }}} < MAX);
+      assert(i*4 < MAX);
     } while (curr != 0);
-    Module.print(intArrayToString(__formatString(_emscripten_jcache_printf_.buffer, varargs)).replace('\\n', ''));
+    Module.print(intArrayToString(__formatString(_emscripten_jcache_printf_.buffer, varargs + i*4)).replace('\\n', ''));
     Runtime.stackAlloc(-4*i); // free up the stack space we know is ok to free
   },
 
@@ -7573,7 +7502,10 @@ LibraryManager.library = {
     a = a|0; b = b|0; c = c|0; d = d|0;
     var l = 0, h = 0;
     l = (a + c)>>>0;
-    h = (b + d + (((l>>>0) < (a>>>0))|0))>>>0; // Add carry from low word to high word on overflow.
+    h = (b + d)>>>0;
+    if ((l>>>0) < (a>>>0)) { // iff we overflowed
+      h = (h+1)>>>0;
+    }
     {{{ makeStructuralReturn(['l|0', 'h'], true) }}};
   },
   llvm_uadd_with_overflow_i64__asm: true,
@@ -7583,10 +7515,10 @@ LibraryManager.library = {
     var l = 0, h = 0, overflow = 0;
     l = (a + c)>>>0;
     h = (b + d)>>>0;
-    overflow = ((h>>>0) < (b>>>0))|0; // Return whether addition overflowed even the high word.
+    if ((h>>>0) < (b>>>0)) overflow = 1;
     if ((l>>>0) < (a>>>0)) {
-      h = (h + 1)>>>0; // Add carry from low word to high word on overflow.
-      overflow = overflow | (!h); // Check again for overflow.
+      h = (h+1)>>>0;
+      if ((h>>>0) == 0) overflow = 1; // two possibilities to overflow here
     }
     {{{ makeStructuralReturn(['l|0', 'h', 'overflow'], true) }}};
   },
@@ -7598,7 +7530,9 @@ LibraryManager.library = {
     var l = 0, h = 0;
     l = (a - c)>>>0;
     h = (b - d)>>>0;
-    h = (b - d - (((c>>>0) > (a>>>0))|0))>>>0; // Borrow one from high word to low word on underflow.
+    if ((l>>>0) > (a>>>0)) { // iff we overflowed
+      h = (h-1)>>>0;
+    }
     {{{ makeStructuralReturn(['l|0', 'h'], true) }}};
   },
 
