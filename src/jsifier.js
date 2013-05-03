@@ -1546,13 +1546,9 @@ function JSify(data, functionsOnly, givenFunctions) {
     if (!mainPass) {
       if (phase == 'pre' && !Variables.generatedGlobalBase) {
         Variables.generatedGlobalBase = true;
-        if (Variables.nextIndexedOffset > 0) {
-          // Variables have been calculated, get to base stuff before we print them
-          // GLOBAL_BASE is statically known to be equal to STACK_MAX and to TOTAL_STACK, assert on this
-          print('assert(STATICTOP == STACK_MAX); assert(STACK_MAX == TOTAL_STACK);\n');
-          print('STATICTOP += ' + Variables.nextIndexedOffset + ';\n');
-          print('assert(STATICTOP < TOTAL_MEMORY);\n');
-        }
+        // Globals are done, here is the rest of static memory
+        print('STATIC_BASE = ' + Runtime.GLOBAL_BASE + ';\n');
+        print('STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n');
       }
       var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable);
       print(generated.map(function(item) { return item.JS }).join('\n'));
@@ -1573,13 +1569,13 @@ function JSify(data, functionsOnly, givenFunctions) {
                 // possibly function table {{{ FT_* }}} etc.
                 if (value.indexOf('{{ ') < 0) return true;
               }
-              writeInt8s(memoryInitialization, target - TOTAL_STACK, value, type);
+              writeInt8s(memoryInitialization, target - Runtime.GLOBAL_BASE, value, type);
               return false;
             }
             return true;
           });
           // write out the singleton big memory initialization value
-          print('/* memory initializer */ ' + makePointer(memoryInitialization, null, 'ALLOC_NONE', 'i8', 'TOTAL_STACK', true)); // we assert on TOTAL_STACK == GLOBAL_BASE
+          print('/* memory initializer */ ' + makePointer(memoryInitialization, null, 'ALLOC_NONE', 'i8', 'Runtime.GLOBAL_BASE', true));
         } else {
           print('/* no memory initializer */'); // test purposes
         }
@@ -1589,6 +1585,27 @@ function JSify(data, functionsOnly, givenFunctions) {
         print(itemsDict.GlobalVariablePostSet.map(function(item) { return item.JS }).join('\n'));
         print('}\n');
         print('if (!awaitingMemoryInitializer) runPostSets();\n'); // if we load the memory initializer, this is done later
+
+        if (USE_TYPED_ARRAYS == 2) {
+          print('var tempDoublePtr = Runtime.alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);\n');
+          print('assert(tempDoublePtr % 8 == 0);\n');
+          print('function copyTempFloat(ptr) { // functions, because inlining this code increases code size too much\n');
+          print('  HEAP8[tempDoublePtr] = HEAP8[ptr];\n');
+          print('  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];\n');
+          print('  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];\n');
+          print('  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];\n');
+          print('}\n');
+          print('function copyTempDouble(ptr) {\n');
+          print('  HEAP8[tempDoublePtr] = HEAP8[ptr];\n');
+          print('  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];\n');
+          print('  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];\n');
+          print('  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];\n');
+          print('  HEAP8[tempDoublePtr+4] = HEAP8[ptr+4];\n');
+          print('  HEAP8[tempDoublePtr+5] = HEAP8[ptr+5];\n');
+          print('  HEAP8[tempDoublePtr+6] = HEAP8[ptr+6];\n');
+          print('  HEAP8[tempDoublePtr+7] = HEAP8[ptr+7];\n');
+          print('}\n');
+        }
       }
 
       return;
@@ -1622,6 +1639,12 @@ function JSify(data, functionsOnly, givenFunctions) {
 
       legalizedI64s = legalizedI64sDefault;
 
+      print('STACK_BASE = STACKTOP = Runtime.alignMemory(STATICTOP);\n');
+      print('staticSealed = true; // seal the static portion of memory\n');
+      print('STACK_MAX = STACK_BASE + ' + TOTAL_STACK + ';\n');
+      print('DYNAMIC_BASE = DYNAMICTOP = Runtime.alignMemory(STACK_MAX);\n');
+      print('assert(DYNAMIC_BASE < TOTAL_MEMORY); // Stack must fit in TOTAL_MEMORY; allocations from here on may enlarge TOTAL_MEMORY\n');
+
       if (asmLibraryFunctions.length > 0) {
         print('// ASM_LIBRARY FUNCTIONS');
         function fix(f) { // fix indenting to not confuse js optimizer
@@ -1631,6 +1654,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         }
         print(asmLibraryFunctions.map(fix).join('\n'));
       }
+
     } else {
       if (singlePhase) {
         assert(data.unparsedGlobalss[0].lines.length == 0, dump([phase, data.unparsedGlobalss]));
@@ -1664,6 +1688,7 @@ function JSify(data, functionsOnly, givenFunctions) {
                 assert(typeof dep == 'function');
                 var text = dep();
                 assert(text.indexOf('\n') < 0);
+                text = text.replace('ALLOC_STATIC', 'ALLOC_DYNAMIC');
                 print('/* PRE_ASM */ ' + text + '\n');
               });
             }

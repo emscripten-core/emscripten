@@ -15,16 +15,18 @@
 // object. For convenience, the short name appears here. Note that if you add a
 // new function with an '_', it will not be found.
 
+// Memory allocated during startup, in postsets, should only be ALLOC_STATIC
+
 LibraryManager.library = {
   // ==========================================================================
   // File system base.
   // ==========================================================================
 
   // keep this low in memory, because we flatten arrays with them in them
-  stdin: 'allocate(1, "i32*", ALLOC_STACK)',
-  stdout: 'allocate(1, "i32*", ALLOC_STACK)',
-  stderr: 'allocate(1, "i32*", ALLOC_STACK)',
-  _impure_ptr: 'allocate(1, "i32*", ALLOC_STACK)',
+  stdin: 'allocate(1, "i32*", ALLOC_STATIC)',
+  stdout: 'allocate(1, "i32*", ALLOC_STATIC)',
+  stderr: 'allocate(1, "i32*", ALLOC_STATIC)',
+  _impure_ptr: 'allocate(1, "i32*", ALLOC_STATIC)',
 
   $FS__deps: ['$ERRNO_CODES', '__setErrNo', 'stdin', 'stdout', 'stderr', '_impure_ptr'],
   $FS__postset: '__ATINIT__.unshift({ func: function() { if (!Module["noFSInit"] && !FS.init.initialized) FS.init() } });' +
@@ -573,7 +575,7 @@ LibraryManager.library = {
         eof: false,
         ungotten: []
       };
-      assert(Math.max(_stdin, _stdout, _stderr) < 1024); // make sure these are low, we flatten arrays with these
+      // TODO: put these low in memory like we used to assert on: assert(Math.max(_stdin, _stdout, _stderr) < 15000); // make sure these are low, we flatten arrays with these
       {{{ makeSetValue(makeGlobalUse('_stdin'), 0, 1, 'void*') }}};
       {{{ makeSetValue(makeGlobalUse('_stdout'), 0, 2, 'void*') }}};
       {{{ makeSetValue(makeGlobalUse('_stderr'), 0, 3, 'void*') }}};
@@ -590,11 +592,11 @@ LibraryManager.library = {
       FS.streams[_stderr] = FS.streams[3];
 #if ASSERTIONS
       FS.checkStreams();
-      assert(FS.streams.length < 1024); // at this early stage, we should not have a large set of file descriptors - just a few
+      // see previous TODO on stdin etc.: assert(FS.streams.length < 1024); // at this early stage, we should not have a large set of file descriptors - just a few
 #endif
       allocate([ allocate(
         {{{ Runtime.QUANTUM_SIZE === 4 ? '[0, 0, 0, 0, _stdin, 0, 0, 0, _stdout, 0, 0, 0, _stderr, 0, 0, 0]' : '[0, _stdin, _stdout, _stderr]' }}},
-        'void*', ALLOC_STATIC) ], 'void*', ALLOC_NONE, {{{ makeGlobalUse('__impure_ptr') }}});
+        'void*', ALLOC_DYNAMIC) ], 'void*', ALLOC_NONE, {{{ makeGlobalUse('__impure_ptr') }}});
     },
 
     quit: function() {
@@ -2425,22 +2427,17 @@ LibraryManager.library = {
     // Implement a Linux-like 'memory area' for our 'process'.
     // Changes the size of the memory area by |bytes|; returns the
     // address of the previous top ('break') of the memory area
-
-    // We need to make sure no one else allocates unfreeable memory!
-    // We must control this entirely. So we don't even need to do
-    // unfreeable allocations - the HEAP is ours, from STATICTOP up.
-    // TODO: We could in theory slice off the top of the HEAP when
-    //       sbrk gets a negative increment in |bytes|...
+    // We control the "dynamic" memory - DYNAMIC_BASE to DYNAMICTOP
     var self = _sbrk;
     if (!self.called) {
-      STATICTOP = alignMemoryPage(STATICTOP); // make sure we start out aligned
+      DYNAMICTOP = alignMemoryPage(DYNAMICTOP); // make sure we start out aligned
       self.called = true;
-#if GC_SUPPORT
-      _sbrk.DYNAMIC_START = STATICTOP;
-#endif
+      assert(Runtime.dynamicAlloc);
+      self.alloc = Runtime.dynamicAlloc;
+      Runtime.dynamicAlloc = function() { abort('cannot dynamically allocate, sbrk now has control') };
     }
-    var ret = STATICTOP;
-    if (bytes != 0) Runtime.staticAlloc(bytes);
+    var ret = DYNAMICTOP;
+    if (bytes != 0) self.alloc(bytes);
     return ret;  // Previous break location.
   },
   open64: 'open',
@@ -3007,16 +3004,20 @@ LibraryManager.library = {
           }
           case 's': {
             // String.
-            var arg = getNextArg('i8*') || nullString;
-            var argLength = _strlen(arg);
+            var arg = getNextArg('i8*');
+            var argLength = arg ? _strlen(arg) : '(null)'.length;
             if (precisionSet) argLength = Math.min(argLength, precision);
             if (!flagLeftAlign) {
               while (argLength < width--) {
                 ret.push({{{ charCode(' ') }}});
               }
             }
-            for (var i = 0; i < argLength; i++) {
-              ret.push({{{ makeGetValue('arg++', 0, 'i8', null, true) }}});
+            if (arg) {
+              for (var i = 0; i < argLength; i++) {
+                ret.push({{{ makeGetValue('arg++', 0, 'i8', null, true) }}});
+              }
+            } else {
+              ret = ret.concat(intArrayFromString('(null)'.substr(0, argLength), true));
             }
             if (flagLeftAlign) {
               while (argLength < width--) {
@@ -3750,7 +3751,7 @@ LibraryManager.library = {
      * implementation (replaced by dlmalloc normally) so
      * not an issue.
      */
-    var ptr = Runtime.staticAlloc(bytes + 8);
+    var ptr = Runtime.dynamicAlloc(bytes + 8);
     return (ptr+8) & 0xFFFFFFF8;
   },
   free: function(){},
@@ -4029,7 +4030,7 @@ LibraryManager.library = {
     _free(temp);
   },
 
-  environ: 'allocate(1, "i32*", ALLOC_STACK)',
+  environ: 'allocate(1, "i32*", ALLOC_STATIC)',
   __environ__deps: ['environ'],
   __environ: '_environ',
   __buildEnvironment__deps: ['__environ'],
@@ -4925,7 +4926,7 @@ LibraryManager.library = {
       }
       return 8;
     }
-    return 'var ctlz_i8 = allocate([' + range(256).map(function(x) { return ctlz(x) }).join(',') + '], "i8", ALLOC_STACK);';
+    return 'var ctlz_i8 = allocate([' + range(256).map(function(x) { return ctlz(x) }).join(',') + '], "i8", ALLOC_STATIC);';
   }],
   llvm_ctlz_i32__asm: true,
   llvm_ctlz_i32__sig: 'ii',
@@ -4961,7 +4962,7 @@ LibraryManager.library = {
       }
       return 8;
     }
-    return 'var cttz_i8 = allocate([' + range(256).map(function(x) { return cttz(x) }).join(',') + '], "i8", ALLOC_STACK);';
+    return 'var cttz_i8 = allocate([' + range(256).map(function(x) { return cttz(x) }).join(',') + '], "i8", ALLOC_STATIC);';
   }],
   llvm_cttz_i32__asm: true,
   llvm_cttz_i32__sig: 'ii',
@@ -5919,11 +5920,11 @@ LibraryManager.library = {
     ['i32', 'tm_gmtoff'],
     ['i32', 'tm_zone']]),
   // Statically allocated time struct.
-  __tm_current: 'allocate({{{ Runtime.QUANTUM_SIZE }}}*26, "i8", ALLOC_STACK)',
+  __tm_current: 'allocate({{{ Runtime.QUANTUM_SIZE }}}*26, "i8", ALLOC_STATIC)',
   // Statically allocated timezone strings.
   __tm_timezones: {},
   // Statically allocated time strings.
-  __tm_formatted: 'allocate({{{ Runtime.QUANTUM_SIZE }}}*26, "i8", ALLOC_STACK)',
+  __tm_formatted: 'allocate({{{ Runtime.QUANTUM_SIZE }}}*26, "i8", ALLOC_STATIC)',
 
   mktime__deps: ['__tm_struct_layout', 'tzset'],
   mktime: function(tmPtr) {
@@ -6057,9 +6058,9 @@ LibraryManager.library = {
 
   // TODO: Initialize these to defaults on startup from system settings.
   // Note: glibc has one fewer underscore for all of these. Also used in other related functions (timegm)
-  _tzname: 'allocate({{{ 2*Runtime.QUANTUM_SIZE }}}, "i32*", ALLOC_STACK)',
-  _daylight: 'allocate(1, "i32*", ALLOC_STACK)',
-  _timezone: 'allocate(1, "i32*", ALLOC_STACK)',
+  _tzname: 'allocate({{{ 2*Runtime.QUANTUM_SIZE }}}, "i32*", ALLOC_STATIC)',
+  _daylight: 'allocate(1, "i32*", ALLOC_STATIC)',
+  _timezone: 'allocate(1, "i32*", ALLOC_STATIC)',
   tzset__deps: ['_tzname', '_daylight', '_timezone'],
   tzset: function() {
     // TODO: Use (malleable) environment variables instead of system settings.
@@ -6756,15 +6757,18 @@ LibraryManager.library = {
     26: 'Text file busy',
     18: 'Invalid cross-device link'
   },
-  __setErrNo__postset: '___setErrNo(0);',
   __setErrNo: function(value) {
     // For convenient setting and returning of errno.
-    if (!___setErrNo.ret) ___setErrNo.ret = allocate([0], 'i32', ALLOC_STATIC);
+    if (!___setErrNo.ret) ___setErrNo.ret = allocate([0], 'i32', ALLOC_NORMAL);
     {{{ makeSetValue('___setErrNo.ret', '0', 'value', 'i32') }}}
     return value;
   },
   __errno_location__deps: ['__setErrNo'],
   __errno_location: function() {
+    if (!___setErrNo.ret) {
+      ___setErrNo.ret = allocate([0], 'i32', ALLOC_NORMAL);
+      {{{ makeSetValue('___setErrNo.ret', '0', '0', 'i32') }}}
+    }
     return ___setErrNo.ret;
   },
   __errno: '__errno_location',
@@ -6877,7 +6881,7 @@ LibraryManager.library = {
        void **restrict stackaddr, size_t *restrict stacksize); */
     /*FIXME: assumes that there is only one thread, and that attr is the
       current thread*/
-    {{{ makeSetValue('stackaddr', '0', 'STACK_ROOT', 'i8*') }}}
+    {{{ makeSetValue('stackaddr', '0', 'STACK_BASE', 'i8*') }}}
     {{{ makeSetValue('stacksize', '0', 'TOTAL_STACK', 'i32') }}}
     return 0;
   },

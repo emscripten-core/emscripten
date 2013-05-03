@@ -61,8 +61,16 @@ var RuntimeGenerator = {
   // An allocation that cannot normally be free'd (except through sbrk, which once
   // called, takes control of STATICTOP)
   staticAlloc: function(size) {
+    if (ASSERTIONS) size = '(assert(!staticSealed),' + size + ')'; // static area must not be sealed
     var ret = RuntimeGenerator.alloc(size, 'STATIC', INIT_HEAP);
-    if (USE_TYPED_ARRAYS) ret += '; if (STATICTOP >= TOTAL_MEMORY) enlargeMemory();'
+    return ret;
+  },
+
+  // allocation on the top of memory, adjusted dynamically by sbrk
+  dynamicAlloc: function(size) {
+    if (ASSERTIONS) size = '(assert(DYNAMICTOP > 0),' + size + ')'; // dynamic area must be ready
+    var ret = RuntimeGenerator.alloc(size, 'DYNAMIC', INIT_HEAP);
+    if (USE_TYPED_ARRAYS) ret += '; if (DYNAMICTOP >= TOTAL_MEMORY) enlargeMemory();'
     return ret;
   },
 
@@ -466,6 +474,7 @@ var Runtime = {
 
 Runtime.stackAlloc = unInline('stackAlloc', ['size']);
 Runtime.staticAlloc = unInline('staticAlloc', ['size']);
+Runtime.dynamicAlloc = unInline('dynamicAlloc', ['size']);
 Runtime.alignMemory = unInline('alignMemory', ['size', 'quantum']);
 Runtime.makeBigInt = unInline('makeBigInt', ['low', 'high', 'unsigned']);
 
@@ -528,4 +537,10 @@ function reSign(value, bits, ignore, sig) {
 #endif
   return value;
 }
+
+// The address globals begin at. Very low in memory, for code size and optimization opportunities.
+// Above 0 is static memory, starting with globals.
+// Then the stack.
+// Then 'dynamic' memory for sbrk.
+Runtime.GLOBAL_BASE = Runtime.alignMemory(1);
 

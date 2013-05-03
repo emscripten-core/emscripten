@@ -279,7 +279,8 @@ var PRINT_SPLIT_FILE_MARKER = 0; // Prints markers in Javascript generation to s
 
 var BUILD_AS_SHARED_LIB = 0; // Whether to build the code as a shared library
                              // 0 here means this is not a shared lib: It is a main file.
-                             // 1 means this is a normal shared lib, load it with dlopen().
+                             // All shared library options (1 and 2) are currently deprecated XXX
+                             // 1 means this is a normal shared lib, load it with dlopen()
                              // 2 means this is a shared lib that will be linked at runtime,
                              //   which means it will insert its functions into
                              //   the global namespace. See STATIC_LIBS_TO_LOAD.

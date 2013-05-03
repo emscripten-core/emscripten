@@ -148,12 +148,9 @@ if (GC_SUPPORT) {
       prep: function() { // Clear reachables and scan for roots
         GC.reachable = {}; // 1 if reachable. XXX
         GC.reachableList = []; // each reachable is added once to this. XXX
-        // static data areas
-        var staticStart = STACK_MAX;
-        var staticEnd = _sbrk.DYNAMIC_START || STATICTOP; // after DYNAMIC_START, sbrk manages it (but it might not exist yet)
-        GC.scan(staticStart, staticEnd);
+        GC.scan(STATIC_BASE, STATICTOP);
         // TODO: scan stack and registers. Currently we assume we run from a timeout or such, so no stack/regs
-        //    stack: STACK_ROOT to STACKTOP
+        //    stack: STACK_BASE to STACKTOP
         //    registers: call scanners
       },
 

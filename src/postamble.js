@@ -15,14 +15,14 @@ Module.callMain = function callMain(args) {
       argv.push(0);
     }
   }
-  var argv = [allocate(intArrayFromString("/bin/this.program"), 'i8', ALLOC_STATIC) ];
+  var argv = [allocate(intArrayFromString("/bin/this.program"), 'i8', ALLOC_NORMAL) ];
   pad();
   for (var i = 0; i < argc-1; i = i + 1) {
-    argv.push(allocate(intArrayFromString(args[i]), 'i8', ALLOC_STATIC));
+    argv.push(allocate(intArrayFromString(args[i]), 'i8', ALLOC_NORMAL));
     pad();
   }
   argv.push(0);
-  argv = allocate(argv, 'i32', ALLOC_STATIC);
+  argv = allocate(argv, 'i32', ALLOC_NORMAL);
 
 #if BENCHMARK
   var start = Date.now();

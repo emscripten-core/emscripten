@@ -184,6 +184,7 @@ if (ASM_JS) {
   assert((TOTAL_MEMORY&(TOTAL_MEMORY-1)) == 0, 'asm.js heap must be power of 2');
 }
 assert(!(!NAMED_GLOBALS && BUILD_AS_SHARED_LIB)); // shared libraries must have named globals
+assert(!BUILD_AS_SHARED_LIB, 'shared libs are deprecated');
 
 // Output some info and warnings based on settings
 
@@ -208,7 +209,10 @@ load('parseTools.js');
 load('intertyper.js');
 load('analyzer.js');
 load('jsifier.js');
-if (RELOOP) load(RELOOPER)
+if (RELOOP) {
+  load(RELOOPER);
+  assert(typeof Relooper != 'undefined');
+}
 globalEval(processMacros(preprocess(read('runtime.js'))));
 Runtime.QUANTUM_SIZE = QUANTUM_SIZE;
 

@@ -465,8 +465,7 @@ function makeGlobalUse(ident) {
       UNINDEXABLE_GLOBALS[ident] = 1;
       return ident;
     }
-    // We know and assert on TOTAL_STACK being equal to GLOBAL_BASE
-    return (TOTAL_STACK + index).toString();
+    return (Runtime.GLOBAL_BASE + index).toString();
   }
   return ident;
 }
@@ -1594,7 +1593,7 @@ function makePointer(slab, pos, allocator, type, ptr, finalMemoryInitialization)
       // writing out into memory, without a normal allocation. We put all of these into a single big chunk.
       assert(typeof slab == 'object');
       assert(slab.length % QUANTUM_SIZE == 0, slab.length); // must be aligned already
-      var offset = ptr - TOTAL_STACK; // we assert on GLOBAL_BASE being equal to TOTAL_STACK
+      var offset = ptr - Runtime.GLOBAL_BASE;
       for (var i = 0; i < slab.length; i++) {
         memoryInitialization[offset + i] = slab[i];
       }
