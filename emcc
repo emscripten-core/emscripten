@@ -1502,7 +1502,7 @@ try:
           passes = [name]
           if shared.Settings.ASM_JS:
             passes = ['asm'] + passes
-          logging.info('applying js optimization pass: %s', passes)
+          logging.debug('applying js optimization pass: %s', passes)
           final = shared.Building.js_optimizer(final, passes, jcache)
           save_intermediate(name)
       js_optimizer_queue = []
