@@ -1083,6 +1083,8 @@ public:
     virtual std::string optionalMethod(std::string s) const {
         return "optional" + s;
     }
+
+    virtual void differentArguments(int i, double d, unsigned char f, double q, std::string) = 0;
 };
 
 EMSCRIPTEN_SYMBOL(optionalMethod);
@@ -1094,16 +1096,25 @@ public:
     std::string abstractMethod() const {
         return call<std::string>("abstractMethod");
     }
+
     std::string optionalMethod(std::string s) const {
         return optional_call<std::string>(optionalMethod_symbol, [&] {
             return AbstractClass::optionalMethod(s);
         }, s);
+    }
+
+    void differentArguments(int i, double d, unsigned char f, double q, std::string s) {
+        return call<void>("differentArguments", i, d, f, q, s);
     }
 };
 
 class ConcreteClass : public AbstractClass {
     std::string abstractMethod() const {
         return "from concrete";
+    }
+
+
+    void differentArguments(int i, double d, unsigned char f, double q, std::string s) {
     }
 };
 
@@ -1117,6 +1128,24 @@ std::string callAbstractMethod(AbstractClass& ac) {
 
 std::string callOptionalMethod(AbstractClass& ac, std::string s) {
     return ac.optionalMethod(s);
+}
+
+void callDifferentArguments(AbstractClass& ac, int i, double d, unsigned char f, double q, std::string s) {
+    return ac.differentArguments(i, d, f, q, s);
+}
+
+EMSCRIPTEN_BINDINGS(interface_tests) {
+    class_<AbstractClass>("AbstractClass")
+        .smart_ptr<std::shared_ptr<AbstractClass>>()
+        .allow_subclass<AbstractClassWrapper>()
+        .function("abstractMethod", &AbstractClass::abstractMethod)
+        .function("optionalMethod", &AbstractClass::optionalMethod)
+        ;
+    
+    function("getAbstractClass", &getAbstractClass);
+    function("callAbstractMethod", &callAbstractMethod);
+    function("callOptionalMethod", &callOptionalMethod);
+    function("callDifferentArguments", &callDifferentArguments);
 }
 
 class HasExternalConstructor {
@@ -1345,132 +1374,6 @@ std::string unsigned_long_to_string(unsigned long val) {
     char str[256];
     sprintf(str, "%lu", val);
     return str;
-}
-
-class MultipleCtors {
-public:
-    int value;
-
-    MultipleCtors(int i) {
-        value = 1;
-        assert(i == 10);
-    }
-    MultipleCtors(int i, int j) {
-        value = 2;
-        assert(i == 20);
-        assert(j == 20);
-    }
-    MultipleCtors(int i, int j, int k) {
-        value = 3;
-        assert(i == 30);
-        assert(j == 30);
-        assert(k == 30);
-    }
-
-    int WhichCtorCalled() const {
-        return value;
-    }
-};
-
-class MultipleOverloads {
-public:
-    MultipleOverloads() {}
-    
-    int value;
-    static int staticValue;
-    
-    int Func(int i) {
-        assert(i == 10);
-        value = 1;
-        return 1;
-    }
-    int Func(int i, int j) {
-        assert(i == 20);
-        assert(j == 20);
-        value = 2;
-        return 2;
-    }
-
-    int WhichFuncCalled() const {
-        return value;
-    }
-    
-    static int StaticFunc(int i) {
-        assert(i == 10);
-        staticValue = 1;
-        return 1;
-    }
-    static int StaticFunc(int i, int j) {
-        assert(i == 20);
-        assert(j == 20);
-        staticValue = 2;
-        return 2;
-    }
-
-    static int WhichStaticFuncCalled() {
-        return staticValue;
-    }
-};
-
-class MultipleOverloadsDerived : public MultipleOverloads {
-public:
-    MultipleOverloadsDerived() {}
-        
-    int Func(int i, int j, int k) {
-        assert(i == 30);
-        assert(j == 30);
-        assert(k == 30);
-        value = 3;
-        return 3;
-    }
-    int Func(int i, int j, int k, int l) {
-        assert(i == 40);
-        assert(j == 40);
-        assert(k == 40);
-        assert(l == 40);
-        value = 4;
-        return 4;
-    }
-    
-    static int StaticFunc(int i, int j, int k) {
-        assert(i == 30);
-        assert(j == 30);
-        assert(k == 30);
-        staticValue = 3;
-        return 3;
-    }
-    static int StaticFunc(int i, int j, int k, int l) {
-        assert(i == 40);
-        assert(j == 40);
-        assert(k == 40);
-        assert(l == 40);
-        staticValue = 4;
-        return 4;
-    }
-};
-
-int overloaded_function(int i)
-{
-    assert(i == 10);
-    return 1;
-}
-
-int overloaded_function(int i, int j)
-{
-    assert(i == 20);
-    assert(j == 20);
-    return 2;
-}
-
-EMSCRIPTEN_BINDINGS(constants) {
-    constant("INT_CONSTANT", 10);
-    constant("STRING_CONSTANT", std::string("some string"));
-
-    TupleVector tv(1, 2, 3, 4);
-    constant("VALUE_TUPLE_CONSTANT", tv);
-
-    StructVector sv(1, 2, 3, 4);
-    constant("VALUE_STRUCT_CONSTANT", sv);
 }
 
 EMSCRIPTEN_BINDINGS(tests) {
@@ -1876,17 +1779,6 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("embind_test_new_Object", &embind_test_new_Object);
     function("embind_test_new_factory", &embind_test_new_factory);
 
-    class_<AbstractClass>("AbstractClass")
-        .smart_ptr<std::shared_ptr<AbstractClass>>()
-        .allow_subclass<AbstractClassWrapper>()
-        .function("abstractMethod", &AbstractClass::abstractMethod)
-        .function("optionalMethod", &AbstractClass::optionalMethod)
-        ;
-    
-    function("getAbstractClass", &getAbstractClass);
-    function("callAbstractMethod", &callAbstractMethod);
-    function("callOptionalMethod", &callOptionalMethod);
-
     class_<HasExternalConstructor>("HasExternalConstructor")
         .constructor(&createHasExternalConstructor)
         .function("getString", &HasExternalConstructor::getString)
@@ -1924,7 +1816,143 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("unsigned_int_to_string", &unsigned_int_to_string);
     function("long_to_string", &long_to_string);
     function("unsigned_long_to_string", &unsigned_long_to_string);
+}
 
+int overloaded_function(int i) {
+    assert(i == 10);
+    return 1;
+}
+
+int overloaded_function(int i, int j) {
+    assert(i == 20);
+    assert(j == 20);
+    return 2;
+}
+
+class MultipleCtors {
+public:
+    int value;
+
+    MultipleCtors(int i) {
+        value = 1;
+        assert(i == 10);
+    }
+    MultipleCtors(int i, int j) {
+        value = 2;
+        assert(i == 20);
+        assert(j == 20);
+    }
+    MultipleCtors(int i, int j, int k) {
+        value = 3;
+        assert(i == 30);
+        assert(j == 30);
+        assert(k == 30);
+    }
+
+    int WhichCtorCalled() const {
+        return value;
+    }
+};
+
+class MultipleOverloads {
+public:
+    MultipleOverloads() {}
+    
+    int value;
+    static int staticValue;
+    
+    int Func(int i) {
+        assert(i == 10);
+        value = 1;
+        return 1;
+    }
+    int Func(int i, int j) {
+        assert(i == 20);
+        assert(j == 20);
+        value = 2;
+        return 2;
+    }
+
+    int WhichFuncCalled() const {
+        return value;
+    }
+    
+    static int StaticFunc(int i) {
+        assert(i == 10);
+        staticValue = 1;
+        return 1;
+    }
+    static int StaticFunc(int i, int j) {
+        assert(i == 20);
+        assert(j == 20);
+        staticValue = 2;
+        return 2;
+    }
+
+    static int WhichStaticFuncCalled() {
+        return staticValue;
+    }
+};
+
+class MultipleOverloadsDerived : public MultipleOverloads {
+public:
+    MultipleOverloadsDerived() {}
+        
+    int Func(int i, int j, int k) {
+        assert(i == 30);
+        assert(j == 30);
+        assert(k == 30);
+        value = 3;
+        return 3;
+    }
+    int Func(int i, int j, int k, int l) {
+        assert(i == 40);
+        assert(j == 40);
+        assert(k == 40);
+        assert(l == 40);
+        value = 4;
+        return 4;
+    }
+    
+    static int StaticFunc(int i, int j, int k) {
+        assert(i == 30);
+        assert(j == 30);
+        assert(k == 30);
+        staticValue = 3;
+        return 3;
+    }
+    static int StaticFunc(int i, int j, int k, int l) {
+        assert(i == 40);
+        assert(j == 40);
+        assert(k == 40);
+        assert(l == 40);
+        staticValue = 4;
+        return 4;
+    }
+};
+
+struct MultipleAccessors {
+    int getConst() {
+        return 1;
+    }
+    int getConst() const {
+        return 2;
+    }
+    int getConst(int i) const {
+        return i;
+    }
+};
+
+struct ConstAndNonConst {
+    void method(int) {
+    }
+
+    int method() const {
+        return 10;
+    }
+};
+
+EMSCRIPTEN_BINDINGS(overloads) {
     function("overloaded_function", select_overload<int(int)>(&overloaded_function));
     function("overloaded_function", select_overload<int(int, int)>(&overloaded_function));
 
@@ -1950,6 +1978,14 @@ EMSCRIPTEN_BINDINGS(tests) {
         .function("Func", select_overload<int(int,int,int,int)>(&MultipleOverloadsDerived::Func))
         .class_function("StaticFunc", select_overload<int(int,int,int)>(&MultipleOverloadsDerived::StaticFunc))
         .class_function("StaticFunc", select_overload<int(int,int,int,int)>(&MultipleOverloadsDerived::StaticFunc))
+        ;
+
+    class_<MultipleAccessors>("MultipleAccessors")
+        .function("getConst", select_overload<int(int)const>(&MultipleAccessors::getConst))
+        ;
+
+    class_<ConstAndNonConst>("ConstAndNonConst")
+        .function("method", select_const(&ConstAndNonConst::method))
         ;
 }
 
@@ -2111,4 +2147,30 @@ EMSCRIPTEN_BINDINGS(read_only_properties) {
         .constructor<int>()
         .property("i", &HasReadOnlyProperty::i)
         ;
+}
+
+EMSCRIPTEN_BINDINGS(constants) {
+    constant("INT_CONSTANT", 10);
+    constant("STRING_CONSTANT", std::string("some string"));
+
+    TupleVector tv(1, 2, 3, 4);
+    constant("VALUE_TUPLE_CONSTANT", tv);
+
+    StructVector sv(1, 2, 3, 4);
+    constant("VALUE_STRUCT_CONSTANT", sv);
+}
+
+class DerivedWithOffset : public DummyDataToTestPointerAdjustment, public Base {    
+};
+
+std::shared_ptr<Base> return_Base_from_DerivedWithOffset(std::shared_ptr<DerivedWithOffset> ptr) {
+    return ptr;
+}
+
+EMSCRIPTEN_BINDINGS(with_adjustment) {
+    class_<DerivedWithOffset, base<Base>>("DerivedWithOffset")
+        .smart_ptr_constructor(&std::make_shared<DerivedWithOffset>)
+        ;
+
+    function("return_Base_from_DerivedWithOffset", &return_Base_from_DerivedWithOffset);
 }

@@ -224,6 +224,10 @@ namespace emscripten {
     struct allow_raw_pointer : public allow_raw_pointers {
     };
 
+    ////////////////////////////////////////////////////////////////////////////////
+    // select_overload and select_const
+    ////////////////////////////////////////////////////////////////////////////////
+
     template<typename Signature>
     typename std::add_pointer<Signature>::type select_overload(typename std::add_pointer<Signature>::type fn) {
         return fn;
@@ -240,6 +244,15 @@ namespace emscripten {
     typename internal::MemberFunctionType<ClassType, Signature>::type select_overload(Signature (ClassType::*fn)) {
         return fn;
     }
+
+    template<typename ClassType, typename ReturnType, typename... Args>
+    auto select_const(ReturnType (ClassType::*method)(Args...) const) -> decltype(method) {
+        return method;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // Invoker
+    ////////////////////////////////////////////////////////////////////////////////
 
     namespace internal {
         template<typename ReturnType, typename... Args>
@@ -1220,90 +1233,10 @@ namespace emscripten {
             TypeID<const ConstantType&>::get(),
             asGenericValue(BindingType<const ConstantType&>::toWireType(v)));
     }
-
-    namespace internal {
-        template<typename T>
-        class optional {
-        public:            
-            optional()
-                : initialized(false)
-            {}
-
-            ~optional() {
-                if (initialized) {
-                    get()->~T();
-                }
-            }
-
-            optional(const optional& rhs)
-                : initialized(false)
-            {
-                *this = rhs;
-            }
-
-            T& operator*() {
-                assert(initialized);
-                return *get();
-            }
-
-            const T& operator*() const {
-                assert(initialized);
-                return *get();
-            }
-
-            explicit operator bool() const {
-                return initialized;
-            }
-
-            optional& operator=(const T& v) {
-                if (initialized) {
-                    get()->~T();
-                }
-                new(get()) T(v);
-                initialized = true;
-                return *this;
-            }
-
-            optional& operator=(const optional& o) {
-                if (initialized) {
-                    get()->~T();
-                }
-                if (o.initialized) {
-                    new(get()) T(*o);
-                }
-                initialized = o.initialized;
-                return *this;
-            }
-
-        private:
-            T* get() {
-                return reinterpret_cast<T*>(&data);
-            }
-
-            T const* get() const {
-                return reinterpret_cast<T const*>(&data);
-            }
-
-            bool initialized;
-            typename std::aligned_storage<sizeof(T)>::type data;
-        };
-    }
-}
-
-namespace emscripten {
-    namespace internal {
-        class BindingsDefinition {
-        public:
-            template<typename Function>
-            BindingsDefinition(Function fn) {
-                fn();
-            }
-        };
-    }
 }
 
 #define EMSCRIPTEN_BINDINGS(name)                                       \
-    static struct BindingInitializer_##name {                           \
-        BindingInitializer_##name();                                    \
-    } BindingInitializer_##name##_instance;                             \
-    BindingInitializer_##name::BindingInitializer_##name()
+    static struct EmscriptenBindingInitializer_##name {                 \
+        EmscriptenBindingInitializer_##name();                          \
+    } EmscriptenBindingInitializer_##name##_instance;                   \
+    EmscriptenBindingInitializer_##name::EmscriptenBindingInitializer_##name()

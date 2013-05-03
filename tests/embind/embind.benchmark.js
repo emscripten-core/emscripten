@@ -222,3 +222,29 @@ function _pass_gameobject_ptr_benchmark_embind_js() {
     Module.print("JS embind pass_gameobject_ptr " + N + " iters: " + (b-a) + " msecs.");
 }
 
+function _call_through_interface0() {
+    var N = 1000000;
+    var obj = Module['Interface'].implement({
+        call0: function() {
+        }
+    });
+    var start = _emscripten_get_now();
+    Module['callInterface0'](N, obj);
+    var elapsed = _emscripten_get_now() - start;
+    Module.print("C++ -> JS void through interface " + N + " iters: " + elapsed + " msecs.");
+    obj.delete();
+}
+
+function _call_through_interface1() {
+    var N = 1000000;
+    var obj = Module['Interface'].implement({
+        call1: function(s1, s2) {
+            return s1 + s2;
+        }
+    });
+    var start = _emscripten_get_now();
+    Module['callInterface1'](N, obj);
+    var elapsed = _emscripten_get_now() - start;
+    Module.print("C++ -> JS std::wstring through interface " + N + " iters: " + elapsed + " msecs.");
+    obj.delete();
+}
