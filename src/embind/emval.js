@@ -1,4 +1,4 @@
-/*global Module*/
+/*global Module, Runtime*/
 /*global HEAP32*/
 /*global readLatin1String, writeStringToMemory*/
 /*global requireRegisteredType, throwBindingError*/
@@ -201,29 +201,31 @@ function __emval_call(handle, argCount, argTypes) {
     return __emval_register(rv);
 }
 
-function __emval_call_method(handle, name, argCount, argTypes) {
-    requireHandle(handle);
-    name = getStringOrSymbol(name);
-
-    var args = parseParameters(
-        argCount,
-        argTypes,
-        Array.prototype.slice.call(arguments, 4));
-    var obj = _emval_handle_array[handle].value;
-    var rv = obj[name].apply(obj, args);
-    return __emval_register(rv);
+function lookupTypes(argCount, argTypes, argWireTypes) {
+    var a = new Array(argCount);
+    for (var i = 0; i < argCount; ++i) {
+        a[i] = requireRegisteredType(
+            HEAP32[(argTypes >> 2) + i],
+            "parameter " + i);
+    }
+    return a;
 }
 
-function __emval_call_void_method(handle, name, argCount, argTypes) {
-    requireHandle(handle);
-    name = getStringOrSymbol(name);
+function __emval_get_method_caller(argCount, argTypes) {
+    var types = lookupTypes(argCount, argTypes);
 
-    var args = parseParameters(
-        argCount,
-        argTypes,
-        Array.prototype.slice.call(arguments, 4));
-    var obj = _emval_handle_array[handle].value;
-    obj[name].apply(obj, args);
+    return Runtime.addFunction(function(handle, name) {
+        requireHandle(handle);
+        name = getStringOrSymbol(name);
+
+        var args = new Array(argCount - 1);
+        for (var i = 1; i < argCount; ++i) {
+            args[i - 1] = types[i].fromWireType(arguments[1 + i]);
+        }
+
+        var obj = _emval_handle_array[handle].value;
+        return types[0].toWireType([], obj[name].apply(obj, args));
+    });
 }
 
 function __emval_has_function(handle, name) {

@@ -39,34 +39,67 @@ namespace emscripten {
                 unsigned argCount,
                 internal::TYPEID argTypes[]
                 /*, ... */);
-            EM_VAL _emval_call_method(
-                EM_VAL value,
-                const char* methodName,
-                unsigned argCount,
-                internal::TYPEID argTypes[]
-                /*, ... */);
-            void _emval_call_void_method(
-                EM_VAL value,
-                const char* methodName,
-                unsigned argCount,
-                internal::TYPEID argTypes[]
-                /*, ...*/);
+
+            // DO NOT call this more than once per signature. It will leak function pointer offsets!
+            GenericFunction _emval_get_method_caller(
+                unsigned argCount, // including return value
+                internal::TYPEID argTypes[]);
             bool _emval_has_function(
                 EM_VAL value,
                 const char* methodName);
         }
-    }
 
-    template<const char* address> 
-    struct symbol_registrar {
-        symbol_registrar() {
-            internal::_emval_register_symbol(address);
-        }
-    };
+        template<const char* address> 
+            struct symbol_registrar {
+            symbol_registrar() {
+                internal::_emval_register_symbol(address);
+            }
+        };
+
+        template<typename ReturnType, typename... Args>
+        struct Signature {
+            typedef typename BindingType<ReturnType>::WireType (*MethodCaller)(EM_VAL value, const char* methodName, typename BindingType<Args>::WireType...);
+
+            static MethodCaller get_method_caller() {
+                static MethodCaller fp = reinterpret_cast<MethodCaller>(init_method_caller());
+                return fp;
+            }
+
+        private:
+            static GenericFunction init_method_caller() {
+                WithPolicies<>::ArgTypeList<ReturnType, Args...> args;
+                return _emval_get_method_caller(args.count, args.types);
+            }
+        };
+
+        template<typename ReturnType, typename... Args>
+        struct MethodCaller {
+            static ReturnType call(EM_VAL handle, const char* methodName, Args&&... args) {
+                auto caller = Signature<ReturnType, Args...>::get_method_caller();
+                auto wireType = caller(
+                    handle,
+                    methodName,
+                    toWireType(std::forward<Args>(args))...);
+                WireDeleter<ReturnType> deleter(wireType);
+                return BindingType<ReturnType>::fromWireType(wireType);
+            }
+        };
+
+        template<typename... Args>
+        struct MethodCaller<void, Args...> {
+            static void call(EM_VAL handle, const char* methodName, Args&&... args) {
+                auto caller = Signature<void, Args...>::get_method_caller();
+                return caller(
+                    handle,
+                    methodName,
+                    toWireType(std::forward<Args>(args))...);
+            }
+        };
+    }
 
 #define EMSCRIPTEN_SYMBOL(name)                                         \
     static const char name##_symbol[] = #name;                          \
-    static const symbol_registrar<name##_symbol> name##_registrar
+    static const ::emscripten::internal::symbol_registrar<name##_symbol> name##_registrar
 
     class val {
     public:
@@ -158,7 +191,7 @@ namespace emscripten {
         }
 
         bool hasOwnProperty(const char* key) const {
-            return val::global("Object")["prototype"]["hasOwnProperty"].call("call", *this, val(key)).as<bool>();
+            return val::global("Object")["prototype"]["hasOwnProperty"].call<bool>("call", *this, val(key));
         }
 
         template<typename... Args>
@@ -211,45 +244,11 @@ namespace emscripten {
                     toWireType(std::forward<Args>(args))...));
         }
 
-        template<typename ...Args>
-        val call(const char* name, Args&&... args) const {
+        template<typename ReturnValue, typename... Args>
+        ReturnValue call(const char* name, Args&&... args) const {
             using namespace internal;
 
-            WithPolicies<>::ArgTypeList<Args...> argList;
-            typedef EM_VAL (*TypedCall)(
-                EM_VAL,
-                const char* name,
-                unsigned,
-                TYPEID argTypes[],
-                typename BindingType<Args>::WireType...);
-            TypedCall typedCall = reinterpret_cast<TypedCall>(&_emval_call_method);
-            return val(
-                typedCall(
-                    handle,
-                    name,
-                    argList.count,
-                    argList.types,
-                    toWireType(std::forward<Args>(args))...));
-        }
-
-        template<typename ...Args>
-        void call_void(const char* name, Args&&... args) const {
-            using namespace internal;
-
-            WithPolicies<>::ArgTypeList<Args...> argList;
-            typedef void (*TypedCall)(
-                EM_VAL,
-                const char* name,
-                unsigned,
-                TYPEID argTypes[],
-                typename BindingType<Args>::WireType...);
-            TypedCall typedCall = reinterpret_cast<TypedCall>(&_emval_call_void_method);
-            return typedCall(
-                handle,
-                name,
-                argList.count,
-                argList.types,
-                toWireType(std::forward<Args>(args))...);
+            return MethodCaller<ReturnValue, Args...>::call(handle, name, std::forward<Args>(args)...);
         }
 
         bool has_function(const char* name) const {

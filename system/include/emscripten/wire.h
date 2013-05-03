@@ -13,6 +13,8 @@
 
 namespace emscripten {
     namespace internal {
+        typedef void (*GenericFunction)();
+
         typedef const struct _TYPEID* TYPEID;
 
         // This implementation is technically not legal, as it's not
@@ -146,6 +148,7 @@ namespace emscripten {
 
         template<>
         struct BindingType<void> {
+            typedef void WireType;
         };
 
         template<>

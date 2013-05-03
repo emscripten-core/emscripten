@@ -270,6 +270,10 @@ function __embind_register_void(rawType, name) {
         'fromWireType': function() {
             return undefined;
         },
+        'toWireType': function(destructors, o) {
+            // TODO: assert if anything else is given?
+            return undefined;
+        },
     });
 }
 
