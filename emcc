@@ -1359,7 +1359,7 @@ try:
   if len(input_files) + len(extra_files_to_link) > 1 or \
      (not LEAVE_INPUTS_RAW and not (suffix(temp_files[0]) in BITCODE_SUFFIXES or suffix(temp_files[0]) in DYNAMICLIB_SUFFIXES) and shared.Building.is_ar(temp_files[0])):
     linker_inputs = temp_files + extra_files_to_link
-    logging.debug('linking: ', linker_inputs)
+    logging.debug('linking: ' + str(linker_inputs))
     t0 = time.time()
     shared.Building.link(linker_inputs, in_temp(target_basename + '.bc'))
     t1 = time.time()
@@ -1490,7 +1490,7 @@ try:
       if DEBUG != '2':
         if shared.Settings.ASM_JS:
           js_optimizer_queue = ['asm'] + js_optimizer_queue
-        logging.debug('applying js optimization passes:', js_optimizer_queue)
+        logging.debug('applying js optimization passes: %s', js_optimizer_queue)
         final = shared.Building.js_optimizer(final, js_optimizer_queue, jcache)
         if DEBUG: save_intermediate('js_opts')
       else:
@@ -1498,7 +1498,7 @@ try:
           passes = [name]
           if shared.Settings.ASM_JS:
             passes = ['asm'] + passes
-          logging.info('applying js optimization pass:', passes)
+          logging.info('applying js optimization pass: %s', passes)
           final = shared.Building.js_optimizer(final, passes, jcache)
           save_intermediate(name)
       js_optimizer_queue = []

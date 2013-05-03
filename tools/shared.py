@@ -285,7 +285,7 @@ def check_node_version():
     logging.warning('node version appears too old (seeing "%s", expected "%s")' % (actual, 'v' + ('.'.join(map(str, EXPECTED_NODE_VERSION)))))
     return False
   except Exception, e:
-    logging.warning('cannot check node version:' + e)
+    logging.warning('cannot check node version: %s',  e)
     return False
 
 # Check that basic stuff we need (a JS engine to compile, Node.js, and Clang and LLVM)
@@ -925,7 +925,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
     # Finish link
     actual_files = unique_ordered(actual_files) # tolerate people trying to link a.so a.so etc.
-    logging.debug('emcc: llvm-linking:', actual_files)
+    logging.debug('emcc: llvm-linking: %s', actual_files)
 
     # check for too-long command line
     link_cmd = [LLVM_LINK] + actual_files + ['-o', target]
@@ -979,7 +979,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     if type(opts) is int:
       opts = Building.pick_llvm_opts(opts)
     #opts += ['-debug-pass=Arguments']
-    logging.debug('emcc: LLVM opts:', opts)
+    logging.debug('emcc: LLVM opts: ' + str(opts))
     output = Popen([LLVM_OPT, filename] + opts + ['-o=' + filename + '.opt.bc'], stdout=PIPE).communicate()[0]
     assert os.path.exists(filename + '.opt.bc'), 'Failed to run llvm optimizations: ' + output
     shutil.move(filename + '.opt.bc', filename)

@@ -13000,7 +13000,7 @@ elif 'sanity' in str(sys.argv):
           if 'LLVM_ROOT' not in settings:
             self.assertContained('Error in evaluating %s' % EM_CONFIG, output)
           elif 'runner.py' not in ' '.join(command):
-            self.assertContained('FATAL', output) # sanity check should fail
+            self.assertContained('CRITICAL', output) # sanity check should fail
 
     def test_closure_compiler(self):
       CLOSURE_FATAL = 'fatal: Closure compiler'
