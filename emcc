@@ -1349,7 +1349,7 @@ try:
         for haz in has: # remove symbols that are supplied by another of the inputs
           if haz in need:
             need.remove(haz)
-        logging.debug('considering including %s: we need %s and have %s' % (name, str(need), str(has)))
+        logging.debug('considering %s: we need %s and have %s' % (name, str(need), str(has)))
       if force or len(need) > 0:
         # We need to build and link the library in
         logging.debug('including %s' % name)

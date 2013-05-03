@@ -9402,7 +9402,7 @@ Options that are modified or new in %s include:
         self.assertContained('error: invalid preprocessing directive', output[1])
         self.assertContained(["error: use of undeclared identifier 'cheez", "error: unknown type name 'cheez'"], output[1])
         self.assertContained('errors generated', output[1])
-        assert 'emcc: compiler frontend failed to generate LLVM bitcode, halting' in output[1].split('errors generated.')[1]
+        assert 'compiler frontend failed to generate LLVM bitcode, halting' in output[1].split('errors generated.')[1]
 
         # emcc src.cpp -c    and   emcc src.cpp -o src.[o|bc] ==> should give a .bc file
         #      regression check: -o js should create "js", with bitcode content
@@ -9495,11 +9495,11 @@ Options that are modified or new in %s include:
           assert len(output[0]) == 0, output[0]
           if bc_params is not None:
             if '-O1' in params and 'something.bc' in params:
-              assert 'warning: -Ox flags ignored, since not generating JavaScript' in output[1]
+              assert '-Ox flags ignored, since not generating JavaScript' in output[1]
             assert os.path.exists('something.bc'), output[1]
             output = Popen([PYTHON, compiler, 'something.bc', '-o', 'something.js'] + bc_params, stdout=PIPE, stderr=PIPE).communicate()
           assert os.path.exists('something.js'), output[1]
-          assert ('Warning: Applying some potentially unsafe optimizations!' in output[1]) == (opt_level >= 3), 'unsafe warning should appear in opt >= 3'
+          assert ('Applying some potentially unsafe optimizations!' in output[1]) == (opt_level >= 3), 'unsafe warning should appear in opt >= 3'
           self.assertContained('hello, world!', run_js('something.js'))
 
           # Verify optimization level etc. in the generated code
@@ -9572,7 +9572,7 @@ Options that are modified or new in %s include:
           assert not os.path.exists(target), 'We should only have created bitcode here: ' + '\n'.join(output)
 
           # Compiling one of them alone is expected to fail
-          output = Popen([PYTHON, compiler, 'twopart_main.o'] + args, stdout=PIPE, stderr=PIPE).communicate()
+          output = Popen([PYTHON, compiler, 'twopart_main.o', '-O1', '-g'] + args, stdout=PIPE, stderr=PIPE).communicate()
           assert os.path.exists(target), '\n'.join(output)
           #print '\n'.join(output)
           self.assertContained('missing function', run_js(target, stderr=STDOUT))
@@ -9925,7 +9925,7 @@ f.close()
                              (['-Lsubdir/something'], False),
                              ([], False)]:
         err = Popen([PYTHON, EMCC, 'main.c'] + args, stderr=PIPE).communicate()[1]
-        assert ('emcc: warning: -I or -L of an absolute path encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript)' in err) == expected, err
+        assert ('-I or -L of an absolute path encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript)' in err) == expected, err
 
     def test_local_link(self):
       # Linking a local library directly, like /usr/lib/libsomething.so, cannot work of course since it
@@ -10693,7 +10693,7 @@ seeked= file.
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'supp.cpp'), '-o', 'supp.o']).communicate()
 
       output = Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.o'), '-s', os.path.join(self.get_dir(), 'supp.o'), '-s', 'SAFE_HEAP=1'], stderr=PIPE).communicate()
-      self.assertContained('emcc: warning: treating -s as linker option', output[1])
+      self.assertContained('treating -s as linker option', output[1])
       output = run_js('a.out.js')
       assert 'yello' in output, 'code works'
       code = open('a.out.js').read()
@@ -13004,7 +13004,7 @@ elif 'sanity' in str(sys.argv):
 
     def test_closure_compiler(self):
       CLOSURE_FATAL = 'fatal: Closure compiler'
-      CLOSURE_WARNING = 'WARNING: Closure compiler'
+      CLOSURE_WARNING = 'does not exist'
 
       # Sanity check should find closure
       restore()
@@ -13031,7 +13031,7 @@ elif 'sanity' in str(sys.argv):
       assert os.path.exists('a.out.js'), output
 
     def test_llvm(self):
-      LLVM_WARNING = 'warning: LLVM version appears incorrect'
+      LLVM_WARNING = 'LLVM version appears incorrect'
 
       restore()
 
@@ -13069,8 +13069,8 @@ elif 'sanity' in str(sys.argv):
         del os.environ['EM_IGNORE_SANITY']
 
     def test_node(self):
-      NODE_WARNING = 'warning: node version appears too old'
-      NODE_WARNING_2 = 'warning: cannot check node version'
+      NODE_WARNING = 'node version appears too old'
+      NODE_WARNING_2 = 'cannot check node version'
 
       restore()
 
@@ -13192,9 +13192,9 @@ fi
       try_delete(CANONICAL_TEMP_DIR)
 
     def test_emcc_caching(self):
-      INCLUDING_MESSAGE = 'emcc: including X'
-      BUILDING_MESSAGE = 'emcc: building X for cache'
-      ERASING_MESSAGE = 'emcc: clearing cache'
+      INCLUDING_MESSAGE = 'including X'
+      BUILDING_MESSAGE = 'building X for cache'
+      ERASING_MESSAGE = 'clearing cache'
 
       EMCC_CACHE = Cache.dirname
 
