@@ -322,7 +322,7 @@ def check_sanity(force=False):
         except Exception, e:
           reason = 'unknown: ' + str(e)
     if reason:
-      logging.info('(Emscripten: %s, clearing cache)' % reason)
+      logging.warning('(Emscripten: %s, clearing cache)' % reason)
       Cache.erase()
 
     # some warning, not fatal checks - do them even if EM_IGNORE_SANITY is on
@@ -430,7 +430,7 @@ class Configuration:
     try:
       self.TEMP_DIR = TEMP_DIR
     except NameError:
-      logging.info('TEMP_DIR not defined in ~/.emscripten, using /tmp')
+      logging.debug('TEMP_DIR not defined in ~/.emscripten, using /tmp')
       self.TEMP_DIR = '/tmp'
 
     self.CANONICAL_TEMP_DIR = os.path.join(self.TEMP_DIR, 'emscripten_temp')

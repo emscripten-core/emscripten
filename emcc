@@ -112,7 +112,7 @@ EMCC_CFLAGS = os.environ.get('EMCC_CFLAGS') # Additional compiler flags that we 
 logging.debug('invocation: ' + ' '.join(sys.argv) + (' + ' + EMCC_CFLAGS if EMCC_CFLAGS else ''))
 if EMCC_CFLAGS: sys.argv.append(EMCC_CFLAGS)
 
-if DEBUG and LEAVE_INPUTS_RAW: logging.error('leaving inputs raw')
+if DEBUG and LEAVE_INPUTS_RAW: logging.warning('leaving inputs raw')
 
 stdout = PIPE if not DEBUG else None # suppress output of child processes
 stderr = PIPE if not DEBUG else None # unless we are in DEBUG mode
@@ -854,7 +854,7 @@ try:
       newargs[i] = ''
     elif newargs[i] == '--clear-cache':
       newargs[i] = ''
-      logging.info('clearing cache')
+      logging.warning('clearing cache')
       shared.Cache.erase()
       sys.exit(0)
     elif newargs[i] == '--save-bc':
