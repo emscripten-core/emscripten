@@ -4344,10 +4344,11 @@ The current type of b is: 9
 
         # This will fail! See explanation near the warning we check for, in the compiler source code
         output = Popen([PYTHON, EMCC, all_name], stderr=PIPE).communicate()
+
         # Check for warning in the generated code
         generated = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
         if 'i386-pc-linux-gnu' in COMPILER_OPTS:
-          assert 'Casting a function pointer type to another with a different number of arguments' in output[1], 'Missing expected warning'
+          assert 'Casting a function pointer type to a potentially incompatible one' in output[1], 'Missing expected warning'
         else:
           print >> sys.stderr, 'skipping C/C++ conventions warning check, since not i386-pc-linux-gnu'
 
