@@ -121,6 +121,10 @@ shared.check_sanity(force=DEBUG)
 
 # Handle some global flags
 
+if len(sys.argv) == 1:
+  logging.warning('no input files')
+  exit(1)
+
 # read response files very early on
 response_file = True
 while response_file:
