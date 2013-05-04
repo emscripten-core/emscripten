@@ -490,7 +490,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         if (!LINKABLE && !LibraryManager.library.hasOwnProperty(shortident) && !LibraryManager.library.hasOwnProperty(shortident + '__inline')) {
           if (ERROR_ON_UNDEFINED_SYMBOLS) error('unresolved symbol: ' + shortident);
           if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) printErr('warning: unresolved symbol: ' + shortident);
-          if (ASM_JS) {
+          if (ASM_JS || item.ident in DEAD_FUNCTIONS) {
             // emit a stub that will fail during runtime. this allows asm validation to succeed.
             LibraryManager.library[shortident] = new Function("Module['printErr']('missing function: " + shortident + "'); abort(-1);");
           } else {
