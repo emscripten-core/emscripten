@@ -470,9 +470,9 @@ function __embind_register_memory_view(rawType, name) {
     registerType(rawType, {
         name: name,
         'fromWireType': function(handle) {
-            var type = HEAP32[handle >> 2];
-            var size = HEAP32[(handle >> 2) + 1]; // in elements
-            var data = HEAP32[(handle >> 2) + 2]; // byte offset into emscripten heap
+            var type = HEAPU32[handle >> 2];
+            var size = HEAPU32[(handle >> 2) + 1]; // in elements
+            var data = HEAPU32[(handle >> 2) + 2]; // byte offset into emscripten heap
             _free(handle);
             var TA = typeMapping[type];
             return new TA(HEAP8.buffer, data, size);
