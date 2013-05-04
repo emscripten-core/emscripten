@@ -377,11 +377,16 @@ namespace emscripten {
     namespace internal {
         template<>
         struct BindingType<memory_view> {
-            typedef memory_view* WireType;
+            // This non-word-sized WireType only works because I
+            // happen to know that clang will pass aggregates as
+            // pointers to stack elements and we never support
+            // converting JavaScript typed arrays back into
+            // memory_view.  (That is, fromWireType is not implemented
+            // on the C++ side, nor is toWireType implemented in
+            // JavaScript.)
+            typedef memory_view WireType;
             static WireType toWireType(const memory_view& mv) {
-                WireType wt = (WireType)malloc(sizeof(memory_view));
-                new(wt) memory_view(mv);
-                return wt;
+                return mv;
             }
         };
     }
