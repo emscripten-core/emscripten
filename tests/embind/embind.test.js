@@ -1728,6 +1728,28 @@ module({
         e.delete();
         f.delete();
     });
+
+    BaseFixture.extend("memory view", function() {
+        test("can pass memory view from C++ to JS", function() {
+            var views = [];
+            cm.callWithMemoryView(function(view) {
+                views.push(view);
+            });
+            assert.equal(3, views.length);
+
+            assert.instanceof(views[0], Uint8Array);
+            assert.equal(8, views[0].length);
+            assert.deepEqual([0, 1, 2, 3, 4, 5, 6, 7], [].slice.call(new Uint8Array(views[0])));
+
+            assert.instanceof(views[1], Float32Array);
+            assert.equal(4, views[1].length);
+            assert.deepEqual([1.5, 2.5, 3.5, 4.5], [].slice.call(views[1]));
+
+            assert.instanceof(views[2], Int16Array);
+            assert.equal(4, views[2].length);
+            assert.deepEqual([1000, 100, 10, 1], [].slice.call(views[2]));
+        });
+    });
 });
 
 /* global run_all_tests */

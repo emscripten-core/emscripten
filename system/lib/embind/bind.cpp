@@ -59,4 +59,5 @@ EMSCRIPTEN_BINDINGS(native_and_builtin_types) {
     _embind_register_std_string(TypeID<std::string>::get(), "std::string");
     _embind_register_std_wstring(TypeID<std::wstring>::get(), sizeof(wchar_t), "std::wstring");
     _embind_register_emval(TypeID<val>::get(), "emscripten::val");
+    _embind_register_memory_view(TypeID<memory_view>::get(), "emscripten::memory_view");
 }

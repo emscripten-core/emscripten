@@ -59,6 +59,10 @@ namespace emscripten {
                 TYPEID emvalType,
                 const char* name);
 
+            void _embind_register_memory_view(
+                TYPEID memoryViewType,
+                const char* name);
+
             void _embind_register_function(
                 const char* name,
                 unsigned argCount,

@@ -1,5 +1,6 @@
 /*global Module, Runtime*/
 /*global HEAP32*/
+/*global createNamedFunction*/
 /*global readLatin1String, writeStringToMemory*/
 /*global requireRegisteredType, throwBindingError*/
 
@@ -192,11 +193,14 @@ function parseParameters(argCount, argTypes, argWireTypes) {
 
 function __emval_call(handle, argCount, argTypes) {
     requireHandle(handle);
+    var types = lookupTypes(argCount, argTypes);
+
+    var args = new Array(argCount);
+    for (var i = 0; i < argCount; ++i) {
+        args[i] = types[i].fromWireType(arguments[3 + i]);
+    }
+
     var fn = _emval_handle_array[handle].value;
-    var args = parseParameters(
-        argCount,
-        argTypes,
-        Array.prototype.slice.call(arguments, 3));
     var rv = fn.apply(undefined, args);
     return __emval_register(rv);
 }
@@ -214,7 +218,8 @@ function lookupTypes(argCount, argTypes, argWireTypes) {
 function __emval_get_method_caller(argCount, argTypes) {
     var types = lookupTypes(argCount, argTypes);
 
-    return Runtime.addFunction(function(handle, name) {
+    var signatureName = types[0].name + "_$" + types.slice(1).map(function(t){return t.name;}).join("_") + "$";
+    return Runtime.addFunction(createNamedFunction(signatureName, function(handle, name) {
         requireHandle(handle);
         name = getStringOrSymbol(name);
 
@@ -225,7 +230,7 @@ function __emval_get_method_caller(argCount, argTypes) {
 
         var obj = _emval_handle_array[handle].value;
         return types[0].toWireType([], obj[name].apply(obj, args));
-    });
+    }));
 }
 
 function __emval_has_function(handle, name) {

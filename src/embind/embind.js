@@ -131,6 +131,7 @@ function extendError(baseErrorType, errorName) {
 
 // from https://github.com/imvu/imvujs/blob/master/src/function.js
 function createNamedFunction(name, body) {
+    name = makeLegalFunctionName(name);
     /*jshint evil:true*/
     return new Function(
         "body",
@@ -453,6 +454,33 @@ function __embind_register_emval(rawType, name) {
     });
 }
 
+function __embind_register_memory_view(rawType, name) {
+    var typeMapping = [
+        Int8Array,
+        Uint8Array,
+        Int16Array,
+        Uint16Array,
+        Int32Array,
+        Uint32Array,
+        Float32Array,
+        Float64Array,        
+    ];
+
+    name = readLatin1String(name);
+    registerType(rawType, {
+        name: name,
+        'fromWireType': function(handle) {
+            var type = HEAP32[handle >> 2];
+            var size = HEAP32[(handle >> 2) + 1]; // in elements
+            var data = HEAP32[(handle >> 2) + 2]; // byte offset into emscripten heap
+            _free(handle);
+            var TA = typeMapping[type];
+            return new TA(HEAP8.buffer, data, size);
+        },
+        destructorFunction: function(ptr) { _free(ptr); },
+    });
+}
+
 function runDestructors(destructors) {
     while (destructors.length) {
         var ptr = destructors.pop();
@@ -681,7 +709,7 @@ function __embind_finalize_tuple(rawTupleType) {
             },
             'toWireType': function(destructors, o) {
                 if (elementsLength !== o.length) {
-                    throw new TypeError("Incorrect number of tuple elements");
+                    throw new TypeError("Incorrect number of tuple elements for " + reg.name + ": expected=" + elementsLength + ", actual=" + o.length);
                 }
                 var ptr = rawConstructor();
                 for (var i = 0; i < elementsLength; ++i) {
