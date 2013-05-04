@@ -2468,9 +2468,15 @@ LibraryManager.library = {
       __scanString.whiteSpace[{{{ charCode(' ') }}}] = 1;
       __scanString.whiteSpace[{{{ charCode('\t') }}}] = 1;
       __scanString.whiteSpace[{{{ charCode('\n') }}}] = 1;
+      __scanString.whiteSpace[{{{ charCode('\v') }}}] = 1;
+      __scanString.whiteSpace[{{{ charCode('\f') }}}] = 1;
+      __scanString.whiteSpace[{{{ charCode('\r') }}}] = 1;
       __scanString.whiteSpace[' '] = 1;
       __scanString.whiteSpace['\t'] = 1;
       __scanString.whiteSpace['\n'] = 1;
+      __scanString.whiteSpace['\v'] = 1;
+      __scanString.whiteSpace['\f'] = 1;
+      __scanString.whiteSpace['\r'] = 1;
     }
     // Supports %x, %4x, %d.%d, %lld, %s, %f, %lf.
     // TODO: Support all format specifiers.
