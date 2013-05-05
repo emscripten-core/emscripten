@@ -8637,7 +8637,7 @@ def process(filename):
           Module.Child2.prototype.runVirtualFunc(c2);
           c2.virtualFunc2();
 
-''' + ('' if Settings.ASM_JS else '''
+''' + ('''
           // extend the class from JS
           var c3 = new Module.Child2;
           Module.customizeVTable(c3, [{
@@ -8666,6 +8666,8 @@ def process(filename):
   src.write(script_src_2 + '\\n')
   src.close()
 '''
+
+        Settings.RESERVED_FUNCTION_POINTERS = 20
 
         self.do_run(src, '''*
 84
@@ -8697,7 +8699,7 @@ Child2:9
 *static*
 *virtualf*
 *virtualf*
-*virtualf2*''' + ('' if Settings.ASM_JS else '''
+*virtualf2*''' + ('''
 Parent:9
 Child2:9
 *js virtualf replacement*

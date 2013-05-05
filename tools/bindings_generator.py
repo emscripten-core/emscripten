@@ -468,7 +468,6 @@ Module['getClass'] = getClass;
 
 function customizeVTable(object, replacementPairs) {
   // Does not handle multiple inheritance
-  // Does not work with asm.js
 
   // Find out vtable size
   var vTable = getValue(object.ptr, 'void*');
@@ -478,23 +477,22 @@ function customizeVTable(object, replacementPairs) {
     size++;
   }
 
-  // Prepare replacement lookup table and add replacements to FUNCTION_TABLE
+  // Prepare replacement lookup table and add replacements.
   // There is actually no good way to do this! So we do the following hack:
   // We create a fake vtable with canary functions, to detect which actual
   // function is being called
   var vTable2 = _malloc(size*Runtime.QUANTUM_SIZE);
   setValue(object.ptr, vTable2, 'void*');
   var canaryValue;
-  var functions = FUNCTION_TABLE.length;
+  var tempFuncs = [];
   for (var i = 0; i < size; i++) {
-    var index = FUNCTION_TABLE.length;
     (function(j) {
-      FUNCTION_TABLE.push(function() {
+      var index = Runtime.addFunction(function() {
         canaryValue = j;
       });
+      setValue(vTable2 + Runtime.QUANTUM_SIZE*i, index, 'void*');
+      tempFuncs.push(index);
     })(i);
-    FUNCTION_TABLE.push(0);
-    setValue(vTable2 + Runtime.QUANTUM_SIZE*i, index, 'void*');
   }
   var args = [{ptr: 0}];
   replacementPairs.forEach(function(pair) {
@@ -509,16 +507,15 @@ function customizeVTable(object, replacementPairs) {
     }
     pair.originalIndex = getValue(vTable + canaryValue*Runtime.QUANTUM_SIZE, 'void*');
   });
-  FUNCTION_TABLE = FUNCTION_TABLE.slice(0, functions);
+  for (var i = 0; i < size; i++) {
+    Runtime.removeFunction(tempFuncs[i]);
+  }
 
   // Do the replacements
 
   var replacements = {};
   replacementPairs.forEach(function(pair) {
-    var replacementIndex = FUNCTION_TABLE.length;
-    FUNCTION_TABLE.push(pair['replacement']);
-    FUNCTION_TABLE.push(0);
-    replacements[pair.originalIndex] = replacementIndex;
+    replacements[pair.originalIndex] = Runtime.addFunction(pair['replacement']);
   });
 
   // Copy and modify vtable
