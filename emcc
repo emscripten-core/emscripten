@@ -1131,8 +1131,6 @@ try:
      not shared.Settings.BUILD_AS_SHARED_LIB == 2: # shared lib 2 use the library in the parent
     # Check if we need to include some libraries that we compile. (We implement libc ourselves in js, but
     # compile a malloc implementation and stdlibc++.)
-    # Note that we assume a single symbol is enough to know if we have/do not have dlmalloc etc. If you
-    # include just a few symbols but want the rest, this will not work.
 
     def read_symbols(path, exclude=None):
       symbols = map(lambda line: line.strip().split(' ')[1], open(path).readlines())
@@ -1328,9 +1326,10 @@ try:
       #logging.info('using libcxxabi, this may need CORRECT_* options')
       #shared.Settings.CORRECT_SIGNS = shared.Settings.CORRECT_OVERFLOWS = shared.Settings.CORRECT_ROUNDINGS = 1
 
-    # If we have libcxx, we must force inclusion of libc, since libcxx uses new internally. Note: this is kind of hacky
     # Settings this in the environment will avoid checking dependencies and make building big projects a little faster
     force = os.environ.get('EMCC_FORCE_STDLIBS')
+
+    # If we have libcxx, we must force inclusion of libc, since libcxx uses new internally. Note: this is kind of hacky.
     has = need = None
     for name, create, fix, library_symbols in [('libcxx',    create_libcxx,    fix_libcxx,    libcxx_symbols),
                                                ('libcextra', create_libcextra, fix_libcextra, libcextra_symbols),
