@@ -4527,10 +4527,10 @@ The current type of b is: 9
       self.do_run(src, 'ok\n')
 
     def test_statics(self):
-        # static initializers save i16 but load i8 for some reason
+        # static initializers save i16 but load i8 for some reason (or i64 and load i8)
         if Settings.SAFE_HEAP:
           Settings.SAFE_HEAP = 3
-          Settings.SAFE_HEAP_LINES = ['src.cpp:19', 'src.cpp:26']
+          Settings.SAFE_HEAP_LINES = ['src.cpp:19', 'src.cpp:26', 'src.cpp:28']
 
         src = '''
           #include <stdio.h>
