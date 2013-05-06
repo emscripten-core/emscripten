@@ -1333,7 +1333,7 @@ try:
       return build_libcxx(os.path.join('system', 'lib'), 'sdl.bc', ['sdl.cpp'])
 
     def apply_sdl(need):
-      return 'malloc' not in all_needed or 'free' not in all_needed
+      return 'SDL_Init' in all_needed and ('malloc' not in all_needed or 'free' not in all_needed)
 
     # Settings this in the environment will avoid checking dependencies and make building big projects a little faster
     force = os.environ.get('EMCC_FORCE_STDLIBS')
