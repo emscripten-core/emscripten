@@ -1705,6 +1705,18 @@ var LibrarySDL = {
 
   SDL_GL_SwapBuffers: function() {},
 
+  // SDL 2
+
+  SDL_GL_ExtensionSupported: function(extension) {
+    return Module.ctx.getExtension(extension);
+  },
+
+  SDL_ClearError: function() {},
+
+  SDL_getenv: function(variable) {
+    return "";
+  },
+
   // TODO
 
   SDL_SetGamma: function(r, g, b) {
