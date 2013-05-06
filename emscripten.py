@@ -371,7 +371,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
         sig = use[8:len(use)-4]
         if sig not in last_forwarded_json['Functions']['tables']:
           if DEBUG: print >> sys.stderr, 'add empty function table', sig
-          last_forwarded_json['Functions']['tables'][sig] = 'var FUNCTION_TABLE_' + sig + ' = [0,0];\n'
+          last_forwarded_json['Functions']['tables'][sig] = 'var FUNCTION_TABLE_' + sig + ' = [' + ','.join(['0']*forwarded_json['Functions']['nextIndex']) + '];\n'
 
     def make_table(sig, raw):
       i = Counter.i
