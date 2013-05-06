@@ -309,6 +309,11 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     forwarded_json['Functions']['indexedFunctions'][indexed] = i # make sure not to modify this python object later - we use it in indexize
     i += 2
   forwarded_json['Functions']['nextIndex'] = i
+  function_table_size = forwarded_json['Functions']['nextIndex']
+  i = 1
+  while i < function_table_size:
+    i *= 2
+  function_table_size = i
 
   def split_32(x):
     x = int(x)
@@ -371,7 +376,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
         sig = use[8:len(use)-4]
         if sig not in last_forwarded_json['Functions']['tables']:
           if DEBUG: print >> sys.stderr, 'add empty function table', sig
-          last_forwarded_json['Functions']['tables'][sig] = 'var FUNCTION_TABLE_' + sig + ' = [' + ','.join(['0']*forwarded_json['Functions']['nextIndex']) + '];\n'
+          last_forwarded_json['Functions']['tables'][sig] = 'var FUNCTION_TABLE_' + sig + ' = [' + ','.join(['0']*function_table_size) + '];\n'
 
     def make_table(sig, raw):
       i = Counter.i
