@@ -143,23 +143,29 @@ public:
 EMSCRIPTEN_SYMBOL(HEAP8);
 EMSCRIPTEN_SYMBOL(buffer);
 
+EMSCRIPTEN_SYMBOL(call0);
+EMSCRIPTEN_SYMBOL(call1);
+EMSCRIPTEN_SYMBOL(call_with_typed_array);
+EMSCRIPTEN_SYMBOL(call_with_memory_view);
+EMSCRIPTEN_SYMBOL(Uint8Array);
+
 class InterfaceWrapper : public emscripten::wrapper<Interface>
 {
 public:
     EMSCRIPTEN_WRAPPER(InterfaceWrapper);
 
     void call0() override {
-        return call<void>("call0");
+        return call<void>(call0_symbol);
     }
 
     std::wstring call1(const std::wstring& str1, const std::wstring& str2) {
-        return call<std::wstring>("call1", str1, str2);
+        return call<std::wstring>(call1_symbol, str1, str2);
     }
 
     void call_with_typed_array(size_t size, const void* data) {
         return call<void>(
-            "call_with_typed_array",
-            emscripten::val::global("Uint8Array").new_(
+            call_with_typed_array_symbol,
+            emscripten::val::global(Uint8Array_symbol).new_(
                 emscripten::val::module_property(HEAP8_symbol)[buffer_symbol],
                 reinterpret_cast<uintptr_t>(data),
                 size));
@@ -167,7 +173,7 @@ public:
 
     void call_with_memory_view(size_t size, const void* data) {
         return call<void>(
-            "call_with_memory_view",
+            call_with_memory_view_symbol,
             emscripten::memory_view(size, data));
     }
 };
