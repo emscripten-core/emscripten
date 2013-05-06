@@ -715,7 +715,7 @@ function __embind_finalize_tuple(rawTupleType) {
                 }
                 if (destructors !== null) {
                     destructors.push(rawDestructor, ptr);
-                 }
+                }
                 return ptr;
             },
             destructorFunction: rawDestructor,
@@ -832,7 +832,9 @@ var genericPointerToWireType = function(destructors, handle) {
 
         if (this.isSmartPointer) {
             var ptr = this.rawConstructor();
-            destructors.push(this.rawDestructor, ptr);
+            if (destructors !== null) {
+                destructors.push(this.rawDestructor, ptr);
+            }
             return ptr;
         } else {
             return 0;
@@ -884,7 +886,9 @@ var genericPointerToWireType = function(destructors, handle) {
                             clonedHandle.delete();
                         })
                     );
-                    destructors.push(this.rawDestructor, ptr);
+                    if (destructors !== null) {
+                        destructors.push(this.rawDestructor, ptr);
+                    }
                 }
                 break;
             
