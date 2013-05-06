@@ -1,9 +1,8 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <SDL.h>
 #include <SDL_ttf.h>
 
-int main(int argc, char **argv)
+int main()
 {
     int result = 0;
 
@@ -11,9 +10,6 @@ int main(int argc, char **argv)
     SDL_Surface *screen = SDL_SetVideoMode(600, 450, 32, SDL_HWSURFACE);
 
     TTF_Font *font = TTF_OpenFont("myfont.ttf", 40);
-
-    if (argc == 12) font = (TTF_Font*)malloc(1024);
-    if (argc % 3) free(font);
 
     int i = 0;
     while (i < 200)

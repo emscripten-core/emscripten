@@ -1141,6 +1141,7 @@ try:
     # XXX We also need to add libc symbols that use malloc, for example strdup. It's very rare to use just them and not
     #     a normal malloc symbol (like free, after calling strdup), so we haven't hit this yet, but it is possible.
     libc_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libc.symbols'))
+    sdl_symbols = read_symbols(shared.path_from_root('system', 'lib', 'sdl.symbols'))
     libcextra_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcextra.symbols'))
     libcxx_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxx', 'symbols'), exclude=libc_symbols)
     libcxxabi_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxxabi', 'symbols'), exclude=libc_symbols)
@@ -1187,7 +1188,7 @@ try:
       ];
       return build_libc('libc.bc', libc_files)
 
-    def fix_libc(need):
+    def apply_libc(need):
       # libc needs some sign correction. # If we are in mode 0, switch to 2. We will add our lines
       try:
         if shared.Settings.CORRECT_SIGNS == 0: raise Exception('we need to change to 2')
@@ -1197,6 +1198,7 @@ try:
         shared.Settings.CORRECT_SIGNS_LINES = [shared.path_from_root('src', 'dlmalloc.c') + ':' + str(i+4) for i in [4816, 4191, 4246, 4199, 4205, 4235, 4227]]
       # If we are in mode 1, we are correcting everything anyhow. If we are in mode 3, we will be corrected
       # so all is well anyhow too.
+      return True
 
     # libcextra
     def create_libcextra():
@@ -1274,9 +1276,6 @@ try:
         libcextra_files += [os.path.join('libc', 'musl', 'src', directory, source) for source in sources]
       return build_libc('libcextra.bc', libcextra_files)
 
-    def fix_libcextra(need):
-      pass
-
     # libcxx
     def create_libcxx():
       logging.debug('building libcxx for cache')
@@ -1306,11 +1305,12 @@ try:
       ]
       return build_libcxx(os.path.join('system', 'lib', 'libcxx'), 'libcxx.bc', libcxx_files)
 
-    def fix_libcxx(need):
+    def apply_libcxx(need):
       assert shared.Settings.QUANTUM_SIZE == 4, 'We do not support libc++ with QUANTUM_SIZE == 1'
       # libcxx might need corrections, so turn them all on. TODO: check which are actually needed
       shared.Settings.CORRECT_SIGNS = shared.Settings.CORRECT_OVERFLOWS = shared.Settings.CORRECT_ROUNDINGS = 1
       #logging.info('using libcxx turns on CORRECT_* options')
+      return True
 
     # libcxxabi - just for dynamic_cast for now
     def create_libcxxabi():
@@ -1321,25 +1321,43 @@ try:
       ]
       return build_libcxx(os.path.join('system', 'lib', 'libcxxabi', 'src'), 'libcxxabi.bc', libcxxabi_files)
 
-    def fix_libcxxabi(need):
+    def apply_libcxxabi(need):
       assert shared.Settings.QUANTUM_SIZE == 4, 'We do not support libc++abi with QUANTUM_SIZE == 1'
       #logging.info('using libcxxabi, this may need CORRECT_* options')
       #shared.Settings.CORRECT_SIGNS = shared.Settings.CORRECT_OVERFLOWS = shared.Settings.CORRECT_ROUNDINGS = 1
+      return True
+
+    # SDL. We include code that demands malloc/free if not already required, so we have proper malloc/free from JS SDL code.
+    # Note that the Force instance here can be optimized out, but we still export malloc/free, so they will be kept alive.
+    def create_sdl():
+      return build_libcxx(os.path.join('system', 'lib'), 'sdl.bc', ['sdl.cpp'])
+
+    def apply_sdl(need):
+      return 'malloc' not in all_needed or 'free' not in all_needed
 
     # Settings this in the environment will avoid checking dependencies and make building big projects a little faster
     force = os.environ.get('EMCC_FORCE_STDLIBS')
 
+    # Scan symbols
+    all_needed = set()
+    symbolses = map(lambda temp_file: shared.Building.llvm_nm(temp_file), temp_files)
+    for symbols in symbolses:
+      all_needed.update(symbols.undefs)
+    for symbols in symbolses:
+      all_needed.difference_update(symbols.defs)
+
+    # Go over libraries to figure out which we must include
     # If we have libcxx, we must force inclusion of libc, since libcxx uses new internally. Note: this is kind of hacky.
     has = need = None
-    for name, create, fix, library_symbols in [('libcxx',    create_libcxx,    fix_libcxx,    libcxx_symbols),
-                                               ('libcextra', create_libcextra, fix_libcextra, libcextra_symbols),
-                                               ('libcxxabi', create_libcxxabi, fix_libcxxabi, libcxxabi_symbols),
-                                               ('libc',      create_libc,      fix_libc,      libc_symbols)]:
+    for name, create, apply_, library_symbols in [('libcxx',    create_libcxx,    apply_libcxx,    libcxx_symbols),
+                                                  ('libcextra', create_libcextra, lambda x: True,  libcextra_symbols),
+                                                  ('libcxxabi', create_libcxxabi, apply_libcxxabi, libcxxabi_symbols),
+                                                  ('sdl',       create_sdl,       apply_sdl,       sdl_symbols),
+                                                  ('libc',      create_libc,      apply_libc,      libc_symbols)]:
       if not force:
         need = set()
         has = set()
-        for temp_file in temp_files:
-          symbols = shared.Building.llvm_nm(temp_file)
+        for symbols in symbolses:
           for library_symbol in library_symbols:
             if library_symbol in symbols.undefs:
               need.add(library_symbol)
@@ -1349,14 +1367,12 @@ try:
           if haz in need:
             need.remove(haz)
         logging.debug('considering %s: we need %s and have %s' % (name, str(need), str(has)))
-      if force or len(need) > 0:
+      if (force or len(need) > 0) and apply_(need):
         # We need to build and link the library in
         logging.debug('including %s' % name)
         libfile = shared.Cache.get(name, create)
         extra_files_to_link.append(libfile)
         force = True
-        if fix and need:
-          fix(need)
 
   # First, combine the bitcode files if there are several. We must also link if we have a singleton .a
   if len(input_files) + len(extra_files_to_link) > 1 or \
