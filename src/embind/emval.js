@@ -218,19 +218,37 @@ function lookupTypes(argCount, argTypes, argWireTypes) {
 function __emval_get_method_caller(argCount, argTypes) {
     var types = lookupTypes(argCount, argTypes);
 
-    var signatureName = types[0].name + "_$" + types.slice(1).map(function(t){return t.name;}).join("_") + "$";
-    return Runtime.addFunction(createNamedFunction(signatureName, function(handle, name) {
-        requireHandle(handle);
-        name = getStringOrSymbol(name);
+    var retType = types[0];
+    var signatureName = retType.name + "_$" + types.slice(1).map(function (t) { return t.name; }).join("_") + "$";
 
-        var args = new Array(argCount - 1);
-        for (var i = 1; i < argCount; ++i) {
-            args[i - 1] = types[i].fromWireType(arguments[1 + i]);
-        }
+    var args1 = ["requireHandle", "getStringOrSymbol", "_emval_handle_array", "retType"];
+    var args2 = [requireHandle, getStringOrSymbol, _emval_handle_array, retType];
 
-        var obj = _emval_handle_array[handle].value;
-        return types[0].toWireType([], obj[name].apply(obj, args));
-    }));
+    var argsList = ""; // 'arg0, arg1, arg2, ... , argN'
+    var argsListWired = ""; // 'arg0Wired, ..., argNWired'
+    for (var i = 0; i < argCount - 1; ++i) {
+        argsList += (i !== 0 ? ", " : "") + "arg" + i;
+        argsListWired += ", arg" + i + "Wired";
+        args1.push("argType" + i);
+        args2.push(types[1 + i]);
+    }
+
+    var invokerFnBody =
+        "return Runtime.addFunction(createNamedFunction('" + signatureName + "', function (handle, name" + argsListWired + ") {\n" +
+        "requireHandle(handle);\n" +
+        "name = getStringOrSymbol(name);\n";
+
+    for (var i = 0; i < argCount - 1; ++i) {
+        invokerFnBody += "var arg" + i + " = argType" + i + ".fromWireType(arg" + i + "Wired);\n";
+    }
+    invokerFnBody +=
+        "var obj = _emval_handle_array[handle].value;\n" +
+        "return retType.toWireType(null, obj[name](" + argsList + "));\n" + 
+        "}));\n";
+
+    args1.push(invokerFnBody);
+    var invokerFunction = new_(Function, args1).apply(null, args2);
+    return invokerFunction;
 }
 
 function __emval_has_function(handle, name) {
