@@ -1084,6 +1084,7 @@ public:
         return "optional" + s;
     }
 
+    virtual std::shared_ptr<Derived> returnsSharedPtr() = 0;
     virtual void differentArguments(int i, double d, unsigned char f, double q, std::string) = 0;
 };
 
@@ -1103,6 +1104,10 @@ public:
         }, s);
     }
 
+    std::shared_ptr<Derived> returnsSharedPtr() {
+        return call<std::shared_ptr<Derived> >("returnsSharedPtr");
+    }
+
     void differentArguments(int i, double d, unsigned char f, double q, std::string s) {
         return call<void>("differentArguments", i, d, f, q, s);
     }
@@ -1116,6 +1121,10 @@ class ConcreteClass : public AbstractClass {
 
     void differentArguments(int i, double d, unsigned char f, double q, std::string s) {
     }
+
+    std::shared_ptr<Derived> returnsSharedPtr() {
+        return std::shared_ptr<Derived>();
+    }
 };
 
 std::shared_ptr<AbstractClass> getAbstractClass() {
@@ -1128,6 +1137,11 @@ std::string callAbstractMethod(AbstractClass& ac) {
 
 std::string callOptionalMethod(AbstractClass& ac, std::string s) {
     return ac.optionalMethod(s);
+}
+
+void callReturnsSharedPtrMethod(AbstractClass& ac) {
+    std::shared_ptr<Derived> sp = ac.returnsSharedPtr();
+    // unused: sp
 }
 
 void callDifferentArguments(AbstractClass& ac, int i, double d, unsigned char f, double q, std::string s) {
@@ -1145,6 +1159,7 @@ EMSCRIPTEN_BINDINGS(interface_tests) {
     function("getAbstractClass", &getAbstractClass);
     function("callAbstractMethod", &callAbstractMethod);
     function("callOptionalMethod", &callOptionalMethod);
+    function("callReturnsSharedPtrMethod", &callReturnsSharedPtrMethod);
     function("callDifferentArguments", &callDifferentArguments);
 }
 

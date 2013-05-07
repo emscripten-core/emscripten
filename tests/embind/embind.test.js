@@ -1559,6 +1559,28 @@ module({
             impl.delete();
         });
 
+        test("returning null shared pointer from interfaces implemented in JS code does not leak", function() {
+            var impl = cm.AbstractClass.implement({
+                returnsSharedPtr: function() {
+                    return null;
+                }
+            });
+            cm.callReturnsSharedPtrMethod(impl);
+            impl.delete();
+            // Let the memory leak test superfixture check that no leaks occurred.
+        });
+
+        test("returning a new shared pointer from interfaces implemented in JS code does not leak", function() {
+            var impl = cm.AbstractClass.implement({
+                returnsSharedPtr: function() {
+                    return cm.embind_test_return_smart_derived_ptr();
+                }
+            });
+            cm.callReturnsSharedPtrMethod(impl);
+            impl.delete();
+            // Let the memory leak test superfixture check that no leaks occurred.
+        });
+
         test("void methods work", function() {
             var saved = {};
             var impl = cm.AbstractClass.implement({
