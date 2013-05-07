@@ -828,22 +828,7 @@ namespace emscripten {
         }
     };
 
-    template<typename PointerType>
-    struct ptr {
-        typedef PointerType pointer_type;
-    };
-
     namespace internal {
-        template<typename T>
-        struct is_ptr {
-            enum { value = false };
-        };
-
-        template<typename T>
-        struct is_ptr<ptr<T>> {
-            enum { value = true };
-        };
-
         template<typename T>
         struct SmartPtrIfNeeded {
             template<typename U>
@@ -865,7 +850,6 @@ namespace emscripten {
     public:
         class_() = delete;
 
-        template<typename = typename std::enable_if<!internal::is_ptr<ClassType>::value>::type>
         explicit class_(const char* name) {
             using namespace internal;
 
