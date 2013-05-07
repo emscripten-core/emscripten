@@ -2834,6 +2834,35 @@ back
           self.emcc_args.pop() ; self.emcc_args.pop() # disable closure to work around a closure bug
         self.do_run(src, 'Throw...Construct...Catched...Destruct...Throw...Construct...Copy...Catched...Destruct...Destruct...')
 
+    def test_multiple_exceptions(self):
+        Settings.DISABLE_EXCEPTION_CATCHING = 0
+
+        src = '''
+        #include <exception>
+        #include <stdio.h>
+        #include <stdexcept>
+        #include <assert.h>
+
+        int main()
+        {
+          int numExceptions = 0;
+          for(int i = 0; i < 10000; ++i)
+          {
+            try
+            {
+              throw std::runtime_error("Throwing an exception.");
+            }
+            catch(const std::exception &e)
+            {
+              ++numExceptions;
+            }
+          }
+          printf("%d", numExceptions);
+          return 0;
+        }
+        '''
+        self.do_run(src, '10000')
+
     def test_white_list_exception(self):
       Settings.DISABLE_EXCEPTION_CATCHING = 2
       Settings.EXCEPTION_CATCHING_WHITELIST = ["__Z12somefunctionv"]
