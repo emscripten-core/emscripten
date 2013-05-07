@@ -1392,7 +1392,13 @@ function normalizeAsm(func) {
           var name = v[0];
           var value = v[1];
           if (!(name in data.vars)) {
-            data.vars[name] = detectAsmCoercion(value);
+            if (value[0] != 'name') {
+              data.vars[name] = detectAsmCoercion(value); // detect by coercion
+            } else {
+              var origin = value[1];
+              assert(origin in data.vars);
+              data.vars[name] = data.vars[origin]; // detect by origin variable
+            }
           }
         }
         unVarify(node[1], node);

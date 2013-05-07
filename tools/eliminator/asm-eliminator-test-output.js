@@ -123,4 +123,10 @@ function switchy() {
     continue;
   }
 }
+function confuusion() {
+  var i = +0, j = +0;
+  func1(+i);
+  j = i;
+  func2(+j);
+}
 

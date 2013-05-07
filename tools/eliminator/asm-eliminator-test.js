@@ -156,5 +156,11 @@ function switchy() {
       continue;
   }
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j", "_segment_holding", "__ZN5identC2EiPKcPci", "_vec2Length", "exc", "label"]
+function confuusion() {
+  var i = +0;
+  func1(+i);
+  var j = i; // add this var in the middle. should show up with right type later, auto-inferred from i's type
+  func2(+j);
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j", "_segment_holding", "__ZN5identC2EiPKcPci", "_vec2Length", "exc", "label", "confuusion"]
 
