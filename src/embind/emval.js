@@ -1,5 +1,6 @@
 /*global Module, Runtime*/
 /*global HEAP32*/
+/*global new_*/
 /*global createNamedFunction*/
 /*global readLatin1String, writeStringToMemory*/
 /*global requireRegisteredType, throwBindingError*/
@@ -221,8 +222,8 @@ function __emval_get_method_caller(argCount, argTypes) {
     var retType = types[0];
     var signatureName = retType.name + "_$" + types.slice(1).map(function (t) { return t.name; }).join("_") + "$";
 
-    var args1 = ["requireHandle", "getStringOrSymbol", "_emval_handle_array", "retType"];
-    var args2 = [requireHandle, getStringOrSymbol, _emval_handle_array, retType];
+    var args1 = ["Runtime", "createNamedFunction", "requireHandle", "getStringOrSymbol", "_emval_handle_array", "retType"];
+    var args2 = [Runtime, createNamedFunction, requireHandle, getStringOrSymbol, _emval_handle_array, retType];
 
     var argsList = ""; // 'arg0, arg1, arg2, ... , argN'
     var argsListWired = ""; // 'arg0Wired, ..., argNWired'
