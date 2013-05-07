@@ -1708,7 +1708,7 @@ var LibrarySDL = {
   // SDL 2
 
   SDL_GL_ExtensionSupported: function(extension) {
-    return Module.ctx.getExtension(extension);
+    return Module.ctx.getExtension(extension) | 0;
   },
 
   SDL_DestroyWindow: function(window) {},
