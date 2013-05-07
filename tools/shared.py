@@ -295,7 +295,7 @@ def check_node_version():
 # we re-check sanity when the settings are changed)
 # We also re-check sanity and clear the cache when the version changes
 
-EMSCRIPTEN_VERSION = '1.4.2'
+EMSCRIPTEN_VERSION = '1.4.3'
 
 def generate_sanity():
   return EMSCRIPTEN_VERSION + '|' + get_llvm_target()
@@ -495,7 +495,7 @@ except:
 
 # Target choice. Must be synced with src/settings.js (TARGET_*)
 def get_llvm_target():
-  return os.environ.get('EMCC_LLVM_TARGET') or 'i386-pc-linux-gnu' # 'le32-unknown-nacl'
+  return os.environ.get('EMCC_LLVM_TARGET') or 'le32-unknown-nacl' # 'i386-pc-linux-gnu'
 LLVM_TARGET = get_llvm_target()
 
 try:

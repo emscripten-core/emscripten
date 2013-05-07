@@ -457,7 +457,7 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
   if len(sys.argv) == 2 and 'ALL.' in sys.argv[1]:
     ignore, test = sys.argv[1].split('.')
     print 'Running all test modes on test "%s"' % test
-    sys.argv = [sys.argv[0], 'default.'+test, 'o1.'+test, 'o2.'+test, 'asm1.'+test, 'asm2.'+test, 'asm2g.'+test, 'asm2le32.'+test, 's_0_0.'+test, 's_0_1.'+test, 's_1_0.'+test, 's_1_1.'+test]
+    sys.argv = [sys.argv[0], 'default.'+test, 'o1.'+test, 'o2.'+test, 'asm1.'+test, 'asm2.'+test, 'asm2g.'+test, 'asm2x86.'+test, 's_0_0.'+test, 's_0_1.'+test, 's_1_0.'+test, 's_1_1.'+test]
 
   class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
     ## Does a complete test - builds, runs, checks output, etc.
@@ -9345,7 +9345,7 @@ TT = %s
   exec('asm1 = make_run("asm1", compiler=CLANG, emcc_args=["-O1", "-s", "CHECK_HEAP_ALIGN=1"])')
   exec('asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2"])')
   exec('asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTIONS=1", "--memory-init-file", "1"])')
-  exec('''asm2le32 = make_run("asm2le32", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "CHECK_HEAP_ALIGN=1"], env='{"EMCC_LLVM_TARGET": "le32-unknown-nacl"}')''')
+  exec('''asm2x86 = make_run("asm2x86", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "CHECK_HEAP_ALIGN=1"], env='{"EMCC_LLVM_TARGET": "i386-pc-linux-gnu"}')''')
 
   # Make custom runs with various options
   for compiler, quantum, embetter, typed_arrays, llvm_opts in [
