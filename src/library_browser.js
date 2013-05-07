@@ -707,8 +707,9 @@ mergeInto(LibraryManager.library, {
     if (ENVIRONMENT_IS_NODE) {
         var t = process['hrtime']();
         return t[0] * 1e3 + t[1] / 1e6;
-    }
-    else if (window['performance'] && window['performance']['now']) {
+    } else if (ENVIRONMENT_IS_SHELL) {
+        return dateNow();
+    } else if (window['performance'] && window['performance']['now']) {
       return window['performance']['now']();
     } else {
       return Date.now();
