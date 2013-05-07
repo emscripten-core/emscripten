@@ -532,7 +532,7 @@ LibraryManager.library = {
       } catch(e) {}
 
       // Create the I/O devices.
-      var devFolder = FS.createFolder('/', 'dev', true, true);
+      var devFolder = FS.findObject("/dev") || FS.createFolder('/', 'dev', true, true);
       var stdin = FS.createDevice(devFolder, 'stdin', input);
       var stdout = FS.createDevice(devFolder, 'stdout', null, output);
       var stderr = FS.createDevice(devFolder, 'stderr', null, error);
