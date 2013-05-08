@@ -99,7 +99,66 @@ function analyzer(data, sidePass) {
         }
       }
       delete item.items;
+      this.forwardItem(item, 'CastAway');
+    }
+  });
+
+  // CastAway - try to remove bitcasts of double to i64, which LLVM sometimes generates unnecessarily
+  // (load a double, convert to i64, use as i64).
+  // We optimize this by checking if the value is later converted to an i64. If so we create a shadow
+  // variable that is a load of an i64, and use that in those places. (As SSA, this is valid, and
+  // variable elimination later will remove the double load if it is no longer needed.)
+  //
+  substrate.addActor('CastAway', {
+    processItem: function(item) {
       this.forwardItem(item, 'Legalizer');
+      if (USE_TYPED_ARRAYS != 2) return;
+
+      item.functions.forEach(function(func) {
+        var changed = false;
+        func.labels.forEach(function(label) {
+          var doubleVars = {};
+          var lines = label.lines;
+          var i = 0;
+          while (i < lines.length) {
+            var line = lines[i];
+            if (line.intertype == 'load' && line.type == 'double') {
+              doubleVars[line.assignTo] = i;
+            } else if (line.intertype == 'bitcast' && line.type == 'i64' && line.ident in doubleVars) {
+              // this is a bitcast of a loaded double into an i64. create shadow var
+              var shadow = line.ident + '$$i64doubleSHADOW';
+              var loadI = doubleVars[line.ident];
+              var load = lines[loadI];
+              if (load.pointer.intertype != 'value') { i++; continue } // TODO
+              // create shadow
+              lines.splice(loadI + 1, 0, { // this element will be legalized in the next phase
+                tokens: null,
+                indent: 2,
+                lineNum: load.lineNum + 0.5,
+                assignTo: shadow,
+                intertype: 'load',
+                pointerType: 'i64*',
+                type: 'i64',
+                valueType: 'i64',
+                pointer: {
+                 intertype: 'value',
+                 ident: load.pointer.ident,
+                 type: 'i64*'
+                },
+                align: load.align,
+                ident: load.ident
+              });
+              // use shadow
+              line.params[0].ident = shadow;
+              line.params[0].type = 'i64';
+              line.type2 = 'i64';
+              // note: no need to update func.lines, it is generated in a later pass
+              i++;
+            }
+            i++;
+          }
+        });
+      });
     }
   });
 
