@@ -509,7 +509,7 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
                    post_build=None) # post_build was already done in ll_to_js, this do_run call is just to test the output
 
     def is_le32(self):
-      return 'le32-unknown-nacl' in COMPILER_OPTS or self.env.get('EMCC_LLVM_TARGET') == 'le32-unknown-nacl'
+      return not ('i386-pc-linux-gnu' in COMPILER_OPTS or self.env.get('EMCC_LLVM_TARGET') == 'i386-pc-linux-gnu')
 
     def test_hello_world(self):
         src = '''
