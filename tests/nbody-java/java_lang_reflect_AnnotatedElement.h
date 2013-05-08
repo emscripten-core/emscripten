@@ -1,0 +1,35 @@
+#ifndef __JAVA_LANG_REFLECT_ANNOTATEDELEMENT__
+#define __JAVA_LANG_REFLECT_ANNOTATEDELEMENT__
+
+#include "xmlvm.h"
+
+// Preprocessor constants for interfaces:
+#define XMLVM_ITABLE_IDX_java_lang_reflect_AnnotatedElement_getAnnotation___java_lang_Class 0
+#define XMLVM_ITABLE_IDX_java_lang_reflect_AnnotatedElement_getAnnotations__ 1
+#define XMLVM_ITABLE_IDX_java_lang_reflect_AnnotatedElement_getDeclaredAnnotations__ 2
+#define XMLVM_ITABLE_IDX_java_lang_reflect_AnnotatedElement_isAnnotationPresent___java_lang_Class 3
+// Implemented interfaces:
+// Super Class:
+#include "java_lang_Object.h"
+
+// Circular references:
+#ifndef XMLVM_FORWARD_DECL_java_lang_Class
+#define XMLVM_FORWARD_DECL_java_lang_Class
+XMLVM_FORWARD_DECL(java_lang_Class)
+#endif
+
+XMLVM_DEFINE_CLASS(java_lang_reflect_AnnotatedElement, 0, 0)
+
+extern JAVA_OBJECT __CLASS_java_lang_reflect_AnnotatedElement;
+extern JAVA_OBJECT __CLASS_java_lang_reflect_AnnotatedElement_1ARRAY;
+extern JAVA_OBJECT __CLASS_java_lang_reflect_AnnotatedElement_2ARRAY;
+extern JAVA_OBJECT __CLASS_java_lang_reflect_AnnotatedElement_3ARRAY;
+#ifndef XMLVM_FORWARD_DECL_java_lang_reflect_AnnotatedElement
+#define XMLVM_FORWARD_DECL_java_lang_reflect_AnnotatedElement
+typedef struct java_lang_reflect_AnnotatedElement java_lang_reflect_AnnotatedElement;
+#endif
+
+void __INIT_java_lang_reflect_AnnotatedElement();
+void __INIT_IMPL_java_lang_reflect_AnnotatedElement();
+
+#endif

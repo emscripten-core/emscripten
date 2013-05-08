@@ -1,0 +1,75 @@
+#ifndef __JAVA_SECURITY_ACCESSCONTROLLER__
+#define __JAVA_SECURITY_ACCESSCONTROLLER__
+
+#include "xmlvm.h"
+
+// Preprocessor constants for interfaces:
+#define XMLVM_ITABLE_SIZE_java_security_AccessController 0
+// Implemented interfaces:
+// Super Class:
+#include "java_lang_Object.h"
+
+// Circular references:
+#ifndef XMLVM_FORWARD_DECL_java_lang_Exception
+#define XMLVM_FORWARD_DECL_java_lang_Exception
+XMLVM_FORWARD_DECL(java_lang_Exception)
+#endif
+#ifndef XMLVM_FORWARD_DECL_java_lang_RuntimeException
+#define XMLVM_FORWARD_DECL_java_lang_RuntimeException
+XMLVM_FORWARD_DECL(java_lang_RuntimeException)
+#endif
+#ifndef XMLVM_FORWARD_DECL_java_security_Permission
+#define XMLVM_FORWARD_DECL_java_security_Permission
+XMLVM_FORWARD_DECL(java_security_Permission)
+#endif
+#ifndef XMLVM_FORWARD_DECL_java_security_PrivilegedAction
+#define XMLVM_FORWARD_DECL_java_security_PrivilegedAction
+XMLVM_FORWARD_DECL(java_security_PrivilegedAction)
+#endif
+// Class declarations for java.security.AccessController
+XMLVM_DEFINE_CLASS(java_security_AccessController, 6, XMLVM_ITABLE_SIZE_java_security_AccessController)
+
+extern JAVA_OBJECT __CLASS_java_security_AccessController;
+extern JAVA_OBJECT __CLASS_java_security_AccessController_1ARRAY;
+extern JAVA_OBJECT __CLASS_java_security_AccessController_2ARRAY;
+extern JAVA_OBJECT __CLASS_java_security_AccessController_3ARRAY;
+//XMLVM_BEGIN_DECLARATIONS
+#define __ADDITIONAL_INSTANCE_FIELDS_java_security_AccessController
+//XMLVM_END_DECLARATIONS
+
+#define __INSTANCE_FIELDS_java_security_AccessController \
+    __INSTANCE_FIELDS_java_lang_Object; \
+    struct { \
+        __ADDITIONAL_INSTANCE_FIELDS_java_security_AccessController \
+    } java_security_AccessController
+
+struct java_security_AccessController {
+    __TIB_DEFINITION_java_security_AccessController* tib;
+    struct {
+        __INSTANCE_FIELDS_java_security_AccessController;
+    } fields;
+};
+#ifndef XMLVM_FORWARD_DECL_java_security_AccessController
+#define XMLVM_FORWARD_DECL_java_security_AccessController
+typedef struct java_security_AccessController java_security_AccessController;
+#endif
+
+#define XMLVM_VTABLE_SIZE_java_security_AccessController 6
+
+void __INIT_java_security_AccessController();
+void __INIT_IMPL_java_security_AccessController();
+void __DELETE_java_security_AccessController(void* me, void* client_data);
+void __INIT_INSTANCE_MEMBERS_java_security_AccessController(JAVA_OBJECT me, int derivedClassWillRegisterFinalizer);
+JAVA_OBJECT __NEW_java_security_AccessController();
+JAVA_OBJECT __NEW_INSTANCE_java_security_AccessController();
+void java_security_AccessController___INIT___(JAVA_OBJECT me);
+void java_security_AccessController_checkPermission___java_security_Permission(JAVA_OBJECT n1);
+void java_security_AccessController_keepalive___java_security_AccessControlContext(JAVA_OBJECT n1);
+JAVA_OBJECT java_security_AccessController_getContext__();
+JAVA_OBJECT java_security_AccessController_doPrivileged___java_security_PrivilegedAction(JAVA_OBJECT n1);
+JAVA_OBJECT java_security_AccessController_doPrivileged___java_security_PrivilegedAction_java_security_AccessControlContext(JAVA_OBJECT n1, JAVA_OBJECT n2);
+JAVA_OBJECT java_security_AccessController_doPrivileged___java_security_PrivilegedExceptionAction(JAVA_OBJECT n1);
+JAVA_OBJECT java_security_AccessController_doPrivileged___java_security_PrivilegedExceptionAction_java_security_AccessControlContext(JAVA_OBJECT n1, JAVA_OBJECT n2);
+void java_security_AccessController___CLINIT_();
+
+#endif

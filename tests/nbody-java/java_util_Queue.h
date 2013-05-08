@@ -1,0 +1,48 @@
+#ifndef __JAVA_UTIL_QUEUE__
+#define __JAVA_UTIL_QUEUE__
+
+#include "xmlvm.h"
+
+// Preprocessor constants for interfaces:
+#define XMLVM_ITABLE_IDX_java_util_Queue_offer___java_lang_Object 88
+#define XMLVM_ITABLE_IDX_java_util_Queue_poll__ 90
+#define XMLVM_ITABLE_IDX_java_util_Queue_remove__ 92
+#define XMLVM_ITABLE_IDX_java_util_Queue_peek__ 89
+#define XMLVM_ITABLE_IDX_java_util_Queue_element__ 83
+#define XMLVM_ITABLE_IDX_java_util_Queue_addAll___java_util_Collection 78
+#define XMLVM_ITABLE_IDX_java_util_Queue_add___java_lang_Object 79
+#define XMLVM_ITABLE_IDX_java_util_Queue_clear__ 80
+#define XMLVM_ITABLE_IDX_java_util_Queue_containsAll___java_util_Collection 81
+#define XMLVM_ITABLE_IDX_java_util_Queue_contains___java_lang_Object 82
+#define XMLVM_ITABLE_IDX_java_util_Queue_equals___java_lang_Object 84
+#define XMLVM_ITABLE_IDX_java_util_Queue_hashCode__ 85
+#define XMLVM_ITABLE_IDX_java_util_Queue_isEmpty__ 86
+#define XMLVM_ITABLE_IDX_java_util_Queue_iterator__ 87
+#define XMLVM_ITABLE_IDX_java_util_Queue_removeAll___java_util_Collection 91
+#define XMLVM_ITABLE_IDX_java_util_Queue_remove___java_lang_Object 93
+#define XMLVM_ITABLE_IDX_java_util_Queue_retainAll___java_util_Collection 94
+#define XMLVM_ITABLE_IDX_java_util_Queue_size__ 95
+#define XMLVM_ITABLE_IDX_java_util_Queue_toArray__ 96
+#define XMLVM_ITABLE_IDX_java_util_Queue_toArray___java_lang_Object_1ARRAY 97
+// Implemented interfaces:
+#include "java_util_Collection.h"
+// Super Class:
+#include "java_lang_Object.h"
+
+// Circular references:
+
+XMLVM_DEFINE_CLASS(java_util_Queue, 0, 0)
+
+extern JAVA_OBJECT __CLASS_java_util_Queue;
+extern JAVA_OBJECT __CLASS_java_util_Queue_1ARRAY;
+extern JAVA_OBJECT __CLASS_java_util_Queue_2ARRAY;
+extern JAVA_OBJECT __CLASS_java_util_Queue_3ARRAY;
+#ifndef XMLVM_FORWARD_DECL_java_util_Queue
+#define XMLVM_FORWARD_DECL_java_util_Queue
+typedef struct java_util_Queue java_util_Queue;
+#endif
+
+void __INIT_java_util_Queue();
+void __INIT_IMPL_java_util_Queue();
+
+#endif

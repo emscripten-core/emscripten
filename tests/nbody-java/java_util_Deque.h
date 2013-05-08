@@ -1,0 +1,69 @@
+#ifndef __JAVA_UTIL_DEQUE__
+#define __JAVA_UTIL_DEQUE__
+
+#include "xmlvm.h"
+
+// Preprocessor constants for interfaces:
+#define XMLVM_ITABLE_IDX_java_util_Deque_addFirst___java_lang_Object 17
+#define XMLVM_ITABLE_IDX_java_util_Deque_addLast___java_lang_Object 18
+#define XMLVM_ITABLE_IDX_java_util_Deque_offerFirst___java_lang_Object 31
+#define XMLVM_ITABLE_IDX_java_util_Deque_offerLast___java_lang_Object 32
+#define XMLVM_ITABLE_IDX_java_util_Deque_removeFirst__ 44
+#define XMLVM_ITABLE_IDX_java_util_Deque_removeLast__ 46
+#define XMLVM_ITABLE_IDX_java_util_Deque_pollFirst__ 37
+#define XMLVM_ITABLE_IDX_java_util_Deque_pollLast__ 38
+#define XMLVM_ITABLE_IDX_java_util_Deque_getFirst__ 26
+#define XMLVM_ITABLE_IDX_java_util_Deque_getLast__ 27
+#define XMLVM_ITABLE_IDX_java_util_Deque_peekFirst__ 34
+#define XMLVM_ITABLE_IDX_java_util_Deque_peekLast__ 35
+#define XMLVM_ITABLE_IDX_java_util_Deque_removeFirstOccurrence___java_lang_Object 43
+#define XMLVM_ITABLE_IDX_java_util_Deque_removeLastOccurrence___java_lang_Object 45
+#define XMLVM_ITABLE_IDX_java_util_Deque_push___java_lang_Object 41
+#define XMLVM_ITABLE_IDX_java_util_Deque_pop__ 40
+#define XMLVM_ITABLE_IDX_java_util_Deque_descendingIterator__ 23
+#define XMLVM_ITABLE_IDX_java_util_Deque_addAll___java_util_Collection 16
+#define XMLVM_ITABLE_IDX_java_util_Deque_add___java_lang_Object 19
+#define XMLVM_ITABLE_IDX_java_util_Deque_clear__ 20
+#define XMLVM_ITABLE_IDX_java_util_Deque_containsAll___java_util_Collection 21
+#define XMLVM_ITABLE_IDX_java_util_Deque_contains___java_lang_Object 22
+#define XMLVM_ITABLE_IDX_java_util_Deque_element__ 24
+#define XMLVM_ITABLE_IDX_java_util_Deque_equals___java_lang_Object 25
+#define XMLVM_ITABLE_IDX_java_util_Deque_hashCode__ 28
+#define XMLVM_ITABLE_IDX_java_util_Deque_isEmpty__ 29
+#define XMLVM_ITABLE_IDX_java_util_Deque_iterator__ 30
+#define XMLVM_ITABLE_IDX_java_util_Deque_offer___java_lang_Object 33
+#define XMLVM_ITABLE_IDX_java_util_Deque_peek__ 36
+#define XMLVM_ITABLE_IDX_java_util_Deque_poll__ 39
+#define XMLVM_ITABLE_IDX_java_util_Deque_removeAll___java_util_Collection 42
+#define XMLVM_ITABLE_IDX_java_util_Deque_remove__ 47
+#define XMLVM_ITABLE_IDX_java_util_Deque_remove___java_lang_Object 48
+#define XMLVM_ITABLE_IDX_java_util_Deque_retainAll___java_util_Collection 49
+#define XMLVM_ITABLE_IDX_java_util_Deque_size__ 50
+#define XMLVM_ITABLE_IDX_java_util_Deque_toArray__ 51
+#define XMLVM_ITABLE_IDX_java_util_Deque_toArray___java_lang_Object_1ARRAY 52
+// Implemented interfaces:
+#include "java_util_Queue.h"
+// Super Class:
+#include "java_lang_Object.h"
+
+// Circular references:
+#ifndef XMLVM_FORWARD_DECL_java_util_Iterator
+#define XMLVM_FORWARD_DECL_java_util_Iterator
+XMLVM_FORWARD_DECL(java_util_Iterator)
+#endif
+
+XMLVM_DEFINE_CLASS(java_util_Deque, 0, 0)
+
+extern JAVA_OBJECT __CLASS_java_util_Deque;
+extern JAVA_OBJECT __CLASS_java_util_Deque_1ARRAY;
+extern JAVA_OBJECT __CLASS_java_util_Deque_2ARRAY;
+extern JAVA_OBJECT __CLASS_java_util_Deque_3ARRAY;
+#ifndef XMLVM_FORWARD_DECL_java_util_Deque
+#define XMLVM_FORWARD_DECL_java_util_Deque
+typedef struct java_util_Deque java_util_Deque;
+#endif
+
+void __INIT_java_util_Deque();
+void __INIT_IMPL_java_util_Deque();
+
+#endif

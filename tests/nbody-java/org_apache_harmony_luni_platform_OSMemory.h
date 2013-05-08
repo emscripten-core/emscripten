@@ -1,0 +1,195 @@
+#ifndef __ORG_APACHE_HARMONY_LUNI_PLATFORM_OSMEMORY__
+#define __ORG_APACHE_HARMONY_LUNI_PLATFORM_OSMEMORY__
+
+#include "xmlvm.h"
+
+// Preprocessor constants for interfaces:
+#define XMLVM_ITABLE_SIZE_org_apache_harmony_luni_platform_OSMemory 37
+// Implemented interfaces:
+#include "org_apache_harmony_luni_platform_IMemorySystem.h"
+// Super Class:
+#include "java_lang_Object.h"
+
+// Circular references:
+#ifndef XMLVM_FORWARD_DECL_java_lang_Double
+#define XMLVM_FORWARD_DECL_java_lang_Double
+XMLVM_FORWARD_DECL(java_lang_Double)
+#endif
+#ifndef XMLVM_FORWARD_DECL_java_lang_Float
+#define XMLVM_FORWARD_DECL_java_lang_Float
+XMLVM_FORWARD_DECL(java_lang_Float)
+#endif
+#ifndef XMLVM_FORWARD_DECL_org_apache_harmony_luni_platform_Endianness
+#define XMLVM_FORWARD_DECL_org_apache_harmony_luni_platform_Endianness
+XMLVM_FORWARD_DECL(org_apache_harmony_luni_platform_Endianness)
+#endif
+// Class declarations for org.apache.harmony.luni.platform.OSMemory
+XMLVM_DEFINE_CLASS(org_apache_harmony_luni_platform_OSMemory, 43, XMLVM_ITABLE_SIZE_org_apache_harmony_luni_platform_OSMemory)
+
+extern JAVA_OBJECT __CLASS_org_apache_harmony_luni_platform_OSMemory;
+extern JAVA_OBJECT __CLASS_org_apache_harmony_luni_platform_OSMemory_1ARRAY;
+extern JAVA_OBJECT __CLASS_org_apache_harmony_luni_platform_OSMemory_2ARRAY;
+extern JAVA_OBJECT __CLASS_org_apache_harmony_luni_platform_OSMemory_3ARRAY;
+//XMLVM_BEGIN_DECLARATIONS
+#define __ADDITIONAL_INSTANCE_FIELDS_org_apache_harmony_luni_platform_OSMemory
+//XMLVM_END_DECLARATIONS
+
+#define __INSTANCE_FIELDS_org_apache_harmony_luni_platform_OSMemory \
+    __INSTANCE_FIELDS_java_lang_Object; \
+    struct { \
+        __ADDITIONAL_INSTANCE_FIELDS_org_apache_harmony_luni_platform_OSMemory \
+    } org_apache_harmony_luni_platform_OSMemory
+
+struct org_apache_harmony_luni_platform_OSMemory {
+    __TIB_DEFINITION_org_apache_harmony_luni_platform_OSMemory* tib;
+    struct {
+        __INSTANCE_FIELDS_org_apache_harmony_luni_platform_OSMemory;
+    } fields;
+};
+#ifndef XMLVM_FORWARD_DECL_org_apache_harmony_luni_platform_OSMemory
+#define XMLVM_FORWARD_DECL_org_apache_harmony_luni_platform_OSMemory
+typedef struct org_apache_harmony_luni_platform_OSMemory org_apache_harmony_luni_platform_OSMemory;
+#endif
+
+#define XMLVM_VTABLE_SIZE_org_apache_harmony_luni_platform_OSMemory 43
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_isLittleEndian__ 22
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_getPointerSize__ 19
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_malloc___long 25
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_free___long 7
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_memset___long_byte_long 27
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_memmove___long_long_long 26
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_getByteArray___long_byte_1ARRAY_int_int 9
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_setByteArray___long_byte_1ARRAY_int_int 30
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_getByte___long 10
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_setByte___long_byte 31
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_getShort___long 20
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_getShort___long_org_apache_harmony_luni_platform_Endianness 21
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_setShort___long_short 40
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_setShort___long_short_org_apache_harmony_luni_platform_Endianness 41
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_getInt___long 15
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_getInt___long_org_apache_harmony_luni_platform_Endianness 16
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_setInt___long_int 36
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_setInt___long_int_org_apache_harmony_luni_platform_Endianness 37
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_getLong___long 17
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_getLong___long_org_apache_harmony_luni_platform_Endianness 18
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_setLong___long_long 38
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_setLong___long_long_org_apache_harmony_luni_platform_Endianness 39
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_getFloat___long 13
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_getFloat___long_org_apache_harmony_luni_platform_Endianness 14
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_setFloat___long_float 34
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_setFloat___long_float_org_apache_harmony_luni_platform_Endianness 35
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_getDouble___long 11
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_getDouble___long_org_apache_harmony_luni_platform_Endianness 12
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_setDouble___long_double 32
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_setDouble___long_double_org_apache_harmony_luni_platform_Endianness 33
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_getAddress___long 8
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_setAddress___long_long 29
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_mmap___long_long_long_int 28
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_unmap___long_long 42
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_load___long_long 24
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_isLoaded___long_long 23
+#define XMLVM_VTABLE_IDX_org_apache_harmony_luni_platform_OSMemory_flush___long_long 6
+
+void __INIT_org_apache_harmony_luni_platform_OSMemory();
+void __INIT_IMPL_org_apache_harmony_luni_platform_OSMemory();
+void __DELETE_org_apache_harmony_luni_platform_OSMemory(void* me, void* client_data);
+void __INIT_INSTANCE_MEMBERS_org_apache_harmony_luni_platform_OSMemory(JAVA_OBJECT me, int derivedClassWillRegisterFinalizer);
+JAVA_OBJECT __NEW_org_apache_harmony_luni_platform_OSMemory();
+JAVA_OBJECT __NEW_INSTANCE_org_apache_harmony_luni_platform_OSMemory();
+void xmlvm_init_native_org_apache_harmony_luni_platform_OSMemory();
+JAVA_INT org_apache_harmony_luni_platform_OSMemory_GET_POINTER_SIZE();
+void org_apache_harmony_luni_platform_OSMemory_PUT_POINTER_SIZE(JAVA_INT v);
+JAVA_OBJECT org_apache_harmony_luni_platform_OSMemory_GET_NATIVE_ORDER();
+void org_apache_harmony_luni_platform_OSMemory_PUT_NATIVE_ORDER(JAVA_OBJECT v);
+JAVA_OBJECT org_apache_harmony_luni_platform_OSMemory_GET_singleton();
+void org_apache_harmony_luni_platform_OSMemory_PUT_singleton(JAVA_OBJECT v);
+void org_apache_harmony_luni_platform_OSMemory___CLINIT_();
+JAVA_OBJECT org_apache_harmony_luni_platform_OSMemory_getOSMemory__();
+JAVA_BOOLEAN org_apache_harmony_luni_platform_OSMemory_isLittleEndianImpl__();
+void org_apache_harmony_luni_platform_OSMemory___INIT___(JAVA_OBJECT me);
+// Vtable index: 22
+JAVA_BOOLEAN org_apache_harmony_luni_platform_OSMemory_isLittleEndian__(JAVA_OBJECT me);
+JAVA_OBJECT org_apache_harmony_luni_platform_OSMemory_getNativeOrder__(JAVA_OBJECT me);
+JAVA_INT org_apache_harmony_luni_platform_OSMemory_getPointerSizeImpl__();
+// Vtable index: 19
+JAVA_INT org_apache_harmony_luni_platform_OSMemory_getPointerSize__(JAVA_OBJECT me);
+// Vtable index: 25
+JAVA_LONG org_apache_harmony_luni_platform_OSMemory_malloc___long(JAVA_OBJECT me, JAVA_LONG n1);
+// Vtable index: 7
+void org_apache_harmony_luni_platform_OSMemory_free___long(JAVA_OBJECT me, JAVA_LONG n1);
+// Vtable index: 27
+void org_apache_harmony_luni_platform_OSMemory_memset___long_byte_long(JAVA_OBJECT me, JAVA_LONG n1, JAVA_BYTE n2, JAVA_LONG n3);
+// Vtable index: 26
+void org_apache_harmony_luni_platform_OSMemory_memmove___long_long_long(JAVA_OBJECT me, JAVA_LONG n1, JAVA_LONG n2, JAVA_LONG n3);
+// Vtable index: 9
+void org_apache_harmony_luni_platform_OSMemory_getByteArray___long_byte_1ARRAY_int_int(JAVA_OBJECT me, JAVA_LONG n1, JAVA_OBJECT n2, JAVA_INT n3, JAVA_INT n4);
+// Vtable index: 30
+void org_apache_harmony_luni_platform_OSMemory_setByteArray___long_byte_1ARRAY_int_int(JAVA_OBJECT me, JAVA_LONG n1, JAVA_OBJECT n2, JAVA_INT n3, JAVA_INT n4);
+// Vtable index: 10
+JAVA_BYTE org_apache_harmony_luni_platform_OSMemory_getByte___long(JAVA_OBJECT me, JAVA_LONG n1);
+// Vtable index: 31
+void org_apache_harmony_luni_platform_OSMemory_setByte___long_byte(JAVA_OBJECT me, JAVA_LONG n1, JAVA_BYTE n2);
+// Vtable index: 20
+JAVA_SHORT org_apache_harmony_luni_platform_OSMemory_getShort___long(JAVA_OBJECT me, JAVA_LONG n1);
+// Vtable index: 21
+JAVA_SHORT org_apache_harmony_luni_platform_OSMemory_getShort___long_org_apache_harmony_luni_platform_Endianness(JAVA_OBJECT me, JAVA_LONG n1, JAVA_OBJECT n2);
+// Vtable index: 40
+void org_apache_harmony_luni_platform_OSMemory_setShort___long_short(JAVA_OBJECT me, JAVA_LONG n1, JAVA_SHORT n2);
+// Vtable index: 41
+void org_apache_harmony_luni_platform_OSMemory_setShort___long_short_org_apache_harmony_luni_platform_Endianness(JAVA_OBJECT me, JAVA_LONG n1, JAVA_SHORT n2, JAVA_OBJECT n3);
+// Vtable index: 15
+JAVA_INT org_apache_harmony_luni_platform_OSMemory_getInt___long(JAVA_OBJECT me, JAVA_LONG n1);
+// Vtable index: 16
+JAVA_INT org_apache_harmony_luni_platform_OSMemory_getInt___long_org_apache_harmony_luni_platform_Endianness(JAVA_OBJECT me, JAVA_LONG n1, JAVA_OBJECT n2);
+// Vtable index: 36
+void org_apache_harmony_luni_platform_OSMemory_setInt___long_int(JAVA_OBJECT me, JAVA_LONG n1, JAVA_INT n2);
+// Vtable index: 37
+void org_apache_harmony_luni_platform_OSMemory_setInt___long_int_org_apache_harmony_luni_platform_Endianness(JAVA_OBJECT me, JAVA_LONG n1, JAVA_INT n2, JAVA_OBJECT n3);
+// Vtable index: 17
+JAVA_LONG org_apache_harmony_luni_platform_OSMemory_getLong___long(JAVA_OBJECT me, JAVA_LONG n1);
+// Vtable index: 18
+JAVA_LONG org_apache_harmony_luni_platform_OSMemory_getLong___long_org_apache_harmony_luni_platform_Endianness(JAVA_OBJECT me, JAVA_LONG n1, JAVA_OBJECT n2);
+// Vtable index: 38
+void org_apache_harmony_luni_platform_OSMemory_setLong___long_long(JAVA_OBJECT me, JAVA_LONG n1, JAVA_LONG n2);
+// Vtable index: 39
+void org_apache_harmony_luni_platform_OSMemory_setLong___long_long_org_apache_harmony_luni_platform_Endianness(JAVA_OBJECT me, JAVA_LONG n1, JAVA_LONG n2, JAVA_OBJECT n3);
+// Vtable index: 13
+JAVA_FLOAT org_apache_harmony_luni_platform_OSMemory_getFloat___long(JAVA_OBJECT me, JAVA_LONG n1);
+// Vtable index: 14
+JAVA_FLOAT org_apache_harmony_luni_platform_OSMemory_getFloat___long_org_apache_harmony_luni_platform_Endianness(JAVA_OBJECT me, JAVA_LONG n1, JAVA_OBJECT n2);
+// Vtable index: 34
+void org_apache_harmony_luni_platform_OSMemory_setFloat___long_float(JAVA_OBJECT me, JAVA_LONG n1, JAVA_FLOAT n2);
+// Vtable index: 35
+void org_apache_harmony_luni_platform_OSMemory_setFloat___long_float_org_apache_harmony_luni_platform_Endianness(JAVA_OBJECT me, JAVA_LONG n1, JAVA_FLOAT n2, JAVA_OBJECT n3);
+// Vtable index: 11
+JAVA_DOUBLE org_apache_harmony_luni_platform_OSMemory_getDouble___long(JAVA_OBJECT me, JAVA_LONG n1);
+// Vtable index: 12
+JAVA_DOUBLE org_apache_harmony_luni_platform_OSMemory_getDouble___long_org_apache_harmony_luni_platform_Endianness(JAVA_OBJECT me, JAVA_LONG n1, JAVA_OBJECT n2);
+// Vtable index: 32
+void org_apache_harmony_luni_platform_OSMemory_setDouble___long_double(JAVA_OBJECT me, JAVA_LONG n1, JAVA_DOUBLE n2);
+// Vtable index: 33
+void org_apache_harmony_luni_platform_OSMemory_setDouble___long_double_org_apache_harmony_luni_platform_Endianness(JAVA_OBJECT me, JAVA_LONG n1, JAVA_DOUBLE n2, JAVA_OBJECT n3);
+// Vtable index: 8
+JAVA_LONG org_apache_harmony_luni_platform_OSMemory_getAddress___long(JAVA_OBJECT me, JAVA_LONG n1);
+// Vtable index: 29
+void org_apache_harmony_luni_platform_OSMemory_setAddress___long_long(JAVA_OBJECT me, JAVA_LONG n1, JAVA_LONG n2);
+JAVA_LONG org_apache_harmony_luni_platform_OSMemory_mmapImpl___long_long_long_int(JAVA_OBJECT me, JAVA_LONG n1, JAVA_LONG n2, JAVA_LONG n3, JAVA_INT n4);
+// Vtable index: 28
+JAVA_LONG org_apache_harmony_luni_platform_OSMemory_mmap___long_long_long_int(JAVA_OBJECT me, JAVA_LONG n1, JAVA_LONG n2, JAVA_LONG n3, JAVA_INT n4);
+void org_apache_harmony_luni_platform_OSMemory_unmapImpl___long_long(JAVA_OBJECT me, JAVA_LONG n1, JAVA_LONG n2);
+// Vtable index: 42
+void org_apache_harmony_luni_platform_OSMemory_unmap___long_long(JAVA_OBJECT me, JAVA_LONG n1, JAVA_LONG n2);
+// Vtable index: 24
+void org_apache_harmony_luni_platform_OSMemory_load___long_long(JAVA_OBJECT me, JAVA_LONG n1, JAVA_LONG n2);
+JAVA_INT org_apache_harmony_luni_platform_OSMemory_loadImpl___long_long(JAVA_OBJECT me, JAVA_LONG n1, JAVA_LONG n2);
+// Vtable index: 23
+JAVA_BOOLEAN org_apache_harmony_luni_platform_OSMemory_isLoaded___long_long(JAVA_OBJECT me, JAVA_LONG n1, JAVA_LONG n2);
+JAVA_BOOLEAN org_apache_harmony_luni_platform_OSMemory_isLoadedImpl___long_long(JAVA_OBJECT me, JAVA_LONG n1, JAVA_LONG n2);
+// Vtable index: 6
+void org_apache_harmony_luni_platform_OSMemory_flush___long_long(JAVA_OBJECT me, JAVA_LONG n1, JAVA_LONG n2);
+JAVA_INT org_apache_harmony_luni_platform_OSMemory_flushImpl___long_long(JAVA_OBJECT me, JAVA_LONG n1, JAVA_LONG n2);
+JAVA_SHORT org_apache_harmony_luni_platform_OSMemory_swap___short(JAVA_OBJECT me, JAVA_SHORT n1);
+JAVA_INT org_apache_harmony_luni_platform_OSMemory_swap___int(JAVA_OBJECT me, JAVA_INT n1);
+JAVA_LONG org_apache_harmony_luni_platform_OSMemory_swap___long(JAVA_OBJECT me, JAVA_LONG n1);
+
+#endif

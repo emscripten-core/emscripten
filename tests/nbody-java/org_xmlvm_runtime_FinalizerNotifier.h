@@ -1,0 +1,99 @@
+#ifndef __ORG_XMLVM_RUNTIME_FINALIZERNOTIFIER__
+#define __ORG_XMLVM_RUNTIME_FINALIZERNOTIFIER__
+
+#include "xmlvm.h"
+
+// Preprocessor constants for interfaces:
+#define XMLVM_ITABLE_SIZE_org_xmlvm_runtime_FinalizerNotifier 0
+// Implemented interfaces:
+// Super Class:
+#include "java_lang_Object.h"
+
+// Circular references:
+#ifndef XMLVM_FORWARD_DECL_java_lang_Class
+#define XMLVM_FORWARD_DECL_java_lang_Class
+XMLVM_FORWARD_DECL(java_lang_Class)
+#endif
+#ifndef XMLVM_FORWARD_DECL_java_lang_String
+#define XMLVM_FORWARD_DECL_java_lang_String
+XMLVM_FORWARD_DECL(java_lang_String)
+#endif
+#ifndef XMLVM_FORWARD_DECL_java_lang_Thread
+#define XMLVM_FORWARD_DECL_java_lang_Thread
+XMLVM_FORWARD_DECL(java_lang_Thread)
+#endif
+#ifndef XMLVM_FORWARD_DECL_org_xmlvm_runtime_Condition
+#define XMLVM_FORWARD_DECL_org_xmlvm_runtime_Condition
+XMLVM_FORWARD_DECL(org_xmlvm_runtime_Condition)
+#endif
+#ifndef XMLVM_FORWARD_DECL_org_xmlvm_runtime_FinalizerNotifier_1
+#define XMLVM_FORWARD_DECL_org_xmlvm_runtime_FinalizerNotifier_1
+XMLVM_FORWARD_DECL(org_xmlvm_runtime_FinalizerNotifier_1)
+#endif
+#ifndef XMLVM_FORWARD_DECL_org_xmlvm_runtime_Mutex
+#define XMLVM_FORWARD_DECL_org_xmlvm_runtime_Mutex
+XMLVM_FORWARD_DECL(org_xmlvm_runtime_Mutex)
+#endif
+// Class declarations for org.xmlvm.runtime.FinalizerNotifier
+XMLVM_DEFINE_CLASS(org_xmlvm_runtime_FinalizerNotifier, 6, XMLVM_ITABLE_SIZE_org_xmlvm_runtime_FinalizerNotifier)
+
+extern JAVA_OBJECT __CLASS_org_xmlvm_runtime_FinalizerNotifier;
+extern JAVA_OBJECT __CLASS_org_xmlvm_runtime_FinalizerNotifier_1ARRAY;
+extern JAVA_OBJECT __CLASS_org_xmlvm_runtime_FinalizerNotifier_2ARRAY;
+extern JAVA_OBJECT __CLASS_org_xmlvm_runtime_FinalizerNotifier_3ARRAY;
+//XMLVM_BEGIN_DECLARATIONS
+#define __ADDITIONAL_INSTANCE_FIELDS_org_xmlvm_runtime_FinalizerNotifier
+//XMLVM_END_DECLARATIONS
+
+#define __INSTANCE_FIELDS_org_xmlvm_runtime_FinalizerNotifier \
+    __INSTANCE_FIELDS_java_lang_Object; \
+    struct { \
+        __ADDITIONAL_INSTANCE_FIELDS_org_xmlvm_runtime_FinalizerNotifier \
+    } org_xmlvm_runtime_FinalizerNotifier
+
+struct org_xmlvm_runtime_FinalizerNotifier {
+    __TIB_DEFINITION_org_xmlvm_runtime_FinalizerNotifier* tib;
+    struct {
+        __INSTANCE_FIELDS_org_xmlvm_runtime_FinalizerNotifier;
+    } fields;
+};
+#ifndef XMLVM_FORWARD_DECL_org_xmlvm_runtime_FinalizerNotifier
+#define XMLVM_FORWARD_DECL_org_xmlvm_runtime_FinalizerNotifier
+typedef struct org_xmlvm_runtime_FinalizerNotifier org_xmlvm_runtime_FinalizerNotifier;
+#endif
+
+#define XMLVM_VTABLE_SIZE_org_xmlvm_runtime_FinalizerNotifier 6
+
+void __INIT_org_xmlvm_runtime_FinalizerNotifier();
+void __INIT_IMPL_org_xmlvm_runtime_FinalizerNotifier();
+void __DELETE_org_xmlvm_runtime_FinalizerNotifier(void* me, void* client_data);
+void __INIT_INSTANCE_MEMBERS_org_xmlvm_runtime_FinalizerNotifier(JAVA_OBJECT me, int derivedClassWillRegisterFinalizer);
+JAVA_OBJECT __NEW_org_xmlvm_runtime_FinalizerNotifier();
+JAVA_OBJECT __NEW_INSTANCE_org_xmlvm_runtime_FinalizerNotifier();
+JAVA_OBJECT org_xmlvm_runtime_FinalizerNotifier_GET_finalizerMutex();
+void org_xmlvm_runtime_FinalizerNotifier_PUT_finalizerMutex(JAVA_OBJECT v);
+JAVA_OBJECT org_xmlvm_runtime_FinalizerNotifier_GET_finalizerCondition();
+void org_xmlvm_runtime_FinalizerNotifier_PUT_finalizerCondition(JAVA_OBJECT v);
+JAVA_OBJECT org_xmlvm_runtime_FinalizerNotifier_GET_finalizerThread();
+void org_xmlvm_runtime_FinalizerNotifier_PUT_finalizerThread(JAVA_OBJECT v);
+JAVA_BOOLEAN org_xmlvm_runtime_FinalizerNotifier_GET_finalizerThreadInvokingFinalizers();
+void org_xmlvm_runtime_FinalizerNotifier_PUT_finalizerThreadInvokingFinalizers(JAVA_BOOLEAN v);
+JAVA_BOOLEAN org_xmlvm_runtime_FinalizerNotifier_GET_gcEnabled();
+void org_xmlvm_runtime_FinalizerNotifier_PUT_gcEnabled(JAVA_BOOLEAN v);
+void org_xmlvm_runtime_FinalizerNotifier___INIT___(JAVA_OBJECT me);
+JAVA_OBJECT org_xmlvm_runtime_FinalizerNotifier_startFinalizerThread__();
+void org_xmlvm_runtime_FinalizerNotifier_setGCActive___boolean(JAVA_BOOLEAN n1);
+JAVA_BOOLEAN org_xmlvm_runtime_FinalizerNotifier_invokeAllFinalizers__();
+void org_xmlvm_runtime_FinalizerNotifier_preventGarbageCollection___boolean(JAVA_BOOLEAN n1);
+JAVA_BOOLEAN org_xmlvm_runtime_FinalizerNotifier_currentThreadIsFinalizerThread___java_lang_Thread(JAVA_OBJECT n1);
+void org_xmlvm_runtime_FinalizerNotifier_finalizerNotifier__();
+JAVA_BOOLEAN org_xmlvm_runtime_FinalizerNotifier_shouldInvokeFinalizers__();
+JAVA_INT org_xmlvm_runtime_FinalizerNotifier_invokeFinalizers__();
+JAVA_OBJECT org_xmlvm_runtime_FinalizerNotifier_access$000__();
+JAVA_BOOLEAN org_xmlvm_runtime_FinalizerNotifier_access$100__();
+void org_xmlvm_runtime_FinalizerNotifier_access$200___boolean(JAVA_BOOLEAN n1);
+JAVA_OBJECT org_xmlvm_runtime_FinalizerNotifier_access$300__();
+JAVA_BOOLEAN org_xmlvm_runtime_FinalizerNotifier_access$400__();
+void org_xmlvm_runtime_FinalizerNotifier___CLINIT_();
+
+#endif
