@@ -129,4 +129,8 @@ function confuusion() {
   j = i;
   func2(+j);
 }
+function tempDouble(a) {
+  a = +a;
+  f(a * a);
+}
 

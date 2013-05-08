@@ -162,5 +162,13 @@ function confuusion() {
   var j = i; // add this var in the middle. should show up with right type later, auto-inferred from i's type
   func2(+j);
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j", "_segment_holding", "__ZN5identC2EiPKcPci", "_vec2Length", "exc", "label", "confuusion"]
+function tempDouble(a) {
+  a = +a;
+  var x = +0, y = +0;
+  // CastAway can leave things like this as variables no longer needed. We need to identify that x's value has no side effects so it can be completely cleaned up
+  x = (HEAP32[((tempDoublePtr)>>2)]=((HEAP32[(($_sroa_0_0__idx1)>>2)])|0),HEAP32[(((tempDoublePtr)+(4))>>2)]=((HEAP32[((($_sroa_0_0__idx1)+(4))>>2)])|0),(+(HEAPF64[(tempDoublePtr)>>3])));
+  y = a*a;
+  f(y);
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j", "_segment_holding", "__ZN5identC2EiPKcPci", "_vec2Length", "exc", "label", "confuusion", "tempDouble"]
 

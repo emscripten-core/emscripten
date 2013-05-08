@@ -1842,13 +1842,22 @@ function eliminate(ast, memSafe) {
         potentials[name] = 1;
       } else if (uses[name] == 0 && (!definitions[name] || definitions[name] <= 1)) { // no uses, no def or 1 def (cannot operate on phis, and the llvm optimizer will remove unneeded phis anyhow)
         var hasSideEffects = false;
-        if (values[name]) {
-          traverse(values[name], function(node, type) {
-            if (!(type in NODES_WITHOUT_ELIMINATION_SIDE_EFFECTS)) {
-              hasSideEffects = true; // cannot remove this unused variable, constructing it has side effects
-              return true;
-            }
-          });
+        var value = values[name];
+        if (value) {
+          // TODO: merge with other side effect code
+          // First, pattern-match
+          //  (HEAP32[((tempDoublePtr)>>2)]=((HEAP32[(($_sroa_0_0__idx1)>>2)])|0),HEAP32[(((tempDoublePtr)+(4))>>2)]=((HEAP32[((($_sroa_0_0__idx1)+(4))>>2)])|0),(+(HEAPF64[(tempDoublePtr)>>3])))
+          // which has no side effects and is the special form of converting double to i64.
+          if (!(value[0] == 'seq' && value[1][0] == 'assign' && value[1][2][0] == 'sub' && value[1][2][2][0] == 'binary' && value[1][2][2][1] == '>>' &&
+                value[1][2][2][2][0] == 'name' && value[1][2][2][2][1] == 'tempDoublePtr')) {
+            // If not that, then traverse and scan normally.
+            traverse(value, function(node, type) {
+              if (!(type in NODES_WITHOUT_ELIMINATION_SIDE_EFFECTS)) {
+                hasSideEffects = true; // cannot remove this unused variable, constructing it has side effects
+                return true;
+              }
+            });
+          }
         }
         if (!hasSideEffects) {
           varsToRemove[name] = !definitions[name] ? 2 : 1; // remove it normally
