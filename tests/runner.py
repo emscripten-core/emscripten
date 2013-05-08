@@ -12871,6 +12871,12 @@ elif 'benchmark' in str(sys.argv):
                                 []          [][]      [][][]    
 --------------------------------''', shared_args=['-std=c99'], force_c=True)
 
+    def test_nbody_java(self): # tests xmlvm compiled java, including bitcasts of doubles, i64 math, etc.
+      args = [path_from_root('tests', 'nbody-java', x) for x in os.listdir(path_from_root('tests', 'nbody-java')) if x.endswith('.c')] + \
+             ['-I' + path_from_root('tests', 'nbody-java')]
+      self.do_benchmark('nbody_java', '', ['11500000'], '''Time(s)''',
+                        force_c=True, emcc_args=args + ['-s', 'PRECISE_I64_MATH=1', '--llvm-lto', '0'], native_args=args + ['-lgc', '-std=c99', '-target', 'x86_64-pc-linux-gnu', '-lm'])
+
     def test_zlib(self):
       src = open(path_from_root('tests', 'zlib', 'benchmark.c'), 'r').read()
       emcc_args = self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a']) + \

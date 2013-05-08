@@ -87,9 +87,8 @@ int selectRead(hysocket_t hysocketP, I_32 uSecTime, BOOLEAN accept)
 UDATA hytime_msec_clock ()
 {
     struct timeval tp;
-    struct timezone tzp;
     
-    gettimeofday (&tp, &tzp);
+    gettimeofday (&tp, NULL);
     return (tp.tv_sec * 1000) + (tp.tv_usec / 1000);
 }
 

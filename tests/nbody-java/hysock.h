@@ -226,7 +226,7 @@ typedef struct hylinger_struct
 } hylinger_struct;
 typedef struct hyipmreq_struct
 {
-  OSIPMREQ addrpair;
+  int addrpair;
 } hyipmreq_struct;
 #define GET_HOST_BUFFER_SIZE 512
 /* The gethostBuffer is allocated bufferSize + EXTRA_SPACE, while gethostby*_r is only aware of bufferSize

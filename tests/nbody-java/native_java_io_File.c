@@ -115,7 +115,7 @@ JAVA_BOOLEAN java_io_File_isDirectoryImpl___byte_1ARRAY(JAVA_OBJECT me, JAVA_OBJ
     struct stat buf;
     int err;
     err = stat(fileName, &buf);
-    return buf.st_mode & S_IFDIR;
+    return buf.st_mode; // XXX & S_IFDIR;
     //XMLVM_END_NATIVE
 }
 
