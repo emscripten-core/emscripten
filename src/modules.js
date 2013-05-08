@@ -318,6 +318,7 @@ var Functions = {
         if (ASM_JS) {
           var curr = table[i];
           if (curr && curr != '0' && !Functions.implementedFunctions[curr]) {
+            curr = curr.replace('.', '_'); // fix Math.* to Math_*
             // This is a library function, we can't just put it in the function table, need a wrapper
             if (!wrapped[curr]) {
               var args = '', arg_coercions = '', call = curr + '(', retPre = '', retPost = '';
