@@ -1396,8 +1396,7 @@ function normalizeAsm(func) {
               data.vars[name] = detectAsmCoercion(value); // detect by coercion
             } else {
               var origin = value[1];
-              assert(origin in data.vars);
-              data.vars[name] = data.vars[origin]; // detect by origin variable
+              data.vars[name] = data.vars[origin] || ASM_INT; // detect by origin variable, or assume int for non-locals
             }
           }
         }
