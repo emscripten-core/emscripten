@@ -246,6 +246,22 @@ void nbody_nbody_main___java_lang_String_1ARRAY(JAVA_OBJECT n1)
 
 int main(int argc, char* argv[])
 {
+    // translate our normalized argument (0-0, 1-0.1secs, 2-0.5secs, 3-1sec, 4-5secs, 5-10secs) to nbody
+    int arg = argc > 1 ? argv[1][0] - '0' : 3;
+    char buffer[100];
+    argv[1] = buffer;
+    int n;
+    switch(arg) {
+      case 0: return 0; break;
+      case 1: n = 600000; break;
+      case 2: n = 3600000; break;
+      case 3: n = 6550000; break;
+      case 4: n = 30000000; break;
+      case 5: n = 60000000; break;
+      default: printf("error: %d\\n", arg); return -1;
+    }
+    snprintf(buffer, 50, "%d", n);
+
     xmlvm_init();
 
     // Initialize the main thread before entering XMLVM_SETJMP
