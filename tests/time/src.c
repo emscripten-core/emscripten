@@ -96,7 +96,8 @@ int main() {
   clock_t start = clock();
   printf("clock(start): %d\n", start >= 0);
   while (clock() - start < 2 * CLOCKS_PER_SEC); // Poor man's sleep().
-  printf("clock(end): %d\n", time(NULL) - start_t == 2);
+  clock_t diff = time(NULL) - start_t;
+  printf("clock(end): %d\n", diff >= 2 && diff < 30);
 
   // Verify that ctime_r(x, buf) is equivalent to asctime_r(localtime(x), buf).
   time_t t7 = time(0);

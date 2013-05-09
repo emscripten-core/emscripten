@@ -108,4 +108,29 @@ function label() {
     i();
   }
 }
+function switchy() {
+  var no = 0, yes = 0;
+  while (1) switch (label | 0) {
+   case x:
+    no = 100;
+    break;
+   case y:
+    yes = 111;
+    yes = yes * 2;
+    print(yes);
+    yes--;
+    print(yes / 2);
+    continue;
+  }
+}
+function confuusion() {
+  var i = +0, j = +0;
+  func1(+i);
+  j = i;
+  func2(+j);
+}
+function tempDouble(a) {
+  a = +a;
+  f(a * a);
+}
 

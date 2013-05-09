@@ -1,3 +1,19 @@
+Updates to Python 2.7.4 and emscripten of Arp 29 2013 with le32
+
+Go to js dir, run EMCONFIGURE_JS=1 ~/Dev/emscripten/emconfigure ./configure --without-threads --without-pymalloc --enable-shared --disable-ipv6
+clean out MULTIARCH= in Makefile
+make, until error on pgen
+Go to native, run ./configure --without-threads --without-pymalloc --enable-shared --disable-ipv6
+cp Parser/pgen ../JS_DIR/Parser
+return to JS
+chmod +x Parser/pgen
+remove #defines of  DOUBLE_IS_BIG_ENDIAN_IEEE754 and DOUBLE_IS_ARM_MIXED_ENDIAN_IEEE754 and HAVE_GCC_ASM_FOR_X87 in pyconfig.h
+make
+link libpython2.7.so with Modules/python.o to get the bitcode file you want
+
+=========================
+
+
 This is Python 2.7.2, compiled to .bc as follows:
 
 Uncompress Python into two separate directories, one for native and one for JS.

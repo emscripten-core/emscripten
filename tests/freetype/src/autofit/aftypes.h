@@ -309,7 +309,7 @@ extern void*  _af_debug_hints;
   (*AF_Script_InitHintsFunc)( AF_GlyphHints     hints,
                               AF_ScriptMetrics  metrics );
 
-  typedef void
+  typedef FT_Error /* XXX EMSCRIPTEN */
   (*AF_Script_ApplyHintsFunc)( AF_GlyphHints     hints,
                                FT_Outline*       outline,
                                AF_ScriptMetrics  metrics );

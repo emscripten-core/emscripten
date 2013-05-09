@@ -99,7 +99,66 @@ function analyzer(data, sidePass) {
         }
       }
       delete item.items;
+      this.forwardItem(item, 'CastAway');
+    }
+  });
+
+  // CastAway - try to remove bitcasts of double to i64, which LLVM sometimes generates unnecessarily
+  // (load a double, convert to i64, use as i64).
+  // We optimize this by checking if the value is later converted to an i64. If so we create a shadow
+  // variable that is a load of an i64, and use that in those places. (As SSA, this is valid, and
+  // variable elimination later will remove the double load if it is no longer needed.)
+  //
+  substrate.addActor('CastAway', {
+    processItem: function(item) {
       this.forwardItem(item, 'Legalizer');
+      if (USE_TYPED_ARRAYS != 2) return;
+
+      item.functions.forEach(function(func) {
+        var changed = false;
+        func.labels.forEach(function(label) {
+          var doubleVars = {};
+          var lines = label.lines;
+          var i = 0;
+          while (i < lines.length) {
+            var line = lines[i];
+            if (line.intertype == 'load' && line.type == 'double') {
+              doubleVars[line.assignTo] = i;
+            } else if (line.intertype == 'bitcast' && line.type == 'i64' && line.ident in doubleVars) {
+              // this is a bitcast of a loaded double into an i64. create shadow var
+              var shadow = line.ident + '$$i64doubleSHADOW';
+              var loadI = doubleVars[line.ident];
+              var load = lines[loadI];
+              if (load.pointer.intertype != 'value') { i++; continue } // TODO
+              // create shadow
+              lines.splice(loadI + 1, 0, { // this element will be legalized in the next phase
+                tokens: null,
+                indent: 2,
+                lineNum: load.lineNum + 0.5,
+                assignTo: shadow,
+                intertype: 'load',
+                pointerType: 'i64*',
+                type: 'i64',
+                valueType: 'i64',
+                pointer: {
+                 intertype: 'value',
+                 ident: load.pointer.ident,
+                 type: 'i64*'
+                },
+                align: load.align,
+                ident: load.ident
+              });
+              // use shadow
+              line.params[0].ident = shadow;
+              line.params[0].type = 'i64';
+              line.type2 = 'i64';
+              // note: no need to update func.lines, it is generated in a later pass
+              i++;
+            }
+            i++;
+          }
+        });
+      });
     }
   });
 
@@ -124,6 +183,10 @@ function analyzer(data, sidePass) {
           bits = bits || 32; // things like pointers are all i32, but show up as 0 bits from getBits
           if (allowLegal && bits <= 32) return [{ ident: base + ('i' + bits in Runtime.INT_TYPES ? '' : '$0'), bits: bits }];
           if (isNumber(base)) return getLegalLiterals(base, bits);
+          if (base[0] == '{') {
+            warnOnce('seeing source of illegal data ' + base + ', likely an inline struct - assuming zeroinit');
+            return getLegalLiterals('0', bits);
+          }
           var ret = new Array(Math.ceil(bits/32));
           var i = 0;
           if (base == 'zeroinitializer' || base == 'undef') base = 0;
@@ -320,12 +383,13 @@ function analyzer(data, sidePass) {
                 }
                 // call, return: Return the first 32 bits, the rest are in temp
                 case 'call': {
-                  bits = getBits(value.type);
-                  var elements = getLegalVars(item.assignTo, bits);
                   var toAdd = [value];
                   // legalize parameters
                   legalizeFunctionParameters(value.params);
+                  // legalize return value, if any
                   if (value.assignTo && isIllegalType(item.type)) {
+                    bits = getBits(value.type);
+                    var elements = getLegalVars(item.assignTo, bits);
                     // legalize return value
                     value.assignTo = elements[0].ident;
                     for (var j = 1; j < elements.length; j++) {
@@ -463,6 +527,23 @@ function analyzer(data, sidePass) {
                 case 'switch': {
                   i++;
                   continue; // special case, handled in makeComparison
+                }
+                case 'va_arg': {
+                  assert(value.type == 'i64');
+                  assert(value.value.type == 'i32*', value.value.type);
+                  i += removeAndAdd(label.lines, i, range(2).map(function(x) {
+                    return {
+                      intertype: 'va_arg',
+                      assignTo: value.assignTo + '$' + x,
+                      type: 'i32',
+                      value: {
+                        intertype: 'value',
+                        ident: value.value.ident, // We read twice from the same i32* var, incrementing // + '$' + x,
+                        type: 'i32*'
+                      }
+                    };
+                  }));
+                  continue;
                 }
                 case 'extractvalue': { // XXX we assume 32-bit alignment in extractvalue/insertvalue,
                                        // but in theory they can run on packed structs too (see use getStructuralTypePartBits)
@@ -655,10 +736,12 @@ function analyzer(data, sidePass) {
                     assert(PRECISE_I64_MATH, 'Must have precise i64 math for non-constant 64-bit shifts');
                     Types.preciseI64MathUsed = 1;
                     value.intertype = 'value';
-                    value.ident = 'var ' + value.assignTo + '$0 = _bitshift64' + value.op[0].toUpperCase() + value.op.substr(1) + '(' + 
-                        asmCoercion(sourceElements[0].ident, 'i32') + ',' +
-                        asmCoercion(sourceElements[1].ident, 'i32') + ',' +
-                        asmCoercion(value.params[1].ident + '$0', 'i32') + ');' +
+                    value.ident = 'var ' + value.assignTo + '$0 = ' +
+                        asmCoercion('_bitshift64' + value.op[0].toUpperCase() + value.op.substr(1) + '(' + 
+                          asmCoercion(sourceElements[0].ident, 'i32') + ',' +
+                          asmCoercion(sourceElements[1].ident, 'i32') + ',' +
+                          asmCoercion(value.params[1].ident + '$0', 'i32') + ')', 'i32'
+                        ) + ';' +
                         'var ' + value.assignTo + '$1 = tempRet0;';
                     value.assignTo = null;
                     i++;
@@ -1384,20 +1467,21 @@ function analyzer(data, sidePass) {
             var line = label.lines[j];
             if ((line.intertype == 'call' || line.intertype == 'invoke') && line.ident == setjmp) {
               // Add a new label
-              var oldIdent = label.ident;
-              var newIdent = func.labelIdCounter++;
+              var oldLabel = label.ident;
+              var newLabel = func.labelIdCounter++;
               if (!func.setjmpTable) func.setjmpTable = [];
-              func.setjmpTable.push([oldIdent, newIdent, line.assignTo]);
+              func.setjmpTable.push({ oldLabel: oldLabel, newLabel: newLabel, assignTo: line.assignTo });
               func.labels.splice(i+1, 0, {
                 intertype: 'label',
-                ident: newIdent,
+                ident: newLabel,
                 lineNum: label.lineNum + 0.5,
                 lines: label.lines.slice(j+1)
               });
+              func.labelsDict[newLabel] = func.labels[i+1];
               label.lines = label.lines.slice(0, j+1);
               label.lines.push({
                 intertype: 'branch',
-                label: toNiceIdent(newIdent),
+                label: toNiceIdent(newLabel),
                 lineNum: line.lineNum + 0.01, // XXX legalizing might confuse this
               });
               // Correct phis
@@ -1406,8 +1490,8 @@ function analyzer(data, sidePass) {
                   if (phi.intertype == 'phi') {
                     for (var i = 0; i < phi.params.length; i++) {
                       var sourceLabelId = getActualLabelId(phi.params[i].label);
-                      if (sourceLabelId == oldIdent) {
-                        phi.params[i].label = newIdent;
+                      if (sourceLabelId == oldLabel) {
+                        phi.params[i].label = newLabel;
                       }
                     }
                   }
@@ -1484,7 +1568,7 @@ function analyzer(data, sidePass) {
             calcAllocatedSize(item.allocatedType)*item.allocatedNum: 0;
           if (USE_TYPED_ARRAYS === 2) {
             // We need to keep the stack aligned
-            item.allocatedSize = Runtime.forceAlign(item.allocatedSize, QUANTUM_SIZE);
+            item.allocatedSize = Runtime.forceAlign(item.allocatedSize, Runtime.STACK_ALIGN);
           }
         }
         var index = 0;

@@ -7,12 +7,12 @@
 #endif
 
 SDL_Surface *screen;
-SDL_Surface *sprite[4];
+SDL_Surface *sprite[6];
 
 void mainloop() {
     int i;
     SDL_Rect rect = { 0, 0, 100, 100 };
-    for (i = 0; i < 4; i++) {
+    for (i = 0; i < 6; i++) {
         rect.x = i & 1 ? 200 : 0;
         rect.y = i & 2 ? 200 : 0;
         SDL_BlitSurface(sprite[i], 0, screen, &rect);
@@ -30,6 +30,8 @@ int main(int argc, char **argv) {
     SDL_FillRect(sprite[1], 0, 0xA0A0A0A0);
     sprite[2] = zoomSurface(sprite[0], 0.5, 0.5, SMOOTHING_ON);
     sprite[3] = zoomSurface(sprite[1], 0.5, 0.5, SMOOTHING_ON);
+    sprite[4] = rotozoomSurface(sprite[0], -20, 0.3, SMOOTHING_ON);
+    sprite[5] = rotozoomSurface(sprite[1], 45, 0.5, SMOOTHING_ON);
 
     mainloop();
 

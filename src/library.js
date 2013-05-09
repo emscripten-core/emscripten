@@ -15,16 +15,18 @@
 // object. For convenience, the short name appears here. Note that if you add a
 // new function with an '_', it will not be found.
 
+// Memory allocated during startup, in postsets, should only be ALLOC_STATIC
+
 LibraryManager.library = {
   // ==========================================================================
   // File system base.
   // ==========================================================================
 
   // keep this low in memory, because we flatten arrays with them in them
-  stdin: 'allocate(1, "i32*", ALLOC_STACK)',
-  stdout: 'allocate(1, "i32*", ALLOC_STACK)',
-  stderr: 'allocate(1, "i32*", ALLOC_STACK)',
-  _impure_ptr: 'allocate(1, "i32*", ALLOC_STACK)',
+  stdin: 'allocate(1, "i32*", ALLOC_STATIC)',
+  stdout: 'allocate(1, "i32*", ALLOC_STATIC)',
+  stderr: 'allocate(1, "i32*", ALLOC_STATIC)',
+  _impure_ptr: 'allocate(1, "i32*", ALLOC_STATIC)',
 
   $FS__deps: ['$ERRNO_CODES', '__setErrNo', 'stdin', 'stdout', 'stderr', '_impure_ptr'],
   $FS__postset: '__ATINIT__.unshift({ func: function() { if (!Module["noFSInit"] && !FS.init.initialized) FS.init() } });' +
@@ -573,7 +575,7 @@ LibraryManager.library = {
         eof: false,
         ungotten: []
       };
-      assert(Math.max(_stdin, _stdout, _stderr) < 128); // make sure these are low, we flatten arrays with these
+      // TODO: put these low in memory like we used to assert on: assert(Math.max(_stdin, _stdout, _stderr) < 15000); // make sure these are low, we flatten arrays with these
       {{{ makeSetValue(makeGlobalUse('_stdin'), 0, 1, 'void*') }}};
       {{{ makeSetValue(makeGlobalUse('_stdout'), 0, 2, 'void*') }}};
       {{{ makeSetValue(makeGlobalUse('_stderr'), 0, 3, 'void*') }}};
@@ -590,11 +592,11 @@ LibraryManager.library = {
       FS.streams[_stderr] = FS.streams[3];
 #if ASSERTIONS
       FS.checkStreams();
-      assert(FS.streams.length < 1024); // at this early stage, we should not have a large set of file descriptors - just a few
+      // see previous TODO on stdin etc.: assert(FS.streams.length < 1024); // at this early stage, we should not have a large set of file descriptors - just a few
 #endif
       allocate([ allocate(
         {{{ Runtime.QUANTUM_SIZE === 4 ? '[0, 0, 0, 0, _stdin, 0, 0, 0, _stdout, 0, 0, 0, _stderr, 0, 0, 0]' : '[0, _stdin, _stdout, _stderr]' }}},
-        'void*', ALLOC_STATIC) ], 'void*', ALLOC_NONE, {{{ makeGlobalUse('__impure_ptr') }}});
+        'void*', ALLOC_DYNAMIC) ], 'void*', ALLOC_NONE, {{{ makeGlobalUse('__impure_ptr') }}});
     },
 
     quit: function() {
@@ -2118,7 +2120,20 @@ LibraryManager.library = {
       return 1;
     }
   },
-  // TODO: Implement initgroups, setgroups (grp.h).
+  // TODO: Implement initgroups (grp.h).
+  setgroups__deps: ['__setErrNo', '$ERRNO_CODES', 'sysconf'],
+  setgroups: function (ngroups, gidset) {
+    // int setgroups(int ngroups, const gid_t *gidset);
+    // https://developer.apple.com/library/mac/#documentation/Darwin/Reference/ManPages/man2/setgroups.2.html
+    if (ngroups < 1 || ngroups > _sysconf({{{ cDefine('_SC_NGROUPS_MAX') }}})) {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return -1;
+    } else {
+      // We have just one process/user/group, so it makes no sense to set groups.
+      ___setErrNo(ERRNO_CODES.EPERM);
+      return -1;
+    }
+  },
   gethostid: function() {
     // long gethostid(void);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/gethostid.html
@@ -2412,22 +2427,17 @@ LibraryManager.library = {
     // Implement a Linux-like 'memory area' for our 'process'.
     // Changes the size of the memory area by |bytes|; returns the
     // address of the previous top ('break') of the memory area
-
-    // We need to make sure no one else allocates unfreeable memory!
-    // We must control this entirely. So we don't even need to do
-    // unfreeable allocations - the HEAP is ours, from STATICTOP up.
-    // TODO: We could in theory slice off the top of the HEAP when
-    //       sbrk gets a negative increment in |bytes|...
+    // We control the "dynamic" memory - DYNAMIC_BASE to DYNAMICTOP
     var self = _sbrk;
     if (!self.called) {
-      STATICTOP = alignMemoryPage(STATICTOP); // make sure we start out aligned
+      DYNAMICTOP = alignMemoryPage(DYNAMICTOP); // make sure we start out aligned
       self.called = true;
-#if GC_SUPPORT
-      _sbrk.DYNAMIC_START = STATICTOP;
-#endif
+      assert(Runtime.dynamicAlloc);
+      self.alloc = Runtime.dynamicAlloc;
+      Runtime.dynamicAlloc = function() { abort('cannot dynamically allocate, sbrk now has control') };
     }
-    var ret = STATICTOP;
-    if (bytes != 0) Runtime.staticAlloc(bytes);
+    var ret = DYNAMICTOP;
+    if (bytes != 0) self.alloc(bytes);
     return ret;  // Previous break location.
   },
   open64: 'open',
@@ -2486,7 +2496,7 @@ LibraryManager.library = {
     for (var formatIndex = 0; formatIndex < format.length;) {
       if (format[formatIndex] === '%' && format[formatIndex+1] == 'n') {
         var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
-        argIndex += Runtime.getNativeFieldSize('void*');
+        argIndex += Runtime.getAlignSize('void*', null, true);
         {{{ makeSetValue('argPtr', 0, 'soFar', 'i32') }}};
         formatIndex += 2;
         continue;
@@ -2495,7 +2505,7 @@ LibraryManager.library = {
       // TODO: Support strings like "%5c" etc.
       if (format[formatIndex] === '%' && format[formatIndex+1] == 'c') {
         var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
-        argIndex += Runtime.getNativeFieldSize('void*');
+        argIndex += Runtime.getAlignSize('void*', null, true);
         fields++;
         next = get();
         {{{ makeSetValue('argPtr', 0, 'next', 'i8') }}}
@@ -2513,6 +2523,11 @@ LibraryManager.library = {
 
       if (format[formatIndex] === '%') {
         formatIndex++;
+        var suppressAssignment = false;
+        if (format[formatIndex] == '*') {
+          suppressAssignment = true;
+          formatIndex++;
+        }
         var maxSpecifierStart = formatIndex;
         while (format[formatIndex].charCodeAt(0) >= {{{ charCode('0') }}} &&
                format[formatIndex].charCodeAt(0) <= {{{ charCode('9') }}}) {
@@ -2578,9 +2593,11 @@ LibraryManager.library = {
           unget();
         }
         if (buffer.length === 0) return 0;  // Failure.
+        if (suppressAssignment) continue;
+
         var text = buffer.join('');
         var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
-        argIndex += Runtime.getNativeFieldSize('void*');
+        argIndex += Runtime.getAlignSize('void*', null, true);
         switch (type) {
           case 'd': case 'u': case 'i':
             if (half) {
@@ -2649,8 +2666,16 @@ LibraryManager.library = {
         ret = {{{ makeGetValue('varargs', 'argIndex', 'double', undefined, undefined, true) }}};
 #if USE_TYPED_ARRAYS == 2
       } else if (type == 'i64') {
+
+#if TARGET_LE32
+        ret = [{{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}},
+               {{{ makeGetValue('varargs', 'argIndex+8', 'i32', undefined, undefined, true) }}}];
+        argIndex += {{{ STACK_ALIGN }}}; // each 32-bit chunk is in a 64-bit block
+#else
         ret = [{{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}},
                {{{ makeGetValue('varargs', 'argIndex+4', 'i32', undefined, undefined, true) }}}];
+#endif
+
 #else
       } else if (type == 'i64') {
         ret = {{{ makeGetValue('varargs', 'argIndex', 'i64', undefined, undefined, true) }}};
@@ -2659,7 +2684,7 @@ LibraryManager.library = {
         type = 'i32'; // varargs are always i32, i64, or double
         ret = {{{ makeGetValue('varargs', 'argIndex', 'i32', undefined, undefined, true) }}};
       }
-      argIndex += Runtime.getNativeFieldSize(type);
+      argIndex += Math.max(Runtime.getNativeFieldSize(type), Runtime.getAlignSize(type, null, true));
       return ret;
     }
 
@@ -2979,16 +3004,20 @@ LibraryManager.library = {
           }
           case 's': {
             // String.
-            var arg = getNextArg('i8*') || nullString;
-            var argLength = _strlen(arg);
+            var arg = getNextArg('i8*');
+            var argLength = arg ? _strlen(arg) : '(null)'.length;
             if (precisionSet) argLength = Math.min(argLength, precision);
             if (!flagLeftAlign) {
               while (argLength < width--) {
                 ret.push({{{ charCode(' ') }}});
               }
             }
-            for (var i = 0; i < argLength; i++) {
-              ret.push({{{ makeGetValue('arg++', 0, 'i8', null, true) }}});
+            if (arg) {
+              for (var i = 0; i < argLength; i++) {
+                ret.push({{{ makeGetValue('arg++', 0, 'i8', null, true) }}});
+              }
+            } else {
+              ret = ret.concat(intArrayFromString('(null)'.substr(0, argLength), true));
             }
             if (flagLeftAlign) {
               while (argLength < width--) {
@@ -3592,6 +3621,9 @@ LibraryManager.library = {
   asprintf: function(s, format, varargs) {
     return _sprintf(-s, format, varargs);
   },
+
+#if TARGET_X86
+  // va_arg is just like our varargs
   vfprintf: 'fprintf',
   vsnprintf: 'snprintf',
   vprintf: 'printf',
@@ -3600,6 +3632,44 @@ LibraryManager.library = {
   vscanf: 'scanf',
   vfscanf: 'fscanf',
   vsscanf: 'sscanf',
+#endif
+
+#if TARGET_LE32
+  // convert va_arg into varargs
+  vfprintf__deps: ['fprintf'],
+  vfprintf: function(s, f, va_arg) {
+    return _fprintf(s, f, {{{ makeGetValue('va_arg', 0, '*') }}});
+  },
+  vsnprintf__deps: ['snprintf'],
+  vsnprintf: function(s, n, format, va_arg) {
+    return _snprintf(s, n, format, {{{ makeGetValue('va_arg', 0, '*') }}});
+  },
+  vprintf__deps: ['printf'],
+  vprintf: function(format, va_arg) {
+    return _printf(format, {{{ makeGetValue('va_arg', 0, '*') }}});
+  },
+  vsprintf__deps: ['sprintf'],
+  vsprintf: function(s, format, va_arg) {
+    return _sprintf(s, format, {{{ makeGetValue('va_arg', 0, '*') }}});
+  },
+  vasprintf__deps: ['asprintf'],
+  vasprintf: function(s, format, va_arg) {
+    return _asprintf(s, format, {{{ makeGetValue('va_arg', 0, '*') }}});
+  },
+  vscanf__deps: ['scanf'],
+  vscanf: function(format, va_arg) {
+    return _scanf(format, {{{ makeGetValue('va_arg', 0, '*') }}});
+  },
+  vfscanf__deps: ['fscanf'],
+  vfscanf: function(s, format, va_arg) {
+    return _fscanf(s, format, {{{ makeGetValue('va_arg', 0, '*') }}});
+  },
+  vsscanf__deps: ['sscanf'],
+  vsscanf: function(s, format, va_arg) {
+    return _sscanf(s, format, {{{ makeGetValue('va_arg', 0, '*') }}});
+  },
+#endif
+
   fopen64: 'fopen',
   __01fopen64_: 'fopen',
   __01freopen64_: 'freopen',
@@ -3681,10 +3751,17 @@ LibraryManager.library = {
      * implementation (replaced by dlmalloc normally) so
      * not an issue.
      */
-    var ptr = Runtime.staticAlloc(bytes + 8);
+#if ASSERTIONS
+    Runtime.warnOnce('using stub malloc (reference it from C to have the real one included)');
+#endif
+    var ptr = Runtime.dynamicAlloc(bytes + 8);
     return (ptr+8) & 0xFFFFFFF8;
   },
-  free: function(){},
+  free: function() {
+#if ASSERTIONS
+    Runtime.warnOnce('using stub free (reference it from C to have the real one included)');
+#endif
+},
 
   calloc__deps: ['malloc'],
   calloc: function(n, s) {
@@ -3960,7 +4037,7 @@ LibraryManager.library = {
     _free(temp);
   },
 
-  environ: 'allocate(1, "i32*", ALLOC_STACK)',
+  environ: 'allocate(1, "i32*", ALLOC_STATIC)',
   __environ__deps: ['environ'],
   __environ: '_environ',
   __buildEnvironment__deps: ['__environ'],
@@ -4148,32 +4225,6 @@ LibraryManager.library = {
     }
   },
 
-  mbtowc: function(pwc, pmb, maxx) {
-    // XXX doesn't really handle multibyte at all
-    if (!pmb) return 0;
-    maxx = Math.min({{{ cDefine('_NL_CTYPE_MB_CUR_MAX') }}}, maxx);
-    var i;
-    for (i = 0; i < maxx; i++) {
-      var curr = {{{ makeGetValue('pmb', 0, 'i8') }}};
-      if (pwc) {
-        {{{ makeSetValue('pwc', '0', 'curr', 'i8') }}};
-        {{{ makeSetValue('pwc', '1', '0', 'i8') }}};
-        pwc += 2;
-      }
-      pmb++;
-      if (!curr) break;
-    }
-    return i;
-  },
-
-  wcrtomb: function(s, wc, ps) {
-    // XXX doesn't really handle multibyte at all
-    if (s) {
-      {{{ makeSetValue('s', '0', 'wc', 'i8') }}};
-    }
-    return 1;
-  },
-
   arc4random: 'rand',
 
   // ==========================================================================
@@ -4223,8 +4274,6 @@ LibraryManager.library = {
     return ret|0;
   },
 
-  wmemcpy: function() { throw 'wmemcpy not implemented' },
-
   llvm_memcpy_i32: 'memcpy',
   llvm_memcpy_i64: 'memcpy',
   llvm_memcpy_p0i8_p0i8_i32: 'memcpy',
@@ -4253,8 +4302,6 @@ LibraryManager.library = {
   llvm_memmove_i64: 'memmove',
   llvm_memmove_p0i8_p0i8_i32: 'memmove',
   llvm_memmove_p0i8_p0i8_i64: 'memmove',
-
-  wmemmove: function() { throw 'wmemmove not implemented' },
 
   memset__inline: function(ptr, value, num, align) {
     return makeSetValues(ptr, 0, value, 'null', num, align);
@@ -4296,31 +4343,17 @@ LibraryManager.library = {
   llvm_memset_p0i8_i32: 'memset',
   llvm_memset_p0i8_i64: 'memset',
 
-  wmemset: function() { throw 'wmemset not implemented' },
-
   strlen__sig: 'ii',
   strlen__asm: true,
   strlen: function(ptr) {
     ptr = ptr|0;
     var curr = 0;
     curr = ptr;
-    while ({{{ makeGetValueAsm('curr', '0', 'i8') }}}|0 != 0) {
+    while ({{{ makeGetValueAsm('curr', '0', 'i8') }}}) {
       curr = (curr + 1)|0;
     }
     return (curr - ptr)|0;
   },
-
-  // TODO: Implement when we have real unicode support.
-  mblen: function() {
-    return 1;
-  },
-
-  wcslen: function() { throw 'wcslen not implemented' },
-  mbrlen: function() { throw 'mbrlen not implemented' },
-  mbsrtowcs: function() { throw 'mbsrtowcs not implemented' },
-  wcsnrtombs: function() { throw 'wcsnrtombs not implemented' },
-  mbsnrtowcs: function() { throw 'mbsnrtowcs not implemented' },
-  mbrtowc: function() { throw 'mbrtowc not implemented' },
 
   strspn: function(pstr, pset) {
     var str = pstr, set, strcurr, setcurr;
@@ -4362,7 +4395,7 @@ LibraryManager.library = {
     do {
       {{{ makeCopyValues('(pdest+i)|0', '(psrc+i)|0', 1, 'i8', null, 1) }}};
       i = (i+1)|0;
-    } while (({{{ makeGetValue('psrc', 'i-1', 'i8') }}})|0 != 0);
+    } while ({{{ makeGetValueAsm('psrc', 'i-1', 'i8') }}});
     return pdest|0;
   },
 
@@ -4417,11 +4450,12 @@ LibraryManager.library = {
   strcat: function(pdest, psrc) {
     pdest = pdest|0; psrc = psrc|0;
     var i = 0;
-    pdest = (pdest + _strlen(pdest))|0;
+    var pdestEnd = 0;
+    pdestEnd = (pdest + (_strlen(pdest)|0))|0;
     do {
-      {{{ makeCopyValues('pdest+i', 'psrc+i', 1, 'i8', null, 1) }}};
+      {{{ makeCopyValues('pdestEnd+i', 'psrc+i', 1, 'i8', null, 1) }}};
       i = (i+1)|0;
-    } while ({{{ makeGetValueAsm('psrc', 'i-1', 'i8') }}} != 0);
+    } while ({{{ makeGetValueAsm('psrc', 'i-1', 'i8') }}});
     return pdest|0;
   },
 
@@ -4481,8 +4515,8 @@ LibraryManager.library = {
     px = px|0; py = py|0; n = n|0;
     var i = 0, x = 0, y = 0;
     while ((i>>>0) < (n>>>0)) {
-      x = _tolower({{{ makeGetValueAsm('px', 'i', 'i8', 0, 1) }}});
-      y = _tolower({{{ makeGetValueAsm('py', 'i', 'i8', 0, 1) }}});
+      x = _tolower({{{ makeGetValueAsm('px', 'i', 'i8', 0, 1) }}})|0;
+      y = _tolower({{{ makeGetValueAsm('py', 'i', 'i8', 0, 1) }}})|0;
       if (((x|0) == (y|0)) & ((x|0) == 0)) return 0;
       if ((x|0) == 0) return -1;
       if ((y|0) == 0) return 1;
@@ -4849,7 +4883,13 @@ LibraryManager.library = {
 
   llvm_va_start__inline: function(ptr) {
     // varargs - we received a pointer to the varargs as a final 'extra' parameter called 'varrp'
+#if TARGET_X86
     return makeSetValue(ptr, 0, 'varrp', 'void*');
+#endif
+#if TARGET_LE32
+    // 4-word structure: start, current offset
+    return makeSetValue(ptr, 0, 'varrp', 'void*') + ';' + makeSetValue(ptr, 4, 0, 'void*');
+#endif
   },
 
   llvm_va_end: function() {},
@@ -4893,16 +4933,20 @@ LibraryManager.library = {
       }
       return 8;
     }
-    return 'var ctlz_i8 = [' + range(256).map(function(x) { return ctlz(x) }).join(',') + '];';
+    return 'var ctlz_i8 = allocate([' + range(256).map(function(x) { return ctlz(x) }).join(',') + '], "i8", ALLOC_STATIC);';
   }],
+  llvm_ctlz_i32__asm: true,
+  llvm_ctlz_i32__sig: 'ii',
   llvm_ctlz_i32: function(x) {
-    var ret = ctlz_i8[x >>> 24];
-    if (ret < 8) return ret;
-    var ret = ctlz_i8[(x >> 16)&0xff];
-    if (ret < 8) return ret + 8;
-    var ret = ctlz_i8[(x >> 8)&0xff];
-    if (ret < 8) return ret + 16;
-    return ctlz_i8[x&0xff] + 24;
+    x = x|0;
+    var ret = 0;
+    ret = {{{ makeGetValueAsm('ctlz_i8', 'x >>> 24', 'i8') }}};
+    if ((ret|0) < 8) return ret|0;
+    var ret = {{{ makeGetValueAsm('ctlz_i8', '(x >> 16)&0xff', 'i8') }}};
+    if ((ret|0) < 8) return (ret + 8)|0;
+    var ret = {{{ makeGetValueAsm('ctlz_i8', '(x >> 8)&0xff', 'i8') }}};
+    if ((ret|0) < 8) return (ret + 16)|0;
+    return ({{{ makeGetValueAsm('ctlz_i8', 'x&0xff', 'i8') }}} + 24)|0;
   },
 
   llvm_ctlz_i64__deps: ['llvm_ctlz_i32'],
@@ -4925,16 +4969,20 @@ LibraryManager.library = {
       }
       return 8;
     }
-    return 'var cttz_i8 = [' + range(256).map(function(x) { return cttz(x) }).join(',') + '];';
+    return 'var cttz_i8 = allocate([' + range(256).map(function(x) { return cttz(x) }).join(',') + '], "i8", ALLOC_STATIC);';
   }],
+  llvm_cttz_i32__asm: true,
+  llvm_cttz_i32__sig: 'ii',
   llvm_cttz_i32: function(x) {
-    var ret = cttz_i8[x & 0xff];
-    if (ret < 8) return ret;
-    var ret = cttz_i8[(x >> 8)&0xff];
-    if (ret < 8) return ret + 8;
-    var ret = cttz_i8[(x >> 16)&0xff];
-    if (ret < 8) return ret + 16;
-    return cttz_i8[x >>> 24] + 24;
+    x = x|0;
+    var ret = 0;
+    ret = {{{ makeGetValueAsm('cttz_i8', 'x & 0xff', 'i8') }}};
+    if ((ret|0) < 8) return ret|0;
+    var ret = {{{ makeGetValueAsm('cttz_i8', '(x >> 8)&0xff', 'i8') }}};
+    if ((ret|0) < 8) return (ret + 8)|0;
+    var ret = {{{ makeGetValueAsm('cttz_i8', '(x >> 16)&0xff', 'i8') }}};
+    if ((ret|0) < 8) return (ret + 16)|0;
+    return ({{{ makeGetValueAsm('cttz_i8', 'x >>> 24', 'i8') }}} + 24)|0;
   },
 
   llvm_cttz_i64__deps: ['llvm_cttz_i32'],
@@ -4996,6 +5044,7 @@ LibraryManager.library = {
   __cxa_free_exception: function(ptr) {
     return _free(ptr);
   },
+  __cxa_throw__sig: 'viii',
   __cxa_throw__deps: ['llvm_eh_exception', '_ZSt18uncaught_exceptionv', '__cxa_find_matching_catch'],
   __cxa_throw: function(ptr, type, destructor) {
     if (!___cxa_throw.initialized) {
@@ -5135,8 +5184,12 @@ LibraryManager.library = {
   // functionality boils down to picking a suitable 'catch' block.
   // We'll do that here, instead, to keep things simpler.
 
-  __cxa_find_matching_catch__deps: ['__cxa_does_inherit', '__cxa_is_number_type'],
-  __cxa_find_matching_catch: function(thrown, throwntype, typeArray) {
+  __cxa_find_matching_catch__deps: ['__cxa_does_inherit', '__cxa_is_number_type', '__resumeException'],
+  __cxa_find_matching_catch: function(thrown, throwntype) {
+    if (thrown == -1) thrown = {{{ makeGetValue('_llvm_eh_exception.buf', '0', 'void*') }}};
+    if (throwntype == -1) throwntype = {{{ makeGetValue('_llvm_eh_exception.buf', QUANTUM_SIZE, 'void*') }}};
+    var typeArray = Array.prototype.slice.call(arguments, 2);
+
     // If throwntype is a pointer, this means a pointer has been
     // thrown. When a pointer is thrown, actually what's thrown
     // is a pointer to the pointer. We'll dereference it.
@@ -5158,6 +5211,15 @@ LibraryManager.library = {
     // or encounter a type for which emscripten doesn't have suitable
     // typeinfo defined. Best-efforts match just in case.
     {{{ makeStructuralReturn(['thrown', 'throwntype']) }}};
+  },
+
+  __resumeException__deps: [function() { Functions.libraryFunctions['__resumeException'] = 1 }], // will be called directly from compiled code
+  __resumeException: function(ptr) {
+#if EXCEPTION_DEBUG
+    Module.print("Resuming exception");
+#endif
+    if ({{{ makeGetValue('_llvm_eh_exception.buf', 0, 'void*') }}} == 0) {{{ makeSetValue('_llvm_eh_exception.buf', 0, 'ptr', 'void*') }}};
+    {{{ makeThrow('ptr') }}};
   },
 
   // Recursively walks up the base types of 'possibilityType'
@@ -5262,9 +5324,11 @@ LibraryManager.library = {
 
   llvm_umul_with_overflow_i64__deps: [function() { Types.preciseI64MathUsed = 1 }],
   llvm_umul_with_overflow_i64: function(xl, xh, yl, yh) {
-    i64Math.multiply(xl, xh, yl, yh);
-    {{{ makeStructuralReturn([makeGetTempDouble(0, 'i32'), makeGetTempDouble(1, 'i32'), '0']) }}};
-    // XXX Need to hack support for second param in long.js
+#if ASSERTIONS
+    Runtime.warnOnce('no overflow support in llvm_umul_with_overflow_i64');
+#endif
+    var low = ___muldi3(xl, xh, yl, yh);
+    {{{ makeStructuralReturn(['low', 'tempRet0', '0']) }}};
   },
 
   llvm_stacksave: function() {
@@ -5310,6 +5374,8 @@ LibraryManager.library = {
   llvm_invariant_end: function() {},
 
   llvm_objectsize_i32: function() { return -1 }, // TODO: support this
+
+  llvm_dbg_declare__inline: function() { throw 'llvm_debug_declare' }, // avoid warning
 
   // ==========================================================================
   // llvm-mono integration
@@ -5395,6 +5461,7 @@ LibraryManager.library = {
     return (ONE_SQRTPI * Math.exp(- x * x) * q2);
   },
   erfcf: 'erfcf',
+  erf__deps: ['erfc'],
   erf: function (x) {
     var MATH_TOLERANCE = 1E-12;
     var TWO_SQRTPI = 1.128379167095512574;
@@ -5860,11 +5927,11 @@ LibraryManager.library = {
     ['i32', 'tm_gmtoff'],
     ['i32', 'tm_zone']]),
   // Statically allocated time struct.
-  __tm_current: 'allocate({{{ Runtime.QUANTUM_SIZE }}}*26, "i8", ALLOC_STACK)',
+  __tm_current: 'allocate({{{ Runtime.QUANTUM_SIZE }}}*26, "i8", ALLOC_STATIC)',
   // Statically allocated timezone strings.
   __tm_timezones: {},
   // Statically allocated time strings.
-  __tm_formatted: 'allocate({{{ Runtime.QUANTUM_SIZE }}}*26, "i8", ALLOC_STACK)',
+  __tm_formatted: 'allocate({{{ Runtime.QUANTUM_SIZE }}}*26, "i8", ALLOC_STATIC)',
 
   mktime__deps: ['__tm_struct_layout', 'tzset'],
   mktime: function(tmPtr) {
@@ -5998,9 +6065,9 @@ LibraryManager.library = {
 
   // TODO: Initialize these to defaults on startup from system settings.
   // Note: glibc has one fewer underscore for all of these. Also used in other related functions (timegm)
-  _tzname: 'allocate({{{ 2*Runtime.QUANTUM_SIZE }}}, "i32*", ALLOC_STACK)',
-  _daylight: 'allocate(1, "i32*", ALLOC_STACK)',
-  _timezone: 'allocate(1, "i32*", ALLOC_STACK)',
+  _tzname: 'allocate({{{ 2*Runtime.QUANTUM_SIZE }}}, "i32*", ALLOC_STATIC)',
+  _daylight: 'allocate(1, "i32*", ALLOC_STATIC)',
+  _timezone: 'allocate(1, "i32*", ALLOC_STATIC)',
   tzset__deps: ['_tzname', '_daylight', '_timezone'],
   tzset: function() {
     // TODO: Use (malleable) environment variables instead of system settings.
@@ -6173,13 +6240,76 @@ LibraryManager.library = {
   // related functionality so the slowdown is more limited.
   // ==========================================================================
 
-  setjmp__inline: function(env) {
-    // Save the label
-    return '(tempInt = setjmpId++, mySetjmpIds[tempInt] = 1, setjmpLabels[tempInt] = label,' + makeSetValue(env, '0', 'tempInt', 'i32', undefined, undefined, undefined, undefined,  ',') + ', 0)';
+  saveSetjmp__asm: true,
+  saveSetjmp__sig: 'iii',
+  saveSetjmp__deps: ['putchar'],
+  saveSetjmp: function(env, label, table) {
+    // Not particularly fast: slow table lookup of setjmpId to label. But setjmp
+    // prevents relooping anyhow, so slowness is to be expected. And typical case
+    // is 1 setjmp per invocation, or less.
+    env = env|0;
+    label = label|0;
+    table = table|0;
+    var i = 0;
+#if ASSERTIONS
+    if ((label|0) == 0) abort(121);
+#endif
+    setjmpId = (setjmpId+1)|0;
+    {{{ makeSetValueAsm('env', '0', 'setjmpId', 'i32') }}};
+    while ((i|0) < {{{ 2*MAX_SETJMPS }}}) {
+      if ({{{ makeGetValueAsm('table', 'i*4', 'i32') }}} == 0) {
+        {{{ makeSetValueAsm('table', 'i*4', 'setjmpId', 'i32') }}};
+        {{{ makeSetValueAsm('table', 'i*4+4', 'label', 'i32') }}};
+        // prepare next slot
+        {{{ makeSetValueAsm('table', 'i*4+8', '0', 'i32') }}};
+        return 0;
+      }
+      i = (i+2)|0;
+    }
+    {{{ makePrintChars('too many setjmps in a function call, build with a higher value for MAX_SETJMPS') }}};
+    abort(0);
+    return 0;
   },
 
+  testSetjmp__asm: true,
+  testSetjmp__sig: 'iii',
+  testSetjmp: function(id, table) {
+    id = id|0;
+    table = table|0;
+    var i = 0, curr = 0;
+    while ((i|0) < {{{ MAX_SETJMPS }}}) {
+      curr = {{{ makeGetValueAsm('table', 'i*4', 'i32') }}};
+      if ((curr|0) == 0) break;
+      if ((curr|0) == (id|0)) {
+        return {{{ makeGetValueAsm('table', 'i*4+4', 'i32') }}};
+      }
+      i = (i+2)|0;
+    }
+    return 0;
+  },
+
+#if ASM_JS
+  setjmp__deps: ['saveSetjmp', 'testSetjmp'],
+#endif
+  setjmp__inline: function(env) {
+    // Save the label
+#if ASM_JS
+    return '_saveSetjmp(' + env + ', label, setjmpTable)|0';
+#else
+    return '(tempInt = setjmpId++, mySetjmpIds[tempInt] = 1, setjmpLabels[tempInt] = label,' + makeSetValue(env, '0', 'tempInt', 'i32', undefined, undefined, undefined, undefined,  ',') + ', 0)';
+#endif
+  },
+
+#if ASM_JS
+  longjmp__deps: ['saveSetjmp', 'testSetjmp'],
+#endif
   longjmp: function(env, value) {
+#if ASM_JS
+    asm.setThrew(env, value || 1);
+    throw 'longjmp';
+#else
     throw { longjmp: true, id: {{{ makeGetValue('env', '0', 'i32') }}}, value: value || 1 };
+#endif
   },
 
   // ==========================================================================
@@ -6534,6 +6664,7 @@ LibraryManager.library = {
     ENOTSUP: 95,
     ENOTTY: 25,
     ENXIO: 6,
+    EOPNOTSUPP: 45,
     EOVERFLOW: 75,
     EOWNERDEAD: 130,
     EPERM: 1,
@@ -6615,6 +6746,7 @@ LibraryManager.library = {
     95: 'Operation not supported',
     25: 'Inappropriate ioctl for device',
     6: 'No such device or address',
+    45: 'Op not supported on transport endpoint',
     75: 'Value too large for defined data type',
     130: 'Owner died',
     1: 'Operation not permitted',
@@ -6632,15 +6764,18 @@ LibraryManager.library = {
     26: 'Text file busy',
     18: 'Invalid cross-device link'
   },
-  __setErrNo__postset: '___setErrNo(0);',
   __setErrNo: function(value) {
     // For convenient setting and returning of errno.
-    if (!___setErrNo.ret) ___setErrNo.ret = allocate([0], 'i32', ALLOC_STATIC);
+    if (!___setErrNo.ret) ___setErrNo.ret = allocate([0], 'i32', ALLOC_NORMAL);
     {{{ makeSetValue('___setErrNo.ret', '0', 'value', 'i32') }}}
     return value;
   },
   __errno_location__deps: ['__setErrNo'],
   __errno_location: function() {
+    if (!___setErrNo.ret) {
+      ___setErrNo.ret = allocate([0], 'i32', ALLOC_NORMAL);
+      {{{ makeSetValue('___setErrNo.ret', '0', '0', 'i32') }}}
+    }
     return ___setErrNo.ret;
   },
   __errno: '__errno_location',
@@ -6753,7 +6888,7 @@ LibraryManager.library = {
        void **restrict stackaddr, size_t *restrict stacksize); */
     /*FIXME: assumes that there is only one thread, and that attr is the
       current thread*/
-    {{{ makeSetValue('stackaddr', '0', 'STACK_ROOT', 'i8*') }}}
+    {{{ makeSetValue('stackaddr', '0', 'STACK_BASE', 'i8*') }}}
     {{{ makeSetValue('stacksize', '0', 'TOTAL_STACK', 'i32') }}}
     return 0;
   },
@@ -7101,7 +7236,13 @@ LibraryManager.library = {
       info.host = _gethostbyname.table[low + 0xff*high];
       assert(info.host, 'problem translating fake ip ' + parts);
     }
-    Sockets.backends[Sockets.backend].connect(info);
+    try {
+      Sockets.backends[Sockets.backend].connect(info);
+    } catch(e) {
+      Module.printErr('Error in connect(): ' + e);
+      ___setErrNo(ERRNO_CODES.EACCES);
+      return -1;
+    }
     return 0;
   },
 
@@ -7359,6 +7500,14 @@ LibraryManager.library = {
     }
   },
 
+  socketpair__deps: ['__setErrNo', '$ERRNO_CODES'],
+  socketpair: function(domain, type, protocol, sv) {
+    // int socketpair(int domain, int type, int protocol, int sv[2]);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/socketpair.html
+    ___setErrNo(ERRNO_CODES.EOPNOTSUPP);
+    return -1;
+  },
+
   // pty.h
 
   openpty: function() { throw 'openpty: TODO' },
@@ -7411,12 +7560,13 @@ LibraryManager.library = {
     }
     var i = 0;
     do {
-      var curr = {{{ makeGetValue('varargs', 'i*4', 'i8') }}};
+      var curr = {{{ makeGetValue('varargs', '0', 'i8') }}};
+      varargs += {{{ STACK_ALIGN }}};
       {{{ makeSetValue('_emscripten_jcache_printf_.buffer', 'i', 'curr', 'i8') }}};
       i++;
-      assert(i*4 < MAX);
+      assert(i*{{{ STACK_ALIGN }}} < MAX);
     } while (curr != 0);
-    Module.print(intArrayToString(__formatString(_emscripten_jcache_printf_.buffer, varargs + i*4)).replace('\\n', ''));
+    Module.print(intArrayToString(__formatString(_emscripten_jcache_printf_.buffer, varargs)).replace('\\n', ''));
     Runtime.stackAlloc(-4*i); // free up the stack space we know is ok to free
   },
 
@@ -7435,10 +7585,7 @@ LibraryManager.library = {
     a = a|0; b = b|0; c = c|0; d = d|0;
     var l = 0, h = 0;
     l = (a + c)>>>0;
-    h = (b + d)>>>0;
-    if ((l>>>0) < (a>>>0)) { // iff we overflowed
-      h = (h+1)>>>0;
-    }
+    h = (b + d + (((l>>>0) < (a>>>0))|0))>>>0; // Add carry from low word to high word on overflow.
     {{{ makeStructuralReturn(['l|0', 'h'], true) }}};
   },
   llvm_uadd_with_overflow_i64__asm: true,
@@ -7448,11 +7595,23 @@ LibraryManager.library = {
     var l = 0, h = 0, overflow = 0;
     l = (a + c)>>>0;
     h = (b + d)>>>0;
-    if ((l>>>0) < (a>>>0)) { // iff we overflowed
-      h = (h+1)>>>0;
-      overflow = 1;
+    overflow = ((h>>>0) < (b>>>0))|0; // Return whether addition overflowed even the high word.
+    if ((l>>>0) < (a>>>0)) {
+      h = (h + 1)>>>0; // Add carry from low word to high word on overflow.
+      overflow = overflow | (!h); // Check again for overflow.
     }
     {{{ makeStructuralReturn(['l|0', 'h', 'overflow'], true) }}};
+  },
+
+  i64Subtract__asm: true,
+  i64Subtract__sig: 'iiiii',
+  i64Subtract: function(a, b, c, d) {
+    a = a|0; b = b|0; c = c|0; d = d|0;
+    var l = 0, h = 0;
+    l = (a - c)>>>0;
+    h = (b - d)>>>0;
+    h = (b - d - (((c>>>0) > (a>>>0))|0))>>>0; // Borrow one from high word to low word on underflow.
+    {{{ makeStructuralReturn(['l|0', 'h'], true) }}};
   },
 
   bitshift64Shl__asm: true,

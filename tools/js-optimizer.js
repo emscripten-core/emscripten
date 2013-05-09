@@ -452,7 +452,16 @@ function simplifyExpressionsPre(ast) {
       }, null, []);
     }
 
-    // &-related optimizations
+    // & and heap-related optimizations
+
+    var heapBits, heapUnsigned;
+    function parseHeap(name) {
+      if (name.substr(0, 4) != 'HEAP') return false;
+      heapUnsigned = name[4] == 'U';
+      heapBits = parseInt(name.substr(heapUnsigned ? 5 : 4));
+      return true;
+    }
+
     traverseGenerated(ast, function(node, type) {
       if (type == 'binary' && node[1] == '&' && node[3][0] == 'num') {
         if (node[2][0] == 'num') return ['num', node[2][1] & node[3][1]];
@@ -465,12 +474,10 @@ function simplifyExpressionsPre(ast) {
         } else if (input[0] == 'sub' && input[1][0] == 'name') {
           // HEAP8[..] & 255 => HEAPU8[..]
           var name = input[1][1];
-          if (name.substr(0, 4) == 'HEAP') {
-            var unsigned = name[4] == 'U';
-            var bits = parseInt(name.substr(unsigned ? 5 : 4));
-            if (amount == Math.pow(2, bits)-1) {
-              if (!unsigned) {
-                input[1][1] = 'HEAPU' + bits; // make unsigned
+          if (parseHeap(name)) {
+            if (amount == Math.pow(2, heapBits)-1) {
+              if (!heapUnsigned) {
+                input[1][1] = 'HEAPU' + heapBits; // make unsigned
               }
               if (asm) {
                 // we cannot return HEAPU8 without a coercion, but at least we do HEAP8 & 255 => HEAPU8 | 0
@@ -480,6 +487,22 @@ function simplifyExpressionsPre(ast) {
               }
               return input;
             }
+          }
+        }
+      } else if (type       == 'binary' && node[1]    == '>>' && node[3][0]    == 'num' &&
+                 node[2][0] == 'binary' && node[2][1] == '<<' && node[2][3][0] == 'num' &&
+                 node[2][2][0] == 'sub' && node[2][2][1][0] == 'name') {
+        // collapse HEAPU?8[..] << 24 >> 24 etc. into HEAP8[..] | 0
+        // TODO: run this before | 0 | 0 removal, because we generate | 0
+        var amount = node[3][1];
+        var name = node[2][2][1][1];
+        if (amount == node[2][3][1] && parseHeap(name)) {
+          if (heapBits == 32 - amount) {
+            node[2][2][1][1] = 'HEAP' + heapBits;
+            node[1] = '|';
+            node[2] = node[2][2];
+            node[3][1] = 0;
+            return node;
           }
         }
       }
@@ -1369,7 +1392,12 @@ function normalizeAsm(func) {
           var name = v[0];
           var value = v[1];
           if (!(name in data.vars)) {
-            data.vars[name] = detectAsmCoercion(value);
+            if (value[0] != 'name') {
+              data.vars[name] = detectAsmCoercion(value); // detect by coercion
+            } else {
+              var origin = value[1];
+              data.vars[name] = data.vars[origin] || ASM_INT; // detect by origin variable, or assume int for non-locals
+            }
           }
         }
         unVarify(node[1], node);
@@ -1765,6 +1793,7 @@ function eliminate(ast, memSafe) {
     var values = {};
     var locals = {};
     var varsToRemove = {}; // variables being removed, that we can eliminate all 'var x;' of (this refers to 'var' nodes we should remove)
+                           // 1 means we should remove it, 2 means we successfully removed it
     var varsToTryToRemove = {}; // variables that have 0 uses, but have side effects - when we scan we can try to remove them
     // add arguments as locals
     if (func[2]) {
@@ -1813,16 +1842,25 @@ function eliminate(ast, memSafe) {
         potentials[name] = 1;
       } else if (uses[name] == 0 && (!definitions[name] || definitions[name] <= 1)) { // no uses, no def or 1 def (cannot operate on phis, and the llvm optimizer will remove unneeded phis anyhow)
         var hasSideEffects = false;
-        if (values[name]) {
-          traverse(values[name], function(node, type) {
-            if (!(type in NODES_WITHOUT_ELIMINATION_SIDE_EFFECTS)) {
-              hasSideEffects = true; // cannot remove this unused variable, constructing it has side effects
-              return true;
-            }
-          });
+        var value = values[name];
+        if (value) {
+          // TODO: merge with other side effect code
+          // First, pattern-match
+          //  (HEAP32[((tempDoublePtr)>>2)]=((HEAP32[(($_sroa_0_0__idx1)>>2)])|0),HEAP32[(((tempDoublePtr)+(4))>>2)]=((HEAP32[((($_sroa_0_0__idx1)+(4))>>2)])|0),(+(HEAPF64[(tempDoublePtr)>>3])))
+          // which has no side effects and is the special form of converting double to i64.
+          if (!(value[0] == 'seq' && value[1][0] == 'assign' && value[1][2][0] == 'sub' && value[1][2][2][0] == 'binary' && value[1][2][2][1] == '>>' &&
+                value[1][2][2][2][0] == 'name' && value[1][2][2][2][1] == 'tempDoublePtr')) {
+            // If not that, then traverse and scan normally.
+            traverse(value, function(node, type) {
+              if (!(type in NODES_WITHOUT_ELIMINATION_SIDE_EFFECTS)) {
+                hasSideEffects = true; // cannot remove this unused variable, constructing it has side effects
+                return true;
+              }
+            });
+          }
         }
         if (!hasSideEffects) {
-          varsToRemove[name] = 1; // remove it normally
+          varsToRemove[name] = !definitions[name] ? 2 : 1; // remove it normally
           sideEffectFree[name] = true;
         } else {
           varsToTryToRemove[name] = 1; // try to remove it later during scanning
@@ -1979,7 +2017,7 @@ function eliminate(ast, memSafe) {
                 for (var i = 0; i < value.length; i++) {
                   node[i] = value[i];
                 }
-                varsToRemove[name] = 1;
+                varsToRemove[name] = 2;
               }
             } else {
               if (allowTracking) track(name, node[3], node);
@@ -2019,7 +2057,7 @@ function eliminate(ast, memSafe) {
                 for (var i = 0; i < value.length; i++) {
                   node[i] = value[i];
                 }
-                varsToRemove[name] = 1;
+                varsToRemove[name] = 2;
               }
             }
           }
@@ -2123,7 +2161,7 @@ function eliminate(ast, memSafe) {
     function doEliminate(name, node) {
       //printErr('elim!!!!! ' + name);
       // yes, eliminate!
-      varsToRemove[name] = 1; // both assign and var definitions can have other vars we must clean up
+      varsToRemove[name] = 2; // both assign and var definitions can have other vars we must clean up
       var info = tracked[name];
       delete tracked[name];
       var defNode = info.defNode;
@@ -2181,7 +2219,7 @@ function eliminate(ast, memSafe) {
     //printErr('cleaning up ' + JSON.stringify(varsToRemove));
     traverse(func, function(node, type) {
       if (type === 'var') {
-        node[1] = node[1].filter(function(pair) { return !(pair[0] in varsToRemove) });
+        node[1] = node[1].filter(function(pair) { return !varsToRemove[pair[0]] });
         if (node[1].length == 0) {
           // wipe out an empty |var;|
           node[0] = 'toplevel';
@@ -2192,7 +2230,7 @@ function eliminate(ast, memSafe) {
 
     if (asm) {
       for (var v in varsToRemove) {
-        delete asmData.vars[v];
+        if (varsToRemove[v] == 2) delete asmData.vars[v];
       }
       denormalizeAsm(func, asmData);
     }

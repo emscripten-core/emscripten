@@ -146,7 +146,7 @@
   }
 
 
-  FT_CALLBACK_DEF( FT_Error )
+  FT_CALLBACK_DEF( void ) /* XXX EMSCRIPTEN */
   parse_font_matrix( CID_Face     face,
                      CID_Parser*  parser )
   {
@@ -195,12 +195,11 @@
       offset->y  = temp[5] >> 16;
     }
 
-    return CID_Err_Ok;      /* this is a callback function; */
-                            /* we must return an error code */
+    return; /* XXX EMSCRIPTEN */
   }
 
 
-  FT_CALLBACK_DEF( FT_Error )
+  FT_CALLBACK_DEF( void ) /* XXX EMSCRIPTEN */
   parse_fd_array( CID_Face     face,
                   CID_Parser*  parser )
   {
@@ -232,9 +231,9 @@
         dict->private_dict.lenIV = 4;
       }
     }
-
+    
   Exit:
-    return error;
+    return; /* XXX EMSCRIPTEN */
   }
 
 
@@ -242,9 +241,9 @@
   /* and CID_FaceDictRec (both are public header files and can't  */
   /* changed); we simply copy the value                           */
 
-  FT_CALLBACK_DEF( FT_Error )
+  FT_CALLBACK_DEF( void ) /* XXX EMSCRIPTEN */
   parse_expansion_factor( CID_Face     face,
-                          CID_Parser*  parser )
+                          CID_Parser*  parser)
   {
     CID_FaceDict  dict;
 
@@ -257,7 +256,7 @@
       dict->private_dict.expansion_factor = dict->expansion_factor;
     }
 
-    return CID_Err_Ok;
+    return; /* XXX EMSCRIPTEN */
   }
 
 

@@ -74,4 +74,25 @@ function retf() {
   }
   // missing final return, need it as a float
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "b", "rett", "ret2t", "retf"]
+function i32_8() {
+  if (((HEAP8[$4 & 16777215] | 0) << 24 >> 24) == 0) {
+    print(5);
+  }
+  if ((HEAP8[$5 & 16777215] << 24 >> 24) == 0) {
+    print(5);
+  }
+  if (((HEAPU8[$6 & 16777215] | 0) << 24 >> 24) == 0) {
+    print(5);
+  }
+  if ((HEAPU8[$7 & 16777215] << 24 >> 24) == 0) {
+    print(5);
+  }
+  // non-valid
+  if ((HEAPU8[$8 & 16777215] << 24 >> 16) == 0) {
+    print(5);
+  }
+  if ((HEAPU8[$9 & 16777215] << 16 >> 16) == 0) {
+    print(5);
+  }
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "b", "rett", "ret2t", "retf", "i32_8"]

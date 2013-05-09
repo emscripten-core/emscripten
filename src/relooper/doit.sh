@@ -1,3 +1,5 @@
+#!/bin/sh
+
 echo "relooper"
 g++ Relooper.cpp -c -g
 g++ Relooper.cpp -c -g -DDEBUG -o RelooperDebug.o

@@ -74,14 +74,23 @@ void game(int w, int h, int i)
   show(univ, w, h);
 }
  
-int main(int c, char **v)
+int main(int argc, char **argv)
 {
-  int w = 0, h = 0, i = -1; // i = -1 means run forever, normal. otherwise, run in benchmark mode
-  if (c > 1) w = atoi(v[1]);
-  if (c > 2) h = atoi(v[2]);
-  if (c > 3) i = atoi(v[3]);
-  if (w <= 0) w = 32;
-  if (h <= 0) h = 32;
+  int w, h, i;
+  int arg = argc > 1 ? argv[1][0] - '0' : 3;
+  switch(arg) {
+    case 0: return 0; break;
+    case 1: w = h = 32; i = 2500; break;
+    case 2: w = h = 32; i = 13000; break;
+    case 3: w = h = 32; i = 24000; break;
+    case 4: w = h = 32; i = 5*24000; break;
+    case 5: w = h = 32; i = 10*24000; break;
+    default: printf("error: %d\\n", arg); return -1;
+  }
+
+  printf("life: %d,%d,%d,%d\n", arg, w, h, i);
   game(w, h, i);
+
+  return 0;
 }
 

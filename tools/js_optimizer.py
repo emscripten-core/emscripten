@@ -34,7 +34,7 @@ class Minifier:
 
     # Create list of valid short names
 
-    MAX_NAMES = 60000
+    MAX_NAMES = 80000
     INVALID_2 = set(['do', 'if', 'in'])
     INVALID_3 = set(['for', 'new', 'try', 'var', 'env'])
 
@@ -100,7 +100,7 @@ def run_on_chunk(command):
   f = open(filename, 'w')
   f.write(output)
   f.close()
-  if DEBUG: print >> sys.stderr, '.'
+  if DEBUG and not shared.WINDOWS: print >> sys.stderr, '.' # Skip debug progress indicator on Windows, since it doesn't buffer well with multiple threads printing to console.
   return filename
 
 def run_on_js(filename, passes, js_engine, jcache):

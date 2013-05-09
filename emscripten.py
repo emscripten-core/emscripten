@@ -12,6 +12,7 @@ headers, for the libc implementation in JS).
 import os, sys, json, optparse, subprocess, re, time, multiprocessing, functools
 
 from tools import jsrun, cache as cache_module, tempfiles
+from tools.response_file import read_response_file
 
 __rootpath__ = os.path.abspath(os.path.dirname(__file__))
 def path_from_root(*pathelems):
@@ -19,6 +20,15 @@ def path_from_root(*pathelems):
   relative to the emscripten root.
   """
   return os.path.join(__rootpath__, *pathelems)
+
+def get_configuration():
+  if hasattr(get_configuration, 'configuration'):
+    return get_configuration.configuration
+
+  from tools import shared
+  configuration = shared.Configuration(environ=os.environ)
+  get_configuration.configuration = configuration
+  return configuration
 
 def scan(ll, settings):
   # blockaddress(@main, %23)
@@ -84,25 +94,27 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   # Split input into the relevant parts for each phase
   pre = []
   funcs = [] # split up functions here, for parallelism later
-  func_idents = []
   meta = [] # needed by each function XXX
 
   if DEBUG: t = time.time()
   in_func = False
   ll_lines = open(infile).readlines()
+  curr_func = None
   for line in ll_lines:
     if in_func:
-      funcs[-1][1].append(line)
+      curr_func.append(line)
       if line.startswith('}'):
         in_func = False
-        funcs[-1] = (funcs[-1][0], ''.join(funcs[-1][1]))
-        pre.append(line) # pre needs it to, so we know about all implemented functions
+        funcs.append((curr_func[0], ''.join(curr_func))) # use the entire line as the identifier
+        # pre needs to know about all implemented functions, even for non-pre func
+        pre.append(curr_func[0])
+        pre.append(line)
+        curr_func = None
     else:
       if line.startswith(';'): continue
       if line.startswith('define '):
         in_func = True
-        funcs.append((line, [line])) # use the entire line as the identifier
-        pre.append(line) # pre needs it to, so we know about all implemented functions
+        curr_func = [line]
       elif line.find(' = type { ') > 0:
         pre.append(line) # type
       elif line.startswith('!'):
@@ -214,10 +226,10 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
 
   # TODO: minimize size of forwarded data from funcs to what we actually need
 
-  if cores == 1 and total_ll_size < MAX_CHUNK_SIZE:
-    assert len(chunks) == 1, 'no point in splitting up without multiple cores'
-
   if len(chunks) > 0:
+    if cores == 1 and total_ll_size < MAX_CHUNK_SIZE:
+      assert len(chunks) == 1, 'no point in splitting up without multiple cores'
+
     if DEBUG: print >> sys.stderr, '  emscript: phase 2 working on %d chunks %s (intended chunk size: %.2f MB, meta: %.2f MB, forwarded: %.2f MB, total: %.2f MB)' % (len(chunks), ('using %d cores' % cores) if len(chunks) > 1 else '', chunk_size/(1024*1024.), len(meta)/(1024*1024.), len(forwarded_data)/(1024*1024.), total_ll_size/(1024*1024.))
 
     commands = [
@@ -291,19 +303,32 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   # calculations on merged forwarded data
   forwarded_json['Functions']['indexedFunctions'] = {}
   i = 2
+  if settings['ASM_JS']: i += 2*settings['RESERVED_FUNCTION_POINTERS']
   for indexed in indexed_functions:
-    #print >> sys.stderr, 'indaxx', indexed, i
+    #print >> sys.stderr, 'function indexing', indexed, i
     forwarded_json['Functions']['indexedFunctions'][indexed] = i # make sure not to modify this python object later - we use it in indexize
     i += 2
   forwarded_json['Functions']['nextIndex'] = i
+  function_table_size = forwarded_json['Functions']['nextIndex']
+  i = 1
+  while i < function_table_size:
+    i *= 2
+  function_table_size = i
+
+  def split_32(x):
+    x = int(x)
+    return '%d,%d,%d,%d' % (x&255, (x >> 8)&255, (x >> 16)&255, (x >> 24)&255)
 
   indexing = forwarded_json['Functions']['indexedFunctions']
   def indexize(js):
-    return re.sub(r"'{{ FI_([\w\d_$]+) }}'", lambda m: str(indexing.get(m.groups(0)[0]) or 0), js)
+    # In the global initial allocation, we need to split up into Uint8 format
+    ret = re.sub(r"\"?'?{{ FI_([\w\d_$]+) }}'?\"?,0,0,0", lambda m: split_32(indexing.get(m.groups(0)[0]) or 0), js)
+    return re.sub(r"'{{ FI_([\w\d_$]+) }}'", lambda m: str(indexing.get(m.groups(0)[0]) or 0), ret)
 
   blockaddrs = forwarded_json['Functions']['blockAddresses']
   def blockaddrsize(js):
-    return re.sub(r'{{{ BA_([\w\d_$]+)\|([\w\d_$]+) }}}', lambda m: str(blockaddrs[m.groups(0)[0]][m.groups(0)[1]]), js)
+    ret = re.sub(r'"?{{{ BA_([\w\d_$]+)\|([\w\d_$]+) }}}"?,0,0,0', lambda m: split_32(blockaddrs[m.groups(0)[0]][m.groups(0)[1]]), js)
+    return re.sub(r'"?{{{ BA_([\w\d_$]+)\|([\w\d_$]+) }}}"?', lambda m: str(blockaddrs[m.groups(0)[0]][m.groups(0)[1]]), ret)
 
   #if DEBUG: outfile.write('// pre\n')
   outfile.write(blockaddrsize(indexize(pre)))
@@ -329,6 +354,14 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   if settings.get('ASM_JS'):
     post_funcs, post_rest = post.split('// EMSCRIPTEN_END_FUNCS\n')
     post = post_rest
+
+    # Move preAsms to their right place
+    def move_preasm(m):
+      contents = m.groups(0)[0]
+      outfile.write(contents + '\n')
+      return ''
+    post_funcs = re.sub(r'/\* PRE_ASM \*/(.*)\n', lambda m: move_preasm(m), post_funcs)
+
     funcs_js += ['\n' + post_funcs + '// EMSCRIPTEN_END_FUNCS\n']
 
     simple = os.environ.get('EMCC_SIMPLE_ASM')
@@ -343,7 +376,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
         sig = use[8:len(use)-4]
         if sig not in last_forwarded_json['Functions']['tables']:
           if DEBUG: print >> sys.stderr, 'add empty function table', sig
-          last_forwarded_json['Functions']['tables'][sig] = 'var FUNCTION_TABLE_' + sig + ' = [0,0];\n'
+          last_forwarded_json['Functions']['tables'][sig] = 'var FUNCTION_TABLE_' + sig + ' = [' + ','.join(['0']*function_table_size) + '];\n'
 
     def make_table(sig, raw):
       i = Counter.i
@@ -352,7 +385,16 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       params = ','.join(['p%d' % p for p in range(len(sig)-1)])
       coercions = ';'.join(['p%d = %sp%d%s' % (p, '+' if sig[p+1] != 'i' else '', p, '' if sig[p+1] != 'i' else '|0') for p in range(len(sig)-1)]) + ';'
       ret = '' if sig[0] == 'v' else ('return %s0' % ('+' if sig[0] != 'i' else ''))
-      return ('function %s(%s) { %s abort(%d); %s }' % (bad, params, coercions, i, ret), raw.replace('[0,', '[' + bad + ',').replace(',0,', ',' + bad + ',').replace(',0,', ',' + bad + ',').replace(',0]', ',' + bad + ']').replace(',0]', ',' + bad + ']').replace(',0\n', ',' + bad + '\n'))
+      start = raw.index('[')
+      end = raw.rindex(']')
+      body = raw[start+1:end].split(',')
+      for j in range(settings['RESERVED_FUNCTION_POINTERS']):
+        body[2 + 2*j] = 'jsCall_%s_%s' % (sig, j)
+      def fix_item(item):
+        newline = '\n' in item
+        return (bad if item.replace('\n', '') == '0' else item) + ('\n' if newline else '')
+      body = ','.join(map(fix_item, body))
+      return ('function %s(%s) { %s %s(%d); %s }' % (bad, params, coercions, 'abort' if not settings['ASSERTIONS'] else 'nullFunc', i, ret), raw[:start+1] + body + raw[end:])
     infos = [make_table(sig, raw) for sig, raw in last_forwarded_json['Functions']['tables'].iteritems()]
     function_tables_defs = '\n'.join([info[0] for info in infos]) + '\n// EMSCRIPTEN_END_FUNCS\n' + '\n'.join([info[1] for info in infos])
 
@@ -361,26 +403,29 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     fundamentals = ['Math', 'Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
     math_envs = ['Math.min'] # TODO: move min to maths
     asm_setup += '\n'.join(['var %s = %s;' % (f.replace('.', '_'), f) for f in math_envs])
+
     basic_funcs = ['abort', 'assert', 'asmPrintInt', 'asmPrintFloat', 'copyTempDouble', 'copyTempFloat'] + [m.replace('.', '_') for m in math_envs]
+    if settings['RESERVED_FUNCTION_POINTERS'] > 0: basic_funcs.append('jsCall')
     if settings['SAFE_HEAP']: basic_funcs += ['SAFE_HEAP_LOAD', 'SAFE_HEAP_STORE', 'SAFE_HEAP_CLEAR']
     if settings['CHECK_HEAP_ALIGN']: basic_funcs += ['CHECK_ALIGN_2', 'CHECK_ALIGN_4', 'CHECK_ALIGN_8']
+    if settings['ASSERTIONS']:
+      basic_funcs += ['nullFunc']
+      asm_setup += 'function nullFunc(x) { Module["printErr"]("Invalid function pointer called. Perhaps a miscast function pointer (check compilation warnings) or bad vtable lookup (maybe due to derefing a bad pointer, like NULL)?"); abort(x) }\n'
+
     basic_vars = ['STACKTOP', 'STACK_MAX', 'tempDoublePtr', 'ABORT']
     basic_float_vars = ['NaN', 'Infinity']
-    if forwarded_json['Types']['preciseI64MathUsed']:
-      basic_funcs += ['i64Math_' + op for op in ['add', 'subtract', 'multiply', 'divide', 'modulo']]
-      asm_setup += '''
-var i64Math_add = function(a, b, c, d) { i64Math.add(a, b, c, d) };
-var i64Math_subtract = function(a, b, c, d) { i64Math.subtract(a, b, c, d) };
-var i64Math_multiply = function(a, b, c, d) { i64Math.multiply(a, b, c, d) };
-var i64Math_divide = function(a, b, c, d, e) { i64Math.divide(a, b, c, d, e) };
-var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
-'''
+
+    if forwarded_json['Types']['preciseI64MathUsed'] or \
+       forwarded_json['Functions']['libraryFunctions'].get('llvm_cttz_i32') or \
+       forwarded_json['Functions']['libraryFunctions'].get('llvm_ctlz_i32'):
+      basic_vars += ['cttz_i8', 'ctlz_i8']
+
     asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore', 'setThrew'] + ['setTempRet%d' % i for i in range(10)]
     # function tables
     def asm_coerce(value, sig):
       if sig == 'v': return value
       return ('+' if sig != 'i' else '') + value + ('|0' if sig == 'i' else '')
-        
+
     function_tables = ['dynCall_' + table for table in last_forwarded_json['Functions']['tables']]
     function_tables_impls = []
     for sig in last_forwarded_json['Functions']['tables'].iterkeys():
@@ -395,6 +440,30 @@ var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
     %s;
   }
 ''' % (sig, ',' if len(sig) > 1 else '', args, arg_coercions, ret))
+
+      for i in range(settings['RESERVED_FUNCTION_POINTERS']):
+        jsret = ('return ' if sig[0] != 'v' else '') + asm_coerce('jsCall(%d%s%s)' % (i, ',' if coerced_args else '', coerced_args), sig[0])
+        function_tables_impls.append('''
+  function jsCall_%s_%s(%s) {
+    %s
+    %s;
+  }
+
+''' % (sig, i, args, arg_coercions, jsret))
+      args = ','.join(['a' + str(i) for i in range(1, len(sig))])
+      args = 'index' + (',' if args else '') + args
+      # C++ exceptions are numbers, and longjmp is a string 'longjmp'
+      asm_setup += '''
+function invoke_%s(%s) {
+  try {
+    %sModule.dynCall_%s(%s);
+  } catch(e) {
+    if (typeof e !== 'number' && e !== 'longjmp') throw e;
+    asm.setThrew(1, 0);
+  }
+}
+''' % (sig, args, 'return ' if sig[0] != 'v' else '', sig, args)
+      basic_funcs.append('invoke_%s' % sig)
 
     # calculate exports
     exported_implemented_functions = list(exported_implemented_functions)
@@ -412,7 +481,7 @@ var i64Math_modulo = function(a, b, c, d, e) { i64Math.modulo(a, b, c, d, e) };
       pass
     # If no named globals, only need externals
     global_vars = map(lambda g: g['name'], filter(lambda g: settings['NAMED_GLOBALS'] or g.get('external') or g.get('unIndexable'), forwarded_json['Variables']['globals'].values()))
-    global_funcs = ['_' + x for x in forwarded_json['Functions']['libraryFunctions'].keys()]
+    global_funcs = ['_' + key for key, value in forwarded_json['Functions']['libraryFunctions'].iteritems() if value != 2]
     def math_fix(g):
       return g if not g.startswith('Math_') else g.split('_')[1];
     asm_global_funcs = ''.join(['  var ' + g.replace('.', '_') + '=global.' + g + ';\n' for g in maths]) + \
@@ -453,6 +522,8 @@ var asm = (function(global, env, buffer) {
   var HEAPF64 = new global.Float64Array(buffer);
 ''' % (asm_setup,) + '\n' + asm_global_vars + '''
   var __THREW__ = 0;
+  var threwValue = 0;
+  var setjmpId = 0;
   var undef = 0;
   var tempInt = 0, tempBigInt = 0, tempBigIntP = 0, tempBigIntS = 0, tempBigIntR = 0.0, tempBigIntI = 0, tempBigIntD = 0, tempValue = 0, tempDouble = 0.0;
 ''' + ''.join(['''
@@ -463,7 +534,7 @@ var asm = (function(global, env, buffer) {
     var ret = 0;
     ret = STACKTOP;
     STACKTOP = (STACKTOP + size)|0;
-    STACKTOP = ((STACKTOP + 3)>>2)<<2;
+''' + ('STACKTOP = ((STACKTOP + 3)>>2)<<2;' if settings['TARGET_X86'] else 'STACKTOP = ((STACKTOP + 7)>>3)<<3;') + '''
     return ret|0;
   }
   function stackSave() {
@@ -473,9 +544,13 @@ var asm = (function(global, env, buffer) {
     top = top|0;
     STACKTOP = top;
   }
-  function setThrew(threw) {
+  function setThrew(threw, value) {
     threw = threw|0;
-    __THREW__ = threw;
+    value = value|0;
+    if ((__THREW__|0) == 0) {
+      __THREW__ = threw;
+      threwValue = value;
+    }
   }
 ''' + ''.join(['''
   function setTempRet%d(value) {
@@ -613,6 +688,18 @@ def main(args, compiler_engine, cache, jcache, relooper, temp_files, DEBUG, DEBU
            jcache=jcache, temp_files=temp_files, DEBUG=DEBUG, DEBUG_CACHE=DEBUG_CACHE)
 
 def _main(environ):
+  response_file = True
+  while response_file:
+    response_file = None
+    for index in range(1, len(sys.argv)):
+      if sys.argv[index][0] == '@':
+        # found one, loop again next time
+        response_file = True
+        response_file_args = read_response_file(sys.argv[index])
+        # slice in extra_args in place of the response file arg
+        sys.argv[index:index+1] = response_file_args
+        break
+
   parser = optparse.OptionParser(
     usage='usage: %prog [-h] [-H HEADERS] [-o OUTFILE] [-c COMPILER_ENGINE] [-s FOO=BAR]* infile',
     description=('You should normally never use this! Use emcc instead. '
@@ -683,17 +770,9 @@ WARNING: You should normally never use this! Use emcc instead.
   else:
     relooper = None # use the cache
 
-  def get_configuration():
-    if hasattr(get_configuration, 'configuration'):
-      return get_configuration.configuration
-    
-    from tools import shared
-    configuration = shared.Configuration(environ=os.environ)
-    get_configuration.configuration = configuration
-    return configuration
-      
   if keywords.temp_dir is None:
     temp_files = get_configuration().get_temp_files()
+    temp_dir = get_configuration().TEMP_DIR
   else:
     temp_dir = os.path.abspath(keywords.temp_dir)
     if not os.path.exists(temp_dir):

@@ -17,6 +17,9 @@ var QUANTUM_SIZE = 4; // This is the size of an individual field in a structure.
                       //
                       // Changing this from the default of 4 is deprecated.
 
+var TARGET_X86 = 0;  // For i386-pc-linux-gnu
+var TARGET_LE32 = 1; // For le32-unknown-nacl
+
 var CORRECT_SIGNS = 1; // Whether we make sure to convert unsigned values to signed values.
                        // Decreases performance with additional runtime checks. Might not be
                        // needed in some kinds of code.
@@ -35,8 +38,9 @@ var ASSERTIONS = 1; // Whether we should add runtime assertions, for example to
                     // if code flow runs into a fault
 var VERBOSE = 0; // When set to 1, will generate more verbose output during compilation.
 
-var INVOKE_RUN = 1; // Whether we will call run(). Disable if you embed the generated
-                    // code in your own, and will call run() yourself at the right time
+var INVOKE_RUN = 1; // Whether we will run the main() function. Disable if you embed the generated
+                    // code in your own, and will call main() yourself at the right time (which you
+                    // can do with Module.callMain(), with an optional parameter of commandline args).
 var INIT_HEAP = 0; // Whether to initialize memory anywhere other than the stack to 0.
 var TOTAL_STACK = 5*1024*1024; // The total stack size. There is no way to enlarge the stack, so this
                                // value must be large enough for the program's requirements. If
@@ -54,6 +58,7 @@ var ALLOW_MEMORY_GROWTH = 0; // If false, we abort with an error if we try to al
                              // that case we must be careful about optimizations, in particular the
                              // eliminator). Note that memory growth is only supported with typed
                              // arrays.
+var MAX_SETJMPS = 20; // size of setjmp table allocated in each function invocation (that has setjmp)
 
 // Code embetterments
 var MICRO_OPTS = 1; // Various micro-optimizations, like nativizing variables
@@ -129,6 +134,9 @@ var CHECK_HEAP_ALIGN = 0; // Check heap accesses for alignment, but don't do as
 
 var SAFE_DYNCALLS = 0; // Show stack traces on missing function pointer/virtual method calls
 
+var RESERVED_FUNCTION_POINTERS = 0; // In asm.js mode, we cannot simply add function pointers to
+                                    // function tables, so we reserve some slots for them.
+
 var ASM_HEAP_LOG = 0; // Simple heap logging, like SAFE_HEAP_LOG but cheaper, and in asm.js
 
 var CORRUPTION_CHECK = 0; // When enabled, will emit a buffer area at the beginning and
@@ -149,7 +157,7 @@ var LABEL_FUNCTION_FILTERS = []; // Filters for function label debug.
                                  // labels of functions that is equaled to
                                  // one of the filters are printed out
                                  // When the array is empty, the filter is disabled.
-var EXCEPTION_DEBUG = 0; // Print out exceptions in emscriptened code
+var EXCEPTION_DEBUG = 0; // Print out exceptions in emscriptened code. Does not work in asm.js mode
 
 var LIBRARY_DEBUG = 0; // Print out when we enter a library call (library*.js). You can also unset
                        // Runtime.debug at runtime for logging to cease, and can set it when you
@@ -271,7 +279,8 @@ var PRINT_SPLIT_FILE_MARKER = 0; // Prints markers in Javascript generation to s
 
 var BUILD_AS_SHARED_LIB = 0; // Whether to build the code as a shared library
                              // 0 here means this is not a shared lib: It is a main file.
-                             // 1 means this is a normal shared lib, load it with dlopen().
+                             // All shared library options (1 and 2) are currently deprecated XXX
+                             // 1 means this is a normal shared lib, load it with dlopen()
                              // 2 means this is a shared lib that will be linked at runtime,
                              //   which means it will insert its functions into
                              //   the global namespace. See STATIC_LIBS_TO_LOAD.
@@ -312,6 +321,9 @@ var WARN_ON_UNDEFINED_SYMBOLS = 0; // If set to 1, we will warn on any undefined
                                    // the existing buildsystem), and (2) functions might be
                                    // implemented later on, say in --pre-js
 
+var ERROR_ON_UNDEFINED_SYMBOLS = 0; // If set to 1, we will give a compile-time error on any
+                                    // undefined symbols (see WARN_ON_UNDEFINED_SYMBOLS).
+
 var SMALL_XHR_CHUNKS = 0; // Use small chunk size for binary synchronous XHR's in Web Workers.
                           // Used for testing.
                           // See test_chunked_synchronous_xhr in runner.py and library.js.
@@ -337,25 +349,18 @@ var PGO = 0; // Enables profile-guided optimization in the form of runtime check
              // calling PGOMonitor.dump());
 var DEAD_FUNCTIONS = []; // Functions on this list are not converted to JS, and calls to
                          // them are turned into abort()s. This is potentially useful for
-                         // (1) reducing code size, if you know some function will never
-                         // be called (see PGO), and also (2) ASM.js requires all declared
-                         // functions to have a corresponding implementation (even if the
-                         // function is never called) and will emit an error during linking if no
-                         // implementation can be found; with this option, asm.js validation will
-                         // succeed for that function and calls to it.
+                         // reducing code size.
                          // If a dead function is actually called, you will get a runtime
                          // error.
                          // TODO: options to lazily load such functions
-var UNRESOLVED_AS_DEAD = 0; // Handle all unresolved functions as if they were in the
-                            // list of dead functions. This is a quick way to turn
-                            // all unresolved references into runtime aborts (and not
-                            // get compile-time warnings or errors on them).
 
 var EXPLICIT_ZEXT = 0; // If 1, generate an explicit conversion of zext i1 to i32, using ?:
 
 var NECESSARY_BLOCKADDRS = []; // List of (function, block) for all block addresses that are taken.
 
 var EMIT_GENERATED_FUNCTIONS = 0; // whether to emit the list of generated functions, needed for external JS optimization passes
+
+var JS_CHUNK_SIZE = 10240; // Used as a maximum size before breaking up expressions and lines into smaller pieces
 
 // Compiler debugging options
 var DEBUG_TAGS_SHOWING = [];

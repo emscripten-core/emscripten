@@ -46,7 +46,7 @@
           reportResult(firstImage != secondImage);
         }, 0);
       }
-      addEventListener("load", doTest, false);
+      Module.postRun = doTest;
 
       // The compiled code
       {{{ SCRIPT_CODE }}}

@@ -3462,7 +3462,7 @@
   }
 
 
-  static void
+  static int /* XXX EMSCRIPTEN */
   ft_black_set_mode( PRaster        raster,
                      unsigned long  mode,
                      const char*    palette )
@@ -3486,6 +3486,7 @@
     FT_UNUSED( palette );
 
 #endif
+	return 0; /* XXX EMSCRIPTEN */
   }
 
 

@@ -2,6 +2,8 @@
 
 // Various namespace-like modules
 
+var STACK_ALIGN = TARGET_X86 ? 4 : 8;
+
 var LLVM = {
   LINKAGES: set('private', 'linker_private', 'linker_private_weak', 'linker_private_weak_def_auto', 'internal',
                 'available_externally', 'linkonce', 'common', 'weak', 'appending', 'extern_weak', 'linkonce_odr',
@@ -230,11 +232,11 @@ var Types = {
 var Functions = {
   // All functions that will be implemented in this file. Maps id to signature
   implementedFunctions: {},
-  libraryFunctions: {}, // functions added from the library
+  libraryFunctions: {}, // functions added from the library. value 2 means asmLibraryFunction
   unimplementedFunctions: {}, // library etc. functions that we need to index, maps id to signature
 
   indexedFunctions: {},
-  nextIndex: 2, // Start at a non-0 (even, see below) value
+  nextIndex: (ASM_JS ? 2*RESERVED_FUNCTION_POINTERS : 0) + 2, // Start at a non-0 (even, see below) value
 
   blockAddresses: {}, // maps functions to a map of block labels to label ids
 
@@ -257,7 +259,7 @@ var Functions = {
     }
     if (phase != 'post' && singlePhase) {
       if (!doNotCreate) this.indexedFunctions[ident] = 0; // tell python we need this indexized
-      return "'{{ FI_" + ident + " }}'"; // something python will replace later
+      return "'{{ FI_" + toNiceIdent(ident) + " }}'"; // something python will replace later
     } else {
       var ret = this.indexedFunctions[ident];
       if (!ret) {
@@ -291,7 +293,7 @@ var Functions = {
       var sig = ASM_JS ? Functions.implementedFunctions[ident] || Functions.unimplementedFunctions[ident] || LibraryManager.library[ident.substr(1) + '__sig'] : 'x';
       assert(sig, ident);
       if (!tables[sig]) tables[sig] = emptyTable(sig); // TODO: make them compact
-      tables[sig][this.indexedFunctions[ident]] = ident in DEAD_FUNCTIONS ? '0' : ident;
+      tables[sig][this.indexedFunctions[ident]] = ident;
     }
     var generated = false;
     var wrapped = {};
@@ -316,6 +318,7 @@ var Functions = {
         if (ASM_JS) {
           var curr = table[i];
           if (curr && curr != '0' && !Functions.implementedFunctions[curr]) {
+            curr = toNiceIdent(curr); // fix Math.* to Math_*
             // This is a library function, we can't just put it in the function table, need a wrapper
             if (!wrapped[curr]) {
               var args = '', arg_coercions = '', call = curr + '(', retPre = '', retPost = '';
@@ -374,7 +377,7 @@ var LibraryManager = {
   load: function() {
     if (this.library) return;
 
-    var libraries = ['library.js', 'library_browser.js', 'library_sdl.js', 'library_gl.js', 'library_glut.js', 'library_xlib.js', 'library_egl.js', 'library_gc.js', 'library_jansson.js', 'library_openal.js'].concat(additionalLibraries);
+    var libraries = ['library.js', 'library_browser.js', 'library_sdl.js', 'library_gl.js', 'library_glut.js', 'library_xlib.js', 'library_egl.js', 'library_gc.js', 'library_jansson.js', 'library_openal.js', 'library_glfw.js'].concat(additionalLibraries);
     for (var i = 0; i < libraries.length; i++) {
       eval(processMacros(preprocess(read(libraries[i]))));
     }

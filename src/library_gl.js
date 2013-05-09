@@ -342,6 +342,7 @@ var LibraryGL = {
     }
   },
 
+  glPixelStorei__sig: 'vii',
   glPixelStorei: function(pname, param) {
     if (pname == 0x0D05 /* GL_PACK_ALIGNMENT */) {
       GL.packAlignment = param;
@@ -351,6 +352,7 @@ var LibraryGL = {
     Module.ctx.pixelStorei(pname, param);
   },
 
+  glGetString__sig: 'ii',
   glGetString: function(name_) {
     switch(name_) {
       case 0x1F00 /* GL_VENDOR */:
@@ -366,6 +368,7 @@ var LibraryGL = {
     }
   },
 
+  glGetIntegerv__sig: 'vii',
   glGetIntegerv: function(name_, p) {
     switch(name_) { // Handle a few trivial GLES values 
       case 0x8DFA: // GL_SHADER_COMPILER
@@ -416,6 +419,7 @@ var LibraryGL = {
     }
   },
 
+  glGetFloatv__sig: 'vii',
   glGetFloatv: function(name_, p) {
     var result = Module.ctx.getParameter(name_);
     switch (typeof(result)) {
@@ -458,6 +462,7 @@ var LibraryGL = {
     }
   },
 
+  glGetBooleanv__sig: 'vii',
   glGetBooleanv: function(name_, p) {
     var result = Module.ctx.getParameter(name_);
     switch (typeof(result)) {
@@ -496,6 +501,7 @@ var LibraryGL = {
     }
   },
 
+  glGenTextures__sig: 'vii',
   glGenTextures: function(n, textures) {
     for (var i = 0; i < n; i++) {
       var id = GL.getNewId(GL.textures); 
@@ -504,6 +510,7 @@ var LibraryGL = {
     }
   },
 
+  glDeleteTextures__sig: 'vii',
   glDeleteTextures: function(n, textures) {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('textures', 'i*4', 'i32') }}};
@@ -534,6 +541,7 @@ var LibraryGL = {
     Module.ctx['compressedTexSubImage2D'](target, level, xoffset, yoffset, width, height, data);
   },
 
+  glTexImage2D__sig: 'viiiiiiiii',
   glTexImage2D: function(target, level, internalFormat, width, height, border, format, type, pixels) {
     if (pixels) {
       var data = GL.getTexPixelData(type, format, width, height, pixels, internalFormat);
@@ -545,6 +553,7 @@ var LibraryGL = {
     Module.ctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixels);
   },
 
+  glTexSubImage2D__sig: 'viiiiiiiii',
   glTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, type, pixels) {
     if (pixels) {
       var data = GL.getTexPixelData(type, format, width, height, pixels, -1);
@@ -555,6 +564,7 @@ var LibraryGL = {
     Module.ctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
   },
 
+  glReadPixels__sig: 'viiiiiii',
   glReadPixels: function(x, y, width, height, format, type, pixels) {
     assert(type == 0x1401 /* GL_UNSIGNED_BYTE */);
     var sizePerPixel;
@@ -571,18 +581,34 @@ var LibraryGL = {
     Module.ctx.readPixels(x, y, width, height, format, type, HEAPU8.subarray(pixels, pixels + totalSize));
   },
 
+  glBindTexture__sig: 'vii',
   glBindTexture: function(target, texture) {
     Module.ctx.bindTexture(target, texture ? GL.textures[texture] : null);
   },
 
+  glGetTexParameterfv__sig: 'viii',
   glGetTexParameterfv: function(target, pname, params) {
     {{{ makeSetValue('params', '0', 'Module.getTexParameter(target, pname)', 'float') }}};
   },
 
+  glGetTexParameteriv__sig: 'viii',
   glGetTexParameteriv: function(target, pname, params) {
     {{{ makeSetValue('params', '0', 'Module.getTexParameter(target, pname)', 'i32') }}};
   },
 
+  glTexParameterfv__sig: 'viii',
+  glTexParameterfv: function(target, pname, params) {
+    var param = {{{ makeGetValue('params', '0', 'float') }}};
+    Module.ctx.texParameterf(target, pname, param);
+  },
+
+  glTexParameteriv__sig: 'viii',
+  glTexParameteriv: function(target, pname, params) {
+    var param = {{{ makeGetValue('params', '0', 'i32') }}};
+    Module.ctx.texParameteri(target, pname, param);
+  },
+
+  glIsTexture__sig: 'ii',
   glIsTexture: function(texture) {
     var texture = GL.textures[texture];
     if (!texture) return 0;
@@ -610,6 +636,7 @@ var LibraryGL = {
     }
   },
 
+  glGetBufferParameteriv__sig: 'viii',
   glGetBufferParameteriv: function(target, value, data) {
     {{{ makeSetValue('data', '0', 'Module.ctx.getBufferParameter(target, value)', 'i32') }}};
   },
@@ -624,6 +651,7 @@ var LibraryGL = {
     Module.ctx.bufferSubData(target, offset, HEAPU8.subarray(data, data+size));
   },
 
+  glIsBuffer__sig: 'ii',
   glIsBuffer: function(buffer) {
     var b = GL.buffers[buffer];
     if (!b) return 0;
@@ -653,16 +681,19 @@ var LibraryGL = {
     Module.ctx.bindRenderbuffer(target, renderbuffer ? GL.renderbuffers[renderbuffer] : null);
   },
 
+  glGetRenderbufferParameteriv__sig: 'viii',
   glGetRenderbufferParameteriv: function(target, pname, params) {
     {{{ makeSetValue('params', '0', 'Module.ctx.getRenderbufferParameter(target, pname)', 'i32') }}};
   },
 
+  glIsRenderbuffer__sig: 'ii',
   glIsRenderbuffer: function(renderbuffer) {
     var rb = GL.renderbuffers[renderbuffer];
     if (!rb) return 0;
     return Module.ctx.isRenderbuffer(rb);
   },
 
+  glGetUniformfv__sig: 'viii',
   glGetUniformfv: function(program, location, params) {
     var data = Module.ctx.getUniform(GL.programs[program], GL.uniforms[location]);
     if (typeof data == 'number') {
@@ -674,6 +705,7 @@ var LibraryGL = {
     }
   },
 
+  glGetUniformiv__sig: 'viii',
   glGetUniformiv: function(program, location, params) {
     var data = Module.ctx.getUniform(GL.programs[program], GL.uniforms[location]);
     if (typeof data == 'number' || typeof data == 'boolean') {
@@ -700,6 +732,7 @@ var LibraryGL = {
     return id;
   },
 
+  glGetVertexAttribfv__sig: 'viii',
   glGetVertexAttribfv: function(index, pname, params) {
 #if FULL_ES2
     if (GL.clientBuffers[index].enabled) {
@@ -716,6 +749,7 @@ var LibraryGL = {
     }
   },
 
+  glGetVertexAttribiv__sig: 'viii',
   glGetVertexAttribiv: function(index, pname, params) {
 #if FULL_ES2
     if (GL.clientBuffers[index].enabled) {
@@ -732,6 +766,7 @@ var LibraryGL = {
     }
   },
 
+  glGetVertexAttribPointerv__sig: 'viii',
   glGetVertexAttribPointerv: function(index, pname, pointer) {
 #if FULL_ES2
     if (GL.clientBuffers[index].enabled) {
@@ -901,6 +936,7 @@ var LibraryGL = {
     Module.ctx.uniform4fv(location, view);
   },
 
+  glUniformMatrix2fv__sig: 'viiii',
   glUniformMatrix2fv: function(location, count, transpose, value) {
     location = GL.uniforms[location];
     var view;
@@ -916,6 +952,7 @@ var LibraryGL = {
     Module.ctx.uniformMatrix2fv(location, transpose, view);
   },
 
+  glUniformMatrix3fv__sig: 'viiii',
   glUniformMatrix3fv: function(location, count, transpose, value) {
     location = GL.uniforms[location];
     var view;
@@ -931,6 +968,7 @@ var LibraryGL = {
     Module.ctx.uniformMatrix3fv(location, transpose, view);
   },
 
+  glUniformMatrix4fv__sig: 'viiii',
   glUniformMatrix4fv: function(location, count, transpose, value) {
     location = GL.uniforms[location];
     var view;
@@ -957,32 +995,38 @@ var LibraryGL = {
     Module.ctx.bindBuffer(target, buffer ? GL.buffers[buffer] : null);
   },
 
+  glVertexAttrib1fv__sig: 'vii',
   glVertexAttrib1fv: function(index, v) {
     v = {{{ makeHEAPView('F32', 'v', 'v+' + (1*4)) }}};
     Module.ctx.vertexAttrib1fv(index, v);
   },
 
+  glVertexAttrib2fv__sig: 'vii',
   glVertexAttrib2fv: function(index, v) {
     v = {{{ makeHEAPView('F32', 'v', 'v+' + (2*4)) }}};
     Module.ctx.vertexAttrib2fv(index, v);
   },
 
+  glVertexAttrib3fv__sig: 'vii',
   glVertexAttrib3fv: function(index, v) {
     v = {{{ makeHEAPView('F32', 'v', 'v+' + (3*4)) }}};
     Module.ctx.vertexAttrib3fv(index, v);
   },
 
+  glVertexAttrib4fv__sig: 'vii',
   glVertexAttrib4fv: function(index, v) {
     v = {{{ makeHEAPView('F32', 'v', 'v+' + (4*4)) }}};
     Module.ctx.vertexAttrib4fv(index, v);
   },
 
+  glGetAttribLocation__sig: 'vii',
   glGetAttribLocation: function(program, name) {
     program = GL.programs[program];
     name = Pointer_stringify(name);
     return Module.ctx.getAttribLocation(program, name);
   },
 
+  glGetActiveAttrib__sig: 'viiiiiii',
   glGetActiveAttrib: function(program, index, bufSize, length, size, type, name) {
     program = GL.programs[program];
     var info = Module.ctx.getActiveAttrib(program, index);
@@ -1008,16 +1052,19 @@ var LibraryGL = {
     return id;
   },
 
+  glDeleteShader__sig: 'vi',
   glDeleteShader: function(shader) {
     Module.ctx.deleteShader(GL.shaders[shader]);
     GL.shaders[shader] = null;
   },
 
+  glDetachShader__sig: 'vii',
   glDetachShader: function(program, shader) {
     Module.ctx.detachShader(GL.programs[program],
                             GL.shaders[shader]);
   },
 
+  glGetAttachedShaders__sig: 'viiii',
   glGetAttachedShaders: function(program, maxCount, count, shaders) {
     var result = Module.ctx.getAttachedShaders(GL.programs[program]);
     var len = result.length;
@@ -1036,9 +1083,10 @@ var LibraryGL = {
     Module.ctx.shaderSource(GL.shaders[shader], source);
   },
 
+  glGetShaderSource__sig: 'viiii',
   glGetShaderSource: function(shader, bufSize, length, source) {
     var result = Module.ctx.getShaderSource(GL.shaders[shader]);
-    result.slice(0, bufSize - 1);
+    result = result.slice(0, bufSize - 1);
     writeStringToMemory(result, source);
     if (length) {
       {{{ makeSetValue('length', '0', 'result.length', 'i32') }}};
@@ -1050,6 +1098,7 @@ var LibraryGL = {
     Module.ctx.compileShader(GL.shaders[shader]);
   },
 
+  glGetShaderInfoLog__sig: 'viiii',
   glGetShaderInfoLog: function(shader, maxLength, length, infoLog) {
     var log = Module.ctx.getShaderInfoLog(GL.shaders[shader]);
     // Work around a bug in Chromium which causes getShaderInfoLog to return null
@@ -1063,6 +1112,7 @@ var LibraryGL = {
     }
   },
 
+  glGetShaderiv__sig: 'viii',
   glGetShaderiv : function(shader, pname, p) {
     if (pname == 0x8B84) { // GL_INFO_LOG_LENGTH
       {{{ makeSetValue('p', '0', 'Module.ctx.getShaderInfoLog(GL.shaders[shader]).length + 1', 'i32') }}};
@@ -1080,6 +1130,7 @@ var LibraryGL = {
     }
   },
 
+  glIsShader__sig: 'ii',
   glIsShader: function(shader) {
     var s = GL.shaders[shader];
     if (!s) return 0;
@@ -1093,6 +1144,7 @@ var LibraryGL = {
     return id;
   },
 
+  glDeleteProgram__sig: 'vi',
   glDeleteProgram: function(program) {
     Module.ctx.deleteProgram(GL.programs[program]);
     GL.programs[program] = null;
@@ -1118,6 +1170,7 @@ var LibraryGL = {
     GL.uniformTable[program] = {}; // uniforms no longer keep the same names after linking
   },
 
+  glGetProgramInfoLog__sig: 'viiii',
   glGetProgramInfoLog: function(program, maxLength, length, infoLog) {
     var log = Module.ctx.getProgramInfoLog(GL.programs[program]);
     // Work around a bug in Chromium which causes getProgramInfoLog to return null
@@ -1136,10 +1189,12 @@ var LibraryGL = {
     Module.ctx.useProgram(program ? GL.programs[program] : null);
   },
 
+  glValidateProgram__sig: 'vi',
   glValidateProgram: function(program) {
     Module.ctx.validateProgram(GL.programs[program]);
   },
 
+  glIsProgram__sig: 'vi',
   glIsProgram: function(program) {
     var program = GL.programs[program];
     if (!program) return 0;
@@ -1696,6 +1751,19 @@ var LibraryGL = {
         case 'glEnableVertexAttribArray': ret = {{{ Functions.getIndex('_glEnableVertexAttribArray', true) }}}; break;
         case 'glDisableVertexAttribArray': ret = {{{ Functions.getIndex('_glDisableVertexAttribArray', true) }}}; break;
         case 'glVertexAttribPointer': ret = {{{ Functions.getIndex('_glVertexAttribPointer', true) }}}; break;
+	case 'glVertexAttrib1f': ret = {{{ Functions.getIndex('_glVertexAttrib1f', true) }}}; break;
+	case 'glVertexAttrib2f': ret = {{{ Functions.getIndex('_glVertexAttrib2f', true) }}}; break;
+	case 'glVertexAttrib3f': ret = {{{ Functions.getIndex('_glVertexAttrib3f', true) }}}; break;
+	case 'glVertexAttrib4f': ret = {{{ Functions.getIndex('_glVertexAttrib4f', true) }}}; break;
+	case 'glVertexAttrib1fv': ret = {{{ Functions.getIndex('_glVertexAttrib1fv', true) }}}; break;
+	case 'glVertexAttrib2fv': ret = {{{ Functions.getIndex('_glVertexAttrib2fv', true) }}}; break;
+	case 'glVertexAttrib3fv': ret = {{{ Functions.getIndex('_glVertexAttrib3fv', true) }}}; break;
+	case 'glVertexAttrib4fv': ret = {{{ Functions.getIndex('_glVertexAttrib4fv', true) }}}; break;
+	case 'glGetVertexAttribfv': ret = {{{ Functions.getIndex('_glGetVertexAttribfv', true) }}}; break;
+	case 'glGetVertexAttribiv': ret = {{{ Functions.getIndex('_glGetVertexAttribiv', true) }}}; break;
+	case 'glGetVertexAttribPointerv': ret = {{{ Functions.getIndex('_glGetVertexAttribPointerv', true) }}}; break;
+	case 'glGetAttribLocation': ret = {{{ Functions.getIndex('_glGetAttribLocation', true) }}}; break;
+	case 'glGetActiveAttrib': ret = {{{ Functions.getIndex('_glGetActiveAttrib', true) }}}; break;
         case 'glBindRenderbuffer': ret = {{{ Functions.getIndex('_glBindRenderbuffer', true) }}}; break;
         case 'glDeleteRenderbuffers': ret = {{{ Functions.getIndex('_glDeleteRenderbuffers', true) }}}; break;
         case 'glGenRenderbuffers': ret = {{{ Functions.getIndex('_glGenRenderbuffers', true) }}}; break;
@@ -1713,11 +1781,96 @@ var LibraryGL = {
         case 'glGenVertexArrays': ret = {{{ Functions.getIndex('_glGenVertexArrays', true) }}}; break;
         case 'glDeleteVertexArrays': ret = {{{ Functions.getIndex('_glDeleteVertexArrays', true) }}}; break;
         case 'glBindVertexArray': ret = {{{ Functions.getIndex('_glBindVertexArray', true) }}}; break;
+        case 'glGetString': ret = {{{ Functions.getIndex('_glGetString', true) }}}; break;
+	case 'glBindTexture': ret = {{{ Functions.getIndex('_glBindTexture', true) }}}; break;
+	case 'glGetBufferParameteriv': ret = {{{ Functions.getIndex('_glGetBufferParameteriv', true) }}}; break;
+	case 'glIsBuffer': ret = {{{ Functions.getIndex('_glIsBuffer', true) }}}; break;
+	case 'glDeleteShader': ret = {{{ Functions.getIndex('_glDeleteShader', true) }}}; break;
+	case 'glUniformMatrix2fv': ret = {{{ Functions.getIndex('_glUniformMatrix2fv', true) }}}; break;
+	case 'glIsRenderbuffer': ret = {{{ Functions.getIndex('_glIsRenderbuffer', true) }}}; break;
+	case 'glBlendEquation': ret = {{{ Functions.getIndex('_glBlendEquation', true) }}}; break;
+	case 'glBlendFunc': ret = {{{ Functions.getIndex('_glBlendFunc', true) }}}; break;
+	case 'glBlendFuncSeparate': ret = {{{ Functions.getIndex('_glBlendFuncSeparate', true) }}}; break;
+	case 'glBlendEquationSeparate': ret = {{{ Functions.getIndex('_glBlendEquationSeparate', true) }}}; break;
+	case 'glDepthRangef': ret = {{{ Functions.getIndex('_glDepthRangef', true) }}}; break;
+	case 'glClear': ret = {{{ Functions.getIndex('_glClear', true) }}}; break;
+	case 'glGenerateMipmap': ret = {{{ Functions.getIndex('_glGenerateMipmap', true) }}}; break;
+	case 'glBlendColor': ret = {{{ Functions.getIndex('_glBlendColor', true) }}}; break;
+	case 'glClearDepthf': ret = {{{ Functions.getIndex('_glClearDepthf', true) }}}; break;
+	case 'glDeleteProgram': ret = {{{ Functions.getIndex('_glDeleteProgram', true) }}}; break;
+	case 'glUniformMatrix3fv': ret = {{{ Functions.getIndex('_glUniformMatrix3fv', true) }}}; break;
+	case 'glClearColor': ret = {{{ Functions.getIndex('_glClearColor', true) }}}; break;
+	case 'glGetRenderbufferParameteriv': ret = {{{ Functions.getIndex('_glGetRenderbufferParameteriv', true) }}}; break;
+	case 'glGetShaderInfoLog': ret = {{{ Functions.getIndex('_glGetShaderInfoLog', true) }}}; break;
+	case 'glUniformMatrix4fv': ret = {{{ Functions.getIndex('_glUniformMatrix4fv', true) }}}; break;
+	case 'glClearStencil': ret = {{{ Functions.getIndex('_glClearStencil', true) }}}; break;
+	case 'glGetProgramInfoLog': ret = {{{ Functions.getIndex('_glGetProgramInfoLog', true) }}}; break;
+	case 'glGetUniformfv': ret = {{{ Functions.getIndex('_glGetUniformfv', true) }}}; break;
+	case 'glStencilFuncSeparate': ret = {{{ Functions.getIndex('_glStencilFuncSeparate', true) }}}; break;
+	case 'glSampleCoverage': ret = {{{ Functions.getIndex('_glSampleCoverage', true) }}}; break;
+	case 'glColorMask': ret = {{{ Functions.getIndex('_glColorMask', true) }}}; break;
+	case 'glGetShaderiv': ret = {{{ Functions.getIndex('_glGetShaderiv', true) }}}; break;
+	case 'glGetUniformiv': ret = {{{ Functions.getIndex('_glGetUniformiv', true) }}}; break;
+	case 'glCopyTexSubImage2D': ret = {{{ Functions.getIndex('_glCopyTexSubImage2D', true) }}}; break;
+	case 'glDetachShader': ret = {{{ Functions.getIndex('_glDetachShader', true) }}}; break;
+	case 'glGetShaderSource': ret = {{{ Functions.getIndex('_glGetShaderSource', true) }}}; break;
+	case 'glDeleteTextures': ret = {{{ Functions.getIndex('_glDeleteTextures', true) }}}; break;
+	case 'glGetAttachedShaders': ret = {{{ Functions.getIndex('_glGetAttachedShaders', true) }}}; break;
+	case 'glValidateProgram': ret = {{{ Functions.getIndex('_glValidateProgram', true) }}}; break;
+	case 'glDepthFunc': ret = {{{ Functions.getIndex('_glDepthFunc', true) }}}; break;
+	case 'glIsShader': ret = {{{ Functions.getIndex('_glIsShader', true) }}}; break;
+	case 'glDepthMask': ret = {{{ Functions.getIndex('_glDepthMask', true) }}}; break;
+	case 'glStencilMaskSeparate': ret = {{{ Functions.getIndex('_glStencilMaskSeparate', true) }}}; break;
+	case 'glIsProgram': ret = {{{ Functions.getIndex('_glIsProgram', true) }}}; break;
+	case 'glDisable': ret = {{{ Functions.getIndex('_glDisable', true) }}}; break;
+	case 'glStencilOpSeparate': ret = {{{ Functions.getIndex('_glStencilOpSeparate', true) }}}; break;
+	case 'glDrawArrays': ret = {{{ Functions.getIndex('_glDrawArrays', true) }}}; break;
+	case 'glDrawElements': ret = {{{ Functions.getIndex('_glDrawElements', true) }}}; break;
+	case 'glEnable': ret = {{{ Functions.getIndex('_glEnable', true) }}}; break;
+	case 'glFinish': ret = {{{ Functions.getIndex('_glFinish', true) }}}; break;
+	case 'glFlush': ret = {{{ Functions.getIndex('_glFlush', true) }}}; break;
+	case 'glFrontFace': ret = {{{ Functions.getIndex('_glFrontFace', true) }}}; break;
+	case 'glCullFace': ret = {{{ Functions.getIndex('_glCullFace', true) }}}; break;
+	case 'glGenTextures': ret = {{{ Functions.getIndex('_glGenTextures', true) }}}; break;
+	case 'glGetError': ret = {{{ Functions.getIndex('_glGetError', true) }}}; break;
+	case 'glGetIntegerv': ret = {{{ Functions.getIndex('_glGetIntegerv', true) }}}; break;
+	case 'glGetBooleanv': ret = {{{ Functions.getIndex('_glGetBooleanv', true) }}}; break;
+	case 'glGetFloatv': ret = {{{ Functions.getIndex('_glGetFloatv', true) }}}; break;
+	case 'glHint': ret = {{{ Functions.getIndex('_glHint', true) }}}; break;
+	case 'glIsTexture': ret = {{{ Functions.getIndex('_glIsTexture', true) }}}; break;
+	case 'glPixelStorei': ret = {{{ Functions.getIndex('_glPixelStorei', true) }}}; break;
+	case 'glReadPixels': ret = {{{ Functions.getIndex('_glReadPixels', true) }}}; break;
+	case 'glScissor': ret = {{{ Functions.getIndex('_glScissor', true) }}}; break;
+	case 'glStencilFunc': ret = {{{ Functions.getIndex('_glStencilFunc', true) }}}; break;
+	case 'glStencilMask': ret = {{{ Functions.getIndex('_glStencilMask', true) }}}; break;
+	case 'glStencilOp': ret = {{{ Functions.getIndex('_glStencilOp', true) }}}; break;
+	case 'glTexImage2D': ret = {{{ Functions.getIndex('_glTexImage2D', true) }}}; break;
+	case 'glTexParameterf': ret = {{{ Functions.getIndex('_glTexParameterf', true) }}}; break;
+	case 'glTexParameterfv': ret = {{{ Functions.getIndex('_glTexParameterfv', true) }}}; break;
+	case 'glTexParameteri': ret = {{{ Functions.getIndex('_glTexParameteri', true) }}}; break;
+	case 'glTexParameteriv': ret = {{{ Functions.getIndex('_glTexParameteriv', true) }}}; break;
+	case 'glGetTexParameterfv': ret = {{{ Functions.getIndex('_glGetTexParameterfv', true) }}}; break;
+	case 'glGetTexParameteriv': ret = {{{ Functions.getIndex('_glGetTexParameteriv', true) }}}; break;
+	case 'glTexSubImage2D': ret = {{{ Functions.getIndex('_glTexSubImage2D', true) }}}; break;
+	case 'glCopyTexImage2D': ret = {{{ Functions.getIndex('_glCopyTexImage2D', true) }}}; break;
+	case 'glViewport': ret = {{{ Functions.getIndex('_glViewport', true) }}}; break;
+	case 'glIsEnabled': ret = {{{ Functions.getIndex('_glIsEnabled', true) }}}; break;
+	case 'glLineWidth': ret = {{{ Functions.getIndex('_glLineWidth', true) }}}; break;
+	case 'glPolygonOffset': ret = {{{ Functions.getIndex('_glPolygonOffset', true) }}}; break;
+	case 'glReleaseShaderCompiler': ret = {{{ Functions.getIndex('_glReleaseShaderCompiler', true) }}}; break;
+	case 'glGetShaderPrecisionFormat': ret = {{{ Functions.getIndex('_glGetShaderPrecisionFormat', true) }}}; break;
+	case 'glShaderBinary': ret = {{{ Functions.getIndex('_glShaderBinary', true) }}}; break;
       }
       if (!ret) Module.printErr('WARNING: getProcAddress failed for ' + name);
       return ret;
     }
   },
+
+  glGetShaderPrecisionFormat__sig: 'v',
+  glGetShaderPrecisionFormat: function() { throw 'glGetShaderPrecisionFormat: TODO' },
+
+  glShaderBinary__sig: 'v',
+  glShaderBinary: function() { throw 'glShaderBinary: TODO' },
 
   glDeleteObject__sig: 'vi',
   glDeleteObject: function(id) {
@@ -1728,6 +1881,11 @@ var LibraryGL = {
     } else {
       Module.printErr('WARNING: deleteObject received invalid id: ' + id);
     }
+  },
+
+  glReleaseShaderCompiler__sig: 'v',
+  glReleaseShaderCompiler: function() {
+    // NOP (as allowed by GLES 2.0 spec)
   },
 
   glGetObjectParameteriv__sig: 'viii',
@@ -1826,7 +1984,7 @@ var LibraryGL = {
 
     totalEnabledClientAttributes: 0,
     enabledClientAttributes: [0, 0],
-    clientAttributes: [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}], // raw data, including possible unneeded ones
+    clientAttributes: [], // raw data, including possible unneeded ones
     liveClientAttributes: [], // the ones actually alive in the current computation, sorted
     modifiedClientAttributes: false,
     clientActiveTexture: 0,
@@ -1834,11 +1992,27 @@ var LibraryGL = {
 
     setClientAttribute: function(name, size, type, stride, pointer) {
       var attrib = this.clientAttributes[name];
-      attrib.name = name;
-      attrib.size = size;
-      attrib.type = type;
-      attrib.stride = stride;
-      attrib.pointer = pointer;
+      if (!attrib) {
+        for (var i = 0; i <= name; i++) { // keep flat
+          if (!this.clientAttributes[i]) {
+            this.clientAttributes[i] = {
+              name: name,
+              size: size,
+              type: type,
+              stride: stride,
+              pointer: pointer,
+              offset: 0
+            };
+          }
+        }
+      } else {
+        attrib.name = name;
+        attrib.size = size;
+        attrib.type = type;
+        attrib.stride = stride;
+        attrib.pointer = pointer;
+        attrib.offset = 0;
+      }
       this.modifiedClientAttributes = true;
     },
 
@@ -2104,14 +2278,16 @@ var LibraryGL = {
           if (this.modelViewLocation) Module.ctx.uniformMatrix4fv(this.modelViewLocation, false, GL.immediate.matrix['m']);
           if (this.projectionLocation) Module.ctx.uniformMatrix4fv(this.projectionLocation, false, GL.immediate.matrix['p']);
 
+          var clientAttributes = GL.immediate.clientAttributes;
+
           Module.ctx.vertexAttribPointer(this.positionLocation, positionSize, positionType, false,
-                                         GL.immediate.stride, GL.immediate.clientAttributes[GL.immediate.VERTEX].offset);
+                                         GL.immediate.stride, clientAttributes[GL.immediate.VERTEX].offset);
           Module.ctx.enableVertexAttribArray(this.positionLocation);
           if (this.hasTextures) {
             for (var i = 0; i < textureSizes.length; i++) {
               if (textureSizes[i] && this.texCoordLocations[i] >= 0) {
                 Module.ctx.vertexAttribPointer(this.texCoordLocations[i], textureSizes[i], textureTypes[i], false,
-                                               GL.immediate.stride, GL.immediate.clientAttributes[GL.immediate.TEXTURE0 + i].offset);
+                                               GL.immediate.stride, clientAttributes[GL.immediate.TEXTURE0 + i].offset);
                 Module.ctx.enableVertexAttribArray(this.texCoordLocations[i]);
               }
             }
@@ -2123,7 +2299,7 @@ var LibraryGL = {
           }
           if (this.hasColorAttrib) {
             Module.ctx.vertexAttribPointer(this.colorLocation, colorSize, colorType, true,
-                                           GL.immediate.stride, GL.immediate.clientAttributes[GL.immediate.COLOR].offset);
+                                           GL.immediate.stride, clientAttributes[GL.immediate.COLOR].offset);
             Module.ctx.enableVertexAttribArray(this.colorLocation);
             Module.ctx.uniform1i(this.hasColorAttribLocation, 1);
           } else if (this.hasColorUniform) {
@@ -2132,7 +2308,7 @@ var LibraryGL = {
           }
           if (this.hasNormal) {
             Module.ctx.vertexAttribPointer(this.normalLocation, normalSize, normalType, true,
-                                           GL.immediate.stride, GL.immediate.clientAttributes[GL.immediate.NORMAL].offset);
+                                           GL.immediate.stride, clientAttributes[GL.immediate.NORMAL].offset);
             Module.ctx.enableVertexAttribArray(this.normalLocation);
           }
           if (!useCurrProgram) { // otherwise, the user program will set the sampler2D binding and uniform itself
@@ -2282,14 +2458,14 @@ var LibraryGL = {
       }
       attributes.sort(function(x, y) { return !x ? (!y ? 0 : 1) : (!y ? -1 : (x.pointer - y.pointer)) });
       start = GL.currArrayBuffer ? 0 : attributes[0].pointer;
+      var multiStrides = false;
       for (var i = 0; i < attributes.length; i++) {
         var attribute = attributes[i];
         if (!attribute) break;
-#if ASSERTIONS
-        assert(stride == 0 || stride == attribute.stride); // must all be in the same buffer
-#endif
+        if (stride != 0 && stride != attribute.stride) multiStrides = true;
         if (attribute.stride) stride = attribute.stride;
       }
+      if (multiStrides) stride = 0; // we will need to restride
       var bytes = 0; // total size in bytes
       if (!stride && !beginEnd) {
         // beginEnd can not have stride in the attributes, that is fine. otherwise,
@@ -2297,7 +2473,7 @@ var LibraryGL = {
         // our emulation code simple, we perform unpacking/restriding here. this adds overhead, so
         // it is a good idea to not hit this!
 #if ASSERTIONS
-        Runtime.warnOnce('Unpacking/restriding attributes, this is not fast');
+        Runtime.warnOnce('Unpacking/restriding attributes, this is slow and dangerous');
 #endif
         if (!GL.immediate.restrideBuffer) GL.immediate.restrideBuffer = _malloc(GL.MAX_TEMP_BUFFER_SIZE);
         start = GL.immediate.restrideBuffer;
@@ -2986,6 +3162,7 @@ var LibraryGL = {
     Module.ctx.disableVertexAttribArray(index);
   },
 
+  glDrawArrays__sig: 'viii',
   glDrawArrays: function(mode, first, count) {
 #if FULL_ES2
     // bind any client-side buffers
@@ -2999,6 +3176,7 @@ var LibraryGL = {
 #endif
   },
 
+  glDrawElements__sig: 'viiii',
   glDrawElements: function(mode, count, type, indices) {
 #if FULL_ES2
     var buf;
@@ -3033,6 +3211,37 @@ var LibraryGL = {
   glActiveTexture__sig: 'vi',
   glCheckFramebufferStatus__sig: 'ii',
   glRenderbufferStorage__sig: 'viiii',
+  glClearStencil__sig: 'vi',
+  glStencilFunc__sig: 'viii',
+  glLineWidth__sig: 'vi',
+  glBlendEquation__sig: 'vi',
+  glBlendEquationSeparate__sig: 'vii',
+  glVertexAttrib1f__sig: 'vii',
+  glVertexAttrib2f__sig: 'viii',
+  glVertexAttrib3f__sig: 'viiii',
+  glVertexAttrib4f__sig: 'viiiii',
+  glCullFace__sig: 'vi',
+  glBlendFunc__sig: 'vii',
+  glBlendFuncSeparate__sig: 'viiii',
+  glPolygonOffset__sig: 'vii',
+  glColorMask__sig: 'viiii',
+  glStencilOp__sig: 'viii',
+  glStencilOpSeparate__sig: 'viiii',
+  glGenerateMipmap__sig: 'vi',
+  glHint__sig: 'vii',
+  glDepthMask__sig: 'vi',
+  glViewport__sig: 'viiii',
+  glDepthFunc__sig: 'vi',
+  glStencilMask__sig: 'vi',
+  glStencilMaskSeparate__sig: 'vii',
+  glClearDepthf__sig: 'vi',
+  glFinish__sig: 'v',
+  glFlush__sig: 'v',
+  glClearColor__sig: 'viiii',
+  glIsEnabled__sig: 'ii',
+  glGetError__sig: 'i',
+  glFrontFace__sig: 'vi',
+  glSampleCoverage__sig: 'vi',
 
   // Open GLES1.1 compatibility
 
@@ -3055,7 +3264,7 @@ var LibraryGL = {
 // Simple pass-through functions. Starred ones have return values. [X] ones have X in the C name but not in the JS name
 [[0, 'getError* finish flush'],
  [1, 'clearDepth clearDepth[f] depthFunc enable disable frontFace cullFace clear lineWidth clearStencil depthMask stencilMask checkFramebufferStatus* generateMipmap activeTexture blendEquation sampleCoverage isEnabled*'],
- [2, 'blendFunc blendEquationSeparate depthRange depthRange[f] stencilMaskSeparate hint polygonOffset'],
+ [2, 'blendFunc blendEquationSeparate depthRange depthRange[f] stencilMaskSeparate hint polygonOffset vertexAttrib1f'],
  [3, 'texParameteri texParameterf vertexAttrib2f stencilFunc stencilOp'],
  [4, 'viewport clearColor scissor vertexAttrib3f colorMask renderbufferStorage blendFuncSeparate blendColor stencilFuncSeparate stencilOpSeparate'],
  [5, 'vertexAttrib4f'],
@@ -3065,11 +3274,16 @@ var LibraryGL = {
   var args = range(num).map(function(i) { return 'x' + i }).join(', ');
   var plainStub = '(function(' + args + ') { Module.ctx.NAME(' + args + ') })';
   var returnStub = '(function(' + args + ') { return Module.ctx.NAME(' + args + ') })';
+  var sigEnd = range(num).map(function() { return 'i' }).join('');
   names.split(' ').forEach(function(name) {
     var stub = plainStub;
+    var sig;
     if (name[name.length-1] == '*') {
       name = name.substr(0, name.length-1);
       stub = returnStub;
+      sig = 'i' + sigEnd;
+    } else {
+      sig = 'v' + sigEnd;
     }
     var cName = name;
     if (name.indexOf('[') >= 0) {
@@ -3079,6 +3293,7 @@ var LibraryGL = {
     var cName = 'gl' + cName[0].toUpperCase() + cName.substr(1);
     assert(!(cName in LibraryGL), "Cannot reimplement the existing function " + cName);
     LibraryGL[cName] = eval(stub.replace('NAME', name));
+    if (!LibraryGL[cName + '__sig']) LibraryGL[cName + '__sig'] = sig;
   });
 });
 

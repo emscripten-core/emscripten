@@ -120,8 +120,9 @@
 
 
   FT_CALLBACK_DEF( FT_Error )
-  t1_cmap_standard_init( T1_CMapStd  cmap )
+  t1_cmap_standard_init( T1_CMapStd  cmap, FT_Pointer init_data ) /* XXX EMSCRIPTEN */
   {
+    FT_UNUSED(init_data); /* XXX EMSCRIPTEN */
     t1_cmap_std_init( cmap, 0 );
     return 0;
   }
@@ -142,8 +143,9 @@
 
 
   FT_CALLBACK_DEF( FT_Error )
-  t1_cmap_expert_init( T1_CMapStd  cmap )
+  t1_cmap_expert_init( T1_CMapStd  cmap, FT_Pointer init_data ) /* XXX EMSCRIPTEN */
   {
+    FT_UNUSED(init_data); /* XXX EMSCRIPTEN */
     t1_cmap_std_init( cmap, 1 );
     return 0;
   }
@@ -172,11 +174,11 @@
 
 
   FT_CALLBACK_DEF( FT_Error )
-  t1_cmap_custom_init( T1_CMapCustom  cmap )
+  t1_cmap_custom_init( T1_CMapCustom  cmap, FT_Pointer init_data ) /* XXX EMSCRIPTEN */
   {
     T1_Face      face     = (T1_Face)FT_CMAP_FACE( cmap );
     T1_Encoding  encoding = &face->type1.encoding;
-
+    FT_UNUSED(init_data); /* XXX EMSCRIPTEN */
 
     cmap->first   = encoding->code_first;
     cmap->count   = (FT_UInt)( encoding->code_last - cmap->first );
@@ -272,12 +274,12 @@
 
 
   FT_CALLBACK_DEF( FT_Error )
-  t1_cmap_unicode_init( PS_Unicodes  unicodes )
+  t1_cmap_unicode_init( PS_Unicodes  unicodes, FT_Pointer init_data ) /* XXX EMSCRIPTEN */
   {
     T1_Face             face    = (T1_Face)FT_CMAP_FACE( unicodes );
     FT_Memory           memory  = FT_FACE_MEMORY( face );
     FT_Service_PsCMaps  psnames = (FT_Service_PsCMaps)face->psnames;
-
+    FT_UNUSED(init_data); /* XXX EMSCRIPTEN */
 
     return psnames->unicodes_init( memory,
                                    unicodes,

@@ -168,6 +168,10 @@ if (SAFE_HEAP >= 2) {
 EXPORTED_FUNCTIONS = set(EXPORTED_FUNCTIONS);
 EXPORTED_GLOBALS = set(EXPORTED_GLOBALS);
 EXCEPTION_CATCHING_WHITELIST = set(EXCEPTION_CATCHING_WHITELIST);
+
+DEAD_FUNCTIONS.forEach(function(dead) {
+  DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push(dead.substr(1));
+});
 DEAD_FUNCTIONS = numberedSet(DEAD_FUNCTIONS);
 
 RUNTIME_DEBUG = LIBRARY_DEBUG || GL_DEBUG;
@@ -178,9 +182,9 @@ assert(!(USE_TYPED_ARRAYS === 2 && QUANTUM_SIZE !== 4), 'For USE_TYPED_ARRAYS ==
 if (ASM_JS) {
   assert(!ALLOW_MEMORY_GROWTH, 'Cannot grow asm.js heap');
   assert((TOTAL_MEMORY&(TOTAL_MEMORY-1)) == 0, 'asm.js heap must be power of 2');
-  assert(DISABLE_EXCEPTION_CATCHING == 1, 'asm.js does not support C++ exceptions yet, you must compile with -s DISABLE_EXCEPTION_CATCHING=1');
 }
 assert(!(!NAMED_GLOBALS && BUILD_AS_SHARED_LIB)); // shared libraries must have named globals
+assert(!BUILD_AS_SHARED_LIB, 'shared libs are deprecated');
 
 // Output some info and warnings based on settings
 
@@ -205,7 +209,10 @@ load('parseTools.js');
 load('intertyper.js');
 load('analyzer.js');
 load('jsifier.js');
-if (RELOOP) load(RELOOPER)
+if (RELOOP) {
+  load(RELOOPER);
+  assert(typeof Relooper != 'undefined');
+}
 globalEval(processMacros(preprocess(read('runtime.js'))));
 Runtime.QUANTUM_SIZE = QUANTUM_SIZE;
 

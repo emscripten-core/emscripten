@@ -171,8 +171,17 @@ void calculateVerticesAndNormals_x87(
 
 int main (int argc, char*argv[])
 {
-	const int N=atoi(argv[1]);
-	const int M=atoi(argv[2]);
+  int N, M;
+  int arg = argc > 1 ? argv[1][0] - '0' : 3;
+  switch(arg) {
+    case 0: return 0; break;
+    case 1: N = 2000; M = 1700; break;
+    case 2: N = 6600; M = 6500; break;
+    case 3: N = 9500; M = 10000; break;
+    case 4: N = 2*11000; M = 2*12000; break;
+    case 5: N = 3*10000; M = 3*10800; break;
+    default: printf("error: %d\\n", arg); return -1;
+  }
 
   Vertex *v = new Vertex[N];
   Influence *i = new Influence[N];

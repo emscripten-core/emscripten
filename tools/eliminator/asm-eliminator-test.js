@@ -141,5 +141,34 @@ function label() {
     i();
   }
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j", "_segment_holding", "__ZN5identC2EiPKcPci", "_vec2Length", "exc", "label"]
+function switchy() {
+  var no = 0, yes = 0;
+  while (1) switch (label | 0) {
+    case x:
+      no = 100; // eliminatable in theory, but eliminator does not look into switch. must leave def above as well.
+      break;
+    case y:
+      yes = 111;
+      yes = yes*2;
+      print(yes);
+      yes--;
+      print(yes/2);
+      continue;
+  }
+}
+function confuusion() {
+  var i = +0;
+  func1(+i);
+  var j = i; // add this var in the middle. should show up with right type later, auto-inferred from i's type
+  func2(+j);
+}
+function tempDouble(a) {
+  a = +a;
+  var x = +0, y = +0;
+  // CastAway can leave things like this as variables no longer needed. We need to identify that x's value has no side effects so it can be completely cleaned up
+  x = (HEAP32[((tempDoublePtr)>>2)]=((HEAP32[(($_sroa_0_0__idx1)>>2)])|0),HEAP32[(((tempDoublePtr)+(4))>>2)]=((HEAP32[((($_sroa_0_0__idx1)+(4))>>2)])|0),(+(HEAPF64[(tempDoublePtr)>>3])));
+  y = a*a;
+  f(y);
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j", "_segment_holding", "__ZN5identC2EiPKcPci", "_vec2Length", "exc", "label", "confuusion", "tempDouble"]
 

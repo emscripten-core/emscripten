@@ -17,7 +17,7 @@ extern "C" {
 #define SO_BROADCAST 6
 #define AF_UNIX PF_UNIX
 
-#define AF_UNSPEC 100
+#define AF_UNSPEC 0
 #define SOCK_STREAM 200
 #define SOL_SOCKET 50
 #define SO_ERROR 10
@@ -40,6 +40,7 @@ extern "C" {
 typedef unsigned int sa_family_t;
 #define AF_INET 1
 #define AF_INET6 6
+#define PF_INET6 AF_INET6
 
 struct sockaddr {
   sa_family_t sa_family; 
@@ -67,6 +68,7 @@ ssize_t recv(int s, void *buf, size_t len, int flags);
 ssize_t send(int s, const void *buf, size_t len, int flags);
 int setsockopt(int s, int level, int optname, const void *optval, socklen_t optlen);
 ssize_t sendto(int s, const void *buf, size_t len, int flags, const struct sockaddr *to, socklen_t tolen);
+int socketpair(int domain, int type, int protocol, int sv[2]);
 
 struct msghdr
 {

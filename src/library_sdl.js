@@ -41,9 +41,7 @@ var LibrarySDL = {
                // Note that images loaded before SDL_SetVideoMode will not get this optimization
 
     keyboardState: null,
-    shiftKey: false,
-    ctrlKey: false,
-    altKey: false,
+    keyboardMap: {},
 
     textInput: false,
 
@@ -410,10 +408,6 @@ var LibrarySDL = {
           }
 
           SDL.events.push(event);
-          if (SDL.events.length >= 10000) {
-            Module.printErr('SDL event queue full, dropping earliest event');
-            SDL.events.shift();
-          }
           break;
         case 'mouseout':
           // Un-press all pressed mouse buttons, because we might miss the release outside of the canvas
@@ -429,6 +423,17 @@ var LibrarySDL = {
             }
           }
           break;
+        case 'blur':
+        case 'visibilitychange': {
+          // Un-press all pressed keys: TODO
+          for (var code in SDL.keyboardMap) {
+            SDL.events.push({
+              type: 'keyup',
+              keyCode: SDL.keyboardMap[code]
+            });
+          }
+          break;
+        }
         case 'unload':
           if (Browser.mainLoop.runner) {
             SDL.events.push(event);
@@ -439,6 +444,10 @@ var LibrarySDL = {
         case 'resize':
           SDL.events.push(event);
           break;
+      }
+      if (SDL.events.length >= 10000) {
+        Module.printErr('SDL event queue full, dropping events');
+        SDL.events = SDL.events.slice(0, 10000);
       }
       return false;
     },
@@ -476,14 +485,12 @@ var LibrarySDL = {
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.mod', '0', 'i32') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.unicode', 'key', 'i32') }}}
 
-          {{{ makeSetValue('SDL.keyboardState', 'SDL.keyCodes[event.keyCode] || event.keyCode', 'event.type == "keydown"', 'i8') }}};
-
-          if (event.keyCode == 16) { //shift
-            SDL.shiftKey = event.type == "keydown";
-          } else if (event.keyCode == 17) { //control
-            SDL.ctrlKey = event.type == "keydown";
-          } else if (event.keyCode == 18) { //alt
-            SDL.altKey = event.type == "keydown";
+          var code = SDL.keyCodes[event.keyCode] || event.keyCode;
+          {{{ makeSetValue('SDL.keyboardState', 'code', 'down', 'i8') }}};
+          if (down) {
+            SDL.keyboardMap[code] = event.keyCode; // save the DOM input, which we can use to unpress it during blur
+          } else {
+            delete SDL.keyboardMap[code];
           }
 
           break;
@@ -642,9 +649,11 @@ var LibrarySDL = {
       document.onkeydown = SDL.receiveEvent;
       document.onkeyup = SDL.receiveEvent;
       document.onkeypress = SDL.receiveEvent;
+      document.onblur = SDL.receiveEvent;
+      document.addEventListener("visibilitychange", SDL.receiveEvent);
     }
     window.onunload = SDL.receiveEvent;
-    SDL.keyboardState = _malloc(0x10000);
+    SDL.keyboardState = _malloc(0x10000); // Our SDL needs 512, but 64K is safe for older SDLs
     _memset(SDL.keyboardState, 0, 0x10000);
     // Initialize this structure carefully for closure
     SDL.DOMEventToSDLEvent['keydown'] = 0x300 /* SDL_KEYDOWN */;
@@ -909,9 +918,9 @@ var LibrarySDL = {
 
   SDL_GetModState: function() {
     // TODO: numlock, capslock, etc.
-    return (SDL.shiftKey ? 0x0001 | 0x0002 : 0) | // KMOD_LSHIFT & KMOD_RSHIFT
-           (SDL.ctrlKey ? 0x0040 | 0x0080 : 0) | // KMOD_LCTRL & KMOD_RCTRL
-           (SDL.altKey ? 0x0100 | 0x0200 : 0); // KMOD_LALT & KMOD_RALT
+    return (SDL.keyboardState[16] ? 0x0001 | 0x0002 : 0) | // KMOD_LSHIFT & KMOD_RSHIFT
+           (SDL.keyboardState[17] ? 0x0040 | 0x0080 : 0) | // KMOD_LCTRL & KMOD_RCTRL
+           (SDL.keyboardState[18] ? 0x0100 | 0x0200 : 0); // KMOD_LALT & KMOD_RALT
   },
 
   SDL_GetMouseState: function(x, y) {
@@ -1029,6 +1038,19 @@ var LibrarySDL = {
     var ret = SDL.makeSurface(w, h, srcData.flags, false, 'zoomSurface');
     var dstData = SDL.surfaces[ret];
     dstData.ctx.drawImage(srcData.canvas, 0, 0, w, h);
+    return ret;
+  },
+
+  rotozoomSurface: function(src, angle, zoom, smooth) {
+    var srcData = SDL.surfaces[src];
+    var w = srcData.width * zoom;
+    var h = srcData.height * zoom;
+    var diagonal = Math.ceil(Math.sqrt(Math.pow(w, 2) + Math.pow(h, 2)));
+    var ret = SDL.makeSurface(diagonal, diagonal, srcData.flags, false, 'rotozoomSurface');
+    var dstData = SDL.surfaces[ret];
+    dstData.ctx.translate(diagonal / 2, diagonal / 2);
+    dstData.ctx.rotate(angle * Math.PI / 180);
+    dstData.ctx.drawImage(srcData.canvas, -w / 2, -h / 2, w, h);
     return ret;
   },
 

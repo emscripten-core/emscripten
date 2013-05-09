@@ -145,9 +145,9 @@ fannkuch(int n)
 }
 
 int
-main(int ac, char **av)
+main(int argc, char **argv)
 {
-   int n = ac > 1 ? atoi(av[1]) : 0;
+   int n = argc > 1 ? atoi(argv[1]) : 0;
 
    if (n < 1) {
       printf("Wrong argument.\n");

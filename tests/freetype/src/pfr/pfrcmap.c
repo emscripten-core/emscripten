@@ -23,11 +23,11 @@
 
 
   FT_CALLBACK_DEF( FT_Error )
-  pfr_cmap_init( PFR_CMap  cmap )
+  pfr_cmap_init( PFR_CMap  cmap, FT_Pointer  init_data ) /* XXX EMSCRIPTEN */
   {
     FT_Error  error = PFR_Err_Ok;
     PFR_Face  face  = (PFR_Face)FT_CMAP_FACE( cmap );
-
+    FT_UNUSED(init_data); /* XXX EMSCRIPTEN */
 
     cmap->num_chars = face->phy_font.num_chars;
     cmap->chars     = face->phy_font.chars;

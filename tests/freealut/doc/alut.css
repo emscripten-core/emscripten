@@ -1,0 +1,45 @@
+body, div {
+  font-family: sans-serif;
+  color: black;
+  background: white
+}
+
+h1, h2, h3, h4, h5, h6, p.title { color: #005A9C }
+
+/*
+ * We could use the following to make the headers stand out a little bit more:
+ *
+ * h1 { background-color: #b8bec2 }
+ * h2 { background-color: #cfd5da }
+ */
+
+h3.manpage { background-color: #e6edf2 }
+
+h1 { font:            170% sans-serif }
+h2 { font:            140% sans-serif }
+h3 { font:            120% sans-serif }
+h4 { font: bold       100% sans-serif }
+h5 { font: italic     100% sans-serif }
+h6 { font: small-caps 100% sans-serif }
+
+pre {
+  font-family: monospace;
+  border-width: 1px;
+  border-style: solid;
+  padding: 0.3em
+}
+
+pre.screen         { color: #006400 }
+pre.programlisting { color: maroon }
+
+div.example {
+  background-color: #fffcf5;
+  margin: 1ex 0em;
+  border: solid #412e25 1px;
+  padding: 0ex 0.4em
+}
+
+a:link    { color:      #0000C8 }
+a:hover   { background: #FFFFA8 }
+a:active  { color:      #D00000 }
+a:visited { color:      #680098 }
