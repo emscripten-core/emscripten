@@ -157,15 +157,15 @@ function __emval_new(handle, argCount, argTypes) {
         __newers[argCount] = newer;
     }
 
-    if (argCount == 0) {
+    if (argCount === 0) {
         return newer(handle, argTypes);
-    } else if (argCount == 1) {
+    } else if (argCount === 1) {
         return newer(handle, argTypes, arguments[3]);
-    } else if (argCount == 2) {
+    } else if (argCount === 2) {
         return newer(handle, argTypes, arguments[3], arguments[4]);
-    } else if (argCount == 3) {
+    } else if (argCount === 3) {
         return newer(handle, argTypes, arguments[3], arguments[4], arguments[5]);
-    } else if (argCount == 4) {
+    } else if (argCount === 4) {
         return newer(handle, argTypes, arguments[3], arguments[4], arguments[5], arguments[6]);
     } else {
         // This is a slow path! (.apply and .splice are slow), so a few specializations are present above.
