@@ -417,11 +417,10 @@ namespace emscripten {
 
         // TODO: This could do a reinterpret-cast if sizeof(T) === sizeof(void*)
         template<typename T>
-        inline void* getContext(const T& t) {
+        inline T* getContext(const T& t) {
             // not a leak because this is called once per binding
-            void* p = malloc(sizeof(T));
-            assert(p);
-            memcpy(p, &t, sizeof(T));
+            T* p = reinterpret_cast<T*>(malloc(sizeof(T)));
+            new(p) T(t);
             return p;
         }
 
