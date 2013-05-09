@@ -509,6 +509,9 @@ COMPILER_OPTS = COMPILER_OPTS + ['-m32', '-U__i386__', '-U__i386', '-Ui386',
                                  '-D__IEEE_LITTLE_ENDIAN', '-fno-math-errno', '-fno-threadsafe-statics',
                                  '-target', LLVM_TARGET]
 
+if LLVM_TARGET == 'le32-unknown-nacl':
+  COMPILER_OPTS += ['-U__native_client__', '-U__pnacl__', '-U__ELF__'] # The nacl target is originally used for Google Native Client. Emscripten is not NaCl, so remove the platform #define, when using their triple.
+
 USE_EMSDK = not os.environ.get('EMMAKEN_NO_SDK')
 
 if USE_EMSDK:
