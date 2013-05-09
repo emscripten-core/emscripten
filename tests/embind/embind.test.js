@@ -5,6 +5,8 @@ module({
 
     var CheckForLeaks = fixture("check for leaks", function() {
         this.setUp(function() {
+            cm.setDelayFunction(undefined);
+
             if (typeof INVOKED_FROM_EMSCRIPTEN_TEST_RUNNER === "undefined") { // TODO: Enable this to work in Emscripten runner as well!
                 cm._mallocDebug(2);
                 assert.equal(0, cm.count_emval_handles());
@@ -12,6 +14,7 @@ module({
             }
         });
         this.tearDown(function() {
+            cm.flushPendingDeletes();
             if (typeof INVOKED_FROM_EMSCRIPTEN_TEST_RUNNER === "undefined") { // TODO: Enable this to work in Emscripten runner as well!
                 cm._mallocAssertAllMemoryFree();
                 assert.equal(0, cm.count_emval_handles());
@@ -1771,6 +1774,94 @@ module({
             assert.equal(4, views[2].length);
             assert.deepEqual([1000, 100, 10, 1], [].slice.call(views[2]));
         });
+    });
+
+    BaseFixture.extend("delete pool", function() {
+        test("can delete objects later", function() {
+            var v = new cm.ValHolder({});
+            v.deleteLater();
+            assert.deepEqual({}, v.getVal());
+            cm.flushPendingDeletes();
+            assert.throws(cm.BindingError, function() {
+                v.getVal();
+            });
+        });
+
+        test("calling deleteLater twice is an error", function() {
+            var v = new cm.ValHolder({});
+            v.deleteLater();
+            assert.throws(cm.BindingError, function() {
+                v.deleteLater();
+            });
+        });
+
+        test("deleteLater returns the object", function() {
+            var v = (new cm.ValHolder({})).deleteLater();
+            assert.deepEqual({}, v.getVal());
+        });
+
+        test("deleteLater throws if object is already deleted", function() {
+            var v = new cm.ValHolder({});
+            v.delete();
+            assert.throws(cm.BindingError, function() {
+                v.deleteLater();
+            });
+        });
+
+        test("delete throws if object is already scheduled for deletion", function() {
+            var v = new cm.ValHolder({});
+            v.deleteLater();
+            assert.throws(cm.BindingError, function() {
+                v.delete();
+            });
+        });
+
+        test("deleteLater invokes delay function", function() {
+            var runLater;
+            cm.setDelayFunction(function(fn) {
+                runLater = fn;
+            });
+
+            var v = new cm.ValHolder({});
+            assert.false(runLater);
+            v.deleteLater();
+            assert.true(runLater);
+            assert.false(v.isDeleted());
+            runLater();
+            assert.true(v.isDeleted());
+        });
+
+        test("deleteLater twice invokes delay function once", function() {
+            var count = 0;
+            var runLater;
+            cm.setDelayFunction(function(fn) {
+                ++count;
+                runLater = fn;
+            });
+
+            (new cm.ValHolder({})).deleteLater();
+            (new cm.ValHolder({})).deleteLater();
+            assert.equal(1, count);
+            runLater();
+            (new cm.ValHolder({})).deleteLater();
+            assert.equal(2, count);
+        });
+
+        test('The delay function is immediately invoked if the deletion queue is not empty', function() {
+            (new cm.ValHolder({})).deleteLater();
+            var count = 0;
+            cm.setDelayFunction(function(fn) {
+                ++count;
+            });
+            assert.equal(1, count);
+        });
+
+        // The idea is that an interactive application would
+        // periodically flush the deleteLater queue by calling
+        //
+        // setDelayFunction(function(fn) {
+        //     setTimeout(fn, 0);
+        // });
     });
 });
 

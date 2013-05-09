@@ -1114,9 +1114,13 @@ ClassHandle.prototype.isAliasOf = function(other) {
     return leftClass === rightClass && left === right;
 };
 
+function throwInstanceAlreadyDeleted(obj) {
+    throwBindingError(getInstanceTypeName(obj) + ' instance already deleted');
+}
+
 ClassHandle.prototype.clone = function() {
     if (!this.$$.ptr) {
-        throwBindingError(getInstanceTypeName(this) + ' instance already deleted');
+        throwInstanceAlreadyDeleted(this);
     }
 
     var clone = Object.create(Object.getPrototypeOf(this), {
@@ -1138,9 +1142,12 @@ function runDestructor(handle) {
     }
 }
 
-ClassHandle.prototype['delete'] = function() {
+ClassHandle.prototype['delete'] = function ClassHandle_delete() {
     if (!this.$$.ptr) {
-        throwBindingError(getInstanceTypeName(this) + ' instance already deleted');
+        throwInstanceAlreadyDeleted(this);
+    }
+    if (this.$$.deleteScheduled) {
+        throwBindingError('Object already scheduled for deletion');
     }
 
     this.$$.count.value -= 1;
@@ -1149,6 +1156,44 @@ ClassHandle.prototype['delete'] = function() {
     }
     this.$$.smartPtr = undefined;
     this.$$.ptr = undefined;
+};
+
+var deletionQueue = [];
+
+ClassHandle.prototype['isDeleted'] = function isDeleted() {
+    return !this.$$.ptr;
+};
+
+ClassHandle.prototype['deleteLater'] = function deleteLater() {
+    if (!this.$$.ptr) {
+        throwInstanceAlreadyDeleted(this);
+    }
+    if (this.$$.deleteScheduled) {
+        throwBindingError('Object already scheduled for deletion');
+    }
+    deletionQueue.push(this);
+    if (deletionQueue.length === 1 && delayFunction) {
+        delayFunction(flushPendingDeletes);
+    }
+    this.$$.deleteScheduled = true;
+    return this;
+};
+
+function flushPendingDeletes() {
+    while (deletionQueue.length) {
+        var obj = deletionQueue.pop();
+        obj.$$.deleteScheduled = false;
+        obj['delete']();
+    }
+}
+Module['flushPendingDeletes'] = flushPendingDeletes;
+
+var delayFunction;
+Module['setDelayFunction'] = function setDelayFunction(fn) {
+    delayFunction = fn;
+    if (deletionQueue.length && delayFunction) {
+        delayFunction(flushPendingDeletes);
+    }
 };
         
 function RegisteredClass(
