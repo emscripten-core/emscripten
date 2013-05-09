@@ -310,7 +310,7 @@ LibraryManager.library = {
           this.getter = getter;
         }
 
-        LazyUint8Array.prototype.getLength = function() {
+        LazyUint8Array.prototype.cacheLength = function() {
             // Find length
             var xhr = new XMLHttpRequest();
             xhr.open('HEAD', url, false);
@@ -371,7 +371,7 @@ LibraryManager.library = {
         Object.defineProperty(lazyArray, "length", {
             get: function() {
                 if(!this.lengthKnown) {
-                    this.getLength();
+                    this.cacheLength();
                 }
                 return this._length;
             }
@@ -379,7 +379,7 @@ LibraryManager.library = {
         Object.defineProperty(lazyArray, "chunkSize", {
             get: function() {
                 if(!this.lengthKnown) {
-                    this.getLength();
+                    this.cacheLength();
                 }
                 return this._chunkSize;
             }
