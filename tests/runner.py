@@ -6039,6 +6039,38 @@ Pass: 0.000012 0.000012''')
       '''
       self.do_run(src, '''0:173,16 1:16,173 2:183,173 3:17,287 4:98,123''')
 
+    def test_sscanf_other_whitespace(self):
+      src = r'''
+        #include<stdio.h>
+
+        int main() {
+          short int x;
+          short int y;
+
+          const char* buffer[] = {
+            "\t2\t3\t", /* TAB - horizontal tab */
+            "\t\t5\t\t7\t\t",
+            "\n11\n13\n",  /* LF - line feed */
+            "\n\n17\n\n19\n\n",
+            "\v23\v29\v",  /* VT - vertical tab */
+            "\v\v31\v\v37\v\v",
+            "\f41\f43\f",  /* FF - form feed */
+            "\f\f47\f\f53\f\f",
+            "\r59\r61\r",  /* CR - carrage return */
+            "\r\r67\r\r71\r\r"
+          };
+
+          for (int i=0; i<10; ++i) {
+            x = 0; y = 0;
+            sscanf(buffer[i], " %d %d ", &x, &y);
+            printf("%d, %d, ",  x, y);
+          }
+
+          return 0;
+        }
+      '''
+      self.do_run(src, '''2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, ''')
+
     def test_sscanf_3(self):
       # i64
       if not Settings.USE_TYPED_ARRAYS == 2: return self.skip('64-bit sscanf only supported in ta2')
