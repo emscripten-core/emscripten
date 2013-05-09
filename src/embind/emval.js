@@ -71,14 +71,8 @@ function __emval_incref(handle) {
 
 function __emval_decref(handle) {
     if (handle && 0 === --_emval_handle_array[handle].refcount) {
-        delete _emval_handle_array[handle];
+        _emval_handle_array[handle] = undefined;
         _emval_free_list.push(handle);
-
-        var actual_length = _emval_handle_array.length;
-        while (actual_length > 0 && _emval_handle_array[actual_length - 1] === undefined) {
-            --actual_length;
-        }
-        _emval_handle_array.length = actual_length;
     }
 }
 
@@ -110,44 +104,73 @@ function __emval_take_value(type, v) {
 
 var __newers = {}; // arity -> function
 
+
+function craftEmvalAllocator(argCount) {
+    /*This function returns a new function that looks like this:
+    function emval_allocator_3(handle, argTypes, arg0Wired, arg1Wired, arg2Wired) {
+        var argType0 = requireRegisteredType(HEAP32[(argTypes >> 2)], "parameter 0");
+        var arg0 = argType0.fromWireType(arg0Wired);
+        var argType1 = requireRegisteredType(HEAP32[(argTypes >> 2) + 1], "parameter 1");
+        var arg1 = argType1.fromWireType(arg1Wired);
+        var argType2 = requireRegisteredType(HEAP32[(argTypes >> 2) + 2], "parameter 2");
+        var arg2 = argType2.fromWireType(arg2Wired);
+        var constructor = _emval_handle_array[handle].value;
+        var emval = new constructor(arg0, arg1, arg2);
+        return emval;
+    } */
+
+    var args1 = ["requireRegisteredType", "HEAP32", "_emval_handle_array", "__emval_register"];
+    var args2 = [requireRegisteredType, HEAP32, _emval_handle_array, __emval_register];
+
+    var argsList = "";
+    var argsListWired = "";
+    for(var i = 0; i < argCount; ++i) {
+        argsList += (i!==0?", ":"")+"arg"+i; // 'arg0, arg1, ..., argn'
+        argsListWired += ", arg"+i+"Wired"; // ', arg0Wired, arg1Wired, ..., argnWired'
+    }
+
+    var invokerFnBody =
+        "return function emval_allocator_"+argCount+"(handle, argTypes " + argsListWired + ") {\n";
+
+    for(var i = 0; i < argCount; ++i) {
+        invokerFnBody += 
+            "var argType"+i+" = requireRegisteredType(HEAP32[(argTypes >> 2) + "+i+"], \"parameter "+i+"\");\n" +
+            "var arg"+i+" = argType"+i+".fromWireType(arg"+i+"Wired);\n";
+    }
+    invokerFnBody +=
+        "var constructor = _emval_handle_array[handle].value;\n" +
+        "var obj = new constructor("+argsList+");\n" +
+        "return __emval_register(obj);\n" +
+        "}\n";
+
+    args1.push(invokerFnBody);
+    var invokerFunction = new_(Function, args1).apply(null, args2);
+    return invokerFunction;
+}
+
 function __emval_new(handle, argCount, argTypes) {
     requireHandle(handle);
-
-    var args = parseParameters(
-        argCount,
-        argTypes,
-        Array.prototype.slice.call(arguments, 3));
-
-    // Alas, we are forced to use operator new until WebKit enables
-    // constructing typed arrays without new.
-    // In WebKit, Uint8Array(10) throws an error.
-    // In every other browser, it's identical to new Uint8Array(10).
-
+    
     var newer = __newers[argCount];
     if (!newer) {
-        var parameters = new Array(argCount);
-        for (var i = 0; i < argCount; ++i) {
-            parameters[i] = 'a' + i;
-        }
-        /*jshint evil:true*/
-        newer = __newers[argCount] = new Function(
-            ['c'].concat(parameters),
-            "return new c(" + parameters.join(',') + ");");
+        newer = craftEmvalAllocator(argCount);
+        __newers[argCount] = newer;
     }
-    
-    var constructor = _emval_handle_array[handle].value;
-    var obj = newer.apply(undefined, [constructor].concat(args));
-/*
-    // implement what amounts to operator new
-    function dummy(){}
-    dummy.prototype = constructor.prototype;
-    var obj = new constructor;
-    var rv = constructor.apply(obj, args);
-    if (typeof rv === 'object') {
-        obj = rv;
+
+    if (argCount == 0) {
+        return newer(handle, argTypes);
+    } else if (argCount == 1) {
+        return newer(handle, argTypes, arguments[3]);
+    } else if (argCount == 2) {
+        return newer(handle, argTypes, arguments[3], arguments[4]);
+    } else if (argCount == 3) {
+        return newer(handle, argTypes, arguments[3], arguments[4], arguments[5]);
+    } else if (argCount == 4) {
+        return newer(handle, argTypes, arguments[3], arguments[4], arguments[5], arguments[6]);
+    } else {
+        // This is a slow path! (.apply and .splice are slow), so a few specializations are present above.
+        return newer.apply(null, arguments.splice(1));
     }
-*/
-    return __emval_register(obj);
 }
 
 // appease jshint (technically this code uses eval)
