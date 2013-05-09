@@ -1732,7 +1732,7 @@ var LibrarySDL = {
   SDL_GL_SetSwapInterval: function(state) {},
 
   SDL_SetWindowTitle: function(window, title) {
-    title = title && Pointer_stringify(title);
+    if (title) document.title = Pointer_stringify(title);
   },
 
   SDL_GetWindowSize: function(window, width, height){
@@ -1757,9 +1757,7 @@ var LibrarySDL = {
 
   SDL_ClearError: function() {},
 
-  SDL_getenv: function(variable) {
-    return "";
-  },
+  SDL_getenv: 'getenv',
 
   // TODO
 
