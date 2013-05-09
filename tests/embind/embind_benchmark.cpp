@@ -51,6 +51,13 @@ extern void pass_gameobject_ptr_benchmark_embind_js();
 extern void call_through_interface0();
 extern void call_through_interface1();
 extern void call_through_interface2();
+
+extern void returns_val_benchmark();
+}
+
+emscripten::val returns_val(emscripten::val value)
+{
+    return emscripten::val(value.as<unsigned>() + 1);
 }
 
 class Vec3
@@ -281,6 +288,8 @@ EMSCRIPTEN_BINDINGS(benchmark)
     function("callInterface1", &callInterface1);
     function("callInterface2", &callInterface2);
     function("callInterface3", &callInterface3);
+
+    function("returns_val", &returns_val);
 }
 
 void __attribute__((noinline)) emscripten_get_now_benchmark(int N)
@@ -492,4 +501,5 @@ int main()
     call_through_interface0();
     call_through_interface1();
     call_through_interface2();
+    returns_val_benchmark();
 }
