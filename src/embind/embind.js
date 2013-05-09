@@ -311,7 +311,7 @@ function __embind_register_integer(primitiveType, name, minRange, maxRange) {
         'toWireType': function(destructors, value) {
             // todo: Here we have an opportunity for -O3 level "unsafe" optimizations: we could
             // avoid the following two if()s and assume value is of proper type.
-            if (typeof value !== "number") {
+            if (typeof value !== "number" && typeof value !== "boolean") {
                 throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
             }
             if (value < minRange || value > maxRange) {
@@ -333,8 +333,8 @@ function __embind_register_float(rawType, name) {
         'toWireType': function(destructors, value) {
             // todo: Here we have an opportunity for -O3 level "unsafe" optimizations: we could
             // avoid the following if() and assume value is of proper type.
-            if (typeof value !== "number") {
-                throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' +this.name);
+            if (typeof value !== "number" && typeof value !== "boolean") {
+                throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
             }
             return value;
         },

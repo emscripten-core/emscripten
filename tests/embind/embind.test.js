@@ -493,6 +493,15 @@ module({
             assert.equal(true, cm.emval_test_not(false));
         });
 
+        test("can pass booleans as integers", function() {
+            assert.equal(1, cm.emval_test_as_unsigned(true));
+            assert.equal(0, cm.emval_test_as_unsigned(false));
+        });
+
+        test("can pass booleans as floats", function() {
+            assert.equal(2, cm.const_ref_adder(true, true));
+        });
+
         test("convert double to unsigned", function() {
             var rv = cm.emval_test_as_unsigned(1.5);
             assert.equal('number', typeof rv);
