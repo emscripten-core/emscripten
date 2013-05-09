@@ -31,7 +31,7 @@ using namespace std;
 
 const int e_count = 40;
 
-result_t measure(clock_t times[FRAMES]) {
+result_t measure(clock_t *times) {
   float values[FRAMES];
   result_t r;
 
