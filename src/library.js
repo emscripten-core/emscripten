@@ -2573,7 +2573,7 @@ LibraryManager.library = {
         if (format[formatIndex] == 'l') {
           long_ = true;
           formatIndex++;
-          if(format[formatIndex] == 'l') {
+          if (format[formatIndex] == 'l') {
             longLong = true;
             formatIndex++;
           }
@@ -2632,7 +2632,7 @@ LibraryManager.library = {
           case 'd': case 'u': case 'i':
             if (half) {
               {{{ makeSetValue('argPtr', 0, 'parseInt(text, 10)', 'i16') }}};
-            } else if(longLong) {
+            } else if (longLong) {
               {{{ makeSetValue('argPtr', 0, 'parseInt(text, 10)', 'i64') }}};
             } else {
               {{{ makeSetValue('argPtr', 0, 'parseInt(text, 10)', 'i32') }}};
@@ -4474,7 +4474,7 @@ LibraryManager.library = {
     var i = 0;
     while(1) {
       var x = {{{ makeGetValue('pstr', 'i', 'i8') }}};
-      if(x == 0) break;
+      if (x == 0) break;
       {{{ makeSetValue('pstr', 'i', '_tolower(x)', 'i8') }}};
       i++;
     }
@@ -4485,7 +4485,7 @@ LibraryManager.library = {
     var i = 0;
     while(1) {
       var x = {{{ makeGetValue('pstr', 'i', 'i8') }}};
-      if(x == 0) break;
+      if (x == 0) break;
       {{{ makeSetValue('pstr', 'i', '_toupper(x)', 'i8') }}};
       i++;
     }
@@ -7161,7 +7161,7 @@ LibraryManager.library = {
     }
 
     // Open the peer connection if we don't have it already
-    if(null == Sockets.peer) {
+    if (null == Sockets.peer) {
       var host = Module['host'];
       var broker = Module['webrtc']['broker'];
       var session = Module['webrtc']['session'];
@@ -7171,7 +7171,7 @@ LibraryManager.library = {
         console.log('connected');
         var addr;
         // Assign 10.0.0.1 to the host
-        if(session && session === connection['route']) {
+        if (session && session === connection['route']) {
           addr = 0x0100000a; // 10.0.0.1
         } else {
           addr = Sockets.addrPool.shift();
@@ -7181,23 +7181,23 @@ LibraryManager.library = {
         connection.ondisconnect = function() {
           console.log('disconnect');
           // Don't return the host address (10.0.0.1) to the pool
-          if(!(session && session === Sockets.connections[addr]['route']))
+          if (!(session && session === Sockets.connections[addr]['route']))
             Sockets.addrPool.push(addr);
           delete Sockets.connections[addr];
 
-          if(Module['webrtc']['ondisconnect'] && 'function' === typeof Module['webrtc']['ondisconnect'])
+          if (Module['webrtc']['ondisconnect'] && 'function' === typeof Module['webrtc']['ondisconnect'])
             Module['webrtc']['ondisconnect'](peer);
         };
         connection.onerror = function(error) {
-          if(Module['webrtc']['onerror'] && 'function' === typeof Module['webrtc']['onerror'])
+          if (Module['webrtc']['onerror'] && 'function' === typeof Module['webrtc']['onerror'])
             Module['webrtc']['onerror'](error);
         };
         connection.onmessage = function(label, message) {
-          if('unreliable' === label)
+          if ('unreliable' === label)
             handleMessage(addr, message.data);
         }
 
-        if(Module['webrtc']['onconnect'] && 'function' === typeof Module['webrtc']['onconnect'])
+        if (Module['webrtc']['onconnect'] && 'function' === typeof Module['webrtc']['onconnect'])
           Module['webrtc']['onconnect'](peer);
       };
       peer.onpending = function(pending) {
@@ -7207,7 +7207,7 @@ LibraryManager.library = {
         console.error(error);
       };
       peer.onroute = function(route) {
-        if(Module['webrtc']['onpeer'] && 'function' === typeof Module['webrtc']['onpeer'])
+        if (Module['webrtc']['onpeer'] && 'function' === typeof Module['webrtc']['onpeer'])
           Module['webrtc']['onpeer'](peer, route);
       };
       function handleMessage(addr, message) {
@@ -7215,7 +7215,7 @@ LibraryManager.library = {
         Module.print("received " + message.byteLength + " raw bytes");
 #endif
         var header = new Uint16Array(message, 0, 2);
-        if(Sockets.portmap[header[1]]) {
+        if (Sockets.portmap[header[1]]) {
           Sockets.portmap[header[1]].inQueue.push([addr, message]);
         } else {
           console.log("unable to deliver message: ", addr, header[1], message);
@@ -7243,11 +7243,11 @@ LibraryManager.library = {
           buffer[tail ++] = element;
           length = Math.min(++ length, max_length - 1);
           tail = tail % max_length;
-          if(tail === head)
+          if (tail === head)
             head = (head + 1) % max_length;
         },
         shift: function(element) {
-          if(length < 1) return undefined;
+          if (length < 1) return undefined;
 
           var element = buffer[head];
           -- length;
@@ -7275,7 +7275,7 @@ LibraryManager.library = {
     for(var i = 0; i < Sockets.maxport; ++ i) {
       var port = Sockets.nextport ++;
       Sockets.nextport = (Sockets.nextport > Sockets.maxport) ? 1 : Sockets.nextport;
-      if(!Sockets.portmap[port]) {
+      if (!Sockets.portmap[port]) {
         return port;
       }
     }
@@ -7290,11 +7290,11 @@ LibraryManager.library = {
   bind: function(fd, addr, addrlen) {
     var info = Sockets.fds[fd];
     if (!info) return -1;
-    if(addr) {
+    if (addr) {
       info.port = _ntohs(getValue(addr + Sockets.sockaddr_in_layout.sin_port, 'i16'));
       // info.addr = getValue(addr + Sockets.sockaddr_in_layout.sin_addr, 'i32');
     }
-    if(!info.port) {
+    if (!info.port) {
       info.port = _mkport();
     }
     info.addr = Sockets.localAddr; // 10.0.0.254
@@ -7312,7 +7312,7 @@ LibraryManager.library = {
     var info = Sockets.fds[fd];
     if (!info) return -1;
     // if we are not connected, use the address info in the message
-    if(!info.bound) {
+    if (!info.bound) {
       _bind(fd);
     }
 
