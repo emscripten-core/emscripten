@@ -6040,6 +6040,8 @@ Pass: 0.000012 0.000012''')
       self.do_run(src, '''0:173,16 1:16,173 2:183,173 3:17,287 4:98,123''')
 
     def test_sscanf_other_whitespace(self):
+      Settings.SAFE_HEAP = 0 # use i16s in printf
+
       src = r'''
         #include<stdio.h>
 
