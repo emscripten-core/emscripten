@@ -12565,7 +12565,16 @@ elif 'benchmark' in str(sys.argv):
       print '   JavaScript: mean: %.3f (+-%.3f) secs  median: %.3f  range: %.3f-%.3f  (noise: %3.3f%%)  (%d runs)' % (mean, std, median, min(times), max(times), 100*std/mean, reps)
       print '   Native    : mean: %.3f (+-%.3f) secs  median: %.3f  range: %.3f-%.3f  (noise: %3.3f%%)  JS is %.2f X slower' % (mean_native, std_native, median_native, min(native_times), max(native_times), 100*std_native/mean_native, final)
 
-    def do_benchmark(self, name, src, args=[], expected_output='FAIL', emcc_args=[], native_args=[], shared_args=[], force_c=False, reps=TEST_REPS):
+    def do_benchmark(self, name, src, expected_output='FAIL', args=[], emcc_args=[], native_args=[], shared_args=[], force_c=False, reps=TEST_REPS):
+      # standard arguments for timing:
+      # 0: no runtime, just startup
+      # 1: very little runtime
+      # 2: 0.5 seconds
+      # 3: 1 second
+      # 4: 5 seconds
+      # 5: 10 seconds
+      args = args or ['3']
+
       dirname = self.get_dir()
       filename = os.path.join(dirname, name + '.c' + ('' if force_c else 'pp'))
       f = open(filename, 'w')
@@ -12654,7 +12663,7 @@ elif 'benchmark' in str(sys.argv):
           return 0;
         }
       '''
-      self.do_benchmark('primes', src, [], 'lastprime: 3043739.')
+      self.do_benchmark('primes', src, 'lastprime: 3043739.')
 
     def test_memops(self):
       src = '''
@@ -12687,7 +12696,7 @@ elif 'benchmark' in str(sys.argv):
           return 0;
         }
       '''
-      self.do_benchmark('memops', src, [], 'final: 400.')
+      self.do_benchmark('memops', src, 'final: 400.')
 
     def zzztest_files(self):
       src = r'''
@@ -12730,7 +12739,7 @@ elif 'benchmark' in str(sys.argv):
           return 0;
         }
       '''
-      self.do_benchmark(src, [], 'ok')
+      self.do_benchmark(src, 'ok')
 
     def test_copy(self):
       src = r'''
@@ -12784,7 +12793,7 @@ elif 'benchmark' in str(sys.argv):
           return 0;
         }
       '''
-      self.do_benchmark('copy', src, [], 'sum:2836\n')
+      self.do_benchmark('copy', src, 'sum:2836\n')
 
     def test_fannkuch(self):
       src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read().replace(
@@ -12804,7 +12813,7 @@ elif 'benchmark' in str(sys.argv):
         '''
       )
       assert 'switch(arg)' in src
-      self.do_benchmark('fannkuch', src, [], 'Pfannkuchen(11) = 51.')
+      self.do_benchmark('fannkuch', src, 'Pfannkuchen(11) = 51.')
 
     def test_corrections(self):
       src = r'''
@@ -12837,7 +12846,7 @@ elif 'benchmark' in str(sys.argv):
           return 0;
         }
       '''
-      self.do_benchmark('corrections', src, [], 'final: 40006013:10225.', emcc_args=['-s', 'CORRECT_SIGNS=1', '-s', 'CORRECT_OVERFLOWS=1', '-s', 'CORRECT_ROUNDINGS=1'])
+      self.do_benchmark('corrections', src, 'final: 40006013:10225.', emcc_args=['-s', 'CORRECT_SIGNS=1', '-s', 'CORRECT_OVERFLOWS=1', '-s', 'CORRECT_ROUNDINGS=1'])
 
     def fasta(self, name, double_rep, emcc_args=[]):
       src = open(path_from_root('tests', 'fasta.cpp'), 'r').read().replace('double', double_rep)
@@ -12855,7 +12864,7 @@ elif 'benchmark' in str(sys.argv):
         }
       ''')
       assert 'switch(arg)' in src
-      self.do_benchmark('fasta', src, [], '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA\nTCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACT\nAAAAATACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAG\nGCTGAGGCAGGAGAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCG\nCCACTGCACTCCAGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAAGGCCGGGCGCGGT\nGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGATCACCTGAGGTCA\nGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAATACAAAAA\nTTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAGGCTGAGGCAGGAG\nAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCCA\nGCCTGGGCGA''')
+      self.do_benchmark('fasta', src, '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA\nTCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACT\nAAAAATACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAG\nGCTGAGGCAGGAGAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCG\nCCACTGCACTCCAGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAAGGCCGGGCGCGGT\nGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGATCACCTGAGGTCA\nGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAATACAAAAA\nTTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAGGCTGAGGCAGGAG\nAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCCA\nGCCTGGGCGA''')
 
     def test_fasta_float(self):
       self.fasta('fasta_float', 'float')
@@ -12868,11 +12877,11 @@ elif 'benchmark' in str(sys.argv):
 
     def test_skinning(self):
       src = open(path_from_root('tests', 'skinning_test_no_simd.cpp'), 'r').read()
-      self.do_benchmark('skinning', src, [], 'blah=0.000000')
+      self.do_benchmark('skinning', src, 'blah=0.000000')
 
     def test_life(self):
       src = open(path_from_root('tests', 'life.c'), 'r').read()
-      self.do_benchmark('life', src, [], '''--------------------------------
+      self.do_benchmark('life', src, '''--------------------------------
                           [][]      []              []          
                               [][]          [][]    []      []  
                                             [][]    []    []    
@@ -12910,7 +12919,7 @@ elif 'benchmark' in str(sys.argv):
     def test_nbody_java(self): # tests xmlvm compiled java, including bitcasts of doubles, i64 math, etc.
       args = [path_from_root('tests', 'nbody-java', x) for x in os.listdir(path_from_root('tests', 'nbody-java')) if x.endswith('.c')] + \
              ['-I' + path_from_root('tests', 'nbody-java')]
-      self.do_benchmark('nbody_java', '', ['11500000'], '''Time(s)''',
+      self.do_benchmark('nbody_java', '', '''Time(s)''',
                         force_c=True, emcc_args=args + ['-s', 'PRECISE_I64_MATH=1', '--llvm-lto', '0'], native_args=args + ['-lgc', '-std=c99', '-target', 'x86_64-pc-linux-gnu', '-lm'])
 
     def test_zlib(self):
@@ -12919,7 +12928,7 @@ elif 'benchmark' in str(sys.argv):
                    ['-I' + path_from_root('tests', 'zlib')]
       native_args = self.get_library('zlib_native', os.path.join('libz.a'), make_args=['libz.a'], native=True) + \
                      ['-I' + path_from_root('tests', 'zlib')]
-      self.do_benchmark('zlib', src, [], '''sizes: 100000,25906
+      self.do_benchmark('zlib', src, '''sizes: 100000,25906
 ok.
 ''',
                         force_c=True, emcc_args=emcc_args, native_args=native_args)
@@ -12933,7 +12942,7 @@ ok.
       emcc_args = js_lib + ['-I' + path_from_root('tests', 'box2d')]
       native_args = native_lib + ['-I' + path_from_root('tests', 'box2d')]
 
-      self.do_benchmark('box2d', src, [], 'frame averages', emcc_args=emcc_args, native_args=native_args)
+      self.do_benchmark('box2d', src, 'frame averages', emcc_args=emcc_args, native_args=native_args)
 
     def test_zzz_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
       src = open(path_from_root('tests', 'bullet', 'Demos', 'Benchmarks', 'BenchmarkDemo.cpp'), 'r').read() + \
@@ -12955,7 +12964,7 @@ ok.
       native_args = native_lib + ['-I' + path_from_root('tests', 'bullet', 'src'),
                                   '-I' + path_from_root('tests', 'bullet', 'Demos', 'Benchmarks')]
 
-      self.do_benchmark('bullet', src, [], '\nok.\n', emcc_args=emcc_args, native_args=native_args)
+      self.do_benchmark('bullet', src, '\nok.\n', emcc_args=emcc_args, native_args=native_args)
 
 elif 'sanity' in str(sys.argv):
 
