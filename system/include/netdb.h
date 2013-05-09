@@ -85,6 +85,8 @@ const char* hstrerror(int err);
 
 extern int h_errno;
 
+#include <netinet/in.h>
+
 #ifdef __cplusplus
 }
 #endif
