@@ -447,6 +447,8 @@ process(sys.argv[1])
 
 sys.argv = map(lambda arg: arg if not arg.startswith('test_') else 'default.' + arg, sys.argv)
 
+test_modes = ['default', 'o1', 'o2', 'asm1', 'asm2', 'asm2g', 'asm2x86', 's_0_0', 's_0_1', 's_1_0', 's_1_1']
+
 test_index = 0
 
 if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'browser' not in str(sys.argv):
@@ -454,10 +456,10 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
 
   print "Running Emscripten tests..."
 
-  if len(sys.argv) == 2 and 'ALL.' in sys.argv[1]:
+  if len(sys.argv) == 2 and sys.argv[1].startswith('ALL.'):
     ignore, test = sys.argv[1].split('.')
     print 'Running all test modes on test "%s"' % test
-    sys.argv = [sys.argv[0], 'default.'+test, 'o1.'+test, 'o2.'+test, 'asm1.'+test, 'asm2.'+test, 'asm2g.'+test, 'asm2x86.'+test, 's_0_0.'+test, 's_0_1.'+test, 's_1_0.'+test, 's_1_1.'+test]
+    sys.argv = [sys.argv[0]] + map(lambda mode: mode+'.'+test, test_modes)
 
   class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
     ## Does a complete test - builds, runs, checks output, etc.
@@ -13457,8 +13459,17 @@ if __name__ == '__main__':
     arg = sys.argv[i]
     if arg.startswith('skip:'):
       which = arg.split('skip:')[1]
-      print >> sys.stderr, 'will skip "%s"' % which
-      exec(which + ' = RunnerCore.skipme')
+      if which.startswith('ALL.'):
+        ignore, test = which.split('.')
+        which = map(lambda mode: mode+'.'+test, test_modes)
+      else:
+        which = [which]
+      
+      print >> sys.stderr, ','.join(which)
+      for test in which:
+        print >> sys.stderr, 'will skip "%s"' % test
+        exec(test + ' = RunnerCore.skipme')
+
       sys.argv[i] = ''
   sys.argv = filter(lambda arg: arg, sys.argv)
 
