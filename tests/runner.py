@@ -5620,7 +5620,7 @@ at function.:blag
                   open(path_from_root('tests', 'printf', 'output_i64_1.txt'), 'r').read()]
       self.do_run(src, expected)
 
-    def test_printf_types(self):
+    def test_printf_2(self):
       src = r'''
         #include <stdio.h>
 
@@ -5633,11 +5633,12 @@ at function.:blag
           double d = 6.6;
 
           printf("%c,%hd,%d,%lld,%.1f,%.1llf\n", c, s, i, l, f, d);
+          printf("%#x,%#x\n", 1, 0);
 
           return 0;
         }
         '''
-      self.do_run(src, '1,2,3,4,5.5,6.6\n')
+      self.do_run(src, '1,2,3,4,5.5,6.6\n0x1,0\n')
 
     def test_vprintf(self):
       src = r'''

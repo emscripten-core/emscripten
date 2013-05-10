@@ -2869,7 +2869,7 @@ LibraryManager.library = {
             } else if (next == {{{ charCode('o') }}}) {
               argText = (flagAlternative ? '0' : '') + currAbsArg.toString(8);
             } else if (next == {{{ charCode('x') }}} || next == {{{ charCode('X') }}}) {
-              prefix = flagAlternative ? '0x' : '';
+              prefix = (flagAlternative && currArg != 0) ? '0x' : '';
 #if PRECISE_I64_MATH
               if (argSize == 8 && i64Math) {
                 if (origArg[1]) {
