@@ -1118,7 +1118,7 @@ var asmPrintCounter = 0;
 // See makeSetValue
 function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSafe, forceAsm) {
   if (UNALIGNED_MEMORY) align = 1;
-  else if (FORCE_ALIGNED_MEMORY) align = 8;
+  else if (FORCE_ALIGNED_MEMORY && !isIllegalType(type)) align = 8;
 
   if (isStructType(type)) {
     var typeData = Types.types[type];
@@ -1222,7 +1222,7 @@ function indexizeFunctions(value, type) {
 //! @param noNeedFirst Whether to ignore the offset in the pointer itself.
 function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep, forcedAlign, forceAsm) {
   if (UNALIGNED_MEMORY && !forcedAlign) align = 1;
-  else if (FORCE_ALIGNED_MEMORY) align = 8;
+  else if (FORCE_ALIGNED_MEMORY && !isIllegalType(type)) align = 8;
 
   sep = sep || ';';
   if (isStructType(type)) {
