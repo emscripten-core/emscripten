@@ -20,6 +20,7 @@ var BRANCH_INVOKE = set('branch', 'invoke');
 var LABEL_ENDERS = set('branch', 'return', 'switch');
 var SIDE_EFFECT_CAUSERS = set('call', 'invoke', 'atomic');
 var UNUNFOLDABLE = set('value', 'structvalue', 'type', 'phiparam');
+var I64_DOUBLE_FLIP = { i64: 'double', double: 'i64' };
 
 // Analyzer
 
@@ -103,59 +104,79 @@ function analyzer(data, sidePass) {
     }
   });
 
-  // CastAway - try to remove bitcasts of double to i64, which LLVM sometimes generates unnecessarily
+  // CastAway - try to remove bitcasts of double<-->i64, which LLVM sometimes generates unnecessarily
   // (load a double, convert to i64, use as i64).
-  // We optimize this by checking if the value is later converted to an i64. If so we create a shadow
-  // variable that is a load of an i64, and use that in those places. (As SSA, this is valid, and
+  // We optimize this by checking if there are such bitcasts. If so we create a shadow
+  // variable that is of the other type, and use that in the relevant places. (As SSA, this is valid, and
   // variable elimination later will remove the double load if it is no longer needed.)
   //
+  // Note that aside from being an optimization, this is needed for correctness in some cases: If code
+  // assumes it can bitcast a double to an i64 and back and forth without loss, that may be violated
+  // due to NaN canonicalization.
   substrate.addActor('CastAway', {
     processItem: function(item) {
       this.forwardItem(item, 'Legalizer');
       if (USE_TYPED_ARRAYS != 2) return;
 
       item.functions.forEach(function(func) {
-        var changed = false;
+        var has = false;
         func.labels.forEach(function(label) {
-          var doubleVars = {};
+          var lines = label.lines;
+          for (var i = 0; i < lines.length; i++) {
+            var line = lines[i];
+            if (line.intertype == 'bitcast' && line.type in I64_DOUBLE_FLIP) {
+              has = true;
+            }
+          }
+        });
+        if (!has) return;
+        // there are i64<-->double bitcasts, create shadows for everything
+        var shadowed = {};
+        func.labels.forEach(function(label) {
           var lines = label.lines;
           var i = 0;
           while (i < lines.length) {
+          var lines = label.lines;
             var line = lines[i];
-            if (line.intertype == 'load' && line.type == 'double') {
-              doubleVars[line.assignTo] = i;
-            } else if (line.intertype == 'bitcast' && line.type == 'i64' && line.ident in doubleVars) {
-              // this is a bitcast of a loaded double into an i64. create shadow var
-              var shadow = line.ident + '$$i64doubleSHADOW';
-              var loadI = doubleVars[line.ident];
-              var load = lines[loadI];
-              if (load.pointer.intertype != 'value') { i++; continue } // TODO
-              // create shadow
-              lines.splice(loadI + 1, 0, { // this element will be legalized in the next phase
+            if (line.intertype == 'load' && line.type in I64_DOUBLE_FLIP) {
+              if (line.pointer.intertype != 'value') { i++; continue } // TODO
+              shadowed[line.assignTo] = 1;
+              var shadow = line.assignTo + '$$SHADOW';
+              var flip = I64_DOUBLE_FLIP[line.type];
+              lines.splice(i + 1, 0, { // if necessary this element will be legalized in the next phase
                 tokens: null,
                 indent: 2,
-                lineNum: load.lineNum + 0.5,
+                lineNum: line.lineNum + 0.5,
                 assignTo: shadow,
                 intertype: 'load',
-                pointerType: 'i64*',
-                type: 'i64',
-                valueType: 'i64',
+                pointerType: flip + '*',
+                type: flip,
+                valueType: flip,
                 pointer: {
                  intertype: 'value',
-                 ident: load.pointer.ident,
-                 type: 'i64*'
+                 ident: line.pointer.ident,
+                 type: flip + '*'
                 },
-                align: load.align,
-                ident: load.ident
+                align: line.align,
+                ident: line.ident
               });
-              // use shadow
-              line.params[0].ident = shadow;
-              line.params[0].type = 'i64';
-              line.type2 = 'i64';
               // note: no need to update func.lines, it is generated in a later pass
               i++;
             }
             i++;
+          }
+        });
+        // use shadows where possible
+        func.labels.forEach(function(label) {
+          var lines = label.lines;
+          for (var i = 0; i < lines.length; i++) {
+            var line = lines[i];
+            if (line.intertype == 'bitcast' && line.type in I64_DOUBLE_FLIP && line.ident in shadowed) {
+              var shadow = line.ident + '$$SHADOW';
+              line.params[0].ident = shadow;
+              line.params[0].type = line.type;
+              line.type2 = line.type;
+            }
           }
         });
       });
