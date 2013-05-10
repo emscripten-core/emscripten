@@ -339,6 +339,9 @@ var LibraryGL = {
                           Module.ctx.getExtension('WEBKIT_EXT_texture_filter_anisotropic');
 
       GL.floatExt = Module.ctx.getExtension('OES_texture_float');
+
+      GL.elementIndexUintExt = Module.ctx.getExtension('OES_element_index_uint');
+      GL.standardDerivativesExt = Module.ctx.getExtension('OES_standard_derivatives');
     }
   },
 
@@ -781,7 +784,7 @@ var LibraryGL = {
     program = GL.programs[program];
     var info = Module.ctx.getActiveUniform(program, index);
 
-    var infoname = info.name.slice(0, bufSize - 1);
+    var infoname = info.name.slice(0, Math.max(0, bufSize - 1));
     writeStringToMemory(infoname, name);
 
     if (length) {
@@ -795,25 +798,25 @@ var LibraryGL = {
     }
   },
 
-  glUniform1f__sig: 'vid',
+  glUniform1f__sig: 'vif',
   glUniform1f: function(location, v0) {
     location = GL.uniforms[location];
     Module.ctx.uniform1f(location, v0);
   },
 
-  glUniform2f__sig: 'vidd',
+  glUniform2f__sig: 'viff',
   glUniform2f: function(location, v0, v1) {
     location = GL.uniforms[location];
     Module.ctx.uniform2f(location, v0, v1);
   },
 
-  glUniform3f__sig: 'viddd',
+  glUniform3f__sig: 'vifff',
   glUniform3f: function(location, v0, v1, v2) {
     location = GL.uniforms[location];
     Module.ctx.uniform3f(location, v0, v1, v2);
   },
 
-  glUniform4f__sig: 'vidddd',
+  glUniform4f__sig: 'viffff',
   glUniform4f: function(location, v0, v1, v2, v3) {
     location = GL.uniforms[location];
     Module.ctx.uniform4f(location, v0, v1, v2, v3);
@@ -1031,7 +1034,7 @@ var LibraryGL = {
     program = GL.programs[program];
     var info = Module.ctx.getActiveAttrib(program, index);
 
-    var infoname = info.name.slice(0, bufSize - 1);
+    var infoname = info.name.slice(0, Math.max(0, bufSize - 1));
     writeStringToMemory(infoname, name);
 
     if (length) {
@@ -1058,12 +1061,6 @@ var LibraryGL = {
     GL.shaders[shader] = null;
   },
 
-  glDetachShader__sig: 'vii',
-  glDetachShader: function(program, shader) {
-    Module.ctx.detachShader(GL.programs[program],
-                            GL.shaders[shader]);
-  },
-
   glGetAttachedShaders__sig: 'viiii',
   glGetAttachedShaders: function(program, maxCount, count, shaders) {
     var result = Module.ctx.getAttachedShaders(GL.programs[program]);
@@ -1086,7 +1083,7 @@ var LibraryGL = {
   glGetShaderSource__sig: 'viiii',
   glGetShaderSource: function(shader, bufSize, length, source) {
     var result = Module.ctx.getShaderSource(GL.shaders[shader]);
-    result = result.slice(0, bufSize - 1);
+    result = result.slice(0, Math.max(0, bufSize - 1));
     writeStringToMemory(result, source);
     if (length) {
       {{{ makeSetValue('length', '0', 'result.length', 'i32') }}};
@@ -1157,6 +1154,12 @@ var LibraryGL = {
                             GL.shaders[shader]);
   },
 
+  glDetachShader__sig: 'vii',
+  glDetachShader: function(program, shader) {
+    Module.ctx.detachShader(GL.programs[program],
+                            GL.shaders[shader]);
+  },
+
   glGetShaderPrecisionFormat: function(shaderType, precisionType, range, precision) {
     var result = Module.ctx.getShaderPrecisionFormat(shaderType, precisionType);
     {{{ makeSetValue('range', '0', 'result.rangeMin', 'i32') }}};
@@ -1194,7 +1197,7 @@ var LibraryGL = {
     Module.ctx.validateProgram(GL.programs[program]);
   },
 
-  glIsProgram__sig: 'vi',
+  glIsProgram__sig: 'ii',
   glIsProgram: function(program) {
     var program = GL.programs[program];
     if (!program) return 0;
@@ -1583,6 +1586,18 @@ var LibraryGL = {
         glAttachShader(program, shader);
       };
 
+      var glDetachShader = _glDetachShader;
+      _glDetachShader = function(program, shader) {
+        var programShader = GL.programShaders[program];
+        if (!programShader) {
+          Module.printErr('WARNING: _glDetachShader received invalid program: ' + program);
+          return;
+        }
+        var index = programShader.indexOf(shader);
+        programShader.splice(index, 1);
+        glDetachShader(program, shader);
+      };
+
       var glUseProgram = _glUseProgram;
       _glUseProgram = function(program) {
 #if GL_DEBUG
@@ -1713,6 +1728,7 @@ var LibraryGL = {
         case 'glCreateProgramObject': case 'glCreateProgram': ret = {{{ Functions.getIndex('_glCreateProgram', true) }}}; break;
         case 'glAttachObject': case 'glAttachShader': ret = {{{ Functions.getIndex('_glAttachShader', true) }}}; break;
         case 'glUseProgramObject': case 'glUseProgram': ret = {{{ Functions.getIndex('_glUseProgram', true) }}}; break;
+        case 'glDetachObject': case 'glDetachShader': ret = {{{ Functions.getIndex('_glDetachShader', true) }}}; break;
         case 'glDeleteObject': ret = {{{ Functions.getIndex('_glDeleteObject', true) }}}; break;
         case 'glGetObjectParameteriv': ret = {{{ Functions.getIndex('_glGetObjectParameteriv', true) }}}; break;
         case 'glGetInfoLog': ret = {{{ Functions.getIndex('_glGetInfoLog', true) }}}; break;
@@ -1786,7 +1802,9 @@ var LibraryGL = {
 	case 'glGetBufferParameteriv': ret = {{{ Functions.getIndex('_glGetBufferParameteriv', true) }}}; break;
 	case 'glIsBuffer': ret = {{{ Functions.getIndex('_glIsBuffer', true) }}}; break;
 	case 'glDeleteShader': ret = {{{ Functions.getIndex('_glDeleteShader', true) }}}; break;
-	case 'glUniformMatrix2fv': ret = {{{ Functions.getIndex('_glUniformMatrix2fv', true) }}}; break;
+        case 'glUniformMatrix2fv': ret = {{{ Functions.getIndex('_glUniformMatrix2fv', true) }}}; break;
+        case 'glUniformMatrix3fv': ret = {{{ Functions.getIndex('_glUniformMatrix3fv', true) }}}; break;
+        case 'glUniformMatrix4fv': ret = {{{ Functions.getIndex('_glUniformMatrix4fv', true) }}}; break;
 	case 'glIsRenderbuffer': ret = {{{ Functions.getIndex('_glIsRenderbuffer', true) }}}; break;
 	case 'glBlendEquation': ret = {{{ Functions.getIndex('_glBlendEquation', true) }}}; break;
 	case 'glBlendFunc': ret = {{{ Functions.getIndex('_glBlendFunc', true) }}}; break;
@@ -1899,6 +1917,9 @@ var LibraryGL = {
     } else if (GL.shaders[id]) {
       if (type == 0x8B84) { // GL_OBJECT_INFO_LOG_LENGTH_ARB
         {{{ makeSetValue('result', '0', 'Module.ctx.getShaderInfoLog(GL.shaders[id]).length', 'i32') }}};
+        return;
+      } else if (type == 0x8B88) { // GL_OBJECT_SHADER_SOURCE_LENGTH_ARB
+        {{{ makeSetValue('result', '0', 'Module.ctx.getShaderSource(GL.shaders[id]).length', 'i32') }}};
         return;
       }
       _glGetShaderiv(id, type, result);
@@ -3107,6 +3128,7 @@ var LibraryGL = {
   glTexGeni: function() { throw 'glTexGeni: TODO' },
   glTexGenfv: function() { throw 'glTexGenfv: TODO' },
   glTexEnvi: function() { Runtime.warnOnce('glTexEnvi: TODO') },
+  glTexEnvf: function() { Runtime.warnOnce('glTexEnvf: TODO') },
   glTexEnvfv: function() { Runtime.warnOnce('glTexEnvfv: TODO') },
 
   glTexImage1D: function() { throw 'glTexImage1D: TODO' },
