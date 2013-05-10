@@ -261,6 +261,8 @@ function analyzer(data, sidePass) {
           var item = lines[i];
           interpLines(lines, i, toAdd);
           Array.prototype.splice.apply(lines, [i, 1].concat(toAdd));
+          if (i > 0) assert(lines[i].lineNum > lines[i-1].lineNum);
+          if (i + toAdd.length < lines.length) assert(lines[i + toAdd.length - 1].lineNum < lines[i + toAdd.length].lineNum);
           return toAdd.length;
         }
         function legalizeFunctionParameters(params) {
