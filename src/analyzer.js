@@ -254,6 +254,7 @@ function analyzer(data, sidePass) {
           var factor = (next - prev)/(4*toAdd.length+3);
           for (var k = 0; k < toAdd.length; k++) {
             toAdd[k].lineNum = prev + ((k+1)*factor);
+            assert(k == 0 || toAdd[k].lineNum > toAdd[k-1].lineNum);
           }
         }
         function removeAndAdd(lines, i, toAdd) {
