@@ -678,6 +678,7 @@ class Settings:
           Settings.RELOOP = 1
         if opt_level >= 3:
           # Aside from these, -O3 also runs closure compiler and llvm lto
+          Settings.FORCE_ALIGNED_MEMORY = 1
           Settings.DOUBLE_MODE = 0
           Settings.PRECISE_I64_MATH = 0
           if noisy: logging.warning('Applying some potentially unsafe optimizations! (Use -O2 if this fails.)')

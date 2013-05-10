@@ -167,6 +167,7 @@ Options that are modified or new in %s include:
   -O3                      As -O2, plus dangerous optimizations that may
                            break the generated code! This adds
 
+                              -s FORCE_ALIGNED_MEMORY=1
                               -s DOUBLE_MODE=0
                               -s PRECISE_I64_MATH=0
                               --closure 1
@@ -174,7 +175,8 @@ Options that are modified or new in %s include:
 
                            This is not recommended at all. A better idea
                            is to try each of these separately on top of
-                           -O2 to see what works. See the wiki for more
+                           -O2 to see what works. See the wiki and
+                           src/settings.js (for the -s options) for more
                            information.
 
   -s OPTION=VALUE          JavaScript code generation option passed
