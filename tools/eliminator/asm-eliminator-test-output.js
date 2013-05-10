@@ -66,11 +66,9 @@ function __ZN5identC2EiPKcPci($this, $n, $a) {
 }
 function _vec2Length($this) {
   $this = $this | 0;
-  var $__first_addr_i = 0, $__last_addr_i = 0, __stackBase__ = 0;
+  var __stackBase__ = 0;
   __stackBase__ = STACKTOP;
   STACKTOP = STACKTOP + 8 | 0;
-  $__first_addr_i = __stackBase__;
-  $__last_addr_i = __stackBase__ + 4;
   STACKTOP = __stackBase__;
   return 0;
 }
@@ -132,5 +130,222 @@ function confuusion() {
 function tempDouble(a) {
   a = +a;
   f(a * a);
+}
+function _org_apache_harmony_luni_util_NumberConverter_freeFormat__($me) {
+  $me = $me | 0;
+  var $_r2_sroa_0 = 0, $_r3_sroa_0 = 0, $$etemp$1 = 0, $6 = 0, $7 = 0, $10 = 0, $11 = +0, $15 = 0, $_r2_sroa_0_0_cast283 = 0, $_r3_sroa_0_0_cast247 = 0, $_r3_sroa_0_0_load244 = +0, $_r3_sroa_0_0_load244$$SHADOW$0 = 0, $_r2_sroa_0_0_load = +0, $_r2_sroa_0_0_load$$SHADOW$0 = 0, $trunc297 = 0, $25 = 0, $26 = 0, $smax = 0, $28 = 0, $_r3_sroa_0_0_load239 = +0, $_pre_phi301 = 0, $_r3_sroa_0_0_cast264_pre_phi = 0, $_r2_sroa_0_0_load265 = +0, $33 = 0, $34 = 0, $_r3_sroa_0_0_cast253 = 0, $36 = 0, $37 = 0, $_r3_sroa_0_0_load243 = +0, $_r2_sroa_0_0_cast = 0, $45 = 0, $_sink_in = +0, $_r3_sroa_0_0_load241 = +0, $_r2_sroa_0_0_load266287 = 0, $_r1_sroa_0_0 = +0, $47 = 0, $48$0 = 0, $48$1 = 0, $_r1_sroa_0_0_extract_trunc185 = 0, $_r1_sroa_0_1_in$0 = 0, $_r1_sroa_0_1_in$1 = 0, $_r1_sroa_0_0_extract_trunc169 = 0, $_r1_sroa_0_2 = +0, $64 = 0, $65 = 0, $69 = 0, $76 = 0, $82 = 0, $_r1_sroa_0_0_extract_trunc = 0, $$etemp$15 = 0, $105 = 0, $106 = 0, $107 = 0, $108 = 0, $109 = 0, $110 = 0, $112 = 0, $113 = 0, $118 = 0, $_r3_sroa_0_0_load242 = +0, label = 0, __stackBase__ = 0;
+  __stackBase__ = STACKTOP;
+  STACKTOP = STACKTOP + 16 | 0;
+  $_r2_sroa_0 = __stackBase__ | 0;
+  $_r3_sroa_0 = __stackBase__ + 8 | 0;
+  if ((HEAP32[(114668 | 0) >> 2] | 0 | 0) == 0) {
+    HEAP32[(114664 | 0) >> 2] = 1;
+    HEAP32[(114668 | 0) >> 2] = 1;
+    $$etemp$1 = 114672 | 0;
+    HEAP32[($$etemp$1 | 0) >> 2] = -1;
+    HEAP32[($$etemp$1 + 4 | 0) >> 2] = -1;
+    HEAP32[(114684 | 0) >> 2] = 25296 | 0;
+    HEAP32[(114704 | 0) >> 2] = 110728;
+    HEAP32[(114712 | 0) >> 2] = 8;
+    HEAP32[(114784 | 0 | 0) >> 2] = HEAP32[(107856 | 0 | 0) >> 2] | 0;
+    HEAP32[(114784 | 0 | 0) + 4 >> 2] = HEAP32[(107856 | 0 | 0) + 4 >> 2] | 0;
+    HEAP32[(114784 | 0 | 0) + 8 >> 2] = HEAP32[(107856 | 0 | 0) + 8 >> 2] | 0;
+    HEAP32[(114784 | 0 | 0) + 12 >> 2] = HEAP32[(107856 | 0 | 0) + 12 >> 2] | 0;
+    HEAP32[(114784 | 0 | 0) + 16 >> 2] = HEAP32[(107856 | 0 | 0) + 16 >> 2] | 0;
+    HEAP32[(114784 | 0 | 0) + 20 >> 2] = HEAP32[(107856 | 0 | 0) + 20 >> 2] | 0;
+  }
+  $6 = _org_xmlvm_runtime_XMLVMArray_createSingleDimension___java_lang_Class_int(HEAP32[138960 >> 2] | 0, 25) | 0;
+  $7 = $me + 8 | 0;
+  $10 = HEAP32[($me + 20 | 0) >> 2] | 0;
+  $11 = (HEAP32[tempDoublePtr >> 2] = $10, HEAP32[tempDoublePtr + 4 >> 2] = 0, +HEAPF64[tempDoublePtr >> 3]);
+  if (($10 | 0) > -1) {
+    HEAP32[$_r2_sroa_0 >> 2] = 0;
+    $_r2_sroa_0_0_load265 = +HEAPF64[$_r2_sroa_0 >> 3];
+    $_r3_sroa_0_0_cast264_pre_phi = $_r3_sroa_0;
+    $_pre_phi301 = $6 + 16 | 0;
+  } else {
+    $15 = $6 + 16 | 0;
+    HEAP16[(HEAP32[$15 >> 2] | 0) >> 1] = 48;
+    $_r2_sroa_0_0_cast283 = $_r2_sroa_0;
+    HEAP16[((HEAP32[$15 >> 2] | 0) + 2 | 0) >> 1] = 46;
+    HEAP32[$_r2_sroa_0_0_cast283 >> 2] = 2;
+    $_r3_sroa_0_0_cast247 = $_r3_sroa_0;
+    HEAP32[$_r3_sroa_0_0_cast247 >> 2] = $10 + 1 | 0;
+    $_r3_sroa_0_0_load244 = +HEAPF64[$_r3_sroa_0 >> 3];
+    $_r3_sroa_0_0_load244$$SHADOW$0 = HEAP32[($_r3_sroa_0 | 0) >> 2] | 0;
+    $_r2_sroa_0_0_load = +HEAPF64[$_r2_sroa_0 >> 3];
+    $_r2_sroa_0_0_load$$SHADOW$0 = HEAP32[($_r2_sroa_0 | 0) >> 2] | 0;
+    HEAPF64[$_r3_sroa_0 >> 3] = $_r2_sroa_0_0_load;
+    HEAPF64[$_r2_sroa_0 >> 3] = $_r3_sroa_0_0_load244;
+    $trunc297 = $_r3_sroa_0_0_load244$$SHADOW$0;
+    $25 = $_r2_sroa_0_0_load$$SHADOW$0;
+    if (($trunc297 | 0) < 0) {
+      $26 = $trunc297 + 1 | 0;
+      $smax = ($26 | 0) > 0 ? $26 : 0;
+      $28 = $25 + $smax | 0;
+      $113 = $25;
+      $112 = $trunc297;
+      while (1) {
+        HEAP16[((HEAP32[$15 >> 2] | 0) + ($113 << 1) | 0) >> 1] = 48;
+        $118 = $112 + 1 | 0;
+        if (($118 | 0) < 0) {
+          $113 = $113 + 1 | 0;
+          $112 = $118;
+        } else {
+          break;
+        }
+      }
+      HEAP32[$_r3_sroa_0_0_cast247 >> 2] = $28 - $trunc297 | 0;
+      HEAP32[$_r2_sroa_0_0_cast283 >> 2] = $smax;
+      $_r3_sroa_0_0_load239 = +HEAPF64[$_r3_sroa_0 >> 3];
+    } else {
+      $_r3_sroa_0_0_load239 = $_r2_sroa_0_0_load;
+    }
+    HEAPF64[$_r2_sroa_0 >> 3] = $_r3_sroa_0_0_load239;
+    $_r2_sroa_0_0_load265 = $_r3_sroa_0_0_load239;
+    $_r3_sroa_0_0_cast264_pre_phi = $_r3_sroa_0_0_cast247;
+    $_pre_phi301 = $15;
+  }
+  $33 = $me + 16 | 0;
+  $34 = HEAP32[$33 >> 2] | 0;
+  $_r3_sroa_0_0_cast253 = $_r3_sroa_0;
+  HEAP32[$_r3_sroa_0_0_cast253 >> 2] = $34;
+  $36 = $me + 12 | 0;
+  $37 = HEAP32[$36 >> 2] | 0;
+  HEAP32[$36 >> 2] = $37 + 1 | 0;
+  HEAP32[$_r3_sroa_0_0_cast264_pre_phi >> 2] = HEAP32[((HEAP32[($34 + 16 | 0) >> 2] | 0) + ($37 << 2) | 0) >> 2] | 0;
+  $_r3_sroa_0_0_load243 = +HEAPF64[$_r3_sroa_0 >> 3];
+  HEAPF64[$_r3_sroa_0 >> 3] = $_r2_sroa_0_0_load265;
+  HEAPF64[$_r2_sroa_0 >> 3] = $11;
+  $_r2_sroa_0_0_cast = $_r2_sroa_0;
+  $45 = $7;
+  $_r1_sroa_0_0 = $_r3_sroa_0_0_load243;
+  $_r2_sroa_0_0_load266287 = $10;
+  $_r3_sroa_0_0_load241 = $_r2_sroa_0_0_load265;
+  $_sink_in = $_r2_sroa_0_0_load265;
+  while (1) {
+    HEAPF64[tempDoublePtr >> 3] = $_sink_in;
+    $47 = HEAP32[tempDoublePtr >> 2] | 0;
+    HEAPF64[tempDoublePtr >> 3] = $_r1_sroa_0_0;
+    $48$0 = HEAP32[tempDoublePtr >> 2] | 0;
+    $48$1 = HEAP32[tempDoublePtr + 4 >> 2] | 0;
+    $_r1_sroa_0_0_extract_trunc185 = $48$0;
+    do {
+      if (($_r1_sroa_0_0_extract_trunc185 | 0) == -1) {
+        if (($_r2_sroa_0_0_load266287 | 0) < -1) {
+          $_r1_sroa_0_2 = $_r3_sroa_0_0_load241;
+          break;
+        }
+        HEAP16[((HEAP32[$_pre_phi301 >> 2] | 0) + ($47 << 1) | 0) >> 1] = 48;
+        $_r1_sroa_0_1_in$1 = 0 | $48$1 & -1;
+        $_r1_sroa_0_1_in$0 = $47 + 1 | 0 | $48$0 & 0;
+        label = 785;
+        break;
+      } else {
+        HEAP16[((HEAP32[$_pre_phi301 >> 2] | 0) + ($47 << 1) | 0) >> 1] = ($_r1_sroa_0_0_extract_trunc185 + 48 | 0) & 65535;
+        $_r1_sroa_0_1_in$1 = 0;
+        $_r1_sroa_0_1_in$0 = $47 + 1 | 0;
+        label = 785;
+        break;
+      }
+    } while (0);
+    do {
+      if ((label | 0) == 785) {
+        label = 0;
+        if (!(($_r2_sroa_0_0_load266287 | 0) == 0)) {
+          $_r1_sroa_0_2 = (HEAP32[tempDoublePtr >> 2] = $_r1_sroa_0_1_in$0, HEAP32[tempDoublePtr + 4 >> 2] = $_r1_sroa_0_1_in$1, +HEAPF64[tempDoublePtr >> 3]);
+          break;
+        }
+        $_r1_sroa_0_0_extract_trunc169 = $_r1_sroa_0_1_in$0;
+        HEAP32[$_r3_sroa_0_0_cast264_pre_phi >> 2] = $_r1_sroa_0_0_extract_trunc169 + 1 | 0;
+        HEAP16[((HEAP32[$_pre_phi301 >> 2] | 0) + ($_r1_sroa_0_0_extract_trunc169 << 1) | 0) >> 1] = 46;
+        $_r1_sroa_0_2 = +HEAPF64[$_r3_sroa_0 >> 3];
+      }
+    } while (0);
+    $64 = $_r2_sroa_0_0_load266287 - 1 | 0;
+    $65 = HEAP32[$36 >> 2] | 0;
+    HEAP32[$_r3_sroa_0_0_cast264_pre_phi >> 2] = $65;
+    if (($65 | 0) < (HEAP32[$45 >> 2] | 0 | 0)) {
+      $69 = HEAP32[$33 >> 2] | 0;
+      HEAP32[$_r3_sroa_0_0_cast253 >> 2] = $69;
+      HEAP32[$36 >> 2] = $65 + 1 | 0;
+      $76 = HEAP32[((HEAP32[($69 + 16 | 0) >> 2] | 0) + ($65 << 2) | 0) >> 2] | 0;
+      HEAP32[$_r3_sroa_0_0_cast264_pre_phi >> 2] = $76;
+      if (!(($76 | 0) != -1 | ($64 | 0) > -2)) {
+        break;
+      }
+    } else {
+      HEAP32[$_r3_sroa_0_0_cast264_pre_phi >> 2] = -1;
+      if (!(($64 | 0) > -2)) {
+        break;
+      }
+    }
+    $_r3_sroa_0_0_load242 = +HEAPF64[$_r3_sroa_0 >> 3];
+    HEAPF64[$_r3_sroa_0 >> 3] = $_r1_sroa_0_2;
+    $_r1_sroa_0_0 = $_r3_sroa_0_0_load242;
+    $_r2_sroa_0_0_load266287 = $64;
+    $_r3_sroa_0_0_load241 = $_r1_sroa_0_2;
+    $_sink_in = $_r1_sroa_0_2;
+  }
+  HEAP32[$_r2_sroa_0_0_cast >> 2] = $64;
+  if ((HEAP32[(106148 | 0) >> 2] | 0 | 0) == 0) {
+    ___INIT_java_lang_String();
+  }
+  $82 = _GC_MALLOC(36 | 0) | 0;
+  HEAP32[$82 >> 2] = 106144;
+  _memset($82 + 4 | 0 | 0 | 0, 0 | 0 | 0, 32 | 0 | 0);
+  HEAP32[$_r2_sroa_0 >> 2] = $82;
+  HEAPF64[tempDoublePtr >> 3] = $_r1_sroa_0_2;
+  $_r1_sroa_0_0_extract_trunc = HEAP32[tempDoublePtr >> 2] | 0;
+  HEAP32[($82 + 8 | 0) >> 2] = 0;
+  HEAP32[($82 + 12 | 0) >> 2] = 0;
+  HEAP32[($82 + 16 | 0) >> 2] = 0;
+  if (($_r1_sroa_0_0_extract_trunc | 0) < 0) {
+    _XMLVM_ERROR(16136 | 0, 13208 | 0, 132112 | 0, 830);
+    return 0 | 0;
+  }
+  if ((HEAP32[($6 + 12 | 0) >> 2] | 0 | 0) < ($_r1_sroa_0_0_extract_trunc | 0)) {
+    _XMLVM_ERROR(16136 | 0, 13208 | 0, 132112 | 0, 830);
+    return 0 | 0;
+  }
+  HEAP32[($82 + 24 | 0) >> 2] = 0;
+  if (!((HEAP32[(114668 | 0) >> 2] | 0 | 0) == 0)) {
+    $105 = HEAP32[138960 >> 2] | 0;
+    $106 = _org_xmlvm_runtime_XMLVMArray_createSingleDimension___java_lang_Class_int($105, $_r1_sroa_0_0_extract_trunc) | 0;
+    $107 = $82 + 20 | 0;
+    $108 = $107;
+    HEAP32[$108 >> 2] = $106;
+    $109 = $82 + 28 | 0;
+    $110 = $109;
+    HEAP32[$110 >> 2] = $_r1_sroa_0_0_extract_trunc;
+    _java_lang_System_arraycopy___java_lang_Object_int_java_lang_Object_int_int($6, 0, $106, 0, $_r1_sroa_0_0_extract_trunc);
+    STACKTOP = __stackBase__;
+    return $82 | 0;
+  }
+  HEAP32[(114664 | 0) >> 2] = 1;
+  HEAP32[(114668 | 0) >> 2] = 1;
+  $$etemp$15 = 114672 | 0;
+  HEAP32[($$etemp$15 | 0) >> 2] = -1;
+  HEAP32[($$etemp$15 + 4 | 0) >> 2] = -1;
+  HEAP32[(114684 | 0) >> 2] = 25296 | 0;
+  HEAP32[(114704 | 0) >> 2] = 110728;
+  HEAP32[(114712 | 0) >> 2] = 8;
+  HEAP32[(114784 | 0 | 0) >> 2] = HEAP32[(107856 | 0 | 0) >> 2] | 0;
+  HEAP32[(114784 | 0 | 0) + 4 >> 2] = HEAP32[(107856 | 0 | 0) + 4 >> 2] | 0;
+  HEAP32[(114784 | 0 | 0) + 8 >> 2] = HEAP32[(107856 | 0 | 0) + 8 >> 2] | 0;
+  HEAP32[(114784 | 0 | 0) + 12 >> 2] = HEAP32[(107856 | 0 | 0) + 12 >> 2] | 0;
+  HEAP32[(114784 | 0 | 0) + 16 >> 2] = HEAP32[(107856 | 0 | 0) + 16 >> 2] | 0;
+  HEAP32[(114784 | 0 | 0) + 20 >> 2] = HEAP32[(107856 | 0 | 0) + 20 >> 2] | 0;
+  $105 = HEAP32[138960 >> 2] | 0;
+  $106 = _org_xmlvm_runtime_XMLVMArray_createSingleDimension___java_lang_Class_int($105, $_r1_sroa_0_0_extract_trunc) | 0;
+  $107 = $82 + 20 | 0;
+  $108 = $107;
+  HEAP32[$108 >> 2] = $106;
+  $109 = $82 + 28 | 0;
+  $110 = $109;
+  HEAP32[$110 >> 2] = $_r1_sroa_0_0_extract_trunc;
+  _java_lang_System_arraycopy___java_lang_Object_int_java_lang_Object_int_int($6, 0, $106, 0, $_r1_sroa_0_0_extract_trunc);
+  STACKTOP = __stackBase__;
+  return $82 | 0;
 }
 

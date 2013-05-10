@@ -1837,7 +1837,14 @@ function eliminate(ast, memSafe) {
     });
     var potentials = {}; // local variables with 1 definition and 1 use
     var sideEffectFree = {}; // whether a local variable has no side effects in its definition
-    for (var name in locals) {
+
+    function unprocessVariable(name) {
+      if (name in potentials) delete potentials[name];
+      if (name in varsToRemove) delete varsToRemove[name];
+      if (name in sideEffectFree) delete sideEffectFree[name];
+      if (name in varsToTryToRemove) delete varsToTryToRemove[name];
+    }
+    function processVariable(name) {
       if (definitions[name] == 1 && uses[name] == 1) {
         potentials[name] = 1;
       } else if (uses[name] == 0 && (!definitions[name] || definitions[name] <= 1)) { // no uses, no def or 1 def (cannot operate on phis, and the llvm optimizer will remove unneeded phis anyhow)
@@ -1862,11 +1869,29 @@ function eliminate(ast, memSafe) {
         if (!hasSideEffects) {
           varsToRemove[name] = !definitions[name] ? 2 : 1; // remove it normally
           sideEffectFree[name] = true;
+          // Each time we remove a variable with 0 uses, if its value has no
+          // side effects and vanishes too, then we can remove a use from variables
+          // appearing in it, and possibly eliminate again
+          if (value) {
+            traverse(value, function(node, type) {
+              if (type == 'name') {
+                var name = node[1];
+                uses[name]--; // cannot be infinite recursion since we descend an energy function
+                assert(uses[name] >= 0);
+                unprocessVariable(name);
+                processVariable(name);
+              }
+            });
+          }
         } else {
           varsToTryToRemove[name] = 1; // try to remove it later during scanning
         }
       }
     }
+    for (var name in locals) {
+      processVariable(name);
+    }
+
     //printErr('defs: ' + JSON.stringify(definitions));
     //printErr('uses: ' + JSON.stringify(uses));
     //printErr('values: ' + JSON.stringify(values));
