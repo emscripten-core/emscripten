@@ -348,4 +348,16 @@ function _org_apache_harmony_luni_util_NumberConverter_freeFormat__($me) {
   STACKTOP = __stackBase__;
   return $82 | 0;
 }
+function __ZN23b2EdgeAndPolygonContact8EvaluateEP10b2ManifoldRK11b2TransformS4_($this, $manifold, $xfA, $xfB) {
+  $this = $this | 0;
+  $manifold = $manifold | 0;
+  $xfA = $xfA | 0;
+  $xfB = $xfB | 0;
+  var __stackBase__ = 0;
+  __stackBase__ = STACKTOP;
+  STACKTOP = STACKTOP + 256 | 0;
+  __ZN12b2EPCollider7CollideEP10b2ManifoldPK11b2EdgeShapeRK11b2TransformPK14b2PolygonShapeS7_(__stackBase__ | 0, $manifold, HEAP32[((HEAP32[($this + 48 | 0) >> 2] | 0) + 12 | 0) >> 2] | 0, $xfA, HEAP32[((HEAP32[($this + 52 | 0) >> 2] | 0) + 12 | 0) >> 2] | 0, $xfB);
+  STACKTOP = __stackBase__;
+  return;
+}
 

@@ -561,5 +561,32 @@ function _org_apache_harmony_luni_util_NumberConverter_freeFormat__($me) {
   STACKTOP = __stackBase__;
   return $82 | 0;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j", "_segment_holding", "__ZN5identC2EiPKcPci", "_vec2Length", "exc", "label", "confuusion", "tempDouble", "_org_apache_harmony_luni_util_NumberConverter_freeFormat__"]
+function __ZN23b2EdgeAndPolygonContact8EvaluateEP10b2ManifoldRK11b2TransformS4_($this, $manifold, $xfA, $xfB) {
+  $this = $this | 0;
+  $manifold = $manifold | 0;
+  $xfA = $xfA | 0;
+  $xfB = $xfB | 0;
+  var $collider_i = 0, $1 = 0, $2 = 0, $3 = 0, $4 = 0, $5 = 0, $6 = 0, $7 = 0;
+  var $8 = 0, $9 = 0, $10 = 0, $11 = 0;
+  var label = 0;
+  var __stackBase__ = 0;
+  __stackBase__ = STACKTOP;
+  STACKTOP = STACKTOP + 256 | 0;
+  $collider_i = __stackBase__ | 0;
+  $1 = $this + 48 | 0;
+  $2 = HEAP32[$1 >> 2] | 0;
+  $3 = $2 + 12 | 0;
+  $4 = HEAP32[$3 >> 2] | 0;
+  $5 = $4;
+  $6 = $this + 52 | 0;
+  $7 = HEAP32[$6 >> 2] | 0;
+  $8 = $7 + 12 | 0;
+  $9 = HEAP32[$8 >> 2] | 0;
+  $10 = $9;
+  $11 = $collider_i;
+  __ZN12b2EPCollider7CollideEP10b2ManifoldPK11b2EdgeShapeRK11b2TransformPK14b2PolygonShapeS7_($collider_i, $manifold, $5, $xfA, $10, $xfB);
+  STACKTOP = __stackBase__;
+  return;
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j", "_segment_holding", "__ZN5identC2EiPKcPci", "_vec2Length", "exc", "label", "confuusion", "tempDouble", "_org_apache_harmony_luni_util_NumberConverter_freeFormat__", "__ZN23b2EdgeAndPolygonContact8EvaluateEP10b2ManifoldRK11b2TransformS4_"]
 

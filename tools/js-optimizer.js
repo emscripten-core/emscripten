@@ -1876,10 +1876,13 @@ function eliminate(ast, memSafe) {
             traverse(value, function(node, type) {
               if (type == 'name') {
                 var name = node[1];
-                uses[name]--; // cannot be infinite recursion since we descend an energy function
-                assert(uses[name] >= 0);
-                unprocessVariable(name);
-                processVariable(name);
+                node[1] = ''; // we can remove this - it will never be shown, and should not be left to confuse us as we traverse
+                if (name in locals) {
+                  uses[name]--; // cannot be infinite recursion since we descend an energy function
+                  assert(uses[name] >= 0);
+                  unprocessVariable(name);
+                  processVariable(name);
+                }
               }
             });
           }
