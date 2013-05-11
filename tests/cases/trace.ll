@@ -24,7 +24,7 @@ entry:
   %retval = alloca i32, align 4                   ; [#uses=1 type=i32*]
   store i32 0, i32* %retval
   %call = call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([15 x i8]* @.str, i32 0, i32 0)) ; [#uses=0 type=i32]
-  %0 = getelementptr inbounds [4 x %struct.TraceKindPair]* @_ZL14traceKindNames, i32 0, i32 1; [#uses=1 type=%struct.TraceKindPair*] [debug line = 1473:17]
+  %0 = getelementptr inbounds [4 x %struct.TraceKindPair]* @_ZL14traceKindNames, i32 0, i32 1 ; [#uses=1 type=%struct.TraceKindPair*] [debug line = 1473:17]
   %1 = getelementptr inbounds %struct.TraceKindPair* %0, i32 0, i32 0 ; [#uses=1 type=i8**] [debug line = 1473:17]
   ret i32 1
 }
