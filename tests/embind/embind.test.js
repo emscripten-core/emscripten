@@ -684,6 +684,15 @@ module({
             c.delete();
         });
 
+        test("access multiple smart ptr ctors", function() {
+            var a = new cm.MultipleSmartCtors(10);
+            assert.equal(a.WhichCtorCalled(), 1);
+            var b = new cm.MultipleCtors(20, 20);
+            assert.equal(b.WhichCtorCalled(), 2);
+            a.delete();
+            b.delete();
+        });
+
         test("wrong number of constructor arguments throws", function() {
             assert.throws(cm.BindingError, function() { new cm.MultipleCtors(); });
             assert.throws(cm.BindingError, function() { new cm.MultipleCtors(1,2,3,4); });

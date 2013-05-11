@@ -894,16 +894,17 @@ namespace emscripten {
                 policies...);
         }
 
-        template<typename... Args, typename... Policies>
-        class_& constructor(ClassType* (*factory)(Args...), Policies...) {
+        template<typename... Args, typename ReturnType, typename... Policies>
+        class_& constructor(ReturnType (*factory)(Args...), Policies...) {
             using namespace internal;
 
-            typename WithPolicies<Policies...>::template ArgTypeList<AllowedRawPointer<ClassType>, Args...> args;
+            // TODO: allows all raw pointers... policies need a rethink
+            typename WithPolicies<allow_raw_pointers, Policies...>::template ArgTypeList<ReturnType, Args...> args;
             _embind_register_class_constructor(
                 TypeID<ClassType>::get(),
                 args.count,
                 args.types,
-                reinterpret_cast<GenericFunction>(&Invoker<ClassType*, Args...>::invoke),
+                reinterpret_cast<GenericFunction>(&Invoker<ReturnType, Args...>::invoke),
                 reinterpret_cast<GenericFunction>(factory));
             return *this;
         }

@@ -1865,7 +1865,7 @@ int overloaded_function(int i, int j) {
 
 class MultipleCtors {
 public:
-    int value;
+    int value = 0;
 
     MultipleCtors(int i) {
         value = 1;
@@ -1881,6 +1881,25 @@ public:
         assert(i == 30);
         assert(j == 30);
         assert(k == 30);
+    }
+
+    int WhichCtorCalled() const {
+        return value;
+    }
+};
+
+class MultipleSmartCtors {
+public:
+    int value = 0;
+
+    MultipleSmartCtors(int i) {
+        value = 1;
+        assert(i == 10);
+    }
+    MultipleSmartCtors(int i, int j) {
+        value = 2;
+        assert(i == 20);
+        assert(j == 20);
     }
 
     int WhichCtorCalled() const {
@@ -1994,7 +2013,15 @@ EMSCRIPTEN_BINDINGS(overloads) {
         .constructor<int>()
         .constructor<int, int>()
         .constructor<int, int, int>()
-        .function("WhichCtorCalled", &MultipleCtors::WhichCtorCalled);
+        .function("WhichCtorCalled", &MultipleCtors::WhichCtorCalled)
+        ;
+        
+    class_<MultipleSmartCtors>("MultipleSmartCtors")
+        .smart_ptr<std::shared_ptr<MultipleSmartCtors>>()
+        .constructor(&std::make_shared<MultipleSmartCtors, int>)
+        .constructor(&std::make_shared<MultipleSmartCtors, int, int>)
+        .function("WhichCtorCalled", &MultipleSmartCtors::WhichCtorCalled)
+        ;
         
     class_<MultipleOverloads>("MultipleOverloads")
         .constructor<>()
