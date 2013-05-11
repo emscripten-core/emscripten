@@ -318,10 +318,10 @@ var LibraryEGL = {
       // Existing Android implementation seems to do so at least.
       return 1;
     case 0x3057: // EGL_WIDTH
-      // TODO
+      {{{ makeSetValue('value', '0', 'Module.canvas.width.toString()', 'i32') }}};
       return 1;
     case 0x3056: // EGL_HEIGHT
-      // TODO
+      {{{ makeSetValue('value', '0', 'Module.canvas.height.toString()', 'i32') }}};
       return 1;
     case 0x3090: // EGL_HORIZONTAL_RESOLUTION
       {{{ makeSetValue('value', '0', '-1' /* EGL_UNKNOWN */, 'i32') }}};
