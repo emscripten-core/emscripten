@@ -1787,6 +1787,7 @@ function eliminate(ast, memSafe) {
     if (asm) var asmData = normalizeAsm(func);
     //printErr('eliminate in ' + func[1]);
 
+
     // First, find the potentially eliminatable functions: that have one definition and one use
     var definitions = {};
     var uses = {};
@@ -1802,6 +1803,7 @@ function eliminate(ast, memSafe) {
       }
     }
     // examine body and note locals
+    var hasSwitch = false;
     traverse(func, function(node, type) {
       if (type === 'var') {
         var node1 = node[1];
@@ -1833,8 +1835,19 @@ function eliminate(ast, memSafe) {
             uses[name]--; // because the name node will show up by itself in the previous case
           }
         }
+      } else if (type == 'switch') {
+        hasSwitch = true;
       }
     });
+
+    // we cannot eliminate variables if there is a switch
+    if (traverse(func, function(node, type) {
+      if (type == 'switch') return true;
+    })) {
+      if (asm) denormalizeAsm(func, asmData);
+      return;
+    }
+
     var potentials = {}; // local variables with 1 definition and 1 use
     var sideEffectFree = {}; // whether a local variable has no side effects in its definition
 

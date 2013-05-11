@@ -143,17 +143,22 @@ function label() {
 }
 function switchy() {
   var no = 0, yes = 0;
+  var a = 0, b = 0;
   while (1) switch (label | 0) {
-    case x:
+    case 1:
       no = 100; // eliminatable in theory, but eliminator does not look into switch. must leave def above as well.
       break;
-    case y:
+    case 2:
       yes = 111;
       yes = yes*2;
       print(yes);
       yes--;
       print(yes/2);
       continue;
+    case 3:
+      a = 5;
+      b = a;
+      break;
   }
 }
 function confuusion() {
