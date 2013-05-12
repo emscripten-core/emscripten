@@ -291,7 +291,7 @@ process(sys.argv[1])
     out = open(stdout, 'r').read()
     err = open(stderr, 'r').read()
     if engine == SPIDERMONKEY_ENGINE and Settings.ASM_JS:
-      if 'successfully compiled asm.js code' in err and 'asm.js link error' not in err:
+      if 'uccessfully compiled asm.js code' in err and 'asm.js link error' not in err:
         print >> sys.stderr, "[was asm.js'ified]"
       elif 'asm.js' in err: # if no asm.js error, then not an odin build
         raise Exception("did NOT asm.js'ify")
@@ -12615,7 +12615,7 @@ elif 'benchmark' in str(sys.argv):
         start = time.time()
         js_output = run_js(final_filename, engine=JS_ENGINE, args=args, stderr=PIPE, full_output=True)
 
-        if i == 0 and 'successfully compiled asm.js code' in js_output:
+        if i == 0 and 'uccessfully compiled asm.js code' in js_output:
           if 'asm.js link error' not in js_output:
             print "[%s was asm.js'ified]" % name
         curr = time.time()-start
