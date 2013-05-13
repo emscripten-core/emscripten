@@ -9,6 +9,7 @@ var VAR_NATIVIZED = 'nativized';
 var VAR_EMULATED = 'emulated';
 
 var ENTRY_IDENT = toNiceIdent('%0');
+var ENTRY_IDENT_EXPLICIT = toNiceIdent('%entry');
 
 function recomputeLines(func) {
   func.lines = func.labels.map(function(label) { return label.lines }).reduce(concatenator, []);
@@ -1498,6 +1499,7 @@ function analyzer(data, sidePass) {
           if (func.labelsDict[labelId]) return labelId;
           // If not present, it must be a surprisingly-named entry (or undefined behavior, in which case, still ok to use the entry)
           labelId = func.labelIds[entryIdent];
+          if (!func.labelsDict[labelId]) labelId = func.labelIds[ENTRY_IDENT_EXPLICIT]; // LLVM 3.3
           assert(func.labelsDict[labelId]);
           return labelId;
         }
