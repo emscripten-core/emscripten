@@ -14920,7 +14920,7 @@ fi
                 print os.stat(os.path.join(EMCC_CACHE, libname + '.bc')).st_size, os.stat(basebc_name).st_size, os.stat(dcebc_name).st_size
                 assert os.stat(os.path.join(EMCC_CACHE, libname + '.bc')).st_size > 1000000, 'libc++ is big'
                 assert os.stat(basebc_name).st_size > 1000000, 'libc++ is indeed big'
-                assert os.stat(dcebc_name).st_size < 500000, 'Dead code elimination must remove most of libc++'
+                assert os.stat(dcebc_name).st_size < os.stat(basebc_name).st_size/2, 'Dead code elimination must remove most of libc++'
               # should only have metadata in -O0, not 1 and 2
               if i > 0:
                 for ll_name in ll_names:
