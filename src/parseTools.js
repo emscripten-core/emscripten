@@ -402,6 +402,9 @@ function parseParamTokens(params) {
         segment.splice(1, 2);
       }
     }
+    if (segment[1] && segment[1].text === 'nocapture') {
+      segment.splice(1, 1);
+    }
     if (segment.length == 1) {
       if (segment[0].text == '...') {
         ret.push({
