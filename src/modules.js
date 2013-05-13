@@ -46,7 +46,9 @@ var Debugging = {
     var form3ab = new RegExp(/^!(\d+) = metadata !{i32 \d+, (?:metadata !\d+|i32 \d+|null), metadata !(\d+).*$/);
     var form3ac = new RegExp(/^!(\d+) = metadata !{i32 \d+, (?:metadata !\d+|null), metadata !"[^"]*", metadata !(\d+)[^\[]*.*$/);
     var form3ad = new RegExp(/^!(\d+) = metadata !{i32 \d+, (?:i32 \d+|null), (?:i32 \d+|null), metadata !"[^"]*", metadata !"[^"]*", metadata !"[^"]*", metadata !(\d+),.*$/);
-    var form3b = new RegExp(/^!(\d+) = metadata !{i32 \d+, metadata !"([^"]+)", metadata !"([^"]*)", (metadata !\d+|null)}.*$/);
+    var form3ae = new RegExp(/^!(\d+) = metadata !{i32 \d+, metadata !(\d+).*$/);
+    // LLVM 3.3 drops the first and last parameters.
+    var form3b = new RegExp(/^!(\d+) = metadata !{(?:i32 \d+, )?metadata !"([^"]+)", metadata !"([^"]*)"(?:, (metadata !\d+|null))?}.*$/);
     var form3c = new RegExp(/^!(\d+) = metadata !{\w+\d* !?(\d+)[^\d].*$/);
     var form4 = new RegExp(/^!llvm.dbg.[\w\.]+ = .*$/);
     var form5 = new RegExp(/^!(\d+) = metadata !{.*$/);
@@ -75,7 +77,7 @@ var Debugging = {
         lines[i] = ';'; // return an empty line, to keep line numbers of subsequent lines the same
         continue;
       }
-      calc = form3a.exec(line) || form3ab.exec(line) || form3ac.exec(line) || form3ad.exec(line);
+      calc = form3a.exec(line) || form3ab.exec(line) || form3ac.exec(line) || form3ad.exec(line) || form3ae.exec(line);
       if (calc) {
         metadataToParentMetadata[calc[1]] = calc[2];
         lines[i] = ';';
