@@ -513,7 +513,7 @@ var LibrarySDL = {
           }
           // fall through
         case 'mousemove': {
-          Browser.calculateMouseMove(event);
+          Browser.calculateMouseEvent(event);
           if (event.type != 'mousemove') {
             var down = event.type === 'mousedown';
             {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};

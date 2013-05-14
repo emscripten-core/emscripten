@@ -12,8 +12,6 @@ var LibraryGLUT = {
     motionFunc: null,
     passiveMotionFunc: null,
     mouseFunc: null,
-    lastX: 0,
-    lastY: 0,
     buttons: 0,
     modifiers: 0,
     initWindowWidth: 256,
@@ -23,12 +21,6 @@ var LibraryGLUT = {
     windowY: 0,
     windowWidth: 0,
     windowHeight: 0,
-
-    savePosition: function(event) {
-      /* TODO maybe loop here ala http://www.quirksmode.org/js/findpos.html */
-      GLUT.lastX = event['clientX'] - Module['canvas'].offsetLeft;
-      GLUT.lastY = event['clientY'] - Module['canvas'].offsetTop;
-    },
 
     saveModifiers: function(event) {
       GLUT.modifiers = 0;
@@ -45,20 +37,21 @@ var LibraryGLUT = {
        * spamming our app with uncessary callback call. It does happen in
        * Chrome on Windows.
        */
-      var newX = event['clientX'] - Module['canvas'].offsetLeft;
-      var newY = event['clientY'] - Module['canvas'].offsetTop;
-      if (newX == GLUT.lastX && newY == GLUT.lastY)
-        return;
+      var lastX = Browser.mouseX;
+      var lastY = Browser.mouseY;
+      Browser.calculateMouseEvent(event);
+      var newX = Browser.mouseX;
+      var newY = Browser.mouseY;
+      if (newX == lastX && newY == lastY) return;
 
-      GLUT.savePosition(event);
       if (GLUT.buttons == 0 && event.target == Module["canvas"] && GLUT.passiveMotionFunc) {
         event.preventDefault();
         GLUT.saveModifiers(event);
-        Runtime.dynCall('vii', GLUT.passiveMotionFunc, [GLUT.lastX, GLUT.lastY]);
+        Runtime.dynCall('vii', GLUT.passiveMotionFunc, [lastX, lastY]);
       } else if (GLUT.buttons != 0 && GLUT.motionFunc) {
         event.preventDefault();
         GLUT.saveModifiers(event);
-        Runtime.dynCall('vii', GLUT.motionFunc, [GLUT.lastX, GLUT.lastY]);
+        Runtime.dynCall('vii', GLUT.motionFunc, [lastX, lastY]);
       }
     },
 
@@ -159,7 +152,7 @@ var LibraryGLUT = {
           if( GLUT.specialFunc ) {
             event.preventDefault();
             GLUT.saveModifiers(event);
-            Runtime.dynCall('viii', GLUT.specialFunc, [key, GLUT.lastX, GLUT.lastY]);
+            Runtime.dynCall('viii', GLUT.specialFunc, [key, Browser.mouseX, Browser.mouseY]);
           }
         }
         else
@@ -168,7 +161,7 @@ var LibraryGLUT = {
           if( key !== null && GLUT.keyboardFunc ) {
             event.preventDefault();
             GLUT.saveModifiers(event);
-            Runtime.dynCall('viii', GLUT.keyboardFunc, [key, GLUT.lastX, GLUT.lastY]);
+            Runtime.dynCall('viii', GLUT.keyboardFunc, [key, Browser.mouseX, Browser.mouseY]);
           }
         }
       }
@@ -181,7 +174,7 @@ var LibraryGLUT = {
           if(GLUT.specialUpFunc) {
             event.preventDefault ();
             GLUT.saveModifiers(event);
-            Runtime.dynCall('viii', GLUT.specialUpFunc, [key, GLUT.lastX, GLUT.lastY]);
+            Runtime.dynCall('viii', GLUT.specialUpFunc, [key, Browser.mouseX, Browser.mouseY]);
           }
         }
         else
@@ -190,14 +183,15 @@ var LibraryGLUT = {
           if( key !== null && GLUT.keyboardUpFunc ) {
             event.preventDefault ();
             GLUT.saveModifiers(event);
-            Runtime.dynCall('viii', GLUT.keyboardUpFunc, [key, GLUT.lastX, GLUT.lastY]);
+            Runtime.dynCall('viii', GLUT.keyboardUpFunc, [key, Browser.mouseX, Browser.mouseY]);
           }
         }
       }
     },
 
     onMouseButtonDown: function(event){
-      GLUT.savePosition(event);
+      Browser.calculateMouseEvent(event);
+
       GLUT.buttons |= (1 << event['button']);
 
       if(event.target == Module["canvas"] && GLUT.mouseFunc){
@@ -206,18 +200,19 @@ var LibraryGLUT = {
         } catch (e) {}
         event.preventDefault();
         GLUT.saveModifiers(event);
-        Runtime.dynCall('viiii', GLUT.mouseFunc, [event['button'], 0/*GLUT_DOWN*/, GLUT.lastX, GLUT.lastY]);
+        Runtime.dynCall('viiii', GLUT.mouseFunc, [event['button'], 0/*GLUT_DOWN*/, Browser.mouseX, Browser.mouseY]);
       }
     },
 
     onMouseButtonUp: function(event){
-      GLUT.savePosition(event);
+      Browser.calculateMouseEvent(event);
+
       GLUT.buttons &= ~(1 << event['button']);
 
       if(GLUT.mouseFunc) {
         event.preventDefault();
         GLUT.saveModifiers(event);
-        Runtime.dynCall('viiii', GLUT.mouseFunc, [event['button'], 1/*GLUT_UP*/, GLUT.lastX, GLUT.lastY]);
+        Runtime.dynCall('viiii', GLUT.mouseFunc, [event['button'], 1/*GLUT_UP*/, Browser.mouseX, Browser.mouseY]);
       }
     },
 

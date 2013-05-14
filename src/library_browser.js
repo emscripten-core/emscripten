@@ -379,7 +379,7 @@ mergeInto(LibraryManager.library, {
     mouseMovementX: 0,
     mouseMovementY: 0,
 
-    calculateMouseMove: function(event) {
+    calculateMouseEvent: function(event) { // event should be mousemove, mousedown or mouseup
       if (Browser.pointerLock) {
         // When the pointer is locked, calculate the coordinates
         // based on the movement of the mouse.
