@@ -305,7 +305,7 @@ var Functions = {
         // Resolve multi-level aliases all the way down
         while (1) {
           var varData = Variables.globals[table[i]];
-          if (!(varData && varData.resolvedAlias)) break;
+          if (!(varData && varData.resolvedAlias && varData.resolvedAlias.indexOf('FUNCTION_TABLE_OFFSET') < 0)) break;
           table[i] = table[+varData.resolvedAlias || eval(varData.resolvedAlias)]; // might need to eval to turn (6) into 6
         }
         // Resolve library aliases
