@@ -35,8 +35,6 @@ var LibraryGLFW = {
     params: null,
     initTime: null,
     wheelPos: 0,
-    lastX: 0,
-    lastY: 0,
     buttons: 0,
     keys: 0,
     initWindowWidth: 640,
@@ -145,28 +143,20 @@ var LibraryGLFW = {
       GLFW.onKeyChanged(event, 0);//GLFW_RELEASE
     },
 
-    savePosition: function(event) {
-      /* TODO maybe loop here ala http://www.quirksmode.org/js/findpos.html */
-      GLFW.lastX = event['clientX'] - Module['canvas'].offsetLeft;
-      GLFW.lastY = event['clientY'] - Module['canvas'].offsetTop;
-    },
-
     onMousemove: function(event) {
       /* Send motion event only if the motion changed, prevents
        * spamming our app with uncessary callback call. It does happen in
        * Chrome on Windows.
        */
-      var newX = event['clientX'] - Module['canvas'].offsetLeft;
-      var newY = event['clientY'] - Module['canvas'].offsetTop;
-      if (newX == GLFW.lastX && newY == GLFW.lastY) {
-        return;
-      }
-
-      GLFW.savePosition(event);
+      var lastX = Browser.mouseX;
+      var lastY = Browser.mouseY;
+      Browser.calculateMouseEvent(event);
+      var newX = Browser.mouseX;
+      var newY = Browser.mouseY;
 
       if (event.target == Module["canvas"] && GLFW.mousePosFunc) {
         event.preventDefault();
-        Runtime.dynCall('vii', GLFW.mousePosFunc, [GLFW.lastX, GLFW.lastY]);
+        Runtime.dynCall('vii', GLFW.mousePosFunc, [lastX, lastY]);
       }
     },
 
@@ -175,7 +165,8 @@ var LibraryGLFW = {
         return;
       }
 
-      GLFW.savePosition(event);
+      Browser.calculateMouseEvent(event);
+
       if (event.target != Module["canvas"]) {
         return;
       }
@@ -441,8 +432,8 @@ var LibraryGLFW = {
   },
 
   glfwGetMousePos: function(xpos, ypos) {
-    setValue(xpos, GLFW.lastX, 'i32');
-    setValue(ypos, GLFW.lastY, 'i32');
+    setValue(xpos, Browser.mouseX, 'i32');
+    setValue(ypos, Browser.mouseY, 'i32');
   },
 
   //I believe it is not possible to move the mouse with javascript
