@@ -3563,10 +3563,8 @@ var LibraryGL = {
         stride = null;
         for (var i = 0; i < attributes.length; i++) {
           var attribute = attributes[i];
-          if (!attribute)
-            break;
-          if (stride === null)
-            stride = attribute.stride;
+          if (!attribute) break;
+          if (stride === null) stride = attribute.stride;
 
           if (attribute.stride != stride) {
 #if ASSERTIONS
@@ -3577,8 +3575,7 @@ var LibraryGL = {
           }
         }
 
-        if (!stride)
-          needsRepack = true;
+        if (!stride) needsRepack = true;
       }
 
       var vertCount = drawStart + drawCount;
