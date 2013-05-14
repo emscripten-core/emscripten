@@ -46,8 +46,6 @@ var LibrarySDL = {
     textInput: false,
 
     startTime: null,
-    mouseX: 0,
-    mouseY: 0,
     buttonState: 0,
     DOMButtons: [0, 0, 0],
 
@@ -515,54 +513,22 @@ var LibrarySDL = {
           }
           // fall through
         case 'mousemove': {
-          if (Browser.pointerLock) {
-            // When the pointer is locked, calculate the coordinates
-            // based on the movement of the mouse.
-            // Workaround for Firefox bug 764498
-            if (event.type != 'mousemove' &&
-                ('mozMovementX' in event)) {
-              var movementX = 0, movementY = 0;
-            } else {
-              var movementX = Browser.getMovementX(event);
-              var movementY = Browser.getMovementY(event);
-            }
-            var x = SDL.mouseX + movementX;
-            var y = SDL.mouseY + movementY;
-          } else {
-            // Otherwise, calculate the movement based on the changes
-            // in the coordinates.
-            var rect = Module["canvas"].getBoundingClientRect();
-            var x = event.pageX - (window.scrollX + rect.left);
-            var y = event.pageY - (window.scrollY + rect.top);
-
-            // the canvas might be CSS-scaled compared to its backbuffer;
-            // SDL-using content will want mouse coordinates in terms
-            // of backbuffer units.
-            var cw = Module["canvas"].width;
-            var ch = Module["canvas"].height;
-            x = x * (cw / rect.width);
-            y = y * (ch / rect.height);
-
-            var movementX = x - SDL.mouseX;
-            var movementY = y - SDL.mouseY;
-          }
+          Browser.calculateMouseMove(event);
           if (event.type != 'mousemove') {
             var down = event.type === 'mousedown';
             {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
             {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.button', 'event.button+1', 'i8') }}}; // DOM buttons are 0-2, SDL 1-3
             {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.state', 'down ? 1 : 0', 'i8') }}};
-            {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.x', 'x', 'i32') }}};
-            {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.y', 'y', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.x', 'Browser.mouseX', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.y', 'Browser.mouseY', 'i32') }}};
           } else {
             {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
             {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.state', 'SDL.buttonState', 'i8') }}};
-            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.x', 'x', 'i32') }}};
-            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.y', 'y', 'i32') }}};
-            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.xrel', 'movementX', 'i32') }}};
-            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.yrel', 'movementY', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.x', 'Browser.mouseX', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.y', 'Browser.mouseY', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.xrel', 'Browser.mouseMovementX', 'i32') }}};
+            {{{ makeSetValue('ptr', 'SDL.structs.MouseMotionEvent.yrel', 'Browser.mouseMovementY', 'i32') }}};
           }
-          SDL.mouseX = x;
-          SDL.mouseY = y;
           break;
         }
         case 'unload': {
@@ -924,8 +890,8 @@ var LibrarySDL = {
   },
 
   SDL_GetMouseState: function(x, y) {
-    if (x) {{{ makeSetValue('x', '0', 'SDL.mouseX', 'i32') }}};
-    if (y) {{{ makeSetValue('y', '0', 'SDL.mouseY', 'i32') }}};
+    if (x) {{{ makeSetValue('x', '0', 'Browser.mouseX', 'i32') }}};
+    if (y) {{{ makeSetValue('y', '0', 'Browser.mouseY', 'i32') }}};
     return SDL.buttonState;
   },
 

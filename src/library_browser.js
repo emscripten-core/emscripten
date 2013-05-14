@@ -374,6 +374,47 @@ mergeInto(LibraryManager.library, {
              0;
     },
 
+    mouseX: 0,
+    mouseY: 0,
+    mouseMovementX: 0,
+    mouseMovementY: 0,
+
+    calculateMouseMove: function(event) {
+      if (Browser.pointerLock) {
+        // When the pointer is locked, calculate the coordinates
+        // based on the movement of the mouse.
+        // Workaround for Firefox bug 764498
+        if (event.type != 'mousemove' &&
+            ('mozMovementX' in event)) {
+          Browser.mouseMovementX = Browser.mouseMovementY = 0;
+        } else {
+          Browser.mouseMovementX = Browser.getMovementX(event);
+          Browser.mouseMovementY = Browser.getMovementY(event);
+        }
+        Browser.mouseX = SDL.mouseX + Browser.mouseMovementX;
+        Browser.mouseY = SDL.mouseY + Browser.mouseMovementY;
+      } else {
+        // Otherwise, calculate the movement based on the changes
+        // in the coordinates.
+        var rect = Module["canvas"].getBoundingClientRect();
+        var x = event.pageX - (window.scrollX + rect.left);
+        var y = event.pageY - (window.scrollY + rect.top);
+
+        // the canvas might be CSS-scaled compared to its backbuffer;
+        // SDL-using content will want mouse coordinates in terms
+        // of backbuffer units.
+        var cw = Module["canvas"].width;
+        var ch = Module["canvas"].height;
+        x = x * (cw / rect.width);
+        y = y * (ch / rect.height);
+
+        Browser.mouseMovementX = x - Browser.mouseX;
+        Browser.mouseMovementY = y - Browser.mouseY;
+        Browser.mouseX = x;
+        Browser.mouseY = y;
+      }
+    },
+
     xhrLoad: function(url, onload, onerror) {
       var xhr = new XMLHttpRequest();
       xhr.open('GET', url, true);
