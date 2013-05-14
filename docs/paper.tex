@@ -214,7 +214,7 @@ following simple example of a C program:
   int main()
   {
     int sum = 0;
-    for (int i = 1; i < 100; i++)
+    for (int i = 1; i <= 100; i++)
       sum += i;
     printf("1+...+100=%d\n", sum);
     return 0;
@@ -239,7 +239,7 @@ define i32 @main() {
 
 ; <label>:2
   %3 = load i32* %i, align 4
-  %4 = icmp slt i32 %3, 100
+  %4 = icmp sle i32 %3, 100
   br i1 %4, label %5, label %12
 
 ; <label>:5
@@ -314,7 +314,7 @@ function _main() {
       __label__ = 0; break;
     case 0:
       var $3 = HEAP[$i];
-      var $4 = $3 < 100;
+      var $4 = $3 <= 100;
       if ($4) { __label__ = 1; break; }
       else    { __label__ = 2; break; }
     case 1:
@@ -594,7 +594,7 @@ function _main() {
   $i = 0;
   $2$2: while(1) {
     var $3 = $i;
-    var $4 = $3 < 100;
+    var $4 = $3 <= 100;
     if (!($4)) { __label__ = 2; break $2$2; }
     var $6 = $i;
     var $7 = $sum;
@@ -616,7 +616,7 @@ function K() {
   var a, b;
   b = a = 0;
   a:for(;;) {
-    if(!(b < 100)) {
+    if(!(b <= 100)) {
       break a
     }
     a += b;
