@@ -8513,6 +8513,10 @@ def process(filename):
         self.do_run(src, '''Finished up all reserved function pointers. Use a higher value for RESERVED_FUNCTION_POINTERS.''')
         generated = open('src.cpp.o.js').read()
         assert 'jsCall' not in generated
+        Settings.RESERVED_FUNCTION_POINTERS = 1
+
+        Settings.ALIASING_FUNCTION_POINTERS = 1
+        self.do_run(src, '''Hello 7 from JS!''')
 
     def test_scriptaclass(self):
         if self.emcc_args is None: return self.skip('requires emcc')
