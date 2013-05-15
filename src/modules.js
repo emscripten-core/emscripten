@@ -261,6 +261,7 @@ var Functions = {
       if (!doNotCreate) this.indexedFunctions[ident] = 0; // tell python we need this indexized
       return "'{{ FI_" + toNiceIdent(ident) + " }}'"; // something python will replace later
     } else {
+      if (!singlePhase) return 'NO_INDEX'; // Should not index functions in post
       var ret = this.indexedFunctions[ident];
       if (!ret) {
         if (doNotCreate) return '0';
