@@ -7727,6 +7727,16 @@ void*:16
 
       self.do_run(path_from_root('tests', 'cubescript'), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
 
+      assert 'asm2g' in test_modes
+      if self.run_name == 'asm2g':
+        results = {}
+        results[Settings.ALIASING_FUNCTION_POINTERS] = len(open('src.cpp.o.js').read())
+        Settings.ALIASING_FUNCTION_POINTERS = 1 - Settings.ALIASING_FUNCTION_POINTERS
+        self.do_run(path_from_root('tests', 'cubescript'), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
+        results[Settings.ALIASING_FUNCTION_POINTERS] = len(open('src.cpp.o.js').read())
+        print results
+        assert results[1] < 0.99*results[0]
+
     def test_gcc_unmangler(self):
       Settings.NAMED_GLOBALS = 1 # test coverage for this
 
@@ -9403,7 +9413,7 @@ TT = %s
 
   # asm.js
   exec('asm1 = make_run("asm1", compiler=CLANG, emcc_args=["-O1", "-s", "CHECK_HEAP_ALIGN=1"])')
-  exec('asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2"])')
+  exec('asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2", "-s", "ALIASING_FUNCTION_POINTERS=1"])')
   exec('asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTIONS=1", "--memory-init-file", "1"])')
   exec('''asm2x86 = make_run("asm2x86", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "CHECK_HEAP_ALIGN=1"], env='{"EMCC_LLVM_TARGET": "i386-pc-linux-gnu"}')''')
 
