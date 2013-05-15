@@ -288,6 +288,8 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
           exported_implemented_functions.add(key)
     for key, value in curr_forwarded_json['Functions']['unimplementedFunctions'].iteritems():
       forwarded_json['Functions']['unimplementedFunctions'][key] = value
+    for key, value in curr_forwarded_json['Functions']['neededTables'].iteritems():
+      forwarded_json['Functions']['neededTables'][key] = value
 
   if settings.get('ASM_JS'):
     parts = pre.split('// ASM_LIBRARY FUNCTIONS\n')
@@ -322,11 +324,6 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     forwarded_json['Functions']['indexedFunctions'][indexed] = curr # make sure not to modify this python object later - we use it in indexize
   if alias: i = max(table_counters.values())
   forwarded_json['Functions']['nextIndex'] = i # post phase can continue to add, in getIndex
-  function_table_size = forwarded_json['Functions']['nextIndex']
-  i = 1
-  while i < function_table_size:
-    i *= 2
-  function_table_size = i
 
   def split_32(x):
     x = int(x)
@@ -382,14 +379,6 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       i = 0
     pre_tables = last_forwarded_json['Functions']['tables']['pre']
     del last_forwarded_json['Functions']['tables']['pre']
-
-    # Find function table calls without function tables generated for them
-    for funcs_js_item in funcs_js:
-      for use in set(re.findall(r'{{{ FTM_[\w\d_$]+ }}}', funcs_js_item)):
-        sig = use[8:len(use)-4]
-        if sig not in last_forwarded_json['Functions']['tables']:
-          if DEBUG: print >> sys.stderr, 'add empty function table', sig
-          last_forwarded_json['Functions']['tables'][sig] = 'var FUNCTION_TABLE_' + sig + ' = [' + ','.join(['0']*function_table_size) + '];\n'
 
     def make_table(sig, raw):
       i = Counter.i

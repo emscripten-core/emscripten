@@ -1463,6 +1463,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         if (!byPointerForced && !funcData.setjmpTable) {
           // normal asm function pointer call
           callIdent = '(' + callIdent + ')&{{{ FTM_' + sig + ' }}}'; // the function table mask is set in emscripten.py
+          Functions.neededTables[sig] = 1;
         } else {
           // This is a call through an invoke_*, either a forced one, or a setjmp-required one
           // note: no need to update argsTypes at this point

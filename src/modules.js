@@ -237,6 +237,8 @@ var Functions = {
 
   indexedFunctions: {},
   nextIndex: (ASM_JS ? 2*RESERVED_FUNCTION_POINTERS : 0) + 2, // Start at a non-0 (even, see below) value
+  neededTables: set('v', 'vi', 'ii', 'iii'), // signatures that appeared (initialized with library stuff
+                                             // we always use), and we will need a function table for
 
   blockAddresses: {}, // maps functions to a map of block labels to label ids
 
@@ -286,7 +288,7 @@ var Functions = {
     }
     var tables = { pre: '' };
     if (ASM_JS) {
-      ['v', 'vi', 'ii', 'iii'].forEach(function(sig) { // add some default signatures that are used in the library
+      keys(Functions.neededTables).forEach(function(sig) { // add some default signatures that are used in the library
         tables[sig] = emptyTable(sig); // TODO: make them compact
       });
     }
@@ -429,6 +431,7 @@ var PassManager = {
           indexedFunctions: Functions.indexedFunctions,
           implementedFunctions: ASM_JS ? Functions.implementedFunctions : [],
           unimplementedFunctions: Functions.unimplementedFunctions,
+          neededTables: Functions.neededTables
         }
       }));
     } else if (phase == 'post') {
