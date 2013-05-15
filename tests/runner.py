@@ -3414,6 +3414,7 @@ Exiting setjmp function, level: 0, prev_jmp: -1
           FILE* fid;
 
           err = mkdir("/foo", 0777);
+          err = mkdir("/bar", 0777);
           fid = fopen("/foo/bar", "w+");
           fclose(fid);
 
@@ -3422,10 +3423,13 @@ Exiting setjmp function, level: 0, prev_jmp: -1
 
           err = rename("/foo", "/foo/foo");
           printf("%d\\n", err);
+
+          err = rename("/foo", "/bar/foo");
+          printf("%d\\n", err);
           return 0;
         }
       '''
-      self.do_run(src, '0\n-1\n', force_c=True)
+      self.do_run(src, '0\n-1\n0\n', force_c=True)
 
     def test_alloca_stack(self):
       if self.emcc_args is None: return # too slow in other modes
