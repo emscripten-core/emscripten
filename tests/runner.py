@@ -8515,7 +8515,7 @@ def process(filename):
         assert 'jsCall' not in generated
         Settings.RESERVED_FUNCTION_POINTERS = 1
 
-        Settings.ALIASING_FUNCTION_POINTERS = 1
+        Settings.ALIASING_FUNCTION_POINTERS = 1 - Settings.ALIASING_FUNCTION_POINTERS # flip the test
         self.do_run(src, '''Hello 7 from JS!''')
 
     def test_scriptaclass(self):
