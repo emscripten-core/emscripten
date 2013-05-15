@@ -302,13 +302,26 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
 
   # calculations on merged forwarded data
   forwarded_json['Functions']['indexedFunctions'] = {}
-  i = 2
+  i = 2 # universal counter
   if settings['ASM_JS']: i += 2*settings['RESERVED_FUNCTION_POINTERS']
+  table_counters = {} # table-specific counters
+  alias = settings['ASM_JS'] and settings['ALIASING_FUNCTION_POINTERS']
+  sig = None
   for indexed in indexed_functions:
-    #print >> sys.stderr, 'function indexing', indexed, i
-    forwarded_json['Functions']['indexedFunctions'][indexed] = i # make sure not to modify this python object later - we use it in indexize
-    i += 2
-  forwarded_json['Functions']['nextIndex'] = i
+    if alias:
+      sig = forwarded_json['Functions']['implementedFunctions'].get(indexed) or forwarded_json['Functions']['unimplementedFunctions'].get(indexed)
+      assert sig, indexed
+      if sig not in table_counters:
+        table_counters[sig] = 2
+      curr = table_counters[sig]
+      table_counters[sig] += 2
+    else:
+      curr = i
+      i += 2
+    #print >> sys.stderr, 'function indexing', indexed, curr, sig
+    forwarded_json['Functions']['indexedFunctions'][indexed] = curr # make sure not to modify this python object later - we use it in indexize
+  if alias: i = max(table_counters.values())
+  forwarded_json['Functions']['nextIndex'] = i # post phase can continue to add, in getIndex
   function_table_size = forwarded_json['Functions']['nextIndex']
   i = 1
   while i < function_table_size:

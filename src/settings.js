@@ -142,6 +142,10 @@ var SAFE_DYNCALLS = 0; // Show stack traces on missing function pointer/virtual 
 
 var RESERVED_FUNCTION_POINTERS = 0; // In asm.js mode, we cannot simply add function pointers to
                                     // function tables, so we reserve some slots for them.
+var ALIASING_FUNCTION_POINTERS = 0; // Whether to allow function pointers to alias if they have
+                                    // a different type. This can greatly decrease table sizes
+                                    // in asm.js, but can break code that compares function
+                                    // pointers across different types.
 
 var ASM_HEAP_LOG = 0; // Simple heap logging, like SAFE_HEAP_LOG but cheaper, and in asm.js
 
