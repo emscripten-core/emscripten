@@ -547,9 +547,8 @@ var LibrarySDL = {
 
     estimateTextWidth: function(fontData, text) {
       var h = fontData.size;
-      var fontString = h + 'px sans-serif';
-      // TODO: use temp context, not screen's, to avoid affecting its performance?
-      var tempCtx = SDL.surfaces[SDL.screen].ctx;
+      var fontString = h + 'px ' + fontData.name;
+      var tempCtx = SDL.ttfContext;
       tempCtx.save();
       tempCtx.font = fontString;
       var ret = tempCtx.measureText(text).width | 0;
@@ -1561,7 +1560,11 @@ var LibrarySDL = {
 
   // SDL TTF
 
-  TTF_Init: function() { return 0 },
+  TTF_Init: function() {
+    var canvas = document.createElement('canvas');
+    SDL.ttfContext = canvas.getContext('2d');
+    return 0;
+  },
 
   TTF_OpenFont: function(filename, size) {
     filename = FS.standardizePath(Pointer_stringify(filename));
@@ -1584,7 +1587,7 @@ var LibrarySDL = {
     var w = SDL.estimateTextWidth(fontData, text);
     var h = fontData.size;
     var color = SDL.loadColorToCSSRGB(color); // XXX alpha breaks fonts?
-    var fontString = h + 'px sans-serif';
+    var fontString = h + 'px ' + fontData.name;
     var surf = SDL.makeSurface(w, h, 0, false, 'text:' + text); // bogus numbers..
     var surfData = SDL.surfaces[surf];
     surfData.ctx.save();
