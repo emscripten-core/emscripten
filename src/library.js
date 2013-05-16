@@ -3482,7 +3482,8 @@ LibraryManager.library = {
     } else if (oldObj.isRoot || oldObj.path == FS.currentPath) {
       ___setErrNo(ERRNO_CODES.EBUSY);
       return -1;
-    } else if (newObj.path && newObj.path.indexOf(oldObj.path) == 0) {
+    } else if (newObj.parentPath &&
+               newObj.parentPath.indexOf(oldObj.path) == 0) {
       ___setErrNo(ERRNO_CODES.EINVAL);
       return -1;
     } else if (newObj.exists && newObj.object.isFolder) {
