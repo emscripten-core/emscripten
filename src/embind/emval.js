@@ -1,9 +1,11 @@
-/*global Module, Runtime*/
+/*global Module:true, Runtime*/
 /*global HEAP32*/
 /*global new_*/
 /*global createNamedFunction*/
 /*global readLatin1String, writeStringToMemory*/
 /*global requireRegisteredType, throwBindingError*/
+
+var Module = Module || {};
 
 var _emval_handle_array = [{}]; // reserve zero
 var _emval_free_list = [];
