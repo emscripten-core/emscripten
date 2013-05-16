@@ -676,6 +676,7 @@ class Settings:
           Settings.EMIT_GENERATED_FUNCTIONS = 1
         if opt_level >= 2:
           Settings.RELOOP = 1
+          Settings.ALIASING_FUNCTION_POINTERS = 1
         if opt_level >= 3:
           # Aside from these, -O3 also runs closure compiler and llvm lto
           Settings.FORCE_ALIGNED_MEMORY = 1
