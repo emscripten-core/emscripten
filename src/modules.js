@@ -229,6 +229,8 @@ var Types = {
   preciseI64MathUsed: (PRECISE_I64_MATH == 2)
 };
 
+var firstTableIndex = (ASM_JS ? 2*RESERVED_FUNCTION_POINTERS : 0) + 2;
+
 var Functions = {
   // All functions that will be implemented in this file. Maps id to signature
   implementedFunctions: {},
@@ -236,7 +238,7 @@ var Functions = {
   unimplementedFunctions: {}, // library etc. functions that we need to index, maps id to signature
 
   indexedFunctions: {},
-  nextIndex: (ASM_JS ? 2*RESERVED_FUNCTION_POINTERS : 0) + 2, // Start at a non-0 (even, see below) value
+  nextIndex: firstTableIndex, // Start at a non-0 (even, see below) value
   neededTables: set('v', 'vi', 'ii', 'iii'), // signatures that appeared (initialized with library stuff
                                              // we always use), and we will need a function table for
 
@@ -281,22 +283,21 @@ var Functions = {
 
   // Generate code for function indexing
   generateIndexing: function() {
-    var total = this.nextIndex;
-    if (ASM_JS) total = ceilPowerOfTwo(total); // must be power of 2 for mask
-    function emptyTable(sig) {
-      return zeros(total);
-    }
     var tables = { pre: '' };
     if (ASM_JS) {
       keys(Functions.neededTables).forEach(function(sig) { // add some default signatures that are used in the library
-        tables[sig] = emptyTable(sig); // TODO: make them compact
+        tables[sig] = zeros(firstTableIndex);
       });
     }
     for (var ident in this.indexedFunctions) {
       var sig = ASM_JS ? Functions.implementedFunctions[ident] || Functions.unimplementedFunctions[ident] || LibraryManager.library[ident.substr(1) + '__sig'] : 'x';
       assert(sig, ident);
-      if (!tables[sig]) tables[sig] = emptyTable(sig); // TODO: make them compact
-      tables[sig][this.indexedFunctions[ident]] = ident;
+      if (!tables[sig]) tables[sig] = zeros(firstTableIndex);
+      var index = this.indexedFunctions[ident];
+      for (var i = tables[sig].length; i < index; i++) {
+        tables[sig][i] = 0; // keep flat
+      }
+      tables[sig][index] = ident;
     }
     var generated = false;
     var wrapped = {};
@@ -352,6 +353,13 @@ var Functions = {
         while (j+10 < table.length) {
           table[j] += '\n';
           j += 10;
+        }
+      }
+      if (ASM_JS) {
+        // asm function table mask must be power of two
+        var fullSize = ceilPowerOfTwo(table.length);
+        for (var i = table.length; i < fullSize; i++) {
+          table[i] = 0;
         }
       }
       var indices = table.toString().replace('"', '');

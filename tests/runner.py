@@ -7729,13 +7729,15 @@ void*:16
 
       assert 'asm2g' in test_modes
       if self.run_name == 'asm2g':
+        original = open('src.cpp.o.js').read()
         results = {}
         results[Settings.ALIASING_FUNCTION_POINTERS] = len(open('src.cpp.o.js').read())
         Settings.ALIASING_FUNCTION_POINTERS = 1 - Settings.ALIASING_FUNCTION_POINTERS
         self.do_run(path_from_root('tests', 'cubescript'), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
         results[Settings.ALIASING_FUNCTION_POINTERS] = len(open('src.cpp.o.js').read())
+        open('original.js', 'w').write(original)
         print results
-        assert results[1] < 0.99*results[0]
+        assert results[1] < results[0]
 
     def test_gcc_unmangler(self):
       Settings.NAMED_GLOBALS = 1 # test coverage for this

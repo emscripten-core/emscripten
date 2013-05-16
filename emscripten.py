@@ -322,8 +322,6 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       i += 2
     #print >> sys.stderr, 'function indexing', indexed, curr, sig
     forwarded_json['Functions']['indexedFunctions'][indexed] = curr # make sure not to modify this python object later - we use it in indexize
-  if alias: i = max(table_counters.values()) if len(table_counters) > 0 else 2 + 2*settings['RESERVED_FUNCTION_POINTERS']
-  forwarded_json['Functions']['nextIndex'] = i
 
   def split_32(x):
     x = int(x)
