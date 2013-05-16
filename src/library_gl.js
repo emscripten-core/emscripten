@@ -3331,7 +3331,10 @@ for (var item in LibraryGL) {
 }
 LibraryGL.$GLEmulation__deps = LibraryGL.$GLEmulation__deps.concat(glFuncs);
 LibraryGL.$GLEmulation__deps.push(function() {
-  for (var func in Functions.getIndex.tentative) Functions.getIndex(func);
+  for (var func in Functions.getIndex.tentative) {
+    Functions.getIndex(func);
+    Functions.unimplementedFunctions[func] = LibraryGL[func.substr(1) + '__sig'];
+  }
 });
 
 if (FORCE_GL_EMULATION) {
