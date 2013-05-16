@@ -20,7 +20,7 @@ int main(int argc, char **argv) {
 
   printf("Init: %d\n", TTF_Init());
 
-  TTF_Font *font = TTF_OpenFont("myfont.ttf", 40);
+  TTF_Font *font = TTF_OpenFont("sans-serif", 40);
   printf("Font: %p\n", font);
 
   SDL_Color color = { 0xff, 0x99, 0x00, 0xff };
