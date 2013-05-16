@@ -314,7 +314,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       sig = forwarded_json['Functions']['implementedFunctions'].get(indexed) or forwarded_json['Functions']['unimplementedFunctions'].get(indexed)
       assert sig, indexed
       if sig not in table_counters:
-        table_counters[sig] = 2
+        table_counters[sig] = 2 + 2*settings['RESERVED_FUNCTION_POINTERS']
       curr = table_counters[sig]
       table_counters[sig] += 2
     else:
