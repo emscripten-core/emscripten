@@ -301,6 +301,7 @@ var Functions = {
     }
     var generated = false;
     var wrapped = {};
+    var maxTable = 0;
     for (var t in tables) {
       if (t == 'pre') continue;
       generated = true;
@@ -355,13 +356,21 @@ var Functions = {
           j += 10;
         }
       }
+      maxTable = Math.max(maxTable, table.length);
+    }
+    if (ASM_JS) maxTable = ceilPowerOfTwo(maxTable);
+    for (var t in tables) {
+      if (t == 'pre') continue;
+      var table = tables[t];
       if (ASM_JS) {
         // asm function table mask must be power of two
-        var fullSize = ceilPowerOfTwo(table.length);
+        // if nonaliasing, then standardize function table size, to avoid aliasing pointers through the &M mask (in a small table using a big index)
+        var fullSize = ALIASING_FUNCTION_POINTERS ? ceilPowerOfTwo(table.length) : maxTable;
         for (var i = table.length; i < fullSize; i++) {
           table[i] = 0;
         }
       }
+      // finalize table
       var indices = table.toString().replace('"', '');
       if (BUILD_AS_SHARED_LIB) {
         // Shared libraries reuse the parent's function table.
