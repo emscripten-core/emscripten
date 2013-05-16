@@ -9,6 +9,7 @@ int main()
     SDL_Init(SDL_INIT_VIDEO);
     SDL_Surface *screen = SDL_SetVideoMode(600, 450, 32, SDL_HWSURFACE);
 
+    TTF_Init();
     TTF_Font *font = TTF_OpenFont("myfont.ttf", 40);
 
     int i = 0;

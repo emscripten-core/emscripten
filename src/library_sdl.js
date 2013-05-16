@@ -549,6 +549,9 @@ var LibrarySDL = {
       var h = fontData.size;
       var fontString = h + 'px ' + fontData.name;
       var tempCtx = SDL.ttfContext;
+#if ASSERTIONS
+      assert(tempCtx, 'TTF_Init must have been called');
+#endif
       tempCtx.save();
       tempCtx.font = fontString;
       var ret = tempCtx.measureText(text).width | 0;
