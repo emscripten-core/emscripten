@@ -71,35 +71,35 @@ var LibraryGL = {
     tempQuadIndexBuffer: null,
 
     generateTempBuffers: function(quads) {
-      this.tempBufferIndexLookup = new Uint8Array(this.MAX_TEMP_BUFFER_SIZE+1);
-      this.tempVertexBuffers = [];
-      this.tempIndexBuffers = [];
+      GL.tempBufferIndexLookup = new Uint8Array(GL.MAX_TEMP_BUFFER_SIZE+1);
+      GL.tempVertexBuffers = [];
+      GL.tempIndexBuffers = [];
       var last = -1, curr = -1;
       var size = 1;
-      for (var i = 0; i <= this.MAX_TEMP_BUFFER_SIZE; i++) {
+      for (var i = 0; i <= GL.MAX_TEMP_BUFFER_SIZE; i++) {
         if (i > size) {
           size <<= 1;
         }
         if (size != last) {
           curr++;
-          this.tempVertexBuffers[curr] = Module.ctx.createBuffer();
-          Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, this.tempVertexBuffers[curr]);
+          GL.tempVertexBuffers[curr] = Module.ctx.createBuffer();
+          Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, GL.tempVertexBuffers[curr]);
           Module.ctx.bufferData(Module.ctx.ARRAY_BUFFER, size, Module.ctx.DYNAMIC_DRAW);
           Module.ctx.bindBuffer(Module.ctx.ARRAY_BUFFER, null);
-          this.tempIndexBuffers[curr] = Module.ctx.createBuffer();
-          Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.tempIndexBuffers[curr]);
+          GL.tempIndexBuffers[curr] = Module.ctx.createBuffer();
+          Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, GL.tempIndexBuffers[curr]);
           Module.ctx.bufferData(Module.ctx.ELEMENT_ARRAY_BUFFER, size, Module.ctx.DYNAMIC_DRAW);
           Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, null);
           last = size;
         }
-        this.tempBufferIndexLookup[i] = curr;
+        GL.tempBufferIndexLookup[i] = curr;
       }
 
       if (quads) {
         // GL_QUAD indexes can be precalculated
-        this.tempQuadIndexBuffer = Module.ctx.createBuffer();
-        Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, this.tempQuadIndexBuffer);
-        var numIndexes = this.MAX_TEMP_BUFFER_SIZE >> 1;
+        GL.tempQuadIndexBuffer = Module.ctx.createBuffer();
+        Module.ctx.bindBuffer(Module.ctx.ELEMENT_ARRAY_BUFFER, GL.tempQuadIndexBuffer);
+        var numIndexes = GL.MAX_TEMP_BUFFER_SIZE >> 1;
         var quadIndexes = new Uint16Array(numIndexes);
         var i = 0, v = 0;
         while (1) {
