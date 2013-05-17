@@ -5135,7 +5135,7 @@ LibraryManager.library = {
     }
     // Clear state flag.
 #if ASM_JS
-    asm.setThrew(0);
+    asm['setThrew'](0);
 #else
     __THREW__ = 0;
 #endif
@@ -6335,7 +6335,7 @@ LibraryManager.library = {
 #endif
   longjmp: function(env, value) {
 #if ASM_JS
-    asm.setThrew(env, value || 1);
+    asm['setThrew'](env, value || 1);
     throw 'longjmp';
 #else
     throw { longjmp: true, id: {{{ makeGetValue('env', '0', 'i32') }}}, value: value || 1 };
