@@ -12633,7 +12633,7 @@ elif 'benchmark' in str(sys.argv):
       print '   JavaScript: mean: %.3f (+-%.3f) secs  median: %.3f  range: %.3f-%.3f  (noise: %3.3f%%)  (%d runs)' % (mean, std, median, min(times), max(times), 100*std/mean, reps)
       print '   Native    : mean: %.3f (+-%.3f) secs  median: %.3f  range: %.3f-%.3f  (noise: %3.3f%%)  JS is %.2f X slower' % (mean_native, std_native, median_native, min(native_times), max(native_times), 100*std_native/mean_native, final)
 
-    def do_benchmark(self, name, src, expected_output='FAIL', args=[], emcc_args=[], native_args=[], shared_args=[], force_c=False, reps=TEST_REPS):
+    def do_benchmark(self, name, src, expected_output='FAIL', args=[], emcc_args=[], native_args=[], shared_args=[], force_c=False, reps=TEST_REPS, native_exec=None):
       # standard arguments for timing:
       # 0: no runtime, just startup
       # 1: very little runtime
@@ -12679,7 +12679,10 @@ elif 'benchmark' in str(sys.argv):
           self.assertContained(expected_output, js_output)
 
       # Run natively
-      self.build_native(filename, shared_args + native_args)
+      if not native_exec:
+        self.build_native(filename, shared_args + native_args)
+      else:
+        shutil.move(native_exec, filename + '.native')
       global total_native_times
       native_times = []
       for i in range(reps):
@@ -12991,6 +12994,16 @@ elif 'benchmark' in str(sys.argv):
              ['-I' + path_from_root('tests', 'nbody-java')]
       self.do_benchmark('nbody_java', '', '''Time(s)''',
                         force_c=True, emcc_args=args + ['-s', 'PRECISE_I64_MATH=1', '--llvm-lto', '0'], native_args=args + ['-lgc', '-std=c99', '-target', 'x86_64-pc-linux-gnu', '-lm'])
+
+    def zzztest_lua(self):
+      shutil.copyfile(path_from_root('tests', 'lua', 'scimark.lua'), 'scimark.lua')
+      emcc_args = self.get_library('lua', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None) + \
+                  ['--embed-file', 'scimark.lua']
+      shutil.copyfile(emcc_args[0], emcc_args[0] + '.bc')
+      emcc_args[0] += '.bc'
+      native_args = self.get_library('lua_native', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, native=True)
+      self.do_benchmark('lua', '', '''[small problem sizes]''',
+                        force_c=True, args=['scimark.lua'], emcc_args=emcc_args, native_args=native_args, native_exec=os.path.join('building', 'lua_native', 'src', 'lua'))
 
     def test_zlib(self):
       src = open(path_from_root('tests', 'zlib', 'benchmark.c'), 'r').read()
