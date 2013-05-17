@@ -1793,19 +1793,19 @@ var LibraryGL = {
         case 'glEnableVertexAttribArray': ret = {{{ Functions.getIndex('_glEnableVertexAttribArray', true) }}}; break;
         case 'glDisableVertexAttribArray': ret = {{{ Functions.getIndex('_glDisableVertexAttribArray', true) }}}; break;
         case 'glVertexAttribPointer': ret = {{{ Functions.getIndex('_glVertexAttribPointer', true) }}}; break;
-	case 'glVertexAttrib1f': ret = {{{ Functions.getIndex('_glVertexAttrib1f', true) }}}; break;
-	case 'glVertexAttrib2f': ret = {{{ Functions.getIndex('_glVertexAttrib2f', true) }}}; break;
-	case 'glVertexAttrib3f': ret = {{{ Functions.getIndex('_glVertexAttrib3f', true) }}}; break;
-	case 'glVertexAttrib4f': ret = {{{ Functions.getIndex('_glVertexAttrib4f', true) }}}; break;
-	case 'glVertexAttrib1fv': ret = {{{ Functions.getIndex('_glVertexAttrib1fv', true) }}}; break;
-	case 'glVertexAttrib2fv': ret = {{{ Functions.getIndex('_glVertexAttrib2fv', true) }}}; break;
-	case 'glVertexAttrib3fv': ret = {{{ Functions.getIndex('_glVertexAttrib3fv', true) }}}; break;
-	case 'glVertexAttrib4fv': ret = {{{ Functions.getIndex('_glVertexAttrib4fv', true) }}}; break;
-	case 'glGetVertexAttribfv': ret = {{{ Functions.getIndex('_glGetVertexAttribfv', true) }}}; break;
-	case 'glGetVertexAttribiv': ret = {{{ Functions.getIndex('_glGetVertexAttribiv', true) }}}; break;
-	case 'glGetVertexAttribPointerv': ret = {{{ Functions.getIndex('_glGetVertexAttribPointerv', true) }}}; break;
-	case 'glGetAttribLocation': ret = {{{ Functions.getIndex('_glGetAttribLocation', true) }}}; break;
-	case 'glGetActiveAttrib': ret = {{{ Functions.getIndex('_glGetActiveAttrib', true) }}}; break;
+  case 'glVertexAttrib1f': ret = {{{ Functions.getIndex('_glVertexAttrib1f', true) }}}; break;
+  case 'glVertexAttrib2f': ret = {{{ Functions.getIndex('_glVertexAttrib2f', true) }}}; break;
+  case 'glVertexAttrib3f': ret = {{{ Functions.getIndex('_glVertexAttrib3f', true) }}}; break;
+  case 'glVertexAttrib4f': ret = {{{ Functions.getIndex('_glVertexAttrib4f', true) }}}; break;
+  case 'glVertexAttrib1fv': ret = {{{ Functions.getIndex('_glVertexAttrib1fv', true) }}}; break;
+  case 'glVertexAttrib2fv': ret = {{{ Functions.getIndex('_glVertexAttrib2fv', true) }}}; break;
+  case 'glVertexAttrib3fv': ret = {{{ Functions.getIndex('_glVertexAttrib3fv', true) }}}; break;
+  case 'glVertexAttrib4fv': ret = {{{ Functions.getIndex('_glVertexAttrib4fv', true) }}}; break;
+  case 'glGetVertexAttribfv': ret = {{{ Functions.getIndex('_glGetVertexAttribfv', true) }}}; break;
+  case 'glGetVertexAttribiv': ret = {{{ Functions.getIndex('_glGetVertexAttribiv', true) }}}; break;
+  case 'glGetVertexAttribPointerv': ret = {{{ Functions.getIndex('_glGetVertexAttribPointerv', true) }}}; break;
+  case 'glGetAttribLocation': ret = {{{ Functions.getIndex('_glGetAttribLocation', true) }}}; break;
+  case 'glGetActiveAttrib': ret = {{{ Functions.getIndex('_glGetActiveAttrib', true) }}}; break;
         case 'glBindRenderbuffer': ret = {{{ Functions.getIndex('_glBindRenderbuffer', true) }}}; break;
         case 'glDeleteRenderbuffers': ret = {{{ Functions.getIndex('_glDeleteRenderbuffers', true) }}}; break;
         case 'glGenRenderbuffers': ret = {{{ Functions.getIndex('_glGenRenderbuffers', true) }}}; break;
@@ -1824,86 +1824,86 @@ var LibraryGL = {
         case 'glDeleteVertexArrays': ret = {{{ Functions.getIndex('_glDeleteVertexArrays', true) }}}; break;
         case 'glBindVertexArray': ret = {{{ Functions.getIndex('_glBindVertexArray', true) }}}; break;
         case 'glGetString': ret = {{{ Functions.getIndex('_glGetString', true) }}}; break;
-	case 'glBindTexture': ret = {{{ Functions.getIndex('_glBindTexture', true) }}}; break;
-	case 'glGetBufferParameteriv': ret = {{{ Functions.getIndex('_glGetBufferParameteriv', true) }}}; break;
-	case 'glIsBuffer': ret = {{{ Functions.getIndex('_glIsBuffer', true) }}}; break;
-	case 'glDeleteShader': ret = {{{ Functions.getIndex('_glDeleteShader', true) }}}; break;
+  case 'glBindTexture': ret = {{{ Functions.getIndex('_glBindTexture', true) }}}; break;
+  case 'glGetBufferParameteriv': ret = {{{ Functions.getIndex('_glGetBufferParameteriv', true) }}}; break;
+  case 'glIsBuffer': ret = {{{ Functions.getIndex('_glIsBuffer', true) }}}; break;
+  case 'glDeleteShader': ret = {{{ Functions.getIndex('_glDeleteShader', true) }}}; break;
         case 'glUniformMatrix2fv': ret = {{{ Functions.getIndex('_glUniformMatrix2fv', true) }}}; break;
         case 'glUniformMatrix3fv': ret = {{{ Functions.getIndex('_glUniformMatrix3fv', true) }}}; break;
         case 'glUniformMatrix4fv': ret = {{{ Functions.getIndex('_glUniformMatrix4fv', true) }}}; break;
-	case 'glIsRenderbuffer': ret = {{{ Functions.getIndex('_glIsRenderbuffer', true) }}}; break;
-	case 'glBlendEquation': ret = {{{ Functions.getIndex('_glBlendEquation', true) }}}; break;
-	case 'glBlendFunc': ret = {{{ Functions.getIndex('_glBlendFunc', true) }}}; break;
-	case 'glBlendFuncSeparate': ret = {{{ Functions.getIndex('_glBlendFuncSeparate', true) }}}; break;
-	case 'glBlendEquationSeparate': ret = {{{ Functions.getIndex('_glBlendEquationSeparate', true) }}}; break;
-	case 'glDepthRangef': ret = {{{ Functions.getIndex('_glDepthRangef', true) }}}; break;
-	case 'glClear': ret = {{{ Functions.getIndex('_glClear', true) }}}; break;
-	case 'glGenerateMipmap': ret = {{{ Functions.getIndex('_glGenerateMipmap', true) }}}; break;
-	case 'glBlendColor': ret = {{{ Functions.getIndex('_glBlendColor', true) }}}; break;
-	case 'glClearDepthf': ret = {{{ Functions.getIndex('_glClearDepthf', true) }}}; break;
-	case 'glDeleteProgram': ret = {{{ Functions.getIndex('_glDeleteProgram', true) }}}; break;
-	case 'glUniformMatrix3fv': ret = {{{ Functions.getIndex('_glUniformMatrix3fv', true) }}}; break;
-	case 'glClearColor': ret = {{{ Functions.getIndex('_glClearColor', true) }}}; break;
-	case 'glGetRenderbufferParameteriv': ret = {{{ Functions.getIndex('_glGetRenderbufferParameteriv', true) }}}; break;
-	case 'glGetShaderInfoLog': ret = {{{ Functions.getIndex('_glGetShaderInfoLog', true) }}}; break;
-	case 'glUniformMatrix4fv': ret = {{{ Functions.getIndex('_glUniformMatrix4fv', true) }}}; break;
-	case 'glClearStencil': ret = {{{ Functions.getIndex('_glClearStencil', true) }}}; break;
-	case 'glGetProgramInfoLog': ret = {{{ Functions.getIndex('_glGetProgramInfoLog', true) }}}; break;
-	case 'glGetUniformfv': ret = {{{ Functions.getIndex('_glGetUniformfv', true) }}}; break;
-	case 'glStencilFuncSeparate': ret = {{{ Functions.getIndex('_glStencilFuncSeparate', true) }}}; break;
-	case 'glSampleCoverage': ret = {{{ Functions.getIndex('_glSampleCoverage', true) }}}; break;
-	case 'glColorMask': ret = {{{ Functions.getIndex('_glColorMask', true) }}}; break;
-	case 'glGetShaderiv': ret = {{{ Functions.getIndex('_glGetShaderiv', true) }}}; break;
-	case 'glGetUniformiv': ret = {{{ Functions.getIndex('_glGetUniformiv', true) }}}; break;
-	case 'glCopyTexSubImage2D': ret = {{{ Functions.getIndex('_glCopyTexSubImage2D', true) }}}; break;
-	case 'glDetachShader': ret = {{{ Functions.getIndex('_glDetachShader', true) }}}; break;
-	case 'glGetShaderSource': ret = {{{ Functions.getIndex('_glGetShaderSource', true) }}}; break;
-	case 'glDeleteTextures': ret = {{{ Functions.getIndex('_glDeleteTextures', true) }}}; break;
-	case 'glGetAttachedShaders': ret = {{{ Functions.getIndex('_glGetAttachedShaders', true) }}}; break;
-	case 'glValidateProgram': ret = {{{ Functions.getIndex('_glValidateProgram', true) }}}; break;
-	case 'glDepthFunc': ret = {{{ Functions.getIndex('_glDepthFunc', true) }}}; break;
-	case 'glIsShader': ret = {{{ Functions.getIndex('_glIsShader', true) }}}; break;
-	case 'glDepthMask': ret = {{{ Functions.getIndex('_glDepthMask', true) }}}; break;
-	case 'glStencilMaskSeparate': ret = {{{ Functions.getIndex('_glStencilMaskSeparate', true) }}}; break;
-	case 'glIsProgram': ret = {{{ Functions.getIndex('_glIsProgram', true) }}}; break;
-	case 'glDisable': ret = {{{ Functions.getIndex('_glDisable', true) }}}; break;
-	case 'glStencilOpSeparate': ret = {{{ Functions.getIndex('_glStencilOpSeparate', true) }}}; break;
-	case 'glDrawArrays': ret = {{{ Functions.getIndex('_glDrawArrays', true) }}}; break;
-	case 'glDrawElements': ret = {{{ Functions.getIndex('_glDrawElements', true) }}}; break;
-	case 'glEnable': ret = {{{ Functions.getIndex('_glEnable', true) }}}; break;
-	case 'glFinish': ret = {{{ Functions.getIndex('_glFinish', true) }}}; break;
-	case 'glFlush': ret = {{{ Functions.getIndex('_glFlush', true) }}}; break;
-	case 'glFrontFace': ret = {{{ Functions.getIndex('_glFrontFace', true) }}}; break;
-	case 'glCullFace': ret = {{{ Functions.getIndex('_glCullFace', true) }}}; break;
-	case 'glGenTextures': ret = {{{ Functions.getIndex('_glGenTextures', true) }}}; break;
-	case 'glGetError': ret = {{{ Functions.getIndex('_glGetError', true) }}}; break;
-	case 'glGetIntegerv': ret = {{{ Functions.getIndex('_glGetIntegerv', true) }}}; break;
-	case 'glGetBooleanv': ret = {{{ Functions.getIndex('_glGetBooleanv', true) }}}; break;
-	case 'glGetFloatv': ret = {{{ Functions.getIndex('_glGetFloatv', true) }}}; break;
-	case 'glHint': ret = {{{ Functions.getIndex('_glHint', true) }}}; break;
-	case 'glIsTexture': ret = {{{ Functions.getIndex('_glIsTexture', true) }}}; break;
-	case 'glPixelStorei': ret = {{{ Functions.getIndex('_glPixelStorei', true) }}}; break;
-	case 'glReadPixels': ret = {{{ Functions.getIndex('_glReadPixels', true) }}}; break;
-	case 'glScissor': ret = {{{ Functions.getIndex('_glScissor', true) }}}; break;
-	case 'glStencilFunc': ret = {{{ Functions.getIndex('_glStencilFunc', true) }}}; break;
-	case 'glStencilMask': ret = {{{ Functions.getIndex('_glStencilMask', true) }}}; break;
-	case 'glStencilOp': ret = {{{ Functions.getIndex('_glStencilOp', true) }}}; break;
-	case 'glTexImage2D': ret = {{{ Functions.getIndex('_glTexImage2D', true) }}}; break;
-	case 'glTexParameterf': ret = {{{ Functions.getIndex('_glTexParameterf', true) }}}; break;
-	case 'glTexParameterfv': ret = {{{ Functions.getIndex('_glTexParameterfv', true) }}}; break;
-	case 'glTexParameteri': ret = {{{ Functions.getIndex('_glTexParameteri', true) }}}; break;
-	case 'glTexParameteriv': ret = {{{ Functions.getIndex('_glTexParameteriv', true) }}}; break;
-	case 'glGetTexParameterfv': ret = {{{ Functions.getIndex('_glGetTexParameterfv', true) }}}; break;
-	case 'glGetTexParameteriv': ret = {{{ Functions.getIndex('_glGetTexParameteriv', true) }}}; break;
-	case 'glTexSubImage2D': ret = {{{ Functions.getIndex('_glTexSubImage2D', true) }}}; break;
-	case 'glCopyTexImage2D': ret = {{{ Functions.getIndex('_glCopyTexImage2D', true) }}}; break;
-	case 'glViewport': ret = {{{ Functions.getIndex('_glViewport', true) }}}; break;
-	case 'glIsEnabled': ret = {{{ Functions.getIndex('_glIsEnabled', true) }}}; break;
-	case 'glLineWidth': ret = {{{ Functions.getIndex('_glLineWidth', true) }}}; break;
-	case 'glPolygonOffset': ret = {{{ Functions.getIndex('_glPolygonOffset', true) }}}; break;
-	case 'glReleaseShaderCompiler': ret = {{{ Functions.getIndex('_glReleaseShaderCompiler', true) }}}; break;
-	case 'glGetShaderPrecisionFormat': ret = {{{ Functions.getIndex('_glGetShaderPrecisionFormat', true) }}}; break;
-	case 'glShaderBinary': ret = {{{ Functions.getIndex('_glShaderBinary', true) }}}; break;
+  case 'glIsRenderbuffer': ret = {{{ Functions.getIndex('_glIsRenderbuffer', true) }}}; break;
+  case 'glBlendEquation': ret = {{{ Functions.getIndex('_glBlendEquation', true) }}}; break;
+  case 'glBlendFunc': ret = {{{ Functions.getIndex('_glBlendFunc', true) }}}; break;
+  case 'glBlendFuncSeparate': ret = {{{ Functions.getIndex('_glBlendFuncSeparate', true) }}}; break;
+  case 'glBlendEquationSeparate': ret = {{{ Functions.getIndex('_glBlendEquationSeparate', true) }}}; break;
+  case 'glDepthRangef': ret = {{{ Functions.getIndex('_glDepthRangef', true) }}}; break;
+  case 'glClear': ret = {{{ Functions.getIndex('_glClear', true) }}}; break;
+  case 'glGenerateMipmap': ret = {{{ Functions.getIndex('_glGenerateMipmap', true) }}}; break;
+  case 'glBlendColor': ret = {{{ Functions.getIndex('_glBlendColor', true) }}}; break;
+  case 'glClearDepthf': ret = {{{ Functions.getIndex('_glClearDepthf', true) }}}; break;
+  case 'glDeleteProgram': ret = {{{ Functions.getIndex('_glDeleteProgram', true) }}}; break;
+  case 'glUniformMatrix3fv': ret = {{{ Functions.getIndex('_glUniformMatrix3fv', true) }}}; break;
+  case 'glClearColor': ret = {{{ Functions.getIndex('_glClearColor', true) }}}; break;
+  case 'glGetRenderbufferParameteriv': ret = {{{ Functions.getIndex('_glGetRenderbufferParameteriv', true) }}}; break;
+  case 'glGetShaderInfoLog': ret = {{{ Functions.getIndex('_glGetShaderInfoLog', true) }}}; break;
+  case 'glUniformMatrix4fv': ret = {{{ Functions.getIndex('_glUniformMatrix4fv', true) }}}; break;
+  case 'glClearStencil': ret = {{{ Functions.getIndex('_glClearStencil', true) }}}; break;
+  case 'glGetProgramInfoLog': ret = {{{ Functions.getIndex('_glGetProgramInfoLog', true) }}}; break;
+  case 'glGetUniformfv': ret = {{{ Functions.getIndex('_glGetUniformfv', true) }}}; break;
+  case 'glStencilFuncSeparate': ret = {{{ Functions.getIndex('_glStencilFuncSeparate', true) }}}; break;
+  case 'glSampleCoverage': ret = {{{ Functions.getIndex('_glSampleCoverage', true) }}}; break;
+  case 'glColorMask': ret = {{{ Functions.getIndex('_glColorMask', true) }}}; break;
+  case 'glGetShaderiv': ret = {{{ Functions.getIndex('_glGetShaderiv', true) }}}; break;
+  case 'glGetUniformiv': ret = {{{ Functions.getIndex('_glGetUniformiv', true) }}}; break;
+  case 'glCopyTexSubImage2D': ret = {{{ Functions.getIndex('_glCopyTexSubImage2D', true) }}}; break;
+  case 'glDetachShader': ret = {{{ Functions.getIndex('_glDetachShader', true) }}}; break;
+  case 'glGetShaderSource': ret = {{{ Functions.getIndex('_glGetShaderSource', true) }}}; break;
+  case 'glDeleteTextures': ret = {{{ Functions.getIndex('_glDeleteTextures', true) }}}; break;
+  case 'glGetAttachedShaders': ret = {{{ Functions.getIndex('_glGetAttachedShaders', true) }}}; break;
+  case 'glValidateProgram': ret = {{{ Functions.getIndex('_glValidateProgram', true) }}}; break;
+  case 'glDepthFunc': ret = {{{ Functions.getIndex('_glDepthFunc', true) }}}; break;
+  case 'glIsShader': ret = {{{ Functions.getIndex('_glIsShader', true) }}}; break;
+  case 'glDepthMask': ret = {{{ Functions.getIndex('_glDepthMask', true) }}}; break;
+  case 'glStencilMaskSeparate': ret = {{{ Functions.getIndex('_glStencilMaskSeparate', true) }}}; break;
+  case 'glIsProgram': ret = {{{ Functions.getIndex('_glIsProgram', true) }}}; break;
+  case 'glDisable': ret = {{{ Functions.getIndex('_glDisable', true) }}}; break;
+  case 'glStencilOpSeparate': ret = {{{ Functions.getIndex('_glStencilOpSeparate', true) }}}; break;
+  case 'glDrawArrays': ret = {{{ Functions.getIndex('_glDrawArrays', true) }}}; break;
+  case 'glDrawElements': ret = {{{ Functions.getIndex('_glDrawElements', true) }}}; break;
+  case 'glEnable': ret = {{{ Functions.getIndex('_glEnable', true) }}}; break;
+  case 'glFinish': ret = {{{ Functions.getIndex('_glFinish', true) }}}; break;
+  case 'glFlush': ret = {{{ Functions.getIndex('_glFlush', true) }}}; break;
+  case 'glFrontFace': ret = {{{ Functions.getIndex('_glFrontFace', true) }}}; break;
+  case 'glCullFace': ret = {{{ Functions.getIndex('_glCullFace', true) }}}; break;
+  case 'glGenTextures': ret = {{{ Functions.getIndex('_glGenTextures', true) }}}; break;
+  case 'glGetError': ret = {{{ Functions.getIndex('_glGetError', true) }}}; break;
+  case 'glGetIntegerv': ret = {{{ Functions.getIndex('_glGetIntegerv', true) }}}; break;
+  case 'glGetBooleanv': ret = {{{ Functions.getIndex('_glGetBooleanv', true) }}}; break;
+  case 'glGetFloatv': ret = {{{ Functions.getIndex('_glGetFloatv', true) }}}; break;
+  case 'glHint': ret = {{{ Functions.getIndex('_glHint', true) }}}; break;
+  case 'glIsTexture': ret = {{{ Functions.getIndex('_glIsTexture', true) }}}; break;
+  case 'glPixelStorei': ret = {{{ Functions.getIndex('_glPixelStorei', true) }}}; break;
+  case 'glReadPixels': ret = {{{ Functions.getIndex('_glReadPixels', true) }}}; break;
+  case 'glScissor': ret = {{{ Functions.getIndex('_glScissor', true) }}}; break;
+  case 'glStencilFunc': ret = {{{ Functions.getIndex('_glStencilFunc', true) }}}; break;
+  case 'glStencilMask': ret = {{{ Functions.getIndex('_glStencilMask', true) }}}; break;
+  case 'glStencilOp': ret = {{{ Functions.getIndex('_glStencilOp', true) }}}; break;
+  case 'glTexImage2D': ret = {{{ Functions.getIndex('_glTexImage2D', true) }}}; break;
+  case 'glTexParameterf': ret = {{{ Functions.getIndex('_glTexParameterf', true) }}}; break;
+  case 'glTexParameterfv': ret = {{{ Functions.getIndex('_glTexParameterfv', true) }}}; break;
+  case 'glTexParameteri': ret = {{{ Functions.getIndex('_glTexParameteri', true) }}}; break;
+  case 'glTexParameteriv': ret = {{{ Functions.getIndex('_glTexParameteriv', true) }}}; break;
+  case 'glGetTexParameterfv': ret = {{{ Functions.getIndex('_glGetTexParameterfv', true) }}}; break;
+  case 'glGetTexParameteriv': ret = {{{ Functions.getIndex('_glGetTexParameteriv', true) }}}; break;
+  case 'glTexSubImage2D': ret = {{{ Functions.getIndex('_glTexSubImage2D', true) }}}; break;
+  case 'glCopyTexImage2D': ret = {{{ Functions.getIndex('_glCopyTexImage2D', true) }}}; break;
+  case 'glViewport': ret = {{{ Functions.getIndex('_glViewport', true) }}}; break;
+  case 'glIsEnabled': ret = {{{ Functions.getIndex('_glIsEnabled', true) }}}; break;
+  case 'glLineWidth': ret = {{{ Functions.getIndex('_glLineWidth', true) }}}; break;
+  case 'glPolygonOffset': ret = {{{ Functions.getIndex('_glPolygonOffset', true) }}}; break;
+  case 'glReleaseShaderCompiler': ret = {{{ Functions.getIndex('_glReleaseShaderCompiler', true) }}}; break;
+  case 'glGetShaderPrecisionFormat': ret = {{{ Functions.getIndex('_glGetShaderPrecisionFormat', true) }}}; break;
+  case 'glShaderBinary': ret = {{{ Functions.getIndex('_glShaderBinary', true) }}}; break;
       }
       if (!ret) Module.printErr('WARNING: getProcAddress failed for ' + name);
       return ret;
@@ -3385,7 +3385,7 @@ var LibraryGL = {
           Module.ctx.drawArrays(mode, first, count);
           return;
         }
-        GL.immediate.prepareClientAttributes(first, count, false);
+        GL.immediate.prepareClientAttributes(count, false);
         GL.immediate.mode = mode;
         if (!GL.currArrayBuffer) {
           GL.immediate.vertexData = {{{ makeHEAPView('F32', 'GL.immediate.vertexPointer', 'GL.immediate.vertexPointer + (first+count)*GL.immediate.stride') }}}; // XXX assuming float
@@ -3407,7 +3407,7 @@ var LibraryGL = {
 #if ASSERTIONS
         console.log("DrawElements doesn't actually prepareClientAttributes properly.");
 #endif
-        GL.immediate.prepareClientAttributes(0, count, false);
+        GL.immediate.prepareClientAttributes(count, false);
         GL.immediate.mode = mode;
         if (!GL.currArrayBuffer) {
           GL.immediate.firstVertex = end ? start : TOTAL_MEMORY; // if we don't know the start, set an invalid value and we will calculate it later from the indices
@@ -3539,7 +3539,7 @@ var LibraryGL = {
     // Modifies liveClientAttributes, stride, vertexPointer, vertexCounter
     //   count: number of elements we will draw
     //   beginEnd: whether we are drawing the results of a begin/end block
-    prepareClientAttributes: function(drawStart, drawCount, beginEnd) {
+    prepareClientAttributes: function(count, beginEnd) {
       // If no client attributes were modified since we were last called, do nothing. Note that this
       // does not work for glBegin/End, where we generate renderer components dynamically and then
       // disable them ourselves, but it does help with glDrawElements/Arrays.
@@ -3555,31 +3555,18 @@ var LibraryGL = {
         if (GL.immediate.enabledClientAttributes[i]) attributes.push(GL.immediate.clientAttributes[i]);
       }
       attributes.sort(function(x, y) { return !x ? (!y ? 0 : 1) : (!y ? -1 : (x.pointer - y.pointer)) });
-
-      var needsRepack = false;
-      if (beginEnd) {
-        needsRepack = true;
-      } else {
-        stride = null;
-        for (var i = 0; i < attributes.length; i++) {
-          var attribute = attributes[i];
-          if (!attribute) break;
-          if (stride === null) stride = attribute.stride;
-
-          if (attribute.stride != stride) {
-#if ASSERTIONS
-            console.log("Perf warning: Stride mismatch in `prepareClientAttributes()`.");
-#endif
-            needsRepack = true;
-            break;
-          }
-        }
-
-        if (!stride) needsRepack = true;
+      start = GL.currArrayBuffer ? 0 : attributes[0].pointer;
+      var multiStrides = false;
+      for (var i = 0; i < attributes.length; i++) {
+        var attribute = attributes[i];
+        if (!attribute) break;
+        if (stride != 0 && stride != attribute.stride) multiStrides = true;
+        if (attribute.stride) stride = attribute.stride;
       }
 
-      var vertCount = drawStart + drawCount;
-      if (needsRepack) {
+      if (multiStrides) stride = 0; // we will need to restride
+      var bytes = 0; // total size in bytes
+      if (!stride && !beginEnd) {
         // beginEnd can not have stride in the attributes, that is fine. otherwise,
         // no stride means that all attributes are in fact packed. to keep the rest of
         // our emulation code simple, we perform unpacking/restriding here. this adds overhead, so
@@ -3592,76 +3579,57 @@ var LibraryGL = {
 #if ASSERTIONS
         assert(start % 4 == 0);
 #endif
-        var pos = 0;
         // calculate restrided offsets and total size
         for (var i = 0; i < attributes.length; i++) {
           var attribute = attributes[i];
           if (!attribute) break;
-
           var size = attribute.size * GL.byteSizeByType[attribute.type - GL.byteSizeByTypeRoot];
           if (size % 4 != 0) size += 4 - (size % 4); // align everything
-
-          attribute.offset = pos;
-          pos += size;
+          attribute.offset = bytes;
+          bytes += size;
         }
-
-        // Alright, we know what our new stride will be.
-        var newStride = pos;
-
 #if ASSERTIONS
-        assert(vertCount*newStride <= GL.MAX_TEMP_BUFFER_SIZE);
+        assert(count*bytes <= GL.MAX_TEMP_BUFFER_SIZE);
 #endif
         // copy out the data (we need to know the stride for that, and define attribute.pointer
         for (var i = 0; i < attributes.length; i++) {
           var attribute = attributes[i];
-          if (!attribute)
-            break;
-
-          var size = attribute.size * GL.byteSizeByType[attribute.type - GL.byteSizeByTypeRoot];
-          if (size % 4 != 0) size += 4 - (size % 4); // align everything
-          // Note that we don't have to assert here, since at worst, we
-          // fill out dword-padded space with some garbage.
-
-          assert(attribute.pointer % 4 == 0, "Error: We assume attrib.pointer is dword-aligned");
-          var dwordStart = attribute.pointer / 4;
-          var dwordCount = size / 4;
-          for (var j = 0; j < vertCount; j++) {
-            for (var k = 0; k < dwordCount; k++) { // copy in chunks of 4 bytes, our alignment makes this possible
-              HEAP32[((start + attribute.offset + newStride*j)>>2) + k] = HEAP32[dwordStart + j*dwordCount + k];
+          if (!attribute) break;
+          var size4 = Math.floor((attribute.size * GL.byteSizeByType[attribute.type - GL.byteSizeByTypeRoot])/4);
+          for (var j = 0; j < count; j++) {
+            for (var k = 0; k < size4; k++) { // copy in chunks of 4 bytes, our alignment makes this possible
+              HEAP32[((start + attribute.offset + bytes*j)>>2) + k] = HEAP32[(attribute.pointer>>2) + j*size4 + k];
             }
           }
           attribute.pointer = start + attribute.offset;
         }
-
-        stride = newStride;
       } else {
         // normal situation, everything is strided and in the same buffer
-#if ASSERTIONS
-        assert(!beginEnd, "Immediate mode should not get here.");
-#endif
-        // This will always give us the proper start, as we sorted
-        // `attributes` by `.pointer` earlier.
-        start = GL.currArrayBuffer ? 0 : attributes[0].pointer;
-
         for (var i = 0; i < attributes.length; i++) {
           var attribute = attributes[i];
-          if (!attribute)
-            break;
-
+          if (!attribute) break;
           attribute.offset = attribute.pointer - start;
-#if ASSERTIONS
-          var size = attribute.size * GL.byteSizeByType[attribute.type - GL.byteSizeByTypeRoot];
-          assert(attribute.offset + size <= stride);
-#endif
+          if (attribute.offset > bytes) { // ensure we start where we should
+            assert((attribute.offset - bytes)%4 == 0); // XXX assuming 4-alignment
+            bytes += attribute.offset - bytes;
+          }
+          bytes += attribute.size * GL.byteSizeByType[attribute.type - GL.byteSizeByTypeRoot];
+          if (bytes % 4 != 0) bytes += 4 - (bytes % 4); // XXX assuming 4-alignment
+        }
+        assert(beginEnd || bytes <= stride); // if not begin-end, explicit stride should make sense with total byte size
+        if (bytes < stride) { // ensure the size is that of the stride
+          bytes = stride;
         }
       }
-      GL.immediate.stride = stride;
+      GL.immediate.stride = bytes;
 
-      if (!beginEnd && !GL.currArrayBuffer) {
-        // This is only used in this case.
-        GL.immediate.vertexPointer = start;
+      if (!beginEnd) {
+        bytes *= count;
+        if (!GL.currArrayBuffer) {
+          GL.immediate.vertexPointer = start;
+        }
+        GL.immediate.vertexCounter = bytes / 4; // XXX assuming float
       }
-      GL.immediate.vertexCounter = drawCount;
     },
 
     flush: function(numProvidedIndexes, startIndex, ptr) {
