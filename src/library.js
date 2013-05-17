@@ -5801,6 +5801,7 @@ LibraryManager.library = {
           for(var i = 0; i < target.contents.length; i++) {
               lib_data[i] = target.contents.get(i);
           }
+          lib_data = intArrayToString(lib_data);
       } else {
           lib_data = intArrayToString(target.contents);
       }
