@@ -6794,10 +6794,12 @@ LibraryManager.library = {
     26: 'Text file busy',
     18: 'Invalid cross-device link'
   },
+  __errno_state: 0,
+  __setErrNo__deps: ['__errno_state'],
+  __setErrNo__postset: '___errno_state = Runtime.staticAlloc(4);',
   __setErrNo: function(value) {
     // For convenient setting and returning of errno.
-    if (!___setErrNo.ret) ___setErrNo.ret = allocate([0], 'i32', ALLOC_NORMAL);
-    {{{ makeSetValue('___setErrNo.ret', '0', 'value', 'i32') }}}
+    {{{ makeSetValue('___errno_state', '0', 'value', 'i32') }}}
     return value;
   },
   __errno_location__deps: ['__setErrNo'],
