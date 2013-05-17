@@ -456,7 +456,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       asm_setup += '''
 function invoke_%s(%s) {
   try {
-    %sModule.dynCall_%s(%s);
+    %sModule["dynCall_%s"](%s);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
     asm["setThrew"](1, 0);
