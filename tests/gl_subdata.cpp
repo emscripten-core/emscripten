@@ -9,7 +9,7 @@ extern "C" {
 }
 static const char vertex_shader[] =
         "#ifdef GL_ES\n"
-        "precision highp float;\n"
+        "precision lowp float;\n"
         "#endif\n"
         "attribute float indices;\n"
         "uniform sampler2D nodeInfo;\n"
@@ -25,7 +25,7 @@ static const char vertex_shader[] =
         "}\n";
 static const char fragment_shader[] =
         "#ifdef GL_ES\n"
-        "precision highp float;\n"
+        "precision lowp float;\n"
         "#endif\n"
         "\n"
         "varying vec4 color;\n"
