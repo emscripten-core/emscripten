@@ -47,14 +47,17 @@ def build_version_file(env):
 
     return emscripten_version_file
 
-def depend_on_emscripten(node, env, path):
+def get_emscripten_version_file(env):
     EMSCRIPTEN_HOME = env.Dir('$EMSCRIPTEN_HOME').abspath
     try:
         version_file = emscripten_version_files[EMSCRIPTEN_HOME]
     except KeyError:
         version_file = build_version_file(env)
         emscripten_version_files[EMSCRIPTEN_HOME] = version_file
-    return [version_file]
+    return version_file
+
+def depend_on_emscripten(node, env, path):
+    return [get_emscripten_version_file(env)]
 
 EmscriptenScanner = Scanner(
     name='emscripten',
@@ -211,6 +214,7 @@ def build_libembind(env):
     libembind = env.Object(
         '$EMSCRIPTEN_TEMP_DIR/internal_libs/bind',
         '$EMSCRIPTEN_HOME/system/lib/embind/bind.cpp')
+    env.Depends(libembind, get_emscripten_version_file(env))
     libembind_cache[emscripten_temp_dir] = libembind
     return libembind
 
@@ -235,6 +239,7 @@ def build_libcxx(env):
             '${EMSCRIPTEN_TEMP_DIR}/libcxx_objects/' + os.path.splitext(o)[0] + '.bc',
             '${EMSCRIPTEN_HOME}/' + o)
         for o in LIBC_SOURCES + LIBCXXABI_SOURCES + LIBCXX_SOURCES]
+    env.Depends(objs, get_emscripten_version_file(env))
 
     libcxx = env.Library('${EMSCRIPTEN_TEMP_DIR}/internal_libs/libcxx', objs)
     libcxx_cache[emscripten_temp_dir] = libcxx
