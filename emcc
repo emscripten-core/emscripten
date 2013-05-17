@@ -1024,9 +1024,6 @@ try:
     if bind:
       shared.Settings.ASM_JS = 0
       logging.warning('disabling asm.js because it is not compatible with embind yet')
-    if closure:
-      logging.warning('disabling closure because it is not compatible with asm.js code generation')
-      closure = False
     if shared.Settings.CORRECT_SIGNS != 1:
       logging.warning('setting CORRECT_SIGNS to 1 for asm.js code generation')
       shared.Settings.CORRECT_SIGNS = 1
@@ -1549,7 +1546,7 @@ try:
     if shared.Settings.RELOOP and not shared.Settings.ASM_JS:
       js_optimizer_queue += ['optimizeShiftsAggressive', get_eliminate()] # aggressive shifts optimization requires loops, it breaks on switches
 
-  if closure:
+  if closure and not shared.Settings.ASM_JS:
     flush_js_optimizer_queue()
 
     logging.debug('running closure')
@@ -1560,12 +1557,15 @@ try:
     logging.debug('running post-closure post-opts')
     js_optimizer_queue += ['simplifyExpressionsPost']
 
-  if not closure and shared.Settings.RELOOP and not keep_js_debug:
+  if (not closure or shared.Settings.ASM_JS) and shared.Settings.RELOOP and not keep_js_debug:
     # do this if closure is not enabled (it gives similar speedups), and we do not need to keep debug info around
     js_optimizer_queue += ['registerize']
 
   if minify_whitespace:
     js_optimizer_queue += ['compress']
+
+  if closure and shared.Settings.ASM_JS: 
+    js_optimizer_queue += ['closure']
 
   js_optimizer_queue += ['last']
 

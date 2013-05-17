@@ -2408,7 +2408,8 @@ var passes = {
   compress: function() { compress = true },
   noPrintMetadata: function() { printMetadata = false },
   asm: function() { asm = true },
-  last: function() { last = true }
+  last: function() { last = true },
+  closure: function(){} // handled in python
 };
 
 // Main

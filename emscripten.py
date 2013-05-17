@@ -459,7 +459,7 @@ function invoke_%s(%s) {
     %sModule.dynCall_%s(%s);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm.setThrew(1, 0);
+    asm["setThrew"](1, 0);
   }
 }
 ''' % (sig, args, 'return ' if sig[0] != 'v' else '', sig, args)
@@ -489,11 +489,11 @@ function invoke_%s(%s) {
     asm_global_vars = ''.join(['  var ' + g + '=env.' + g + '|0;\n' for g in basic_vars + global_vars]) + \
                       ''.join(['  var ' + g + '=+env.' + g + ';\n' for g in basic_float_vars])
     # sent data
-    the_global = '{ ' + ', '.join([math_fix(s) + ': ' + s for s in fundamentals]) + ' }'
-    sending = '{ ' + ', '.join([math_fix(s) + ': ' + s for s in basic_funcs + global_funcs + basic_vars + basic_float_vars + global_vars]) + ' }'
+    the_global = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in fundamentals]) + ' }'
+    sending = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in basic_funcs + global_funcs + basic_vars + basic_float_vars + global_vars]) + ' }'
     # received
     if not simple:
-      receiving = ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm.' + s for s in exported_implemented_functions + function_tables])
+      receiving = ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"]' for s in exported_implemented_functions + function_tables])
     else:
       receiving = 'var _main = Module["_main"] = asm;'
 
@@ -565,9 +565,9 @@ var asm = (function(global, env, buffer) {
 // EMSCRIPTEN_END_ASM
 (%s, %s, buffer);
 %s;
-Runtime.stackAlloc = function(size) { return asm.stackAlloc(size) };
-Runtime.stackSave = function() { return asm.stackSave() };
-Runtime.stackRestore = function(top) { asm.stackRestore(top) };
+Runtime.stackAlloc = function(size) { return asm['stackAlloc'](size) };
+Runtime.stackSave = function() { return asm['stackSave']() };
+Runtime.stackRestore = function(top) { asm['stackRestore'](top) };
 ''' % (pre_tables + '\n'.join(function_tables_impls) + '\n' + function_tables_defs.replace('\n', '\n  '), exports, the_global, sending, receiving)]
 
     # Set function table masks

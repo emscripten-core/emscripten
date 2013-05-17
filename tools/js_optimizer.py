@@ -129,7 +129,7 @@ def run_on_js(filename, passes, js_engine, jcache):
   end_funcs_marker = '// EMSCRIPTEN_END_FUNCS\n'
   start_funcs = js.find(start_funcs_marker)
   end_funcs = js.rfind(end_funcs_marker)
-  assert (start_funcs >= 0) == (end_funcs >= 0) == (not not suffix)
+  #assert (start_funcs >= 0) == (end_funcs >= 0) == (not not suffix)
   asm_registerize = 'asm' in passes and 'registerize' in passes
   if asm_registerize:
     start_asm_marker = '// EMSCRIPTEN_START_ASM\n'
@@ -264,6 +264,30 @@ EMSCRIPTEN_FUNCS();
     filenames = []
 
   for filename in filenames: temp_files.note(filename)
+
+  if 'closure' in passes:
+    # run closure on the shell code, everything but what we js-optimize
+    start_asm = '// EMSCRIPTEN_START_ASM\n'
+    end_asm = '// EMSCRIPTEN_END_ASM\n'
+    closure_sep = 'wakaUnknownBefore(); var asm=wakaUnknownAfter(global,env,buffer)\n'
+
+    closuree = temp_files.get('.closure.js').name
+    c = open(closuree, 'w')
+    pre_1, pre_2 = pre.split(start_asm)
+    post_1, post_2 = post.split(end_asm)
+    c.write(pre_1)
+    c.write(closure_sep)
+    c.write(post_2)
+    c.close()
+    closured = shared.Building.closure_compiler(closuree, pretty='compress' not in passes)
+    temp_files.note(closured)
+    coutput = open(closured).read()
+    coutput = coutput.replace('wakaUnknownBefore();', '')
+    after = 'wakaUnknownAfter'
+    start = coutput.find(after)
+    end = coutput.find(')', start)
+    pre = coutput[:start] + '(function(global,env,buffer) {\n' + start_asm + pre_2[pre_2.find('{')+1:]
+    post = post_1[:post_1.rfind('}')] + '\n' + end_asm + '\n})' + coutput[end+1:]
 
   filename += '.jo.js'
   f = open(filename, 'w')

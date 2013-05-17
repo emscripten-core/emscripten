@@ -1208,7 +1208,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     return js_optimizer.run(filename, passes, listify(NODE_JS), jcache)
 
   @staticmethod
-  def closure_compiler(filename):
+  def closure_compiler(filename, pretty=True):
     if not os.path.exists(CLOSURE_COMPILER):
       raise Exception('Closure compiler appears to be missing, looked at: ' + str(CLOSURE_COMPILER))
 
@@ -1218,10 +1218,10 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
             '-Xmx' + (os.environ.get('JAVA_HEAP_SIZE') or '1024m'), # if you need a larger Java heap, use this environment variable
             '-jar', CLOSURE_COMPILER,
             '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
-            '--formatting', 'PRETTY_PRINT',
             '--language_in', 'ECMASCRIPT5',
             #'--variable_map_output_file', filename + '.vars',
             '--js', filename, '--js_output_file', filename + '.cc.js']
+    if pretty: args += ['--formatting', 'PRETTY_PRINT']
     if os.environ.get('EMCC_CLOSURE_ARGS'):
       args += shlex.split(os.environ.get('EMCC_CLOSURE_ARGS'))
     process = Popen(args, stdout=PIPE, stderr=STDOUT)
