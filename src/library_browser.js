@@ -311,10 +311,10 @@ mergeInto(LibraryManager.library, {
     lockPointer: undefined,
     resizeCanvas: undefined,
     requestFullScreen: function(lockPointer, resizeCanvas) {
-      this.lockPointer = lockPointer;
-      this.resizeCanvas = resizeCanvas;
-      if (typeof this.lockPointer === 'undefined') this.lockPointer = true;
-      if (typeof this.resizeCanvas === 'undefined') this.resizeCanvas = false;
+      Browser.lockPointer = lockPointer;
+      Browser.resizeCanvas = resizeCanvas;
+      if (typeof Browser.lockPointer === 'undefined') Browser.lockPointer = true;
+      if (typeof Browser.resizeCanvas === 'undefined') Browser.resizeCanvas = false;
 
       var canvas = Module['canvas'];
       function fullScreenChange() {
@@ -335,8 +335,8 @@ mergeInto(LibraryManager.library, {
         if (Module['onFullScreen']) Module['onFullScreen'](Browser.isFullScreen);
       }
 
-      if (!this.fullScreenHandlersInstalled) {
-        this.fullScreenHandlersInstalled = true;
+      if (!Browser.fullScreenHandlersInstalled) {
+        Browser.fullScreenHandlersInstalled = true;
         document.addEventListener('fullscreenchange', fullScreenChange, false);
         document.addEventListener('mozfullscreenchange', fullScreenChange, false);
         document.addEventListener('webkitfullscreenchange', fullScreenChange, false);
