@@ -7741,7 +7741,7 @@ void*:16
 
     def test_cubescript(self):
       if self.emcc_args is None: return self.skip('requires emcc')
-      if self.emcc_args is not None and '-O2' in self.emcc_args:
+      if self.run_name == 'o2':
         self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
 
       Building.COMPILER_TEST_OPTS = [] # remove -g, so we have one test without it by default
@@ -7891,6 +7891,9 @@ def process(filename):
                    force_c=True)
 
     def test_zlib(self):
+      if Settings.ASM_JS:
+        self.banned_js_engines = [NODE_JS] # TODO investigate
+
       if self.emcc_args is not None and '-O2' in self.emcc_args:
         self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
 
@@ -9588,8 +9591,8 @@ Options that are modified or new in %s include:
           (['-o', 'something.js'],                          0, None, 0, 1),
           (['-o', 'something.js', '-O0'],                   0, None, 0, 0),
           (['-o', 'something.js', '-O1'],                   1, None, 0, 0),
-          (['-o', 'something.js', '-O1', '-g'],             1, None, 0, 0),
-          (['-o', 'something.js', '-O1', '--closure', '1'], 1, None, 0, 0), # no closure when asm.js is on
+          (['-o', 'something.js', '-O1', '-g'],             1, None, 0, 0), # no closure since debug
+          (['-o', 'something.js', '-O1', '--closure', '1'], 1, None, 1, 0),
           (['-o', 'something.js', '-O1', '--closure', '1', '-s', 'ASM_JS=0'], 1, None, 1, 0),
           (['-o', 'something.js', '-O2'],                   2, None, 0, 1),
           (['-o', 'something.js', '-O2', '-g'],             2, None, 0, 0),
