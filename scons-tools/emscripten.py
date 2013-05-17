@@ -41,6 +41,7 @@ def build_version_file(env):
         '$EMSCRIPTEN_VERSION_FILE',
         EMSCRIPTEN_DEPENDENCIES,
         touch_file)
+
     env.AddPostAction(
         emscripten_version_file,
         Delete(env.Dir('$EMSCRIPTEN_TEMP_DIR').abspath))
@@ -260,24 +261,18 @@ def generate(env):
         JS_OPTIMIZER_PASSES=[],
         LLVM_OPT_PASSES=['-std-compile-opts', '-std-link-opts'],
 
-        # todo: calculate from __file__
-        EMSCRIPTEN_HOME=env.Dir('#/third-party/emscripten'),
+        EMSCRIPTEN_HOME=env.Dir(os.path.join(os.path.dirname(__file__), '..')),
     )
 
     env.Replace(
-        CC='${LLVM_ROOT}/clang',
-        CXX='${LLVM_ROOT}/clang++',
-        AR='${LLVM_ROOT}/llvm-link',
+        CC='${LLVM_ROOT}/${CLANG}',
+        CXX='${LLVM_ROOT}/${CLANGXX}',
+        AR='${LLVM_ROOT}/${LLVM_LINK}',
         ARCOM='$AR -o $TARGET $SOURCES',
         OBJSUFFIX='.bc',
         LIBPREFIX='',
         LIBSUFFIX='.bc',
         RANLIBCOM='',
-        # todo: remove
-        _LIBFLAGS='',
-        _LIBDIRFLAGS='',
-        # comment this out:
-        LINK=os.path.join('${LLVM_ROOT}', 'llvm-link'),
         CCFLAGS=[
             '-U__STRICT_ANSI__',
             '-target', 'le32-unknown-nacl',

@@ -15,12 +15,19 @@ def add_libraries(target, source, env):
     return (target, source + unique)
 
 def generate(env):
+    env.SetDefault(
+        CLANG='clang',
+        CLANGXX='clang++',
+        LLVM_DIS='llvm-dis',
+        LLVM_OPT='opt',
+        LLVM_LINK='llvm-link')
+    
     env['BUILDERS']['LLVMDis'] = Builder(
-        action='${LLVM_ROOT}/llvm-dis -o=$TARGET $SOURCE')
+        action='${LLVM_ROOT}/$LLVM_DIS -o=$TARGET $SOURCE')
 
     env['BUILDERS']['LLVMOpt'] = Builder(
-        action='${LLVM_ROOT}/opt $LLVM_OPT_FLAGS $LLVM_OPT_PASSES -o=$TARGET $SOURCE')
+        action='${LLVM_ROOT}/$LLVM_OPT $LLVM_OPT_FLAGS $LLVM_OPT_PASSES -o=$TARGET $SOURCE')
 
     env['BUILDERS']['LLVMLink'] = Builder(
-        action='${LLVM_ROOT}/llvm-link -o=$TARGET $SOURCES',
+        action='${LLVM_ROOT}/$LLVM_LINK -o=$TARGET $SOURCES',
         emitter=add_libraries)
