@@ -3642,7 +3642,7 @@ var LibraryGL = {
       var renderer = this.getRenderer();
 
       // Generate index data in a format suitable for GLES 2.0/WebGL
-      var numVertexes = this.vertexCounter;
+      var numVertexes = 4 * this.vertexCounter / GL.immediate.stride;
       assert(numVertexes % 1 == 0, "`numVertexes` must be an integer.");
 
       var emulatedElementArrayBuffer = false;
@@ -3728,11 +3728,11 @@ var LibraryGL = {
   },
 
   glEnd: function() {
-    GL.immediate.prepareClientAttributes(0, GL.immediate.rendererComponents[GL.immediate.VERTEX], true);
+    GL.immediate.prepareClientAttributes(GL.immediate.rendererComponents[GL.immediate.VERTEX], true);
     GL.immediate.firstVertex = 0;
     GL.immediate.lastVertex = GL.immediate.vertexCounter / (GL.immediate.stride >> 2);
     GL.immediate.flush();
-    //GL.immediate.disableBeginEndClientAttributes();
+    GL.immediate.disableBeginEndClientAttributes();
     GL.immediate.mode = -1;
 
     // Pop the old state:
