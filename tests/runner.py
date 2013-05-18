@@ -12596,6 +12596,15 @@ elif 'benchmark' in str(sys.argv):
   TEST_REPS = 2
   TOTAL_TESTS = 8
 
+  # standard arguments for timing:
+  # 0: no runtime, just startup
+  # 1: very little runtime
+  # 2: 0.5 seconds
+  # 3: 1 second
+  # 4: 5 seconds
+  # 5: 10 seconds
+  DEFAULT_ARG = '4'
+
   tests_done = 0
   total_times = map(lambda x: 0., range(TOTAL_TESTS))
   total_native_times = map(lambda x: 0., range(TOTAL_TESTS))
@@ -12633,15 +12642,9 @@ elif 'benchmark' in str(sys.argv):
       print '   JavaScript: mean: %.3f (+-%.3f) secs  median: %.3f  range: %.3f-%.3f  (noise: %3.3f%%)  (%d runs)' % (mean, std, median, min(times), max(times), 100*std/mean, reps)
       print '   Native    : mean: %.3f (+-%.3f) secs  median: %.3f  range: %.3f-%.3f  (noise: %3.3f%%)  JS is %.2f X slower' % (mean_native, std_native, median_native, min(native_times), max(native_times), 100*std_native/mean_native, final)
 
-    def do_benchmark(self, name, src, expected_output='FAIL', args=[], emcc_args=[], native_args=[], shared_args=[], force_c=False, reps=TEST_REPS, native_exec=None, output_parser=None):
-      # standard arguments for timing:
-      # 0: no runtime, just startup
-      # 1: very little runtime
-      # 2: 0.5 seconds
-      # 3: 1 second
-      # 4: 5 seconds
-      # 5: 10 seconds
-      args = args or ['4']
+    def do_benchmark(self, name, src, expected_output='FAIL', args=[], emcc_args=[], native_args=[], shared_args=[], force_c=False, reps=TEST_REPS, native_exec=None, output_parser=None, args_processor=None):
+      args = args or [DEFAULT_ARG]
+      if args_processor: args = args_processor(args)
 
       dirname = self.get_dir()
       filename = os.path.join(dirname, name + '.c' + ('' if force_c else 'pp'))
@@ -12962,26 +12965,46 @@ elif 'benchmark' in str(sys.argv):
       src = open(path_from_root('tests', 'life.c'), 'r').read()
       self.do_benchmark('life', src, '''--------------------------------''', shared_args=['-std=c99'], force_c=True)
 
-    def test_nbody_java(self): # tests xmlvm compiled java, including bitcasts of doubles, i64 math, etc.
+    def test_java_nbody(self): # tests xmlvm compiled java, including bitcasts of doubles, i64 math, etc.
       args = [path_from_root('tests', 'nbody-java', x) for x in os.listdir(path_from_root('tests', 'nbody-java')) if x.endswith('.c')] + \
              ['-I' + path_from_root('tests', 'nbody-java')]
       self.do_benchmark('nbody_java', '', '''Time(s)''',
                         force_c=True, emcc_args=args + ['-s', 'PRECISE_I64_MATH=1', '--llvm-lto', '0'], native_args=args + ['-lgc', '-std=c99', '-target', 'x86_64-pc-linux-gnu', '-lm'])
 
-    def test_lua(self):
-      shutil.copyfile(path_from_root('tests', 'lua', 'scimark.lua'), 'scimark.lua')
+    def lua(self, benchmark, expected, output_parser=None, args_processor=None):
+      shutil.copyfile(path_from_root('tests', 'lua', benchmark), benchmark)
       emcc_args = self.get_library('lua', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None) + \
-                  ['--embed-file', 'scimark.lua']
+                  ['--embed-file', benchmark]
       shutil.copyfile(emcc_args[0], emcc_args[0] + '.bc')
       emcc_args[0] += '.bc'
       native_args = self.get_library('lua_native', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, native=True)
 
-      def parser(output):
+      self.do_benchmark('lua', '', expected,
+                        force_c=True, args=[benchmark], emcc_args=emcc_args, native_args=native_args, native_exec=os.path.join('building', 'lua_native', 'src', 'lua'),
+                        output_parser=output_parser, args_processor=args_processor)
+
+    def test_lua_scimark(self):
+      def output_parser(output):
         return 1.0/float(re.search('\nSciMark +([\d\.]+) ', output).group(1))
 
-      self.do_benchmark('lua', '', '''[small problem sizes]''',
-                        force_c=True, args=['scimark.lua'], emcc_args=emcc_args, native_args=native_args, native_exec=os.path.join('building', 'lua_native', 'src', 'lua'),
-                        output_parser=parser)
+      self.lua('scimark.lua', '[small problem sizes]', output_parser=output_parser)
+
+    def test_lua_binarytrees(self):
+      def args_processor(args):
+        arg = int(DEFAULT_ARG)
+        if arg == 0:
+          return args + ['0']
+        elif arg == 1:
+          return args + ['9.5']
+        elif arg == 2:
+          return args + ['11.99']
+        elif arg == 3:
+          return args + ['12.85']
+        elif arg == 4:
+          return args + ['14.72']
+        elif arg == 5:
+          return args + ['15.82']
+      self.lua('binarytrees.lua', 'long lived tree of depth', args_processor=args_processor)
 
     def test_zlib(self):
       src = open(path_from_root('tests', 'zlib', 'benchmark.c'), 'r').read()
