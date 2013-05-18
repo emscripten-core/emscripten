@@ -12979,7 +12979,7 @@ elif 'benchmark' in str(sys.argv):
       emcc_args[0] += '.bc'
       native_args = self.get_library('lua_native', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, native=True)
 
-      self.do_benchmark('lua', '', expected,
+      self.do_benchmark('lua_' + benchmark, '', expected,
                         force_c=True, args=[benchmark], emcc_args=emcc_args, native_args=native_args, native_exec=os.path.join('building', 'lua_native', 'src', 'lua'),
                         output_parser=output_parser, args_processor=args_processor)
 
