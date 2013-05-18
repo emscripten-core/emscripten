@@ -366,7 +366,7 @@ process(sys.argv[1])
         print >> sys.stderr,  '<load %s from cache> ' % cache_name,
         generated_libs = []
         for basename, contents in self.library_cache[cache_name]:
-          bc_file = os.path.join(build_dir, basename)
+          bc_file = os.path.join(build_dir, cache_name + '_' +  basename)
           f = open(bc_file, 'wb')
           f.write(contents)
           f.close()
@@ -12688,7 +12688,7 @@ elif 'benchmark' in str(sys.argv):
       if not native_exec:
         self.build_native(filename, shared_args + native_args)
       else:
-        shutil.move(native_exec, filename + '.native')
+        shutil.copyfile(native_exec, filename + '.native')
       global total_native_times
       native_times = []
       for i in range(reps):
