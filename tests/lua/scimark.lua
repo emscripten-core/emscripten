@@ -32,7 +32,7 @@
 local SCIMARK_VERSION = "2010-12-10"
 local SCIMARK_COPYRIGHT = "Copyright (C) 2006-2010 Mike Pall"
 
-local MIN_TIME = 0.5
+local MIN_TIME = 0.8
 local RANDOM_SEED = 101009 -- Must be odd.
 local SIZE_SELECT = "small"
 
