@@ -384,8 +384,8 @@ local function measure(min_time, name, ...)
   until false
 end
 
-printf("Lua SciMark %s based on SciMark 2.0a. %s.\n\n",
-       SCIMARK_VERSION, SCIMARK_COPYRIGHT)
+--printf("Lua SciMark %s based on SciMark 2.0a. %s.\n\n",
+--       SCIMARK_VERSION, SCIMARK_COPYRIGHT)
 
 while arg and arg[1] do
   local a = table.remove(arg, 1)

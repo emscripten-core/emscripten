@@ -12633,7 +12633,7 @@ elif 'benchmark' in str(sys.argv):
       print '   JavaScript: mean: %.3f (+-%.3f) secs  median: %.3f  range: %.3f-%.3f  (noise: %3.3f%%)  (%d runs)' % (mean, std, median, min(times), max(times), 100*std/mean, reps)
       print '   Native    : mean: %.3f (+-%.3f) secs  median: %.3f  range: %.3f-%.3f  (noise: %3.3f%%)  JS is %.2f X slower' % (mean_native, std_native, median_native, min(native_times), max(native_times), 100*std_native/mean_native, final)
 
-    def do_benchmark(self, name, src, expected_output='FAIL', args=[], emcc_args=[], native_args=[], shared_args=[], force_c=False, reps=TEST_REPS, native_exec=None):
+    def do_benchmark(self, name, src, expected_output='FAIL', args=[], emcc_args=[], native_args=[], shared_args=[], force_c=False, reps=TEST_REPS, native_exec=None, output_parser=None):
       # standard arguments for timing:
       # 0: no runtime, just startup
       # 1: very little runtime
@@ -12671,7 +12671,10 @@ elif 'benchmark' in str(sys.argv):
         if i == 0 and 'uccessfully compiled asm.js code' in js_output:
           if 'asm.js link error' not in js_output:
             print "[%s was asm.js'ified]" % name
-        curr = time.time()-start
+        if not output_parser:
+          curr = time.time()-start
+        else:
+          curr = output_parser(js_output)
         times.append(curr)
         total_times[tests_done] += curr
         if i == 0:
@@ -12691,7 +12694,10 @@ elif 'benchmark' in str(sys.argv):
         if i == 0:
           # Sanity check on output
           self.assertContained(expected_output, native_output)
-        curr = time.time()-start
+        if not output_parser:
+          curr = time.time()-start
+        else:
+          curr = output_parser(native_output)
         native_times.append(curr)
         total_native_times[tests_done] += curr
 
@@ -12995,15 +13001,20 @@ elif 'benchmark' in str(sys.argv):
       self.do_benchmark('nbody_java', '', '''Time(s)''',
                         force_c=True, emcc_args=args + ['-s', 'PRECISE_I64_MATH=1', '--llvm-lto', '0'], native_args=args + ['-lgc', '-std=c99', '-target', 'x86_64-pc-linux-gnu', '-lm'])
 
-    def zzztest_lua(self):
+    def test_lua(self):
       shutil.copyfile(path_from_root('tests', 'lua', 'scimark.lua'), 'scimark.lua')
       emcc_args = self.get_library('lua', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None) + \
                   ['--embed-file', 'scimark.lua']
       shutil.copyfile(emcc_args[0], emcc_args[0] + '.bc')
       emcc_args[0] += '.bc'
       native_args = self.get_library('lua_native', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, native=True)
+
+      def parser(output):
+        return 1.0/float(re.search('\nSciMark +([\d\.]+) ', output).group(1))
+
       self.do_benchmark('lua', '', '''[small problem sizes]''',
-                        force_c=True, args=['scimark.lua'], emcc_args=emcc_args, native_args=native_args, native_exec=os.path.join('building', 'lua_native', 'src', 'lua'))
+                        force_c=True, args=['scimark.lua'], emcc_args=emcc_args, native_args=native_args, native_exec=os.path.join('building', 'lua_native', 'src', 'lua'),
+                        output_parser=parser)
 
     def test_zlib(self):
       src = open(path_from_root('tests', 'zlib', 'benchmark.c'), 'r').read()
