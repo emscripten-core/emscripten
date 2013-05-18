@@ -12593,7 +12593,7 @@ elif 'benchmark' in str(sys.argv):
 
   Building.COMPILER_TEST_OPTS = []
 
-  TEST_REPS = 4
+  TEST_REPS = 2
   TOTAL_TESTS = 8
 
   tests_done = 0
@@ -12641,7 +12641,7 @@ elif 'benchmark' in str(sys.argv):
       # 3: 1 second
       # 4: 5 seconds
       # 5: 10 seconds
-      args = args or ['3']
+      args = args or ['4']
 
       dirname = self.get_dir()
       filename = os.path.join(dirname, name + '.c' + ('' if force_c else 'pp'))
@@ -12742,7 +12742,7 @@ elif 'benchmark' in str(sys.argv):
           return 0;
         }
       '''
-      self.do_benchmark('primes', src, 'lastprime: 3043739.')
+      self.do_benchmark('primes', src, 'lastprime:')
 
     def test_memops(self):
       src = '''
@@ -12775,7 +12775,7 @@ elif 'benchmark' in str(sys.argv):
           return 0;
         }
       '''
-      self.do_benchmark('memops', src, 'final: 400.')
+      self.do_benchmark('memops', src, 'final:')
 
     def zzztest_files(self):
       src = r'''
@@ -12872,7 +12872,7 @@ elif 'benchmark' in str(sys.argv):
           return 0;
         }
       '''
-      self.do_benchmark('copy', src, 'sum:2836\n')
+      self.do_benchmark('copy', src, 'sum:')
 
     def test_fannkuch(self):
       src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read().replace(
@@ -12892,7 +12892,7 @@ elif 'benchmark' in str(sys.argv):
         '''
       )
       assert 'switch(arg)' in src
-      self.do_benchmark('fannkuch', src, 'Pfannkuchen(11) = 51.')
+      self.do_benchmark('fannkuch', src, 'Pfannkuchen(')
 
     def test_corrections(self):
       src = r'''
@@ -12925,7 +12925,7 @@ elif 'benchmark' in str(sys.argv):
           return 0;
         }
       '''
-      self.do_benchmark('corrections', src, 'final: 40006013:10225.', emcc_args=['-s', 'CORRECT_SIGNS=1', '-s', 'CORRECT_OVERFLOWS=1', '-s', 'CORRECT_ROUNDINGS=1'])
+      self.do_benchmark('corrections', src, 'final:', emcc_args=['-s', 'CORRECT_SIGNS=1', '-s', 'CORRECT_OVERFLOWS=1', '-s', 'CORRECT_ROUNDINGS=1'])
 
     def fasta(self, name, double_rep, emcc_args=[]):
       src = open(path_from_root('tests', 'fasta.cpp'), 'r').read().replace('double', double_rep)
@@ -12943,7 +12943,7 @@ elif 'benchmark' in str(sys.argv):
         }
       ''')
       assert 'switch(arg)' in src
-      self.do_benchmark('fasta', src, '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA\nTCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACT\nAAAAATACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAG\nGCTGAGGCAGGAGAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCG\nCCACTGCACTCCAGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAAGGCCGGGCGCGGT\nGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGATCACCTGAGGTCA\nGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAATACAAAAA\nTTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAGGCTGAGGCAGGAG\nAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCCA\nGCCTGGGCGA''')
+      self.do_benchmark('fasta', src, '')
 
     def test_fasta_float(self):
       self.fasta('fasta_float', 'float')
@@ -12960,40 +12960,7 @@ elif 'benchmark' in str(sys.argv):
 
     def test_life(self):
       src = open(path_from_root('tests', 'life.c'), 'r').read()
-      self.do_benchmark('life', src, '''--------------------------------
-                          [][]      []              []          
-                              [][]          [][]    []      []  
-                                            [][]    []    []    
-                                [][]                  []  []    
-                                []    [][]                []    
-  [][]                            []    []            []  []    
-  [][]                          []        []          []  []    
-                                []      [][]            []      
-                                [][]    [][]                    
-                  [][]          [][]  []                      []
-                  [][]          [][]    [][]                  []
-                                  [][]  []                      
-                                        []                      
-                                    []                          
-                                  []    []                      
-[]                      [][][]            []                  []
-  []                                  [][][][][][]  []      [][]
-  []                    [][]            []  []      [][]  []  []
-[]                                      []          [][]  []  []
-                                          [][]  []  [][][]  [][]
-                                            []    []    [][][]  
-                                        [][]        [][][][]    
-                      [][]      [][]                  []        
-                    []      [][]        []                      
-                                            [][]                
-                      [][]                  []                  
-                        []        [][][][][]                    
-[][][]                    [][]                                  
-                        [][]    []  [][][]                      
-                        []    []          [][]                  
-                                              []                
-                                []          [][]      [][][]    
---------------------------------''', shared_args=['-std=c99'], force_c=True)
+      self.do_benchmark('life', src, '''--------------------------------''', shared_args=['-std=c99'], force_c=True)
 
     def test_nbody_java(self): # tests xmlvm compiled java, including bitcasts of doubles, i64 math, etc.
       args = [path_from_root('tests', 'nbody-java', x) for x in os.listdir(path_from_root('tests', 'nbody-java')) if x.endswith('.c')] + \
@@ -13022,9 +12989,7 @@ elif 'benchmark' in str(sys.argv):
                    ['-I' + path_from_root('tests', 'zlib')]
       native_args = self.get_library('zlib_native', os.path.join('libz.a'), make_args=['libz.a'], native=True) + \
                      ['-I' + path_from_root('tests', 'zlib')]
-      self.do_benchmark('zlib', src, '''sizes: 100000,25906
-ok.
-''',
+      self.do_benchmark('zlib', src, '''ok.''',
                         force_c=True, emcc_args=emcc_args, native_args=native_args)
 
     def test_yyy_box2d(self): # Called thus so it runs late in the alphabetical cycle... it is long
