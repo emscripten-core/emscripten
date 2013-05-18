@@ -12965,7 +12965,7 @@ elif 'benchmark' in str(sys.argv):
       src = open(path_from_root('tests', 'life.c'), 'r').read()
       self.do_benchmark('life', src, '''--------------------------------''', shared_args=['-std=c99'], force_c=True)
 
-    def test_java_nbody(self): # tests xmlvm compiled java, including bitcasts of doubles, i64 math, etc.
+    def test_zzz_java_nbody(self): # tests xmlvm compiled java, including bitcasts of doubles, i64 math, etc.
       args = [path_from_root('tests', 'nbody-java', x) for x in os.listdir(path_from_root('tests', 'nbody-java')) if x.endswith('.c')] + \
              ['-I' + path_from_root('tests', 'nbody-java')]
       self.do_benchmark('nbody_java', '', '''Time(s)''',
@@ -12983,13 +12983,13 @@ elif 'benchmark' in str(sys.argv):
                         force_c=True, args=[benchmark], emcc_args=emcc_args, native_args=native_args, native_exec=os.path.join('building', 'lua_native', 'src', 'lua'),
                         output_parser=output_parser, args_processor=args_processor)
 
-    def test_lua_scimark(self):
+    def test_zzz_lua_scimark(self):
       def output_parser(output):
         return 1.0/float(re.search('\nSciMark +([\d\.]+) ', output).group(1))
 
       self.lua('scimark.lua', '[small problem sizes]', output_parser=output_parser)
 
-    def test_lua_binarytrees(self):
+    def test_zzz_lua_binarytrees(self):
       def args_processor(args):
         arg = int(DEFAULT_ARG)
         if arg == 0:
@@ -13006,7 +13006,7 @@ elif 'benchmark' in str(sys.argv):
           return args + ['15.82']
       self.lua('binarytrees.lua', 'long lived tree of depth', args_processor=args_processor)
 
-    def test_zlib(self):
+    def test_zzz_zlib(self):
       src = open(path_from_root('tests', 'zlib', 'benchmark.c'), 'r').read()
       emcc_args = self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a']) + \
                    ['-I' + path_from_root('tests', 'zlib')]
@@ -13015,7 +13015,7 @@ elif 'benchmark' in str(sys.argv):
       self.do_benchmark('zlib', src, '''ok.''',
                         force_c=True, emcc_args=emcc_args, native_args=native_args)
 
-    def test_yyy_box2d(self): # Called thus so it runs late in the alphabetical cycle... it is long
+    def test_zzz_box2d(self): # Called thus so it runs late in the alphabetical cycle... it is long
       src = open(path_from_root('tests', 'box2d', 'Benchmark.cpp'), 'r').read()
 
       js_lib = self.get_library('box2d', [os.path.join('box2d.a')], configure=None)
