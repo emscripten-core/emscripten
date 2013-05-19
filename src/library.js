@@ -3576,14 +3576,14 @@ LibraryManager.library = {
     return -1;
   },
   fscanf__deps: ['$FS', '__setErrNo', '$ERRNO_CODES',
-                 '_scanString', 'getc', 'ungetc'],
+                 '_scanString', 'fgetc', 'fseek', 'ftell'],
   fscanf: function(stream, format, varargs) {
     // int fscanf(FILE *restrict stream, const char *restrict format, ... );
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/scanf.html
     if (FS.streams[stream]) {
-      var stack = [];
-      var get = function() { var ret = _fgetc(stream); stack.push(ret); return ret };
-      var unget = function(c) { return _ungetc(stack.pop(), stream) };
+      var i = _ftell(stream), SEEK_SET = 0;
+      var get = function () { i++; return _fgetc(stream); };
+      var unget = function () { _fseek(stream, --i, SEEK_SET); };
       return __scanString(format, get, unget, varargs);
     } else {
       return -1;
