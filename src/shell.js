@@ -1,8 +1,14 @@
-try {
-  this['Module'] = Module;
-} catch(e) {
-  this['Module'] = Module = {};
-}
+#if USE_MODULE_CLOSURE
+(function () {
+#endif
+
+// The lack of var prevents closure from name mangling the Module variable.
+// This is depended on by a few of the unit tests (e.g. test_scriptaclass)
+// who's code is added post-closure compilation and references Module.
+// It'd be great to convert those unit tests such that their test code
+// isn't being inlined with the module, but instead seperate and 
+// including the module through something like node's require.
+Module = {};
 
 // The environment setup code below is customized to use Module.
 // *** Environment setup code ***
@@ -38,13 +44,7 @@ if (ENVIRONMENT_IS_NODE) {
 
   Module['readBinary'] = function(filename) { return Module['read'](filename, true) };
 
-  Module['load'] = function(f) {
-    globalEval(read(f));
-  };
-
-  if (!Module['arguments']) {
-    Module['arguments'] = process['argv'].slice(2);
-  }
+  Module['arguments'] = process['argv'].slice(2);
 }
 
 if (ENVIRONMENT_IS_SHELL) {
@@ -56,27 +56,21 @@ if (ENVIRONMENT_IS_SHELL) {
     return read(f, 'binary');
   };
 
-  if (!Module['arguments']) {
-    if (typeof scriptArgs != 'undefined') {
-      Module['arguments'] = scriptArgs;
-    } else if (typeof arguments != 'undefined') {
-      Module['arguments'] = arguments;
-    }
+  if (typeof scriptArgs != 'undefined') {
+    Module['arguments'] = scriptArgs;
+  } else if (typeof arguments != 'undefined') {
+    Module['arguments'] = arguments;
   }
 }
 
 if (ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_WORKER) {
-  if (!Module['print']) {
-    Module['print'] = function(x) {
-      console.log(x);
-    };
-  }
+  Module['print'] = function(x) {
+    console.log(x);
+  };
 
-  if (!Module['printErr']) {
-    Module['printErr'] = function(x) {
-      console.log(x);
-    };
-  }
+  Module['printErr'] = function(x) {
+    console.log(x);
+  };
 }
 
 if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
@@ -87,25 +81,19 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
     return xhr.responseText;
   };
 
-  if (!Module['arguments']) {
-    if (typeof arguments != 'undefined') {
-      Module['arguments'] = arguments;
-    }
+  if (typeof arguments != 'undefined') {
+    Module['arguments'] = arguments;
   }
 }
 
 if (ENVIRONMENT_IS_WORKER) {
   // We can do very little here...
   var TRY_USE_DUMP = false;
-  if (!Module['print']) {
-    Module['print'] = (TRY_USE_DUMP && (typeof(dump) !== "undefined") ? (function(x) {
-      dump(x);
-    }) : (function(x) {
-      // self.postMessage(x); // enable this if you want stdout to be sent as messages
-    }));
-  }
-
-  Module['load'] = importScripts;
+  Module['print'] = (TRY_USE_DUMP && (typeof(dump) !== "undefined") ? (function(x) {
+    dump(x);
+  }) : (function(x) {
+    // self.postMessage(x); // enable this if you want stdout to be sent as messages
+  }));
 }
 
 if (!ENVIRONMENT_IS_WORKER && !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_SHELL) {
@@ -115,11 +103,6 @@ if (!ENVIRONMENT_IS_WORKER && !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !EN
 
 function globalEval(x) {
   eval.call(null, x);
-}
-if (!Module['load'] == 'undefined' && Module['read']) {
-  Module['load'] = function(f) {
-    globalEval(Module['read'](f));
-  };
 }
 if (!Module['print']) {
   Module['print'] = function(){};
@@ -136,11 +119,27 @@ if (!Module['arguments']) {
 Module.print = Module['print'];
 Module.printErr = Module['printErr'];
 
-// Callbacks
-if (!Module['preRun']) Module['preRun'] = [];
-if (!Module['postRun']) Module['postRun'] = [];
-
   {{BODY}}
 
   // {{MODULE_ADDITIONS}}
 
+// require.js
+if (typeof define !== 'undefined' && define.amd) {
+  define(function () {
+    return Module;
+  });
+}
+// Node.js
+else if (typeof module !== 'undefined' && module.exports) {
+  module.exports = Module;
+}
+// browser
+else {
+  this['{{{ MODULE_NAME }}}'] = Module;
+}
+
+#if USE_MODULE_CLOSURE
+// Dynamic compiling, say as a Function() object.
+return Module;
+})();
+#endif

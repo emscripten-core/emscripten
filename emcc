@@ -694,7 +694,7 @@ try:
   llvm_opts = None
   llvm_lto = None
   closure = None
-  js_transform = None
+  js_transform = []
   pre_js = ''
   post_js = ''
   minify_whitespace = None
@@ -756,7 +756,7 @@ try:
       newargs[i+1] = ''
     elif newargs[i].startswith('--js-transform'):
       check_bad_eq(newargs[i])
-      js_transform = newargs[i+1]
+      js_transform.append(newargs[i+1])
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i].startswith('--pre-js'):
@@ -1439,7 +1439,7 @@ try:
   # Embed and preload files
   if len(preload_files) + len(embed_files) > 0:
     logging.debug('setting up files')
-    file_args = []
+    file_args = ['--pre-run']
     if len(preload_files) > 0:
       file_args.append('--preload')
       file_args += preload_files
@@ -1451,10 +1451,21 @@ try:
     if use_preload_cache:
       file_args.append('--use-preload-cache')
     code = execute([shared.PYTHON, shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE)[0]
-    src = open(final).read().replace('// {{PRE_RUN_ADDITIONS}}', '// {{PRE_RUN_ADDITIONS}}\n' + code)
+    src = open(final).read().replace('// {{MODULE_ADDITIONS}}', '// {{MODULE_ADDITIONS}}\n' + code)
     final += '.files.js'
     open(final, 'w').write(src)
     if DEBUG: save_intermediate('files')
+
+  # Attend autorun commands before closure compiler is ran.
+  if shared.Settings.INVOKE_RUN:
+    # For HTML builds a <script> tag will be appended later on.
+    if final_suffix != 'html':
+      if split_js_file:
+        assert false, 'The module must be manually ran when --split is enabled. Set INVOKE_RUN=0 to continue.'
+      else:
+        f = open(final, 'a')
+        f.write('\nModule.load(Module.run);');
+        f.close()
 
   # Apply pre and postjs files
   if pre_js or post_js:
@@ -1476,13 +1487,14 @@ try:
     if DEBUG: save_intermediate('bind')
 
   # Apply a source code transformation, if requested
-  if js_transform:
-    shutil.copyfile(final, final + '.tr.js')
-    final += '.tr.js'
+  for i, transform in enumerate(js_transform):
+    newFinal = final + '.tr%d.js' % i
+    shutil.copyfile(final, newFinal)
+    final = newFinal
     posix = True if not shared.WINDOWS else False
     logging.debug('applying transform: %s' % js_transform)
-    execute(shlex.split(js_transform, posix=posix) + [os.path.abspath(final)])
-    if DEBUG: save_intermediate('transformed')
+    execute(shlex.split(transform, posix=posix) + [os.path.abspath(final)])
+    if DEBUG: save_intermediate('transformed%d' % i)
 
   # It is useful to run several js optimizer passes together, to save on unneeded unparsing/reparsing
   js_optimizer_queue = []
@@ -1583,10 +1595,21 @@ try:
           logging.debug('did not see memory initialization')
 
   # If we were asked to also generate HTML, do that
+  def rreplace(s, old, new, count):
+    return (s[::-1].replace(old[::-1], new[::-1], count))[::-1]
+
   if final_suffix == 'html':
     logging.debug('generating HTML')
     shell = open(shell_path).read()
     html = open(target, 'w')
+
+    # Add the auto-run as the final <script> tag.
+    if shared.Settings.INVOKE_RUN:
+      shell = rreplace(shell, '</script>', '''</script>
+        <script type="text/javascript">
+        window['%(module_name)s'].load(function () { window['%(module_name)s'].run(); });
+        </script>''' % { 'module_name': shared.Settings.MODULE_NAME }, 1)
+
     if not Compression.on:
       html.write(shell.replace('{{{ SCRIPT_CODE }}}', open(final).read()))
     else:
@@ -1601,45 +1624,84 @@ try:
       #   3. convert to a string of source code
       #   4. insert a script element with that source code (more effective than eval)
       decoding = '''
+        // Let's return a fake Module for now.
+        var Module = window['%(module_name)s'] = {
+          // Shim load and pass on the callback once we truly are loaded.
+          load: function (cb) {
+            this._loadcb = cb;
+          }
+        };
+
         var decompressWorker = new Worker('decompress.js');
         var decompressCallbacks = [];
         var decompressions = 0;
-        Module["decompress"] = function(data, callback) {
+
+        function decompress(data, callback) {
           var id = decompressCallbacks.length;
           decompressCallbacks.push(callback);
           decompressWorker.postMessage({ data: data, id: id });
-          if (Module['setStatus']) {
+          if (typeof(setStatus) !== 'undefined') {
             decompressions++;
-            Module['setStatus']('Decompressing...');
+            setStatus('Decompressing...');
           }
         };
+
         decompressWorker.onmessage = function(event) {
           decompressCallbacks[event.data.id](event.data.data);
           decompressCallbacks[event.data.id] = null;
-          if (Module['setStatus']) {
+          if (typeof(setStatus) !== 'undefined') {
             decompressions--;
             if (decompressions == 0) {
-              Module['setStatus']('');
+              setStatus('');
             }
           }
         };
+
         var compiledCodeXHR = new XMLHttpRequest();
-        compiledCodeXHR.open('GET', '%s', true);
+        compiledCodeXHR.open('GET', '%(target)s', true);
         compiledCodeXHR.responseType = 'arraybuffer';
         compiledCodeXHR.onload = function() {
           var arrayBuffer = compiledCodeXHR.response;
           if (!arrayBuffer) throw('Loading compressed code failed.');
           var byteArray = new Uint8Array(arrayBuffer);
-          Module.decompress(byteArray, function(decompressed) {
+          decompress(byteArray, function(decompressed) {
+            var oldModule = window['%(module_name)s'];
+
             var source = Array.prototype.slice.apply(decompressed).map(function(x) { return String.fromCharCode(x) }).join(''); // createObjectURL instead?
             var scriptTag = document.createElement('script');
             scriptTag.setAttribute('type', 'text/javascript');
             scriptTag.innerHTML = source;
             document.body.appendChild(scriptTag);
+
+            // Copy any properties set on the original fake module_name
+            // over to the new one.
+            var newModule = window['%(module_name)s'];
+
+            for (var key in oldModule) {
+              if (!oldModule.hasOwnProperty(key)) {
+                continue;
+              }
+              if (key === 'load') {
+                // Ignore the load shim.
+                continue;
+              }
+              newModule[key] = oldModule[key];
+            }
+
+            if (newModule._loadcb) {
+              // Go ahead with the deferred load request.
+              console.log('LOADING');
+              newModule.load(newModule._loadcb);
+              newModule._loadcb = null;
+            }
           });
         };
         compiledCodeXHR.send(null);
-''' % Compression.compressed_name(js_target)
+''' % {
+        'module_name': shared.Settings.MODULE_NAME,
+        'target': Compression.compressed_name(js_target)
+      }
+
       html.write(shell.replace('{{{ SCRIPT_CODE }}}', decoding))
 
       # Add decompressor with web worker glue code

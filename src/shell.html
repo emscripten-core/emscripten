@@ -34,63 +34,61 @@
     <hr/>
     <textarea class="emscripten" id="output" rows="8"></textarea>
     <hr>
-    <script type='text/javascript'>
+    <script type="text/javascript">
+      function setStatus(text) {
+        var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
+        var statusElement = document.getElementById('status');
+        var progressElement = document.getElementById('progress');
+        if (m) {
+          text = m[1];
+          progressElement.value = parseInt(m[2])*100;
+          progressElement.max = parseInt(m[4])*100;
+          progressElement.hidden = false;
+        } else {
+          progressElement.value = null;
+          progressElement.max = null;
+          progressElement.hidden = true;
+        }
+        statusElement.innerHTML = text;
+      }
+
+      function setProgress(left, total) {
+        setStatus(left ? 'Preparing... (' + (total-left) + '/' + total + ')' : 'All downloads complete.');
+      }
+
+      setStatus('Downloading...');
+    </script>
+    <script type="text/javascript">
+      {{{ SCRIPT_CODE }}}
+    </script>
+    <script type="text/javascript">
       // connect to canvas
-      var Module = {
-        preRun: [],
-        postRun: [],
-        print: (function() {
-          var element = document.getElementById('output');
-          element.value = ''; // clear browser cache
-          return function(text) {
-            text = Array.prototype.slice.call(arguments).join(' ');
-            // These replacements are necessary if you render to raw HTML
-            //text = text.replace(/&/g, "&amp;");
-            //text = text.replace(/</g, "&lt;");
-            //text = text.replace(/>/g, "&gt;");
-            //text = text.replace('\n', '<br>', 'g');
-            element.value += text + "\n";
-            element.scrollTop = 99999; // focus on bottom
-          };
-        })(),
-        printErr: function(text) {
+      Module.canvas = document.getElementById('canvas');
+      Module.print = (function() {
+        var element = document.getElementById('output');
+        element.value = ''; // clear browser cache
+        return function(text) {
           text = Array.prototype.slice.call(arguments).join(' ');
-          if (0) { // XXX disabled for safety typeof dump == 'function') {
-            dump(text + '\n'); // fast, straight to the real console
-          } else {
-            console.log(text);
-          }
-        },
-        canvas: document.getElementById('canvas'),
-        setStatus: function(text) {
-          if (Module.setStatus.interval) clearInterval(Module.setStatus.interval);
-          var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
-          var statusElement = document.getElementById('status');
-          var progressElement = document.getElementById('progress');
-          if (m) {
-            text = m[1];
-            progressElement.value = parseInt(m[2])*100;
-            progressElement.max = parseInt(m[4])*100;
-            progressElement.hidden = false;
-          } else {
-            progressElement.value = null;
-            progressElement.max = null;
-            progressElement.hidden = true;
-          }
-          statusElement.innerHTML = text;
-        },
-        totalDependencies: 0,
-        monitorRunDependencies: function(left) {
-          this.totalDependencies = Math.max(this.totalDependencies, left);
-          Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
+          // These replacements are necessary if you render to raw HTML
+          //text = text.replace(/&/g, "&amp;");
+          //text = text.replace(/</g, "&lt;");
+          //text = text.replace(/>/g, "&gt;");
+          //text = text.replace('\n', '<br>', 'g');
+          element.value += text + "\n";
+          element.scrollTop = 99999; // focus on bottom
+        };
+      })();
+      Module.printErr = function(text) {
+        text = Array.prototype.slice.call(arguments).join(' ');
+        if (0) { // XXX disabled for safety typeof dump == 'function') {
+          dump(text + '\n'); // fast, straight to the real console
+        } else {
+          console.log(text);
         }
       };
-      Module.setStatus('Downloading...');
-    </script>      
-    <script type='text/javascript'>
-
-      {{{ SCRIPT_CODE }}}
-
+      // Re-use global functions for Module status.
+      Module.setStatus = window.setStatus;
+      Module.monitorRunDependencies = window.setProgress;
     </script>
   </body>
 </html>

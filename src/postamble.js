@@ -1,9 +1,8 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
-Module['callMain'] = function callMain(args) {
-  assert(runDependencies == 0, 'cannot call main when async dependencies remain! (listen on __ATMAIN__)');
-  assert(!Module['preRun'] || Module['preRun'].length == 0, 'cannot call main when preRun functions remain to be called');
+function callMain(args) {
+  assert(!preRunTasks.length, 'cannot call main when preRun functions remain to be called');
 
   args = args || [];
 
@@ -55,48 +54,114 @@ Module['callMain'] = function callMain(args) {
 
 {{GLOBAL_VARS}}
 
-function run(args) {
+function preInit(callback) {
+  callback = callback || function () {};
+
+  var total = preInitTasks.length;
+
+  var next = function () {
+    // nothing left to do
+    if (!preInitTasks.length) {
+      return callback(null);
+    }
+
+    var fn = preInitTasks.shift();
+    fn(function (err) {
+      if (err) {
+        return callback(err);
+      }
+      next();
+    });
+  };
+  next();
+}
+
+function preRun(callback) {
+  callback = callback || function () {};
+
+  var progress = Module['monitorRunDependencies'] || function () {};
+  var total = preRunTasks.length;
+
+#if ASSERTIONS
+  if (typeof setInterval !== 'undefined') {
+    // Check for missing dependencies every few seconds
+    var runDependencyWatcher = setInterval(function () {
+      if (!preRunTasks.length) {
+        clearInterval(runDependencyWatcher);
+        return;
+      }
+
+      Module.printErr('still waiting on run dependencies:');
+      for (var i = 0; i < preRunTasks.length; i++) {
+        Module.printErr('dependency: ' + preRunTasks[i].toString());
+      }
+      Module.printErr('(end of list)');
+    }, 10000);
+  }
+#endif
+
+  var next = function () {
+    // nothing left to do
+    if (!preRunTasks.length) {
+      progress(0, total);
+      return callback(null);
+    }
+
+    var fn = preRunTasks.shift();
+    fn(function (err) {
+      progress(preRunTasks.length, total);
+
+      if (err) {
+        return callback(err);
+      }
+
+      next();
+    });
+  };
+  next();
+}
+
+function postRun() {
+  while (postRunTasks.length) {
+    var fn = postRunTasks.shift();
+    fn();
+  }
+}
+
+function _run(args) {
   args = args || Module['arguments'];
 
-  if (runDependencies > 0) {
+  var ret = 0;
+
+  ensureInitRuntime();
+
+  preMain();
+
+  if (Module['_main']) {
+    ret = callMain(args);
+  }
+
+  if (!Module['noExitRuntime']) {
+    exitRuntime();
+  }
+
+  postRun();
+
+  return ret;
+}
+
+function run(args) {
+  if (calledRun) {
+    Module.printErr('run() has already been called');
+    return 0;
+  }
+
+  if (preRunTasks.length) {
     Module.printErr('run() called, but dependencies remain, so not running');
     return 0;
   }
 
-  if (Module['preRun']) {
-    if (typeof Module['preRun'] == 'function') Module['preRun'] = [Module['preRun']];
-    var toRun = Module['preRun'];
-    Module['preRun'] = [];
-    for (var i = toRun.length-1; i >= 0; i--) {
-      toRun[i]();
-    }
-    if (runDependencies > 0) {
-      // a preRun added a dependency, run will be called later
-      return 0;
-    }
-  }
-
-  function doRun() {
-    ensureInitRuntime();
-
-    preMain();
-
-    var ret = 0;
-    calledRun = true;
-    if (Module['_main'] && shouldRunNow) {
-      ret = Module['callMain'](args);
-      if (!Module['noExitRuntime']) {
-        exitRuntime();
-      }
-    }
-    if (Module['postRun']) {
-      if (typeof Module['postRun'] == 'function') Module['postRun'] = [Module['postRun']];
-      while (Module['postRun'].length > 0) {
-        Module['postRun'].pop()();
-      }
-    }
-    return ret;
-  }
+  calledRun = true;
 
   if (Module['setStatus']) {
     Module['setStatus']('Running...');
@@ -104,37 +169,32 @@ function run(args) {
       setTimeout(function() {
         Module['setStatus']('');
       }, 1);
-      if (!ABORT) doRun();
+      if (!ABORT) _run(args);
     }, 1);
     return 0;
   } else {
-    return doRun();
+    return _run(args);
   }
 }
 Module['run'] = Module.run = run;
 
-// {{PRE_RUN_ADDITIONS}}
+function load(onready) {
+  // Bootstrap any potential run dependencies.
+  preInit(function (err) {
+    if (err) {
+      // TODO handle error
+    }
 
-if (Module['preInit']) {
-  if (typeof Module['preInit'] == 'function') Module['preInit'] = [Module['preInit']];
-  while (Module['preInit'].length > 0) {
-    Module['preInit'].pop()();
-  }
+    preRun(function (err) {
+      if (err) {
+        // TODO handle error
+      }
+
+      onready();
+    });
+  });
 }
-
-// shouldRunNow refers to calling main(), not run().
-#if INVOKE_RUN
-var shouldRunNow = true;
-#else
-var shouldRunNow = false;
-#endif
-if (Module['noInitialRun']) {
-  shouldRunNow = false;
-}
-
-run();
-
-// {{POST_RUN_ADDITIONS}}
+Module['load'] = Module.load = load;
 
 #if BUILD_AS_WORKER
 

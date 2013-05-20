@@ -275,7 +275,10 @@ if has_preloaded:
       },
       send: function() {}
     };
-  '''
+
+    var preloadTotal = %d;
+    var preloaded = 0;
+  ''' % len(data_files)
 
 counter = 0
 for file_ in data_files:
@@ -299,12 +302,13 @@ for file_ in data_files:
     counter += 1
     dds = crunch and filename.endswith(CRUNCH_INPUT_SUFFIX)
 
-    prepare = ''
-    finish = "Module['removeRunDependency']('fp %s');\n" % filename
+    prefix = ''
+    finish = "if (typeof (cb) !== 'undefined' && ++preloaded >= preloadTotal) { cb(null); }\n"
+    suffix = ''
 
     if dds:
       # decompress crunch format into dds
-      prepare = '''
+      prefix = '''
         var ddsHeader = byteArray.subarray(0, %(dds_header_size)d);
         requestDecrunch('%(filename)s', byteArray.subarray(%(dds_header_size)d), function(ddsData) {
           byteArray = new Uint8Array(ddsHeader.length + ddsData.length);
@@ -312,7 +316,7 @@ for file_ in data_files:
           byteArray.set(ddsData, %(dds_header_size)d);
 ''' % { 'filename': filename, 'dds_header_size': DDS_HEADER_SIZE }
 
-      finish += '''
+      suffix += '''
         });
 '''
 
@@ -324,12 +328,12 @@ for file_ in data_files:
       var arrayBuffer = %(varname)s.response;
       assert(arrayBuffer, 'Loading file %(filename)s failed.');
       var byteArray = !arrayBuffer.subarray ? new Uint8Array(arrayBuffer) : arrayBuffer;
-      %(prepare)s
-      Module['FS_createPreloadedFile']('/%(dirname)s', '%(basename)s', byteArray, true, true, function() {
+      %(prefix)s
+      Module['FS_createPreloadedFile']('/%(dirname)s', '%(basename)s', byteArray, true, true, function () {
         %(finish)s
       }%(fail)s);
+      %(suffix)s
     };
-    Module['addRunDependency']('fp %(filename)s');
     %(varname)s.send(null);
 ''' % {
         'request': 'DataRequest', # In the past we also supported XHRs here
@@ -337,9 +341,11 @@ for file_ in data_files:
         'filename': filename,
         'dirname': os.path.dirname(filename),
         'basename': os.path.basename(filename),
-        'prepare': prepare,
+        'prefix': prefix,
         'finish': finish,
-        'fail': '' if filename[-4:] not in AUDIO_SUFFIXES else ''', function() { Module['removeRunDependency']('fp %s') }''' % filename # workaround for chromium bug 124926 (still no audio with this, but at least we don't hang)
+        'suffix': suffix,
+        # silently fail for certain audio files (workaround for chromium bug 124926)
+        'fail': '' if filename[-4:] not in AUDIO_SUFFIXES else ''', function() { %s }''' % finish
   }
   else:
     assert 0
@@ -350,18 +356,19 @@ if has_preloaded:
   for file_ in data_files:
     if file_['mode'] == 'preload':
       use_data += '''
+      {
         curr = DataRequest.prototype.requests['%s'];
         var data = byteArray.subarray(%d, %d);
         var ptr = _malloc(%d);
         HEAPU8.set(data, ptr);
         curr.response = HEAPU8.subarray(ptr, ptr + %d);
         curr.onload();
-      ''' % (file_['name'], file_['data_start'], file_['data_end'], file_['data_end'] - file_['data_start'], file_['data_end'] - file_['data_start'])
-  use_data += "          Module['removeRunDependency']('datafile_%s');\n" % data_target
+      }
+''' % (file_['name'], file_['data_start'], file_['data_end'], file_['data_end'] - file_['data_start'], file_['data_end'] - file_['data_start'])
 
   if Compression.on:
     use_data = '''
-      Module["decompress"](byteArray, function(decompressed) {
+      decompress(byteArray, function(decompressed) {
         byteArray = new Uint8Array(decompressed);
         %s
       });
@@ -519,17 +526,17 @@ if has_preloaded:
       var curr;
       %s
     };
-    Module['addRunDependency']('datafile_%s');
 
     function handleError(error) {
       console.error('package error:', error);
     };
-  ''' % (use_data, data_target) # use basename because from the browser's point of view, we need to find the datafile in the same dir as the html file
+  ''' % (use_data) # use basename because from the browser's point of view, we need to find the datafile in the same dir as the html file
 
   code += r'''
-    if (!Module.preloadResults)
+    if (!Module.preloadResults) {
       Module.preloadResults = {};
-  '''
+    }
+'''
 
   if use_preload_cache:
     code += r'''
@@ -568,25 +575,29 @@ if has_preloaded:
     '''
   else:
     code += r'''
-      Module.preloadResults[PACKAGE_NAME] = {fromCache: false};
-      fetchRemotePackage(REMOTE_PACKAGE_NAME, processPackageData, handleError);
+    Module.preloadResults[PACKAGE_NAME] = {fromCache: false};
+    fetchRemotePackage(REMOTE_PACKAGE_NAME, processPackageData, handleError);
     '''
+else:
+  code += '''
+    cb(null);
+'''
 
 if pre_run:
   ret += '''
-  if (typeof Module == 'undefined') Module = {};
-  if (!Module['preRun']) Module['preRun'] = [];
-  Module["preRun"].push(function() {
+  Module.addPreRun(function (cb) {
 '''
+
 ret += code
 
 if pre_run:
-  ret += '  });\n'
+  ret += '''
+  });
+'''
 
 if crunch:
   ret += '''
-  if (!Module['postRun']) Module['postRun'] = [];
-  Module["postRun"].push(function() {
+  Module.addPostRun(function () {
     decrunchWorker.terminate();
   });
 '''

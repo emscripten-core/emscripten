@@ -372,6 +372,10 @@ var EMIT_GENERATED_FUNCTIONS = 0; // whether to emit the list of generated funct
 
 var JS_CHUNK_SIZE = 10240; // Used as a maximum size before breaking up expressions and lines into smaller pieces
 
+// Module configuration options
+var USE_MODULE_CLOSURE = 0;
+var MODULE_NAME = 'Module';
+
 // Compiler debugging options
 var DEBUG_TAGS_SHOWING = [];
   // Some useful items:
