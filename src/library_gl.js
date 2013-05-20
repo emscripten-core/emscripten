@@ -1472,7 +1472,6 @@ var LibraryGL = {
       var glShaderSource = _glShaderSource;
       _glShaderSource = function(shader, count, string, length) {
         var source = GL.getSource(shader, count, string, length);
-        console.log("glShaderSource: Input: \n" + source);
 #if GL_DEBUG
         console.log("glShaderSource: Input: \n" + source);
         GL.shaderOriginalSources[shader] = source;
@@ -1580,7 +1579,6 @@ var LibraryGL = {
         GL.shaderSources[shader] = source;
         console.log("glShaderSource: Output: \n" + source);
 #endif
-        console.log("glShaderSource: Output: \n" + source);
         Module.ctx.shaderSource(GL.shaders[shader], source);
       };
 
