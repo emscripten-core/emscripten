@@ -286,11 +286,22 @@ function isVarArgsFunctionType(type) {
   return type.substr(-varArgsSuffix.length) == varArgsSuffix;
 }
 
+function getNumVars(type) { // how many variables are needed to represent this type
+  if (type in Runtime.FLOAT_TYPES) return 1;
+  return Math.max(getNumIntChunks(type), 1);
+}
+
 function countNormalArgs(type, out) {
   out = out || {};
   if (!isFunctionType(type, out)) return -1;
-  if (isVarArgsFunctionType(type)) out.numArgs--;
-  return out.numArgs;
+  var ret = 0;
+  if (out.segments) {
+    for (var i = 0; i < out.segments.length; i++) {
+      ret += getNumVars(out.segments[i][0].text);
+    }
+  }
+  if (isVarArgsFunctionType(type)) ret--;
+  return ret;
 }
 
 function addIdent(token) {
