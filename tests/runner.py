@@ -12974,9 +12974,11 @@ elif 'benchmark' in str(sys.argv):
 
     def lua(self, benchmark, expected, output_parser=None, args_processor=None):
       shutil.copyfile(path_from_root('tests', 'lua', benchmark + '.lua'), benchmark + '.lua')
+      #shutil.copyfile(path_from_root('tests', 'lua', 'binarytrees.lua'), 'binarytrees.lua')
+      #shutil.copyfile(path_from_root('tests', 'lua', 'scimark.lua'), 'scimark.lua')
       emcc_args = self.get_library('lua', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None) + \
                   ['--embed-file', benchmark + '.lua']
-                  #['--embed-file', 'binarytrees.lua', '--embed-file', 'scimark.lua']
+                  #['--embed-file', 'binarytrees.lua', '--embed-file', 'scimark.lua'] + ['--minify', '0']
       shutil.copyfile(emcc_args[0], emcc_args[0] + '.bc')
       emcc_args[0] += '.bc'
       native_args = self.get_library('lua_native', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, native=True)
