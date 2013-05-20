@@ -12689,6 +12689,7 @@ elif 'benchmark' in str(sys.argv):
         self.build_native(filename, shared_args + native_args)
       else:
         shutil.copyfile(native_exec, filename + '.native')
+        shutil.copymode(native_exec, filename + '.native')
       global total_native_times
       native_times = []
       for i in range(reps):
@@ -12972,22 +12973,23 @@ elif 'benchmark' in str(sys.argv):
                         force_c=True, emcc_args=args + ['-s', 'PRECISE_I64_MATH=1', '--llvm-lto', '0'], native_args=args + ['-lgc', '-std=c99', '-target', 'x86_64-pc-linux-gnu', '-lm'])
 
     def lua(self, benchmark, expected, output_parser=None, args_processor=None):
-      shutil.copyfile(path_from_root('tests', 'lua', benchmark), benchmark)
+      shutil.copyfile(path_from_root('tests', 'lua', benchmark + '.lua'), benchmark + '.lua')
       emcc_args = self.get_library('lua', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None) + \
-                  ['--embed-file', benchmark]
+                  ['--embed-file', benchmark + '.lua']
+                  #['--embed-file', 'binarytrees.lua', '--embed-file', 'scimark.lua']
       shutil.copyfile(emcc_args[0], emcc_args[0] + '.bc')
       emcc_args[0] += '.bc'
       native_args = self.get_library('lua_native', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, native=True)
 
       self.do_benchmark('lua_' + benchmark, '', expected,
-                        force_c=True, args=[benchmark], emcc_args=emcc_args, native_args=native_args, native_exec=os.path.join('building', 'lua_native', 'src', 'lua'),
+                        force_c=True, args=[benchmark + '.lua'], emcc_args=emcc_args, native_args=native_args, native_exec=os.path.join('building', 'lua_native', 'src', 'lua'),
                         output_parser=output_parser, args_processor=args_processor)
 
     def test_zzz_lua_scimark(self):
       def output_parser(output):
         return 1.0/float(re.search('\nSciMark +([\d\.]+) ', output).group(1))
 
-      self.lua('scimark.lua', '[small problem sizes]', output_parser=output_parser)
+      self.lua('scimark', '[small problem sizes]', output_parser=output_parser)
 
     def test_zzz_lua_binarytrees(self):
       def args_processor(args):
@@ -13004,7 +13006,7 @@ elif 'benchmark' in str(sys.argv):
           return args + ['14.72']
         elif arg == 5:
           return args + ['15.82']
-      self.lua('binarytrees.lua', 'long lived tree of depth', args_processor=args_processor)
+      self.lua('binarytrees', 'long lived tree of depth', args_processor=args_processor)
 
     def test_zzz_zlib(self):
       src = open(path_from_root('tests', 'zlib', 'benchmark.c'), 'r').read()
