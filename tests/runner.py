@@ -2403,28 +2403,34 @@ returned |umber one top notchfi FI FO FUM WHEN WHERE WHY HOW WHO|''', ['wowie', 
           static jmp_buf buf;
 
           void second(void) {
-              printf("second\n");         // prints
-              longjmp(buf,1);             // jumps back to where setjmp was called - making setjmp now return 1
+              printf("second\n");
+              longjmp(buf,-1);
           }
 
           void first(void) {
-              second();
-              printf("first\n");          // does not print
+              printf("first\n");                         // prints
+              longjmp(buf,1);                            // jumps back to where setjmp was called - making setjmp now return 1
           }
 
           int main() {
               volatile int x = 0;
-              if ( ! setjmp(buf) ) {
+              int jmpval = setjmp(buf);
+              if (!jmpval) {
+                  x++;                                   // should be properly restored once longjmp jumps back
+                  first();                               // when executed, setjmp returns 1
+                  printf("skipped\n");                   // does not print
+              } else if (jmpval == 1) {                  // when first() jumps back, setjmp returns 1
+                  printf("result: %d %d\n", x, jmpval);  // prints
                   x++;
-                  first();                // when executed, setjmp returns 0
-              } else {                    // when longjmp jumps back, setjmp returns 1
-                  printf("main: %d\n", x);       // prints
+                  second();                              // when executed, setjmp returns -1
+              } else if (jmpval == -1) {                 // when second() jumps back, setjmp returns -1
+                  printf("result: %d %d\n", x, jmpval);  // prints
               }
 
               return 0;
           }
         '''
-        self.do_run(src, 'second\nmain: 1\n')
+        self.do_run(src, 'first\nresult: 1 1\nsecond\nresult: 2 -1')
 
     def test_longjmp2(self):
       src = r'''
