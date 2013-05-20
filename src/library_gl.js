@@ -1993,32 +1993,27 @@ var LibraryGL = {
        * naive iteration along the array. (hashmap with only one bucket)
        */
       function CNaiveListMap() {
-        "use strict";
         var list = [];
 
         this.insert = function(key, val) {
-          if (this.contains(key|0))
-            return false;
-
+          if (this.contains(key|0)) return false;
           list.push([key, val]);
           return true;
         };
 
         var __contains_i;
         this.contains = function(key) {
-          for (__contains_i = 0; __contains_i < list.length; ++__contains_i)
-            if (list[__contains_i][0] === key)
-              return true;
-
+          for (__contains_i = 0; __contains_i < list.length; ++__contains_i) {
+            if (list[__contains_i][0] === key) return true;
+          }
           return false;
         };
 
         var __get_i;
         this.get = function(key) {
-          for (__get_i = 0; __get_i < list.length; ++__get_i)
-            if (list[__get_i][0] === key)
-              return list[__get_i][1];
-
+          for (__get_i = 0; __get_i < list.length; ++__get_i) {
+            if (list[__get_i][0] === key) return list[__get_i][1];
+          }
           return undefined;
         };
       };
@@ -2046,15 +2041,13 @@ var LibraryGL = {
         }
       */
       function CMapTree() {
-        "use strict";
-
         function CNLNode() {
           var map = new CNaiveListMap();
 
           this.child = function(keyFrag) {
-            if (!map.contains(keyFrag|0))
+            if (!map.contains(keyFrag|0)) {
               map.insert(keyFrag|0, new CNLNode());
-
+            }
             return map.get(keyFrag|0);
           };
 
@@ -2237,9 +2230,9 @@ var LibraryGL = {
         }
 
         var texCoordExpr = TEX_COORD_VARYING_PREFIX + texUnitID;
-        if (TEX_MATRIX_UNIFORM_PREFIX != null)
+        if (TEX_MATRIX_UNIFORM_PREFIX != null) {
           texCoordExpr = "(" + TEX_MATRIX_UNIFORM_PREFIX + texUnitID + " * " + texCoordExpr + ")";
-
+        }
         return func + "(" + TEX_UNIT_UNIFORM_PREFIX + texUnitID + ", " + texCoordExpr + ".xy)";
       }
 
@@ -2303,9 +2296,7 @@ var LibraryGL = {
       }
 
       function valToFloatLiteral(val) {
-        if (val == Math.round(val))
-          return val + ".0";
-
+        if (val == Math.round(val)) return val + '.0';
         return val;
       }
 
@@ -2379,9 +2370,7 @@ var LibraryGL = {
         this.traverseState = function(keyView) {
           var texUnitType = this.getTexType();
           keyView.next(texUnitType);
-          if (!texUnitType)
-            return;
-
+          if (!texUnitType) return;
           this.env.traverseState(keyView);
         };
       };
@@ -2400,15 +2389,15 @@ var LibraryGL = {
       }
 
       CTexUnit.prototype.getTexType = function() {
-        if (this.enabled_texCube)
+        if (this.enabled_texCube) {
           return GL_TEXTURE_CUBE_MAP;
-        else if (this.enabled_tex3D)
+        } else if (this.enabled_tex3D) {
           return GL_TEXTURE_3D;
-        else if (this.enabled_tex2D)
+        } else if (this.enabled_tex2D) {
           return GL_TEXTURE_2D;
-        else if (this.enabled_tex1D)
+        } else if (this.enabled_tex1D) {
           return GL_TEXTURE_1D;
-
+        }
         return 0;
       }
 
@@ -2648,7 +2637,7 @@ var LibraryGL = {
         init: function(gl, specifiedMaxTextureImageUnits) {
           var maxTexUnits = 0;
           if (specifiedMaxTextureImageUnits) {
-              maxTexUnits = specifiedMaxTextureImageUnits;
+            maxTexUnits = specifiedMaxTextureImageUnits;
           } else if (gl) {
             maxTexUnits = gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS);
           }
@@ -2675,8 +2664,7 @@ var LibraryGL = {
           var lines = [];
           var lastPassVar = PRIM_COLOR_VARYING;
           for (var i = 0; i < s_texUnits.length; i++) {
-            if (!s_texUnits[i].enabled())
-              continue;
+            if (!s_texUnits[i].enabled()) continue;
 
             s_requiredTexUnitsForPass.push(i);
 
@@ -2691,8 +2679,7 @@ var LibraryGL = {
           lines.push(resultDest + " = " + lastPassVar + ";");
 
           var indent = "";
-          for (var i = 0; i < indentSize; i++)
-            indent += " ";
+          for (var i = 0; i < indentSize; i++) indent += " ";
 
           var output = indent + lines.join("\n" + indent);
 
@@ -2850,8 +2837,7 @@ var LibraryGL = {
         },
 
         hook_texEnvfv: function(target, pname, params) {
-          if (target != GL_TEXTURE_ENV)
-            return;
+          if (target != GL_TEXTURE_ENV) return;
 
           var env = getCurTexUnit().env;
           switch (pname) {
@@ -3097,14 +3083,15 @@ var LibraryGL = {
               texUnitUniformList += 'uniform sampler2D ' + uTexUnitPrefix + texUnit + ';\n';
               vsTexCoordInits += '  ' + vTexCoordPrefix + texUnit + ' = ' + aTexCoordPrefix + texUnit + ';\n';
 
-              if (GL.immediate.useTextureMatrix)
+              if (GL.immediate.useTextureMatrix) {
                 texUnitUniformList += 'uniform mat4 ' + uTexMatrixPrefix + texUnit + ';\n';
+              }
             }
 
             var vsFogVaryingInit = null;
-            if (GLEmulation.fogEnabled)
+            if (GLEmulation.fogEnabled) {
               vsFogVaryingInit = '  v_fogFragCoord = abs(ecPosition.z);\n';
-
+            }
 
             var vsSource = [
               'attribute vec4 a_position;',
@@ -3298,10 +3285,7 @@ var LibraryGL = {
             for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
               var texUnitID = i;
               var attribLoc = this.texCoordLocations[texUnitID];
-              if (attribLoc === undefined)
-                continue;
-              if (attribLoc < 0)
-                continue;
+              if (attribLoc === undefined || attribLoc < 0) continue;
 
               if (texUnitID < textureSizes.length && textureSizes[texUnitID]) {
                 Module.ctx.vertexAttribPointer(attribLoc, textureSizes[texUnitID], textureTypes[texUnitID], false,
@@ -3429,8 +3413,9 @@ var LibraryGL = {
     },
 
     setupHooks: function() {
-      if (!GLEmulation.hasRunInit)
+      if (!GLEmulation.hasRunInit) {
         GLEmulation.init();
+      }
 
       var glActiveTexture = _glActiveTexture;
       _glActiveTexture = function(texture) {
