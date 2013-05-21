@@ -49,7 +49,10 @@ class JCache:
   def ensure(self):
     self.cache.ensure()
     if not os.path.exists(self.dirname):
-      os.makedirs(self.dirname)
+      try:
+        os.makedirs(self.dirname)
+      except (IOError, OSError):
+        pass
 
   def get_shortkey(self, keys):
     if type(keys) not in [list, tuple]:
