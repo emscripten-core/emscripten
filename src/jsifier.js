@@ -1181,6 +1181,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     if (disabled) {
       ret = call_ + ';';
     } else if (ASM_JS) {
+      call_ = call_.replace('; return', ''); // we auto-add returns when aborting, but do not need them here
       ret = '(__THREW__ = 0,' +  call_ + ');';
     } else {
       ret = '(function() { try { __THREW__ = 0; return '
