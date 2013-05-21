@@ -18,7 +18,6 @@ namespace emscripten {
     };
 
     namespace internal {
-        typedef void (*GenericFunction)();
         typedef long GenericEnumValue;
 
         // Implemented in JavaScript.  Don't call these directly.
@@ -58,6 +57,10 @@ namespace emscripten {
 
             void _embind_register_emval(
                 TYPEID emvalType,
+                const char* name);
+
+            void _embind_register_memory_view(
+                TYPEID memoryViewType,
                 const char* name);
 
             void _embind_register_function(
@@ -414,11 +417,10 @@ namespace emscripten {
 
         // TODO: This could do a reinterpret-cast if sizeof(T) === sizeof(void*)
         template<typename T>
-        inline void* getContext(const T& t) {
+        inline T* getContext(const T& t) {
             // not a leak because this is called once per binding
-            void* p = malloc(sizeof(T));
-            assert(p);
-            memcpy(p, &t, sizeof(T));
+            T* p = reinterpret_cast<T*>(malloc(sizeof(T)));
+            new(p) T(t);
             return p;
         }
 
@@ -749,38 +751,19 @@ namespace emscripten {
 
         template<typename ReturnType, typename... Args>
         ReturnType call(const char* name, Args&&... args) const {
-            return Caller<ReturnType, Args...>::call(wrapped, name, std::forward<Args>(args)...);
+            return wrapped.call<ReturnType>(name, std::forward<Args>(args)...);
         }
 
         template<typename ReturnType, typename... Args, typename Default>
         ReturnType optional_call(const char* name, Default def, Args&&... args) const {
-            if (has_function(name)) {
-                return Caller<ReturnType, Args...>::call(wrapped, name, std::forward<Args>(args)...);
+            if (wrapped.has_function(name)) {
+                return call<ReturnType>(name, std::forward<Args>(args)...);
             } else {
                 return def();
             }
         }
 
     private:
-        bool has_function(const char* name) const {
-            return wrapped.has_function(name);
-        }
-
-        // this class only exists because you can't partially specialize function templates
-        template<typename ReturnType, typename... Args>
-        struct Caller {
-            static ReturnType call(const val& v, const char* name, Args&&... args) {
-                return v.call(name, std::forward<Args>(args)...).template as<ReturnType>();
-            }
-        };
-
-        template<typename... Args>
-        struct Caller<void, Args...> {
-            static void call(const val& v, const char* name, Args&&... args) {
-                v.call_void(name, std::forward<Args>(args)...);
-            }
-        };
-
         val wrapped;
     };
 
@@ -844,22 +827,7 @@ namespace emscripten {
         }
     };
 
-    template<typename PointerType>
-    struct ptr {
-        typedef PointerType pointer_type;
-    };
-
     namespace internal {
-        template<typename T>
-        struct is_ptr {
-            enum { value = false };
-        };
-
-        template<typename T>
-        struct is_ptr<ptr<T>> {
-            enum { value = true };
-        };
-
         template<typename T>
         struct SmartPtrIfNeeded {
             template<typename U>
@@ -881,7 +849,6 @@ namespace emscripten {
     public:
         class_() = delete;
 
-        template<typename = typename std::enable_if<!internal::is_ptr<ClassType>::value>::type>
         explicit class_(const char* name) {
             using namespace internal;
 
@@ -927,16 +894,17 @@ namespace emscripten {
                 policies...);
         }
 
-        template<typename... Args, typename... Policies>
-        class_& constructor(ClassType* (*factory)(Args...), Policies...) {
+        template<typename... Args, typename ReturnType, typename... Policies>
+        class_& constructor(ReturnType (*factory)(Args...), Policies...) {
             using namespace internal;
 
-            typename WithPolicies<Policies...>::template ArgTypeList<AllowedRawPointer<ClassType>, Args...> args;
+            // TODO: allows all raw pointers... policies need a rethink
+            typename WithPolicies<allow_raw_pointers, Policies...>::template ArgTypeList<ReturnType, Args...> args;
             _embind_register_class_constructor(
                 TypeID<ClassType>::get(),
                 args.count,
                 args.types,
-                reinterpret_cast<GenericFunction>(&Invoker<ClassType*, Args...>::invoke),
+                reinterpret_cast<GenericFunction>(&Invoker<ReturnType, Args...>::invoke),
                 reinterpret_cast<GenericFunction>(factory));
             return *this;
         }

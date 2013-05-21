@@ -50,6 +50,14 @@ extern void pass_gameobject_ptr_benchmark_embind_js();
 
 extern void call_through_interface0();
 extern void call_through_interface1();
+extern void call_through_interface2();
+
+extern void returns_val_benchmark();
+}
+
+emscripten::val returns_val(emscripten::val value)
+{
+    return emscripten::val(value.as<unsigned>() + 1);
 }
 
 class Vec3
@@ -135,7 +143,18 @@ class Interface
 public:
     virtual void call0() = 0;
     virtual std::wstring call1(const std::wstring& str1, const std::wstring& str2) = 0;
+    virtual void call_with_typed_array(size_t size, const void*) = 0;
+    virtual void call_with_memory_view(size_t size, const void*) = 0;
 };
+
+EMSCRIPTEN_SYMBOL(HEAP8);
+EMSCRIPTEN_SYMBOL(buffer);
+
+EMSCRIPTEN_SYMBOL(call0);
+EMSCRIPTEN_SYMBOL(call1);
+EMSCRIPTEN_SYMBOL(call_with_typed_array);
+EMSCRIPTEN_SYMBOL(call_with_memory_view);
+EMSCRIPTEN_SYMBOL(Uint8Array);
 
 class InterfaceWrapper : public emscripten::wrapper<Interface>
 {
@@ -143,11 +162,26 @@ public:
     EMSCRIPTEN_WRAPPER(InterfaceWrapper);
 
     void call0() override {
-        return call<void>("call0");
+        return call<void>(call0_symbol);
     }
 
     std::wstring call1(const std::wstring& str1, const std::wstring& str2) {
-        return call<std::wstring>("call1", str1, str2);
+        return call<std::wstring>(call1_symbol, str1, str2);
+    }
+
+    void call_with_typed_array(size_t size, const void* data) {
+        return call<void>(
+            call_with_typed_array_symbol,
+            emscripten::val::global(Uint8Array_symbol).new_(
+                emscripten::val::module_property(HEAP8_symbol)[buffer_symbol],
+                reinterpret_cast<uintptr_t>(data),
+                size));
+    }
+
+    void call_with_memory_view(size_t size, const void* data) {
+        return call<void>(
+            call_with_memory_view_symbol,
+            emscripten::memory_view(size, data));
     }
 };
 
@@ -177,6 +211,33 @@ void callInterface1(unsigned N, Interface& o) {
             o.call1(
                 o.call1(qux, foo),
                 o.call1(bar, baz)));
+    }
+}
+
+void callInterface2(unsigned N, Interface& o) {
+    int i = 0;
+    for (unsigned i = 0; i < N; i += 8) {
+        o.call_with_typed_array(sizeof(int), &i);
+        o.call_with_typed_array(sizeof(int), &i);
+        o.call_with_typed_array(sizeof(int), &i);
+        o.call_with_typed_array(sizeof(int), &i);
+        o.call_with_typed_array(sizeof(int), &i);
+        o.call_with_typed_array(sizeof(int), &i);
+        o.call_with_typed_array(sizeof(int), &i);
+        o.call_with_typed_array(sizeof(int), &i);
+    }
+}
+
+void callInterface3(unsigned N, Interface& o) {
+    for (unsigned i = 0; i < N; i += 8) {
+        o.call_with_memory_view(sizeof(int), &i);
+        o.call_with_memory_view(sizeof(int), &i);
+        o.call_with_memory_view(sizeof(int), &i);
+        o.call_with_memory_view(sizeof(int), &i);
+        o.call_with_memory_view(sizeof(int), &i);
+        o.call_with_memory_view(sizeof(int), &i);
+        o.call_with_memory_view(sizeof(int), &i);
+        o.call_with_memory_view(sizeof(int), &i);
     }
 }
 
@@ -225,6 +286,10 @@ EMSCRIPTEN_BINDINGS(benchmark)
 
     function("callInterface0", &callInterface0);
     function("callInterface1", &callInterface1);
+    function("callInterface2", &callInterface2);
+    function("callInterface3", &callInterface3);
+
+    function("returns_val", &returns_val);
 }
 
 void __attribute__((noinline)) emscripten_get_now_benchmark(int N)
@@ -435,4 +500,6 @@ int main()
     emscripten_get_now();
     call_through_interface0();
     call_through_interface1();
+    call_through_interface2();
+    returns_val_benchmark();
 }

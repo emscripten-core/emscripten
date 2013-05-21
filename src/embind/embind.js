@@ -131,6 +131,7 @@ function extendError(baseErrorType, errorName) {
 
 // from https://github.com/imvu/imvujs/blob/master/src/function.js
 function createNamedFunction(name, body) {
+    name = makeLegalFunctionName(name);
     /*jshint evil:true*/
     return new Function(
         "body",
@@ -270,6 +271,10 @@ function __embind_register_void(rawType, name) {
         'fromWireType': function() {
             return undefined;
         },
+        'toWireType': function(destructors, o) {
+            // TODO: assert if anything else is given?
+            return undefined;
+        },
     });
 }
 
@@ -306,7 +311,7 @@ function __embind_register_integer(primitiveType, name, minRange, maxRange) {
         'toWireType': function(destructors, value) {
             // todo: Here we have an opportunity for -O3 level "unsafe" optimizations: we could
             // avoid the following two if()s and assume value is of proper type.
-            if (typeof value !== "number") {
+            if (typeof value !== "number" && typeof value !== "boolean") {
                 throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
             }
             if (value < minRange || value > maxRange) {
@@ -328,8 +333,8 @@ function __embind_register_float(rawType, name) {
         'toWireType': function(destructors, value) {
             // todo: Here we have an opportunity for -O3 level "unsafe" optimizations: we could
             // avoid the following if() and assume value is of proper type.
-            if (typeof value !== "number") {
-                throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' +this.name);
+            if (typeof value !== "number" && typeof value !== "boolean") {
+                throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
             }
             return value;
         },
@@ -446,6 +451,31 @@ function __embind_register_emval(rawType, name) {
             return __emval_register(value);
         },
         destructorFunction: null, // This type does not need a destructor
+    });
+}
+
+function __embind_register_memory_view(rawType, name) {
+    var typeMapping = [
+        Int8Array,
+        Uint8Array,
+        Int16Array,
+        Uint16Array,
+        Int32Array,
+        Uint32Array,
+        Float32Array,
+        Float64Array,        
+    ];
+
+    name = readLatin1String(name);
+    registerType(rawType, {
+        name: name,
+        'fromWireType': function(handle) {
+            var type = HEAPU32[handle >> 2];
+            var size = HEAPU32[(handle >> 2) + 1]; // in elements
+            var data = HEAPU32[(handle >> 2) + 2]; // byte offset into emscripten heap
+            var TA = typeMapping[type];
+            return new TA(HEAP8.buffer, data, size);
+        },
     });
 }
 
@@ -677,7 +707,7 @@ function __embind_finalize_tuple(rawTupleType) {
             },
             'toWireType': function(destructors, o) {
                 if (elementsLength !== o.length) {
-                    throw new TypeError("Incorrect number of tuple elements");
+                    throw new TypeError("Incorrect number of tuple elements for " + reg.name + ": expected=" + elementsLength + ", actual=" + o.length);
                 }
                 var ptr = rawConstructor();
                 for (var i = 0; i < elementsLength; ++i) {
@@ -685,7 +715,7 @@ function __embind_finalize_tuple(rawTupleType) {
                 }
                 if (destructors !== null) {
                     destructors.push(rawDestructor, ptr);
-                 }
+                }
                 return ptr;
             },
             destructorFunction: rawDestructor,
@@ -802,7 +832,9 @@ var genericPointerToWireType = function(destructors, handle) {
 
         if (this.isSmartPointer) {
             var ptr = this.rawConstructor();
-            destructors.push(this.rawDestructor, ptr);
+            if (destructors !== null) {
+                destructors.push(this.rawDestructor, ptr);
+            }
             return ptr;
         } else {
             return 0;
@@ -854,7 +886,9 @@ var genericPointerToWireType = function(destructors, handle) {
                             clonedHandle.delete();
                         })
                     );
-                    destructors.push(this.rawDestructor, ptr);
+                    if (destructors !== null) {
+                        destructors.push(this.rawDestructor, ptr);
+                    }
                 }
                 break;
             
@@ -1080,9 +1114,13 @@ ClassHandle.prototype.isAliasOf = function(other) {
     return leftClass === rightClass && left === right;
 };
 
+function throwInstanceAlreadyDeleted(obj) {
+    throwBindingError(getInstanceTypeName(obj) + ' instance already deleted');
+}
+
 ClassHandle.prototype.clone = function() {
     if (!this.$$.ptr) {
-        throwBindingError(getInstanceTypeName(this) + ' instance already deleted');
+        throwInstanceAlreadyDeleted(this);
     }
 
     var clone = Object.create(Object.getPrototypeOf(this), {
@@ -1104,9 +1142,12 @@ function runDestructor(handle) {
     }
 }
 
-ClassHandle.prototype['delete'] = function() {
+ClassHandle.prototype['delete'] = function ClassHandle_delete() {
     if (!this.$$.ptr) {
-        throwBindingError(getInstanceTypeName(this) + ' instance already deleted');
+        throwInstanceAlreadyDeleted(this);
+    }
+    if (this.$$.deleteScheduled) {
+        throwBindingError('Object already scheduled for deletion');
     }
 
     this.$$.count.value -= 1;
@@ -1115,6 +1156,44 @@ ClassHandle.prototype['delete'] = function() {
     }
     this.$$.smartPtr = undefined;
     this.$$.ptr = undefined;
+};
+
+var deletionQueue = [];
+
+ClassHandle.prototype['isDeleted'] = function isDeleted() {
+    return !this.$$.ptr;
+};
+
+ClassHandle.prototype['deleteLater'] = function deleteLater() {
+    if (!this.$$.ptr) {
+        throwInstanceAlreadyDeleted(this);
+    }
+    if (this.$$.deleteScheduled) {
+        throwBindingError('Object already scheduled for deletion');
+    }
+    deletionQueue.push(this);
+    if (deletionQueue.length === 1 && delayFunction) {
+        delayFunction(flushPendingDeletes);
+    }
+    this.$$.deleteScheduled = true;
+    return this;
+};
+
+function flushPendingDeletes() {
+    while (deletionQueue.length) {
+        var obj = deletionQueue.pop();
+        obj.$$.deleteScheduled = false;
+        obj['delete']();
+    }
+}
+Module['flushPendingDeletes'] = flushPendingDeletes;
+
+var delayFunction;
+Module['setDelayFunction'] = function setDelayFunction(fn) {
+    delayFunction = fn;
+    if (deletionQueue.length && delayFunction) {
+        delayFunction(flushPendingDeletes);
+    }
 };
         
 function RegisteredClass(
