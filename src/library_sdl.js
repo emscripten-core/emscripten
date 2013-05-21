@@ -1349,6 +1349,9 @@ var LibrarySDL = {
     channelInfo.audio = audio = audio.cloneNode(true);
     audio.numChannels = info.audio.numChannels;
     audio.frequency = info.audio.frequency;
+
+    // TODO: handle N loops. Behavior matches Mix_PlayMusic
+    audio.loop = loops != 0; 
     if (SDL.channelFinished) {
       audio['onended'] = function() { // TODO: cache these
         Runtime.getFuncWrapper(SDL.channelFinished, 'vi')(channel);
@@ -1450,7 +1453,7 @@ var LibrarySDL = {
     loops = Math.max(loops, 1);
     var audio = SDL.audios[id].audio;
     if (!audio) return 0;
-    audio.loop = loops != 1; // TODO: handle N loops for finite N
+    audio.loop = loops != 0; // TODO: handle N loops for finite N
     if (SDL.audios[id].buffer) {
       audio["mozWriteAudio"](SDL.audios[id].buffer);
     } else {
