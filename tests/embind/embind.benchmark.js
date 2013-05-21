@@ -248,3 +248,38 @@ function _call_through_interface1() {
     Module.print("C++ -> JS std::wstring through interface " + N + " iters: " + elapsed + " msecs.");
     obj.delete();
 }
+
+function _call_through_interface2() {
+    var N = 1000000;
+    var total = 0;
+    var obj = Module['Interface'].implement({
+        call_with_typed_array: function(ta) {
+            total += ta.length;
+        },
+        call_with_memory_view: function(ta) {
+            total += ta.length;
+        },
+    });
+
+    var start = _emscripten_get_now();
+    Module['callInterface2'](N, obj);
+    var elapsed = _emscripten_get_now() - start;
+    Module.print("C++ -> JS typed array instantiation " + N + " iters: " + elapsed + " msecs.");
+
+    var start = _emscripten_get_now();
+    Module['callInterface3'](N, obj);
+    var elapsed = _emscripten_get_now() - start;
+    Module.print("C++ -> JS memory_view instantiation" + N + " iters: " + elapsed + " msecs.");
+    obj.delete();
+}
+
+function _returns_val_benchmark() {
+    var N = 1000000;
+    var v = 1;
+    var start = _emscripten_get_now();
+    for(var i = 0; i < N; ++i) {
+        v = Module['returns_val'](v);
+    }
+    var elapsed = _emscripten_get_now() - start;
+    Module.print("returns_val " + N + " iters: " + elapsed + " msecs");
+}

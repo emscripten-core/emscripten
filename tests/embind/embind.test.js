@@ -5,6 +5,8 @@ module({
 
     var CheckForLeaks = fixture("check for leaks", function() {
         this.setUp(function() {
+            cm.setDelayFunction(undefined);
+
             if (typeof INVOKED_FROM_EMSCRIPTEN_TEST_RUNNER === "undefined") { // TODO: Enable this to work in Emscripten runner as well!
                 cm._mallocDebug(2);
                 assert.equal(0, cm.count_emval_handles());
@@ -12,6 +14,7 @@ module({
             }
         });
         this.tearDown(function() {
+            cm.flushPendingDeletes();
             if (typeof INVOKED_FROM_EMSCRIPTEN_TEST_RUNNER === "undefined") { // TODO: Enable this to work in Emscripten runner as well!
                 cm._mallocAssertAllMemoryFree();
                 assert.equal(0, cm.count_emval_handles());
@@ -490,6 +493,15 @@ module({
             assert.equal(true, cm.emval_test_not(false));
         });
 
+        test("can pass booleans as integers", function() {
+            assert.equal(1, cm.emval_test_as_unsigned(true));
+            assert.equal(0, cm.emval_test_as_unsigned(false));
+        });
+
+        test("can pass booleans as floats", function() {
+            assert.equal(2, cm.const_ref_adder(true, true));
+        });
+
         test("convert double to unsigned", function() {
             var rv = cm.emval_test_as_unsigned(1.5);
             assert.equal('number', typeof rv);
@@ -670,6 +682,15 @@ module({
             a.delete();
             b.delete();
             c.delete();
+        });
+
+        test("access multiple smart ptr ctors", function() {
+            var a = new cm.MultipleSmartCtors(10);
+            assert.equal(a.WhichCtorCalled(), 1);
+            var b = new cm.MultipleCtors(20, 20);
+            assert.equal(b.WhichCtorCalled(), 2);
+            a.delete();
+            b.delete();
         });
 
         test("wrong number of constructor arguments throws", function() {
@@ -1559,6 +1580,28 @@ module({
             impl.delete();
         });
 
+        test("returning null shared pointer from interfaces implemented in JS code does not leak", function() {
+            var impl = cm.AbstractClass.implement({
+                returnsSharedPtr: function() {
+                    return null;
+                }
+            });
+            cm.callReturnsSharedPtrMethod(impl);
+            impl.delete();
+            // Let the memory leak test superfixture check that no leaks occurred.
+        });
+
+        test("returning a new shared pointer from interfaces implemented in JS code does not leak", function() {
+            var impl = cm.AbstractClass.implement({
+                returnsSharedPtr: function() {
+                    return cm.embind_test_return_smart_derived_ptr();
+                }
+            });
+            cm.callReturnsSharedPtrMethod(impl);
+            impl.delete();
+            // Let the memory leak test superfixture check that no leaks occurred.
+        });
+
         test("void methods work", function() {
             var saved = {};
             var impl = cm.AbstractClass.implement({
@@ -1727,6 +1770,116 @@ module({
         assert.true(f.isAliasOf(e));
         e.delete();
         f.delete();
+    });
+
+    BaseFixture.extend("memory view", function() {
+        test("can pass memory view from C++ to JS", function() {
+            var views = [];
+            cm.callWithMemoryView(function(view) {
+                views.push(view);
+            });
+            assert.equal(3, views.length);
+
+            assert.instanceof(views[0], Uint8Array);
+            assert.equal(8, views[0].length);
+            assert.deepEqual([0, 1, 2, 3, 4, 5, 6, 7], [].slice.call(new Uint8Array(views[0])));
+
+            assert.instanceof(views[1], Float32Array);
+            assert.equal(4, views[1].length);
+            assert.deepEqual([1.5, 2.5, 3.5, 4.5], [].slice.call(views[1]));
+
+            assert.instanceof(views[2], Int16Array);
+            assert.equal(4, views[2].length);
+            assert.deepEqual([1000, 100, 10, 1], [].slice.call(views[2]));
+        });
+    });
+
+    BaseFixture.extend("delete pool", function() {
+        test("can delete objects later", function() {
+            var v = new cm.ValHolder({});
+            v.deleteLater();
+            assert.deepEqual({}, v.getVal());
+            cm.flushPendingDeletes();
+            assert.throws(cm.BindingError, function() {
+                v.getVal();
+            });
+        });
+
+        test("calling deleteLater twice is an error", function() {
+            var v = new cm.ValHolder({});
+            v.deleteLater();
+            assert.throws(cm.BindingError, function() {
+                v.deleteLater();
+            });
+        });
+
+        test("deleteLater returns the object", function() {
+            var v = (new cm.ValHolder({})).deleteLater();
+            assert.deepEqual({}, v.getVal());
+        });
+
+        test("deleteLater throws if object is already deleted", function() {
+            var v = new cm.ValHolder({});
+            v.delete();
+            assert.throws(cm.BindingError, function() {
+                v.deleteLater();
+            });
+        });
+
+        test("delete throws if object is already scheduled for deletion", function() {
+            var v = new cm.ValHolder({});
+            v.deleteLater();
+            assert.throws(cm.BindingError, function() {
+                v.delete();
+            });
+        });
+
+        test("deleteLater invokes delay function", function() {
+            var runLater;
+            cm.setDelayFunction(function(fn) {
+                runLater = fn;
+            });
+
+            var v = new cm.ValHolder({});
+            assert.false(runLater);
+            v.deleteLater();
+            assert.true(runLater);
+            assert.false(v.isDeleted());
+            runLater();
+            assert.true(v.isDeleted());
+        });
+
+        test("deleteLater twice invokes delay function once", function() {
+            var count = 0;
+            var runLater;
+            cm.setDelayFunction(function(fn) {
+                ++count;
+                runLater = fn;
+            });
+
+            (new cm.ValHolder({})).deleteLater();
+            (new cm.ValHolder({})).deleteLater();
+            assert.equal(1, count);
+            runLater();
+            (new cm.ValHolder({})).deleteLater();
+            assert.equal(2, count);
+        });
+
+        test('The delay function is immediately invoked if the deletion queue is not empty', function() {
+            (new cm.ValHolder({})).deleteLater();
+            var count = 0;
+            cm.setDelayFunction(function(fn) {
+                ++count;
+            });
+            assert.equal(1, count);
+        });
+
+        // The idea is that an interactive application would
+        // periodically flush the deleteLater queue by calling
+        //
+        // setDelayFunction(function(fn) {
+        //     setTimeout(fn, 0);
+        // });
     });
 });
 
