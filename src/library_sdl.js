@@ -1349,6 +1349,9 @@ var LibrarySDL = {
     channelInfo.audio = audio = audio.cloneNode(true);
     audio.numChannels = info.audio.numChannels;
     audio.frequency = info.audio.frequency;
+
+    // TODO: handle N loops. Behavior matches Mix_PlayMusic
+    audio.loop = loops != 0; 
     if (SDL.channelFinished) {
       audio['onended'] = function() { // TODO: cache these
         Runtime.getFuncWrapper(SDL.channelFinished, 'vi')(channel);
