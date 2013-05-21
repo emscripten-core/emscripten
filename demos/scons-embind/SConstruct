@@ -1,0 +1,23 @@
+env = Environment(
+    toolpath=['../../scons-tools'],
+    tools=['cc', 'c++', 'ar', 'emscripten', 'llvm', 'closure'],
+    LLVM_ROOT='/opt/local/bin',
+    CLANG='clang-mp-3.2',
+    CLANGXX='clang++-mp-3.2',
+    LLVM_LINK='llvm-link-mp-3.2',
+    LLVM_OPT='opt-mp-3.2',
+    LLVM_DIS='llvm-dis-mp-3.2',
+    EMSCRIPTEN_VERSION_FILE=File('build/version_file'),
+    EMSCRIPTEN_SETTINGS={
+        'ASM_JS': 0,
+    })
+env['BUILDERS']['WrapInModule'] = Builder(
+    action='cp $SOURCE $TARGET',
+)
+
+env.Append()
+a1 = env.Object('build/foo.bc', 'foo.cpp')
+a2 = env.Object('build/bar.bc', 'bar.cpp')
+total = env.LLVMLink('build/thelibrary.bc', [a1, a2])
+
+env.emscripten('build/thelibrary.js', total)
