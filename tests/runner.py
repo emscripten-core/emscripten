@@ -6363,6 +6363,31 @@ def process(filename):
       self.emcc_args += ['--embed-file', 'eol.txt']
       self.do_run(src, 'SUCCESS\n')
 
+    def test_fscanf(self):
+      if self.emcc_args is None: return self.skip('requires emcc')
+      open(os.path.join(self.get_dir(), 'three_numbers.txt'), 'w').write('''-1 0.1 -.1''')
+      src = r'''
+        #include <stdio.h>
+        #include <assert.h>
+        #include <float.h>
+        int main()
+        {
+            float x = FLT_MAX, y = FLT_MAX, z = FLT_MAX;
+
+            FILE* fp = fopen("three_numbers.txt", "r");
+            if (fp) {
+                int match = fscanf(fp, " %f %f %f ", &x, &y, &z);
+                printf("match = %d\n", match);
+                printf("x = %0.1f, y = %0.1f, z = %0.1f\n", x, y, z);
+            } else {
+                printf("failed to open three_numbers.txt\n");
+            }
+            return 0;
+        }
+      '''
+      self.emcc_args += ['--embed-file', 'three_numbers.txt']
+      self.do_run(src, 'match = 3\nx = -1.0, y = 0.1, z = -0.1\n')
+
     def test_folders(self):
       add_pre_run = '''
 def process(filename):
