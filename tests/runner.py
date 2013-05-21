@@ -10028,6 +10028,23 @@ f.close()
       self.assertContained('hello from lib', run_js(os.path.join(self.get_dir(), 'a.out.js')))
       assert not os.path.exists('a.out') and not os.path.exists('a.exe'), 'Must not leave unneeded linker stubs'
 
+    def test_symlink(self):
+      open(os.path.join(self.get_dir(), 'foobar.xxx'), 'w').write('int main(){ return 0; }')
+      os.symlink(os.path.join(self.get_dir(), 'foobar.xxx'), os.path.join(self.get_dir(), 'foobar.c'))
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'foobar.c'), '-o', os.path.join(self.get_dir(), 'foobar')], stdout=PIPE, stderr=PIPE).communicate()
+      assert os.path.exists(os.path.join(self.get_dir(), 'foobar'))
+      try_delete(os.path.join(self.get_dir(), 'foobar'))
+      try_delete(os.path.join(self.get_dir(), 'foobar.xxx'))
+      try_delete(os.path.join(self.get_dir(), 'foobar.c'))
+
+      open(os.path.join(self.get_dir(), 'foobar.c'), 'w').write('int main(){ return 0; }')
+      os.symlink(os.path.join(self.get_dir(), 'foobar.c'), os.path.join(self.get_dir(), 'foobar.xxx'))
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'foobar.xxx'), '-o', os.path.join(self.get_dir(), 'foobar')], stdout=PIPE, stderr=PIPE).communicate()
+      assert os.path.exists(os.path.join(self.get_dir(), 'foobar'))
+      try_delete(os.path.join(self.get_dir(), 'foobar'))
+      try_delete(os.path.join(self.get_dir(), 'foobar.xxx'))
+      try_delete(os.path.join(self.get_dir(), 'foobar.c'))
+      
     def test_multiply_defined_libsymbols(self):
       lib = "int mult() { return 1; }"
       lib_name = os.path.join(self.get_dir(), 'libA.c')
