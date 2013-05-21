@@ -1187,7 +1187,7 @@ m_divisor is 1091269979
         #include <stdint.h>
         #include <stdarg.h>
 
-        void ccv_cache_generate_signature(char *msg, int len, int64_t sig_start, ...) {
+        int64_t ccv_cache_generate_signature(char *msg, int len, int64_t sig_start, ...) {
           if (sig_start < 10123)
             printf("%s\n", msg+len);
           va_list v;
@@ -1197,26 +1197,33 @@ m_divisor is 1091269979
           else
             printf("nada\n");
           va_end(v);
+          return len*sig_start*(msg[0]+1);
         }
 
         int main(int argc, char **argv)
         {
           for (int i = 0; i < argc; i++) {
+            int64_t x;
             if (i % 123123 == 0)
-              ccv_cache_generate_signature(argv[i], i+2, (int64_t)argc*argc, 54.111);
+              x = ccv_cache_generate_signature(argv[i], i+2, (int64_t)argc*argc, 54.111);
             else
-              ccv_cache_generate_signature(argv[i], i+2, (int64_t)argc*argc, 13);
+              x = ccv_cache_generate_signature(argv[i], i+2, (int64_t)argc*argc, 13);
+            printf("%lld\n", x);
           }
         };
       '''
       self.do_run(src, '''in/this.program
 nada
+1536
 a
 nada
+5760
 fl
 nada
+6592
 sdfasdfasdf
 nada
+7840
 ''', 'waka fleefl asdfasdfasdfasdf'.split(' '))
 
     def test_i32_mul_precise(self):

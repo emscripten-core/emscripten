@@ -411,8 +411,9 @@ function analyzer(data, sidePass) {
                   // legalize parameters
                   legalizeFunctionParameters(value.params);
                   // legalize return value, if any
-                  if (value.assignTo && isIllegalType(item.type)) {
-                    bits = getBits(value.type);
+                  var returnType = getReturnType(item.type);
+                  if (value.assignTo && isIllegalType(returnType)) {
+                    bits = getBits(returnType);
                     var elements = getLegalVars(item.assignTo, bits);
                     // legalize return value
                     value.assignTo = elements[0].ident;
