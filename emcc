@@ -28,34 +28,6 @@ Example uses:
    so it should relay everything to gcc/g++. You should not define that when
    running make, of course.
 
- * With CMake, the same command will work (with cmake instead of ./configure). You may also be
-   able to do the following in your CMakeLists.txt:
-
-    SET(CMAKE_C_COMPILER "PATH/emcc")
-    SET(CMAKE_CXX_COMPILER "PATH/em++")
-    SET(CMAKE_LINKER "PATH/emcc")
-    SET(CMAKE_CXX_LINKER "PATH/emcc")
-    SET(CMAKE_C_LINK_EXECUTABLE "PATH/emcc")
-    SET(CMAKE_CXX_LINK_EXECUTABLE "PATH/emcc")
-    SET(CMAKE_AR "PATH/emar")
-    SET(CMAKE_RANLIB "PATH/emranlib")
-
- * For SCons the shared.py can be imported like so:
-    __file__ = str(Dir('#/project_path_to_emscripten/dummy/dummy'))
-    __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    def path_from_root(*pathelems):
-      return os.path.join(__rootpath__, *pathelems)
-    sys.path += [path_from_root('')]
-    from tools.shared import *
-
-   For using the Emscripten compilers/linkers/etc. you can do:
-    env = Environment()
-    ...
-    env.Append(CCFLAGS = COMPILER_OPTS)
-    env.Replace(LINK = LLVM_LD)
-    env.Replace(LD   = LLVM_LD)
-   TODO: Document all relevant setup changes
-
 After setting that up, run your build system normally.
 
 Note the appearance of em++ instead of emcc
