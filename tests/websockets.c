@@ -56,7 +56,7 @@ unsigned int get_all_buf(int sock, char* output, unsigned int maxsize)
   }
 
   if(n < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
-    fprintf(stderr, "error in get_all_buf!");
+    fprintf(stderr, "error in get_all_buf! %d", errno);
     exit(EXIT_FAILURE);
   }
   return offset;

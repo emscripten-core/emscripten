@@ -6804,11 +6804,7 @@ LibraryManager.library = {
   },
   __errno_location__deps: ['__setErrNo'],
   __errno_location: function() {
-    if (!___setErrNo.ret) {
-      ___setErrNo.ret = allocate([0], 'i32', ALLOC_NORMAL);
-      {{{ makeSetValue('___setErrNo.ret', '0', '0', 'i32') }}}
-    }
-    return ___setErrNo.ret;
+    return ___errno_state;
   },
   __errno: '__errno_location',
 
