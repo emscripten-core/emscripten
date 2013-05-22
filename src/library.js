@@ -7212,7 +7212,7 @@ LibraryManager.library = {
       };
       function handleMessage(addr, message) {
 #if SOCKET_DEBUG
-        Module.print("received " + message.byteLength + " raw bytes");
+  Module.print("received " + message.byteLength + " raw bytes");
 #endif
         var header = new Uint16Array(message, 0, 2);
         if (Sockets.portmap[header[1]]) {
@@ -7331,7 +7331,7 @@ LibraryManager.library = {
     var iov = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iov', 'i8*') }}};
     var num = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iovlen', 'i32') }}};
 #if SOCKET_DEBUG
-      Module.print('sendmsg vecs: ' + num);
+  Module.print('sendmsg vecs: ' + num);
 #endif
     var totalSize = 0;
     for (var i = 0; i < num; i++) {
@@ -7342,7 +7342,7 @@ LibraryManager.library = {
     for (var i = 0; i < num; i++) {
       var currNum = {{{ makeGetValue('iov', '8*i + 4', 'i32') }}};
 #if SOCKET_DEBUG
-      Module.print('sendmsg curr size: ' + currNum);
+  Module.print('sendmsg curr size: ' + currNum);
 #endif
       if (!currNum) continue;
       var currBuf = {{{ makeGetValue('iov', '8*i', 'i8*') }}};
@@ -7353,8 +7353,8 @@ LibraryManager.library = {
     info.header[0] = info.port; // src port
     info.header[1] = port; // dst port
 #if SOCKET_DEBUG
-      Module.print('sendmsg port: ' + info.header[0] + ' -> ' + info.header[1]);
-      Module.print('sendmsg bytes: ' + data.length + ' | ' + Array.prototype.slice.call(data));
+  Module.print('sendmsg port: ' + info.header[0] + ' -> ' + info.header[1]);
+  Module.print('sendmsg bytes: ' + data.length + ' | ' + Array.prototype.slice.call(data));
 #endif
     var buffer = new Uint8Array(info.header.byteLength + data.byteLength);
     buffer.set(new Uint8Array(info.header.buffer));
@@ -7385,8 +7385,8 @@ LibraryManager.library = {
 
     var bytes = buffer.length;
 #if SOCKET_DEBUG
-    Module.print('recvmsg port: ' + header[1] + ' <- ' + header[0]);
-    Module.print('recvmsg bytes: ' + bytes + ' | ' + Array.prototype.slice.call(buffer));
+  Module.print('recvmsg port: ' + header[1] + ' <- ' + header[0]);
+  Module.print('recvmsg bytes: ' + bytes + ' | ' + Array.prototype.slice.call(buffer));
 #endif
     // write source
     var name = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_name', '*') }}};
@@ -7400,14 +7400,14 @@ LibraryManager.library = {
     for (var i = 0; i < num && bytes > 0; i++) {
       var currNum = {{{ makeGetValue('iov', '8*i + 4', 'i32') }}};
 #if SOCKET_DEBUG
-      Module.print('recvmsg loop ' + [i, num, bytes, currNum]);
+  Module.print('recvmsg loop ' + [i, num, bytes, currNum]);
 #endif
       if (!currNum) continue;
       currNum = Math.min(currNum, bytes); // XXX what should happen when we partially fill a buffer..?
       bytes -= currNum;
       var currBuf = {{{ makeGetValue('iov', '8*i', 'i8*') }}};
 #if SOCKET_DEBUG
-      Module.print('recvmsg call recv ' + currNum);
+  Module.print('recvmsg call recv ' + currNum);
 #endif
       HEAPU8.set(buffer.subarray(bufferPos, bufferPos + currNum), currBuf);
       bufferPos += currNum;
@@ -7555,9 +7555,9 @@ LibraryManager.library = {
       info.socket.onmessage = function(event) {
         assert(typeof event.data !== 'string' && event.data.byteLength); // must get binary data!
         var data = new Uint8Array(event.data); // make a typed array view on the array buffer
-  #if SOCKET_DEBUG
-        Module.print(['onmessage', data.length, '|', Array.prototype.slice.call(data)]);
-  #endif
+#if SOCKET_DEBUG
+  Module.print(['onmessage', data.length, '|', Array.prototype.slice.call(data)]);
+#endif
         if (info.stream) {
           info.inQueue.push(data);
         } else {
@@ -7580,9 +7580,9 @@ LibraryManager.library = {
               break; // not enough data has arrived
             }
             currPos += 4;
-  #if SOCKET_DEBUG
-            Module.print(['onmessage message', currLen, '|', Array.prototype.slice.call(data.subarray(currPos, currPos+currLen))]);
-  #endif
+#if SOCKET_DEBUG
+  Module.print(['onmessage message', currLen, '|', Array.prototype.slice.call(data.subarray(currPos, currPos+currLen))]);
+#endif
             info.inQueue.push(data.subarray(currPos, currPos+currLen));
             currPos += currLen;
           }
@@ -7594,9 +7594,9 @@ LibraryManager.library = {
       }
       function send(data) {
         // TODO: if browser accepts views, can optimize this
-  #if SOCKET_DEBUG
-        Module.print('sender actually sending ' + Array.prototype.slice.call(data));
-  #endif
+#if SOCKET_DEBUG
+  Module.print('sender actually sending ' + Array.prototype.slice.call(data));
+#endif
         // ok to use the underlying buffer, we created data and know that the buffer starts at the beginning
         info.socket.send(data.buffer);
       }
@@ -7650,14 +7650,14 @@ LibraryManager.library = {
     }
     var buffer = info.inQueue.shift();
 #if SOCKET_DEBUG
-    Module.print('recv: ' + [Array.prototype.slice.call(buffer)]);
+  Module.print('recv: ' + [Array.prototype.slice.call(buffer)]);
 #endif
     if (len < buffer.length) {
       if (info.stream) {
         // This is tcp (reliable), so if not all was read, keep it
         info.inQueue.unshift(buffer.subarray(len));
 #if SOCKET_DEBUG
-        Module.print('recv: put back: ' + (len - buffer.length));
+  Module.print('recv: put back: ' + (len - buffer.length));
 #endif
       }
       buffer = buffer.subarray(0, len);
@@ -7687,7 +7687,7 @@ LibraryManager.library = {
     var iov = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iov', 'i8*') }}};
     var num = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_iovlen', 'i32') }}};
 #if SOCKET_DEBUG
-      Module.print('sendmsg vecs: ' + num);
+  Module.print('sendmsg vecs: ' + num);
 #endif
     var totalSize = 0;
     for (var i = 0; i < num; i++) {
@@ -7698,7 +7698,7 @@ LibraryManager.library = {
     for (var i = 0; i < num; i++) {
       var currNum = {{{ makeGetValue('iov', '8*i + 4', 'i32') }}};
 #if SOCKET_DEBUG
-      Module.print('sendmsg curr size: ' + currNum);
+  Module.print('sendmsg curr size: ' + currNum);
 #endif
       if (!currNum) continue;
       var currBuf = {{{ makeGetValue('iov', '8*i', 'i8*') }}};
@@ -7716,7 +7716,7 @@ LibraryManager.library = {
     // if we are not connected, use the address info in the message
     if (!info.connected) {
 #if SOCKET_DEBUG
-      Module.print('recvmsg connecting');
+  Module.print('recvmsg connecting');
 #endif
       var name = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_name', '*') }}};
       assert(name, 'sendmsg on non-connected socket, and no name/address in the message');
@@ -7729,7 +7729,7 @@ LibraryManager.library = {
     var buffer = info.inQueue.shift();
     var bytes = buffer.length;
 #if SOCKET_DEBUG
-    Module.print('recvmsg bytes: ' + bytes);
+  Module.print('recvmsg bytes: ' + bytes);
 #endif
     // write source
     var name = {{{ makeGetValue('msg', 'Sockets.msghdr_layout.msg_name', '*') }}};
@@ -7743,14 +7743,14 @@ LibraryManager.library = {
     for (var i = 0; i < num && bytes > 0; i++) {
       var currNum = {{{ makeGetValue('iov', '8*i + 4', 'i32') }}};
 #if SOCKET_DEBUG
-      Module.print('recvmsg loop ' + [i, num, bytes, currNum]);
+  Module.print('recvmsg loop ' + [i, num, bytes, currNum]);
 #endif
       if (!currNum) continue;
       currNum = Math.min(currNum, bytes); // XXX what should happen when we partially fill a buffer..?
       bytes -= currNum;
       var currBuf = {{{ makeGetValue('iov', '8*i', 'i8*') }}};
 #if SOCKET_DEBUG
-      Module.print('recvmsg call recv ' + currNum);
+  Module.print('recvmsg call recv ' + currNum);
 #endif
       HEAPU8.set(buffer.subarray(bufferPos, bufferPos + currNum), currBuf);
       bufferPos += currNum;
@@ -7760,7 +7760,7 @@ LibraryManager.library = {
       if (bufferPos < bytes) {
         info.inQueue.unshift(buffer.subarray(bufferPos));
 #if SOCKET_DEBUG
-        Module.print('recvmsg: put back: ' + (bytes - bufferPos));
+  Module.print('recvmsg: put back: ' + (bytes - bufferPos));
 #endif
       }
     }
