@@ -95,4 +95,18 @@ function i32_8() {
     print(5);
   }
 }
+function sign_extension_simplification() {
+  if ((HEAP8[$4 & 16777215] & 127) << 24 >> 24 == 0) {
+    print(5);
+  }
+  if ((HEAP8[$4 & 16777215] & 128) << 24 >> 24 == 0) {
+    print(5);
+  }
+  if ((HEAP32[$5 & 16777215] & 32767) << 16 >> 16 == 0) {
+    print(5);
+  }
+  if ((HEAP32[$5 & 16777215] & 32768) << 16 >> 16 == 0) {
+    print(5);
+  }
+}
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "b", "rett", "ret2t", "retf", "i32_8"]
