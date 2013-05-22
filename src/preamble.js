@@ -813,6 +813,7 @@ function addRunDependency(id) {
   if (id) {
     assert(!runDependencyTracking[id]);
     runDependencyTracking[id] = 1;
+#if ASSERTIONS
     if (runDependencyWatcher === null && typeof setInterval !== 'undefined') {
       // Check for missing dependencies every few seconds
       runDependencyWatcher = setInterval(function() {
@@ -827,8 +828,9 @@ function addRunDependency(id) {
         if (shown) {
           Module.printErr('(end of list)');
         }
-      }, 6000);
+      }, 10000);
     }
+#endif
   } else {
     Module.printErr('warning: run dependency added without ID');
   }
