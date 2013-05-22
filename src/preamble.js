@@ -231,7 +231,7 @@ var setjmpId = 1; // Used in setjmp/longjmp
 var setjmpLabels = {};
 #endif
 
-var ABORT = false;
+var ABORT = false; // whether we are quitting the application. no code should run after this. set in exit() and abort()
 
 var undef = 0;
 // tempInt is used for 32-bit signed values or smaller. tempBigInt is used

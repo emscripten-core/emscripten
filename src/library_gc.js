@@ -26,7 +26,7 @@ if (GC_SUPPORT) {
         _GC_finalizer_notifier = _malloc(4); setValue(_GC_finalizer_notifier, 0, 'i32');
 
         if (ENVIRONMENT_IS_WEB) {
-          setInterval(function() {
+          Browser.safeSetInterval(function() {
             GC.maybeCollect();
           }, 1000);
         } else {

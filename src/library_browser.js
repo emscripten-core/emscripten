@@ -184,7 +184,7 @@ mergeInto(LibraryManager.library, {
           };
           audio.src = url;
           // workaround for chrome bug 124926 - we do not always get oncanplaythrough or onerror
-          setTimeout(function() {
+          Browser.safeSetTimeout(function() {
             finish(audio); // try to use it even though it is not necessarily ready to play
           }, 10000);
         } else {
@@ -359,6 +359,23 @@ mergeInto(LibraryManager.library, {
                                        window['setTimeout'];
       }
       window.requestAnimationFrame(func);
+    },
+
+    // abort-aware versions
+    safeRequestAnimationFrame: function(func) {
+      Browser.requestAnimationFrame(function() {
+        if (!ABORT) func();
+      });
+    },
+    safeSetTimeout: function(func, timeout) {
+      setTimeout(function() {
+        if (!ABORT) func();
+      }, timeout);
+    },
+    safeSetInterval: function(func, timeout) {
+      setInterval(function() {
+        if (!ABORT) func();
+      }, timeout);
     },
 
     getMovementX: function(event) {
@@ -612,7 +629,7 @@ mergeInto(LibraryManager.library, {
     Module['noExitRuntime'] = true;
 
     // TODO: cache these to avoid generating garbage
-    setTimeout(function() {
+    Browser.safeSetTimeout(function() {
       _emscripten_run_script(script);
     }, millis);
   },
@@ -621,6 +638,7 @@ mergeInto(LibraryManager.library, {
     Module['noExitRuntime'] = true;
 
     Browser.mainLoop.runner = function() {
+      if (ABORT) return;
       if (Browser.mainLoop.queue.length > 0) {
         var start = Date.now();
         var blocker = Browser.mainLoop.queue.shift();
@@ -723,9 +741,9 @@ mergeInto(LibraryManager.library, {
     }
 
     if (millis >= 0) {
-      setTimeout(wrapper, millis);
+      Browser.safeSetTimeout(wrapper, millis);
     } else {
-      Browser.requestAnimationFrame(wrapper);
+      Browser.safeRequestAnimationFrame(wrapper);
     }
   },
 

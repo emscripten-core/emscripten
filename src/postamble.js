@@ -104,7 +104,7 @@ function run(args) {
       setTimeout(function() {
         Module['setStatus']('');
       }, 1);
-      doRun();
+      if (!ABORT) doRun();
     }, 1);
     return 0;
   } else {

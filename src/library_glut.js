@@ -322,16 +322,17 @@ var LibraryGLUT = {
     var callback = function() {
       if (GLUT.idleFunc) {
         Runtime.dynCall('v', GLUT.idleFunc);
-        window.setTimeout(callback, 0);
+        Browser.safeSetTimeout(callback, 0);
       }
     }
-    if (!GLUT.idleFunc)
-      window.setTimeout(callback, 0);
+    if (!GLUT.idleFunc) {
+      Browser.safeSetTimeout(callback, 0);
+    }
     GLUT.idleFunc = func;
   },
 
   glutTimerFunc: function(msec, func, value) {
-    window.setTimeout(function() { Runtime.dynCall('vi', func, [value]); }, msec);
+    Browser.safeSetTimeout(function() { Runtime.dynCall('vi', func, [value]); }, msec);
   },
 
   glutDisplayFunc: function(func) {
@@ -419,6 +420,7 @@ var LibraryGLUT = {
   glutPostRedisplay: function() {
     if (GLUT.displayFunc) {
       Browser.requestAnimationFrame(function() {
+        if (ABORT) return;
         Runtime.dynCall('v', GLUT.displayFunc);
       });
     }

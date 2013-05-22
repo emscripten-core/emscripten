@@ -1197,7 +1197,7 @@ var LibrarySDL = {
 
   SDL_PauseAudio: function(pauseOn) {
     if (SDL.audio.paused !== pauseOn) {
-      SDL.audio.timer = pauseOn ? SDL.audio.timer && clearInterval(SDL.audio.timer) : setInterval(SDL.audio.caller, 1/35);
+      SDL.audio.timer = pauseOn ? SDL.audio.timer && clearInterval(SDL.audio.timer) : Browser.safeSetInterval(SDL.audio.caller, 1/35);
     }
     SDL.audio.paused = pauseOn;
   },
