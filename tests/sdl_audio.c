@@ -9,7 +9,7 @@ Mix_Chunk *sound, *sound2;
 int play2();
 
 int play() {
-  int channel = Mix_PlayChannel(-1, sound, 1);
+  int channel = Mix_PlayChannel(-1, sound, 0);
   assert(channel == 0);
 
   emscripten_run_script("setTimeout(Module['_play2'], 500)");
@@ -26,7 +26,7 @@ void done(int channel) {
 int play2() {
   Mix_ChannelFinished(done);
 
-  int channel2 = Mix_PlayChannel(-1, sound2, 1);
+  int channel2 = Mix_PlayChannel(-1, sound2, 0);
   assert(channel2 == 1);
   return channel2;
 }
