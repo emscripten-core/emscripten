@@ -7128,7 +7128,7 @@ LibraryManager.library = {
     peer: null,
     connections: {},
     portmap: {},
-    localAddr: 0xfe00000a,
+    localAddr: 0xfe00000a, // Local address is always 10.0.0.254
     addrPool: [            0x0200000a, 0x0300000a, 0x0400000a, 0x0500000a,
                0x0600000a, 0x0700000a, 0x0800000a, 0x0900000a, 0x0a00000a,
                0x0b00000a, 0x0c00000a, 0x0d00000a, 0x0e00000a], /* 0x0100000a is reserved */
@@ -7151,6 +7151,17 @@ LibraryManager.library = {
   },
 
 #if SOCKET_WEBRTC
+  /* WebRTC sockets supports several options on the Module object.
+
+     * Module['host']: true if this peer is hosting, false otherwise
+     * Module['webrtc']['broker']: hostname for the p2p broker that this peer should use
+     * Module['webrtc']['session']: p2p session for that this peer will join, or undefined if this peer is hosting
+     * Module['webrtc']['hostOptions']: options to pass into p2p library if this peer is hosting
+     * Module['webrtc']['onpeer']: function(peer, route), invoked when this peer is ready to connect
+     * Module['webrtc']['onconnect']: function(peer), invoked when a new peer connection is ready
+     * Module['webrtc']['ondisconnect']: function(peer), invoked when an existing connection is closed
+     * Module['webrtc']['onerror']: function(error), invoked when an error occurs
+   */
   socket__deps: ['$Sockets'],
   socket: function(family, type, protocol) {
     var fd = Sockets.nextFd++;
@@ -7170,6 +7181,9 @@ LibraryManager.library = {
       peer.onconnection = function(connection) {
         console.log('connected');
         var addr;
+        /* If this peer is connecting to the host, assign 10.0.0.1 to the host so it can be
+           reached at a known address.
+         */
         // Assign 10.0.0.1 to the host
         if (session && session === connection['route']) {
           addr = 0x0100000a; // 10.0.0.1
@@ -7283,7 +7297,7 @@ LibraryManager.library = {
   },
 
   connect: function() {
-
+    // Stub: connection-oriented sockets are not supported yet.
   },
 
   bind__deps: ['$Sockets', '_inet_ntop_raw', 'ntohs', 'mkport'],
