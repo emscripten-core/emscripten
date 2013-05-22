@@ -201,7 +201,8 @@ mergeInto(LibraryManager.library, {
                                   canvas['webkitRequestPointerLock'];
       canvas.exitPointerLock = document['exitPointerLock'] ||
                                document['mozExitPointerLock'] ||
-                               document['webkitExitPointerLock'];
+                               document['webkitExitPointerLock'] ||
+                               function(){}; // no-op if function does not exist
       canvas.exitPointerLock = canvas.exitPointerLock.bind(document);
 
       function pointerLockChange() {
