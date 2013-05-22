@@ -361,6 +361,13 @@ mergeInto(LibraryManager.library, {
       window.requestAnimationFrame(func);
     },
 
+    // generic abort-aware wrapper for an async callback
+    safeCallback: function(func) {
+      return function() {
+        if (!ABORT) return func.apply(null, arguments);
+      };
+    },
+
     // abort-aware versions
     safeRequestAnimationFrame: function(func) {
       Browser.requestAnimationFrame(function() {
