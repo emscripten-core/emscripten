@@ -1766,8 +1766,10 @@ function getGetElementPtrIndexes(item) {
       // We have a *variable* to index with, or a negative number. In both
       // cases, in theory we might need to do something dynamic here. FIXME?
       // But, most likely all the possible types are the same, so do that case here now...
-      for (var i = 1; i < typeData.fields.length; i++) {
-        assert(typeData.fields[0] === typeData.fields[i]);
+      if (typeData) {
+        for (var i = 1; i < typeData.fields.length; i++) {
+          assert(typeData.fields[0] === typeData.fields[i]);
+        }
       }
       curr = 0;
     }
