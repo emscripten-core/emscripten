@@ -1022,8 +1022,6 @@ try:
     logging.warning('disabling closure because debug info was requested')
     closure = False
 
-  if jcache and not keep_js_debug: print >> sys.stderr, 'emcc: warning: it is recommended to run jcache with -g when compiling bitcode to JS'
-
   if minify_whitespace is None:
     minify_whitespace = opt_level >= 2 and not keep_js_debug
 
