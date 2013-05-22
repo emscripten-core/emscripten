@@ -443,9 +443,12 @@ class Configuration:
       except Exception, e:
         logging.debug(e + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ~/.emscripten')
 
+  def get_temp_dir(self):
+    return self.TEMP_DIR if not self.DEBUG else self.EMSCRIPTEN_TEMP_DIR
+
   def get_temp_files(self):
     return tempfiles.TempFiles(
-      tmp=self.TEMP_DIR if not self.DEBUG else self.EMSCRIPTEN_TEMP_DIR,
+      tmp=self.get_temp_dir(),
       save_debug_files=os.environ.get('EMCC_DEBUG_SAVE'))
 
 configuration = Configuration(environ=os.environ)
