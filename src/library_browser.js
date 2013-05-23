@@ -384,6 +384,8 @@ mergeInto(LibraryManager.library, {
       setInterval(function() {
         if (!ABORT) func();
       }, timeout);
+    },
+
     getUserMedia: function(func) {
       if(!window.getUserMedia) {
         window.getUserMedia = navigator['getUserMedia'] ||
