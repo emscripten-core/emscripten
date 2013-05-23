@@ -159,6 +159,7 @@ for file_ in data_files:
 data_files = filter(lambda file_: not os.path.isdir(file_['name']), data_files)
 
 for file_ in data_files:
+  if file_['name'].startswith('./'): file_['name'] = file_['name'][2:] # remove redundant ./ prefix
   file_['name'] = file_['name'].replace(os.path.sep, '/') # name in the filesystem, native and emulated
   file_['localname'] = file_['name'] # name to actually load from local filesystem, after transformations
 
