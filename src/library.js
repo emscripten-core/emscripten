@@ -6186,8 +6186,9 @@ LibraryManager.library = {
   clock_gettime__deps: ['__timespec_struct_layout'],
   clock_gettime: function(clk_id, tp) {
     // int clock_gettime(clockid_t clk_id, struct timespec *tp);
-    {{{ makeSetValue('tp', '___timespec_struct_layout.tv_sec', '0', 'i32') }}}
-    {{{ makeSetValue('tp', '___timespec_struct_layout.tv_nsec', '0', 'i32') }}}
+    var now = Date.now();
+    {{{ makeSetValue('tp', '___timespec_struct_layout.tv_sec', 'Math.floor(now/1000)', 'i32') }}}; // seconds
+    {{{ makeSetValue('tp', '___timespec_struct_layout.tv_nsec', '0', 'i32') }}}; // nanoseconds - not supported
     return 0;
   },
   clock_settime: function(clk_id, tp) {
