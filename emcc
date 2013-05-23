@@ -601,7 +601,7 @@ if EMMAKEN_CFLAGS: CC_ADDITIONAL_ARGS += shlex.split(EMMAKEN_CFLAGS)
 
 # ---------------- Utilities ---------------
 
-SOURCE_SUFFIXES = ('.c', '.cpp', '.cxx', '.cc')
+SOURCE_SUFFIXES = ('.c', '.cpp', '.cxx', '.cc', '.m', '.mm')
 BITCODE_SUFFIXES = ('.bc', '.o', '.obj')
 DYNAMICLIB_SUFFIXES = ('.dylib', '.so', '.dll')
 STATICLIB_SUFFIXES = ('.a',)
@@ -629,8 +629,9 @@ header = False # pre-compiled headers. We fake that by just copying the file
 for i in range(1, len(sys.argv)):
   arg = sys.argv[i]
   if not arg.startswith('-'):
-    if arg.endswith('.c'):
-      use_cxx = False
+    for extension in ['.c','.m']:
+      if arg.endswith(extension):
+        use_cxx = False
     if arg.endswith('.h') and sys.argv[i-1] != '-include':
       header = True
 
