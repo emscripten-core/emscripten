@@ -13063,6 +13063,11 @@ elif 'benchmark' in str(sys.argv):
       src = open(path_from_root('tests', 'life.c'), 'r').read()
       self.do_benchmark('life', src, '''--------------------------------''', shared_args=['-std=c99'], force_c=True)
 
+    def test_linpack(self):
+      def output_parser(output):
+        return 100.0/float(re.search('Unrolled Double  Precision +([\d\.]+) Mflops', output).group(1))
+      self.do_benchmark('linpack', open(path_from_root('tests', 'linpack.c')).read(), '''Unrolled Double  Precision''', force_c=True, output_parser=output_parser)
+
     def test_zzz_java_nbody(self): # tests xmlvm compiled java, including bitcasts of doubles, i64 math, etc.
       args = [path_from_root('tests', 'nbody-java', x) for x in os.listdir(path_from_root('tests', 'nbody-java')) if x.endswith('.c')] + \
              ['-I' + path_from_root('tests', 'nbody-java')]
@@ -13086,7 +13091,7 @@ elif 'benchmark' in str(sys.argv):
 
     def test_zzz_lua_scimark(self):
       def output_parser(output):
-        return 1.0/float(re.search('\nSciMark +([\d\.]+) ', output).group(1))
+        return 100.0/float(re.search('\nSciMark +([\d\.]+) ', output).group(1))
 
       self.lua('scimark', '[small problem sizes]', output_parser=output_parser)
 
