@@ -403,6 +403,23 @@ function removeUnneededLabelSettings(ast) {
 // Various expression simplifications. Pre run before closure (where we still have metadata), Post run after.
 
 function simplifyExpressionsPre(ast) {
+  // Look for (x&A)<<B>>B and replace it with X&A if possible.
+  function simplifySignExtends(ast) {
+    traverseGenerated(ast, function(node, type) {
+      if (type == 'binary'       && node[1]    == '>>' && node[3][0] == 'num' &&
+          node[2][0] == 'binary' && node[2][1] == '<<' && node[2][3][0] == 'num' && node[3][1] == node[2][3][1]) {
+        var innerNode = node[2][2];
+        var shifts = node[3][1];
+        if (innerNode[0] == 'binary' && innerNode[1] == '&' && innerNode[3][0] == 'num') {
+          var mask = innerNode[3][1];
+          if (mask << shifts >> shifts == mask) {
+            return innerNode;
+          }
+        }
+      }
+    });
+  }
+
   // When there is a bunch of math like (((8+5)|0)+12)|0, only the external |0 is needed, one correction is enough.
   // At each node, ((X|0)+Y)|0 can be transformed into (X+Y): The inner corrections are not needed
   // TODO: Is the same is true for 0xff, 0xffff?
@@ -592,6 +609,7 @@ function simplifyExpressionsPre(ast) {
     });
   }
 
+  simplifySignExtends(ast);
   simplifyBitops(ast);
   joinAdditions(ast);
   // simplifyZeroComp(ast); TODO: investigate performance
