@@ -1357,7 +1357,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     var ignoreFunctionIndexizing = [];
     var useJSArgs = (simpleIdent + '__jsargs') in LibraryManager.library;
     var hasVarArgs = isVarArgsFunctionType(type);
-    var normalArgs = (hasVarArgs && !useJSArgs) ? countNormalArgs(type) : -1;
+    var normalArgs = (hasVarArgs && !useJSArgs) ? countNormalArgs(type, null, true) : -1;
     var byPointer = getVarData(funcData, ident);
     var byPointerForced = false;
 
