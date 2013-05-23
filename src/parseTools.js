@@ -129,9 +129,13 @@ function isPointerType(type) {
   return type[type.length-1] == '*';
 }
 
+function isArrayType(type) {
+  return /^\[\d+\ x\ (.*)\]/.test(type);
+}
+
 function isStructType(type) {
   if (isPointerType(type)) return false;
-  if (/^\[\d+\ x\ (.*)\]/.test(type)) return true; // [15 x ?] blocks. Like structs
+  if (isArrayType(type)) return true;
   if (/<?{ ?[^}]* ?}>?/.test(type)) return true; // { i32, i8 } etc. - anonymous struct types
   // See comment in isStructPointerType()
   return type[0] == '%';
@@ -1754,10 +1758,11 @@ function getGetElementPtrIndexes(item) {
       indexes.push(getFastValue(Runtime.getNativeTypeSize(type), '*', offset, 'i32'));
     }
   }
-  item.params.slice(2, item.params.length).forEach(function(arg) {
+  item.params.slice(2, item.params.length).forEach(function(arg, i) {
     var curr = arg;
     // TODO: If index is constant, optimize
     var typeData = Types.types[type];
+    assert(typeData || i == item.params.length - 3); // can be null, when we get to the end (a basic type)
     if (isStructType(type) && typeData.needsFlattening) {
       if (typeData.flatFactor) {
         indexes.push(getFastValue(curr, '*', typeData.flatFactor, 'i32'));
@@ -1773,16 +1778,15 @@ function getGetElementPtrIndexes(item) {
         indexes.push(curr);
       }
     }
-    if (!isNumber(curr) || parseInt(curr) < 0) {
-      // We have a *variable* to index with, or a negative number. In both
-      // cases, in theory we might need to do something dynamic here. FIXME?
-      // But, most likely all the possible types are the same, so do that case here now...
-      for (var i = 1; i < typeData.fields.length; i++) {
-        assert(typeData.fields[0] === typeData.fields[i]);
+    if (typeData) {
+      if (isArrayType(type)) {
+        type = typeData.fields[0]; // all the same, so accept even out-of-bounds this way
+      } else {
+        assert(isNumber(curr)); // cannot be dynamic
+        type = typeData.fields[curr];
       }
-      curr = 0;
+      assert(type);
     }
-    type = typeData && typeData.fields[curr] ? typeData.fields[curr] : '';
   });
 
   var ret = getFastValues(indexes, '+', 'i32');
