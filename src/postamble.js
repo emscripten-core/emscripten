@@ -55,14 +55,7 @@ Module['callMain'] = function callMain(args) {
 
 {{GLOBAL_VARS}}
 
-function run(args) {
-  args = args || Module['arguments'];
-
-  if (runDependencies > 0) {
-    Module.printErr('run() called, but dependencies remain, so not running');
-    return 0;
-  }
-
+function preRun() {
   if (Module['preRun']) {
     if (typeof Module['preRun'] == 'function') Module['preRun'] = [Module['preRun']];
     var toRun = Module['preRun'];
@@ -76,25 +69,48 @@ function run(args) {
     }
   }
 
+  if (Module['onready']) Module['onready']();
+}
+
+function postRun() {
+  if (Module['postRun']) {
+    if (typeof Module['postRun'] == 'function') Module['postRun'] = [Module['postRun']];
+    while (Module['postRun'].length > 0) {
+      Module['postRun'].pop()();
+    }
+  }
+}
+
+function run(args) {
+  args = args || Module['arguments'];
+
+  if (calledRun) {
+    Module.printErr('run() has already been called');
+    return 0;
+  }
+
+  if (runDependencies > 0) {
+    Module.printErr('run() called, but dependencies remain, so not running');
+    return 0;
+  }
+
+  calledRun = true;
+
   function doRun() {
     ensureInitRuntime();
 
     preMain();
 
     var ret = 0;
-    calledRun = true;
-    if (Module['_main'] && shouldRunNow) {
-      ret = Module['callMain'](args);
+    if (Module['_main']) {
+      ret = Module.callMain(args);
       if (!Module['noExitRuntime']) {
         exitRuntime();
       }
     }
-    if (Module['postRun']) {
-      if (typeof Module['postRun'] == 'function') Module['postRun'] = [Module['postRun']];
-      while (Module['postRun'].length > 0) {
-        Module['postRun'].pop()();
-      }
-    }
+
+    postRun();
+
     return ret;
   }
 
@@ -115,6 +131,14 @@ Module['run'] = Module.run = run;
 
 // {{PRE_RUN_ADDITIONS}}
 
+function load(onready) {
+  Module['onready'] = onready;
+
+  // Bootstrap any potential run dependencies.
+  preRun();
+}
+Module['load'] = load;
+
 if (Module['preInit']) {
   if (typeof Module['preInit'] == 'function') Module['preInit'] = [Module['preInit']];
   while (Module['preInit'].length > 0) {
@@ -122,17 +146,20 @@ if (Module['preInit']) {
   }
 }
 
-// shouldRunNow refers to calling main(), not run().
 #if INVOKE_RUN
-var shouldRunNow = true;
+var autoRun = true;
 #else
-var shouldRunNow = false;
+var autoRun = false;
 #endif
 if (Module['noInitialRun']) {
-  shouldRunNow = false;
+  autoRun = false;
 }
 
-run();
+if (autoRun) {
+  load(function () {
+    run();
+  });
+}
 
 // {{POST_RUN_ADDITIONS}}
 
