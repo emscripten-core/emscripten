@@ -6,6 +6,8 @@ target triple = "i386-pc-linux-gnu"
 
 @.str = private constant [14 x i8] c"hello, world!\00", align 1 ; [#uses=1]
 
+@.waka = extern_weak global i8* ; no initializer!
+
 define i32 @main() nounwind {
 entry:
   %z = alloca %struct.s, align 4
