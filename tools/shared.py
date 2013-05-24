@@ -631,6 +631,11 @@ def unique_ordered(values): # return a list of unique values in an input list, w
     return True
   return filter(check, values)
 
+def expand_response(data):
+  if type(data) == str and data[0] == '@':
+    return json.loads(open(data[1:]).read())
+  return data
+
 # Settings. A global singleton. Not pretty, but nicer than passing |, settings| everywhere
 
 class Settings:
@@ -1097,7 +1102,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
   @staticmethod
   def get_safe_internalize():
-    exports = ','.join(map(lambda exp: exp[1:], Settings.EXPORTED_FUNCTIONS))
+    exports = ','.join(map(lambda exp: exp[1:], expand_response(Settings.EXPORTED_FUNCTIONS)))
     # internalize carefully, llvm 3.2 will remove even main if not told not to
     return ['-internalize', '-internalize-public-api-list=' + exports]
 

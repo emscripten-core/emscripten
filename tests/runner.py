@@ -8620,6 +8620,28 @@ def process(filename):
       shutil.move(self.in_dir('src.cpp.o.js'), self.in_dir('pgoed2.js'))
       assert open('pgoed.js').read() == open('pgoed2.js').read()
 
+    def test_exported_response(self):
+      if self.emcc_args is None: return self.skip('requires emcc')
+
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        extern "C" {
+          int other_function() { return 5; }
+        }
+
+        int main() {
+          printf("waka!\n");
+          return 0;
+        }
+      '''
+      open('exps', 'w').write('["_main","_other_function"]')
+
+      self.emcc_args += ['-s', 'EXPORTED_FUNCTIONS=@exps']
+      self.do_run(src, '''waka!''')
+      assert 'other_function' in open('src.cpp.o.js').read()
+
     def test_add_function(self):
       if self.emcc_args is None: return self.skip('requires emcc')
 
