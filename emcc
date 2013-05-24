@@ -994,7 +994,7 @@ try:
   for change in settings_changes:
     key, value = change.split('=')
     if value[0] == '@':
-      value = '"' + value + '"'
+      value = '"@' + os.path.abspath(value[1:]) + '"'
     exec('shared.Settings.' + key + ' = ' + value)
 
   # Apply effects from settings

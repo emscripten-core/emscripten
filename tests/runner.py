@@ -8605,6 +8605,18 @@ def process(filename):
       open('dead_funcs', 'w').write(pgo_output[pgo_output.find('['):-1])
       self.emcc_args += ['-s', 'DEAD_FUNCTIONS=@' + self.in_dir('dead_funcs')]
       self.do_run(src, output)
+      self.emcc_args.pop()
+      self.emcc_args.pop()
+      shutil.move(self.in_dir('src.cpp.o.js'), self.in_dir('pgoed2.js'))
+      assert open('pgoed.js').read() == open('pgoed2.js').read()
+
+      # with relative response in settings element itself
+
+      open('dead_funcs', 'w').write(pgo_output[pgo_output.find('['):-1])
+      self.emcc_args += ['-s', 'DEAD_FUNCTIONS=@dead_funcs']
+      self.do_run(src, output)
+      self.emcc_args.pop()
+      self.emcc_args.pop()
       shutil.move(self.in_dir('src.cpp.o.js'), self.in_dir('pgoed2.js'))
       assert open('pgoed.js').read() == open('pgoed2.js').read()
 
