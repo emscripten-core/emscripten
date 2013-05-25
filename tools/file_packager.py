@@ -120,6 +120,8 @@ for arg in sys.argv[1:]:
       srcpath, dstpath = arg.split('@') # User is specifying destination filename explicitly.
     else:
       srcpath = dstpath = arg # Use source path as destination path.
+      if os.path.isabs(dstpath):
+        print >> sys.stderr, 'Warning: Embedding an absolute file/directory name "' + dstpath + '" to the virtual filesystem. The file will be made available in the path "' + dstpath + '", and not in the root of the generated file system. Use the explicit syntax --preload-file srcpath@dstpath to specify the target location the absolute source path should be directed to.'
     if os.path.isfile(srcpath) or os.path.isdir(srcpath):
       data_files.append({ 'srcpath': srcpath, 'dstpath': dstpath, 'mode': mode })
     else:
