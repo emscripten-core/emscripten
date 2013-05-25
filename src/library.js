@@ -5088,7 +5088,13 @@ LibraryManager.library = {
     return _malloc(size);
   },
   __cxa_free_exception: function(ptr) {
-    return _free(ptr);
+    try {
+      return _free(ptr);
+    } catch(e) { // XXX FIXME
+#if ASSERTIONS
+      Module.printErr('exception during cxa_free_exception: ' + e);
+#endif
+    }
   },
   __cxa_throw__sig: 'viii',
   __cxa_throw__deps: ['llvm_eh_exception', '_ZSt18uncaught_exceptionv', '__cxa_find_matching_catch'],
