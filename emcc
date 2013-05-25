@@ -1002,8 +1002,7 @@ try:
     assert opt_level >= 1, 'asm.js requires -O1 or above'
 
     if bind:
-      shared.Settings.ASM_JS = 0
-      logging.warning('disabling asm.js because it is not compatible with embind yet')
+      shared.Settings.RESERVED_FUNCTION_POINTERS = max(shared.Settings.RESERVED_FUNCTION_POINTERS, 10)
     if shared.Settings.CORRECT_SIGNS != 1:
       logging.warning('setting CORRECT_SIGNS to 1 for asm.js code generation')
       shared.Settings.CORRECT_SIGNS = 1
