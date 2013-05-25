@@ -5559,10 +5559,15 @@ LibraryManager.library = {
   frexp: function(x, exp_addr) {
     var sig = 0, exp_ = 0;
     if (x !== 0) {
+      var sign = 1;
+      if (x < 0) {
+        x = -x;
+        sign = -1;
+      }
       var raw_exp = Math.log(x)/Math.log(2);
       exp_ = Math.ceil(raw_exp);
       if (exp_ === raw_exp) exp_ += 1;
-      sig = x/Math.pow(2, exp_);
+      sig = sign*x/Math.pow(2, exp_);
     }
     {{{ makeSetValue('exp_addr', 0, 'exp_', 'i32') }}}
     return sig;
