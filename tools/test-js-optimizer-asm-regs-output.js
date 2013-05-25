@@ -25,15 +25,15 @@ function stackRestore(i1) {
 function switchey(d1, i2) {
   d1 = +d1;
   i2 = i2 | 0;
-  var i3 = 0, d4 = +0, i5 = 0, d6 = +0;
+  var i3 = 0, d4 = +0;
   switch (d1 | 0) {
    case 0:
-    i3 = d1 + d1 | 0;
-    d4 = d(Math_max(10, Math_min(5, f())));
-    i5 = i3 + 2 | 0;
-    print(i5);
-    d6 = d4 * 5;
-    return d6;
+    i2 = d1 + d1 | 0;
+    d1 = d(Math_max(10, Math_min(5, f())));
+    i3 = i2 + 2 | 0;
+    print(i3);
+    d4 = d1 * 5;
+    return d4;
    case 1:
     return 20;
   }

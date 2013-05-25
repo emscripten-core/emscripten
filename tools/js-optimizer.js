@@ -1505,7 +1505,7 @@ function registerize(ast) {
     // Replace all var definitions with assignments; we will add var definitions at the top after we registerize
     // We also mark local variables - i.e., having a var definition
     var localVars = {};
-    var hasSwitch = false; // we cannot optimize variables if there is a switch
+    var hasSwitch = false; // we cannot optimize variables if there is a switch, unless in asm mode
     traverse(fun, function(node, type) {
       if (type == 'var') {
         node[1].forEach(function(defined) { localVars[defined[0]] = 1 });
@@ -1630,7 +1630,7 @@ function registerize(ast) {
       }
     });
     var optimizables = {};
-    if (!hasSwitch) {
+    if (!hasSwitch || asm) {
       for (var possible in possibles) {
         if (!unoptimizables[possible]) optimizables[possible] = 1;
       }
