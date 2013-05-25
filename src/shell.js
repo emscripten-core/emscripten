@@ -1,5 +1,6 @@
 try {
   this['Module'] = Module;
+  Module.test;
 } catch(e) {
   this['Module'] = Module = {};
 }

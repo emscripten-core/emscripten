@@ -8681,6 +8681,24 @@ def process(filename):
         Settings.ALIASING_FUNCTION_POINTERS = 1 - Settings.ALIASING_FUNCTION_POINTERS # flip the test
         self.do_run(src, '''Hello 7 from JS!''')
 
+    def test_embind(self):
+      if self.emcc_args is None: return self.skip('requires emcc')
+      Building.COMPILER_TEST_OPTS += ['--bind']
+
+      src = r'''
+        #include<stdio.h>
+        #include<emscripten/val.h>
+
+        using namespace emscripten;
+
+        int main() {
+          val Math = val::global("Math");
+          printf("abs(-10): %d\n", Math.call<int>("abs", -10));
+          return 0;
+        }
+      '''
+      self.do_run(src, 'abs(-10): 10');
+
     def test_scriptaclass(self):
         if self.emcc_args is None: return self.skip('requires emcc')
 
