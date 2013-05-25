@@ -4532,6 +4532,204 @@ The current type of b is: 9
 
         self.do_run(src, '*1*', force_c=True)
 
+    def test_strtoll_hex(self):
+      # tests strtoll for hex strings (0x...) 
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        int main() {
+          const char *STRING = "0x4 -0x3A +0xDEADBEEF";
+          char *end_char;
+
+          // undefined base
+          long long int l1 = strtoll(STRING, &end_char, 0);
+          long long int l2 = strtoll(end_char, &end_char, 0);
+          long long int l3 = strtoll(end_char, NULL, 0);
+
+          // defined base
+          long long int l4 = strtoll(STRING, &end_char, 16);
+          long long int l5 = strtoll(end_char, &end_char, 16);
+          long long int l6 = strtoll(end_char, NULL, 16);
+ 
+          printf("%d%d%d%d%d%d\n", l1==0x4, l2==-0x3a, l3==0xdeadbeef, l4==0x4, l5==-0x3a, l6==0xdeadbeef);
+          return 0;
+        }
+      '''
+      self.do_run(src, '111111')
+
+    def test_strtoll_dec(self):
+      # tests strtoll for decimal strings (0x...) 
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        int main() {
+          const char *STRING = "4 -38 +4711";
+          char *end_char;
+
+          // undefined base
+          long long int l1 = strtoll(STRING, &end_char, 0);
+          long long int l2 = strtoll(end_char, &end_char, 0);
+          long long int l3 = strtoll(end_char, NULL, 0);
+
+          // defined base
+          long long int l4 = strtoll(STRING, &end_char, 10);
+          long long int l5 = strtoll(end_char, &end_char, 10);
+          long long int l6 = strtoll(end_char, NULL, 10);
+ 
+          printf("%d%d%d%d%d%d\n", l1==4, l2==-38, l3==4711, l4==4, l5==-38, l6==4711);
+          return 0;
+        }
+      '''
+      self.do_run(src, '111111')
+
+    def test_strtoll_bin(self):
+      # tests strtoll for binary strings (0x...) 
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        int main() {
+          const char *STRING = "1 -101 +1011";
+          char *end_char;
+
+          // defined base
+          long long int l4 = strtoll(STRING, &end_char, 2);
+          long long int l5 = strtoll(end_char, &end_char, 2);
+          long long int l6 = strtoll(end_char, NULL, 2);
+ 
+          printf("%d%d%d\n", l4==1, l5==-5, l6==11);
+          return 0;
+        }
+      '''
+      self.do_run(src, '111')
+
+    def test_strtoll_oct(self):
+      # tests strtoll for decimal strings (0x...) 
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        int main() {
+          const char *STRING = "0 -035 +04711";
+          char *end_char;
+
+          // undefined base
+          long long int l1 = strtoll(STRING, &end_char, 0);
+          long long int l2 = strtoll(end_char, &end_char, 0);
+          long long int l3 = strtoll(end_char, NULL, 0);
+
+          // defined base
+          long long int l4 = strtoll(STRING, &end_char, 8);
+          long long int l5 = strtoll(end_char, &end_char, 8);
+          long long int l6 = strtoll(end_char, NULL, 8);
+
+          printf("%d%d%d%d%d%d\n", l1==0, l2==-29, l3==2505, l4==0, l5==-29, l6==2505);
+          return 0;
+        }
+      '''
+      self.do_run(src, '111111')
+    
+    def test_strtol_hex(self):
+      # tests strtoll for hex strings (0x...) 
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        int main() {
+          const char *STRING = "0x4 -0x3A +0xDEAD";
+          char *end_char;
+
+          // undefined base
+          long l1 = strtol(STRING, &end_char, 0);
+          long l2 = strtol(end_char, &end_char, 0);
+          long l3 = strtol(end_char, NULL, 0);
+
+          // defined base
+          long l4 = strtol(STRING, &end_char, 16);
+          long l5 = strtol(end_char, &end_char, 16);
+          long l6 = strtol(end_char, NULL, 16);
+ 
+          printf("%d%d%d%d%d%d\n", l1==0x4, l2==-0x3a, l3==0xdead, l4==0x4, l5==-0x3a, l6==0xdead);
+          return 0;
+        }
+      '''
+      self.do_run(src, '111111')
+
+    def test_strtol_dec(self):
+      # tests strtoll for decimal strings (0x...) 
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        int main() {
+          const char *STRING = "4 -38 +4711";
+          char *end_char;
+
+          // undefined base
+          long l1 = strtol(STRING, &end_char, 0);
+          long l2 = strtol(end_char, &end_char, 0);
+          long l3 = strtol(end_char, NULL, 0);
+
+          // defined base
+          long l4 = strtol(STRING, &end_char, 10);
+          long l5 = strtol(end_char, &end_char, 10);
+          long l6 = strtol(end_char, NULL, 10);
+ 
+          printf("%d%d%d%d%d%d\n", l1==4, l2==-38, l3==4711, l4==4, l5==-38, l6==4711);
+          return 0;
+        }
+      '''
+      self.do_run(src, '111111')
+
+    def test_strtol_bin(self):
+      # tests strtoll for binary strings (0x...) 
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        int main() {
+          const char *STRING = "1 -101 +1011";
+          char *end_char;
+
+          // defined base
+          long l4 = strtol(STRING, &end_char, 2);
+          long l5 = strtol(end_char, &end_char, 2);
+          long l6 = strtol(end_char, NULL, 2);
+ 
+          printf("%d%d%d\n", l4==1, l5==-5, l6==11);
+          return 0;
+        }
+      '''
+      self.do_run(src, '111')
+
+    def test_strtol_oct(self):
+      # tests strtoll for decimal strings (0x...) 
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        int main() {
+          const char *STRING = "0 -035 +04711";
+          char *end_char;
+
+          // undefined base
+          long l1 = strtol(STRING, &end_char, 0);
+          long l2 = strtol(end_char, &end_char, 0);
+          long l3 = strtol(end_char, NULL, 0);
+
+          // defined base
+          long l4 = strtol(STRING, &end_char, 8);
+          long l5 = strtol(end_char, &end_char, 8);
+          long l6 = strtol(end_char, NULL, 8);
+
+          printf("%d%d%d%d%d%d\n", l1==0, l2==-29, l3==2505, l4==0, l5==-29, l6==2505);
+          return 0;
+        }
+      '''
+      self.do_run(src, '111111')
+
     def test_atexit(self):
       # Confirms they are called in reverse order
       src = r'''
