@@ -12,6 +12,8 @@ var RELOOP_IGNORED_LASTS = set('return', 'unreachable', 'resume');
 var addedLibraryItems = {};
 var asmLibraryFunctions = [];
 
+var SETJMP_LABEL = -1;
+
 // JSifier
 function JSify(data, functionsOnly, givenFunctions) {
   var mainPass = !functionsOnly;
@@ -730,7 +732,7 @@ function JSify(data, functionsOnly, givenFunctions) {
             }).join('\n') + '\n';
             if (func.setjmpTable && ASM_JS) {
               // emit a label in which we write to the proper local variable, before jumping to the actual label
-              ret += '  case -1111: ';
+              ret += '  case ' + SETJMP_LABEL + ': ';
               ret += func.setjmpTable.map(function(triple) { // original label, label we created for right after the setjmp, variable setjmp result goes into
                 return 'if ((setjmpLabel|0) == ' + getLabelId(triple.oldLabel) + ') { ' + triple.assignTo + ' = threwValue; label = ' + triple.newLabel + ' }\n';
               }).join(' else ');
@@ -1489,9 +1491,9 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
 
     if (ASM_JS && funcData.setjmpTable) {
-      // check if a longjmp was done. If a setjmp happened, check if ours. If ours, go to -111 to handle it.
+      // check if a longjmp was done. If a setjmp happened, check if ours. If ours, go to a special label to handle it.
       // otherwise, just return - the call to us must also have been an invoke, so the setjmp propagates that way
-      ret += '; if (((__THREW__|0) != 0) & ((threwValue|0) != 0)) { setjmpLabel = ' + asmCoercion('_testSetjmp(' + makeGetValue('__THREW__', 0, 'i32') + ', setjmpTable)', 'i32') + '; if ((setjmpLabel|0) > 0) { label = -1111; break } else return ' + (funcData.returnType != 'void' ? asmCoercion('0', funcData.returnType) : '') + ' } __THREW__ = threwValue = 0;\n';
+      ret += '; if (((__THREW__|0) != 0) & ((threwValue|0) != 0)) { setjmpLabel = ' + asmCoercion('_testSetjmp(' + makeGetValue('__THREW__', 0, 'i32') + ', setjmpTable)', 'i32') + '; if ((setjmpLabel|0) > 0) { label = ' + SETJMP_LABEL + '; break } else return ' + (funcData.returnType != 'void' ? asmCoercion('0', funcData.returnType) : '') + ' } __THREW__ = threwValue = 0;\n';
     }
 
     return ret;
