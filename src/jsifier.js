@@ -1160,6 +1160,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     return ret + ';';
   });
   makeFuncLineActor('resume', function(item) {
+    if (DISABLE_EXCEPTION_CATCHING) return 'abort()';
     if (item.ident == 0) {
       // No exception to resume, so we can just bail.
       // This is related to issue #917 and http://llvm.org/PR15518
