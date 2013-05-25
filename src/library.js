@@ -3965,8 +3965,8 @@ LibraryManager.library = {
             {{{ makeGetValue('str+1', 0, 'i8') }}} == {{{ charCode('X') }}}) {
           str += 2;
         }
-      }
-    }
+      }      
+    } 
     if (!finalBase) finalBase = 10;
 
     // Get digits.
@@ -4020,7 +4020,7 @@ LibraryManager.library = {
     var isNegative = false;
     // Skip space.
     while (_isspace({{{ makeGetValue('str', 0, 'i8') }}})) str++;
-
+    
     // Check for a plus/minus sign.
     if ({{{ makeGetValue('str', 0, 'i8') }}} == {{{ charCode('-') }}}) {
       str++;
@@ -4049,8 +4049,8 @@ LibraryManager.library = {
             {{{ makeGetValue('str+1', 0, 'i8') }}} == {{{ charCode('X') }}}) {
           str += 2;
         }
-      }
-    }
+      }      
+    } 
     if (!finalBase) finalBase = 10;
     start = str;
 
