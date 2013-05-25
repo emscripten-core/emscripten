@@ -1794,10 +1794,10 @@ function registerize(ast) {
 // In memSafe mode, we are more careful and assume functions can replace HEAP and FUNCTION_TABLE, which
 // can happen in ALLOW_MEMORY_GROWTH mode
 
-var ELIMINATION_SAFE_NODES = set('var', 'assign', 'call', 'if', 'toplevel', 'do', 'return', 'label'); // do is checked carefully, however
+var ELIMINATION_SAFE_NODES = set('var', 'assign', 'call', 'if', 'toplevel', 'do', 'return', 'label', 'switch'); // do is checked carefully, however
 var NODES_WITHOUT_ELIMINATION_SIDE_EFFECTS = set('name', 'num', 'string', 'binary', 'sub', 'unary-prefix');
 var IGNORABLE_ELIMINATOR_SCAN_NODES = set('num', 'toplevel', 'string', 'break', 'continue', 'dot'); // dot can only be STRING_TABLE.*
-var ABORTING_ELIMINATOR_SCAN_NODES = set('new', 'object', 'function', 'defun', 'switch', 'for', 'while', 'array', 'throw'); // we could handle some of these, TODO, but nontrivial (e.g. for while, the condition is hit multiple times after the body)
+var ABORTING_ELIMINATOR_SCAN_NODES = set('new', 'object', 'function', 'defun', 'for', 'while', 'array', 'throw'); // we could handle some of these, TODO, but nontrivial (e.g. for while, the condition is hit multiple times after the body)
 
 function eliminate(ast, memSafe) {
   // Find variables that have a single use, and if they can be eliminated, do so
@@ -1859,12 +1859,7 @@ function eliminate(ast, memSafe) {
     });
 
     // we cannot eliminate variables if there is a switch
-    if (traverse(func, function(node, type) {
-      if (type == 'switch') return true;
-    })) {
-      if (asm) denormalizeAsm(func, asmData);
-      return;
-    }
+    if (hasSwitch && !asm) return;
 
     var potentials = {}; // local variables with 1 definition and 1 use
     var sideEffectFree = {}; // whether a local variable has no side effects in its definition
@@ -2171,10 +2166,18 @@ function eliminate(ast, memSafe) {
               invalidateCalls();
               callsInvalidated = true;
             }
+
             allowTracking = false;
+
+            var lastAbort = abort; // do not let an abort in 2 cause 3 to be skipped
             traverseInOrder(node[2]); // 2 and 3 could be 'parallel', really..
+            var midAbort = abort;
+            abort = lastAbort;
             if (node[3]) traverseInOrder(node[3]);
+            abort = midAbort || lastAbort;
+
             allowTracking = true;
+
           } else {
             tracked = {};
             abort = true;
@@ -2206,6 +2209,22 @@ function eliminate(ast, memSafe) {
           traverseInOrder(node[1]);
           traverseInOrder(node[2]);
           traverseInOrder(node[3]);
+        } else if (type == 'switch') {
+          traverseInOrder(node[1]);
+          var cases = node[2];
+          var lastAbort = abort;
+          var finalAbort = abort;
+          for (var i = 0; i < cases.length; i++) {
+            var c = cases[i];
+            assert(c[0] === null || c[0][0] == 'num' || (c[0][0] == 'unary-prefix' && c[0][2][0] == 'num'));
+            var stats = c[1];
+            abort = lastAbort;
+            for (var j = 0; j < stats.length; j++) {
+              traverseInOrder(stats[j]);
+            }
+            finalAbort = finalAbort || abort;
+          }
+          abort = finalAbort;
         } else {
           if (!(type in ABORTING_ELIMINATOR_SCAN_NODES)) {
             printErr('unfamiliar eliminator scan node: ' + JSON.stringify(node));
@@ -2252,7 +2271,8 @@ function eliminate(ast, memSafe) {
       }
     }
     traverse(func, function(block) {
-      var stats = getStatements(block);
+      // Look for statements, including while-switch pattern
+      var stats = getStatements(block) || (block[0] == 'while' && block[2][0] == 'switch' ? [block[2]] : stats);
       if (!stats) return;
       tracked = {};
       //printErr('new StatBlock');

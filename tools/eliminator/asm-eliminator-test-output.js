@@ -107,10 +107,9 @@ function label() {
   }
 }
 function switchy() {
-  var no = 0, yes = 0, a = 0, b = 0;
+  var yes = 0;
   while (1) switch (label | 0) {
    case 1:
-    no = 100;
     break;
    case 2:
     yes = 111;
@@ -120,8 +119,6 @@ function switchy() {
     print(yes / 2);
     continue;
    case 3:
-    a = 5;
-    b = a;
     break;
   }
 }
