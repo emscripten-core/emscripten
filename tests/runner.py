@@ -4720,7 +4720,7 @@ The current type of b is: 9
       self.do_run(src, '111111')
 
     def test_strtoll_dec(self):
-      if self.emcc_args is None: return self.skip('requires emcc')
+     if self.emcc_args is None: return self.skip('requires emcc')
 
       # tests strtoll for decimal strings (0x...) 
       src = r'''
