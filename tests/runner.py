@@ -11491,7 +11491,7 @@ elif 'browser' in str(sys.argv):
             REPORT_RESULT();
             return 0;
           }
-        ''' % path))
+        ''' % path.replace(os.path.sep, '/')))
 
       make_main('somefile.txt')
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', 'somefile.txt', '-o', 'page.html']).communicate()
