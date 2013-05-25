@@ -8693,11 +8693,15 @@ def process(filename):
 
         int main() {
           val Math = val::global("Math");
+
+          // two ways to call Math.abs
           printf("abs(-10): %d\n", Math.call<int>("abs", -10));
+          printf("abs(-11): %d\n", Math["abs"](-11).as<int>());
+
           return 0;
         }
       '''
-      self.do_run(src, 'abs(-10): 10');
+      self.do_run(src, 'abs(-10): 10\nabs(-11): 11');
 
     def test_scriptaclass(self):
         if self.emcc_args is None: return self.skip('requires emcc')
