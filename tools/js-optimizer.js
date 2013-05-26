@@ -1596,7 +1596,15 @@ function registerize(ast) {
     var varLevels = {};
     var possibles = {};
     var unoptimizables = {};
-    traverse(fun, function(node, type) {
+    function purgeLevel() {
+      // Invalidate all dominating on this level, further users make it unoptimizable
+      for (var name in levelDominations[level]) {
+        varLevels[name] = 0;
+      }
+      levelDominations[level] = null;
+      level--;
+    }
+    traverse(fun, function possibilifier(node, type) {
       if (type == 'name') {
         var name = node[1];
         if (localVars[name]) {
@@ -1617,16 +1625,49 @@ function registerize(ast) {
           }
         }
       } else if (type in CONTROL_FLOW) {
-        level++;
-      }
-    }, function(node, type) {
-      if (type in CONTROL_FLOW) {
-        // Invalidate all dominating on this level, further users make it unoptimizable
-        for (var name in levelDominations[level]) {
-          varLevels[name] = 0;
+        // recurse children, in the context of a loop
+        switch(type) {
+          case 'while': case 'do': {
+            traverse(node[1], possibilifier);
+            level++;
+            traverse(node[2], possibilifier);
+            purgeLevel();
+            break;
+          }
+          case 'for': {
+            traverse(node[1], possibilifier);
+            for (var i = 2; i <= 4; i++) {
+              level++;
+              traverse(node[i], possibilifier);
+              purgeLevel();
+            }
+            break;
+          }
+          case 'if': {
+            traverse(node[1], possibilifier);
+            level++;
+            traverse(node[2], possibilifier);
+            purgeLevel();
+            if (node[3]) {
+              level++;
+              traverse(node[3], possibilifier);
+              purgeLevel();
+            }
+            break;
+          }
+          case 'switch': {
+            traverse(node[1], possibilifier);
+            var cases = node[2];
+            for (var i = 0; i < cases.length; i++) {
+              level++;
+              traverse(cases[i][1], possibilifier);
+              purgeLevel();
+            }
+            break;
+          }
+          default: throw dumpAst(node);
         }
-        levelDominations[level] = null;
-        level--;
+        return null; // prevent recursion into children, which we already did
       }
     });
     var optimizables = {};
@@ -1635,6 +1676,10 @@ function registerize(ast) {
         if (!unoptimizables[possible]) optimizables[possible] = 1;
       }
     }
+
+    //printErr('optimizables: ' + JSON.stringify(optimizables));
+    //printErr('unoptimizables: ' + JSON.stringify(unoptimizables));
+
     // Go through the function's code, assigning 'registers'.
     // The only tricky bit is to keep variables locked on a register through loops,
     // since they can potentially be returned to. Optimizable variables lock onto

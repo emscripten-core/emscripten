@@ -38,4 +38,69 @@ function switchey(d1, i2) {
     return 20;
   }
 }
+function switchey2() {
+  var i1 = 0, i2 = 0, i3 = 0, i4 = 0, i5 = 0, d6 = +0, d7 = +0, i8 = 0, i9 = 0;
+  i1 = STACKTOP;
+  STACKTOP = STACKTOP + 8 | 0;
+  i2 = 1;
+  while (1) switch (i2 | 0) {
+   case 1:
+    i3 = i1 | 0;
+    __ZN6RandomC1Ev(i3);
+    i4 = 0;
+    i5 = 0;
+    i2 = 2;
+    break;
+   case 2:
+    d6 = +__ZN6Random3getEf(8, +1);
+    d7 = +__ZN6Random3getEf(i3, +1);
+    _printf(24, (tempInt = STACKTOP, STACKTOP = STACKTOP + 16 | 0, HEAPF64[CHECK_ALIGN_8(tempInt | 0) >> 3] = d6, HEAPF64[CHECK_ALIGN_8(tempInt + 8 | 0) >> 3] = d7, tempInt) | 0);
+    i8 = (d6 != d7 & 1) + i5 | 0;
+    i9 = i4 + 1 | 0;
+    if ((i9 | 0) < 100) {
+      i4 = i9;
+      i5 = i8;
+      i2 = 2;
+      break;
+    } else {
+      i2 = 3;
+      break;
+    }
+   case 3:
+    _printf(16, (tempInt = STACKTOP, STACKTOP = STACKTOP + 8 | 0, HEAP32[CHECK_ALIGN_4(tempInt | 0) >> 2] = i8, tempInt) | 0);
+    STACKTOP = i1;
+    return 0;
+  }
+  return 0;
+}
+function iffey() {
+  var i1 = 0, i2 = 0, i3 = 0, i4 = 0, i5 = 0, d6 = +0, d7 = +0, i8 = 0, i9 = 0;
+  i1 = STACKTOP;
+  STACKTOP = STACKTOP + 8 | 0;
+  i2 = 1;
+  while (1) {
+    if (i2 | 0) {
+      i3 = i1 | 0;
+      __ZN6RandomC1Ev(i3);
+      i4 = 0;
+      i5 = 0;
+      i2 = 2;
+    } else {
+      d6 = +__ZN6Random3getEf(8, +1);
+      d7 = +__ZN6Random3getEf(i3, +1);
+      _printf(24, (tempInt = STACKTOP, STACKTOP = STACKTOP + 16 | 0, HEAPF64[CHECK_ALIGN_8(tempInt | 0) >> 3] = d6, HEAPF64[CHECK_ALIGN_8(tempInt + 8 | 0) >> 3] = d7, tempInt) | 0);
+      i8 = (d6 != d7 & 1) + i5 | 0;
+      i9 = i4 + 1 | 0;
+      if ((i9 | 0) < 100) {
+        i4 = i9;
+        i5 = i8;
+        i2 = 2;
+      } else {
+        i2 = 3;
+        return 10;
+      }
+    }
+  }
+  return 0;
+}
 
