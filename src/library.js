@@ -7584,7 +7584,7 @@ LibraryManager.library = {
   },
 
   emscripten_run_script_int: function(ptr) {
-    return eval(Pointer_stringify(ptr));
+    return eval(Pointer_stringify(ptr))|0;
   },
 
   emscripten_run_script_string: function(ptr) {
