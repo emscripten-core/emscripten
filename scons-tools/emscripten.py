@@ -265,9 +265,9 @@ def generate(env):
     )
 
     env.Replace(
-        CC='${LLVM_ROOT}/${CLANG}',
-        CXX='${LLVM_ROOT}/${CLANGXX}',
-        AR='${LLVM_ROOT}/${LLVM_LINK}',
+        CC=os.path.join('${LLVM_ROOT}', '${CLANG}'),
+        CXX=os.path.join('${LLVM_ROOT}', '${CLANGXX}'),
+        AR=os.path.join('${LLVM_ROOT}', '${LLVM_LINK}'),
         ARCOM='$AR -o $TARGET $SOURCES',
         OBJSUFFIX='.bc',
         LIBPREFIX='',
