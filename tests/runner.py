@@ -277,6 +277,33 @@ process(sys.argv[1])
       else:
         assert 'memory initializer */' in open(filename + '.o.js').read()
 
+  def generic_transform(self, basename, code):
+    def strip_leading_indentation(s):
+      def leading_whitespace(s):
+        count = 0
+        for c in s:
+          if c != ' ': break
+          count += 1
+        return count
+      lines = s.strip('\r\n').split('\n')
+      leading = min(map(lambda x: leading_whitespace(x), lines))
+      lines = map(lambda x: x[leading:], lines)
+      return '\n'.join(lines)
+
+    filename = os.path.join(self.get_dir(), basename)
+    f = open(filename, 'w')
+    code = '''import sys
+src = open(sys.argv[1], 'r').read()
+%s
+open(sys.argv[1], 'w').write(src)''' % strip_leading_indentation(code)
+    f.write(code)
+    f.close()
+    return filename
+
+  def module_addition(self, basename, code):
+    return self.generic_transform(basename,
+      '''src = src.replace('// {{MODULE_ADDITIONS}}', \'\'\'// {{MODULE_ADDITIONS}}\n%s\n\'\'\')''' % code)
+
   def run_generated_code(self, engine, filename, args=[], check_timeout=True, output_nicerizer=None):
     stdout = os.path.join(self.get_dir(), 'stdout') # use files, as PIPE can get too full and hang us
     stderr = os.path.join(self.get_dir(), 'stderr')
@@ -3058,22 +3085,20 @@ Exiting setjmp function, level: 0, prev_jmp: -1
         }
       '''
 
-      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+      transform_path = self.module_addition('transform.py', '''
         var initialStack = -1;
         var _report_stack = function(x) {
           Module.print('reported');
           initialStack = x;
         }
-        var Module = {
-          postRun: function() {
-            Module.print('postRun');
-            assert(initialStack == STACKTOP, [initialStack, STACKTOP]);
-            Module.print('ok.');
-          }
-        };
+        Module.addPostRun(function () {
+          Module.print('postRun');
+          assert(initialStack == STACKTOP, [initialStack, STACKTOP]);
+          Module.print('ok.');
+        });
       ''')
 
-      self.emcc_args += ['--pre-js', 'pre.js']
+      self.emcc_args += ['--js-transform', ('python %s' % transform_path)]
       self.do_run(src, '''reported\nExit Status: 1\npostRun\nok.\n''')
 
     def test_class(self):
@@ -5164,16 +5189,14 @@ The current type of b is: 9
         }
         '''
       Settings.BUILD_AS_SHARED_LIB = 0
-      add_pre_run_and_checks = '''
-def process(filename):
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    "FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);"
-  )
-  open(filename, 'w').write(src)
-'''
-      self.do_run(src, 'Constructing main object.\nConstructing lib object.\n',
-                  post_build=add_pre_run_and_checks)
+      transform_path = self.module_addition('transform.py', '''
+        Module.addPreRun(function (cb) {
+          FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false, cb, cb);
+        });
+      ''')
+
+      self.emcc_args += ['--js-transform', ('python %s' % transform_path)]
+      self.do_run(src, 'Constructing main object.\nConstructing lib object.\n')
 
     def test_dlfcn_qsort(self):
       return self.skip('shared libs are deprecated')
@@ -5260,17 +5283,15 @@ def process(filename):
         '''
       Settings.BUILD_AS_SHARED_LIB = 0
       Settings.EXPORTED_FUNCTIONS = ['_main']
-      add_pre_run_and_checks = '''
-def process(filename):
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    "FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);"
-  )
-  open(filename, 'w').write(src)
-'''
+      transform_path = self.module_addition('transform.py', '''
+        Module.addPreRun(function (cb) {
+          FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false, cb, cb);
+        });
+      ''')
+
+      self.emcc_args += ['--js-transform', ('python %s' % transform_path)]
       self.do_run(src, 'Sort with main comparison: 5 4 3 2 1 *Sort with lib comparison: 1 2 3 4 5 *',
-                  output_nicerizer=lambda x, err: x.replace('\n', '*'),
-                  post_build=add_pre_run_and_checks)
+                  output_nicerizer=lambda x, err: x.replace('\n', '*'))
 
     def test_dlfcn_data_and_fptr(self):
       return self.skip('shared libs are deprecated')
@@ -5365,17 +5386,15 @@ def process(filename):
       Settings.BUILD_AS_SHARED_LIB = 0
       Settings.EXPORTED_FUNCTIONS = ['_main']
       Settings.EXPORTED_GLOBALS = []
-      add_pre_run_and_checks = '''
-def process(filename):
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    "FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);"
-  )
-  open(filename, 'w').write(src)
-'''
+      transform_path = self.module_addition('transform.py', '''
+        Module.addPreRun(function (cb) {
+          FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false, cb, cb);
+        });
+      ''')
+
+      self.emcc_args += ['--js-transform', ('python %s' % transform_path)]
       self.do_run(src, 'In func: 13*First calling main_fptr from lib.*Second calling lib_fptr from main.*parent_func called from child*parent_func called from child*Var: 42*',
-                   output_nicerizer=lambda x, err: x.replace('\n', '*'),
-                   post_build=add_pre_run_and_checks)
+                   output_nicerizer=lambda x, err: x.replace('\n', '*'))
 
     def test_dlfcn_alias(self):
       return self.skip('shared libs are deprecated')
@@ -5421,17 +5440,15 @@ def process(filename):
       Settings.BUILD_AS_SHARED_LIB = 0
       Settings.INCLUDE_FULL_LIBRARY = 1
       Settings.EXPORTED_FUNCTIONS = ['_main']
-      add_pre_run_and_checks = '''
-def process(filename):
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    "FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);"
-  )
-  open(filename, 'w').write(src)
-'''
+      transform_path = self.module_addition('transform.py', '''
+        Module.addPreRun(function (cb) {
+          FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false, cb, cb);
+        });
+      ''')
+
+      self.emcc_args += ['--js-transform', ('python %s' % transform_path)]
       self.do_run(src, 'Parent global: 123.*Parent global: 456.*',
                   output_nicerizer=lambda x, err: x.replace('\n', '*'),
-                  post_build=add_pre_run_and_checks,
                   extra_emscripten_args=['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/time.h,libc/langinfo.h'])
       Settings.INCLUDE_FULL_LIBRARY = 0
 
@@ -5487,16 +5504,14 @@ def process(filename):
         '''
       Settings.BUILD_AS_SHARED_LIB = 0
       Settings.EXPORTED_FUNCTIONS = ['_main']
-      add_pre_run_and_checks = '''
-def process(filename):
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    "FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);"
-  )
-  open(filename, 'w').write(src)
-'''
-      self.do_run(src, '100\n200\n13\n42\n',
-                  post_build=add_pre_run_and_checks)
+      transform_path = self.module_addition('transform.py', '''
+        Module.addPreRun(function (cb) {
+          FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false, cb, cb);
+        });
+      ''')
+
+      self.emcc_args += ['--js-transform', ('python %s' % transform_path)]
+      self.do_run(src, '100\n200\n13\n42\n')
 
     def test_rand(self):
       return self.skip('rand() is now random') # FIXME
@@ -6249,49 +6264,36 @@ Pass: 0.000012 0.000012''')
         self.emcc_args += ['--closure', '1'] # Use closure here, to test we don't break FS stuff
 
       Settings.CORRECT_SIGNS = 1 # Just so our output is what we expect. Can flip them both.
-      post = '''
-def process(filename):
-  src = \'\'\'
-    var Module = {
-      'noFSInit': true,
-      'preRun': function() {
-        FS.createLazyFile('/', 'test.file', 'test.file', true, false);
-        // Test FS_* exporting
-        Module['FS_createDataFile']('/', 'somefile.binary', [100, 200, 50, 25, 10, 77, 123], true, false);  // 200 becomes -56, since signed chars are used in memory
-        var test_files_input = 'hi there!';
-        var test_files_input_index = 0;
-        FS.init(function() {
-          return test_files_input.charCodeAt(test_files_input_index++) || null;
-        });
-      }
-    };
-  \'\'\' + open(filename, 'r').read()
-  open(filename, 'w').write(src)
-'''
+
+      src = open(path_from_root('tests', 'files.cpp'), 'r').read()
+
       other = open(os.path.join(self.get_dir(), 'test.file'), 'w')
       other.write('some data');
       other.close()
 
-      src = open(path_from_root('tests', 'files.cpp'), 'r').read()
+      transform_path = self.module_addition('transform.py', '''
+        Module.noFSInit = true;
+        Module.addPreRun(function(cb) {
+          FS.createLazyFile('/', 'test.file', 'test.file', true, false);
+          // Test FS_* exporting
+          Module['FS_createDataFile']('/', 'somefile.binary', [100, 200, 50, 25, 10, 77, 123], true, false);  // 200 becomes -56, since signed chars are used in memory
+          var test_files_input = 'hi there!';
+          var test_files_input_index = 0;
+          FS.init(function() {
+            return test_files_input.charCodeAt(test_files_input_index++) || null;
+          });
+          cb();
+        });
+      ''')
+
+      self.emcc_args += ['--js-transform', ('python %s' % transform_path)]
       self.do_run(src, 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\nok.\n',
-                   post_build=post, extra_emscripten_args=['-H', 'libc/fcntl.h'])
+        extra_emscripten_args=['-H', 'libc/fcntl.h'])
 
     def test_files_m(self):
       # Test for Module.stdin etc.
-
       Settings.CORRECT_SIGNS = 1
 
-      post = '''
-def process(filename):
-  src = \'\'\'
-    var data = [10, 20, 40, 30];
-    var Module = {
-      stdin: function() { return data.pop() || null },
-      stdout: function(x) { Module.print('got: ' + x) }
-    };
-  \'\'\' + open(filename, 'r').read()
-  open(filename, 'w').write(src)
-'''
       src = r'''
         #include <stdio.h>
         #include <unistd.h>
@@ -6305,7 +6307,15 @@ def process(filename):
           return 0;
         }
         '''
-      self.do_run(src, 'isatty? 0,0,1\ngot: 35\ngot: 45\ngot: 25\ngot: 15\n', post_build=post)
+
+      transform_path = self.module_addition('transform.py', '''
+        var data = [10, 20, 40, 30];
+        Module.stdin = function() { return data.pop() || null };
+        Module.stdout = function(x) { Module.print('got: ' + x) };
+      ''')
+
+      self.emcc_args += ['--js-transform', ('python %s' % transform_path)]
+      self.do_run(src, 'isatty? 0,0,1\ngot: 35\ngot: 45\ngot: 25\ngot: 15\n')
 
     def test_fwrite_0(self):
       src = r'''
@@ -6395,21 +6405,6 @@ def process(filename):
       self.do_run(src, 'match = 3\nx = -1.0, y = 0.1, z = -0.1\n')
 
     def test_folders(self):
-      add_pre_run = '''
-def process(filename):
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    \'\'\'
-      FS.createFolder('/', 'test', true, false);
-      FS.createPath('/', 'test/hello/world/', true, false);
-      FS.createPath('/test', 'goodbye/world/', true, false);
-      FS.createPath('/test/goodbye', 'noentry', false, false);
-      FS.createDataFile('/test', 'freeforall.ext', 'abc', true, true);
-      FS.createDataFile('/test', 'restricted.ext', 'def', false, false);
-    \'\'\'
-  )
-  open(filename, 'w').write(src)
-'''
       src = r'''
         #include <stdio.h>
         #include <dirent.h>
@@ -6451,6 +6446,18 @@ def process(filename):
           return 0;
         }
         '''
+      transform_path = self.module_addition('transform.py', '''
+        Module.addPreRun(function (cb) {
+          FS.createFolder('/', 'test', true, false);
+          FS.createPath('/', 'test/hello/world/', true, false);
+          FS.createPath('/test', 'goodbye/world/', true, false);
+          FS.createPath('/test/goodbye', 'noentry', false, false);
+          FS.createDataFile('/test', 'freeforall.ext', 'abc', true, true);
+          FS.createDataFile('/test', 'restricted.ext', 'def', false, false);
+          cb();
+        });
+      ''')
+
       expected = '''
         --E: 0
         .
@@ -6471,81 +6478,71 @@ def process(filename):
         --E: 20, D: 0
         --E: 9
       '''
-      self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=add_pre_run)
+
+      self.emcc_args += ['--js-transform', ('python %s' % transform_path)]
+      self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected))
 
     def test_stat(self):
-      add_pre_run = '''
-def process(filename):
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    \'\'\'
-      var f1 = FS.createFolder('/', 'test', true, true);
-      var f2 = FS.createDataFile(f1, 'file', 'abcdef', true, true);
-      var f3 = FS.createLink(f1, 'link', 'file', true, true);
-      var f4 = FS.createDevice(f1, 'device', function(){}, function(){});
-      f1.timestamp = f2.timestamp = f3.timestamp = f4.timestamp = new Date(1200000000000);
-    \'\'\'
-  )
-  open(filename, 'w').write(src)
-'''
+      transform_path = self.module_addition('transform.py', '''
+        Module.addPreRun(function (cb) {
+          var f1 = FS.createFolder('/', 'test', true, true);
+          var f2 = FS.createDataFile(f1, 'file', 'abcdef', true, true);
+          var f3 = FS.createLink(f1, 'link', 'file', true, true);
+          var f4 = FS.createDevice(f1, 'device', function(){}, function(){});
+          f1.timestamp = f2.timestamp = f3.timestamp = f4.timestamp = new Date(1200000000000);
+          cb();
+        });
+      ''')
       src = open(path_from_root('tests', 'stat', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'stat', 'output.txt'), 'r').read()
-      self.do_run(src, expected, post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h'])
+      self.emcc_args += ['--js-transform', ('python %s' % transform_path)]
+      self.do_run(src, expected, extra_emscripten_args=['-H', 'libc/fcntl.h'])
 
     def test_fcntl(self):
-      add_pre_run = '''
-def process(filename):
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    "FS.createDataFile('/', 'test', 'abcdef', true, true);"
-  )
-  open(filename, 'w').write(src)
-'''
+      transform_path = self.module_addition('transform.py', '''
+        Module.addPreRun(function (cb) {
+          FS.createDataFile('/', 'test', 'abcdef', true, true);
+          cb();
+        });
+      ''')
       src = open(path_from_root('tests', 'fcntl', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'fcntl', 'output.txt'), 'r').read()
-      self.do_run(src, expected, post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h'])
+      self.emcc_args += ['--js-transform', ('python %s' % transform_path)]
+      self.do_run(src, expected, extra_emscripten_args=['-H', 'libc/fcntl.h'])
 
     def test_fcntl_open(self):
-      add_pre_run = '''
-def process(filename):
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    \'\'\'
-      FS.createDataFile('/', 'test-file', 'abcdef', true, true);
-      FS.createFolder('/', 'test-folder', true, true);
-    \'\'\'
-  )
-  open(filename, 'w').write(src)
-'''
+      transform_path = self.module_addition('transform.py', '''
+        Module.addPreRun(function (cb) {
+          FS.createDataFile('/', 'test-file', 'abcdef', true, true);
+          FS.createFolder('/', 'test-folder', true, true);
+          cb();
+        });
+      ''')
       src = open(path_from_root('tests', 'fcntl-open', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'fcntl-open', 'output.txt'), 'r').read()
-      self.do_run(src, expected, post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h'])
+      self.emcc_args += ['--js-transform', ('python %s' % transform_path)]
+      self.do_run(src, expected, extra_emscripten_args=['-H', 'libc/fcntl.h'])
 
     def test_fcntl_misc(self):
-      add_pre_run = '''
-def process(filename):
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    "FS.createDataFile('/', 'test', 'abcdef', true, true);"
-  )
-  open(filename, 'w').write(src)
-'''
+      transform_path = self.module_addition('transform.py', '''
+        Module.addPreRun(function (cb) {
+          FS.createDataFile('/', 'test', 'abcdef', true, true);
+          cb();
+        });
+      ''')
       src = open(path_from_root('tests', 'fcntl-misc', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'fcntl-misc', 'output.txt'), 'r').read()
-      self.do_run(src, expected, post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h'])
+      self.emcc_args += ['--js-transform', ('python %s' % transform_path)]
+      self.do_run(src, expected, extra_emscripten_args=['-H', 'libc/fcntl.h'])
 
     def test_poll(self):
-      add_pre_run = '''
-def process(filename):
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    \'\'\'
-      FS.createDataFile('/', 'file', 'abcdef', true, true);
-      FS.createDevice('/', 'device', function() {}, function() {});
-    \'\'\'
-  )
-  open(filename, 'w').write(src)
-'''
+      transform_path = self.module_addition('transform.py', '''
+        Module.addPreRun(function (cb) {
+          FS.createDataFile('/', 'file', 'abcdef', true, true);
+          FS.createDevice('/', 'device', function() {}, function() {});
+          cb();
+        });
+      ''')
       src = r'''
         #include <stdio.h>
         #include <errno.h>
@@ -6585,7 +6582,8 @@ def process(filename):
         multi[3].revents: 1
         multi[4].revents: 1
         '''
-      self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h,poll.h'])
+      self.emcc_args += ['--js-transform', ('python %s' % transform_path)]
+      self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected), extra_emscripten_args=['-H', 'libc/fcntl.h,poll.h'])
 
     def test_statvfs(self):
       src = r'''
@@ -6687,23 +6685,17 @@ def process(filename):
       self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected))
 
     def test_utime(self):
-      add_pre_run_and_checks = '''
-def process(filename):
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    \'\'\'
-      var TEST_F1 = FS.createFolder('/', 'writeable', true, true);
-      var TEST_F2 = FS.createFolder('/', 'unwriteable', true, false);
-    \'\'\'
-  ).replace(
-    '// {{POST_RUN_ADDITIONS}}',
-    \'\'\'
-      Module.print('first changed: ' + (TEST_F1.timestamp == 1200000000000));
-      Module.print('second changed: ' + (TEST_F2.timestamp == 1200000000000));
-    \'\'\'
-  )
-  open(filename, 'w').write(src)
-'''
+      transform_path = self.module_addition('transform.py', '''
+        Module.addPreRun(function (cb) {
+          Module.TEST_F1 = FS.createFolder('/', 'writeable', true, true);
+          Module.TEST_F2 = FS.createFolder('/', 'unwriteable', true, false);
+          cb();
+        });
+        Module.addPostRun(function (cb) {
+          Module.print('first changed: ' + (Module.TEST_F1.timestamp == 1200000000000));
+          Module.print('second changed: ' + (Module.TEST_F2.timestamp == 1200000000000));
+        });
+      ''')
       src = r'''
         #include <stdio.h>
         #include <errno.h>
@@ -6729,7 +6721,8 @@ def process(filename):
         first changed: true
         second changed: false
       '''
-      self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=add_pre_run_and_checks)
+      self.emcc_args += ['--js-transform', ('python %s' % transform_path)]
+      self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected))
 
     def test_utf(self):
       self.banned_js_engines = [SPIDERMONKEY_ENGINE] # only node handles utf well
@@ -6822,15 +6815,14 @@ def process(filename):
         self.do_run(src, "1 2 3")
 
     def test_readdir(self):
-      add_pre_run = '''
-def process(filename):
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    "FS.createFolder('', 'test', true, true);\\nFS.createLazyFile( 'test', 'some_file', 'http://localhost/some_file', true, false);\\nFS.createFolder('test', 'some_directory', true, true);"
-  )
-  open(filename, 'w').write(src)
-'''
-
+      transform_path = self.module_addition('transform.py', '''
+        Module.addPreRun(function (cb) {
+          FS.createFolder('', 'test', true, true);
+          FS.createLazyFile( 'test', 'some_file', 'http://localhost/some_file', true, false);
+          FS.createFolder('test', 'some_directory', true, true);
+          cb();
+        });
+      ''')
       src = '''
         #include <dirent.h>
         #include <stdio.h>
@@ -6851,52 +6843,39 @@ def process(filename):
         }
 
       '''
-      self.do_run(src, ". is a directory\n.. is a directory\nsome_file is a file\nsome_directory is a directory", post_build=add_pre_run)
+      self.emcc_args += ['--js-transform', ('python %s' % transform_path)]
+      self.do_run(src, ". is a directory\n.. is a directory\nsome_file is a file\nsome_directory is a directory")
 
     def test_fs_base(self):
       Settings.INCLUDE_FULL_LIBRARY = 1
       try:
-        addJS = '''
-def process(filename):
-  import tools.shared as shared
-  src = open(filename, 'r').read().replace('FS.init();', '').replace( # Disable normal initialization, replace with ours
-    '// {{PRE_RUN_ADDITIONS}}',
-    open(shared.path_from_root('tests', 'filesystem', 'src.js'), 'r').read())
-  open(filename, 'w').write(src)
-'''
+        transform_path = self.module_addition('transform.py', '''
+          // Disable normal initialization, replace with ours
+          Module.noFSInit = true;
+          ''' + open(path_from_root('tests', 'filesystem', 'src.js'), 'r').read() + '''
+        ''')
         src = 'int main() {return 0;}\n'
         expected = open(path_from_root('tests', 'filesystem', 'output.txt'), 'r').read()
-        self.do_run(src, expected, post_build=addJS, extra_emscripten_args=['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/langinfo.h,libc/time.h'])
+        self.emcc_args += ['--js-transform', ('python %s' % transform_path)]
+        self.do_run(src, expected, extra_emscripten_args=['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/langinfo.h,libc/time.h'])
       finally:
         Settings.INCLUDE_FULL_LIBRARY = 0
 
     def test_unistd_access(self):
-      add_pre_run = '''
-def process(filename):
-  import tools.shared as shared
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    open(shared.path_from_root('tests', 'unistd', 'access.js'), 'r').read()
-  )
-  open(filename, 'w').write(src)
-'''
+      transform_path = self.module_addition('transform.py',
+        open(path_from_root('tests', 'unistd', 'access.js'), 'r').read())
       src = open(path_from_root('tests', 'unistd', 'access.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'access.out'), 'r').read()
-      self.do_run(src, expected, post_build=add_pre_run)
+      self.emcc_args += ['--js-transform', ('python %s' % transform_path)]
+      self.do_run(src, expected)
 
     def test_unistd_curdir(self):
-      add_pre_run = '''
-def process(filename):
-  import tools.shared as shared
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    open(shared.path_from_root('tests', 'unistd', 'curdir.js'), 'r').read()
-  )
-  open(filename, 'w').write(src)
-'''
+      transform_path = self.module_addition('transform.py',
+        open(path_from_root('tests', 'unistd', 'curdir.js'), 'r').read());
       src = open(path_from_root('tests', 'unistd', 'curdir.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'curdir.out'), 'r').read()
-      self.do_run(src, expected, post_build=add_pre_run)
+      self.emcc_args += ['--js-transform', ('python %s' % transform_path)]
+      self.do_run(src, expected)
 
     def test_unistd_close(self):
       src = open(path_from_root('tests', 'unistd', 'close.c'), 'r').read()
@@ -6909,18 +6888,12 @@ def process(filename):
       self.do_run(src, expected, extra_emscripten_args=['-H', 'libc/unistd.h'])
 
     def test_unistd_ttyname(self):
-      add_pre_run = '''
-def process(filename):
-  import tools.shared as shared
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    open(shared.path_from_root('tests', 'unistd', 'ttyname.js'), 'r').read()
-  )
-  open(filename, 'w').write(src)
-'''
+      transform_path = self.module_addition('transform.py', 
+        open(path_from_root('tests', 'unistd', 'ttyname.js'), 'r').read())
       src = open(path_from_root('tests', 'unistd', 'ttyname.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'ttyname.out'), 'r').read()
-      self.do_run(src, expected, post_build=add_pre_run)
+      self.emcc_args += ['--js-transform', ('python %s' % transform_path)]
+      self.do_run(src, expected)
 
     def test_unistd_dup(self):
       src = open(path_from_root('tests', 'unistd', 'dup.c'), 'r').read()
@@ -6933,18 +6906,12 @@ def process(filename):
       self.do_run(src, expected)
 
     def test_unistd_truncate(self):
-      add_pre_run = '''
-def process(filename):
-  import tools.shared as shared
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    open(shared.path_from_root('tests', 'unistd', 'truncate.js'), 'r').read()
-  )
-  open(filename, 'w').write(src)
-'''
+      transform_path = self.module_addition('transform.py',
+        open(path_from_root('tests', 'unistd', 'truncate.js'), 'r').read())
       src = open(path_from_root('tests', 'unistd', 'truncate.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'truncate.out'), 'r').read()
-      self.do_run(src, expected, post_build=add_pre_run)
+      self.emcc_args += ['--js-transform', ('python %s' % transform_path)]
+      self.do_run(src, expected)
 
     def test_unistd_swab(self):
       src = open(path_from_root('tests', 'unistd', 'swab.c'), 'r').read()
@@ -6952,18 +6919,12 @@ def process(filename):
       self.do_run(src, expected)
 
     def test_unistd_isatty(self):
-      add_pre_run = '''
-def process(filename):
-  import tools.shared as shared
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    open(shared.path_from_root('tests', 'unistd', 'isatty.js'), 'r').read()
-  )
-  open(filename, 'w').write(src)
-'''
+      transform_path = self.module_addition('transform.py',
+        open(path_from_root('tests', 'unistd', 'isatty.js'), 'r').read())
       src = open(path_from_root('tests', 'unistd', 'isatty.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'isatty.out'), 'r').read()
-      self.do_run(src, expected, post_build=add_pre_run)
+      self.emcc_args += ['--js-transform', ('python %s' % transform_path)]
+      self.do_run(src, expected)
 
     def test_unistd_sysconf(self):
       src = open(path_from_root('tests', 'unistd', 'sysconf.c'), 'r').read()
@@ -6976,32 +6937,20 @@ def process(filename):
       self.do_run(src, expected)
 
     def test_unistd_unlink(self):
-      add_pre_run = '''
-def process(filename):
-  import tools.shared as shared
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    open(shared.path_from_root('tests', 'unistd', 'unlink.js'), 'r').read()
-  )
-  open(filename, 'w').write(src)
-'''
+      transform_path = self.module_addition('transform.py',
+        open(path_from_root('tests', 'unistd', 'unlink.js'), 'r').read())
       src = open(path_from_root('tests', 'unistd', 'unlink.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'unlink.out'), 'r').read()
-      self.do_run(src, expected, post_build=add_pre_run)
+      self.emcc_args += ['--js-transform', ('python %s' % transform_path)]
+      self.do_run(src, expected)
 
     def test_unistd_links(self):
-      add_pre_run = '''
-def process(filename):
-  import tools.shared as shared
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    open(shared.path_from_root('tests', 'unistd', 'links.js'), 'r').read()
-  )
-  open(filename, 'w').write(src)
-'''
+      transform_path = self.module_addition('transform.py',
+        open(path_from_root('tests', 'unistd', 'links.js'), 'r').read())
       src = open(path_from_root('tests', 'unistd', 'links.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'links.out'), 'r').read()
-      self.do_run(src, expected, post_build=add_pre_run)
+      self.emcc_args += ['--js-transform', ('python %s' % transform_path)]
+      self.do_run(src, expected)
 
     def test_unistd_sleep(self):
       src = open(path_from_root('tests', 'unistd', 'sleep.c'), 'r').read()
@@ -7009,18 +6958,12 @@ def process(filename):
       self.do_run(src, expected)
 
     def test_unistd_io(self):
-      add_pre_run = '''
-def process(filename):
-  import tools.shared as shared
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    open(shared.path_from_root('tests', 'unistd', 'io.js'), 'r').read()
-  )
-  open(filename, 'w').write(src)
-'''
+      transform_path = self.module_addition('transform.py',
+        open(path_from_root('tests', 'unistd', 'io.js'), 'r').read())
       src = open(path_from_root('tests', 'unistd', 'io.c'), 'r').read()
       expected = open(path_from_root('tests', 'unistd', 'io.out'), 'r').read()
-      self.do_run(src, expected, post_build=add_pre_run)
+      self.emcc_args += ['--js-transform', ('python %s' % transform_path)]
+      self.do_run(src, expected)
 
     def test_unistd_misc(self):
       src = open(path_from_root('tests', 'unistd', 'misc.c'), 'r').read()
@@ -7894,29 +7837,25 @@ void*:16
 
       if Settings.CORRECT_SIGNS == 0: Settings.CORRECT_SIGNS = 1 # Not sure why, but needed
 
-      post = '''
-def process(filename):
-  import tools.shared as shared
-  # Embed the font into the document
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    "FS.createDataFile('/', 'font.ttf', %s, true, false);" % str(
-      map(ord, open(shared.path_from_root('tests', 'freetype', 'LiberationSansBold.ttf'), 'rb').read())
-    )
-  )
-  open(filename, 'w').write(src)
-'''
+      transform_path = self.module_addition('transform.py', '''
+        Module.addPreRun(function (cb) {
+          FS.createDataFile('/', 'font.ttf', %s, true, false);
+          cb();
+        });
+        ''' % str(
+                map(ord, open(path_from_root('tests', 'freetype', 'LiberationSansBold.ttf'), 'rb').read())
+              ))
 
       # Not needed for js, but useful for debugging
       shutil.copyfile(path_from_root('tests', 'freetype', 'LiberationSansBold.ttf'), os.path.join(self.get_dir(), 'font.ttf'))
 
       # Main
+      self.emcc_args += ['--js-transform', ('python %s' % transform_path)]
       self.do_run(open(path_from_root('tests', 'freetype', 'main.c'), 'r').read(),
                    open(path_from_root('tests', 'freetype', 'ref.txt'), 'r').read(),
                    ['font.ttf', 'test!', '150', '120', '25'],
                    libraries=self.get_freetype(),
-                   includes=[path_from_root('tests', 'freetype', 'include')],
-                   post_build=post)
+                   includes=[path_from_root('tests', 'freetype', 'include')])
                    #build_ll_hook=self.do_autodebug)
 
       # github issue 324
@@ -7925,16 +7864,14 @@ def process(filename):
                    open(path_from_root('tests', 'freetype', 'ref_2.txt'), 'r').read(),
                    ['font.ttf', 'w', '32', '32', '25'],
                    libraries=self.get_freetype(),
-                   includes=[path_from_root('tests', 'freetype', 'include')],
-                   post_build=post)
+                   includes=[path_from_root('tests', 'freetype', 'include')],)
 
       print '[issue 324 case 2]'
       self.do_run(open(path_from_root('tests', 'freetype', 'main_3.c'), 'r').read(),
                    open(path_from_root('tests', 'freetype', 'ref_3.txt'), 'r').read(),
                    ['font.ttf', 'W', '32', '32', '0'],
                    libraries=self.get_freetype(),
-                   includes=[path_from_root('tests', 'freetype', 'include')],
-                   post_build=post)
+                   includes=[path_from_root('tests', 'freetype', 'include')])
 
       print '[issue 324 case 3]'
       self.do_run('',
@@ -8047,7 +7984,7 @@ def process(filename):
   src.write(
     \'\'\'
       FS.createDataFile('/', 'paper.pdf', eval(Module.read('paper.pdf.js')), true, false);
-      Module.callMain(Module.arguments);
+      Module.run(Module.arguments);
       Module.print("Data: " + JSON.stringify(FS.root.contents['filename-1.ppm'].contents.map(function(x) { return unSign(x, 8) })));
     \'\'\'
   )
@@ -8085,21 +8022,18 @@ def process(filename):
         Settings.CORRECT_SIGNS = 2
         Settings.CORRECT_SIGNS_LINES = ["mqc.c:566", "mqc.c:317"]
 
-      post = '''
-def process(filename):
-  import tools.shared as shared
-  original_j2k = shared.path_from_root('tests', 'openjpeg', 'syntensity_lobby_s.j2k')
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    "FS.createDataFile('/', 'image.j2k', %s, true, false);" % shared.line_splitter(str(
-      map(ord, open(original_j2k, 'rb').read())
-    ))
-  ).replace(
-    '// {{POST_RUN_ADDITIONS}}',
-    "Module.print('Data: ' + JSON.stringify(FS.analyzePath('image.raw').object.contents));"
-  )
-  open(filename, 'w').write(src)
-'''
+      transform_path = self.module_addition('transform.py', '''
+        Module.addPreRun(function (cb) {
+          FS.createDataFile('/', 'image.j2k', %s, true, false);
+          cb();
+        });
+        Module.addPostRun(function () {
+          Module.print('Data: ' + JSON.stringify(FS.analyzePath('image.raw').object.contents));
+        });
+        Module.print('Data: ' + JSON.stringify(FS.analyzePath('image.raw').object.contents));
+      ''' % line_splitter(str(
+              map(ord, open(original_j2k, 'rb').read())
+          )))
 
       shutil.copy(path_from_root('tests', 'openjpeg', 'opj_config.h'), self.get_dir())
 
@@ -8149,6 +8083,7 @@ def process(filename):
         return output
 
       self.emcc_args += ['--minify', '0'] # to compare the versions
+      self.emcc_args += ['--js-transform', ('python %s' % transform_path)]
 
       def do_test():
         self.do_run(open(path_from_root('tests', 'openjpeg', 'codec', 'j2k_to_image.c'), 'r').read(),
@@ -8160,7 +8095,6 @@ def process(filename):
                                path_from_root('tests', 'openjpeg', 'common'),
                                os.path.join(self.get_build_dir(), 'openjpeg')],
                      force_c=True,
-                     post_build=post,
                      output_nicerizer=image_compare)#, build_ll_hook=self.do_autodebug)
 
       do_test()
@@ -8458,44 +8392,39 @@ def process(filename):
         }
       '''
 
-      post = '''
-def process(filename):
-  src = \'\'\'
-    var Module = {
-      'postRun': function() {
-        Module.print('*');
-        var ret;
-        ret = Module['ccall']('get_int', 'number'); Module.print([typeof ret, ret]);
-        ret = ccall('get_float', 'number'); Module.print([typeof ret, ret.toFixed(2)]);
-        ret = ccall('get_string', 'string'); Module.print([typeof ret, ret]);
-        ret = ccall('print_int', null, ['number'], [12]); Module.print(typeof ret);
-        ret = ccall('print_float', null, ['number'], [14.56]); Module.print(typeof ret);
-        ret = ccall('print_string', null, ['string'], ["cheez"]); Module.print(typeof ret);
-        ret = ccall('print_string', null, ['array'], [[97, 114, 114, 45, 97, 121, 0]]); Module.print(typeof ret);
-        ret = ccall('multi', 'number', ['number', 'number', 'number', 'string'], [2, 1.4, 3, 'more']); Module.print([typeof ret, ret]);
-        var p = ccall('malloc', 'pointer', ['number'], [4]);
-        setValue(p, 650, 'i32');
-        ret = ccall('pointer', 'pointer', ['pointer'], [p]); Module.print([typeof ret, getValue(ret, 'i32')]);
-        Module.print('*');
-        // part 2: cwrap
-        var multi = Module['cwrap']('multi', 'number', ['number', 'number', 'number', 'string']);
-        Module.print(multi(2, 1.4, 3, 'atr'));
-        Module.print(multi(8, 5.4, 4, 'bret'));
-        Module.print('*');
-        // part 3: avoid stack explosion
-        for (var i = 0; i < TOTAL_STACK/60; i++) {
-          ccall('multi', 'number', ['number', 'number', 'number', 'string'], [0, 0, 0, '123456789012345678901234567890123456789012345678901234567890']);
-        }
-        Module.print('stack is ok.');
-      }
-    };
-  \'\'\' + open(filename, 'r').read()
-  open(filename, 'w').write(src)
-'''
+      transform_path = self.module_addition('transform.py', '''
+        Module.addPostRun(function() {
+          Module.print('*');
+          var ret;
+          ret = Module['ccall']('get_int', 'number'); Module.print([typeof ret, ret]);
+          ret = ccall('get_float', 'number'); Module.print([typeof ret, ret.toFixed(2)]);
+          ret = ccall('get_string', 'string'); Module.print([typeof ret, ret]);
+          ret = ccall('print_int', null, ['number'], [12]); Module.print(typeof ret);
+          ret = ccall('print_float', null, ['number'], [14.56]); Module.print(typeof ret);
+          ret = ccall('print_string', null, ['string'], ["cheez"]); Module.print(typeof ret);
+          ret = ccall('print_string', null, ['array'], [[97, 114, 114, 45, 97, 121, 0]]); Module.print(typeof ret);
+          ret = ccall('multi', 'number', ['number', 'number', 'number', 'string'], [2, 1.4, 3, 'more']); Module.print([typeof ret, ret]);
+          var p = ccall('malloc', 'pointer', ['number'], [4]);
+          setValue(p, 650, 'i32');
+          ret = ccall('pointer', 'pointer', ['pointer'], [p]); Module.print([typeof ret, getValue(ret, 'i32')]);
+          Module.print('*');
+          // part 2: cwrap
+          var multi = Module['cwrap']('multi', 'number', ['number', 'number', 'number', 'string']);
+          Module.print(multi(2, 1.4, 3, 'atr'));
+          Module.print(multi(8, 5.4, 4, 'bret'));
+          Module.print('*');
+          // part 3: avoid stack explosion
+          for (var i = 0; i < TOTAL_STACK/60; i++) {
+            ccall('multi', 'number', ['number', 'number', 'number', 'string'], [0, 0, 0, '123456789012345678901234567890123456789012345678901234567890']);
+          }
+          Module.print('stack is ok.');
+        });
+      ''')
 
       Settings.EXPORTED_FUNCTIONS += ['_get_int', '_get_float', '_get_string', '_print_int', '_print_float', '_print_string', '_multi', '_pointer', '_malloc']
 
-      self.do_run(src, '*\nnumber,5\nnumber,3.14\nstring,hello world\n12\nundefined\n14.56\nundefined\ncheez\nundefined\narr-ay\nundefined\nmore\nnumber,10\n650\nnumber,21\n*\natr\n10\nbret\n53\n*\nstack is ok.\n', post_build=post)
+      self.emcc_args += ['--js-transform', ('python %s' % transform_path)]
+      self.do_run(src, '*\nnumber,5\nnumber,3.14\nstring,hello world\n12\nundefined\n14.56\nundefined\ncheez\nundefined\narr-ay\nundefined\nmore\nnumber,10\n650\nnumber,21\n*\natr\n10\nbret\n53\n*\nstack is ok.\n')
 
     def test_pgo(self):
       if Settings.ASM_JS: return self.skip('PGO does not work in asm mode')
@@ -8627,14 +8556,16 @@ def process(filename):
         }
       '''
 
-      open(os.path.join(self.get_dir(), 'post.js'), 'w').write('''
-        var newFuncPtr = Runtime.addFunction(function(num) {
-          Module.print('Hello ' + num + ' from JS!');
+      transform_path = self.module_addition('transform.py', '''
+        Module.load(function () {
+          var newFuncPtr = Runtime.addFunction(function(num) {
+            Module.print('Hello ' + num + ' from JS!');
+          });
+          Module.run([newFuncPtr.toString()]);
         });
-        Module.callMain([newFuncPtr.toString()]);
       ''')
 
-      self.emcc_args += ['--post-js', 'post.js']
+      self.emcc_args += ['--js-transform', ('python %s' % transform_path)]
       self.do_run(src, '''Hello 7 from JS!''')
 
       if Settings.ASM_JS:
@@ -8933,17 +8864,16 @@ Child2:9
           #include "bindingtest.cpp"
         '''
 
-        post = '''
-def process(filename):
-  src = open(filename, 'a')
-  src.write(open('bindingtest.js').read() + '\\n\\n')
-  src.write(\'\'\'
-          var user = new Module.StringUser("hello", 43);
-          user.Print(41, "world");
-            \'\'\')
-  src.close()
-'''
-        self.do_run(src, '|hello|43|world|41|', post_build=post)
+        transform_path = self.module_addition('transform.py', '''
+        ''' + open('bindingtest.js').read() + '''
+          Module['_main'] = function () {
+            var user = new Module.StringUser("hello", 43);
+            user.Print(41, "world");
+          };
+        ''')
+
+        self.emcc_args += ['--js-transform', ('python %s' % transform_path)]
+        self.do_run(src, '|hello|43|world|41|')
 
     def test_typeinfo(self):
       if self.emcc_args is not None and self.emcc_args != []: return self.skip('full LLVM opts optimize out all the code that uses the type')
@@ -8971,31 +8901,25 @@ def process(filename):
         }
       '''
 
-      post = '''
-def process(filename):
-  src = open(filename, 'r').read().replace(
-    '// {{POST_RUN_ADDITIONS}}',
-    \'\'\'
-      if (Runtime.typeInfo) {
-        Module.print('|' + Runtime.typeInfo.UserStruct.fields + '|' + Runtime.typeInfo.UserStruct.flatIndexes + '|');
-        var t = Runtime.generateStructInfo(['x', { us: ['x', 'y', 'z'] }, 'y'], 'Encloser')
-        Module.print('|' + [t.x, t.us.x, t.us.y, t.us.z, t.y] + '|');
-        Module.print('|' + JSON.stringify(Runtime.generateStructInfo(['x', 'y', 'z'], 'UserStruct')) + '|');
-      } else {
-        Module.print('No type info.');
-      }
-    \'\'\'
-  )
-  open(filename, 'w').write(src)
-'''
+      transform_path = self.module_addition('transform.py', '''
+        Module.addPostRun(function () {
+          if (Runtime.typeInfo) {
+            Module.print('|' + Runtime.typeInfo.UserStruct.fields + '|' + Runtime.typeInfo.UserStruct.flatIndexes + '|');
+            var t = Runtime.generateStructInfo(['x', { us: ['x', 'y', 'z'] }, 'y'], 'Encloser')
+            Module.print('|' + [t.x, t.us.x, t.us.y, t.us.z, t.y] + '|');
+            Module.print('|' + JSON.stringify(Runtime.generateStructInfo(['x', 'y', 'z'], 'UserStruct')) + '|');
+          } else {
+            Module.print('No type info.');
+          }
+        });
+      ''')
 
-      self.do_run(src,
-                   '*ok:5*\n|i32,i8,i16|0,4,6|\n|0,4,8,10,12|\n|{"__size__":8,"x":0,"y":4,"z":6}|',
-                   post_build=post)
+      self.emcc_args += ['--js-transform', ('python %s' % transform_path)]
+      self.do_run(src, '*ok:5*\n|i32,i8,i16|0,4,6|\n|0,4,8,10,12|\n|{"__size__":8,"x":0,"y":4,"z":6}|')
 
       # Make sure that without the setting, we don't spam the .js with the type info
       Settings.RUNTIME_TYPE_INFO = 0
-      self.do_run(src, 'No type info.', post_build=post)
+      self.do_run(src, 'No type info.')
 
     ### Tests for tools
 
@@ -9707,12 +9631,13 @@ Options that are modified or new in %s include:
           assert 'new Uint16Array' in generated and 'new Uint32Array' in generated, 'typed arrays 2 should be used by default'
           assert 'SAFE_HEAP' not in generated, 'safe heap should not be used by default'
           assert ': while(' not in generated, 'when relooping we also js-optimize, so there should be no labelled whiles'
+
           if closure:
-            if opt_level <= 1: assert 'Module._main =' in generated, 'closure compiler should have been run'
-            elif opt_level >= 2: assert 'Module._main=' in generated, 'closure compiler should have been run (and output should be minified)'
+            if opt_level <= 1: assert 'Module["_main"] =' not in generated, 'closure compiler should have been run'
+            elif opt_level >= 2: assert 'Module["_main"] =' not in generated, 'closure compiler should have been run (and output should be minified)'
           else:
             # closure has not been run, we can do some additional checks. TODO: figure out how to do these even with closure
-            assert 'Module._main = ' not in generated, 'closure compiler should not have been run'
+            assert 'Module["_main"] = ' in generated, 'closure compiler should not have been run'
             if keep_debug:
               assert ('(label)' in generated or '(label | 0)' in generated) == (opt_level <= 1), 'relooping should be in opt >= 2'
               assert ('assert(STACKTOP < STACK_MAX' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
@@ -10624,68 +10549,54 @@ f.close()
           return 0;
         }
       ''')
-      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
-        var Module = {
-          preRun: function() { Module.print('pre-run') },
-          postRun: function() { Module.print('post-run') }
-        };
+
+      transform_path = self.module_addition('transform.py', '''
+        Module.addPreRun(function (cb) { Module.print('pre-run'); cb(null); });
+        Module.addPostRun(function() { Module.print('post-run'); });
       ''')
 
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js']).communicate()
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--js-transform', ('python %s' % transform_path)]).communicate()
       self.assertContained('pre-run\nhello from main\npost-run\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
       # never run, so no preRun or postRun
-      src = open(os.path.join(self.get_dir(), 'a.out.js')).read().replace('// {{PRE_RUN_ADDITIONS}}', 'addRunDependency()')
-      open(os.path.join(self.get_dir(), 'a.out.js'), 'w').write(src)
+      transform_path = self.module_addition('transform.py', '''
+        Module.addPreRun(function (cb) {
+          // Kill off in a few ms.
+          setTimeout(function () { throw new Error('done'); }, 100);
+        });
+      ''')
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--js-transform', ('python %s' % transform_path)]).communicate()
       self.assertNotContained('pre-run\nhello from main\npost-run\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
       # noInitialRun prevents run
       for no_initial_run, run_dep in [(0, 0), (1, 0), (0, 1)]:
         print no_initial_run, run_dep
-        Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp')]).communicate()
-        src = 'var Module = { noInitialRun: %d };\n' % no_initial_run + open(os.path.join(self.get_dir(), 'a.out.js')).read()
+        
+        transform = ''
         if run_dep:
-          src = src.replace('// {{PRE_RUN_ADDITIONS}}', '// {{PRE_RUN_ADDITIONS}}\naddRunDependency("test");') \
-                   .replace('// {{POST_RUN_ADDITIONS}}', '// {{POST_RUN_ADDITIONS}}\nremoveRunDependency("test");')
-        open(os.path.join(self.get_dir(), 'a.out.js'), 'w').write(src)
+          transform = '''
+            Module.addPreRun(function (cb) { setTimeout(function () { cb(null); }); });
+          '''
+        transform_path = self.module_addition('transform.py', transform)
+        Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-s', 'INVOKE_RUN=' + ('0' if no_initial_run else '1'), '--js-transform', ('python %s' % transform_path)]).communicate()
         assert ('hello from main' in run_js(os.path.join(self.get_dir(), 'a.out.js'))) != no_initial_run, 'only run if no noInitialRun'
 
         if no_initial_run:
           # Calling main later should still work, filesystem etc. must be set up.
           print 'call main later'
-          src = open(os.path.join(self.get_dir(), 'a.out.js')).read() + '\nModule.callMain();\n';
+          src = open(os.path.join(self.get_dir(), 'a.out.js')).read() + '\nModule.run();\n';
           open(os.path.join(self.get_dir(), 'a.out.js'), 'w').write(src)
           assert 'hello from main' in run_js(os.path.join(self.get_dir(), 'a.out.js')), 'main should print when called manually'
 
       # Use postInit
-      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
-        var Module = {
-          preRun: function() { Module.print('pre-run') },
-          postRun: function() { Module.print('post-run') },
-          preInit: function() { Module.print('pre-init') }
-        };
+      transform_path = self.module_addition('transform.py', '''
+        Module.addPreInit(function(cb) { Module.print('pre-init'); cb(null); });
+        Module.addPreRun(function(cb) { Module.print('pre-run'); cb(null); });
+        Module.addPostRun(function() { Module.print('post-run'); });
       ''')
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js']).communicate()
-      self.assertContained('pre-init\npre-run\nhello from main\npost-run\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
-    def test_prepost2(self):
-      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
-        #include <stdio.h>
-        int main() {
-          printf("hello from main\\n");
-          return 0;
-        }
-      ''')
-      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
-        var Module = {
-          preRun: function() { Module.print('pre-run') },
-        };
-      ''')
-      open(os.path.join(self.get_dir(), 'pre2.js'), 'w').write('''
-        Module.postRun = function() { Module.print('post-run') };
-      ''')
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '--pre-js', 'pre2.js']).communicate()
-      self.assertContained('pre-run\nhello from main\npost-run\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--js-transform', ('python %s' % transform_path)]).communicate()
+      self.assertContained('pre-init\npre-run\nhello from main\npost-run\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
     def test_prepre(self):
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
@@ -10695,16 +10606,12 @@ f.close()
           return 0;
         }
       ''')
-      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
-        var Module = {
-          preRun: [function() { Module.print('pre-run') }],
-        };
+      transform_path = self.module_addition('transform.py', '''
+        Module.addPreRun(function (cb) { Module.print('pre-run'); cb(null); });
+        Module.addPreRun(function (cb) { Module.print('prepre'); cb(null); });
       ''')
-      open(os.path.join(self.get_dir(), 'pre2.js'), 'w').write('''
-        Module.preRun.push(function() { Module.print('prepre') });
-      ''')
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '--pre-js', 'pre2.js']).communicate()
-      self.assertContained('prepre\npre-run\nhello from main\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--js-transform', ('python %s' % transform_path)]).communicate()
+      self.assertContained('pre-run\nprepre\nhello from main\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
     def test_save_bc(self):
       for save in [0, 1]:
@@ -11095,9 +11002,8 @@ elif 'browser' in str(sys.argv):
     httpd.serve_forever() # test runner will kill us
 
   class browser(RunnerCore):
-    def __init__(self, *args, **kwargs):
-      super(browser, self).__init__(*args, **kwargs)
-
+    @classmethod
+    def setUpClass(cls):
       if hasattr(browser, 'harness_server'): return
       browser.harness_queue = multiprocessing.Queue()
       browser.harness_server = multiprocessing.Process(target=harness_server_func, args=(browser.harness_queue,))
@@ -11105,7 +11011,8 @@ elif 'browser' in str(sys.argv):
       print '[Browser harness server on process %d]' % browser.harness_server.pid
       webbrowser.open_new('http://localhost:9999/run_harness')
 
-    def __del__(self):
+    @classmethod
+    def tearDownClass(cls):
       if not hasattr(browser, 'harness_server'): return
 
       browser.harness_server.terminate()
@@ -11161,8 +11068,8 @@ elif 'browser' in str(sys.argv):
     def reftest(self, expected):
       basename = os.path.basename(expected)
       shutil.copyfile(expected, os.path.join(self.get_dir(), basename))
-      open(os.path.join(self.get_dir(), 'reftest.js'), 'w').write('''
-        function doReftest() {
+      return self.module_addition('reftest.py', '''
+        function doReftest(cb) {
           if (doReftest.done) return;
           doReftest.done = true;
           var img = new Image();
@@ -11208,16 +11115,21 @@ elif 'browser' in str(sys.argv):
           }
           img.src = '%s';
         };
-        Module['postRun'] = doReftest;
-        Module['preRun'].push(function() {
+
+        Module.addPreRun(function(cb) {
           setTimeout(doReftest, 1000); // if run() throws an exception and postRun is not called, this will kick in
+          cb();
         });
-''' % basename)
+
+        Module.addPostRun(function () {
+          doReftest();
+        });
+      ''' % basename)
 
     def test_html(self):
       # test HTML generation.
-      self.reftest(path_from_root('tests', 'htmltest.png'))
-      output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.html',  '--pre-js', 'reftest.js']).communicate()
+      reftest_path = self.reftest(path_from_root('tests', 'htmltest.png'))
+      output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.html', '--js-transform', ('python %s' % reftest_path)]).communicate()
       self.run_browser('something.html', 'You should see "hello, world!" and a colored cube.', '/report_result?0')
 
     def build_native_lzma(self):
@@ -11233,8 +11145,8 @@ elif 'browser' in str(sys.argv):
 
     def test_split(self):
       # test HTML generation.
-      self.reftest(path_from_root('tests', 'htmltest.png'))
-      output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.js', '--split', '100', '--pre-js', 'reftest.js']).communicate()
+      reftest_path = self.reftest(path_from_root('tests', 'htmltest.png'))
+      output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'INVOKE_RUN=0', '-o', 'something.js', '--split', '100', '--js-transform', ('python %s' % reftest_path)]).communicate()
       assert os.path.exists(os.path.join(self.get_dir(), 'something.js')), 'must be main js file'
       assert os.path.exists(os.path.join(self.get_dir(), 'something_functions.js')), 'must be functions js file'
       assert os.path.exists(os.path.join(self.get_dir(), 'something.include.html')), 'must be js include file'
@@ -11266,57 +11178,56 @@ elif 'browser' in str(sys.argv):
           <hr/>
           <textarea class="emscripten" id="output" rows="8"></textarea>
           <hr>
-          <script type='text/javascript'>
+          <script type="text/javascript">
+            function setStatus(text) {
+              var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
+              var statusElement = document.getElementById('status');
+              var progressElement = document.getElementById('progress');
+              if (m) {
+                text = m[1];
+                progressElement.value = parseInt(m[2])*100;
+                progressElement.max = parseInt(m[4])*100;
+                progressElement.hidden = false;
+              } else {
+                progressElement.value = null;
+                progressElement.max = null;
+                progressElement.hidden = true;
+              }
+              statusElement.innerHTML = text;
+            }
+            function setProgress(left, total) {
+              setStatus(left ? 'Preparing... (' + (total-left) + '/' + total + ')' : 'All downloads complete.');
+            }
+            setStatus('Downloading...');
+          </script>
+          ''' + open(os.path.join(self.get_dir(), 'something.include.html')).read() + '''
+          <script type="text/javascript">
             // connect to canvas
-            var Module = {
-              preRun: [],
-              postRun: [],
-              print: (function() {
-                var element = document.getElementById('output');
-                element.value = ''; // clear browser cache
-                return function(text) {
-                  // These replacements are necessary if you render to raw HTML
-                  //text = text.replace(/&/g, "&amp;");
-                  //text = text.replace(/</g, "&lt;");
-                  //text = text.replace(/>/g, "&gt;");
-                  //text = text.replace('\\n', '<br>', 'g');
-                  element.value += text + "\\n";
-                  element.scrollTop = 99999; // focus on bottom
-                };
-              })(),
-              printErr: function(text) {
-                if (0) { // XXX disabled for safety typeof dump == 'function') {
-                  dump(text + '\\n'); // fast, straight to the real console
-                } else {
-                  console.log(text);
-                }
-              },
-              canvas: document.getElementById('canvas'),
-              setStatus: function(text) {
-                if (Module.setStatus.interval) clearInterval(Module.setStatus.interval);
-                var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
-                var statusElement = document.getElementById('status');
-                var progressElement = document.getElementById('progress');
-                if (m) {
-                  text = m[1];
-                  progressElement.value = parseInt(m[2])*100;
-                  progressElement.max = parseInt(m[4])*100;
-                  progressElement.hidden = false;
-                } else {
-                  progressElement.value = null;
-                  progressElement.max = null;
-                  progressElement.hidden = true;
-                }
-                statusElement.innerHTML = text;
-              },
-              totalDependencies: 0,
-              monitorRunDependencies: function(left) {
-                this.totalDependencies = Math.max(this.totalDependencies, left);
-                Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
+            Module.canvas = document.getElementById('canvas');
+            Module.print = (function() {
+              var element = document.getElementById('output');
+              element.value = ''; // clear browser cache
+              return function(text) {
+                // These replacements are necessary if you render to raw HTML
+                //text = text.replace(/&/g, "&amp;");
+                //text = text.replace(/</g, "&lt;");
+                //text = text.replace(/>/g, "&gt;");
+                //text = text.replace('\\n', '<br>', 'g');
+                element.value += text + "\\n";
+                element.scrollTop = 99999; // focus on bottom
+              };
+            })();
+            Module.printErr = function(text) {
+              if (0) { // XXX disabled for safety typeof dump == 'function') {
+                dump(text + '\\n'); // fast, straight to the real console
+              } else {
+                console.log(text);
               }
             };
-            Module.setStatus('Downloading...');
-          </script>''' + open(os.path.join(self.get_dir(), 'something.include.html')).read() + '''
+            Module.setStatus = window.setStatus;
+            Module.monitorRunDependencies = window.setProgress;
+            Module.load(Module.run);
+          </script>
         </body>
       </html>
       ''')
@@ -11324,8 +11235,8 @@ elif 'browser' in str(sys.argv):
       self.run_browser('something.html', 'You should see "hello, world!" and a colored cube.', '/report_result?0')
 
     def test_split_in_source_filenames(self):
-      self.reftest(path_from_root('tests', 'htmltest.png'))
-      output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.js', '-g', '--split', '100', '--pre-js', 'reftest.js']).communicate()
+      reftest_path = self.reftest(path_from_root('tests', 'htmltest.png'))
+      output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.js', '-g', '--split', '100', '--js-transform', ('python %s' % reftest_path)]).communicate()
       assert os.path.exists(os.path.join(self.get_dir(), 'something.js')), 'must be main js file'
       assert os.path.exists(self.get_dir() + '/something/' + path_from_root('tests', 'hello_world_sdl.cpp.js')), 'must be functions js file'
       assert os.path.exists(os.path.join(self.get_dir(), 'something.include.html')), 'must be js include file'
@@ -11358,56 +11269,56 @@ elif 'browser' in str(sys.argv):
           <textarea class="emscripten" id="output" rows="8"></textarea>
           <hr>
           <script type='text/javascript'>
+            function setStatus(text) {
+              var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
+              var statusElement = document.getElementById('status');
+              var progressElement = document.getElementById('progress');
+              if (m) {
+                text = m[1];
+                progressElement.value = parseInt(m[2])*100;
+                progressElement.max = parseInt(m[4])*100;
+                progressElement.hidden = false;
+              } else {
+                progressElement.value = null;
+                progressElement.max = null;
+                progressElement.hidden = true;
+              }
+              statusElement.innerHTML = text;
+            }
+            function setProgress(left, total) {
+              setStatus(left ? 'Preparing... (' + (total-left) + '/' + total + ')' : 'All downloads complete.');
+            }
+            setStatus('Downloading...');
+          </script>
+          ''' + open(os.path.join(self.get_dir(), 'something.include.html')).read() + '''
+          <script type="text/javascript">
             // connect to canvas
-            var Module = {
-              preRun: [],
-              postRun: [],
-              print: (function() {
-                var element = document.getElementById('output');
-                element.value = ''; // clear browser cache
-                return function(text) {
-                  // These replacements are necessary if you render to raw HTML
-                  //text = text.replace(/&/g, "&amp;");
-                  //text = text.replace(/</g, "&lt;");
-                  //text = text.replace(/>/g, "&gt;");
-                  //text = text.replace('\\n', '<br>', 'g');
-                  element.value += text + "\\n";
-                  element.scrollTop = 99999; // focus on bottom
-                };
-              })(),
-              printErr: function(text) {
-                if (0) { // XXX disabled for safety typeof dump == 'function') {
-                  dump(text + '\\n'); // fast, straight to the real console
-                } else {
-                  console.log(text);
-                }
-              },
-              canvas: document.getElementById('canvas'),
-              setStatus: function(text) {
-                if (Module.setStatus.interval) clearInterval(Module.setStatus.interval);
-                var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
-                var statusElement = document.getElementById('status');
-                var progressElement = document.getElementById('progress');
-                if (m) {
-                  text = m[1];
-                  progressElement.value = parseInt(m[2])*100;
-                  progressElement.max = parseInt(m[4])*100;
-                  progressElement.hidden = false;
-                } else {
-                  progressElement.value = null;
-                  progressElement.max = null;
-                  progressElement.hidden = true;
-                }
-                statusElement.innerHTML = text;
-              },
-              totalDependencies: 0,
-              monitorRunDependencies: function(left) {
-                this.totalDependencies = Math.max(this.totalDependencies, left);
-                Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
+            Module.canvas = document.getElementById('canvas');
+            Module.print = (function() {
+              var element = document.getElementById('output');
+              element.value = ''; // clear browser cache
+              return function(text) {
+                // These replacements are necessary if you render to raw HTML
+                //text = text.replace(/&/g, "&amp;");
+                //text = text.replace(/</g, "&lt;");
+                //text = text.replace(/>/g, "&gt;");
+                //text = text.replace('\\n', '<br>', 'g');
+                element.value += text + "\\n";
+                element.scrollTop = 99999; // focus on bottom
+              };
+            })();
+            Module.printErr = function(text) {
+              if (0) { // XXX disabled for safety typeof dump == 'function') {
+                dump(text + '\\n'); // fast, straight to the real console
+              } else {
+                console.log(text);
               }
             };
-            Module.setStatus('Downloading...');
-          </script>''' + open(os.path.join(self.get_dir(), 'something.include.html')).read() + '''
+            Module.setStatus = window.setStatus;
+            Module.monitorRunDependencies = window.setProgress;
+
+            Module.load(Module.run);
+          </script>
         </body>
       </html>
       ''')
@@ -11480,14 +11391,14 @@ elif 'browser' in str(sys.argv):
       self.run_browser('dirrey/page.html', 'You should see |load me right before|.', '/report_result?1')
 
       # With FS.preloadFile
-
-      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
-        Module.preRun = function() {
-          FS.createPreloadedFile('/', 'someotherfile.txt', 'somefile.txt', true, false);
-        };
+      transform_path = self.module_addition('transform.py', '''
+        Module.addPreRun(function(cb) {
+          FS.createPreloadedFile('/', 'someotherfile.txt', 'somefile.txt', true, false, cb, cb);
+        });
       ''')
+
       make_main('someotherfile.txt')
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '-o', 'page.html']).communicate()
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--js-transform', ('python %s' % transform_path), '-o', 'page.html']).communicate()
       self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
 
     def test_preload_caching(self):
@@ -11671,14 +11582,16 @@ elif 'browser' in str(sys.argv):
       self.run_browser('page.html', '', '/report_result?1')
 
     def test_sdl_key(self):
-      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
-        Module.postRun = function() {
+      open(os.path.join(self.get_dir(), 'sdl_key.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_key.c')).read()))
+
+      transform_path = self.module_addition('transform.py', '''
+        Module.addPostRun(function() {
           function doOne() {
             Module._one();
             setTimeout(doOne, 1000/60);
           }
           setTimeout(doOne, 1000/60);
-        }
+        });
 
         function simulateKeyEvent(c) {
           var event = document.createEvent("KeyboardEvent");
@@ -11693,20 +11606,19 @@ elif 'browser' in str(sys.argv):
           document.dispatchEvent(event2);
         }
       ''')
-      open(os.path.join(self.get_dir(), 'sdl_key.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_key.c')).read()))
 
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_key.c'), '-o', 'page.html', '--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']''']).communicate()
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_key.c'), '--js-transform', ('python %s' % transform_path), '-o', 'page.html', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']''']).communicate()
       self.run_browser('page.html', '', '/report_result?510510')
 
     def test_sdl_text(self):
-      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
-        Module.postRun = function() {
+      transform_path = self.module_addition('transform.py', '''
+        Module.addPostRun(function() {
           function doOne() {
             Module._one();
             setTimeout(doOne, 1000/60);
           }
           setTimeout(doOne, 1000/60);
-        }
+        });
 
         function simulateKeyEvent(charCode) {
           var event = document.createEvent("KeyboardEvent");
@@ -11717,11 +11629,11 @@ elif 'browser' in str(sys.argv):
       ''')
       open(os.path.join(self.get_dir(), 'sdl_text.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_text.c')).read()))
 
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_text.c'), '-o', 'page.html', '--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']''']).communicate()
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_text.c'), '-o', 'page.html', '--js-transform', ('python %s' % transform_path), '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']''']).communicate()
       self.run_browser('page.html', '', '/report_result?1')
 
     def test_sdl_mouse(self):
-      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+      transform_path = self.module_addition('transform.py', '''
         function simulateMouseEvent(x, y, button) {
           var event = document.createEvent("MouseEvents");
           if (button >= 0) {
@@ -11750,11 +11662,11 @@ elif 'browser' in str(sys.argv):
       ''')
       open(os.path.join(self.get_dir(), 'sdl_mouse.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_mouse.c')).read()))
 
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_mouse.c'), '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js']).communicate()
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_mouse.c'), '--js-transform', ('python %s' % transform_path), '-O2', '--minify', '0', '-o', 'page.html']).communicate()
       self.run_browser('page.html', '', '/report_result?740')
 
     def test_sdl_mouse_offsets(self):
-      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+      transform_path = self.module_addition('transform.py', '''
         function simulateMouseEvent(x, y, button) {
           var event = document.createEvent("MouseEvents");
           if (button >= 0) {
@@ -11781,6 +11693,7 @@ elif 'browser' in str(sys.argv):
         }
         window['simulateMouseEvent'] = simulateMouseEvent;
       ''')
+
       open(os.path.join(self.get_dir(), 'page.html'), 'w').write('''
         <html>
           <head>
@@ -11808,27 +11721,25 @@ elif 'browser' in str(sys.argv):
               <canvas id="canvas"></canvas>
             </div>
             <textarea id="output" rows="8"></textarea>
-            <script type="text/javascript">
-              var Module = {
-                canvas: document.getElementById('canvas'),
-                print: (function() {
-                  var element = document.getElementById('output');
-                  element.value = ''; // clear browser cache
-                  return function(text) {
-                    text = Array.prototype.slice.call(arguments).join(' ');
-                    element.value += text + "\\n";
-                    element.scrollTop = 99999; // focus on bottom
-                  };
-                })()
-              };
-            </script>
             <script type="text/javascript" src="sdl_mouse.js"></script>
+            <script type="text/javascript">
+              Module.canvas = document.getElementById('canvas');
+              Module.print = (function() {
+                var element = document.getElementById('output');
+                element.value = ''; // clear browser cache
+                return function(text) {
+                  text = Array.prototype.slice.call(arguments).join(' ');
+                  element.value += text + "\\n";
+                  element.scrollTop = 99999; // focus on bottom
+                };
+              })();
+            </script>
           </body>
         </html>
       ''')
       open(os.path.join(self.get_dir(), 'sdl_mouse.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_mouse.c')).read()))
 
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_mouse.c'), '-O2', '--minify', '0', '-o', 'sdl_mouse.js', '--pre-js', 'pre.js']).communicate()
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_mouse.c'), '--js-transform', ('python %s' % transform_path), '-O2', '--minify', '0', '-o', 'sdl_mouse.js']).communicate()
       self.run_browser('page.html', '', '/report_result?600')
 
     def test_sdl_audio(self):
@@ -11863,51 +11774,51 @@ elif 'browser' in str(sys.argv):
 
     def test_sdl_ogl(self):
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.reftest(path_from_root('tests', 'screenshot-gray-purple.png'))
-      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_ogl.c'), '-O2', '--minify', '0', '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png', '-s', 'GL_TESTING=1']).communicate()
+      reftest_path = self.reftest(path_from_root('tests', 'screenshot-gray-purple.png'))
+      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_ogl.c'), '-O2', '--minify', '0', '-o', 'something.html', '--js-transform', ('python %s' % reftest_path), '--preload-file', 'screenshot.png', '-s', 'GL_TESTING=1']).communicate()
       self.run_browser('something.html', 'You should see an image with gray at the top.', '/report_result?0')
 
     def test_sdl_ogl_defaultmatrixmode(self):
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.reftest(path_from_root('tests', 'screenshot-gray-purple.png'))
-      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_ogl_defaultMatrixMode.c'), '--minify', '0', '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png', '-s', 'GL_TESTING=1']).communicate()
+      reftest_path = self.reftest(path_from_root('tests', 'screenshot-gray-purple.png'))
+      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_ogl_defaultMatrixMode.c'), '--minify', '0', '-o', 'something.html', '--js-transform', ('python %s' % reftest_path), '--preload-file', 'screenshot.png', '-s', 'GL_TESTING=1']).communicate()
       self.run_browser('something.html', 'You should see an image with gray at the top.', '/report_result?0')
 
     def test_sdl_ogl_p(self):
       # Immediate mode with pointers
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.reftest(path_from_root('tests', 'screenshot-gray.png'))
-      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_ogl_p.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png', '-s', 'GL_TESTING=1']).communicate()
+      reftest_path = self.reftest(path_from_root('tests', 'screenshot-gray.png'))
+      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_ogl_p.c'), '-o', 'something.html', '--js-transform', ('python %s' % reftest_path), '--preload-file', 'screenshot.png', '-s', 'GL_TESTING=1']).communicate()
       self.run_browser('something.html', 'You should see an image with gray at the top.', '/report_result?0')
 
     def test_sdl_fog_simple(self):
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.reftest(path_from_root('tests', 'screenshot-fog-simple.png'))
-      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_fog_simple.c'), '-O2', '--minify', '0', '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png', '-s', 'GL_TESTING=1']).communicate()
+      reftest_path = self.reftest(path_from_root('tests', 'screenshot-fog-simple.png'))
+      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_fog_simple.c'), '-O2', '--minify', '0', '-o', 'something.html', '--js-transform', ('python %s' % reftest_path), '--preload-file', 'screenshot.png', '-s', 'GL_TESTING=1']).communicate()
       self.run_browser('something.html', 'You should see an image with fog.', '/report_result?0')
 
     def test_sdl_fog_negative(self):
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.reftest(path_from_root('tests', 'screenshot-fog-negative.png'))
-      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_fog_negative.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png', '-s', 'GL_TESTING=1']).communicate()
+      reftest_path = self.reftest(path_from_root('tests', 'screenshot-fog-negative.png'))
+      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_fog_negative.c'), '-o', 'something.html', '--js-transform', ('python %s' % reftest_path), '--preload-file', 'screenshot.png', '-s', 'GL_TESTING=1']).communicate()
       self.run_browser('something.html', 'You should see an image with fog.', '/report_result?0')
 
     def test_sdl_fog_density(self):
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.reftest(path_from_root('tests', 'screenshot-fog-density.png'))
-      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_fog_density.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png', '-s', 'GL_TESTING=1']).communicate()
+      reftest_path = self.reftest(path_from_root('tests', 'screenshot-fog-density.png'))
+      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_fog_density.c'), '-o', 'something.html', '--js-transform', ('python %s' % reftest_path), '--preload-file', 'screenshot.png', '-s', 'GL_TESTING=1']).communicate()
       self.run_browser('something.html', 'You should see an image with fog.', '/report_result?0')
 
     def test_sdl_fog_exp2(self):
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.reftest(path_from_root('tests', 'screenshot-fog-exp2.png'))
-      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_fog_exp2.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png', '-s', 'GL_TESTING=1']).communicate()
+      reftest_path = self.reftest(path_from_root('tests', 'screenshot-fog-exp2.png'))
+      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_fog_exp2.c'), '-o', 'something.html', '--js-transform', ('python %s' % reftest_path), '--preload-file', 'screenshot.png', '-s', 'GL_TESTING=1']).communicate()
       self.run_browser('something.html', 'You should see an image with fog.', '/report_result?0')
 
     def test_sdl_fog_linear(self):
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.reftest(path_from_root('tests', 'screenshot-fog-linear.png'))
-      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_fog_linear.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png', '-s', 'GL_TESTING=1']).communicate()
+      reftest_path = self.reftest(path_from_root('tests', 'screenshot-fog-linear.png'))
+      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_fog_linear.c'), '-o', 'something.html', '--js-transform', ('python %s' % reftest_path), '--preload-file', 'screenshot.png', '-s', 'GL_TESTING=1']).communicate()
       self.run_browser('something.html', 'You should see an image with fog.', '/report_result?0')
 
     def test_openal_playback(self):
@@ -12005,23 +11916,22 @@ elif 'browser' in str(sys.argv):
 
       c_source_filename = "checksummer.c"
 
-      prejs_filename = "worker_prejs.js"
-      prejs_file = open(prejs_filename, 'w')
-      prejs_file.write(r"""
-        if (typeof(Module) === "undefined") Module = {};
-        Module["arguments"] = ["/bigfile"];
-        Module["preInit"] = function() {
-            FS.createLazyFile('/', "bigfile", "http://localhost:11111/bogus_file_path", true, false);
-        };
+      transform_path = self.module_addition('transform.py', '''
         var doTrace = true;
-        Module["print"] =    function(s) { self.postMessage({channel: "stdout", line: s}); };
-        Module["stderr"] =   function(s) { self.postMessage({channel: "stderr", char: s, trace: ((doTrace && s === 10) ? new Error().stack : null)}); doTrace = false; };
-      """)
-      prejs_file.close()
+
+        Module.addPreInit(function (cb) {
+            FS.createLazyFile('/', "bigfile", "http://localhost:11111/bogus_file_path", true, false);
+            Module["arguments"] = ["/bigfile"];
+            Module["print"] = function(s) { self.postMessage({channel: "stdout", line: s}); };
+            Module["stderr"] = function(s) { self.postMessage({channel: "stderr", char: s, trace: ((doTrace && s === 10) ? new Error().stack : null)}); doTrace = false; };
+            cb();
+        });
+      ''')
+
       # vs. os.path.join(self.get_dir(), filename)
       # vs. path_from_root('tests', 'hello_world_gles.c')
       Popen([PYTHON, EMCC, path_from_root('tests', c_source_filename), '-g', '-s', 'SMALL_CHUNKS=1', '-o', worker_filename,
-                                           '--pre-js', prejs_filename]).communicate()
+                                           '--js-transform', ('python %s' % transform_path)]).communicate()
 
       chunkSize = 1024
       data = os.urandom(10*chunkSize+1) # 10 full chunks and one 1 byte chunk
@@ -12072,9 +11982,9 @@ elif 'browser' in str(sys.argv):
       server.terminate()
 
     def test_glgears(self):
-      self.reftest(path_from_root('tests', 'gears.png'))
+      reftest_path = self.reftest(path_from_root('tests', 'gears.png'))
       Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
-                                           '-DHAVE_BUILTIN_SINCOS', '--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']).communicate()
+                                           '-DHAVE_BUILTIN_SINCOS', '--js-transform', ('python %s' % reftest_path), '-s', 'GL_TESTING=1']).communicate()
       self.run_browser('something.html', 'You should see animating gears.', '/report_result?0')
 
     def test_glgears_animation(self):
@@ -12093,9 +12003,9 @@ elif 'browser' in str(sys.argv):
           assert ('var GLEmulation' in open(self.in_dir('something.html')).read()) == emulation, "emulation code should be added when asked for"
 
     def test_glgears_deriv(self):
-      self.reftest(path_from_root('tests', 'gears.png'))
+      reftest_path = self.reftest(path_from_root('tests', 'gears.png'))
       Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_gles_deriv.c'), '-o', 'something.html', '-s', 'GL_TESTING=1',
-                                           '-DHAVE_BUILTIN_SINCOS', '--pre-js', 'reftest.js']).communicate()
+                                           '-DHAVE_BUILTIN_SINCOS', '--js-transform', ('python %s' % reftest_path)]).communicate()
       self.run_browser('something.html', 'You should see animating gears.', '/report_result?0')
       src = open('something.html').read()
       assert 'gl-matrix' not in src, 'Should not include glMatrix when not needed'
@@ -12124,8 +12034,8 @@ elif 'browser' in str(sys.argv):
           shutil.copyfile(book_path('Chapter_13', 'ParticleSystem', 'smoke.tga'), os.path.join(self.get_dir(), 'smoke.tga'))
           args = ['--preload-file', 'smoke.tga', '-O2'] # test optimizations and closure here as well for more coverage
 
-        self.reftest(book_path(basename.replace('.bc', '.png')))
-        Popen([PYTHON, EMCC, program, '-o', 'program.html', '--pre-js', 'reftest.js', '-s', 'GL_TESTING=1'] + args).communicate()
+        reftest_path = self.reftest(book_path(basename.replace('.bc', '.png')))
+        Popen([PYTHON, EMCC, program, '-o', 'program.html', '--js-transform', ('python %s' % reftest_path), '-s', 'GL_TESTING=1'] + args).communicate()
         self.run_browser('program.html', '', '/report_result?0')
 
     def btest(self, filename, expected=None, reference=None, reference_slack=0, args=[]): # TODO: use in all other tests
@@ -12139,8 +12049,8 @@ elif 'browser' in str(sys.argv):
       else:
         expected = [str(i) for i in range(0, reference_slack+1)]
         shutil.copyfile(path_from_root('tests', filename), os.path.join(self.get_dir(), os.path.basename(filename)))
-        self.reftest(path_from_root('tests', reference))
-        args = args + ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
+        reftest_path = self.reftest(path_from_root('tests', reference))
+        args = args + ['--js-transform', ('python %s' % reftest_path), '-s', 'GL_TESTING=1']
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), os.path.basename(filename)), '-o', 'test.html'] + args).communicate()
       if type(expected) is str: expected = [expected]
       self.run_browser('test.html', '.', ['/report_result?' + e for e in expected])
@@ -12300,27 +12210,24 @@ elif 'browser' in str(sys.argv):
       self.btest('sdl_rotozoom.c', reference='sdl_rotozoom.png', args=['--preload-file', 'example.png'])
 
     def test_sdl_canvas_palette_2(self):
-      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
-        Module['preRun'].push(function() {
-          SDL.defaults.copyOnLock = false;
-        });
-      ''')
-
-      open(os.path.join(self.get_dir(), 'args-r.js'), 'w').write('''
+      transform_r_path = self.module_addition('transform-r.py', '''
+        Module.addPreRun(function(cb) { SDL.defaults.copyOnLock = false; cb(); });
         Module['arguments'] = ['-r'];
       ''')
 
-      open(os.path.join(self.get_dir(), 'args-g.js'), 'w').write('''
+      transform_g_path = self.module_addition('transform-g.py', '''
+        Module.addPreRun(function(cb) { SDL.defaults.copyOnLock = false; cb(); });
         Module['arguments'] = ['-g'];
       ''')
 
-      open(os.path.join(self.get_dir(), 'args-b.js'), 'w').write('''
+      transform_b_path = self.module_addition('transform-b.py', '''
+        Module.addPreRun(function(cb) { SDL.defaults.copyOnLock = false; cb(); });
         Module['arguments'] = ['-b'];
       ''')
 
-      self.btest('sdl_canvas_palette_2.c', reference='sdl_canvas_palette_r.png', args=['--pre-js', 'pre.js', '--pre-js', 'args-r.js'])
-      self.btest('sdl_canvas_palette_2.c', reference='sdl_canvas_palette_g.png', args=['--pre-js', 'pre.js', '--pre-js', 'args-g.js'])
-      self.btest('sdl_canvas_palette_2.c', reference='sdl_canvas_palette_b.png', args=['--pre-js', 'pre.js', '--pre-js', 'args-b.js'])
+      self.btest('sdl_canvas_palette_2.c', reference='sdl_canvas_palette_r.png', args=['--js-transform', ('python %s' % transform_r_path)])
+      self.btest('sdl_canvas_palette_2.c', reference='sdl_canvas_palette_g.png', args=['--js-transform', ('python %s' % transform_g_path)])
+      self.btest('sdl_canvas_palette_2.c', reference='sdl_canvas_palette_b.png', args=['--js-transform', ('python %s' % transform_b_path)])
 
     def test_sdl_alloctext(self):
       self.btest('sdl_alloctext.c', expected='1', args=['-O2', '-s', 'TOTAL_MEMORY=' + str(1024*1024*8)])
@@ -12337,12 +12244,12 @@ elif 'browser' in str(sys.argv):
       shutil.copyfile(path_from_root('tests', 'ship.dds'), 'ship.dds')
       shutil.copyfile(path_from_root('tests', 'bloom.dds'), 'bloom.dds')
       shutil.copyfile(path_from_root('tests', 'water.dds'), 'water.dds')
-      Popen([PYTHON, FILE_PACKAGER, 'test.data', '--pre-run', '--crunch', '--preload', 'ship.dds', 'bloom.dds', 'water.dds'], stdout=open('pre.js', 'w')).communicate()
+      Popen([PYTHON, FILE_PACKAGER, 'test.data', '--pre-run', '--crunch', '--preload', 'ship.dds', 'bloom.dds', 'water.dds'], stdout=open('post.js', 'w')).communicate()
       assert os.stat('test.data').st_size < 0.5*(os.stat('ship.dds').st_size+os.stat('bloom.dds').st_size+os.stat('water.dds').st_size), 'Compressed should be smaller than dds'
       shutil.move('ship.dds', 'ship.donotfindme.dds') # make sure we load from the compressed
       shutil.move('bloom.dds', 'bloom.donotfindme.dds') # make sure we load from the compressed
       shutil.move('water.dds', 'water.donotfindme.dds') # make sure we load from the compressed
-      self.btest('s3tc_crunch.c', reference='s3tc_crunch.png', reference_slack=11, args=['--pre-js', 'pre.js'])
+      self.btest('s3tc_crunch.c', reference='s3tc_crunch.png', reference_slack=11, args=['--post-js', 'post.js'])
 
     def test_s3tc_crunch_split(self): # load several datafiles/outputs of file packager
       shutil.copyfile(path_from_root('tests', 'ship.dds'), 'ship.dds')
@@ -12383,17 +12290,16 @@ elif 'browser' in str(sys.argv):
 
     def test_pre_run_deps(self):
       # Adding a dependency in preRun will delay run
-      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
-        Module.preRun = function() {
-          addRunDependency();
+      transform_path = self.module_addition('transform.py', '''
+        Module.addPreRun(function(cb) {
           Module.print('preRun called, added a dependency...');
           setTimeout(function() {
             Module.okk = 10;
-            removeRunDependency()
+            cb();
           }, 2000);
-        };
+        });
       ''')
-      self.btest('pre_run_deps.cpp', expected='10', args=['--pre-js', 'pre.js'])
+      self.btest('pre_run_deps.cpp', expected='10', args=['--js-transform', ('python %s' % transform_path)])
 
     def test_worker_api(self):
       Popen([PYTHON, EMCC, path_from_root('tests', 'worker_api_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-s', 'EXPORTED_FUNCTIONS=["_one"]']).communicate()

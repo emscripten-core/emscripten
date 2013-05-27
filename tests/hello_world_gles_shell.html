@@ -9,21 +9,23 @@
     <div id='output'></div>
     <hr>
     <script type='text/javascript'>
+      // The compiled code
+      {{{ SCRIPT_CODE }}}
+    </script>
+    <script type='text/javascript'>
       /**
        * TODO: Encapsulate this part in a reusable token such as
        *       EMSCRIPTEN_ENVIRONMENT so that we can share code
        *       between the default shell and custom ones.
        */
       // connect to canvas
-      var Module = {
-        print: (function() {
-          var element = document.getElementById('output');
-          return function(text) {
-            element.innerHTML += text.replace('\n', '<br>', 'g') + '<br>';
-          };
-        })(),
-        canvas: document.getElementById('canvas')
-      };
+      Module.print = (function() {
+        var element = document.getElementById('output');
+        return function(text) {
+          element.innerHTML += text.replace('\n', '<br>', 'g') + '<br>';
+        };
+      })();
+      Module.canvas = document.getElementById('canvas');
 
       // Test code
       function simulateKeyEvent(keyCode) {
@@ -38,18 +40,15 @@
         xhr.send();
         setTimeout(function() { window.close() }, 1000);
       }
-      function doTest() {
+      Module.addPostRun(function () {
         var firstImage = Module.canvas.toDataURL();
         simulateKeyEvent(0x25 /* DOM_VK_LEFT */);
         setTimeout(function() {
           var secondImage = Module.canvas.toDataURL();
           reportResult(firstImage != secondImage);
         }, 0);
-      }
-      Module.postRun = doTest;
-
-      // The compiled code
-      {{{ SCRIPT_CODE }}}
+      });
+      Module.load(Module.run);
     </script>
   </body>
 </html>
