@@ -754,6 +754,11 @@ mergeInto(LibraryManager.library, {
     }
   },
 
+  emscripten_exit_with_live_runtime: function() {
+    Module['noExitRuntime'] = true;
+    throw 'SimulateInfiniteLoop';
+  },
+
   emscripten_hide_mouse: function() {
     var styleSheet = document.styleSheets[0];
     var rules = styleSheet.cssRules;

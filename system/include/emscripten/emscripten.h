@@ -136,6 +136,14 @@ inline void emscripten_async_call(void (*func)(void *), void *arg, int millis) {
 #endif
 
 /*
+ * Exits the program immediately, but leaves the runtime alive
+ * so that you can continue to run code later (so global destructors
+ * etc. are not run). This is implicitly performed when you do
+ * an asynchronous operation like emscripten_async_call.
+ */
+extern void emscripten_exit_with_live_runtime();
+
+/*
  * Hide the OS mouse cursor over the canvas. Note that SDL's
  * SDL_ShowCursor command shows and hides the SDL cursor, not
  * the OS one. This command is useful to hide the OS cursor
