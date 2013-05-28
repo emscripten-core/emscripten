@@ -3029,6 +3029,28 @@ setjmp exception execution path, level: 0, prev_jmp: -1
 Exiting setjmp function, level: 0, prev_jmp: -1
 ''')
 
+    def test_std_exception(self):
+      if self.emcc_args is None: return self.skip('requires emcc')
+      Settings.DISABLE_EXCEPTION_CATCHING = 0
+      self.emcc_args += ['-s', 'SAFE_HEAP=0']
+
+      src = r'''
+        #include <stdio.h>
+        #include <exception>
+
+        int main()
+        {
+            std::exception e;
+            try {
+              throw e;
+            } catch(std::exception e) {
+              printf("caught std::exception\n");
+            }
+            return 0;
+        }
+      '''
+      self.do_run(src, 'caught std::exception')
+
     def test_exit_stack(self):
       if self.emcc_args is None: return self.skip('requires emcc')
       if Settings.ASM_JS: return self.skip('uses report_stack without exporting')
