@@ -871,12 +871,14 @@ function loadMemoryInitializer(filename) {
   }
 
   // always do this asynchronously, to keep shell and web as similar as possible
-  addPreRun(function() {
+  addPreRun(function(cb) {
     if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
       applyData(Module['readBinary'](filename));
+      cb();
     } else {
       Browser.asyncLoad(filename, function(data) {
         applyData(data);
+        cb();
       }, function(data) {
         throw 'could not load memory initializer ' + filename;
       });

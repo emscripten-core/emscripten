@@ -1,14 +1,16 @@
 #if USE_MODULE_CLOSURE
 (function () {
-#endif
 
+var Module = {};
+#else
 // The lack of var prevents closure from name mangling the Module variable.
 // This is depended on by a few of the unit tests (e.g. test_scriptaclass)
 // who's code is added post-closure compilation and references Module.
-// It'd be great to convert those unit tests such that their test code
-// isn't being inlined with the module, but instead seperate and 
-// including the module through something like node's require.
+//
+// I believe these tests should be re-written such that their test code
+// isn't inlined with the module.
 Module = {};
+#endif
 
 // The environment setup code below is customized to use Module.
 // *** Environment setup code ***
