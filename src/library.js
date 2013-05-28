@@ -6819,7 +6819,7 @@ LibraryManager.library = {
   },
   __errno_state: 0,
   __setErrNo__deps: ['__errno_state'],
-  __setErrNo__postset: '___errno_state = Runtime.staticAlloc(4);',
+  __setErrNo__postset: '___errno_state = Runtime.staticAlloc(4); {{{ makeSetValue("___errno_state", 0, 0, "i32") }}};',
   __setErrNo: function(value) {
     // For convenient setting and returning of errno.
     {{{ makeSetValue('___errno_state', '0', 'value', 'i32') }}}
