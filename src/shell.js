@@ -121,9 +121,9 @@ if (!Module['arguments']) {
 Module.print = Module['print'];
 Module.printErr = Module['printErr'];
 
-  {{BODY}}
+{{BODY}}
 
-  // {{MODULE_ADDITIONS}}
+// {{MODULE_ADDITIONS}}
 
 // require.js
 if (typeof define !== 'undefined' && define.amd) {
@@ -139,6 +139,8 @@ else if (typeof module !== 'undefined' && module.exports) {
 else {
   this['{{{ MODULE_NAME }}}'] = Module;
 }
+
+// {{AUTORUN}}
 
 #if USE_MODULE_CLOSURE
 // Dynamic compiling, say as a Function() object.

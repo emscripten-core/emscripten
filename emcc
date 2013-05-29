@@ -1456,16 +1456,11 @@ try:
     open(final, 'w').write(src)
     if DEBUG: save_intermediate('files')
 
-  # Attend autorun commands before closure compiler is ran.
+  # Append autorun commands before closure compiler is ran for non-HTML outputs.
   if shared.Settings.INVOKE_RUN:
-    # For HTML builds a <script> tag will be appended later on.
     if final_suffix != 'html':
-      if split_js_file:
-        assert false, 'The module must be manually ran when --split is enabled. Set INVOKE_RUN=0 to continue.'
-      else:
-        f = open(final, 'a')
-        f.write('\nModule.load(Module.run);');
-        f.close()
+      src = open(final).read().replace('// {{AUTORUN}}', '// {{AUTORUN}}\nModule.load(Module.run);');
+      open(final, 'w').write(src)
 
   # Apply pre and postjs files
   if pre_js or post_js:
@@ -1488,9 +1483,9 @@ try:
 
   # Apply a source code transformation, if requested
   for i, transform in enumerate(js_transform):
-    newFinal = final + '.tr%d.js' % i
-    shutil.copyfile(final, newFinal)
-    final = newFinal
+    new_final = final + '.tr%d.js' % i
+    shutil.copyfile(final, new_final)
+    final = new_final
     posix = True if not shared.WINDOWS else False
     logging.debug('applying transform: %s' % js_transform)
     execute(shlex.split(transform, posix=posix) + [os.path.abspath(final)])
@@ -1595,13 +1590,14 @@ try:
           logging.debug('did not see memory initialization')
 
   # If we were asked to also generate HTML, do that
-  def rreplace(s, old, new, count):
-    return (s[::-1].replace(old[::-1], new[::-1], count))[::-1]
-
   if final_suffix == 'html':
     logging.debug('generating HTML')
     shell = open(shell_path).read()
     html = open(target, 'w')
+
+    # right-to-left string replace
+    def rreplace(s, old, new, count):
+      return (s[::-1].replace(old[::-1], new[::-1], count))[::-1]
 
     # Add the auto-run as the final <script> tag.
     if shared.Settings.INVOKE_RUN:
