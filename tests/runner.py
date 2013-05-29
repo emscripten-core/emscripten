@@ -11714,7 +11714,9 @@ elif 'browser' in str(sys.argv):
       self.run_browser('page.html', '', '/report_result?1')
 
     def test_preload_file(self):
-      open(os.path.join(self.get_dir(), 'somefile.txt'), 'w').write('''load me right before running the code please''')
+      absolute_src_path = os.path.join(self.get_dir(), 'somefile.txt').replace('\\', '/')
+      open(absolute_src_path, 'w').write('''load me right before running the code please''')
+      
       def make_main(path):
         print path
         open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
@@ -11733,32 +11735,92 @@ elif 'browser' in str(sys.argv):
             REPORT_RESULT();
             return 0;
           }
-        ''' % path))
+          ''' % path))
 
-      make_main('somefile.txt')
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', 'somefile.txt', '-o', 'page.html']).communicate()
-      self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
+      test_cases = [
+       # (source preload-file string, file on target FS to load)
+        ("somefile.txt", "somefile.txt"),
+        ("./somefile.txt", "somefile.txt"),
+        ("somefile.txt@file.txt", "file.txt"),
+        ("./somefile.txt@file.txt", "file.txt"),
+        ("./somefile.txt@./file.txt", "file.txt"),
+        ("somefile.txt@/file.txt", "file.txt"),
+        ("somefile.txt@/", "somefile.txt"), 
+        (absolute_src_path + "@file.txt", "file.txt"),
+        (absolute_src_path + "@/file.txt", "file.txt"),
+        (absolute_src_path + "@/", "somefile.txt"),
+        ("somefile.txt@/directory/file.txt", "/directory/file.txt"),
+        ("somefile.txt@/directory/file.txt", "directory/file.txt"),
+        (absolute_src_path + "@/directory/file.txt", "directory/file.txt")]
+      
+      for test in test_cases:
+        (srcpath, dstpath) = test
+        make_main(dstpath)
+        print srcpath
+        Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', srcpath, '-o', 'page.html']).communicate()
+        self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
 
       # By absolute path
 
-      make_main(os.path.join(self.get_dir(), 'somefile.txt'))
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', os.path.join(self.get_dir(), 'somefile.txt'), '-o', 'page.html']).communicate()
+      make_main(absolute_src_path)
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', absolute_src_path, '-o', 'page.html']).communicate()
       self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
 
-      # By ./path
+      # Test subdirectory handling with asset packaging.
+      os.makedirs(os.path.join(self.get_dir(), 'assets/sub/asset1/').replace('\\', '/'))
+      os.makedirs(os.path.join(self.get_dir(), 'assets/sub/asset2/').replace('\\', '/'))
+      open(os.path.join(self.get_dir(), 'assets/sub/asset1/file1.txt'), 'w').write('''load me right before running the code please''')
+      open(os.path.join(self.get_dir(), 'assets/sub/asset2/file2.txt'), 'w').write('''load me right before running the code please''')
+      absolute_assets_src_path = os.path.join(self.get_dir(), 'assets').replace('\\', '/')
+      def make_main_two_files(path1, path2):
+        open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
+          #include <stdio.h>
+          #include <string.h>
+          #include <emscripten.h>
+          int main() {
+            FILE *f = fopen("%s", "r");
+            char buf[100];
+            fread(buf, 1, 20, f);
+            buf[20] = 0;
+            fclose(f);
+            printf("|%%s|\n", buf);
 
-      make_main('somefile.txt')
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', './somefile.txt', '-o', 'page.html']).communicate()
-      self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
+            int result = !strcmp("load me right before", buf);
+            
+            f = fopen("%s", "r");
+            if (f == NULL)
+              result = 0;
+            fclose(f);
+            REPORT_RESULT();
+            return 0;
+          }
+        ''' % (path1, path2)))
 
+      test_cases = [
+       # (source directory to embed, file1 on target FS to load, file2 on target FS to load)
+        ("assets", "assets/sub/asset1/file1.txt", "assets/sub/asset2/file2.txt"),
+        ("assets/", "assets/sub/asset1/file1.txt", "assets/sub/asset2/file2.txt"),
+        ("assets@/", "/sub/asset1/file1.txt", "/sub/asset2/file2.txt"),
+        ("assets/@/", "/sub/asset1/file1.txt", "/sub/asset2/file2.txt"),
+        ("assets@./", "/sub/asset1/file1.txt", "/sub/asset2/file2.txt"),
+        (absolute_assets_src_path + "@/", "/sub/asset1/file1.txt", "/sub/asset2/file2.txt"),
+        (absolute_assets_src_path + "@/assets", "/assets/sub/asset1/file1.txt", "/assets/sub/asset2/file2.txt")]
+
+      for test in test_cases:
+        (srcpath, dstpath1, dstpath2) = test
+        make_main_two_files(dstpath1, dstpath2)
+        print srcpath
+        Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', srcpath, '-o', 'page.html']).communicate()
+        self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
+        
       # Should still work with -o subdir/..
 
-      make_main(os.path.join(self.get_dir(), 'somefile.txt'))
+      make_main(absolute_src_path)
       try:
         os.mkdir(os.path.join(self.get_dir(), 'dirrey'))
       except:
         pass
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', os.path.join(self.get_dir(), 'somefile.txt'), '-o', 'dirrey/page.html']).communicate()
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', absolute_src_path, '-o', 'dirrey/page.html']).communicate()
       self.run_browser('dirrey/page.html', 'You should see |load me right before|.', '/report_result?1')
 
       # With FS.preloadFile
