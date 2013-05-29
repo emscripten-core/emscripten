@@ -1850,7 +1850,6 @@ function eliminate(ast, memSafe) {
     if (asm) var asmData = normalizeAsm(func);
     //printErr('eliminate in ' + func[1]);
 
-
     // First, find the potentially eliminatable functions: that have one definition and one use
     var definitions = {};
     var uses = {};
@@ -2213,19 +2212,12 @@ function eliminate(ast, memSafe) {
             }
 
             allowTracking = false;
-
-            var lastAbort = abort; // do not let an abort in 2 cause 3 to be skipped
             traverseInOrder(node[2]); // 2 and 3 could be 'parallel', really..
-            var midAbort = abort;
-            abort = lastAbort;
             if (node[3]) traverseInOrder(node[3]);
-            abort = midAbort || lastAbort;
-
             allowTracking = true;
 
           } else {
             tracked = {};
-            abort = true;
           }
         } else if (type == 'block') {
           var stats = node[1];
@@ -2246,7 +2238,6 @@ function eliminate(ast, memSafe) {
             traverseInOrder(node[2]);
           } else {
             tracked = {};
-            abort = true;
           }
         } else if (type == 'return') {
           if (node[1]) traverseInOrder(node[1]);
@@ -2257,19 +2248,14 @@ function eliminate(ast, memSafe) {
         } else if (type == 'switch') {
           traverseInOrder(node[1]);
           var cases = node[2];
-          var lastAbort = abort;
-          var finalAbort = abort;
           for (var i = 0; i < cases.length; i++) {
             var c = cases[i];
             assert(c[0] === null || c[0][0] == 'num' || (c[0][0] == 'unary-prefix' && c[0][2][0] == 'num'));
             var stats = c[1];
-            abort = lastAbort;
             for (var j = 0; j < stats.length; j++) {
               traverseInOrder(stats[j]);
             }
-            finalAbort = finalAbort || abort;
           }
-          abort = finalAbort;
         } else {
           if (!(type in ABORTING_ELIMINATOR_SCAN_NODES)) {
             printErr('unfamiliar eliminator scan node: ' + JSON.stringify(node));
@@ -2319,11 +2305,12 @@ function eliminate(ast, memSafe) {
       // Look for statements, including while-switch pattern
       var stats = getStatements(block) || (block[0] == 'while' && block[2][0] == 'switch' ? [block[2]] : stats);
       if (!stats) return;
+      //printErr('Stats: ' + JSON.stringify(stats).substr(0,100));
       tracked = {};
       //printErr('new StatBlock');
       for (var i = 0; i < stats.length; i++) {
         var node = stats[i];
-        //printErr('StatBlock[' + i + '] => ' + JSON.stringify(node));
+        //printErr('StatBlock[' + i + '] => ' + JSON.stringify(node).substr(0,100));
         var type = node[0];
         if (type == 'stat') {
           node = node[1];
