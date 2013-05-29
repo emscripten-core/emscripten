@@ -211,12 +211,16 @@ if crunch:
 
   for file_ in data_files:
     if file_['dstpath'].endswith(CRUNCH_INPUT_SUFFIX):
-      # Do not crunch if crunched version exists and is more recent than dds source
-      crunch_name = unsuffixed(file_['dstpath']) + CRUNCH_OUTPUT_SUFFIX
-      file_['dstpath'] = crunch_name
+      src_dds_name = file_['srcpath']
+      src_crunch_name = unsuffixed(src_dds_name) + CRUNCH_OUTPUT_SUFFIX
+
+      # Preload/embed the .crn version instead of the .dds version, but use the .dds suffix for the target file in the virtual FS.
+      file_['srcpath'] = src_crunch_name
+
       try:
-        crunch_time = os.stat(crunch_name).st_mtime
-        dds_time = os.stat(file_['srcpath']).st_mtime
+        # Do not crunch if crunched version exists and is more recent than dds source
+        crunch_time = os.stat(src_crunch_name).st_mtime
+        dds_time = os.stat(src_dds_name).st_mtime
         if dds_time < crunch_time: continue
       except:
         pass # if one of them does not exist, continue on
@@ -232,16 +236,15 @@ if crunch:
           raise Exception('unknown format')
       except:
         format = []
-      Popen([CRUNCH, '-file', file_['srcpath'], '-quality', crunch] + format, stdout=sys.stderr).communicate()
+      Popen([CRUNCH, '-outsamedir', '-file', src_dds_name, '-quality', crunch] + format, stdout=sys.stderr).communicate()
       #if not os.path.exists(os.path.basename(crunch_name)):
       #  print >> sys.stderr, 'Failed to crunch, perhaps a weird dxt format? Looking for a source PNG for the DDS'
       #  Popen([CRUNCH, '-file', unsuffixed(file_['srcpath']) + '.png', '-quality', crunch] + format, stdout=sys.stderr).communicate()
-      assert os.path.exists(os.path.basename(crunch_name)), 'crunch failed to generate output'
-      shutil.move(os.path.basename(crunch_name), crunch_name) # crunch places files in the current dir
+      assert os.path.exists(os.path.basename(src_crunch_name)), 'crunch failed to generate output'
       # prepend the dds header
-      crunched = open(crunch_name, 'rb').read()
-      c = open(crunch_name, 'wb')
-      c.write(open(file_['srcpath'], 'rb').read()[:DDS_HEADER_SIZE])
+      crunched = open(src_crunch_name, 'rb').read()
+      c = open(src_crunch_name, 'wb')
+      c.write(open(src_dds_name, 'rb').read()[:DDS_HEADER_SIZE])
       c.write(crunched)
       c.close()
 
