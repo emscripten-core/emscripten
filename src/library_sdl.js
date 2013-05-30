@@ -694,6 +694,11 @@ var LibrarySDL = {
       Module['canvas'].addEventListener(event, SDL.receiveEvent, true);
     });
     Browser.setCanvasSize(width, height, true);
+    // Free the old surface first.
+    if (SDL.screen) {
+      SDL.freeSurface(SDL.screen);
+      SDL.screen = null;
+    }
     SDL.screen = SDL.makeSurface(width, height, flags, true, 'screen');
     if (!SDL.addedResizeListener) {
       SDL.addedResizeListener = true;
