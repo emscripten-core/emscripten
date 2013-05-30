@@ -7114,9 +7114,13 @@ LibraryManager.library = {
   // sockets. Note that the implementation assumes all sockets are always
   // nonblocking
   // ==========================================================================
+#if SOCKET_WEBRTC
   $Sockets__deps: ['__setErrNo', '$ERRNO_CODES',
     function() { return 'var SocketIO = ' + read('socket.io.js') + ';\n' },
     function() { return 'var Peer = ' + read('wrtcp.js') + ';\n' }],
+#else
+  $Sockets__deps: ['__setErrNo', '$ERRNO_CODES'],
+#endif
   $Sockets: {
     BUFFER_SIZE: 10*1024, // initial size
     MAX_BUFFER_SIZE: 10*1024*1024, // maximum size we will grow the buffer
