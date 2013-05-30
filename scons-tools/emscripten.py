@@ -24,6 +24,7 @@ def build_version_file(env):
     
     EMSCRIPTEN_DEPENDENCIES = [
         env.Glob('${EMSCRIPTEN_HOME}/src/*.js'),
+        env.Glob('${EMSCRIPTEN_HOME}/src/embind/*.js'),
         env.Glob('${EMSCRIPTEN_HOME}/tools/*.py'),
         '${EMSCRIPTEN_HOME}/emscripten.py',
     ]
@@ -301,6 +302,12 @@ def generate(env):
         '__IEEE_LITTLE_ENDIAN',
     ])
     
+    env.Append(
+        CPPPATH=[
+            env.Dir('${EMSCRIPTEN_HOME}/system/include'),
+        ]
+    )
+
     env['BUILDERS']['Emscripten'] = Builder(
         action='$PYTHON ${EMSCRIPTEN_HOME}/emscripten.py $EMSCRIPTEN_FLAGS $_EMSCRIPTEN_SETTINGS_FLAGS --temp-dir=$EMSCRIPTEN_TEMP_DIR --compiler $JS_ENGINE --relooper=third-party/relooper.js $SOURCE > $TARGET',
         target_scanner=EmscriptenScanner)
