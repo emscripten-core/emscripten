@@ -1280,10 +1280,17 @@ var LibraryGL = {
     hasRunInit: false,
 
     init: function() {
+      // Do not activate immediate/emulation code (e.g. replace glDrawElements) when in FULL_ES2 mode.
+      // We do not need full emulation, we instead emulate client-side arrays etc. in FULL_ES2 code in
+      // a straightforward manner, and avoid not having a bound buffer be ambiguous between es2 emulation
+      // code and legacy gl emulation code.
+#if FULL_ES2
+      return;
+#endif
+
       if (GLEmulation.hasRunInit) {
         return;
       }
-
       GLEmulation.hasRunInit = true;
 
       GLEmulation.fogColor = new Float32Array(4);
@@ -1983,7 +1990,10 @@ var LibraryGL = {
 
   // GL Immediate mode
 
+  // See comment in GLEmulation.init()
+#if FULL_ES2 == 0
   $GLImmediate__postset: 'GL.immediate.setupFuncs(); Browser.moduleContextCreatedCallbacks.push(function() { GL.immediate.init() });',
+#endif
   $GLImmediate__deps: ['$Browser', '$GL', '$GLEmulation'],
   $GLImmediate: {
     MapTreeLib: null,

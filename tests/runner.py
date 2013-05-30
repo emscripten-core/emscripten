@@ -12436,6 +12436,9 @@ elif 'browser' in str(sys.argv):
           self.run_browser('something.html', 'You should see animating gears.', '/report_gl_result?true')
           assert ('var GLEmulation' in open(self.in_dir('something.html')).read()) == emulation, "emulation code should be added when asked for"
 
+    def test_fulles2_sdlproc(self):
+      self.btest('full_es2_sdlproc.c', '1', args=['-s', 'GL_TESTING=1', '-DHAVE_BUILTIN_SINCOS', '-s', 'FULL_ES2=1'])
+
     def test_glgears_deriv(self):
       self.reftest(path_from_root('tests', 'gears.png'))
       Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_gles_deriv.c'), '-o', 'something.html', '-s', 'GL_TESTING=1',
