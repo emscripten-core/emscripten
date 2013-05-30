@@ -540,20 +540,36 @@ LibraryManager.library = {
       var stdinOverridden = true, stdoutOverridden = true, stderrOverridden = true;
       if (!input) {
         stdinOverridden = false;
+        // The input function for the input device has 3 particular return values:
+        // a.) the next character represented as an integer
+        // b.) undefined to signal that no data is currently available
+        // c.) null to signal an EOF
         input = function() {
           if (!input.cache || !input.cache.length) {
-            var result;
-            if (typeof window != 'undefined' &&
-                typeof window.prompt == 'function') {
+            var result = null;
+            if (ENVIRONMENT_IS_NODE) {
+              if (process.stdin.destroyed) {
+                return undefined;
+              }
+              result = process.stdin.read();
+            } else if (typeof window != 'undefined' &&
+              typeof window.prompt == 'function') {
               // Browser.
-              result = window.prompt('Input: ');
-              if (result === null) result = String.fromCharCode(0); // cancel ==> EOF
+              result = window.prompt('Input: ');  // returns null on cancel
+              if (result !== null) {
+                result += '\n';
+              }
             } else if (typeof readline == 'function') {
               // Command line.
               result = readline();
+              if (result !== null) {
+                result += '\n';
+              }
             }
-            if (!result) result = '';
-            input.cache = intArrayFromString(result + '\n', true);
+            if (!result) {
+              return null;
+            }
+            input.cache = intArrayFromString(result, true);
           }
           return input.cache.shift();
         };
@@ -1828,8 +1844,9 @@ LibraryManager.library = {
             bytesRead++;
           }
           for (var i = 0; i < nbyte; i++) {
+            var result;
             try {
-              var result = stream.object.input();
+              result = stream.object.input();
             } catch (e) {
               ___setErrNo(ERRNO_CODES.EIO);
               return -1;
