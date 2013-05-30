@@ -993,7 +993,6 @@ var LibraryGL = {
 
     if (target == Module.ctx.ARRAY_BUFFER) {
       GL.currArrayBuffer = buffer;
-      GL.currArrayBufferObj = bufferObj;
     } else if (target == Module.ctx.ELEMENT_ARRAY_BUFFER) {
       GL.currElementArrayBuffer = buffer;
     }
