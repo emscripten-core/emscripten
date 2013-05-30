@@ -7195,24 +7195,29 @@ LibraryManager.library = {
         connection.ondisconnect = function() {
           console.log('disconnect');
           // Don't return the host address (10.0.0.1) to the pool
-          if (!(session && session === Sockets.connections[addr]['route']))
+          if (!(session && session === Sockets.connections[addr]['route'])) {
             Sockets.addrPool.push(addr);
+          }
           delete Sockets.connections[addr];
 
-          if (Module['webrtc']['ondisconnect'] && 'function' === typeof Module['webrtc']['ondisconnect'])
+          if (Module['webrtc']['ondisconnect'] && 'function' === typeof Module['webrtc']['ondisconnect']) {
             Module['webrtc']['ondisconnect'](peer);
+          }
         };
         connection.onerror = function(error) {
-          if (Module['webrtc']['onerror'] && 'function' === typeof Module['webrtc']['onerror'])
+          if (Module['webrtc']['onerror'] && 'function' === typeof Module['webrtc']['onerror']) {
             Module['webrtc']['onerror'](error);
+          }
         };
         connection.onmessage = function(label, message) {
-          if ('unreliable' === label)
+          if ('unreliable' === label) {
             handleMessage(addr, message.data);
+          }
         }
 
-        if (Module['webrtc']['onconnect'] && 'function' === typeof Module['webrtc']['onconnect'])
+        if (Module['webrtc']['onconnect'] && 'function' === typeof Module['webrtc']['onconnect']) {
           Module['webrtc']['onconnect'](peer);
+        }
       };
       peer.onpending = function(pending) {
         console.log('pending from: ', pending['route'], '; initiated by: ', (pending['incoming']) ? 'remote' : 'local');
@@ -7221,8 +7226,9 @@ LibraryManager.library = {
         console.error(error);
       };
       peer.onroute = function(route) {
-        if (Module['webrtc']['onpeer'] && 'function' === typeof Module['webrtc']['onpeer'])
+        if (Module['webrtc']['onpeer'] && 'function' === typeof Module['webrtc']['onpeer']) {
           Module['webrtc']['onpeer'](peer, route);
+        }
       };
       function handleMessage(addr, message) {
 #if SOCKET_DEBUG
@@ -7257,8 +7263,9 @@ LibraryManager.library = {
           buffer[tail ++] = element;
           length = Math.min(++ length, max_length - 1);
           tail = tail % max_length;
-          if (tail === head)
+          if (tail === head) {
             head = (head + 1) % max_length;
+          }
         },
         shift: function(element) {
           if (length < 1) return undefined;
