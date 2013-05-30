@@ -373,7 +373,7 @@ var LibraryGL = {
 
   glGetIntegerv__sig: 'vii',
   glGetIntegerv: function(name_, p) {
-    switch(name_) { // Handle a few trivial GLES values 
+    switch(name_) { // Handle a few trivial GLES values
       case 0x8DFA: // GL_SHADER_COMPILER
         {{{ makeSetValue('p', '0', '1', 'i32') }}};
         return;
@@ -507,7 +507,7 @@ var LibraryGL = {
   glGenTextures__sig: 'vii',
   glGenTextures: function(n, textures) {
     for (var i = 0; i < n; i++) {
-      var id = GL.getNewId(GL.textures); 
+      var id = GL.getNewId(GL.textures);
       GL.textures[id] = Module.ctx.createTexture();
       {{{ makeSetValue('textures', 'i*4', 'id', 'i32') }}};
     }
@@ -726,7 +726,7 @@ var LibraryGL = {
     var ptable = GL.uniformTable[program];
     if (!ptable) ptable = GL.uniformTable[program] = {};
     var id = ptable[name];
-    if (id) return id; 
+    if (id) return id;
     var loc = Module.ctx.getUniformLocation(GL.programs[program], name);
     if (!loc) return -1;
     id = GL.getNewId(GL.uniforms);
@@ -989,13 +989,16 @@ var LibraryGL = {
 
   glBindBuffer__sig: 'vii',
   glBindBuffer: function(target, buffer) {
+    var bufferObj = buffer ? GL.buffers[buffer] : null;
+
     if (target == Module.ctx.ARRAY_BUFFER) {
       GL.currArrayBuffer = buffer;
+      GL.currArrayBufferObj = bufferObj;
     } else if (target == Module.ctx.ELEMENT_ARRAY_BUFFER) {
       GL.currElementArrayBuffer = buffer;
     }
 
-    Module.ctx.bindBuffer(target, buffer ? GL.buffers[buffer] : null);
+    Module.ctx.bindBuffer(target, bufferObj);
   },
 
   glVertexAttrib1fv__sig: 'vii',
@@ -1275,7 +1278,15 @@ var LibraryGL = {
     currentVao: null,
     enabledVertexAttribArrays: {}, // helps with vao cleanups
 
+    hasRunInit: false,
+
     init: function() {
+      if (GLEmulation.hasRunInit) {
+        return;
+      }
+
+      GLEmulation.hasRunInit = true;
+
       GLEmulation.fogColor = new Float32Array(4);
 
       // Add some emulation workarounds
@@ -1297,6 +1308,7 @@ var LibraryGL = {
         0x80A0: 1  // GL_SAMPLE_COVERAGE
       };
 
+      var glEnable = _glEnable;
       _glEnable = function(cap) {
         // Clean up the renderer on any change to the rendering state. The optimization of
         // skipping renderer setup is aimed at the case of multiple glDraw* right after each other
@@ -1307,13 +1319,18 @@ var LibraryGL = {
         } else if (cap == 0x0de1 /* GL_TEXTURE_2D */) {
           // XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support
           // it by forwarding to glEnableClientState
+          /* Actually, let's not, for now. (This sounds exceedingly broken)
+           * This is in gl_ps_workaround2.c.
           _glEnableClientState(cap);
+          */
           return;
         } else if (!(cap in validCapabilities)) {
           return;
         }
-        Module.ctx.enable(cap);
+        glEnable(cap);
       };
+
+      var glDisable = _glDisable;
       _glDisable = function(cap) {
         if (GL.immediate.lastRenderer) GL.immediate.lastRenderer.cleanup();
         if (cap == 0x0B60 /* GL_FOG */) {
@@ -1322,12 +1339,15 @@ var LibraryGL = {
         } else if (cap == 0x0de1 /* GL_TEXTURE_2D */) {
           // XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support
           // it by forwarding to glDisableClientState
+          /* Actually, let's not, for now. (This sounds exceedingly broken)
+           * This is in gl_ps_workaround2.c.
           _glDisableClientState(cap);
+          */
           return;
         } else if (!(cap in validCapabilities)) {
           return;
         }
-        Module.ctx.disable(cap);
+        glDisable(cap);
       };
       _glIsEnabled = function(cap) {
         if (cap == 0x0B60 /* GL_FOG */) {
@@ -1453,6 +1473,7 @@ var LibraryGL = {
       _glShaderSource = function(shader, count, string, length) {
         var source = GL.getSource(shader, count, string, length);
 #if GL_DEBUG
+        console.log("glShaderSource: Input: \n" + source);
         GL.shaderOriginalSources[shader] = source;
 #endif
         // XXX We add attributes and uniforms to shaders. The program can ask for the # of them, and see the
@@ -1510,9 +1531,7 @@ var LibraryGL = {
           }
           if (source.indexOf('gl_Color') >= 0) {
             source = 'attribute vec4 a_color; \n' +
-                     'uniform vec4 u_color; \n' +
-                     'uniform int u_hasColorAttrib; \n' +
-                     source.replace(/gl_Color/g, '(u_hasColorAttrib > 0 ? a_color : u_color)');
+                     source.replace(/gl_Color/g, 'a_color');
           }
           if (source.indexOf('gl_Normal') >= 0) {
             source = 'attribute vec3 a_normal; \n' +
@@ -1558,6 +1577,7 @@ var LibraryGL = {
         }
 #if GL_DEBUG
         GL.shaderSources[shader] = source;
+        console.log("glShaderSource: Output: \n" + source);
 #endif
         Module.ctx.shaderSource(GL.shaders[shader], source);
       };
@@ -1706,8 +1726,12 @@ var LibraryGL = {
     getAttributeFromCapability: function(cap) {
       var attrib = null;
       switch (cap) {
-        case 0x8078: // GL_TEXTURE_COORD_ARRAY
         case 0x0de1: // GL_TEXTURE_2D - XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support it
+#if ASSERTIONS
+          abort("GL_TEXTURE_2D is not a spec-defined capability for gl{Enable,Disable}ClientState.");
+#endif
+          // Fall through:
+        case 0x8078: // GL_TEXTURE_COORD_ARRAY
           attrib = GL.immediate.TEXTURE0 + GL.immediate.clientActiveTexture; break;
         case 0x8074: // GL_VERTEX_ARRAY
           attrib = GL.immediate.VERTEX; break;
@@ -1767,19 +1791,19 @@ var LibraryGL = {
         case 'glEnableVertexAttribArray': ret = {{{ Functions.getIndex('_glEnableVertexAttribArray', true) }}}; break;
         case 'glDisableVertexAttribArray': ret = {{{ Functions.getIndex('_glDisableVertexAttribArray', true) }}}; break;
         case 'glVertexAttribPointer': ret = {{{ Functions.getIndex('_glVertexAttribPointer', true) }}}; break;
-	case 'glVertexAttrib1f': ret = {{{ Functions.getIndex('_glVertexAttrib1f', true) }}}; break;
-	case 'glVertexAttrib2f': ret = {{{ Functions.getIndex('_glVertexAttrib2f', true) }}}; break;
-	case 'glVertexAttrib3f': ret = {{{ Functions.getIndex('_glVertexAttrib3f', true) }}}; break;
-	case 'glVertexAttrib4f': ret = {{{ Functions.getIndex('_glVertexAttrib4f', true) }}}; break;
-	case 'glVertexAttrib1fv': ret = {{{ Functions.getIndex('_glVertexAttrib1fv', true) }}}; break;
-	case 'glVertexAttrib2fv': ret = {{{ Functions.getIndex('_glVertexAttrib2fv', true) }}}; break;
-	case 'glVertexAttrib3fv': ret = {{{ Functions.getIndex('_glVertexAttrib3fv', true) }}}; break;
-	case 'glVertexAttrib4fv': ret = {{{ Functions.getIndex('_glVertexAttrib4fv', true) }}}; break;
-	case 'glGetVertexAttribfv': ret = {{{ Functions.getIndex('_glGetVertexAttribfv', true) }}}; break;
-	case 'glGetVertexAttribiv': ret = {{{ Functions.getIndex('_glGetVertexAttribiv', true) }}}; break;
-	case 'glGetVertexAttribPointerv': ret = {{{ Functions.getIndex('_glGetVertexAttribPointerv', true) }}}; break;
-	case 'glGetAttribLocation': ret = {{{ Functions.getIndex('_glGetAttribLocation', true) }}}; break;
-	case 'glGetActiveAttrib': ret = {{{ Functions.getIndex('_glGetActiveAttrib', true) }}}; break;
+  case 'glVertexAttrib1f': ret = {{{ Functions.getIndex('_glVertexAttrib1f', true) }}}; break;
+  case 'glVertexAttrib2f': ret = {{{ Functions.getIndex('_glVertexAttrib2f', true) }}}; break;
+  case 'glVertexAttrib3f': ret = {{{ Functions.getIndex('_glVertexAttrib3f', true) }}}; break;
+  case 'glVertexAttrib4f': ret = {{{ Functions.getIndex('_glVertexAttrib4f', true) }}}; break;
+  case 'glVertexAttrib1fv': ret = {{{ Functions.getIndex('_glVertexAttrib1fv', true) }}}; break;
+  case 'glVertexAttrib2fv': ret = {{{ Functions.getIndex('_glVertexAttrib2fv', true) }}}; break;
+  case 'glVertexAttrib3fv': ret = {{{ Functions.getIndex('_glVertexAttrib3fv', true) }}}; break;
+  case 'glVertexAttrib4fv': ret = {{{ Functions.getIndex('_glVertexAttrib4fv', true) }}}; break;
+  case 'glGetVertexAttribfv': ret = {{{ Functions.getIndex('_glGetVertexAttribfv', true) }}}; break;
+  case 'glGetVertexAttribiv': ret = {{{ Functions.getIndex('_glGetVertexAttribiv', true) }}}; break;
+  case 'glGetVertexAttribPointerv': ret = {{{ Functions.getIndex('_glGetVertexAttribPointerv', true) }}}; break;
+  case 'glGetAttribLocation': ret = {{{ Functions.getIndex('_glGetAttribLocation', true) }}}; break;
+  case 'glGetActiveAttrib': ret = {{{ Functions.getIndex('_glGetActiveAttrib', true) }}}; break;
         case 'glBindRenderbuffer': ret = {{{ Functions.getIndex('_glBindRenderbuffer', true) }}}; break;
         case 'glDeleteRenderbuffers': ret = {{{ Functions.getIndex('_glDeleteRenderbuffers', true) }}}; break;
         case 'glGenRenderbuffers': ret = {{{ Functions.getIndex('_glGenRenderbuffers', true) }}}; break;
@@ -1798,86 +1822,86 @@ var LibraryGL = {
         case 'glDeleteVertexArrays': ret = {{{ Functions.getIndex('_glDeleteVertexArrays', true) }}}; break;
         case 'glBindVertexArray': ret = {{{ Functions.getIndex('_glBindVertexArray', true) }}}; break;
         case 'glGetString': ret = {{{ Functions.getIndex('_glGetString', true) }}}; break;
-	case 'glBindTexture': ret = {{{ Functions.getIndex('_glBindTexture', true) }}}; break;
-	case 'glGetBufferParameteriv': ret = {{{ Functions.getIndex('_glGetBufferParameteriv', true) }}}; break;
-	case 'glIsBuffer': ret = {{{ Functions.getIndex('_glIsBuffer', true) }}}; break;
-	case 'glDeleteShader': ret = {{{ Functions.getIndex('_glDeleteShader', true) }}}; break;
+  case 'glBindTexture': ret = {{{ Functions.getIndex('_glBindTexture', true) }}}; break;
+  case 'glGetBufferParameteriv': ret = {{{ Functions.getIndex('_glGetBufferParameteriv', true) }}}; break;
+  case 'glIsBuffer': ret = {{{ Functions.getIndex('_glIsBuffer', true) }}}; break;
+  case 'glDeleteShader': ret = {{{ Functions.getIndex('_glDeleteShader', true) }}}; break;
         case 'glUniformMatrix2fv': ret = {{{ Functions.getIndex('_glUniformMatrix2fv', true) }}}; break;
         case 'glUniformMatrix3fv': ret = {{{ Functions.getIndex('_glUniformMatrix3fv', true) }}}; break;
         case 'glUniformMatrix4fv': ret = {{{ Functions.getIndex('_glUniformMatrix4fv', true) }}}; break;
-	case 'glIsRenderbuffer': ret = {{{ Functions.getIndex('_glIsRenderbuffer', true) }}}; break;
-	case 'glBlendEquation': ret = {{{ Functions.getIndex('_glBlendEquation', true) }}}; break;
-	case 'glBlendFunc': ret = {{{ Functions.getIndex('_glBlendFunc', true) }}}; break;
-	case 'glBlendFuncSeparate': ret = {{{ Functions.getIndex('_glBlendFuncSeparate', true) }}}; break;
-	case 'glBlendEquationSeparate': ret = {{{ Functions.getIndex('_glBlendEquationSeparate', true) }}}; break;
-	case 'glDepthRangef': ret = {{{ Functions.getIndex('_glDepthRangef', true) }}}; break;
-	case 'glClear': ret = {{{ Functions.getIndex('_glClear', true) }}}; break;
-	case 'glGenerateMipmap': ret = {{{ Functions.getIndex('_glGenerateMipmap', true) }}}; break;
-	case 'glBlendColor': ret = {{{ Functions.getIndex('_glBlendColor', true) }}}; break;
-	case 'glClearDepthf': ret = {{{ Functions.getIndex('_glClearDepthf', true) }}}; break;
-	case 'glDeleteProgram': ret = {{{ Functions.getIndex('_glDeleteProgram', true) }}}; break;
-	case 'glUniformMatrix3fv': ret = {{{ Functions.getIndex('_glUniformMatrix3fv', true) }}}; break;
-	case 'glClearColor': ret = {{{ Functions.getIndex('_glClearColor', true) }}}; break;
-	case 'glGetRenderbufferParameteriv': ret = {{{ Functions.getIndex('_glGetRenderbufferParameteriv', true) }}}; break;
-	case 'glGetShaderInfoLog': ret = {{{ Functions.getIndex('_glGetShaderInfoLog', true) }}}; break;
-	case 'glUniformMatrix4fv': ret = {{{ Functions.getIndex('_glUniformMatrix4fv', true) }}}; break;
-	case 'glClearStencil': ret = {{{ Functions.getIndex('_glClearStencil', true) }}}; break;
-	case 'glGetProgramInfoLog': ret = {{{ Functions.getIndex('_glGetProgramInfoLog', true) }}}; break;
-	case 'glGetUniformfv': ret = {{{ Functions.getIndex('_glGetUniformfv', true) }}}; break;
-	case 'glStencilFuncSeparate': ret = {{{ Functions.getIndex('_glStencilFuncSeparate', true) }}}; break;
-	case 'glSampleCoverage': ret = {{{ Functions.getIndex('_glSampleCoverage', true) }}}; break;
-	case 'glColorMask': ret = {{{ Functions.getIndex('_glColorMask', true) }}}; break;
-	case 'glGetShaderiv': ret = {{{ Functions.getIndex('_glGetShaderiv', true) }}}; break;
-	case 'glGetUniformiv': ret = {{{ Functions.getIndex('_glGetUniformiv', true) }}}; break;
-	case 'glCopyTexSubImage2D': ret = {{{ Functions.getIndex('_glCopyTexSubImage2D', true) }}}; break;
-	case 'glDetachShader': ret = {{{ Functions.getIndex('_glDetachShader', true) }}}; break;
-	case 'glGetShaderSource': ret = {{{ Functions.getIndex('_glGetShaderSource', true) }}}; break;
-	case 'glDeleteTextures': ret = {{{ Functions.getIndex('_glDeleteTextures', true) }}}; break;
-	case 'glGetAttachedShaders': ret = {{{ Functions.getIndex('_glGetAttachedShaders', true) }}}; break;
-	case 'glValidateProgram': ret = {{{ Functions.getIndex('_glValidateProgram', true) }}}; break;
-	case 'glDepthFunc': ret = {{{ Functions.getIndex('_glDepthFunc', true) }}}; break;
-	case 'glIsShader': ret = {{{ Functions.getIndex('_glIsShader', true) }}}; break;
-	case 'glDepthMask': ret = {{{ Functions.getIndex('_glDepthMask', true) }}}; break;
-	case 'glStencilMaskSeparate': ret = {{{ Functions.getIndex('_glStencilMaskSeparate', true) }}}; break;
-	case 'glIsProgram': ret = {{{ Functions.getIndex('_glIsProgram', true) }}}; break;
-	case 'glDisable': ret = {{{ Functions.getIndex('_glDisable', true) }}}; break;
-	case 'glStencilOpSeparate': ret = {{{ Functions.getIndex('_glStencilOpSeparate', true) }}}; break;
-	case 'glDrawArrays': ret = {{{ Functions.getIndex('_glDrawArrays', true) }}}; break;
-	case 'glDrawElements': ret = {{{ Functions.getIndex('_glDrawElements', true) }}}; break;
-	case 'glEnable': ret = {{{ Functions.getIndex('_glEnable', true) }}}; break;
-	case 'glFinish': ret = {{{ Functions.getIndex('_glFinish', true) }}}; break;
-	case 'glFlush': ret = {{{ Functions.getIndex('_glFlush', true) }}}; break;
-	case 'glFrontFace': ret = {{{ Functions.getIndex('_glFrontFace', true) }}}; break;
-	case 'glCullFace': ret = {{{ Functions.getIndex('_glCullFace', true) }}}; break;
-	case 'glGenTextures': ret = {{{ Functions.getIndex('_glGenTextures', true) }}}; break;
-	case 'glGetError': ret = {{{ Functions.getIndex('_glGetError', true) }}}; break;
-	case 'glGetIntegerv': ret = {{{ Functions.getIndex('_glGetIntegerv', true) }}}; break;
-	case 'glGetBooleanv': ret = {{{ Functions.getIndex('_glGetBooleanv', true) }}}; break;
-	case 'glGetFloatv': ret = {{{ Functions.getIndex('_glGetFloatv', true) }}}; break;
-	case 'glHint': ret = {{{ Functions.getIndex('_glHint', true) }}}; break;
-	case 'glIsTexture': ret = {{{ Functions.getIndex('_glIsTexture', true) }}}; break;
-	case 'glPixelStorei': ret = {{{ Functions.getIndex('_glPixelStorei', true) }}}; break;
-	case 'glReadPixels': ret = {{{ Functions.getIndex('_glReadPixels', true) }}}; break;
-	case 'glScissor': ret = {{{ Functions.getIndex('_glScissor', true) }}}; break;
-	case 'glStencilFunc': ret = {{{ Functions.getIndex('_glStencilFunc', true) }}}; break;
-	case 'glStencilMask': ret = {{{ Functions.getIndex('_glStencilMask', true) }}}; break;
-	case 'glStencilOp': ret = {{{ Functions.getIndex('_glStencilOp', true) }}}; break;
-	case 'glTexImage2D': ret = {{{ Functions.getIndex('_glTexImage2D', true) }}}; break;
-	case 'glTexParameterf': ret = {{{ Functions.getIndex('_glTexParameterf', true) }}}; break;
-	case 'glTexParameterfv': ret = {{{ Functions.getIndex('_glTexParameterfv', true) }}}; break;
-	case 'glTexParameteri': ret = {{{ Functions.getIndex('_glTexParameteri', true) }}}; break;
-	case 'glTexParameteriv': ret = {{{ Functions.getIndex('_glTexParameteriv', true) }}}; break;
-	case 'glGetTexParameterfv': ret = {{{ Functions.getIndex('_glGetTexParameterfv', true) }}}; break;
-	case 'glGetTexParameteriv': ret = {{{ Functions.getIndex('_glGetTexParameteriv', true) }}}; break;
-	case 'glTexSubImage2D': ret = {{{ Functions.getIndex('_glTexSubImage2D', true) }}}; break;
-	case 'glCopyTexImage2D': ret = {{{ Functions.getIndex('_glCopyTexImage2D', true) }}}; break;
-	case 'glViewport': ret = {{{ Functions.getIndex('_glViewport', true) }}}; break;
-	case 'glIsEnabled': ret = {{{ Functions.getIndex('_glIsEnabled', true) }}}; break;
-	case 'glLineWidth': ret = {{{ Functions.getIndex('_glLineWidth', true) }}}; break;
-	case 'glPolygonOffset': ret = {{{ Functions.getIndex('_glPolygonOffset', true) }}}; break;
-	case 'glReleaseShaderCompiler': ret = {{{ Functions.getIndex('_glReleaseShaderCompiler', true) }}}; break;
-	case 'glGetShaderPrecisionFormat': ret = {{{ Functions.getIndex('_glGetShaderPrecisionFormat', true) }}}; break;
-	case 'glShaderBinary': ret = {{{ Functions.getIndex('_glShaderBinary', true) }}}; break;
+  case 'glIsRenderbuffer': ret = {{{ Functions.getIndex('_glIsRenderbuffer', true) }}}; break;
+  case 'glBlendEquation': ret = {{{ Functions.getIndex('_glBlendEquation', true) }}}; break;
+  case 'glBlendFunc': ret = {{{ Functions.getIndex('_glBlendFunc', true) }}}; break;
+  case 'glBlendFuncSeparate': ret = {{{ Functions.getIndex('_glBlendFuncSeparate', true) }}}; break;
+  case 'glBlendEquationSeparate': ret = {{{ Functions.getIndex('_glBlendEquationSeparate', true) }}}; break;
+  case 'glDepthRangef': ret = {{{ Functions.getIndex('_glDepthRangef', true) }}}; break;
+  case 'glClear': ret = {{{ Functions.getIndex('_glClear', true) }}}; break;
+  case 'glGenerateMipmap': ret = {{{ Functions.getIndex('_glGenerateMipmap', true) }}}; break;
+  case 'glBlendColor': ret = {{{ Functions.getIndex('_glBlendColor', true) }}}; break;
+  case 'glClearDepthf': ret = {{{ Functions.getIndex('_glClearDepthf', true) }}}; break;
+  case 'glDeleteProgram': ret = {{{ Functions.getIndex('_glDeleteProgram', true) }}}; break;
+  case 'glUniformMatrix3fv': ret = {{{ Functions.getIndex('_glUniformMatrix3fv', true) }}}; break;
+  case 'glClearColor': ret = {{{ Functions.getIndex('_glClearColor', true) }}}; break;
+  case 'glGetRenderbufferParameteriv': ret = {{{ Functions.getIndex('_glGetRenderbufferParameteriv', true) }}}; break;
+  case 'glGetShaderInfoLog': ret = {{{ Functions.getIndex('_glGetShaderInfoLog', true) }}}; break;
+  case 'glUniformMatrix4fv': ret = {{{ Functions.getIndex('_glUniformMatrix4fv', true) }}}; break;
+  case 'glClearStencil': ret = {{{ Functions.getIndex('_glClearStencil', true) }}}; break;
+  case 'glGetProgramInfoLog': ret = {{{ Functions.getIndex('_glGetProgramInfoLog', true) }}}; break;
+  case 'glGetUniformfv': ret = {{{ Functions.getIndex('_glGetUniformfv', true) }}}; break;
+  case 'glStencilFuncSeparate': ret = {{{ Functions.getIndex('_glStencilFuncSeparate', true) }}}; break;
+  case 'glSampleCoverage': ret = {{{ Functions.getIndex('_glSampleCoverage', true) }}}; break;
+  case 'glColorMask': ret = {{{ Functions.getIndex('_glColorMask', true) }}}; break;
+  case 'glGetShaderiv': ret = {{{ Functions.getIndex('_glGetShaderiv', true) }}}; break;
+  case 'glGetUniformiv': ret = {{{ Functions.getIndex('_glGetUniformiv', true) }}}; break;
+  case 'glCopyTexSubImage2D': ret = {{{ Functions.getIndex('_glCopyTexSubImage2D', true) }}}; break;
+  case 'glDetachShader': ret = {{{ Functions.getIndex('_glDetachShader', true) }}}; break;
+  case 'glGetShaderSource': ret = {{{ Functions.getIndex('_glGetShaderSource', true) }}}; break;
+  case 'glDeleteTextures': ret = {{{ Functions.getIndex('_glDeleteTextures', true) }}}; break;
+  case 'glGetAttachedShaders': ret = {{{ Functions.getIndex('_glGetAttachedShaders', true) }}}; break;
+  case 'glValidateProgram': ret = {{{ Functions.getIndex('_glValidateProgram', true) }}}; break;
+  case 'glDepthFunc': ret = {{{ Functions.getIndex('_glDepthFunc', true) }}}; break;
+  case 'glIsShader': ret = {{{ Functions.getIndex('_glIsShader', true) }}}; break;
+  case 'glDepthMask': ret = {{{ Functions.getIndex('_glDepthMask', true) }}}; break;
+  case 'glStencilMaskSeparate': ret = {{{ Functions.getIndex('_glStencilMaskSeparate', true) }}}; break;
+  case 'glIsProgram': ret = {{{ Functions.getIndex('_glIsProgram', true) }}}; break;
+  case 'glDisable': ret = {{{ Functions.getIndex('_glDisable', true) }}}; break;
+  case 'glStencilOpSeparate': ret = {{{ Functions.getIndex('_glStencilOpSeparate', true) }}}; break;
+  case 'glDrawArrays': ret = {{{ Functions.getIndex('_glDrawArrays', true) }}}; break;
+  case 'glDrawElements': ret = {{{ Functions.getIndex('_glDrawElements', true) }}}; break;
+  case 'glEnable': ret = {{{ Functions.getIndex('_glEnable', true) }}}; break;
+  case 'glFinish': ret = {{{ Functions.getIndex('_glFinish', true) }}}; break;
+  case 'glFlush': ret = {{{ Functions.getIndex('_glFlush', true) }}}; break;
+  case 'glFrontFace': ret = {{{ Functions.getIndex('_glFrontFace', true) }}}; break;
+  case 'glCullFace': ret = {{{ Functions.getIndex('_glCullFace', true) }}}; break;
+  case 'glGenTextures': ret = {{{ Functions.getIndex('_glGenTextures', true) }}}; break;
+  case 'glGetError': ret = {{{ Functions.getIndex('_glGetError', true) }}}; break;
+  case 'glGetIntegerv': ret = {{{ Functions.getIndex('_glGetIntegerv', true) }}}; break;
+  case 'glGetBooleanv': ret = {{{ Functions.getIndex('_glGetBooleanv', true) }}}; break;
+  case 'glGetFloatv': ret = {{{ Functions.getIndex('_glGetFloatv', true) }}}; break;
+  case 'glHint': ret = {{{ Functions.getIndex('_glHint', true) }}}; break;
+  case 'glIsTexture': ret = {{{ Functions.getIndex('_glIsTexture', true) }}}; break;
+  case 'glPixelStorei': ret = {{{ Functions.getIndex('_glPixelStorei', true) }}}; break;
+  case 'glReadPixels': ret = {{{ Functions.getIndex('_glReadPixels', true) }}}; break;
+  case 'glScissor': ret = {{{ Functions.getIndex('_glScissor', true) }}}; break;
+  case 'glStencilFunc': ret = {{{ Functions.getIndex('_glStencilFunc', true) }}}; break;
+  case 'glStencilMask': ret = {{{ Functions.getIndex('_glStencilMask', true) }}}; break;
+  case 'glStencilOp': ret = {{{ Functions.getIndex('_glStencilOp', true) }}}; break;
+  case 'glTexImage2D': ret = {{{ Functions.getIndex('_glTexImage2D', true) }}}; break;
+  case 'glTexParameterf': ret = {{{ Functions.getIndex('_glTexParameterf', true) }}}; break;
+  case 'glTexParameterfv': ret = {{{ Functions.getIndex('_glTexParameterfv', true) }}}; break;
+  case 'glTexParameteri': ret = {{{ Functions.getIndex('_glTexParameteri', true) }}}; break;
+  case 'glTexParameteriv': ret = {{{ Functions.getIndex('_glTexParameteriv', true) }}}; break;
+  case 'glGetTexParameterfv': ret = {{{ Functions.getIndex('_glGetTexParameterfv', true) }}}; break;
+  case 'glGetTexParameteriv': ret = {{{ Functions.getIndex('_glGetTexParameteriv', true) }}}; break;
+  case 'glTexSubImage2D': ret = {{{ Functions.getIndex('_glTexSubImage2D', true) }}}; break;
+  case 'glCopyTexImage2D': ret = {{{ Functions.getIndex('_glCopyTexImage2D', true) }}}; break;
+  case 'glViewport': ret = {{{ Functions.getIndex('_glViewport', true) }}}; break;
+  case 'glIsEnabled': ret = {{{ Functions.getIndex('_glIsEnabled', true) }}}; break;
+  case 'glLineWidth': ret = {{{ Functions.getIndex('_glLineWidth', true) }}}; break;
+  case 'glPolygonOffset': ret = {{{ Functions.getIndex('_glPolygonOffset', true) }}}; break;
+  case 'glReleaseShaderCompiler': ret = {{{ Functions.getIndex('_glReleaseShaderCompiler', true) }}}; break;
+  case 'glGetShaderPrecisionFormat': ret = {{{ Functions.getIndex('_glGetShaderPrecisionFormat', true) }}}; break;
+  case 'glShaderBinary': ret = {{{ Functions.getIndex('_glShaderBinary', true) }}}; break;
       }
       if (!ret) Module.printErr('WARNING: getProcAddress failed for ' + name);
       return ret;
@@ -1963,7 +1987,873 @@ var LibraryGL = {
   $GLImmediate__postset: 'GL.immediate.setupFuncs(); Browser.moduleContextCreatedCallbacks.push(function() { GL.immediate.init() });',
   $GLImmediate__deps: ['$Browser', '$GL', '$GLEmulation'],
   $GLImmediate: {
-    MAX_TEXTURES: 7,
+    MapTreeLib: null,
+    spawnMapTreeLib: function() {
+      /* A naive implementation of a map backed by an array, and accessed by
+       * naive iteration along the array. (hashmap with only one bucket)
+       */
+      function CNaiveListMap() {
+        var list = [];
+
+        this.insert = function(key, val) {
+          if (this.contains(key|0)) return false;
+          list.push([key, val]);
+          return true;
+        };
+
+        var __contains_i;
+        this.contains = function(key) {
+          for (__contains_i = 0; __contains_i < list.length; ++__contains_i) {
+            if (list[__contains_i][0] === key) return true;
+          }
+          return false;
+        };
+
+        var __get_i;
+        this.get = function(key) {
+          for (__get_i = 0; __get_i < list.length; ++__get_i) {
+            if (list[__get_i][0] === key) return list[__get_i][1];
+          }
+          return undefined;
+        };
+      };
+
+      /* A tree of map nodes.
+        Uses `KeyView`s to allow descending the tree without garbage.
+        Example: {
+          // Create our map object.
+          var map = new ObjTreeMap();
+
+          // Grab the static keyView for the map.
+          var keyView = map.GetStaticKeyView();
+
+          // Let's make a map for:
+          // root: <undefined>
+          //   1: <undefined>
+          //     2: <undefined>
+          //       5: "Three, sir!"
+          //       3: "Three!"
+
+          // Note how we can chain together `Reset` and `Next` to
+          // easily descend based on multiple key fragments.
+          keyView.Reset().Next(1).Next(2).Next(5).Set("Three, sir!");
+          keyView.Reset().Next(1).Next(2).Next(3).Set("Three!");
+        }
+      */
+      function CMapTree() {
+        function CNLNode() {
+          var map = new CNaiveListMap();
+
+          this.child = function(keyFrag) {
+            if (!map.contains(keyFrag|0)) {
+              map.insert(keyFrag|0, new CNLNode());
+            }
+            return map.get(keyFrag|0);
+          };
+
+          this.value = undefined;
+          this.get = function() {
+            return this.value;
+          };
+
+          this.set = function(val) {
+            this.value = val;
+          };
+        }
+
+        function CKeyView(root) {
+          var cur;
+
+          this.reset = function() {
+            cur = root;
+            return this;
+          };
+          this.reset();
+
+          this.next = function(keyFrag) {
+            cur = cur.child(keyFrag);
+            return this;
+          };
+
+          this.get = function() {
+            return cur.get();
+          };
+
+          this.set = function(val) {
+            cur.set(val);
+          };
+        };
+
+        var root;
+        var staticKeyView;
+
+        this.createKeyView = function() {
+          return new CKeyView(root);
+        }
+
+        this.clear = function() {
+          root = new CNLNode();
+          staticKeyView = this.createKeyView();
+        };
+        this.clear();
+
+        this.getStaticKeyView = function() {
+          staticKeyView.reset();
+          return staticKeyView;
+        };
+      };
+
+      // Exports:
+      return {
+        create: function() {
+          return new CMapTree();
+        },
+      };
+    },
+
+    TexEnvJIT: null,
+    spawnTexEnvJIT: function() {
+      // GL defs:
+      var GL_TEXTURE0 = 0x84C0;
+      var GL_TEXTURE_1D = 0x0DE0;
+      var GL_TEXTURE_2D = 0x0DE1;
+      var GL_TEXTURE_3D = 0x806f;
+      var GL_TEXTURE_CUBE_MAP = 0x8513;
+      var GL_TEXTURE_ENV = 0x2300;
+      var GL_TEXTURE_ENV_MODE = 0x2200;
+      var GL_TEXTURE_ENV_COLOR = 0x2201;
+      var GL_TEXTURE_CUBE_MAP_POSITIVE_X = 0x8515;
+      var GL_TEXTURE_CUBE_MAP_NEGATIVE_X = 0x8516;
+      var GL_TEXTURE_CUBE_MAP_POSITIVE_Y = 0x8517;
+      var GL_TEXTURE_CUBE_MAP_NEGATIVE_Y = 0x8518;
+      var GL_TEXTURE_CUBE_MAP_POSITIVE_Z = 0x8519;
+      var GL_TEXTURE_CUBE_MAP_NEGATIVE_Z = 0x851A;
+
+      var GL_SRC0_RGB = 0x8580;
+      var GL_SRC1_RGB = 0x8581;
+      var GL_SRC2_RGB = 0x8582;
+
+      var GL_SRC0_ALPHA = 0x8588;
+      var GL_SRC1_ALPHA = 0x8589;
+      var GL_SRC2_ALPHA = 0x858A;
+
+      var GL_OPERAND0_RGB = 0x8590;
+      var GL_OPERAND1_RGB = 0x8591;
+      var GL_OPERAND2_RGB = 0x8592;
+
+      var GL_OPERAND0_ALPHA = 0x8598;
+      var GL_OPERAND1_ALPHA = 0x8599;
+      var GL_OPERAND2_ALPHA = 0x859A;
+
+      var GL_COMBINE_RGB = 0x8571;
+      var GL_COMBINE_ALPHA = 0x8572;
+
+      var GL_RGB_SCALE = 0x8573;
+      var GL_ALPHA_SCALE = 0x0D1C;
+
+      // env.mode
+      var GL_ADD      = 0x0104;
+      var GL_BLEND    = 0x0BE2;
+      var GL_REPLACE  = 0x1E01;
+      var GL_MODULATE = 0x2100;
+      var GL_DECAL    = 0x2101;
+      var GL_COMBINE  = 0x8570;
+
+      // env.color/alphaCombiner
+      //var GL_ADD         = 0x0104;
+      //var GL_REPLACE     = 0x1E01;
+      //var GL_MODULATE    = 0x2100;
+      var GL_SUBTRACT    = 0x84E7;
+      var GL_INTERPOLATE = 0x8575;
+
+      // env.color/alphaSrc
+      var GL_TEXTURE       = 0x1702;
+      var GL_CONSTANT      = 0x8576;
+      var GL_PRIMARY_COLOR = 0x8577;
+      var GL_PREVIOUS      = 0x8578;
+
+      // env.color/alphaOp
+      var GL_SRC_COLOR           = 0x0300;
+      var GL_ONE_MINUS_SRC_COLOR = 0x0301;
+      var GL_SRC_ALPHA           = 0x0302;
+      var GL_ONE_MINUS_SRC_ALPHA = 0x0303;
+
+      var GL_RGB  = 0x1907;
+      var GL_RGBA = 0x1908;
+
+      // Our defs:
+      var TEXENVJIT_NAMESPACE_PREFIX = "tej_";
+      // Not actually constant, as they can be changed between JIT passes:
+      var TEX_UNIT_UNIFORM_PREFIX = "uTexUnit";
+      var TEX_COORD_VARYING_PREFIX = "vTexCoord";
+      var PRIM_COLOR_VARYING = "vPrimColor";
+      var TEX_MATRIX_UNIFORM_PREFIX = "uTexMatrix";
+
+      // Static vars:
+      var s_texUnits = null; //[];
+      var s_activeTexture = 0;
+
+      var s_requiredTexUnitsForPass = [];
+
+      // Static funcs:
+      function abort(info) {
+        assert(false, "[TexEnvJIT] ABORT: " + info);
+      }
+
+      function abort_noSupport(info) {
+        abort("No support: " + info);
+      }
+
+      function abort_sanity(info) {
+        abort("Sanity failure: " + info);
+      }
+
+      function genTexUnitSampleExpr(texUnitID) {
+        var texUnit = s_texUnits[texUnitID];
+        var texType = texUnit.getTexType();
+
+        var func = null;
+        switch (texType) {
+          case GL_TEXTURE_1D:
+            func = "texture2D";
+            break;
+          case GL_TEXTURE_2D:
+            func = "texture2D";
+            break;
+          case GL_TEXTURE_3D:
+            return abort_noSupport("No support for 3D textures.");
+          case GL_TEXTURE_CUBE_MAP:
+            func = "textureCube";
+            break;
+          default:
+            return abort_sanity("Unknown texType: 0x" + texType.toString(16));
+        }
+
+        var texCoordExpr = TEX_COORD_VARYING_PREFIX + texUnitID;
+        if (TEX_MATRIX_UNIFORM_PREFIX != null) {
+          texCoordExpr = "(" + TEX_MATRIX_UNIFORM_PREFIX + texUnitID + " * " + texCoordExpr + ")";
+        }
+        return func + "(" + TEX_UNIT_UNIFORM_PREFIX + texUnitID + ", " + texCoordExpr + ".xy)";
+      }
+
+      function getTypeFromCombineOp(op) {
+        switch (op) {
+          case GL_SRC_COLOR:
+          case GL_ONE_MINUS_SRC_COLOR:
+            return "vec3";
+          case GL_SRC_ALPHA:
+          case GL_ONE_MINUS_SRC_ALPHA:
+            return "float";
+        }
+
+        return Abort_NoSupport("Unsupported combiner op: 0x" + op.toString(16));
+      }
+
+      function getCurTexUnit() {
+        return s_texUnits[s_activeTexture];
+      }
+
+      function genCombinerSourceExpr(texUnitID, constantExpr, previousVar,
+                                     src, op)
+      {
+        var srcExpr = null;
+        switch (src) {
+          case GL_TEXTURE:
+            srcExpr = genTexUnitSampleExpr(texUnitID);
+            break;
+          case GL_CONSTANT:
+            srcExpr = constantExpr;
+            break;
+          case GL_PRIMARY_COLOR:
+            srcExpr = PRIM_COLOR_VARYING;
+            break;
+          case GL_PREVIOUS:
+            srcExpr = previousVar;
+            break;
+          default:
+              return abort_noSupport("Unsupported combiner src: 0x" + src.toString(16));
+        }
+
+        var expr = null;
+        switch (op) {
+          case GL_SRC_COLOR:
+            expr = srcExpr + ".rgb";
+            break;
+          case GL_ONE_MINUS_SRC_COLOR:
+            expr = "(vec3(1.0) - " + srcExpr + ".rgb)";
+            break;
+          case GL_SRC_ALPHA:
+            expr = srcExpr + ".a";
+            break;
+          case GL_ONE_MINUS_SRC_ALPHA:
+            expr = "(1.0 - " + srcExpr + ".a)";
+            break;
+          default:
+            return abort_noSupport("Unsupported combiner op: 0x" + op.toString(16));
+        }
+
+        return expr;
+      }
+
+      function valToFloatLiteral(val) {
+        if (val == Math.round(val)) return val + '.0';
+        return val;
+      }
+
+
+      // Classes:
+      function CTexEnv() {
+        this.mode = GL_MODULATE;
+        this.colorCombiner = GL_MODULATE;
+        this.alphaCombiner = GL_MODULATE;
+        this.colorScale = 1;
+        this.alphaScale = 1;
+        this.envColor = [0, 0, 0, 0];
+
+        this.colorSrc = [
+          GL_TEXTURE,
+          GL_PREVIOUS,
+          GL_CONSTANT
+        ];
+        this.alphaSrc = [
+          GL_TEXTURE,
+          GL_PREVIOUS,
+          GL_CONSTANT
+        ];
+        this.colorOp = [
+          GL_SRC_COLOR,
+          GL_SRC_COLOR,
+          GL_SRC_ALPHA
+        ];
+        this.alphaOp = [
+          GL_SRC_ALPHA,
+          GL_SRC_ALPHA,
+          GL_SRC_ALPHA
+        ];
+
+        this.traverseState = function(keyView) {
+          keyView.next(this.mode);
+          keyView.next(this.colorCombiner);
+          keyView.next(this.alphaCombiner);
+          keyView.next(this.colorCombiner);
+          keyView.next(this.alphaScale);
+          keyView.next(this.envColor[0]);
+          keyView.next(this.envColor[1]);
+          keyView.next(this.envColor[2]);
+          keyView.next(this.envColor[3]);
+
+          keyView.next(this.colorSrc[0]);
+          keyView.next(this.colorSrc[1]);
+          keyView.next(this.colorSrc[2]);
+
+          keyView.next(this.alphaSrc[0]);
+          keyView.next(this.alphaSrc[1]);
+          keyView.next(this.alphaSrc[2]);
+
+          keyView.next(this.colorOp[0]);
+          keyView.next(this.colorOp[1]);
+          keyView.next(this.colorOp[2]);
+
+          keyView.next(this.alphaOp[0]);
+          keyView.next(this.alphaOp[1]);
+          keyView.next(this.alphaOp[2]);
+        };
+      }
+
+      function CTexUnit() {
+        this.env = new CTexEnv();
+        this.enabled_tex1D   = false;
+        this.enabled_tex2D   = false;
+        this.enabled_tex3D   = false;
+        this.enabled_texCube = false;
+
+        this.traverseState = function(keyView) {
+          var texUnitType = this.getTexType();
+          keyView.next(texUnitType);
+          if (!texUnitType) return;
+          this.env.traverseState(keyView);
+        };
+      };
+
+      // Class impls:
+      CTexUnit.prototype.enabled = function() {
+        return this.getTexType() != 0;
+      }
+
+      CTexUnit.prototype.genPassLines = function(passOutputVar, passInputVar, texUnitID) {
+        if (!this.enabled()) {
+          return ["vec4 " + passOutputVar + " = " + passInputVar + ";"];
+        }
+
+        return this.env.genPassLines(passOutputVar, passInputVar, texUnitID);
+      }
+
+      CTexUnit.prototype.getTexType = function() {
+        if (this.enabled_texCube) {
+          return GL_TEXTURE_CUBE_MAP;
+        } else if (this.enabled_tex3D) {
+          return GL_TEXTURE_3D;
+        } else if (this.enabled_tex2D) {
+          return GL_TEXTURE_2D;
+        } else if (this.enabled_tex1D) {
+          return GL_TEXTURE_1D;
+        }
+        return 0;
+      }
+
+      CTexEnv.prototype.genPassLines = function(passOutputVar, passInputVar, texUnitID) {
+        switch (this.mode) {
+          case GL_REPLACE: {
+            /* RGB:
+             * Cv = Cs
+             * Av = Ap // Note how this is different, and that we'll
+             *            need to track the bound texture internalFormat
+             *            to get this right.
+             *
+             * RGBA:
+             * Cv = Cs
+             * Av = As
+             */
+            return [
+              "vec4 " + passOutputVar + " = " + genTexUnitSampleExpr(texUnitID) + ";",
+            ];
+          }
+          case GL_ADD: {
+            /* RGBA:
+             * Cv = Cp + Cs
+             * Av = ApAs
+             */
+            var prefix = TEXENVJIT_NAMESPACE_PREFIX + 'env' + texUnitID + "_";
+            var texVar = prefix + "tex";
+            var colorVar = prefix + "color";
+            var alphaVar = prefix + "alpha";
+
+            return [
+              "vec4 " + texVar + " = " + genTexUnitSampleExpr(texUnitID) + ";",
+              "vec3 " + colorVar + " = " + passInputVar + ".rgb + " + texVar + ".rgb;",
+              "float " + alphaVar + " = " + passInputVar + ".a * " + texVar + ".a;",
+              "vec4 " + passOutputVar + " = vec4(" + colorVar + ", " + alphaVar + ");",
+            ];
+          }
+          case GL_MODULATE: {
+            /* RGBA:
+             * Cv = CpCs
+             * Av = ApAs
+             */
+            var line = [
+              "vec4 " + passOutputVar,
+              " = ",
+                passInputVar,
+                " * ",
+                genTexUnitSampleExpr(texUnitID),
+              ";",
+            ];
+            return [line.join("")];
+          }
+          case GL_DECAL: {
+            /* RGBA:
+             * Cv = Cp(1 - As) + CsAs
+             * Av = Ap
+             */
+            var prefix = TEXENVJIT_NAMESPACE_PREFIX + 'env' + texUnitID + "_";
+            var texVar = prefix + "tex";
+            var colorVar = prefix + "color";
+            var alphaVar = prefix + "alpha";
+
+            return [
+              "vec4 " + texVar + " = " + genTexUnitSampleExpr(texUnitID) + ";",
+              [
+                "vec3 " + colorVar + " = ",
+                  passInputVar + ".rgb * (1.0 - " + texVar + ".a)",
+                    " + ",
+                  texVar + ".rgb * " + texVar + ".a",
+                ";"
+              ].join(""),
+              "float " + alphaVar + " = " + passInputVar + ".a;",
+              "vec4 " + passOutputVar + " = vec4(" + colorVar + ", " + alphaVar + ");",
+            ];
+          }
+          case GL_BLEND: {
+            /* RGBA:
+             * Cv = Cp(1 - Cs) + CcCs
+             * Av = As
+             */
+            var prefix = TEXENVJIT_NAMESPACE_PREFIX + 'env' + texUnitID + "_";
+            var texVar = prefix + "tex";
+            var colorVar = prefix + "color";
+            var alphaVar = prefix + "alpha";
+
+            return [
+              "vec4 " + texVar + " = " + genTexUnitSampleExpr(texUnitID) + ";",
+              [
+                "vec3 " + colorVar + " = ",
+                  passInputVar + ".rgb * (1.0 - " + texVar + ".rgb)",
+                    " + ",
+                  PRIM_COLOR_VARYING + ".rgb * " + texVar + ".rgb",
+                ";"
+              ].join(""),
+              "float " + alphaVar + " = " + texVar + ".a;",
+              "vec4 " + passOutputVar + " = vec4(" + colorVar + ", " + alphaVar + ");",
+            ];
+          }
+          case GL_COMBINE: {
+            var prefix = TEXENVJIT_NAMESPACE_PREFIX + 'env' + texUnitID + "_";
+            var colorVar = prefix + "color";
+            var alphaVar = prefix + "alpha";
+            var colorLines = this.genCombinerLines(true, colorVar,
+                                                   passInputVar, texUnitID,
+                                                   this.colorCombiner, this.colorSrc, this.colorOp);
+            var alphaLines = this.genCombinerLines(false, alphaVar,
+                                                   passInputVar, texUnitID,
+                                                   this.alphaCombiner, this.alphaSrc, this.alphaOp);
+            var line = [
+              "vec4 " + passOutputVar,
+              " = ",
+                "vec4(",
+                    colorVar + " * " + valToFloatLiteral(this.colorScale),
+                    ", ",
+                    alphaVar + " * " + valToFloatLiteral(this.alphaScale),
+                ")",
+              ";",
+            ].join("");
+            return [].concat(colorLines, alphaLines, [line]);
+          }
+        }
+
+        return Abort_NoSupport("Unsupported TexEnv mode: 0x" + this.mode.toString(16));
+      }
+
+      CTexEnv.prototype.genCombinerLines = function(isColor, outputVar,
+                                                    passInputVar, texUnitID,
+                                                    combiner, srcArr, opArr)
+      {
+        var argsNeeded = null;
+        switch (combiner) {
+          case GL_REPLACE:
+            argsNeeded = 1;
+            break;
+
+          case GL_MODULATE:
+          case GL_ADD:
+          case GL_SUBTRACT:
+            argsNeeded = 2;
+            break;
+
+          case GL_INTERPOLATE:
+            argsNeeded = 3;
+            break;
+
+          default:
+            return abort_noSupport("Unsupported combiner: 0x" + combiner.toString(16));
+        }
+
+        var constantExpr = [
+          "vec4(",
+            valToFloatLiteral(this.envColor[0]),
+            ", ",
+            valToFloatLiteral(this.envColor[1]),
+            ", ",
+            valToFloatLiteral(this.envColor[2]),
+            ", ",
+            valToFloatLiteral(this.envColor[3]),
+          ")",
+        ].join("");
+        var src0Expr = (argsNeeded >= 1) ? genCombinerSourceExpr(texUnitID, constantExpr, passInputVar, srcArr[0], opArr[0])
+                                         : null;
+        var src1Expr = (argsNeeded >= 2) ? genCombinerSourceExpr(texUnitID, constantExpr, passInputVar, srcArr[1], opArr[1])
+                                         : null;
+        var src2Expr = (argsNeeded >= 3) ? genCombinerSourceExpr(texUnitID, constantExpr, passInputVar, srcArr[2], opArr[2])
+                                         : null;
+
+        var outputType = isColor ? "vec3" : "float";
+        var lines = null;
+        switch (combiner) {
+          case GL_REPLACE: {
+            var line = [
+              outputType + " " + outputVar,
+              " = ",
+                src0Expr,
+              ";",
+            ];
+            lines = [line.join("")];
+            break;
+          }
+          case GL_MODULATE: {
+            var line = [
+              outputType + " " + outputVar + " = ",
+                src0Expr + " * " + src1Expr,
+              ";",
+            ];
+            lines = [line.join("")];
+            break;
+          }
+          case GL_ADD: {
+            var line = [
+              outputType + " " + outputVar + " = ",
+                src0Expr + " + " + src1Expr,
+              ";",
+            ];
+            lines = [line.join("")];
+            break;
+          }
+          case GL_SUBTRACT: {
+            var line = [
+              outputType + " " + outputVar + " = ",
+                src0Expr + " - " + src1Expr,
+              ";",
+            ];
+            lines = [line.join("")];
+            break;
+          }
+          case GL_INTERPOLATE: {
+            var prefix = TEXENVJIT_NAMESPACE_PREFIX + 'env' + texUnitID + "_";
+            var arg2Var = prefix + "colorSrc2";
+            var arg2Line = getTypeFromCombineOp(this.colorOp[2]) + " " + arg2Var + " = " + src2Expr + ";";
+
+            var line = [
+              outputType + " " + outputVar,
+              " = ",
+                src0Expr + " * " + arg2Var,
+                " + ",
+                src1Expr + " * (1.0 - " + arg2Var + ")",
+              ";",
+            ];
+            lines = [
+              arg2Line,
+              line.join(""),
+            ];
+            break;
+          }
+
+          default:
+            return abort_sanity("Unmatched TexEnv.colorCombiner?");
+        }
+
+        return lines;
+      }
+
+      return {
+        // Exports:
+        init: function(gl, specifiedMaxTextureImageUnits) {
+          var maxTexUnits = 0;
+          if (specifiedMaxTextureImageUnits) {
+            maxTexUnits = specifiedMaxTextureImageUnits;
+          } else if (gl) {
+            maxTexUnits = gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS);
+          }
+
+          assert(maxTexUnits > 0);
+
+          s_texUnits = [];
+          for (var i = 0; i < maxTexUnits; i++) {
+            s_texUnits.push(new CTexUnit());
+          }
+        },
+
+        setGLSLVars: function(uTexUnitPrefix, vTexCoordPrefix, vPrimColor, uTexMatrixPrefix) {
+          TEX_UNIT_UNIFORM_PREFIX   = uTexUnitPrefix;
+          TEX_COORD_VARYING_PREFIX  = vTexCoordPrefix;
+          PRIM_COLOR_VARYING        = vPrimColor;
+          TEX_MATRIX_UNIFORM_PREFIX = uTexMatrixPrefix;
+        },
+
+        genAllPassLines: function(resultDest, indentSize) {
+          indentSize = indentSize || 0;
+
+          s_requiredTexUnitsForPass.length = 0; // Clear the list.
+          var lines = [];
+          var lastPassVar = PRIM_COLOR_VARYING;
+          for (var i = 0; i < s_texUnits.length; i++) {
+            if (!s_texUnits[i].enabled()) continue;
+
+            s_requiredTexUnitsForPass.push(i);
+
+            var prefix = TEXENVJIT_NAMESPACE_PREFIX + 'env' + i + "_";
+            var passOutputVar = prefix + "result";
+
+            var newLines = s_texUnits[i].genPassLines(passOutputVar, lastPassVar, i);
+            lines = lines.concat(newLines, [""]);
+
+            lastPassVar = passOutputVar;
+          }
+          lines.push(resultDest + " = " + lastPassVar + ";");
+
+          var indent = "";
+          for (var i = 0; i < indentSize; i++) indent += " ";
+
+          var output = indent + lines.join("\n" + indent);
+
+          return output;
+        },
+
+        getUsedTexUnitList: function() {
+          return s_requiredTexUnitsForPass;
+        },
+
+        traverseState: function(keyView) {
+          for (var i = 0; i < s_texUnits.length; i++) {
+            var texUnit = s_texUnits[i];
+            var enabled = texUnit.enabled();
+            keyView.next(enabled);
+            if (enabled) {
+              texUnit.traverseState(keyView);
+            }
+          }
+        },
+
+        getTexUnitType: function(texUnitID) {
+          assert(texUnitID >= 0 &&
+                 texUnitID < s_texUnits.length);
+
+          return s_texUnits[texUnitID].getTexType();
+        },
+
+        // Hooks:
+        hook_activeTexture: function(texture) {
+          s_activeTexture = texture - GL_TEXTURE0;
+        },
+
+        hook_enable: function(cap) {
+          var cur = getCurTexUnit();
+          switch (cap) {
+            case GL_TEXTURE_1D:
+              cur.enabled_tex1D = true;
+              break;
+            case GL_TEXTURE_2D:
+              cur.enabled_tex2D = true;
+              break;
+            case GL_TEXTURE_3D:
+              cur.enabled_tex3D = true;
+              break;
+            case GL_TEXTURE_CUBE_MAP:
+              cur.enabled_texCube = true;
+              break;
+          }
+        },
+
+        hook_disable: function(cap) {
+          var cur = getCurTexUnit();
+          switch (cap) {
+            case GL_TEXTURE_1D:
+              cur.enabled_tex1D = false;
+              break;
+            case GL_TEXTURE_2D:
+              cur.enabled_tex2D = false;
+              break;
+            case GL_TEXTURE_3D:
+              cur.enabled_tex3D = false;
+              break;
+            case GL_TEXTURE_CUBE_MAP:
+              cur.enabled_texCube = false;
+              break;
+          }
+        },
+
+        hook_texEnvf: function(target, pname, param) {
+          if (target != GL_TEXTURE_ENV)
+            return;
+
+          var env = getCurTexUnit().env;
+          switch (pname) {
+            case GL_RGB_SCALE:
+              env.colorScale = param;
+              break;
+            case GL_ALPHA_SCALE:
+              env.alphaScale = param;
+              break;
+
+            default:
+              Module.printErr('WARNING: Unhandled `pname` in call to `glTexEnvf`.');
+          }
+        },
+
+        hook_texEnvi: function(target, pname, param) {
+          if (target != GL_TEXTURE_ENV)
+            return;
+
+          var env = getCurTexUnit().env;
+          switch (pname) {
+            case GL_TEXTURE_ENV_MODE:
+              env.mode = param;
+              break;
+
+            case GL_COMBINE_RGB:
+              env.colorCombiner = param;
+              break;
+            case GL_COMBINE_ALPHA:
+              env.alphaCombiner = param;
+              break;
+
+            case GL_SRC0_RGB:
+              env.colorSrc[0] = param;
+              break;
+            case GL_SRC1_RGB:
+              env.colorSrc[1] = param;
+              break;
+            case GL_SRC2_RGB:
+              env.colorSrc[2] = param;
+              break;
+
+            case GL_SRC0_ALPHA:
+              env.alphaSrc[0] = param;
+              break;
+            case GL_SRC1_ALPHA:
+              env.alphaSrc[1] = param;
+              break;
+            case GL_SRC2_ALPHA:
+              env.alphaSrc[2] = param;
+              break;
+
+            case GL_OPERAND0_RGB:
+              env.colorOp[0] = param;
+              break;
+            case GL_OPERAND1_RGB:
+              env.colorOp[1] = param;
+              break;
+            case GL_OPERAND2_RGB:
+              env.colorOp[2] = param;
+              break;
+
+            case GL_OPERAND0_ALPHA:
+              env.alphaOp[0] = param;
+              break;
+            case GL_OPERAND1_ALPHA:
+              env.alphaOp[1] = param;
+              break;
+            case GL_OPERAND2_ALPHA:
+              env.alphaOp[2] = param;
+              break;
+
+            case GL_RGB_SCALE:
+              env.colorScale = param;
+              break;
+            case GL_ALPHA_SCALE:
+              env.alphaScale = param;
+              break;
+
+            default:
+              Module.printErr('WARNING: Unhandled `pname` in call to `glTexEnvi`.');
+          }
+        },
+
+        hook_texEnvfv: function(target, pname, params) {
+          if (target != GL_TEXTURE_ENV) return;
+
+          var env = getCurTexUnit().env;
+          switch (pname) {
+            case GL_TEXTURE_ENV_COLOR: {
+              for (var i = 0; i < 4; i++) {
+                var param = {{{ makeGetValue('params', 'i*4', 'float') }}};
+                env.envColor[i] = param;
+              }
+              break
+            }
+            default:
+              Module.printErr('WARNING: Unhandled `pname` in call to `glTexEnvfv`.');
+          }
+        },
+      };
+    },
 
     // Vertex and index data
     vertexData: null, // current vertex data. either tempData (glBegin etc.) or a view into the heap (gl*Pointer). Default view is F32
@@ -1974,7 +2864,6 @@ var LibraryGL = {
     mode: -1,
 
     rendererCache: null,
-    rendererCacheItemTemplate: [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null], // 16 nulls
     rendererComponents: [], // small cache for calls inside glBegin/end. counts how many times the element was seen
     rendererComponentPointer: 0, // next place to start a glBegin/end component
     lastRenderer: null, // used to avoid cleaning up and re-preparing the same renderer
@@ -1988,6 +2877,7 @@ var LibraryGL = {
     currentMatrix: 'm', // default is modelview
     tempMatrix: null,
     matricesModified: false,
+    useTextureMatrix: false,
 
     // Clientside attributes
     VERTEX: 0,
@@ -2000,8 +2890,8 @@ var LibraryGL = {
     TEXTURE4: 7,
     TEXTURE5: 8,
     TEXTURE6: 9,
-    NUM_ATTRIBUTES: 10,
-    NUM_TEXTURES: 7,
+    NUM_ATTRIBUTES: 10, // Overwritten in init().
+    MAX_TEXTURES: 7,    // Overwritten in init().
 
     totalEnabledClientAttributes: 0,
     enabledClientAttributes: [0, 0],
@@ -2010,6 +2900,8 @@ var LibraryGL = {
     modifiedClientAttributes: false,
     clientActiveTexture: 0,
     clientColor: null,
+    usedTexUnitList: [],
+    fixedFunctionProgram: null,
 
     setClientAttribute: function(name, size, type, stride, pointer) {
       var attrib = this.clientAttributes[name];
@@ -2042,7 +2934,9 @@ var LibraryGL = {
       if (!this.rendererComponents[name]) {
         this.rendererComponents[name] = 1;
 #if ASSERTIONS
-        assert(!this.enabledClientAttributes[name]); // cannot get mixed up with this, for example we will disable this later
+        if (this.enabledClientAttributes[name]) {
+          console.log("Warning: glTexCoord used after EnableClientState for TEXTURE_COORD_ARRAY for TEXTURE0. Disabling TEXTURE_COORD_ARRAY...");
+        }
 #endif
         this.enabledClientAttributes[name] = true;
         this.setClientAttribute(name, size, type, 0, this.rendererComponentPointer);
@@ -2062,19 +2956,18 @@ var LibraryGL = {
       // return a renderer object given the liveClientAttributes
       // we maintain a cache of renderers, optimized to not generate garbage
       var attributes = GL.immediate.liveClientAttributes;
-      var cacheItem = GL.immediate.rendererCache;
+      var cacheMap = GL.immediate.rendererCache;
       var temp;
+      var keyView = cacheMap.getStaticKeyView().reset();
+
+      // By attrib state:
       for (var i = 0; i < attributes.length; i++) {
         var attribute = attributes[i];
-        temp = cacheItem[attribute.name];
-        cacheItem = temp ? temp : (cacheItem[attribute.name] = GL.immediate.rendererCacheItemTemplate.slice());
-        temp = cacheItem[attribute.size];
-        cacheItem = temp ? temp : (cacheItem[attribute.size] = GL.immediate.rendererCacheItemTemplate.slice());
-        var typeIndex = attribute.type - GL.byteSizeByTypeRoot; // ensure it starts at 0 to keep the cache items dense
-        temp = cacheItem[typeIndex];
-        cacheItem = temp ? temp : (cacheItem[typeIndex] = GL.immediate.rendererCacheItemTemplate.slice());
+        keyView.next(attribute.name).next(attribute.size).next(attribute.type);
       }
-      var fogParam;
+
+      // By fog state:
+      var fogParam = 0;
       if (GLEmulation.fogEnabled) {
         switch (GLEmulation.fogMode) {
           case 0x0801: // GL_EXP2
@@ -2087,33 +2980,40 @@ var LibraryGL = {
             fogParam = 3;
             break;
         }
-      } else {
-        fogParam = 0;
       }
-      temp = cacheItem[fogParam];
-      cacheItem = temp ? temp : (cacheItem[fogParam] = GL.immediate.rendererCacheItemTemplate.slice());
-      if (GL.currProgram) { // Note the order here; this one is last, and optional. Note that we cannot ensure it is dense, sadly
-        temp = cacheItem[GL.currProgram];
-        cacheItem = temp ? temp : (cacheItem[GL.currProgram] = GL.immediate.rendererCacheItemTemplate.slice());
+      keyView.next(fogParam);
+
+      // By cur program:
+      keyView.next(GL.currProgram);
+      if (!GL.currProgram) {
+        GL.immediate.TexEnvJIT.traverseState(keyView);
       }
-      if (!cacheItem.renderer) {
+
+      // If we don't already have it, create it.
+      if (!keyView.get()) {
 #if GL_DEBUG
         Module.printErr('generating renderer for ' + JSON.stringify(attributes));
 #endif
-        cacheItem.renderer = this.createRenderer();
+        keyView.set(this.createRenderer());
       }
-      return cacheItem.renderer;
+      return keyView.get();
     },
 
     createRenderer: function(renderer) {
       var useCurrProgram = !!GL.currProgram;
       var hasTextures = false, textureSizes = [], textureTypes = [];
-      for (var i = 0; i < GL.immediate.NUM_TEXTURES; i++) {
-        if (GL.immediate.enabledClientAttributes[GL.immediate.TEXTURE0 + i]) {
-          textureSizes[i] = GL.immediate.clientAttributes[GL.immediate.TEXTURE0 + i].size;
-          textureTypes[i] = GL.immediate.clientAttributes[GL.immediate.TEXTURE0 + i].type;
-          hasTextures = true;
+      for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
+        var texAttribName = GL.immediate.TEXTURE0 + i;
+        if (!GL.immediate.enabledClientAttributes[texAttribName])
+          continue;
+
+        if (!useCurrProgram) {
+          assert(GL.immediate.TexEnvJIT.getTexUnitType(i) != 0, "GL_TEXTURE" + i + " coords are supplied, but that texture unit is disabled in the fixed-function pipeline.");
         }
+
+        textureSizes[i] = GL.immediate.clientAttributes[texAttribName].size;
+        textureTypes[i] = GL.immediate.clientAttributes[texAttribName].type;
+        hasTextures = true;
       }
       var positionSize = GL.immediate.clientAttributes[GL.immediate.VERTEX].size;
       var positionType = GL.immediate.clientAttributes[GL.immediate.VERTEX].type;
@@ -2129,6 +3029,13 @@ var LibraryGL = {
       }
       var ret = {
         init: function() {
+          // For fixed-function shader generation.
+          var uTexUnitPrefix = 'u_texUnit';
+          var aTexCoordPrefix = 'a_texCoord';
+          var vTexCoordPrefix = 'v_texCoord';
+          var vPrimColor = 'v_color';
+          var uTexMatrixPrefix = GL.immediate.useTextureMatrix ? 'u_textureMatrix' : null;
+
           if (useCurrProgram) {
             if (GL.shaderInfos[GL.programShaders[GL.currProgram][0]].type == Module.ctx.VERTEX_SHADER) {
               this.vertexShader = GL.shaders[GL.programShaders[GL.currProgram][0]];
@@ -2138,13 +3045,12 @@ var LibraryGL = {
               this.fragmentShader = GL.shaders[GL.programShaders[GL.currProgram][0]];
             }
             this.program = GL.programs[GL.currProgram];
+            this.usedTexUnitList = [];
           } else {
             // IMPORTANT NOTE: If you parameterize the shader source based on any runtime values
             // in order to create the least expensive shader possible based on the features being
             // used, you should also update the code in the beginning of getRenderer to make sure
             // that you cache the renderer based on the said parameters.
-            this.vertexShader = Module.ctx.createShader(Module.ctx.VERTEX_SHADER);
-            var zero = positionSize == 2 ? '0, ' : '';
             if (GLEmulation.fogEnabled) {
               switch (GLEmulation.fogMode) {
                 case 0x0801: // GL_EXP2
@@ -2161,47 +3067,95 @@ var LibraryGL = {
                   break;
               }
             }
-            Module.ctx.shaderSource(this.vertexShader, 'attribute vec' + positionSize + ' a_position;  \n' +
-                                                       'attribute vec2 a_texCoord0;  \n' +
-                                                       (hasTextures ? 'varying vec2 v_texCoord;    \n' : '') +
-                                                       'varying vec4 v_color; \n' +
-                                                       (colorSize ? 'attribute vec4 a_color; \n': 'uniform vec4 u_color; \n') +
-                                                       (GLEmulation.fogEnabled ? 'varying float v_fogFragCoord; \n' : '') +
-                                                       'uniform mat4 u_modelView;   \n' +
-                                                       'uniform mat4 u_projection;  \n' +
-                                                       'void main()                 \n' +
-                                                       '{                           \n' +
-                                                       '  vec4 ecPosition = (u_modelView * vec4(a_position, ' + zero + '1.0)); \n' + // eye-coordinate position
-                                                       '  gl_Position = u_projection * ecPosition; \n' +
-                                                       (hasTextures ? 'v_texCoord = a_texCoord0;    \n' : '') +
-                                                       (colorSize ? 'v_color = a_color; \n' : 'v_color = u_color; \n') +
-                                                       (GLEmulation.fogEnabled ? 'v_fogFragCoord = abs(ecPosition.z);\n' : '') +
-                                                       '}                           \n');
+
+            GL.immediate.TexEnvJIT.setGLSLVars(uTexUnitPrefix, vTexCoordPrefix, vPrimColor, uTexMatrixPrefix);
+            var fsTexEnvPass = GL.immediate.TexEnvJIT.genAllPassLines('gl_FragColor', 2);
+
+            var texUnitAttribList = '';
+            var texUnitVaryingList = '';
+            var texUnitUniformList = '';
+            var vsTexCoordInits = '';
+            this.usedTexUnitList = GL.immediate.TexEnvJIT.getUsedTexUnitList();
+            for (var i = 0; i < this.usedTexUnitList.length; i++) {
+              var texUnit = this.usedTexUnitList[i];
+              texUnitAttribList += 'attribute vec4 ' + aTexCoordPrefix + texUnit + ';\n';
+              texUnitVaryingList += 'varying vec4 ' + vTexCoordPrefix + texUnit + ';\n';
+              texUnitUniformList += 'uniform sampler2D ' + uTexUnitPrefix + texUnit + ';\n';
+              vsTexCoordInits += '  ' + vTexCoordPrefix + texUnit + ' = ' + aTexCoordPrefix + texUnit + ';\n';
+
+              if (GL.immediate.useTextureMatrix) {
+                texUnitUniformList += 'uniform mat4 ' + uTexMatrixPrefix + texUnit + ';\n';
+              }
+            }
+
+            var vsFogVaryingInit = null;
+            if (GLEmulation.fogEnabled) {
+              vsFogVaryingInit = '  v_fogFragCoord = abs(ecPosition.z);\n';
+            }
+
+            var vsSource = [
+              'attribute vec4 a_position;',
+              'attribute vec4 a_color;',
+              'varying vec4 v_color;',
+              texUnitAttribList,
+              texUnitVaryingList,
+              (GLEmulation.fogEnabled ? 'varying float v_fogFragCoord;' : null),
+              'uniform mat4 u_modelView;',
+              'uniform mat4 u_projection;',
+              'void main()',
+              '{',
+              '  vec4 ecPosition = u_modelView * a_position;', // eye-coordinate position
+              '  gl_Position = u_projection * ecPosition;',
+              '  v_color = a_color;',
+              vsTexCoordInits,
+              vsFogVaryingInit,
+              '}',
+              ''
+            ].join('\n').replace(/\n\n+/g, '\n');
+
+            this.vertexShader = Module.ctx.createShader(Module.ctx.VERTEX_SHADER);
+            Module.ctx.shaderSource(this.vertexShader, vsSource);
             Module.ctx.compileShader(this.vertexShader);
 
+            var fogHeaderIfNeeded = null;
+            if (GLEmulation.fogEnabled) {
+              fogHeaderIfNeeded = [
+                '',
+                'varying float v_fogFragCoord; ',
+                'uniform vec4 u_fogColor;      ',
+                'uniform float u_fogEnd;       ',
+                'uniform float u_fogScale;     ',
+                'uniform float u_fogDensity;   ',
+                'float ffog(in float ecDistance) { ',
+                fogFormula,
+                '  fog = clamp(fog, 0.0, 1.0); ',
+                '  return fog;                 ',
+                '}',
+                '',
+              ].join("\n");
+            }
+
+            var fogPass = null;
+            if (GLEmulation.fogEnabled) {
+              fogPass = 'gl_FragColor = vec4(mix(u_fogColor.rgb, gl_FragColor.rgb, ffog(v_fogFragCoord)), gl_FragColor.a);\n';
+            }
+
+            var fsSource = [
+              'precision mediump float;',
+              texUnitVaryingList,
+              texUnitUniformList,
+              'varying vec4 v_color;',
+              fogHeaderIfNeeded,
+              'void main()',
+              '{',
+              fsTexEnvPass,
+              fogPass,
+              '}',
+              ''
+            ].join("\n").replace(/\n\n+/g, '\n');
+
             this.fragmentShader = Module.ctx.createShader(Module.ctx.FRAGMENT_SHADER);
-            Module.ctx.shaderSource(this.fragmentShader, 'precision mediump float;                            \n' +
-                                                         'varying vec2 v_texCoord;                            \n' +
-                                                         'uniform sampler2D u_texture;                        \n' +
-                                                         'varying vec4 v_color;                               \n' +
-                                                         (GLEmulation.fogEnabled ? (
-                                                           'varying float v_fogFragCoord; \n' +
-                                                           'uniform vec4 u_fogColor; \n' +
-                                                           'uniform float u_fogEnd; \n' +
-                                                           'uniform float u_fogScale; \n' +
-                                                           'uniform float u_fogDensity; \n' +
-                                                           'float ffog(in float ecDistance) { \n' +
-                                                           fogFormula +
-                                                           '  fog = clamp(fog, 0.0, 1.0); \n' +
-                                                           '  return fog; \n' +
-                                                           '} \n'
-                                                           ) : '') +
-                                                         'void main()                                         \n' +
-                                                         '{                                                   \n' +
-                                                         (hasTextures ? 'gl_FragColor = v_color * texture2D( u_texture, v_texCoord );\n' :
-                                                                        'gl_FragColor = v_color;\n') +
-                                                         (GLEmulation.fogEnabled ? 'gl_FragColor = vec4(mix(u_fogColor.rgb, gl_FragColor.rgb, ffog(v_fogFragCoord)), gl_FragColor.a); \n' : '') +
-                                                         '}                                                   \n');
+            Module.ctx.shaderSource(this.fragmentShader, fsSource);
             Module.ctx.compileShader(this.fragmentShader);
 
             this.program = Module.ctx.createProgram();
@@ -2212,12 +3166,36 @@ var LibraryGL = {
           }
 
           this.positionLocation = Module.ctx.getAttribLocation(this.program, 'a_position');
+
           this.texCoordLocations = [];
-          for (var i = 0; i < textureSizes.length; i++) {
-            if (textureSizes[i]) {
+
+          for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
+            if (!GL.immediate.enabledClientAttributes[GL.immediate.TEXTURE0 + i]) {
+              this.texCoordLocations[i] = -1;
+              continue;
+            }
+
+            if (useCurrProgram) {
               this.texCoordLocations[i] = Module.ctx.getAttribLocation(this.program, 'a_texCoord' + i);
+            } else {
+              this.texCoordLocations[i] = Module.ctx.getAttribLocation(this.program, aTexCoordPrefix + i);
             }
           }
+
+          if (!useCurrProgram) {
+            // Temporarily switch to the program so we can set our sampler uniforms early.
+            var prevBoundProg = Module.ctx.getParameter(Module.ctx.CURRENT_PROGRAM);
+            Module.ctx.useProgram(this.program);
+            {
+              for (var i = 0; i < this.usedTexUnitList.length; i++) {
+                var texUnitID = this.usedTexUnitList[i];
+                var texSamplerLoc = Module.ctx.getUniformLocation(this.program, uTexUnitPrefix + texUnitID);
+                Module.ctx.uniform1i(texSamplerLoc, texUnitID);
+              }
+            }
+            Module.ctx.useProgram(prevBoundProg);
+          }
+
           this.textureMatrixLocations = [];
           for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
             this.textureMatrixLocations[i] = Module.ctx.getUniformLocation(this.program, 'u_textureMatrix' + i);
@@ -2225,16 +3203,12 @@ var LibraryGL = {
           this.colorLocation = Module.ctx.getAttribLocation(this.program, 'a_color');
           this.normalLocation = Module.ctx.getAttribLocation(this.program, 'a_normal');
 
-          this.textureLocation = Module.ctx.getUniformLocation(this.program, 'u_texture'); // only for immediate mode with no shaders, so only one is enough
           this.modelViewLocation = Module.ctx.getUniformLocation(this.program, 'u_modelView');
           this.projectionLocation = Module.ctx.getUniformLocation(this.program, 'u_projection');
-          this.hasColorAttribLocation = Module.ctx.getUniformLocation(this.program, 'u_hasColorAttrib');
-          this.colorUniformLocation = Module.ctx.getUniformLocation(this.program, 'u_color');
 
           this.hasTextures = hasTextures;
-          this.hasColorAttrib = colorSize > 0 && this.colorLocation >= 0;
-          this.hasColorUniform = !!this.colorUniformLocation;
           this.hasNormal = normalSize > 0 && this.normalLocation >= 0;
+          this.hasColor = (this.colorLocation === 0) || this.colorLocation > 0;
 
           this.floatType = Module.ctx.FLOAT; // minor optimization
 
@@ -2294,6 +3268,7 @@ var LibraryGL = {
 
           if (!GL.currProgram) {
             Module.ctx.useProgram(this.program);
+            GL.immediate.fixedFunctionProgram = this.program;
           }
 
           if (this.modelViewLocation) Module.ctx.uniformMatrix4fv(this.modelViewLocation, false, GL.immediate.matrix['m']);
@@ -2305,11 +3280,21 @@ var LibraryGL = {
                                          GL.immediate.stride, clientAttributes[GL.immediate.VERTEX].offset);
           Module.ctx.enableVertexAttribArray(this.positionLocation);
           if (this.hasTextures) {
-            for (var i = 0; i < textureSizes.length; i++) {
-              if (textureSizes[i] && this.texCoordLocations[i] >= 0) {
-                Module.ctx.vertexAttribPointer(this.texCoordLocations[i], textureSizes[i], textureTypes[i], false,
-                                               GL.immediate.stride, clientAttributes[GL.immediate.TEXTURE0 + i].offset);
-                Module.ctx.enableVertexAttribArray(this.texCoordLocations[i]);
+            //for (var i = 0; i < this.usedTexUnitList.length; i++) {
+            //  var texUnitID = this.usedTexUnitList[i];
+            for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
+              var texUnitID = i;
+              var attribLoc = this.texCoordLocations[texUnitID];
+              if (attribLoc === undefined || attribLoc < 0) continue;
+
+              if (texUnitID < textureSizes.length && textureSizes[texUnitID]) {
+                Module.ctx.vertexAttribPointer(attribLoc, textureSizes[texUnitID], textureTypes[texUnitID], false,
+                                               GL.immediate.stride, GL.immediate.clientAttributes[GL.immediate.TEXTURE0 + texUnitID].offset);
+                Module.ctx.enableVertexAttribArray(attribLoc);
+              } else {
+                // These two might be dangerous, but let's try them.
+                Module.ctx.vertexAttrib4f(attribLoc, 0, 0, 0, 1);
+                Module.ctx.disableVertexAttribArray(attribLoc);
               }
             }
             for (var i = 0; i < GL.immediate.MAX_TEXTURES; i++) {
@@ -2318,25 +3303,18 @@ var LibraryGL = {
               }
             }
           }
-          if (this.hasColorAttrib) {
+          if (colorSize) {
             Module.ctx.vertexAttribPointer(this.colorLocation, colorSize, colorType, true,
                                            GL.immediate.stride, clientAttributes[GL.immediate.COLOR].offset);
             Module.ctx.enableVertexAttribArray(this.colorLocation);
-            Module.ctx.uniform1i(this.hasColorAttribLocation, 1);
-          } else if (this.hasColorUniform) {
-            Module.ctx.uniform1i(this.hasColorAttribLocation, 0);
-            Module.ctx.uniform4fv(this.colorUniformLocation, GL.immediate.clientColor);
+          } else if (this.hasColor) {
+            Module.ctx.disableVertexAttribArray(this.colorLocation);
+            Module.ctx.vertexAttrib4fv(this.colorLocation, GL.immediate.clientColor);
           }
           if (this.hasNormal) {
             Module.ctx.vertexAttribPointer(this.normalLocation, normalSize, normalType, true,
                                            GL.immediate.stride, clientAttributes[GL.immediate.NORMAL].offset);
             Module.ctx.enableVertexAttribArray(this.normalLocation);
-          }
-          if (!useCurrProgram) { // otherwise, the user program will set the sampler2D binding and uniform itself
-            var texture = Module.ctx.getParameter(Module.ctx.TEXTURE_BINDING_2D);
-            Module.ctx.activeTexture(Module.ctx.TEXTURE0);
-            Module.ctx.bindTexture(Module.ctx.TEXTURE_2D, texture);
-            Module.ctx.uniform1i(this.textureLocation, 0);
           }
           if (this.hasFog) {
             if (this.fogColorLocation) Module.ctx.uniform4fv(this.fogColorLocation, GLEmulation.fogColor);
@@ -2355,7 +3333,7 @@ var LibraryGL = {
               }
             }
           }
-          if (this.hasColorAttrib) {
+          if (this.hasColor) {
             Module.ctx.disableVertexAttribArray(this.colorLocation);
           }
           if (this.hasNormal) {
@@ -2408,6 +3386,9 @@ var LibraryGL = {
         if (!GL.currElementArrayBuffer) {
           assert(type == Module.ctx.UNSIGNED_SHORT); // We can only emulate buffers of this kind, for now
         }
+#if ASSERTIONS
+        console.log("DrawElements doesn't actually prepareClientAttributes properly.");
+#endif
         GL.immediate.prepareClientAttributes(count, false);
         GL.immediate.mode = mode;
         if (!GL.currArrayBuffer) {
@@ -2418,6 +3399,76 @@ var LibraryGL = {
         GL.immediate.flush(count, 0, indices);
         GL.immediate.mode = -1;
       };
+
+      // TexEnv stuff needs to be prepared early, so do it here.
+      // init() is too late for -O2, since it freezes the GL functions
+      // by that point.
+      GL.immediate.MapTreeLib = GL.immediate.spawnMapTreeLib();
+      GL.immediate.spawnMapTreeLib = null;
+
+      GL.immediate.TexEnvJIT = GL.immediate.spawnTexEnvJIT();
+      GL.immediate.spawnTexEnvJIT = null;
+
+      GL.immediate.setupHooks();
+    },
+
+    setupHooks: function() {
+      if (!GLEmulation.hasRunInit) {
+        GLEmulation.init();
+      }
+
+      var glActiveTexture = _glActiveTexture;
+      _glActiveTexture = function(texture) {
+        GL.immediate.TexEnvJIT.hook_activeTexture(texture);
+        glActiveTexture(texture);
+      };
+
+      var glEnable = _glEnable;
+      _glEnable = function(cap) {
+        GL.immediate.TexEnvJIT.hook_enable(cap);
+        glEnable(cap);
+      };
+      var glDisable = _glDisable;
+      _glDisable = function(cap) {
+        GL.immediate.TexEnvJIT.hook_disable(cap);
+        glDisable(cap);
+      };
+
+      var glTexEnvf = (typeof(_glTexEnvf) != 'undefined') ? _glTexEnvf : function(){};
+      _glTexEnvf = function(target, pname, param) {
+        GL.immediate.TexEnvJIT.hook_texEnvf(target, pname, param);
+        // Don't call old func, since we are the implementor.
+        //glTexEnvf(target, pname, param);
+      };
+      var glTexEnvi = (typeof(_glTexEnvi) != 'undefined') ? _glTexEnvi : function(){};
+      _glTexEnvi = function(target, pname, param) {
+        GL.immediate.TexEnvJIT.hook_texEnvi(target, pname, param);
+        // Don't call old func, since we are the implementor.
+        //glTexEnvi(target, pname, param);
+      };
+      var glTexEnvfv = (typeof(_glTexEnvfv) != 'undefined') ? _glTexEnvfv : function(){};
+      _glTexEnvfv = function(target, pname, param) {
+        GL.immediate.TexEnvJIT.hook_texEnvfv(target, pname, param);
+        // Don't call old func, since we are the implementor.
+        //glTexEnvfv(target, pname, param);
+      };
+
+      var glGetIntegerv = _glGetIntegerv;
+      _glGetIntegerv = function(pname, params) {
+        switch (pname) {
+          case 0x8B8D: { // GL_CURRENT_PROGRAM
+            // Just query directly so we're working with WebGL objects.
+            var cur = Module.ctx.getParameter(Module.ctx.CURRENT_PROGRAM);
+            if (cur == GL.immediate.fixedFunctionProgram) {
+              // Pretend we're not using a program.
+              {{{ makeSetValue('params', '0', '0', 'i32') }}};
+              return;
+            }
+            break;
+          }
+        }
+        glGetIntegerv(pname, params);
+      };
     },
 
     // Main functions
@@ -2427,6 +3478,15 @@ var LibraryGL = {
       GL.immediate.initted = true;
 
       if (!Module.useWebGL) return; // a 2D canvas may be currently used TODO: make sure we are actually called in that case
+
+      this.TexEnvJIT.init(Module.ctx);
+
+      GL.immediate.MAX_TEXTURES = Module.ctx.getParameter(Module.ctx.MAX_TEXTURE_IMAGE_UNITS);
+      GL.immediate.NUM_ATTRIBUTES = GL.immediate.TEXTURE0 + GL.immediate.MAX_TEXTURES;
+      GL.immediate.clientAttributes = [];
+      for (var i = 0; i < GL.immediate.NUM_ATTRIBUTES; i++) {
+        GL.immediate.clientAttributes.push({});
+      }
 
       this.matrixStack['m'] = [];
       this.matrixStack['p'] = [];
@@ -2445,7 +3505,7 @@ var LibraryGL = {
       }
 
       // Renderer cache
-      this.rendererCache = this.rendererCacheItemTemplate.slice();
+      this.rendererCache = this.MapTreeLib.create();
 
       // Buffers for data
       this.tempData = new Float32Array(GL.MAX_TEMP_BUFFER_SIZE >> 2);
@@ -2486,6 +3546,7 @@ var LibraryGL = {
         if (stride != 0 && stride != attribute.stride) multiStrides = true;
         if (attribute.stride) stride = attribute.stride;
       }
+
       if (multiStrides) stride = 0; // we will need to restride
       var bytes = 0; // total size in bytes
       if (!stride && !beginEnd) {
@@ -2564,8 +3625,8 @@ var LibraryGL = {
       var renderer = this.getRenderer();
 
       // Generate index data in a format suitable for GLES 2.0/WebGL
-      var numVertexes = 4 * this.vertexCounter / GL.immediate.stride; // XXX assuming float
-      assert(numVertexes % 1 == 0);
+      var numVertexes = 4 * this.vertexCounter / GL.immediate.stride;
+      assert(numVertexes % 1 == 0, "`numVertexes` must be an integer.");
 
       var emulatedElementArrayBuffer = false;
       var numIndexes = 0;
@@ -2629,6 +3690,16 @@ var LibraryGL = {
 
   glBegin__deps: ['$GLImmediateSetup'],
   glBegin: function(mode) {
+    // Push the old state:
+    GL.immediate.enabledClientAttributes_preBegin = GL.immediate.enabledClientAttributes;
+    GL.immediate.enabledClientAttributes = [];
+
+    GL.immediate.clientAttributes_preBegin = GL.immediate.clientAttributes;
+    GL.immediate.clientAttributes = []
+    for (var i = 0; i < GL.immediate.clientAttributes_preBegin.length; i++) {
+      GL.immediate.clientAttributes.push({});
+    }
+
     GL.immediate.mode = mode;
     GL.immediate.vertexCounter = 0;
     var components = GL.immediate.rendererComponents = [];
@@ -2646,6 +3717,12 @@ var LibraryGL = {
     GL.immediate.flush();
     GL.immediate.disableBeginEndClientAttributes();
     GL.immediate.mode = -1;
+
+    // Pop the old state:
+    GL.immediate.enabledClientAttributes = GL.immediate.enabledClientAttributes_preBegin;
+    GL.immediate.clientAttributes = GL.immediate.clientAttributes_preBegin;
+
+    GL.immediate.modifiedClientAttributes = true;
   },
 
   glVertex3f: function(x, y, z) {
@@ -2670,7 +3747,7 @@ var LibraryGL = {
   glVertex2fv: function(p) {
     _glVertex3f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}}, 0);
   },
-  
+
   glVertex3i: 'glVertex3f',
 
   glVertex2i: 'glVertex3f',
@@ -2883,7 +3960,7 @@ var LibraryGL = {
   glGenVertexArrays__sig: 'vii',
   glGenVertexArrays: function(n, vaos) {
     for (var i = 0; i < n; i++) {
-      var id = GL.getNewId(GLEmulation.vaos); 
+      var id = GL.getNewId(GLEmulation.vaos);
       GLEmulation.vaos[id] = {
         id: id,
         arrayBuffer: 0,
@@ -2944,6 +4021,7 @@ var LibraryGL = {
     } else if (mode == 0x1701 /* GL_PROJECTION */) {
       GL.immediate.currentMatrix = 'p';
     } else if (mode == 0x1702) { // GL_TEXTURE
+      GL.immediate.useTextureMatrix = true;
       GL.immediate.currentMatrix = 't' + GL.immediate.clientActiveTexture;
     } else {
       throw "Wrong mode " + mode + " passed to glMatrixMode";
@@ -3113,7 +4191,7 @@ var LibraryGL = {
 
     return 1 /* GL_TRUE */;
   },
-  
+
   gluOrtho2D: function(left, right, bottom, top) {
     _glOrtho(left, right, bottom, top, -1, 1);
   },
@@ -3280,8 +4358,9 @@ var LibraryGL = {
   glGenVertexArraysOES: 'glGenVertexArrays',
   glDeleteVertexArraysOES: 'glDeleteVertexArrays',
   glBindVertexArrayOES: 'glBindVertexArray',
-  glFramebufferTexture2DOES: 'glFramebufferTexture2D'
+  glFramebufferTexture2DOES: 'glFramebufferTexture2D',
 };
+
 
 // Simple pass-through functions. Starred ones have return values. [X] ones have X in the C name but not in the JS name
 [[0, 'getError* finish flush'],

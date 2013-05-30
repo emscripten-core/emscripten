@@ -63,14 +63,12 @@ int main(int argc, char *argv[])
     const char *exts = (const char *)glGetString(GL_EXTENSIONS);
     assert(hasext(exts, "GL_ARB_texture_compression"));
     assert(hasext(exts, "GL_EXT_texture_compression_s3tc"));
-    
+
     // Set the OpenGL state after creating the context with SDL_SetVideoMode
 
     glClearColor( 0, 0, 0, 0 );
-    
-#if !EMSCRIPTEN
-    glEnable( GL_TEXTURE_2D ); // Need this to display a texture XXX unnecessary in OpenGL ES 2.0/WebGL
-#endif
+
+    glEnable( GL_TEXTURE_2D ); // Needed when we're using the fixed-function pipeline.
 
     glViewport( 0, 0, 640, 480 );
 
@@ -158,7 +156,7 @@ int main(int argc, char *argv[])
 
     // Clear the screen before drawing
     glClear( GL_COLOR_BUFFER_BIT );
-    
+
     // Bind the texture to which subsequent calls refer to
     glBindTexture( GL_TEXTURE_2D, texture );
 
@@ -195,7 +193,7 @@ int main(int argc, char *argv[])
     glEnd();
 
     SDL_GL_SwapBuffers();
-    
+
 #if !EMSCRIPTEN
     // Wait for 3 seconds to give us a chance to see the image
     SDL_Delay(1500);
@@ -203,8 +201,8 @@ int main(int argc, char *argv[])
 
     // Now we can delete the OpenGL texture and close down SDL
     glDeleteTextures( 1, &texture );
-    
+
     SDL_Quit();
-    
+
     return 0;
 }

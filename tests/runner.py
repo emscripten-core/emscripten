@@ -904,26 +904,26 @@ if 'benchmark' not in str(sys.argv) and 'sanity' not in str(sys.argv) and 'brows
 
           void interface_clock_changed()
           {
-	          UINT8 m_divshift;
-	          INT32 m_divisor;
+            UINT8 m_divshift;
+            INT32 m_divisor;
 
-	          //INT64 attos = m_attoseconds_per_cycle;
-	          INT64 attos = 279365114840;
-	          m_divshift = 0;
-	          while (attos >= (1UL << 31))
-	          {
-		          m_divshift++;
-		          printf("m_divshift is %i, on %Ld >?= %lu\n", m_divshift, attos, 1UL << 31);
-		          attos >>= 1;
-	          }
-	          m_divisor = attos;
+            //INT64 attos = m_attoseconds_per_cycle;
+            INT64 attos = 279365114840;
+            m_divshift = 0;
+            while (attos >= (1UL << 31))
+            {
+              m_divshift++;
+              printf("m_divshift is %i, on %Ld >?= %lu\n", m_divshift, attos, 1UL << 31);
+              attos >>= 1;
+            }
+            m_divisor = attos;
 
-	          printf("m_divisor is %i\n",m_divisor);
+            printf("m_divisor is %i\n",m_divisor);
           }
 
           int main() {
-	          interface_clock_changed();
-	          return 0;
+            interface_clock_changed();
+            return 0;
           }
         '''
         self.do_run(src, '''m_divshift is 1, on 279365114840 >?= 2147483648
@@ -997,8 +997,8 @@ m_divisor is 1091269979
           volatile UINT64 testu64a = 14746250828952703000U;
 
           while ((UINT64)testu32a * (UINT64)bigu32 < testu64a) {
-	          printf("testu64a is %llu\n", testu64a);
-	          testu64a /= 2;
+            printf("testu64a is %llu\n", testu64a);
+            testu64a /= 2;
           }
 
           return 0;
@@ -1456,28 +1456,28 @@ c5,de,15,8a
           quint64 v = strtoull("4433ffeeddccbb00", NULL, 16);
           printf("%lld\n", v);
 
-	        const string string64bitInt = "4433ffeeddccbb00";
-	        stringstream s(string64bitInt);
-	        quint64 int64bitInt = 0;
+          const string string64bitInt = "4433ffeeddccbb00";
+          stringstream s(string64bitInt);
+          quint64 int64bitInt = 0;
           printf("1\n");
-	        s >> hex >> int64bitInt;
+          s >> hex >> int64bitInt;
           printf("2\n");
 
-	        stringstream out;
-	        out << hex << qbswap(int64bitInt);
+          stringstream out;
+          out << hex << qbswap(int64bitInt);
 
-	        cout << out.str() << endl;
-	        cout << hex << int64bitInt << endl;
-	        cout << string64bitInt << endl;
+          cout << out.str() << endl;
+          cout << hex << int64bitInt << endl;
+          cout << string64bitInt << endl;
 
-	        if (out.str() != "bbccddeeff3344")
-	        {
-		        cout << "Failed!" << endl;
-	        }
-	        else
-	        {
-		        cout << "Succeeded!" << endl;
-	        }
+          if (out.str() != "bbccddeeff3344")
+          {
+            cout << "Failed!" << endl;
+          }
+          else
+          {
+            cout << "Succeeded!" << endl;
+          }
 
           return 0;
         }
@@ -3613,36 +3613,36 @@ Exiting setjmp function, level: 0, prev_jmp: -1
       src = open(path_from_root('tests', 'life.c'), 'r').read()
       self.do_run(src, '''--------------------------------
 []                                    []                  [][][]
-                    []  []    []    [][]  []            []  []  
-[]                [][]  [][]              [][][]      []        
+                    []  []    []    [][]  []            []  []
+[]                [][]  [][]              [][][]      []
                   []    []      []      []  [][]    []        []
                   []  [][]    []        []    []  []    [][][][]
-                    [][]      [][]  []    [][][]  []        []  
-                                []  [][]  [][]    [][]  [][][]  
+                    [][]      [][]  []    [][][]  []        []
+                                []  [][]  [][]    [][]  [][][]
                                     [][]          [][][]  []  []
                                     [][]              [][]    []
                                                           [][][]
-                                                            []  
-                                                                
-                                                                
-                                                                
-                                                                
-                                        [][][]                  
-                                      []      [][]      [][]    
-                                      [][]      []  [][]  [][]  
-                                                    [][]  [][]  
-                                                      []        
-                  [][]                                          
+                                                            []
+
+
+
+
+                                        [][][]
+                                      []      [][]      [][]
+                                      [][]      []  [][]  [][]
+                                                    [][]  [][]
+                                                      []
+                  [][]
                   [][]                                        []
 []                                                      [][]  []
                                                   [][][]      []
-                                                []      [][]    
+                                                []      [][]
 []                                                    []      []
-                                                          []    
+                                                          []
 []                                                        []  []
-                                              [][][]            
-                                                                
-                                  []                            
+                                              [][][]
+
+                                  []
                               [][][]                          []
 --------------------------------
 ''', ['2'], force_c=True)
@@ -4030,15 +4030,15 @@ def process(filename):
 
           // see related things in openjpeg
           typedef struct opj_mqc_state {
-	          unsigned int qeval;
-	          int mps;
-	          struct opj_mqc_state *nmps;
-	          struct opj_mqc_state *nlps;
+            unsigned int qeval;
+            int mps;
+            struct opj_mqc_state *nmps;
+            struct opj_mqc_state *nlps;
           } opj_mqc_state_t;
 
           static opj_mqc_state_t mqc_states[2] = {
-	          {0x5600, 0, &mqc_states[2], &mqc_states[3]},
-	          {0x5602, 1, &mqc_states[3], &mqc_states[2]},
+            {0x5600, 0, &mqc_states[2], &mqc_states[3]},
+            {0x5602, 1, &mqc_states[3], &mqc_states[2]},
           };
 
           int main() {
@@ -4807,25 +4807,25 @@ The current type of b is: 9
 
         typedef struct
         {
-	        int (*f)(void *);
-	        void *d;
-	        char s[16];
+          int (*f)(void *);
+          void *d;
+          char s[16];
         } LMEXFunctionStruct;
 
         int f(void *user)
         {
-	        return 0;
+          return 0;
         }
 
         static LMEXFunctionStruct const a[] =
         {
-	        {f, (void *)(int)'a', "aa"}
+          {f, (void *)(int)'a', "aa"}
         };
 
         int main()
         {
           printf("ok\n");
-	        return a[0].f(a[0].d);
+          return a[0].f(a[0].d);
         }
       '''
       self.do_run(src, 'ok\n')
@@ -6210,13 +6210,13 @@ at function.:blag
           printf("|%s|\n", buffy);
 
           int numverts = -1;
-          printf("%d\n", sscanf("	numverts 1499\n", " numverts %d", &numverts)); // white space is the same, even if tab vs space
+          printf("%d\n", sscanf(" numverts 1499\n", " numverts %d", &numverts)); // white space is the same, even if tab vs space
           printf("%d\n", numverts);
 
           int index;
           float u, v;
           short start, count;
-          printf("%d\n", sscanf("	vert 87 ( 0.481565 0.059481 ) 0 1\n", " vert %d ( %f %f ) %hu %hu", &index, &u, &v, &start, &count));
+          printf("%d\n", sscanf(" vert 87 ( 0.481565 0.059481 ) 0 1\n", " vert %d ( %f %f ) %hu %hu", &index, &u, &v, &start, &count));
           printf("%d,%.6f,%.6f,%hu,%hu\n", index, u, v, start, count);
 
           int neg, neg2, neg3 = 0;
@@ -10461,8 +10461,8 @@ f.close()
         #define _TESTA_H_
 
         class TestA {
-	        public:
-		        TestA();
+          public:
+            TestA();
         };
 
         #endif
@@ -10472,8 +10472,8 @@ f.close()
         #define _TESTB_H_
 
         class TestB {
-	        public:
-		        TestB();
+          public:
+            TestB();
         };
 
         #endif
@@ -10483,7 +10483,7 @@ f.close()
         #include <testa.h>
 
         TestA::TestA() {
-	        printf("TestA\n");
+          printf("TestA\n");
         }
       ''')
       open('testb.cpp', 'w').write(r'''
@@ -10493,8 +10493,8 @@ f.close()
         /*
         */
         TestB::TestB() {
-	        printf("TestB\n");
-	        TestA* testa = new TestA();
+          printf("TestB\n");
+          TestA* testa = new TestA();
         }
       ''')
       open('main.cpp', 'w').write(r'''
@@ -10505,9 +10505,9 @@ f.close()
         /*
         */
         int main(int argc, char** argv) {
-	        printf("Main\n");
-	        TestA* testa = new TestA();
-	        TestB* testb = new TestB();
+          printf("Main\n");
+          TestA* testa = new TestA();
+          TestB* testb = new TestB();
         }
       ''')
 
@@ -11132,7 +11132,7 @@ f.close()
       output = Popen([os.path.join(self.get_dir(), 'files.o.run')], stdin=open(os.path.join(self.get_dir(), 'stdin')), stdout=PIPE, stderr=PIPE).communicate()
       self.assertContained('''size: 37
 data: 119,97,107,97,32,119,97,107,97,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35
-loop: 119 97 107 97 32 119 97 107 97 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 
+loop: 119 97 107 97 32 119 97 107 97 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35
 input:inter-active
 texto
 $
@@ -12548,14 +12548,6 @@ elif 'browser' in str(sys.argv):
       # packed data that needs to be strided
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
       self.btest('gl_ps_packed.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png'])
-
-    def test_gl_ps_workaround(self):
-      shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.btest('gl_ps_workaround.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png'])
-
-    def test_gl_ps_workaround2(self):
-      shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.btest('gl_ps_workaround2.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png'])
 
     def test_gl_ps_strides(self):
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
@@ -14005,7 +13997,7 @@ if __name__ == '__main__':
         which = map(lambda mode: mode+'.'+test, test_modes)
       else:
         which = [which]
-      
+
       print >> sys.stderr, ','.join(which)
       for test in which:
         print >> sys.stderr, 'will skip "%s"' % test
