@@ -638,7 +638,7 @@ function __embind_register_function(name, argCount, rawArgTypesAddr, rawInvoker,
 
 var tupleRegistrations = {};
 
-function __embind_register_tuple(rawType, name, rawConstructor, rawDestructor) {
+function __embind_register_value_array(rawType, name, rawConstructor, rawDestructor) {
     tupleRegistrations[rawType] = {
         name: readLatin1String(name),
         rawConstructor: FUNCTION_TABLE[rawConstructor],
@@ -647,7 +647,7 @@ function __embind_register_tuple(rawType, name, rawConstructor, rawDestructor) {
     };
 }
 
-function __embind_register_tuple_element(
+function __embind_register_value_array_element(
     rawTupleType,
     getterReturnType,
     getter,
@@ -666,7 +666,7 @@ function __embind_register_tuple_element(
     });
 }
 
-function __embind_finalize_tuple(rawTupleType) {
+function __embind_finalize_value_array(rawTupleType) {
     var reg = tupleRegistrations[rawTupleType];
     delete tupleRegistrations[rawTupleType];
     var elements = reg.elements;
@@ -725,7 +725,7 @@ function __embind_finalize_tuple(rawTupleType) {
 
 var structRegistrations = {};
 
-function __embind_register_struct(
+function __embind_register_value_object(
     rawType,
     name,
     rawConstructor,
@@ -739,7 +739,7 @@ function __embind_register_struct(
     };
 }
 
-function __embind_register_struct_field(
+function __embind_register_value_object_field(
     structType,
     fieldName,
     getterReturnType,
@@ -760,7 +760,7 @@ function __embind_register_struct_field(
     });
 }
 
-function __embind_finalize_struct(structType) {
+function __embind_finalize_value_object(structType) {
     var reg = structRegistrations[structType];
     delete structRegistrations[structType];
 

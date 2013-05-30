@@ -1747,8 +1747,8 @@ module({
     BaseFixture.extend("constants", function() {
         assert.equal(10, cm.INT_CONSTANT);
         assert.equal("some string", cm.STRING_CONSTANT);
-        assert.deepEqual([1, 2, 3, 4], cm.VALUE_TUPLE_CONSTANT);
-        assert.deepEqual({x:1,y:2,z:3,w:4}, cm.VALUE_STRUCT_CONSTANT);
+        assert.deepEqual([1, 2, 3, 4], cm.VALUE_ARRAY_CONSTANT);
+        assert.deepEqual({x:1,y:2,z:3,w:4}, cm.VALUE_OBJECT_CONSTANT);
     });
 
     BaseFixture.extend("object handle comparison", function() {
