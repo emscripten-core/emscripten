@@ -6,7 +6,6 @@ var LibraryOpenCL = {
     ctx: [],
     ctx_clean: 0,
     cmdQueue: [],
-    enqueueFloat: [],
     cmdQueue_clean: 0,
     programs: [],
     programs_clean: 0,
@@ -16,6 +15,7 @@ var LibraryOpenCL = {
     buffers_clean: 0,
     platforms: [],
     devices: [],
+    sig: [],
     errorMessage: "Unfortunately your system does not support WebCL. " +
                     "Make sure that you have both the OpenCL driver " +
                     "and the WebCL browser extension installed.",
@@ -25,7 +25,10 @@ var LibraryOpenCL = {
     // clEnqueueWriteBuffer need Float32Array or Uint32Array
     // clEnqueueReadBuffer need Float32Array or Uint32Array
     isFloat: function(ptr,size) {
-
+      
+      console.error("CL.isFloat not must be called any more ... use the parse of kernel string !!! \n");
+      console.error("But may be the kernel source is not yet parse !!! \n");
+            
       var v_int = {{{ makeGetValue('ptr', '0', 'i32') }}}; 
       var v_float = {{{ makeGetValue('ptr', '0', 'float') }}}; 
               
@@ -826,8 +829,57 @@ var LibraryOpenCL = {
     }
 
     var sourceIdx = {{{ makeGetValue('strings', '0', 'i32') }}}
-    var kernel = Pointer_stringify(sourceIdx);       
-
+    var kernel = Pointer_stringify(sourceIdx); 
+    
+    // Experimental parse of kernel for have the different type of the kernel (input and output)
+    var start_kernel = kernel.indexOf("__kernel");
+    var kernel_sub_part = kernel.substr(start_kernel,kernel.length - start_kernel);
+    var start_kernel_brace = kernel_sub_part.indexOf("(");
+    var close_kernel_brace = kernel_sub_part.indexOf(")");
+    kernel_sub_part = kernel_sub_part.substr(start_kernel_brace + 1,close_kernel_brace - start_kernel_brace);
+    kernel_sub_part = kernel_sub_part.replace(/\n/g, "");
+    
+    var kernel_sub_part_split = kernel_sub_part.split(",");
+    for (var i = 0; i < kernel_sub_part_split.length; i++) {
+      
+      if (kernel_sub_part_split[i].contains("float4") ||
+         (kernel_sub_part_split[i].contains("float") && kernel_sub_part_split[i].contains("*"))) {
+           
+        console.info("Kernel Parameter "+i+" typeof is float4 or float* ("+WebCL.types.FLOAT_V+")");
+        CL.sig[i] = WebCL.types.FLOAT_V;
+        
+      } else if (kernel_sub_part_split[i].contains("float")) {
+        
+        console.info("Kernel Parameter "+i+" typeof is float ("+WebCL.types.FLOAT+")");
+        CL.sig[i] = WebCL.types.FLOAT;    
+                
+      } else if (kernel_sub_part_split[i].contains("uchar4") ||
+                (kernel_sub_part_split[i].contains("unsigned") && kernel_sub_part_split[i].contains("char") && kernel_sub_part_split[i].contains("*")) ||
+                (kernel_sub_part_split[i].contains("unsigned") && kernel_sub_part_split[i].contains("int") && kernel_sub_part_split[i].contains("*"))) {
+                  
+        console.info("Kernel Parameter "+i+" typeof is uchar4 or unsigned char* or unsigned int * ("+WebCL.types.UINT_V+")");
+        CL.sig[i] = WebCL.types.UINT_V;
+        
+      } else if (kernel_sub_part_split[i].contains("unsigned") && kernel_sub_part_split[i].contains("int")) {
+        
+        console.info("Kernel Parameter "+i+" typeof is unsigned int ("+WebCL.types.UINT+")");
+        CL.sig[i] = WebCL.types.UINT;        
+        
+      } else if (kernel_sub_part_split[i].contains("int") && kernel_sub_part_split[i].contains("*")) {
+        
+        console.info("Kernel Parameter "+i+" typeof is int * ("+WebCL.types.INT_V+")");
+        CL.sig[i] = WebCL.types.INT_V;    
+        
+      } else if (kernel_sub_part_split[i].contains("int")) {
+        
+        console.info("Kernel Parameter "+i+" typeof is int ("+WebCL.types.INT+")");
+        CL.sig[i] = WebCL.types.INT;    
+        
+      } else {
+        console.error("Unknow type of parameter : "+kernel_sub_part_split[i]);        
+      }
+    }
+    
     try {
       // \todo set the properties 
       CL.programs.push(CL.ctx[ctx].createProgramWithSource(kernel));
@@ -1062,28 +1114,37 @@ var LibraryOpenCL = {
             {{{ makeSetValue('errcode_ret', '0', '-38', 'i32') }}} /* CL_INVALID_MEM_OBJECT */;
             return 0;
           }
-
-          var isFloat = CL.isFloat(host_ptr,size);
-
-          if (isFloat) {
-            CL.enqueueFloat[CL.cmdQueue.length-1] = 1; // Enqueue is float type
-            vector = new Float32Array(size / 4);
-          } else {
-            CL.enqueueFloat[CL.cmdQueue.length-1] = 0; // Enqueue is int type
-            vector = new Uint32Array(size / 4);
+          
+          if (CL.sig.length == 0 || CL.buffers-1 > CL.sig.length) {
+#if OPENCL_DEBUG
+            console.error("clCreateBuffer: Invalid signature : "+buff);
+#endif
+            return -1; /* CL_FAILED */     
           }
-      
-          //var str_vector = "clEnqueueWriteBuffer : vector(";
+
+          var isFloat = 0;
+          var vector;    
+             
+          if (CL.sig[CL.buffers.length-1] == WebCL.types.FLOAT_V) {
+            vector = new Float32Array(size / 4);
+            isFloat = 1;
+          } else if (CL.sig[CL.buffers.length-1] == WebCL.types.UINT_V) {
+            vector = new Uint32Array(size / 4);
+          } else if (CL.sig[CL.buffers.length-1] == WebCL.types.INT_V) {
+            vector = new Int32Array(size / 4);
+          } else {
+#if OPENCL_DEBUG
+            console.error("clCreateBuffer: Unknow ouptut type : "+CL.sig[CL.buffers.length-1]);
+#endif
+          }
+  
           for (var i = 0; i < (size / 4); i++) {
-            if (CL.enqueueFloat[CL.cmdQueue.length-1]) {
+            if (isFloat) {
               vector[i] = {{{ makeGetValue('host_ptr', 'i*4', 'float') }}};
             } else {
               vector[i] = {{{ makeGetValue('host_ptr', 'i*4', 'i32') }}};
             }
-            //str_vector += vector[i] + ",";
           }
-          //str_vector = str_vector.substr(0,str_vector.length - 1) + ")";
-          //console.info(str_vector);
     
           CL.cmdQueue[CL.cmdQueue.length-1].enqueueWriteBuffer(CL.buffers[CL.buffers.length-1], 1, 0, size, vector , []);    
 
@@ -1182,29 +1243,39 @@ var LibraryOpenCL = {
 
       return -38; /* CL_INVALID_MEM_OBJECT */
     }
-   
-    var isFloat = CL.isFloat(ptr,size);
+
+    var isFloat = 0;
+    var vector;    
     
-    var vector;
-    if (isFloat) {
-      CL.enqueueFloat[CL.cmdQueue.length-1] = 1; // Enqueue is float type
-      vector = new Float32Array(size / 4);
-    } else {
-      CL.enqueueFloat[CL.cmdQueue.length-1] = 0; // Enqueue is int type
-      vector = new Uint32Array(size / 4);
+    if (CL.sig.length == 0 || buff > CL.sig.length) {
+      isFloat = CL.isFloat(ptr,size); 
+      if (isFloat) {
+        vector = new Float32Array(size / 4);
+      } else {
+        vector = new Int32Array(size / 4);
+      }
+    } else {        
+      if (CL.sig[buff] == WebCL.types.FLOAT_V) {
+        vector = new Float32Array(size / 4);
+        isFloat = 1;
+      } else if (CL.sig[buff] == WebCL.types.UINT_V) {
+        vector = new Uint32Array(size / 4);
+      } else if (CL.sig[buff] == WebCL.types.INT_V) {
+        vector = new Int32Array(size / 4);
+      } else {
+#if OPENCL_DEBUG
+        console.error("clEnqueueWriteBuffer: Unknow ouptut type : "+CL.sig[buff]);
+#endif
+      }
     }
-    
-    //var str_vector = "clEnqueueWriteBuffer : vector(";
+  
     for (var i = 0; i < (size / 4); i++) {
-      if (CL.enqueueFloat[queue]) {
+      if (isFloat) {
         vector[i] = {{{ makeGetValue('ptr', 'i*4', 'float') }}};
       } else {
         vector[i] = {{{ makeGetValue('ptr', 'i*4', 'i32') }}};
       }
-      //str_vector += vector[i] + ",";
     }
-    //str_vector = str_vector.substr(0,str_vector.length - 1) + ")";
-    //console.info(str_vector);
     
     try {
       CL.cmdQueue[queue].enqueueWriteBuffer (CL.buffers[buff], blocking_write, offset, size, vector , []);
@@ -1277,15 +1348,23 @@ var LibraryOpenCL = {
     }
                         
     try {  
-            
+          
       // \todo problem what is arg_value is buffer or just value ??? hard to say ....
       // \todo i suppose the arg_index correspond with the order of the buffer creation if is 
       // not inside the buffers array size we take the value
-      var isFloat = CL.isFloat(arg_value,arg_size);
+      
+      var isFloat = 0;
+      if (CL.sig.length > 0 && arg_index < CL.sig.length) {
+        isFloat = ( CL.sig[arg_index] == WebCL.types.FLOAT_V ) || ( CL.sig[arg_index] == WebCL.types.FLOAT ) 
+      } else {
+#if OPENCL_DEBUG
+        console.error("clSetKernelArg: Invalid signature : "+CL.sig.length);
+#endif
+        return -1; /* CL_FAILED */
+      }
+        
       var isNull = ({{{ makeGetValue('arg_value', '0', 'i32') }}} == 0);
-      
-      //console.log("clSetKernelArg : isFloat = "+isFloat);
-      
+
       var value;
       if (isNull == 1) {
         CL.kernels[ker].setKernelArgLocal(arg_index,arg_size);
@@ -1299,8 +1378,6 @@ var LibraryOpenCL = {
           } else {
             value[i] = {{{ makeGetValue('arg_value', 'i*4', 'i32') }}};
           }
-          
-          //console.log("clSetKernelArg : value["+i+"] = "+value[i]);       
         }
         if (isFloat == 1) {
           CL.kernels[ker].setKernelArg(arg_index,value,WebCL.types.FLOAT_V);
@@ -1313,7 +1390,6 @@ var LibraryOpenCL = {
         } else {
           value = {{{ makeGetValue('arg_value', '0', 'i32') }}};
         }
-        //console.log("clSetKernelArg : value = "+value);   
         
         if (arg_index >= 0 && arg_index < CL.buffers.length) {
           CL.kernels[ker].setKernelArg(arg_index,CL.buffers[arg_index]);
@@ -1322,10 +1398,8 @@ var LibraryOpenCL = {
             CL.kernels[ker].setKernelArg(arg_index,value,WebCL.types.FLOAT);
           } else {
             CL.kernels[ker].setKernelArg(arg_index,value,WebCL.types.INT);
-          }
-            
-        }
-        
+          }            
+        }        
       }
         
       return 0;/*CL_SUCCESS*/
@@ -1515,30 +1589,41 @@ var LibraryOpenCL = {
     }
 
     try {
+
+      if (CL.sig.length == 0 || buff > CL.sig.length) {
+#if OPENCL_DEBUG
+        console.error("clEnqueueReadBuffer: Invalid signature : "+buff);
+#endif
+        return -1; /* CL_FAILED */     
+      }
+
+      var isFloat = 0;
       var vector;    
-      
-      if (CL.enqueueFloat[queue]) {
+        
+      if (CL.sig[buff] == WebCL.types.FLOAT_V) {
         vector = new Float32Array(size / 4);
-      } else {
+        isFloat = 1;
+      } else if (CL.sig[buff] == WebCL.types.UINT_V) {
         vector = new Uint32Array(size / 4);
+      } else if (CL.sig[buff] == WebCL.types.INT_V) {
+        vector = new Int32Array(size / 4);
+      } else {
+#if OPENCL_DEBUG
+        console.error("clEnqueueReadBuffer: Unknow ouptut type : "+CL.sig[buff]);
+#endif
+        return -1; /* CL_FAILED */     
       }
 
       CL.cmdQueue[queue].enqueueReadBuffer (CL.buffers[buff], blocking_read == 1 ? true : false, offset, size, vector, []);
 
-      //var str_vector = "clEnqueueReadBuffer : vector(";
       for (var i = 0; i < (size / 4); i++) {
-        if (CL.enqueueFloat[queue]) {
+        if (isFloat) {
           {{{ makeSetValue('results', 'i*4', 'vector[i]', 'float') }}};  
-          //str_vector += {{{ makeGetValue('results', 'i*4', 'float') }}} + ",";
         } else {
           {{{ makeSetValue('results', 'i*4', 'vector[i]', 'i32') }}};  
-          //str_vector += {{{ makeGetValue('results', 'i*4', 'i32') }}} + ",";
         }         
       }
 
-      //str_vector = str_vector.substr(0,str_vector.length - 1) + ")";
-      //console.info("clEnqueueReadBuffer: Vector "+str_vector+" - Size : "+vector.length+"");
-      
       return 0;/*CL_SUCCESS*/
     } catch(e) {
       return CL.catchError("clEnqueueReadBuffer",e);
