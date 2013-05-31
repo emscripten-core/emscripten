@@ -379,12 +379,12 @@ void Relooper::Calculate(Block *Entry) {
         Block *Curr = *iter;
         TotalCodeSize += strlen(Curr->Code);
       }
-
       for (BlockSet::iterator iter = Live.begin(); iter != Live.end(); iter++) {
         Block *Original = *iter;
         if (Original->BranchesIn.size() <= 1 || Original->BranchesOut.size() > 0) continue;
         if (strlen(Original->Code)*(Original->BranchesIn.size()-1) > TotalCodeSize/5) continue; // if splitting increases raw code size by a significant amount, abort
         // Split the node (for simplicity, we replace all the blocks, even though we could have reused the original)
+        PrintDebug("Splitting block %d\n", Original->Id);
         for (BlockBranchMap::iterator iter = Original->BranchesIn.begin(); iter != Original->BranchesIn.end(); iter++) {
           Block *Prior = iter->first;
           Block *Split = new Block(Original->Code);
@@ -393,6 +393,12 @@ void Relooper::Calculate(Block *Entry) {
           Prior->BranchesOut.erase(Original);
           Parent->AddBlock(Split);
           Live.insert(Split);
+          for (BlockBranchMap::iterator iter = Original->BranchesOut.begin(); iter != Original->BranchesOut.end(); iter++) {
+            Block *Post = iter->first;
+            Branch *Details = iter->second;
+            Split->BranchesOut[Post] = new Branch(Details->Condition, Details->Code);
+            Post->BranchesIn[Split] = new Branch(NULL);
+          }
         }
       }
     }
@@ -1010,9 +1016,14 @@ void Relooper::SetAsmJSMode(int On) {
 void DebugDump(BlockSet &Blocks, const char *prefix) {
   if (prefix) printf("%s ", prefix);
   for (BlockSet::iterator iter = Blocks.begin(); iter != Blocks.end(); iter++) {
-    printf("%d ", (*iter)->Id);
+    printf("%d:\n", (*iter)->Id);
+    for (BlockBranchMap::iterator iter2 = (*iter)->BranchesOut.begin(); iter2 != (*iter)->BranchesOut.end(); iter2++) {
+      printf("  OUT %d\n", iter2->first->Id);
+    }
+    for (BlockBranchMap::iterator iter2 = (*iter)->BranchesIn.begin(); iter2 != (*iter)->BranchesIn.end(); iter2++) {
+      printf("  IN  %d\n", iter2->first->Id);
+    }
   }
-  printf("\n");
 }
 
 static void PrintDebug(const char *Format, ...) {

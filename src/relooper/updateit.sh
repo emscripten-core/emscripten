@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 ./test &> test.txt
 ./test2 &> test2.txt
 ./test3 &> test3.txt
