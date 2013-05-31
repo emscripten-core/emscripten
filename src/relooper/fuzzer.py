@@ -98,14 +98,14 @@ int main() {
   open('fuzz.slow.js', 'w').write(slow)
   open('fuzz.cpp', 'w').write(fast)
   print '_'
-  slow_out = subprocess.Popen(['/home/alon/Dev/odinmonkey/js/src/fast/js', '-m', '-n', 'fuzz.slow.js'], stdout=subprocess.PIPE).communicate()[0]
+  slow_out = subprocess.Popen(['mozjs', '-m', '-n', 'fuzz.slow.js'], stdout=subprocess.PIPE).communicate()[0]
 
   print '.'
   subprocess.call(['g++', 'fuzz.cpp', 'Relooper.o', '-o', 'fuzz', '-g'])
   print '*'
   subprocess.call(['./fuzz'], stdout=open('fuzz.fast.js', 'w'))
   print '-'
-  fast_out = subprocess.Popen(['/home/alon/Dev/odinmonkey/js/src/fast/js', '-m', '-n', 'fuzz.fast.js'], stdout=subprocess.PIPE).communicate()[0]
+  fast_out = subprocess.Popen(['mozjs', '-m', '-n', 'fuzz.fast.js'], stdout=subprocess.PIPE).communicate()[0]
   print
 
   if slow_out != fast_out:
