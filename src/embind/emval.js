@@ -4,6 +4,7 @@
 /*global createNamedFunction*/
 /*global readLatin1String, writeStringToMemory*/
 /*global requireRegisteredType, throwBindingError*/
+/*jslint sub:true*/ /* The symbols 'fromWireType' and 'toWireType' must be accessed via array notation to be closure-safe since craftInvokerFunction crafts functions as strings that can't be closured. */
 
 var Module = Module || {};
 
@@ -100,7 +101,7 @@ function __emval_new_cstring(v) {
 
 function __emval_take_value(type, v) {
     type = requireRegisteredType(type, '_emval_take_value');
-    v = type.fromWireType(v);
+    v = type['fromWireType'](v);
     return __emval_register(v);
 }
 
@@ -203,7 +204,7 @@ function __emval_as(handle, returnType) {
     returnType = requireRegisteredType(returnType, 'emval::as');
     var destructors = [];
     // caller owns destructing
-    return returnType.toWireType(destructors, _emval_handle_array[handle].value);
+    return returnType['toWireType'](destructors, _emval_handle_array[handle].value);
 }
 
 function parseParameters(argCount, argTypes, argWireTypes) {
@@ -212,7 +213,7 @@ function parseParameters(argCount, argTypes, argWireTypes) {
         var argType = requireRegisteredType(
             HEAP32[(argTypes >> 2) + i],
             "parameter " + i);
-        a[i] = argType.fromWireType(argWireTypes[i]);
+        a[i] = argType['fromWireType'](argWireTypes[i]);
     }
     return a;
 }
@@ -223,7 +224,7 @@ function __emval_call(handle, argCount, argTypes) {
 
     var args = new Array(argCount);
     for (var i = 0; i < argCount; ++i) {
-        args[i] = types[i].fromWireType(arguments[3 + i]);
+        args[i] = types[i]['fromWireType'](arguments[3 + i]);
     }
 
     var fn = _emval_handle_array[handle].value;
@@ -247,8 +248,8 @@ function __emval_get_method_caller(argCount, argTypes) {
     var retType = types[0];
     var signatureName = retType.name + "_$" + types.slice(1).map(function (t) { return t.name; }).join("_") + "$";
 
-    var args1 = ["Runtime", "createNamedFunction", "requireHandle", "getStringOrSymbol", "_emval_handle_array", "retType"];
-    var args2 = [Runtime, createNamedFunction, requireHandle, getStringOrSymbol, _emval_handle_array, retType];
+    var args1 = ["addFunction", "createNamedFunction", "requireHandle", "getStringOrSymbol", "_emval_handle_array", "retType"];
+    var args2 = [Runtime.addFunction, createNamedFunction, requireHandle, getStringOrSymbol, _emval_handle_array, retType];
 
     var argsList = ""; // 'arg0, arg1, arg2, ... , argN'
     var argsListWired = ""; // 'arg0Wired, ..., argNWired'
@@ -260,7 +261,7 @@ function __emval_get_method_caller(argCount, argTypes) {
     }
 
     var invokerFnBody =
-        "return Runtime.addFunction(createNamedFunction('" + signatureName + "', function (handle, name" + argsListWired + ") {\n" +
+        "return addFunction(createNamedFunction('" + signatureName + "', function (handle, name" + argsListWired + ") {\n" +
         "requireHandle(handle);\n" +
         "name = getStringOrSymbol(name);\n";
 

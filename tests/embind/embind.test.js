@@ -898,10 +898,7 @@ module({
 
         test("can clone handles", function() {
             var a = cm.emval_test_get_function_ptr();
-            assert.equal(1, a.$$.count.value);
             var b = a.clone();
-            assert.equal(2, a.$$.count.value);
-            assert.equal(2, b.$$.count.value);
             a.delete();
 
             assert.throws(cm.BindingError, function() {
@@ -1149,7 +1146,7 @@ module({
             a.set(b);
             var c = a.get();
 
-            assert.equal(b.$$.ptr, c.$$.ptr);
+            assert.true(b.isAliasOf(c));
             b.delete();
             c.delete();
             a.delete();
