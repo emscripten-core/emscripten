@@ -303,8 +303,11 @@ for file_ in data_files:
     dds = crunch and filename.endswith(CRUNCH_INPUT_SUFFIX)
 
     prefix = ''
-    finish = "if (typeof (cb) !== 'undefined' && ++preloaded >= preloadTotal) { cb(null); }\n"
+    finish = ''
     suffix = ''
+
+    if pre_run:
+      finish = 'if (++preloaded >= preloadTotal) { cb(null); }\n'
 
     if dds:
       # decompress crunch format into dds
@@ -579,9 +582,10 @@ if has_preloaded:
     fetchRemotePackage(REMOTE_PACKAGE_NAME, processPackageData, handleError);
     '''
 else:
-  code += '''
-    cb(null);
-'''
+  if pre_run:
+    code += '''
+      cb(null);
+  '''
 
 if pre_run:
   ret += '''

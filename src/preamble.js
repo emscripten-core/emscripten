@@ -831,7 +831,7 @@ var PGOMonitor = {
     if (this.allGenerated) {
       return cb();
     }
-    this.oninitcallback = oninitcallback;
+    this.oninitcallback = cb;
   },
   initialize: function(allGenerated) {
     this.allGenerated = allGenerated;
