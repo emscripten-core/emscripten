@@ -13251,13 +13251,18 @@ Press any key to continue.'''
       
     def test_opencl_hello(self):
       open(os.path.join(self.get_dir(), 'hello_world_cl.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'hello_world_cl.c')).read()))
-
-      Popen([PYTHON, EMCC, '-O2', os.path.join(self.get_dir(), 'hello_world_cl.c'), '-o', 'page.html']).communicate()
-      self.run_browser('page.html', '', '/report_result?1')
+      Popen([PYTHON, EMCC, '-O2', os.path.join(self.get_dir(), 'hello_world_cl.c'), '-o', 'opencl.html']).communicate()
+      self.run_browser('opencl.html', '', '/report_result?1')
 
     def test_openal_buffers(self):
       shutil.copyfile(path_from_root('tests', 'sounds', 'the_entertainer.wav'), os.path.join(self.get_dir(), 'the_entertainer.wav'))
       self.btest('openal_buffers.c', '0', args=['--preload-file', 'the_entertainer.wav'],)
+
+    def test_opencl_qjulia(self):
+      shutil.copyfile(path_from_root('tests', 'qjulia_kernel.cl'), os.path.join(self.get_dir(), 'qjulia_kernel.cl'))
+      open(os.path.join(self.get_dir(), 'qjulia.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'qjulia.c')).read()))
+      Popen([PYTHON, EMCC, '-O2', os.path.join(self.get_dir(), 'qjulia.c'), '--preload-file', 'qjulia_kernel.cl', '-o', 'opencl.html']).communicate()
+      self.run_browser('opencl.html', '', '/report_result?1')
 
     def test_glfw(self):
       open(os.path.join(self.get_dir(), 'glfw.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'glfw.c')).read()))
