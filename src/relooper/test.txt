@@ -109,3 +109,28 @@ while(1) {
   // block D
 }
 
+
+
+-- if (expensive || expensive2) X else Y; Z --
+
+
+
+// block A
+do {
+  if (expensive()) {
+    label = 33;
+  } else {
+    // block B
+    if (expensive2()) {
+      label = 33;
+      break;
+    }
+    // block D
+    break;
+  }
+} while(0);
+if (label == 33) {
+  // block C;
+}
+// block E
+

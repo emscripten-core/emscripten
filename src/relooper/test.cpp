@@ -190,5 +190,45 @@ int main() {
 
     puts(buffer);
   }
+
+  if (1) {
+    Relooper::SetOutputBuffer(buffer, sizeof(buffer));
+
+    printf("\n\n-- if (expensive || expensive2) X else Y; Z --\n\n");
+
+    Block *b_a = new Block("// block A\n");
+    Block *b_b = new Block("// block B\n");
+    Block *b_c = new Block("// block C;\n");
+    Block *b_d = new Block("// block D\n");
+    Block *b_e = new Block("// block E\n");
+    Block *b_f = new Block("// block F\n");
+
+    b_a->AddBranchTo(b_c, "expensive()");
+    b_a->AddBranchTo(b_b, NULL);
+
+    b_b->AddBranchTo(b_c, "expensive2()");
+    b_b->AddBranchTo(b_d, NULL);
+
+    b_c->AddBranchTo(b_e, NULL);
+
+    b_d->AddBranchTo(b_e, NULL);
+
+    b_e->AddBranchTo(b_f, NULL);
+
+    b_f->AddBranchTo(b_e, NULL);
+
+    Relooper r;
+    r.AddBlock(b_a);
+    r.AddBlock(b_b);
+    r.AddBlock(b_c);
+    r.AddBlock(b_d);
+    r.AddBlock(b_e);
+
+    r.Calculate(b_a);
+    printf("\n\n");
+    r.Render();
+
+    puts(buffer);
+  }
 }
 
