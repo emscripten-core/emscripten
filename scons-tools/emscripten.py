@@ -156,8 +156,6 @@ def emscripten(env, target_js, source_bc):
         buildName('min.js'),
         global_emscripten_min_js)
 
-    env.InstallAs(buildName('js'), emscripten_js)
-
     return [emscripten_iteration_js, emscripten_js, emscripten_min_js]
 
 LIBC_SOURCES = [
