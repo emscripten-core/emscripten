@@ -41,6 +41,7 @@ struct Branch {
   void Render(Block *Target, bool SetLabel);
 };
 
+typedef std::set<Block*> BlockSet;
 typedef std::map<Block*, Branch*> BlockBranchMap;
 
 // Represents a basic block of code - some instructions that end with a
@@ -52,9 +53,9 @@ struct Block {
   // processed branches.
   // Blocks own the Branch objects they use, and destroy them when done.
   BlockBranchMap BranchesOut;
-  BlockBranchMap BranchesIn; // TODO: make this just a list of Incoming, without branch info - should be just on BranchesOut
+  BlockSet BranchesIn;
   BlockBranchMap ProcessedBranchesOut;
-  BlockBranchMap ProcessedBranchesIn;
+  BlockSet ProcessedBranchesIn;
   Shape *Parent; // The shape we are directly inside
   int Id; // A unique identifier
   const char *Code; // The string representation of the code in this block. Owning pointer (we copy the input)
@@ -205,7 +206,6 @@ struct Relooper {
   static void SetAsmJSMode(int On);
 };
 
-typedef std::set<Block*> BlockSet;
 typedef std::map<Block*, BlockSet> BlockBlockSetMap;
 
 #if DEBUG

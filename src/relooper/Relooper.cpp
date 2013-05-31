@@ -104,9 +104,6 @@ Block::Block(const char *CodeInit) : Parent(NULL), Id(Block::IdCounter++), Defau
 
 Block::~Block() {
   if (Code) free((void*)Code);
-  for (BlockBranchMap::iterator iter = ProcessedBranchesIn.begin(); iter != ProcessedBranchesIn.end(); iter++) {
-    delete iter->second;
-  }
   for (BlockBranchMap::iterator iter = ProcessedBranchesOut.begin(); iter != ProcessedBranchesOut.end(); iter++) {
     delete iter->second;
   }
@@ -385,10 +382,10 @@ void Relooper::Calculate(Block *Entry) {
         if (strlen(Original->Code)*(Original->BranchesIn.size()-1) > TotalCodeSize/5) continue; // if splitting increases raw code size by a significant amount, abort
         // Split the node (for simplicity, we replace all the blocks, even though we could have reused the original)
         PrintDebug("Splitting block %d\n", Original->Id);
-        for (BlockBranchMap::iterator iter = Original->BranchesIn.begin(); iter != Original->BranchesIn.end(); iter++) {
-          Block *Prior = iter->first;
+        for (BlockSet::iterator iter = Original->BranchesIn.begin(); iter != Original->BranchesIn.end(); iter++) {
+          Block *Prior = *iter;
           Block *Split = new Block(Original->Code);
-          Split->BranchesIn[Prior] = new Branch(NULL);
+          Split->BranchesIn.insert(Prior);
           Prior->BranchesOut[Split] = new Branch(Prior->BranchesOut[Original]->Condition, Prior->BranchesOut[Original]->Code);
           Prior->BranchesOut.erase(Original);
           Parent->AddBlock(Split);
@@ -397,7 +394,7 @@ void Relooper::Calculate(Block *Entry) {
             Block *Post = iter->first;
             Branch *Details = iter->second;
             Split->BranchesOut[Post] = new Branch(Details->Condition, Details->Code);
-            Post->BranchesIn[Split] = new Branch(NULL);
+            Post->BranchesIn.insert(Split);
           }
         }
       }
@@ -411,7 +408,7 @@ void Relooper::Calculate(Block *Entry) {
     Block *Curr = Blocks[i];
     if (Pre.Live.find(Curr) == Pre.Live.end()) continue;
     for (BlockBranchMap::iterator iter = Curr->BranchesOut.begin(); iter != Curr->BranchesOut.end(); iter++) {
-      iter->first->BranchesIn[Curr] = new Branch(NULL);
+      iter->first->BranchesIn.insert(Curr);
     }
   }
 
@@ -441,22 +438,21 @@ void Relooper::Calculate(Block *Entry) {
     void Solipsize(Block *Target, Branch::FlowType Type, Shape *Ancestor, BlockSet &From) {
       PrintDebug("Solipsizing branches into %d\n", Target->Id);
       DebugDump(From, "  relevant to solipsize: ");
-      for (BlockBranchMap::iterator iter = Target->BranchesIn.begin(); iter != Target->BranchesIn.end();) {
-        Block *Prior = iter->first;
+      for (BlockSet::iterator iter = Target->BranchesIn.begin(); iter != Target->BranchesIn.end();) {
+        Block *Prior = *iter;
         if (From.find(Prior) == From.end()) {
           iter++;
           continue;
         }
-        Branch *TargetIn = iter->second;
         Branch *PriorOut = Prior->BranchesOut[Target];
-        PriorOut->Ancestor = Ancestor; // Do we need this info
-        PriorOut->Type = Type;         // on TargetIn too?
+        PriorOut->Ancestor = Ancestor;
+        PriorOut->Type = Type;
         if (MultipleShape *Multiple = Shape::IsMultiple(Ancestor)) {
           Multiple->NeedLoop++; // We are breaking out of this Multiple, so need a loop
         }
         iter++; // carefully increment iter before erasing
         Target->BranchesIn.erase(Prior);
-        Target->ProcessedBranchesIn[Prior] = TargetIn;
+        Target->ProcessedBranchesIn.insert(Prior);
         Prior->BranchesOut.erase(Target);
         Prior->ProcessedBranchesOut[Target] = PriorOut;
         PrintDebug("  eliminated branch from %d\n", Prior->Id);
@@ -494,8 +490,8 @@ void Relooper::Calculate(Block *Entry) {
           InnerBlocks.insert(Curr);
           Blocks.erase(Curr);
           // Add the elements prior to it
-          for (BlockBranchMap::iterator iter = Curr->BranchesIn.begin(); iter != Curr->BranchesIn.end(); iter++) {
-            Queue.insert(iter->first);
+          for (BlockSet::iterator iter = Curr->BranchesIn.begin(); iter != Curr->BranchesIn.end(); iter++) {
+            Queue.insert(*iter);
           }
         }
       }
@@ -626,8 +622,8 @@ void Relooper::Calculate(Block *Entry) {
         BlockList ToInvalidate;
         for (BlockSet::iterator iter = CurrGroup.begin(); iter != CurrGroup.end(); iter++) {
           Block *Child = *iter;
-          for (BlockBranchMap::iterator iter = Child->BranchesIn.begin(); iter != Child->BranchesIn.end(); iter++) {
-            Block *Parent = iter->first;
+          for (BlockSet::iterator iter = Child->BranchesIn.begin(); iter != Child->BranchesIn.end(); iter++) {
+            Block *Parent = *iter;
             if (Helper.Ownership[Parent] != Helper.Ownership[Child]) {
               ToInvalidate.push_back(Child);
             }
@@ -757,8 +753,8 @@ void Relooper::Calculate(Block *Entry) {
             Block *Entry = iter->first;
             BlockSet &Group = iter->second;
             BlockBlockSetMap::iterator curr = iter++; // iterate carefully, we may delete
-            for (BlockBranchMap::iterator iterBranch = Entry->BranchesIn.begin(); iterBranch != Entry->BranchesIn.end(); iterBranch++) {
-              Block *Origin = iterBranch->first;
+            for (BlockSet::iterator iterBranch = Entry->BranchesIn.begin(); iterBranch != Entry->BranchesIn.end(); iterBranch++) {
+              Block *Origin = *iterBranch;
               if (Group.find(Origin) == Group.end()) {
                 // Reached from outside the group, so we cannot handle this
                 PrintDebug("Cannot handle group with entry %d because of incoming branch from %d\n", Entry->Id, Origin->Id);
@@ -1020,8 +1016,8 @@ void DebugDump(BlockSet &Blocks, const char *prefix) {
     for (BlockBranchMap::iterator iter2 = (*iter)->BranchesOut.begin(); iter2 != (*iter)->BranchesOut.end(); iter2++) {
       printf("  OUT %d\n", iter2->first->Id);
     }
-    for (BlockBranchMap::iterator iter2 = (*iter)->BranchesIn.begin(); iter2 != (*iter)->BranchesIn.end(); iter2++) {
-      printf("  IN  %d\n", iter2->first->Id);
+    for (BlockSet::iterator iter2 = (*iter)->BranchesIn.begin(); iter2 != (*iter)->BranchesIn.end(); iter2++) {
+      printf("  IN  %d\n", (*iter2)->Id);
     }
   }
 }
