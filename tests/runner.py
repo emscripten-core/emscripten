@@ -13248,6 +13248,12 @@ Press any key to continue.'''
 
       Popen([PYTHON, EMCC, '-O2', os.path.join(self.get_dir(), 'openal_playback.cpp'), '--preload-file', 'audio.wav', '-o', 'page.html']).communicate()
       self.run_browser('page.html', '', '/report_result?1')
+      
+    def test_opencl_hello(self):
+      open(os.path.join(self.get_dir(), 'hello_world_cl.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'hello_world_cl.c')).read()))
+
+      Popen([PYTHON, EMCC, '-O2', os.path.join(self.get_dir(), 'hello_world_cl.c'), '-o', 'page.html']).communicate()
+      self.run_browser('page.html', '', '/report_result?1')
 
     def test_openal_buffers(self):
       shutil.copyfile(path_from_root('tests', 'sounds', 'the_entertainer.wav'), os.path.join(self.get_dir(), 'the_entertainer.wav'))
