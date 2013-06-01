@@ -211,6 +211,7 @@ typedef std::map<Block*, BlockSet> BlockBlockSetMap;
 #if DEBUG
 struct Debugging {
   static void Dump(BlockSet &Blocks, const char *prefix=NULL);
+  static void Dump(Shape *S, const char *prefix=NULL);
 };
 #endif
 

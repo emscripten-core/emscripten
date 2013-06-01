@@ -893,10 +893,22 @@ void Relooper::Calculate(Block *Entry) {
         func(Loop->Next); \
       }
 
+    // Find the single block that must be hit in a shape, or NULL if there is more than one
+    Block *FollowNaturalFlow(Shape *S) {
+      SHAPE_SWITCH(S, {
+        return Simple->Inner;
+      }, {
+        return NULL;
+      }, {
+        return FollowNaturalFlow(Loop->Inner);
+      });
+    }
+
     // Remove unneeded breaks and continues.
     // A flow operation is trivially unneeded if the shape we naturally get to by normal code
     // execution is the same as the flow forces us to.
     void RemoveUnneededFlows(Shape *Root, Shape *Natural=NULL) {
+      Block *NaturalBlock = FollowNaturalFlow(Natural);
       Shape *Next = Root;
       while (Next) {
         Root = Next;
@@ -911,7 +923,7 @@ void Relooper::Calculate(Block *Entry) {
             for (BlockBranchMap::iterator iter = Simple->Inner->ProcessedBranchesOut.begin(); iter != Simple->Inner->ProcessedBranchesOut.end(); iter++) {
               Block *Target = iter->first;
               Branch *Details = iter->second;
-              if (Details->Type != Branch::Direct && Target->Parent == Natural) {
+              if (Details->Type != Branch::Direct && Target == NaturalBlock) { // note: cannot handle split blocks
                 Details->Type = Branch::Direct;
                 if (MultipleShape *Multiple = Shape::IsMultiple(Details->Ancestor)) {
                   Multiple->NeedLoop--;
@@ -1026,7 +1038,7 @@ void Relooper::SetAsmJSMode(int On) {
 #if DEBUG
 // Debugging
 
-void DebugDump(BlockSet &Blocks, const char *prefix) {
+void Debugging::Dump(BlockSet &Blocks, const char *prefix) {
   if (prefix) printf("%s ", prefix);
   for (BlockSet::iterator iter = Blocks.begin(); iter != Blocks.end(); iter++) {
     Block *Curr = *iter;
@@ -1037,6 +1049,21 @@ void DebugDump(BlockSet &Blocks, const char *prefix) {
       assert(Other->BranchesIn.find(Curr) != Other->BranchesIn.end());
     }
   }
+}
+
+void Debugging::Dump(Shape *S, const char *prefix) {
+  if (prefix) printf("%s ", prefix);
+  printf(" %d ", S->Id);
+  SHAPE_SWITCH(S, {
+    printf("<< Simple with block %d\n", Simple->Inner->Id);
+  }, {
+    printf("<< Multiple\n");
+    for (BlockShapeMap::iterator iter = Multiple->InnerMap.begin(); iter != Multiple->InnerMap.end(); iter++) {
+      printf("     with entry %d\n", iter->first->Id);
+    }
+  }, {
+    printf("<< Loop\n");
+  });
 }
 
 static void PrintDebug(const char *Format, ...) {
