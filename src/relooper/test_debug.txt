@@ -34,86 +34,72 @@ int main() {
 // Process() called
 // Process() running
   blocks :  1:
-  OUT 2
-  OUT 4
+  -> 2
+  -> 4
 2:
-  OUT 3
-  OUT 4
-  IN  1
+  -> 3
+  -> 4
 3:
-  OUT 4
-  IN  2
+  -> 4
 4:
-  IN  1
-  IN  2
-  IN  3
   entries:  1:
-  OUT 2
-  OUT 4
+  -> 2
+  -> 4
 // creating simple block with block #1
 // Solipsizing branches into 2
   relevant to solipsize:  1:
-  OUT 2
-  OUT 4
+  -> 2
+  -> 4
 //   eliminated branch from 1
 // Solipsizing branches into 4
   relevant to solipsize:  1:
-  OUT 4
+  -> 4
 //   eliminated branch from 1
 // Process() running
   blocks :  2:
-  OUT 3
-  OUT 4
+  -> 3
+  -> 4
 3:
-  OUT 4
-  IN  2
+  -> 4
 4:
-  IN  2
-  IN  3
   entries:  2:
-  OUT 3
-  OUT 4
+  -> 3
+  -> 4
 4:
-  IN  2
-  IN  3
 // Investigated independent groups:
  group:  2:
-  OUT 3
-  OUT 4
+  -> 3
+  -> 4
 3:
-  OUT 4
-  IN  2
+  -> 4
 // Independent groups: 1
 // Handleable independent groups: 1
 // creating multiple block with 1 inner groups
 //   multiple group with entry 2:
      2:
-  OUT 3
-  OUT 4
+  -> 3
+  -> 4
 3:
-  OUT 4
-  IN  2
+  -> 4
 // Solipsizing branches into 4
   relevant to solipsize:  2:
-  OUT 3
-  OUT 4
+  -> 3
+  -> 4
 3:
-  OUT 4
-  IN  2
+  -> 4
 //   eliminated branch from 2
 //   eliminated branch from 3
 // Process() called
 // Process() running
   blocks :  2:
-  OUT 3
+  -> 3
 3:
-  IN  2
   entries:  2:
-  OUT 3
+  -> 3
 // creating simple block with block #2
 // Solipsizing branches into 3
   relevant to solipsize:  2:
-  OUT 3
+  -> 3
 //   eliminated branch from 2
 // Process() running
   blocks :  3:

@@ -1029,12 +1029,12 @@ void Relooper::SetAsmJSMode(int On) {
 void DebugDump(BlockSet &Blocks, const char *prefix) {
   if (prefix) printf("%s ", prefix);
   for (BlockSet::iterator iter = Blocks.begin(); iter != Blocks.end(); iter++) {
-    printf("%d:\n", (*iter)->Id);
-    for (BlockBranchMap::iterator iter2 = (*iter)->BranchesOut.begin(); iter2 != (*iter)->BranchesOut.end(); iter2++) {
-      printf("  OUT %d\n", iter2->first->Id);
-    }
-    for (BlockSet::iterator iter2 = (*iter)->BranchesIn.begin(); iter2 != (*iter)->BranchesIn.end(); iter2++) {
-      printf("  IN  %d\n", (*iter2)->Id);
+    Block *Curr = *iter;
+    printf("%d:\n", Curr->Id);
+    for (BlockBranchMap::iterator iter2 = Curr->BranchesOut.begin(); iter2 != Curr->BranchesOut.end(); iter2++) {
+      Block *Other = iter2->first;
+      printf("  -> %d\n", Other->Id);
+      assert(Other->BranchesIn.find(Curr) != Other->BranchesIn.end());
     }
   }
 }
