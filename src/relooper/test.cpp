@@ -223,6 +223,7 @@ int main() {
     r.AddBlock(b_c);
     r.AddBlock(b_d);
     r.AddBlock(b_e);
+    r.AddBlock(b_f);
 
     r.Calculate(b_a);
     printf("\n\n");

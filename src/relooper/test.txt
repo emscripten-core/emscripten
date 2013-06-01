@@ -129,8 +129,14 @@ do {
     break;
   }
 } while(0);
-if (label == 33) {
-  // block C;
+do {
+  if (label == 33) {
+    // block C;
+    break;
+  }
+} while(0);
+while(1) {
+  // block E
+  // block F
 }
-// block E
 

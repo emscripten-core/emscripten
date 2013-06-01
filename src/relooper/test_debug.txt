@@ -28,13 +28,8 @@ int main() {
   return 0;
 }
 // Adding block 1 (ep)
-//   with branch out to 2
-//   with branch out to 4
 // Adding block 2 (LBB1)
-//   with branch out to 3
-//   with branch out to 4
 // Adding block 3 (LBB2)
-//   with branch out to 4
 // Adding block 4 (LBB3)
 // Process() called
 // Process() running

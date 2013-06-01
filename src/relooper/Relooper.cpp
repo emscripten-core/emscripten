@@ -376,28 +376,46 @@ void Relooper::Calculate(Block *Entry) {
         Block *Curr = *iter;
         TotalCodeSize += strlen(Curr->Code);
       }
+      BlockSet Splits;
+      BlockSet Removed;
+      //DebugDump(Live, "before");
       for (BlockSet::iterator iter = Live.begin(); iter != Live.end(); iter++) {
         Block *Original = *iter;
-        if (Original->BranchesIn.size() <= 1 || Original->BranchesOut.size() > 0) continue;
+        if (Original->BranchesIn.size() <= 1 || Original->BranchesOut.size() > 0) continue; // only dead ends, for now
+        if (Original->BranchesOut.find(Original) != Original->BranchesOut.end()) continue; // cannot split a looping node
         if (strlen(Original->Code)*(Original->BranchesIn.size()-1) > TotalCodeSize/5) continue; // if splitting increases raw code size by a significant amount, abort
         // Split the node (for simplicity, we replace all the blocks, even though we could have reused the original)
         PrintDebug("Splitting block %d\n", Original->Id);
         for (BlockSet::iterator iter = Original->BranchesIn.begin(); iter != Original->BranchesIn.end(); iter++) {
           Block *Prior = *iter;
           Block *Split = new Block(Original->Code);
+          PrintDebug("  to %d\n", Split->Id);
           Split->BranchesIn.insert(Prior);
-          Prior->BranchesOut[Split] = new Branch(Prior->BranchesOut[Original]->Condition, Prior->BranchesOut[Original]->Code);
+          Branch *Details = Prior->BranchesOut[Original];
+          Prior->BranchesOut[Split] = new Branch(Details->Condition, Details->Code);
           Prior->BranchesOut.erase(Original);
-          Parent->AddBlock(Split);
-          Live.insert(Split);
           for (BlockBranchMap::iterator iter = Original->BranchesOut.begin(); iter != Original->BranchesOut.end(); iter++) {
             Block *Post = iter->first;
             Branch *Details = iter->second;
             Split->BranchesOut[Post] = new Branch(Details->Condition, Details->Code);
             Post->BranchesIn.insert(Split);
           }
+          Splits.insert(Split);
+          Removed.insert(Original);
         }
+        for (BlockBranchMap::iterator iter = Original->BranchesOut.begin(); iter != Original->BranchesOut.end(); iter++) {
+          Block *Post = iter->first;
+          Post->BranchesIn.erase(Original);
+        }
+        //DebugDump(Live, "mid");
       }
+      for (BlockSet::iterator iter = Splits.begin(); iter != Splits.end(); iter++) {
+        Live.insert(*iter);
+      }
+      for (BlockSet::iterator iter = Removed.begin(); iter != Removed.end(); iter++) {
+        Live.erase(*iter);
+      }
+      //DebugDump(Live, "after");
     }
   };
   PreOptimizer Pre(this);
@@ -823,13 +841,11 @@ void Relooper::Calculate(Block *Entry) {
   // Main
 
   BlockSet AllBlocks;
-  for (int i = 0; i < Blocks.size(); i++) {
-    AllBlocks.insert(Blocks[i]);
+  for (BlockSet::iterator iter = Pre.Live.begin(); iter != Pre.Live.end(); iter++) {
+    Block *Curr = *iter;
+    AllBlocks.insert(Curr);
 #if DEBUG
-    PrintDebug("Adding block %d (%s)\n", Blocks[i]->Id, Blocks[i]->Code);
-    for (BlockBranchMap::iterator iter = Blocks[i]->BranchesOut.begin(); iter != Blocks[i]->BranchesOut.end(); iter++) {
-      PrintDebug("  with branch out to %d\n", iter->first->Id);
-    }
+    PrintDebug("Adding block %d (%s)\n", Curr->Id, Curr->Code);
 #endif
   }
 
