@@ -126,7 +126,6 @@ do {
       break;
     }
     // block D
-    break;
   }
 } while(0);
 if (label == 33) {

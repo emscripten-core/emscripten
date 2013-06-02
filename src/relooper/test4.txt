@@ -7,7 +7,6 @@ do {
       break;
     }
     //21
-    break;
   } else {
     label = 4;
   }

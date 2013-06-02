@@ -136,10 +136,6 @@ void Block::Render(bool InLoop) {
 
   bool SetLabel = true; // in some cases it is clear we can avoid setting label, see later
 
-  if (ProcessedBranchesOut.size() == 1 && ProcessedBranchesOut.begin()->second->Type == Branch::Direct) {
-    SetLabel = false;
-  }
-
   // A setting of the label variable (label = x) is necessary if it can
   // cause an impact. The main case is where we set label to x, then elsewhere
   // we check if label is equal to that value, i.e., that label is an entry
@@ -893,14 +889,17 @@ void Relooper::Calculate(Block *Entry) {
         func(Loop->Next); \
       }
 
-    // Find the single block that must be hit in a shape, or NULL if there is more than one
-    Block *FollowNaturalFlow(Shape *S) {
+    // Find the blocks that natural control flow can get us directly to, or through a multiple that we ignore
+    void FollowNaturalFlow(Shape *S, BlockSet &Out) {
       SHAPE_SWITCH(S, {
-        return Simple->Inner;
+        Out.insert(Simple->Inner);
       }, {
-        return NULL;
+        for (BlockShapeMap::iterator iter = Multiple->InnerMap.begin(); iter != Multiple->InnerMap.end(); iter++) {
+          FollowNaturalFlow(iter->second, Out);
+        }
+        FollowNaturalFlow(Multiple->Next, Out);
       }, {
-        return FollowNaturalFlow(Loop->Inner);
+        FollowNaturalFlow(Loop->Inner, Out);
       });
     }
 
@@ -908,7 +907,8 @@ void Relooper::Calculate(Block *Entry) {
     // A flow operation is trivially unneeded if the shape we naturally get to by normal code
     // execution is the same as the flow forces us to.
     void RemoveUnneededFlows(Shape *Root, Shape *Natural=NULL) {
-      Block *NaturalBlock = FollowNaturalFlow(Natural);
+      BlockSet NaturalBlocks;
+      FollowNaturalFlow(Natural, NaturalBlocks);
       Shape *Next = Root;
       while (Next) {
         Root = Next;
@@ -923,7 +923,7 @@ void Relooper::Calculate(Block *Entry) {
             for (BlockBranchMap::iterator iter = Simple->Inner->ProcessedBranchesOut.begin(); iter != Simple->Inner->ProcessedBranchesOut.end(); iter++) {
               Block *Target = iter->first;
               Branch *Details = iter->second;
-              if (Details->Type != Branch::Direct && Target == NaturalBlock) { // note: cannot handle split blocks
+              if (Details->Type != Branch::Direct && NaturalBlocks.find(Target) != NaturalBlocks.end()) { // note: cannot handle split blocks
                 Details->Type = Branch::Direct;
                 if (MultipleShape *Multiple = Shape::IsMultiple(Details->Ancestor)) {
                   Multiple->NeedLoop--;

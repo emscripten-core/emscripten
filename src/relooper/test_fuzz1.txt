@@ -3,13 +3,10 @@
 print('entry'); var label; var state; var decisions = [4, 1, 7, 2, 6, 6, 8]; var index = 0; function check() { if (index == decisions.length) throw 'HALT'; return decisions[index++] }
 print(5); state = check();
 print(6); state = check();
-do {
-  if (state == 7) {
-    print(7); state = check();
-    label = 3;
-    break;
-  }
-} while(0);
+if (state == 7) {
+  print(7); state = check();
+  label = 3;
+}
 L5: while(1) {
   if (label == 3) {
     label = 0;
