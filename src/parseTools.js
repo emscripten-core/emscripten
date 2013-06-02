@@ -2047,8 +2047,9 @@ function processMathop(item) {
 
   if ((type == 'i64' || paramTypes[0] == 'i64' || paramTypes[1] == 'i64' || idents[1] == '(i64)' || rawBits > 32) && USE_TYPED_ARRAYS == 2) {
     // this code assumes i64 for the most part
-    if (ASSERTIONS && rawBits < 64) {
-      warnOnce('processMathop processing illegal non-i64 value: ' + [type, paramTypes, idents])
+    if (ASSERTIONS && rawBits > 1 && rawBits < 64) {
+      warnOnce('processMathop processing illegal non-i64 value');
+      if (VERBOSE) printErr([op, item.type, rawBits, type, paramTypes, idents]);
     }
 
     var warnI64_1 = function() {
