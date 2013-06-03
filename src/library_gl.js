@@ -3965,7 +3965,7 @@ var LibraryGL = {
   },
 
   // Vertex array object (VAO) support. TODO: when the WebGL extension is popular, use that and remove this code and GL.vaos
-  glGenVertexArrays__deps: ['$GLEMulation'],
+  glGenVertexArrays__deps: ['$GLEmulation'],
   glGenVertexArrays__sig: 'vii',
   glGenVertexArrays: function(n, vaos) {
     for (var i = 0; i < n; i++) {

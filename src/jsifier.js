@@ -460,6 +460,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         } else {
           ident = '_' + ident;
         }
+        if (VERBOSE) printErr('adding ' + ident + ' and deps ' + deps);
         var depsText = (deps ? '\n' + deps.map(addFromLibrary).filter(function(x) { return x != '' }).join('\n') : '');
         var contentText = isFunction ? snippet : ('var ' + ident + '=' + snippet + ';');
         if (ASM_JS) {
