@@ -56,6 +56,9 @@ int main()
   fwrite(data, 1, 5, outf);
   fclose(outf);
 
+  FILE *devNull = fopen("/dev/null", "rb");
+  assert(devNull);
+
   char data2[10];
   FILE *inf = fopen("go.out", "rb");
   int num = fread(data2, 1, 10, inf);

@@ -560,6 +560,7 @@ LibraryManager.library = {
       var stdout = FS.createDevice(devFolder, 'stdout', null, output);
       var stderr = FS.createDevice(devFolder, 'stderr', null, error);
       FS.createDevice(devFolder, 'tty', input, output);
+      FS.createDevice(devFolder, 'null', function(){}, function(){});
 
       // Create default streams.
       FS.streams[1] = {
