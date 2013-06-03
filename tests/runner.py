@@ -6824,7 +6824,7 @@ def process(filename):
           printf("f_blocks: %lu\n", s.f_blocks);
           printf("f_bfree: %lu\n", s.f_bfree);
           printf("f_bavail: %lu\n", s.f_bavail);
-          printf("f_files: %lu\n", s.f_files);
+          printf("f_files: %d\n", s.f_files > 5);
           printf("f_ffree: %lu\n", s.f_ffree);
           printf("f_favail: %lu\n", s.f_favail);
           printf("f_fsid: %lu\n", s.f_fsid);
@@ -6842,7 +6842,7 @@ def process(filename):
         f_blocks: 1000000
         f_bfree: 500000
         f_bavail: 500000
-        f_files: 10
+        f_files: 1
         f_ffree: 1000000
         f_favail: 1000000
         f_fsid: 42
