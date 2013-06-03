@@ -995,6 +995,7 @@ try:
     key, value = change.split('=')
     if value[0] == '@':
       value = '"@' + os.path.abspath(value[1:]) + '"'
+      value = value.replace('\\\\', '/').replace('\\', '/') # Convert backslash paths to forward slashes on Windows as well, since the JS compiler otherwise needs the backslashes escaped (alternative is to escape all input paths passing to JS, which feels clumsier to read)
     exec('shared.Settings.' + key + ' = ' + value)
 
   # Apply effects from settings
