@@ -1,3 +1,6 @@
+#ifndef __emscripten_h__
+#define __emscripten_h__
+
 /**
  * This file contains a few useful things for compiling C/C++ code
  * with Emscripten, an LLVM-to-JavaScript compiler.
@@ -380,4 +383,6 @@ void emscripten_jcache_printf_(...); /* internal use */
 #ifdef __cplusplus
 }
 #endif
+
+#endif // __emscripten_h__
 
