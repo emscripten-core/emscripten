@@ -4532,6 +4532,204 @@ The current type of b is: 9
 
         self.do_run(src, '*1*', force_c=True)
 
+    def test_strtoll_hex(self):
+      # tests strtoll for hex strings (0x...) 
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        int main() {
+          const char *STRING = "0x4 -0x3A +0xDEADBEEF";
+          char *end_char;
+
+          // undefined base
+          long long int l1 = strtoll(STRING, &end_char, 0);
+          long long int l2 = strtoll(end_char, &end_char, 0);
+          long long int l3 = strtoll(end_char, NULL, 0);
+
+          // defined base
+          long long int l4 = strtoll(STRING, &end_char, 16);
+          long long int l5 = strtoll(end_char, &end_char, 16);
+          long long int l6 = strtoll(end_char, NULL, 16);
+ 
+          printf("%d%d%d%d%d%d\n", l1==0x4, l2==-0x3a, l3==0xdeadbeef, l4==0x4, l5==-0x3a, l6==0xdeadbeef);
+          return 0;
+        }
+      '''
+      self.do_run(src, '111111')
+
+    def test_strtoll_dec(self):
+      # tests strtoll for decimal strings (0x...) 
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        int main() {
+          const char *STRING = "4 -38 +4711";
+          char *end_char;
+
+          // undefined base
+          long long int l1 = strtoll(STRING, &end_char, 0);
+          long long int l2 = strtoll(end_char, &end_char, 0);
+          long long int l3 = strtoll(end_char, NULL, 0);
+
+          // defined base
+          long long int l4 = strtoll(STRING, &end_char, 10);
+          long long int l5 = strtoll(end_char, &end_char, 10);
+          long long int l6 = strtoll(end_char, NULL, 10);
+ 
+          printf("%d%d%d%d%d%d\n", l1==4, l2==-38, l3==4711, l4==4, l5==-38, l6==4711);
+          return 0;
+        }
+      '''
+      self.do_run(src, '111111')
+
+    def test_strtoll_bin(self):
+      # tests strtoll for binary strings (0x...) 
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        int main() {
+          const char *STRING = "1 -101 +1011";
+          char *end_char;
+
+          // defined base
+          long long int l4 = strtoll(STRING, &end_char, 2);
+          long long int l5 = strtoll(end_char, &end_char, 2);
+          long long int l6 = strtoll(end_char, NULL, 2);
+ 
+          printf("%d%d%d\n", l4==1, l5==-5, l6==11);
+          return 0;
+        }
+      '''
+      self.do_run(src, '111')
+
+    def test_strtoll_oct(self):
+      # tests strtoll for decimal strings (0x...) 
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        int main() {
+          const char *STRING = "0 -035 +04711";
+          char *end_char;
+
+          // undefined base
+          long long int l1 = strtoll(STRING, &end_char, 0);
+          long long int l2 = strtoll(end_char, &end_char, 0);
+          long long int l3 = strtoll(end_char, NULL, 0);
+
+          // defined base
+          long long int l4 = strtoll(STRING, &end_char, 8);
+          long long int l5 = strtoll(end_char, &end_char, 8);
+          long long int l6 = strtoll(end_char, NULL, 8);
+
+          printf("%d%d%d%d%d%d\n", l1==0, l2==-29, l3==2505, l4==0, l5==-29, l6==2505);
+          return 0;
+        }
+      '''
+      self.do_run(src, '111111')
+    
+    def test_strtol_hex(self):
+      # tests strtoll for hex strings (0x...) 
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        int main() {
+          const char *STRING = "0x4 -0x3A +0xDEAD";
+          char *end_char;
+
+          // undefined base
+          long l1 = strtol(STRING, &end_char, 0);
+          long l2 = strtol(end_char, &end_char, 0);
+          long l3 = strtol(end_char, NULL, 0);
+
+          // defined base
+          long l4 = strtol(STRING, &end_char, 16);
+          long l5 = strtol(end_char, &end_char, 16);
+          long l6 = strtol(end_char, NULL, 16);
+ 
+          printf("%d%d%d%d%d%d\n", l1==0x4, l2==-0x3a, l3==0xdead, l4==0x4, l5==-0x3a, l6==0xdead);
+          return 0;
+        }
+      '''
+      self.do_run(src, '111111')
+
+    def test_strtol_dec(self):
+      # tests strtoll for decimal strings (0x...) 
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        int main() {
+          const char *STRING = "4 -38 +4711";
+          char *end_char;
+
+          // undefined base
+          long l1 = strtol(STRING, &end_char, 0);
+          long l2 = strtol(end_char, &end_char, 0);
+          long l3 = strtol(end_char, NULL, 0);
+
+          // defined base
+          long l4 = strtol(STRING, &end_char, 10);
+          long l5 = strtol(end_char, &end_char, 10);
+          long l6 = strtol(end_char, NULL, 10);
+ 
+          printf("%d%d%d%d%d%d\n", l1==4, l2==-38, l3==4711, l4==4, l5==-38, l6==4711);
+          return 0;
+        }
+      '''
+      self.do_run(src, '111111')
+
+    def test_strtol_bin(self):
+      # tests strtoll for binary strings (0x...) 
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        int main() {
+          const char *STRING = "1 -101 +1011";
+          char *end_char;
+
+          // defined base
+          long l4 = strtol(STRING, &end_char, 2);
+          long l5 = strtol(end_char, &end_char, 2);
+          long l6 = strtol(end_char, NULL, 2);
+ 
+          printf("%d%d%d\n", l4==1, l5==-5, l6==11);
+          return 0;
+        }
+      '''
+      self.do_run(src, '111')
+
+    def test_strtol_oct(self):
+      # tests strtoll for decimal strings (0x...) 
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        int main() {
+          const char *STRING = "0 -035 +04711";
+          char *end_char;
+
+          // undefined base
+          long l1 = strtol(STRING, &end_char, 0);
+          long l2 = strtol(end_char, &end_char, 0);
+          long l3 = strtol(end_char, NULL, 0);
+
+          // defined base
+          long l4 = strtol(STRING, &end_char, 8);
+          long l5 = strtol(end_char, &end_char, 8);
+          long l6 = strtol(end_char, NULL, 8);
+
+          printf("%d%d%d%d%d%d\n", l1==0, l2==-29, l3==2505, l4==0, l5==-29, l6==2505);
+          return 0;
+        }
+      '''
+      self.do_run(src, '111111')
+
     def test_atexit(self):
       # Confirms they are called in reverse order
       src = r'''
@@ -11516,7 +11714,9 @@ elif 'browser' in str(sys.argv):
       self.run_browser('page.html', '', '/report_result?1')
 
     def test_preload_file(self):
-      open(os.path.join(self.get_dir(), 'somefile.txt'), 'w').write('''load me right before running the code please''')
+      absolute_src_path = os.path.join(self.get_dir(), 'somefile.txt').replace('\\', '/')
+      open(absolute_src_path, 'w').write('''load me right before running the code please''')
+      
       def make_main(path):
         print path
         open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
@@ -11535,32 +11735,92 @@ elif 'browser' in str(sys.argv):
             REPORT_RESULT();
             return 0;
           }
-        ''' % path))
+          ''' % path))
 
-      make_main('somefile.txt')
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', 'somefile.txt', '-o', 'page.html']).communicate()
-      self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
+      test_cases = [
+       # (source preload-file string, file on target FS to load)
+        ("somefile.txt", "somefile.txt"),
+        ("./somefile.txt", "somefile.txt"),
+        ("somefile.txt@file.txt", "file.txt"),
+        ("./somefile.txt@file.txt", "file.txt"),
+        ("./somefile.txt@./file.txt", "file.txt"),
+        ("somefile.txt@/file.txt", "file.txt"),
+        ("somefile.txt@/", "somefile.txt"), 
+        (absolute_src_path + "@file.txt", "file.txt"),
+        (absolute_src_path + "@/file.txt", "file.txt"),
+        (absolute_src_path + "@/", "somefile.txt"),
+        ("somefile.txt@/directory/file.txt", "/directory/file.txt"),
+        ("somefile.txt@/directory/file.txt", "directory/file.txt"),
+        (absolute_src_path + "@/directory/file.txt", "directory/file.txt")]
+      
+      for test in test_cases:
+        (srcpath, dstpath) = test
+        make_main(dstpath)
+        print srcpath
+        Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', srcpath, '-o', 'page.html']).communicate()
+        self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
 
       # By absolute path
 
-      make_main(os.path.join(self.get_dir(), 'somefile.txt'))
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', os.path.join(self.get_dir(), 'somefile.txt'), '-o', 'page.html']).communicate()
+      make_main(absolute_src_path)
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', absolute_src_path, '-o', 'page.html']).communicate()
       self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
 
-      # By ./path
+      # Test subdirectory handling with asset packaging.
+      os.makedirs(os.path.join(self.get_dir(), 'assets/sub/asset1/').replace('\\', '/'))
+      os.makedirs(os.path.join(self.get_dir(), 'assets/sub/asset2/').replace('\\', '/'))
+      open(os.path.join(self.get_dir(), 'assets/sub/asset1/file1.txt'), 'w').write('''load me right before running the code please''')
+      open(os.path.join(self.get_dir(), 'assets/sub/asset2/file2.txt'), 'w').write('''load me right before running the code please''')
+      absolute_assets_src_path = os.path.join(self.get_dir(), 'assets').replace('\\', '/')
+      def make_main_two_files(path1, path2):
+        open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
+          #include <stdio.h>
+          #include <string.h>
+          #include <emscripten.h>
+          int main() {
+            FILE *f = fopen("%s", "r");
+            char buf[100];
+            fread(buf, 1, 20, f);
+            buf[20] = 0;
+            fclose(f);
+            printf("|%%s|\n", buf);
 
-      make_main('somefile.txt')
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', './somefile.txt', '-o', 'page.html']).communicate()
-      self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
+            int result = !strcmp("load me right before", buf);
+            
+            f = fopen("%s", "r");
+            if (f == NULL)
+              result = 0;
+            fclose(f);
+            REPORT_RESULT();
+            return 0;
+          }
+        ''' % (path1, path2)))
 
+      test_cases = [
+       # (source directory to embed, file1 on target FS to load, file2 on target FS to load)
+        ("assets", "assets/sub/asset1/file1.txt", "assets/sub/asset2/file2.txt"),
+        ("assets/", "assets/sub/asset1/file1.txt", "assets/sub/asset2/file2.txt"),
+        ("assets@/", "/sub/asset1/file1.txt", "/sub/asset2/file2.txt"),
+        ("assets/@/", "/sub/asset1/file1.txt", "/sub/asset2/file2.txt"),
+        ("assets@./", "/sub/asset1/file1.txt", "/sub/asset2/file2.txt"),
+        (absolute_assets_src_path + "@/", "/sub/asset1/file1.txt", "/sub/asset2/file2.txt"),
+        (absolute_assets_src_path + "@/assets", "/assets/sub/asset1/file1.txt", "/assets/sub/asset2/file2.txt")]
+
+      for test in test_cases:
+        (srcpath, dstpath1, dstpath2) = test
+        make_main_two_files(dstpath1, dstpath2)
+        print srcpath
+        Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', srcpath, '-o', 'page.html']).communicate()
+        self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
+        
       # Should still work with -o subdir/..
 
-      make_main(os.path.join(self.get_dir(), 'somefile.txt'))
+      make_main(absolute_src_path)
       try:
         os.mkdir(os.path.join(self.get_dir(), 'dirrey'))
       except:
         pass
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', os.path.join(self.get_dir(), 'somefile.txt'), '-o', 'dirrey/page.html']).communicate()
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', absolute_src_path, '-o', 'dirrey/page.html']).communicate()
       self.run_browser('dirrey/page.html', 'You should see |load me right before|.', '/report_result?1')
 
       # With FS.preloadFile

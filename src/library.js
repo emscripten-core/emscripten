@@ -3918,7 +3918,14 @@ LibraryManager.library = {
           str++;
         }
       }
-    }
+    } else if (finalBase==16) {
+      if ({{{ makeGetValue('str', 0, 'i8') }}} == {{{ charCode('0') }}}) {
+        if ({{{ makeGetValue('str+1', 0, 'i8') }}} == {{{ charCode('x') }}} ||
+            {{{ makeGetValue('str+1', 0, 'i8') }}} == {{{ charCode('X') }}}) {
+          str += 2;
+        }
+      }      
+    } 
     if (!finalBase) finalBase = 10;
 
     // Get digits.
@@ -3969,13 +3976,14 @@ LibraryManager.library = {
 #if USE_TYPED_ARRAYS == 2
   _parseInt64__deps: ['isspace', '__setErrNo', '$ERRNO_CODES', function() { Types.preciseI64MathUsed = 1 }],
   _parseInt64: function(str, endptr, base, min, max, unsign) {
-    var start = str;
+    var isNegative = false;
     // Skip space.
     while (_isspace({{{ makeGetValue('str', 0, 'i8') }}})) str++;
-
+    
     // Check for a plus/minus sign.
     if ({{{ makeGetValue('str', 0, 'i8') }}} == {{{ charCode('-') }}}) {
       str++;
+      isNegative = true;
     } else if ({{{ makeGetValue('str', 0, 'i8') }}} == {{{ charCode('+') }}}) {
       str++;
     }
@@ -3991,12 +3999,19 @@ LibraryManager.library = {
           str += 2;
         } else {
           finalBase = 8;
-          str++;
           ok = true; // we saw an initial zero, perhaps the entire thing is just "0"
         }
       }
-    }
+    } else if (finalBase==16) {
+      if ({{{ makeGetValue('str', 0, 'i8') }}} == {{{ charCode('0') }}}) {
+        if ({{{ makeGetValue('str+1', 0, 'i8') }}} == {{{ charCode('x') }}} ||
+            {{{ makeGetValue('str+1', 0, 'i8') }}} == {{{ charCode('X') }}}) {
+          str += 2;
+        }
+      }      
+    } 
     if (!finalBase) finalBase = 10;
+    start = str;
 
     // Get digits.
     var chr;
@@ -4009,6 +4024,7 @@ LibraryManager.library = {
         ok = true;
       }
     }
+
     if (!ok) {
       ___setErrNo(ERRNO_CODES.EINVAL);
       {{{ makeStructuralReturn(['0', '0']) }}};
@@ -4020,7 +4036,8 @@ LibraryManager.library = {
     }
 
     try {
-      i64Math.fromString(Pointer_stringify(start, str - start), finalBase, min, max, unsign);
+      var numberString = isNegative ? '-'+Pointer_stringify(start, str - start) : Pointer_stringify(start, str - start);
+      i64Math.fromString(numberString, finalBase, min, max, unsign);
     } catch(e) {
       ___setErrNo(ERRNO_CODES.ERANGE); // not quite correct
     }

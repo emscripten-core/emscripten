@@ -1032,13 +1032,13 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
       for (var i = 0; i < idents.length; i++) {
         if (keys(deps[idents[i]]).length == 0) {
-          pre = 'var ' + idents[i] + ' = ' + valueJSes[idents[i]] + ';' + pre;
+          post = 'var ' + idents[i] + ' = ' + valueJSes[idents[i]] + ';' + post;
           remove(idents[i]);
           continue mainLoop;
         }
       }
       // If we got here, we have circular dependencies, and must break at least one.
-      pre = 'var ' + idents[0] + '$phi = ' + valueJSes[idents[0]] + ';' + pre;
+      pre += 'var ' + idents[0] + '$phi = ' + valueJSes[idents[0]] + ';';
       post += 'var ' + idents[0] + ' = ' + idents[0] + '$phi;';
       remove(idents[0]);
     }

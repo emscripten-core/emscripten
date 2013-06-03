@@ -879,6 +879,7 @@ var PGOMonitor = {
     Module.print('-s DEAD_FUNCTIONS=\'' + JSON.stringify(dead) + '\'\n');
   }
 };
+Module['PGOMonitor'] = PGOMonitor;
 __ATEXIT__.push({ func: function() { PGOMonitor.dump() } });
 addPreRun(function() { addRunDependency('pgo') });
 #endif
