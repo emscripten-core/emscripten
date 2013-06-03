@@ -3613,36 +3613,36 @@ Exiting setjmp function, level: 0, prev_jmp: -1
       src = open(path_from_root('tests', 'life.c'), 'r').read()
       self.do_run(src, '''--------------------------------
 []                                    []                  [][][]
-                    []  []    []    [][]  []            []  []
-[]                [][]  [][]              [][][]      []
+                    []  []    []    [][]  []            []  []  
+[]                [][]  [][]              [][][]      []        
                   []    []      []      []  [][]    []        []
                   []  [][]    []        []    []  []    [][][][]
-                    [][]      [][]  []    [][][]  []        []
-                                []  [][]  [][]    [][]  [][][]
+                    [][]      [][]  []    [][][]  []        []  
+                                []  [][]  [][]    [][]  [][][]  
                                     [][]          [][][]  []  []
                                     [][]              [][]    []
                                                           [][][]
-                                                            []
-
-
-
-
-                                        [][][]
-                                      []      [][]      [][]
-                                      [][]      []  [][]  [][]
-                                                    [][]  [][]
-                                                      []
-                  [][]
+                                                            []  
+                                                                
+                                                                
+                                                                
+                                                                
+                                        [][][]                  
+                                      []      [][]      [][]    
+                                      [][]      []  [][]  [][]  
+                                                    [][]  [][]  
+                                                      []        
+                  [][]                                          
                   [][]                                        []
 []                                                      [][]  []
                                                   [][][]      []
-                                                []      [][]
+                                                []      [][]    
 []                                                    []      []
-                                                          []
+                                                          []    
 []                                                        []  []
-                                              [][][]
-
-                                  []
+                                              [][][]            
+                                                                
+                                  []                            
                               [][][]                          []
 --------------------------------
 ''', ['2'], force_c=True)
@@ -6210,13 +6210,13 @@ at function.:blag
           printf("|%s|\n", buffy);
 
           int numverts = -1;
-          printf("%d\n", sscanf(" numverts 1499\n", " numverts %d", &numverts)); // white space is the same, even if tab vs space
+          printf("%d\n", sscanf("	numverts 1499\n", " numverts %d", &numverts)); // white space is the same, even if tab vs space
           printf("%d\n", numverts);
 
           int index;
           float u, v;
           short start, count;
-          printf("%d\n", sscanf(" vert 87 ( 0.481565 0.059481 ) 0 1\n", " vert %d ( %f %f ) %hu %hu", &index, &u, &v, &start, &count));
+          printf("%d\n", sscanf("	vert 87 ( 0.481565 0.059481 ) 0 1\n", " vert %d ( %f %f ) %hu %hu", &index, &u, &v, &start, &count));
           printf("%d,%.6f,%.6f,%hu,%hu\n", index, u, v, start, count);
 
           int neg, neg2, neg3 = 0;
@@ -11132,7 +11132,7 @@ f.close()
       output = Popen([os.path.join(self.get_dir(), 'files.o.run')], stdin=open(os.path.join(self.get_dir(), 'stdin')), stdout=PIPE, stderr=PIPE).communicate()
       self.assertContained('''size: 37
 data: 119,97,107,97,32,119,97,107,97,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35
-loop: 119 97 107 97 32 119 97 107 97 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35
+loop: 119 97 107 97 32 119 97 107 97 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 
 input:inter-active
 texto
 $
