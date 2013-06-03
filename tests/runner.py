@@ -4533,6 +4533,8 @@ The current type of b is: 9
         self.do_run(src, '*1*', force_c=True)
 
     def test_strtoll_hex(self):
+      if self.emcc_args is None: return self.skip('requires emcc')
+
       # tests strtoll for hex strings (0x...) 
       src = r'''
         #include <stdio.h>
@@ -4559,6 +4561,8 @@ The current type of b is: 9
       self.do_run(src, '111111')
 
     def test_strtoll_dec(self):
+      if self.emcc_args is None: return self.skip('requires emcc')
+
       # tests strtoll for decimal strings (0x...) 
       src = r'''
         #include <stdio.h>
@@ -4585,6 +4589,8 @@ The current type of b is: 9
       self.do_run(src, '111111')
 
     def test_strtoll_bin(self):
+      if self.emcc_args is None: return self.skip('requires emcc')
+
       # tests strtoll for binary strings (0x...) 
       src = r'''
         #include <stdio.h>
@@ -4606,6 +4612,8 @@ The current type of b is: 9
       self.do_run(src, '111')
 
     def test_strtoll_oct(self):
+      if self.emcc_args is None: return self.skip('requires emcc')
+
       # tests strtoll for decimal strings (0x...) 
       src = r'''
         #include <stdio.h>
