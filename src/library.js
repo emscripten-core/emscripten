@@ -1834,6 +1834,10 @@ LibraryManager.library = {
               ___setErrNo(ERRNO_CODES.EIO);
               return -1;
             }
+            if (result === undefined && bytesRead === 0) {
+              ___setErrNo(ERRNO_CODES.EAGAIN);
+              return -1;
+            }
             if (result === null || result === undefined) break;
             bytesRead++;
             {{{ makeSetValue('buf', 'i', 'result', 'i8') }}}
