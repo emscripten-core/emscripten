@@ -67,9 +67,21 @@ LibraryManager.library = {
       if (typeof stream === 'undefined') {
         stream = null;
       }
-      fd = (typeof fd !== 'undefined') ? fd : FS.streams.length;
-      for (var i = FS.streams.length; i < fd; i++) {
-        FS.streams[i] = null; // Keep dense
+      if (!fd) {
+        if (stream && stream.socket) {
+          for (var i = 1; i < 64; i++) {
+            if (!FS.streams[i]) {
+              fd = i;
+              break;
+            }
+          }
+          assert(fd, 'ran out of low fds for sockets');
+        } else {
+          fd = Math.max(FS.streams.length, 64);
+          for (var i = FS.streams.length; i < fd; i++) {
+            FS.streams[i] = null; // Keep dense
+          }
+        }
       }
       // Close WebSocket first if we are about to replace the fd (i.e. dup2)
       if (FS.streams[fd] && FS.streams[fd].socket && FS.streams[fd].socket.close) {
@@ -7314,7 +7326,8 @@ LibraryManager.library = {
       port: null,
       inQueue: new CircularBuffer(INCOMING_QUEUE_LENGTH),
       header: new Uint16Array(2),
-      bound: false
+      bound: false,
+      socket: true
     };
     assert(fd < 64); // select() assumes socket fd values are in 0..63
     var stream = type == {{{ cDefine('SOCK_STREAM') }}};
@@ -7680,7 +7693,8 @@ LibraryManager.library = {
     }
     var fd = FS.createFileHandle({ 
       connected: false,
-      stream: stream
+      stream: stream,
+      socket: true
     });
     assert(fd < 64); // select() assumes socket fd values are in 0..63
     return fd;
