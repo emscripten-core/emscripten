@@ -6,7 +6,8 @@ mergeInto(LibraryManager.library, {
   $Browser__postset: 'Module["requestFullScreen"] = function(lockPointer, resizeCanvas) { Browser.requestFullScreen(lockPointer, resizeCanvas) };\n' + // exports
                      'Module["requestAnimationFrame"] = function(func) { Browser.requestAnimationFrame(func) };\n' +
                      'Module["pauseMainLoop"] = function() { Browser.mainLoop.pause() };\n' +
-                     'Module["resumeMainLoop"] = function() { Browser.mainLoop.resume() };\n',
+                     'Module["resumeMainLoop"] = function() { Browser.mainLoop.resume() };\n' +
+                     'Module["getUserMedia"] = function() { Browser.getUserMedia() }',
   $Browser: {
     mainLoop: {
       scheduler: null,
@@ -346,7 +347,7 @@ mergeInto(LibraryManager.library, {
       canvas.requestFullScreen = canvas['requestFullScreen'] ||
                                  canvas['mozRequestFullScreen'] ||
                                  (canvas['webkitRequestFullScreen'] ? function() { canvas['webkitRequestFullScreen'](Element['ALLOW_KEYBOARD_INPUT']) } : null);
-      canvas.requestFullScreen(); 
+      canvas.requestFullScreen();
     },
 
     requestAnimationFrame: function(func) {
@@ -383,6 +384,14 @@ mergeInto(LibraryManager.library, {
       setInterval(function() {
         if (!ABORT) func();
       }, timeout);
+    },
+
+    getUserMedia: function(func) {
+      if(!window.getUserMedia) {
+        window.getUserMedia = navigator['getUserMedia'] ||
+                              navigator['mozGetUserMedia'];
+      }
+      window.getUserMedia(func);
     },
 
     getMovementX: function(event) {
@@ -499,7 +508,7 @@ mergeInto(LibraryManager.library, {
       {{{ makeSetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'flags', 'i32') }}}
       Browser.updateResizeListeners();
     },
-    
+
     setWindowedCanvasSize: function() {
       var canvas = Module['canvas'];
       canvas.width = this.windowedWidth;
@@ -509,7 +518,7 @@ mergeInto(LibraryManager.library, {
       {{{ makeSetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'flags', 'i32') }}}
       Browser.updateResizeListeners();
     }
-    
+
   },
 
   emscripten_async_wget: function(url, file, onload, onerror) {
@@ -546,11 +555,11 @@ mergeInto(LibraryManager.library, {
     var _request = Pointer_stringify(request);
     var _param = Pointer_stringify(param);
     var index = _file.lastIndexOf('/');
-     
+
     var http = new XMLHttpRequest();
     http.open(_request, _url, true);
     http.responseType = 'arraybuffer';
-    
+
     // LOAD
     http.onload = function(e) {
       if (http.status == 200) {
@@ -560,20 +569,20 @@ mergeInto(LibraryManager.library, {
         if (onerror) Runtime.dynCall('vii', onerror, [arg, http.status]);
       }
     };
-      
+
     // ERROR
     http.onerror = function(e) {
       if (onerror) Runtime.dynCall('vii', onerror, [arg, http.status]);
     };
-	
+
     // PROGRESS
     http.onprogress = function(e) {
       var percentComplete = (e.position / e.totalSize)*100;
       if (onprogress) Runtime.dynCall('vii', onprogress, [arg, percentComplete]);
     };
-	  
+
     // Useful because the browser can limit the number of redirection
-    try {  
+    try {
       if (http.channel instanceof Ci.nsIHttpChannel)
       http.channel.redirectionLimit = 0;
     } catch (ex) { /* whatever */ }
@@ -588,7 +597,7 @@ mergeInto(LibraryManager.library, {
       http.send(null);
     }
   },
-  
+
   emscripten_async_prepare: function(file, onload, onerror) {
     var _file = Pointer_stringify(file);
     var data = FS.analyzePath(_file);
