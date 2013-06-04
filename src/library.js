@@ -6777,6 +6777,7 @@ LibraryManager.library = {
     ESTRPIPE: 143
   },
   $ERRNO_MESSAGES: {
+    0: 'Success',
     1: 'Not super-user',
     2: 'No such file or directory',
     3: 'No such process',
