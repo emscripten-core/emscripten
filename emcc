@@ -539,7 +539,7 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
         skip_next = False
         idx += 1
         continue
-      if el == '-s' and is_minus_s_for_emcc(argv, idx):
+      if not use_js and el == '-s' and is_minus_s_for_emcc(argv, idx): # skip -s X=Y if not using js for configure
         skip_next = True
       else:
         yield el
