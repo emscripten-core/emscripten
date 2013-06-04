@@ -14,6 +14,10 @@
 
 #define EXPECTED_BYTES 28
 
+#ifndef SOCKK
+#define SOCKK 8992
+#endif
+
 int SocketFD;
 
 unsigned int get_all_buf(int sock, char* output, unsigned int maxsize)
@@ -25,7 +29,11 @@ unsigned int get_all_buf(int sock, char* output, unsigned int maxsize)
   char buffer[1024];
   int n;
   unsigned int offset = 0;
+#if TEST_FILE_OPS
+  while((errno = 0, (n = read(sock, buffer, sizeof(buffer)))>0) ||
+#else
   while((errno = 0, (n = recv(sock, buffer, sizeof(buffer), 0))>0) ||
+#endif
     errno == EINTR) {
     if(n>0)
     {
@@ -96,13 +104,7 @@ int main(void)
   memset(&stSockAddr, 0, sizeof(stSockAddr));
 
   stSockAddr.sin_family = AF_INET;
-  stSockAddr.sin_port = htons(
-#if EMSCRIPTEN
-    8993
-#else
-    8992
-#endif
-  );
+  stSockAddr.sin_port = htons(SOCKK);
   Res = inet_pton(AF_INET, "127.0.0.1", &stSockAddr.sin_addr);
 
   if (0 > Res) {
