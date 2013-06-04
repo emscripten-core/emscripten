@@ -1806,7 +1806,7 @@ LibraryManager.library = {
     // ssize_t read(int fildes, void *buf, size_t nbyte);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/read.html
     var stream = FS.streams[fildes];
-    if ('socket' in stream) {
+    if (stream && ('socket' in stream)) {
       return _recv(fildes, buf, nbyte, 0);
     } else if (!stream) {
       ___setErrNo(ERRNO_CODES.EBADF);
@@ -2004,7 +2004,7 @@ LibraryManager.library = {
     // ssize_t write(int fildes, const void *buf, size_t nbyte);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/write.html
     var stream = FS.streams[fildes];
-    if ('socket' in stream) {
+    if (stream && ('socket' in stream)) {
         return _send(fildes, buf, nbyte, 0);
     } else if (!stream) {
       ___setErrNo(ERRNO_CODES.EBADF);
