@@ -11,8 +11,8 @@ lockf(good): 0, errno: 0
 lockf(bad): -1, errno: 9
 nice: 0, errno: 1
 pause: -1, errno: 4
-pipe(good): -1, errno: 38
-pipe(bad): -1, errno: 38
+pipe(good): -1, errno: 88
+pipe(bad): -1, errno: 88
 execl: -1, errno: 8
 execle: -1, errno: 8
 execlp: -1, errno: 8
@@ -29,8 +29,8 @@ alarm: 0, errno: 0
 ualarm: 0, errno: 0
 fork: -1, errno: 11
 vfork: -1, errno: 11
-crypt: (null), errno: 38
-encrypt, errno: 38
+crypt: (null), errno: 88
+encrypt, errno: 88
 getgid: 0, errno: 0
 getegid: 0, errno: 0
 getuid: 0, errno: 0

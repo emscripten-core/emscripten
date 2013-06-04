@@ -2244,8 +2244,8 @@ returned |umber one top notchfi FI FO FUM WHEN WHERE WHY HOW WHO|''', ['wowie', 
           }
           '''
         expected = '''
-          <Numerical argument out of domain>
-          <Resource temporarily unavailable>
+          <Math arg out of domain of func>
+          <No more processes>
           <34>
           <123>
           '''
