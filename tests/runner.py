@@ -6508,6 +6508,19 @@ Pass: 0.000012 0.000012''')
       '''
       self.do_run(src, '1\n30\n2\n1000000,-123\n')
 
+    def test_sscanf_caps(self):
+      src = r'''
+        #include "stdio.h"
+
+        int main(){
+          unsigned int a;
+          float e, f, g;
+          sscanf("a 1.1 1.1 1.1", "%x %E %F %G", &a, &e, &f, &g);
+          printf("%d %.1F %.1F %.1F\n", a, e, f, g);
+        }
+      '''
+      self.do_run(src, '10 1.1 1.1 1.1');
+
     def test_langinfo(self):
       src = open(path_from_root('tests', 'langinfo', 'test.c'), 'r').read()
       expected = open(path_from_root('tests', 'langinfo', 'output.txt'), 'r').read()
