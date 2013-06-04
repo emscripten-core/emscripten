@@ -3798,14 +3798,14 @@ LibraryManager.library = {
      * implementation (replaced by dlmalloc normally) so
      * not an issue.
      */
-#if ASSERTIONS
+#if ASSERTIONS == 2
     Runtime.warnOnce('using stub malloc (reference it from C to have the real one included)');
 #endif
     var ptr = Runtime.dynamicAlloc(bytes + 8);
     return (ptr+8) & 0xFFFFFFF8;
   },
   free: function() {
-#if ASSERTIONS
+#if ASSERTIONS == 2
     Runtime.warnOnce('using stub free (reference it from C to have the real one included)');
 #endif
 },
