@@ -2586,7 +2586,8 @@ LibraryManager.library = {
         var curr = 0;
         var buffer = [];
         // Read characters according to the format. floats are trickier, they may be in an unfloat state in the middle, then be a valid float later
-        if (type == 'f' || type == 'e' || type == 'g' || type == 'E') {
+        if (type == 'f' || type == 'e' || type == 'g' || 
+            type == 'F' || type == 'E' || type == 'G') {
           var last = 0;
           next = get();
           while (next > 0) {
@@ -2608,7 +2609,7 @@ LibraryManager.library = {
                 (type == 's' ||
                  ((type === 'd' || type == 'u' || type == 'i') && ((next >= {{{ charCode('0') }}} && next <= {{{ charCode('9') }}}) ||
                                                                    (first && next == {{{ charCode('-') }}}))) ||
-                 (type === 'x' && (next >= {{{ charCode('0') }}} && next <= {{{ charCode('9') }}} ||
+                 ((type === 'x' || type === 'X') && (next >= {{{ charCode('0') }}} && next <= {{{ charCode('9') }}} ||
                                    next >= {{{ charCode('a') }}} && next <= {{{ charCode('f') }}} ||
                                    next >= {{{ charCode('A') }}} && next <= {{{ charCode('F') }}}))) &&
                 (formatIndex >= format.length || next !== format[formatIndex].charCodeAt(0))) { // Stop when we read something that is coming up
@@ -2638,11 +2639,15 @@ LibraryManager.library = {
               {{{ makeSetValue('argPtr', 0, 'parseInt(text, 10)', 'i32') }}};
             }
             break;
+          case 'X':
           case 'x':
             {{{ makeSetValue('argPtr', 0, 'parseInt(text, 16)', 'i32') }}}
             break;
+          case 'F':
           case 'f':
+          case 'E':
           case 'e':
+          case 'G':
           case 'g':
           case 'E':
             // fallthrough intended
