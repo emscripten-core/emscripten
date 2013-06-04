@@ -37,6 +37,6 @@ access(/empty-forbidden) after rmdir: 0
 access(/full) before: 0
 errno: 21
 access(/full) after unlink: 0
-errno: 39
+errno: 90
 access(/full) after rmdir: 0
 
