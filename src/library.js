@@ -7330,6 +7330,7 @@ LibraryManager.library = {
    */
   socket__deps: ['$Sockets'],
   socket: function(family, type, protocol) {
+    var INCOMING_QUEUE_LENGTH = 64;
     var fd = FS.createFileHandle({
       addr: null,
       port: null,
@@ -7422,8 +7423,6 @@ LibraryManager.library = {
       }
       Sockets.peer = peer;
     }
-
-    var INCOMING_QUEUE_LENGTH = 64;
 
     function CircularBuffer(max_length) {
       var buffer = new Array(++ max_length);
