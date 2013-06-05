@@ -2621,7 +2621,7 @@ LibraryManager.library = {
         var curr = 0;
         var buffer = [];
         // Read characters according to the format. floats are trickier, they may be in an unfloat state in the middle, then be a valid float later
-        if (type == 'f' || type == 'e' || type == 'g' || 
+        if (type == 'f' || type == 'e' || type == 'g' ||
             type == 'F' || type == 'E' || type == 'G') {
           var last = 0;
           next = get();
@@ -3965,8 +3965,8 @@ LibraryManager.library = {
             {{{ makeGetValue('str+1', 0, 'i8') }}} == {{{ charCode('X') }}}) {
           str += 2;
         }
-      }      
-    } 
+      }
+    }
     if (!finalBase) finalBase = 10;
 
     // Get digits.
@@ -4020,7 +4020,7 @@ LibraryManager.library = {
     var isNegative = false;
     // Skip space.
     while (_isspace({{{ makeGetValue('str', 0, 'i8') }}})) str++;
-    
+
     // Check for a plus/minus sign.
     if ({{{ makeGetValue('str', 0, 'i8') }}} == {{{ charCode('-') }}}) {
       str++;
@@ -4049,8 +4049,8 @@ LibraryManager.library = {
             {{{ makeGetValue('str+1', 0, 'i8') }}} == {{{ charCode('X') }}}) {
           str += 2;
         }
-      }      
-    } 
+      }
+    }
     if (!finalBase) finalBase = 10;
     start = str;
 
@@ -7337,7 +7337,7 @@ LibraryManager.library = {
       header: new Uint16Array(2),
       bound: false,
       socket: true
-    };
+    });
     assert(fd < 64); // select() assumes socket fd values are in 0..63
     var stream = type == {{{ cDefine('SOCK_STREAM') }}};
     if (protocol) {
@@ -7700,7 +7700,7 @@ LibraryManager.library = {
     if (protocol) {
       assert(stream == (protocol == {{{ cDefine('IPPROTO_TCP') }}})); // if SOCK_STREAM, must be tcp
     }
-    var fd = FS.createFileHandle({ 
+    var fd = FS.createFileHandle({
       connected: false,
       stream: stream,
       socket: true
