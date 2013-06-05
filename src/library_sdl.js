@@ -936,7 +936,10 @@ var LibrarySDL = {
   },
 
   SDL_GetError: function() {
-    return allocate(intArrayFromString("unknown SDL-emscripten error"), 'i8');
+    if (!SDL.errorMessage) {
+      SDL.errorMessage = allocate(intArrayFromString("unknown SDL-emscripten error"), 'i8', ALLOC_NORMAL);
+    }
+    return SDL.errorMessage;
   },
 
   SDL_CreateRGBSurface: function(flags, width, height, depth, rmask, gmask, bmask, amask) {
@@ -1173,7 +1176,7 @@ var LibrarySDL = {
 
     if (obtained) {
       {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.freq', 'SDL.audio.freq', 'i32') }}}; // no good way for us to know if the browser can really handle this
-      {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.format', 33151, 'i16') }}}; // float, signed, 32-bit
+      {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.format', 33040, 'i16') }}}; // float, signed, 16-bit
       {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.channels', 'SDL.audio.channels', 'i8') }}};
       {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.silence', makeGetValue('desired', 'SDL.structs.AudioSpec.silence', 'i8', 0, 1), 'i8') }}}; // unclear if browsers can provide this
       {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.samples', 'SDL.audio.samples', 'i16') }}};
