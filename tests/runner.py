@@ -12088,23 +12088,26 @@ elif 'browser' in str(sys.argv):
           setTimeout(doOne, 1000/60);
         }
 
-        function simulateKeyEvent(c) {
+        function keydown(c) {
           var event = document.createEvent("KeyboardEvent");
           event.initKeyEvent("keydown", true, true, window,
                              0, 0, 0, 0,
                              c, c);
           document.dispatchEvent(event);
-          var event2 = document.createEvent("KeyboardEvent");
-          event2.initKeyEvent("keyup", true, true, window,
+        }
+
+        function keyup(c) {
+          var event = document.createEvent("KeyboardEvent");
+          event.initKeyEvent("keyup", true, true, window,
                              0, 0, 0, 0,
                              c, c);
-          document.dispatchEvent(event2);
+          document.dispatchEvent(event);
         }
       ''')
       open(os.path.join(self.get_dir(), 'sdl_key.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_key.c')).read()))
 
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_key.c'), '-o', 'page.html', '--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']''']).communicate()
-      self.run_browser('page.html', '', '/report_result?510510')
+      self.run_browser('page.html', '', '/report_result?223092870')
 
     def test_sdl_text(self):
       open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
