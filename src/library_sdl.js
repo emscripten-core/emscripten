@@ -1160,9 +1160,6 @@ var LibrarySDL = {
   SDL_OpenAudio: function(desired, obtained) {
     SDL.allocateChannels(32);
 
-    // FIXME: Assumes 16-bit audio
-    assert(obtained === 0, 'Cannot return obtained SDL audio params');
-
     SDL.audio = {
       freq: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.freq', 'i32', 0, 1) }}},
       format: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.format', 'i16', 0, 1) }}},
@@ -1173,6 +1170,16 @@ var LibrarySDL = {
       paused: true,
       timer: null
     };
+
+    if (obtained) {
+      {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.freq', 'SDL.audio.freq', 'i32') }}}; // no good way for us to know if the browser can really handle this
+      {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.format', 33151, 'i16') }}}; // float, signed, 32-bit
+      {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.channels', 'SDL.audio.channels', 'i8') }}};
+      {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.silence', makeGetValue('desired', 'SDL.structs.AudioSpec.silence', 'i8', 0, 1), 'i8') }}}; // unclear if browsers can provide this
+      {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.samples', 'SDL.audio.samples', 'i16') }}};
+      {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.callback', 'SDL.audio.callback', '*') }}};
+      {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.userdata', 'SDL.audio.userdata', '*') }}};
+    }
 
     var totalSamples = SDL.audio.samples*SDL.audio.channels;
     SDL.audio.bufferSize = totalSamples*2; // hardcoded 16-bit audio
