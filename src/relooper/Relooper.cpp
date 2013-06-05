@@ -528,8 +528,6 @@ void Relooper::Calculate(Block *Entry) {
       DebugDump(Blocks, "  outer blocks:");
       DebugDump(NextEntries, "  outer entries:");
 
-      // TODO: Optionally hoist additional blocks into the loop
-
       LoopShape *Loop = new LoopShape();
       Notice(Loop);
 
@@ -551,7 +549,7 @@ void Relooper::Calculate(Block *Entry) {
     // For each entry, find the independent group reachable by it. The independent group is
     // the entry itself, plus all the blocks it can reach that cannot be directly reached by another entry. Note that we
     // ignore directly reaching the entry itself by another entry.
-    void FindIndependentGroups(BlockSet &Blocks, BlockSet &Entries, BlockBlockSetMap& IndependentGroups) {
+    void FindIndependentGroups(BlockSet &Entries, BlockBlockSetMap& IndependentGroups) {
       typedef std::map<Block*, Block*> BlockBlockMap;
 
       struct HelperClass {
@@ -756,7 +754,7 @@ void Relooper::Calculate(Block *Entry) {
         // independent blocks from an entry/ies. It is important to remove through
         // multiples as opposed to looping since the former is more performant.
         BlockBlockSetMap IndependentGroups;
-        FindIndependentGroups(Blocks, *Entries, IndependentGroups);
+        FindIndependentGroups(*Entries, IndependentGroups);
 
         PrintDebug("Independent groups: %d\n", IndependentGroups.size());
 
