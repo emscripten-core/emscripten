@@ -5732,7 +5732,8 @@ LibraryManager.library = {
   llround: 'round',
   llroundf: 'round',
   rint: function(x) {
-    return (x > 0) ? -Math.round(-x) : Math.round(x);
+    if (Math.abs(x % 1) !== 0.5) return Math.round(x);
+    return x + x % 2 + ((x < 0) ? 1 : -1);
   },
   rintf: 'rint',
   lrint: 'rint',
