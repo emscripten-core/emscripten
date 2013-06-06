@@ -229,4 +229,9 @@ function __ZN14NetworkAddressC1EPKcti(r1) {
   __ZN14NetworkAddressC2EPKcti(r1);
   return;
 }
+function looop() {
+  do {
+    do_it();
+  } while (!condition());
+}
 

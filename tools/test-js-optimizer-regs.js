@@ -234,4 +234,12 @@ function __ZN14NetworkAddressC1EPKcti($this) {
   __ZN14NetworkAddressC2EPKcti($this);
   return;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["test", "primes", "atomic", "fcntl_open", "ex", "switchey", "__ZN14NetworkAddressC1EPKcti"]
+function looop() {
+  while (1) {
+    do_it();
+    if (condition()) {
+      break;
+    }
+  }
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["test", "primes", "atomic", "fcntl_open", "ex", "switchey", "__ZN14NetworkAddressC1EPKcti", "looop"]

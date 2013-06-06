@@ -968,6 +968,7 @@ function simplifyNotComps(ast) {
       }
     }
   });
+  return ast;
 }
 
 function simplifyExpressionsPost(ast) {
@@ -1804,6 +1805,21 @@ function registerize(ast) {
       }
       denormalizeAsm(fun, finalAsmData);
     }
+
+    // Post-registerize optimizations. This is near the end of the pipeline, we can assume all other optimizations except for minification are done
+    traverse(fun, function(node, type) {
+      if (type == 'while' && node[1][0] == 'num' && node[1][1] == 1 && node[2][0] == 'block') {
+        // while (1) { .. if (..) { break } } ==> do { .. } while(..)
+        var stats = node[2][1];
+        var last = stats[stats.length-1];
+        if (last[0] == 'if' && !last[3] && last[2][0] == 'block' && last[2][1][0][0] == 'break' && !last[2][1][0][1]) {
+          var conditionToBreak = last[1];
+          stats.pop();
+          node[0] = 'do';
+          node[1] = simplifyNotComps(['unary-prefix', '!', conditionToBreak]);
+        }
+      }
+    });
   });
 }
 
