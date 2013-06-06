@@ -522,6 +522,54 @@ void Relooper::Calculate(Block *Entry) {
         }
       }
 
+#if 0
+      // We can avoid multiple next entries by hoisting them into the loop.
+      if (NextEntries.size() > 1) {
+        BlockBlockSetMap IndependentGroups;
+        FindIndependentGroups(NextEntries, IndependentGroups, &InnerBlocks);
+
+        while (IndependentGroups.size() > 0 && NextEntries.size() > 1) {
+          Block *Min = NULL;
+          int MinSize = 0;
+          for (BlockBlockSetMap::iterator iter = IndependentGroups.begin(); iter != IndependentGroups.end(); iter++) {
+            Block *Entry = iter->first;
+            BlockSet &Blocks = iter->second;
+            if (!Min || Blocks.size() < MinSize) { // TODO: code size, not # of blocks
+              Min = Entry;
+              MinSize = Blocks.size();
+            }
+          }
+          // check how many new entries this would cause
+          BlockSet &Hoisted = IndependentGroups[Min];
+          bool abort = false;
+          for (BlockSet::iterator iter = Hoisted.begin(); iter != Hoisted.end() && !abort; iter++) {
+            Block *Curr = *iter;
+            for (BlockBranchMap::iterator iter = Curr->BranchesOut.begin(); iter != Curr->BranchesOut.end(); iter++) {
+              Block *Target = iter->first;
+              if (Hoisted.find(Target) == Hoisted.end() && NextEntries.find(Target) == NextEntries.end()) {
+                // abort this hoisting
+                abort = true;
+                break;
+              }
+            }
+          }
+          if (abort) {
+            IndependentGroups.erase(Min);
+            continue;
+          }
+          // hoist this entry
+          PrintDebug("hoisting %d into loop\n", Min->Id);
+          NextEntries.erase(Min);
+          for (BlockSet::iterator iter = Hoisted.begin(); iter != Hoisted.end(); iter++) {
+            Block *Curr = *iter;
+            InnerBlocks.insert(Curr);
+            Blocks.erase(Curr);
+          }
+          IndependentGroups.erase(Min);
+        }
+      }
+#endif
+
       PrintDebug("creating loop block:\n");
       DebugDump(InnerBlocks, "  inner blocks:");
       DebugDump(Entries, "  inner entries:");
@@ -549,7 +597,8 @@ void Relooper::Calculate(Block *Entry) {
     // For each entry, find the independent group reachable by it. The independent group is
     // the entry itself, plus all the blocks it can reach that cannot be directly reached by another entry. Note that we
     // ignore directly reaching the entry itself by another entry.
-    void FindIndependentGroups(BlockSet &Entries, BlockBlockSetMap& IndependentGroups) {
+    //   @param Ignore - previous blocks that are irrelevant
+    void FindIndependentGroups(BlockSet &Entries, BlockBlockSetMap& IndependentGroups, BlockSet *Ignore=NULL) {
       typedef std::map<Block*, Block*> BlockBlockMap;
 
       struct HelperClass {
@@ -637,6 +686,7 @@ void Relooper::Calculate(Block *Entry) {
           Block *Child = *iter;
           for (BlockSet::iterator iter = Child->BranchesIn.begin(); iter != Child->BranchesIn.end(); iter++) {
             Block *Parent = *iter;
+            if (Ignore && Ignore->find(Parent) != Ignore->end()) continue;
             if (Helper.Ownership[Parent] != Helper.Ownership[Child]) {
               ToInvalidate.push_back(Child);
             }
