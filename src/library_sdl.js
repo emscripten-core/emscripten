@@ -942,6 +942,12 @@ var LibrarySDL = {
     return SDL.errorMessage;
   },
 
+  SDL_SetError: function() {
+  },
+
+  SDL_Malloc: 'malloc',
+  SDL_Free: 'free',
+
   SDL_CreateRGBSurface: function(flags, width, height, depth, rmask, gmask, bmask, amask) {
     return SDL.makeSurface(width, height, flags, false, 'CreateRGBSurface', rmask, gmask, bmask, amask);
   },
@@ -1761,6 +1767,11 @@ var LibrarySDL = {
 
   SDL_NumJoysticks: function() { return 0 },
 
+  SDL_GetNumAudioDrivers: function() { return 1 },
+
+  SDL_GetCurrentAudioDriver: function() { return "Mozilla Audio" },
+  SDL_GetAudioDriver: function(index) { return GetCurrentAudioDriver() },
+
   SDL_RWFromFile: function(filename, mode) {
     return filename; // XXX We just forward the filename
   },
@@ -1793,7 +1804,11 @@ var LibrarySDL = {
   SDL_CondBroadcast: function() { throw 'SDL_CondBroadcast: TODO' },
   SDL_CondWaitTimeout: function() { throw 'SDL_CondWaitTimeout: TODO' },
   SDL_WM_ToggleFullScreen: function() { throw 'SDL_WM_ToggleFullScreen: TODO' },
+  SDL_RWFromMem: function(buffer, size) { throw 'SDL_RWFromMem: TODO' },
+  SDL_SetColorKey: function(surface, flag, key) { throw 'SDL_SetColorKey: TODO' },
 
+  Mix_VolumeChunk: function(chunk, volume) { throw 'Mix_VolumeChunk: TODO' },
+  Mix_SetPosition: function(channel, angle, distance) { throw 'Mix_SetPosition: TODO' },
   Mix_SetPostMix: function() { throw 'Mix_SetPostMix: TODO' },
   Mix_QuerySpec: function() { throw 'Mix_QuerySpec: TODO' },
   Mix_FadeInChannelTimed: function() { throw 'Mix_FadeInChannelTimed' },
