@@ -5,8 +5,7 @@
 function countLines(s) {
   var count = 0;
   for (var i = 0, l = s.length; i < l; i ++) {
-    var c = s[i];
-    if (c === '\n') count++;
+    if (s[i] === '\n') count++;
   }
   return count;
 }
@@ -74,7 +73,6 @@ function generateMap(fileName, sourceRoot, mapFileBaseName) {
   var seenFiles = Object.create(null);
 
   extractComments(generatedSource, function(content, generatedLineNumber) {
-      console.log(content, generatedLineNumber)
     var matches = /@line (\d+) "([^"]*)"/.exec(content);
     if (matches === null) return;
     var originalLineNumber = parseInt(matches[1], 10);

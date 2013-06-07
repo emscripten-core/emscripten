@@ -1595,7 +1595,7 @@ try:
     shell = open(shell_path).read()
     html = open(target, 'w')
     if not Compression.on:
-      if keep_js_debug: generate_source_maps(final, target)
+      if keep_llvm_debug and keep_js_debug: generate_source_maps(final, target)
       html.write(shell.replace('{{{ SCRIPT_CODE }}}', open(final).read()))
     else:
       # Compress the main code
@@ -1666,7 +1666,7 @@ try:
         from tools.split import split_javascript_file
         split_javascript_file(final, unsuffixed(target), split_js_file)
     else:
-        if keep_js_debug: generate_source_maps(final, target)
+        if keep_llvm_debug and keep_js_debug: generate_source_maps(final, target)
 
         # copy final JS to output
         shutil.move(final, target)
