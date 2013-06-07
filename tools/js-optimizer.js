@@ -950,25 +950,27 @@ function optimizeShiftsAggressive(ast) {
 // we then get
 //   if (!(x < 5))
 // or such. Simplifying these saves space and time.
-function simplifyNotComps(ast) {
-  traverse(ast, function(node, type) {
-    if (type == 'unary-prefix' && node[1] == '!' && node[2][0] == 'binary') {
-      if (node[2][1] == '<') {
-        return ['binary', '>=', node[2][2], node[2][3]];
-      } else if (node[2][1] == '>') {
-        return ['binary', '<=', node[2][2], node[2][3]];
-      } else if (node[2][1] == '==') {
-        return ['binary', '!=', node[2][2], node[2][3]];
-      } else if (node[2][1] == '!=') {
-        return ['binary', '==', node[2][2], node[2][3]];
-      } else if (node[2][1] == '===') {
-        return ['binary', '!==', node[2][2], node[2][3]];
-      } else if (node[2][1] == '!==') {
-        return ['binary', '===', node[2][2], node[2][3]];
-      }
+function simplifyNotCompsDirect(node) {
+  if (node[0] == 'unary-prefix' && node[1] == '!' && node[2][0] == 'binary') {
+    if (node[2][1] == '<') {
+      return ['binary', '>=', node[2][2], node[2][3]];
+    } else if (node[2][1] == '>') {
+      return ['binary', '<=', node[2][2], node[2][3]];
+    } else if (node[2][1] == '==') {
+      return ['binary', '!=', node[2][2], node[2][3]];
+    } else if (node[2][1] == '!=') {
+      return ['binary', '==', node[2][2], node[2][3]];
+    } else if (node[2][1] == '===') {
+      return ['binary', '!==', node[2][2], node[2][3]];
+    } else if (node[2][1] == '!==') {
+      return ['binary', '===', node[2][2], node[2][3]];
     }
-  });
-  return ast;
+  }
+  return node;
+}
+
+function simplifyNotComps(ast) {
+  traverse(ast, simplifyNotCompsDirect);
 }
 
 function simplifyExpressionsPost(ast) {
@@ -1217,8 +1219,7 @@ function hoistMultiples(ast) {
           var temp = node[3];
           node[3] = node[2];
           node[2] = temp;
-          node[1] = ['unary-prefix', '!', node[1]];
-          simplifyNotComps(node[1]); // bake the ! into the expression
+          node[1] = simplifyNotCompsDirect(['unary-prefix', '!', node[1]]);
           stat1 = node[2][1];
           stat2 = node[3][1];
         }
@@ -2436,7 +2437,7 @@ function eliminate(ast, memSafe) {
             }
             // simplify the if. we remove the if branch, leaving only the else
             if (flip) {
-              last[1] = simplifyNotComps(['unary-prefix', '!', last[1]]);
+              last[1] = simplifyNotCompsDirect(['unary-prefix', '!', last[1]]);
               last[2] = last[3];
             }
             last.pop();
@@ -2574,7 +2575,8 @@ function asmLoopOptimizer(ast) {
           var conditionToBreak = last[1];
           stats.pop();
           node[0] = 'do';
-          node[1] = simplifyNotComps(['unary-prefix', '!', conditionToBreak]);
+          node[1] = simplifyNotCompsDirect(['unary-prefix', '!', conditionToBreak]);
+          return node;
         }
       }
     });

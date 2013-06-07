@@ -39,6 +39,12 @@ function looop() {
       break;
     }
   }
+  while (1) {
+    do_it();
+    if (a > b) {
+      break;
+    }
+  }
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["finall", "looop"]
 
