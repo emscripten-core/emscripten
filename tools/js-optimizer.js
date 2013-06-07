@@ -2375,7 +2375,7 @@ function eliminate(ast, memSafe) {
             ifTrue = temp;
             flip = true;
           }
-          if (ifTrue[1][0][0] == 'break' && !ifTrue[1][1]) {
+          if (ifTrue[1][0][0] == 'break') {
             var assigns = ifFalse[1];
             var loopers = [], helpers = [];
             for (var i = 0; i < assigns.length; i++) {
