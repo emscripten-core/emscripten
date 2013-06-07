@@ -49,7 +49,7 @@ emcc can be influenced by a few environment variables:
 
 import os, sys, shutil, tempfile, subprocess, shlex, time, re, logging
 from subprocess import PIPE, STDOUT
-from tools import shared
+from tools import shared, jsrun
 from tools.shared import Compression, execute, suffix, unsuffixed, unsuffixed_basename
 from tools.response_file import read_response_file
 
@@ -1582,12 +1582,17 @@ try:
         else:
           logging.debug('did not see memory initialization')
 
+  def generate_source_maps(filename, mapFileBaseName):
+    jsrun.run_js(shared.path_from_root('tools', 'sourcemapper.js'),
+      shared.NODE_JS, [filename, os.getcwd(), mapFileBaseName])
+
   # If we were asked to also generate HTML, do that
   if final_suffix == 'html':
     logging.debug('generating HTML')
     shell = open(shell_path).read()
     html = open(target, 'w')
     if not Compression.on:
+      if keep_js_debug: generate_source_maps(final, target)
       html.write(shell.replace('{{{ SCRIPT_CODE }}}', open(final).read()))
     else:
       # Compress the main code
@@ -1658,6 +1663,8 @@ try:
         from tools.split import split_javascript_file
         split_javascript_file(final, unsuffixed(target), split_js_file)
     else:
+        if keep_js_debug: generate_source_maps(final, target)
+
         # copy final JS to output
         shutil.move(final, target)
 
