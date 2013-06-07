@@ -13146,6 +13146,9 @@ elif 'benchmark' in str(sys.argv):
 
   class benchmark(RunnerCore):
     def print_stats(self, times, native_times, last=False, reps=TEST_REPS):
+      if reps == 0:
+        print '(no reps)'
+        return
       mean = sum(times)/len(times)
       squared_times = map(lambda x: x*x, times)
       mean_of_squared = sum(squared_times)/len(times)
