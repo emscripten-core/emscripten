@@ -868,7 +868,7 @@ var LibrarySDL = {
   },
 
   SDL_Delay: function(delay) {
-    throw 'SDL_Delay called! Potential infinite loop, quitting. ' + new Error().stack;
+    abort('SDL_Delay called! Potential infinite loop, quitting.');
   },
 
   SDL_WM_SetCaption: function(title, icon) {
