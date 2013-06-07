@@ -68,7 +68,7 @@ function generateMap(fileName, sourceRoot, mapFileBaseName) {
   var path = require('path');
   var SourceMapGenerator = require('source-map').SourceMapGenerator;
 
-  var generator = new SourceMapGenerator({ file: fileName });
+  var generator = new SourceMapGenerator({ file: mapFileBaseName });
   var generatedSource = fs.readFileSync(fileName, 'utf-8');
   var seenFiles = Object.create(null);
 
@@ -80,11 +80,13 @@ function generateMap(fileName, sourceRoot, mapFileBaseName) {
 
     if (!(originalFileName in seenFiles)) {
       seenFiles[originalFileName] = true;
+      var rootedPath = originalFileName[0] === path.sep ?
+          originalFileName : path.join(sourceRoot, originalFileName);
       try {
-        generator.setSourceContent(originalFileName,
-                                   fs.readFileSync(sourceRoot + "/" + originalFileName));
+        generator.setSourceContent(originalFileName, fs.readFileSync(rootedPath, 'utf-8'));
       } catch (e) {
-        console.warn("Unable to find original file for " + originalFileName);
+        console.warn("Unable to find original file for " + originalFileName +
+          " at " + rootedPath);
       }
     }
 

@@ -170,16 +170,13 @@ class RunnerCore(unittest.TestCase):
       post1 = post_build
       post2 = None
 
-    def run_post(post):
-      if not post: return
-      exec post in locals()
-      shutil.copyfile(filename + '.o.js', filename + '.o.js.prepost.js')
-      process(filename + '.o.js')
-
     if self.emcc_args is None:
       Building.emscripten(filename, append_ext=True, extra_args=extra_emscripten_args)
-      run_post(post1)
-      run_post(post2)
+      if post1:
+        exec post1 in locals()
+        shutil.copyfile(filename + '.o.js', filename + '.o.js.prepost.js')
+        process(filename + '.o.js')
+      if post2: post2(filename + '.o.js')
     else:
       transform_args = []
       if post1:
@@ -196,7 +193,7 @@ process(sys.argv[1])
         transform.close()
         transform_args = ['--js-transform', "%s %s" % (PYTHON, transform_filename)]
       Building.emcc(filename + '.o.ll', Settings.serialize() + self.emcc_args + transform_args + Building.COMPILER_TEST_OPTS, filename + '.o.js')
-      run_post(post2)
+      if post2: post2(filename + '.o.js')
 
   # Build JavaScript code from source code
   def build(self, src, dirname, filename, output_processor=None, main_file=None, additional_files=[], libraries=[], includes=[], build_ll_hook=None, extra_emscripten_args=[], post_build=None):
@@ -9215,97 +9212,92 @@ def process(filename):
   src.close()
 '''
 
-        post3 = '''
-def process(filename):
-  script_src_2 = \'\'\'
-          var sme = new Module.Parent(42);
-          sme.mulVal(2);
-          Module.print('*')
-          Module.print(sme.getVal());
+        def post3(filename):
+          script_src_2 = '''
+            var sme = new Module.Parent(42);
+            sme.mulVal(2);
+            Module.print('*')
+            Module.print(sme.getVal());
 
-          Module.print('c1');
+            Module.print('c1');
 
-          var c1 = new Module.Child1();
-          Module.print(c1.getVal());
-          c1.mulVal(2);
-          Module.print(c1.getVal());
-          Module.print(c1.getValSqr());
-          Module.print(c1.getValSqr(3));
-          Module.print(c1.getValTimes()); // default argument should be 1
-          Module.print(c1.getValTimes(2));
+            var c1 = new Module.Child1();
+            Module.print(c1.getVal());
+            c1.mulVal(2);
+            Module.print(c1.getVal());
+            Module.print(c1.getValSqr());
+            Module.print(c1.getValSqr(3));
+            Module.print(c1.getValTimes()); // default argument should be 1
+            Module.print(c1.getValTimes(2));
 
-          Module.print('c1 v2');
+            Module.print('c1 v2');
 
-          c1 = new Module.Child1(8); // now with a parameter, we should handle the overloading automatically and properly and use constructor #2
-          Module.print(c1.getVal());
-          c1.mulVal(2);
-          Module.print(c1.getVal());
-          Module.print(c1.getValSqr());
-          Module.print(c1.getValSqr(3));
+            c1 = new Module.Child1(8); // now with a parameter, we should handle the overloading automatically and properly and use constructor #2
+            Module.print(c1.getVal());
+            c1.mulVal(2);
+            Module.print(c1.getVal());
+            Module.print(c1.getValSqr());
+            Module.print(c1.getValSqr(3));
 
-          Module.print('c2')
+            Module.print('c2')
 
-          var c2 = new Module.Child2();
-          Module.print(c2.getVal());
-          c2.mulVal(2);
-          Module.print(c2.getVal());
-          Module.print(c2.getValCube());
-          var succeeded;
-          try {
-            succeeded = 0;
-            Module.print(c2.doSomethingSecret()); // should fail since private
-            succeeded = 1;
-          } catch(e) {}
-          Module.print(succeeded);
-          try {
-            succeeded = 0;
-            Module.print(c2.getValSqr()); // function from the other class
-            succeeded = 1;
-          } catch(e) {}
-          Module.print(succeeded);
-          try {
-            succeeded = 0;
-            c2.getValCube(); // sanity
-            succeeded = 1;
-          } catch(e) {}
-          Module.print(succeeded);
+            var c2 = new Module.Child2();
+            Module.print(c2.getVal());
+            c2.mulVal(2);
+            Module.print(c2.getVal());
+            Module.print(c2.getValCube());
+            var succeeded;
+            try {
+              succeeded = 0;
+              Module.print(c2.doSomethingSecret()); // should fail since private
+              succeeded = 1;
+            } catch(e) {}
+            Module.print(succeeded);
+            try {
+              succeeded = 0;
+              Module.print(c2.getValSqr()); // function from the other class
+              succeeded = 1;
+            } catch(e) {}
+            Module.print(succeeded);
+            try {
+              succeeded = 0;
+              c2.getValCube(); // sanity
+              succeeded = 1;
+            } catch(e) {}
+            Module.print(succeeded);
 
-          Module.Child2.prototype.printStatic(); // static calls go through the prototype
+            Module.Child2.prototype.printStatic(); // static calls go through the prototype
 
-          // virtual function
-          c2.virtualFunc();
-          Module.Child2.prototype.runVirtualFunc(c2);
-          c2.virtualFunc2();
+            // virtual function
+            c2.virtualFunc();
+            Module.Child2.prototype.runVirtualFunc(c2);
+            c2.virtualFunc2();
 
-''' + ('''
-          // extend the class from JS
-          var c3 = new Module.Child2;
-          Module.customizeVTable(c3, [{
-            original: Module.Child2.prototype.virtualFunc,
-            replacement: function() {
-              Module.print('*js virtualf replacement*');
-            }
-          }, {
-            original: Module.Child2.prototype.virtualFunc2,
-            replacement: function() {
-              Module.print('*js virtualf2 replacement*');
-            }
-          }]);
-          c3.virtualFunc();
-          Module.Child2.prototype.runVirtualFunc(c3);
-          c3.virtualFunc2();
+            // extend the class from JS
+            var c3 = new Module.Child2;
+            Module.customizeVTable(c3, [{
+              original: Module.Child2.prototype.virtualFunc,
+              replacement: function() {
+                Module.print('*js virtualf replacement*');
+              }
+            }, {
+              original: Module.Child2.prototype.virtualFunc2,
+              replacement: function() {
+                Module.print('*js virtualf2 replacement*');
+              }
+            }]);
+            c3.virtualFunc();
+            Module.Child2.prototype.runVirtualFunc(c3);
+            c3.virtualFunc2();
 
-          c2.virtualFunc(); // original should remain the same
-          Module.Child2.prototype.runVirtualFunc(c2);
-          c2.virtualFunc2();
-''') + '''
-
-          Module.print('*ok*');
-        \'\'\'
-  src = open(filename, 'a')
-  src.write(script_src_2 + '\\n')
-  src.close()
-'''
+            c2.virtualFunc(); // original should remain the same
+            Module.Child2.prototype.runVirtualFunc(c2);
+            c2.virtualFunc2();
+            Module.print('*ok*');
+          '''
+          src = open(filename, 'a')
+          src.write(script_src_2 + '\n')
+          src.close()
 
         Settings.RESERVED_FUNCTION_POINTERS = 20
 
@@ -9349,7 +9341,7 @@ Child2:9
 *virtualf*
 *virtualf2*''') + '''
 *ok*
-''', post_build=[post2, post3])
+''', post_build=(post2, post3))
 
     def test_scriptaclass_2(self):
         if self.emcc_args is None: return self.skip('requires emcc')
@@ -9591,6 +9583,47 @@ def process(filename):
       except Exception, e:
         # This test *should* fail
         assert 'Assertion failed' in str(e), str(e)
+
+    def test_source_map(self):
+      if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
+      if self.emcc_args is not None:
+        if '-O1' in self.emcc_args or '-O2' in self.emcc_args: return self.skip('optimizations remove LLVM debug info')
+
+      src = '''
+        #include <stdio.h>
+        #include <assert.h>
+
+        int foo() {
+          return 1; // line 6
+        }
+
+        int main() {
+          int i = foo(); // line 10
+          return 0; // line 11
+        }
+      '''
+
+      dirname = self.get_dir()
+      src_filename = os.path.join(dirname, 'src.cpp')
+
+      def post(filename):
+        import json
+        map_filename = filename + '.map'
+        data = json.load(open(map_filename, 'r'))
+        self.assertIdentical(filename, data['file'])
+        self.assertIdentical(src_filename, data['sources'][0])
+        self.assertIdentical(src, data['sourcesContent'][0])
+        mappings = json.loads(jsrun.run_js(
+          path_from_root('tools', 'sourcemap2json.js'),
+          tools.shared.NODE_JS, [map_filename]))
+        seen_lines = set()
+        for m in mappings:
+          self.assertIdentical(src_filename, m['source'])
+          seen_lines.add(m['originalLine'])
+        # ensure that all the 'meaningful' lines in the original code get mapped
+        assert seen_lines.issuperset([6, 10, 11])
+
+      self.build(src, dirname, src_filename, post_build=(None,post))
 
     def test_linespecific(self):
       if Settings.ASM_JS: return self.skip('asm always has corrections on')

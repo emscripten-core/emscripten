@@ -1585,9 +1585,9 @@ try:
         else:
           logging.debug('did not see memory initialization')
 
-  def generate_source_maps(filename, mapFileBaseName):
+  def generate_source_maps(filename, map_file_base_name):
     jsrun.run_js(shared.path_from_root('tools', 'sourcemapper.js'),
-      shared.NODE_JS, [filename, os.getcwd(), mapFileBaseName])
+      shared.NODE_JS, [filename, os.getcwd(), map_file_base_name])
 
   # If we were asked to also generate HTML, do that
   if final_suffix == 'html':
