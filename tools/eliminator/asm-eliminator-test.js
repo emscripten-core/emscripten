@@ -6775,5 +6775,53 @@ function looop7() {
   while (1) {
   }
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j", "_segment_holding", "__ZN5identC2EiPKcPci", "_vec2Length", "exc", "label", "confuusion", "tempDouble", "_org_apache_harmony_luni_util_NumberConverter_freeFormat__", "__ZN23b2EdgeAndPolygonContact8EvaluateEP10b2ManifoldRK11b2TransformS4_", "_java_nio_charset_Charset_forNameInternal___java_lang_String", "looop2", "looop3", "looop4", "looop5", "looop6", "looop7"]
+function multiloop($n_0, $35) {
+  $n_0 = $n_0 | 0;
+  $35 = $35 | 0;
+  var $p_0 = 0, $39 = 0, $41 = 0, $46 = 0;
+  $n_0 = $35;
+  $p_0 = (HEAP32[$15 >> 2] | 0) + ($35 << 1) | 0;
+  while (1) {
+    $39 = $p_0 - 2 | 0;
+    $41 = HEAPU16[$39 >> 1] | 0;
+    if ($41 >>> 0 < $2 >>> 0) {
+      $_off0 = 0;
+    } else {
+      $_off0 = $41 - $2 & 65535;
+    }
+    HEAP16[$39 >> 1] = $_off0;
+    $46 = $n_0 - 1 | 0;
+    if (($46 | 0) == 0) {
+      break;
+    } else {
+      $n_0 = $46;
+      $p_0 = $39;
+    }
+  }
+}
+function multiloop2($n_0, $35) {
+  $n_0 = $n_0 | 0;
+  $35 = $35 | 0;
+  var $p_0 = 0, $39 = 0, $41 = 0, $46 = 0;
+  $n_0 = $35;
+  $p_0 = (HEAP32[$15 >> 2] | 0) + ($35 << 1) | 0;
+  while (1) {
+    $39 = $p_0 - 2 | 0;
+    $41 = HEAPU16[$39 >> 1] | 0;
+    if ($41 >>> 0 < $2 >>> 0) {
+      $_off0 = 0;
+    } else {
+      $_off0 = $41 - $2 & 65535;
+    }
+    HEAP16[$39 >> 1] = $p_0; // cannot optimize one, so none
+    $46 = $n_0 - 1 | 0;
+    if (($46 | 0) == 0) {
+      break;
+    } else {
+      $n_0 = $46;
+      $p_0 = $39;
+    }
+  }
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j", "_segment_holding", "__ZN5identC2EiPKcPci", "_vec2Length", "exc", "label", "confuusion", "tempDouble", "_org_apache_harmony_luni_util_NumberConverter_freeFormat__", "__ZN23b2EdgeAndPolygonContact8EvaluateEP10b2ManifoldRK11b2TransformS4_", "_java_nio_charset_Charset_forNameInternal___java_lang_String", "looop2", "looop3", "looop4", "looop5", "looop6", "looop7", "multiloop", "multiloop2"]
 
