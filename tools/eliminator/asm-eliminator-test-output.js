@@ -5031,4 +5031,21 @@ function looop6() {
   }
   moar(i);
 }
+function looop7() {
+  var $old_0_i107_i = 0, $current_0_i108_i = 0, $696 = 0;
+  $old_0_i107_i = $draw_left_i;
+  while (1) {
+    $current_0_i108_i = HEAP32[$old_0_i107_i >> 2] | 0;
+    if (($current_0_i108_i | 0) == 0) {
+      break;
+    }
+    $696 = $current_0_i108_i + 4 | 0;
+    if (($current_0_i108_i | 0) == ($P_3207_i | 0)) {
+      break;
+    } else {
+      $old_0_i107_i = $696;
+    }
+  }
+  HEAP32[$old_0_i107_i >> 2] = HEAP32[$696 >> 2] | 0;
+}
 

@@ -1854,6 +1854,7 @@ function eliminate(ast, memSafe) {
     // First, find the potentially eliminatable functions: that have one definition and one use
     var definitions = {};
     var uses = {};
+    var namings = {};
     var values = {};
     var locals = {};
     var varsToRemove = {}; // variables being removed, that we can eliminate all 'var x;' of (this refers to 'var' nodes we should remove)
@@ -1896,12 +1897,18 @@ function eliminate(ast, memSafe) {
           if (!values[name]) values[name] = node[3];
           if (node[1] === true) { // not +=, -= etc., just =
             uses[name]--; // because the name node will show up by itself in the previous case
+            if (!namings[name]) namings[name] = 0;
+            namings[name]++; // offset it here, this tracks the total times we are named
           }
         }
       } else if (type == 'switch') {
         hasSwitch = true;
       }
     });
+
+    for (var used in uses) {
+      namings[used] = (namings[used] || 0) + uses[used];
+    }
 
     // we cannot eliminate variables if there is a switch
     if (hasSwitch && !asm) return;
@@ -2372,7 +2379,7 @@ function eliminate(ast, memSafe) {
             if (assign[1] === true && assign[2][0] == 'name' && assign[3][0] == 'name') {
               var looper = assign[2][1];
               var helper = assign[3][1];
-              if (definitions[helper] == 1 && seenUses[looper] == uses[looper] + 1 &&  // +1, because uses does not count the definition
+              if (definitions[helper] == 1 && seenUses[looper] == namings[looper] &&
                   !helperReplacements[helper] && !helperReplacements[looper]) {
                 // the remaining issue is whether looper is used after the assignment to helper and before the last line (where we assign to it)
                 var found = -1;
