@@ -2364,7 +2364,7 @@ function eliminate(ast, memSafe) {
         // try to remove loop helper variables specifically
         var stats = node[2][1];
         var last = stats[stats.length-1];
-        if (last[0] == 'if' && last[2][0] == 'block' && last[3] && last[3][0] == 'block') {
+        if (last && last[0] == 'if' && last[2][0] == 'block' && last[3] && last[3][0] == 'block') {
           var ifTrue = last[2];
           var ifFalse = last[3];
           var flip = false;
@@ -2555,7 +2555,7 @@ function asmLoopOptimizer(ast) {
         // while (1) { .. if (..) { break } } ==> do { .. } while(..)
         var stats = node[2][1];
         var last = stats[stats.length-1];
-        if (last[0] == 'if' && !last[3] && last[2][0] == 'block' && last[2][1][0][0] == 'break' && !last[2][1][0][1]) {
+        if (last && last[0] == 'if' && !last[3] && last[2][0] == 'block' && last[2][1][0][0] == 'break' && !last[2][1][0][1]) {
           var conditionToBreak = last[1];
           stats.pop();
           node[0] = 'do';

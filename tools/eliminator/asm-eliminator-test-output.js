@@ -5047,5 +5047,6 @@ function looop7() {
     }
   }
   HEAP32[$old_0_i107_i >> 2] = HEAP32[$696 >> 2] | 0;
+  while (1) {}
 }
 
