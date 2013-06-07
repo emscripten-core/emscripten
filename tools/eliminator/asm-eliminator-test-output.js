@@ -4961,4 +4961,74 @@ function _java_nio_charset_Charset_forNameInternal___java_lang_String($n1) {
     break;
   }
 }
+function looop2() {
+  var i = 0;
+  while (1) {
+    do_it();
+    i = i + 1 | 0;
+    if (condition(i)) {
+      break;
+    }
+  }
+}
+function looop3() {
+  var i = 0;
+  while (1) {
+    do_it();
+    i = i + 1 | 0;
+    if (!condition(i)) {
+      break;
+    }
+  }
+}
+function looop4() {
+  var i = 0, helper = 0;
+  while (1) {
+    do_it();
+    helper = i + 1 | 0;
+    f(i, helper);
+    if (condition()) {
+      i = helper;
+    } else {
+      break;
+    }
+  }
+}
+function looop4b() {
+  var i = 0, helper = 0;
+  while (1) {
+    do_it();
+    helper = i + 1 | 0;
+    g(helper);
+    if (condition(i)) {
+      i = helper;
+    } else {
+      break;
+    }
+  }
+}
+function looop5() {
+  var i = 0, helper = 0;
+  while (1) {
+    do_it();
+    helper = i + 1 | 0;
+    if (condition(helper)) {
+      i = helper;
+    } else {
+      break;
+    }
+  }
+  moar(i);
+}
+function looop6() {
+  var i = 0;
+  while (1) {
+    do_it();
+    i = i + 1 | 0;
+    if (!condition(i)) {
+      break;
+    }
+  }
+  moar(i);
+}
 

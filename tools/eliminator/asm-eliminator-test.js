@@ -6678,5 +6678,82 @@ function _java_nio_charset_Charset_forNameInternal___java_lang_String($n1) {
     __THREW__ = threwValue = 0;
     break;
   }
-}// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j", "_segment_holding", "__ZN5identC2EiPKcPci", "_vec2Length", "exc", "label", "confuusion", "tempDouble", "_org_apache_harmony_luni_util_NumberConverter_freeFormat__", "__ZN23b2EdgeAndPolygonContact8EvaluateEP10b2ManifoldRK11b2TransformS4_", "_java_nio_charset_Charset_forNameInternal___java_lang_String"]
+}
+function looop2() {
+  var i = 0, helper = 0;
+  while (1) {
+    do_it();
+    helper = (i + 1)|0;
+    if (condition(helper)) {
+      break;
+    } else {
+      i = helper;
+    }
+  }
+}
+function looop3() {
+  var i = 0, helper = 0;
+  while (1) {
+    do_it();
+    helper = (i + 1)|0;
+    if (condition(helper)) {
+      i = helper;
+    } else {
+      break;
+    }
+  }
+}
+function looop4() {
+  var i = 0, helper = 0;
+  while (1) {
+    do_it();
+    helper = (i + 1)|0;
+    f(i, helper); // i is used, cannot optimize!
+    if (condition()) {
+      i = helper;
+    } else {
+      break;
+    }
+  }
+}
+function looop4b() {
+  var i = 0, helper = 0;
+  while (1) {
+    do_it();
+    helper = (i + 1)|0;
+    g(helper);
+    if (condition(i)) { // i is used, cannot optimize!
+      i = helper;
+    } else {
+      break;
+    }
+  }
+}
+function looop5() {
+  var i = 0, helper = 0;
+  while (1) {
+    do_it();
+    helper = (i + 1)|0;
+    if (condition(helper)) {
+      i = helper;
+    } else {
+      break;
+    }
+  }
+  moar(i); // i is still needed, cannot optimize!
+}
+function looop6() {
+  var i = 0, helper = 0;
+  while (1) {
+    do_it();
+    helper = (i + 1)|0;
+    if (condition(helper)) {
+      i = helper;
+    } else {
+      break;
+    }
+  }
+  moar(helper); // this is cool
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j", "_segment_holding", "__ZN5identC2EiPKcPci", "_vec2Length", "exc", "label", "confuusion", "tempDouble", "_org_apache_harmony_luni_util_NumberConverter_freeFormat__", "__ZN23b2EdgeAndPolygonContact8EvaluateEP10b2ManifoldRK11b2TransformS4_", "_java_nio_charset_Charset_forNameInternal___java_lang_String", "looop2", "looop3", "looop4", "looop5", "looop6"]
 
