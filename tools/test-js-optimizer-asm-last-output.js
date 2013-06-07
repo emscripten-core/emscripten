@@ -32,4 +32,9 @@ function finall(x) {
   a = -0xde0b6b000000000;
   return 12.0e10;
 }
+function looop() {
+  do {
+    do_it();
+  } while (!condition());
+}
 
