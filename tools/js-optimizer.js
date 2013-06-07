@@ -1972,7 +1972,7 @@ function eliminate(ast, memSafe) {
     //printErr('locals: ' + JSON.stringify(locals));
     //printErr('varsToRemove: ' + JSON.stringify(varsToRemove));
     //printErr('varsToTryToRemove: ' + JSON.stringify(varsToTryToRemove));
-    definitions = values = null;
+    values = null;
     //printErr('potentials: ' + JSON.stringify(potentials));
     // We can now proceed through the function. In each list of statements, we try to eliminate
     var tracked = {};
@@ -2327,6 +2327,8 @@ function eliminate(ast, memSafe) {
       //printErr('delete StatBlock');
     });
 
+    var seenUses = {}, helperReplacements = {}; // for looper-helper optimization
+
     // clean up vars
     //printErr('cleaning up ' + JSON.stringify(varsToRemove));
     traverse(func, function(node, type) {
@@ -2336,6 +2338,87 @@ function eliminate(ast, memSafe) {
           // wipe out an empty |var;|
           node[0] = 'toplevel';
           node[1] = [];
+        }
+      }
+    }, function(node, type) {
+      if (type == 'name') {
+        var name = node[1];
+        if (name in helperReplacements) {
+          node[1] = helperReplacements[name];
+          return; // no need to track this anymore, we can't loop-optimize more than once
+        }
+        // track how many uses we saw. we need to know when a variable is no longer used (hence we run this in the post)
+        if (!(name in seenUses)) {
+          seenUses[name] = 1;
+        } else {
+          seenUses[name]++;
+        }
+      } else if (type == 'while') {
+        // try to remove loop helper variables specifically
+        var stats = node[2][1];
+        var last = stats[stats.length-1];
+        if (last[0] == 'if' && last[2][0] == 'block' && last[3] && last[3][0] == 'block') {
+          var ifTrue = last[2];
+          var ifFalse = last[3];
+          var flip = false;
+          if (ifFalse[1][0][0] == 'break') { // canonicalize break in the if
+            var temp = ifFalse;
+            ifFalse = ifTrue;
+            ifTrue = temp;
+            flip = true;
+          }
+          if (ifTrue[1][0][0] == 'break' && !ifTrue[1][1] && ifFalse[1].length == 1 && ifFalse[1][0][0] == 'stat' && ifFalse[1][0][1][0] == 'assign') {
+            var assign = ifFalse[1][0][1];
+            if (assign[1] === true && assign[2][0] == 'name' && assign[3][0] == 'name') {
+              var looper = assign[2][1];
+              var helper = assign[3][1];
+              if (definitions[helper] == 1 && seenUses[looper] == uses[looper] + 1 &&  // +1, because uses does not count the definition
+                  !helperReplacements[helper] && !helperReplacements[looper]) {
+                // the remaining issue is whether looper is used after the assignment to helper and before the last line (where we assign to it)
+                var found = -1;
+                for (var i = stats.length-2; i >= 0; i--) {
+                  var curr = stats[i];
+                  if (curr[0] == 'stat' && curr[1][0] == 'assign') {
+                    var currAssign = curr[1];
+                    if (currAssign[1] === true && currAssign[2][0] == 'name') {
+                      var to = currAssign[2][1];
+                      if (to == helper) {
+                        found = i;
+                        break;
+                      }
+                    }
+                  }
+                }
+                if (found >= 0) {
+                  var looperUsed = false;
+                  for (var i = found+1; i < stats.length && !looperUsed; i++) {
+                    var curr = i < stats.length-1 ? stats[i] : last[1]; // on the last line, just look in the condition
+                    traverse(curr, function(node, type) {
+                      if (type == 'name' && node[1] == looper) {
+                        looperUsed = true;
+                        return true;
+                      }
+                    });
+                  }
+                  if (!looperUsed) {
+                    // hurrah! this is safe to do
+                    varsToRemove[helper] = 2;
+                    traverse(node, function(node, type) { // replace all appearances of helper with looper
+                      if (type == 'name' && node[1] == helper) node[1] = looper;
+                    });
+                    helperReplacements[helper] = looper; // replace all future appearances of helper with looper
+                    helperReplacements[looper] = looper; // avoid any further attempts to optimize looper in this manner (seenUses is wrong anyhow, too)
+                    // simplify the if. we remove the if branch, leaving only the else
+                    if (flip) {
+                      last[1] = simplifyNotComps(['unary-prefix', '!', last[1]]);
+                      last[2] = last[3];
+                    }
+                    last.pop();
+                  }
+                }
+              }
+            }
+          }
         }
       }
     });
