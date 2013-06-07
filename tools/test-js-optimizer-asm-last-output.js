@@ -39,5 +39,8 @@ function looop() {
   do {
     do_it();
   } while (a <= b);
+  do {
+    do_it();
+  } while (x());
 }
 

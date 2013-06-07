@@ -45,6 +45,12 @@ function looop() {
       break;
     }
   }
+  while (1) {
+    do_it();
+    if (!x()) {
+      break;
+    }
+  }
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["finall", "looop"]
 

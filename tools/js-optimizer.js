@@ -951,19 +951,23 @@ function optimizeShiftsAggressive(ast) {
 //   if (!(x < 5))
 // or such. Simplifying these saves space and time.
 function simplifyNotCompsDirect(node) {
-  if (node[0] == 'unary-prefix' && node[1] == '!' && node[2][0] == 'binary') {
-    if (node[2][1] == '<') {
-      return ['binary', '>=', node[2][2], node[2][3]];
-    } else if (node[2][1] == '>') {
-      return ['binary', '<=', node[2][2], node[2][3]];
-    } else if (node[2][1] == '==') {
-      return ['binary', '!=', node[2][2], node[2][3]];
-    } else if (node[2][1] == '!=') {
-      return ['binary', '==', node[2][2], node[2][3]];
-    } else if (node[2][1] == '===') {
-      return ['binary', '!==', node[2][2], node[2][3]];
-    } else if (node[2][1] == '!==') {
-      return ['binary', '===', node[2][2], node[2][3]];
+  if (node[0] == 'unary-prefix' && node[1] == '!') {
+    if (node[2][0] == 'binary') {
+      if (node[2][1] == '<') {
+        return ['binary', '>=', node[2][2], node[2][3]];
+      } else if (node[2][1] == '>') {
+        return ['binary', '<=', node[2][2], node[2][3]];
+      } else if (node[2][1] == '==') {
+        return ['binary', '!=', node[2][2], node[2][3]];
+      } else if (node[2][1] == '!=') {
+        return ['binary', '==', node[2][2], node[2][3]];
+      } else if (node[2][1] == '===') {
+        return ['binary', '!==', node[2][2], node[2][3]];
+      } else if (node[2][1] == '!==') {
+        return ['binary', '===', node[2][2], node[2][3]];
+      }
+    } else if (node[2][0] == 'unary-prefix' && node[2][1] == '!') {
+      return node[2][2];
     }
   }
   return node;
