@@ -371,17 +371,17 @@ mergeInto(LibraryManager.library, {
 
     // abort-aware versions
     safeRequestAnimationFrame: function(func) {
-      Browser.requestAnimationFrame(function() {
+      return Browser.requestAnimationFrame(function() {
         if (!ABORT) func();
       });
     },
     safeSetTimeout: function(func, timeout) {
-      setTimeout(function() {
+      return setTimeout(function() {
         if (!ABORT) func();
       }, timeout);
     },
     safeSetInterval: function(func, timeout) {
-      setInterval(function() {
+      return setInterval(function() {
         if (!ABORT) func();
       }, timeout);
     },
