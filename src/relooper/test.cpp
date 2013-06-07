@@ -231,5 +231,32 @@ int main() {
 
     puts(buffer);
   }
+
+  if (1) {
+    Relooper::SetOutputBuffer(buffer, sizeof(buffer));
+
+    printf("\n\n-- conditional loop --\n\n");
+
+    Block *b_a = new Block("// block A\n");
+    Block *b_b = new Block("// block B\n");
+    Block *b_c = new Block("// block C\n");
+
+    b_a->AddBranchTo(b_b, "shouldLoop()");
+    b_a->AddBranchTo(b_c, NULL);
+
+    b_b->AddBranchTo(b_b, "moarLoop()");
+    b_b->AddBranchTo(b_c, NULL);
+
+    Relooper r;
+    r.AddBlock(b_a);
+    r.AddBlock(b_b);
+    r.AddBlock(b_c);
+
+    r.Calculate(b_a);
+    printf("\n\n");
+    r.Render();
+
+    puts(buffer);
+  }
 }
 

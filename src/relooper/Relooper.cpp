@@ -70,7 +70,7 @@ int Indenter::CurrIndent = 0;
 
 // Branch
 
-Branch::Branch(const char *ConditionInit, const char *CodeInit) : Ancestor(NULL), Labeled(false) {
+Branch::Branch(const char *ConditionInit, const char *CodeInit) : Ancestor(NULL), Labeled(true) {
   Condition = ConditionInit ? strdup(ConditionInit) : NULL;
   Code = CodeInit ? strdup(CodeInit) : NULL;
 }
@@ -951,10 +951,28 @@ void Relooper::Calculate(Block *Entry) {
       });
     }
 
+    void FindNaturals(Shape *Root, Shape *Otherwise=NULL) {
+      if (Root->Next) {
+        Root->Natural = Root->Next;
+        FindNaturals(Root->Next, Otherwise);
+      } else {
+        Root->Natural = Otherwise;
+      }
+
+      SHAPE_SWITCH(Root, {
+      }, {
+        for (BlockShapeMap::iterator iter = Multiple->InnerMap.begin(); iter != Multiple->InnerMap.end(); iter++) {
+          FindNaturals(iter->second, Root->Natural);
+        }
+      }, {
+        FindNaturals(Loop->Inner, Loop->Inner);
+      });
+    }
+
     // Remove unneeded breaks and continues.
     // A flow operation is trivially unneeded if the shape we naturally get to by normal code
     // execution is the same as the flow forces us to.
-    void RemoveUnneededFlows(Shape *Root, Shape *Natural=NULL) {
+    void RemoveUnneededFlows(Shape *Root, Shape *Natural=NULL, LoopShape *LastLoop=NULL) {
       BlockSet NaturalBlocks;
       FollowNaturalFlow(Natural, NaturalBlocks);
       Shape *Next = Root;
@@ -976,16 +994,22 @@ void Relooper::Calculate(Block *Entry) {
                 if (MultipleShape *Multiple = Shape::IsMultiple(Details->Ancestor)) {
                   Multiple->NeedLoop--;
                 }
+              } else if (Details->Type == Branch::Break && LastLoop && LastLoop->Natural == Details->Ancestor->Natural) {
+                // it is important to simplify breaks, as simpler breaks enable other optimizations
+                Details->Labeled = false;
+                if (MultipleShape *Multiple = Shape::IsMultiple(Details->Ancestor)) {
+                  Multiple->NeedLoop--;
+                }
               }
             }
           }
         }, {
           for (BlockShapeMap::iterator iter = Multiple->InnerMap.begin(); iter != Multiple->InnerMap.end(); iter++) {
-            RemoveUnneededFlows(iter->second, Multiple->Next);
+            RemoveUnneededFlows(iter->second, Multiple->Next, Multiple->NeedLoop ? NULL : LastLoop);
           }
           Next = Multiple->Next;
         }, {
-          RemoveUnneededFlows(Loop->Inner, Loop->Inner);
+          RemoveUnneededFlows(Loop->Inner, Loop->Inner, Loop);
           Next = Loop->Next;
         });
       }
@@ -1016,7 +1040,7 @@ void Relooper::Calculate(Block *Entry) {
             Branch *Details = iter->second;
             if (Details->Type != Branch::Direct) {
               assert(LoopStack.size() > 0);
-              if (Details->Ancestor != LoopStack.top()) {
+              if (Details->Ancestor != LoopStack.top() && Details->Labeled) {
                 LabeledShape *Labeled = Shape::IsLabeled(Details->Ancestor);
                 Labeled->Labeled = true;
                 Details->Labeled = true;
@@ -1054,6 +1078,7 @@ void Relooper::Calculate(Block *Entry) {
     }
 
     void Process(Shape *Root) {
+      FindNaturals(Root);
       RemoveUnneededFlows(Root);
       FindLabeledLoops(Root);
     }
@@ -1101,6 +1126,10 @@ void Debugging::Dump(BlockSet &Blocks, const char *prefix) {
 
 void Debugging::Dump(Shape *S, const char *prefix) {
   if (prefix) printf("%s ", prefix);
+  if (!S) {
+    printf(" (null)\n");
+    return;
+  }
   printf(" %d ", S->Id);
   SHAPE_SWITCH(S, {
     printf("<< Simple with block %d\n", Simple->Inner->Id);
