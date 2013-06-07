@@ -6560,7 +6560,7 @@ def process(filename):
   src = \'\'\'
     var Module = {
       'noFSInit': true,
-      'preRun': function() {
+      'preRun': function(cb) {
         FS.createLazyFile('/', 'test.file', 'test.file', true, false);
         // Test FS_* exporting
         Module['FS_createDataFile']('/', 'somefile.binary', [100, 200, 50, 25, 10, 77, 123], true, false);  // 200 becomes -56, since signed chars are used in memory
@@ -6569,6 +6569,7 @@ def process(filename):
         FS.init(function() {
           return test_files_input.charCodeAt(test_files_input_index++) || null;
         });
+        cb(null);
       }
     };
   \'\'\' + open(filename, 'r').read()
@@ -8353,7 +8354,7 @@ def process(filename):
   src.write(
     \'\'\'
       FS.createDataFile('/', 'paper.pdf', eval(Module.read('paper.pdf.js')), true, false);
-      Module.callMain(Module.arguments);
+      Module.run(Module.arguments);
       Module.print("Data: " + JSON.stringify(FS.root.contents['filename-1.ppm'].contents.map(function(x) { return unSign(x, 8) })));
     \'\'\'
   )
@@ -8971,7 +8972,7 @@ def process(filename):
         var newFuncPtr = Runtime.addFunction(function(num) {
           Module.print('Hello ' + num + ' from JS!');
         });
-        Module.callMain([newFuncPtr.toString()]);
+        Module.run([newFuncPtr.toString()]);
       ''')
 
       self.emcc_args += ['--post-js', 'post.js']
@@ -10070,11 +10071,11 @@ Options that are modified or new in %s include:
           assert 'SAFE_HEAP' not in generated, 'safe heap should not be used by default'
           assert ': while(' not in generated, 'when relooping we also js-optimize, so there should be no labelled whiles'
           if closure:
-            if opt_level <= 1: assert 'Module._main =' in generated, 'closure compiler should have been run'
-            elif opt_level >= 2: assert 'Module._main=' in generated, 'closure compiler should have been run (and output should be minified)'
+            if opt_level <= 1: assert '._main =' in generated, 'closure compiler should have been run'
+            elif opt_level >= 2: assert '._main=' in generated, 'closure compiler should have been run (and output should be minified)'
           else:
             # closure has not been run, we can do some additional checks. TODO: figure out how to do these even with closure
-            assert 'Module._main = ' not in generated, 'closure compiler should not have been run'
+            assert '._main = ' not in generated, 'closure compiler should not have been run'
             if keep_debug:
               assert ('(label)' in generated or '(label | 0)' in generated) == (opt_level <= 1), 'relooping should be in opt >= 2'
               assert ('assert(STACKTOP < STACK_MAX' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
@@ -10990,8 +10991,8 @@ f.close()
       ''')
       open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
         var Module = {
-          preRun: function() { Module.print('pre-run') },
-          postRun: function() { Module.print('post-run') }
+          preRun: function(cb) { Module.print('pre-run'); cb(null); },
+          postRun: function() { Module.print('post-run'); }
         };
       ''')
 
@@ -10999,7 +11000,7 @@ f.close()
       self.assertContained('pre-run\nhello from main\npost-run\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
       # never run, so no preRun or postRun
-      src = open(os.path.join(self.get_dir(), 'a.out.js')).read().replace('// {{PRE_RUN_ADDITIONS}}', 'addRunDependency()')
+      src = open(os.path.join(self.get_dir(), 'a.out.js')).read().replace('// {{PRE_RUN_ADDITIONS}}', 'Module.addPreRun(function (cb) {});')
       open(os.path.join(self.get_dir(), 'a.out.js'), 'w').write(src)
       self.assertNotContained('pre-run\nhello from main\npost-run\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
@@ -11009,24 +11010,23 @@ f.close()
         Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp')]).communicate()
         src = 'var Module = { noInitialRun: %d };\n' % no_initial_run + open(os.path.join(self.get_dir(), 'a.out.js')).read()
         if run_dep:
-          src = src.replace('// {{PRE_RUN_ADDITIONS}}', '// {{PRE_RUN_ADDITIONS}}\naddRunDependency("test");') \
-                   .replace('// {{POST_RUN_ADDITIONS}}', '// {{POST_RUN_ADDITIONS}}\nremoveRunDependency("test");')
+          src = src.replace('// {{PRE_RUN_ADDITIONS}}', '// {{PRE_RUN_ADDITIONS}}\nModule.addPreRun(function (cb) { setTimeout(function () { cb(null); }); });')
         open(os.path.join(self.get_dir(), 'a.out.js'), 'w').write(src)
         assert ('hello from main' in run_js(os.path.join(self.get_dir(), 'a.out.js'))) != no_initial_run, 'only run if no noInitialRun'
 
         if no_initial_run:
           # Calling main later should still work, filesystem etc. must be set up.
           print 'call main later'
-          src = open(os.path.join(self.get_dir(), 'a.out.js')).read() + '\nModule.callMain();\n';
+          src = open(os.path.join(self.get_dir(), 'a.out.js')).read() + '\nModule.run();\n';
           open(os.path.join(self.get_dir(), 'a.out.js'), 'w').write(src)
           assert 'hello from main' in run_js(os.path.join(self.get_dir(), 'a.out.js')), 'main should print when called manually'
 
       # Use postInit
       open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
         var Module = {
-          preRun: function() { Module.print('pre-run') },
-          postRun: function() { Module.print('post-run') },
-          preInit: function() { Module.print('pre-init') }
+          preInit: function(cb) { Module.print('pre-init'); cb(null); },
+          preRun: function(cb) { Module.print('pre-run'); cb(null); },
+          postRun: function() { Module.print('post-run'); }
         };
       ''')
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js']).communicate()
@@ -11042,7 +11042,7 @@ f.close()
       ''')
       open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
         var Module = {
-          preRun: function() { Module.print('pre-run') },
+          preRun: function(cb) { Module.print('pre-run'); cb(null); },
         };
       ''')
       open(os.path.join(self.get_dir(), 'pre2.js'), 'w').write('''
@@ -11061,14 +11061,14 @@ f.close()
       ''')
       open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
         var Module = {
-          preRun: [function() { Module.print('pre-run') }],
+          preRun: [function(cb) { Module.print('pre-run'); cb(null); }],
         };
       ''')
       open(os.path.join(self.get_dir(), 'pre2.js'), 'w').write('''
-        Module.preRun.push(function() { Module.print('prepre') });
+        Module.preRun.push(function(cb) { Module.print('prepre'); cb(null); });
       ''')
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '--pre-js', 'pre2.js']).communicate()
-      self.assertContained('prepre\npre-run\nhello from main\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+      self.assertContained('pre-run\nprepre\nhello from main\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
     def test_save_bc(self):
       for save in [0, 1]:
@@ -11459,17 +11459,18 @@ elif 'browser' in str(sys.argv):
     httpd.serve_forever() # test runner will kill us
 
   class browser(RunnerCore):
-    def __init__(self, *args, **kwargs):
-      super(browser, self).__init__(*args, **kwargs)
-
+    @classmethod
+    def setUpClass(cls):
       if hasattr(browser, 'harness_server'): return
+
       browser.harness_queue = multiprocessing.Queue()
       browser.harness_server = multiprocessing.Process(target=harness_server_func, args=(browser.harness_queue,))
       browser.harness_server.start()
       print '[Browser harness server on process %d]' % browser.harness_server.pid
       webbrowser.open_new('http://localhost:9999/run_harness')
 
-    def __del__(self):
+    @classmethod
+    def tearDownClass(cls):
       if not hasattr(browser, 'harness_server'): return
 
       browser.harness_server.terminate()
@@ -11573,8 +11574,9 @@ elif 'browser' in str(sys.argv):
           img.src = '%s';
         };
         Module['postRun'] = doReftest;
-        Module['preRun'].push(function() {
+        Module['preRun'].push(function(cb) {
           setTimeout(doReftest, 1000); // if run() throws an exception and postRun is not called, this will kick in
+          cb(null);
         });
 ''' % basename)
 
@@ -11914,8 +11916,12 @@ elif 'browser' in str(sys.argv):
       # With FS.preloadFile
 
       open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
-        Module.preRun = function() {
-          FS.createPreloadedFile('/', 'someotherfile.txt', 'somefile.txt', true, false);
+        Module.preRun = function(cb) {
+          FS.createPreloadedFile('/', 'someotherfile.txt', 'somefile.txt', true, false, function () {
+            cb(null);
+          }, function () {
+            cb(null);
+          });
         };
       ''')
       make_main('someotherfile.txt')
@@ -12445,8 +12451,9 @@ elif 'browser' in str(sys.argv):
       prejs_file.write(r"""
         if (typeof(Module) === "undefined") Module = {};
         Module["arguments"] = ["/bigfile"];
-        Module["preInit"] = function() {
+        Module["preInit"] = function(cb) {
             FS.createLazyFile('/', "bigfile", "http://localhost:11111/bogus_file_path", true, false);
+            cb(null);
         };
         var doTrace = true;
         Module["print"] =    function(s) { self.postMessage({channel: "stdout", line: s}); };
@@ -12731,8 +12738,9 @@ elif 'browser' in str(sys.argv):
 
     def test_sdl_canvas_palette_2(self):
       open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
-        Module['preRun'].push(function() {
+        Module['preRun'].push(function(cb) {
           SDL.defaults.copyOnLock = false;
+          cb(null);
         });
       ''')
 
@@ -12814,12 +12822,11 @@ elif 'browser' in str(sys.argv):
     def test_pre_run_deps(self):
       # Adding a dependency in preRun will delay run
       open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
-        Module.preRun = function() {
-          addRunDependency();
+        Module.preRun = function(cb) {
           Module.print('preRun called, added a dependency...');
           setTimeout(function() {
             Module.okk = 10;
-            removeRunDependency()
+            cb(null);
           }, 2000);
         };
       ''')

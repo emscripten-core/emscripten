@@ -42,7 +42,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       // things out as they are ready.
 
       var shellParts = read(shellFile).split('{{BODY}}');
-      print(shellParts[0]);
+      print(processMacros(preprocess(shellParts[0])));
       var preFile = BUILD_AS_SHARED_LIB ? 'preamble_sharedlib.js' : 'preamble.js';
       var pre = processMacros(preprocess(read(preFile).replace('{{RUNTIME}}', getRuntime())));
       print(pre);
@@ -1738,14 +1738,14 @@ function JSify(data, functionsOnly, givenFunctions) {
     print(postParts[1]);
 
     var shellParts = read(shellFile).split('{{BODY}}');
-    print(shellParts[1]);
+    print(processMacros(preprocess(shellParts[1])));
     // Print out some useful metadata
     if (EMIT_GENERATED_FUNCTIONS || PGO) {
       var generatedFunctions = JSON.stringify(keys(Functions.implementedFunctions).filter(function(func) {
         return IGNORED_FUNCTIONS.indexOf(func.ident) < 0;
       }));
       if (PGO) {
-        print('PGOMonitor.allGenerated = ' + generatedFunctions + ';\nremoveRunDependency("pgo");\n');
+        print('PGOMonitor.initialize(' + generatedFunctions + ');\n');
       }
       if (EMIT_GENERATED_FUNCTIONS) {
         print('// EMSCRIPTEN_GENERATED_FUNCTIONS: ' + generatedFunctions + '\n');
