@@ -1957,6 +1957,39 @@ Succeeded!
 1.000000=1.000000*2^0
 -1.000000=-1.000000*2^0''')
 
+    def test_rounding(self):
+        src = '''
+          #include <stdio.h>
+          #include <math.h>
+
+          int main()
+          {
+            printf("%.1f ", round(1.4));
+            printf("%.1f ", round(1.6));
+            printf("%.1f ", round(-1.4));
+            printf("%.1f ", round(-1.6));
+
+            printf("%.1f ", round(1.5));
+            printf("%.1f ", round(2.5));
+            printf("%.1f ", round(-1.5));
+            printf("%.1f ", round(-2.5));
+
+            printf("%ld ", lrint(1.4));
+            printf("%ld ", lrint(1.6));
+            printf("%ld ", lrint(-1.4));
+            printf("%ld ", lrint(-1.6));
+
+            printf("%ld ", lrint(1.5));
+            printf("%ld ", lrint(2.5));
+            printf("%ld ", lrint(-1.5));
+            printf("%ld ", lrint(-2.5));
+
+            return 0;
+          }
+          '''
+        self.do_run(src, "1.0 2.0 -1.0 -2.0 2.0 3.0 -2.0 -3.0 "
+                         "1 2 -1 -2 2 2 -2 -2")
+
     def test_getgep(self):
         # Generated code includes getelementptr (getelementptr, 0, 1), i.e., GEP as the first param to GEP
         src = '''
