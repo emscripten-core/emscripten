@@ -13537,6 +13537,7 @@ elif 'benchmark' in str(sys.argv):
       self.lua('scimark', '[small problem sizes]', output_parser=output_parser)
 
     def test_zzz_lua_binarytrees(self):
+      # js version: ['binarytrees.lua', {0: 0, 1: 9.5, 2: 11.99, 3: 12.85, 4: 14.72, 5: 15.82}[arguments[0]]]
       def args_processor(args):
         arg = int(DEFAULT_ARG)
         if arg == 0:
