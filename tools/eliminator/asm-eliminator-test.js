@@ -6755,5 +6755,22 @@ function looop6() {
   }
   moar(helper); // this is cool
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j", "_segment_holding", "__ZN5identC2EiPKcPci", "_vec2Length", "exc", "label", "confuusion", "tempDouble", "_org_apache_harmony_luni_util_NumberConverter_freeFormat__", "__ZN23b2EdgeAndPolygonContact8EvaluateEP10b2ManifoldRK11b2TransformS4_", "_java_nio_charset_Charset_forNameInternal___java_lang_String", "looop2", "looop3", "looop4", "looop5", "looop6"]
+function looop7() {
+  var $old_0_i107_i = 0, $current_0_i108_i = 0, $696 = 0;
+  $old_0_i107_i = $draw_left_i;
+  while (1) {
+    $current_0_i108_i = HEAP32[$old_0_i107_i >> 2] | 0;
+    if (($current_0_i108_i | 0) == 0) {
+      break;
+    }
+    $696 = $current_0_i108_i + 4 | 0;
+    if (($current_0_i108_i | 0) == ($P_3207_i | 0)) {
+      break;
+    } else {
+      $old_0_i107_i = $696;
+    }
+  }
+  HEAP32[$old_0_i107_i >> 2] = HEAP32[$696 >> 2] | 0;
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j", "_segment_holding", "__ZN5identC2EiPKcPci", "_vec2Length", "exc", "label", "confuusion", "tempDouble", "_org_apache_harmony_luni_util_NumberConverter_freeFormat__", "__ZN23b2EdgeAndPolygonContact8EvaluateEP10b2ManifoldRK11b2TransformS4_", "_java_nio_charset_Charset_forNameInternal___java_lang_String", "looop2", "looop3", "looop4", "looop5", "looop6", "looop7"]
 
