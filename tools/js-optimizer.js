@@ -522,6 +522,27 @@ function simplifyExpressionsPre(ast) {
             return node;
           }
         }
+      } else if (type == 'assign') {
+        // optimizations for assigning into HEAP32 specifically
+        if (node[1] === true && node[2][0] == 'sub' && node[2][1][0] == 'name' && node[2][1][1] == 'HEAP32') {
+          // HEAP32[..] = x | 0 does not need the | 0 (unless it is a mandatory |0 of a call)
+          if (node[3][0] == 'binary' && node[3][1] == '|') {
+            if (node[3][2][0] == 'num' && node[3][2][1] == 0 && node[3][3][0] != 'call') {
+              node[3] = node[3][3];
+            } else if (node[3][3][0] == 'num' && node[3][3][1] == 0 && node[3][2][0] != 'call') {
+              node[3] = node[3][2];
+            }
+          }
+          // remove bitcasts that are now obviously pointless, e.g.
+          // HEAP32[$45 >> 2] = HEAPF32[tempDoublePtr >> 2] = ($14 < $28 ? $14 : $28) - $42, HEAP32[tempDoublePtr >> 2] | 0;
+          var value = node[3];
+          if (value[0] == 'seq' && value[1][0] == 'assign' && value[1][2][0] == 'sub' && value[1][2][1][0] == 'name' && value[1][2][1][1] == 'HEAPF32' &&
+              value[1][2][2][0] == 'binary' && value[1][2][2][2][0] == 'name' && value[1][2][2][2][1] == 'tempDoublePtr') {
+            // transform to HEAPF32[$45 >> 2] = ($14 < $28 ? $14 : $28) - $42;
+            node[2][1][1] = 'HEAPF32';
+            node[3] = value[1][3];
+          }
+        }
       }
     });
 
@@ -2349,9 +2370,9 @@ function eliminate(ast, memSafe) {
 
     var seenUses = {}, helperReplacements = {}; // for looper-helper optimization
 
-    // clean up vars
-    //printErr('cleaning up ' + JSON.stringify(varsToRemove));
+    // clean up vars, and loop variable elimination
     traverse(func, function(node, type) {
+      // pre
       if (type === 'var') {
         node[1] = node[1].filter(function(pair) { return !varsToRemove[pair[0]] });
         if (node[1].length == 0) {
@@ -2361,6 +2382,7 @@ function eliminate(ast, memSafe) {
         }
       }
     }, function(node, type) {
+      // post
       if (type == 'name') {
         var name = node[1];
         if (name in helperReplacements) {

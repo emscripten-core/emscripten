@@ -107,4 +107,12 @@ function sign_extension_simplification() {
     print(5);
   }
 }
+function tempDoublePtr($45, $14, $28, $42) {
+  $45 = $45 | 0;
+  $14 = $14 | 0;
+  $28 = $28 | 0;
+  $42 = $42 | 0;
+  HEAPF32[$45 >> 2] = ($14 < $28 ? $14 : $28) - $42;
+  HEAP32[$world + 102916 >> 2] = _malloc(192) | 0;
+}
 
