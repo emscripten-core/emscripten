@@ -126,15 +126,6 @@ class RunnerCore(unittest.TestCase):
   def in_dir(self, *pathelems):
     return os.path.join(self.get_dir(), *pathelems)
 
-  def get_shared_library_name(self, linux_name):
-    if platform.system() == 'Linux':
-      return linux_name
-    elif platform.system() == 'Darwin':
-      return linux_name.replace('.so', '') + '.dylib'
-    else:
-      print >> sys.stderr, 'get_shared_library_name needs to be implemented on %s' % platform.system()
-      return linux_name
-
   def get_stdout_path(self):
     return os.path.join(self.get_dir(), 'stdout')
 
@@ -8422,7 +8413,7 @@ def process(filename):
                              [os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/index.c.o'.split('/')),
                               os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/convert.c.o'.split('/')),
                               os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/__/common/color.c.o'.split('/')),
-                              os.path.join('bin', self.get_shared_library_name('libopenjpeg.so.1.4.0'))],
+                              os.path.join('bin', 'libopenjpeg.so.1.4.0')],
                              configure=['cmake', '.'],
                              #configure_args=['--enable-tiff=no', '--enable-jp3d=no', '--enable-png=no'],
                              make_args=[]) # no -j 2, since parallel builds can fail
