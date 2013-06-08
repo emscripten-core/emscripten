@@ -402,6 +402,8 @@ function removeUnneededLabelSettings(ast) {
 
 // Various expression simplifications. Pre run before closure (where we still have metadata), Post run after.
 
+var USEFUL_BINARY_OPS = set('<<', '>>', '|', '&', '^');
+
 function simplifyExpressionsPre(ast) {
   // Look for (x&A)<<B>>B and replace it with X&A if possible.
   function simplifySignExtends(ast) {
@@ -427,7 +429,6 @@ function simplifyExpressionsPre(ast) {
   // 'useful' mathops already |0 anyhow.
 
   function simplifyBitops(ast) {
-    var USEFUL_BINARY_OPS = set('<<', '>>', '|', '&', '^');
     var SAFE_BINARY_OPS = set('+', '-', '*'); // division is unsafe as it creates non-ints in JS; mod is unsafe as signs matter so we can't remove |0's
     var ZERO = ['num', 0];
     var rerun = true;
@@ -537,6 +538,17 @@ function simplifyExpressionsPre(ast) {
               node[3] = node[3][2];
             }
           }
+        }
+      } else if (type == 'binary' && node[1] == '|') {
+        // canonicalize order of |0 to end
+        if (node[2][0] == 'num' && node[2][1] == 0) {
+          var temp = node[2];
+          node[2] = node[3];
+          node[3] = temp;
+        }
+        // if a seq ends in an |0, remove an external |0
+        if (node[2][0] == 'seq' && node[2][2][0] == 'binary' && node[2][2][1] in USEFUL_BINARY_OPS) {
+          return node[2];
         }
       }
     });
