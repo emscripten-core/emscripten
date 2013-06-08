@@ -1850,6 +1850,13 @@ var NODES_WITHOUT_ELIMINATION_SIDE_EFFECTS = set('name', 'num', 'string', 'binar
 var IGNORABLE_ELIMINATOR_SCAN_NODES = set('num', 'toplevel', 'string', 'break', 'continue', 'dot'); // dot can only be STRING_TABLE.*
 var ABORTING_ELIMINATOR_SCAN_NODES = set('new', 'object', 'function', 'defun', 'for', 'while', 'array', 'throw'); // we could handle some of these, TODO, but nontrivial (e.g. for while, the condition is hit multiple times after the body)
 
+function isTempDoublePtrAccess(node) { // these are used in bitcasts; they are not really affecting memory, and should cause no invalidation
+  assert(node[0] == 'sub');
+  return (node[2][0] == 'name' && node[2][1] == 'tempDoublePtr') ||
+         (node[2][0] == 'binary' && ((node[2][2][0] == 'name' && node[2][2][1] == 'tempDoublePtr') ||
+                                     (node[2][3][0] == 'name' && node[2][3][1] == 'tempDoublePtr')));
+}
+
 function eliminate(ast, memSafe) {
   // Find variables that have a single use, and if they can be eliminated, do so
   traverseGeneratedFunctions(ast, function(func, type) {
@@ -2134,7 +2141,7 @@ function eliminate(ast, memSafe) {
               if (allowTracking) track(name, node[3], node);
             }
           } else if (target[0] == 'sub') {
-            if (!memoryInvalidated) {
+            if (!isTempDoublePtrAccess(target) && !memoryInvalidated) {
               invalidateMemory();
               memoryInvalidated = true;
             }
@@ -2142,7 +2149,8 @@ function eliminate(ast, memSafe) {
         } else if (type == 'sub') {
           traverseInOrder(node[1], false, !memSafe); // evaluate inner
           traverseInOrder(node[2]); // evaluate outer
-          if (!ignoreSub) { // ignoreSub means we are a write (happening later), not a read
+          // ignoreSub means we are a write (happening later), not a read
+          if (!ignoreSub && !isTempDoublePtrAccess(node)) {
             // do the memory access
             if (!callsInvalidated) {
               invalidateCalls();
