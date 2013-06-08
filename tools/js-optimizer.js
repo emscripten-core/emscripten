@@ -479,8 +479,12 @@ function simplifyExpressionsPre(ast) {
       return true;
     }
 
+    var hasTempDoublePtr = false;
+
     traverseGenerated(ast, function(node, type) {
-      if (type == 'binary' && node[1] == '&' && node[3][0] == 'num') {
+      if (type == 'name') {
+        if (node[1] == 'tempDoublePtr') hasTempDoublePtr = true;
+      } else if (type == 'binary' && node[1] == '&' && node[3][0] == 'num') {
         if (node[2][0] == 'num') return ['num', node[2][1] & node[3][1]];
         var input = node[2];
         var amount = node[3][1];
@@ -533,36 +537,45 @@ function simplifyExpressionsPre(ast) {
               node[3] = node[3][2];
             }
           }
-          // remove bitcasts that are now obviously pointless, e.g.
-          // HEAP32[$45 >> 2] = HEAPF32[tempDoublePtr >> 2] = ($14 < $28 ? $14 : $28) - $42, HEAP32[tempDoublePtr >> 2] | 0;
-          var value = node[3];
-          if (value[0] == 'seq' && value[1][0] == 'assign' && value[1][2][0] == 'sub' && value[1][2][1][0] == 'name' && value[1][2][1][1] == 'HEAPF32' &&
-              value[1][2][2][0] == 'binary' && value[1][2][2][2][0] == 'name' && value[1][2][2][2][1] == 'tempDoublePtr') {
-            // transform to HEAPF32[$45 >> 2] = ($14 < $28 ? $14 : $28) - $42;
-            node[2][1][1] = 'HEAPF32';
-            node[3] = value[1][3];
-          }
-        }
-      } else if (type == 'seq') {
-        // (HEAP32[tempDoublePtr >> 2] = HEAP32[$37 >> 2], +HEAPF32[tempDoublePtr >> 2])
-        //   ==>
-        // +HEAPF32[$37 >> 2]
-        if (node[0] == 'seq' && node[1][0] == 'assign' && node[1][2][0] == 'sub' && node[1][2][1][0] == 'name' &&
-            (node[1][2][1][1] == 'HEAP32' || node[1][2][1][1] == 'HEAPF32') &&
-            node[1][2][2][0] == 'binary' && node[1][2][2][2][0] == 'name' && node[1][2][2][2][1] == 'tempDoublePtr' &&
-            node[1][3][0] == 'sub' && node[1][3][1][0] == 'name' && (node[1][3][1][1] == 'HEAP32' || node[1][3][1][1] == 'HEAPF32')) {
-          if (node[1][2][1][1] == 'HEAP32') {
-            node[1][3][1][1] = 'HEAPF32';
-            return ['unary-prefix', '+', node[1][3]];
-          } else {
-            node[1][3][1][1] = 'HEAP32';
-            return ['binary', '|', node[1][3], ['num', 0]];
-          }
         }
       }
     });
 
     if (asm) {
+      if (hasTempDoublePtr) {
+        traverse(ast, function(node, type) {
+          if (type == 'assign') {
+            if (node[1] === true && node[2][0] == 'sub' && node[2][1][0] == 'name' && node[2][1][1] == 'HEAP32') {
+              // remove bitcasts that are now obviously pointless, e.g.
+              // HEAP32[$45 >> 2] = HEAPF32[tempDoublePtr >> 2] = ($14 < $28 ? $14 : $28) - $42, HEAP32[tempDoublePtr >> 2] | 0;
+              var value = node[3];
+              if (value[0] == 'seq' && value[1][0] == 'assign' && value[1][2][0] == 'sub' && value[1][2][1][0] == 'name' && value[1][2][1][1] == 'HEAPF32' &&
+                  value[1][2][2][0] == 'binary' && value[1][2][2][2][0] == 'name' && value[1][2][2][2][1] == 'tempDoublePtr') {
+                // transform to HEAPF32[$45 >> 2] = ($14 < $28 ? $14 : $28) - $42;
+                node[2][1][1] = 'HEAPF32';
+                node[3] = value[1][3];
+              }
+            }
+          } else if (type == 'seq') {
+            // (HEAP32[tempDoublePtr >> 2] = HEAP32[$37 >> 2], +HEAPF32[tempDoublePtr >> 2])
+            //   ==>
+            // +HEAPF32[$37 >> 2]
+            if (node[0] == 'seq' && node[1][0] == 'assign' && node[1][2][0] == 'sub' && node[1][2][1][0] == 'name' &&
+                (node[1][2][1][1] == 'HEAP32' || node[1][2][1][1] == 'HEAPF32') &&
+                node[1][2][2][0] == 'binary' && node[1][2][2][2][0] == 'name' && node[1][2][2][2][1] == 'tempDoublePtr' &&
+                node[1][3][0] == 'sub' && node[1][3][1][0] == 'name' && (node[1][3][1][1] == 'HEAP32' || node[1][3][1][1] == 'HEAPF32')) {
+              if (node[1][2][1][1] == 'HEAP32') {
+                node[1][3][1][1] = 'HEAPF32';
+                return ['unary-prefix', '+', node[1][3]];
+              } else {
+                node[1][3][1][1] = 'HEAP32';
+                return ['binary', '|', node[1][3], ['num', 0]];
+              }
+            }
+          }
+        });
+      }
+
       // optimize num >> num, in asm we need this here since we do not run optimizeShifts
       traverseGenerated(ast, function(node, type) {
         if (type == 'binary' && node[1] == '>>' && node[2][0] == 'num' && node[3][0] == 'num') {

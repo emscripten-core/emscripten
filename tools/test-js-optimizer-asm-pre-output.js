@@ -116,5 +116,7 @@ function tempDoublePtr($45, $14, $28, $42) {
   HEAP32[$world + 102916 >> 2] = _malloc(192) | 0;
   f(+HEAPF32[$45 >> 2]);
   g(HEAP32[$14 >> 2] | 0);
+  $42 = +HEAPF32[$42 >> 2];
+  ch($42);
 }
 

@@ -118,5 +118,7 @@ function tempDoublePtr($45, $14, $28, $42) {
   HEAP32[$world + 102916 >> 2] = _malloc(192) | 0;
   f((HEAP32[tempDoublePtr >> 2] = HEAP32[$45 >> 2], +HEAPF32[tempDoublePtr >> 2]));
   g((HEAPF32[tempDoublePtr >> 2] = HEAPF32[$14 >> 2], HEAP32[tempDoublePtr >> 2] | 0));
+  $42 = (HEAP32[tempDoublePtr >> 2] = HEAP32[$42 >> 2] | 0, +HEAPF32[tempDoublePtr >> 2]);
+  ch($42);
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "b", "rett", "ret2t", "retf", "i32_8", "tempDoublePtr"]
