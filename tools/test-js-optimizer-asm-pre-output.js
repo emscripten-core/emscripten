@@ -112,11 +112,23 @@ function tempDoublePtr($45, $14, $28, $42) {
   $14 = $14 | 0;
   $28 = $28 | 0;
   $42 = $42 | 0;
+  var unelim = +0, bad = 0, unelim2 = +0;
+  unelim = +(127.5 * +$14);
   HEAPF32[$45 >> 2] = ($14 < $28 ? $14 : $28) - $42;
   HEAP32[$world + 102916 >> 2] = _malloc(192) | 0;
   f(+HEAPF32[$45 >> 2]);
   g(HEAP32[$14 >> 2] | 0);
   $42 = +HEAPF32[$42 >> 2];
   ch($42);
+  HEAPF32[$45 >> 2] = unelim;
+  moar();
+  bad = (HEAPF32[tempDoublePtr >> 2] = 127.5 * +$14, HEAP32[tempDoublePtr >> 2] | 0);
+  func();
+  HEAP32[4] = bad;
+  HEAP32[5] = bad + 1;
+  moar();
+  unelim2 = 127 + $14 | 0;
+  func();
+  HEAP32[4] = unelim2;
 }
 

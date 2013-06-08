@@ -405,7 +405,7 @@ function removeUnneededLabelSettings(ast) {
 function simplifyExpressionsPre(ast) {
   // Look for (x&A)<<B>>B and replace it with X&A if possible.
   function simplifySignExtends(ast) {
-    traverseGenerated(ast, function(node, type) {
+    traverse(ast, function(node, type) {
       if (type == 'binary'       && node[1]    == '>>' && node[3][0] == 'num' &&
           node[2][0] == 'binary' && node[2][1] == '<<' && node[2][3][0] == 'num' && node[3][1] == node[2][3][1]) {
         var innerNode = node[2][2];
@@ -433,7 +433,7 @@ function simplifyExpressionsPre(ast) {
     var rerun = true;
     while (rerun) {
       rerun = false;
-      traverseGenerated(ast, function process(node, type, stack) {
+      traverse(ast, function process(node, type, stack) {
         if (type == 'binary' && node[1] == '|') {
           if (node[2][0] == 'num' && node[3][0] == 'num') {
             return ['num', node[2][1] | node[3][1]];
@@ -481,7 +481,7 @@ function simplifyExpressionsPre(ast) {
 
     var hasTempDoublePtr = false;
 
-    traverseGenerated(ast, function(node, type) {
+    traverse(ast, function(node, type) {
       if (type == 'name') {
         if (node[1] == 'tempDoublePtr') hasTempDoublePtr = true;
       } else if (type == 'binary' && node[1] == '&' && node[3][0] == 'num') {
@@ -574,10 +574,71 @@ function simplifyExpressionsPre(ast) {
             }
           }
         });
+
+        // finally, wipe out remaining ones by finding cases where all assignments to X are bitcasts, and all uses are writes to
+        // the other heap type, then eliminate the bitcast
+        var bitcastVars = {};
+        traverse(ast, function(node, type) {
+          if (type == 'assign' && node[1] === true && node[2][0] == 'name') {
+            var value = node[3];
+            if (value[0] == 'seq' && value[1][0] == 'assign' && value[1][2][0] == 'sub' && value[1][2][1][0] == 'name' &&
+                (value[1][2][1][1] == 'HEAP32' || value[1][2][1][1] == 'HEAPF32') &&
+                value[1][2][2][0] == 'binary' && value[1][2][2][2][0] == 'name' && value[1][2][2][2][1] == 'tempDoublePtr') {
+              var name = node[2][1];
+              if (!bitcastVars[name]) bitcastVars[name] = {
+                define_HEAP32: 0, define_HEAPF32: 0, use_HEAP32: 0, use_HEAPF32: 0, bad: false, namings: 0, defines: [], uses: []
+              };
+              bitcastVars[name]['define_' + value[1][2][1][1]]++;
+              bitcastVars[name].defines.push(node);
+            }
+          }
+        });
+        traverse(ast, function(node, type) {
+          if (type == 'name' && bitcastVars[node[1]]) {
+            bitcastVars[node[1]].namings++;
+          } else if (type == 'assign' && node[1] === true) {
+            var value = node[3];
+            if (value[0] == 'name') {
+              var name = value[1];
+              if (bitcastVars[name]) {
+                var target = node[2];
+                if (target[0] == 'sub' && target[1][0] == 'name' && (target[1][1] == 'HEAP32' || target[1][1] == 'HEAPF32')) {
+                  bitcastVars[name]['use_' + target[1][1]]++;
+                  bitcastVars[name].uses.push(node);
+                }
+              }
+            }
+          }
+        });
+        var asmData = normalizeAsm(ast);
+        for (var v in bitcastVars) {
+          var info = bitcastVars[v];
+          // good variables define only one type, use only one type, have definitions and uses, and define as a different type than they use
+          if (info.define_HEAP32*info.define_HEAPF32 == 0 && info.use_HEAP32*info.use_HEAPF32 == 0 &&
+              info.define_HEAP32+info.define_HEAPF32 > 0  && info.use_HEAP32+info.use_HEAPF32 > 0 &&
+              info.define_HEAP32*info.use_HEAP32 == 0 && info.define_HEAPF32*info.use_HEAPF32 == 0 &&
+              v in asmData.vars && info.namings == info.define_HEAP32+info.define_HEAPF32+info.use_HEAP32+info.use_HEAPF32) {
+            var correct = info.use_HEAP32 ? 'HEAPF32' : 'HEAP32';
+            info.defines.forEach(function(define) {
+              define[3] = define[3][1][3];
+              if (correct == 'HEAP32') {
+                define[3] = ['binary', '|', define[3], ['num', 0]];
+              } else {
+                define[3] = ['unary-prefix', '+', define[3]];
+              }
+              // do we want a simplifybitops on the new values here?
+            });
+            info.uses.forEach(function(use) {
+              use[2][1][1] = correct;
+            });
+            asmData.vars[v] = 1 - asmData.vars[v];
+          }
+        }
+        denormalizeAsm(ast, asmData);
       }
 
       // optimize num >> num, in asm we need this here since we do not run optimizeShifts
-      traverseGenerated(ast, function(node, type) {
+      traverse(ast, function(node, type) {
         if (type == 'binary' && node[1] == '>>' && node[2][0] == 'num' && node[3][0] == 'num') {
           node[0] = 'num';
           node[1] = node[2][1] >> node[3][1];
@@ -593,7 +654,7 @@ function simplifyExpressionsPre(ast) {
     var rerun = true;
     while (rerun) {
       rerun = false;
-      traverseGenerated(ast, function(node, type) {
+      traverse(ast, function(node, type) {
         if (type == 'binary' && node[1] == '+') {
           if (node[2][0] == 'num' && node[3][0] == 'num') {
             rerun = true;
@@ -616,7 +677,7 @@ function simplifyExpressionsPre(ast) {
 
   // if (x == 0) can be if (!x), etc.
   function simplifyZeroComp(ast) {
-    traverseGenerated(ast, function(node, type) {
+    traverse(ast, function(node, type) {
       var binary;
       if (type == 'if' && (binary = node[1])[0] == 'binary') {
         if ((binary[1] == '!=' || binary[1] == '!==') && binary[3][0] == 'num' && binary[3][1] == 0) {
@@ -630,40 +691,40 @@ function simplifyExpressionsPre(ast) {
     });
   }
 
-  function asmOpts(ast) {
+  function asmOpts(fun) {
     // 1. Add final returns when necessary
     // 2. Remove unneeded coercions on function calls that have no targets (eliminator removed it)
-    traverseGeneratedFunctions(ast, function(fun) {
-      var returnType = null;
-      traverse(fun, function(node, type) {
-        if (type == 'return' && node[1]) {
-          returnType = detectAsmCoercion(node[1]);
-        } else if (type == 'stat') {
-          var inner = node[1];
-          if ((inner[0] == 'binary' && inner[1] in ASSOCIATIVE_BINARIES && inner[2][0] == 'call' && inner[3][0] == 'num') ||
-              (inner[0] == 'unary-prefix' && inner[1] == '+' && inner[2][0] == 'call')) {
-            node[1] = inner[2];
-          }
-        }
-      });
-      // Add a final return if one is missing.
-      if (returnType !== null) {
-        var stats = getStatements(fun);
-        var last = stats[stats.length-1];
-        if (last[0] != 'return') {
-          var returnValue = ['num', 0];
-          if (returnType == ASM_DOUBLE) returnValue = ['unary-prefix', '+', returnValue];
-          stats.push(['return', returnValue]);
+    var returnType = null;
+    traverse(fun, function(node, type) {
+      if (type == 'return' && node[1]) {
+        returnType = detectAsmCoercion(node[1]);
+      } else if (type == 'stat') {
+        var inner = node[1];
+        if ((inner[0] == 'binary' && inner[1] in ASSOCIATIVE_BINARIES && inner[2][0] == 'call' && inner[3][0] == 'num') ||
+            (inner[0] == 'unary-prefix' && inner[1] == '+' && inner[2][0] == 'call')) {
+          node[1] = inner[2];
         }
       }
     });
+    // Add a final return if one is missing.
+    if (returnType !== null) {
+      var stats = getStatements(fun);
+      var last = stats[stats.length-1];
+      if (last[0] != 'return') {
+        var returnValue = ['num', 0];
+        if (returnType == ASM_DOUBLE) returnValue = ['unary-prefix', '+', returnValue];
+        stats.push(['return', returnValue]);
+      }
+    }
   }
 
-  simplifySignExtends(ast);
-  simplifyBitops(ast);
-  joinAdditions(ast);
-  // simplifyZeroComp(ast); TODO: investigate performance
-  if (asm) asmOpts(ast);
+  traverseGeneratedFunctions(ast, function(func) {
+    simplifySignExtends(func);
+    simplifyBitops(func);
+    joinAdditions(func);
+    // simplifyZeroComp(func); TODO: investigate performance
+    if (asm) asmOpts(func);
+  });
 }
 
 // In typed arrays mode 2, we can have

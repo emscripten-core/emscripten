@@ -114,11 +114,25 @@ function tempDoublePtr($45, $14, $28, $42) {
   $14 = $14 | 0;
   $28 = $28 | 0;
   $42 = $42 | 0;
+  var unelim = 0; // only used as assign to int heap, so can avoid bitcast in definition
+  var bad = 0;
+  var unelim2 = 0; // opposite types
+  unelim = (HEAPF32[tempDoublePtr >> 2] = 127.5 * +$14, HEAP32[tempDoublePtr >> 2] | 0);
   HEAP32[$45 >> 2] = 0 | (HEAPF32[tempDoublePtr >> 2] = ($14 < $28 ? $14 : $28) - $42, HEAP32[tempDoublePtr >> 2] | 0);
   HEAP32[$world + 102916 >> 2] = _malloc(192) | 0;
   f((HEAP32[tempDoublePtr >> 2] = HEAP32[$45 >> 2], +HEAPF32[tempDoublePtr >> 2]));
   g((HEAPF32[tempDoublePtr >> 2] = HEAPF32[$14 >> 2], HEAP32[tempDoublePtr >> 2] | 0));
   $42 = (HEAP32[tempDoublePtr >> 2] = HEAP32[$42 >> 2] | 0, +HEAPF32[tempDoublePtr >> 2]);
   ch($42);
+  HEAP32[$45 >> 2] = unelim;
+  moar();
+  bad = (HEAPF32[tempDoublePtr >> 2] = 127.5 * +$14, HEAP32[tempDoublePtr >> 2] | 0);
+  func();
+  HEAP32[4] = bad;
+  HEAP32[5] = (bad + 1) | 0;
+  moar();
+  unelim2 = (HEAP32[tempDoublePtr >> 2] = 127 + $14, +HEAPF32[tempDoublePtr >> 2]);
+  func();
+  HEAPF32[4] = unelim2;
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["a", "b", "rett", "ret2t", "retf", "i32_8", "tempDoublePtr"]
