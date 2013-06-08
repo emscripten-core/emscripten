@@ -539,16 +539,19 @@ function simplifyExpressionsPre(ast) {
             }
           }
         }
-      } else if (type == 'binary' && node[1] == '|') {
-        // canonicalize order of |0 to end
-        if (node[2][0] == 'num' && node[2][1] == 0) {
-          var temp = node[2];
-          node[2] = node[3];
-          node[3] = temp;
-        }
-        // if a seq ends in an |0, remove an external |0
-        if (node[2][0] == 'seq' && node[2][2][0] == 'binary' && node[2][2][1] in USEFUL_BINARY_OPS) {
-          return node[2];
+        var value = node[3];
+        if (value[0] == 'binary' && value[1] == '|') {
+          // canonicalize order of |0 to end
+          if (value[2][0] == 'num' && value[2][1] == 0) {
+            var temp = value[2];
+            value[2] = value[3];
+            value[3] = temp;
+          }
+          // if a seq ends in an |0, remove an external |0
+          // note that it is only safe to do this in assigns, like we are doing here (return (x, y|0); is not valid)
+          if (value[2][0] == 'seq' && value[2][2][0] == 'binary' && value[2][2][1] in USEFUL_BINARY_OPS) {
+            node[3] = value[2];
+          }
         }
       }
     });

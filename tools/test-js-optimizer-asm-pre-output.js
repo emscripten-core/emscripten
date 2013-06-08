@@ -8,7 +8,7 @@ function a() {
   HEAP[1024] = 5;
   whee(12, 13);
   whee(12, 13);
-  f((g = t(), g + g | 0));
+  f((g = t(), g + g | 0) | 0);
 }
 function b($this, $__n) {
   $this = $this | 0;
