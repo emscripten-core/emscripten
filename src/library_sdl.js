@@ -47,6 +47,7 @@ var LibrarySDL = {
 
     startTime: null,
     buttonState: 0,
+    modState: 0,
     DOMButtons: [0, 0, 0],
 
     DOMEventToSDLEvent: {},
@@ -373,7 +374,8 @@ var LibrarySDL = {
             if (event['movementX'] == 0 && event['movementY'] == 0) {
               // ignore a mousemove event if it doesn't contain any movement info
               // (without pointer lock, we infer movement from pageX/pageY, so this check is unnecessary)
-              return false;
+              event.preventDefault();
+              return;
             }
           }
           // fall through
@@ -396,15 +398,20 @@ var LibrarySDL = {
           } else if (event.type == 'mousedown') {
             SDL.DOMButtons[event.button] = 1;
           } else if (event.type == 'mouseup') {
-            if (!SDL.DOMButtons[event.button]) return false; // ignore extra ups, can happen if we leave the canvas while pressing down, then return,
-                                                             // since we add a mouseup in that case
+            // ignore extra ups, can happen if we leave the canvas while pressing down, then return,
+            // since we add a mouseup in that case
+            if (!SDL.DOMButtons[event.button]) {
+              event.preventDefault();
+              return;
+            }
+
             SDL.DOMButtons[event.button] = 0;
           }
 
           if (event.type == 'keypress' && !SDL.textInput) {
             break;
           }
-
+          
           SDL.events.push(event);
           break;
         case 'mouseout':
@@ -438,7 +445,7 @@ var LibrarySDL = {
             // Force-run a main event loop, since otherwise this event will never be caught!
             Browser.mainLoop.runner();
           }
-          return true;
+          return;
         case 'resize':
           SDL.events.push(event);
           break;
@@ -447,7 +454,11 @@ var LibrarySDL = {
         Module.printErr('SDL event queue full, dropping events');
         SDL.events = SDL.events.slice(0, 10000);
       }
-      return false;
+      // manually triggered resize event doesn't have a preventDefault member
+      if (event.preventDefault) {
+        event.preventDefault();
+      }
+      return;
     },
 
     makeCEvent: function(event, ptr) {
@@ -473,15 +484,6 @@ var LibrarySDL = {
           } else {
             scan = SDL.scanCodes[key] || key;
           }
-          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}}
-          //{{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.which', '1', 'i32') }}}
-          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.state', 'down ? 1 : 0', 'i8') }}}
-          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.repeat', '0', 'i8') }}} // TODO
-
-          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.scancode', 'scan', 'i32') }}}
-          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.sym', 'key', 'i32') }}}
-          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.mod', '0', 'i32') }}}
-          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.unicode', 'key', 'i32') }}}
 
           var code = SDL.keyCodes[event.keyCode] || event.keyCode;
           {{{ makeSetValue('SDL.keyboardState', 'code', 'down', 'i8') }}};
@@ -490,6 +492,19 @@ var LibrarySDL = {
           } else {
             delete SDL.keyboardMap[code];
           }
+
+          // TODO: lmeta, rmeta, numlock, capslock, KMOD_MODE, KMOD_RESERVED
+          SDL.modState = ({{{ makeGetValue('SDL.keyboardState', '1248', 'i8') }}} ? 0x0040 | 0x0080 : 0) | // KMOD_LCTRL & KMOD_RCTRL
+            ({{{ makeGetValue('SDL.keyboardState', '1249', 'i8') }}} ? 0x0001 | 0x0002 : 0) | // KMOD_LSHIFT & KMOD_RSHIFT
+            ({{{ makeGetValue('SDL.keyboardState', '1250', 'i8') }}} ? 0x0100 | 0x0200 : 0); // KMOD_LALT & KMOD_RALT
+
+          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}}
+          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.state', 'down ? 1 : 0', 'i8') }}}
+          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.repeat', '0', 'i8') }}} // TODO
+          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.scancode', 'scan', 'i32') }}}
+          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.sym', 'key', 'i32') }}}
+          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.mod', 'SDL.modState', 'i32') }}}
+          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.unicode', 'key', 'i32') }}}
 
           break;
         }
@@ -614,13 +629,13 @@ var LibrarySDL = {
     SDL.startTime = Date.now();
     // capture all key events. we just keep down and up, but also capture press to prevent default actions
     if (!Module['doNotCaptureKeyboard']) {
-      document.onkeydown = SDL.receiveEvent;
-      document.onkeyup = SDL.receiveEvent;
-      document.onkeypress = SDL.receiveEvent;
-      document.onblur = SDL.receiveEvent;
+      document.addEventListener("keydown", SDL.receiveEvent);
+      document.addEventListener("keyup", SDL.receiveEvent);
+      document.addEventListener("keypress", SDL.receiveEvent);
+      document.addEventListener("blur", SDL.receiveEvent);
       document.addEventListener("visibilitychange", SDL.receiveEvent);
     }
-    window.onunload = SDL.receiveEvent;
+    window.addEventListener("unload", SDL.receiveEvent);
     SDL.keyboardState = _malloc(0x10000); // Our SDL needs 512, but 64K is safe for older SDLs
     _memset(SDL.keyboardState, 0, 0x10000);
     // Initialize this structure carefully for closure
@@ -888,12 +903,16 @@ var LibrarySDL = {
   SDL_GetKeyState: function() {
     return _SDL_GetKeyboardState();
   },
+  
+  SDL_GetKeyName: function(key) {
+    if (!SDL.keyName) {
+      SDL.keyName = allocate(intArrayFromString('unknown key'), 'i8', ALLOC_NORMAL);
+    }
+    return SDL.keyName;
+  },
 
   SDL_GetModState: function() {
-    // TODO: numlock, capslock, etc.
-    return (SDL.keyboardState[16] ? 0x0001 | 0x0002 : 0) | // KMOD_LSHIFT & KMOD_RSHIFT
-           (SDL.keyboardState[17] ? 0x0040 | 0x0080 : 0) | // KMOD_LCTRL & KMOD_RCTRL
-           (SDL.keyboardState[18] ? 0x0100 | 0x0200 : 0); // KMOD_LALT & KMOD_RALT
+    return SDL.modState;
   },
 
   SDL_GetMouseState: function(x, y) {
@@ -1101,6 +1120,20 @@ var LibrarySDL = {
   SDL_MapRGBA: function(fmt, r, g, b, a) {
     // Canvas screens are always RGBA
     return (a&0xff)+((b&0xff)<<8)+((g&0xff)<<16)+((r&0xff)<<24)
+  },
+
+  SDL_GetAppState: function() {
+    var state = 0;
+
+    if (Browser.pointerLock) {
+      state |= 0x01;  // SDL_APPMOUSEFOCUS
+    }
+    if (document.hasFocus()) {
+      state |= 0x02;  // SDL_APPINPUTFOCUS
+    }
+    state |= 0x04;  // SDL_APPACTIVE
+
+    return state;
   },
 
   SDL_WM_GrabInput: function() {},
@@ -1755,6 +1788,10 @@ var LibrarySDL = {
     return -1;
   },
 
+  SDL_SetGammaRamp: function (redTable, greenTable, blueTable) {
+    return -1;
+  },
+
   // Misc
 
   SDL_InitSubSystem: function(flags) { return 0 },
@@ -1792,7 +1829,7 @@ var LibrarySDL = {
   SDL_FreeRW: function() { throw 'SDL_FreeRW: TODO' },
   SDL_CondBroadcast: function() { throw 'SDL_CondBroadcast: TODO' },
   SDL_CondWaitTimeout: function() { throw 'SDL_CondWaitTimeout: TODO' },
-  SDL_WM_ToggleFullScreen: function() { throw 'SDL_WM_ToggleFullScreen: TODO' },
+  SDL_WM_IconifyWindow: function() { throw 'SDL_WM_IconifyWindow TODO' },
 
   Mix_SetPostMix: function() { throw 'Mix_SetPostMix: TODO' },
   Mix_QuerySpec: function() { throw 'Mix_QuerySpec: TODO' },
@@ -1802,6 +1839,15 @@ var LibrarySDL = {
   Mix_Linked_Version: function() { throw 'Mix_Linked_Version: TODO' },
   SDL_CreateRGBSurfaceFrom: function() { throw 'SDL_CreateRGBSurfaceFrom: TODO' },
   SDL_SaveBMP_RW: function() { throw 'SDL_SaveBMP_RW: TODO' },
+
+  SDL_HasRDTSC: function() { return 0; },
+  SDL_HasMMX: function() { return 0; },
+  SDL_HasMMXExt: function() { return 0; },
+  SDL_Has3DNow: function() { return 0; },
+  SDL_Has3DNowExt: function() { return 0; },
+  SDL_HasSSE: function() { return 0; },
+  SDL_HasSSE2: function() { return 0; },
+  SDL_HasAltiVec: function() { return 0; }
 };
 
 autoAddDeps(LibrarySDL, '$SDL');
