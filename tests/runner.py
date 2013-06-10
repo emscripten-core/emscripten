@@ -11731,6 +11731,37 @@ elif 'browser' in str(sys.argv):
       self.btest('hello_world_sdl.cpp', reference='htmltest.png',
           message='You should see "hello, world!" and a colored cube.')
 
+    def test_html_source_map(self):
+      cpp_file = os.path.join(self.get_dir(), 'src.cpp')
+      html_file = os.path.join(self.get_dir(), 'src.html')
+      # browsers will try to 'guess' the corresponding original line if a
+      # generated line is unmapped, so if we want to make sure that our
+      # numbering is correct, we need to provide a couple of 'possible wrong
+      # answers'. thus, we add some printf calls so that the cpp file gets
+      # multiple mapped lines. in other words, if the program consists of a
+      # single 'throw' statement, browsers may just map any thrown exception to
+      # that line, because it will be the only mapped line.
+      with open(cpp_file, 'w') as f:
+        f.write(r'''
+        #include <cstdio>
+
+        int main() {
+          printf("Starting test\n");
+          try {
+            throw 42; // line 8
+          } catch (int e) { }
+          printf("done\n");
+          return 0;
+        }
+        ''')
+      Popen([PYTHON, EMCC, cpp_file, '-o', html_file,  '-g']).communicate()
+      webbrowser.open_new('file://' + html_file)
+      print '''
+Set the debugger to pause on exceptions
+You should see an exception thrown at src.cpp:7.
+Press any key to continue.'''
+      raw_input()
+
     def build_native_lzma(self):
       lzma_native = path_from_root('third_party', 'lzma.js', 'lzma-native')
       if os.path.isfile(lzma_native) and os.access(lzma_native, os.X_OK): return
