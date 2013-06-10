@@ -6354,7 +6354,8 @@ LibraryManager.library = {
   // Note that we need to emulate functions that use setjmp, and also to create
   // a new label we can return to. Emulation make such functions slower, this
   // can be alleviated by making a new function containing just the setjmp
-  // related functionality so the slowdown is more limited.
+  // related functionality so the slowdown is more limited - you may need
+  // to prevent inlining to keep this isolated, try __attribute__((noinline))
   // ==========================================================================
 
   saveSetjmp__asm: true,
