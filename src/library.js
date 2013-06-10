@@ -7669,8 +7669,8 @@ LibraryManager.library = {
       nfds = Math.min(64, nfds); // fd sets have 64 bits
 
       for (var fd = 0; fd < nfds; fd++) {
-        var mask = 1 << (fd % 32), int = fd < 32 ? srcLow : srcHigh;
-        if (int & mask) {
+        var mask = 1 << (fd % 32), int_ = fd < 32 ? srcLow : srcHigh;
+        if (int_ & mask) {
           // index is in the set, check if it is ready for read
           var info = FS.streams[fd];
           if (info && can(info)) {
@@ -8058,8 +8058,8 @@ LibraryManager.library = {
       nfds = Math.min(64, nfds); // fd sets have 64 bits
 
       for (var fd = 0; fd < nfds; fd++) {
-        var mask = 1 << (fd % 32), int = fd < 32 ? srcLow : srcHigh;
-        if (int & mask) {
+        var mask = 1 << (fd % 32), int_ = fd < 32 ? srcLow : srcHigh;
+        if (int_ & mask) {
           // index is in the set, check if it is ready for read
           var info = FS.streams[fd];
           if (info && can(info)) {
