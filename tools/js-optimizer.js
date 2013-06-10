@@ -402,10 +402,12 @@ function removeUnneededLabelSettings(ast) {
 
 // Various expression simplifications. Pre run before closure (where we still have metadata), Post run after.
 
+var USEFUL_BINARY_OPS = set('<<', '>>', '|', '&', '^');
+
 function simplifyExpressionsPre(ast) {
   // Look for (x&A)<<B>>B and replace it with X&A if possible.
   function simplifySignExtends(ast) {
-    traverseGenerated(ast, function(node, type) {
+    traverse(ast, function(node, type) {
       if (type == 'binary'       && node[1]    == '>>' && node[3][0] == 'num' &&
           node[2][0] == 'binary' && node[2][1] == '<<' && node[2][3][0] == 'num' && node[3][1] == node[2][3][1]) {
         var innerNode = node[2][2];
@@ -427,13 +429,12 @@ function simplifyExpressionsPre(ast) {
   // 'useful' mathops already |0 anyhow.
 
   function simplifyBitops(ast) {
-    var USEFUL_BINARY_OPS = set('<<', '>>', '|', '&', '^');
     var SAFE_BINARY_OPS = set('+', '-', '*'); // division is unsafe as it creates non-ints in JS; mod is unsafe as signs matter so we can't remove |0's
     var ZERO = ['num', 0];
     var rerun = true;
     while (rerun) {
       rerun = false;
-      traverseGenerated(ast, function process(node, type, stack) {
+      traverse(ast, function process(node, type, stack) {
         if (type == 'binary' && node[1] == '|') {
           if (node[2][0] == 'num' && node[3][0] == 'num') {
             return ['num', node[2][1] | node[3][1]];
@@ -479,8 +480,12 @@ function simplifyExpressionsPre(ast) {
       return true;
     }
 
-    traverseGenerated(ast, function(node, type) {
-      if (type == 'binary' && node[1] == '&' && node[3][0] == 'num') {
+    var hasTempDoublePtr = false;
+
+    traverse(ast, function(node, type) {
+      if (type == 'name') {
+        if (node[1] == 'tempDoublePtr') hasTempDoublePtr = true;
+      } else if (type == 'binary' && node[1] == '&' && node[3][0] == 'num') {
         if (node[2][0] == 'num') return ['num', node[2][1] & node[3][1]];
         var input = node[2];
         var amount = node[3][1];
@@ -522,12 +527,133 @@ function simplifyExpressionsPre(ast) {
             return node;
           }
         }
+      } else if (type == 'assign') {
+        // optimizations for assigning into HEAP32 specifically
+        if (node[1] === true && node[2][0] == 'sub' && node[2][1][0] == 'name' && node[2][1][1] == 'HEAP32') {
+          // HEAP32[..] = x | 0 does not need the | 0 (unless it is a mandatory |0 of a call)
+          if (node[3][0] == 'binary' && node[3][1] == '|') {
+            if (node[3][2][0] == 'num' && node[3][2][1] == 0 && node[3][3][0] != 'call') {
+              node[3] = node[3][3];
+            } else if (node[3][3][0] == 'num' && node[3][3][1] == 0 && node[3][2][0] != 'call') {
+              node[3] = node[3][2];
+            }
+          }
+        }
+        var value = node[3];
+        if (value[0] == 'binary' && value[1] == '|') {
+          // canonicalize order of |0 to end
+          if (value[2][0] == 'num' && value[2][1] == 0) {
+            var temp = value[2];
+            value[2] = value[3];
+            value[3] = temp;
+          }
+          // if a seq ends in an |0, remove an external |0
+          // note that it is only safe to do this in assigns, like we are doing here (return (x, y|0); is not valid)
+          if (value[2][0] == 'seq' && value[2][2][0] == 'binary' && value[2][2][1] in USEFUL_BINARY_OPS) {
+            node[3] = value[2];
+          }
+        }
       }
     });
 
     if (asm) {
+      if (hasTempDoublePtr) {
+        traverse(ast, function(node, type) {
+          if (type == 'assign') {
+            if (node[1] === true && node[2][0] == 'sub' && node[2][1][0] == 'name' && node[2][1][1] == 'HEAP32') {
+              // remove bitcasts that are now obviously pointless, e.g.
+              // HEAP32[$45 >> 2] = HEAPF32[tempDoublePtr >> 2] = ($14 < $28 ? $14 : $28) - $42, HEAP32[tempDoublePtr >> 2] | 0;
+              var value = node[3];
+              if (value[0] == 'seq' && value[1][0] == 'assign' && value[1][2][0] == 'sub' && value[1][2][1][0] == 'name' && value[1][2][1][1] == 'HEAPF32' &&
+                  value[1][2][2][0] == 'binary' && value[1][2][2][2][0] == 'name' && value[1][2][2][2][1] == 'tempDoublePtr') {
+                // transform to HEAPF32[$45 >> 2] = ($14 < $28 ? $14 : $28) - $42;
+                node[2][1][1] = 'HEAPF32';
+                node[3] = value[1][3];
+              }
+            }
+          } else if (type == 'seq') {
+            // (HEAP32[tempDoublePtr >> 2] = HEAP32[$37 >> 2], +HEAPF32[tempDoublePtr >> 2])
+            //   ==>
+            // +HEAPF32[$37 >> 2]
+            if (node[0] == 'seq' && node[1][0] == 'assign' && node[1][2][0] == 'sub' && node[1][2][1][0] == 'name' &&
+                (node[1][2][1][1] == 'HEAP32' || node[1][2][1][1] == 'HEAPF32') &&
+                node[1][2][2][0] == 'binary' && node[1][2][2][2][0] == 'name' && node[1][2][2][2][1] == 'tempDoublePtr' &&
+                node[1][3][0] == 'sub' && node[1][3][1][0] == 'name' && (node[1][3][1][1] == 'HEAP32' || node[1][3][1][1] == 'HEAPF32')) {
+              if (node[1][2][1][1] == 'HEAP32') {
+                node[1][3][1][1] = 'HEAPF32';
+                return ['unary-prefix', '+', node[1][3]];
+              } else {
+                node[1][3][1][1] = 'HEAP32';
+                return ['binary', '|', node[1][3], ['num', 0]];
+              }
+            }
+          }
+        });
+
+        // finally, wipe out remaining ones by finding cases where all assignments to X are bitcasts, and all uses are writes to
+        // the other heap type, then eliminate the bitcast
+        var bitcastVars = {};
+        traverse(ast, function(node, type) {
+          if (type == 'assign' && node[1] === true && node[2][0] == 'name') {
+            var value = node[3];
+            if (value[0] == 'seq' && value[1][0] == 'assign' && value[1][2][0] == 'sub' && value[1][2][1][0] == 'name' &&
+                (value[1][2][1][1] == 'HEAP32' || value[1][2][1][1] == 'HEAPF32') &&
+                value[1][2][2][0] == 'binary' && value[1][2][2][2][0] == 'name' && value[1][2][2][2][1] == 'tempDoublePtr') {
+              var name = node[2][1];
+              if (!bitcastVars[name]) bitcastVars[name] = {
+                define_HEAP32: 0, define_HEAPF32: 0, use_HEAP32: 0, use_HEAPF32: 0, bad: false, namings: 0, defines: [], uses: []
+              };
+              bitcastVars[name]['define_' + value[1][2][1][1]]++;
+              bitcastVars[name].defines.push(node);
+            }
+          }
+        });
+        traverse(ast, function(node, type) {
+          if (type == 'name' && bitcastVars[node[1]]) {
+            bitcastVars[node[1]].namings++;
+          } else if (type == 'assign' && node[1] === true) {
+            var value = node[3];
+            if (value[0] == 'name') {
+              var name = value[1];
+              if (bitcastVars[name]) {
+                var target = node[2];
+                if (target[0] == 'sub' && target[1][0] == 'name' && (target[1][1] == 'HEAP32' || target[1][1] == 'HEAPF32')) {
+                  bitcastVars[name]['use_' + target[1][1]]++;
+                  bitcastVars[name].uses.push(node);
+                }
+              }
+            }
+          }
+        });
+        var asmData = normalizeAsm(ast);
+        for (var v in bitcastVars) {
+          var info = bitcastVars[v];
+          // good variables define only one type, use only one type, have definitions and uses, and define as a different type than they use
+          if (info.define_HEAP32*info.define_HEAPF32 == 0 && info.use_HEAP32*info.use_HEAPF32 == 0 &&
+              info.define_HEAP32+info.define_HEAPF32 > 0  && info.use_HEAP32+info.use_HEAPF32 > 0 &&
+              info.define_HEAP32*info.use_HEAP32 == 0 && info.define_HEAPF32*info.use_HEAPF32 == 0 &&
+              v in asmData.vars && info.namings == info.define_HEAP32+info.define_HEAPF32+info.use_HEAP32+info.use_HEAPF32) {
+            var correct = info.use_HEAP32 ? 'HEAPF32' : 'HEAP32';
+            info.defines.forEach(function(define) {
+              define[3] = define[3][1][3];
+              if (correct == 'HEAP32') {
+                define[3] = ['binary', '|', define[3], ['num', 0]];
+              } else {
+                define[3] = ['unary-prefix', '+', define[3]];
+              }
+              // do we want a simplifybitops on the new values here?
+            });
+            info.uses.forEach(function(use) {
+              use[2][1][1] = correct;
+            });
+            asmData.vars[v] = 1 - asmData.vars[v];
+          }
+        }
+        denormalizeAsm(ast, asmData);
+      }
+
       // optimize num >> num, in asm we need this here since we do not run optimizeShifts
-      traverseGenerated(ast, function(node, type) {
+      traverse(ast, function(node, type) {
         if (type == 'binary' && node[1] == '>>' && node[2][0] == 'num' && node[3][0] == 'num') {
           node[0] = 'num';
           node[1] = node[2][1] >> node[3][1];
@@ -543,7 +669,7 @@ function simplifyExpressionsPre(ast) {
     var rerun = true;
     while (rerun) {
       rerun = false;
-      traverseGenerated(ast, function(node, type) {
+      traverse(ast, function(node, type) {
         if (type == 'binary' && node[1] == '+') {
           if (node[2][0] == 'num' && node[3][0] == 'num') {
             rerun = true;
@@ -566,7 +692,7 @@ function simplifyExpressionsPre(ast) {
 
   // if (x == 0) can be if (!x), etc.
   function simplifyZeroComp(ast) {
-    traverseGenerated(ast, function(node, type) {
+    traverse(ast, function(node, type) {
       var binary;
       if (type == 'if' && (binary = node[1])[0] == 'binary') {
         if ((binary[1] == '!=' || binary[1] == '!==') && binary[3][0] == 'num' && binary[3][1] == 0) {
@@ -580,40 +706,40 @@ function simplifyExpressionsPre(ast) {
     });
   }
 
-  function asmOpts(ast) {
+  function asmOpts(fun) {
     // 1. Add final returns when necessary
     // 2. Remove unneeded coercions on function calls that have no targets (eliminator removed it)
-    traverseGeneratedFunctions(ast, function(fun) {
-      var returnType = null;
-      traverse(fun, function(node, type) {
-        if (type == 'return' && node[1]) {
-          returnType = detectAsmCoercion(node[1]);
-        } else if (type == 'stat') {
-          var inner = node[1];
-          if ((inner[0] == 'binary' && inner[1] in ASSOCIATIVE_BINARIES && inner[2][0] == 'call' && inner[3][0] == 'num') ||
-              (inner[0] == 'unary-prefix' && inner[1] == '+' && inner[2][0] == 'call')) {
-            node[1] = inner[2];
-          }
-        }
-      });
-      // Add a final return if one is missing.
-      if (returnType !== null) {
-        var stats = getStatements(fun);
-        var last = stats[stats.length-1];
-        if (last[0] != 'return') {
-          var returnValue = ['num', 0];
-          if (returnType == ASM_DOUBLE) returnValue = ['unary-prefix', '+', returnValue];
-          stats.push(['return', returnValue]);
+    var returnType = null;
+    traverse(fun, function(node, type) {
+      if (type == 'return' && node[1]) {
+        returnType = detectAsmCoercion(node[1]);
+      } else if (type == 'stat') {
+        var inner = node[1];
+        if ((inner[0] == 'binary' && inner[1] in ASSOCIATIVE_BINARIES && inner[2][0] == 'call' && inner[3][0] == 'num') ||
+            (inner[0] == 'unary-prefix' && inner[1] == '+' && inner[2][0] == 'call')) {
+          node[1] = inner[2];
         }
       }
     });
+    // Add a final return if one is missing.
+    if (returnType !== null) {
+      var stats = getStatements(fun);
+      var last = stats[stats.length-1];
+      if (last[0] != 'return') {
+        var returnValue = ['num', 0];
+        if (returnType == ASM_DOUBLE) returnValue = ['unary-prefix', '+', returnValue];
+        stats.push(['return', returnValue]);
+      }
+    }
   }
 
-  simplifySignExtends(ast);
-  simplifyBitops(ast);
-  joinAdditions(ast);
-  // simplifyZeroComp(ast); TODO: investigate performance
-  if (asm) asmOpts(ast);
+  traverseGeneratedFunctions(ast, function(func) {
+    simplifySignExtends(func);
+    simplifyBitops(func);
+    joinAdditions(func);
+    // simplifyZeroComp(func); TODO: investigate performance
+    if (asm) asmOpts(func);
+  });
 }
 
 // In typed arrays mode 2, we can have
@@ -950,24 +1076,28 @@ function optimizeShiftsAggressive(ast) {
 // we then get
 //   if (!(x < 5))
 // or such. Simplifying these saves space and time.
-function simplifyNotComps(ast) {
-  traverse(ast, function(node, type) {
-    if (type == 'unary-prefix' && node[1] == '!' && node[2][0] == 'binary') {
-      if (node[2][1] == '<') {
-        return ['binary', '>=', node[2][2], node[2][3]];
-      } else if (node[2][1] == '>') {
-        return ['binary', '<=', node[2][2], node[2][3]];
-      } else if (node[2][1] == '==') {
-        return ['binary', '!=', node[2][2], node[2][3]];
-      } else if (node[2][1] == '!=') {
-        return ['binary', '==', node[2][2], node[2][3]];
-      } else if (node[2][1] == '===') {
-        return ['binary', '!==', node[2][2], node[2][3]];
-      } else if (node[2][1] == '!==') {
-        return ['binary', '===', node[2][2], node[2][3]];
+function simplifyNotCompsDirect(node) {
+  if (node[0] == 'unary-prefix' && node[1] == '!') {
+    if (node[2][0] == 'binary') {
+      switch(node[2][1]) {
+        case '<': return ['binary', '>=', node[2][2], node[2][3]];
+        case '>': return ['binary', '<=', node[2][2], node[2][3]];
+        case '<=': return ['binary', '>', node[2][2], node[2][3]];
+        case '>=': return ['binary', '<', node[2][2], node[2][3]];
+        case '==': return ['binary', '!=', node[2][2], node[2][3]];
+        case '!=': return ['binary', '==', node[2][2], node[2][3]];
+        case '===': return ['binary', '!==', node[2][2], node[2][3]];
+        case '!==': return ['binary', '===', node[2][2], node[2][3]];
       }
+    } else if (node[2][0] == 'unary-prefix' && node[2][1] == '!') {
+      return node[2][2];
     }
-  });
+  }
+  return node;
+}
+
+function simplifyNotComps(ast) {
+  traverse(ast, simplifyNotCompsDirect);
 }
 
 function simplifyExpressionsPost(ast) {
@@ -1216,8 +1346,7 @@ function hoistMultiples(ast) {
           var temp = node[3];
           node[3] = node[2];
           node[2] = temp;
-          node[1] = ['unary-prefix', '!', node[1]];
-          simplifyNotComps(node[1]); // bake the ! into the expression
+          node[1] = simplifyNotCompsDirect(['unary-prefix', '!', node[1]]);
           stat1 = node[2][1];
           stat2 = node[3][1];
         }
@@ -1844,6 +1973,13 @@ var NODES_WITHOUT_ELIMINATION_SIDE_EFFECTS = set('name', 'num', 'string', 'binar
 var IGNORABLE_ELIMINATOR_SCAN_NODES = set('num', 'toplevel', 'string', 'break', 'continue', 'dot'); // dot can only be STRING_TABLE.*
 var ABORTING_ELIMINATOR_SCAN_NODES = set('new', 'object', 'function', 'defun', 'for', 'while', 'array', 'throw'); // we could handle some of these, TODO, but nontrivial (e.g. for while, the condition is hit multiple times after the body)
 
+function isTempDoublePtrAccess(node) { // these are used in bitcasts; they are not really affecting memory, and should cause no invalidation
+  assert(node[0] == 'sub');
+  return (node[2][0] == 'name' && node[2][1] == 'tempDoublePtr') ||
+         (node[2][0] == 'binary' && ((node[2][2][0] == 'name' && node[2][2][1] == 'tempDoublePtr') ||
+                                     (node[2][3][0] == 'name' && node[2][3][1] == 'tempDoublePtr')));
+}
+
 function eliminate(ast, memSafe) {
   // Find variables that have a single use, and if they can be eliminated, do so
   traverseGeneratedFunctions(ast, function(func, type) {
@@ -1853,6 +1989,7 @@ function eliminate(ast, memSafe) {
     // First, find the potentially eliminatable functions: that have one definition and one use
     var definitions = {};
     var uses = {};
+    var namings = {};
     var values = {};
     var locals = {};
     var varsToRemove = {}; // variables being removed, that we can eliminate all 'var x;' of (this refers to 'var' nodes we should remove)
@@ -1895,12 +2032,18 @@ function eliminate(ast, memSafe) {
           if (!values[name]) values[name] = node[3];
           if (node[1] === true) { // not +=, -= etc., just =
             uses[name]--; // because the name node will show up by itself in the previous case
+            if (!namings[name]) namings[name] = 0;
+            namings[name]++; // offset it here, this tracks the total times we are named
           }
         }
       } else if (type == 'switch') {
         hasSwitch = true;
       }
     });
+
+    for (var used in uses) {
+      namings[used] = (namings[used] || 0) + uses[used];
+    }
 
     // we cannot eliminate variables if there is a switch
     if (hasSwitch && !asm) return;
@@ -1971,7 +2114,7 @@ function eliminate(ast, memSafe) {
     //printErr('locals: ' + JSON.stringify(locals));
     //printErr('varsToRemove: ' + JSON.stringify(varsToRemove));
     //printErr('varsToTryToRemove: ' + JSON.stringify(varsToTryToRemove));
-    definitions = values = null;
+    values = null;
     //printErr('potentials: ' + JSON.stringify(potentials));
     // We can now proceed through the function. In each list of statements, we try to eliminate
     var tracked = {};
@@ -2121,7 +2264,7 @@ function eliminate(ast, memSafe) {
               if (allowTracking) track(name, node[3], node);
             }
           } else if (target[0] == 'sub') {
-            if (!memoryInvalidated) {
+            if (!isTempDoublePtrAccess(target) && !memoryInvalidated) {
               invalidateMemory();
               memoryInvalidated = true;
             }
@@ -2129,7 +2272,8 @@ function eliminate(ast, memSafe) {
         } else if (type == 'sub') {
           traverseInOrder(node[1], false, !memSafe); // evaluate inner
           traverseInOrder(node[2]); // evaluate outer
-          if (!ignoreSub) { // ignoreSub means we are a write (happening later), not a read
+          // ignoreSub means we are a write (happening later), not a read
+          if (!ignoreSub && !isTempDoublePtrAccess(node)) {
             // do the memory access
             if (!callsInvalidated) {
               invalidateCalls();
@@ -2326,15 +2470,114 @@ function eliminate(ast, memSafe) {
       //printErr('delete StatBlock');
     });
 
-    // clean up vars
-    //printErr('cleaning up ' + JSON.stringify(varsToRemove));
+    var seenUses = {}, helperReplacements = {}; // for looper-helper optimization
+
+    // clean up vars, and loop variable elimination
     traverse(func, function(node, type) {
+      // pre
       if (type === 'var') {
         node[1] = node[1].filter(function(pair) { return !varsToRemove[pair[0]] });
         if (node[1].length == 0) {
           // wipe out an empty |var;|
           node[0] = 'toplevel';
           node[1] = [];
+        }
+      }
+    }, function(node, type) {
+      // post
+      if (type == 'name') {
+        var name = node[1];
+        if (name in helperReplacements) {
+          node[1] = helperReplacements[name];
+          return; // no need to track this anymore, we can't loop-optimize more than once
+        }
+        // track how many uses we saw. we need to know when a variable is no longer used (hence we run this in the post)
+        if (!(name in seenUses)) {
+          seenUses[name] = 1;
+        } else {
+          seenUses[name]++;
+        }
+      } else if (type == 'while') {
+        // try to remove loop helper variables specifically
+        var stats = node[2][1];
+        var last = stats[stats.length-1];
+        if (last && last[0] == 'if' && last[2][0] == 'block' && last[3] && last[3][0] == 'block') {
+          var ifTrue = last[2];
+          var ifFalse = last[3];
+          var flip = false;
+          if (ifFalse[1][0][0] == 'break') { // canonicalize break in the if
+            var temp = ifFalse;
+            ifFalse = ifTrue;
+            ifTrue = temp;
+            flip = true;
+          }
+          if (ifTrue[1][0][0] == 'break') {
+            var assigns = ifFalse[1];
+            var loopers = [], helpers = [];
+            for (var i = 0; i < assigns.length; i++) {
+              if (assigns[i][0] == 'stat' && assigns[i][1][0] == 'assign') {
+                var assign = assigns[i][1];
+                if (assign[1] === true && assign[2][0] == 'name' && assign[3][0] == 'name') {
+                  var looper = assign[2][1];
+                  var helper = assign[3][1];
+                  if (definitions[helper] == 1 && seenUses[looper] == namings[looper] &&
+                      !helperReplacements[helper] && !helperReplacements[looper]) {
+                    loopers.push(looper);
+                    helpers.push(helper);
+                  }
+                }
+              }
+            }
+            if (loopers.length < assigns.length) return; // TODO: handle the case where can can just eliminate one. (we can't optimize the break, but we can remove the var at least)
+            for (var l = 0; l < loopers.length; l++) {
+              var looper = loopers[l];
+              var helper = helpers[l];
+              // the remaining issue is whether loopers are used after the assignment to helper and before the last line (where we assign to it)
+              var found = -1;
+              for (var i = stats.length-2; i >= 0; i--) {
+                var curr = stats[i];
+                if (curr[0] == 'stat' && curr[1][0] == 'assign') {
+                  var currAssign = curr[1];
+                  if (currAssign[1] === true && currAssign[2][0] == 'name') {
+                    var to = currAssign[2][1];
+                    if (to == helper) {
+                      found = i;
+                      break;
+                    }
+                  }
+                }
+              }
+              if (found < 0) return;
+              var looperUsed = false;
+              for (var i = found+1; i < stats.length && !looperUsed; i++) {
+                var curr = i < stats.length-1 ? stats[i] : last[1]; // on the last line, just look in the condition
+                traverse(curr, function(node, type) {
+                  if (type == 'name' && node[1] == looper) {
+                    looperUsed = true;
+                    return true;
+                  }
+                });
+              }
+              if (looperUsed) return;
+            }
+            // hurrah! this is safe to do
+            for (var l = 0; l < loopers.length; l++) {
+              var looper = loopers[l];
+              var helper = helpers[l];
+              varsToRemove[helper] = 2;
+              traverse(node, function(node, type) { // replace all appearances of helper with looper
+                if (type == 'name' && node[1] == helper) node[1] = looper;
+              });
+              helperReplacements[helper] = looper; // replace all future appearances of helper with looper
+              helperReplacements[looper] = looper; // avoid any further attempts to optimize looper in this manner (seenUses is wrong anyhow, too)
+            }
+            // simplify the if. we remove the if branch, leaving only the else
+            if (flip) {
+              last[1] = simplifyNotCompsDirect(['unary-prefix', '!', last[1]]);
+              last[2] = last[3];
+            }
+            last.pop();
+          }
         }
       }
     });
@@ -2455,6 +2698,27 @@ function fixDotZero(js) {
   });
 }
 
+function asmLoopOptimizer(ast) {
+  traverseGeneratedFunctions(ast, function(fun) {
+    // This is at the end of the pipeline, we can assume all other optimizations are done, and we modify loops
+    // into shapes that might confuse other passes
+    traverse(fun, function(node, type) {
+      if (type == 'while' && node[1][0] == 'num' && node[1][1] == 1 && node[2][0] == 'block') {
+        // while (1) { .. if (..) { break } } ==> do { .. } while(..)
+        var stats = node[2][1];
+        var last = stats[stats.length-1];
+        if (last && last[0] == 'if' && !last[3] && last[2][0] == 'block' && last[2][1][0][0] == 'break' && !last[2][1][0][1]) {
+          var conditionToBreak = last[1];
+          stats.pop();
+          node[0] = 'do';
+          node[1] = simplifyNotCompsDirect(['unary-prefix', '!', conditionToBreak]);
+          return node;
+        }
+      }
+    });
+  });
+}
+
 // Passes table
 
 var compress = false, printMetadata = true, asm = false, last = false;
@@ -2498,6 +2762,7 @@ arguments_.slice(1).forEach(function(arg) {
   passes[arg](ast);
 });
 if (asm && last) {
+  asmLoopOptimizer(ast);
   prepDotZero(ast);
 }
 var js = astToSrc(ast, compress), old;
