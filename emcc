@@ -1585,9 +1585,9 @@ try:
         else:
           logging.debug('did not see memory initialization')
 
-  def generate_source_maps(filename, map_file_base_name):
+  def generate_source_map(filename, map_file_base_name, offset=0):
     jsrun.run_js(shared.path_from_root('tools', 'sourcemapper.js'),
-      shared.NODE_JS, [filename, os.getcwd(), map_file_base_name])
+      shared.NODE_JS, [filename, os.getcwd(), map_file_base_name, str(offset)])
 
   # If we were asked to also generate HTML, do that
   if final_suffix == 'html':
@@ -1595,7 +1595,12 @@ try:
     shell = open(shell_path).read()
     html = open(target, 'w')
     if not Compression.on:
-      if keep_llvm_debug and keep_js_debug: generate_source_maps(final, target)
+      if keep_llvm_debug and keep_js_debug:
+        match = re.match('.*?<script[^>]*>{{{ SCRIPT_CODE }}}</script>', shell,
+            re.DOTALL)
+        if match is None:
+          raise RuntimeError('Could not find script insertion point')
+        generate_source_map(final, target, match.group().count('\n'))
       html.write(shell.replace('{{{ SCRIPT_CODE }}}', open(final).read()))
     else:
       # Compress the main code
@@ -1666,7 +1671,7 @@ try:
         from tools.split import split_javascript_file
         split_javascript_file(final, unsuffixed(target), split_js_file)
     else:
-        if keep_llvm_debug and keep_js_debug: generate_source_maps(final, target)
+        if keep_llvm_debug and keep_js_debug: generate_source_map(final, target)
 
         # copy final JS to output
         shutil.move(final, target)

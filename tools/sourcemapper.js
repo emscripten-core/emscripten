@@ -63,7 +63,7 @@ function extractComments(source, commentHandler) {
   }
 }
 
-function generateMap(fileName, sourceRoot, mapFileBaseName) {
+function generateMap(fileName, sourceRoot, mapFileBaseName, generatedLineOffset) {
   var fs = require('fs');
   var path = require('path');
   var SourceMapGenerator = require('source-map').SourceMapGenerator;
@@ -91,7 +91,7 @@ function generateMap(fileName, sourceRoot, mapFileBaseName) {
     }
 
     generator.addMapping({
-      generated: { line: generatedLineNumber, column: 0 },
+      generated: { line: generatedLineNumber + generatedLineOffset, column: 0 },
       original: { line: originalLineNumber, column: 0 },
       source: originalFileName
     });
@@ -108,11 +108,14 @@ function generateMap(fileName, sourceRoot, mapFileBaseName) {
 if (require.main === module) {
   if (process.argv.length < 3) {
     console.log('Usage: ./sourcemapper.js <filename> <source root (default: .)> ' +
-                '<map file basename (default: filename)>');
+                '<map file basename (default: filename)>' +
+                '<generated line offset (default: 0)>');
     process.exit(1);
   } else {
     var sourceRoot = process.argv.length > 3 ? process.argv[3] : ".";
     var mapFileBaseName = process.argv.length > 4 ? process.argv[4] : process.argv[2];
-    generateMap(process.argv[2], sourceRoot, mapFileBaseName);
+    var generatedLineOffset = process.argv.length > 5 ?
+        parseInt(process.argv[5], 10) : 0;
+    generateMap(process.argv[2], sourceRoot, mapFileBaseName, generatedLineOffset);
   }
 }
