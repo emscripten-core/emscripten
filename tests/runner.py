@@ -13984,7 +13984,7 @@ fi
           assert os.path.exists(RELOOPER) == (i >= 2), 'have relooper on O2: ' + output
           src = open('a.out.js').read()
           main = src.split('function _main()')[1].split('\n}\n')[0]
-          assert ('while (1) {' in main or 'while(1){' in main) == (i >= 2), 'reloop code on O2: ' + main
+          assert ('while (1) {' in main or 'while(1){' in main or '} while ($' in main or '}while($' in main) == (i >= 2), 'reloop code on O2: ' + main
           assert ('switch' not in main) == (i >= 2), 'reloop code on O2: ' + main
 
     def test_jcache(self):
