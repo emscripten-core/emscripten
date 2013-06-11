@@ -6354,7 +6354,8 @@ LibraryManager.library = {
   // Note that we need to emulate functions that use setjmp, and also to create
   // a new label we can return to. Emulation make such functions slower, this
   // can be alleviated by making a new function containing just the setjmp
-  // related functionality so the slowdown is more limited.
+  // related functionality so the slowdown is more limited - you may need
+  // to prevent inlining to keep this isolated, try __attribute__((noinline))
   // ==========================================================================
 
   saveSetjmp__asm: true,
@@ -7668,8 +7669,8 @@ LibraryManager.library = {
       nfds = Math.min(64, nfds); // fd sets have 64 bits
 
       for (var fd = 0; fd < nfds; fd++) {
-        var mask = 1 << (fd % 32), int = fd < 32 ? srcLow : srcHigh;
-        if (int & mask) {
+        var mask = 1 << (fd % 32), int_ = fd < 32 ? srcLow : srcHigh;
+        if (int_ & mask) {
           // index is in the set, check if it is ready for read
           var info = FS.streams[fd];
           if (info && can(info)) {
@@ -8057,8 +8058,8 @@ LibraryManager.library = {
       nfds = Math.min(64, nfds); // fd sets have 64 bits
 
       for (var fd = 0; fd < nfds; fd++) {
-        var mask = 1 << (fd % 32), int = fd < 32 ? srcLow : srcHigh;
-        if (int & mask) {
+        var mask = 1 << (fd % 32), int_ = fd < 32 ? srcLow : srcHigh;
+        if (int_ & mask) {
           // index is in the set, check if it is ready for read
           var info = FS.streams[fd];
           if (info && can(info)) {
