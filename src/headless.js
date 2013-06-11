@@ -4,6 +4,20 @@
 // TODO: sync from bananabread headless.js
 
 var window = {
+  eventListeners: {},
+  addEventListener: function(id, func) {
+    var listeners = this.eventListeners[id];
+    if (!listeners) {
+      listeners = this.eventListeners[id] = [];
+    }
+    listeners.push(func);
+  },
+  callEventListeners: function(id) {
+    var listeners = this.eventListeners[id];
+    if (listeners) {
+      listeners.forEach(function(listener) { listener() });
+    }
+  },
   location: {
     toString: function() {
       return '%s';

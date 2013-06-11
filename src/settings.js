@@ -245,7 +245,8 @@ var EXPORTED_FUNCTIONS = ['_main', '_malloc'];
                                     // through LLVM dead code elimination, and also made accessible outside of
                                     // the generated code even after running closure compiler (on "Module").
                                     // Note the necessary prefix of "_".
-var EXPORT_ALL = 0; // If true, we export all the symbols
+var EXPORT_ALL = 0; // If true, we export all the symbols. Note that this does *not* affect LLVM, so it can
+                    // still eliminate functions as dead. This just exports them on the Module object.
 var EXPORT_BINDINGS = 0; // Export all bindings generator functions (prefixed with emscripten_bind_). This
                          // is necessary to use the bindings generator with asm.js
 

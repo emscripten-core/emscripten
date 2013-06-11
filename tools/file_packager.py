@@ -240,7 +240,7 @@ if crunch:
       #if not os.path.exists(os.path.basename(crunch_name)):
       #  print >> sys.stderr, 'Failed to crunch, perhaps a weird dxt format? Looking for a source PNG for the DDS'
       #  Popen([CRUNCH, '-file', unsuffixed(file_['srcpath']) + '.png', '-quality', crunch] + format, stdout=sys.stderr).communicate()
-      assert os.path.exists(os.path.basename(src_crunch_name)), 'crunch failed to generate output'
+      assert os.path.exists(src_crunch_name), 'crunch failed to generate output'
       # prepend the dds header
       crunched = open(src_crunch_name, 'rb').read()
       c = open(src_crunch_name, 'wb')

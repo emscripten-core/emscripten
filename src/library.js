@@ -2621,7 +2621,7 @@ LibraryManager.library = {
         var curr = 0;
         var buffer = [];
         // Read characters according to the format. floats are trickier, they may be in an unfloat state in the middle, then be a valid float later
-        if (type == 'f' || type == 'e' || type == 'g' || 
+        if (type == 'f' || type == 'e' || type == 'g' ||
             type == 'F' || type == 'E' || type == 'G') {
           var last = 0;
           next = get();
@@ -3965,8 +3965,8 @@ LibraryManager.library = {
             {{{ makeGetValue('str+1', 0, 'i8') }}} == {{{ charCode('X') }}}) {
           str += 2;
         }
-      }      
-    } 
+      }
+    }
     if (!finalBase) finalBase = 10;
 
     // Get digits.
@@ -4020,7 +4020,7 @@ LibraryManager.library = {
     var isNegative = false;
     // Skip space.
     while (_isspace({{{ makeGetValue('str', 0, 'i8') }}})) str++;
-    
+
     // Check for a plus/minus sign.
     if ({{{ makeGetValue('str', 0, 'i8') }}} == {{{ charCode('-') }}}) {
       str++;
@@ -4049,8 +4049,8 @@ LibraryManager.library = {
             {{{ makeGetValue('str+1', 0, 'i8') }}} == {{{ charCode('X') }}}) {
           str += 2;
         }
-      }      
-    } 
+      }
+    }
     if (!finalBase) finalBase = 10;
     start = str;
 
@@ -5732,7 +5732,8 @@ LibraryManager.library = {
   llround: 'round',
   llroundf: 'round',
   rint: function(x) {
-    return (x > 0) ? -Math.round(-x) : Math.round(x);
+    if (Math.abs(x % 1) !== 0.5) return Math.round(x);
+    return x + x % 2 + ((x < 0) ? 1 : -1);
   },
   rintf: 'rint',
   lrint: 'rint',
@@ -6353,7 +6354,8 @@ LibraryManager.library = {
   // Note that we need to emulate functions that use setjmp, and also to create
   // a new label we can return to. Emulation make such functions slower, this
   // can be alleviated by making a new function containing just the setjmp
-  // related functionality so the slowdown is more limited.
+  // related functionality so the slowdown is more limited - you may need
+  // to prevent inlining to keep this isolated, try __attribute__((noinline))
   // ==========================================================================
 
   saveSetjmp__asm: true,
@@ -6373,11 +6375,11 @@ LibraryManager.library = {
     setjmpId = (setjmpId+1)|0;
     {{{ makeSetValueAsm('env', '0', 'setjmpId', 'i32') }}};
     while ((i|0) < {{{ 2*MAX_SETJMPS }}}) {
-      if ({{{ makeGetValueAsm('table', 'i*4', 'i32') }}} == 0) {
-        {{{ makeSetValueAsm('table', 'i*4', 'setjmpId', 'i32') }}};
-        {{{ makeSetValueAsm('table', 'i*4+4', 'label', 'i32') }}};
+      if ({{{ makeGetValueAsm('table', '(i<<2)', 'i32') }}} == 0) {
+        {{{ makeSetValueAsm('table', '(i<<2)', 'setjmpId', 'i32') }}};
+        {{{ makeSetValueAsm('table', '(i<<2)+4', 'label', 'i32') }}};
         // prepare next slot
-        {{{ makeSetValueAsm('table', 'i*4+8', '0', 'i32') }}};
+        {{{ makeSetValueAsm('table', '(i<<2)+8', '0', 'i32') }}};
         return 0;
       }
       i = (i+2)|0;
@@ -6394,10 +6396,10 @@ LibraryManager.library = {
     table = table|0;
     var i = 0, curr = 0;
     while ((i|0) < {{{ MAX_SETJMPS }}}) {
-      curr = {{{ makeGetValueAsm('table', 'i*4', 'i32') }}};
+      curr = {{{ makeGetValueAsm('table', '(i<<2)', 'i32') }}};
       if ((curr|0) == 0) break;
       if ((curr|0) == (id|0)) {
-        return {{{ makeGetValueAsm('table', 'i*4+4', 'i32') }}};
+        return {{{ makeGetValueAsm('table', '(i<<2)+4', 'i32') }}};
       }
       i = (i+2)|0;
     }
@@ -7330,6 +7332,7 @@ LibraryManager.library = {
    */
   socket__deps: ['$Sockets'],
   socket: function(family, type, protocol) {
+    var INCOMING_QUEUE_LENGTH = 64;
     var fd = FS.createFileHandle({
       addr: null,
       port: null,
@@ -7337,7 +7340,7 @@ LibraryManager.library = {
       header: new Uint16Array(2),
       bound: false,
       socket: true
-    };
+    });
     assert(fd < 64); // select() assumes socket fd values are in 0..63
     var stream = type == {{{ cDefine('SOCK_STREAM') }}};
     if (protocol) {
@@ -7422,8 +7425,6 @@ LibraryManager.library = {
       }
       Sockets.peer = peer;
     }
-
-    var INCOMING_QUEUE_LENGTH = 64;
 
     function CircularBuffer(max_length) {
       var buffer = new Array(++ max_length);
@@ -7668,8 +7669,8 @@ LibraryManager.library = {
       nfds = Math.min(64, nfds); // fd sets have 64 bits
 
       for (var fd = 0; fd < nfds; fd++) {
-        var mask = 1 << (fd % 32), int = fd < 32 ? srcLow : srcHigh;
-        if (int & mask) {
+        var mask = 1 << (fd % 32), int_ = fd < 32 ? srcLow : srcHigh;
+        if (int_ & mask) {
           // index is in the set, check if it is ready for read
           var info = FS.streams[fd];
           if (info && can(info)) {
@@ -7700,7 +7701,7 @@ LibraryManager.library = {
     if (protocol) {
       assert(stream == (protocol == {{{ cDefine('IPPROTO_TCP') }}})); // if SOCK_STREAM, must be tcp
     }
-    var fd = FS.createFileHandle({ 
+    var fd = FS.createFileHandle({
       connected: false,
       stream: stream,
       socket: true
@@ -8057,8 +8058,8 @@ LibraryManager.library = {
       nfds = Math.min(64, nfds); // fd sets have 64 bits
 
       for (var fd = 0; fd < nfds; fd++) {
-        var mask = 1 << (fd % 32), int = fd < 32 ? srcLow : srcHigh;
-        if (int & mask) {
+        var mask = 1 << (fd % 32), int_ = fd < 32 ? srcLow : srcHigh;
+        if (int_ & mask) {
           // index is in the set, check if it is ready for read
           var info = FS.streams[fd];
           if (info && can(info)) {

@@ -4961,4 +4961,151 @@ function _java_nio_charset_Charset_forNameInternal___java_lang_String($n1) {
     break;
   }
 }
+function looop2() {
+  var i = 0;
+  while (1) {
+    do_it();
+    i = i + 1 | 0;
+    if (condition(i)) {
+      break;
+    }
+  }
+}
+function looop3() {
+  var i = 0;
+  while (1) {
+    do_it();
+    i = i + 1 | 0;
+    if (!condition(i)) {
+      break;
+    }
+  }
+}
+function looop4() {
+  var i = 0, helper = 0;
+  while (1) {
+    do_it();
+    helper = i + 1 | 0;
+    f(i, helper);
+    if (condition()) {
+      i = helper;
+    } else {
+      break;
+    }
+  }
+}
+function looop4b() {
+  var i = 0, helper = 0;
+  while (1) {
+    do_it();
+    helper = i + 1 | 0;
+    g(helper);
+    if (condition(i)) {
+      i = helper;
+    } else {
+      break;
+    }
+  }
+}
+function looop5() {
+  var i = 0, helper = 0;
+  while (1) {
+    do_it();
+    helper = i + 1 | 0;
+    if (condition(helper)) {
+      i = helper;
+    } else {
+      break;
+    }
+  }
+  moar(i);
+}
+function looop6() {
+  var i = 0;
+  while (1) {
+    do_it();
+    i = i + 1 | 0;
+    if (!condition(i)) {
+      break;
+    }
+  }
+  moar(i);
+}
+function looop7() {
+  var $old_0_i107_i = 0, $current_0_i108_i = 0, $696 = 0;
+  $old_0_i107_i = $draw_left_i;
+  while (1) {
+    $current_0_i108_i = HEAP32[$old_0_i107_i >> 2] | 0;
+    if (($current_0_i108_i | 0) == 0) {
+      break;
+    }
+    $696 = $current_0_i108_i + 4 | 0;
+    if (($current_0_i108_i | 0) == ($P_3207_i | 0)) {
+      break;
+    } else {
+      $old_0_i107_i = $696;
+    }
+  }
+  HEAP32[$old_0_i107_i >> 2] = HEAP32[$696 >> 2] | 0;
+  while (1) {}
+}
+function multiloop($n_0, $35) {
+  $n_0 = $n_0 | 0;
+  $35 = $35 | 0;
+  var $p_0 = 0, $41 = 0;
+  $n_0 = $35;
+  $p_0 = (HEAP32[$15 >> 2] | 0) + ($35 << 1) | 0;
+  while (1) {
+    $p_0 = $p_0 - 2 | 0;
+    $41 = HEAPU16[$p_0 >> 1] | 0;
+    if ($41 >>> 0 < $2 >>> 0) {
+      $_off0 = 0;
+    } else {
+      $_off0 = $41 - $2 & 65535;
+    }
+    HEAP16[$p_0 >> 1] = $_off0;
+    $n_0 = $n_0 - 1 | 0;
+    if (($n_0 | 0) == 0) {
+      break;
+    }
+  }
+}
+function multiloop2($n_0, $35) {
+  $n_0 = $n_0 | 0;
+  $35 = $35 | 0;
+  var $p_0 = 0, $39 = 0, $41 = 0, $46 = 0;
+  $n_0 = $35;
+  $p_0 = (HEAP32[$15 >> 2] | 0) + ($35 << 1) | 0;
+  while (1) {
+    $39 = $p_0 - 2 | 0;
+    $41 = HEAPU16[$39 >> 1] | 0;
+    if ($41 >>> 0 < $2 >>> 0) {
+      $_off0 = 0;
+    } else {
+      $_off0 = $41 - $2 & 65535;
+    }
+    HEAP16[$39 >> 1] = $p_0;
+    $46 = $n_0 - 1 | 0;
+    if (($46 | 0) == 0) {
+      break;
+    } else {
+      $n_0 = $46;
+      $p_0 = $39;
+    }
+  }
+}
+function tempDouble2($46, $14, $28, $42, $20, $32, $45) {
+  $46 = $46 | 0;
+  $14 = $14 | 0;
+  $28 = $28 | 0;
+  $42 = $42 | 0;
+  $20 = $20 | 0;
+  $32 = $32 | 0;
+  $45 = $45 | 0;
+  var $_sroa_06_0_insert_insert$1 = 0;
+  $_sroa_06_0_insert_insert$1 = (HEAPF32[tempDoublePtr >> 2] = ($20 < $32 ? $20 : $32) - $42, HEAP32[tempDoublePtr >> 2] | 0) | 0;
+  HEAP32[$45 >> 2] = 0 | (HEAPF32[tempDoublePtr >> 2] = ($14 < $28 ? $14 : $28) - $42, HEAP32[tempDoublePtr >> 2] | 0);
+  HEAP32[$45 + 4 >> 2] = $_sroa_06_0_insert_insert$1;
+  HEAP32[$45 + 8 >> 2] = $_sroa_06_0_insert_insert$1;
+}
 
