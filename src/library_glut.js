@@ -309,6 +309,10 @@ var LibraryGLUT = {
 	return Module['canvas'].width;
       case 103: /* GLUT_WINDOW_HEIGHT */
 	return Module['canvas'].height;
+      case 200: /* GLUT_SCREEN_WIDTH */
+	return Module['canvas'].width;
+      case 201: /* GLUT_SCREEN_HEIGHT */
+	return Module['canvas'].height;
       case 500: /* GLUT_INIT_WINDOW_X */
 	return 0; /* TODO */
       case 501: /* GLUT_INIT_WINDOW_Y */
