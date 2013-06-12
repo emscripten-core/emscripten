@@ -425,8 +425,18 @@ mergeInto(LibraryManager.library, {
           Browser.mouseMovementX = Browser.getMovementX(event);
           Browser.mouseMovementY = Browser.getMovementY(event);
         }
-        Browser.mouseX = SDL.mouseX + Browser.mouseMovementX;
-        Browser.mouseY = SDL.mouseY + Browser.mouseMovementY;
+        
+        // MADE: FIX: check for SDL
+        if (typeof SDL != "undefined")
+        {
+        	Browser.mouseX = SDL.mouseX + Browser.mouseMovementX;
+        	Browser.mouseY = SDL.mouseY + Browser.mouseMovementY;
+        }
+        else
+        {
+        	Browser.mouseX = Browser.mouseMovementX;
+        	Browser.mouseY = Browser.mouseMovementY;
+        }        
       } else {
         // Otherwise, calculate the movement based on the changes
         // in the coordinates.
@@ -502,10 +512,14 @@ mergeInto(LibraryManager.library, {
       this.windowedWidth = canvas.width;
       this.windowedHeight = canvas.height;
       canvas.width = screen.width;
-      canvas.height = screen.height;
-      var flags = {{{ makeGetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'i32', 0, 1) }}};
-      flags = flags | 0x00800000; // set SDL_FULLSCREEN flag
-      {{{ makeSetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'flags', 'i32') }}}
+      canvas.height = screen.height;   
+      // MADE: FIX: check if SDL is available   
+      if (typeof SDL != "undefined")
+      {
+      	var flags = {{{ makeGetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'i32', 0, 1) }}};
+      	flags = flags | 0x00800000; // set SDL_FULLSCREEN flag
+      	{{{ makeSetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'flags', 'i32') }}}
+      }
       Browser.updateResizeListeners();
     },
 
@@ -513,9 +527,13 @@ mergeInto(LibraryManager.library, {
       var canvas = Module['canvas'];
       canvas.width = this.windowedWidth;
       canvas.height = this.windowedHeight;
-      var flags = {{{ makeGetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'i32', 0, 1) }}};
-      flags = flags & ~0x00800000; // clear SDL_FULLSCREEN flag
-      {{{ makeSetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'flags', 'i32') }}}
+      // MADE: FIX: check if SDL is available       
+      if (typeof SDL != "undefined")
+      {
+      	var flags = {{{ makeGetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'i32', 0, 1) }}};
+      	flags = flags & ~0x00800000; // clear SDL_FULLSCREEN flag
+      	{{{ makeSetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'flags', 'i32') }}}
+      }
       Browser.updateResizeListeners();
     }
 
