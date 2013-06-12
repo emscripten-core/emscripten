@@ -262,6 +262,7 @@ var LibraryGLUT = {
 
   glutGetModifiers: function() { return GLUT.modifiers; },
 
+  glutInit__deps: ['$Browser'],
   glutInit: function(argcp, argv) {
     // Ignore arguments
     GLUT.initTime = Date.now();
@@ -271,6 +272,13 @@ var LibraryGLUT = {
     window.addEventListener("mousemove", GLUT.onMousemove, true);
     window.addEventListener("mousedown", GLUT.onMouseButtonDown, true);
     window.addEventListener("mouseup", GLUT.onMouseButtonUp, true);
+    
+   	Browser.resizeListeners.push(function(width, height) {
+   		
+   			if (GLUT.reshapeFunc) {
+   				Runtime.dynCall('vii', GLUT.reshapeFunc, [width, height]);
+   			}
+   		});
 
     __ATEXIT__.push({ func: function() {
       window.removeEventListener("keydown", GLUT.onKeydown, true);
@@ -355,7 +363,7 @@ var LibraryGLUT = {
     GLUT.specialUpFunc = func;
   },
 
-  glutReshapeFunc: function(func) {
+  glutReshapeFunc: function(func) { 
     GLUT.reshapeFunc = func;
   },
 
