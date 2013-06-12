@@ -3958,6 +3958,11 @@ Exiting setjmp function, level: 0, prev_jmp: -1
           '''
         self.do_run(src, '*2,2,5,8,8***8,8,5,8,8***7,2,6,990,7,2*', [], lambda x, err: x.replace('\n', '*'))
 
+    def test_float_h(self):
+      process = Popen([PYTHON, EMCC, path_from_root('tests', 'float+.c')], stdout=PIPE, stderr=PIPE)
+      process.communicate()
+      assert process.returncode is 0, 'float.h should agree with our system'
+
     def test_emscripten_api(self):
         #if Settings.MICRO_OPTS or Settings.RELOOP or Building.LLVM_OPTS: return self.skip('FIXME')
 
