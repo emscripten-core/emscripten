@@ -10507,7 +10507,7 @@ f.close()
                              (['-Lsubdir/something'], False),
                              ([], False)]:
         err = Popen([PYTHON, EMCC, 'main.c'] + args, stderr=PIPE).communicate()[1]
-        assert ('-I or -L of an absolute path encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript)' in err) == expected, err
+        assert ('encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript)' in err) == expected, err
 
     def test_local_link(self):
       # Linking a local library directly, like /usr/lib/libsomething.so, cannot work of course since it
