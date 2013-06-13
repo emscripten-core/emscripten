@@ -34,8 +34,14 @@ int   scandir(const char *dirp,
 enum {
   DT_UNKNOWN = 0,
 #define DT_UNKNOWN DT_UNKNOWN
-  DT_DIR = 4
+  DT_CHR = 2,
+#define DT_CHR DT_CHR
+  DT_DIR = 4,
 #define DT_DIR DT_DIR
+  DT_REG = 8,
+#define DT_REG DT_REG
+  DT_LNK = 10
+#define DT_LNK DT_LNK
 };
 
 #ifdef __cplusplus
