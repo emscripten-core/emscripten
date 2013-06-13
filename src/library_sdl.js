@@ -965,6 +965,13 @@ var LibrarySDL = {
     return SDL.makeSurface(width, height, flags, false, 'CreateRGBSurface', rmask, gmask, bmask, amask);
   },
 
+  SDL_CreateRGBSurfaceFrom: function(pixels, width, height, depth, pitch, rmask, gmask, bmask, amask) {
+    // TODO: Actually fill pixel data to created surface.
+    // TODO: Take into account depth and pitch parameters.
+    console.log('TODO: Partially unimplemented SDL_CreateRGBSurfaceFrom called!');
+    return SDL.makeSurface(width, height, 0, false, 'CreateRGBSurfaceFrom', rmask, gmask, bmask, amask);
+  },
+
   SDL_DisplayFormatAlpha: function(surf) {
     var oldData = SDL.surfaces[surf];
     var ret = SDL.makeSurface(oldData.width, oldData.height, oldData.flags, false, 'copy:' + oldData.source);
@@ -1837,7 +1844,6 @@ var LibrarySDL = {
   Mix_FadeOutChannel: function() { throw 'Mix_FadeOutChannel' },
 
   Mix_Linked_Version: function() { throw 'Mix_Linked_Version: TODO' },
-  SDL_CreateRGBSurfaceFrom: function() { throw 'SDL_CreateRGBSurfaceFrom: TODO' },
   SDL_SaveBMP_RW: function() { throw 'SDL_SaveBMP_RW: TODO' },
 
   SDL_HasRDTSC: function() { return 0; },
