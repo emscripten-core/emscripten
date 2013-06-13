@@ -136,3 +136,20 @@ while(1) {
   // block F
 }
 
+
+
+-- conditional loop --
+
+
+
+// block A
+if (shouldLoop()) {
+  while(1) {
+    // block B
+    if (!(moarLoop())) {
+      break;
+    }
+  }
+}
+// block C
+

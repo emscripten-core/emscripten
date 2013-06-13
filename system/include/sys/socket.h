@@ -44,7 +44,7 @@ typedef unsigned int sa_family_t;
 
 struct sockaddr {
   sa_family_t sa_family; 
-  char        sa_data[];
+  char        sa_data[16];
 };
 
 struct sockaddr_storage {

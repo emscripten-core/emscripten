@@ -20,7 +20,7 @@ var BRANCH_INVOKE = set('branch', 'invoke');
 var LABEL_ENDERS = set('branch', 'return', 'switch');
 var SIDE_EFFECT_CAUSERS = set('call', 'invoke', 'atomic');
 var UNUNFOLDABLE = set('value', 'structvalue', 'type', 'phiparam');
-var I64_DOUBLE_FLIP = { i64: 'double', double: 'i64' };
+var SHADOW_FLIP = { i64: 'double', double: 'i64' }; //, i32: 'float', float: 'i32' };
 
 // Analyzer
 
@@ -124,13 +124,13 @@ function analyzer(data, sidePass) {
           var lines = label.lines;
           for (var i = 0; i < lines.length; i++) {
             var line = lines[i];
-            if (line.intertype == 'bitcast' && line.type in I64_DOUBLE_FLIP) {
+            if (line.intertype == 'bitcast' && line.type in SHADOW_FLIP) {
               has = true;
             }
           }
         });
         if (!has) return;
-        // there are i64<-->double bitcasts, create shadows for everything
+        // there are integer<->floating-point bitcasts, create shadows for everything
         var shadowed = {};
         func.labels.forEach(function(label) {
           var lines = label.lines;
@@ -138,11 +138,11 @@ function analyzer(data, sidePass) {
           while (i < lines.length) {
           var lines = label.lines;
             var line = lines[i];
-            if (line.intertype == 'load' && line.type in I64_DOUBLE_FLIP) {
+            if (line.intertype == 'load' && line.type in SHADOW_FLIP) {
               if (line.pointer.intertype != 'value') { i++; continue } // TODO
               shadowed[line.assignTo] = 1;
               var shadow = line.assignTo + '$$SHADOW';
-              var flip = I64_DOUBLE_FLIP[line.type];
+              var flip = SHADOW_FLIP[line.type];
               lines.splice(i + 1, 0, { // if necessary this element will be legalized in the next phase
                 tokens: null,
                 indent: 2,
@@ -171,7 +171,7 @@ function analyzer(data, sidePass) {
           var lines = label.lines;
           for (var i = 0; i < lines.length; i++) {
             var line = lines[i];
-            if (line.intertype == 'bitcast' && line.type in I64_DOUBLE_FLIP && line.ident in shadowed) {
+            if (line.intertype == 'bitcast' && line.type in SHADOW_FLIP && line.ident in shadowed) {
               var shadow = line.ident + '$$SHADOW';
               line.params[0].ident = shadow;
               line.params[0].type = line.type;

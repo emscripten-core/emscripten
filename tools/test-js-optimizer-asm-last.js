@@ -32,4 +32,25 @@ function finall(x) {
   a = -0xde0b6b000000000;
   return +12e10;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["finall"]
+function looop() {
+  while (1) {
+    do_it();
+    if (condition()) {
+      break;
+    }
+  }
+  while (1) {
+    do_it();
+    if (a > b) {
+      break;
+    }
+  }
+  while (1) {
+    do_it();
+    if (!x()) {
+      break;
+    }
+  }
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["finall", "looop"]
+

@@ -70,7 +70,7 @@ int Indenter::CurrIndent = 0;
 
 // Branch
 
-Branch::Branch(const char *ConditionInit, const char *CodeInit) : Ancestor(NULL), Labeled(false) {
+Branch::Branch(const char *ConditionInit, const char *CodeInit) : Ancestor(NULL), Labeled(true) {
   Condition = ConditionInit ? strdup(ConditionInit) : NULL;
   Code = CodeInit ? strdup(CodeInit) : NULL;
 }
@@ -522,13 +522,59 @@ void Relooper::Calculate(Block *Entry) {
         }
       }
 
+#if 0
+      // We can avoid multiple next entries by hoisting them into the loop.
+      if (NextEntries.size() > 1) {
+        BlockBlockSetMap IndependentGroups;
+        FindIndependentGroups(NextEntries, IndependentGroups, &InnerBlocks);
+
+        while (IndependentGroups.size() > 0 && NextEntries.size() > 1) {
+          Block *Min = NULL;
+          int MinSize = 0;
+          for (BlockBlockSetMap::iterator iter = IndependentGroups.begin(); iter != IndependentGroups.end(); iter++) {
+            Block *Entry = iter->first;
+            BlockSet &Blocks = iter->second;
+            if (!Min || Blocks.size() < MinSize) { // TODO: code size, not # of blocks
+              Min = Entry;
+              MinSize = Blocks.size();
+            }
+          }
+          // check how many new entries this would cause
+          BlockSet &Hoisted = IndependentGroups[Min];
+          bool abort = false;
+          for (BlockSet::iterator iter = Hoisted.begin(); iter != Hoisted.end() && !abort; iter++) {
+            Block *Curr = *iter;
+            for (BlockBranchMap::iterator iter = Curr->BranchesOut.begin(); iter != Curr->BranchesOut.end(); iter++) {
+              Block *Target = iter->first;
+              if (Hoisted.find(Target) == Hoisted.end() && NextEntries.find(Target) == NextEntries.end()) {
+                // abort this hoisting
+                abort = true;
+                break;
+              }
+            }
+          }
+          if (abort) {
+            IndependentGroups.erase(Min);
+            continue;
+          }
+          // hoist this entry
+          PrintDebug("hoisting %d into loop\n", Min->Id);
+          NextEntries.erase(Min);
+          for (BlockSet::iterator iter = Hoisted.begin(); iter != Hoisted.end(); iter++) {
+            Block *Curr = *iter;
+            InnerBlocks.insert(Curr);
+            Blocks.erase(Curr);
+          }
+          IndependentGroups.erase(Min);
+        }
+      }
+#endif
+
       PrintDebug("creating loop block:\n");
       DebugDump(InnerBlocks, "  inner blocks:");
       DebugDump(Entries, "  inner entries:");
       DebugDump(Blocks, "  outer blocks:");
       DebugDump(NextEntries, "  outer entries:");
-
-      // TODO: Optionally hoist additional blocks into the loop
 
       LoopShape *Loop = new LoopShape();
       Notice(Loop);
@@ -551,7 +597,8 @@ void Relooper::Calculate(Block *Entry) {
     // For each entry, find the independent group reachable by it. The independent group is
     // the entry itself, plus all the blocks it can reach that cannot be directly reached by another entry. Note that we
     // ignore directly reaching the entry itself by another entry.
-    void FindIndependentGroups(BlockSet &Blocks, BlockSet &Entries, BlockBlockSetMap& IndependentGroups) {
+    //   @param Ignore - previous blocks that are irrelevant
+    void FindIndependentGroups(BlockSet &Entries, BlockBlockSetMap& IndependentGroups, BlockSet *Ignore=NULL) {
       typedef std::map<Block*, Block*> BlockBlockMap;
 
       struct HelperClass {
@@ -639,6 +686,7 @@ void Relooper::Calculate(Block *Entry) {
           Block *Child = *iter;
           for (BlockSet::iterator iter = Child->BranchesIn.begin(); iter != Child->BranchesIn.end(); iter++) {
             Block *Parent = *iter;
+            if (Ignore && Ignore->find(Parent) != Ignore->end()) continue;
             if (Helper.Ownership[Parent] != Helper.Ownership[Child]) {
               ToInvalidate.push_back(Child);
             }
@@ -756,7 +804,7 @@ void Relooper::Calculate(Block *Entry) {
         // independent blocks from an entry/ies. It is important to remove through
         // multiples as opposed to looping since the former is more performant.
         BlockBlockSetMap IndependentGroups;
-        FindIndependentGroups(Blocks, *Entries, IndependentGroups);
+        FindIndependentGroups(*Entries, IndependentGroups);
 
         PrintDebug("Independent groups: %d\n", IndependentGroups.size());
 
@@ -903,10 +951,28 @@ void Relooper::Calculate(Block *Entry) {
       });
     }
 
+    void FindNaturals(Shape *Root, Shape *Otherwise=NULL) {
+      if (Root->Next) {
+        Root->Natural = Root->Next;
+        FindNaturals(Root->Next, Otherwise);
+      } else {
+        Root->Natural = Otherwise;
+      }
+
+      SHAPE_SWITCH(Root, {
+      }, {
+        for (BlockShapeMap::iterator iter = Multiple->InnerMap.begin(); iter != Multiple->InnerMap.end(); iter++) {
+          FindNaturals(iter->second, Root->Natural);
+        }
+      }, {
+        FindNaturals(Loop->Inner, Loop->Inner);
+      });
+    }
+
     // Remove unneeded breaks and continues.
     // A flow operation is trivially unneeded if the shape we naturally get to by normal code
     // execution is the same as the flow forces us to.
-    void RemoveUnneededFlows(Shape *Root, Shape *Natural=NULL) {
+    void RemoveUnneededFlows(Shape *Root, Shape *Natural=NULL, LoopShape *LastLoop=NULL) {
       BlockSet NaturalBlocks;
       FollowNaturalFlow(Natural, NaturalBlocks);
       Shape *Next = Root;
@@ -928,16 +994,22 @@ void Relooper::Calculate(Block *Entry) {
                 if (MultipleShape *Multiple = Shape::IsMultiple(Details->Ancestor)) {
                   Multiple->NeedLoop--;
                 }
+              } else if (Details->Type == Branch::Break && LastLoop && LastLoop->Natural == Details->Ancestor->Natural) {
+                // it is important to simplify breaks, as simpler breaks enable other optimizations
+                Details->Labeled = false;
+                if (MultipleShape *Multiple = Shape::IsMultiple(Details->Ancestor)) {
+                  Multiple->NeedLoop--;
+                }
               }
             }
           }
         }, {
           for (BlockShapeMap::iterator iter = Multiple->InnerMap.begin(); iter != Multiple->InnerMap.end(); iter++) {
-            RemoveUnneededFlows(iter->second, Multiple->Next);
+            RemoveUnneededFlows(iter->second, Multiple->Next, Multiple->NeedLoop ? NULL : LastLoop);
           }
           Next = Multiple->Next;
         }, {
-          RemoveUnneededFlows(Loop->Inner, Loop->Inner);
+          RemoveUnneededFlows(Loop->Inner, Loop->Inner, Loop);
           Next = Loop->Next;
         });
       }
@@ -968,7 +1040,7 @@ void Relooper::Calculate(Block *Entry) {
             Branch *Details = iter->second;
             if (Details->Type != Branch::Direct) {
               assert(LoopStack.size() > 0);
-              if (Details->Ancestor != LoopStack.top()) {
+              if (Details->Ancestor != LoopStack.top() && Details->Labeled) {
                 LabeledShape *Labeled = Shape::IsLabeled(Details->Ancestor);
                 Labeled->Labeled = true;
                 Details->Labeled = true;
@@ -1006,6 +1078,7 @@ void Relooper::Calculate(Block *Entry) {
     }
 
     void Process(Shape *Root) {
+      FindNaturals(Root);
       RemoveUnneededFlows(Root);
       FindLabeledLoops(Root);
     }
@@ -1053,6 +1126,10 @@ void Debugging::Dump(BlockSet &Blocks, const char *prefix) {
 
 void Debugging::Dump(Shape *S, const char *prefix) {
   if (prefix) printf("%s ", prefix);
+  if (!S) {
+    printf(" (null)\n");
+    return;
+  }
   printf(" %d ", S->Id);
   SHAPE_SWITCH(S, {
     printf("<< Simple with block %d\n", Simple->Inner->Id);

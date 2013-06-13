@@ -8,6 +8,7 @@ function a() {
   HEAP[1024] = 5;
   whee(12, 13);
   whee(12, 13);
+  f((g = t(), g + g | 0) | 0);
 }
 function b($this, $__n) {
   $this = $this | 0;
@@ -106,5 +107,58 @@ function sign_extension_simplification() {
   if ((HEAP32[$5 & 16777215] & 32768) << 16 >> 16 == 0) {
     print(5);
   }
+}
+function tempDoublePtr($45, $14, $28, $42) {
+  $45 = $45 | 0;
+  $14 = $14 | 0;
+  $28 = $28 | 0;
+  $42 = $42 | 0;
+  var unelim = +0, bad = 0, unelim2 = +0;
+  unelim = +(127.5 * +$14);
+  HEAPF32[$45 >> 2] = ($14 < $28 ? $14 : $28) - $42;
+  HEAP32[$world + 102916 >> 2] = _malloc(192) | 0;
+  f(+HEAPF32[$45 >> 2]);
+  g(HEAP32[$14 >> 2] | 0);
+  $42 = +HEAPF32[$42 >> 2];
+  ch($42);
+  HEAPF32[$45 >> 2] = unelim;
+  moar();
+  bad = (HEAPF32[tempDoublePtr >> 2] = 127.5 * +$14, HEAP32[tempDoublePtr >> 2] | 0);
+  func();
+  HEAP32[4] = bad;
+  HEAP32[5] = bad + 1;
+  moar();
+  unelim2 = 127 + $14 | 0;
+  func();
+  HEAP32[4] = unelim2;
+}
+function boxx($this, $aabb, $xf, $childIndex) {
+  $this = $this | 0;
+  $aabb = $aabb | 0;
+  $xf = $xf | 0;
+  $childIndex = $childIndex | 0;
+  var $2 = +0, $4 = +0, $7 = +0, $9 = +0, $13 = +0, $14 = +0, $19 = +0, $20 = +0, $22 = +0, $25 = +0, $28 = +0, $32 = +0, $42 = +0, $45 = 0, $_sroa_06_0_insert_insert$1 = +0, $51 = 0, $_sroa_0_0_insert_insert$1 = +0;
+  $2 = +HEAPF32[$xf + 12 >> 2];
+  $4 = +HEAPF32[$this + 12 >> 2];
+  $7 = +HEAPF32[$xf + 8 >> 2];
+  $9 = +HEAPF32[$this + 16 >> 2];
+  $13 = +HEAPF32[$xf >> 2];
+  $14 = $13 + ($2 * $4 - $7 * $9);
+  $19 = +HEAPF32[$xf + 4 >> 2];
+  $20 = $4 * $7 + $2 * $9 + $19;
+  $22 = +HEAPF32[$this + 20 >> 2];
+  $25 = +HEAPF32[$this + 24 >> 2];
+  $28 = $13 + ($2 * $22 - $7 * $25);
+  $32 = $19 + ($7 * $22 + $2 * $25);
+  $42 = +HEAPF32[$this + 8 >> 2];
+  $45 = $aabb;
+  $_sroa_06_0_insert_insert$1 = +(($20 < $32 ? $20 : $32) - $42);
+  HEAPF32[$45 >> 2] = ($14 < $28 ? $14 : $28) - $42;
+  HEAPF32[$45 + 4 >> 2] = $_sroa_06_0_insert_insert$1;
+  $51 = $aabb + 8 | 0;
+  $_sroa_0_0_insert_insert$1 = +($42 + ($20 > $32 ? $20 : $32));
+  HEAPF32[$51 >> 2] = $42 + ($14 > $28 ? $14 : $28);
+  HEAPF32[$51 + 4 >> 2] = $_sroa_0_0_insert_insert$1;
+  return;
 }
 

@@ -9,7 +9,7 @@ do {
   }
 } while(0);
 LBB3
-L5: do {
+do {
   if (LBB3 -> LBB4) {
     LBB4
     if (!(LBB4 -> LBB5)) {
@@ -18,7 +18,7 @@ L5: do {
     while(1) {
       LBB5
       if (LBB5 -> LBB6) {
-        break L5;
+        break;
       }
     }
   }

@@ -126,15 +126,6 @@ class RunnerCore(unittest.TestCase):
   def in_dir(self, *pathelems):
     return os.path.join(self.get_dir(), *pathelems)
 
-  def get_shared_library_name(self, linux_name):
-    if platform.system() == 'Linux':
-      return linux_name
-    elif platform.system() == 'Darwin':
-      return linux_name.replace('.so', '') + '.dylib'
-    else:
-      print >> sys.stderr, 'get_shared_library_name needs to be implemented on %s' % platform.system()
-      return linux_name
-
   def get_stdout_path(self):
     return os.path.join(self.get_dir(), 'stdout')
 
@@ -1956,6 +1947,39 @@ Succeeded!
 -0.500000=-0.500000*2^0
 1.000000=1.000000*2^0
 -1.000000=-1.000000*2^0''')
+
+    def test_rounding(self):
+        src = '''
+          #include <stdio.h>
+          #include <math.h>
+
+          int main()
+          {
+            printf("%.1f ", round(1.4));
+            printf("%.1f ", round(1.6));
+            printf("%.1f ", round(-1.4));
+            printf("%.1f ", round(-1.6));
+
+            printf("%.1f ", round(1.5));
+            printf("%.1f ", round(2.5));
+            printf("%.1f ", round(-1.5));
+            printf("%.1f ", round(-2.5));
+
+            printf("%ld ", lrint(1.4));
+            printf("%ld ", lrint(1.6));
+            printf("%ld ", lrint(-1.4));
+            printf("%ld ", lrint(-1.6));
+
+            printf("%ld ", lrint(1.5));
+            printf("%ld ", lrint(2.5));
+            printf("%ld ", lrint(-1.5));
+            printf("%ld ", lrint(-2.5));
+
+            return 0;
+          }
+          '''
+        self.do_run(src, "1.0 2.0 -1.0 -2.0 2.0 3.0 -2.0 -3.0 "
+                         "1 2 -1 -2 2 2 -2 -2")
 
     def test_getgep(self):
         # Generated code includes getelementptr (getelementptr, 0, 1), i.e., GEP as the first param to GEP
@@ -6520,7 +6544,7 @@ Pass: 0.000012 0.000012''')
         int main(){
           unsigned int a;
           float e, f, g;
-          sscanf("a 1.1 1.1 1.1", "%x %E %F %G", &a, &e, &f, &g);
+          sscanf("a 1.1 1.1 1.1", "%X %E %F %G", &a, &e, &f, &g);
           printf("%d %.1F %.1F %.1F\n", a, e, f, g);
         }
       '''
@@ -8394,7 +8418,7 @@ def process(filename):
                              [os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/index.c.o'.split('/')),
                               os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/convert.c.o'.split('/')),
                               os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/__/common/color.c.o'.split('/')),
-                              os.path.join('bin', self.get_shared_library_name('libopenjpeg.so.1.4.0'))],
+                              os.path.join('bin', 'libopenjpeg.so.1.4.0')],
                              configure=['cmake', '.'],
                              #configure_args=['--enable-tiff=no', '--enable-jp3d=no', '--enable-png=no'],
                              make_args=[]) # no -j 2, since parallel builds can fail
@@ -12093,23 +12117,26 @@ elif 'browser' in str(sys.argv):
           setTimeout(doOne, 1000/60);
         }
 
-        function simulateKeyEvent(c) {
+        function keydown(c) {
           var event = document.createEvent("KeyboardEvent");
           event.initKeyEvent("keydown", true, true, window,
                              0, 0, 0, 0,
                              c, c);
           document.dispatchEvent(event);
-          var event2 = document.createEvent("KeyboardEvent");
-          event2.initKeyEvent("keyup", true, true, window,
+        }
+
+        function keyup(c) {
+          var event = document.createEvent("KeyboardEvent");
+          event.initKeyEvent("keyup", true, true, window,
                              0, 0, 0, 0,
                              c, c);
-          document.dispatchEvent(event2);
+          document.dispatchEvent(event);
         }
       ''')
       open(os.path.join(self.get_dir(), 'sdl_key.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_key.c')).read()))
 
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_key.c'), '-o', 'page.html', '--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']''']).communicate()
-      self.run_browser('page.html', '', '/report_result?510510')
+      self.run_browser('page.html', '', '/report_result?223092870')
 
     def test_sdl_text(self):
       open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
@@ -13118,6 +13145,9 @@ elif 'benchmark' in str(sys.argv):
 
   class benchmark(RunnerCore):
     def print_stats(self, times, native_times, last=False, reps=TEST_REPS):
+      if reps == 0:
+        print '(no reps)'
+        return
       mean = sum(times)/len(times)
       squared_times = map(lambda x: x*x, times)
       mean_of_squared = sum(squared_times)/len(times)
@@ -13506,6 +13536,7 @@ elif 'benchmark' in str(sys.argv):
       self.lua('scimark', '[small problem sizes]', output_parser=output_parser)
 
     def test_zzz_lua_binarytrees(self):
+      # js version: ['binarytrees.lua', {0: 0, 1: 9.5, 2: 11.99, 3: 12.85, 4: 14.72, 5: 15.82}[arguments[0]]]
       def args_processor(args):
         arg = int(DEFAULT_ARG)
         if arg == 0:
@@ -13958,7 +13989,7 @@ fi
           assert os.path.exists(RELOOPER) == (i >= 2), 'have relooper on O2: ' + output
           src = open('a.out.js').read()
           main = src.split('function _main()')[1].split('\n}\n')[0]
-          assert ('while (1) {' in main or 'while(1){' in main) == (i >= 2), 'reloop code on O2: ' + main
+          assert ('while (1) {' in main or 'while(1){' in main or '} while ($' in main or '}while($' in main) == (i >= 2), 'reloop code on O2: ' + main
           assert ('switch' not in main) == (i >= 2), 'reloop code on O2: ' + main
 
     def test_jcache(self):
