@@ -10496,6 +10496,24 @@ f.close()
 
       self.assertContained('result: 1', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+    def test_export_all(self):
+      lib = r'''
+        #include <stdio.h>
+        void libf1() { printf("libf1\n"); }
+        void libf2() { printf("libf2\n"); }
+      '''
+      lib_name = os.path.join(self.get_dir(), 'lib.c')
+      open(lib_name, 'w').write(lib)
+
+      open('main.js', 'w').write('''
+        _libf1();
+        _libf2();
+      ''')
+
+      Building.emcc(lib_name, ['-s', 'EXPORT_ALL=1', '--post-js', 'main.js'], output_filename='a.out.js')
+
+      self.assertContained('libf1\nlibf2\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
     def test_abspaths(self):
       # Includes with absolute paths are generally dangerous, things like -I/usr/.. will get to system local headers, not our portable ones.
 

@@ -328,7 +328,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       var js = (index !== null ? '' : item.ident + '=') + constant;
       if (js) js += ';';
 
-      if (!ASM_JS && (EXPORT_ALL || (item.ident in EXPORTED_GLOBALS))) {
+      if (!ASM_JS && NAMED_GLOBALS && (EXPORT_ALL || (item.ident in EXPORTED_GLOBALS))) {
         js += '\nModule["' + item.ident + '"] = ' + item.ident + ';';
       }
       if (BUILD_AS_SHARED_LIB == 2 && !item.private_) {
