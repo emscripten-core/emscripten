@@ -4657,6 +4657,14 @@ LibraryManager.library = {
     return 0;
   },
 
+  strnlen: function(ptr, num) {
+    for (var i = 0; i < num; i++) {
+      if ({{{ makeGetValue('ptr', 0, 'i8') }}} == 0) return i;
+      ptr++;
+    }
+    return num;
+  },
+
   strstr: function(ptr1, ptr2) {
     var check = 0, start;
     do {
