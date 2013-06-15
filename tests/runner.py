@@ -12071,6 +12071,11 @@ elif 'browser' in str(sys.argv):
       shutil.move(os.path.join(self.get_dir(), 'datafile.txt'), 'datafile.txt.renamedsoitcannotbefound');
       self.run_browser('page.html', '', '/report_result?1')
 
+    def test_sdl_blank(self):
+      self.reftest(path_from_root('tests', 'screenshot-blank.png'))
+      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_canvas_blank.c'), '-o', 'something.html', '--pre-js', 'reftest.js']).communicate()
+      self.run_browser('something.html', 'You should see a blank black box.', '/report_result?0')
+
     def test_sdl_image(self):
       # load an image file, get pixel data. Also O2 coverage for --preload-file, and memory-init
       shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.jpg'))

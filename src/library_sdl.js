@@ -760,7 +760,7 @@ var LibrarySDL = {
       var data = surfData.image.data;
       var num = data.length;
       for (var i = 0; i < num/4; i++) {
-        data[i*4+3] = 255; // opacity, as canvases blend alpha
+        data[i*4] = 255; // opacity, as canvases blend alpha
       }
     }
 
@@ -830,10 +830,10 @@ var LibrarySDL = {
       while (dst < num) {
         // TODO: access underlying data buffer and write in 32-bit chunks or more
         var val = HEAP32[src]; // This is optimized. Instead, we could do {{{ makeGetValue('buffer', 'dst', 'i32') }}};
-        data[dst  ] = val & 0xff;
-        data[dst+1] = (val >> 8) & 0xff;
-        data[dst+2] = (val >> 16) & 0xff;
-        data[dst+3] = isScreen ? 0xff : ((val >> 24) & 0xff);
+        data[dst  ] = (val >> 24) & 0xff;
+        data[dst+1] = (val >> 16) & 0xff;
+        data[dst+2] = (val >> 8) & 0xff;
+        data[dst+3] = isScreen ? 0xff : val & 0xff;
         src++;
         dst += 4;
       }

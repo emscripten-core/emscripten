@@ -2,7 +2,7 @@
 #include <SDL/SDL.h>
 
 
-int main() {
+extern "C" int main(int, char**) {
   printf("hello, world!\n");
 
   SDL_Init(SDL_INIT_VIDEO);
@@ -11,10 +11,10 @@ int main() {
   if (SDL_MUSTLOCK(screen)) SDL_LockSurface(screen);
   for (int i = 0; i < 256; i++) {
     for (int j = 0; j < 256; j++) {
-      *((char*)screen->pixels + i*256*4 + j*4 + 0) = i;
-      *((char*)screen->pixels + i*256*4 + j*4 + 1) = j;
-      *((char*)screen->pixels + i*256*4 + j*4 + 2) = 255-i;
-      *((char*)screen->pixels + i*256*4 + j*4 + 3) = (i+j)%255; // actually ignored, since this is to the screen
+      *((char*)screen->pixels + i*256*4 + j*4 + 3) = i;
+      *((char*)screen->pixels + i*256*4 + j*4 + 2) = j;
+      *((char*)screen->pixels + i*256*4 + j*4 + 1) = 255-i;
+      *((char*)screen->pixels + i*256*4 + j*4 + 0) = (i+j)%255; // actually ignored, since this is to the screen
     }
   }
   if (SDL_MUSTLOCK(screen)) SDL_UnlockSurface(screen);
