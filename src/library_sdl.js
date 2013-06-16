@@ -1840,6 +1840,7 @@ var LibrarySDL = {
   SDL_CreateRGBSurfaceFrom: function() { throw 'SDL_CreateRGBSurfaceFrom: TODO' },
   SDL_SaveBMP_RW: function() { throw 'SDL_SaveBMP_RW: TODO' },
 
+  SDL_WM_SetIcon: function() { /* This function would set the application window icon surface, which doesn't apply for web canvases, so a no-op. */ },
   SDL_HasRDTSC: function() { return 0; },
   SDL_HasMMX: function() { return 0; },
   SDL_HasMMXExt: function() { return 0; },
