@@ -1568,6 +1568,9 @@ var LibrarySDL = {
             }
             // Allocate new sound buffer to be played.
             var source = SDL.audioContext['createBufferSource']();
+            if (SDL.audio.soundSource[SDL.audio.nextSoundSource]) {
+              SDL.audio.soundSource[SDL.audio.nextSoundSource]['disconnect']();
+            }
             SDL.audio.soundSource[SDL.audio.nextSoundSource] = source;
             source.buffer = SDL.audioContext['createBuffer'](SDL.audio.channels,sizeSamplesPerChannel,SDL.audio.freq);
             SDL.audio.soundSource[SDL.audio.nextSoundSource]['connect'](SDL.audioContext['destination']);
