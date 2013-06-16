@@ -5008,6 +5008,7 @@ LibraryManager.library = {
 
   llvm_va_copy: function(ppdest, ppsrc) {
     {{{ makeCopyValues('ppdest', 'ppsrc', Runtime.QUANTUM_SIZE, 'null', null, 1) }}};
+    {{{ makeCopyValues('(ppdest+4)', '(ppsrc+4)', Runtime.QUANTUM_SIZE, 'null', null, 1) }}};
     /* Alternate implementation that copies the actual DATA; it assumes the va_list is prefixed by its size
     var psrc = IHEAP[ppsrc]-1;
     var num = IHEAP[psrc]; // right before the data, is the number of (flattened) values
