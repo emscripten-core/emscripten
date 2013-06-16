@@ -1513,6 +1513,7 @@ var LibrarySDL = {
       if (typeof(SDL.audio.audioOutput['mozSetup'])==='function') { // Primarily use Mozilla Audio Data API if available.
         SDL.audio.audioOutput['mozSetup'](SDL.audio.channels, SDL.audio.freq); // use string attributes on mozOutput for closure compiler
         SDL.audio.mozBuffer = new Float32Array(totalSamples);
+        SDL.audio.nextPlayTime = 0;
         SDL.audio.pushAudio = function(ptr, size) {
           var mozBuffer = SDL.audio.mozBuffer;
           // The input audio data for SDL audio is either 8-bit or 16-bit interleaved across channels, output for Mozilla Audio Data API
@@ -1527,7 +1528,19 @@ var LibrarySDL = {
               mozBuffer[i] = ((v >= 0) ? v-128 : v+128) /128;
             }
           }
+          // Submit the audio data to audio device.
           SDL.audio.audioOutput['mozWriteAudio'](mozBuffer);
+          
+          // Compute when the next audio callback should be called.
+          var curtime = Date.now() / 1000.0 - SDL.audio.startTime;
+          if (curtime > SDL.audio.nextPlayTime && SDL.audio.nextPlayTime != 0) {
+            console.log('warning: Audio callback had starved sending audio by ' + (curtime - SDL.audio.nextPlayTime) + ' seconds.');
+          }
+          var playtime = Math.max(curtime, SDL.audio.nextPlayTime);
+          var buffer_duration = SDL.audio.samples / SDL.audio.freq;
+          SDL.audio.nextPlayTime = playtime + buffer_duration;
+          // Schedule the next audio callback call.
+          SDL.audio.timer = Browser.safeSetTimeout(SDL.audio.caller, 1000.0 * (playtime-curtime));
         }
       } else {
         // Initialize Web Audio API if we haven't done so yet. Note: Only initialize Web Audio context ever once on the web page,
@@ -1588,14 +1601,10 @@ var LibrarySDL = {
             }
             var playtime = Math.max(curtime, SDL.audio.nextPlayTime);
             SDL.audio.soundSource[SDL.audio.nextSoundSource]['start'](playtime);
-            var buffer_duration = SDL.audio.soundSource[SDL.audio.nextSoundSource]['buffer']['duration'];
+            var buffer_duration = sizeSamplesPerChannel / SDL.audio.freq;
             SDL.audio.nextPlayTime = playtime + buffer_duration;
             SDL.audio.nextSoundSource = (SDL.audio.nextSoundSource + 1) % 4;
-            // Make sure we are always more than one sample block ahead of the current time to avoid starving.
-            if (curtime + buffer_duration + buffer_duration >= SDL.audio.nextPlayTime) {
-              // Immediately queue up an extra buffer to force the sound feeding to be ahead by more than one sample block:
-              Browser.safeSetTimeout(SDL.audio.caller, 1);
-            }
+            SDL.audio.timer = Browser.safeSetTimeout(SDL.audio.caller, 1000*(playtime-curtime));
           } catch(e) {
             console.log('Web Audio API error playing back audio: ' + e.toString());
           }
@@ -1638,10 +1647,15 @@ var LibrarySDL = {
     if (!SDL.audio) {
       return;
     }
-    if (SDL.audio.paused !== pauseOn) {
-      SDL.audio.timer = pauseOn ? SDL.audio.timer && clearInterval(SDL.audio.timer) : Browser.safeSetInterval(SDL.audio.caller, 1000 * SDL.audio.samples / SDL.audio.freq);
-      // Immediately queue up a buffer to make the sound feeding to be ahead by one sample block.
-      Browser.safeSetTimeout(SDL.audio.caller, 1);
+    if (pauseOn) {
+      if (SDL.audio.timer !== undefined) {
+        clearTimeout(SDL.audio.timer);
+        SDL.audio.timer = undefined;
+      }
+    } else {// if (SDL.audio.timer === undefined) {
+      // Start the audio playback timer callback loop.
+      SDL.audio.timer = Browser.safeSetTimeout(SDL.audio.caller, 1);
+      SDL.audio.startTime = Date.now() / 1000.0;
     }
     SDL.audio.paused = pauseOn;
   },
