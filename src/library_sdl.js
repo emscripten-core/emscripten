@@ -1810,7 +1810,7 @@ var LibrarySDL = {
 
   SDL_AddTimer: function(interval, callback, param) {
     return window.setTimeout(function() {
-      Runtime.dynCall('ii', callback, [interval, param]);
+      Runtime.dynCall('iii', callback, [interval, param]);
     }, interval);
   },
   SDL_RemoveTimer: function(id) {
