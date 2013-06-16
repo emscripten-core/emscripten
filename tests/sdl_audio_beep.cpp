@@ -203,9 +203,9 @@ void update() {
     delete beep;
     beep = 0;
 #ifdef EMSCRIPTEN
-    emscripten_async_call(nextTest, 0, 500);
+    emscripten_async_call(nextTest, 0, 1500);
 #else
-    SDL_Delay(500);
+    SDL_Delay(1500);
     nextTest();
 #endif
   }
