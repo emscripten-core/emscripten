@@ -1603,7 +1603,7 @@ var LibrarySDL = {
         {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.freq', 'SDL.audio.freq', 'i32') }}};
         {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.format', 'SDL.audio.format', 'i16') }}};
         {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.channels', 'SDL.audio.channels', 'i8') }}};
-        {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.silence', makeGetValue('desired', 'SDL.structs.AudioSpec.silence', 'i8', 0, 1), 'i8') }}}; // unclear if browsers can provide this
+        {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.silence', 'SDL.audio.silence', 'i8') }}};
         {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.samples', 'SDL.audio.samples', 'i16') }}};
         {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.callback', 'SDL.audio.callback', '*') }}};
         {{{ makeSetValue('obtained', 'SDL.structs.AudioSpec.userdata', 'SDL.audio.userdata', '*') }}};
