@@ -1585,13 +1585,17 @@ var LibrarySDL = {
             var curtime = SDL.audioContext['currentTime'];
             if (curtime > SDL.audio.nextPlayTime && SDL.audio.nextPlayTime != 0) {
               console.log('warning: Audio callback had starved sending audio by ' + (curtime - SDL.audio.nextPlayTime) + ' seconds.');
-              // Immediately queue up an extra buffer to force the sound feeding to be ahead by one sample block:
-              Browser.safeSetTimeout(SDL.audio.caller, 1);
             }
             var playtime = Math.max(curtime, SDL.audio.nextPlayTime);
             SDL.audio.soundSource[SDL.audio.nextSoundSource]['start'](playtime);
-            SDL.audio.nextPlayTime = playtime + SDL.audio.soundSource[SDL.audio.nextSoundSource]['buffer']['duration'];
+            var buffer_duration = SDL.audio.soundSource[SDL.audio.nextSoundSource]['buffer']['duration'];
+            SDL.audio.nextPlayTime = playtime + buffer_duration;
             SDL.audio.nextSoundSource = (SDL.audio.nextSoundSource + 1) % 4;
+            // Make sure we are always more than one sample block ahead of the current time to avoid starving.
+            if (curtime + buffer_duration + buffer_duration >= SDL.audio.nextPlayTime) {
+              // Immediately queue up an extra buffer to force the sound feeding to be ahead by more than one sample block:
+              Browser.safeSetTimeout(SDL.audio.caller, 1);
+            }
           } catch(e) {
             console.log('Web Audio API error playing back audio: ' + e.toString());
           }
