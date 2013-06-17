@@ -1569,10 +1569,10 @@ var LibrarySDL = {
             // Allocate new sound buffer to be played.
             var source = SDL.audioContext['createBufferSource']();
             if (SDL.audio.soundSource[SDL.audio.nextSoundSource]) {
-              SDL.audio.soundSource[SDL.audio.nextSoundSource]['disconnect']();
+              SDL.audio.soundSource[SDL.audio.nextSoundSource]['disconnect'](); // Explicitly disconnect old source, since we know it shouldn't be running anymore.
             }
             SDL.audio.soundSource[SDL.audio.nextSoundSource] = source;
-            source.buffer = SDL.audioContext['createBuffer'](SDL.audio.channels,sizeSamplesPerChannel,SDL.audio.freq);
+            var soundBuffer = SDL.audioContext['createBuffer'](SDL.audio.channels,sizeSamplesPerChannel,SDL.audio.freq);
             SDL.audio.soundSource[SDL.audio.nextSoundSource]['connect'](SDL.audioContext['destination']);
 
             // The input audio data is interleaved across the channels, i.e. [L, R, L, R, L, R, ...] and is either 8-bit or 16-bit as
@@ -1580,7 +1580,7 @@ var LibrarySDL = {
             // so perform a buffer conversion for the data.
             var numChannels = SDL.audio.channels;
             for(var i = 0; i < numChannels; ++i) {
-              var channelData = SDL.audio.soundSource[SDL.audio.nextSoundSource]['buffer']['getChannelData'](i);
+              var channelData = soundBuffer['getChannelData'](i);
               if (channelData.length != sizeSamplesPerChannel) {
                 throw 'Web Audio output buffer length mismatch! Destination size: ' + channelData.length + ' samples vs expected ' + sizeSamplesPerChannel + ' samples!';
               }
@@ -1595,6 +1595,8 @@ var LibrarySDL = {
                 }
               }
             }
+            // Workaround https://bugzilla.mozilla.org/show_bug.cgi?id=883675 by setting the buffer only after filling. The order is important here!
+            source['buffer'] = soundBuffer;
             
             // Schedule the generated sample buffer to be played out at the correct time right after the previously scheduled
             // sample buffer has finished.
