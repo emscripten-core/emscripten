@@ -760,7 +760,7 @@ var LibrarySDL = {
       var data = surfData.image.data;
       var num = data.length;
       for (var i = 0; i < num/4; i++) {
-        data[i*4+3] = 255; // opacity, as canvases blend alpha
+        data[i*4] = 255; // opacity, as canvases blend alpha
       }
     }
 
@@ -819,7 +819,6 @@ var LibrarySDL = {
     if (surfData.isFlagSet(0x00200000 /* SDL_HWPALETTE */)) {
       SDL.copyIndexedColorData(surfData);
     } else if (!surfData.colors) {
-      var num = surfData.image.data.length;
       var data = surfData.image.data;
       var buffer = surfData.buffer;
 #if USE_TYPED_ARRAYS == 2
@@ -827,17 +826,16 @@ var LibrarySDL = {
       var src = buffer >> 2;
       var dst = 0;
       var isScreen = surf == SDL.screen;
-      while (dst < num) {
-        // TODO: access underlying data buffer and write in 32-bit chunks or more
-        var val = HEAP32[src]; // This is optimized. Instead, we could do {{{ makeGetValue('buffer', 'dst', 'i32') }}};
-        data[dst  ] = val & 0xff;
-        data[dst+1] = (val >> 8) & 0xff;
-        data[dst+2] = (val >> 16) & 0xff;
-        data[dst+3] = isScreen ? 0xff : ((val >> 24) & 0xff);
-        src++;
-        dst += 4;
+      var data32 = new Uint32Array(data.buffer);
+      while (dst < data32.length) {
+        var val = HEAP32[src++]; // this is an optimization. Instead, we could do {{{ makeGetValue('buffer', 'dst', 'i32') }}};
+        data32[dst++] = val >>> 24
+                      | (val >> 8 & 0xff00)
+                      | (val << 8 & 0xff0000)
+                      | (isScreen ? 0xff000000 : val & 0xff000000);
       }
 #else
+      var num = surfData.image.data.length;
       for (var i = 0; i < num; i++) {
         // We may need to correct signs here. Potentially you can hardcode a write of 255 to alpha, say, and
         // the compiler may decide to write -1 in the llvm bitcode...
