@@ -4312,47 +4312,46 @@ def process(filename):
           }
           
           void varargs_listoffsets_list_evaluate(int count, va_list ap, int vaIteration)
-		  {			
-			while(count > 0)
-			{
-				const char* string = va_arg(ap, const char*);
-				printf("%s", string);
-				count--;
-			}
-			
-			printf("\\n");
-		  }
-			
+          {
+            while(count > 0)
+            {
+                const char* string = va_arg(ap, const char*);
+                printf("%s", string);
+                count--;
+            }
+            printf("\\n");
+          }
+            
           void varags_listoffsets_list_copy(int count, va_list ap, int iteration)
           {
-          	va_list ap_copy;			
-			va_copy(ap_copy, ap);			
-			varargs_listoffsets_list_evaluate(count, ap_copy, iteration);			
-			va_end(ap_copy);
-		  }
-			
-		  void varargs_listoffsets_args(int type, int count, ...)
-		  {
-		  	va_list ap;
-		  	va_start(ap, count);
-			
-			// evaluate a copied list
-			varags_listoffsets_list_copy(count, ap, 1);
-			varags_listoffsets_list_copy(count, ap, 2);
-			varags_listoffsets_list_copy(count, ap, 3);
-			varags_listoffsets_list_copy(count, ap, 4);
-			
-			varargs_listoffsets_list_evaluate(count, ap, 1);
-			
-			// NOTE: we expect this test to fail, so we will check the stdout for <BAD+0><BAD+1>.....	
-			varargs_listoffsets_list_evaluate(count, ap, 2);	 
-			
-			// NOTE: this test has to work again, as we restart the list
-			va_end(ap);
-		  	va_start(ap, count);
-			varargs_listoffsets_list_evaluate(count, ap, 3);	 
-			va_end(ap);
-		  }
+            va_list ap_copy;
+            va_copy(ap_copy, ap);
+            varargs_listoffsets_list_evaluate(count, ap_copy, iteration);
+            va_end(ap_copy);
+          }
+            
+          void varargs_listoffsets_args(int type, int count, ...)
+          {
+            va_list ap;
+            va_start(ap, count);
+            
+            // evaluate a copied list
+            varags_listoffsets_list_copy(count, ap, 1);
+            varags_listoffsets_list_copy(count, ap, 2);
+            varags_listoffsets_list_copy(count, ap, 3);
+            varags_listoffsets_list_copy(count, ap, 4);
+            
+            varargs_listoffsets_list_evaluate(count, ap, 1);
+            
+            // NOTE: we expect this test to fail, so we will check the stdout for <BAD+0><BAD+1>.....
+            varargs_listoffsets_list_evaluate(count, ap, 2);
+            
+            // NOTE: this test has to work again, as we restart the list
+            va_end(ap);
+            va_start(ap, count);
+            varargs_listoffsets_list_evaluate(count, ap, 3);
+            va_end(ap);
+          }
           
           void varargs_listoffsets_main()
           {
