@@ -172,8 +172,10 @@ void nextTest(void *unused = 0) {
         printf("All tests done. Quit.\n");
 #ifdef EMSCRIPTEN
         emscripten_cancel_main_loop();
+#ifdef REPORT_RESULT
         int result = 1;
         REPORT_RESULT();
+#endif
 #endif
         return;
       }
