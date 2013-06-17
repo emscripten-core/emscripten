@@ -50,7 +50,7 @@ if len(sys.argv) == 1:
 See the source for more details.'''
   sys.exit(0)
 
-emcc_debug = os.environ.get('EMCC_DEBUG')
+DEBUG = os.environ.get('EMCC_DEBUG')
 
 data_target = sys.argv[1]
 
@@ -158,11 +158,11 @@ def has_hidden_attribute(filepath):
     return False
     
   try:
-      attrs = ctypes.windll.kernel32.GetFileAttributesW(unicode(filepath))
-      assert attrs != -1
-      result = bool(attrs & 2)
+    attrs = ctypes.windll.kernel32.GetFileAttributesW(unicode(filepath))
+    assert attrs != -1
+    result = bool(attrs & 2)
   except (AttributeError, AssertionError):
-      result = False
+    result = False
   return result
 
 # The packager should never preload/embed any directories that have a component starting with '.' in them,
@@ -187,7 +187,7 @@ def add(arg, dirname, names):
     fullname = os.path.join(dirname, name)
     if not os.path.isdir(fullname):
       if should_ignore(fullname):
-        if emcc_debug:
+        if DEBUG:
           print >> sys.stderr, 'Skipping hidden file "' + fullname + '" from inclusion in the emscripten virtual file system.'
       else:
         dstpath = os.path.join(rootpathdst, os.path.relpath(fullname, rootpathsrc)) # Convert source filename relative to root directory of target FS.
@@ -203,7 +203,7 @@ for file_ in data_files:
   if file_['dstpath'].endswith('/'): # If user has submitted a directory name as the destination but omitted the destination filename, use the filename from source file
     file_['dstpath'] = file_['dstpath'] + os.path.basename(file_['srcpath'])
   if file_['dstpath'].startswith('./'): file_['dstpath'] = file_['dstpath'][2:] # remove redundant ./ prefix
-  if emcc_debug:
+  if DEBUG:
     print >> sys.stderr, 'Packaging file "' + file_['srcpath'] + '" to VFS in path "' + file_['dstpath'] + '".'
 
 # Remove duplicates (can occur naively, for example preload dir/, preload dir/subdir/)
