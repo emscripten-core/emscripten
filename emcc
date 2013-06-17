@@ -53,8 +53,6 @@ from tools import shared
 from tools.shared import Compression, execute, suffix, unsuffixed, unsuffixed_basename
 from tools.response_file import read_response_file
 
-logging = logging.getLogger('emcc')
-
 # Mapping of emcc opt levels to llvm opt levels. We use llvm opt level 3 in emcc opt
 # levels 2 and 3 (emcc 3 is unsafe opts, so unsuitable for the only level to get
 # llvm opt level 3, and speed-wise emcc level 2 is already the slowest/most optimizing
@@ -819,8 +817,12 @@ try:
       newargs[i] = ''
     elif newargs[i] == '-v':
       shared.COMPILER_OPTS += ['-v']
-      DEBUG = 1
       os.environ['EMCC_DEBUG'] = '1' # send to child processes too
+      if DEBUG != 1:
+        # swap in debug logging
+        DEBUG = 1
+        shared.set_logging()
+        logging.debug('invocation: ' + ' '.join(sys.argv))
       newargs[i] = ''
     elif newargs[i].startswith('--shell-file'):
       check_bad_eq(newargs[i])

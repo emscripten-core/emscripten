@@ -454,9 +454,12 @@ EMSCRIPTEN_TEMP_DIR = configuration.EMSCRIPTEN_TEMP_DIR
 DEBUG_CACHE = configuration.DEBUG_CACHE
 CANONICAL_TEMP_DIR = configuration.CANONICAL_TEMP_DIR
 
-level = logging.DEBUG if os.environ.get('EMCC_DEBUG') else logging.INFO
-logging.basicConfig(level=level, format='%(levelname)-8s %(name)s: %(message)s')
-  
+logging.basicConfig(format='%(levelname)-8s %(name)s: %(message)s')
+def set_logging():
+  logger = logging.getLogger()
+  logger.setLevel(logging.DEBUG if os.environ.get('EMCC_DEBUG') else logging.INFO)
+set_logging()
+
 if not EMSCRIPTEN_TEMP_DIR:
   EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_', dir=configuration.TEMP_DIR)
   def clean_temp():
