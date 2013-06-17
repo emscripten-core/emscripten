@@ -5,9 +5,11 @@
 #include <emscripten.h>
 
 static Mix_Chunk *sound = NULL;
+static Mix_Chunk *noiseLoop = NULL;
 static Mix_Music *music = NULL;
 
 static int soundChannel = 0;
+static int noiseLoopChannel = 0;
 
 void one_iter();
 void one_iter() {
@@ -19,6 +21,12 @@ void one_iter() {
       soundChannel = Mix_PlayChannel(-1, sound, 0);
       printf("channel = %d", soundChannel);
       assert(soundChannel != -1 && soundChannel != 0);
+
+      noiseLoopChannel = Mix_PlayChannel(-1, noiseLoop, -1);
+      printf("noiseLoopChannel = %d", noiseLoopChannel);
+      assert(noiseLoopChannel != -1 && noiseLoopChannel != 0);
+      // set noiseLoopChannel to half volume
+      Mix_Volume(noiseLoopChannel,MIX_MAX_VOLUME/10);
       break;
     case 2:
       printf("channel %d is playing = %d", soundChannel, Mix_Playing(soundChannel));
@@ -70,9 +78,11 @@ int main(int argc, char **argv) {
 
   sound = Mix_LoadWAV("sound.ogg");
   assert(sound);
+  noiseLoop = Mix_LoadWAV("noise.ogg");
+  assert(noiseLoop);
+
   music = Mix_LoadMUS("music.ogg");
   assert(music);
-
   emscripten_set_main_loop(one_iter, 30, 0);
 
   // force a quit
