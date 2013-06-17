@@ -4999,23 +4999,19 @@ LibraryManager.library = {
     return makeSetValue(ptr, 0, 'varrp', 'void*');
 #endif
 #if TARGET_LE32
-    // 4-word structure: start, current offset
-    return makeSetValue(ptr, 0, 'varrp', 'void*') + ';' + makeSetValue(ptr, 4, 0, 'void*');
+    // 2-word structure: struct { void* start; void* currentOffset; }
+    return makeSetValue(ptr, 0, 'varrp', 'void*') + ';' + makeSetValue(ptr, Runtime.QUANTUM_SIZE, 0, 'void*');
 #endif
   },
 
   llvm_va_end: function() {},
 
   llvm_va_copy: function(ppdest, ppsrc) {
+  	// copy the list start
     {{{ makeCopyValues('ppdest', 'ppsrc', Runtime.QUANTUM_SIZE, 'null', null, 1) }}};
-    {{{ makeCopyValues('(ppdest+4)', '(ppsrc+4)', Runtime.QUANTUM_SIZE, 'null', null, 1) }}};
-    /* Alternate implementation that copies the actual DATA; it assumes the va_list is prefixed by its size
-    var psrc = IHEAP[ppsrc]-1;
-    var num = IHEAP[psrc]; // right before the data, is the number of (flattened) values
-    var pdest = _malloc(num+1);
-    _memcpy(pdest, psrc, num+1);
-    IHEAP[ppdest] = pdest+1;
-    */
+    
+    // copy the list's current offset (will be advanced with each call to va_arg)
+    {{{ makeCopyValues('(ppdest+'+Runtime.QUANTUM_SIZE+')', '(ppsrc+'+Runtime.QUANTUM_SIZE+')', Runtime.QUANTUM_SIZE, 'null', null, 1) }}};
   },
 
   llvm_bswap_i16: function(x) {
