@@ -4355,7 +4355,7 @@ def process(filename):
           
           void varargs_listoffsets_main()
           {
-          	varargs_listoffsets_args(0, 5, "abc", "def", "ghi", "jkl", "mno", "<BAD+0>", "<BAD+1>", "<BAD+2>", "<BAD+3>", "<BAD+4>", "<BAD+5>", "<BAD+6>", "<BAD+7>", "<BAD+8>", "<BAD+9>", "<BAD+10>", "<BAD+11>", "<BAD+12>", "<BAD+13>", "<BAD+14>", "<BAD+15>", "<BAD+16>");
+            varargs_listoffsets_args(0, 5, "abc", "def", "ghi", "jkl", "mno", "<BAD+0>", "<BAD+1>", "<BAD+2>", "<BAD+3>", "<BAD+4>", "<BAD+5>", "<BAD+6>", "<BAD+7>", "<BAD+8>", "<BAD+9>", "<BAD+10>", "<BAD+11>", "<BAD+12>", "<BAD+13>", "<BAD+14>", "<BAD+15>", "<BAD+16>");
           }
 
           #define GETMAX(pref, type) \
@@ -4389,8 +4389,8 @@ def process(filename):
             void (*vfp)(const char *s, ...) = argc == 1211 ? NULL : vary;
             vfp("*vfp:%d,%d*", 22, 199);
 
-			// ensure lists work properly when copied, reinited etc.
-			varargs_listoffsets_main();
+            // ensure lists work properly when copied, reinited etc.
+            varargs_listoffsets_main();
 
             return 0;
           }
