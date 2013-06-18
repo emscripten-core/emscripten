@@ -174,7 +174,7 @@ def should_ignore(filename):
     
   components = filename.replace('\\\\', '/').replace('\\', '/').split('/')
   for c in components:
-    if c.startswith('.'):
+    if c.startswith('.') and c != '.' and c != '..':
       return True
   return False
 
