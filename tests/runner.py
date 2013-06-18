@@ -14204,8 +14204,6 @@ else:
   raise Exception('Test runner is confused: ' + str(sys.argv))
 
 if __name__ == '__main__':
-  sys.argv = [sys.argv[0]] + ['-v'] + sys.argv[1:] # Verbose output by default
-
   # Sanity checks
 
   total_engines = len(JS_ENGINES)
@@ -14237,5 +14235,4 @@ if __name__ == '__main__':
 
   # Go
 
-  unittest.main()
-
+  unittest.main(verbosity=2)
