@@ -11583,7 +11583,8 @@ elif 'browser' in str(sys.argv):
       print '[Browser harness server on process %d]' % browser.harness_server.pid
       webbrowser.open_new('http://localhost:9999/run_harness')
 
-    def __del__(self):
+    @classmethod
+    def tearDownClass(cls):
       if not hasattr(browser, 'harness_server'): return
 
       browser.harness_server.terminate()
