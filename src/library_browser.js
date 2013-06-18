@@ -47,8 +47,11 @@ mergeInto(LibraryManager.library, {
     workers: [],
 
     init: function() {
-      if (Browser.initted) return;
+      if (!Module["preloadPlugins"]) Module["preloadPlugins"] = []; // needs to exist even in workers
+
+      if (Browser.initted || ENVIRONMENT_IS_WORKER) return;
       Browser.initted = true;
+
       try {
         new Blob();
         Browser.hasBlobConstructor = true;
@@ -78,8 +81,6 @@ mergeInto(LibraryManager.library, {
           'mp3': 'audio/mpeg'
         }[name.substr(name.lastIndexOf('.')+1)];
       }
-
-      if (!Module["preloadPlugins"]) Module["preloadPlugins"] = [];
 
       var imagePlugin = {};
       imagePlugin['canHandle'] = function(name) {
