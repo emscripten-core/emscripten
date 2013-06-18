@@ -4023,7 +4023,7 @@ def process(filename):
 
           double get() {
             double ret = 0;
-            __asm __volatile__("12/3.3":"=r"(ret));
+            __asm __volatile__("Math.abs(-12/3.3)":"=r"(ret)); // write to a variable
             return ret;
           }
 
