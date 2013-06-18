@@ -11,7 +11,7 @@
 #endif
 
 #define NUM_BUFFERS 4
-#define BUFFER_SIZE 1024*8
+#define BUFFER_SIZE 1470*10
 
 ALCdevice* device = NULL;
 ALCcontext* context = NULL;
@@ -26,21 +26,42 @@ unsigned int bits = 0;
 ALenum format = 0;
 ALuint source = 0;
 
-void cycle(void *arg) {
+void iter(void *arg) {
   ALuint buffer = 0;
-  ALint numBuffers = 0;
+  ALint buffersProcessed = 0;
+  ALint buffersWereQueued = 0;
+  ALint buffersQueued = 0;
+  ALint state;
 
-  alGetSourcei(source, AL_BUFFERS_PROCESSED, &numBuffers);
+  alGetSourcei(source, AL_BUFFERS_PROCESSED, &buffersProcessed);
 
-  while (offset < size && numBuffers--) {
+  while (offset < size && buffersProcessed--) {
+    // unqueue the old buffer and validate the queue length
+    alGetSourcei(source, AL_BUFFERS_QUEUED, &buffersWereQueued);
     alSourceUnqueueBuffers(source, 1, &buffer);
+
+    assert(alGetError() == AL_NO_ERROR);
     int len = size - offset;
     if (len > BUFFER_SIZE) {
       len = BUFFER_SIZE;
     }
+
+    alGetSourcei(source, AL_BUFFERS_QUEUED, &buffersQueued);
+    assert(buffersQueued == buffersWereQueued - 1);
+
+    // queue the new buffer and validate the queue length
+    buffersWereQueued = buffersQueued;
     alBufferData(buffer, format, &data[offset], len, frequency);
+
     alSourceQueueBuffers(source, 1, &buffer);
     assert(alGetError() == AL_NO_ERROR);
+
+    alGetSourcei(source, AL_BUFFERS_QUEUED, &buffersQueued);
+    assert(buffersQueued == buffersWereQueued + 1);
+
+    // make sure it's still playing
+    alGetSourcei(source, AL_SOURCE_STATE, &state);
+    assert(state == AL_PLAYING);
 
     offset += len;
   }
@@ -50,18 +71,8 @@ void cycle(void *arg) {
 #ifdef EMSCRIPTEN
     int result = 0;
     REPORT_RESULT();
-#else
+#endif
     exit(0);
-#endif
-  }
-  // Give the JS thread a few ms to breathe.
-  else {
-#ifdef EMSCRIPTEN
-    emscripten_async_call(cycle, NULL, 10);
-#else
-    usleep(10);
-    cycle();
-#endif
   }
 }
 
@@ -165,9 +176,12 @@ int main(int argc, char* argv[]) {
   //
   // Cycle and refill the buffers until we're done.
   //
-#ifdef EMSCRIPTEN
-  emscripten_async_call(cycle, NULL, 10);
-#else 
-  cycle();
+#if EMSCRIPTEN
+  emscripten_set_main_loop(iter, 0, 0);
+#else
+  while (1) {
+    iter(NULL);
+    usleep(16);
+  }
 #endif
 }

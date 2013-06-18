@@ -136,18 +136,16 @@ var LibraryOpenAL = {
       }
       // Process all buffers that'll be played before the next tick.
       else if (startOffset < (AL.QUEUE_LOOKAHEAD / 1000) && !entry.src) {
-        // If the offset is positive, we need to delay playing the sound that amount.
-        var when = Math.max(startOffset, 0);
-        // If the offset is negative, we need to play immediately, offset by its absolute value (print warning?).
+        // If the start offset is negative, we need to offset the actual buffer.
         var offset = Math.abs(Math.min(startOffset, 0));
 
         entry.src = AL.currentContext.ctx.createBufferSource();
         entry.src.buffer = entry.buffer;
         entry.src.connect(src.gain);
-        entry.src.start(when, offset);
+        entry.src.start(startTime, offset);
         
 #if OPENAL_DEBUG
-        console.log('updateSource queuing buffer ' + i + ' for source ' + idx + ' in ' + when + ' (starting at ' + offset + ')');
+        console.log('updateSource queuing buffer ' + i + ' for source ' + idx + ' at ' + startTime + ' (offset by ' + offset + ')');
 #endif
       }
 
@@ -465,6 +463,7 @@ var LibraryOpenAL = {
     }
   },
 
+  alSourcefv__deps: ['alSource3f'],
   alSourcefv: function(source, param, value) {
     _alSource3f(source, param,
       {{{ makeGetValue('value', '0', 'float') }}},
@@ -509,6 +508,7 @@ var LibraryOpenAL = {
     _updateSource(src);
   },
 
+  alSourceUnqueueBuffers__deps: ["updateSource"],
   alSourceUnqueueBuffers: function(source, count, buffers) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
@@ -538,12 +538,13 @@ var LibraryOpenAL = {
         var b = AL.currentContext.buf[j];
         if (b && b == entry.buffer) {
           {{{ makeSetValue('buffers', 'i*4', 'j+1', 'i32') }}};
-          src.buffer = null;
           break;
         }
       }
       src.buffersPlayed--;
     }
+
+    _updateSource(src);
   },
 
   alDeleteBuffers: function(count, buffers)
@@ -729,6 +730,7 @@ var LibraryOpenAL = {
     _setSourceState(src, 0x1013 /* AL_PAUSED */);
   },
 
+  alGetSourcei__deps: ['updateSource'],
   alGetSourcei: function(source, param, value) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
@@ -745,6 +747,15 @@ var LibraryOpenAL = {
       AL.currentContext.err = 0xA001 /* AL_INVALID_NAME */;
       return;
     }
+
+    // Being that we have no way to receive end events from buffer nodes,
+    // we currently proccess and update a source's buffer queue every
+    // ~QUEUE_INTERVAL milliseconds. However, this interval is not precise,
+    // so we also forcefully update the source when alGetSourcei is queried
+    // to aid in the common scenario of application calling alGetSourcei(AL_BUFFERS_PROCESSED)
+    // to recycle buffers.
+    _updateSource(src);
+
     switch (param) {
     case 0x202 /* AL_SOURCE_RELATIVE */:
       {{{ makeSetValue('value', '0', 'src.panner ? 1 : 0', 'i32') }}};
