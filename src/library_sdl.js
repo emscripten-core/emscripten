@@ -1445,7 +1445,6 @@ var LibrarySDL = {
   // SDL_Audio
 
   SDL_OpenAudio: function(desired, obtained) {
-    // On Firefox, we prefer Mozilla Audio API. Otherwise, use WebAudioAPI.
     try {
       SDL.audio = {
         freq: {{{ makeGetValue('desired', 'SDL.structs.AudioSpec.freq', 'i32', 0, 1) }}},
@@ -1510,7 +1509,8 @@ var LibrarySDL = {
       };
       
       SDL.audio.audioOutput = new Audio();
-      if (typeof(SDL.audio.audioOutput['mozSetup'])==='function') { // Primarily use Mozilla Audio Data API if available.
+      // As a workaround use Mozilla Audio Data API on Firefox until it ships with Web Audio and sound quality issues are fixed.
+      if (typeof(SDL.audio.audioOutput['mozSetup'])==='function') {
         SDL.audio.audioOutput['mozSetup'](SDL.audio.channels, SDL.audio.freq); // use string attributes on mozOutput for closure compiler
         SDL.audio.mozBuffer = new Float32Array(totalSamples);
         SDL.audio.nextPlayTime = 0;
