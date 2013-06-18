@@ -11452,6 +11452,9 @@ elif 'browser' in str(sys.argv):
             result = q.get()
           s.wfile.write(result)
         s.wfile.close()
+      def log_request(code=0, size=0):
+        # don't log; too noisy
+        pass
     httpd = BaseHTTPServer.HTTPServer(('localhost', 9999), TestServerHandler)
     httpd.serve_forever() # test runner will kill us
 
@@ -11472,6 +11475,9 @@ elif 'browser' in str(sys.argv):
             s.send_response(500)
             s.send_header("Content-type", "text/html")
             s.end_headers()
+      def log_request(code=0, size=0):
+        # don't log; too noisy
+        pass
     os.chdir(dir)
     httpd = BaseHTTPServer.HTTPServer(('localhost', 8888), TestServerHandler)
     httpd.serve_forever() # test runner will kill us

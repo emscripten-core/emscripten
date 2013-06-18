@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <SDL/SDL.h>
 #include <SDL/SDL_image.h>
 #include <assert.h>
@@ -43,7 +45,7 @@ void ready(void *arg, const char *fileName) {
 
     testImage(seenName);
 
-    free(seenName); // As the API docs say, we are responsible for freeing the 'fake' names we are given
+    free((void*)seenName); // As the API docs say, we are responsible for freeing the 'fake' names we are given
 
     SDL_Flip(screen);
   }
