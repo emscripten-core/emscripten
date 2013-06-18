@@ -344,6 +344,14 @@ def check_sanity(force=False):
         logging.critical('Node.js (%s) does not seem to work, check the paths in %s' % (NODE_JS, EM_CONFIG))
         sys.exit(1)
 
+    from distutils.version import LooseVersion
+    min_node_version = LooseVersion('v0.8')
+    node_version = LooseVersion(jsrun.run_js('-v', NODE_JS))
+    if node_version < min_node_version:
+      logging.critical('Node.js has version %s, but needs minimum version %s'
+          % (node_version, min_node_version))
+      sys.exit(1)
+
     for cmd in [CLANG, LLVM_LINK, LLVM_AR, LLVM_OPT, LLVM_AS, LLVM_DIS, LLVM_NM]:
       if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'): # .exe extension required for Windows
         logging.critical('Cannot find %s, check the paths in %s' % (cmd, EM_CONFIG))
