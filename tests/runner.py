@@ -12735,6 +12735,9 @@ elif 'browser' in str(sys.argv):
     def test_cube_explosion(self):
       self.btest('cube_explosion.c', expected=['667220544', '-1543354600', '-1485258415'])
 
+    def test_sdl_canvas_blank(self):
+      self.btest('sdl_canvas_blank.c', reference='sdl_canvas_blank.png')
+
     def test_sdl_canvas_palette(self):
       self.btest('sdl_canvas_palette.c', reference='sdl_canvas_palette.png')
 
