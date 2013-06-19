@@ -1310,8 +1310,10 @@ function JSify(data, functionsOnly, givenFunctions) {
     assert(TARGET_LE32);
     var ident = item.value.ident;
     var move = Runtime.STACK_ALIGN;
-    return '(tempInt=' + makeGetValue(ident, 4, '*') + ',' +
-                         makeSetValue(ident, 4, 'tempInt + ' + move, '*') + ',' +
+    
+    // store current list offset in tempInt, advance list offset by STACK_ALIGN, return list entry stored at tempInt
+    return '(tempInt=' + makeGetValue(ident, Runtime.QUANTUM_SIZE, '*') + ',' +
+                         makeSetValue(ident, Runtime.QUANTUM_SIZE, 'tempInt + ' + move, '*') + ',' +
                          makeGetValue(makeGetValue(ident, 0, '*'), 'tempInt', item.type) + ')';
   });
 
