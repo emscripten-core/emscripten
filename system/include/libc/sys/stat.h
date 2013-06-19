@@ -58,6 +58,42 @@ struct	stat
 #endif
 };
 
+struct	stat64
+{
+  dev_t		st_dev;
+  ino_t		st_ino;
+  mode_t	st_mode;
+  nlink_t	st_nlink;
+  uid_t		st_uid;
+  gid_t		st_gid;
+  dev_t		st_rdev;
+  off_t		st_size;
+#if defined(__rtems__)
+  struct timespec st_atim;
+  struct timespec st_mtim;
+  struct timespec st_ctim;
+  blksize_t     st_blksize;
+  blkcnt_t	st_blocks;
+#else
+  /* SysV/sco doesn't have the rest... But Solaris, eabi does.  */
+#if defined(__svr4__) && !defined(__PPC__) && !defined(__sun__)
+  time_t	st_atime;
+  time_t	st_mtime;
+  time_t	st_ctime;
+#else
+  time_t	st_atime;
+  long		st_spare1;
+  time_t	st_mtime;
+  long		st_spare2;
+  time_t	st_ctime;
+  long		st_spare3;
+  long		st_blksize;
+  long		st_blocks;
+  long	st_spare4[2];
+#endif
+#endif
+};
+
 #if defined(__rtems__)
 #define st_atime st_atim.tv_sec
 #define st_ctime st_ctim.tv_sec
@@ -145,16 +181,16 @@ struct	stat
 int	_EXFUN(chmod,( const char *__path, mode_t __mode ));
 int     _EXFUN(fchmod,(int __fd, mode_t __mode));
 int	_EXFUN(fstat,( int __fd, struct stat *__sbuf ));
-int	_EXFUN(fstat64,( int __fd, struct stat *__sbuf )); /* XXX Emscripten */
+int	_EXFUN(fstat64,( int __fd, struct stat64 *__sbuf )); /* XXX Emscripten */
 int	_EXFUN(mkdir,( const char *_path, mode_t __mode ));
 int	_EXFUN(mkfifo,( const char *__path, mode_t __mode ));
 int	_EXFUN(stat,( const char *__path, struct stat *__sbuf ));
-int	_EXFUN(stat64,( const char *__path, struct stat *__sbuf )); /* XXX Emscripten */
+int	_EXFUN(stat64,( const char *__path, struct stat64 *__sbuf )); /* XXX Emscripten */
 mode_t	_EXFUN(umask,( mode_t __mask ));
 
 #if defined(EMSCRIPTEN) || defined (__SPU__) || defined(__rtems__) || defined(__CYGWIN__) && !defined(__INSIDE_CYGWIN__) 
 int	_EXFUN(lstat,( const char *__path, struct stat *__buf ));
-int	_EXFUN(lstat64,( const char *__path, struct stat *__buf )); /* XXX Emscripten */
+int	_EXFUN(lstat64,( const char *__path, struct stat64 *__buf )); /* XXX Emscripten */
 int	_EXFUN(mknod,( const char *__path, mode_t __mode, dev_t __dev ));
 #endif
 
