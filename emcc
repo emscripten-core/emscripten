@@ -1477,6 +1477,7 @@ try:
     open(final, 'w').write(src)
     if DEBUG: save_intermediate('bind')
 
+  # TODO: support source maps with js_transform
   # Apply a source code transformation, if requested
   if js_transform:
     shutil.copyfile(final, final + '.tr.js')
@@ -1485,6 +1486,8 @@ try:
     logging.debug('applying transform: %s' % js_transform)
     execute(shlex.split(js_transform, posix=posix) + [os.path.abspath(final)])
     if DEBUG: save_intermediate('transformed')
+
+  js_transform_tempfiles = [final]
 
   # It is useful to run several js optimizer passes together, to save on unneeded unparsing/reparsing
   js_optimizer_queue = []
@@ -1497,6 +1500,7 @@ try:
         logging.debug('applying js optimization passes: %s', js_optimizer_queue)
         final = shared.Building.js_optimizer(final, js_optimizer_queue, jcache,
             keep_llvm_debug and keep_js_debug)
+        js_transform_tempfiles.append(final)
         if DEBUG: save_intermediate('js_opts')
       else:
         for name in js_optimizer_queue:
@@ -1506,6 +1510,7 @@ try:
           logging.debug('applying js optimization pass: %s', passes)
           final = shared.Building.js_optimizer(final, passes, jcache,
             keep_llvm_debug and keep_js_debug)
+          js_transform_tempfiles.append(final)
           save_intermediate(name)
       js_optimizer_queue = []
 
@@ -1514,7 +1519,8 @@ try:
 
     if DEBUG == '2':
       # Clean up the syntax a bit
-      final = shared.Building.js_optimizer(final, [], jcache)
+      final = shared.Building.js_optimizer(final, [], jcache,
+            keep_llvm_debug and keep_js_debug)
       if DEBUG: save_intermediate('pretty')
 
     def get_eliminate():
@@ -1532,6 +1538,8 @@ try:
     flush_js_optimizer_queue()
 
     logging.debug('running closure')
+    # no need to add this to js_transform_tempfiles, because closure and
+    # keep_js_debug are never simultaneously true
     final = shared.Building.closure_compiler(final)
     if DEBUG: save_intermediate('closure')
 
@@ -1579,6 +1587,7 @@ try:
       src = re.sub('/\* memory initializer \*/ allocate\(([\d,\.concat\(\)\[\]\\n ]+)"i8", ALLOC_NONE, Runtime\.GLOBAL_BASE\)', repl, src, count=1)
       open(final + '.mem.js', 'w').write(src)
       final += '.mem.js'
+      js_transform_tempfiles[-1] = final # simple text substitution preserves comment line number mappings
       if DEBUG:
         if os.path.exists(memfile):
           save_intermediate('meminit')
@@ -1586,9 +1595,12 @@ try:
         else:
           logging.debug('did not see memory initialization')
 
-  def generate_source_map(filename, map_file_base_name, offset=0):
+  def generate_source_map(map_file_base_name, offset=0):
     jsrun.run_js(shared.path_from_root('tools', 'source-maps', 'sourcemapper.js'),
-      shared.NODE_JS, [filename, os.getcwd(), map_file_base_name, str(offset)])
+      shared.NODE_JS, js_transform_tempfiles +
+        ['--sourceRoot', os.getcwd(),
+         '--mapFileBaseName', map_file_base_name,
+         '--offset', str(offset)])
 
   # If we were asked to also generate HTML, do that
   if final_suffix == 'html':
@@ -1601,7 +1613,7 @@ try:
             re.DOTALL)
         if match is None:
           raise RuntimeError('Could not find script insertion point')
-        generate_source_map(final, target, match.group().count('\n'))
+        generate_source_map(target, match.group().count('\n'))
       html.write(shell.replace('{{{ SCRIPT_CODE }}}', open(final).read()))
     else:
       # Compress the main code
@@ -1672,7 +1684,7 @@ try:
         from tools.split import split_javascript_file
         split_javascript_file(final, unsuffixed(target), split_js_file)
     else:
-        if keep_llvm_debug and keep_js_debug: generate_source_map(final, target)
+        if keep_llvm_debug and keep_js_debug: generate_source_map(target)
 
         # copy final JS to output
         shutil.move(final, target)

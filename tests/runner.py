@@ -9585,21 +9585,21 @@ def process(filename):
         assert 'Assertion failed' in str(e), str(e)
 
     def test_source_map(self):
+      if Settings.USE_TYPED_ARRAYS != 2: return self.skip("doesn't pass without typed arrays")
       if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
-      if self.emcc_args is not None:
-        if '-O1' in self.emcc_args or '-O2' in self.emcc_args: return self.skip('optimizations remove LLVM debug info')
 
       src = '''
         #include <stdio.h>
         #include <assert.h>
 
-        int foo() {
-          return 1; // line 6
+        __attribute__((noinline)) int foo() {
+          printf("hi"); // line 6
+          return 1; // line 7
         }
 
         int main() {
-          int i = foo(); // line 10
-          return 0; // line 11
+          printf("%d", foo()); // line 11
+          return 0; // line 12
         }
       '''
 
@@ -9621,7 +9621,7 @@ def process(filename):
           self.assertIdentical(src_filename, m['source'])
           seen_lines.add(m['originalLine'])
         # ensure that all the 'meaningful' lines in the original code get mapped
-        assert seen_lines.issuperset([6, 10, 11])
+        assert seen_lines.issuperset([6, 7, 11, 12])
 
       self.build(src, dirname, src_filename, post_build=(None,post))
 

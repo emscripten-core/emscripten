@@ -2,6 +2,9 @@
 
 "use strict";
 
+var fs = require('fs');
+var path = require('path');
+
 function countLines(s) {
   var count = 0;
   for (var i = 0, l = s.length; i < l; i ++) {
@@ -63,21 +66,39 @@ function extractComments(source, commentHandler) {
   }
 }
 
-function generateMap(fileName, sourceRoot, mapFileBaseName, generatedLineOffset) {
-  var fs = require('fs');
-  var path = require('path');
+function getMappings(source) {
+  // generatedLineNumber -> { originalLineNumber, originalFileName }
+  var mappings = {};
+  extractComments(source, function(content, generatedLineNumber) {
+    var matches = /@line (\d+)(?: "([^"]*)")?/.exec(content);
+    if (matches === null) return;
+    var originalFileName = matches[2];
+    mappings[generatedLineNumber] = {
+      originalLineNumber: parseInt(matches[1], 10),
+      originalFileName: originalFileName
+    }
+  });
+  return mappings;
+}
+
+function generateMap(mappings, sourceRoot, mapFileBaseName, generatedLineOffset) {
   var SourceMapGenerator = require('source-map').SourceMapGenerator;
 
   var generator = new SourceMapGenerator({ file: mapFileBaseName });
-  var generatedSource = fs.readFileSync(fileName, 'utf-8');
   var seenFiles = Object.create(null);
 
-  extractComments(generatedSource, function(content, generatedLineNumber) {
-    var matches = /@line (\d+) "([^"]*)"/.exec(content);
-    if (matches === null) return;
-    var originalLineNumber = parseInt(matches[1], 10);
-    var originalFileName = matches[2];
+  for (var generatedLineNumber in mappings) {
+    var generatedLineNumber = parseInt(generatedLineNumber, 10);
+    var mapping = mappings[generatedLineNumber];
+    var originalFileName = mapping.originalFileName;
+    generator.addMapping({
+      generated: { line: generatedLineNumber + generatedLineOffset, column: 0 },
+      original: { line: mapping.originalLineNumber, column: 0 },
+      source: originalFileName
+    });
 
+    // we could call setSourceContent repeatedly, but readFileSync is slow, so
+    // avoid doing it unnecessarily
     if (!(originalFileName in seenFiles)) {
       seenFiles[originalFileName] = true;
       var rootedPath = originalFileName[0] === path.sep ?
@@ -89,33 +110,64 @@ function generateMap(fileName, sourceRoot, mapFileBaseName, generatedLineOffset)
           " at " + rootedPath);
       }
     }
+  }
 
-    generator.addMapping({
-      generated: { line: generatedLineNumber + generatedLineOffset, column: 0 },
-      original: { line: originalLineNumber, column: 0 },
-      source: originalFileName
-    });
-  });
+  fs.writeFileSync(mapFileBaseName + '.map', generator.toString());
+}
 
-  var mapFileName = mapFileBaseName + '.map';
-  fs.writeFileSync(mapFileName, generator.toString());
-
-  var lastLine = generatedSource.slice(generatedSource.lastIndexOf('\n'));
+function appendMappingURL(fileName, source, mapFileName) {
+  var lastLine = source.slice(source.lastIndexOf('\n'));
   if (!/sourceMappingURL/.test(lastLine))
     fs.appendFileSync(fileName, '//@ sourceMappingURL=' + path.basename(mapFileName));
 }
 
+function parseArgs(args) {
+  var rv = { _: [] }; // unflagged args go into `_`; similar to the optimist library
+  for (var i = 0; i < args.length; i++) {
+    if (/^--/.test(args[i])) rv[args[i].slice(2)] = args[++i];
+    else rv._.push(args[i]);
+  }
+  return rv;
+}
+
 if (require.main === module) {
   if (process.argv.length < 3) {
-    console.log('Usage: ./sourcemapper.js <filename> <source root (default: .)> ' +
-                '<map file basename (default: filename)>' +
-                '<generated line offset (default: 0)>');
+    console.log('Usage: ./sourcemapper.js <original js> <optimized js file ...> \\\n' +
+                '\t--sourceRoot <default "."> \\\n' +
+                '\t--mapFileBaseName <default `filename`> \\\n' +
+                '\t--offset <default 0>');
     process.exit(1);
   } else {
-    var sourceRoot = process.argv.length > 3 ? process.argv[3] : ".";
-    var mapFileBaseName = process.argv.length > 4 ? process.argv[4] : process.argv[2];
-    var generatedLineOffset = process.argv.length > 5 ?
-        parseInt(process.argv[5], 10) : 0;
-    generateMap(process.argv[2], sourceRoot, mapFileBaseName, generatedLineOffset);
+    var opts = parseArgs(process.argv.slice(2));
+    var fileName = opts._[0];
+    var sourceRoot = opts.sourceRoot ? opts.sourceRoot : ".";
+    var mapFileBaseName = opts.mapFileBaseName ? opts.mapFileBaseName : fileName;
+    var generatedLineOffset = opts.offset ? parseInt(opts.offset, 10) : 0;
+
+    var generatedSource = fs.readFileSync(fileName, 'utf-8');
+    var source = generatedSource;
+    var mappings = getMappings(generatedSource);
+    for (var i = 1, l = opts._.length; i < l; i ++) {
+      var optimizedSource = fs.readFileSync(opts._[i], 'utf-8')
+      var optimizedMappings = getMappings(optimizedSource);
+      var newMappings = {};
+      // uglify processes the code between EMSCRIPTEN_START_FUNCS and
+      // EMSCRIPTEN_END_FUNCS, so its line number maps are relative to those
+      // markers. we correct for that here.
+      var startFuncsLineNumber = countLines(
+        source.slice(0, source.indexOf('// EMSCRIPTEN_START_FUNCS'))) + 2;
+      for (var line in optimizedMappings) {
+        var originalLineNumber = optimizedMappings[line].originalLineNumber + startFuncsLineNumber;
+        if (originalLineNumber in mappings) {
+          newMappings[line] = mappings[originalLineNumber];
+        }
+      }
+      mappings = newMappings;
+      source = optimizedSource;
+    }
+
+    generateMap(mappings, sourceRoot, mapFileBaseName, generatedLineOffset);
+    appendMappingURL(opts._[opts._.length - 1], generatedSource,
+                     opts.mapFileBaseName + '.map');
   }
 }
