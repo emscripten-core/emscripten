@@ -869,7 +869,6 @@ try:
   if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
   if llvm_lto is None: llvm_lto = opt_level >= 3
   if opt_level <= 0: keep_llvm_debug = keep_js_debug = True # always keep debug in -O0
-  if opt_level > 0: keep_llvm_debug = False # JS optimizer wipes out llvm debug info from being visible
   if closure is None and opt_level == 3: closure = True
 
   if DEBUG: start_time = time.time() # done after parsing arguments, which might affect debug state
@@ -1496,7 +1495,8 @@ try:
         if shared.Settings.ASM_JS:
           js_optimizer_queue = ['asm'] + js_optimizer_queue
         logging.debug('applying js optimization passes: %s', js_optimizer_queue)
-        final = shared.Building.js_optimizer(final, js_optimizer_queue, jcache)
+        final = shared.Building.js_optimizer(final, js_optimizer_queue, jcache,
+            keep_llvm_debug and keep_js_debug)
         if DEBUG: save_intermediate('js_opts')
       else:
         for name in js_optimizer_queue:
@@ -1504,7 +1504,8 @@ try:
           if shared.Settings.ASM_JS:
             passes = ['asm'] + passes
           logging.debug('applying js optimization pass: %s', passes)
-          final = shared.Building.js_optimizer(final, passes, jcache)
+          final = shared.Building.js_optimizer(final, passes, jcache,
+            keep_llvm_debug and keep_js_debug)
           save_intermediate(name)
       js_optimizer_queue = []
 

@@ -11,6 +11,7 @@
 
 // *** Environment setup code ***
 var arguments_ = [];
+var debug = false;
 
 var ENVIRONMENT_IS_NODE = typeof process === 'object';
 var ENVIRONMENT_IS_WEB = typeof window === 'object';
@@ -146,7 +147,7 @@ var generatedFunctions = false; // whether we have received only generated funct
 var minifierInfo = null;
 
 function srcToAst(src) {
-  return uglify.parser.parse(src);
+  return uglify.parser.parse(src, false, debug);
 }
 
 function astToSrc(ast, compress) {
@@ -2750,6 +2751,14 @@ var passes = {
 
 var suffix = '';
 
+arguments_ = arguments_.filter(function (arg) {
+  if (!/^--/.test(arg)) return true;
+
+  if (arg === '--debug') debug = true;
+  else throw new Error('Unrecognized flag: ' + arg);
+});
+
+
 var src = read(arguments_[0]);
 var ast = srcToAst(src);
 //printErr(JSON.stringify(ast)); throw 1;
@@ -2757,6 +2766,7 @@ generatedFunctions = src.indexOf(GENERATED_FUNCTIONS_MARKER) >= 0;
 var minifierInfoStart = src.indexOf('// MINIFY_INFO:')
 if (minifierInfoStart > 0) minifierInfo = JSON.parse(src.substr(minifierInfoStart + 15));
 //printErr(JSON.stringify(minifierInfo));
+
 
 arguments_.slice(1).forEach(function(arg) {
   passes[arg](ast);
