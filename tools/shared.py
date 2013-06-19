@@ -273,7 +273,7 @@ def check_llvm_version():
   except Exception, e:
     logging.warning('Could not verify LLVM version: %s' % str(e))
 
-EXPECTED_NODE_VERSION = (0,6,8)
+EXPECTED_NODE_VERSION = (0,8,0)
 
 def check_node_version():
   try:
