@@ -426,7 +426,7 @@ mergeInto(LibraryManager.library, {
           Browser.mouseMovementY = Browser.getMovementY(event);
         }
         
-        // MADE: FIX: check for SDL
+        // check if SDL is available
         if (typeof SDL != "undefined")
         {
         	Browser.mouseX = SDL.mouseX + Browser.mouseMovementX;
@@ -513,7 +513,7 @@ mergeInto(LibraryManager.library, {
       this.windowedHeight = canvas.height;
       canvas.width = screen.width;
       canvas.height = screen.height;   
-      // MADE: FIX: check if SDL is available   
+      // check if SDL is available   
       if (typeof SDL != "undefined")
       {
       	var flags = {{{ makeGetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'i32', 0, 1) }}};
@@ -527,7 +527,7 @@ mergeInto(LibraryManager.library, {
       var canvas = Module['canvas'];
       canvas.width = this.windowedWidth;
       canvas.height = this.windowedHeight;
-      // MADE: FIX: check if SDL is available       
+      // check if SDL is available       
       if (typeof SDL != "undefined")
       {
       	var flags = {{{ makeGetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'i32', 0, 1) }}};
