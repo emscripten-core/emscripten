@@ -4311,6 +4311,7 @@ def process(filename):
 
     def test_varargs(self):
         if Settings.QUANTUM_SIZE == 1: return self.skip('FIXME: Add support for this')
+        if not self.is_le32(): return self.skip('we do not support all varargs stuff without le32')
 
         src = '''
           #include <stdio.h>
