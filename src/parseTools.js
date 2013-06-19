@@ -710,9 +710,9 @@ function splitI64(value, floatConversion) {
   var lowInput = legalizedI64s ? value : 'VALUE';
   if (floatConversion && ASM_JS) lowInput = asmFloatToInt(lowInput);
   if (legalizedI64s) {
-    return [lowInput + '>>>0', 'Math.min(Math.floor((' + value + ')/' + asmEnsureFloat(4294967296, 'float') + '), ' + asmEnsureFloat(4294967295, 'float') + ')>>>0'];
+    return [lowInput + '>>>0', asmCoercion('Math.min(' + asmCoercion('Math.floor((' + value + ')/' + asmEnsureFloat(4294967296, 'float') + ')', 'double') + ', ' + asmEnsureFloat(4294967295, 'float') + ')', 'i32') + '>>>0'];
   } else {
-    return makeInlineCalculation(makeI64(lowInput + '>>>0', 'Math.min(Math.floor(VALUE/' + asmEnsureFloat(4294967296, 'float') + '), ' + asmEnsureFloat(4294967295, 'float') + ')>>>0'), value, 'tempBigIntP');
+    return makeInlineCalculation(makeI64(lowInput + '>>>0', asmCoercion('Math.min(' + asmCoercion('Math.floor(VALUE/' + asmEnsureFloat(4294967296, 'float') + ')', 'double') + ', ' + asmEnsureFloat(4294967295, 'float') + ')', 'i32') + '>>>0'), value, 'tempBigIntP');
   }
 }
 function mergeI64(value, unsigned) {
