@@ -4399,7 +4399,7 @@ LibraryManager.library = {
         {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i8'), 'i8') }}};
       }
     } else {
-      _memcpy(dest, src, num);
+      _memcpy(dest, src, num) | 0;
     }
   },
   llvm_memmove_i32: 'memmove',
