@@ -11583,7 +11583,8 @@ elif 'browser' in str(sys.argv):
       print '[Browser harness server on process %d]' % browser.harness_server.pid
       webbrowser.open_new('http://localhost:9999/run_harness')
 
-    def __del__(self):
+    @classmethod
+    def tearDownClass(cls):
       if not hasattr(browser, 'harness_server'): return
 
       browser.harness_server.terminate()
@@ -11694,9 +11695,8 @@ elif 'browser' in str(sys.argv):
 
     def test_html(self):
       # test HTML generation.
-      self.reftest(path_from_root('tests', 'htmltest.png'))
-      output = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-o', 'something.html',  '--pre-js', 'reftest.js']).communicate()
-      self.run_browser('something.html', 'You should see "hello, world!" and a colored cube.', '/report_result?0')
+      self.btest('hello_world_sdl.cpp', reference='htmltest.png',
+          message='You should see "hello, world!" and a colored cube.')
 
     def build_native_lzma(self):
       lzma_native = path_from_root('third_party', 'lzma.js', 'lzma-native')
@@ -12424,52 +12424,52 @@ elif 'browser' in str(sys.argv):
 
     def test_sdl_ogl(self):
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.reftest(path_from_root('tests', 'screenshot-gray-purple.png'))
-      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_ogl.c'), '-O2', '--minify', '0', '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png', '-s', 'GL_TESTING=1']).communicate()
-      self.run_browser('something.html', 'You should see an image with gray at the top.', '/report_result?0')
+      self.btest('sdl_ogl.c', reference='screenshot-gray-purple.png',
+        args=['-O2', '--minify', '0', '--preload-file', 'screenshot.png'],
+        message='You should see an image with gray at the top.')
 
     def test_sdl_ogl_defaultmatrixmode(self):
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.reftest(path_from_root('tests', 'screenshot-gray-purple.png'))
-      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_ogl_defaultMatrixMode.c'), '--minify', '0', '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png', '-s', 'GL_TESTING=1']).communicate()
-      self.run_browser('something.html', 'You should see an image with gray at the top.', '/report_result?0')
+      self.btest('sdl_ogl_defaultMatrixMode.c', reference='screenshot-gray-purple.png',
+        args=['--minify', '0', '--preload-file', 'screenshot.png'],
+        message='You should see an image with gray at the top.')
 
     def test_sdl_ogl_p(self):
       # Immediate mode with pointers
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.reftest(path_from_root('tests', 'screenshot-gray.png'))
-      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_ogl_p.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png', '-s', 'GL_TESTING=1']).communicate()
-      self.run_browser('something.html', 'You should see an image with gray at the top.', '/report_result?0')
+      self.btest('sdl_ogl_p.c', reference='screenshot-gray.png',
+        args=['--preload-file', 'screenshot.png'],
+        message='You should see an image with gray at the top.')
 
     def test_sdl_fog_simple(self):
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.reftest(path_from_root('tests', 'screenshot-fog-simple.png'))
-      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_fog_simple.c'), '-O2', '--minify', '0', '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png', '-s', 'GL_TESTING=1']).communicate()
-      self.run_browser('something.html', 'You should see an image with fog.', '/report_result?0')
+      self.btest('sdl_fog_simple.c', reference='screenshot-fog-simple.png',
+        args=['-O2', '--minify', '0', '--preload-file', 'screenshot.png'],
+        message='You should see an image with fog.')
 
     def test_sdl_fog_negative(self):
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.reftest(path_from_root('tests', 'screenshot-fog-negative.png'))
-      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_fog_negative.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png', '-s', 'GL_TESTING=1']).communicate()
-      self.run_browser('something.html', 'You should see an image with fog.', '/report_result?0')
+      self.btest('sdl_fog_negative.c', reference='screenshot-fog-negative.png',
+        args=['--preload-file', 'screenshot.png'],
+        message='You should see an image with fog.')
 
     def test_sdl_fog_density(self):
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.reftest(path_from_root('tests', 'screenshot-fog-density.png'))
-      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_fog_density.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png', '-s', 'GL_TESTING=1']).communicate()
-      self.run_browser('something.html', 'You should see an image with fog.', '/report_result?0')
+      self.btest('sdl_fog_density.c', reference='screenshot-fog-density.png',
+        args=['--preload-file', 'screenshot.png'],
+        message='You should see an image with fog.')
 
     def test_sdl_fog_exp2(self):
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.reftest(path_from_root('tests', 'screenshot-fog-exp2.png'))
-      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_fog_exp2.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png', '-s', 'GL_TESTING=1']).communicate()
-      self.run_browser('something.html', 'You should see an image with fog.', '/report_result?0')
+      self.btest('sdl_fog_exp2.c', reference='screenshot-fog-exp2.png',
+        args=['--preload-file', 'screenshot.png'],
+        message='You should see an image with fog.')
 
     def test_sdl_fog_linear(self):
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.reftest(path_from_root('tests', 'screenshot-fog-linear.png'))
-      Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_fog_linear.c'), '-o', 'something.html', '--pre-js', 'reftest.js', '--preload-file', 'screenshot.png', '-s', 'GL_TESTING=1']).communicate()
-      self.run_browser('something.html', 'You should see an image with fog.', '/report_result?0')
+      self.btest('sdl_fog_linear.c', reference='screenshot-fog-linear.png',
+        args=['--preload-file', 'screenshot.png'],
+        message='You should see an image with fog.')
 
     def test_openal_playback(self):
       shutil.copyfile(path_from_root('tests', 'sounds', 'audio.wav'), os.path.join(self.get_dir(), 'audio.wav'))
@@ -12633,10 +12633,9 @@ elif 'browser' in str(sys.argv):
       server.terminate()
 
     def test_glgears(self):
-      self.reftest(path_from_root('tests', 'gears.png'))
-      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_gles.c'), '-o', 'something.html',
-                                           '-DHAVE_BUILTIN_SINCOS', '--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']).communicate()
-      self.run_browser('something.html', 'You should see animating gears.', '/report_result?0')
+      self.btest('hello_world_gles.c', reference='gears.png',
+          args=['-DHAVE_BUILTIN_SINCOS'], outfile='something.html',
+          message='You should see animating gears.')
 
     def test_glgears_animation(self):
       es2_suffix = ['', '_full', '_full_944']
@@ -12657,12 +12656,11 @@ elif 'browser' in str(sys.argv):
       self.btest('full_es2_sdlproc.c', '1', args=['-s', 'GL_TESTING=1', '-DHAVE_BUILTIN_SINCOS', '-s', 'FULL_ES2=1'])
 
     def test_glgears_deriv(self):
-      self.reftest(path_from_root('tests', 'gears.png'))
-      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_gles_deriv.c'), '-o', 'something.html', '-s', 'GL_TESTING=1',
-                                           '-DHAVE_BUILTIN_SINCOS', '--pre-js', 'reftest.js']).communicate()
-      self.run_browser('something.html', 'You should see animating gears.', '/report_result?0')
-      src = open('something.html').read()
-      assert 'gl-matrix' not in src, 'Should not include glMatrix when not needed'
+      self.btest('hello_world_gles_deriv.c', reference='gears.png',
+          args=['-DHAVE_BUILTIN_SINCOS'], outfile='something.html',
+          message='You should see animating gears.')
+      with open('something.html') as f:
+        assert 'gl-matrix' not in f.read(), 'Should not include glMatrix when not needed'
 
     def test_glbook(self):
       programs = self.get_library('glbook', [
@@ -12688,26 +12686,28 @@ elif 'browser' in str(sys.argv):
           shutil.copyfile(book_path('Chapter_13', 'ParticleSystem', 'smoke.tga'), os.path.join(self.get_dir(), 'smoke.tga'))
           args = ['--preload-file', 'smoke.tga', '-O2'] # test optimizations and closure here as well for more coverage
 
-        self.reftest(book_path(basename.replace('.bc', '.png')))
-        Popen([PYTHON, EMCC, program, '-o', 'program.html', '--pre-js', 'reftest.js', '-s', 'GL_TESTING=1'] + args).communicate()
-        self.run_browser('program.html', '', '/report_result?0')
+        self.btest(program,
+            reference=book_path(basename.replace('.bc', '.png')), args=args)
 
-    def btest(self, filename, expected=None, reference=None, reference_slack=0, args=[]): # TODO: use in all other tests
+    def btest(self, filename, expected=None, reference=None, reference_slack=0,
+        args=[], outfile='test.html', message='.'): # TODO: use in all other tests
+      filepath = path_from_root('tests', filename)
+      temp_filepath = os.path.join(self.get_dir(), os.path.basename(filename))
       if not reference:
         if '\n' in filename: # if we are provided the source and not a path, use that
           src = filename
           filename = 'main.cpp'
         else:
-          src = open(path_from_root('tests', filename)).read()
-        open(os.path.join(self.get_dir(), filename), 'w').write(self.with_report_result(src))
+          with open(filepath) as f: f.read()
+        with open(temp_filepath, 'w') as f: f.write(self.with_report_result(src))
       else:
         expected = [str(i) for i in range(0, reference_slack+1)]
-        shutil.copyfile(path_from_root('tests', filename), os.path.join(self.get_dir(), os.path.basename(filename)))
+        shutil.copyfile(filepath, temp_filepath)
         self.reftest(path_from_root('tests', reference))
         args = args + ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), os.path.basename(filename)), '-o', 'test.html'] + args).communicate()
+      Popen([PYTHON, EMCC, temp_filepath, '-o', outfile] + args).communicate()
       if type(expected) is str: expected = [expected]
-      self.run_browser('test.html', '.', ['/report_result?' + e for e in expected])
+      self.run_browser(outfile, message, ['/report_result?' + e for e in expected])
 
     def test_gles2_emulation(self):
       shutil.copyfile(path_from_root('tests', 'glbook', 'Chapter_10', 'MultiTexture', 'basemap.tga'), self.in_dir('basemap.tga'))
@@ -14204,8 +14204,6 @@ else:
   raise Exception('Test runner is confused: ' + str(sys.argv))
 
 if __name__ == '__main__':
-  sys.argv = [sys.argv[0]] + ['-v'] + sys.argv[1:] # Verbose output by default
-
   # Sanity checks
 
   total_engines = len(JS_ENGINES)
@@ -14237,5 +14235,4 @@ if __name__ == '__main__':
 
   # Go
 
-  unittest.main()
-
+  unittest.main(verbosity=2)
