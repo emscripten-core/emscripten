@@ -152,6 +152,7 @@ function srcToAst(src) {
 
 function astToSrc(ast, compress) {
     return uglify.uglify.gen_code(ast, {
+    debug: debug,
     ascii_only: true,
     beautify: !compress,
     indent_level: 2
