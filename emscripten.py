@@ -128,7 +128,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   if DEBUG: print >> sys.stderr, '  emscript: split took %s seconds' % (time.time() - t)
 
   if len(funcs) == 0:
-    raise RuntimeError('No functions to process. Make sure you prevented LLVM from eliminating them as dead (use EXPORTED_FUNCTIONS if necessary, see the FAQ)')
+    print >> sys.stderr, 'No functions to process. Make sure you prevented LLVM from eliminating them as dead (use EXPORTED_FUNCTIONS if necessary, see the FAQ)'
 
   #if DEBUG:
   #  print >> sys.stderr, '========= pre ================\n'
