@@ -429,7 +429,14 @@ function simplifyExpressionsPre(ast) {
   // 'useful' mathops already |0 anyhow.
 
   function simplifyBitops(ast) {
-    var SAFE_BINARY_OPS = set('+', '-', '*'); // division is unsafe as it creates non-ints in JS; mod is unsafe as signs matter so we can't remove |0's
+    var SAFE_BINARY_OPS;
+    if (asm) {
+      SAFE_BINARY_OPS = set('+', '-'); // division is unsafe as it creates non-ints in JS; mod is unsafe as signs matter so we can't remove |0's; mul does not nest with +,- in asm
+    } else {
+      SAFE_BINARY_OPS = set('+', '-', '*');
+    }
+    var COERCION_REQUIRING_OPS = set('call', 'sub', 'unary-prefix'); // ops that in asm must be coerced
+    var COERCION_REQUIRING_BINARIES = set('*', '/', '%'); // binary ops that in asm must be coerced
     var ZERO = ['num', 0];
     var rerun = true;
     while (rerun) {
@@ -438,24 +445,39 @@ function simplifyExpressionsPre(ast) {
         if (type == 'binary' && node[1] == '|') {
           if (node[2][0] == 'num' && node[3][0] == 'num') {
             return ['num', node[2][1] | node[3][1]];
-          } else if (jsonCompare(node[2], ZERO) || jsonCompare(node[3], ZERO)) {
-            // We might be able to remove this correction
-            for (var i = stack.length-1; i >= 0; i--) {
-              if (stack[i] == 1) {
-                // we will replace ourselves with the non-zero side. Recursively process that node.
-                var result = jsonCompare(node[2], ZERO) ? node[3] : node[2], other;
-                // replace node in-place
-                node.length = result.length;
-                for (var j = 0; j < result.length; j++) {
-                  node[j] = result[j];
-                }
-                rerun = true;
-                return process(result, result[0], stack);
-              } else if (stack[i] == -1) {
-                break; // Too bad, we can't
-              } else if (asm) {
-                break; // we must keep a coercion right on top of a heap access in asm mode
+          }
+          var go = false;
+          if (jsonCompare(node[2], ZERO)) {
+            // canonicalize order
+            var temp = node[3];
+            node[3] = node[2];
+            node[2] = temp;
+            go = true;
+          } else if (jsonCompare(node[3], ZERO)) {
+            go = true;
+          }
+          if (!go) {
+            stack.push(1);
+            return;
+          }
+          // We might be able to remove this correction
+          for (var i = stack.length-1; i >= 0; i--) {
+            if (stack[i] == 1) {
+              if (asm && stack[stack.length-1] != 1) {
+                if (node[2][0] in COERCION_REQUIRING_OPS ||
+                    (node[2][0] == 'binary' && node[2][1] in COERCION_REQUIRING_BINARIES)) break;
               }
+              // we will replace ourselves with the non-zero side. Recursively process that node.
+              var result = jsonCompare(node[2], ZERO) ? node[3] : node[2], other;
+              // replace node in-place
+              node.length = result.length;
+              for (var j = 0; j < result.length; j++) {
+                node[j] = result[j];
+              }
+              rerun = true;
+              return process(result, result[0], stack);
+            } else if (stack[i] == -1) {
+              break; // Too bad, we can't
             }
           }
           stack.push(1); // From here on up, no need for this kind of correction, it's done at the top
@@ -707,18 +729,11 @@ function simplifyExpressionsPre(ast) {
   }
 
   function asmOpts(fun) {
-    // 1. Add final returns when necessary
-    // 2. Remove unneeded coercions on function calls that have no targets (eliminator removed it)
+    // Add final returns when necessary
     var returnType = null;
     traverse(fun, function(node, type) {
       if (type == 'return' && node[1]) {
         returnType = detectAsmCoercion(node[1]);
-      } else if (type == 'stat') {
-        var inner = node[1];
-        if ((inner[0] == 'binary' && inner[1] in ASSOCIATIVE_BINARIES && inner[2][0] == 'call' && inner[3][0] == 'num') ||
-            (inner[0] == 'unary-prefix' && inner[1] == '+' && inner[2][0] == 'call')) {
-          node[1] = inner[2];
-        }
       }
     });
     // Add a final return if one is missing.
