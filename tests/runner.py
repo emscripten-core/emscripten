@@ -4036,6 +4036,39 @@ def process(filename):
 
         self.do_run(src, 'Inline JS is very cool\n3.64')
 
+    def zzztest_inlinejs2(self):
+        if Settings.ASM_JS: return self.skip('asm does not support random code, TODO: something that works in asm')
+        src = r'''
+          #include <stdio.h>
+
+          double get() {
+            double ret = 0;
+            __asm __volatile__("Math.abs(-12/3.3)":"=r"(ret)); // write to a variable
+            return ret;
+          }
+
+          int mix(int x, int y) {
+            int ret;
+            asm("Math.pow(2, %0+%1+1)" : "=r"(ret) : "r"(x), "r"(y)); // read and write
+            return ret;
+          }
+
+          void mult() {
+            asm("var $_$1 = Math.abs(-100); $_$1 *= 2;"); // multiline
+            asm __volatile__("Module.print($_$1); Module.print('\n')");
+          }
+
+          int main(int argc, char **argv) {
+            asm("Module.print('Inline JS is very cool')");
+            printf("%.2f\n", get());
+            printf("%d\n", mix(argc, argc/2));
+            mult();
+            return 0;
+          }
+          '''
+
+        self.do_run(src, 'Inline JS is very cool\n3.64\nwaka\nzakai\n')
+
     def test_memorygrowth(self):
       if Settings.USE_TYPED_ARRAYS == 0: return self.skip('memory growth is only supported with typed arrays')
       if Settings.ASM_JS: return self.skip('asm does not support memory growth yet')
