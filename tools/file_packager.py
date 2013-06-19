@@ -236,7 +236,7 @@ if crunch:
     function requestDecrunch(filename, data, callback) {
       decrunchWorker.postMessage({
         filename: filename,
-        data: data,
+        data: new Uint8Array(data),
         callbackID: decrunchCallbacks.length
       });
       decrunchCallbacks.push(callback);
