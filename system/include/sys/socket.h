@@ -38,7 +38,7 @@ extern "C" {
 #define SHUT_RDWR 2
 
 typedef unsigned int sa_family_t;
-#define AF_INET 1
+#define AF_INET PF_INET
 #define AF_INET6 6
 #define PF_INET6 AF_INET6
 
