@@ -1383,7 +1383,7 @@ function makeCopyValues(dest, src, num, type, modifier, align, sep) {
     if (!isNumber(num)) num = stripCorrections(num);
     if (!isNumber(align)) align = stripCorrections(align);
     if (!isNumber(num) || (parseInt(num)/align >= UNROLL_LOOP_MAX)) {
-      return '_memcpy(' + dest + ', ' + src + ', ' + num + ')';
+      return '(_memcpy(' + dest + ', ' + src + ', ' + num + ')|0)';
     }
     num = parseInt(num);
     if (ASM_JS) {
@@ -1465,7 +1465,7 @@ function getFastValue(a, op, b, type) {
         if ((isNumber(a) && Math.abs(a) < TWO_TWENTY) || (isNumber(b) && Math.abs(b) < TWO_TWENTY) || (bits < 32 && !ASM_JS)) {
           return '(((' + a + ')*(' + b + '))&' + ((Math.pow(2, bits)-1)|0) + ')'; // keep a non-eliminatable coercion directly on this
         }
-        return 'Math.imul(' + a + ',' + b + ')';
+        return '(Math.imul(' + a + ',' + b + ')|0)';
       }
     } else {
       if (a == '0') {

@@ -435,62 +435,68 @@ function simplifyExpressionsPre(ast) {
     } else {
       SAFE_BINARY_OPS = set('+', '-', '*');
     }
-    var COERCION_REQUIRING_OPS = set('call', 'sub', 'unary-prefix'); // ops that in asm must be coerced
+    var COERCION_REQUIRING_OPS = set('sub', 'unary-prefix'); // ops that in asm must be coerced right away
     var COERCION_REQUIRING_BINARIES = set('*', '/', '%'); // binary ops that in asm must be coerced
     var ZERO = ['num', 0];
-    var rerun = true;
-    while (rerun) {
-      rerun = false;
-      traverse(ast, function process(node, type, stack) {
-        if (type == 'binary' && node[1] == '|') {
-          if (node[2][0] == 'num' && node[3][0] == 'num') {
-            return ['num', node[2][1] | node[3][1]];
-          }
-          var go = false;
-          if (jsonCompare(node[2], ZERO)) {
-            // canonicalize order
-            var temp = node[3];
-            node[3] = node[2];
-            node[2] = temp;
-            go = true;
-          } else if (jsonCompare(node[3], ZERO)) {
-            go = true;
-          }
-          if (!go) {
-            stack.push(1);
-            return;
-          }
-          // We might be able to remove this correction
-          for (var i = stack.length-1; i >= 0; i--) {
-            if (stack[i] == 1) {
-              if (asm && stack[stack.length-1] != 1) {
-                if (node[2][0] in COERCION_REQUIRING_OPS ||
-                    (node[2][0] == 'binary' && node[2][1] in COERCION_REQUIRING_BINARIES)) break;
-              }
-              // we will replace ourselves with the non-zero side. Recursively process that node.
-              var result = jsonCompare(node[2], ZERO) ? node[3] : node[2], other;
-              // replace node in-place
-              node.length = result.length;
-              for (var j = 0; j < result.length; j++) {
-                node[j] = result[j];
-              }
-              rerun = true;
-              return process(result, result[0], stack);
-            } else if (stack[i] == -1) {
-              break; // Too bad, we can't
+
+    function removeMultipleOrZero() {
+      var rerun = true;
+      while (rerun) {
+        rerun = false;
+        traverse(ast, function process(node, type, stack) {
+          if (type == 'binary' && node[1] == '|') {
+            if (node[2][0] == 'num' && node[3][0] == 'num') {
+              return ['num', node[2][1] | node[3][1]];
             }
+            var go = false;
+            if (jsonCompare(node[2], ZERO)) {
+              // canonicalize order
+              var temp = node[3];
+              node[3] = node[2];
+              node[2] = temp;
+              go = true;
+            } else if (jsonCompare(node[3], ZERO)) {
+              go = true;
+            }
+            if (!go) {
+              stack.push(2);
+              return;
+            }
+            // We might be able to remove this correction
+            for (var i = stack.length-1; i >= 0; i--) {
+              if (stack[i] >= 1) {
+                if (asm) {
+                  if (stack[stack.length-1] < 2 && node[2][0] == 'call') break; // we can only remove multiple |0s on these
+                  if (stack[stack.length-1] < 1 && (node[2][0] in COERCION_REQUIRING_OPS ||
+                                                    (node[2][0] == 'binary' && node[2][1] in COERCION_REQUIRING_BINARIES))) break; // we can remove |0 or >>2
+                }
+                // we will replace ourselves with the non-zero side. Recursively process that node.
+                var result = jsonCompare(node[2], ZERO) ? node[3] : node[2], other;
+                // replace node in-place
+                node.length = result.length;
+                for (var j = 0; j < result.length; j++) {
+                  node[j] = result[j];
+                }
+                rerun = true;
+                return process(result, result[0], stack);
+              } else if (stack[i] == -1) {
+                break; // Too bad, we can't
+              }
+            }
+            stack.push(2); // From here on up, no need for this kind of correction, it's done at the top
+                           // (Add this at the end, so it is only added if we did not remove it)
+          } else if (type == 'binary' && node[1] in USEFUL_BINARY_OPS) {
+            stack.push(1);
+          } else if ((type == 'binary' && node[1] in SAFE_BINARY_OPS) || type == 'num' || type == 'name') {
+            stack.push(0); // This node is safe in that it does not interfere with this optimization
+          } else {
+            stack.push(-1); // This node is dangerous! Give up if you see this before you see '1'
           }
-          stack.push(1); // From here on up, no need for this kind of correction, it's done at the top
-                         // (Add this at the end, so it is only added if we did not remove it)
-        } else if (type == 'binary' && node[1] in USEFUL_BINARY_OPS) {
-          stack.push(1);
-        } else if ((type == 'binary' && node[1] in SAFE_BINARY_OPS) || type == 'num' || type == 'name') {
-          stack.push(0); // This node is safe in that it does not interfere with this optimization
-        } else {
-          stack.push(-1); // This node is dangerous! Give up if you see this before you see '1'
-        }
-      }, null, []);
+        }, null, []);
+      }
     }
+
+    removeMultipleOrZero();
 
     // & and heap-related optimizations
 
@@ -502,7 +508,7 @@ function simplifyExpressionsPre(ast) {
       return true;
     }
 
-    var hasTempDoublePtr = false;
+    var hasTempDoublePtr = false, rerunOrZeroPass = false;
 
     traverse(ast, function(node, type) {
       if (type == 'name') {
@@ -537,7 +543,6 @@ function simplifyExpressionsPre(ast) {
                  node[2][0] == 'binary' && node[2][1] == '<<' && node[2][3][0] == 'num' &&
                  node[2][2][0] == 'sub' && node[2][2][1][0] == 'name') {
         // collapse HEAPU?8[..] << 24 >> 24 etc. into HEAP8[..] | 0
-        // TODO: run this before | 0 | 0 removal, because we generate | 0
         var amount = node[3][1];
         var name = node[2][2][1][1];
         if (amount == node[2][3][1] && parseHeap(name)) {
@@ -546,6 +551,7 @@ function simplifyExpressionsPre(ast) {
             node[1] = '|';
             node[2] = node[2][2];
             node[3][1] = 0;
+            rerunOrZeroPass = true;
             return node;
           }
         }
@@ -577,6 +583,8 @@ function simplifyExpressionsPre(ast) {
         }
       }
     });
+
+    if (rerunOrZeroPass) removeMultipleOrZero();
 
     if (asm) {
       if (hasTempDoublePtr) {

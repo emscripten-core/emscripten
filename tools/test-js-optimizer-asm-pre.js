@@ -16,6 +16,9 @@ function a() {
   +f();
   f(+(+h() + 5));
   $140 = $p_3_i + (-$mantSize_0_i | 0) | 0;
+  f(g() | 0 | 0);
+  f(g() | 0 & -1);
+  f((g() | 0) >> 2);
 }
 function b($this, $__n) {
   $this = $this | 0;
