@@ -459,7 +459,7 @@ function simplifyExpressionsPre(ast) {
               go = true;
             }
             if (!go) {
-              stack.push(2);
+              stack.push(1);
               return;
             }
             // We might be able to remove this correction

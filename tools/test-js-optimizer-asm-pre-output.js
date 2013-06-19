@@ -18,6 +18,7 @@ function a() {
   f(g() | 0);
   f(g() | 0 & -1);
   f((g() | 0) >> 2);
+  $56 = _fcntl() | 0 | 1;
 }
 function b($this, $__n) {
   $this = $this | 0;
