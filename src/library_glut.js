@@ -274,7 +274,6 @@ var LibraryGLUT = {
     window.addEventListener("mouseup", GLUT.onMouseButtonUp, true);
     
    	Browser.resizeListeners.push(function(width, height) {
-   		
    			if (GLUT.reshapeFunc) {
    				Runtime.dynCall('vii', GLUT.reshapeFunc, [width, height]);
    			}
@@ -367,7 +366,7 @@ var LibraryGLUT = {
     GLUT.specialUpFunc = func;
   },
 
-  glutReshapeFunc: function(func) { 
+  glutReshapeFunc: function(func) {
     GLUT.reshapeFunc = func;
   },
 
