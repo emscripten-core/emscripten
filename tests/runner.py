@@ -9614,7 +9614,7 @@ def process(filename):
         self.assertIdentical(src_filename, data['sources'][0])
         self.assertIdentical(src, data['sourcesContent'][0])
         mappings = json.loads(jsrun.run_js(
-          path_from_root('tools', 'sourcemap2json.js'),
+          path_from_root('tools', 'source-maps', 'sourcemap2json.js'),
           tools.shared.NODE_JS, [map_filename]))
         seen_lines = set()
         for m in mappings:
