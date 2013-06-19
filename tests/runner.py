@@ -13819,7 +13819,7 @@ elif 'sanity' in str(sys.argv):
 
       try:
         os.environ['EM_IGNORE_SANITY'] = '1'
-        for version, succeed in [(('v0.6.6'), False), (('v0.6.7'), False), (('v0.6.8'), True), (('v0.6.9'), True), (('v0.7.1'), True), (('v0.7.9'), True), (('v0.8.7'), True), (('v0.8.9'), True), ('cheez', False)]:
+        for version, succeed in [('v0.7.9', False), ('v0.8.0', True), ('v0.8.1', True), ('cheez', False)]:
           f = open(path_from_root('tests', 'fake', 'nodejs'), 'w')
           f.write('#!/bin/sh\n')
           f.write('''if [ $1 = "--version" ]; then
