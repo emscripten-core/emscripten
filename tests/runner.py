@@ -11542,6 +11542,9 @@ elif 'browser' in str(sys.argv):
             result = q.get()
           s.wfile.write(result)
         s.wfile.close()
+      def log_request(code=0, size=0):
+        # don't log; too noisy
+        pass
     httpd = BaseHTTPServer.HTTPServer(('localhost', 9999), TestServerHandler)
     httpd.serve_forever() # test runner will kill us
 
@@ -11562,6 +11565,9 @@ elif 'browser' in str(sys.argv):
             s.send_response(500)
             s.send_header("Content-type", "text/html")
             s.end_headers()
+      def log_request(code=0, size=0):
+        # don't log; too noisy
+        pass
     os.chdir(dir)
     httpd = BaseHTTPServer.HTTPServer(('localhost', 8888), TestServerHandler)
     httpd.serve_forever() # test runner will kill us
@@ -12835,6 +12841,9 @@ elif 'browser' in str(sys.argv):
 
     def test_cube_explosion(self):
       self.btest('cube_explosion.c', expected=['667220544', '-1543354600', '-1485258415'])
+
+    def test_sdl_canvas_blank(self):
+      self.btest('sdl_canvas_blank.c', reference='sdl_canvas_blank.png')
 
     def test_sdl_canvas_palette(self):
       self.btest('sdl_canvas_palette.c', reference='sdl_canvas_palette.png')
