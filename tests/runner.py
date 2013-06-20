@@ -12698,7 +12698,7 @@ elif 'browser' in str(sys.argv):
           src = filename
           filename = 'main.cpp'
         else:
-          with open(filepath) as f: f.read()
+          with open(filepath) as f: src = f.read()
         with open(temp_filepath, 'w') as f: f.write(self.with_report_result(src))
       else:
         expected = [str(i) for i in range(0, reference_slack+1)]
