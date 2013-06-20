@@ -9582,7 +9582,7 @@ def process(filename):
         self.do_run(src, '*nothingatall*', post_build=post)
       except Exception, e:
         # This test *should* fail
-        assert 'Assertion failed' in str(e), str(e)
+        assert 'Assertion failed: x < 15' in str(e), str(e)
 
     def test_source_map(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip("doesn't pass without typed arrays")

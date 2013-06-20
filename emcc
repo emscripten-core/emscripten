@@ -1490,7 +1490,7 @@ try:
     final += '.tr.js'
     posix = True if not shared.WINDOWS else False
     logging.debug('applying transform: %s' % js_transform)
-    execute(shlex.split(js_transform, posix=posix) + [os.path.abspath(final)])
+    subprocess.check_call(shlex.split(js_transform, posix=posix) + [os.path.abspath(final)])
     if DEBUG: save_intermediate('transformed')
 
   js_transform_tempfiles = [final]
