@@ -1185,8 +1185,13 @@ function JSify(data, functionsOnly, givenFunctions) {
     if (disabled) {
       ret = call_ + ';';
     } else if (ASM_JS) {
+      if (item.type != 'void') call_ = asmCoercion(call_, item.type); // ensure coercion to ffi in comma operator
       call_ = call_.replace('; return', ''); // we auto-add returns when aborting, but do not need them here
-      ret = '(__THREW__ = 0,' +  call_ + ');';
+      if (item.type == 'void') {
+        ret = '__THREW__ = 0;' +  call_ + ';';
+      } else {
+        ret = '(__THREW__ = 0,' +  call_ + ');';
+      }
     } else {
       ret = '(function() { try { __THREW__ = 0; return '
           + call_ + ' '
