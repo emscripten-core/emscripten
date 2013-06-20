@@ -5,6 +5,9 @@
 var fs = require('fs');
 var path = require('path');
 
+var START_MARKER = '// EMSCRIPTEN_START_FUNCS\n';
+var END_MARKER = '// EMSCRIPTEN_END_FUNCS\n';
+
 function countLines(s) {
   var count = 0;
   for (var i = 0, l = s.length; i < l; i ++) {
@@ -26,14 +29,13 @@ function countLines(s) {
 function extractComments(source, commentHandler) {
   var state = 'code';
   var commentContent = '';
-  var functionStartIdx = source.indexOf('// EMSCRIPTEN_START_FUNCS');
-  var functionEndIdx = source.lastIndexOf('// EMSCRIPTEN_END_FUNCS');
-  var lineCount = countLines(source.slice(0, functionStartIdx));
+  var functionStartIdx = source.indexOf(START_MARKER);
+  var functionEndIdx = source.lastIndexOf(END_MARKER);
+  var lineCount = countLines(source.slice(0, functionStartIdx)) + 2;
 
-  for (var i = functionStartIdx; i < functionEndIdx; i++) {
+  for (var i = functionStartIdx + START_MARKER.length; i < functionEndIdx; i++) {
     var c = source[i];
     var nextC = source[i+1];
-    if (c === '\n') lineCount++;
     switch (state) {
       case 'code':
           if (c === '/') {
@@ -62,7 +64,9 @@ function extractComments(source, commentHandler) {
           if (c === '\\') i++;
           else if (c === '"') state = 'code';
           break;
-      }
+    }
+
+    if (c === '\n') lineCount++;
   }
 }
 
@@ -153,9 +157,9 @@ if (require.main === module) {
       var newMappings = {};
       // uglify processes the code between EMSCRIPTEN_START_FUNCS and
       // EMSCRIPTEN_END_FUNCS, so its line number maps are relative to those
-      // markers. we correct for that here.
-      var startFuncsLineNumber = countLines(
-        source.slice(0, source.indexOf('// EMSCRIPTEN_START_FUNCS'))) + 2;
+      // markers. we correct for that here. +2 = 1 for the newline in the marker
+      // and 1 to make it a 1-based index.
+      var startFuncsLineNumber = countLines(source.slice(0, source.indexOf(START_MARKER))) + 2;
       for (var line in optimizedMappings) {
         var originalLineNumber = optimizedMappings[line].originalLineNumber + startFuncsLineNumber;
         if (originalLineNumber in mappings) {
