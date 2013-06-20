@@ -13661,21 +13661,7 @@ elif 'benchmark' in str(sys.argv):
 
     def test_zzz_lua_binarytrees(self):
       # js version: ['binarytrees.lua', {0: 0, 1: 9.5, 2: 11.99, 3: 12.85, 4: 14.72, 5: 15.82}[arguments[0]]]
-      def args_processor(args):
-        arg = int(DEFAULT_ARG)
-        if arg == 0:
-          return args + ['0']
-        elif arg == 1:
-          return args + ['9.5']
-        elif arg == 2:
-          return args + ['11.99']
-        elif arg == 3:
-          return args + ['12.85']
-        elif arg == 4:
-          return args + ['14.72']
-        elif arg == 5:
-          return args + ['15.82']
-      self.lua('binarytrees', 'long lived tree of depth', args_processor=args_processor)
+      self.lua('binarytrees', 'long lived tree of depth')
 
     def test_zzz_zlib(self):
       src = open(path_from_root('tests', 'zlib', 'benchmark.c'), 'r').read()
