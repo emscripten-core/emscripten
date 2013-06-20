@@ -57,7 +57,7 @@ class Minifier:
           if curr not in INVALID_3: self.names.append(curr)
     #print >> sys.stderr, self.names
 
-  def minify_shell(self, shell, compress, debug=False):
+  def minify_shell(self, shell, compress, source_map=False):
     #print >> sys.stderr, "MINIFY SHELL 1111111111", shell, "\n222222222222222"
     # Run through js-optimizer.js to find and minify the global symbols
     # We send it the globals, which it parses at the proper time. JS decides how
@@ -80,7 +80,7 @@ class Minifier:
     output = subprocess.Popen(self.js_engine +
         [JS_OPTIMIZER, temp_file, 'minifyGlobals', 'noPrintMetadata'] +
         (['compress'] if compress else []) +
-        (['--debug'] if debug else []),
+        (['--debug'] if source_map else []),
         stdout=subprocess.PIPE).communicate()[0]
     assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + output
     #print >> sys.stderr, "minified SHELL 3333333333333333", output, "\n44444444444444444444"
@@ -107,7 +107,7 @@ def run_on_chunk(command):
   if DEBUG and not shared.WINDOWS: print >> sys.stderr, '.' # Skip debug progress indicator on Windows, since it doesn't buffer well with multiple threads printing to console.
   return filename
 
-def run_on_js(filename, passes, js_engine, jcache, debug=False):
+def run_on_js(filename, passes, js_engine, jcache, source_map=False):
   if isinstance(jcache, bool) and jcache: jcache = shared.JCache
   if jcache: shared.JCache.ensure()
 
@@ -175,7 +175,7 @@ EMSCRIPTEN_FUNCS();
       js = js[start_funcs + len(start_funcs_marker):end_funcs]
 
       minifier = Minifier(js, js_engine)
-      asm_shell_pre, asm_shell_post = minifier.minify_shell(asm_shell, 'compress' in passes, debug).split('EMSCRIPTEN_FUNCS();');
+      asm_shell_pre, asm_shell_post = minifier.minify_shell(asm_shell, 'compress' in passes, source_map).split('EMSCRIPTEN_FUNCS();');
       asm_shell_post = asm_shell_post.replace('});', '})');
       pre += asm_shell_pre + '\n' + start_funcs_marker
       post = end_funcs_marker + asm_shell_post + post
@@ -211,7 +211,9 @@ EMSCRIPTEN_FUNCS();
   total_size = len(js)
   js = None
 
-  cores = int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
+  # if we are making source maps, we want our debug numbering to start from the
+  # top of the file, so avoid breaking the JS into chunks
+  cores = 1 if source_map else int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
   intended_num_chunks = int(round(cores * NUM_CHUNKS_PER_CORE))
   chunk_size = min(MAX_CHUNK_SIZE, max(MIN_CHUNK_SIZE, total_size / intended_num_chunks))
 
@@ -253,7 +255,7 @@ EMSCRIPTEN_FUNCS();
     # XXX Use '--nocrankshaft' to disable crankshaft to work around v8 bug 1895, needed for older v8/node (node 0.6.8+ should be ok)
     commands = map(lambda filename: js_engine +
         [JS_OPTIMIZER, filename, 'noPrintMetadata'] +
-        (['--debug'] if debug else []) + passes, filenames)
+        (['--debug'] if source_map else []) + passes, filenames)
     #print [' '.join(command) for command in commands]
 
     cores = min(cores, filenames)
@@ -321,6 +323,6 @@ EMSCRIPTEN_FUNCS();
 
   return filename
 
-def run(filename, passes, js_engine, jcache, debug=False):
-  return temp_files.run_and_clean(lambda: run_on_js(filename, passes, js_engine, jcache, debug))
+def run(filename, passes, js_engine, jcache, source_map=False):
+  return temp_files.run_and_clean(lambda: run_on_js(filename, passes, js_engine, jcache, source_map))
 

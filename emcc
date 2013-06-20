@@ -710,6 +710,7 @@ try:
   save_bc = False
   memory_init_file = False
   use_preload_cache = False
+  make_source_map = False
 
   if use_cxx:
     default_cxx_std = '-std=c++03' # Enforce a consistent C++ standard when compiling .cpp files, if user does not specify one on the cmdline.
@@ -780,6 +781,9 @@ try:
     elif newargs[i] == '-g':
       keep_llvm_debug = True
       keep_js_debug = True
+    elif newargs[i] == '--map':
+      make_source_map = True
+      newargs[i] = '-g' # we'll need this to get LLVM debug info
     elif newargs[i] == '--bind':
       bind = True
       newargs[i] = ''
@@ -869,6 +873,8 @@ try:
   if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
   if llvm_lto is None: llvm_lto = opt_level >= 3
   if opt_level <= 0: keep_llvm_debug = keep_js_debug = True # always keep debug in -O0
+  if opt_level > 0: keep_llvm_debug = False # JS optimizer wipes out llvm debug info
+  if make_source_map: keep_llvm_debug = True; keep_js_debug = True
   if closure is None and opt_level == 3: closure = True
 
   if DEBUG: start_time = time.time() # done after parsing arguments, which might affect debug state
@@ -1498,8 +1504,7 @@ try:
         if shared.Settings.ASM_JS:
           js_optimizer_queue = ['asm'] + js_optimizer_queue
         logging.debug('applying js optimization passes: %s', js_optimizer_queue)
-        final = shared.Building.js_optimizer(final, js_optimizer_queue, jcache,
-            keep_llvm_debug and keep_js_debug)
+        final = shared.Building.js_optimizer(final, js_optimizer_queue, jcache, make_source_map)
         js_transform_tempfiles.append(final)
         if DEBUG: save_intermediate('js_opts')
       else:
@@ -1508,8 +1513,7 @@ try:
           if shared.Settings.ASM_JS:
             passes = ['asm'] + passes
           logging.debug('applying js optimization pass: %s', passes)
-          final = shared.Building.js_optimizer(final, passes, jcache,
-            keep_llvm_debug and keep_js_debug)
+          final = shared.Building.js_optimizer(final, passes, jcache, make_source_map)
           js_transform_tempfiles.append(final)
           save_intermediate(name)
       js_optimizer_queue = []
@@ -1519,8 +1523,7 @@ try:
 
     if DEBUG == '2':
       # Clean up the syntax a bit
-      final = shared.Building.js_optimizer(final, [], jcache,
-            keep_llvm_debug and keep_js_debug)
+      final = shared.Building.js_optimizer(final, [], jcache, make_source_map)
       if DEBUG: save_intermediate('pretty')
 
     def get_eliminate():
@@ -1608,7 +1611,7 @@ try:
     shell = open(shell_path).read()
     html = open(target, 'w')
     if not Compression.on:
-      if keep_llvm_debug and keep_js_debug:
+      if make_source_map:
         match = re.match('.*?<script[^>]*>{{{ SCRIPT_CODE }}}</script>', shell,
             re.DOTALL)
         if match is None:
@@ -1684,7 +1687,7 @@ try:
         from tools.split import split_javascript_file
         split_javascript_file(final, unsuffixed(target), split_js_file)
     else:
-        if keep_llvm_debug and keep_js_debug: generate_source_map(target)
+        if make_source_map: generate_source_map(target)
 
         # copy final JS to output
         shutil.move(final, target)

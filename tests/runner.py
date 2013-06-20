@@ -9586,7 +9586,7 @@ def process(filename):
 
     def test_source_map(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip("doesn't pass without typed arrays")
-      if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
+      if '--map' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('--map')
 
       src = '''
         #include <stdio.h>
@@ -11754,7 +11754,7 @@ elif 'browser' in str(sys.argv):
           return 0;
         }
         ''')
-      Popen([PYTHON, EMCC, cpp_file, '-o', html_file,  '-g']).communicate()
+      Popen([PYTHON, EMCC, cpp_file, '-o', html_file,  '--map']).communicate()
       webbrowser.open_new('file://' + html_file)
       print '''
 Set the debugger to pause on exceptions
