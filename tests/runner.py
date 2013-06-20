@@ -9625,6 +9625,40 @@ def process(filename):
 
       self.build(src, dirname, src_filename, post_build=(None,post))
 
+    def test_exception_source_map(self):
+      if Settings.USE_TYPED_ARRAYS != 2: return self.skip("doesn't pass without typed arrays")
+      if '--map' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('--map')
+
+      src = '''
+        #include <stdio.h>
+
+        __attribute__((noinline)) void foo(int i) {
+            if (i < 10) throw i; // line 5
+        }
+
+        int main() {
+          int i;
+          scanf("%d", &i);
+          foo(i);
+          return 0;
+        }
+      '''
+
+      def post(filename):
+        import json
+        map_filename = filename + '.map'
+        mappings = json.loads(jsrun.run_js(
+          path_from_root('tools', 'source-maps', 'sourcemap2json.js'),
+          tools.shared.NODE_JS, [map_filename]))
+        with open(filename) as f: lines = f.readlines()
+        for m in mappings:
+          if m['originalLine'] == 5 and '__cxa_throw' in lines[m['generatedLine']]:
+            return
+        assert False, 'Must label throw statements with line numbers'
+
+      dirname = self.get_dir()
+      self.build(src, dirname, os.path.join(dirname, 'src.cpp'), post_build=(None, post))
+
     def test_linespecific(self):
       if Settings.ASM_JS: return self.skip('asm always has corrections on')
 
