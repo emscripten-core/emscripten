@@ -2438,7 +2438,10 @@ function eliminate(ast, memSafe) {
       }
       traverseInOrder(node);
     }
+    //var eliminationLimit = 0; // used to debugging purposes
     function doEliminate(name, node) {
+      //if (eliminationLimit == 0) return;
+      //eliminationLimit--;
       //printErr('elim!!!!! ' + name);
       // yes, eliminate!
       varsToRemove[name] = 2; // both assign and var definitions can have other vars we must clean up
@@ -2587,7 +2590,13 @@ function eliminate(ast, memSafe) {
               }
               if (looperUsed) return;
             }
+            for (var l = 0; l < helpers.length; l++) {
+              for (var k = 0; k < helpers.length; k++) {
+                if (l != k && helpers[l] == helpers[k]) return; // it is complicated to handle a shared helper, abort
+              }
+            }
             // hurrah! this is safe to do
+            //printErr("ELIM LOOP VAR " + JSON.stringify(loopers) + ' :: ' + JSON.stringify(helpers));
             for (var l = 0; l < loopers.length; l++) {
               var looper = loopers[l];
               var helper = helpers[l];

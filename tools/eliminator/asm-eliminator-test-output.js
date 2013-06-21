@@ -5049,6 +5049,19 @@ function looop7() {
   HEAP32[$old_0_i107_i >> 2] = HEAP32[$696 >> 2] | 0;
   while (1) {}
 }
+function looop8() {
+  var i = 0, j = 0, a = 0;
+  while (1) {
+    do_it(i, j);
+    a = i + j | 0;
+    if (condition(helper)) {
+      break;
+    } else {
+      i = a;
+      j = a;
+    }
+  }
+}
 function multiloop($n_0, $35) {
   $n_0 = $n_0 | 0;
   $35 = $35 | 0;
