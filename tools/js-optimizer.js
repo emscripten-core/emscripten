@@ -1116,11 +1116,15 @@ function simplifyNotCompsDirect(node) {
       return node[2][2];
     }
   }
-  return node;
+  if (!simplifyNotCompsPass) return node;
 }
 
+var simplifyNotCompsPass = false;
+
 function simplifyNotComps(ast) {
+  simplifyNotCompsPass = true;
   traverse(ast, simplifyNotCompsDirect);
+  simplifyNotCompsPass = false;
 }
 
 function simplifyExpressionsPost(ast) {
