@@ -273,7 +273,7 @@ def check_llvm_version():
   except Exception, e:
     logging.warning('Could not verify LLVM version: %s' % str(e))
 
-EXPECTED_NODE_VERSION = (0,6,8)
+EXPECTED_NODE_VERSION = (0,8,0)
 
 def check_node_version():
   try:
@@ -295,7 +295,7 @@ def check_node_version():
 # we re-check sanity when the settings are changed)
 # We also re-check sanity and clear the cache when the version changes
 
-EMSCRIPTEN_VERSION = '1.4.9'
+EMSCRIPTEN_VERSION = '1.5.0'
 
 def generate_sanity():
   return EMSCRIPTEN_VERSION + '|' + get_llvm_target()
@@ -454,9 +454,12 @@ EMSCRIPTEN_TEMP_DIR = configuration.EMSCRIPTEN_TEMP_DIR
 DEBUG_CACHE = configuration.DEBUG_CACHE
 CANONICAL_TEMP_DIR = configuration.CANONICAL_TEMP_DIR
 
-level = logging.DEBUG if os.environ.get('EMCC_DEBUG') else logging.INFO
-logging.basicConfig(level=level, format='%(levelname)-8s %(name)s: %(message)s')
-  
+logging.basicConfig(format='%(levelname)-8s %(name)s: %(message)s')
+def set_logging():
+  logger = logging.getLogger()
+  logger.setLevel(logging.DEBUG if os.environ.get('EMCC_DEBUG') else logging.INFO)
+set_logging()
+
 if not EMSCRIPTEN_TEMP_DIR:
   EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_', dir=configuration.TEMP_DIR)
   def clean_temp():
@@ -1091,7 +1094,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
   @staticmethod
   def can_build_standalone():
-    return not Settings.BUILD_AS_SHARED_LIB and not Settings.LINKABLE
+    return not Settings.BUILD_AS_SHARED_LIB and not Settings.LINKABLE and not Settings.EXPORT_ALL
 
   @staticmethod
   def can_use_unsafe_opts():
@@ -1285,6 +1288,9 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       emcc_debug = os.environ.get('EMCC_DEBUG')
       if emcc_debug: del os.environ['EMCC_DEBUG']
 
+      emcc_optimize_normally = os.environ.get('EMCC_OPTIMIZE_NORMALLY')
+      if emcc_optimize_normally: del os.environ['EMCC_OPTIMIZE_NORMALLY']
+
       def make(opt_level):
         raw = relooper + '.raw.js'
         Building.emcc(os.path.join('relooper', 'Relooper.cpp'), ['-I' + os.path.join('relooper'), '--post-js',
@@ -1315,6 +1321,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     finally:
       os.chdir(curr)
       if emcc_debug: os.environ['EMCC_DEBUG'] = emcc_debug
+      if emcc_optimize_normally: os.environ['EMCC_OPTIMIZE_NORMALLY'] = emcc_optimize_normally
       if not ok:
         logging.error('bootstrapping relooper failed. You may need to manually create relooper.js by compiling it, see src/relooper/emscripten')
         1/0

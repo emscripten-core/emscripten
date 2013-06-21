@@ -328,7 +328,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       var js = (index !== null ? '' : item.ident + '=') + constant;
       if (js) js += ';';
 
-      if (!ASM_JS && (EXPORT_ALL || (item.ident in EXPORTED_GLOBALS))) {
+      if (!ASM_JS && NAMED_GLOBALS && (EXPORT_ALL || (item.ident in EXPORTED_GLOBALS))) {
         js += '\nModule["' + item.ident + '"] = ' + item.ident + ';';
       }
       if (BUILD_AS_SHARED_LIB == 2 && !item.private_) {
@@ -1185,8 +1185,13 @@ function JSify(data, functionsOnly, givenFunctions) {
     if (disabled) {
       ret = call_ + ';';
     } else if (ASM_JS) {
+      if (item.type != 'void') call_ = asmCoercion(call_, item.type); // ensure coercion to ffi in comma operator
       call_ = call_.replace('; return', ''); // we auto-add returns when aborting, but do not need them here
-      ret = '(__THREW__ = 0,' +  call_ + ');';
+      if (item.type == 'void') {
+        ret = '__THREW__ = 0;' +  call_ + ';';
+      } else {
+        ret = '(__THREW__ = 0,' +  call_ + ');';
+      }
     } else {
       ret = '(function() { try { __THREW__ = 0; return '
           + call_ + ' '
@@ -1310,8 +1315,10 @@ function JSify(data, functionsOnly, givenFunctions) {
     assert(TARGET_LE32);
     var ident = item.value.ident;
     var move = Runtime.STACK_ALIGN;
-    return '(tempInt=' + makeGetValue(ident, 4, '*') + ',' +
-                         makeSetValue(ident, 4, 'tempInt + ' + move, '*') + ',' +
+    
+    // store current list offset in tempInt, advance list offset by STACK_ALIGN, return list entry stored at tempInt
+    return '(tempInt=' + makeGetValue(ident, Runtime.QUANTUM_SIZE, '*') + ',' +
+                         makeSetValue(ident, Runtime.QUANTUM_SIZE, 'tempInt + ' + move, '*') + ',' +
                          makeGetValue(makeGetValue(ident, 0, '*'), 'tempInt', item.type) + ')';
   });
 

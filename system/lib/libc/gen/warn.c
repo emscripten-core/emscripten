@@ -46,4 +46,4 @@ _warn(const char *fmt, ...)
 
 /* PRINTFLIKE1 */
 void
-warn(const char *fmt, ...) __attribute__((weak, alias("warn")));
+warn(const char *fmt, ...) __attribute__((weak, alias("_warn")));

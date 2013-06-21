@@ -4399,7 +4399,7 @@ LibraryManager.library = {
         {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i8'), 'i8') }}};
       }
     } else {
-      _memcpy(dest, src, num);
+      _memcpy(dest, src, num) | 0;
     }
   },
   llvm_memmove_i32: 'memmove',
@@ -4655,6 +4655,14 @@ LibraryManager.library = {
       ptr++;
     }
     return 0;
+  },
+
+  strnlen: function(ptr, num) {
+    for (var i = 0; i < num; i++) {
+      if ({{{ makeGetValue('ptr', 0, 'i8') }}} == 0) return i;
+      ptr++;
+    }
+    return num;
   },
 
   strstr: function(ptr1, ptr2) {
@@ -4991,22 +4999,19 @@ LibraryManager.library = {
     return makeSetValue(ptr, 0, 'varrp', 'void*');
 #endif
 #if TARGET_LE32
-    // 4-word structure: start, current offset
-    return makeSetValue(ptr, 0, 'varrp', 'void*') + ';' + makeSetValue(ptr, 4, 0, 'void*');
+    // 2-word structure: struct { void* start; void* currentOffset; }
+    return makeSetValue(ptr, 0, 'varrp', 'void*') + ';' + makeSetValue(ptr, Runtime.QUANTUM_SIZE, 0, 'void*');
 #endif
   },
 
   llvm_va_end: function() {},
 
   llvm_va_copy: function(ppdest, ppsrc) {
+  	// copy the list start
     {{{ makeCopyValues('ppdest', 'ppsrc', Runtime.QUANTUM_SIZE, 'null', null, 1) }}};
-    /* Alternate implementation that copies the actual DATA; it assumes the va_list is prefixed by its size
-    var psrc = IHEAP[ppsrc]-1;
-    var num = IHEAP[psrc]; // right before the data, is the number of (flattened) values
-    var pdest = _malloc(num+1);
-    _memcpy(pdest, psrc, num+1);
-    IHEAP[ppdest] = pdest+1;
-    */
+    
+    // copy the list's current offset (will be advanced with each call to va_arg)
+    {{{ makeCopyValues('(ppdest+'+Runtime.QUANTUM_SIZE+')', '(ppsrc+'+Runtime.QUANTUM_SIZE+')', Runtime.QUANTUM_SIZE, 'null', null, 1) }}};
   },
 
   llvm_bswap_i16: function(x) {

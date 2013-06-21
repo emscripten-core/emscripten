@@ -5,12 +5,12 @@ function ___muldsi3($a, $b) {
   var $1 = 0, $2 = 0, $3 = 0, $6 = 0, $8 = 0, $11 = 0, $12 = 0;
   $1 = $a & 65535;
   $2 = $b & 65535;
-  $3 = Math.imul($2, $1);
+  $3 = Math.imul($2, $1) | 0;
   $6 = $a >>> 16;
-  $8 = ($3 >>> 16) + Math.imul($2, $6) | 0;
+  $8 = ($3 >>> 16) + (Math.imul($2, $6) | 0) | 0;
   $11 = $b >>> 16;
-  $12 = Math.imul($11, $1);
-  return (tempRet0 = (($8 >>> 16) + Math.imul($11, $6) | 0) + ((($8 & 65535) + $12 | 0) >>> 16) | 0, 0 | ($8 + $12 << 16 | $3 & 65535)) | 0;
+  $12 = Math.imul($11, $1) | 0;
+  return (tempRet0 = (($8 >>> 16) + (Math.imul($11, $6) | 0) | 0) + ((($8 & 65535) + $12 | 0) >>> 16) | 0, 0 | ($8 + $12 << 16 | $3 & 65535)) | 0;
 }
 function ___divdi3($a$0, $a$1, $b$0, $b$1) {
   $a$0 = $a$0 | 0;
@@ -47,7 +47,7 @@ function ___remdi3($a$0, $a$1, $b$0, $b$1) {
   $4$0 = _i64Subtract($1$0 ^ $a$0, $1$1 ^ $a$1, $1$0, $1$1) | 0;
   $4$1 = tempRet0;
   $6$0 = _i64Subtract($2$0 ^ $b$0, $2$1 ^ $b$1, $2$0, $2$1) | 0;
-  ___udivmoddi4($4$0, $4$1, $6$0, tempRet0, $rem);
+  ___udivmoddi4($4$0, $4$1, $6$0, tempRet0, $rem) | 0;
   $10$0 = _i64Subtract(HEAP32[$rem >> 2] ^ $1$0, HEAP32[$rem + 4 >> 2] ^ $1$1, $1$0, $1$1) | 0;
   $10$1 = tempRet0;
   STACKTOP = __stackBase__;
@@ -63,8 +63,8 @@ function ___muldi3($a$0, $a$1, $b$0, $b$1) {
   $y_sroa_0_0_extract_trunc = $b$0;
   $1$0 = ___muldsi3($x_sroa_0_0_extract_trunc, $y_sroa_0_0_extract_trunc) | 0;
   $1$1 = tempRet0;
-  $2 = Math.imul($a$1, $y_sroa_0_0_extract_trunc);
-  return (tempRet0 = (Math.imul($b$1, $x_sroa_0_0_extract_trunc) + $2 | 0) + $1$1 | $1$1 & 0, 0 | $1$0 & -1) | 0;
+  $2 = Math.imul($a$1, $y_sroa_0_0_extract_trunc) | 0;
+  return (tempRet0 = ((Math.imul($b$1, $x_sroa_0_0_extract_trunc) | 0) + $2 | 0) + $1$1 | $1$1 & 0, 0 | $1$0 & -1) | 0;
 }
 function ___udivdi3($a$0, $a$1, $b$0, $b$1) {
   $a$0 = $a$0 | 0;
@@ -84,7 +84,7 @@ function ___uremdi3($a$0, $a$1, $b$0, $b$1) {
   __stackBase__ = STACKTOP;
   STACKTOP = STACKTOP + 8 | 0;
   $rem = __stackBase__ | 0;
-  ___udivmoddi4($a$0, $a$1, $b$0, $b$1, $rem);
+  ___udivmoddi4($a$0, $a$1, $b$0, $b$1, $rem) | 0;
   STACKTOP = __stackBase__;
   return (tempRet0 = HEAP32[$rem + 4 >> 2] | 0, HEAP32[$rem >> 2] | 0) | 0;
 }
@@ -258,7 +258,7 @@ function ___udivmoddi4($a$0, $a$1, $b$0, $b$1, $rem) {
       $149 = $carry_0203 | $q_sroa_0_1199 << 1;
       $r_sroa_0_0_insert_insert42$0 = 0 | ($r_sroa_0_1201 << 1 | $q_sroa_1_1198 >>> 31);
       $r_sroa_0_0_insert_insert42$1 = $r_sroa_0_1201 >>> 31 | $r_sroa_1_1200 << 1 | 0;
-      _i64Subtract($137$0, $137$1, $r_sroa_0_0_insert_insert42$0, $r_sroa_0_0_insert_insert42$1);
+      _i64Subtract($137$0, $137$1, $r_sroa_0_0_insert_insert42$0, $r_sroa_0_0_insert_insert42$1) | 0;
       $150$1 = tempRet0;
       $151$0 = $150$1 >> 31 | (($150$1 | 0) < 0 ? -1 : 0) << 1;
       $152 = $151$0 & 1;

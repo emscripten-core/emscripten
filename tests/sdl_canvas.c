@@ -38,7 +38,7 @@ int main(int argc, char **argv) {
 
   // fill stuff
   SDL_Rect rect = { 200, 200, 175, 125 };
-  SDL_FillRect(screen, &rect, 0x2222ffff);
+  SDL_FillRect(screen, &rect, SDL_MapRGBA(screen->format, 0x22, 0x22, 0xff, 0xff));
 
   SDL_Flip(screen); 
 

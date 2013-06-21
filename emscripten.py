@@ -128,7 +128,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   if DEBUG: print >> sys.stderr, '  emscript: split took %s seconds' % (time.time() - t)
 
   if len(funcs) == 0:
-    raise RuntimeError('No functions to process. Make sure you prevented LLVM from eliminating them as dead (use EXPORTED_FUNCTIONS if necessary, see the FAQ)')
+    print >> sys.stderr, 'No functions to process. Make sure you prevented LLVM from eliminating them as dead (use EXPORTED_FUNCTIONS if necessary, see the FAQ)'
 
   #if DEBUG:
   #  print >> sys.stderr, '========= pre ================\n'
@@ -407,7 +407,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     math_envs = ['Math.min'] # TODO: move min to maths
     asm_setup += '\n'.join(['var %s = %s;' % (f.replace('.', '_'), f) for f in math_envs])
 
-    basic_funcs = ['abort', 'assert', 'asmPrintInt', 'asmPrintFloat', 'copyTempDouble', 'copyTempFloat'] + [m.replace('.', '_') for m in math_envs]
+    basic_funcs = ['abort', 'assert', 'asmPrintInt', 'asmPrintFloat'] + [m.replace('.', '_') for m in math_envs]
     if settings['RESERVED_FUNCTION_POINTERS'] > 0: basic_funcs.append('jsCall')
     if settings['SAFE_HEAP']: basic_funcs += ['SAFE_HEAP_LOAD', 'SAFE_HEAP_STORE', 'SAFE_HEAP_CLEAR']
     if settings['CHECK_HEAP_ALIGN']: basic_funcs += ['CHECK_ALIGN_2', 'CHECK_ALIGN_4', 'CHECK_ALIGN_8']
@@ -554,6 +554,24 @@ var asm = (function(global, env, buffer) {
       __THREW__ = threw;
       threwValue = value;
     }
+  }
+  function copyTempFloat(ptr) {
+    ptr = ptr|0;
+    HEAP8[tempDoublePtr] = HEAP8[ptr];
+    HEAP8[tempDoublePtr+1|0] = HEAP8[ptr+1|0];
+    HEAP8[tempDoublePtr+2|0] = HEAP8[ptr+2|0];
+    HEAP8[tempDoublePtr+3|0] = HEAP8[ptr+3|0];
+  }
+  function copyTempDouble(ptr) {
+    ptr = ptr|0;
+    HEAP8[tempDoublePtr] = HEAP8[ptr];
+    HEAP8[tempDoublePtr+1|0] = HEAP8[ptr+1|0];
+    HEAP8[tempDoublePtr+2|0] = HEAP8[ptr+2|0];
+    HEAP8[tempDoublePtr+3|0] = HEAP8[ptr+3|0];
+    HEAP8[tempDoublePtr+4|0] = HEAP8[ptr+4|0];
+    HEAP8[tempDoublePtr+5|0] = HEAP8[ptr+5|0];
+    HEAP8[tempDoublePtr+6|0] = HEAP8[ptr+6|0];
+    HEAP8[tempDoublePtr+7|0] = HEAP8[ptr+7|0];
   }
 ''' + ''.join(['''
   function setTempRet%d(value) {

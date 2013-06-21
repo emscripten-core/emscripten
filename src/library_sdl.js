@@ -242,7 +242,7 @@ var LibrarySDL = {
     },
 
     translateColorToCSSRGBA: function(rgba) {
-      return 'rgba(' + ((rgba >> 24)&255) + ',' + ((rgba >> 16)&255) + ',' + ((rgba >> 8)&255) + ',' + ((rgba&255)/255) + ')';
+      return 'rgba(' + (rgba&0xff) + ',' + (rgba>>8 & 0xff) + ',' + (rgba>>16 & 0xff) + ',' + (rgba>>>24)/0xff + ')';
     },
 
     translateRGBAToCSSRGBA: function(r, g, b, a) {
@@ -250,7 +250,7 @@ var LibrarySDL = {
     },
 
     translateRGBAToColor: function(r, g, b, a) {
-      return (r << 24) + (g << 16) + (b << 8) + a;
+      return r | g << 8 | b << 16 | a << 24;
     },
 
     makeSurface: function(width, height, flags, usePageCanvas, source, rmask, gmask, bmask, amask) {
@@ -819,7 +819,6 @@ var LibrarySDL = {
     if (surfData.isFlagSet(0x00200000 /* SDL_HWPALETTE */)) {
       SDL.copyIndexedColorData(surfData);
     } else if (!surfData.colors) {
-      var num = surfData.image.data.length;
       var data = surfData.image.data;
       var buffer = surfData.buffer;
 #if USE_TYPED_ARRAYS == 2
@@ -827,17 +826,14 @@ var LibrarySDL = {
       var src = buffer >> 2;
       var dst = 0;
       var isScreen = surf == SDL.screen;
+      var data32 = new Uint32Array(data.buffer);
+      var num = data32.length;
       while (dst < num) {
-        // TODO: access underlying data buffer and write in 32-bit chunks or more
-        var val = HEAP32[src]; // This is optimized. Instead, we could do {{{ makeGetValue('buffer', 'dst', 'i32') }}};
-        data[dst  ] = val & 0xff;
-        data[dst+1] = (val >> 8) & 0xff;
-        data[dst+2] = (val >> 16) & 0xff;
-        data[dst+3] = isScreen ? 0xff : ((val >> 24) & 0xff);
-        src++;
-        dst += 4;
+        // HEAP32[src++] is an optimization. Instead, we could do {{{ makeGetValue('buffer', 'dst', 'i32') }}};
+        data32[dst++] = HEAP32[src++] | (isScreen ? 0xff000000 : 0);
       }
 #else
+      var num = surfData.image.data.length;
       for (var i = 0; i < num; i++) {
         // We may need to correct signs here. Potentially you can hardcode a write of 255 to alpha, say, and
         // the compiler may decide to write -1 in the llvm bitcode...
@@ -963,6 +959,13 @@ var LibrarySDL = {
 
   SDL_CreateRGBSurface: function(flags, width, height, depth, rmask, gmask, bmask, amask) {
     return SDL.makeSurface(width, height, flags, false, 'CreateRGBSurface', rmask, gmask, bmask, amask);
+  },
+
+  SDL_CreateRGBSurfaceFrom: function(pixels, width, height, depth, pitch, rmask, gmask, bmask, amask) {
+    // TODO: Actually fill pixel data to created surface.
+    // TODO: Take into account depth and pitch parameters.
+    console.log('TODO: Partially unimplemented SDL_CreateRGBSurfaceFrom called!');
+    return SDL.makeSurface(width, height, 0, false, 'CreateRGBSurfaceFrom', rmask, gmask, bmask, amask);
   },
 
   SDL_DisplayFormatAlpha: function(surf) {
@@ -1113,13 +1116,13 @@ var LibrarySDL = {
   },
 
   SDL_MapRGB: function(fmt, r, g, b) {
-    // Canvas screens are always RGBA
-    return 0xff+((b&0xff)<<8)+((g&0xff)<<16)+((r&0xff)<<24)
+    // Canvas screens are always RGBA. We assume the machine is little-endian.
+    return r&0xff|(g&0xff)<<8|(b&0xff)<<16|0xff000000;
   },
 
   SDL_MapRGBA: function(fmt, r, g, b, a) {
-    // Canvas screens are always RGBA
-    return (a&0xff)+((b&0xff)<<8)+((g&0xff)<<16)+((r&0xff)<<24)
+    // Canvas screens are always RGBA. We assume the machine is little-endian.
+    return r&0xff|(g&0xff)<<8|(b&0xff)<<16|(a&0xff)<<24;
   },
 
   SDL_GetAppState: function() {
@@ -1810,7 +1813,7 @@ var LibrarySDL = {
 
   SDL_AddTimer: function(interval, callback, param) {
     return window.setTimeout(function() {
-      Runtime.dynCall('ii', callback, [interval, param]);
+      Runtime.dynCall('iii', callback, [interval, param]);
     }, interval);
   },
   SDL_RemoveTimer: function(id) {
@@ -1837,9 +1840,9 @@ var LibrarySDL = {
   Mix_FadeOutChannel: function() { throw 'Mix_FadeOutChannel' },
 
   Mix_Linked_Version: function() { throw 'Mix_Linked_Version: TODO' },
-  SDL_CreateRGBSurfaceFrom: function() { throw 'SDL_CreateRGBSurfaceFrom: TODO' },
   SDL_SaveBMP_RW: function() { throw 'SDL_SaveBMP_RW: TODO' },
 
+  SDL_WM_SetIcon: function() { /* This function would set the application window icon surface, which doesn't apply for web canvases, so a no-op. */ },
   SDL_HasRDTSC: function() { return 0; },
   SDL_HasMMX: function() { return 0; },
   SDL_HasMMXExt: function() { return 0; },

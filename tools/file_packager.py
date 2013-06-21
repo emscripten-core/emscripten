@@ -39,7 +39,7 @@ TODO:        You can also provide .crn files yourself, pre-crunched. With this o
              to dds files in the browser, exactly the same as if this tool compressed them.
 '''
 
-import os, sys, shutil, random, uuid
+import os, sys, shutil, random, uuid, ctypes
 
 import shared
 from shared import Compression, execute, suffix, unsuffixed
@@ -49,6 +49,8 @@ if len(sys.argv) == 1:
   print '''Usage: file_packager.py TARGET [--preload A...] [--embed B...] [--compress COMPRESSION_DATA] [--pre-run] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache]
 See the source for more details.'''
   sys.exit(0)
+
+DEBUG = os.environ.get('EMCC_DEBUG')
 
 data_target = sys.argv[1]
 
@@ -150,6 +152,32 @@ function assert(check, msg) {
 }
 '''
 
+# Win32 code to test whether the given file has the hidden property set.
+def has_hidden_attribute(filepath):
+  if sys.platform != 'win32':
+    return False
+    
+  try:
+    attrs = ctypes.windll.kernel32.GetFileAttributesW(unicode(filepath))
+    assert attrs != -1
+    result = bool(attrs & 2)
+  except (AttributeError, AssertionError):
+    result = False
+  return result
+
+# The packager should never preload/embed any directories that have a component starting with '.' in them,
+# or if the file is hidden (Win32). Note that this filter ONLY applies to directories. Explicitly specified single files
+# are always preloaded/embedded, even if they start with a '.'.
+def should_ignore(filename):
+  if has_hidden_attribute(filename):
+    return True
+    
+  components = filename.replace('\\\\', '/').replace('\\', '/').split('/')
+  for c in components:
+    if c.startswith('.') and c != '.' and c != '..':
+      return True
+  return False
+
 # Expand directories into individual files
 def add(arg, dirname, names):
   # rootpathsrc: The path name of the root directory on the local FS we are adding to emscripten virtual FS.
@@ -158,8 +186,12 @@ def add(arg, dirname, names):
   for name in names:
     fullname = os.path.join(dirname, name)
     if not os.path.isdir(fullname):
-      dstpath = os.path.join(rootpathdst, os.path.relpath(fullname, rootpathsrc)) # Convert source filename relative to root directory of target FS.
-      data_files.append({ 'srcpath': fullname, 'dstpath': dstpath, 'mode': mode })
+      if should_ignore(fullname):
+        if DEBUG:
+          print >> sys.stderr, 'Skipping hidden file "' + fullname + '" from inclusion in the emscripten virtual file system.'
+      else:
+        dstpath = os.path.join(rootpathdst, os.path.relpath(fullname, rootpathsrc)) # Convert source filename relative to root directory of target FS.
+        data_files.append({ 'srcpath': fullname, 'dstpath': dstpath, 'mode': mode })
 
 for file_ in data_files:
   if os.path.isdir(file_['srcpath']):
@@ -171,6 +203,8 @@ for file_ in data_files:
   if file_['dstpath'].endswith('/'): # If user has submitted a directory name as the destination but omitted the destination filename, use the filename from source file
     file_['dstpath'] = file_['dstpath'] + os.path.basename(file_['srcpath'])
   if file_['dstpath'].startswith('./'): file_['dstpath'] = file_['dstpath'][2:] # remove redundant ./ prefix
+  if DEBUG:
+    print >> sys.stderr, 'Packaging file "' + file_['srcpath'] + '" to VFS in path "' + file_['dstpath'] + '".'
 
 # Remove duplicates (can occur naively, for example preload dir/, preload dir/subdir/)
 seen = {}
@@ -202,7 +236,7 @@ if crunch:
     function requestDecrunch(filename, data, callback) {
       decrunchWorker.postMessage({
         filename: filename,
-        data: data,
+        data: new Uint8Array(data),
         callbackID: decrunchCallbacks.length
       });
       decrunchCallbacks.push(callback);

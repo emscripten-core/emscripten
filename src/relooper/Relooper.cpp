@@ -897,6 +897,7 @@ void Relooper::Calculate(Block *Entry) {
   BlockSet Entries;
   Entries.insert(Entry);
   Root = Analyzer(this).Process(AllBlocks, Entries, NULL);
+  assert(Root);
 
   // Post optimizations
 
@@ -1091,6 +1092,7 @@ void Relooper::Calculate(Block *Entry) {
 
 void Relooper::Render() {
   OutputBuffer = OutputBufferRoot;
+  assert(Root);
   Root->Render(false);
 }
 

@@ -53,8 +53,6 @@ from tools import shared
 from tools.shared import Compression, execute, suffix, unsuffixed, unsuffixed_basename
 from tools.response_file import read_response_file
 
-logging = logging.getLogger('emcc')
-
 # Mapping of emcc opt levels to llvm opt levels. We use llvm opt level 3 in emcc opt
 # levels 2 and 3 (emcc 3 is unsafe opts, so unsuitable for the only level to get
 # llvm opt level 3, and speed-wise emcc level 2 is already the slowest/most optimizing
@@ -819,8 +817,12 @@ try:
       newargs[i] = ''
     elif newargs[i] == '-v':
       shared.COMPILER_OPTS += ['-v']
-      DEBUG = 1
       os.environ['EMCC_DEBUG'] = '1' # send to child processes too
+      if DEBUG != 1:
+        # swap in debug logging
+        DEBUG = 1
+        shared.set_logging()
+        logging.debug('invocation: ' + ' '.join(sys.argv))
       newargs[i] = ''
     elif newargs[i].startswith('--shell-file'):
       check_bad_eq(newargs[i])
@@ -853,9 +855,10 @@ try:
       memory_init_file = int(newargs[i+1])
       newargs[i] = ''
       newargs[i+1] = ''
-    elif newargs[i].startswith(('-I/', '-L/')):
-      if not absolute_warning_shown:
-        logging.warning ('-I or -L of an absolute path encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript)') # Of course an absolute path to a non-system-specific library or header is fine, and you can ignore this warning. The danger are system headers that are e.g. x86 specific and nonportable. The emscripten bundled headers are modified to be portable, local system ones are generally not
+    elif newargs[i].startswith(('-I', '-L')):
+      path_name = newargs[i][2:]
+      if not absolute_warning_shown and os.path.isabs(path_name):
+        logging.warning ('-I or -L of an absolute path "' + newargs[i] + '" encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript)') # Of course an absolute path to a non-system-specific library or header is fine, and you can ignore this warning. The danger are system headers that are e.g. x86 specific and nonportable. The emscripten bundled headers are modified to be portable, local system ones are generally not
         absolute_warning_shown = True
   newargs = [ arg for arg in newargs if arg is not '' ]
 
@@ -902,7 +905,7 @@ try:
 
     if i > 0:
       prev = newargs[i-1]
-      if prev in ['-MT', '-install_name', '-I', '-L']: continue # ignore this gcc-style argument
+      if prev in ['-MT', '-MF', '-MQ', '-D', '-U', '-o', '-x', '-Xpreprocessor', '-include', '-imacros', '-idirafter', '-iprefix', '-iwithprefix', '-iwithprefixbefore', '-isysroot', '-imultilib', '-A', '-isystem', '-iquote', '-install_name', '-I', '-L']: continue # ignore this gcc-style argument
 
     if (os.path.islink(arg) and os.path.realpath(arg).endswith(SOURCE_SUFFIXES + BITCODE_SUFFIXES + DYNAMICLIB_SUFFIXES + ASSEMBLY_SUFFIXES)):
       arg = os.path.realpath(arg)
