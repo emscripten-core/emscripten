@@ -164,7 +164,8 @@ function astToSrc(ast, compress) {
 function traverseChildren(node, traverse, pre, post, stack) {
   for (var i = 0; i < node.length; i++) {
     var subnode = node[i];
-    if (typeof subnode == 'object' && subnode && subnode.length) {
+    if (typeof subnode == 'object' && subnode && subnode.length &&
+        typeof subnode.valueOf() !== 'string') {
       var subresult = traverse(subnode, pre, post, stack);
       if (subresult == true) return true;
       if (subresult !== null && typeof subresult == 'object') node[i] = subresult;
@@ -188,7 +189,9 @@ function traverseChildren(node, traverse, pre, post, stack) {
 //     was stopped, true. Otherwise undefined.
 function traverse(node, pre, post, stack) {
   var type = node[0], result, len;
-  var relevant = typeof type == 'string';
+  // valueOf() ensures that NodeWithToken (produced by uglify's parser during
+  // 'embed tokens' mode) gets marked as 'relevant'
+  var relevant = type && typeof type.valueOf() == 'string';
   if (relevant) {
     if (stack) len = stack.length;
     var result = pre(node, type, stack);
@@ -2006,7 +2009,7 @@ function eliminate(ast, memSafe) {
     // examine body and note locals
     var hasSwitch = false;
     traverse(func, function(node, type) {
-      if (type === 'var') {
+      if (type == 'var') {
         var node1 = node[1];
         for (var i = 0; i < node1.length; i++) {
           var node1i = node1[i];
@@ -2020,7 +2023,7 @@ function eliminate(ast, memSafe) {
           if (!uses[name]) uses[name] = 0;
           locals[name] = true;
         }
-      } else if (type === 'name') {
+      } else if (type == 'name') {
         var name = node[1];
         if (!uses[name]) uses[name] = 0;
         uses[name]++;
@@ -2477,7 +2480,7 @@ function eliminate(ast, memSafe) {
     // clean up vars, and loop variable elimination
     traverse(func, function(node, type) {
       // pre
-      if (type === 'var') {
+      if (type == 'var') {
         node[1] = node[1].filter(function(pair) { return !varsToRemove[pair[0]] });
         if (node[1].length == 0) {
           // wipe out an empty |var;|
@@ -2599,21 +2602,21 @@ function eliminate(ast, memSafe) {
 
     this.run = function() {
       traverse(this.node, function(node, type) {
-        if (type === 'binary' && node[1] == '+') {
+        if (type == 'binary' && node[1] == '+') {
           var names = [];
           var num = 0;
           var has_num = false;
           var fail = false;
           traverse(node, function(subNode, subType) {
-            if (subType === 'binary') {
+            if (subType == 'binary') {
               if (subNode[1] != '+') {
                 fail = true;
                 return false;
               }
-            } else if (subType === 'name') {
+            } else if (subType == 'name') {
               names.push(subNode[1]);
               return;
-            } else if (subType === 'num') {
+            } else if (subType == 'num') {
               num += subNode[1];
               has_num = true;
               return;
