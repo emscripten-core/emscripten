@@ -442,7 +442,9 @@ function simplifyExpressionsPre(ast) {
       traverse(ast, function process(node, type, stack) {
         if (type == 'binary' && node[1] == '|') {
           if (node[2][0] == 'num' && node[3][0] == 'num') {
-            return ['num', node[2][1] | node[3][1]];
+            // pass node[2][0] instead of 'num' because it might be a token
+            // object with line numbers attached.
+            return [node[2][0], node[2][1] | node[3][1]];
           } else if (jsonCompare(node[2], ZERO) || jsonCompare(node[3], ZERO)) {
             // We might be able to remove this correction
             for (var i = stack.length-1; i >= 0; i--) {
