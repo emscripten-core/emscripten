@@ -2626,48 +2626,50 @@ function eliminate(ast, memSafe) {
     }
   });
 
-  // A class for optimizing expressions. We know that it is legitimate to collapse
-  // 5+7 in the generated code, as it will always be numerical, for example. XXX do we need this? here?
-  function ExpressionOptimizer(node) {
-    this.node = node;
+  if (!asm) { // TODO: deprecate in non-asm too
+    // A class for optimizing expressions. We know that it is legitimate to collapse
+    // 5+7 in the generated code, as it will always be numerical, for example. XXX do we need this? here?
+    function ExpressionOptimizer(node) {
+      this.node = node;
 
-    this.run = function() {
-      traverse(this.node, function(node, type) {
-        if (type === 'binary' && node[1] == '+') {
-          var names = [];
-          var num = 0;
-          var has_num = false;
-          var fail = false;
-          traverse(node, function(subNode, subType) {
-            if (subType === 'binary') {
-              if (subNode[1] != '+') {
+      this.run = function() {
+        traverse(this.node, function(node, type) {
+          if (type === 'binary' && node[1] == '+') {
+            var names = [];
+            var num = 0;
+            var has_num = false;
+            var fail = false;
+            traverse(node, function(subNode, subType) {
+              if (subType === 'binary') {
+                if (subNode[1] != '+') {
+                  fail = true;
+                  return false;
+                }
+              } else if (subType === 'name') {
+                names.push(subNode[1]);
+                return;
+              } else if (subType === 'num') {
+                num += subNode[1];
+                has_num = true;
+                return;
+              } else {
                 fail = true;
                 return false;
               }
-            } else if (subType === 'name') {
-              names.push(subNode[1]);
-              return;
-            } else if (subType === 'num') {
-              num += subNode[1];
-              has_num = true;
-              return;
-            } else {
-              fail = true;
-              return false;
+            });
+            if (!fail && has_num) {
+              var ret = ['num', num];
+              for (var i = 0; i < names.length; i++) {
+                ret = ['binary', '+', ['name', names[i]], ret];
+              }
+              return ret;
             }
-          });
-          if (!fail && has_num) {
-            var ret = ['num', num];
-            for (var i = 0; i < names.length; i++) {
-              ret = ['binary', '+', ['name', names[i]], ret];
-            }
-            return ret;
           }
-        }
-      });
-    };
+        });
+      };
+    }
+    new ExpressionOptimizer(ast).run();
   }
-  new ExpressionOptimizer(ast).run();
 }
 
 function eliminateMemSafe(ast) {
