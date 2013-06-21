@@ -1132,6 +1132,8 @@ try:
     libcxx_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxx', 'symbols'), exclude=libc_symbols)
     libcxxabi_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxxabi', 'symbols'), exclude=libc_symbols)
 
+    # XXX we should disable EMCC_DEBUG (and EMCC_OPTIMIZE_NORMALLY?) when building libs, just like in the relooper
+
     def build_libc(lib_filename, files):
       o_s = []
       prev_cxx = os.environ.get('EMMAKEN_CXX')
