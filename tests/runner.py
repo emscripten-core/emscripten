@@ -11766,6 +11766,8 @@ elif 'browser' in str(sys.argv):
           message='You should see "hello, world!" and a colored cube.')
 
     def test_html_source_map(self):
+      if 'test_html_source_map' not in str(sys.argv): return self.skip('''This test
+ requires manual intervention; will not be run unless explicitly requested''')
       cpp_file = os.path.join(self.get_dir(), 'src.cpp')
       html_file = os.path.join(self.get_dir(), 'src.html')
       # browsers will try to 'guess' the corresponding original line if a
@@ -11788,7 +11790,10 @@ elif 'browser' in str(sys.argv):
           return 0;
         }
         ''')
-      Popen([PYTHON, EMCC, cpp_file, '-o', html_file,  '--map']).communicate()
+      # use relative paths when calling emcc, because file:// URIs can only load
+      # sourceContent when the maps are relative paths
+      Popen([PYTHON, EMCC, 'src.cpp', '-o', 'src.html',  '--map'],
+          cwd=self.get_dir()).communicate()
       webbrowser.open_new('file://' + html_file)
       print '''
 Set the debugger to pause on exceptions
