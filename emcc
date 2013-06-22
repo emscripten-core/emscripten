@@ -1483,9 +1483,11 @@ try:
     open(final, 'w').write(src)
     if DEBUG: save_intermediate('bind')
 
-  # TODO: support source maps with js_transform
   # Apply a source code transformation, if requested
   if js_transform:
+    # TODO: support source maps with js_transform
+    logging.warning('disabling source maps because a js transform is being done')
+    make_source_map = False
     shutil.copyfile(final, final + '.tr.js')
     final += '.tr.js'
     posix = True if not shared.WINDOWS else False

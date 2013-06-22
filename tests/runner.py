@@ -9605,12 +9605,16 @@ def process(filename):
 
       dirname = self.get_dir()
       src_filename = os.path.join(dirname, 'src.cpp')
+      with open(src_filename, 'w') as f: f.write(src)
+      out_filename = os.path.join(dirname, 'a.out.js')
 
-      def post(filename):
+      def build_and_check():
         import json
-        map_filename = filename + '.map'
+        Building.emcc(src_filename, Settings.serialize() + self.emcc_args +
+            Building.COMPILER_TEST_OPTS, out_filename, stderr=PIPE)
+        map_filename = out_filename + '.map'
         data = json.load(open(map_filename, 'r'))
-        self.assertIdentical(filename, data['file'])
+        self.assertIdentical(out_filename, data['file'])
         self.assertIdentical(src_filename, data['sources'][0])
         self.assertIdentical(src, data['sourcesContent'][0])
         mappings = json.loads(jsrun.run_js(
@@ -9623,7 +9627,18 @@ def process(filename):
         # ensure that all the 'meaningful' lines in the original code get mapped
         assert seen_lines.issuperset([6, 7, 11, 12])
 
-      self.build(src, dirname, src_filename, post_build=(None,post))
+      # EMCC_DEBUG=2 causes lots of intermediate files to be written, and so
+      # serves as a stress test for source maps because it needs to correlate
+      # line numbers across all those files.
+      old_emcc_debug = os.environ.get('EMCC_DEBUG', None)
+      os.environ.pop('EMCC_DEBUG', None)
+      build_and_check()
+      os.environ['EMCC_DEBUG'] = '2'
+      build_and_check()
+      if old_emcc_debug is not None:
+        os.environ['EMCC_DEBUG'] = old_emcc_debug
+      else:
+        del os.environ['EMCC_DEBUG']
 
     def test_exception_source_map(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip("doesn't pass without typed arrays")
