@@ -182,7 +182,7 @@ Options that are modified or new in %s include:
                            ). Note that the path must be absolute, not
                            relative.
 
-  -g                       Use debug info. Note that you need this during
+  -g or -g1                Use debug info. Note that you need this during
                            the last compilation phase from bitcode to
                            JavaScript, or else we will remove it by
                            default in -O1 and above.
@@ -192,6 +192,11 @@ Options that are modified or new in %s include:
                            have the effect of disabling anything that
                            causes name mangling or minification (closure
                            or the registerize pass).
+
+  -g2                      Like -g1, but we generate source maps as well,
+                           and we preserve comments even with -O1 and above.
+                           Note that this may be considerably slower because
+                           JS optimization is limited to a single core.
 
   --typed-arrays <mode>    0: No typed arrays
                            1: Parallel typed arrays
@@ -689,6 +694,7 @@ try:
   newargs = sys.argv[1:]
 
   opt_level = 0
+  debug_level = 0
   llvm_opts = None
   llvm_lto = None
   closure = None
@@ -703,14 +709,11 @@ try:
   ignore_dynamic_linking = False
   shell_path = shared.path_from_root('src', 'shell.html')
   js_libraries = []
-  keep_llvm_debug = False
-  keep_js_debug = False
   bind = False
   jcache = False
   save_bc = False
   memory_init_file = False
   use_preload_cache = False
-  make_source_map = False
 
   if use_cxx:
     default_cxx_std = '-std=c++03' # Enforce a consistent C++ standard when compiling .cpp files, if user does not specify one on the cmdline.
@@ -724,6 +727,14 @@ try:
 
   settings_changes = []
 
+  def validate_arg_level(level_string, max_level):
+    try:
+      level = int(level_string)
+      assert 0 <= level <= max_level
+    except:
+      raise Exception('Invalid argument value: ' + newargs[i])
+    return level
+
   for i in range(len(newargs)):
     newargs[i] = newargs[i].strip() # On Windows Vista (and possibly others), excessive spaces in the command line leak into the items in this array, so trim e.g. 'foo.cpp ' -> 'foo.cpp'
     if newargs[i].startswith('-O'):
@@ -732,11 +743,7 @@ try:
       if requested_level == 's':
         requested_level = 2
         settings_changes.append('INLINING_LIMIT=50')
-      try:
-        opt_level = int(requested_level)
-        assert 0 <= opt_level <= 3
-      except:
-        raise Exception('Invalid optimization level: ' + newargs[i])
+      opt_level = validate_arg_level(requested_level, 3)
       newargs[i] = ''
     elif newargs[i].startswith('--llvm-opts'):
       check_bad_eq(newargs[i])
@@ -778,12 +785,11 @@ try:
       split_js_file = int(newargs[i+1])
       newargs[i] = ''
       newargs[i+1] = ''
-    elif newargs[i] == '-g':
-      keep_llvm_debug = True
-      keep_js_debug = True
-    elif newargs[i] == '--map':
-      make_source_map = True
-      newargs[i] = '-g' # we'll need this to get LLVM debug info
+    elif newargs[i].startswith('-g'):
+      requested_level = newargs[i][2:] or '1'
+      debug_level = validate_arg_level(requested_level, 2)
+      if debug_level > 0:
+        newargs[i] = '-g' # we'll need this to get LLVM debug info
     elif newargs[i] == '--bind':
       bind = True
       newargs[i] = ''
@@ -872,10 +878,13 @@ try:
 
   if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
   if llvm_lto is None: llvm_lto = opt_level >= 3
-  if opt_level <= 0: keep_llvm_debug = keep_js_debug = True # always keep debug in -O0
-  if opt_level > 0: keep_llvm_debug = False # JS optimizer wipes out llvm debug info
-  if make_source_map: keep_llvm_debug = True; keep_js_debug = True
+  if opt_level <= 0: debug_level = max(debug_level, 1) # always keep debug in -O0
   if closure is None and opt_level == 3: closure = True
+
+  # TODO: support source maps with js_transform
+  if js_transform and debug_level >= 2:
+    logging.warning('disabling source maps because a js transform is being done')
+    debug_level = 1
 
   if DEBUG: start_time = time.time() # done after parsing arguments, which might affect debug state
 
@@ -1023,15 +1032,12 @@ try:
     if shared.Settings.ASSERTIONS and shared.Settings.ALIASING_FUNCTION_POINTERS:
       logging.warning('ALIASING_FUNCTION_POINTERS is on, function pointer comparisons may be invalid across types')
 
-  if shared.Settings.CORRECT_SIGNS >= 2 or shared.Settings.CORRECT_OVERFLOWS >= 2 or shared.Settings.CORRECT_ROUNDINGS >= 2:
-    keep_llvm_debug = True # must keep debug info to do line-by-line operations
-
-  if (keep_llvm_debug or keep_js_debug) and closure:
+  if debug_level >= 1 and closure:
     logging.warning('disabling closure because debug info was requested')
     closure = False
 
   if minify_whitespace is None:
-    minify_whitespace = opt_level >= 2 and not keep_js_debug
+    minify_whitespace = opt_level >= 2 and debug_level == 0
 
   assert shared.LLVM_TARGET in shared.COMPILER_OPTS
   if shared.LLVM_TARGET == 'i386-pc-linux-gnu':
@@ -1401,7 +1407,13 @@ try:
 
   # Optimize, if asked to
   if not LEAVE_INPUTS_RAW:
-    link_opts = [] if keep_llvm_debug else ['-strip-debug'] # remove LLVM debug info in -O1+, since the optimizer removes it anyhow
+
+    if opt_level == 0 or debug_level >= 2 or shared.Settings.CORRECT_SIGNS >= 2 or \
+        shared.Settings.CORRECT_OVERFLOWS >= 2 or shared.Settings.CORRECT_ROUNDINGS >= 2:
+      link_opts = []
+    else:
+      link_opts = ['-strip-debug'] # remove LLVM debug info in -O1+, since the optimizer removes it anyhow
+
     if llvm_opts > 0:
       if not os.environ.get('EMCC_OPTIMIZE_NORMALLY'):
         shared.Building.llvm_opt(in_temp(target_basename + '.bc'), llvm_opts)
@@ -1485,9 +1497,6 @@ try:
 
   # Apply a source code transformation, if requested
   if js_transform:
-    # TODO: support source maps with js_transform
-    logging.warning('disabling source maps because a js transform is being done')
-    make_source_map = False
     shutil.copyfile(final, final + '.tr.js')
     final += '.tr.js'
     posix = True if not shared.WINDOWS else False
@@ -1506,7 +1515,7 @@ try:
         if shared.Settings.ASM_JS:
           js_optimizer_queue = ['asm'] + js_optimizer_queue
         logging.debug('applying js optimization passes: %s', js_optimizer_queue)
-        final = shared.Building.js_optimizer(final, js_optimizer_queue, jcache, make_source_map)
+        final = shared.Building.js_optimizer(final, js_optimizer_queue, jcache, debug_level >= 2)
         js_transform_tempfiles.append(final)
         if DEBUG: save_intermediate('js_opts')
       else:
@@ -1515,7 +1524,7 @@ try:
           if shared.Settings.ASM_JS:
             passes = ['asm'] + passes
           logging.debug('applying js optimization pass: %s', passes)
-          final = shared.Building.js_optimizer(final, passes, jcache, make_source_map)
+          final = shared.Building.js_optimizer(final, passes, jcache, debug_level >= 2)
           js_transform_tempfiles.append(final)
           save_intermediate(name)
       js_optimizer_queue = []
@@ -1525,7 +1534,7 @@ try:
 
     if DEBUG == '2':
       # Clean up the syntax a bit
-      final = shared.Building.js_optimizer(final, [], jcache, make_source_map)
+      final = shared.Building.js_optimizer(final, [], jcache, debug_level >= 2)
       js_transform_tempfiles.append(final)
       if DEBUG: save_intermediate('pretty')
 
@@ -1545,7 +1554,7 @@ try:
 
     logging.debug('running closure')
     # no need to add this to js_transform_tempfiles, because closure and
-    # keep_js_debug are never simultaneously true
+    # debug_level > 0 are never simultaneously true
     final = shared.Building.closure_compiler(final)
     if DEBUG: save_intermediate('closure')
 
@@ -1553,7 +1562,7 @@ try:
     logging.debug('running post-closure post-opts')
     js_optimizer_queue += ['simplifyExpressionsPost']
 
-  if (not closure or shared.Settings.ASM_JS) and shared.Settings.RELOOP and not keep_js_debug:
+  if (not closure or shared.Settings.ASM_JS) and shared.Settings.RELOOP and debug_level == 0:
     # do this if closure is not enabled (it gives similar speedups), and we do not need to keep debug info around
     js_optimizer_queue += ['registerize']
 
@@ -1614,7 +1623,7 @@ try:
     shell = open(shell_path).read()
     html = open(target, 'w')
     if not Compression.on:
-      if make_source_map:
+      if debug_level >= 2:
         match = re.match('.*?<script[^>]*>{{{ SCRIPT_CODE }}}</script>', shell,
             re.DOTALL)
         if match is None:
@@ -1690,7 +1699,7 @@ try:
         from tools.split import split_javascript_file
         split_javascript_file(final, unsuffixed(target), split_js_file)
     else:
-        if make_source_map: generate_source_map(target)
+        if debug_level >= 2: generate_source_map(target)
 
         # copy final JS to output
         shutil.move(final, target)

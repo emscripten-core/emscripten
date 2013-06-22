@@ -9607,12 +9607,12 @@ def process(filename):
       src_filename = os.path.join(dirname, 'src.cpp')
       no_maps_filename = os.path.join(dirname, 'no-maps.out.js')
       with open(src_filename, 'w') as f: f.write(src)
-      assert '--map' not in Building.COMPILER_TEST_OPTS
+      assert '-g2' not in Building.COMPILER_TEST_OPTS
       Building.emcc(src_filename, Settings.serialize() + self.emcc_args +
           Building.COMPILER_TEST_OPTS, no_maps_filename)
       with open(no_maps_filename) as f: no_maps_file = f.read()
       out_filename = os.path.join(dirname, 'a.out.js')
-      Building.COMPILER_TEST_OPTS.append('--map')
+      Building.COMPILER_TEST_OPTS.append('-g2')
 
       def build_and_check():
         import json
@@ -9656,7 +9656,7 @@ def process(filename):
 
     def test_exception_source_map(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip("doesn't pass without typed arrays")
-      if '--map' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('--map')
+      if '-g2' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g2')
 
       src = '''
         #include <stdio.h>
@@ -11821,7 +11821,7 @@ elif 'browser' in str(sys.argv):
         ''')
       # use relative paths when calling emcc, because file:// URIs can only load
       # sourceContent when the maps are relative paths
-      Popen([PYTHON, EMCC, 'src.cpp', '-o', 'src.html',  '--map'],
+      Popen([PYTHON, EMCC, 'src.cpp', '-o', 'src.html', '-g2'],
           cwd=self.get_dir()).communicate()
       webbrowser.open_new('file://' + html_file)
       print '''
