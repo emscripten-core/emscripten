@@ -1444,7 +1444,7 @@ try:
   # Embed and preload files
   if len(preload_files) + len(embed_files) > 0:
     logging.debug('setting up files')
-    file_args = []
+    file_args = ['--pre-run']
     if len(preload_files) > 0:
       file_args.append('--preload')
       file_args += preload_files

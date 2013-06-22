@@ -281,7 +281,7 @@ Module["ccall"] = ccall;
 // Returns the C function with a specified identifier (for C++, you need to do manual name mangling)
 function getCFunc(ident) {
   try {
-    var func = globalScope['Module']['_' + ident]; // closure exported function
+    var func = Module['_' + ident]; // closure exported function
     if (!func) func = eval('_' + ident); // explicit lookup
   } catch(e) {
   }
@@ -801,75 +801,45 @@ Math['imul'] = function(a, b) {
 // Note that you can add dependencies in preRun, even though
 // it happens right before run - run will be postponed until
 // the dependencies are met.
-var runDependencies = 0;
-var runDependencyTracking = {};
-var calledInit = false, calledRun = false;
-var runDependencyWatcher = null;
-function addRunDependency(id) {
-  runDependencies++;
-  if (Module['monitorRunDependencies']) {
-    Module['monitorRunDependencies'](runDependencies);
-  }
-  if (id) {
-    assert(!runDependencyTracking[id]);
-    runDependencyTracking[id] = 1;
-#if ASSERTIONS
-    if (runDependencyWatcher === null && typeof setInterval !== 'undefined') {
-      // Check for missing dependencies every few seconds
-      runDependencyWatcher = setInterval(function() {
-        var shown = false;
-        for (var dep in runDependencyTracking) {
-          if (!shown) {
-            shown = true;
-            Module.printErr('still waiting on run dependencies:');
-          }
-          Module.printErr('dependency: ' + dep);
-        }
-        if (shown) {
-          Module.printErr('(end of list)');
-        }
-      }, 10000);
-    }
-#endif
-  } else {
-    Module.printErr('warning: run dependency added without ID');
-  }
+var preInitTasks = [];
+var preRunTasks = [];
+var postRunTasks = [];
+
+function addPreInit(func) {
+  preInitTasks.push(func);
 }
-Module['addRunDependency'] = addRunDependency;
-function removeRunDependency(id) {
-  runDependencies--;
-  if (Module['monitorRunDependencies']) {
-    Module['monitorRunDependencies'](runDependencies);
-  }
-  if (id) {
-    assert(runDependencyTracking[id]);
-    delete runDependencyTracking[id];
-  } else {
-    Module.printErr('warning: run dependency removed without ID');
-  }
-  if (runDependencies == 0) {
-    if (runDependencyWatcher !== null) {
-      clearInterval(runDependencyWatcher);
-      runDependencyWatcher = null;
-    } 
-    // If run has never been called, and we should call run (INVOKE_RUN is true, and Module.noInitialRun is not false)
-    if (!calledRun && shouldRunNow) run();
-  }
+Module["addPreInit"] = Module.addPreInit = addPreInit;
+
+function addPreRun(func) {
+  preRunTasks.push(func);
 }
-Module['removeRunDependency'] = removeRunDependency;
+Module["addPreRun"] = Module.addPreRun = addPreRun;
+
+function addPostRun(func) {
+  postRunTasks.push(func);
+}
+Module["addPostRun"] = Module.addPostRun = addPostRun;
 
 Module["preloadedImages"] = {}; // maps url to image data
 Module["preloadedAudios"] = {}; // maps url to audio data
 
-function addPreRun(func) {
-  if (!Module['preRun']) Module['preRun'] = [];
-  else if (typeof Module['preRun'] == 'function') Module['preRun'] = [Module['preRun']];
-  Module['preRun'].push(func);
-}
-
 #if PGO
 var PGOMonitor = {
   called: {},
+  oninit: function (cb) {
+    if (this.allGenerated) {
+      return cb();
+    }
+    this.oninitcallback = cb;
+  },
+  initialize: function(allGenerated) {
+    this.allGenerated = allGenerated;
+
+    if (this.oninitcallback) {
+      this.oninitcallback();
+      this.oninitcallback = null;
+    }
+  },
   dump: function() {
     var dead = [];
     for (var i = 0; i < this.allGenerated.length; i++) {
@@ -881,7 +851,11 @@ var PGOMonitor = {
 };
 Module['PGOMonitor'] = PGOMonitor;
 __ATEXIT__.push({ func: function() { PGOMonitor.dump() } });
-addPreRun(function() { addRunDependency('pgo') });
+addPreRun(function (cb) {
+  PGOMonitor.oninit(function () {
+    cb();
+  });
+});
 #endif
 
 var awaitingMemoryInitializer = false;
@@ -897,12 +871,14 @@ function loadMemoryInitializer(filename) {
   }
 
   // always do this asynchronously, to keep shell and web as similar as possible
-  addPreRun(function() {
+  addPreRun(function(cb) {
     if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
       applyData(Module['readBinary'](filename));
+      cb();
     } else {
       Browser.asyncLoad(filename, function(data) {
         applyData(data);
+        cb();
       }, function(data) {
         throw 'could not load memory initializer ' + filename;
       });

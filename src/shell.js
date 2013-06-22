@@ -1,9 +1,9 @@
-try {
-  this['Module'] = Module;
-  Module.test;
-} catch(e) {
-  this['Module'] = Module = {};
-}
+#if USE_MODULE_CLOSURE
+(function () {
+#endif
+
+var config = typeof Module !== 'undefined' ? Module : null;
+var Module = {};
 
 // The environment setup code below is customized to use Module.
 // *** Environment setup code ***
@@ -11,10 +11,6 @@ var ENVIRONMENT_IS_NODE = typeof process === 'object' && typeof require === 'fun
 var ENVIRONMENT_IS_WEB = typeof window === 'object';
 var ENVIRONMENT_IS_WORKER = typeof importScripts === 'function';
 var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
-
-if (typeof module === "object") {
-  module.exports = Module;
-}
 
 if (ENVIRONMENT_IS_NODE) {
   // Expose functionality in the same simple way that the shells work
@@ -47,9 +43,7 @@ if (ENVIRONMENT_IS_NODE) {
     globalEval(read(f));
   };
 
-  if (!Module['arguments']) {
-    Module['arguments'] = process['argv'].slice(2);
-  }
+  Module['arguments'] = process['argv'].slice(2);
 }
 
 if (ENVIRONMENT_IS_SHELL) {
@@ -61,27 +55,21 @@ if (ENVIRONMENT_IS_SHELL) {
     return read(f, 'binary');
   };
 
-  if (!Module['arguments']) {
-    if (typeof scriptArgs != 'undefined') {
-      Module['arguments'] = scriptArgs;
-    } else if (typeof arguments != 'undefined') {
-      Module['arguments'] = arguments;
-    }
+  if (typeof scriptArgs != 'undefined') {
+    Module['arguments'] = scriptArgs;
+  } else if (typeof arguments != 'undefined') {
+    Module['arguments'] = arguments;
   }
 }
 
 if (ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_WORKER) {
-  if (!Module['print']) {
-    Module['print'] = function(x) {
-      console.log(x);
-    };
-  }
+  Module['print'] = function(x) {
+    console.log(x);
+  };
 
-  if (!Module['printErr']) {
-    Module['printErr'] = function(x) {
-      console.log(x);
-    };
-  }
+  Module['printErr'] = function(x) {
+    console.log(x);
+  };
 }
 
 if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
@@ -92,23 +80,19 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
     return xhr.responseText;
   };
 
-  if (!Module['arguments']) {
-    if (typeof arguments != 'undefined') {
-      Module['arguments'] = arguments;
-    }
+  if (typeof arguments != 'undefined') {
+    Module['arguments'] = arguments;
   }
 }
 
 if (ENVIRONMENT_IS_WORKER) {
   // We can do very little here...
   var TRY_USE_DUMP = false;
-  if (!Module['print']) {
-    Module['print'] = (TRY_USE_DUMP && (typeof(dump) !== "undefined") ? (function(x) {
-      dump(x);
-    }) : (function(x) {
-      // self.postMessage(x); // enable this if you want stdout to be sent as messages
-    }));
-  }
+  Module['print'] = (TRY_USE_DUMP && (typeof(dump) !== "undefined") ? (function(x) {
+    dump(x);
+  }) : (function(x) {
+    // self.postMessage(x); // enable this if you want stdout to be sent as messages
+  }));
 
   Module['load'] = importScripts;
 }
@@ -141,11 +125,63 @@ if (!Module['arguments']) {
 Module.print = Module['print'];
 Module.printErr = Module['printErr'];
 
-// Callbacks
-if (!Module['preRun']) Module['preRun'] = [];
-if (!Module['postRun']) Module['postRun'] = [];
-
   {{BODY}}
 
   // {{MODULE_ADDITIONS}}
 
+// merge in the configuration global if it exists
+if (config) {
+  for (var key in config) {
+    if (!config.hasOwnProperty(key)) {
+      continue;
+    }
+    var val = config[key];
+    // old Module definitions had preInit / preRun / postRun callbacks
+    // specified as either a single function or an array of functions.
+    // here we're taking those functions and passing them to the 
+    // appropriate add<type> function (e.g. addPreRun).
+    if (key === 'preInit' || key === 'preRun' || key === 'postRun') {
+      key = key.charAt(0).toUpperCase() + key.slice(1);  // capitalize first letter
+
+      var fn = Module['add' + key];
+      if (typeof val === 'function') {
+        fn(val);
+      } else {
+        for (var i = 0; i < val.length; i++) {
+          fn(val[i]);
+        }
+      }
+    } else {
+      Module[key] = config[key];
+    }
+  }
+}
+
+// {{PRE_RUN_ADDITIONS}}
+
+#if INVOKE_RUN
+if (!Module['noInitialRun']) {
+  Module.preload(Module.run);
+}
+#endif
+
+// {{POST_RUN_ADDITIONS}}
+
+// require.js
+if (typeof define !== 'undefined' && define.amd) {
+  define(function () {
+    return Module;
+  });
+}
+// Node.js
+else if (typeof module !== 'undefined' && module.exports) {
+  module.exports = Module;
+}
+// browser
+else {
+  this['{{{ MODULE_NAME }}}'] = Module;
+}
+
+#if USE_MODULE_CLOSURE
+})();
+#endif

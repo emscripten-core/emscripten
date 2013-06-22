@@ -465,11 +465,10 @@ mergeInto(LibraryManager.library, {
       xhr.send(null);
     },
 
-    asyncLoad: function(url, onload, onerror, noRunDep) {
+    asyncLoad: function(url, onload, onerror) {
       Browser.xhrLoad(url, function(arrayBuffer) {
         assert(arrayBuffer, 'Loading data file "' + url + '" failed (no arrayBuffer).');
         onload(new Uint8Array(arrayBuffer));
-        if (!noRunDep) removeRunDependency('al ' + url);
       }, function(event) {
         if (onerror) {
           onerror();
@@ -477,7 +476,6 @@ mergeInto(LibraryManager.library, {
           throw 'Loading data file "' + url + '" failed.';
         }
       });
-      if (!noRunDep) addRunDependency('al ' + url);
     },
 
     resizeListeners: [],
