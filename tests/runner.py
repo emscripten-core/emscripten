@@ -9586,6 +9586,7 @@ def process(filename):
 
     def test_source_map(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip("doesn't pass without typed arrays")
+      if NODE_JS not in JS_ENGINES: return self.skip('sourcemapper requires Node to run')
       if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
 
       src = '''
@@ -9605,13 +9606,18 @@ def process(filename):
 
       dirname = self.get_dir()
       src_filename = os.path.join(dirname, 'src.cpp')
+      out_filename = os.path.join(dirname, 'a.out.js')
       no_maps_filename = os.path.join(dirname, 'no-maps.out.js')
+
       with open(src_filename, 'w') as f: f.write(src)
       assert '-g2' not in Building.COMPILER_TEST_OPTS
       Building.emcc(src_filename, Settings.serialize() + self.emcc_args +
-          Building.COMPILER_TEST_OPTS, no_maps_filename)
+          Building.COMPILER_TEST_OPTS, out_filename)
+      # the file name may find its way into the generated code, so make sure we
+      # can do an apples-to-apples comparison by compiling with the same file name
+      shutil.move(out_filename, no_maps_filename)
       with open(no_maps_filename) as f: no_maps_file = f.read()
-      out_filename = os.path.join(dirname, 'a.out.js')
+      no_maps_file = re.sub(' *//@.*$', '', no_maps_file, flags=re.MULTILINE)
       Building.COMPILER_TEST_OPTS.append('-g2')
 
       def build_and_check():
@@ -9624,7 +9630,7 @@ def process(filename):
         # this is worth checking because the parser AST swaps strings for token
         # objects when generating source maps, so we want to make sure the
         # optimizer can deal with both types.
-        out_file = re.sub('//@.*$', '', out_file)
+        out_file = re.sub(' *//@.*$', '', out_file, flags=re.MULTILINE)
         self.assertIdentical(no_maps_file, out_file)
         map_filename = out_filename + '.map'
         data = json.load(open(map_filename, 'r'))
@@ -9657,6 +9663,7 @@ def process(filename):
     def test_exception_source_map(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip("doesn't pass without typed arrays")
       if '-g2' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g2')
+      if NODE_JS not in JS_ENGINES: return self.skip('sourcemapper requires Node to run')
 
       src = '''
         #include <stdio.h>
