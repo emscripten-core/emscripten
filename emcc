@@ -1552,8 +1552,9 @@ try:
   if (not closure or shared.Settings.ASM_JS) and shared.Settings.RELOOP and debug_level < 3:
     js_optimizer_queue += ['registerize']
 
-  if debug_level == 0 and opt_level > 0:
-    js_optimizer_queue += ['compress']
+  if opt_level > 0:
+    if debug_level < 2 and shared.Settings.ASM_JS: js_optimizer_queue += ['minifyGlobals']
+    if debug_level == 0: js_optimizer_queue += ['minifyWhitespace']
 
   if closure and shared.Settings.ASM_JS: 
     js_optimizer_queue += ['closure']

@@ -149,10 +149,10 @@ function srcToAst(src) {
   return uglify.parser.parse(src);
 }
 
-function astToSrc(ast, compress) {
+function astToSrc(ast, minifyWhitespace) {
     return uglify.uglify.gen_code(ast, {
     ascii_only: true,
-    beautify: !compress,
+    beautify: !minifyWhitespace,
     indent_level: 1
   });
 }
@@ -2759,7 +2759,7 @@ function asmLoopOptimizer(ast) {
 
 // Passes table
 
-var compress = false, printMetadata = true, asm = false, last = false;
+var minifyWhitespace = false, printMetadata = true, asm = false, last = false;
 
 var passes = {
   dumpAst: dumpAst,
@@ -2777,7 +2777,7 @@ var passes = {
   eliminate: eliminate,
   eliminateMemSafe: eliminateMemSafe,
   minifyGlobals: minifyGlobals,
-  compress: function() { compress = true },
+  minifyWhitespace: function() { minifyWhitespace = true },
   noPrintMetadata: function() { printMetadata = false },
   asm: function() { asm = true },
   last: function() { last = true },
@@ -2803,7 +2803,7 @@ if (asm && last) {
   asmLoopOptimizer(ast);
   prepDotZero(ast);
 }
-var js = astToSrc(ast, compress), old;
+var js = astToSrc(ast, minifyWhitespace), old;
 if (asm && last) {
   js = fixDotZero(js);
 }
