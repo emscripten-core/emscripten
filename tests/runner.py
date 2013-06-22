@@ -9586,7 +9586,7 @@ def process(filename):
 
     def test_source_map(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip("doesn't pass without typed arrays")
-      if '--map' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('--map')
+      if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
 
       src = '''
         #include <stdio.h>
@@ -9605,13 +9605,27 @@ def process(filename):
 
       dirname = self.get_dir()
       src_filename = os.path.join(dirname, 'src.cpp')
+      no_maps_filename = os.path.join(dirname, 'no-maps.out.js')
       with open(src_filename, 'w') as f: f.write(src)
+      assert '--map' not in Building.COMPILER_TEST_OPTS
+      Building.emcc(src_filename, Settings.serialize() + self.emcc_args +
+          Building.COMPILER_TEST_OPTS, no_maps_filename)
+      with open(no_maps_filename) as f: no_maps_file = f.read()
       out_filename = os.path.join(dirname, 'a.out.js')
+      Building.COMPILER_TEST_OPTS.append('--map')
 
       def build_and_check():
         import json
         Building.emcc(src_filename, Settings.serialize() + self.emcc_args +
             Building.COMPILER_TEST_OPTS, out_filename, stderr=PIPE)
+        with open(out_filename) as f: out_file = f.read()
+        # after removing the @line and @sourceMappingURL comments, the build
+        # result should be identical to the non-source-mapped debug version.
+        # this is worth checking because the parser AST swaps strings for token
+        # objects when generating source maps, so we want to make sure the
+        # optimizer can deal with both types.
+        out_file = re.sub('//@.*$', '', out_file)
+        self.assertIdentical(no_maps_file, out_file)
         map_filename = out_filename + '.map'
         data = json.load(open(map_filename, 'r'))
         self.assertIdentical(out_filename, data['file'])
