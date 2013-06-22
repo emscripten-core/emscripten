@@ -427,15 +427,14 @@ mergeInto(LibraryManager.library, {
         }
         
         // check if SDL is available
-        if (typeof SDL != "undefined")
-        {
+        if (typeof SDL != "undefined") {
         	Browser.mouseX = SDL.mouseX + Browser.mouseMovementX;
         	Browser.mouseY = SDL.mouseY + Browser.mouseMovementY;
-        }
-        else
-        {
-        	Browser.mouseX = Browser.mouseMovementX;
-        	Browser.mouseY = Browser.mouseMovementY;
+        } else {
+        	// just add the mouse delta to the current absolut mouse position
+        	// FIXME: ideally this should be clamped against the canvas size and zero
+        	Browser.mouseX += Browser.mouseMovementX;
+        	Browser.mouseY += Browser.mouseMovementY;
         }        
       } else {
         // Otherwise, calculate the movement based on the changes
@@ -512,10 +511,9 @@ mergeInto(LibraryManager.library, {
       this.windowedWidth = canvas.width;
       this.windowedHeight = canvas.height;
       canvas.width = screen.width;
-      canvas.height = screen.height;   
+      canvas.height = screen.height;
       // check if SDL is available   
-      if (typeof SDL != "undefined")
-      {
+      if (typeof SDL != "undefined") {
       	var flags = {{{ makeGetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'i32', 0, 1) }}};
       	flags = flags | 0x00800000; // set SDL_FULLSCREEN flag
       	{{{ makeSetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'flags', 'i32') }}}
@@ -528,8 +526,7 @@ mergeInto(LibraryManager.library, {
       canvas.width = this.windowedWidth;
       canvas.height = this.windowedHeight;
       // check if SDL is available       
-      if (typeof SDL != "undefined")
-      {
+      if (typeof SDL != "undefined") {
       	var flags = {{{ makeGetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'i32', 0, 1) }}};
       	flags = flags & ~0x00800000; // clear SDL_FULLSCREEN flag
       	{{{ makeSetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'flags', 'i32') }}}
