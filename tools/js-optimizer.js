@@ -2781,7 +2781,6 @@ var passes = {
   noPrintMetadata: function() { printMetadata = false },
   asm: function() { asm = true },
   last: function() { last = true },
-  closure: function(){} // handled in python
 };
 
 // Main

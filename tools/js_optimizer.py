@@ -139,6 +139,10 @@ def run_on_js(filename, passes, js_engine, jcache):
     end_asm = js.rfind(end_asm_marker)
     assert (start_asm >= 0) == (end_asm >= 0)
 
+  closure = 'closure' in passes
+  if closure:
+    passes = filter(lambda p: p != 'closure', passes) # we will do it manually
+
   if not suffix and jcache:
     # JCache cannot be used without metadata, since it might reorder stuff, and that's dangerous since only generated can be reordered
     # This means jcache does not work after closure compiler runs, for example. But you won't get much benefit from jcache with closure
@@ -266,7 +270,7 @@ EMSCRIPTEN_FUNCS();
 
   for filename in filenames: temp_files.note(filename)
 
-  if 'closure' in passes:
+  if closure:
     # run closure on the shell code, everything but what we js-optimize
     start_asm = '// EMSCRIPTEN_START_ASM\n'
     end_asm = '// EMSCRIPTEN_END_ASM\n'
