@@ -25,7 +25,7 @@ var RuntimeGenerator = {
     sep = sep || ';';
     var ret = RuntimeGenerator.alloc(size, 'STACK', false, sep, USE_TYPED_ARRAYS != 2 || (isNumber(size) && parseInt(size) % {{{ STACK_ALIGN }}} == 0));
     if (ASSERTIONS) {
-      ret += sep + 'assert(' + asmCoercion('(STACKTOP|0) < (STACK_MAX|0)', 'i32') + ')';
+      ret += sep + '(assert(' + asmCoercion('(STACKTOP|0) < (STACK_MAX|0)', 'i32') + ')|0)';
     }
     return ret;
   },
@@ -37,11 +37,11 @@ var RuntimeGenerator = {
     if (USE_TYPED_ARRAYS == 2) {
       assert(initial % Runtime.STACK_ALIGN == 0);
       if (ASSERTIONS && Runtime.STACK_ALIGN == 4) {
-        ret += '; assert(' + asmCoercion('!(STACKTOP&3)', 'i32') + ')';
+        ret += '; (assert(' + asmCoercion('!(STACKTOP&3)', 'i32') + ')|0)';
       }
     }
     if (ASSERTIONS) {
-      ret += '; assert(' + asmCoercion('(STACKTOP|0) < (STACK_MAX|0)', 'i32') + ')';
+      ret += '; (assert(' + asmCoercion('(STACKTOP|0) < (STACK_MAX|0)', 'i32') + ')|0)';
     }
     if (false) {
       ret += '; _memset(' + asmCoercion('__stackBase__', 'i32') + ', 0, ' + initial + ')';

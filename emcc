@@ -182,16 +182,31 @@ Options that are modified or new in %s include:
                            ). Note that the path must be absolute, not
                            relative.
 
-  -g or -g1                Use debug info. Note that you need this during
-                           the last compilation phase from bitcode to
-                           JavaScript, or else we will remove it by
-                           default in -O1 and above.
-                           In -O0, line numbers wil be shown in the
-                           generated code. In -O1 and above, the optimizer
-                           removes those comments. This flag does however
-                           have the effect of disabling anything that
-                           causes name mangling or minification (closure
-                           or the registerize pass).
+  -g                       Use debug info. When compiling to bitcode,
+                           this is the same as in clang and gcc, it
+                           adds debug info to the object files. When
+                           compiling from source to JS or bitcode to JS,
+                           it is equivalent to -g3 (keep code as debuggable
+                           as possible, except for discarding LLVM
+                           debug info, so no C/C++ line numbers; use
+                           -g4 to get line number debugging info in JS).
+
+  -g<level>                When compiling from bitcode to JS, we can
+                           keep the code debuggable to different
+                           degrees. Each of these levels builds on the
+                           previous:
+
+                            -g0  Make no effort to keep code debuggable.
+                                 Will discard LLVM debug info. (default
+                                 in -O1+)
+                            -g1  Preserve (do not minify) whitespace
+                            -g2  Preserve function names
+                            -g3  Preserve variable names
+                            -g4  Preserve LLVM debug info (if -g was
+                                 used when compiling the C/C++ sources)
+                                 and show line number debug comments.
+                                 This is the highest level of debuggability.
+                                 (default in -O0)
 
   -g2                      Like -g1, but we generate source maps as well,
                            and we preserve comments even with -O1 and above.
@@ -308,12 +323,7 @@ Options that are modified or new in %s include:
                            archive, which is given the same name as the
                            output HTML but with suffix .data.compress
 
-  --minify <on>            0: Do not minify the generated JavaScript's
-                              whitespace (default in -O0, -O1, or if
-                              -g is used)
-                           1: Minify the generated JavaScript's
-                              whitespace (default in -O2+, assuming
-                              -g is not used)
+  --minify 0               Identical to -g1
 
   --split <size>           Splits the resulting javascript file into pieces
                            to ease debugging. This option only works if
@@ -701,7 +711,6 @@ try:
   js_transform = None
   pre_js = ''
   post_js = ''
-  minify_whitespace = None
   split_js_file = None
   preload_files = []
   embed_files = []
@@ -777,7 +786,7 @@ try:
       newargs[i+1] = ''
     elif newargs[i].startswith('--minify'):
       check_bad_eq(newargs[i])
-      minify_whitespace = int(newargs[i+1])
+      debug_level = max(1, debug_level)
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i].startswith('--split'):
@@ -786,10 +795,9 @@ try:
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i].startswith('-g'):
-      requested_level = newargs[i][2:] or '1'
-      debug_level = validate_arg_level(requested_level, 2)
-      if debug_level > 0:
-        newargs[i] = '-g' # we'll need this to get LLVM debug info
+      requested_level = newargs[i][2:] or '3'
+      debug_level = validate_arg_level(requested_level, 4)
+      newargs[i] = '-g' # we'll need this to get LLVM debug info
     elif newargs[i] == '--bind':
       bind = True
       newargs[i] = ''
@@ -878,13 +886,13 @@ try:
 
   if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
   if llvm_lto is None: llvm_lto = opt_level >= 3
-  if opt_level <= 0: debug_level = max(debug_level, 1) # always keep debug in -O0
+  if opt_level == 0: debug_level = 4
   if closure is None and opt_level == 3: closure = True
 
   # TODO: support source maps with js_transform
-  if js_transform and debug_level >= 2:
+  if js_transform and debug_level >= 4:
     logging.warning('disabling source maps because a js transform is being done')
-    debug_level = 1
+    debug_level = 3
 
   if DEBUG: start_time = time.time() # done after parsing arguments, which might affect debug state
 
@@ -1032,12 +1040,12 @@ try:
     if shared.Settings.ASSERTIONS and shared.Settings.ALIASING_FUNCTION_POINTERS:
       logging.warning('ALIASING_FUNCTION_POINTERS is on, function pointer comparisons may be invalid across types')
 
-  if debug_level >= 1 and closure:
+  if shared.Settings.CORRECT_SIGNS >= 2 or shared.Settings.CORRECT_OVERFLOWS >= 2 or shared.Settings.CORRECT_ROUNDINGS >= 2:
+    debug_level = 4 # must keep debug info to do line-by-line operations
+
+  if debug_level > 0 and closure:
     logging.warning('disabling closure because debug info was requested')
     closure = False
-
-  if minify_whitespace is None:
-    minify_whitespace = opt_level >= 2 and debug_level == 0
 
   assert shared.LLVM_TARGET in shared.COMPILER_OPTS
   if shared.LLVM_TARGET == 'i386-pc-linux-gnu':
@@ -1142,6 +1150,8 @@ try:
     libcextra_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcextra.symbols'))
     libcxx_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxx', 'symbols'), exclude=libc_symbols)
     libcxxabi_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxxabi', 'symbols'), exclude=libc_symbols)
+
+    # XXX we should disable EMCC_DEBUG (and EMCC_OPTIMIZE_NORMALLY?) when building libs, just like in the relooper
 
     def build_libc(lib_filename, files):
       o_s = []
@@ -1363,7 +1373,7 @@ try:
         for haz in has: # remove symbols that are supplied by another of the inputs
           if haz in need:
             need.remove(haz)
-        logging.debug('considering %s: we need %s and have %s' % (name, str(need), str(has)))
+        if shared.Settings.VERBOSE: logging.debug('considering %s: we need %s and have %s' % (name, str(need), str(has)))
       if (force or len(need) > 0) and apply_(need):
         # We need to build and link the library in
         logging.debug('including %s' % name)
@@ -1407,12 +1417,7 @@ try:
 
   # Optimize, if asked to
   if not LEAVE_INPUTS_RAW:
-
-    if opt_level == 0 or debug_level >= 2 or shared.Settings.CORRECT_SIGNS >= 2 or \
-        shared.Settings.CORRECT_OVERFLOWS >= 2 or shared.Settings.CORRECT_ROUNDINGS >= 2:
-      link_opts = []
-    else:
-      link_opts = ['-strip-debug'] # remove LLVM debug info in -O1+, since the optimizer removes it anyhow
+    link_opts = [] if debug_level >= 4 else ['-strip-debug'] # remove LLVM debug if we are not asked for it
 
     if llvm_opts > 0:
       if not os.environ.get('EMCC_OPTIMIZE_NORMALLY'):
@@ -1515,7 +1520,7 @@ try:
         if shared.Settings.ASM_JS:
           js_optimizer_queue = ['asm'] + js_optimizer_queue
         logging.debug('applying js optimization passes: %s', js_optimizer_queue)
-        final = shared.Building.js_optimizer(final, js_optimizer_queue, jcache, debug_level >= 2)
+        final = shared.Building.js_optimizer(final, js_optimizer_queue, jcache, debug_level >= 4)
         js_transform_tempfiles.append(final)
         if DEBUG: save_intermediate('js_opts')
       else:
@@ -1524,7 +1529,7 @@ try:
           if shared.Settings.ASM_JS:
             passes = ['asm'] + passes
           logging.debug('applying js optimization pass: %s', passes)
-          final = shared.Building.js_optimizer(final, passes, jcache, debug_level >= 2)
+          final = shared.Building.js_optimizer(final, passes, jcache, debug_level >= 4)
           js_transform_tempfiles.append(final)
           save_intermediate(name)
       js_optimizer_queue = []
@@ -1534,7 +1539,7 @@ try:
 
     if DEBUG == '2':
       # Clean up the syntax a bit
-      final = shared.Building.js_optimizer(final, [], jcache, debug_level >= 2)
+      final = shared.Building.js_optimizer(final, [], jcache, debug_level >= 4)
       js_transform_tempfiles.append(final)
       if DEBUG: save_intermediate('pretty')
 
@@ -1562,12 +1567,12 @@ try:
     logging.debug('running post-closure post-opts')
     js_optimizer_queue += ['simplifyExpressionsPost']
 
-  if (not closure or shared.Settings.ASM_JS) and shared.Settings.RELOOP and debug_level == 0:
-    # do this if closure is not enabled (it gives similar speedups), and we do not need to keep debug info around
+  if (not closure or shared.Settings.ASM_JS) and shared.Settings.RELOOP and debug_level < 3:
     js_optimizer_queue += ['registerize']
 
-  if minify_whitespace:
-    js_optimizer_queue += ['compress']
+  if opt_level > 0:
+    if debug_level < 2 and shared.Settings.ASM_JS and shared.Settings.RELOOP: js_optimizer_queue += ['minifyGlobals']
+    if debug_level == 0: js_optimizer_queue += ['minifyWhitespace']
 
   if closure and shared.Settings.ASM_JS: 
     js_optimizer_queue += ['closure']
@@ -1623,7 +1628,7 @@ try:
     shell = open(shell_path).read()
     html = open(target, 'w')
     if not Compression.on:
-      if debug_level >= 2:
+      if debug_level >= 4:
         match = re.match('.*?<script[^>]*>{{{ SCRIPT_CODE }}}</script>', shell,
             re.DOTALL)
         if match is None:
@@ -1699,7 +1704,7 @@ try:
         from tools.split import split_javascript_file
         split_javascript_file(final, unsuffixed(target), split_js_file)
     else:
-        if debug_level >= 2: generate_source_map(target)
+        if debug_level >= 4: generate_source_map(target)
 
         # copy final JS to output
         shutil.move(final, target)

@@ -114,7 +114,8 @@ var Debugging = {
         m = metadataToParentMetadata[m];
         assert(m, 'Confused as to parent metadata for llvm #' + l + ', metadata !' + m);
       }
-      this.llvmLineToSourceFile[l] = metadataToFilename[m];
+      // Normalize Windows path slashes coming from LLVM metadata, so that forward slashes can be assumed as path delimiters.
+      this.llvmLineToSourceFile[l] = metadataToFilename[m].replace(/\\5C/g, '/');
     }
 
     this.on = true;

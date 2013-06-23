@@ -57,7 +57,7 @@ class Minifier:
           if curr not in INVALID_3: self.names.append(curr)
     #print >> sys.stderr, self.names
 
-  def minify_shell(self, shell, compress, source_map=False):
+  def minify_shell(self, shell, minify_whitespace, source_map=False):
     #print >> sys.stderr, "MINIFY SHELL 1111111111", shell, "\n222222222222222"
     # Run through js-optimizer.js to find and minify the global symbols
     # We send it the globals, which it parses at the proper time. JS decides how
@@ -73,15 +73,15 @@ class Minifier:
     f = open(temp_file, 'w')
     f.write(shell)
     f.write('\n')
-    self
     f.write('// MINIFY_INFO:' + self.serialize())
     f.close()
 
     output = subprocess.Popen(self.js_engine +
         [JS_OPTIMIZER, temp_file, 'minifyGlobals', 'noPrintMetadata'] +
-        (['compress'] if compress else []) +
+        (['minifyWhitespace'] if minify_whitespace else []) +
         (['--debug'] if source_map else []),
         stdout=subprocess.PIPE).communicate()[0]
+
     assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + output
     #print >> sys.stderr, "minified SHELL 3333333333333333", output, "\n44444444444444444444"
     code, metadata = output.split('// MINIFY_INFO:')
@@ -134,13 +134,19 @@ def run_on_js(filename, passes, js_engine, jcache, source_map=False):
   start_funcs = js.find(start_funcs_marker)
   end_funcs = js.rfind(end_funcs_marker)
   #assert (start_funcs >= 0) == (end_funcs >= 0) == (not not suffix)
-  asm_registerize = 'asm' in passes and 'registerize' in passes
-  if asm_registerize:
+
+  minify_globals = 'minifyGlobals' in passes and 'registerize' in passes and 'asm' in passes
+  if minify_globals:
+    passes = filter(lambda p: p != 'minifyGlobals', passes) # we will run it manually
     start_asm_marker = '// EMSCRIPTEN_START_ASM\n'
     end_asm_marker = '// EMSCRIPTEN_END_ASM\n'
     start_asm = js.find(start_asm_marker)
     end_asm = js.rfind(end_asm_marker)
     assert (start_asm >= 0) == (end_asm >= 0)
+
+  closure = 'closure' in passes
+  if closure:
+    passes = filter(lambda p: p != 'closure', passes) # we will do it manually
 
   if not suffix and jcache:
     # JCache cannot be used without metadata, since it might reorder stuff, and that's dangerous since only generated can be reordered
@@ -150,7 +156,7 @@ def run_on_js(filename, passes, js_engine, jcache, source_map=False):
     jcache = False
 
   if suffix:
-    if not asm_registerize:
+    if not minify_globals:
       pre = js[:start_funcs + len(start_funcs_marker)]
       post = js[end_funcs + len(end_funcs_marker):]
       js = js[start_funcs + len(start_funcs_marker):end_funcs]
@@ -175,7 +181,7 @@ EMSCRIPTEN_FUNCS();
       js = js[start_funcs + len(start_funcs_marker):end_funcs]
 
       minifier = Minifier(js, js_engine)
-      asm_shell_pre, asm_shell_post = minifier.minify_shell(asm_shell, 'compress' in passes, source_map).split('EMSCRIPTEN_FUNCS();');
+      asm_shell_pre, asm_shell_post = minifier.minify_shell(asm_shell, 'minifyWhitespace' in passes, source_map).split('EMSCRIPTEN_FUNCS();');
       asm_shell_post = asm_shell_post.replace('});', '})');
       pre += asm_shell_pre + '\n' + start_funcs_marker
       post = end_funcs_marker + asm_shell_post + post
@@ -242,7 +248,7 @@ EMSCRIPTEN_FUNCS();
       f = open(temp_file, 'w')
       f.write(chunk)
       f.write(suffix_marker)
-      if asm_registerize:
+      if minify_globals:
         f.write('\n')
         f.write('// MINIFY_INFO:' + minify_info)
       f.close()
@@ -273,7 +279,7 @@ EMSCRIPTEN_FUNCS();
 
   for filename in filenames: temp_files.note(filename)
 
-  if 'closure' in passes:
+  if closure:
     # run closure on the shell code, everything but what we js-optimize
     start_asm = '// EMSCRIPTEN_START_ASM\n'
     end_asm = '// EMSCRIPTEN_END_ASM\n'
@@ -287,7 +293,7 @@ EMSCRIPTEN_FUNCS();
     c.write(closure_sep)
     c.write(post_2)
     c.close()
-    closured = shared.Building.closure_compiler(closuree, pretty='compress' not in passes)
+    closured = shared.Building.closure_compiler(closuree, pretty='minifyWhitespace' not in passes)
     temp_files.note(closured)
     coutput = open(closured).read()
     coutput = coutput.replace('wakaUnknownBefore();', '')

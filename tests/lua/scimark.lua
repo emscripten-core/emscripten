@@ -387,31 +387,31 @@ end
 --printf("Lua SciMark %s based on SciMark 2.0a. %s.\n\n",
 --       SCIMARK_VERSION, SCIMARK_COPYRIGHT)
 
-while arg and arg[1] do
-  local a = table.remove(arg, 1)
-  if a == "-noffi" then
-    package.preload.ffi = nil
-  elseif a == "-small" then
-    SIZE_SELECT = "small"
-  elseif a == "-large" then
-    SIZE_SELECT = "large"
-  elseif benchmarks[a] then
-    local p = benchmarks[SIZE_SELECT][a]
-    measure(MIN_TIME, a, tonumber(arg[1]) or p[1], tonumber(arg[2]) or p[2])
-    return
-  else
-    printf("Usage: scimark [-noffi] [-small|-large] [BENCH params...]\n\n")
-    printf("BENCH   -small         -large\n")
-    printf("---------------------------------------\n")
-    for _,name in ipairs(benchmarks) do
-      printf("%-7s %-13s %s\n", name,
-	     fmtparams(unpack(benchmarks.small[name])),
-	     fmtparams(unpack(benchmarks.large[name])))
-    end
-    printf("\n")
-    os.exit(1)
-  end
-end
+--while arg and arg[1] do
+--  local a = table.remove(arg, 1)
+--  if a == "-noffi" then
+--    package.preload.ffi = nil
+--  elseif a == "-small" then
+--    SIZE_SELECT = "small"
+--  elseif a == "-large" then
+--    SIZE_SELECT = "large"
+--  elseif benchmarks[a] then
+--    local p = benchmarks[SIZE_SELECT][a]
+--    measure(MIN_TIME, a, tonumber(arg[1]) or p[1], tonumber(arg[2]) or p[2])
+--    return
+--  else
+--    printf("Usage: scimark [-noffi] [-small|-large] [BENCH params...]\n\n")
+--    printf("BENCH   -small         -large\n")
+--    printf("---------------------------------------\n")
+--    for _,name in ipairs(benchmarks) do
+--      printf("%-7s %-13s %s\n", name,
+--	     fmtparams(unpack(benchmarks.small[name])),
+--	     fmtparams(unpack(benchmarks.large[name])))
+--    end
+--    printf("\n")
+--    os.exit(1)
+--  end
+--end
 
 local params = benchmarks[SIZE_SELECT]
 local sum = 0

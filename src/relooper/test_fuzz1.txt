@@ -4,29 +4,29 @@ print('entry'); var label; var state; var decisions = [4, 1, 7, 2, 6, 6, 8]; var
 print(5); state = check();
 print(6); state = check();
 if (state == 7) {
-  print(7); state = check();
-  label = 3;
+ print(7); state = check();
+ label = 3;
 }
 L5: while(1) {
-  if (label == 3) {
-    label = 0;
-    print(2); state = check();
+ if (label == 3) {
+  label = 0;
+  print(2); state = check();
+ }
+ print(1); state = check();
+ while(1) {
+  print(3); state = check();
+  if (!(state == 8)) {
+   continue L5;
   }
-  print(1); state = check();
-  while(1) {
-    print(3); state = check();
-    if (!(state == 8)) {
-      continue L5;
-    }
-    print(8); state = check();
-    if (!(state == 4)) {
-      label = 3;
-      continue L5;
-    }
-    print(4); state = check();
-    if (!(state == 3)) {
-      continue L5;
-    }
+  print(8); state = check();
+  if (!(state == 4)) {
+   label = 3;
+   continue L5;
   }
+  print(4); state = check();
+  if (!(state == 3)) {
+   continue L5;
+  }
+ }
 }
 

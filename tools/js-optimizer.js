@@ -150,12 +150,12 @@ function srcToAst(src) {
   return uglify.parser.parse(src, false, debug);
 }
 
-function astToSrc(ast, compress) {
+function astToSrc(ast, minifyWhitespace) {
     return uglify.uglify.gen_code(ast, {
     debug: debug,
     ascii_only: true,
-    beautify: !compress,
-    indent_level: 2
+    beautify: !minifyWhitespace,
+    indent_level: 1
   });
 }
 
@@ -434,21 +434,49 @@ function simplifyExpressionsPre(ast) {
   // 'useful' mathops already |0 anyhow.
 
   function simplifyBitops(ast) {
-    var SAFE_BINARY_OPS = set('+', '-', '*'); // division is unsafe as it creates non-ints in JS; mod is unsafe as signs matter so we can't remove |0's
+    var SAFE_BINARY_OPS;
+    if (asm) {
+      SAFE_BINARY_OPS = set('+', '-'); // division is unsafe as it creates non-ints in JS; mod is unsafe as signs matter so we can't remove |0's; mul does not nest with +,- in asm
+    } else {
+      SAFE_BINARY_OPS = set('+', '-', '*');
+    }
+    var COERCION_REQUIRING_OPS = set('sub', 'unary-prefix'); // ops that in asm must be coerced right away
+    var COERCION_REQUIRING_BINARIES = set('*', '/', '%'); // binary ops that in asm must be coerced
     var ZERO = ['num', 0];
-    var rerun = true;
-    while (rerun) {
-      rerun = false;
-      traverse(ast, function process(node, type, stack) {
-        if (type == 'binary' && node[1] == '|') {
-          if (node[2][0] == 'num' && node[3][0] == 'num') {
-            // pass node[2][0] instead of 'num' because it might be a token
-            // object with line numbers attached.
-            return [node[2][0], node[2][1] | node[3][1]];
-          } else if (jsonCompare(node[2], ZERO) || jsonCompare(node[3], ZERO)) {
+
+    function removeMultipleOrZero() {
+      var rerun = true;
+      while (rerun) {
+        rerun = false;
+        traverse(ast, function process(node, type, stack) {
+          if (type == 'binary' && node[1] == '|') {
+            if (node[2][0] == 'num' && node[3][0] == 'num') {
+              // pass node[2][0] instead of 'num' because it might be a token
+              // object with line numbers attached.
+              return [node[2][0], node[2][1] | node[3][1]];
+            }
+            var go = false;
+            if (jsonCompare(node[2], ZERO)) {
+              // canonicalize order
+              var temp = node[3];
+              node[3] = node[2];
+              node[2] = temp;
+              go = true;
+            } else if (jsonCompare(node[3], ZERO)) {
+              go = true;
+            }
+            if (!go) {
+              stack.push(1);
+              return;
+            }
             // We might be able to remove this correction
             for (var i = stack.length-1; i >= 0; i--) {
-              if (stack[i] == 1) {
+              if (stack[i] >= 1) {
+                if (asm) {
+                  if (stack[stack.length-1] < 2 && node[2][0] == 'call') break; // we can only remove multiple |0s on these
+                  if (stack[stack.length-1] < 1 && (node[2][0] in COERCION_REQUIRING_OPS ||
+                                                    (node[2][0] == 'binary' && node[2][1] in COERCION_REQUIRING_BINARIES))) break; // we can remove |0 or >>2
+                }
                 // we will replace ourselves with the non-zero side. Recursively process that node.
                 var result = jsonCompare(node[2], ZERO) ? node[3] : node[2], other;
                 // replace node in-place
@@ -460,22 +488,22 @@ function simplifyExpressionsPre(ast) {
                 return process(result, result[0], stack);
               } else if (stack[i] == -1) {
                 break; // Too bad, we can't
-              } else if (asm) {
-                break; // we must keep a coercion right on top of a heap access in asm mode
               }
             }
+            stack.push(2); // From here on up, no need for this kind of correction, it's done at the top
+                           // (Add this at the end, so it is only added if we did not remove it)
+          } else if (type == 'binary' && node[1] in USEFUL_BINARY_OPS) {
+            stack.push(1);
+          } else if ((type == 'binary' && node[1] in SAFE_BINARY_OPS) || type == 'num' || type == 'name') {
+            stack.push(0); // This node is safe in that it does not interfere with this optimization
+          } else {
+            stack.push(-1); // This node is dangerous! Give up if you see this before you see '1'
           }
-          stack.push(1); // From here on up, no need for this kind of correction, it's done at the top
-                         // (Add this at the end, so it is only added if we did not remove it)
-        } else if (type == 'binary' && node[1] in USEFUL_BINARY_OPS) {
-          stack.push(1);
-        } else if ((type == 'binary' && node[1] in SAFE_BINARY_OPS) || type == 'num' || type == 'name') {
-          stack.push(0); // This node is safe in that it does not interfere with this optimization
-        } else {
-          stack.push(-1); // This node is dangerous! Give up if you see this before you see '1'
-        }
-      }, null, []);
+        }, null, []);
+      }
     }
+
+    removeMultipleOrZero();
 
     // & and heap-related optimizations
 
@@ -487,7 +515,7 @@ function simplifyExpressionsPre(ast) {
       return true;
     }
 
-    var hasTempDoublePtr = false;
+    var hasTempDoublePtr = false, rerunOrZeroPass = false;
 
     traverse(ast, function(node, type) {
       if (type == 'name') {
@@ -522,7 +550,6 @@ function simplifyExpressionsPre(ast) {
                  node[2][0] == 'binary' && node[2][1] == '<<' && node[2][3][0] == 'num' &&
                  node[2][2][0] == 'sub' && node[2][2][1][0] == 'name') {
         // collapse HEAPU?8[..] << 24 >> 24 etc. into HEAP8[..] | 0
-        // TODO: run this before | 0 | 0 removal, because we generate | 0
         var amount = node[3][1];
         var name = node[2][2][1][1];
         if (amount == node[2][3][1] && parseHeap(name)) {
@@ -531,6 +558,7 @@ function simplifyExpressionsPre(ast) {
             node[1] = '|';
             node[2] = node[2][2];
             node[3][1] = 0;
+            rerunOrZeroPass = true;
             return node;
           }
         }
@@ -562,6 +590,8 @@ function simplifyExpressionsPre(ast) {
         }
       }
     });
+
+    if (rerunOrZeroPass) removeMultipleOrZero();
 
     if (asm) {
       if (hasTempDoublePtr) {
@@ -714,18 +744,11 @@ function simplifyExpressionsPre(ast) {
   }
 
   function asmOpts(fun) {
-    // 1. Add final returns when necessary
-    // 2. Remove unneeded coercions on function calls that have no targets (eliminator removed it)
+    // Add final returns when necessary
     var returnType = null;
     traverse(fun, function(node, type) {
       if (type == 'return' && node[1]) {
         returnType = detectAsmCoercion(node[1]);
-      } else if (type == 'stat') {
-        var inner = node[1];
-        if ((inner[0] == 'binary' && inner[1] in ASSOCIATIVE_BINARIES && inner[2][0] == 'call' && inner[3][0] == 'num') ||
-            (inner[0] == 'unary-prefix' && inner[1] == '+' && inner[2][0] == 'call')) {
-          node[1] = inner[2];
-        }
       }
     });
     // Add a final return if one is missing.
@@ -1100,11 +1123,15 @@ function simplifyNotCompsDirect(node) {
       return node[2][2];
     }
   }
-  return node;
+  if (!simplifyNotCompsPass) return node;
 }
 
+var simplifyNotCompsPass = false;
+
 function simplifyNotComps(ast) {
+  simplifyNotCompsPass = true;
   traverse(ast, simplifyNotCompsDirect);
+  simplifyNotCompsPass = false;
 }
 
 function simplifyExpressionsPost(ast) {
@@ -2418,7 +2445,10 @@ function eliminate(ast, memSafe) {
       }
       traverseInOrder(node);
     }
+    //var eliminationLimit = 0; // used to debugging purposes
     function doEliminate(name, node) {
+      //if (eliminationLimit == 0) return;
+      //eliminationLimit--;
       //printErr('elim!!!!! ' + name);
       // yes, eliminate!
       varsToRemove[name] = 2; // both assign and var definitions can have other vars we must clean up
@@ -2567,7 +2597,13 @@ function eliminate(ast, memSafe) {
               }
               if (looperUsed) return;
             }
+            for (var l = 0; l < helpers.length; l++) {
+              for (var k = 0; k < helpers.length; k++) {
+                if (l != k && helpers[l] == helpers[k]) return; // it is complicated to handle a shared helper, abort
+              }
+            }
             // hurrah! this is safe to do
+            //printErr("ELIM LOOP VAR " + JSON.stringify(loopers) + ' :: ' + JSON.stringify(helpers));
             for (var l = 0; l < loopers.length; l++) {
               var looper = loopers[l];
               var helper = helpers[l];
@@ -2597,48 +2633,50 @@ function eliminate(ast, memSafe) {
     }
   });
 
-  // A class for optimizing expressions. We know that it is legitimate to collapse
-  // 5+7 in the generated code, as it will always be numerical, for example. XXX do we need this? here?
-  function ExpressionOptimizer(node) {
-    this.node = node;
+  if (!asm) { // TODO: deprecate in non-asm too
+    // A class for optimizing expressions. We know that it is legitimate to collapse
+    // 5+7 in the generated code, as it will always be numerical, for example. XXX do we need this? here?
+    function ExpressionOptimizer(node) {
+      this.node = node;
 
-    this.run = function() {
-      traverse(this.node, function(node, type) {
-        if (type == 'binary' && node[1] == '+') {
-          var names = [];
-          var num = 0;
-          var has_num = false;
-          var fail = false;
-          traverse(node, function(subNode, subType) {
-            if (subType == 'binary') {
-              if (subNode[1] != '+') {
+      this.run = function() {
+        traverse(this.node, function(node, type) {
+          if (type == 'binary' && node[1] == '+') {
+            var names = [];
+            var num = 0;
+            var has_num = false;
+            var fail = false;
+            traverse(node, function(subNode, subType) {
+              if (subType == 'binary') {
+                if (subNode[1] != '+') {
+                  fail = true;
+                  return false;
+                }
+              } else if (subType == 'name') {
+                names.push(subNode[1]);
+                return;
+              } else if (subType == 'num') {
+                num += subNode[1];
+                has_num = true;
+                return;
+              } else {
                 fail = true;
                 return false;
               }
-            } else if (subType == 'name') {
-              names.push(subNode[1]);
-              return;
-            } else if (subType == 'num') {
-              num += subNode[1];
-              has_num = true;
-              return;
-            } else {
-              fail = true;
-              return false;
+            });
+            if (!fail && has_num) {
+              var ret = ['num', num];
+              for (var i = 0; i < names.length; i++) {
+                ret = ['binary', '+', ['name', names[i]], ret];
+              }
+              return ret;
             }
-          });
-          if (!fail && has_num) {
-            var ret = ['num', num];
-            for (var i = 0; i < names.length; i++) {
-              ret = ['binary', '+', ['name', names[i]], ret];
-            }
-            return ret;
           }
-        }
-      });
-    };
+        });
+      };
+    }
+    new ExpressionOptimizer(ast).run();
   }
-  new ExpressionOptimizer(ast).run();
 }
 
 function eliminateMemSafe(ast) {
@@ -2728,7 +2766,7 @@ function asmLoopOptimizer(ast) {
 
 // Passes table
 
-var compress = false, printMetadata = true, asm = false, last = false;
+var minifyWhitespace = false, printMetadata = true, asm = false, last = false;
 
 var passes = {
   dumpAst: dumpAst,
@@ -2746,11 +2784,10 @@ var passes = {
   eliminate: eliminate,
   eliminateMemSafe: eliminateMemSafe,
   minifyGlobals: minifyGlobals,
-  compress: function() { compress = true },
+  minifyWhitespace: function() { minifyWhitespace = true },
   noPrintMetadata: function() { printMetadata = false },
   asm: function() { asm = true },
   last: function() { last = true },
-  closure: function(){} // handled in python
 };
 
 // Main
@@ -2781,7 +2818,7 @@ if (asm && last) {
   asmLoopOptimizer(ast);
   prepDotZero(ast);
 }
-var js = astToSrc(ast, compress), old;
+var js = astToSrc(ast, minifyWhitespace), old;
 if (asm && last) {
   js = fixDotZero(js);
 }

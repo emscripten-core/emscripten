@@ -133,7 +133,7 @@ class RunnerCore(unittest.TestCase):
     # Hardcode in the arguments, so js is portable without manual commandlinearguments
     if not args: return
     js = open(filename).read()
-    open(filename, 'w').write(js.replace('run();', 'run(%s);' % str(args)))
+    open(filename, 'w').write(js.replace('run();', 'run(%s + Module["arguments"]);' % str(args)))
 
   def prep_ll_run(self, filename, ll_file, force_recompile=False, build_ll_hook=None):
     if ll_file.endswith(('.bc', '.o')):
@@ -9610,7 +9610,7 @@ def process(filename):
       no_maps_filename = os.path.join(dirname, 'no-maps.out.js')
 
       with open(src_filename, 'w') as f: f.write(src)
-      assert '-g2' not in Building.COMPILER_TEST_OPTS
+      assert '-g4' not in Building.COMPILER_TEST_OPTS
       Building.emcc(src_filename, Settings.serialize() + self.emcc_args +
           Building.COMPILER_TEST_OPTS, out_filename)
       # the file name may find its way into the generated code, so make sure we
@@ -9618,7 +9618,7 @@ def process(filename):
       shutil.move(out_filename, no_maps_filename)
       with open(no_maps_filename) as f: no_maps_file = f.read()
       no_maps_file = re.sub(' *//@.*$', '', no_maps_file, flags=re.MULTILINE)
-      Building.COMPILER_TEST_OPTS.append('-g2')
+      Building.COMPILER_TEST_OPTS.append('-g4')
 
       def build_and_check():
         import json
@@ -9662,7 +9662,7 @@ def process(filename):
 
     def test_exception_source_map(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip("doesn't pass without typed arrays")
-      if '-g2' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g2')
+      if '-g4' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g4')
       if NODE_JS not in JS_ENGINES: return self.skip('sourcemapper requires Node to run')
 
       src = '''
@@ -10263,8 +10263,8 @@ Options that are modified or new in %s include:
           assert 'SAFE_HEAP' not in generated, 'safe heap should not be used by default'
           assert ': while(' not in generated, 'when relooping we also js-optimize, so there should be no labelled whiles'
           if closure:
-            if opt_level <= 1: assert 'Module._main =' in generated, 'closure compiler should have been run'
-            elif opt_level >= 2: assert 'Module._main=' in generated, 'closure compiler should have been run (and output should be minified)'
+            if opt_level == 0: assert 'Module._main =' in generated, 'closure compiler should have been run'
+            elif opt_level >= 1: assert 'Module._main=' in generated, 'closure compiler should have been run (and output should be minified)'
           else:
             # closure has not been run, we can do some additional checks. TODO: figure out how to do these even with closure
             assert 'Module._main = ' not in generated, 'closure compiler should not have been run'
@@ -10275,7 +10275,7 @@ Options that are modified or new in %s include:
             if opt_level >= 2 and '-g' in params:
               assert re.search('HEAP8\[\$?\w+ ?\+ ?\(+\$?\w+ ?', generated) or re.search('HEAP8\[HEAP32\[', generated), 'eliminator should create compound expressions, and fewer one-time vars' # also in -O1, but easier to test in -O2
             assert ('_puts(' in generated) == (opt_level >= 1), 'with opt >= 1, llvm opts are run and they should optimize printf to puts'
-            if opt_level <= 1 or '-g' in params: assert 'function _main() {' in generated, 'Should be unminified, including whitespace'
+            if opt_level == 0 or '-g' in params: assert 'function _main() {' in generated, 'Should be unminified, including whitespace'
             elif opt_level >= 2: assert ('function _main(){' in generated or '"use asm";var a=' in generated), 'Should be whitespace-minified'
 
         # emcc -s RELOOP=1 src.cpp ==> should pass -s to emscripten.py. --typed-arrays is a convenient alias for -s USE_TYPED_ARRAYS
@@ -10285,6 +10285,11 @@ Options that are modified or new in %s include:
           (['-O2'], lambda generated: 'var b=0' in generated and not 'function _main' in generated, 'registerize/minify is run by default in -O2'),
           (['-O2', '--minify', '0'], lambda generated: 'var b = 0' in generated and not 'function _main' in generated, 'minify is cancelled, but not registerize'),
           (['-O2', '-g'], lambda generated: 'var b=0' not in generated and 'var b = 0' not in generated and 'function _main' in generated, 'registerize/minify is cancelled by -g'),
+          (['-O2', '-g0'], lambda generated: 'var b=0'   in generated and not 'function _main' in generated, 'registerize/minify is run by default in -O2 -g0'),
+          (['-O2', '-g1'], lambda generated: 'var b = 0' in generated and not 'function _main' in generated, 'compress is cancelled by -g1'),
+          (['-O2', '-g2'], lambda generated: ('var b = 0' in generated or 'var i1 = 0' in generated) and 'function _main' in generated, 'minify is cancelled by -g2'),
+          (['-O2', '-g3'], lambda generated: 'var b=0' not in generated and 'var b = 0' not in generated and 'function _main' in generated, 'registerize is cancelled by -g3'),
+          #(['-O2', '-g4'], lambda generated: 'var b=0' not in generated and 'var b = 0' not in generated and 'function _main' in generated, 'same as -g3 for now'),
           (['-s', 'INLINING_LIMIT=0'], lambda generated: 'function _dump' in generated, 'no inlining without opts'),
           (['-O3', '-s', 'INLINING_LIMIT=0', '--closure', '0'], lambda generated: 'function _dump' not in generated, 'lto/inlining'),
           (['-Os', '--llvm-lto', '1', '-s', 'ASM_JS=0'], lambda generated: 'function _dump' in generated, '-Os disables inlining'),
@@ -11828,7 +11833,7 @@ elif 'browser' in str(sys.argv):
         ''')
       # use relative paths when calling emcc, because file:// URIs can only load
       # sourceContent when the maps are relative paths
-      Popen([PYTHON, EMCC, 'src.cpp', '-o', 'src.html', '-g2'],
+      Popen([PYTHON, EMCC, 'src.cpp', '-o', 'src.html', '-g4'],
           cwd=self.get_dir()).communicate()
       webbrowser.open_new('file://' + html_file)
       print '''
@@ -12837,7 +12842,7 @@ Press any key to continue.'''
           src = filename
           filename = 'main.cpp'
         else:
-          with open(filepath) as f: f.read()
+          with open(filepath) as f: src = f.read()
         with open(temp_filepath, 'w') as f: f.write(self.with_report_result(src))
       else:
         expected = [str(i) for i in range(0, reference_slack+1)]
@@ -13453,16 +13458,25 @@ elif 'benchmark' in str(sys.argv):
       f.close()
       final_filename = os.path.join(dirname, name + '.js')
 
+      open('hardcode.py', 'w').write('''
+def process(filename):
+  js = open(filename).read()
+  replaced = js.replace("run();", "run(%s.concat(Module[\\"arguments\\"]));")
+  assert js != replaced
+  open(filename, 'w').write(replaced)
+import sys
+process(sys.argv[1])
+''' % str(args[:-1]) # do not hardcode in the last argument, the default arg
+)
+
       try_delete(final_filename)
       output = Popen([PYTHON, EMCC, filename, #'-O3',
                       '-O2', '-s', 'DOUBLE_MODE=0', '-s', 'PRECISE_I64_MATH=0',
-                      '--llvm-lto', '1', '--memory-init-file', '0',
+                      '--llvm-lto', '1', '--memory-init-file', '0', '--js-transform', 'python hardcode.py',
                       '-s', 'TOTAL_MEMORY=128*1024*1024',
                       '--closure', '1',
                       '-o', final_filename] + shared_args + emcc_args, stdout=PIPE, stderr=self.stderr_redirect).communicate()
       assert os.path.exists(final_filename), 'Failed to compile file: ' + output[0]
-
-      self.hardcode_arguments(final_filename, args)
 
       # Run JS
       global total_times, tests_done
@@ -13789,7 +13803,7 @@ elif 'benchmark' in str(sys.argv):
       native_args = self.get_library('lua_native', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, native=True)
 
       self.do_benchmark('lua_' + benchmark, '', expected,
-                        force_c=True, args=[benchmark + '.lua'], emcc_args=emcc_args, native_args=native_args, native_exec=os.path.join('building', 'lua_native', 'src', 'lua'),
+                        force_c=True, args=[benchmark + '.lua', DEFAULT_ARG], emcc_args=emcc_args, native_args=native_args, native_exec=os.path.join('building', 'lua_native', 'src', 'lua'),
                         output_parser=output_parser, args_processor=args_processor)
 
     def test_zzz_lua_scimark(self):
@@ -13800,21 +13814,7 @@ elif 'benchmark' in str(sys.argv):
 
     def test_zzz_lua_binarytrees(self):
       # js version: ['binarytrees.lua', {0: 0, 1: 9.5, 2: 11.99, 3: 12.85, 4: 14.72, 5: 15.82}[arguments[0]]]
-      def args_processor(args):
-        arg = int(DEFAULT_ARG)
-        if arg == 0:
-          return args + ['0']
-        elif arg == 1:
-          return args + ['9.5']
-        elif arg == 2:
-          return args + ['11.99']
-        elif arg == 3:
-          return args + ['12.85']
-        elif arg == 4:
-          return args + ['14.72']
-        elif arg == 5:
-          return args + ['15.82']
-      self.lua('binarytrees', 'long lived tree of depth', args_processor=args_processor)
+      self.lua('binarytrees', 'long lived tree of depth')
 
     def test_zzz_zlib(self):
       src = open(path_from_root('tests', 'zlib', 'benchmark.c'), 'r').read()
