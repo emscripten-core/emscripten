@@ -9652,13 +9652,15 @@ def process(filename):
       # line numbers across all those files.
       old_emcc_debug = os.environ.get('EMCC_DEBUG', None)
       os.environ.pop('EMCC_DEBUG', None)
-      build_and_check()
-      os.environ['EMCC_DEBUG'] = '2'
-      build_and_check()
-      if old_emcc_debug is not None:
-        os.environ['EMCC_DEBUG'] = old_emcc_debug
-      else:
-        del os.environ['EMCC_DEBUG']
+      try:
+        build_and_check()
+        os.environ['EMCC_DEBUG'] = '2'
+        build_and_check()
+      finally:
+        if old_emcc_debug is not None:
+          os.environ['EMCC_DEBUG'] = old_emcc_debug
+        else:
+          del os.environ['EMCC_DEBUG']
 
     def test_exception_source_map(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip("doesn't pass without typed arrays")
