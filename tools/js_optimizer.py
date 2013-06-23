@@ -73,7 +73,6 @@ class Minifier:
     f = open(temp_file, 'w')
     f.write(shell)
     f.write('\n')
-    self
     f.write('// MINIFY_INFO:' + self.serialize())
     f.close()
 
