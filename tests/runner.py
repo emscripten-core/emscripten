@@ -10606,6 +10606,25 @@ f.close()
       self.assertContained('hello from lib', run_js(os.path.join(self.get_dir(), 'a.out.js')))
       assert not os.path.exists('a.out') and not os.path.exists('a.exe'), 'Must not leave unneeded linker stubs'
 
+    def zzztest_static_link(self):
+      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
+        extern void printey();
+        int main() {
+          printey();
+          return 0;
+        }
+      ''')
+      open(os.path.join(self.get_dir(), 'lib.cpp'), 'w').write('''
+        #include <stdio.h>
+        void printey() {
+          printf("hello from lib\\n");
+        }
+      ''')
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'lib.cpp'), '-o', 'lib.js', '-s', 'SIDE_MODULE=1', '-O2']).communicate()
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-o', 'main.js', '-s', 'MAIN_MODULE=1', '-O2']).communicate()
+      Popen([PYTHON, EMLINK, 'main.js', 'lib.js', 'together.js'])
+      self.assertContained('hello from lib', run_js('together.js'))
+
     def test_symlink(self):
       if os.name == 'nt':
         return self.skip('Windows FS does not need to be tested for symlinks support, since it does not have them.')

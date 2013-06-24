@@ -296,6 +296,10 @@ var SHOW_LABELS = 0; // Show labels in the generated code
 
 var PRINT_SPLIT_FILE_MARKER = 0; // Prints markers in Javascript generation to split the file later on. See emcc --split option.
 
+var MAIN_MODULE = 0; // A main module is a file compiled in a way that allows us to link it to
+                     // a side module using emlink.py.
+var SIDE_MODULE = 0; // Corresponds to MAIN_MODULE
+
 var BUILD_AS_SHARED_LIB = 0; // Whether to build the code as a shared library
                              // 0 here means this is not a shared lib: It is a main file.
                              // All shared library options (1 and 2) are currently deprecated XXX
