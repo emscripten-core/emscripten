@@ -2713,6 +2713,61 @@ function minifyGlobals(ast) {
   suffix = '// EXTRA_INFO:' + JSON.stringify(minified);
 }
 
+// Relocation pass for a shared module (for the functions part of the module)
+//
+// 1. Replace function names with alternate names as defined (to avoid colliding with
+// names in the main module we are being linked to)
+// 2. Hardcode function table offsets from F_BASE+x to const+x if x is a variable, or
+//    the constant sum of the base + offset
+// 3. Hardcode heap offsets from H_BASE as well
+function relocate(ast) {
+  assert(asm); // we also assume we are normalized
+
+  var replacements = extraInfo.replacements;
+  var fBase = extraInfo.fBase;
+  var hBase = extraInfo.hBase;
+
+  traverse(ast, function(node, type) {
+    switch(type) {
+      case 'name': case 'defun': {
+        var rep = replacements[node[1]];
+        if (rep) node[1] = rep;
+        break;
+      }
+      case 'binary': {
+        if (node[1] == '+' && node[2][0] == 'name') {
+          var base = null;
+          if (node[2][1] == 'F_BASE') {
+            base = fBase;
+          } else if (node[2][1] == 'H_BASE') {
+            base = hBase;
+          }
+          if (base) {
+            var other = node[3];
+            if (other[0] == 'num') {
+              other[1] += base;
+              return other;
+            } else {
+              node[2] = ['num', base];
+            }
+          }
+        }
+        break;
+      }
+      case 'var': {
+        var vars = node[1];
+        for (var i = 0; i < vars.length; i++) {
+          var name = vars[i][0];
+          assert(!(name in replacements)); // cannot shadow functions we are replacing TODO: fix that
+        }
+        break;
+      }
+    }
+  });
+}
+
+// Last pass utilities
+
 // Change +5 to DOT$ZERO(5). We then textually change 5 to 5.0 (uglify's ast cannot differentiate between 5 and 5.0 directly)
 function prepDotZero(ast) {
   traverse(ast, function(node, type) {
@@ -2777,6 +2832,7 @@ var passes = {
   eliminate: eliminate,
   eliminateMemSafe: eliminateMemSafe,
   minifyGlobals: minifyGlobals,
+  relocate: relocate,
   minifyWhitespace: function() { minifyWhitespace = true },
   noPrintMetadata: function() { printMetadata = false },
   asm: function() { asm = true },
