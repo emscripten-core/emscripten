@@ -34,4 +34,4 @@ function collideLocal(i1) {
  bGlobal(i1);
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS
-// MINIFY_INFO: { "names": ["a", "b", "c", "d", "e", "f", "g", "h", "i", "i1", "cl"], "globals": { "aGlobal": "a", "bGlobal": "i1", "collideLocal": "cl" } }
+// EXTRA_INFO: { "names": ["a", "b", "c", "d", "e", "f", "g", "h", "i", "i1", "cl"], "globals": { "aGlobal": "a", "bGlobal": "i1", "collideLocal": "cl" } }
