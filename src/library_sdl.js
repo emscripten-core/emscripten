@@ -1385,26 +1385,28 @@ var LibrarySDL = {
     // If the user asks us to allocate a channel automatically, get the first
     // free one.
     if (channel == -1) {
-      channel = SDL.channelMinimumNumber;
       for (var i = SDL.channelMinimumNumber; i < SDL.numChannels; i++) {
         if (!SDL.channels[i].audio) {
           channel = i;
           break;
         }
       }
+      if (channel == -1) {
+        Module.printErr('All ' + SDL.numChannels + ' channels in use!');
+        return -1;
+      }
     }
-
     // We clone the audio node to utilize the preloaded audio buffer, since
     // the browser has already preloaded the audio file.
     var channelInfo = SDL.channels[channel];
     channelInfo.audio = audio = audio.cloneNode(true);
     audio.numChannels = info.audio.numChannels;
     audio.frequency = info.audio.frequency;
-
     // TODO: handle N loops. Behavior matches Mix_PlayMusic
     audio.loop = loops != 0; 
-    if (SDL.channelFinished) {
-      audio['onended'] = function() { // TODO: cache these
+    audio['onended'] = function() { // TODO: cache these
+      channelInfo.audio = null;
+      if (SDL.channelFinished) {
         Runtime.getFuncWrapper(SDL.channelFinished, 'vi')(channel);
       }
     }
@@ -1461,7 +1463,6 @@ var LibrarySDL = {
       audio.play();
     }
     audio.volume = channelInfo.volume;
-    audio.paused = false;
     return channel;
   },
   Mix_PlayChannelTimed: 'Mix_PlayChannel', // XXX ignore Timing
@@ -1475,6 +1476,8 @@ var LibrarySDL = {
     if (info.audio) {
       info.audio.pause();
       info.audio = null;
+    } else {
+      Module.printErr('No Audio for channel: ' + channel);
     }
     if (SDL.channelFinished) {
       Runtime.getFuncWrapper(SDL.channelFinished, 'vi')(channel);
@@ -1512,6 +1515,12 @@ var LibrarySDL = {
     }
     audio.volume = SDL.music.volume;
     audio['onended'] = _Mix_HaltMusic; // will send callback
+    if (SDL.music.audio) {
+      if (!SDL.music.audio.paused) {
+        Module.printErr('Music is already playing. ' + SDL.music.source);
+      }
+      SDL.music.audio.pause();
+    }
     SDL.music.audio = audio;
     return 0;
   },
@@ -1577,7 +1586,8 @@ var LibrarySDL = {
     var info = SDL.channels[channel];
     if (info && info.audio) {
       info.audio.pause();
-      info.audio.paused = true;
+    } else {
+      Module.printErr('Mix_Pause: no sound found for channel: ' + channel);
     }
   },
   
