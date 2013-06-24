@@ -5,7 +5,7 @@ Fast static linker for emscripten outputs. Specifically this links asm.js module
 
 Usage: emlink.py [main module] [side module] [output name]
 
-  Main module should be built with -s MAIN_MODULE=1
+  Main module should be built with -s MAIN_MODULE=1 (and possibly -s DISABLE_GL_EMULATION=1, if you do not need GL emulation)
   Side module should be built with -s SIDE_MODULE=1
 
 Note that the output file can be used as a main module, so you can link multiple
