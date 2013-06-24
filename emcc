@@ -203,10 +203,13 @@ Options that are modified or new in %s include:
                             -g2  Preserve function names
                             -g3  Preserve variable names
                             -g4  Preserve LLVM debug info (if -g was
-                                 used when compiling the C/C++ sources)
-                                 and show line number debug comments.
-                                 This is the highest level of debuggability.
-                                 (default in -O0)
+                                 used when compiling the C/C++ sources),
+                                 show line number debug comments, and
+                                 generate source maps. This is the highest
+                                 level of debuggability. Note that this
+                                 may make -O1 and above significantly
+                                 slower because JS optimization will be
+                                 limited to 1 core.  (default in -O0)
 
   -g2                      Like -g1, but we generate source maps as well,
                            and we preserve comments even with -O1 and above.
@@ -736,12 +739,12 @@ try:
 
   settings_changes = []
 
-  def validate_arg_level(level_string, max_level):
+  def validate_arg_level(level_string, max_level, err_msg):
     try:
       level = int(level_string)
       assert 0 <= level <= max_level
     except:
-      raise Exception('Invalid argument value: ' + newargs[i])
+      raise Exception(err_msg)
     return level
 
   for i in range(len(newargs)):
@@ -752,7 +755,7 @@ try:
       if requested_level == 's':
         requested_level = 2
         settings_changes.append('INLINING_LIMIT=50')
-      opt_level = validate_arg_level(requested_level, 3)
+      opt_level = validate_arg_level(requested_level, 3, 'Invalid optimization level: ' + newargs[i])
       newargs[i] = ''
     elif newargs[i].startswith('--llvm-opts'):
       check_bad_eq(newargs[i])
@@ -796,7 +799,7 @@ try:
       newargs[i+1] = ''
     elif newargs[i].startswith('-g'):
       requested_level = newargs[i][2:] or '3'
-      debug_level = validate_arg_level(requested_level, 4)
+      debug_level = validate_arg_level(requested_level, 4, 'Invalid debug level: ' + newargs[i])
       newargs[i] = '-g' # we'll need this to get LLVM debug info
     elif newargs[i] == '--bind':
       bind = True
