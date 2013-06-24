@@ -4409,25 +4409,29 @@ var LibraryGL = {
 
 autoAddDeps(LibraryGL, '$GL');
 
-// Emulation requires everything else, potentially
-LibraryGL.$GLEmulation__deps = LibraryGL.$GLEmulation__deps.slice(0); // the __deps object is shared
-var glFuncs = [];
-for (var item in LibraryGL) {
-  if (item != '$GLEmulation' && item.substr(-6) != '__deps' && item.substr(-9) != '__postset' && item.substr(-5) != '__sig' && item.substr(0, 2) == 'gl') {
-    glFuncs.push(item);
+if (DISABLE_GL_EMULATION) {
+  delete LibraryGL.$GLEmulation;
+} else {
+  // Emulation requires everything else, potentially
+  LibraryGL.$GLEmulation__deps = LibraryGL.$GLEmulation__deps.slice(0); // the __deps object is shared
+  var glFuncs = [];
+  for (var item in LibraryGL) {
+    if (item != '$GLEmulation' && item.substr(-6) != '__deps' && item.substr(-9) != '__postset' && item.substr(-5) != '__sig' && item.substr(0, 2) == 'gl') {
+      glFuncs.push(item);
+    }
   }
-}
-LibraryGL.$GLEmulation__deps = LibraryGL.$GLEmulation__deps.concat(glFuncs);
-LibraryGL.$GLEmulation__deps.push(function() {
-  for (var func in Functions.getIndex.tentative) {
-    Functions.getIndex(func);
-    Functions.unimplementedFunctions[func] = LibraryGL[func.substr(1) + '__sig'];
-  }
-});
+  LibraryGL.$GLEmulation__deps = LibraryGL.$GLEmulation__deps.concat(glFuncs);
+  LibraryGL.$GLEmulation__deps.push(function() {
+    for (var func in Functions.getIndex.tentative) {
+      Functions.getIndex(func);
+      Functions.unimplementedFunctions[func] = LibraryGL[func.substr(1) + '__sig'];
+    }
+  });
 
-if (FORCE_GL_EMULATION) {
-  LibraryGL.glDrawElements__deps = LibraryGL.glDrawElements__deps.concat('$GLEmulation');
-  LibraryGL.glDrawArrays__deps = LibraryGL.glDrawArrays__deps.concat('$GLEmulation');
+  if (FORCE_GL_EMULATION) {
+    LibraryGL.glDrawElements__deps = LibraryGL.glDrawElements__deps.concat('$GLEmulation');
+    LibraryGL.glDrawArrays__deps = LibraryGL.glDrawArrays__deps.concat('$GLEmulation');
+  }
 }
 
 mergeInto(LibraryManager.library, LibraryGL);

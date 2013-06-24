@@ -186,6 +186,8 @@ var GL_MAX_TEMP_BUFFER_SIZE = 2097152; // How large GL emulation temp buffers ar
 var GL_UNSAFE_OPTS = 1; // Enables some potentially-unsafe optimizations in GL emulation code
 var FULL_ES2 = 0; // Forces support for all GLES2 features, not just the WebGL-friendly subset.
 var FORCE_GL_EMULATION = 0; // Forces inclusion of full GL emulation code.
+var DISABLE_GL_EMULATION = 0; // Disable inclusion of full GL emulation code. Useful when you don't want emulation
+                              // but do need INCLUDE_FULL_LIBRARY or MAIN_MODULE.
 
 var DISABLE_EXCEPTION_CATCHING = 0; // Disables generating code to actually catch exceptions. If the code you
                                     // are compiling does not actually rely on catching exceptions (but the

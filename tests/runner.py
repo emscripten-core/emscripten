@@ -10606,7 +10606,7 @@ f.close()
       self.assertContained('hello from lib', run_js(os.path.join(self.get_dir(), 'a.out.js')))
       assert not os.path.exists('a.out') and not os.path.exists('a.exe'), 'Must not leave unneeded linker stubs'
 
-    def zzztest_static_link(self):
+    def test_static_link(self):
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
         extern void printey();
         int main() {
@@ -10621,7 +10621,7 @@ f.close()
         }
       ''')
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'lib.cpp'), '-o', 'lib.js', '-s', 'SIDE_MODULE=1', '-O2']).communicate()
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-o', 'main.js', '-s', 'MAIN_MODULE=1', '-O2']).communicate()
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-o', 'main.js', '-s', 'MAIN_MODULE=1', '-O2', '-s', 'DISABLE_GL_EMULATION=1']).communicate()
       Popen([PYTHON, EMLINK, 'main.js', 'lib.js', 'together.js'])
       self.assertContained('hello from lib', run_js('together.js'))
 
