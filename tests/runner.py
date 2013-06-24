@@ -10614,17 +10614,17 @@ f.close()
           return 0;
         }
       ''')
-      open(os.path.join(self.get_dir(), 'lib.cpp'), 'w').write('''
+      open(os.path.join(self.get_dir(), 'side.cpp'), 'w').write('''
         #include <stdio.h>
         void printey() {
-          printf("hello from lib\\n");
+          printf("hello from side\\n");
         }
       ''')
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'lib.cpp'), '-o', 'lib.js', '-s', 'SIDE_MODULE=1', '-O2']).communicate()
+      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'side.cpp'), '-o', 'side.js', '-s', 'SIDE_MODULE=1', '-O2']).communicate()
       # TODO: test with and without DISABLE_GL_EMULATION, check that file sizes change
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-o', 'main.js', '-s', 'MAIN_MODULE=1', '-O2', '-s', 'DISABLE_GL_EMULATION=1']).communicate()
-      Popen([PYTHON, EMLINK, 'main.js', 'lib.js', 'together.js'])
-      self.assertContained('hello from lib', run_js('together.js'))
+      Popen([PYTHON, EMLINK, 'main.js', 'side.js', 'together.js'])
+      self.assertContained('hello from side', run_js('together.js'))
 
     def test_symlink(self):
       if os.name == 'nt':
