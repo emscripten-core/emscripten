@@ -130,9 +130,9 @@ def run_on_js(filename, passes, js_engine, jcache):
   end_funcs = js.rfind(end_funcs_marker)
   #assert (start_funcs >= 0) == (end_funcs >= 0) == (not not suffix)
 
-  minify_globals = 'minifyGlobals' in passes and 'asm' in passes
+  minify_globals = 'registerizeAndMinify' in passes and 'asm' in passes
   if minify_globals:
-    passes = filter(lambda p: p != 'minifyGlobals', passes) # we will run it manually
+    passes = map(lambda p: p if p != 'registerizeAndMinify' else 'registerize', passes)
     start_asm_marker = '// EMSCRIPTEN_START_ASM\n'
     end_asm_marker = '// EMSCRIPTEN_END_ASM\n'
     start_asm = js.find(start_asm_marker)

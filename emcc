@@ -1553,7 +1553,7 @@ try:
     js_optimizer_queue += ['registerize']
 
   if opt_level > 0:
-    if debug_level < 2 and shared.Settings.ASM_JS and shared.Settings.RELOOP: js_optimizer_queue += ['minifyGlobals']
+    if debug_level < 2 and shared.Settings.ASM_JS: js_optimizer_queue = map(lambda p: p if p != 'registerize' else 'registerizeAndMinify', js_optimizer_queue)
     if debug_level == 0: js_optimizer_queue += ['minifyWhitespace']
 
   if closure and shared.Settings.ASM_JS: 
