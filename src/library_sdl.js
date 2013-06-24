@@ -1463,7 +1463,6 @@ var LibrarySDL = {
       audio.play();
     }
     audio.volume = channelInfo.volume;
-    audio.paused = false;
     return channel;
   },
   Mix_PlayChannelTimed: 'Mix_PlayChannel', // XXX ignore Timing
@@ -1521,7 +1520,6 @@ var LibrarySDL = {
         Module.printErr('Music is already playing. ' + SDL.music.source);
       }
       SDL.music.audio.pause();
-      SDL.music.audio.paused = true;
     }
     SDL.music.audio = audio;
     return 0;
@@ -1531,7 +1529,6 @@ var LibrarySDL = {
     var audio = SDL.music.audio;
     if (!audio) return 0;
     audio.pause();
-    audio.paused = true;
     return 0;
   },
 
@@ -1539,7 +1536,6 @@ var LibrarySDL = {
     var audio = SDL.music.audio;
     if (!audio) return 0;
     audio.play();
-    audio.paused = false;
     return 0;
   },
 
@@ -1590,7 +1586,6 @@ var LibrarySDL = {
     var info = SDL.channels[channel];
     if (info && info.audio) {
       info.audio.pause();
-      info.audio.paused = true;
     } else {
       Module.printErr('Mix_Pause: no sound found for channel: ' + channel);
     }
