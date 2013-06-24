@@ -19,6 +19,7 @@ WINDOWS = sys.platform.startswith('win')
 
 DEBUG = os.environ.get('EMCC_DEBUG')
 
+import_sig = re.compile('( *)var ([_\w$]+) *=.*;')
 func_sig = re.compile('( *)function ([_\w$]+)\(')
 
 class Minifier:

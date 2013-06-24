@@ -29,9 +29,17 @@ print 'Output:', out
 class AsmModule():
   def __init__(self, filename):
     self.js = open(filename).read()
+    # imports
+    imports_js = self.js[self.js.find(js_optimizer.start_asm_marker):self.js.rfind(js_optimizer.start_funcs_marker)]
+    self.imports = [m.group(0) for m in js_optimizer.import_sig.finditer(imports_js)]
+    #print 'imports', self.imports
+
+    # funcs
     funcs_js = self.js[self.js.find(js_optimizer.start_funcs_marker):self.js.rfind(js_optimizer.end_funcs_marker)]
     self.funcs = [m.group(2) for m in js_optimizer.func_sig.finditer(funcs_js)]
-    print filename, self.funcs
+    #print 'funcs', self.funcs
+
+    # exports
 
   def relocate(self, main):
     # Find function name replacements TODO: do not rename duplicate names with duplicate contents, just merge them
@@ -44,8 +52,12 @@ class AsmModule():
         replacements[func] = rep
     print replacements
 
+  def write(self, out):
+    open(out, 'w').write(self.js)
+
 main = AsmModule(main)
 side = AsmModule(side)
 
 side.relocate(main)
+#main.write(out)
 
