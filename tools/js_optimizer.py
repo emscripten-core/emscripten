@@ -73,13 +73,13 @@ class Minifier:
     f = open(temp_file, 'w')
     f.write(shell)
     f.write('\n')
-    f.write('// MINIFY_INFO:' + self.serialize())
+    f.write('// EXTRA_INFO:' + self.serialize())
     f.close()
 
     output = subprocess.Popen(self.js_engine + [JS_OPTIMIZER, temp_file, 'minifyGlobals', 'noPrintMetadata'] + (['minifyWhitespace'] if minify_whitespace else []), stdout=subprocess.PIPE).communicate()[0]
     assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + output
     #print >> sys.stderr, "minified SHELL 3333333333333333", output, "\n44444444444444444444"
-    code, metadata = output.split('// MINIFY_INFO:')
+    code, metadata = output.split('// EXTRA_INFO:')
     self.globs = json.loads(metadata)
     return code.replace('13371337', '0.0')
 
@@ -243,7 +243,7 @@ EMSCRIPTEN_FUNCS();
       f.write(suffix_marker)
       if minify_globals:
         f.write('\n')
-        f.write('// MINIFY_INFO:' + minify_info)
+        f.write('// EXTRA_INFO:' + minify_info)
       f.close()
       return temp_file
     filenames = [write_chunk(chunks[i], i) for i in range(len(chunks))]
