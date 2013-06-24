@@ -1180,7 +1180,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     // in an assignment
     var disabled = DISABLE_EXCEPTION_CATCHING == 2  && !(item.funcData.ident in EXCEPTION_CATCHING_WHITELIST); 
     var phiSets = calcPhiSets(item);
-    var call_ = makeFunctionCall(item.ident, item.params, item.funcData, item.type, ASM_JS && !disabled);
+    var call_ = makeFunctionCall(item.ident, item.params, item.funcData, item.type, ASM_JS && !disabled, !!item.assignTo || !item.standalone);
 
     var ret;
 
@@ -1337,7 +1337,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     return ret;
   });
 
-  function makeFunctionCall(ident, params, funcData, type, forceByPointer) {
+  function makeFunctionCall(ident, params, funcData, type, forceByPointer, hasReturn) {
     // We cannot compile assembly. See comment in intertyper.js:'Call'
     assert(ident != 'asm', 'Inline assembly cannot be compiled to JavaScript!');
 
@@ -1465,8 +1465,8 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
     }
 
-    var returnType;
-    if (byPointer || ASM_JS) {
+    var returnType = 'void';
+    if ((byPointer || ASM_JS) && hasReturn) {
       returnType = getReturnType(type);
     }
 
@@ -1511,7 +1511,7 @@ function JSify(data, functionsOnly, givenFunctions) {
   makeFuncLineActor('getelementptr', function(item) { return finalizeLLVMFunctionCall(item) });
   makeFuncLineActor('call', function(item) {
     if (item.standalone && LibraryManager.isStubFunction(item.ident)) return ';';
-    return makeFunctionCall(item.ident, item.params, item.funcData, item.type) + (item.standalone ? ';' : '');
+    return makeFunctionCall(item.ident, item.params, item.funcData, item.type, false, !!item.assignTo || !item.standalone) + (item.standalone ? ';' : '');
   });
 
   makeFuncLineActor('unreachable', function(item) {
