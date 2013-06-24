@@ -10621,6 +10621,7 @@ f.close()
         }
       ''')
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'lib.cpp'), '-o', 'lib.js', '-s', 'SIDE_MODULE=1', '-O2']).communicate()
+      # TODO: test with and without DISABLE_GL_EMULATION, check that file sizes change
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-o', 'main.js', '-s', 'MAIN_MODULE=1', '-O2', '-s', 'DISABLE_GL_EMULATION=1']).communicate()
       Popen([PYTHON, EMLINK, 'main.js', 'lib.js', 'together.js'])
       self.assertContained('hello from lib', run_js('together.js'))

@@ -14,6 +14,7 @@ side modules into a main module that way.
 
 import os, subprocess, sys
 from tools import shared
+from tools import js_optimizer
 
 try:
   me, main, side, out = sys.argv[:4]
@@ -24,4 +25,27 @@ except:
 print 'Main module:', main
 print 'Side module:', side
 print 'Output:', out
+
+class AsmModule():
+  def __init__(self, filename):
+    self.js = open(filename).read()
+    funcs_js = self.js[self.js.find(js_optimizer.start_funcs_marker):self.js.rfind(js_optimizer.end_funcs_marker)]
+    self.funcs = [m.group(2) for m in js_optimizer.func_sig.finditer(funcs_js)]
+    print filename, self.funcs
+
+  def relocate(self, main):
+    # Find function name replacements TODO: do not rename duplicate names with duplicate contents, just merge them
+    main_funcs = set(main.funcs)
+    replacements = {}
+    for i in range(len(self.funcs)):
+      rep = func = self.funcs[i]
+      while rep in main_funcs:
+        rep += '_'
+        replacements[func] = rep
+    print replacements
+
+main = AsmModule(main)
+side = AsmModule(side)
+
+side.relocate(main)
 

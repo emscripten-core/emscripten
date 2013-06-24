@@ -95,6 +95,11 @@ class Minifier:
       'globals': self.globs
     })
 
+start_funcs_marker = '// EMSCRIPTEN_START_FUNCS\n'
+end_funcs_marker = '// EMSCRIPTEN_END_FUNCS\n'
+start_asm_marker = '// EMSCRIPTEN_START_ASM\n'
+end_asm_marker = '// EMSCRIPTEN_END_ASM\n'
+
 def run_on_chunk(command):
   filename = command[2] # XXX hackish
   #print >> sys.stderr, 'running js optimizer command', ' '.join(command), '""""', open(filename).read()
@@ -129,8 +134,6 @@ def run_on_js(filename, passes, js_engine, jcache, source_map=False):
     generated = set(eval(suffix[len(suffix_marker)+1:]))
 
   # Find markers
-  start_funcs_marker = '// EMSCRIPTEN_START_FUNCS\n'
-  end_funcs_marker = '// EMSCRIPTEN_END_FUNCS\n'
   start_funcs = js.find(start_funcs_marker)
   end_funcs = js.rfind(end_funcs_marker)
   #assert (start_funcs >= 0) == (end_funcs >= 0) == (not not suffix)
@@ -138,8 +141,6 @@ def run_on_js(filename, passes, js_engine, jcache, source_map=False):
   minify_globals = 'registerizeAndMinify' in passes and 'asm' in passes
   if minify_globals:
     passes = map(lambda p: p if p != 'registerizeAndMinify' else 'registerize', passes)
-    start_asm_marker = '// EMSCRIPTEN_START_ASM\n'
-    end_asm_marker = '// EMSCRIPTEN_END_ASM\n'
     start_asm = js.find(start_asm_marker)
     end_asm = js.rfind(end_asm_marker)
     assert (start_asm >= 0) == (end_asm >= 0)
