@@ -164,11 +164,10 @@ function astToSrc(ast, minifyWhitespace) {
 function traverseChildren(node, traverse, pre, post, stack) {
   for (var i = 0; i < node.length; i++) {
     var subnode = node[i];
-    if (typeof subnode == 'object' && subnode && subnode.length &&
-        typeof subnode.valueOf() !== 'string') {
+    if (Array.isArray(subnode)) {
       var subresult = traverse(subnode, pre, post, stack);
-      if (subresult == true) return true;
-      if (subresult !== null && typeof subresult == 'object') node[i] = subresult;
+      if (subresult === true) return true;
+      if (subresult !== null && typeof subresult === 'object') node[i] = subresult;
     }
   }
 }
@@ -191,16 +190,16 @@ function traverse(node, pre, post, stack) {
   var type = node[0], result, len;
   // valueOf() ensures that NodeWithToken (produced by uglify's parser during
   // 'embed tokens' mode) gets marked as 'relevant'
-  var relevant = type && typeof type.valueOf() == 'string';
+  var relevant = !Array.isArray(node[0]);
   if (relevant) {
     if (stack) len = stack.length;
     var result = pre(node, type, stack);
-    if (result == true) return true;
-    if (result !== null && typeof result == 'object') node = result; // Continue processing on this node
+    if (result === true) return true;
+    if (Array.isArray(result)) node = result; // Continue processing on this node
     if (stack && len == stack.length) stack.push(0);
   }
   if (result !== null) {
-    if (traverseChildren(node, traverse, pre, post, stack) == true) return true;
+    if (traverseChildren(node, traverse, pre, post, stack) === true) return true;
   }
   if (relevant) {
     if (post) {
@@ -451,9 +450,8 @@ function simplifyExpressionsPre(ast) {
         traverse(ast, function process(node, type, stack) {
           if (type == 'binary' && node[1] == '|') {
             if (node[2][0] == 'num' && node[3][0] == 'num') {
-              // pass node[2][0] instead of 'num' because it might be a token
-              // object with line numbers attached.
-              return [node[2][0], node[2][1] | node[3][1]];
+              node[2][1] |= node[3][1];
+              return node[2];
             }
             var go = false;
             if (jsonCompare(node[2], ZERO)) {
@@ -707,7 +705,7 @@ function simplifyExpressionsPre(ast) {
     while (rerun) {
       rerun = false;
       traverse(ast, function(node, type) {
-        if (type == 'binary' && node[1] == '+') {
+        if (type == 'binary' && node[1] === '+') {
           if (node[2][0] == 'num' && node[3][0] == 'num') {
             rerun = true;
             return ['num', node[2][1] + node[3][1]];
@@ -715,7 +713,7 @@ function simplifyExpressionsPre(ast) {
           for (var i = 2; i <= 3; i++) {
             var ii = 5-i;
             for (var j = 2; j <= 3; j++) {
-              if (node[i][0] == 'num' && node[ii][0] == 'binary' && node[ii][1] == '+' && node[ii][j][0] == 'num') {
+              if (node[i][0] == 'num' && node[ii][0] == 'binary' && node[ii][1] === '+' && node[ii][j][0] == 'num') {
                 rerun = true;
                 node[ii][j][1] += node[i][1];
                 return node[ii];
@@ -837,7 +835,7 @@ function optimizeShiftsInternal(ast, conservative) {
           if (shifts <= MAX_SHIFTS) {
             // Push the >> inside the value elements
             function addShift(subNode) {
-              if (subNode[0] == 'binary' && subNode[1] == '+') {
+              if (subNode[0] == 'binary' && subNode[1] === '+') {
                 subNode[2] = addShift(subNode[2]);
                 subNode[3] = addShift(subNode[3]);
                 return subNode;
@@ -1015,11 +1013,11 @@ function optimizeShiftsInternal(ast, conservative) {
       // Re-combine remaining shifts, to undo the breaking up we did before. may require reordering inside +'s
       traverse(fun, function(node, type, stack) {
         stack.push(node);
-        if (type == 'binary' && node[1] == '+' && (stack[stack.length-2][0] != 'binary' || stack[stack.length-2][1] != '+')) {
+        if (type == 'binary' && node[1] === '+' && (stack[stack.length-2][0] != 'binary' || stack[stack.length-2][1] !== '+')) {
           // 'Flatten' added items
           var addedItems = [];
           function flatten(node) {
-            if (node[0] == 'binary' && node[1] == '+') {
+            if (node[0] == 'binary' && node[1] === '+') {
               flatten(node[2]);
               flatten(node[3]);
             } else {
@@ -1445,7 +1443,7 @@ function loopOptimizer(ast) {
     var more = false;
     // Remove unneeded labels
     traverseGenerated(ast, function(node, type) {
-      if (type == 'label' && node[1][0] == '+') {
+      if (type == 'label' && node[1][0] === '+') {
         more = true;
         var ident = node[1].substr(1);
         // Remove label from loop flow commands
@@ -2038,7 +2036,8 @@ function eliminate(ast, memSafe) {
     // examine body and note locals
     var hasSwitch = false;
     traverse(func, function(node, type) {
-      if (type == 'var') {
+      if (debug && type) type = type.toString();
+      if (type === 'var') {
         var node1 = node[1];
         for (var i = 0; i < node1.length; i++) {
           var node1i = node1[i];
@@ -2052,11 +2051,11 @@ function eliminate(ast, memSafe) {
           if (!uses[name]) uses[name] = 0;
           locals[name] = true;
         }
-      } else if (type == 'name') {
+      } else if (type === 'name') {
         var name = node[1];
         if (!uses[name]) uses[name] = 0;
         uses[name]++;
-      } else if (type == 'assign') {
+      } else if (type === 'assign') {
         var target = node[2];
         if (target[0] == 'name') {
           var name = target[1];
@@ -2070,7 +2069,7 @@ function eliminate(ast, memSafe) {
             namings[name]++; // offset it here, this tracks the total times we are named
           }
         }
-      } else if (type == 'switch') {
+      } else if (type === 'switch') {
         hasSwitch = true;
       }
     });
@@ -2641,21 +2640,22 @@ function eliminate(ast, memSafe) {
 
       this.run = function() {
         traverse(this.node, function(node, type) {
-          if (type == 'binary' && node[1] == '+') {
+          if (type == 'binary' && node[1] === '+') {
             var names = [];
             var num = 0;
             var has_num = false;
             var fail = false;
             traverse(node, function(subNode, subType) {
-              if (subType == 'binary') {
-                if (subNode[1] != '+') {
+              if (debug && subType) subType = subType.toString();
+              if (subType === 'binary') {
+                if (subNode[1] !== '+') {
                   fail = true;
                   return false;
                 }
-              } else if (subType == 'name') {
+              } else if (subType === 'name') {
                 names.push(subNode[1]);
                 return;
-              } else if (subType == 'num') {
+              } else if (subType === 'num') {
                 num += subNode[1];
                 has_num = true;
                 return;
@@ -2723,7 +2723,7 @@ function minifyGlobals(ast) {
 // Change +5 to DOT$ZERO(5). We then textually change 5 to 5.0 (uglify's ast cannot differentiate between 5 and 5.0 directly)
 function prepDotZero(ast) {
   traverse(ast, function(node, type) {
-    if (type == 'unary-prefix' && node[1] == '+') {
+    if (type == 'unary-prefix' && node[1] === '+') {
       if (node[2][0] == 'num' ||
           (node[2][0] == 'unary-prefix' && node[2][1] == '-' && node[2][2][0] == 'num')) {
         return ['call', ['name', 'DOT$ZERO'], [node[2]]];

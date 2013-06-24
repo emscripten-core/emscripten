@@ -9660,7 +9660,7 @@ def process(filename):
         if old_emcc_debug is not None:
           os.environ['EMCC_DEBUG'] = old_emcc_debug
         else:
-          del os.environ['EMCC_DEBUG']
+          os.environ.pop('EMCC_DEBUG', None)
 
     def test_exception_source_map(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip("doesn't pass without typed arrays")
