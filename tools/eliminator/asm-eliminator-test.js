@@ -6851,5 +6851,11 @@ function tempDouble2($46, $14, $28, $42, $20, $32, $45) {
  HEAP32[$45 + 4 >> 2] = $_sroa_06_0_insert_insert$1;
  HEAP32[$45 + 8 >> 2] = $_sroa_06_0_insert_insert$1;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j", "_segment_holding", "__ZN5identC2EiPKcPci", "_vec2Length", "exc", "label", "confuusion", "tempDouble", "_org_apache_harmony_luni_util_NumberConverter_freeFormat__", "__ZN23b2EdgeAndPolygonContact8EvaluateEP10b2ManifoldRK11b2TransformS4_", "_java_nio_charset_Charset_forNameInternal___java_lang_String", "looop2", "looop3", "looop4", "looop5", "looop6", "looop7", "looop8", "multiloop", "multiloop2", "tempDouble2"]
+function watIf() {
+ while (1) {
+  if ($cmp38) {} else {
+  }
+ }
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "__Z11printResultPiS_j", "_segment_holding", "__ZN5identC2EiPKcPci", "_vec2Length", "exc", "label", "confuusion", "tempDouble", "_org_apache_harmony_luni_util_NumberConverter_freeFormat__", "__ZN23b2EdgeAndPolygonContact8EvaluateEP10b2ManifoldRK11b2TransformS4_", "_java_nio_charset_Charset_forNameInternal___java_lang_String", "looop2", "looop3", "looop4", "looop5", "looop6", "looop7", "looop8", "multiloop", "multiloop2", "tempDouble2", "watIf"]
 

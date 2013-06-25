@@ -5121,4 +5121,9 @@ function tempDouble2($46, $14, $28, $42, $20, $32, $45) {
  HEAP32[$45 + 4 >> 2] = $_sroa_06_0_insert_insert$1;
  HEAP32[$45 + 8 >> 2] = $_sroa_06_0_insert_insert$1;
 }
+function watIf() {
+ while (1) {
+  if ($cmp38) {} else {}
+ }
+}
 

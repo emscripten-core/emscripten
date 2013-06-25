@@ -2535,13 +2535,13 @@ function eliminate(ast, memSafe) {
           var ifTrue = last[2];
           var ifFalse = last[3];
           var flip = false;
-          if (ifFalse[1][0][0] == 'break') { // canonicalize break in the if
+          if (ifFalse[1][0] && ifFalse[1][0][0] == 'break') { // canonicalize break in the if
             var temp = ifFalse;
             ifFalse = ifTrue;
             ifTrue = temp;
             flip = true;
           }
-          if (ifTrue[1][0][0] == 'break') {
+          if (ifTrue[1][0] && ifTrue[1][0][0] == 'break') {
             var assigns = ifFalse[1];
             var loopers = [], helpers = [];
             for (var i = 0; i < assigns.length; i++) {
