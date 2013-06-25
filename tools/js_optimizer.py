@@ -137,7 +137,8 @@ def run_on_js(filename, passes, js_engine, jcache, source_map=False, extra_info=
   # Find markers
   start_funcs = js.find(start_funcs_marker)
   end_funcs = js.rfind(end_funcs_marker)
-  #assert (start_funcs >= 0) == (end_funcs >= 0) == (not not suffix)
+
+  know_generated = suffix or start_funcs >= 0
 
   minify_globals = 'registerizeAndMinify' in passes and 'asm' in passes
   if minify_globals:
@@ -150,14 +151,14 @@ def run_on_js(filename, passes, js_engine, jcache, source_map=False, extra_info=
   if closure:
     passes = filter(lambda p: p != 'closure', passes) # we will do it manually
 
-  if not suffix and jcache:
+  if not know_generated and jcache:
     # JCache cannot be used without metadata, since it might reorder stuff, and that's dangerous since only generated can be reordered
     # This means jcache does not work after closure compiler runs, for example. But you won't get much benefit from jcache with closure
     # anyhow (since closure is likely the longest part of the build).
     if DEBUG: print >>sys.stderr, 'js optimizer: no metadata, so disabling jcache'
     jcache = False
 
-  if suffix:
+  if know_generated:
     if not minify_globals:
       pre = js[:start_funcs + len(start_funcs_marker)]
       post = js[end_funcs + len(end_funcs_marker):]
@@ -191,7 +192,7 @@ EMSCRIPTEN_FUNCS();
       minify_info = minifier.serialize()
       #if DEBUG: print >> sys.stderr, 'minify info:', minify_info
     # remove suffix if no longer needed
-    if 'last' in passes:
+    if suffix and 'last' in passes:
       suffix_start = post.find(suffix_marker)
       suffix_end = post.find('\n', suffix_start)
       post = post[:suffix_start] + post[suffix_end:]
@@ -211,7 +212,7 @@ EMSCRIPTEN_FUNCS();
     if m:
       ident = m.group(2)
     else:
-      if suffix: continue # ignore whitespace
+      if know_generated: continue # ignore whitespace
       ident = 'anon_%d' % i
     assert ident
     funcs.append((ident, func))
