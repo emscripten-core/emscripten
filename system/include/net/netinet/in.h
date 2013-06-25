@@ -23,6 +23,7 @@ enum {
 #define INET6_ADDRSTRLEN 46
 
 #define INADDR_ANY 0
+#define INADDR_LOOPBACK 0x7f000001 /* 127.0.0.1 */
 
 struct in_addr {
   unsigned long s_addr;
@@ -45,6 +46,14 @@ struct in6_addr {
 #define s6_addr16 _u._s6_addr16
 #define s6_addr32 _u._s6_addr32
 };
+
+extern const struct in6_addr in6addr_any;
+extern const struct in6_addr in6addr_loopback;
+extern const struct in6_addr in6addr_linklocal_allnodes;
+extern const struct in6_addr in6addr_linklocal_allrouters;
+extern const struct in6_addr in6addr_interfacelocal_allnodes;
+extern const struct in6_addr in6addr_interfacelocal_allrouters;
+extern const struct in6_addr in6addr_sitelocal_allrouters;
 
 struct sockaddr_in6 {
   short           sin6_family;
