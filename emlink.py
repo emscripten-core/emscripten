@@ -28,6 +28,7 @@ print 'Output:', out
 
 class AsmModule():
   def __init__(self, filename):
+    self.filename = filename
     self.js = open(filename).read()
 
     self.start_asm = self.js.find(js_optimizer.start_asm_marker)
@@ -51,7 +52,7 @@ class AsmModule():
     self.tables_js = post_js[:ret]
     self.exports_js = post_js[ret:]
 
-  def relocate(self, main):
+  def relocate_into(self, main):
     # imports
     main_imports = set(main.imports)
     new_imports = [imp for imp in self.imports if imp not in main_imports]
@@ -68,11 +69,21 @@ class AsmModule():
         replacements[func] = rep
     #print replacements
 
+    temp = shared.Building.js_optimizer(self.filename, ['asm', 'relocate'])
+    relocated_funcs = AsmModule(temp)
+    shared.try_delete(temp)
+    main.extra_funcs_js = relocated_funcs.funcs_js
+
+    # tables
+
+    # exports
+
   def write(self, out):
     f = open(out, 'w')
     f.write(self.js[:self.start_asm])
     f.write(self.imports_js)
     f.write(self.funcs_js)
+    f.write(self.extra_funcs_js)
     f.write(self.tables_js)
     f.write(self.exports_js)
     f.write(self.js[self.end_asm:])
@@ -81,6 +92,6 @@ class AsmModule():
 main = AsmModule(main)
 side = AsmModule(side)
 
-side.relocate(main)
+side.relocate_into(main)
 main.write(out)
 
