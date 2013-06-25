@@ -56,6 +56,7 @@ class AsmModule():
     # heap initializer TODO
 
     # global initializers TODO
+    shared.JS.memory_initializer_pattern
 
     # imports
     main_imports = set(main.imports)
