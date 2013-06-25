@@ -1260,6 +1260,8 @@ var LibraryGL = {
     return Module.ctx.isFramebuffer(fb);
   },
 
+#if DISABLE_GL_EMULATION == 0
+
   // GL emulation: provides misc. functionality not present in OpenGL ES 2.0 or WebGL
 
   $GLEmulation__postset: 'GLEmulation.init();',
@@ -4139,6 +4141,44 @@ var LibraryGL = {
   },
   glRotatef: 'glRotated',
 
+  glDrawBuffer: function() { throw 'glDrawBuffer: TODO' },
+  glReadBuffer: function() { throw 'glReadBuffer: TODO' },
+
+  glLightfv: function() { throw 'glLightfv: TODO' },
+  glLightModelfv: function() { throw 'glLightModelfv: TODO' },
+  glMaterialfv: function() { throw 'glMaterialfv: TODO' },
+
+  glTexGeni: function() { throw 'glTexGeni: TODO' },
+  glTexGenfv: function() { throw 'glTexGenfv: TODO' },
+  glTexEnvi: function() { Runtime.warnOnce('glTexEnvi: TODO') },
+  glTexEnvf: function() { Runtime.warnOnce('glTexEnvf: TODO') },
+  glTexEnvfv: function() { Runtime.warnOnce('glTexEnvfv: TODO') },
+
+  glTexImage1D: function() { throw 'glTexImage1D: TODO' },
+  glTexCoord3f: function() { throw 'glTexCoord3f: TODO' },
+  glGetTexLevelParameteriv: function() { throw 'glGetTexLevelParameteriv: TODO' },
+
+  glShadeModel: function() { Runtime.warnOnce('TODO: glShadeModel') },
+
+  // Open GLES1.1 compatibility
+
+  glGenFramebuffersOES : 'glGenFramebuffers',
+  glGenRenderbuffersOES : 'glGenRenderbuffers',
+  glBindFramebufferOES : 'glBindFramebuffer',
+  glBindRenderbufferOES : 'glBindRenderbuffer',
+  glGetRenderbufferParameterivOES : 'glGetRenderbufferParameteriv',
+  glFramebufferRenderbufferOES : 'glFramebufferRenderbuffer',
+  glRenderbufferStorageOES : 'glRenderbufferStorage',
+  glCheckFramebufferStatusOES : 'glCheckFramebufferStatus',
+  glDeleteFramebuffersOES : 'glDeleteFramebuffers',
+  glDeleteRenderbuffersOES : 'glDeleteRenderbuffers',
+  glGenVertexArraysOES: 'glGenVertexArrays',
+  glDeleteVertexArraysOES: 'glDeleteVertexArrays',
+  glBindVertexArrayOES: 'glBindVertexArray',
+  glFramebufferTexture2DOES: 'glFramebufferTexture2D',
+
+#endif // DISABLE_GL_EMULATION == 0
+
   // GLU
 
   gluPerspective: function(fov, aspect, near, far) {
@@ -4204,25 +4244,6 @@ var LibraryGL = {
   gluOrtho2D: function(left, right, bottom, top) {
     _glOrtho(left, right, bottom, top, -1, 1);
   },
-
-  glDrawBuffer: function() { throw 'glDrawBuffer: TODO' },
-  glReadBuffer: function() { throw 'glReadBuffer: TODO' },
-
-  glLightfv: function() { throw 'glLightfv: TODO' },
-  glLightModelfv: function() { throw 'glLightModelfv: TODO' },
-  glMaterialfv: function() { throw 'glMaterialfv: TODO' },
-
-  glTexGeni: function() { throw 'glTexGeni: TODO' },
-  glTexGenfv: function() { throw 'glTexGenfv: TODO' },
-  glTexEnvi: function() { Runtime.warnOnce('glTexEnvi: TODO') },
-  glTexEnvf: function() { Runtime.warnOnce('glTexEnvf: TODO') },
-  glTexEnvfv: function() { Runtime.warnOnce('glTexEnvfv: TODO') },
-
-  glTexImage1D: function() { throw 'glTexImage1D: TODO' },
-  glTexCoord3f: function() { throw 'glTexCoord3f: TODO' },
-  glGetTexLevelParameteriv: function() { throw 'glGetTexLevelParameteriv: TODO' },
-
-  glShadeModel: function() { Runtime.warnOnce('TODO: glShadeModel') },
 
   // GLES2 emulation
 
@@ -4351,23 +4372,6 @@ var LibraryGL = {
   glGetError__sig: 'i',
   glFrontFace__sig: 'vi',
   glSampleCoverage__sig: 'vi',
-
-  // Open GLES1.1 compatibility
-
-  glGenFramebuffersOES : 'glGenFramebuffers',
-  glGenRenderbuffersOES : 'glGenRenderbuffers',
-  glBindFramebufferOES : 'glBindFramebuffer',
-  glBindRenderbufferOES : 'glBindRenderbuffer',
-  glGetRenderbufferParameterivOES : 'glGetRenderbufferParameteriv',
-  glFramebufferRenderbufferOES : 'glFramebufferRenderbuffer',
-  glRenderbufferStorageOES : 'glRenderbufferStorage',
-  glCheckFramebufferStatusOES : 'glCheckFramebufferStatus',
-  glDeleteFramebuffersOES : 'glDeleteFramebuffers',
-  glDeleteRenderbuffersOES : 'glDeleteRenderbuffers',
-  glGenVertexArraysOES: 'glGenVertexArrays',
-  glDeleteVertexArraysOES: 'glDeleteVertexArrays',
-  glBindVertexArrayOES: 'glBindVertexArray',
-  glFramebufferTexture2DOES: 'glFramebufferTexture2D',
 };
 
 
@@ -4409,9 +4413,7 @@ var LibraryGL = {
 
 autoAddDeps(LibraryGL, '$GL');
 
-if (DISABLE_GL_EMULATION) {
-  delete LibraryGL.$GLEmulation;
-} else {
+if (!DISABLE_GL_EMULATION) {
   // Emulation requires everything else, potentially
   LibraryGL.$GLEmulation__deps = LibraryGL.$GLEmulation__deps.slice(0); // the __deps object is shared
   var glFuncs = [];
