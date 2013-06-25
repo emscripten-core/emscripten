@@ -10610,25 +10610,28 @@ f.close()
       assert not os.path.exists('a.out') and not os.path.exists('a.exe'), 'Must not leave unneeded linker stubs'
 
     def test_static_link(self):
-      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
+      def test(main, side, first=True):
+        open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(main)
+        open(os.path.join(self.get_dir(), 'side.cpp'), 'w').write(side)
+        Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'side.cpp'), '-o', 'side.js', '-s', 'SIDE_MODULE=1', '-O2']).communicate()
+        # TODO: test with and without DISABLE_GL_EMULATION, check that file sizes change
+        Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-o', 'main.js', '-s', 'MAIN_MODULE=1', '-O2', '-s', 'DISABLE_GL_EMULATION=1']).communicate()
+        Popen([PYTHON, EMLINK, 'main.js', 'side.js', 'together.js'], stdout=PIPE).communicate()
+        assert os.path.exists('together.js')
+        out = run_js('together.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True)
+        self.assertContained('side says 11.', out)
+        self.validate_asmjs(out)
+
+      test('''
         #include <stdio.h>
         extern int sidey();
         int main() {
           printf("side says %d.", sidey());
           return 0;
         }
-      ''')
-      open(os.path.join(self.get_dir(), 'side.cpp'), 'w').write('''
+      ''', '''
         int sidey() { return 11; }
       ''')
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'side.cpp'), '-o', 'side.js', '-s', 'SIDE_MODULE=1', '-O2']).communicate()
-      # TODO: test with and without DISABLE_GL_EMULATION, check that file sizes change
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-o', 'main.js', '-s', 'MAIN_MODULE=1', '-O2', '-s', 'DISABLE_GL_EMULATION=1']).communicate()
-      Popen([PYTHON, EMLINK, 'main.js', 'side.js', 'together.js']).communicate()
-      assert os.path.exists('together.js')
-      out = run_js('together.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True)
-      self.assertContained('side says 11.', out)
-      self.validate_asmjs(out)
 
     def test_symlink(self):
       if os.name == 'nt':
