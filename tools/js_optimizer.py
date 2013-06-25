@@ -113,7 +113,7 @@ def run_on_chunk(command):
   if DEBUG and not shared.WINDOWS: print >> sys.stderr, '.' # Skip debug progress indicator on Windows, since it doesn't buffer well with multiple threads printing to console.
   return filename
 
-def run_on_js(filename, passes, js_engine, jcache, source_map=False):
+def run_on_js(filename, passes, js_engine, jcache, source_map=False, extra_info=None):
   if isinstance(jcache, bool) and jcache: jcache = shared.JCache
   if jcache: shared.JCache.ensure()
 
@@ -251,8 +251,12 @@ EMSCRIPTEN_FUNCS();
       f.write(chunk)
       f.write(suffix_marker)
       if minify_globals:
+        assert not extra_info
         f.write('\n')
         f.write('// EXTRA_INFO:' + minify_info)
+      elif extra_info:
+        f.write('\n')
+        f.write('// EXTRA_INFO:' + json.dumps(extra_info))
       f.close()
       return temp_file
     filenames = [write_chunk(chunks[i], i) for i in range(len(chunks))]
@@ -331,6 +335,6 @@ EMSCRIPTEN_FUNCS();
 
   return filename
 
-def run(filename, passes, js_engine, jcache, source_map=False):
-  return temp_files.run_and_clean(lambda: run_on_js(filename, passes, js_engine, jcache, source_map))
+def run(filename, passes, js_engine, jcache, source_map=False, extra_info=None):
+  return temp_files.run_and_clean(lambda: run_on_js(filename, passes, js_engine, jcache, source_map, extra_info))
 

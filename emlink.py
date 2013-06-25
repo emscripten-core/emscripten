@@ -69,7 +69,7 @@ class AsmModule():
         replacements[func] = rep
     #print replacements
 
-    temp = shared.Building.js_optimizer(self.filename, ['asm', 'relocate'])
+    temp = shared.Building.js_optimizer(self.filename, ['asm', 'relocate'], extra_info={ 'replacements': replacements })
     relocated_funcs = AsmModule(temp)
     shared.try_delete(temp)
     main.extra_funcs_js = relocated_funcs.funcs_js
