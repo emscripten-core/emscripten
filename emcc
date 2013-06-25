@@ -836,6 +836,7 @@ try:
         DEBUG = 1
         shared.set_logging()
         logging.debug('invocation: ' + ' '.join(sys.argv))
+        shared.apply_configuration() # reset config to pick up change
       newargs[i] = ''
     elif newargs[i].startswith('--shell-file'):
       check_bad_eq(newargs[i])
