@@ -10623,9 +10623,9 @@ f.close()
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'side.cpp'), '-o', 'side.js', '-s', 'SIDE_MODULE=1', '-O2']).communicate()
       # TODO: test with and without DISABLE_GL_EMULATION, check that file sizes change
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-o', 'main.js', '-s', 'MAIN_MODULE=1', '-O2', '-s', 'DISABLE_GL_EMULATION=1']).communicate()
-      Popen([PYTHON, EMLINK, 'main.js', 'side.js', 'together.js'])
-      assert os.path.exists(self.in_dir('together.js'))
-      self.assertContained('hello from side', run_js(self.in_dir('together.js')))
+      Popen([PYTHON, EMLINK, 'main.js', 'side.js', 'together.js']).communicate()
+      assert os.path.exists('together.js')
+      self.assertContained('hello from side', run_js('together.js'))
 
     def test_symlink(self):
       if os.name == 'nt':

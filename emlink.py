@@ -55,11 +55,12 @@ class AsmModule():
   def relocate_into(self, main):
     # heap initializer TODO
 
+    # global initializers TODO
+
     # imports
     main_imports = set(main.imports)
     new_imports = [imp for imp in self.imports if imp not in main_imports]
-    print 'new imports', new_imports
-    #main.imports_js += '\n'.join(new_imports)
+    main.imports_js += '\n'.join(new_imports)
 
     # Find function name replacements TODO: do not rename duplicate names with duplicate contents, just merge them
     main_funcs = set(main.funcs)
@@ -69,7 +70,6 @@ class AsmModule():
       while rep in main_funcs:
         rep += '_'
         replacements[func] = rep
-    #print replacements
 
     temp = shared.Building.js_optimizer(self.filename, ['asm', 'relocate'], extra_info={ 'replacements': replacements })
     relocated_funcs = AsmModule(temp)
