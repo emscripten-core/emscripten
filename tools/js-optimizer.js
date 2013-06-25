@@ -11,6 +11,7 @@
 
 // *** Environment setup code ***
 var arguments_ = [];
+var debug = false;
 
 var ENVIRONMENT_IS_NODE = typeof process === 'object';
 var ENVIRONMENT_IS_WEB = typeof window === 'object';
@@ -146,11 +147,12 @@ var generatedFunctions = false; // whether we have received only generated funct
 var extraInfo = null;
 
 function srcToAst(src) {
-  return uglify.parser.parse(src);
+  return uglify.parser.parse(src, false, debug);
 }
 
 function astToSrc(ast, minifyWhitespace) {
     return uglify.uglify.gen_code(ast, {
+    debug: debug,
     ascii_only: true,
     beautify: !minifyWhitespace,
     indent_level: 1
@@ -162,10 +164,10 @@ function astToSrc(ast, minifyWhitespace) {
 function traverseChildren(node, traverse, pre, post, stack) {
   for (var i = 0; i < node.length; i++) {
     var subnode = node[i];
-    if (typeof subnode == 'object' && subnode && subnode.length) {
+    if (Array.isArray(subnode)) {
       var subresult = traverse(subnode, pre, post, stack);
-      if (subresult == true) return true;
-      if (subresult !== null && typeof subresult == 'object') node[i] = subresult;
+      if (subresult === true) return true;
+      if (subresult !== null && typeof subresult === 'object') node[i] = subresult;
     }
   }
 }
@@ -186,16 +188,16 @@ function traverseChildren(node, traverse, pre, post, stack) {
 //     was stopped, true. Otherwise undefined.
 function traverse(node, pre, post, stack) {
   var type = node[0], result, len;
-  var relevant = typeof type == 'string';
+  var relevant = !Array.isArray(node[0]);
   if (relevant) {
     if (stack) len = stack.length;
     var result = pre(node, type, stack);
-    if (result == true) return true;
-    if (result !== null && typeof result == 'object') node = result; // Continue processing on this node
+    if (result === true) return true;
+    if (Array.isArray(result)) node = result; // Continue processing on this node
     if (stack && len == stack.length) stack.push(0);
   }
   if (result !== null) {
-    if (traverseChildren(node, traverse, pre, post, stack) == true) return true;
+    if (traverseChildren(node, traverse, pre, post, stack) === true) return true;
   }
   if (relevant) {
     if (post) {
@@ -446,7 +448,8 @@ function simplifyExpressionsPre(ast) {
         traverse(ast, function process(node, type, stack) {
           if (type == 'binary' && node[1] == '|') {
             if (node[2][0] == 'num' && node[3][0] == 'num') {
-              return ['num', node[2][1] | node[3][1]];
+              node[2][1] |= node[3][1];
+              return node[2];
             }
             var go = false;
             if (jsonCompare(node[2], ZERO)) {
@@ -700,7 +703,7 @@ function simplifyExpressionsPre(ast) {
     while (rerun) {
       rerun = false;
       traverse(ast, function(node, type) {
-        if (type == 'binary' && node[1] == '+') {
+        if (type == 'binary' && node[1] === '+') {
           if (node[2][0] == 'num' && node[3][0] == 'num') {
             rerun = true;
             return ['num', node[2][1] + node[3][1]];
@@ -708,7 +711,7 @@ function simplifyExpressionsPre(ast) {
           for (var i = 2; i <= 3; i++) {
             var ii = 5-i;
             for (var j = 2; j <= 3; j++) {
-              if (node[i][0] == 'num' && node[ii][0] == 'binary' && node[ii][1] == '+' && node[ii][j][0] == 'num') {
+              if (node[i][0] == 'num' && node[ii][0] == 'binary' && node[ii][1] === '+' && node[ii][j][0] == 'num') {
                 rerun = true;
                 node[ii][j][1] += node[i][1];
                 return node[ii];
@@ -830,7 +833,7 @@ function optimizeShiftsInternal(ast, conservative) {
           if (shifts <= MAX_SHIFTS) {
             // Push the >> inside the value elements
             function addShift(subNode) {
-              if (subNode[0] == 'binary' && subNode[1] == '+') {
+              if (subNode[0] == 'binary' && subNode[1] === '+') {
                 subNode[2] = addShift(subNode[2]);
                 subNode[3] = addShift(subNode[3]);
                 return subNode;
@@ -1008,11 +1011,11 @@ function optimizeShiftsInternal(ast, conservative) {
       // Re-combine remaining shifts, to undo the breaking up we did before. may require reordering inside +'s
       traverse(fun, function(node, type, stack) {
         stack.push(node);
-        if (type == 'binary' && node[1] == '+' && (stack[stack.length-2][0] != 'binary' || stack[stack.length-2][1] != '+')) {
+        if (type == 'binary' && node[1] === '+' && (stack[stack.length-2][0] != 'binary' || stack[stack.length-2][1] !== '+')) {
           // 'Flatten' added items
           var addedItems = [];
           function flatten(node) {
-            if (node[0] == 'binary' && node[1] == '+') {
+            if (node[0] == 'binary' && node[1] === '+') {
               flatten(node[2]);
               flatten(node[3]);
             } else {
@@ -1438,7 +1441,7 @@ function loopOptimizer(ast) {
     var more = false;
     // Remove unneeded labels
     traverseGenerated(ast, function(node, type) {
-      if (type == 'label' && node[1][0] == '+') {
+      if (type == 'label' && node[1][0] === '+') {
         more = true;
         var ident = node[1].substr(1);
         // Remove label from loop flow commands
@@ -2031,6 +2034,7 @@ function eliminate(ast, memSafe) {
     // examine body and note locals
     var hasSwitch = false;
     traverse(func, function(node, type) {
+      if (debug && type) type = type.toString();
       if (type === 'var') {
         var node1 = node[1];
         for (var i = 0; i < node1.length; i++) {
@@ -2049,7 +2053,7 @@ function eliminate(ast, memSafe) {
         var name = node[1];
         if (!uses[name]) uses[name] = 0;
         uses[name]++;
-      } else if (type == 'assign') {
+      } else if (type === 'assign') {
         var target = node[2];
         if (target[0] == 'name') {
           var name = target[1];
@@ -2063,7 +2067,7 @@ function eliminate(ast, memSafe) {
             namings[name]++; // offset it here, this tracks the total times we are named
           }
         }
-      } else if (type == 'switch') {
+      } else if (type === 'switch') {
         hasSwitch = true;
       }
     });
@@ -2505,7 +2509,7 @@ function eliminate(ast, memSafe) {
     // clean up vars, and loop variable elimination
     traverse(func, function(node, type) {
       // pre
-      if (type === 'var') {
+      if (type == 'var') {
         node[1] = node[1].filter(function(pair) { return !varsToRemove[pair[0]] });
         if (node[1].length == 0) {
           // wipe out an empty |var;|
@@ -2634,14 +2638,15 @@ function eliminate(ast, memSafe) {
 
       this.run = function() {
         traverse(this.node, function(node, type) {
-          if (type === 'binary' && node[1] == '+') {
+          if (type == 'binary' && node[1] === '+') {
             var names = [];
             var num = 0;
             var has_num = false;
             var fail = false;
             traverse(node, function(subNode, subType) {
+              if (debug && subType) subType = subType.toString();
               if (subType === 'binary') {
-                if (subNode[1] != '+') {
+                if (subNode[1] !== '+') {
                   fail = true;
                   return false;
                 }
@@ -2771,7 +2776,7 @@ function relocate(ast) {
 // Change +5 to DOT$ZERO(5). We then textually change 5 to 5.0 (uglify's ast cannot differentiate between 5 and 5.0 directly)
 function prepDotZero(ast) {
   traverse(ast, function(node, type) {
-    if (type == 'unary-prefix' && node[1] == '+') {
+    if (type == 'unary-prefix' && node[1] === '+') {
       if (node[2][0] == 'num' ||
           (node[2][0] == 'unary-prefix' && node[2][1] == '-' && node[2][2][0] == 'num')) {
         return ['call', ['name', 'DOT$ZERO'], [node[2]]];
@@ -2843,6 +2848,14 @@ var passes = {
 
 var suffix = '';
 
+arguments_ = arguments_.filter(function (arg) {
+  if (!/^--/.test(arg)) return true;
+
+  if (arg === '--debug') debug = true;
+  else throw new Error('Unrecognized flag: ' + arg);
+});
+
+
 var src = read(arguments_[0]);
 var ast = srcToAst(src);
 //printErr(JSON.stringify(ast)); throw 1;
@@ -2850,6 +2863,7 @@ generatedFunctions = src.indexOf(GENERATED_FUNCTIONS_MARKER) >= 0;
 var extraInfoStart = src.indexOf('// EXTRA_INFO:')
 if (extraInfoStart > 0) extraInfo = JSON.parse(src.substr(extraInfoStart + 14));
 //printErr(JSON.stringify(extraInfo));
+
 
 arguments_.slice(1).forEach(function(arg) {
   passes[arg](ast);

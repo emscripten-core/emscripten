@@ -695,7 +695,9 @@ function JSify(data, functionsOnly, givenFunctions) {
               }
             }
             i++;
-            return JS + (Debugging.on ? Debugging.getComment(line.lineNum) : '');
+            // invoke instructions span two lines, and the debug info is located
+            // on the second line, hence the +1
+            return JS + (Debugging.on ? Debugging.getComment(line.lineNum + (line.intertype === 'invoke' ? 1 : 0)) : '');
           })
                                   .join('\n')
                                   .split('\n') // some lines include line breaks
