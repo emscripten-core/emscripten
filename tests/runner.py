@@ -265,6 +265,12 @@ process(sys.argv[1])
       else:
         assert 'memory initializer */' in open(filename + '.o.js').read()
 
+  def validate_asmjs(self, err):
+    if 'uccessfully compiled asm.js code' in err and 'asm.js link error' not in err:
+      print >> sys.stderr, "[was asm.js'ified]"
+    elif 'asm.js' in err: # if no asm.js error, then not an odin build
+      raise Exception("did NOT asm.js'ify")
+
   def run_generated_code(self, engine, filename, args=[], check_timeout=True, output_nicerizer=None):
     stdout = os.path.join(self.get_dir(), 'stdout') # use files, as PIPE can get too full and hang us
     stderr = os.path.join(self.get_dir(), 'stderr')
@@ -279,10 +285,7 @@ process(sys.argv[1])
     out = open(stdout, 'r').read()
     err = open(stderr, 'r').read()
     if engine == SPIDERMONKEY_ENGINE and Settings.ASM_JS:
-      if 'uccessfully compiled asm.js code' in err and 'asm.js link error' not in err:
-        print >> sys.stderr, "[was asm.js'ified]"
-      elif 'asm.js' in err: # if no asm.js error, then not an odin build
-        raise Exception("did NOT asm.js'ify")
+      self.validate_asmjs(err)
     if output_nicerizer:
       ret = output_nicerizer(out, err)
     else:
@@ -10608,24 +10611,24 @@ f.close()
 
     def test_static_link(self):
       open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
-        extern void printey();
+        #include <stdio.h>
+        extern int sidey();
         int main() {
-          printey();
+          printf("side says %d.", sidey());
           return 0;
         }
       ''')
       open(os.path.join(self.get_dir(), 'side.cpp'), 'w').write('''
-        #include <stdio.h>
-        void printey() {
-          printf("hello from side\\n");
-        }
+        int sidey() { return 11; }
       ''')
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'side.cpp'), '-o', 'side.js', '-s', 'SIDE_MODULE=1', '-O2']).communicate()
       # TODO: test with and without DISABLE_GL_EMULATION, check that file sizes change
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-o', 'main.js', '-s', 'MAIN_MODULE=1', '-O2', '-s', 'DISABLE_GL_EMULATION=1']).communicate()
       Popen([PYTHON, EMLINK, 'main.js', 'side.js', 'together.js']).communicate()
       assert os.path.exists('together.js')
-      self.assertContained('hello from side', run_js('together.js'))
+      out = run_js('together.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True)
+      self.assertContained('side says 11.', out)
+      self.validate_asmjs(out)
 
     def test_symlink(self):
       if os.name == 'nt':
