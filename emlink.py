@@ -72,7 +72,7 @@ class AsmModule():
     temp = shared.Building.js_optimizer(self.filename, ['asm', 'relocate'], extra_info={ 'replacements': replacements })
     relocated_funcs = AsmModule(temp)
     shared.try_delete(temp)
-    main.extra_funcs_js = relocated_funcs.funcs_js
+    main.extra_funcs_js = relocated_funcs.funcs_js.replace(js_optimizer.start_funcs_marker, '\n')
 
     # tables
 
