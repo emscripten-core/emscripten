@@ -117,9 +117,9 @@ var LibraryGLUT = {
       if (48 <= keycode && keycode <= 57)
         return keycode; // numeric  TODO handle shift?
       if (65 <= keycode && keycode <= 90)
-	return event['shiftKey'] ? keycode : keycode + 32;
+        return event['shiftKey'] ? keycode : keycode + 32;
       if (106 <= keycode && keycode <= 111)
-	return keycode - 106 + 42; // *,+-./  TODO handle shift?
+        return keycode - 106 + 42; // *,+-./  TODO handle shift?
 
       switch (keycode) {
         case 27: // escape
@@ -227,7 +227,7 @@ var LibraryGLUT = {
       } else {
         width = GLUT.windowWidth;
         height = GLUT.windowHeight;
-	    // TODO set position
+        // TODO set position
         document.removeEventListener('fullscreenchange', GLUT.onFullScreenEventChange, true);
         document.removeEventListener('mozfullscreenchange', GLUT.onFullScreenEventChange, true);
         document.removeEventListener('webkitfullscreenchange', GLUT.onFullScreenEventChange, true);
@@ -255,13 +255,14 @@ var LibraryGLUT = {
                 document['cancelFullScreen'] ||
                 document['mozCancelFullScreen'] ||
                 document['webkitCancelFullScreen'] ||
-	        (function() {});
+                (function() {});
       CFS.apply(document, []);
     }
   },
 
   glutGetModifiers: function() { return GLUT.modifiers; },
 
+  glutInit__deps: ['$Browser'],
   glutInit: function(argcp, argv) {
     // Ignore arguments
     GLUT.initTime = Date.now();
@@ -271,6 +272,12 @@ var LibraryGLUT = {
     window.addEventListener("mousemove", GLUT.onMousemove, true);
     window.addEventListener("mousedown", GLUT.onMouseButtonDown, true);
     window.addEventListener("mouseup", GLUT.onMouseButtonUp, true);
+    
+    Browser.resizeListeners.push(function(width, height) {
+      if (GLUT.reshapeFunc) {
+      	Runtime.dynCall('vii', GLUT.reshapeFunc, [width, height]);
+      }
+    });
 
     __ATEXIT__.push({ func: function() {
       window.removeEventListener("keydown", GLUT.onKeydown, true);
@@ -294,21 +301,25 @@ var LibraryGLUT = {
   glutGet: function(type) {
     switch (type) {
       case 100: /* GLUT_WINDOW_X */
-	return 0; /* TODO */
+        return 0; /* TODO */
       case 101: /* GLUT_WINDOW_Y */
-	return 0; /* TODO */
+        return 0; /* TODO */
       case 102: /* GLUT_WINDOW_WIDTH */
-	return Module['canvas'].width;
+        return Module['canvas'].width;
       case 103: /* GLUT_WINDOW_HEIGHT */
-	return Module['canvas'].height;
+        return Module['canvas'].height;
+      case 200: /* GLUT_SCREEN_WIDTH */
+        return Module['canvas'].width;
+      case 201: /* GLUT_SCREEN_HEIGHT */
+        return Module['canvas'].height;
       case 500: /* GLUT_INIT_WINDOW_X */
-	return 0; /* TODO */
+        return 0; /* TODO */
       case 501: /* GLUT_INIT_WINDOW_Y */
-	return 0; /* TODO */
+        return 0; /* TODO */
       case 502: /* GLUT_INIT_WINDOW_WIDTH */
-	return GLUT.initWindowWidth;
+        return GLUT.initWindowWidth;
       case 503: /* GLUT_INIT_WINDOW_HEIGHT */
-	return GLUT.initWindowHeight;
+        return GLUT.initWindowHeight;
       case 700: /* GLUT_ELAPSED_TIME */
         var now = Date.now();
         return now - GLUT.initTime;
@@ -386,10 +397,8 @@ var LibraryGLUT = {
   glutReshapeWindow__deps: ['$GLUT', 'glutPostRedisplay'],
   glutReshapeWindow: function(width, height) {
     GLUT.cancelFullScreen();
-    // console.log("glutReshapeWindow: " + width + ", " + height);
     Browser.setCanvasSize(width, height);
     if (GLUT.reshapeFunc) {
-      // console.log("GLUT.reshapeFunc: " + width + ", " + height);
       Runtime.dynCall('vii', GLUT.reshapeFunc, [width, height]);
     }
     _glutPostRedisplay();
