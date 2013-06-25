@@ -30,30 +30,33 @@ class AsmModule():
   def __init__(self, filename):
     self.js = open(filename).read()
 
-    start_asm = self.js.find(js_optimizer.start_asm_marker)
-    start_funcs = self.js.find(js_optimizer.start_funcs_marker)
-    end_funcs = self.js.rfind(js_optimizer.end_funcs_marker)
-    end_asm = self.js.rfind(js_optimizer.end_asm_marker)
+    self.start_asm = self.js.find(js_optimizer.start_asm_marker)
+    self.start_funcs = self.js.find(js_optimizer.start_funcs_marker)
+    self.end_funcs = self.js.rfind(js_optimizer.end_funcs_marker)
+    self.end_asm = self.js.rfind(js_optimizer.end_asm_marker)
 
     # imports
-    self.imports_js = self.js[start_asm:start_funcs]
+    self.imports_js = self.js[self.start_asm:self.start_funcs]
     self.imports = [m.group(0) for m in js_optimizer.import_sig.finditer(self.imports_js)]
     #print 'imports', self.imports
 
     # funcs
-    self.funcs_js = self.js[start_funcs:end_funcs]
+    self.funcs_js = self.js[self.start_funcs:self.end_funcs]
     self.funcs = [m.group(2) for m in js_optimizer.func_sig.finditer(self.funcs_js)]
     #print 'funcs', self.funcs
 
     # tables and exports
-    self.post_js = self.js[end_funcs:end_asm]
+    post_js = self.js[self.end_funcs:self.end_asm]
+    ret = post_js.find('return')
+    self.tables_js = post_js[:ret]
+    self.exports_js = post_js[ret:]
 
   def relocate(self, main):
     # imports
     main_imports = set(main.imports)
     new_imports = [imp for imp in self.imports if imp not in main_imports]
     print 'new imports', new_imports
-    main.imports_js += '\n'.join(new_imports)
+    #main.imports_js += '\n'.join(new_imports)
 
     # Find function name replacements TODO: do not rename duplicate names with duplicate contents, just merge them
     main_funcs = set(main.funcs)
@@ -66,11 +69,18 @@ class AsmModule():
     #print replacements
 
   def write(self, out):
-    open(out, 'w').write(self.js)
+    f = open(out, 'w')
+    f.write(self.js[:self.start_asm])
+    f.write(self.imports_js)
+    f.write(self.funcs_js)
+    f.write(self.tables_js)
+    f.write(self.exports_js)
+    f.write(self.js[self.end_asm:])
+    f.close()
 
 main = AsmModule(main)
 side = AsmModule(side)
 
 side.relocate(main)
-#main.write(out)
+main.write(out)
 
