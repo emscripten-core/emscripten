@@ -188,8 +188,6 @@ function traverseChildren(node, traverse, pre, post, stack) {
 //     was stopped, true. Otherwise undefined.
 function traverse(node, pre, post, stack) {
   var type = node[0], result, len;
-  // valueOf() ensures that NodeWithToken (produced by uglify's parser during
-  // 'embed tokens' mode) gets marked as 'relevant'
   var relevant = !Array.isArray(node[0]);
   if (relevant) {
     if (stack) len = stack.length;
