@@ -1069,11 +1069,12 @@ try:
   if shared.Settings.MAIN_MODULE:
     assert not shared.Settings.SIDE_MODULE
     shared.Settings.INCLUDE_FULL_LIBRARY = 1
-    shared.Settings.LINKABLE = 1 # TODO: add FORCE_DCE option for the brave people that do want to dce here and in side modules
-    debug_level = max(debug_level, 2) # preserve function names
   elif shared.Settings.SIDE_MODULE:
     assert not shared.Settings.MAIN_MODULE
-    shared.Settings.LINKABLE = 1
+
+  if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE:
+    assert not memory_init_file, 'memory init file is not supported with module linking'
+    shared.Settings.LINKABLE = 1 # TODO: add FORCE_DCE option for the brave people that do want to dce here and in side modules
     debug_level = max(debug_level, 2)
 
   ## Compile source code to bitcode

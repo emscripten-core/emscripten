@@ -53,6 +53,8 @@ class AsmModule():
     self.exports_js = post_js[ret:]
 
   def relocate_into(self, main):
+    # heap initializer TODO
+
     # imports
     main_imports = set(main.imports)
     new_imports = [imp for imp in self.imports if imp not in main_imports]
@@ -74,9 +76,9 @@ class AsmModule():
     shared.try_delete(temp)
     main.extra_funcs_js = relocated_funcs.funcs_js.replace(js_optimizer.start_funcs_marker, '\n')
 
-    # tables
+    # tables TODO
 
-    # exports
+    # exports TODO
 
   def write(self, out):
     f = open(out, 'w')
