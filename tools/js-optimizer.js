@@ -103,7 +103,7 @@ function globalEval(x) {
   eval.call(null, x);
 }
 
-if (typeof load == 'undefined' && typeof read != 'undefined') {
+if (typeof load === 'undefined' && typeof read != 'undefined') {
   this['load'] = function(f) {
     globalEval(read(f));
   };
@@ -194,7 +194,7 @@ function traverse(node, pre, post, stack) {
     var result = pre(node, type, stack);
     if (result === true) return true;
     if (Array.isArray(result)) node = result; // Continue processing on this node
-    if (stack && len == stack.length) stack.push(0);
+    if (stack && len === stack.length) stack.push(0);
   }
   if (result !== null) {
     if (traverseChildren(node, traverse, pre, post, stack) === true) return true;
@@ -213,7 +213,7 @@ function traverse(node, pre, post, stack) {
 function traverseGenerated(ast, pre, post, stack) {
   assert(generatedFunctions);
   traverse(ast, function(node) {
-    if (node[0] == 'defun') {
+    if (node[0] === 'defun') {
       traverse(node, pre, post, stack);
       return null;
     }
@@ -222,13 +222,13 @@ function traverseGenerated(ast, pre, post, stack) {
 
 function traverseGeneratedFunctions(ast, callback) {
   assert(generatedFunctions);
-  if (ast[0] == 'toplevel') {
+  if (ast[0] === 'toplevel') {
     var stats = ast[1];
     for (var i = 0; i < stats.length; i++) {
       var curr = stats[i];
-      if (curr[0] == 'defun') callback(curr);
+      if (curr[0] === 'defun') callback(curr);
     }
-  } else if (ast[0] == 'defun') {
+  } else if (ast[0] === 'defun') {
     callback(ast);
   }
 }
@@ -238,7 +238,7 @@ function traverseWithVariables(ast, callback) {
   traverse(ast, function(node, type, stack) {
     if (type in FUNCTION) {
       stack.push({ type: 'function', vars: node[2] });
-    } else if (type == 'var') {
+    } else if (type === 'var') {
       // Find our function, add our vars
       var func = stack[stack.length-1];
       if (func) {
@@ -246,12 +246,12 @@ function traverseWithVariables(ast, callback) {
       }
     }
   }, function(node, type, stack) {
-    if (type == 'toplevel' || type in FUNCTION) {
+    if (type === 'toplevel' || type in FUNCTION) {
       // We know all of the variables that are seen here, proceed to do relevant replacements
       var allVars = stack.map(function(item) { return item ? item.vars : [] }).reduce(concatenator, []); // FIXME dictionary for speed?
       traverse(node, function(node2, type2, stack2) {
         // Be careful not to look into our inner functions. They have already been processed.
-        if (sum(stack2) > 1 || (type == 'toplevel' && sum(stack2) == 1)) return;
+        if (sum(stack2) > 1 || (type === 'toplevel' && sum(stack2) === 1)) return;
         if (type2 in FUNCTION) stack2.push(1);
         return callback(node2, type2, allVars);
       }, null, []);
@@ -264,7 +264,7 @@ function emptyNode() { // XXX do we need to create new nodes here? can't we reus
 }
 
 function isEmptyNode(node) {
-  return node.length == 2 && node[0] == 'toplevel' && node[1].length == 0;
+  return node.length === 2 && node[0] === 'toplevel' && node[1].length === 0;
 }
 
 // Passes
@@ -286,7 +286,7 @@ function unGlobalize(ast) {
 
   throw 'this is deprecated!'; // and does not work with parallel compilation
 
-  assert(ast[0] == 'toplevel');
+  assert(ast[0] === 'toplevel');
   var values = {};
   // Find global renamings of the relevant values
   ast[1].forEach(function(node, i) {
@@ -307,7 +307,7 @@ function unGlobalize(ast) {
       ast[1][i][1][j] = emptyNode();
       var assigned = false;
       traverseWithVariables(ast, function(node, type, allVars) {
-        if (type == 'assign' && node[2][0] == 'name' && node[2][1] == ident) assigned = true;
+        if (type === 'assign' && node[2][0] === 'name' && node[2][1] === ident) assigned = true;
       });
       ast[1][i][1][j] = [ident, value];
       if (!assigned) {
@@ -317,12 +317,12 @@ function unGlobalize(ast) {
       return true;
     });
 
-    if (node[1].length == 0) {
+    if (node[1].length === 0) {
       ast[1][i] = emptyNode();
     }
   });
   traverseWithVariables(ast, function(node, type, allVars) {
-    if (type == 'name') {
+    if (type === 'name') {
       var ident = node[1];
       if (ident in values && allVars.indexOf(ident) < 0) {
         return copy(values[ident]);
@@ -345,9 +345,9 @@ function unGlobalize(ast) {
 // is now explicit.
 function removeAssignsToUndefined(ast) {
   traverse(ast, function(node, type) {
-    if (type == 'assign' && jsonCompare(node[3], ['unary-prefix', 'void', ['num', 0]])) {
+    if (type === 'assign' && jsonCompare(node[3], ['unary-prefix', 'void', ['num', 0]])) {
       return emptyNode();
-    } else if (type == 'var') {
+    } else if (type === 'var') {
       node[1] = node[1].map(function(varItem, j) {
         var ident = varItem[0];
         var value = varItem[1];
@@ -361,10 +361,10 @@ function removeAssignsToUndefined(ast) {
   while (modified) {
     modified = false;
     traverse(ast, function(node, type) {
-      if (type == 'assign' && jsonCompare(node[3], emptyNode())) {
+      if (type === 'assign' && jsonCompare(node[3], emptyNode())) {
         modified = true;
         return emptyNode();
-      } else if (type == 'var') {
+      } else if (type === 'var') {
         node[1] = node[1].map(function(varItem, j) {
           var ident = varItem[0];
           var value = varItem[1];
@@ -382,19 +382,19 @@ function removeAssignsToUndefined(ast) {
 // are actually necessary. It's easy to clean those up now.
 function removeUnneededLabelSettings(ast) {
   traverse(ast, function(node, type) {
-    if (type == 'defun') { // all of our compiled code is in defun nodes
+    if (type === 'defun') { // all of our compiled code is in defun nodes
       // Find all checks
       var checked = {};
       traverse(node, function(node, type) {
-        if (type == 'binary' && node[1] == '==' && node[2][0] == 'name' && node[2][1] == 'label') {
-          assert(node[3][0] == 'num');
+        if (type === 'binary' && node[1] === '==' && node[2][0] === 'name' && node[2][1] === 'label') {
+          assert(node[3][0] === 'num');
           checked[node[3][1]] = 1;
         }
       });
       // Remove unneeded sets
       traverse(node, function(node, type) {
-        if (type == 'assign' && node[2][0] == 'name' && node[2][1] == 'label') {
-          assert(node[3][0] == 'num');
+        if (type === 'assign' && node[2][0] === 'name' && node[2][1] === 'label') {
+          assert(node[3][0] === 'num');
           if (!(node[3][1] in checked)) return emptyNode();
         }
       });
@@ -410,13 +410,13 @@ function simplifyExpressionsPre(ast) {
   // Look for (x&A)<<B>>B and replace it with X&A if possible.
   function simplifySignExtends(ast) {
     traverse(ast, function(node, type) {
-      if (type == 'binary'       && node[1]    == '>>' && node[3][0] == 'num' &&
-          node[2][0] == 'binary' && node[2][1] == '<<' && node[2][3][0] == 'num' && node[3][1] == node[2][3][1]) {
+      if (type === 'binary'       && node[1]    === '>>' && node[3][0] === 'num' &&
+          node[2][0] === 'binary' && node[2][1] === '<<' && node[2][3][0] === 'num' && node[3][1] === node[2][3][1]) {
         var innerNode = node[2][2];
         var shifts = node[3][1];
-        if (innerNode[0] == 'binary' && innerNode[1] == '&' && innerNode[3][0] == 'num') {
+        if (innerNode[0] === 'binary' && innerNode[1] === '&' && innerNode[3][0] === 'num') {
           var mask = innerNode[3][1];
-          if (mask << shifts >> shifts == mask) {
+          if (mask << shifts >> shifts === mask) {
             return innerNode;
           }
         }
@@ -446,8 +446,8 @@ function simplifyExpressionsPre(ast) {
       while (rerun) {
         rerun = false;
         traverse(ast, function process(node, type, stack) {
-          if (type == 'binary' && node[1] == '|') {
-            if (node[2][0] == 'num' && node[3][0] == 'num') {
+          if (type === 'binary' && node[1] === '|') {
+            if (node[2][0] === 'num' && node[3][0] === 'num') {
               node[2][1] |= node[3][1];
               return node[2];
             }
@@ -469,9 +469,9 @@ function simplifyExpressionsPre(ast) {
             for (var i = stack.length-1; i >= 0; i--) {
               if (stack[i] >= 1) {
                 if (asm) {
-                  if (stack[stack.length-1] < 2 && node[2][0] == 'call') break; // we can only remove multiple |0s on these
+                  if (stack[stack.length-1] < 2 && node[2][0] === 'call') break; // we can only remove multiple |0s on these
                   if (stack[stack.length-1] < 1 && (node[2][0] in COERCION_REQUIRING_OPS ||
-                                                    (node[2][0] == 'binary' && node[2][1] in COERCION_REQUIRING_BINARIES))) break; // we can remove |0 or >>2
+                                                    (node[2][0] === 'binary' && node[2][1] in COERCION_REQUIRING_BINARIES))) break; // we can remove |0 or >>2
                 }
                 // we will replace ourselves with the non-zero side. Recursively process that node.
                 var result = jsonCompare(node[2], ZERO) ? node[3] : node[2], other;
@@ -482,15 +482,15 @@ function simplifyExpressionsPre(ast) {
                 }
                 rerun = true;
                 return process(result, result[0], stack);
-              } else if (stack[i] == -1) {
+              } else if (stack[i] === -1) {
                 break; // Too bad, we can't
               }
             }
             stack.push(2); // From here on up, no need for this kind of correction, it's done at the top
                            // (Add this at the end, so it is only added if we did not remove it)
-          } else if (type == 'binary' && node[1] in USEFUL_BINARY_OPS) {
+          } else if (type === 'binary' && node[1] in USEFUL_BINARY_OPS) {
             stack.push(1);
-          } else if ((type == 'binary' && node[1] in SAFE_BINARY_OPS) || type == 'num' || type == 'name') {
+          } else if ((type === 'binary' && node[1] in SAFE_BINARY_OPS) || type === 'num' || type === 'name') {
             stack.push(0); // This node is safe in that it does not interfere with this optimization
           } else {
             stack.push(-1); // This node is dangerous! Give up if you see this before you see '1'
@@ -506,7 +506,7 @@ function simplifyExpressionsPre(ast) {
     var heapBits, heapUnsigned;
     function parseHeap(name) {
       if (name.substr(0, 4) != 'HEAP') return false;
-      heapUnsigned = name[4] == 'U';
+      heapUnsigned = name[4] === 'U';
       heapBits = parseInt(name.substr(heapUnsigned ? 5 : 4));
       return true;
     }
@@ -514,21 +514,21 @@ function simplifyExpressionsPre(ast) {
     var hasTempDoublePtr = false, rerunOrZeroPass = false;
 
     traverse(ast, function(node, type) {
-      if (type == 'name') {
-        if (node[1] == 'tempDoublePtr') hasTempDoublePtr = true;
-      } else if (type == 'binary' && node[1] == '&' && node[3][0] == 'num') {
-        if (node[2][0] == 'num') return ['num', node[2][1] & node[3][1]];
+      if (type === 'name') {
+        if (node[1] === 'tempDoublePtr') hasTempDoublePtr = true;
+      } else if (type === 'binary' && node[1] === '&' && node[3][0] === 'num') {
+        if (node[2][0] === 'num') return ['num', node[2][1] & node[3][1]];
         var input = node[2];
         var amount = node[3][1];
-        if (input[0] == 'binary' && input[1] == '&' && input[3][0] == 'num') {
+        if (input[0] === 'binary' && input[1] === '&' && input[3][0] === 'num') {
           // Collapse X & 255 & 1
           node[3][1] = amount & input[3][1];
           node[2] = input[2];
-        } else if (input[0] == 'sub' && input[1][0] == 'name') {
+        } else if (input[0] === 'sub' && input[1][0] === 'name') {
           // HEAP8[..] & 255 => HEAPU8[..]
           var name = input[1][1];
           if (parseHeap(name)) {
-            if (amount == Math.pow(2, heapBits)-1) {
+            if (amount === Math.pow(2, heapBits)-1) {
               if (!heapUnsigned) {
                 input[1][1] = 'HEAPU' + heapBits; // make unsigned
               }
@@ -542,14 +542,14 @@ function simplifyExpressionsPre(ast) {
             }
           }
         }
-      } else if (type       == 'binary' && node[1]    == '>>' && node[3][0]    == 'num' &&
-                 node[2][0] == 'binary' && node[2][1] == '<<' && node[2][3][0] == 'num' &&
-                 node[2][2][0] == 'sub' && node[2][2][1][0] == 'name') {
+      } else if (type       === 'binary' && node[1]    === '>>' && node[3][0]    === 'num' &&
+                 node[2][0] === 'binary' && node[2][1] === '<<' && node[2][3][0] === 'num' &&
+                 node[2][2][0] === 'sub' && node[2][2][1][0] === 'name') {
         // collapse HEAPU?8[..] << 24 >> 24 etc. into HEAP8[..] | 0
         var amount = node[3][1];
         var name = node[2][2][1][1];
-        if (amount == node[2][3][1] && parseHeap(name)) {
-          if (heapBits == 32 - amount) {
+        if (amount === node[2][3][1] && parseHeap(name)) {
+          if (heapBits === 32 - amount) {
             node[2][2][1][1] = 'HEAP' + heapBits;
             node[1] = '|';
             node[2] = node[2][2];
@@ -558,29 +558,29 @@ function simplifyExpressionsPre(ast) {
             return node;
           }
         }
-      } else if (type == 'assign') {
+      } else if (type === 'assign') {
         // optimizations for assigning into HEAP32 specifically
-        if (node[1] === true && node[2][0] == 'sub' && node[2][1][0] == 'name' && node[2][1][1] == 'HEAP32') {
+        if (node[1] === true && node[2][0] === 'sub' && node[2][1][0] === 'name' && node[2][1][1] === 'HEAP32') {
           // HEAP32[..] = x | 0 does not need the | 0 (unless it is a mandatory |0 of a call)
-          if (node[3][0] == 'binary' && node[3][1] == '|') {
-            if (node[3][2][0] == 'num' && node[3][2][1] == 0 && node[3][3][0] != 'call') {
+          if (node[3][0] === 'binary' && node[3][1] === '|') {
+            if (node[3][2][0] === 'num' && node[3][2][1] === 0 && node[3][3][0] != 'call') {
               node[3] = node[3][3];
-            } else if (node[3][3][0] == 'num' && node[3][3][1] == 0 && node[3][2][0] != 'call') {
+            } else if (node[3][3][0] === 'num' && node[3][3][1] === 0 && node[3][2][0] != 'call') {
               node[3] = node[3][2];
             }
           }
         }
         var value = node[3];
-        if (value[0] == 'binary' && value[1] == '|') {
+        if (value[0] === 'binary' && value[1] === '|') {
           // canonicalize order of |0 to end
-          if (value[2][0] == 'num' && value[2][1] == 0) {
+          if (value[2][0] === 'num' && value[2][1] === 0) {
             var temp = value[2];
             value[2] = value[3];
             value[3] = temp;
           }
           // if a seq ends in an |0, remove an external |0
           // note that it is only safe to do this in assigns, like we are doing here (return (x, y|0); is not valid)
-          if (value[2][0] == 'seq' && value[2][2][0] == 'binary' && value[2][2][1] in USEFUL_BINARY_OPS) {
+          if (value[2][0] === 'seq' && value[2][2][0] === 'binary' && value[2][2][1] in USEFUL_BINARY_OPS) {
             node[3] = value[2];
           }
         }
@@ -592,27 +592,27 @@ function simplifyExpressionsPre(ast) {
     if (asm) {
       if (hasTempDoublePtr) {
         traverse(ast, function(node, type) {
-          if (type == 'assign') {
-            if (node[1] === true && node[2][0] == 'sub' && node[2][1][0] == 'name' && node[2][1][1] == 'HEAP32') {
+          if (type === 'assign') {
+            if (node[1] === true && node[2][0] === 'sub' && node[2][1][0] === 'name' && node[2][1][1] === 'HEAP32') {
               // remove bitcasts that are now obviously pointless, e.g.
               // HEAP32[$45 >> 2] = HEAPF32[tempDoublePtr >> 2] = ($14 < $28 ? $14 : $28) - $42, HEAP32[tempDoublePtr >> 2] | 0;
               var value = node[3];
-              if (value[0] == 'seq' && value[1][0] == 'assign' && value[1][2][0] == 'sub' && value[1][2][1][0] == 'name' && value[1][2][1][1] == 'HEAPF32' &&
-                  value[1][2][2][0] == 'binary' && value[1][2][2][2][0] == 'name' && value[1][2][2][2][1] == 'tempDoublePtr') {
+              if (value[0] === 'seq' && value[1][0] === 'assign' && value[1][2][0] === 'sub' && value[1][2][1][0] === 'name' && value[1][2][1][1] === 'HEAPF32' &&
+                  value[1][2][2][0] === 'binary' && value[1][2][2][2][0] === 'name' && value[1][2][2][2][1] === 'tempDoublePtr') {
                 // transform to HEAPF32[$45 >> 2] = ($14 < $28 ? $14 : $28) - $42;
                 node[2][1][1] = 'HEAPF32';
                 node[3] = value[1][3];
               }
             }
-          } else if (type == 'seq') {
+          } else if (type === 'seq') {
             // (HEAP32[tempDoublePtr >> 2] = HEAP32[$37 >> 2], +HEAPF32[tempDoublePtr >> 2])
             //   ==>
             // +HEAPF32[$37 >> 2]
-            if (node[0] == 'seq' && node[1][0] == 'assign' && node[1][2][0] == 'sub' && node[1][2][1][0] == 'name' &&
-                (node[1][2][1][1] == 'HEAP32' || node[1][2][1][1] == 'HEAPF32') &&
-                node[1][2][2][0] == 'binary' && node[1][2][2][2][0] == 'name' && node[1][2][2][2][1] == 'tempDoublePtr' &&
-                node[1][3][0] == 'sub' && node[1][3][1][0] == 'name' && (node[1][3][1][1] == 'HEAP32' || node[1][3][1][1] == 'HEAPF32')) {
-              if (node[1][2][1][1] == 'HEAP32') {
+            if (node[0] === 'seq' && node[1][0] === 'assign' && node[1][2][0] === 'sub' && node[1][2][1][0] === 'name' &&
+                (node[1][2][1][1] === 'HEAP32' || node[1][2][1][1] === 'HEAPF32') &&
+                node[1][2][2][0] === 'binary' && node[1][2][2][2][0] === 'name' && node[1][2][2][2][1] === 'tempDoublePtr' &&
+                node[1][3][0] === 'sub' && node[1][3][1][0] === 'name' && (node[1][3][1][1] === 'HEAP32' || node[1][3][1][1] === 'HEAPF32')) {
+              if (node[1][2][1][1] === 'HEAP32') {
                 node[1][3][1][1] = 'HEAPF32';
                 return ['unary-prefix', '+', node[1][3]];
               } else {
@@ -627,11 +627,11 @@ function simplifyExpressionsPre(ast) {
         // the other heap type, then eliminate the bitcast
         var bitcastVars = {};
         traverse(ast, function(node, type) {
-          if (type == 'assign' && node[1] === true && node[2][0] == 'name') {
+          if (type === 'assign' && node[1] === true && node[2][0] === 'name') {
             var value = node[3];
-            if (value[0] == 'seq' && value[1][0] == 'assign' && value[1][2][0] == 'sub' && value[1][2][1][0] == 'name' &&
-                (value[1][2][1][1] == 'HEAP32' || value[1][2][1][1] == 'HEAPF32') &&
-                value[1][2][2][0] == 'binary' && value[1][2][2][2][0] == 'name' && value[1][2][2][2][1] == 'tempDoublePtr') {
+            if (value[0] === 'seq' && value[1][0] === 'assign' && value[1][2][0] === 'sub' && value[1][2][1][0] === 'name' &&
+                (value[1][2][1][1] === 'HEAP32' || value[1][2][1][1] === 'HEAPF32') &&
+                value[1][2][2][0] === 'binary' && value[1][2][2][2][0] === 'name' && value[1][2][2][2][1] === 'tempDoublePtr') {
               var name = node[2][1];
               if (!bitcastVars[name]) bitcastVars[name] = {
                 define_HEAP32: 0, define_HEAPF32: 0, use_HEAP32: 0, use_HEAPF32: 0, bad: false, namings: 0, defines: [], uses: []
@@ -642,15 +642,15 @@ function simplifyExpressionsPre(ast) {
           }
         });
         traverse(ast, function(node, type) {
-          if (type == 'name' && bitcastVars[node[1]]) {
+          if (type === 'name' && bitcastVars[node[1]]) {
             bitcastVars[node[1]].namings++;
-          } else if (type == 'assign' && node[1] === true) {
+          } else if (type === 'assign' && node[1] === true) {
             var value = node[3];
-            if (value[0] == 'name') {
+            if (value[0] === 'name') {
               var name = value[1];
               if (bitcastVars[name]) {
                 var target = node[2];
-                if (target[0] == 'sub' && target[1][0] == 'name' && (target[1][1] == 'HEAP32' || target[1][1] == 'HEAPF32')) {
+                if (target[0] === 'sub' && target[1][0] === 'name' && (target[1][1] === 'HEAP32' || target[1][1] === 'HEAPF32')) {
                   bitcastVars[name]['use_' + target[1][1]]++;
                   bitcastVars[name].uses.push(node);
                 }
@@ -662,14 +662,14 @@ function simplifyExpressionsPre(ast) {
         for (var v in bitcastVars) {
           var info = bitcastVars[v];
           // good variables define only one type, use only one type, have definitions and uses, and define as a different type than they use
-          if (info.define_HEAP32*info.define_HEAPF32 == 0 && info.use_HEAP32*info.use_HEAPF32 == 0 &&
+          if (info.define_HEAP32*info.define_HEAPF32 === 0 && info.use_HEAP32*info.use_HEAPF32 === 0 &&
               info.define_HEAP32+info.define_HEAPF32 > 0  && info.use_HEAP32+info.use_HEAPF32 > 0 &&
-              info.define_HEAP32*info.use_HEAP32 == 0 && info.define_HEAPF32*info.use_HEAPF32 == 0 &&
-              v in asmData.vars && info.namings == info.define_HEAP32+info.define_HEAPF32+info.use_HEAP32+info.use_HEAPF32) {
+              info.define_HEAP32*info.use_HEAP32 === 0 && info.define_HEAPF32*info.use_HEAPF32 === 0 &&
+              v in asmData.vars && info.namings === info.define_HEAP32+info.define_HEAPF32+info.use_HEAP32+info.use_HEAPF32) {
             var correct = info.use_HEAP32 ? 'HEAPF32' : 'HEAP32';
             info.defines.forEach(function(define) {
               define[3] = define[3][1][3];
-              if (correct == 'HEAP32') {
+              if (correct === 'HEAP32') {
                 define[3] = ['binary', '|', define[3], ['num', 0]];
               } else {
                 define[3] = ['unary-prefix', '+', define[3]];
@@ -687,7 +687,7 @@ function simplifyExpressionsPre(ast) {
 
       // optimize num >> num, in asm we need this here since we do not run optimizeShifts
       traverse(ast, function(node, type) {
-        if (type == 'binary' && node[1] == '>>' && node[2][0] == 'num' && node[3][0] == 'num') {
+        if (type === 'binary' && node[1] === '>>' && node[2][0] === 'num' && node[3][0] === 'num') {
           node[0] = 'num';
           node[1] = node[2][1] >> node[3][1];
           node.length = 2;
@@ -703,15 +703,15 @@ function simplifyExpressionsPre(ast) {
     while (rerun) {
       rerun = false;
       traverse(ast, function(node, type) {
-        if (type == 'binary' && node[1] === '+') {
-          if (node[2][0] == 'num' && node[3][0] == 'num') {
+        if (type === 'binary' && node[1] === '+') {
+          if (node[2][0] === 'num' && node[3][0] === 'num') {
             rerun = true;
             return ['num', node[2][1] + node[3][1]];
           }
           for (var i = 2; i <= 3; i++) {
             var ii = 5-i;
             for (var j = 2; j <= 3; j++) {
-              if (node[i][0] == 'num' && node[ii][0] == 'binary' && node[ii][1] === '+' && node[ii][j][0] == 'num') {
+              if (node[i][0] === 'num' && node[ii][0] === 'binary' && node[ii][1] === '+' && node[ii][j][0] === 'num') {
                 rerun = true;
                 node[ii][j][1] += node[i][1];
                 return node[ii];
@@ -723,15 +723,15 @@ function simplifyExpressionsPre(ast) {
     }
   }
 
-  // if (x == 0) can be if (!x), etc.
+  // if (x === 0) can be if (!x), etc.
   function simplifyZeroComp(ast) {
     traverse(ast, function(node, type) {
       var binary;
-      if (type == 'if' && (binary = node[1])[0] == 'binary') {
-        if ((binary[1] == '!=' || binary[1] == '!==') && binary[3][0] == 'num' && binary[3][1] == 0) {
+      if (type === 'if' && (binary = node[1])[0] === 'binary') {
+        if ((binary[1] === '!=' || binary[1] === '!==') && binary[3][0] === 'num' && binary[3][1] === 0) {
           node[1] = binary[2];
           return node;
-        } else if ((binary[1] == '==' || binary[1] == '===') && binary[3][0] == 'num' && binary[3][1] == 0) {
+        } else if ((binary[1] === '==' || binary[1] === '===') && binary[3][0] === 'num' && binary[3][1] === 0) {
           node[1] = ['unary-prefix', '!', binary[2]];
           return node;
         }
@@ -743,7 +743,7 @@ function simplifyExpressionsPre(ast) {
     // Add final returns when necessary
     var returnType = null;
     traverse(fun, function(node, type) {
-      if (type == 'return' && node[1]) {
+      if (type === 'return' && node[1]) {
         returnType = detectAsmCoercion(node[1]);
       }
     });
@@ -753,7 +753,7 @@ function simplifyExpressionsPre(ast) {
       var last = stats[stats.length-1];
       if (last[0] != 'return') {
         var returnValue = ['num', 0];
-        if (returnType == ASM_DOUBLE) returnValue = ['unary-prefix', '+', returnValue];
+        if (returnType === ASM_DOUBLE) returnValue = ['unary-prefix', '+', returnValue];
         stats.push(['return', returnValue]);
       }
     }
@@ -803,11 +803,11 @@ function optimizeShiftsInternal(ast, conservative) {
       // vars
       // XXX if var has >>=, ignore it here? That means a previous pass already optimized it
       var hasSwitch = traverse(fun, function(node, type) {
-        if (type == 'var') {
+        if (type === 'var') {
           node[1].forEach(function(arg) {
             newVar(arg[0], false, arg[1]);
           });
-        } else if (type == 'switch') {
+        } else if (type === 'switch') {
           // The relooper can't always optimize functions, and we currently don't work with
           // switch statements when optimizing shifts. Bail.
           return true;
@@ -820,25 +820,25 @@ function optimizeShiftsInternal(ast, conservative) {
       // optimize for code size, not speed.
       traverse(fun, function(node, type, stack) {
         stack.push(node);
-        if (type == 'name' && vars[node[1]] && stack[stack.length-2][0] != 'assign') {
+        if (type === 'name' && vars[node[1]] && stack[stack.length-2][0] != 'assign') {
           vars[node[1]].uses++;
-        } else if (type == 'assign' && node[2][0] == 'name' && vars[node[2][1]]) {
+        } else if (type === 'assign' && node[2][0] === 'name' && vars[node[2][1]]) {
           vars[node[2][1]].defs++;
         }
       }, null, []);
       // First, break up elements inside a shift. This lets us see clearly what to do next.
       traverse(fun, function(node, type) {
-        if (type == 'binary' && node[1] == '>>' && node[3][0] == 'num') {
+        if (type === 'binary' && node[1] === '>>' && node[3][0] === 'num') {
           var shifts = node[3][1];
           if (shifts <= MAX_SHIFTS) {
             // Push the >> inside the value elements
             function addShift(subNode) {
-              if (subNode[0] == 'binary' && subNode[1] === '+') {
+              if (subNode[0] === 'binary' && subNode[1] === '+') {
                 subNode[2] = addShift(subNode[2]);
                 subNode[3] = addShift(subNode[3]);
                 return subNode;
               }
-              if (subNode[0] == 'name' && !subNode[2]) { // names are returned with a shift, but we also note their being shifted
+              if (subNode[0] === 'name' && !subNode[2]) { // names are returned with a shift, but we also note their being shifted
                 var name = subNode[1];
                 if (vars[name]) {
                   vars[name].timesShifted[shifts]++;
@@ -852,7 +852,7 @@ function optimizeShiftsInternal(ast, conservative) {
         }
       });
       traverse(fun, function(node, type) {
-        if (node[0] == 'name' && node[2]) {
+        if (node[0] === 'name' && node[2]) {
           return node.slice(0, 2); // clean up our notes
         }
       });
@@ -861,7 +861,7 @@ function optimizeShiftsInternal(ast, conservative) {
       for (var name in vars) {
         var data = vars[name];
         var totalTimesShifted = sum(data.timesShifted);
-        if (totalTimesShifted == 0) {
+        if (totalTimesShifted === 0) {
           continue;
         }
         if (totalTimesShifted != Math.max.apply(null, data.timesShifted)) {
@@ -871,7 +871,7 @@ function optimizeShiftsInternal(ast, conservative) {
         if (funFinished[name]) continue;
         // We have one shift size (and possible unshifted uses). Consider replacing this variable with a shifted clone. If
         // the estimated benefit is >0, we will do it
-        if (data.defs == 1) {
+        if (data.defs === 1) {
           data.benefit = totalTimesShifted - 2*(data.defs + (data.param ? 1 : 0));
         }
         if (conservative) data.benefit = 0;
@@ -887,7 +887,7 @@ function optimizeShiftsInternal(ast, conservative) {
       //printErr(JSON.stringify(vars));
       function cleanNotes() { // We need to mark 'name' nodes as 'processed' in some passes here; this cleans the notes up
         traverse(fun, function(node, type) {
-          if (node[0] == 'name' && node[2]) {
+          if (node[0] === 'name' && node[2]) {
             return node.slice(0, 2);
           }
         });
@@ -909,7 +909,7 @@ function optimizeShiftsInternal(ast, conservative) {
       }
       traverse(fun, function(node, type, stack) { // add shift to assignments
         stack.push(node);
-        if (node[0] == 'assign' && node[1] === true && node[2][0] == 'name' && needsShift(node[2][1]) && !node[2][2]) {
+        if (node[0] === 'assign' && node[1] === true && node[2][0] === 'name' && needsShift(node[2][1]) && !node[2][2]) {
           var name = node[2][1];
           var data = vars[name];
           var parent = stack[stack.length-3];
@@ -917,7 +917,7 @@ function optimizeShiftsInternal(ast, conservative) {
           assert(statements, 'Invalid parent for assign-shift: ' + dump(parent));
           var i = statements.indexOf(stack[stack.length-2]);
           statements.splice(i+1, 0, ['stat', ['assign', true, ['name', name + '$s' + data.primaryShift], ['binary', '>>', ['name', name, true], ['num', data.primaryShift]]]]);
-        } else if (node[0] == 'var') {
+        } else if (node[0] === 'var') {
           var args = node[1];
           for (var i = 0; i < args.length; i++) {
             var arg = args[i];
@@ -933,14 +933,14 @@ function optimizeShiftsInternal(ast, conservative) {
       cleanNotes();
       traverse(fun, function(node, type, stack) { // replace shifted name with new variable
         stack.push(node);
-        if (node[0] == 'binary' && node[1] == '>>' && node[2][0] == 'name' && needsShift(node[2][1]) && node[3][0] == 'num') {
+        if (node[0] === 'binary' && node[1] === '>>' && node[2][0] === 'name' && needsShift(node[2][1]) && node[3][0] === 'num') {
           var name = node[2][1];
           var data = vars[name];
           var parent = stack[stack.length-2];
           // Don't modify in |x$sN = x >> 2|, in normal assigns and in var assigns
-          if (parent[0] == 'assign' && parent[2][0] == 'name' && parent[2][1] == name + '$s' + data.primaryShift) return;
-          if (parent[0] == name + '$s' + data.primaryShift) return;
-          if (node[3][1] == data.primaryShift) {
+          if (parent[0] === 'assign' && parent[2][0] === 'name' && parent[2][1] === name + '$s' + data.primaryShift) return;
+          if (parent[0] === name + '$s' + data.primaryShift) return;
+          if (node[3][1] === data.primaryShift) {
             return ['name', name + '$s' + data.primaryShift];
           }
         }
@@ -951,8 +951,8 @@ function optimizeShiftsInternal(ast, conservative) {
       while (more) { // combine shifts in the same direction as an optimization
         more = false;
         traverse(fun, function(node, type) {
-          if (node[0] == 'binary' && node[1] in SIMPLE_SHIFTS && node[2][0] == 'binary' && node[2][1] == node[1] &&
-              node[3][0] == 'num' && node[2][3][0] == 'num') { // do not turn a << b << c into a << b + c; while logically identical, it is slower
+          if (node[0] === 'binary' && node[1] in SIMPLE_SHIFTS && node[2][0] === 'binary' && node[2][1] === node[1] &&
+              node[3][0] === 'num' && node[2][3][0] === 'num') { // do not turn a << b << c into a << b + c; while logically identical, it is slower
             more = true;
             return ['binary', node[1], node[2][2], ['num', node[3][1] + node[2][3][1]]];
           }
@@ -961,32 +961,32 @@ function optimizeShiftsInternal(ast, conservative) {
       // Before recombining, do some additional optimizations
       traverse(fun, function(node, type) {
         // Apply constant shifts onto constants
-        if (type == 'binary' && node[1] == '>>' && node[2][0] == 'num' && node[3][0] == 'num' && node[3][1] <= MAX_SHIFTS) {
+        if (type === 'binary' && node[1] === '>>' && node[2][0] === 'num' && node[3][0] === 'num' && node[3][1] <= MAX_SHIFTS) {
           var subNode = node[2];
           var shifts = node[3][1];
           var result = subNode[1] / Math.pow(2, shifts);
-          if (result % 1 == 0) {
+          if (result % 1 === 0) {
             subNode[1] = result;
             return subNode;
           }
         }
         // Optimize the case of ($a*80)>>2 into ($a*20)|0
-        if (type == 'binary' && node[1] in SIMPLE_SHIFTS &&
-            node[2][0] == 'binary' && node[2][1] == '*') {
+        if (type === 'binary' && node[1] in SIMPLE_SHIFTS &&
+            node[2][0] === 'binary' && node[2][1] === '*') {
           var mulNode = node[2];
-          if (mulNode[2][0] == 'num') {
+          if (mulNode[2][0] === 'num') {
             var temp = mulNode[2];
             mulNode[2] = mulNode[3];
             mulNode[3] = temp;
           }
-          if (mulNode[3][0] == 'num') {
-            if (node[1] == '<<') {
+          if (mulNode[3][0] === 'num') {
+            if (node[1] === '<<') {
               mulNode[3][1] *= Math.pow(2, node[3][1]);
               node[1] = '|';
               node[3][1] = 0;
               return node;
             } else {
-              if (mulNode[3][1] % Math.pow(2, node[3][1]) == 0) {
+              if (mulNode[3][1] % Math.pow(2, node[3][1]) === 0) {
                 mulNode[3][1] /= Math.pow(2, node[3][1]);
                 node[1] = '|';
                 node[3][1] = 0;
@@ -997,8 +997,8 @@ function optimizeShiftsInternal(ast, conservative) {
         }
         /* XXX - theoretically useful optimization(s), but commented out as not helpful in practice
         // Transform (x << 2) >> 2 into x & mask or something even simpler
-        if (type == 'binary'       && node[1]    == '>>' && node[3][0] == 'num' &&
-            node[2][0] == 'binary' && node[2][1] == '<<' && node[2][3][0] == 'num' && node[3][1] == node[2][3][1]) {
+        if (type === 'binary'       && node[1]    === '>>' && node[3][0] === 'num' &&
+            node[2][0] === 'binary' && node[2][1] === '<<' && node[2][3][0] === 'num' && node[3][1] === node[2][3][1]) {
           var subNode = node[2];
           var shifts = node[3][1];
           var mask = ((0xffffffff << shifts) >>> shifts) | 0;
@@ -1011,11 +1011,11 @@ function optimizeShiftsInternal(ast, conservative) {
       // Re-combine remaining shifts, to undo the breaking up we did before. may require reordering inside +'s
       traverse(fun, function(node, type, stack) {
         stack.push(node);
-        if (type == 'binary' && node[1] === '+' && (stack[stack.length-2][0] != 'binary' || stack[stack.length-2][1] !== '+')) {
+        if (type === 'binary' && node[1] === '+' && (stack[stack.length-2][0] != 'binary' || stack[stack.length-2][1] !== '+')) {
           // 'Flatten' added items
           var addedItems = [];
           function flatten(node) {
-            if (node[0] == 'binary' && node[1] === '+') {
+            if (node[0] === 'binary' && node[1] === '+') {
               flatten(node[2]);
               flatten(node[3]);
             } else {
@@ -1028,15 +1028,15 @@ function optimizeShiftsInternal(ast, conservative) {
             function originalOrderKey(item) {
               return -originalOrder.indexOf(item);
             }
-            if (node[0] == 'binary' && node[1] in SIMPLE_SHIFTS) {
-              if (node[3][0] == 'num' && node[3][1] <= MAX_SHIFTS) return 2*node[3][1] + (node[1] == '>>' ? 100 : 0); // 0-106
-              return (node[1] == '>>' ? 20000 : 10000) + originalOrderKey(node);
+            if (node[0] === 'binary' && node[1] in SIMPLE_SHIFTS) {
+              if (node[3][0] === 'num' && node[3][1] <= MAX_SHIFTS) return 2*node[3][1] + (node[1] === '>>' ? 100 : 0); // 0-106
+              return (node[1] === '>>' ? 20000 : 10000) + originalOrderKey(node);
             }
-            if (node[0] == 'num') return -20000 + node[1];
+            if (node[0] === 'num') return -20000 + node[1];
             return -10000 + originalOrderKey(node); // Don't modify the original order if we don't modify anything
           }
           for (var i = 0; i < addedItems.length; i++) {
-            if (addedItems[i][0] == 'string') return; // this node is not relevant for us
+            if (addedItems[i][0] === 'string') return; // this node is not relevant for us
           }
           addedItems.sort(function(node1, node2) {
             return key(node1) - key(node2);
@@ -1045,7 +1045,7 @@ function optimizeShiftsInternal(ast, conservative) {
           var i = 0;
           while (i < addedItems.length-1) { // re-combine inside addedItems
             var k = key(addedItems[i]), k1 = key(addedItems[i+1]);
-            if (k == k1 && k >= 0 && k1 <= 106) {
+            if (k === k1 && k >= 0 && k1 <= 106) {
               addedItems[i] = ['binary', addedItems[i][1], ['binary', '+', addedItems[i][2], addedItems[i+1][2]], addedItems[i][3]];
               addedItems.splice(i+1, 1);
             } else {
@@ -1054,7 +1054,7 @@ function optimizeShiftsInternal(ast, conservative) {
           }
           var num = 0;
           for (i = 0; i < addedItems.length; i++) { // combine all numbers into one
-            if (addedItems[i][0] == 'num') {
+            if (addedItems[i][0] === 'num') {
               num += addedItems[i][1];
               addedItems.splice(i, 1);
               i--;
@@ -1066,7 +1066,7 @@ function optimizeShiftsInternal(ast, conservative) {
                           // so it might take more space, but normally at most one more digit).
             var added = false;
             for (i = 0; i < addedItems.length; i++) {
-              if (addedItems[i][0] == 'binary' && addedItems[i][1] == '>>' && addedItems[i][3][0] == 'num' && addedItems[i][3][1] <= MAX_SHIFTS) {
+              if (addedItems[i][0] === 'binary' && addedItems[i][1] === '>>' && addedItems[i][3][0] === 'num' && addedItems[i][3][1] <= MAX_SHIFTS) {
                 addedItems[i] = ['binary', '>>', ['binary', '+', addedItems[i][2], ['num', num << addedItems[i][3][1]]], addedItems[i][3]];
                 added = true;
               }
@@ -1103,8 +1103,8 @@ function optimizeShiftsAggressive(ast) {
 //   if (!(x < 5))
 // or such. Simplifying these saves space and time.
 function simplifyNotCompsDirect(node) {
-  if (node[0] == 'unary-prefix' && node[1] == '!') {
-    if (node[2][0] == 'binary') {
+  if (node[0] === 'unary-prefix' && node[1] === '!') {
+    if (node[2][0] === 'binary') {
       switch(node[2][1]) {
         case '<': return ['binary', '>=', node[2][2], node[2][3]];
         case '>': return ['binary', '<=', node[2][2], node[2][3]];
@@ -1115,7 +1115,7 @@ function simplifyNotCompsDirect(node) {
         case '===': return ['binary', '!==', node[2][2], node[2][3]];
         case '!==': return ['binary', '===', node[2][2], node[2][3]];
       }
-    } else if (node[2][0] == 'unary-prefix' && node[2][1] == '!') {
+    } else if (node[2][0] === 'unary-prefix' && node[2][1] === '!') {
       return node[2][2];
     }
   }
@@ -1138,8 +1138,8 @@ var NO_SIDE_EFFECTS = set('num', 'name');
 
 function hasSideEffects(node) { // this is 99% incomplete!
   if (node[0] in NO_SIDE_EFFECTS) return false;
-  if (node[0] == 'unary-prefix') return hasSideEffects(node[2]);
-  if (node[0] == 'binary') return hasSideEffects(node[2]) || hasSideEffects(node[3]);
+  if (node[0] === 'unary-prefix') return hasSideEffects(node[2]);
+  if (node[0] === 'binary') return hasSideEffects(node[2]) || hasSideEffects(node[3]);
   return true;
 }
 
@@ -1148,8 +1148,8 @@ function hasSideEffects(node) { // this is 99% incomplete!
 function vacuum(ast) {
   function isEmpty(node) {
     if (!node) return true;
-    if (node[0] == 'toplevel' && (!node[1] || node[1].length == 0)) return true;
-    if (node[0] == 'block' && (!node[1] || (typeof node[1] != 'object') || node[1].length == 0 || (node[1].length == 1 && isEmpty(node[1])))) return true;
+    if (node[0] === 'toplevel' && (!node[1] || node[1].length === 0)) return true;
+    if (node[0] === 'block' && (!node[1] || (typeof node[1] != 'object') || node[1].length === 0 || (node[1].length === 1 && isEmpty(node[1])))) return true;
     return false;
   }
   function simplifyList(node, si) {
@@ -1159,7 +1159,7 @@ function vacuum(ast) {
     var i = 0;
     while (i < statements.length) {
       var subNode = statements[i];
-      if (subNode[0] == 'block') {
+      if (subNode[0] === 'block') {
         statements.splice.apply(statements, [i, 1].concat(subNode[1] || []));
         changed = true;
       } else {
@@ -1179,20 +1179,20 @@ function vacuum(ast) {
     var ret;
     switch(node[0]) {
       case 'block': {
-        if (node[1] && node[1].length == 1 && node[1][0][0] == 'block') {
+        if (node[1] && node[1].length === 1 && node[1][0][0] === 'block') {
           return node[1][0];
-        } else if (typeof node[1] == 'object') {
+        } else if (typeof node[1] === 'object') {
           ret = simplifyList(node, 1);
           if (ret) return ret;
         }
       } break;
       case 'stat': {
-        if (node[1][0] == 'block') {
+        if (node[1][0] === 'block') {
           return node[1];
         }
       } break;
       case 'defun': {
-        if (node[3].length == 1 && node[3][0][0] == 'block') {
+        if (node[3].length === 1 && node[3][0][0] === 'block') {
           node[3] = node[3][0][1];
           return node;
         } else {
@@ -1201,19 +1201,19 @@ function vacuum(ast) {
         }
       } break;
       case 'do': {
-        if (node[1][0] == 'num' && node[2][0] == 'toplevel' && (!node[2][1] || node[2][1].length == 0)) {
+        if (node[1][0] === 'num' && node[2][0] === 'toplevel' && (!node[2][1] || node[2][1].length === 0)) {
           return emptyNode();
         } else if (isEmpty(node[2]) && !hasSideEffects(node[1])) {
           return emptyNode();
         }
       } break;
       case 'label': {
-        if (node[2][0] == 'toplevel' && (!node[2][1] || node[2][1].length == 0)) {
+        if (node[2][0] === 'toplevel' && (!node[2][1] || node[2][1].length === 0)) {
           return emptyNode();
         }
       } break;
       case 'if': {
-        var empty2 = isEmpty(node[2]), empty3 = isEmpty(node[3]), has3 = node.length == 4;
+        var empty2 = isEmpty(node[2]), empty3 = isEmpty(node[3]), has3 = node.length === 4;
         if (!empty2 && empty3 && has3) { // empty else clauses
           return node.slice(0, 3);
         } else if (empty2 && !empty3) { // empty if blocks
@@ -1235,9 +1235,9 @@ function vacuum(ast) {
 }
 
 function getStatements(node) {
-  if (node[0] == 'defun') {
+  if (node[0] === 'defun') {
     return node[3];
-  } else if (node[0] == 'block') {
+  } else if (node[0] === 'block') {
     return node[1];
   } else {
     return null;
@@ -1245,9 +1245,9 @@ function getStatements(node) {
 }
 
 // Multiple blocks from the relooper are, in general, implemented by
-//   if (label == x) { } else if ..
+//   if (label === x) { } else if ..
 // and branching into them by
-//   if (condition) { label == x } else ..
+//   if (condition) { label === x } else ..
 // We can hoist the multiple block into the condition, thus removing code and one 'if' check
 function hoistMultiples(ast) {
   traverseGeneratedFunctions(ast, function(node) {
@@ -1264,10 +1264,10 @@ function hoistMultiples(ast) {
         var postInner = post;
         var shellLabel = false, shellDo = false;
         while (true) {
-          if (postInner[0] == 'label') {
+          if (postInner[0] === 'label') {
             shellLabel = postInner[1];
             postInner = postInner[2];
-          } else if (postInner[0] == 'do') {
+          } else if (postInner[0] === 'do') {
             shellDo = postInner[1];
             postInner = postInner[2][1][0];
           } else {
@@ -1276,19 +1276,19 @@ function hoistMultiples(ast) {
         }
         if (postInner[0] != 'if') continue;
         // Look into this if, and its elseifs
-        while (postInner && postInner[0] == 'if') {
+        while (postInner && postInner[0] === 'if') {
           var cond = postInner[1];
-          if (cond[0] == 'binary' && cond[1] == '==' && cond[2][0] == 'name' && cond[2][1] == 'label') {
-            assert(cond[3][0] == 'num');
+          if (cond[0] === 'binary' && cond[1] === '==' && cond[2][0] === 'name' && cond[2][1] === 'label') {
+            assert(cond[3][0] === 'num');
             // We have a valid Multiple check here. Try to hoist it, look for the source in |pre| and its else's
             var labelNum = cond[3][1];
             var labelBlock = postInner[2];
-            assert(labelBlock[0] == 'block');
+            assert(labelBlock[0] === 'block');
             var found = false;
             traverse(pre, function(preNode, preType) {
-              if (!found && preType == 'assign' && preNode[2][0] == 'name' && preNode[2][1] == 'label') {
-                assert(preNode[3][0] == 'num');
-                if (preNode[3][1] == labelNum) {
+              if (!found && preType === 'assign' && preNode[2][0] === 'name' && preNode[2][1] === 'label') {
+                assert(preNode[3][0] === 'num');
+                if (preNode[3][1] === labelNum) {
                   // That's it! Hoist away. We can also throw away the label setting as its goal has already been achieved
                   found = true;
                   modifiedI = true;
@@ -1318,16 +1318,16 @@ function hoistMultiples(ast) {
     // situation is if the code after us is a multiple, in which case we might be checking for
     // this label inside it (or in a later multiple, even)
     function tryEliminate(node) {
-      if (node[0] == 'if') {
+      if (node[0] === 'if') {
         var replaced;
         if (replaced = tryEliminate(node[2])) node[2] = replaced;
         if (node[3] && (replaced = tryEliminate(node[3]))) node[3] = replaced;
       } else {
-        if (node[0] == 'block' && node[1] && node[1].length > 0) {
+        if (node[0] === 'block' && node[1] && node[1].length > 0) {
           var subNode = node[1][node[1].length-1];
-          if (subNode[0] == 'stat' && subNode[1][0] == 'assign' && subNode[1][2][0] == 'name' &&
-              subNode[1][2][1] == 'label' && subNode[1][3][0] == 'num') {
-            if (node[1].length == 1) {
+          if (subNode[0] === 'stat' && subNode[1][0] === 'assign' && subNode[1][2][0] === 'name' &&
+              subNode[1][2][1] === 'label' && subNode[1][3][0] === 'num') {
+            if (node[1].length === 1) {
               return emptyNode();
             } else {
               node[1].splice(node[1].length-1, 1);
@@ -1339,9 +1339,9 @@ function hoistMultiples(ast) {
       return false;
     }
     function getActualStatement(node) { // find the actual active statement, ignoring a label and one-time do loop
-      if (node[0] == 'label') node = node[2];
-      if (node[0] == 'do') node = node[2];
-      if (node[0] == 'block' && node[1].length == 1) node = node[1][0];
+      if (node[0] === 'label') node = node[2];
+      if (node[0] === 'do') node = node[2];
+      if (node[0] === 'block' && node[1].length === 1) node = node[1][0];
       return node;
     }
     vacuum(node);
@@ -1351,7 +1351,7 @@ function hoistMultiples(ast) {
       for (var i = 0; i < statements.length-1; i++) {
         var curr = getActualStatement(statements[i]);
         var next = statements[i+1];
-        if (curr[0] == 'if' && next[0] != 'if' && next[0] != 'label' && next[0] != 'do' && next[0] != 'while') {
+        if (curr[0] === 'if' && next[0] != 'if' && next[0] != 'label' && next[0] != 'do' && next[0] != 'while') {
           tryEliminate(curr);
         }
       }
@@ -1369,7 +1369,7 @@ function hoistMultiples(ast) {
     if (!statements) return;
     for (var i = 0; i < statements.length; i++) {
       var node = statements[i];
-      if (node[0] == 'if' && node[2][0] == 'block' && node[3] && node[3][0] == 'block') {
+      if (node[0] === 'if' && node[2][0] === 'block' && node[3] && node[3][0] === 'block') {
         var stat1 = node[2][1], stat2 = node[3][1];
         // If break|continue in the latter and not the former, reverse them
         if (!(stat1[stat1.length-1][0] in LOOP_FLOW) && (stat2[stat2.length-1][0] in LOOP_FLOW)) {
@@ -1397,7 +1397,7 @@ function loopOptimizer(ast) {
     var neededDos = [];
     // Find unneeded labels
     traverseGenerated(ast, function(node, type, stack) {
-      if (type == 'label' && node[2][0] in LOOP) {
+      if (type === 'label' && node[2][0] in LOOP) {
         // this is a labelled loop. we don't know if it's needed yet. Mark its label for removal for now now.
         stack.push(node);
         node[1] = '+' + node[1];
@@ -1413,12 +1413,12 @@ function loopOptimizer(ast) {
         assert(lastLoop, 'Cannot break/continue without a Label');
         while (i >= 0 && !lastLabel) {
           if (stack[i][0] in LOOP) break; // another loop in the middle - no label for lastLoop
-          if (stack[i][0] == 'label') lastLabel = stack[i];
+          if (stack[i][0] === 'label') lastLabel = stack[i];
           i--;
         }
         var ident = node[1]; // there may not be a label ident if this is a simple break; or continue;
         var plus = '+' + ident;
-        if (lastLabel && ident && (ident == lastLabel[1] || plus == lastLabel[1])) {
+        if (lastLabel && ident && (ident === lastLabel[1] || plus === lastLabel[1])) {
           // If this is a 'do' loop, this break means we actually need it.
           neededDos.push(lastLoop);
           // We don't need the control flow command to have a label - it's referring to the current loop
@@ -1431,7 +1431,7 @@ function loopOptimizer(ast) {
             // Find the label node that needs to stay alive
             stack.forEach(function(label) {
               if (!label) return;
-              if (label[1] == plus) label[1] = label[1].substr(1); // Remove '+', marking it as needed
+              if (label[1] === plus) label[1] = label[1].substr(1); // Remove '+', marking it as needed
             });
           }
         }
@@ -1441,12 +1441,12 @@ function loopOptimizer(ast) {
     var more = false;
     // Remove unneeded labels
     traverseGenerated(ast, function(node, type) {
-      if (type == 'label' && node[1][0] === '+') {
+      if (type === 'label' && node[1][0] === '+') {
         more = true;
         var ident = node[1].substr(1);
         // Remove label from loop flow commands
         traverse(node[2], function(node2, type) {
-          if (type in LOOP_FLOW && node2[1] == ident) {
+          if (type in LOOP_FLOW && node2[1] === ident) {
             return [node2[0]];
           }
         });
@@ -1456,13 +1456,13 @@ function loopOptimizer(ast) {
     // Remove unneeded one-time loops. We need such loops if (1) they have a label, or (2) they have a direct break so they are in neededDos.
     // First, add all labeled loops of this nature to neededDos
     traverseGenerated(ast, function(node, type) {
-      if (type == 'label' && node[2][0] == 'do') {
+      if (type === 'label' && node[2][0] === 'do') {
         neededDos.push(node[2]);
       }
     });
     // Remove unneeded dos, we know who they are now
     traverseGenerated(ast, function(node, type) {
-      if (type == 'do' && neededDos.indexOf(node) < 0) {
+      if (type === 'do' && neededDos.indexOf(node) < 0) {
         assert(jsonCompare(node[1], ['num', 0]), 'Trying to remove a one-time do loop that is not one of our generated ones.;');
         more = true;
         return node[2];
@@ -1488,7 +1488,7 @@ function loopOptimizer(ast) {
 function unVarify(vars, ret) { // transform var x=1, y=2 etc. into (x=1, y=2), i.e., the same assigns, but without a var definition
   ret = ret || [];
   ret[0] = 'stat';
-  if (vars.length == 1) {
+  if (vars.length === 1) {
     ret[1] = ['assign', true, ['name', vars[0][0]], vars[0][1]];
   } else {
     ret[1] = [];
@@ -1510,16 +1510,16 @@ var ASM_DOUBLE = 1;
 
 function detectAsmCoercion(node) {
   // for params, +x vs x|0, for vars, 0.0 vs 0
-  if (node[0] == 'num' && node[1].toString().indexOf('.') >= 0) return ASM_DOUBLE;
-  return node[0] == 'unary-prefix' ? ASM_DOUBLE : ASM_INT;
+  if (node[0] === 'num' && node[1].toString().indexOf('.') >= 0) return ASM_DOUBLE;
+  return node[0] === 'unary-prefix' ? ASM_DOUBLE : ASM_INT;
 }
 
 function makeAsmParamCoercion(param, type) {
-  return type == ASM_INT ? ['binary', '|', ['name', param], ['num', 0]] : ['unary-prefix', '+', ['name', param]];
+  return type === ASM_INT ? ['binary', '|', ['name', param], ['num', 0]] : ['unary-prefix', '+', ['name', param]];
 }
 
 function makeAsmVarDef(v, type) {
-  return [v, type == ASM_INT ? ['num', 0] : ['unary-prefix', '+', ['num', 0]]];
+  return [v, type === ASM_INT ? ['num', 0] : ['unary-prefix', '+', ['num', 0]]];
 }
 
 function normalizeAsm(func) {
@@ -1551,7 +1551,7 @@ function normalizeAsm(func) {
       var name = v[0];
       var value = v[1];
       if (!(name in data.vars)) {
-        assert(value[0] == 'num' || (value[0] == 'unary-prefix' && value[2][0] == 'num')); // must be valid coercion no-op
+        assert(value[0] === 'num' || (value[0] === 'unary-prefix' && value[2][0] === 'num')); // must be valid coercion no-op
         data.vars[name] = detectAsmCoercion(value);
         v.length = 1; // make an un-assigning var
       } else {
@@ -1563,7 +1563,7 @@ function normalizeAsm(func) {
   // finally, look for other var definitions and collect them
   while (i < stats.length) {
     traverse(stats[i], function(node, type) {
-      if (type == 'var') {
+      if (type === 'var') {
         for (var j = 0; j < node[1].length; j++) {
           var v = node[1][j];
           var name = v[0];
@@ -1578,8 +1578,8 @@ function normalizeAsm(func) {
           }
         }
         unVarify(node[1], node);
-      } else if (type == 'dot') {
-        if (node[1][0] == 'name' && node[1][1] == 'Math') {
+      } else if (type === 'dot') {
+        if (node[1][0] === 'name' && node[1][1] === 'Math') {
           // transform Math.max to Math_max; we forward in the latter version
           node[0] = 'name';
           node[1] = 'Math_' + node[2];
@@ -1597,7 +1597,7 @@ function denormalizeAsm(func, data) {
   var stats = func[3];
   // Remove var definitions, if any
   for (var i = 0; i < stats.length; i++) {
-    if (stats[i][0] == 'var') {
+    if (stats[i][0] === 'var') {
       stats[i] = emptyNode();
     } else {
       if (!isEmptyNode(stats[i])) break;
@@ -1666,7 +1666,7 @@ function registerize(ast) {
     var localVars = {};
     var hasSwitch = false; // we cannot optimize variables if there is a switch, unless in asm mode
     traverse(fun, function(node, type) {
-      if (type == 'var') {
+      if (type === 'var') {
         node[1].forEach(function(defined) { localVars[defined[0]] = 1 });
         var vars = node[1].filter(function(varr) { return varr[1] });
         if (vars.length >= 1) {
@@ -1674,7 +1674,7 @@ function registerize(ast) {
         } else {
           return emptyNode();
         }
-      } else if (type == 'switch') {
+      } else if (type === 'switch') {
         hasSwitch = true;
       }
     });
@@ -1685,7 +1685,7 @@ function registerize(ast) {
       var nextLocal = 0;
       // Minify globals using the mapping we were given
       traverse(fun, function(node, type) {
-        if (type == 'name') {
+        if (type === 'name') {
           var name = node[1];
           var minified = minifierInfo.globals[name];
           if (minified) {
@@ -1705,13 +1705,13 @@ function registerize(ast) {
               asmData.params[newName] = asmData.params[minified];
               delete asmData.params[minified];
               traverse(fun, function(node, type) {
-                if (type == 'name' && node[1] == minified) {
+                if (type === 'name' && node[1] === minified) {
                   node[1] = newName;
                 }
               });
               if (fun[2]) {
                 for (var i = 0; i < fun[2].length; i++) {
-                  if (fun[2][i] == minified) fun[2][i] = newName;
+                  if (fun[2][i] === minified) fun[2][i] = newName;
                 }
               }
             }
@@ -1764,15 +1764,15 @@ function registerize(ast) {
       level--;
     }
     traverse(fun, function possibilifier(node, type) {
-      if (type == 'name') {
+      if (type === 'name') {
         var name = node[1];
         if (localVars[name]) {
           if (!varUses[name]) varUses[name] = 0;
           varUses[name]++;
           if (possibles[name] && !varLevels[name]) unoptimizables[name] = 1; // used outside of simple domination
         }
-      } else if (type == 'assign' && typeof node[1] != 'string') {
-        if (node[2] && node[2][0] == 'name') {
+      } else if (type === 'assign' && typeof node[1] != 'string') {
+        if (node[2] && node[2][0] === 'name') {
           var name = node[2][1];
           // if local and not yet used, this might be optimizable if we dominate
           // all other uses
@@ -1880,11 +1880,11 @@ function registerize(ast) {
       }
       varUses[name]--;
       assert(varUses[name] >= 0);
-      if (varUses[name] == 0) {
+      if (varUses[name] === 0) {
         if (optimizables[name]) delete activeOptimizables[name];
         // If we are not in a loop, or we are optimizable and not bound to a loop
         // (we might have been in one but left it), we can free the register now.
-        if (loops == 0 || (optimizables[name] && !optimizableLoops[name])) {
+        if (loops === 0 || (optimizables[name] && !optimizableLoops[name])) {
           // free register
           freeRegs.push(reg);
         } else {
@@ -1897,7 +1897,7 @@ function registerize(ast) {
       return true;
     }
     traverse(fun, function(node, type) { // XXX we rely on traversal order being the same as execution order here
-      if (type == 'name') {
+      if (type === 'name') {
         var name = node[1];
         if (decUse(name)) {
           node[1] = fullNames[varRegs[name]];
@@ -2004,10 +2004,10 @@ var IGNORABLE_ELIMINATOR_SCAN_NODES = set('num', 'toplevel', 'string', 'break', 
 var ABORTING_ELIMINATOR_SCAN_NODES = set('new', 'object', 'function', 'defun', 'for', 'while', 'array', 'throw'); // we could handle some of these, TODO, but nontrivial (e.g. for while, the condition is hit multiple times after the body)
 
 function isTempDoublePtrAccess(node) { // these are used in bitcasts; they are not really affecting memory, and should cause no invalidation
-  assert(node[0] == 'sub');
-  return (node[2][0] == 'name' && node[2][1] == 'tempDoublePtr') ||
-         (node[2][0] == 'binary' && ((node[2][2][0] == 'name' && node[2][2][1] == 'tempDoublePtr') ||
-                                     (node[2][3][0] == 'name' && node[2][3][1] == 'tempDoublePtr')));
+  assert(node[0] === 'sub');
+  return (node[2][0] === 'name' && node[2][1] === 'tempDoublePtr') ||
+         (node[2][0] === 'binary' && ((node[2][2][0] === 'name' && node[2][2][1] === 'tempDoublePtr') ||
+                                     (node[2][3][0] === 'name' && node[2][3][1] === 'tempDoublePtr')));
 }
 
 function eliminate(ast, memSafe) {
@@ -2055,7 +2055,7 @@ function eliminate(ast, memSafe) {
         uses[name]++;
       } else if (type === 'assign') {
         var target = node[2];
-        if (target[0] == 'name') {
+        if (target[0] === 'name') {
           var name = target[1];
           if (!(name in definitions)) definitions[name] = 0;
           definitions[name]++;
@@ -2089,9 +2089,9 @@ function eliminate(ast, memSafe) {
       if (name in varsToTryToRemove) delete varsToTryToRemove[name];
     }
     function processVariable(name) {
-      if (definitions[name] == 1 && uses[name] == 1) {
+      if (definitions[name] === 1 && uses[name] === 1) {
         potentials[name] = 1;
-      } else if (uses[name] == 0 && (!definitions[name] || definitions[name] <= 1)) { // no uses, no def or 1 def (cannot operate on phis, and the llvm optimizer will remove unneeded phis anyhow)
+      } else if (uses[name] === 0 && (!definitions[name] || definitions[name] <= 1)) { // no uses, no def or 1 def (cannot operate on phis, and the llvm optimizer will remove unneeded phis anyhow)
         var hasSideEffects = false;
         var value = values[name];
         if (value) {
@@ -2099,8 +2099,8 @@ function eliminate(ast, memSafe) {
           // First, pattern-match
           //  (HEAP32[((tempDoublePtr)>>2)]=((HEAP32[(($_sroa_0_0__idx1)>>2)])|0),HEAP32[(((tempDoublePtr)+(4))>>2)]=((HEAP32[((($_sroa_0_0__idx1)+(4))>>2)])|0),(+(HEAPF64[(tempDoublePtr)>>3])))
           // which has no side effects and is the special form of converting double to i64.
-          if (!(value[0] == 'seq' && value[1][0] == 'assign' && value[1][2][0] == 'sub' && value[1][2][2][0] == 'binary' && value[1][2][2][1] == '>>' &&
-                value[1][2][2][2][0] == 'name' && value[1][2][2][2][1] == 'tempDoublePtr')) {
+          if (!(value[0] === 'seq' && value[1][0] === 'assign' && value[1][2][0] === 'sub' && value[1][2][2][0] === 'binary' && value[1][2][2][1] === '>>' &&
+                value[1][2][2][2][0] === 'name' && value[1][2][2][2][1] === 'tempDoublePtr')) {
             // If not that, then traverse and scan normally.
             traverse(value, function(node, type) {
               if (!(type in NODES_WITHOUT_ELIMINATION_SIDE_EFFECTS)) {
@@ -2118,7 +2118,7 @@ function eliminate(ast, memSafe) {
           // appearing in it, and possibly eliminate again
           if (value) {
             traverse(value, function(node, type) {
-              if (type == 'name') {
+              if (type === 'name') {
                 var name = node[1];
                 node[1] = ''; // we can remove this - it will never be shown, and should not be left to confuse us as we traverse
                 if (name in locals) {
@@ -2156,7 +2156,7 @@ function eliminate(ast, memSafe) {
       var usesGlobals = false, usesMemory = false, deps = {}, doesCall = false;
       var ignoreName = false; // one-time ignorings of names, as first op in sub and call
       traverse(value, function(node, type) {
-        if (type == 'name') {
+        if (type === 'name') {
           if (!ignoreName) {
             var name = node[1];
             if (!(name in locals)) {
@@ -2168,10 +2168,10 @@ function eliminate(ast, memSafe) {
           } else {
             ignoreName = false;
           }
-        } else if (type == 'sub') {
+        } else if (type === 'sub') {
           usesMemory = true;
           ignoreName = true;
-        } else if (type == 'call') {
+        } else if (type === 'call') {
           usesGlobals = true;
           usesMemory = true;
           doesCall = true;        
@@ -2259,10 +2259,10 @@ function eliminate(ast, memSafe) {
         //nesting++; // printErr-related
         //printErr(spaces(2*(nesting+1)) + 'trav: ' + JSON.stringify(node).substr(0, 50) + ' : ' + keys(tracked) + ' : ' + [allowTracking, ignoreSub, ignoreName]);
         var type = node[0];
-        if (type == 'assign') {
+        if (type === 'assign') {
           var target = node[2];
           var value = node[3];
-          var nameTarget = target[0] == 'name';
+          var nameTarget = target[0] === 'name';
           traverseInOrder(target, true, nameTarget); // evaluate left
           traverseInOrder(value); // evaluate right
           // do the actual assignment
@@ -2279,7 +2279,7 @@ function eliminate(ast, memSafe) {
                 }
                 // if we can track this name (that we assign into), and it has 0 uses and we want to remove its 'var'
                 // definition - then remove it right now, there is no later chance
-                if (allowTracking && (name in varsToRemove) && uses[name] == 0) {
+                if (allowTracking && (name in varsToRemove) && uses[name] === 0) {
                   track(name, node[3], node);
                   doEliminate(name, node);
                 }
@@ -2294,13 +2294,13 @@ function eliminate(ast, memSafe) {
             } else {
               if (allowTracking) track(name, node[3], node);
             }
-          } else if (target[0] == 'sub') {
+          } else if (target[0] === 'sub') {
             if (!isTempDoublePtrAccess(target) && !memoryInvalidated) {
               invalidateMemory();
               memoryInvalidated = true;
             }
           }
-        } else if (type == 'sub') {
+        } else if (type === 'sub') {
           traverseInOrder(node[1], false, !memSafe); // evaluate inner
           traverseInOrder(node[2]); // evaluate outer
           // ignoreSub means we are a write (happening later), not a read
@@ -2311,7 +2311,7 @@ function eliminate(ast, memSafe) {
               callsInvalidated = true;
             }
           }
-        } else if (type == 'var') {
+        } else if (type === 'var') {
           var vars = node[1];
           for (var i = 0; i < vars.length; i++) {
             var name = vars[i][0];
@@ -2323,7 +2323,7 @@ function eliminate(ast, memSafe) {
               } else {
                 invalidateByDep(name);
               }
-              if (vars.length == 1 && name in varsToTryToRemove && value) {
+              if (vars.length === 1 && name in varsToTryToRemove && value) {
                 // replace it in-place
                 value = ['stat', value];
                 node.length = value.length;
@@ -2334,7 +2334,7 @@ function eliminate(ast, memSafe) {
               }
             }
           }
-        } else if (type == 'binary') {
+        } else if (type === 'binary') {
           var flipped = false;
           if (node[1] in ASSOCIATIVE_BINARIES && !(node[2][0] in NAME_OR_NUM) && node[3][0] in NAME_OR_NUM) { // TODO recurse here?
             // associatives like + and * can be reordered in the simple case of one of the sides being a name, since we assume they are all just numbers
@@ -2350,7 +2350,7 @@ function eliminate(ast, memSafe) {
             node[2] = node[3];
             node[3] = temp;
           }
-        } else if (type == 'name') {
+        } else if (type === 'name') {
           if (!ignoreName) { // ignoreName means we are the name of something like a call or a sub - irrelevant for us
             var name = node[1];
             if (name in tracked) {
@@ -2360,10 +2360,10 @@ function eliminate(ast, memSafe) {
               callsInvalidated = true;
             }
           }
-        } else if (type == 'unary-prefix' || type == 'unary-postfix') {
+        } else if (type === 'unary-prefix' || type === 'unary-postfix') {
           traverseInOrder(node[2]);
         } else if (type in IGNORABLE_ELIMINATOR_SCAN_NODES) {
-        } else if (type == 'call') {
+        } else if (type === 'call') {
           traverseInOrder(node[1], false, true);
           var args = node[2];
           for (var i = 0; i < args.length; i++) {
@@ -2378,7 +2378,7 @@ function eliminate(ast, memSafe) {
             invalidateMemory();
             memoryInvalidated = true;
           }
-        } else if (type == 'if') {
+        } else if (type === 'if') {
           if (allowTracking) {
             traverseInOrder(node[1]); // can eliminate into condition, but nowhere else
             if (!callsInvalidated) { // invalidate calls, since we cannot eliminate them into an if that may not execute!
@@ -2394,38 +2394,38 @@ function eliminate(ast, memSafe) {
           } else {
             tracked = {};
           }
-        } else if (type == 'block') {
+        } else if (type === 'block') {
           var stats = node[1];
           if (stats) {
             for (var i = 0; i < stats.length; i++) {
               traverseInOrder(stats[i]);
             }
           }
-        } else if (type == 'stat') {
+        } else if (type === 'stat') {
           traverseInOrder(node[1]);
-        } else if (type == 'label') {
+        } else if (type === 'label') {
           traverseInOrder(node[2]);
-        } else if (type == 'seq') {
+        } else if (type === 'seq') {
           traverseInOrder(node[1]);
           traverseInOrder(node[2]);
-        } else if (type == 'do') {
-          if (node[1][0] == 'num' && node[1][1] == 0) { // one-time loop
+        } else if (type === 'do') {
+          if (node[1][0] === 'num' && node[1][1] === 0) { // one-time loop
             traverseInOrder(node[2]);
           } else {
             tracked = {};
           }
-        } else if (type == 'return') {
+        } else if (type === 'return') {
           if (node[1]) traverseInOrder(node[1]);
-        } else if (type == 'conditional') {
+        } else if (type === 'conditional') {
           traverseInOrder(node[1]);
           traverseInOrder(node[2]);
           traverseInOrder(node[3]);
-        } else if (type == 'switch') {
+        } else if (type === 'switch') {
           traverseInOrder(node[1]);
           var cases = node[2];
           for (var i = 0; i < cases.length; i++) {
             var c = cases[i];
-            assert(c[0] === null || c[0][0] == 'num' || (c[0][0] == 'unary-prefix' && c[0][2][0] == 'num'));
+            assert(c[0] === null || c[0][0] === 'num' || (c[0][0] === 'unary-prefix' && c[0][2][0] === 'num'));
             var stats = c[1];
             for (var j = 0; j < stats.length; j++) {
               traverseInOrder(stats[j]);
@@ -2444,7 +2444,7 @@ function eliminate(ast, memSafe) {
     }
     //var eliminationLimit = 0; // used to debugging purposes
     function doEliminate(name, node) {
-      //if (eliminationLimit == 0) return;
+      //if (eliminationLimit === 0) return;
       //eliminationLimit--;
       //printErr('elim!!!!! ' + name);
       // yes, eliminate!
@@ -2453,9 +2453,9 @@ function eliminate(ast, memSafe) {
       delete tracked[name];
       var defNode = info.defNode;
       if (!sideEffectFree[name]) {
-        if (defNode[0] == 'var') {
+        if (defNode[0] === 'var') {
           defNode[1].forEach(function(pair) {
-            if (pair[0] == name) {
+            if (pair[0] === name) {
               value = pair[1];
             }
           });
@@ -2481,7 +2481,7 @@ function eliminate(ast, memSafe) {
     }
     traverse(func, function(block) {
       // Look for statements, including while-switch pattern
-      var stats = getStatements(block) || (block[0] == 'while' && block[2][0] == 'switch' ? [block[2]] : stats);
+      var stats = getStatements(block) || (block[0] === 'while' && block[2][0] === 'switch' ? [block[2]] : stats);
       if (!stats) return;
       //printErr('Stats: ' + JSON.stringify(stats).substr(0,100));
       tracked = {};
@@ -2490,7 +2490,7 @@ function eliminate(ast, memSafe) {
         var node = stats[i];
         //printErr('StatBlock[' + i + '] => ' + JSON.stringify(node).substr(0,100));
         var type = node[0];
-        if (type == 'stat') {
+        if (type === 'stat') {
           node = node[1];
           type = node[0];
         }
@@ -2509,9 +2509,9 @@ function eliminate(ast, memSafe) {
     // clean up vars, and loop variable elimination
     traverse(func, function(node, type) {
       // pre
-      if (type == 'var') {
+      if (type === 'var') {
         node[1] = node[1].filter(function(pair) { return !varsToRemove[pair[0]] });
-        if (node[1].length == 0) {
+        if (node[1].length === 0) {
           // wipe out an empty |var;|
           node[0] = 'toplevel';
           node[1] = [];
@@ -2519,7 +2519,7 @@ function eliminate(ast, memSafe) {
       }
     }, function(node, type) {
       // post
-      if (type == 'name') {
+      if (type === 'name') {
         var name = node[1];
         if (name in helperReplacements) {
           node[1] = helperReplacements[name];
@@ -2531,30 +2531,30 @@ function eliminate(ast, memSafe) {
         } else {
           seenUses[name]++;
         }
-      } else if (type == 'while') {
+      } else if (type === 'while') {
         // try to remove loop helper variables specifically
         var stats = node[2][1];
         var last = stats[stats.length-1];
-        if (last && last[0] == 'if' && last[2][0] == 'block' && last[3] && last[3][0] == 'block') {
+        if (last && last[0] === 'if' && last[2][0] === 'block' && last[3] && last[3][0] === 'block') {
           var ifTrue = last[2];
           var ifFalse = last[3];
           var flip = false;
-          if (ifFalse[1][0][0] == 'break') { // canonicalize break in the if
+          if (ifFalse[1][0][0] === 'break') { // canonicalize break in the if
             var temp = ifFalse;
             ifFalse = ifTrue;
             ifTrue = temp;
             flip = true;
           }
-          if (ifTrue[1][0][0] == 'break') {
+          if (ifTrue[1][0][0] === 'break') {
             var assigns = ifFalse[1];
             var loopers = [], helpers = [];
             for (var i = 0; i < assigns.length; i++) {
-              if (assigns[i][0] == 'stat' && assigns[i][1][0] == 'assign') {
+              if (assigns[i][0] === 'stat' && assigns[i][1][0] === 'assign') {
                 var assign = assigns[i][1];
-                if (assign[1] === true && assign[2][0] == 'name' && assign[3][0] == 'name') {
+                if (assign[1] === true && assign[2][0] === 'name' && assign[3][0] === 'name') {
                   var looper = assign[2][1];
                   var helper = assign[3][1];
-                  if (definitions[helper] == 1 && seenUses[looper] == namings[looper] &&
+                  if (definitions[helper] === 1 && seenUses[looper] === namings[looper] &&
                       !helperReplacements[helper] && !helperReplacements[looper]) {
                     loopers.push(looper);
                     helpers.push(helper);
@@ -2570,11 +2570,11 @@ function eliminate(ast, memSafe) {
               var found = -1;
               for (var i = stats.length-2; i >= 0; i--) {
                 var curr = stats[i];
-                if (curr[0] == 'stat' && curr[1][0] == 'assign') {
+                if (curr[0] === 'stat' && curr[1][0] === 'assign') {
                   var currAssign = curr[1];
-                  if (currAssign[1] === true && currAssign[2][0] == 'name') {
+                  if (currAssign[1] === true && currAssign[2][0] === 'name') {
                     var to = currAssign[2][1];
-                    if (to == helper) {
+                    if (to === helper) {
                       found = i;
                       break;
                     }
@@ -2586,7 +2586,7 @@ function eliminate(ast, memSafe) {
               for (var i = found+1; i < stats.length && !looperUsed; i++) {
                 var curr = i < stats.length-1 ? stats[i] : last[1]; // on the last line, just look in the condition
                 traverse(curr, function(node, type) {
-                  if (type == 'name' && node[1] == looper) {
+                  if (type === 'name' && node[1] === looper) {
                     looperUsed = true;
                     return true;
                   }
@@ -2596,7 +2596,7 @@ function eliminate(ast, memSafe) {
             }
             for (var l = 0; l < helpers.length; l++) {
               for (var k = 0; k < helpers.length; k++) {
-                if (l != k && helpers[l] == helpers[k]) return; // it is complicated to handle a shared helper, abort
+                if (l != k && helpers[l] === helpers[k]) return; // it is complicated to handle a shared helper, abort
               }
             }
             // hurrah! this is safe to do
@@ -2606,7 +2606,7 @@ function eliminate(ast, memSafe) {
               var helper = helpers[l];
               varsToRemove[helper] = 2;
               traverse(node, function(node, type) { // replace all appearances of helper with looper
-                if (type == 'name' && node[1] == helper) node[1] = looper;
+                if (type === 'name' && node[1] === helper) node[1] = looper;
               });
               helperReplacements[helper] = looper; // replace all future appearances of helper with looper
               helperReplacements[looper] = looper; // avoid any further attempts to optimize looper in this manner (seenUses is wrong anyhow, too)
@@ -2624,7 +2624,7 @@ function eliminate(ast, memSafe) {
 
     if (asm) {
       for (var v in varsToRemove) {
-        if (varsToRemove[v] == 2) delete asmData.vars[v];
+        if (varsToRemove[v] === 2) delete asmData.vars[v];
       }
       denormalizeAsm(func, asmData);
     }
@@ -2638,7 +2638,7 @@ function eliminate(ast, memSafe) {
 
       this.run = function() {
         traverse(this.node, function(node, type) {
-          if (type == 'binary' && node[1] === '+') {
+          if (type === 'binary' && node[1] === '+') {
             var names = [];
             var num = 0;
             var has_num = false;
@@ -2687,7 +2687,7 @@ function minifyGlobals(ast) {
   var first = true; // do not minify initial 'var asm ='
   // find the globals
   traverse(ast, function(node, type) {
-    if (type == 'var') {
+    if (type === 'var') {
       if (first) {
         first = false;
         return;
@@ -2708,7 +2708,7 @@ function minifyGlobals(ast) {
   }
   // apply minification
   traverse(ast, function(node, type) {
-    if (type == 'name') {
+    if (type === 'name') {
       var name = node[1];
       if (name in minified) {
         node[1] = minified[name];
@@ -2721,9 +2721,9 @@ function minifyGlobals(ast) {
 // Change +5 to DOT$ZERO(5). We then textually change 5 to 5.0 (uglify's ast cannot differentiate between 5 and 5.0 directly)
 function prepDotZero(ast) {
   traverse(ast, function(node, type) {
-    if (type == 'unary-prefix' && node[1] === '+') {
-      if (node[2][0] == 'num' ||
-          (node[2][0] == 'unary-prefix' && node[2][1] == '-' && node[2][2][0] == 'num')) {
+    if (type === 'unary-prefix' && node[1] === '+') {
+      if (node[2][0] === 'num' ||
+          (node[2][0] === 'unary-prefix' && node[2][1] === '-' && node[2][2][0] === 'num')) {
         return ['call', ['name', 'DOT$ZERO'], [node[2]]];
       }
     }
@@ -2731,7 +2731,7 @@ function prepDotZero(ast) {
 }
 function fixDotZero(js) {
   return js.replace(/DOT\$ZERO\(([-+]?(0x)?[0-9a-f]*\.?[0-9]+([eE][-+]?[0-9]+)?)\)/g, function(m, num) {
-    if (num.substr(0, 2) == '0x' || num.substr(0, 3) == '-0x') {
+    if (num.substr(0, 2) === '0x' || num.substr(0, 3) === '-0x') {
       return eval(num) + '.0';
     }
     if (num.indexOf('.') >= 0) return num;
@@ -2746,11 +2746,11 @@ function asmLoopOptimizer(ast) {
     // This is at the end of the pipeline, we can assume all other optimizations are done, and we modify loops
     // into shapes that might confuse other passes
     traverse(fun, function(node, type) {
-      if (type == 'while' && node[1][0] == 'num' && node[1][1] == 1 && node[2][0] == 'block') {
+      if (type === 'while' && node[1][0] === 'num' && node[1][1] === 1 && node[2][0] === 'block') {
         // while (1) { .. if (..) { break } } ==> do { .. } while(..)
         var stats = node[2][1];
         var last = stats[stats.length-1];
-        if (last && last[0] == 'if' && !last[3] && last[2][0] == 'block' && last[2][1][0][0] == 'break' && !last[2][1][0][1]) {
+        if (last && last[0] === 'if' && !last[3] && last[2][0] === 'block' && last[2][1][0][0] === 'break' && !last[2][1][0][1]) {
           var conditionToBreak = last[1];
           stats.pop();
           node[0] = 'do';
