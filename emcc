@@ -1058,6 +1058,10 @@ try:
   else:
     raise Exception('unknown llvm target: ' + str(shared.LLVM_TARGET))
 
+  if shared.Settings.USE_TYPED_ARRAYS != 2 and llvm_opts > 0:
+    logging.warning('disabling LLVM optimizations, need typed arrays mode 2 for them')
+    llvm_opts = 0
+
   ## Compile source code to bitcode
 
   logging.debug('compiling to bitcode')

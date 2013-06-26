@@ -67,9 +67,9 @@ var RELOOP = 0; // Recreate js native loops from llvm data
 var RELOOPER = 'relooper.js'; // Loads the relooper from this path relative to compiler.js
 
 var USE_TYPED_ARRAYS = 2; // Use typed arrays for the heap. See https://github.com/kripken/emscripten/wiki/Code-Generation-Modes/
-                          // 0 means no typed arrays are used.
+                          // 0 means no typed arrays are used. This mode disallows LLVM optimizations
                           // 1 has two heaps, IHEAP (int32) and FHEAP (double),
-                          // and addresses there are a match for normal addresses. This is deprecated.
+                          // and addresses there are a match for normal addresses. This mode disallows LLVM optimizations.
                           // 2 is a single heap, accessible through views as int8, int32, etc. This is
                           //   the recommended mode both for performance and for compatibility.
 var USE_FHEAP = 1; // Relevant in USE_TYPED_ARRAYS == 1. If this is disabled, only IHEAP will be used, and FHEAP

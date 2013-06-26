@@ -435,7 +435,7 @@ process(sys.argv[1])
 
 sys.argv = map(lambda arg: arg if not arg.startswith('test_') else 'default.' + arg, sys.argv)
 
-test_modes = ['default', 'o1', 'o2', 'asm1', 'asm2', 'asm2g', 'asm2x86', 's_0_0', 's_0_1', 's_1_0', 's_1_1']
+test_modes = ['default', 'o1', 'o2', 'asm1', 'asm2', 'asm2g', 'asm2x86', 's_0_0', 's_0_1']
 
 test_index = 0
 
@@ -10005,7 +10005,7 @@ finalizing 3 (global == 0)
 ''')
 
   # Generate tests for everything
-  def make_run(fullname, name=-1, compiler=-1, llvm_opts=0, embetter=0, quantum_size=0, typed_arrays=0, emcc_args=None, env='{}'):
+  def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0, typed_arrays=0, emcc_args=None, env='{}'):
     exec('''
 class %s(T):
   run_name = '%s'
@@ -10042,7 +10042,6 @@ class %s(T):
         Building.COMPILER_TEST_OPTS = [] # remove -g in -O2 tests, for more coverage
       return
 
-    llvm_opts = %d # 1 is yes, 2 is yes and unsafe
     embetter = %d
     quantum_size = %d
     # TODO: Move much of these to a init() function in shared.py, and reuse that
@@ -10052,14 +10051,13 @@ class %s(T):
     Settings.MICRO_OPTS = embetter
     Settings.QUANTUM_SIZE = quantum_size
     Settings.ASSERTIONS = 1-embetter
-    Settings.SAFE_HEAP = 1-(embetter and llvm_opts)
-    Building.LLVM_OPTS = llvm_opts
-    Settings.CHECK_OVERFLOWS = 1-(embetter or llvm_opts)
-    Settings.CORRECT_OVERFLOWS = 1-(embetter and llvm_opts)
+    Settings.SAFE_HEAP = 1-embetter
+    Settings.CHECK_OVERFLOWS = 1-embetter
+    Settings.CORRECT_OVERFLOWS = 1-embetter
     Settings.CORRECT_SIGNS = 0
     Settings.CORRECT_ROUNDINGS = 0
     Settings.CORRECT_OVERFLOWS_LINES = CORRECT_SIGNS_LINES = CORRECT_ROUNDINGS_LINES = SAFE_HEAP_LINES = []
-    Settings.CHECK_SIGNS = 0 #1-(embetter or llvm_opts)
+    Settings.CHECK_SIGNS = 0 #1-embetter
     Settings.RUNTIME_TYPE_INFO = 0
     Settings.DISABLE_EXCEPTION_CATCHING = 0
     Settings.INCLUDE_FULL_LIBRARY = 0
@@ -10068,12 +10066,10 @@ class %s(T):
     Settings.EMULATE_UNALIGNED_ACCESSES = int(Settings.USE_TYPED_ARRAYS == 2 and Building.LLVM_OPTS == 2)
     Settings.DOUBLE_MODE = 1 if Settings.USE_TYPED_ARRAYS and Building.LLVM_OPTS == 0 else 0
     Settings.PRECISE_I64_MATH = 0
-    Settings.NAMED_GLOBALS = 0 if not (embetter and llvm_opts) else 1
-
-    Building.pick_llvm_opts(3)
+    Settings.NAMED_GLOBALS = 0 if not embetter else 1
 
 TT = %s
-''' % (fullname, fullname, env, fullname, fullname, compiler, str(emcc_args), llvm_opts, embetter, quantum_size, typed_arrays, fullname))
+''' % (fullname, fullname, env, fullname, fullname, compiler, str(emcc_args), embetter, quantum_size, typed_arrays, fullname))
     return TT
 
   # Make one run with the defaults
@@ -10092,16 +10088,14 @@ TT = %s
   exec('''asm2x86 = make_run("asm2x86", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "CHECK_HEAP_ALIGN=1"], env='{"EMCC_LLVM_TARGET": "i386-pc-linux-gnu"}')''')
 
   # Make custom runs with various options
-  for compiler, quantum, embetter, typed_arrays, llvm_opts in [
-    (CLANG, 4, 0, 0, 0),
-    (CLANG, 4, 0, 0, 1),
-    (CLANG, 4, 1, 1, 0),
-    (CLANG, 4, 1, 1, 1),
+  for compiler, quantum, embetter, typed_arrays in [
+    (CLANG, 4, 0, 0),
+    (CLANG, 4, 1, 1),
   ]:
-    fullname = 's_%d_%d%s%s' % (
-      llvm_opts, embetter, '' if quantum == 4 else '_q' + str(quantum), '' if typed_arrays in [0, 1] else '_t' + str(typed_arrays)
+    fullname = 's_0_%d%s%s' % (
+      embetter, '' if quantum == 4 else '_q' + str(quantum), '' if typed_arrays in [0, 1] else '_t' + str(typed_arrays)
     )
-    exec('%s = make_run(fullname, %r,%r,%d,%d,%d,%d)' % (fullname, fullname, compiler, llvm_opts, embetter, quantum, typed_arrays))
+    exec('%s = make_run(fullname, %r,%r,%d,%d,%d)' % (fullname, fullname, compiler, embetter, quantum, typed_arrays))
 
   del T # T is just a shape for the specific subclasses, we don't test it itself
 
