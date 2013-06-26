@@ -10229,23 +10229,25 @@ Options that are modified or new in %s include:
           (['-o', 'something.js', '-O3', '-s', 'ASM_JS=0'], 3, None, 1, 1),
           # and, test compiling to bitcode first
           (['-o', 'something.bc'], 0, [],      0, 0),
-          (['-o', 'something.bc'], 0, ['-O0'], 0, 0),
-          (['-o', 'something.bc'], 1, ['-O1'], 0, 0),
-          (['-o', 'something.bc'], 2, ['-O2'], 0, 0),
-          (['-o', 'something.bc'], 3, ['-O3', '-s', 'ASM_JS=0'], 1, 0),
-          (['-O1', '-o', 'something.bc'], 0, [], 0, 0), # -Ox is ignored and warned about
+          (['-o', 'something.bc', '-O0'], 0, [], 0, 0),
+          (['-o', 'something.bc', '-O1'], 1, ['-O1'], 0, 0),
+          (['-o', 'something.bc', '-O2'], 2, ['-O2'], 0, 0),
+          (['-o', 'something.bc', '-O3'], 3, ['-O3', '-s', 'ASM_JS=0'], 1, 0),
+          (['-O1', '-o', 'something.bc'], 1, [], 0, 0), # -Ox is ignored and warned about
         ]:
           print params, opt_level, bc_params, closure, has_malloc
           self.clear()
           keep_debug = '-g' in params
-          output = Popen([PYTHON, compiler, path_from_root('tests', 'hello_world_loop' + ('_malloc' if has_malloc else '') + '.cpp')] + params,
+          args = [PYTHON, compiler, path_from_root('tests', 'hello_world_loop' + ('_malloc' if has_malloc else '') + '.cpp')] + params
+          print '..', args
+          output = Popen(args,
                          stdout=PIPE, stderr=PIPE).communicate()
           assert len(output[0]) == 0, output[0]
           if bc_params is not None:
-            if '-O1' in params and 'something.bc' in params:
-              assert '-Ox flags ignored, since not generating JavaScript' in output[1]
             assert os.path.exists('something.bc'), output[1]
-            output = Popen([PYTHON, compiler, 'something.bc', '-o', 'something.js'] + bc_params, stdout=PIPE, stderr=PIPE).communicate()
+            bc_args = [PYTHON, compiler, 'something.bc', '-o', 'something.js'] + bc_params
+            print '....', bc_args
+            output = Popen(bc_args, stdout=PIPE, stderr=PIPE).communicate()
           assert os.path.exists('something.js'), output[1]
           assert ('Applying some potentially unsafe optimizations!' in output[1]) == (opt_level >= 3), 'unsafe warning should appear in opt >= 3'
           self.assertContained('hello, world!', run_js('something.js'))
@@ -14126,8 +14128,7 @@ fi
           try_delete('a.out.js')
 
           basebc_name = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-0-basebc.bc')
-          dcebc_name1 = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-1-linktime.bc')
-          dcebc_name2 = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-2-linktime.bc')
+          dcebc_name = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-1-linktime.bc')
           ll_names = [os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-X-ll.ll').replace('X', str(x)) for x in range(2,5)]
 
           # Building a file that *does* need dlmalloc *should* trigger cache generation, but only the first time
@@ -14135,7 +14136,7 @@ fi
             for i in range(3):
               print filename, libname, i
               self.clear()
-              dcebc_name = dcebc_name1 if i == 0 else dcebc_name2
+              dcebc_name = dcebc_name1
               try_delete(basebc_name) # we might need to check this file later
               try_delete(dcebc_name) # we might need to check this file later
               for ll_name in ll_names: try_delete(ll_name)
