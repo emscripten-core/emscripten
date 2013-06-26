@@ -36,10 +36,11 @@ class AsmModule():
     self.end_funcs = self.js.rfind(js_optimizer.end_funcs_marker)
     self.end_asm = self.js.rfind(js_optimizer.end_asm_marker)
 
-    self.pre = self.js[:self.start_asm]
+    # pre
+    self.pre_js = self.js[:self.start_asm]
 
     # heap initializer
-    mem_init = re.search(shared.JS.memory_initializer_pattern, self.pre)
+    mem_init = re.search(shared.JS.memory_initializer_pattern, self.pre_js)
     if mem_init:
       self.mem_init_full_js = mem_init.group(0)
       self.mem_init_js = mem_init.groups(0)[0][:-2]
@@ -67,6 +68,10 @@ class AsmModule():
     self.exports = set([export.strip() for export in self.exports_js[self.exports_js.find('{')+1:self.exports_js.find('}')].split(',')])
     #print >> sys.stderr, self.exports
 
+    # post
+    self.post_js = self.js[self.end_asm:]
+    self.module_defs = set(re.findall('var [\w\d_$]+ = Module\["[\w\d_$]+"\] = asm\["[\w\d_$]+"\];\n', self.post_js))
+
   def relocate_into(self, main):
     # heap initializer
     concat = '.concat(' if main.mem_init_js and self.mem_init_js else ''
@@ -74,7 +79,7 @@ class AsmModule():
     allocation = main.mem_init_js + concat + self.mem_init_js + end
     if allocation:
       full_allocation = '/* memory initializer */ allocate(' + allocation + ', "i8", ALLOC_NONE, Runtime.GLOBAL_BASE)'
-      main.pre = re.sub(shared.JS.memory_initializer_pattern if main.mem_init_js else shared.JS.no_memory_initializer_pattern, full_allocation, main.pre, count=1)
+      main.pre_js = re.sub(shared.JS.memory_initializer_pattern if main.mem_init_js else shared.JS.no_memory_initializer_pattern, full_allocation, main.pre_js, count=1)
 
     # global initializers TODO
 
@@ -108,15 +113,21 @@ class AsmModule():
     exports = main.exports.union(self.exports)
     main.exports_js = 'return {' + ','.join(list(exports)) + '};\n})\n'
 
+    # post
+    new_module_defs = self.module_defs.difference(main.module_defs)
+    if len(new_module_defs) > 0:
+      position = main.post_js.find('Runtime.') # Runtime is the start of the hardcoded ones
+      main.post_js = main.post_js[:position] + ''.join(list(new_module_defs)) + '\n' + main.post_js[position:]
+
   def write(self, out):
     f = open(out, 'w')
-    f.write(self.pre)
+    f.write(self.pre_js)
     f.write(self.imports_js)
     f.write(self.funcs_js)
     f.write(self.extra_funcs_js)
     f.write(self.tables_js)
     f.write(self.exports_js)
-    f.write(self.js[self.end_asm:])
+    f.write(self.post_js)
     f.close()
 
 main = AsmModule(main)
