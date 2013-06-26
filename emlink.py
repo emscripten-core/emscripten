@@ -64,9 +64,11 @@ class AsmModule():
     ret = post_js.find('return')
     self.tables_js = post_js[:ret]
     self.exports_js = post_js[ret:]
+    self.exports = set([export.strip() for export in self.exports_js[self.exports_js.find('{')+1:self.exports_js.find('}')].split(',')])
+    #print >> sys.stderr, self.exports
 
   def relocate_into(self, main):
-    # heap initializer TODO
+    # heap initializer
     concat = '.concat(' if main.mem_init_js and self.mem_init_js else ''
     end = ')' if main.mem_init_js and self.mem_init_js else ''
     allocation = main.mem_init_js + concat + self.mem_init_js + end
@@ -102,7 +104,9 @@ class AsmModule():
 
     # tables TODO
 
-    # exports TODO
+    # exports
+    exports = main.exports.union(self.exports)
+    main.exports_js = 'return {' + ','.join(list(exports)) + '};\n})\n'
 
   def write(self, out):
     f = open(out, 'w')
