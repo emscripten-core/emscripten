@@ -706,7 +706,8 @@ function simplifyExpressionsPre(ast) {
         if (type === 'binary' && node[1] === '+') {
           if (node[2][0] === 'num' && node[3][0] === 'num') {
             rerun = true;
-            return ['num', node[2][1] + node[3][1]];
+            node[2][1] += node[3][1];
+            return node[2];
           }
           for (var i = 2; i <= 3; i++) {
             var ii = 5-i;
