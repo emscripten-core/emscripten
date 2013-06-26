@@ -11494,64 +11494,6 @@ seeked= file.
       code = open('a.out.js').read()
       assert 'SAFE_HEAP' in code, 'valid -s option had an effect'
 
-    def test_optimize_normally(self):
-      assert not os.environ.get('EMCC_OPTIMIZE_NORMALLY')
-      assert not os.environ.get('EMCC_DEBUG')
-
-      for optimize_normally in [0, 1]:
-        print optimize_normally
-        try:
-          if optimize_normally: os.environ['EMCC_OPTIMIZE_NORMALLY'] = '1'
-          os.environ['EMCC_DEBUG'] = '1'
-
-          open(self.in_dir('main.cpp'), 'w').write(r'''
-            extern "C" {
-              void something();
-            }
-
-            int main() {
-              something();
-              return 0;
-            }
-          ''')
-          open(self.in_dir('supp.cpp'), 'w').write(r'''
-            #include <stdio.h>
-
-            extern "C" {
-              void something() {
-                printf("yello\n");
-              }
-            }
-          ''')
-          out, err = Popen([PYTHON, EMCC, self.in_dir('main.cpp'), '-O2', '-o', 'main.o'], stdout=PIPE, stderr=PIPE).communicate()
-          assert ("emcc: LLVM opts: ['-O3']" in err) == optimize_normally
-          assert (' with -O3 since EMCC_OPTIMIZE_NORMALLY defined' in err) == optimize_normally
-
-          out, err = Popen([PYTHON, EMCC, self.in_dir('supp.cpp'), '-O2', '-o', 'supp.o'], stdout=PIPE, stderr=PIPE).communicate()
-          assert ("emcc: LLVM opts: ['-O3']" in err) == optimize_normally
-          assert (' with -O3 since EMCC_OPTIMIZE_NORMALLY defined' in err) == optimize_normally
-
-          out, err = Popen([PYTHON, EMCC, self.in_dir('main.o'), self.in_dir('supp.o'), '-O2', '-o', 'both.o'], stdout=PIPE, stderr=PIPE).communicate()
-          assert "emcc: LLVM opts: ['-O3']" not in err
-          assert ' with -O3 since EMCC_OPTIMIZE_NORMALLY defined' not in err
-          assert ('despite EMCC_OPTIMIZE_NORMALLY since not source code' in err) == optimize_normally
-
-          out, err = Popen([PYTHON, EMCC, self.in_dir('main.cpp'), self.in_dir('supp.cpp'), '-O2', '-o', 'both2.o'], stdout=PIPE, stderr=PIPE).communicate()
-          assert ("emcc: LLVM opts: ['-O3']" in err) == optimize_normally
-          assert (' with -O3 since EMCC_OPTIMIZE_NORMALLY defined' in err) == optimize_normally
-
-          for last in ['both.o', 'both2.o']:
-            out, err = Popen([PYTHON, EMCC, self.in_dir('both.o'), '-O2', '-o', last + '.js', '--memory-init-file', '0'], stdout=PIPE, stderr=PIPE).communicate()
-            assert ("emcc: LLVM opts: ['-O3']" not in err) == optimize_normally
-            assert ' with -O3 since EMCC_OPTIMIZE_NORMALLY defined' not in err
-            output = run_js(last + '.js')
-            assert 'yello' in output, 'code works ' + err
-          assert open('both.o.js').read() == open('both2.o.js').read()
-
-        finally:
-          if optimize_normally: del os.environ['EMCC_OPTIMIZE_NORMALLY']
-          del os.environ['EMCC_DEBUG']
-
     def test_jcache_printf(self):
       open(self.in_dir('src.cpp'), 'w').write(r'''
         #include <stdio.h>

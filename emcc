@@ -127,11 +127,6 @@ Options that are modified or new in %s include:
                            (For details on the affects of different
                            opt levels, see apply_opt_level() in
                            tools/shared.py and also src/settings.js.)
-                           Note: Optimizations are only done when
-                           compiling to JavaScript, not to intermediate
-                           bitcode, *unless* you build with
-                           EMCC_OPTIMIZE_NORMALLY=1 (not recommended
-                           unless you know what you are doing!)
   -O2                      As -O1, plus the relooper (loop recreation),
                            LLVM -O2 optimizations, and
 
@@ -1103,18 +1098,15 @@ try:
 
   if not LEAVE_INPUTS_RAW: assert len(temp_files) == len(input_files)
 
+  # Optimize source files
+  if llvm_opts > 0:
+    for input_file in input_files:
+      if input_file.endswith(SOURCE_SUFFIXES):
+        logging.debug('optimizing %s with -O%d' % (input_file, llvm_opts))
+        shared.Building.llvm_opt(in_temp(unsuffixed(uniquename(input_file)) + '.o'), llvm_opts)
+
   # If we were just asked to generate bitcode, stop there
   if final_suffix not in JS_CONTAINING_SUFFIXES:
-    if llvm_opts > 0:
-      if not os.environ.get('EMCC_OPTIMIZE_NORMALLY'):
-        logging.warning('-Ox flags ignored, since not generating JavaScript')
-      else:
-        for input_file in input_files:
-          if input_file.endswith(SOURCE_SUFFIXES):
-            logging.debug('optimizing %s with -O%d since EMCC_OPTIMIZE_NORMALLY defined' % (input_file, llvm_opts))
-            shared.Building.llvm_opt(in_temp(unsuffixed(uniquename(input_file)) + '.o'), llvm_opts)
-          else:
-            logging.debug('not optimizing %s despite EMCC_OPTIMIZE_NORMALLY since not source code' % (input_file))
     if not specified_target:
       for input_file in input_files:
         shutil.move(in_temp(unsuffixed(uniquename(input_file)) + '.o'), unsuffixed_basename(input_file) + '.' + final_suffix)
@@ -1154,7 +1146,7 @@ try:
     libcxx_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxx', 'symbols'), exclude=libc_symbols)
     libcxxabi_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxxabi', 'symbols'), exclude=libc_symbols)
 
-    # XXX we should disable EMCC_DEBUG (and EMCC_OPTIMIZE_NORMALLY?) when building libs, just like in the relooper
+    # XXX we should disable EMCC_DEBUG when building libs, just like in the relooper
 
     def build_libc(lib_filename, files):
       o_s = []
@@ -1422,13 +1414,6 @@ try:
   if not LEAVE_INPUTS_RAW:
     link_opts = [] if debug_level >= 4 else ['-strip-debug'] # remove LLVM debug if we are not asked for it
 
-    if llvm_opts > 0:
-      if not os.environ.get('EMCC_OPTIMIZE_NORMALLY'):
-        shared.Building.llvm_opt(in_temp(target_basename + '.bc'), llvm_opts)
-        if DEBUG: save_intermediate('opt', 'bc')
-        # Do LTO in a separate pass to work around LLVM bug XXX (see failure e.g. in cubescript)
-      else:
-        logging.debug('not running opt because EMCC_OPTIMIZE_NORMALLY was specified, opt should have been run before')
     if shared.Building.can_build_standalone():
       # If we can LTO, do it before dce, since it opens up dce opportunities
       if llvm_lto and shared.Building.can_use_unsafe_opts():
