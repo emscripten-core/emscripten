@@ -2806,7 +2806,7 @@ function asmLoopOptimizer(ast) {
         // while (1) { .. if (..) { break } } ==> do { .. } while(..)
         var stats = node[2][1];
         var last = stats[stats.length-1];
-        if (last && last[0] === 'if' && !last[3] && last[2][0] === 'block' && last[2][1][0][0] === 'break' && !last[2][1][0][1]) {
+        if (last && last[0] === 'if' && !last[3] && last[2][0] === 'block' && last[2][1][0] && last[2][1][0][0] === 'break' && !last[2][1][0][1]) {
           var conditionToBreak = last[1];
           stats.pop();
           node[0] = 'do';
