@@ -236,6 +236,11 @@ var FS_LOG = 0; // Log all FS operations.  This is especially helpful when you'r
                 // a new project and want to see a list of file system operations happening
                 // so that you can create a virtual file system with all of the required files.
 
+var USE_BSS = 1; // https://en.wikipedia.org/wiki/.bss
+                 // When enabled, 0-initialized globals are sorted to the end of the globals list,
+                 // enabling us to not explicitly store the initialization value for each 0 byte.
+                 // This significantly lowers the memory initialization array size.
+
 var NAMED_GLOBALS = 0; // If 1, we use global variables for globals. Otherwise
                        // they are referred to by a base plus an offset (called an indexed global),
                        // saving global variables but adding runtime overhead.
