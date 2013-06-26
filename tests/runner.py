@@ -9570,19 +9570,17 @@ def process(filename):
         }
       '''
       try:
-        post = r'''
-def process(filename):
-  lines = open(filename, 'r').readlines()
-  lines = filter(lambda line: '___assert_fail(' in line or '___assert_func(' in line, lines)
-  found_line_num = any(('//@line 7 "' in line) for line in lines)
-  found_filename = any(('src.cpp"\n' in line) for line in lines)
-  assert found_line_num, 'Must have debug info with the line number'
-  assert found_filename, 'Must have debug info with the filename'
-'''
-        self.do_run(src, '*nothingatall*', post_build=post)
+        self.do_run(src, '*nothingatall*')
       except Exception, e:
         # This test *should* fail
         assert 'Assertion failed: x < 15' in str(e), str(e)
+
+      lines = open('src.cpp.o.js', 'r').readlines()
+      lines = filter(lambda line: '___assert_fail(' in line or '___assert_func(' in line, lines)
+      found_line_num = any(('//@line 7 "' in line) for line in lines)
+      found_filename = any(('src.cpp"\n' in line) for line in lines)
+      assert found_line_num, 'Must have debug info with the line number'
+      assert found_filename, 'Must have debug info with the filename'
 
     def test_source_map(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip("doesn't pass without typed arrays")
