@@ -45,6 +45,10 @@ class AsmModule():
       self.mem_init_full_js = mem_init.group(0)
       self.mem_init_js = mem_init.groups(0)[0][:-2]
       self.mem_init_size = self.mem_init_js.count(',') + self.mem_init_js.count('concat') # XXX add testing for large and small ones
+      pad = 8 - (self.mem_init_size % 8)
+      if pad < 8:
+        self.mem_init_js += '.concat([' + ','.join(['0']*pad) + '])'
+        self.mem_init_size += pad
     else:
       self.mem_init_js = ''
       self.mem_init_size = 0
@@ -80,6 +84,7 @@ class AsmModule():
     if allocation:
       full_allocation = '/* memory initializer */ allocate(' + allocation + ', "i8", ALLOC_NONE, Runtime.GLOBAL_BASE)'
       main.pre_js = re.sub(shared.JS.memory_initializer_pattern if main.mem_init_js else shared.JS.no_memory_initializer_pattern, full_allocation, main.pre_js, count=1)
+      main.pre_js = re.sub('STATICTOP = STATIC_BASE \+ (\d+);', 'STATICTOP = STATIC_BASE + %d' % (main.mem_init_size + side.mem_init_size), main.pre_js, count=1)
 
     # global initializers TODO
 
@@ -100,7 +105,7 @@ class AsmModule():
     temp = shared.Building.js_optimizer(self.filename, ['asm', 'relocate'], extra_info={
       'replacements': replacements,
       'fBase': 0,
-      'hBase': shared.JS.align(main.mem_init_size, 8)
+      'hBase': main.mem_init_size
     })
     #print >> sys.stderr, 'relocated side into', temp
     relocated_funcs = AsmModule(temp)

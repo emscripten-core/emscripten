@@ -10610,7 +10610,8 @@ f.close()
       assert not os.path.exists('a.out') and not os.path.exists('a.exe'), 'Must not leave unneeded linker stubs'
 
     def test_static_link(self):
-      def test(main, side, first=True):
+      def test(name, main, side, expected, first=True):
+        print name
         #t = main ; main = side ; side = t
         open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(main)
         open(os.path.join(self.get_dir(), 'side.cpp'), 'w').write(side)
@@ -10620,20 +10621,20 @@ f.close()
         Popen([PYTHON, EMLINK, 'main.js', 'side.js', 'together.js'], stdout=PIPE).communicate()
         assert os.path.exists('together.js')
         out = run_js('together.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True)
-        self.assertContained('side says 11.', out)
+        self.assertContained(expected, out)
         self.validate_asmjs(out)
-        #if first: test(side, main, False) # test reverse order
+        if first: test(name + ' (reverse)', side, main, expected, False) # test reverse order
 
-      test('''
+      test('basics', '''
         #include <stdio.h>
         extern int sidey();
         int main() {
-          printf("side says %d.", sidey());
+          printf("other says %d.", sidey());
           return 0;
         }
       ''', '''
         int sidey() { return 11; }
-      ''')
+      ''', 'other says 11.')
 
     def test_symlink(self):
       if os.name == 'nt':
