@@ -1138,6 +1138,8 @@ try:
         symbols = filter(lambda symbol: symbol not in exclude, symbols)
       return set(symbols)
 
+    lib_opts = ['-O2']
+
     # XXX We also need to add libc symbols that use malloc, for example strdup. It's very rare to use just them and not
     #     a normal malloc symbol (like free, after calling strdup), so we haven't hit this yet, but it is possible.
     libc_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libc.symbols'))
@@ -1155,7 +1157,7 @@ try:
       musl_internal_includes = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'internal')
       for src in files:
         o = in_temp(os.path.basename(src) + '.o')
-        execute([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o, '-I', musl_internal_includes], stdout=stdout, stderr=stderr)
+        execute([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o, '-I', musl_internal_includes] + lib_opts, stdout=stdout, stderr=stderr)
         o_s.append(o)
       if prev_cxx: os.environ['EMMAKEN_CXX'] = prev_cxx
       shared.Building.link(o_s, in_temp(lib_filename))
@@ -1166,7 +1168,7 @@ try:
       for src in files:
         o = in_temp(src + '.o')
         srcfile = shared.path_from_root(src_dirname, src)
-        execute([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11'], stdout=stdout, stderr=stderr)
+        execute([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11'] + lib_opts, stdout=stdout, stderr=stderr)
         o_s.append(o)
       shared.Building.link(o_s, in_temp(lib_filename))
       return in_temp(lib_filename)
