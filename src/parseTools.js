@@ -492,7 +492,9 @@ function makeGlobalUse(ident) {
       UNINDEXABLE_GLOBALS[ident] = 1;
       return ident;
     }
-    return (Runtime.GLOBAL_BASE + index).toString();
+    var ret = (Runtime.GLOBAL_BASE + index).toString();
+    if (SIDE_MODULE) ret = '(H_BASE+' + ret + ')';
+    return ret;
   }
   return ident;
 }
@@ -1627,6 +1629,9 @@ function makePointer(slab, pos, allocator, type, ptr, finalMemoryInitialization)
       // writing out into memory, without a normal allocation. We put all of these into a single big chunk.
       assert(typeof slab == 'object');
       assert(slab.length % QUANTUM_SIZE == 0, slab.length); // must be aligned already
+      if (SIDE_MODULE && typeof ptr == 'string') {
+        ptr = parseInt(ptr.substring(ptr.indexOf('+'), ptr.length-1)); // parse into (H_BASE+X)
+      }
       var offset = ptr - Runtime.GLOBAL_BASE;
       for (var i = 0; i < slab.length; i++) {
         memoryInitialization[offset + i] = slab[i];

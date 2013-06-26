@@ -2760,7 +2760,7 @@ function relocate(ast) {
           } else if (node[2][1] == 'H_BASE') {
             base = hBase;
           }
-          if (base) {
+          if (base !== null) {
             var other = node[3];
             if (other[0] == 'num') {
               other[1] += base;

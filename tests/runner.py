@@ -10611,6 +10611,7 @@ f.close()
 
     def test_static_link(self):
       def test(main, side, first=True):
+        #t = main ; main = side ; side = t
         open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(main)
         open(os.path.join(self.get_dir(), 'side.cpp'), 'w').write(side)
         Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'side.cpp'), '-o', 'side.js', '-s', 'SIDE_MODULE=1', '-O2']).communicate()
@@ -10621,6 +10622,7 @@ f.close()
         out = run_js('together.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True)
         self.assertContained('side says 11.', out)
         self.validate_asmjs(out)
+        #if first: test(side, main, False) # test reverse order
 
       test('''
         #include <stdio.h>

@@ -12,7 +12,7 @@ Note that the output file can be used as a main module, so you can link multiple
 side modules into a main module that way.
 '''
 
-import os, subprocess, sys
+import os, subprocess, sys, re
 from tools import shared
 from tools import js_optimizer
 
@@ -36,6 +36,19 @@ class AsmModule():
     self.end_funcs = self.js.rfind(js_optimizer.end_funcs_marker)
     self.end_asm = self.js.rfind(js_optimizer.end_asm_marker)
 
+    self.pre = self.js[:self.start_asm]
+
+    # heap initializer
+    mem_init = re.search(shared.JS.memory_initializer_pattern, self.pre)
+    if mem_init:
+      self.mem_init_full_js = mem_init.group(0)
+      self.mem_init_js = mem_init.groups(0)[0][:-2]
+      self.mem_init_size = self.mem_init_js.count(',') + self.mem_init_js.count('concat') # XXX add testing for large and small ones
+    else:
+      self.mem_init_js = ''
+      self.mem_init_size = 0
+    #print >> sys.stderr, self.mem_init_js
+
     # imports
     self.imports_js = self.js[self.start_asm:self.start_funcs]
     self.imports = [m.group(0) for m in js_optimizer.import_sig.finditer(self.imports_js)]
@@ -54,9 +67,14 @@ class AsmModule():
 
   def relocate_into(self, main):
     # heap initializer TODO
+    concat = '.concat(' if main.mem_init_js and self.mem_init_js else ''
+    end = ')' if main.mem_init_js and self.mem_init_js else ''
+    allocation = main.mem_init_js + concat + self.mem_init_js + end
+    if allocation:
+      full_allocation = '/* memory initializer */ allocate(' + allocation + ', "i8", ALLOC_NONE, Runtime.GLOBAL_BASE)'
+      main.pre = re.sub(shared.JS.memory_initializer_pattern if main.mem_init_js else shared.JS.no_memory_initializer_pattern, full_allocation, main.pre, count=1)
 
     # global initializers TODO
-    shared.JS.memory_initializer_pattern
 
     # imports
     main_imports = set(main.imports)
@@ -72,7 +90,12 @@ class AsmModule():
         rep += '_'
         replacements[func] = rep
 
-    temp = shared.Building.js_optimizer(self.filename, ['asm', 'relocate'], extra_info={ 'replacements': replacements })
+    temp = shared.Building.js_optimizer(self.filename, ['asm', 'relocate'], extra_info={
+      'replacements': replacements,
+      'fBase': 0,
+      'hBase': shared.JS.align(main.mem_init_size, 8)
+    })
+    #print >> sys.stderr, 'relocated side into', temp
     relocated_funcs = AsmModule(temp)
     shared.try_delete(temp)
     main.extra_funcs_js = relocated_funcs.funcs_js.replace(js_optimizer.start_funcs_marker, '\n')
@@ -83,7 +106,7 @@ class AsmModule():
 
   def write(self, out):
     f = open(out, 'w')
-    f.write(self.js[:self.start_asm])
+    f.write(self.pre)
     f.write(self.imports_js)
     f.write(self.funcs_js)
     f.write(self.extra_funcs_js)

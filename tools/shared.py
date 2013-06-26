@@ -1352,10 +1352,16 @@ chunkify = cache.chunkify
 
 class JS:
   memory_initializer_pattern = '/\* memory initializer \*/ allocate\(([\d,\.concat\(\)\[\]\\n ]+)"i8", ALLOC_NONE, Runtime\.GLOBAL_BASE\)'
+  no_memory_initializer_pattern = '/\* no memory initializer \*/'
 
   @staticmethod
   def to_nice_ident(ident): # limited version of the JS function toNiceIdent
-    return ident.replace('%', '$').replace('@', '_');
+    return ident.replace('%', '$').replace('@', '_')
+
+  @staticmethod
+  def align(x, by):
+    while x % by != 0: x += 1
+    return x
 
 # Compression of code and data for smaller downloads
 class Compression:
