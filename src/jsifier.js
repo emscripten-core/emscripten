@@ -14,6 +14,8 @@ var asmLibraryFunctions = [];
 
 var SETJMP_LABEL = -1;
 
+var INDENTATION = ' ';
+
 // JSifier
 function JSify(data, functionsOnly, givenFunctions) {
   var mainPass = !functionsOnly;
@@ -591,13 +593,13 @@ function JSify(data, functionsOnly, givenFunctions) {
       func.JS += 'function ' + func.ident + '(' + paramIdents.join(', ') + ') {\n';
 
       if (PGO) {
-        func.JS += '  PGOMonitor.called["' + func.ident + '"] = 1;\n';
+        func.JS += INDENTATION + 'PGOMonitor.called["' + func.ident + '"] = 1;\n';
       }
 
       if (ASM_JS) {
         // spell out argument types
         func.params.forEach(function(param) {
-          func.JS += '  ' + param.ident + ' = ' + asmCoercion(param.ident, param.type) + ';\n';
+          func.JS += INDENTATION + param.ident + ' = ' + asmCoercion(param.ident, param.type) + ';\n';
         });
 
         // spell out local variables
@@ -611,7 +613,7 @@ function JSify(data, functionsOnly, givenFunctions) {
             i += chunkSize;
           }
           for (i = 0; i < chunks.length; i++) {
-            func.JS += '  var ' + chunks[i].map(function(v) {
+            func.JS += INDENTATION + 'var ' + chunks[i].map(function(v) {
               var type = getImplementationType(v);
               if (!isIllegalType(type) || v.ident.indexOf('$', 1) > 0) { // not illegal, or a broken up illegal
                 return v.ident + ' = ' + asmInitializer(type); //, func.variables[v.ident].impl);
@@ -627,7 +629,7 @@ function JSify(data, functionsOnly, givenFunctions) {
 
       if (true) { // TODO: optimize away when not needed
         if (CLOSURE_ANNOTATIONS) func.JS += '/** @type {number} */';
-        func.JS += '  var label = 0;\n';
+        func.JS += INDENTATION + 'var label = 0;\n';
       }
 
       if (ASM_JS) {
@@ -636,12 +638,12 @@ function JSify(data, functionsOnly, givenFunctions) {
           hasByVal = hasByVal || param.byVal;
         });
         if (hasByVal) {
-          func.JS += '  var tempParam = 0;\n';
+          func.JS += INDENTATION + 'var tempParam = 0;\n';
         }
       }
 
       // Prepare the stack, if we need one. If we have other stack allocations, force the stack to be set up.
-      func.JS += '  ' + RuntimeGenerator.stackEnter(func.initialStack, func.otherStackAllocations) + ';\n';
+      func.JS += INDENTATION + RuntimeGenerator.stackEnter(func.initialStack, func.otherStackAllocations) + ';\n';
 
       // Make copies of by-value params
       // XXX It is not clear we actually need this. While without this we fail, it does look like
@@ -654,7 +656,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         if (param.byVal) {
           var type = removePointing(param.type);
           var typeInfo = Types.types[type];
-          func.JS += '  ' + (ASM_JS ? '' : 'var ') + 'tempParam = ' + param.ident + '; ' + param.ident + ' = ' + RuntimeGenerator.stackAlloc(typeInfo.flatSize) + ';' +
+          func.JS += INDENTATION + (ASM_JS ? '' : 'var ') + 'tempParam = ' + param.ident + '; ' + param.ident + ' = ' + RuntimeGenerator.stackAlloc(typeInfo.flatSize) + ';' +
                      makeCopyValues(param.ident, 'tempParam', typeInfo.flatSize, 'null', null, param.byVal) + ';\n';
         }
       });
@@ -728,12 +730,12 @@ function JSify(data, functionsOnly, givenFunctions) {
             }
             ret += 'switch(' + asmCoercion('label', 'i32') + ') {\n';
             ret += block.labels.map(function(label) {
-              return indent + '  case ' + getLabelId(label.ident) + ': ' + (SHOW_LABELS ? '// ' + getOriginalLabelId(label.ident) : '') + '\n'
-                            + getLabelLines(label, indent + '    ');
+              return indent + INDENTATION + 'case ' + getLabelId(label.ident) + ': ' + (SHOW_LABELS ? '// ' + getOriginalLabelId(label.ident) : '') + '\n'
+                            + getLabelLines(label, indent + INDENTATION + INDENTATION);
             }).join('\n') + '\n';
             if (func.setjmpTable && ASM_JS) {
               // emit a label in which we write to the proper local variable, before jumping to the actual label
-              ret += '  case ' + SETJMP_LABEL + ': ';
+              ret += INDENTATION + 'case ' + SETJMP_LABEL + ': ';
               ret += func.setjmpTable.map(function(triple) { // original label, label we created for right after the setjmp, variable setjmp result goes into
                 return 'if ((setjmpLabel|0) == ' + getLabelId(triple.oldLabel) + ') { ' + triple.assignTo + ' = threwValue; label = ' + triple.newLabel + ' }\n';
               }).join(' else ');
@@ -741,7 +743,7 @@ function JSify(data, functionsOnly, givenFunctions) {
               ret += '__THREW__ = threwValue = 0;\n';
               ret += 'break;\n';
             }
-            if (ASSERTIONS) ret += indent + '  default: assert(0' + (ASM_JS ? '' : ', "bad label: " + label') + ');\n';
+            if (ASSERTIONS) ret += indent + INDENTATION + 'default: assert(0' + (ASM_JS ? '' : ', "bad label: " + label') + ');\n';
             ret += indent + '}\n';
             if (func.setjmpTable && !ASM_JS) {
               ret += ' } catch(e) { if (!e.longjmp || !(e.id in mySetjmpIds)) throw(e); setjmpTable[setjmpLabels[e.id]](e.value) }';
@@ -797,13 +799,13 @@ function JSify(data, functionsOnly, givenFunctions) {
         }
         return ret;
       }
-      func.JS += walkBlock(func.block, '  ');
+      func.JS += walkBlock(func.block, INDENTATION);
       // Finalize function
       if (LABEL_DEBUG && functionNameFilterTest(func.ident)) func.JS += "  INDENT = INDENT.substr(0, INDENT.length-2);\n";
       // Ensure a return in a function with a type that returns, even if it lacks a return (e.g., if it aborts())
       if (RELOOP && func.lines.length > 0 && func.returnType != 'void') {
         var returns = func.labels.filter(function(label) { return label.lines[label.lines.length-1].intertype == 'return' }).length;
-        if (returns == 0) func.JS += '  return ' + asmCoercion('0', func.returnType);
+        if (returns == 0) func.JS += INDENTATION + 'return ' + asmCoercion('0', func.returnType);
       }
       func.JS += '}\n';
       
@@ -1121,7 +1123,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         ret += value + '{\n';
       }
       var phiSet = getPhiSetsForLabel(phiSets, targetLabel);
-      ret += '  ' + phiSet + makeBranch(targetLabel, item.currLabelId || null) + '\n';
+      ret += INDENTATION + '' + phiSet + makeBranch(targetLabel, item.currLabelId || null) + '\n';
       ret += '}\n';
       if (RELOOP) {
         item.groupedLabels.push({
@@ -1178,7 +1180,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     // in an assignment
     var disabled = DISABLE_EXCEPTION_CATCHING == 2  && !(item.funcData.ident in EXCEPTION_CATCHING_WHITELIST); 
     var phiSets = calcPhiSets(item);
-    var call_ = makeFunctionCall(item.ident, item.params, item.funcData, item.type, ASM_JS && !disabled);
+    var call_ = makeFunctionCall(item.ident, item.params, item.funcData, item.type, ASM_JS && !disabled, !!item.assignTo || !item.standalone);
 
     var ret;
 
@@ -1335,7 +1337,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     return ret;
   });
 
-  function makeFunctionCall(ident, params, funcData, type, forceByPointer) {
+  function makeFunctionCall(ident, params, funcData, type, forceByPointer, hasReturn) {
     // We cannot compile assembly. See comment in intertyper.js:'Call'
     assert(ident != 'asm', 'Inline assembly cannot be compiled to JavaScript!');
 
@@ -1463,8 +1465,8 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
     }
 
-    var returnType;
-    if (byPointer || ASM_JS) {
+    var returnType = 'void';
+    if ((byPointer || ASM_JS) && hasReturn) {
       returnType = getReturnType(type);
     }
 
@@ -1509,7 +1511,7 @@ function JSify(data, functionsOnly, givenFunctions) {
   makeFuncLineActor('getelementptr', function(item) { return finalizeLLVMFunctionCall(item) });
   makeFuncLineActor('call', function(item) {
     if (item.standalone && LibraryManager.isStubFunction(item.ident)) return ';';
-    return makeFunctionCall(item.ident, item.params, item.funcData, item.type) + (item.standalone ? ';' : '');
+    return makeFunctionCall(item.ident, item.params, item.funcData, item.type, false, !!item.assignTo || !item.standalone) + (item.standalone ? ';' : '');
   });
 
   makeFuncLineActor('unreachable', function(item) {

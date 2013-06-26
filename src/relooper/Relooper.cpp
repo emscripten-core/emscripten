@@ -18,6 +18,8 @@ static void PrintDebug(const char *Format, ...);
 #define DebugDump(x, ...)
 #endif
 
+#define INDENTATION 1
+
 struct Indenter {
   static int CurrIndent;
 
@@ -34,8 +36,8 @@ static int OutputBufferSize = 0;
 
 void PrintIndented(const char *Format, ...) {
   assert(OutputBuffer);
-  assert(OutputBuffer + Indenter::CurrIndent*2 - OutputBufferRoot < OutputBufferSize);
-  for (int i = 0; i < Indenter::CurrIndent*2; i++, OutputBuffer++) *OutputBuffer = ' ';
+  assert(OutputBuffer + Indenter::CurrIndent*INDENTATION - OutputBufferRoot < OutputBufferSize);
+  for (int i = 0; i < Indenter::CurrIndent*INDENTATION; i++, OutputBuffer++) *OutputBuffer = ' ';
   va_list Args;
   va_start(Args, Format);
   int left = OutputBufferSize - (OutputBuffer - OutputBufferRoot);
@@ -47,8 +49,8 @@ void PrintIndented(const char *Format, ...) {
 
 void PutIndented(const char *String) {
   assert(OutputBuffer);
-  assert(OutputBuffer + Indenter::CurrIndent*2 - OutputBufferRoot < OutputBufferSize);
-  for (int i = 0; i < Indenter::CurrIndent*2; i++, OutputBuffer++) *OutputBuffer = ' ';
+  assert(OutputBuffer + Indenter::CurrIndent*INDENTATION - OutputBufferRoot < OutputBufferSize);
+  for (int i = 0; i < Indenter::CurrIndent*INDENTATION; i++, OutputBuffer++) *OutputBuffer = ' ';
   int left = OutputBufferSize - (OutputBuffer - OutputBufferRoot);
   int needed = strlen(String)+1;
   assert(needed < left);

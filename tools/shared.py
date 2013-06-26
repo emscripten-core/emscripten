@@ -295,7 +295,7 @@ def check_node_version():
 # we re-check sanity when the settings are changed)
 # We also re-check sanity and clear the cache when the version changes
 
-EMSCRIPTEN_VERSION = '1.5.0'
+EMSCRIPTEN_VERSION = '1.5.1'
 
 def generate_sanity():
   return EMSCRIPTEN_VERSION + '|' + get_llvm_target()
@@ -420,7 +420,7 @@ FILE_PACKAGER = path_from_root('tools', 'file_packager.py')
 # Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use TEMP_DIR/emscripten_temp
 
 class Configuration:
-  def __init__(self, environ):
+  def __init__(self, environ=os.environ):
     self.DEBUG = environ.get('EMCC_DEBUG')
     if self.DEBUG == "0":
       self.DEBUG = None
@@ -448,11 +448,14 @@ class Configuration:
       tmp=self.TEMP_DIR if not self.DEBUG else self.EMSCRIPTEN_TEMP_DIR,
       save_debug_files=os.environ.get('EMCC_DEBUG_SAVE'))
 
-configuration = Configuration(environ=os.environ)
-DEBUG = configuration.DEBUG
-EMSCRIPTEN_TEMP_DIR = configuration.EMSCRIPTEN_TEMP_DIR
-DEBUG_CACHE = configuration.DEBUG_CACHE
-CANONICAL_TEMP_DIR = configuration.CANONICAL_TEMP_DIR
+def apply_configuration():
+  global configuration, DEBUG, EMSCRIPTEN_TEMP_DIR, DEBUG_CACHE, CANONICAL_TEMP_DIR
+  configuration = Configuration()
+  DEBUG = configuration.DEBUG
+  EMSCRIPTEN_TEMP_DIR = configuration.EMSCRIPTEN_TEMP_DIR
+  DEBUG_CACHE = configuration.DEBUG_CACHE
+  CANONICAL_TEMP_DIR = configuration.CANONICAL_TEMP_DIR
+apply_configuration()
 
 logging.basicConfig(format='%(levelname)-8s %(name)s: %(message)s')
 def set_logging():
@@ -462,9 +465,11 @@ set_logging()
 
 if not EMSCRIPTEN_TEMP_DIR:
   EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_', dir=configuration.TEMP_DIR)
-  def clean_temp():
-    try_delete(EMSCRIPTEN_TEMP_DIR)
-  atexit.register(clean_temp)
+  def prepare_to_clean_temp(d):
+    def clean_temp():
+      try_delete(d)
+    atexit.register(clean_temp)
+  prepare_to_clean_temp(EMSCRIPTEN_TEMP_DIR) # this global var might change later
 
 # EM_CONFIG stuff
 

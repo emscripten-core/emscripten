@@ -6,11 +6,11 @@
 
 // block A
 if (check == 10) {
-  atob();
-  // block B
-  btoc();
+ atob();
+ // block B
+ btoc();
 } else {
-  atoc();
+ atoc();
 }
 // block C
 
@@ -22,9 +22,9 @@ if (check == 10) {
 
 // block A
 if (check == 15) {
-  // block B
+ // block B
 } else {
-  // block C
+ // block C
 }
 // block D
 
@@ -35,12 +35,12 @@ if (check == 15) {
 
 
 while(1) {
-  // block A
-  var check = maybe();
-  // block B
-  if (!(check == 41)) {
-    break;
-  }
+ // block A
+ var check = maybe();
+ // block B
+ if (!(check == 41)) {
+  break;
+ }
 }
 // block C
 
@@ -51,25 +51,25 @@ while(1) {
 // code 1
 var $i_0 = 0;var $x_0 = 5; 
 while(1) {
-  // code 2
-  if (!($2)) {
-    var $x_1 = $x_0; 
-    label = 18;
-    break;
-  }
-  // code 3
-  if ($6) {
-    break;
-  } else {
-    var $i_0 = $7;var $x_0 = $5; 
-  }
+ // code 2
+ if (!($2)) {
+  var $x_1 = $x_0; 
+  label = 18;
+  break;
+ }
+ // code 3
+ if ($6) {
+  break;
+ } else {
+  var $i_0 = $7;var $x_0 = $5; 
+ }
 }
 if (label == 18) {
-  // code 7
+ // code 7
 }
 // code 4
 if ($10) {
-  // code 5
+ // code 5
 }
 // code 6
 var $x_1 = $13; 
@@ -83,15 +83,15 @@ var $x_1 = $13;
 
 // block A...................................................................................................
 if (chak()) {
-  atob();
-  // block B...................................................................................................
-  btod();
-  // block D
+ atob();
+ // block B...................................................................................................
+ btod();
+ // block D
 } else {
-  atoc();
-  // block C...................................................................................................
-  ctod2();
-  // block D
+ atoc();
+ // block C...................................................................................................
+ ctod2();
+ // block D
 }
 
 
@@ -102,11 +102,11 @@ if (chak()) {
 
 // block A
 if (!(check == 10)) {
-  return C;
+ return C;
 }
 while(1) {
-  // block B
-  // block D
+ // block B
+ // block D
 }
 
 
@@ -117,23 +117,23 @@ while(1) {
 
 // block A
 do {
-  if (expensive()) {
-    label = 33;
-  } else {
-    // block B
-    if (expensive2()) {
-      label = 33;
-      break;
-    }
-    // block D
+ if (expensive()) {
+  label = 33;
+ } else {
+  // block B
+  if (expensive2()) {
+   label = 33;
+   break;
   }
+  // block D
+ }
 } while(0);
 if (label == 33) {
-  // block C;
+ // block C;
 }
 while(1) {
-  // block E
-  // block F
+ // block E
+ // block F
 }
 
 
@@ -144,12 +144,12 @@ while(1) {
 
 // block A
 if (shouldLoop()) {
-  while(1) {
-    // block B
-    if (!(moarLoop())) {
-      break;
-    }
+ while(1) {
+  // block B
+  if (!(moarLoop())) {
+   break;
   }
+ }
 }
 // block C
 

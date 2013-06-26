@@ -143,17 +143,17 @@ var FALSE_NODE = ['unary-prefix', '!', ['num', 1]];
 var GENERATED_FUNCTIONS_MARKER = '// EMSCRIPTEN_GENERATED_FUNCTIONS';
 var generatedFunctions = false; // whether we have received only generated functions
 
-var minifierInfo = null;
+var extraInfo = null;
 
 function srcToAst(src) {
   return uglify.parser.parse(src);
 }
 
-function astToSrc(ast, compress) {
+function astToSrc(ast, minifyWhitespace) {
     return uglify.uglify.gen_code(ast, {
     ascii_only: true,
-    beautify: !compress,
-    indent_level: 2
+    beautify: !minifyWhitespace,
+    indent_level: 1
   });
 }
 
@@ -1116,11 +1116,15 @@ function simplifyNotCompsDirect(node) {
       return node[2][2];
     }
   }
-  return node;
+  if (!simplifyNotCompsPass) return node;
 }
 
+var simplifyNotCompsPass = false;
+
 function simplifyNotComps(ast) {
+  simplifyNotCompsPass = true;
   traverse(ast, simplifyNotCompsDirect);
+  simplifyNotCompsPass = false;
 }
 
 function simplifyExpressionsPost(ast) {
@@ -1630,7 +1634,7 @@ function denormalizeAsm(func, data) {
 
 // Very simple 'registerization', coalescing of variables into a smaller number,
 // as part of minification. Globals-level minification began in a previous pass,
-// we receive minifierInfo which tells us how to rename globals. (Only in asm.js.)
+// we receive extraInfo which tells us how to rename globals. (Only in asm.js.)
 //
 // We do not optimize when there are switches, so this pass only makes sense with
 // relooping.
@@ -1672,7 +1676,7 @@ function registerize(ast) {
       }
     });
     vacuum(fun);
-    if (minifierInfo) {
+    if (extraInfo) {
       assert(asm);
       var usedGlobals = {};
       var nextLocal = 0;
@@ -1680,7 +1684,7 @@ function registerize(ast) {
       traverse(fun, function(node, type) {
         if (type == 'name') {
           var name = node[1];
-          var minified = minifierInfo.globals[name];
+          var minified = extraInfo.globals[name];
           if (minified) {
             assert(!localVars[name], name); // locals must not shadow globals, or else we don't know which is which
             if (localVars[minified]) {
@@ -1713,8 +1717,8 @@ function registerize(ast) {
           }
         }
       });
-      assert(fun[1] in minifierInfo.globals, fun[1]);
-      fun[1] = minifierInfo.globals[fun[1]];
+      assert(fun[1] in extraInfo.globals, fun[1]);
+      fun[1] = extraInfo.globals[fun[1]];
       assert(fun[1]);
       var nextRegName = 0;
     }
@@ -1722,14 +1726,14 @@ function registerize(ast) {
     function getNewRegName(num, name) {
       if (!asm) return 'r' + num;
       var type = asmData.vars[name];
-      if (!minifierInfo) {
+      if (!extraInfo) {
         var ret = (type ? 'd' : 'i') + num;
         regTypes[ret] = type;
         return ret;
       }
       // find the next free minified name that is not used by a global that shows up in this function
-      while (nextRegName < minifierInfo.names.length) {
-        var ret = minifierInfo.names[nextRegName++];
+      while (nextRegName < extraInfo.names.length) {
+        var ret = extraInfo.names[nextRegName++];
         if (!usedGlobals[ret]) {
           regTypes[ret] = type;
           return ret;
@@ -2434,7 +2438,10 @@ function eliminate(ast, memSafe) {
       }
       traverseInOrder(node);
     }
+    //var eliminationLimit = 0; // used to debugging purposes
     function doEliminate(name, node) {
+      //if (eliminationLimit == 0) return;
+      //eliminationLimit--;
       //printErr('elim!!!!! ' + name);
       // yes, eliminate!
       varsToRemove[name] = 2; // both assign and var definitions can have other vars we must clean up
@@ -2528,13 +2535,13 @@ function eliminate(ast, memSafe) {
           var ifTrue = last[2];
           var ifFalse = last[3];
           var flip = false;
-          if (ifFalse[1][0][0] == 'break') { // canonicalize break in the if
+          if (ifFalse[1][0] && ifFalse[1][0][0] == 'break') { // canonicalize break in the if
             var temp = ifFalse;
             ifFalse = ifTrue;
             ifTrue = temp;
             flip = true;
           }
-          if (ifTrue[1][0][0] == 'break') {
+          if (ifTrue[1][0] && ifTrue[1][0][0] == 'break') {
             var assigns = ifFalse[1];
             var loopers = [], helpers = [];
             for (var i = 0; i < assigns.length; i++) {
@@ -2583,7 +2590,13 @@ function eliminate(ast, memSafe) {
               }
               if (looperUsed) return;
             }
+            for (var l = 0; l < helpers.length; l++) {
+              for (var k = 0; k < helpers.length; k++) {
+                if (l != k && helpers[l] == helpers[k]) return; // it is complicated to handle a shared helper, abort
+              }
+            }
             // hurrah! this is safe to do
+            //printErr("ELIM LOOP VAR " + JSON.stringify(loopers) + ' :: ' + JSON.stringify(helpers));
             for (var l = 0; l < loopers.length; l++) {
               var looper = loopers[l];
               var helper = helpers[l];
@@ -2613,48 +2626,50 @@ function eliminate(ast, memSafe) {
     }
   });
 
-  // A class for optimizing expressions. We know that it is legitimate to collapse
-  // 5+7 in the generated code, as it will always be numerical, for example. XXX do we need this? here?
-  function ExpressionOptimizer(node) {
-    this.node = node;
+  if (!asm) { // TODO: deprecate in non-asm too
+    // A class for optimizing expressions. We know that it is legitimate to collapse
+    // 5+7 in the generated code, as it will always be numerical, for example. XXX do we need this? here?
+    function ExpressionOptimizer(node) {
+      this.node = node;
 
-    this.run = function() {
-      traverse(this.node, function(node, type) {
-        if (type === 'binary' && node[1] == '+') {
-          var names = [];
-          var num = 0;
-          var has_num = false;
-          var fail = false;
-          traverse(node, function(subNode, subType) {
-            if (subType === 'binary') {
-              if (subNode[1] != '+') {
+      this.run = function() {
+        traverse(this.node, function(node, type) {
+          if (type === 'binary' && node[1] == '+') {
+            var names = [];
+            var num = 0;
+            var has_num = false;
+            var fail = false;
+            traverse(node, function(subNode, subType) {
+              if (subType === 'binary') {
+                if (subNode[1] != '+') {
+                  fail = true;
+                  return false;
+                }
+              } else if (subType === 'name') {
+                names.push(subNode[1]);
+                return;
+              } else if (subType === 'num') {
+                num += subNode[1];
+                has_num = true;
+                return;
+              } else {
                 fail = true;
                 return false;
               }
-            } else if (subType === 'name') {
-              names.push(subNode[1]);
-              return;
-            } else if (subType === 'num') {
-              num += subNode[1];
-              has_num = true;
-              return;
-            } else {
-              fail = true;
-              return false;
+            });
+            if (!fail && has_num) {
+              var ret = ['num', num];
+              for (var i = 0; i < names.length; i++) {
+                ret = ['binary', '+', ['name', names[i]], ret];
+              }
+              return ret;
             }
-          });
-          if (!fail && has_num) {
-            var ret = ['num', num];
-            for (var i = 0; i < names.length; i++) {
-              ret = ['binary', '+', ['name', names[i]], ret];
-            }
-            return ret;
           }
-        }
-      });
-    };
+        });
+      };
+    }
+    new ExpressionOptimizer(ast).run();
   }
-  new ExpressionOptimizer(ast).run();
 }
 
 function eliminateMemSafe(ast) {
@@ -2675,16 +2690,16 @@ function minifyGlobals(ast) {
       var vars = node[1];
       for (var i = 0; i < vars.length; i++) {
         var name = vars[i][0];
-        assert(next < minifierInfo.names.length);
-        vars[i][0] = minified[name] = minifierInfo.names[next++];
+        assert(next < extraInfo.names.length);
+        vars[i][0] = minified[name] = extraInfo.names[next++];
       }
     }
   });
   // add all globals in function chunks, i.e. not here but passed to us
-  for (var i = 0; i < minifierInfo.globals.length; i++) {
-    name = minifierInfo.globals[i];
-    assert(next < minifierInfo.names.length);
-    minified[name] = minifierInfo.names[next++];
+  for (var i = 0; i < extraInfo.globals.length; i++) {
+    name = extraInfo.globals[i];
+    assert(next < extraInfo.names.length);
+    minified[name] = extraInfo.names[next++];
   }
   // apply minification
   traverse(ast, function(node, type) {
@@ -2695,8 +2710,63 @@ function minifyGlobals(ast) {
       }
     }
   });
-  suffix = '// MINIFY_INFO:' + JSON.stringify(minified);
+  suffix = '// EXTRA_INFO:' + JSON.stringify(minified);
 }
+
+// Relocation pass for a shared module (for the functions part of the module)
+//
+// 1. Replace function names with alternate names as defined (to avoid colliding with
+// names in the main module we are being linked to)
+// 2. Hardcode function table offsets from F_BASE+x to const+x if x is a variable, or
+//    the constant sum of the base + offset
+// 3. Hardcode heap offsets from H_BASE as well
+function relocate(ast) {
+  assert(asm); // we also assume we are normalized
+
+  var replacements = extraInfo.replacements;
+  var fBase = extraInfo.fBase;
+  var hBase = extraInfo.hBase;
+
+  traverse(ast, function(node, type) {
+    switch(type) {
+      case 'name': case 'defun': {
+        var rep = replacements[node[1]];
+        if (rep) node[1] = rep;
+        break;
+      }
+      case 'binary': {
+        if (node[1] == '+' && node[2][0] == 'name') {
+          var base = null;
+          if (node[2][1] == 'F_BASE') {
+            base = fBase;
+          } else if (node[2][1] == 'H_BASE') {
+            base = hBase;
+          }
+          if (base) {
+            var other = node[3];
+            if (other[0] == 'num') {
+              other[1] += base;
+              return other;
+            } else {
+              node[2] = ['num', base];
+            }
+          }
+        }
+        break;
+      }
+      case 'var': {
+        var vars = node[1];
+        for (var i = 0; i < vars.length; i++) {
+          var name = vars[i][0];
+          assert(!(name in replacements)); // cannot shadow functions we are replacing TODO: fix that
+        }
+        break;
+      }
+    }
+  });
+}
+
+// Last pass utilities
 
 // Change +5 to DOT$ZERO(5). We then textually change 5 to 5.0 (uglify's ast cannot differentiate between 5 and 5.0 directly)
 function prepDotZero(ast) {
@@ -2744,7 +2814,7 @@ function asmLoopOptimizer(ast) {
 
 // Passes table
 
-var compress = false, printMetadata = true, asm = false, last = false;
+var minifyWhitespace = false, printMetadata = true, asm = false, last = false;
 
 var passes = {
   dumpAst: dumpAst,
@@ -2762,11 +2832,11 @@ var passes = {
   eliminate: eliminate,
   eliminateMemSafe: eliminateMemSafe,
   minifyGlobals: minifyGlobals,
-  compress: function() { compress = true },
+  relocate: relocate,
+  minifyWhitespace: function() { minifyWhitespace = true },
   noPrintMetadata: function() { printMetadata = false },
   asm: function() { asm = true },
   last: function() { last = true },
-  closure: function(){} // handled in python
 };
 
 // Main
@@ -2777,9 +2847,9 @@ var src = read(arguments_[0]);
 var ast = srcToAst(src);
 //printErr(JSON.stringify(ast)); throw 1;
 generatedFunctions = src.indexOf(GENERATED_FUNCTIONS_MARKER) >= 0;
-var minifierInfoStart = src.indexOf('// MINIFY_INFO:')
-if (minifierInfoStart > 0) minifierInfo = JSON.parse(src.substr(minifierInfoStart + 15));
-//printErr(JSON.stringify(minifierInfo));
+var extraInfoStart = src.indexOf('// EXTRA_INFO:')
+if (extraInfoStart > 0) extraInfo = JSON.parse(src.substr(extraInfoStart + 14));
+//printErr(JSON.stringify(extraInfo));
 
 arguments_.slice(1).forEach(function(arg) {
   passes[arg](ast);
@@ -2788,7 +2858,7 @@ if (asm && last) {
   asmLoopOptimizer(ast);
   prepDotZero(ast);
 }
-var js = astToSrc(ast, compress), old;
+var js = astToSrc(ast, minifyWhitespace), old;
 if (asm && last) {
   js = fixDotZero(js);
 }
