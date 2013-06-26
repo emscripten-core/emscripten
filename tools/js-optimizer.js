@@ -2035,7 +2035,6 @@ function eliminate(ast, memSafe) {
     // examine body and note locals
     var hasSwitch = false;
     traverse(func, function(node, type) {
-      if (debug && type) type = type.toString();
       if (type === 'var') {
         var node1 = node[1];
         for (var i = 0; i < node1.length; i++) {
@@ -2645,7 +2644,6 @@ function eliminate(ast, memSafe) {
             var has_num = false;
             var fail = false;
             traverse(node, function(subNode, subType) {
-              if (debug && subType) subType = subType.toString();
               if (subType === 'binary') {
                 if (subNode[1] !== '+') {
                   fail = true;
