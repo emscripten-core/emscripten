@@ -44,8 +44,9 @@ class AsmModule():
     if mem_init:
       self.mem_init_full_js = mem_init.group(0)
       self.mem_init_js = mem_init.groups(0)[0][:-2]
-      self.mem_init_size = self.mem_init_js.count(',') + self.mem_init_js.count('concat') # XXX add testing for large and small ones
+      self.mem_init_size = self.mem_init_js.count(',') + self.mem_init_js.count('concat') + 1 # XXX add testing for large and small ones
       pad = 8 - (self.mem_init_size % 8)
+      #print >> sys.stderr, 'pad', self.mem_init_size, pad
       if pad < 8:
         self.mem_init_js += '.concat([' + ','.join(['0']*pad) + '])'
         self.mem_init_size += pad

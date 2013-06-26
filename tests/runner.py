@@ -10610,6 +10610,8 @@ f.close()
       assert not os.path.exists('a.out') and not os.path.exists('a.exe'), 'Must not leave unneeded linker stubs'
 
     def test_static_link(self):
+      print
+
       def test(name, main, side, expected, first=True):
         print name
         #t = main ; main = side ; side = t
@@ -10625,6 +10627,7 @@ f.close()
         self.validate_asmjs(out)
         if first: test(name + ' (reverse)', side, main, expected, False) # test reverse order
 
+      # test a simple call from one module to another. only one has a string (and constant memory initialization for it)
       test('basics', '''
         #include <stdio.h>
         extern int sidey();
@@ -10635,6 +10638,20 @@ f.close()
       ''', '''
         int sidey() { return 11; }
       ''', 'other says 11.')
+
+      # memory initialization in both
+      test('multiple memory inits', r'''
+        #include <stdio.h>
+        extern void sidey();
+        int main() {
+          printf("hello from main\n");
+          sidey();
+          return 0;
+        }
+      ''', r'''
+        #include <stdio.h>
+        void sidey() { printf("hello from side\n"); }
+      ''', 'hello from main\nhello from side\n')
 
     def test_symlink(self):
       if os.name == 'nt':
