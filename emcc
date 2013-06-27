@@ -139,7 +139,7 @@ Options that are modified or new in %s include:
                               -s DOUBLE_MODE=0
                               -s PRECISE_I64_MATH=0
                               --closure 1
-                              --llvm-lto 1
+                              --llvm-lto 2
 
                            This is not recommended at all. A better idea
                            is to try each of these separately on top of
@@ -215,11 +215,14 @@ Options that are modified or new in %s include:
                            2: -O2 LLVM optimizations
                            3: -O3 LLVM optimizations (default in -O2+)
 
-  --llvm-lto <level>       0: No LLVM LTO (default in -O2 and below)
-                           1: LLVM LTO (default in -O3)
+  --llvm-lto <level>       0: No LLVM LTO (default)
+                           1: LLVM LTO is performed
                            Note: If LLVM optimizations are not run
                            (see --llvm-opts), setting this to 1 has no
                            effect.
+                           2: LLVM LTO is performed, and we supplement it
+                              with pre-running LLVM opt -O3 on the full
+                              combined bitcode
 
   --closure <on>           0: No closure compiler (default in -O2 and below)
                            1: Run closure compiler. This greatly reduces
@@ -879,7 +882,7 @@ try:
     newargs = newargs + [default_cxx_std]
 
   if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
-  if llvm_lto is None: llvm_lto = opt_level >= 3
+  if llvm_lto is None and opt_level >= 3: llvm_lto = 2
   if opt_level == 0: debug_level = 4
   if closure is None and opt_level == 3: closure = True
 
@@ -1418,6 +1421,11 @@ try:
   # Optimize, if asked to
   if not LEAVE_INPUTS_RAW:
     link_opts = [] if debug_level >= 4 else ['-strip-debug'] # remove LLVM debug if we are not asked for it
+
+    if llvm_lto >= 2:
+      logging.debug('running LLVM opt -O3 as pre-LTO')
+      shared.Building.llvm_opt(in_temp(target_basename + '.bc'), ['-O3'])
+      if DEBUG: save_intermediate('opt', 'bc')
 
     if shared.Building.can_build_standalone():
       # If we can LTO, do it before dce, since it opens up dce opportunities
