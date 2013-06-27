@@ -8696,6 +8696,7 @@ def process(filename):
 
     def test_autodebug(self):
       if Building.LLVM_OPTS: return self.skip('LLVM opts mess us up')
+      Building.COMPILER_TEST_OPTS += ['--llvm-opts', '0']
 
       # Run a test that should work, generating some code
       self.test_structs()
