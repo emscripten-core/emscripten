@@ -10233,7 +10233,7 @@ Options that are modified or new in %s include:
           (['-o', 'something.bc', '-O1'], 1, ['-O1'], 0, 0),
           (['-o', 'something.bc', '-O2'], 2, ['-O2'], 0, 0),
           (['-o', 'something.bc', '-O3'], 3, ['-O3', '-s', 'ASM_JS=0'], 1, 0),
-          (['-O1', '-o', 'something.bc'], 1, [], 0, 0), # -Ox is ignored and warned about
+          (['-O1', '-o', 'something.bc'], 1, [], 0, 0),
         ]:
           print params, opt_level, bc_params, closure, has_malloc
           self.clear()
