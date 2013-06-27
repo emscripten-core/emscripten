@@ -930,20 +930,6 @@ void Relooper::Calculate(Block *Entry) {
         loop; \
       }
 
-    #define SHAPE_SWITCH_AUTO(var, simple, multiple, loop, func) \
-      if (SimpleShape *Simple = Shape::IsSimple(var)) { \
-        simple; \
-        func(Simple->Next); \
-      } else if (MultipleShape *Multiple = Shape::IsMultiple(var)) { \
-        multiple; \
-        RECURSE_MULTIPLE(func) \
-        func(Multiple->Next); \
-      } else if (LoopShape *Loop = Shape::IsLoop(var)) { \
-        loop; \
-        RECURSE_LOOP(func); \
-        func(Loop->Next); \
-      }
-
     // Find the blocks that natural control flow can get us directly to, or through a multiple that we ignore
     void FollowNaturalFlow(Shape *S, BlockSet &Out) {
       SHAPE_SWITCH(S, {
