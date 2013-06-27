@@ -234,7 +234,7 @@ process(sys.argv[1])
              ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
              map(lambda include: '-I' + include, includes) + \
              ['-c', f, '-o', f + '.o']
-      output = Popen(args, stdout=PIPE).communicate()[0]
+      output = Popen(args, stdout=PIPE, stderr=self.stderr_redirect).communicate()[0]
       assert os.path.exists(f + '.o'), 'Source compilation error: ' + output
 
     # Link all files
