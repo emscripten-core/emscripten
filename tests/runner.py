@@ -4230,6 +4230,8 @@ def process(filename):
 ''', args=['34962', '26214', '35040'])
 
     def test_indirectbr(self):
+        Building.COMPILER_TEST_OPTS = filter(lambda x: x != '-g', Building.COMPILER_TEST_OPTS)
+
         src = '''
           #include <stdio.h>
           int main(void) {
