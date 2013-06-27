@@ -8472,6 +8472,8 @@ def process(filename):
     def test_openjpeg(self):
       if self.emcc_args is None: return self.skip('needs libc for getopt')
 
+      Building.COMPILER_TEST_OPTS = filter(lambda x: x != '-g', Building.COMPILER_TEST_OPTS) # remove -g, so we have one test without it by default
+
       if Settings.USE_TYPED_ARRAYS == 2:
         Settings.CORRECT_SIGNS = 1
       else:
