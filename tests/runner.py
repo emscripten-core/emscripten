@@ -230,11 +230,11 @@ process(sys.argv[1])
         os.remove(f + '.o')
       except:
         pass
-      args = [PYTHON, EMCC] + Building.COMPILER_TEST_OPTS + \
+      args = [PYTHON, EMCC] + Building.COMPILER_TEST_OPTS + Settings.serialize() + \
              ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
              map(lambda include: '-I' + include, includes) + \
              ['-c', f, '-o', f + '.o']
-      output = Popen(args, stdout=PIPE, stderr=self.stderr_redirect).communicate()[0]
+      output = Popen(args, stdout=PIPE, stderr=self.stderr_redirect if not DEBUG else None).communicate()[0]
       assert os.path.exists(f + '.o'), 'Source compilation error: ' + output
 
     # Link all files
@@ -10044,9 +10044,10 @@ class %s(T):
       Building.LLVM_OPTS = 0
       if '-O2' in self.emcc_args:
         Building.COMPILER_TEST_OPTS = [] # remove -g in -O2 tests, for more coverage
-      for arg in self.emcc_args:
-        if arg.startswith('-O'):
-          Building.COMPILER_TEST_OPTS.append(arg) # so bitcode is optimized too, this is for cpp to ll
+      Building.COMPILER_TEST_OPTS += self.emcc_args
+      #for arg in self.emcc_args:
+      #  if arg.startswith('-O'):
+      #    Building.COMPILER_TEST_OPTS.append(arg) # so bitcode is optimized too, this is for cpp to ll
       return
 
     embetter = %d
