@@ -104,7 +104,7 @@ void Branch::Render(Block *Target, bool SetLabel) {
 
 int Block::IdCounter = 1; // 0 is reserved for clearings
 
-Block::Block(const char *CodeInit) : Parent(NULL), Id(Block::IdCounter++), DefaultTarget(NULL), IsCheckedMultipleEntry(false) {
+Block::Block(const char *CodeInit) : Parent(NULL), Id(Block::IdCounter++), IsCheckedMultipleEntry(false) {
   Code = strdup(CodeInit);
 }
 
@@ -178,6 +178,8 @@ void Block::Render(bool InLoop) {
     }
   }
 
+  Block *DefaultTarget(NULL); // The block we branch to without checking the condition, if none of the other conditions held.
+
   // We must do this here, because blocks can be split and even comparing their Ids is not enough. We must check the conditions.
   for (BlockBranchMap::iterator iter = ProcessedBranchesOut.begin(); iter != ProcessedBranchesOut.end(); iter++) {
     if (!iter->second->Condition) {
@@ -185,7 +187,7 @@ void Block::Render(bool InLoop) {
       DefaultTarget = iter->first;
     }
   }
-  assert(DefaultTarget); // Must be a default
+  assert(DefaultTarget); // Since each block *must* branch somewhere, this must be set
 
   ministring RemainingConditions;
   bool First = true;
