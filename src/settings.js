@@ -381,6 +381,9 @@ var EMIT_GENERATED_FUNCTIONS = 0; // whether to emit the list of generated funct
 
 var JS_CHUNK_SIZE = 10240; // Used as a maximum size before breaking up expressions and lines into smaller pieces
 
+var EXPORT_NAME = 'Module'; // Global variable to export the module as for environments without a standardized module
+                            // loading system (e.g. the browser and SM shell).
+
 // Compiler debugging options
 var DEBUG_TAGS_SHOWING = [];
   // Some useful items:
