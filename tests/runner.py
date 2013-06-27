@@ -234,7 +234,7 @@ process(sys.argv[1])
              ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
              map(lambda include: '-I' + include, includes) + \
              ['-c', f, '-o', f + '.o']
-      output = Popen(args, stdout=PIPE, stderr=self.stderr_redirect).communicate()[0]
+      output = Popen(args, stdout=PIPE).communicate()[0]
       assert os.path.exists(f + '.o'), 'Source compilation error: ' + output
 
     # Link all files
@@ -8217,7 +8217,7 @@ void*:16
       if self.run_name == 'o2':
         self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
 
-      Building.COMPILER_TEST_OPTS = [] # remove -g, so we have one test without it by default
+      Building.COMPILER_TEST_OPTS = filter(lambda x: x != '-g', Building.COMPILER_TEST_OPTS) # remove -g, so we have one test without it by default
       if self.emcc_args is None: Settings.SAFE_HEAP = 0 # Has some actual loads of unwritten-to places, in the C++ code...
 
       # Overflows happen in hash loop
@@ -8249,7 +8249,7 @@ void*:16
     def test_gcc_unmangler(self):
       Settings.NAMED_GLOBALS = 1 # test coverage for this
 
-      Building.COMPILER_TEST_OPTS = ['-I' + path_from_root('third_party')]
+      Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('third_party')]
 
       self.do_run(open(path_from_root('third_party', 'gcc_demangler.c')).read(), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'])
 
@@ -10040,6 +10040,7 @@ class %s(T):
       Building.LLVM_OPTS = 0
       if '-O2' in self.emcc_args:
         Building.COMPILER_TEST_OPTS = [] # remove -g in -O2 tests, for more coverage
+      Building.COMPILER_TEST_OPTS += self.emcc_args # so bitcode is optimized too, this is for cpp to ll
       return
 
     embetter = %d
