@@ -886,6 +886,10 @@ try:
   if opt_level == 0: debug_level = 4
   if closure is None and opt_level == 3: closure = True
 
+  if llvm_lto is None and bind:
+    logging.debug('running lto for embind') # XXX this is a workaround for a pointer issue
+    llvm_lto = 1
+
   # TODO: support source maps with js_transform
   if js_transform and debug_level >= 4:
     logging.warning('disabling source maps because a js transform is being done')
