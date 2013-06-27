@@ -14136,7 +14136,6 @@ fi
             for i in range(3):
               print filename, libname, i
               self.clear()
-              dcebc_name = dcebc_name1
               try_delete(basebc_name) # we might need to check this file later
               try_delete(dcebc_name) # we might need to check this file later
               for ll_name in ll_names: try_delete(ll_name)
@@ -14153,9 +14152,9 @@ fi
               assert os.path.exists(os.path.join(EMCC_CACHE, libname + '.bc'))
               if libname == 'libcxx':
                 print os.stat(os.path.join(EMCC_CACHE, libname + '.bc')).st_size, os.stat(basebc_name).st_size, os.stat(dcebc_name).st_size
-                assert os.stat(os.path.join(EMCC_CACHE, libname + '.bc')).st_size > 1800000, 'libc++ is big'
-                assert os.stat(basebc_name).st_size > 1800000, 'libc++ is indeed big'
-                assert os.stat(dcebc_name).st_size < 750000, 'Dead code elimination must remove most of libc++'
+                assert os.stat(os.path.join(EMCC_CACHE, libname + '.bc')).st_size > 1000000, 'libc++ is big'
+                assert os.stat(basebc_name).st_size > 1000000, 'libc++ is indeed big'
+                assert os.stat(dcebc_name).st_size < 500000, 'Dead code elimination must remove most of libc++'
               # should only have metadata in -O0, not 1 and 2
               if i > 0:
                 for ll_name in ll_names:
@@ -14242,7 +14241,7 @@ fi
           (['--jcache'], 'hello_malloc.cpp', False, True, False, True, False, True, []),
           ([], 'hello_malloc.cpp', False, False, False, False, False, False, []),
           # new, huge file
-          ([], 'hello_libcxx.cpp', False, False, False, False, False, False, ('4 chunks',)),
+          ([], 'hello_libcxx.cpp', False, False, False, False, False, False, ('3 chunks',)),
           (['--jcache'], 'hello_libcxx.cpp', True, False, True, False, True, False, []),
           (['--jcache'], 'hello_libcxx.cpp', False, True, False, True, False, True, []),
           ([], 'hello_libcxx.cpp', False, False, False, False, False, False, []),
