@@ -913,13 +913,13 @@ void Relooper::Calculate(Block *Entry) {
 
     PostOptimizer(Relooper *ParentInit) : Parent(ParentInit), Closure(NULL) {}
 
-    #define RECURSE_MULTIPLE_MANUAL(func, manual) \
-      for (BlockShapeMap::iterator iter = manual->InnerMap.begin(); iter != manual->InnerMap.end(); iter++) { \
+    #define RECURSE_Multiple(shape, func) \
+      for (BlockShapeMap::iterator iter = shape->InnerMap.begin(); iter != shape->InnerMap.end(); iter++) { \
         func(iter->second); \
       }
-    #define RECURSE_MULTIPLE(func) RECURSE_MULTIPLE_MANUAL(func, Multiple);
-    #define RECURSE_LOOP(func) \
-      func(Loop->Inner);
+    #define RECURSE_Loop(shape, func) \
+      func(shape->Inner);
+    #define RECURSE(shape, func) RECURSE_##shape(shape, func);
 
     #define SHAPE_SWITCH(var, simple, multiple, loop) \
       if (SimpleShape *Simple = Shape::IsSimple(var)) { \
@@ -1026,7 +1026,7 @@ void Relooper::Calculate(Block *Entry) {
           // If we are fusing a Multiple with a loop into this Simple, then visit it now
           if (Fused && Fused->NeedLoop) {
             LoopStack.push(Fused);
-            RECURSE_MULTIPLE_MANUAL(FindLabeledLoops, Fused);
+            RECURSE_Multiple(Fused, FindLabeledLoops);
           }
           for (BlockBranchMap::iterator iter = Simple->Inner->ProcessedBranchesOut.begin(); iter != Simple->Inner->ProcessedBranchesOut.end(); iter++) {
             Block *Target = iter->first;
@@ -1052,14 +1052,14 @@ void Relooper::Calculate(Block *Entry) {
           if (Multiple->NeedLoop) {
             LoopStack.push(Multiple);
           }
-          RECURSE_MULTIPLE(FindLabeledLoops);
+          RECURSE(Multiple, FindLabeledLoops);
           if (Multiple->NeedLoop) {
             LoopStack.pop();
           }
           Next = Root->Next;
         }, {
           LoopStack.push(Loop);
-          RECURSE_LOOP(FindLabeledLoops);
+          RECURSE(Loop, FindLabeledLoops);
           LoopStack.pop();
           Next = Root->Next;
         });
