@@ -10044,10 +10044,10 @@ class %s(T):
       Building.LLVM_OPTS = 0
       if '-O2' in self.emcc_args:
         Building.COMPILER_TEST_OPTS = [] # remove -g in -O2 tests, for more coverage
-      Building.COMPILER_TEST_OPTS += self.emcc_args
-      #for arg in self.emcc_args:
-      #  if arg.startswith('-O'):
-      #    Building.COMPILER_TEST_OPTS.append(arg) # so bitcode is optimized too, this is for cpp to ll
+      #Building.COMPILER_TEST_OPTS += self.emcc_args
+      for arg in self.emcc_args:
+        if arg.startswith('-O'):
+          Building.COMPILER_TEST_OPTS.append(arg) # so bitcode is optimized too, this is for cpp to ll
       return
 
     embetter = %d
