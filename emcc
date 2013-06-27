@@ -139,7 +139,7 @@ Options that are modified or new in %s include:
                               -s DOUBLE_MODE=0
                               -s PRECISE_I64_MATH=0
                               --closure 1
-                              --llvm-lto 2
+                              --llvm-lto 3
 
                            This is not recommended at all. A better idea
                            is to try each of these separately on top of
@@ -217,12 +217,14 @@ Options that are modified or new in %s include:
 
   --llvm-lto <level>       0: No LLVM LTO (default)
                            1: LLVM LTO is performed
+                           2: We combine all the bitcode and run LLVM opt -O3
+                              on that (which optimizes across modules, but is
+                              not the same as normal LTO), but do not do normal
+                              LTO
+                           3: We do both 2 and then 1
                            Note: If LLVM optimizations are not run
-                           (see --llvm-opts), setting this to 1 has no
+                           (see --llvm-opts), setting this has no
                            effect.
-                           2: LLVM LTO is performed, and we supplement it
-                              with pre-running LLVM opt -O3 on the full
-                              combined bitcode
 
   --closure <on>           0: No closure compiler (default in -O2 and below)
                            1: Run closure compiler. This greatly reduces
@@ -882,7 +884,7 @@ try:
     newargs = newargs + [default_cxx_std]
 
   if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
-  if llvm_lto is None and opt_level >= 3: llvm_lto = 2
+  if llvm_lto is None and opt_level >= 3: llvm_lto = 3
   if opt_level == 0: debug_level = 4
   if closure is None and opt_level == 3: closure = True
 
@@ -1433,7 +1435,7 @@ try:
 
     if shared.Building.can_build_standalone():
       # If we can LTO, do it before dce, since it opens up dce opportunities
-      if llvm_lto and shared.Building.can_use_unsafe_opts():
+      if llvm_lto and llvm_lto != 2 and shared.Building.can_use_unsafe_opts():
         if not shared.Building.can_inline(): link_opts.append('-disable-inlining')
         # do not internalize in std-link-opts - it ignores internalize-public-api-list - and add a manual internalize
         link_opts += ['-disable-internalize'] + shared.Building.get_safe_internalize() + ['-std-link-opts']
