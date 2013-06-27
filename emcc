@@ -1096,14 +1096,17 @@ try:
           shared.Building.llvm_as(input_file, temp_file)
           temp_files.append(temp_file)
 
-  if not LEAVE_INPUTS_RAW: assert len(temp_files) == len(input_files)
+  if not LEAVE_INPUTS_RAW:
+    assert len(temp_files) == len(input_files)
 
-  # Optimize source files
-  if llvm_opts > 0:
-    for input_file in input_files:
-      if input_file.endswith(SOURCE_SUFFIXES):
-        logging.debug('optimizing %s with -O%d' % (input_file, llvm_opts))
-        shared.Building.llvm_opt(in_temp(unsuffixed(uniquename(input_file)) + '.o'), llvm_opts)
+    # Optimize source files
+    if llvm_opts > 0:
+      for i in range(len(input_files)):
+        input_file = input_files[i]
+        if input_files[i].endswith(SOURCE_SUFFIXES):
+          temp_file = temp_files[i]
+          logging.debug('optimizing %s with -O%d' % (input_file, llvm_opts))
+          shared.Building.llvm_opt(temp_file, llvm_opts)
 
   # If we were just asked to generate bitcode, stop there
   if final_suffix not in JS_CONTAINING_SUFFIXES:
