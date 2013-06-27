@@ -324,6 +324,7 @@ def check_sanity(force=False):
     if reason:
       logging.warning('(Emscripten: %s, clearing cache)' % reason)
       Cache.erase()
+      force = False # the check actually failed, so definitely write out the sanity file, to avoid others later seeing failures too
 
     # some warning, not fatal checks - do them even if EM_IGNORE_SANITY is on
     check_llvm_version()
@@ -944,7 +945,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
     # Finish link
     actual_files = unique_ordered(actual_files) # tolerate people trying to link a.so a.so etc.
-    logging.debug('emcc: llvm-linking: %s', actual_files)
+    logging.debug('emcc: llvm-linking: %s to %s', actual_files, target)
 
     # check for too-long command line
     link_cmd = [LLVM_LINK] + actual_files + ['-o', target]
