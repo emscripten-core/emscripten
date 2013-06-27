@@ -196,7 +196,7 @@ function traverse(node, pre, post, stack) {
     if (stack) len = stack.length;
     var result = pre(node, type, stack);
     if (result === true) return true;
-    if (result && result !== null) node = result; // Continue processing on this node
+    if (Array.isArray(result)) { node = result; type = node[0]; } // Continue processing on this node
     if (stack && len === stack.length) stack.push(0);
   }
   if (result !== null) {
@@ -1508,6 +1508,150 @@ function loopOptimizer(ast) {
   } while (more);
 
   vacuum(ast);
+}
+
+/* Is node of the form `identifier | 0`? */
+function isAsmInt(node) {
+  var ZERO = ['num', 0];
+  return node[1] === '|' && jsonCompare(node[3], ZERO);
+}
+
+/* Convert chains of if statements into switch-case, if possible */
+function switchify(ast) {
+  var labelCount = 0;
+  var BREAK = ['break', '!']; // '!' used as a marker for what will be unlabeled breaks
+  var exitStatements = ['break', 'continue', 'return', 'throw']
+  var breakTargetTypes = ['for', 'do', 'while', 'switch'];
+  var breakTargets = [];
+
+  // tries to match a pattern of (ident1 == num1 | ident2 == num2 | ...).
+  // returns undefined on failure; otherwise returns an array containing each
+  // clause of the disjunction. we don't check whether ident1 == ident2 here;
+  // that's done in the traverser below.
+  function getSwitchableClauses(condition) {
+    if (condition[0] !== 'binary') return;
+    if (condition[1] === '==' && condition[3][0] === 'num')
+      return [condition];
+    if (condition[1] === '||' || condition[1] === '|') {
+      var left = getSwitchableClauses(condition[2]);
+      if (!left) return;
+      var right = getSwitchableClauses(condition[3]);
+      if (!right) return;
+      return left.concat(right);
+    }
+  }
+
+  // convert blocks into a plain array, and single statements into
+  // single-element arrays
+  function ensureStatementList(ast) {
+    return ast[0] === 'block' ? ast[1] : [ast[1]];
+  }
+
+  traverseGenerated(ast, function pre(ast, type, stack) {
+    stack.push(ast);
+
+    if (type === 'if') {
+      var nextBlock = ast;
+      var discriminant;
+      var cases = [];
+      var clauseCount = 0;
+      do {
+        var clauses = getSwitchableClauses(nextBlock[1]);
+        if (!clauses) return;
+
+        if (!discriminant) {
+          discriminant = clauses[0][2];
+          if (!isAsmInt(discriminant)) return;
+        }
+
+        for (var i = 0, l = clauses.length; i < l; i ++)
+          if (!jsonCompare(discriminant, clauses[i][2])) return;
+
+        cases.push([clauses.map(function(c) { return c[3]; }),
+                    ensureStatementList(nextBlock[2])]);
+
+        clauseCount += clauses.length;
+
+        nextBlock = nextBlock[3];
+      }
+      while (nextBlock && nextBlock[0] === 'if');
+
+      // XXX how many clauses before the transformation is worth it?
+      if (clauseCount < 5) return;
+
+      // at this point, we know that the if statement can be replaced,
+      // so we can feel free to modify objects in the original ast.
+
+      // reformat our cases into a form understood by uglify
+      var uglifyFormattedCases = [];
+
+      for (var i = 0; i < cases.length; i ++) {
+        var clauses = cases[i][0];
+        var statements = cases[i][1];
+        // add in `break` statements at the end of each statement block.
+        // no point adding in break if we're already exiting, though.
+        // XXX this code assumes that there are no empty blocks in the original
+        // code. is this a correct assumption?
+        if (exitStatements.indexOf(statements[statements.length - 1][0]) === -1)
+          statements.push(BREAK);
+
+        for (var j = 0; j < clauses.length - 1; j ++) {
+          var clause = clauses[j];
+          uglifyFormattedCases.push([clause, []]);
+        }
+        uglifyFormattedCases.push([clauses[clauses.length - 1], statements]);
+      }
+
+      if (nextBlock)
+        uglifyFormattedCases.push([null, ensureStatementList(nextBlock)]); // default:
+
+      // actualTarget: the control flow block that unlabeled breaks in the
+      // generated code 'actually' point to, at least before we introduced our
+      // switch statement.
+      breakTargets.push({
+        actualTarget: breakTargets[breakTargets.length - 1].actualTarget
+      });
+
+      return ['switch', discriminant, uglifyFormattedCases];
+    } else if (type === 'break') {
+      var target = ast[1];
+      if (target === '!') return ['break', null]; // this was a break we generated when optimizing an if/else
+      if (target !== null) return; // already labeled; no need to change anything
+
+      var lastBreakTarget = breakTargets[breakTargets.length - 1];
+      var actualTarget = lastBreakTarget.actualTarget;
+      if (actualTarget === lastBreakTarget) return;
+
+      if (!actualTarget.label) {
+        // hack: generated code should only contain labels beginning with 'L',
+        // so beginning labels with 'S' should ensure no collisions
+        actualTarget.label = 'S' + labelCount++;
+        // we can't add new nodes higher up in the tree right now, so just
+        // annotate the unlabeled loops and transform them in a second pass
+        actualTarget.node.push({ type: 'newLabel', name: actualTarget.label });
+      }
+      return ['break', actualTarget.label];
+    } else if (breakTargetTypes.indexOf(type) >= 0) {
+      var last = stack[stack.length - 2];
+      var label = last[0] === 'label' ? last[1] : null;
+      if (label && !/L\d+/.test(label)) throw new Error('Unexpected label: ' + label);
+      var target = { node: ast, label: label };
+      target.actualTarget = target;
+      breakTargets.push(target);
+    }
+  }, function post(ast, type) {
+    if (breakTargetTypes.indexOf(type) >= 0) {
+      breakTargets.pop();
+    }
+  }, []);
+
+  traverseGenerated(ast, function pre(ast, type) {
+    var last = ast[ast.length - 1];
+    if (last && last.type === 'newLabel') {
+      ast.pop();
+      return ['label', last.name, ast];
+    }
+  });
 }
 
 function unVarify(vars, ret) { // transform var x=1, y=2 etc. into (x=1, y=2), i.e., the same assigns, but without a var definition
@@ -3759,6 +3903,7 @@ var passes = {
   optimizeShiftsAggressive: optimizeShiftsAggressive,
   hoistMultiples: hoistMultiples,
   loopOptimizer: loopOptimizer,
+  switchify: switchify,
   registerize: registerize,
   eliminate: eliminate,
   eliminateMemSafe: eliminateMemSafe,

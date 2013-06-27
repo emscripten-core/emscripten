@@ -471,6 +471,9 @@ Options that are modified or new in %s include:
                            to hide these warnings and acknowledge that the
                            explicit use of absolute paths is intentional.
 
+  --switchify              Convert if-else chains to switch statements if
+                           possible.
+
 The target file, if specified (-o <target>), defines what will
 be generated:
 
@@ -734,6 +737,7 @@ try:
   save_bc = False
   memory_init_file = False
   use_preload_cache = False
+  switchify = False
 
   if use_cxx:
     default_cxx_std = '-std=c++03' # Enforce a consistent C++ standard when compiling .cpp files, if user does not specify one on the cmdline.
@@ -897,6 +901,9 @@ try:
       memory_init_file = int(newargs[i+1])
       newargs[i] = ''
       newargs[i+1] = ''
+    elif newargs[i] == '--switchify':
+      switchify = True
+      newargs[i] = ''
     elif newargs[i].startswith(('-I', '-L')):
       path_name = newargs[i][2:]
       if not absolute_warning_shown and os.path.isabs(path_name):
@@ -1649,6 +1656,9 @@ try:
       js_optimizer_queue += ['closure']
 
     if not shared.Settings.SIDE_MODULE: js_optimizer_queue += ['last'] # side modules are not finalized until after relocation
+
+    if switchify and shared.Settings.ASM_JS:
+      js_optimizer_queue += ['switchify']
 
     flush_js_optimizer_queue()
 

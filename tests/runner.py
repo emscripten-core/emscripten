@@ -12232,6 +12232,8 @@ int main(int argc, char const *argv[])
          ['asm', 'outline']),
         (path_from_root('tools', 'test-js-optimizer-asm-outline3.js'), open(path_from_root('tools', 'test-js-optimizer-asm-outline3-output.js')).read(),
          ['asm', 'outline']),
+        (path_from_root('tools', 'test-js-optimizer-asm-switchify.js'), open(path_from_root('tools', 'test-js-optimizer-asm-switchify-output.js')).read(),
+         ['switchify'])
       ]:
         print input
         output = Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
