@@ -584,6 +584,8 @@ function simplifyExpressionsPre(ast) {
             node[3] = value[2];
           }
         }
+      } else if (type == 'sub' && node[1][0] == 'name' && /^FUNCTION_TABLE.*/.exec(node[1][1])) {
+        return null; // do not traverse subchildren here, we should not collapse 55 & 126. TODO: optimize this into a nonvirtual call (also because we lose some other opts here)!
       }
     });
 
