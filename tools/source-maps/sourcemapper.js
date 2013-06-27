@@ -110,7 +110,7 @@ function generateMap(mappings, sourceRoot, mapFileBaseName, generatedLineOffset)
       try {
         generator.setSourceContent(originalFileName, fs.readFileSync(rootedPath, 'utf-8'));
       } catch (e) {
-        console.warn("Unable to find original file for " + originalFileName +
+        console.warn("sourcemapper: Unable to find original file for " + originalFileName +
           " at " + rootedPath);
       }
     }
