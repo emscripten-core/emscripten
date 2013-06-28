@@ -10047,6 +10047,12 @@ class %s(T):
       for arg in self.emcc_args:
         if arg.startswith('-O'):
           Building.COMPILER_TEST_OPTS.append(arg) # so bitcode is optimized too, this is for cpp to ll
+        else:
+          try:
+            key, value = arg.split('=')
+            Settings[key] = value # forward  -s K=V
+          except:
+            pass
       return
 
     embetter = %d
