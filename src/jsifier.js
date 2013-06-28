@@ -285,42 +285,60 @@ function JSify(data, functionsOnly, givenFunctions) {
         index = makeGlobalUse(item.ident); // index !== null indicates we are indexing this
         allocator = 'ALLOC_NONE';
       }
-      if (item.external) {
-        if (Runtime.isNumberType(item.type) || isPointerType(item.type)) {
-          constant = zeros(Runtime.getNativeFieldSize(item.type));
-        } else {
-          constant = makeEmptyStruct(item.type);
+
+      if (isBSS(item)) {
+        var length = calcAllocatedSize(item.type);
+        length = Runtime.alignMemory(length);
+
+        // If using indexed globals, go ahead and early out (no need to explicitly
+        // initialize).
+        if (!NAMED_GLOBALS) {
+          return ret;
+        }
+        // If using named globals, we can at least shorten the call to allocate by
+        // passing an integer representing the size of memory to alloc instead of
+        // an array of 0s of size length.
+        else {
+          constant = length;
         }
       } else {
-        constant = parseConst(item.value, item.type, item.ident);
-      }
-      assert(typeof constant === 'object');//, [typeof constant, JSON.stringify(constant), item.external]);
-
-      // This is a flattened object. We need to find its idents, so they can be assigned to later
-      constant.forEach(function(value, i) {
-        if (needsPostSet(value)) { // ident, or expression containing an ident
-          ret.push({
-            intertype: 'GlobalVariablePostSet',
-            JS: makeSetValue(makeGlobalUse(item.ident), i, value, 'i32', false, true) + ';' // ignore=true, since e.g. rtti and statics cause lots of safe_heap errors
-          });
-          constant[i] = '0';
+        if (item.external) {
+          if (Runtime.isNumberType(item.type) || isPointerType(item.type)) {
+            constant = zeros(Runtime.getNativeFieldSize(item.type));
+          } else {
+            constant = makeEmptyStruct(item.type);
+          }
+        } else {
+          constant = parseConst(item.value, item.type, item.ident);
         }
-      });
+        assert(typeof constant === 'object');//, [typeof constant, JSON.stringify(constant), item.external]);
 
-      if (item.external) {
-        // External variables in shared libraries should not be declared as
-        // they would shadow similarly-named globals in the parent, so do nothing here.
-        if (BUILD_AS_SHARED_LIB) return ret;
-        // Library items need us to emit something, but everything else requires nothing.
-        if (!LibraryManager.library[item.ident.slice(1)]) return ret;
-      }
+        // This is a flattened object. We need to find its idents, so they can be assigned to later
+        constant.forEach(function(value, i) {
+          if (needsPostSet(value)) { // ident, or expression containing an ident
+            ret.push({
+              intertype: 'GlobalVariablePostSet',
+              JS: makeSetValue(makeGlobalUse(item.ident), i, value, 'i32', false, true) + ';' // ignore=true, since e.g. rtti and statics cause lots of safe_heap errors
+            });
+            constant[i] = '0';
+          }
+        });
 
-      // ensure alignment
-      constant = constant.concat(zeros(Runtime.alignMemory(constant.length) - constant.length));
+        if (item.external) {
+          // External variables in shared libraries should not be declared as
+          // they would shadow similarly-named globals in the parent, so do nothing here.
+          if (BUILD_AS_SHARED_LIB) return ret;
+          // Library items need us to emit something, but everything else requires nothing.
+          if (!LibraryManager.library[item.ident.slice(1)]) return ret;
+        }
 
-      // Special case: class vtables. We make sure they are null-terminated, to allow easy runtime operations
-      if (item.ident.substr(0, 5) == '__ZTV') {
-        constant = constant.concat(zeros(Runtime.alignMemory(QUANTUM_SIZE)));
+        // ensure alignment
+        constant = constant.concat(zeros(Runtime.alignMemory(constant.length) - constant.length));
+
+        // Special case: class vtables. We make sure they are null-terminated, to allow easy runtime operations
+        if (item.ident.substr(0, 5) == '__ZTV') {
+          constant = constant.concat(zeros(Runtime.alignMemory(QUANTUM_SIZE)));
+        }
       }
 
       // NOTE: This is the only place that could potentially create static
@@ -1568,7 +1586,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         print('STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n');
       }
       var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable);
-      print(generated.map(function(item) { return item.JS }).join('\n'));
+      print(generated.map(function(item) { return item.JS; }).join('\n'));
 
       if (phase == 'pre') {
         if (memoryInitialization.length > 0) {
