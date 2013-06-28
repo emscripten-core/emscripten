@@ -11,6 +11,18 @@ function asmModule(stdlib) {
       return 1;
     }
 
+    // this should get switchified. Worth testing as a separate case to make
+    // sure we correctly handle switch statements that aren't nested in loops.
+    if ((a | 0) == 1) {
+      return 1;
+    }
+    else if ((a | 0) == 2) {
+      return 2;
+    }
+    else {
+      return 3;
+    }
+
     // this for loop is already labeled; don't generate another label for it
     L0:
     for (;;) {

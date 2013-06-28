@@ -1522,7 +1522,7 @@ function switchify(ast) {
   var BREAK = ['break', '!']; // '!' used as a marker for what will be unlabeled breaks
   var exitStatements = ['break', 'continue', 'return', 'throw']
   var breakTargetTypes = ['for', 'do', 'while', 'switch'];
-  var breakTargets = [];
+  var breakTargets = [{ actualTarget: null }]; // sentinel value
 
   // tries to match a pattern of (ident1 == num1 | ident2 == num2 | ...).
   // returns undefined on failure; otherwise returns an array containing each
