@@ -8368,6 +8368,8 @@ def process(filename):
                    force_c=True)
 
     def test_zlib(self):
+      if not Settings.USE_TYPED_ARRAYS == 2: return self.skip('works in general, but cached build will be optimized and fail, so disable this')
+
       if Settings.ASM_JS:
         self.banned_js_engines = [NODE_JS] # TODO investigate
 
