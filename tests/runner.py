@@ -10612,9 +10612,10 @@ f.close()
     def test_static_link(self):
       print
 
-      def test(name, main, side, expected, first=True):
+      def test(name, header, main, side, expected, first=True):
         print name
         #t = main ; main = side ; side = t
+        if header: open(os.path.join(self.get_dir(), 'header.h'), 'w').write(header)
         open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(main)
         open(os.path.join(self.get_dir(), 'side.cpp'), 'w').write(side)
         Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'side.cpp'), '-o', 'side.js', '-s', 'SIDE_MODULE=1', '-O2']).communicate()
@@ -10625,10 +10626,10 @@ f.close()
         out = run_js('together.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True)
         self.assertContained(expected, out)
         self.validate_asmjs(out)
-        if first: test(name + ' (reverse)', side, main, expected, False) # test reverse order
+        if first: test(name + ' (reverse)', header, side, main, expected, False) # test reverse order
 
       # test a simple call from one module to another. only one has a string (and constant memory initialization for it)
-      test('basics', '''
+      test('basics', '', '''
         #include <stdio.h>
         extern int sidey();
         int main() {
@@ -10640,7 +10641,7 @@ f.close()
       ''', 'other says 11.')
 
       # memory initialization in both
-      test('multiple memory inits', r'''
+      test('multiple memory inits', '', r'''
         #include <stdio.h>
         extern void sidey();
         int main() {
