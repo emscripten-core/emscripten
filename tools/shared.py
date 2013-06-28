@@ -1,6 +1,7 @@
 import shutil, time, os, sys, json, tempfile, copy, shlex, atexit, subprocess, hashlib, cPickle, re
 from subprocess import Popen, PIPE, STDOUT
 from tempfile import mkstemp
+from distutils.spawn import find_executable
 import jsrun, cache, tempfiles
 from response_file import create_response_file
 import logging, platform
@@ -204,25 +205,12 @@ else:
     config_file = '\n'.join(config_file)
     # autodetect some default paths
     config_file = config_file.replace('{{{ EMSCRIPTEN_ROOT }}}', __rootpath__)
-    llvm_root = '/usr/bin'
-    try:
-      llvm_root = os.path.dirname(Popen(['which', 'llvm-dis'], stdout=PIPE).communicate()[0].replace('\n', ''))
-    except:
-      pass
+    llvm_root = find_executable('llvm-dis') or '/usr/bin'
     config_file = config_file.replace('{{{ LLVM_ROOT }}}', llvm_root)
-    node = 'node'
-    try:
-      node = Popen(['which', 'node'], stdout=PIPE).communicate()[0].replace('\n', '') or \
-             Popen(['which', 'nodejs'], stdout=PIPE).communicate()[0].replace('\n', '') or node
-    except:
-      pass
+    node = find_executable('node') or find_executable('nodejs') or 'node'
     config_file = config_file.replace('{{{ NODE }}}', node)
-    python = sys.executable or 'python'
-    try:
-      python = Popen(['which', 'python2'], stdout=PIPE).communicate()[0].replace('\n', '') or \
-               Popen(['which', 'python'], stdout=PIPE).communicate()[0].replace('\n', '') or python
-    except:
-      pass
+    python = find_executable('python2') or find_executable('python') or \
+        sys.executable or 'python'
     config_file = config_file.replace('{{{ PYTHON }}}', python)    
 
     # write
