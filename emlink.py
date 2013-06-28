@@ -10,6 +10,18 @@ Usage: emlink.py [main module] [side module] [output name]
 
 Note that the output file can be used as a main module, so you can link multiple
 side modules into a main module that way.
+
+Limitations:
+
+ * Modules cannot be minified (but can be minified after linking)
+ * We duplicate code in some cases, like overlapping names in different modules, and function aliases
+ * We do not handle sharing of global constants across modules, only code (you can make a function to
+   access a constant, if you need that)
+
+Overall, this linking approach should be fast to perform, but generate less-optimal results than
+to link all the bitcode together and build to JS as a single project. Final builds should be
+done in that approach, but during development static linking can avoid recompiling your entire
+project all the time.
 '''
 
 import os, subprocess, sys, re
