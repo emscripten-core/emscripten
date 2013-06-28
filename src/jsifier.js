@@ -264,9 +264,9 @@ function JSify(data, functionsOnly, givenFunctions) {
       assert(!item.lines); // FIXME remove this, after we are sure it isn't needed
       var ret = [item];
       if (item.ident == '_llvm_global_ctors') {
-        item.JS = '\n__ATINIT__ = __ATINIT__.concat([\n' +
-                    item.ctors.map(function(ctor) { return '  { func: function() { ' + ctor + '() } }' }).join(',\n') +
-                  '\n]);\n';
+        item.JS = '\n/* global initializers */ __ATINIT__.push(' +
+                    item.ctors.map(function(ctor) { return '{ func: function() { ' + ctor + '() } }' }).join(',') +
+                  ');\n';
         return ret;
       }
 
