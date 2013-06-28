@@ -7224,6 +7224,23 @@ LibraryManager.library = {
     return 1;
   },
 
+  // netinet/in.h
+
+  _in6addr_any:
+    'allocate([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], "i8", ALLOC_STATIC)',
+  _in6addr_loopback:
+    'allocate([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], "i8", ALLOC_STATIC)',
+  _in6addr_linklocal_allnodes:
+    'allocate([255,2,0,0,0,0,0,0,0,0,0,0,0,0,0,1], "i8", ALLOC_STATIC)',
+  _in6addr_linklocal_allrouters:
+    'allocate([255,2,0,0,0,0,0,0,0,0,0,0,0,0,0,2], "i8", ALLOC_STATIC)',
+  _in6addr_interfacelocal_allnodes:
+    'allocate([255,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1], "i8", ALLOC_STATIC)',
+  _in6addr_interfacelocal_allrouters:
+    'allocate([255,1,0,0,0,0,0,0,0,0,0,0,0,0,0,2], "i8", ALLOC_STATIC)',
+  _in6addr_sitelocal_allrouters:
+    'allocate([255,5,0,0,0,0,0,0,0,0,0,0,0,0,0,2], "i8", ALLOC_STATIC)',
+
   // ==========================================================================
   // netdb.h
   // ==========================================================================
