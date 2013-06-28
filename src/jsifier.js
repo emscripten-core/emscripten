@@ -390,6 +390,11 @@ function JSify(data, functionsOnly, givenFunctions) {
         dependencies: set([value]),
         JS: item.ident + ' = ' + value + ';' + fix
       });
+      if ((MAIN_MODULE || SIDE_MODULE) && isFunctionType(item.type)) {
+        var target = item.value.ident;
+        if (!Functions.aliases[target]) Functions.aliases[target] = [];
+        Functions.aliases[target].push(item.ident);
+      }
       return ret;
     }
   });
@@ -847,6 +852,19 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
 
       func.JS = func.JS.replace(/\n *;/g, '\n'); // remove unneeded lines
+
+      if (MAIN_MODULE || SIDE_MODULE) {
+        // Clone the function for each of its aliases. We do not know which name it will be used by in another module,
+        // and we do not have a heavyweight metadata system to resolve aliases during linking
+        var aliases = Functions.aliases[func.ident];
+        if (aliases) {
+          var body = func.JS.substr(func.JS.indexOf('('));
+          aliases.forEach(function(alias) {
+            func.JS += '\n' + 'function ' + alias + body;
+          });
+        }
+      }
+
       return func;
     }
   });

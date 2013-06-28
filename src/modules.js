@@ -245,6 +245,8 @@ var Functions = {
 
   blockAddresses: {}, // maps functions to a map of block labels to label ids
 
+  aliases: {}, // in shared modules (MAIN_MODULE or SHARED_MODULE), a list of aliases for functions that have them
+
   getSignature: function(returnType, argTypes, hasVarArgs) {
     var sig = returnType == 'void' ? 'v' : (isIntImplemented(returnType) ? 'i' : 'f');
     for (var i = 0; i < argTypes.length; i++) {
