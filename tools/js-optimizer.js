@@ -188,12 +188,12 @@ function traverseChildren(node, traverse, pre, post, stack) {
 //     was stopped, true. Otherwise undefined.
 function traverse(node, pre, post, stack) {
   var type = node[0], result, len;
-  var relevant = typeof node[0] === 'string';
+  var relevant = typeof type === 'string';
   if (relevant) {
     if (stack) len = stack.length;
     var result = pre(node, type, stack);
     if (result === true) return true;
-    if (Array.isArray(result)) node = result; // Continue processing on this node
+    if (result && result !== null) node = result; // Continue processing on this node
     if (stack && len === stack.length) stack.push(0);
   }
   if (result !== null) {
