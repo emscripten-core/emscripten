@@ -55,6 +55,15 @@ class AsmModule():
       self.mem_init_size = 0
     #print >> sys.stderr, self.mem_init_js
 
+    # global initializers
+    global_inits = re.search(shared.JS.global_initializers_pattern, self.pre_js)
+    if global_inits:
+      self.global_inits_js = global_inits.group(0)
+      self.global_inits = map(lambda init: init.split('{')[2][1:].split('(')[0], global_inits.groups(0)[0].split(','))
+    else:
+      self.global_inits_js = ''
+      self.global_inits = []
+
     # imports
     self.imports_js = self.js[self.start_asm:self.start_funcs]
     self.imports = [m.group(0) for m in js_optimizer.import_sig.finditer(self.imports_js)]
@@ -87,8 +96,6 @@ class AsmModule():
       main.pre_js = re.sub(shared.JS.memory_initializer_pattern if main.mem_init_js else shared.JS.no_memory_initializer_pattern, full_allocation, main.pre_js, count=1)
       main.pre_js = re.sub('STATICTOP = STATIC_BASE \+ (\d+);', 'STATICTOP = STATIC_BASE + %d' % (main.mem_init_size + side.mem_init_size), main.pre_js, count=1)
 
-    # global initializers TODO
-
     # imports
     main_imports = set(main.imports)
     new_imports = [imp for imp in self.imports if imp not in main_imports]
@@ -112,6 +119,18 @@ class AsmModule():
     relocated_funcs = AsmModule(temp)
     shared.try_delete(temp)
     main.extra_funcs_js = relocated_funcs.funcs_js.replace(js_optimizer.start_funcs_marker, '\n')
+
+    # global initializers
+    if self.global_inits:
+      # TODO: take into account function name replacements
+      all_global_inits = map(lambda init: '{ func: function() { %s() } }' % init, main.global_inits + self.global_inits)
+      all_global_inits_js = '/* global initializers */ __ATINIT__.push(' + ','.join(all_global_inits) + ');'
+      if main.global_inits:
+        target = main.global_inits_js
+      else:
+        target = '// === Body ===\n'
+        all_global_inits_js = target + all_global_inits_js
+      main.pre_js = main.pre_js.replace(target, all_global_inits_js)
 
     # tables TODO
 

@@ -1354,6 +1354,8 @@ class JS:
   memory_initializer_pattern = '/\* memory initializer \*/ allocate\(([\d,\.concat\(\)\[\]\\n ]+)"i8", ALLOC_NONE, Runtime\.GLOBAL_BASE\)'
   no_memory_initializer_pattern = '/\* no memory initializer \*/'
 
+  global_initializers_pattern = '/\* global initializers \*/ __ATINIT__.push\((.+)\);'
+
   @staticmethod
   def to_nice_ident(ident): # limited version of the JS function toNiceIdent
     return ident.replace('%', '$').replace('@', '_')
