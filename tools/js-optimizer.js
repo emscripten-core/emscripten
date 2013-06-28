@@ -1577,7 +1577,7 @@ function switchify(ast) {
       while (nextBlock && nextBlock[0] === 'if');
 
       // XXX how many clauses before the transformation is worth it?
-      if (clauseCount < 5) return;
+      if (clauseCount < 2) return;
 
       // at this point, we know that the if statement can be replaced,
       // so we can feel free to modify objects in the original ast.
