@@ -288,13 +288,14 @@ function JSify(data, functionsOnly, givenFunctions) {
         var length = calcAllocatedSize(item.type);
         length = Runtime.alignMemory(length);
 
-        // If not using indexed globals, go ahead and early out (it doesn't need to
-        // be explicitly allocated).
+        // If using indexed globals, go ahead and early out (no need to explicitly
+        // initialize).
         if (!NAMED_GLOBALS) {
           return ret;
         }
-        // If using named globals, shorten the call to allocate() by just passing an
-        // integer representing the length of the chunk of memory we need to alloc.
+        // If using named globals, we can at least shorten the call to allocate by
+        // passing an integer representing the size of memory to alloc instead of
+        // an array of 0s of size length.
         else {
           constant = length;
         }
