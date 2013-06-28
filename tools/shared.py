@@ -1100,7 +1100,9 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
   @staticmethod
   def get_safe_internalize():
-    exports = ','.join(map(lambda exp: exp[1:], expand_response(Settings.EXPORTED_FUNCTIONS)))
+    exps = expand_response(Settings.EXPORTED_FUNCTIONS)
+    if '_malloc' not in exps: exps.append('_malloc') # needed internally, even if user did not add to EXPORTED_FUNCTIONS
+    exports = ','.join(map(lambda exp: exp[1:], exps))
     # internalize carefully, llvm 3.2 will remove even main if not told not to
     return ['-internalize', '-internalize-public-api-list=' + exports]
 
