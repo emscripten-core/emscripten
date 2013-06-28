@@ -497,14 +497,20 @@ function makeGlobalUse(ident) {
 }
 
 function sortGlobals(globals) {
-  var ks = keys(globals);
-  ks.sort();
-  var inv = invertArray(ks);
   return values(globals).sort(function(a, b) {
-    // sort globals based on if they need to be explicitly initialized or not (moving
-    // values that don't need to be to the end of the array). if equal, sort by name.
-    return (Number(isBSS(a)) - Number(isBSS(b))) ||
-      (inv[b.ident] - inv[a.ident]);
+    // sort globals based on if they need to be explicitly initialized or not, moving
+    // values that don't need to be to the end of the array.
+    var d = Number(isBSS(a)) - Number(isBSS(b));
+    if (d) {
+      return d;
+    }
+    // else, sort by name.
+    else if (a.ident < b.ident) {
+      return -1;
+    } else if (a.ident > b.ident) {
+      return 1;
+    }
+    return 0;
   });
 }
 
