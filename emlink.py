@@ -122,8 +122,8 @@ class AsmModule():
 
     # global initializers
     if self.global_inits:
-      # TODO: take into account function name replacements
-      all_global_inits = map(lambda init: '{ func: function() { %s() } }' % init, main.global_inits + self.global_inits)
+      my_global_inits = map(lambda init: replacements[init] if init in replacements else init, self.global_inits)
+      all_global_inits = map(lambda init: '{ func: function() { %s() } }' % init, main.global_inits + my_global_inits)
       all_global_inits_js = '/* global initializers */ __ATINIT__.push(' + ','.join(all_global_inits) + ');'
       if main.global_inits:
         target = main.global_inits_js
