@@ -1639,7 +1639,7 @@ try:
         match = re.match('.*?<script[^>]*>{{{ SCRIPT_CODE }}}</script>', shell,
             re.DOTALL)
         if match is None:
-          raise RuntimeError('Could not find script insertion point')
+          raise RuntimeError('''Could not find script insertion point - make sure you have   <script type='text/javascript'>{{{ SCRIPT_CODE }}}</script>   in your HTML file (with no newlines)''')
         generate_source_map(target, match.group().count('\n'))
       html.write(shell.replace('{{{ SCRIPT_CODE }}}', open(final).read()))
     else:
