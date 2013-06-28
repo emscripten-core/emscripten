@@ -6,6 +6,14 @@ function asmModule(stdlib) {
   if ((a | 0) == 1) {
    return 1;
   }
+  switch (a | 0) {
+  case 1:
+   return 1;
+  case 2:
+   return 2;
+  default:
+   return 3;
+  }
   L0 : for (;;) {
    switch (a | 0) {
    case 1:
