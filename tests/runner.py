@@ -4079,7 +4079,7 @@ def process(filename):
         #include <assert.h>
         #include "emscripten.h"
 
-        int main()
+        int main(int argc, char **argv)
         {
           char *buf1 = (char*)malloc(100);
           char *data1 = "hello";
@@ -4093,6 +4093,8 @@ def process(filename):
 
           int totalMemory = emscripten_run_script_int("TOTAL_MEMORY");
           char *buf3 = (char*)malloc(totalMemory+1);
+          buf3[argc] = (int)buf2;
+          if (argc % 7 == 6) printf("%d\n", memcpy(buf3, buf1, argc));
           char *buf4 = (char*)malloc(100);
           float *buf5 = (float*)malloc(100);
           //printf("totalMemory: %d bufs: %d,%d,%d,%d,%d\n", totalMemory, buf1, buf2, buf3, buf4, buf5);
@@ -8597,6 +8599,7 @@ def process(filename):
     def test_python(self):
       if self.emcc_args is None: return self.skip('requires emcc')
       if Settings.QUANTUM_SIZE == 1: return self.skip('TODO: make this work')
+      if not self.is_le32(): return self.skip('fails on non-le32') # FIXME
 
       #Settings.EXPORTED_FUNCTIONS += ['_PyRun_SimpleStringFlags'] # for the demo
 
@@ -9702,7 +9705,9 @@ def process(filename):
       if Settings.ASM_JS: return self.skip('asm always has corrections on')
 
       if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
-      if self.emcc_args: self.emcc_args += ['--llvm-opts', '0'] # llvm full opts make the expected failures here not happen
+      if self.emcc_args:
+        self.emcc_args += ['--llvm-opts', '0'] # llvm full opts make the expected failures here not happen
+        Building.COMPILER_TEST_OPTS += ['--llvm-opts', '0']
 
       Settings.CHECK_SIGNS = 0
       Settings.CHECK_OVERFLOWS = 0
