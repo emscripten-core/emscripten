@@ -135,7 +135,14 @@ class AsmModule():
     # tables TODO
 
     # exports
-    exports = main.exports.union(self.exports)
+    def rep_exp(export):
+      key, value = export.split(':')
+      if key in replacements:
+        repped = replacements[key]
+        return repped + ': ' + repped
+      return export
+    my_exports = map(rep_exp, self.exports)
+    exports = main.exports.union(my_exports)
     main.exports_js = 'return {' + ','.join(list(exports)) + '};\n})\n'
 
     # post
