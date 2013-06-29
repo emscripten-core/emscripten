@@ -248,7 +248,7 @@ class AsmModule():
     ret = main + side
     size = 2
     while size < len(ret): size *= 2
-    ret = ret + [0]*(size - len(ret))
+    ret = ret + ['0']*(size - len(ret))
     assert len(ret) == size
     f_sizes[table] = size
     return '[' + ','.join(ret) + ']'
