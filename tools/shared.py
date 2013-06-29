@@ -1361,6 +1361,20 @@ class JS:
     return ident.replace('%', '$').replace('@', '_')
 
   @staticmethod
+  def make_invoke(sig, named=True):
+    args = ','.join(['a' + str(i) for i in range(1, len(sig))])
+    args = 'index' + (',' if args else '') + args
+    # C++ exceptions are numbers, and longjmp is a string 'longjmp'
+    return '''function%s(%s) {
+  try {
+    %sModule["dynCall_%s"](%s);
+  } catch(e) {
+    if (typeof e !== 'number' && e !== 'longjmp') throw e;
+    asm["setThrew"](1, 0);
+  }
+}''' % ((' invoke_' + sig) if named else '', args, 'return ' if sig[0] != 'v' else '', sig, args)
+
+  @staticmethod
   def align(x, by):
     while x % by != 0: x += 1
     return x

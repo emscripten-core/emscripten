@@ -11,6 +11,7 @@ headers, for the libc implementation in JS).
 
 import os, sys, json, optparse, subprocess, re, time, multiprocessing, functools
 
+from tools import shared
 from tools import jsrun, cache as cache_module, tempfiles
 from tools.response_file import read_response_file
 
@@ -25,7 +26,6 @@ def get_configuration():
   if hasattr(get_configuration, 'configuration'):
     return get_configuration.configuration
 
-  from tools import shared
   configuration = shared.Configuration(environ=os.environ)
   get_configuration.configuration = configuration
   return configuration
@@ -453,19 +453,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   }
 
 ''' % (sig, i, args, arg_coercions, jsret))
-      args = ','.join(['a' + str(i) for i in range(1, len(sig))])
-      args = 'index' + (',' if args else '') + args
-      # C++ exceptions are numbers, and longjmp is a string 'longjmp'
-      asm_setup += '''
-function invoke_%s(%s) {
-  try {
-    %sModule["dynCall_%s"](%s);
-  } catch(e) {
-    if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
-  }
-}
-''' % (sig, args, 'return ' if sig[0] != 'v' else '', sig, args)
+      asm_setup += '\n' + shared.JS.make_invoke(sig) + '\n'
       basic_funcs.append('invoke_%s' % sig)
 
     # calculate exports

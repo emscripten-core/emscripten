@@ -17,6 +17,13 @@ Limitations:
  * We duplicate code in some cases, like overlapping names in different modules, and function aliases
  * We do not handle sharing of global constants across modules, only code (you can make a function to
    access a constant, if you need that)
+ * We do not link in compiled libraries (libc, libc++, etc.) in side modules. If the main module
+   does not automatically link in the ones that side modules will need, you should compile the
+   main module with
+
+    EMCC_FORCE_STDLIBS=1 emcc ..
+
+   which will link in all the C libraries.
 
 Overall, this linking approach should be fast to perform, but generate less-optimal results than
 to link all the bitcode together and build to JS as a single project. Final builds should be
@@ -96,6 +103,7 @@ class AsmModule():
 
     # post
     self.post_js = self.js[self.end_asm:]
+    self.sendings = set([sending.strip() for sending in self.post_js[self.post_js.find('}, { ')+5:self.post_js.find(' }, buffer);')].split(',')])
     self.module_defs = set(re.findall('var [\w\d_$]+ = Module\["[\w\d_$]+"\] = asm\["[\w\d_$]+"\];\n', self.post_js))
 
   def relocate_into(self, main):
@@ -122,6 +130,18 @@ class AsmModule():
         rep += '_'
         replacements[func] = rep
     #print >> sys.stderr, 'replacements:', replacements
+
+    # sendings: add invokes for new tables
+    new_sendings = []
+    for table in self.tables:
+      if table not in main.tables:
+        sig = table[table.rfind('_')+1:]
+        new_sendings.append('"invoke_%s": %s' % (sig, shared.JS.make_invoke(sig, named=False)))
+    if new_sendings:
+      sendings_js = ', '.join(main.sendings.union(new_sendings))
+      sendings_start = main.post_js.find('}, { ')+5
+      sendings_end = main.post_js.find(' }, buffer);')
+      main.post_js = main.post_js[:sendings_start] + sendings_js + main.post_js[sendings_end:]
 
     # tables
     f_bases = {}
