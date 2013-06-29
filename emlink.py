@@ -164,14 +164,45 @@ class AsmModule():
     main.extra_funcs_js = relocated_funcs.funcs_js.replace(js_optimizer.start_funcs_marker, '\n')
 
     # update function table uses
+    ft_marker = 'FUNCTION_TABLE_'
+
     def update_fts(what):
-      def fix(m):
-        table = 'FUNCTION_TABLE_' + m.group(1)
-        if table not in f_sizes: return m.group(0) # table was not modified
-        contents = m.group(2)
-        assert '[' not in contents # TODO handle nesting
-        return '%s[%s&%d]' % (table, contents, f_sizes[table]-1)
-      return re.sub('FUNCTION_TABLE_(\w+)\[(.*)& ?(\d+)\]', fix, what)
+      updates = []
+      i = 1 # avoid seeing marker in recursion
+      while 1:
+        i = what.find(ft_marker, i)
+        if i < 0: break;
+        start = i
+        end = what.find('[', start)
+        table = what[i:end]
+        if table not in f_sizes:
+          # table was not modified
+          i += len(ft_marker)
+          continue
+        nesting = 1
+        while nesting > 0:
+          next = what.find(']', end+1)
+          nesting -= 1
+          nesting += what.count('[', end+1, next)
+          end = next
+        assert end > 0
+        mask = what.rfind('&', start, end)
+        assert mask > 0 and end - mask <= 13
+        fixed = update_fts(what[start:mask+1] + str(f_sizes[table]-1) + ']')
+        updates.append((start, end, fixed))
+        i = end # additional function table uses were done by recursion
+      # apply updates
+      if len(updates) == 0: return what
+      parts = []
+      so_far = 0
+      for i in range(len(updates)):
+        start, end, fixed = updates[i]
+        parts.append(what[so_far:start])
+        parts.append(fixed)
+        so_far = end+1
+      parts.append(what[so_far:])
+      return ''.join(parts)
+
     main.funcs_js = update_fts(main.funcs_js)
     main.extra_funcs_js = update_fts(main.extra_funcs_js)
 
