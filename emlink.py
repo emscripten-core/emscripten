@@ -45,6 +45,8 @@ print 'Main module:', main
 print 'Side module:', side
 print 'Output:', out
 
+shared.try_delete(out)
+
 class AsmModule():
   def __init__(self, filename):
     self.filename = filename
@@ -165,6 +167,7 @@ class AsmModule():
     def update_fts(what):
       def fix(m):
         table = 'FUNCTION_TABLE_' + m.group(1)
+        if table not in f_sizes: return m.group(0) # table was not modified
         contents = m.group(2)
         assert '[' not in contents # TODO handle nesting
         return '%s[%s&%d]' % (table, contents, f_sizes[table]-1)

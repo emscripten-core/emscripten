@@ -10610,8 +10610,6 @@ f.close()
       assert not os.path.exists('a.out') and not os.path.exists('a.exe'), 'Must not leave unneeded linker stubs'
 
     def test_static_link(self):
-      print
-
       def test(name, header, main, side, expected, first=True):
         print name
         #t = main ; main = side ; side = t
@@ -10684,8 +10682,6 @@ f.close()
         #include "header.h"
         static Class c("side");
       ''', ['new main\nnew side\n', 'new side\nnew main\n'])
-
-      return # TODO the rest
 
       # Class code used across modules
       test('codecall', r'''
