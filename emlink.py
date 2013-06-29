@@ -125,10 +125,12 @@ class AsmModule():
 
     # tables
     f_bases = {}
+    f_sizes = {}
     for table, data in self.tables.iteritems():
-      main.tables[table] = self.merge_tables(table, main.tables.get(table), data, replacements, f_bases)
+      main.tables[table] = self.merge_tables(table, main.tables.get(table), data, replacements, f_bases, f_sizes)
     main.combine_tables()
 
+    # relocate
     temp = shared.Building.js_optimizer(self.filename, ['asm', 'relocate'], extra_info={
       'replacements': replacements,
       'fBases': f_bases,
@@ -138,6 +140,15 @@ class AsmModule():
     relocated_funcs = AsmModule(temp)
     shared.try_delete(temp)
     main.extra_funcs_js = relocated_funcs.funcs_js.replace(js_optimizer.start_funcs_marker, '\n')
+
+    # update function table uses
+    def update_fts(what):
+      def fix(m):
+        table = 'FUNCTION_TABLE_' + m.group(1)
+        return '%s[%s& %d]' % (table, m.group(2), f_sizes[table]-1)
+      return re.sub('FUNCTION_TABLE_(\w+)\[(.*)& (\d+)\]', fix, what) # XXX handle nested [, ]
+    main.funcs_js = update_fts(main.funcs_js)
+    main.extra_funcs_js = update_fts(main.extra_funcs_js)
 
     # global initializers
     if self.global_inits:
@@ -198,11 +209,12 @@ class AsmModule():
       tables[name] = data
     return tables
 
-  def merge_tables(self, table, main, side, replacements, f_bases):
+  def merge_tables(self, table, main, side, replacements, f_bases, f_sizes):
     side = side[1:-1].split(',')
     side = map(lambda f: replacements[f] if f in replacements else f, side)
     if not main:
       f_bases[table] = 0
+      f_sizes[table] = len(side)
       return '[' + ','.join(side) + ']'
     main = main[1:-1].split(',')
     # TODO: handle non-aliasing case too
@@ -213,6 +225,7 @@ class AsmModule():
     while size < len(ret): size *= 2
     ret = ret + [0]*(size - len(ret))
     assert len(ret) == size
+    f_sizes[table] = size
     return '[' + ','.join(ret) + ']'
 
   def combine_tables(self):
