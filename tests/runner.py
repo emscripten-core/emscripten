@@ -10700,6 +10700,24 @@ f.close()
         Class::Class(const char *name) { printf("new %s\n", name); }
       ''', ['new main\n'])
 
+      return # TODO
+
+      # C library usage
+      test('clibs', r'''
+        #include <iostream>
+        #include <string>
+        std::string side();
+      ''', r'''
+        #include "header.h"
+        int main() {
+          std::cout << "hello from main " << side() << std::endl;
+          return 0;
+        }
+      ''', r'''
+        #include "header.h"
+        std::string side() { return "and hello from side"; }
+      ''', ['hello from main and hello from side\n'])
+
     def test_symlink(self):
       if os.name == 'nt':
         return self.skip('Windows FS does not need to be tested for symlinks support, since it does not have them.')
