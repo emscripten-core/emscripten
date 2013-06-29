@@ -145,8 +145,10 @@ class AsmModule():
     def update_fts(what):
       def fix(m):
         table = 'FUNCTION_TABLE_' + m.group(1)
-        return '%s[%s& %d]' % (table, m.group(2), f_sizes[table]-1)
-      return re.sub('FUNCTION_TABLE_(\w+)\[(.*)& (\d+)\]', fix, what) # XXX handle nested [, ]
+        contents = m.group(2)
+        assert '[' not in contents # TODO handle nesting
+        return '%s[%s&%d]' % (table, contents, f_sizes[table]-1)
+      return re.sub('FUNCTION_TABLE_(\w+)\[(.*)& ?(\d+)\]', fix, what)
     main.funcs_js = update_fts(main.funcs_js)
     main.extra_funcs_js = update_fts(main.extra_funcs_js)
 
