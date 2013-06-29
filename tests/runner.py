@@ -10685,6 +10685,25 @@ f.close()
         static Class c("side");
       ''', ['new main\nnew side\n', 'new side\nnew main\n'])
 
+      return # TODO the rest
+
+      # Class code used across modules
+      test('codecall', r'''
+        #include <stdio.h>
+        struct Class {
+          Class(const char *name);
+        };
+      ''', r'''
+        #include "header.h"
+        int main() {
+          Class c("main");
+          return 0;
+        }
+      ''', r'''
+        #include "header.h"
+        Class::Class(const char *name) { printf("new %s\n", name); }
+      ''', ['new main\n'])
+
     def test_symlink(self):
       if os.name == 'nt':
         return self.skip('Windows FS does not need to be tested for symlinks support, since it does not have them.')
