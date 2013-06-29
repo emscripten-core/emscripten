@@ -1151,7 +1151,9 @@ try:
   extra_files_to_link = []
 
   if not LEAVE_INPUTS_RAW and not AUTODEBUG and \
-     not shared.Settings.BUILD_AS_SHARED_LIB == 2: # shared lib 2 use the library in the parent
+     not shared.Settings.BUILD_AS_SHARED_LIB == 2 and \
+     not shared.Settings.SIDE_MODULE == 2: # shared libraries/side modules link no C libraries, need them in parent
+
     # Check if we need to include some libraries that we compile. (We implement libc ourselves in js, but
     # compile a malloc implementation and stdlibc++.)
 
