@@ -118,11 +118,6 @@ class AsmModule():
       main.pre_js = re.sub(shared.JS.memory_initializer_pattern if main.mem_init_js else shared.JS.no_memory_initializer_pattern, full_allocation, main.pre_js, count=1)
       main.pre_js = re.sub('STATICTOP = STATIC_BASE \+ (\d+);', 'STATICTOP = STATIC_BASE + %d' % (main.mem_init_size + side.mem_init_size), main.pre_js, count=1)
 
-    # imports
-    main_imports = set(main.imports)
-    new_imports = [imp for imp in self.imports if imp not in main_imports]
-    main.imports_js += '\n'.join(new_imports)
-
     # Find function name replacements TODO: do not rename duplicate names with duplicate contents, just merge them
     main_funcs = set(main.funcs)
     replacements = {}
@@ -132,6 +127,12 @@ class AsmModule():
         rep += '_'
         replacements[func] = rep
     #print >> sys.stderr, 'replacements:', replacements
+
+    # imports
+    main_imports = set(main.imports)
+    new_imports = [imp for imp in self.imports if imp not in main_imports and
+                                                  imp.split('var ')[1].split('=')[0] not in main_funcs] # a previous import may now be implemented # TODO: reverse
+    main.imports_js += '\n'.join(new_imports)
 
     # sendings: add invokes for new tables
     new_sendings = []
