@@ -91,8 +91,8 @@ class AsmModule():
     ret = post_js.find('return')
     self.tables_js = post_js[:ret]
     self.exports_js = post_js[ret:]
+    self.tables = self.parse_tables(self.tables_js)
     self.exports = set([export.strip() for export in self.exports_js[self.exports_js.find('{')+1:self.exports_js.find('}')].split(',')])
-    #print >> sys.stderr, self.exports
 
     # post
     self.post_js = self.js[self.end_asm:]
@@ -121,10 +121,17 @@ class AsmModule():
       while rep in main_funcs:
         rep += '_'
         replacements[func] = rep
+    #print >> sys.stderr, 'replacements:', replacements
+
+    # tables
+    f_bases = {}
+    for table, data in self.tables.iteritems():
+      main.tables[table] = self.merge_tables(table, main.tables.get(table), data, replacements, f_bases)
+    main.combine_tables()
 
     temp = shared.Building.js_optimizer(self.filename, ['asm', 'relocate'], extra_info={
       'replacements': replacements,
-      'fBase': 0,
+      'fBases': f_bases,
       'hBase': main.mem_init_size
     })
     #print >> sys.stderr, 'relocated side into', temp
@@ -143,8 +150,6 @@ class AsmModule():
         target = '// === Body ===\n'
         all_global_inits_js = target + all_global_inits_js
       main.pre_js = main.pre_js.replace(target, all_global_inits_js)
-
-    # tables TODO
 
     # exports
     def rep_exp(export):
@@ -180,6 +185,40 @@ class AsmModule():
     f.write(self.exports_js)
     f.write(self.post_js)
     f.close()
+
+  # Utilities
+
+  def parse_tables(self, js):
+    tables = {}
+    parts = js.split(';')
+    for part in parts:
+      if '=' not in part: continue
+      part = part.split('var ')[1]
+      name, data = part.split(' = ')
+      tables[name] = data
+    return tables
+
+  def merge_tables(self, table, main, side, replacements, f_bases):
+    side = side[1:-1].split(',')
+    side = map(lambda f: replacements[f] if f in replacements else f, side)
+    if not main:
+      f_bases[table] = 0
+      return '[' + ','.join(side) + ']'
+    main = main[1:-1].split(',')
+    # TODO: handle non-aliasing case too
+    assert len(main) % 2 == 0
+    f_bases[table] = len(main)
+    ret = main + side
+    size = 2
+    while size < len(ret): size *= 2
+    ret = ret + [0]*(size - len(ret))
+    assert len(ret) == size
+    return '[' + ','.join(ret) + ']'
+
+  def combine_tables(self):
+    self.tables_js = '// EMSCRIPTEN_END_FUNCS\n'
+    for table, data in self.tables.iteritems():
+      self.tables_js += 'var %s = %s;\n' % (table, data)
 
 main = AsmModule(main)
 side = AsmModule(side)
