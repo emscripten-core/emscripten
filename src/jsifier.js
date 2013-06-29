@@ -1747,8 +1747,8 @@ function JSify(data, functionsOnly, givenFunctions) {
             }
           }
         });
-        print(read('fastLong.js'));
       }
+      print(read('fastLong.js'));
       print('// EMSCRIPTEN_END_FUNCS\n');
       print(read('long.js'));
     } else {
