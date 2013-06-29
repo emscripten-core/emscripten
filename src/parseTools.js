@@ -472,10 +472,11 @@ function isBSS(item) {
     return false;
   }
 
+  if (item.external) return false; // externals are typically implemented in a JS library, and must be accessed by name, explicitly
+
   // return true if a global is uninitialized or initialized to 0
-  return item.external ||
-    (item.value && item.value.intertype === 'emptystruct') ||
-    (item.value && item.value.value !== undefined && item.value.value === '0');
+  return (item.value && item.value.intertype === 'emptystruct') ||
+         (item.value && item.value.value !== undefined && item.value.value === '0');
 }
 
 function makeGlobalDef(ident) {
