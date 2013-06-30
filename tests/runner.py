@@ -10700,9 +10700,8 @@ f.close()
         Class::Class(const char *name) { printf("new %s\n", name); }
       ''', ['new main\n'])
 
-      return # TODO
-
-      test('clibs', r'''
+      # malloc usage in both modules
+      test('malloc', r'''
         #include <stdlib.h>
         #include <string.h>
         char *side(const char *data);
@@ -10721,15 +10720,16 @@ f.close()
         #include "header.h"
         char *side(const char *data) {
           return (char*)data;
-//          char *ret = (char*)malloc(strlen(data)+1);
-  //        strcpy(ret, data);
-    //      return ret;
+          char *ret = (char*)malloc(strlen(data)+1);
+          strcpy(ret, data);
+          return ret;
         }
       ''', ['hello through side\n'])
-      return
 
-      # C library usage
-      test('clibs', r'''
+      return # TODO
+
+      # iostream usage in one and std::string in both
+      test('iostream', r'''
         #include <iostream>
         #include <string>
         std::string side();
