@@ -1379,6 +1379,17 @@ def execute(cmd, *args, **kw):
     logging.error('Invoking Process failed: <<< ' + cmd + ' >>>')
     raise
 
+def check_execute(cmd, *args, **kw):
+  # TODO: use in more places. execute doesn't actually check that return values
+  # are nonzero
+  try:
+    kw['stderr'] = STDOUT
+    subprocess.check_output(cmd, *args, **kw)
+    logging.debug("Successfuly executed %s" % " ".join(cmd))
+  except subprocess.CalledProcessError as e:
+    logging.error("'%s' failed with output:\n%s" % (" ".join(e.cmd), e.output))
+    raise
+
 def suffix(name):
   parts = name.split('.')
   if len(parts) > 1:
