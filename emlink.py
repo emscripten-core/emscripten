@@ -144,7 +144,7 @@ class AsmModule():
     main.combine_tables()
 
     # relocate
-    temp = shared.Building.js_optimizer(self.filename, ['asm', 'relocate'], extra_info={
+    temp = shared.Building.js_optimizer(self.filename, ['asm', 'relocate', 'last'], extra_info={
       'replacements': replacements,
       'fBases': f_bases,
       'hBase': main.staticbump

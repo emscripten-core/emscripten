@@ -10638,6 +10638,18 @@ f.close()
         int sidey() { return 11; }
       ''', 'other says 11.')
 
+      # finalization of float variables should pass asm.js validation
+      test('floats', '', '''
+        #include <stdio.h>
+        extern float sidey();
+        int main() {
+          printf("other says %.2f.", sidey()+1);
+          return 0;
+        }
+      ''', '''
+        float sidey() { return 11.5; }
+      ''', 'other says 12.50')
+
       # memory initialization in both
       test('multiple memory inits', '', r'''
         #include <stdio.h>

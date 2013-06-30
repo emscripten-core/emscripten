@@ -2899,7 +2899,7 @@ arguments_.slice(1).forEach(function(arg) {
   passes[arg](ast);
 });
 if (asm && last) {
-  asmLoopOptimizer(ast);
+  asmLoopOptimizer(ast); // TODO: move out of last, to make last faster when done later (as in side modules)
   prepDotZero(ast);
 }
 var js = astToSrc(ast, minifyWhitespace), old;
