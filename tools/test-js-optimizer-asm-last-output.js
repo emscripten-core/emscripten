@@ -42,5 +42,33 @@ function looop() {
  do {
   do_it();
  } while (x());
+ while (1) {
+  do_it();
+  if (a()) continue;
+  if (!x()) {
+   break;
+  }
+ }
+ do {
+  do_it();
+  do {
+   if (a()) continue;
+  } while (b());
+ } while (x());
+ do {
+  do_it();
+  while (b()) {
+   if (a()) continue;
+  }
+ } while (x());
+ X : while (1) {
+  do_it();
+  while (b()) {
+   if (a()) continue X;
+  }
+  if (!x()) {
+   break;
+  }
+ }
 }
 

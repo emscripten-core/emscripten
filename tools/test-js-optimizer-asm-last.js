@@ -51,6 +51,40 @@ function looop() {
    break;
   }
  }
+ while (1) {
+  do_it();
+  if (a()) continue; // we cannot move to do-while, continue will hit the while check
+  if (!x()) {
+   break;
+  }
+ }
+ while (1) {
+  do_it();
+  do {
+    if (a()) continue; // ok to optimize, continue is not for us
+  } while (b());
+  if (!x()) {
+   break;
+  }
+ }
+ while (1) {
+  do_it();
+  while (b()) {
+    if (a()) continue; // also ok to optimize, continue is not for us
+  }
+  if (!x()) {
+   break;
+  }
+ }
+ X: while (1) {
+  do_it();
+  while (b()) {
+    if (a()) continue X; // not ok to optimize
+  }
+  if (!x()) {
+   break;
+  }
+ }
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS: ["finall", "looop"]
 

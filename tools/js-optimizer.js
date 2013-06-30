@@ -2807,6 +2807,23 @@ function asmLoopOptimizer(ast) {
         var stats = node[2][1];
         var last = stats[stats.length-1];
         if (last && last[0] === 'if' && !last[3] && last[2][0] === 'block' && last[2][1][0] && last[2][1][0][0] === 'break' && !last[2][1][0][1]) {
+          var abort = false;
+          var stack = 0;
+          traverse(stats, function(node, type) {
+            if (type == 'continue') {
+              if (stack == 0 || node[1]) { // abort if labeled (we do not analyze labels here yet), or a continue directly on us
+                abort = true;
+                return true;
+              }
+            } else if (type in LOOP) {
+              stack++;
+            }
+          }, function(node, type) {
+            if (type in LOOP) {
+              stack--;
+            }
+          });
+          if (abort) return;
           var conditionToBreak = last[1];
           stats.pop();
           node[0] = 'do';
