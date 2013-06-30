@@ -15,8 +15,13 @@ Limitations:
 
  * Modules cannot be minified (but can be minified after linking)
  * We duplicate code in some cases, like overlapping names in different modules, and function aliases
- * We do not handle sharing of global constants across modules, only code (you can make a function to
-   access a constant, if you need that)
+ * We only share code between modules, not global variables. Global variables should be declared
+   in the module that uses them, other modules can reach them through function calls. For example,
+   a static class function implemented in one module can be called from another, and it can provide
+   access to static variables on that class. (Note that implementing the static class function in a
+   header will not work, then the code will be duplicated in each module, with only one of them
+   able to correctly access the variable - the one in the same module as where the variable is
+   declared.)
  * We do not link in compiled libraries (libc, libc++, etc.) in side modules. If the main module
    does not automatically link in the ones that side modules will need, you should compile the
    main module with
