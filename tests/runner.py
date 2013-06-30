@@ -10702,6 +10702,32 @@ f.close()
 
       return # TODO
 
+      test('clibs', r'''
+        #include <stdlib.h>
+        #include <string.h>
+        char *side(const char *data);
+      ''', r'''
+        #include <stdio.h>
+        #include "header.h"
+        int main() {
+          char *temp = side("hello through side\n");
+          char *ret = (char*)malloc(strlen(temp)+1);
+          strcpy(ret, temp);
+          temp[1] = 'x';
+          puts(ret);
+          return 0;
+        }
+      ''', r'''
+        #include "header.h"
+        char *side(const char *data) {
+          return (char*)data;
+//          char *ret = (char*)malloc(strlen(data)+1);
+  //        strcpy(ret, data);
+    //      return ret;
+        }
+      ''', ['hello through side\n'])
+      return
+
       # C library usage
       test('clibs', r'''
         #include <iostream>

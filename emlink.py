@@ -61,20 +61,9 @@ class AsmModule():
     self.pre_js = self.js[:self.start_asm]
 
     # heap initializer
-    mem_init = re.search(shared.JS.memory_initializer_pattern, self.pre_js)
-    if mem_init:
-      self.mem_init_full_js = mem_init.group(0)
-      self.mem_init_js = mem_init.groups(0)[0][:-2]
-      self.mem_init_size = self.mem_init_js.count(',') + self.mem_init_js.count('concat') + 1 # XXX add testing for large and small ones
-      pad = 8 - (self.mem_init_size % 8)
-      #print >> sys.stderr, 'pad', self.mem_init_size, pad
-      if pad < 8:
-        self.mem_init_js += '.concat([' + ','.join(['0']*pad) + '])'
-        self.mem_init_size += pad
-    else:
-      self.mem_init_js = ''
-      self.mem_init_size = 0
-    #print >> sys.stderr, self.mem_init_js
+    self.staticbump = int(re.search(shared.JS.memory_staticbump_pattern, self.pre_js).group(1))
+    if self.staticbump:
+      self.mem_init_js = re.search(shared.JS.memory_initializer_pattern, self.pre_js).group(0)
 
     # global initializers
     global_inits = re.search(shared.JS.global_initializers_pattern, self.pre_js)
@@ -110,13 +99,9 @@ class AsmModule():
 
   def relocate_into(self, main):
     # heap initializer
-    concat = '.concat(' if main.mem_init_js and self.mem_init_js else ''
-    end = ')' if main.mem_init_js and self.mem_init_js else ''
-    allocation = main.mem_init_js + concat + self.mem_init_js + end
-    if allocation:
-      full_allocation = '/* memory initializer */ allocate(' + allocation + ', "i8", ALLOC_NONE, Runtime.GLOBAL_BASE)'
-      main.pre_js = re.sub(shared.JS.memory_initializer_pattern if main.mem_init_js else shared.JS.no_memory_initializer_pattern, full_allocation, main.pre_js, count=1)
-      main.pre_js = re.sub('STATICTOP = STATIC_BASE \+ (\d+);', 'STATICTOP = STATIC_BASE + %d' % (main.mem_init_size + side.mem_init_size), main.pre_js, count=1)
+    if self.staticbump > 0:
+      new_mem_init = self.mem_init_js[:self.mem_init_js.rfind(', ')] + ', Runtime.GLOBAL_BASE+%d)' % main.staticbump
+      main.pre_js = re.sub(shared.JS.memory_staticbump_pattern, 'STATICTOP = STATIC_BASE + %d;\n' % (main.staticbump + side.staticbump) + new_mem_init, main.pre_js, count=1)
 
     # Find function name replacements TODO: do not rename duplicate names with duplicate contents, just merge them
     main_funcs = set(main.funcs)
@@ -157,7 +142,7 @@ class AsmModule():
     temp = shared.Building.js_optimizer(self.filename, ['asm', 'relocate'], extra_info={
       'replacements': replacements,
       'fBases': f_bases,
-      'hBase': main.mem_init_size
+      'hBase': main.staticbump
     })
     #print >> sys.stderr, 'relocated side into', temp
     relocated_funcs = AsmModule(temp)
