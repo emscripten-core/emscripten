@@ -7554,11 +7554,11 @@ def process(filename):
           return 0;
         }
       '''
-      self.do_run(src, '''www.cheezburger.com : 1 : 4
+      self.do_run(src, '''www.cheezburger.com : 2 : 4
 * -84.29.1.0.
-fail.on.this.never.work : 1 : 4
+fail.on.this.never.work : 2 : 4
 * -84.29.2.0.
-localhost : 1 : 4
+localhost : 2 : 4
 * -84.29.3.0.
 ''')
 
