@@ -144,6 +144,14 @@ class AsmModule():
       sendings_end = main.post_js.find(' }, buffer);')
       main.post_js = main.post_js[:sendings_start] + sendings_js + main.post_js[sendings_end:]
 
+    # check for undefined references to global variables
+    def check_import(key, value):
+      if value.startswith('+') or value.endswith('|0'): # ignore functions
+        if key not in all_sendings:
+          print >> sys.stderr, 'external variable %s is still not defined after linking' % key
+    for key, value in self.imports.iteritems(): check_import(key, value)
+    for key, value in main.imports.iteritems(): check_import(key, value)
+
     # tables
     f_bases = {}
     f_sizes = {}
