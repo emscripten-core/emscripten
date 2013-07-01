@@ -1264,8 +1264,12 @@ var C_DEFINES = {'SI_MESGQ': '5',
    '_SC_TTY_NAME_MAX': '41',
    'AF_INET': '2',
    'AF_INET6': '6',
+   'PF_INET': '2',
+   'PF_INET6': '6',
    'FIONREAD': '1',
    'SOCK_STREAM': '200',
-   'IPPROTO_TCP': 1
+   'SOCK_DGRAM': '20',
+   'IPPROTO_TCP': '1',
+   'IPPROTO_UDP': '2'
 };
 

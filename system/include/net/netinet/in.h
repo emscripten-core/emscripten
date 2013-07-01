@@ -56,8 +56,8 @@ extern const struct in6_addr in6addr_interfacelocal_allrouters;
 extern const struct in6_addr in6addr_sitelocal_allrouters;
 
 struct sockaddr_in6 {
-  short           sin6_family;
-  short           sin6_port;
+  int             sin6_family;
+  unsigned short  sin6_port;
   int             sin6_flowinfo;
   struct in6_addr sin6_addr;
   int             sin6_scope_id;
