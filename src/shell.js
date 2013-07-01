@@ -12,10 +12,6 @@ var ENVIRONMENT_IS_WEB = typeof window === 'object';
 var ENVIRONMENT_IS_WORKER = typeof importScripts === 'function';
 var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
 
-if (typeof module === "object") {
-  module.exports = Module;
-}
-
 if (ENVIRONMENT_IS_NODE) {
   // Expose functionality in the same simple way that the shells work
   // Note that we pollute the global namespace here, otherwise we break in node
@@ -50,6 +46,8 @@ if (ENVIRONMENT_IS_NODE) {
   if (!Module['arguments']) {
     Module['arguments'] = process['argv'].slice(2);
   }
+
+  module.exports = Module;
 }
 
 if (ENVIRONMENT_IS_SHELL) {
@@ -68,6 +66,8 @@ if (ENVIRONMENT_IS_SHELL) {
       Module['arguments'] = arguments;
     }
   }
+  
+  this['{{{ EXPORT_NAME }}}'] = Module;
 }
 
 if (ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_WORKER) {
@@ -82,6 +82,8 @@ if (ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_WORKER) {
       console.log(x);
     };
   }
+
+  this['{{{ EXPORT_NAME }}}'] = Module;
 }
 
 if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
