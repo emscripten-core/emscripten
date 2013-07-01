@@ -805,7 +805,7 @@ mergeInto(LibraryManager.library, {
         var t = process['hrtime']();
         return t[0] * 1e3 + t[1] / 1e6;
     }
-    else if (window['performance'] && window['performance']['now']) {
+    else if (ENVIRONMENT_IS_WEB && window['performance'] && window['performance']['now']) {
       return window['performance']['now']();
     } else {
       return Date.now();
