@@ -10624,7 +10624,9 @@ f.close()
         out = run_js('together.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True)
         self.assertContained(expected, out)
         self.validate_asmjs(out)
-        if first: test(name + ' (reverse)', header, side, main, expected, False) # test reverse order
+        if first:
+          shutil.copyfile('together.js', 'first.js')
+          test(name + ' (reverse)', header, side, main, expected, False) # test reverse order
 
       # test a simple call from one module to another. only one has a string (and constant memory initialization for it)
       test('basics', '', '''

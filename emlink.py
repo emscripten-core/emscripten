@@ -83,8 +83,11 @@ class AsmModule():
 
     # imports
     self.imports_js = self.js[self.start_asm:self.start_funcs]
-    self.imports = [m.group(0) for m in js_optimizer.import_sig.finditer(self.imports_js)]
-    #print 'imports', self.imports
+    self.imports = {}
+    for imp in js_optimizer.import_sig.finditer(self.imports_js):
+      key, value = imp.group(0).split('var ')[1][:-1].replace(' ', '').split('=')
+      self.imports[key] = value
+    #print >> sys.stderr, 'imports', self.imports
 
     # funcs
     self.funcs_js = self.js[self.start_funcs:self.end_funcs]
@@ -121,9 +124,7 @@ class AsmModule():
     #print >> sys.stderr, 'replacements:', replacements
 
     # imports
-    main_imports = set(main.imports)
-    new_imports = [imp for imp in self.imports if imp not in main_imports and
-                                                  imp.split('var ')[1].split('=')[0] not in main_funcs] # a previous import may now be implemented # TODO: reverse
+    new_imports = ['var %s = %s;' % (imp, self.imports[imp]) for imp in self.imports if imp not in main.imports and imp not in main_funcs]
     main.imports_js += '\n'.join(new_imports) + '\n'
 
     # sendings: add invokes for new tables
