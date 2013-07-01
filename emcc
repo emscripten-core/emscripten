@@ -1365,7 +1365,9 @@ try:
       return 'SDL_Init' in all_needed and ('malloc' not in all_needed or 'free' not in all_needed)
 
     # Settings this in the environment will avoid checking dependencies and make building big projects a little faster
+    # 1 means include everything; otherwise it can be the name of a lib (libcxx, etc.)
     force = os.environ.get('EMCC_FORCE_STDLIBS')
+    force_all = force == '1'
 
     # Scan symbols
     all_needed = set()
@@ -1383,7 +1385,8 @@ try:
                                                   ('libcxxabi', create_libcxxabi, apply_libcxxabi, libcxxabi_symbols),
                                                   ('sdl',       create_sdl,       apply_sdl,       sdl_symbols),
                                                   ('libc',      create_libc,      apply_libc,      libc_symbols)]:
-      if not force:
+      force_this = force_all or force == name
+      if not force_this:
         need = set()
         has = set()
         for symbols in symbolses:
@@ -1396,12 +1399,13 @@ try:
           if haz in need:
             need.remove(haz)
         if shared.Settings.VERBOSE: logging.debug('considering %s: we need %s and have %s' % (name, str(need), str(has)))
-      if (force or len(need) > 0) and apply_(need):
-        # We need to build and link the library in
-        logging.debug('including %s' % name)
-        libfile = shared.Cache.get(name, create)
-        extra_files_to_link.append(libfile)
-        force = True
+      if force_this or len(need) > 0:
+        force_all = True
+        if apply_(need):
+          # We need to build and link the library in
+          logging.debug('including %s' % name)
+          libfile = shared.Cache.get(name, create)
+          extra_files_to_link.append(libfile)
 
   # First, combine the bitcode files if there are several. We must also link if we have a singleton .a
   if len(input_files) + len(extra_files_to_link) > 1 or \
