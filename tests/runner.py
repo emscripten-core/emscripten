@@ -10731,12 +10731,36 @@ f.close()
       ''', r'''
         #include "header.h"
         char *side(const char *data) {
-          return (char*)data;
           char *ret = (char*)malloc(strlen(data)+1);
           strcpy(ret, data);
           return ret;
         }
       ''', ['hello through side\n'])
+
+      # libc usage in one modules. must force libc inclusion in the main module if that isn't the one using mallinfo()
+      try:
+        os.environ['EMCC_FORCE_STDLIBS'] = 'libc'
+        test('malloc-1', r'''
+          #include <string.h>
+          int side();
+        ''', r'''
+          #include <stdio.h>
+          #include "header.h"
+          int main() {
+            printf("|%d|\n", side());
+            return 0;
+          }
+        ''', r'''
+          #include <stdlib.h>
+          #include <malloc.h>
+          #include "header.h"
+          int side() {
+            struct mallinfo m = mallinfo();
+            return m.arena > 1;
+          }
+        ''', ['|1|\n'])
+      finally:
+        del os.environ['EMCC_FORCE_STDLIBS']
 
       return # TODO
 

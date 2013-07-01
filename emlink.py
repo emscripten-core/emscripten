@@ -28,7 +28,9 @@ Limitations:
 
     EMCC_FORCE_STDLIBS=1 emcc ..
 
-   which will link in all the C libraries.
+   which will link in all the libraries (you can also do EMCC_FORCE_STDLIBS=libc for example to
+   include just libc and its dependencies; run with EMCC_DEBUG=1 to see which are necessary and
+   include the first one).
 
 Overall, this linking approach should be fast to perform, but generate less-optimal results than
 to link all the bitcode together and build to JS as a single project. Final builds should be
