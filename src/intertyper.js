@@ -502,7 +502,7 @@ function intertyper(data, sidePass, baseLineNums) {
       } else {
         // variable
         var ident = item.tokens[0].text;
-        var private_ = findTokenText(item, 'private') >= 0;
+        var private_ = findTokenText(item, 'private') >= 0 || findTokenText(item, 'internal') >= 0;
         cleanOutTokens(LLVM.GLOBAL_MODIFIERS, item.tokens, [2, 3]);
         var external = false;
         if (item.tokens[2].text === 'external') {
