@@ -104,7 +104,10 @@ class AsmModule():
 
     # post
     self.post_js = self.js[self.end_asm:]
-    self.sendings = set([sending.strip() for sending in self.post_js[self.post_js.find('}, { ')+5:self.post_js.find(' }, buffer);')].split(',')])
+    self.sendings = {}
+    for sending in [sending.strip() for sending in self.post_js[self.post_js.find('}, { ')+5:self.post_js.find(' }, buffer);')].split(',')]:
+      colon = sending.find(':')
+      self.sendings[sending[:colon].replace('"', '')] = sending[colon+1:].strip()
     self.module_defs = set(re.findall('var [\w\d_$]+ = Module\["[\w\d_$]+"\] = asm\["[\w\d_$]+"\];\n', self.post_js))
 
   def relocate_into(self, main):
@@ -124,17 +127,19 @@ class AsmModule():
     #print >> sys.stderr, 'replacements:', replacements
 
     # imports
-    new_imports = ['var %s = %s;' % (imp, self.imports[imp]) for imp in self.imports if imp not in main.imports and imp not in main_funcs]
-    main.imports_js += '\n'.join(new_imports) + '\n'
+    new_imports = [imp for imp in self.imports if imp not in main.imports and imp not in main_funcs]
+    main.imports_js += '\n'.join(['var %s = %s;' % (imp, self.imports[imp]) for imp in new_imports]) + '\n'
 
     # sendings: add invokes for new tables
-    new_sendings = []
+    all_sendings = main.sendings
+    added_sending = False
     for table in self.tables:
       if table not in main.tables:
         sig = table[table.rfind('_')+1:]
-        new_sendings.append('"invoke_%s": %s' % (sig, shared.JS.make_invoke(sig, named=False)))
-    if new_sendings:
-      sendings_js = ', '.join(main.sendings.union(new_sendings))
+        all_sendings['invoke_%s' % sig] = shared.JS.make_invoke(sig, named=False)
+        added_sending = True
+    if added_sending:
+      sendings_js = ', '.join(['%s: %s' % (key, value) for key, value in all_sendings.iteritems()])
       sendings_start = main.post_js.find('}, { ')+5
       sendings_end = main.post_js.find(' }, buffer);')
       main.post_js = main.post_js[:sendings_start] + sendings_js + main.post_js[sendings_end:]
