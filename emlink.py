@@ -124,7 +124,7 @@ class AsmModule():
     main_imports = set(main.imports)
     new_imports = [imp for imp in self.imports if imp not in main_imports and
                                                   imp.split('var ')[1].split('=')[0] not in main_funcs] # a previous import may now be implemented # TODO: reverse
-    main.imports_js += '\n'.join(new_imports)
+    main.imports_js += '\n'.join(new_imports) + '\n'
 
     # sendings: add invokes for new tables
     new_sendings = []
