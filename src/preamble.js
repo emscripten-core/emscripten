@@ -525,6 +525,9 @@ function Pointer_stringify(ptr, /* optional */ length) {
   var t;
   var i = 0;
   while (1) {
+#if ASSERTIONS
+    assert(ptr + i < TOTAL_MEMORY);
+#endif
     t = {{{ makeGetValue('ptr', 'i', 'i8', 0, 1) }}};
     if (t >= 128) hasUtf = true;
     else if (t == 0 && !length) break;
