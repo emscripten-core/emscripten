@@ -1450,17 +1450,16 @@ try:
       shared.Building.llvm_opt(in_temp(target_basename + '.bc'), ['-O3'])
       if DEBUG: save_intermediate('opt', 'bc')
 
-    if shared.Building.can_build_standalone():
-      # If we can LTO, do it before dce, since it opens up dce opportunities
-      if llvm_lto and llvm_lto != 2 and shared.Building.can_use_unsafe_opts():
-        if not shared.Building.can_inline(): link_opts.append('-disable-inlining')
-        # do not internalize in std-link-opts - it ignores internalize-public-api-list - and add a manual internalize
-        link_opts += ['-disable-internalize'] + shared.Building.get_safe_internalize() + ['-std-link-opts']
-      else:
-        # At minimum remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
-        link_opts += shared.Building.get_safe_internalize() + ['-globaldce']
-      shared.Building.llvm_opt(in_temp(target_basename + '.bc'), link_opts)
-      if DEBUG: save_intermediate('linktime', 'bc')
+    # If we can LTO, do it before dce, since it opens up dce opportunities
+    if shared.Building.can_build_standalone() and llvm_lto and llvm_lto != 2 and shared.Building.can_use_unsafe_opts():
+      if not shared.Building.can_inline(): link_opts.append('-disable-inlining')
+      # do not internalize in std-link-opts - it ignores internalize-public-api-list - and add a manual internalize
+      link_opts += ['-disable-internalize'] + shared.Building.get_safe_internalize() + ['-std-link-opts']
+    else:
+      # At minimum remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
+      link_opts += shared.Building.get_safe_internalize() + ['-globaldce']
+    shared.Building.llvm_opt(in_temp(target_basename + '.bc'), link_opts)
+    if DEBUG: save_intermediate('linktime', 'bc')
 
   if save_bc:
     shutil.copyfile(final, save_bc)
