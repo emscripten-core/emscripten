@@ -2759,10 +2759,11 @@ function relocate(ast) {
           if (node[2][1] == 'H_BASE') {
             base = hBase;
           } else if (m = /^F_BASE_(\w+)$/.exec(node[2][1])) {
-            base = fBases[m[1]];
+            base = fBases[m[1]] || 0; // 0 if the parent has no function table for this, but the child does. so no relocation needed
           }
           if (base !== null) {
             var other = node[3];
+            if (base === 0) return other;
             if (other[0] == 'num') {
               other[1] += base;
               return other;
