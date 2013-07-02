@@ -2742,8 +2742,9 @@ function relocate(ast) {
   assert(asm); // we also assume we are normalized
 
   var replacements = extraInfo.replacements;
-  var fBase = extraInfo.fBase;
+  var fBases = extraInfo.fBases;
   var hBase = extraInfo.hBase;
+  var m;
 
   traverse(ast, function(node, type) {
     switch(type) {
@@ -2755,10 +2756,10 @@ function relocate(ast) {
       case 'binary': {
         if (node[1] == '+' && node[2][0] == 'name') {
           var base = null;
-          if (node[2][1] == 'F_BASE') {
-            base = fBase;
-          } else if (node[2][1] == 'H_BASE') {
+          if (node[2][1] == 'H_BASE') {
             base = hBase;
+          } else if (m = /^F_BASE_(\w+)$/.exec(node[2][1])) {
+            base = fBases[m[1]];
           }
           if (base !== null) {
             var other = node[3];
