@@ -16,7 +16,7 @@ so you may prefer to use fewer cores here.
 '''
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, tempfile, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, multiprocessing, functools, stat
+import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, multiprocessing, functools, stat
 
 if len(sys.argv) == 1:
   print '''
@@ -13893,7 +13893,22 @@ elif 'sanity' in str(sys.argv):
     def test_firstrun(self):
       for command in commands:
         wipe()
-        output = self.do(command)
+
+        def make_executable(name):
+          with open(os.path.join(temp_bin, name), 'w') as f:
+            os.fchmod(f.fileno(), stat.S_IRWXU)
+
+        try:
+          temp_bin = tempfile.mkdtemp()
+          old_environ_path = os.environ['PATH']
+          os.environ['PATH'] = temp_bin + os.pathsep + old_environ_path
+          make_executable('llvm-dis')
+          make_executable('node')
+          make_executable('python2')
+          output = self.do(command)
+        finally:
+          os.environ['PATH'] = old_environ_path
+          shutil.rmtree(temp_bin)
 
         self.assertContained('Welcome to Emscripten!', output)
         self.assertContained('This is the first time any of the Emscripten tools has been run.', output)
@@ -13901,6 +13916,12 @@ elif 'sanity' in str(sys.argv):
         self.assertContained('It contains our best guesses for the important paths, which are:', output)
         self.assertContained('LLVM_ROOT', output)
         self.assertContained('NODE_JS', output)
+        self.assertContained('PYTHON', output)
+        if platform.system() is not 'Windows':
+          # os.chmod can't make files executable on Windows
+          self.assertIdentical(temp_bin, re.search("^ *LLVM_ROOT *= (.*)$", output, re.M).group(1))
+          self.assertIdentical(os.path.join(temp_bin, 'node'), re.search("^ *NODE_JS *= (.*)$", output, re.M).group(1))
+          self.assertIdentical(os.path.join(temp_bin, 'python2'), re.search("^ *PYTHON *= (.*)$", output, re.M).group(1))
         self.assertContained('Please edit the file if any of those are incorrect', output)
         self.assertContained('This command will now exit. When you are done editing those paths, re-run it.', output)
         assert output.split()[-1].endswith('===='), 'We should have stopped: ' + output
