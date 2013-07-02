@@ -286,6 +286,11 @@ function JSify(data, functionsOnly, givenFunctions) {
         allocator = 'ALLOC_NONE';
       }
 
+      if (ASM_JS && (MAIN_MODULE || SIDE_MODULE) && !item.private_ && !NAMED_GLOBALS && isIndexableGlobal(item.ident)) {
+        // We need this to be named (and it normally would not be), so that it can be linked to and used from other modules
+        Variables.globals[item.ident].linkable = 1;
+      }
+
       if (isBSS(item)) {
         var length = calcAllocatedSize(item.type);
         length = Runtime.alignMemory(length);

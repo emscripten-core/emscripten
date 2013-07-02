@@ -479,6 +479,14 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
                        ''.join(['  var ' + g + '=env.' + math_fix(g) + ';\n' for g in basic_funcs + global_funcs])
     asm_global_vars = ''.join(['  var ' + g + '=env.' + g + '|0;\n' for g in basic_vars + global_vars]) + \
                       ''.join(['  var ' + g + '=+env.' + g + ';\n' for g in basic_float_vars])
+    # In linkable modules, we need to add some explicit globals for global variables that can be linked and used across modules
+    if settings.get('MAIN_MODULE') or settings.get('SIDE_MODULE'):
+      for key, value in forwarded_json['Variables']['globals'].iteritems():
+        if value.get('linkable'):
+          init = str(forwarded_json['Variables']['indexedGlobals'][key])
+          if settings.get('SIDE_MODULE'): init = '(H_BASE+' + init + ')|0'
+          asm_global_vars += '  var %s=%s;\n' % (key, init)
+
     # sent data
     the_global = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in fundamentals]) + ' }'
     sending = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in basic_funcs + global_funcs + basic_vars + basic_float_vars + global_vars]) + ' }'

@@ -81,17 +81,19 @@ class AsmModule():
       self.global_inits_js = ''
       self.global_inits = []
 
-    # imports
-    self.imports_js = self.js[self.start_asm:self.start_funcs]
+    # imports (and global variables)
+    first_var = self.js.find('var ', self.js.find('var ', self.start_asm)+4)
+    self.pre_imports_js = self.js[self.start_asm:first_var]
+    self.imports_js = self.js[first_var:self.start_funcs]
     self.imports = {}
     for imp in js_optimizer.import_sig.finditer(self.imports_js):
-      key, value = imp.group(0).split('var ')[1][:-1].replace(' ', '').split('=')
+      key, value = imp.group(0).split('var ')[1][:-1].split('=', 1)
       self.imports[key] = value
     #print >> sys.stderr, 'imports', self.imports
 
     # funcs
     self.funcs_js = self.js[self.start_funcs:self.end_funcs]
-    self.funcs = [m.group(2) for m in js_optimizer.func_sig.finditer(self.funcs_js)]
+    self.funcs = set([m.group(2) for m in js_optimizer.func_sig.finditer(self.funcs_js)])
     #print 'funcs', self.funcs
 
     # tables and exports
@@ -117,18 +119,13 @@ class AsmModule():
       main.pre_js = re.sub(shared.JS.memory_staticbump_pattern, 'STATICTOP = STATIC_BASE + %d;\n' % (main.staticbump + side.staticbump) + new_mem_init, main.pre_js, count=1)
 
     # Find function name replacements TODO: do not rename duplicate names with duplicate contents, just merge them
-    main_funcs = set(main.funcs)
     replacements = {}
-    for i in range(len(self.funcs)):
-      rep = func = self.funcs[i]
-      while rep in main_funcs:
+    for func in self.funcs:
+      rep = func
+      while rep in main.funcs:
         rep += '_'
         replacements[func] = rep
     #print >> sys.stderr, 'replacements:', replacements
-
-    # imports
-    new_imports = [imp for imp in self.imports if imp not in main.imports and imp not in main_funcs]
-    main.imports_js += '\n'.join(['var %s = %s;' % (imp, self.imports[imp]) for imp in new_imports]) + '\n'
 
     # sendings: add invokes for new tables
     all_sendings = main.sendings
@@ -138,6 +135,27 @@ class AsmModule():
         sig = table[table.rfind('_')+1:]
         all_sendings['invoke_%s' % sig] = shared.JS.make_invoke(sig, named=False)
         added_sending = True
+
+    # imports
+    all_imports = main.imports
+    for key, value in self.imports.iteritems():
+      if key in self.funcs or key in main.funcs: continue # external function in one module, implemented in the other
+      value_concrete = '.' not in value # env.key means it is an import, an external value, and not a concrete one
+      main_value = main.imports.get(key)
+      main_value_concrete = main_value and '.' not in main_value
+      if value_concrete and main_value_concrete: continue # standard global var
+      if not main_value or value_concrete:
+        if '+' in value:
+          # relocate
+          value = value.replace('(', '').replace(')', '').replace('| 0', '').replace('|0', '').replace(' ', '')
+          left, right = value.split('+')
+          assert left == 'H_BASE'
+          value = str(main.staticbump + int(right))
+        all_imports[key] = value
+      if (value_concrete or main_value_concrete) and key in all_sendings:
+        del all_sendings[key] # import of external value no longer needed
+    main.imports_js = '\n'.join(['var %s = %s;' % (key, value) for key, value in all_imports.iteritems()]) + '\n'
+
     if added_sending:
       sendings_js = ', '.join(['%s: %s' % (key, value) for key, value in all_sendings.iteritems()])
       sendings_start = main.post_js.find('}, { ')+5
@@ -149,8 +167,7 @@ class AsmModule():
       if value.startswith('+') or value.endswith('|0'): # ignore functions
         if key not in all_sendings:
           print >> sys.stderr, 'external variable %s is still not defined after linking' % key
-    for key, value in self.imports.iteritems(): check_import(key, value)
-    for key, value in main.imports.iteritems(): check_import(key, value)
+    for key, value in all_imports.iteritems(): check_import(key, value)
 
     # tables
     f_bases = {}
@@ -252,6 +269,7 @@ class AsmModule():
   def write(self, out):
     f = open(out, 'w')
     f.write(self.pre_js)
+    f.write(self.pre_imports_js)
     f.write(self.imports_js)
     f.write(self.funcs_js)
     f.write(self.extra_funcs_js)
