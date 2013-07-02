@@ -264,20 +264,25 @@ var Functions = {
       if (!Functions.getIndex.tentative) Functions.getIndex.tentative = {}; // only used by GL emulation; TODO: generalize when needed
       Functions.getIndex.tentative[ident] = 0;
     }
+    var ret;
     if (phase != 'post' && singlePhase) {
       if (!doNotCreate) this.indexedFunctions[ident] = 0; // tell python we need this indexized
-      return "'{{ FI_" + toNiceIdent(ident) + " }}'"; // something python will replace later
+      ret = "'{{ FI_" + toNiceIdent(ident) + " }}'"; // something python will replace later
     } else {
       if (!singlePhase) return 'NO_INDEX'; // Should not index functions in post
-      var ret = this.indexedFunctions[ident];
+      ret = this.indexedFunctions[ident];
       if (!ret) {
         if (doNotCreate) return '0';
         ret = this.nextIndex;
         this.nextIndex += 2; // Need to have indexes be even numbers, see |polymorph| test
         this.indexedFunctions[ident] = ret;
       }
-      return ret.toString();
+      ret = ret.toString();
     }
+    if (BUILD_AS_SHARED_LIB) {
+      ret = '(FUNCTION_TABLE_OFFSET + ' + ret + ')';
+    }
+    return ret;
   },
 
   getTable: function(sig) {

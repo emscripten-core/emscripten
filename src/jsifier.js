@@ -1525,7 +1525,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           // This is a call through an invoke_*, either a forced one, or a setjmp-required one
           // note: no need to update argsTypes at this point
           if (byPointerForced) Functions.unimplementedFunctions[callIdent] = sig;
-          args.unshift(byPointerForced ? Functions.getIndex(callIdent) : asmCoercion(callIdent, 'i32'));
+          args.unshift(byPointerForced ? Functions.getIndex(callIdent, undefined, sig) : asmCoercion(callIdent, 'i32'));
           callIdent = 'invoke_' + sig;
         }
       } else if (SAFE_DYNCALLS) {

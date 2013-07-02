@@ -1229,15 +1229,11 @@ function indexizeFunctions(value, type) {
   var out = {};
   if (type && isFunctionType(type, out) && value[0] === '_') { // checking for _ differentiates from $ (local vars)
     // add signature to library functions that we now know need indexing
-    if (!(value in Functions.implementedFunctions) && !(value in Functions.unimplementedFunctions)) {
-      Functions.unimplementedFunctions[value] = Functions.getSignature(out.returnType, out.segments ? out.segments.map(function(segment) { return segment[0].text }) : []);
+    var sig = Functions.implementedFunctions[value] || Functions.unimplementedFunctions[value];
+    if (!sig) {
+      sig = Functions.unimplementedFunctions[value] = Functions.getSignature(out.returnType, out.segments ? out.segments.map(function(segment) { return segment[0].text }) : []);
     }
-
-    if (BUILD_AS_SHARED_LIB) {
-      return '(FUNCTION_TABLE_OFFSET + ' + Functions.getIndex(value) + ')';
-    } else {
-      return Functions.getIndex(value);
-    }
+    return Functions.getIndex(value, undefined, sig);
   }
   return value;
 }
