@@ -10764,8 +10764,6 @@ f.close()
       finally:
         del os.environ['EMCC_FORCE_STDLIBS']
 
-      return # TODO
-
       # iostream usage in one and std::string in both
       test('iostream', r'''
         #include <iostream>

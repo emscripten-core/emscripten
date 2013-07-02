@@ -1605,6 +1605,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       if (phase == 'pre' && !Variables.generatedGlobalBase) {
         Variables.generatedGlobalBase = true;
         // Globals are done, here is the rest of static memory
+        assert((TARGET_LE32 && Runtime.GLOBAL_BASE == 8) || (TARGET_X86 && Runtime.GLOBAL_BASE == 4)); // this is assumed in e.g. relocations for linkable modules
         print('STATIC_BASE = ' + Runtime.GLOBAL_BASE + ';\n');
         print('STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n');
       }
