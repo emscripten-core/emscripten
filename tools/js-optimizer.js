@@ -405,13 +405,16 @@ function removeUnneededLabelSettings(ast) {
 // Various expression simplifications. Pre run before closure (where we still have metadata), Post run after.
 
 var USEFUL_BINARY_OPS = set('<<', '>>', '|', '&', '^');
+var COMPARE_OPS = set('<', '<=', '>', '>=', '==', '===', '!=');
 
 function simplifyExpressionsPre(ast) {
-  // Look for (x&A)<<B>>B and replace it with X&A if possible.
-  function simplifySignExtends(ast) {
+  // Simplify common expressions used to perform integer conversion operations
+  // in cases where no conversion is needed.
+  function simplifyIntegerConversions(ast) {
     traverse(ast, function(node, type) {
       if (type === 'binary'       && node[1]    === '>>' && node[3][0] === 'num' &&
           node[2][0] === 'binary' && node[2][1] === '<<' && node[2][3][0] === 'num' && node[3][1] === node[2][3][1]) {
+        // Transform (x&A)<<B>>B to X&A.
         var innerNode = node[2][2];
         var shifts = node[3][1];
         if (innerNode[0] === 'binary' && innerNode[1] === '&' && innerNode[3][0] === 'num') {
@@ -419,6 +422,15 @@ function simplifyExpressionsPre(ast) {
           if (mask << shifts >> shifts === mask) {
             return innerNode;
           }
+        }
+      } else if (type === 'binary' && node[1] === '&' && node[3][0] === 'num') {
+        // Rewrite (X < Y) & 1 to (X < Y)|0. (Subsequent passes will eliminate
+        // the |0 if possible.)
+        var input = node[2];
+        var amount = node[3][1];
+        if (input[0] === 'binary' && (input[1] in COMPARE_OPS) && amount == 1) {
+          node[1] = '|';
+          node[3][1] = 0;
         }
       }
     });
@@ -763,7 +775,7 @@ function simplifyExpressionsPre(ast) {
   }
 
   traverseGeneratedFunctions(ast, function(func) {
-    simplifySignExtends(func);
+    simplifyIntegerConversions(func);
     simplifyBitops(func);
     joinAdditions(func);
     // simplifyZeroComp(func); TODO: investigate performance
