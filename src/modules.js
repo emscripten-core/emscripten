@@ -259,7 +259,7 @@ var Functions = {
   },
 
   // Mark a function as needing indexing. Python will coordinate them all
-  getIndex: function(ident, doNotCreate) {
+  getIndex: function(ident, doNotCreate, sig) {
     if (doNotCreate && !(ident in this.indexedFunctions)) {
       if (!Functions.getIndex.tentative) Functions.getIndex.tentative = {}; // only used by GL emulation; TODO: generalize when needed
       Functions.getIndex.tentative[ident] = 0;
@@ -279,7 +279,9 @@ var Functions = {
       }
       ret = ret.toString();
     }
-    if (BUILD_AS_SHARED_LIB) {
+    if (SIDE_MODULE && sig) { // sig can be undefined for the GL library functions
+      ret = '((F_BASE_' + sig + ' + ' + ret + ')|0)';
+    } else if (BUILD_AS_SHARED_LIB) {
       ret = '(FUNCTION_TABLE_OFFSET + ' + ret + ')';
     }
     return ret;
