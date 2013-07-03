@@ -9640,7 +9640,9 @@ def process(filename):
         # objects when generating source maps, so we want to make sure the
         # optimizer can deal with both types.
         out_file = re.sub(' *//@.*$', '', out_file, flags=re.MULTILINE)
-        self.assertIdentical(no_maps_file, out_file)
+        def clean(code):
+          return code.replace('{\n}', '{}')
+        self.assertIdentical(clean(no_maps_file), clean(out_file))
         map_filename = out_filename + '.map'
         data = json.load(open(map_filename, 'r'))
         self.assertIdentical(out_filename, data['file'])
