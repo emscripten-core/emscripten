@@ -2147,7 +2147,11 @@ function processMathop(item) {
       }
       case 'select': return idents[0] + ' ? ' + makeCopyI64(idents[1]) + ' : ' + makeCopyI64(idents[2]);
       case 'ptrtoint': return makeI64(idents[0], 0);
-      case 'inttoptr': return '(' + idents[0] + '[0])'; // just directly truncate the i64 to a 'pointer', which is an i32
+      case 'inttoptr': {
+        var m = /\(?\[(\d+),\d+\]\)?/.exec(idents[0]);
+        if (m) return m[1]; // constant, can just parse it right now
+        return '(' + idents[0] + '[0])'; // just directly truncate the i64 to a 'pointer', which is an i32
+      }
       // Dangerous, rounded operations. TODO: Fully emulate
       case 'add': {
         if (PRECISE_I64_MATH) {
