@@ -9,10 +9,14 @@ function asmModule(stdlib) {
   switch (a | 0) {
   case 1:
    return 1;
-  case 2:
-   return 2;
-  default:
+  case 3:
    return 3;
+  case 4:
+   return 4;
+  default:
+   if ((a | 0) != 2) {
+    return 2;
+   }
   }
   L0 : for (;;) {
    switch (a | 0) {
