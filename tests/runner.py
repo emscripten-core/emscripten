@@ -10613,6 +10613,8 @@ f.close()
       def test(name, header, main, side, expected, args=[], suffix='cpp', first=True):
         print name
         #t = main ; main = side ; side = t
+        original_main = main
+        original_side = side
         if header: open(os.path.join(self.get_dir(), 'header.h'), 'w').write(header)
         if type(main) == str:
           open(os.path.join(self.get_dir(), 'main.' + suffix), 'w').write(main)
@@ -10630,7 +10632,7 @@ f.close()
         self.validate_asmjs(out)
         if first:
           shutil.copyfile('together.js', 'first.js')
-          test(name + ' (reverse)', header, side, main, expected, args, suffix, False) # test reverse order
+          test(name + ' (reverse)', header, original_side, original_main, expected, args, suffix, False) # test reverse order
 
       # test a simple call from one module to another. only one has a string (and constant memory initialization for it)
       test('basics', '', '''
