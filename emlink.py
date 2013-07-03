@@ -175,6 +175,7 @@ class AsmModule():
     for table, data in self.tables.iteritems():
       main.tables[table] = self.merge_tables(table, main.tables.get(table), data, replacements, f_bases, f_sizes)
     main.combine_tables()
+    #print >> sys.stderr, 'f bases', f_bases
 
     # relocate
     temp = shared.Building.js_optimizer(self.filename, ['asm', 'relocate', 'last'], extra_info={
@@ -291,16 +292,17 @@ class AsmModule():
     return tables
 
   def merge_tables(self, table, main, side, replacements, f_bases, f_sizes):
+    sig = table.split('_')[-1]
     side = side[1:-1].split(',')
     side = map(lambda f: replacements[f] if f in replacements else f, side)
     if not main:
-      f_bases[table] = 0
+      f_bases[sig] = 0
       f_sizes[table] = len(side)
       return '[' + ','.join(side) + ']'
     main = main[1:-1].split(',')
     # TODO: handle non-aliasing case too
     assert len(main) % 2 == 0
-    f_bases[table] = len(main)
+    f_bases[sig] = len(main)
     ret = main + side
     size = 2
     while size < len(ret): size *= 2
