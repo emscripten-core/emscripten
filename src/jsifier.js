@@ -1639,11 +1639,11 @@ function JSify(data, functionsOnly, givenFunctions) {
           print('/* no memory initializer */'); // test purposes
         }
 
-        // Run postsets right before main, and after the memory initializer has been set up
+        // Define postsets. These will be run in ATINIT, right before global initializers (which might need the postsets). We cannot
+        // run them now because the memory initializer might not have been applied yet.
         print('function runPostSets() {\n');
         print(itemsDict.GlobalVariablePostSet.map(function(item) { return item.JS }).join('\n'));
         print('}\n');
-        print('if (!awaitingMemoryInitializer) runPostSets();\n'); // if we load the memory initializer, this is done later
 
         if (USE_TYPED_ARRAYS == 2) {
           print('var tempDoublePtr = Runtime.alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);\n');
@@ -1816,6 +1816,21 @@ function JSify(data, functionsOnly, givenFunctions) {
     substrate.addItems(data.functionStubs, 'FunctionStub');
     assert(data.functions.length == 0);
   } else {
+    if (phase == 'pre') {
+      // ensure there is a global ctors, for runPostSets
+      if ('_llvm_global_ctors' in data.globalVariables) {
+        data.globalVariables._llvm_global_ctors.ctors.unshift('runPostSets'); // run postsets right before global initializers
+        hasCtors = true;
+      } else {
+        substrate.addItems([{
+          intertype: 'GlobalVariableStub',
+          ident: '_llvm_global_ctors',
+          type: '[1 x { i32, void ()* }]',
+          ctors: ["runPostSets"],
+        }], 'GlobalVariable');
+      }
+    }
+
     substrate.addItems(sortGlobals(data.globalVariables), 'GlobalVariable');
     substrate.addItems(data.aliass, 'Alias');
     substrate.addItems(data.functions, 'FunctionSplitter');
