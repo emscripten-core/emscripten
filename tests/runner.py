@@ -10803,8 +10803,6 @@ f.close()
         std::string side() { return "and hello from side"; }
       ''', ['hello from main and hello from side\n'])
 
-      return # TODO
-
       # test a simple call from one module to another. only one has a string (and constant memory initialization for it)
       test('zlib', '', open(path_from_root('tests', 'zlib', 'example.c'), 'r').read(), 
                        self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a']),
