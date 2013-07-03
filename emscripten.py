@@ -341,8 +341,18 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     ret = re.sub(r'"?{{{ BA_([\w\d_$]+)\|([\w\d_$]+) }}}"?,0,0,0', lambda m: split_32(blockaddrs[m.groups(0)[0]][m.groups(0)[1]]), js)
     return re.sub(r'"?{{{ BA_([\w\d_$]+)\|([\w\d_$]+) }}}"?', lambda m: str(blockaddrs[m.groups(0)[0]][m.groups(0)[1]]), ret)
 
+  pre = blockaddrsize(indexize(pre))
+
+  if settings.get('ASM_JS'):
+    # move postsets into the asm module
+    class PostSets: js = ''
+    def handle_post_sets(m):
+      PostSets.js = m.group(0)
+      return '\n'
+    pre = re.sub(r'function runPostSets[^}]+}', handle_post_sets, pre)
+
   #if DEBUG: outfile.write('// pre\n')
-  outfile.write(blockaddrsize(indexize(pre)))
+  outfile.write(pre)
   pre = None
 
   #if DEBUG: outfile.write('// funcs\n')
@@ -458,6 +468,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
 
     # calculate exports
     exported_implemented_functions = list(exported_implemented_functions)
+    exported_implemented_functions.append('runPostSets')
     exports = []
     if not simple:
       for export in exported_implemented_functions + asm_runtime_funcs + function_tables:
@@ -575,7 +586,7 @@ var asm = (function(global, env, buffer) {
     value = value|0;
     tempRet%d = value;
   }
-''' % (i, i) for i in range(10)])] + funcs_js + ['''
+''' % (i, i) for i in range(10)])] + [PostSets.js + '\n'] + funcs_js + ['''
   %s
 
   return %s;
