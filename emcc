@@ -1413,7 +1413,7 @@ try:
     linker_inputs = temp_files + extra_files_to_link
     logging.debug('linking: ' + str(linker_inputs))
     t0 = time.time()
-    shared.Building.link(linker_inputs, in_temp(target_basename + '.bc'), force_archive_contents = len(input_files) == 1 and temp_files[0].endswith(STATICLIB_SUFFIXES))
+    shared.Building.link(linker_inputs, in_temp(target_basename + '.bc'), force_archive_contents = len(filter(lambda temp: not temp.endswith(STATICLIB_SUFFIXES), temp_files)) == 0)
     t1 = time.time()
     logging.debug('    linking took %.2f seconds' % (t1 - t0))
     final = in_temp(target_basename + '.bc')
