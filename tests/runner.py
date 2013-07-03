@@ -10610,15 +10610,19 @@ f.close()
       assert not os.path.exists('a.out') and not os.path.exists('a.exe'), 'Must not leave unneeded linker stubs'
 
     def test_static_link(self):
-      def test(name, header, main, side, expected, first=True):
+      def test(name, header, main, side, expected, args=[], suffix='cpp', first=True):
         print name
         #t = main ; main = side ; side = t
         if header: open(os.path.join(self.get_dir(), 'header.h'), 'w').write(header)
-        open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(main)
-        open(os.path.join(self.get_dir(), 'side.cpp'), 'w').write(side)
-        Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'side.cpp'), '-o', 'side.js', '-s', 'SIDE_MODULE=1', '-O2']).communicate()
+        if type(main) == str:
+          open(os.path.join(self.get_dir(), 'main.' + suffix), 'w').write(main)
+          main = ['main.' + suffix]
+        if type(side) == str:
+          open(os.path.join(self.get_dir(), 'side.' + suffix), 'w').write(side)
+          side = ['side.' + suffix]
+        Popen([PYTHON, EMCC] + side + ['-o', 'side.js', '-s', 'SIDE_MODULE=1', '-O2'] + args).communicate()
         # TODO: test with and without DISABLE_GL_EMULATION, check that file sizes change
-        Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-o', 'main.js', '-s', 'MAIN_MODULE=1', '-O2', '-s', 'DISABLE_GL_EMULATION=1']).communicate()
+        Popen([PYTHON, EMCC] + main + ['-o', 'main.js', '-s', 'MAIN_MODULE=1', '-O2', '-s', 'DISABLE_GL_EMULATION=1'] + args).communicate()
         Popen([PYTHON, EMLINK, 'main.js', 'side.js', 'together.js'], stdout=PIPE).communicate()
         assert os.path.exists('together.js')
         out = run_js('together.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True)
@@ -10626,7 +10630,7 @@ f.close()
         self.validate_asmjs(out)
         if first:
           shutil.copyfile('together.js', 'first.js')
-          test(name + ' (reverse)', header, side, main, expected, False) # test reverse order
+          test(name + ' (reverse)', header, side, main, expected, args, suffix, False) # test reverse order
 
       # test a simple call from one module to another. only one has a string (and constant memory initialization for it)
       test('basics', '', '''
@@ -10779,6 +10783,14 @@ f.close()
         #include "header.h"
         std::string side() { return "and hello from side"; }
       ''', ['hello from main and hello from side\n'])
+
+      return # TODO
+
+      # test a simple call from one module to another. only one has a string (and constant memory initialization for it)
+      test('zlib', '', open(path_from_root('tests', 'zlib', 'example.c'), 'r').read(), 
+                       self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a']),
+                       open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
+                       args=['-I' + path_from_root('tests', 'zlib')], suffix='c')
 
     def test_symlink(self):
       if os.name == 'nt':
