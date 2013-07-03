@@ -10672,6 +10672,21 @@ f.close()
         void sidey() { printf("hello from side\n"); }
       ''', 'hello from main\nhello from side\n')
 
+      # function pointers
+      test('fp1', 'typedef void (*voidfunc)();', r'''
+        #include <stdio.h>
+        #include "header.h"
+        voidfunc sidey(voidfunc f);
+        void a() { printf("hello from funcptr\n"); }
+        int main() {
+          sidey(a)();
+          return 0;
+        }
+      ''', '''
+        #include "header.h"
+        voidfunc sidey(voidfunc f) { return f; }
+      ''', 'hello from funcptr\n')
+
       # Global initializer
       test('global init', '', r'''
         #include <stdio.h>
