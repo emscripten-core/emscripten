@@ -867,7 +867,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     return generated_libs
 
   @staticmethod
-  def link(files, target):
+  def link(files, target, force_archive_contents=False):
     actual_files = []
     unresolved_symbols = set(['main']) # tracking unresolveds is necessary for .a linking, see below. (and main is always a necessary symbol)
     resolved_symbols = set()
@@ -918,7 +918,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
                 # Link in the .o if it provides symbols, *or* this is a singleton archive (which is apparently an exception in gcc ld)
                 #print >> sys.stderr, 'need', content, '?', unresolved_symbols, 'and we can supply', new_symbols.defs
                 #print >> sys.stderr, content, 'DEF', new_symbols.defs, '\n'
-                if new_symbols.defs.intersection(unresolved_symbols) or len(files) == 1:
+                if new_symbols.defs.intersection(unresolved_symbols) or len(files) == 1 or force_archive_contents:
                   if Building.is_bitcode(content):
                     #print >> sys.stderr, '  adding object', content, '\n'
                     resolved_symbols = resolved_symbols.union(new_symbols.defs)
