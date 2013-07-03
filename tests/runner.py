@@ -10803,11 +10803,22 @@ f.close()
         std::string side() { return "and hello from side"; }
       ''', ['hello from main and hello from side\n'])
 
-      # test a simple call from one module to another. only one has a string (and constant memory initialization for it)
+      # zlib compression library. tests function pointers in initializers and many other things
       test('zlib', '', open(path_from_root('tests', 'zlib', 'example.c'), 'r').read(), 
                        self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a']),
                        open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
                        args=['-I' + path_from_root('tests', 'zlib')], suffix='c')
+
+      # bullet physics engine. tests all the things
+      test('bullet', '', open(path_from_root('tests', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp'), 'r').read(), 
+           self.get_library('bullet', [os.path.join('src', '.libs', 'libBulletDynamics.a'),
+                                       os.path.join('src', '.libs', 'libBulletCollision.a'),
+                                       os.path.join('src', '.libs', 'libLinearMath.a')]),
+           [open(path_from_root('tests', 'bullet', 'output.txt'), 'r').read(), # different roundings
+            open(path_from_root('tests', 'bullet', 'output2.txt'), 'r').read(),
+            open(path_from_root('tests', 'bullet', 'output3.txt'), 'r').read()],
+           args=['-I' + path_from_root('tests', 'bullet', 'src')])
+
 
     def test_symlink(self):
       if os.name == 'nt':
