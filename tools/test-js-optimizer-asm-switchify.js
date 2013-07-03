@@ -11,16 +11,20 @@ function asmModule(stdlib) {
       return 1;
     }
 
-    // this should get switchified. Worth testing as a separate case to make
-    // sure we correctly handle switch statements that aren't nested in loops.
+    // this should get switchified. this tests a) that we correctly handle
+    // switch statements that aren't nested in loops, and b) that we will
+    // switchify a chain of if-elses that contain '!='.
     if ((a | 0) == 1) {
       return 1;
     }
-    else if ((a | 0) == 2) {
+    else if ((a | 0) != 2) {
       return 2;
     }
-    else {
+    else if ((a | 0) == 3) {
       return 3;
+    }
+    else if ((a | 0) == 4) {
+      return 4;
     }
 
     // this for loop is already labeled; don't generate another label for it

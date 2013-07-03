@@ -1524,18 +1524,18 @@ function switchify(ast) {
   var breakTargetTypes = ['for', 'do', 'while', 'switch'];
   var breakTargets = [{ actualTarget: null }]; // sentinel value
 
-  // tries to match a pattern of (ident1 == num1 | ident2 == num2 | ...).
+  // tries to match a pattern of (ident1 op num1 | ident2 op num2 | ...).
   // returns undefined on failure; otherwise returns an array containing each
   // clause of the disjunction. we don't check whether ident1 == ident2 here;
   // that's done in the traverser below.
-  function getSwitchableClauses(condition) {
+  function getSwitchableClauses(condition, op) {
     if (condition[0] !== 'binary') return;
-    if (condition[1] === '==' && condition[3][0] === 'num')
+    if (condition[1] === op && condition[3][0] === 'num')
       return [condition];
     if (condition[1] === '||' || condition[1] === '|') {
-      var left = getSwitchableClauses(condition[2]);
+      var left = getSwitchableClauses(condition[2], op);
       if (!left) return;
-      var right = getSwitchableClauses(condition[3]);
+      var right = getSwitchableClauses(condition[3], op);
       if (!right) return;
       return left.concat(right);
     }
@@ -1544,7 +1544,14 @@ function switchify(ast) {
   // convert blocks into a plain array, and single statements into
   // single-element arrays
   function ensureStatementList(ast) {
-    return ast[0] === 'block' ? ast[1] : [ast[1]];
+    switch (ast[0]) {
+      case 'block':
+        return ast[1];
+      case 'stat':
+        return [ast[1]];
+      default:
+        return [ast];
+    }
   }
 
   traverseGenerated(ast, function pre(ast, type, stack) {
@@ -1555,8 +1562,17 @@ function switchify(ast) {
       var discriminant;
       var cases = [];
       var clauseCount = 0;
+      var negatedCase = null;
       do {
-        var clauses = getSwitchableClauses(nextBlock[1]);
+        var clauses = getSwitchableClauses(nextBlock[1], '==');
+        if (clauses) {
+          cases.push([clauses.map(function(c) { return c[3]; }),
+                      ensureStatementList(nextBlock[2])]);
+          clauseCount += clauses.length;
+        } else if (!negatedCase) {
+          clauses = getSwitchableClauses(nextBlock[1], '!=');
+          negatedCase = ['if', nextBlock[1], nextBlock[2], null];
+        }
         if (!clauses) return;
 
         if (!discriminant) {
@@ -1567,14 +1583,18 @@ function switchify(ast) {
         for (var i = 0, l = clauses.length; i < l; i ++)
           if (!jsonCompare(discriminant, clauses[i][2])) return;
 
-        cases.push([clauses.map(function(c) { return c[3]; }),
-                    ensureStatementList(nextBlock[2])]);
-
-        clauseCount += clauses.length;
-
         nextBlock = nextBlock[3];
       }
       while (nextBlock && nextBlock[0] === 'if');
+
+      if (negatedCase) {
+        if (nextBlock) {
+          // presence of else clause + if (a|0 != ...). this seems like only
+          // poorly-formed code would match it, but just to be safe
+          return;
+        } else
+          nextBlock = negatedCase;
+      }
 
       // XXX how many clauses before the transformation is worth it?
       if (clauseCount < 2) return;
