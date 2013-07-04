@@ -10629,9 +10629,10 @@ f.close()
         Popen([PYTHON, EMCC] + main + ['-o', 'main.js', '-s', 'MAIN_MODULE=1', '-O2', '-s', 'DISABLE_GL_EMULATION=1'] + args).communicate()
         Popen([PYTHON, EMLINK, 'main.js', 'side.js', 'together.js'], stdout=PIPE).communicate()
         assert os.path.exists('together.js')
-        out = run_js('together.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True)
-        self.assertContained(expected, out)
-        self.validate_asmjs(out)
+        for engine in JS_ENGINES:
+          out = run_js('together.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True)
+          self.assertContained(expected, out)
+          if engine == SPIDERMONKEY_ENGINE: self.validate_asmjs(out)
         if first:
           shutil.copyfile('together.js', 'first.js')
           test(name + ' (reverse)', header, original_side, original_main, expected, args, suffix, False) # test reverse order
