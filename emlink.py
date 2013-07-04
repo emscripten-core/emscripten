@@ -3,32 +3,7 @@
 '''
 Fast static linker for emscripten outputs. Specifically this links asm.js modules.
 
-Usage: emlink.py [main module] [side module] [output name]
-
-  Main module should be built with -s MAIN_MODULE=1 (and possibly -s DISABLE_GL_EMULATION=1, if you do not need GL emulation)
-  Side module should be built with -s SIDE_MODULE=1
-
-Note that the output file can be used as a main module, so you can link multiple
-side modules into a main module that way.
-
-Limitations:
-
- * Modules cannot be minified (but can be minified after linking)
- * We duplicate code in some cases, like overlapping names in different modules, and function aliases
- * We do not link in compiled libraries (libc, libc++, etc.) in side modules. If the main module
-   does not automatically link in the ones that side modules will need, you should compile the
-   main module with
-
-    EMCC_FORCE_STDLIBS=1 emcc ..
-
-   which will link in all the libraries (you can also do EMCC_FORCE_STDLIBS=libc for example to
-   include just libc and its dependencies; run with EMCC_DEBUG=1 to see which are necessary and
-   include the first one).
-
-Overall, this linking approach should be fast to perform, but generate less-optimal results than
-to link all the bitcode together and build to JS as a single project. Final builds should be
-done in that approach, but during development static linking can avoid recompiling your entire
-project all the time.
+See https://github.com/kripken/emscripten/wiki/Linking
 '''
 
 import os, subprocess, sys, re
