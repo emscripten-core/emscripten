@@ -7835,47 +7835,234 @@ LibraryManager.library = {
   ntohl: 'htonl',
   ntohs: 'htons',
 
+  // http://pubs.opengroup.org/onlinepubs/9699919799/functions/inet_ntop.html
+  inet_ntop__deps: ['__setErrNo', '$ERRNO_CODES', 'inet_ntop4', 'inet_ntop6'],
+  inet_ntop: function(af, src, dst, size) {
+    switch (af) {
+      case {{{ cDefine('AF_INET') }}}:
+        return _inet_ntop4(src, dst, size);
+      case {{{ cDefine('AF_INET6') }}}:
+        return _inet_ntop6(src, dst, size);
+      default:
+        ___setErrNo(ERRNO_CODES.EAFNOSUPPORT);
+        return 0;
+    }
+  },
+  inet_pton__deps: ['__setErrNo', '$ERRNO_CODES', 'inet_pton4', 'inet_pton6'],
+  inet_pton: function(af, src, dst) {
+    switch (af) {
+      case {{{ cDefine('AF_INET') }}}:
+        return _inet_pton4(src, dst);
+      case {{{ cDefine('AF_INET6') }}}:
+        return _inet_pton6(src, dst);
+      default:
+        ___setErrNo(ERRNO_CODES.EAFNOSUPPORT);
+        return -1;
+    }
+  },
   inet_addr: function(ptr) {
-    var b = Pointer_stringify(ptr).split(".");
-    if (b.length !== 4) return -1; // we return -1 for error, and otherwise a uint32. this helps inet_pton differentiate
+     var b = Pointer_stringify(ptr).split(".");
+     if (b.length !== 4) return -1; // we return -1 for error, and otherwise a uint32. this helps inet_pton differentiate
+     return (Number(b[0]) | (Number(b[1]) << 8) | (Number(b[2]) << 16) | (Number(b[3]) << 24)) >>> 0;
+  },
+  _inet_aton_raw: function(str) {
+    var b = str.split(".");
     return (Number(b[0]) | (Number(b[1]) << 8) | (Number(b[2]) << 16) | (Number(b[3]) << 24)) >>> 0;
   },
-
-  inet_pton__deps: ['__setErrNo', '$ERRNO_CODES', 'inet_addr'],
-  inet_pton: function(af, src, dst) {
-    // int af, const char *src, void *dst
-    if ((af ^ {{{ cDefine('AF_INET') }}}) !==  0) { ___setErrNo(ERRNO_CODES.EAFNOSUPPORT); return -1; }
-    var ret = _inet_addr(src);
-    if (ret == -1 || isNaN(ret)) return 0;
-    setValue(dst, ret, 'i32');
-    return 1;
-  },
-
-  _inet_ntop_raw: function(addr) {
+  _inet_ntoa_raw: function(addr) {
     return (addr & 0xff) + '.' + ((addr >> 8) & 0xff) + '.' + ((addr >> 16) & 0xff) + '.' + ((addr >> 24) & 0xff)
   },
-
-  inet_ntop__deps: ['_inet_ntop_raw'],
-  inet_ntop: function(af, src, dst, size) {
-    var addr = getValue(src, 'i32');
-    var str = __inet_ntop_raw(addr);
-    writeStringToMemory(str.substr(0, size), dst);
-    return dst;
-  },
-
-  inet_ntoa__deps: ['inet_ntop'],
+  inet_ntoa__deps: ['_inet_ntoa_raw'],
   inet_ntoa: function(in_addr) {
     if (!_inet_ntoa.buffer) {
       _inet_ntoa.buffer = _malloc(1024);
     }
-    return _inet_ntop(0, in_addr, _inet_ntoa.buffer, 1024);
+    var addr = getValue(in_addr, 'i32');
+    var str = __inet_ntoa_raw(addr);
+    writeStringToMemory(str.substr(0, 1024), _inet_ntoa.buffer);
+    return _inet_ntoa.buffer;
   },
-
   inet_aton__deps: ['inet_addr'],
   inet_aton: function(cp, inp) {
     var addr = _inet_addr(cp);
     setValue(inp, addr, 'i32');
     if (addr < 0) return 0;
+    return 1;
+  },
+
+  inet_ntop4__deps: ['__setErrNo', '$ERRNO_CODES', '_inet_ntoa_raw'],
+  inet_ntop4: function(src, dst, size) {
+    var str = __inet_ntoa_raw(getValue(src, 'i32'));
+    if (str.length+1 > size) {
+      ___setErrNo(ERRNO_CODES.ENOSPC);
+      return 0;
+    }
+    writeStringToMemory(str, dst);
+    return dst;
+  },
+
+  inet_ntop6__deps: ['__setErrNo', '$ERRNO_CODES', 'inet_ntop6_raw'],
+  inet_ntop6: function(src, dst, size) {
+    var str = _inet_ntop6_raw(src);
+    if (str.length+1 > size) {
+      ___setErrNo(ERRNO_CODES.ENOSPC);
+      return 0;
+    }
+    writeStringToMemory(str, dst);
+    return dst;
+  },
+  inet_ntop6_raw__deps: ['ntohs'],
+  inet_ntop6_raw: function(src) {
+
+    //  ref:  http://www.ietf.org/rfc/rfc2373.txt - section 2.5.4
+    //  Format for IPv4 compatible and mapped  128-bit IPv6 Addresses
+    //  128-bits are split into eight 16-bit words
+    //  stored in network byte order (big-endian)
+    //  |                80 bits               | 16 |      32 bits        |
+    //  +-----------------------------------------------------------------+
+    //  |               10 bytes               |  2 |      4 bytes        |
+    //  +--------------------------------------+--------------------------+
+    //  +               5 words                |  1 |      2 words        |
+    //  +--------------------------------------+--------------------------+
+    //  |0000..............................0000|0000|    IPv4 ADDRESS     | (compatible)
+    //  +--------------------------------------+----+---------------------+
+    //  |0000..............................0000|FFFF|    IPv4 ADDRESS     | (mapped)
+    //  +--------------------------------------+----+---------------------+
+
+    var str = "";
+    var word = 0;
+    var longest = 0;
+    var lastzero = 0;
+    var zstart = 0;
+    var len = 0;
+    var i = 0;
+
+    // Handle IPv4-compatible, IPv4-mapped, loopback and any/unspecified addresses
+
+    var hasipv4 = true;
+    var v4part = "";
+    // check if the 10 high-order bytes are all zeros (first 5 words)
+    for (i = 0; i < 10; i++) {
+      if ({{{ makeGetValue('src', 'i', 'i8') }}} !== 0) { hasipv4 = false; break; }
+    }
+
+    if (hasipv4) {
+      // low-order 32-bits store an IPv4 address (bytes 13 to 16) (last 2 words)
+      v4part = __inet_ntoa_raw({{{ makeGetValue('src', '12', 'i32') }}});
+      // IPv4-mapped IPv6 address if 16-bit value (bytes 11 and 12) == 0xFFFF (6th word)
+      if ({{{ makeGetValue('src', '10', 'i16') }}} === -1) {
+        str = "::ffff:";
+        str += v4part;
+        return str;
+      }
+      // IPv4-compatible IPv6 address if 16-bit value (bytes 11 and 12) == 0x0000 (6th word)
+      if ({{{ makeGetValue('src', '10', 'i16') }}} === 0) {
+        str = "::";
+        //special case IPv6 addresses
+        if(v4part === "0.0.0.0") v4part = ""; // any/unspecified address
+        if(v4part === "0.0.0.1") v4part = "1";// loopback address
+        str += v4part;
+        return str;
+      }
+    }
+
+    // Handle all other IPv6 addresses
+
+    // first run to find the longest contiguous zero words
+    for (word = 0; word < 8; word++) {
+      if ({{{ makeGetValue('src', 'word*2', 'i16') }}} === 0) {
+        if (word - lastzero > 1) {
+          len = 0;
+        }
+        lastzero = word;
+        len++;
+      }
+      if (len > longest) {
+        longest = len;
+        zstart = word - longest + 1;
+      }
+    }
+
+    for (word = 0; word < 8; word++) {
+      if (longest > 1) {
+        // compress contiguous zeros - to produce "::"
+        if ({{{ makeGetValue('src', 'word*2', 'i16') }}} === 0 && word >= zstart && word < (zstart + longest) ) {
+          if (word === zstart) {
+            str += ":";
+            if (zstart === 0) str += ":"; //leading zeros case
+          }
+          continue;
+        }
+      }
+      // converts 16-bit words from big-endian to little-endian before converting to hex string
+      str += Number(_ntohs({{{ makeGetValue('src', 'word*2', 'i16') }}} & 0xffff)).toString(16);
+      str += word < 7 ? ":" : "";
+    }
+    return str;
+  },
+
+  inet_pton4__deps: ['inet_addr'],
+  inet_pton4: function(src, dst) {
+    var ret = _inet_addr(src);
+    if (ret === -1 || isNaN(ret)) return 0;
+    setValue(dst, ret, 'i32');
+    return 1;
+  },
+
+  inet_pton6__deps: ['inet_pton6_raw'],
+  inet_pton6: function(src, dst) {
+    return _inet_pton6_raw(Pointer_stringify(src), dst);
+  },
+
+  inet_pton6_raw__deps: ['htons'],
+  inet_pton6_raw: function(addr, dst) {
+    var words;
+    var w, offset, z, i;
+    /* http://home.deds.nl/~aeron/regex/ */
+    var valid6regx = /^((?=.*::)(?!.*::.+::)(::)?([\dA-F]{1,4}:(:|\b)|){5}|([\dA-F]{1,4}:){6})((([\dA-F]{1,4}((?!\3)::|:\b|$))|(?!\2\3)){2}|(((2[0-4]|1\d|[1-9])?\d|25[0-5])\.?\b){4})$/i
+    if (!valid6regx.test(addr)) {
+      return 0;
+    }
+    if (addr === "::") {
+      for (i=0; i < 4; i++) {{{ makeSetValue('dst', 'i*4', '0', 'i32') }}};
+      return 1;
+    }
+    // Z placeholder to keep track of zeros when splitting the string on ":"
+    if (addr.indexOf("::") === 0) {
+      addr = addr.replace("::", "Z:"); // leading zeros case
+    } else {
+      addr = addr.replace("::", ":Z:");
+    }
+
+    if (addr.indexOf(".") > 0) {
+      // parse IPv4 embedded address
+      addr = addr.replace(new RegExp('[.]', 'g'), ":");
+      words = addr.split(":");
+      words[words.length-4] = parseInt(words[words.length-4]) + parseInt(words[words.length-3])*256;
+      words[words.length-3] = parseInt(words[words.length-2]) + parseInt(words[words.length-1])*256;
+      words = words.slice(0, words.length-2);
+    } else {
+      words = addr.split(":");
+    }
+
+    offset = 0; z = 0;
+    for (w=0; w < words.length; w++) {
+      if (typeof words[w] === 'string') {
+        if (words[w] === 'Z') {
+          // compressed zeros - write appropriate number of zero words
+          for (z = 0; z < (8 - words.length+1); z++) {
+            {{{ makeSetValue('dst', '(w+z)*2', '0', 'i16') }}};
+          }
+          offset = z-1;
+        } else {
+          // parse hex to field to 16-bit value and write it in network byte-order
+          {{{ makeSetValue('dst', '(w+offset)*2', '_htons(parseInt(words[w],16))', 'i16') }}};
+        }
+      } else {
+        // parsed IPv4 words
+        {{{ makeSetValue('dst', '(w+offset)*2', 'words[w]', 'i16') }}};
+      }
+    }
     return 1;
   },
 
@@ -8151,7 +8338,7 @@ LibraryManager.library = {
     // Stub: connection-oriented sockets are not supported yet.
   },
 
-  bind__deps: ['$Sockets', '_inet_ntop_raw', 'ntohs', 'mkport'],
+  bind__deps: ['$Sockets', '_inet_ntoa_raw', 'ntohs', 'mkport'],
   bind: function(fd, addr, addrlen) {
     var info = FS.streams[fd];
     if (!info) return -1;
@@ -8163,7 +8350,7 @@ LibraryManager.library = {
       info.port = _mkport();
     }
     info.addr = Sockets.localAddr; // 10.0.0.254
-    info.host = __inet_ntop_raw(info.addr);
+    info.host = __inet_ntoa_raw(info.addr);
     info.close = function() {
       Sockets.portmap[info.port] = undefined;
     }
@@ -8172,7 +8359,7 @@ LibraryManager.library = {
     info.bound = true;
   },
 
-  sendmsg__deps: ['$Sockets', 'bind', '_inet_ntop_raw', 'ntohs'],
+  sendmsg__deps: ['$Sockets', 'bind', '_inet_ntoa_raw', 'ntohs'],
   sendmsg: function(fd, msg, flags) {
     var info = FS.streams[fd];
     if (!info) return -1;
@@ -8186,7 +8373,7 @@ LibraryManager.library = {
     var port = _ntohs(getValue(name + Sockets.sockaddr_in_layout.sin_port, 'i16'));
     var addr = getValue(name + Sockets.sockaddr_in_layout.sin_addr, 'i32');
     var connection = Sockets.connections[addr];
-    // var host = __inet_ntop_raw(addr);
+    // var host = __inet_ntoa_raw(addr);
 
     if (!(connection && connection.connected)) {
       ___setErrNo(ERRNO_CODES.EWOULDBLOCK);
@@ -8387,14 +8574,14 @@ LibraryManager.library = {
     return fd;
   },
 
-  connect__deps: ['$FS', '$Sockets', '_inet_ntop_raw', 'ntohs', 'gethostbyname'],
+  connect__deps: ['$FS', '$Sockets', '_inet_ntoa_raw', 'ntohs', 'gethostbyname'],
   connect: function(fd, addr, addrlen) {
     var info = FS.streams[fd];
     if (!info) return -1;
     info.connected = true;
     info.addr = getValue(addr + Sockets.sockaddr_in_layout.sin_addr, 'i32');
     info.port = _htons(getValue(addr + Sockets.sockaddr_in_layout.sin_port, 'i16'));
-    info.host = __inet_ntop_raw(info.addr);
+    info.host = __inet_ntoa_raw(info.addr);
     // Support 'fake' ips from gethostbyname
     var parts = info.host.split('.');
     if (parts[0] == '172' && parts[1] == '29') {
