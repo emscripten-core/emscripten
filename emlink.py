@@ -134,7 +134,7 @@ class AsmModule():
     def check_import(key, value):
       if value.startswith('+') or value.endswith('|0'): # ignore functions
         if key not in all_sendings:
-          print >> sys.stderr, 'external variable %s is still not defined after linking' % key
+          print >> sys.stderr, 'warning: external variable %s is still not defined after linking' % key
     for key, value in all_imports.iteritems(): check_import(key, value)
 
     # tables
