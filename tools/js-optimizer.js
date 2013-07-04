@@ -2094,7 +2094,7 @@ function eliminate(ast, memSafe) {
     if (hasSwitch && !asm) return;
 
     var potentials = {}; // local variables with 1 definition and 1 use
-    var sideEffectFree = {}; // whether a local variable has no side effects in its definition
+    var sideEffectFree = {}; // whether a local variable has no side effects in its definition. Only relevant when there are no uses
 
     function unprocessVariable(name) {
       if (name in potentials) delete potentials[name];
@@ -2105,7 +2105,7 @@ function eliminate(ast, memSafe) {
     function processVariable(name) {
       if (definitions[name] === 1 && uses[name] === 1) {
         potentials[name] = 1;
-      } else if (uses[name] === 0 && (!definitions[name] || definitions[name] <= 1)) { // no uses, no def or 1 def (cannot operate on phis, and the llvm optimizer will remove unneeded phis anyhow)
+      } else if (uses[name] === 0 && (!definitions[name] || definitions[name] <= 1)) { // no uses, no def or 1 def (cannot operate on phis, and the llvm optimizer will remove unneeded phis anyhow) (no definition means it is a function parameter, or a local with just |var x;| but no defining assignment)
         var hasSideEffects = false;
         var value = values[name];
         if (value) {
@@ -2487,7 +2487,7 @@ function eliminate(ast, memSafe) {
           node[i] = value[i];
         }
       } else {
-        // empty it out in-place
+        // This has no side effects and no uses, empty it out in-place
         node.length = 0;
         node[0] = 'toplevel';
         node[1] = [];
