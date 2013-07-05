@@ -2021,7 +2021,9 @@ var ELIMINATION_SAFE_NODES = set('var', 'assign', 'call', 'if', 'toplevel', 'do'
 var NODES_WITHOUT_ELIMINATION_SIDE_EFFECTS = set('name', 'num', 'string', 'binary', 'sub', 'unary-prefix');
 var IGNORABLE_ELIMINATOR_SCAN_NODES = set('num', 'toplevel', 'string', 'break', 'continue', 'dot'); // dot can only be STRING_TABLE.*
 var ABORTING_ELIMINATOR_SCAN_NODES = set('new', 'object', 'function', 'defun', 'for', 'while', 'array', 'throw'); // we could handle some of these, TODO, but nontrivial (e.g. for while, the condition is hit multiple times after the body)
+
 var NODES_WITHOUT_ELIMINATION_SENSITIVITY = set('name', 'num', 'binary', 'unary-prefix');
+var FAST_ELIMINATION_BINARIES = setUnion(setUnion(USEFUL_BINARY_OPS, COMPARE_OPS), set('+'));
 
 function isTempDoublePtrAccess(node) { // these are used in bitcasts; they are not really affecting memory, and should cause no invalidation
   assert(node[0] === 'sub');
@@ -2068,7 +2070,8 @@ function eliminate(ast, memSafe) {
         if (value) {
           traverse(value, function(node, type) {
             if (!(type in NODES_WITHOUT_ELIMINATION_SENSITIVITY) ||
-                 (type == 'name' && !assessTriviality(node[1]))) {
+                 (type == 'name' && !assessTriviality(node[1])) ||
+                 (type == 'binary' && !(node[1] in FAST_ELIMINATION_BINARIES))) {
               sensitive = true;
               return true;
             }

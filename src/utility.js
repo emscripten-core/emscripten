@@ -293,6 +293,14 @@ function setSub(x, y) {
   return ret;
 }
 
+function setUnion(x, y) {
+  var ret = set(keys(x));
+  for (yy in y) {
+    ret[yy] = 0;
+  }
+  return ret;
+}
+
 // Intersection of 2 sets. Faster if |xx| << |yy|
 function setIntersect(x, y) {
   var ret = {};
