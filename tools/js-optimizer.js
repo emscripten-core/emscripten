@@ -2039,6 +2039,7 @@ function eliminate(ast, memSafe) {
     // such variables in a trivial manner.
 
     var assignments = {};
+    var appearances = {};
     var defs = {};
     var trivialConsidered = {};
 
@@ -2047,16 +2048,22 @@ function eliminate(ast, memSafe) {
         var name = node[2][1];
         if (name in asmData.vars) {
           assignments[name] = (assignments[name] || 0) + 1;
+          appearances[name] = (appearances[name] || 0) - 1; // this appearance is a definition, offset the counting later
           defs[name] = node;
         } else {
           if (name in asmData.params) {
             trivialConsidered[name] = true; // this parameter is not ssa, it must be in a hand-optimized function, so it is not trivial
           }
         }
+      } else if (type == 'name') {
+        var name = node[1];
+        if (name in asmData.vars) {
+          appearances[name] = (appearances[name] || 0) + 1;
+        }
       }
     });
 
-    var allTrivials = {};
+    var allTrivials = {}; // key of a trivial var => size of its (expanded) value, at least 1
 
     function assessTriviality(name) {
       // only care about vars with 0-1 assignments of (0 for parameters), and can ignore label (which is not explicitly initialized, but cannot be eliminated ever anyhow)
@@ -2064,27 +2071,37 @@ function eliminate(ast, memSafe) {
       if (trivialConsidered[name]) return allTrivials[name];
       trivialConsidered[name] = true;
       var sensitive = false;
+      var size = 0;
       var def = defs[name];
       if (def) {
         var value = def[3];
         if (value) {
           traverse(value, function(node, type) {
+            var one = node[1];
             if (!(type in NODES_WITHOUT_ELIMINATION_SENSITIVITY) ||
-                 (type == 'name' && !assessTriviality(node[1])) ||
+                 (type == 'name' && !assessTriviality(one)) ||
                  (type == 'binary' && !(node[1] in FAST_ELIMINATION_BINARIES))) {
               sensitive = true;
               return true;
             }
+            // if this is a name, it must be a trivial variable and we know its size
+            size += ((type == 'name') ? allTrivials[one] : 1) || 1;
           });
         }
       }
-      if (!sensitive) allTrivials[name] = true;
-      return !sensitive;
+      if (!sensitive) {
+        size = size || 1;
+        var extraAppearances = (appearances[name] - 1) || 0;
+        if (extraAppearances <= 4*size) { // 1 appearance, always ok to trivially eliminate. otherwise, tradeoff
+          allTrivials[name] = size; // trivial!
+          return true;
+        }
+      }
+      return false;
     }
     for (var name in asmData.vars) {
       assessTriviality(name);
     }
-
     var trivials = {};
 
     for (var name in allTrivials) { // from now on, ignore parameters
