@@ -2049,7 +2049,8 @@ function eliminate(ast, memSafe) {
     var trivialConsidered = {};
 
     function assessTriviality(name) {
-      if (!assignments[name] || assignments[name] > 1 || (!(name in asmData.vars) && !(name in asmData.params))) return false;
+      // only care about vars with 1 assignments of, and can ignore label (which is not explicitly initialized, but cannot be eliminated ever anyhow)
+      if (!assignments[name] || assignments[name] > 1 || (!(name in asmData.vars) && !(name in asmData.params)) || name == 'label') return false;
       if (trivialConsidered[name]) return trivials[name];
       trivialConsidered[name] = true;
 //printErr('consider ' + name);
