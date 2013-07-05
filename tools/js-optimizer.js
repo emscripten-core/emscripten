@@ -2041,7 +2041,7 @@ function eliminate(ast, memSafe) {
     var assignments = {};
     var appearances = {};
     var defs = {};
-    var trivialConsidered = {};
+    var considered = {};
 
     traverse(func, function(node, type) {
       if (type == 'assign' && node[2][0] == 'name') {
@@ -2052,7 +2052,7 @@ function eliminate(ast, memSafe) {
           defs[name] = node;
         } else {
           if (name in asmData.params) {
-            trivialConsidered[name] = true; // this parameter is not ssa, it must be in a hand-optimized function, so it is not trivial
+            considered[name] = true; // this parameter is not ssa, it must be in a hand-optimized function, so it is not trivial
           }
         }
       } else if (type == 'name') {
@@ -2065,26 +2065,36 @@ function eliminate(ast, memSafe) {
 
     var allTrivials = {}; // key of a trivial var => size of its (expanded) value, at least 1
 
+    // three levels of variables:
+    // 1. trivial: 1 def (or less), uses nothing sensitive, can be eliminated
+    // 2. safe: 1 def (or less), can be used in a trivial, but cannot itself be eliminated
+    // 3. sensitive: uses a global or memory or something else that prevents trivial elimination.
+
     function assessTriviality(name) {
       // only care about vars with 0-1 assignments of (0 for parameters), and can ignore label (which is not explicitly initialized, but cannot be eliminated ever anyhow)
       if (assignments[name] > 1 || (!(name in asmData.vars) && !(name in asmData.params)) || name == 'label') return false;
-      if (trivialConsidered[name]) return allTrivials[name];
-      trivialConsidered[name] = true;
+      if (considered[name]) return allTrivials[name];
+      considered[name] = true;
       var sensitive = false;
       var size = 0;
       var def = defs[name];
       if (def) {
         var value = def[3];
         if (value) {
-          traverse(value, function(node, type) {
+          traverse(value, function recurseValue(node, type) {
             var one = node[1];
             if (!(type in NODES_WITHOUT_ELIMINATION_SENSITIVITY) ||
-                 (type == 'name' && !assessTriviality(one)) ||
-                 (type == 'binary' && !(node[1] in FAST_ELIMINATION_BINARIES))) {
+                (type == 'binary' && !(one in FAST_ELIMINATION_BINARIES))) {
               sensitive = true;
               return true;
             }
-            // if this is a name, it must be a trivial variable and we know its size
+            if (type == 'name' && !assessTriviality(one)) {
+              if (assignments[one] > 1 || (!(one in asmData.vars) && !(one in asmData.params))) {
+                sensitive = true; // directly using something sensitive
+                return true;
+              } // otherwise, not trivial, but at least safe.
+            }
+            // if this is a name, it must be a trivial variable (or a safe one) and we know its size
             size += ((type == 'name') ? allTrivials[one] : 1) || 1;
           });
         }
@@ -2112,9 +2122,10 @@ function eliminate(ast, memSafe) {
 
     var values = {};
 
-    function evaluate(name) { // receive a name node (['name', name]) and return that node, or the proper recursive evaluation of all replacements
+    function evaluate(name) {
       var node = values[name];
       if (node) return node;
+      values[node] = null; // prevent infinite recursion
       var def = defs[name];
       if (def) {
         node = def[3];

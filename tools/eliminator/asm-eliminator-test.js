@@ -6688,6 +6688,7 @@ function _java_nio_charset_Charset_forNameInternal___java_lang_String($n1) {
 }
 function looop2() {
  var i = 0, helper = 0;
+ i = init();
  while (1) {
   do_it();
   helper = (i + 1)|0;
@@ -6700,6 +6701,7 @@ function looop2() {
 }
 function looop3() {
  var i = 0, helper = 0;
+ i = init();
  while (1) {
   do_it();
   helper = (i + 1)|0;
@@ -6712,6 +6714,7 @@ function looop3() {
 }
 function looop4() {
  var i = 0, helper = 0;
+ i = init();
  while (1) {
   do_it();
   helper = (i + 1)|0;
@@ -6725,6 +6728,7 @@ function looop4() {
 }
 function looop4b() {
  var i = 0, helper = 0;
+ i = init();
  while (1) {
   do_it();
   helper = (i + 1)|0;
@@ -6738,6 +6742,7 @@ function looop4b() {
 }
 function looop5() {
  var i = 0, helper = 0;
+ i = init();
  while (1) {
   do_it();
   helper = (i + 1)|0;
@@ -6751,6 +6756,7 @@ function looop5() {
 }
 function looop6() {
  var i = 0, helper = 0;
+ i = init();
  while (1) {
   do_it();
   helper = (i + 1)|0;
@@ -6784,6 +6790,8 @@ function looop7() {
 }
 function looop8() {
  var i = 0, j = 0, a = 0;
+ i = init();
+ j = init();
  while (1) {
   do_it(i, j);
   a = (i + j)|0;
