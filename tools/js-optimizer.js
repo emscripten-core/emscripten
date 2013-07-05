@@ -2038,6 +2038,7 @@ function eliminate(ast, memSafe) {
 
     var assignments = {};
     var defs = {};
+    var trivialConsidered = {};
 
     traverse(func, function(node, type) {
       if (type == 'assign' && node[2][0] == 'name') {
@@ -2046,13 +2047,14 @@ function eliminate(ast, memSafe) {
           assignments[name] = (assignments[name] || 0) + 1;
           defs[name] = node;
         } else {
-          assert(!(name in asmData.params), func[1]); // params should be ssa
+          if (name in asmData.params) {
+            trivialConsidered[name] = true; // this parameter is not ssa, it must be in a hand-optimized function, so it is not trivial
+          }
         }
       }
     });
 
     var allTrivials = {};
-    var trivialConsidered = {};
 
     function assessTriviality(name) {
       // only care about vars with 0-1 assignments of (0 for parameters), and can ignore label (which is not explicitly initialized, but cannot be eliminated ever anyhow)
