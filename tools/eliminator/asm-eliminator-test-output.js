@@ -134,7 +134,7 @@ function tempDouble(a) {
 }
 function _org_apache_harmony_luni_util_NumberConverter_freeFormat__($me) {
  $me = $me | 0;
- var $_r2_sroa_0 = 0, $_r3_sroa_0 = 0, $$etemp$1 = 0, $6 = 0, $7 = 0, $10 = 0, $11 = +0, $15 = 0, $_r2_sroa_0_0_cast283 = 0, $_r3_sroa_0_0_cast247 = 0, $_r3_sroa_0_0_load244 = +0, $_r3_sroa_0_0_load244$$SHADOW$0 = 0, $_r2_sroa_0_0_load = +0, $_r2_sroa_0_0_load$$SHADOW$0 = 0, $trunc297 = 0, $25 = 0, $26 = 0, $smax = 0, $28 = 0, $_r3_sroa_0_0_load239 = +0, $_pre_phi301 = 0, $_r3_sroa_0_0_cast264_pre_phi = 0, $_r2_sroa_0_0_load265 = +0, $33 = 0, $34 = 0, $_r3_sroa_0_0_cast253 = 0, $36 = 0, $37 = 0, $_r3_sroa_0_0_load243 = +0, $_r2_sroa_0_0_cast = 0, $45 = 0, $_sink_in = +0, $_r3_sroa_0_0_load241 = +0, $_r2_sroa_0_0_load266287 = 0, $_r1_sroa_0_0 = +0, $47 = 0, $48$0 = 0, $48$1 = 0, $_r1_sroa_0_0_extract_trunc185 = 0, $_r1_sroa_0_1_in$0 = 0, $_r1_sroa_0_1_in$1 = 0, $_r1_sroa_0_0_extract_trunc169 = 0, $_r1_sroa_0_2 = +0, $64 = 0, $65 = 0, $69 = 0, $76 = 0, $82 = 0, $_r1_sroa_0_0_extract_trunc = 0, $$etemp$15 = 0, $105 = 0, $106 = 0, $107 = 0, $108 = 0, $109 = 0, $110 = 0, $112 = 0, $113 = 0, $118 = 0, $_r3_sroa_0_0_load242 = +0, label = 0, __stackBase__ = 0;
+ var $_r2_sroa_0 = 0, $_r3_sroa_0 = 0, $6 = 0, $7 = 0, $10 = 0, $11 = +0, $15 = 0, $_r2_sroa_0_0_cast283 = 0, $_r3_sroa_0_0_cast247 = 0, $_r3_sroa_0_0_load244 = +0, $_r3_sroa_0_0_load244$$SHADOW$0 = 0, $_r2_sroa_0_0_load = +0, $_r2_sroa_0_0_load$$SHADOW$0 = 0, $trunc297 = 0, $25 = 0, $26 = 0, $smax = 0, $28 = 0, $_r3_sroa_0_0_load239 = +0, $_pre_phi301 = 0, $_r3_sroa_0_0_cast264_pre_phi = 0, $_r2_sroa_0_0_load265 = +0, $33 = 0, $34 = 0, $_r3_sroa_0_0_cast253 = 0, $36 = 0, $37 = 0, $_r3_sroa_0_0_load243 = +0, $_r2_sroa_0_0_cast = 0, $45 = 0, $_sink_in = +0, $_r3_sroa_0_0_load241 = +0, $_r2_sroa_0_0_load266287 = 0, $_r1_sroa_0_0 = +0, $47 = 0, $48$0 = 0, $48$1 = 0, $_r1_sroa_0_0_extract_trunc185 = 0, $_r1_sroa_0_1_in$0 = 0, $_r1_sroa_0_1_in$1 = 0, $_r1_sroa_0_0_extract_trunc169 = 0, $_r1_sroa_0_2 = +0, $64 = 0, $65 = 0, $69 = 0, $76 = 0, $82 = 0, $_r1_sroa_0_0_extract_trunc = 0, $105 = 0, $106 = 0, $107 = 0, $108 = 0, $109 = 0, $110 = 0, $112 = 0, $113 = 0, $118 = 0, $_r3_sroa_0_0_load242 = +0, label = 0, __stackBase__ = 0;
  __stackBase__ = STACKTOP;
  STACKTOP = STACKTOP + 16 | 0;
  $_r2_sroa_0 = __stackBase__ | 0;
@@ -142,9 +142,8 @@ function _org_apache_harmony_luni_util_NumberConverter_freeFormat__($me) {
  if ((HEAP32[(114668 | 0) >> 2] | 0 | 0) == 0) {
   HEAP32[(114664 | 0) >> 2] = 1;
   HEAP32[(114668 | 0) >> 2] = 1;
-  $$etemp$1 = 114672 | 0;
-  HEAP32[($$etemp$1 | 0) >> 2] = -1;
-  HEAP32[($$etemp$1 + 4 | 0) >> 2] = -1;
+  HEAP32[(114672 | 0 | 0) >> 2] = -1;
+  HEAP32[((114672 | 0) + 4 | 0) >> 2] = -1;
   HEAP32[(114684 | 0) >> 2] = 25296 | 0;
   HEAP32[(114704 | 0) >> 2] = 110728;
   HEAP32[(114712 | 0) >> 2] = 8;
@@ -325,9 +324,8 @@ function _org_apache_harmony_luni_util_NumberConverter_freeFormat__($me) {
  }
  HEAP32[(114664 | 0) >> 2] = 1;
  HEAP32[(114668 | 0) >> 2] = 1;
- $$etemp$15 = 114672 | 0;
- HEAP32[($$etemp$15 | 0) >> 2] = -1;
- HEAP32[($$etemp$15 + 4 | 0) >> 2] = -1;
+ HEAP32[(114672 | 0 | 0) >> 2] = -1;
+ HEAP32[((114672 | 0) + 4 | 0) >> 2] = -1;
  HEAP32[(114684 | 0) >> 2] = 25296 | 0;
  HEAP32[(114704 | 0) >> 2] = 110728;
  HEAP32[(114712 | 0) >> 2] = 8;

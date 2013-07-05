@@ -2017,6 +2017,7 @@ var ELIMINATION_SAFE_NODES = set('var', 'assign', 'call', 'if', 'toplevel', 'do'
 var NODES_WITHOUT_ELIMINATION_SIDE_EFFECTS = set('name', 'num', 'string', 'binary', 'sub', 'unary-prefix');
 var IGNORABLE_ELIMINATOR_SCAN_NODES = set('num', 'toplevel', 'string', 'break', 'continue', 'dot'); // dot can only be STRING_TABLE.*
 var ABORTING_ELIMINATOR_SCAN_NODES = set('new', 'object', 'function', 'defun', 'for', 'while', 'array', 'throw'); // we could handle some of these, TODO, but nontrivial (e.g. for while, the condition is hit multiple times after the body)
+var NODES_WITHOUT_ELIMINATION_SENSITIVITY = set('name', 'num', 'binary', 'unary-prefix');
 
 function isTempDoublePtrAccess(node) { // these are used in bitcasts; they are not really affecting memory, and should cause no invalidation
   assert(node[0] === 'sub');
@@ -2026,10 +2027,102 @@ function isTempDoublePtrAccess(node) { // these are used in bitcasts; they are n
 }
 
 function eliminate(ast, memSafe) {
+  function performTrivialEliminations(func, asmData) {
+    // Find 'trivial' variables: ones with 1 definition, and that definition is not sensitive to any changes: it
+    // only depends on constants and local variables that are themselves trivial. We can unquestionably eliminate
+    // such variables in a trivial manner.
+
+    var assignments = {};
+    var defs = {};
+
+    traverse(func, function(node, type) {
+      if (type == 'assign' && node[2][0] == 'name') {
+        var name = node[2][1];
+        if (name in asmData.vars) {
+          assignments[name] = (assignments[name] || 0) + 1;
+          defs[name] = node;
+        }
+      }
+    });
+
+    var trivials = {};
+    var trivialConsidered = {};
+
+    function assessTriviality(name) {
+      if (!assignments[name] || assignments[name] > 1 || (!(name in asmData.vars) && !(name in asmData.params))) return false;
+      if (trivialConsidered[name]) return trivials[name];
+      trivialConsidered[name] = true;
+//printErr('consider ' + name);
+      var value = defs[name][3];
+      var sensitive = false;
+      if (value) {
+        traverse(value, function(node, type) {
+          if (!(type in NODES_WITHOUT_ELIMINATION_SENSITIVITY) ||
+               (type == 'name' && !assessTriviality(node[1]))) {
+            sensitive = true;
+            return true;
+          }
+        });
+      }
+//printErr('considered ' + name + ', iz ' + (!sensitive));
+      if (!sensitive) trivials[name] = true;
+      return !sensitive;
+    }
+    for (var name in asmData.vars) {
+      assessTriviality(name);
+    }
+
+    var values = {};
+
+    function evaluate(name) { // receive a name node (['name', name]) and return that node, or the proper recursive evaluation of all replacements
+      var node = values[name];
+      if (node) return node;
+      node = defs[name][3];
+      traverse(node, function(node, type) {
+        if (type == 'name') {
+          var name2 = node[1];
+          if (name2 in trivials) {
+            return evaluate(name2);
+          }
+        }
+      });
+      values[name] = node
+      return node;
+    }
+
+    for (var name in trivials) {
+      evaluate(name);
+    }
+
+    for (var name in trivials) {
+      var def = defs[name];
+      def.length = 0;
+      def[0] = 'toplevel';
+      def[1] = [];
+    }
+
+    // Perform replacements
+    traverse(func, function(node, type) {
+      if (type == 'name') {
+        var name = node[1];
+        if (name in trivials) {
+          return copy(values[name]); // must copy, or else the same object can be used multiple times
+        }
+      }
+    });
+
+    //printErr('trivs in ' + func[1]);
+    //for (var name in trivials) printErr('trivial: ' + name);// + ' : ' + JSON.stringify(values[name]));
+
+    trivials = null;
+  }
+
   // Find variables that have a single use, and if they can be eliminated, do so
   traverseGeneratedFunctions(ast, function(func, type) {
-    if (asm) var asmData = normalizeAsm(func);
-    //printErr('eliminate in ' + func[1]);
+    if (asm) {
+      var asmData = normalizeAsm(func);
+      performTrivialEliminations(func, asmData);
+    }
 
     // First, find the potentially eliminatable functions: that have one definition and one use
     var definitions = {};
