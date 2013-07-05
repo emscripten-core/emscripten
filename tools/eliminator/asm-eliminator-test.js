@@ -6,6 +6,12 @@ function asm(x, y) {
  a = cheez((y+~~x)|0)|0;
  b = a*a;
  fleefl(b|0, a|0);
+ if (chak()) {
+  label = 12; // label has one setting, but cannot optimize it out as a trivial - we do actually rely on the asm 0 initialization
+ }
+ if (label == 12) {
+  something();
+ }
 }
 function __Z11printResultPiS_j($needle, $haystack, $len) {
  $needle = $needle | 0;
@@ -163,6 +169,7 @@ function switchy() {
 }
 function confuusion() {
  var i = +0;
+ i = 5.1;
  func1(+i);
  var j = i; // add this var in the middle. should show up with right type later, auto-inferred from i's type
  func2(+j);
@@ -1294,7 +1301,7 @@ function _java_nio_charset_Charset_forNameInternal___java_lang_String($n1) {
   $136 = $135;
   $137 = HEAP32[$136 >> 2] | 0;
   $138 = $137;
-  $139;
+  $139 = 0;
   $140 = ($139 | 0) == 0;
   if ($140) {
    label = 31;
@@ -1706,7 +1713,7 @@ function _java_nio_charset_Charset_forNameInternal___java_lang_String($n1) {
   $263 = $262;
   $264 = HEAP32[$263 >> 2] | 0;
   $265 = $264;
-  $266;
+  $266 = 0;
   $267 = ($266 | 0) == 0;
   if ($267) {
    label = 59;
@@ -6788,10 +6795,9 @@ function looop8() {
   }
  }
 }
-function multiloop($n_0, $35) {
- $n_0 = $n_0 | 0;
+function multiloop($35) {
  $35 = $35 | 0;
- var $p_0 = 0, $39 = 0, $41 = 0, $46 = 0;
+ var $n_0 = 0, $p_0 = 0, $39 = 0, $41 = 0, $46 = 0;
  $n_0 = $35;
  $p_0 = (HEAP32[$15 >> 2] | 0) + ($35 << 1) | 0;
  while (1) {
@@ -6812,10 +6818,9 @@ function multiloop($n_0, $35) {
   }
  }
 }
-function multiloop2($n_0, $35) {
- $n_0 = $n_0 | 0;
+function multiloop2($35) {
  $35 = $35 | 0;
- var $p_0 = 0, $39 = 0, $41 = 0, $46 = 0;
+ var $n_0 = 0, $p_0 = 0, $39 = 0, $41 = 0, $46 = 0;
  $n_0 = $35;
  $p_0 = (HEAP32[$15 >> 2] | 0) + ($35 << 1) | 0;
  while (1) {

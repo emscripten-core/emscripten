@@ -1533,8 +1533,12 @@ function makeAsmParamCoercion(param, type) {
   return type === ASM_INT ? ['binary', '|', ['name', param], ['num', 0]] : ['unary-prefix', '+', ['name', param]];
 }
 
+function makeAsmZero(type) {
+  return type === ASM_INT ? ['num', 0] : ['unary-prefix', '+', ['num', 0]];
+}
+
 function makeAsmVarDef(v, type) {
-  return [v, type === ASM_INT ? ['num', 0] : ['unary-prefix', '+', ['num', 0]]];
+  return [v, makeAsmZero(type)];
 }
 
 function normalizeAsm(func) {
@@ -2041,53 +2045,74 @@ function eliminate(ast, memSafe) {
         if (name in asmData.vars) {
           assignments[name] = (assignments[name] || 0) + 1;
           defs[name] = node;
+        } else {
+          assert(!(name in asmData.params), func[1]); // params should be ssa
         }
       }
     });
 
-    var trivials = {};
+    var allTrivials = {};
     var trivialConsidered = {};
 
     function assessTriviality(name) {
-      // only care about vars with 1 assignments of, and can ignore label (which is not explicitly initialized, but cannot be eliminated ever anyhow)
-      if (!assignments[name] || assignments[name] > 1 || (!(name in asmData.vars) && !(name in asmData.params)) || name == 'label') return false;
-      if (trivialConsidered[name]) return trivials[name];
+      // only care about vars with 0-1 assignments of (0 for parameters), and can ignore label (which is not explicitly initialized, but cannot be eliminated ever anyhow)
+      if (assignments[name] > 1 || (!(name in asmData.vars) && !(name in asmData.params)) || name == 'label') return false;
+      if (trivialConsidered[name]) return allTrivials[name];
       trivialConsidered[name] = true;
-//printErr('consider ' + name);
-      var value = defs[name][3];
       var sensitive = false;
-      if (value) {
-        traverse(value, function(node, type) {
-          if (!(type in NODES_WITHOUT_ELIMINATION_SENSITIVITY) ||
-               (type == 'name' && !assessTriviality(node[1]))) {
-            sensitive = true;
-            return true;
-          }
-        });
+      var def = defs[name];
+      if (def) {
+        var value = def[3];
+        if (value) {
+          traverse(value, function(node, type) {
+            if (!(type in NODES_WITHOUT_ELIMINATION_SENSITIVITY) ||
+                 (type == 'name' && !assessTriviality(node[1]))) {
+              sensitive = true;
+              return true;
+            }
+          });
+        }
       }
-//printErr('considered ' + name + ', iz ' + (!sensitive));
-      if (!sensitive) trivials[name] = true;
+      if (!sensitive) allTrivials[name] = true;
       return !sensitive;
     }
     for (var name in asmData.vars) {
       assessTriviality(name);
     }
 
+    var trivials = {};
+
+    for (var name in allTrivials) { // from now on, ignore parameters
+      if (name in asmData.vars) trivials[name] = true;
+    }
+
+    allTrivials = {};
+
     var values = {};
 
     function evaluate(name) { // receive a name node (['name', name]) and return that node, or the proper recursive evaluation of all replacements
       var node = values[name];
       if (node) return node;
-      node = defs[name][3];
-      traverse(node, function(node, type) {
-        if (type == 'name') {
+      var def = defs[name];
+      if (def) {
+        node = def[3];
+        if (node[0] == 'name') {
           var name2 = node[1];
           if (name2 in trivials) {
-            return evaluate(name2);
+            node = evaluate(name2);
           }
+        } else {
+          traverse(node, function(node, type) {
+            if (type == 'name') {
+              var name2 = node[1];
+              if (name2 in trivials) {
+                return evaluate(name2);
+              }
+            }
+          });
         }
-      });
-      values[name] = node
+        values[name] = node;
+      }
       return node;
     }
 
@@ -2097,23 +2122,25 @@ function eliminate(ast, memSafe) {
 
     for (var name in trivials) {
       var def = defs[name];
-      def.length = 0;
-      def[0] = 'toplevel';
-      def[1] = [];
+      if (def) {
+        def.length = 0;
+        def[0] = 'toplevel';
+        def[1] = [];
+      }
+      delete asmData.vars[name];
     }
 
-    // Perform replacements
+    // Perform replacements TODO: save list of uses objects before, replace directly, avoid extra traverse
     traverse(func, function(node, type) {
       if (type == 'name') {
         var name = node[1];
         if (name in trivials) {
-          return copy(values[name]); // must copy, or else the same object can be used multiple times
+          var value = values[name];
+          if (!value) throw 'missing value: ' + [func[1], name, values[name]] + ' - faulty reliance on asm zero-init?';
+          return copy(value); // must copy, or else the same object can be used multiple times
         }
       }
     });
-
-    //printErr('trivs in ' + func[1]);
-    //for (var name in trivials) printErr('trivial: ' + name);// + ' : ' + JSON.stringify(values[name]));
 
     trivials = null;
   }

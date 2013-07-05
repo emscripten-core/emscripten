@@ -1,9 +1,15 @@
 function asm(x, y) {
  x = +x;
  y = y | 0;
- var a = 0;
+ var a = 0, label = 0;
  a = cheez(y + ~~x | 0) | 0;
  fleefl(a * a | 0, a | 0);
+ if (chak()) {
+  label = 12;
+ }
+ if (label == 12) {
+  something();
+ }
 }
 function __Z11printResultPiS_j($needle, $haystack, $len) {
  $needle = $needle | 0;
@@ -123,10 +129,8 @@ function switchy() {
  }
 }
 function confuusion() {
- var i = +0, j = +0;
- func1(+i);
- j = i;
- func2(+j);
+ func1(+5.1);
+ func2(+5.1);
 }
 function tempDouble(a) {
  a = +a;
@@ -134,7 +138,7 @@ function tempDouble(a) {
 }
 function _org_apache_harmony_luni_util_NumberConverter_freeFormat__($me) {
  $me = $me | 0;
- var $_r2_sroa_0 = 0, $_r3_sroa_0 = 0, $6 = 0, $7 = 0, $10 = 0, $11 = +0, $15 = 0, $_r2_sroa_0_0_cast283 = 0, $_r3_sroa_0_0_cast247 = 0, $_r3_sroa_0_0_load244 = +0, $_r3_sroa_0_0_load244$$SHADOW$0 = 0, $_r2_sroa_0_0_load = +0, $_r2_sroa_0_0_load$$SHADOW$0 = 0, $trunc297 = 0, $25 = 0, $26 = 0, $smax = 0, $28 = 0, $_r3_sroa_0_0_load239 = +0, $_pre_phi301 = 0, $_r3_sroa_0_0_cast264_pre_phi = 0, $_r2_sroa_0_0_load265 = +0, $33 = 0, $34 = 0, $_r3_sroa_0_0_cast253 = 0, $36 = 0, $37 = 0, $_r3_sroa_0_0_load243 = +0, $_r2_sroa_0_0_cast = 0, $45 = 0, $_sink_in = +0, $_r3_sroa_0_0_load241 = +0, $_r2_sroa_0_0_load266287 = 0, $_r1_sroa_0_0 = +0, $47 = 0, $48$0 = 0, $48$1 = 0, $_r1_sroa_0_0_extract_trunc185 = 0, $_r1_sroa_0_1_in$0 = 0, $_r1_sroa_0_1_in$1 = 0, $_r1_sroa_0_0_extract_trunc169 = 0, $_r1_sroa_0_2 = +0, $64 = 0, $65 = 0, $69 = 0, $76 = 0, $82 = 0, $_r1_sroa_0_0_extract_trunc = 0, $105 = 0, $106 = 0, $107 = 0, $108 = 0, $109 = 0, $110 = 0, $112 = 0, $113 = 0, $118 = 0, $_r3_sroa_0_0_load242 = +0, label = 0, __stackBase__ = 0;
+ var $_r2_sroa_0 = 0, $_r3_sroa_0 = 0, $6 = 0, $10 = 0, $11 = +0, $15 = 0, $_r2_sroa_0_0_cast283 = 0, $_r3_sroa_0_0_cast247 = 0, $_r3_sroa_0_0_load244 = +0, $_r3_sroa_0_0_load244$$SHADOW$0 = 0, $_r2_sroa_0_0_load = +0, $_r2_sroa_0_0_load$$SHADOW$0 = 0, $trunc297 = 0, $25 = 0, $26 = 0, $smax = 0, $28 = 0, $_r3_sroa_0_0_load239 = +0, $_pre_phi301 = 0, $_r3_sroa_0_0_cast264_pre_phi = 0, $_r2_sroa_0_0_load265 = +0, $34 = 0, $_r3_sroa_0_0_cast253 = 0, $37 = 0, $_r3_sroa_0_0_load243 = +0, $_r2_sroa_0_0_cast = 0, $_sink_in = +0, $_r3_sroa_0_0_load241 = +0, $_r2_sroa_0_0_load266287 = 0, $_r1_sroa_0_0 = +0, $47 = 0, $48$0 = 0, $48$1 = 0, $_r1_sroa_0_0_extract_trunc185 = 0, $_r1_sroa_0_1_in$0 = 0, $_r1_sroa_0_1_in$1 = 0, $_r1_sroa_0_0_extract_trunc169 = 0, $_r1_sroa_0_2 = +0, $64 = 0, $65 = 0, $69 = 0, $76 = 0, $82 = 0, $_r1_sroa_0_0_extract_trunc = 0, $105 = 0, $106 = 0, $107 = 0, $108 = 0, $109 = 0, $110 = 0, $112 = 0, $113 = 0, $118 = 0, $_r3_sroa_0_0_load242 = +0, label = 0, __stackBase__ = 0;
  __stackBase__ = STACKTOP;
  STACKTOP = STACKTOP + 16 | 0;
  $_r2_sroa_0 = __stackBase__ | 0;
@@ -155,7 +159,6 @@ function _org_apache_harmony_luni_util_NumberConverter_freeFormat__($me) {
   HEAP32[(114784 | 0 | 0) + 20 >> 2] = HEAP32[(107856 | 0 | 0) + 20 >> 2] | 0;
  }
  $6 = _org_xmlvm_runtime_XMLVMArray_createSingleDimension___java_lang_Class_int(HEAP32[138960 >> 2] | 0, 25) | 0;
- $7 = $me + 8 | 0;
  $10 = HEAP32[($me + 20 | 0) >> 2] | 0;
  $11 = (HEAP32[tempDoublePtr >> 2] = $10, HEAP32[tempDoublePtr + 4 >> 2] = 0, +HEAPF64[tempDoublePtr >> 3]);
  if (($10 | 0) > -1) {
@@ -206,19 +209,16 @@ function _org_apache_harmony_luni_util_NumberConverter_freeFormat__($me) {
   $_r3_sroa_0_0_cast264_pre_phi = $_r3_sroa_0_0_cast247;
   $_pre_phi301 = $15;
  }
- $33 = $me + 16 | 0;
- $34 = HEAP32[$33 >> 2] | 0;
+ $34 = HEAP32[($me + 16 | 0) >> 2] | 0;
  $_r3_sroa_0_0_cast253 = $_r3_sroa_0;
  HEAP32[$_r3_sroa_0_0_cast253 >> 2] = $34;
- $36 = $me + 12 | 0;
- $37 = HEAP32[$36 >> 2] | 0;
- HEAP32[$36 >> 2] = $37 + 1 | 0;
+ $37 = HEAP32[($me + 12 | 0) >> 2] | 0;
+ HEAP32[($me + 12 | 0) >> 2] = $37 + 1 | 0;
  HEAP32[$_r3_sroa_0_0_cast264_pre_phi >> 2] = HEAP32[((HEAP32[($34 + 16 | 0) >> 2] | 0) + ($37 << 2) | 0) >> 2] | 0;
  $_r3_sroa_0_0_load243 = +HEAPF64[$_r3_sroa_0 >> 3];
  HEAPF64[$_r3_sroa_0 >> 3] = $_r2_sroa_0_0_load265;
  HEAPF64[$_r2_sroa_0 >> 3] = $11;
  $_r2_sroa_0_0_cast = $_r2_sroa_0;
- $45 = $7;
  $_r1_sroa_0_0 = $_r3_sroa_0_0_load243;
  $_r2_sroa_0_0_load266287 = $10;
  $_r3_sroa_0_0_load241 = $_r2_sroa_0_0_load265;
@@ -263,12 +263,12 @@ function _org_apache_harmony_luni_util_NumberConverter_freeFormat__($me) {
    }
   } while (0);
   $64 = $_r2_sroa_0_0_load266287 - 1 | 0;
-  $65 = HEAP32[$36 >> 2] | 0;
+  $65 = HEAP32[($me + 12 | 0) >> 2] | 0;
   HEAP32[$_r3_sroa_0_0_cast264_pre_phi >> 2] = $65;
-  if (($65 | 0) < (HEAP32[$45 >> 2] | 0 | 0)) {
-   $69 = HEAP32[$33 >> 2] | 0;
+  if (($65 | 0) < (HEAP32[($me + 8 | 0) >> 2] | 0 | 0)) {
+   $69 = HEAP32[($me + 16 | 0) >> 2] | 0;
    HEAP32[$_r3_sroa_0_0_cast253 >> 2] = $69;
-   HEAP32[$36 >> 2] = $65 + 1 | 0;
+   HEAP32[($me + 12 | 0) >> 2] = $65 + 1 | 0;
    $76 = HEAP32[((HEAP32[($69 + 16 | 0) >> 2] | 0) + ($65 << 2) | 0) >> 2] | 0;
    HEAP32[$_r3_sroa_0_0_cast264_pre_phi >> 2] = $76;
    if (!(($76 | 0) != -1 | ($64 | 0) > -2)) {
@@ -361,7 +361,7 @@ function __ZN23b2EdgeAndPolygonContact8EvaluateEP10b2ManifoldRK11b2TransformS4_(
 }
 function _java_nio_charset_Charset_forNameInternal___java_lang_String($n1) {
  $n1 = $n1 | 0;
- var $_r0_sroa_0 = 0, $_r0_sroa_1 = 0, $_r1_sroa_0 = 0, $_r2_sroa_0 = 0, $_r3_sroa_0 = 0, $_r3_sroa_1 = 0, $_r5_sroa_0 = 0, $local_env_w4567aaac23b1b6 = 0, $local_env_w4567aaac23b1c16 = 0, $local_env_w4567aaac23b1c22 = 0, $local_env_w4567aaac23b1c24 = 0, $local_env_w4567aaac23b1c26 = 0, $local_env_w4567aaac23b1c29 = 0, $local_env_w4567aaac23b1c31 = 0, $local_env_w4567aaac23b1c35 = 0, $local_env_w4567aaac23b1c40 = 0, $local_env_w4567aaac23b1c42 = 0, $local_env_w4567aaac23b1c44 = 0, $local_env_w4567aaac23b1c48 = 0, $local_env_w4567aaac23b1c50 = 0, $5 = 0, $16 = 0, $18 = 0, $19 = 0, $21 = 0, $25 = 0, $40 = 0, $52 = 0, $57 = 0, $61 = 0, $tib1_0_ph_i543 = 0, $72 = 0, $tib1_0_lcssa_i546 = 0, $dimension_tib1_0_lcssa_i547 = 0, $77 = 0, $79 = 0, $dimension_tib1_029_i549 = 0, $82 = 0, $83 = 0, $86 = 0, $88 = 0, $dimension_tib2_024_i551 = 0, $91 = 0, $92 = 0, $95 = 0, $tib2_0_lcssa_in_i553 = 0, $dimension_tib2_0_lcssa_i554 = 0, $tib2_0_lcssa_i555 = 0, $tib1_121_i558 = 0, $i_0_i561 = 0, $113 = 0, $_r1_sroa_0_0_load600 = 0, $119 = 0, $122 = 0, $139 = 0, $145 = 0, $149 = 0, $151 = 0, $153 = 0, $155 = 0, $159 = 0, $170 = 0, $175 = 0, $179 = 0, $tib1_0_ph_i521 = 0, $190 = 0, $tib1_0_lcssa_i524 = 0, $dimension_tib1_0_lcssa_i525 = 0, $195 = 0, $197 = 0, $dimension_tib1_029_i527 = 0, $200 = 0, $201 = 0, $204 = 0, $206 = 0, $dimension_tib2_024_i529 = 0, $209 = 0, $210 = 0, $213 = 0, $tib2_0_lcssa_in_i531 = 0, $dimension_tib2_0_lcssa_i532 = 0, $tib2_0_lcssa_i533 = 0, $tib1_121_i536 = 0, $i_0_i539 = 0, $231 = 0, $238 = 0, $240 = 0, $_r1_sroa_0_0_load = 0, $246 = 0, $249 = 0, $266 = 0, $273 = 0, $275 = 0, $284 = 0, $286 = 0, $290 = 0, $305 = 0, $310 = 0, $323 = 0, $328 = 0, $332 = 0, $tib1_0_ph_i500 = 0, $343 = 0, $tib1_0_lcssa_i503 = 0, $dimension_tib1_0_lcssa_i504 = 0, $348 = 0, $350 = 0, $dimension_tib1_029_i506 = 0, $353 = 0, $354 = 0, $357 = 0, $359 = 0, $dimension_tib2_024_i508 = 0, $362 = 0, $363 = 0, $366 = 0, $tib2_0_lcssa_in_i510 = 0, $dimension_tib2_0_lcssa_i511 = 0, $tib2_0_lcssa_i512 = 0, $tib1_121_i515 = 0, $i_0_i518 = 0, $384 = 0, $392 = 0, $394 = 0, $395 = 0, $397 = 0, $401 = 0, $416 = 0, $424 = 0, $426 = 0, $427 = 0, $429 = 0, $433 = 0, $446 = 0, $451 = 0, $455 = 0, $tib1_0_ph_i479 = 0, $466 = 0, $tib1_0_lcssa_i482 = 0, $dimension_tib1_0_lcssa_i483 = 0, $471 = 0, $473 = 0, $dimension_tib1_029_i485 = 0, $476 = 0, $477 = 0, $480 = 0, $482 = 0, $dimension_tib2_024_i487 = 0, $485 = 0, $486 = 0, $489 = 0, $tib2_0_lcssa_in_i489 = 0, $dimension_tib2_0_lcssa_i490 = 0, $tib2_0_lcssa_i491 = 0, $tib1_121_i494 = 0, $i_0_i497 = 0, $507 = 0, $519 = 0, $521 = 0, $525 = 0, $534 = 0, $539 = 0, $542 = 0, $546 = 0, $548 = 0, $557 = 0, $562 = 0, $566 = 0, $tib1_0_ph_i458 = 0, $577 = 0, $tib1_0_lcssa_i461 = 0, $dimension_tib1_0_lcssa_i462 = 0, $582 = 0, $584 = 0, $dimension_tib1_029_i464 = 0, $587 = 0, $588 = 0, $591 = 0, $593 = 0, $dimension_tib2_024_i466 = 0, $596 = 0, $597 = 0, $600 = 0, $tib2_0_lcssa_in_i468 = 0, $dimension_tib2_0_lcssa_i469 = 0, $tib2_0_lcssa_i470 = 0, $tib1_121_i473 = 0, $i_0_i476 = 0, $618 = 0, $623 = 0, $625 = 0, $629 = 0, $632 = 0, $643 = 0, $644 = 0, $649 = 0, $653 = 0, $tib1_0_ph_i437 = 0, $664 = 0, $tib1_0_lcssa_i440 = 0, $dimension_tib1_0_lcssa_i441 = 0, $669 = 0, $671 = 0, $dimension_tib1_029_i443 = 0, $674 = 0, $675 = 0, $678 = 0, $680 = 0, $dimension_tib2_024_i445 = 0, $683 = 0, $684 = 0, $687 = 0, $tib2_0_lcssa_in_i447 = 0, $dimension_tib2_0_lcssa_i448 = 0, $tib2_0_lcssa_i449 = 0, $tib1_121_i452 = 0, $i_0_i455 = 0, $705 = 0, $711 = 0, $716 = 0, $720 = 0, $tib1_0_ph_i416 = 0, $731 = 0, $tib1_0_lcssa_i419 = 0, $dimension_tib1_0_lcssa_i420 = 0, $736 = 0, $738 = 0, $dimension_tib1_029_i422 = 0, $741 = 0, $742 = 0, $745 = 0, $747 = 0, $dimension_tib2_024_i424 = 0, $750 = 0, $751 = 0, $754 = 0, $tib2_0_lcssa_in_i426 = 0, $dimension_tib2_0_lcssa_i427 = 0, $tib2_0_lcssa_i428 = 0, $tib1_121_i431 = 0, $i_0_i434 = 0, $772 = 0, $780 = 0, $782 = 0, $783 = 0, $785 = 0, $789 = 0, $798 = 0, $808 = 0, $809 = 0, $814 = 0, $818 = 0, $tib1_0_ph_i395 = 0, $829 = 0, $tib1_0_lcssa_i398 = 0, $dimension_tib1_0_lcssa_i399 = 0, $834 = 0, $836 = 0, $dimension_tib1_029_i401 = 0, $839 = 0, $840 = 0, $843 = 0, $845 = 0, $dimension_tib2_024_i403 = 0, $848 = 0, $849 = 0, $852 = 0, $tib2_0_lcssa_in_i405 = 0, $dimension_tib2_0_lcssa_i406 = 0, $tib2_0_lcssa_i407 = 0, $tib1_121_i410 = 0, $i_0_i413 = 0, $870 = 0, $876 = 0, $881 = 0, $885 = 0, $tib1_0_ph_i374 = 0, $896 = 0, $tib1_0_lcssa_i377 = 0, $dimension_tib1_0_lcssa_i378 = 0, $901 = 0, $903 = 0, $dimension_tib1_029_i380 = 0, $906 = 0, $907 = 0, $910 = 0, $912 = 0, $dimension_tib2_024_i382 = 0, $915 = 0, $916 = 0, $919 = 0, $tib2_0_lcssa_in_i384 = 0, $dimension_tib2_0_lcssa_i385 = 0, $tib2_0_lcssa_i386 = 0, $tib1_121_i389 = 0, $i_0_i392 = 0, $937 = 0, $945 = 0, $947 = 0, $948 = 0, $950 = 0, $954 = 0, $_r0_sroa_0_0_load607 = 0, $969 = 0, $974 = 0, $978 = 0, $tib1_0_ph_i353 = 0, $989 = 0, $tib1_0_lcssa_i356 = 0, $dimension_tib1_0_lcssa_i357 = 0, $994 = 0, $996 = 0, $dimension_tib1_029_i359 = 0, $999 = 0, $1000 = 0, $1003 = 0, $1005 = 0, $dimension_tib2_024_i361 = 0, $1008 = 0, $1009 = 0, $1012 = 0, $tib2_0_lcssa_in_i363 = 0, $dimension_tib2_0_lcssa_i364 = 0, $tib2_0_lcssa_i365 = 0, $tib1_121_i368 = 0, $i_0_i371 = 0, $1030 = 0, $1036 = 0, $1038 = 0, $1042 = 0, $1050 = 0, $1056 = 0, $1064 = 0, $1066 = 0, $1067 = 0, $1069 = 0, $1073 = 0, $1083 = 0, $1084 = 0, $1089 = 0, $1093 = 0, $tib1_0_ph_i332 = 0, $1104 = 0, $tib1_0_lcssa_i335 = 0, $dimension_tib1_0_lcssa_i336 = 0, $1109 = 0, $1111 = 0, $dimension_tib1_029_i338 = 0, $1114 = 0, $1115 = 0, $1118 = 0, $1120 = 0, $dimension_tib2_024_i340 = 0, $1123 = 0, $1124 = 0, $1127 = 0, $tib2_0_lcssa_in_i342 = 0, $dimension_tib2_0_lcssa_i343 = 0, $tib2_0_lcssa_i344 = 0, $tib1_121_i347 = 0, $i_0_i350 = 0, $1145 = 0, $1151 = 0, $1156 = 0, $1160 = 0, $tib1_0_ph_i311 = 0, $1171 = 0, $tib1_0_lcssa_i314 = 0, $dimension_tib1_0_lcssa_i315 = 0, $1176 = 0, $1178 = 0, $dimension_tib1_029_i317 = 0, $1181 = 0, $1182 = 0, $1185 = 0, $1187 = 0, $dimension_tib2_024_i319 = 0, $1190 = 0, $1191 = 0, $1194 = 0, $tib2_0_lcssa_in_i321 = 0, $dimension_tib2_0_lcssa_i322 = 0, $tib2_0_lcssa_i323 = 0, $tib1_121_i326 = 0, $i_0_i329 = 0, $1212 = 0, $1222 = 0, $1232 = 0, $1233 = 0, $1238 = 0, $1242 = 0, $tib1_0_ph_i290 = 0, $1253 = 0, $tib1_0_lcssa_i293 = 0, $dimension_tib1_0_lcssa_i294 = 0, $1258 = 0, $1260 = 0, $dimension_tib1_029_i296 = 0, $1263 = 0, $1264 = 0, $1267 = 0, $1269 = 0, $dimension_tib2_024_i298 = 0, $1272 = 0, $1273 = 0, $1276 = 0, $tib2_0_lcssa_in_i300 = 0, $dimension_tib2_0_lcssa_i301 = 0, $tib2_0_lcssa_i302 = 0, $tib1_121_i305 = 0, $i_0_i308 = 0, $1294 = 0, $1300 = 0, $1305 = 0, $1309 = 0, $tib1_0_ph_i269 = 0, $1320 = 0, $tib1_0_lcssa_i272 = 0, $dimension_tib1_0_lcssa_i273 = 0, $1325 = 0, $1327 = 0, $dimension_tib1_029_i275 = 0, $1330 = 0, $1331 = 0, $1334 = 0, $1336 = 0, $dimension_tib2_024_i277 = 0, $1339 = 0, $1340 = 0, $1343 = 0, $tib2_0_lcssa_in_i279 = 0, $dimension_tib2_0_lcssa_i280 = 0, $tib2_0_lcssa_i281 = 0, $tib1_121_i284 = 0, $i_0_i287 = 0, $1361 = 0, $1369 = 0, $1371 = 0, $1372 = 0, $1374 = 0, $1378 = 0, $_r0_sroa_0_0_load604 = 0, $1391 = 0, $1400 = 0, $1401 = 0, $1406 = 0, $1410 = 0, $tib1_0_ph_i248 = 0, $1421 = 0, $tib1_0_lcssa_i251 = 0, $dimension_tib1_0_lcssa_i252 = 0, $1426 = 0, $1428 = 0, $dimension_tib1_029_i254 = 0, $1431 = 0, $1432 = 0, $1435 = 0, $1437 = 0, $dimension_tib2_024_i256 = 0, $1440 = 0, $1441 = 0, $1444 = 0, $tib2_0_lcssa_in_i258 = 0, $dimension_tib2_0_lcssa_i259 = 0, $tib2_0_lcssa_i260 = 0, $tib1_121_i263 = 0, $i_0_i266 = 0, $1462 = 0, $1468 = 0, $1473 = 0, $1477 = 0, $tib1_0_ph_i227 = 0, $1488 = 0, $tib1_0_lcssa_i230 = 0, $dimension_tib1_0_lcssa_i231 = 0, $1493 = 0, $1495 = 0, $dimension_tib1_029_i233 = 0, $1498 = 0, $1499 = 0, $1502 = 0, $1504 = 0, $dimension_tib2_024_i235 = 0, $1507 = 0, $1508 = 0, $1511 = 0, $tib2_0_lcssa_in_i237 = 0, $dimension_tib2_0_lcssa_i238 = 0, $tib2_0_lcssa_i239 = 0, $tib1_121_i242 = 0, $i_0_i245 = 0, $1529 = 0, $1536 = 0, $1538 = 0, $1539 = 0, $1541 = 0, $1545 = 0, $1551 = 0, $1553 = 0, $_r0_sroa_0_0_load602 = 0, $1570 = 0, $1575 = 0, $1579 = 0, $tib1_0_ph_i185 = 0, $1590 = 0, $tib1_0_lcssa_i188 = 0, $dimension_tib1_0_lcssa_i189 = 0, $1595 = 0, $1597 = 0, $dimension_tib1_029_i191 = 0, $1600 = 0, $1601 = 0, $1604 = 0, $1606 = 0, $dimension_tib2_024_i193 = 0, $1609 = 0, $1610 = 0, $1613 = 0, $tib2_0_lcssa_in_i195 = 0, $dimension_tib2_0_lcssa_i196 = 0, $tib2_0_lcssa_i197 = 0, $tib1_121_i200 = 0, $i_0_i203 = 0, $1631 = 0, $1638 = 0, $1640 = 0, $1641 = 0, $1643 = 0, $1647 = 0, $1653 = 0, $1655 = 0, $_r2_sroa_0_0_load = 0, $1666 = 0, $1668 = 0, $1684 = 0, $1689 = 0, $1693 = 0, $tib1_0_ph_i = 0, $1704 = 0, $tib1_0_lcssa_i = 0, $dimension_tib1_0_lcssa_i = 0, $1709 = 0, $1711 = 0, $dimension_tib1_029_i = 0, $1714 = 0, $1715 = 0, $1718 = 0, $1720 = 0, $dimension_tib2_024_i = 0, $1723 = 0, $1724 = 0, $1727 = 0, $tib2_0_lcssa_in_i = 0, $dimension_tib2_0_lcssa_i = 0, $tib2_0_lcssa_i = 0, $tib1_121_i = 0, $i_0_i = 0, $1745 = 0, label = 0, __stackBase__ = 0, setjmpLabel = 0, setjmpTable = 0;
+ var $_r0_sroa_0 = 0, $_r0_sroa_1 = 0, $_r1_sroa_0 = 0, $_r2_sroa_0 = 0, $_r3_sroa_0 = 0, $_r3_sroa_1 = 0, $local_env_w4567aaac23b1b6 = 0, $local_env_w4567aaac23b1c16 = 0, $local_env_w4567aaac23b1c22 = 0, $local_env_w4567aaac23b1c24 = 0, $local_env_w4567aaac23b1c26 = 0, $local_env_w4567aaac23b1c29 = 0, $local_env_w4567aaac23b1c31 = 0, $local_env_w4567aaac23b1c35 = 0, $local_env_w4567aaac23b1c40 = 0, $local_env_w4567aaac23b1c42 = 0, $local_env_w4567aaac23b1c44 = 0, $local_env_w4567aaac23b1c48 = 0, $local_env_w4567aaac23b1c50 = 0, $5 = 0, $16 = 0, $18 = 0, $19 = 0, $21 = 0, $25 = 0, $40 = 0, $52 = 0, $57 = 0, $61 = 0, $tib1_0_ph_i543 = 0, $72 = 0, $tib1_0_lcssa_i546 = 0, $dimension_tib1_0_lcssa_i547 = 0, $77 = 0, $79 = 0, $dimension_tib1_029_i549 = 0, $82 = 0, $83 = 0, $86 = 0, $88 = 0, $dimension_tib2_024_i551 = 0, $91 = 0, $92 = 0, $95 = 0, $tib2_0_lcssa_in_i553 = 0, $dimension_tib2_0_lcssa_i554 = 0, $tib2_0_lcssa_i555 = 0, $tib1_121_i558 = 0, $i_0_i561 = 0, $113 = 0, $_r1_sroa_0_0_load600 = 0, $119 = 0, $122 = 0, $149 = 0, $151 = 0, $153 = 0, $155 = 0, $159 = 0, $170 = 0, $175 = 0, $179 = 0, $tib1_0_ph_i521 = 0, $190 = 0, $tib1_0_lcssa_i524 = 0, $dimension_tib1_0_lcssa_i525 = 0, $195 = 0, $197 = 0, $dimension_tib1_029_i527 = 0, $200 = 0, $201 = 0, $204 = 0, $206 = 0, $dimension_tib2_024_i529 = 0, $209 = 0, $210 = 0, $213 = 0, $tib2_0_lcssa_in_i531 = 0, $dimension_tib2_0_lcssa_i532 = 0, $tib2_0_lcssa_i533 = 0, $tib1_121_i536 = 0, $i_0_i539 = 0, $231 = 0, $238 = 0, $240 = 0, $_r1_sroa_0_0_load = 0, $246 = 0, $249 = 0, $273 = 0, $275 = 0, $284 = 0, $286 = 0, $290 = 0, $305 = 0, $310 = 0, $323 = 0, $328 = 0, $332 = 0, $tib1_0_ph_i500 = 0, $343 = 0, $tib1_0_lcssa_i503 = 0, $dimension_tib1_0_lcssa_i504 = 0, $348 = 0, $350 = 0, $dimension_tib1_029_i506 = 0, $353 = 0, $354 = 0, $357 = 0, $359 = 0, $dimension_tib2_024_i508 = 0, $362 = 0, $363 = 0, $366 = 0, $tib2_0_lcssa_in_i510 = 0, $dimension_tib2_0_lcssa_i511 = 0, $tib2_0_lcssa_i512 = 0, $tib1_121_i515 = 0, $i_0_i518 = 0, $384 = 0, $392 = 0, $394 = 0, $395 = 0, $397 = 0, $401 = 0, $416 = 0, $424 = 0, $426 = 0, $427 = 0, $429 = 0, $433 = 0, $446 = 0, $451 = 0, $455 = 0, $tib1_0_ph_i479 = 0, $466 = 0, $tib1_0_lcssa_i482 = 0, $dimension_tib1_0_lcssa_i483 = 0, $471 = 0, $473 = 0, $dimension_tib1_029_i485 = 0, $476 = 0, $477 = 0, $480 = 0, $482 = 0, $dimension_tib2_024_i487 = 0, $485 = 0, $486 = 0, $489 = 0, $tib2_0_lcssa_in_i489 = 0, $dimension_tib2_0_lcssa_i490 = 0, $tib2_0_lcssa_i491 = 0, $tib1_121_i494 = 0, $i_0_i497 = 0, $507 = 0, $519 = 0, $521 = 0, $525 = 0, $534 = 0, $539 = 0, $542 = 0, $546 = 0, $548 = 0, $557 = 0, $562 = 0, $566 = 0, $tib1_0_ph_i458 = 0, $577 = 0, $tib1_0_lcssa_i461 = 0, $dimension_tib1_0_lcssa_i462 = 0, $582 = 0, $584 = 0, $dimension_tib1_029_i464 = 0, $587 = 0, $588 = 0, $591 = 0, $593 = 0, $dimension_tib2_024_i466 = 0, $596 = 0, $597 = 0, $600 = 0, $tib2_0_lcssa_in_i468 = 0, $dimension_tib2_0_lcssa_i469 = 0, $tib2_0_lcssa_i470 = 0, $tib1_121_i473 = 0, $i_0_i476 = 0, $618 = 0, $623 = 0, $625 = 0, $629 = 0, $632 = 0, $643 = 0, $644 = 0, $649 = 0, $653 = 0, $tib1_0_ph_i437 = 0, $664 = 0, $tib1_0_lcssa_i440 = 0, $dimension_tib1_0_lcssa_i441 = 0, $669 = 0, $671 = 0, $dimension_tib1_029_i443 = 0, $674 = 0, $675 = 0, $678 = 0, $680 = 0, $dimension_tib2_024_i445 = 0, $683 = 0, $684 = 0, $687 = 0, $tib2_0_lcssa_in_i447 = 0, $dimension_tib2_0_lcssa_i448 = 0, $tib2_0_lcssa_i449 = 0, $tib1_121_i452 = 0, $i_0_i455 = 0, $705 = 0, $711 = 0, $716 = 0, $720 = 0, $tib1_0_ph_i416 = 0, $731 = 0, $tib1_0_lcssa_i419 = 0, $dimension_tib1_0_lcssa_i420 = 0, $736 = 0, $738 = 0, $dimension_tib1_029_i422 = 0, $741 = 0, $742 = 0, $745 = 0, $747 = 0, $dimension_tib2_024_i424 = 0, $750 = 0, $751 = 0, $754 = 0, $tib2_0_lcssa_in_i426 = 0, $dimension_tib2_0_lcssa_i427 = 0, $tib2_0_lcssa_i428 = 0, $tib1_121_i431 = 0, $i_0_i434 = 0, $772 = 0, $780 = 0, $782 = 0, $783 = 0, $785 = 0, $789 = 0, $798 = 0, $808 = 0, $809 = 0, $814 = 0, $818 = 0, $tib1_0_ph_i395 = 0, $829 = 0, $tib1_0_lcssa_i398 = 0, $dimension_tib1_0_lcssa_i399 = 0, $834 = 0, $836 = 0, $dimension_tib1_029_i401 = 0, $839 = 0, $840 = 0, $843 = 0, $845 = 0, $dimension_tib2_024_i403 = 0, $848 = 0, $849 = 0, $852 = 0, $tib2_0_lcssa_in_i405 = 0, $dimension_tib2_0_lcssa_i406 = 0, $tib2_0_lcssa_i407 = 0, $tib1_121_i410 = 0, $i_0_i413 = 0, $870 = 0, $876 = 0, $881 = 0, $885 = 0, $tib1_0_ph_i374 = 0, $896 = 0, $tib1_0_lcssa_i377 = 0, $dimension_tib1_0_lcssa_i378 = 0, $901 = 0, $903 = 0, $dimension_tib1_029_i380 = 0, $906 = 0, $907 = 0, $910 = 0, $912 = 0, $dimension_tib2_024_i382 = 0, $915 = 0, $916 = 0, $919 = 0, $tib2_0_lcssa_in_i384 = 0, $dimension_tib2_0_lcssa_i385 = 0, $tib2_0_lcssa_i386 = 0, $tib1_121_i389 = 0, $i_0_i392 = 0, $937 = 0, $945 = 0, $947 = 0, $948 = 0, $950 = 0, $954 = 0, $_r0_sroa_0_0_load607 = 0, $969 = 0, $974 = 0, $978 = 0, $tib1_0_ph_i353 = 0, $989 = 0, $tib1_0_lcssa_i356 = 0, $dimension_tib1_0_lcssa_i357 = 0, $994 = 0, $996 = 0, $dimension_tib1_029_i359 = 0, $999 = 0, $1000 = 0, $1003 = 0, $1005 = 0, $dimension_tib2_024_i361 = 0, $1008 = 0, $1009 = 0, $1012 = 0, $tib2_0_lcssa_in_i363 = 0, $dimension_tib2_0_lcssa_i364 = 0, $tib2_0_lcssa_i365 = 0, $tib1_121_i368 = 0, $i_0_i371 = 0, $1030 = 0, $1036 = 0, $1038 = 0, $1042 = 0, $1050 = 0, $1056 = 0, $1064 = 0, $1066 = 0, $1067 = 0, $1069 = 0, $1073 = 0, $1083 = 0, $1084 = 0, $1089 = 0, $1093 = 0, $tib1_0_ph_i332 = 0, $1104 = 0, $tib1_0_lcssa_i335 = 0, $dimension_tib1_0_lcssa_i336 = 0, $1109 = 0, $1111 = 0, $dimension_tib1_029_i338 = 0, $1114 = 0, $1115 = 0, $1118 = 0, $1120 = 0, $dimension_tib2_024_i340 = 0, $1123 = 0, $1124 = 0, $1127 = 0, $tib2_0_lcssa_in_i342 = 0, $dimension_tib2_0_lcssa_i343 = 0, $tib2_0_lcssa_i344 = 0, $tib1_121_i347 = 0, $i_0_i350 = 0, $1145 = 0, $1151 = 0, $1156 = 0, $1160 = 0, $tib1_0_ph_i311 = 0, $1171 = 0, $tib1_0_lcssa_i314 = 0, $dimension_tib1_0_lcssa_i315 = 0, $1176 = 0, $1178 = 0, $dimension_tib1_029_i317 = 0, $1181 = 0, $1182 = 0, $1185 = 0, $1187 = 0, $dimension_tib2_024_i319 = 0, $1190 = 0, $1191 = 0, $1194 = 0, $tib2_0_lcssa_in_i321 = 0, $dimension_tib2_0_lcssa_i322 = 0, $tib2_0_lcssa_i323 = 0, $tib1_121_i326 = 0, $i_0_i329 = 0, $1212 = 0, $1222 = 0, $1232 = 0, $1233 = 0, $1238 = 0, $1242 = 0, $tib1_0_ph_i290 = 0, $1253 = 0, $tib1_0_lcssa_i293 = 0, $dimension_tib1_0_lcssa_i294 = 0, $1258 = 0, $1260 = 0, $dimension_tib1_029_i296 = 0, $1263 = 0, $1264 = 0, $1267 = 0, $1269 = 0, $dimension_tib2_024_i298 = 0, $1272 = 0, $1273 = 0, $1276 = 0, $tib2_0_lcssa_in_i300 = 0, $dimension_tib2_0_lcssa_i301 = 0, $tib2_0_lcssa_i302 = 0, $tib1_121_i305 = 0, $i_0_i308 = 0, $1294 = 0, $1300 = 0, $1305 = 0, $1309 = 0, $tib1_0_ph_i269 = 0, $1320 = 0, $tib1_0_lcssa_i272 = 0, $dimension_tib1_0_lcssa_i273 = 0, $1325 = 0, $1327 = 0, $dimension_tib1_029_i275 = 0, $1330 = 0, $1331 = 0, $1334 = 0, $1336 = 0, $dimension_tib2_024_i277 = 0, $1339 = 0, $1340 = 0, $1343 = 0, $tib2_0_lcssa_in_i279 = 0, $dimension_tib2_0_lcssa_i280 = 0, $tib2_0_lcssa_i281 = 0, $tib1_121_i284 = 0, $i_0_i287 = 0, $1361 = 0, $1369 = 0, $1371 = 0, $1372 = 0, $1374 = 0, $1378 = 0, $_r0_sroa_0_0_load604 = 0, $1391 = 0, $1400 = 0, $1401 = 0, $1406 = 0, $1410 = 0, $tib1_0_ph_i248 = 0, $1421 = 0, $tib1_0_lcssa_i251 = 0, $dimension_tib1_0_lcssa_i252 = 0, $1426 = 0, $1428 = 0, $dimension_tib1_029_i254 = 0, $1431 = 0, $1432 = 0, $1435 = 0, $1437 = 0, $dimension_tib2_024_i256 = 0, $1440 = 0, $1441 = 0, $1444 = 0, $tib2_0_lcssa_in_i258 = 0, $dimension_tib2_0_lcssa_i259 = 0, $tib2_0_lcssa_i260 = 0, $tib1_121_i263 = 0, $i_0_i266 = 0, $1462 = 0, $1468 = 0, $1473 = 0, $1477 = 0, $tib1_0_ph_i227 = 0, $1488 = 0, $tib1_0_lcssa_i230 = 0, $dimension_tib1_0_lcssa_i231 = 0, $1493 = 0, $1495 = 0, $dimension_tib1_029_i233 = 0, $1498 = 0, $1499 = 0, $1502 = 0, $1504 = 0, $dimension_tib2_024_i235 = 0, $1507 = 0, $1508 = 0, $1511 = 0, $tib2_0_lcssa_in_i237 = 0, $dimension_tib2_0_lcssa_i238 = 0, $tib2_0_lcssa_i239 = 0, $tib1_121_i242 = 0, $i_0_i245 = 0, $1529 = 0, $1536 = 0, $1538 = 0, $1539 = 0, $1541 = 0, $1545 = 0, $1551 = 0, $1553 = 0, $_r0_sroa_0_0_load602 = 0, $1570 = 0, $1575 = 0, $1579 = 0, $tib1_0_ph_i185 = 0, $1590 = 0, $tib1_0_lcssa_i188 = 0, $dimension_tib1_0_lcssa_i189 = 0, $1595 = 0, $1597 = 0, $dimension_tib1_029_i191 = 0, $1600 = 0, $1601 = 0, $1604 = 0, $1606 = 0, $dimension_tib2_024_i193 = 0, $1609 = 0, $1610 = 0, $1613 = 0, $tib2_0_lcssa_in_i195 = 0, $dimension_tib2_0_lcssa_i196 = 0, $tib2_0_lcssa_i197 = 0, $tib1_121_i200 = 0, $i_0_i203 = 0, $1631 = 0, $1638 = 0, $1640 = 0, $1641 = 0, $1643 = 0, $1647 = 0, $1653 = 0, $1655 = 0, $_r2_sroa_0_0_load = 0, $1666 = 0, $1668 = 0, $1684 = 0, $1689 = 0, $1693 = 0, $tib1_0_ph_i = 0, $1704 = 0, $tib1_0_lcssa_i = 0, $dimension_tib1_0_lcssa_i = 0, $1709 = 0, $1711 = 0, $dimension_tib1_029_i = 0, $1714 = 0, $1715 = 0, $1718 = 0, $1720 = 0, $dimension_tib2_024_i = 0, $1723 = 0, $1724 = 0, $1727 = 0, $tib2_0_lcssa_in_i = 0, $dimension_tib2_0_lcssa_i = 0, $tib2_0_lcssa_i = 0, $tib1_121_i = 0, $i_0_i = 0, $1745 = 0, label = 0, __stackBase__ = 0, setjmpLabel = 0, setjmpTable = 0;
  __stackBase__ = STACKTOP;
  STACKTOP = STACKTOP + 536 | 0;
  label = 1;
@@ -406,7 +406,6 @@ function _java_nio_charset_Charset_forNameInternal___java_lang_String($n1) {
   label = 3;
   break;
  case 3:
-  $_r5_sroa_0 = $n1;
   $5 = invoke_ii(556, 709 | 0) | 0;
   if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
    setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
@@ -521,7 +520,7 @@ function _java_nio_charset_Charset_forNameInternal___java_lang_String($n1) {
   break;
  case 10:
   $_r0_sroa_0 = HEAP32[140056 >> 2] | 0;
-  $40 = invoke_iii(HEAP32[((HEAP32[($_r0_sroa_0 | 0) >> 2] | 0) + 160 | 0) >> 2] | 0 | 0, $_r0_sroa_0 | 0, $_r5_sroa_0 | 0) | 0;
+  $40 = invoke_iii(HEAP32[((HEAP32[($_r0_sroa_0 | 0) >> 2] | 0) + 160 | 0) >> 2] | 0 | 0, $_r0_sroa_0 | 0, $n1 | 0) | 0;
   if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
    setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
    if ((setjmpLabel | 0) > 0) {
@@ -726,8 +725,7 @@ function _java_nio_charset_Charset_forNameInternal___java_lang_String($n1) {
    } else return 0 | 0;
   }
   __THREW__ = threwValue = 0;
-  $139;
-  if (($139 | 0) == 0) {
+  if ((0 | 0) == 0) {
    label = 31;
    break;
   } else {
@@ -735,7 +733,7 @@ function _java_nio_charset_Charset_forNameInternal___java_lang_String($n1) {
    break;
   }
  case 30:
-  invoke_iii(268, 31e3 | 0 | 0, (tempInt = STACKTOP, STACKTOP = STACKTOP + 8 | 0, HEAP32[tempInt >> 2] = $139, tempInt) | 0) | 0;
+  invoke_iii(268, 31e3 | 0 | 0, (tempInt = STACKTOP, STACKTOP = STACKTOP + 8 | 0, HEAP32[tempInt >> 2] = 0, tempInt) | 0) | 0;
   if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
    setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
    if ((setjmpLabel | 0) > 0) {
@@ -750,7 +748,6 @@ function _java_nio_charset_Charset_forNameInternal___java_lang_String($n1) {
   STACKTOP = __stackBase__;
   return $_r0_sroa_0 | 0;
  case 32:
-  $145 = ($_r5_sroa_0 | 0) == 0;
   if ((HEAP32[(105500 | 0) >> 2] | 0 | 0) == 0) {
    label = 33;
    break;
@@ -789,7 +786,7 @@ function _java_nio_charset_Charset_forNameInternal___java_lang_String($n1) {
    } else return 0 | 0;
   }
   __THREW__ = threwValue = 0;
-  if ($145) {
+  if (($n1 | 0) == 0) {
    label = 35;
    break;
   } else {
@@ -1047,8 +1044,7 @@ function _java_nio_charset_Charset_forNameInternal___java_lang_String($n1) {
    } else return 0 | 0;
   }
   __THREW__ = threwValue = 0;
-  $266;
-  if (($266 | 0) == 0) {
+  if ((0 | 0) == 0) {
    label = 59;
    break;
   } else {
@@ -1056,7 +1052,7 @@ function _java_nio_charset_Charset_forNameInternal___java_lang_String($n1) {
    break;
   }
  case 58:
-  invoke_iii(268, 31e3 | 0 | 0, (tempInt = STACKTOP, STACKTOP = STACKTOP + 8 | 0, HEAP32[tempInt >> 2] = $266, tempInt) | 0) | 0;
+  invoke_iii(268, 31e3 | 0 | 0, (tempInt = STACKTOP, STACKTOP = STACKTOP + 8 | 0, HEAP32[tempInt >> 2] = 0, tempInt) | 0) | 0;
   if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
    setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
    if ((setjmpLabel | 0) > 0) {
@@ -1133,7 +1129,7 @@ function _java_nio_charset_Charset_forNameInternal___java_lang_String($n1) {
    break;
   }
  case 63:
-  invoke_vi(44, $_r5_sroa_0 | 0);
+  invoke_vi(44, $n1 | 0);
   if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
    setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
    if ((setjmpLabel | 0) > 0) {
@@ -1480,7 +1476,7 @@ function _java_nio_charset_Charset_forNameInternal___java_lang_String($n1) {
   break;
  case 94:
   $_r0_sroa_0 = HEAP32[140064 >> 2] | 0;
-  $416 = invoke_iii(HEAP32[((HEAP32[($_r0_sroa_0 | 0) >> 2] | 0) + 144 | 0) >> 2] | 0 | 0, $_r0_sroa_0 | 0, $_r5_sroa_0 | 0) | 0;
+  $416 = invoke_iii(HEAP32[((HEAP32[($_r0_sroa_0 | 0) >> 2] | 0) + 144 | 0) >> 2] | 0 | 0, $_r0_sroa_0 | 0, $n1 | 0) | 0;
   if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
    setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
    if ((setjmpLabel | 0) > 0) {
@@ -1552,7 +1548,7 @@ function _java_nio_charset_Charset_forNameInternal___java_lang_String($n1) {
    break;
   }
  case 98:
-  invoke_vii(24, $_r0_sroa_0 | 0, $_r5_sroa_0 | 0);
+  invoke_vii(24, $_r0_sroa_0 | 0, $n1 | 0);
   if ((__THREW__ | 0) != 0 & (threwValue | 0) != 0) {
    setjmpLabel = _testSetjmp(HEAP32[__THREW__ >> 2] | 0, setjmpTable) | 0;
    if ((setjmpLabel | 0) > 0) {
@@ -5060,10 +5056,9 @@ function looop8() {
   }
  }
 }
-function multiloop($n_0, $35) {
- $n_0 = $n_0 | 0;
+function multiloop($35) {
  $35 = $35 | 0;
- var $p_0 = 0, $41 = 0;
+ var $n_0 = 0, $p_0 = 0, $41 = 0;
  $n_0 = $35;
  $p_0 = (HEAP32[$15 >> 2] | 0) + ($35 << 1) | 0;
  while (1) {
@@ -5081,10 +5076,9 @@ function multiloop($n_0, $35) {
   }
  }
 }
-function multiloop2($n_0, $35) {
- $n_0 = $n_0 | 0;
+function multiloop2($35) {
  $35 = $35 | 0;
- var $p_0 = 0, $39 = 0, $41 = 0, $46 = 0;
+ var $n_0 = 0, $p_0 = 0, $39 = 0, $41 = 0, $46 = 0;
  $n_0 = $35;
  $p_0 = (HEAP32[$15 >> 2] | 0) + ($35 << 1) | 0;
  while (1) {
