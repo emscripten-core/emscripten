@@ -504,7 +504,8 @@ except:
 COMPILER_OPTS = COMPILER_OPTS + ['-m32', '-U__i386__', '-U__i386', '-Ui386',
                                  '-U__SSE__', '-U__SSE_MATH__', '-U__SSE2__', '-U__SSE2_MATH__', '-U__MMX__',
                                  '-DEMSCRIPTEN', '-D__EMSCRIPTEN__', '-U__STRICT_ANSI__',
-                                 '-D__IEEE_LITTLE_ENDIAN', '-fno-math-errno', '-fno-threadsafe-statics',
+                                 '-D__IEEE_LITTLE_ENDIAN', '-fno-math-errno',
+                                 #'-fno-threadsafe-statics', # disabled due to issue 1289
                                  '-target', LLVM_TARGET]
 
 if LLVM_TARGET == 'le32-unknown-nacl':
