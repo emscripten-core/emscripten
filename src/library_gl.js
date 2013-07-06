@@ -4416,6 +4416,19 @@ autoAddDeps(LibraryGL, '$GL');
 if (!DISABLE_GL_EMULATION) {
   // Emulation requires everything else, potentially
   LibraryGL.$GLEmulation__deps = LibraryGL.$GLEmulation__deps.slice(0); // the __deps object is shared
+
+  // Create glEmulation_NAME versions of all indexable GL calls, to allow C to implement functions with the same name,
+  // but still allow the library version to be called via a function pointer (from SDL_GetProcAddress)
+  for (var func in Functions.getIndex.tentative) {
+    if (func in Functions.implementedFunctions) {
+      var funcShort = func.substr(1);
+      var fullName = '_glRelocate' + func;
+      var fullNameShort = fullName.substr(1);
+      LibraryGL[fullNameShort] = LibraryGL[funcShort];
+      LibraryGL[fullNameShort + '__sig'] = LibraryGL[funcShort + '__sig'];
+    }
+  }
+
   var glFuncs = [];
   for (var item in LibraryGL) {
     if (item != '$GLEmulation' && item.substr(-6) != '__deps' && item.substr(-9) != '__postset' && item.substr(-5) != '__sig' && item.substr(0, 2) == 'gl') {
@@ -4425,8 +4438,14 @@ if (!DISABLE_GL_EMULATION) {
   LibraryGL.$GLEmulation__deps = LibraryGL.$GLEmulation__deps.concat(glFuncs);
   LibraryGL.$GLEmulation__deps.push(function() {
     for (var func in Functions.getIndex.tentative) {
-      Functions.getIndex(func);
-      Functions.unimplementedFunctions[func] = LibraryGL[func.substr(1) + '__sig'];
+      var fullName;
+      if (func in Functions.implementedFunctions) {
+        fullName = '_glRelocate' + func;
+      } else {
+        fullName = func;
+      }
+      Functions.getIndex(fullName);
+      Functions.unimplementedFunctions[fullName] = LibraryGL[fullName.substr(1) + '__sig'];
     }
   });
 
