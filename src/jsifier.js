@@ -1335,7 +1335,7 @@ function JSify(data, functionsOnly, givenFunctions) {
   makeFuncLineActor('alloca', function(item) {
     if (typeof item.allocatedIndex === 'number') {
       if (item.allocatedSize === 0) return ''; // This will not actually be shown - it's nativized
-      return asmCoercion(getFastValue('__stackBase__', '+', item.allocatedIndex.toString()), 'i32');
+      return asmCoercion(getFastValue('sp', '+', item.allocatedIndex.toString()), 'i32');
     } else {
       return RuntimeGenerator.stackAlloc(getFastValue(calcAllocatedSize(item.allocatedType), '*', item.allocatedNum));
     }

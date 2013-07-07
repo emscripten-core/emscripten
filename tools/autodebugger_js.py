@@ -33,7 +33,7 @@ for i in range(len(lines)):
              (' else' not in lines[i-1] or '{' in lines[i-1]) and \
              (' else' not in lines[i+1] or '{' in lines[i+1]):
       var = m.groups(1)[0].rstrip().split(' ')[-1]
-      if 'STACKTOP' not in lines[i] and 'stackBase' not in lines[i]:
+      if 'STACKTOP' not in lines[i] and 'sp' not in lines[i]:
         #lines[i] += ''' print("[%4d] %s = " + %s);''' % (i+1, var, var)
         lines[i] += ''' print("%s = " + %s);''' % (var, var)
     m = re.match('^ +HEAP.*$', lines[i])
