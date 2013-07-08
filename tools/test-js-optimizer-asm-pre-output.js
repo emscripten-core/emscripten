@@ -130,6 +130,7 @@ function compare_result_simplification() {
  HEAP32[$4] = HEAP32[$5] == HEAP32[$6];
  HEAP32[$4] = HEAP32[$5] === HEAP32[$6];
  HEAP32[$4] = HEAP32[$5] != HEAP32[$6];
+ HEAP32[$4] = HEAP32[$5] !== HEAP32[$6];
  var x = HEAP32[$5] != HEAP32[$6] | 0;
 }
 function tempDoublePtr($45, $14, $28, $42) {

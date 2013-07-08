@@ -137,6 +137,7 @@ function compare_result_simplification() {
  HEAP32[$4] = (HEAP32[$5] == HEAP32[$6]) & 1;
  HEAP32[$4] = (HEAP32[$5] === HEAP32[$6]) & 1;
  HEAP32[$4] = (HEAP32[$5] != HEAP32[$6]) & 1;
+ HEAP32[$4] = (HEAP32[$5] !== HEAP32[$6]) & 1;
  // Convert the &1 to |0 here, since we don't get an implicit coersion.
  var x = (HEAP32[$5] != HEAP32[$6]) & 1;
 }

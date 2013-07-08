@@ -405,7 +405,7 @@ function removeUnneededLabelSettings(ast) {
 // Various expression simplifications. Pre run before closure (where we still have metadata), Post run after.
 
 var USEFUL_BINARY_OPS = set('<<', '>>', '|', '&', '^');
-var COMPARE_OPS = set('<', '<=', '>', '>=', '==', '===', '!=');
+var COMPARE_OPS = set('<', '<=', '>', '>=', '==', '===', '!=', '!==');
 
 function simplifyExpressionsPre(ast) {
   // Simplify common expressions used to perform integer conversion operations
