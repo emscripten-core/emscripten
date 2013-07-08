@@ -163,10 +163,10 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     if DEBUG_CACHE and not out:
       dfpath = os.path.join(get_configuration().TEMP_DIR, "ems_" + shortkey)
       dfp = open(dfpath, 'w')
-      dfp.write(pre_input);
-      dfp.write("\n\n========================== settings_text\n\n");
-      dfp.write(settings_text);
-      dfp.write("\n\n========================== libraries\n\n");
+      dfp.write(pre_input)
+      dfp.write("\n\n========================== settings_text\n\n")
+      dfp.write(settings_text)
+      dfp.write("\n\n========================== libraries\n\n")
       dfp.write("\n".join(libraries))
       dfp.close()
       print >>sys.stderr, '  cache miss, key data dumped to %s' % dfpath
@@ -485,7 +485,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     global_vars = map(lambda g: g['name'], filter(lambda g: settings['NAMED_GLOBALS'] or g.get('external') or g.get('unIndexable'), forwarded_json['Variables']['globals'].values()))
     global_funcs = ['_' + key for key, value in forwarded_json['Functions']['libraryFunctions'].iteritems() if value != 2]
     def math_fix(g):
-      return g if not g.startswith('Math_') else g.split('_')[1];
+      return g if not g.startswith('Math_') else g.split('_')[1]
     asm_global_funcs = ''.join(['  var ' + g.replace('.', '_') + '=global.' + g + ';\n' for g in maths]) + \
                        ''.join(['  var ' + g + '=env.' + math_fix(g) + ';\n' for g in basic_funcs + global_funcs])
     asm_global_vars = ''.join(['  var ' + g + '=env.' + g + '|0;\n' for g in basic_vars + global_vars]) + \

@@ -826,7 +826,7 @@ try:
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i].startswith('--use-preload-cache'):
-      use_preload_cache = True;
+      use_preload_cache = True
       newargs[i] = ''
     elif newargs[i] == '--ignore-dynamic-linking':
       ignore_dynamic_linking = True
@@ -952,7 +952,7 @@ try:
               if not prefix: continue
               if l.startswith(prefix):
                 l = l[len(prefix):]
-                break;
+                break
             libs.append(l)
             newargs[i] = ''
           else:
@@ -1213,7 +1213,7 @@ try:
         os.path.join('libc', 'gen', 'vwarn.c'),
         os.path.join('libc', 'gen', 'vwarnx.c'),
         os.path.join('libc', 'stdlib', 'strtod.c'),
-      ];
+      ]
       return build_libc('libc.bc', libc_files)
 
     def apply_libc(need):
