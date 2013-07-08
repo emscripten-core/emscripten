@@ -2507,6 +2507,8 @@ function eliminate(ast, memSafe) {
         if (type === 'stat') {
           node = node[1];
           type = node[0];
+        } else if (type == 'return' && i < stats.length-1) {
+          stats.length = i+1; // remove any code after a return
         }
         // Check for things that affect elimination
         if (type in ELIMINATION_SAFE_NODES) {
