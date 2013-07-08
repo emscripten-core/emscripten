@@ -64,6 +64,12 @@ function b($this, $__n) {
   HEAP32[(($this + 4 | 0) & 16777215) >> 2] = $40;
  }
  HEAP8[($38 + $40 | 0) & 16777215] = 0;
+ // Eliminate the |0.
+ HEAP32[$4] = ((~(HEAP32[$5]|0))|0);
+ // Rewrite to ~.
+ HEAP32[$4] = HEAP32[$5]^-1;
+ // Rewrite to ~ and eliminate the |0.
+ HEAP32[$4] = ((HEAP32[$5]|0)^-1)|0;
  return;
 }
 function rett() {
