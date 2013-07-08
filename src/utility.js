@@ -298,8 +298,16 @@ function setIntersect(x, y) {
   var ret = {};
   for (xx in x) {
     if (xx in y) {
-      ret[xx] = true;
+      ret[xx] = 0;
     }
+  }
+  return ret;
+}
+
+function setUnion(x, y) {
+  var ret = set(keys(x));
+  for (yy in y) {
+    ret[yy] = 0;
   }
   return ret;
 }
