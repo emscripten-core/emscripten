@@ -2948,6 +2948,46 @@ function outline(ast) {
     });
   }
 
+  // Prepares information for spilling of local variables
+  function analyzeFunction(func, asmData) {
+    asmData.stack = []; // list of variables, each gets 8 bytes
+    for (var name in asmData.params) {
+      asmData.stack.push(name);
+    }
+    for (var name in asmData.vars) {
+      asmData.stack.push(name);
+    }
+  }
+
+  // Analyze uses - reads and writes - of variables in part of the AST of a function
+  function analyzeVariables(func, asmData, ast) {
+    var writes = {};
+    var appearances = {};
+
+    traverse(func, function(node, type) {
+      if (type == 'assign' && node[2][0] == 'name') {
+        var name = node[2][1];
+        if (name in asmData.vars || name in asmData.params) {
+          writes[name] = 0;
+          appearances[name] = (appearances[name] || 0) - 1; // this appearance is a definition, offset the counting later
+        }
+      } else if (type == 'name') {
+        var name = node[1];
+        if (name in asmData.vars || name in asmData.params) {
+          appearances[name] = (appearances[name] || 0) + 1;
+        }
+      }
+    });
+
+    var reads = {};
+
+    for (var name in appearances) {
+      if (appearances[name] > 0) reads[name] = 0;
+    }
+
+    return { writes: writes, reads: reads };
+  }
+
   var sizeToOutline = extraInfo.sizeToOutline;
   var level = 0;
 
@@ -3014,11 +3054,14 @@ function outline(ast) {
     var size = measureSize(func);
     if (size >= sizeToOutline) {
       aggressiveVariableElimination(func, asmData);
+      analyzeFunction(func, asmData);
       var ret = outlineStatements(func, asmData, getStatements(func));
       if (ret && ret.length > 0) newFuncs.push.apply(newFuncs, ret);
     }
     denormalizeAsm(func, asmData);
   });
+
+  // TODO: recurse into new functions, must be careful though so as to not quickly re-outline and leave an intermediary skeletal function
 
   if (newFuncs.length > 0) {
     // add new functions to the toplevel, or create a toplevel if there isn't one
