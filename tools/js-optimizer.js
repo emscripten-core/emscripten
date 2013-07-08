@@ -3012,11 +3012,13 @@ function outline(ast) {
     for (var v in varInfo.reads) {
       if (v != 'sp') {
         reps.push(['stat', ['assign', true, ['sub', ['name', getAsmType(asmData, v) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], ['name', v]]]);
+        code.unshift(['stat', ['assign', true, ['name', v], ['sub', ['name', getAsmType(asmData, v) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]]]]);
       }
     }
     reps.push(['stat', ['call', ['name', newIdent], [['name', 'sp']]]]);
     for (var v in varInfo.writes) {
       reps.push(['stat', ['assign', true, ['name', v], ['sub', ['name', getAsmType(asmData, v) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]]]]);
+      code.push(['stat', ['assign', true, ['sub', ['name', getAsmType(asmData, v) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], ['name', v]]]);
     }
     stats.splice.apply(stats, [start, end-start+1].concat(reps));
     // Generate new function
@@ -3095,7 +3097,8 @@ function outline(ast) {
     denormalizeAsm(func, asmData);
   });
 
-  // TODO: control flow: route returns and breaks
+  // TODO: control flow: route returns and breaks. outlined code should have all breaks/continues/returns break into the outermost scope,
+  //       after setting a state variable, etc.
   // TODO: recurse into new functions, must be careful though so as to not quickly re-outline and leave an intermediary skeletal function
 
   if (newFuncs.length > 0) {
