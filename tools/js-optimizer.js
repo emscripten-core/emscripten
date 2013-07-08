@@ -2953,6 +2953,8 @@ function outline(ast) {
 
   function doOutline(func, asmData, stats, i, end) {
     printErr(' do outline ' + [func[1], level, 'range:', i, end, 'of', stats.length]);
+    var callCode = ['call', ['name', 'outlinedCode'], [['name', 'param1']]];
+    stats.splice(i, end-i+1, callCode);
     return [emptyNode()];
   }
 
