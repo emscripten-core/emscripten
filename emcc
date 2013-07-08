@@ -522,14 +522,14 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
       open(tempout, 'w').write('//\n')
 
   src = None
-  for i in range(len(sys.argv)):
-    if sys.argv[i].endswith('.c'):
+  for arg in sys.argv:
+    if arg.endswith('.c'):
       try:
-        src = open(sys.argv[i]).read()
-        if debug_configure: open(tempout, 'a').write('============= ' + sys.argv[i] + '\n' + src + '\n=============\n\n')
+        src = open(arg).read()
+        if debug_configure: open(tempout, 'a').write('============= ' + arg + '\n' + src + '\n=============\n\n')
       except:
         pass
-    if sys.argv[i].endswith('.s'):
+    if arg.endswith('.s'):
       if debug_configure: open(tempout, 'a').write('(compiling .s assembly, must use clang\n')
       use_js = 0
 
@@ -1121,9 +1121,8 @@ try:
 
     # Optimize source files
     if llvm_opts > 0:
-      for i in range(len(input_files)):
-        input_file = input_files[i]
-        if input_files[i].endswith(SOURCE_SUFFIXES):
+      for i, input_file in enumerate(input_files):
+        if input_file.endswith(SOURCE_SUFFIXES):
           temp_file = temp_files[i]
           logging.debug('optimizing %s with -O%d' % (input_file, llvm_opts))
           shared.Building.llvm_opt(temp_file, llvm_opts)
