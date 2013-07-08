@@ -3006,9 +3006,11 @@ function outline(ast) {
     var varInfo = analyzeVariables(func, asmData, code);
     var spills = [];
     for (var v in varInfo.reads) {
-      spills.push(['assign', true,['sub', ['name', getAsmType(asmData, v) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], ['name', v]]);
+      if (v != 'sp') {
+        spills.push(['stat', ['assign', true,['sub', ['name', getAsmType(asmData, v) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], ['name', v]]]);
+      }
     }
-    var callCode = ['call', ['name', 'outlinedCode'], [['name', 'param1']]];
+    var callCode = ['stat', ['call', ['name', 'outlinedCode'], [['name', 'sp']]]];
     stats.splice.apply(stats, [start, end-start+1].concat(spills).concat([callCode]));
     return [emptyNode()];
   }
