@@ -2948,13 +2948,63 @@ function outline(ast) {
     });
   }
 
-  function outlineChunks(func, asmData) {
-    if (measureSize(func) < sizeToOutline) return;
+  var sizeToOutline = extraInfo.sizeToOutline;
+
+  function doOutline(func, asmData, stats, i, end) {
+    //printErr('do outline ' + [i, end, 'of', stats.length]);
+    return [emptyNode()];
+  }
+
+  var level = 0;
+
+  function outlineStatements(func, asmData, stats) {
+    level++;
+    if (measureSize(stats) < sizeToOutline) return;
+    var ret = [];
+    var sizeSeen = 0;
+    var end = stats.length-1;
+    var i = stats.length;
+    while (--i >= 0) {
+      var stat = stats[i];
+      var size = measureSize(stat);
+      //printErr(level + ' size          ' + [i, size]);
+      if (size >= sizeToOutline) {
+        // this by itself is big enough to inline, recurse into it and find statements to split on
+        var subStatements = null;
+        traverse(stat, function(node, type) {
+          if (type == 'block') {
+            if (measureSize(node) >= sizeToOutline) {
+              var subRet = outlineStatements(func, asmData, node[1]);
+              if (subRet && subRet.length > 0) ret.push.apply(ret, subRet);
+            }
+            return null; // do not recurse into children, outlineStatements will do so if necessary
+          }
+        });
+        continue;
+      }
+      sizeSeen += size;
+      if (sizeSeen >= sizeToOutline) {
+        if (i == 0 && end == stats.length-1) {
+          // we have the full range here, so inlining would do nothing useful
+          if (stats.length >= 2) {
+            // at least split this function in half
+            i = Math.floor(stats.length/2);
+            end = stats.length-1;
+          } else {
+            break;
+          }
+        }
+        ret.push.apply(ret, doOutline(func, asmData, stats, i, end)); // outline [i, .. ,end] inclusive
+        sizeSeen = 0;
+        end = i-1;
+      }
+    }
+    level--;
+    return ret;
   }
 
   //
 
-  var sizeToOutline = extraInfo.sizeToOutline;
   var newFuncs = [];
 
   traverseGeneratedFunctions(ast, function(func) {
@@ -2962,8 +3012,8 @@ function outline(ast) {
     var size = measureSize(func);
     if (size >= sizeToOutline) {
       aggressiveVariableElimination(func, asmData);
-      var ret = outlineChunks(func, asmData);
-      if (ret) newFuncs.push.apply(newFuncs, ret);
+      var ret = outlineStatements(func, asmData, getStatements(func));
+      if (ret && ret.length > 0) newFuncs.push.apply(newFuncs, ret);
     }
     denormalizeAsm(func, asmData);
   });
