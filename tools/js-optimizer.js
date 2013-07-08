@@ -2973,7 +2973,7 @@ function outline(ast) {
     var writes = {};
     var appearances = {};
 
-    traverse(func, function(node, type) {
+    traverse(ast, function(node, type) {
       if (type == 'assign' && node[2][0] == 'name') {
         var name = node[2][1];
         if (name in asmData.vars || name in asmData.params) {
@@ -3004,14 +3004,17 @@ function outline(ast) {
     printErr(' do outline ' + [func[1], level, 'range:', start, end, 'of', stats.length]);
     var code = stats.slice(start, end+1);
     var varInfo = analyzeVariables(func, asmData, code);
-    var spills = [];
+    var reps = [];
     for (var v in varInfo.reads) {
       if (v != 'sp') {
-        spills.push(['stat', ['assign', true,['sub', ['name', getAsmType(asmData, v) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], ['name', v]]]);
+        reps.push(['stat', ['assign', true, ['sub', ['name', getAsmType(asmData, v) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], ['name', v]]]);
       }
     }
-    var callCode = ['stat', ['call', ['name', 'outlinedCode'], [['name', 'sp']]]];
-    stats.splice.apply(stats, [start, end-start+1].concat(spills).concat([callCode]));
+    reps.push(['stat', ['call', ['name', 'outlinedCode'], [['name', 'sp']]]]);
+    for (var v in varInfo.writes) {
+      reps.push(['stat', ['assign', true, ['name', v], ['sub', ['name', getAsmType(asmData, v) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]]]]);
+    }
+    stats.splice.apply(stats, [start, end-start+1].concat(reps));
     return [emptyNode()];
   }
 
