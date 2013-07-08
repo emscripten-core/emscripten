@@ -21,6 +21,7 @@ var LibrarySDL = {
     version: null,
 
     surfaces: {},
+    canvasPool: [],
     events: [],
     fonts: [null],
 
@@ -288,7 +289,10 @@ var LibrarySDL = {
       SDL.GL = SDL.GL || useWebGL;
       var canvas;
       if (!usePageCanvas) {
-        canvas = document.createElement('canvas');
+        if (SDL.canvasPool.length > 0)
+          canvas = SDL.canvasPool.pop();
+        else
+          canvas = document.createElement('canvas');
         canvas.width = width;
         canvas.height = height;
       } else {
@@ -355,6 +359,7 @@ var LibrarySDL = {
     },
 
     freeSurface: function(surf) {
+      SDL.canvasPool.push(SDL.surfaces[surf].canvas);
       _free(SDL.surfaces[surf].buffer);
       _free(SDL.surfaces[surf].pixelFormat);
       _free(surf);
