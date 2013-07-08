@@ -3005,6 +3005,7 @@ function outline(ast) {
   function doOutline(func, asmData, stats, start, end) {
     printErr(' do outline ' + [func[1], level, 'range:', start, end, 'of', stats.length]);
     var code = stats.slice(start, end+1);
+    var newIdent = func[1] + '$' + (asmData.splitCounter++);
     // add spills and reads before and after the call to the outlined code
     var varInfo = analyzeVariables(func, asmData, code);
     var reps = [];
@@ -3013,15 +3014,21 @@ function outline(ast) {
         reps.push(['stat', ['assign', true, ['sub', ['name', getAsmType(asmData, v) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], ['name', v]]]);
       }
     }
-    reps.push(['stat', ['call', ['name', 'outlinedCode'], [['name', 'sp']]]]);
+    reps.push(['stat', ['call', ['name', newIdent], [['name', 'sp']]]]);
     for (var v in varInfo.writes) {
       reps.push(['stat', ['assign', true, ['name', v], ['sub', ['name', getAsmType(asmData, v) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]]]]);
     }
     stats.splice.apply(stats, [start, end-start+1].concat(reps));
     // Generate new function
-    var id = asmData.splitCounter++;
-    var ident = func[1] + '$' + id;
-    var newFunc = ['defun', ident, [['name', 'sp']], code];
+    var newFunc = ['defun', newIdent, ['sp'], code];
+    var newAsmInfo = { params: { sp: ASM_INT }, vars: {} };
+    for (var v in varInfo.reads) {
+      newAsmInfo.vars[v] = getAsmType(asmData, v);
+    }
+    for (var v in varInfo.writes) {
+      newAsmInfo.vars[v] = getAsmType(asmData, v);
+    }
+    denormalizeAsm(newFunc, newAsmInfo);
     return [newFunc];
   }
 
