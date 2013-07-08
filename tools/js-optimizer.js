@@ -1537,6 +1537,11 @@ function makeAsmVarDef(v, type) {
   return [v, type === ASM_INT ? ['num', 0] : ['unary-prefix', '+', ['num', 0]]];
 }
 
+function getAsmType(asmInfo, name) {
+  if (name in asmInfo.vars) return asmInfo.vars[name];
+  return asmInfo.params[name];
+}
+
 function normalizeAsm(func) {
   //printErr('pre-normalize \n\n' + astToSrc(func) + '\n\n');
   var data = {
@@ -2950,12 +2955,16 @@ function outline(ast) {
 
   // Prepares information for spilling of local variables
   function analyzeFunction(func, asmData) {
-    asmData.stack = []; // list of variables, each gets 8 bytes
+    var stack = []; // list of variables, each gets 8 bytes
     for (var name in asmData.params) {
-      asmData.stack.push(name);
+      stack.push(name);
     }
     for (var name in asmData.vars) {
-      asmData.stack.push(name);
+      stack.push(name);
+    }
+    asmData.stackPos = {};
+    for (var i = 0; i < stack.length; i++) {
+      asmData.stackPos[stack[i]] = i*8;
     }
   }
 
@@ -2991,10 +3000,16 @@ function outline(ast) {
   var sizeToOutline = extraInfo.sizeToOutline;
   var level = 0;
 
-  function doOutline(func, asmData, stats, i, end) {
-    printErr(' do outline ' + [func[1], level, 'range:', i, end, 'of', stats.length]);
+  function doOutline(func, asmData, stats, start, end) {
+    printErr(' do outline ' + [func[1], level, 'range:', start, end, 'of', stats.length]);
+    var code = stats.slice(start, end+1);
+    var varInfo = analyzeVariables(func, asmData, code);
+    var spills = [];
+    for (var v in varInfo.reads) {
+      spills.push(['assign', true,['sub', ['name', getAsmType(asmData, v) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], ['name', v]]);
+    }
     var callCode = ['call', ['name', 'outlinedCode'], [['name', 'param1']]];
-    stats.splice(i, end-i+1, callCode);
+    stats.splice.apply(stats, [start, end-start+1].concat(spills).concat([callCode]));
     return [emptyNode()];
   }
 
@@ -3064,6 +3079,9 @@ function outline(ast) {
   // TODO: recurse into new functions, must be careful though so as to not quickly re-outline and leave an intermediary skeletal function
 
   if (newFuncs.length > 0) {
+    // We have outlined. Add stack support: header in which we allocate enough stack space TODO
+    // If sp was not present before, add it and before each return, pop the stack TODO
+
     // add new functions to the toplevel, or create a toplevel if there isn't one
     if (ast[0] === 'toplevel') {
       var stats = ast[1];
