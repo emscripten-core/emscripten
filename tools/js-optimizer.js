@@ -2966,6 +2966,8 @@ function outline(ast) {
     for (var i = 0; i < stack.length; i++) {
       asmData.stackPos[stack[i]] = i*8;
     }
+
+    asmData.splitCounter = 0;
   }
 
   // Analyze uses - reads and writes - of variables in part of the AST of a function
@@ -3003,6 +3005,7 @@ function outline(ast) {
   function doOutline(func, asmData, stats, start, end) {
     printErr(' do outline ' + [func[1], level, 'range:', start, end, 'of', stats.length]);
     var code = stats.slice(start, end+1);
+    // add spills and reads before and after the call to the outlined code
     var varInfo = analyzeVariables(func, asmData, code);
     var reps = [];
     for (var v in varInfo.reads) {
@@ -3015,7 +3018,11 @@ function outline(ast) {
       reps.push(['stat', ['assign', true, ['name', v], ['sub', ['name', getAsmType(asmData, v) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]]]]);
     }
     stats.splice.apply(stats, [start, end-start+1].concat(reps));
-    return [emptyNode()];
+    // Generate new function
+    var id = asmData.splitCounter++;
+    var ident = func[1] + '$' + id;
+    var newFunc = ['defun', ident, [['name', 'sp']], code];
+    return [newFunc];
   }
 
   function outlineStatements(func, asmData, stats) {
@@ -3081,11 +3088,13 @@ function outline(ast) {
     denormalizeAsm(func, asmData);
   });
 
+  // TODO: control flow: route returns and breaks
   // TODO: recurse into new functions, must be careful though so as to not quickly re-outline and leave an intermediary skeletal function
 
   if (newFuncs.length > 0) {
     // We have outlined. Add stack support: header in which we allocate enough stack space TODO
     // If sp was not present before, add it and before each return, pop the stack TODO
+    // (none of this should be done in inner functions, of course, just the original)
 
     // add new functions to the toplevel, or create a toplevel if there isn't one
     if (ast[0] === 'toplevel') {
