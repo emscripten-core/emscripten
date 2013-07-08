@@ -10020,97 +10020,97 @@ finalizing 3 (global == 0)
 ''')
 
   # Generate tests for everything
-  def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0, typed_arrays=0, emcc_args=None, env='{}'):
-    exec('''
-class %s(T):
-  run_name = '%s'
-  env = %s
+  def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
+      typed_arrays=0, emcc_args=None, env=None):
 
-  def tearDown(self):
-    super(%s, self).tearDown()
+    if env is None: env = {}
 
-    for k, v in self.env.iteritems():
-      del os.environ[k]
+    TT = type(fullname, (T,), dict(run_name = fullname, env = env))
 
-  def setUp(self):
-    super(%s, self).setUp()
+    def tearDown(self):
+      super(TT, self).tearDown()
 
-    for k, v in self.env.iteritems():
-      assert k not in os.environ, k + ' should not be in environment'
-      os.environ[k] = v
+      for k, v in self.env.iteritems():
+        del os.environ[k]
 
-    global checked_sanity
-    if not checked_sanity:
-      print '(checking sanity from test runner)' # do this after we set env stuff
-      check_sanity(force=True)
-      checked_sanity = True
+    TT.tearDown = tearDown
 
-    Building.COMPILER_TEST_OPTS = ['-g']
-    os.chdir(self.get_dir()) # Ensure the directory exists and go there
-    Building.COMPILER = %r
+    def setUp(self):
+      super(TT, self).setUp()
+      for k, v in self.env.iteritems():
+        assert k not in os.environ, k + ' should not be in environment'
+        os.environ[k] = v
 
-    self.emcc_args = %s
-    if self.emcc_args is not None:
-      Settings.load(self.emcc_args)
-      Building.LLVM_OPTS = 0
-      if '-O2' in self.emcc_args:
-        Building.COMPILER_TEST_OPTS = [] # remove -g in -O2 tests, for more coverage
-      #Building.COMPILER_TEST_OPTS += self.emcc_args
-      for arg in self.emcc_args:
-        if arg.startswith('-O'):
-          Building.COMPILER_TEST_OPTS.append(arg) # so bitcode is optimized too, this is for cpp to ll
-        else:
-          try:
-            key, value = arg.split('=')
-            Settings[key] = value # forward  -s K=V
-          except:
-            pass
-      return
+      global checked_sanity
+      if not checked_sanity:
+        print '(checking sanity from test runner)' # do this after we set env stuff
+        check_sanity(force=True)
+        checked_sanity = True
 
-    embetter = %d
-    quantum_size = %d
-    # TODO: Move much of these to a init() function in shared.py, and reuse that
-    Settings.USE_TYPED_ARRAYS = %d
-    Settings.INVOKE_RUN = 1
-    Settings.RELOOP = 0 # we only do them in the "o2" pass
-    Settings.MICRO_OPTS = embetter
-    Settings.QUANTUM_SIZE = quantum_size
-    Settings.ASSERTIONS = 1-embetter
-    Settings.SAFE_HEAP = 1-embetter
-    Settings.CHECK_OVERFLOWS = 1-embetter
-    Settings.CORRECT_OVERFLOWS = 1-embetter
-    Settings.CORRECT_SIGNS = 0
-    Settings.CORRECT_ROUNDINGS = 0
-    Settings.CORRECT_OVERFLOWS_LINES = CORRECT_SIGNS_LINES = CORRECT_ROUNDINGS_LINES = SAFE_HEAP_LINES = []
-    Settings.CHECK_SIGNS = 0 #1-embetter
-    Settings.RUNTIME_TYPE_INFO = 0
-    Settings.DISABLE_EXCEPTION_CATCHING = 0
-    Settings.INCLUDE_FULL_LIBRARY = 0
-    Settings.BUILD_AS_SHARED_LIB = 0
-    Settings.RUNTIME_LINKED_LIBS = []
-    Settings.EMULATE_UNALIGNED_ACCESSES = int(Settings.USE_TYPED_ARRAYS == 2 and Building.LLVM_OPTS == 2)
-    Settings.DOUBLE_MODE = 1 if Settings.USE_TYPED_ARRAYS and Building.LLVM_OPTS == 0 else 0
-    Settings.PRECISE_I64_MATH = 0
-    Settings.NAMED_GLOBALS = 0 if not embetter else 1
+      Building.COMPILER_TEST_OPTS = ['-g']
+      os.chdir(self.get_dir()) # Ensure the directory exists and go there
+      Building.COMPILER = compiler
 
-TT = %s
-''' % (fullname, fullname, env, fullname, fullname, compiler, str(emcc_args), embetter, quantum_size, typed_arrays, fullname))
+      self.emcc_args = None if emcc_args is None else emcc_args[:]
+      if self.emcc_args is not None:
+        Settings.load(self.emcc_args)
+        Building.LLVM_OPTS = 0
+        if '-O2' in self.emcc_args:
+          Building.COMPILER_TEST_OPTS = [] # remove -g in -O2 tests, for more coverage
+        #Building.COMPILER_TEST_OPTS += self.emcc_args
+        for arg in self.emcc_args:
+          if arg.startswith('-O'):
+            Building.COMPILER_TEST_OPTS.append(arg) # so bitcode is optimized too, this is for cpp to ll
+          else:
+            try:
+              key, value = arg.split('=')
+              Settings[key] = value # forward  -s K=V
+            except:
+              pass
+        return
+
+      # TODO: Move much of these to a init() function in shared.py, and reuse that
+      Settings.USE_TYPED_ARRAYS = typed_arrays
+      Settings.INVOKE_RUN = 1
+      Settings.RELOOP = 0 # we only do them in the "o2" pass
+      Settings.MICRO_OPTS = embetter
+      Settings.QUANTUM_SIZE = quantum_size
+      Settings.ASSERTIONS = 1-embetter
+      Settings.SAFE_HEAP = 1-embetter
+      Settings.CHECK_OVERFLOWS = 1-embetter
+      Settings.CORRECT_OVERFLOWS = 1-embetter
+      Settings.CORRECT_SIGNS = 0
+      Settings.CORRECT_ROUNDINGS = 0
+      Settings.CORRECT_OVERFLOWS_LINES = CORRECT_SIGNS_LINES = CORRECT_ROUNDINGS_LINES = SAFE_HEAP_LINES = []
+      Settings.CHECK_SIGNS = 0 #1-embetter
+      Settings.RUNTIME_TYPE_INFO = 0
+      Settings.DISABLE_EXCEPTION_CATCHING = 0
+      Settings.INCLUDE_FULL_LIBRARY = 0
+      Settings.BUILD_AS_SHARED_LIB = 0
+      Settings.RUNTIME_LINKED_LIBS = []
+      Settings.EMULATE_UNALIGNED_ACCESSES = int(Settings.USE_TYPED_ARRAYS == 2 and Building.LLVM_OPTS == 2)
+      Settings.DOUBLE_MODE = 1 if Settings.USE_TYPED_ARRAYS and Building.LLVM_OPTS == 0 else 0
+      Settings.PRECISE_I64_MATH = 0
+      Settings.NAMED_GLOBALS = 0 if not embetter else 1
+
+    TT.setUp = setUp
+
     return TT
 
   # Make one run with the defaults
-  exec('default = make_run("default", compiler=CLANG, emcc_args=[])')
+  default = make_run("default", compiler=CLANG, emcc_args=[])
 
   # Make one run with -O1, with safe heap
-  exec('o1 = make_run("o1", compiler=CLANG, emcc_args=["-O1", "-s", "ASM_JS=0", "-s", "SAFE_HEAP=1"])')
+  o1 = make_run("o1", compiler=CLANG, emcc_args=["-O1", "-s", "ASM_JS=0", "-s", "SAFE_HEAP=1"])
 
   # Make one run with -O2, but without closure (we enable closure in specific tests, otherwise on everything it is too slow)
-  exec('o2 = make_run("o2", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=0", "-s", "JS_CHUNK_SIZE=1024"])')
+  o2 = make_run("o2", compiler=CLANG, emcc_args=["-O2", "-s", "ASM_JS=0", "-s", "JS_CHUNK_SIZE=1024"])
 
   # asm.js
-  exec('asm1 = make_run("asm1", compiler=CLANG, emcc_args=["-O1", "-s", "CHECK_HEAP_ALIGN=1"])')
-  exec('asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2"])')
-  exec('asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTIONS=1", "--memory-init-file", "1"])')
-  exec('''asm2x86 = make_run("asm2x86", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "CHECK_HEAP_ALIGN=1"], env='{"EMCC_LLVM_TARGET": "i386-pc-linux-gnu"}')''')
+  asm1 = make_run("asm1", compiler=CLANG, emcc_args=["-O1", "-s", "CHECK_HEAP_ALIGN=1"])
+  asm2 = make_run("asm2", compiler=CLANG, emcc_args=["-O2"])
+  asm2g = make_run("asm2g", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "ASSERTIONS=1", "--memory-init-file", "1"])
+  asm2x86 = make_run("asm2x86", compiler=CLANG, emcc_args=["-O2", "-g", "-s", "CHECK_HEAP_ALIGN=1"], env={"EMCC_LLVM_TARGET": "i386-pc-linux-gnu"})
 
   # Make custom runs with various options
   for compiler, quantum, embetter, typed_arrays in [
@@ -10120,7 +10120,7 @@ TT = %s
     fullname = 's_0_%d%s%s' % (
       embetter, '' if quantum == 4 else '_q' + str(quantum), '' if typed_arrays in [0, 1] else '_t' + str(typed_arrays)
     )
-    exec('%s = make_run(fullname, %r,%r,%d,%d,%d)' % (fullname, fullname, compiler, embetter, quantum, typed_arrays))
+    locals()[fullname] = make_run(fullname, fullname, compiler, embetter, quantum, typed_arrays)
 
   del T # T is just a shape for the specific subclasses, we don't test it itself
 
