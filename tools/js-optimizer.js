@@ -2948,16 +2948,38 @@ function outline(ast) {
     });
   }
 
+  function outlineChunks(func, asmData) {
+    if (measureSize(func) < sizeToOutline) return;
+  }
+
+  //
+
   var sizeToOutline = extraInfo.sizeToOutline;
+  var newFuncs = [];
 
   traverseGeneratedFunctions(ast, function(func) {
     var asmData = normalizeAsm(func);
     var size = measureSize(func);
     if (size >= sizeToOutline) {
       aggressiveVariableElimination(func, asmData);
+      var ret = outlineChunks(func, asmData);
+      if (ret) newFuncs.push.apply(newFuncs, ret);
     }
     denormalizeAsm(func, asmData);
   });
+
+  if (newFuncs.length > 0) {
+    // add new functions to the toplevel, or create a toplevel if there isn't one
+    if (ast[0] === 'toplevel') {
+      var stats = ast[1];
+      stats.push.apply(stats, newFuncs);
+    } else if (ast[0] === 'defun') {
+      newFuncs.unshift(copy(ast));
+      ast.length = 0;
+      ast[0] = 'toplevel';
+      ast[1] = newFuncs;
+    }
+  }
 }
 
 // Last pass utilities
