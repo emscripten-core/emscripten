@@ -2949,13 +2949,12 @@ function outline(ast) {
   }
 
   var sizeToOutline = extraInfo.sizeToOutline;
+  var level = 0;
 
   function doOutline(func, asmData, stats, i, end) {
-    //printErr('do outline ' + [i, end, 'of', stats.length]);
+    printErr(' do outline ' + [func[1], level, 'range:', i, end, 'of', stats.length]);
     return [emptyNode()];
   }
-
-  var level = 0;
 
   function outlineStatements(func, asmData, stats) {
     level++;
@@ -2980,6 +2979,7 @@ function outline(ast) {
             return null; // do not recurse into children, outlineStatements will do so if necessary
           }
         });
+        sizeSeen = 0;
         continue;
       }
       sizeSeen += size;
