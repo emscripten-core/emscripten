@@ -2982,7 +2982,7 @@ function outline(ast) {
   function analyzeCode(func, asmData, ast) {
     var writes = {};
     var appearances = {};
-    var hasReturn = false;
+    var hasReturn = false, hasBreak = false, hasContinue = false;
     var breaks = {};    // set of labels we break or continue
     var continues = {}; // to. '0' is an unlabeled one
 
@@ -3002,8 +3002,10 @@ function outline(ast) {
         hasReturn = true;
       } else if (type == 'break') {
         breaks[node[1] || 0] = 0;
+        hasBreak = true;
       } else if (type == 'continue') {
         continues[node[1] || 0] = 0;
+        hasContinue = true;
       }
     });
 
@@ -3039,6 +3041,10 @@ function outline(ast) {
     }
     stats.splice.apply(stats, [start, end-start+1].concat(reps));
     // Generate new function
+    if (codeInfo.hasReturn || codeInfo.hasBreak || codeInfo.hasContinue) {
+      // we need to capture all control flow using a top-level labeled one-time loop in the outlined function
+      code = [['label', 'OL', ['do', ['num', 0], ['block', code]]]];
+    }
     var newFunc = ['defun', newIdent, ['sp'], code];
     var newAsmInfo = { params: { sp: ASM_INT }, vars: {} };
     for (var v in codeInfo.reads) {
