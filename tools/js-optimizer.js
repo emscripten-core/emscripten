@@ -3093,38 +3093,44 @@ function outline(ast) {
 
   //
 
-  var newFuncs = [];
+  if (ast[0] !== 'toplevel') {
+    assert(ast[0] == 'defun');
+    ast = ['toplevel', [ast]];
+  }
 
-  traverseGeneratedFunctions(ast, function(func) {
-    var asmData = normalizeAsm(func);
-    var size = measureSize(func);
-    if (size >= sizeToOutline) {
-      aggressiveVariableElimination(func, asmData);
-      analyzeFunction(func, asmData);
-      var ret = outlineStatements(func, asmData, getStatements(func), 0.5*size);
-      if (ret && ret.length > 0) newFuncs.push.apply(newFuncs, ret);
-    }
-    denormalizeAsm(func, asmData);
-  });
+  var funcs = ast[1];
 
-  // TODO: control flow: route returns and breaks. outlined code should have all breaks/continues/returns break into the outermost scope,
-  //       after setting a state variable, etc.
-  // TODO: recurse into new functions, must be careful though so as to not quickly re-outline and leave an intermediary skeletal function
+  var more = true;
+  while (more) {
+    more = false;
 
-  if (newFuncs.length > 0) {
-    // We have outlined. Add stack support: header in which we allocate enough stack space TODO
-    // If sp was not present before, add it and before each return, pop the stack TODO
-    // (none of this should be done in inner functions, of course, just the original)
+    var newFuncs = [];
 
-    // add new functions to the toplevel, or create a toplevel if there isn't one
-    if (ast[0] === 'toplevel') {
-      var stats = ast[1];
-      stats.push.apply(stats, newFuncs);
-    } else if (ast[0] === 'defun') {
-      newFuncs.unshift(copy(ast));
-      ast.length = 0;
-      ast[0] = 'toplevel';
-      ast[1] = newFuncs;
+    funcs.forEach(function(func) {
+      var asmData = normalizeAsm(func);
+      var size = measureSize(func);
+      if (size >= sizeToOutline) {
+        aggressiveVariableElimination(func, asmData);
+        analyzeFunction(func, asmData);
+        var ret = outlineStatements(func, asmData, getStatements(func), 0.5*size);
+        if (ret && ret.length > 0) newFuncs.push.apply(newFuncs, ret);
+      }
+      denormalizeAsm(func, asmData);
+    });
+
+    // TODO: control flow: route returns and breaks. outlined code should have all breaks/continues/returns break into the outermost scope,
+    //       after setting a state variable, etc.
+
+    if (newFuncs.length > 0) {
+      // We have outlined. Add stack support: header in which we allocate enough stack space TODO
+      // If sp was not present before, add it and before each return, pop the stack TODO
+      // (none of this should be done in inner functions, of course, just the original)
+
+      // add new functions to the toplevel, or create a toplevel if there isn't one
+      ast[1].push.apply(ast[1], newFuncs);
+
+      funcs = newFuncs;
+      more = true;
     }
   }
 }
