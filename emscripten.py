@@ -620,6 +620,16 @@ Runtime.stackRestore = function(top) { asm['stackRestore'](top) };
 // EMSCRIPTEN_END_FUNCS
 ''']
 
+  # Create symbol table for self-dlopen
+  if settings.get('LINKABLE'):
+    GLOBAL_BASE = forwarded_json['Runtime']['GLOBAL_BASE']
+    symbol_table = {k:v+8 for k,v in forwarded_json['Variables']['indexedGlobals'].iteritems()}
+    for raw in last_forwarded_json['Functions']['tables'].itervalues():
+      table = raw[raw.find('[')+1:raw.find(']')].split(",")
+      symbol_table.update(map(lambda x: (x[1], x[0]),
+        filter(lambda x: x[1] != '0', enumerate(table))))
+    outfile.write("var SYMBOL_TABLE = %s;" % json.dumps(symbol_table))
+
   for funcs_js_item in funcs_js: # do this loop carefully to save memory
     funcs_js_item = indexize(funcs_js_item)
     funcs_js_item = blockaddrsize(funcs_js_item)

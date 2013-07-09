@@ -5885,6 +5885,35 @@ def process(filename):
       self.do_run(src, '100\n200\n13\n42\n',
                   post_build=add_pre_run_and_checks)
 
+    def test_dlfcn_self(self):
+      if Settings.USE_TYPED_ARRAYS == 1: return self.skip('Does not work with USE_TYPED_ARRAYS=1')
+      Settings.LINKABLE = 1
+
+      src = r'''
+#include <stdio.h>
+#include <dlfcn.h>
+
+int global = 123;
+
+extern "C" __attribute__((noinline)) void foo(int x) {
+  printf("%d\n", x);
+}
+
+void repeatable() {
+  void* self = dlopen(NULL, RTLD_LAZY);
+  int* global_ptr = (int*)dlsym(self, "global");
+  void (*foo_ptr)(int) = (void (*)(int))dlsym(self, "foo");
+  foo_ptr(*global_ptr);
+  dlclose(self);
+}
+
+int main() {
+  repeatable();
+  repeatable();
+  return 0;
+}'''
+      self.do_run(src, '123\n123')
+
     def test_rand(self):
       return self.skip('rand() is now random') # FIXME
 

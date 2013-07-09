@@ -5886,7 +5886,7 @@ LibraryManager.library = {
   dlopen: function(filename, flag) {
     // void *dlopen(const char *file, int mode);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html
-    filename = (ENV['LD_LIBRARY_PATH'] || '/') + Pointer_stringify(filename);
+    filename = filename === 0 ? '__self__' : (ENV['LD_LIBRARY_PATH'] || '/') + Pointer_stringify(filename);
 
     if (DLFCN_DATA.loadedLibNames[filename]) {
       // Already loaded; increment ref count and return.
@@ -5895,47 +5895,54 @@ LibraryManager.library = {
       return handle;
     }
 
-    var target = FS.findObject(filename);
-    if (!target || target.isFolder || target.isDevice) {
-      DLFCN_DATA.errorMsg = 'Could not find dynamic lib: ' + filename;
-      return 0;
+    if (filename === '__self__') {
+      var handle = -1;
+      var lib_module = Module;
+      var cached_functions = SYMBOL_TABLE;
     } else {
-      FS.forceLoadFile(target);
-      var lib_data = intArrayToString(target.contents);
-    }
+      var target = FS.findObject(filename);
+      if (!target || target.isFolder || target.isDevice) {
+        DLFCN_DATA.errorMsg = 'Could not find dynamic lib: ' + filename;
+        return 0;
+      } else {
+        FS.forceLoadFile(target);
+        var lib_data = intArrayToString(target.contents);
+      }
 
-    try {
-      var lib_module = eval(lib_data)({{{ Functions.getTable('x') }}}.length);
-    } catch (e) {
+      try {
+        var lib_module = eval(lib_data)({{{ Functions.getTable('x') }}}.length);
+      } catch (e) {
 #if ASSERTIONS
-      Module.printErr('Error in loading dynamic library: ' + e);
+        Module.printErr('Error in loading dynamic library: ' + e);
 #endif
-      DLFCN_DATA.errorMsg = 'Could not evaluate dynamic lib: ' + filename;
-      return 0;
-    }
+        DLFCN_DATA.errorMsg = 'Could not evaluate dynamic lib: ' + filename;
+        return 0;
+      }
 
-    // Not all browsers support Object.keys().
-    var handle = 1;
-    for (var key in DLFCN_DATA.loadedLibs) {
-      if (DLFCN_DATA.loadedLibs.hasOwnProperty(key)) handle++;
-    }
+      // Not all browsers support Object.keys().
+      var handle = 1;
+      for (var key in DLFCN_DATA.loadedLibs) {
+        if (DLFCN_DATA.loadedLibs.hasOwnProperty(key)) handle++;
+      }
 
+      // We don't care about RTLD_NOW and RTLD_LAZY.
+      if (flag & 256) { // RTLD_GLOBAL
+        for (var ident in lib_module) {
+          if (lib_module.hasOwnProperty(ident)) {
+            Module[ident] = lib_module[ident];
+          }
+        }
+      }
+
+      var cached_functions = {};
+    }
     DLFCN_DATA.loadedLibs[handle] = {
       refcount: 1,
       name: filename,
       module: lib_module,
-      cached_functions: {}
+      cached_functions: cached_functions
     };
     DLFCN_DATA.loadedLibNames[filename] = handle;
-
-    // We don't care about RTLD_NOW and RTLD_LAZY.
-    if (flag & 256) { // RTLD_GLOBAL
-      for (var ident in lib_module) {
-        if (lib_module.hasOwnProperty(ident)) {
-          Module[ident] = lib_module[ident];
-        }
-      }
-    }
 
     return handle;
   },
@@ -5968,13 +5975,15 @@ LibraryManager.library = {
       return 0;
     } else {
       var lib = DLFCN_DATA.loadedLibs[handle];
-      if (!lib.module.hasOwnProperty(symbol)) {
-        DLFCN_DATA.errorMsg = ('Tried to lookup unknown symbol "' + symbol +
-                               '" in dynamic lib: ' + lib.name);
-        return 0;
+      // self-dlopen means that lib.module is not a superset of
+      // cached_functions, so check the latter first
+      if (lib.cached_functions.hasOwnProperty(symbol)) {
+        return lib.cached_functions[symbol];
       } else {
-        if (lib.cached_functions.hasOwnProperty(symbol)) {
-          return lib.cached_functions[symbol];
+        if (!lib.module.hasOwnProperty(symbol)) {
+          DLFCN_DATA.errorMsg = ('Tried to lookup unknown symbol "' + symbol +
+                                 '" in dynamic lib: ' + lib.name);
+          return 0;
         } else {
           var result = lib.module[symbol];
           if (typeof result == 'function') {
