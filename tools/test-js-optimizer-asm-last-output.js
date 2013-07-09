@@ -30,6 +30,7 @@ function finall(x) {
  a = -999999984306749400.0;
  a = -999999984306749400.0;
  a = -0xde0b6b000000000;
+ f(g() | 0);
  return 12.0e10;
 }
 function looop() {

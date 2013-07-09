@@ -3205,12 +3205,13 @@ function fixDotZero(js) {
   });
 }
 
-function asmLoopOptimizer(ast) {
+function asmLastOpts(ast) {
   traverseGeneratedFunctions(ast, function(fun) {
-    // This is at the end of the pipeline, we can assume all other optimizations are done, and we modify loops
-    // into shapes that might confuse other passes
     traverse(fun, function(node, type) {
       if (type === 'while' && node[1][0] === 'num' && node[1][1] === 1 && node[2][0] === 'block') {
+        // This is at the end of the pipeline, we can assume all other optimizations are done, and we modify loops
+        // into shapes that might confuse other passes
+
         // while (1) { .. if (..) { break } } ==> do { .. } while(..)
         var stats = node[2][1];
         var last = stats[stats.length-1];
@@ -3238,6 +3239,11 @@ function asmLoopOptimizer(ast) {
           node[1] = simplifyNotCompsDirect(['unary-prefix', '!', conditionToBreak]);
           return node;
         }
+      } else if (type == 'binary' && node[1] == '&' && node[3][0] == 'unary-prefix' && node[3][1] == '-' && node[3][2][0] == 'num' && node[3][2][1] == 1) {
+        // Change &-1 into |0, at this point the hint is no longer needed
+        node[1] = '|';
+        node[3] = node[3][2];
+        node[3][1] = 0;
       }
     });
   });
@@ -3296,7 +3302,7 @@ arguments_.slice(1).forEach(function(arg) {
   passes[arg](ast);
 });
 if (asm && last) {
-  asmLoopOptimizer(ast); // TODO: move out of last, to make last faster when done later (as in side modules)
+  asmLastOpts(ast); // TODO: move out of last, to make last faster when done later (as in side modules)
   prepDotZero(ast);
 }
 var js = astToSrc(ast, minifyWhitespace), old;
