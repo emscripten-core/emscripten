@@ -136,6 +136,9 @@ var CONTROL_FLOW = set('do', 'while', 'for', 'if', 'switch');
 var NAME_OR_NUM = set('name', 'num');
 var ASSOCIATIVE_BINARIES = set('+', '*', '|', '&', '^');
 
+var BREAK_CAPTURERS = set('do', 'while', 'for', 'switch');
+var CONTINUE_CAPTURERS = LOOP;
+
 var NULL_NODE = ['name', 'null'];
 var UNDEFINED_NODE = ['unary-prefix', 'void', ['num', 0]];
 var TRUE_NODE = ['unary-prefix', '!', ['num', 0]];
@@ -2980,11 +2983,19 @@ function outline(ast) {
 
   // Analyze uses - reads and writes - of variables in part of the AST of a function
   function analyzeCode(func, asmData, ast) {
+    var labels = {};
+
+    traverse(ast, function(node, type) {
+      if (type == 'label' && node[1]) labels[node[1]] = 0;
+    });
+
     var writes = {};
     var appearances = {};
     var hasReturn = false, hasBreak = false, hasContinue = false;
     var breaks = {};    // set of labels we break or continue
     var continues = {}; // to. '0' is an unlabeled one
+    var breakCapturers = 0;
+    var continueCapturers = 0;
 
     traverse(ast, function(node, type) {
       if (type == 'assign' && node[2][0] == 'name') {
@@ -3001,11 +3012,30 @@ function outline(ast) {
       } else if (type == 'return') {
         hasReturn = true;
       } else if (type == 'break') {
-        breaks[node[1] || 0] = 0;
+        var label = node[1] || 0;
+        if (!label && breakCapturers > 0) return; // no label, and captured
+        if (label && (label in labels)) return; // label, and defined in this code, so captured
+        breaks[label || 0] = 0;
         hasBreak = true;
       } else if (type == 'continue') {
-        continues[node[1] || 0] = 0;
+        var label = node[1] || 0;
+        if (!label && continueCapturers > 0) return; // no label, and captured
+        if (label && (label in labels)) return; // label, and defined in this code, so captured
+        continues[label || 0] = 0;
         hasContinue = true;
+      } else {
+        if (type in BREAK_CAPTURERS) {
+          breakCapturers++;        }
+        if (type in CONTINUE_CAPTURERS) {
+          continueCapturers++;
+        }
+      }
+    }, function(node, type) {
+      if (type in BREAK_CAPTURERS) {
+        breakCapturers--;
+      }
+      if (type in CONTINUE_CAPTURERS) {
+        continueCapturers--;
       }
     });
 
@@ -3015,7 +3045,7 @@ function outline(ast) {
       if (appearances[name] > 0) reads[name] = 0;
     }
 
-    return { writes: writes, reads: reads, hasReturn: hasReturn, breaks: breaks, continues: continues };
+    return { writes: writes, reads: reads, hasReturn: hasReturn, breaks: breaks, continues: continues, labels: labels };
   }
 
   var sizeToOutline = extraInfo.sizeToOutline;
@@ -3138,7 +3168,7 @@ function outline(ast) {
 
     if (newFuncs.length > 0) {
       // We have outlined. Add stack support: header in which we allocate enough stack space TODO
-      // If sp was not present before, add it and before each return, pop the stack TODO
+      // If sp was not present before, add it and before each return, pop the stack. also a final pop if not ending with a return TODO
       // (none of this should be done in inner functions, of course, just the original)
 
       // add new functions to the toplevel, or create a toplevel if there isn't one
