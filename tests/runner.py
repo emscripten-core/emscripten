@@ -11571,8 +11571,8 @@ f.close()
          ['asm', 'last']),
         (path_from_root('tools', 'test-js-optimizer-asm-relocate.js'), open(path_from_root('tools', 'test-js-optimizer-asm-relocate-output.js')).read(),
          ['asm', 'relocate']),
-        (path_from_root('tools', 'test-js-optimizer-asm-outline.js'), open(path_from_root('tools', 'test-js-optimizer-asm-outline-output.js')).read(),
-         ['asm', 'outline']),
+        #(path_from_root('tools', 'test-js-optimizer-asm-outline.js'), open(path_from_root('tools', 'test-js-optimizer-asm-outline-output.js')).read(),
+        # ['asm', 'outline']),
       ]:
         print input
         output = Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
