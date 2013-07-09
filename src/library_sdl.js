@@ -1022,6 +1022,7 @@ var LibrarySDL = {
     surfData.ctx.fillStyle = SDL.translateColorToCSSRGBA(color);
     surfData.ctx.fillRect(r.x, r.y, r.w, r.h);
     surfData.ctx.restore();
+    return 0;
   },
 
   SDL_BlitSurface__deps: ['SDL_UpperBlit'],
@@ -1054,6 +1055,11 @@ var LibrarySDL = {
 
   SDL_SetAlpha: function(surf, flag, alpha) {
     SDL.surfaces[surf].alpha = alpha;
+  },
+
+  SDL_SetColorKey: function(surf, flag, key) {
+    Runtime.warnOnce('SDL_SetColorKey is a no-op for performance reasons');
+    return 0;
   },
 
   SDL_GetTicks: function() {
@@ -1472,15 +1478,22 @@ var LibrarySDL = {
   },
 
   Mix_HaltChannel: function(channel) {
-    var info = SDL.channels[channel];
-    if (info.audio) {
-      info.audio.pause();
-      info.audio = null;
-    } else {
-      Module.printErr('No Audio for channel: ' + channel);
+    function halt(channel) {
+      var info = SDL.channels[channel];
+      if (info.audio) {
+        info.audio.pause();
+        info.audio = null;
+      } else {
+        Module.printErr('No Audio for channel: ' + channel);
+      }
+      if (SDL.channelFinished) {
+        Runtime.getFuncWrapper(SDL.channelFinished, 'vi')(channel);
+      }
     }
-    if (SDL.channelFinished) {
-      Runtime.getFuncWrapper(SDL.channelFinished, 'vi')(channel);
+    if (channel != -1) {
+      halt(channel);
+    } else {
+      for (var i = 0; i < SDL.channels.length; ++i) halt(i);
     }
     return 0;
   },
@@ -1667,6 +1680,7 @@ var LibrarySDL = {
   },
   TTF_RenderText_Blended: 'TTF_RenderText_Solid', // XXX ignore blending vs. solid
   TTF_RenderText_Shaded: 'TTF_RenderText_Solid', // XXX ignore blending vs. solid
+  TTF_RenderUTF8_Solid: 'TTF_RenderText_Solid',
 
   TTF_SizeText: function(font, text, w, h) {
     var fontData = SDL.fonts[font];
@@ -1691,35 +1705,73 @@ var LibrarySDL = {
 
   // SDL gfx
 
-  boxRGBA: function(surf, x1, y1, x2, y2, r, g, b, a) {
+  _drawBox: function(surf, x1, y1, x2, y2, cssColor) {
     var surfData = SDL.surfaces[surf];
     assert(!surfData.locked); // but we could unlock and re-lock if we must..
     // TODO: if ctx does not change, leave as is, and also do not re-set xStyle etc.
+    var x = x1 < x2 ? x1 : x2;
+    var y = y1 < y2 ? y1 : y2;
+    var w = Math.abs(x2 - x1);
+    var h = Math.abs(y2 - y1);
     surfData.ctx.save();
-    surfData.ctx.fillStyle = SDL.translateRGBAToCSSRGBA(r, g, b, a);
-    surfData.ctx.fillRect(x1, y1, x2-x1, y2-y1);
+    surfData.ctx.fillStyle = cssColor;
+    surfData.ctx.fillRect(x, y, w, h);
     surfData.ctx.restore();
   },
 
+  boxColor__deps: ['_drawBox'],
+  boxColor: function(surf, x1, y1, x2, y2, color) {
+    return __drawBox(surf, x1, y1, x2, y2, SDL.translateRGBAToCSSRGBA(color>>>24, (color>>16)&0xff, (color>>8)&0xff, color&0xff));
+  },
+
+  boxRGBA__deps: ['_drawBox'],
+  boxRGBA: function(surf, x1, y1, x2, y2, r, g, b, a) {
+    return __drawBox(surf, x1, y1, x2, y2, SDL.translateRGBAToCSSRGBA(r, g, b, a));
+  },
+
+  _drawRectangle: function(surf, x1, y1, x2, y2, cssColor) {
+    var surfData = SDL.surfaces[surf];
+    assert(!surfData.locked); // but we could unlock and re-lock if we must..
+    var x = x1 < x2 ? x1 : x2;
+    var y = y1 < y2 ? y1 : y2;
+    var w = Math.abs(x2 - x1);
+    var h = Math.abs(y2 - y1);
+    surfData.ctx.save();
+    surfData.ctx.strokeStyle = cssColor;
+    surfData.ctx.strokeRect(x, y, w, h);
+    surfData.ctx.restore();
+  },
+
+  rectangleColor__deps: ['_drawRectangle'],
+  rectangleColor: function(surf, x1, y1, x2, y2, color) {
+    return __drawRectangle(surf, x1, y1, x2, y2, SDL.translateRGBAToCSSRGBA(color>>>24, (color>>16)&0xff, (color>>8)&0xff, color&0xff));
+  },
+
+  rectangleRGBA__deps: ['_drawRectangle'],
   rectangleRGBA: function(surf, x1, y1, x2, y2, r, g, b, a) {
-    var surfData = SDL.surfaces[surf];
-    assert(!surfData.locked); // but we could unlock and re-lock if we must..
-    surfData.ctx.save();
-    surfData.ctx.strokeStyle = SDL.translateRGBAToCSSRGBA(r, g, b, a);
-    surfData.ctx.strokeRect(x1, y1, x2-x1, y2-y1);
-    surfData.ctx.restore();
+    return __drawRectangle(surf, x1, y1, x2, y2, SDL.translateRGBAToCSSRGBA(r, g, b, a));
   },
 
-  lineRGBA: function(surf, x1, y1, x2, y2, r, g, b, a) {
+  _drawLine: function(surf, x1, y1, x2, y2, cssColor) {
     var surfData = SDL.surfaces[surf];
     assert(!surfData.locked); // but we could unlock and re-lock if we must..
     surfData.ctx.save();
-    surfData.ctx.strokeStyle = SDL.translateRGBAToCSSRGBA(r, g, b, a);
+    surfData.ctx.strokeStyle = cssColor;
     surfData.ctx.beginPath();
     surfData.ctx.moveTo(x1, y1);
     surfData.ctx.lineTo(x2, y2);
     surfData.ctx.stroke();
     surfData.ctx.restore();
+  },
+
+  lineColor__deps: ['_drawLine'],
+  lineColor: function(surf, x1, y1, x2, y2, color) {
+    return __drawLine(surf, x1, y1, x2, y2, SDL.translateRGBAToCSSRGBA(color>>>24, (color>>16)&0xff, (color>>8)&0xff, color&0xff));
+  },
+
+  lineRGBA__deps: ['_drawLine'],
+  lineRGBA: function(surf, x1, y1, x2, y2, r, g, b, a) {
+    return __drawLine(surf, x1, y1, x2, y2, SDL.translateRGBAToCSSRGBA(r, g, b, a));
   },
 
   pixelRGBA__deps: ['boxRGBA'],
@@ -1805,11 +1857,17 @@ var LibrarySDL = {
     return -1;
   },
 
+  // Joysticks
+
+  SDL_NumJoysticks: function() { return 0 },
+
+  SDL_JoystickOpen: function(deviceIndex) { return 0 },
+
+  SDL_JoystickGetButton: function(joystick, button) { return 0 },
+
   // Misc
 
   SDL_InitSubSystem: function(flags) { return 0 },
-
-  SDL_NumJoysticks: function() { return 0 },
 
   SDL_RWFromFile: function(filename, mode) {
     return filename; // XXX We just forward the filename
