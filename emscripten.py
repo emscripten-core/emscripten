@@ -44,20 +44,25 @@ MIN_CHUNK_SIZE = 1024*1024
 MAX_CHUNK_SIZE = float(os.environ.get('EMSCRIPT_MAX_CHUNK_SIZE') or 'inf') # configuring this is just for debugging purposes
 
 def process_funcs((i, funcs, meta, settings_file, compiler, forwarded_file, libraries, compiler_engine, temp_files, DEBUG)):
-  funcs_file = temp_files.get('.func_%d.ll' % i).name
-  f = open(funcs_file, 'w')
-  f.write(funcs)
-  funcs = None
-  f.write('\n')
-  f.write(meta)
-  f.close()
-  out = jsrun.run_js(
-    compiler,
-    engine=compiler_engine,
-    args=[settings_file, funcs_file, 'funcs', forwarded_file] + libraries,
-    stdout=subprocess.PIPE,
-    cwd=path_from_root('src'))
-  tempfiles.try_delete(funcs_file)
+  try:
+    funcs_file = temp_files.get('.func_%d.ll' % i).name
+    f = open(funcs_file, 'w')
+    f.write(funcs)
+    funcs = None
+    f.write('\n')
+    f.write(meta)
+    f.close()
+    out = jsrun.run_js(
+      compiler,
+      engine=compiler_engine,
+      args=[settings_file, funcs_file, 'funcs', forwarded_file] + libraries,
+      stdout=subprocess.PIPE,
+      cwd=path_from_root('src'))
+  except KeyboardInterrupt:
+    # Python 2.7 seems to lock up when a child process throws KeyboardInterrupt
+    raise Exception()
+  finally:
+    tempfiles.try_delete(funcs_file)
   if DEBUG: print >> sys.stderr, '.'
   return out
 
