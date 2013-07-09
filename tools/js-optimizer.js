@@ -3042,7 +3042,7 @@ function outline(ast) {
     return [newFunc];
   }
 
-  function outlineStatements(func, asmData, stats) {
+  function outlineStatements(func, asmData, stats, maxSize) {
     level++;
     if (measureSize(stats) < sizeToOutline) return;
     var ret = [];
@@ -3059,7 +3059,7 @@ function outline(ast) {
         traverse(stat, function(node, type) {
           if (type == 'block') {
             if (measureSize(node) >= sizeToOutline) {
-              var subRet = outlineStatements(func, asmData, node[1]);
+              var subRet = outlineStatements(func, asmData, node[1], maxSize);
               if (subRet && subRet.length > 0) ret.push.apply(ret, subRet);
             }
             return null; // do not recurse into children, outlineStatements will do so if necessary
@@ -3069,17 +3069,19 @@ function outline(ast) {
         continue;
       }
       sizeSeen += size;
-      if (sizeSeen >= sizeToOutline) {
-        if (i == 0 && end == stats.length-1) {
-          // we have the full range here, so inlining would do nothing useful
-          if (stats.length >= 2) {
-            // at least split this function in half
-            i = Math.floor(stats.length/2);
-            end = stats.length-1;
-          } else {
-            break;
-          }
+      // If this is big enough to outline, but no too big (if very close to the size of the full function,
+      // outlining is pointless; remove stats from the end to try to achieve the good case), then outline.
+      // Also, try to reduce the size if it is much larger than the hoped-for size
+      while ((sizeSeen > maxSize || sizeSeen > 2*sizeToOutline) && i < end) {
+        sizeSeen -= measureSize(stats[end]);
+        if (sizeSeen >= sizeToOutline) {
+          end--;
+        } else {
+          sizeSeen += measureSize(stats[end]); // abort, this took away too much
+          break;
         }
+      }
+      if (sizeSeen >= sizeToOutline && sizeSeen <= maxSize) {
         ret.push.apply(ret, doOutline(func, asmData, stats, i, end)); // outline [i, .. ,end] inclusive
         sizeSeen = 0;
         end = i-1;
@@ -3099,7 +3101,7 @@ function outline(ast) {
     if (size >= sizeToOutline) {
       aggressiveVariableElimination(func, asmData);
       analyzeFunction(func, asmData);
-      var ret = outlineStatements(func, asmData, getStatements(func));
+      var ret = outlineStatements(func, asmData, getStatements(func), 0.5*size);
       if (ret && ret.length > 0) newFuncs.push.apply(newFuncs, ret);
     }
     denormalizeAsm(func, asmData);
