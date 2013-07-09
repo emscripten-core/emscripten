@@ -63,6 +63,9 @@ function b($this, $__n) {
   HEAP32[($this + 4 & 16777215) >> 2] = $40;
  }
  HEAP8[$38 + $40 & 16777215] = 0;
+ HEAP32[$4] = ~HEAP32[$5];
+ HEAP32[$4] = ~HEAP32[$5];
+ HEAP32[$4] = ~HEAP32[$5];
  return;
 }
 function rett() {
@@ -127,6 +130,7 @@ function compare_result_simplification() {
  HEAP32[$4] = HEAP32[$5] == HEAP32[$6];
  HEAP32[$4] = HEAP32[$5] === HEAP32[$6];
  HEAP32[$4] = HEAP32[$5] != HEAP32[$6];
+ HEAP32[$4] = HEAP32[$5] !== HEAP32[$6];
  var x = HEAP32[$5] != HEAP32[$6] | 0;
 }
 function tempDoublePtr($45, $14, $28, $42) {
