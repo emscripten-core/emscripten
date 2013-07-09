@@ -405,7 +405,7 @@ function removeUnneededLabelSettings(ast) {
 // Various expression simplifications. Pre run before closure (where we still have metadata), Post run after.
 
 var USEFUL_BINARY_OPS = set('<<', '>>', '|', '&', '^');
-var COMPARE_OPS = set('<', '<=', '>', '>=', '==', '===', '!=');
+var COMPARE_OPS = set('<', '<=', '>', '>=', '==', '===', '!=', '!==');
 
 function simplifyExpressionsPre(ast) {
   // Simplify common expressions used to perform integer conversion operations
@@ -504,6 +504,8 @@ function simplifyExpressionsPre(ast) {
             stack.push(1);
           } else if ((type === 'binary' && node[1] in SAFE_BINARY_OPS) || type === 'num' || type === 'name') {
             stack.push(0); // This node is safe in that it does not interfere with this optimization
+          } else if (type === 'unary-prefix' && node[1] === '~') {
+            stack.push(1);
           } else {
             stack.push(-1); // This node is dangerous! Give up if you see this before you see '1'
           }
@@ -553,6 +555,12 @@ function simplifyExpressionsPre(ast) {
               return input;
             }
           }
+        }
+      } else if (type === 'binary' && node[1] === '^') {
+        // LLVM represents bitwise not as xor with -1. Translate it back to an actual bitwise not.
+        if (node[3][0] === 'unary-prefix' && node[3][1] === '-' && node[3][2][0] === 'num' &&
+            node[3][2][1] === 1) {
+            return ['unary-prefix', '~', node[2]];
         }
       } else if (type       === 'binary' && node[1]    === '>>' && node[3][0]    === 'num' &&
                  node[2][0] === 'binary' && node[2][1] === '<<' && node[2][3][0] === 'num' &&
