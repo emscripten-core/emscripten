@@ -2222,9 +2222,9 @@ function processMathop(item) {
     // basic integer ops
     case 'add': return handleOverflow(getFastValue(idents[0], '+', idents[1], item.type), bits);
     case 'sub': return handleOverflow(getFastValue(idents[0], '-', idents[1], item.type), bits);
-    case 'sdiv': case 'udiv': return makeRounding(getFastValue(idents[0], '/', idents[1], item.type), bits, op[0] === 's');
+    case 'sdiv': case 'udiv': return makeRounding(getFastValue(idents[0], '/', idents[1], item.type), bits, true);
     case 'mul': return getFastValue(idents[0], '*', idents[1], item.type); // overflow handling is already done in getFastValue for '*'
-    case 'urem': case 'srem': return makeRounding(getFastValue(idents[0], '%', idents[1], item.type), bits, op[0] === 's');
+    case 'urem': case 'srem': return makeRounding(getFastValue(idents[0], '%', idents[1], item.type), bits, true);
     case 'or': {
       if (bits > 32) {
         assert(bits === 64, 'Too many bits for or: ' + bits);
