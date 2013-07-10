@@ -84,7 +84,7 @@ mergeInto(LibraryManager.library, {
 
       var imagePlugin = {};
       imagePlugin['canHandle'] = function(name) {
-        return !Module.noImageDecoding && /\.(jpg|jpeg|png|bmp)$/.exec(name);
+        return !Module.noImageDecoding && /\.(jpg|jpeg|png|bmp)$/i.test(name);
       };
       imagePlugin['handle'] = function(byteArray, name, onload, onerror) {
         var b = null;
