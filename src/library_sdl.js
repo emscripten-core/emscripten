@@ -246,7 +246,7 @@ var LibrarySDL = {
     },
 
     translateRGBAToCSSRGBA: function(r, g, b, a) {
-      return 'rgba(' + r + ',' + g + ',' + b + ',' + (a/255) + ')';
+      return 'rgba(' + (r&0xff) + ',' + (g&0xff) + ',' + (b&0xff) + ',' + (a&0xff)/255 + ')';
     },
 
     translateRGBAToColor: function(r, g, b, a) {
@@ -1022,6 +1022,7 @@ var LibrarySDL = {
     surfData.ctx.fillStyle = SDL.translateColorToCSSRGBA(color);
     surfData.ctx.fillRect(r.x, r.y, r.w, r.h);
     surfData.ctx.restore();
+    return 0;
   },
 
   SDL_BlitSurface__deps: ['SDL_UpperBlit'],
@@ -1031,11 +1032,19 @@ var LibrarySDL = {
 
   zoomSurface: function(src, x, y, smooth) {
     var srcData = SDL.surfaces[src];
-    var w = srcData.width*x;
-    var h = srcData.height*y;
-    var ret = SDL.makeSurface(w, h, srcData.flags, false, 'zoomSurface');
+    var w = srcData.width * x;
+    var h = srcData.height * y;
+    var ret = SDL.makeSurface(Math.abs(w), Math.abs(h), srcData.flags, false, 'zoomSurface');
     var dstData = SDL.surfaces[ret];
-    dstData.ctx.drawImage(srcData.canvas, 0, 0, w, h);
+    if (x >= 0 && y >= 0) dstData.ctx.drawImage(srcData.canvas, 0, 0, w, h);
+    else {
+      dstData.ctx.save();
+      dstData.ctx.scale(x < 0 ? -1 : 1, y < 0 ? -1 : 1);
+      dstData.ctx.drawImage(srcData.canvas, w < 0 ? w : 0, h < 0 ? h : 0, Math.abs(w), Math.abs(h));
+      // XXX I think this should work according to the spec, but currently
+      // fails on FF: dstData.ctx.drawImage(srcData.canvas, 0, 0, w, h);
+      dstData.ctx.restore();
+    }
     return ret;
   },
 
@@ -1054,6 +1063,14 @@ var LibrarySDL = {
 
   SDL_SetAlpha: function(surf, flag, alpha) {
     SDL.surfaces[surf].alpha = alpha;
+  },
+
+  SDL_SetColorKey: function(surf, flag, key) {
+    // SetColorKey assigns one color to be rendered as transparent. I don't
+    // think the canvas API allows for anything like this, and iterating through
+    // each pixel to replace that color seems prohibitively expensive.
+    Runtime.warnOnce('SDL_SetColorKey is a no-op for performance reasons');
+    return 0;
   },
 
   SDL_GetTicks: function() {
@@ -1472,15 +1489,20 @@ var LibrarySDL = {
   },
 
   Mix_HaltChannel: function(channel) {
-    var info = SDL.channels[channel];
-    if (info.audio) {
-      info.audio.pause();
-      info.audio = null;
-    } else {
-      Module.printErr('No Audio for channel: ' + channel);
+    function halt(channel) {
+      var info = SDL.channels[channel];
+      if (info.audio) {
+        info.audio.pause();
+        info.audio = null;
+      }
+      if (SDL.channelFinished) {
+        Runtime.getFuncWrapper(SDL.channelFinished, 'vi')(channel);
+      }
     }
-    if (SDL.channelFinished) {
-      Runtime.getFuncWrapper(SDL.channelFinished, 'vi')(channel);
+    if (channel != -1) {
+      halt(channel);
+    } else {
+      for (var i = 0; i < SDL.channels.length; ++i) halt(i);
     }
     return 0;
   },
@@ -1667,6 +1689,7 @@ var LibrarySDL = {
   },
   TTF_RenderText_Blended: 'TTF_RenderText_Solid', // XXX ignore blending vs. solid
   TTF_RenderText_Shaded: 'TTF_RenderText_Solid', // XXX ignore blending vs. solid
+  TTF_RenderUTF8_Solid: 'TTF_RenderText_Solid',
 
   TTF_SizeText: function(font, text, w, h) {
     var fontData = SDL.fonts[font];
@@ -1691,35 +1714,114 @@ var LibrarySDL = {
 
   // SDL gfx
 
+  $SDL_gfx: {
+    drawRectangle: function(surf, x1, y1, x2, y2, action, cssColor) {
+      x1 = x1 << 16 >> 16;
+      y1 = y1 << 16 >> 16;
+      x2 = x2 << 16 >> 16;
+      y2 = y2 << 16 >> 16;
+      var surfData = SDL.surfaces[surf];
+      assert(!surfData.locked); // but we could unlock and re-lock if we must..
+      // TODO: if ctx does not change, leave as is, and also do not re-set xStyle etc.
+      var x = x1 < x2 ? x1 : x2;
+      var y = y1 < y2 ? y1 : y2;
+      var w = Math.abs(x2 - x1);
+      var h = Math.abs(y2 - y1);
+      surfData.ctx.save();
+      surfData.ctx[action + 'Style'] = cssColor;
+      surfData.ctx[action + 'Rect'](x, y, w, h);
+      surfData.ctx.restore();
+    },
+    drawLine: function(surf, x1, y1, x2, y2, cssColor) {
+      x1 = x1 << 16 >> 16;
+      y1 = y1 << 16 >> 16;
+      x2 = x2 << 16 >> 16;
+      y2 = y2 << 16 >> 16;
+      var surfData = SDL.surfaces[surf];
+      assert(!surfData.locked); // but we could unlock and re-lock if we must..
+      surfData.ctx.save();
+      surfData.ctx.strokeStyle = cssColor;
+      surfData.ctx.beginPath();
+      surfData.ctx.moveTo(x1, y1);
+      surfData.ctx.lineTo(x2, y2);
+      surfData.ctx.stroke();
+      surfData.ctx.restore();
+    },
+    // See http://stackoverflow.com/questions/2172798/how-to-draw-an-oval-in-html5-canvas
+    drawEllipse: function(surf, x, y, rx, ry, action, cssColor) {
+      x = x << 16 >> 16;
+      y = y << 16 >> 16;
+      rx = rx << 16 >> 16;
+      ry = ry << 16 >> 16;
+      var surfData = SDL.surfaces[surf];
+      assert(!surfData.locked); // but we could unlock and re-lock if we must..
+
+      surfData.ctx.save();
+      surfData.ctx.beginPath();
+      surfData.ctx.translate(x, y);
+      surfData.ctx.scale(rx, ry);
+      surfData.ctx.arc(0, 0, 1, 0, 2 * Math.PI);
+      surfData.ctx.restore();
+
+      surfData.ctx.save();
+      surfData.ctx[action + 'Style'] = cssColor;
+      surfData.ctx[action]();
+      surfData.ctx.restore();
+    },
+    // the gfx library uses something different from the rest of SDL...
+    translateColorToCSSRGBA: function(rgba) {
+      return 'rgba(' + (rgba>>>24) + ',' + (rgba>>16 & 0xff) + ',' + (rgba>>8 & 0xff) + ',' + (rgba&0xff) + ')';
+    }
+  },
+
+  boxColor__deps: ['$SDL_gfx'],
+  boxColor: function(surf, x1, y1, x2, y2, color) {
+    return SDL_gfx.drawRectangle(surf, x1, y1, x2, y2, 'fill', SDL_gfx.translateColorToCSSRGBA(color));
+  },
+
+  boxRGBA__deps: ['$SDL_gfx'],
   boxRGBA: function(surf, x1, y1, x2, y2, r, g, b, a) {
-    var surfData = SDL.surfaces[surf];
-    assert(!surfData.locked); // but we could unlock and re-lock if we must..
-    // TODO: if ctx does not change, leave as is, and also do not re-set xStyle etc.
-    surfData.ctx.save();
-    surfData.ctx.fillStyle = SDL.translateRGBAToCSSRGBA(r, g, b, a);
-    surfData.ctx.fillRect(x1, y1, x2-x1, y2-y1);
-    surfData.ctx.restore();
+    return SDL_gfx.drawRectangle(surf, x1, y1, x2, y2, 'fill', SDL.translateRGBAToCSSRGBA(r, g, b, a));
   },
 
+  rectangleColor__deps: ['$SDL_gfx'],
+  rectangleColor: function(surf, x1, y1, x2, y2, color) {
+    return SDL_gfx.drawRectangle(surf, x1, y1, x2, y2, 'stroke', SDL_gfx.translateColorToCSSRGBA(color));
+  },
+
+  rectangleRGBA__deps: ['$SDL_gfx'],
   rectangleRGBA: function(surf, x1, y1, x2, y2, r, g, b, a) {
-    var surfData = SDL.surfaces[surf];
-    assert(!surfData.locked); // but we could unlock and re-lock if we must..
-    surfData.ctx.save();
-    surfData.ctx.strokeStyle = SDL.translateRGBAToCSSRGBA(r, g, b, a);
-    surfData.ctx.strokeRect(x1, y1, x2-x1, y2-y1);
-    surfData.ctx.restore();
+    return SDL_gfx.drawRectangle(surf, x1, y1, x2, y2, 'stroke', SDL.translateRGBAToCSSRGBA(r, g, b, a));
   },
 
+  ellipseColor__deps: ['$SDL_gfx'],
+  ellipseColor: function(surf, x, y, rx, ry, color) {
+    return SDL_gfx.drawEllipse(surf, x, y, rx, ry, 'stroke', SDL_gfx.translateColorToCSSRGBA(color));
+  },
+
+  ellipseRGBA__deps: ['$SDL_gfx'],
+  ellipseRGBA: function(surf, x, y, rx, ry, r, g, b, a) {
+    return SDL_gfx.drawEllipse(surf, x, y, rx, ry, 'stroke', SDL.translateRGBAToCSSRGBA(r, g, b, a));
+  },
+
+  filledEllipseColor__deps: ['$SDL_gfx'],
+  filledEllipseColor: function(surf, x, y, rx, ry, color) {
+    return SDL_gfx.drawEllipse(surf, x, y, rx, ry, 'fill', SDL_gfx.translateColorToCSSRGBA(color));
+  },
+
+  filledEllipseRGBA__deps: ['$SDL_gfx'],
+  filledEllipseRGBA: function(surf, x, y, rx, ry, r, g, b, a) {
+    return SDL_gfx.drawEllipse(surf, x, y, rx, ry, 'fill', SDL.translateRGBAToCSSRGBA(r, g, b, a));
+  },
+
+  lineColor__deps: ['$SDL_gfx'],
+  lineColor: function(surf, x1, y1, x2, y2, color) {
+    return SDL_gfx.drawLine(surf, x1, y1, x2, y2, SDL_gfx.translateColorToCSSRGBA(color));
+  },
+
+  lineRGBA__deps: ['$SDL_gfx'],
   lineRGBA: function(surf, x1, y1, x2, y2, r, g, b, a) {
-    var surfData = SDL.surfaces[surf];
-    assert(!surfData.locked); // but we could unlock and re-lock if we must..
-    surfData.ctx.save();
-    surfData.ctx.strokeStyle = SDL.translateRGBAToCSSRGBA(r, g, b, a);
-    surfData.ctx.beginPath();
-    surfData.ctx.moveTo(x1, y1);
-    surfData.ctx.lineTo(x2, y2);
-    surfData.ctx.stroke();
-    surfData.ctx.restore();
+    return SDL_gfx.drawLine(surf, x1, y1, x2, y2, SDL.translateRGBAToCSSRGBA(r, g, b, a));
   },
 
   pixelRGBA__deps: ['boxRGBA'],
@@ -1805,11 +1907,17 @@ var LibrarySDL = {
     return -1;
   },
 
+  // Joysticks
+
+  SDL_NumJoysticks: function() { return 0 },
+
+  SDL_JoystickOpen: function(deviceIndex) { return 0 },
+
+  SDL_JoystickGetButton: function(joystick, button) { return 0 },
+
   // Misc
 
   SDL_InitSubSystem: function(flags) { return 0 },
-
-  SDL_NumJoysticks: function() { return 0 },
 
   SDL_RWFromFile: function(filename, mode) {
     return filename; // XXX We just forward the filename
