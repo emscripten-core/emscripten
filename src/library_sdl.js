@@ -246,7 +246,7 @@ var LibrarySDL = {
     },
 
     translateRGBAToCSSRGBA: function(r, g, b, a) {
-      return 'rgba(' + r + ',' + g + ',' + b + ',' + (a/255) + ')';
+      return 'rgba(' + (r&0xff) + ',' + (g&0xff) + ',' + (b&0xff) + ',' + (a&0xff)/255 + ')';
     },
 
     translateRGBAToColor: function(r, g, b, a) {
@@ -1713,6 +1713,10 @@ var LibrarySDL = {
 
   $SDL_gfx: {
     drawRectangle: function(surf, x1, y1, x2, y2, action, cssColor) {
+      x1 = x1 << 16 >> 16;
+      y1 = y1 << 16 >> 16;
+      x2 = x2 << 16 >> 16;
+      y2 = y2 << 16 >> 16;
       var surfData = SDL.surfaces[surf];
       assert(!surfData.locked); // but we could unlock and re-lock if we must..
       // TODO: if ctx does not change, leave as is, and also do not re-set xStyle etc.
@@ -1726,6 +1730,10 @@ var LibrarySDL = {
       surfData.ctx.restore();
     },
     drawLine: function(surf, x1, y1, x2, y2, cssColor) {
+      x1 = x1 << 16 >> 16;
+      y1 = y1 << 16 >> 16;
+      x2 = x2 << 16 >> 16;
+      y2 = y2 << 16 >> 16;
       var surfData = SDL.surfaces[surf];
       assert(!surfData.locked); // but we could unlock and re-lock if we must..
       surfData.ctx.save();
@@ -1738,6 +1746,10 @@ var LibrarySDL = {
     },
     // See http://stackoverflow.com/questions/2172798/how-to-draw-an-oval-in-html5-canvas
     drawEllipse: function(surf, x, y, rx, ry, action, cssColor) {
+      x = x << 16 >> 16;
+      y = y << 16 >> 16;
+      rx = rx << 16 >> 16;
+      ry = ry << 16 >> 16;
       var surfData = SDL.surfaces[surf];
       assert(!surfData.locked); // but we could unlock and re-lock if we must..
 
