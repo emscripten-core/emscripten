@@ -1711,7 +1711,7 @@ var LibrarySDL = {
 
   // SDL gfx
 
-  _drawBox: function(surf, x1, y1, x2, y2, cssColor) {
+  _drawRectangle: function(surf, x1, y1, x2, y2, action, cssColor) {
     var surfData = SDL.surfaces[surf];
     assert(!surfData.locked); // but we could unlock and re-lock if we must..
     // TODO: if ctx does not change, leave as is, and also do not re-set xStyle etc.
@@ -1720,42 +1720,29 @@ var LibrarySDL = {
     var w = Math.abs(x2 - x1);
     var h = Math.abs(y2 - y1);
     surfData.ctx.save();
-    surfData.ctx.fillStyle = cssColor;
-    surfData.ctx.fillRect(x, y, w, h);
+    surfData.ctx[action + 'Style'] = cssColor;
+    surfData.ctx[action + 'Rect'](x, y, w, h);
     surfData.ctx.restore();
   },
 
-  boxColor__deps: ['_drawBox'],
+  boxColor__deps: ['_drawRectangle'],
   boxColor: function(surf, x1, y1, x2, y2, color) {
-    return __drawBox(surf, x1, y1, x2, y2, SDL.translateRGBAToCSSRGBA(color>>>24, (color>>16)&0xff, (color>>8)&0xff, color&0xff));
+    return __drawRectangle(surf, x1, y1, x2, y2, 'fill', SDL.translateRGBAToCSSRGBA(color>>>24, (color>>16)&0xff, (color>>8)&0xff, color&0xff));
   },
 
-  boxRGBA__deps: ['_drawBox'],
+  boxRGBA__deps: ['_drawRectangle'],
   boxRGBA: function(surf, x1, y1, x2, y2, r, g, b, a) {
-    return __drawBox(surf, x1, y1, x2, y2, SDL.translateRGBAToCSSRGBA(r, g, b, a));
-  },
-
-  _drawRectangle: function(surf, x1, y1, x2, y2, cssColor) {
-    var surfData = SDL.surfaces[surf];
-    assert(!surfData.locked); // but we could unlock and re-lock if we must..
-    var x = x1 < x2 ? x1 : x2;
-    var y = y1 < y2 ? y1 : y2;
-    var w = Math.abs(x2 - x1);
-    var h = Math.abs(y2 - y1);
-    surfData.ctx.save();
-    surfData.ctx.strokeStyle = cssColor;
-    surfData.ctx.strokeRect(x, y, w, h);
-    surfData.ctx.restore();
+    return __drawRectangle(surf, x1, y1, x2, y2, 'fill', SDL.translateRGBAToCSSRGBA(r, g, b, a));
   },
 
   rectangleColor__deps: ['_drawRectangle'],
   rectangleColor: function(surf, x1, y1, x2, y2, color) {
-    return __drawRectangle(surf, x1, y1, x2, y2, SDL.translateRGBAToCSSRGBA(color>>>24, (color>>16)&0xff, (color>>8)&0xff, color&0xff));
+    return __drawRectangle(surf, x1, y1, x2, y2, 'stroke', SDL.translateRGBAToCSSRGBA(color>>>24, (color>>16)&0xff, (color>>8)&0xff, color&0xff));
   },
 
   rectangleRGBA__deps: ['_drawRectangle'],
   rectangleRGBA: function(surf, x1, y1, x2, y2, r, g, b, a) {
-    return __drawRectangle(surf, x1, y1, x2, y2, SDL.translateRGBAToCSSRGBA(r, g, b, a));
+    return __drawRectangle(surf, x1, y1, x2, y2, 'stroke', SDL.translateRGBAToCSSRGBA(r, g, b, a));
   },
 
   _drawLine: function(surf, x1, y1, x2, y2, cssColor) {
@@ -1768,6 +1755,44 @@ var LibrarySDL = {
     surfData.ctx.lineTo(x2, y2);
     surfData.ctx.stroke();
     surfData.ctx.restore();
+  },
+
+  // See http://stackoverflow.com/questions/2172798/how-to-draw-an-oval-in-html5-canvas
+  _drawEllipse: function(surf, x, y, rx, ry, action, cssColor) {
+    var surfData = SDL.surfaces[surf];
+    assert(!surfData.locked); // but we could unlock and re-lock if we must..
+
+    surfData.ctx.save();
+    surfData.ctx.beginPath();
+    surfData.ctx.scale(rx, ry);
+    surfData.ctx.translate(x, y);
+    surfData.ctx.arc(1, 1, 1, 0, 2 * Math.PI);
+    surfData.ctx.restore();
+
+    surfData.ctx.save();
+    surfData.ctx[action + 'Style'] = cssColor;
+    surfData.ctx[action]();
+    surfData.ctx.restore();
+  },
+
+  ellipseColor__deps: ['_drawEllipse'],
+  ellipseColor: function(surf, x, y, rx, ry, color) {
+    return __drawEllipse(surf, x, y, rx, ry, 'stroke', SDL.translateRGBAToCSSRGBA(color>>>24, (color>>16)&0xff, (color>>8)&0xff, color&0xff));
+  },
+
+  ellipseRGBA__deps: ['_drawEllipse'],
+  ellipseRGBA: function(surf, x, y, rx, ry, color) {
+    return __drawEllipse(surf, x, y, rx, ry, 'stroke', SDL.translateRGBAToCSSRGBA(r, g, b, a));
+  },
+
+  filledEllipseColor__deps: ['_drawEllipse'],
+  filledEllipseColor: function(surf, x, y, rx, ry, color) {
+    return __drawEllipse(surf, x, y, rx, ry, 'fill', SDL.translateRGBAToCSSRGBA(color>>>24, (color>>16)&0xff, (color>>8)&0xff, color&0xff));
+  },
+
+  filledEllipseRGBA__deps: ['_drawEllipse'],
+  filledEllipseRGBA: function(surf, x, y, rx, ry, color) {
+    return __drawEllipse(surf, x, y, rx, ry, 'fill', SDL.translateRGBAToCSSRGBA(r, g, b, a));
   },
 
   lineColor__deps: ['_drawLine'],
