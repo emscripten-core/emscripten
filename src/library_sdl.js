@@ -1764,9 +1764,9 @@ var LibrarySDL = {
 
     surfData.ctx.save();
     surfData.ctx.beginPath();
-    surfData.ctx.scale(rx, ry);
     surfData.ctx.translate(x, y);
-    surfData.ctx.arc(1, 1, 1, 0, 2 * Math.PI);
+    surfData.ctx.scale(rx, ry);
+    surfData.ctx.arc(0, 0, 1, 0, 2 * Math.PI);
     surfData.ctx.restore();
 
     surfData.ctx.save();
@@ -1781,7 +1781,7 @@ var LibrarySDL = {
   },
 
   ellipseRGBA__deps: ['_drawEllipse'],
-  ellipseRGBA: function(surf, x, y, rx, ry, color) {
+  ellipseRGBA: function(surf, x, y, rx, ry, r, g, b, a) {
     return __drawEllipse(surf, x, y, rx, ry, 'stroke', SDL.translateRGBAToCSSRGBA(r, g, b, a));
   },
 
@@ -1791,7 +1791,7 @@ var LibrarySDL = {
   },
 
   filledEllipseRGBA__deps: ['_drawEllipse'],
-  filledEllipseRGBA: function(surf, x, y, rx, ry, color) {
+  filledEllipseRGBA: function(surf, x, y, rx, ry, r, g, b, a) {
     return __drawEllipse(surf, x, y, rx, ry, 'fill', SDL.translateRGBAToCSSRGBA(r, g, b, a));
   },
 

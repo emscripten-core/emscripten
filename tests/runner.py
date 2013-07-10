@@ -13186,6 +13186,9 @@ Press any key to continue.'''
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
       self.btest('sdl_rotozoom.c', reference='sdl_rotozoom.png', args=['--preload-file', 'screenshot.png'], reference_slack=3)
 
+    def test_sdl_gfx_primitives(self):
+      self.btest('sdl_gfx_primitives.c', reference='sdl_gfx_primitives.png', reference_slack=3)
+
     def test_sdl_canvas_palette_2(self):
       open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
         Module['preRun'].push(function() {
