@@ -3176,7 +3176,7 @@ function outline(ast) {
         ));
         reps.push(makeIf(
           makeComparison(makeStackAccess(ASM_INT, asmData.controlStackPos), '==', ['num', CONTROL_BREAK_LABEL]),
-          ['stat', ['break', makeStackAccess(ASM_INT, asmData.controlDataStackPos)]]
+          ['stat', ['break', makeStackAccess(ASM_INT, asmData.controlDataStackPos)]] // XXX here and below, need a switch overall possible labels
         ));
       }
       if (codeInfo.hasContinue) {
@@ -3186,7 +3186,7 @@ function outline(ast) {
         ));
         reps.push(makeIf(
           makeComparison(makeStackAccess(ASM_INT, asmData.controlStackPos), '==', ['num', CONTROL_CONTINUE_LABEL]),
-          ['stat', ['continue', makeStackAccess(ASM_INT, asmData.controlDataStackPos)]]
+          ['stat', ['continue', makeStackAccess(ASM_INT, asmData.controlDataStackPos)]] // XXX
         ));
       }
     }
