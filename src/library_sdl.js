@@ -361,8 +361,48 @@ var LibrarySDL = {
       SDL.surfaces[surf] = null;
     },
 
+    touchX:0, touchY: 0,
+
     receiveEvent: function(event) {
       switch(event.type) {
+        case 'touchstart':
+          event.preventDefault();
+          var touch = event.touches[ 0 ];
+          touchX = touch.pageX;
+          touchY = touch.pageY;
+          var event = {
+              type: 'mousedown',
+              button: 0,
+              pageX: touchX,
+              pageY: touchY
+          };
+          SDL.DOMButtons[0] = 1;
+          SDL.events.push(event);
+          break;
+        case 'touchmove':
+          event.preventDefault();
+          var touch = event.touches[ 0 ];
+          touchX = touch.pageX;
+          touchY = touch.pageY;
+          event = {
+              type: 'mousemove',
+              button: 0,
+              pageX: touchX,
+              pageY: touchY
+          };
+          SDL.events.push(event);
+          break;
+        case 'touchend':
+          event.preventDefault();
+          event = {
+              type: 'mouseup',
+              button: 0,
+              pageX: touchX,
+              pageY: touchY
+          };
+          SDL.DOMButtons[0] = 0;
+          SDL.events.push(event);
+          break;
         case 'mousemove':
           if (Browser.pointerLock) {
             // workaround for firefox bug 750111
