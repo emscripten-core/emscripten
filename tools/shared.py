@@ -257,7 +257,7 @@ def check_clang_version():
 
 def check_llvm_version():
   try:
-    check_clang_version();
+    check_clang_version()
   except Exception, e:
     logging.warning('Could not verify LLVM version: %s' % str(e))
 
@@ -1196,7 +1196,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
         opts.append('-jump-threading')
         opts.append('-correlated-propagation')
         opts.append('-dse')
-        #addExtensionsToPM(EP_ScalarOptimizerLate, MPM);
+        #addExtensionsToPM(EP_ScalarOptimizerLate, MPM)
 
         opts.append('-adce')
         opts.append('-simplifycfg')
@@ -1300,7 +1300,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
           '-O' + str(opt_level), '--closure', '0'], raw)
         f = open(relooper, 'w')
         f.write("// Relooper, (C) 2012 Alon Zakai, MIT license, https://github.com/kripken/Relooper\n")
-        f.write("var Relooper = (function() {\n");
+        f.write("var Relooper = (function() {\n")
         f.write(open(raw).read())
         f.write('\n  return Module.Relooper;\n')
         f.write('})();\n')
