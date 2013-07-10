@@ -1032,11 +1032,17 @@ var LibrarySDL = {
 
   zoomSurface: function(src, x, y, smooth) {
     var srcData = SDL.surfaces[src];
-    var w = srcData.width*x;
-    var h = srcData.height*y;
-    var ret = SDL.makeSurface(w, h, srcData.flags, false, 'zoomSurface');
+    var w = srcData.width * x;
+    var h = srcData.height * y;
+    var ret = SDL.makeSurface(Math.abs(w), Math.abs(h), srcData.flags, false, 'zoomSurface');
     var dstData = SDL.surfaces[ret];
-    dstData.ctx.drawImage(srcData.canvas, 0, 0, w, h);
+    if (x >= 0 && y >= 0) dstData.ctx.drawImage(srcData.canvas, 0, 0, w, h);
+    else {
+      dstData.ctx.save();
+      dstData.ctx.scale(x < 0 ? -1 : 1, y < 0 ? -1 : 1);
+      dstData.ctx.drawImage(srcData.canvas, 0, 0, w, h);
+      dstData.ctx.restore();
+    }
     return ret;
   },
 
