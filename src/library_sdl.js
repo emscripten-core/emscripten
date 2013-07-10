@@ -1040,7 +1040,9 @@ var LibrarySDL = {
     else {
       dstData.ctx.save();
       dstData.ctx.scale(x < 0 ? -1 : 1, y < 0 ? -1 : 1);
-      dstData.ctx.drawImage(srcData.canvas, 0, 0, w, h);
+      dstData.ctx.drawImage(srcData.canvas, w < 0 ? w : 0, h < 0 ? h : 0, Math.abs(w), Math.abs(h));
+      // XXX I think this should work according to the spec, but currently
+      // fails on FF: dstData.ctx.drawImage(srcData.canvas, 0, 0, w, h);
       dstData.ctx.restore();
     }
     return ret;
