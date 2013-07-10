@@ -1066,6 +1066,9 @@ var LibrarySDL = {
   },
 
   SDL_SetColorKey: function(surf, flag, key) {
+    // SetColorKey assigns one color to be rendered as transparent. I don't
+    // think the canvas API allows for anything like this, and iterating through
+    // each pixel to replace that color seems prohibitively expensive.
     Runtime.warnOnce('SDL_SetColorKey is a no-op for performance reasons');
     return 0;
   },
