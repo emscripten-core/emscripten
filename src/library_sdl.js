@@ -1491,8 +1491,6 @@ var LibrarySDL = {
       if (info.audio) {
         info.audio.pause();
         info.audio = null;
-      } else {
-        Module.printErr('No Audio for channel: ' + channel);
       }
       if (SDL.channelFinished) {
         Runtime.getFuncWrapper(SDL.channelFinished, 'vi')(channel);
