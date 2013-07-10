@@ -1711,98 +1711,102 @@ var LibrarySDL = {
 
   // SDL gfx
 
-  _drawRectangle: function(surf, x1, y1, x2, y2, action, cssColor) {
-    var surfData = SDL.surfaces[surf];
-    assert(!surfData.locked); // but we could unlock and re-lock if we must..
-    // TODO: if ctx does not change, leave as is, and also do not re-set xStyle etc.
-    var x = x1 < x2 ? x1 : x2;
-    var y = y1 < y2 ? y1 : y2;
-    var w = Math.abs(x2 - x1);
-    var h = Math.abs(y2 - y1);
-    surfData.ctx.save();
-    surfData.ctx[action + 'Style'] = cssColor;
-    surfData.ctx[action + 'Rect'](x, y, w, h);
-    surfData.ctx.restore();
+  $SDL_gfx: {
+    drawRectangle: function(surf, x1, y1, x2, y2, action, cssColor) {
+      var surfData = SDL.surfaces[surf];
+      assert(!surfData.locked); // but we could unlock and re-lock if we must..
+      // TODO: if ctx does not change, leave as is, and also do not re-set xStyle etc.
+      var x = x1 < x2 ? x1 : x2;
+      var y = y1 < y2 ? y1 : y2;
+      var w = Math.abs(x2 - x1);
+      var h = Math.abs(y2 - y1);
+      surfData.ctx.save();
+      surfData.ctx[action + 'Style'] = cssColor;
+      surfData.ctx[action + 'Rect'](x, y, w, h);
+      surfData.ctx.restore();
+    },
+    drawLine: function(surf, x1, y1, x2, y2, cssColor) {
+      var surfData = SDL.surfaces[surf];
+      assert(!surfData.locked); // but we could unlock and re-lock if we must..
+      surfData.ctx.save();
+      surfData.ctx.strokeStyle = cssColor;
+      surfData.ctx.beginPath();
+      surfData.ctx.moveTo(x1, y1);
+      surfData.ctx.lineTo(x2, y2);
+      surfData.ctx.stroke();
+      surfData.ctx.restore();
+    },
+    // See http://stackoverflow.com/questions/2172798/how-to-draw-an-oval-in-html5-canvas
+    drawEllipse: function(surf, x, y, rx, ry, action, cssColor) {
+      var surfData = SDL.surfaces[surf];
+      assert(!surfData.locked); // but we could unlock and re-lock if we must..
+
+      surfData.ctx.save();
+      surfData.ctx.beginPath();
+      surfData.ctx.translate(x, y);
+      surfData.ctx.scale(rx, ry);
+      surfData.ctx.arc(0, 0, 1, 0, 2 * Math.PI);
+      surfData.ctx.restore();
+
+      surfData.ctx.save();
+      surfData.ctx[action + 'Style'] = cssColor;
+      surfData.ctx[action]();
+      surfData.ctx.restore();
+    },
+    // the gfx library uses something different from the rest of SDL...
+    translateColorToCSSRGBA: function(rgba) {
+      return 'rgba(' + (rgba>>>24) + ',' + (rgba>>16 & 0xff) + ',' + (rgba>>8 & 0xff) + ',' + (rgba&0xff) + ')';
+    }
   },
 
-  boxColor__deps: ['_drawRectangle'],
+  boxColor__deps: ['$SDL_gfx'],
   boxColor: function(surf, x1, y1, x2, y2, color) {
-    return __drawRectangle(surf, x1, y1, x2, y2, 'fill', SDL.translateRGBAToCSSRGBA(color>>>24, (color>>16)&0xff, (color>>8)&0xff, color&0xff));
+    return SDL_gfx.drawRectangle(surf, x1, y1, x2, y2, 'fill', SDL_gfx.translateColorToCSSRGBA(color));
   },
 
-  boxRGBA__deps: ['_drawRectangle'],
+  boxRGBA__deps: ['$SDL_gfx'],
   boxRGBA: function(surf, x1, y1, x2, y2, r, g, b, a) {
-    return __drawRectangle(surf, x1, y1, x2, y2, 'fill', SDL.translateRGBAToCSSRGBA(r, g, b, a));
+    return SDL_gfx.drawRectangle(surf, x1, y1, x2, y2, 'fill', SDL.translateRGBAToCSSRGBA(r, g, b, a));
   },
 
-  rectangleColor__deps: ['_drawRectangle'],
+  rectangleColor__deps: ['$SDL_gfx'],
   rectangleColor: function(surf, x1, y1, x2, y2, color) {
-    return __drawRectangle(surf, x1, y1, x2, y2, 'stroke', SDL.translateRGBAToCSSRGBA(color>>>24, (color>>16)&0xff, (color>>8)&0xff, color&0xff));
+    return SDL_gfx.drawRectangle(surf, x1, y1, x2, y2, 'stroke', SDL_gfx.translateColorToCSSRGBA(color));
   },
 
-  rectangleRGBA__deps: ['_drawRectangle'],
+  rectangleRGBA__deps: ['$SDL_gfx'],
   rectangleRGBA: function(surf, x1, y1, x2, y2, r, g, b, a) {
-    return __drawRectangle(surf, x1, y1, x2, y2, 'stroke', SDL.translateRGBAToCSSRGBA(r, g, b, a));
+    return SDL_gfx.drawRectangle(surf, x1, y1, x2, y2, 'stroke', SDL.translateRGBAToCSSRGBA(r, g, b, a));
   },
 
-  _drawLine: function(surf, x1, y1, x2, y2, cssColor) {
-    var surfData = SDL.surfaces[surf];
-    assert(!surfData.locked); // but we could unlock and re-lock if we must..
-    surfData.ctx.save();
-    surfData.ctx.strokeStyle = cssColor;
-    surfData.ctx.beginPath();
-    surfData.ctx.moveTo(x1, y1);
-    surfData.ctx.lineTo(x2, y2);
-    surfData.ctx.stroke();
-    surfData.ctx.restore();
-  },
-
-  // See http://stackoverflow.com/questions/2172798/how-to-draw-an-oval-in-html5-canvas
-  _drawEllipse: function(surf, x, y, rx, ry, action, cssColor) {
-    var surfData = SDL.surfaces[surf];
-    assert(!surfData.locked); // but we could unlock and re-lock if we must..
-
-    surfData.ctx.save();
-    surfData.ctx.beginPath();
-    surfData.ctx.translate(x, y);
-    surfData.ctx.scale(rx, ry);
-    surfData.ctx.arc(0, 0, 1, 0, 2 * Math.PI);
-    surfData.ctx.restore();
-
-    surfData.ctx.save();
-    surfData.ctx[action + 'Style'] = cssColor;
-    surfData.ctx[action]();
-    surfData.ctx.restore();
-  },
-
-  ellipseColor__deps: ['_drawEllipse'],
+  ellipseColor__deps: ['$SDL_gfx'],
   ellipseColor: function(surf, x, y, rx, ry, color) {
-    return __drawEllipse(surf, x, y, rx, ry, 'stroke', SDL.translateRGBAToCSSRGBA(color>>>24, (color>>16)&0xff, (color>>8)&0xff, color&0xff));
+    return SDL_gfx.drawEllipse(surf, x, y, rx, ry, 'stroke', SDL_gfx.translateColorToCSSRGBA(color));
   },
 
-  ellipseRGBA__deps: ['_drawEllipse'],
+  ellipseRGBA__deps: ['$SDL_gfx'],
   ellipseRGBA: function(surf, x, y, rx, ry, r, g, b, a) {
-    return __drawEllipse(surf, x, y, rx, ry, 'stroke', SDL.translateRGBAToCSSRGBA(r, g, b, a));
+    return SDL_gfx.drawEllipse(surf, x, y, rx, ry, 'stroke', SDL.translateRGBAToCSSRGBA(r, g, b, a));
   },
 
-  filledEllipseColor__deps: ['_drawEllipse'],
+  filledEllipseColor__deps: ['$SDL_gfx'],
   filledEllipseColor: function(surf, x, y, rx, ry, color) {
-    return __drawEllipse(surf, x, y, rx, ry, 'fill', SDL.translateRGBAToCSSRGBA(color>>>24, (color>>16)&0xff, (color>>8)&0xff, color&0xff));
+    return SDL_gfx.drawEllipse(surf, x, y, rx, ry, 'fill', SDL_gfx.translateColorToCSSRGBA(color));
   },
 
-  filledEllipseRGBA__deps: ['_drawEllipse'],
+  filledEllipseRGBA__deps: ['$SDL_gfx'],
   filledEllipseRGBA: function(surf, x, y, rx, ry, r, g, b, a) {
-    return __drawEllipse(surf, x, y, rx, ry, 'fill', SDL.translateRGBAToCSSRGBA(r, g, b, a));
+    return SDL_gfx.drawEllipse(surf, x, y, rx, ry, 'fill', SDL.translateRGBAToCSSRGBA(r, g, b, a));
   },
 
-  lineColor__deps: ['_drawLine'],
+  lineColor__deps: ['$SDL_gfx'],
   lineColor: function(surf, x1, y1, x2, y2, color) {
-    return __drawLine(surf, x1, y1, x2, y2, SDL.translateRGBAToCSSRGBA(color>>>24, (color>>16)&0xff, (color>>8)&0xff, color&0xff));
+    return SDL_gfx.drawLine(surf, x1, y1, x2, y2, SDL_gfx.translateColorToCSSRGBA(color));
   },
 
-  lineRGBA__deps: ['_drawLine'],
+  lineRGBA__deps: ['$SDL_gfx'],
   lineRGBA: function(surf, x1, y1, x2, y2, r, g, b, a) {
-    return __drawLine(surf, x1, y1, x2, y2, SDL.translateRGBAToCSSRGBA(r, g, b, a));
+    return SDL_gfx.drawLine(surf, x1, y1, x2, y2, SDL.translateRGBAToCSSRGBA(r, g, b, a));
   },
 
   pixelRGBA__deps: ['boxRGBA'],
