@@ -21,6 +21,7 @@ var LibrarySDL = {
     version: null,
 
     surfaces: {},
+    // A pool of freed canvas elements. Reusing them avoids GC pauses.
     canvasPool: [],
     events: [],
     fonts: [null],
