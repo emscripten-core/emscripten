@@ -290,10 +290,11 @@ var LibrarySDL = {
       SDL.GL = SDL.GL || useWebGL;
       var canvas;
       if (!usePageCanvas) {
-        if (SDL.canvasPool.length > 0)
+        if (SDL.canvasPool.length > 0) {
           canvas = SDL.canvasPool.pop();
-        else
+        } else {
           canvas = document.createElement('canvas');
+        }
         canvas.width = width;
         canvas.height = height;
       } else {
