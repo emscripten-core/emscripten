@@ -501,7 +501,7 @@ var LibraryGL = {
     for (var i = 0; i < n; i++) {
       var id = GL.getNewId(GL.textures);
       var texture = Module.ctx.createTexture();
-      texture.name = 0;
+      texture.name = id;
       GL.textures[id] = texture;
       {{{ makeSetValue('textures', 'i*4', 'id', 'i32') }}};
     }
@@ -677,8 +677,8 @@ var LibraryGL = {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('renderbuffers', 'i*4', 'i32') }}};
       var renderbuffer = GL.renderbuffers[id];
-      renderbuffer.name = 0;
       Module.ctx.deleteRenderbuffer(renderbuffer);
+      renderbuffer.name = 0;
       GL.renderbuffers[id] = null;
     }
   },
