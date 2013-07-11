@@ -367,38 +367,38 @@ var LibrarySDL = {
       switch(event.type) {
         case 'touchstart':
           event.preventDefault();
-          var touch = event.touches[ 0 ];
+          var touch = event.touches[0];
           touchX = touch.pageX;
           touchY = touch.pageY;
           var event = {
-              type: 'mousedown',
-              button: 0,
-              pageX: touchX,
-              pageY: touchY
+            type: 'mousedown',
+            button: 0,
+            pageX: touchX,
+            pageY: touchY
           };
           SDL.DOMButtons[0] = 1;
           SDL.events.push(event);
           break;
         case 'touchmove':
           event.preventDefault();
-          var touch = event.touches[ 0 ];
+          var touch = event.touches[0];
           touchX = touch.pageX;
           touchY = touch.pageY;
           event = {
-              type: 'mousemove',
-              button: 0,
-              pageX: touchX,
-              pageY: touchY
+            type: 'mousemove',
+            button: 0,
+            pageX: touchX,
+            pageY: touchY
           };
           SDL.events.push(event);
           break;
         case 'touchend':
           event.preventDefault();
           event = {
-              type: 'mouseup',
-              button: 0,
-              pageX: touchX,
-              pageY: touchY
+            type: 'mouseup',
+            button: 0,
+            pageX: touchX,
+            pageY: touchY
           };
           SDL.DOMButtons[0] = 0;
           SDL.events.push(event);
