@@ -122,14 +122,6 @@ var LibraryGL = {
       }
     },
 
-    // Linear lookup in one of the tables (buffers, programs, etc.). TODO: consider using a weakmap to make this faster, if it matters
-    scan: function(table, object) {
-      for (var item in table) {
-        if (table[item] == object) return item;
-      }
-      return 0;
-    },
-
     // Find a token in a shader source string
     findToken: function(source, token) {
       function isIdentChar(ch) {
@@ -402,15 +394,15 @@ var LibraryGL = {
             {{{ makeSetValue('p', 'i*4', 'result[i]', 'i32') }}};
           }
         } else if (result instanceof WebGLBuffer) {
-          {{{ makeSetValue('p', '0', 'GL.scan(GL.buffers, result)', 'i32') }}};
+          {{{ makeSetValue('p', '0', 'result.name | 0', 'i32') }}};
         } else if (result instanceof WebGLProgram) {
-          {{{ makeSetValue('p', '0', 'GL.scan(GL.programs, result)', 'i32') }}};
+          {{{ makeSetValue('p', '0', 'result.name | 0', 'i32') }}};
         } else if (result instanceof WebGLFramebuffer) {
-          {{{ makeSetValue('p', '0', 'GL.scan(GL.framebuffers, result)', 'i32') }}};
+          {{{ makeSetValue('p', '0', 'result.name | 0', 'i32') }}};
         } else if (result instanceof WebGLRenderbuffer) {
-          {{{ makeSetValue('p', '0', 'GL.scan(GL.renderbuffers, result)', 'i32') }}};
+          {{{ makeSetValue('p', '0', 'result.name | 0', 'i32') }}};
         } else if (result instanceof WebGLTexture) {
-          {{{ makeSetValue('p', '0', 'GL.scan(GL.textures, result)', 'i32') }}};
+          {{{ makeSetValue('p', '0', 'result.name | 0', 'i32') }}};
         } else {
           throw 'Unknown object returned from WebGL getParameter';
         }
@@ -445,15 +437,15 @@ var LibraryGL = {
             {{{ makeSetValue('p', 'i*4', 'result[i]', 'float') }}};
           }
         } else if (result instanceof WebGLBuffer) {
-          {{{ makeSetValue('p', '0', 'GL.scan(GL.buffers, result)', 'float') }}};
+          {{{ makeSetValue('p', '0', 'result.name | 0', 'float') }}};
         } else if (result instanceof WebGLProgram) {
-          {{{ makeSetValue('p', '0', 'GL.scan(GL.programs, result)', 'float') }}};
+          {{{ makeSetValue('p', '0', 'result.name | 0', 'float') }}};
         } else if (result instanceof WebGLFramebuffer) {
-          {{{ makeSetValue('p', '0', 'GL.scan(GL.framebuffers, result)', 'float') }}};
+          {{{ makeSetValue('p', '0', 'result.name | 0', 'float') }}};
         } else if (result instanceof WebGLRenderbuffer) {
-          {{{ makeSetValue('p', '0', 'GL.scan(GL.renderbuffers, result)', 'float') }}};
+          {{{ makeSetValue('p', '0', 'result.name | 0', 'float') }}};
         } else if (result instanceof WebGLTexture) {
-          {{{ makeSetValue('p', '0', 'GL.scan(GL.textures, result)', 'float') }}};
+          {{{ makeSetValue('p', '0', 'result.name | 0', 'float') }}};
         } else {
           throw 'Unknown object returned from WebGL getParameter';
         }
@@ -508,7 +500,9 @@ var LibraryGL = {
   glGenTextures: function(n, textures) {
     for (var i = 0; i < n; i++) {
       var id = GL.getNewId(GL.textures);
-      GL.textures[id] = Module.ctx.createTexture();
+      var texture = Module.ctx.createTexture();
+      texture.name = id;
+      GL.textures[id] = texture;
       {{{ makeSetValue('textures', 'i*4', 'id', 'i32') }}};
     }
   },
@@ -517,7 +511,9 @@ var LibraryGL = {
   glDeleteTextures: function(n, textures) {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('textures', 'i*4', 'i32') }}};
-      Module.ctx.deleteTexture(GL.textures[id]);
+      var texture = GL.textures[id];
+      Module.ctx.deleteTexture(texture);
+      texture.name = 0;
       GL.textures[id] = null;
     }
   },
@@ -622,7 +618,9 @@ var LibraryGL = {
   glGenBuffers: function(n, buffers) {
     for (var i = 0; i < n; i++) {
       var id = GL.getNewId(GL.buffers);
-      GL.buffers[id] = Module.ctx.createBuffer();
+      var buffer = Module.ctx.createBuffer();
+      buffer.name = id;
+      GL.buffers[id] = buffer;
       {{{ makeSetValue('buffers', 'i*4', 'id', 'i32') }}};
     }
   },
@@ -631,7 +629,9 @@ var LibraryGL = {
   glDeleteBuffers: function(n, buffers) {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('buffers', 'i*4', 'i32') }}};
-      Module.ctx.deleteBuffer(GL.buffers[id]);
+      var buffer = GL.buffers[id];
+      Module.ctx.deleteBuffer(buffer);
+      buffer.name = 0;
       GL.buffers[id] = null;
 
       if (id == GL.currArrayBuffer) GL.currArrayBuffer = 0;
@@ -665,7 +665,9 @@ var LibraryGL = {
   glGenRenderbuffers: function(n, renderbuffers) {
     for (var i = 0; i < n; i++) {
       var id = GL.getNewId(GL.renderbuffers);
-      GL.renderbuffers[id] = Module.ctx.createRenderbuffer();
+      var renderbuffer = Module.ctx.createRenderbuffer();
+      renderbuffer.name = id;
+      GL.renderbuffers[id] = renderbuffer;
       {{{ makeSetValue('renderbuffers', 'i*4', 'id', 'i32') }}};
     }
   },
@@ -674,8 +676,10 @@ var LibraryGL = {
   glDeleteRenderbuffers: function(n, renderbuffers) {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('renderbuffers', 'i*4', 'i32') }}};
-      Module.ctx.deleteRenderbuffer(GL.renderbuffers[id]);
-      GL.renderbuffers[id];
+      var renderbuffer = GL.renderbuffers[id];
+      Module.ctx.deleteRenderbuffer(renderbuffer);
+      renderbuffer.name = 0;
+      GL.renderbuffers[id] = null;
     }
   },
 
@@ -1139,13 +1143,17 @@ var LibraryGL = {
   glCreateProgram__sig: 'i',
   glCreateProgram: function() {
     var id = GL.getNewId(GL.programs);
-    GL.programs[id] = Module.ctx.createProgram();
+    var program = Module.ctx.createProgram();
+    program.name = id;
+    GL.programs[id] = program;
     return id;
   },
 
   glDeleteProgram__sig: 'vi',
   glDeleteProgram: function(program) {
-    Module.ctx.deleteProgram(GL.programs[program]);
+    var program = GL.programs[program];
+    Module.ctx.deleteProgram(program);
+    program.name = 0;
     GL.programs[program] = null;
     GL.uniformTable[program] = null;
   },
@@ -1221,7 +1229,9 @@ var LibraryGL = {
   glGenFramebuffers: function(n, ids) {
     for (var i = 0; i < n; ++i) {
       var id = GL.getNewId(GL.framebuffers);
-      GL.framebuffers[id] = Module.ctx.createFramebuffer();
+      var framebuffer = Module.ctx.createFramebuffer();
+      framebuffer.name = id;
+      GL.framebuffers[id] = framebuffer;
       {{{ makeSetValue('ids', 'i*4', 'id', 'i32') }}};
     }
   },
@@ -1230,7 +1240,9 @@ var LibraryGL = {
   glDeleteFramebuffers: function(n, framebuffers) {
     for (var i = 0; i < n; ++i) {
       var id = {{{ makeGetValue('framebuffers', 'i*4', 'i32') }}};
-      Module.ctx.deleteFramebuffer(GL.framebuffers[id]);
+      var framebuffer = GL.framebuffers[id];
+      Module.ctx.deleteFramebuffer(framebuffer);
+      framebuffer.name = 0;
       GL.framebuffers[id] = null;
     }
   },
