@@ -9,7 +9,7 @@ header files (so that the JS compiler can see the constants in those
 headers, for the libc implementation in JS).
 '''
 
-import os, sys, json, optparse, subprocess, re, time, multiprocessing, functools
+import os, sys, json, optparse, subprocess, re, time, multiprocessing, string
 
 from tools import shared
 from tools import jsrun, cache as cache_module, tempfiles
@@ -627,7 +627,7 @@ Runtime.stackRestore = function(top) { asm['stackRestore'](top) };
       if forwarded_json['Variables']['globals'][k]['named']}
     for raw in last_forwarded_json['Functions']['tables'].itervalues():
       if raw == '': continue
-      table = raw[raw.find('[')+1:raw.find(']')].split(",")
+      table = map(string.strip, raw[raw.find('[')+1:raw.find(']')].split(","))
       symbol_table.update(map(lambda x: (x[1], x[0]),
         filter(lambda x: x[1] != '0', enumerate(table))))
     outfile.write("var SYMBOL_TABLE = %s;" % json.dumps(symbol_table))
