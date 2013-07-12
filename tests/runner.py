@@ -4720,7 +4720,7 @@ The current type of b is: 9
       self.do_run(src, '111111')
 
     def test_strtoll_dec(self):
-     if self.emcc_args is None: return self.skip('requires emcc')
+      if self.emcc_args is None: return self.skip('requires emcc')
 
       # tests strtoll for decimal strings (0x...) 
       src = r'''
@@ -4957,6 +4957,130 @@ The current type of b is: 9
         }
       '''
       self.do_run(src, 'time: ') # compilation check, mainly
+
+
+    def test_strptime_tm(self):
+      src=r'''
+        #include <time.h>
+        #include <stdio.h>
+        #include <string.h>
+
+        int main() {
+          struct tm tm;
+          char *ptr = strptime("17410105012000", "%H%M%S%d%m%Y", &tm);
+
+          printf("%s: %s, %d/%d/%d %d:%d:%d", 
+            (ptr != NULL && *ptr=='\0') ? "OK" : "ERR", 
+            tm.tm_wday == 0 ? "Sun" : (tm.tm_wday == 1 ? "Mon" : (tm.tm_wday == 2 ? "Tue" : (tm.tm_wday == 3 ? "Wed" : (tm.tm_wday == 4 ? "Thu" : (tm.tm_wday == 5 ? "Fri" : (tm.tm_wday == 6 ? "Sat" : "ERR")))))),
+            tm.tm_mon+1,
+            tm.tm_mday,
+            tm.tm_year+1900,
+            tm.tm_hour,
+            tm.tm_min,
+            tm.tm_sec            
+          );
+        }
+      ''' 
+      self.do_run(src, 'OK: Wed, 1/5/2000 17:41:1')
+
+    def test_strptime_days(self):
+      src = r'''
+        #include <time.h>
+        #include <stdio.h>
+        #include <string.h>
+
+        static const struct {
+          const char *input;
+          const char *format;
+        } day_tests[] = {
+          { "2000-01-01", "%Y-%m-%d"},
+          { "03/03/00", "%D"},
+          { "9/9/99", "%x"},
+          { "19990502123412", "%Y%m%d%H%M%S"},
+          { "2001 20 Mon", "%Y %U %a"},
+          { "2006 4 Fri", "%Y %U %a"},
+          { "2001 21 Mon", "%Y %W %a"},
+          { "2013 29 Wed", "%Y %W %a"},
+          { "2000-01-01 08:12:21 AM", "%Y-%m-%d %I:%M:%S %p"},
+          { "2000-01-01 08:12:21 PM", "%Y-%m-%d %I:%M:%S %p"},
+          { "2001 17 Tue", "%Y %U %a"},
+          { "2001 8 Thursday", "%Y %W %a"},
+        };
+
+        int main() {  
+          struct tm tm;
+
+          for (int i = 0; i < sizeof (day_tests) / sizeof (day_tests[0]); ++i) {
+            memset (&tm, '\0', sizeof (tm));
+            char *ptr = strptime(day_tests[i].input, day_tests[i].format, &tm);
+
+            printf("%s: %d/%d/%d (%dth DoW, %dth DoY)\n", (ptr != NULL && *ptr=='\0') ? "OK" : "ERR", tm.tm_mon+1, tm.tm_mday, 1900+tm.tm_year, tm.tm_wday, tm.tm_yday);
+          }
+        }
+      '''
+      self.do_run(src, 'OK: 1/1/2000 (6th DoW, 0th DoY)\n'\
+                       'OK: 3/3/2000 (5th DoW, 62th DoY)\n'\
+                       'OK: 9/9/1999 (4th DoW, 251th DoY)\n'\
+                       'OK: 5/2/1999 (0th DoW, 121th DoY)\n'\
+                       'OK: 5/21/2001 (1th DoW, 140th DoY)\n'\
+                       'OK: 1/27/2006 (5th DoW, 26th DoY)\n'\
+                       'OK: 5/21/2001 (1th DoW, 140th DoY)\n'\
+                       'OK: 7/24/2013 (3th DoW, 204th DoY)\n'\
+                       'OK: 1/1/2000 (6th DoW, 0th DoY)\n'\
+                       'OK: 1/1/2000 (6th DoW, 0th DoY)\n'\
+                       'OK: 5/1/2001 (2th DoW, 120th DoY)\n'\
+                       'OK: 2/22/2001 (4th DoW, 52th DoY)\n'\
+      )
+
+    def test_strptime_reentrant(self):
+      src=r'''
+        #include <time.h>
+        #include <stdio.h>
+        #include <string.h>
+        #include <stdlib.h>
+
+        int main () {
+          int result = 0;
+          struct tm tm;
+
+          memset (&tm, 0xaa, sizeof (tm));
+
+          /* Test we don't crash on uninitialized struct tm.
+             Some fields might contain bogus values until everything
+             needed is initialized, but we shouldn't crash.  */
+          if (strptime ("2007", "%Y", &tm) == NULL
+              || strptime ("12", "%d", &tm) == NULL
+              || strptime ("Feb", "%b", &tm) == NULL
+              || strptime ("13", "%M", &tm) == NULL
+              || strptime ("21", "%S", &tm) == NULL
+              || strptime ("16", "%H", &tm) == NULL) {
+            printf("ERR: returned NULL");
+            exit(EXIT_FAILURE);
+          }
+
+          if (tm.tm_sec != 21 || tm.tm_min != 13 || tm.tm_hour != 16
+              || tm.tm_mday != 12 || tm.tm_mon != 1 || tm.tm_year != 107
+              || tm.tm_wday != 1 || tm.tm_yday != 42) {
+            printf("ERR: unexpected tm content (1) - %d/%d/%d %d:%d:%d", tm.tm_mon+1, tm.tm_mday, tm.tm_year+1900, tm.tm_hour, tm.tm_min, tm.tm_sec);
+            exit(EXIT_FAILURE);
+          }
+
+          if (strptime ("8", "%d", &tm) == NULL) {
+            printf("ERR: strptime failed");
+            exit(EXIT_FAILURE);
+          }
+
+          if (tm.tm_sec != 21 || tm.tm_min != 13 || tm.tm_hour != 16
+              || tm.tm_mday != 8 || tm.tm_mon != 1 || tm.tm_year != 107
+              || tm.tm_wday != 4 || tm.tm_yday != 38) {
+            printf("ERR: unexpected tm content (2) - %d/%d/%d %d:%d:%d", tm.tm_mon+1, tm.tm_mday, tm.tm_year+1900, tm.tm_hour, tm.tm_min, tm.tm_sec);
+            exit(EXIT_FAILURE);
+          }
+
+          printf("OK");
+        }
+      '''
+      self.do_run(src, 'OK')
 
     def test_intentional_fault(self):
       # Some programs intentionally segfault themselves, we should compile that into a throw
