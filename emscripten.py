@@ -622,9 +622,11 @@ Runtime.stackRestore = function(top) { asm['stackRestore'](top) };
 
   # Create symbol table for self-dlopen
   if settings.get('LINKABLE'):
-    GLOBAL_BASE = forwarded_json['Runtime']['GLOBAL_BASE']
-    symbol_table = {k:v+8 for k,v in forwarded_json['Variables']['indexedGlobals'].iteritems()}
+    symbol_table = {k:v+forwarded_json['Runtime']['GLOBAL_BASE']
+      for k,v in forwarded_json['Variables']['indexedGlobals'].iteritems()
+      if forwarded_json['Variables']['globals'][k]['named']}
     for raw in last_forwarded_json['Functions']['tables'].itervalues():
+      if raw == '': continue
       table = raw[raw.find('[')+1:raw.find(']')].split(",")
       symbol_table.update(map(lambda x: (x[1], x[0]),
         filter(lambda x: x[1] != '0', enumerate(table))))

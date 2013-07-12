@@ -5899,7 +5899,7 @@ extern "C" __attribute__((noinline)) void foo(int x) {
   printf("%d\n", x);
 }
 
-void repeatable() {
+extern "C" __attribute__((noinline)) void repeatable() {
   void* self = dlopen(NULL, RTLD_LAZY);
   int* global_ptr = (int*)dlsym(self, "global");
   void (*foo_ptr)(int) = (void (*)(int))dlsym(self, "foo");
@@ -5912,7 +5912,22 @@ int main() {
   repeatable();
   return 0;
 }'''
-      self.do_run(src, '123\n123')
+      def post(filename):
+        with open(filename) as f:
+          for line in f:
+            if 'var SYMBOL_TABLE' in line:
+              table = line
+              break
+          else:
+            raise Exception('Could not find symbol table!')
+        import json
+        table = json.loads(table[table.find('{'):table.rfind('}')+1])
+        actual = list(sorted(table.keys()))
+        # ensure there aren't too many globals; we don't want unnamed_addr
+        assert actual == ['_foo', '_global', '_main', '_repeatable'], \
+          "Symbol table does not match: %s" % actual
+
+      self.do_run(src, '123\n123', post_build=(None, post))
 
     def test_rand(self):
       return self.skip('rand() is now random') # FIXME
