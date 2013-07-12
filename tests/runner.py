@@ -6794,84 +6794,9 @@ def process(filename):
       self.emcc_args += ['--embed-file', 'three_numbers.txt']
       self.do_run(src, 'match = 3\nx = -1.0, y = 0.1, z = -0.1\n')
 
-    def test_folders(self):
-      add_pre_run = '''
-def process(filename):
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    \'\'\'
-      FS.createFolder('/', 'test', true, false);
-      FS.createPath('/', 'test/hello/world/', true, false);
-      FS.createPath('/test', 'goodbye/world/', true, false);
-      FS.createPath('/test/goodbye', 'noentry', false, false);
-      FS.createDataFile('/test', 'freeforall.ext', 'abc', true, true);
-      FS.createDataFile('/test', 'restricted.ext', 'def', false, false);
-    \'\'\'
-  )
-  open(filename, 'w').write(src)
-'''
-      src = r'''
-        #include <stdio.h>
-        #include <dirent.h>
-        #include <errno.h>
-
-        int main() {
-          struct dirent *e;
-
-          // Basic correct behaviour.
-          DIR* d = opendir("/test");
-          printf("--E: %d\n", errno);
-          while ((e = readdir(d))) puts(e->d_name);
-          printf("--E: %d\n", errno);
-
-          // Empty folder; tell/seek.
-          puts("****");
-          d = opendir("/test/hello/world/");
-          e = readdir(d);
-          puts(e->d_name);
-          int pos = telldir(d);
-          e = readdir(d);
-          puts(e->d_name);
-          seekdir(d, pos);
-          e = readdir(d);
-          puts(e->d_name);
-
-          // Errors.
-          puts("****");
-          printf("--E: %d\n", errno);
-          d = opendir("/test/goodbye/noentry");
-          printf("--E: %d, D: %d\n", errno, d);
-          d = opendir("/i/dont/exist");
-          printf("--E: %d, D: %d\n", errno, d);
-          d = opendir("/test/freeforall.ext");
-          printf("--E: %d, D: %d\n", errno, d);
-          while ((e = readdir(d))) puts(e->d_name);
-          printf("--E: %d\n", errno);
-
-          return 0;
-        }
-        '''
-      expected = '''
-        --E: 0
-        .
-        ..
-        hello
-        goodbye
-        freeforall.ext
-        restricted.ext
-        --E: 0
-        ****
-        .
-        ..
-        ..
-        ****
-        --E: 0
-        --E: 13, D: 0
-        --E: 2, D: 0
-        --E: 20, D: 0
-        --E: 9
-      '''
-      self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=add_pre_run)
+    def test_readdir(self):
+      src = open(path_from_root('tests', 'dirent', 'test_readdir.c'), 'r').read()
+      self.do_run(src, 'success', force_c=True)
 
     def test_stat(self):
       add_pre_run = '''
@@ -7220,38 +7145,6 @@ def process(filename):
         print linkable
         Settings.LINKABLE = linkable # regression check for issue #273
         self.do_run(src, "1 2 3")
-
-    def test_readdir(self):
-      add_pre_run = '''
-def process(filename):
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    "FS.createFolder('', 'test', true, true);\\nFS.createLazyFile( 'test', 'some_file', 'http://localhost/some_file', true, false);\\nFS.createFolder('test', 'some_directory', true, true);"
-  )
-  open(filename, 'w').write(src)
-'''
-
-      src = '''
-        #include <dirent.h>
-        #include <stdio.h>
-
-        int main()
-        {
-            DIR * dir;
-            dirent * entity;
-
-            dir = opendir( "test" );
-
-            while( ( entity = readdir( dir ) ) )
-            {
-                printf( "%s is a %s\\n", entity->d_name, entity->d_type & DT_DIR ? "directory" : "file" );
-            }
-
-            return 0;
-        }
-
-      '''
-      self.do_run(src, ". is a directory\n.. is a directory\nsome_file is a file\nsome_directory is a directory", post_build=add_pre_run)
 
     def test_fs_base(self):
       Settings.INCLUDE_FULL_LIBRARY = 1
