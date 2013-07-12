@@ -64,7 +64,7 @@ LibraryManager.library = {
     // This is set to false when the runtime is initialized, allowing you
     // to modify the filesystem freely before run() is called.
     ignorePermissions: true,
-    createFileHandle: function(stream, fd) {
+    createStream: function(stream, fd) {
       if (typeof stream === 'undefined') {
         stream = null;
       }
@@ -88,11 +88,17 @@ LibraryManager.library = {
       if (FS.streams[fd] && FS.streams[fd].socket && FS.streams[fd].socket.close) {
         FS.streams[fd].socket.close();
       }
+      if (stream) {
+        stream.fd = fd;
+      }
       FS.streams[fd] = stream;
-      return fd;
+      return stream;
     },
-    removeFileHandle: function(fd) {
-      FS.streams[fd] = null;
+    closeStream: function(stream) {
+      FS.streams[stream.fd] = null;
+    },
+    getStream: function (fd) {
+      return FS.streams[fd];
     },
     joinPath: function(parts, forceRelative) {
       var ret = parts[0];
@@ -676,6 +682,7 @@ LibraryManager.library = {
     }
   },
 
+
   // ==========================================================================
   // dirent.h
   // ==========================================================================
@@ -708,7 +715,7 @@ LibraryManager.library = {
     }
     var contents = [];
     for (var key in target.contents) contents.push(key);
-    var id = FS.createFileHandle({
+    var stream = FS.createStream({
       path: path,
       object: target,
       // An index into contents. Special values: -2 is ".", -1 is "..".
@@ -729,46 +736,47 @@ LibraryManager.library = {
 #if ASSERTIONS
     FS.checkStreams();
 #endif
-    return id;
+    return stream.fd;
   },
   closedir__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   closedir: function(dirp) {
     // int closedir(DIR *dirp);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/closedir.html
-    if (!FS.streams[dirp] || !FS.streams[dirp].object.isFolder) {
+    var stream = FS.getStream(dirp);
+    if (!stream || !stream.object.isFolder) {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
-    } else {
-      _free(FS.streams[dirp].currentEntry);
-      FS.streams[dirp] = null;
-      return 0;
     }
+    _free(stream.currentEntry);
+    FS.closeStream(stream);
+    return 0;
   },
   telldir__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   telldir: function(dirp) {
     // long int telldir(DIR *dirp);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/telldir.html
-    if (!FS.streams[dirp] || !FS.streams[dirp].object.isFolder) {
+    var stream = FS.getStream(dirp);
+    if (!stream || !stream.object.isFolder) {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
-    } else {
-      return FS.streams[dirp].position;
     }
+    return stream.position;
   },
   seekdir__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   seekdir: function(dirp, loc) {
     // void seekdir(DIR *dirp, long int loc);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/seekdir.html
-    if (!FS.streams[dirp] || !FS.streams[dirp].object.isFolder) {
+    var stream = FS.getStream(dirp);
+    if (!stream || !stream.object.isFolder) {
       ___setErrNo(ERRNO_CODES.EBADF);
+      return;
+    }
+    var entries = 0;
+    for (var key in stream.contents) entries++;
+    if (loc >= entries) {
+      ___setErrNo(ERRNO_CODES.EINVAL);
     } else {
-      var entries = 0;
-      for (var key in FS.streams[dirp].contents) entries++;
-      if (loc >= entries) {
-        ___setErrNo(ERRNO_CODES.EINVAL);
-      } else {
-        FS.streams[dirp].position = loc;
-      }
+      stream.position = loc;
     }
   },
   rewinddir__deps: ['seekdir'],
@@ -781,10 +789,10 @@ LibraryManager.library = {
   readdir_r: function(dirp, entry, result) {
     // int readdir_r(DIR *dirp, struct dirent *entry, struct dirent **result);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/readdir_r.html
-    if (!FS.streams[dirp] || !FS.streams[dirp].object.isFolder) {
+    var stream = FS.getStream(dirp);
+    if (!stream || !stream.object.isFolder) {
       return ___setErrNo(ERRNO_CODES.EBADF);
     }
-    var stream = FS.streams[dirp];
     var loc = stream.position;
     var entries = 0;
     for (var key in stream.contents) entries++;
@@ -828,17 +836,17 @@ LibraryManager.library = {
   readdir: function(dirp) {
     // struct dirent *readdir(DIR *dirp);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/readdir_r.html
-    if (!FS.streams[dirp] || !FS.streams[dirp].object.isFolder) {
+    var stream = FS.getStream(dirp);
+    if (!stream || !stream.object.isFolder) {
       ___setErrNo(ERRNO_CODES.EBADF);
       return 0;
+    }
+    if (!_readdir.result) _readdir.result = _malloc(4);
+    _readdir_r(dirp, stream.currentEntry, _readdir.result);
+    if ({{{ makeGetValue(0, '_readdir.result', 'i8*') }}} === 0) {
+      return 0;
     } else {
-      if (!_readdir.result) _readdir.result = _malloc(4);
-      _readdir_r(dirp, FS.streams[dirp].currentEntry, _readdir.result);
-      if ({{{ makeGetValue(0, '_readdir.result', 'i8*') }}} === 0) {
-        return 0;
-      } else {
-        return FS.streams[dirp].currentEntry;
-      }
+      return stream.currentEntry;
     }
   },
   __01readdir64_: 'readdir',
@@ -1032,13 +1040,13 @@ LibraryManager.library = {
   fstat: function(fildes, buf) {
     // int fstat(int fildes, struct stat *buf);
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/fstat.html
-    if (!FS.streams[fildes]) {
+    var stream = FS.getStream(fildes);
+    if (!stream) {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
-    } else {
-      var pathArray = intArrayFromString(FS.streams[fildes].path);
-      return _stat(allocate(pathArray, 'i8', ALLOC_STACK), buf);
     }
+    var pathArray = intArrayFromString(stream.path);
+    return _stat(allocate(pathArray, 'i8', ALLOC_STACK), buf);
   },
   mknod__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   mknod: function(path, mode, dev) {
@@ -1113,7 +1121,7 @@ LibraryManager.library = {
   fchmod: function(fildes, mode) {
     // int fchmod(int fildes, mode_t mode);
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/fchmod.html
-    var stream = FS.streams[fildes];
+    var stream = FS.getStream(fildes);
     if (!stream) {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
@@ -1264,7 +1272,7 @@ LibraryManager.library = {
       finalPath = path.parentPath + '/' + path.name;
     }
     // Actually create an open stream.
-    var id;
+    var stream;
     if (target.isFolder) {
       var entryBuffer = 0;
       if (___dirent_struct_layout) {
@@ -1272,7 +1280,7 @@ LibraryManager.library = {
       }
       var contents = [];
       for (var key in target.contents) contents.push(key);
-      id = FS.createFileHandle({
+      stream = FS.createStream({
         path: finalPath,
         object: target,
         // An index into contents. Special values: -2 is ".", -1 is "..".
@@ -1291,7 +1299,7 @@ LibraryManager.library = {
         currentEntry: entryBuffer
       });
     } else {
-      id = FS.createFileHandle({
+      stream = FS.createStream({
         path: finalPath,
         object: target,
         position: 0,
@@ -1306,7 +1314,7 @@ LibraryManager.library = {
 #if ASSERTIONS
     FS.checkStreams();
 #endif
-    return id;
+    return stream.fd;
   },
   creat__deps: ['open'],
   creat: function(path, mode) {
@@ -1327,11 +1335,11 @@ LibraryManager.library = {
   fcntl: function(fildes, cmd, varargs, dup2) {
     // int fcntl(int fildes, int cmd, ...);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/fcntl.html
-    if (!FS.streams[fildes]) {
+    var stream = FS.getStream(fildes);
+    if (!stream) {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
     }
-    var stream = FS.streams[fildes];
     switch (cmd) {
       case {{{ cDefine('F_DUPFD') }}}:
         var arg = {{{ makeGetValue('varargs', 0, 'i32') }}};
@@ -1344,7 +1352,7 @@ LibraryManager.library = {
           newStream[member] = stream[member];
         }
         arg = dup2 ? arg : Math.max(arg, FS.streams.length); // dup2 wants exactly arg; fcntl wants a free descriptor >= arg
-        FS.createFileHandle(newStream, arg);
+        FS.createStream(newStream, arg);
 #if ASSERTIONS
         FS.checkStreams();
 #endif
@@ -1401,12 +1409,12 @@ LibraryManager.library = {
   posix_fallocate: function(fd, offset, len) {
     // int posix_fallocate(int fd, off_t offset, off_t len);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/posix_fallocate.html
-    if (!FS.streams[fd] || !FS.streams[fd].isWrite || FS.streams[fd].link ||
-        FS.streams[fd].isFolder || FS.streams[fd].isDevice) {
+    var stream = FS.getStream(fd);
+    if (!stream || !stream.isWrite || stream.link || stream.isFolder || stream.isDevice) {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
     }
-    var contents = FS.streams[fd].object.contents;
+    var contents = stream.object.contents;
     var limit = offset + len;
     while (limit > contents.length) contents.push(0);
     return 0;
@@ -1442,8 +1450,8 @@ LibraryManager.library = {
       var fd = {{{ makeGetValue('pollfd', 'offsets.fd', 'i32') }}};
       var events = {{{ makeGetValue('pollfd', 'offsets.events', 'i16') }}};
       var revents = 0;
-      if (FS.streams[fd]) {
-        var stream = FS.streams[fd];
+      var stream = FS.getStream(fd);
+      if (stream) {
         if (events & {{{ cDefine('POLLIN') }}}) revents |= {{{ cDefine('POLLIN') }}};
         if (events & {{{ cDefine('POLLOUT') }}}) revents |= {{{ cDefine('POLLOUT') }}};
       } else {
@@ -1517,16 +1525,16 @@ LibraryManager.library = {
   close: function(fildes) {
     // int close(int fildes);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/close.html
-    if (FS.streams[fildes]) {
-      if (FS.streams[fildes].currentEntry) {
-        _free(FS.streams[fildes].currentEntry);
-      }
-      FS.streams[fildes] = null;
-      return 0;
-    } else {
+    var stream = FS.getStream(fildes);
+    if (!stream) {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
     }
+    if (stream.currentEntry) {
+      _free(stream.currentEntry);
+    }
+    FS.closeStream(stream);
+    return 0;
   },
   dup__deps: ['fcntl'],
   dup: function(fildes) {
@@ -1538,10 +1546,11 @@ LibraryManager.library = {
   dup2: function(fildes, fildes2) {
     // int dup2(int fildes, int fildes2);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/dup.html
+    var stream = FS.getStream(fildes);
     if (fildes2 < 0) {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
-    } else if (fildes === fildes2 && FS.streams[fildes]) {
+    } else if (fildes === fildes2 && stream) {
       return fildes;
     } else {
       _close(fildes2);
@@ -1552,8 +1561,9 @@ LibraryManager.library = {
   fchown: function(fildes, owner, group) {
     // int fchown(int fildes, uid_t owner, gid_t group);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fchown.html
-    if (FS.streams[fildes]) {
-      return _chown(FS.streams[fildes].path, owner, group);
+    var stream = FS.getStream(fildes);
+    if (stream) {
+      return _chown(stream.path, owner, group);
     } else {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
@@ -1563,8 +1573,9 @@ LibraryManager.library = {
   fchdir: function(fildes) {
     // int fchdir(int fildes);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fchdir.html
-    if (FS.streams[fildes]) {
-      return _chdir(FS.streams[fildes].path);
+    var stream = FS.getStream(fildes);
+    if (stream) {
+      return _chdir(stream.path);
     } else {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
@@ -1637,7 +1648,8 @@ LibraryManager.library = {
   fsync: function(fildes) {
     // int fsync(int fildes);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fsync.html
-    if (FS.streams[fildes]) {
+    var stream = FS.getStream(fildes);
+    if (stream) {
       // We write directly to the file system, so there's nothing to do here.
       return 0;
     } else {
@@ -1680,15 +1692,15 @@ LibraryManager.library = {
   ftruncate: function(fildes, length) {
     // int ftruncate(int fildes, off_t length);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/ftruncate.html
-    if (FS.streams[fildes] && FS.streams[fildes].isWrite) {
-      return _truncate(FS.streams[fildes].path, length);
-    } else if (FS.streams[fildes]) {
-      ___setErrNo(ERRNO_CODES.EINVAL);
-      return -1;
-    } else {
+    var stream = FS.getStream(fildes);
+    if (!stream) {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
+    } else if (!stream.write) {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return -1;
     }
+    return _truncate(stream.path, length);
   },
   getcwd__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   getcwd: function(buf, size) {
@@ -1718,7 +1730,7 @@ LibraryManager.library = {
   isatty: function(fildes) {
     // int isatty(int fildes);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/isatty.html
-    var stream = FS.streams[fildes];
+    var stream = FS.getStream(fildes);
     if (!stream) {
       ___setErrNo(ERRNO_CODES.EBADF);
       return 0;
@@ -1747,7 +1759,8 @@ LibraryManager.library = {
   lockf: function(fildes, func, size) {
     // int lockf(int fildes, int function, off_t size);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/lockf.html
-    if (FS.streams[fildes]) {
+    var stream = FS.getStream(fildes);
+    if (stream) {
       // Pretend whatever locking or unlocking operation succeeded. Locking does
       // not make much sense, since we have a single process/thread.
       return 0;
@@ -1760,25 +1773,24 @@ LibraryManager.library = {
   lseek: function(fildes, offset, whence) {
     // off_t lseek(int fildes, off_t offset, int whence);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/lseek.html
-    if (FS.streams[fildes] && !FS.streams[fildes].object.isDevice) {
-      var stream = FS.streams[fildes];
-      var position = offset;
-      if (whence === 1) {  // SEEK_CUR.
-        position += stream.position;
-      } else if (whence === 2) {  // SEEK_END.
-        position += stream.object.contents.length;
-      }
-      if (position < 0) {
-        ___setErrNo(ERRNO_CODES.EINVAL);
-        return -1;
-      } else {
-        stream.ungotten = [];
-        stream.position = position;
-        return position;
-      }
-    } else {
+    var stream = FS.getStream(fildes);
+    if (!stream || stream.object.isDevice) {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
+    }
+    var position = offset;
+    if (whence === 1) {  // SEEK_CUR.
+      position += stream.position;
+    } else if (whence === 2) {  // SEEK_END.
+      position += stream.object.contents.length;
+    }
+    if (position < 0) {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return -1;
+    } else {
+      stream.ungotten = [];
+      stream.position = position;
+      return position;
     }
   },
   pipe__deps: ['__setErrNo', '$ERRNO_CODES'],
@@ -1794,7 +1806,7 @@ LibraryManager.library = {
   pread: function(fildes, buf, nbyte, offset) {
     // ssize_t pread(int fildes, void *buf, size_t nbyte, off_t offset);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/read.html
-    var stream = FS.streams[fildes];
+    var stream = FS.getStream(fildes);
     if (!stream || stream.object.isDevice) {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
@@ -1837,7 +1849,7 @@ LibraryManager.library = {
   read: function(fildes, buf, nbyte) {
     // ssize_t read(int fildes, void *buf, size_t nbyte);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/read.html
-    var stream = FS.streams[fildes];
+    var stream = FS.getStream(fildes);
     if (stream && ('socket' in stream)) {
       return _recv(fildes, buf, nbyte, 0);
     } else if (!stream) {
@@ -1947,7 +1959,7 @@ LibraryManager.library = {
   ttyname_r: function(fildes, name, namesize) {
     // int ttyname_r(int fildes, char *name, size_t namesize);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/ttyname.html
-    var stream = FS.streams[fildes];
+    var stream = FS.getStream(fildes);
     var ttyname = '/dev/tty';
     if (!stream) {
       return ___setErrNo(ERRNO_CODES.EBADF);
@@ -1998,7 +2010,7 @@ LibraryManager.library = {
   pwrite: function(fildes, buf, nbyte, offset) {
     // ssize_t pwrite(int fildes, const void *buf, size_t nbyte, off_t offset);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/write.html
-    var stream = FS.streams[fildes];
+    var stream = FS.getStream(fildes);
     if (!stream || stream.object.isDevice) {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
@@ -2025,7 +2037,7 @@ LibraryManager.library = {
   write: function(fildes, buf, nbyte) {
     // ssize_t write(int fildes, const void *buf, size_t nbyte);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/write.html
-    var stream = FS.streams[fildes];
+    var stream = FS.getStream(fildes);
     if (stream && ('socket' in stream)) {
         return _send(fildes, buf, nbyte, 0);
     } else if (!stream) {
@@ -3157,7 +3169,8 @@ LibraryManager.library = {
   clearerr: function(stream) {
     // void clearerr(FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/clearerr.html
-    if (FS.streams[stream]) FS.streams[stream].error = false;
+    stream = FS.getStream(stream);
+    if (stream) stream.error = false;
   },
   fclose__deps: ['close', 'fsync'],
   fclose: function(stream) {
@@ -3170,36 +3183,37 @@ LibraryManager.library = {
   fdopen: function(fildes, mode) {
     // FILE *fdopen(int fildes, const char *mode);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fdopen.html
-    if (FS.streams[fildes]) {
-      var stream = FS.streams[fildes];
-      mode = Pointer_stringify(mode);
-      if ((mode.indexOf('w') != -1 && !stream.isWrite) ||
-          (mode.indexOf('r') != -1 && !stream.isRead) ||
-          (mode.indexOf('a') != -1 && !stream.isAppend) ||
-          (mode.indexOf('+') != -1 && (!stream.isRead || !stream.isWrite))) {
-        ___setErrNo(ERRNO_CODES.EINVAL);
-        return 0;
-      } else {
-        stream.error = false;
-        stream.eof = false;
-        return fildes;
-      }
-    } else {
+    mode = Pointer_stringify(mode);
+    var stream = FS.getStream(fildes);
+    if (!stream) {
       ___setErrNo(ERRNO_CODES.EBADF);
       return 0;
+    }
+    if ((mode.indexOf('w') != -1 && !stream.isWrite) ||
+        (mode.indexOf('r') != -1 && !stream.isRead) ||
+        (mode.indexOf('a') != -1 && !stream.isAppend) ||
+        (mode.indexOf('+') != -1 && (!stream.isRead || !stream.isWrite))) {
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return 0;
+    } else {
+      stream.error = false;
+      stream.eof = false;
+      return fildes;
     }
   },
   feof__deps: ['$FS'],
   feof: function(stream) {
     // int feof(FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/feof.html
-    return Number(FS.streams[stream] && FS.streams[stream].eof);
+    stream = FS.getStream(stream);
+    return Number(stream && stream.eof);
   },
   ferror__deps: ['$FS'],
   ferror: function(stream) {
     // int ferror(FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/ferror.html
-    return Number(FS.streams[stream] && FS.streams[stream].error);
+    stream = FS.getStream(stream);
+    return Number(stream && stream.error);
   },
   fflush__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   fflush: function(stream) {
@@ -3207,9 +3221,10 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fflush.html
     var flush = function(filedes) {
       // Right now we write all data directly, except for output devices.
-      if (FS.streams[filedes] && FS.streams[filedes].object.output) {
-        if (!FS.streams[filedes].object.isTerminal) { // don't flush terminals, it would cause a \n to also appear
-          FS.streams[filedes].object.output(null);
+      var streamObj = FS.getStream(filedes);
+      if (streamObj && streamObj.object.output) {
+        if (!streamObj.object.isTerminal) { // don't flush terminals, it would cause a \n to also appear
+          streamObj.object.output(null);
         }
       }
     };
@@ -3230,8 +3245,8 @@ LibraryManager.library = {
   fgetc: function(stream) {
     // int fgetc(FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fgetc.html
-    if (!FS.streams[stream]) return -1;
-    var streamObj = FS.streams[stream];
+    var streamObj = FS.getStream(stream);
+    if (!streamObj) return -1;
     if (streamObj.eof || streamObj.error) return -1;
     var ret = _fread(_fgetc.ret, 1, 1, stream);
     if (ret == 0) {
@@ -3256,28 +3271,26 @@ LibraryManager.library = {
   fgetpos: function(stream, pos) {
     // int fgetpos(FILE *restrict stream, fpos_t *restrict pos);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fgetpos.html
-    if (FS.streams[stream]) {
-      stream = FS.streams[stream];
-      if (stream.object.isDevice) {
-        ___setErrNo(ERRNO_CODES.ESPIPE);
-        return -1;
-      } else {
-        {{{ makeSetValue('pos', '0', 'stream.position', 'i32') }}}
-        var state = (stream.eof ? 1 : 0) + (stream.error ? 2 : 0);
-        {{{ makeSetValue('pos', Runtime.getNativeTypeSize('i32'), 'state', 'i32') }}}
-        return 0;
-      }
-    } else {
+    stream = FS.getStream(stream);
+    if (!stream) {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
     }
+    if (stream.object.isDevice) {
+      ___setErrNo(ERRNO_CODES.ESPIPE);
+      return -1;
+    }
+    {{{ makeSetValue('pos', '0', 'stream.position', 'i32') }}}
+    var state = (stream.eof ? 1 : 0) + (stream.error ? 2 : 0);
+    {{{ makeSetValue('pos', Runtime.getNativeTypeSize('i32'), 'state', 'i32') }}}
+    return 0;
   },
   fgets__deps: ['fgetc'],
   fgets: function(s, n, stream) {
     // char *fgets(char *restrict s, int n, FILE *restrict stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fgets.html
-    if (!FS.streams[stream]) return 0;
-    var streamObj = FS.streams[stream];
+    var streamObj = FS.getStream(stream);
+    if (!streamObj) return 0;
     if (streamObj.error || streamObj.eof) return 0;
     var byte_;
     for (var i = 0; i < n - 1 && byte_ != {{{ charCode('\n') }}}; i++) {
@@ -3355,7 +3368,8 @@ LibraryManager.library = {
     {{{ makeSetValue('_fputc.ret', '0', 'chr', 'i8') }}}
     var ret = _write(stream, _fputc.ret, 1);
     if (ret == -1) {
-      if (FS.streams[stream]) FS.streams[stream].error = true;
+      var streamObj = FS.getStream(stream);
+      if (streamObj) streamObj.error = true;
       return -1;
     } else {
       return chr;
@@ -3399,7 +3413,7 @@ LibraryManager.library = {
       return 0;
     }
     var bytesRead = 0;
-    var streamObj = FS.streams[stream];
+    var streamObj = FS.getStream(stream);
     while (streamObj.ungotten.length && bytesToRead > 0) {
       {{{ makeSetValue('ptr++', '0', 'streamObj.ungotten.pop()', 'i8') }}}
       bytesToRead--;
@@ -3419,12 +3433,13 @@ LibraryManager.library = {
     // FILE *freopen(const char *restrict filename, const char *restrict mode, FILE *restrict stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/freopen.html
     if (!filename) {
-      if (!FS.streams[stream]) {
+      var streamObj = FS.getStream(stream);
+      if (!streamObj) {
         ___setErrNo(ERRNO_CODES.EBADF);
         return 0;
       }
       if (_freopen.buffer) _free(_freopen.buffer);
-      filename = intArrayFromString(FS.streams[stream].path);
+      filename = intArrayFromString(streamObj.path);
       filename = allocate(filename, 'i8', ALLOC_NORMAL);
     }
     _fclose(stream);
@@ -3437,10 +3452,10 @@ LibraryManager.library = {
     var ret = _lseek(stream, offset, whence);
     if (ret == -1) {
       return -1;
-    } else {
-      FS.streams[stream].eof = false;
-      return 0;
     }
+    stream = FS.getStream(stream);
+    stream.eof = false;
+    return 0;
   },
   fseeko: 'fseek',
   fseeko64: 'fseek',
@@ -3448,37 +3463,35 @@ LibraryManager.library = {
   fsetpos: function(stream, pos) {
     // int fsetpos(FILE *stream, const fpos_t *pos);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fsetpos.html
-    if (FS.streams[stream]) {
-      if (FS.streams[stream].object.isDevice) {
-        ___setErrNo(ERRNO_CODES.EPIPE);
-        return -1;
-      } else {
-        FS.streams[stream].position = {{{ makeGetValue('pos', '0', 'i32') }}};
-        var state = {{{ makeGetValue('pos', Runtime.getNativeTypeSize('i32'), 'i32') }}};
-        FS.streams[stream].eof = Boolean(state & 1);
-        FS.streams[stream].error = Boolean(state & 2);
-        return 0;
-      }
-    } else {
+    stream = FS.getStream(stream);
+    if (!stream) {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
     }
+    if (stream.object.isDevice) {
+      ___setErrNo(ERRNO_CODES.EPIPE);
+      return -1;
+    }
+    stream.position = {{{ makeGetValue('pos', '0', 'i32') }}};
+    var state = {{{ makeGetValue('pos', Runtime.getNativeTypeSize('i32'), 'i32') }}};
+    stream.eof = Boolean(state & 1);
+    stream.error = Boolean(state & 2);
+    return 0;
   },
   ftell__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   ftell: function(stream) {
     // long ftell(FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/ftell.html
-    if (FS.streams[stream]) {
-      stream = FS.streams[stream];
-      if (stream.object.isDevice) {
-        ___setErrNo(ERRNO_CODES.ESPIPE);
-        return -1;
-      } else {
-        return stream.position;
-      }
-    } else {
+    stream = FS.getStream(stream);
+    if (!stream) {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
+    }
+    if (stream.object.isDevice) {
+      ___setErrNo(ERRNO_CODES.ESPIPE);
+      return -1;
+    } else {
+      return stream.position;
     }
   },
   ftello: 'ftell',
@@ -3491,7 +3504,8 @@ LibraryManager.library = {
     if (bytesToWrite == 0) return 0;
     var bytesWritten = _write(stream, ptr, bytesToWrite);
     if (bytesWritten == -1) {
-      if (FS.streams[stream]) FS.streams[stream].error = true;
+      var streamObj = FS.getStream(stream);
+      if (streamObj) streamObj.error = true;
       return 0;
     } else {
       return Math.floor(bytesWritten / size);
@@ -3566,7 +3580,8 @@ LibraryManager.library = {
     // void rewind(FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/rewind.html
     _fseek(stream, 0, 0);  // SEEK_SET.
-    if (FS.streams[stream]) FS.streams[stream].error = false;
+    var streamObj = FS.getStream(stream);
+    if (streamObj) streamObj.error = false;
   },
   setvbuf: function(stream, buf, type, size) {
     // int setvbuf(FILE *restrict stream, char *restrict buf, int type, size_t size);
@@ -3625,7 +3640,7 @@ LibraryManager.library = {
   ungetc: function(c, stream) {
     // int ungetc(int c, FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/ungetc.html
-    stream = FS.streams[stream];
+    stream = FS.getStream(stream);
     if (!stream) {
       return -1;
     }
@@ -3650,20 +3665,20 @@ LibraryManager.library = {
   fscanf: function(stream, format, varargs) {
     // int fscanf(FILE *restrict stream, const char *restrict format, ... );
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/scanf.html
-    if (FS.streams[stream]) {
-      var buffer = [];
-      var get = function() {
-        var c = _fgetc(stream);
-        buffer.push(c);
-        return c;
-      };
-      var unget = function() {
-        _ungetc(buffer.pop(), stream);
-      };
-      return __scanString(format, get, unget, varargs);
-    } else {
+    var streamObj = FS.getStream(stream);
+    if (!streamObj) {
       return -1;
     }
+    var buffer = [];
+    var get = function() {
+      var c = _fgetc(stream);
+      buffer.push(c);
+      return c;
+    };
+    var unget = function() {
+      _ungetc(buffer.pop(), stream);
+    };
+    return __scanString(format, get, unget, varargs);
   },
   scanf__deps: ['fscanf'],
   scanf: function(format, varargs) {
@@ -3813,7 +3828,7 @@ LibraryManager.library = {
       _memset(ptr, 0, num);
       allocated = true;
     } else {
-      var info = FS.streams[stream];
+      var info = FS.getStream(stream);
       if (!info) return -1;
       var contents = info.object.contents;
       // Only make a new copy when MAP_PRIVATE is specified.
@@ -8010,7 +8025,7 @@ LibraryManager.library = {
   socket__deps: ['$Sockets'],
   socket: function(family, type, protocol) {
     var INCOMING_QUEUE_LENGTH = 64;
-    var fd = FS.createFileHandle({
+    var stream = FS.createStream({
       addr: null,
       port: null,
       inQueue: new CircularBuffer(INCOMING_QUEUE_LENGTH),
@@ -8018,7 +8033,7 @@ LibraryManager.library = {
       bound: false,
       socket: true
     });
-    assert(fd < 64); // select() assumes socket fd values are in 0..63
+    assert(stream.fd < 64); // select() assumes socket fd values are in 0..63
     var stream = type == {{{ cDefine('SOCK_STREAM') }}};
     if (protocol) {
       assert(stream == (protocol == {{{ cDefine('IPPROTO_TCP') }}})); // if stream, must be tcp
@@ -8132,7 +8147,7 @@ LibraryManager.library = {
       };
     };
 
-    return fd;
+    return stream.fd;
   },
 
   mkport__deps: ['$Sockets'],
@@ -8153,7 +8168,7 @@ LibraryManager.library = {
 
   bind__deps: ['$Sockets', '_inet_ntop_raw', 'ntohs', 'mkport'],
   bind: function(fd, addr, addrlen) {
-    var info = FS.streams[fd];
+    var info = FS.getStream(fd);
     if (!info) return -1;
     if (addr) {
       info.port = _ntohs(getValue(addr + Sockets.sockaddr_in_layout.sin_port, 'i16'));
@@ -8174,7 +8189,7 @@ LibraryManager.library = {
 
   sendmsg__deps: ['$Sockets', 'bind', '_inet_ntop_raw', 'ntohs'],
   sendmsg: function(fd, msg, flags) {
-    var info = FS.streams[fd];
+    var info = FS.getStream(fd);
     if (!info) return -1;
     // if we are not connected, use the address info in the message
     if (!info.bound) {
@@ -8230,7 +8245,7 @@ LibraryManager.library = {
 
   recvmsg__deps: ['$Sockets', 'bind', '__setErrNo', '$ERRNO_CODES', 'htons'],
   recvmsg: function(fd, msg, flags) {
-    var info = FS.streams[fd];
+    var info = FS.getStream(fd);
     if (!info) return -1;
     // if we are not connected, use the address info in the message
     if (!info.port) {
@@ -8281,14 +8296,14 @@ LibraryManager.library = {
   },
 
   shutdown: function(fd, how) {
-    var info = FS.streams[fd];
-    if (!info) return -1;
-    info.close();
-    FS.removeFileHandle(fd);
+    var stream = FS.getStream(fd);
+    if (!stream) return -1;
+    stream.close();
+    FS.closeStream(stream);
   },
 
   ioctl: function(fd, request, varargs) {
-    var info = FS.streams[fd];
+    var info = FS.getStream(fd);
     if (!info) return -1;
     var bytes = 0;
     if (info.hasData()) {
@@ -8308,7 +8323,7 @@ LibraryManager.library = {
     // TODO: webrtc queued incoming connections, etc.
     // For now, the model is that bind does a connect, and we "accept" that one connection,
     // which has host:port the same as ours. We also return the same socket fd.
-    var info = FS.streams[fd];
+    var info = FS.getStream(fd);
     if (!info) return -1;
     if (addr) {
       setValue(addr + Sockets.sockaddr_in_layout.sin_addr, info.addr, 'i32');
@@ -8349,7 +8364,7 @@ LibraryManager.library = {
         var mask = 1 << (fd % 32), int_ = fd < 32 ? srcLow : srcHigh;
         if (int_ & mask) {
           // index is in the set, check if it is ready for read
-          var info = FS.streams[fd];
+          var info = FS.getStream(fd);
           if (info && can(info)) {
             // set bit
             fd < 32 ? (dstLow = dstLow | mask) : (dstHigh = dstHigh | mask);
@@ -8378,18 +8393,18 @@ LibraryManager.library = {
     if (protocol) {
       assert(stream == (protocol == {{{ cDefine('IPPROTO_TCP') }}})); // if SOCK_STREAM, must be tcp
     }
-    var fd = FS.createFileHandle({
+    var stream = FS.createStream({
       connected: false,
       stream: stream,
       socket: true
     });
-    assert(fd < 64); // select() assumes socket fd values are in 0..63
-    return fd;
+    assert(stream.fd < 64); // select() assumes socket fd values are in 0..63
+    return stream.fd;
   },
 
   connect__deps: ['$FS', '$Sockets', '_inet_ntop_raw', 'ntohs', 'gethostbyname'],
   connect: function(fd, addr, addrlen) {
-    var info = FS.streams[fd];
+    var info = FS.getStream(fd);
     if (!info) return -1;
     info.connected = true;
     info.addr = getValue(addr + Sockets.sockaddr_in_layout.sin_addr, 'i32');
@@ -8507,7 +8522,7 @@ LibraryManager.library = {
 
   recv__deps: ['$FS'],
   recv: function(fd, buf, len, flags) {
-    var info = FS.streams[fd];
+    var info = FS.getStream(fd);
     if (!info) return -1;
     if (!info.hasData()) {
       ___setErrNo(ERRNO_CODES.EAGAIN); // no data, and all sockets are nonblocking, so this is the right behavior
@@ -8533,7 +8548,7 @@ LibraryManager.library = {
 
   send__deps: ['$FS'],
   send: function(fd, buf, len, flags) {
-    var info = FS.streams[fd];
+    var info = FS.getStream(fd);
     if (!info) return -1;
     info.sender(HEAPU8.subarray(buf, buf+len));
     return len;
@@ -8541,7 +8556,7 @@ LibraryManager.library = {
 
   sendmsg__deps: ['$FS', '$Sockets', 'connect'],
   sendmsg: function(fd, msg, flags) {
-    var info = FS.streams[fd];
+    var info = FS.getStream(fd);
     if (!info) return -1;
     // if we are not connected, use the address info in the message
     if (!info.connected) {
@@ -8576,7 +8591,7 @@ LibraryManager.library = {
 
   recvmsg__deps: ['$FS', '$Sockets', 'connect', 'recv', '__setErrNo', '$ERRNO_CODES', 'htons'],
   recvmsg: function(fd, msg, flags) {
-    var info = FS.streams[fd];
+    var info = FS.getStream(fd);
     if (!info) return -1;
     // if we are not connected, use the address info in the message
     if (!info.connected) {
@@ -8634,7 +8649,7 @@ LibraryManager.library = {
 
   recvfrom__deps: ['$FS', 'connect', 'recv'],
   recvfrom: function(fd, buf, len, flags, addr, addrlen) {
-    var info = FS.streams[fd];
+    var info = FS.getStream(fd);
     if (!info) return -1;
     // if we are not connected, use the address info in the message
     if (!info.connected) {
@@ -8645,14 +8660,14 @@ LibraryManager.library = {
   },
 
   shutdown: function(fd, how) {
-    var info = FS.streams[fd];
-    if (!info) return -1;
-    info.socket.close();
-    FS.removeFileHandle(fd);
+    var stream = FS.getStream(fd);
+    if (!stream) return -1;
+    stream.socket.close();
+    FS.closeStream(stream);
   },
 
   ioctl: function(fd, request, varargs) {
-    var info = FS.streams[fd];
+    var info = FS.getStream(fd);
     if (!info) return -1;
     var bytes = 0;
     if (info.hasData()) {
@@ -8682,7 +8697,7 @@ LibraryManager.library = {
     // TODO: webrtc queued incoming connections, etc.
     // For now, the model is that bind does a connect, and we "accept" that one connection,
     // which has host:port the same as ours. We also return the same socket fd.
-    var info = FS.streams[fd];
+    var info = FS.getStream(fd);
     if (!info) return -1;
     if (addr) {
       setValue(addr + Sockets.sockaddr_in_layout.sin_addr, info.addr, 'i32');
@@ -8738,7 +8753,7 @@ LibraryManager.library = {
         var mask = 1 << (fd % 32), int_ = fd < 32 ? srcLow : srcHigh;
         if (int_ & mask) {
           // index is in the set, check if it is ready for read
-          var info = FS.streams[fd];
+          var info = FS.getStream(fd);
           if (info && can(info)) {
             // set bit
             fd < 32 ? (dstLow = dstLow | mask) : (dstHigh = dstHigh | mask);
