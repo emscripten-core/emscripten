@@ -1279,6 +1279,7 @@ var C_DEFINES = {'SI_MESGQ': '5',
    'SOCK_STREAM': '200',
    'SOCK_DGRAM': '20',
    'IPPROTO_TCP': '1',
-   'IPPROTO_UDP': '2'
+   'IPPROTO_UDP': '2',
+   'EOF': '-1'
 };
 
