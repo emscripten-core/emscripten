@@ -737,7 +737,8 @@ LibraryManager.library = {
     // int closedir(DIR *dirp);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/closedir.html
     if (!FS.streams[dirp] || !FS.streams[dirp].object.isFolder) {
-      return ___setErrNo(ERRNO_CODES.EBADF);
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
     } else {
       _free(FS.streams[dirp].currentEntry);
       FS.streams[dirp] = null;
@@ -749,7 +750,8 @@ LibraryManager.library = {
     // long int telldir(DIR *dirp);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/telldir.html
     if (!FS.streams[dirp] || !FS.streams[dirp].object.isFolder) {
-      return ___setErrNo(ERRNO_CODES.EBADF);
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
     } else {
       return FS.streams[dirp].position;
     }

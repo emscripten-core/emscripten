@@ -24,6 +24,7 @@ DIR  *opendir(const char *);
 void  seekdir(DIR *, long);
 long  telldir(DIR *);
 DIR  *readdir(DIR *);
+int readdir_r(DIR *, struct dirent *, struct dirent **);
 int   closedir(DIR *dirp);
 void  rewinddir(DIR *dirp);
 int   scandir(const char *dirp,
