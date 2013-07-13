@@ -865,10 +865,6 @@ LibraryManager.library = {
     }
     var file = FS.findObject(Pointer_stringify(path));
     if (file === null) return -1;
-    if (!file.write) {
-      ___setErrNo(ERRNO_CODES.EPERM);
-      return -1;
-    }
     file.timestamp = time;
     return 0;
   },
