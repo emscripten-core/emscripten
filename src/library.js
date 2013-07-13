@@ -1379,7 +1379,7 @@ LibraryManager.library = {
   posix_fallocate: function(fd, offset, len) {
     // int posix_fallocate(int fd, off_t offset, off_t len);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/posix_fallocate.html
-    if (!FS.streams[fd] || FS.streams[fd].link ||
+    if (!FS.streams[fd] || !FS.streams[fd].isWrite || FS.streams[fd].link ||
         FS.streams[fd].isFolder || FS.streams[fd].isDevice) {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;

@@ -6,7 +6,7 @@
 
 int main() {
   struct stat s;
-  int f = open("/test", O_RDONLY, 0777);
+  int f = open("/test", O_RDWR, 0777);
 
   printf("posix_fadvise: %d\n", posix_fadvise(f, 3, 2, POSIX_FADV_DONTNEED));
   printf("errno: %d\n", errno);
