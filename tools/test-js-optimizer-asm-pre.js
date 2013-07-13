@@ -70,6 +70,7 @@ function b($this, $__n) {
  HEAP32[$4] = HEAP32[$5]^-1;
  // Rewrite to ~ and eliminate the |0.
  HEAP32[$4] = ((HEAP32[$5]|0)^-1)|0;
+ h((~~g) ^ -1); // do NOT convert this, as it would lead to ~~~ which is confusing in asm, given the role of ~~
  return;
 }
 function rett() {

@@ -562,7 +562,8 @@ function simplifyExpressionsPre(ast) {
       } else if (type === 'binary' && node[1] === '^') {
         // LLVM represents bitwise not as xor with -1. Translate it back to an actual bitwise not.
         if (node[3][0] === 'unary-prefix' && node[3][1] === '-' && node[3][2][0] === 'num' &&
-            node[3][2][1] === 1) {
+            node[3][2][1] === 1 &&
+            !(node[2][0] == 'unary-prefix' && node[2][1] == '~')) { // avoid creating ~~~ which is confusing for asm given the role of ~~
             return ['unary-prefix', '~', node[2]];
         }
       } else if (type       === 'binary' && node[1]    === '>>' && node[3][0]    === 'num' &&

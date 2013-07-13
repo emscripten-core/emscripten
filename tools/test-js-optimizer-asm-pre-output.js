@@ -66,6 +66,7 @@ function b($this, $__n) {
  HEAP32[$4] = ~HEAP32[$5];
  HEAP32[$4] = ~HEAP32[$5];
  HEAP32[$4] = ~HEAP32[$5];
+ h(~~g ^ -1);
  return;
 }
 function rett() {
