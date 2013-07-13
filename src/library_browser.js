@@ -91,6 +91,10 @@ mergeInto(LibraryManager.library, {
         if (Browser.hasBlobConstructor) {
           try {
             b = new Blob([byteArray], { type: getMimetype(name) });
+            if (b.size !== byteArray.length) { // Safari bug #118630
+              // Safari's Blob can only take an ArrayBuffer
+              b = new Blob([(new Uint8Array(byteArray)).buffer], { type: getMimetype(name) });
+            }
           } catch(e) {
             Runtime.warnOnce('Blob constructor present but fails: ' + e + '; falling back to blob builder');
           }
