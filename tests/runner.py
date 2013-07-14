@@ -7309,18 +7309,8 @@ def process(filename):
       self.do_run(src, expected, extra_emscripten_args=['-H', 'libc/unistd.h'])
 
     def test_unistd_ttyname(self):
-      add_pre_run = '''
-def process(filename):
-  import tools.shared as shared
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    open(shared.path_from_root('tests', 'unistd', 'ttyname.js'), 'r').read()
-  )
-  open(filename, 'w').write(src)
-'''
       src = open(path_from_root('tests', 'unistd', 'ttyname.c'), 'r').read()
-      expected = open(path_from_root('tests', 'unistd', 'ttyname.out'), 'r').read()
-      self.do_run(src, expected, post_build=add_pre_run)
+      self.do_run(src, 'success', force_c=True)
 
     def test_unistd_dup(self):
       src = open(path_from_root('tests', 'unistd', 'dup.c'), 'r').read()
@@ -7352,18 +7342,8 @@ def process(filename):
       self.do_run(src, expected)
 
     def test_unistd_isatty(self):
-      add_pre_run = '''
-def process(filename):
-  import tools.shared as shared
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    open(shared.path_from_root('tests', 'unistd', 'isatty.js'), 'r').read()
-  )
-  open(filename, 'w').write(src)
-'''
       src = open(path_from_root('tests', 'unistd', 'isatty.c'), 'r').read()
-      expected = open(path_from_root('tests', 'unistd', 'isatty.out'), 'r').read()
-      self.do_run(src, expected, post_build=add_pre_run)
+      self.do_run(src, 'success', force_c=True)
 
     def test_unistd_sysconf(self):
       src = open(path_from_root('tests', 'unistd', 'sysconf.c'), 'r').read()
