@@ -637,7 +637,8 @@ function simplifyExpressionsPre(ast) {
             if (node[0] === 'seq' && node[1][0] === 'assign' && node[1][2][0] === 'sub' && node[1][2][1][0] === 'name' &&
                 (node[1][2][1][1] === 'HEAP32' || node[1][2][1][1] === 'HEAPF32') &&
                 node[1][2][2][0] === 'binary' && node[1][2][2][2][0] === 'name' && node[1][2][2][2][1] === 'tempDoublePtr' &&
-                node[1][3][0] === 'sub' && node[1][3][1][0] === 'name' && (node[1][3][1][1] === 'HEAP32' || node[1][3][1][1] === 'HEAPF32')) {
+                node[1][3][0] === 'sub' && node[1][3][1][0] === 'name' && (node[1][3][1][1] === 'HEAP32' || node[1][3][1][1] === 'HEAPF32') &&
+                node[2][0] !== 'seq') { // avoid (x, y, z) which can be used for tempDoublePtr on doubles for alignment fixes
               if (node[1][2][1][1] === 'HEAP32') {
                 node[1][3][1][1] = 'HEAPF32';
                 return ['unary-prefix', '+', node[1][3]];

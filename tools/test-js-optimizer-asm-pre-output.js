@@ -157,6 +157,8 @@ function tempDoublePtr($45, $14, $28, $42) {
  unelim2 = 127 + $14 | 0;
  func();
  HEAP32[4] = unelim2;
+ barrier();
+ $f163 = (HEAP32[tempDoublePtr >> 2] = HEAP32[$f165 >> 2], HEAP32[tempDoublePtr + 4 >> 2] = HEAP32[$f165 + 4 >> 2], +HEAPF64[tempDoublePtr >> 3]);
 }
 function boxx($this, $aabb, $xf, $childIndex) {
  $this = $this | 0;
