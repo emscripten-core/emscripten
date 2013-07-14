@@ -6831,20 +6831,9 @@ def process(filename):
       self.do_run(src, expected, post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h'])
 
     def test_fcntl_open(self):
-      add_pre_run = '''
-def process(filename):
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    \'\'\'
-      FS.createDataFile('/', 'test-file', 'abcdef', true, true);
-      FS.createFolder('/', 'test-folder', true, true);
-    \'\'\'
-  )
-  open(filename, 'w').write(src)
-'''
       src = open(path_from_root('tests', 'fcntl-open', 'src.c'), 'r').read()
       expected = open(path_from_root('tests', 'fcntl-open', 'output.txt'), 'r').read()
-      self.do_run(src, expected, post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h'])
+      self.do_run(src, expected, force_c=True, extra_emscripten_args=['-H', 'libc/fcntl.h'])
 
     def test_fcntl_misc(self):
       add_pre_run = '''
