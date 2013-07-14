@@ -6224,7 +6224,7 @@ LibraryManager.library = {
   },
 
   strftime__deps: ['__tm_struct_layout'],
-  strftime: function(s, maxsize, format, timeptr) {
+  strftime: function(s, maxsize, format, tm) {
     // size_t strftime(char *restrict s, size_t maxsize, const char *restrict format, const struct tm *restrict timeptr);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/strftime.html
     
