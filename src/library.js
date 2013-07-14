@@ -6377,21 +6377,16 @@ LibraryManager.library = {
       }
     };
     for (var rule in EXPANSION_RULES_2) {
-      if (format.indexOf(rule) >= 0) {
+      if (pattern.indexOf(rule) >= 0) {
         pattern = pattern.replace(new RegExp(rule, 'g'), EXPANSION_RULES_2[rule](date));
       }
     }
 
     // FIXME: this will not work for UTF-8 characters with code points > 0x7F
-    var offset = 0;
-    for (offset, len=pattern.length; offset<maxsize-1 && offset<len; ++offset) {
-      {{{ makeSetValue('s', 'offset', 'pattern.charCodeAt(offset)', 'i8') }}}
-    }
+    pattern = pattern.substring(0, maxsize-1);
+    writeStringToMemory(pattern, s, false);
 
-    // write null-terminating byte
-    {{{ makeSetValue('s', 'maxsize-1', '0', 'i8') }}}
-
-    return offset;
+    return pattern.length;
   },
   strftime_l: 'strftime', // no locale support yet
 
