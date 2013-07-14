@@ -6223,11 +6223,175 @@ LibraryManager.library = {
     return -1;
   },
 
+  strftime__deps: ['__tm_struct_layout'],
   strftime: function(s, maxsize, format, timeptr) {
     // size_t strftime(char *restrict s, size_t maxsize, const char *restrict format, const struct tm *restrict timeptr);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/strftime.html
-    // TODO: Implement.
-    return 0;
+    
+    var date = {
+      tm_sec: {{{ makeGetValue('tm', '___tm_struct_layout.tm_sec', 'i32') }}},
+      tm_hour: {{{ makeGetValue('tm', '___tm_struct_layout.tm_hour', 'i32') }}},
+      tm_mday: {{{ makeGetValue('tm', '___tm_struct_layout.tm_mday', 'i32') }}},
+      tm_mon: {{{ makeGetValue('tm', '___tm_struct_layout.tm_mon', 'i32') }}},
+      tm_year: {{{ makeGetValue('tm', '___tm_struct_layout.tm_year', 'i32') }}},
+      tm_wday: {{{ makeGetValue('tm', '___tm_struct_layout.tm_wday', 'i32') }}},
+      tm_yday: {{{ makeGetValue('tm', '___tm_struct_layout.tm_yday', 'i32') }}},
+      tm_isdst: {{{ makeGetValue('tm', '___tm_struct_layout.tm_isdst', 'i32') }}}
+    };
+
+    var pattern = Pointer_stringify(format);
+
+    // expand format
+    var EXPANSION_RULES_1 = {
+      '%c': '%a %b %d %H:%M:%S %Y',     // Replaced by the locale's appropriate date and time representation - e.g., Mon Aug  3 14:02:01 2013
+      '%D': '%m/%d/%y',                 // Equivalent to %m / %d / %y
+      '%F': '%Y-%m-%d',                 // Equivalent to %Y - %m - %d
+      '%h': '%b',                       // Equivalent to %b
+      '%r': '%I:%M:%S %p',              // Replaced by the time in a.m. and p.m. notation
+      '%R': '%H:%M',                    // Replaced by the time in 24-hour notation
+      '%T': '%H:%M:%S',                 // Replaced by the time
+      '%x': '%m/%d/%y',                 // Replaced by the locale's appropriate date representation
+      '%X': '%H:%M:%S',                 // Replaced by the locale's appropriate date representation
+    };
+    for (var rule in EXPANSION_RULES_1) {
+      pattern = pattern.replace(new RegExp(rule, 'g'), EXPANSION_RULES_1[rule]);
+    }
+
+    var WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+    var leadingSomething = function(value, digits, character) {
+      if (typeof value === 'number') {
+        number = String.valueOf(value);
+      }
+      while (value.length < digits) {
+        value = character[0]+value;
+      }
+      return value;
+    };
+
+    var leadingNulls = function(value, digits) {
+      return leadingSomething(value, digits, '0');
+    };
+
+    var EXPANSION_RULES_2 = {
+      '%a': function(date) {
+        return WEEKDAYS[date.tm_wday].substring(0,3);
+      },
+      '%A': function(date) {
+        return WEEKDAYS[date.tm_wday];
+      },
+      '%b': function(date) {
+        return MONTHS[date.tm_mon].substring(0,3);
+      },
+      '%B': function(date) {
+        return MONTHS[date.tm_mon];
+      },
+      '%C': function(date) {
+        var year = date.tm_year+1900;
+        return leadingNulls(Math.floor(year/100),2);
+      },
+      '%d': function(date) {
+        return leadingNulls(date.tm_mday, 2);
+      },
+      '%e': function(date) {
+        return leadingSomething(date.tm_mday, 2, ' ');
+      },
+      '%g': function(date) {
+        // %g, %G, and %V give values according to the ISO 8601:2000 standard week-based year. 
+        // In this system, weeks begin on a Monday and week 1 of the year is the week that includes 
+        // January 4th, which is also the week that includes the first Thursday of the year, and 
+        // is also the first week that contains at least four days in the year. 
+        // If the first Monday of January is the 2nd, 3rd, or 4th, the preceding days are part of 
+        // the last week of the preceding year; thus, for Saturday 2nd January 1999, 
+        // %G is replaced by 1998 and %V is replaced by 53. If December 29th, 30th, 
+        // or 31st is a Monday, it and any following days are part of week 1 of the following year. 
+        // Thus, for Tuesday 30th December 1997, %G is replaced by 1998 and %V is replaced by 01.
+        // TODO
+      },
+      '%G': function(date) {
+        // TODO
+      },
+      '%H': function(date) {
+        return leadingNulls(date.tm_hour, 2);
+      },
+      '%I': function(date) {
+        return leadingNulls(date.tm_hour<13 ? date.tm_hour : date.tm_hour-12, 2);
+      },
+      '%j': function(date) {
+        return leadingNulls(date.tm_mday+1, 3);
+      },
+      '%m': function(date) {
+        return leadingNulls(date.tm_mon+1, 2);
+      },
+      '%M': function(date) {
+        return leadingNulls(date.tm_min, 2);
+      },
+      '%n': function() {
+        return '\n';
+      },
+      '%p': function(date) {
+        if (date.tm_hour>0 && date.tm_hour<13) {
+          return 'AM';
+        } else {
+          return 'PM';
+        }
+      },
+      '%S': function(date) {
+        return leadingNulls(date.tm_sec, 2);
+      },
+      '%t': function() {
+        return '\t';
+      },
+      '%u': function(date) {
+        var day = new Date(date.tm_year+1900, date.tm_mon+1, date.tm_mday, 0, 0, 0, 0);
+        return day.getDay() || 7;
+      },
+      '%U': function(date) {
+        // TODO
+      },
+      '%V': function(date) {
+        // TODO
+      },
+      '%w': function(date) {
+        var day = new Date(date.tm_year+1900, date.tm_mon+1, date.tm_mday, 0, 0, 0, 0);
+        return day.getDay();
+      },
+      '%W': function(date) {
+        // TODO
+      },
+      '%y': function(date) {
+        return String.valueOf(date.tm_year+1900).substring(2);
+      },
+      '%Y': function(date) {
+        return date.tm_year+1900;
+      },
+      '%z': function(date) {
+        return '';
+      },
+      '%Z': function(date) {
+        return '';
+      },
+      '%%': function() {
+        return '%';
+      }
+    };
+    for (var rule in EXPANSION_RULES_2) {
+      if (format.indexOf(rule) >= 0) {
+        pattern = pattern.replace(new RegExp(rule, 'g'), EXPANSION_RULES_2[rule](date));
+      }
+    }
+
+    // FIXME: this will not work for UTF-8 characters with code points > 0x7F
+    var offset = 0;
+    for (offset, len=pattern.length; offset<maxsize-1 && offset<len; ++offset) {
+      {{{ makeSetValue('s', 'offset', 'pattern.charCodeAt(offset)', 'i8') }}}
+    }
+
+    // write null-terminating byte
+    {{{ makeSetValue('s', 'maxsize-1', '0', 'i8') }}}
+
+    return offset;
   },
   strftime_l: 'strftime', // no locale support yet
 
