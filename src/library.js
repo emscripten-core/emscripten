@@ -588,8 +588,11 @@ LibraryManager.library = {
       // Create the I/O devices.
       var devFolder = FS.createFolder('/', 'dev', true, true);
       var stdin = FS.createDevice(devFolder, 'stdin', input);
+      stdin.isTerminal = !stdinOverridden;
       var stdout = FS.createDevice(devFolder, 'stdout', null, output);
+      stdout.isTerminal = !stdoutOverridden;
       var stderr = FS.createDevice(devFolder, 'stderr', null, error);
+      stderr.isTerminal = !stderrOverridden;
       FS.createDevice(devFolder, 'tty', input, output);
       FS.createDevice(devFolder, 'null', function(){}, function(){});
 
@@ -601,7 +604,6 @@ LibraryManager.library = {
         isRead: true,
         isWrite: false,
         isAppend: false,
-        isTerminal: !stdinOverridden,
         error: false,
         eof: false,
         ungotten: []
@@ -613,7 +615,6 @@ LibraryManager.library = {
         isRead: false,
         isWrite: true,
         isAppend: false,
-        isTerminal: !stdoutOverridden,
         error: false,
         eof: false,
         ungotten: []
@@ -625,7 +626,6 @@ LibraryManager.library = {
         isRead: false,
         isWrite: true,
         isAppend: false,
-        isTerminal: !stderrOverridden,
         error: false,
         eof: false,
         ungotten: []
@@ -1686,13 +1686,16 @@ LibraryManager.library = {
   isatty: function(fildes) {
     // int isatty(int fildes);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/isatty.html
-    if (!FS.streams[fildes]) {
+    var stream = FS.streams[fildes];
+    if (!stream) {
       ___setErrNo(ERRNO_CODES.EBADF);
       return 0;
     }
-    if (FS.streams[fildes].isTerminal) return 1;
-    ___setErrNo(ERRNO_CODES.ENOTTY);
-    return 0;
+    if (!stream.object.isTerminal) {
+      ___setErrNo(ERRNO_CODES.ENOTTY);
+      return 0;
+    }
+    return 1;
   },
   lchown__deps: ['chown'],
   lchown: function(path, owner, group) {
@@ -1914,30 +1917,21 @@ LibraryManager.library = {
     if (!_ttyname.ret) _ttyname.ret = _malloc(256);
     return _ttyname_r(fildes, _ttyname.ret, 256) ? 0 : _ttyname.ret;
   },
-  ttyname_r__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
+  ttyname_r__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'isatty'],
   ttyname_r: function(fildes, name, namesize) {
     // int ttyname_r(int fildes, char *name, size_t namesize);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/ttyname.html
     var stream = FS.streams[fildes];
+    var ttyname = '/dev/tty';
     if (!stream) {
       return ___setErrNo(ERRNO_CODES.EBADF);
-    } else {
-      var object = stream.object;
-      if (!object.isDevice || !object.input || !object.output) {
-        return ___setErrNo(ERRNO_CODES.ENOTTY);
-      } else {
-        var ret = stream.path;
-        if (namesize < ret.length + 1) {
-          return ___setErrNo(ERRNO_CODES.ERANGE);
-        } else {
-          for (var i = 0; i < ret.length; i++) {
-            {{{ makeSetValue('name', 'i', 'ret.charCodeAt(i)', 'i8') }}}
-          }
-          {{{ makeSetValue('name', 'i', '0', 'i8') }}}
-          return 0;
-        }
-      }
+    } else if (!_isatty(fildes)) {
+       return ___setErrNo(ERRNO_CODES.ENOTTY);
+    } else if (namesize < ttyname.length + 1) {
+      return ___setErrNo(ERRNO_CODES.ERANGE);
     }
+    writeStringToMemory(ttyname, name);
+    return 0;
   },
   symlink__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   symlink: function(path1, path2) {
