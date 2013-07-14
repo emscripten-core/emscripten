@@ -1,28 +1,28 @@
-#include <stdio.h>
+#include <assert.h>
 #include <errno.h>
-#include <unistd.h>
 #include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 int main() {
-  printf("read: %d\n", isatty(open("/read", O_RDONLY)));
-  printf("errno: %d\n", errno);
-  errno = 0;
+  int err;
 
-  printf("write: %d\n", isatty(open("/write", O_WRONLY)));
-  printf("errno: %d\n", errno);
-  errno = 0;
+  err = isatty(-1);
+  assert(!err);
+  assert(errno == EBADF);
 
-  printf("all: %d\n", isatty(open("/all", O_RDONLY)));
-  printf("errno: %d\n", errno);
-  errno = 0;
+  err = isatty(open("/dev/stdin", O_RDONLY));
+  assert(err == 1);
 
-  printf("folder: %d\n", isatty(open("/folder", O_RDONLY)));
-  printf("errno: %d\n", errno);
-  errno = 0;
+  err = isatty(open("/dev/null", O_RDONLY));
+  assert(!err);
 
-  printf("file: %d\n", isatty(open("/file", O_RDONLY)));
-  printf("errno: %d\n", errno);
-  errno = 0;
+  err = isatty(open("/dev", O_RDONLY));
+  assert(!err);
 
-  return 0;
+  puts("success");
+
+  return EXIT_SUCCESS;
 }
