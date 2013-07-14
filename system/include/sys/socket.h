@@ -34,7 +34,8 @@ extern "C" {
 #define SO_LINGER 130
 #define SO_BSDCOMPAT 140
 
-#define SHUT_RD 1
+#define SHUT_RD 0
+#define SHUT_WR 1
 #define SHUT_RDWR 2
 
 typedef unsigned int sa_family_t;
