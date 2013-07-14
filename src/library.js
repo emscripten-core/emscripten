@@ -1211,7 +1211,7 @@ LibraryManager.library = {
         ___setErrNo(ERRNO_CODES.EEXIST);
         return -1;
       }
-      if ((isWrite || isCreate || isTruncate) && target.isFolder) {
+      if ((isWrite || isTruncate) && target.isFolder) {
         ___setErrNo(ERRNO_CODES.EISDIR);
         return -1;
       }
