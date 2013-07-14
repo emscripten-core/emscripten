@@ -6230,6 +6230,7 @@ LibraryManager.library = {
     
     var date = {
       tm_sec: {{{ makeGetValue('tm', '___tm_struct_layout.tm_sec', 'i32') }}},
+      tm_min: {{{ makeGetValue('tm', '___tm_struct_layout.tm_min', 'i32') }}},
       tm_hour: {{{ makeGetValue('tm', '___tm_struct_layout.tm_hour', 'i32') }}},
       tm_mday: {{{ makeGetValue('tm', '___tm_struct_layout.tm_mday', 'i32') }}},
       tm_mon: {{{ makeGetValue('tm', '___tm_struct_layout.tm_mon', 'i32') }}},
