@@ -1096,7 +1096,11 @@ var LibrarySDL = {
     return ret;
   },
 
+  rotozoomSurface__deps: ['zoomSurface'],
   rotozoomSurface: function(src, angle, zoom, smooth) {
+    if (angle % 360 === 0) {
+      return _zoomSurface(src, zoom, zoom, smooth);
+    }
     var srcData = SDL.surfaces[src];
     var w = srcData.width * zoom;
     var h = srcData.height * zoom;
