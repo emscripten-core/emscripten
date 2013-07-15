@@ -1077,6 +1077,9 @@ try:
     shared.Settings.LINKABLE = 1 # TODO: add FORCE_DCE option for the brave people that do want to dce here and in side modules
     debug_level = max(debug_level, 2)
 
+  if shared.Settings.DLOPEN_SUPPORT:
+    shared.Settings.LINKABLE = 1
+
   ## Compile source code to bitcode
 
   logging.debug('compiling to bitcode')

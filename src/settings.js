@@ -327,6 +327,10 @@ var LINKABLE = 0; // If set to 1, this file can be linked with others, either as
                   // LINKABLE of 0 is very useful in that we can reduce the size of the
                   // generated code very significantly, by removing everything not actually used.
 
+var DLOPEN_SUPPORT = 0; // Whether to support dlopen(NULL, ...) which enables dynamic access to the
+                        // module's functions and globals. Implies LINKABLE=1, because we do not want
+                        // dead code elimination.
+
 var RUNTIME_TYPE_INFO = 0; // Whether to expose type info to the script at run time. This
                            // increases the size of the generated script, but allows you
                            // to more easily perform operations from handwritten JS on
