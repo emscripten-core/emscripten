@@ -102,16 +102,20 @@ start_asm_marker = '// EMSCRIPTEN_START_ASM\n'
 end_asm_marker = '// EMSCRIPTEN_END_ASM\n'
 
 def run_on_chunk(command):
-  filename = command[2] # XXX hackish
-  #print >> sys.stderr, 'running js optimizer command', ' '.join(command), '""""', open(filename).read()
-  output = subprocess.Popen(command, stdout=subprocess.PIPE).communicate()[0]
-  assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + output
-  filename = temp_files.get(os.path.basename(filename) + '.jo.js').name
-  f = open(filename, 'w')
-  f.write(output)
-  f.close()
-  if DEBUG and not shared.WINDOWS: print >> sys.stderr, '.' # Skip debug progress indicator on Windows, since it doesn't buffer well with multiple threads printing to console.
-  return filename
+  try:
+    filename = command[2] # XXX hackish
+    #print >> sys.stderr, 'running js optimizer command', ' '.join(command), '""""', open(filename).read()
+    output = subprocess.Popen(command, stdout=subprocess.PIPE).communicate()[0]
+    assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + output
+    filename = temp_files.get(os.path.basename(filename) + '.jo.js').name
+    f = open(filename, 'w')
+    f.write(output)
+    f.close()
+    if DEBUG and not shared.WINDOWS: print >> sys.stderr, '.' # Skip debug progress indicator on Windows, since it doesn't buffer well with multiple threads printing to console.
+    return filename
+  except KeyboardInterrupt:
+    # avoid throwing keyboard interrupts from a child process
+    raise Exception()
 
 def run_on_js(filename, passes, js_engine, jcache, source_map=False, extra_info=None):
   if isinstance(jcache, bool) and jcache: jcache = shared.JCache
