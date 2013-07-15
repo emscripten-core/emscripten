@@ -5735,10 +5735,14 @@ LibraryManager.library = {
   rintf: 'rint',
   lrint: 'rint',
   lrintf: 'rint',
+#if USE_TYPED_ARRAYS == 2
   llrint: function(x) {
     x = (x < 0) ? -Math.round(-x) : Math.round(x);
     {{{ makeStructuralReturn(splitI64('x')) }}};
   },
+#else
+  llrint: 'rint',
+#endif
   llrintf: 'llrint',
   nearbyint: 'rint',
   nearbyintf: 'rint',
