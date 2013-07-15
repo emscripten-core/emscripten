@@ -258,6 +258,15 @@ var Functions = {
     return sig;
   },
 
+  getSignatureReturnType: function(sig) {
+    switch(sig[0]) {
+      case 'v': return 'void';
+      case 'i': return 'i32';
+      case 'f': return 'double';
+      default: throw 'what is this sig? ' + sig;
+    }
+  },
+
   // Mark a function as needing indexing. Python will coordinate them all
   getIndex: function(ident, doNotCreate, sig) {
     if (doNotCreate && !(ident in this.indexedFunctions)) {

@@ -1498,7 +1498,12 @@ function JSify(data, functionsOnly, givenFunctions) {
 
     var returnType = 'void';
     if ((byPointer || ASM_JS) && hasReturn) {
-      returnType = getReturnType(type);
+      if (callIdent in Functions.implementedFunctions) {
+        // LLVM sometimes bitcasts for no reason. We must call using the exact same type as the actual function is generated as
+        returnType = Functions.getSignatureReturnType(Functions.implementedFunctions[callIdent]);
+      } else {
+        returnType = getReturnType(type);
+      }
     }
 
     if (byPointer) {
