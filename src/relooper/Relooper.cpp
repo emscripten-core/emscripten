@@ -174,7 +174,7 @@ void Block::Render(bool InLoop) {
     }
   }
 
-  // We must do this here, because blocks can be split and even comparing their Ids is not enough. We must check the conditions.
+  // Find the default target, the one without a condition
   for (BlockBranchMap::iterator iter = ProcessedBranchesOut.begin(); iter != ProcessedBranchesOut.end(); iter++) {
     if (!iter->second->Condition) {
       assert(!DefaultTarget); // Must be exactly one default
