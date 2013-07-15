@@ -5735,8 +5735,11 @@ LibraryManager.library = {
   rintf: 'rint',
   lrint: 'rint',
   lrintf: 'rint',
-  llrint: 'rint',
-  llrintf: 'rint',
+  llrint: function(x) {
+    x = (x < 0) ? -Math.round(-x) : Math.round(x);
+    {{{ makeStructuralReturn(splitI64('x')) }}};
+  },
+  llrintf: 'llrint',
   nearbyint: 'rint',
   nearbyintf: 'rint',
   trunc: function(x) {
