@@ -604,7 +604,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           var associatedSourceFile = "NO_SOURCE";
       }
       
-      if (LINKABLE) Functions.getIndex(func.ident);
+      if (DLOPEN_SUPPORT) Functions.getIndex(func.ident);
 
       func.JS += 'function ' + func.ident + '(' + paramIdents.join(', ') + ') {\n';
 

@@ -5887,7 +5887,7 @@ def process(filename):
 
     def test_dlfcn_self(self):
       if Settings.USE_TYPED_ARRAYS == 1: return self.skip('Does not work with USE_TYPED_ARRAYS=1')
-      Settings.LINKABLE = 1
+      Settings.DLOPEN_SUPPORT = 1
 
       src = r'''
 #include <stdio.h>
