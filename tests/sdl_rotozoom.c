@@ -6,7 +6,7 @@
 #include "emscripten.h"
 #endif
 
-const int numSprites = 8;
+const int numSprites = 9;
 SDL_Surface *screen;
 SDL_Surface *sprite[numSprites];
 
@@ -41,6 +41,7 @@ int main(int argc, char **argv) {
     sprite[5] = rotozoomSurface(sprite[1], 45, 0.5, SMOOTHING_ON);
     sprite[6] = zoomSurface(sprite[0], -0.5, 0.5, SMOOTHING_ON);
     sprite[7] = zoomSurface(sprite[0], -0.5, -0.5, SMOOTHING_ON);
+    sprite[8] = rotozoomSurface(sprite[1], 0, 0.5, SMOOTHING_ON);
 
     mainloop();
 
