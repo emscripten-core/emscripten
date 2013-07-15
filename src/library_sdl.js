@@ -1760,6 +1760,11 @@ var LibrarySDL = {
     return Math.floor(fontData.size*0.02); // XXX
   },
 
+  TTF_FontHeight: function(font) {
+    var fontData = SDL.fonts[font];
+    return fontData.size;
+  },
+
   // SDL gfx
 
   $SDL_gfx: {
