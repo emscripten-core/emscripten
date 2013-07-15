@@ -1,11 +1,13 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <SDL/SDL.h>
 #include <SDL/SDL_mixer.h>
 #include <assert.h>
 #include <emscripten.h>
+#include <sys/stat.h>
 
-Mix_Chunk *sound, *sound2;
-
+Mix_Chunk *sound, *sound2, *sound3;
+Mix_Music * music;
 int play2();
 
 int play() {
@@ -28,6 +30,9 @@ int play2() {
 
   int channel2 = Mix_PlayChannel(-1, sound2, 0);
   assert(channel2 == 1);
+  int channel3 = Mix_PlayChannel(-1, sound3, 0);
+  assert(channel3 == 2);
+  assert(Mix_PlayMusic(music, 1) == 0);
   return channel2;
 }
 
@@ -39,6 +44,26 @@ int main(int argc, char **argv) {
 
   sound = Mix_LoadWAV("sound.ogg");
   assert(sound);
+  
+  {
+      struct stat info;
+      int result = stat("noise.ogg", &info);
+      char * bytes = malloc( info.st_size );
+      FILE * f = fopen( "noise.ogg", "rb" );
+      fread( bytes, 1, info.st_size, f  );
+      fclose(f);
+  
+      SDL_RWops * ops = SDL_RWFromConstMem(bytes, info.st_size);
+      sound3 = Mix_LoadWAV_RW(ops, 0);
+      SDL_FreeRW(ops);
+      free(bytes);
+  }
+
+  {
+      music = Mix_LoadMUS("the_entertainer.ogg");
+  }
+  
+  
   sound2 = Mix_LoadWAV("sound2.wav");
   assert(sound);
 
