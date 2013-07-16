@@ -2013,19 +2013,22 @@ var LibrarySDL = {
 
   SDL_InitSubSystem: function(flags) { return 0 },
   SDL_RWFromConstMem: function(mem, size) {
-    var id = SDL.rwops.length
-    SDL.rwops.push( {'bytes': mem, 'count': size} );
+    var id = SDL.rwops.length; // TODO: recycle ids when they are null
+    SDL.rwops.push( { 'bytes': mem, 'count': size } );
     return id;
   },
 
   SDL_RWFromFile: function(filename, mode) {
-    var id = SDL.rwops.length
-    SDL.rwops.push( {'filename': filename} );
+    var id = SDL.rwops.length; // TODO: recycle ids when they are null
+    SDL.rwops.push( { 'filename': filename } );
     return id;
   },
   
   SDL_FreeRW: function(rwopsID) {
     SDL.rwops[rwopsID] = null;
+    while (SDL.rwops.length > 0 && SDL.rwops[SDL.rwops.length-1] === null) {
+      SDL.rwops.pop();
+    }
   },
 
   SDL_EnableUNICODE: function(on) {
