@@ -1,35 +1,138 @@
-#include <stdio.h>
+#include <assert.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
+#include <sys/stat.h>
+
+static void create_file(const char *path, const char *buffer, int mode) {
+  int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, mode);
+  assert(fd >= 0);
+
+  int err = write(fd, buffer, sizeof(char) * strlen(buffer));
+  assert(err ==  (sizeof(char) * strlen(buffer)));
+
+  close(fd);
+}
+
+void setup() {
+  create_file("file", "test", 0777);
+  create_file("file1", "test", 0777);
+  symlink("file1", "file1-link");
+  mkdir("dir-empty", 0777);
+  symlink("dir-empty", "dir-empty-link");
+  mkdir("dir-readonly", 0777);
+  create_file("dir-readonly/anotherfile", "test", 0777);
+  mkdir("dir-readonly/anotherdir", 0777);
+  chmod("dir-readonly", 0555);
+  mkdir("dir-full", 0777);
+  create_file("dir-full/anotherfile", "test", 0777);
+}
+
+void cleanup() {
+  unlink("file");
+  unlink("file1");
+  unlink("file1-link");
+  rmdir("dir-empty");
+  unlink("dir-empty-link");
+  chmod("dir-readonly", 0777);
+  unlink("dir-readonly/anotherfile");
+  rmdir("dir-readonly/anotherdir");
+  rmdir("dir-readonly");
+  unlink("dir-full/anotherfile");
+  rmdir("dir-full");
+}
+
+void test() {
+  int err;
+  char buffer[512];
+
+  //
+  // test unlink
+  //
+  err = unlink("noexist");
+  assert(err == -1);
+  assert(errno == ENOENT);
+
+  err = unlink("dir-readonly");
+  assert(err == -1);
+#ifdef __linux__
+  assert(errno == EISDIR);
+#else
+  assert(errno == EPERM);
+#endif
+
+  err = unlink("dir-readonly/anotherfile");
+  assert(err == -1);
+  assert(errno == EACCES);
+
+  // try unlinking the symlink first to make sure
+  // we don't follow the link
+  err = unlink("file1-link");
+  assert(!err);
+  err = access("file1", F_OK);
+  assert(!err);
+  err = access("file1-link", F_OK);
+  assert(err == -1);
+
+  err = unlink("file");
+  assert(!err);
+  err = access("file", F_OK);
+  assert(err == -1);
+
+  //
+  // test rmdir
+  //
+  err = rmdir("noexist");
+  assert(err == -1);
+  assert(errno == ENOENT);
+
+  err = rmdir("file1");
+  assert(err == -1);
+  assert(errno == ENOTDIR);
+
+  err = rmdir("dir-readonly/anotherdir");
+  assert(err == -1);
+  assert(errno == EACCES);
+
+  err = rmdir("dir-full");
+  assert(err == -1);
+  assert(errno == ENOTEMPTY);
+
+  // test removing the cwd / root. The result isn't specified by
+  // POSIX, but Linux seems to set EBUSY in both cases.
+#ifndef __APPLE__
+  getcwd(buffer, sizeof(buffer));
+  err = rmdir(buffer);
+  assert(err == -1);
+  assert(errno == EBUSY);
+#endif
+  err = rmdir("/");
+  assert(err == -1);
+#ifdef __APPLE__
+  assert(errno == EISDIR);
+#else
+  assert(errno == EBUSY);
+#endif
+
+  err = rmdir("dir-empty-link");
+  assert(err == -1);
+  assert(errno == ENOTDIR);
+
+  err = rmdir("dir-empty");
+  assert(!err);
+  err = access("dir-empty", F_OK);
+  assert(err == -1);
+
+  puts("success");
+}
 
 int main() {
-  char* files[] = {"/device", "/file", "/file-forbidden", "/noexist"};
-  char* folders[] = {"/empty", "/empty-forbidden", "/full"};
-  int i;
-
-  for (i = 0; i < sizeof files / sizeof files[0]; i++) {
-    printf("access(%s) before: %d\n", files[i], access(files[i], F_OK));
-    rmdir(files[i]);
-    printf("errno: %d\n", errno);
-    errno = 0;
-    printf("access(%s) after rmdir: %d\n", files[i], access(files[i], F_OK));
-    unlink(files[i]);
-    printf("errno: %d\n", errno);
-    errno = 0;
-    printf("access(%s) after unlink: %d\n\n", files[i], access(files[i], F_OK));
-  }
-
-  for (i = 0; i < sizeof folders / sizeof folders[0]; i++) {
-    printf("access(%s) before: %d\n", folders[i], access(folders[i], F_OK));
-    unlink(folders[i]);
-    printf("errno: %d\n", errno);
-    errno = 0;
-    printf("access(%s) after unlink: %d\n", folders[i], access(folders[i], F_OK));
-    rmdir(folders[i]);
-    printf("errno: %d\n", errno);
-    errno = 0;
-    printf("access(%s) after rmdir: %d\n\n", folders[i], access(folders[i], F_OK));
-  }
-
-  return 0;
+  atexit(cleanup);
+  signal(SIGABRT, cleanup);
+  setup();
+  test();
+  return EXIT_SUCCESS;
 }
