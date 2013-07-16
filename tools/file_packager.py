@@ -330,15 +330,18 @@ for file_ in data_files:
   if file_['mode'] == 'embed':
     # Embed
     data = map(ord, open(file_['srcpath'], 'rb').read())
-    str_data = ''
-    chunk_size = 10240
-    while len(data) > 0:
-      chunk = data[:chunk_size]
-      data = data[chunk_size:]
-      if not str_data:
-        str_data = str(chunk)
-      else:
-        str_data += '.concat(' + str(chunk) + ')'
+    if not data:
+      str_data = '[]'
+    else:
+      str_data = ''
+      chunk_size = 10240
+      while len(data) > 0:
+        chunk = data[:chunk_size]
+        data = data[chunk_size:]
+        if not str_data:
+          str_data = str(chunk)
+        else:
+          str_data += '.concat(' + str(chunk) + ')'
     code += '''Module['FS_createDataFile']('/%s', '%s', %s, true, true);\n''' % (os.path.dirname(filename), os.path.basename(filename), str_data)
   elif file_['mode'] == 'preload':
     # Preload
