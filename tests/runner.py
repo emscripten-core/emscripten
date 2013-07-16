@@ -3591,33 +3591,9 @@ Exiting setjmp function, level: 0, prev_jmp: -1
       self.do_run(src, 'z:1*', force_c=True)
 
     def test_rename(self):
-      src = '''
-        #include <stdio.h>
-        #include <sys/stat.h>
-        #include <sys/types.h>
-        #include <assert.h>
-
-        int main() {
-          int err;
-          FILE* fid;
-
-          err = mkdir("/foo", 0777);
-          err = mkdir("/bar", 0777);
-          fid = fopen("/foo/bar", "w+");
-          fclose(fid);
-
-          err = rename("/foo/bar", "/foo/bar2");
-          printf("%d\\n", err);
-
-          err = rename("/foo", "/foo/foo");
-          printf("%d\\n", err);
-
-          err = rename("/foo", "/bar/foo");
-          printf("%d\\n", err);
-          return 0;
-        }
-      '''
-      self.do_run(src, '0\n-1\n0\n', force_c=True)
+      Building.COMPILER_TEST_OPTS += ['-DUSE_OLD_FS='+str(Settings.USE_OLD_FS)]
+      src = open(path_from_root('tests', 'stdio', 'test_rename.c'), 'r').read()
+      self.do_run(src, 'success', force_c=True)
 
     def test_alloca_stack(self):
       if self.emcc_args is None: return # too slow in other modes
