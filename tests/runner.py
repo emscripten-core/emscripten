@@ -10626,7 +10626,7 @@ f.close()
         Popen([PYTHON, EMLINK, 'main.js', 'side.js', 'together.js'], stdout=PIPE).communicate()
         assert os.path.exists('together.js')
         for engine in JS_ENGINES:
-          out = run_js('together.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True)
+          out = run_js('together.js', engine=engine, stderr=PIPE, full_output=True)
           self.assertContained(expected, out)
           if engine == SPIDERMONKEY_ENGINE: self.validate_asmjs(out)
         if first:
