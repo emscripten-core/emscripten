@@ -11567,6 +11567,8 @@ f.close()
          ['asm', 'last']),
         (path_from_root('tools', 'test-js-optimizer-asm-relocate.js'), open(path_from_root('tools', 'test-js-optimizer-asm-relocate-output.js')).read(),
          ['asm', 'relocate']),
+        #(path_from_root('tools', 'test-js-optimizer-asm-outline1.js'), open(path_from_root('tools', 'test-js-optimizer-asm-outline1-output.js')).read(),
+        # ['asm', 'outline']),
         #(path_from_root('tools', 'test-js-optimizer-asm-outline2.js'), open(path_from_root('tools', 'test-js-optimizer-asm-outline2-output.js')).read(),
         # ['asm', 'outline']),
       ]:
