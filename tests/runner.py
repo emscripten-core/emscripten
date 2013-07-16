@@ -10024,6 +10024,11 @@ finalizing 3 (global == 0)
       for k, v in self.env.iteritems():
         del os.environ[k]
 
+      # clear global changes to Building
+      Building.COMPILER_TEST_OPTS = []
+      Building.COMPILER = CLANG
+      Building.LLVM_OPTS = 0
+
     TT.tearDown = tearDown
 
     def setUp(self):
