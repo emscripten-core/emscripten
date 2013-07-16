@@ -1222,8 +1222,22 @@ var LibrarySDL = {
     return flags; // We support JPG, PNG, TIF because browsers do
   },
 
-  IMG_Load__deps: ['SDL_LockSurface'],
-  IMG_Load: function(filename) {
+  IMG_Load_RW__deps: ['SDL_LockSurface'],
+  IMG_Load_RW: function(rwopsID, freesrc) {
+    var rwops = SDL.rwops[rwopsID];
+
+    if ( rwops === undefined )
+      return 0;
+
+    var filename = rwops.filename;
+    
+    if (filename === undefined) {
+      Runtime.warnOnce('Only file names that have been preloaded are supported for IMG_Load_RW.');
+      // TODO. Support loading image data from embedded files, similarly to Mix_LoadWAV_RW
+      // TODO. Support loading image data from byte arrays, similarly to Mix_LoadWAV_RW
+      return 0;
+    }
+    
     filename = FS.standardizePath(Pointer_stringify(filename));
     if (filename[0] == '/') {
       // Convert the path to relative
@@ -1256,8 +1270,14 @@ var LibrarySDL = {
     return surf;
   },
   SDL_LoadBMP: 'IMG_Load',
-  SDL_LoadBMP_RW: 'IMG_Load',
-  IMG_Load_RW: 'IMG_Load',
+  SDL_LoadBMP_RW: 'IMG_Load_RW',
+  IMG_Load__deps: ['IMG_Load_RW', 'SDL_RWFromFile', 'SDL_FreeRW'],
+  IMG_Load: function(filename){
+    var rwops = _SDL_RWFromFile(filename);
+    var result = _IMG_Load_RW(rwops);
+    _SDL_FreeRW(rwops);
+    return result;
+  },
 
   // SDL_Audio
 
@@ -1611,9 +1631,12 @@ var LibrarySDL = {
   },
 
   Mix_LoadMUS_RW: 'Mix_LoadWAV_RW',
-  Mix_LoadMUS__deps: ['Mix_LoadMUS_RW', 'SDL_RWFromFile'],
-  Mix_LoadMUS: function(file) {
-    return _Mix_LoadMUS_RW(_SDL_RWFromFile(file));
+  Mix_LoadMUS__deps: ['Mix_LoadMUS_RW', 'SDL_RWFromFile', 'SDL_FreeRW'],
+  Mix_LoadMUS: function(filename) {
+    var rwops = _SDL_RWFromFile(filename);
+    var result = _Mix_LoadMUS_RW(rwops);
+    _SDL_FreeRW(rwops);
+    return result;
   },
 
   Mix_FreeMusic: 'Mix_FreeChunk',
