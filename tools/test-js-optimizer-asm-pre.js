@@ -20,6 +20,7 @@ function a() {
  f(g() | 0 & -1);
  f((g() | 0) >> 2);
  $56 = (_fcntl() | 0) | 1;
+ FUNCTION_TABLE_ii[55 & 127]() | 0;
 }
 function b($this, $__n) {
  $this = $this | 0;
@@ -63,6 +64,13 @@ function b($this, $__n) {
   HEAP32[(($this + 4 | 0) & 16777215) >> 2] = $40;
  }
  HEAP8[($38 + $40 | 0) & 16777215] = 0;
+ // Eliminate the |0.
+ HEAP32[$4] = ((~(HEAP32[$5]|0))|0);
+ // Rewrite to ~.
+ HEAP32[$4] = HEAP32[$5]^-1;
+ // Rewrite to ~ and eliminate the |0.
+ HEAP32[$4] = ((HEAP32[$5]|0)^-1)|0;
+ h((~~g) ^ -1); // do NOT convert this, as it would lead to ~~~ which is confusing in asm, given the role of ~~
  return;
 }
 function rett() {
@@ -121,6 +129,19 @@ function sign_extension_simplification() {
   print(5);
  }
 }
+function compare_result_simplification() {
+ // Eliminate these '&1's.
+ HEAP32[$4] = (HEAP32[$5] < HEAP32[$6]) & 1;
+ HEAP32[$4] = (HEAP32[$5] > HEAP32[$6]) & 1;
+ HEAP32[$4] = (HEAP32[$5] <= HEAP32[$6]) & 1;
+ HEAP32[$4] = (HEAP32[$5] <= HEAP32[$6]) & 1;
+ HEAP32[$4] = (HEAP32[$5] == HEAP32[$6]) & 1;
+ HEAP32[$4] = (HEAP32[$5] === HEAP32[$6]) & 1;
+ HEAP32[$4] = (HEAP32[$5] != HEAP32[$6]) & 1;
+ HEAP32[$4] = (HEAP32[$5] !== HEAP32[$6]) & 1;
+ // Convert the &1 to |0 here, since we don't get an implicit coersion.
+ var x = (HEAP32[$5] != HEAP32[$6]) & 1;
+}
 function tempDoublePtr($45, $14, $28, $42) {
  $45 = $45 | 0;
  $14 = $14 | 0;
@@ -146,6 +167,8 @@ function tempDoublePtr($45, $14, $28, $42) {
  unelim2 = (HEAP32[tempDoublePtr >> 2] = 127 + $14, +HEAPF32[tempDoublePtr >> 2]);
  func();
  HEAPF32[4] = unelim2;
+ barrier();
+ $f163 = (HEAP32[tempDoublePtr >> 2] = HEAP32[$f165 >> 2], HEAP32[tempDoublePtr + 4 >> 2] = HEAP32[$f165 + 4 >> 2], +HEAPF64[tempDoublePtr >> 3]);
 }
 function boxx($this, $aabb, $xf, $childIndex) {
  $this = $this | 0;

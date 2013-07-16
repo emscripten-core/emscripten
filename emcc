@@ -49,7 +49,7 @@ emcc can be influenced by a few environment variables:
 
 import os, sys, shutil, tempfile, subprocess, shlex, time, re, logging
 from subprocess import PIPE, STDOUT
-from tools import shared
+from tools import shared, jsrun
 from tools.shared import Compression, execute, suffix, unsuffixed, unsuffixed_basename
 from tools.response_file import read_response_file
 
@@ -127,11 +127,6 @@ Options that are modified or new in %s include:
                            (For details on the affects of different
                            opt levels, see apply_opt_level() in
                            tools/shared.py and also src/settings.js.)
-                           Note: Optimizations are only done when
-                           compiling to JavaScript, not to intermediate
-                           bitcode, *unless* you build with
-                           EMCC_OPTIMIZE_NORMALLY=1 (not recommended
-                           unless you know what you are doing!)
   -O2                      As -O1, plus the relooper (loop recreation),
                            LLVM -O2 optimizations, and
 
@@ -144,7 +139,7 @@ Options that are modified or new in %s include:
                               -s DOUBLE_MODE=0
                               -s PRECISE_I64_MATH=0
                               --closure 1
-                              --llvm-lto 1
+                              --llvm-lto 3
 
                            This is not recommended at all. A better idea
                            is to try each of these separately on top of
@@ -203,10 +198,13 @@ Options that are modified or new in %s include:
                             -g2  Preserve function names
                             -g3  Preserve variable names
                             -g4  Preserve LLVM debug info (if -g was
-                                 used when compiling the C/C++ sources)
-                                 and show line number debug comments.
-                                 This is the highest level of debuggability.
-                                 (default in -O0)
+                                 used when compiling the C/C++ sources),
+                                 show line number debug comments, and
+                                 generate source maps. This is the highest
+                                 level of debuggability. Note that this
+                                 may make -O1 and above significantly
+                                 slower because JS optimization will be
+                                 limited to 1 core.  (default in -O0)
 
   --typed-arrays <mode>    0: No typed arrays
                            1: Parallel typed arrays
@@ -217,10 +215,15 @@ Options that are modified or new in %s include:
                            2: -O2 LLVM optimizations
                            3: -O3 LLVM optimizations (default in -O2+)
 
-  --llvm-lto <level>       0: No LLVM LTO (default in -O2 and below)
-                           1: LLVM LTO (default in -O3)
+  --llvm-lto <level>       0: No LLVM LTO (default)
+                           1: LLVM LTO is performed
+                           2: We combine all the bitcode and run LLVM opt -O3
+                              on that (which optimizes across modules, but is
+                              not the same as normal LTO), but do not do normal
+                              LTO
+                           3: We do both 2 and then 1
                            Note: If LLVM optimizations are not run
-                           (see --llvm-opts), setting this to 1 has no
+                           (see --llvm-opts), setting this has no
                            effect.
 
   --closure <on>           0: No closure compiler (default in -O2 and below)
@@ -519,14 +522,14 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
       open(tempout, 'w').write('//\n')
 
   src = None
-  for i in range(len(sys.argv)):
-    if sys.argv[i].endswith('.c'):
+  for arg in sys.argv:
+    if arg.endswith('.c'):
       try:
-        src = open(sys.argv[i]).read()
-        if debug_configure: open(tempout, 'a').write('============= ' + sys.argv[i] + '\n' + src + '\n=============\n\n')
+        src = open(arg).read()
+        if debug_configure: open(tempout, 'a').write('============= ' + arg + '\n' + src + '\n=============\n\n')
       except:
         pass
-    if sys.argv[i].endswith('.s'):
+    if arg.endswith('.s'):
       if debug_configure: open(tempout, 'a').write('(compiling .s assembly, must use clang\n')
       use_js = 0
 
@@ -731,6 +734,14 @@ try:
 
   settings_changes = []
 
+  def validate_arg_level(level_string, max_level, err_msg):
+    try:
+      level = int(level_string)
+      assert 0 <= level <= max_level
+    except:
+      raise Exception(err_msg)
+    return level
+
   for i in range(len(newargs)):
     newargs[i] = newargs[i].strip() # On Windows Vista (and possibly others), excessive spaces in the command line leak into the items in this array, so trim e.g. 'foo.cpp ' -> 'foo.cpp'
     if newargs[i].startswith('-O'):
@@ -739,11 +750,7 @@ try:
       if requested_level == 's':
         requested_level = 2
         settings_changes.append('INLINING_LIMIT=50')
-      try:
-        opt_level = int(requested_level)
-        assert 0 <= opt_level <= 3
-      except:
-        raise Exception('Invalid optimization level: ' + newargs[i])
+      opt_level = validate_arg_level(requested_level, 3, 'Invalid optimization level: ' + newargs[i])
       newargs[i] = ''
     elif newargs[i].startswith('--llvm-opts'):
       check_bad_eq(newargs[i])
@@ -787,12 +794,8 @@ try:
       newargs[i+1] = ''
     elif newargs[i].startswith('-g'):
       requested_level = newargs[i][2:] or '3'
-      try:
-        debug_level = int(requested_level)
-        assert 0 <= debug_level <= 4
-      except:
-        raise Exception('Invalid debug level: ' + newargs[i])
-      newargs[i] = '-g' # discard level for clang args
+      debug_level = validate_arg_level(requested_level, 4, 'Invalid debug level: ' + newargs[i])
+      newargs[i] = '-g' # we'll need this to get LLVM debug info
     elif newargs[i] == '--bind':
       bind = True
       newargs[i] = ''
@@ -823,7 +826,7 @@ try:
       newargs[i] = ''
       newargs[i+1] = ''
     elif newargs[i].startswith('--use-preload-cache'):
-      use_preload_cache = True;
+      use_preload_cache = True
       newargs[i] = ''
     elif newargs[i] == '--ignore-dynamic-linking':
       ignore_dynamic_linking = True
@@ -881,9 +884,18 @@ try:
     newargs = newargs + [default_cxx_std]
 
   if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
-  if llvm_lto is None: llvm_lto = opt_level >= 3
+  if llvm_lto is None and opt_level >= 3: llvm_lto = 3
   if opt_level == 0: debug_level = 4
   if closure is None and opt_level == 3: closure = True
+
+  if llvm_lto is None and bind:
+    logging.debug('running lto for embind') # XXX this is a workaround for a pointer issue
+    llvm_lto = 1
+
+  # TODO: support source maps with js_transform
+  if js_transform and debug_level >= 4:
+    logging.warning('disabling source maps because a js transform is being done')
+    debug_level = 3
 
   if DEBUG: start_time = time.time() # done after parsing arguments, which might affect debug state
 
@@ -940,7 +952,7 @@ try:
               if not prefix: continue
               if l.startswith(prefix):
                 l = l[len(prefix):]
-                break;
+                break
             libs.append(l)
             newargs[i] = ''
           else:
@@ -1050,6 +1062,24 @@ try:
   else:
     raise Exception('unknown llvm target: ' + str(shared.LLVM_TARGET))
 
+  if shared.Settings.USE_TYPED_ARRAYS != 2 and llvm_opts > 0:
+    logging.warning('disabling LLVM optimizations, need typed arrays mode 2 for them')
+    llvm_opts = 0
+
+  if shared.Settings.MAIN_MODULE:
+    assert not shared.Settings.SIDE_MODULE
+    shared.Settings.INCLUDE_FULL_LIBRARY = 1
+  elif shared.Settings.SIDE_MODULE:
+    assert not shared.Settings.MAIN_MODULE
+
+  if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE:
+    assert not memory_init_file, 'memory init file is not supported with module linking'
+    shared.Settings.LINKABLE = 1 # TODO: add FORCE_DCE option for the brave people that do want to dce here and in side modules
+    debug_level = max(debug_level, 2)
+
+  if shared.Settings.DLOPEN_SUPPORT:
+    shared.Settings.LINKABLE = 1
+
   ## Compile source code to bitcode
 
   logging.debug('compiling to bitcode')
@@ -1089,20 +1119,19 @@ try:
           shared.Building.llvm_as(input_file, temp_file)
           temp_files.append(temp_file)
 
-  if not LEAVE_INPUTS_RAW: assert len(temp_files) == len(input_files)
+  if not LEAVE_INPUTS_RAW:
+    assert len(temp_files) == len(input_files)
+
+    # Optimize source files
+    if llvm_opts > 0:
+      for i, input_file in enumerate(input_files):
+        if input_file.endswith(SOURCE_SUFFIXES):
+          temp_file = temp_files[i]
+          logging.debug('optimizing %s with -O%d' % (input_file, llvm_opts))
+          shared.Building.llvm_opt(temp_file, llvm_opts)
 
   # If we were just asked to generate bitcode, stop there
   if final_suffix not in JS_CONTAINING_SUFFIXES:
-    if llvm_opts > 0:
-      if not os.environ.get('EMCC_OPTIMIZE_NORMALLY'):
-        logging.warning('-Ox flags ignored, since not generating JavaScript')
-      else:
-        for input_file in input_files:
-          if input_file.endswith(SOURCE_SUFFIXES):
-            logging.debug('optimizing %s with -O%d since EMCC_OPTIMIZE_NORMALLY defined' % (input_file, llvm_opts))
-            shared.Building.llvm_opt(in_temp(unsuffixed(uniquename(input_file)) + '.o'), llvm_opts)
-          else:
-            logging.debug('not optimizing %s despite EMCC_OPTIMIZE_NORMALLY since not source code' % (input_file))
     if not specified_target:
       for input_file in input_files:
         shutil.move(in_temp(unsuffixed(uniquename(input_file)) + '.o'), unsuffixed_basename(input_file) + '.' + final_suffix)
@@ -1124,7 +1153,9 @@ try:
   extra_files_to_link = []
 
   if not LEAVE_INPUTS_RAW and not AUTODEBUG and \
-     not shared.Settings.BUILD_AS_SHARED_LIB == 2: # shared lib 2 use the library in the parent
+     not shared.Settings.BUILD_AS_SHARED_LIB == 2 and \
+     not shared.Settings.SIDE_MODULE: # shared libraries/side modules link no C libraries, need them in parent
+
     # Check if we need to include some libraries that we compile. (We implement libc ourselves in js, but
     # compile a malloc implementation and stdlibc++.)
 
@@ -1134,6 +1165,8 @@ try:
         symbols = filter(lambda symbol: symbol not in exclude, symbols)
       return set(symbols)
 
+    lib_opts = ['-O2']
+
     # XXX We also need to add libc symbols that use malloc, for example strdup. It's very rare to use just them and not
     #     a normal malloc symbol (like free, after calling strdup), so we haven't hit this yet, but it is possible.
     libc_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libc.symbols'))
@@ -1142,7 +1175,7 @@ try:
     libcxx_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxx', 'symbols'), exclude=libc_symbols)
     libcxxabi_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxxabi', 'symbols'), exclude=libc_symbols)
 
-    # XXX we should disable EMCC_DEBUG (and EMCC_OPTIMIZE_NORMALLY?) when building libs, just like in the relooper
+    # XXX we should disable EMCC_DEBUG when building libs, just like in the relooper
 
     def build_libc(lib_filename, files):
       o_s = []
@@ -1151,7 +1184,7 @@ try:
       musl_internal_includes = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'internal')
       for src in files:
         o = in_temp(os.path.basename(src) + '.o')
-        execute([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o, '-I', musl_internal_includes], stdout=stdout, stderr=stderr)
+        execute([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o, '-I', musl_internal_includes] + lib_opts, stdout=stdout, stderr=stderr)
         o_s.append(o)
       if prev_cxx: os.environ['EMMAKEN_CXX'] = prev_cxx
       shared.Building.link(o_s, in_temp(lib_filename))
@@ -1162,7 +1195,7 @@ try:
       for src in files:
         o = in_temp(src + '.o')
         srcfile = shared.path_from_root(src_dirname, src)
-        execute([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11'], stdout=stdout, stderr=stderr)
+        execute([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11'] + lib_opts, stdout=stdout, stderr=stderr)
         o_s.append(o)
       shared.Building.link(o_s, in_temp(lib_filename))
       return in_temp(lib_filename)
@@ -1183,7 +1216,7 @@ try:
         os.path.join('libc', 'gen', 'vwarn.c'),
         os.path.join('libc', 'gen', 'vwarnx.c'),
         os.path.join('libc', 'stdlib', 'strtod.c'),
-      ];
+      ]
       return build_libc('libc.bc', libc_files)
 
     def apply_libc(need):
@@ -1334,7 +1367,9 @@ try:
       return 'SDL_Init' in all_needed and ('malloc' not in all_needed or 'free' not in all_needed)
 
     # Settings this in the environment will avoid checking dependencies and make building big projects a little faster
+    # 1 means include everything; otherwise it can be the name of a lib (libcxx, etc.)
     force = os.environ.get('EMCC_FORCE_STDLIBS')
+    force_all = force == '1'
 
     # Scan symbols
     all_needed = set()
@@ -1352,7 +1387,8 @@ try:
                                                   ('libcxxabi', create_libcxxabi, apply_libcxxabi, libcxxabi_symbols),
                                                   ('sdl',       create_sdl,       apply_sdl,       sdl_symbols),
                                                   ('libc',      create_libc,      apply_libc,      libc_symbols)]:
-      if not force:
+      force_this = force_all or force == name
+      if not force_this:
         need = set()
         has = set()
         for symbols in symbolses:
@@ -1365,12 +1401,13 @@ try:
           if haz in need:
             need.remove(haz)
         if shared.Settings.VERBOSE: logging.debug('considering %s: we need %s and have %s' % (name, str(need), str(has)))
-      if (force or len(need) > 0) and apply_(need):
-        # We need to build and link the library in
-        logging.debug('including %s' % name)
-        libfile = shared.Cache.get(name, create)
-        extra_files_to_link.append(libfile)
-        force = True
+      if force_this or len(need) > 0:
+        force_all = True
+        if apply_(need):
+          # We need to build and link the library in
+          logging.debug('including %s' % name)
+          libfile = shared.Cache.get(name, create)
+          extra_files_to_link.append(libfile)
 
   # First, combine the bitcode files if there are several. We must also link if we have a singleton .a
   if len(input_files) + len(extra_files_to_link) > 1 or \
@@ -1378,7 +1415,7 @@ try:
     linker_inputs = temp_files + extra_files_to_link
     logging.debug('linking: ' + str(linker_inputs))
     t0 = time.time()
-    shared.Building.link(linker_inputs, in_temp(target_basename + '.bc'))
+    shared.Building.link(linker_inputs, in_temp(target_basename + '.bc'), force_archive_contents = len(filter(lambda temp: not temp.endswith(STATICLIB_SUFFIXES), temp_files)) == 0)
     t1 = time.time()
     logging.debug('    linking took %.2f seconds' % (t1 - t0))
     final = in_temp(target_basename + '.bc')
@@ -1409,24 +1446,22 @@ try:
   # Optimize, if asked to
   if not LEAVE_INPUTS_RAW:
     link_opts = [] if debug_level >= 4 else ['-strip-debug'] # remove LLVM debug if we are not asked for it
-    if llvm_opts > 0:
-      if not os.environ.get('EMCC_OPTIMIZE_NORMALLY'):
-        shared.Building.llvm_opt(in_temp(target_basename + '.bc'), llvm_opts)
-        if DEBUG: save_intermediate('opt', 'bc')
-        # Do LTO in a separate pass to work around LLVM bug XXX (see failure e.g. in cubescript)
-      else:
-        logging.debug('not running opt because EMCC_OPTIMIZE_NORMALLY was specified, opt should have been run before')
-    if shared.Building.can_build_standalone():
-      # If we can LTO, do it before dce, since it opens up dce opportunities
-      if llvm_lto and shared.Building.can_use_unsafe_opts():
-        if not shared.Building.can_inline(): link_opts.append('-disable-inlining')
-        # do not internalize in std-link-opts - it ignores internalize-public-api-list - and add a manual internalize
-        link_opts += ['-disable-internalize'] + shared.Building.get_safe_internalize() + ['-std-link-opts']
-      else:
-        # At minimum remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
-        link_opts += shared.Building.get_safe_internalize() + ['-globaldce']
-      shared.Building.llvm_opt(in_temp(target_basename + '.bc'), link_opts)
-      if DEBUG: save_intermediate('linktime', 'bc')
+
+    if llvm_lto >= 2:
+      logging.debug('running LLVM opt -O3 as pre-LTO')
+      shared.Building.llvm_opt(in_temp(target_basename + '.bc'), ['-O3'])
+      if DEBUG: save_intermediate('opt', 'bc')
+
+    # If we can LTO, do it before dce, since it opens up dce opportunities
+    if shared.Building.can_build_standalone() and llvm_lto and llvm_lto != 2 and shared.Building.can_use_unsafe_opts():
+      if not shared.Building.can_inline(): link_opts.append('-disable-inlining')
+      # do not internalize in std-link-opts - it ignores internalize-public-api-list - and add a manual internalize
+      link_opts += ['-disable-internalize'] + shared.Building.get_safe_internalize() + ['-std-link-opts']
+    else:
+      # At minimum remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
+      link_opts += shared.Building.get_safe_internalize() + ['-globaldce']
+    shared.Building.llvm_opt(in_temp(target_basename + '.bc'), link_opts)
+    if DEBUG: save_intermediate('linktime', 'bc')
 
   if save_bc:
     shutil.copyfile(final, save_bc)
@@ -1496,8 +1531,10 @@ try:
     final += '.tr.js'
     posix = True if not shared.WINDOWS else False
     logging.debug('applying transform: %s' % js_transform)
-    execute(shlex.split(js_transform, posix=posix) + [os.path.abspath(final)])
+    subprocess.check_call(shlex.split(js_transform, posix=posix) + [os.path.abspath(final)])
     if DEBUG: save_intermediate('transformed')
+
+  js_transform_tempfiles = [final]
 
   # It is useful to run several js optimizer passes together, to save on unneeded unparsing/reparsing
   js_optimizer_queue = []
@@ -1508,7 +1545,8 @@ try:
         if shared.Settings.ASM_JS:
           js_optimizer_queue = ['asm'] + js_optimizer_queue
         logging.debug('applying js optimization passes: %s', js_optimizer_queue)
-        final = shared.Building.js_optimizer(final, js_optimizer_queue, jcache)
+        final = shared.Building.js_optimizer(final, js_optimizer_queue, jcache, debug_level >= 4)
+        js_transform_tempfiles.append(final)
         if DEBUG: save_intermediate('js_opts')
       else:
         for name in js_optimizer_queue:
@@ -1516,7 +1554,8 @@ try:
           if shared.Settings.ASM_JS:
             passes = ['asm'] + passes
           logging.debug('applying js optimization pass: %s', passes)
-          final = shared.Building.js_optimizer(final, passes, jcache)
+          final = shared.Building.js_optimizer(final, passes, jcache, debug_level >= 4)
+          js_transform_tempfiles.append(final)
           save_intermediate(name)
       js_optimizer_queue = []
 
@@ -1525,7 +1564,8 @@ try:
 
     if DEBUG == '2':
       # Clean up the syntax a bit
-      final = shared.Building.js_optimizer(final, [], jcache)
+      final = shared.Building.js_optimizer(final, [], jcache, debug_level >= 4)
+      js_transform_tempfiles.append(final)
       if DEBUG: save_intermediate('pretty')
 
     def get_eliminate():
@@ -1543,6 +1583,8 @@ try:
     flush_js_optimizer_queue()
 
     logging.debug('running closure')
+    # no need to add this to js_transform_tempfiles, because closure and
+    # debug_level > 0 are never simultaneously true
     final = shared.Building.closure_compiler(final)
     if DEBUG: save_intermediate('closure')
 
@@ -1560,7 +1602,7 @@ try:
   if closure and shared.Settings.ASM_JS: 
     js_optimizer_queue += ['closure']
 
-  js_optimizer_queue += ['last']
+  if not shared.Settings.SIDE_MODULE: js_optimizer_queue += ['last'] # side modules are not finalized until after relocation
 
   flush_js_optimizer_queue()
 
@@ -1587,9 +1629,10 @@ try:
           if os.path.abspath(memfile) != os.path.abspath(memfile):
             shutil.copyfile(memfile, temp_memfile)
         return 'loadMemoryInitializer("%s");' % os.path.basename(memfile)
-      src = re.sub('/\* memory initializer \*/ allocate\(([\d,\.concat\(\)\[\]\\n ]+)"i8", ALLOC_NONE, Runtime\.GLOBAL_BASE\)', repl, src, count=1)
+      src = re.sub(shared.JS.memory_initializer_pattern, repl, src, count=1)
       open(final + '.mem.js', 'w').write(src)
       final += '.mem.js'
+      js_transform_tempfiles[-1] = final # simple text substitution preserves comment line number mappings
       if DEBUG:
         if os.path.exists(memfile):
           save_intermediate('meminit')
@@ -1597,12 +1640,25 @@ try:
         else:
           logging.debug('did not see memory initialization')
 
+  def generate_source_map(map_file_base_name, offset=0):
+    jsrun.run_js(shared.path_from_root('tools', 'source-maps', 'sourcemapper.js'),
+      shared.NODE_JS, js_transform_tempfiles +
+        ['--sourceRoot', os.getcwd(),
+         '--mapFileBaseName', map_file_base_name,
+         '--offset', str(offset)])
+
   # If we were asked to also generate HTML, do that
   if final_suffix == 'html':
     logging.debug('generating HTML')
     shell = open(shell_path).read()
     html = open(target, 'w')
     if not Compression.on:
+      if debug_level >= 4:
+        match = re.match('.*?<script[^>]*>{{{ SCRIPT_CODE }}}</script>', shell,
+            re.DOTALL)
+        if match is None:
+          raise RuntimeError('''Could not find script insertion point - make sure you have   <script type='text/javascript'>{{{ SCRIPT_CODE }}}</script>   in your HTML file (with no newlines)''')
+        generate_source_map(target, match.group().count('\n'))
       html.write(shell.replace('{{{ SCRIPT_CODE }}}', open(final).read()))
     else:
       # Compress the main code
@@ -1673,6 +1729,8 @@ try:
         from tools.split import split_javascript_file
         split_javascript_file(final, unsuffixed(target), split_js_file)
     else:
+        if debug_level >= 4: generate_source_map(target)
+
         # copy final JS to output
         shutil.move(final, target)
 

@@ -267,7 +267,7 @@ var globalScope = this;
 //
 // @param ident      The name of the C function (note that C++ functions will be name-mangled - use extern "C")
 // @param returnType The return type of the function, one of the JS types 'number', 'string' or 'array' (use 'number' for any C pointer, and
-//                   'array' for JavaScript arrays and typed arrays).
+//                   'array' for JavaScript arrays and typed arrays; note that arrays are 8-bit).
 // @param argTypes   An array of the types of arguments for the function (if there are no arguments, this can be ommitted). Types are as in returnType,
 //                   except that 'array' is not possible (there is no way for us to know the length of the array)
 // @param args       An array of the arguments to the function, as native JS values (as in returnType)
@@ -525,6 +525,9 @@ function Pointer_stringify(ptr, /* optional */ length) {
   var t;
   var i = 0;
   while (1) {
+#if ASSERTIONS
+    assert(ptr + i < TOTAL_MEMORY);
+#endif
     t = {{{ makeGetValue('ptr', 'i', 'i8', 0, 1) }}};
     if (t >= 128) hasUtf = true;
     else if (t == 0 && !length) break;
@@ -884,8 +887,6 @@ __ATEXIT__.push({ func: function() { PGOMonitor.dump() } });
 addPreRun(function() { addRunDependency('pgo') });
 #endif
 
-var awaitingMemoryInitializer = false;
-
 function loadMemoryInitializer(filename) {
   function applyData(data) {
 #if USE_TYPED_ARRAYS == 2
@@ -893,7 +894,6 @@ function loadMemoryInitializer(filename) {
 #else
     allocate(data, 'i8', ALLOC_NONE, STATIC_BASE);
 #endif
-    runPostSets();
   }
 
   // always do this asynchronously, to keep shell and web as similar as possible
@@ -908,8 +908,6 @@ function loadMemoryInitializer(filename) {
       });
     }
   });
-
-  awaitingMemoryInitializer = false;
 }
 
 // === Body ===

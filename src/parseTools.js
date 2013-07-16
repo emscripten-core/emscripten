@@ -467,6 +467,18 @@ function isIndexableGlobal(ident) {
   return !data.alias && !data.external;
 }
 
+function isBSS(item) {
+  if (!USE_BSS) {
+    return false;
+  }
+
+  if (item.external) return false; // externals are typically implemented in a JS library, and must be accessed by name, explicitly
+
+  // return true if a global is uninitialized or initialized to 0
+  return (item.value && item.value.intertype === 'emptystruct') ||
+         (item.value && item.value.value !== undefined && item.value.value === '0');
+}
+
 function makeGlobalDef(ident) {
   if (!NAMED_GLOBALS && isIndexableGlobal(ident)) return '';
   return 'var ' + ident + ';';
@@ -480,7 +492,9 @@ function makeGlobalUse(ident) {
       UNINDEXABLE_GLOBALS[ident] = 1;
       return ident;
     }
-    return (Runtime.GLOBAL_BASE + index).toString();
+    var ret = (Runtime.GLOBAL_BASE + index).toString();
+    if (SIDE_MODULE) ret = '(H_BASE+' + ret + ')';
+    return ret;
   }
   return ident;
 }
@@ -490,7 +504,10 @@ function sortGlobals(globals) {
   ks.sort();
   var inv = invertArray(ks);
   return values(globals).sort(function(a, b) {
-    return inv[b.ident] - inv[a.ident];
+    // sort globals based on if they need to be explicitly initialized or not (moving
+    // values that don't need to be to the end of the array). if equal, sort by name.
+    return (Number(isBSS(a)) - Number(isBSS(b))) ||
+      (inv[b.ident] - inv[a.ident]);
   });
 }
 
@@ -1212,15 +1229,11 @@ function indexizeFunctions(value, type) {
   var out = {};
   if (type && isFunctionType(type, out) && value[0] === '_') { // checking for _ differentiates from $ (local vars)
     // add signature to library functions that we now know need indexing
-    if (!(value in Functions.implementedFunctions) && !(value in Functions.unimplementedFunctions)) {
-      Functions.unimplementedFunctions[value] = Functions.getSignature(out.returnType, out.segments ? out.segments.map(function(segment) { return segment[0].text }) : []);
+    var sig = Functions.implementedFunctions[value] || Functions.unimplementedFunctions[value];
+    if (!sig) {
+      sig = Functions.unimplementedFunctions[value] = Functions.getSignature(out.returnType, out.segments ? out.segments.map(function(segment) { return segment[0].text }) : []);
     }
-
-    if (BUILD_AS_SHARED_LIB) {
-      return '(FUNCTION_TABLE_OFFSET + ' + Functions.getIndex(value) + ')';
-    } else {
-      return Functions.getIndex(value);
-    }
+    return Functions.getIndex(value, undefined, sig);
   }
   return value;
 }
@@ -1612,6 +1625,9 @@ function makePointer(slab, pos, allocator, type, ptr, finalMemoryInitialization)
       // writing out into memory, without a normal allocation. We put all of these into a single big chunk.
       assert(typeof slab == 'object');
       assert(slab.length % QUANTUM_SIZE == 0, slab.length); // must be aligned already
+      if (SIDE_MODULE && typeof ptr == 'string') {
+        ptr = parseInt(ptr.substring(ptr.indexOf('+'), ptr.length-1)); // parse into (H_BASE+X)
+      }
       var offset = ptr - Runtime.GLOBAL_BASE;
       for (var i = 0; i < slab.length; i++) {
         memoryInitialization[offset + i] = slab[i];
@@ -2131,7 +2147,11 @@ function processMathop(item) {
       }
       case 'select': return idents[0] + ' ? ' + makeCopyI64(idents[1]) + ' : ' + makeCopyI64(idents[2]);
       case 'ptrtoint': return makeI64(idents[0], 0);
-      case 'inttoptr': return '(' + idents[0] + '[0])'; // just directly truncate the i64 to a 'pointer', which is an i32
+      case 'inttoptr': {
+        var m = /\(?\[(\d+),\d+\]\)?/.exec(idents[0]);
+        if (m) return m[1]; // constant, can just parse it right now
+        return '(' + idents[0] + '[0])'; // just directly truncate the i64 to a 'pointer', which is an i32
+      }
       // Dangerous, rounded operations. TODO: Fully emulate
       case 'add': {
         if (PRECISE_I64_MATH) {
@@ -2202,9 +2222,9 @@ function processMathop(item) {
     // basic integer ops
     case 'add': return handleOverflow(getFastValue(idents[0], '+', idents[1], item.type), bits);
     case 'sub': return handleOverflow(getFastValue(idents[0], '-', idents[1], item.type), bits);
-    case 'sdiv': case 'udiv': return makeRounding(getFastValue(idents[0], '/', idents[1], item.type), bits, op[0] === 's');
+    case 'sdiv': case 'udiv': return makeRounding(getFastValue(idents[0], '/', idents[1], item.type), bits, true);
     case 'mul': return getFastValue(idents[0], '*', idents[1], item.type); // overflow handling is already done in getFastValue for '*'
-    case 'urem': case 'srem': return makeRounding(getFastValue(idents[0], '%', idents[1], item.type), bits, op[0] === 's');
+    case 'urem': case 'srem': return makeRounding(getFastValue(idents[0], '%', idents[1], item.type), bits, true);
     case 'or': {
       if (bits > 32) {
         assert(bits === 64, 'Too many bits for or: ' + bits);

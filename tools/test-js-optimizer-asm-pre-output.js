@@ -19,6 +19,7 @@ function a() {
  f(g() | 0 & -1);
  f((g() | 0) >> 2);
  $56 = _fcntl() | 0 | 1;
+ FUNCTION_TABLE_ii[55 & 127]() | 0;
 }
 function b($this, $__n) {
  $this = $this | 0;
@@ -62,6 +63,10 @@ function b($this, $__n) {
   HEAP32[($this + 4 & 16777215) >> 2] = $40;
  }
  HEAP8[$38 + $40 & 16777215] = 0;
+ HEAP32[$4] = ~HEAP32[$5];
+ HEAP32[$4] = ~HEAP32[$5];
+ HEAP32[$4] = ~HEAP32[$5];
+ h(~~g ^ -1);
  return;
 }
 function rett() {
@@ -118,6 +123,17 @@ function sign_extension_simplification() {
   print(5);
  }
 }
+function compare_result_simplification() {
+ HEAP32[$4] = HEAP32[$5] < HEAP32[$6];
+ HEAP32[$4] = HEAP32[$5] > HEAP32[$6];
+ HEAP32[$4] = HEAP32[$5] <= HEAP32[$6];
+ HEAP32[$4] = HEAP32[$5] <= HEAP32[$6];
+ HEAP32[$4] = HEAP32[$5] == HEAP32[$6];
+ HEAP32[$4] = HEAP32[$5] === HEAP32[$6];
+ HEAP32[$4] = HEAP32[$5] != HEAP32[$6];
+ HEAP32[$4] = HEAP32[$5] !== HEAP32[$6];
+ var x = HEAP32[$5] != HEAP32[$6] | 0;
+}
 function tempDoublePtr($45, $14, $28, $42) {
  $45 = $45 | 0;
  $14 = $14 | 0;
@@ -141,6 +157,8 @@ function tempDoublePtr($45, $14, $28, $42) {
  unelim2 = 127 + $14 | 0;
  func();
  HEAP32[4] = unelim2;
+ barrier();
+ $f163 = (HEAP32[tempDoublePtr >> 2] = HEAP32[$f165 >> 2], HEAP32[tempDoublePtr + 4 >> 2] = HEAP32[$f165 + 4 >> 2], +HEAPF64[tempDoublePtr >> 3]);
 }
 function boxx($this, $aabb, $xf, $childIndex) {
  $this = $this | 0;

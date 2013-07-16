@@ -126,6 +126,9 @@ extern __IMPORT char *_tzname[2];
 #ifndef tzname
 #define tzname _tzname
 #endif
+#ifndef timezone
+#define timezone _timezone
+#endif
 #endif /* !__STRICT_ANSI__ */
 
 #ifdef __cplusplus

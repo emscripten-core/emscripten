@@ -84,13 +84,17 @@ mergeInto(LibraryManager.library, {
 
       var imagePlugin = {};
       imagePlugin['canHandle'] = function(name) {
-        return !Module.noImageDecoding && /\.(jpg|jpeg|png|bmp)$/.exec(name);
+        return !Module.noImageDecoding && /\.(jpg|jpeg|png|bmp)$/i.test(name);
       };
       imagePlugin['handle'] = function(byteArray, name, onload, onerror) {
         var b = null;
         if (Browser.hasBlobConstructor) {
           try {
             b = new Blob([byteArray], { type: getMimetype(name) });
+            if (b.size !== byteArray.length) { // Safari bug #118630
+              // Safari's Blob can only take an ArrayBuffer
+              b = new Blob([(new Uint8Array(byteArray)).buffer], { type: getMimetype(name) });
+            }
           } catch(e) {
             Runtime.warnOnce('Blob constructor present but fails: ' + e + '; falling back to blob builder');
           }
@@ -805,7 +809,7 @@ mergeInto(LibraryManager.library, {
         var t = process['hrtime']();
         return t[0] * 1e3 + t[1] / 1e6;
     }
-    else if (window['performance'] && window['performance']['now']) {
+    else if (ENVIRONMENT_IS_WEB && window['performance'] && window['performance']['now']) {
       return window['performance']['now']();
     } else {
       return Date.now();

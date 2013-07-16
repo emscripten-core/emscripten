@@ -2867,7 +2867,6 @@ function _inflate($strm, $flush) {
  var $retval_0;
  STACKTOP = __stackBase__;
  return $retval_0;
- return null;
 }
 function _malloc($bytes) {
  var __label__;
@@ -4482,7 +4481,6 @@ function _malloc($bytes) {
  } while (0);
  var $mem_0;
  return $mem_0;
- return null;
 }
 function _mallocNoU($bytes) {
  var __label__;
@@ -6097,7 +6095,6 @@ function _mallocNoU($bytes) {
  } while (0);
  var $mem_0;
  return $mem_0;
- return null;
 }
 function asm(x, y) {
  x = +x;

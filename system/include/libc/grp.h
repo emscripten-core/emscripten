@@ -82,9 +82,9 @@ void		 setgrfile (const char *);
 char		*group_from_gid (gid_t, int);
 int		 setgroupent (int);
 #endif /* !__CYGWIN__ */
-int		 initgroups (const char *, gid_t);
 #endif /* !_XOPEN_SOURCE */
 #endif /* !_POSIX_SOURCE */
+int		 initgroups (const char *, gid_t);
 #endif /* !__INSIDE_CYGWIN__ */
 
 #ifdef __cplusplus

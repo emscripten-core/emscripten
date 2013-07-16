@@ -73,6 +73,7 @@ typedef struct {
                          /*   three arguments instead of one. */
 #define SA_NODEFER   4   /* XXX Emscripten */
 #define SA_RESETHAND 8   /* XXX Emscripten */
+#define SA_RESTART   16  /* XXX Emscripten */
 
 /* struct sigaction notes from POSIX:
  *

@@ -588,8 +588,11 @@ LibraryManager.library = {
       // Create the I/O devices.
       var devFolder = FS.createFolder('/', 'dev', true, true);
       var stdin = FS.createDevice(devFolder, 'stdin', input);
+      stdin.isTerminal = !stdinOverridden;
       var stdout = FS.createDevice(devFolder, 'stdout', null, output);
+      stdout.isTerminal = !stdoutOverridden;
       var stderr = FS.createDevice(devFolder, 'stderr', null, error);
+      stderr.isTerminal = !stderrOverridden;
       FS.createDevice(devFolder, 'tty', input, output);
       FS.createDevice(devFolder, 'null', function(){}, function(){});
 
@@ -601,7 +604,6 @@ LibraryManager.library = {
         isRead: true,
         isWrite: false,
         isAppend: false,
-        isTerminal: !stdinOverridden,
         error: false,
         eof: false,
         ungotten: []
@@ -613,7 +615,6 @@ LibraryManager.library = {
         isRead: false,
         isWrite: true,
         isAppend: false,
-        isTerminal: !stdoutOverridden,
         error: false,
         eof: false,
         ungotten: []
@@ -625,7 +626,6 @@ LibraryManager.library = {
         isRead: false,
         isWrite: true,
         isAppend: false,
-        isTerminal: !stderrOverridden,
         error: false,
         eof: false,
         ungotten: []
@@ -737,7 +737,8 @@ LibraryManager.library = {
     // int closedir(DIR *dirp);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/closedir.html
     if (!FS.streams[dirp] || !FS.streams[dirp].object.isFolder) {
-      return ___setErrNo(ERRNO_CODES.EBADF);
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
     } else {
       _free(FS.streams[dirp].currentEntry);
       FS.streams[dirp] = null;
@@ -749,7 +750,8 @@ LibraryManager.library = {
     // long int telldir(DIR *dirp);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/telldir.html
     if (!FS.streams[dirp] || !FS.streams[dirp].object.isFolder) {
-      return ___setErrNo(ERRNO_CODES.EBADF);
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
     } else {
       return FS.streams[dirp].position;
     }
@@ -865,10 +867,6 @@ LibraryManager.library = {
     }
     var file = FS.findObject(Pointer_stringify(path));
     if (file === null) return -1;
-    if (!file.write) {
-      ___setErrNo(ERRNO_CODES.EPERM);
-      return -1;
-    }
     file.timestamp = time;
     return 0;
   },
@@ -1213,7 +1211,7 @@ LibraryManager.library = {
         ___setErrNo(ERRNO_CODES.EEXIST);
         return -1;
       }
-      if ((isWrite || isCreate || isTruncate) && target.isFolder) {
+      if ((isWrite || isTruncate) && target.isFolder) {
         ___setErrNo(ERRNO_CODES.EISDIR);
         return -1;
       }
@@ -1381,7 +1379,7 @@ LibraryManager.library = {
   posix_fallocate: function(fd, offset, len) {
     // int posix_fallocate(int fd, off_t offset, off_t len);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/posix_fallocate.html
-    if (!FS.streams[fd] || FS.streams[fd].link ||
+    if (!FS.streams[fd] || !FS.streams[fd].isWrite || FS.streams[fd].link ||
         FS.streams[fd].isFolder || FS.streams[fd].isDevice) {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
@@ -1688,13 +1686,16 @@ LibraryManager.library = {
   isatty: function(fildes) {
     // int isatty(int fildes);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/isatty.html
-    if (!FS.streams[fildes]) {
+    var stream = FS.streams[fildes];
+    if (!stream) {
       ___setErrNo(ERRNO_CODES.EBADF);
       return 0;
     }
-    if (FS.streams[fildes].isTerminal) return 1;
-    ___setErrNo(ERRNO_CODES.ENOTTY);
-    return 0;
+    if (!stream.object.isTerminal) {
+      ___setErrNo(ERRNO_CODES.ENOTTY);
+      return 0;
+    }
+    return 1;
   },
   lchown__deps: ['chown'],
   lchown: function(path, owner, group) {
@@ -1916,30 +1917,21 @@ LibraryManager.library = {
     if (!_ttyname.ret) _ttyname.ret = _malloc(256);
     return _ttyname_r(fildes, _ttyname.ret, 256) ? 0 : _ttyname.ret;
   },
-  ttyname_r__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
+  ttyname_r__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', 'isatty'],
   ttyname_r: function(fildes, name, namesize) {
     // int ttyname_r(int fildes, char *name, size_t namesize);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/ttyname.html
     var stream = FS.streams[fildes];
+    var ttyname = '/dev/tty';
     if (!stream) {
       return ___setErrNo(ERRNO_CODES.EBADF);
-    } else {
-      var object = stream.object;
-      if (!object.isDevice || !object.input || !object.output) {
-        return ___setErrNo(ERRNO_CODES.ENOTTY);
-      } else {
-        var ret = stream.path;
-        if (namesize < ret.length + 1) {
-          return ___setErrNo(ERRNO_CODES.ERANGE);
-        } else {
-          for (var i = 0; i < ret.length; i++) {
-            {{{ makeSetValue('name', 'i', 'ret.charCodeAt(i)', 'i8') }}}
-          }
-          {{{ makeSetValue('name', 'i', '0', 'i8') }}}
-          return 0;
-        }
-      }
+    } else if (!_isatty(fildes)) {
+       return ___setErrNo(ERRNO_CODES.ENOTTY);
+    } else if (namesize < ttyname.length + 1) {
+      return ___setErrNo(ERRNO_CODES.ERANGE);
     }
+    writeStringToMemory(ttyname, name);
+    return 0;
   },
   symlink__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   symlink: function(path1, path2) {
@@ -3191,7 +3183,7 @@ LibraryManager.library = {
     var flush = function(filedes) {
       // Right now we write all data directly, except for output devices.
       if (FS.streams[filedes] && FS.streams[filedes].object.output) {
-        if (!FS.streams[filedes].isTerminal) { // don't flush terminals, it would cause a \n to also appear
+        if (!FS.streams[filedes].object.isTerminal) { // don't flush terminals, it would cause a \n to also appear
           FS.streams[filedes].object.output(null);
         }
       }
@@ -5743,8 +5735,15 @@ LibraryManager.library = {
   rintf: 'rint',
   lrint: 'rint',
   lrintf: 'rint',
+#if USE_TYPED_ARRAYS == 2
+  llrint: function(x) {
+    x = (x < 0) ? -Math.round(-x) : Math.round(x);
+    {{{ makeStructuralReturn(splitI64('x')) }}};
+  },
+#else
   llrint: 'rint',
-  llrintf: 'rint',
+#endif
+  llrintf: 'llrint',
   nearbyint: 'rint',
   nearbyintf: 'rint',
   trunc: function(x) {
@@ -5886,7 +5885,7 @@ LibraryManager.library = {
   dlopen: function(filename, flag) {
     // void *dlopen(const char *file, int mode);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html
-    filename = (ENV['LD_LIBRARY_PATH'] || '/') + Pointer_stringify(filename);
+    filename = filename === 0 ? '__self__' : (ENV['LD_LIBRARY_PATH'] || '/') + Pointer_stringify(filename);
 
     if (DLFCN_DATA.loadedLibNames[filename]) {
       // Already loaded; increment ref count and return.
@@ -5895,47 +5894,54 @@ LibraryManager.library = {
       return handle;
     }
 
-    var target = FS.findObject(filename);
-    if (!target || target.isFolder || target.isDevice) {
-      DLFCN_DATA.errorMsg = 'Could not find dynamic lib: ' + filename;
-      return 0;
+    if (filename === '__self__') {
+      var handle = -1;
+      var lib_module = Module;
+      var cached_functions = SYMBOL_TABLE;
     } else {
-      FS.forceLoadFile(target);
-      var lib_data = intArrayToString(target.contents);
-    }
+      var target = FS.findObject(filename);
+      if (!target || target.isFolder || target.isDevice) {
+        DLFCN_DATA.errorMsg = 'Could not find dynamic lib: ' + filename;
+        return 0;
+      } else {
+        FS.forceLoadFile(target);
+        var lib_data = intArrayToString(target.contents);
+      }
 
-    try {
-      var lib_module = eval(lib_data)({{{ Functions.getTable('x') }}}.length);
-    } catch (e) {
+      try {
+        var lib_module = eval(lib_data)({{{ Functions.getTable('x') }}}.length);
+      } catch (e) {
 #if ASSERTIONS
-      Module.printErr('Error in loading dynamic library: ' + e);
+        Module.printErr('Error in loading dynamic library: ' + e);
 #endif
-      DLFCN_DATA.errorMsg = 'Could not evaluate dynamic lib: ' + filename;
-      return 0;
-    }
+        DLFCN_DATA.errorMsg = 'Could not evaluate dynamic lib: ' + filename;
+        return 0;
+      }
 
-    // Not all browsers support Object.keys().
-    var handle = 1;
-    for (var key in DLFCN_DATA.loadedLibs) {
-      if (DLFCN_DATA.loadedLibs.hasOwnProperty(key)) handle++;
-    }
+      // Not all browsers support Object.keys().
+      var handle = 1;
+      for (var key in DLFCN_DATA.loadedLibs) {
+        if (DLFCN_DATA.loadedLibs.hasOwnProperty(key)) handle++;
+      }
 
+      // We don't care about RTLD_NOW and RTLD_LAZY.
+      if (flag & 256) { // RTLD_GLOBAL
+        for (var ident in lib_module) {
+          if (lib_module.hasOwnProperty(ident)) {
+            Module[ident] = lib_module[ident];
+          }
+        }
+      }
+
+      var cached_functions = {};
+    }
     DLFCN_DATA.loadedLibs[handle] = {
       refcount: 1,
       name: filename,
       module: lib_module,
-      cached_functions: {}
+      cached_functions: cached_functions
     };
     DLFCN_DATA.loadedLibNames[filename] = handle;
-
-    // We don't care about RTLD_NOW and RTLD_LAZY.
-    if (flag & 256) { // RTLD_GLOBAL
-      for (var ident in lib_module) {
-        if (lib_module.hasOwnProperty(ident)) {
-          Module[ident] = lib_module[ident];
-        }
-      }
-    }
 
     return handle;
   },
@@ -5968,13 +5974,15 @@ LibraryManager.library = {
       return 0;
     } else {
       var lib = DLFCN_DATA.loadedLibs[handle];
-      if (!lib.module.hasOwnProperty(symbol)) {
-        DLFCN_DATA.errorMsg = ('Tried to lookup unknown symbol "' + symbol +
-                               '" in dynamic lib: ' + lib.name);
-        return 0;
+      // self-dlopen means that lib.module is not a superset of
+      // cached_functions, so check the latter first
+      if (lib.cached_functions.hasOwnProperty(symbol)) {
+        return lib.cached_functions[symbol];
       } else {
-        if (lib.cached_functions.hasOwnProperty(symbol)) {
-          return lib.cached_functions[symbol];
+        if (!lib.module.hasOwnProperty(symbol)) {
+          DLFCN_DATA.errorMsg = ('Tried to lookup unknown symbol "' + symbol +
+                                 '" in dynamic lib: ' + lib.name);
+          return 0;
         } else {
           var result = lib.module[symbol];
           if (typeof result == 'function') {
@@ -6223,10 +6231,281 @@ LibraryManager.library = {
   },
   strftime_l: 'strftime', // no locale support yet
 
+  strptime__deps: ['__tm_struct_layout'],
   strptime: function(buf, format, tm) {
     // char *strptime(const char *restrict buf, const char *restrict format, struct tm *restrict tm);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/strptime.html
-    // TODO: Implement.
+    var pattern = Pointer_stringify(format);
+
+    // escape special characters
+    // TODO: not sure we really need to escape all of these in JS regexps
+    var SPECIAL_CHARS = '\\!@#$^&*()+=-[]/{}|:<>?,.';
+    for (var i=0, ii=SPECIAL_CHARS.length; i<ii; ++i) {
+      pattern = pattern.replace(new RegExp('\\'+SPECIAL_CHARS[i], 'g'), '\\'+SPECIAL_CHARS[i]);
+    }
+
+    // reduce number of matchers
+    var EQUIVALENT_MATCHERS = {
+      '%A':  '%a',
+      '%B':  '%b',
+      '%c':  '%x\\s+%X',
+      '%D':  '%m\\/%d\\/%y',
+      '%e':  '%d',
+      '%h':  '%b',
+      '%R':  '%H\\:%M',
+      '%r':  '%I\\:%M\\:%S\\s%p',
+      '%T':  '%H\\:%M\\:%S',
+      '%x':  '%m\\/%d\\/(?:%y|%Y)',
+      '%X':  '%H\\:%M\\:%S'
+    };
+    for (var matcher in EQUIVALENT_MATCHERS) {
+      pattern = pattern.replace(matcher, EQUIVALENT_MATCHERS[matcher]);
+    }
+    
+    // TODO: take care of locale
+
+    var DATE_PATTERNS = {
+      /* weeday name */     '%a': '(?:Sun(?:day)?)|(?:Mon(?:day)?)|(?:Tue(?:sday)?)|(?:Wed(?:nesday)?)|(?:Thu(?:rsday)?)|(?:Fri(?:day)?)|(?:Sat(?:urday)?)',
+      /* month name */      '%b': '(?:Jan(?:uary)?)|(?:Feb(?:ruary)?)|(?:Mar(?:ch)?)|(?:Apr(?:il)?)|May|(?:Jun(?:e)?)|(?:Jul(?:y)?)|(?:Aug(?:ust)?)|(?:Sep(?:tember)?)|(?:Oct(?:ober)?)|(?:Nov(?:ember)?)|(?:Dec(?:ember)?)',
+      /* century */         '%C': '\\d\\d',
+      /* day of month */    '%d': '0[1-9]|[1-9](?!\\d)|1\\d|2\\d|30|31',
+      /* hour (24hr) */     '%H': '\\d(?!\\d)|[0,1]\\d|20|21|22|23',
+      /* hour (12hr) */     '%I': '\\d(?!\\d)|0\\d|10|11|12',
+      /* day of year */     '%j': '00[1-9]|0?[1-9](?!\\d)|0?[1-9]\\d(?!\\d)|[1,2]\\d\\d|3[0-6]\\d',
+      /* month */           '%m': '0[1-9]|[1-9](?!\\d)|10|11|12',
+      /* minutes */         '%M': '0\\d|\\d(?!\\d)|[1-5]\\d',
+      /* whitespace */      '%n': '\\s',
+      /* AM/PM */           '%p': 'AM|am|PM|pm|A\\.M\\.|a\\.m\\.|P\\.M\\.|p\\.m\\.',
+      /* seconds */         '%S': '0\\d|\\d(?!\\d)|[1-5]\\d|60',
+      /* week number */     '%U': '0\\d|\\d(?!\\d)|[1-4]\\d|50|51|52|53',
+      /* week number */     '%W': '0\\d|\\d(?!\\d)|[1-4]\\d|50|51|52|53',
+      /* weekday number */  '%w': '[0-6]',
+      /* 2-digit year */    '%y': '\\d\\d',
+      /* 4-digit year */    '%Y': '\\d\\d\\d\\d',
+      /* % */               '%%': '%',
+      /* whitespace */      '%t': '\\s',
+    };
+
+    var MONTH_NUMBERS = {JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5, JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11};
+    var MONTH_DAYS_REGULAR = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    var MONTH_DAYS_LEAP = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    var DAY_NUMBERS_SUN_FIRST = {SUN: 0, MON: 1, TUE: 2, WED: 3, THU: 4, FRI: 5, SAT: 6};
+    var DAY_NUMBERS_MON_FIRST = {MON: 0, TUE: 1, WED: 2, THU: 3, FRI: 4, SAT: 5, SUN: 6};
+
+    var isLeapYear = function(year) {
+      return year%4===0 && (year%100!==0 || year%400===0);
+    };
+
+    var arraySum = function(array, index) {
+      var sum = 0;
+      for (var i=0; i<=index; sum += array[i++]);
+      return sum;
+    };
+
+    var addDays = function(date, days) {
+      while(days>0) {
+        var leap = isLeapYear(date.getFullYear());
+        var currentMonth = date.getMonth();
+        var daysInCurrentMonth = (leap ? MONTH_DAYS_LEAP : MONTH_DAYS_REGULAR)[currentMonth];
+
+        if (days>daysInCurrentMonth-date.getDate()) {
+          // we spill over to next month
+          days -= (daysInCurrentMonth-date.getDate()+1);
+          date.setDate(1);
+          if (currentMonth<11) {
+            date.setMonth(currentMonth+1)
+          } else {
+            date.setMonth(0);
+            date.setFullYear(date.getFullYear()+1);
+          }
+        } else {
+          // we stay in current month 
+          date.setDate(date.getDate()+days);
+          return date;
+        }
+      }
+      return date;
+    };
+
+    for (var datePattern in DATE_PATTERNS) {
+      pattern = pattern.replace(datePattern, '('+datePattern+DATE_PATTERNS[datePattern]+')');    
+    }
+
+    // take care of capturing groups
+    var capture = [];
+    for (var i=pattern.indexOf('%'); i>=0; i=pattern.indexOf('%')) {
+      capture.push(pattern[i+1]);
+      pattern = pattern.replace(new RegExp('\\%'+pattern[i+1], 'g'), '');
+    }
+
+    var matches = new RegExp('^'+pattern).exec(Pointer_stringify(buf))
+    // Module['print'](Pointer_stringify(buf)+ ' is matched by '+((new RegExp('^'+pattern)).source)+' into: '+JSON.stringify(matches));
+
+    var initDate = function() {
+      var fixup = function(value, min, max) {
+        return (typeof value !== 'number' || isNaN(value)) ? min : (value>=min ? (value<=max ? value: max): min);
+      };
+      return {
+        year: fixup({{{ makeGetValue('tm', '___tm_struct_layout.tm_year', 'i32', 0, 0, 1) }}} + 1900 , 1970, 9999),
+        month: fixup({{{ makeGetValue('tm', '___tm_struct_layout.tm_mon', 'i32', 0, 0, 1) }}}, 0, 11),
+        day: fixup({{{ makeGetValue('tm', '___tm_struct_layout.tm_mday', 'i32', 0, 0, 1) }}}, 1, 31),
+        hour: fixup({{{ makeGetValue('tm', '___tm_struct_layout.tm_hour', 'i32', 0, 0, 1) }}}, 0, 23),
+        min: fixup({{{ makeGetValue('tm', '___tm_struct_layout.tm_min', 'i32', 0, 0, 1) }}}, 0, 59),
+        sec: fixup({{{ makeGetValue('tm', '___tm_struct_layout.tm_sec', 'i32', 0, 0, 1) }}}, 0, 59)
+      };
+    };
+
+    if (matches) {
+      var date = initDate();
+      var value;
+
+      var getMatch = function(symbol) {
+        var pos = capture.indexOf(symbol);
+        // check if symbol appears in regexp
+        if (pos >= 0) {
+          // return matched value or null (falsy!) for non-matches
+          return matches[pos+1];
+        }
+        return;
+      }
+
+      // seconds
+      if ((value=getMatch('S'))) {
+        date.sec = parseInt(value);
+      }
+
+      // minutes
+      if ((value=getMatch('M'))) {
+        date.min = parseInt(value);
+      }
+
+      // hours
+      if ((value=getMatch('H'))) {
+        // 24h clock
+        date.hour = parseInt(value);
+      } else if ((value = getMatch('I'))) {
+        // AM/PM clock
+        var hour = parseInt(value);
+        if ((value=getMatch('p'))) {
+          hour += value.toUpperCase()[0] === 'P' ? 12 : 0;
+        }
+        date.hour = hour;
+      }
+
+      // year
+      if ((value=getMatch('Y'))) {
+        // parse from four-digit year
+        date.year = parseInt(value);
+      } else if ((value=getMatch('y'))) {
+        // parse from two-digit year...
+        var year = parseInt(value);
+        if ((value=getMatch('C'))) {
+          // ...and century
+          year += parseInt(value)*100;
+        } else {
+          // ...and rule-of-thumb
+          year += year<69 ? 2000 : 1900;
+        }
+        date.year = year;
+      }
+
+      // month
+      if ((value=getMatch('m'))) {
+        // parse from month number
+        date.month = parseInt(value)-1;
+      } else if ((value=getMatch('b'))) {
+        // parse from month name
+        date.month = MONTH_NUMBERS[value.substring(0,3).toUpperCase()] || 0;
+        // TODO: derive month from day in year+year, week number+day of week+year 
+      }
+
+      // day
+      if ((value=getMatch('d'))) {
+        // get day of month directly
+        date.day = parseInt(value);
+      } else if ((value=getMatch('j'))) {
+        // get day of month from day of year ...
+        var day = parseInt(value);
+        var leapYear = isLeapYear(date.year);
+        for (var month=0; month<12; ++month) {
+          var daysUntilMonth = arraySum(leapYear ? MONTH_DAYS_LEAP : MONTH_DAYS_REGULAR, month-1);
+          if (day<=daysUntilMonth+(leapYear ? MONTH_DAYS_LEAP : MONTH_DAYS_REGULAR)[month]) {
+            date.day = day-daysUntilMonth;
+          }
+        }
+      } else if ((value=getMatch('a'))) {
+        // get day of month from weekday ...
+        var weekDay = value.substring(0,3).toUpperCase();
+        if ((value=getMatch('U'))) {
+          // ... and week number (Sunday being first day of week)
+          // Week number of the year (Sunday as the first day of the week) as a decimal number [00,53]. 
+          // All days in a new year preceding the first Sunday are considered to be in week 0.
+          var weekDayNumber = DAY_NUMBERS_SUN_FIRST[weekDay];
+          var weekNumber = parseInt(value);
+
+          // January 1st 
+          var janFirst = new Date(date.year, 0, 1);
+          var endDate;
+          if (janFirst.getDay() === 0) {
+            // Jan 1st is a Sunday, and, hence in the 1st CW
+            endDate = addDays(janFirst, weekDayNumber+7*(weekNumber-1));
+          } else {
+            // Jan 1st is not a Sunday, and, hence still in the 0th CW
+            endDate = addDays(janFirst, 7-janFirst.getDay()+weekDayNumber+7*(weekNumber-1));
+          }
+          date.day = endDate.getDate();
+          date.month = endDate.getMonth();
+        } else if ((value=getMatch('W'))) {
+          // ... and week number (Monday being first day of week)
+          // Week number of the year (Monday as the first day of the week) as a decimal number [00,53]. 
+          // All days in a new year preceding the first Monday are considered to be in week 0.
+          var weekDayNumber = DAY_NUMBERS_MON_FIRST[weekDay];
+          var weekNumber = parseInt(value);
+
+          // January 1st 
+          var janFirst = new Date(date.year, 0, 1);
+          var endDate;
+          if (janFirst.getDay()===1) {
+            // Jan 1st is a Monday, and, hence in the 1st CW
+             endDate = addDays(janFirst, weekDayNumber+7*(weekNumber-1));
+          } else {
+            // Jan 1st is not a Monday, and, hence still in the 0th CW
+            endDate = addDays(janFirst, 7-janFirst.getDay()+1+weekDayNumber+7*(weekNumber-1));
+          }
+
+          date.day = endDate.getDate();
+          date.month = endDate.getMonth();
+        }
+      }
+
+      /*
+      tm_sec  int seconds after the minute  0-61*
+      tm_min  int minutes after the hour  0-59
+      tm_hour int hours since midnight  0-23
+      tm_mday int day of the month  1-31
+      tm_mon  int months since January  0-11
+      tm_year int years since 1900  
+      tm_wday int days since Sunday 0-6
+      tm_yday int days since January 1  0-365
+      tm_isdst  int Daylight Saving Time flag 
+      */
+
+      var fullDate = new Date(date.year, date.month, date.day, date.hour, date.min, date.sec, 0);
+      {{{ makeSetValue('tm', '___tm_struct_layout.tm_sec', 'fullDate.getSeconds()', 'i32') }}}
+      {{{ makeSetValue('tm', '___tm_struct_layout.tm_min', 'fullDate.getMinutes()', 'i32') }}}
+      {{{ makeSetValue('tm', '___tm_struct_layout.tm_hour', 'fullDate.getHours()', 'i32') }}}
+      {{{ makeSetValue('tm', '___tm_struct_layout.tm_mday', 'fullDate.getDate()', 'i32') }}}
+      {{{ makeSetValue('tm', '___tm_struct_layout.tm_mon', 'fullDate.getMonth()', 'i32') }}}
+      {{{ makeSetValue('tm', '___tm_struct_layout.tm_year', 'fullDate.getFullYear()-1900', 'i32') }}}
+      {{{ makeSetValue('tm', '___tm_struct_layout.tm_wday', 'fullDate.getDay()', 'i32') }}}
+      {{{ makeSetValue('tm', '___tm_struct_layout.tm_yday', 'arraySum(isLeapYear(fullDate.getFullYear()) ? MONTH_DAYS_LEAP : MONTH_DAYS_REGULAR, fullDate.getMonth()-1)+fullDate.getDate()-1', 'i32') }}}
+      {{{ makeSetValue('tm', '___tm_struct_layout.tm_isdst', '0', 'i32') }}}
+
+      // we need to convert the matched sequence into an integer array to take care of UTF-8 characters > 0x7F
+      // TODO: not sure that intArrayFromString handles all unicode characters correctly
+      return buf+intArrayFromString(matches[0]).length-1;
+    } 
+
     return 0;
   },
   strptime_l: 'strptime', // no locale support yet
@@ -7223,6 +7502,23 @@ LibraryManager.library = {
     if (addr < 0) return 0;
     return 1;
   },
+
+  // netinet/in.h
+
+  _in6addr_any:
+    'allocate([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], "i8", ALLOC_STATIC)',
+  _in6addr_loopback:
+    'allocate([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], "i8", ALLOC_STATIC)',
+  _in6addr_linklocal_allnodes:
+    'allocate([255,2,0,0,0,0,0,0,0,0,0,0,0,0,0,1], "i8", ALLOC_STATIC)',
+  _in6addr_linklocal_allrouters:
+    'allocate([255,2,0,0,0,0,0,0,0,0,0,0,0,0,0,2], "i8", ALLOC_STATIC)',
+  _in6addr_interfacelocal_allnodes:
+    'allocate([255,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1], "i8", ALLOC_STATIC)',
+  _in6addr_interfacelocal_allrouters:
+    'allocate([255,1,0,0,0,0,0,0,0,0,0,0,0,0,0,2], "i8", ALLOC_STATIC)',
+  _in6addr_sitelocal_allrouters:
+    'allocate([255,5,0,0,0,0,0,0,0,0,0,0,0,0,0,2], "i8", ALLOC_STATIC)',
 
   // ==========================================================================
   // netdb.h
@@ -8254,4 +8550,8 @@ function autoAddDeps(object, name) {
   }
 }
 
+// Add aborting stubs for various libc stuff needed by libc++
+['pthread_cond_signal', 'pthread_equal', 'wcstol', 'wcstoll', 'wcstoul', 'wcstoull', 'wcstof', 'wcstod', 'wcstold', 'swprintf', 'pthread_join', 'pthread_detach', 'strcoll_l', 'strxfrm_l', 'wcscoll_l', 'toupper_l', 'tolower_l', 'iswspace_l', 'iswprint_l', 'iswcntrl_l', 'iswupper_l', 'iswlower_l', 'iswalpha_l', 'iswdigit_l', 'iswpunct_l', 'iswxdigit_l', 'iswblank_l', 'wcsxfrm_l', 'towupper_l', 'towlower_l'].forEach(function(aborter) {
+  LibraryManager.library[aborter] = function() { throw 'TODO: ' + aborter };
+});
 

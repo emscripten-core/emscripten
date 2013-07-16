@@ -502,7 +502,8 @@ function intertyper(data, sidePass, baseLineNums) {
       } else {
         // variable
         var ident = item.tokens[0].text;
-        var private_ = findTokenText(item, 'private') >= 0;
+        var private_ = findTokenText(item, 'private') >= 0 || findTokenText(item, 'internal') >= 0;
+        var named = findTokenText(item, 'unnamed_addr') < 0;
         cleanOutTokens(LLVM.GLOBAL_MODIFIERS, item.tokens, [2, 3]);
         var external = false;
         if (item.tokens[2].text === 'external') {
@@ -516,6 +517,7 @@ function intertyper(data, sidePass, baseLineNums) {
           type: item.tokens[2].text,
           external: external,
           private_: private_,
+          named: named,
           lineNum: item.lineNum
         };
         if (!NAMED_GLOBALS) {

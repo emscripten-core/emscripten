@@ -67,9 +67,9 @@ var RELOOP = 0; // Recreate js native loops from llvm data
 var RELOOPER = 'relooper.js'; // Loads the relooper from this path relative to compiler.js
 
 var USE_TYPED_ARRAYS = 2; // Use typed arrays for the heap. See https://github.com/kripken/emscripten/wiki/Code-Generation-Modes/
-                          // 0 means no typed arrays are used.
+                          // 0 means no typed arrays are used. This mode disallows LLVM optimizations
                           // 1 has two heaps, IHEAP (int32) and FHEAP (double),
-                          // and addresses there are a match for normal addresses. This is deprecated.
+                          // and addresses there are a match for normal addresses. This mode disallows LLVM optimizations.
                           // 2 is a single heap, accessible through views as int8, int32, etc. This is
                           //   the recommended mode both for performance and for compatibility.
 var USE_FHEAP = 1; // Relevant in USE_TYPED_ARRAYS == 1. If this is disabled, only IHEAP will be used, and FHEAP
@@ -186,6 +186,8 @@ var GL_MAX_TEMP_BUFFER_SIZE = 2097152; // How large GL emulation temp buffers ar
 var GL_UNSAFE_OPTS = 1; // Enables some potentially-unsafe optimizations in GL emulation code
 var FULL_ES2 = 0; // Forces support for all GLES2 features, not just the WebGL-friendly subset.
 var FORCE_GL_EMULATION = 0; // Forces inclusion of full GL emulation code.
+var DISABLE_GL_EMULATION = 0; // Disable inclusion of full GL emulation code. Useful when you don't want emulation
+                              // but do need INCLUDE_FULL_LIBRARY or MAIN_MODULE.
 
 var DISABLE_EXCEPTION_CATCHING = 0; // Disables generating code to actually catch exceptions. If the code you
                                     // are compiling does not actually rely on catching exceptions (but the
@@ -235,6 +237,11 @@ var CORRECT_ROUNDINGS = 1; // C rounds to 0 (-5.5 to -5, +5.5 to 5), while JS ha
 var FS_LOG = 0; // Log all FS operations.  This is especially helpful when you're porting
                 // a new project and want to see a list of file system operations happening
                 // so that you can create a virtual file system with all of the required files.
+
+var USE_BSS = 1; // https://en.wikipedia.org/wiki/.bss
+                 // When enabled, 0-initialized globals are sorted to the end of the globals list,
+                 // enabling us to not explicitly store the initialization value for each 0 byte.
+                 // This significantly lowers the memory initialization array size.
 
 var NAMED_GLOBALS = 0; // If 1, we use global variables for globals. Otherwise
                        // they are referred to by a base plus an offset (called an indexed global),
@@ -291,6 +298,10 @@ var SHOW_LABELS = 0; // Show labels in the generated code
 
 var PRINT_SPLIT_FILE_MARKER = 0; // Prints markers in Javascript generation to split the file later on. See emcc --split option.
 
+var MAIN_MODULE = 0; // A main module is a file compiled in a way that allows us to link it to
+                     // a side module using emlink.py.
+var SIDE_MODULE = 0; // Corresponds to MAIN_MODULE
+
 var BUILD_AS_SHARED_LIB = 0; // Whether to build the code as a shared library
                              // 0 here means this is not a shared lib: It is a main file.
                              // All shared library options (1 and 2) are currently deprecated XXX
@@ -315,6 +326,10 @@ var LINKABLE = 0; // If set to 1, this file can be linked with others, either as
                   // the library it will open will then access through an extern.
                   // LINKABLE of 0 is very useful in that we can reduce the size of the
                   // generated code very significantly, by removing everything not actually used.
+
+var DLOPEN_SUPPORT = 0; // Whether to support dlopen(NULL, ...) which enables dynamic access to the
+                        // module's functions and globals. Implies LINKABLE=1, because we do not want
+                        // dead code elimination.
 
 var RUNTIME_TYPE_INFO = 0; // Whether to expose type info to the script at run time. This
                            // increases the size of the generated script, but allows you
@@ -375,6 +390,9 @@ var NECESSARY_BLOCKADDRS = []; // List of (function, block) for all block addres
 var EMIT_GENERATED_FUNCTIONS = 0; // whether to emit the list of generated functions, needed for external JS optimization passes
 
 var JS_CHUNK_SIZE = 10240; // Used as a maximum size before breaking up expressions and lines into smaller pieces
+
+var EXPORT_NAME = 'Module'; // Global variable to export the module as for environments without a standardized module
+                            // loading system (e.g. the browser and SM shell).
 
 // Compiler debugging options
 var DEBUG_TAGS_SHOWING = [];
@@ -1257,10 +1275,14 @@ var C_DEFINES = {'SI_MESGQ': '5',
    'SIGTTOU': '22',
    '_CS_POSIX_V7_LP64_OFF64_LDFLAGS': '10',
    '_SC_TTY_NAME_MAX': '41',
-   'AF_INET': '1',
+   'AF_INET': '2',
    'AF_INET6': '6',
+   'PF_INET': '2',
+   'PF_INET6': '6',
    'FIONREAD': '1',
    'SOCK_STREAM': '200',
-   'IPPROTO_TCP': 1
+   'SOCK_DGRAM': '20',
+   'IPPROTO_TCP': '1',
+   'IPPROTO_UDP': '2'
 };
 

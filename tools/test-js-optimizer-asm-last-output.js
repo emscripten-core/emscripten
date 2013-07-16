@@ -30,6 +30,7 @@ function finall(x) {
  a = -999999984306749400.0;
  a = -999999984306749400.0;
  a = -0xde0b6b000000000;
+ f(g() | 0);
  return 12.0e10;
 }
 function looop() {
@@ -42,5 +43,33 @@ function looop() {
  do {
   do_it();
  } while (x());
+ while (1) {
+  do_it();
+  if (a()) continue;
+  if (!x()) {
+   break;
+  }
+ }
+ do {
+  do_it();
+  do {
+   if (a()) continue;
+  } while (b());
+ } while (x());
+ do {
+  do_it();
+  while (b()) {
+   if (a()) continue;
+  }
+ } while (x());
+ X : while (1) {
+  do_it();
+  while (b()) {
+   if (a()) continue X;
+  }
+  if (!x()) {
+   break;
+  }
+ }
 }
 

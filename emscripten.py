@@ -9,8 +9,9 @@ header files (so that the JS compiler can see the constants in those
 headers, for the libc implementation in JS).
 '''
 
-import os, sys, json, optparse, subprocess, re, time, multiprocessing, functools
+import os, sys, json, optparse, subprocess, re, time, multiprocessing, string
 
+from tools import shared
 from tools import jsrun, cache as cache_module, tempfiles
 from tools.response_file import read_response_file
 
@@ -25,7 +26,6 @@ def get_configuration():
   if hasattr(get_configuration, 'configuration'):
     return get_configuration.configuration
 
-  from tools import shared
   configuration = shared.Configuration(environ=os.environ)
   get_configuration.configuration = configuration
   return configuration
@@ -44,20 +44,25 @@ MIN_CHUNK_SIZE = 1024*1024
 MAX_CHUNK_SIZE = float(os.environ.get('EMSCRIPT_MAX_CHUNK_SIZE') or 'inf') # configuring this is just for debugging purposes
 
 def process_funcs((i, funcs, meta, settings_file, compiler, forwarded_file, libraries, compiler_engine, temp_files, DEBUG)):
-  funcs_file = temp_files.get('.func_%d.ll' % i).name
-  f = open(funcs_file, 'w')
-  f.write(funcs)
-  funcs = None
-  f.write('\n')
-  f.write(meta)
-  f.close()
-  out = jsrun.run_js(
-    compiler,
-    engine=compiler_engine,
-    args=[settings_file, funcs_file, 'funcs', forwarded_file] + libraries,
-    stdout=subprocess.PIPE,
-    cwd=path_from_root('src'))
-  tempfiles.try_delete(funcs_file)
+  try:
+    funcs_file = temp_files.get('.func_%d.ll' % i).name
+    f = open(funcs_file, 'w')
+    f.write(funcs)
+    funcs = None
+    f.write('\n')
+    f.write(meta)
+    f.close()
+    out = jsrun.run_js(
+      compiler,
+      engine=compiler_engine,
+      args=[settings_file, funcs_file, 'funcs', forwarded_file] + libraries,
+      stdout=subprocess.PIPE,
+      cwd=path_from_root('src'))
+  except KeyboardInterrupt:
+    # Python 2.7 seems to lock up when a child process throws KeyboardInterrupt
+    raise Exception()
+  finally:
+    tempfiles.try_delete(funcs_file)
   if DEBUG: print >> sys.stderr, '.'
   return out
 
@@ -163,10 +168,10 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     if DEBUG_CACHE and not out:
       dfpath = os.path.join(get_configuration().TEMP_DIR, "ems_" + shortkey)
       dfp = open(dfpath, 'w')
-      dfp.write(pre_input);
-      dfp.write("\n\n========================== settings_text\n\n");
-      dfp.write(settings_text);
-      dfp.write("\n\n========================== libraries\n\n");
+      dfp.write(pre_input)
+      dfp.write("\n\n========================== settings_text\n\n")
+      dfp.write(settings_text)
+      dfp.write("\n\n========================== libraries\n\n")
       dfp.write("\n".join(libraries))
       dfp.close()
       print >>sys.stderr, '  cache miss, key data dumped to %s' % dfpath
@@ -341,8 +346,18 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     ret = re.sub(r'"?{{{ BA_([\w\d_$]+)\|([\w\d_$]+) }}}"?,0,0,0', lambda m: split_32(blockaddrs[m.groups(0)[0]][m.groups(0)[1]]), js)
     return re.sub(r'"?{{{ BA_([\w\d_$]+)\|([\w\d_$]+) }}}"?', lambda m: str(blockaddrs[m.groups(0)[0]][m.groups(0)[1]]), ret)
 
+  pre = blockaddrsize(indexize(pre))
+
+  if settings.get('ASM_JS'):
+    # move postsets into the asm module
+    class PostSets: js = ''
+    def handle_post_sets(m):
+      PostSets.js = m.group(0)
+      return '\n'
+    pre = re.sub(r'function runPostSets[^}]+}', handle_post_sets, pre)
+
   #if DEBUG: outfile.write('// pre\n')
-  outfile.write(blockaddrsize(indexize(pre)))
+  outfile.write(pre)
   pre = None
 
   #if DEBUG: outfile.write('// funcs\n')
@@ -453,23 +468,12 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   }
 
 ''' % (sig, i, args, arg_coercions, jsret))
-      args = ','.join(['a' + str(i) for i in range(1, len(sig))])
-      args = 'index' + (',' if args else '') + args
-      # C++ exceptions are numbers, and longjmp is a string 'longjmp'
-      asm_setup += '''
-function invoke_%s(%s) {
-  try {
-    %sModule["dynCall_%s"](%s);
-  } catch(e) {
-    if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
-  }
-}
-''' % (sig, args, 'return ' if sig[0] != 'v' else '', sig, args)
+      asm_setup += '\n' + shared.JS.make_invoke(sig) + '\n'
       basic_funcs.append('invoke_%s' % sig)
 
     # calculate exports
     exported_implemented_functions = list(exported_implemented_functions)
+    exported_implemented_functions.append('runPostSets')
     exports = []
     if not simple:
       for export in exported_implemented_functions + asm_runtime_funcs + function_tables:
@@ -486,11 +490,20 @@ function invoke_%s(%s) {
     global_vars = map(lambda g: g['name'], filter(lambda g: settings['NAMED_GLOBALS'] or g.get('external') or g.get('unIndexable'), forwarded_json['Variables']['globals'].values()))
     global_funcs = ['_' + key for key, value in forwarded_json['Functions']['libraryFunctions'].iteritems() if value != 2]
     def math_fix(g):
-      return g if not g.startswith('Math_') else g.split('_')[1];
+      return g if not g.startswith('Math_') else g.split('_')[1]
     asm_global_funcs = ''.join(['  var ' + g.replace('.', '_') + '=global.' + g + ';\n' for g in maths]) + \
                        ''.join(['  var ' + g + '=env.' + math_fix(g) + ';\n' for g in basic_funcs + global_funcs])
     asm_global_vars = ''.join(['  var ' + g + '=env.' + g + '|0;\n' for g in basic_vars + global_vars]) + \
                       ''.join(['  var ' + g + '=+env.' + g + ';\n' for g in basic_float_vars])
+    # In linkable modules, we need to add some explicit globals for global variables that can be linked and used across modules
+    if settings.get('MAIN_MODULE') or settings.get('SIDE_MODULE'):
+      assert settings.get('TARGET_LE32'), 'TODO: support x86 target when linking modules (needs offset of 4 and not 8 here)'
+      for key, value in forwarded_json['Variables']['globals'].iteritems():
+        if value.get('linkable'):
+          init = forwarded_json['Variables']['indexedGlobals'][key] + 8 # 8 is Runtime.GLOBAL_BASE / STATIC_BASE
+          if settings.get('SIDE_MODULE'): init = '(H_BASE+' + str(init) + ')|0'
+          asm_global_vars += '  var %s=%s;\n' % (key, str(init))
+
     # sent data
     the_global = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in fundamentals]) + ' }'
     sending = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in basic_funcs + global_funcs + basic_vars + basic_float_vars + global_vars]) + ' }'
@@ -578,7 +591,7 @@ var asm = (function(global, env, buffer) {
     value = value|0;
     tempRet%d = value;
   }
-''' % (i, i) for i in range(10)])] + funcs_js + ['''
+''' % (i, i) for i in range(10)])] + [PostSets.js + '\n'] + funcs_js + ['''
   %s
 
   return %s;
@@ -611,6 +624,18 @@ Runtime.stackRestore = function(top) { asm['stackRestore'](top) };
 '''] + funcs_js + ['''
 // EMSCRIPTEN_END_FUNCS
 ''']
+
+  # Create symbol table for self-dlopen
+  if settings.get('DLOPEN_SUPPORT'):
+    symbol_table = { k:v+forwarded_json['Runtime']['GLOBAL_BASE']
+      for k,v in forwarded_json['Variables']['indexedGlobals'].iteritems()
+      if forwarded_json['Variables']['globals'][k]['named'] }
+    for raw in last_forwarded_json['Functions']['tables'].itervalues():
+      if raw == '': continue
+      table = map(string.strip, raw[raw.find('[')+1:raw.find(']')].split(","))
+      symbol_table.update(map(lambda x: (x[1], x[0]),
+        filter(lambda x: x[1] != '0', enumerate(table))))
+    outfile.write("var SYMBOL_TABLE = %s;" % json.dumps(symbol_table))
 
   for funcs_js_item in funcs_js: # do this loop carefully to save memory
     funcs_js_item = indexize(funcs_js_item)

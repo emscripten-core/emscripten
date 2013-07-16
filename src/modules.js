@@ -245,37 +245,60 @@ var Functions = {
 
   blockAddresses: {}, // maps functions to a map of block labels to label ids
 
+  aliases: {}, // in shared modules (MAIN_MODULE or SHARED_MODULE), a list of aliases for functions that have them
+
   getSignature: function(returnType, argTypes, hasVarArgs) {
     var sig = returnType == 'void' ? 'v' : (isIntImplemented(returnType) ? 'i' : 'f');
     for (var i = 0; i < argTypes.length; i++) {
       var type = argTypes[i];
       if (!type) break; // varargs
-      sig += isIntImplemented(type) ? (getBits(type) == 64 ? 'ii' : 'i') : 'f'; // legalized i64s will be i32s
+      if (type in Runtime.FLOAT_TYPES) {
+        sig += 'f';
+      } else {
+        var chunks = getNumIntChunks(type);
+        for (var j = 0; j < chunks; j++) sig += 'i';
+      }
     }
     if (hasVarArgs) sig += 'i';
     return sig;
   },
 
+  getSignatureReturnType: function(sig) {
+    switch(sig[0]) {
+      case 'v': return 'void';
+      case 'i': return 'i32';
+      case 'f': return 'double';
+      default: throw 'what is this sig? ' + sig;
+    }
+  },
+
   // Mark a function as needing indexing. Python will coordinate them all
-  getIndex: function(ident, doNotCreate) {
+  getIndex: function(ident, doNotCreate, sig) {
     if (doNotCreate && !(ident in this.indexedFunctions)) {
       if (!Functions.getIndex.tentative) Functions.getIndex.tentative = {}; // only used by GL emulation; TODO: generalize when needed
       Functions.getIndex.tentative[ident] = 0;
     }
+    var ret;
     if (phase != 'post' && singlePhase) {
       if (!doNotCreate) this.indexedFunctions[ident] = 0; // tell python we need this indexized
-      return "'{{ FI_" + toNiceIdent(ident) + " }}'"; // something python will replace later
+      ret = "'{{ FI_" + toNiceIdent(ident) + " }}'"; // something python will replace later
     } else {
       if (!singlePhase) return 'NO_INDEX'; // Should not index functions in post
-      var ret = this.indexedFunctions[ident];
+      ret = this.indexedFunctions[ident];
       if (!ret) {
         if (doNotCreate) return '0';
         ret = this.nextIndex;
         this.nextIndex += 2; // Need to have indexes be even numbers, see |polymorph| test
         this.indexedFunctions[ident] = ret;
       }
-      return ret.toString();
+      ret = ret.toString();
     }
+    if (SIDE_MODULE && sig) { // sig can be undefined for the GL library functions
+      ret = '((F_BASE_' + sig + ' + ' + ret + ')|0)';
+    } else if (BUILD_AS_SHARED_LIB) {
+      ret = '(FUNCTION_TABLE_OFFSET + ' + ret + ')';
+    }
+    return ret;
   },
 
   getTable: function(sig) {
@@ -440,7 +463,8 @@ var PassManager = {
         Types: Types,
         Variables: Variables,
         Functions: Functions,
-        EXPORTED_FUNCTIONS: EXPORTED_FUNCTIONS // needed for asm.js global constructors (ctors)
+        EXPORTED_FUNCTIONS: EXPORTED_FUNCTIONS, // needed for asm.js global constructors (ctors)
+        Runtime: { GLOBAL_BASE: Runtime.GLOBAL_BASE }
       }));
     } else if (phase == 'funcs') {
       print('\n//FORWARDED_DATA:' + JSON.stringify({
