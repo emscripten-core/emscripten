@@ -331,7 +331,7 @@ for file_ in data_files:
     # Embed
     data = map(ord, open(file_['srcpath'], 'rb').read())
     if not data:
-        str_data = '[]'
+      str_data = '[]'
     else:
       str_data = ''
       chunk_size = 10240
