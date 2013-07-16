@@ -1474,7 +1474,6 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
 
     args = args.concat(varargs);
-    var argsText = args.join(', ');
 
     // Inline if either we inline whenever we can (and we can), or if there is no noninlined version
     var inline = LibraryManager.library[simpleIdent + '__inline'];
@@ -1496,13 +1495,26 @@ function JSify(data, functionsOnly, givenFunctions) {
       }
     }
 
+    if (callIdent in Functions.implementedFunctions) {
+      // LLVM sometimes bitcasts for no reason. We must call using the exact same type as the actual function is generated as.
+      var numArgs = Functions.implementedFunctions[callIdent].length - 1;
+      if (numArgs !== args.length) {
+        if (VERBOSE) warnOnce('Fixing function call arguments based on signature, on ' + [callIdent, args.length, numArgs]);
+        while (args.length > numArgs) { args.pop(); argsTypes.pop() }
+        while (args.length < numArgs) { args.push('0'); argsTypes.push('i32') }
+      }
+    }
+
     var returnType = 'void';
     if ((byPointer || ASM_JS) && hasReturn) {
+      returnType = getReturnType(type);
       if (callIdent in Functions.implementedFunctions) {
         // LLVM sometimes bitcasts for no reason. We must call using the exact same type as the actual function is generated as
-        returnType = Functions.getSignatureReturnType(Functions.implementedFunctions[callIdent]);
-      } else {
-        returnType = getReturnType(type);
+        var trueType = Functions.getSignatureReturnType(Functions.implementedFunctions[callIdent]);
+        if (trueType !== returnType && !isIdenticallyImplemented(trueType, returnType)) {
+          if (VERBOSE) warnOnce('Fixing function call based on return type from signature, on ' + [callIdent, returnType, trueType]);
+          returnType = trueType;
+        }
       }
     }
 
