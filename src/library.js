@@ -1867,42 +1867,42 @@ LibraryManager.library = {
   rmdir: function(path) {
     // int rmdir(const char *path);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/rmdir.html
-    path = FS.analyzePath(Pointer_stringify(path));
+    path = Pointer_stringify(path);
+    path = FS.analyzePath(path, true);
     if (!path.parentExists || !path.exists) {
       ___setErrNo(path.error);
       return -1;
-    } else if (!path.object.write || path.isRoot) {
+    } else if (!path.parentObject.write) {
       ___setErrNo(ERRNO_CODES.EACCES);
       return -1;
     } else if (!path.object.isFolder) {
       ___setErrNo(ERRNO_CODES.ENOTDIR);
+      return -1;
+    } else if (path.isRoot || path.path == FS.currentPath) {
+      ___setErrNo(ERRNO_CODES.EBUSY);
       return -1;
     } else {
       for (var i in path.object.contents) {
         ___setErrNo(ERRNO_CODES.ENOTEMPTY);
         return -1;
       }
-      if (path.path == FS.currentPath) {
-        ___setErrNo(ERRNO_CODES.EBUSY);
-        return -1;
-      } else {
-        delete path.parentObject.contents[path.name];
-        return 0;
-      }
+      delete path.parentObject.contents[path.name];
+      return 0;
     }
   },
   unlink__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   unlink: function(path) {
     // int unlink(const char *path);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/unlink.html
-    path = FS.analyzePath(Pointer_stringify(path));
+    path = Pointer_stringify(path);
+    path = FS.analyzePath(path, true);
     if (!path.parentExists || !path.exists) {
       ___setErrNo(path.error);
       return -1;
     } else if (path.object.isFolder) {
-      ___setErrNo(ERRNO_CODES.EISDIR);
+      ___setErrNo(ERRNO_CODES.EPERM);
       return -1;
-    } else if (!path.object.write) {
+    } else if (!path.parentObject.write) {
       ___setErrNo(ERRNO_CODES.EACCES);
       return -1;
     } else {
