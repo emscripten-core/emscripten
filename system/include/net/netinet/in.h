@@ -55,6 +55,13 @@ extern const struct in6_addr in6addr_interfacelocal_allnodes;
 extern const struct in6_addr in6addr_interfacelocal_allrouters;
 extern const struct in6_addr in6addr_sitelocal_allrouters;
 
+#define IN6ADDR_ANY_INIT { { { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 } } }
+#define IN6ADDR_LOOPBACK_INIT { { { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1 } } }
+#define IN6ADDR_LINKLOCAL_ALLNODES_INIT \
+	{ { { 0xff,2,0,0,0,0,0,0,0,0,0,0,0,0,0,1 } } }
+#define IN6ADDR_LINKLOCAL_ALLROUTERS_INIT \
+	{ { { 0xff,2,0,0,0,0,0,0,0,0,0,0,0,0,0,2 } } }
+
 struct sockaddr_in6 {
   int             sin6_family;
   unsigned short  sin6_port;
