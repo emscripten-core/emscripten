@@ -1115,6 +1115,7 @@ LibraryManager.library = {
   },
   stat64: 'stat',
   fstat64: 'fstat',
+  lstat64: 'lstat',
   __01fstat64_: 'fstat',
   __01stat64_: 'stat',
   __01lstat64_: 'lstat',
