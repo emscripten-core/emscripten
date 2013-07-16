@@ -142,7 +142,7 @@ def emscripten(env, target_js, source_bc):
     [global_emscripten_min_js] = env.JSOptimizer(
         buildName('global.min.js'),
         closure_js,
-        JS_OPTIMIZER_PASSES=['simplifyExpressionsPost', 'compress', 'last'])
+        JS_OPTIMIZER_PASSES=['simplifyExpressionsPost', 'minifyWhitespace', 'last'])
 
     [emscripten_iteration_js] = env.WrapInModule(
         buildName('iteration.js'),
