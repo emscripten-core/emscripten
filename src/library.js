@@ -6345,14 +6345,13 @@ LibraryManager.library = {
       var fixup = function(value, min, max) {
         return (typeof value !== 'number' || isNaN(value)) ? min : (value>=min ? (value<=max ? value: max): min);
       };
-
       return {
-        year: fixup({{{ makeGetValue('tm', '___tm_struct_layout.tm_year', 'i32') }}} + 1900 , 1970, 9999),
-        month: fixup({{{ makeGetValue('tm', '___tm_struct_layout.tm_mon', 'i32') }}}, 0, 11),
-        day: fixup({{{ makeGetValue('tm', '___tm_struct_layout.tm_mday', 'i32') }}}, 1, 31),
-        hour: fixup({{{ makeGetValue('tm', '___tm_struct_layout.tm_hour', 'i32') }}}, 0, 23),
-        min: fixup({{{ makeGetValue('tm', '___tm_struct_layout.tm_min', 'i32') }}}, 0, 59),
-        sec: fixup({{{ makeGetValue('tm', '___tm_struct_layout.tm_sec', 'i32') }}}, 0, 59)
+        year: fixup({{{ makeGetValue('tm', '___tm_struct_layout.tm_year', 'i32', 0, 0, 1) }}} + 1900 , 1970, 9999),
+        month: fixup({{{ makeGetValue('tm', '___tm_struct_layout.tm_mon', 'i32', 0, 0, 1) }}}, 0, 11),
+        day: fixup({{{ makeGetValue('tm', '___tm_struct_layout.tm_mday', 'i32', 0, 0, 1) }}}, 1, 31),
+        hour: fixup({{{ makeGetValue('tm', '___tm_struct_layout.tm_hour', 'i32', 0, 0, 1) }}}, 0, 23),
+        min: fixup({{{ makeGetValue('tm', '___tm_struct_layout.tm_min', 'i32', 0, 0, 1) }}}, 0, 59),
+        sec: fixup({{{ makeGetValue('tm', '___tm_struct_layout.tm_sec', 'i32', 0, 0, 1) }}}, 0, 59)
       };
     };
 
