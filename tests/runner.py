@@ -5096,9 +5096,6 @@ The current type of b is: 9
 
     def test_strftime(self):
       src=r'''
-        // Adapted from: 
-        // http://opencores.org/ocsvn/openrisc/openrisc/trunk/rtos/ecos-2.0/packages/language/c/libc/time/v2_0/tests/strftime.c
-
         #include <time.h>
         #include <stdio.h>
         #include <string.h>
@@ -5232,9 +5229,26 @@ The current type of b is: 9
             size = strftime(s, 10, "%U", &tm);
             test((size==2) && !cmp(s, "01"), "strftime test #25", s);
 
+            // 2/1/1999
+            tm.tm_year = 99;
+            tm.tm_yday = 1;
+            size = strftime(s, 10, "%G (%V)", &tm);
+            test((size==9) && !cmp(s, "1998 (53)"), "strftime test #26", s);
+
+            size = strftime(s, 10, "%g", &tm);
+            test((size==2) && !cmp(s, "98"), "strftime test #27", s);
+
+            // 30/12/1997
+            tm.tm_year = 97;
+            tm.tm_yday = 363;
+            size = strftime(s, 10, "%G (%V)", &tm);
+            test((size==9) && !cmp(s, "1998 (01)"), "strftime test #28", s);
+
+            size = strftime(s, 10, "%g", &tm);
+            test((size==2) && !cmp(s, "98"), "strftime test #29", s);
         } 
       '''
-      self.do_run(src, '111111111111111111111111')
+      self.do_run(src, '11111111111111111111111111111')
 
     def test_intentional_fault(self):
       # Some programs intentionally segfault themselves, we should compile that into a throw

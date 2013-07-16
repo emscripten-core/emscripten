@@ -6328,6 +6328,46 @@ LibraryManager.library = {
       return compare;
     };
 
+    var getFirstWeekStartDate = function(janFourth) {
+        switch (janFourth.getDay()) {
+          case 0: // Sunday
+            return new Date(janFourth.getFullYear()-1, 11, 29);
+          case 1: // Monday
+            return janFourth;
+          case 2: // Tuesday
+            return new Date(janFourth.getFullYear(), 0, 3);
+          case 3: // Wednesday
+            return new Date(janFourth.getFullYear(), 0, 2);
+          case 4: // Thursday
+            return new Date(janFourth.getFullYear(), 0, 1);
+          case 5: // Friday
+            return new Date(janFourth.getFullYear()-1, 11, 31);
+          case 6: // Saturday
+            return new Date(janFourth.getFullYear()-1, 11, 30);
+        }
+    };
+
+    var getWeekBasedYear = function(date) {
+        var thisDate = __addDays(new Date(date.tm_year+1900, 0, 1), date.tm_yday);
+
+        var janFourthThisYear = new Date(thisDate.getFullYear(), 0, 4);
+        var janFourthNextYear = new Date(thisDate.getFullYear()+1, 0, 4);
+
+        var firstWeekStartThisYear = getFirstWeekStartDate(janFourthThisYear);
+        var firstWeekStartNextYear = getFirstWeekStartDate(janFourthNextYear);
+
+        if (compareByDay(firstWeekStartThisYear, thisDate) <= 0) {
+          // this date is after the start of the first week of this year
+          if (compareByDay(firstWeekStartNextYear, thisDate) <= 0) {
+            return thisDate.getFullYear()+1;
+          } else {
+            return thisDate.getFullYear();
+          }
+        } else { 
+          return thisDate.getFullYear()-1;
+        }
+    };
+
     var EXPANSION_RULES_2 = {
       '%a': function(date) {
         return WEEKDAYS[date.tm_wday].substring(0,3);
@@ -6361,35 +6401,11 @@ LibraryManager.library = {
         // %G is replaced by 1998 and %V is replaced by 53. If December 29th, 30th, 
         // or 31st is a Monday, it and any following days are part of week 1 of the following year. 
         // Thus, for Tuesday 30th December 1997, %G is replaced by 1998 and %V is replaced by 01.
-        var janFourth = new Date(date.tm_year+1900, 0, 4);
-        var firstWeekStart;
-        switch (janFourth.getDay()) {
-          case 0: // Sunday
-            firstWeekStart = new Date(janFourth.getFullYear()-1, 11, 29);
-            break;
-          case 1: // Monday
-            firstWeekStart = janFourth;
-            break;
-          case 2: // Tuesday
-            firstWeekStart = new Date(janFourth.getFullYear(), 0, 3);
-            break;
-          case 3: // Wednesday
-            firstWeekStart = new Date(janFourth.getFullYear(), 0, 2);
-            break;
-          case 4: // Thursday
-            firstWeekStart = new Date(janFourth.getFullYear(), 0, 1);
-            break;
-          case 5: // Friday
-            firstWeekStart = new Date(janFourth.getFullYear()-1, 11, 31);
-            break;
-          case 6: // Saturday
-            firstWeekStart = new Date(janFourth.getFullYear()-1, 11, 30);
-            break;
-        }
-        return firstWeekStart.getFullYear().toString().substring(2);
+        
+        return getWeekBasedYear(date).toString().substring(2);
       },
       '%G': function(date) {
-        // TODO
+        return getWeekBasedYear(date);
       },
       '%H': function(date) {
         return leadingNulls(date.tm_hour, 2);
@@ -6431,7 +6447,7 @@ LibraryManager.library = {
         // Replaced by the week number of the year as a decimal number [00,53]. 
         // The first Sunday of January is the first day of week 1; 
         // days in the new year before this are in week 0. [ tm_year, tm_wday, tm_yday]
-        var janFirst = new Date(date.tm_year, 0, 1);
+        var janFirst = new Date(date.tm_year+1900, 0, 1);
         var firstSunday = janFirst.getDay() === 0 ? janFirst : __addDays(janFirst, 7-janFirst.getDay());
         var endDate = new Date(date.tm_year+1900, date.tm_mon, date.tm_mday);
         
@@ -6452,7 +6468,34 @@ LibraryManager.library = {
         // or more days in the new year, then it is considered week 1. 
         // Otherwise, it is the last week of the previous year, and the next week is week 1. 
         // Both January 4th and the first Thursday of January are always in week 1. [ tm_year, tm_wday, tm_yday]
-        // TODO: implement
+        var janFourthThisYear = new Date(date.tm_year+1900, 0, 4);
+        var janFourthNextYear = new Date(date.tm_year+1901, 0, 4);
+
+        var firstWeekStartThisYear = getFirstWeekStartDate(janFourthThisYear);
+        var firstWeekStartNextYear = getFirstWeekStartDate(janFourthNextYear);
+
+        var endDate = __addDays(new Date(date.tm_year+1900, 0, 1), date.tm_yday);
+
+        if (compareByDay(endDate, firstWeekStartThisYear) < 0) {
+          // if given date is before this years first week, then it belongs to the 53rd week of last year
+          return '53';
+        } 
+
+        if (compareByDay(firstWeekStartNextYear, endDate) <= 0) {
+          // if given date is after next years first week, then it belongs to the 01th week of next year
+          return '01';
+        }
+
+        // given date is in between CW 01..53 of this calendar year
+        var daysDifference;
+        if (firstWeekStartThisYear.getFullYear() < date.tm_year+1900) {
+          // first CW of this year starts last year
+          daysDifference = date.tm_yday+32-firstWeekStartThisYear.getDate()
+        } else {
+          // first CW of this year starts this year
+          daysDifference = date.tm_yday+1-firstWeekStartThisYear.getDate();
+        }
+        return leadingNulls(Math.ceil(daysDifference/7), 2);
       },
       '%w': function(date) {
         var day = new Date(date.tm_year+1900, date.tm_mon+1, date.tm_mday, 0, 0, 0, 0);
