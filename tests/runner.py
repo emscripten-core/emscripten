@@ -12810,8 +12810,9 @@ Press any key to continue.'''
       self.run_browser('page.html', 'Should print "(300, 150)" -- the size of the canvas in pixels', '/report_result?1')
 
     def test_freealut(self):
-      programs = self.get_library('freealut', os.path.join('examples', 'hello_world.bc'), make_args=['EXEEXT=.bc'])
+      programs = self.get_library('freealut', os.path.join('examples', '.libs', 'hello_world.bc'), make_args=['EXEEXT=.bc'])
       for program in programs:
+        assert os.path.exists(program)
         Popen([PYTHON, EMCC, '-O2', program, '-o', 'page.html']).communicate()
         self.run_browser('page.html', 'You should hear "Hello World!"')
 
