@@ -6224,15 +6224,345 @@ LibraryManager.library = {
     return -1;
   },
 
-  strftime: function(s, maxsize, format, timeptr) {
+  _MONTH_DAYS_REGULAR: [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
+  _MONTH_DAYS_LEAP: [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
+
+  _isLeapYear: function(year) {
+      return year%4===0 && (year%100!==0 || year%400===0);
+  },
+
+  _arraySum: function(array, index) {
+    var sum = 0;
+    for (var i=0; i<=index; sum += array[i++]);
+    return sum;
+  },
+
+  _addDays__deps: ['_isLeapYear', '_MONTH_DAYS_LEAP', '_MONTH_DAYS_REGULAR'],
+  _addDays: function(date, days) {
+    var newDate = new Date(date.getTime());
+    while(days>0) {
+      var leap = __isLeapYear(newDate.getFullYear());
+      var currentMonth = newDate.getMonth();
+      var daysInCurrentMonth = (leap ? __MONTH_DAYS_LEAP : __MONTH_DAYS_REGULAR)[currentMonth];
+
+      if (days>daysInCurrentMonth-newDate.getDate()) {
+        // we spill over to next month
+        days -= (daysInCurrentMonth-newDate.getDate()+1);
+        newDate.setDate(1);
+        if (currentMonth<11) {
+          newDate.setMonth(currentMonth+1)
+        } else {
+          newDate.setMonth(0);
+          newDate.setFullYear(newDate.getFullYear()+1);
+        }
+      } else {
+        // we stay in current month 
+        newDate.setDate(newDate.getDate()+days);
+        return newDate;
+      }
+    }
+
+    return newDate;
+  },
+
+  strftime__deps: ['__tm_struct_layout', '_isLeapYear', '_arraySum', '_addDays', '_MONTH_DAYS_REGULAR', '_MONTH_DAYS_LEAP'],
+  strftime: function(s, maxsize, format, tm) {
     // size_t strftime(char *restrict s, size_t maxsize, const char *restrict format, const struct tm *restrict timeptr);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/strftime.html
-    // TODO: Implement.
-    return 0;
+    
+    var date = {
+      tm_sec: {{{ makeGetValue('tm', '___tm_struct_layout.tm_sec', 'i32') }}},
+      tm_min: {{{ makeGetValue('tm', '___tm_struct_layout.tm_min', 'i32') }}},
+      tm_hour: {{{ makeGetValue('tm', '___tm_struct_layout.tm_hour', 'i32') }}},
+      tm_mday: {{{ makeGetValue('tm', '___tm_struct_layout.tm_mday', 'i32') }}},
+      tm_mon: {{{ makeGetValue('tm', '___tm_struct_layout.tm_mon', 'i32') }}},
+      tm_year: {{{ makeGetValue('tm', '___tm_struct_layout.tm_year', 'i32') }}},
+      tm_wday: {{{ makeGetValue('tm', '___tm_struct_layout.tm_wday', 'i32') }}},
+      tm_yday: {{{ makeGetValue('tm', '___tm_struct_layout.tm_yday', 'i32') }}},
+      tm_isdst: {{{ makeGetValue('tm', '___tm_struct_layout.tm_isdst', 'i32') }}}
+    };
+
+    var pattern = Pointer_stringify(format);
+
+    // expand format
+    var EXPANSION_RULES_1 = {
+      '%c': '%a %b %d %H:%M:%S %Y',     // Replaced by the locale's appropriate date and time representation - e.g., Mon Aug  3 14:02:01 2013
+      '%D': '%m/%d/%y',                 // Equivalent to %m / %d / %y
+      '%F': '%Y-%m-%d',                 // Equivalent to %Y - %m - %d
+      '%h': '%b',                       // Equivalent to %b
+      '%r': '%I:%M:%S %p',              // Replaced by the time in a.m. and p.m. notation
+      '%R': '%H:%M',                    // Replaced by the time in 24-hour notation
+      '%T': '%H:%M:%S',                 // Replaced by the time
+      '%x': '%m/%d/%y',                 // Replaced by the locale's appropriate date representation
+      '%X': '%H:%M:%S',                 // Replaced by the locale's appropriate date representation
+    };
+    for (var rule in EXPANSION_RULES_1) {
+      pattern = pattern.replace(new RegExp(rule, 'g'), EXPANSION_RULES_1[rule]);
+    }
+
+    var WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+    var leadingSomething = function(value, digits, character) {
+      var str = typeof value === 'number' ? value.toString() : (value || '');
+      while (str.length < digits) {
+        str = character[0]+str;
+      }
+      return str;
+    };
+
+    var leadingNulls = function(value, digits) {
+      return leadingSomething(value, digits, '0');
+    };
+
+    var compareByDay = function(date1, date2) {
+      var sgn = function(value) {
+        return value<0 ? -1 : (value>0 ? 1 : 0);
+      };
+
+      var compare;
+      if ((compare = sgn(date1.getFullYear()-date2.getFullYear())) === 0) {
+        if ((compare = sgn(date1.getMonth()-date2.getMonth())) === 0) {
+          compare = sgn(date1.getDate()-date2.getDate());
+        }
+      }
+      return compare;
+    };
+
+    var getFirstWeekStartDate = function(janFourth) {
+        switch (janFourth.getDay()) {
+          case 0: // Sunday
+            return new Date(janFourth.getFullYear()-1, 11, 29);
+          case 1: // Monday
+            return janFourth;
+          case 2: // Tuesday
+            return new Date(janFourth.getFullYear(), 0, 3);
+          case 3: // Wednesday
+            return new Date(janFourth.getFullYear(), 0, 2);
+          case 4: // Thursday
+            return new Date(janFourth.getFullYear(), 0, 1);
+          case 5: // Friday
+            return new Date(janFourth.getFullYear()-1, 11, 31);
+          case 6: // Saturday
+            return new Date(janFourth.getFullYear()-1, 11, 30);
+        }
+    };
+
+    var getWeekBasedYear = function(date) {
+        var thisDate = __addDays(new Date(date.tm_year+1900, 0, 1), date.tm_yday);
+
+        var janFourthThisYear = new Date(thisDate.getFullYear(), 0, 4);
+        var janFourthNextYear = new Date(thisDate.getFullYear()+1, 0, 4);
+
+        var firstWeekStartThisYear = getFirstWeekStartDate(janFourthThisYear);
+        var firstWeekStartNextYear = getFirstWeekStartDate(janFourthNextYear);
+
+        if (compareByDay(firstWeekStartThisYear, thisDate) <= 0) {
+          // this date is after the start of the first week of this year
+          if (compareByDay(firstWeekStartNextYear, thisDate) <= 0) {
+            return thisDate.getFullYear()+1;
+          } else {
+            return thisDate.getFullYear();
+          }
+        } else { 
+          return thisDate.getFullYear()-1;
+        }
+    };
+
+    var EXPANSION_RULES_2 = {
+      '%a': function(date) {
+        return WEEKDAYS[date.tm_wday].substring(0,3);
+      },
+      '%A': function(date) {
+        return WEEKDAYS[date.tm_wday];
+      },
+      '%b': function(date) {
+        return MONTHS[date.tm_mon].substring(0,3);
+      },
+      '%B': function(date) {
+        return MONTHS[date.tm_mon];
+      },
+      '%C': function(date) {
+        var year = date.tm_year+1900;
+        return leadingNulls(Math.floor(year/100),2);
+      },
+      '%d': function(date) {
+        return leadingNulls(date.tm_mday, 2);
+      },
+      '%e': function(date) {
+        return leadingSomething(date.tm_mday, 2, ' ');
+      },
+      '%g': function(date) {
+        // %g, %G, and %V give values according to the ISO 8601:2000 standard week-based year. 
+        // In this system, weeks begin on a Monday and week 1 of the year is the week that includes 
+        // January 4th, which is also the week that includes the first Thursday of the year, and 
+        // is also the first week that contains at least four days in the year. 
+        // If the first Monday of January is the 2nd, 3rd, or 4th, the preceding days are part of 
+        // the last week of the preceding year; thus, for Saturday 2nd January 1999, 
+        // %G is replaced by 1998 and %V is replaced by 53. If December 29th, 30th, 
+        // or 31st is a Monday, it and any following days are part of week 1 of the following year. 
+        // Thus, for Tuesday 30th December 1997, %G is replaced by 1998 and %V is replaced by 01.
+        
+        return getWeekBasedYear(date).toString().substring(2);
+      },
+      '%G': function(date) {
+        return getWeekBasedYear(date);
+      },
+      '%H': function(date) {
+        return leadingNulls(date.tm_hour, 2);
+      },
+      '%I': function(date) {
+        return leadingNulls(date.tm_hour<13 ? date.tm_hour : date.tm_hour-12, 2);
+      },
+      '%j': function(date) {
+        // Day of the year (001-366)
+        return leadingNulls(date.tm_mday+__arraySum(__isLeapYear(date.tm_year+1900) ? __MONTH_DAYS_LEAP : __MONTH_DAYS_REGULAR, date.tm_mon-1), 3);
+      },
+      '%m': function(date) {
+        return leadingNulls(date.tm_mon+1, 2);
+      },
+      '%M': function(date) {
+        return leadingNulls(date.tm_min, 2);
+      },
+      '%n': function() {
+        return '\n';
+      },
+      '%p': function(date) {
+        if (date.tm_hour>0 && date.tm_hour<13) {
+          return 'AM';
+        } else {
+          return 'PM';
+        }
+      },
+      '%S': function(date) {
+        return leadingNulls(date.tm_sec, 2);
+      },
+      '%t': function() {
+        return '\t';
+      },
+      '%u': function(date) {
+        var day = new Date(date.tm_year+1900, date.tm_mon+1, date.tm_mday, 0, 0, 0, 0);
+        return day.getDay() || 7;
+      },
+      '%U': function(date) {
+        // Replaced by the week number of the year as a decimal number [00,53]. 
+        // The first Sunday of January is the first day of week 1; 
+        // days in the new year before this are in week 0. [ tm_year, tm_wday, tm_yday]
+        var janFirst = new Date(date.tm_year+1900, 0, 1);
+        var firstSunday = janFirst.getDay() === 0 ? janFirst : __addDays(janFirst, 7-janFirst.getDay());
+        var endDate = new Date(date.tm_year+1900, date.tm_mon, date.tm_mday);
+        
+        // is target date after the first Sunday?
+        if (compareByDay(firstSunday, endDate) < 0) {
+          // calculate difference in days between first Sunday and endDate
+          var februaryFirstUntilEndMonth = __arraySum(__isLeapYear(endDate.getFullYear()) ? __MONTH_DAYS_LEAP : __MONTH_DAYS_REGULAR, endDate.getMonth()-1)-31;
+          var firstSundayUntilEndJanuary = 31-firstSunday.getDate();
+          var days = firstSundayUntilEndJanuary+februaryFirstUntilEndMonth+endDate.getDate();
+          return leadingNulls(Math.ceil(days/7), 2);
+        }
+
+        return compareByDay(firstSunday, janFirst) === 0 ? '01': '00';
+      },
+      '%V': function(date) {
+        // Replaced by the week number of the year (Monday as the first day of the week) 
+        // as a decimal number [01,53]. If the week containing 1 January has four 
+        // or more days in the new year, then it is considered week 1. 
+        // Otherwise, it is the last week of the previous year, and the next week is week 1. 
+        // Both January 4th and the first Thursday of January are always in week 1. [ tm_year, tm_wday, tm_yday]
+        var janFourthThisYear = new Date(date.tm_year+1900, 0, 4);
+        var janFourthNextYear = new Date(date.tm_year+1901, 0, 4);
+
+        var firstWeekStartThisYear = getFirstWeekStartDate(janFourthThisYear);
+        var firstWeekStartNextYear = getFirstWeekStartDate(janFourthNextYear);
+
+        var endDate = __addDays(new Date(date.tm_year+1900, 0, 1), date.tm_yday);
+
+        if (compareByDay(endDate, firstWeekStartThisYear) < 0) {
+          // if given date is before this years first week, then it belongs to the 53rd week of last year
+          return '53';
+        } 
+
+        if (compareByDay(firstWeekStartNextYear, endDate) <= 0) {
+          // if given date is after next years first week, then it belongs to the 01th week of next year
+          return '01';
+        }
+
+        // given date is in between CW 01..53 of this calendar year
+        var daysDifference;
+        if (firstWeekStartThisYear.getFullYear() < date.tm_year+1900) {
+          // first CW of this year starts last year
+          daysDifference = date.tm_yday+32-firstWeekStartThisYear.getDate()
+        } else {
+          // first CW of this year starts this year
+          daysDifference = date.tm_yday+1-firstWeekStartThisYear.getDate();
+        }
+        return leadingNulls(Math.ceil(daysDifference/7), 2);
+      },
+      '%w': function(date) {
+        var day = new Date(date.tm_year+1900, date.tm_mon+1, date.tm_mday, 0, 0, 0, 0);
+        return day.getDay();
+      },
+      '%W': function(date) {
+        // Replaced by the week number of the year as a decimal number [00,53]. 
+        // The first Monday of January is the first day of week 1; 
+        // days in the new year before this are in week 0. [ tm_year, tm_wday, tm_yday]
+        var janFirst = new Date(date.tm_year, 0, 1);
+        var firstMonday = janFirst.getDay() === 1 ? janFirst : __addDays(janFirst, janFirst.getDay() === 0 ? 1 : 7-janFirst.getDay()+1);
+        var endDate = new Date(date.tm_year+1900, date.tm_mon, date.tm_mday);
+
+        // is target date after the first Monday?
+        if (compareByDay(firstMonday, endDate) < 0) {
+          var februaryFirstUntilEndMonth = __arraySum(__isLeapYear(endDate.getFullYear()) ? __MONTH_DAYS_LEAP : __MONTH_DAYS_REGULAR, endDate.getMonth()-1)-31;
+          var firstMondayUntilEndJanuary = 31-firstMonday.getDate();
+          var days = firstMondayUntilEndJanuary+februaryFirstUntilEndMonth+endDate.getDate();
+          return leadingNulls(Math.ceil(days/7), 2);
+        }
+        return compareByDay(firstMonday, janFirst) === 0 ? '01': '00';
+      },
+      '%y': function(date) {
+        // Replaced by the last two digits of the year as a decimal number [00,99]. [ tm_year]
+        return (date.tm_year+1900).toString().substring(2);
+      },
+      '%Y': function(date) {
+        // Replaced by the year as a decimal number (for example, 1997). [ tm_year]
+        return date.tm_year+1900;
+      },
+      '%z': function(date) {
+        // Replaced by the offset from UTC in the ISO 8601:2000 standard format ( +hhmm or -hhmm ),
+        // or by no characters if no timezone is determinable. 
+        // For example, "-0430" means 4 hours 30 minutes behind UTC (west of Greenwich). 
+        // If tm_isdst is zero, the standard time offset is used. 
+        // If tm_isdst is greater than zero, the daylight savings time offset is used. 
+        // If tm_isdst is negative, no characters are returned. 
+        // FIXME: we cannot determine time zone (or can we?)
+        return '';
+      },
+      '%Z': function(date) {
+        // Replaced by the timezone name or abbreviation, or by no bytes if no timezone information exists. [ tm_isdst]
+        // FIXME: we cannot determine time zone (or can we?)
+        return '';
+      },
+      '%%': function() {
+        return '%';
+      }
+    };
+    for (var rule in EXPANSION_RULES_2) {
+      if (pattern.indexOf(rule) >= 0) {
+        pattern = pattern.replace(new RegExp(rule, 'g'), EXPANSION_RULES_2[rule](date));
+      }
+    }
+
+    var bytes = intArrayFromString(pattern, false);
+    if (bytes.length>maxsize) {
+      return 0;
+    } 
+
+    writeArrayToMemory(bytes, s);
+    return bytes.length-1;
   },
   strftime_l: 'strftime', // no locale support yet
 
-  strptime__deps: ['__tm_struct_layout'],
+  strptime__deps: ['__tm_struct_layout', '_isLeapYear', '_arraySum', '_addDays', '_MONTH_DAYS_REGULAR', '_MONTH_DAYS_LEAP'],
   strptime: function(buf, format, tm) {
     // char *strptime(const char *restrict buf, const char *restrict format, struct tm *restrict tm);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/strptime.html
@@ -6288,45 +6618,8 @@ LibraryManager.library = {
     };
 
     var MONTH_NUMBERS = {JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5, JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11};
-    var MONTH_DAYS_REGULAR = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-    var MONTH_DAYS_LEAP = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
     var DAY_NUMBERS_SUN_FIRST = {SUN: 0, MON: 1, TUE: 2, WED: 3, THU: 4, FRI: 5, SAT: 6};
     var DAY_NUMBERS_MON_FIRST = {MON: 0, TUE: 1, WED: 2, THU: 3, FRI: 4, SAT: 5, SUN: 6};
-
-    var isLeapYear = function(year) {
-      return year%4===0 && (year%100!==0 || year%400===0);
-    };
-
-    var arraySum = function(array, index) {
-      var sum = 0;
-      for (var i=0; i<=index; sum += array[i++]);
-      return sum;
-    };
-
-    var addDays = function(date, days) {
-      while(days>0) {
-        var leap = isLeapYear(date.getFullYear());
-        var currentMonth = date.getMonth();
-        var daysInCurrentMonth = (leap ? MONTH_DAYS_LEAP : MONTH_DAYS_REGULAR)[currentMonth];
-
-        if (days>daysInCurrentMonth-date.getDate()) {
-          // we spill over to next month
-          days -= (daysInCurrentMonth-date.getDate()+1);
-          date.setDate(1);
-          if (currentMonth<11) {
-            date.setMonth(currentMonth+1)
-          } else {
-            date.setMonth(0);
-            date.setFullYear(date.getFullYear()+1);
-          }
-        } else {
-          // we stay in current month 
-          date.setDate(date.getDate()+days);
-          return date;
-        }
-      }
-      return date;
-    };
 
     for (var datePattern in DATE_PATTERNS) {
       pattern = pattern.replace(datePattern, '('+datePattern+DATE_PATTERNS[datePattern]+')');    
@@ -6427,10 +6720,10 @@ LibraryManager.library = {
       } else if ((value=getMatch('j'))) {
         // get day of month from day of year ...
         var day = parseInt(value);
-        var leapYear = isLeapYear(date.year);
+        var leapYear = __isLeapYear(date.year);
         for (var month=0; month<12; ++month) {
-          var daysUntilMonth = arraySum(leapYear ? MONTH_DAYS_LEAP : MONTH_DAYS_REGULAR, month-1);
-          if (day<=daysUntilMonth+(leapYear ? MONTH_DAYS_LEAP : MONTH_DAYS_REGULAR)[month]) {
+          var daysUntilMonth = __arraySum(leapYear ? __MONTH_DAYS_LEAP : __MONTH_DAYS_REGULAR, month-1);
+          if (day<=daysUntilMonth+(leapYear ? __MONTH_DAYS_LEAP : __MONTH_DAYS_REGULAR)[month]) {
             date.day = day-daysUntilMonth;
           }
         }
@@ -6449,10 +6742,10 @@ LibraryManager.library = {
           var endDate;
           if (janFirst.getDay() === 0) {
             // Jan 1st is a Sunday, and, hence in the 1st CW
-            endDate = addDays(janFirst, weekDayNumber+7*(weekNumber-1));
+            endDate = __addDays(janFirst, weekDayNumber+7*(weekNumber-1));
           } else {
             // Jan 1st is not a Sunday, and, hence still in the 0th CW
-            endDate = addDays(janFirst, 7-janFirst.getDay()+weekDayNumber+7*(weekNumber-1));
+            endDate = __addDays(janFirst, 7-janFirst.getDay()+weekDayNumber+7*(weekNumber-1));
           }
           date.day = endDate.getDate();
           date.month = endDate.getMonth();
@@ -6468,10 +6761,10 @@ LibraryManager.library = {
           var endDate;
           if (janFirst.getDay()===1) {
             // Jan 1st is a Monday, and, hence in the 1st CW
-             endDate = addDays(janFirst, weekDayNumber+7*(weekNumber-1));
+             endDate = __addDays(janFirst, weekDayNumber+7*(weekNumber-1));
           } else {
             // Jan 1st is not a Monday, and, hence still in the 0th CW
-            endDate = addDays(janFirst, 7-janFirst.getDay()+1+weekDayNumber+7*(weekNumber-1));
+            endDate = __addDays(janFirst, 7-janFirst.getDay()+1+weekDayNumber+7*(weekNumber-1));
           }
 
           date.day = endDate.getDate();
@@ -6499,7 +6792,7 @@ LibraryManager.library = {
       {{{ makeSetValue('tm', '___tm_struct_layout.tm_mon', 'fullDate.getMonth()', 'i32') }}}
       {{{ makeSetValue('tm', '___tm_struct_layout.tm_year', 'fullDate.getFullYear()-1900', 'i32') }}}
       {{{ makeSetValue('tm', '___tm_struct_layout.tm_wday', 'fullDate.getDay()', 'i32') }}}
-      {{{ makeSetValue('tm', '___tm_struct_layout.tm_yday', 'arraySum(isLeapYear(fullDate.getFullYear()) ? MONTH_DAYS_LEAP : MONTH_DAYS_REGULAR, fullDate.getMonth()-1)+fullDate.getDate()-1', 'i32') }}}
+      {{{ makeSetValue('tm', '___tm_struct_layout.tm_yday', '__arraySum(__isLeapYear(fullDate.getFullYear()) ? __MONTH_DAYS_LEAP : __MONTH_DAYS_REGULAR, fullDate.getMonth()-1)+fullDate.getDate()-1', 'i32') }}}
       {{{ makeSetValue('tm', '___tm_struct_layout.tm_isdst', '0', 'i32') }}}
 
       // we need to convert the matched sequence into an integer array to take care of UTF-8 characters > 0x7F
