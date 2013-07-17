@@ -97,6 +97,16 @@ function mix() {
  }
  return 20;
 }
+function vars(x, y) {
+ x = x | 0;
+ y = +y;
+ HEAP32[sp + 0 >> 2] = x;
+ HEAPF32[sp + 8 >> 2] = y;
+ vars$1(sp);
+ HEAP32[sp + 0 >> 2] = x;
+ HEAPF32[sp + 8 >> 2] = y;
+ vars$0(sp);
+}
 function lin$0(sp) {
  sp = sp | 0;
  c(13);
@@ -245,5 +255,25 @@ function mix$1(sp) {
  c(13);
  c(14);
  c(15);
+}
+function vars$0(sp) {
+ sp = sp | 0;
+ var x = 0, y = +0;
+ y = HEAPF32[sp + 8 >> 2];
+ x = HEAP32[sp + 0 >> 2];
+ c(5 + (x + y));
+ c(6 + y * x);
+ c(7 + (x + y));
+ c(8 + y * x);
+}
+function vars$1(sp) {
+ sp = sp | 0;
+ var x = 0, y = +0;
+ y = HEAPF32[sp + 8 >> 2];
+ x = HEAP32[sp + 0 >> 2];
+ c(1 + (x + y));
+ c(2 + y * x);
+ c(3 + (x + y));
+ c(4 + y * x);
 }
 

@@ -157,5 +157,20 @@ function mix() {
   }
   return 20;
 }
+function vars(x, y) {
+  x = x | 0;
+  y = +y;
+  var a = 0, b = +0;
+  a = x+y;
+  b = y*x;
+  c(1+a);
+  c(2+b);
+  c(3+a);
+  c(4+b);
+  c(5+a);
+  c(6+b);
+  c(7+a);
+  c(8+b);
+}
 // EMSCRIPTEN_GENERATED_FUNCTIONS
 // EXTRA_INFO: { "sizeToOutline": 30 }
