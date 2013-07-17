@@ -3294,6 +3294,8 @@ function outline(ast) {
       denormalizeAsm(func, asmData);
     });
 
+    sizeToOutline *= 2; // be more and more conservative about outlining as we look into outlined functions
+
     // TODO: control flow: route returns and breaks. outlined code should have all breaks/continues/returns break into the outermost scope,
     //       after setting a state variable, etc.
 
