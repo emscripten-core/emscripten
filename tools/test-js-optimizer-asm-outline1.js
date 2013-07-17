@@ -199,5 +199,19 @@ function vars3(x, y) {
   a = c(6+b);
   a = c(7+a);
 }
+function vars4(x, y) {
+  x = x | 0;
+  y = +y;
+  var a = 0, b = +0;
+  a = x+y;
+  b = y*x;
+  a = c(1+a);
+  a = c(2+a);
+  a = c(3+a);
+  a = c(4+a);
+  a = c(5+a);
+  a = c(6+a);
+  b = c(7+a+x);
+}
 // EMSCRIPTEN_GENERATED_FUNCTIONS
 // EXTRA_INFO: { "sizeToOutline": 30 }
