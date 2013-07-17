@@ -73,6 +73,7 @@ function mix() {
   c(4);
   c(5);
   c(6);
+  c(7);
   mix$1(sp);
   mix$0(sp);
   if (HEAP32[sp + 0 >> 2] == 1) {
@@ -80,7 +81,7 @@ function mix() {
   }
   if (HEAP32[sp + 0 >> 2] == 2) {
    switch (HEAP32[sp + 8 >> 2]) {
-   case 1:
+   case 2:
     break main;
    }
   }
@@ -89,7 +90,7 @@ function mix() {
   }
   if (HEAP32[sp + 0 >> 2] == 4) {
    switch (HEAP32[sp + 8 >> 2]) {
-   case 2:
+   case 3:
     continue main;
    }
   }
@@ -217,24 +218,25 @@ function lin5$1(sp) {
 function mix$0(sp) {
  sp = sp | 0;
  OL : do {
-  c(15);
   c(16);
   c(17);
-  HEAP32[sp + 8 >> 2] = 1, HEAP32[sp + 0 >> 2] = 2, break OL;
+  HEAP32[sp + 8 >> 2] = 2, HEAP32[sp + 0 >> 2] = 2, break OL;
   c(18);
   HEAP32[sp + 0 >> 2] = 1, break OL;
   while (1) {
    break;
   }
+  inner : while (1) {
+   break inner;
+  }
   c(19);
   HEAP32[sp + 0 >> 2] = 3, break OL;
   c(20);
-  HEAP32[sp + 8 >> 2] = 2, HEAP32[sp + 0 >> 2] = 4, break OL;
+  HEAP32[sp + 8 >> 2] = 3, HEAP32[sp + 0 >> 2] = 4, break OL;
  } while (0);
 }
 function mix$1(sp) {
  sp = sp | 0;
- c(7);
  c(8);
  c(9);
  c(10);
@@ -242,5 +244,6 @@ function mix$1(sp) {
  c(12);
  c(13);
  c(14);
+ c(15);
 }
 

@@ -147,6 +147,9 @@ function mix() {
     while (1) {
       break; // no need to forward
     }
+    inner: while (1) {
+      break inner; // no need to forward
+    }
     c(19);
     continue;
     c(20);
