@@ -3220,9 +3220,10 @@ function outline(ast) {
     var newFunc = ['defun', newIdent, ['sp'], code];
     var newAsmData = { params: { sp: ASM_INT }, vars: {} };
     for (var v in codeInfo.reads) {
-      newAsmData.vars[v] = getAsmType(asmData, v);
+      if (v != 'sp') newAsmData.vars[v] = getAsmType(asmData, v);
     }
     for (var v in codeInfo.writes) {
+      assert(v != 'sp');
       newAsmData.vars[v] = getAsmType(asmData, v);
     }
     denormalizeAsm(newFunc, newAsmData);
@@ -3313,12 +3314,12 @@ function outline(ast) {
             traverse(stats, function(node, type) {
               if (type === 'assign' && node[2][0] === 'name' && node[2][1] === 'STACKTOP') {
                 var value = node[3];
-                assert(value[0] == 'binary' && value[1] == '|' && value[2][0] == 'name' && value[2][1] == 'STACKTOP' && value[3][0] == 'num');
-                value[3][1] += extraSpace;
+                assert(value[0] == 'binary' && value[1] == '|' && value[2][0] == 'binary' && value[2][1] == '+' && value[2][2][0] == 'name' && value[2][2][1] == 'STACKTOP' && value[2][3][0] == 'num');
+                value[2][3][1] += extraSpace;
                 return true;
               }
             });
-          } else {
+          } else if (!('sp' in asmData.params)) { // if sp is a param, then we are an outlined function, no need to add stack support for us
             // add sp variable and stack bump
             var index = getFirstIndexInNormalized(func, asmData);
             stats.splice(index, 0,
@@ -3326,28 +3327,28 @@ function outline(ast) {
               ['stat', makeAssign(['name', 'STACKTOP'], ['binary', '|', ['binary', '+', ['name', 'STACKTOP'], ['num', extraSpace]], ['num', 0]])]
             );
             asmData.vars.sp = ASM_INT; // no need to add to vars, we are about to denormalize anyhow
-          }
-          // pop the stack in returns
-          function makePop() {
-            return ['stat', makeAssign(['name', 'STACKTOP'], ['name', 'sp'])];
-          }
-          traverse(func, function(node, type) {
-            var stats = getStatements(node);
-            if (!stats) return;
-            for (var i = 0; i < stats.length; i++) {
-              var subNode = stats[i];
-              if (subNode[0] === 'stat') subNode = subNode[1];
-              if (subNode[0] == 'return') {
-                stats.splice(i, 0, makePop());
-                i++;
-              }
+            // we added sp, so we must add stack popping
+            function makePop() {
+              return ['stat', makeAssign(['name', 'STACKTOP'], ['name', 'sp'])];
             }
-          });
-          // pop the stack at the end if there is not a return
-          var last = stats[stats.length-1];
-          if (last[0] === 'stat') last = last[1];
-          if (last[0] !== 'return') {
-            stats.push(makePop());
+            traverse(func, function(node, type) {
+              var stats = getStatements(node);
+              if (!stats) return;
+              for (var i = 0; i < stats.length; i++) {
+                var subNode = stats[i];
+                if (subNode[0] === 'stat') subNode = subNode[1];
+                if (subNode[0] == 'return') {
+                  stats.splice(i, 0, makePop());
+                  i++;
+                }
+              }
+            });
+            // pop the stack at the end if there is not a return
+            var last = stats[stats.length-1];
+            if (last[0] === 'stat') last = last[1];
+            if (last[0] !== 'return') {
+              stats.push(makePop());
+            }
           }
         }
       }

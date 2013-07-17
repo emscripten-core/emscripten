@@ -213,5 +213,22 @@ function vars4(x, y) {
   a = c(6+a);
   b = c(7+a+x);
 }
+function vars_w_stack(x, y) {
+  x = x | 0;
+  y = +y;
+  var a = 0, b = +0, sp = 0;
+  sp = STACKTOP;
+  STACKTOP = STACKTOP + 16 | 0;
+  a = x+y;
+  b = y*x;
+  a = c(1+a);
+  a = c(2+a);
+  a = c(3+a);
+  a = c(4+a);
+  a = c(5+a);
+  a = c(6+a);
+  b = c(7+a);
+  STACKTOP = sp;
+}
 // EMSCRIPTEN_GENERATED_FUNCTIONS
 // EXTRA_INFO: { "sizeToOutline": 30 }
