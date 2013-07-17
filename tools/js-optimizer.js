@@ -3075,6 +3075,9 @@ function outline(ast) {
   function makeComparison(left, comp, right) {
     return ['binary', comp, left, right];
   }
+  function makeSwitch(value, cases) {
+    return ['switch', value, cases];
+  }
 
   var CONTROL_BREAK = 1, CONTROL_BREAK_LABEL = 2, CONTROL_CONTINUE = 3, CONTROL_CONTINUE_LABEL = 4, CONTROL_RETURN_VOID = 5, CONTROL_RETURN_INT = 6, CONTROL_RETURN_DOUBLE = 7;
 
@@ -3175,20 +3178,30 @@ function outline(ast) {
           makeComparison(makeStackAccess(ASM_INT, asmData.controlStackPos), '==', ['num', CONTROL_BREAK]),
           [['stat', ['break']]]
         ));
-        reps.push(makeIf(
-          makeComparison(makeStackAccess(ASM_INT, asmData.controlStackPos), '==', ['num', CONTROL_BREAK_LABEL]),
-          [['stat', ['break', makeStackAccess(ASM_INT, asmData.controlDataStackPos)]]] // XXX here and below, need a switch overall possible labels
-        ));
+        if (keys(codeInfo.labels).length > 0) {
+          reps.push(makeIf(
+            makeComparison(makeStackAccess(ASM_INT, asmData.controlStackPos), '==', ['num', CONTROL_BREAK_LABEL]),
+            [makeSwitch(makeStackAccess(ASM_INT, asmData.controlDataStackPos), keys(codeInfo.labels).map(function(key) {
+              var id = codeInfo.labels[key];
+              return [['num', id], [['stat', ['break', key]]]];
+            }))]
+          ));
+        }
       }
       if (codeInfo.hasContinue) {
         reps.push(makeIf(
           makeComparison(makeStackAccess(ASM_INT, asmData.controlStackPos), '==', ['num', CONTROL_CONTINUE]),
-          [['stat', ['break']]]
+          [['stat', ['continue']]]
         ));
-        reps.push(makeIf(
-          makeComparison(makeStackAccess(ASM_INT, asmData.controlStackPos), '==', ['num', CONTROL_CONTINUE_LABEL]),
-          [['stat', ['continue', makeStackAccess(ASM_INT, asmData.controlDataStackPos)]]] // XXX
-        ));
+        if (keys(codeInfo.labels).length > 0) {
+          reps.push(makeIf(
+            makeComparison(makeStackAccess(ASM_INT, asmData.controlStackPos), '==', ['num', CONTROL_CONTINUE_LABEL]),
+            [makeSwitch(makeStackAccess(ASM_INT, asmData.controlDataStackPos), keys(codeInfo.labels).map(function(key) {
+              var id = codeInfo.labels[key];
+              return [['num', id], [['stat', ['continue', key]]]];
+            }))]
+          ));
+        }
       }
     }
     var newFunc = ['defun', newIdent, ['sp'], code];
