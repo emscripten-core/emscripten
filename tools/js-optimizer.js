@@ -1699,6 +1699,11 @@ function getStackBumpNode(ast) {
   return found;
 }
 
+function getStackBumpSize(ast) {
+  var node = getStackBumpNode(ast);
+  return node ? node[3][2][3][1] : 0;
+}
+
 // Very simple 'registerization', coalescing of variables into a smaller number,
 // as part of minification. Globals-level minification began in a previous pass,
 // we receive extraInfo which tells us how to rename globals. (Only in asm.js.)
@@ -3007,13 +3012,14 @@ function outline(ast) {
       stack.push(name);
     }
     asmData.stackPos = {};
+    var stackSize = getStackBumpSize(func);
     for (var i = 0; i < stack.length; i++) {
-      asmData.stackPos[stack[i]] = i*8;
+      asmData.stackPos[stack[i]] = stackSize + i*8;
     }
     // Reserve an extra two spots: one for control flow var, the other for control flow data
     asmData.extraStackSize = (stack.length + 2)*8;
-    asmData.controlStackPos = asmData.extraStackSize - 16;
-    asmData.controlDataStackPos = asmData.extraStackSize - 8;
+    asmData.controlStackPos = stackSize + asmData.extraStackSize - 16;
+    asmData.controlDataStackPos = stackSize + asmData.extraStackSize - 8;
     asmData.splitCounter = 0;
   }
 
