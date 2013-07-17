@@ -3302,8 +3302,54 @@ function outline(ast) {
       if (size >= sizeToOutline) {
         aggressiveVariableElimination(func, asmData);
         analyzeFunction(func, asmData);
-        var ret = outlineStatements(func, asmData, getStatements(func), 0.5*size);
-        if (ret && ret.length > 0) newFuncs.push.apply(newFuncs, ret);
+        var stats = getStatements(func);
+        var ret = outlineStatements(func, asmData, stats, 0.5*size);
+        if (ret && ret.length > 0) {
+          newFuncs.push.apply(newFuncs, ret);
+          // We have outlined. Add stack support
+          var extraSpace = asmData.stackSize;
+          if ('sp' in asmData.vars) {
+            // find stack bump (STACKTOP = STACKTOP + X | 0) and add the extra space
+            traverse(stats, function(node, type) {
+              if (type === 'assign' && node[2][0] === 'name' && node[2][1] === 'STACKTOP') {
+                var value = node[3];
+                assert(value[0] == 'binary' && value[1] == '|' && value[2][0] == 'name' && value[2][1] == 'STACKTOP' && value[3][0] == 'num');
+                value[3][1] += extraSpace;
+                return true;
+              }
+            });
+          } else {
+            // add sp variable and stack bump
+            var index = getFirstIndexInNormalized(func, asmData);
+            stats.splice(index, 0,
+              ['stat', makeAssign(['name', 'sp'], ['name', 'STACKTOP'])],
+              ['stat', makeAssign(['name', 'STACKTOP'], ['binary', '|', ['binary', '+', ['name', 'STACKTOP'], ['num', extraSpace]], ['num', 0]])]
+            );
+            asmData.vars.sp = ASM_INT; // no need to add to vars, we are about to denormalize anyhow
+          }
+          // pop the stack in returns
+          function makePop() {
+            return ['stat', makeAssign(['name', 'STACKTOP'], ['name', 'sp'])];
+          }
+          traverse(func, function(node, type) {
+            var stats = getStatements(node);
+            if (!stats) return;
+            for (var i = 0; i < stats.length; i++) {
+              var subNode = stats[i];
+              if (subNode[0] === 'stat') subNode = subNode[1];
+              if (subNode[0] == 'return') {
+                stats.splice(i, 0, makePop());
+                i++;
+              }
+            }
+          });
+          // pop the stack at the end if there is not a return
+          var last = stats[stats.length-1];
+          if (last[0] === 'stat') last = last[1];
+          if (last[0] !== 'return') {
+            stats.push(makePop());
+          }
+        }
       }
       denormalizeAsm(func, asmData);
     });
@@ -3314,10 +3360,6 @@ function outline(ast) {
     //       after setting a state variable, etc.
 
     if (newFuncs.length > 0) {
-      // We have outlined. Add stack support: header in which we allocate enough stack space TODO
-      // If sp was not present before, add it and before each return, pop the stack. also a final pop if not ending with a return TODO
-      // (none of this should be done in inner functions, of course, just the original)
-
       // add new functions to the toplevel, or create a toplevel if there isn't one
       ast[1].push.apply(ast[1], newFuncs);
 
