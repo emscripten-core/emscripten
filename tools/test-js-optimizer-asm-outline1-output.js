@@ -265,7 +265,9 @@ function lin3$0(sp) {
   c(18);
   c(19);
   c(20);
-  HEAP32[sp + 8 >> 2] = 10, HEAP32[sp + 0 >> 2] = 6, break OL;
+  HEAP32[sp + 0 >> 2] = 6;
+  HEAP32[sp + 8 >> 2] = 10;
+  break OL;
  } while (0);
 }
 function lin3$1(sp) {
@@ -290,7 +292,8 @@ function lin4$0(sp) {
   c(18);
   c(19);
   c(20);
-  HEAP32[sp + 0 >> 2] = 1, break OL;
+  HEAP32[sp + 0 >> 2] = 1;
+  break OL;
  } while (0);
 }
 function lin4$1(sp) {
@@ -315,7 +318,8 @@ function lin5$0(sp) {
   c(18);
   c(19);
   c(20);
-  HEAP32[sp + 0 >> 2] = 3, break OL;
+  HEAP32[sp + 0 >> 2] = 3;
+  break OL;
  } while (0);
 }
 function lin5$1(sp) {
@@ -334,9 +338,12 @@ function mix$0(sp) {
  OL : do {
   c(16);
   c(17);
-  HEAP32[sp + 8 >> 2] = 2, HEAP32[sp + 0 >> 2] = 2, break OL;
+  HEAP32[sp + 0 >> 2] = 2;
+  HEAP32[sp + 8 >> 2] = 2;
+  break OL;
   c(18);
-  HEAP32[sp + 0 >> 2] = 1, break OL;
+  HEAP32[sp + 0 >> 2] = 1;
+  break OL;
   while (1) {
    break;
   }
@@ -344,9 +351,12 @@ function mix$0(sp) {
    break inner;
   }
   c(19);
-  HEAP32[sp + 0 >> 2] = 3, break OL;
+  HEAP32[sp + 0 >> 2] = 3;
+  break OL;
   c(20);
-  HEAP32[sp + 8 >> 2] = 3, HEAP32[sp + 0 >> 2] = 4, break OL;
+  HEAP32[sp + 0 >> 2] = 4;
+  HEAP32[sp + 8 >> 2] = 3;
+  break OL;
  } while (0);
 }
 function mix$1(sp) {

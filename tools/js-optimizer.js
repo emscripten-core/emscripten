@@ -3137,47 +3137,56 @@ function outline(ast) {
       // we need to capture all control flow using a top-level labeled one-time loop in the outlined function
       var breakCapturers = 0;
       var continueCapturers = 0;
-      traverse(code, function(node, type) {
+      traverse(['block', code], function(node, type) { // traverse on dummy block, so we get the toplevel statements
         // replace all break/continue/returns with code to break out of the main one-time loop, and set the control data
-        if (type == 'return') {
-          var ret = ['break', 'OL'];
-          if (!node[1]) {
-            ret = ['seq', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos), ['num', CONTROL_RETURN_VOID]), ret];
-          } else {
-            var type = detectAsmCoercion(node[1], asmData);
-            ret = ['seq', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos), ['num', type == ASM_INT ? CONTROL_RETURN_INT : CONTROL_RETURN_DOUBLE]), ret];
-            ret = ['seq', makeAssign(makeStackAccess(type, asmData.controlDataStackPos), node[1]), ret];
-          }
-          return ret;
-        } else if (type == 'break') {
-          var label = node[1] || 0;
-          if (label == 'OL') return; // this was just added before us, it is new replacement code
-          if (!label && breakCapturers > 0) return; // no label, and captured
-          if (label && (label in codeInfo.labels)) return; // label, and defined in this code, so captured
-          var ret = ['break', 'OL'];
-          ret = ['seq', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos), ['num', label ? CONTROL_BREAK_LABEL : CONTROL_BREAK]), ret];
-          if (label) {
-            assert(label in codeInfo.breaks);
-            ret = ['seq', makeAssign(makeStackAccess(ASM_INT, asmData.controlDataStackPos), ['num', codeInfo.breaks[label]]), ret];
-          }
-          return ret;
-        } else if (type == 'continue') {
-          var label = node[1] || 0;
-          if (!label && continueCapturers > 0) return; // no label, and captured
-          if (label && (label in codeInfo.labels)) return; // label, and defined in this code, so captured
-          var ret = ['break', 'OL'];
-          ret = ['seq', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos), ['num', label ? CONTROL_CONTINUE_LABEL : CONTROL_CONTINUE]), ret];
-          if (label) {
-            assert(label in codeInfo.continues);
-            ret = ['seq', makeAssign(makeStackAccess(ASM_INT, asmData.controlDataStackPos), ['num', codeInfo.continues[label]]), ret];
-          }
-          return ret;
-        } else {
-          if (type in BREAK_CAPTURERS) {
-            breakCapturers++;
-          }
-          if (type in CONTINUE_CAPTURERS) {
-            continueCapturers++;
+        if (type in BREAK_CAPTURERS) {
+          breakCapturers++;
+        }
+        if (type in CONTINUE_CAPTURERS) {
+          continueCapturers++;
+        }
+        var stats = node === code ? node : getStatements(node);
+        if (stats) {
+          for (var i = 0; i < stats.length; i++) {
+            var node = stats[i]; // step all over node and type here, for convenience
+            var type = node[0];
+            var ret = null;
+            if (type == 'return') {
+              ret = [];
+              if (!node[1]) {
+                ret.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos), ['num', CONTROL_RETURN_VOID])]);
+              } else {
+                var type = detectAsmCoercion(node[1], asmData);
+                ret.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos), ['num', type == ASM_INT ? CONTROL_RETURN_INT : CONTROL_RETURN_DOUBLE])]);
+                ret.push(['stat', makeAssign(makeStackAccess(type, asmData.controlDataStackPos), node[1])]);
+              }
+              ret.push(['stat', ['break', 'OL']]);
+            } else if (type == 'break') {
+              var label = node[1] || 0;
+              if (label == 'OL') continue; // this was just added before us, it is new replacement code
+              if (!label && breakCapturers > 0) continue; // no label, and captured
+              if (label && (label in codeInfo.labels)) continue; // label, and defined in this code, so captured
+              ret = [['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos), ['num', label ? CONTROL_BREAK_LABEL : CONTROL_BREAK])]];
+              if (label) {
+                assert(label in codeInfo.breaks);
+                ret.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlDataStackPos), ['num', codeInfo.breaks[label]])]);
+              }
+              ret.push(['stat', ['break', 'OL']]);
+            } else if (type == 'continue') {
+              var label = node[1] || 0;
+              if (!label && continueCapturers > 0) continue; // no label, and captured
+              if (label && (label in codeInfo.labels)) continue; // label, and defined in this code, so captured
+              ret = [['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos), ['num', label ? CONTROL_CONTINUE_LABEL : CONTROL_CONTINUE])]];
+              if (label) {
+                assert(label in codeInfo.continues);
+                ret.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlDataStackPos), ['num', codeInfo.continues[label]])]);
+              }
+              ret.push(['stat', ['break', 'OL']]);
+            }
+            if (ret) {
+              stats.splice.apply(stats, [i, 1].concat(ret));
+              i += ret.length-1;
+            }
           }
         }
       }, function(node, type) {

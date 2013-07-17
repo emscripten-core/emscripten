@@ -400,7 +400,8 @@ function _free$0(sp) {
    HEAP32[25] = $p_0;
    HEAP32[$p_0 + 4 >> 2] = $220 | 1;
    HEAP32[$189 + $220 >> 2] = $220;
-   HEAP32[sp + 632 >> 2] = 5, break OL;
+   HEAP32[sp + 632 >> 2] = 5;
+   break OL;
   }
   $227 = ($194 & -8) + $psize_0 | 0;
   L726 : do {
@@ -559,10 +560,12 @@ function _free$0(sp) {
   HEAP32[$189 + $227 >> 2] = $227;
   if (($p_0 | 0) != (HEAP32[25] | 0)) {
    $psize_1 = $227;
-   HEAP32[sp + 632 >> 2] = 1, break OL;
+   HEAP32[sp + 632 >> 2] = 1;
+   break OL;
   }
   HEAP32[22] = $227;
-  HEAP32[sp + 632 >> 2] = 5, break OL;
+  HEAP32[sp + 632 >> 2] = 5;
+  break OL;
  } while (0);
  HEAP32[sp + 248 >> 2] = $220;
  HEAP32[sp + 256 >> 2] = $227;
@@ -620,13 +623,15 @@ function _free$1(sp) {
    if ((HEAP32[($mem + (($10 & -8) - 4) | 0) >> 2] & 3 | 0) != 3) {
     $p_0 = $25;
     $psize_0 = $26;
-    HEAP32[sp + 632 >> 2] = 1, break OL;
+    HEAP32[sp + 632 >> 2] = 1;
+    break OL;
    }
    HEAP32[22] = $26;
    HEAP32[($mem + (($10 & -8) - 4) | 0) >> 2] = HEAP32[($mem + (($10 & -8) - 4) | 0) >> 2] & -2;
    HEAP32[$mem + ((-8 - $21 | 0) + 4) >> 2] = $26 | 1;
    HEAP32[($mem + (($10 & -8) - 8) | 0) >> 2] = $26;
-   HEAP32[sp + 632 >> 2] = 5, break OL;
+   HEAP32[sp + 632 >> 2] = 5;
+   break OL;
   }
   if ($21 >>> 0 < 256) {
    $37 = HEAP32[$mem + ((-8 - $21 | 0) + 8) >> 2] | 0;
@@ -646,7 +651,8 @@ function _free$1(sp) {
     HEAP32[20] = HEAP32[20] & (1 << ($21 >>> 3) ^ -1);
     $p_0 = $25;
     $psize_0 = $26;
-    HEAP32[sp + 632 >> 2] = 1, break OL;
+    HEAP32[sp + 632 >> 2] = 1;
+    break OL;
    }
    do {
     if (($40 | 0) == (120 + ($21 >>> 3 << 1 << 2) | 0 | 0)) {
@@ -666,7 +672,8 @@ function _free$1(sp) {
    HEAP32[$_pre_phi307 >> 2] = $37;
    $p_0 = $25;
    $psize_0 = $26;
-   HEAP32[sp + 632 >> 2] = 1, break OL;
+   HEAP32[sp + 632 >> 2] = 1;
+   break OL;
   }
   $69 = $mem + (-8 - $21 | 0) | 0;
   $72 = HEAP32[$mem + ((-8 - $21 | 0) + 24) >> 2] | 0;
@@ -732,7 +739,8 @@ function _free$1(sp) {
   if (($72 | 0) == 0) {
    $p_0 = $25;
    $psize_0 = $26;
-   HEAP32[sp + 632 >> 2] = 1, break OL;
+   HEAP32[sp + 632 >> 2] = 1;
+   break OL;
   }
   $120 = 384 + (HEAP32[($mem + ((-8 - $21 | 0) + 28) | 0) >> 2] << 2) | 0;
   do {
@@ -744,7 +752,9 @@ function _free$1(sp) {
     HEAP32[21] = HEAP32[21] & (1 << HEAP32[($mem + ((-8 - $21 | 0) + 28) | 0) >> 2] ^ -1);
     $p_0 = $25;
     $psize_0 = $26;
-    HEAP32[sp + 640 >> 2] = 2, HEAP32[sp + 632 >> 2] = 2, break OL;
+    HEAP32[sp + 632 >> 2] = 2;
+    HEAP32[sp + 640 >> 2] = 2;
+    break OL;
    } else {
     if ($72 >>> 0 < (HEAP32[24] | 0) >>> 0) {
      _abort();
@@ -757,7 +767,9 @@ function _free$1(sp) {
     if (($R_1 | 0) == 0) {
      $p_0 = $25;
      $psize_0 = $26;
-     HEAP32[sp + 640 >> 2] = 2, HEAP32[sp + 632 >> 2] = 2, break OL;
+     HEAP32[sp + 632 >> 2] = 2;
+     HEAP32[sp + 640 >> 2] = 2;
+     break OL;
     }
    }
   } while (0);
@@ -781,7 +793,8 @@ function _free$1(sp) {
   if (($164 | 0) == 0) {
    $p_0 = $25;
    $psize_0 = $26;
-   HEAP32[sp + 632 >> 2] = 1, break OL;
+   HEAP32[sp + 632 >> 2] = 1;
+   break OL;
   }
   if ($164 >>> 0 < (HEAP32[24] | 0) >>> 0) {
    _abort();
@@ -790,7 +803,8 @@ function _free$1(sp) {
    HEAP32[$164 + 24 >> 2] = $R_1;
    $p_0 = $25;
    $psize_0 = $26;
-   HEAP32[sp + 632 >> 2] = 1, break OL;
+   HEAP32[sp + 632 >> 2] = 1;
+   break OL;
   }
  } while (0);
  HEAP32[sp + 216 >> 2] = $p_0;
