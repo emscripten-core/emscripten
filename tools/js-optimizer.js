@@ -2997,9 +2997,9 @@ function outline(ast) {
       asmData.stackPos[stack[i]] = i*8;
     }
     // Reserve an extra two spots: one for control flow var, the other for control flow data
-    asmData.stackSize = (stack.length + 2)*8;
-    asmData.controlStackPos = asmData.stackSize - 16;
-    asmData.controlDataStackPos = asmData.stackSize - 8;
+    asmData.extraStackSize = (stack.length + 2)*8;
+    asmData.controlStackPos = asmData.extraStackSize - 16;
+    asmData.controlDataStackPos = asmData.extraStackSize - 8;
     asmData.splitCounter = 0;
   }
 
@@ -3316,7 +3316,7 @@ function outline(ast) {
         if (ret && ret.length > 0) {
           newFuncs.push.apply(newFuncs, ret);
           // We have outlined. Add stack support
-          var extraSpace = asmData.stackSize;
+          var extraSpace = asmData.extraStackSize;
           if ('sp' in asmData.vars) {
             // find stack bump (STACKTOP = STACKTOP + X | 0) and add the extra space
             traverse(stats, function(node, type) {
