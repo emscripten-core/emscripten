@@ -2993,11 +2993,11 @@ function outline(ast) {
 
   // Analyze uses - reads and writes - of variables in part of the AST of a function
   function analyzeCode(func, asmData, ast) {
-    var labels = {};
+    var labels = {}; // labels defined in this code
     var labelCounter = 1; // 0 means no label
 
     traverse(ast, function(node, type) {
-      if ((type == 'label' || type in LOOP_FLOW) && node[1] && !(node[1] in labels)) {
+      if (type == 'label' && !(node[1] in labels)) {
         labels[node[1]] = labelCounter++;
       }
     });
@@ -3006,7 +3006,7 @@ function outline(ast) {
     var appearances = {};
     var hasReturn = false, hasBreak = false, hasContinue = false;
     var breaks = {};    // set of labels we break or continue
-    var continues = {}; // to. '0' is an unlabeled one
+    var continues = {}; // to (name -> id, just like labels)
     var breakCapturers = 0;
     var continueCapturers = 0;
 
@@ -3028,13 +3028,13 @@ function outline(ast) {
         var label = node[1] || 0;
         if (!label && breakCapturers > 0) return; // no label, and captured
         if (label && (label in labels)) return; // label, and defined in this code, so captured
-        breaks[label || 0] = 0;
+        if (label) breaks[label] = labelCounter++;
         hasBreak = true;
       } else if (type == 'continue') {
         var label = node[1] || 0;
         if (!label && continueCapturers > 0) return; // no label, and captured
         if (label && (label in labels)) return; // label, and defined in this code, so captured
-        continues[label || 0] = 0;
+        if (label) continues[label] = labelCounter++;
         hasContinue = true;
       } else {
         if (type in BREAK_CAPTURERS) {
@@ -3127,8 +3127,8 @@ function outline(ast) {
           var ret = ['break', 'OL'];
           ret = ['seq', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos), ['num', label ? CONTROL_BREAK_LABEL : CONTROL_BREAK]), ret];
           if (label) {
-            assert(label in codeInfo.labels, label + ' in ' + keys(codeInfo.labels));
-            ret = ['seq', makeAssign(makeStackAccess(ASM_INT, asmData.controlDataStackPos), ['num', codeInfo.labels[label]]), ret];
+            assert(label in codeInfo.breaks);
+            ret = ['seq', makeAssign(makeStackAccess(ASM_INT, asmData.controlDataStackPos), ['num', codeInfo.breaks[label]]), ret];
           }
           return ret;
         } else if (type == 'continue') {
@@ -3138,7 +3138,8 @@ function outline(ast) {
           var ret = ['break', 'OL'];
           ret = ['seq', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos), ['num', label ? CONTROL_CONTINUE_LABEL : CONTROL_CONTINUE]), ret];
           if (label) {
-            ret = ['seq', makeAssign(makeStackAccess(ASM_INT, asmData.controlDataStackPos), ['num', codeInfo.labels[label]]), ret];
+            assert(label in codeInfo.continues);
+            ret = ['seq', makeAssign(makeStackAccess(ASM_INT, asmData.controlDataStackPos), ['num', codeInfo.continues[label]]), ret];
           }
           return ret;
         } else {
@@ -3178,11 +3179,11 @@ function outline(ast) {
           makeComparison(makeStackAccess(ASM_INT, asmData.controlStackPos), '==', ['num', CONTROL_BREAK]),
           [['stat', ['break']]]
         ));
-        if (keys(codeInfo.labels).length > 0) {
+        if (keys(codeInfo.breaks).length > 0) {
           reps.push(makeIf(
             makeComparison(makeStackAccess(ASM_INT, asmData.controlStackPos), '==', ['num', CONTROL_BREAK_LABEL]),
-            [makeSwitch(makeStackAccess(ASM_INT, asmData.controlDataStackPos), keys(codeInfo.labels).map(function(key) {
-              var id = codeInfo.labels[key];
+            [makeSwitch(makeStackAccess(ASM_INT, asmData.controlDataStackPos), keys(codeInfo.breaks).map(function(key) {
+              var id = codeInfo.breaks[key];
               return [['num', id], [['stat', ['break', key]]]];
             }))]
           ));
@@ -3193,11 +3194,11 @@ function outline(ast) {
           makeComparison(makeStackAccess(ASM_INT, asmData.controlStackPos), '==', ['num', CONTROL_CONTINUE]),
           [['stat', ['continue']]]
         ));
-        if (keys(codeInfo.labels).length > 0) {
+        if (keys(codeInfo.continues).length > 0) {
           reps.push(makeIf(
             makeComparison(makeStackAccess(ASM_INT, asmData.controlStackPos), '==', ['num', CONTROL_CONTINUE_LABEL]),
-            [makeSwitch(makeStackAccess(ASM_INT, asmData.controlDataStackPos), keys(codeInfo.labels).map(function(key) {
-              var id = codeInfo.labels[key];
+            [makeSwitch(makeStackAccess(ASM_INT, asmData.controlDataStackPos), keys(codeInfo.continues).map(function(key) {
+              var id = codeInfo.continues[key];
               return [['num', id], [['stat', ['continue', key]]]];
             }))]
           ));
