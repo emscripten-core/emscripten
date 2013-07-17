@@ -2235,3 +2235,11 @@ EMSCRIPTEN_BINDINGS(with_adjustment) {
 
     function("return_Base_from_DerivedWithOffset", &return_Base_from_DerivedWithOffset);
 }
+
+void clear_StringHolder(StringHolder& sh) {
+    sh.set("");
+}
+
+EMSCRIPTEN_BINDINGS(references) {
+    function("clear_StringHolder", &clear_StringHolder);
+}

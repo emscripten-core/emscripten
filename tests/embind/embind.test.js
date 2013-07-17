@@ -1878,6 +1878,16 @@ module({
         //     setTimeout(fn, 0);
         // });
     });
+
+    BaseFixture.extend("references", function() {
+        test("JS object handles can be passed through to C++ by reference", function() {
+            var sh = new cm.StringHolder("Hello world");
+            assert.equal("Hello world", sh.get());
+            cm.clear_StringHolder(sh);
+            assert.equal("", sh.get());
+            sh.delete();
+        });
+    });
 });
 
 /* global run_all_tests */
