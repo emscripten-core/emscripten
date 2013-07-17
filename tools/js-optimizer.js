@@ -3058,8 +3058,7 @@ function outline(ast) {
     for (var name in appearances) {
       if (appearances[name] > 0) reads[name] = 0;
     }
-
-    return { writes: writes, reads: reads, hasReturn: hasReturn, breaks: breaks, continues: continues, labels: labels };
+    return { writes: writes, reads: reads, hasReturn: hasReturn, hasBreak: hasBreak, hasContinue: hasContinue, breaks: breaks, continues: continues, labels: labels };
   }
 
   function makeAssign(dst, src) {
@@ -3174,21 +3173,21 @@ function outline(ast) {
       if (codeInfo.hasBreak) {
         reps.push(makeIf(
           makeComparison(makeStackAccess(ASM_INT, asmData.controlStackPos), '==', ['num', CONTROL_BREAK]),
-          ['stat', ['break']]
+          [['stat', ['break']]]
         ));
         reps.push(makeIf(
           makeComparison(makeStackAccess(ASM_INT, asmData.controlStackPos), '==', ['num', CONTROL_BREAK_LABEL]),
-          ['stat', ['break', makeStackAccess(ASM_INT, asmData.controlDataStackPos)]] // XXX here and below, need a switch overall possible labels
+          [['stat', ['break', makeStackAccess(ASM_INT, asmData.controlDataStackPos)]]] // XXX here and below, need a switch overall possible labels
         ));
       }
       if (codeInfo.hasContinue) {
         reps.push(makeIf(
           makeComparison(makeStackAccess(ASM_INT, asmData.controlStackPos), '==', ['num', CONTROL_CONTINUE]),
-          ['stat', ['break']]
+          [['stat', ['break']]]
         ));
         reps.push(makeIf(
           makeComparison(makeStackAccess(ASM_INT, asmData.controlStackPos), '==', ['num', CONTROL_CONTINUE_LABEL]),
-          ['stat', ['continue', makeStackAccess(ASM_INT, asmData.controlDataStackPos)]] // XXX
+          [['stat', ['continue', makeStackAccess(ASM_INT, asmData.controlDataStackPos)]]] // XXX
         ));
       }
     }
