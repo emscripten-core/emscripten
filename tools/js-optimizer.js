@@ -1673,6 +1673,18 @@ function denormalizeAsm(func, data) {
   //printErr('denormalized \n\n' + astToSrc(func) + '\n\n');
 }
 
+function getFirstIndexInNormalized(func, data) {
+  // In a normalized asm function, return the index of the first element that is not not defs or annotation
+  var stats = func[3];
+  var i = stats.length-1;
+  while (i >= 0) {
+    var stat = stats[i];
+    if (stat[0] == 'var') break;
+    i--;
+  }
+  return i+1;
+}
+
 // Very simple 'registerization', coalescing of variables into a smaller number,
 // as part of minification. Globals-level minification began in a previous pass,
 // we receive extraInfo which tells us how to rename globals. (Only in asm.js.)
@@ -3226,7 +3238,8 @@ function outline(ast) {
     var sizeSeen = 0;
     var end = stats.length-1;
     var i = stats.length;
-    while (--i >= 0) {
+    var minIndex = stats == getStatements(func) ? getFirstIndexInNormalized(func, asmData) : 0;
+    while (--i >= minIndex) {
       var stat = stats[i];
       var size = measureSize(stat);
       //printErr(level + ' size          ' + [i, size]);
