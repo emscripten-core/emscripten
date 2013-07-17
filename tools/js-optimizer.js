@@ -3105,7 +3105,6 @@ function outline(ast) {
     // Generate new function
     if (codeInfo.hasReturn || codeInfo.hasBreak || codeInfo.hasContinue) {
       // we need to capture all control flow using a top-level labeled one-time loop in the outlined function
-      code = [['label', 'OL', ['do', ['num', 0], ['block', code]]]];
       var breakCapturers = 0;
       var continueCapturers = 0;
       traverse(code, function(node, type) {
@@ -3158,6 +3157,7 @@ function outline(ast) {
           continueCapturers--;
         }
       });
+      code = [['label', 'OL', ['do', ['num', 0], ['block', code]]]]; // do this after processing, to not confuse breakCapturers etc.
       // read the control data at the callsite to the outlined function
       if (codeInfo.hasReturn) {
         reps.push(makeIf(
