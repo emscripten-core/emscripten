@@ -3106,13 +3106,11 @@ function outline(ast) {
     for (var v in codeInfo.reads) {
       if (v != 'sp') {
         reps.push(['stat', ['assign', true, ['sub', ['name', getAsmType(asmData, v) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], ['name', v]]]);
-        code.unshift(['stat', ['assign', true, ['name', v], ['sub', ['name', getAsmType(asmData, v) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]]]]);
       }
     }
     reps.push(['stat', ['call', ['name', newIdent], [['name', 'sp']]]]);
     for (var v in codeInfo.writes) {
       reps.push(['stat', ['assign', true, ['name', v], ['sub', ['name', getAsmType(asmData, v) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]]]]);
-      code.push(['stat', ['assign', true, ['sub', ['name', getAsmType(asmData, v) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], ['name', v]]]);
     }
     // Generate new function
     if (codeInfo.hasReturn || codeInfo.hasBreak || codeInfo.hasContinue) {
@@ -3217,6 +3215,16 @@ function outline(ast) {
         }
       }
     }
+    // add spills and unspills in outlined code outside the OL loop
+    for (var v in codeInfo.reads) {
+      if (v != 'sp') {
+        code.unshift(['stat', ['assign', true, ['name', v], ['sub', ['name', getAsmType(asmData, v) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]]]]);
+      }
+    }
+    for (var v in codeInfo.writes) {
+      code.push(['stat', ['assign', true, ['sub', ['name', getAsmType(asmData, v) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], ['name', v]]]);
+    }
+    // finalize
     var newFunc = ['defun', newIdent, ['sp'], code];
     var newAsmData = { params: { sp: ASM_INT }, vars: {} };
     for (var v in codeInfo.reads) {
@@ -3314,6 +3322,7 @@ function outline(ast) {
             traverse(stats, function(node, type) {
               if (type === 'assign' && node[2][0] === 'name' && node[2][1] === 'STACKTOP') {
                 var value = node[3];
+                if (value[0] === 'name') return true;
                 assert(value[0] == 'binary' && value[1] == '|' && value[2][0] == 'binary' && value[2][1] == '+' && value[2][2][0] == 'name' && value[2][2][1] == 'STACKTOP' && value[2][3][0] == 'num');
                 value[2][3][1] += extraSpace;
                 return true;
