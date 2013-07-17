@@ -28,7 +28,56 @@ LibraryManager.library = {
   stderr: 'allocate(1, "i32*", ALLOC_STATIC)',
   _impure_ptr: 'allocate(1, "i32*", ALLOC_STATIC)',
 
-  $FS__deps: ['$ERRNO_CODES', '__setErrNo', 'stdin', 'stdout', 'stderr', '_impure_ptr'],
+  $FSCOM: {
+    // Preloads a file asynchronously. You can call this before run, for example in
+    // preRun. run will be delayed until this file arrives and is set up.
+    // If you call it after run(), you may want to pause the main loop until it
+    // completes, if so, you can use the onload parameter to be notified when
+    // that happens.
+    // In addition to normally creating the file, we also asynchronously preload
+    // the browser-friendly versions of it: For an image, we preload an Image
+    // element and for an audio, and Audio. These are necessary for SDL_Image
+    // and _Mixer to find the files in preloadedImages/Audios.
+    // You can also call this with a typed array instead of a url. It will then
+    // do preloading for the Image/Audio part, as if the typed array were the
+    // result of an XHR that you did manually.
+    createPreloadedFile__deps: ['$PATH'],
+    createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile) {
+      Browser.init();
+      var fullname = PATH.join(parent, name).substr(1);
+      function processData(byteArray) {
+        function finish(byteArray) {
+          if (!dontCreateFile) {
+            FS.createDataFile(parent, name, byteArray, canRead, canWrite);
+          }
+          if (onload) onload();
+          removeRunDependency('cp ' + fullname);
+        }
+        var handled = false;
+        Module['preloadPlugins'].forEach(function(plugin) {
+          if (handled) return;
+          if (plugin['canHandle'](fullname)) {
+            plugin['handle'](byteArray, fullname, finish, function() {
+              if (onerror) onerror();
+              removeRunDependency('cp ' + fullname);
+            });
+            handled = true;
+          }
+        });
+        if (!handled) finish(byteArray);
+      }
+      addRunDependency('cp ' + fullname);
+      if (typeof url == 'string') {
+        Browser.asyncLoad(url, function(byteArray) {
+          processData(byteArray);
+        }, onerror);
+      } else {
+        processData(url);
+      }
+    }
+  },
+
+  $FS__deps: ['$FSCOM', '$ERRNO_CODES', '__setErrNo', 'stdin', 'stdout', 'stderr', '_impure_ptr'],
   $FS__postset: 'FS.staticInit();' +
                 '__ATINIT__.unshift({ func: function() { if (!Module["noFSInit"] && !FS.init.initialized) FS.init() } });' +
                 '__ATMAIN__.push({ func: function() { FS.ignorePermissions = false } });' +
@@ -431,50 +480,8 @@ LibraryManager.library = {
 
       return FS.createFile(parent, name, properties, canRead, canWrite);
     },
-    // Preloads a file asynchronously. You can call this before run, for example in
-    // preRun. run will be delayed until this file arrives and is set up.
-    // If you call it after run(), you may want to pause the main loop until it
-    // completes, if so, you can use the onload parameter to be notified when
-    // that happens.
-    // In addition to normally creating the file, we also asynchronously preload
-    // the browser-friendly versions of it: For an image, we preload an Image
-    // element and for an audio, and Audio. These are necessary for SDL_Image
-    // and _Mixer to find the files in preloadedImages/Audios.
-    // You can also call this with a typed array instead of a url. It will then
-    // do preloading for the Image/Audio part, as if the typed array were the
-    // result of an XHR that you did manually.
-    createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile) {
-      Browser.init();
-      var fullname = FS.joinPath([parent, name], true);
-      function processData(byteArray) {
-        function finish(byteArray) {
-          if (!dontCreateFile) {
-            FS.createDataFile(parent, name, byteArray, canRead, canWrite);
-          }
-          if (onload) onload();
-          removeRunDependency('cp ' + fullname);
-        }
-        var handled = false;
-        Module['preloadPlugins'].forEach(function(plugin) {
-          if (handled) return;
-          if (plugin['canHandle'](fullname)) {
-            plugin['handle'](byteArray, fullname, finish, function() {
-              if (onerror) onerror();
-              removeRunDependency('cp ' + fullname);
-            });
-            handled = true;
-          }
-        });
-        if (!handled) finish(byteArray);
-      }
-      addRunDependency('cp ' + fullname);
-      if (typeof url == 'string') {
-        Browser.asyncLoad(url, function(byteArray) {
-          processData(byteArray);
-        }, onerror);
-      } else {
-        processData(url);
-      }
+    createPreloadedFile: function () {
+      FSCOM.createPreloadedFile.apply(this, arguments);
     },
     // Creates a link to a specific local path.
     createLink: function(parent, name, target, canRead, canWrite) {
