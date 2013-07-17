@@ -11,7 +11,6 @@ headers, for the libc implementation in JS).
 
 import os, sys, json, optparse, subprocess, re, time, multiprocessing, string
 
-from tools import shared
 from tools import jsrun, cache as cache_module, tempfiles
 from tools.response_file import read_response_file
 
@@ -26,6 +25,7 @@ def get_configuration():
   if hasattr(get_configuration, 'configuration'):
     return get_configuration.configuration
 
+  from tools import shared
   configuration = shared.Configuration(environ=os.environ)
   get_configuration.configuration = configuration
   return configuration
@@ -468,6 +468,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   }
 
 ''' % (sig, i, args, arg_coercions, jsret))
+      from tools import shared
       asm_setup += '\n' + shared.JS.make_invoke(sig) + '\n'
       basic_funcs.append('invoke_%s' % sig)
 
