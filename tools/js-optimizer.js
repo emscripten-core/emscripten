@@ -1685,6 +1685,20 @@ function getFirstIndexInNormalized(func, data) {
   return i+1;
 }
 
+function getStackBumpNode(ast) {
+  var found = null;
+  traverse(ast, function(node, type) {
+    if (type === 'assign' && node[2][0] === 'name' && node[2][1] === 'STACKTOP') {
+      var value = node[3];
+      if (value[0] === 'name') return true;
+      assert(value[0] == 'binary' && value[1] == '|' && value[2][0] == 'binary' && value[2][1] == '+' && value[2][2][0] == 'name' && value[2][2][1] == 'STACKTOP' && value[2][3][0] == 'num');
+      found = node;
+      return true;
+    }
+  });
+  return found;
+}
+
 // Very simple 'registerization', coalescing of variables into a smaller number,
 // as part of minification. Globals-level minification began in a previous pass,
 // we receive extraInfo which tells us how to rename globals. (Only in asm.js.)
@@ -3319,15 +3333,8 @@ function outline(ast) {
           var extraSpace = asmData.extraStackSize;
           if ('sp' in asmData.vars) {
             // find stack bump (STACKTOP = STACKTOP + X | 0) and add the extra space
-            traverse(stats, function(node, type) {
-              if (type === 'assign' && node[2][0] === 'name' && node[2][1] === 'STACKTOP') {
-                var value = node[3];
-                if (value[0] === 'name') return true;
-                assert(value[0] == 'binary' && value[1] == '|' && value[2][0] == 'binary' && value[2][1] == '+' && value[2][2][0] == 'name' && value[2][2][1] == 'STACKTOP' && value[2][3][0] == 'num');
-                value[2][3][1] += extraSpace;
-                return true;
-              }
-            });
+            var stackBumpNode = getStackBumpNode(stats);
+            if (stackBumpNode) stackBumpNode[3][2][3][1] += extraSpace;
           } else if (!('sp' in asmData.params)) { // if sp is a param, then we are an outlined function, no need to add stack support for us
             // add sp variable and stack bump
             var index = getFirstIndexInNormalized(func, asmData);
