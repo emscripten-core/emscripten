@@ -172,5 +172,18 @@ function vars(x, y) {
   c(7+a);
   c(8+b);
 }
+function vars2(x, y) {
+  x = x | 0;
+  y = +y;
+  var a = 0, b = +0;
+  a = x+y;
+  b = y*x;
+  a = c(1+a);
+  b = c(2+b);
+  a = c(3+a);
+  b = c(4+b);
+  a = c(5+a);
+  b = c(6+b);
+}
 // EMSCRIPTEN_GENERATED_FUNCTIONS
 // EXTRA_INFO: { "sizeToOutline": 30 }
