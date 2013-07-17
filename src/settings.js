@@ -125,6 +125,11 @@ var INLINING_LIMIT = 0;  // A limit on inlining. If 0, we will inline normally i
                          // we will prevent inlining of functions of this size or larger
                          // in closure. 50 is a reasonable setting if you do not want
                          // inlining
+var OUTLINING_LIMIT = 0; // A function size above which we try to automatically break up
+                         // functions into smaller ones, to avoid the downsides of very
+                         // large functions (JS engines often compile them very slowly,
+                         // compile them with lower optimizations, or do not optimize them
+                         // at all). If 0, we do not perform outlining at all.
 
 // Generated code debugging options
 var SAFE_HEAP = 0; // Check each write to the heap, for example, this will give a clear

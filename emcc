@@ -1596,6 +1596,10 @@ try:
     logging.debug('running post-closure post-opts')
     js_optimizer_queue += ['simplifyExpressionsPost']
 
+  if shared.Settings.OUTLINING_LIMIT > 0:
+    js_optimizer_queue += ['outline']
+    js_optimizer_extra_info['sizeToOutline'] = shared.Settings.OUTLINING_LIMIT
+
   if (not closure or shared.Settings.ASM_JS) and shared.Settings.RELOOP and debug_level < 3:
     js_optimizer_queue += ['registerize']
 
