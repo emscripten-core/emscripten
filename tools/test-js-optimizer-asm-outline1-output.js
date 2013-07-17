@@ -121,6 +121,21 @@ function vars2(x, y) {
  a = HEAP32[sp + 16 >> 2];
  b = HEAPF32[sp + 24 >> 2];
 }
+function vars3(x, y) {
+ x = x | 0;
+ y = +y;
+ var a = 0;
+ HEAP32[sp + 16 >> 2] = a;
+ HEAP32[sp + 0 >> 2] = x;
+ HEAPF32[sp + 8 >> 2] = y;
+ vars3$1(sp);
+ a = HEAP32[sp + 16 >> 2];
+ HEAP32[sp + 16 >> 2] = a;
+ HEAPF32[sp + 8 >> 2] = y;
+ HEAP32[sp + 0 >> 2] = x;
+ vars3$0(sp);
+ a = HEAP32[sp + 16 >> 2];
+}
 function lin$0(sp) {
  sp = sp | 0;
  c(13);
@@ -301,5 +316,29 @@ function vars2$0(sp) {
  b = c(6 + b);
  HEAP32[sp + 16 >> 2] = a;
  HEAPF32[sp + 24 >> 2] = b;
+}
+function vars3$0(sp) {
+ sp = sp | 0;
+ var a = 0, y = +0, x = 0;
+ x = HEAP32[sp + 0 >> 2];
+ y = HEAPF32[sp + 8 >> 2];
+ a = HEAP32[sp + 16 >> 2];
+ a = c(4 + y * x);
+ a = c(5 + a);
+ a = c(6 + y * x);
+ a = c(7 + a);
+ HEAP32[sp + 16 >> 2] = a;
+}
+function vars3$1(sp) {
+ sp = sp | 0;
+ var a = 0, x = 0, y = +0;
+ y = HEAPF32[sp + 8 >> 2];
+ x = HEAP32[sp + 0 >> 2];
+ a = HEAP32[sp + 16 >> 2];
+ a = x + y;
+ a = c(1 + a);
+ a = c(2 + y * x);
+ a = c(3 + a);
+ HEAP32[sp + 16 >> 2] = a;
 }
 
