@@ -1538,14 +1538,17 @@ try:
 
   # It is useful to run several js optimizer passes together, to save on unneeded unparsing/reparsing
   js_optimizer_queue = []
+  js_optimizer_extra_info = {}
   def flush_js_optimizer_queue():
-    global final, js_optimizer_queue
+    global final, js_optimizer_queue, js_optimizer_extra_info
+    if len(js_optimizer_extra_info) == 0:
+      js_optimizer_extra_info = None
     if len(js_optimizer_queue) > 0 and not(len(js_optimizer_queue) == 1 and js_optimizer_queue[0] == 'last'):
       if DEBUG != '2':
         if shared.Settings.ASM_JS:
           js_optimizer_queue = ['asm'] + js_optimizer_queue
         logging.debug('applying js optimization passes: %s', js_optimizer_queue)
-        final = shared.Building.js_optimizer(final, js_optimizer_queue, jcache, debug_level >= 4)
+        final = shared.Building.js_optimizer(final, js_optimizer_queue, jcache, debug_level >= 4, js_optimizer_extra_info)
         js_transform_tempfiles.append(final)
         if DEBUG: save_intermediate('js_opts')
       else:
@@ -1554,10 +1557,11 @@ try:
           if shared.Settings.ASM_JS:
             passes = ['asm'] + passes
           logging.debug('applying js optimization pass: %s', passes)
-          final = shared.Building.js_optimizer(final, passes, jcache, debug_level >= 4)
+          final = shared.Building.js_optimizer(final, passes, jcache, debug_level >= 4, js_optimizer_extra_info)
           js_transform_tempfiles.append(final)
           save_intermediate(name)
       js_optimizer_queue = []
+    js_optimizer_extra_info = {}
 
   if opt_level >= 1:
     logging.debug('running pre-closure post-opts')
