@@ -36,15 +36,15 @@ function lin3() {
   c(5);
   lin3$1(sp);
   lin3$0(sp);
-  if (HEAP32[sp + 0 >> 2] == 5) {
+  if ((HEAP32[sp + 0 >> 2] | 0) == 5) {
    STACKTOP = sp;
    return;
   }
-  if (HEAP32[sp + 0 >> 2] == 6) {
+  if ((HEAP32[sp + 0 >> 2] | 0) == 6) {
    STACKTOP = sp;
    return HEAP32[sp + 8 >> 2];
   }
-  if (HEAP32[sp + 0 >> 2] == 7) {
+  if ((HEAP32[sp + 0 >> 2] | 0) == 7) {
    STACKTOP = sp;
    return HEAPF32[sp + 8 >> 2];
   }
@@ -63,7 +63,7 @@ function lin4() {
   c(4);
   lin4$1(sp);
   lin4$0(sp);
-  if (HEAP32[sp + 0 >> 2] == 1) {
+  if ((HEAP32[sp + 0 >> 2] | 0) == 1) {
    break;
   }
  }
@@ -81,7 +81,7 @@ function lin5() {
   c(4);
   lin5$1(sp);
   lin5$0(sp);
-  if (HEAP32[sp + 0 >> 2] == 3) {
+  if ((HEAP32[sp + 0 >> 2] | 0) == 3) {
    continue;
   }
  }
@@ -102,19 +102,19 @@ function mix() {
   c(7);
   mix$1(sp);
   mix$0(sp);
-  if (HEAP32[sp + 0 >> 2] == 1) {
+  if ((HEAP32[sp + 0 >> 2] | 0) == 1) {
    break;
   }
-  if (HEAP32[sp + 0 >> 2] == 2) {
+  if ((HEAP32[sp + 0 >> 2] | 0) == 2) {
    switch (HEAP32[sp + 8 >> 2]) {
    case 2:
     break main;
    }
   }
-  if (HEAP32[sp + 0 >> 2] == 3) {
+  if ((HEAP32[sp + 0 >> 2] | 0) == 3) {
    continue;
   }
-  if (HEAP32[sp + 0 >> 2] == 4) {
+  if ((HEAP32[sp + 0 >> 2] | 0) == 4) {
    switch (HEAP32[sp + 8 >> 2]) {
    case 3:
     continue main;

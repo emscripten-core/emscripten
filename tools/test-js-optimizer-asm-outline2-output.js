@@ -90,19 +90,19 @@ function _free($mem) {
    $120 = HEAP32[sp + 184 >> 2] | 0;
    $151 = HEAP32[sp + 192 >> 2] | 0;
    $164 = HEAP32[sp + 200 >> 2] | 0;
-   if (HEAP32[sp + 632 >> 2] == 5) {
+   if ((HEAP32[sp + 632 >> 2] | 0) == 5) {
     return;
    }
-   if (HEAP32[sp + 632 >> 2] == 6) {
+   if ((HEAP32[sp + 632 >> 2] | 0) == 6) {
     return HEAP32[sp + 640 >> 2];
    }
-   if (HEAP32[sp + 632 >> 2] == 7) {
+   if ((HEAP32[sp + 632 >> 2] | 0) == 7) {
     return HEAPF32[sp + 640 >> 2];
    }
-   if (HEAP32[sp + 632 >> 2] == 1) {
+   if ((HEAP32[sp + 632 >> 2] | 0) == 1) {
     break;
    }
-   if (HEAP32[sp + 632 >> 2] == 2) {
+   if ((HEAP32[sp + 632 >> 2] | 0) == 2) {
     switch (HEAP32[sp + 640 >> 2]) {
     case 2:
      break L621;
@@ -189,16 +189,16 @@ function _free($mem) {
    $351 = HEAP32[sp + 400 >> 2] | 0;
    $364 = HEAP32[sp + 408 >> 2] | 0;
    $psize_1 = HEAP32[sp + 416 >> 2] | 0;
-   if (HEAP32[sp + 632 >> 2] == 5) {
+   if ((HEAP32[sp + 632 >> 2] | 0) == 5) {
     return;
    }
-   if (HEAP32[sp + 632 >> 2] == 6) {
+   if ((HEAP32[sp + 632 >> 2] | 0) == 6) {
     return HEAP32[sp + 640 >> 2];
    }
-   if (HEAP32[sp + 632 >> 2] == 7) {
+   if ((HEAP32[sp + 632 >> 2] | 0) == 7) {
     return HEAPF32[sp + 640 >> 2];
    }
-   if (HEAP32[sp + 632 >> 2] == 1) {
+   if ((HEAP32[sp + 632 >> 2] | 0) == 1) {
     break;
    }
   } else {

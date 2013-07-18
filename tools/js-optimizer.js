@@ -3199,26 +3199,26 @@ function outline(ast) {
       // read the control data at the callsite to the outlined function
       if (codeInfo.hasReturn) {
         reps.push(makeIf(
-          makeComparison(makeStackAccess(ASM_INT, asmData.controlStackPos), '==', ['num', CONTROL_RETURN_VOID]),
+          makeComparison(makeAsmCoercion(makeStackAccess(ASM_INT, asmData.controlStackPos), ASM_INT), '==', ['num', CONTROL_RETURN_VOID]),
           [['stat', ['return']]]
         ));
         reps.push(makeIf(
-          makeComparison(makeStackAccess(ASM_INT, asmData.controlStackPos), '==', ['num', CONTROL_RETURN_INT]),
+          makeComparison(makeAsmCoercion(makeStackAccess(ASM_INT, asmData.controlStackPos), ASM_INT), '==', ['num', CONTROL_RETURN_INT]),
           [['stat', ['return', makeStackAccess(ASM_INT, asmData.controlDataStackPos)]]]
         ));
         reps.push(makeIf(
-          makeComparison(makeStackAccess(ASM_INT, asmData.controlStackPos), '==', ['num', CONTROL_RETURN_DOUBLE]),
+          makeComparison(makeAsmCoercion(makeStackAccess(ASM_INT, asmData.controlStackPos), ASM_INT), '==', ['num', CONTROL_RETURN_DOUBLE]),
           [['stat', ['return', makeStackAccess(ASM_DOUBLE, asmData.controlDataStackPos)]]]
         ));
       }
       if (codeInfo.hasBreak) {
         reps.push(makeIf(
-          makeComparison(makeStackAccess(ASM_INT, asmData.controlStackPos), '==', ['num', CONTROL_BREAK]),
+          makeComparison(makeAsmCoercion(makeStackAccess(ASM_INT, asmData.controlStackPos), ASM_INT), '==', ['num', CONTROL_BREAK]),
           [['stat', ['break']]]
         ));
         if (keys(codeInfo.breaks).length > 0) {
           reps.push(makeIf(
-            makeComparison(makeStackAccess(ASM_INT, asmData.controlStackPos), '==', ['num', CONTROL_BREAK_LABEL]),
+            makeComparison(makeAsmCoercion(makeStackAccess(ASM_INT, asmData.controlStackPos), ASM_INT), '==', ['num', CONTROL_BREAK_LABEL]),
             [makeSwitch(makeStackAccess(ASM_INT, asmData.controlDataStackPos), keys(codeInfo.breaks).map(function(key) {
               var id = codeInfo.breaks[key];
               return [['num', id], [['stat', ['break', key]]]];
@@ -3228,12 +3228,12 @@ function outline(ast) {
       }
       if (codeInfo.hasContinue) {
         reps.push(makeIf(
-          makeComparison(makeStackAccess(ASM_INT, asmData.controlStackPos), '==', ['num', CONTROL_CONTINUE]),
+          makeComparison(makeAsmCoercion(makeStackAccess(ASM_INT, asmData.controlStackPos), ASM_INT), '==', ['num', CONTROL_CONTINUE]),
           [['stat', ['continue']]]
         ));
         if (keys(codeInfo.continues).length > 0) {
           reps.push(makeIf(
-            makeComparison(makeStackAccess(ASM_INT, asmData.controlStackPos), '==', ['num', CONTROL_CONTINUE_LABEL]),
+            makeComparison(makeAsmCoercion(makeStackAccess(ASM_INT, asmData.controlStackPos), ASM_INT), '==', ['num', CONTROL_CONTINUE_LABEL]),
             [makeSwitch(makeStackAccess(ASM_INT, asmData.controlDataStackPos), keys(codeInfo.continues).map(function(key) {
               var id = codeInfo.continues[key];
               return [['num', id], [['stat', ['continue', key]]]];
