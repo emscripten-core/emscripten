@@ -533,12 +533,11 @@ var LibrarySDL = {
             scan = SDL.scanCodes[key] || key;
           }
 
-          var code = SDL.keyCodes[event.keyCode] || event.keyCode;
-          {{{ makeSetValue('SDL.keyboardState', 'code', 'down', 'i8') }}};
+          {{{ makeSetValue('SDL.keyboardState', 'key', 'down', 'i8') }}};
           if (down) {
-            SDL.keyboardMap[code] = event.keyCode; // save the DOM input, which we can use to unpress it during blur
+            SDL.keyboardMap[key] = event.keyCode; // save the DOM input, which we can use to unpress it during blur
           } else {
-            delete SDL.keyboardMap[code];
+            delete SDL.keyboardMap[key];
           }
 
           // TODO: lmeta, rmeta, numlock, capslock, KMOD_MODE, KMOD_RESERVED
