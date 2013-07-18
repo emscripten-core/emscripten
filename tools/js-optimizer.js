@@ -3031,7 +3031,7 @@ function outline(ast) {
 
     var writes = {};
     var appearances = {};
-    var hasReturn = false, hasBreak = false, hasContinue = false;
+    var hasReturn = false, hasReturnInt = false, hasReturnDouble = false, hasBreak = false, hasContinue = false;
     var breaks = {};    // set of labels we break or continue
     var continues = {}; // to (name -> id, just like labels)
     var breakCapturers = 0;
@@ -3050,7 +3050,13 @@ function outline(ast) {
           appearances[name] = (appearances[name] || 0) + 1;
         }
       } else if (type == 'return') {
-        hasReturn = true;
+        if (!node[1]) {
+          hasReturn = true;
+        } else if (detectAsmCoercion(node[1]) == ASM_INT) {
+          hasReturnInt = true;
+        } else {
+          hasReturnDouble = true;
+        }
       } else if (type == 'break') {
         var label = node[1] || 0;
         if (!label && breakCapturers > 0) return; // no label, and captured
@@ -3079,13 +3085,14 @@ function outline(ast) {
         continueCapturers--;
       }
     });
+    assert(hasReturn + hasReturnInt + hasReturnDouble <= 1);
 
     var reads = {};
 
     for (var name in appearances) {
       if (appearances[name] > 0) reads[name] = 0;
     }
-    return { writes: writes, reads: reads, hasReturn: hasReturn, hasBreak: hasBreak, hasContinue: hasContinue, breaks: breaks, continues: continues, labels: labels };
+    return { writes: writes, reads: reads, hasReturn: hasReturn, hasReturnInt: hasReturnInt, hasReturnDouble: hasReturnDouble, hasBreak: hasBreak, hasContinue: hasContinue, breaks: breaks, continues: continues, labels: labels };
   }
 
   function makeAssign(dst, src) {
@@ -3128,7 +3135,7 @@ function outline(ast) {
       reps.push(['stat', ['assign', true, ['name', v], makeAsmCoercion(['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], getAsmType(v, asmData))]]);
     }
     // Generate new function
-    if (codeInfo.hasReturn || codeInfo.hasBreak || codeInfo.hasContinue) {
+    if (codeInfo.hasReturn || codeInfo.hasReturnInt || codeInfo.hasReturnDouble || codeInfo.hasBreak || codeInfo.hasContinue) {
       // we need to capture all control flow using a top-level labeled one-time loop in the outlined function
       var breakCapturers = 0;
       var continueCapturers = 0;
@@ -3199,10 +3206,14 @@ function outline(ast) {
           makeComparison(makeAsmCoercion(makeStackAccess(ASM_INT, asmData.controlStackPos), ASM_INT), '==', ['num', CONTROL_RETURN_VOID]),
           [['stat', ['return']]]
         ));
+      }
+      if (codeInfo.hasReturnInt) {
         reps.push(makeIf(
           makeComparison(makeAsmCoercion(makeStackAccess(ASM_INT, asmData.controlStackPos), ASM_INT), '==', ['num', CONTROL_RETURN_INT]),
           [['stat', ['return', makeStackAccess(ASM_INT, asmData.controlDataStackPos)]]]
         ));
+      }
+      if (codeInfo.hasReturnDouble) {
         reps.push(makeIf(
           makeComparison(makeAsmCoercion(makeStackAccess(ASM_INT, asmData.controlStackPos), ASM_INT), '==', ['num', CONTROL_RETURN_DOUBLE]),
           [['stat', ['return', makeStackAccess(ASM_DOUBLE, asmData.controlDataStackPos)]]]

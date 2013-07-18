@@ -95,12 +95,6 @@ function _free($mem) {
    if ((HEAP32[sp + 632 >> 2] | 0) == 5) {
     return;
    }
-   if ((HEAP32[sp + 632 >> 2] | 0) == 6) {
-    return HEAP32[sp + 640 >> 2];
-   }
-   if ((HEAP32[sp + 632 >> 2] | 0) == 7) {
-    return HEAPF32[sp + 640 >> 2];
-   }
    if ((HEAP32[sp + 632 >> 2] | 0) == 1) {
     break;
    }
@@ -194,12 +188,6 @@ function _free($mem) {
    $psize_1 = HEAP32[sp + 416 >> 2] | 0;
    if ((HEAP32[sp + 632 >> 2] | 0) == 5) {
     return;
-   }
-   if ((HEAP32[sp + 632 >> 2] | 0) == 6) {
-    return HEAP32[sp + 640 >> 2];
-   }
-   if ((HEAP32[sp + 632 >> 2] | 0) == 7) {
-    return HEAPF32[sp + 640 >> 2];
    }
    if ((HEAP32[sp + 632 >> 2] | 0) == 1) {
     break;

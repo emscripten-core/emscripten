@@ -36,17 +36,9 @@ function lin3() {
   c(5);
   lin3$1(sp);
   lin3$0(sp);
-  if ((HEAP32[sp + 0 >> 2] | 0) == 5) {
-   STACKTOP = sp;
-   return;
-  }
   if ((HEAP32[sp + 0 >> 2] | 0) == 6) {
    STACKTOP = sp;
    return HEAP32[sp + 8 >> 2];
-  }
-  if ((HEAP32[sp + 0 >> 2] | 0) == 7) {
-   STACKTOP = sp;
-   return HEAPF32[sp + 8 >> 2];
   }
  }
  STACKTOP = sp;
