@@ -410,7 +410,7 @@ function removeUnneededLabelSettings(ast) {
 var USEFUL_BINARY_OPS = set('<<', '>>', '|', '&', '^');
 var COMPARE_OPS = set('<', '<=', '>', '>=', '==', '===', '!=', '!==');
 
-function simplifyExpressionsPre(ast) {
+function simplifyExpressions(ast) {
   // Simplify common expressions used to perform integer conversion operations
   // in cases where no conversion is needed.
   function simplifyIntegerConversions(ast) {
@@ -793,6 +793,7 @@ function simplifyExpressionsPre(ast) {
     joinAdditions(func);
     // simplifyZeroComp(func); TODO: investigate performance
     if (asm) asmOpts(func);
+    simplifyNotComps(func);
   });
 }
 
@@ -1156,10 +1157,6 @@ function simplifyNotComps(ast) {
   simplifyNotCompsPass = true;
   traverse(ast, simplifyNotCompsDirect);
   simplifyNotCompsPass = false;
-}
-
-function simplifyExpressionsPost(ast) {
-  simplifyNotComps(ast);
 }
 
 var NO_SIDE_EFFECTS = set('num', 'name');
@@ -3478,10 +3475,9 @@ var passes = {
   unGlobalize: unGlobalize,
   removeAssignsToUndefined: removeAssignsToUndefined,
   //removeUnneededLabelSettings: removeUnneededLabelSettings,
-  simplifyExpressionsPre: simplifyExpressionsPre,
+  simplifyExpressions: simplifyExpressions,
   optimizeShiftsConservative: optimizeShiftsConservative,
   optimizeShiftsAggressive: optimizeShiftsAggressive,
-  simplifyExpressionsPost: simplifyExpressionsPost,
   hoistMultiples: hoistMultiples,
   loopOptimizer: loopOptimizer,
   registerize: registerize,

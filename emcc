@@ -1578,7 +1578,7 @@ try:
       else:
         return 'eliminate'
 
-    js_optimizer_queue += [get_eliminate(), 'simplifyExpressionsPre']
+    js_optimizer_queue += [get_eliminate(), 'simplifyExpressions']
 
     if shared.Settings.RELOOP and not shared.Settings.ASM_JS:
       js_optimizer_queue += ['optimizeShiftsAggressive', get_eliminate()] # aggressive shifts optimization requires loops, it breaks on switches
@@ -1591,10 +1591,6 @@ try:
     # debug_level > 0 are never simultaneously true
     final = shared.Building.closure_compiler(final)
     if DEBUG: save_intermediate('closure')
-
-  if opt_level >= 1:
-    logging.debug('running post-closure post-opts')
-    js_optimizer_queue += ['simplifyExpressionsPost']
 
   if shared.Settings.OUTLINING_LIMIT > 0:
     js_optimizer_queue += ['outline']
