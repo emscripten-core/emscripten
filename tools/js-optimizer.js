@@ -3118,11 +3118,11 @@ function outline(ast) {
     // add spills and reads before and after the call to the outlined code, and in the outlined code itself
     var codeInfo = analyzeCode(func, asmData, code);
     var reps = [];
-    for (var v in codeInfo.reads) {
+    keys(setUnion(codeInfo.reads, codeInfo.writes)).forEach(function(v) {
       if (v != 'sp') {
         reps.push(['stat', ['assign', true, ['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], ['name', v]]]);
       }
-    }
+    });
     reps.push(['stat', ['call', ['name', newIdent], [['name', 'sp']]]]);
     for (var v in codeInfo.writes) {
       reps.push(['stat', ['assign', true, ['name', v], makeAsmCoercion(['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], getAsmType(v, asmData))]]);
@@ -3240,11 +3240,11 @@ function outline(ast) {
       }
     }
     // add spills and unspills in outlined code outside the OL loop
-    for (var v in codeInfo.reads) {
+    keys(setUnion(codeInfo.reads, codeInfo.writes)).forEach(function(v) {
       if (v != 'sp') {
         code.unshift(['stat', ['assign', true, ['name', v], makeAsmCoercion(['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], getAsmType(v, asmData))]]);
       }
-    }
+    });
     for (var v in codeInfo.writes) {
       code.push(['stat', ['assign', true, ['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], ['name', v]]]);
     }
