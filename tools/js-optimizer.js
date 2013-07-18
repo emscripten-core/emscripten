@@ -3210,13 +3210,13 @@ function outline(ast) {
       if (codeInfo.hasReturnInt) {
         reps.push(makeIf(
           makeComparison(makeAsmCoercion(makeStackAccess(ASM_INT, asmData.controlStackPos), ASM_INT), '==', ['num', CONTROL_RETURN_INT]),
-          [['stat', ['return', makeStackAccess(ASM_INT, asmData.controlDataStackPos)]]]
+          [['stat', ['return', makeAsmCoercion(makeStackAccess(ASM_INT, asmData.controlDataStackPos), ASM_INT)]]]
         ));
       }
       if (codeInfo.hasReturnDouble) {
         reps.push(makeIf(
           makeComparison(makeAsmCoercion(makeStackAccess(ASM_INT, asmData.controlStackPos), ASM_INT), '==', ['num', CONTROL_RETURN_DOUBLE]),
-          [['stat', ['return', makeStackAccess(ASM_DOUBLE, asmData.controlDataStackPos)]]]
+          [['stat', ['return', makeAsmCoercion(makeStackAccess(ASM_DOUBLE, asmData.controlDataStackPos), ASM_DOUBLE)]]]
         ));
       }
       if (codeInfo.hasBreak) {
