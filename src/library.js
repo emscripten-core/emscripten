@@ -1773,9 +1773,11 @@ LibraryManager.library = {
     } else if (stream.object.isFolder) {
       ___setErrNo(ERRNO_CODES.EISDIR);
       return -1;
-    } else if (nbyte < 0 || offset < 0) {
+    } else if (nbyte < 0 || offset < 0 ) {
       ___setErrNo(ERRNO_CODES.EINVAL);
       return -1;
+    } else if (offset >= stream.object.contents.length) {
+      return 0;
     } else {
       var bytesRead = 0;
       while (stream.ungotten.length && nbyte > 0) {
@@ -1785,6 +1787,8 @@ LibraryManager.library = {
       }
       var contents = stream.object.contents;
       var size = Math.min(contents.length - offset, nbyte);
+      assert( size >= 0 );
+      
 #if USE_TYPED_ARRAYS == 2
       if (contents.subarray) { // typed array
         HEAPU8.set(contents.subarray(offset, offset+size), buf);
@@ -1852,6 +1856,7 @@ LibraryManager.library = {
       } else {
         var ungotSize = stream.ungotten.length;
         bytesRead = _pread(fildes, buf, nbyte, stream.position);
+        assert( bytesRead >= -1 );
         if (bytesRead != -1) {
           stream.position += (stream.ungotten.length - ungotSize) + bytesRead;
         }
@@ -1887,9 +1892,9 @@ LibraryManager.library = {
         ___setErrNo(ERRNO_CODES.ENOTEMPTY);
         return -1;
       }
-      delete path.parentObject.contents[path.name];
-      return 0;
-    }
+        delete path.parentObject.contents[path.name];
+        return 0;
+      }
   },
   unlink__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
   unlink: function(path) {
@@ -5900,39 +5905,39 @@ LibraryManager.library = {
       var lib_module = Module;
       var cached_functions = SYMBOL_TABLE;
     } else {
-      var target = FS.findObject(filename);
-      if (!target || target.isFolder || target.isDevice) {
-        DLFCN_DATA.errorMsg = 'Could not find dynamic lib: ' + filename;
-        return 0;
-      } else {
-        FS.forceLoadFile(target);
-        var lib_data = intArrayToString(target.contents);
-      }
+    var target = FS.findObject(filename);
+    if (!target || target.isFolder || target.isDevice) {
+      DLFCN_DATA.errorMsg = 'Could not find dynamic lib: ' + filename;
+      return 0;
+    } else {
+      FS.forceLoadFile(target);
+      var lib_data = intArrayToString(target.contents);
+    }
 
-      try {
-        var lib_module = eval(lib_data)({{{ Functions.getTable('x') }}}.length);
-      } catch (e) {
+    try {
+      var lib_module = eval(lib_data)({{{ Functions.getTable('x') }}}.length);
+    } catch (e) {
 #if ASSERTIONS
-        Module.printErr('Error in loading dynamic library: ' + e);
+      Module.printErr('Error in loading dynamic library: ' + e);
 #endif
-        DLFCN_DATA.errorMsg = 'Could not evaluate dynamic lib: ' + filename;
-        return 0;
-      }
+      DLFCN_DATA.errorMsg = 'Could not evaluate dynamic lib: ' + filename;
+      return 0;
+    }
 
-      // Not all browsers support Object.keys().
-      var handle = 1;
-      for (var key in DLFCN_DATA.loadedLibs) {
-        if (DLFCN_DATA.loadedLibs.hasOwnProperty(key)) handle++;
-      }
+    // Not all browsers support Object.keys().
+    var handle = 1;
+    for (var key in DLFCN_DATA.loadedLibs) {
+      if (DLFCN_DATA.loadedLibs.hasOwnProperty(key)) handle++;
+    }
 
-      // We don't care about RTLD_NOW and RTLD_LAZY.
-      if (flag & 256) { // RTLD_GLOBAL
-        for (var ident in lib_module) {
-          if (lib_module.hasOwnProperty(ident)) {
-            Module[ident] = lib_module[ident];
-          }
+    // We don't care about RTLD_NOW and RTLD_LAZY.
+    if (flag & 256) { // RTLD_GLOBAL
+      for (var ident in lib_module) {
+        if (lib_module.hasOwnProperty(ident)) {
+          Module[ident] = lib_module[ident];
         }
       }
+    }
 
       var cached_functions = {};
     }
@@ -5980,11 +5985,11 @@ LibraryManager.library = {
       if (lib.cached_functions.hasOwnProperty(symbol)) {
         return lib.cached_functions[symbol];
       } else {
-        if (!lib.module.hasOwnProperty(symbol)) {
-          DLFCN_DATA.errorMsg = ('Tried to lookup unknown symbol "' + symbol +
-                                 '" in dynamic lib: ' + lib.name);
-          return 0;
-        } else {
+      if (!lib.module.hasOwnProperty(symbol)) {
+        DLFCN_DATA.errorMsg = ('Tried to lookup unknown symbol "' + symbol +
+                               '" in dynamic lib: ' + lib.name);
+        return 0;
+      } else {
           var result = lib.module[symbol];
           if (typeof result == 'function') {
             {{{ Functions.getTable('x') }}}.push(result);
