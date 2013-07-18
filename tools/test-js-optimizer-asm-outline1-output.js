@@ -106,7 +106,7 @@ function mix() {
    break;
   }
   if ((HEAP32[sp + 0 >> 2] | 0) == 2) {
-   switch (HEAP32[sp + 8 >> 2]) {
+   switch (HEAP32[sp + 8 >> 2] | 0) {
    case 2:
     break main;
    }
@@ -115,7 +115,7 @@ function mix() {
    continue;
   }
   if ((HEAP32[sp + 0 >> 2] | 0) == 4) {
-   switch (HEAP32[sp + 8 >> 2]) {
+   switch (HEAP32[sp + 8 >> 2] | 0) {
    case 3:
     continue main;
    }

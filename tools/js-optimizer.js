@@ -3219,7 +3219,7 @@ function outline(ast) {
         if (keys(codeInfo.breaks).length > 0) {
           reps.push(makeIf(
             makeComparison(makeAsmCoercion(makeStackAccess(ASM_INT, asmData.controlStackPos), ASM_INT), '==', ['num', CONTROL_BREAK_LABEL]),
-            [makeSwitch(makeStackAccess(ASM_INT, asmData.controlDataStackPos), keys(codeInfo.breaks).map(function(key) {
+            [makeSwitch(makeAsmCoercion(makeStackAccess(ASM_INT, asmData.controlDataStackPos), ASM_INT), keys(codeInfo.breaks).map(function(key) {
               var id = codeInfo.breaks[key];
               return [['num', id], [['stat', ['break', key]]]];
             }))]
@@ -3234,7 +3234,7 @@ function outline(ast) {
         if (keys(codeInfo.continues).length > 0) {
           reps.push(makeIf(
             makeComparison(makeAsmCoercion(makeStackAccess(ASM_INT, asmData.controlStackPos), ASM_INT), '==', ['num', CONTROL_CONTINUE_LABEL]),
-            [makeSwitch(makeStackAccess(ASM_INT, asmData.controlDataStackPos), keys(codeInfo.continues).map(function(key) {
+            [makeSwitch(makeAsmCoercion(makeStackAccess(ASM_INT, asmData.controlDataStackPos), ASM_INT), keys(codeInfo.continues).map(function(key) {
               var id = codeInfo.continues[key];
               return [['num', id], [['stat', ['continue', key]]]];
             }))]
