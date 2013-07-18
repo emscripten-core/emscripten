@@ -1540,24 +1540,22 @@ function detectAsmCoercion(node, asmInfo) {
   // for params, +x vs x|0, for vars, 0.0 vs 0
   if (node[0] === 'num' && node[1].toString().indexOf('.') >= 0) return ASM_DOUBLE;
   if (node[0] === 'unary-prefix') return ASM_DOUBLE;
-  if (asmInfo && node[0] == 'name') {
-    if (node[1] in asmInfo.vars) return asmInfo.vars[node[1]];
-    if (node[1] in asmInfo.params) return asmInfo.params[node[1]];
-  }
+  if (asmInfo && node[0] == 'name') return getAsmType(node[1], asmInfo);
   return ASM_INT;
 }
 
-function makeAsmParamCoercion(param, type) {
-  return type === ASM_INT ? ['binary', '|', ['name', param], ['num', 0]] : ['unary-prefix', '+', ['name', param]];
+function makeAsmCoercion(node, type) {
+  return type === ASM_INT ? ['binary', '|', node, ['num', 0]] : ['unary-prefix', '+', node];
 }
 
 function makeAsmVarDef(v, type) {
   return [v, type === ASM_INT ? ['num', 0] : ['unary-prefix', '+', ['num', 0]]];
 }
 
-function getAsmType(asmInfo, name) {
+function getAsmType(name, asmInfo) {
   if (name in asmInfo.vars) return asmInfo.vars[name];
-  return asmInfo.params[name];
+  if (name in asmInfo.params) return asmInfo.params[name];
+  assert(false, 'unknown var ' + name);
 }
 
 function normalizeAsm(func) {
@@ -1658,7 +1656,7 @@ function denormalizeAsm(func, data) {
   // add param coercions
   var next = 0;
   func[2].forEach(function(param) {
-    stats[next++] = ['stat', ['assign', true, ['name', param], makeAsmParamCoercion(param, data.params[param])]];
+    stats[next++] = ['stat', ['assign', true, ['name', param], makeAsmCoercion(['name', param], data.params[param])]];
   });
   // add variable definitions
   var varDefs = [];
@@ -3125,12 +3123,12 @@ function outline(ast) {
     var reps = [];
     for (var v in codeInfo.reads) {
       if (v != 'sp') {
-        reps.push(['stat', ['assign', true, ['sub', ['name', getAsmType(asmData, v) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], ['name', v]]]);
+        reps.push(['stat', ['assign', true, ['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], ['name', v]]]);
       }
     }
     reps.push(['stat', ['call', ['name', newIdent], [['name', 'sp']]]]);
     for (var v in codeInfo.writes) {
-      reps.push(['stat', ['assign', true, ['name', v], ['sub', ['name', getAsmType(asmData, v) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]]]]);
+      reps.push(['stat', ['assign', true, ['name', v], makeAsmCoercion(['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], getAsmType(v, asmData))]]);
     }
     // Generate new function
     if (codeInfo.hasReturn || codeInfo.hasBreak || codeInfo.hasContinue) {
@@ -3247,21 +3245,21 @@ function outline(ast) {
     // add spills and unspills in outlined code outside the OL loop
     for (var v in codeInfo.reads) {
       if (v != 'sp') {
-        code.unshift(['stat', ['assign', true, ['name', v], ['sub', ['name', getAsmType(asmData, v) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]]]]);
+        code.unshift(['stat', ['assign', true, ['name', v], makeAsmCoercion(['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], getAsmType(v, asmData))]]);
       }
     }
     for (var v in codeInfo.writes) {
-      code.push(['stat', ['assign', true, ['sub', ['name', getAsmType(asmData, v) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], ['name', v]]]);
+      code.push(['stat', ['assign', true, ['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], ['name', v]]]);
     }
     // finalize
     var newFunc = ['defun', newIdent, ['sp'], code];
     var newAsmData = { params: { sp: ASM_INT }, vars: {} };
     for (var v in codeInfo.reads) {
-      if (v != 'sp') newAsmData.vars[v] = getAsmType(asmData, v);
+      if (v != 'sp') newAsmData.vars[v] = getAsmType(v, asmData);
     }
     for (var v in codeInfo.writes) {
       assert(v != 'sp');
-      newAsmData.vars[v] = getAsmType(asmData, v);
+      newAsmData.vars[v] = getAsmType(v, asmData);
     }
     denormalizeAsm(newFunc, newAsmData);
     // replace in stats
