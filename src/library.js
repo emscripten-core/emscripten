@@ -559,25 +559,28 @@ LibraryManager.library = {
         };
       }
       var utf8 = new Runtime.UTF8Processor();
-      function simpleOutput(val) {
-        if (val === null || val === {{{ charCode('\n') }}}) {
-          output.printer(output.buffer.join(''));
-          output.buffer = [];
-        } else {
-          output.buffer.push(utf8.processCChar(val));
-        }
+      function createSimpleOutput() {
+        var fn = function (val) {
+          if (val === null || val === {{{ charCode('\n') }}}) {
+            fn.printer(fn.buffer.join(''));
+            fn.buffer = [];
+          } else {
+            fn.buffer.push(utf8.processCChar(val));
+          }
+        };
+        return fn;
       }
       if (!output) {
         stdoutOverridden = false;
-        output = simpleOutput;
+        output = createSimpleOutput();
       }
       if (!output.printer) output.printer = Module['print'];
       if (!output.buffer) output.buffer = [];
       if (!error) {
         stderrOverridden = false;
-        error = simpleOutput;
+        error = createSimpleOutput();
       }
-      if (!error.printer) error.printer = Module['print'];
+      if (!error.printer) error.printer = Module['printErr'];
       if (!error.buffer) error.buffer = [];
 
       // Create the temporary folder, if not already created
