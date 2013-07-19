@@ -3119,9 +3119,9 @@ function outline(ast) {
   var level = 0;
 
   function doOutline(func, asmData, stats, start, end) {
-    printErr(' do outline ' + [func[1], level, 'range:', start, end, 'of', stats.length]);
     var code = stats.slice(start, end+1);
     var newIdent = func[1] + '$' + (asmData.splitCounter++);
+    printErr(' do outline ' + [func[1], level, 'range:', start, end, 'of', stats.length, newIdent]); //dumpSrc(['block', code]);//dumpAst(['block', code]);
     // analyze variables, and find 'owned' variables - that only appear in the outlined code, and do not need any spill support
     var codeInfo = analyzeCode(func, asmData, code);
     var allCodeInfo = analyzeCode(func, asmData, func);
@@ -3161,6 +3161,7 @@ function outline(ast) {
         if (stats) {
           for (var i = 0; i < stats.length; i++) {
             var node = stats[i]; // step all over node and type here, for convenience
+            if (node[0] == 'stat') node = node[1];
             var type = node[0];
             var ret = null;
             if (type == 'return') {
