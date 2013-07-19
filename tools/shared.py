@@ -1094,7 +1094,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
 
   @staticmethod
   def can_use_unsafe_opts():
-    return Settings.USE_TYPED_ARRAYS == 2
+    return Settings.USE_TYPED_ARRAYS == 2 and not Settings.DISABLE_UNSAFE_OPTS
 
   @staticmethod
   def can_inline():

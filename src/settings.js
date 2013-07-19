@@ -413,6 +413,12 @@ var DEBUG_TAGS_SHOWING = [];
   //    legalizer
 
 
+var DISABLE_UNSAFE_OPTS = 0;  // Explicitly disable the use of llvm options
+                              // that seem to be unsafe.  This may be useful
+                              // if optimizations are changing the behaviour
+                              // of the compiled code.
+
+
 // A cached set of defines, generated from the header files. This
 // lets the emscripten libc (library.js) see the right values.
 // If you the headers or use different ones, you will need to override
