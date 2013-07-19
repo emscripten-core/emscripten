@@ -3127,7 +3127,7 @@ function outline(ast) {
     var allCodeInfo = analyzeCode(func, asmData, func);
     var owned = { sp: 1 }; // sp is always owned, each has its own
     keys(setUnion(codeInfo.reads, codeInfo.writes)).forEach(function(v) {
-      if (allCodeInfo.reads[v] === codeInfo.reads[v] && allCodeInfo.writes[v] === codeInfo.writes[v]) {
+      if (allCodeInfo.reads[v] === codeInfo.reads[v] && allCodeInfo.writes[v] === codeInfo.writes[v] && !(v in asmData.params)) {
         owned[v] = 1;
       }
     });
@@ -3286,6 +3286,9 @@ function outline(ast) {
       newAsmData.vars[v] = getAsmType(v, asmData);
     }
     denormalizeAsm(newFunc, newAsmData);
+    for (var v in owned) {
+      if (v != 'sp') delete asmData.vars[v]; // parent does not need these anymore
+    }
     // replace in stats
     stats.splice.apply(stats, [start, end-start+1].concat(reps));
     return [newFunc];
