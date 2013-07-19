@@ -3131,8 +3131,11 @@ function outline(ast) {
         owned[v] = 1;
       }
     });
-    // add spills and reads before and after the call to the outlined code, and in the outlined code itself
     var reps = [];
+    // wipe out control variable
+    reps.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos), ['num', 0])]);
+    reps.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlDataStackPos), ['num', 0])]); // XXX not really needed
+    // add spills and reads before and after the call to the outlined code, and in the outlined code itself
     keys(setUnion(codeInfo.reads, codeInfo.writes)).forEach(function(v) {
       if (!(v in owned)) {
         reps.push(['stat', ['assign', true, ['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], ['name', v]]]);
