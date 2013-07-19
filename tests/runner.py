@@ -10817,6 +10817,41 @@ f.close()
            args=['-I' + path_from_root('tests', 'bullet', 'src')])
 
 
+    def zzztest_outline(self):
+      def test(name, src, libs, expected, args=[], suffix='cpp'):
+        print name
+
+        def measure_funcs(filename):
+          i = 0
+          start = -1
+          curr = '?'
+          ret = {}
+          for line in open(filename):
+            i += 1
+            if line.startswith('function '):
+              start = i
+              curr = line
+            elif line.startswith('}'):
+              size = i - start
+              if size > 100: ret[curr] = size
+          return ret
+
+        sizes = {}
+        for outlining_limit in [0, 500, 1000, 2500, 5000, 10000]:
+          Popen([PYTHON, EMCC, src] + libs + ['-o', 'test.js', '-O2', '-g3', '-s', 'OUTLINING_LIMIT=%d' % outlining_limit] + args).communicate()
+          assert os.path.exists('test.js')
+          for engine in JS_ENGINES:
+            out = run_js('test.js', engine=engine, stderr=PIPE, full_output=True)
+            self.assertContained(expected, out)
+            #if engine == SPIDERMONKEY_ENGINE: self.validate_asmjs(out)
+          sizes[outlining_limit] = max(measure_funcs('test.js').values())
+        print sizes
+
+      test('zlib', path_from_root('tests', 'zlib', 'example.c'), 
+                   self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a']),
+                   open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
+                   args=['-I' + path_from_root('tests', 'zlib')], suffix='c')
+
     def test_symlink(self):
       if os.name == 'nt':
         return self.skip('Windows FS does not need to be tested for symlinks support, since it does not have them.')
