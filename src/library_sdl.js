@@ -939,7 +939,10 @@ var LibrarySDL = {
     // TODO
   },
 
-  SDL_GetKeyboardState: function() {
+  SDL_GetKeyboardState: function(numKeys) {
+    if (numKeys) {
+      {{{ makeSetValue('numKeys', 0, 0x10000, 'i32') }}};
+    }
     return SDL.keyboardState;
   },
 
