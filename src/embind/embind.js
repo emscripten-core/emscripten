@@ -5,9 +5,9 @@
 /*global __emval_register, _emval_handle_array, __emval_decref*/
 /*global ___getTypeName*/
 /*jslint sub:true*/ /* The symbols 'fromWireType' and 'toWireType' must be accessed via array notation to be closure-safe since craftInvokerFunction crafts functions as strings that can't be closured. */
-var InternalError = Module.InternalError = extendError(Error, 'InternalError');
-var BindingError = Module.BindingError = extendError(Error, 'BindingError');
-var UnboundTypeError = Module.UnboundTypeError = extendError(BindingError, 'UnboundTypeError');
+var InternalError = Module['InternalError'] = extendError(Error, 'InternalError');
+var BindingError = Module['BindingError'] = extendError(Error, 'BindingError');
+var UnboundTypeError = Module['UnboundTypeError'] = extendError(BindingError, 'UnboundTypeError');
 
 function throwInternalError(message) {
     throw new InternalError(message);
@@ -638,7 +638,7 @@ function __embind_register_function(name, argCount, rawArgTypesAddr, rawInvoker,
 
 var tupleRegistrations = {};
 
-function __embind_register_tuple(rawType, name, rawConstructor, rawDestructor) {
+function __embind_register_value_array(rawType, name, rawConstructor, rawDestructor) {
     tupleRegistrations[rawType] = {
         name: readLatin1String(name),
         rawConstructor: FUNCTION_TABLE[rawConstructor],
@@ -647,7 +647,7 @@ function __embind_register_tuple(rawType, name, rawConstructor, rawDestructor) {
     };
 }
 
-function __embind_register_tuple_element(
+function __embind_register_value_array_element(
     rawTupleType,
     getterReturnType,
     getter,
@@ -666,7 +666,7 @@ function __embind_register_tuple_element(
     });
 }
 
-function __embind_finalize_tuple(rawTupleType) {
+function __embind_finalize_value_array(rawTupleType) {
     var reg = tupleRegistrations[rawTupleType];
     delete tupleRegistrations[rawTupleType];
     var elements = reg.elements;
@@ -725,7 +725,7 @@ function __embind_finalize_tuple(rawTupleType) {
 
 var structRegistrations = {};
 
-function __embind_register_struct(
+function __embind_register_value_object(
     rawType,
     name,
     rawConstructor,
@@ -739,7 +739,7 @@ function __embind_register_struct(
     };
 }
 
-function __embind_register_struct_field(
+function __embind_register_value_object_field(
     structType,
     fieldName,
     getterReturnType,
@@ -760,7 +760,7 @@ function __embind_register_struct_field(
     });
 }
 
-function __embind_finalize_struct(structType) {
+function __embind_finalize_value_object(structType) {
     var reg = structRegistrations[structType];
     delete structRegistrations[structType];
 
@@ -879,11 +879,11 @@ var genericPointerToWireType = function(destructors, handle) {
                 if (handle.$$.smartPtrType === this) {
                     ptr = handle.$$.smartPtr;
                 } else {
-                    var clonedHandle = handle.clone();
+                    var clonedHandle = handle['clone']();
                     ptr = this.rawShare(
                         ptr,
                         __emval_register(function() {
-                            clonedHandle.delete();
+                            clonedHandle['delete']();
                         })
                     );
                     if (destructors !== null) {
@@ -1088,7 +1088,7 @@ function getInstanceTypeName(handle) {
     return handle.$$.ptrType.registeredClass.name;
 }
 
-ClassHandle.prototype.isAliasOf = function(other) {
+ClassHandle.prototype['isAliasOf'] = function(other) {
     if (!(this instanceof ClassHandle)) {
         return false;
     }
@@ -1118,7 +1118,7 @@ function throwInstanceAlreadyDeleted(obj) {
     throwBindingError(getInstanceTypeName(obj) + ' instance already deleted');
 }
 
-ClassHandle.prototype.clone = function() {
+ClassHandle.prototype['clone'] = function() {
     if (!this.$$.ptr) {
         throwInstanceAlreadyDeleted(this);
     }

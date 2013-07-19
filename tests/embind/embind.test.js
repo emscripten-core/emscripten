@@ -898,10 +898,7 @@ module({
 
         test("can clone handles", function() {
             var a = cm.emval_test_get_function_ptr();
-            assert.equal(1, a.$$.count.value);
             var b = a.clone();
-            assert.equal(2, a.$$.count.value);
-            assert.equal(2, b.$$.count.value);
             a.delete();
 
             assert.throws(cm.BindingError, function() {
@@ -1149,7 +1146,7 @@ module({
             a.set(b);
             var c = a.get();
 
-            assert.equal(b.$$.ptr, c.$$.ptr);
+            assert.true(b.isAliasOf(c));
             b.delete();
             c.delete();
             a.delete();
@@ -1747,8 +1744,8 @@ module({
     BaseFixture.extend("constants", function() {
         assert.equal(10, cm.INT_CONSTANT);
         assert.equal("some string", cm.STRING_CONSTANT);
-        assert.deepEqual([1, 2, 3, 4], cm.VALUE_TUPLE_CONSTANT);
-        assert.deepEqual({x:1,y:2,z:3,w:4}, cm.VALUE_STRUCT_CONSTANT);
+        assert.deepEqual([1, 2, 3, 4], cm.VALUE_ARRAY_CONSTANT);
+        assert.deepEqual({x:1,y:2,z:3,w:4}, cm.VALUE_OBJECT_CONSTANT);
     });
 
     BaseFixture.extend("object handle comparison", function() {
@@ -1880,6 +1877,16 @@ module({
         // setDelayFunction(function(fn) {
         //     setTimeout(fn, 0);
         // });
+    });
+
+    BaseFixture.extend("references", function() {
+        test("JS object handles can be passed through to C++ by reference", function() {
+            var sh = new cm.StringHolder("Hello world");
+            assert.equal("Hello world", sh.get());
+            cm.clear_StringHolder(sh);
+            assert.equal("", sh.get());
+            sh.delete();
+        });
     });
 });
 
