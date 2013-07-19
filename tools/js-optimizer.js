@@ -3122,17 +3122,27 @@ function outline(ast) {
     printErr(' do outline ' + [func[1], level, 'range:', start, end, 'of', stats.length]);
     var code = stats.slice(start, end+1);
     var newIdent = func[1] + '$' + (asmData.splitCounter++);
-    // add spills and reads before and after the call to the outlined code, and in the outlined code itself
+    // analyze variables, and find 'owned' variables - that only appear in the outlined code, and do not need any spill support
     var codeInfo = analyzeCode(func, asmData, code);
+    var allCodeInfo = analyzeCode(func, asmData, func);
+    var owned = { sp: 1 }; // sp is always owned, each has its own
+    keys(setUnion(codeInfo.reads, codeInfo.writes)).forEach(function(v) {
+      if (allCodeInfo.reads[v] === codeInfo.reads[v] && allCodeInfo.writes[v] === codeInfo.writes[v]) {
+        owned[v] = 1;
+      }
+    });
+    // add spills and reads before and after the call to the outlined code, and in the outlined code itself
     var reps = [];
     keys(setUnion(codeInfo.reads, codeInfo.writes)).forEach(function(v) {
-      if (v != 'sp') {
+      if (!(v in owned)) {
         reps.push(['stat', ['assign', true, ['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], ['name', v]]]);
       }
     });
     reps.push(['stat', ['call', ['name', newIdent], [['name', 'sp']]]]);
     for (var v in codeInfo.writes) {
-      reps.push(['stat', ['assign', true, ['name', v], makeAsmCoercion(['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], getAsmType(v, asmData))]]);
+      if (!(v in owned)) {
+        reps.push(['stat', ['assign', true, ['name', v], makeAsmCoercion(['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], getAsmType(v, asmData))]]);
+      }
     }
     // Generate new function
     if (codeInfo.hasReturn || codeInfo.hasReturnInt || codeInfo.hasReturnDouble || codeInfo.hasBreak || codeInfo.hasContinue) {
@@ -3252,12 +3262,14 @@ function outline(ast) {
     }
     // add spills and unspills in outlined code outside the OL loop
     keys(setUnion(codeInfo.reads, codeInfo.writes)).forEach(function(v) {
-      if (v != 'sp') {
+      if (!(v in owned)) {
         code.unshift(['stat', ['assign', true, ['name', v], makeAsmCoercion(['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], getAsmType(v, asmData))]]);
       }
     });
     for (var v in codeInfo.writes) {
-      code.push(['stat', ['assign', true, ['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], ['name', v]]]);
+      if (!(v in owned)) {
+        code.push(['stat', ['assign', true, ['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], ['name', v]]]);
+      }
     }
     // finalize
     var newFunc = ['defun', newIdent, ['sp'], code];
