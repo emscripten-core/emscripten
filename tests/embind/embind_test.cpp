@@ -1445,7 +1445,7 @@ EMSCRIPTEN_BINDINGS(tests) {
 
     //function("emval_test_take_and_return_CustomStruct", &emval_test_take_and_return_CustomStruct);
 
-    value_tuple<TupleVector>("TupleVector")
+    value_array<TupleVector>("TupleVector")
         .element(&TupleVector::x)
         .element(&Vector::getY, &Vector::setY)
         .element(&readVectorZ, &writeVectorZ)
@@ -1455,13 +1455,13 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("emval_test_return_TupleVector", &emval_test_return_TupleVector);
     function("emval_test_take_and_return_TupleVector", &emval_test_take_and_return_TupleVector);
 
-    value_tuple<TupleVectorTuple>("TupleVectorTuple")
+    value_array<TupleVectorTuple>("TupleVectorTuple")
         .element(&TupleVectorTuple::v)
         ;
 
     function("emval_test_return_TupleVectorTuple", &emval_test_return_TupleVectorTuple);
 
-    value_struct<StructVector>("StructVector")
+    value_object<StructVector>("StructVector")
         .field("x", &StructVector::x)
         .field("y", &Vector::getY, &Vector::setY)
         .field("z", &readVectorZ, &writeVectorZ)
@@ -1471,7 +1471,7 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("emval_test_return_StructVector", &emval_test_return_StructVector);
     function("emval_test_take_and_return_StructVector", &emval_test_take_and_return_StructVector);
 
-    value_struct<TupleInStruct>("TupleInStruct")
+    value_object<TupleInStruct>("TupleInStruct")
         .field("field", &TupleInStruct::field)
         ;
 
@@ -2077,12 +2077,12 @@ OrderedStruct getOrderedStruct() {
 }
 
 EMSCRIPTEN_BINDINGS(order) {
-    value_tuple<OrderedTuple>("OrderedTuple")
+    value_array<OrderedTuple>("OrderedTuple")
         .element(&OrderedTuple::first)
         .element(&OrderedTuple::second)
         ;
 
-    value_struct<OrderedStruct>("OrderedStruct")
+    value_object<OrderedStruct>("OrderedStruct")
         .field("first", &OrderedStruct::first)
         .field("second", &OrderedStruct::second)
         ;
@@ -2215,10 +2215,10 @@ EMSCRIPTEN_BINDINGS(constants) {
     constant("STRING_CONSTANT", std::string("some string"));
 
     TupleVector tv(1, 2, 3, 4);
-    constant("VALUE_TUPLE_CONSTANT", tv);
+    constant("VALUE_ARRAY_CONSTANT", tv);
 
     StructVector sv(1, 2, 3, 4);
-    constant("VALUE_STRUCT_CONSTANT", sv);
+    constant("VALUE_OBJECT_CONSTANT", sv);
 }
 
 class DerivedWithOffset : public DummyDataToTestPointerAdjustment, public Base {    
@@ -2234,4 +2234,12 @@ EMSCRIPTEN_BINDINGS(with_adjustment) {
         ;
 
     function("return_Base_from_DerivedWithOffset", &return_Base_from_DerivedWithOffset);
+}
+
+void clear_StringHolder(StringHolder& sh) {
+    sh.set("");
+}
+
+EMSCRIPTEN_BINDINGS(references) {
+    function("clear_StringHolder", &clear_StringHolder);
 }

@@ -70,13 +70,13 @@ namespace emscripten {
                 GenericFunction invoker,
                 GenericFunction function);
 
-            void _embind_register_tuple(
+            void _embind_register_value_array(
                 TYPEID tupleType,
                 const char* name,
                 GenericFunction constructor,
                 GenericFunction destructor);
             
-            void _embind_register_tuple_element(
+            void _embind_register_value_array_element(
                 TYPEID tupleType,
                 TYPEID getterReturnType,
                 GenericFunction getter,
@@ -85,15 +85,15 @@ namespace emscripten {
                 GenericFunction setter,
                 void* setterContext);
 
-            void _embind_finalize_tuple(TYPEID tupleType);
+            void _embind_finalize_value_array(TYPEID tupleType);
 
-            void _embind_register_struct(
+            void _embind_register_value_object(
                 TYPEID structType,
                 const char* fieldName,
                 GenericFunction constructor,
                 GenericFunction destructor);
             
-            void _embind_register_struct_field(
+            void _embind_register_value_object_field(
                 TYPEID structType,
                 const char* fieldName,
                 TYPEID getterReturnType,
@@ -103,7 +103,7 @@ namespace emscripten {
                 GenericFunction setter,
                 void* setterContext);
 
-            void _embind_finalize_struct(TYPEID structType);
+            void _embind_finalize_value_object(TYPEID structType);
 
             void _embind_register_smart_ptr(
                 TYPEID pointerType,
@@ -531,26 +531,26 @@ namespace emscripten {
     ////////////////////////////////////////////////////////////////////////////////
 
     template<typename ClassType>
-    class value_tuple : public internal::noncopyable {
+    class value_array : public internal::noncopyable {
     public:
-        value_tuple(const char* name) {
+        value_array(const char* name) {
             using namespace internal;
-            _embind_register_tuple(
+            _embind_register_value_array(
                 TypeID<ClassType>::get(),
                 name,
                 reinterpret_cast<GenericFunction>(&raw_constructor<ClassType>),
                 reinterpret_cast<GenericFunction>(&raw_destructor<ClassType>));
         }
 
-        ~value_tuple() {
+        ~value_array() {
             using namespace internal;
-            _embind_finalize_tuple(TypeID<ClassType>::get());
+            _embind_finalize_value_array(TypeID<ClassType>::get());
         }
 
         template<typename InstanceType, typename ElementType>
-        value_tuple& element(ElementType InstanceType::*field) {
+        value_array& element(ElementType InstanceType::*field) {
             using namespace internal;
-            _embind_register_tuple_element(
+            _embind_register_value_array_element(
                 TypeID<ClassType>::get(),
                 TypeID<ElementType>::get(),
                 reinterpret_cast<GenericFunction>(
@@ -566,11 +566,11 @@ namespace emscripten {
         }
 
         template<typename Getter, typename Setter>
-        value_tuple& element(Getter getter, Setter setter) {
+        value_array& element(Getter getter, Setter setter) {
             using namespace internal;
             typedef GetterPolicy<Getter> GP;
             typedef SetterPolicy<Setter> SP;
-            _embind_register_tuple_element(
+            _embind_register_value_array_element(
                 TypeID<ClassType>::get(),
                 TypeID<typename GP::ReturnType>::get(),
                 reinterpret_cast<GenericFunction>(&GP::template get<ClassType>),
@@ -582,11 +582,11 @@ namespace emscripten {
         }
 
         template<int Index>
-        value_tuple& element(index<Index>) {
+        value_array& element(index<Index>) {
             using namespace internal;
             ClassType* null = 0;
             typedef typename std::remove_reference<decltype((*null)[Index])>::type ElementType;
-            _embind_register_tuple_element(
+            _embind_register_value_array_element(
                 TypeID<ClassType>::get(),
                 TypeID<ElementType>::get(),
                 reinterpret_cast<GenericFunction>(&internal::get_by_index<ClassType, ElementType>),
@@ -603,25 +603,25 @@ namespace emscripten {
     ////////////////////////////////////////////////////////////////////////////////
 
     template<typename ClassType>
-    class value_struct : public internal::noncopyable {
+    class value_object : public internal::noncopyable {
     public:
-        value_struct(const char* name) {
+        value_object(const char* name) {
             using namespace internal;
-            _embind_register_struct(
+            _embind_register_value_object(
                 TypeID<ClassType>::get(),
                 name,
                 reinterpret_cast<GenericFunction>(&raw_constructor<ClassType>),
                 reinterpret_cast<GenericFunction>(&raw_destructor<ClassType>));
         }
 
-        ~value_struct() {
-            _embind_finalize_struct(internal::TypeID<ClassType>::get());
+        ~value_object() {
+            _embind_finalize_value_object(internal::TypeID<ClassType>::get());
         }
 
         template<typename InstanceType, typename FieldType>
-        value_struct& field(const char* fieldName, FieldType InstanceType::*field) {
+        value_object& field(const char* fieldName, FieldType InstanceType::*field) {
             using namespace internal;
-            _embind_register_struct_field(
+            _embind_register_value_object_field(
                 TypeID<ClassType>::get(),
                 fieldName,
                 TypeID<FieldType>::get(),
@@ -638,7 +638,7 @@ namespace emscripten {
         }
     
         template<typename Getter, typename Setter>
-        value_struct& field(
+        value_object& field(
             const char* fieldName,
             Getter getter,
             Setter setter
@@ -646,7 +646,7 @@ namespace emscripten {
             using namespace internal;
             typedef GetterPolicy<Getter> GP;
             typedef SetterPolicy<Setter> SP;
-            _embind_register_struct_field(
+            _embind_register_value_object_field(
                 TypeID<ClassType>::get(),
                 fieldName,
                 TypeID<typename GP::ReturnType>::get(),
@@ -659,11 +659,11 @@ namespace emscripten {
         }
 
         template<int Index>
-        value_struct& field(const char* fieldName, index<Index>) {
+        value_object& field(const char* fieldName, index<Index>) {
             using namespace internal;
             ClassType* null = 0;
             typedef typename std::remove_reference<decltype((*null)[Index])>::type ElementType;
-            _embind_register_struct_field(
+            _embind_register_value_object_field(
                 TypeID<ClassType>::get(),
                 fieldName,
                 TypeID<ElementType>::get(),
