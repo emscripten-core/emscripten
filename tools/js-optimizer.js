@@ -3291,6 +3291,14 @@ function outline(ast) {
     }
     // replace in stats
     stats.splice.apply(stats, [start, end-start+1].concat(reps));
+    // if we just removed a final return from the original function, add one
+    var last = getStatements(func)[getStatements(func).length-1];
+    if (last[0] === 'stat') last = last[1];
+    if (last[0] !== 'return') {
+      if (allCodeInfo.hasReturnInt || allCodeInfo.hasReturnDouble) {
+        getStatements(func).push(['stat', ['return', makeAsmCoercion(['num', 0], allCodeInfo.hasReturnInt ? ASM_INT : ASM_DOUBLE)]]);
+      }
+    }
     return [newFunc];
   }
 

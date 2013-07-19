@@ -10842,7 +10842,7 @@ f.close()
           for engine in JS_ENGINES:
             out = run_js('test.js', engine=engine, stderr=PIPE, full_output=True)
             self.assertContained(expected, out)
-            #if engine == SPIDERMONKEY_ENGINE: self.validate_asmjs(out)
+            if engine == SPIDERMONKEY_ENGINE: self.validate_asmjs(out)
           low = expected_ranges[outlining_limit][0]
           seen = max(measure_funcs('test.js').values())
           high = expected_ranges[outlining_limit][1]
