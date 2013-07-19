@@ -5956,7 +5956,7 @@ LibraryManager.library = {
       return 1;
     } else {
       var lib_record = DLFCN_DATA.loadedLibs[handle];
-      if (lib_record.refcount-- == 0) {
+      if (--lib_record.refcount == 0) {
         delete DLFCN_DATA.loadedLibNames[lib_record.name];
         delete DLFCN_DATA.loadedLibs[handle];
       }
