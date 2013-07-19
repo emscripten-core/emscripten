@@ -3030,7 +3030,7 @@ function outline(ast) {
     });
 
     var writes = {};
-    var appearances = {};
+    var namings = {};
     var hasReturn = false, hasReturnInt = false, hasReturnDouble = false, hasBreak = false, hasContinue = false;
     var breaks = {};    // set of labels we break or continue
     var continues = {}; // to (name -> id, just like labels)
@@ -3041,13 +3041,12 @@ function outline(ast) {
       if (type == 'assign' && node[2][0] == 'name') {
         var name = node[2][1];
         if (name in asmData.vars || name in asmData.params) {
-          writes[name] = 0;
-          appearances[name] = (appearances[name] || 0) - 1; // this appearance is a definition, offset the counting later
+          writes[name] = (writes[name] || 0) + 1;
         }
       } else if (type == 'name') {
         var name = node[1];
         if (name in asmData.vars || name in asmData.params) {
-          appearances[name] = (appearances[name] || 0) + 1;
+          namings[name] = (namings[name] || 0) + 1;
         }
       } else if (type == 'return') {
         if (!node[1]) {
@@ -3088,10 +3087,11 @@ function outline(ast) {
     assert(hasReturn + hasReturnInt + hasReturnDouble <= 1);
 
     var reads = {};
-
-    for (var name in appearances) {
-      if (appearances[name] > 0) reads[name] = 0;
+    for (var v in namings) {
+      var actualReads = namings[v] - (writes[v] || 0);
+      if (actualReads > 0) reads[v] = actualReads;
     }
+
     return { writes: writes, reads: reads, hasReturn: hasReturn, hasReturnInt: hasReturnInt, hasReturnDouble: hasReturnDouble, hasBreak: hasBreak, hasContinue: hasContinue, breaks: breaks, continues: continues, labels: labels };
   }
 
@@ -3392,6 +3392,7 @@ function outline(ast) {
       denormalizeAsm(func, asmData);
     });
 
+    funcs = null;
     sizeToOutline *= 2; // be more and more conservative about outlining as we look into outlined functions
 
     // TODO: control flow: route returns and breaks. outlined code should have all breaks/continues/returns break into the outermost scope,
@@ -3401,8 +3402,8 @@ function outline(ast) {
       // add new functions to the toplevel, or create a toplevel if there isn't one
       ast[1].push.apply(ast[1], newFuncs);
 
-      funcs = newFuncs;
-      more = true;
+      // funcs = newFuncs; // TODO: consider recursing into newly outlined functions
+      // more = true;
     }
   }
 }
