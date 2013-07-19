@@ -1433,15 +1433,14 @@ function analyzer(data, sidePass) {
         func.labelsDict = {};
         func.labelIds = {};
         func.labelIdsInverse = {};
-        func.labelIds[toNiceIdent('%0')] = 1;
-        func.labelIdsInverse[0] = toNiceIdent('%0');
-        func.labelIdCounter = 2;
+        func.labelIdCounter = 1;
         func.labels.forEach(function(label) {
           if (!(label.ident in func.labelIds)) {
             func.labelIds[label.ident] = func.labelIdCounter++;
             func.labelIdsInverse[func.labelIdCounter-1] = label.ident;
           }
         });
+        var entryIdent = func.labels[0].ident;
 
         // Minify label ids to numeric ids.
         func.labels.forEach(function(label) {
@@ -1478,7 +1477,7 @@ function analyzer(data, sidePass) {
         function getActualLabelId(labelId) {
           if (func.labelsDict[labelId]) return labelId;
           // If not present, it must be a surprisingly-named entry (or undefined behavior, in which case, still ok to use the entry)
-          labelId = func.labelIds[ENTRY_IDENT];
+          labelId = func.labelIds[entryIdent];
           assert(func.labelsDict[labelId]);
           return labelId;
         }
