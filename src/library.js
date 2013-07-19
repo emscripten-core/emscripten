@@ -28,7 +28,175 @@ LibraryManager.library = {
   stderr: 'allocate(1, "i32*", ALLOC_STATIC)',
   _impure_ptr: 'allocate(1, "i32*", ALLOC_STATIC)',
 
+  $FSCOM__deps: ['$FS'],
   $FSCOM: {
+    // Makes sure a file's contents are loaded. Returns whether the file has
+    // been loaded successfully. No-op for files that have been loaded already.
+    forceLoadFile: function(obj) {
+      if (obj.isDevice || obj.isFolder || obj.link || obj.contents) return true;
+      var success = true;
+      if (typeof XMLHttpRequest !== 'undefined') {
+        throw new Error("Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread.");
+      } else if (Module['read']) {
+        // Command-line.
+        try {
+          // WARNING: Can't read binary files in V8's d8 or tracemonkey's js, as
+          //          read() will try to parse UTF8.
+          obj.contents = intArrayFromString(Module['read'](obj.url), true);
+        } catch (e) {
+          success = false;
+        }
+      } else {
+        throw new Error('Cannot load without read() or XMLHttpRequest.');
+      }
+      if (!success) ___setErrNo(ERRNO_CODES.EIO);
+      return success;
+    },
+    // Creates a file record for lazy-loading from a URL. XXX This requires a synchronous
+    // XHR, which is not possible in browsers except in a web worker! Use preloading,
+    // either --preload-file in emcc or FS.createPreloadedFile
+    createLazyFile: function(parent, name, url, canRead, canWrite) {
+      if (typeof XMLHttpRequest !== 'undefined') {
+        if (!ENVIRONMENT_IS_WORKER) throw 'Cannot do synchronous binary XHRs outside webworkers in modern browsers. Use --embed-file or --preload-file in emcc';
+        // Lazy chunked Uint8Array (implements get and length from Uint8Array). Actual getting is abstracted away for eventual reuse.
+        var LazyUint8Array = function() {
+          this.lengthKnown = false;
+          this.chunks = []; // Loaded chunks. Index is the chunk number
+        }
+        LazyUint8Array.prototype.get = function(idx) {
+          if (idx > this.length-1 || idx < 0) {
+            return undefined;
+          }
+          var chunkOffset = idx % this.chunkSize;
+          var chunkNum = Math.floor(idx / this.chunkSize);
+          return this.getter(chunkNum)[chunkOffset];
+        }
+        LazyUint8Array.prototype.setDataGetter = function(getter) {
+          this.getter = getter;
+        }
+        LazyUint8Array.prototype.cacheLength = function() {
+            // Find length
+            var xhr = new XMLHttpRequest();
+            xhr.open('HEAD', url, false);
+            xhr.send(null);
+            if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
+            var datalength = Number(xhr.getResponseHeader("Content-length"));
+            var header;
+            var hasByteServing = (header = xhr.getResponseHeader("Accept-Ranges")) && header === "bytes";
+#if SMALL_XHR_CHUNKS
+            var chunkSize = 1024; // Chunk size in bytes
+#else
+            var chunkSize = 1024*1024; // Chunk size in bytes
+#endif
+
+            if (!hasByteServing) chunkSize = datalength;
+
+            // Function to get a range from the remote URL.
+            var doXHR = (function(from, to) {
+              if (from > to) throw new Error("invalid range (" + from + ", " + to + ") or no bytes requested!");
+              if (to > datalength-1) throw new Error("only " + datalength + " bytes available! programmer error!");
+
+              // TODO: Use mozResponseArrayBuffer, responseStream, etc. if available.
+              var xhr = new XMLHttpRequest();
+              xhr.open('GET', url, false);
+              if (datalength !== chunkSize) xhr.setRequestHeader("Range", "bytes=" + from + "-" + to);
+
+              // Some hints to the browser that we want binary data.
+              if (typeof Uint8Array != 'undefined') xhr.responseType = 'arraybuffer';
+              if (xhr.overrideMimeType) {
+                xhr.overrideMimeType('text/plain; charset=x-user-defined');
+              }
+
+              xhr.send(null);
+              if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
+              if (xhr.response !== undefined) {
+                return new Uint8Array(xhr.response || []);
+              } else {
+                return intArrayFromString(xhr.responseText || '', true);
+              }
+            });
+            var lazyArray = this;
+            lazyArray.setDataGetter(function(chunkNum) {
+              var start = chunkNum * chunkSize;
+              var end = (chunkNum+1) * chunkSize - 1; // including this byte
+              end = Math.min(end, datalength-1); // if datalength-1 is selected, this is the last block
+              if (typeof(lazyArray.chunks[chunkNum]) === "undefined") {
+                lazyArray.chunks[chunkNum] = doXHR(start, end);
+              }
+              if (typeof(lazyArray.chunks[chunkNum]) === "undefined") throw new Error("doXHR failed!");
+              return lazyArray.chunks[chunkNum];
+            });
+
+            this._length = datalength;
+            this._chunkSize = chunkSize;
+            this.lengthKnown = true;
+        }
+
+        var lazyArray = new LazyUint8Array();
+        Object.defineProperty(lazyArray, "length", {
+            get: function() {
+                if(!this.lengthKnown) {
+                    this.cacheLength();
+                }
+                return this._length;
+            }
+        });
+        Object.defineProperty(lazyArray, "chunkSize", {
+            get: function() {
+                if(!this.lengthKnown) {
+                    this.cacheLength();
+                }
+                return this._chunkSize;
+            }
+        });
+
+        var properties = { isDevice: false, contents: lazyArray };
+      } else {
+        var properties = { isDevice: false, url: url };
+      }
+
+      var node = FS.createFile(parent, name, properties, canRead, canWrite);
+#if USE_OLD_FS == 0
+      // This is a total hack, but I want to get this lazy file code out of the
+      // core of MEMFS. If we want to keep this lazy file concept I feel it should
+      // be its own thin LAZYFS proxying calls to MEMFS.
+      if (properties.contents) {
+        node.contents = properties.contents;
+      } else if (properties.url) {
+        node.contents = null;
+        node.url = properties.url;
+      }
+      // override each stream op with one that tries to force load the lazy file first
+      var stream_ops = {};
+      var keys = Object.keys(node.stream_ops);
+      keys.forEach(function (key) {
+        var fn = node.stream_ops[key];
+        stream_ops[key] = function () {
+          if (!FS.forceLoadFile(node)) {
+            throw new FS.ErrnoError(ERRNO_CODES.EIO);
+          }
+          return fn.apply(null, arguments);
+        };
+      });
+      // use a custom read function
+      stream_ops.read = function (stream, buffer, offset, length, position) {
+        var contents = stream.node.contents;
+        var size = Math.min(contents.length - position, length);
+        if (contents.slice) { // normal array
+          for (var i = 0; i < size; i++) {
+            buffer[offset + i] = contents[position + i];
+          }
+        } else {
+          for (var i = 0; i < size; i++) { // LazyUint8Array from sync binary XHR
+            buffer[offset + i] = contents.get(position + i);
+          }
+        }
+        return size;
+      };
+      node.stream_ops = stream_ops;
+#endif
+      return node;
+    },
     // Preloads a file asynchronously. You can call this before run, for example in
     // preRun. run will be delayed until this file arrives and is set up.
     // If you call it after run(), you may want to pause the main loop until it
@@ -374,114 +542,10 @@ LibraryManager.library = {
       };
       return FS.createFile(parent, name, properties, canRead, canWrite);
     },
-    // Creates a file record for lazy-loading from a URL. XXX This requires a synchronous
-    // XHR, which is not possible in browsers except in a web worker! Use preloading,
-    // either --preload-file in emcc or FS.createPreloadedFile
-    createLazyFile: function(parent, name, url, canRead, canWrite) {
-
-      if (typeof XMLHttpRequest !== 'undefined') {
-        if (!ENVIRONMENT_IS_WORKER) throw 'Cannot do synchronous binary XHRs outside webworkers in modern browsers. Use --embed-file or --preload-file in emcc';
-        // Lazy chunked Uint8Array (implements get and length from Uint8Array). Actual getting is abstracted away for eventual reuse.
-        var LazyUint8Array = function() {
-          this.lengthKnown = false;
-          this.chunks = []; // Loaded chunks. Index is the chunk number
-        }
-        LazyUint8Array.prototype.get = function(idx) {
-          if (idx > this.length-1 || idx < 0) {
-            return undefined;
-          }
-          var chunkOffset = idx % this.chunkSize;
-          var chunkNum = Math.floor(idx / this.chunkSize);
-          return this.getter(chunkNum)[chunkOffset];
-        }
-        LazyUint8Array.prototype.setDataGetter = function(getter) {
-          this.getter = getter;
-        }
-
-        LazyUint8Array.prototype.cacheLength = function() {
-            // Find length
-            var xhr = new XMLHttpRequest();
-            xhr.open('HEAD', url, false);
-            xhr.send(null);
-            if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
-            var datalength = Number(xhr.getResponseHeader("Content-length"));
-            var header;
-            var hasByteServing = (header = xhr.getResponseHeader("Accept-Ranges")) && header === "bytes";
-#if SMALL_XHR_CHUNKS
-            var chunkSize = 1024; // Chunk size in bytes
-#else
-            var chunkSize = 1024*1024; // Chunk size in bytes
-#endif
-
-            if (!hasByteServing) chunkSize = datalength;
-
-            // Function to get a range from the remote URL.
-            var doXHR = (function(from, to) {
-              if (from > to) throw new Error("invalid range (" + from + ", " + to + ") or no bytes requested!");
-              if (to > datalength-1) throw new Error("only " + datalength + " bytes available! programmer error!");
-
-              // TODO: Use mozResponseArrayBuffer, responseStream, etc. if available.
-              var xhr = new XMLHttpRequest();
-              xhr.open('GET', url, false);
-              if (datalength !== chunkSize) xhr.setRequestHeader("Range", "bytes=" + from + "-" + to);
-
-              // Some hints to the browser that we want binary data.
-              if (typeof Uint8Array != 'undefined') xhr.responseType = 'arraybuffer';
-              if (xhr.overrideMimeType) {
-                xhr.overrideMimeType('text/plain; charset=x-user-defined');
-              }
-
-              xhr.send(null);
-              if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
-              if (xhr.response !== undefined) {
-                return new Uint8Array(xhr.response || []);
-              } else {
-                return intArrayFromString(xhr.responseText || '', true);
-              }
-            });
-            var lazyArray = this;
-            lazyArray.setDataGetter(function(chunkNum) {
-              var start = chunkNum * chunkSize;
-              var end = (chunkNum+1) * chunkSize - 1; // including this byte
-              end = Math.min(end, datalength-1); // if datalength-1 is selected, this is the last block
-              if (typeof(lazyArray.chunks[chunkNum]) === "undefined") {
-                lazyArray.chunks[chunkNum] = doXHR(start, end);
-              }
-              if (typeof(lazyArray.chunks[chunkNum]) === "undefined") throw new Error("doXHR failed!");
-              return lazyArray.chunks[chunkNum];
-            });
-
-            this._length = datalength;
-            this._chunkSize = chunkSize;
-            this.lengthKnown = true;
-        }
-
-        var lazyArray = new LazyUint8Array();
-        Object.defineProperty(lazyArray, "length", {
-            get: function() {
-                if(!this.lengthKnown) {
-                    this.cacheLength();
-                }
-                return this._length;
-            }
-        });
-        Object.defineProperty(lazyArray, "chunkSize", {
-            get: function() {
-                if(!this.lengthKnown) {
-                    this.cacheLength();
-                }
-                return this._chunkSize;
-            }
-        });
-
-        var properties = { isDevice: false, contents: lazyArray };
-      } else {
-        var properties = { isDevice: false, url: url };
-      }
-
-      return FS.createFile(parent, name, properties, canRead, canWrite);
+    createLazyFile: function() {
+      return FSCOM.createLazyFile.apply(this, arguments);
     },
-    createPreloadedFile: function () {
+    createPreloadedFile: function() {
       FSCOM.createPreloadedFile.apply(this, arguments);
     },
     // Creates a link to a specific local path.
@@ -501,27 +565,8 @@ LibraryManager.library = {
       var ops = {isDevice: true, input: input, output: output};
       return FS.createFile(parent, name, ops, Boolean(input), Boolean(output));
     },
-    // Makes sure a file's contents are loaded. Returns whether the file has
-    // been loaded successfully. No-op for files that have been loaded already.
-    forceLoadFile: function(obj) {
-      if (obj.isDevice || obj.isFolder || obj.link || obj.contents) return true;
-      var success = true;
-      if (typeof XMLHttpRequest !== 'undefined') {
-        throw new Error("Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread.");
-      } else if (Module['read']) {
-        // Command-line.
-        try {
-          // WARNING: Can't read binary files in V8's d8 or tracemonkey's js, as
-          //          read() will try to parse UTF8.
-          obj.contents = intArrayFromString(Module['read'](obj.url), true);
-        } catch (e) {
-          success = false;
-        }
-      } else {
-        throw new Error('Cannot load without read() or XMLHttpRequest.');
-      }
-      if (!success) ___setErrNo(ERRNO_CODES.EIO);
-      return success;
+    forceLoadFile: function() {
+      return FSCOM.forceLoadFile.apply(this, arguments);
     },
     staticInit: function () {
       // The main file system tree. All the contents are inside this.
@@ -1203,13 +1248,16 @@ LibraryManager.library = {
       if (canWrite) mode |= {{{ cDefine('S_IWUGO') }}};
       return mode;
     },
-    joinPath: function(parts, forceRelative) {
+    joinPath: function (parts, forceRelative) {
       var path = PATH.join.apply(null, parts);
       if (forceRelative && path[0] == '/') path = path.substr(1);
       return path;
     },
-    absolutePath: function(relative, base) {
+    absolutePath: function (relative, base) {
       return PATH.resolve(base, relative);
+    },
+    standardizePath: function (path) {
+      return PATH.normalize(path);
     },
     findObject: function (path, dontResolveLastLink) {
       var ret = FS.analyzePath(path, dontResolveLastLink);
@@ -1293,9 +1341,6 @@ LibraryManager.library = {
       }
       return node;
     },
-    createLazyFile: function (parent, name, url, canRead, canWrite) {
-      throw new Error('TODO');
-    },
     createDevice: function (parent, name, input, output) {
       var path = PATH.join(typeof parent === 'string' ? parent : FS.getPath(parent), name);
       var mode = input && output ? 0777 : (input ? 0333 : 0555);
@@ -1353,6 +1398,12 @@ LibraryManager.library = {
     createLink: function (parent, name, target, canRead, canWrite) {
       var path = PATH.join(typeof parent === 'string' ? parent : FS.getPath(parent), name);
       return VFS.symlink(target, path);
+    },
+    forceLoadFile: function() {
+      return FSCOM.forceLoadFile.apply(this, arguments);
+    },
+    createLazyFile: function () {
+      return FSCOM.createLazyFile.apply(this, arguments);
     },
     createPreloadedFile: function () {
       FSCOM.createPreloadedFile.apply(this, arguments);
@@ -1976,13 +2027,9 @@ LibraryManager.library = {
           buffer.set(contents.subarray(position, position + size), offset);
         } else
 #endif
-        if (contents.slice) { // normal array
+        {
           for (var i = 0; i < size; i++) {
             buffer[offset + i] = contents[position + i];
-          }
-        } else {
-          for (var i = 0; i < size; i++) { // LazyUint8Array from sync binary XHR
-            buffer[offset + i] = contents.get(position + i);
           }
         }
         return size;
