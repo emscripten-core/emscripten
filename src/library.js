@@ -1787,7 +1787,7 @@ LibraryManager.library = {
       }
       var contents = stream.object.contents;
       var size = Math.min(contents.length - offset, nbyte);
-      assert( size >= 0 );
+      assert(size >= 0);
       
 #if USE_TYPED_ARRAYS == 2
       if (contents.subarray) { // typed array
@@ -1856,7 +1856,7 @@ LibraryManager.library = {
       } else {
         var ungotSize = stream.ungotten.length;
         bytesRead = _pread(fildes, buf, nbyte, stream.position);
-        assert( bytesRead >= -1 );
+        assert(bytesRead >= -1);
         if (bytesRead != -1) {
           stream.position += (stream.ungotten.length - ungotSize) + bytesRead;
         }
