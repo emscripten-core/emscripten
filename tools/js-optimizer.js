@@ -3304,19 +3304,41 @@ function outline(ast) {
 
   function outlineStatements(func, asmData, stats, maxSize) {
     level++;
-    if (measureSize(stats) < sizeToOutline) return;
+    var originalSize = measureSize(stats);
+    if (originalSize < sizeToOutline) return;
     var ret = [];
     var sizeSeen = 0;
     var end = stats.length-1;
     var i = stats.length;
     var minIndex = stats == getStatements(func) ? getFirstIndexInNormalized(func, asmData) : 0;
-    while (--i >= minIndex) {
+    var canRestart = false;
+    while (1) {
+      i--;
+      if (i < minIndex) {
+        // we might be done. but, if we have just recursively outlined, do a further attempt from the beginning.
+        // we compare total code size (current remaining size and outlined size) versus the original size, and do not restart if
+        // we are adding too much overhead.
+        var currSize = measureSize(stats);
+        var outlinedSize = measureSize(ret);
+        if (canRestart && currSize + outlinedSize < 1.2*originalSize) {
+          //printErr('restarting ' + func[1] + ' since ' + [currSize, outlinedSize, originalSize]);
+          lastSize = currSize;
+          i = stats.length;
+          end = stats.length-1;
+          sizeSeen = 0;
+          canRestart = false;
+          continue;
+        } else {
+          break;
+        }
+      }
       var stat = stats[i];
       var size = measureSize(stat);
       //printErr(level + ' size          ' + [i, size]);
       if (size >= sizeToOutline) {
         // this by itself is big enough to inline, recurse into it and find statements to split on
         var subStatements = null;
+        var pre = ret.length;
         traverse(stat, function(node, type) {
           if (type == 'block') {
             if (measureSize(node) >= sizeToOutline) {
@@ -3326,8 +3348,13 @@ function outline(ast) {
             return null; // do not recurse into children, outlineStatements will do so if necessary
           }
         });
-        sizeSeen = 0;
-        continue;
+        if (ret.length > pre) {
+          // we outlined recursively, reset our state here
+          end = i-1;
+          sizeSeen = 0;
+          canRestart = true;
+          continue;
+        }
       }
       sizeSeen += size;
       // If this is big enough to outline, but no too big (if very close to the size of the full function,
