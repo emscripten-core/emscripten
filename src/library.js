@@ -2560,15 +2560,27 @@ LibraryManager.library = {
         continue;
       }
 
-      // TODO: Support strings like "%5c" etc.
-      if (format[formatIndex] === '%' && format[formatIndex+1] == 'c') {
-        var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
-        argIndex += Runtime.getAlignSize('void*', null, true);
-        fields++;
-        next = get();
-        {{{ makeSetValue('argPtr', 0, 'next', 'i8') }}}
-        formatIndex += 2;
-        continue;
+      if (format[formatIndex] === '%') {
+        var nextC = format.indexOf('c', formatIndex+1);
+        if (nextC > 0) {
+          var maxx = 1;
+          if (nextC > formatIndex+1) {
+            var sub = format.substring(formatIndex+1, nextC)
+            maxx = parseInt(sub);
+            if (maxx != sub) maxx = 0;
+          }
+          if (maxx) {
+            var argPtr = HEAP32[(varargs + argIndex)>>2];
+            argIndex += Runtime.getAlignSize('void*', null, true);
+            fields++;
+            for (var i = 0; i < maxx; i++) {
+              next = get();
+              {{{ makeSetValue('argPtr++', 0, 'next', 'i8') }}};
+            }
+            formatIndex += nextC - formatIndex + 1;
+            continue;
+          }
+        }
       }
 
       // remove whitespace

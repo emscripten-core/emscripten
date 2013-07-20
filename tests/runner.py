@@ -6785,6 +6785,25 @@ Pass: 0.000012 0.000012''')
       '''
       self.do_run(src, '2,  , black\n2, ., #001100\n2, X, #111100');
 
+    def test_sscanf_6(self):
+      src = r'''
+        #include <stdio.h>
+
+        int main()
+        {
+          char *date = "18.07.2013w";
+          char c[10];
+          int y, m, d, i;
+          i = sscanf(date, "%d.%d.%4d%c", &d, &m, &y, c);
+          printf("date: %s; day %2d, month %2d, year %4d, extra: %c, %d\n", date, d, m, y, c[0], i);
+          i = sscanf(date, "%d.%d.%3c", &d, &m, c);
+          printf("date: %s; day %2d, month %2d, year %4d, extra: %s, %d\n", date, d, m, y, c, i);
+        }
+      '''
+      self.do_run(src, '''date: 18.07.2013w; day 18, month  7, year 2013, extra: w, 4
+date: 18.07.2013w; day 18, month  7, year 2013, extra: 201, 3
+''');
+
     def test_sscanf_skip(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip("need ta2 for full i64")
 
