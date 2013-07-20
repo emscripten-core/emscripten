@@ -642,7 +642,7 @@ for i in range(1, len(sys.argv)):
   if not arg.startswith('-'):
     if arg.endswith(('.c','.m')):
       use_cxx = False
-    if arg.endswith('.h') and sys.argv[i-1] != '-include':
+    if arg.endswith('.h') and sys.argv[i-1] != '-include' and sys.argv[i-1] != '-MT' and sys.argv[i-1] != '-MQ':
       header = True
 
 if '-M' in sys.argv or '-MM' in sys.argv:
