@@ -3315,7 +3315,7 @@ function outline(ast) {
     while (1) {
       i--;
       if (i < minIndex) {
-        // we might be done. but, if we have just recursively outlined, do a further attempt from the beginning.
+        // we might be done. but, if we have just outlined, do a further attempt from the beginning.
         // we compare total code size (current remaining size and outlined size) versus the original size, and do not restart if
         // we are adding too much overhead.
         var currSize = measureSize(stats);
@@ -3373,6 +3373,8 @@ function outline(ast) {
         ret.push.apply(ret, doOutline(func, asmData, stats, i, end)); // outline [i, .. ,end] inclusive
         sizeSeen = 0;
         end = i-1;
+        canRestart = true;
+        continue;
       }
     }
     level--;
