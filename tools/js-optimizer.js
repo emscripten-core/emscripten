@@ -3320,7 +3320,7 @@ function outline(ast) {
         // we are adding too much overhead.
         var currSize = measureSize(stats);
         var outlinedSize = measureSize(ret);
-        if (canRestart && currSize + outlinedSize < 1.2*originalSize) {
+        if (canRestart && currSize >= sizeToOutline && currSize + outlinedSize < 1.2*originalSize) {
           //printErr('restarting ' + func[1] + ' since ' + [currSize, outlinedSize, originalSize]);
           lastSize = currSize;
           i = stats.length;
