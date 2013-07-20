@@ -4898,7 +4898,9 @@ LibraryManager.library = {
   isprint: function(chr) {
     return 0x1F < chr && chr < 0x7F;
   },
-  isgraph: 'isprint',
+  isgraph: function(chr) {
+    return 0x20 < chr && chr < 0x7F;
+  },
   // Lookup tables for glibc ctype implementation.
   __ctype_b_loc: function() {
     // http://refspecs.freestandards.org/LSB_3.0.0/LSB-Core-generic/LSB-Core-generic/baselib---ctype-b-loc.html
