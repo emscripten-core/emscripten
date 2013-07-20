@@ -1226,8 +1226,9 @@ var LibrarySDL = {
   IMG_Load_RW: function(rwopsID, freesrc) {
     var rwops = SDL.rwops[rwopsID];
 
-    if ( rwops === undefined )
+    if (rwops === undefined) {
       return 0;
+    }
 
     var filename = rwops.filename;
     
@@ -1440,8 +1441,7 @@ var LibrarySDL = {
         // We found the file. Load the contents
         if ( fileObject && !fileObject.isFolder && fileObject.read ) {
           bytes = fileObject.contents
-        }
-        else {
+        } else {
           return 0;
         }
       }
