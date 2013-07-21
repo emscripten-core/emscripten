@@ -10858,6 +10858,7 @@ f.close()
         for outlining_limit in [2000, 5000, 0]:
           Popen([PYTHON, EMCC, src] + libs + ['-o', 'test.js', '-O2', '-g3', '-s', 'OUTLINING_LIMIT=%d' % outlining_limit] + args).communicate()
           assert os.path.exists('test.js')
+          shutil.copyfile('test.js', '%d_test.js' % outlining_limit)
           for engine in JS_ENGINES:
             out = run_js('test.js', engine=engine, stderr=PIPE, full_output=True)
             self.assertContained(expected, out)
