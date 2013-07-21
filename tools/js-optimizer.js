@@ -3123,6 +3123,7 @@ function outline(ast) {
   var costs = {}; // new function name => overhead cost of outlining
 
   function doOutline(func, asmData, stats, start, end) {
+    if (!extraInfo.allowCostlyOutlines) var originalStats = copy(stats);
     var code = stats.slice(start, end+1);
     var funcSize = measureSize(func);
     var newIdent = func[1] + '$' + (asmData.splitCounter++);
@@ -3307,11 +3308,17 @@ function outline(ast) {
       if (v != 'sp') newAsmData.vars[v] = getAsmType(v, asmData);
     }
     denormalizeAsm(newFunc, newAsmData);
+    // replace in stats
+    stats.splice.apply(stats, [start, end-start+1].concat(reps));
+    if (!extraInfo.allowCostlyOutlines && (measureSize(func) >= funcSize || measureSize(newFunc) >= funcSize)) {
+      // abort, this was pointless
+      stats.length = originalStats.length;
+      for (var i = 0; i < stats.length; i++) stats[i] = originalStats[i];
+      return [];
+    }
     for (var v in owned) {
       if (v != 'sp') delete asmData.vars[v]; // parent does not need these anymore
     }
-    // replace in stats
-    stats.splice.apply(stats, [start, end-start+1].concat(reps));
     // if we just removed a final return from the original function, add one
     var last = getStatements(func)[getStatements(func).length-1];
     if (last[0] === 'stat') last = last[1];

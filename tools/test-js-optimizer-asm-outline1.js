@@ -231,4 +231,4 @@ function vars_w_stack(x, y) {
   STACKTOP = sp;
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS
-// EXTRA_INFO: { "sizeToOutline": 30 }
+// EXTRA_INFO: { "sizeToOutline": 30, "allowCostlyOutlines": 1 }

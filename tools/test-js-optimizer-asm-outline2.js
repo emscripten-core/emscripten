@@ -603,4 +603,4 @@ function _free($mem) {
  return;
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS
-// EXTRA_INFO: { "sizeToOutline": 1000 }
+// EXTRA_INFO: { "sizeToOutline": 1000, "allowCostlyOutlines": 1 }
