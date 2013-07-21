@@ -3118,10 +3118,13 @@ function outline(ast) {
   var sizeToOutline = extraInfo.sizeToOutline;
   var level = 0;
 
+  var costs = {}; // new function name => overhead cost of outlining
+
   function doOutline(func, asmData, stats, start, end) {
     var code = stats.slice(start, end+1);
+    var funcSize = measureSize(func);
     var newIdent = func[1] + '$' + (asmData.splitCounter++);
-    printErr(' do outline ' + [func[1], level, 'range:', start, end, 'of', stats.length, newIdent]); //dumpSrc(['block', code]);//dumpAst(['block', code]);
+    //printErr(' do outline ' + [func[1], level, 'range:', start, end, 'of', stats.length, newIdent, measureSize(code)]); //dumpSrc(['block', code]);//dumpAst(['block', code]);
     // analyze variables, and find 'owned' variables - that only appear in the outlined code, and do not need any spill support
     var codeInfo = analyzeCode(func, asmData, code);
     var allCodeInfo = analyzeCode(func, asmData, func);
@@ -3299,6 +3302,10 @@ function outline(ast) {
         getStatements(func).push(['stat', ['return', makeAsmCoercion(['num', 0], allCodeInfo.hasReturnInt ? ASM_INT : ASM_DOUBLE)]]);
       }
     }
+    // the cost is the total size increase of all code, after the outlining operation. We also
+    // inherit the outlining cost of the parent function, if any, so the repeated outlining
+    // cannot infinitely recurse.
+    costs[newIdent] = measureSize(func) + measureSize(newFunc) - funcSize + (costs[func[1]] || 0);
     return [newFunc];
   }
 
@@ -3400,10 +3407,11 @@ function outline(ast) {
       var asmData = normalizeAsm(func);
       var size = measureSize(func);
       if (size >= sizeToOutline) {
+        printErr('trying to reduce the size of ' + func[1] + ' which is ' + size + ' (>= ' + sizeToOutline + ')');
         aggressiveVariableElimination(func, asmData);
         analyzeFunction(func, asmData);
         var stats = getStatements(func);
-        var ret = outlineStatements(func, asmData, stats, 0.5*size);
+        var ret = outlineStatements(func, asmData, stats, 0.9*size);
         if (ret && ret.length > 0) {
           newFuncs.push.apply(newFuncs, ret);
           // We have outlined. Add stack support
@@ -3444,12 +3452,12 @@ function outline(ast) {
             }
           }
         }
+        printErr('... resulting size of ' + func[1] + ' is ' + measureSize(func));
       }
       denormalizeAsm(func, asmData);
     });
 
     funcs = null;
-    sizeToOutline *= 2; // be more and more conservative about outlining as we look into outlined functions
 
     // TODO: control flow: route returns and breaks. outlined code should have all breaks/continues/returns break into the outermost scope,
     //       after setting a state variable, etc.
@@ -3458,8 +3466,11 @@ function outline(ast) {
       // add new functions to the toplevel, or create a toplevel if there isn't one
       ast[1].push.apply(ast[1], newFuncs);
 
-      // funcs = newFuncs; // TODO: consider recursing into newly outlined functions
-      // more = true;
+      funcs = newFuncs.filter(function(newFunc) {
+        // recursively outline if we have a large new function that did not come at a high cost
+        return measureSize(newFunc) > sizeToOutline && costs[newFunc[1]] < 0.1*sizeToOutline;
+      });
+      more = funcs.length > 0;
     }
   }
 }

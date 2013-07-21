@@ -10865,7 +10865,7 @@ f.close()
           low = expected_ranges[outlining_limit][0]
           seen = max(measure_funcs('test.js').values())
           high = expected_ranges[outlining_limit][1]
-          print '   ', low, '<=', seen, '<=', high
+          print outlining_limit, '   ', low, '<=', seen, '<=', high
           assert low <= seen <= high
 
       test('zlib', path_from_root('tests', 'zlib', 'example.c'), 
