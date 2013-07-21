@@ -1610,9 +1610,7 @@ function switchify(ast) {
         var statements = cases[i][1];
         // add in `break` statements at the end of each statement block.
         // no point adding in break if we're already exiting, though.
-        // XXX this code assumes that there are no empty blocks in the original
-        // code. is this a correct assumption?
-        if (exitStatements.indexOf(statements[statements.length - 1][0]) === -1)
+        if (statements.length === 0 || exitStatements.indexOf(statements[statements.length - 1][0]) === -1)
           statements.push(BREAK);
 
         for (var j = 0; j < clauses.length - 1; j ++) {
