@@ -48,9 +48,14 @@ function lin3() {
   HEAP32[sp + 0 >> 2] = 0;
   HEAP32[sp + 8 >> 2] = 0;
   sp = lin3$0(sp) | 0;
-  if ((HEAP32[sp + 0 >> 2] | 0) == 6) {
+  tempValue = HEAP32[sp + 0 >> 2] | 0;
+  tempInt = HEAP32[sp + 8 >> 2] | 0;
+  tempDouble = +HEAPF32[sp + 8 >> 2];
+  HEAP32[sp + 0 >> 2] = 0;
+  HEAP32[sp + 8 >> 2] = 0;
+  if ((tempValue | 0) == 6) {
    STACKTOP = sp;
-   return HEAP32[sp + 8 >> 2] | 0;
+   return tempInt | 0;
   }
  }
  STACKTOP = sp;
@@ -71,7 +76,12 @@ function lin4() {
   HEAP32[sp + 0 >> 2] = 0;
   HEAP32[sp + 8 >> 2] = 0;
   sp = lin4$0(sp) | 0;
-  if ((HEAP32[sp + 0 >> 2] | 0) == 1) {
+  tempValue = HEAP32[sp + 0 >> 2] | 0;
+  tempInt = HEAP32[sp + 8 >> 2] | 0;
+  tempDouble = +HEAPF32[sp + 8 >> 2];
+  HEAP32[sp + 0 >> 2] = 0;
+  HEAP32[sp + 8 >> 2] = 0;
+  if ((tempValue | 0) == 1) {
    break;
   }
  }
@@ -93,7 +103,12 @@ function lin5() {
   HEAP32[sp + 0 >> 2] = 0;
   HEAP32[sp + 8 >> 2] = 0;
   sp = lin5$0(sp) | 0;
-  if ((HEAP32[sp + 0 >> 2] | 0) == 3) {
+  tempValue = HEAP32[sp + 0 >> 2] | 0;
+  tempInt = HEAP32[sp + 8 >> 2] | 0;
+  tempDouble = +HEAPF32[sp + 8 >> 2];
+  HEAP32[sp + 0 >> 2] = 0;
+  HEAP32[sp + 8 >> 2] = 0;
+  if ((tempValue | 0) == 3) {
    continue;
   }
  }
@@ -118,22 +133,27 @@ function mix() {
   HEAP32[sp + 0 >> 2] = 0;
   HEAP32[sp + 8 >> 2] = 0;
   sp = mix$0(sp) | 0;
-  if ((HEAP32[sp + 0 >> 2] | 0) == 1) {
+  tempValue = HEAP32[sp + 0 >> 2] | 0;
+  tempInt = HEAP32[sp + 8 >> 2] | 0;
+  tempDouble = +HEAPF32[sp + 8 >> 2];
+  HEAP32[sp + 0 >> 2] = 0;
+  HEAP32[sp + 8 >> 2] = 0;
+  if ((tempValue | 0) == 1) {
    break;
   }
-  if ((HEAP32[sp + 0 >> 2] | 0) == 2) {
-   switch (HEAP32[sp + 8 >> 2] | 0) {
+  if ((tempValue | 0) == 2) {
+   switch (tempInt | 0) {
    case 2:
     {
      break main;
     }
    }
   }
-  if ((HEAP32[sp + 0 >> 2] | 0) == 3) {
+  if ((tempValue | 0) == 3) {
    continue;
   }
-  if ((HEAP32[sp + 0 >> 2] | 0) == 4) {
-   switch (HEAP32[sp + 8 >> 2] | 0) {
+  if ((tempValue | 0) == 4) {
+   switch (tempInt | 0) {
    case 3:
     {
      continue main;

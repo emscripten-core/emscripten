@@ -60,14 +60,19 @@ function _free($mem) {
    sp = _free$1(sp) | 0;
    $p_0 = HEAP32[sp + 216 >> 2] | 0;
    $psize_0 = HEAP32[sp + 208 >> 2] | 0;
-   if ((HEAP32[sp + 632 >> 2] | 0) == 5) {
+   tempValue = HEAP32[sp + 632 >> 2] | 0;
+   tempInt = HEAP32[sp + 640 >> 2] | 0;
+   tempDouble = +HEAPF32[sp + 640 >> 2];
+   HEAP32[sp + 632 >> 2] = 0;
+   HEAP32[sp + 640 >> 2] = 0;
+   if ((tempValue | 0) == 5) {
     return;
    }
-   if ((HEAP32[sp + 632 >> 2] | 0) == 1) {
+   if ((tempValue | 0) == 1) {
     break;
    }
-   if ((HEAP32[sp + 632 >> 2] | 0) == 2) {
-    switch (HEAP32[sp + 640 >> 2] | 0) {
+   if ((tempValue | 0) == 2) {
+    switch (tempInt | 0) {
     case 2:
      {
       break L621;
@@ -97,7 +102,12 @@ function _free($mem) {
  HEAP32[sp + 0 >> 2] = $mem;
  HEAP32[sp + 16 >> 2] = $10;
  sp = _free$2(sp) | 0;
- if ((HEAP32[sp + 632 >> 2] | 0) == 5) {
+ tempValue = HEAP32[sp + 632 >> 2] | 0;
+ tempInt = HEAP32[sp + 640 >> 2] | 0;
+ tempDouble = +HEAPF32[sp + 640 >> 2];
+ HEAP32[sp + 632 >> 2] = 0;
+ HEAP32[sp + 640 >> 2] = 0;
+ if ((tempValue | 0) == 5) {
   return;
  }
 }
@@ -569,11 +579,16 @@ function _free$2(sp) {
     HEAP32[sp + 416 >> 2] = $psize_1;
     sp = _free$0(sp) | 0;
     $psize_1 = HEAP32[sp + 416 >> 2] | 0;
-    if ((HEAP32[sp + 632 >> 2] | 0) == 5) {
+    tempValue = HEAP32[sp + 632 >> 2] | 0;
+    tempInt = HEAP32[sp + 640 >> 2] | 0;
+    tempDouble = +HEAPF32[sp + 640 >> 2];
+    HEAP32[sp + 632 >> 2] = 0;
+    HEAP32[sp + 640 >> 2] = 0;
+    if ((tempValue | 0) == 5) {
      HEAP32[sp + 632 >> 2] = 5;
      break OL;
     }
-    if ((HEAP32[sp + 632 >> 2] | 0) == 1) {
+    if ((tempValue | 0) == 1) {
      break;
     }
    } else {
