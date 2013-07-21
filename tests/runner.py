@@ -10872,7 +10872,12 @@ f.close()
       test('zlib', path_from_root('tests', 'zlib', 'example.c'), 
                    self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a']),
                    open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
-                   { 1000: (380, 390), 2000: (395, 410), 5000: (800, 1100), 0: (1500, 1800) },
+                   {
+                    1000: (380, 390),
+                    2000: (395, 410),
+                    5000: (800, 1100),
+                    0: (1500, 1800)
+                   },
                    args=['-I' + path_from_root('tests', 'zlib')], suffix='c')
 
     def test_symlink(self):
