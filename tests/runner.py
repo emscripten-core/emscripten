@@ -27,6 +27,7 @@ Running the main part of the test suite. Don't forget to run the other parts!
   benchmark - run before and after each set of changes before pushing to
               master, verify no regressions
   browser - runs pages in a web browser
+  browser audio - runs audio tests in a web browser (requires human verification)
 
 To run one of those parts, do something like
 
@@ -11869,6 +11870,24 @@ elif 'browser' in str(sys.argv):
   print
   print 'Running the browser tests. Make sure the browser allows popups from localhost.'
   print
+
+  if 'audio' in sys.argv:
+    print
+    print 'Running the browser audio tests. Make sure to listen to hear the correct results!'
+    print
+
+    i = sys.argv.index('audio')
+    sys.argv = sys.argv[:i] + sys.argv[i+1:]
+    i = sys.argv.index('browser')
+    sys.argv = sys.argv[:i] + sys.argv[i+1:]
+    sys.argv += [
+      'browser.test_sdl_audio',
+      'browser.test_sdl_audio_mix_channels',
+      'browser.test_sdl_audio_mix',
+      'browser.test_sdl_audio_quickload',
+      'browser.test_openal_playback',
+      'browser.test_freealut'
+    ]
 
   # Run a server and a web page. When a test runs, we tell the server about it,
   # which tells the web page, which then opens a window with the test. Doing
