@@ -3327,9 +3327,9 @@ function outline(ast) {
         // (but only if the total costs are not extravagant)
         var currSize = measureSize(stats);
         var outlinedSize = measureSize(ret);
-        if (canRestart && currSize > sizeToOutline && sum(ret.map(function(newFunc) {
+        if (canRestart && currSize > 1.2*sizeToOutline && sum(ret.map(function(newFunc) {
           return costs[newFunc[1]] || 0;
-        })) < 0.1*sizeToOutline) {
+        })) < 0.5*originalSize) {
           printErr('restarting ' + func[1] + ' since ' + [currSize, outlinedSize, originalSize] + ' in level ' + level);
           lastSize = currSize;
           i = stats.length;
