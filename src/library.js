@@ -1776,6 +1776,8 @@ LibraryManager.library = {
     } else if (nbyte < 0 || offset < 0) {
       ___setErrNo(ERRNO_CODES.EINVAL);
       return -1;
+    } else if (offset >= stream.object.contents.length) {
+      return 0;
     } else {
       var bytesRead = 0;
       while (stream.ungotten.length && nbyte > 0) {
@@ -1785,6 +1787,8 @@ LibraryManager.library = {
       }
       var contents = stream.object.contents;
       var size = Math.min(contents.length - offset, nbyte);
+      assert(size >= 0);
+      
 #if USE_TYPED_ARRAYS == 2
       if (contents.subarray) { // typed array
         HEAPU8.set(contents.subarray(offset, offset+size), buf);
@@ -1852,6 +1856,7 @@ LibraryManager.library = {
       } else {
         var ungotSize = stream.ungotten.length;
         bytesRead = _pread(fildes, buf, nbyte, stream.position);
+        assert(bytesRead >= -1);
         if (bytesRead != -1) {
           stream.position += (stream.ungotten.length - ungotSize) + bytesRead;
         }
