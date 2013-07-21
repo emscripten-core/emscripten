@@ -69,7 +69,9 @@ function _free($mem) {
    if ((HEAP32[sp + 632 >> 2] | 0) == 2) {
     switch (HEAP32[sp + 640 >> 2] | 0) {
     case 2:
-     break L621;
+     {
+      break L621;
+     }
     }
    }
   } else {

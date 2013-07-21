@@ -3124,10 +3124,10 @@ function outline(ast) {
     var code = stats.slice(start, end+1);
     var funcSize = measureSize(func);
     var newIdent = func[1] + '$' + (asmData.splitCounter++);
-    //printErr(' do outline ' + [func[1], level, 'range:', start, end, 'of', stats.length, newIdent, measureSize(code)]); //dumpSrc(['block', code]);//dumpAst(['block', code]);
     // analyze variables, and find 'owned' variables - that only appear in the outlined code, and do not need any spill support
     var codeInfo = analyzeCode(func, asmData, code);
     var allCodeInfo = analyzeCode(func, asmData, func);
+    //printErr(' do outline ' + [func[1], level, 'range:', start, end, 'of', stats.length, newIdent, measureSize(code), JSON.stringify(codeInfo.labels), JSON.stringify(codeInfo.breaks), JSON.stringify(codeInfo.continues)]);
     var owned = { sp: 1 }; // sp is always owned, each has its own
     keys(setUnion(codeInfo.reads, codeInfo.writes)).forEach(function(v) {
       if (allCodeInfo.reads[v] === codeInfo.reads[v] && allCodeInfo.writes[v] === codeInfo.writes[v] && !(v in asmData.params)) {
@@ -3246,7 +3246,7 @@ function outline(ast) {
             makeComparison(makeAsmCoercion(makeStackAccess(ASM_INT, asmData.controlStackPos), ASM_INT), '==', ['num', CONTROL_BREAK_LABEL]),
             [makeSwitch(makeAsmCoercion(makeStackAccess(ASM_INT, asmData.controlDataStackPos), ASM_INT), keys(codeInfo.breaks).map(function(key) {
               var id = codeInfo.breaks[key];
-              return [['num', id], [['stat', ['break', key]]]];
+              return [['num', id], [['block', [['stat', ['break', key]]]]]];
             }))]
           ));
         }
@@ -3261,7 +3261,7 @@ function outline(ast) {
             makeComparison(makeAsmCoercion(makeStackAccess(ASM_INT, asmData.controlStackPos), ASM_INT), '==', ['num', CONTROL_CONTINUE_LABEL]),
             [makeSwitch(makeAsmCoercion(makeStackAccess(ASM_INT, asmData.controlDataStackPos), ASM_INT), keys(codeInfo.continues).map(function(key) {
               var id = codeInfo.continues[key];
-              return [['num', id], [['stat', ['continue', key]]]];
+              return [['num', id], [['block', [['stat', ['continue', key]]]]]];
             }))]
           ));
         }
