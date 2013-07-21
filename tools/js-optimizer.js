@@ -3472,11 +3472,12 @@ function outline(ast) {
       // add new functions to the toplevel, or create a toplevel if there isn't one
       ast[1].push.apply(ast[1], newFuncs);
 
-      funcs = newFuncs.filter(function(newFunc) {
-        // recursively outline if we have a large new function that did not come at a high cost
-        return measureSize(newFunc) > sizeToOutline && costs[newFunc[1]] < 0.1*sizeToOutline;
-      });
-      more = funcs.length > 0;
+      // TODO: check if in some cases we do need to outline new functions
+      //funcs = newFuncs.filter(function(newFunc) {
+      //  // recursively outline if we have a large new function that did not come at a high cost
+      //  return measureSize(newFunc) > sizeToOutline && costs[newFunc[1]] < 0.1*sizeToOutline;
+      //});
+      //more = funcs.length > 0;
     }
   }
 }
