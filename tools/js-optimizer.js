@@ -3144,7 +3144,7 @@ function outline(ast) {
         reps.push(['stat', ['assign', true, ['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], ['name', v]]]);
       }
     });
-    reps.push(['stat', ['call', ['name', newIdent], [['name', 'sp']]]]);
+    reps.push(['stat', ['assign', true, ['name', 'sp'], makeAsmCoercion(['call', ['name', newIdent], [['name', 'sp']]], ASM_INT)]]);
     for (var v in codeInfo.writes) {
       if (!(v in owned)) {
         reps.push(['stat', ['assign', true, ['name', v], makeAsmCoercion(['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], getAsmType(v, asmData))]]);
@@ -3278,6 +3278,8 @@ function outline(ast) {
         code.push(['stat', ['assign', true, ['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], ['name', v]]]);
       }
     }
+    // add final return of sp. the model is that we send sp as the single param, and get it back out
+    code.push(['stat', ['return', makeAsmCoercion(['name', 'sp'], ASM_INT)]]);
     // finalize
     var newFunc = ['defun', newIdent, ['sp'], code];
     var newAsmData = { params: { sp: ASM_INT }, vars: {} };
@@ -3285,8 +3287,7 @@ function outline(ast) {
       if (v != 'sp') newAsmData.vars[v] = getAsmType(v, asmData);
     }
     for (var v in codeInfo.writes) {
-      assert(v != 'sp');
-      newAsmData.vars[v] = getAsmType(v, asmData);
+      if (v != 'sp') newAsmData.vars[v] = getAsmType(v, asmData);
     }
     denormalizeAsm(newFunc, newAsmData);
     for (var v in owned) {
