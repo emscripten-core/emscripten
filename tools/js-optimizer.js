@@ -3313,8 +3313,8 @@ function outline(ast) {
   function outlineStatements(func, asmData, stats, maxSize) {
     level++;
     printErr('outlineStatements: ' + [func[1], level, measureSize(func)]);
-    var originalSize = measureSize(stats);
-    if (originalSize < sizeToOutline) { level--; return }
+    var lastSize = measureSize(stats);
+    if (lastSize < sizeToOutline) { level--; return }
     var ret = [];
     var sizeSeen = 0;
     var end = stats.length-1;
@@ -3328,10 +3328,8 @@ function outline(ast) {
         // (but only if the total costs are not extravagant)
         var currSize = measureSize(stats);
         var outlinedSize = measureSize(ret);
-        if (canRestart && currSize > 1.2*sizeToOutline && sum(ret.map(function(newFunc) {
-          return costs[newFunc[1]] || 0;
-        })) < 0.5*originalSize) {
-          printErr('restarting ' + func[1] + ' since ' + [currSize, outlinedSize, originalSize] + ' in level ' + level);
+        if (canRestart && currSize > 1.2*sizeToOutline && lastSize - currSize >= 0.75*sizeToOutline) {
+          printErr('restarting ' + func[1] + ' since ' + [currSize, outlinedSize, lastSize] + ' in level ' + level);
           lastSize = currSize;
           i = stats.length;
           end = stats.length-1;
