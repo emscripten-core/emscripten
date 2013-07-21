@@ -1655,10 +1655,10 @@ try:
     if closure and shared.Settings.ASM_JS: 
       js_optimizer_queue += ['closure']
 
-    if not shared.Settings.SIDE_MODULE: js_optimizer_queue += ['last'] # side modules are not finalized until after relocation
-
     if switchify and shared.Settings.ASM_JS:
       js_optimizer_queue += ['switchify']
+
+    if not shared.Settings.SIDE_MODULE: js_optimizer_queue += ['last'] # side modules are not finalized until after relocation
 
     flush_js_optimizer_queue()
 
