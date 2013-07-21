@@ -3311,8 +3311,9 @@ function outline(ast) {
 
   function outlineStatements(func, asmData, stats, maxSize) {
     level++;
+    printErr('outlineStatements: ' + [func[1], level, measureSize(func)]);
     var originalSize = measureSize(stats);
-    if (originalSize < sizeToOutline) return;
+    if (originalSize < sizeToOutline) { level--; return }
     var ret = [];
     var sizeSeen = 0;
     var end = stats.length-1;
@@ -3323,12 +3324,13 @@ function outline(ast) {
       i--;
       if (i < minIndex) {
         // we might be done. but, if we have just outlined, do a further attempt from the beginning.
-        // we compare total code size (current remaining size and outlined size) versus the original size, and do not restart if
-        // we are adding too much overhead.
+        // (but only if the total costs are not extravagant)
         var currSize = measureSize(stats);
         var outlinedSize = measureSize(ret);
-        if (canRestart && currSize >= sizeToOutline && currSize + outlinedSize < 1.2*originalSize) {
-          //printErr('restarting ' + func[1] + ' since ' + [currSize, outlinedSize, originalSize]);
+        if (canRestart && currSize > sizeToOutline && sum(ret.map(function(newFunc) {
+          return costs[newFunc[1]] || 0;
+        })) < 0.1*sizeToOutline) {
+          printErr('restarting ' + func[1] + ' since ' + [currSize, outlinedSize, originalSize] + ' in level ' + level);
           lastSize = currSize;
           i = stats.length;
           end = stats.length-1;
@@ -3357,6 +3359,7 @@ function outline(ast) {
         });
         if (ret.length > pre) {
           // we outlined recursively, reset our state here
+          printErr('successful outline in recursion ' + func[1] + ' due to recursive in level ' + level);
           end = i-1;
           sizeSeen = 0;
           canRestart = true;
@@ -3378,6 +3381,7 @@ function outline(ast) {
       }
       if (sizeSeen >= sizeToOutline && sizeSeen <= maxSize) {
         ret.push.apply(ret, doOutline(func, asmData, stats, i, end)); // outline [i, .. ,end] inclusive
+        printErr('performed outline on ' + func[1] + ' of ' + sizeSeen + ', func is now size ' + measureSize(func));
         sizeSeen = 0;
         end = i-1;
         canRestart = true;
@@ -3412,6 +3416,7 @@ function outline(ast) {
         analyzeFunction(func, asmData);
         var stats = getStatements(func);
         var ret = outlineStatements(func, asmData, stats, 0.9*size);
+        assert(level == 0);
         if (ret && ret.length > 0) {
           newFuncs.push.apply(newFuncs, ret);
           // We have outlined. Add stack support
