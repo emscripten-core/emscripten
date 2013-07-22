@@ -1,9 +1,4 @@
-try {
-  this['Module'] = Module;
-  Module.test;
-} catch(e) {
-  this['Module'] = Module = {};
-}
+var Module = typeof {{{ EXPORT_NAME }}} !== 'undefined' ? {{{ EXPORT_NAME }}} : {};
 
 // The environment setup code below is customized to use Module.
 // *** Environment setup code ***
@@ -150,4 +145,3 @@ if (!Module['postRun']) Module['postRun'] = [];
   {{BODY}}
 
   // {{MODULE_ADDITIONS}}
-

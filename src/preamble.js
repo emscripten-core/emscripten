@@ -281,7 +281,7 @@ Module["ccall"] = ccall;
 // Returns the C function with a specified identifier (for C++, you need to do manual name mangling)
 function getCFunc(ident) {
   try {
-    var func = globalScope['Module']['_' + ident]; // closure exported function
+    var func = Module['_' + ident]; // closure exported function
     if (!func) func = eval('_' + ident); // explicit lookup
   } catch(e) {
   }
