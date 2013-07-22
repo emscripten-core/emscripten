@@ -3120,9 +3120,11 @@ function outline(ast) {
   var sizeToOutline = extraInfo.sizeToOutline;
   var level = 0;
 
-  var costs = {}; // new function name => overhead cost of outlining
+  var outliningsLeft = {}; // function name => counter of how many more outlinings to allow
+  var outliningParents = {}; // function name => parent it was outlined from
 
   function doOutline(func, asmData, stats, start, end) {
+    if (!outliningsLeft[func[1]]) return [];
     if (!extraInfo.allowCostlyOutlines) var originalStats = copy(stats);
     var code = stats.slice(start, end+1);
     var funcSize = measureSize(func);
@@ -3327,10 +3329,8 @@ function outline(ast) {
         getStatements(func).push(['stat', ['return', makeAsmCoercion(['num', 0], allCodeInfo.hasReturnInt ? ASM_INT : ASM_DOUBLE)]]);
       }
     }
-    // the cost is the total size increase of all code, after the outlining operation. We also
-    // inherit the outlining cost of the parent function, if any, so the repeated outlining
-    // cannot infinitely recurse.
-    costs[newIdent] = measureSize(func) + measureSize(newFunc) - funcSize + (costs[func[1]] || 0);
+    outliningsLeft[func[1]]--;
+    outliningParents[newIdent] = func[1];
     return [newFunc];
   }
 
@@ -3435,6 +3435,7 @@ function outline(ast) {
       var size = measureSize(func);
       if (size >= sizeToOutline) {
         printErr('trying to reduce the size of ' + func[1] + ' which is ' + size + ' (>= ' + sizeToOutline + ')');
+        outliningsLeft[func[1]] = Math.round(1.5*size/sizeToOutline);
         aggressiveVariableElimination(func, asmData);
         analyzeFunction(func, asmData);
         var stats = getStatements(func);
