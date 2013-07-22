@@ -3018,6 +3018,7 @@ function outline(ast) {
     asmData.controlStackPos = stackSize + asmData.extraStackSize - 16;
     asmData.controlDataStackPos = stackSize + asmData.extraStackSize - 8;
     asmData.splitCounter = 0;
+    asmData.maxOutlinings = Math.round(1.5*measureSize(func)/sizeToOutline);
   }
 
   // Analyze uses - reads and writes - of variables in part of the AST of a function
@@ -3120,15 +3121,14 @@ function outline(ast) {
   var sizeToOutline = extraInfo.sizeToOutline;
   var level = 0;
 
-  var outliningsLeft = {}; // function name => counter of how many more outlinings to allow
   var outliningParents = {}; // function name => parent it was outlined from
 
   function doOutline(func, asmData, stats, start, end) {
-    if (!outliningsLeft[func[1]]) return [];
     if (!extraInfo.allowCostlyOutlines) var originalStats = copy(stats);
     var code = stats.slice(start, end+1);
     var funcSize = measureSize(func);
     var newIdent = func[1] + '$' + (asmData.splitCounter++);
+    if (asmData.splitCounter === asmData.maxOutlinings) return [];
     // analyze variables, and find 'owned' variables - that only appear in the outlined code, and do not need any spill support
     var codeInfo = analyzeCode(func, asmData, code);
     var allCodeInfo = analyzeCode(func, asmData, func);
@@ -3329,7 +3329,6 @@ function outline(ast) {
         getStatements(func).push(['stat', ['return', makeAsmCoercion(['num', 0], allCodeInfo.hasReturnInt ? ASM_INT : ASM_DOUBLE)]]);
       }
     }
-    outliningsLeft[func[1]]--;
     outliningParents[newIdent] = func[1];
     return [newFunc];
   }
@@ -3435,7 +3434,6 @@ function outline(ast) {
       var size = measureSize(func);
       if (size >= sizeToOutline) {
         printErr('trying to reduce the size of ' + func[1] + ' which is ' + size + ' (>= ' + sizeToOutline + ')');
-        outliningsLeft[func[1]] = Math.round(1.5*size/sizeToOutline);
         aggressiveVariableElimination(func, asmData);
         analyzeFunction(func, asmData);
         var stats = getStatements(func);
