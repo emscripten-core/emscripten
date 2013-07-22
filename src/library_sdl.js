@@ -651,20 +651,6 @@ var LibrarySDL = {
       return ret;
     },
 
-
-    getMimetype: function(name) {
-      Module.printErr( name + " is type " + typeof(name) );
-      return {
-        'jpg': 'image/jpeg',
-        'jpeg': 'image/jpeg',
-        'png': 'image/png',
-        'bmp': 'image/bmp',
-        'ogg': 'audio/ogg',
-        'wav': 'audio/wav',
-        'mp3': 'audio/mpeg'
-      }[name.substr(name.lastIndexOf('.')+1)];
-    },
-  
     // Debugging
 
     debugSurface: function(surfData) {
@@ -2057,7 +2043,7 @@ var LibrarySDL = {
   SDL_RWFromFile: function(_name, mode) {
     var id = SDL.rwops.length; // TODO: recycle ids when they are null
     var name = Pointer_stringify(_name)
-    SDL.rwops.push({ filename: name, mimetype: SDL.getMimetype(name) });
+    SDL.rwops.push({ filename: name, mimetype: Browser.getMimetype(name) });
     return id;
   },
   
