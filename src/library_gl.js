@@ -1077,11 +1077,8 @@ var LibraryGL = {
     {{{ makeSetValue('count', '0', 'len', 'i32') }}};
     for (var i = 0; i < len; ++i) {
       var id = GL.shaders.indexOf(result[i]);
-      if (id === -1) {
-        Module.printErr("glGetAttachedShaders: local shader id not found");
-      } else {
-        {{{ makeSetValue('shaders', 'i*4', 'id', 'i32') }}};
-      }
+      assert(id !== -1, 'shader not bound to local id');
+      {{{ makeSetValue('shaders', 'i*4', 'id', 'i32') }}};
     }
   },
 
