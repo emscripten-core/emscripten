@@ -1231,7 +1231,7 @@ function indexizeFunctions(value, type) {
     // add signature to library functions that we now know need indexing
     var sig = Functions.implementedFunctions[value] || Functions.unimplementedFunctions[value];
     if (!sig) {
-      sig = Functions.unimplementedFunctions[value] = Functions.getSignature(out.returnType, out.segments ? out.segments.map(function(segment) { return segment[0].text }) : []);
+      sig = Functions.unimplementedFunctions[value] = Functions.getSignature(out.returnType, out.segments ? out.segments.map(function(segment) { return segment[0].text }) : [], isVarArgsFunctionType(type));
     }
     return Functions.getIndex(value, undefined, sig);
   }

@@ -4522,6 +4522,22 @@ The current address of a is: 0x12345678
 The current type of b is: 9
 ''')
 
+    def test_functionpointer_libfunc_varargs(self):
+      src = r'''
+        #include <stdio.h>
+        #include <fcntl.h>
+        typedef int (*fp_t)(int, int, ...);
+        int main(int argc, char **argv) {
+          fp_t fp = &fcntl;
+          if (argc == 1337) fp = (fp_t)&main;
+          (*fp)(0, 10);
+          (*fp)(0, 10, 5);
+          printf("waka\n");
+          return 0;
+        }
+      '''
+      self.do_run(src, '''waka''')
+
     def test_structbyval(self):
         Settings.INLINING_LIMIT = 50
 

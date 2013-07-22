@@ -50,7 +50,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       print(pre);
 
       data.unparsedFunctions.forEach(function(func) {
-        Functions.implementedFunctions[func.ident] = Functions.getSignature(func.returnType, func.params.map(function(param) { return param.type }));
+        Functions.implementedFunctions[func.ident] = Functions.getSignature(func.returnType, func.params.map(function(param) { return param.type }), func.hasVarArgs);
       });
     }
   }
