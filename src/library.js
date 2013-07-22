@@ -6247,28 +6247,28 @@ LibraryManager.library = {
   _MONTH_DAYS_LEAP: [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
 
   _isLeapYear: function(year) {
-      return year%4===0 && (year%100!==0 || year%400===0);
+      return year%4 === 0 && (year%100 !== 0 || year%400 === 0);
   },
 
   _arraySum: function(array, index) {
     var sum = 0;
-    for (var i=0; i<=index; sum += array[i++]);
+    for (var i = 0; i <= index; sum += array[i++]);
     return sum;
   },
 
   _addDays__deps: ['_isLeapYear', '_MONTH_DAYS_LEAP', '_MONTH_DAYS_REGULAR'],
   _addDays: function(date, days) {
     var newDate = new Date(date.getTime());
-    while(days>0) {
+    while(days > 0) {
       var leap = __isLeapYear(newDate.getFullYear());
       var currentMonth = newDate.getMonth();
       var daysInCurrentMonth = (leap ? __MONTH_DAYS_LEAP : __MONTH_DAYS_REGULAR)[currentMonth];
 
-      if (days>daysInCurrentMonth-newDate.getDate()) {
+      if (days > daysInCurrentMonth-newDate.getDate()) {
         // we spill over to next month
         days -= (daysInCurrentMonth-newDate.getDate()+1);
         newDate.setDate(1);
-        if (currentMonth<11) {
+        if (currentMonth < 11) {
           newDate.setMonth(currentMonth+1)
         } else {
           newDate.setMonth(0);
@@ -6336,7 +6336,7 @@ LibraryManager.library = {
 
     var compareByDay = function(date1, date2) {
       var sgn = function(value) {
-        return value<0 ? -1 : (value>0 ? 1 : 0);
+        return value < 0 ? -1 : (value > 0 ? 1 : 0);
       };
 
       var compare;
@@ -6431,7 +6431,7 @@ LibraryManager.library = {
         return leadingNulls(date.tm_hour, 2);
       },
       '%I': function(date) {
-        return leadingNulls(date.tm_hour<13 ? date.tm_hour : date.tm_hour-12, 2);
+        return leadingNulls(date.tm_hour < 13 ? date.tm_hour : date.tm_hour-12, 2);
       },
       '%j': function(date) {
         // Day of the year (001-366)
@@ -6447,7 +6447,7 @@ LibraryManager.library = {
         return '\n';
       },
       '%p': function(date) {
-        if (date.tm_hour>0 && date.tm_hour<13) {
+        if (date.tm_hour > 0 && date.tm_hour < 13) {
           return 'AM';
         } else {
           return 'PM';
@@ -6572,7 +6572,7 @@ LibraryManager.library = {
     }
 
     var bytes = intArrayFromString(pattern, false);
-    if (bytes.length>maxsize) {
+    if (bytes.length > maxsize) {
       return 0;
     } 
 
