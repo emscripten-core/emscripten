@@ -3008,17 +3008,18 @@ function outline(ast) {
     }
     asmData.stackPos = {};
     var stackSize = getStackBumpSize(func);
+    if (stackSize % 8 === 0) stackSize += 8 - (stackSize % 8);
     for (var i = 0; i < stack.length; i++) {
       asmData.stackPos[stack[i]] = stackSize + i*8;
     }
-    // Reserve an extra two spots: one for control flow var, the other for control flow data
+    // Reserve an extra two spots per possible outlining: one for control flow var, the other for control flow data
     // The control variables are zeroed out when calling an outlined function, and after using
     // the value after they return.
-    asmData.extraStackSize = (stack.length + 2)*8;
-    asmData.controlStackPos = stackSize + asmData.extraStackSize - 16;
-    asmData.controlDataStackPos = stackSize + asmData.extraStackSize - 8;
-    asmData.splitCounter = 0;
     asmData.maxOutlinings = Math.round(1.5*measureSize(func)/sizeToOutline);
+    asmData.totalStackSize = stackSize + (stack.length + 2*asmData.maxOutlinings)*8;
+    asmData.controlStackPos = function(i) { return stackSize + (stack.length + i)*8 };
+    asmData.controlDataStackPos = function(i) { return stackSize + (stack.length + i)*8 + 4 };
+    asmData.splitCounter = 0;
   }
 
   // Analyze uses - reads and writes - of variables in part of the AST of a function
@@ -3124,11 +3125,12 @@ function outline(ast) {
   var outliningParents = {}; // function name => parent it was outlined from
 
   function doOutline(func, asmData, stats, start, end) {
+    if (asmData.splitCounter === asmData.maxOutlinings) return [];
     if (!extraInfo.allowCostlyOutlines) var originalStats = copy(stats);
     var code = stats.slice(start, end+1);
     var funcSize = measureSize(func);
-    var newIdent = func[1] + '$' + (asmData.splitCounter++);
-    if (asmData.splitCounter === asmData.maxOutlinings) return [];
+    var outlineIndex = asmData.splitCounter++;
+    var newIdent = func[1] + '$' + outlineIndex;
     // analyze variables, and find 'owned' variables - that only appear in the outlined code, and do not need any spill support
     var codeInfo = analyzeCode(func, asmData, code);
     var allCodeInfo = analyzeCode(func, asmData, func);
@@ -3141,8 +3143,8 @@ function outline(ast) {
     });
     var reps = [];
     // wipe out control variable
-    reps.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos), ['num', 0])]);
-    reps.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlDataStackPos), ['num', 0])]); // XXX not really needed
+    reps.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos(outlineIndex)), ['num', 0])]);
+    reps.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlDataStackPos(outlineIndex)), ['num', 0])]); // XXX not really needed
     // add spills and reads before and after the call to the outlined code, and in the outlined code itself
     keys(setUnion(codeInfo.reads, codeInfo.writes)).forEach(function(v) {
       if (!(v in owned)) {
@@ -3178,11 +3180,11 @@ function outline(ast) {
             if (type == 'return') {
               ret = [];
               if (!node[1]) {
-                ret.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos), ['num', CONTROL_RETURN_VOID])]);
+                ret.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos(outlineIndex)), ['num', CONTROL_RETURN_VOID])]);
               } else {
                 var type = detectAsmCoercion(node[1], asmData);
-                ret.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos), ['num', type == ASM_INT ? CONTROL_RETURN_INT : CONTROL_RETURN_DOUBLE])]);
-                ret.push(['stat', makeAssign(makeStackAccess(type, asmData.controlDataStackPos), node[1])]);
+                ret.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos(outlineIndex)), ['num', type == ASM_INT ? CONTROL_RETURN_INT : CONTROL_RETURN_DOUBLE])]);
+                ret.push(['stat', makeAssign(makeStackAccess(type, asmData.controlDataStackPos(outlineIndex)), node[1])]);
               }
               ret.push(['stat', ['break', 'OL']]);
             } else if (type == 'break') {
@@ -3190,20 +3192,20 @@ function outline(ast) {
               if (label == 'OL') continue; // this was just added before us, it is new replacement code
               if (!label && breakCapturers > 0) continue; // no label, and captured
               if (label && (label in codeInfo.labels)) continue; // label, and defined in this code, so captured
-              ret = [['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos), ['num', label ? CONTROL_BREAK_LABEL : CONTROL_BREAK])]];
+              ret = [['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos(outlineIndex)), ['num', label ? CONTROL_BREAK_LABEL : CONTROL_BREAK])]];
               if (label) {
                 assert(label in codeInfo.breaks);
-                ret.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlDataStackPos), ['num', codeInfo.breaks[label]])]);
+                ret.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlDataStackPos(outlineIndex)), ['num', codeInfo.breaks[label]])]);
               }
               ret.push(['stat', ['break', 'OL']]);
             } else if (type == 'continue') {
               var label = node[1] || 0;
               if (!label && continueCapturers > 0) continue; // no label, and captured
               if (label && (label in codeInfo.labels)) continue; // label, and defined in this code, so captured
-              ret = [['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos), ['num', label ? CONTROL_CONTINUE_LABEL : CONTROL_CONTINUE])]];
+              ret = [['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos(outlineIndex)), ['num', label ? CONTROL_CONTINUE_LABEL : CONTROL_CONTINUE])]];
               if (label) {
                 assert(label in codeInfo.continues);
-                ret.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlDataStackPos), ['num', codeInfo.continues[label]])]);
+                ret.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlDataStackPos(outlineIndex)), ['num', codeInfo.continues[label]])]);
               }
               ret.push(['stat', ['break', 'OL']]);
             }
@@ -3225,18 +3227,18 @@ function outline(ast) {
       // read the control data at the callsite to the outlined function, and clear the control values
       reps.push(['stat', makeAssign(
         ['name', 'tempValue'],
-        makeAsmCoercion(makeStackAccess(ASM_INT, asmData.controlStackPos), ASM_INT)
+        makeAsmCoercion(makeStackAccess(ASM_INT, asmData.controlStackPos(outlineIndex)), ASM_INT)
       )]);
       reps.push(['stat', makeAssign(
         ['name', 'tempInt'],
-        makeAsmCoercion(makeStackAccess(ASM_INT, asmData.controlDataStackPos), ASM_INT)
+        makeAsmCoercion(makeStackAccess(ASM_INT, asmData.controlDataStackPos(outlineIndex)), ASM_INT)
       )]);
       reps.push(['stat', makeAssign(
         ['name', 'tempDouble'],
-        makeAsmCoercion(makeStackAccess(ASM_DOUBLE, asmData.controlDataStackPos), ASM_DOUBLE)
+        makeAsmCoercion(makeStackAccess(ASM_DOUBLE, asmData.controlDataStackPos(outlineIndex)), ASM_DOUBLE)
       )]);
-      reps.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos), ['num', 0])]);
-      reps.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlDataStackPos), ['num', 0])]); // XXX not really needed
+      reps.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos(outlineIndex)), ['num', 0])]);
+      reps.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlDataStackPos(outlineIndex)), ['num', 0])]); // XXX not really needed
       // use the control data information
       if (codeInfo.hasReturn) {
         reps.push(makeIf(
@@ -3442,17 +3444,16 @@ function outline(ast) {
         if (ret && ret.length > 0) {
           newFuncs.push.apply(newFuncs, ret);
           // We have outlined. Add stack support
-          var extraSpace = asmData.extraStackSize;
           if ('sp' in asmData.vars) {
             // find stack bump (STACKTOP = STACKTOP + X | 0) and add the extra space
             var stackBumpNode = getStackBumpNode(stats);
-            if (stackBumpNode) stackBumpNode[3][2][3][1] += extraSpace;
+            if (stackBumpNode) stackBumpNode[3][2][3][1] = asmData.totalStackSize;
           } else if (!('sp' in asmData.params)) { // if sp is a param, then we are an outlined function, no need to add stack support for us
             // add sp variable and stack bump
             var index = getFirstIndexInNormalized(func, asmData);
             stats.splice(index, 0,
               ['stat', makeAssign(['name', 'sp'], ['name', 'STACKTOP'])],
-              ['stat', makeAssign(['name', 'STACKTOP'], ['binary', '|', ['binary', '+', ['name', 'STACKTOP'], ['num', extraSpace]], ['num', 0]])]
+              ['stat', makeAssign(['name', 'STACKTOP'], ['binary', '|', ['binary', '+', ['name', 'STACKTOP'], ['num', asmData.totalStackSize]], ['num', 0]])]
             );
             asmData.vars.sp = ASM_INT; // no need to add to vars, we are about to denormalize anyhow
             // we added sp, so we must add stack popping
