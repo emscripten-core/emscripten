@@ -1076,7 +1076,9 @@ var LibraryGL = {
     }
     {{{ makeSetValue('count', '0', 'len', 'i32') }}};
     for (var i = 0; i < len; ++i) {
-      {{{ makeSetValue('shaders', 'i*4', 'GL.shaders[result[i]]', 'i32') }}};
+      var id = GL.shaders.indexOf(result[i]);
+      assert(id !== -1, 'shader not bound to local id');
+      {{{ makeSetValue('shaders', 'i*4', 'id', 'i32') }}};
     }
   },
 
