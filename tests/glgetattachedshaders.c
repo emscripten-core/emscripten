@@ -86,7 +86,8 @@ int main(int argc, char *argv[])
          die("unknown shader returned");
    }
 
-   printf("test passed\n");
+   int result = 1;
+   REPORT_RESULT();
 
    return 0;
 }
