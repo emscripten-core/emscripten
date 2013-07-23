@@ -201,14 +201,24 @@ var Runtime = {
     type.alignSize = 0;
     var diffs = [];
     var prev = -1;
+    var index = 0;
     type.flatIndexes = type.fields.map(function(field) {
+      index++;
       var size, alignSize;
       if (Runtime.isNumberType(field) || Runtime.isPointerType(field)) {
         size = Runtime.getNativeTypeSize(field); // pack char; char; in structs, also char[X]s.
         alignSize = Runtime.getAlignSize(field, size);
       } else if (Runtime.isStructType(field)) {
-        size = Types.types[field].flatSize;
-        alignSize = Runtime.getAlignSize(null, Types.types[field].alignSize);
+        if (field[1] === '0') {
+          // this is [0 x something]. When inside another structure like here, it must be at the end,
+          // and it adds no size
+          assert(index === type.fields.length);
+          size = 0;
+          alignSize = 0;
+        } else {
+          size = Types.types[field].flatSize;
+          alignSize = Runtime.getAlignSize(null, Types.types[field].alignSize);
+        }
       } else if (field[0] == 'b') {
         // bN, large number field, like a [N x i8]
         size = field.substr(1)|0;
@@ -218,8 +228,12 @@ var Runtime = {
       }
       if (type.packed) alignSize = 1;
       type.alignSize = Math.max(type.alignSize, alignSize);
-      var curr = Runtime.alignMemory(type.flatSize, alignSize); // if necessary, place this on aligned memory
-      type.flatSize = curr + size;
+      if (size > 0) {
+        var curr = Runtime.alignMemory(type.flatSize, alignSize); // if necessary, place this on aligned memory
+        type.flatSize = curr + size;
+      } else {
+        curr = prev;
+      }
       if (prev >= 0) {
         diffs.push(curr-prev);
       }
