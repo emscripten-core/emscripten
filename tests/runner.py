@@ -271,6 +271,8 @@ process(sys.argv[1])
       print >> sys.stderr, "[was asm.js'ified]"
     elif 'asm.js' in err: # if no asm.js error, then not an odin build
       raise Exception("did NOT asm.js'ify")
+    err = '\n'.join(filter(lambda line: 'successfully compiled asm.js code' not in line, err.split('\n')))
+    return err
 
   def run_generated_code(self, engine, filename, args=[], check_timeout=True, output_nicerizer=None):
     stdout = os.path.join(self.get_dir(), 'stdout') # use files, as PIPE can get too full and hang us
@@ -286,7 +288,7 @@ process(sys.argv[1])
     out = open(stdout, 'r').read()
     err = open(stderr, 'r').read()
     if engine == SPIDERMONKEY_ENGINE and Settings.ASM_JS:
-      self.validate_asmjs(err)
+      err = self.validate_asmjs(err)
     if output_nicerizer:
       ret = output_nicerizer(out, err)
     else:
