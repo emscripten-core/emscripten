@@ -784,7 +784,7 @@ Module['writeArrayToMemory'] = writeArrayToMemory;
 {{{ reSign }}}
 
 #if PRECISE_I32_MUL
-if (!Math.imul) Math.imul = function(a, b) {
+if (!Math['imul']) Math['imul'] = function(a, b) {
   var ah  = a >>> 16;
   var al = a & 0xffff;
   var bh  = b >>> 16;
@@ -792,10 +792,11 @@ if (!Math.imul) Math.imul = function(a, b) {
   return (al*bl + ((ah*bl + al*bh) << 16))|0;
 };
 #else
-Math.imul = function(a, b) {
+Math['imul'] = function(a, b) {
   return (a*b)|0; // fast but imprecise
 };
 #endif
+Math.imul = Math['imul'];
 
 // A counter of dependencies for calling run(). If we need to
 // do asynchronous work before running, increment this and
