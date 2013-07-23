@@ -13340,7 +13340,7 @@ Press any key to continue.'''
       self.btest('glshaderinfo.cpp', '1')
 
     def test_glgetattachedshaders(self):
-      self.btest('glgetattachedshaders.cpp', '1')
+      self.btest('glgetattachedshaders.c', '1')
 
     def test_sdlglshader(self):
       self.btest('sdlglshader.c', reference='sdlglshader.png', args=['-O2', '--closure', '1'])
