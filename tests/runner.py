@@ -11030,7 +11030,7 @@ f.close()
               if size > 100: ret[curr] = size
           return ret
 
-        for outlining_limit in [1000, 2000, 5000, 0]:
+        for outlining_limit in [500, 1000, 2000, 5000, 0]:
           Popen([PYTHON, EMCC, src] + libs + ['-o', 'test.js', '-O2', '-g3', '-s', 'OUTLINING_LIMIT=%d' % outlining_limit] + args).communicate()
           assert os.path.exists('test.js')
           shutil.copyfile('test.js', '%d_test.js' % outlining_limit)
@@ -11048,10 +11048,11 @@ f.close()
                    self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a']),
                    open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
                    {
+                     500: (340, 345),
                     1000: (380, 390),
                     2000: (395, 410),
                     5000: (800, 1100),
-                    0: (1500, 1800)
+                       0: (1500, 1800)
                    },
                    args=['-I' + path_from_root('tests', 'zlib')], suffix='c')
 

@@ -3312,8 +3312,12 @@ function outline(ast) {
       if (v != 'sp') newAsmData.vars[v] = getAsmType(v, asmData);
     }
     denormalizeAsm(newFunc, newAsmData);
+    // add outline call markers (we cannot do later outlinings that cut through an outlining call)
+    reps.unshift(['begin-outline-call', newIdent]);
+    reps.push(['end-outline-call', newIdent]);
     // replace in stats
     stats.splice.apply(stats, [start, end-start+1].concat(reps));
+    // final evaluation and processing
     if (!extraInfo.allowCostlyOutlines && (measureSize(func) >= funcSize || measureSize(newFunc) >= funcSize)) {
       // abort, this was pointless
       stats.length = originalStats.length;
@@ -3366,6 +3370,14 @@ function outline(ast) {
         }
       }
       var stat = stats[i];
+      if (stat[0] === 'end-outline-call') {
+        // we cannot outline through an outline call, so include all of it
+        while (stats[i--][0] !== 'begin-outline-call') {
+          assert(i >= 0);
+        }
+        assert(i >= 0);
+        stat = stats[i];
+      }
       var size = measureSize(stat);
       //printErr(level + ' size          ' + [i, size]);
       if (size >= sizeToOutline) {
@@ -3391,10 +3403,10 @@ function outline(ast) {
         }
       }
       sizeSeen += size;
-      // If this is big enough to outline, but no too big (if very close to the size of the full function,
+      // If this is big enough to outline, but not too big (if very close to the size of the full function,
       // outlining is pointless; remove stats from the end to try to achieve the good case), then outline.
       // Also, try to reduce the size if it is much larger than the hoped-for size
-      while ((sizeSeen > maxSize || sizeSeen > 2*sizeToOutline) && i < end) {
+      while ((sizeSeen > maxSize || sizeSeen > 2*sizeToOutline) && i < end && stats[i][0] !== 'end-outline-call') {
         sizeSeen -= measureSize(stats[end]);
         if (sizeSeen >= sizeToOutline) {
           end--;
@@ -3502,6 +3514,11 @@ function outline(ast) {
       //more = funcs.length > 0;
     }
   }
+
+  // clear out markers
+  traverse(ast, function(node, type) {
+    if (type === 'begin-outline-call' || type === 'end-outline-call') return emptyNode();
+  });
 }
 
 // Last pass utilities
