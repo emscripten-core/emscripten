@@ -159,6 +159,10 @@ typedef __gid_t gid_t;
 typedef __id_t  id_t ; /* can hold a uid_t or pid_t */
 #endif
 
+__int32_t major(__uint32_t _x);
+__int32_t minor(__uint32_t _x);
+dev_t makedev(__uint32_t _major, __uint32_t _minor);
+
 #if defined(__XMK__)
 typedef signed char pid_t;
 #else

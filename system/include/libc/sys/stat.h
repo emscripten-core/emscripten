@@ -179,7 +179,8 @@ struct	stat64
 #endif
 
 int	_EXFUN(chmod,( const char *__path, mode_t __mode ));
-int     _EXFUN(fchmod,(int __fd, mode_t __mode));
+int _EXFUN(lchmod,( const char *__path, mode_t __mode ));
+int _EXFUN(fchmod,(int __fd, mode_t __mode));
 int	_EXFUN(fstat,( int __fd, struct stat *__sbuf ));
 int	_EXFUN(fstat64,( int __fd, struct stat64 *__sbuf )); /* XXX Emscripten */
 int	_EXFUN(mkdir,( const char *_path, mode_t __mode ));

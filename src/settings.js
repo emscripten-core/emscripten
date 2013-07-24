@@ -243,6 +243,8 @@ var FS_LOG = 0; // Log all FS operations.  This is especially helpful when you'r
                 // a new project and want to see a list of file system operations happening
                 // so that you can create a virtual file system with all of the required files.
 
+var USE_OLD_FS = 1; // Switch to toggle the new / old FS code. Currently only used for testing purposes.
+
 var USE_BSS = 1; // https://en.wikipedia.org/wiki/.bss
                  // When enabled, 0-initialized globals are sorted to the end of the globals list,
                  // enabling us to not explicitly store the initialization value for each 0 byte.
@@ -411,7 +413,6 @@ var DEBUG_TAGS_SHOWING = [];
   //    unparsedFunctions
   //    metadata
   //    legalizer
-
 
 // A cached set of defines, generated from the header files. This
 // lets the emscripten libc (library.js) see the right values.
