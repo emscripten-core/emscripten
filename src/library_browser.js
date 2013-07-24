@@ -70,18 +70,6 @@ mergeInto(LibraryManager.library, {
       // (possibly modified) data. For example, a plugin might decompress a file, or it
       // might create some side data structure for use later (like an Image element, etc.).
 
-      function getMimetype(name) {
-        return {
-          'jpg': 'image/jpeg',
-          'jpeg': 'image/jpeg',
-          'png': 'image/png',
-          'bmp': 'image/bmp',
-          'ogg': 'audio/ogg',
-          'wav': 'audio/wav',
-          'mp3': 'audio/mpeg'
-        }[name.substr(name.lastIndexOf('.')+1)];
-      }
-
       var imagePlugin = {};
       imagePlugin['canHandle'] = function(name) {
         return !Module.noImageDecoding && /\.(jpg|jpeg|png|bmp)$/i.test(name);
@@ -90,10 +78,10 @@ mergeInto(LibraryManager.library, {
         var b = null;
         if (Browser.hasBlobConstructor) {
           try {
-            b = new Blob([byteArray], { type: getMimetype(name) });
+            b = new Blob([byteArray], { type: Browser.getMimetype(name) });
             if (b.size !== byteArray.length) { // Safari bug #118630
               // Safari's Blob can only take an ArrayBuffer
-              b = new Blob([(new Uint8Array(byteArray)).buffer], { type: getMimetype(name) });
+              b = new Blob([(new Uint8Array(byteArray)).buffer], { type: Browser.getMimetype(name) });
             }
           } catch(e) {
             Runtime.warnOnce('Blob constructor present but fails: ' + e + '; falling back to blob builder');
@@ -148,7 +136,7 @@ mergeInto(LibraryManager.library, {
         }
         if (Browser.hasBlobConstructor) {
           try {
-            var b = new Blob([byteArray], { type: getMimetype(name) });
+            var b = new Blob([byteArray], { type: Browser.getMimetype(name) });
           } catch(e) {
             return fail();
           }
@@ -391,6 +379,18 @@ mergeInto(LibraryManager.library, {
       }, timeout);
     },
 
+    getMimetype: function(name) {
+      return {
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'bmp': 'image/bmp',
+        'ogg': 'audio/ogg',
+        'wav': 'audio/wav',
+        'mp3': 'audio/mpeg'
+      }[name.substr(name.lastIndexOf('.')+1)];
+    },
+    
     getUserMedia: function(func) {
       if(!window.getUserMedia) {
         window.getUserMedia = navigator['getUserMedia'] ||
@@ -398,6 +398,7 @@ mergeInto(LibraryManager.library, {
       }
       window.getUserMedia(func);
     },
+
 
     getMovementX: function(event) {
       return event['movementX'] ||
