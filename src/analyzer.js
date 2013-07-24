@@ -502,18 +502,38 @@ function analyzer(data, sidePass) {
                         { intertype: 'value', ident: j.toString(), type: 'i32' }
                       ]
                     });
-                    var actualSizeType = 'i' + element.bits; // The last one may be smaller than 32 bits
-                    toAdd.push({
+                    var newItem = {
                       intertype: 'load',
                       assignTo: element.ident,
-                      pointerType: actualSizeType + '*',
-                      valueType: actualSizeType,
-                      type: actualSizeType, // XXX why is this missing from intertyper?
-                      pointer: { intertype: 'value', ident: tempVar, type: actualSizeType + '*' },
+                      pointerType: 'i32*',
+                      valueType: 'i32',
+                      type: 'i32',
+                      pointer: { intertype: 'value', ident: tempVar, type: 'i32*' },
                       ident: tempVar,
-                      pointerType: actualSizeType + '*',
                       align: value.align
-                    });
+                    };
+                    var newItem2 = null;
+                    // The last one may be smaller than 32 bits
+                    if (element.bits < 32) {
+                      newItem.assignTo += '$preadd$';
+                      newItem2 = {
+                        intertype: 'mathop',
+                        op: 'and',
+                        assignTo: element.ident,
+                        type: 'i32',
+                        params: [{
+                          intertype: 'value',
+                          type: 'i32',
+                          ident: newItem.assignTo
+                        }, {
+                          intertype: 'value',
+                          type: 'i32',
+                          ident: (0xffffffff >>> (32 - element.bits)).toString()
+                        }],
+                      };
+                    }
+                    toAdd.push(newItem);
+                    if (newItem2) toAdd.push(newItem2);
                     j++;
                   });
                   Types.needAnalysis['[0 x i32]'] = 0;
