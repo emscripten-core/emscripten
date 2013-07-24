@@ -424,6 +424,7 @@ var LibraryGLUT = {
   },
 
   glutInitDisplayMode: function(mode) {},
+  glutInitDisplayString: function(modestr) {},
   glutSwapBuffers: function() {},
 
   glutPostRedisplay: function() {

@@ -334,7 +334,175 @@ var LibraryGL = {
 
       GL.elementIndexUintExt = Module.ctx.getExtension('OES_element_index_uint');
       GL.standardDerivativesExt = Module.ctx.getExtension('OES_standard_derivatives');
-    }
+    },
+
+    getProcAddress: function(name) {
+      name = name.replace('EXT', '').replace('ARB', '');
+      // Do the translation carefully because of closure
+      var ret = 0;
+      switch (name) {
+      case 'glActiveTexture': ret = {{{ Functions.getIndex('_glActiveTexture', true) }}}; break;
+      case 'glAttachShader': ret = {{{ Functions.getIndex('_glAttachShader', true) }}}; break;
+      case 'glBindAttribLocation': ret = {{{ Functions.getIndex('_glBindAttribLocation', true) }}}; break;
+      case 'glBindBuffer': ret = {{{ Functions.getIndex('_glBindBuffer', true) }}}; break;
+      case 'glBindFramebuffer': ret = {{{ Functions.getIndex('_glBindFramebuffer', true) }}}; break;
+      case 'glBindRenderbuffer': ret = {{{ Functions.getIndex('_glBindRenderbuffer', true) }}}; break;
+      case 'glBindTexture': ret = {{{ Functions.getIndex('_glBindTexture', true) }}}; break;
+      case 'glBlendColor': ret = {{{ Functions.getIndex('_glBlendColor', true) }}}; break;
+      case 'glBlendEquation': ret = {{{ Functions.getIndex('_glBlendEquation', true) }}}; break;
+      case 'glBlendEquationSeparate': ret = {{{ Functions.getIndex('_glBlendEquationSeparate', true) }}}; break;
+      case 'glBlendFunc': ret = {{{ Functions.getIndex('_glBlendFunc', true) }}}; break;
+      case 'glBlendFuncSeparate': ret = {{{ Functions.getIndex('_glBlendFuncSeparate', true) }}}; break;
+      case 'glBufferData': ret = {{{ Functions.getIndex('_glBufferData', true) }}}; break;
+      case 'glBufferSubData': ret = {{{ Functions.getIndex('_glBufferSubData', true) }}}; break;
+      case 'glCheckFramebufferStatus': ret = {{{ Functions.getIndex('_glCheckFramebufferStatus', true) }}}; break;
+      case 'glClear': ret = {{{ Functions.getIndex('_glClear', true) }}}; break;
+      case 'glClearColor': ret = {{{ Functions.getIndex('_glClearColor', true) }}}; break;
+      case 'glClearDepthf': ret = {{{ Functions.getIndex('_glClearDepthf', true) }}}; break;
+      case 'glClearStencil': ret = {{{ Functions.getIndex('_glClearStencil', true) }}}; break;
+      case 'glColorMask': ret = {{{ Functions.getIndex('_glColorMask', true) }}}; break;
+      case 'glCompileShader': ret = {{{ Functions.getIndex('_glCompileShader', true) }}}; break;
+      case 'glCompressedTexImage2D': ret = {{{ Functions.getIndex('_glCompressedTexImage2D', true) }}}; break;
+      case 'glCompressedTexSubImage2D': ret = {{{ Functions.getIndex('_glCompressedTexSubImage2D', true) }}}; break;
+      case 'glCopyTexImage2D': ret = {{{ Functions.getIndex('_glCopyTexImage2D', true) }}}; break;
+      case 'glCopyTexSubImage2D': ret = {{{ Functions.getIndex('_glCopyTexSubImage2D', true) }}}; break;
+      case 'glCreateProgram': ret = {{{ Functions.getIndex('_glCreateProgram', true) }}}; break;
+      case 'glCreateShader': ret = {{{ Functions.getIndex('_glCreateShader', true) }}}; break;
+      case 'glCullFace': ret = {{{ Functions.getIndex('_glCullFace', true) }}}; break;
+      case 'glDeleteBuffers': ret = {{{ Functions.getIndex('_glDeleteBuffers', true) }}}; break;
+      case 'glDeleteFramebuffers': ret = {{{ Functions.getIndex('_glDeleteFramebuffers', true) }}}; break;
+      case 'glDeleteProgram': ret = {{{ Functions.getIndex('_glDeleteProgram', true) }}}; break;
+      case 'glDeleteRenderbuffers': ret = {{{ Functions.getIndex('_glDeleteRenderbuffers', true) }}}; break;
+      case 'glDeleteShader': ret = {{{ Functions.getIndex('_glDeleteShader', true) }}}; break;
+      case 'glDeleteTextures': ret = {{{ Functions.getIndex('_glDeleteTextures', true) }}}; break;
+      case 'glDepthFunc': ret = {{{ Functions.getIndex('_glDepthFunc', true) }}}; break;
+      case 'glDepthMask': ret = {{{ Functions.getIndex('_glDepthMask', true) }}}; break;
+      case 'glDepthRangef': ret = {{{ Functions.getIndex('_glDepthRangef', true) }}}; break;
+      case 'glDetachShader': ret = {{{ Functions.getIndex('_glDetachShader', true) }}}; break;
+      case 'glDisable': ret = {{{ Functions.getIndex('_glDisable', true) }}}; break;
+      case 'glDisableVertexAttribArray': ret = {{{ Functions.getIndex('_glDisableVertexAttribArray', true) }}}; break;
+      case 'glDrawArrays': ret = {{{ Functions.getIndex('_glDrawArrays', true) }}}; break;
+      case 'glDrawElements': ret = {{{ Functions.getIndex('_glDrawElements', true) }}}; break;
+      case 'glEnable': ret = {{{ Functions.getIndex('_glEnable', true) }}}; break;
+      case 'glEnableVertexAttribArray': ret = {{{ Functions.getIndex('_glEnableVertexAttribArray', true) }}}; break;
+      case 'glFinish': ret = {{{ Functions.getIndex('_glFinish', true) }}}; break;
+      case 'glFlush': ret = {{{ Functions.getIndex('_glFlush', true) }}}; break;
+      case 'glFramebufferRenderbuffer': ret = {{{ Functions.getIndex('_glFramebufferRenderbuffer', true) }}}; break;
+      case 'glFramebufferTexture2D': ret = {{{ Functions.getIndex('_glFramebufferTexture2D', true) }}}; break;
+      case 'glFrontFace': ret = {{{ Functions.getIndex('_glFrontFace', true) }}}; break;
+      case 'glGenBuffers': ret = {{{ Functions.getIndex('_glGenBuffers', true) }}}; break;
+      case 'glGenFramebuffers': ret = {{{ Functions.getIndex('_glGenFramebuffers', true) }}}; break;
+      case 'glGenRenderbuffers': ret = {{{ Functions.getIndex('_glGenRenderbuffers', true) }}}; break;
+      case 'glGenTextures': ret = {{{ Functions.getIndex('_glGenTextures', true) }}}; break;
+      case 'glGenerateMipmap': ret = {{{ Functions.getIndex('_glGenerateMipmap', true) }}}; break;
+      case 'glGetActiveAttrib': ret = {{{ Functions.getIndex('_glGetActiveAttrib', true) }}}; break;
+      case 'glGetActiveUniform': ret = {{{ Functions.getIndex('_glGetActiveUniform', true) }}}; break;
+      case 'glGetAttachedShaders': ret = {{{ Functions.getIndex('_glGetAttachedShaders', true) }}}; break;
+      case 'glGetAttribLocation': ret = {{{ Functions.getIndex('_glGetAttribLocation', true) }}}; break;
+      case 'glGetBooleanv': ret = {{{ Functions.getIndex('_glGetBooleanv', true) }}}; break;
+      case 'glGetBufferParameteriv': ret = {{{ Functions.getIndex('_glGetBufferParameteriv', true) }}}; break;
+      case 'glGetError': ret = {{{ Functions.getIndex('_glGetError', true) }}}; break;
+      case 'glGetFloatv': ret = {{{ Functions.getIndex('_glGetFloatv', true) }}}; break;
+      case 'glGetFramebufferAttachmentParameteriv': ret = {{{ Functions.getIndex('_glGetFramebufferAttachmentParameteriv', true) }}}; break;
+      case 'glGetIntegerv': ret = {{{ Functions.getIndex('_glGetIntegerv', true) }}}; break;
+      case 'glGetProgramInfoLog': ret = {{{ Functions.getIndex('_glGetProgramInfoLog', true) }}}; break;
+      case 'glGetProgramiv': ret = {{{ Functions.getIndex('_glGetProgramiv', true) }}}; break;
+      case 'glGetRenderbufferParameteriv': ret = {{{ Functions.getIndex('_glGetRenderbufferParameteriv', true) }}}; break;
+      case 'glGetShaderInfoLog': ret = {{{ Functions.getIndex('_glGetShaderInfoLog', true) }}}; break;
+      case 'glGetShaderPrecisionFormat': ret = {{{ Functions.getIndex('_glGetShaderPrecisionFormat', true) }}}; break;
+      case 'glGetShaderSource': ret = {{{ Functions.getIndex('_glGetShaderSource', true) }}}; break;
+      case 'glGetShaderiv': ret = {{{ Functions.getIndex('_glGetShaderiv', true) }}}; break;
+      case 'glGetString': ret = {{{ Functions.getIndex('_glGetString', true) }}}; break;
+      case 'glGetTexParameterfv': ret = {{{ Functions.getIndex('_glGetTexParameterfv', true) }}}; break;
+      case 'glGetTexParameteriv': ret = {{{ Functions.getIndex('_glGetTexParameteriv', true) }}}; break;
+      case 'glGetUniformLocation': ret = {{{ Functions.getIndex('_glGetUniformLocation', true) }}}; break;
+      case 'glGetUniformfv': ret = {{{ Functions.getIndex('_glGetUniformfv', true) }}}; break;
+      case 'glGetUniformiv': ret = {{{ Functions.getIndex('_glGetUniformiv', true) }}}; break;
+      case 'glGetVertexAttribPointerv': ret = {{{ Functions.getIndex('_glGetVertexAttribPointerv', true) }}}; break;
+      case 'glGetVertexAttribfv': ret = {{{ Functions.getIndex('_glGetVertexAttribfv', true) }}}; break;
+      case 'glGetVertexAttribiv': ret = {{{ Functions.getIndex('_glGetVertexAttribiv', true) }}}; break;
+      case 'glHint': ret = {{{ Functions.getIndex('_glHint', true) }}}; break;
+      case 'glIsBuffer': ret = {{{ Functions.getIndex('_glIsBuffer', true) }}}; break;
+      case 'glIsEnabled': ret = {{{ Functions.getIndex('_glIsEnabled', true) }}}; break;
+      case 'glIsFramebuffer': ret = {{{ Functions.getIndex('_glIsFramebuffer', true) }}}; break;
+      case 'glIsProgram': ret = {{{ Functions.getIndex('_glIsProgram', true) }}}; break;
+      case 'glIsRenderbuffer': ret = {{{ Functions.getIndex('_glIsRenderbuffer', true) }}}; break;
+      case 'glIsShader': ret = {{{ Functions.getIndex('_glIsShader', true) }}}; break;
+      case 'glIsTexture': ret = {{{ Functions.getIndex('_glIsTexture', true) }}}; break;
+      case 'glLineWidth': ret = {{{ Functions.getIndex('_glLineWidth', true) }}}; break;
+      case 'glLinkProgram': ret = {{{ Functions.getIndex('_glLinkProgram', true) }}}; break;
+      case 'glPixelStorei': ret = {{{ Functions.getIndex('_glPixelStorei', true) }}}; break;
+      case 'glPolygonOffset': ret = {{{ Functions.getIndex('_glPolygonOffset', true) }}}; break;
+      case 'glReadPixels': ret = {{{ Functions.getIndex('_glReadPixels', true) }}}; break;
+      case 'glReleaseShaderCompiler': ret = {{{ Functions.getIndex('_glReleaseShaderCompiler', true) }}}; break;
+      case 'glRenderbufferStorage': ret = {{{ Functions.getIndex('_glRenderbufferStorage', true) }}}; break;
+      case 'glSampleCoverage': ret = {{{ Functions.getIndex('_glSampleCoverage', true) }}}; break;
+      case 'glScissor': ret = {{{ Functions.getIndex('_glScissor', true) }}}; break;
+      case 'glShaderBinary': ret = {{{ Functions.getIndex('_glShaderBinary', true) }}}; break;
+      case 'glShaderSource': ret = {{{ Functions.getIndex('_glShaderSource', true) }}}; break;
+      case 'glStencilFunc': ret = {{{ Functions.getIndex('_glStencilFunc', true) }}}; break;
+      case 'glStencilFuncSeparate': ret = {{{ Functions.getIndex('_glStencilFuncSeparate', true) }}}; break;
+      case 'glStencilMask': ret = {{{ Functions.getIndex('_glStencilMask', true) }}}; break;
+      case 'glStencilMaskSeparate': ret = {{{ Functions.getIndex('_glStencilMaskSeparate', true) }}}; break;
+      case 'glStencilOp': ret = {{{ Functions.getIndex('_glStencilOp', true) }}}; break;
+      case 'glStencilOpSeparate': ret = {{{ Functions.getIndex('_glStencilOpSeparate', true) }}}; break;
+      case 'glTexImage2D': ret = {{{ Functions.getIndex('_glTexImage2D', true) }}}; break;
+      case 'glTexParameterf': ret = {{{ Functions.getIndex('_glTexParameterf', true) }}}; break;
+      case 'glTexParameterfv': ret = {{{ Functions.getIndex('_glTexParameterfv', true) }}}; break;
+      case 'glTexParameteri': ret = {{{ Functions.getIndex('_glTexParameteri', true) }}}; break;
+      case 'glTexParameteriv': ret = {{{ Functions.getIndex('_glTexParameteriv', true) }}}; break;
+      case 'glTexSubImage2D': ret = {{{ Functions.getIndex('_glTexSubImage2D', true) }}}; break;
+      case 'glUniform1f': ret = {{{ Functions.getIndex('_glUniform1f', true) }}}; break;
+      case 'glUniform1fv': ret = {{{ Functions.getIndex('_glUniform1fv', true) }}}; break;
+      case 'glUniform1i': ret = {{{ Functions.getIndex('_glUniform1i', true) }}}; break;
+      case 'glUniform1iv': ret = {{{ Functions.getIndex('_glUniform1iv', true) }}}; break;
+      case 'glUniform2f': ret = {{{ Functions.getIndex('_glUniform2f', true) }}}; break;
+      case 'glUniform2fv': ret = {{{ Functions.getIndex('_glUniform2fv', true) }}}; break;
+      case 'glUniform2i': ret = {{{ Functions.getIndex('_glUniform2i', true) }}}; break;
+      case 'glUniform2iv': ret = {{{ Functions.getIndex('_glUniform2iv', true) }}}; break;
+      case 'glUniform3f': ret = {{{ Functions.getIndex('_glUniform3f', true) }}}; break;
+      case 'glUniform3fv': ret = {{{ Functions.getIndex('_glUniform3fv', true) }}}; break;
+      case 'glUniform3i': ret = {{{ Functions.getIndex('_glUniform3i', true) }}}; break;
+      case 'glUniform3iv': ret = {{{ Functions.getIndex('_glUniform3iv', true) }}}; break;
+      case 'glUniform4f': ret = {{{ Functions.getIndex('_glUniform4f', true) }}}; break;
+      case 'glUniform4fv': ret = {{{ Functions.getIndex('_glUniform4fv', true) }}}; break;
+      case 'glUniform4i': ret = {{{ Functions.getIndex('_glUniform4i', true) }}}; break;
+      case 'glUniform4iv': ret = {{{ Functions.getIndex('_glUniform4iv', true) }}}; break;
+      case 'glUniformMatrix2fv': ret = {{{ Functions.getIndex('_glUniformMatrix2fv', true) }}}; break;
+      case 'glUniformMatrix3fv': ret = {{{ Functions.getIndex('_glUniformMatrix3fv', true) }}}; break;
+      case 'glUniformMatrix4fv': ret = {{{ Functions.getIndex('_glUniformMatrix4fv', true) }}}; break;
+      case 'glUseProgram': ret = {{{ Functions.getIndex('_glUseProgram', true) }}}; break;
+      case 'glValidateProgram': ret = {{{ Functions.getIndex('_glValidateProgram', true) }}}; break;
+      case 'glVertexAttrib1f': ret = {{{ Functions.getIndex('_glVertexAttrib1f', true) }}}; break;
+      case 'glVertexAttrib1fv': ret = {{{ Functions.getIndex('_glVertexAttrib1fv', true) }}}; break;
+      case 'glVertexAttrib2f': ret = {{{ Functions.getIndex('_glVertexAttrib2f', true) }}}; break;
+      case 'glVertexAttrib2fv': ret = {{{ Functions.getIndex('_glVertexAttrib2fv', true) }}}; break;
+      case 'glVertexAttrib3f': ret = {{{ Functions.getIndex('_glVertexAttrib3f', true) }}}; break;
+      case 'glVertexAttrib3fv': ret = {{{ Functions.getIndex('_glVertexAttrib3fv', true) }}}; break;
+      case 'glVertexAttrib4f': ret = {{{ Functions.getIndex('_glVertexAttrib4f', true) }}}; break;
+      case 'glVertexAttrib4fv': ret = {{{ Functions.getIndex('_glVertexAttrib4fv', true) }}}; break;
+      case 'glVertexAttribPointer': ret = {{{ Functions.getIndex('_glVertexAttribPointer', true) }}}; break;
+      case 'glViewport': ret = {{{ Functions.getIndex('_glViewport', true) }}}; break;
+#if DISABLE_GL_EMULATION == 0
+      case 'glAttachObject': ret = {{{ Functions.getIndex('_glAttachShader', true) }}}; break;
+      case 'glBindVertexArray': ret = {{{ Functions.getIndex('_glBindVertexArray', true) }}}; break;
+      case 'glBindProgram': ret = {{{ Functions.getIndex('_glBindProgram', true) }}}; break;
+      case 'glCreateProgramObject': ret = {{{ Functions.getIndex('_glCreateProgram', true) }}}; break;
+      case 'glCreateShaderObject': ret = {{{ Functions.getIndex('_glCreateShader', true) }}}; break;
+      case 'glClientActiveTexture': ret = {{{ Functions.getIndex('_glClientActiveTexture', true) }}}; break;
+      case 'glDeleteVertexArrays': ret = {{{ Functions.getIndex('_glDeleteVertexArrays', true) }}}; break;
+      case 'glDeleteObject': ret = {{{ Functions.getIndex('_glDeleteObject', true) }}}; break;
+      case 'glDetachObject': ret = {{{ Functions.getIndex('_glDetachShader', true) }}}; break;
+      case 'glDrawRangeElements': ret = {{{ Functions.getIndex('_glDrawRangeElements', true) }}}; break;
+      case 'glGenVertexArrays': ret = {{{ Functions.getIndex('_glGenVertexArrays', true) }}}; break;
+      case 'glGetInfoLog': ret = {{{ Functions.getIndex('_glGetInfoLog', true) }}}; break;
+      case 'glGetObjectParameteriv': ret = {{{ Functions.getIndex('_glGetObjectParameteriv', true) }}}; break;
+      case 'glUseProgramObject': ret = {{{ Functions.getIndex('_glUseProgram', true) }}}; break;
+#endif
+      }
+      if (!ret) Module.printErr('WARNING: getProcAddress failed for ' + name);
+      return ret;
+    },
   },
 
   glPixelStorei__sig: 'vii',
@@ -1178,6 +1346,7 @@ var LibraryGL = {
                             GL.shaders[shader]);
   },
 
+  glGetShaderPrecisionFormat__sig: 'viiii',
   glGetShaderPrecisionFormat: function(shaderType, precisionType, range, precision) {
     var result = Module.ctx.getShaderPrecisionFormat(shaderType, precisionType);
     {{{ makeSetValue('range', '0', 'result.rangeMin', 'i32') }}};
@@ -1279,6 +1448,14 @@ var LibraryGL = {
     if (!fb) return 0;
     return Module.ctx.isFramebuffer(fb);
   },
+
+  glReleaseShaderCompiler__sig: 'v',
+  glReleaseShaderCompiler: function() {
+    // NOP (as allowed by GLES 2.0 spec)
+  },
+
+  glShaderBinary__sig: 'v',
+  glShaderBinary: function() { throw 'glShaderBinary: UNSUPPORTED' },
 
 #if DISABLE_GL_EMULATION == 0
 
@@ -1770,177 +1947,7 @@ var LibraryGL = {
       }
       return attrib;
     },
-
-    getProcAddress: function(name) {
-      name = name.replace('EXT', '').replace('ARB', '');
-      // Do the translation carefully because of closure
-      var ret = 0;
-      switch (name) {
-        case 'glCreateShaderObject': case 'glCreateShader': ret = {{{ Functions.getIndex('_glCreateShader', true) }}}; break;
-        case 'glCreateProgramObject': case 'glCreateProgram': ret = {{{ Functions.getIndex('_glCreateProgram', true) }}}; break;
-        case 'glAttachObject': case 'glAttachShader': ret = {{{ Functions.getIndex('_glAttachShader', true) }}}; break;
-        case 'glUseProgramObject': case 'glUseProgram': ret = {{{ Functions.getIndex('_glUseProgram', true) }}}; break;
-        case 'glDetachObject': case 'glDetachShader': ret = {{{ Functions.getIndex('_glDetachShader', true) }}}; break;
-        case 'glDeleteObject': ret = {{{ Functions.getIndex('_glDeleteObject', true) }}}; break;
-        case 'glGetObjectParameteriv': ret = {{{ Functions.getIndex('_glGetObjectParameteriv', true) }}}; break;
-        case 'glGetInfoLog': ret = {{{ Functions.getIndex('_glGetInfoLog', true) }}}; break;
-        case 'glBindProgram': ret = {{{ Functions.getIndex('_glBindProgram', true) }}}; break;
-        case 'glDrawRangeElements': ret = {{{ Functions.getIndex('_glDrawRangeElements', true) }}}; break;
-        case 'glShaderSource': ret = {{{ Functions.getIndex('_glShaderSource', true) }}}; break;
-        case 'glCompileShader': ret = {{{ Functions.getIndex('_glCompileShader', true) }}}; break;
-        case 'glLinkProgram': ret = {{{ Functions.getIndex('_glLinkProgram', true) }}}; break;
-        case 'glGetUniformLocation': ret = {{{ Functions.getIndex('_glGetUniformLocation', true) }}}; break;
-        case 'glUniform1f': ret = {{{ Functions.getIndex('_glUniform1f', true) }}}; break;
-        case 'glUniform2f': ret = {{{ Functions.getIndex('_glUniform2f', true) }}}; break;
-        case 'glUniform3f': ret = {{{ Functions.getIndex('_glUniform3f', true) }}}; break;
-        case 'glUniform4f': ret = {{{ Functions.getIndex('_glUniform4f', true) }}}; break;
-        case 'glUniform1fv': ret = {{{ Functions.getIndex('_glUniform1fv', true) }}}; break;
-        case 'glUniform2fv': ret = {{{ Functions.getIndex('_glUniform2fv', true) }}}; break;
-        case 'glUniform3fv': ret = {{{ Functions.getIndex('_glUniform3fv', true) }}}; break;
-        case 'glUniform4fv': ret = {{{ Functions.getIndex('_glUniform4fv', true) }}}; break;
-        case 'glUniform1i': ret = {{{ Functions.getIndex('_glUniform1i', true) }}}; break;
-        case 'glUniform2i': ret = {{{ Functions.getIndex('_glUniform2i', true) }}}; break;
-        case 'glUniform3i': ret = {{{ Functions.getIndex('_glUniform3i', true) }}}; break;
-        case 'glUniform4i': ret = {{{ Functions.getIndex('_glUniform4i', true) }}}; break;
-        case 'glUniform1iv': ret = {{{ Functions.getIndex('_glUniform1iv', true) }}}; break;
-        case 'glUniform2iv': ret = {{{ Functions.getIndex('_glUniform2iv', true) }}}; break;
-        case 'glUniform3iv': ret = {{{ Functions.getIndex('_glUniform3iv', true) }}}; break;
-        case 'glUniform4iv': ret = {{{ Functions.getIndex('_glUniform4iv', true) }}}; break;
-        case 'glBindAttribLocation': ret = {{{ Functions.getIndex('_glBindAttribLocation', true) }}}; break;
-        case 'glGetActiveUniform': ret = {{{ Functions.getIndex('_glGetActiveUniform', true) }}}; break;
-        case 'glGenBuffers': ret = {{{ Functions.getIndex('_glGenBuffers', true) }}}; break;
-        case 'glBindBuffer': ret = {{{ Functions.getIndex('_glBindBuffer', true) }}}; break;
-        case 'glBufferData': ret = {{{ Functions.getIndex('_glBufferData', true) }}}; break;
-        case 'glBufferSubData': ret = {{{ Functions.getIndex('_glBufferSubData', true) }}}; break;
-        case 'glDeleteBuffers': ret = {{{ Functions.getIndex('_glDeleteBuffers', true) }}}; break;
-        case 'glActiveTexture': ret = {{{ Functions.getIndex('_glActiveTexture', true) }}}; break;
-        case 'glClientActiveTexture': ret = {{{ Functions.getIndex('_glClientActiveTexture', true) }}}; break;
-        case 'glGetProgramiv': ret = {{{ Functions.getIndex('_glGetProgramiv', true) }}}; break;
-        case 'glEnableVertexAttribArray': ret = {{{ Functions.getIndex('_glEnableVertexAttribArray', true) }}}; break;
-        case 'glDisableVertexAttribArray': ret = {{{ Functions.getIndex('_glDisableVertexAttribArray', true) }}}; break;
-        case 'glVertexAttribPointer': ret = {{{ Functions.getIndex('_glVertexAttribPointer', true) }}}; break;
-        case 'glVertexAttrib1f': ret = {{{ Functions.getIndex('_glVertexAttrib1f', true) }}}; break;
-        case 'glVertexAttrib2f': ret = {{{ Functions.getIndex('_glVertexAttrib2f', true) }}}; break;
-        case 'glVertexAttrib3f': ret = {{{ Functions.getIndex('_glVertexAttrib3f', true) }}}; break;
-        case 'glVertexAttrib4f': ret = {{{ Functions.getIndex('_glVertexAttrib4f', true) }}}; break;
-        case 'glVertexAttrib1fv': ret = {{{ Functions.getIndex('_glVertexAttrib1fv', true) }}}; break;
-        case 'glVertexAttrib2fv': ret = {{{ Functions.getIndex('_glVertexAttrib2fv', true) }}}; break;
-        case 'glVertexAttrib3fv': ret = {{{ Functions.getIndex('_glVertexAttrib3fv', true) }}}; break;
-        case 'glVertexAttrib4fv': ret = {{{ Functions.getIndex('_glVertexAttrib4fv', true) }}}; break;
-        case 'glGetVertexAttribfv': ret = {{{ Functions.getIndex('_glGetVertexAttribfv', true) }}}; break;
-        case 'glGetVertexAttribiv': ret = {{{ Functions.getIndex('_glGetVertexAttribiv', true) }}}; break;
-        case 'glGetVertexAttribPointerv': ret = {{{ Functions.getIndex('_glGetVertexAttribPointerv', true) }}}; break;
-        case 'glGetAttribLocation': ret = {{{ Functions.getIndex('_glGetAttribLocation', true) }}}; break;
-        case 'glGetActiveAttrib': ret = {{{ Functions.getIndex('_glGetActiveAttrib', true) }}}; break;
-        case 'glBindRenderbuffer': ret = {{{ Functions.getIndex('_glBindRenderbuffer', true) }}}; break;
-        case 'glDeleteRenderbuffers': ret = {{{ Functions.getIndex('_glDeleteRenderbuffers', true) }}}; break;
-        case 'glGenRenderbuffers': ret = {{{ Functions.getIndex('_glGenRenderbuffers', true) }}}; break;
-        case 'glCompressedTexImage2D': ret = {{{ Functions.getIndex('_glCompressedTexImage2D', true) }}}; break;
-        case 'glCompressedTexSubImage2D': ret = {{{ Functions.getIndex('_glCompressedTexSubImage2D', true) }}}; break;
-        case 'glBindFramebuffer': ret = {{{ Functions.getIndex('_glBindFramebuffer', true) }}}; break;
-        case 'glGenFramebuffers': ret = {{{ Functions.getIndex('_glGenFramebuffers', true) }}}; break;
-        case 'glDeleteFramebuffers': ret = {{{ Functions.getIndex('_glDeleteFramebuffers', true) }}}; break;
-        case 'glFramebufferRenderbuffer': ret = {{{ Functions.getIndex('_glFramebufferRenderbuffer', true) }}}; break;
-        case 'glFramebufferTexture2D': ret = {{{ Functions.getIndex('_glFramebufferTexture2D', true) }}}; break;
-        case 'glGetFramebufferAttachmentParameteriv': ret = {{{ Functions.getIndex('_glGetFramebufferAttachmentParameteriv', true) }}}; break;
-        case 'glIsFramebuffer': ret = {{{ Functions.getIndex('_glIsFramebuffer', true) }}}; break;
-        case 'glCheckFramebufferStatus': ret = {{{ Functions.getIndex('_glCheckFramebufferStatus', true) }}}; break;
-        case 'glRenderbufferStorage': ret = {{{ Functions.getIndex('_glRenderbufferStorage', true) }}}; break;
-        case 'glGenVertexArrays': ret = {{{ Functions.getIndex('_glGenVertexArrays', true) }}}; break;
-        case 'glDeleteVertexArrays': ret = {{{ Functions.getIndex('_glDeleteVertexArrays', true) }}}; break;
-        case 'glBindVertexArray': ret = {{{ Functions.getIndex('_glBindVertexArray', true) }}}; break;
-        case 'glGetString': ret = {{{ Functions.getIndex('_glGetString', true) }}}; break;
-        case 'glBindTexture': ret = {{{ Functions.getIndex('_glBindTexture', true) }}}; break;
-        case 'glGetBufferParameteriv': ret = {{{ Functions.getIndex('_glGetBufferParameteriv', true) }}}; break;
-        case 'glIsBuffer': ret = {{{ Functions.getIndex('_glIsBuffer', true) }}}; break;
-        case 'glDeleteShader': ret = {{{ Functions.getIndex('_glDeleteShader', true) }}}; break;
-        case 'glUniformMatrix2fv': ret = {{{ Functions.getIndex('_glUniformMatrix2fv', true) }}}; break;
-        case 'glUniformMatrix3fv': ret = {{{ Functions.getIndex('_glUniformMatrix3fv', true) }}}; break;
-        case 'glUniformMatrix4fv': ret = {{{ Functions.getIndex('_glUniformMatrix4fv', true) }}}; break;
-        case 'glIsRenderbuffer': ret = {{{ Functions.getIndex('_glIsRenderbuffer', true) }}}; break;
-        case 'glBlendEquation': ret = {{{ Functions.getIndex('_glBlendEquation', true) }}}; break;
-        case 'glBlendFunc': ret = {{{ Functions.getIndex('_glBlendFunc', true) }}}; break;
-        case 'glBlendFuncSeparate': ret = {{{ Functions.getIndex('_glBlendFuncSeparate', true) }}}; break;
-        case 'glBlendEquationSeparate': ret = {{{ Functions.getIndex('_glBlendEquationSeparate', true) }}}; break;
-        case 'glDepthRangef': ret = {{{ Functions.getIndex('_glDepthRangef', true) }}}; break;
-        case 'glClear': ret = {{{ Functions.getIndex('_glClear', true) }}}; break;
-        case 'glGenerateMipmap': ret = {{{ Functions.getIndex('_glGenerateMipmap', true) }}}; break;
-        case 'glBlendColor': ret = {{{ Functions.getIndex('_glBlendColor', true) }}}; break;
-        case 'glClearDepthf': ret = {{{ Functions.getIndex('_glClearDepthf', true) }}}; break;
-        case 'glDeleteProgram': ret = {{{ Functions.getIndex('_glDeleteProgram', true) }}}; break;
-        case 'glUniformMatrix3fv': ret = {{{ Functions.getIndex('_glUniformMatrix3fv', true) }}}; break;
-        case 'glClearColor': ret = {{{ Functions.getIndex('_glClearColor', true) }}}; break;
-        case 'glGetRenderbufferParameteriv': ret = {{{ Functions.getIndex('_glGetRenderbufferParameteriv', true) }}}; break;
-        case 'glGetShaderInfoLog': ret = {{{ Functions.getIndex('_glGetShaderInfoLog', true) }}}; break;
-        case 'glUniformMatrix4fv': ret = {{{ Functions.getIndex('_glUniformMatrix4fv', true) }}}; break;
-        case 'glClearStencil': ret = {{{ Functions.getIndex('_glClearStencil', true) }}}; break;
-        case 'glGetProgramInfoLog': ret = {{{ Functions.getIndex('_glGetProgramInfoLog', true) }}}; break;
-        case 'glGetUniformfv': ret = {{{ Functions.getIndex('_glGetUniformfv', true) }}}; break;
-        case 'glStencilFuncSeparate': ret = {{{ Functions.getIndex('_glStencilFuncSeparate', true) }}}; break;
-        case 'glSampleCoverage': ret = {{{ Functions.getIndex('_glSampleCoverage', true) }}}; break;
-        case 'glColorMask': ret = {{{ Functions.getIndex('_glColorMask', true) }}}; break;
-        case 'glGetShaderiv': ret = {{{ Functions.getIndex('_glGetShaderiv', true) }}}; break;
-        case 'glGetUniformiv': ret = {{{ Functions.getIndex('_glGetUniformiv', true) }}}; break;
-        case 'glCopyTexSubImage2D': ret = {{{ Functions.getIndex('_glCopyTexSubImage2D', true) }}}; break;
-        case 'glDetachShader': ret = {{{ Functions.getIndex('_glDetachShader', true) }}}; break;
-        case 'glGetShaderSource': ret = {{{ Functions.getIndex('_glGetShaderSource', true) }}}; break;
-        case 'glDeleteTextures': ret = {{{ Functions.getIndex('_glDeleteTextures', true) }}}; break;
-        case 'glGetAttachedShaders': ret = {{{ Functions.getIndex('_glGetAttachedShaders', true) }}}; break;
-        case 'glValidateProgram': ret = {{{ Functions.getIndex('_glValidateProgram', true) }}}; break;
-        case 'glDepthFunc': ret = {{{ Functions.getIndex('_glDepthFunc', true) }}}; break;
-        case 'glIsShader': ret = {{{ Functions.getIndex('_glIsShader', true) }}}; break;
-        case 'glDepthMask': ret = {{{ Functions.getIndex('_glDepthMask', true) }}}; break;
-        case 'glStencilMaskSeparate': ret = {{{ Functions.getIndex('_glStencilMaskSeparate', true) }}}; break;
-        case 'glIsProgram': ret = {{{ Functions.getIndex('_glIsProgram', true) }}}; break;
-        case 'glDisable': ret = {{{ Functions.getIndex('_glDisable', true) }}}; break;
-        case 'glStencilOpSeparate': ret = {{{ Functions.getIndex('_glStencilOpSeparate', true) }}}; break;
-        case 'glDrawArrays': ret = {{{ Functions.getIndex('_glDrawArrays', true) }}}; break;
-        case 'glDrawElements': ret = {{{ Functions.getIndex('_glDrawElements', true) }}}; break;
-        case 'glEnable': ret = {{{ Functions.getIndex('_glEnable', true) }}}; break;
-        case 'glFinish': ret = {{{ Functions.getIndex('_glFinish', true) }}}; break;
-        case 'glFlush': ret = {{{ Functions.getIndex('_glFlush', true) }}}; break;
-        case 'glFrontFace': ret = {{{ Functions.getIndex('_glFrontFace', true) }}}; break;
-        case 'glCullFace': ret = {{{ Functions.getIndex('_glCullFace', true) }}}; break;
-        case 'glGenTextures': ret = {{{ Functions.getIndex('_glGenTextures', true) }}}; break;
-        case 'glGetError': ret = {{{ Functions.getIndex('_glGetError', true) }}}; break;
-        case 'glGetIntegerv': ret = {{{ Functions.getIndex('_glGetIntegerv', true) }}}; break;
-        case 'glGetBooleanv': ret = {{{ Functions.getIndex('_glGetBooleanv', true) }}}; break;
-        case 'glGetFloatv': ret = {{{ Functions.getIndex('_glGetFloatv', true) }}}; break;
-        case 'glHint': ret = {{{ Functions.getIndex('_glHint', true) }}}; break;
-        case 'glIsTexture': ret = {{{ Functions.getIndex('_glIsTexture', true) }}}; break;
-        case 'glPixelStorei': ret = {{{ Functions.getIndex('_glPixelStorei', true) }}}; break;
-        case 'glReadPixels': ret = {{{ Functions.getIndex('_glReadPixels', true) }}}; break;
-        case 'glScissor': ret = {{{ Functions.getIndex('_glScissor', true) }}}; break;
-        case 'glStencilFunc': ret = {{{ Functions.getIndex('_glStencilFunc', true) }}}; break;
-        case 'glStencilMask': ret = {{{ Functions.getIndex('_glStencilMask', true) }}}; break;
-        case 'glStencilOp': ret = {{{ Functions.getIndex('_glStencilOp', true) }}}; break;
-        case 'glTexImage2D': ret = {{{ Functions.getIndex('_glTexImage2D', true) }}}; break;
-        case 'glTexParameterf': ret = {{{ Functions.getIndex('_glTexParameterf', true) }}}; break;
-        case 'glTexParameterfv': ret = {{{ Functions.getIndex('_glTexParameterfv', true) }}}; break;
-        case 'glTexParameteri': ret = {{{ Functions.getIndex('_glTexParameteri', true) }}}; break;
-        case 'glTexParameteriv': ret = {{{ Functions.getIndex('_glTexParameteriv', true) }}}; break;
-        case 'glGetTexParameterfv': ret = {{{ Functions.getIndex('_glGetTexParameterfv', true) }}}; break;
-        case 'glGetTexParameteriv': ret = {{{ Functions.getIndex('_glGetTexParameteriv', true) }}}; break;
-        case 'glTexSubImage2D': ret = {{{ Functions.getIndex('_glTexSubImage2D', true) }}}; break;
-        case 'glCopyTexImage2D': ret = {{{ Functions.getIndex('_glCopyTexImage2D', true) }}}; break;
-        case 'glViewport': ret = {{{ Functions.getIndex('_glViewport', true) }}}; break;
-        case 'glIsEnabled': ret = {{{ Functions.getIndex('_glIsEnabled', true) }}}; break;
-        case 'glLineWidth': ret = {{{ Functions.getIndex('_glLineWidth', true) }}}; break;
-        case 'glPolygonOffset': ret = {{{ Functions.getIndex('_glPolygonOffset', true) }}}; break;
-        case 'glReleaseShaderCompiler': ret = {{{ Functions.getIndex('_glReleaseShaderCompiler', true) }}}; break;
-        case 'glGetShaderPrecisionFormat': ret = {{{ Functions.getIndex('_glGetShaderPrecisionFormat', true) }}}; break;
-        case 'glShaderBinary': ret = {{{ Functions.getIndex('_glShaderBinary', true) }}}; break;
-      }
-      if (!ret) Module.printErr('WARNING: getProcAddress failed for ' + name);
-      return ret;
-    }
   },
-
-  glGetShaderPrecisionFormat__sig: 'v',
-  glGetShaderPrecisionFormat: function() { throw 'glGetShaderPrecisionFormat: TODO' },
-
-  glShaderBinary__sig: 'v',
-  glShaderBinary: function() { throw 'glShaderBinary: TODO' },
 
   glDeleteObject__sig: 'vi',
   glDeleteObject: function(id) {
@@ -1951,11 +1958,6 @@ var LibraryGL = {
     } else {
       Module.printErr('WARNING: deleteObject received invalid id: ' + id);
     }
-  },
-
-  glReleaseShaderCompiler__sig: 'v',
-  glReleaseShaderCompiler: function() {
-    // NOP (as allowed by GLES 2.0 spec)
   },
 
   glGetObjectParameteriv__sig: 'viii',
@@ -4363,7 +4365,7 @@ var LibraryGL = {
   glRenderbufferStorage__sig: 'viiii',
   glClearStencil__sig: 'vi',
   glStencilFunc__sig: 'viii',
-  glLineWidth__sig: 'vi',
+  glLineWidth__sig: 'vf',
   glBlendEquation__sig: 'vi',
   glBlendEquationSeparate__sig: 'vii',
   glVertexAttrib1f__sig: 'vii',
@@ -4373,7 +4375,7 @@ var LibraryGL = {
   glCullFace__sig: 'vi',
   glBlendFunc__sig: 'vii',
   glBlendFuncSeparate__sig: 'viiii',
-  glPolygonOffset__sig: 'vii',
+  glPolygonOffset__sig: 'vff',
   glColorMask__sig: 'viiii',
   glStencilOp__sig: 'viii',
   glStencilOpSeparate__sig: 'viiii',
@@ -4384,21 +4386,21 @@ var LibraryGL = {
   glDepthFunc__sig: 'vi',
   glStencilMask__sig: 'vi',
   glStencilMaskSeparate__sig: 'vii',
-  glClearDepthf__sig: 'vi',
+  glClearDepthf__sig: 'vf',
   glFinish__sig: 'v',
   glFlush__sig: 'v',
-  glClearColor__sig: 'viiii',
+  glClearColor__sig: 'vffff',
   glIsEnabled__sig: 'ii',
   glGetError__sig: 'i',
   glFrontFace__sig: 'vi',
-  glSampleCoverage__sig: 'vi',
+  glSampleCoverage__sig: 'vfi',
 };
 
 
 // Simple pass-through functions. Starred ones have return values. [X] ones have X in the C name but not in the JS name
 [[0, 'getError* finish flush'],
- [1, 'clearDepth clearDepth[f] depthFunc enable disable frontFace cullFace clear lineWidth clearStencil depthMask stencilMask checkFramebufferStatus* generateMipmap activeTexture blendEquation sampleCoverage isEnabled*'],
- [2, 'blendFunc blendEquationSeparate depthRange depthRange[f] stencilMaskSeparate hint polygonOffset vertexAttrib1f'],
+ [1, 'clearDepth clearDepth[f] depthFunc enable disable frontFace cullFace clear lineWidth clearStencil depthMask stencilMask checkFramebufferStatus* generateMipmap activeTexture blendEquation isEnabled*'],
+ [2, 'blendFunc blendEquationSeparate depthRange depthRange[f] stencilMaskSeparate hint polygonOffset sampleCoverage vertexAttrib1f'],
  [3, 'texParameteri texParameterf vertexAttrib2f stencilFunc stencilOp'],
  [4, 'viewport clearColor scissor vertexAttrib3f colorMask renderbufferStorage blendFuncSeparate blendColor stencilFuncSeparate stencilOpSeparate'],
  [5, 'vertexAttrib4f'],
@@ -4433,27 +4435,65 @@ var LibraryGL = {
 
 autoAddDeps(LibraryGL, '$GL');
 
-if (!DISABLE_GL_EMULATION) {
-  // Emulation requires everything else, potentially
-  LibraryGL.$GLEmulation__deps = LibraryGL.$GLEmulation__deps.slice(0); // the __deps object is shared
-  var glFuncs = [];
-  for (var item in LibraryGL) {
-    if (item != '$GLEmulation' && item.substr(-6) != '__deps' && item.substr(-9) != '__postset' && item.substr(-5) != '__sig' && item.substr(0, 2) == 'gl') {
-      glFuncs.push(item);
-    }
-  }
-  LibraryGL.$GLEmulation__deps = LibraryGL.$GLEmulation__deps.concat(glFuncs);
-  LibraryGL.$GLEmulation__deps.push(function() {
-    for (var func in Functions.getIndex.tentative) {
-      Functions.getIndex(func);
-      Functions.unimplementedFunctions[func] = LibraryGL[func.substr(1) + '__sig'];
-    }
-  });
+var GL_lib_name;
+if (DISABLE_GL_EMULATION) {
+  GL_lib_name = "$GL";
+} else {
+  GL_lib_name = "$GLEmulation";
+}
 
-  if (FORCE_GL_EMULATION) {
-    LibraryGL.glDrawElements__deps = LibraryGL.glDrawElements__deps.concat('$GLEmulation');
-    LibraryGL.glDrawArrays__deps = LibraryGL.glDrawArrays__deps.concat('$GLEmulation');
+GL_lib_deps = LibraryGL[GL_lib_name + "__deps"].slice(0); // the __deps object is shared
+
+// Create glEmulation_NAME versions of all indexable GL calls, to allow C to implement functions with the same name,
+// but still allow the library version to be called via a function pointer (from SDL_GetProcAddress)
+for (var func in Functions.getIndex.tentative) {
+  if (func in Functions.implementedFunctions) {
+    var funcShort = func.substr(1);
+    if (funcShort.substr(0,2) != 'gl')
+      continue;
+
+    var fullName = '_glRelocate' + func;
+    var fullNameShort = fullName.substr(1);
+    LibraryGL[fullNameShort] = LibraryGL[funcShort];
+    LibraryGL[fullNameShort + '__sig'] = LibraryGL[funcShort + '__sig'];
   }
+}
+
+var glFuncs = [];
+for (var item in LibraryGL) {
+  if (item != GL_lib_name &&
+      item.substr(-6) != '__deps' &&
+      item.substr(-9) != '__postset' &&
+      item.substr(-5) != '__sig' &&
+      item.substr(0, 2) == 'gl')
+  {
+    glFuncs.push(item);
+  }
+}
+
+GL_lib_deps = GL_lib_deps.concat(glFuncs);
+GL_lib_deps.push(function() {
+  for (var func in Functions.getIndex.tentative) {
+    if (func.substr(0,3) != "_gl")
+      continue;
+
+    var fullName;
+    if (func in Functions.implementedFunctions) {
+      fullName = '_glRelocate' + func;
+    } else {
+      fullName = func;
+    }
+    Functions.getIndex(fullName);
+    Functions.unimplementedFunctions[fullName] = LibraryGL[fullName.substr(1) + '__sig'];
+    //printErr("GLUnimp " + fullName + " -> sig for " + fullName.substr(1) + '__sig' + " (" + LibraryGL[fullName.substr(1) + '__sig'] + ")");
+  }
+});
+
+LibraryGL[GL_lib_name + "__deps"] = GL_lib_deps;
+
+if (!DISABLE_GL_EMULATION && FORCE_GL_EMULATION) {
+  LibraryGL.glDrawElements__deps = LibraryGL.glDrawElements__deps.concat('$GLEmulation');
+  LibraryGL.glDrawArrays__deps = LibraryGL.glDrawArrays__deps.concat('$GLEmulation');
 }
 
 mergeInto(LibraryManager.library, LibraryGL);
