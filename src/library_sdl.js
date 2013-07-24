@@ -1925,9 +1925,9 @@ var LibrarySDL = {
     console.log('TODO: SDL_GL_SetAttribute');
   },
 
-  SDL_GL_GetProcAddress__deps: ['$GLEmulation'],
+  SDL_GL_GetProcAddress__deps: ['$GL'],
   SDL_GL_GetProcAddress: function(name_) {
-    return GLEmulation.getProcAddress(Pointer_stringify(name_));
+    return GL.getProcAddress(Pointer_stringify(name_));
   },
 
   SDL_GL_SwapBuffers: function() {},
