@@ -2578,7 +2578,7 @@ LibraryManager.library = {
             if (maxx != sub) maxx = 0;
           }
           if (maxx) {
-            var argPtr = HEAP32[(varargs + argIndex)>>2];
+            var argPtr = {{{ makeGetValue('varargs', 'argIndex', 'void*') }}};
             argIndex += Runtime.getAlignSize('void*', null, true);
             fields++;
             for (var i = 0; i < maxx; i++) {
