@@ -214,7 +214,7 @@ var Runtime = {
           // and it adds no size
           assert(index === type.fields.length);
           size = 0;
-          alignSize = 0;
+          alignSize = type.alignSize || QUANTUM_SIZE;
         } else {
           size = Types.types[field].flatSize;
           alignSize = Runtime.getAlignSize(null, Types.types[field].alignSize);
@@ -228,12 +228,8 @@ var Runtime = {
       }
       if (type.packed) alignSize = 1;
       type.alignSize = Math.max(type.alignSize, alignSize);
-      if (size > 0) {
-        var curr = Runtime.alignMemory(type.flatSize, alignSize); // if necessary, place this on aligned memory
-        type.flatSize = curr + size;
-      } else {
-        curr = prev;
-      }
+      var curr = Runtime.alignMemory(type.flatSize, alignSize); // if necessary, place this on aligned memory
+      type.flatSize = curr + size;
       if (prev >= 0) {
         diffs.push(curr-prev);
       }

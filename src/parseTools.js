@@ -969,6 +969,12 @@ function generateStructTypes(type) {
         }
         ret[index++] = type;
       } else {
+        if (Runtime.isStructType(type) && type[1] === '0') {
+          // this is [0 x something]. When inside another structure like here, it must be at the end,
+          // and it does nothing
+          assert(i === typeData.fields.length-1);
+          return;
+        }
         add(Types.types[type]);
       }
       var more = (i+1 < typeData.fields.length ? typeData.flatIndexes[i+1] : typeData.flatSize) - (index - start);
