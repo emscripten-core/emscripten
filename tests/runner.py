@@ -6963,11 +6963,12 @@ Pass: 0.000012 0.000012''')
     def test_sscanf_6(self):
       src = r'''
         #include <stdio.h>
-
+        #include <string.h>
         int main()
         {
           char *date = "18.07.2013w";
           char c[10];
+          memset(c, 0, 10);
           int y, m, d, i;
           i = sscanf(date, "%d.%d.%4d%c", &d, &m, &y, c);
           printf("date: %s; day %2d, month %2d, year %4d, extra: %c, %d\n", date, d, m, y, c[0], i);
@@ -11048,7 +11049,7 @@ f.close()
                    self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a']),
                    open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
                    {
-                     500: (340, 345),
+                     500: (340, 345), # too big, need if-else chain flattening
                     1000: (380, 390),
                     2000: (395, 410),
                     5000: (800, 1100),
