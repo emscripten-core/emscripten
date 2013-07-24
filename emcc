@@ -302,6 +302,9 @@ Options that are modified or new in %s include:
                            your main compiled code (or run it before in
                            some other way).
 
+                           For more docs on the options --preload-file
+                           accepts, see  https://github.com/kripken/emscripten/wiki/Filesystem-Guide
+
   --compression <codec>    Compress both the compiled code and embedded/
                            preloaded files. <codec> should be a triple,
 
