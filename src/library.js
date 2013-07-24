@@ -1048,27 +1048,45 @@ LibraryManager.library = {
   mknod: function(path, mode, dev) {
     // int mknod(const char *path, mode_t mode, dev_t dev);
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/mknod.html
-    if (dev !== 0 || !(mode & 0xC000)) {  // S_IFREG | S_IFDIR.
-      // Can't create devices or pipes through mknod().
+    path = Pointer_stringify(path);
+    var fmt = (mode & {{{ cDefine('S_IFMT') }}});
+    if (fmt !== {{{ cDefine('S_IFREG') }}} && fmt !== {{{ cDefine('S_IFCHR') }}} &&
+        fmt !== {{{ cDefine('S_IFBLK') }}} && fmt !== {{{ cDefine('S_IFIFO') }}} &&
+        fmt !== {{{ cDefine('S_IFSOCK') }}}) {
+      // not valid formats for mknod
       ___setErrNo(ERRNO_CODES.EINVAL);
       return -1;
-    } else {
-      var properties = {contents: [], isFolder: Boolean(mode & 0x4000)};  // S_IFDIR.
-      path = FS.analyzePath(Pointer_stringify(path));
-      try {
-        FS.createObject(path.parentObject, path.name, properties,
-                        mode & 0x100, mode & 0x80);  // S_IRUSR, S_IWUSR.
-        return 0;
-      } catch (e) {
-        return -1;
-      }
+    }
+    if (fmt === {{{ cDefine('S_IFCHR') }}} || fmt === {{{ cDefine('S_IFBLK') }}} ||
+        fmt === {{{ cDefine('S_IFIFO') }}} || fmt === {{{ cDefine('S_IFSOCK') }}}) {
+      // not supported currently
+      ___setErrNo(ERRNO_CODES.EPERM);
+      return -1;
+    }
+    path = FS.analyzePath(path);
+    var properties = { contents: [], isFolder: false };  // S_IFDIR.
+    try {
+      FS.createObject(path.parentObject, path.name, properties,
+                      mode & 0x100, mode & 0x80);  // S_IRUSR, S_IWUSR.
+      return 0;
+    } catch (e) {
+      return -1;
     }
   },
   mkdir__deps: ['mknod'],
   mkdir: function(path, mode) {
     // int mkdir(const char *path, mode_t mode);
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/mkdir.html
-    return _mknod(path, 0x4000 | (mode & 0x180), 0);  // S_IFDIR, S_IRUSR | S_IWUSR.
+    path = Pointer_stringify(path);
+    path = FS.analyzePath(path);
+    var properties = { contents: [], isFolder: true };
+    try {
+      FS.createObject(path.parentObject, path.name, properties,
+                      mode & 0x100, mode & 0x80);  // S_IRUSR, S_IWUSR.
+      return 0;
+    } catch (e) {
+      return -1;
+    }
   },
   mkfifo__deps: ['__setErrNo', '$ERRNO_CODES'],
   mkfifo: function(path, mode) {
@@ -1082,10 +1100,13 @@ LibraryManager.library = {
     return -1;
   },
   chmod__deps: ['$FS'],
-  chmod: function(path, mode) {
+  chmod: function(path, mode, dontResolveLastLink) {
     // int chmod(const char *path, mode_t mode);
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/chmod.html
-    var obj = FS.findObject(Pointer_stringify(path));
+    // NOTE: dontResolveLastLink is a shortcut for lchmod(). It should never be
+    //       used in client code.
+    path = typeof path !== 'string' ? Pointer_stringify(path) : path;
+    var obj = FS.findObject(path, dontResolveLastLink);
     if (obj === null) return -1;
     obj.read = mode & 0x100;  // S_IRUSR.
     obj.write = mode & 0x80;  // S_IWUSR.
@@ -1096,15 +1117,16 @@ LibraryManager.library = {
   fchmod: function(fildes, mode) {
     // int fchmod(int fildes, mode_t mode);
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/fchmod.html
-    if (!FS.streams[fildes]) {
+    var stream = FS.streams[fildes];
+    if (!stream) {
       ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
-    } else {
-      var pathArray = intArrayFromString(FS.streams[fildes].path);
-      return _chmod(allocate(pathArray, 'i8', ALLOC_STACK), mode);
     }
+    return _chmod(stream.path, mode);
   },
-  lchmod: function() { throw 'TODO: lchmod' },
+  lchmod: function(path, mode) {
+    return _chmod(path, mode, true);
+  },
 
   umask__deps: ['$FS'],
   umask: function(newMask) {
@@ -6931,15 +6953,15 @@ LibraryManager.library = {
   // NOTE: These are fake, since we don't support the C device creation API.
   // http://www.kernel.org/doc/man-pages/online/pages/man3/minor.3.html
   makedev: function(maj, min) {
-    return 0;
+    return ((maj) << 8 | (min));
   },
   gnu_dev_makedev: 'makedev',
   major: function(dev) {
-    return 0;
+    return ((dev) >> 8);
   },
   gnu_dev_major: 'major',
   minor: function(dev) {
-    return 0;
+    return ((dev) & 0xff);
   },
   gnu_dev_minor: 'minor',
 
