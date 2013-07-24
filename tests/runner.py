@@ -4062,6 +4062,11 @@ def process(filename):
         Settings.EXPORTED_FUNCTIONS = ['_main', '_save_me_aimee']
         self.do_run(src, 'hello world!\n*100*\n*fivesix*\nmann\n', post_build=check)
 
+        # test EXPORT_ALL
+        Settings.EXPORTED_FUNCTIONS = []
+        Settings.EXPORT_ALL = 1
+        self.do_run(src, 'hello world!\n*100*\n*fivesix*\nmann\n', post_build=check)
+
     def test_inlinejs(self):
         if Settings.ASM_JS: return self.skip('asm does not support random code, TODO: something that works in asm')
         src = r'''
