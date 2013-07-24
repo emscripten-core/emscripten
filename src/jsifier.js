@@ -1211,7 +1211,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     // in an assignment
     var disabled = DISABLE_EXCEPTION_CATCHING == 2  && !(item.funcData.ident in EXCEPTION_CATCHING_WHITELIST); 
     var phiSets = calcPhiSets(item);
-    var call_ = makeFunctionCall(item.ident, item.params, item.funcData, item.type, ASM_JS && !disabled, !!item.assignTo || !item.standalone);
+    var call_ = makeFunctionCall(item.ident, item.params, item.funcData, item.type, ASM_JS && !disabled, !!item.assignTo || !item.standalone, true);
 
     var ret;
 
@@ -1368,7 +1368,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     return ret;
   });
 
-  function makeFunctionCall(ident, params, funcData, type, forceByPointer, hasReturn) {
+  function makeFunctionCall(ident, params, funcData, type, forceByPointer, hasReturn, invoke) {
     // We cannot compile assembly. See comment in intertyper.js:'Call'
     assert(ident != 'asm', 'Inline assembly cannot be compiled to JavaScript!');
 
@@ -1433,7 +1433,7 @@ function JSify(data, functionsOnly, givenFunctions) {
 
     args = args.map(function(arg, i) { return indexizeFunctions(arg, argsTypes[i]) });
     if (ASM_JS) {
-      if (shortident in Functions.libraryFunctions || simpleIdent in Functions.libraryFunctions || byPointerForced || funcData.setjmpTable) {
+      if (shortident in Functions.libraryFunctions || simpleIdent in Functions.libraryFunctions || byPointerForced || invoke || funcData.setjmpTable) {
         args = args.map(function(arg, i) { return asmCoercion(arg, argsTypes[i]) });
       } else {
         args = args.map(function(arg, i) { return asmEnsureFloat(arg, argsTypes[i]) });
@@ -1522,7 +1522,8 @@ function JSify(data, functionsOnly, givenFunctions) {
       var sig = Functions.getSignature(returnType, argsTypes, hasVarArgs);
       if (ASM_JS) {
         assert(returnType.search(/\("'\[,/) == -1); // XXX need isFunctionType(type, out)
-        if (!byPointerForced && !funcData.setjmpTable) {
+        var functionTableCall = !byPointerForced && !funcData.setjmpTable && !invoke;
+        if (functionTableCall) {
           // normal asm function pointer call
           callIdent = '(' + callIdent + ')&{{{ FTM_' + sig + ' }}}'; // the function table mask is set in emscripten.py
           Functions.neededTables[sig] = 1;
@@ -1537,7 +1538,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         assert(!ASM_JS, 'cannot emit safe dyncalls in asm');
         callIdent = '(tempInt=' + callIdent + ',tempInt < 0 || tempInt >= FUNCTION_TABLE.length-1 || !FUNCTION_TABLE[tempInt] ? abort("dyncall error: ' + sig + ' " + FUNCTION_TABLE_NAMES[tempInt]) : tempInt)';
       }
-      if (!ASM_JS || (!byPointerForced && !funcData.setjmpTable)) callIdent = Functions.getTable(sig) + '[' + callIdent + ']';
+      if (!ASM_JS || functionTableCall) callIdent = Functions.getTable(sig) + '[' + callIdent + ']';
     }
 
     var ret = callIdent + '(' + args.join(', ') + ')';

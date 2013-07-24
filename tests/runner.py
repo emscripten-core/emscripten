@@ -2969,6 +2969,37 @@ back
           self.emcc_args.pop() ; self.emcc_args.pop() # disable closure to work around a closure bug
         self.do_run(src, 'Throw...Construct...Catched...Destruct...Throw...Construct...Copy...Catched...Destruct...Destruct...')
 
+    def test_exception_2(self):
+      if self.emcc_args is None: return self.skip('need emcc to add in libcxx properly')
+      Settings.DISABLE_EXCEPTION_CATCHING = 0
+      src = r'''
+        #include <stdexcept>
+        #include <stdio.h>
+
+        typedef void (*FuncPtr)();
+
+        void ThrowException()
+        {
+	        throw std::runtime_error("catch me!");
+        }
+
+        FuncPtr ptr = ThrowException;
+
+        int main()
+        {
+	        try
+	        {
+		        ptr();
+	        }
+	        catch(...)
+	        {
+		        printf("Exception caught successfully!\n");
+	        }
+	        return 0;
+        }
+      '''
+      self.do_run(src, 'Exception caught successfully!')
+
     def test_white_list_exception(self):
       Settings.DISABLE_EXCEPTION_CATCHING = 2
       Settings.EXCEPTION_CATCHING_WHITELIST = ["__Z12somefunctionv"]
