@@ -1694,7 +1694,7 @@ function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
       }
       case 'float': return ['HEAPF32'];
       default: {
-        throw 'what, exactly, can we do for unknown types in TA2?! ' + new Error().stack;
+        throw 'what, exactly, can we do for unknown types in TA2?! ' + [new Error().stack, ptr, type, allowMultiple, unsigned];
       }
     }
   }
