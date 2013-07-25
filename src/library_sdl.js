@@ -365,7 +365,7 @@ var LibrarySDL = {
     freeSurface: function(surf) {
       var refcountPointer = surf + Runtime.QUANTUM_SIZE * 14;
       var refcount = {{{ makeGetValue('refcountPointer', '0', 'i32') }}};
-      if (refcount > 0) {
+      if (refcount > 1) {
         {{{ makeSetValue('refcountPointer', '0', 'refcount - 1', 'i32') }}};
         return;
       }
