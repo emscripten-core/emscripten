@@ -273,6 +273,43 @@ function vars_w_stack(x, y) {
  a = HEAP32[sp + 40 >> 2] | 0;
  b = +HEAPF32[sp + 48 >> 2];
 }
+function chain() {
+ var helper$0 = 0, sp = 0;
+ sp = STACKTOP;
+ STACKTOP = STACKTOP + 176 | 0;
+ helper$0 = 1;
+ HEAP32[sp + 56 >> 2] = 0;
+ HEAP32[sp + 60 >> 2] = 0;
+ HEAP32[sp + 8 >> 2] = helper$0;
+ sp = chain$5(sp) | 0;
+ helper$0 = HEAP32[sp + 8 >> 2] | 0;
+ HEAP32[sp + 48 >> 2] = 0;
+ HEAP32[sp + 52 >> 2] = 0;
+ HEAP32[sp + 8 >> 2] = helper$0;
+ sp = chain$4(sp) | 0;
+ helper$0 = HEAP32[sp + 8 >> 2] | 0;
+ HEAP32[sp + 40 >> 2] = 0;
+ HEAP32[sp + 44 >> 2] = 0;
+ HEAP32[sp + 8 >> 2] = helper$0;
+ sp = chain$3(sp) | 0;
+ helper$0 = HEAP32[sp + 8 >> 2] | 0;
+ HEAP32[sp + 32 >> 2] = 0;
+ HEAP32[sp + 36 >> 2] = 0;
+ HEAP32[sp + 8 >> 2] = helper$0;
+ sp = chain$2(sp) | 0;
+ helper$0 = HEAP32[sp + 8 >> 2] | 0;
+ HEAP32[sp + 24 >> 2] = 0;
+ HEAP32[sp + 28 >> 2] = 0;
+ HEAP32[sp + 8 >> 2] = helper$0;
+ sp = chain$1(sp) | 0;
+ helper$0 = HEAP32[sp + 8 >> 2] | 0;
+ HEAP32[sp + 16 >> 2] = 0;
+ HEAP32[sp + 20 >> 2] = 0;
+ HEAP32[sp + 8 >> 2] = helper$0;
+ sp = chain$0(sp) | 0;
+ helper$0 = HEAP32[sp + 8 >> 2] | 0;
+ STACKTOP = sp;
+}
 function lin$0(sp) {
  sp = sp | 0;
  c(13);
@@ -561,6 +598,100 @@ function vars_w_stack$1(sp) {
  a = c(3 + a);
  HEAPF32[sp + 48 >> 2] = b;
  HEAP32[sp + 40 >> 2] = a;
+ return sp | 0;
+}
+function chain$0(sp) {
+ sp = sp | 0;
+ var helper$0 = 0;
+ helper$0 = HEAP32[sp + 8 >> 2] | 0;
+ if (helper$0 ? x == 11 : 0) {
+  helper$0 = 0;
+  print(11);
+ }
+ if (helper$0 ? x == 12 : 0) {
+  helper$0 = 0;
+  print(12);
+ }
+ if (helper$0) {
+  helper$0 = 0;
+  print(99);
+ }
+ HEAP32[sp + 8 >> 2] = helper$0;
+ return sp | 0;
+}
+function chain$1(sp) {
+ sp = sp | 0;
+ var helper$0 = 0;
+ helper$0 = HEAP32[sp + 8 >> 2] | 0;
+ if (helper$0 ? x == 9 : 0) {
+  helper$0 = 0;
+  print(9);
+ }
+ if (helper$0 ? x == 10 : 0) {
+  helper$0 = 0;
+  print(10);
+ }
+ HEAP32[sp + 8 >> 2] = helper$0;
+ return sp | 0;
+}
+function chain$2(sp) {
+ sp = sp | 0;
+ var helper$0 = 0;
+ helper$0 = HEAP32[sp + 8 >> 2] | 0;
+ if (helper$0 ? x == 7 : 0) {
+  helper$0 = 0;
+  print(7);
+ }
+ if (helper$0 ? x == 8 : 0) {
+  helper$0 = 0;
+  print(8);
+ }
+ HEAP32[sp + 8 >> 2] = helper$0;
+ return sp | 0;
+}
+function chain$3(sp) {
+ sp = sp | 0;
+ var helper$0 = 0;
+ helper$0 = HEAP32[sp + 8 >> 2] | 0;
+ if (helper$0 ? x == 5 : 0) {
+  helper$0 = 0;
+  print(5);
+ }
+ if (helper$0 ? x == 6 : 0) {
+  helper$0 = 0;
+  print(6);
+ }
+ HEAP32[sp + 8 >> 2] = helper$0;
+ return sp | 0;
+}
+function chain$4(sp) {
+ sp = sp | 0;
+ var helper$0 = 0;
+ helper$0 = HEAP32[sp + 8 >> 2] | 0;
+ if (helper$0 ? x == 3 : 0) {
+  helper$0 = 0;
+  print(3);
+ }
+ if (helper$0 ? x == 4 : 0) {
+  helper$0 = 0;
+  print(4);
+ }
+ HEAP32[sp + 8 >> 2] = helper$0;
+ return sp | 0;
+}
+function chain$5(sp) {
+ sp = sp | 0;
+ var helper$0 = 0;
+ helper$0 = HEAP32[sp + 8 >> 2] | 0;
+ if (helper$0 ? x == 1 : 0) {
+  helper$0 = 0;
+  print(1);
+ }
+ if (helper$0 ? x == 2 : 0) {
+  helper$0 = 0;
+  print(2);
+ }
+ HEAP32[sp + 8 >> 2] = helper$0;
  return sp | 0;
 }
 

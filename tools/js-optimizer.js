@@ -2997,6 +2997,63 @@ function outline(ast) {
     });
   }
 
+  // Try to flatten out code as much as possible, to make outlining more feasible.
+  function flatten(func, asmData) {
+    var minSize = sizeToOutline/3;
+    var helperId = 0;
+    function getHelper() {
+      while (1) {
+        var ret = 'helper$' + (helperId++);
+        if (!(ret in asmData.vars) && !(ret in asmData.params)) {
+          asmData.vars[ret] = ASM_INT;
+          return ret;
+        }
+      }
+    }
+    traverse(func, function(node) {
+      var stats = getStatements(node);
+      if (stats) {
+        for (var i = 0; i < stats.length; i++) {
+          var node = stats[i]; // step over param
+          var type = node[0];
+          if (measureSize(node) >= minSize) {
+            if (type === 'if') {
+              var reps = [];
+              var helper = getHelper();
+              // clear helper
+              reps.push(['stat', ['assign', true, ['name', helper], ['num', 1]]]);
+              // gather parts
+              var parts = [];
+              var curr = node;
+              while (1) {
+                parts.push({ condition: curr[1], body: curr[2] });
+                curr = curr[3];
+                if (!curr) break;
+                if (curr[0] != 'if') {
+                  parts.push({ condition: null, body: curr });
+                  break;
+                }
+              }
+              // generate flattened code
+              parts.forEach(function(part) {
+                var condition = ['name', helper];
+                if (part.condition) condition = ['conditional', condition, part.condition, ['num', 0]];
+                assert(part.body[0] == 'block');
+                reps.push(makeIf(condition, part.body[1]));
+                getStatements(part.body).unshift(['stat', ['assign', true, ['name', helper], ['num', 0]]]);
+              });
+              // replace code and update i
+              stats.splice.apply(stats, [i, 1].concat(reps));
+              i--; // negate loop increment
+              i += reps.length;
+              continue;
+            }
+          }
+        }
+      }
+    });
+  }
+
   // Prepares information for spilling of local variables
   function analyzeFunction(func, asmData) {
     var stack = []; // list of variables, each gets 8 bytes
@@ -3369,15 +3426,17 @@ function outline(ast) {
           break;
         }
       }
+
       var stat = stats[i];
-      if (stat[0] === 'end-outline-call') {
+      while (stat[0] === 'end-outline-call') {
         // we cannot outline through an outline call, so include all of it
-        while (stats[i--][0] !== 'begin-outline-call') {
-          assert(i >= 0);
+        while (stats[--i][0] !== 'begin-outline-call') {
+          assert(i >= 1);
+          assert(stats[i][0] !== 'end-outline-call');
         }
-        assert(i >= 0);
         stat = stats[i];
       }
+
       var size = measureSize(stat);
       //printErr(level + ' size          ' + [i, size]);
       if (size >= sizeToOutline) {
@@ -3406,7 +3465,7 @@ function outline(ast) {
       // If this is big enough to outline, but not too big (if very close to the size of the full function,
       // outlining is pointless; remove stats from the end to try to achieve the good case), then outline.
       // Also, try to reduce the size if it is much larger than the hoped-for size
-      while ((sizeSeen > maxSize || sizeSeen > 2*sizeToOutline) && i < end && stats[i][0] !== 'end-outline-call') {
+      while ((sizeSeen > maxSize || sizeSeen > 2*sizeToOutline) && end > i+1 && stats[end][0] !== 'begin-outline-call' && stats[end][0] !== 'end-outline-call') {
         sizeSeen -= measureSize(stats[end]);
         if (sizeSeen >= sizeToOutline) {
           end--;
@@ -3415,6 +3474,19 @@ function outline(ast) {
           break;
         }
       }
+      // verify we are not outlining through an outline call
+      var sum = 0;
+      stats.slice(i, end+1).forEach(function(stat) {
+        if (stat[0] == 'begin-outline-call') {
+          assert(sum == 0);
+          sum++;
+        } else if (stat[0] == 'end-outline-call') {
+          assert(sum == 1);
+          sum--;
+        }
+      });
+      assert(sum == 0);
+      // final decision and action
       if (sizeSeen >= sizeToOutline && sizeSeen <= maxSize) {
         ret.push.apply(ret, doOutline(func, asmData, stats, i, end)); // outline [i, .. ,end] inclusive
         printErr('performed outline on ' + func[1] + ' of ' + sizeSeen + ', func is now size ' + measureSize(func));
@@ -3449,6 +3521,7 @@ function outline(ast) {
       if (size >= sizeToOutline) {
         printErr('trying to reduce the size of ' + func[1] + ' which is ' + size + ' (>= ' + sizeToOutline + ')');
         aggressiveVariableElimination(func, asmData);
+        flatten(func, asmData);
         analyzeFunction(func, asmData);
         var stats = getStatements(func);
         var ret = outlineStatements(func, asmData, stats, 0.9*size);

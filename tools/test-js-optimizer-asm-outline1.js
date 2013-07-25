@@ -230,5 +230,34 @@ function vars_w_stack(x, y) {
   b = c(7+a);
   STACKTOP = sp;
 }
+function chain() {
+  if (x == 1) {
+    print(1);
+  } else if (x == 2) {
+    print(2);
+  } else if (x == 3) {
+    print(3);
+  } else if (x == 4) {
+    print(4);
+  } else if (x == 5) {
+    print(5);
+  } else if (x == 6) {
+    print(6);
+  } else if (x == 7) {
+    print(7);
+  } else if (x == 8) {
+    print(8);
+  } else if (x == 9) {
+    print(9);
+  } else if (x == 10) {
+    print(10);
+  } else if (x == 11) {
+    print(11);
+  } else if (x == 12) {
+    print(12);
+  } else {
+    print(99);
+  }
+}
 // EMSCRIPTEN_GENERATED_FUNCTIONS
 // EXTRA_INFO: { "sizeToOutline": 30, "allowCostlyOutlines": 1 }

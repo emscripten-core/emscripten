@@ -11081,9 +11081,9 @@ f.close()
                    self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a']),
                    open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
                    {
-                     500: (340, 345), # too big, need if-else chain flattening
-                    1000: (380, 390),
-                    2000: (395, 410),
+                     500: (300, 310),
+                    1000: (360, 370),
+                    2000: (480, 500),
                     5000: (800, 1100),
                        0: (1500, 1800)
                    },
