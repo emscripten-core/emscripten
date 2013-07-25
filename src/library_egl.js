@@ -40,9 +40,9 @@ var LibraryEGL = {
     getProcAddress: function(name) {
       var ret = 0;
       if (name[0] == 'g' && name[1] == 'l') {
-	ret = GL.getProcAddress(name);
-	//console.log("EGL getProcAddress for " + name + " -> " + ret);
-	return ret;
+        ret = GL.getProcAddress(name);
+        //console.log("EGL getProcAddress for " + name + " -> " + ret);
+        return ret;
       }
 
       switch (name) {

@@ -479,31 +479,31 @@ var LibrarySDL = {
           break;
 
         case 'touchstart':
-	  SDL.DOMButtons[0] = 1;
-	  SDL.events.push({
-	      type: 'mousedown',
-	      button: 0,
-	      pageX: event.changedTouches[0].pageX,
-	      pageY: event.changedTouches[0].pageY
-	  });
-	  break;
+          SDL.DOMButtons[0] = 1;
+          SDL.events.push({
+            type: 'mousedown',
+            button: 0,
+            pageX: event.changedTouches[0].pageX,
+            pageY: event.changedTouches[0].pageY
+          });
+          break;
         case 'touchend':
-	  SDL.DOMButtons[0] = 0;
-	  SDL.events.push({
-	      type: 'mouseup',
-	      button: 0,
-	      pageX: event.changedTouches[0].pageX,
-	      pageY: event.changedTouches[0].pageY
-	  });
-	  break;
+          SDL.DOMButtons[0] = 0;
+          SDL.events.push({
+            type: 'mouseup',
+            button: 0,
+            pageX: event.changedTouches[0].pageX,
+            pageY: event.changedTouches[0].pageY
+          });
+          break;
         case 'touchmove':
-	  SDL.events.push({
-	      type: 'mousemove',
-	      button: 0,
-	      pageX: event.changedTouches[0].pageX,
-	      pageY: event.changedTouches[0].pageY
-	  });
-	  break;
+          SDL.events.push({
+            type: 'mousemove',
+            button: 0,
+            pageX: event.changedTouches[0].pageX,
+            pageY: event.changedTouches[0].pageY
+          });
+          break;
 
         case 'blur':
         case 'visibilitychange': {
