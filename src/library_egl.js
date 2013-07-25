@@ -46,30 +46,30 @@ var LibraryEGL = {
       }
 
       switch (name) {
-      case 'eglGetDisplay': ret = {{{ Functions.getIndex('_eglGetDisplay', true) }}}; break;
-      case 'eglInitialize': ret = {{{ Functions.getIndex('_eglInitialize', true) }}}; break;
-      case 'eglTerminate': ret = {{{ Functions.getIndex('_eglTerminate', true) }}}; break;
-      case 'eglGetConfigs': ret = {{{ Functions.getIndex('_eglGetConfigs', true) }}}; break;
-      case 'eglChooseConfig': ret = {{{ Functions.getIndex('_eglChooseConfig', true) }}}; break;
-      case 'eglGetConfigAttrib': ret = {{{ Functions.getIndex('_eglGetConfigAttrib', true) }}}; break;
-      case 'eglCreateWindowSurface': ret = {{{ Functions.getIndex('_eglCreateWindowSurface', true) }}}; break;
-      case 'eglDestroySurface': ret = {{{ Functions.getIndex('_eglDestroySurface', true) }}}; break;
-      case 'eglCreateContext': ret = {{{ Functions.getIndex('_eglCreateContext', true) }}}; break;
-      case 'eglDestroyContext': ret = {{{ Functions.getIndex('_eglDestroyContext', true) }}}; break;
-      case 'eglQuerySurface': ret = {{{ Functions.getIndex('_eglQuerySurface', true) }}}; break;
-      case 'eglQueryContext': ret = {{{ Functions.getIndex('_eglQueryContext', true) }}}; break;
-      case 'eglGetError': ret = {{{ Functions.getIndex('_eglGetError', true) }}}; break;
-      case 'eglQueryString': ret = {{{ Functions.getIndex('_eglQueryString', true) }}}; break;
-      case 'eglBindAPI': ret = {{{ Functions.getIndex('_eglBindAPI', true) }}}; break;
-      case 'eglQueryAPI': ret = {{{ Functions.getIndex('_eglQueryAPI', true) }}}; break;
-      case 'eglWaitClient': ret = {{{ Functions.getIndex('_eglWaitClient', true) }}}; break;
-      case 'eglWaitNative': ret = {{{ Functions.getIndex('_eglWaitNative', true) }}}; break;
-      case 'eglSwapInterval': ret = {{{ Functions.getIndex('_eglSwapInterval', true) }}}; break;
-      case 'eglMakeCurrent': ret = {{{ Functions.getIndex('_eglMakeCurrent', true) }}}; break;
-      case 'eglSwapBuffers': ret = {{{ Functions.getIndex('_eglSwapBuffers', true) }}}; break;
+        case 'eglGetDisplay': ret = {{{ Functions.getIndex('_eglGetDisplay', true) }}}; break;
+        case 'eglInitialize': ret = {{{ Functions.getIndex('_eglInitialize', true) }}}; break;
+        case 'eglTerminate': ret = {{{ Functions.getIndex('_eglTerminate', true) }}}; break;
+        case 'eglGetConfigs': ret = {{{ Functions.getIndex('_eglGetConfigs', true) }}}; break;
+        case 'eglChooseConfig': ret = {{{ Functions.getIndex('_eglChooseConfig', true) }}}; break;
+        case 'eglGetConfigAttrib': ret = {{{ Functions.getIndex('_eglGetConfigAttrib', true) }}}; break;
+        case 'eglCreateWindowSurface': ret = {{{ Functions.getIndex('_eglCreateWindowSurface', true) }}}; break;
+        case 'eglDestroySurface': ret = {{{ Functions.getIndex('_eglDestroySurface', true) }}}; break;
+        case 'eglCreateContext': ret = {{{ Functions.getIndex('_eglCreateContext', true) }}}; break;
+        case 'eglDestroyContext': ret = {{{ Functions.getIndex('_eglDestroyContext', true) }}}; break;
+        case 'eglQuerySurface': ret = {{{ Functions.getIndex('_eglQuerySurface', true) }}}; break;
+        case 'eglQueryContext': ret = {{{ Functions.getIndex('_eglQueryContext', true) }}}; break;
+        case 'eglGetError': ret = {{{ Functions.getIndex('_eglGetError', true) }}}; break;
+        case 'eglQueryString': ret = {{{ Functions.getIndex('_eglQueryString', true) }}}; break;
+        case 'eglBindAPI': ret = {{{ Functions.getIndex('_eglBindAPI', true) }}}; break;
+        case 'eglQueryAPI': ret = {{{ Functions.getIndex('_eglQueryAPI', true) }}}; break;
+        case 'eglWaitClient': ret = {{{ Functions.getIndex('_eglWaitClient', true) }}}; break;
+        case 'eglWaitNative': ret = {{{ Functions.getIndex('_eglWaitNative', true) }}}; break;
+        case 'eglSwapInterval': ret = {{{ Functions.getIndex('_eglSwapInterval', true) }}}; break;
+        case 'eglMakeCurrent': ret = {{{ Functions.getIndex('_eglMakeCurrent', true) }}}; break;
+        case 'eglSwapBuffers': ret = {{{ Functions.getIndex('_eglSwapBuffers', true) }}}; break;
       }
       if (!ret) Module.printErr('WARNING: eglGetProcAddress failed for ' + name);
-      console.log("EGL getProcAddress for " + name + " -> " + ret);
+      //console.log("EGL getProcAddress for " + name + " -> " + ret);
       return ret;
     },
   },
@@ -564,8 +564,7 @@ for (var item in LibraryEGL) {
 LibraryEGL["$EGL__deps"] = LibraryEGL["$EGL__deps"].concat(eglFuncs);
 LibraryEGL["$EGL__deps"].push(function() {
   for (var func in Functions.getIndex.tentative) {
-    if (func.substr(0,4) != "_egl")
-      continue;
+    if (func.substr(0,4) != "_egl") continue;
 
     var fullName;
     if (func in Functions.implementedFunctions) {
@@ -580,3 +579,4 @@ LibraryEGL["$EGL__deps"].push(function() {
 });
 
 mergeInto(LibraryManager.library, LibraryEGL);
+
