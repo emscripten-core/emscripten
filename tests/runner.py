@@ -11064,7 +11064,9 @@ f.close()
               curr = None
           return ret
 
-        for outlining_limit in [500, 1000, 2000, 5000, 0]:
+        for outlining_limit in [250, 500, 1000, 2000, 5000, 0]:
+          print '\n', outlining_limit, '\n'
+          # TODO: test without -g3, tell all sorts
           Popen([PYTHON, EMCC, src] + libs + ['-o', 'test.js', '-O2', '-g3', '-s', 'OUTLINING_LIMIT=%d' % outlining_limit] + args).communicate()
           assert os.path.exists('test.js')
           shutil.copyfile('test.js', '%d_test.js' % outlining_limit)
@@ -11082,7 +11084,8 @@ f.close()
                    self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a']),
                    open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
                    {
-                     500: (290, 310),
+                     250: (330, 340),
+                     500: (270, 310),
                     1000: (350, 380),
                     2000: (470, 500),
                     5000: (800, 1100),
