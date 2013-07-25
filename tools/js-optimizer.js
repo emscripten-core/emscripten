@@ -1784,9 +1784,10 @@ function registerize(ast) {
           }
         }
       });
-      assert(fun[1] in extraInfo.globals, fun[1]);
-      fun[1] = extraInfo.globals[fun[1]];
-      assert(fun[1]);
+      if (fun[1] in extraInfo.globals) { // if fun was created by a previous optimization pass, it will not be here
+        fun[1] = extraInfo.globals[fun[1]];
+        assert(fun[1]);
+      }
       var nextRegName = 0;
     }
     var regTypes = {};
