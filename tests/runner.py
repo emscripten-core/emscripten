@@ -11051,16 +11051,17 @@ f.close()
         def measure_funcs(filename):
           i = 0
           start = -1
-          curr = '?'
+          curr = None
           ret = {}
           for line in open(filename):
             i += 1
             if line.startswith('function '):
               start = i
               curr = line
-            elif line.startswith('}'):
+            elif line.startswith('}') and curr:
               size = i - start
-              if size > 100: ret[curr] = size
+              ret[curr] = size
+              curr = None
           return ret
 
         for outlining_limit in [500, 1000, 2000, 5000, 0]:
@@ -11081,9 +11082,9 @@ f.close()
                    self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a']),
                    open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
                    {
-                     500: (300, 310),
-                    1000: (360, 370),
-                    2000: (480, 500),
+                     500: (290, 310),
+                    1000: (350, 380),
+                    2000: (470, 500),
                     5000: (800, 1100),
                        0: (1500, 1800)
                    },
