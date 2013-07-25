@@ -3072,7 +3072,7 @@ function outline(ast) {
     // Reserve an extra two spots per possible outlining: one for control flow var, the other for control flow data
     // The control variables are zeroed out when calling an outlined function, and after using
     // the value after they return.
-    asmData.maxOutlinings = Math.round(1.5*measureSize(func)/sizeToOutline);
+    asmData.maxOutlinings = Math.round(3*measureSize(func)/sizeToOutline);
     asmData.totalStackSize = stackSize + (stack.length + 2*asmData.maxOutlinings)*8;
     asmData.controlStackPos = function(i) { return stackSize + (stack.length + i)*8 };
     asmData.controlDataStackPos = function(i) { return stackSize + (stack.length + i)*8 + 4 };
@@ -3534,7 +3534,7 @@ function outline(ast) {
       var size = measureSize(func);
       if (size >= sizeToOutline) {
         printErr('trying to reduce the size of ' + func[1] + ' which is ' + size + ' (>= ' + sizeToOutline + ')');
-        aggressiveVariableElimination(func, asmData);
+        //aggressiveVariableElimination(func, asmData); // TODO: debug it, it does the wrong thing on hand-written memset
         flatten(func, asmData);
         analyzeFunction(func, asmData);
         var stats = getStatements(func);
