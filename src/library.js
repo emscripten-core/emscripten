@@ -4119,16 +4119,17 @@ LibraryManager.library = {
       return Runtime.dynCall('iii', cmp, [x, y]);
     }
     var keys = [];
-    for (var i = 0; i < num; i++) keys.push(i);
-    keys.sort(function(a, b) {
-      return comparator(base+a*size, base+b*size);
-    });
+    for (var i = 0; i < num; i++) keys.push(base + i * size);
+
+    keys.sort(getDynCallFunc_iii(cmp));
+
     // apply the sort
     var temp = _malloc(num*size);
     _memcpy(temp, base, num*size);
     for (var i = 0; i < num; i++) {
-      if (keys[i] == i) continue; // already in place
-      _memcpy(base+i*size, temp+keys[i]*size, size);
+      var idx = (keys[i] - base) / size;
+      if (idx == i) continue; // already in place
+      _memcpy(base+i*size, temp+idx*size, size);
     }
     _free(temp);
   },
