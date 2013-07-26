@@ -11085,10 +11085,10 @@ f.close()
                    self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a']),
                    open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
                    {
-                     100: (270, 280),
-                     250: (330, 360),
-                     500: (320, 350),
-                    1000: (440, 480),
+                     100: (190, 210),
+                     250: (300, 330),
+                     500: (250, 310),
+                    1000: (330, 400),
                     2000: (450, 500),
                     5000: (800, 1100),
                        0: (1500, 1800)
@@ -11848,6 +11848,8 @@ f.close()
         (path_from_root('tools', 'test-js-optimizer-asm-outline1.js'), open(path_from_root('tools', 'test-js-optimizer-asm-outline1-output.js')).read(),
          ['asm', 'outline']),
         (path_from_root('tools', 'test-js-optimizer-asm-outline2.js'), open(path_from_root('tools', 'test-js-optimizer-asm-outline2-output.js')).read(),
+         ['asm', 'outline']),
+        (path_from_root('tools', 'test-js-optimizer-asm-outline3.js'), open(path_from_root('tools', 'test-js-optimizer-asm-outline3-output.js')).read(),
          ['asm', 'outline']),
       ]:
         print input

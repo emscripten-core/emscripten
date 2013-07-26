@@ -2873,6 +2873,7 @@ function outline(ast) {
           defs[name] = node;
         } else {
           if (name in asmData.params) {
+            assignments[name] = (assignments[name] || 1) + 1; // init to 1 for initial parameter assignment
             considered[name] = true; // this parameter is not ssa, it must be in a hand-optimized function, so it is not trivial
           }
         }
@@ -3535,7 +3536,7 @@ function outline(ast) {
       var size = measureSize(func);
       if (size >= sizeToOutline) {
         printErr('trying to reduce the size of ' + func[1] + ' which is ' + size + ' (>= ' + sizeToOutline + ')');
-        //aggressiveVariableElimination(func, asmData); // TODO: debug it, it does the wrong thing on hand-written memset
+        aggressiveVariableElimination(func, asmData);
         flatten(func, asmData);
         analyzeFunction(func, asmData);
         var stats = getStatements(func);
