@@ -1,8 +1,14 @@
-try {
-  this['Module'] = Module;
-  Module.test;
-} catch(e) {
-  this['Module'] = Module = {};
+// Sometimes an existing Module object exists with properties
+// meant to overwrite the default module functionality. Here
+// we collect those properties and reapply _after_ we configure
+// the current environment's defaults to avoid having to be so
+// defensive during initialization.
+var Module = typeof {{{ EXPORT_NAME }}} !== 'undefined' ? {{{ EXPORT_NAME }}} : {};
+var moduleOverrides = {};
+for (var key in Module) {
+  if (Module.hasOwnProperty(key)) {
+    moduleOverrides[key] = Module[key];
+  }
 }
 
 // The environment setup code below is customized to use Module.
@@ -43,9 +49,7 @@ if (ENVIRONMENT_IS_NODE) {
     globalEval(read(f));
   };
 
-  if (!Module['arguments']) {
-    Module['arguments'] = process['argv'].slice(2);
-  }
+  Module['arguments'] = process['argv'].slice(2);
 
   module.exports = Module;
 }
@@ -59,29 +63,23 @@ if (ENVIRONMENT_IS_SHELL) {
     return read(f, 'binary');
   };
 
-  if (!Module['arguments']) {
-    if (typeof scriptArgs != 'undefined') {
-      Module['arguments'] = scriptArgs;
-    } else if (typeof arguments != 'undefined') {
-      Module['arguments'] = arguments;
-    }
+  if (typeof scriptArgs != 'undefined') {
+    Module['arguments'] = scriptArgs;
+  } else if (typeof arguments != 'undefined') {
+    Module['arguments'] = arguments;
   }
-  
+
   this['{{{ EXPORT_NAME }}}'] = Module;
 }
 
 if (ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_WORKER) {
-  if (!Module['print']) {
-    Module['print'] = function(x) {
-      console.log(x);
-    };
-  }
+  Module['print'] = function(x) {
+    console.log(x);
+  };
 
-  if (!Module['printErr']) {
-    Module['printErr'] = function(x) {
-      console.log(x);
-    };
-  }
+  Module['printErr'] = function(x) {
+    console.log(x);
+  };
 
   this['{{{ EXPORT_NAME }}}'] = Module;
 }
@@ -94,23 +92,19 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
     return xhr.responseText;
   };
 
-  if (!Module['arguments']) {
-    if (typeof arguments != 'undefined') {
-      Module['arguments'] = arguments;
-    }
+  if (typeof arguments != 'undefined') {
+    Module['arguments'] = arguments;
   }
 }
 
 if (ENVIRONMENT_IS_WORKER) {
   // We can do very little here...
   var TRY_USE_DUMP = false;
-  if (!Module['print']) {
-    Module['print'] = (TRY_USE_DUMP && (typeof(dump) !== "undefined") ? (function(x) {
-      dump(x);
-    }) : (function(x) {
-      // self.postMessage(x); // enable this if you want stdout to be sent as messages
-    }));
-  }
+  Module['print'] = (TRY_USE_DUMP && (typeof(dump) !== "undefined") ? (function(x) {
+    dump(x);
+  }) : (function(x) {
+    // self.postMessage(x); // enable this if you want stdout to be sent as messages
+  }));
 
   Module['load'] = importScripts;
 }
@@ -144,10 +138,16 @@ Module.print = Module['print'];
 Module.printErr = Module['printErr'];
 
 // Callbacks
-if (!Module['preRun']) Module['preRun'] = [];
-if (!Module['postRun']) Module['postRun'] = [];
+Module['preRun'] = [];
+Module['postRun'] = [];
 
-  {{BODY}}
+// Merge back in the overrides
+for (var key in moduleOverrides) {
+  if (moduleOverrides.hasOwnProperty(key)) {
+    Module[key] = moduleOverrides[key];
+  }
+}
 
-  // {{MODULE_ADDITIONS}}
+{{BODY}}
 
+// {{MODULE_ADDITIONS}}
