@@ -3001,7 +3001,7 @@ function outline(ast) {
 
   // Try to flatten out code as much as possible, to make outlining more feasible.
   function flatten(func, asmData) {
-    var minSize = sizeToOutline/3;
+    var minSize = sizeToOutline;
     var helperId = 0;
     function getHelper() {
       while (1) {
@@ -3012,18 +3012,22 @@ function outline(ast) {
         }
       }
     }
+    var ignore = [];
     traverse(func, function(node) {
       var stats = getStatements(node);
       if (stats) {
         for (var i = 0; i < stats.length; i++) {
           var node = stats[i]; // step over param
+          if (ignore.indexOf(node) >= 0) continue;
+          if (node[0] == 'stat') node = node[1];
+          if (ignore.indexOf(node) >= 0) continue;
           var type = node[0];
           if (measureSize(node) >= minSize) {
             if (type === 'if' && node[3]) {
               var reps = [];
               var helper = getHelper();
               // clear helper
-              reps.push(['stat', ['assign', true, ['name', helper], ['num', 1]]]);
+              reps.push(['stat', ['assign', true, ['name', helper], ['num', 1]]]); // 1 means continue in ifs
               // gather parts
               var parts = [];
               var curr = node;
@@ -3036,13 +3040,41 @@ function outline(ast) {
                   break;
                 }
               }
-              // generate flattened code
+              // chunkify. Each chunk is a chain of if-elses, with the new overhead just on entry and exit
+              var chunks = [];
+              var currSize = 0;
+              var currChunk = [];
               parts.forEach(function(part) {
-                var condition = ['name', helper];
-                if (part.condition) condition = ['conditional', condition, part.condition, ['num', 0]];
-                assert(part.body[0] == 'block');
-                reps.push(makeIf(condition, part.body[1]));
-                getStatements(part.body).unshift(['stat', ['assign', true, ['name', helper], ['num', 0]]]);
+                var size = (part.condition ? measureSize(part.condition) : 0) + measureSize(part.body) + 5; // add constant for overhead of extra code
+                assert(size > 0);
+                if (size + currSize >= minSize && currSize) {
+                  chunks.push(currChunk);
+                  currChunk = [];
+                  currSize = 0;
+                }
+                currChunk.push(part);
+                currSize += size;
+              });
+              assert(currSize);
+              chunks.push(currChunk);
+              // generate flattened code
+              chunks.forEach(function(chunk) {
+                var pre = ['stat', ['assign', true, ['name', helper], ['num', 0]]];
+                var chain = null, tail = null;
+                chunk.forEach(function(part) {
+                  // add to chain
+                  var contents = makeIf(part.condition || ['num', 1], part.body[1]);
+                  if (chain) {
+                    tail[3] = contents;
+                  } else {
+                    chain = contents;
+                    ignore.push(contents);
+                  }
+                  tail = contents;
+                });
+                // if none of the ifs were entered, in the final else note that we need to continue
+                tail[3] = ['block', [['stat', ['assign', true, ['name', helper], ['num', 1]]]]];
+                reps.push(makeIf(['name', helper], [pre, chain]));
               });
               // replace code and update i
               stats.splice.apply(stats, [i, 1].concat(reps));
@@ -3504,7 +3536,7 @@ function outline(ast) {
         var newFuncs = doOutline(func, asmData, stats, i, end); // outline [i, .. ,end] inclusive
         if (newFuncs.length) {
           ret.push.apply(ret, newFuncs);
-          printErr('performed outline on ' + func[1] + ' of ' + sizeSeen + ', func is now size ' + measureSize(func));
+          printErr('performed outline on ' + func[1] + ' of ' + sizeSeen + ', func is now size ' + measureSize(func) + ' ==> ' + newFuncs[0][1]);
         }
         sizeSeen = 0;
         end = i-1;
