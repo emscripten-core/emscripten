@@ -1743,7 +1743,7 @@ function registerize(ast) {
       }
     });
     vacuum(fun);
-    if (extraInfo) {
+    if (extraInfo && extraInfo.globals) {
       assert(asm);
       var usedGlobals = {};
       var nextLocal = 0;
@@ -1794,7 +1794,7 @@ function registerize(ast) {
     function getNewRegName(num, name) {
       if (!asm) return 'r' + num;
       var type = asmData.vars[name];
-      if (!extraInfo) {
+      if (!extraInfo || !extraInfo.globals) {
         var ret = (type ? 'd' : 'i') + num;
         regTypes[ret] = type;
         return ret;

@@ -11064,22 +11064,28 @@ f.close()
               curr = None
           return ret
 
-        for debug in ['-g1', '-g']:
-          for outlining_limit in [100, 250, 500, 1000, 2000, 5000, 0]:
+        for debug, outlining_limits in [
+          ([], (1000,)),
+          (['-g1'], (1000,)),
+          (['-g2'], (1000,)),
+          (['-g'], (100, 250, 500, 1000, 2000, 5000, 0))
+        ]:
+          for outlining_limit in outlining_limits:
             print '\n', debug, outlining_limit, '\n'
             # TODO: test without -g3, tell all sorts
-            Popen([PYTHON, EMCC, src] + libs + ['-o', 'test.js', '-O2', debug, '-s', 'OUTLINING_LIMIT=%d' % outlining_limit] + args).communicate()
+            Popen([PYTHON, EMCC, src] + libs + ['-o', 'test.js', '-O2'] + debug + ['-s', 'OUTLINING_LIMIT=%d' % outlining_limit] + args).communicate()
             assert os.path.exists('test.js')
             shutil.copyfile('test.js', '%d_test.js' % outlining_limit)
             for engine in JS_ENGINES:
               out = run_js('test.js', engine=engine, stderr=PIPE, full_output=True)
               self.assertContained(expected, out)
               if engine == SPIDERMONKEY_ENGINE: self.validate_asmjs(out)
-            low = expected_ranges[outlining_limit][0]
-            seen = max(measure_funcs('test.js').values())
-            high = expected_ranges[outlining_limit][1]
-            print outlining_limit, '   ', low, '<=', seen, '<=', high
-            assert low <= seen <= high
+            if debug == ['-g']:
+              low = expected_ranges[outlining_limit][0]
+              seen = max(measure_funcs('test.js').values())
+              high = expected_ranges[outlining_limit][1]
+              print outlining_limit, '   ', low, '<=', seen, '<=', high
+              assert low <= seen <= high
 
       test('zlib', path_from_root('tests', 'zlib', 'example.c'), 
                    self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a']),
