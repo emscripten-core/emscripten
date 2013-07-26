@@ -10507,11 +10507,11 @@ Options that are modified or new in %s include:
           assert 'SAFE_HEAP' not in generated, 'safe heap should not be used by default'
           assert ': while(' not in generated, 'when relooping we also js-optimize, so there should be no labelled whiles'
           if closure:
-            if opt_level == 0: assert 'Module._main =' in generated, 'closure compiler should have been run'
-            elif opt_level >= 1: assert 'Module._main=' in generated, 'closure compiler should have been run (and output should be minified)'
+            if opt_level == 0: assert '._main =' in generated, 'closure compiler should have been run'
+            elif opt_level >= 1: assert '._main=' in generated, 'closure compiler should have been run (and output should be minified)'
           else:
             # closure has not been run, we can do some additional checks. TODO: figure out how to do these even with closure
-            assert 'Module._main = ' not in generated, 'closure compiler should not have been run'
+            assert '._main = ' not in generated, 'closure compiler should not have been run'
             if keep_debug:
               assert ('(label)' in generated or '(label | 0)' in generated) == (opt_level <= 1), 'relooping should be in opt >= 2'
               assert ('assert(STACKTOP < STACK_MAX' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
