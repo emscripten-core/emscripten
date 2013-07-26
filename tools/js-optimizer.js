@@ -3018,7 +3018,7 @@ function outline(ast) {
           var node = stats[i]; // step over param
           var type = node[0];
           if (measureSize(node) >= minSize) {
-            if (type === 'if') {
+            if (type === 'if' && node[3]) {
               var reps = [];
               var helper = getHelper();
               // clear helper
