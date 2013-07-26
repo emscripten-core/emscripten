@@ -276,6 +276,8 @@ var LibrarySDL = {
       {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*5', '0', 'buffer', 'void*') }}}      // SDL_Surface.pixels
       {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*6', '0', '0', 'i32*') }}}      // SDL_Surface.offset
 
+      {{{ makeSetValue('surf+Runtime.QUANTUM_SIZE*14', '0', '1', 'i32') }}}
+
       {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.format', '0', '-2042224636', 'i32') }}} // SDL_PIXELFORMAT_RGBA8888
       {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.palette', '0', '0', 'i32') }}} // TODO
       {{{ makeSetValue('pixelFormat + SDL.structs.PixelFormat.BitsPerPixel', '0', 'bpp * 8', 'i8') }}}
@@ -362,6 +364,13 @@ var LibrarySDL = {
     },
 
     freeSurface: function(surf) {
+      var refcountPointer = surf + Runtime.QUANTUM_SIZE * 14;
+      var refcount = {{{ makeGetValue('refcountPointer', '0', 'i32') }}};
+      if (refcount > 1) {
+        {{{ makeSetValue('refcountPointer', '0', 'refcount - 1', 'i32') }}};
+        return;
+      }
+
       var info = SDL.surfaces[surf];
       if (!info.usePageCanvas && info.canvas) SDL.canvasPool.push(info.canvas);
       _free(info.buffer);
