@@ -4459,6 +4459,13 @@ LibraryManager.library = {
   llvm_memmove_p0i8_p0i8_i32: 'memmove',
   llvm_memmove_p0i8_p0i8_i64: 'memmove',
 
+  bcopy__deps: ['memmove'],
+  bcopy: function(src, dest, num) {
+    // void bcopy(const void *s1, void *s2, size_t n);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/bcopy.html
+    _memmove(dest, src, num);
+  },
+
   memset__inline: function(ptr, value, num, align) {
     return makeSetValues(ptr, 0, value, 'null', num, align);
   },
