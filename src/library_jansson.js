@@ -79,7 +79,7 @@ var LibraryJansson = {
       load: function(string, flags, error) {
         // This is potentially a security problem.
         // TODO: Make sure everything is properly escaped
-        var json_obj = eval('(' + string + ')');
+        var json_obj = JSON.parse(string);
 
         if (json_obj != null) {
           // The context is an array storing all child nodes.
