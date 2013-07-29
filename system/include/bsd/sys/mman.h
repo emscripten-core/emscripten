@@ -155,7 +155,7 @@ int	munlock __P((const void *, size_t));
 int	munmap __P((void *, size_t));
 #ifndef _POSIX_SOURCE
 int	madvise __P((void *, size_t, int));
-int	mincore __P((const void *, size_t, char *));
+int	mincore __P((const void *, size_t, unsigned char *));
 int	minherit __P((void *, size_t, int));
 #endif
 
