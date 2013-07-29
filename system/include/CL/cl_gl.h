@@ -1,5 +1,5 @@
 /**********************************************************************************
- * Copyright (c) 2011 The Khronos Group Inc.
+ * Copyright (c) 2008 - 2012 The Khronos Group Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and/or associated documentation files (the
@@ -52,6 +52,7 @@ typedef struct __GLsync *cl_GLsync;
 /* cl_gl_texture_info           */
 #define CL_GL_TEXTURE_TARGET                    0x2004
 #define CL_GL_MIPMAP_LEVEL                      0x2005
+#define CL_GL_NUM_SAMPLES                       0x2012
 
 
 extern CL_API_ENTRY cl_mem CL_API_CALL
@@ -103,24 +104,22 @@ clEnqueueReleaseGLObjects(cl_command_queue      /* command_queue */,
                           cl_event *            /* event */) CL_API_SUFFIX__VERSION_1_0;
 
 
-#ifdef CL_USE_DEPRECATED_OPENCL_1_1_APIS
-#warning CL_USE_DEPRECATED_OPENCL_1_1_APIS is defined. These APIs are unsupported and untested in OpenCL 1.2!
-    extern CL_API_ENTRY cl_mem CL_API_CALL
-    clCreateFromGLTexture2D(cl_context      /* context */,
-                            cl_mem_flags    /* flags */,
-                            cl_GLenum       /* target */,
-                            cl_GLint        /* miplevel */,
-                            cl_GLuint       /* texture */,
-                            cl_int *        /* errcode_ret */) CL_EXT_SUFFIX__VERSION_1_1_DEPRECATED;
+// Deprecated OpenCL 1.1 APIs
+extern CL_API_ENTRY CL_EXT_PREFIX__VERSION_1_1_DEPRECATED cl_mem CL_API_CALL
+clCreateFromGLTexture2D(cl_context      /* context */,
+                        cl_mem_flags    /* flags */,
+                        cl_GLenum       /* target */,
+                        cl_GLint        /* miplevel */,
+                        cl_GLuint       /* texture */,
+                        cl_int *        /* errcode_ret */) CL_EXT_SUFFIX__VERSION_1_1_DEPRECATED;
     
-    extern CL_API_ENTRY cl_mem CL_API_CALL
-    clCreateFromGLTexture3D(cl_context      /* context */,
-                            cl_mem_flags    /* flags */,
-                            cl_GLenum       /* target */,
-                            cl_GLint        /* miplevel */,
-                            cl_GLuint       /* texture */,
-                            cl_int *        /* errcode_ret */) CL_EXT_SUFFIX__VERSION_1_1_DEPRECATED;
-#endif /* CL_USE_DEPRECATED_OPENCL_1_2_APIS */
+extern CL_API_ENTRY CL_EXT_PREFIX__VERSION_1_1_DEPRECATED cl_mem CL_API_CALL
+clCreateFromGLTexture3D(cl_context      /* context */,
+                        cl_mem_flags    /* flags */,
+                        cl_GLenum       /* target */,
+                        cl_GLint        /* miplevel */,
+                        cl_GLuint       /* texture */,
+                        cl_int *        /* errcode_ret */) CL_EXT_SUFFIX__VERSION_1_1_DEPRECATED;
     
 /* cl_khr_gl_sharing extension  */
     

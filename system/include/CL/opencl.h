@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008-2010 The Khronos Group Inc.
+ * Copyright (c) 2008-2012 The Khronos Group Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and/or associated documentation files (the
@@ -21,7 +21,7 @@
  * MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
  ******************************************************************************/
 
-/* $Revision: 11707 $ on $Date: 2010-06-13 23:30:16 -0700 (Sun, 13 Jun 2010) $ */
+/* $Revision: 11708 $ on $Date: 2010-06-13 23:36:24 -0700 (Sun, 13 Jun 2010) $ */
 
 #ifndef __OPENCL_H
 #define __OPENCL_H

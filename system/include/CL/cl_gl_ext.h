@@ -1,5 +1,5 @@
 /**********************************************************************************
- * Copyright (c) 2008-2010 The Khronos Group Inc.
+ * Copyright (c) 2008-2012 The Khronos Group Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and/or associated documentation files (the
@@ -41,7 +41,7 @@ extern "C" {
 
 /*
  * For each extension, follow this template
- * * cl_VEN_extname extension  */
+ *  cl_VEN_extname extension  */
 /* #define cl_VEN_extname 1
  * ... define new types, if any
  * ... define new tokens, if any
