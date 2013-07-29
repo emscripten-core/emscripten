@@ -119,7 +119,25 @@ int main(int argc, char** argv)
     // Connect to a compute device
     //
     int gpu = 1;
-    err = clGetDeviceIDs(NULL, CL_DEVICE_TYPE_DEFAULT/*gpu ? CL_DEVICE_TYPE_GPU : CL_DEVICE_TYPE_CPU*/, 1, &device_id, NULL);
+    
+    // Parse command line options
+    //
+    i = 0;
+    int use_gpu = 1;
+    for( i = 0; i < argc && argv; i++)
+    {
+        if(!argv[i])
+            continue;
+            
+        if(strstr(argv[i], "cpu"))
+            use_gpu = 0;        
+
+        else if(strstr(argv[i], "gpu"))
+            use_gpu = 1;
+    }
+
+    printf("Call : clGetDeviceIDs ...\n");
+    err = clGetDeviceIDs(NULL, use_gpu ? CL_DEVICE_TYPE_GPU : CL_DEVICE_TYPE_CPU, 1, &device_id, NULL);
     if (err != CL_SUCCESS)
     {
         printf("Error: Failed to create a device group!\n");
@@ -128,6 +146,7 @@ int main(int argc, char** argv)
   
     // Create a compute context 
     //
+    printf("Call : clCreateContext ...\n");    
     context = clCreateContext(0, 1, &device_id, NULL, NULL, &err);
     if (!context)
     {
@@ -139,9 +158,12 @@ int main(int argc, char** argv)
     cl_char vendor_name[1024] = {0};
     cl_char device_name[1024] = {0};
     cl_bool image_support;
+        
+    printf("Call : clGetDeviceInfo ...\n");    
     err = clGetDeviceInfo(device_id, CL_DEVICE_VENDOR, sizeof(vendor_name), vendor_name, &returned_size);
     err|= clGetDeviceInfo(device_id, CL_DEVICE_NAME, sizeof(device_name), device_name, &returned_size);
     err|= clGetDeviceInfo(device_id, CL_DEVICE_IMAGE_SUPPORT, sizeof(device_name), &image_support, &returned_size);
+
     if (err != CL_SUCCESS)
     {
         printf("Error: Failed to retrieve device info!\n");
@@ -151,6 +173,7 @@ int main(int argc, char** argv)
     unsigned int device_count;
     cl_device_id device_ids[16];
 
+    printf("Call : clGetContextInfo ...\n");    
     err = clGetContextInfo(context, CL_CONTEXT_DEVICES, sizeof(device_ids), device_ids, &returned_size);
     if(err)
     {
@@ -160,10 +183,9 @@ int main(int argc, char** argv)
     
     device_count = returned_size / sizeof(cl_device_id);
     
-    printf("Connecting to %s %s ... Image Support %d : Devices count %d\n", vendor_name, device_name, image_support, device_count);
-    
     // Create a command commands
     //
+    printf("Call : clCreateCommandQueue ...\n");    
     commands = clCreateCommandQueue(context, device_id, 0, &err);
     if (!commands)
     {
@@ -173,6 +195,7 @@ int main(int argc, char** argv)
 
     // Create the compute program from the source buffer
     //
+    printf("Call : clCreateProgramWithSource ...\n");      
     program = clCreateProgramWithSource(context, 1, (const char **) & KernelSource, NULL, &err);
     if (!program)
     {
@@ -182,6 +205,7 @@ int main(int argc, char** argv)
 
     // Build the program executable
     //
+    printf("Call : clBuildProgram ...\n");          
     err = clBuildProgram(program, 0, NULL, NULL, NULL, NULL);
     if (err != CL_SUCCESS)
     {
@@ -196,6 +220,7 @@ int main(int argc, char** argv)
 
     // Create the compute kernel in the program we wish to run
     //
+    printf("Call : clCreateKernel ...\n");              
     kernel = clCreateKernel(program, "square", &err);
     if (!kernel || err != CL_SUCCESS)
     {
@@ -205,6 +230,7 @@ int main(int argc, char** argv)
 
     // Create the input and output arrays in device memory for our calculation
     //
+    printf("Call : clCreateBuffer ...\n");                  
     input = clCreateBuffer(context,  CL_MEM_READ_ONLY,  sizeof(float) * count, NULL, NULL);
     output = clCreateBuffer(context, CL_MEM_WRITE_ONLY, sizeof(float) * count, NULL, NULL);
     if (!input || !output)
@@ -215,6 +241,7 @@ int main(int argc, char** argv)
     
     // Write our data set into the input array in device memory 
     //
+    printf("Call : clEnqueueWriteBuffer ...\n");                      
     err = clEnqueueWriteBuffer(commands, input, CL_TRUE, 0, sizeof(float) * count, data, 0, NULL, NULL);
     if (err != CL_SUCCESS)
     {
@@ -224,6 +251,7 @@ int main(int argc, char** argv)
 
     // Set the arguments to our compute kernel
     //
+    printf("Call : clSetKernelArg ...\n");                          
     err = 0;
     err  = clSetKernelArg(kernel, 0, sizeof(cl_mem), &input);
     err |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &output);
@@ -236,6 +264,7 @@ int main(int argc, char** argv)
 
     // Get the maximum work group size for executing the kernel on the device
     //
+    printf("Call : clGetKernelWorkGroupInfo ...\n");                              
     err = clGetKernelWorkGroupInfo(kernel, device_id, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local), &local, NULL);
     if (err != CL_SUCCESS)
     {
@@ -247,6 +276,7 @@ int main(int argc, char** argv)
     // using the maximum number of work group items for this device
     //
     global = count;
+    printf("Call : clEnqueueNDRangeKernel ...\n");                                  
     err = clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
     if (err)
     {
@@ -256,10 +286,12 @@ int main(int argc, char** argv)
 
     // Wait for the command commands to get serviced before reading back results
     //
+    printf("Call : clFinish ...\n");        
     clFinish(commands);
 
     // Read back the results from the device to verify the output
     //
+    printf("Call : clEnqueueReadBuffer ...\n");            
     err = clEnqueueReadBuffer( commands, output, CL_TRUE, 0, sizeof(float) * count, results, 0, NULL, NULL );  
     if (err != CL_SUCCESS)
     {
@@ -279,6 +311,8 @@ int main(int argc, char** argv)
         #endif
             correct++;
     }
+    
+    printf("Connecting to \"%s\" \"%s\" ... Image Support %d : Devices count %d\n", vendor_name, device_name, image_support, device_count);
     
     // Print a brief summary detailing the results
     //

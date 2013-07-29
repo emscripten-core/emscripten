@@ -84,12 +84,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define USE_GL_ATTACHMENTS              (0)  // enable OpenGL attachments for Compute results
-#define DEBUG_INFO                      (0)     
+#define DEBUG_INFO                      (1)     
 #define COMPUTE_KERNEL_FILENAME         ("qjulia_kernel.cl")
 #define COMPUTE_KERNEL_METHOD_NAME      ("QJuliaKernel")
 #define SEPARATOR                       ("----------------------------------------------------------------------\n")
-#define WIDTH                           (512)
-#define HEIGHT                          (512)
+#define WIDTH                           (128)
+#define HEIGHT                          (128)
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -326,9 +326,13 @@ CreateTexture(uint width, uint height)
     
 #ifndef __EMSCRIPTEN__
     glActiveTextureARB(ActiveTextureUnit);
+#else
+    glActiveTexture(ActiveTextureUnit);
 #endif
+    
     glGenTextures(1, &TextureId);
     glBindTexture(TextureTarget, TextureId);
+
 #ifndef __EMSCRIPTEN__
     glTexParameteri(TextureTarget, GL_TEXTURE_WRAP_S, GL_CLAMP);
     glTexParameteri(TextureTarget, GL_TEXTURE_WRAP_T, GL_CLAMP);
@@ -356,13 +360,16 @@ RenderTexture( void *pvData )
 
     glMatrixMode( GL_TEXTURE );
     glLoadIdentity();
-
+    
     glEnable( TextureTarget );
     glBindTexture( TextureTarget, TextureId );
 
-    if(pvData)
+    
+    if(pvData) {
         glTexSubImage2D(TextureTarget, 0, 0, 0, TextureWidth, TextureHeight, 
                         TextureFormat, TextureType, pvData);
+    }
+    
 #ifdef __EMSCRIPTEN__
     glDisableClientState(GL_TEXTURE_COORD_ARRAY);
     glDisableClientState(GL_VERTEX_ARRAY);
@@ -835,7 +842,9 @@ Cleanup(void)
     clReleaseProgram(ComputeProgram);
     clReleaseCommandQueue(ComputeCommands);
     clReleaseMemObject(ComputeResult);
+#if (USE_GL_ATTACHMENTS)
     clReleaseMemObject(ComputeImage);
+#endif
     clReleaseContext(ComputeContext);
     
     ComputeCommands = 0;
@@ -978,9 +987,9 @@ ReportStats(
         double fMs = (TimeElapsed * 1000.0 / (double) FrameCount);
         double fFps = 1.0 / (fMs / 1000.0);
 #ifdef __EMSCRIPTEN__
-        printf("[%s] Compute: %3.2f ms  Display: %3.2f fps (%s)\n",
+        /*printf("[%s] Compute: %3.2f ms  Display: %3.2f fps (%s)\n",
                 (ComputeDeviceType == CL_DEVICE_TYPE_GPU) ? "GPU" : "CPU",
-                fMs, fFps, USE_GL_ATTACHMENTS ? "attached" : "copying");
+                fMs, fFps, USE_GL_ATTACHMENTS ? "attached" : "copying");*/
 #else
         sprintf(StatsString, "[%s] Compute: %3.2f ms  Display: %3.2f fps (%s)\n", 
                 (ComputeDeviceType == CL_DEVICE_TYPE_GPU) ? "GPU" : "CPU", 
@@ -1177,15 +1186,17 @@ int main(int argc, char** argv)
     glutCreateWindow (argv[0]);
     if (Initialize (use_gpu) == GL_NO_ERROR)
     {
+      
         glutDisplayFunc(Display);
         glutIdleFunc(Idle);
         glutReshapeFunc(Reshape);
         glutKeyboardFunc(Keyboard);
 
         atexit(Shutdown);
+      	
         printf("Starting event loop...\n");
 
-        glutMainLoop();
+        glutMainLoop();     
     }
 
     return 0;
