@@ -2698,13 +2698,13 @@ LibraryManager.library = {
           if (next <= 0) break mainLoop;  // End of input.
           next = get();
         }
-        unget(next);
+        unget();
         formatIndex++;
       } else {
         // Not a specifier.
         next = get();
         if (format[formatIndex].charCodeAt(0) !== next) {
-          unget(next);
+          unget();
           break mainLoop;
         }
         formatIndex++;
@@ -3594,6 +3594,8 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/ungetc.html
     if (FS.streams[stream]) {
       c = unSign(c & 0xFF);
+      // A successful call to ungetc() shall clear the end-of-file indicator for the stream.
+      FS.streams[stream].eof = false;
       FS.streams[stream].ungotten.push(c);
       return c;
     } else {
@@ -3609,14 +3611,21 @@ LibraryManager.library = {
     return -1;
   },
   fscanf__deps: ['$FS', '__setErrNo', '$ERRNO_CODES',
-                 '_scanString', 'fgetc', 'fseek', 'ftell'],
+                 '_scanString', 'getc', 'ungetc'],
   fscanf: function(stream, format, varargs) {
     // int fscanf(FILE *restrict stream, const char *restrict format, ... );
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/scanf.html
     if (FS.streams[stream]) {
-      var i = _ftell(stream), SEEK_SET = 0;
-      var get = function () { i++; return _fgetc(stream); };
-      var unget = function () { _fseek(stream, --i, SEEK_SET); };
+      var stack = [];
+      var get = function() {
+        var ret = _fgetc(stream);
+        if (ret > 0)
+          stack.push(ret);
+        return ret;
+      };
+      var unget = function() {
+        return _ungetc(stack.pop(), stream);
+      };
       return __scanString(format, get, unget, varargs);
     } else {
       return -1;
