@@ -212,7 +212,7 @@ var Runtime = {
         if (field[1] === '0') {
           // this is [0 x something]. When inside another structure like here, it must be at the end,
           // and it adds no size
-          assert(index === type.fields.length);
+          // XXX this happens in java-nbody for example... assert(index === type.fields.length, 'zero-length in the middle!');
           size = 0;
           alignSize = type.alignSize || QUANTUM_SIZE;
         } else {

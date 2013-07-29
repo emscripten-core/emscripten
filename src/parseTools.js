@@ -970,10 +970,9 @@ function generateStructTypes(type) {
         ret[index++] = type;
       } else {
         if (Runtime.isStructType(type) && type[1] === '0') {
-          // this is [0 x something]. When inside another structure like here, it must be at the end,
-          // and it does nothing
-          assert(i === typeData.fields.length-1);
-          return;
+          // this is [0 x something], which does nothing
+          // XXX this happens in java_nbody... assert(i === typeData.fields.length-1);
+          continue;
         }
         add(Types.types[type]);
       }
