@@ -1,9 +1,22 @@
+// The Module object: Our interface to the outside world. We import
+// and export values on it, and do the work to get that through
+// closure compiler if necessary. There are various ways Module can be used:
+// 1. Not defined. We create it here
+// 2. A function parameter, function(Module) { ..generated code.. }
+// 3. pre-run appended it, var Module = {}; ..generated code..
+// 4. External script tag defines var Module.
+// We need to do an eval in order to handle the closure compiler
+// case, where this code here is minified but Module was defined
+// elsewhere (e.g. case 4 above). We also need to check if Module
+// already exists (e.g. case 3 above).
+var Module;
+if (!Module) Module = eval('(function() { try { return {{{ EXPORT_NAME }}} || {} } catch(e) { return {} } })()');
+
 // Sometimes an existing Module object exists with properties
 // meant to overwrite the default module functionality. Here
 // we collect those properties and reapply _after_ we configure
 // the current environment's defaults to avoid having to be so
 // defensive during initialization.
-var Module = typeof {{{ EXPORT_NAME }}} !== 'undefined' ? {{{ EXPORT_NAME }}} : {};
 var moduleOverrides = {};
 for (var key in Module) {
   if (Module.hasOwnProperty(key)) {
