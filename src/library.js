@@ -1805,11 +1805,6 @@ LibraryManager.library = {
       return 0;
     } else {
       var bytesRead = 0;
-      while (stream.ungotten.length && nbyte > 0) {
-        {{{ makeSetValue('buf++', '0', 'stream.ungotten.pop()', 'i8') }}}
-        nbyte--;
-        bytesRead++;
-      }
       var contents = stream.object.contents;
       var size = Math.min(contents.length - offset, nbyte);
       assert(size >= 0);
@@ -1853,11 +1848,6 @@ LibraryManager.library = {
       if (stream.object.isDevice) {
         if (stream.object.input) {
           bytesRead = 0;
-          while (stream.ungotten.length && nbyte > 0) {
-            {{{ makeSetValue('buf++', '0', 'stream.ungotten.pop()', 'i8') }}}
-            nbyte--;
-            bytesRead++;
-          }
           for (var i = 0; i < nbyte; i++) {
             try {
               var result = stream.object.input();
@@ -1879,11 +1869,10 @@ LibraryManager.library = {
           return -1;
         }
       } else {
-        var ungotSize = stream.ungotten.length;
         bytesRead = _pread(fildes, buf, nbyte, stream.position);
         assert(bytesRead >= -1);
         if (bytesRead != -1) {
-          stream.position += (stream.ungotten.length - ungotSize) + bytesRead;
+          stream.position += bytesRead;
         }
         return bytesRead;
       }
@@ -3243,7 +3232,7 @@ LibraryManager.library = {
       return -1;
     }
   },
-  fgetc__deps: ['$FS', 'read'],
+  fgetc__deps: ['$FS', 'fread'],
   fgetc__postset: '_fgetc.ret = allocate([0], "i8", ALLOC_STATIC);',
   fgetc: function(stream) {
     // int fgetc(FILE *stream);
@@ -3251,7 +3240,7 @@ LibraryManager.library = {
     if (!FS.streams[stream]) return -1;
     var streamObj = FS.streams[stream];
     if (streamObj.eof || streamObj.error) return -1;
-    var ret = _read(stream, _fgetc.ret, 1);
+    var ret = _fread(_fgetc.ret, 1, 1, stream);
     if (ret == 0) {
       streamObj.eof = true;
       return -1;
@@ -3413,16 +3402,24 @@ LibraryManager.library = {
     // size_t fread(void *restrict ptr, size_t size, size_t nitems, FILE *restrict stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fread.html
     var bytesToRead = nitems * size;
-    if (bytesToRead == 0) return 0;
-    var bytesRead = _read(stream, ptr, bytesToRead);
+    if (bytesToRead == 0) {
+      return 0;
+    }
+    var bytesRead = 0;
     var streamObj = FS.streams[stream];
-    if (bytesRead == -1) {
+    while (streamObj.ungotten.length && bytesToRead > 0) {
+      {{{ makeSetValue('ptr++', '0', 'streamObj.ungotten.pop()', 'i8') }}}
+      bytesToRead--;
+      bytesRead++;
+    }
+    var err = _read(stream, ptr, bytesToRead);
+    if (err == -1) {
       if (streamObj) streamObj.error = true;
       return 0;
-    } else {
-      if (bytesRead < bytesToRead) streamObj.eof = true;
-      return Math.floor(bytesRead / size);
     }
+    bytesRead += err;
+    if (bytesRead < bytesToRead) streamObj.eof = true;
+    return Math.floor(bytesRead / size);
   },
   freopen__deps: ['$FS', 'fclose', 'fopen', '__setErrNo', '$ERRNO_CODES'],
   freopen: function(filename, mode, stream) {
@@ -3635,13 +3632,18 @@ LibraryManager.library = {
   ungetc: function(c, stream) {
     // int ungetc(int c, FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/ungetc.html
-    if (FS.streams[stream]) {
-      c = unSign(c & 0xFF);
-      FS.streams[stream].ungotten.push(c);
-      return c;
-    } else {
+    stream = FS.streams[stream];
+    if (!stream) {
       return -1;
     }
+    if (c === {{{ cDefine('EOF') }}}) {
+      // do nothing for EOF character
+      return c;
+    }
+    c = unSign(c & 0xFF);
+    stream.ungotten.push(c);
+    stream.eof = false;
+    return c;
   },
   system__deps: ['__setErrNo', '$ERRNO_CODES'],
   system: function(command) {

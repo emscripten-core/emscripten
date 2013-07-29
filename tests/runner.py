@@ -7142,6 +7142,10 @@ def process(filename):
         '''
       self.do_run(src, 'written=0')
 
+    def test_fgetc_ungetc(self):
+      src = open(path_from_root('tests', 'stdio', 'test_fgetc_ungetc.c'), 'r').read()
+      self.do_run(src, 'success', force_c=True)
+
     def test_fgetc_unsigned(self):
       if self.emcc_args is None: return self.skip('requires emcc')
       src = r'''
