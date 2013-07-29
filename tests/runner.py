@@ -9528,7 +9528,10 @@ def process(filename):
             c2.virtualFunc2();
             Module.print('*ok*');
           '''
-          src = open(filename, 'a')
+          code = open(filename).read()
+          src = open(filename, 'w')
+          src.write('var Module = {};\n') # name Module
+          src.write(code)
           src.write(script_src_2 + '\n')
           src.close()
 

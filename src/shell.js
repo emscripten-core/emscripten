@@ -9,6 +9,10 @@
 // case, where this code here is minified but Module was defined
 // elsewhere (e.g. case 4 above). We also need to check if Module
 // already exists (e.g. case 3 above).
+// Note that if you want to run closure, and also to use Module
+// after the generated code, you will need to define   var Module = {};
+// before the code. Then that object will be used in the code, and you
+// can continue to use Module afterwards as well.
 var Module;
 if (!Module) Module = eval('(function() { try { return {{{ EXPORT_NAME }}} || {} } catch(e) { return {} } })()');
 
