@@ -11227,6 +11227,22 @@ f.close()
 
       self.assertContained('libf1\nlibf2\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+    def test_stdin(self):
+      open('main.cpp', 'w').write(r'''
+#include <stdio.h>
+int main(int argc, char const *argv[])
+{
+    char str[10] = {0};
+    scanf("%10s", str);
+    printf("%s\n", str);
+    return 0;
+}
+''')
+      Building.emcc('main.cpp', output_filename='a.out.js')
+      open('in.txt', 'w').write('abc')
+      # node's stdin support is broken
+      self.assertContained('abc', Popen(listify(SPIDERMONKEY_ENGINE) + ['a.out.js'], stdin=open('in.txt'), stdout=PIPE, stderr=PIPE).communicate()[0])
+
     def test_abspaths(self):
       # Includes with absolute paths are generally dangerous, things like -I/usr/.. will get to system local headers, not our portable ones.
 

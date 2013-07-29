@@ -3660,8 +3660,23 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/scanf.html
     if (FS.streams[stream]) {
       var i = _ftell(stream), SEEK_SET = 0;
-      var get = function () { i++; return _fgetc(stream); };
-      var unget = function () { _fseek(stream, --i, SEEK_SET); };
+      // if the stream does not support seeking backwards (e.g. stdin), buffer it here
+      var buffer = [], bufferIndex = 0;
+      var get = function() {
+        if (bufferIndex < buffer.length) {
+          return buffer[bufferIndex++];
+        }
+        i++;
+        bufferIndex++;
+        var c = _fgetc(stream);
+        buffer.push(c);
+        return c;
+      };
+      var unget = function() {
+        if (_fseek(stream, --i, SEEK_SET) !== 0) {
+          bufferIndex--;
+        }
+      };
       return __scanString(format, get, unget, varargs);
     } else {
       return -1;
