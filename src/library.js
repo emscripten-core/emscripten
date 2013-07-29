@@ -1165,7 +1165,7 @@ LibraryManager.library = {
     ['i32', 'f_namemax']]),
   statvfs__deps: ['$FS', '__statvfs_struct_layout'],
   statvfs: function(path, buf) {
-    // http://pubs.opengroup.org/onlinepubs/7908799/xsh/stat.html
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/statvfs.html
     // int statvfs(const char *restrict path, struct statvfs *restrict buf);
     var offsets = ___statvfs_struct_layout;
     // NOTE: None of the constants here are true. We're just returning safe and
