@@ -1030,6 +1030,10 @@ try:
     exec('shared.Settings.' + key + ' = ' + value)
 
   # Apply effects from settings
+  if bind and shared.Settings.ASM_JS:
+    logging.warning('disabling asm.js since embind is not ready for it yet')
+    shared.Settings.ASM_JS = 0
+
   if shared.Settings.ASM_JS:
     assert opt_level >= 1, 'asm.js requires -O1 or above'
 
