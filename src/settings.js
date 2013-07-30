@@ -416,8 +416,8 @@ var DEBUG_TAGS_SHOWING = [];
 
 // A cached set of defines, generated from the header files. This
 // lets the emscripten libc (library.js) see the right values.
-// If you the headers or use different ones, you will need to override
-// this.
+// If you modify the headers or use different ones, you will need
+// to override this.
 var C_DEFINES = {
    'ABDAY_1': '14',
    'ABDAY_2': '15',
