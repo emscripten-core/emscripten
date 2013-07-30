@@ -11994,7 +11994,9 @@ int main(int argc, char const *argv[])
         ([], True), # without --bind, we fail
         (['--bind'], False),
         (['--bind', '-O1'], False),
-        (['--bind', '-O2'], False)
+        (['--bind', '-O2'], False),
+        (['--bind', '-O1', '-s', 'ASM_JS=0'], False),
+        (['--bind', '-O2', '-s', 'ASM_JS=0'], False)
       ]:
         print args, fail
         self.clear()
