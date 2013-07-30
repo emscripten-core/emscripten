@@ -39,10 +39,11 @@ Module['callMain'] = function callMain(args) {
     ret = Module['_main'](argc, argv, 0);
   }
   catch(e) {
-    if (e == 'Exited') {
+    if (e && typeof e == 'object' && e.type == 'ExitStatus') {
       // exit() throws this once it's done to make sure execution
       // has been stopped completely
-      return;
+      Module.print('Exit Status: ' + e.value);
+      return e.value;
     } else if (e == 'SimulateInfiniteLoop') {
       // running an evented main loop, don't immediately exit
       Module['noExitRuntime'] = true;
@@ -132,7 +133,7 @@ function exit(status) {
   if (inMain) {
     // if we're still inside the callMain's try/catch, we need to throw an
     // exception in order to immediately terminate execution.
-    throw 'Exited';
+    throw { type: 'ExitStatus', value: status };
   }
 }
 Module['exit'] = Module.exit = exit;
