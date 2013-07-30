@@ -2133,20 +2133,7 @@ LibraryManager.library = {
   _exit: function(status) {
     // void _exit(int status);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/exit.html
-
-    function ExitStatus() {
-      this.name = "ExitStatus";
-      this.message = "Program terminated with exit(" + status + ")";
-      this.status = status;
-      Module.print('Exit Status: ' + status);
-    };
-    ExitStatus.prototype = new Error();
-    ExitStatus.prototype.constructor = ExitStatus;
-
-    exitRuntime();
-    ABORT = true;
-
-    throw new ExitStatus();
+    Module['exit'](status);
   },
   fork__deps: ['__setErrNo', '$ERRNO_CODES'],
   fork: function() {
@@ -3929,8 +3916,7 @@ LibraryManager.library = {
   __cxa_atexit: 'atexit',
 
   abort: function() {
-    ABORT = true;
-    throw 'abort() at ' + (new Error().stack);
+    Module['abort']();
   },
 
   bsearch: function(key, base, num, size, compar) {
