@@ -6144,9 +6144,14 @@ LibraryManager.library = {
     {{{ makeSetValue('tmPtr', 'offsets.tm_wday', 'date.getUTCDay()', 'i32') }}}
     {{{ makeSetValue('tmPtr', 'offsets.tm_gmtoff', '0', 'i32') }}}
     {{{ makeSetValue('tmPtr', 'offsets.tm_isdst', '0', 'i32') }}}
-
-    var start = new Date(date.getFullYear(), 0, 1);
-    var yday = Math.round((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    var start = new Date(date); // define date using UTC, start from Jan 01 00:00:00 UTC
+    start.setUTCDate(1);
+    start.setUTCMonth(0);
+    start.setUTCHours(0);
+    start.setUTCMinutes(0);
+    start.setUTCSeconds(0);
+    start.setUTCMilliseconds(0);
+    var yday = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
     {{{ makeSetValue('tmPtr', 'offsets.tm_yday', 'yday', 'i32') }}}
 
     var timezone = "GMT";
@@ -6157,7 +6162,6 @@ LibraryManager.library = {
 
     return tmPtr;
   },
-
   timegm__deps: ['mktime'],
   timegm: function(tmPtr) {
     _tzset();

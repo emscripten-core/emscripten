@@ -5025,6 +5025,55 @@ The current type of b is: 9
       '''
       self.do_run(src, 'time: ') # compilation check, mainly
 
+    def test_gmtime(self):
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+        #include <time.h>
+
+        int main(void)
+        {
+            time_t t=time(NULL);
+            struct tm *ptm=gmtime(&t);
+            struct tm tmCurrent=*ptm;
+            int hour=tmCurrent.tm_hour;
+
+            t-=hour*3600; // back to midnight
+            for(hour=0;hour<24;hour++)
+            {
+                ptm=gmtime(&t);
+                // tm_yday must be constant all day...
+                printf("yday: %d, hour: %d\n", ptm->tm_yday, hour);
+                t+=3600; // add one hour
+            }
+            return(0);
+        }
+      '''
+      self.do_run(src, '''yday: 210, hour: 0
+yday: 210, hour: 1
+yday: 210, hour: 2
+yday: 210, hour: 3
+yday: 210, hour: 4
+yday: 210, hour: 5
+yday: 210, hour: 6
+yday: 210, hour: 7
+yday: 210, hour: 8
+yday: 210, hour: 9
+yday: 210, hour: 10
+yday: 210, hour: 11
+yday: 210, hour: 12
+yday: 210, hour: 13
+yday: 210, hour: 14
+yday: 210, hour: 15
+yday: 210, hour: 16
+yday: 210, hour: 17
+yday: 210, hour: 18
+yday: 210, hour: 19
+yday: 210, hour: 20
+yday: 210, hour: 21
+yday: 210, hour: 22
+yday: 210, hour: 23
+''')
 
     def test_strptime_tm(self):
       src=r'''
