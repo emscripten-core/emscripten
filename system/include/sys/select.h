@@ -1,6 +1,8 @@
 #ifndef _SELECT_H
 #define _SELECT_H
 
+#include <unistd.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
