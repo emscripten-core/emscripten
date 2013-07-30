@@ -12309,6 +12309,16 @@ elif 'browser' in str(sys.argv):
       self.btest('hello_world_sdl.cpp', reference='htmltest.png',
           message='You should see "hello, world!" and a colored cube.')
 
+    def test_embind_0(self):
+      # test embind with -O0.
+      self.btest('embind/embind_test_browser.cpp', args=['--bind', '-O0'], reference='htmltest.png',
+          message='You should see "hello, world!" and a colored cube.')
+
+    def test_embind_2(self):
+      # test embind with -O2.
+      self.btest('embind/embind_test_browser.cpp', args=['--bind', '-O2'], reference='htmltest.png',
+          message='You should see "hello, world!" and a colored cube.')
+
     def test_html_source_map(self):
       if 'test_html_source_map' not in str(sys.argv): return self.skip('''This test
  requires manual intervention; will not be run unless explicitly requested''')
