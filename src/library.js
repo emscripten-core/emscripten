@@ -3653,29 +3653,19 @@ LibraryManager.library = {
     ___setErrNo(ERRNO_CODES.EAGAIN);
     return -1;
   },
-  fscanf__deps: ['$FS', '__setErrNo', '$ERRNO_CODES',
-                 '_scanString', 'fgetc', 'fseek', 'ftell'],
+  fscanf__deps: ['$FS', '_scanString', 'fgetc', 'ungetc'],
   fscanf: function(stream, format, varargs) {
     // int fscanf(FILE *restrict stream, const char *restrict format, ... );
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/scanf.html
     if (FS.streams[stream]) {
-      var i = _ftell(stream), SEEK_SET = 0;
-      // if the stream does not support seeking backwards (e.g. stdin), buffer it here
-      var buffer = [], bufferIndex = 0;
+      var buffer = [];
       var get = function() {
-        if (bufferIndex < buffer.length) {
-          return buffer[bufferIndex++];
-        }
-        i++;
-        bufferIndex++;
         var c = _fgetc(stream);
         buffer.push(c);
         return c;
       };
       var unget = function() {
-        if (_fseek(stream, --i, SEEK_SET) !== 0) {
-          bufferIndex--;
-        }
+        _ungetc(buffer.pop(), stream);
       };
       return __scanString(format, get, unget, varargs);
     } else {

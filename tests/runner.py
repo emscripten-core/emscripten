@@ -11246,6 +11246,29 @@ int main(int argc, char const *argv[])
       # node's stdin support is broken
       self.assertContained('abc', Popen(listify(SPIDERMONKEY_ENGINE) + ['a.out.js'], stdin=open('in.txt'), stdout=PIPE, stderr=PIPE).communicate()[0])
 
+    def test_ungetc_fscanf(self):
+      open('main.cpp', 'w').write(r'''
+        #include <stdio.h>
+        int main(int argc, char const *argv[])
+        {
+            char str[4] = {0};
+            FILE* f = fopen("my_test.input", "r");
+            if (f == NULL) {
+                printf("cannot open file\n");
+                return -1;
+            }
+            ungetc('x', f);
+            ungetc('y', f);
+            ungetc('z', f);
+            fscanf(f, "%3s", str);
+            printf("%s\n", str);
+            return 0;
+        }
+      ''')
+      open('my_test.input', 'w').write('abc')
+      Building.emcc('main.cpp', ['--embed-file', 'my_test.input'], output_filename='a.out.js')
+      self.assertContained('zyx', Popen(listify(JS_ENGINES[0]) + ['a.out.js'], stdout=PIPE, stderr=PIPE).communicate()[0])
+
     def test_abspaths(self):
       # Includes with absolute paths are generally dangerous, things like -I/usr/.. will get to system local headers, not our portable ones.
 
