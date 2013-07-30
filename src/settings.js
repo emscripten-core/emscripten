@@ -473,7 +473,7 @@ var C_DEFINES = {
    'D_FMT': '2',
    'D_MD_ORDER': '57',
    'D_T_FMT': '1',
-   'EOF': '-1'
+   'EOF': '-1',
    'ERA': '45',
    'ERA_D_FMT': '46',
    'ERA_D_T_FMT': '47',
@@ -1291,6 +1291,6 @@ var C_DEFINES = {
    '___int8_t_defined': '1',
    '___int_least16_t_defined': '1',
    '___int_least32_t_defined': '1',
-   '___int_least8_t_defined': '1',
+   '___int_least8_t_defined': '1'
 };
 
