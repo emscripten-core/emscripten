@@ -124,18 +124,19 @@ class AsmModule():
         del all_sendings[key] # import of external value no longer needed
     main.imports_js = '\n'.join(['var %s = %s;' % (key, value) for key, value in all_imports.iteritems()]) + '\n'
 
-    if added_sending:
-      sendings_js = ', '.join(['%s: %s' % (key, value) for key, value in all_sendings.iteritems()])
-      sendings_start = main.post_js.find('}, { ')+5
-      sendings_end = main.post_js.find(' }, buffer);')
-      main.post_js = main.post_js[:sendings_start] + sendings_js + main.post_js[sendings_end:]
-
     # check for undefined references to global variables
     def check_import(key, value):
       if value.startswith('+') or value.endswith('|0'): # ignore functions
         if key not in all_sendings:
           print >> sys.stderr, 'warning: external variable %s is still not defined after linking' % key
+          all_sendings[key] = '0'
     for key, value in all_imports.iteritems(): check_import(key, value)
+
+    if added_sending:
+      sendings_js = ', '.join(['%s: %s' % (key, value) for key, value in all_sendings.iteritems()])
+      sendings_start = main.post_js.find('}, { ')+5
+      sendings_end = main.post_js.find(' }, buffer);')
+      main.post_js = main.post_js[:sendings_start] + sendings_js + main.post_js[sendings_end:]
 
     # tables
     f_bases = {}
