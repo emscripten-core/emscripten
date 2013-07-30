@@ -56,7 +56,7 @@ class AsmModule():
     self.imports = {}
     for imp in js_optimizer.import_sig.finditer(self.imports_js):
       key, value = imp.group(0).split('var ')[1][:-1].split('=', 1)
-      self.imports[key] = value
+      self.imports[key.strip()] = value.strip()
     #print >> sys.stderr, 'imports', self.imports
 
     # funcs

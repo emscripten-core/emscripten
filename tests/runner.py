@@ -11034,6 +11034,23 @@ f.close()
         std::string side() { return "and hello from side"; }
       ''', ['hello from main and hello from side\n'])
 
+      # followup to iostream test: a second linking
+      print 'second linking of a linking output'
+      open('moar.cpp', 'w').write(r'''
+        #include <iostream>
+        struct Moar {
+          Moar() { std::cout << "moar!" << std::endl; }
+        };
+        Moar m;
+      ''')
+      Popen([PYTHON, EMCC, 'moar.cpp', '-o', 'moar.js', '-s', 'SIDE_MODULE=1', '-O2']).communicate()
+      Popen([PYTHON, EMLINK, 'together.js', 'moar.js', 'triple.js'], stdout=PIPE).communicate()
+      assert os.path.exists('triple.js')
+      for engine in JS_ENGINES:
+        out = run_js('triple.js', engine=engine, stderr=PIPE, full_output=True)
+        self.assertContained('moar!\nhello from main and hello from side\n', out)
+        if engine == SPIDERMONKEY_ENGINE: self.validate_asmjs(out)
+
       # zlib compression library. tests function pointers in initializers and many other things
       test('zlib', '', open(path_from_root('tests', 'zlib', 'example.c'), 'r').read(), 
                        self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a']),
