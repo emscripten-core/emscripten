@@ -202,8 +202,16 @@ extern int __signbitd (double x);
   #define isinf(y) (fpclassify(y) == FP_INFINITE)
 #endif
 
+#ifndef isinff
+  #define isinff isinf
+#endif
+
 #ifndef isnan
   #define isnan(y) (fpclassify(y) == FP_NAN)
+#endif
+
+#ifndef isnanf
+  #define isnanf isnan
 #endif
 
 #define isnormal(y) (fpclassify(y) == FP_NORMAL)
