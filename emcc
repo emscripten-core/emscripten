@@ -1087,6 +1087,10 @@ try:
   if shared.Settings.DLOPEN_SUPPORT:
     shared.Settings.LINKABLE = 1
 
+  if shared.Settings.STB_IMAGE and final_suffix in JS_CONTAINING_SUFFIXES:
+    input_files.append(shared.path_from_root('third_party', 'stb_image.c'))
+    shared.Settings.EXPORTED_FUNCTIONS += ['_stbi_load', '_stbi_load_from_memory', '_stbi_image_free']
+
   ## Compile source code to bitcode
 
   logging.debug('compiling to bitcode')
