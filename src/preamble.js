@@ -723,15 +723,15 @@ function exitRuntime() {
   callRuntimeCallbacks(__ATEXIT__);
 }
 
-Module['addOnInit'] = function addOnInit(cb) {
+Module['addOnInit'] = Module.addOnInit = function addOnInit(cb) {
   __ATINIT__.unshift(cb);
 };
 
-Module['addOnPreMain'] = function addOnPreMain(cb) {
+Module['addOnPreMain'] = Module.addOnPreMain = function addOnPreMain(cb) {
   __ATMAIN__.unshift(cb);
 };
 
-Module['addOnExit'] = function addOnExit(cb) {
+Module['addOnExit'] = Module.addOnExit = function addOnExit(cb) {
   __ATEXIT__.unshift(cb);
 };
 

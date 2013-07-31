@@ -4,7 +4,7 @@
 var initialStackTop;
 var inMain;
 
-Module['callMain'] = function callMain(args) {
+Module['callMain'] = Module.callMain = function callMain(args) {
   assert(runDependencies == 0, 'cannot call main when async dependencies remain! (listen on __ATMAIN__)');
   assert(!Module['preRun'] || Module['preRun'].length == 0, 'cannot call main when preRun functions remain to be called');
 
