@@ -446,6 +446,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
       return ('+' if sig != 'i' else '') + value + ('|0' if sig == 'i' else '')
 
     function_tables = ['dynCall_' + table for table in last_forwarded_json['Functions']['tables']]
+    function_tables += ['getDynCallFunc_' + table for table in last_forwarded_json['Functions']['tables']]
     function_tables_impls = []
     for sig in last_forwarded_json['Functions']['tables'].iterkeys():
       args = ','.join(['a' + str(i) for i in range(1, len(sig))])
@@ -459,6 +460,19 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     %s;
   }
 ''' % (sig, ',' if len(sig) > 1 else '', args, arg_coercions, ret))
+
+      # function tables
+      def asm_coerce_2(value, sig):
+        if sig == 'v': return value
+        return ('+' if sig != 'i' else '') + value + ('||function(){return 0;}' if sig == 'i' else '')
+
+      ret2 = 'return ' + asm_coerce_2('FUNCTION_TABLE_%s[index&{{{ FTM_%s }}}]' % (sig, sig), sig[0])
+      function_tables_impls.append('''
+  function getDynCallFunc_%s(index) {
+    index = index|0;
+    %s;
+  }
+''' % (sig, ret2))
 
       for i in range(settings['RESERVED_FUNCTION_POINTERS']):
         jsret = ('return ' if sig[0] != 'v' else '') + asm_coerce('jsCall(%d%s%s)' % (i, ',' if coerced_args else '', coerced_args), sig[0])
