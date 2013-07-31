@@ -5343,7 +5343,7 @@ The current type of b is: 9
           return 0;
         }
         '''
-      self.do_run(src, 'fault on write to 0' if not Settings.ASM_JS else 'Assertion: 0')
+      self.do_run(src, 'fault on write to 0' if not Settings.ASM_JS else 'abort()')
 
     def test_trickystring(self):
       src = r'''
