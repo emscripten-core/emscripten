@@ -4113,15 +4113,15 @@ LibraryManager.library = {
   qsort__deps: ['memcpy'],
   qsort: function(base, num, size, cmp) {
     if (num == 0 || size == 0) return;
-    // forward calls to the JavaScript sort method
-    // first, sort the items logically
-    var comparator = function(x, y) {
-      return Runtime.dynCall('iii', cmp, [x, y]);
-    }
+
     var keys = [];
     for (var i = 0; i < num; i++) keys.push(base + i * size);
 
+#if ASM_JS == 0
+    keys.sort(FUNCTION_TABLE[cmp]);
+#else
     keys.sort(getDynCallFunc_iii(cmp));
+#endif
 
     // apply the sort
     var temp = _malloc(num*size);
