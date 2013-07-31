@@ -198,6 +198,17 @@ for file_ in data_files:
     os.path.walk(file_['srcpath'], add, [file_['mode'], file_['srcpath'], file_['dstpath']])
 data_files = filter(lambda file_: not os.path.isdir(file_['srcpath']), data_files)
 
+# Absolutize paths, and check that they make sense
+curr_abspath = os.path.abspath(os.getcwd())
+for file_ in data_files:
+  path = file_['dstpath']
+  abspath = os.path.abspath(path)
+  print >> sys.stderr, path, abspath, curr_abspath
+  if not abspath.startswith(curr_abspath):
+    print >> sys.stderr, 'Error: Embedding "%s" which is below the current directory. This is invalid since the current directory becomes the root that the generated code will see' % path
+    sys.exit(1)
+  file_['dstpath'] = abspath[len(curr_abspath)+1:]
+
 for file_ in data_files:
   file_['dstpath'] = file_['dstpath'].replace(os.path.sep, '/') # name in the filesystem, native and emulated
   if file_['dstpath'].endswith('/'): # If user has submitted a directory name as the destination but omitted the destination filename, use the filename from source file

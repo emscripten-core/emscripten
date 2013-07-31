@@ -12165,6 +12165,36 @@ seeked= file.
       self.assertNotContained('emcc: warning: treating -s as linker option', output[1])
       assert os.path.exists('conftest')
 
+    def test_file_packager(self):
+      try:
+        os.mkdir('subdir')
+      except:
+        pass
+      open('data1.txt', 'w').write('data1')
+      os.chdir('subdir')
+      open('data2.txt', 'w').write('data2')
+      # relative path to below the current dir is invalid
+      out, err = Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', '../data1.txt'], stdout=PIPE, stderr=PIPE).communicate()
+      assert len(out) == 0
+      assert 'below the current directory' in err
+      # relative path that ends up under us is cool
+      out, err = Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', '../subdir/data2.txt'], stdout=PIPE, stderr=PIPE).communicate()
+      assert len(out) > 0
+      assert 'below the current directory' not in err
+      # direct path leads to the same code being generated - relative path does not make us do anything different
+      out2, err2 = Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data2.txt'], stdout=PIPE, stderr=PIPE).communicate()
+      assert len(out2) > 0
+      assert 'below the current directory' not in err2
+      def clean(txt):
+        return filter(lambda line: 'PACKAGE_UUID' not in line, txt.split('\n'))
+      out = clean(out)
+      out2 = clean(out2)
+      assert out == out2
+      # sanity check that we do generate different code for different inputs
+      out3, err3 = Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data2.txt', 'data2.txt@waka.txt'], stdout=PIPE, stderr=PIPE).communicate()
+      out3 = clean(out3)
+      assert out != out3
+
     def test_crunch(self):
       # crunch should not be run if a .crn exists that is more recent than the .dds
       shutil.copyfile(path_from_root('tests', 'ship.dds'), 'ship.dds')
