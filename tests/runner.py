@@ -5030,6 +5030,7 @@ The current type of b is: 9
         #include <stdio.h>
         #include <stdlib.h>
         #include <time.h>
+        #include <assert.h>
 
         int main(void)
         {
@@ -5039,41 +5040,21 @@ The current type of b is: 9
             int hour=tmCurrent.tm_hour;
 
             t-=hour*3600; // back to midnight
+            int yday = -1;
             for(hour=0;hour<24;hour++)
             {
                 ptm=gmtime(&t);
                 // tm_yday must be constant all day...
                 printf("yday: %d, hour: %d\n", ptm->tm_yday, hour);
+                if (yday == -1) yday = ptm->tm_yday;
+                else assert(yday == ptm->tm_yday);
                 t+=3600; // add one hour
             }
+            printf("ok!\n");
             return(0);
         }
       '''
-      self.do_run(src, '''yday: 210, hour: 0
-yday: 210, hour: 1
-yday: 210, hour: 2
-yday: 210, hour: 3
-yday: 210, hour: 4
-yday: 210, hour: 5
-yday: 210, hour: 6
-yday: 210, hour: 7
-yday: 210, hour: 8
-yday: 210, hour: 9
-yday: 210, hour: 10
-yday: 210, hour: 11
-yday: 210, hour: 12
-yday: 210, hour: 13
-yday: 210, hour: 14
-yday: 210, hour: 15
-yday: 210, hour: 16
-yday: 210, hour: 17
-yday: 210, hour: 18
-yday: 210, hour: 19
-yday: 210, hour: 20
-yday: 210, hour: 21
-yday: 210, hour: 22
-yday: 210, hour: 23
-''')
+      self.do_run(src, '''ok!''')
 
     def test_strptime_tm(self):
       src=r'''
