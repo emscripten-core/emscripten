@@ -255,14 +255,9 @@ var LibraryOpenAL = {
     if (!AL.currentContext) {
       return 0xA004 /* AL_INVALID_OPERATION */;
     } else {
-<<<<<<< HEAD
       // Reset error on get.
       var err = AL.currentContext.err;
       AL.currentContext.err = 0 /* AL_NO_ERROR */;
-=======
-      var err = AL.currentContext.err;
-      AL.currentContext.err = 0
->>>>>>> Add some function openal
       return err;
     }
   },
@@ -285,26 +280,6 @@ var LibraryOpenAL = {
         return 0;
       default:
         return 0xA002 /* AL_INVALID_ENUM */
-    }
-  },
-  
-  alGetString: function(param) {
-	  switch (param) {
-      case 0xB001 /* AL_VENDOR */:
-      case 0xB002 /* AL_VERSION */:
-      case 0xB003 /* AL_RENDERER */:
-      case 0xB004 /* AL_EXTENSIONS */:
-        return allocate(intArrayFromString('OpenAL Audio Context'), 'i8', ALLOC_NORMAL);
-      default:
-	      return "";
-    }
-  },
-  
-  alcGetString: function(param) {
-	  switch (param) {
-      case 0x1006 /* ALC_EXTENSIONS */:
-      default:
-        return "";
     }
   },
 
@@ -380,16 +355,8 @@ var LibraryOpenAL = {
       {{{ makeSetValue('sources', 'i*4', 'AL.currentContext.src.length', 'i32') }}};
     }
   },
-<<<<<<< HEAD
-<<<<<<< HEAD
 
   alSourcei__deps: ['updateSource'],
-=======
-  
->>>>>>> Add some function openal
-=======
-
->>>>>>> Indent and line correction
   alSourcei: function(source, param, value) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
@@ -544,29 +511,6 @@ var LibraryOpenAL = {
     }
   },
   
-  alSource3i: function(source, param, value1, value2, value3) {
-    if (!AL.currentContext) {
-#if OPENAL_DEBUG
-      console.error("alSource3i called without a valid context");
-#endif
-      return;
-    }
-    if (source > AL.currentContext.src.length) {
-#if OPENAL_DEBUG
-      console.error("alSource3i called with an invalid source");
-#endif
-      return;
-    }
-    switch (param) {
-    case 0x20006 /* AL_AUXILIARY_SEND_FILTER */:
-    default:
-#if OPENAL_DEBUG
-      console.log("alSourcefv with param " + param + " not implemented yet");
-#endif
-      break;
-    }
-  },
-
   alSourcefv__deps: ['alSource3f'],
   alSourcefv: function(source, param, value) {
     _alSource3f(source, param,
@@ -834,31 +778,7 @@ var LibraryOpenAL = {
     _setSourceState(src, 0x1013 /* AL_PAUSED */);
   },
 
-<<<<<<< HEAD
   alGetSourcei__deps: ['updateSource'],
-=======
-  alGetSourcef: function(source, param, value) {
-    if (!AL.currentContext) {
-#if OPENAL_DEBUG
-      console.error("alGetSourcef called without a valid context");
-#endif
-      return;
-    }
-    if (source > AL.currentContext.src.length) {
-#if OPENAL_DEBUG
-      console.error("alGetSourcef called with an invalid source");
-#endif
-      return;
-    }
-    switch (param) {
-    case 0x1024 /* AL_SEC_OFFSET */:
-      // Always return 1
-      {{{ makeSetValue('value', '0', '1', 'float') }}};
-      break;
-    }
-  },
-  
->>>>>>> Add some function openal
   alGetSourcei: function(source, param, value) {
     if (!AL.currentContext) {
 #if OPENAL_DEBUG
@@ -1088,14 +1008,6 @@ var LibraryOpenAL = {
   alcGetProcAddress: function(device, fname) {
     return 0;
   },
-<<<<<<< HEAD
-
-  alDopplerFactor: function(value) {
-  },
-
-  alDopplerVelocity: function(value) {
-  }
-=======
   
   alDopplerFactor: function(value) {
     AL.currentContext.ctx.listener.dopplerFactor = value;
@@ -1108,8 +1020,6 @@ var LibraryOpenAL = {
   alcGetIntegerv: function(device, param, size, data) {
 
   },
-  
->>>>>>> Add some function openal
 };
 
 autoAddDeps(LibraryOpenAL, '$AL');
