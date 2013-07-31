@@ -13263,6 +13263,12 @@ Press any key to continue.'''
       open(os.path.join(self.get_dir(), 'qjulia.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'qjulia.c')).read()))
       Popen([PYTHON, EMCC, '-O2', os.path.join(self.get_dir(), 'qjulia.c'), '--preload-file', 'qjulia_kernel.cl', '-o', 'opencl.html']).communicate()
       self.run_browser('opencl.html', '', '/report_result?1')
+      
+    def test_opencl_scan(self):
+      shutil.copyfile(path_from_root('tests', 'scan_kernel.cl'), os.path.join(self.get_dir(), 'scan_kernel.cl'))
+      open(os.path.join(self.get_dir(), 'scan.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'scan.c')).read()))
+      Popen([PYTHON, EMCC, '-O2', os.path.join(self.get_dir(), 'scan.c'), '--preload-file', 'scan_kernel.cl', '-s', 'TOTAL_MEMORY=' + str(32*1024*1024), '-o', 'opencl.html']).communicate()
+      self.run_browser('opencl.html', '', '/report_result?1')
 
     def test_glfw(self):
       open(os.path.join(self.get_dir(), 'glfw.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'glfw.c')).read()))
