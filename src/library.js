@@ -4157,7 +4157,11 @@ LibraryManager.library = {
     var keys = [];
     for (var i = 0; i < num; i++) keys.push(i);
     keys.sort(function(a, b) {
-      return comparator(base+a*size, base+b*size);
+#if ASM_JS
+      return Module['dynCall_iii'](cmp, base+a*size, base+b*size);
+#else
+      return FUNCTION_TABLE[cmp](base+a*size, base+b*size);
+#endif
     });
     // apply the sort
     var temp = _malloc(num*size);
