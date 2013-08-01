@@ -4947,7 +4947,17 @@ LibraryManager.library = {
            (chr >= {{{ charCode('{') }}} && chr <= {{{ charCode('~') }}});
   },
   isspace: function(chr) {
-    return chr in { 32: 0, 9: 0, 10: 0, 11: 0, 12: 0, 13: 0 };
+    switch(chr) {
+      case 32:
+      case 9:
+      case 10:
+      case 11:
+      case 12:
+      case 13:
+        return true;
+      default:
+        return false;
+    };
   },
   isblank: function(chr) {
     return chr == {{{ charCode(' ') }}} || chr == {{{ charCode('\t') }}};
