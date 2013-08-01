@@ -10,7 +10,8 @@
 extern "C" {
 #endif
 
-// Note that the values of these constants are mostly arbitrary numbers.
+// All the values of these constants are same to glibc
+
 #define SOCK_STREAM     1
 #define SOCK_DGRAM      2
 #define SOCK_RAW        3
@@ -107,23 +108,58 @@ extern "C" {
 #define AF_NFC          PF_NFC
 #define AF_MAX          PF_MAX
 
-#define SOL_SOCKET 50
-
 #define SOMAXCONN 128
 
-#define SO_BROADCAST 6
-#define SO_ERROR 10
-#define SO_REUSEADDR 30
-#define SO_SNDBUF 40
-#define SO_RCVBUF 60
-#define SO_LINGER 70
-#define SO_NOSIGPIPE 80
-#define SO_KEEPALIVE 90
-#define SO_OOBINLINE 100
-#define SO_NO_CHECK 110
-#define SO_PRIORITY 120
-#define SO_LINGER 130
-#define SO_BSDCOMPAT 140
+#define SOL_SOCKET      1
+
+#define SO_DEBUG        1
+#define SO_REUSEADDR    2
+#define SO_TYPE         3
+#define SO_ERROR        4
+#define SO_DONTROUTE    5
+#define SO_BROADCAST    6
+#define SO_SNDBUF       7
+#define SO_RCVBUF       8
+#define SO_SNDBUFFORCE  32
+#define SO_RCVBUFFORCE  33
+#define SO_KEEPALIVE    9
+#define SO_OOBINLINE    10
+#define SO_NO_CHECK     11
+#define SO_PRIORITY     12
+#define SO_LINGER       13
+#define SO_BSDCOMPAT    14
+#ifndef SO_PASSCRED
+#define SO_PASSCRED     16
+#define SO_PEERCRED     17
+#define SO_RCVLOWAT     18
+#define SO_SNDLOWAT     19
+#define SO_RCVTIMEO     20
+#define SO_SNDTIMEO     21
+#endif
+#define SO_SECURITY_AUTHENTICATION              22
+#define SO_SECURITY_ENCRYPTION_TRANSPORT        23
+#define SO_SECURITY_ENCRYPTION_NETWORK          24
+#define SO_BINDTODEVICE         25
+#define SO_ATTACH_FILTER        26
+#define SO_DETACH_FILTER        27
+#define SO_PEERNAME             28
+#define SO_TIMESTAMP            29
+#define SCM_TIMESTAMP           SO_TIMESTAMP
+#define SO_ACCEPTCONN           30
+#define SO_PEERSEC              31
+#define SO_PASSSEC              34
+#define SO_TIMESTAMPNS          35
+#define SCM_TIMESTAMPNS         SO_TIMESTAMPNS
+#define SO_MARK                 36
+#define SO_TIMESTAMPING         37
+#define SCM_TIMESTAMPING        SO_TIMESTAMPING
+#define SO_PROTOCOL             38
+#define SO_DOMAIN               39
+#define SO_RXQ_OVFL             40
+
+#if __BSD_VISIBLE
+#define SO_NOSIGPIPE            0x0800
+#endif
 
 #define MSG_OOB           0x01
 #define MSG_PEEK          0x02
