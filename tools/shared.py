@@ -517,7 +517,7 @@ USE_EMSDK = not os.environ.get('EMMAKEN_NO_SDK')
 if USE_EMSDK:
   # Disable system C and C++ include directories, and add our own (using -idirafter so they are last, like system dirs, which
   # allows projects to override them)
-  EMSDK_OPTS = ['-nostdinc', '-nostdinc++', '-Xclang', '-nobuiltininc', '-Xclang', '-nostdsysteminc',
+  EMSDK_OPTS = ['-nostdinc', '-Xclang', '-nobuiltininc', '-Xclang', '-nostdsysteminc',
     '-Xclang', '-isystem' + path_from_root('system', 'local', 'include'),
     '-Xclang', '-isystem' + path_from_root('system', 'include', 'libcxx'),
     '-Xclang', '-isystem' + path_from_root('system', 'include'),
@@ -530,9 +530,11 @@ if USE_EMSDK:
   ] + [
     '-U__APPLE__', '-U__linux__'
   ]
+  EMSDK_CXX_OPTS = ['-nostdinc++']
   COMPILER_OPTS += EMSDK_OPTS
 else:
   EMSDK_OPTS = []
+  EMSDK_CXX_OPTS = []
 
 #print >> sys.stderr, 'SDK opts', ' '.join(EMSDK_OPTS)
 #print >> sys.stderr, 'Compiler opts', ' '.join(COMPILER_OPTS)

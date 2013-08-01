@@ -53,6 +53,15 @@ from tools import shared, jsrun
 from tools.shared import Compression, execute, suffix, unsuffixed, unsuffixed_basename
 from tools.response_file import read_response_file
 
+CXX_SUFFIXES = ('.cpp', '.cxx', '.cc')
+SOURCE_SUFFIXES = ('.c', '.cpp', '.cxx', '.cc', '.m', '.mm')
+BITCODE_SUFFIXES = ('.bc', '.o', '.obj')
+DYNAMICLIB_SUFFIXES = ('.dylib', '.so', '.dll')
+STATICLIB_SUFFIXES = ('.a',)
+ASSEMBLY_SUFFIXES = ('.ll',)
+LIB_PREFIXES = ('', 'lib')
+JS_CONTAINING_SUFFIXES = ('js', 'html')
+
 # Mapping of emcc opt levels to llvm opt levels. We use llvm opt level 3 in emcc opt
 # levels 2 and 3 (emcc 3 is unsafe opts, so unsuitable for the only level to get
 # llvm opt level 3, and speed-wise emcc level 2 is already the slowest/most optimizing
@@ -532,7 +541,7 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
         if debug_configure: open(tempout, 'a').write('============= ' + arg + '\n' + src + '\n=============\n\n')
       except:
         pass
-    if arg.endswith('.s'):
+    elif arg.endswith('.s'):
       if debug_configure: open(tempout, 'a').write('(compiling .s assembly, must use clang\n')
       use_js = 0
 
@@ -614,15 +623,6 @@ EMMAKEN_CFLAGS = os.environ.get('EMMAKEN_CFLAGS')
 if EMMAKEN_CFLAGS: CC_ADDITIONAL_ARGS += shlex.split(EMMAKEN_CFLAGS)
 
 # ---------------- Utilities ---------------
-
-SOURCE_SUFFIXES = ('.c', '.cpp', '.cxx', '.cc', '.m', '.mm')
-BITCODE_SUFFIXES = ('.bc', '.o', '.obj')
-DYNAMICLIB_SUFFIXES = ('.dylib', '.so', '.dll')
-STATICLIB_SUFFIXES = ('.a',)
-ASSEMBLY_SUFFIXES = ('.ll',)
-LIB_PREFIXES = ('', 'lib')
-
-JS_CONTAINING_SUFFIXES = ('js', 'html')
 
 seen_names = {}
 def uniquename(name):
@@ -1105,6 +1105,8 @@ try:
       output_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
       temp_files.append(output_file)
       args = newargs + ['-emit-llvm', '-c', input_file, '-o', output_file]
+      if input_file.endswith(CXX_SUFFIXES):
+        args += shared.EMSDK_CXX_OPTS
       logging.debug("running:" + call + ' ' + ' '.join(args))
       execute([call] + args) # let compiler frontend print directly, so colors are saved (PIPE kills that)
       if not os.path.exists(output_file):
