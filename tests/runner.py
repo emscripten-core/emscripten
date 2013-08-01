@@ -10733,6 +10733,27 @@ f.close()
             os.chdir(path_from_root('tests')) # Move away from the directory we are about to remove.
             shutil.rmtree(tempdirname)
 
+    def test_nostdincxx(self):
+      try:
+        old = os.environ.get('EMCC_LLVM_TARGET') or ''
+        for compiler in [EMCC, EMXX]:
+          for target in ['i386-pc-linux-gnu', 'le32-unknown-nacl']:
+            print compiler, target
+            os.environ['EMCC_LLVM_TARGET'] = target
+            out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-v'], stdout=PIPE, stderr=PIPE).communicate()
+            out2, err2 = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-v', '-nostdinc++'], stdout=PIPE, stderr=PIPE).communicate()
+            assert out == out2
+            def focus(e):
+              assert 'search starts here:' in e, e
+              assert e.count('End of search list.') == 1, e
+              return e[e.index('search starts here:'):e.index('End of search list.')+20]
+            err = focus(err)
+            err2 = focus(err2)
+            assert err == err2, err + '\n\n\n\n' + err2
+      finally:
+        if old:
+          os.environ['EMCC_LLVM_TARGET'] = old
+
     def test_failure_error_code(self):
       for compiler in [EMCC, EMXX]:
         # Test that if one file is missing from the build, then emcc shouldn't succeed, and shouldn't try to produce an output file.

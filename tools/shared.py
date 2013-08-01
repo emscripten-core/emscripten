@@ -530,7 +530,10 @@ if USE_EMSDK:
   ] + [
     '-U__APPLE__', '-U__linux__'
   ]
-  EMSDK_CXX_OPTS = ['-nostdinc++']
+  if LLVM_TARGET != 'le32-unknown-nacl':
+    EMSDK_CXX_OPTS = ['-nostdinc++'] # le32 target does not need -nostdinc++
+  else:
+    EMSDK_CXX_OPTS = []
   COMPILER_OPTS += EMSDK_OPTS
 else:
   EMSDK_OPTS = []
