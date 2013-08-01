@@ -3921,7 +3921,11 @@ LibraryManager.library = {
 
   bsearch: function(key, base, num, size, compar) {
     var cmp = function(x, y) {
-      return Runtime.dynCall('iii', compar, [x, y])
+#if ASM_JS
+      return Module['dynCall_iii'](compar, x, y);
+#else
+      return FUNCTION_TABLE[compar](x, y);
+#endif
     };
     var left = 0;
     var right = num;
@@ -3931,7 +3935,6 @@ LibraryManager.library = {
       mid = (left + right) >>> 1;
       addr = base + (mid * size);
       test = cmp(key, addr);
-
       if (test < 0) {
         right = mid;
       } else if (test > 0) {
@@ -4151,9 +4154,6 @@ LibraryManager.library = {
     if (num == 0 || size == 0) return;
     // forward calls to the JavaScript sort method
     // first, sort the items logically
-    var comparator = function(x, y) {
-      return Runtime.dynCall('iii', cmp, [x, y]);
-    }
     var keys = [];
     for (var i = 0; i < num; i++) keys.push(i);
     keys.sort(function(a, b) {
