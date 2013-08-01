@@ -6,7 +6,7 @@ var inMain;
 
 Module['callMain'] = Module.callMain = function callMain(args) {
   assert(runDependencies == 0, 'cannot call main when async dependencies remain! (listen on __ATMAIN__)');
-  assert(!Module['preRun'] || Module['preRun'].length == 0, 'cannot call main when preRun functions remain to be called');
+  assert(__ATPRERUN__.length == 0, 'cannot call main when preRun functions remain to be called');
 
   args = args || [];
 
@@ -74,17 +74,11 @@ function run(args) {
     return;
   }
 
-  if (Module['preRun']) {
-    if (typeof Module['preRun'] == 'function') Module['preRun'] = [Module['preRun']];
-    var toRun = Module['preRun'];
-    Module['preRun'] = [];
-    for (var i = toRun.length-1; i >= 0; i--) {
-      toRun[i]();
-    }
-    if (runDependencies > 0) {
-      // a preRun added a dependency, run will be called later
-      return;
-    }
+  preRun();
+
+  if (runDependencies > 0) {
+    // a preRun added a dependency, run will be called later
+    return;
   }
 
   function doRun() {
@@ -96,12 +90,8 @@ function run(args) {
     if (Module['_main'] && shouldRunNow) {
       Module['callMain'](args);
     }
-    if (Module['postRun']) {
-      if (typeof Module['postRun'] == 'function') Module['postRun'] = [Module['postRun']];
-      while (Module['postRun'].length > 0) {
-        Module['postRun'].pop()();
-      }
-    }
+
+    postRun();
   }
 
   if (Module['setStatus']) {
