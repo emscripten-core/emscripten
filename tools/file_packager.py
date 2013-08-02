@@ -122,8 +122,6 @@ for arg in sys.argv[1:]:
       srcpath, dstpath = arg.split('@') # User is specifying destination filename explicitly.
     else:
       srcpath = dstpath = arg # Use source path as destination path.
-      if os.path.isabs(dstpath):
-        print >> sys.stderr, 'Warning: Embedding an absolute file/directory name "' + dstpath + '" to the virtual filesystem. The file will be made available in the path "' + dstpath + '", and not in the root of the generated file system. Use the explicit syntax --preload-file srcpath@dstpath to specify the target location the absolute source path should be directed to.'
     if os.path.isfile(srcpath) or os.path.isdir(srcpath):
       data_files.append({ 'srcpath': srcpath, 'dstpath': dstpath, 'mode': mode })
     else:
@@ -201,13 +199,18 @@ data_files = filter(lambda file_: not os.path.isdir(file_['srcpath']), data_file
 # Absolutize paths, and check that they make sense
 curr_abspath = os.path.abspath(os.getcwd())
 for file_ in data_files:
-  path = file_['dstpath']
-  abspath = os.path.abspath(path)
-  if DEBUG: print >> sys.stderr, path, abspath, curr_abspath
-  if not abspath.startswith(curr_abspath):
-    print >> sys.stderr, 'Error: Embedding "%s" which is below the current directory. This is invalid since the current directory becomes the root that the generated code will see' % path
-    sys.exit(1)
-  file_['dstpath'] = abspath[len(curr_abspath)+1:]
+  if file_['srcpath'] == file_['dstpath']:
+    # This file was not defined with src@dst, so we inferred the destination from the source. In that case,
+    # we require that the destination not be under the current location
+    path = file_['dstpath']
+    abspath = os.path.abspath(path)
+    if DEBUG: print >> sys.stderr, path, abspath, curr_abspath
+    if not abspath.startswith(curr_abspath):
+      print >> sys.stderr, 'Error: Embedding "%s" which is below the current directory. This is invalid since the current directory becomes the root that the generated code will see' % path
+      sys.exit(1)
+    file_['dstpath'] = abspath[len(curr_abspath)+1:]
+    if os.path.isabs(path):
+      print >> sys.stderr, 'Warning: Embedding an absolute file/directory name "' + path + '" to the virtual filesystem. The file will be made available in the relative path "' + file_['dstpath'] + '". You can use the explicit syntax --preload-file srcpath@dstpath to explicitly specify the target location the absolute source path should be directed to.'
 
 for file_ in data_files:
   file_['dstpath'] = file_['dstpath'].replace(os.path.sep, '/') # name in the filesystem, native and emulated

@@ -12717,7 +12717,7 @@ Press any key to continue.'''
       open(absolute_src_path2, 'w').write('''load me right before running the code please''')
       
       def make_main(path):
-        print path
+        print 'make main at', path
         open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
           #include <stdio.h>
           #include <string.h>
@@ -12755,14 +12755,14 @@ Press any key to continue.'''
       
       for test in test_cases:
         (srcpath, dstpath) = test
+        print 'Testing', srcpath, dstpath
         make_main(dstpath)
-        print srcpath
         Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', srcpath, '-o', 'page.html']).communicate()
         self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
 
       # By absolute path
 
-      make_main(absolute_src_path)
+      make_main('somefile.txt') # absolute becomes relative
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', absolute_src_path, '-o', 'page.html']).communicate()
       self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
 
@@ -12822,7 +12822,7 @@ Press any key to continue.'''
         
       # Should still work with -o subdir/..
 
-      make_main(absolute_src_path)
+      make_main('somefile.txt') # absolute becomes relative
       try:
         os.mkdir(os.path.join(self.get_dir(), 'dirrey'))
       except:
