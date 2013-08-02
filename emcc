@@ -1010,7 +1010,7 @@ try:
     logging.error('no input files\nnote that input files without a known suffix are ignored, make sure your input files end with one of: ' + str(SOURCE_SUFFIXES + BITCODE_SUFFIXES + DYNAMICLIB_SUFFIXES + STATICLIB_SUFFIXES + ASSEMBLY_SUFFIXES))
     exit(0)
 
-  newargs += CC_ADDITIONAL_ARGS
+  newargs = CC_ADDITIONAL_ARGS + newargs
 
   assert not (Compression.on and final_suffix != 'html'), 'Compression only works when generating HTML'
 
