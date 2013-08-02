@@ -14927,11 +14927,29 @@ fi
         finally:
           del os.environ['EMCC_DEBUG']
 
+      restore()
+
+      def ensure_cache():
+        self.do([EMCC, '-O2', path_from_root('tests', 'hello_world.c')])
+
       # Manual cache clearing
+      ensure_cache()
       assert os.path.exists(EMCC_CACHE)
       output = self.do([EMCC, '--clear-cache'])
       assert ERASING_MESSAGE in output
       assert not os.path.exists(EMCC_CACHE)
+
+      # Changing LLVM_ROOT, even without altering .emscripten, clears the cache
+      ensure_cache()
+      old = os.environ.get('LLVM')
+      try:
+        os.environ['LLVM'] = 'waka'
+        assert os.path.exists(EMCC_CACHE)
+        output = self.do([EMCC])
+        assert ERASING_MESSAGE in output
+        assert not os.path.exists(EMCC_CACHE)
+      finally:
+        if old: os.environ['LLVM'] = old
 
       try_delete(CANONICAL_TEMP_DIR)
 

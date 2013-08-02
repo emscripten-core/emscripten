@@ -286,7 +286,7 @@ def check_node_version():
 EMSCRIPTEN_VERSION = '1.5.3'
 
 def generate_sanity():
-  return EMSCRIPTEN_VERSION + '|' + get_llvm_target()
+  return EMSCRIPTEN_VERSION + '|' + get_llvm_target() + '|' + LLVM_ROOT
 
 def check_sanity(force=False):
   try:
