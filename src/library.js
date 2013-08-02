@@ -1417,6 +1417,16 @@ LibraryManager.library = {
   },
 
   // ==========================================================================
+  // sys/file.h
+  // ==========================================================================
+
+  flock: function(fd, operation) {
+    // int flock(int fd, int operation);
+    // Pretend to succeed
+    return 0;
+  },
+
+  // ==========================================================================
   // poll.h
   // ==========================================================================
 
@@ -3852,6 +3862,20 @@ LibraryManager.library = {
   },
 
   // TODO: Implement mremap.
+
+  mprotect: function(addr, len, prot) {
+    // int mprotect(void *addr, size_t len, int prot);
+    // http://pubs.opengroup.org/onlinepubs/7908799/xsh/mprotect.html
+    // Pretend to succeed
+    return 0;
+  },
+
+  msync: function(addr, len, flags) {
+    // int msync(void *addr, size_t len, int flags);
+    // http://pubs.opengroup.org/onlinepubs/009696799/functions/msync.html
+    // Pretend to succeed
+    return 0;
+  },
 
   // ==========================================================================
   // stdlib.h
