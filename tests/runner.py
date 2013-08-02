@@ -13608,61 +13608,61 @@ Press any key to continue.'''
       self.btest('cubegeom_pre.c', reference='cubegeom_pre.png')
 
     def test_cubegeom_pre2(self):
-      self.btest('cubegeom_pre2.c', expected=['-1472804742', '-1626058463', '-2046234971'], args=['-s', 'GL_DEBUG=1']) # some coverage for GL_DEBUG not breaking the build
+      self.btest('cubegeom_pre2.c', reference='cubegeom_pre2.png', args=['-s', 'GL_DEBUG=1']) # some coverage for GL_DEBUG not breaking the build
 
     def test_cubegeom_pre3(self):
-      self.btest('cubegeom_pre3.c', expected=['-1472804742', '-1626058463', '-2046234971'])
+      self.btest('cubegeom_pre3.c', reference='cubegeom_pre2.png')
 
     def test_cubegeom(self):
-      self.btest('cubegeom.c', args=['-O2', '-g'], expected=['188641320', '1522377227', '-1054007155', '-1111866053'])
+      self.btest('cubegeom.c', args=['-O2', '-g'], reference='cubegeom.png')
 
     def test_cubegeom_glew(self):
-      self.btest('cubegeom_glew.c', args=['-O2', '--closure', '1'], expected=['188641320', '1522377227', '-1054007155', '-1111866053'])
+      self.btest('cubegeom_glew.c', args=['-O2', '--closure', '1'], reference='cubegeom.png')
 
     def test_cubegeom_color(self):
-      self.btest('cubegeom_color.c', expected=['588472350', '-687660609', '-818120875'])
+      self.btest('cubegeom_color.c', reference='cubegeom_color.png')
 
     def test_cubegeom_normal(self):
-      self.btest('cubegeom_normal.c', expected=['752917084', '-251570256', '-291655550'])
+      self.btest('cubegeom_normal.c', reference='cubegeom_normal.png')
 
     def test_cubegeom_normal_dap(self): # draw is given a direct pointer to clientside memory, no element array buffer
-      self.btest('cubegeom_normal_dap.c', expected=['752917084', '-251570256', '-291655550'])
+      self.btest('cubegeom_normal_dap.c', reference='cubegeom_normal.png')
 
     def test_cubegeom_normal_dap_far(self): # indices do nto start from 0
-      self.btest('cubegeom_normal_dap_far.c', expected=['752917084', '-251570256', '-291655550'])
+      self.btest('cubegeom_normal_dap_far.c', reference='cubegeom_normal.png')
 
     def test_cubegeom_normal_dap_far_range(self): # glDrawRangeElements
-      self.btest('cubegeom_normal_dap_far_range.c', expected=['752917084', '-251570256', '-291655550'])
+      self.btest('cubegeom_normal_dap_far_range.c', reference='cubegeom_normal.png')
 
     def test_cubegeom_normal_dap_far_glda(self): # use glDrawArrays
-      self.btest('cubegeom_normal_dap_far_glda.c', expected=['-218745386', '-263951846', '-375182658'])
+      self.btest('cubegeom_normal_dap_far_glda.c', reference='cubegeom_normal_dap_far_glda.png')
 
     def test_cubegeom_normal_dap_far_glda_quad(self): # with quad
-      self.btest('cubegeom_normal_dap_far_glda_quad.c', expected=['1757386625', '-677777235', '-690699597'])
+      self.btest('cubegeom_normal_dap_far_glda_quad.c', reference='cubegeom_normal_dap_far_glda_quad.png')
 
     def test_cubegeom_mt(self):
-      self.btest('cubegeom_mt.c', expected=['-457159152', '910983047', '870576921']) # multitexture
+      self.btest('cubegeom_mt.c', reference='cubegeom_mt.png') # multitexture
 
     def test_cubegeom_color2(self):
-      self.btest('cubegeom_color2.c', expected=['1121999515', '-391668088', '-522128354'])
+      self.btest('cubegeom_color2.c', reference='cubegeom_color2.png')
 
     def test_cubegeom_texturematrix(self):
-      self.btest('cubegeom_texturematrix.c', expected=['1297500583', '-791216738', '-783804685'])
+      self.btest('cubegeom_texturematrix.c', reference='cubegeom_texturematrix.png')
 
     def test_cubegeom_fog(self):
-      self.btest('cubegeom_fog.c', expected=['1617140399', '-898782526', '-946179526'])
+      self.btest('cubegeom_fog.c', reference='cubegeom_fog.png')
 
     def test_cubegeom_pre_vao(self):
-      self.btest('cubegeom_pre_vao.c', expected=['-1472804742', '-1626058463', '-2046234971'])
+      self.btest('cubegeom_pre_vao.c', reference='cubegeom_pre_vao.png')
 
     def test_cubegeom_pre2_vao(self):
-      self.btest('cubegeom_pre2_vao.c', expected=['-1472804742', '-1626058463', '-2046234971'])
+      self.btest('cubegeom_pre2_vao.c', reference='cubegeom_pre_vao.png')
 
     def test_cubegeom_pre2_vao2(self):
-      self.btest('cubegeom_pre2_vao2.c', expected=['-790445118'])
+      self.btest('cubegeom_pre2_vao2.c', reference='cubegeom_pre2_vao2.png')
 
     def test_cube_explosion(self):
-      self.btest('cube_explosion.c', expected=['667220544', '-1543354600', '-1485258415'])
+      self.btest('cube_explosion.c', reference='cube_explosion.png')
 
     def test_sdl_canvas_blank(self):
       self.btest('sdl_canvas_blank.c', reference='sdl_canvas_blank.png')
