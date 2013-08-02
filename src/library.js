@@ -29,7 +29,8 @@ LibraryManager.library = {
   _impure_ptr: 'allocate(1, "i32*", ALLOC_STATIC)',
 
   $FS__deps: ['$ERRNO_CODES', '__setErrNo', 'stdin', 'stdout', 'stderr', '_impure_ptr'],
-  $FS__postset: '__ATINIT__.unshift({ func: function() { if (!Module["noFSInit"] && !FS.init.initialized) FS.init() } });' +
+  $FS__postset: 'FS.staticInit();' +
+                '__ATINIT__.unshift({ func: function() { if (!Module["noFSInit"] && !FS.init.initialized) FS.init() } });' +
                 '__ATMAIN__.push({ func: function() { FS.ignorePermissions = false } });' +
                 '__ATEXIT__.push({ func: function() { FS.quit() } });' +
                 // export some names through closure
@@ -223,7 +224,6 @@ LibraryManager.library = {
     // set to true and the object is a symbolic link, it will be returned as is
     // instead of being resolved. Links embedded in the path are still resolved.
     findObject: function(path, dontResolveLastLink) {
-      FS.ensureRoot();
       var ret = FS.analyzePath(path, dontResolveLastLink);
       if (ret.exists) {
         return ret.object;
@@ -509,8 +509,7 @@ LibraryManager.library = {
       if (!success) ___setErrNo(ERRNO_CODES.EIO);
       return success;
     },
-    ensureRoot: function() {
-      if (FS.root) return;
+    staticInit: function () {
       // The main file system tree. All the contents are inside this.
       FS.root = {
         read: true,
@@ -521,6 +520,11 @@ LibraryManager.library = {
         inodeNumber: 1,
         contents: {}
       };
+      // Create the temporary folder, if not already created
+      try {
+        FS.createFolder('/', 'tmp', true, true);
+      } catch(e) {}
+      FS.createFolder('/', 'dev', true, true);
     },
     // Initializes the filesystems with stdin/stdout/stderr devices, given
     // optional handlers.
@@ -528,8 +532,6 @@ LibraryManager.library = {
       // Make sure we initialize only once.
       assert(!FS.init.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
       FS.init.initialized = true;
-
-      FS.ensureRoot();
 
       // Allow Module.stdin etc. to provide defaults, if none explicitly passed to us here
       input = input || Module['stdin'];
@@ -583,21 +585,15 @@ LibraryManager.library = {
       if (!error.printer) error.printer = Module['printErr'];
       if (!error.buffer) error.buffer = [];
 
-      // Create the temporary folder, if not already created
-      try {
-        FS.createFolder('/', 'tmp', true, true);
-      } catch(e) {}
-
       // Create the I/O devices.
-      var devFolder = FS.createFolder('/', 'dev', true, true);
-      var stdin = FS.createDevice(devFolder, 'stdin', input);
+      var stdin = FS.createDevice('/dev', 'stdin', input);
       stdin.isTerminal = !stdinOverridden;
-      var stdout = FS.createDevice(devFolder, 'stdout', null, output);
+      var stdout = FS.createDevice('/dev', 'stdout', null, output);
       stdout.isTerminal = !stdoutOverridden;
-      var stderr = FS.createDevice(devFolder, 'stderr', null, error);
+      var stderr = FS.createDevice('/dev', 'stderr', null, error);
       stderr.isTerminal = !stderrOverridden;
-      FS.createDevice(devFolder, 'tty', input, output);
-      FS.createDevice(devFolder, 'null', function(){}, function(){});
+      FS.createDevice('/dev', 'tty', input, output);
+      FS.createDevice('/dev', 'null', function(){}, function(){});
 
       // Create default streams.
       FS.streams[1] = {
