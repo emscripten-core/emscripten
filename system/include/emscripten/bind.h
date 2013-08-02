@@ -794,7 +794,6 @@ namespace emscripten {
         // NOTE: this returns the class type, not the pointer type
         template<typename T>
         inline TYPEID getActualType(T* ptr) {
-            assert(ptr);
             return reinterpret_cast<TYPEID>(&typeid(*ptr));
         };
     }
