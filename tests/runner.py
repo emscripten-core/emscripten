@@ -14951,6 +14951,7 @@ fi
         assert not os.path.exists(EMCC_CACHE)
       finally:
         if old: os.environ['LLVM'] = old
+        else: del os.environ['LLVM']
 
       try_delete(CANONICAL_TEMP_DIR)
 
