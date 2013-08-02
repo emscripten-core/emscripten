@@ -12417,6 +12417,7 @@ elif 'browser' in str(sys.argv):
             var actualUrl = Module.canvas.toDataURL();
             var actualImage = new Image();
             actualImage.onload = function() {
+              //document.body.appendChild(actualImage); // to grab it for creating the test reference
               var actualCanvas = document.createElement('canvas');
               actualCanvas.width = actualImage.width;
               actualCanvas.height = actualImage.height;
@@ -13604,7 +13605,7 @@ Press any key to continue.'''
       self.btest('gl_matrix_identity.c', expected=['-1882984448', '460451840'])
 
     def test_cubegeom_pre(self):
-      self.btest('cubegeom_pre.c', expected=['-1472804742', '-1626058463', '-2046234971'])
+      self.btest('cubegeom_pre.c', reference='cubegeom_pre.png')
 
     def test_cubegeom_pre2(self):
       self.btest('cubegeom_pre2.c', expected=['-1472804742', '-1626058463', '-2046234971'], args=['-s', 'GL_DEBUG=1']) # some coverage for GL_DEBUG not breaking the build
