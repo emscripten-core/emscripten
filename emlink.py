@@ -6,7 +6,7 @@ Fast static linker for emscripten outputs. Specifically this links asm.js module
 See https://github.com/kripken/emscripten/wiki/Linking
 '''
 
-import os, subprocess, sys
+import sys
 from tools import shared
 from tools.asm_module import AsmModule
 

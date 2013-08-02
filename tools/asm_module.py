@@ -14,8 +14,9 @@ class AsmModule():
     self.end_funcs = self.js.rfind(js_optimizer.end_funcs_marker)
     self.end_asm = self.js.rfind(js_optimizer.end_asm_marker)
 
-    # pre
+    # pre and asm
     self.pre_js = self.js[:self.start_asm]
+    self.asm_js = self.js[self.start_asm:self.end_asm]
 
     # heap initializer
     self.staticbump = int(re.search(shared.JS.memory_staticbump_pattern, self.pre_js).group(1))
@@ -238,8 +239,8 @@ class AsmModule():
     for part in parts:
       if '=' not in part: continue
       part = part.split('var ')[1]
-      name, data = part.split(' = ')
-      tables[name] = data
+      name, data = part.split('=')
+      tables[name.strip()] = data.strip()
     return tables
 
   def merge_tables(self, table, main, side, replacements, f_bases, f_sizes):
