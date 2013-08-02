@@ -338,7 +338,7 @@ function analyzer(data, sidePass) {
                 if (subItem != item && (!(subItem.intertype in UNUNFOLDABLE) ||
                                        (subItem.intertype == 'value' && isNumber(subItem.ident) && isIllegalType(subItem.type)))) {
                   if (item.intertype == 'phi') {
-                    assert(subItem.intertype == 'value' || subItem.intertype == 'structvalue', 'We can only unfold illegal constants in phis');
+                    assert(subItem.intertype == 'value' || subItem.intertype == 'structvalue' || subItem.intertype in PARSABLE_LLVM_FUNCTIONS, 'We can only unfold some expressions in phis');
                     // we must handle this in the phi itself, if we unfold normally it will not be pushed back with the phi
                   } else {
                     var tempIdent = '$$etemp$' + (tempId++);
