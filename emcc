@@ -787,6 +787,7 @@ try:
       newargs[i+1] = ''
     elif newargs[i].startswith('--minify'):
       check_bad_eq(newargs[i])
+      assert newargs[i+1] == '0', '0 is the only supported option for --minify; 1 has been deprecated'
       debug_level = max(1, debug_level)
       newargs[i] = ''
       newargs[i+1] = ''
