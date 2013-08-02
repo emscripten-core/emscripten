@@ -12,13 +12,14 @@ define i32 @doit(i32 %x, { i32, i32 } %y) {
   ret i32 0
 }
 
-define i32 @main() {
+define i32 @main(i32 %argc) {
 entry:
   %retval = alloca i32, align 4                   ; [#uses=1 type=i32*]
   %myi64 = alloca i64, align 4
   %comp = alloca { i32, i32 }, align 4            ; [#uses=1]
   store i32 0, i32* %retval
-  br label %cond.end
+  %should = icmp ne i32 %argc, 1337
+  br i1 %should, label %cond.end, label %cond.null
 
 cond.null:
   br label %cond.end
