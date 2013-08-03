@@ -15,7 +15,5 @@ double strtold_l(const char *start, char **end, locale_t loc);
 }
 #endif
 
-#include_next <xlocale.h>
-
 #endif /* _COMPAT_XLOCALE_H_ */
 

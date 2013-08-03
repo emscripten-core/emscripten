@@ -1,59 +1,51 @@
-/*	$NetBSD: search.h,v 1.12 1999/02/22 10:34:28 christos Exp $	*/
-/* $FreeBSD: src/include/search.h,v 1.4 2002/03/23 17:24:53 imp Exp $ */
+#ifndef _SEARCH_H
+#define _SEARCH_H
 
-/*
- * Written by J.T. Conklin <jtc@netbsd.org>
- * Public domain.
- */
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#ifndef _SEARCH_H_
-#define _SEARCH_H_
+#include <features.h>
 
-#include <sys/cdefs.h>
-#include <machine/ansi.h>
-#include <sys/types.h>
+#define __NEED_size_t
+#include <bits/alltypes.h>
 
-typedef struct entry {
+typedef enum { FIND, ENTER } ACTION;
+typedef enum { preorder, postorder, endorder, leaf } VISIT;
+
+typedef struct {
 	char *key;
 	void *data;
 } ENTRY;
 
-typedef enum {
-	FIND, ENTER
-} ACTION;
+int hcreate(size_t);
+void hdestroy(void);
+ENTRY *hsearch(ENTRY, ACTION);
 
-typedef enum {
-	preorder,
-	postorder,
-	endorder,
-	leaf
-} VISIT;
+void insque(void *, void *);
+void remque(void *);
 
-#ifdef _SEARCH_PRIVATE
-typedef struct node {
-	char         *key;
-	struct node  *llink, *rlink;
-} node_t;
-#endif
+void *lsearch(const void *, void *, size_t *, size_t,
+	int (*)(const void *, const void *));
+void *lfind(const void *, const void *, size_t *, size_t,
+	int (*)(const void *, const void *));
 
-struct hsearch_data
-{
-  struct internal_head *htable;
-  size_t htablesize;
+void *tdelete(const void *__restrict, void **__restrict, int(*)(const void *, const void *));
+void *tfind(const void *, void *const *, int(*)(const void *, const void *));
+void *tsearch(const void *, void **, int (*)(const void *, const void *));
+void twalk(const void *, void (*)(const void *, VISIT, int));
+
+#ifdef _GNU_SOURCE
+struct qelem {
+	struct qelem *q_forw, *q_back;
+	char q_data[1];
 };
 
-__BEGIN_DECLS
-int	 hcreate(size_t);
-void	 hdestroy(void);
-ENTRY	*hsearch(ENTRY, ACTION);
-int	 hcreate_r(size_t, struct hsearch_data *);
-void	 hdestroy_r(struct hsearch_data *);
-int	hsearch_r(ENTRY, ACTION, ENTRY **, struct hsearch_data *);
-void	*tdelete(const void *, void **, int (*)(const void *, const void *));
-void	tdestroy (void *, void (*)(void *));
-void	*tfind(const void *, void **, int (*)(const void *, const void *));
-void	*tsearch(const void *, void **, int (*)(const void *, const void *));
-void      twalk(const void *, void (*)(const void *, VISIT, int));
-__END_DECLS
+void tdestroy(void *, void (*)(void *));
+#endif
 
-#endif /* !_SEARCH_H_ */
+#ifdef __cplusplus
+}
+#endif
+
+#endif

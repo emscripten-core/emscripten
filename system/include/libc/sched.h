@@ -1,97 +1,71 @@
-/*
- *  Written by Joel Sherrill <joel@OARcorp.com>.
- *
- *  COPYRIGHT (c) 1989-2010.
- *  On-Line Applications Research Corporation (OAR).
- *
- *  Permission to use, copy, modify, and distribute this software for any
- *  purpose without fee is hereby granted, provided that this entire notice
- *  is included in all copies of any software which is or includes a copy
- *  or modification of this software.
- *
- *  THIS SOFTWARE IS BEING PROVIDED "AS IS", WITHOUT ANY EXPRESS OR IMPLIED
- *  WARRANTY.  IN PARTICULAR,  THE AUTHOR MAKES NO REPRESENTATION
- *  OR WARRANTY OF ANY KIND CONCERNING THE MERCHANTABILITY OF THIS
- *  SOFTWARE OR ITS FITNESS FOR ANY PARTICULAR PURPOSE.
- *
- *  $Id: sched.h,v 1.2 2010/04/01 18:33:33 jjohnstn Exp $
- */
-
-#ifndef _SCHED_H_
-#define _SCHED_H_
-
-#include <sys/types.h>
-#include <sys/sched.h>
-
+#ifndef _SCHED_H
+#define _SCHED_H
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#if defined(_POSIX_PRIORITY_SCHEDULING)
-/*
- *  XBD 13 - Set Scheduling Parameters, P1003.1b-2008, p. 1803
- */
-int sched_setparam(
-  pid_t                     __pid,
-  const struct sched_param *__param
-);
+#include <features.h>
 
-/*
- *  XBD 13 - Set Scheduling Parameters, P1003.1b-2008, p. 1800
- */
-int sched_getparam(
-  pid_t                     __pid,
-  struct sched_param       *__param
-);
+#define __NEED_struct_timespec
+#define __NEED_pid_t
+#define __NEED_time_t
 
-/*
- *  XBD 13 - Set Scheduling Policy and Scheduling Parameters,
- *         P1003.1b-2008, p. 1805
- */
-int sched_setscheduler(
-  pid_t                     __pid,
-  int                       __policy,
-  const struct sched_param *__param
-);
+#include <bits/alltypes.h>
 
-/*
- *  XBD 13 - Get Scheduling Policy, P1003.1b-2008, p. 1801
- */
-int sched_getscheduler(
-  pid_t                     __pid
-);
+struct sched_param {
+	int sched_priority;
+	int sched_ss_low_priority;
+	struct timespec sched_ss_repl_period;
+	struct timespec sched_ss_init_budget;
+	int sched_ss_max_repl;
+};
 
-/*
- *  XBD 13 - Get Scheduling Parameter Limits, P1003.1b-2008, p. 1799
- */
-int sched_get_priority_max(
-  int __policy
-);
+int    sched_get_priority_max(int);
+int    sched_get_priority_min(int);
+int    sched_getparam(pid_t, struct sched_param *);
+int    sched_getscheduler(pid_t);
+int    sched_rr_get_interval(pid_t, struct timespec *);
+int    sched_setparam(pid_t, const struct sched_param *);
+int    sched_setscheduler(pid_t, int, const struct sched_param *);
+int     sched_yield(void);
 
-int sched_get_priority_min(
-  int  __policy
-);
+#define SCHED_OTHER 0
+#define SCHED_FIFO 1
+#define SCHED_RR 2
+#define SCHED_BATCH 3
+#define SCHED_IDLE 5
+#define SCHED_RESET_ON_FORK 0x40000000
 
-/*
- *  XBD 13 - Get Scheduling Parameter Limits, P1003.1b-2008, p. 1802
- */
-int sched_rr_get_interval(
-  pid_t             __pid,
-  struct timespec  *__interval
-);
-#endif /* _POSIX_PRIORITY_SCHEDULING */
-
-#if defined(_POSIX_THREADS) || defined(_POSIX_PRIORITY_SCHEDULING) || defined(EMSCRIPTEN)
-
-/*
- *  XBD 13 - Yield Processor, P1003.1b-2008, p. 1807
- */
-int sched_yield( void );
-
-#endif /* _POSIX_THREADS or _POSIX_PRIORITY_SCHEDULING */
+#ifdef _GNU_SOURCE
+#define CSIGNAL		0x000000ff
+#define CLONE_VM	0x00000100
+#define CLONE_FS	0x00000200
+#define CLONE_FILES	0x00000400
+#define CLONE_SIGHAND	0x00000800
+#define CLONE_PTRACE	0x00002000
+#define CLONE_VFORK	0x00004000
+#define CLONE_PARENT	0x00008000
+#define CLONE_THREAD	0x00010000
+#define CLONE_NEWNS	0x00020000
+#define CLONE_SYSVSEM	0x00040000
+#define CLONE_SETTLS	0x00080000
+#define CLONE_PARENT_SETTID	0x00100000
+#define CLONE_CHILD_CLEARTID	0x00200000
+#define CLONE_DETACHED	0x00400000
+#define CLONE_UNTRACED	0x00800000
+#define CLONE_CHILD_SETTID	0x01000000
+#define CLONE_NEWUTS	0x04000000
+#define CLONE_NEWIPC	0x08000000
+#define CLONE_NEWUSER	0x10000000
+#define CLONE_NEWPID	0x20000000
+#define CLONE_NEWNET	0x40000000
+#define CLONE_IO	0x80000000
+int clone (int (*)(void *), void *, int, void *, ...);
+int unshare(int);
+int setns(int, int);
+#endif
 
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* _SCHED_H_ */
+#endif
