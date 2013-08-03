@@ -13245,20 +13245,20 @@ Press any key to continue.'''
 
     def test_sdl_ogl(self):
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.btest('sdl_ogl.c', reference='screenshot-gray-purple.png',
+      self.btest('sdl_ogl.c', reference='screenshot-gray-purple.png', reference_slack=1,
         args=['-O2', '--minify', '0', '--preload-file', 'screenshot.png'],
         message='You should see an image with gray at the top.')
 
     def test_sdl_ogl_defaultmatrixmode(self):
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.btest('sdl_ogl_defaultMatrixMode.c', reference='screenshot-gray-purple.png',
+      self.btest('sdl_ogl_defaultMatrixMode.c', reference='screenshot-gray-purple.png', reference_slack=1,
         args=['--minify', '0', '--preload-file', 'screenshot.png'],
         message='You should see an image with gray at the top.')
 
     def test_sdl_ogl_p(self):
       # Immediate mode with pointers
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.btest('sdl_ogl_p.c', reference='screenshot-gray.png',
+      self.btest('sdl_ogl_p.c', reference='screenshot-gray.png', reference_slack=1,
         args=['--preload-file', 'screenshot.png'],
         message='You should see an image with gray at the top.')
 
@@ -13288,7 +13288,7 @@ Press any key to continue.'''
 
     def test_sdl_fog_linear(self):
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.btest('sdl_fog_linear.c', reference='screenshot-fog-linear.png',
+      self.btest('sdl_fog_linear.c', reference='screenshot-fog-linear.png', reference_slack=1,
         args=['--preload-file', 'screenshot.png'],
         message='You should see an image with fog.')
 
