@@ -1,2 +1,0 @@
-/* dummy file for external tools to use.  Real file is created by
-   newlib configuration. */
