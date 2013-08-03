@@ -1,103 +1,102 @@
-/*
- * string.h
- *
- * Definitions for memory and string functions.
- */
+#ifndef	_STRING_H
+#define	_STRING_H
 
-#ifndef _STRING_H_
-#define	_STRING_H_
-
-#include "_ansi.h"
-#include <sys/reent.h>
-
-#define __need_size_t
-#include <stddef.h>
-
-#ifndef NULL
-#define NULL 0
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-_BEGIN_STD_C
+#include <features.h>
 
-_PTR 	 _EXFUN(memchr,(const _PTR, int, size_t));
-int 	 _EXFUN(memcmp,(const _PTR, const _PTR, size_t));
-_PTR 	 _EXFUN(memcpy,(_PTR, const _PTR, size_t));
-_PTR	 _EXFUN(memmove,(_PTR, const _PTR, size_t));
-_PTR	 _EXFUN(memset,(_PTR, int, size_t));
-char 	*_EXFUN(strcat,(char *, const char *));
-char 	*_EXFUN(strchr,(const char *, int));
-int	 _EXFUN(strcmp,(const char *, const char *));
-int	 _EXFUN(strcoll,(const char *, const char *));
-char 	*_EXFUN(strcpy,(char *, const char *));
-size_t	 _EXFUN(strcspn,(const char *, const char *));
-char 	*_EXFUN(strerror,(int));
-size_t	 _EXFUN(strlen,(const char *));
-char 	*_EXFUN(strncat,(char *, const char *, size_t));
-int	 _EXFUN(strncmp,(const char *, const char *, size_t));
-char 	*_EXFUN(strncpy,(char *, const char *, size_t));
-char 	*_EXFUN(strpbrk,(const char *, const char *));
-char 	*_EXFUN(strrchr,(const char *, int));
-size_t	 _EXFUN(strspn,(const char *, const char *));
-char 	*_EXFUN(strstr,(const char *, const char *));
+#define NULL 0L
 
-#if defined(EMSCRIPTEN) || !defined(_REENT_ONLY)
-char 	*_EXFUN(strtok,(char *, const char *));
+#define __NEED_size_t
+#if defined(_POSIX_SOURCE) || defined(_POSIX_C_SOURCE) \
+ || defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) \
+ || defined(_BSD_SOURCE)
+#define __NEED_locale_t
 #endif
 
-size_t	 _EXFUN(strxfrm,(char *, const char *, size_t));
+#include <bits/alltypes.h>
 
-#if defined(EMSCRIPTEN) || !defined(__STRICT_ANSI__)
-char 	*_EXFUN(strtok_r,(char *, const char *, char **));
+void *memcpy (void *__restrict, const void *__restrict, size_t);
+void *memmove (void *, const void *, size_t);
+void *memset (void *, int, size_t);
+int memcmp (const void *, const void *, size_t);
+void *memchr (const void *, int, size_t);
 
-int	 _EXFUN(bcmp,(const void *, const void *, size_t));
-void	 _EXFUN(bcopy,(const void *, void *, size_t));
-void	 _EXFUN(bzero,(void *, size_t));
-int	 _EXFUN(ffs,(int));
-char 	*_EXFUN(index,(const char *, int));
-_PTR	 _EXFUN(memccpy,(_PTR, const _PTR, int, size_t));
-_PTR	 _EXFUN(mempcpy,(_PTR, const _PTR, size_t));
-_PTR	 _EXFUN(memmem, (const _PTR, size_t, const _PTR, size_t));
-char 	*_EXFUN(rindex,(const char *, int));
-char 	*_EXFUN(stpcpy,(char *, const char *));
-char 	*_EXFUN(stpncpy,(char *, const char *, size_t));
-int	 _EXFUN(strcasecmp,(const char *, const char *));
-char	*_EXFUN(strcasestr,(const char *, const char *));
-char 	*_EXFUN(strdup,(const char *));
-char 	*_EXFUN(_strdup_r,(struct _reent *, const char *));
-char 	*_EXFUN(strndup,(const char *, size_t));
-char 	*_EXFUN(_strndup_r,(struct _reent *, const char *, size_t));
-char 	*_EXFUN(strerror_r,(int, char *, size_t));
-size_t	 _EXFUN(strlcat,(char *, const char *, size_t));
-size_t	 _EXFUN(strlcpy,(char *, const char *, size_t));
-int	 _EXFUN(strncasecmp,(const char *, const char *, size_t));
-size_t	 _EXFUN(strnlen,(const char *, size_t));
-char 	*_EXFUN(strsep,(char **, const char *));
-#if defined(__CYGWIN__) || defined(EMSCRIPTEN)
-#ifndef DEFS_H	/* Kludge to work around problem compiling in gdb */
-char  *_EXFUN(strsignal, (int __signo));
-#endif
-int     _EXFUN(strtosigno, (const char *__name));
-#endif
+char *strcpy (char *__restrict, const char *__restrict);
+char *strncpy (char *__restrict, const char *__restrict, size_t);
 
-/* These function names are used on Windows and perhaps other systems.  */
-#ifndef strcmpi
-#define strcmpi strcasecmp
-#endif
-#ifndef stricmp
-#define stricmp strcasecmp
-#endif
-#ifndef strncmpi
-#define strncmpi strncasecmp
-#endif
-#ifndef strnicmp
-#define strnicmp strncasecmp
+char *strcat (char *__restrict, const char *__restrict);
+char *strncat (char *__restrict, const char *__restrict, size_t);
+
+int strcmp (const char *, const char *);
+int strncmp (const char *, const char *, size_t);
+
+int strcoll (const char *, const char *);
+size_t strxfrm (char *__restrict, const char *__restrict, size_t);
+
+char *strchr (const char *, int);
+char *strrchr (const char *, int);
+
+size_t strcspn (const char *, const char *);
+size_t strspn (const char *, const char *);
+char *strpbrk (const char *, const char *);
+char *strstr (const char *, const char *);
+char *strtok (char *__restrict, const char *__restrict);
+
+size_t strlen (const char *);
+
+char *strerror (int);
+
+#if defined(_BSD_SOURCE) || defined(_GNU_SOURCE)
+#include <strings.h>
 #endif
 
-#endif /* ! __STRICT_ANSI__ */
+#if defined(_POSIX_SOURCE) || defined(_POSIX_C_SOURCE) \
+ || defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) \
+ || defined(_BSD_SOURCE)
+char *strtok_r (char *__restrict, const char *__restrict, char **__restrict);
+int strerror_r (int, char *, size_t);
+char *stpcpy(char *__restrict, const char *__restrict);
+char *stpncpy(char *__restrict, const char *__restrict, size_t);
+size_t strnlen (const char *, size_t);
+char *strdup (const char *);
+char *strndup (const char *, size_t);
+char *strsignal(int);
+char *strerror_l (int, locale_t);
+int strcoll_l (const char *, const char *, locale_t);
+size_t strxfrm_l (char *__restrict, const char *__restrict, size_t, locale_t);
+#endif
 
-#include <sys/string.h>
+#if defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) \
+ || defined(_BSD_SOURCE)
+void *memccpy (void *__restrict, const void *__restrict, int, size_t);
+#endif
 
-_END_STD_C
+#if defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
+char *strsep(char **, const char *);
+size_t strlcat (char *, const char *, size_t);
+size_t strlcpy (char *, const char *, size_t);
+#endif
 
-#endif /* _STRING_H_ */
+#ifdef _GNU_SOURCE
+#define	strdupa(x)	strcpy(alloca(strlen(x)+1),x)
+int strverscmp (const char *, const char *);
+int strcasecmp_l (const char *, const char *, locale_t);
+int strncasecmp_l (const char *, const char *, size_t, locale_t);
+char *strchrnul(const char *, int);
+char *strcasestr(const char *, const char *);
+void *memmem(const void *, size_t, const void *, size_t);
+void *memrchr(const void *, int, size_t);
+void *mempcpy(void *, const void *, size_t);
+#ifndef __cplusplus
+char *basename();
+#endif
+#endif
 
+#ifdef __cplusplus
+}
+#endif
+
+#endif

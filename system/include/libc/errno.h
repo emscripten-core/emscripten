@@ -1,11 +1,27 @@
-#ifndef __ERRNO_H__
-#define __ERRNO_H__
+#ifndef	_ERRNO_H
+#define _ERRNO_H
 
-#ifndef __error_t_defined
-typedef int error_t;
-#define __error_t_defined 1
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-#include <sys/errno.h>
+#include <features.h>
 
-#endif /* !__ERRNO_H__ */
+#include <bits/errno.h>
+
+#ifdef __GNUC__
+__attribute__((const))
+#endif
+int *__errno_location(void);
+#define errno (*__errno_location())
+
+#ifdef _GNU_SOURCE
+extern char *program_invocation_short_name, *program_invocation_name;
+#endif
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
+
