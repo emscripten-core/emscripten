@@ -7844,7 +7844,7 @@ LibraryManager.library = {
   inet_pton__deps: ['__setErrNo', '$ERRNO_CODES', 'inet_addr'],
   inet_pton: function(af, src, dst) {
     // int af, const char *src, void *dst
-    if ((af ^ {{{ cDefine("AF_INET") }}}) !==  0) { ___setErrNo(ERRNO_CODES.EAFNOSUPPORT); return -1; }
+    if ((af ^ {{{ cDefine('AF_INET') }}}) !==  0) { ___setErrNo(ERRNO_CODES.EAFNOSUPPORT); return -1; }
     var ret = _inet_addr(src);
     if (ret == -1 || isNaN(ret)) return 0;
     setValue(dst, ret, 'i32');
@@ -7932,7 +7932,7 @@ LibraryManager.library = {
     var aliasesBuf = _malloc(4);
     setValue(aliasesBuf, 0, 'i8*');
     setValue(ret+___hostent_struct_layout.h_aliases, aliasesBuf, 'i8**');
-    setValue(ret+___hostent_struct_layout.h_addrtype, {{{ cDefine("AF_INET") }}}, 'i32');
+    setValue(ret+___hostent_struct_layout.h_addrtype, {{{ cDefine('AF_INET') }}}, 'i32');
     setValue(ret+___hostent_struct_layout.h_length, 4, 'i32');
     var addrListBuf = _malloc(12);
     setValue(addrListBuf, addrListBuf+8, 'i32*');
