@@ -12417,7 +12417,14 @@ elif 'browser' in str(sys.argv):
             var actualUrl = Module.canvas.toDataURL();
             var actualImage = new Image();
             actualImage.onload = function() {
-              //document.body.appendChild(actualImage); // to grab it for creating the test reference
+              /*
+              document.body.appendChild(img); // for comparisons
+              var div = document.createElement('div');
+              div.innerHTML = '^=expected, v=actual';
+              document.body.appendChild(div);
+              document.body.appendChild(actualImage); // to grab it for creating the test reference
+              */
+
               var actualCanvas = document.createElement('canvas');
               actualCanvas.width = actualImage.width;
               actualCanvas.height = actualImage.height;
