@@ -1318,7 +1318,7 @@ var LibraryGL = {
       GLEmulation.fogColor = new Float32Array(4);
 
       // Add some emulation workarounds
-      Module.printErr('WARNING: using emscripten GL emulation. This is a collection of limited workarounds, do not expect it to work');
+      Module.printErr('WARNING: using emscripten GL emulation. This is a collection of limited workarounds, do not expect it to work. (If you do not want this, build with -s DISABLE_GL_EMULATION=1)');
 #if GL_UNSAFE_OPTS == 0
       Module.printErr('WARNING: using emscripten GL emulation unsafe opts. If weirdness happens, try -s GL_UNSAFE_OPTS=0');
 #endif
