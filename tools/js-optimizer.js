@@ -2817,7 +2817,7 @@ function relocate(ast) {
             var other = node[3];
             if (base === 0) return other;
             if (other[0] == 'num') {
-              other[1] += base;
+              other[1] = (other[1] + base)|0;
               return other;
             } else {
               node[2] = ['num', base];
