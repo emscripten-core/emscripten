@@ -12395,6 +12395,8 @@ elif 'browser' in str(sys.argv):
 ''' + code
 
     def reftest(self, expected):
+      # make sure the pngs used here have no color correction, using e.g.
+      #   pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB infile outfile
       basename = os.path.basename(expected)
       shutil.copyfile(expected, os.path.join(self.get_dir(), basename))
       open(os.path.join(self.get_dir(), 'reftest.js'), 'w').write('''
