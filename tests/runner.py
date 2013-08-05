@@ -5025,6 +5025,36 @@ The current type of b is: 9
       '''
       self.do_run(src, 'time: ') # compilation check, mainly
 
+    def test_gmtime(self):
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+        #include <time.h>
+        #include <assert.h>
+
+        int main(void)
+        {
+            time_t t=time(NULL);
+            struct tm *ptm=gmtime(&t);
+            struct tm tmCurrent=*ptm;
+            int hour=tmCurrent.tm_hour;
+
+            t-=hour*3600; // back to midnight
+            int yday = -1;
+            for(hour=0;hour<24;hour++)
+            {
+                ptm=gmtime(&t);
+                // tm_yday must be constant all day...
+                printf("yday: %d, hour: %d\n", ptm->tm_yday, hour);
+                if (yday == -1) yday = ptm->tm_yday;
+                else assert(yday == ptm->tm_yday);
+                t+=3600; // add one hour
+            }
+            printf("ok!\n");
+            return(0);
+        }
+      '''
+      self.do_run(src, '''ok!''')
 
     def test_strptime_tm(self):
       src=r'''
@@ -5313,7 +5343,7 @@ The current type of b is: 9
           return 0;
         }
         '''
-      self.do_run(src, 'fault on write to 0' if not Settings.ASM_JS else 'Assertion: 0')
+      self.do_run(src, 'fault on write to 0' if not Settings.ASM_JS else 'abort()')
 
     def test_trickystring(self):
       src = r'''
@@ -9060,6 +9090,7 @@ def process(filename):
 
       src = r'''
         #include <stdio.h>
+        #include <stdlib.h>
 
         extern "C" {
           int get_int() { return 5; }
@@ -9082,42 +9113,44 @@ def process(filename):
           if (argc == 15) print_string(argv[0]);
           if (argc == 16) pointer((int*)argv[0]);
           if (argc % 17 == 12) return multi(argc, float(argc)/2, argc+1, argv[0]);
-          return 0;
+          // return 0;
+          exit(0);
         }
       '''
 
       post = '''
 def process(filename):
   src = \'\'\'
-    var Module = {
-      'postRun': function() {
-        Module.print('*');
-        var ret;
-        ret = Module['ccall']('get_int', 'number'); Module.print([typeof ret, ret]);
-        ret = ccall('get_float', 'number'); Module.print([typeof ret, ret.toFixed(2)]);
-        ret = ccall('get_string', 'string'); Module.print([typeof ret, ret]);
-        ret = ccall('print_int', null, ['number'], [12]); Module.print(typeof ret);
-        ret = ccall('print_float', null, ['number'], [14.56]); Module.print(typeof ret);
-        ret = ccall('print_string', null, ['string'], ["cheez"]); Module.print(typeof ret);
-        ret = ccall('print_string', null, ['array'], [[97, 114, 114, 45, 97, 121, 0]]); Module.print(typeof ret);
-        ret = ccall('multi', 'number', ['number', 'number', 'number', 'string'], [2, 1.4, 3, 'more']); Module.print([typeof ret, ret]);
-        var p = ccall('malloc', 'pointer', ['number'], [4]);
-        setValue(p, 650, 'i32');
-        ret = ccall('pointer', 'pointer', ['pointer'], [p]); Module.print([typeof ret, getValue(ret, 'i32')]);
-        Module.print('*');
-        // part 2: cwrap
-        var multi = Module['cwrap']('multi', 'number', ['number', 'number', 'number', 'string']);
-        Module.print(multi(2, 1.4, 3, 'atr'));
-        Module.print(multi(8, 5.4, 4, 'bret'));
-        Module.print('*');
-        // part 3: avoid stack explosion
-        for (var i = 0; i < TOTAL_STACK/60; i++) {
-          ccall('multi', 'number', ['number', 'number', 'number', 'string'], [0, 0, 0, '123456789012345678901234567890123456789012345678901234567890']);
-        }
-        Module.print('stack is ok.');
+    var Module = { noInitialRun: true };
+    \'\'\' + open(filename, 'r').read() + \'\'\'
+    Module.addOnExit(function () {
+      Module.print('*');
+      var ret;
+      ret = Module['ccall']('get_int', 'number'); Module.print([typeof ret, ret]);
+      ret = ccall('get_float', 'number'); Module.print([typeof ret, ret.toFixed(2)]);
+      ret = ccall('get_string', 'string'); Module.print([typeof ret, ret]);
+      ret = ccall('print_int', null, ['number'], [12]); Module.print(typeof ret);
+      ret = ccall('print_float', null, ['number'], [14.56]); Module.print(typeof ret);
+      ret = ccall('print_string', null, ['string'], ["cheez"]); Module.print(typeof ret);
+      ret = ccall('print_string', null, ['array'], [[97, 114, 114, 45, 97, 121, 0]]); Module.print(typeof ret);
+      ret = ccall('multi', 'number', ['number', 'number', 'number', 'string'], [2, 1.4, 3, 'more']); Module.print([typeof ret, ret]);
+      var p = ccall('malloc', 'pointer', ['number'], [4]);
+      setValue(p, 650, 'i32');
+      ret = ccall('pointer', 'pointer', ['pointer'], [p]); Module.print([typeof ret, getValue(ret, 'i32')]);
+      Module.print('*');
+      // part 2: cwrap
+      var multi = Module['cwrap']('multi', 'number', ['number', 'number', 'number', 'string']);
+      Module.print(multi(2, 1.4, 3, 'atr'));
+      Module.print(multi(8, 5.4, 4, 'bret'));
+      Module.print('*');
+      // part 3: avoid stack explosion
+      for (var i = 0; i < TOTAL_STACK/60; i++) {
+        ccall('multi', 'number', ['number', 'number', 'number', 'string'], [0, 0, 0, '123456789012345678901234567890123456789012345678901234567890']);
       }
-    };
-  \'\'\' + open(filename, 'r').read()
+      Module.print('stack is ok.');
+    });
+    Module.callMain();
+  \'\'\'
   open(filename, 'w').write(src)
 '''
 
@@ -9328,6 +9361,26 @@ def process(filename):
         }
       '''
       self.do_run(src, 'abs(-10): 10\nabs(-11): 11');
+
+    def test_embind_2(self):
+      if self.emcc_args is None: return self.skip('requires emcc')
+      Building.COMPILER_TEST_OPTS += ['--bind', '--post-js', 'post.js']
+      open('post.js', 'w').write('''
+        Module.print('lerp ' + Module.lerp(1, 2, 0.66) + '.');
+      ''')
+      src = r'''
+        #include <stdio.h>
+        #include <SDL/SDL.h>
+        #include <emscripten/bind.h>
+        using namespace emscripten;
+        float lerp(float a, float b, float t) {
+            return (1 - t) * a + t * b;
+        }
+        EMSCRIPTEN_BINDINGS(my_module) {
+            function("lerp", &lerp);
+        }
+      '''
+      self.do_run(src, 'lerp 1.66');
 
     def test_scriptaclass(self):
         if self.emcc_args is None: return self.skip('requires emcc')
@@ -10680,6 +10733,27 @@ f.close()
             os.chdir(path_from_root('tests')) # Move away from the directory we are about to remove.
             shutil.rmtree(tempdirname)
 
+    def test_nostdincxx(self):
+      try:
+        old = os.environ.get('EMCC_LLVM_TARGET') or ''
+        for compiler in [EMCC, EMXX]:
+          for target in ['i386-pc-linux-gnu', 'le32-unknown-nacl']:
+            print compiler, target
+            os.environ['EMCC_LLVM_TARGET'] = target
+            out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-v'], stdout=PIPE, stderr=PIPE).communicate()
+            out2, err2 = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-v', '-nostdinc++'], stdout=PIPE, stderr=PIPE).communicate()
+            assert out == out2
+            def focus(e):
+              assert 'search starts here:' in e, e
+              assert e.count('End of search list.') == 1, e
+              return e[e.index('search starts here:'):e.index('End of search list.')+20]
+            err = focus(err)
+            err2 = focus(err2)
+            assert err == err2, err + '\n\n\n\n' + err2
+      finally:
+        if old:
+          os.environ['EMCC_LLVM_TARGET'] = old
+
     def test_failure_error_code(self):
       for compiler in [EMCC, EMXX]:
         # Test that if one file is missing from the build, then emcc shouldn't succeed, and shouldn't try to produce an output file.
@@ -11034,6 +11108,23 @@ f.close()
         std::string side() { return "and hello from side"; }
       ''', ['hello from main and hello from side\n'])
 
+      # followup to iostream test: a second linking
+      print 'second linking of a linking output'
+      open('moar.cpp', 'w').write(r'''
+        #include <iostream>
+        struct Moar {
+          Moar() { std::cout << "moar!" << std::endl; }
+        };
+        Moar m;
+      ''')
+      Popen([PYTHON, EMCC, 'moar.cpp', '-o', 'moar.js', '-s', 'SIDE_MODULE=1', '-O2']).communicate()
+      Popen([PYTHON, EMLINK, 'together.js', 'moar.js', 'triple.js'], stdout=PIPE).communicate()
+      assert os.path.exists('triple.js')
+      for engine in JS_ENGINES:
+        out = run_js('triple.js', engine=engine, stderr=PIPE, full_output=True)
+        self.assertContained('moar!\nhello from main and hello from side\n', out)
+        if engine == SPIDERMONKEY_ENGINE: self.validate_asmjs(out)
+
       # zlib compression library. tests function pointers in initializers and many other things
       test('zlib', '', open(path_from_root('tests', 'zlib', 'example.c'), 'r').read(), 
                        self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a']),
@@ -11245,6 +11336,29 @@ int main(int argc, char const *argv[])
       open('in.txt', 'w').write('abc')
       # node's stdin support is broken
       self.assertContained('abc', Popen(listify(SPIDERMONKEY_ENGINE) + ['a.out.js'], stdin=open('in.txt'), stdout=PIPE, stderr=PIPE).communicate()[0])
+
+    def test_ungetc_fscanf(self):
+      open('main.cpp', 'w').write(r'''
+        #include <stdio.h>
+        int main(int argc, char const *argv[])
+        {
+            char str[4] = {0};
+            FILE* f = fopen("my_test.input", "r");
+            if (f == NULL) {
+                printf("cannot open file\n");
+                return -1;
+            }
+            ungetc('x', f);
+            ungetc('y', f);
+            ungetc('z', f);
+            fscanf(f, "%3s", str);
+            printf("%s\n", str);
+            return 0;
+        }
+      ''')
+      open('my_test.input', 'w').write('abc')
+      Building.emcc('main.cpp', ['--embed-file', 'my_test.input'], output_filename='a.out.js')
+      self.assertContained('zyx', Popen(listify(JS_ENGINES[0]) + ['a.out.js'], stdout=PIPE, stderr=PIPE).communicate()[0])
 
     def test_abspaths(self):
       # Includes with absolute paths are generally dangerous, things like -I/usr/.. will get to system local headers, not our portable ones.
@@ -11951,7 +12065,9 @@ int main(int argc, char const *argv[])
         ([], True), # without --bind, we fail
         (['--bind'], False),
         (['--bind', '-O1'], False),
-        (['--bind', '-O2'], False)
+        (['--bind', '-O2'], False),
+        (['--bind', '-O1', '-s', 'ASM_JS=0'], False),
+        (['--bind', '-O2', '-s', 'ASM_JS=0'], False)
       ]:
         print args, fail
         self.clear()
@@ -12070,6 +12186,36 @@ seeked= file.
       self.assertNotContained('emcc: warning: treating -s as linker option', output[1])
       assert os.path.exists('conftest')
 
+    def test_file_packager(self):
+      try:
+        os.mkdir('subdir')
+      except:
+        pass
+      open('data1.txt', 'w').write('data1')
+      os.chdir('subdir')
+      open('data2.txt', 'w').write('data2')
+      # relative path to below the current dir is invalid
+      out, err = Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', '../data1.txt'], stdout=PIPE, stderr=PIPE).communicate()
+      assert len(out) == 0
+      assert 'below the current directory' in err
+      # relative path that ends up under us is cool
+      out, err = Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', '../subdir/data2.txt'], stdout=PIPE, stderr=PIPE).communicate()
+      assert len(out) > 0
+      assert 'below the current directory' not in err
+      # direct path leads to the same code being generated - relative path does not make us do anything different
+      out2, err2 = Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data2.txt'], stdout=PIPE, stderr=PIPE).communicate()
+      assert len(out2) > 0
+      assert 'below the current directory' not in err2
+      def clean(txt):
+        return filter(lambda line: 'PACKAGE_UUID' not in line, txt.split('\n'))
+      out = clean(out)
+      out2 = clean(out2)
+      assert out == out2
+      # sanity check that we do generate different code for different inputs
+      out3, err3 = Popen([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data2.txt', 'data2.txt@waka.txt'], stdout=PIPE, stderr=PIPE).communicate()
+      out3 = clean(out3)
+      assert out != out3
+
     def test_crunch(self):
       # crunch should not be run if a .crn exists that is more recent than the .dds
       shutil.copyfile(path_from_root('tests', 'ship.dds'), 'ship.dds')
@@ -12131,6 +12277,7 @@ elif 'browser' in str(sys.argv):
       'browser.test_sdl_audio_mix',
       'browser.test_sdl_audio_quickload',
       'browser.test_openal_playback',
+      'browser.test_openal_buffers',
       'browser.test_freealut'
     ]
 
@@ -12196,7 +12343,7 @@ elif 'browser' in str(sys.argv):
     @classmethod
     def tearDownClass(cls):
       if not hasattr(browser, 'harness_server'): return
-
+      
       browser.harness_server.terminate()
       delattr(browser, 'harness_server')
       print '[Browser harness server terminated]'
@@ -12270,6 +12417,14 @@ elif 'browser' in str(sys.argv):
             var actualUrl = Module.canvas.toDataURL();
             var actualImage = new Image();
             actualImage.onload = function() {
+              /*
+              document.body.appendChild(img); // for comparisons
+              var div = document.createElement('div');
+              div.innerHTML = '^=expected, v=actual';
+              document.body.appendChild(div);
+              document.body.appendChild(actualImage); // to grab it for creating the test reference
+              */
+
               var actualCanvas = document.createElement('canvas');
               actualCanvas.width = actualImage.width;
               actualCanvas.height = actualImage.height;
@@ -12570,7 +12725,7 @@ Press any key to continue.'''
       open(absolute_src_path2, 'w').write('''load me right before running the code please''')
       
       def make_main(path):
-        print path
+        print 'make main at', path
         open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
           #include <stdio.h>
           #include <string.h>
@@ -12608,14 +12763,14 @@ Press any key to continue.'''
       
       for test in test_cases:
         (srcpath, dstpath) = test
+        print 'Testing', srcpath, dstpath
         make_main(dstpath)
-        print srcpath
         Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', srcpath, '-o', 'page.html']).communicate()
         self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
 
       # By absolute path
 
-      make_main(absolute_src_path)
+      make_main('somefile.txt') # absolute becomes relative
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--preload-file', absolute_src_path, '-o', 'page.html']).communicate()
       self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
 
@@ -12675,7 +12830,7 @@ Press any key to continue.'''
         
       # Should still work with -o subdir/..
 
-      make_main(absolute_src_path)
+      make_main('somefile.txt') # absolute becomes relative
       try:
         os.mkdir(os.path.join(self.get_dir(), 'dirrey'))
       except:
@@ -12867,6 +13022,16 @@ Press any key to continue.'''
       # load an image file, get pixel data.
       shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.not'))
       self.btest('sdl_image_prepare_data.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.not'])
+
+    def test_sdl_stb_image(self):
+      # load an image file, get pixel data.
+      shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.not'))
+      self.btest('sdl_stb_image.c', reference='screenshot.jpg', args=['-s', 'STB_IMAGE=1', '--preload-file', 'screenshot.not'])
+
+    def test_sdl_stb_image_data(self):
+      # load an image file, get pixel data.
+      shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.not'))
+      self.btest('sdl_stb_image_data.c', reference='screenshot.jpg', args=['-s', 'STB_IMAGE=1', '--preload-file', 'screenshot.not'])
 
     def test_sdl_canvas(self):
       open(os.path.join(self.get_dir(), 'sdl_canvas.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_canvas.c')).read()))
@@ -13080,20 +13245,20 @@ Press any key to continue.'''
 
     def test_sdl_ogl(self):
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.btest('sdl_ogl.c', reference='screenshot-gray-purple.png',
+      self.btest('sdl_ogl.c', reference='screenshot-gray-purple.png', reference_slack=1,
         args=['-O2', '--minify', '0', '--preload-file', 'screenshot.png'],
         message='You should see an image with gray at the top.')
 
     def test_sdl_ogl_defaultmatrixmode(self):
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.btest('sdl_ogl_defaultMatrixMode.c', reference='screenshot-gray-purple.png',
+      self.btest('sdl_ogl_defaultMatrixMode.c', reference='screenshot-gray-purple.png', reference_slack=1,
         args=['--minify', '0', '--preload-file', 'screenshot.png'],
         message='You should see an image with gray at the top.')
 
     def test_sdl_ogl_p(self):
       # Immediate mode with pointers
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.btest('sdl_ogl_p.c', reference='screenshot-gray.png',
+      self.btest('sdl_ogl_p.c', reference='screenshot-gray.png', reference_slack=1,
         args=['--preload-file', 'screenshot.png'],
         message='You should see an image with gray at the top.')
 
@@ -13123,7 +13288,7 @@ Press any key to continue.'''
 
     def test_sdl_fog_linear(self):
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.btest('sdl_fog_linear.c', reference='screenshot-fog-linear.png',
+      self.btest('sdl_fog_linear.c', reference='screenshot-fog-linear.png', reference_slack=1,
         args=['--preload-file', 'screenshot.png'],
         message='You should see an image with fog.')
 
@@ -13133,6 +13298,10 @@ Press any key to continue.'''
 
       Popen([PYTHON, EMCC, '-O2', os.path.join(self.get_dir(), 'openal_playback.cpp'), '--preload-file', 'audio.wav', '-o', 'page.html']).communicate()
       self.run_browser('page.html', '', '/report_result?1')
+
+    def test_openal_buffers(self):
+      shutil.copyfile(path_from_root('tests', 'sounds', 'the_entertainer.wav'), os.path.join(self.get_dir(), 'the_entertainer.wav'))
+      self.btest('openal_buffers.c', '0', args=['--preload-file', 'the_entertainer.wav'],)
 
     def test_glfw(self):
       open(os.path.join(self.get_dir(), 'glfw.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'glfw.c')).read()))
@@ -13422,12 +13591,12 @@ Press any key to continue.'''
     def test_gl_ps(self):
       # pointers and a shader
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.btest('gl_ps.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png'])
+      self.btest('gl_ps.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png'], reference_slack=1)
 
     def test_gl_ps_packed(self):
       # packed data that needs to be strided
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-      self.btest('gl_ps_packed.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png'])
+      self.btest('gl_ps_packed.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png'], reference_slack=1)
 
     def test_gl_ps_strides(self):
       shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
@@ -13443,64 +13612,64 @@ Press any key to continue.'''
       self.btest('gl_matrix_identity.c', expected=['-1882984448', '460451840'])
 
     def test_cubegeom_pre(self):
-      self.btest('cubegeom_pre.c', expected=['-1472804742', '-1626058463', '-2046234971'])
+      self.btest('cubegeom_pre.c', reference='cubegeom_pre.png')
 
     def test_cubegeom_pre2(self):
-      self.btest('cubegeom_pre2.c', expected=['-1472804742', '-1626058463', '-2046234971'], args=['-s', 'GL_DEBUG=1']) # some coverage for GL_DEBUG not breaking the build
+      self.btest('cubegeom_pre2.c', reference='cubegeom_pre2.png', args=['-s', 'GL_DEBUG=1']) # some coverage for GL_DEBUG not breaking the build
 
     def test_cubegeom_pre3(self):
-      self.btest('cubegeom_pre3.c', expected=['-1472804742', '-1626058463', '-2046234971'])
+      self.btest('cubegeom_pre3.c', reference='cubegeom_pre2.png')
 
     def test_cubegeom(self):
-      self.btest('cubegeom.c', args=['-O2', '-g'], expected=['188641320', '1522377227', '-1054007155', '-1111866053'])
+      self.btest('cubegeom.c', args=['-O2', '-g'], reference='cubegeom.png')
 
     def test_cubegeom_glew(self):
-      self.btest('cubegeom_glew.c', args=['-O2', '--closure', '1'], expected=['188641320', '1522377227', '-1054007155', '-1111866053'])
+      self.btest('cubegeom_glew.c', args=['-O2', '--closure', '1'], reference='cubegeom.png')
 
     def test_cubegeom_color(self):
-      self.btest('cubegeom_color.c', expected=['588472350', '-687660609', '-818120875'])
+      self.btest('cubegeom_color.c', reference='cubegeom_color.png')
 
     def test_cubegeom_normal(self):
-      self.btest('cubegeom_normal.c', expected=['752917084', '-251570256', '-291655550'])
+      self.btest('cubegeom_normal.c', reference='cubegeom_normal.png')
 
     def test_cubegeom_normal_dap(self): # draw is given a direct pointer to clientside memory, no element array buffer
-      self.btest('cubegeom_normal_dap.c', expected=['752917084', '-251570256', '-291655550'])
+      self.btest('cubegeom_normal_dap.c', reference='cubegeom_normal.png')
 
     def test_cubegeom_normal_dap_far(self): # indices do nto start from 0
-      self.btest('cubegeom_normal_dap_far.c', expected=['752917084', '-251570256', '-291655550'])
+      self.btest('cubegeom_normal_dap_far.c', reference='cubegeom_normal.png')
 
     def test_cubegeom_normal_dap_far_range(self): # glDrawRangeElements
-      self.btest('cubegeom_normal_dap_far_range.c', expected=['752917084', '-251570256', '-291655550'])
+      self.btest('cubegeom_normal_dap_far_range.c', reference='cubegeom_normal.png')
 
     def test_cubegeom_normal_dap_far_glda(self): # use glDrawArrays
-      self.btest('cubegeom_normal_dap_far_glda.c', expected=['-218745386', '-263951846', '-375182658'])
+      self.btest('cubegeom_normal_dap_far_glda.c', reference='cubegeom_normal_dap_far_glda.png')
 
     def test_cubegeom_normal_dap_far_glda_quad(self): # with quad
-      self.btest('cubegeom_normal_dap_far_glda_quad.c', expected=['1757386625', '-677777235', '-690699597'])
+      self.btest('cubegeom_normal_dap_far_glda_quad.c', reference='cubegeom_normal_dap_far_glda_quad.png')
 
     def test_cubegeom_mt(self):
-      self.btest('cubegeom_mt.c', expected=['-457159152', '910983047', '870576921']) # multitexture
+      self.btest('cubegeom_mt.c', reference='cubegeom_mt.png') # multitexture
 
     def test_cubegeom_color2(self):
-      self.btest('cubegeom_color2.c', expected=['1121999515', '-391668088', '-522128354'])
+      self.btest('cubegeom_color2.c', reference='cubegeom_color2.png')
 
     def test_cubegeom_texturematrix(self):
-      self.btest('cubegeom_texturematrix.c', expected=['1297500583', '-791216738', '-783804685'])
+      self.btest('cubegeom_texturematrix.c', reference='cubegeom_texturematrix.png')
 
     def test_cubegeom_fog(self):
-      self.btest('cubegeom_fog.c', expected=['1617140399', '-898782526', '-946179526'])
+      self.btest('cubegeom_fog.c', reference='cubegeom_fog.png')
 
     def test_cubegeom_pre_vao(self):
-      self.btest('cubegeom_pre_vao.c', expected=['-1472804742', '-1626058463', '-2046234971'])
+      self.btest('cubegeom_pre_vao.c', reference='cubegeom_pre_vao.png')
 
     def test_cubegeom_pre2_vao(self):
-      self.btest('cubegeom_pre2_vao.c', expected=['-1472804742', '-1626058463', '-2046234971'])
+      self.btest('cubegeom_pre2_vao.c', reference='cubegeom_pre_vao.png')
 
     def test_cubegeom_pre2_vao2(self):
-      self.btest('cubegeom_pre2_vao2.c', expected=['-790445118'])
+      self.btest('cubegeom_pre2_vao2.c', reference='cubegeom_pre2_vao2.png')
 
     def test_cube_explosion(self):
-      self.btest('cube_explosion.c', expected=['667220544', '-1543354600', '-1485258415'])
+      self.btest('cube_explosion.c', reference='cube_explosion.png')
 
     def test_sdl_canvas_blank(self):
       self.btest('sdl_canvas_blank.c', reference='sdl_canvas_blank.png')
@@ -14766,11 +14935,30 @@ fi
         finally:
           del os.environ['EMCC_DEBUG']
 
+      restore()
+
+      def ensure_cache():
+        self.do([EMCC, '-O2', path_from_root('tests', 'hello_world.c')])
+
       # Manual cache clearing
+      ensure_cache()
       assert os.path.exists(EMCC_CACHE)
       output = self.do([EMCC, '--clear-cache'])
       assert ERASING_MESSAGE in output
       assert not os.path.exists(EMCC_CACHE)
+
+      # Changing LLVM_ROOT, even without altering .emscripten, clears the cache
+      ensure_cache()
+      old = os.environ.get('LLVM')
+      try:
+        os.environ['LLVM'] = 'waka'
+        assert os.path.exists(EMCC_CACHE)
+        output = self.do([EMCC])
+        assert ERASING_MESSAGE in output
+        assert not os.path.exists(EMCC_CACHE)
+      finally:
+        if old: os.environ['LLVM'] = old
+        else: del os.environ['LLVM']
 
       try_delete(CANONICAL_TEMP_DIR)
 

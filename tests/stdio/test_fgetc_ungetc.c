@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -47,7 +48,9 @@ void test() {
   ungetc('a', file);
   err = fgetc(file);
   assert(err == (int)'a');
-  fread(buffer, sizeof(char), sizeof(buffer), file);
+  int r = fread(buffer, sizeof(char), sizeof(buffer), file);
+  assert(r == 3);
+  buffer[3] = 0;
   assert(!strcmp(buffer, "bcd"));
 
   // rewind and fseek should reset anything that's been

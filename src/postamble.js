@@ -1,9 +1,12 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
-Module['callMain'] = function callMain(args) {
+var initialStackTop;
+var inMain;
+
+Module['callMain'] = Module.callMain = function callMain(args) {
   assert(runDependencies == 0, 'cannot call main when async dependencies remain! (listen on __ATMAIN__)');
-  assert(!Module['preRun'] || Module['preRun'].length == 0, 'cannot call main when preRun functions remain to be called');
+  assert(__ATPRERUN__.length == 0, 'cannot call main when preRun functions remain to be called');
 
   args = args || [];
 
@@ -28,29 +31,37 @@ Module['callMain'] = function callMain(args) {
   var start = Date.now();
 #endif
 
-  var ret;
+  initialStackTop = STACKTOP;
+  inMain = true;
 
-  var initialStackTop = STACKTOP;
+  var ret;
   try {
     ret = Module['_main'](argc, argv, 0);
   }
   catch(e) {
-    if (e.name == 'ExitStatus') {
-      return e.status;
+    if (e && typeof e == 'object' && e.type == 'ExitStatus') {
+      // exit() throws this once it's done to make sure execution
+      // has been stopped completely
+      Module.print('Exit Status: ' + e.value);
+      return e.value;
     } else if (e == 'SimulateInfiniteLoop') {
+      // running an evented main loop, don't immediately exit
       Module['noExitRuntime'] = true;
     } else {
       throw e;
     }
   } finally {
-    STACKTOP = initialStackTop;
+    inMain = false;
   }
 
 #if BENCHMARK
   Module.realPrint('main() took ' + (Date.now() - start) + ' milliseconds');
 #endif
 
-  return ret;
+  // if we're not running an evented main loop, it's time to exit
+  if (!Module['noExitRuntime']) {
+    exit(ret);
+  }
 }
 
 {{GLOBAL_VARS}}
@@ -60,20 +71,14 @@ function run(args) {
 
   if (runDependencies > 0) {
     Module.printErr('run() called, but dependencies remain, so not running');
-    return 0;
+    return;
   }
 
-  if (Module['preRun']) {
-    if (typeof Module['preRun'] == 'function') Module['preRun'] = [Module['preRun']];
-    var toRun = Module['preRun'];
-    Module['preRun'] = [];
-    for (var i = toRun.length-1; i >= 0; i--) {
-      toRun[i]();
-    }
-    if (runDependencies > 0) {
-      // a preRun added a dependency, run will be called later
-      return 0;
-    }
+  preRun();
+
+  if (runDependencies > 0) {
+    // a preRun added a dependency, run will be called later
+    return;
   }
 
   function doRun() {
@@ -81,21 +86,12 @@ function run(args) {
 
     preMain();
 
-    var ret = 0;
     calledRun = true;
     if (Module['_main'] && shouldRunNow) {
-      ret = Module['callMain'](args);
-      if (!Module['noExitRuntime']) {
-        exitRuntime();
-      }
+      Module['callMain'](args);
     }
-    if (Module['postRun']) {
-      if (typeof Module['postRun'] == 'function') Module['postRun'] = [Module['postRun']];
-      while (Module['postRun'].length > 0) {
-        Module['postRun'].pop()();
-      }
-    }
-    return ret;
+
+    postRun();
   }
 
   if (Module['setStatus']) {
@@ -106,12 +102,42 @@ function run(args) {
       }, 1);
       if (!ABORT) doRun();
     }, 1);
-    return 0;
   } else {
-    return doRun();
+    doRun();
   }
 }
 Module['run'] = Module.run = run;
+
+function exit(status) {
+  ABORT = true;
+  STACKTOP = initialStackTop;
+
+  // TODO call externally added 'exit' callbacks with the status code.
+  // It'd be nice to provide the same interface for all Module events (e.g.
+  // prerun, premain, postmain). Perhaps an EventEmitter so we can do:
+  // Module.on('exit', function (status) {});
+
+  // exit the runtime
+  exitRuntime();
+
+  if (inMain) {
+    // if we're still inside the callMain's try/catch, we need to throw an
+    // exception in order to immediately terminate execution.
+    throw { type: 'ExitStatus', value: status };
+  }
+}
+Module['exit'] = Module.exit = exit;
+
+function abort(text) {
+  if (text) {
+    Module.print(text);
+  }
+
+  ABORT = true;
+
+  throw 'abort() at ' + (new Error().stack);
+}
+Module['abort'] = Module.abort = abort;
 
 // {{PRE_RUN_ADDITIONS}}
 

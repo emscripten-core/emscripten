@@ -29,7 +29,8 @@ LibraryManager.library = {
   _impure_ptr: 'allocate(1, "i32*", ALLOC_STATIC)',
 
   $FS__deps: ['$ERRNO_CODES', '__setErrNo', 'stdin', 'stdout', 'stderr', '_impure_ptr'],
-  $FS__postset: '__ATINIT__.unshift({ func: function() { if (!Module["noFSInit"] && !FS.init.initialized) FS.init() } });' +
+  $FS__postset: 'FS.staticInit();' +
+                '__ATINIT__.unshift({ func: function() { if (!Module["noFSInit"] && !FS.init.initialized) FS.init() } });' +
                 '__ATMAIN__.push({ func: function() { FS.ignorePermissions = false } });' +
                 '__ATEXIT__.push({ func: function() { FS.quit() } });' +
                 // export some names through closure
@@ -223,7 +224,6 @@ LibraryManager.library = {
     // set to true and the object is a symbolic link, it will be returned as is
     // instead of being resolved. Links embedded in the path are still resolved.
     findObject: function(path, dontResolveLastLink) {
-      FS.ensureRoot();
       var ret = FS.analyzePath(path, dontResolveLastLink);
       if (ret.exists) {
         return ret.object;
@@ -509,8 +509,7 @@ LibraryManager.library = {
       if (!success) ___setErrNo(ERRNO_CODES.EIO);
       return success;
     },
-    ensureRoot: function() {
-      if (FS.root) return;
+    staticInit: function () {
       // The main file system tree. All the contents are inside this.
       FS.root = {
         read: true,
@@ -521,6 +520,11 @@ LibraryManager.library = {
         inodeNumber: 1,
         contents: {}
       };
+      // Create the temporary folder, if not already created
+      try {
+        FS.createFolder('/', 'tmp', true, true);
+      } catch(e) {}
+      FS.createFolder('/', 'dev', true, true);
     },
     // Initializes the filesystems with stdin/stdout/stderr devices, given
     // optional handlers.
@@ -528,8 +532,6 @@ LibraryManager.library = {
       // Make sure we initialize only once.
       assert(!FS.init.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
       FS.init.initialized = true;
-
-      FS.ensureRoot();
 
       // Allow Module.stdin etc. to provide defaults, if none explicitly passed to us here
       input = input || Module['stdin'];
@@ -583,21 +585,15 @@ LibraryManager.library = {
       if (!error.printer) error.printer = Module['printErr'];
       if (!error.buffer) error.buffer = [];
 
-      // Create the temporary folder, if not already created
-      try {
-        FS.createFolder('/', 'tmp', true, true);
-      } catch(e) {}
-
       // Create the I/O devices.
-      var devFolder = FS.createFolder('/', 'dev', true, true);
-      var stdin = FS.createDevice(devFolder, 'stdin', input);
+      var stdin = FS.createDevice('/dev', 'stdin', input);
       stdin.isTerminal = !stdinOverridden;
-      var stdout = FS.createDevice(devFolder, 'stdout', null, output);
+      var stdout = FS.createDevice('/dev', 'stdout', null, output);
       stdout.isTerminal = !stdoutOverridden;
-      var stderr = FS.createDevice(devFolder, 'stderr', null, error);
+      var stderr = FS.createDevice('/dev', 'stderr', null, error);
       stderr.isTerminal = !stderrOverridden;
-      FS.createDevice(devFolder, 'tty', input, output);
-      FS.createDevice(devFolder, 'null', function(){}, function(){});
+      FS.createDevice('/dev', 'tty', input, output);
+      FS.createDevice('/dev', 'null', function(){}, function(){});
 
       // Create default streams.
       FS.streams[1] = {
@@ -1165,7 +1161,7 @@ LibraryManager.library = {
     ['i32', 'f_namemax']]),
   statvfs__deps: ['$FS', '__statvfs_struct_layout'],
   statvfs: function(path, buf) {
-    // http://pubs.opengroup.org/onlinepubs/7908799/xsh/stat.html
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/statvfs.html
     // int statvfs(const char *restrict path, struct statvfs *restrict buf);
     var offsets = ___statvfs_struct_layout;
     // NOTE: None of the constants here are true. We're just returning safe and
@@ -1413,6 +1409,16 @@ LibraryManager.library = {
     var contents = FS.streams[fd].object.contents;
     var limit = offset + len;
     while (limit > contents.length) contents.push(0);
+    return 0;
+  },
+
+  // ==========================================================================
+  // sys/file.h
+  // ==========================================================================
+
+  flock: function(fd, operation) {
+    // int flock(int fd, int operation);
+    // Pretend to succeed
     return 0;
   },
 
@@ -2133,20 +2139,7 @@ LibraryManager.library = {
   _exit: function(status) {
     // void _exit(int status);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/exit.html
-
-    function ExitStatus() {
-      this.name = "ExitStatus";
-      this.message = "Program terminated with exit(" + status + ")";
-      this.status = status;
-      Module.print('Exit Status: ' + status);
-    };
-    ExitStatus.prototype = new Error();
-    ExitStatus.prototype.constructor = ExitStatus;
-
-    exitRuntime();
-    ABORT = true;
-
-    throw new ExitStatus();
+    Module['exit'](status);
   },
   fork__deps: ['__setErrNo', '$ERRNO_CODES'],
   fork: function() {
@@ -3653,29 +3646,19 @@ LibraryManager.library = {
     ___setErrNo(ERRNO_CODES.EAGAIN);
     return -1;
   },
-  fscanf__deps: ['$FS', '__setErrNo', '$ERRNO_CODES',
-                 '_scanString', 'fgetc', 'fseek', 'ftell'],
+  fscanf__deps: ['$FS', '_scanString', 'fgetc', 'ungetc'],
   fscanf: function(stream, format, varargs) {
     // int fscanf(FILE *restrict stream, const char *restrict format, ... );
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/scanf.html
     if (FS.streams[stream]) {
-      var i = _ftell(stream), SEEK_SET = 0;
-      // if the stream does not support seeking backwards (e.g. stdin), buffer it here
-      var buffer = [], bufferIndex = 0;
+      var buffer = [];
       var get = function() {
-        if (bufferIndex < buffer.length) {
-          return buffer[bufferIndex++];
-        }
-        i++;
-        bufferIndex++;
         var c = _fgetc(stream);
         buffer.push(c);
         return c;
       };
       var unget = function() {
-        if (_fseek(stream, --i, SEEK_SET) !== 0) {
-          bufferIndex--;
-        }
+        _ungetc(buffer.pop(), stream);
       };
       return __scanString(format, get, unget, varargs);
     } else {
@@ -3876,6 +3859,20 @@ LibraryManager.library = {
 
   // TODO: Implement mremap.
 
+  mprotect: function(addr, len, prot) {
+    // int mprotect(void *addr, size_t len, int prot);
+    // http://pubs.opengroup.org/onlinepubs/7908799/xsh/mprotect.html
+    // Pretend to succeed
+    return 0;
+  },
+
+  msync: function(addr, len, flags) {
+    // int msync(void *addr, size_t len, int flags);
+    // http://pubs.opengroup.org/onlinepubs/009696799/functions/msync.html
+    // Pretend to succeed
+    return 0;
+  },
+
   // ==========================================================================
   // stdlib.h
   // ==========================================================================
@@ -3939,13 +3936,16 @@ LibraryManager.library = {
   __cxa_atexit: 'atexit',
 
   abort: function() {
-    ABORT = true;
-    throw 'abort() at ' + (new Error().stack);
+    Module['abort']();
   },
 
   bsearch: function(key, base, num, size, compar) {
     var cmp = function(x, y) {
-      return Runtime.dynCall('iii', compar, [x, y])
+#if ASM_JS
+      return Module['dynCall_iii'](compar, x, y);
+#else
+      return FUNCTION_TABLE[compar](x, y);
+#endif
     };
     var left = 0;
     var right = num;
@@ -3955,7 +3955,6 @@ LibraryManager.library = {
       mid = (left + right) >>> 1;
       addr = base + (mid * size);
       test = cmp(key, addr);
-
       if (test < 0) {
         right = mid;
       } else if (test > 0) {
@@ -4175,13 +4174,14 @@ LibraryManager.library = {
     if (num == 0 || size == 0) return;
     // forward calls to the JavaScript sort method
     // first, sort the items logically
-    var comparator = function(x, y) {
-      return Runtime.dynCall('iii', cmp, [x, y]);
-    }
     var keys = [];
     for (var i = 0; i < num; i++) keys.push(i);
     keys.sort(function(a, b) {
-      return comparator(base+a*size, base+b*size);
+#if ASM_JS
+      return Module['dynCall_iii'](cmp, base+a*size, base+b*size);
+#else
+      return FUNCTION_TABLE[cmp](base+a*size, base+b*size);
+#endif
     });
     // apply the sort
     var temp = _malloc(num*size);
@@ -4458,6 +4458,13 @@ LibraryManager.library = {
   llvm_memmove_i64: 'memmove',
   llvm_memmove_p0i8_p0i8_i32: 'memmove',
   llvm_memmove_p0i8_p0i8_i64: 'memmove',
+
+  bcopy__deps: ['memmove'],
+  bcopy: function(src, dest, num) {
+    // void bcopy(const void *s1, void *s2, size_t n);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/bcopy.html
+    _memmove(dest, src, num);
+  },
 
   memset__inline: function(ptr, value, num, align) {
     return makeSetValues(ptr, 0, value, 'null', num, align);
@@ -4947,7 +4954,17 @@ LibraryManager.library = {
            (chr >= {{{ charCode('{') }}} && chr <= {{{ charCode('~') }}});
   },
   isspace: function(chr) {
-    return chr in { 32: 0, 9: 0, 10: 0, 11: 0, 12: 0, 13: 0 };
+    switch(chr) {
+      case 32:
+      case 9:
+      case 10:
+      case 11:
+      case 12:
+      case 13:
+        return true;
+      default:
+        return false;
+    };
   },
   isblank: function(chr) {
     return chr == {{{ charCode(' ') }}} || chr == {{{ charCode('\t') }}};
@@ -6161,9 +6178,14 @@ LibraryManager.library = {
     {{{ makeSetValue('tmPtr', 'offsets.tm_wday', 'date.getUTCDay()', 'i32') }}}
     {{{ makeSetValue('tmPtr', 'offsets.tm_gmtoff', '0', 'i32') }}}
     {{{ makeSetValue('tmPtr', 'offsets.tm_isdst', '0', 'i32') }}}
-
-    var start = new Date(date.getFullYear(), 0, 1);
-    var yday = Math.round((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    var start = new Date(date); // define date using UTC, start from Jan 01 00:00:00 UTC
+    start.setUTCDate(1);
+    start.setUTCMonth(0);
+    start.setUTCHours(0);
+    start.setUTCMinutes(0);
+    start.setUTCSeconds(0);
+    start.setUTCMilliseconds(0);
+    var yday = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
     {{{ makeSetValue('tmPtr', 'offsets.tm_yday', 'yday', 'i32') }}}
 
     var timezone = "GMT";
@@ -6174,7 +6196,6 @@ LibraryManager.library = {
 
     return tmPtr;
   },
-
   timegm__deps: ['mktime'],
   timegm: function(tmPtr) {
     _tzset();
@@ -7823,7 +7844,7 @@ LibraryManager.library = {
   inet_pton__deps: ['__setErrNo', '$ERRNO_CODES', 'inet_addr'],
   inet_pton: function(af, src, dst) {
     // int af, const char *src, void *dst
-    if ((af ^ {{{ cDefine("AF_INET") }}}) !==  0) { ___setErrNo(ERRNO_CODES.EAFNOSUPPORT); return -1; }
+    if ((af ^ {{{ cDefine('AF_INET') }}}) !==  0) { ___setErrNo(ERRNO_CODES.EAFNOSUPPORT); return -1; }
     var ret = _inet_addr(src);
     if (ret == -1 || isNaN(ret)) return 0;
     setValue(dst, ret, 'i32');
@@ -7911,7 +7932,7 @@ LibraryManager.library = {
     var aliasesBuf = _malloc(4);
     setValue(aliasesBuf, 0, 'i8*');
     setValue(ret+___hostent_struct_layout.h_aliases, aliasesBuf, 'i8**');
-    setValue(ret+___hostent_struct_layout.h_addrtype, {{{ cDefine("AF_INET") }}}, 'i32');
+    setValue(ret+___hostent_struct_layout.h_addrtype, {{{ cDefine('AF_INET') }}}, 'i32');
     setValue(ret+___hostent_struct_layout.h_length, 4, 'i32');
     var addrListBuf = _malloc(12);
     setValue(addrListBuf, addrListBuf+8, 'i32*');

@@ -1238,61 +1238,133 @@ var LibrarySDL = {
     return flags; // We support JPG, PNG, TIF because browsers do
   },
 
-  IMG_Load_RW__deps: ['SDL_LockSurface'],
-  IMG_Load_RW: function(rwopsID, freesrc) {
-    var rwops = SDL.rwops[rwopsID];
+  IMG_Load_RW__deps: ['SDL_LockSurface', 'SDL_FreeRW'],
+  IMG_Load_RW: function(rwopsID, freeSrc) {
+    try {
+      // stb_image integration support
+      var cleanup = function() {
+        if (rwops && freeSrc) _SDL_FreeRW(rwopsID);
+      };
+      function addCleanup(func) {
+        var old = cleanup;
+        cleanup = function() {
+          old();
+          func();
+        }
+      }
+      function callStbImage(func, params) {
+        var x = Module['_malloc']({{{ QUANTUM_SIZE }}});
+        var y = Module['_malloc']({{{ QUANTUM_SIZE }}});
+        var comp = Module['_malloc']({{{ QUANTUM_SIZE }}});
+        addCleanup(function() {
+          Module['_free'](x);
+          Module['_free'](y);
+          Module['_free'](comp);
+          if (data) Module['_stbi_image_free'](data);
+        });
+        var data = Module['_' + func].apply(null, params.concat([x, y, comp, 0]));
+        if (!data) return null;
+        return {
+          rawData: true,
+          data: data,
+          width: {{{ makeGetValue('x', 0, 'i32') }}},
+          height: {{{ makeGetValue('y', 0, 'i32') }}},
+          size: {{{ makeGetValue('x', 0, 'i32') }}} * {{{ makeGetValue('y', 0, 'i32') }}} * {{{ makeGetValue('comp', 0, 'i32') }}},
+          bpp: {{{ makeGetValue('comp', 0, 'i32') }}}
+        };
+      }
 
-    if (rwops === undefined) {
-      return 0;
-    }
+      var rwops = SDL.rwops[rwopsID];
+      if (rwops === undefined) {
+        return 0;
+      }
 
-    var filename = rwops.filename;
-    
-    if (filename === undefined) {
-      Runtime.warnOnce('Only file names that have been preloaded are supported for IMG_Load_RW.');
-      // TODO. Support loading image data from embedded files, similarly to Mix_LoadWAV_RW
-      // TODO. Support loading image data from byte arrays, similarly to Mix_LoadWAV_RW
-      return 0;
+      var filename = rwops.filename;
+      if (filename === undefined) {
+#if STB_IMAGE
+        var raw = callStbImage('stbi_load_from_memory', [rwops.bytes, rwops.count]);
+        if (!raw) return 0;
+#else
+        Runtime.warnOnce('Only file names that have been preloaded are supported for IMG_Load_RW. Consider using STB_IMAGE=1 if you want synchronous image decoding (see settings.js)');
+        return 0;
+#endif
+      }
+
+      if (!raw) {
+        filename = FS.standardizePath(filename);
+        if (filename[0] == '/') {
+          // Convert the path to relative
+          filename = filename.substr(1);
+        }
+        var raw = Module["preloadedImages"][filename];
+        if (!raw) {
+          if (raw === null) Module.printErr('Trying to reuse preloaded image, but freePreloadedMediaOnUse is set!');
+#if STB_IMAGE
+          var name = Module['_malloc'](filename.length+1);
+          writeStringToMemory(filename, name);
+          addCleanup(function() {
+            Module['_free'](name);
+          });
+          var raw = callStbImage('stbi_load', [name]);
+          if (!raw) return 0;
+#else
+          Runtime.warnOnce('Cannot find preloaded image ' + filename);
+          Runtime.warnOnce('Cannot find preloaded image ' + filename + '. Consider using STB_IMAGE=1 if you want synchronous image decoding (see settings.js)');
+          return 0;
+#endif
+        } else if (Module['freePreloadedMediaOnUse']) {
+          Module["preloadedImages"][filename] = null;
+        }
+      }
+
+      var surf = SDL.makeSurface(raw.width, raw.height, 0, false, 'load:' + filename);
+      var surfData = SDL.surfaces[surf];
+      surfData.ctx.globalCompositeOperation = "copy";
+      if (!raw.rawData) {
+        surfData.ctx.drawImage(raw, 0, 0, raw.width, raw.height, 0, 0, raw.width, raw.height);
+      } else {
+        var imageData = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
+        if (raw.bpp == 4) {
+          imageData.data.set({{{ makeHEAPView('U8', 'raw.data', 'raw.data+raw.size') }}});
+        } else if (raw.bpp == 3) {
+          var pixels = raw.size/3;
+          var data = imageData.data;
+          var sourcePtr = raw.data;
+          var destPtr = 0;
+          for (var i = 0; i < pixels; i++) {
+            data[destPtr++] = {{{ makeGetValue('sourcePtr++', 0, 'i8', null, 1) }}};
+            data[destPtr++] = {{{ makeGetValue('sourcePtr++', 0, 'i8', null, 1) }}};
+            data[destPtr++] = {{{ makeGetValue('sourcePtr++', 0, 'i8', null, 1) }}};
+            data[destPtr++] = 255;
+          }
+        } else {
+          Module.printErr('cannot handle bpp ' + raw.bpp);
+          return 0;
+        }
+        surfData.ctx.putImageData(imageData, 0, 0);
+      }
+      surfData.ctx.globalCompositeOperation = "source-over";
+      // XXX SDL does not specify that loaded images must have available pixel data, in fact
+      //     there are cases where you just want to blit them, so you just need the hardware
+      //     accelerated version. However, code everywhere seems to assume that the pixels
+      //     are in fact available, so we retrieve it here. This does add overhead though.
+      _SDL_LockSurface(surf);
+      surfData.locked--; // The surface is not actually locked in this hack
+      if (SDL.GL) {
+        // After getting the pixel data, we can free the canvas and context if we do not need to do 2D canvas blitting
+        surfData.canvas = surfData.ctx = null;
+      }
+      return surf;
+    } finally {
+      cleanup();
     }
-    
-    filename = FS.standardizePath(filename);
-    if (filename[0] == '/') {
-      // Convert the path to relative
-      filename = filename.substr(1);
-    }
-    var raw = Module["preloadedImages"][filename];
-    if (!raw) {
-      if (raw === null) Module.printErr('Trying to reuse preloaded image, but freePreloadedMediaOnUse is set!');
-      Runtime.warnOnce('Cannot find preloaded image ' + filename);
-      return 0;
-    }
-    if (Module['freePreloadedMediaOnUse']) {
-      Module["preloadedImages"][filename] = null;
-    }
-    var surf = SDL.makeSurface(raw.width, raw.height, 0, false, 'load:' + filename);
-    var surfData = SDL.surfaces[surf];
-    surfData.ctx.globalCompositeOperation = "copy";
-    surfData.ctx.drawImage(raw, 0, 0, raw.width, raw.height, 0, 0, raw.width, raw.height);
-    surfData.ctx.globalCompositeOperation = "source-over";
-    // XXX SDL does not specify that loaded images must have available pixel data, in fact
-    //     there are cases where you just want to blit them, so you just need the hardware
-    //     accelerated version. However, code everywhere seems to assume that the pixels
-    //     are in fact available, so we retrieve it here. This does add overhead though.
-    _SDL_LockSurface(surf);
-    surfData.locked--; // The surface is not actually locked in this hack
-    if (SDL.GL) {
-      // After getting the pixel data, we can free the canvas and context if we do not need to do 2D canvas blitting
-      surfData.canvas = surfData.ctx = null;
-    }
-    return surf;
   },
   SDL_LoadBMP: 'IMG_Load',
   SDL_LoadBMP_RW: 'IMG_Load_RW',
-  IMG_Load__deps: ['IMG_Load_RW', 'SDL_RWFromFile', 'SDL_FreeRW'],
+  IMG_Load__deps: ['IMG_Load_RW', 'SDL_RWFromFile'],
   IMG_Load: function(filename){
     var rwops = _SDL_RWFromFile(filename);
-    var result = _IMG_Load_RW(rwops);
-    _SDL_FreeRW(rwops);
+    var result = _IMG_Load_RW(rwops, 1);
     return result;
   },
 
@@ -2055,11 +2127,13 @@ var LibrarySDL = {
   // Misc
 
   SDL_InitSubSystem: function(flags) { return 0 },
+
   SDL_RWFromConstMem: function(mem, size) {
     var id = SDL.rwops.length; // TODO: recycle ids when they are null
     SDL.rwops.push({ bytes: mem, count: size });
     return id;
   },
+  SDL_RWFromMem: 'SDL_RWFromConstMem',
 
   SDL_RWFromFile: function(_name, mode) {
     var id = SDL.rwops.length; // TODO: recycle ids when they are null

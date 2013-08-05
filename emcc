@@ -53,6 +53,15 @@ from tools import shared, jsrun
 from tools.shared import Compression, execute, suffix, unsuffixed, unsuffixed_basename
 from tools.response_file import read_response_file
 
+CXX_SUFFIXES = ('.cpp', '.cxx', '.cc')
+SOURCE_SUFFIXES = ('.c', '.cpp', '.cxx', '.cc', '.m', '.mm')
+BITCODE_SUFFIXES = ('.bc', '.o', '.obj')
+DYNAMICLIB_SUFFIXES = ('.dylib', '.so', '.dll')
+STATICLIB_SUFFIXES = ('.a',)
+ASSEMBLY_SUFFIXES = ('.ll',)
+LIB_PREFIXES = ('', 'lib')
+JS_CONTAINING_SUFFIXES = ('js', 'html')
+
 # Mapping of emcc opt levels to llvm opt levels. We use llvm opt level 3 in emcc opt
 # levels 2 and 3 (emcc 3 is unsafe opts, so unsuitable for the only level to get
 # llvm opt level 3, and speed-wise emcc level 2 is already the slowest/most optimizing
@@ -532,7 +541,7 @@ if CONFIGURE_CONFIG or CMAKE_CONFIG:
         if debug_configure: open(tempout, 'a').write('============= ' + arg + '\n' + src + '\n=============\n\n')
       except:
         pass
-    if arg.endswith('.s'):
+    elif arg.endswith('.s'):
       if debug_configure: open(tempout, 'a').write('(compiling .s assembly, must use clang\n')
       use_js = 0
 
@@ -614,15 +623,6 @@ EMMAKEN_CFLAGS = os.environ.get('EMMAKEN_CFLAGS')
 if EMMAKEN_CFLAGS: CC_ADDITIONAL_ARGS += shlex.split(EMMAKEN_CFLAGS)
 
 # ---------------- Utilities ---------------
-
-SOURCE_SUFFIXES = ('.c', '.cpp', '.cxx', '.cc', '.m', '.mm')
-BITCODE_SUFFIXES = ('.bc', '.o', '.obj')
-DYNAMICLIB_SUFFIXES = ('.dylib', '.so', '.dll')
-STATICLIB_SUFFIXES = ('.a',)
-ASSEMBLY_SUFFIXES = ('.ll',)
-LIB_PREFIXES = ('', 'lib')
-
-JS_CONTAINING_SUFFIXES = ('js', 'html')
 
 seen_names = {}
 def uniquename(name):
@@ -787,6 +787,7 @@ try:
       newargs[i+1] = ''
     elif newargs[i].startswith('--minify'):
       check_bad_eq(newargs[i])
+      assert newargs[i+1] == '0', '0 is the only supported option for --minify; 1 has been deprecated'
       debug_level = max(1, debug_level)
       newargs[i] = ''
       newargs[i+1] = ''
@@ -1010,7 +1011,7 @@ try:
     logging.error('no input files\nnote that input files without a known suffix are ignored, make sure your input files end with one of: ' + str(SOURCE_SUFFIXES + BITCODE_SUFFIXES + DYNAMICLIB_SUFFIXES + STATICLIB_SUFFIXES + ASSEMBLY_SUFFIXES))
     exit(0)
 
-  newargs += CC_ADDITIONAL_ARGS
+  newargs = CC_ADDITIONAL_ARGS + newargs
 
   assert not (Compression.on and final_suffix != 'html'), 'Compression only works when generating HTML'
 
@@ -1030,6 +1031,10 @@ try:
     exec('shared.Settings.' + key + ' = ' + value)
 
   # Apply effects from settings
+  if bind and shared.Settings.ASM_JS:
+    logging.warning('disabling asm.js since embind is not ready for it yet')
+    shared.Settings.ASM_JS = 0
+
   if shared.Settings.ASM_JS:
     assert opt_level >= 1, 'asm.js requires -O1 or above'
 
@@ -1083,6 +1088,10 @@ try:
   if shared.Settings.DLOPEN_SUPPORT:
     shared.Settings.LINKABLE = 1
 
+  if shared.Settings.STB_IMAGE and final_suffix in JS_CONTAINING_SUFFIXES:
+    input_files.append(shared.path_from_root('third_party', 'stb_image.c'))
+    shared.Settings.EXPORTED_FUNCTIONS += ['_stbi_load', '_stbi_load_from_memory', '_stbi_image_free']
+
   ## Compile source code to bitcode
 
   logging.debug('compiling to bitcode')
@@ -1097,6 +1106,8 @@ try:
       output_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
       temp_files.append(output_file)
       args = newargs + ['-emit-llvm', '-c', input_file, '-o', output_file]
+      if input_file.endswith(CXX_SUFFIXES):
+        args += shared.EMSDK_CXX_OPTS
       logging.debug("running:" + call + ' ' + ' '.join(args))
       execute([call] + args) # let compiler frontend print directly, so colors are saved (PIPE kills that)
       if not os.path.exists(output_file):
