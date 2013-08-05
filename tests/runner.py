@@ -14105,6 +14105,8 @@ elif 'benchmark' in str(sys.argv):
   total_native_times = map(lambda x: 0., range(TOTAL_TESTS))
 
   class benchmark(RunnerCore):
+    save_dir = True
+
     def print_stats(self, times, native_times, last=False, reps=TEST_REPS):
       if reps == 0:
         print '(no reps)'
