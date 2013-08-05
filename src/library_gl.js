@@ -636,6 +636,11 @@ var LibraryGL = {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('buffers', 'i*4', 'i32') }}};
       var buffer = GL.buffers[id];
+
+      // From spec: "glDeleteBuffers silently ignores 0's and names that do not
+      // correspond to existing buffer objects."
+      if (!buffer) continue;
+
       Module.ctx.deleteBuffer(buffer);
       buffer.name = 0;
       GL.buffers[id] = null;
