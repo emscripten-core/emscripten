@@ -3591,7 +3591,6 @@ Exiting setjmp function, level: 0, prev_jmp: -1
       self.do_run(src, 'z:1*', force_c=True)
 
     def test_rename(self):
-      Building.COMPILER_TEST_OPTS += ['-DUSE_OLD_FS='+str(Settings.USE_OLD_FS)]
       src = open(path_from_root('tests', 'stdio', 'test_rename.c'), 'r').read()
       self.do_run(src, 'success', force_c=True)
 
@@ -7220,17 +7219,14 @@ def process(filename):
       self.do_run(src, 'success', force_c=True)
 
     def test_stat(self):
-      Building.COMPILER_TEST_OPTS += ['-DUSE_OLD_FS='+str(Settings.USE_OLD_FS)]
       src = open(path_from_root('tests', 'stat', 'test_stat.c'), 'r').read()
       self.do_run(src, 'success', force_c=True)
 
     def test_stat_chmod(self):
-      Building.COMPILER_TEST_OPTS += ['-DUSE_OLD_FS='+str(Settings.USE_OLD_FS)]
       src = open(path_from_root('tests', 'stat', 'test_chmod.c'), 'r').read()
       self.do_run(src, 'success', force_c=True)
 
     def test_stat_mknod(self):
-      Building.COMPILER_TEST_OPTS += ['-DUSE_OLD_FS='+str(Settings.USE_OLD_FS)]
       src = open(path_from_root('tests', 'stat', 'test_mknod.c'), 'r').read()
       self.do_run(src, 'success', force_c=True)
 

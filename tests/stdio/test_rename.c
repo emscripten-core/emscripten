@@ -56,7 +56,6 @@ void test() {
   assert(err == -1);
   assert(errno == EISDIR);
 
-#if !USE_OLD_FS
   // can't overwrite a file with a folder
   err = rename("dir", "file");
   assert(err == -1);
@@ -71,19 +70,16 @@ void test() {
   err = rename("dir", "dir-readonly/dir");
   assert(err == -1);
   assert(errno == EACCES);
-#endif
 
   // source should not be ancestor of target
   err = rename("dir", "dir/somename");
   assert(err == -1);
   assert(errno == EINVAL);
 
-#if !USE_OLD_FS
   // target should not be an ancestor of source
   err = rename("dir/subdir", "dir");
   assert(err == -1);
   assert(errno == ENOTEMPTY);
-#endif
 
   // do some valid renaming
   err = rename("dir/file", "dir/file1");
