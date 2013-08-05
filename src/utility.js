@@ -312,6 +312,12 @@ function setUnion(x, y) {
   return ret;
 }
 
+function setSize(x) {
+  var ret = 0;
+  for (var xx in x) ret++;
+  return ret;
+}
+
 function invertArray(x) {
   var ret = {};
   for (var i = 0; i < x.length; i++) {
