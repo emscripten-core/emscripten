@@ -639,7 +639,7 @@ var LibraryGL = {
 
       // From spec: "glDeleteBuffers silently ignores 0's and names that do not
       // correspond to existing buffer objects."
-      if(! buffer) continue;
+      if (!buffer) continue;
 
       Module.ctx.deleteBuffer(buffer);
       buffer.name = 0;
