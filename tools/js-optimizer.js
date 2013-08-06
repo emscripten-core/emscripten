@@ -3227,6 +3227,7 @@ function outline(ast) {
     if (asmData.splitCounter === asmData.maxOutlinings) return [];
     if (!extraInfo.allowCostlyOutlines) var originalStats = copy(stats);
     var code = stats.slice(start, end+1);
+    var originalCodeSize =  measureSize(code);
     var funcSize = measureSize(func);
     var outlineIndex = asmData.splitCounter++;
     var newIdent = func[1] + '$' + outlineIndex;
@@ -3239,7 +3240,6 @@ function outline(ast) {
         owned[v] = 1;
       }
     });
-    printErr('attempting outline ' + [func[1], newIdent, 'overhead:', setSize(setSub(codeInfo.writes, owned)), setSize(setSub(codeInfo.reads, owned))]);
     var reps = [];
     // wipe out control variable
     reps.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos(outlineIndex)), ['num', 0])]);
@@ -3418,7 +3418,6 @@ function outline(ast) {
     // final evaluation and processing
     if (!extraInfo.allowCostlyOutlines && (measureSize(func) >= funcSize || measureSize(newFunc) >= funcSize)) {
       // abort, this was pointless
-      printErr('abort outlining ' + newIdent);
       stats.length = originalStats.length;
       for (var i = 0; i < stats.length; i++) stats[i] = originalStats[i];
       asmData.splitCounter--;
@@ -3436,7 +3435,7 @@ function outline(ast) {
       }
     }
     outliningParents[newIdent] = func[1];
-    printErr('successful outlining ' + newIdent);
+    printErr('performed outline ' + [func[1], newIdent, 'code sizes (pre/post):', originalCodeSize, measureSize(code), 'overhead (w/r):', setSize(setSub(codeInfo.writes, owned)), setSize(setSub(codeInfo.reads, owned))]);
     calculateThreshold(func);
     return [newFunc];
   }
@@ -3548,7 +3547,6 @@ function outline(ast) {
         var newFuncs = doOutline(func, asmData, stats, i, end); // outline [i, .. ,end] inclusive
         if (newFuncs.length) {
           ret.push.apply(ret, newFuncs);
-          printErr('performed outline on ' + func[1] + ' of ' + sizeSeen + ', => ' + newFuncs[0][1]);
         }
         sizeSeen = 0;
         end = i-1;
