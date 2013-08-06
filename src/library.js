@@ -180,6 +180,9 @@ LibraryManager.library = {
     //
     // paths
     //
+    cwd: function() {
+      return FS.currentPath;
+    },
     lookupPath: function (path, opts) {
       path = PATH.resolve(FS.currentPath, path);
       opts = opts || { recurse_count: 0 };

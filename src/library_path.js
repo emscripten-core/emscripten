@@ -1,4 +1,5 @@
 mergeInto(LibraryManager.library, {
+  $PATH__deps: ['$FS'],
   $PATH: {
     // split a filename into [root, dir, basename, ext], unix version
     // 'root' is just a slash, or nothing.
@@ -80,7 +81,7 @@ mergeInto(LibraryManager.library, {
       var resolvedPath = '',
         resolvedAbsolute = false;
       for (var i = arguments.length - 1; i >= -1 && !resolvedAbsolute; i--) {
-        var path = (i >= 0) ? arguments[i] : process.cwd();
+        var path = (i >= 0) ? arguments[i] : FS.cwd();
         // Skip empty and invalid entries
         if (typeof path !== 'string') {
           throw new TypeError('Arguments to path.resolve must be strings');
