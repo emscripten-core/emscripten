@@ -57,19 +57,19 @@ LibraryManager.library = {
     ignorePermissions: true,
     
     ErrnoError: function (errno) {
-      function ErrnoError(errno) {
-        this.errno = errno;
-        for (var key in ERRNO_CODES) {
-          if (ERRNO_CODES[key] === errno) {
-            this.code = key;
-            break;
-          }
+      this.errno = errno;
+      for (var key in ERRNO_CODES) {
+        if (ERRNO_CODES[key] === errno) {
+          this.code = key;
+          break;
         }
-        this.message = ERRNO_MESSAGES[errno];
-      };
-      ErrnoError.prototype = Object.create(Error.prototype);
-      ErrnoError.prototype.contructor = ErrnoError;
-      return new ErrnoError(errno);
+      }
+      this.message = ERRNO_MESSAGES[errno];
+    },
+
+    handleFSError: function(e) {
+      if (!(e instanceof FS.ErrnoError)) throw e + ' : ' + new Error().stack;
+      return ___setErrNo(e.errno);
     },
 
     //
@@ -1761,7 +1761,7 @@ LibraryManager.library = {
       var lookup = FS.lookupPath(path, { follow: true });
       node = lookup.node;
     } catch (e) {
-      ___setErrNo(e.errno);
+      FS.handleFSError(e);
       return 0;
     }
     if (!FS.isDir(node.mode)) {
@@ -1813,7 +1813,7 @@ LibraryManager.library = {
     try {
       entries = VFS.readdir(stream);
     } catch (e) {
-      return ___setErrNo(e.errno);
+      return FS.handleFSError(e);
     }
     if (stream.position < 0 || stream.position >= entries.length) {
       {{{ makeSetValue('result', '0', '0', 'i8*') }}}
@@ -1893,7 +1893,7 @@ LibraryManager.library = {
       VFS.utime(path, time, time);
       return 0;
     } catch (e) {
-      ___setErrNo(e.errno);
+      FS.handleFSError(e);
       return -1;
     }
   },
@@ -2006,7 +2006,7 @@ LibraryManager.library = {
       {{{ makeSetValue('buf', '___stat_struct_layout.st_blocks', 'stat.blocks', 'i32') }}}
       return 0;
     } catch (e) {
-      ___setErrNo(e.errno);
+      FS.handleFSError(e);
       return -1;
     }
   },
@@ -2043,7 +2043,7 @@ LibraryManager.library = {
       VFS.mknod(path, mode, dev);
       return 0;
     } catch (e) {
-      ___setErrNo(e.errno);
+      FS.handleFSError(e);
       return -1;
     }
   },
@@ -2056,7 +2056,7 @@ LibraryManager.library = {
       VFS.mkdir(path, mode, 0);
       return 0;
     } catch (e) {
-      ___setErrNo(e.errno);
+      FS.handleFSError(e);
       return -1;
     }
   },
@@ -2082,7 +2082,7 @@ LibraryManager.library = {
       VFS.chmod(path, mode);
       return 0;
     } catch (e) {
-      ___setErrNo(e.errno);
+      FS.handleFSError(e);
       return -1;
     }
   },
@@ -2094,7 +2094,7 @@ LibraryManager.library = {
       VFS.fchmod(fildes, mode);
       return 0;
     } catch (e) {
-      ___setErrNo(e.errno);
+      FS.handleFSError(e);
       return -1;
     }
   },
@@ -2105,7 +2105,7 @@ LibraryManager.library = {
       VFS.lchmod(path, mode);
       return 0;
     } catch (e) {
-      ___setErrNo(e.errno);
+      FS.handleFSError(e);
       return -1;
     }
   },
@@ -2197,7 +2197,7 @@ LibraryManager.library = {
       var stream = VFS.open(path, oflag, mode);
       return stream.fd;
     } catch (e) {
-      ___setErrNo(e.errno);
+      FS.handleFSError(e);
       return -1;
     }
   },
@@ -2236,7 +2236,7 @@ LibraryManager.library = {
         try {
           newStream = VFS.open(stream.path, stream.flags, 0, arg);
         } catch (e) {
-          ___setErrNo(e.errno);
+          FS.handleFSError(e);
           return -1;
         }
         return newStream.fd;
@@ -2294,7 +2294,7 @@ LibraryManager.library = {
       VFS.allocate(stream, offset, len);
       return 0;
     } catch (e) {
-      ___setErrNo(e.errno);
+      FS.handleFSError(e);
       return -1;
     }
   },
@@ -2361,7 +2361,7 @@ LibraryManager.library = {
       var lookup = FS.lookupPath(path, { follow: true });
       node = lookup.node;
     } catch (e) {
-      ___setErrNo(e.errno);
+      FS.handleFSError(e);
       return -1;
     }
     var perms = '';
@@ -2384,7 +2384,7 @@ LibraryManager.library = {
     try {
       lookup = FS.lookupPath(path, { follow: true });
     } catch (e) {
-      ___setErrNo(e.errno);
+      FS.handleFSError(e);
       return -1;
     }
     if (!FS.isDir(lookup.node.mode)) {
@@ -2412,7 +2412,7 @@ LibraryManager.library = {
       VFS.chown(path, owner, group);
       return 0;
     } catch (e) {
-      ___setErrNo(e.errno);
+      FS.handleFSError(e);
       return -1;
     }
   },
@@ -2436,7 +2436,7 @@ LibraryManager.library = {
       VFS.close(stream);
       return 0;
     } catch (e) {
-      ___setErrNo(e.errno);;
+      FS.handleFSError(e);;
       return -1;
     }
   },
@@ -2462,7 +2462,7 @@ LibraryManager.library = {
         var stream2 = VFS.open(stream.path, stream.flags, 0, fildes2, fildes2);
         return stream2.fd;
       } catch (e) {
-        ___setErrNo(e.errno);
+        FS.handleFSError(e);
         return -1;
       }
     }
@@ -2475,7 +2475,7 @@ LibraryManager.library = {
       VFS.fchown(fildes, owner, group);
       return 0;
     } catch (e) {
-      ___setErrNo(e.errno);
+      FS.handleFSError(e);
       return -1;
     }
   },
@@ -2578,7 +2578,7 @@ LibraryManager.library = {
       VFS.truncate(path, length);
       return 0;
     } catch (e) {
-      ___setErrNo(e.errno);
+      FS.handleFSError(e);
       return -1;
     }
   },
@@ -2590,7 +2590,7 @@ LibraryManager.library = {
       VFS.ftruncate(fildes, length);
       return 0;
     } catch (e) {
-      ___setErrNo(e.errno);
+      FS.handleFSError(e);
       return -1;
     }
   },
@@ -2674,7 +2674,7 @@ LibraryManager.library = {
     try {
       return VFS.llseek(stream, offset, whence);
     } catch (e) {
-      ___setErrNo(e.errno);
+      FS.handleFSError(e);
       return -1;
     }
   },
@@ -2700,7 +2700,7 @@ LibraryManager.library = {
       var slab = {{{ makeGetSlabs('buf', 'i8', true) }}};
       return VFS.read(stream, slab, buf, nbyte, offset);
     } catch (e) {
-      ___setErrNo(e.errno);
+      FS.handleFSError(e);
       return -1;
     }
   },
@@ -2722,7 +2722,7 @@ LibraryManager.library = {
       var slab = {{{ makeGetSlabs('buf', 'i8', true) }}};
       return VFS.read(stream, slab, buf, nbyte);
     } catch (e) {
-      ___setErrNo(e.errno);
+      FS.handleFSError(e);
       return -1;
     }
   },
@@ -2740,7 +2740,7 @@ LibraryManager.library = {
       VFS.rmdir(path);
       return 0;
     } catch (e) {
-      ___setErrNo(e.errno);
+      FS.handleFSError(e);
       return -1;
     }
   },
@@ -2753,7 +2753,7 @@ LibraryManager.library = {
       VFS.unlink(path);
       return 0;
     } catch (e) {
-      ___setErrNo(e.errno);
+      FS.handleFSError(e);
       return -1;
     }
   },
@@ -2790,7 +2790,7 @@ LibraryManager.library = {
       VFS.symlink(path1, path2);
       return 0;
     } catch (e) {
-      ___setErrNo(e.errno);
+      FS.handleFSError(e);
       return -1;
     }
   },
@@ -2803,7 +2803,7 @@ LibraryManager.library = {
     try {
       str = VFS.readlink(path);
     } catch (e) {
-      ___setErrNo(e.errno);
+      FS.handleFSError(e);
       return -1;
     }
     str = str.slice(0, Math.max(0, bufsize - 1));
@@ -2823,7 +2823,7 @@ LibraryManager.library = {
       var slab = {{{ makeGetSlabs('buf', 'i8', true) }}};
       return VFS.write(stream, slab, buf, nbyte, offset);
     } catch (e) {
-      ___setErrNo(e.errno);
+      FS.handleFSError(e);
       return -1;
     }
   },
@@ -2845,7 +2845,7 @@ LibraryManager.library = {
       var slab = {{{ makeGetSlabs('buf', 'i8', true) }}};
       return VFS.write(stream, slab, buf, nbyte);
     } catch (e) {
-      ___setErrNo(e.errno);
+      FS.handleFSError(e);
       return -1;
     }
   },
@@ -4315,7 +4315,7 @@ LibraryManager.library = {
       VFS.rename(old_path, new_path);
       return 0;
     } catch (e) {
-      ___setErrNo(e.errno);
+      FS.handleFSError(e);
       return -1;
     }
   },
@@ -4580,7 +4580,7 @@ LibraryManager.library = {
         ptr = res.ptr;
         allocated = res.allocated;
       } catch (e) {
-        ___setErrNo(e.errno);
+        FS.handleFSError(e);
         return -1;
       }
     }
