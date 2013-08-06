@@ -8,6 +8,7 @@ FS.createDevice('/def', 'deviceB', function() {}, function() {});
 FS.createLink('/abc', 'localLink', '123', true, true);
 FS.createLink('/abc', 'rootLink', '/', true, true);
 FS.createLink('/abc', 'relativeLink', '../def', true, true);
+FS.ignorePermissions = false;
 
 function explore(path) {
   Module.print(path);

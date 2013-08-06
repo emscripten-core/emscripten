@@ -53,15 +53,10 @@ void test() {
 
   // mknod a character device
   err = mknod("mknod-device", S_IFCHR | 0777, 123);
-#if USE_OLD_FS
-  assert(err);
-  assert(errno == EPERM);
-#else
   assert(!err);
   memset(&s, 0, sizeof s);
   stat("mknod-device", &s);
   assert(S_ISCHR(s.st_mode));
-#endif
 
 #endif
 
