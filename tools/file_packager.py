@@ -206,7 +206,7 @@ for file_ in data_files:
     abspath = os.path.abspath(path)
     if DEBUG: print >> sys.stderr, path, abspath, curr_abspath
     if not abspath.startswith(curr_abspath):
-      print >> sys.stderr, 'Error: Embedding "%s" which is below the current directory. This is invalid since the current directory becomes the root that the generated code will see' % path
+      print >> sys.stderr, 'Error: Embedding "%s" which is below the current directory "%s". This is invalid since the current directory becomes the root that the generated code will see' % (path, curr_abspath)
       sys.exit(1)
     file_['dstpath'] = abspath[len(curr_abspath)+1:]
     if os.path.isabs(path):
