@@ -874,7 +874,7 @@ LibraryManager.library = {
     // result of an XHR that you did manually.
     createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile) {
       Browser.init();
-      var fullname = PATH.join(parent, name).substr(1);
+      var fullname = FS.joinPath([parent, name], true);
       function processData(byteArray) {
         function finish(byteArray) {
           if (!dontCreateFile) {
