@@ -200,18 +200,25 @@ if '\n' in EM_CONFIG:
 else:
   CONFIG_FILE = os.path.expanduser(EM_CONFIG)
   if not os.path.exists(CONFIG_FILE):
+    # Note: repr is used to ensure the paths are escaped correctly on Windows.
+    # The full string is replaced so that the template stays valid Python.
     config_file = open(path_from_root('tools', 'settings_template_readonly.py')).read().split('\n')
     config_file = config_file[1:] # remove "this file will be copied..."
     config_file = '\n'.join(config_file)
     # autodetect some default paths
-    config_file = config_file.replace('{{{ EMSCRIPTEN_ROOT }}}', __rootpath__)
+    config_file = config_file.replace('\'{{{ EMSCRIPTEN_ROOT }}}\'', repr(__rootpath__))
     llvm_root = os.path.dirname(find_executable('llvm-dis') or '/usr/bin/llvm-dis')
-    config_file = config_file.replace('{{{ LLVM_ROOT }}}', llvm_root)
+    config_file = config_file.replace('\'{{{ LLVM_ROOT }}}\'', repr(llvm_root))
     node = find_executable('node') or find_executable('nodejs') or 'node'
-    config_file = config_file.replace('{{{ NODE }}}', node)
+    config_file = config_file.replace('\'{{{ NODE }}}\'', repr(node))
     python = find_executable('python2') or find_executable('python') or \
         sys.executable or 'python'
-    config_file = config_file.replace('{{{ PYTHON }}}', python)    
+    config_file = config_file.replace('\'{{{ PYTHON }}}\'', repr(python))
+    if WINDOWS:
+      tempdir = os.environ.get('TEMP') or os.environ.get('TMP') or 'c:\\temp'
+    else:
+      tempdir = '/tmp'
+    config_file = config_file.replace('\'{{{ TEMP }}}\'', repr(tempdir))
 
     # write
     open(CONFIG_FILE, 'w').write(config_file)
