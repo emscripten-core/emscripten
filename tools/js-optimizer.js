@@ -3418,8 +3418,10 @@ function outline(ast) {
     // final evaluation and processing
     if (!extraInfo.allowCostlyOutlines && (measureSize(func) >= funcSize || measureSize(newFunc) >= funcSize)) {
       // abort, this was pointless
+      printErr('abort outlining ' + newIdent);
       stats.length = originalStats.length;
       for (var i = 0; i < stats.length; i++) stats[i] = originalStats[i];
+      asmData.splitCounter--;
       return [];
     }
     for (var v in owned) {
@@ -3434,6 +3436,7 @@ function outline(ast) {
       }
     }
     outliningParents[newIdent] = func[1];
+    printErr('successful outlining ' + newIdent);
     calculateThreshold(func);
     return [newFunc];
   }
