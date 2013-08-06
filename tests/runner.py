@@ -11242,19 +11242,21 @@ f.close()
               print outlining_limit, '   ', low, '<=', seen, '<=', high
               assert low <= seen <= high
 
-      test('zlib', path_from_root('tests', 'zlib', 'example.c'), 
-                   self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a']),
-                   open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
-                   {
-                     100: (190, 250),
-                     250: (300, 330),
-                     500: (250, 310),
-                    1000: (230, 300),
-                    2000: (380, 450),
-                    5000: (800, 1100),
-                       0: (1500, 1800)
-                   },
-                   args=['-I' + path_from_root('tests', 'zlib')], suffix='c')
+      for test_opts in [[]]: #['-O2']]:
+        Building.COMPILER_TEST_OPTS = test_opts
+        test('zlib', path_from_root('tests', 'zlib', 'example.c'), 
+                     self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a']),
+                     open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
+                     {
+                       100: (190, 250),
+                       250: (300, 330),
+                       500: (250, 310),
+                      1000: (230, 300),
+                      2000: (380, 450),
+                      5000: (800, 1100),
+                         0: (1500, 1800)
+                     },
+                     args=['-I' + path_from_root('tests', 'zlib')], suffix='c')
 
     def test_symlink(self):
       if os.name == 'nt':
