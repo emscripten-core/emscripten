@@ -353,7 +353,7 @@ process(sys.argv[1])
     build_dir = self.get_build_dir()
     output_dir = self.get_dir()
 
-    cache_name = name + cache_name_extra + (self.env.get('EMCC_LLVM_TARGET') or '')
+    cache_name = name + str(Building.COMPILER_TEST_OPTS) + cache_name_extra + (self.env.get('EMCC_LLVM_TARGET') or '')
 
     if self.library_cache is not None:
       if cache and self.library_cache.get(cache_name):
