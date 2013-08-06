@@ -3520,7 +3520,7 @@ function outline(ast) {
       // If this is big enough to outline, but not too big (if very close to the size of the full function,
       // outlining is pointless; remove stats from the end to try to achieve the good case), then outline.
       // Also, try to reduce the size if it is much larger than the hoped-for size
-      while ((sizeSeen > maxSize || sizeSeen > 2*sizeToOutline) && end > i+1 && stats[end][0] !== 'begin-outline-call' && stats[end][0] !== 'end-outline-call') {
+      while ((sizeSeen > maxSize || sizeSeen > 2*sizeToOutline) && end > i && stats[end][0] !== 'begin-outline-call' && stats[end][0] !== 'end-outline-call') {
         sizeSeen -= measureSize(stats[end]);
         if (sizeSeen >= sizeToOutline) {
           end--;
