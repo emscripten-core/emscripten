@@ -24,11 +24,11 @@ def generate(env):
         LLVM_LINK='llvm-link')
     
     env['BUILDERS']['LLVMDis'] = Builder(
-        action=os.path.join('${LLVM_ROOT}', '$LLVM_DIS') + ' -o=$TARGET $SOURCE')
+        action=os.path.join('${LLVM_ROOT}', '$LLVM_DIS') + ' -o $TARGET $SOURCE')
 
     env['BUILDERS']['LLVMOpt'] = Builder(
-        action=os.path.join('${LLVM_ROOT}', '$LLVM_OPT') + ' $LLVM_OPT_FLAGS $LLVM_OPT_PASSES -o=$TARGET $SOURCE')
+        action=os.path.join('${LLVM_ROOT}', '$LLVM_OPT') + ' $LLVM_OPT_FLAGS $LLVM_OPT_PASSES -o $TARGET $SOURCE')
 
     env['BUILDERS']['LLVMLink'] = Builder(
-        action=os.path.join('${LLVM_ROOT}', '$LLVM_LINK') + ' -o=$TARGET $SOURCES',
+        action=os.path.join('${LLVM_ROOT}', '$LLVM_LINK') + ' -o $TARGET $SOURCES',
         emitter=add_libraries)
