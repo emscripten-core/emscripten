@@ -3417,6 +3417,7 @@ function outline(ast) {
     stats.splice.apply(stats, [start, end-start+1].concat(reps));
     // final evaluation and processing
     if (!extraInfo.allowCostlyOutlines && (measureSize(func) >= funcSize || measureSize(newFunc) >= funcSize)) {
+      //printErr('aborted outline attempt ' + [measureSize(func), measureSize(newFunc), ' one of which >= ', funcSize]);
       // abort, this was pointless
       stats.length = originalStats.length;
       for (var i = 0; i < stats.length; i++) stats[i] = originalStats[i];
@@ -3542,6 +3543,7 @@ function outline(ast) {
       });
       assert(sum == 0);
       // final decision and action
+      //printErr(' will try done working on sizeSeen due to ' + [(sizeSeen > maxSize || sizeSeen > 2*sizeToOutline), end > i , stats[end][0] !== 'begin-outline-call' , stats[end][0] !== 'end-outline-call'] + '  ...  ' + [sizeSeen, sizeToOutline, maxSize, sizeSeen >= sizeToOutline, sizeSeen <= maxSize]);
       if (sizeSeen >= sizeToOutline && sizeSeen <= maxSize) {
         assert(i >= minIndex);
         var newFuncs = doOutline(func, asmData, stats, i, end); // outline [i, .. ,end] inclusive

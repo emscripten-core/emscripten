@@ -11200,7 +11200,7 @@ f.close()
 
 
     def test_outline(self):
-      def test(name, src, libs, expected, expected_ranges, args=[], suffix='cpp'):
+      def test(name, src, libs, expected, expected_ranges, args=[], suffix='cpp', test_sizes=True):
         print name
 
         def measure_funcs(filename):
@@ -11240,9 +11240,9 @@ f.close()
               seen = max(measure_funcs('test.js').values())
               high = expected_ranges[outlining_limit][1]
               print outlining_limit, '   ', low, '<=', seen, '<=', high
-              assert low <= seen <= high
+              if test_sizes: assert low <= seen <= high
 
-      for test_opts in [[]]: #['-O2']]:
+      for test_opts, test_sizes in [([], True), (['-O2'], False)]:
         Building.COMPILER_TEST_OPTS = test_opts
         test('zlib', path_from_root('tests', 'zlib', 'example.c'), 
                      self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a']),
@@ -11256,7 +11256,7 @@ f.close()
                       5000: (800, 1100),
                          0: (1500, 1800)
                      },
-                     args=['-I' + path_from_root('tests', 'zlib')], suffix='c')
+                     args=['-I' + path_from_root('tests', 'zlib')], suffix='c', test_sizes=test_sizes)
 
     def test_symlink(self):
       if os.name == 'nt':
