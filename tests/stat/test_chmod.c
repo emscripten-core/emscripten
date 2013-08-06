@@ -56,11 +56,7 @@ void test() {
 
   memset(&s, 0, sizeof s);
   stat("file", &s);
-#if USE_OLD_FS
-  assert(s.st_mode == (0222 | S_IFREG));
-#else
   assert(s.st_mode == (0200 | S_IFREG));
-#endif
   assert(s.st_ctime != lastctime);
 
   //
@@ -74,11 +70,7 @@ void test() {
 
   memset(&s, 0, sizeof s);
   stat("file", &s);
-#if USE_OLD_FS
-  assert(s.st_mode == (0000 | S_IFREG));
-#else
   assert(s.st_mode == (0100 | S_IFREG));
-#endif
   assert(s.st_ctime != lastctime);
 
   //
@@ -95,11 +87,7 @@ void test() {
   assert(!err);
   memset(&s, 0, sizeof s);
   stat("folder", &s);
-#if USE_OLD_FS
-  assert(s.st_mode == (0222 | S_IFDIR));
-#else
   assert(s.st_mode == (0300 | S_IFDIR));
-#endif
   assert(s.st_ctime != lastctime);
 
   //
@@ -110,11 +98,7 @@ void test() {
 
   // make sure the file it references changed
   stat("file-link", &s);
-#if USE_OLD_FS
-  assert(s.st_mode == (0555 | S_IFREG));
-#else
   assert(s.st_mode == (0400 | S_IFREG));
-#endif
 
   // but the link didn't
   lstat("file-link", &s);
@@ -128,19 +112,11 @@ void test() {
 
   // make sure the file it references didn't change
   stat("file-link", &s);
-#if USE_OLD_FS
-  assert(s.st_mode == (0555 | S_IFREG));
-#else
   assert(s.st_mode == (0400 | S_IFREG));
-#endif
 
   // but the link did
   lstat("file-link", &s);
-#if USE_OLD_FS
-  assert(s.st_mode == (0555 | S_IFLNK));
-#else
   assert(s.st_mode == (0500 | S_IFLNK));
-#endif
 
   puts("success");
 }

@@ -249,8 +249,6 @@ var FS_LOG = 0; // Log all FS operations.  This is especially helpful when you'r
                 // a new project and want to see a list of file system operations happening
                 // so that you can create a virtual file system with all of the required files.
 
-var USE_OLD_FS = 1; // Switch to toggle the new / old FS code. Currently only used for testing purposes.
-
 var USE_BSS = 1; // https://en.wikipedia.org/wiki/.bss
                  // When enabled, 0-initialized globals are sorted to the end of the globals list,
                  // enabling us to not explicitly store the initialization value for each 0 byte.
@@ -880,9 +878,9 @@ var C_DEFINES = {
    'S_IRGRP': '0000040',
    'S_IROTH': '0000004',
    'S_IRUSR': '0000400',
-   'S_IRWXG': '0000040',
-   'S_IRWXO': '0000004',
-   'S_IRWXU': '0000400',
+   'S_IRWXG': '0000070',
+   'S_IRWXO': '0000007',
+   'S_IRWXU': '0000700',
    'S_ISGID': '0002000',
    'S_ISUID': '0004000',
    'S_ISVTX': '0001000',
@@ -1297,6 +1295,33 @@ var C_DEFINES = {
    '___int8_t_defined': '1',
    '___int_least16_t_defined': '1',
    '___int_least32_t_defined': '1',
-   '___int_least8_t_defined': '1'
+   '___int_least8_t_defined': '1',
+    'FMODE_READ': '0x1',
+   'FMODE_WRITE': '0x2',
+   'FMODE_LSEEK': '0x4',
+   'FMODE_PREAD': '0x8',
+   'FMODE_PWRITE': '0x10',
+   'FMODE_EXEC': '0x20',
+   'FMODE_NDELAY': '0x40',
+   'FMODE_EXCL': '0x80',
+   'FMODE_NOCMTIME': '0x800',
+   'FMODE_RANDOM': '0x1000',
+   'FMODE_UNSIGNED_OFFSET': '0x2000',
+   'FMODE_PATH': '0x4000',
+   'FMODE_NONOTIFY': '0x1000000',
+   'S_IRWXUGO': '511',
+   'S_IALLUGO': '4095',
+   'S_IRUGO': '292',
+   'S_IWUGO': '146',
+   'S_IXUGO': '73',
+   'LOOKUP_FOLLOW': '0x0001',
+   'LOOKUP_DIRECTORY': '0x0002',
+   'LOOKUP_PARENT': '0x0010',
+   'MAP_SHARED': '0x01',
+   'MAP_PRIVATE': '0x02',
+   'MAP_TYPE': '0x0f',
+   'MAP_FIXED': '0x100',
+   'MAP_ANONYMOUS': '0x10',
+   'O_NOFOLLOW': '0200000'
 };
 
