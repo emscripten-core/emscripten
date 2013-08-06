@@ -869,7 +869,6 @@ LibraryManager.library = {
     // You can also call this with a typed array instead of a url. It will then
     // do preloading for the Image/Audio part, as if the typed array were the
     // result of an XHR that you did manually.
-    createPreloadedFile__deps: ['$PATH'],
     createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile) {
       Browser.init();
       var fullname = PATH.join(parent, name).substr(1);
