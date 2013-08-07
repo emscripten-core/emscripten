@@ -10,7 +10,7 @@
 //                   or otherwise).
 
 var LibrarySDL = {
-  $SDL__deps: ['$FS', '$Browser'],
+  $SDL__deps: ['$FS', '$PATH', '$Browser'],
   $SDL: {
     defaults: {
       width: 320,
@@ -1291,11 +1291,7 @@ var LibrarySDL = {
       }
 
       if (!raw) {
-        filename = FS.standardizePath(filename);
-        if (filename[0] == '/') {
-          // Convert the path to relative
-          filename = filename.substr(1);
-        }
+        filename = PATH.resolve(filename);
         var raw = Module["preloadedImages"][filename];
         if (!raw) {
           if (raw === null) Module.printErr('Trying to reuse preloaded image, but freePreloadedMediaOnUse is set!');

@@ -874,7 +874,9 @@ LibraryManager.library = {
     // result of an XHR that you did manually.
     createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile) {
       Browser.init();
-      var fullname = FS.joinPath([parent, name], true);
+      // TODO we should allow people to just pass in a complete filename instead
+      // of parent and name being that we just join them anyways
+      var fullname = PATH.resolve(PATH.join(parent, name));
       function processData(byteArray) {
         function finish(byteArray) {
           if (!dontCreateFile) {
