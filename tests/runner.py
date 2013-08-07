@@ -11041,6 +11041,24 @@ f.close()
         voidfunc sidey(voidfunc f) { return f; }
       ''', 'hello from funcptr\n')
 
+      # function pointers with 'return' in the name
+      test('fp2', 'typedef void (*voidfunc)();', r'''
+        #include <stdio.h>
+        #include "header.h"
+        int sidey(voidfunc f);
+        void areturn0() { printf("hello 0\n"); }
+        void areturn1() { printf("hello 1\n"); }
+        void areturn2() { printf("hello 2\n"); }
+        int main(int argc, char **argv) {
+          voidfunc table[3] = { areturn0, areturn1, areturn2 };
+          table[sidey(NULL)]();
+          return 0;
+        }
+      ''', '''
+        #include "header.h"
+        int sidey(voidfunc f) { if (f) f(); return 1; }
+      ''', 'hello 1\n')
+
       # Global initializer
       test('global init', '', r'''
         #include <stdio.h>

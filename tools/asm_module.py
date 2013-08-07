@@ -49,7 +49,7 @@ class AsmModule():
 
     # tables and exports
     post_js = self.js[self.end_funcs:self.end_asm]
-    ret = post_js.find('return')
+    ret = post_js.find('return ')
     self.tables_js = post_js[:ret]
     self.exports_js = post_js[ret:]
     self.tables = self.parse_tables(self.tables_js)
