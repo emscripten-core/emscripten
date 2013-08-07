@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/ioctl.h>
 #include <assert.h>
 #if EMSCRIPTEN
@@ -15,9 +16,15 @@
 
 #define EXPECTED_BYTES 5
 
-int SocketFD;
+int sockfd = -1;
 
-int done = 0;
+void finish(int result) {
+  close(sockfd);
+#if EMSCRIPTEN
+  REPORT_RESULT();
+#endif
+  exit(result);
+}
 
 void iter(void *arg) {  
   static char readbuf[1024];
@@ -25,44 +32,39 @@ void iter(void *arg) {
   
   fd_set sett;
   FD_ZERO(&sett);
-  FD_SET(SocketFD, &sett);
+  FD_SET(sockfd, &sett);
   
-  if( readPos < 7 ){
-    // still reading
-    int selectRes = select(64, &sett, NULL, NULL, NULL);
+  int res = select(64, &sett, NULL, NULL, NULL);
+  
+  if (res == -1) {
+    perror("select failed");
+    finish(EXIT_FAILURE);
+  } else if (res == 0) {
+    return;
+  } else if (res > 0) {
+    assert(FD_ISSET(sockfd, &sett));
     
-    if( selectRes == 0 )
+    int bytesRead = recv(sockfd, readbuf+readPos, 7-readPos, 0);
+    if (bytesRead == -1) {
+      if (errno != EAGAIN) {
+        perror("recv error");
+        finish(EXIT_FAILURE);
+      }
+      // try again
       return;
-    
-    if( selectRes == -1 ){
-      perror( "Connection to websocket server failed" );
-      exit(EXIT_FAILURE);
     }
-    if( selectRes > 0 ){
-      assert(FD_ISSET(SocketFD, &sett));
-      
-      int bytesRead = recv( SocketFD, readbuf+readPos, 7-readPos, 0 );
+
+    if (readPos < 7) {
       readPos += bytesRead;
+    } else {
+      if (!bytesRead) {
+        perror("Connection to websocket server was closed as expected");
+        finish(266);
+      } else {
+        perror("Connection to websocket server was not closed");
+        finish(EXIT_FAILURE);
+      }
     }
-  } else {
-    // here the server should have closed the connection
-    int selectRes = select(64, &sett, NULL, NULL, NULL);
-    
-    if( selectRes == 0 )
-      return;
-    
-    if( selectRes == -1 ){
-      perror( "Connection to websocket server failed as expected" );
-      int result = 266;
-      REPORT_RESULT();
-      emscripten_cancel_main_loop();
-      done = 1;
-    } 
-    
-    if( selectRes > 0 ){
-      printf( "Error: socket should not show up on select call anymore.\n" );
-      exit(EXIT_FAILURE);
-    }     
   }
   
   return;
@@ -71,56 +73,40 @@ void iter(void *arg) {
 // Scenario: the server sends data and closes the connection after 7 bytes. 
 // This test should provoke the situation in which the underlying 
 // tcp connection has been torn down already but there is still data 
-// in the inQueue. The select call has to succeed as long the queue
+// in the queue. The select call has to succeed as long the queue
 // still contains data and only then start to throw errors.
-int main(void)
-{
-  struct sockaddr_in stSockAddr;
-  int Res;
-  SocketFD = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+int main() {
+  struct sockaddr_in addr;
+  int res;
 
-  if (-1 == SocketFD)
-  {
+  sockfd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+  if (sockfd == -1) {
     perror("cannot create socket");
-    exit(EXIT_FAILURE);
+    finish(EXIT_FAILURE);
   }
+  fcntl(sockfd, F_SETFL, O_NONBLOCK);
 
-  memset(&stSockAddr, 0, sizeof(stSockAddr));
-
-  stSockAddr.sin_family = AF_INET;
-  stSockAddr.sin_port = htons(
-#if EMSCRIPTEN
-    8995
-#else
-    8994
-#endif
-  );
-  Res = inet_pton(AF_INET, "127.0.0.1", &stSockAddr.sin_addr);
-
-  if (0 > Res) {
-    perror("error: first parameter is not a valid address family");
-    close(SocketFD);
-    exit(EXIT_FAILURE);
-  } else if (0 == Res) {
-    perror("char string (second parameter does not contain valid ipaddress)");
-    close(SocketFD);
-    exit(EXIT_FAILURE);
+  memset(&addr, 0, sizeof(addr));
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons(SOCKK);
+  if (inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr) != 1) {
+    perror("inet_pton failed");
+    finish(EXIT_FAILURE);
   }
 
   // This call should succeed (even if the server port is closed)
-  if (-1 == connect(SocketFD, (struct sockaddr *)&stSockAddr, sizeof(stSockAddr))) {
+  res = connect(sockfd, (struct sockaddr *)&addr, sizeof(addr));
+  if (res == -1 && errno != EINPROGRESS) {
     perror("connect failed");
-    close(SocketFD);
-    exit(EXIT_FAILURE);
-
+    finish(EXIT_FAILURE);
   }
 
 #if EMSCRIPTEN
   emscripten_set_main_loop(iter, 0, 0);
 #else
-  while (!done) iter(NULL);
+  while (1) iter(NULL);
 #endif
 
-  return EXIT_SUCCESS;
+  return EXIT_FAILURE;
 }
 

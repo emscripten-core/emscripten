@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/ioctl.h>
 #if EMSCRIPTEN
 #include <emscripten.h>
@@ -16,54 +17,74 @@
 
 #define EXPECTED_BYTES 5
 
-void stall(void *arg) {
+int sockfd = -1;
+char *data = NULL;
+
+void finish(int result) {
+  close(sockfd);
+  exit(result);
 }
 
-int main(void)
-{
-  struct sockaddr_in stSockAddr;
-  int Res;
-  int SocketFD = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+void loop() {
+  fd_set fdw;
+  int res;
 
-  if (-1 == SocketFD)
-  {
-    perror("cannot create socket");
-    exit(EXIT_FAILURE);
-  }
-
-  memset(&stSockAddr, 0, sizeof(stSockAddr));
-
-  stSockAddr.sin_family = AF_INET;
-  stSockAddr.sin_port = htons(SOCKK);
-  Res = inet_pton(AF_INET, "127.0.0.1", &stSockAddr.sin_addr);
-
-  if (0 > Res) {
-    perror("error: first parameter is not a valid address family");
-    close(SocketFD);
-    exit(EXIT_FAILURE);
-  } else if (0 == Res) {
-    perror("char string (second parameter does not contain valid ipaddress)");
-    close(SocketFD);
-    exit(EXIT_FAILURE);
-  }
-
-  printf("connect..\n");
-
-  if (-1 == connect(SocketFD, (struct sockaddr *)&stSockAddr, sizeof(stSockAddr))) {
-    perror("connect failed");
-    close(SocketFD);
-    exit(EXIT_FAILURE);
+  // make sure that sockfd has finished connecting and is ready to write
+  FD_ZERO(&fdw);
+  FD_SET(sockfd, &fdw);
+  res = select(64, NULL, &fdw, NULL, NULL);
+  if (res == -1) {
+    perror("select failed");
+    finish(EXIT_FAILURE);
+    return;
+  } else if (!FD_ISSET(sockfd, &fdw)) {
+    return;
   }
 
   printf("send..\n");
 
-  char *data = generateData();
-  send(SocketFD, data, DATA_SIZE, 0);
+  res = send(sockfd, data, DATA_SIZE, 0);
+  if (res == -1) {
+    if (errno != EAGAIN) {
+      perror("send error");
+      finish(EXIT_FAILURE);
+    }
+    return;
+  }
 
-  printf("stall..\n");
+  finish(EXIT_SUCCESS);
+}
 
-  emscripten_set_main_loop(stall, 1, 0);
+int main() {
+  struct sockaddr_in addr;
+  int res;
+  
+  sockfd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+  if (sockfd == -1) {
+    perror("cannot create socket");
+    exit(EXIT_FAILURE);
+  }
+  fcntl(sockfd, F_SETFL, O_NONBLOCK);
+
+  memset(&addr, 0, sizeof(addr));
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons(SOCKK);
+  if (inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr) != 1) {
+    perror("inet_pton failed");
+    finish(EXIT_FAILURE);
+  }
+
+  printf("connect..\n");
+
+  res = connect(sockfd, (struct sockaddr *)&addr, sizeof(addr));
+  if (res == -1 && errno != EINPROGRESS) {
+    perror("connect failed");
+    finish(EXIT_FAILURE);
+  }
+
+  data = generateData();
+
+  emscripten_set_main_loop(loop, 1, 0);
 
   return EXIT_SUCCESS;
 }
-

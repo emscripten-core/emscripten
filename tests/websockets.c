@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/ioctl.h>
 #include <assert.h>
 #if EMSCRIPTEN
@@ -15,12 +16,18 @@
 
 #define EXPECTED_BYTES 5
 
-int SocketFD;
-
+int sockfd;
 int not_always_data = 0;
 
-unsigned int get_all_buf(int sock, char* output, unsigned int maxsize)
-{
+void finish(int result) {
+  close(sockfd);
+#if EMSCRIPTEN
+  REPORT_RESULT();
+#endif
+  exit(result);
+}
+
+unsigned int get_all_buf(int sock, char* output, unsigned int maxsize) {
   // select check for IO
   fd_set sett;
   FD_ZERO(&sett);
@@ -35,6 +42,7 @@ unsigned int get_all_buf(int sock, char* output, unsigned int maxsize)
   int bytes;
   if (ioctl(sock, FIONREAD, &bytes) || bytes == 0) {
     not_always_data = 1;
+    printf("ioctl says 0, FD_ISSET says %ld\n", FD_ISSET(sock, &sett));
     assert(FD_ISSET(sock, &sett) == 0);
     return 0;
   }
@@ -47,28 +55,42 @@ unsigned int get_all_buf(int sock, char* output, unsigned int maxsize)
   unsigned int offset = 0;
   while((errno = 0, (n = recv(sock, buffer, sizeof(buffer), 0))>0) ||
     errno == EINTR) {
-    if(n>0)
-    {
-      if (((unsigned int) n)+offset > maxsize) { fprintf(stderr, "too much data!"); exit(EXIT_FAILURE); }
+    if(n > 0) {
+      if (((unsigned int) n)+offset > maxsize) {
+        fprintf(stderr, "too much data!");
+        finish(EXIT_FAILURE);
+      }
       memcpy(output+offset, buffer, n);
       offset += n;
     }
   }
 
-  if(n < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
+  if (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
     fprintf(stderr, "error in get_all_buf! %d", errno);
-    exit(EXIT_FAILURE);
+    finish(EXIT_FAILURE);
   }
   return offset;
 }
 
-int done = 0;
-
 void iter(void *arg) {
-  /* perform read write operations ... */
   static char out[1024*2];
   static int pos = 0;
-  int n = get_all_buf(SocketFD, out+pos, 1024-pos);
+  fd_set fdr;
+  int res;
+
+  // make sure that sockfd is ready to read
+  FD_ZERO(&fdr);
+  FD_SET(sockfd, &fdr);
+  res = select(64, &fdr, NULL, NULL, NULL);
+  if (res == -1) {
+    perror("select failed");
+    finish(EXIT_FAILURE);
+  } else if (!FD_ISSET(sockfd, &fdr)) {
+    return;
+  }
+
+  // perform read write operations ...
+  int n = get_all_buf(sockfd, out+pos, 1024-pos);
   if (n) printf("read! %d\n", n);
   pos += n;
   if (pos >= EXPECTED_BYTES) {
@@ -78,70 +100,44 @@ void iter(void *arg) {
       sum += out[i];
     }
 
-    shutdown(SocketFD, SHUT_RDWR);
+    shutdown(sockfd, SHUT_RDWR);
 
-    close(SocketFD);
-
-    done = 1;
+    close(sockfd);
 
     printf("sum: %d\n", sum);
-
-#if EMSCRIPTEN
-    //assert(not_always_data == 1);
-
-    int result = sum;
-    REPORT_RESULT();
-#endif
+    finish(sum);
   }
 }
 
-int main(void)
-{
-  struct sockaddr_in stSockAddr;
-  int Res;
-  SocketFD = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+void main() {
+  struct sockaddr_in addr;
+  int res;
 
-  if (-1 == SocketFD)
-  {
+  sockfd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+  if (sockfd == -1) {
     perror("cannot create socket");
-    exit(EXIT_FAILURE);
+    finish(EXIT_FAILURE);
   }
+  fcntl(sockfd, F_SETFL, O_NONBLOCK);
 
-  memset(&stSockAddr, 0, sizeof(stSockAddr));
-
-  stSockAddr.sin_family = AF_INET;
-  stSockAddr.sin_port = htons(
-#if EMSCRIPTEN
-    8991
-#else
-    8990
-#endif
-  );
-  Res = inet_pton(AF_INET, "127.0.0.1", &stSockAddr.sin_addr);
-
-  if (0 > Res) {
-    perror("error: first parameter is not a valid address family");
-    close(SocketFD);
-    exit(EXIT_FAILURE);
-  } else if (0 == Res) {
-    perror("char string (second parameter does not contain valid ipaddress)");
-    close(SocketFD);
-    exit(EXIT_FAILURE);
+  memset(&addr, 0, sizeof(addr));
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons(SOCKK);
+  if (inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr) != 1) {
+    perror("inet_pton failed");
+    finish(EXIT_FAILURE);
   }
-
-  if (-1 == connect(SocketFD, (struct sockaddr *)&stSockAddr, sizeof(stSockAddr))) {
+  
+  res = connect(sockfd, (struct sockaddr *)&addr, sizeof(addr));
+  if (res == -1 && errno != EINPROGRESS) {
     perror("connect failed");
-    close(SocketFD);
-    exit(EXIT_FAILURE);
-
+    finish(EXIT_FAILURE);
   }
 
 #if EMSCRIPTEN
   emscripten_set_main_loop(iter, 0, 0);
 #else
-  while (!done) iter(NULL);
+  while (1) iter(NULL);
 #endif
-
-  return EXIT_SUCCESS;
 }
 

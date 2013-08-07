@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/ioctl.h>
 #include <assert.h>
 #if EMSCRIPTEN
@@ -15,81 +16,83 @@
 
 #define EXPECTED_BYTES 5
 
-int SocketFD;
+int sockfd = -1;
 
-int done = 0;
+void finish(int result) {
+  close(sockfd);
+#if EMSCRIPTEN
+  REPORT_RESULT();
+#endif
+  exit(result);
+}
 
-void iter(void *arg) {  
+void iter(void *arg) {
+  static int retries = 0;
+
   fd_set sett;
   FD_ZERO(&sett);
-  FD_SET(SocketFD, &sett);
+  FD_SET(sockfd, &sett);
   
-  // The error should happen here
-  int select_says_yes = select(64, &sett, NULL, NULL, NULL);
-  if( select_says_yes == -1 ){
-    printf( "Connection to websocket server failed as expected." );
-    perror( "Error message" );
-    int result = 266;
-    REPORT_RESULT();
-    done = 1;
+  // currently, we've connected to a closed server port.
+  // the initial async connect "succeeded" and select
+  // should say that the socket is ready for a non-blocking
+  // read, however, the read should be 0 sized signalling
+  // that the remote end has closed.
+  int handles = select(64, &sett, NULL, NULL, NULL);
+  if (handles == -1) {
+    perror("select failed");
+    finish(EXIT_FAILURE);
   }
 
-  assert(!select_says_yes);
-  done = 1;
+  if (FD_ISSET(sockfd, &sett)) {
+    char buffer[1024];
+    int n = recv(sockfd, buffer, sizeof(buffer), 0);
+    if (n == -1 && retries++ > 10) {
+      perror("revv failed");
+      finish(EXIT_FAILURE);
+    } else if (!n) {
+      perror("Connection to websocket server failed as expected.");
+      finish(266);
+    }
+  }
 }
 
 // This is for testing a websocket connection to a closed server port.
 // The connect call will succeed (due to the asynchronous websocket
 // behavior) but once the underlying websocket system realized that 
 // the connection cannot be established, the next select call will fail.
-int main(void)
-{
-  struct sockaddr_in stSockAddr;
-  int Res;
-  SocketFD = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+int main() {
+  struct sockaddr_in addr;
+  int res;
 
-  if (-1 == SocketFD)
-  {
+  sockfd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+  if (sockfd == -1) {
     perror("cannot create socket");
-    exit(EXIT_FAILURE);
+    finish(EXIT_FAILURE);
   }
+  fcntl(sockfd, F_SETFL, O_NONBLOCK);
 
-  memset(&stSockAddr, 0, sizeof(stSockAddr));
-
-  stSockAddr.sin_family = AF_INET;
-  stSockAddr.sin_port = htons(
-#if EMSCRIPTEN
-    8995
-#else
-    8994
-#endif
-  );
-  Res = inet_pton(AF_INET, "127.0.0.1", &stSockAddr.sin_addr);
-
-  if (0 > Res) {
-    perror("error: first parameter is not a valid address family");
-    close(SocketFD);
-    exit(EXIT_FAILURE);
-  } else if (0 == Res) {
-    perror("char string (second parameter does not contain valid ipaddress)");
-    close(SocketFD);
-    exit(EXIT_FAILURE);
+  memset(&addr, 0, sizeof(addr));
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons(SOCKK);
+  if (inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr) != 1) {
+    perror("inet_pton failed");
+    finish(EXIT_FAILURE);
   }
 
   // This call should succeed (even if the server port is closed)
-  if (-1 == connect(SocketFD, (struct sockaddr *)&stSockAddr, sizeof(stSockAddr))) {
+  res = connect(sockfd, (struct sockaddr *)&addr, sizeof(addr));
+  if (res == -1 && errno != EINPROGRESS) {
     perror("connect failed");
-    close(SocketFD);
-    exit(EXIT_FAILURE);
-
+    finish(EXIT_FAILURE);
   }
 
 #if EMSCRIPTEN
   emscripten_set_main_loop(iter, 0, 0);
 #else
-  while (!done) iter(NULL);
+  while (1) iter(NULL);
 #endif
-
-  return EXIT_SUCCESS;
+  
+  return EXIT_FAILURE;
 }
 

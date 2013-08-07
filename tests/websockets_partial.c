@@ -3,6 +3,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,107 +14,98 @@
 #include <emscripten.h>
 #endif
 
-int SocketFD;
-int done = 0;
+int sockfd = -1;
 int sum = 0;
+
+void finish(int result) {
+  close(sockfd);
+#if EMSCRIPTEN
+  REPORT_RESULT();
+#endif
+  exit(result);
+}
 
 void iter(void *arg) {
   char buffer[1024];
   char packetLength;
-  int n;
+  fd_set fdr;
   int i;
+  int res;
 
-  if (done) {
+  // make sure that sockfd is ready to read
+  FD_ZERO(&fdr);
+  FD_SET(sockfd, &fdr);
+  res = select(64, &fdr, NULL, NULL, NULL);
+  if (res == -1) {
+    perror("select failed");
+    finish(EXIT_FAILURE);
+  } else if (!FD_ISSET(sockfd, &fdr)) {
     return;
   }
 
-  n = recv(SocketFD, buffer, 1, 0);
-
-  if (n == -1) {
+  res = recv(sockfd, buffer, 1, 0);
+  if (res == -1) {
     if (errno == EAGAIN || errno == EWOULDBLOCK) {
       return; //try again
     }
 
-    fprintf(stderr, "unexcepted end of data");
-    exit(EXIT_FAILURE);
+    perror("unexcepted end of data");
+    finish(EXIT_FAILURE);
   }
 
-  if (n != 1) {
-    fprintf(stderr, "should read 1 byte");
-    exit(EXIT_FAILURE);
+  if (res != 1) {
+    perror("should read 1 byte");
+    finish(EXIT_FAILURE);
   }
 
   packetLength = buffer[0];
-  n = recv(SocketFD, buffer, packetLength, 0);
+  res = recv(sockfd, buffer, packetLength, 0);
 
-  printf("got %d,%d\n", n, packetLength);
+  printf("got %d,%d\n", res, packetLength);
 
-  if (n != packetLength) {
-    fprintf(stderr, "lost packet data, expected: %d readed: %d", packetLength, n);
-    exit(EXIT_FAILURE);
+  if (res != packetLength) {
+    fprintf(stderr, "lost packet data, expected: %d readed: %d", packetLength, res);
+    finish(EXIT_FAILURE);
   }
 
   for (i = 0; i < packetLength; ++i) {
     if (buffer[i] != i+1) {
       fprintf(stderr, "packet corrupted, expected: %d, actual: %d", i+1, buffer[i]);
-      exit(EXIT_FAILURE);
+      finish(EXIT_FAILURE);
     }
 
     sum += buffer[i];
   }
 
   if (packetLength == buffer[0]) { // \x01\x01 - end marker
-    shutdown(SocketFD, SHUT_RDWR);
-    close(SocketFD);
-    done = 1;
-
-    #if EMSCRIPTEN
-        printf("sum: %d\n", sum);
-        int result = sum;
-        REPORT_RESULT();
-    #endif
+    printf("sum: %d\n", sum);
+    finish(sum);
   }
 }
 
-int main(void)
-{
-  struct sockaddr_in stSockAddr;
-  int Res;
-  SocketFD = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+int main() {
+  struct sockaddr_in addr;
+  int res;
 
-  if (-1 == SocketFD)
-  {
+  sockfd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+  if (sockfd == -1) {
     perror("cannot create socket");
     exit(EXIT_FAILURE);
   }
+  fcntl(sockfd, F_SETFL, O_NONBLOCK);
 
-  memset(&stSockAddr, 0, sizeof(stSockAddr));
-
-  stSockAddr.sin_family = AF_INET;
-  stSockAddr.sin_port = htons(
-#if EMSCRIPTEN
-    8991
-#else
-    8990
-#endif
-  );
-  Res = inet_pton(AF_INET, "127.0.0.1", &stSockAddr.sin_addr);
-
-  if (0 > Res) {
-    perror("error: first parameter is not a valid address family");
-    close(SocketFD);
-    exit(EXIT_FAILURE);
-  } else if (0 == Res) {
-    perror("char string (second parameter does not contain valid ipaddress)");
-    close(SocketFD);
-    exit(EXIT_FAILURE);
+  memset(&addr, 0, sizeof(addr));
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons(SOCKK);
+  if (inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr) != 1) {
+    perror("inet_pton failed");
+    finish(EXIT_FAILURE);
   }
 
-  if (-1 == connect(SocketFD, (struct sockaddr *)&stSockAddr, sizeof(stSockAddr))) {
+  res = connect(sockfd, (struct sockaddr *)&addr, sizeof(addr));
+  if (res == -1 && errno != EINPROGRESS) {
     perror("connect failed");
-    close(SocketFD);
-    exit(EXIT_FAILURE);
-
+    finish(EXIT_FAILURE);
   }
 
 #if EMSCRIPTEN
