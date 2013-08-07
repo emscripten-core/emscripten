@@ -3,11 +3,11 @@ mergeInto(LibraryManager.library, {
   $PATH: {
     // split a filename into [root, dir, basename, ext], unix version
     // 'root' is just a slash, or nothing.
-    splitPath: function (filename) {
+    splitPath: function(filename) {
       var splitPathRe = /^(\/?|)([\s\S]*?)((?:\.{1,2}|[^\/]+?|)(\.[^.\/]*|))(?:[\/]*)$/;
       return splitPathRe.exec(filename).slice(1);
     },
-    normalizeArray: function (parts, allowAboveRoot) {
+    normalizeArray: function(parts, allowAboveRoot) {
       // if the path tries to go above the root, `up` ends up > 0
       var up = 0;
       for (var i = parts.length - 1; i >= 0; i--) {
@@ -30,7 +30,7 @@ mergeInto(LibraryManager.library, {
       }
       return parts;
     },
-    normalize: function (path) {
+    normalize: function(path) {
       var isAbsolute = path.charAt(0) === '/',
           trailingSlash = path.substr(-1) === '/';
       // Normalize the path
@@ -45,7 +45,7 @@ mergeInto(LibraryManager.library, {
       }
       return (isAbsolute ? '/' : '') + path;
     },
-    dirname: function (path) {
+    dirname: function(path) {
       var result = PATH.splitPath(path),
           root = result[0],
           dir = result[1];
@@ -59,7 +59,7 @@ mergeInto(LibraryManager.library, {
       }
       return root + dir;
     },
-    basename: function (path, ext) {
+    basename: function(path, ext) {
       // EMSCRIPTEN return '/'' for '/', not an empty string
       if (path === '/') return '/';
       var f = PATH.splitPath(path)[2];
@@ -68,7 +68,7 @@ mergeInto(LibraryManager.library, {
       }
       return f;
     },
-    join: function () {
+    join: function() {
       var paths = Array.prototype.slice.call(arguments, 0);
       return PATH.normalize(paths.filter(function(p, index) {
         if (typeof p !== 'string') {
@@ -77,7 +77,7 @@ mergeInto(LibraryManager.library, {
         return p;
       }).join('/'));
     },
-    resolve: function () {
+    resolve: function() {
       var resolvedPath = '',
         resolvedAbsolute = false;
       for (var i = arguments.length - 1; i >= -1 && !resolvedAbsolute; i--) {
