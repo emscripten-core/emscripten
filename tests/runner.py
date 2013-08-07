@@ -13045,7 +13045,7 @@ Press any key to continue.'''
       open(os.path.join(self.get_dir(), 'sdl_image.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_image.c')).read()))
 
       for mem in [0, 1]:
-        Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_image.c'), '-O2', '--preload-file', 'screenshot.jpg', '-o', 'page.html', '--memory-init-file', str(mem)]).communicate()
+        Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_image.c'), '-O2', '--preload-file', 'screenshot.jpg@/assets/screenshot.jpg', '-o', 'page.html', '--memory-init-file', str(mem)]).communicate()
         self.run_browser('page.html', '', '/report_result?600')
 
     def test_sdl_image_jpeg(self):

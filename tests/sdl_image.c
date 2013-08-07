@@ -3,6 +3,7 @@
 #include <SDL/SDL_image.h>
 #include <assert.h>
 #include <emscripten.h>
+#include <unistd.h>
 
 int testImage(SDL_Surface* screen, const char* fileName) {
   SDL_Surface *image = IMG_Load(fileName);
@@ -27,9 +28,12 @@ int main() {
   SDL_Surface *screen = SDL_SetVideoMode(600, 450, 32, SDL_SWSURFACE);
 
   int result = 0;
-  result = testImage(screen, "screenshot.jpg"); // relative path
+
+  result |= testImage(screen, "/assets/screenshot.jpg"); // absolute path
   assert(result != 0);
-  result |= testImage(screen, "/screenshot.jpg"); // absolute path
+
+  chdir("/assets");
+  result = testImage(screen, "./screenshot.jpg"); // relative path
   assert(result != 0);
 
   SDL_Flip(screen);
