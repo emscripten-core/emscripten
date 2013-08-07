@@ -9161,24 +9161,14 @@ def process(filename):
         }
 
         int main(int argc, char **argv) {
-          // keep them alive
-          if (argc == 10) return get_int();
-          if (argc == 11) return get_float();
-          if (argc == 12) return get_string()[0];
-          if (argc == 13) print_int(argv[0][0]);
-          if (argc == 14) print_float(argv[0][0]);
-          if (argc == 15) print_string(argv[0]);
-          if (argc == 16) pointer((int*)argv[0]);
-          if (argc % 17 == 12) return multi(argc, float(argc)/2, argc+1, argv[0]);
-          // return 0;
-          exit(0);
+          return 0;
         }
       '''
 
       post = '''
 def process(filename):
   src = \'\'\'
-    var Module = { noInitialRun: true };
+    var Module = { 'noInitialRun': true };
     \'\'\' + open(filename, 'r').read() + \'\'\'
     Module.addOnExit(function () {
       Module.print('*');
