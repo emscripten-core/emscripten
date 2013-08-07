@@ -13065,7 +13065,7 @@ Press any key to continue.'''
         open(os.path.join(self.get_dir(), 'sdl_image.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_image.c')).read()).replace('screenshot.jpg', basename))
 
         self.build_native_lzma()
-        Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_image.c'), '--preload-file', basename, '-o', 'page.html',
+        Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_image.c'), '--preload-file', basename + '@/assets/' + basename, '-o', 'page.html',
                '--compression', '%s,%s,%s' % (path_from_root('third_party', 'lzma.js', 'lzma-native'),
                                               path_from_root('third_party', 'lzma.js', 'lzma-decoder.js'),
                                               'LZMA.decompress')]).communicate()
