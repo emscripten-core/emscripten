@@ -85,7 +85,7 @@ var LibraryOpenAL = {
         err: 0,
         src: [],
         buf: [],
-        interval: setInterval(function () { _updateSources(context); }, AL.QUEUE_INTERVAL)
+        interval: setInterval(function() { _updateSources(context); }, AL.QUEUE_INTERVAL)
       };
       AL.contexts.push(context);
       return AL.contexts.length;
@@ -95,14 +95,14 @@ var LibraryOpenAL = {
   },
 
   updateSources__deps: ['updateSource'],
-  updateSources: function (context) {
+  updateSources: function(context) {
     for (var i = 0; i < context.src.length; i++) {
       _updateSource(context.src[i]);
     }
   },
 
   updateSource__deps: ['setSourceState'],
-  updateSource: function (src) {
+  updateSource: function(src) {
 #if OPENAL_DEBUG
     var idx = AL.currentContext.src.indexOf(src);
 #endif
@@ -154,7 +154,7 @@ var LibraryOpenAL = {
   },
 
   setSourceState__deps: ['updateSource', 'stopSourceQueue'],
-  setSourceState: function (src, state) {
+  setSourceState: function(src, state) {
 #if OPENAL_DEBUG
     var idx = AL.currentContext.src.indexOf(src);
 #endif
@@ -208,7 +208,7 @@ var LibraryOpenAL = {
     }
   },
 
-  stopSourceQueue: function (src) {
+  stopSourceQueue: function(src) {
     for (var i = 0; i < src.queue.length; i++) {
       var entry = src.queue[i];
       if (entry.src) {
@@ -906,7 +906,7 @@ var LibraryOpenAL = {
     return 0;
   },
 
-  alGetString: function (param) {
+  alGetString: function(param) {
     return allocate(intArrayFromString('NA'), 'i8', ALLOC_NORMAL);
   },
 
@@ -914,7 +914,7 @@ var LibraryOpenAL = {
     return 0;
   },
 
-  alcGetString: function (param) {
+  alcGetString: function(param) {
     return allocate(intArrayFromString('NA'), 'i8', ALLOC_NORMAL);
   },
 

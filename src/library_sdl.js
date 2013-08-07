@@ -318,7 +318,7 @@ var LibrarySDL = {
         usePageCanvas: usePageCanvas,
         source: source,
 
-        isFlagSet: function (flag) {
+        isFlagSet: function(flag) {
           return flags & flag;
         }
       };
@@ -2112,7 +2112,7 @@ var LibrarySDL = {
     return -1;
   },
 
-  SDL_SetGammaRamp: function (redTable, greenTable, blueTable) {
+  SDL_SetGammaRamp: function(redTable, greenTable, blueTable) {
     return -1;
   },
 
