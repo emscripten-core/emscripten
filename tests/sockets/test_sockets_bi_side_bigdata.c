@@ -13,7 +13,7 @@
 #include <emscripten.h>
 #endif
 
-#include "websockets_bigdata.h"
+#include "test_sockets_bigdata.h"
 
 #define EXPECTED_BYTES 5
 
