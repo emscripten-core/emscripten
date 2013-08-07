@@ -56,7 +56,7 @@ LibraryManager.library = {
     // to modify the filesystem freely before run() is called.
     ignorePermissions: true,
     
-    ErrnoError: function (errno) {
+    ErrnoError: function(errno) {
       this.errno = errno;
       for (var key in ERRNO_CODES) {
         if (ERRNO_CODES[key] === errno) {
@@ -75,19 +75,19 @@ LibraryManager.library = {
     //
     // nodes
     //
-    hashName: function (parentid, name) {
+    hashName: function(parentid, name) {
       var hash = 0;
       for (var i = 0; i < name.length; i++) {
         hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
       }
       return (parentid + hash) % FS.name_table.length;
     },
-    hashAddNode: function (node) {
+    hashAddNode: function(node) {
       var hash = FS.hashName(node.parent.id, node.name);
       node.name_next = FS.name_table[hash];
       FS.name_table[hash] = node;
     },
-    hashRemoveNode: function (node) {
+    hashRemoveNode: function(node) {
       var hash = FS.hashName(node.parent.id, node.name);
       if (FS.name_table[hash] === node) {
         FS.name_table[hash] = node.name_next;
@@ -102,7 +102,7 @@ LibraryManager.library = {
         }
       }
     },
-    lookupNode: function (parent, name) {
+    lookupNode: function(parent, name) {
       var err = FS.mayLookup(parent);
       if (err) {
         throw new FS.ErrnoError(err);
@@ -116,7 +116,7 @@ LibraryManager.library = {
       // if we failed to find it in the cache, call into the VFS
       return VFS.lookup(parent, name);
     },
-    createNode: function (parent, name, mode, rdev) {
+    createNode: function(parent, name, mode, rdev) {
       var node = {
         id: FS.nextInode++,
         name: name,
@@ -136,12 +136,12 @@ LibraryManager.library = {
       var readMode = {{{ cDefine('S_IRUGO') }}} | {{{ cDefine('S_IXUGO') }}};
       var writeMode = {{{ cDefine('S_IWUGO') }}};
       Object.defineProperty(node, 'read', {
-        get: function () { return (node.mode & readMode) === readMode; },
-        set: function (val) { val ? node.mode |= readMode : node.mode &= ~readMode; }
+        get: function() { return (node.mode & readMode) === readMode; },
+        set: function(val) { val ? node.mode |= readMode : node.mode &= ~readMode; }
       });
       Object.defineProperty(node, 'write', {
-        get: function () { return (node.mode & writeMode) === writeMode; },
-        set: function (val) { val ? node.mode |= writeMode : node.mode &= ~writeMode; }
+        get: function() { return (node.mode & writeMode) === writeMode; },
+        set: function(val) { val ? node.mode |= writeMode : node.mode &= ~writeMode; }
       });
       // TODO add:
       // isFolder
@@ -149,31 +149,31 @@ LibraryManager.library = {
       FS.hashAddNode(node);
       return node;
     },
-    destroyNode: function (node) {
+    destroyNode: function(node) {
       FS.hashRemoveNode(node);
     },
-    isRoot: function (node) {
+    isRoot: function(node) {
       return node === node.parent;
     },
-    isMountpoint: function (node) {
+    isMountpoint: function(node) {
       return node.mounted;
     },
-    isFile: function (mode) {
+    isFile: function(mode) {
       return (mode & {{{ cDefine('S_IFMT') }}}) === {{{ cDefine('S_IFREG') }}};
     },
-    isDir: function (mode) {
+    isDir: function(mode) {
       return (mode & {{{ cDefine('S_IFMT') }}}) === {{{ cDefine('S_IFDIR') }}};
     },
-    isLink: function (mode) {
+    isLink: function(mode) {
       return (mode & {{{ cDefine('S_IFMT') }}}) === {{{ cDefine('S_IFLNK') }}};
     },
-    isChrdev: function (mode) {
+    isChrdev: function(mode) {
       return (mode & {{{ cDefine('S_IFMT') }}}) === {{{ cDefine('S_IFCHR') }}};
     },
-    isBlkdev: function (mode) {
+    isBlkdev: function(mode) {
       return (mode & {{{ cDefine('S_IFMT') }}}) === {{{ cDefine('S_IFBLK') }}};
     },
-    isFIFO: function (mode) {
+    isFIFO: function(mode) {
       return (mode & {{{ cDefine('S_IFMT') }}}) === {{{ cDefine('S_IFIFO') }}};
     },
 
@@ -183,7 +183,7 @@ LibraryManager.library = {
     cwd: function() {
       return FS.currentPath;
     },
-    lookupPath: function (path, opts) {
+    lookupPath: function(path, opts) {
       path = PATH.resolve(FS.currentPath, path);
       opts = opts || { recurse_count: 0 };
 
@@ -192,7 +192,7 @@ LibraryManager.library = {
       }
 
       // split the path
-      var parts = PATH.normalizeArray(path.split('/').filter(function (p) {
+      var parts = PATH.normalizeArray(path.split('/').filter(function(p) {
         return !!p;
       }), false);
 
@@ -236,7 +236,7 @@ LibraryManager.library = {
 
       return { path: current_path, node: current };
     },
-    getPath: function (node) {
+    getPath: function(node) {
       var path;
       while (true) {
         if (FS.isRoot(node)) {
@@ -268,7 +268,7 @@ LibraryManager.library = {
       '"xa+"': {{{ cDefine('O_APPEND') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_RDWR') }}} | {{{ cDefine('O_EXCL') }}}
     },
     // convert the 'r', 'r+', etc. to it's corresponding set of O_* flags
-    modeStringToFlags: function (str) {
+    modeStringToFlags: function(str) {
       var flags = FS.flagModes[str];
       if (typeof flags === 'undefined') {
         throw new Error('Unknown file open mode: ' + str);
@@ -276,7 +276,7 @@ LibraryManager.library = {
       return flags;
     },
     // convert O_* bitmask to a string for nodePermissions
-    flagsToPermissionString: function (flag) {
+    flagsToPermissionString: function(flag) {
       var accmode = flag & {{{ cDefine('O_ACCMODE') }}};
       var perms = ['r', 'w', 'rw'][accmode];
       if ((flag & {{{ cDefine('O_TRUNC') }}})) {
@@ -284,7 +284,7 @@ LibraryManager.library = {
       }
       return perms;
     },
-    nodePermissions: function (node, perms) {
+    nodePermissions: function(node, perms) {
       if (FS.ignorePermissions) {
         return 0;
       }
@@ -298,10 +298,10 @@ LibraryManager.library = {
       }
       return 0;
     },
-    mayLookup: function (dir) {
+    mayLookup: function(dir) {
       return FS.nodePermissions(dir, 'x');
     },
-    mayMknod: function (mode) {
+    mayMknod: function(mode) {
       switch (mode & {{{ cDefine('S_IFMT') }}}) {
         case {{{ cDefine('S_IFREG') }}}:
         case {{{ cDefine('S_IFCHR') }}}:
@@ -313,7 +313,7 @@ LibraryManager.library = {
           return ERRNO_CODES.EINVAL;
       }
     },
-    mayCreate: function (dir, name) {
+    mayCreate: function(dir, name) {
       try {
         var node = FS.lookupNode(dir, name);
         return ERRNO_CODES.EEXIST;
@@ -321,7 +321,7 @@ LibraryManager.library = {
       }
       return FS.nodePermissions(dir, 'wx');
     },
-    mayDelete: function (dir, name, isdir) {
+    mayDelete: function(dir, name, isdir) {
       var node;
       try {
         node = FS.lookupNode(dir, name);
@@ -346,7 +346,7 @@ LibraryManager.library = {
       }
       return 0;
     },
-    mayOpen: function (node, flags) {
+    mayOpen: function(node, flags) {
       if (!node) {
         return ERRNO_CODES.ENOENT;
       }
@@ -371,7 +371,7 @@ LibraryManager.library = {
     // however, once opened, the stream's operations are overridden with
     // the operations of the device its underlying node maps back to.
     chrdev_stream_ops: {
-      open: function (stream) {
+      open: function(stream) {
         var device = FS.getDevice(stream.node.rdev);
         // override node's stream ops with the device's
         stream.stream_ops = device.stream_ops;
@@ -380,23 +380,23 @@ LibraryManager.library = {
           stream.stream_ops.open(stream);
         }
       },
-      llseek: function () {
+      llseek: function() {
         throw new FS.ErrnoError(ERRNO_CODES.ESPIPE);
       }
     },
-    major: function (dev) {
+    major: function(dev) {
       return ((dev) >> 8);
     },
-    minor: function (dev) {
+    minor: function(dev) {
       return ((dev) & 0xff);
     },
-    makedev: function (ma, mi) {
+    makedev: function(ma, mi) {
       return ((ma) << 8 | (mi));
     },
-    registerDevice: function (dev, ops) {
+    registerDevice: function(dev, ops) {
       FS.devices[dev] = { stream_ops: ops };
     },
-    getDevice: function (dev) {
+    getDevice: function(dev) {
       return FS.devices[dev];
     },
 
@@ -404,7 +404,7 @@ LibraryManager.library = {
     // streams
     //
     MAX_OPEN_FDS: 4096,
-    nextfd: function (fd_start, fd_end) {
+    nextfd: function(fd_start, fd_end) {
       fd_start = fd_start || 1;
       fd_end = fd_end || FS.MAX_OPEN_FDS;
       for (var fd = fd_start; fd <= fd_end; fd++) {
@@ -414,46 +414,46 @@ LibraryManager.library = {
       }
       throw new FS.ErrnoError(ERRNO_CODES.EMFILE);
     },
-    getStream: function (fd) {
+    getStream: function(fd) {
       return FS.streams[fd];
     },
-    createStream: function (stream, fd_start, fd_end) {
+    createStream: function(stream, fd_start, fd_end) {
       var fd = FS.nextfd(fd_start, fd_end);
       stream.fd = fd;
       // compatibility
       Object.defineProperty(stream, 'object', {
-        get: function () { return stream.node; },
-        set: function (val) { stream.node = val; }
+        get: function() { return stream.node; },
+        set: function(val) { stream.node = val; }
       });
       Object.defineProperty(stream, 'isRead', {
-        get: function () { return (stream.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_WRONLY') }}}; }
+        get: function() { return (stream.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_WRONLY') }}}; }
       });
       Object.defineProperty(stream, 'isWrite', {
-        get: function () { return (stream.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_RDONLY') }}}; }
+        get: function() { return (stream.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_RDONLY') }}}; }
       });
       Object.defineProperty(stream, 'isAppend', {
-        get: function () { return (stream.flags & {{{ cDefine('O_APPEND') }}}); }
+        get: function() { return (stream.flags & {{{ cDefine('O_APPEND') }}}); }
       });
       FS.streams[fd] = stream;
       return stream;
     },
-    closeStream: function (fd) {
+    closeStream: function(fd) {
       FS.streams[fd] = null;
     },
 
     //
     // general
     //
-    createDefaultDirectories: function () {
+    createDefaultDirectories: function() {
       VFS.mkdir('/tmp', 0777);
     },
-    createDefaultDevices: function () {
+    createDefaultDevices: function() {
       // create /dev
       VFS.mkdir('/dev', 0777);
       // setup /dev/null
       FS.registerDevice(FS.makedev(1, 3), {
-        read: function () { return 0; },
-        write: function () { return 0; }
+        read: function() { return 0; },
+        write: function() { return 0; }
       });
       VFS.mkdev('/dev/null', 0666, FS.makedev(1, 3));
       // setup /dev/tty and /dev/tty1
@@ -468,7 +468,7 @@ LibraryManager.library = {
       VFS.mkdir('/dev/shm', 0777);
       VFS.mkdir('/dev/shm/tmp', 0777);
     },
-    createStandardStreams: function () {
+    createStandardStreams: function() {
       // TODO deprecate the old functionality of a single
       // input / output callback and that utilizes FS.createDevice
       // and instead require a unique set of stream ops
@@ -506,14 +506,14 @@ LibraryManager.library = {
       {{{ makeSetValue(makeGlobalUse('_stderr'), 0, 'stderr.fd', 'void*') }}};
       assert(stderr.fd === 3, 'invalid handle for stderr (' + stderr.fd + ')');
     },
-    staticInit: function () {
+    staticInit: function() {
       FS.root = FS.createNode(null, '/', {{{ cDefine('S_IFDIR') }}} | 0777, 0);
       VFS.mount(MEMFS, {}, '/');
 
       FS.createDefaultDirectories();
       FS.createDefaultDevices();
     },
-    init: function (input, output, error) {
+    init: function(input, output, error) {
       assert(!FS.init.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
       FS.init.initialized = true;
 
@@ -524,7 +524,7 @@ LibraryManager.library = {
 
       FS.createStandardStreams();
     },
-    quit: function () {
+    quit: function() {
       FS.init.initialized = false;
       for (var i = 0; i < FS.streams.length; i++) {
         var stream = FS.streams[i];
@@ -538,24 +538,24 @@ LibraryManager.library = {
     //
     // compatibility
     //
-    getMode: function (canRead, canWrite) {
+    getMode: function(canRead, canWrite) {
       var mode = 0;
       if (canRead) mode |= {{{ cDefine('S_IRUGO') }}} | {{{ cDefine('S_IXUGO') }}};
       if (canWrite) mode |= {{{ cDefine('S_IWUGO') }}};
       return mode;
     },
-    joinPath: function (parts, forceRelative) {
+    joinPath: function(parts, forceRelative) {
       var path = PATH.join.apply(null, parts);
       if (forceRelative && path[0] == '/') path = path.substr(1);
       return path;
     },
-    absolutePath: function (relative, base) {
+    absolutePath: function(relative, base) {
       return PATH.resolve(base, relative);
     },
-    standardizePath: function (path) {
+    standardizePath: function(path) {
       return PATH.normalize(path);
     },
-    findObject: function (path, dontResolveLastLink) {
+    findObject: function(path, dontResolveLastLink) {
       var ret = FS.analyzePath(path, dontResolveLastLink);
       if (ret.exists) {
         return ret.object;
@@ -564,7 +564,7 @@ LibraryManager.library = {
         return null;
       }
     },
-    analyzePath: function (path, dontResolveLastLink) {
+    analyzePath: function(path, dontResolveLastLink) {
       // operate from within the context of the symlink's target
       try {
         var lookup = FS.lookupPath(path, { follow: !dontResolveLastLink });
@@ -592,12 +592,12 @@ LibraryManager.library = {
       };
       return ret;
     },
-    createFolder: function (parent, name, canRead, canWrite) {
+    createFolder: function(parent, name, canRead, canWrite) {
       var path = PATH.join(typeof parent === 'string' ? parent : FS.getPath(parent), name);
       var mode = FS.getMode(canRead, canWrite);
       return VFS.mkdir(path, mode);
     },
-    createPath: function (parent, path, canRead, canWrite) {
+    createPath: function(parent, path, canRead, canWrite) {
       parent = typeof parent === 'string' ? parent : FS.getPath(parent);
       var parts = path.split('/').reverse();
       while (parts.length) {
@@ -613,12 +613,12 @@ LibraryManager.library = {
       }
       return current;
     },
-    createFile: function (parent, name, properties, canRead, canWrite) {
+    createFile: function(parent, name, properties, canRead, canWrite) {
       var path = PATH.join(typeof parent === 'string' ? parent : FS.getPath(parent), name);
       var mode = FS.getMode(canRead, canWrite);
       return VFS.create(path, mode);
     },
-    createDataFile: function (parent, name, data, canRead, canWrite) {
+    createDataFile: function(parent, name, data, canRead, canWrite) {
       var path = PATH.join(typeof parent === 'string' ? parent : FS.getPath(parent), name);
       var mode = FS.getMode(canRead, canWrite);
       var node = VFS.create(path, mode);
@@ -637,7 +637,7 @@ LibraryManager.library = {
       }
       return node;
     },
-    createDevice: function (parent, name, input, output) {
+    createDevice: function(parent, name, input, output) {
       var path = PATH.join(typeof parent === 'string' ? parent : FS.getPath(parent), name);
       var mode = input && output ? 0777 : (input ? 0333 : 0555);
       if (!FS.createDevice.major) FS.createDevice.major = 64;
@@ -645,16 +645,16 @@ LibraryManager.library = {
       // Create a fake device that a set of stream ops to emulate
       // the old behavior.
       FS.registerDevice(dev, {
-        open: function (stream) {
+        open: function(stream) {
           stream.seekable = false;
         },
-        close: function (stream) {
+        close: function(stream) {
           // flush any pending line data
           if (output.buffer && output.buffer.length) {
             output({{{ charCode('\n') }}});
           }
         },
-        read: function (stream, buffer, offset, length, pos /* ignored */) {
+        read: function(stream, buffer, offset, length, pos /* ignored */) {
           var bytesRead = 0;
           for (var i = 0; i < length; i++) {
             var result;
@@ -675,7 +675,7 @@ LibraryManager.library = {
           }
           return bytesRead;
         },
-        write: function (stream, buffer, offset, length, pos) {
+        write: function(stream, buffer, offset, length, pos) {
           for (var i = 0; i < length; i++) {
             try {
               output(buffer[offset+i]);
@@ -691,7 +691,7 @@ LibraryManager.library = {
       });
       return VFS.mkdev(path, mode, dev);
     },
-    createLink: function (parent, name, target, canRead, canWrite) {
+    createLink: function(parent, name, target, canRead, canWrite) {
       var path = PATH.join(typeof parent === 'string' ? parent : FS.getPath(parent), name);
       return VFS.symlink(target, path);
     },
@@ -833,9 +833,9 @@ LibraryManager.library = {
       // override each stream op with one that tries to force load the lazy file first
       var stream_ops = {};
       var keys = Object.keys(node.stream_ops);
-      keys.forEach(function (key) {
+      keys.forEach(function(key) {
         var fn = node.stream_ops[key];
-        stream_ops[key] = function () {
+        stream_ops[key] = function() {
           if (!FS.forceLoadFile(node)) {
             throw new FS.ErrnoError(ERRNO_CODES.EIO);
           }
@@ -843,7 +843,7 @@ LibraryManager.library = {
         };
       });
       // use a custom read function
-      stream_ops.read = function (stream, buffer, offset, length, position) {
+      stream_ops.read = function(stream, buffer, offset, length, position) {
         var contents = stream.node.contents;
         var size = Math.min(contents.length - position, length);
         if (contents.slice) { // normal array
@@ -909,7 +909,7 @@ LibraryManager.library = {
   
   $VFS__deps: ['$FS'],
   $VFS: {
-    mount: function (type, opts, mountpoint) {
+    mount: function(type, opts, mountpoint) {
       var mount = {
         type: type,
         opts: opts,
@@ -935,11 +935,11 @@ LibraryManager.library = {
       }
       return root;
     },
-    lookup: function (parent, name) {
+    lookup: function(parent, name) {
       return parent.node_ops.lookup(parent, name);
     },
     // generic function for all node creation
-    mknod: function (path, mode, dev) {
+    mknod: function(path, mode, dev) {
       var lookup = FS.lookupPath(path, { parent: true });
       var parent = lookup.node;
       var name = PATH.basename(path);
@@ -953,21 +953,21 @@ LibraryManager.library = {
       return parent.node_ops.mknod(parent, name, mode, dev);
     },
     // helpers to create specific types of nodes
-    create: function (path, mode) {
+    create: function(path, mode) {
       mode &= {{{ cDefine('S_IALLUGO') }}};
       mode |= {{{ cDefine('S_IFREG') }}};
       return VFS.mknod(path, mode, 0);
     },
-    mkdir: function (path, mode) {
+    mkdir: function(path, mode) {
       mode &= {{{ cDefine('S_IRWXUGO') }}} | {{{ cDefine('S_ISVTX') }}};
       mode |= {{{ cDefine('S_IFDIR') }}};
       return VFS.mknod(path, mode, 0);
     },
-    mkdev: function (path, mode, dev) {
+    mkdev: function(path, mode, dev) {
       mode |= {{{ cDefine('S_IFCHR') }}};
       return VFS.mknod(path, mode, dev);
     },
-    symlink: function (oldpath, newpath) {
+    symlink: function(oldpath, newpath) {
       var lookup = FS.lookupPath(newpath, { parent: true });
       var parent = lookup.node;
       var newname = PATH.basename(newpath);
@@ -980,7 +980,7 @@ LibraryManager.library = {
       }
       return parent.node_ops.symlink(parent, newname, oldpath);
     },
-    rename: function (old_path, new_path) {
+    rename: function(old_path, new_path) {
       var old_dirname = PATH.dirname(old_path);
       var new_dirname = PATH.dirname(new_path);
       var old_name = PATH.basename(old_path);
@@ -1062,7 +1062,7 @@ LibraryManager.library = {
         FS.hashAddNode(old_node);
       }
     },
-    rmdir: function (path) {
+    rmdir: function(path) {
       var lookup = FS.lookupPath(path, { parent: true });
       var parent = lookup.node;
       var name = PATH.basename(path);
@@ -1080,7 +1080,7 @@ LibraryManager.library = {
       parent.node_ops.rmdir(parent, name);
       FS.destroyNode(node);
     },
-    unlink: function (path) {
+    unlink: function(path) {
       var lookup = FS.lookupPath(path, { parent: true });
       var parent = lookup.node;
       var name = PATH.basename(path);
@@ -1100,7 +1100,7 @@ LibraryManager.library = {
       parent.node_ops.unlink(parent, name);
       FS.destroyNode(node);
     },
-    readlink: function (path) {
+    readlink: function(path) {
       var lookup = FS.lookupPath(path, { follow: false });
       var link = lookup.node;
       if (!link.node_ops.readlink) {
@@ -1108,7 +1108,7 @@ LibraryManager.library = {
       }
       return link.node_ops.readlink(link);
     },
-    stat: function (path, dontFollow) {
+    stat: function(path, dontFollow) {
       var lookup = FS.lookupPath(path, { follow: !dontFollow });
       var node = lookup.node;
       if (!node.node_ops.getattr) {
@@ -1116,10 +1116,10 @@ LibraryManager.library = {
       }
       return node.node_ops.getattr(node);
     },
-    lstat: function (path) {
+    lstat: function(path) {
       return VFS.stat(path, true);
     },
-    chmod: function (path, mode, dontFollow) {
+    chmod: function(path, mode, dontFollow) {
       var node;
       if (typeof path === 'string') {
         var lookup = FS.lookupPath(path, { follow: !dontFollow });
@@ -1135,17 +1135,17 @@ LibraryManager.library = {
         timestamp: Date.now()
       });
     },
-    lchmod: function (path, mode) {
+    lchmod: function(path, mode) {
       VFS.chmod(path, mode, true);
     },
-    fchmod: function (fd, mode) {
+    fchmod: function(fd, mode) {
       var stream = FS.getStream(fd);
       if (!stream) {
         throw new FS.ErrnoError(ERRNO_CODES.EBADF);
       }
       VFS.chmod(stream.node, mode);
     },
-    chown: function (path, uid, gid, dontFollow) {
+    chown: function(path, uid, gid, dontFollow) {
       var node;
       if (typeof path === 'string') {
         var lookup = FS.lookupPath(path, { follow: !dontFollow });
@@ -1161,17 +1161,17 @@ LibraryManager.library = {
         // we ignore the uid / gid for now
       });
     },
-    lchown: function (path, uid, gid) {
+    lchown: function(path, uid, gid) {
       VFS.chown(path, uid, gid, true);
     },
-    fchown: function (fd, uid, gid) {
+    fchown: function(fd, uid, gid) {
       var stream = FS.getStream(fd);
       if (!stream) {
         throw new FS.ErrnoError(ERRNO_CODES.EBADF);
       }
       VFS.chown(stream.node, uid, gid);
     },
-    truncate: function (path, len) {
+    truncate: function(path, len) {
       if (len < 0) {
         throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
       }
@@ -1200,7 +1200,7 @@ LibraryManager.library = {
         timestamp: Date.now()
       });
     },
-    ftruncate: function (fd, len) {
+    ftruncate: function(fd, len) {
       var stream = FS.getStream(fd);
       if (!stream) {
         throw new FS.ErrnoError(ERRNO_CODES.EBADF);
@@ -1210,14 +1210,14 @@ LibraryManager.library = {
       }
       VFS.truncate(stream.node, len);
     },
-    utime: function (path, atime, mtime) {
+    utime: function(path, atime, mtime) {
       var lookup = FS.lookupPath(path, { follow: true });
       var node = lookup.node;
       node.node_ops.setattr(node, {
         timestamp: Math.max(atime, mtime)
       });
     },
-    open: function (path, flags, mode, fd_start, fd_end) {
+    open: function(path, flags, mode, fd_start, fd_end) {
       path = PATH.normalize(path);
       flags = typeof flags === 'string' ? FS.modeStringToFlags(flags) : flags;
       if ((flags & {{{ cDefine('O_CREAT') }}})) {
@@ -1281,7 +1281,7 @@ LibraryManager.library = {
       }
       return stream;
     },
-    close: function (stream) {
+    close: function(stream) {
       try {
         if (stream.stream_ops.close) {
           stream.stream_ops.close(stream);
@@ -1292,19 +1292,19 @@ LibraryManager.library = {
         FS.closeStream(stream.fd);
       }
     },
-    llseek: function (stream, offset, whence) {
+    llseek: function(stream, offset, whence) {
       if (!stream.seekable || !stream.stream_ops.llseek) {
         throw new FS.ErrnoError(ERRNO_CODES.ESPIPE);
       }
       return stream.stream_ops.llseek(stream, offset, whence);
     },
-    readdir: function (stream) {
+    readdir: function(stream) {
       if (!stream.stream_ops.readdir) {
         throw new FS.ErrnoError(ERRNO_CODES.ENOTDIR);
       }
       return stream.stream_ops.readdir(stream);
     },
-    read: function (stream, buffer, offset, length, position) {
+    read: function(stream, buffer, offset, length, position) {
       if (length < 0 || position < 0) {
         throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
       }
@@ -1328,7 +1328,7 @@ LibraryManager.library = {
       if (!seeking) stream.position += bytesRead;
       return bytesRead;
     },
-    write: function (stream, buffer, offset, length, position) {
+    write: function(stream, buffer, offset, length, position) {
       if (length < 0 || position < 0) {
         throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
       }
@@ -1356,7 +1356,7 @@ LibraryManager.library = {
       if (!seeking) stream.position += bytesWritten;
       return bytesWritten;
     },
-    allocate: function (stream, offset, length) {
+    allocate: function(stream, offset, length) {
       if (offset < 0 || length <= 0) {
         throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
       }
@@ -1371,7 +1371,7 @@ LibraryManager.library = {
       }
       stream.stream_ops.allocate(stream, offset, length);
     },
-    mmap: function (stream, buffer, offset, length, position, prot, flags) {
+    mmap: function(stream, buffer, offset, length, position, prot, flags) {
       // TODO if PROT is PROT_WRITE, make sure we have write acccess
       if ((stream.flags & {{{ cDefine('O_ACCMODE') }}}) === {{{ cDefine('O_WRONLY')}}}) {
         throw new FS.ErrnoError(ERRNO_CODES.EACCES);
@@ -1385,10 +1385,10 @@ LibraryManager.library = {
 
   $MEMFS__deps: ['$FS'],
   $MEMFS: {
-    mount: function (mount) {
+    mount: function(mount) {
       return MEMFS.create_node(null, '/', {{{ cDefine('S_IFDIR') }}} | 0777, 0);
     },
-    create_node: function (parent, name, mode, dev) {
+    create_node: function(parent, name, mode, dev) {
       if (FS.isBlkdev(mode) || FS.isFIFO(mode)) {
         // no supported
         throw new FS.ErrnoError(ERRNO_CODES.EPERM);
@@ -1414,7 +1414,7 @@ LibraryManager.library = {
       return node;
     },
     node_ops: {
-      getattr: function (node) {
+      getattr: function(node) {
         var attr = {};
         // device numbers reuse inode numbers.
         attr.dev = FS.isChrdev(node.mode) ? node.id : 1;
@@ -1442,7 +1442,7 @@ LibraryManager.library = {
         attr.blocks = Math.ceil(attr.size / attr.blksize);
         return attr;
       },
-      setattr: function (node, attr) {
+      setattr: function(node, attr) {
         if (attr.mode !== undefined) {
           node.mode = attr.mode;
         }
@@ -1455,13 +1455,13 @@ LibraryManager.library = {
           else while (attr.size > contents.length) contents.push(0);
         }
       },
-      lookup: function (parent, name) {
+      lookup: function(parent, name) {
         throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
       },
-      mknod: function (parent, name, mode, dev) {
+      mknod: function(parent, name, mode, dev) {
         return MEMFS.create_node(parent, name, mode, dev);
       },
-      rename: function (old_node, new_dir, new_name) {
+      rename: function(old_node, new_dir, new_name) {
         // if we're overwriting a directory at new_name, make sure it's empty.
         if (FS.isDir(old_node.mode)) {
           var new_node;
@@ -1480,22 +1480,22 @@ LibraryManager.library = {
         old_node.name = new_name;
         new_dir.contents[new_name] = old_node;
       },
-      unlink: function (parent, name) {
+      unlink: function(parent, name) {
         delete parent.contents[name];
       },
-      rmdir: function (parent, name) {
+      rmdir: function(parent, name) {
         var node = FS.lookupNode(parent, name);
         for (var i in node.contents) {
           throw new FS.ErrnoError(ERRNO_CODES.ENOTEMPTY);
         }
         delete parent.contents[name];
       },
-      symlink: function (parent, newname, oldpath) {
+      symlink: function(parent, newname, oldpath) {
         var node = MEMFS.create_node(parent, newname, 0777 | {{{ cDefine('S_IFLNK') }}}, 0);
         node.link = oldpath;
         return node;
       },
-      readlink: function (node) {
+      readlink: function(node) {
         if (!FS.isLink(node.mode)) {
           throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
         }
@@ -1503,7 +1503,7 @@ LibraryManager.library = {
       },
     },
     stream_ops: {
-      open: function (stream) {
+      open: function(stream) {
         if (FS.isDir(stream.node.mode)) {
           // cache off the directory entries when open'd
           var entries = ['.', '..']
@@ -1516,7 +1516,7 @@ LibraryManager.library = {
           stream.entries = entries;
         }
       },
-      read: function (stream, buffer, offset, length, position) {
+      read: function(stream, buffer, offset, length, position) {
         var contents = stream.node.contents;
         var size = Math.min(contents.length - position, length);
 #if USE_TYPED_ARRAYS == 2
@@ -1531,7 +1531,7 @@ LibraryManager.library = {
         }
         return size;
       },
-      write: function (stream, buffer, offset, length, position) {
+      write: function(stream, buffer, offset, length, position) {
         var contents = stream.node.contents;
         while (contents.length < position) contents.push(0);
         for (var i = 0; i < length; i++) {
@@ -1540,7 +1540,7 @@ LibraryManager.library = {
         stream.node.timestamp = Date.now();
         return length;
       },
-      llseek: function (stream, offset, whence) {
+      llseek: function(stream, offset, whence) {
         var position = offset;
         if (whence === 1) {  // SEEK_CUR.
           position += stream.position;
@@ -1556,15 +1556,15 @@ LibraryManager.library = {
         stream.position = position;
         return position;
       },
-      readdir: function (stream) {
+      readdir: function(stream) {
         return stream.entries;
       },
-      allocate: function (stream, offset, length) {
+      allocate: function(stream, offset, length) {
         var contents = stream.node.contents;
         var limit = offset + length;
         while (limit > contents.length) contents.push(0);
       },
-      mmap: function (stream, buffer, offset, length, position, prot, flags) {
+      mmap: function(stream, buffer, offset, length, position, prot, flags) {
         if (!FS.isFile(stream.node.mode)) {
           throw new FS.ErrnoError(ERRNO_CODES.ENODEV);
         }
@@ -1602,7 +1602,7 @@ LibraryManager.library = {
   $SOCKFS__postset: '__ATINIT__.push({ func: function() { SOCKFS.root = VFS.mount(SOCKFS, {}, null); } });',
   $SOCKFS__deps: ['$FS'],
   $SOCKFS: {
-    mount: function (mount) {
+    mount: function(mount) {
       var node = FS.createNode(null, '/', {{{ cDefine('S_IFDIR') }}} | 0777, 0);
       node.node_ops = SOCKFS.node_ops;
       node.stream_ops = SOCKFS.stream_ops;
@@ -1619,12 +1619,12 @@ LibraryManager.library = {
   $TTY__deps: ['$FS'],
   $TTY: {
     ttys: [],
-    register: function (dev, ops) {
+    register: function(dev, ops) {
       TTY.ttys[dev] = { input: [], output: [], ops: ops };
       FS.registerDevice(dev, TTY.stream_ops);
     },
     stream_ops: {
-      open: function (stream) {
+      open: function(stream) {
         // this wouldn't be required if the library wasn't eval'd at first...
         if (!TTY.utf8) {
           TTY.utf8 = new Runtime.UTF8Processor();
@@ -1636,13 +1636,13 @@ LibraryManager.library = {
         stream.tty = tty;
         stream.seekable = false;
       },
-      close: function (stream) {
+      close: function(stream) {
         // flush any pending line data
         if (stream.tty.output.length) {
           stream.tty.ops.put_char(stream.tty, {{{ charCode('\n') }}});
         }
       },
-      read: function (stream, buffer, offset, length, pos /* ignored */) {
+      read: function(stream, buffer, offset, length, pos /* ignored */) {
         if (!stream.tty || !stream.tty.ops.get_char) {
           throw new FS.ErrnoError(ERRNO_CODES.ENXIO);
         }
@@ -1666,7 +1666,7 @@ LibraryManager.library = {
         }
         return bytesRead;
       },
-      write: function (stream, buffer, offset, length, pos) {
+      write: function(stream, buffer, offset, length, pos) {
         if (!stream.tty || !stream.tty.ops.put_char) {
           throw new FS.ErrnoError(ERRNO_CODES.ENXIO);
         }
@@ -1686,7 +1686,7 @@ LibraryManager.library = {
     // NOTE: This is weird to support stdout and stderr
     // overrides in addition to print and printErr orverrides.
     default_tty_ops: {
-      get_char: function (tty) {
+      get_char: function(tty) {
         if (!tty.input.length) {
           var result = null;
           if (ENVIRONMENT_IS_NODE) {
@@ -1715,7 +1715,7 @@ LibraryManager.library = {
         }
         return tty.input.shift();
       },
-      put_char: function (tty, val) {
+      put_char: function(tty, val) {
         if (val === null || val === {{{ charCode('\n') }}}) {
           Module['print'](tty.output.join(''));
           tty.output = [];
@@ -1725,7 +1725,7 @@ LibraryManager.library = {
       }
     },
     default_tty1_ops: {
-      put_char: function (tty, val) {
+      put_char: function(tty, val) {
         if (val === null || val === {{{ charCode('\n') }}}) {
           Module['printErr'](tty.output.join(''));
           tty.output = [];
@@ -2102,7 +2102,7 @@ LibraryManager.library = {
     }
   },
   lchmod__deps: ['chmod'],
-  lchmod: function (path, mode) {
+  lchmod: function(path, mode) {
     path = Pointer_stringify(path);
     try {
       VFS.lchmod(path, mode);
@@ -2977,7 +2977,7 @@ LibraryManager.library = {
   },
   // TODO: Implement initgroups (grp.h).
   setgroups__deps: ['__setErrNo', '$ERRNO_CODES', 'sysconf'],
-  setgroups: function (ngroups, gidset) {
+  setgroups: function(ngroups, gidset) {
     // int setgroups(int ngroups, const gid_t *gidset);
     // https://developer.apple.com/library/mac/#documentation/Darwin/Reference/ManPages/man2/setgroups.2.html
     if (ngroups < 1 || ngroups > _sysconf({{{ cDefine('_SC_NGROUPS_MAX') }}})) {
@@ -5139,7 +5139,7 @@ LibraryManager.library = {
 
   // FIXME: memcpy, memmove and memset should all return their destination pointers.
 
-  memcpy__inline: function (dest, src, num, align) {
+  memcpy__inline: function(dest, src, num, align) {
     var ret = '';
 #if ASSERTIONS
 #if ASM_JS == 0
@@ -5152,7 +5152,7 @@ LibraryManager.library = {
 
   memcpy__asm: true,
   memcpy__sig: 'iiii',
-  memcpy: function (dest, src, num) {
+  memcpy: function(dest, src, num) {
     dest = dest|0; src = src|0; num = num|0;
     var ret = 0;
     ret = dest|0;
@@ -6356,7 +6356,7 @@ LibraryManager.library = {
   // http://www.digitalmars.com/archives/cplusplus/3634.html
   // and mruby source code at
   // https://github.com/mruby/mruby/blob/master/src/math.c
-  erfc: function (x) {
+  erfc: function(x) {
     var MATH_TOLERANCE = 1E-12;
     var ONE_SQRTPI = 0.564189583547756287;
     var a = 1;
@@ -6388,7 +6388,7 @@ LibraryManager.library = {
   },
   erfcf: 'erfcf',
   erf__deps: ['erfc'],
-  erf: function (x) {
+  erf: function(x) {
     var MATH_TOLERANCE = 1E-12;
     var TWO_SQRTPI = 1.128379167095512574;
     var sum = x;
