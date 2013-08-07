@@ -124,13 +124,11 @@ int main() {
   }
 
 #if EMSCRIPTEN
-#if EMBED_SIDE
   emscripten_run_script("console.log('adding iframe');"
                         "var iframe = document.createElement('iframe');"
                         "iframe.src = 'side.html';"
                         "document.body.appendChild(iframe);"
                         "console.log('added.');");
-#endif
   emscripten_set_main_loop(iter, 0, 0);
 #else
   while (1) iter(NULL);

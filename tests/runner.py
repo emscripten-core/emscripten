@@ -13998,7 +13998,7 @@ Press any key to continue.'''
             with self.WebsockHarness(6992, self.make_relay_server(6992, 6994)):
               with self.WebsockHarness(6994, no_server=True):
                 Popen([PYTHON, EMCC, path_from_root('tests', 'sockets/test_sockets_bi_side.c'), '-o', 'side.html', '-DSOCKK=6995', '-DTEST_DGRAM=%d' % datagram]).communicate()
-                self.btest('sockets/test_sockets_bi.c', expected='2499', args=['-DSOCKK=6993', '-DTEST_DGRAM=%d' % datagram, '-DTEST_FILE_OPS=%s' % fileops, '-DEMBED_SIDE'])
+                self.btest('sockets/test_sockets_bi.c', expected='2499', args=['-DSOCKK=6993', '-DTEST_DGRAM=%d' % datagram, '-DTEST_FILE_OPS=%s' % fileops])
           finally:
             self.clean_pids()
 
