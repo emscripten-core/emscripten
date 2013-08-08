@@ -360,8 +360,15 @@ def check_sanity(force=False):
 
 # Tools/paths
 
-LLVM_ADD_VERSION = os.getenv('LLVM_ADD_VERSION')
-CLANG_ADD_VERSION = os.getenv('CLANG_ADD_VERSION')
+try:
+	LLVM_ADD_VERSION
+except NameError:
+	LLVM_ADD_VERSION = os.getenv('LLVM_ADD_VERSION')
+
+try:
+	CLANG_ADD_VERSION
+except NameError:
+	CLANG_ADD_VERSION = os.getenv('CLANG_ADD_VERSION')
 
 # Some distributions ship with multiple llvm versions so they add
 # the version to the binaries, cope with that
