@@ -462,6 +462,12 @@ Options that are modified or new in %s include:
                            memory initialization data embedded inside
                            JavaScript as text. (default is off)
 
+  -Wno-warn-absolute-paths If not specified, the compiler will warn about any
+                           uses of absolute paths in -I and -L command line
+                           directives. Pass this flag on the command line
+                           to hide these warnings and acknowledge that the
+                           explicit use of absolute paths is intentional.
+
 The target file, if specified (-o <target>), defines what will
 be generated:
 
