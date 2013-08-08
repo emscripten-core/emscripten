@@ -876,7 +876,10 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
   @staticmethod
   def link(files, target, force_archive_contents=False):
     actual_files = []
-    unresolved_symbols = set(['main']) # tracking unresolveds is necessary for .a linking, see below. (and main is always a necessary symbol)
+    # Tracking unresolveds is necessary for .a linking, see below.
+    # Specify all possible entry points to seed the linking process.
+    # For a simple application, this would just be "main".
+    unresolved_symbols = set([func[1:] for func in Settings.EXPORTED_FUNCTIONS])
     resolved_symbols = set()
     temp_dirs = []
     files = map(os.path.abspath, files)
