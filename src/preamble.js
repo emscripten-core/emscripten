@@ -156,6 +156,15 @@ function SAFE_HEAP_COPY_HISTORY(dest, src) {
   SAFE_HEAP_ACCESS(dest, HEAP_HISTORY[dest] || null, true, false);
 }
 
+function SAFE_HEAP_FILL_HISTORY(from, to, type) {
+#if SAFE_HEAP_LOG
+  Module.print('SAFE_HEAP fill: ' + [from, to, type]);
+#endif
+  for (var i = from; i < to; i++) {
+    HEAP_HISTORY[i] = type;
+  }
+}
+
 //==========================================
 #endif
 

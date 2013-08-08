@@ -2701,6 +2701,11 @@ LibraryManager.library = {
     }
     try {
       var slab = {{{ makeGetSlabs('buf', 'i8', true) }}};
+#if SAFE_HEAP
+#if USE_TYPED_ARRAYS == 0
+      SAFE_HEAP_FILL_HISTORY(buf, buf+nbyte, 'i8'); // VFS does not use makeSetValues, so we need to do it manually
+#endif
+#endif
       return VFS.read(stream, slab, buf, nbyte, offset);
     } catch (e) {
       FS.handleFSError(e);
@@ -2723,6 +2728,11 @@ LibraryManager.library = {
 
     try {
       var slab = {{{ makeGetSlabs('buf', 'i8', true) }}};
+#if SAFE_HEAP
+#if USE_TYPED_ARRAYS == 0
+      SAFE_HEAP_FILL_HISTORY(buf, buf+nbyte, 'i8'); // VFS does not use makeSetValues, so we need to do it manually
+#endif
+#endif
       return VFS.read(stream, slab, buf, nbyte);
     } catch (e) {
       FS.handleFSError(e);
@@ -2824,6 +2834,11 @@ LibraryManager.library = {
     }
     try {
       var slab = {{{ makeGetSlabs('buf', 'i8', true) }}};
+#if SAFE_HEAP
+#if USE_TYPED_ARRAYS == 0
+      SAFE_HEAP_FILL_HISTORY(buf, buf+nbyte, 'i8'); // VFS does not use makeSetValues, so we need to do it manually
+#endif
+#endif
       return VFS.write(stream, slab, buf, nbyte, offset);
     } catch (e) {
       FS.handleFSError(e);
@@ -2846,6 +2861,11 @@ LibraryManager.library = {
 
     try {
       var slab = {{{ makeGetSlabs('buf', 'i8', true) }}};
+#if SAFE_HEAP
+#if USE_TYPED_ARRAYS == 0
+      SAFE_HEAP_FILL_HISTORY(buf, buf+nbyte, 'i8'); // VFS does not use makeSetValues, so we need to do it manually
+#endif
+#endif
       return VFS.write(stream, slab, buf, nbyte);
     } catch (e) {
       FS.handleFSError(e);
