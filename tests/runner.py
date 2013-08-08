@@ -1989,6 +1989,8 @@ Succeeded!
 
     # This example borrowed from MSDN documentation
     def test_fcvt(self):
+        if self.emcc_args is None: return self.skip('requires emcc')
+
         src = '''
           #include <stdlib.h>
           #include <stdio.h>
