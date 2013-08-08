@@ -70,8 +70,7 @@ if (ENVIRONMENT_IS_NODE) {
 
   module.exports = Module;
 }
-
-if (ENVIRONMENT_IS_SHELL) {
+else if (ENVIRONMENT_IS_SHELL) {
   Module['print'] = print;
   if (typeof printErr != 'undefined') Module['printErr'] = printErr; // not present in v8 or older sm
 
@@ -88,20 +87,7 @@ if (ENVIRONMENT_IS_SHELL) {
 
   this['{{{ EXPORT_NAME }}}'] = Module;
 }
-
-if (ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_WORKER) {
-  Module['print'] = function(x) {
-    console.log(x);
-  };
-
-  Module['printErr'] = function(x) {
-    console.log(x);
-  };
-
-  this['{{{ EXPORT_NAME }}}'] = Module;
-}
-
-if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
+else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   Module['read'] = function(url) {
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, false);
@@ -112,21 +98,30 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   if (typeof arguments != 'undefined') {
     Module['arguments'] = arguments;
   }
+
+  if (ENVIRONMENT_IS_WEB) {
+    Module['print'] = function(x) {
+      console.log(x);
+    };
+
+    Module['printErr'] = function(x) {
+      console.log(x);
+    };
+
+    this['{{{ EXPORT_NAME }}}'] = Module;
+  } else if (ENVIRONMENT_IS_WORKER) {
+    // We can do very little here...
+    var TRY_USE_DUMP = false;
+    Module['print'] = (TRY_USE_DUMP && (typeof(dump) !== "undefined") ? (function(x) {
+      dump(x);
+    }) : (function(x) {
+      // self.postMessage(x); // enable this if you want stdout to be sent as messages
+    }));
+
+    Module['load'] = importScripts;
+  }
 }
-
-if (ENVIRONMENT_IS_WORKER) {
-  // We can do very little here...
-  var TRY_USE_DUMP = false;
-  Module['print'] = (TRY_USE_DUMP && (typeof(dump) !== "undefined") ? (function(x) {
-    dump(x);
-  }) : (function(x) {
-    // self.postMessage(x); // enable this if you want stdout to be sent as messages
-  }));
-
-  Module['load'] = importScripts;
-}
-
-if (!ENVIRONMENT_IS_WORKER && !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_SHELL) {
+else {
   // Unreachable because SHELL is dependant on the others
   throw 'Unknown runtime environment. Where are we?';
 }
