@@ -11,11 +11,63 @@ extern "C" {
 
 enum {
     IPPROTO_IP = 0,
-#define IPPROTO_IP IPPROTO_IP
-    IPPROTO_TCP = 1,
-#define IPPROTO_TCP IPPROTO_TCP
-    IPPROTO_UDP = 2,
-#define IPPROTO_UDP IPPROTO_UDP
+#define IPPROTO_IP              IPPROTO_IP
+    IPPROTO_HOPOPTS = 0,
+#define IPPROTO_HOPOPTS         IPPROTO_HOPOPTS
+    IPPROTO_ICMP = 1,
+#define IPPROTO_ICMP            IPPROTO_ICMP
+    IPPROTO_IGMP = 2,
+#define IPPROTO_IGMP            IPPROTO_IGMP
+    IPPROTO_IPIP = 4,
+#define IPPROTO_IPIP            IPPROTO_IPIP
+    IPPROTO_TCP = 6,
+#define IPPROTO_TCP             IPPROTO_TCP
+    IPPROTO_EGP = 8,
+#define IPPROTO_EGP             IPPROTO_EGP
+    IPPROTO_PUP = 12,
+#define IPPROTO_PUP             IPPROTO_PUP
+    IPPROTO_UDP = 17,
+#define IPPROTO_UDP             IPPROTO_UDP
+    IPPROTO_IDP = 22,
+#define IPPROTO_IDP             IPPROTO_IDP
+    IPPROTO_TP = 29,
+#define IPPROTO_TP              IPPROTO_TP
+    IPPROTO_DCCP = 33,
+#define IPPROTO_DCCP            IPPROTO_DCCP
+    IPPROTO_IPV6 = 41,
+#define IPPROTO_IPV6            IPPROTO_IPV6
+    IPPROTO_ROUTING = 43,
+#define IPPROTO_ROUTING         IPPROTO_ROUTING
+    IPPROTO_FRAGMENT = 44,
+#define IPPROTO_FRAGMENT        IPPROTO_FRAGMENT
+    IPPROTO_RSVP = 46,
+#define IPPROTO_RSVP            IPPROTO_RSVP
+    IPPROTO_GRE = 47,
+#define IPPROTO_GRE             IPPROTO_GRE
+    IPPROTO_ESP = 50,
+#define IPPROTO_ESP             IPPROTO_ESP
+    IPPROTO_AH = 51,
+#define IPPROTO_AH              IPPROTO_AH
+    IPPROTO_ICMPV6 = 58,
+#define IPPROTO_ICMPV6          IPPROTO_ICMPV6
+    IPPROTO_NONE = 59,
+#define IPPROTO_NONE            IPPROTO_NONE
+    IPPROTO_DSTOPTS = 60,
+#define IPPROTO_DSTOPTS         IPPROTO_DSTOPTS
+    IPPROTO_MTP = 92,
+#define IPPROTO_MTP             IPPROTO_MTP
+    IPPROTO_ENCAP = 98,
+#define IPPROTO_ENCAP           IPPROTO_ENCAP
+    IPPROTO_PIM = 103,
+#define IPPROTO_PIM             IPPROTO_PIM
+    IPPROTO_COMP = 108,
+#define IPPROTO_COMP            IPPROTO_COMP
+    IPPROTO_SCTP = 132,
+#define IPPROTO_SCTP            IPPROTO_SCTP
+    IPPROTO_UDPLITE = 136,
+#define IPPROTO_UDPLITE         IPPROTO_UDPLITE
+    IPPROTO_RAW = 255,
+#define IPPROTO_RAW             IPPROTO_RAW
     IPPROTO_MAX
 };
 
@@ -74,6 +126,11 @@ struct ip_mreq {
   struct in_addr imr_multiaddr;
   struct in_addr imr_interface;
 };
+
+#define IP_PMTUDISC_DONT          0
+#define IP_PMTUDISC_WANT          1
+#define IP_PMTUDISC_DO            2
+#define IP_PMTUDISC_PROBE         3
 
 #define IP_MULTICAST_IF 32
 #define IP_MULTICAST_TTL 33

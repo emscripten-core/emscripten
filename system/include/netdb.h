@@ -11,6 +11,20 @@ extern "C" {
 #define NO_DATA 4
 #define NO_ADDRESS 5
 
+#define AI_PASSIVE                    0x0001
+#define AI_CANONNAME                  0x0002
+#define AI_NUMERICHOST                0x0004
+#define AI_V4MAPPED                   0x0008
+#define AI_ALL                        0x0010
+#define AI_ADDRCONFIG                 0x0020
+#ifdef __USE_GNU
+# define AI_IDN                       0x0040
+# define AI_CANONIDN                  0x0080
+# define AI_IDN_ALLOW_UNASSIGNED      0x0100
+# define AI_IDN_USE_STD3_ASCII_RULES  0x0200
+#endif
+#define AI_NUMERICSERV                0x0400
+
 #define EAI_ADDRFAMILY 1
 #define EAI_AGAIN 2
 #define EAI_BADFLAGS 3
@@ -46,6 +60,15 @@ extern "C" {
 #define IP_XFRM_POLICY 17
 #define IP_PASSSEC 18
 #define IP_TRANSPARENT 19
+
+#define NI_MAXHOST      1025
+#define NI_MAXSERV      32
+
+#define NI_NOFQDN       0x00000001
+#define NI_NUMERICHOST  0x00000002
+#define NI_NAMEREQD     0x00000004
+#define NI_NUMERICSERV  0x00000008
+#define NI_DGRAM        0x00000010
 
 typedef int socklen_t;
 
@@ -84,6 +107,19 @@ void herror(const char* s);
 const char* hstrerror(int err);
 
 extern int h_errno;
+
+struct servent {
+    char  *s_name;
+    char **s_aliases;
+    int    s_port;
+    char  *s_proto;
+};
+
+struct servent *getservent(void);
+struct servent *getservbyname(const char *name, const char *proto);
+struct servent *getservbyport(int port, const char *proto);
+void setservent(int stayopen);
+void endservent(void);
 
 #include <netinet/in.h>
 
