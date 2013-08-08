@@ -16,7 +16,7 @@ V8_ENGINE = os.path.expanduser(os.getenv('V8') or 'd8') # executable
 
 JAVA = 'java' # executable
 
-TEMP_DIR = '/tmp' # You will need to modify this on Windows
+TEMP_DIR = '{{{ TEMP }}}'
 
 #CLOSURE_COMPILER = '..' # define this to not use the bundled version
 

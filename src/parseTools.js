@@ -396,11 +396,17 @@ function parseParamTokens(params) {
       // handle 'byval' and 'byval align X'. We store the alignment in 'byVal'
       byVal = QUANTUM_SIZE;
       segment.splice(1, 1);
+      if (segment[1] && segment[1].text === 'nocapture') {
+        segment.splice(1, 1);
+      }
       if (segment[1] && segment[1].text === 'align') {
         assert(isNumber(segment[2].text));
         byVal = parseInt(segment[2].text);
         segment.splice(1, 2);
       }
+    }
+    if (segment[1] && segment[1].text === 'nocapture') {
+      segment.splice(1, 1);
     }
     if (segment.length == 1) {
       if (segment[0].text == '...') {
