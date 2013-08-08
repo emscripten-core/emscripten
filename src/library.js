@@ -8952,7 +8952,7 @@ LibraryManager.library = {
      * Module['webrtc']['ondisconnect']: function(peer), invoked when an existing connection is closed
      * Module['webrtc']['onerror']: function(error), invoked when an error occurs
    */
-  socket__deps: ['$Sockets'],
+  socket__deps: ['$FS', '$Sockets'],
   socket: function(family, type, protocol) {
     var INCOMING_QUEUE_LENGTH = 64;
     var stream = FS.createStream({
@@ -9097,7 +9097,7 @@ LibraryManager.library = {
     // Stub: connection-oriented sockets are not supported yet.
   },
 
-  bind__deps: ['$Sockets', '_inet_ntoa_raw', 'ntohs', 'mkport'],
+  bind__deps: ['$FS', '$Sockets', '_inet_ntoa_raw', 'ntohs', 'mkport'],
   bind: function(fd, addr, addrlen) {
     var info = FS.getStream(fd);
     if (!info) return -1;
@@ -9118,7 +9118,7 @@ LibraryManager.library = {
     info.bound = true;
   },
 
-  sendmsg__deps: ['$Sockets', 'bind', '_inet_ntoa_raw', 'ntohs'],
+  sendmsg__deps: ['$FS', '$Sockets', 'bind', '_inet_ntoa_raw', 'ntohs'],
   sendmsg: function(fd, msg, flags) {
     var info = FS.getStream(fd);
     if (!info) return -1;
@@ -9174,7 +9174,7 @@ LibraryManager.library = {
     connection.send('unreliable', buffer.buffer);
   },
 
-  recvmsg__deps: ['$Sockets', 'bind', '__setErrNo', '$ERRNO_CODES', 'htons'],
+  recvmsg__deps: ['$FS', '$Sockets', 'bind', '__setErrNo', '$ERRNO_CODES', 'htons'],
   recvmsg: function(fd, msg, flags) {
     var info = FS.getStream(fd);
     if (!info) return -1;
@@ -9226,6 +9226,7 @@ LibraryManager.library = {
     return ret;
   },
 
+  shutdown__deps: ['$FS'],
   shutdown: function(fd, how) {
     var stream = FS.getStream(fd);
     if (!stream) return -1;
@@ -9233,6 +9234,7 @@ LibraryManager.library = {
     FS.closeStream(stream);
   },
 
+  ioctl__deps: ['$FS'],
   ioctl: function(fd, request, varargs) {
     var info = FS.getStream(fd);
     if (!info) return -1;
@@ -9250,6 +9252,7 @@ LibraryManager.library = {
     return 0;
   },
 
+  accept__deps: ['$FS'],
   accept: function(fd, addr, addrlen) {
     // TODO: webrtc queued incoming connections, etc.
     // For now, the model is that bind does a connect, and we "accept" that one connection,
@@ -9264,6 +9267,7 @@ LibraryManager.library = {
     return fd;
   },
 
+  select__deps: ['$FS'],
   select: function(nfds, readfds, writefds, exceptfds, timeout) {
     // readfds are supported,
     // writefds checks socket open status
@@ -9318,7 +9322,7 @@ LibraryManager.library = {
     }
   },
 #else
-  socket__deps: ['$Sockets'],
+  socket__deps: ['$FS', '$Sockets'],
   socket: function(family, type, protocol) {
     var stream = type == {{{ cDefine('SOCK_STREAM') }}};
     if (protocol) {
@@ -9591,6 +9595,7 @@ LibraryManager.library = {
     return _recv(fd, buf, len, flags);
   },
 
+  shutdown__deps: ['$FS'],
   shutdown: function(fd, how) {
     var stream = FS.getStream(fd);
     if (!stream) return -1;
@@ -9598,6 +9603,7 @@ LibraryManager.library = {
     FS.closeStream(stream);
   },
 
+  ioctl__deps: ['$FS'],
   ioctl: function(fd, request, varargs) {
     var info = FS.getStream(fd);
     if (!info) return -1;
