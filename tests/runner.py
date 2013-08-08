@@ -13045,13 +13045,21 @@ Press any key to continue.'''
       open(os.path.join(self.get_dir(), 'sdl_image.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_image.c')).read()))
 
       for mem in [0, 1]:
-        Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_image.c'), '-O2', '--preload-file', 'screenshot.jpg@/assets/screenshot.jpg', '-o', 'page.html', '--memory-init-file', str(mem)]).communicate()
-        self.run_browser('page.html', '', '/report_result?600')
+        for dest, dirname, basename in [('screenshot.jpg',                        '/',       'screenshot.jpg'),
+                                        ('screenshot.jpg@/assets/screenshot.jpg', '/assets', 'screenshot.jpg')]:
+          Popen([
+            PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_image.c'), '-o', 'page.html', '-O2', '--memory-init-file', str(mem),
+            '--preload-file', dest, '-DSCREENSHOT_DIRNAME="' + dirname + '"', '-DSCREENSHOT_BASENAME="' + basename + '"'
+          ]).communicate()
+          self.run_browser('page.html', '', '/report_result?600')
 
     def test_sdl_image_jpeg(self):
       shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.jpeg'))
-      open(os.path.join(self.get_dir(), 'sdl_image_jpeg.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_image_jpeg.c')).read()))
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_image_jpeg.c'), '--preload-file', 'screenshot.jpeg', '-o', 'page.html']).communicate()
+      open(os.path.join(self.get_dir(), 'sdl_image_jpeg.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_image.c')).read()))
+      Popen([
+        PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_image_jpeg.c'), '-o', 'page.html',
+        '--preload-file', 'screenshot.jpeg', '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.jpeg"'
+      ]).communicate()
       self.run_browser('page.html', '', '/report_result?600')
 
     def test_sdl_image_compressed(self):
@@ -13062,13 +13070,16 @@ Press any key to continue.'''
 
         basename = os.path.basename(image)
         shutil.copyfile(image, os.path.join(self.get_dir(), basename))
-        open(os.path.join(self.get_dir(), 'sdl_image.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_image.c')).read()).replace('screenshot.jpg', basename))
+        open(os.path.join(self.get_dir(), 'sdl_image.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_image.c')).read()))
 
         self.build_native_lzma()
-        Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_image.c'), '--preload-file', basename + '@/assets/' + basename, '-o', 'page.html',
-               '--compression', '%s,%s,%s' % (path_from_root('third_party', 'lzma.js', 'lzma-native'),
-                                              path_from_root('third_party', 'lzma.js', 'lzma-decoder.js'),
-                                              'LZMA.decompress')]).communicate()
+        Popen([
+          PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_image.c'), '-o', 'page.html',
+          '--preload-file', basename, '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="' + basename + '"',
+          '--compression', '%s,%s,%s' % (path_from_root('third_party', 'lzma.js', 'lzma-native'),
+                                         path_from_root('third_party', 'lzma.js', 'lzma-decoder.js'),
+                                         'LZMA.decompress')
+        ]).communicate()
         shutil.move(os.path.join(self.get_dir(), basename), basename + '.renamedsoitcannotbefound');
         self.run_browser('page.html', '', '/report_result?' + str(width))
 

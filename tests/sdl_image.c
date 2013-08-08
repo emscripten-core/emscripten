@@ -29,11 +29,11 @@ int main() {
 
   int result = 0;
 
-  result |= testImage(screen, "/assets/screenshot.jpg"); // absolute path
+  result |= testImage(screen, SCREENSHOT_DIRNAME "/" SCREENSHOT_BASENAME); // absolute path
   assert(result != 0);
 
-  chdir("/assets");
-  result = testImage(screen, "./screenshot.jpg"); // relative path
+  chdir(SCREENSHOT_DIRNAME);
+  result = testImage(screen, "./" SCREENSHOT_BASENAME); // relative path
   assert(result != 0);
 
   SDL_Flip(screen);
