@@ -1,4 +1,7 @@
          T btowc
+         T ecvt
+         T fcvt
+         T gcvt
          T iswalnum
          T iswalpha
          T iswblank

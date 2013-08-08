@@ -1984,6 +1984,24 @@ Succeeded!
         self.do_run(src, "1.0 2.0 -1.0 -2.0 2.0 3.0 -2.0 -3.0 "
                          "1 2 -1 -2 2 2 -2 -2")
 
+    # This example borrowed from MSDN documentation
+    def test_fcvt(self):
+        src = '''
+          #include <stdlib.h>
+          #include <stdio.h>
+
+          int main() {
+             int  decimal, sign;
+             char *buffer;
+             double source = 3.1415926535;
+
+             buffer = fcvt(source, 7, &decimal, &sign);
+             printf("source: %2.10f   buffer: '%s'   decimal: %d   sign: %d\\n",
+                     source, buffer, decimal, sign);
+          }
+          '''
+        self.do_run(src, "source: 3.1415926535   buffer: '31415927'   decimal: 1   sign: 0");
+
     def test_llrint(self):
       if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
       src = r'''

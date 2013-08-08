@@ -1285,6 +1285,11 @@ try:
           'wctob.c',
           'wctomb.c',
          ]],
+         ['stdlib', [
+           'ecvt.c',
+           'fcvt.c',
+           'gcvt.c',
+         ]],
          ['string', [
            'wcpcpy.c',
            'wcpncpy.c',
