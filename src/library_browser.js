@@ -60,7 +60,11 @@ mergeInto(LibraryManager.library, {
         console.log("warning: no blob constructor, cannot create blobs with mimetypes");
       }
       Browser.BlobBuilder = typeof MozBlobBuilder != "undefined" ? MozBlobBuilder : (typeof WebKitBlobBuilder != "undefined" ? WebKitBlobBuilder : (!Browser.hasBlobConstructor ? console.log("warning: no BlobBuilder") : null));
-      Browser.URLObject = typeof window != "undefined" ? (window.URL ? window.URL : window.webkitURL) : console.log("warning: cannot create object URLs");
+      Browser.URLObject = typeof window != "undefined" ? (window.URL ? window.URL : window.webkitURL) : undefined;
+      if (!Module.noImageDecoding && typeof Browser.URLObject === 'undefined') {
+        console.log("warning: Browser does not support creating object URLs. Built-in browser image decoding will not be available.");
+        Module.noImageDecoding = true;
+      }
 
       // Support for plugins that can process preloaded files. You can add more of these to
       // your app by creating and appending to Module.preloadPlugins.
