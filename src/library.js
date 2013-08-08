@@ -2841,7 +2841,7 @@ LibraryManager.library = {
     }
 
     if (stream && ('socket' in stream)) {
-        return _send(fildes, buf, nbyte, 0);
+      return _send(fildes, buf, nbyte, 0);
     }
 
     try {
