@@ -11449,6 +11449,8 @@ int main(int argc, char const *argv[])
 
       for args, expected in [(['-I/usr/something'], True),
                              (['-L/usr/something'], True),
+                             (['-I/usr/something', '-Wno-warn-absolute-paths'], False),
+                             (['-L/usr/something', '-Wno-warn-absolute-paths'], False),
                              (['-Isubdir/something'], False),
                              (['-Lsubdir/something'], False),
                              ([], False)]:

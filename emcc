@@ -462,6 +462,12 @@ Options that are modified or new in %s include:
                            memory initialization data embedded inside
                            JavaScript as text. (default is off)
 
+  -Wno-warn-absolute-paths If not specified, the compiler will warn about any
+                           uses of absolute paths in -I and -L command line
+                           directives. Pass this flag on the command line
+                           to hide these warnings and acknowledge that the
+                           explicit use of absolute paths is intentional.
+
 The target file, if specified (-o <target>), defines what will
 be generated:
 
@@ -735,6 +741,12 @@ try:
 
   absolute_warning_shown = False
 
+  # Scan for warning suppression message in advance from other cmdline flags, so that it works even if -I or -L directives are present before this.
+  for i in range(len(newargs)):
+    if newargs[i] == '-Wno-warn-absolute-paths':
+      newargs[i] = ''
+      absolute_warning_shown = True
+
   settings_changes = []
 
   def validate_arg_level(level_string, max_level, err_msg):
@@ -879,7 +891,7 @@ try:
     elif newargs[i].startswith(('-I', '-L')):
       path_name = newargs[i][2:]
       if not absolute_warning_shown and os.path.isabs(path_name):
-        logging.warning ('-I or -L of an absolute path "' + newargs[i] + '" encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript)') # Of course an absolute path to a non-system-specific library or header is fine, and you can ignore this warning. The danger are system headers that are e.g. x86 specific and nonportable. The emscripten bundled headers are modified to be portable, local system ones are generally not
+        logging.warning ('-I or -L of an absolute path "' + newargs[i] + '" encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript). Pass \'-Wno-warn-absolute-paths\' to emcc to hide this warning.') # Of course an absolute path to a non-system-specific library or header is fine, and you can ignore this warning. The danger are system headers that are e.g. x86 specific and nonportable. The emscripten bundled headers are modified to be portable, local system ones are generally not
         absolute_warning_shown = True
   newargs = [ arg for arg in newargs if arg is not '' ]
 
