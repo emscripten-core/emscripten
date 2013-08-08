@@ -7764,6 +7764,8 @@ def process(filename):
       self.do_run(src, '120.86.52.18\n120.86.52.18\n')
 
     def test_inet4(self):
+      if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
+
       src = r'''
         #include <stdio.h>
         #include <arpa/inet.h>
