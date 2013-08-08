@@ -650,7 +650,7 @@ LibraryManager.library = {
         },
         close: function(stream) {
           // flush any pending line data
-          if (output.buffer && output.buffer.length) {
+          if (output && output.buffer && output.buffer.length) {
             output({{{ charCode('\n') }}});
           }
         },
