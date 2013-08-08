@@ -444,7 +444,7 @@ var C_DEFINES = {
    'ABMON_9': '41',
    'ACCESSPERMS': '0000400',
    'AF_INET': '2',
-   'AF_INET6': '6',
+   'AF_INET6': '10',
    'ALLPERMS': '0004000',
    'ALT_DIGITS': '49',
    'AM_STR': '5',
