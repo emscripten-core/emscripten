@@ -16,7 +16,7 @@ so you may prefer to use fewer cores here.
 '''
 
 from subprocess import Popen, PIPE, STDOUT
-import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, multiprocessing, functools, stat
+import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, difflib, webbrowser, hashlib, threading, platform, BaseHTTPServer, multiprocessing, functools, stat, string
 
 if len(sys.argv) == 1:
   print '''
@@ -354,6 +354,9 @@ process(sys.argv[1])
     output_dir = self.get_dir()
 
     cache_name = name + str(Building.COMPILER_TEST_OPTS) + cache_name_extra + (self.env.get('EMCC_LLVM_TARGET') or '')
+
+    valid_chars = "_%s%s" % (string.ascii_letters, string.digits)
+    cache_name = ''.join([(c if c in valid_chars else '_') for c in cache_name])
 
     if self.library_cache is not None:
       if cache and self.library_cache.get(cache_name):
