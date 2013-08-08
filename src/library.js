@@ -1820,7 +1820,7 @@ LibraryManager.library = {
     }
     if (stream.position < 0 || stream.position >= entries.length) {
       {{{ makeSetValue('result', '0', '0', 'i8*') }}}
-      return;
+      return 0;
     }
     var id;
     var type;
