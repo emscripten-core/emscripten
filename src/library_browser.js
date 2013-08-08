@@ -3,6 +3,7 @@
 // Utilities for browser environments
 
 mergeInto(LibraryManager.library, {
+  $Browser__deps: ['$PATH'],
   $Browser__postset: 'Module["requestFullScreen"] = function(lockPointer, resizeCanvas) { Browser.requestFullScreen(lockPointer, resizeCanvas) };\n' + // exports
                      'Module["requestAnimationFrame"] = function(func) { Browser.requestAnimationFrame(func) };\n' +
                      'Module["pauseMainLoop"] = function() { Browser.mainLoop.pause() };\n' +
@@ -549,10 +550,9 @@ mergeInto(LibraryManager.library, {
   emscripten_async_wget: function(url, file, onload, onerror) {
     var _url = Pointer_stringify(url);
     var _file = Pointer_stringify(file);
-    var index = _file.lastIndexOf('/');
     FS.createPreloadedFile(
-      _file.substr(0, index),
-      _file.substr(index +1),
+      PATH.dirname(_file),
+      PATH.basename(_file),
       _url, true, true,
       function() {
         if (onload) Runtime.dynCall('vi', onload, [file]);
@@ -627,10 +627,9 @@ mergeInto(LibraryManager.library, {
     var _file = Pointer_stringify(file);
     var data = FS.analyzePath(_file);
     if (!data.exists) return -1;
-    var index = _file.lastIndexOf('/');
     FS.createPreloadedFile(
-      _file.substr(0, index),
-      _file.substr(index +1),
+      PATH.dirname(_file),
+      PATH.basename(_file),
       new Uint8Array(data.object.contents), true, true,
       function() {
         if (onload) Runtime.dynCall('vi', onload, [file]);
@@ -650,7 +649,7 @@ mergeInto(LibraryManager.library, {
     var cname = _malloc(name.length+1);
     writeStringToMemory(name, cname);
     FS.createPreloadedFile(
-      '',
+      '/',
       name,
       {{{ makeHEAPView('U8', 'data', 'data + size') }}},
       true, true,
