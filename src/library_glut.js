@@ -267,11 +267,19 @@ var LibraryGLUT = {
     // Ignore arguments
     GLUT.initTime = Date.now();
 
+    var isTouchDevice = 'ontouchstart' in document.documentElement;
+
     window.addEventListener("keydown", GLUT.onKeydown, true);
     window.addEventListener("keyup", GLUT.onKeyup, true);
-    window.addEventListener("mousemove", GLUT.onMousemove, true);
-    window.addEventListener("mousedown", GLUT.onMouseButtonDown, true);
-    window.addEventListener("mouseup", GLUT.onMouseButtonUp, true);
+    if (isTouchDevice) {
+      window.addEventListener("touchmove", GLUT.onMousemove, true);
+      window.addEventListener("touchstart", GLUT.onMouseButtonDown, true);
+      window.addEventListener("touchend", GLUT.onMouseButtonUp, true);
+    } else {
+      window.addEventListener("mousemove", GLUT.onMousemove, true);
+      window.addEventListener("mousedown", GLUT.onMouseButtonDown, true);
+      window.addEventListener("mouseup", GLUT.onMouseButtonUp, true);
+    }
     
     Browser.resizeListeners.push(function(width, height) {
       if (GLUT.reshapeFunc) {
@@ -282,9 +290,15 @@ var LibraryGLUT = {
     __ATEXIT__.push({ func: function() {
       window.removeEventListener("keydown", GLUT.onKeydown, true);
       window.removeEventListener("keyup", GLUT.onKeyup, true);
-      window.removeEventListener("mousemove", GLUT.onMousemove, true);
-      window.removeEventListener("mousedown", GLUT.onMouseButtonDown, true);
-      window.removeEventListener("mouseup", GLUT.onMouseButtonUp, true);
+      if (isTouchDevice) {
+        window.removeEventListener("touchmove", GLUT.onMousemove, true);
+        window.removeEventListener("touchstart", GLUT.onMouseButtonDown, true);
+        window.removeEventListener("touchend", GLUT.onMouseButtonUp, true);
+      } else {
+        window.removeEventListener("mousemove", GLUT.onMousemove, true);
+        window.removeEventListener("mousedown", GLUT.onMouseButtonDown, true);
+        window.removeEventListener("mouseup", GLUT.onMouseButtonUp, true);
+      }
       Module["canvas"].width = Module["canvas"].height = 1;
     } });
   },
