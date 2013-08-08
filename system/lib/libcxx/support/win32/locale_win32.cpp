@@ -9,8 +9,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "support/win32/locale_win32.h"
-
-#include <stdarg.h> // va_start, va_end
+#include <cstdarg> // va_start, va_end
+#include <cwchar>  // mbstate_t
 
 // FIXME: base currently unused. Needs manual work to construct the new locale
 locale_t newlocale( int mask, const char * locale, locale_t /*base*/ )
@@ -20,6 +20,8 @@ locale_t newlocale( int mask, const char * locale, locale_t /*base*/ )
 locale_t uselocale( locale_t newloc )
 {
     locale_t old_locale = _get_current_locale();
+    if ( newloc == NULL )
+        return old_locale;
     // uselocale sets the thread's locale by definition, so unconditionally use thread-local locale
     _configthreadlocale( _ENABLE_PER_THREAD_LOCALE );
     // uselocale sets all categories

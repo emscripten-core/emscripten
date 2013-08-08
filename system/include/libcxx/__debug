@@ -24,6 +24,10 @@
 
 #if _LIBCPP_DEBUG_LEVEL >= 2
 
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
+#pragma GCC system_header
+#endif
+
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 struct _LIBCPP_TYPE_VIS __c_node;
@@ -171,7 +175,7 @@ public:
     bool __decrementable(const void* __i) const;
     bool __addable(const void* __i, ptrdiff_t __n) const;
     bool __subscriptable(const void* __i, ptrdiff_t __n) const;
-    bool __comparable(const void* __i, const void* __j) const;
+    bool __less_than_comparable(const void* __i, const void* __j) const;
 private:
     _LIBCPP_HIDDEN
     __i_node* __insert_iterator(void* __i);
