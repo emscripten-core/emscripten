@@ -3220,7 +3220,7 @@ function outline(ast) {
     printErr('trying to reduce the size of ' + func[1] + ' which is ' + size + ' (>= ' + extraInfo.sizeToOutline + '), aim for ' + sizeToOutline);
   }
 
-  var level = 0;
+  var level = 0, loops = 0;
   var outliningParents = {}; // function name => parent it was outlined from
 
   function doOutline(func, asmData, stats, start, end) {
@@ -3436,7 +3436,7 @@ function outline(ast) {
       }
     }
     outliningParents[newIdent] = func[1];
-    printErr('performed outline ' + [func[1], newIdent, 'code sizes (pre/post):', originalCodeSize, measureSize(code), 'overhead (w/r):', setSize(setSub(codeInfo.writes, owned)), setSize(setSub(codeInfo.reads, owned)), ' owned: ', setSize(owned), ' left: ', setSize(asmData.vars), setSize(asmData.params)]);
+    printErr('performed outline ' + [func[1], newIdent, 'code sizes (pre/post):', originalCodeSize, measureSize(code), 'overhead (w/r):', setSize(setSub(codeInfo.writes, owned)), setSize(setSub(codeInfo.reads, owned)), ' owned: ', setSize(owned), ' left: ', setSize(asmData.vars), setSize(asmData.params), ' loopsDepth: ', loops]);
     calculateThreshold(func);
     return [newFunc];
   }
@@ -3506,6 +3506,12 @@ function outline(ast) {
               if (subRet && subRet.length > 0) ret.push.apply(ret, subRet);
             }
             return null; // do not recurse into children, outlineStatements will do so if necessary
+          } else if (type == 'while') {
+            loops++;
+          }
+        }, function(node, type) {
+          if (type == 'while') {
+            loops--;
           }
         });
         if (ret.length > pre) {
