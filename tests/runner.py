@@ -10236,6 +10236,7 @@ def process(filename):
         Settings.CORRECT_SIGNS = 0
 
     def test_exit_status(self):
+      if self.emcc_args is None: return self.skip('need emcc')
       src = r'''
         #include <stdio.h>
         #include <stdlib.h>
@@ -10251,12 +10252,12 @@ def process(filename):
       '''
       open('post.js', 'w').write('''
         Module.addOnExit(function () {
-          Module.print('Exit Status: ' + EXITSTATUS);
+          Module.print('I see exit status: ' + EXITSTATUS);
         });
         Module.callMain();
       ''')
       self.emcc_args += ['-s', 'INVOKE_RUN=0', '--post-js', 'post.js']
-      self.do_run(src, 'hello, world!\ncleanup\nExit Status: 118')
+      self.do_run(src, 'hello, world!\nexit(118) called\ncleanup\nI see exit status: 118')
 
     def test_gc(self):
       if self.emcc_args == None: return self.skip('needs ta2')
