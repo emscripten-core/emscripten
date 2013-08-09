@@ -3189,6 +3189,25 @@ Exiting setjmp function, level: 0, prev_jmp: -1
       '''
       self.do_run(src, 'caught std::exception')
 
+    def test_async_exit(self):
+      open('main.c', 'w').write(r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+        #include "emscripten.h"
+
+        void main_loop() {
+          exit(EXIT_SUCCESS);
+        }
+
+        int main() {
+          emscripten_set_main_loop(main_loop, 60, 0);
+          return 0;
+        }
+      ''')
+
+      Popen([PYTHON, EMCC, 'main.c']).communicate()
+      self.assertNotContained('Reached an unreachable!', run_js(self.in_dir('a.out.js'), stderr=STDOUT))
+
     def test_exit_stack(self):
       if self.emcc_args is None: return self.skip('requires emcc')
       if Settings.ASM_JS: return self.skip('uses report_stack without exporting')
@@ -3226,6 +3245,7 @@ Exiting setjmp function, level: 0, prev_jmp: -1
         }
         var Module = {
           postRun: function() {
+            Module.print('Exit Status: ' + EXITSTATUS);
             Module.print('postRun');
             assert(initialStack == STACKTOP, [initialStack, STACKTOP]);
             Module.print('ok.');
@@ -10223,13 +10243,19 @@ def process(filename):
           printf("cleanup\n");
         }
 
-        int main()
-        {
+        int main() {
           atexit(cleanup); // this atexit should still be called
           printf("hello, world!\n");
           exit(118); // Unusual exit status to make sure it's working!
         }
       '''
+      open('post.js', 'w').write('''
+        Module.addOnExit(function () {
+          Module.print('Exit Status: ' + EXITSTATUS);
+        });
+        Module.callMain();
+      ''')
+      self.emcc_args += ['-s', 'INVOKE_RUN=0', '--post-js', 'post.js']
       self.do_run(src, 'hello, world!\ncleanup\nExit Status: 118')
 
     def test_gc(self):
