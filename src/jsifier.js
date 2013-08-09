@@ -1238,6 +1238,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           + (EXCEPTION_DEBUG ? 'Module.print("Exception: " + e + ", currently at: " + (new Error().stack)); ' : '')
           + 'return null } })();';
     }
+    ret = makeVarArgsCleanup(ret);
 
     if (item.assignTo) {
       ret = 'var ' + item.assignTo + ' = ' + ret;
@@ -1562,10 +1563,24 @@ function JSify(data, functionsOnly, givenFunctions) {
 
     return ret;
   }
+
+  function makeVarArgsCleanup(js) {
+    if (js.indexOf('(tempVarArgs=') >= 0) {
+      if (js[js.length-1] == ';') {
+        return js + ' STACKTOP=tempVarArgs;';
+      } else {
+        assert(js.indexOf(';') < 0);
+        return '((' + js + '), STACKTOP=tempVarArgs)';
+      }
+    }
+    return js;
+  }
+
   makeFuncLineActor('getelementptr', function(item) { return finalizeLLVMFunctionCall(item) });
   makeFuncLineActor('call', function(item) {
     if (item.standalone && LibraryManager.isStubFunction(item.ident)) return ';';
-    return makeFunctionCall(item.ident, item.params, item.funcData, item.type, false, !!item.assignTo || !item.standalone) + (item.standalone ? ';' : '');
+    var ret = makeFunctionCall(item.ident, item.params, item.funcData, item.type, false, !!item.assignTo || !item.standalone) + (item.standalone ? ';' : '');
+    return makeVarArgsCleanup(ret);
   });
 
   makeFuncLineActor('unreachable', function(item) {

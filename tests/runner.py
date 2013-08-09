@@ -3719,6 +3719,82 @@ Exiting setjmp function, level: 0, prev_jmp: -1
       Settings.TOTAL_STACK = 1024
       self.do_run(src, 'ok!')
 
+    def test_stack_varargs2(self):
+      if self.emcc_args is None: return # too slow in other modes
+      Settings.TOTAL_STACK = 1024
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        void func(int i) {
+        }
+        int main() {
+          for (int i = 0; i < 1024; i++) {
+            printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+                     i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
+          }
+          printf("ok!\n");
+          return 0;
+        }
+      '''
+      self.do_run(src, 'ok!')
+
+      print 'with return'
+
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        int main() {
+          for (int i = 0; i < 1024; i++) {
+            int j = printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
+                     i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
+            printf(" (%d)\n", j);
+          }
+          printf("ok!\n");
+          return 0;
+        }
+      '''
+      self.do_run(src, 'ok!')
+
+      print 'with definitely no return'
+
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+        #include <stdarg.h>
+
+        void vary(const char *s, ...)
+        {
+          va_list v;
+          va_start(v, s);
+          char d[20];
+          vsnprintf(d, 20, s, v);
+          puts(d);
+
+          // Try it with copying
+          va_list tempva;
+          va_copy(tempva, v);
+          vsnprintf(d, 20, s, tempva);
+          puts(d);
+
+          va_end(v);
+        }
+
+        int main() {
+          for (int i = 0; i < 1024; i++) {
+            int j = printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
+                     i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
+            printf(" (%d)\n", j);
+            vary("*cheez: %d+%d*", 99, 24);
+            vary("*albeit*");
+          }
+          printf("ok!\n");
+          return 0;
+        }
+      '''
+      self.do_run(src, 'ok!')
+
     def test_stack_void(self):
       Settings.INLINING_LIMIT = 50
 
