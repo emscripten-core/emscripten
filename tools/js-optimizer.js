@@ -3436,7 +3436,7 @@ function outline(ast) {
       }
     }
     outliningParents[newIdent] = func[1];
-    printErr('performed outline ' + [func[1], newIdent, 'code sizes (pre/post):', originalCodeSize, measureSize(code), 'overhead (w/r):', setSize(setSub(codeInfo.writes, owned)), setSize(setSub(codeInfo.reads, owned))]);
+    printErr('performed outline ' + [func[1], newIdent, 'code sizes (pre/post):', originalCodeSize, measureSize(code), 'overhead (w/r):', setSize(setSub(codeInfo.writes, owned)), setSize(setSub(codeInfo.reads, owned)), ' owned: ', setSize(owned), ' left: ', setSize(asmData.vars), setSize(asmData.params)]);
     calculateThreshold(func);
     return [newFunc];
   }
