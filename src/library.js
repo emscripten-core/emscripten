@@ -1022,14 +1022,14 @@ LibraryManager.library = {
       if (relative.charAt(0) !== '.') {
         throw new FS.ErrnoError(ERRNO_CODES.ENOTEMPTY);
       }
-      // see if the new path alreay exists
+      // see if the new path already exists
       var new_node;
       try {
         new_node = FS.lookupNode(new_dir, new_name);
       } catch (e) {
         // not fatal
       }
-      // early out if nothing needs to changews
+      // early out if nothing needs to change
       if (old_node === new_node) {
         return;
       }
@@ -1383,7 +1383,7 @@ LibraryManager.library = {
       stream.stream_ops.allocate(stream, offset, length);
     },
     mmap: function(stream, buffer, offset, length, position, prot, flags) {
-      // TODO if PROT is PROT_WRITE, make sure we have write acccess
+      // TODO if PROT is PROT_WRITE, make sure we have write access
       if ((stream.flags & {{{ cDefine('O_ACCMODE') }}}) === {{{ cDefine('O_WRONLY')}}}) {
         throw new FS.ErrnoError(ERRNO_CODES.EACCES);
       }
@@ -1695,7 +1695,7 @@ LibraryManager.library = {
       }
     },
     // NOTE: This is weird to support stdout and stderr
-    // overrides in addition to print and printErr orverrides.
+    // overrides in addition to print and printErr overrides.
     default_tty_ops: {
       get_char: function(tty) {
         if (!tty.input.length) {
@@ -2901,7 +2901,7 @@ LibraryManager.library = {
         value = ENV['PATH'] || '/';
         break;
       case {{{ cDefine('_CS_POSIX_V6_WIDTH_RESTRICTED_ENVS') }}}:
-        // Mimicing glibc.
+        // Mimicking glibc.
         value = 'POSIX_V6_ILP32_OFF32\nPOSIX_V6_ILP32_OFFBIG';
         break;
       case {{{ cDefine('_CS_GNU_LIBC_VERSION') }}}:
