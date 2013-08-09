@@ -1509,8 +1509,7 @@ var LibrarySDL = {
     var bytes;
     
     if (rwops.filename !== undefined) {
-      filename = rwops.filename;
-      filename = FS.standardizePath(filename);
+      filename = PATH.resolve(rwops.filename);
       var raw = Module["preloadedAudios"][filename];
       if (!raw) {
         if (raw === null) Module.printErr('Trying to reuse preloaded audio, but freePreloadedMediaOnUse is set!');
@@ -1523,7 +1522,7 @@ var LibrarySDL = {
         
         // We found the file. Load the contents
         if (fileObject && !fileObject.isFolder && fileObject.read) {
-          bytes = fileObject.contents
+          bytes = fileObject.contents;
         } else {
           return 0;
         }

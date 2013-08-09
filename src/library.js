@@ -135,17 +135,24 @@ LibraryManager.library = {
       // compatibility
       var readMode = {{{ cDefine('S_IRUGO') }}} | {{{ cDefine('S_IXUGO') }}};
       var writeMode = {{{ cDefine('S_IWUGO') }}};
-      Object.defineProperty(node, 'read', {
-        get: function() { return (node.mode & readMode) === readMode; },
-        set: function(val) { val ? node.mode |= readMode : node.mode &= ~readMode; }
+      // NOTE we must use Object.defineProperties instead of individual calls to
+      // Object.defineProperty in order to make closure compiler happy
+      Object.defineProperties(node, {
+        read: {
+          get: function() { return (node.mode & readMode) === readMode; },
+          set: function(val) { val ? node.mode |= readMode : node.mode &= ~readMode; }
+        },
+        write: {
+          get: function() { return (node.mode & writeMode) === writeMode; },
+          set: function(val) { val ? node.mode |= writeMode : node.mode &= ~writeMode; }
+        },
+        isFolder: {
+          get: function() { return FS.isDir(node.mode); },
+        },
+        isDevice: {
+          get: function() { return FS.isChrdev(node.mode); },
+        },
       });
-      Object.defineProperty(node, 'write', {
-        get: function() { return (node.mode & writeMode) === writeMode; },
-        set: function(val) { val ? node.mode |= writeMode : node.mode &= ~writeMode; }
-      });
-      // TODO add:
-      // isFolder
-      // isDevice
       FS.hashAddNode(node);
       return node;
     },
@@ -421,18 +428,20 @@ LibraryManager.library = {
       var fd = FS.nextfd(fd_start, fd_end);
       stream.fd = fd;
       // compatibility
-      Object.defineProperty(stream, 'object', {
-        get: function() { return stream.node; },
-        set: function(val) { stream.node = val; }
-      });
-      Object.defineProperty(stream, 'isRead', {
-        get: function() { return (stream.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_WRONLY') }}}; }
-      });
-      Object.defineProperty(stream, 'isWrite', {
-        get: function() { return (stream.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_RDONLY') }}}; }
-      });
-      Object.defineProperty(stream, 'isAppend', {
-        get: function() { return (stream.flags & {{{ cDefine('O_APPEND') }}}); }
+      Object.defineProperties(stream, {
+        object: {
+          get: function() { return stream.node; },
+          set: function(val) { stream.node = val; }
+        },
+        isRead: {
+          get: function() { return (stream.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_WRONLY') }}}; }
+        },
+        isWrite: {
+          get: function() { return (stream.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_RDONLY') }}}; }
+        },
+        isAppend: {
+          get: function() { return (stream.flags & {{{ cDefine('O_APPEND') }}}); }
+        }
       });
       FS.streams[fd] = stream;
       return stream;
