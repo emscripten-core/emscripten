@@ -219,6 +219,9 @@ Options that are modified or new in %s include:
                            1: Parallel typed arrays
                            2: Shared (C-like) typed arrays (default)
 
+  --js-opts                0: Prevent JS optimizer from running
+                           1: Use JS optimizer (default)
+
   --llvm-opts <level>      0: No LLVM optimizations (default in -O0)
                            1: -O1 LLVM optimizations (default in -O1)
                            2: -O2 LLVM optimizations
@@ -712,6 +715,7 @@ try:
 
   opt_level = 0
   debug_level = 0
+  js_opts = None
   llvm_opts = None
   llvm_lto = None
   closure = None
@@ -767,6 +771,11 @@ try:
         settings_changes.append('INLINING_LIMIT=50')
       opt_level = validate_arg_level(requested_level, 3, 'Invalid optimization level: ' + newargs[i])
       newargs[i] = ''
+    elif newargs[i].startswith('--js-opts'):
+      check_bad_eq(newargs[i])
+      js_opts = eval(newargs[i+1])
+      newargs[i] = ''
+      newargs[i+1] = ''
     elif newargs[i].startswith('--llvm-opts'):
       check_bad_eq(newargs[i])
       llvm_opts = eval(newargs[i+1])
@@ -899,6 +908,7 @@ try:
   if default_cxx_std:
     newargs = newargs + [default_cxx_std]
 
+  if js_opts is None: js_opts = True
   if llvm_opts is None: llvm_opts = LLVM_OPT_LEVEL[opt_level]
   if llvm_lto is None and opt_level >= 3: llvm_lto = 3
   if opt_level == 0: debug_level = 4
@@ -1594,7 +1604,7 @@ try:
       js_optimizer_queue = []
     js_optimizer_extra_info = {}
 
-  if opt_level >= 1:
+  if opt_level >= 1 and js_opts:
     logging.debug('running pre-closure post-opts')
 
     if DEBUG == '2':
@@ -1623,23 +1633,24 @@ try:
     final = shared.Building.closure_compiler(final)
     if DEBUG: save_intermediate('closure')
 
-  if shared.Settings.OUTLINING_LIMIT > 0:
-    js_optimizer_queue += ['outline']
-    js_optimizer_extra_info['sizeToOutline'] = shared.Settings.OUTLINING_LIMIT
+  if js_opts:
+    if shared.Settings.OUTLINING_LIMIT > 0:
+      js_optimizer_queue += ['outline']
+      js_optimizer_extra_info['sizeToOutline'] = shared.Settings.OUTLINING_LIMIT
 
-  if (not closure or shared.Settings.ASM_JS) and shared.Settings.RELOOP and debug_level < 3:
-    js_optimizer_queue += ['registerize']
+    if (not closure or shared.Settings.ASM_JS) and shared.Settings.RELOOP and debug_level < 3:
+      js_optimizer_queue += ['registerize']
 
-  if opt_level > 0:
-    if debug_level < 2 and shared.Settings.ASM_JS: js_optimizer_queue = map(lambda p: p if p != 'registerize' else 'registerizeAndMinify', js_optimizer_queue)
-    if debug_level == 0: js_optimizer_queue += ['minifyWhitespace']
+    if opt_level > 0:
+      if debug_level < 2 and shared.Settings.ASM_JS: js_optimizer_queue = map(lambda p: p if p != 'registerize' else 'registerizeAndMinify', js_optimizer_queue)
+      if debug_level == 0: js_optimizer_queue += ['minifyWhitespace']
 
-  if closure and shared.Settings.ASM_JS: 
-    js_optimizer_queue += ['closure']
+    if closure and shared.Settings.ASM_JS: 
+      js_optimizer_queue += ['closure']
 
-  if not shared.Settings.SIDE_MODULE: js_optimizer_queue += ['last'] # side modules are not finalized until after relocation
+    if not shared.Settings.SIDE_MODULE: js_optimizer_queue += ['last'] # side modules are not finalized until after relocation
 
-  flush_js_optimizer_queue()
+    flush_js_optimizer_queue()
 
   # Remove some trivial whitespace # TODO: do not run when compress has already been done on all parts of the code
   src = open(final).read()
