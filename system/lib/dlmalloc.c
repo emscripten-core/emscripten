@@ -4,7 +4,7 @@
 #define DLMALLOC_EXPORT __attribute__((__weak__, __visibility__("default")))
 /* mmap uses malloc, so malloc can't use mmap */
 #define HAVE_MMAP 0
-/* we can only glow the heap up anyhow, so don't try to trim */
+/* we can only grow the heap up anyhow, so don't try to trim */
 #define MORECORE_CANNOT_TRIM 1
 #endif
 
