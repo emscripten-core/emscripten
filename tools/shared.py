@@ -290,7 +290,7 @@ def check_node_version():
 # we re-check sanity when the settings are changed)
 # We also re-check sanity and clear the cache when the version changes
 
-EMSCRIPTEN_VERSION = '1.5.3'
+EMSCRIPTEN_VERSION = '1.5.4'
 
 def generate_sanity():
   return EMSCRIPTEN_VERSION + '|' + get_llvm_target() + '|' + LLVM_ROOT
