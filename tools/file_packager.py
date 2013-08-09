@@ -40,7 +40,7 @@ TODO:        You can also provide .crn files yourself, pre-crunched. With this o
 '''
 
 import os, sys, shutil, random, uuid, ctypes
-
+import posixpath
 import shared
 from shared import Compression, execute, suffix, unsuffixed
 from subprocess import Popen, PIPE, STDOUT
@@ -217,7 +217,7 @@ for file_ in data_files:
   if file_['dstpath'].endswith('/'): # If user has submitted a directory name as the destination but omitted the destination filename, use the filename from source file
     file_['dstpath'] = file_['dstpath'] + os.path.basename(file_['srcpath'])
   # make destination path always relative to the root
-  file_['dstpath'] = os.path.normpath(os.path.join('/', file_['dstpath']))
+  file_['dstpath'] = posixpath.normpath(os.path.join('/', file_['dstpath']))
   if DEBUG:
     print >> sys.stderr, 'Packaging file "' + file_['srcpath'] + '" to VFS in path "' + file_['dstpath'] + '".'
 
