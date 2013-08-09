@@ -11229,7 +11229,7 @@ f.close()
 
 
     def test_outline(self):
-      def test(name, src, libs, expected, expected_ranges, args=[], suffix='cpp', test_sizes=True):
+      def test(name, src, libs, expected, expected_ranges, args=[], suffix='cpp'):
         print name
 
         def measure_funcs(filename):
@@ -11255,7 +11255,7 @@ f.close()
           (['-g'], (100, 250, 500, 1000, 2000, 5000, 0))
         ]:
           for outlining_limit in outlining_limits:
-            print '\n', debug, outlining_limit, '\n'
+            print '\n', Building.COMPILER_TEST_OPTS, debug, outlining_limit, '\n'
             # TODO: test without -g3, tell all sorts
             Popen([PYTHON, EMCC, src] + libs + ['-o', 'test.js', '-O2'] + debug + ['-s', 'OUTLINING_LIMIT=%d' % outlining_limit] + args).communicate()
             assert os.path.exists('test.js')
@@ -11268,24 +11268,35 @@ f.close()
               low = expected_ranges[outlining_limit][0]
               seen = max(measure_funcs('test.js').values())
               high = expected_ranges[outlining_limit][1]
-              print outlining_limit, '   ', low, '<=', seen, '<=', high
-              if test_sizes: assert low <= seen <= high
+              print Building.COMPILER_TEST_OPTS, outlining_limit, '   ', low, '<=', seen, '<=', high
+              assert low <= seen <= high
 
-      for test_opts, test_sizes in [([], True), (['-O2'], False)]:
+      for test_opts, expected_ranges in [
+        ([], {
+           100: (190, 250),
+           250: (200, 330),
+           500: (250, 310),
+          1000: (230, 300),
+          2000: (380, 450),
+          5000: (800, 1100),
+             0: (1500, 1800)
+        }),
+        (['-O2'], {
+           100: (0, 1500),
+           250: (0, 1500),
+           500: (0, 1500),
+          1000: (0, 1500),
+          2000: (0, 2000),
+          5000: (0, 5000),
+             0: (0, 5000)
+        }),
+      ]:
         Building.COMPILER_TEST_OPTS = test_opts
         test('zlib', path_from_root('tests', 'zlib', 'example.c'), 
                      self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a']),
                      open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
-                     {
-                       100: (190, 250),
-                       250: (200, 330),
-                       500: (250, 310),
-                      1000: (230, 300),
-                      2000: (380, 450),
-                      5000: (800, 1100),
-                         0: (1500, 1800)
-                     },
-                     args=['-I' + path_from_root('tests', 'zlib')], suffix='c', test_sizes=test_sizes)
+                     expected_ranges,
+                     args=['-I' + path_from_root('tests', 'zlib')], suffix='c')
 
     def test_symlink(self):
       if os.name == 'nt':
