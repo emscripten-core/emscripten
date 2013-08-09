@@ -12400,6 +12400,24 @@ elif 'browser' in str(sys.argv):
       'browser.test_freealut'
     ]
 
+  if 'sockets' in sys.argv:
+    print
+    print 'Running the browser socket tests.'
+    print
+    i = sys.argv.index('sockets')
+    sys.argv = sys.argv[:i] + sys.argv[i+1:]
+    i = sys.argv.index('browser')
+    sys.argv = sys.argv[:i] + sys.argv[i+1:]
+    sys.argv += [
+      'browser.test_sockets_bi',
+      'browser.test_sockets_gethostbyname',
+      'browser.test_sockets_bi_bigdata',
+      'browser.test_sockets_select_server_down',
+      'browser.test_sockets_select_server_closes_connection',
+      'browser.test_sockets_select_server_closes_connection_rw',
+      'browser.test_enet'
+    ]
+
   # Run a server and a web page. When a test runs, we tell the server about it,
   # which tells the web page, which then opens a window with the test. Doing
   # it this way then allows the page to close() itself when done.
@@ -14011,14 +14029,14 @@ Press any key to continue.'''
 
     # always run these tests last
     # make sure to use different ports in each one because it takes a while for the processes to be cleaned up
-    def test_websockets(self):
+    def test_sockets(self):
       try:
         with self.WebsockHarness(8990):
-          self.btest('websockets.c', expected='571')
+          self.btest('sockets/test_sockets.c', expected='571', args=['-DSOCKK=8991'])
       finally:
         self.clean_pids()
 
-    def test_websockets_partial(self):
+    def test_sockets_partial(self):
       def partial(q):
         import socket
 
@@ -14041,7 +14059,7 @@ Press any key to continue.'''
 
       try:
         with self.WebsockHarness(8990, partial):
-          self.btest('websockets_partial.c', expected='165')
+          self.btest('sockets/test_sockets_partial.c', expected='165', args=['-DSOCKK=8991'])
       finally:
         self.clean_pids()
 
@@ -14053,44 +14071,35 @@ Press any key to continue.'''
         proc.communicate()
       return relay_server
 
-    def test_websockets_bi(self):
+    def test_sockets_bi(self):
       for datagram in [0,1]:
         for fileops in [0,1]:
           try:
             print >> sys.stderr, 'test_websocket_bi datagram %d, fileops %d' % (datagram, fileops)
-            with self.WebsockHarness(8992, self.make_relay_server(8992, 8994)):
-              with self.WebsockHarness(8994, no_server=True):
-                Popen([PYTHON, EMCC, path_from_root('tests', 'websockets_bi_side.c'), '-o', 'side.html', '-DSOCKK=8995', '-DTEST_DGRAM=%d' % datagram]).communicate()
-                self.btest('websockets_bi.c', expected='2499', args=['-DSOCKK=8993', '-DTEST_DGRAM=%d' % datagram, '-DTEST_FILE_OPS=%s' % fileops])
+            with self.WebsockHarness(6992, self.make_relay_server(6992, 6994)):
+              with self.WebsockHarness(6994, no_server=True):
+                Popen([PYTHON, EMCC, path_from_root('tests', 'sockets/test_sockets_bi_side.c'), '-o', 'side.html', '-DSOCKK=6995', '-DTEST_DGRAM=%d' % datagram]).communicate()
+                self.btest('sockets/test_sockets_bi.c', expected='2499', args=['-DSOCKK=6993', '-DTEST_DGRAM=%d' % datagram, '-DTEST_FILE_OPS=%s' % fileops])
           finally:
             self.clean_pids()
 
-    def test_websockets_bi_listen(self):
-      try:
-        with self.WebsockHarness(6992, self.make_relay_server(6992, 6994)):
-          with self.WebsockHarness(6994, no_server=True):
-            Popen([PYTHON, EMCC, path_from_root('tests', 'websockets_bi_side.c'), '-o', 'side.html', '-DSOCKK=6995']).communicate()
-            self.btest('websockets_bi_listener.c', expected='2499', args=['-DSOCKK=6993'])
-      finally:
-        self.clean_pids()
-
-    def test_websockets_gethostbyname(self):
+    def test_sockets_gethostbyname(self):
       try:
         with self.WebsockHarness(7000):
-          self.btest('websockets_gethostbyname.c', expected='571', args=['-O2'])
+          self.btest('sockets/test_sockets_gethostbyname.c', expected='571', args=['-O2', '-DSOCKK=7001'])
       finally:
         self.clean_pids()
 
-    def test_websockets_bi_bigdata(self):
+    def test_sockets_bi_bigdata(self):
       try:
         with self.WebsockHarness(3992, self.make_relay_server(3992, 3994)):
           with self.WebsockHarness(3994, no_server=True):
-            Popen([PYTHON, EMCC, path_from_root('tests', 'websockets_bi_side_bigdata.c'), '-o', 'side.html', '-DSOCKK=3995', '-s', 'SOCKET_DEBUG=0', '-I' + path_from_root('tests')]).communicate()
-            self.btest('websockets_bi_bigdata.c', expected='0', args=['-DSOCKK=3993', '-s', 'SOCKET_DEBUG=0', '-I' + path_from_root('tests')])
+            Popen([PYTHON, EMCC, path_from_root('tests', 'sockets/test_sockets_bi_side_bigdata.c'), '-o', 'side.html', '-DSOCKK=3995', '-s', 'SOCKET_DEBUG=0', '-I' + path_from_root('tests/sockets')]).communicate()
+            self.btest('sockets/test_sockets_bi_bigdata.c', expected='0', args=['-DSOCKK=3993', '-s', 'SOCKET_DEBUG=0', '-I' + path_from_root('tests/sockets')])
       finally:
         self.clean_pids()
 
-    def test_websockets_select_server_down(self):
+    def test_sockets_select_server_down(self):
       def closedServer(q):
         import socket
 
@@ -14099,11 +14108,11 @@ Press any key to continue.'''
         ssock.bind(("127.0.0.1", 8994))
       try:
         with self.WebsockHarness(8994, closedServer):
-          self.btest('websockets_select.c', expected='266')
+          self.btest('sockets/test_sockets_select.c', expected='266', args=['-DSOCKK=8995'])
       finally:
         self.clean_pids()
 
-    def test_websockets_select_server_closes_connection(self):
+    def test_sockets_select_server_closes_connection(self):
       def closingServer(q):
         import socket
 
@@ -14119,11 +14128,11 @@ Press any key to continue.'''
 
       try:
         with self.WebsockHarness(8994, closingServer):
-          self.btest('websockets_select_server_closes_connection.c', expected='266')
+          self.btest('sockets/test_sockets_select_server_closes_connection.c', expected='266', args=['-DSOCKK=8995'])
       finally:
         self.clean_pids()
 
-    def test_websockets_select_server_closes_connection_rw(self):
+    def test_sockets_select_server_closes_connection_rw(self):
       def closingServer_rw(q):
         import socket
 
@@ -14151,7 +14160,7 @@ Press any key to continue.'''
 
       try:
         with self.WebsockHarness(8998, closingServer_rw):
-          self.btest('websockets_select_server_closes_connection_rw.c', expected='266')
+          self.btest('sockets/test_sockets_select_server_closes_connection_rw.c', expected='266', args=['-DSOCKK=8999'])
       finally:
         self.clean_pids()
 
