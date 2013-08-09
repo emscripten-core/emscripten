@@ -1,6 +1,14 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
+function ExitStatus(status) {
+  this.name = "ExitStatus";
+  this.message = "Program terminated with exit(" + status + ")";
+  this.status = status;
+};
+ExitStatus.prototype = new Error();
+ExitStatus.prototype.constructor = ExitStatus;
+
 var initialStackTop;
 
 Module['callMain'] = Module.callMain = function callMain(args) {
@@ -45,7 +53,7 @@ Module['callMain'] = Module.callMain = function callMain(args) {
     }
   }
   catch(e) {
-    if (e.name == 'ExitStatus') {
+    if (e instanceof ExitStatus) {
       // exit() throws this once it's done to make sure execution
       // has been stopped completely
       return;
@@ -112,14 +120,7 @@ function exit(status) {
   exitRuntime();
  
   // throw an exception to halt the current execution
-  function ExitStatus() {
-    this.name = "ExitStatus";
-    this.message = "Program terminated with exit(" + status + ")";
-    this.status = status;
-  };
-  ExitStatus.prototype = new Error();
-  ExitStatus.prototype.constructor = ExitStatus;
-  throw new ExitStatus();
+  throw new ExitStatus(status);
 }
 Module['exit'] = Module.exit = exit;
 
