@@ -27,6 +27,10 @@ Running the main part of the test suite. Don't forget to run the other parts!
   benchmark - run before and after each set of changes before pushing to
               master, verify no regressions
   browser - runs pages in a web browser
+
+There are also commands to run specific subsets of the test suite:
+
+  browser sockets - runs websocket networking tests
   browser audio - runs audio tests in a web browser (requires human verification)
 
 To run one of those parts, do something like
