@@ -170,15 +170,15 @@ function vars(x, y) {
  var sp = 0;
  sp = STACKTOP;
  STACKTOP = STACKTOP + 152 | 0;
+ HEAP32[sp + 8 >> 2] = x;
+ HEAPF32[sp + 16 >> 2] = y;
  HEAP32[sp + 32 >> 2] = 0;
  HEAP32[sp + 36 >> 2] = 0;
+ vars$1(sp);
  HEAP32[sp + 8 >> 2] = x;
  HEAPF32[sp + 16 >> 2] = y;
- vars$1(sp);
  HEAP32[sp + 24 >> 2] = 0;
  HEAP32[sp + 28 >> 2] = 0;
- HEAP32[sp + 8 >> 2] = x;
- HEAPF32[sp + 16 >> 2] = y;
  vars$0(sp);
  STACKTOP = sp;
 }
@@ -192,10 +192,10 @@ function vars2(x, y) {
  b = y * x;
  a = c(1 + a);
  b = c(2 + b);
- HEAP32[sp + 40 >> 2] = 0;
- HEAP32[sp + 44 >> 2] = 0;
  HEAP32[sp + 24 >> 2] = a;
  HEAPF32[sp + 32 >> 2] = b;
+ HEAP32[sp + 40 >> 2] = 0;
+ HEAP32[sp + 44 >> 2] = 0;
  vars2$0(sp);
  a = HEAP32[sp + 24 >> 2] | 0;
  b = +HEAPF32[sp + 32 >> 2];
@@ -207,18 +207,18 @@ function vars3(x, y) {
  var a = 0, sp = 0;
  sp = STACKTOP;
  STACKTOP = STACKTOP + 160 | 0;
+ HEAP32[sp + 8 >> 2] = x;
+ HEAPF32[sp + 16 >> 2] = y;
+ HEAP32[sp + 24 >> 2] = a;
  HEAP32[sp + 40 >> 2] = 0;
  HEAP32[sp + 44 >> 2] = 0;
- HEAP32[sp + 24 >> 2] = a;
- HEAP32[sp + 8 >> 2] = x;
- HEAPF32[sp + 16 >> 2] = y;
  vars3$1(sp);
  a = HEAP32[sp + 24 >> 2] | 0;
+ HEAP32[sp + 8 >> 2] = x;
+ HEAPF32[sp + 16 >> 2] = y;
+ HEAP32[sp + 24 >> 2] = a;
  HEAP32[sp + 32 >> 2] = 0;
  HEAP32[sp + 36 >> 2] = 0;
- HEAP32[sp + 24 >> 2] = a;
- HEAPF32[sp + 16 >> 2] = y;
- HEAP32[sp + 8 >> 2] = x;
  vars3$0(sp);
  a = HEAP32[sp + 24 >> 2] | 0;
  STACKTOP = sp;
@@ -230,20 +230,20 @@ function vars4(x, y) {
  sp = STACKTOP;
  STACKTOP = STACKTOP + 168 | 0;
  a = x + y;
+ HEAP32[sp + 8 >> 2] = x;
+ HEAPF32[sp + 16 >> 2] = y;
+ HEAP32[sp + 24 >> 2] = a;
+ HEAPF32[sp + 32 >> 2] = b;
  HEAP32[sp + 48 >> 2] = 0;
  HEAP32[sp + 52 >> 2] = 0;
- HEAPF32[sp + 16 >> 2] = y;
+ vars4$1(sp);
+ a = HEAP32[sp + 24 >> 2] | 0;
+ b = +HEAPF32[sp + 32 >> 2];
  HEAP32[sp + 8 >> 2] = x;
  HEAP32[sp + 24 >> 2] = a;
  HEAPF32[sp + 32 >> 2] = b;
- vars4$1(sp);
- b = +HEAPF32[sp + 32 >> 2];
- a = HEAP32[sp + 24 >> 2] | 0;
  HEAP32[sp + 40 >> 2] = 0;
  HEAP32[sp + 44 >> 2] = 0;
- HEAP32[sp + 24 >> 2] = a;
- HEAP32[sp + 8 >> 2] = x;
- HEAPF32[sp + 32 >> 2] = b;
  vars4$0(sp);
  a = HEAP32[sp + 24 >> 2] | 0;
  b = +HEAPF32[sp + 32 >> 2];
@@ -256,19 +256,19 @@ function vars_w_stack(x, y) {
  sp = STACKTOP;
  STACKTOP = STACKTOP + 208 | 0;
  a = x + y;
+ HEAP32[sp + 24 >> 2] = x;
+ HEAPF32[sp + 32 >> 2] = y;
+ HEAP32[sp + 40 >> 2] = a;
+ HEAPF32[sp + 48 >> 2] = b;
  HEAP32[sp + 72 >> 2] = 0;
  HEAP32[sp + 76 >> 2] = 0;
- HEAPF32[sp + 32 >> 2] = y;
- HEAP32[sp + 24 >> 2] = x;
+ vars_w_stack$1(sp);
+ a = HEAP32[sp + 40 >> 2] | 0;
+ b = +HEAPF32[sp + 48 >> 2];
  HEAP32[sp + 40 >> 2] = a;
  HEAPF32[sp + 48 >> 2] = b;
- vars_w_stack$1(sp);
- b = +HEAPF32[sp + 48 >> 2];
- a = HEAP32[sp + 40 >> 2] | 0;
  HEAP32[sp + 64 >> 2] = 0;
  HEAP32[sp + 68 >> 2] = 0;
- HEAP32[sp + 40 >> 2] = a;
- HEAPF32[sp + 48 >> 2] = b;
  vars_w_stack$0(sp);
  a = HEAP32[sp + 40 >> 2] | 0;
  b = +HEAPF32[sp + 48 >> 2];
@@ -278,34 +278,34 @@ function chain() {
  sp = STACKTOP;
  STACKTOP = STACKTOP + 336 | 0;
  helper$0 = 1;
+ HEAP32[sp + 8 >> 2] = helper$0;
  HEAP32[sp + 56 >> 2] = 0;
  HEAP32[sp + 60 >> 2] = 0;
- HEAP32[sp + 8 >> 2] = helper$0;
  chain$5(sp);
  helper$0 = HEAP32[sp + 8 >> 2] | 0;
+ HEAP32[sp + 8 >> 2] = helper$0;
  HEAP32[sp + 48 >> 2] = 0;
  HEAP32[sp + 52 >> 2] = 0;
- HEAP32[sp + 8 >> 2] = helper$0;
  chain$4(sp);
  helper$0 = HEAP32[sp + 8 >> 2] | 0;
+ HEAP32[sp + 8 >> 2] = helper$0;
  HEAP32[sp + 40 >> 2] = 0;
  HEAP32[sp + 44 >> 2] = 0;
- HEAP32[sp + 8 >> 2] = helper$0;
  chain$3(sp);
  helper$0 = HEAP32[sp + 8 >> 2] | 0;
+ HEAP32[sp + 8 >> 2] = helper$0;
  HEAP32[sp + 32 >> 2] = 0;
  HEAP32[sp + 36 >> 2] = 0;
- HEAP32[sp + 8 >> 2] = helper$0;
  chain$2(sp);
  helper$0 = HEAP32[sp + 8 >> 2] | 0;
+ HEAP32[sp + 8 >> 2] = helper$0;
  HEAP32[sp + 24 >> 2] = 0;
  HEAP32[sp + 28 >> 2] = 0;
- HEAP32[sp + 8 >> 2] = helper$0;
  chain$1(sp);
  helper$0 = HEAP32[sp + 8 >> 2] | 0;
+ HEAP32[sp + 8 >> 2] = helper$0;
  HEAP32[sp + 16 >> 2] = 0;
  HEAP32[sp + 20 >> 2] = 0;
- HEAP32[sp + 8 >> 2] = helper$0;
  chain$0(sp);
  helper$0 = HEAP32[sp + 8 >> 2] | 0;
  STACKTOP = sp;
@@ -472,8 +472,8 @@ function mix$1(sp) {
 function vars$0(sp) {
  sp = sp | 0;
  var x = 0, y = +0;
- y = +HEAPF32[sp + 16 >> 2];
  x = HEAP32[sp + 8 >> 2] | 0;
+ y = +HEAPF32[sp + 16 >> 2];
  c(5 + (x + y));
  c(6 + y * x);
  c(7 + (x + y));
@@ -482,8 +482,8 @@ function vars$0(sp) {
 function vars$1(sp) {
  sp = sp | 0;
  var x = 0, y = +0;
- y = +HEAPF32[sp + 16 >> 2];
  x = HEAP32[sp + 8 >> 2] | 0;
+ y = +HEAPF32[sp + 16 >> 2];
  c(1 + (x + y));
  c(2 + y * x);
  c(3 + (x + y));
@@ -492,8 +492,8 @@ function vars$1(sp) {
 function vars2$0(sp) {
  sp = sp | 0;
  var a = 0, b = +0;
- b = +HEAPF32[sp + 32 >> 2];
  a = HEAP32[sp + 24 >> 2] | 0;
+ b = +HEAPF32[sp + 32 >> 2];
  a = c(3 + a);
  b = c(4 + b);
  a = c(5 + a);
@@ -516,8 +516,8 @@ function vars3$0(sp) {
 function vars3$1(sp) {
  sp = sp | 0;
  var a = 0, x = 0, y = +0;
- y = +HEAPF32[sp + 16 >> 2];
  x = HEAP32[sp + 8 >> 2] | 0;
+ y = +HEAPF32[sp + 16 >> 2];
  a = HEAP32[sp + 24 >> 2] | 0;
  a = x + y;
  a = c(1 + a);
@@ -528,9 +528,9 @@ function vars3$1(sp) {
 function vars4$0(sp) {
  sp = sp | 0;
  var a = 0, x = 0, b = +0;
- b = +HEAPF32[sp + 32 >> 2];
  x = HEAP32[sp + 8 >> 2] | 0;
  a = HEAP32[sp + 24 >> 2] | 0;
+ b = +HEAPF32[sp + 32 >> 2];
  a = c(4 + a);
  a = c(5 + a);
  a = c(6 + a);
@@ -541,22 +541,22 @@ function vars4$0(sp) {
 function vars4$1(sp) {
  sp = sp | 0;
  var y = +0, x = 0, a = 0, b = +0;
- b = +HEAPF32[sp + 32 >> 2];
- a = HEAP32[sp + 24 >> 2] | 0;
  x = HEAP32[sp + 8 >> 2] | 0;
  y = +HEAPF32[sp + 16 >> 2];
+ a = HEAP32[sp + 24 >> 2] | 0;
+ b = +HEAPF32[sp + 32 >> 2];
  b = y * x;
  a = c(1 + a);
  a = c(2 + a);
  a = c(3 + a);
- HEAPF32[sp + 32 >> 2] = b;
  HEAP32[sp + 24 >> 2] = a;
+ HEAPF32[sp + 32 >> 2] = b;
 }
 function vars_w_stack$0(sp) {
  sp = sp | 0;
  var a = 0, b = +0;
- b = +HEAPF32[sp + 48 >> 2];
  a = HEAP32[sp + 40 >> 2] | 0;
+ b = +HEAPF32[sp + 48 >> 2];
  a = c(4 + a);
  a = c(5 + a);
  a = c(6 + a);
@@ -568,16 +568,16 @@ function vars_w_stack$0(sp) {
 function vars_w_stack$1(sp) {
  sp = sp | 0;
  var y = +0, x = 0, a = 0, b = +0;
- b = +HEAPF32[sp + 48 >> 2];
- a = HEAP32[sp + 40 >> 2] | 0;
  x = HEAP32[sp + 24 >> 2] | 0;
  y = +HEAPF32[sp + 32 >> 2];
+ a = HEAP32[sp + 40 >> 2] | 0;
+ b = +HEAPF32[sp + 48 >> 2];
  b = y * x;
  a = c(1 + a);
  a = c(2 + a);
  a = c(3 + a);
- HEAPF32[sp + 48 >> 2] = b;
  HEAP32[sp + 40 >> 2] = a;
+ HEAPF32[sp + 48 >> 2] = b;
 }
 function chain$0(sp) {
  sp = sp | 0;

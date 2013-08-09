@@ -3241,21 +3241,29 @@ function outline(ast) {
       }
     });
     var reps = [];
-    // wipe out control variable
-    reps.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos(outlineIndex)), ['num', 0])]);
-    reps.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlDataStackPos(outlineIndex)), ['num', 0])]); // XXX not really needed
-    // add spills and reads before and after the call to the outlined code, and in the outlined code itself
-    keys(setUnion(codeInfo.reads, codeInfo.writes)).forEach(function(v) {
+    // add spills
+    function orderFunc(x, y) {
+      return (asmData.stackPos[x] - asmData.stackPos[y]) || x.localeCompare(y);
+    }
+    var sortedReadsAndWrites = keys(setUnion(codeInfo.reads, codeInfo.writes)).sort(orderFunc);
+    var sortedWrites = keys(codeInfo.writes).sort(orderFunc);
+    sortedReadsAndWrites.forEach(function(v) {
       if (!(v in owned)) {
         reps.push(['stat', ['assign', true, ['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], ['name', v]]]);
       }
     });
+    // wipe out control variable
+    reps.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos(outlineIndex)), ['num', 0])]);
+    reps.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlDataStackPos(outlineIndex)), ['num', 0])]); // XXX not really needed
+    // do the call
     reps.push(['stat', ['call', ['name', newIdent], [['name', 'sp']]]]);
-    for (var v in codeInfo.writes) {
+    // add unspills
+    sortedWrites.forEach(function(v) {
       if (!(v in owned)) {
         reps.push(['stat', ['assign', true, ['name', v], makeAsmCoercion(['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], getAsmType(v, asmData))]]);
       }
-    }
+    });
+
     // Generate new function
     if (codeInfo.hasReturn || codeInfo.hasReturnInt || codeInfo.hasReturnDouble || codeInfo.hasBreak || codeInfo.hasContinue) {
       // we need to capture all control flow using a top-level labeled one-time loop in the outlined function
@@ -3389,16 +3397,17 @@ function outline(ast) {
       }
     }
     // add spills and unspills in outlined code outside the OL loop
-    keys(setUnion(codeInfo.reads, codeInfo.writes)).forEach(function(v) {
+    sortedReadsAndWrites.reverse();
+    sortedReadsAndWrites.forEach(function(v) {
       if (!(v in owned)) {
         code.unshift(['stat', ['assign', true, ['name', v], makeAsmCoercion(['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], getAsmType(v, asmData))]]);
       }
     });
-    for (var v in codeInfo.writes) {
+    sortedWrites.forEach(function(v) {
       if (!(v in owned)) {
         code.push(['stat', ['assign', true, ['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], ['name', v]]]);
       }
-    }
+    });
     // finalize
     var newFunc = ['defun', newIdent, ['sp'], code];
     var newAsmData = { params: { sp: ASM_INT }, vars: {} };
