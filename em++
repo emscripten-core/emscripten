@@ -8,5 +8,7 @@ import os, subprocess, sys
 from tools import shared
 
 os.environ['EMMAKEN_CXX'] = '1'
+if not os.path.exists(shared.PYTHON):
+  print >> sys.stderr, 'warning: PYTHON does not seem to be defined properly in ~/.emscripten (%s)' % shared.PYTHON
 exit(subprocess.call([shared.PYTHON, shared.EMCC] + sys.argv[1:]))
 
