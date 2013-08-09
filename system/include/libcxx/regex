@@ -2769,7 +2769,7 @@ private:
     void __push_end_marked_subexpression(unsigned);
     void __push_empty();
     void __push_word_boundary(bool);
-    void __push_lookahead(const basic_regex&, bool);
+    void __push_lookahead(const basic_regex&, bool, unsigned);
 
     template <class _Allocator>
         bool
@@ -2843,6 +2843,15 @@ private:
                  const basic_regex<_Cp, _Tp>& __e,
                  regex_constants::match_flag_type __flags);
 
+    template <class _Iter, class _Ap, class _Cp, class _Tp>
+    friend
+    bool
+    regex_search(__wrap_iter<_Iter> __first,
+                 __wrap_iter<_Iter> __last,
+                 match_results<__wrap_iter<_Iter>, _Ap>& __m,
+                 const basic_regex<_Cp, _Tp>& __e,
+                 regex_constants::match_flag_type __flags);
+
     template <class, class> friend class __lookahead;
 };
 
@@ -2898,6 +2907,7 @@ class __lookahead
     typedef __owns_one_state<_CharT> base;
 
     basic_regex<_CharT, _Traits> __exp_;
+    unsigned __mexp_;
     bool __invert_;
 
     __lookahead(const __lookahead&);
@@ -2906,8 +2916,8 @@ public:
     typedef _VSTD::__state<_CharT> __state;
 
     _LIBCPP_INLINE_VISIBILITY
-    __lookahead(const basic_regex<_CharT, _Traits>& __exp, bool __invert, __node<_CharT>* __s)
-        : base(__s), __exp_(__exp), __invert_(__invert) {}
+    __lookahead(const basic_regex<_CharT, _Traits>& __exp, bool __invert, __node<_CharT>* __s, unsigned __mexp)
+        : base(__s), __exp_(__exp), __invert_(__invert), __mexp_(__mexp) {}
 
     virtual void __exec(__state&) const;
 };
@@ -2921,11 +2931,14 @@ __lookahead<_CharT, _Traits>::__exec(__state& __s) const
     bool __matched = __exp_.__match_at_start_ecma(__s.__current_, __s.__last_,
                                                   __m,
                                                   __s.__flags_ | regex_constants::match_continuous,
-                                                  true);
+                                                  __s.__at_first_ && __s.__current_ == __s.__first_);
     if (__matched != __invert_)
     {
         __s.__do_ = __state::__accept_but_not_consume;
         __s.__node_ = this->first();
+        for (unsigned __i = 1; __i < __m.size(); ++__i) {
+            __s.__sub_matches_[__mexp_ + __i - 1] = __m.__matches_[__i];
+        }
     }
     else
     {
@@ -3420,6 +3433,7 @@ basic_regex<_CharT, _Traits>::__parse_QUOTED_CHAR_ERE(_ForwardIterator __first,
                 case '+':
                 case '?':
                 case '{':
+                case '}':
                     __push_char(*__temp);
                     __first = ++__temp;
                     break;
@@ -3903,7 +3917,7 @@ basic_regex<_CharT, _Traits>::__parse_awk_escape(_ForwardIterator __first,
         {
             __val = 8 * __val + *__first - '0';
             if (++__first != __last && ('0' <= *__first && *__first <= '7'))
-                __val = 8 * __val + *__first - '0';
+                __val = 8 * __val + *__first++ - '0';
         }
         if (__str)
             *__str = _CharT(__val);
@@ -4158,7 +4172,9 @@ basic_regex<_CharT, _Traits>::__parse_assertion(_ForwardIterator __first,
                                 basic_regex __exp;
                                 __exp.__flags_ = __flags_;
                                 __temp = __exp.__parse(++__temp, __last);
-                                __push_lookahead(_VSTD::move(__exp), false);
+                                unsigned __mexp = __exp.__marked_count_;
+                                __push_lookahead(_VSTD::move(__exp), false, __marked_count_);
+                                __marked_count_ += __mexp;
 #ifndef _LIBCPP_NO_EXCEPTIONS
                                 if (__temp == __last || *__temp != ')')
                                     throw regex_error(regex_constants::error_paren);
@@ -4171,7 +4187,9 @@ basic_regex<_CharT, _Traits>::__parse_assertion(_ForwardIterator __first,
                                 basic_regex __exp;
                                 __exp.__flags_ = __flags_;
                                 __temp = __exp.__parse(++__temp, __last);
-                                __push_lookahead(_VSTD::move(__exp), true);
+                                unsigned __mexp = __exp.__marked_count_;
+                                __push_lookahead(_VSTD::move(__exp), true, __marked_count_);
+                                __marked_count_ += __mexp;
 #ifndef _LIBCPP_NO_EXCEPTIONS
                                 if (__temp == __last || *__temp != ')')
                                     throw regex_error(regex_constants::error_paren);
@@ -4408,7 +4426,8 @@ basic_regex<_CharT, _Traits>::__parse_character_escape(_ForwardIterator __first,
         case 'c':
             if ((__t = _VSTD::next(__first)) != __last)
             {
-                if ('A' <= *__t <= 'Z' || 'a' <= *__t <= 'z')
+                if (('A' <= *__t && *__t <= 'Z') || 
+                    ('a' <= *__t && *__t <= 'z'))
                 {
                     if (__str)
                         *__str = _CharT(*__t % 32);
@@ -4416,7 +4435,15 @@ basic_regex<_CharT, _Traits>::__parse_character_escape(_ForwardIterator __first,
                         __push_char(_CharT(*__t % 32));
                     __first = ++__t;
                 }
+#ifndef _LIBCPP_NO_EXCEPTIONS
+                else 
+                    throw regex_error(regex_constants::error_escape);
+#endif  // _LIBCPP_NO_EXCEPTIONS
             }
+#ifndef _LIBCPP_NO_EXCEPTIONS
+            else
+                throw regex_error(regex_constants::error_escape);
+#endif  // _LIBCPP_NO_EXCEPTIONS
             break;
         case 'u':
             ++__first;
@@ -4481,7 +4508,7 @@ basic_regex<_CharT, _Traits>::__parse_character_escape(_ForwardIterator __first,
                 ++__first;
             }
 #ifndef _LIBCPP_NO_EXCEPTIONS
-            else if (__str)
+            else
                 throw regex_error(regex_constants::error_escape);
 #endif  // _LIBCPP_NO_EXCEPTIONS
             break;
@@ -4740,10 +4767,11 @@ basic_regex<_CharT, _Traits>::__start_matching_list(bool __negate)
 template <class _CharT, class _Traits>
 void
 basic_regex<_CharT, _Traits>::__push_lookahead(const basic_regex& __exp,
-                                               bool __invert)
+                                               bool __invert,
+                                               unsigned __mexp)
 {
     __end_->first() = new __lookahead<_CharT, _Traits>(__exp, __invert,
-                                                           __end_->first());
+                                                           __end_->first(), __mexp);
     __end_ = static_cast<__owns_one_state<_CharT>*>(__end_->first());
 }
 
@@ -5763,7 +5791,8 @@ basic_regex<_CharT, _Traits>::__search(
 {
     __m.__init(1 + mark_count(), __first, __last,
                                     __flags & regex_constants::__no_update_pos);
-    if (__match_at_start(__first, __last, __m, __flags, true))
+    if (__match_at_start(__first, __last, __m, __flags, 
+                                    !(__flags & regex_constants::__no_update_pos)))
     {
         __m.__prefix_.second = __m[0].first;
         __m.__prefix_.matched = __m.__prefix_.first != __m.__prefix_.second;
@@ -5800,9 +5829,25 @@ regex_search(_BidirectionalIterator __first, _BidirectionalIterator __last,
              const basic_regex<_CharT, _Traits>& __e,
              regex_constants::match_flag_type __flags = regex_constants::match_default)
 {
-    basic_string<_CharT> __s(__first, __last);
+    int __offset = (__flags & regex_constants::match_prev_avail) ? 1 : 0;
+    basic_string<_CharT> __s(_VSTD::prev(__first, __offset), __last);
     match_results<const _CharT*> __mc;
-    bool __r = __e.__search(__s.data(), __s.data() + __s.size(), __mc, __flags);
+    bool __r = __e.__search(__s.data() + __offset, __s.data() + __s.size(), __mc, __flags);
+    __m.__assign(__first, __last, __mc, __flags & regex_constants::__no_update_pos);
+    return __r;
+}
+
+template <class _Iter, class _Allocator, class _CharT, class _Traits>
+inline _LIBCPP_INLINE_VISIBILITY
+bool
+regex_search(__wrap_iter<_Iter> __first,
+             __wrap_iter<_Iter> __last,
+             match_results<__wrap_iter<_Iter>, _Allocator>& __m,
+             const basic_regex<_CharT, _Traits>& __e,
+             regex_constants::match_flag_type __flags = regex_constants::match_default)
+{
+    match_results<const _CharT*> __mc;
+    bool __r = __e.__search(__first.base(), __last.base(), __mc, __flags);
     __m.__assign(__first, __last, __mc, __flags & regex_constants::__no_update_pos);
     return __r;
 }
@@ -6044,7 +6089,7 @@ regex_iterator<_BidirectionalIterator, _CharT, _Traits>::operator++()
 {
     __flags_ |= regex_constants::__no_update_pos;
     _BidirectionalIterator __start = __match_[0].second;
-    if (__match_.length() == 0)
+    if (__match_.empty())
     {
         if (__start == __end_)
         {
