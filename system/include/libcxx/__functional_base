@@ -50,12 +50,26 @@ public:
     static const bool value = sizeof(__test<_Tp>(0)) == 1;
 };
 
+#if _LIBCPP_STD_VER > 11
+template <class _Tp = void>
+#else
 template <class _Tp>
+#endif
 struct _LIBCPP_TYPE_VIS less : binary_function<_Tp, _Tp, bool>
 {
     _LIBCPP_INLINE_VISIBILITY bool operator()(const _Tp& __x, const _Tp& __y) const
         {return __x < __y;}
 };
+
+#if _LIBCPP_STD_VER > 11
+template <>
+struct _LIBCPP_TYPE_VIS less<void>
+{
+    template <class _T1, class _T2> _LIBCPP_INLINE_VISIBILITY
+    auto operator()(_T1&& __t, _T2&& __u) const
+        { return _VSTD::forward<_T1>(__t) < _VSTD::forward<_T2>(__u); }
+};
+#endif
 
 #ifdef _LIBCPP_HAS_NO_VARIADICS
 
@@ -292,7 +306,8 @@ struct __weak_result_type<_Rp (_Cp::*)(_A1, _A2, _A3...) const volatile>
 
 // bullets 1 and 2
 
-template <class _Fp, class _A0, class ..._Args>
+template <class _Fp, class _A0, class ..._Args,
+            class>
 inline _LIBCPP_INLINE_VISIBILITY
 auto
 __invoke(_Fp&& __f, _A0&& __a0, _Args&& ...__args)
@@ -301,7 +316,8 @@ __invoke(_Fp&& __f, _A0&& __a0, _Args&& ...__args)
     return (_VSTD::forward<_A0>(__a0).*__f)(_VSTD::forward<_Args>(__args)...);
 }
 
-template <class _Fp, class _A0, class ..._Args>
+template <class _Fp, class _A0, class ..._Args,
+            class>
 inline _LIBCPP_INLINE_VISIBILITY
 auto
 __invoke(_Fp&& __f, _A0&& __a0, _Args&& ...__args)
@@ -312,7 +328,8 @@ __invoke(_Fp&& __f, _A0&& __a0, _Args&& ...__args)
 
 // bullets 3 and 4
 
-template <class _Fp, class _A0>
+template <class _Fp, class _A0,
+            class>
 inline _LIBCPP_INLINE_VISIBILITY
 auto
 __invoke(_Fp&& __f, _A0&& __a0)
@@ -321,7 +338,8 @@ __invoke(_Fp&& __f, _A0&& __a0)
     return _VSTD::forward<_A0>(__a0).*__f;
 }
 
-template <class _Fp, class _A0>
+template <class _Fp, class _A0,
+            class>
 inline _LIBCPP_INLINE_VISIBILITY
 auto
 __invoke(_Fp&& __f, _A0&& __a0)
