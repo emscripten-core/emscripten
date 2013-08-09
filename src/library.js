@@ -9464,17 +9464,30 @@ LibraryManager.library = {
       return -1;
     }
 
-    return 0;
+    // always "fail" in non-blocking mode
+    ___setErrNo(ERRNO_CODES.EINPROGRESS);
+    return -1;
   },
 
   recv__deps: ['$FS'],
   recv: function(fd, buf, len, flags) {
     var info = FS.getStream(fd);
-    if (!info) return -1;
-    if (!info.hasData()) {
-      ___setErrNo(ERRNO_CODES.EAGAIN); // no data, and all sockets are nonblocking, so this is the right behavior
+    if (!info) {
+      ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
     }
+#if SOCKET_WEBRTC == 0
+    if (!info.hasData()) {
+      if (info.socket.readyState === WebSocket.CLOSING || info.socket.readyState === WebSocket.CLOSED) {
+        // socket has closed
+        return 0;
+      } else {
+        // else, our socket is in a valid state but truly has nothing available
+        ___setErrNo(ERRNO_CODES.EAGAIN);
+        return -1;
+      }
+    }
+#endif
     var buffer = info.inQueue.shift();
 #if SOCKET_DEBUG
     Module.print('recv: ' + [Array.prototype.slice.call(buffer)]);
@@ -9496,7 +9509,19 @@ LibraryManager.library = {
   send__deps: ['$FS'],
   send: function(fd, buf, len, flags) {
     var info = FS.getStream(fd);
-    if (!info) return -1;
+    if (!info) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    }
+#if SOCKET_WEBRTC == 0
+    if (info.socket.readyState === WebSocket.CLOSING || info.socket.readyState === WebSocket.CLOSED) {
+      ___setErrNo(ERRNO_CODES.ENOTCONN);
+      return -1;
+    } else if (info.socket.readyState === WebSocket.CONNECTING) {
+      ___setErrNo(ERRNO_CODES.EAGAIN);
+      return -1;
+    }
+#endif
     info.sender(HEAPU8.subarray(buf, buf+len));
     return len;
   },
@@ -9634,7 +9659,8 @@ LibraryManager.library = {
 
   bind__deps: ['connect'],
   bind: function(fd, addr, addrlen) {
-    return _connect(fd, addr, addrlen);
+    _connect(fd, addr, addrlen);
+    return 0;
   },
 
   listen: function(fd, backlog) {
@@ -9667,24 +9693,12 @@ LibraryManager.library = {
     var errorCondition = 0;
 
     function canRead(info) {
-      // make sure hasData exists.
-      // we do create it when the socket is connected,
-      // but other implementations may create it lazily
-      if ((info.socket.readyState == WebSocket.CLOSING || info.socket.readyState == WebSocket.CLOSED) && info.inQueue.length == 0) {
-        errorCondition = -1;
-        return false;
-      }
-      return info.hasData && info.hasData();
+      return (info.hasData && info.hasData()) ||
+        info.socket.readyState == WebSocket.CLOSING ||  // let recv return 0 once closed
+        info.socket.readyState == WebSocket.CLOSED;
     }
 
     function canWrite(info) {
-      // make sure socket exists.
-      // we do create it when the socket is connected,
-      // but other implementations may create it lazily
-      if ((info.socket.readyState == WebSocket.CLOSING || info.socket.readyState == WebSocket.CLOSED)) {
-        errorCondition = -1;
-        return false;
-      }
       return info.socket && (info.socket.readyState == info.socket.OPEN);
     }
 
@@ -9703,7 +9717,11 @@ LibraryManager.library = {
         if (int_ & mask) {
           // index is in the set, check if it is ready for read
           var info = FS.getStream(fd);
-          if (info && can(info)) {
+          if (!info) {
+            ___setErrNo(ERRNO_CODES.EBADF);
+            return -1;
+          }
+          if (can(info)) {
             // set bit
             fd < 32 ? (dstLow = dstLow | mask) : (dstHigh = dstHigh | mask);
             bitsSet++;
