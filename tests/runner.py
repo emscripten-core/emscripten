@@ -14107,7 +14107,7 @@ Press any key to continue.'''
     def make_relay_server(self, port1, port2):
       def relay_server(q):
         print >> sys.stderr, 'creating relay server on ports %d,%d' % (port1, port2)
-        proc = Popen([PYTHON, path_from_root('tests', 'socket_relay.py'), str(port1), str(port2)])
+        proc = Popen([PYTHON, path_from_root('tests', 'sockets/socket_relay.py'), str(port1), str(port2)])
         q.put(proc.pid)
         proc.communicate()
       return relay_server
@@ -14214,12 +14214,12 @@ Press any key to continue.'''
       Popen([PYTHON, path_from_root('emmake'), 'make']).communicate()
       enet = [self.in_dir('enet', '.libs', 'libenet.a'), '-I'+path_from_root('tests', 'enet', 'include')]
       os.chdir(pwd)
-      Popen([PYTHON, EMCC, path_from_root('tests', 'enet_server.c'), '-o', 'server.html'] + enet).communicate()
+      Popen([PYTHON, EMCC, path_from_root('tests', 'sockets/test_enet_server.c'), '-o', 'server.html', '-DSOCKK=1235'] + enet).communicate()
 
       try:
         with self.WebsockHarness(1234, self.make_relay_server(1234, 1236)):
           with self.WebsockHarness(1236, no_server=True):
-            self.btest('enet_client.c', expected='0', args=enet)
+            self.btest('sockets/test_enet_client.c', expected='0', args=['-DSOCKK=1237'] + enet)
       finally:
         self.clean_pids()
 

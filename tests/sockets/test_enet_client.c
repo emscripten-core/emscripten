@@ -1,20 +1,22 @@
 #include <stdio.h>
-#include <emscripten.h>
-
+#include <string.h>
 #include <enet/enet.h>
+#if EMSCRIPTEN
+#include <emscripten.h>
+#endif
 
 ENetHost * host;
 
 void main_loop() {
-  static int counter = 0;
 #if EMSCRIPTEN
+  static int counter = 0;
   counter++;
-#endif
   if (counter == 100) {
     printf("stop!\n");
     emscripten_cancel_main_loop();
     return;
   }
+#endif
 
   ENetEvent event;
   if (enet_host_service (host, & event, 0) == 0) return;
@@ -32,7 +34,11 @@ void main_loop() {
               event.channelID);
 
       int result = strcmp("packetfoo", event.packet->data);
+#if EMSCRIPTEN
       REPORT_RESULT();
+#else
+      exit(EXIT_SUCCESS);
+#endif
 
       /* Clean up the packet now that we're done using it. */
       enet_packet_destroy (event.packet);
@@ -73,11 +79,7 @@ int main (int argc, char ** argv)
 
   ENetAddress address;
   enet_address_set_host (& address, "localhost");
-#if EMSCRIPTEN
-  address.port = 1237;
-#else
-  address.port = 1235;
-#endif
+  address.port = SOCKK;
 
   printf("connecting to server...\n");
 
@@ -100,7 +102,11 @@ int main (int argc, char ** argv)
                         "console.log('added.');");
 #endif
 
+#if EMSCRIPTEN
   emscripten_set_main_loop(main_loop, 3, 1);
+#else
+  while (1) main_loop();
+#endif
 
   return 1;
 }
