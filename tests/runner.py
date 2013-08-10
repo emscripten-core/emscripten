@@ -13706,15 +13706,17 @@ Press any key to continue.'''
         self.btest(program,
             reference=book_path(basename.replace('.bc', '.png')), args=args)
 
-    def btest(self, filename, expected=None, reference=None, reference_slack=0,
+    def btest(self, filename, expected=None, reference=None, force_c=False, reference_slack=0,
         args=[], outfile='test.html', message='.'): # TODO: use in all other tests
-      filepath = path_from_root('tests', filename)
-      temp_filepath = os.path.join(self.get_dir(), os.path.basename(filename))
+      # if we are provided the source and not a path, use that
+      filename_is_src = '\n' in filename
+      src = filename if filename_is_src else ''
+      filepath = path_from_root('tests', filename) if not filename_is_src else ('main.c' if force_c else 'main.cpp')
+      temp_filepath = os.path.join(self.get_dir(), os.path.basename(filepath))
+      if filename_is_src:
+        with open(temp_filepath, 'w') as f: f.write(src)
       if not reference:
-        if '\n' in filename: # if we are provided the source and not a path, use that
-          src = filename
-          filename = 'main.cpp'
-        else:
+        if not src:
           with open(filepath) as f: src = f.read()
         with open(temp_filepath, 'w') as f: f.write(self.with_report_result(src))
       else:
