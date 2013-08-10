@@ -56,6 +56,12 @@ var LibraryOpenAL = {
       return 0;
     }
   },
+  
+  getCurrentTime: function() {
+    // currentTime is frozen during execution, use perfomrance timers to 
+    // emulate the current time at call time
+    return (window['performance']['now']() - AL.currentContext.startTime) / 1000.0;
+  },
 
   alcCreateContext__deps: ['updateSources'],
   alcCreateContext: function(device, attrList) {
@@ -85,7 +91,8 @@ var LibraryOpenAL = {
         err: 0,
         src: [],
         buf: [],
-        interval: setInterval(function() { _updateSources(context); }, AL.QUEUE_INTERVAL)
+        interval: setInterval(function() { _updateSources(context); }, AL.QUEUE_INTERVAL),
+        startTime: window['performance']['now']()
       };
       AL.contexts.push(context);
       return AL.contexts.length;
@@ -101,7 +108,7 @@ var LibraryOpenAL = {
     }
   },
 
-  updateSource__deps: ['setSourceState'],
+  updateSource__deps: ['setSourceState', 'getCurrentTime'],
   updateSource: function(src) {
 #if OPENAL_DEBUG
     var idx = AL.currentContext.src.indexOf(src);
@@ -110,7 +117,7 @@ var LibraryOpenAL = {
       return;
     }
 
-    var currentTime = AL.currentContext.ctx.currentTime;
+    var currentTime = _getCurrentTime();
     var startTime = src.bufferPosition;
 
     for (var i = src.buffersPlayed; i < src.queue.length; i++) {
@@ -153,7 +160,7 @@ var LibraryOpenAL = {
     }
   },
 
-  setSourceState__deps: ['updateSource', 'stopSourceQueue'],
+  setSourceState__deps: ['updateSource', 'stopSourceQueue', 'getCurrentTime'],
   setSourceState: function(src, state) {
 #if OPENAL_DEBUG
     var idx = AL.currentContext.src.indexOf(src);
@@ -162,7 +169,7 @@ var LibraryOpenAL = {
       if (src.state !== 0x1013 /* AL_PAUSED */) {
         src.state = 0x1012 /* AL_PLAYING */;
         // Reset our position.
-        src.bufferPosition = AL.currentContext.ctx.currentTime;
+        src.bufferPosition = _getCurrentTime();
         src.buffersPlayed = 0;
 #if OPENAL_DEBUG
         console.log('setSourceState resetting and playing source ' + idx);
@@ -170,7 +177,7 @@ var LibraryOpenAL = {
       } else {
         src.state = 0x1012 /* AL_PLAYING */;
         // Use the current offset from src.bufferPosition to resume at the correct point.
-        src.bufferPosition = AL.currentContext.ctx.currentTime - src.bufferPosition;
+        src.bufferPosition = _getCurrentTime() - src.bufferPosition;
 #if OPENAL_DEBUG
         console.log('setSourceState resuming source ' + idx + ' at ' + src.bufferPosition.toFixed(4));
 #endif
@@ -181,7 +188,7 @@ var LibraryOpenAL = {
       if (src.state === 0x1012 /* AL_PLAYING */) {
         src.state = 0x1013 /* AL_PAUSED */;
         // Store off the current offset to restore with on resume.
-        src.bufferPosition = AL.currentContext.ctx.currentTime - src.bufferPosition;
+        src.bufferPosition = _getCurrentTime() - src.bufferPosition;
         _stopSourceQueue(src);
 #if OPENAL_DEBUG
         console.log('setSourceState pausing source ' + idx + ' at ' + src.bufferPosition.toFixed(4));
