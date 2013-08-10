@@ -12450,7 +12450,6 @@ elif 'browser' in str(sys.argv):
     i = sys.argv.index('browser')
     sys.argv = sys.argv[:i] + sys.argv[i+1:]
     sys.argv += [
-      'browser.test_sockets_gethostbyname',
       'browser.test_sockets_select_server_down',
       'browser.test_sockets_select_server_closes_connection_rw',
       'browser.test_enet'
@@ -14104,9 +14103,9 @@ Press any key to continue.'''
         proc.communicate()
       return relay_server
 
-    def test_sockets_gethostbyname(self):
-      with self.WebsockHarness(7000):
-        self.btest('sockets/test_sockets_gethostbyname.c', expected='571', args=['-O2', '-DSOCKK=7001'])
+    # TODO add support for gethostbyaddr to re-enable this test
+    # def test_sockets_gethostbyname(self):
+    #   self.btest('sockets/test_sockets_gethostbyname.c', expected='0', args=['-O2', '-DSOCKK=8997'])
     
     def test_sockets_select_server_down(self):
       def closedServer(q):
