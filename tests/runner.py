@@ -12450,11 +12450,8 @@ elif 'browser' in str(sys.argv):
     i = sys.argv.index('browser')
     sys.argv = sys.argv[:i] + sys.argv[i+1:]
     sys.argv += [
-      'browser.test_sockets_bi',
       'browser.test_sockets_gethostbyname',
-      'browser.test_sockets_bi_bigdata',
       'browser.test_sockets_select_server_down',
-      'browser.test_sockets_select_server_closes_connection',
       'browser.test_sockets_select_server_closes_connection_rw',
       'browser.test_enet'
     ]
@@ -14075,10 +14072,6 @@ Press any key to continue.'''
 
     # always run these tests last
     # make sure to use different ports in each one because it takes a while for the processes to be cleaned up
-    def test_sockets(self):
-      with self.WebsockHarness(8990):
-        self.btest('sockets/test_sockets.c', expected='571', args=['-DSOCKK=8991'])
-
     def test_sockets_partial(self):
       def partial(q):
         import socket
@@ -14111,25 +14104,10 @@ Press any key to continue.'''
         proc.communicate()
       return relay_server
 
-    def test_sockets_bi(self):
-      for datagram in [0,1]:
-        for fileops in [0,1]:
-          print >> sys.stderr, 'test_websocket_bi datagram %d, fileops %d' % (datagram, fileops)
-          with self.WebsockHarness(6992, self.make_relay_server(6992, 6994)):
-            with self.WebsockHarness(6994, no_server=True):
-              Popen([PYTHON, EMCC, path_from_root('tests', 'sockets/test_sockets_bi_side.c'), '-o', 'side.html', '-DSOCKK=6995', '-DTEST_DGRAM=%d' % datagram]).communicate()
-              self.btest('sockets/test_sockets_bi.c', expected='2499', args=['-DSOCKK=6993', '-DTEST_DGRAM=%d' % datagram, '-DTEST_FILE_OPS=%s' % fileops])
-
     def test_sockets_gethostbyname(self):
       with self.WebsockHarness(7000):
         self.btest('sockets/test_sockets_gethostbyname.c', expected='571', args=['-O2', '-DSOCKK=7001'])
-
-    def test_sockets_bi_bigdata(self):
-      with self.WebsockHarness(3992, self.make_relay_server(3992, 3994)):
-        with self.WebsockHarness(3994, no_server=True):
-          Popen([PYTHON, EMCC, path_from_root('tests', 'sockets/test_sockets_bi_side_bigdata.c'), '-o', 'side.html', '-DSOCKK=3995', '-s', 'SOCKET_DEBUG=0', '-I' + path_from_root('tests/sockets')]).communicate()
-          self.btest('sockets/test_sockets_bi_bigdata.c', expected='0', args=['-DSOCKK=3993', '-s', 'SOCKET_DEBUG=0', '-I' + path_from_root('tests/sockets')])
-
+    
     def test_sockets_select_server_down(self):
       def closedServer(q):
         import socket
@@ -14139,23 +14117,6 @@ Press any key to continue.'''
         ssock.bind(("127.0.0.1", 8994))
       with self.WebsockHarness(8994, closedServer):
         self.btest('sockets/test_sockets_select.c', expected='266', args=['-DSOCKK=8995'])
-
-    def test_sockets_select_server_closes_connection(self):
-      def closingServer(q):
-        import socket
-
-        q.put(None) # No sub-process to start
-        ssock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        ssock.bind(("127.0.0.1", 8994))
-        ssock.listen(2)
-        while True:
-          csock, addr = ssock.accept()
-          print "Connection from %s" % repr(addr)
-          csock.send("1234567")
-          csock.close()
-
-      with self.WebsockHarness(8994, closingServer):
-        self.btest('sockets/test_sockets_select_server_closes_connection.c', expected='266', args=['-DSOCKK=8995'])
 
     def test_sockets_select_server_closes_connection_rw(self):
       def closingServer_rw(q):
