@@ -111,7 +111,7 @@ int main() {
 #if EMSCRIPTEN
   emscripten_set_main_loop(iter, 0, 0);
 #else
-  while (!done) iter(NULL);
+  while (1) iter(NULL);
 #endif
 
   return EXIT_SUCCESS;
