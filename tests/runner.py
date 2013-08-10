@@ -3254,7 +3254,7 @@ Exiting setjmp function, level: 0, prev_jmp: -1
       ''')
 
       self.emcc_args += ['--pre-js', 'pre.js']
-      self.do_run(src, '''reported\nExit Status: 1\npostRun\nok.\n''')
+      self.do_run(src, '''reported\nexit(1) called\nExit Status: 1\npostRun\nok.\n''')
 
     def test_class(self):
         src = '''
