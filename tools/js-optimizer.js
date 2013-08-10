@@ -3106,7 +3106,9 @@ function outline(ast) {
     // Reserve an extra two spots per possible outlining: one for control flow var, the other for control flow data
     // The control variables are zeroed out when calling an outlined function, and after using
     // the value after they return.
-    asmData.maxOutlinings = Math.round(3*measureSize(func)/extraInfo.sizeToOutline);
+    var size = measureSize(func);
+    asmData.maxOutlinings = Math.round(3*size/extraInfo.sizeToOutline);
+    asmData.intendedPieces = Math.ceil(size/extraInfo.sizeToOutline);
     asmData.totalStackSize = stackSize + (stack.length + 2*asmData.maxOutlinings)*8;
     asmData.controlStackPos = function(i) { return stackSize + (stack.length + i)*8 };
     asmData.controlDataStackPos = function(i) { return stackSize + (stack.length + i)*8 + 4 };
@@ -3211,13 +3213,15 @@ function outline(ast) {
   var CONTROL_BREAK = 1, CONTROL_BREAK_LABEL = 2, CONTROL_CONTINUE = 3, CONTROL_CONTINUE_LABEL = 4, CONTROL_RETURN_VOID = 5, CONTROL_RETURN_INT = 6, CONTROL_RETURN_DOUBLE = 7;
 
   var sizeToOutline = null; // customized per function and as we make progress
-  function calculateThreshold(func) {
-    sizeToOutline = extraInfo.sizeToOutline;
+  function calculateThreshold(func, asmData) {
     var size = measureSize(func);
-    //var desiredChunks = Math.ceil(size/extraInfo.sizeToOutline);
-    ////sizeToOutline = Math.round((extraInfo.sizeToOutline + (2*size/desiredChunks))/3);
-    //sizeToOutline = Math.round(size/desiredChunks);
-    printErr('trying to reduce the size of ' + func[1] + ' which is ' + size + ' (>= ' + extraInfo.sizeToOutline + '), aim for ' + sizeToOutline);
+    if (size <= extraInfo.sizeToOutline) {
+      sizeToOutline = Infinity;
+      printErr('  no point in trying to reduce the size of ' + func[1] + ' which is ' + size + ' <= ' + extraInfo.sizeToOutline);
+    } else {
+      sizeToOutline = Math.round(size/Math.max(2, asmData.intendedPieces--));
+      printErr('trying to reduce the size of ' + func[1] + ' which is ' + size + ' (>=? ' + extraInfo.sizeToOutline + '), aim for ' + sizeToOutline);
+    }
   }
 
   var level = 0, loops = 0;
@@ -3446,7 +3450,7 @@ function outline(ast) {
     }
     outliningParents[newIdent] = func[1];
     printErr('performed outline ' + [func[1], newIdent, 'code sizes (pre/post):', originalCodeSize, measureSize(code), 'overhead (w/r):', setSize(setSub(codeInfo.writes, owned)), setSize(setSub(codeInfo.reads, owned)), ' owned: ', setSize(owned), ' left: ', setSize(asmData.vars), setSize(asmData.params), ' loopsDepth: ', loops]);
-    calculateThreshold(func);
+    calculateThreshold(func, asmData);
     return [newFunc];
   }
 
@@ -3526,6 +3530,7 @@ function outline(ast) {
         if (ret.length > pre) {
           // we outlined recursively, reset our state here
           //printErr('successful outline in recursion ' + func[1] + ' due to recursive in level ' + level);
+          if (measureSize(func) <= extraInfo.sizeToOutline) break;
           end = i-1;
           sizeSeen = 0;
           canRestart = true;
@@ -3565,6 +3570,7 @@ function outline(ast) {
         if (newFuncs.length) {
           ret.push.apply(ret, newFuncs);
         }
+        if (measureSize(func) <= extraInfo.sizeToOutline) break;
         sizeSeen = 0;
         end = i-1;
         canRestart = true;
@@ -3596,8 +3602,8 @@ function outline(ast) {
       if (size >= extraInfo.sizeToOutline) {
         aggressiveVariableElimination(func, asmData);
         flatten(func, asmData);
-        calculateThreshold(func);
         analyzeFunction(func, asmData);
+        calculateThreshold(func, asmData);
         var stats = getStatements(func);
         var ret = outlineStatements(func, asmData, stats, 0.9*size);
         assert(level == 0);
