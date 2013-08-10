@@ -84,7 +84,9 @@ class AsmModule():
     for table in self.tables:
       if table not in main.tables:
         sig = table[table.rfind('_')+1:]
-        all_sendings['invoke_%s' % sig] = shared.JS.make_invoke(sig, named=False)
+        func = 'invoke_%s' % sig
+        all_sendings[func] = func
+        main.pre_js += 'var %s = %s;\n' % (func, shared.JS.make_invoke(sig, named=False))
         added_sending = True
 
     # imports

@@ -200,18 +200,25 @@ if '\n' in EM_CONFIG:
 else:
   CONFIG_FILE = os.path.expanduser(EM_CONFIG)
   if not os.path.exists(CONFIG_FILE):
+    # Note: repr is used to ensure the paths are escaped correctly on Windows.
+    # The full string is replaced so that the template stays valid Python.
     config_file = open(path_from_root('tools', 'settings_template_readonly.py')).read().split('\n')
     config_file = config_file[1:] # remove "this file will be copied..."
     config_file = '\n'.join(config_file)
     # autodetect some default paths
-    config_file = config_file.replace('{{{ EMSCRIPTEN_ROOT }}}', __rootpath__)
+    config_file = config_file.replace('\'{{{ EMSCRIPTEN_ROOT }}}\'', repr(__rootpath__))
     llvm_root = os.path.dirname(find_executable('llvm-dis') or '/usr/bin/llvm-dis')
-    config_file = config_file.replace('{{{ LLVM_ROOT }}}', llvm_root)
+    config_file = config_file.replace('\'{{{ LLVM_ROOT }}}\'', repr(llvm_root))
     node = find_executable('node') or find_executable('nodejs') or 'node'
-    config_file = config_file.replace('{{{ NODE }}}', node)
+    config_file = config_file.replace('\'{{{ NODE }}}\'', repr(node))
     python = find_executable('python2') or find_executable('python') or \
         sys.executable or 'python'
-    config_file = config_file.replace('{{{ PYTHON }}}', python)    
+    config_file = config_file.replace('\'{{{ PYTHON }}}\'', repr(python))
+    if WINDOWS:
+      tempdir = os.environ.get('TEMP') or os.environ.get('TMP') or 'c:\\temp'
+    else:
+      tempdir = '/tmp'
+    config_file = config_file.replace('\'{{{ TEMP }}}\'', repr(tempdir))
 
     # write
     open(CONFIG_FILE, 'w').write(config_file)
@@ -283,7 +290,7 @@ def check_node_version():
 # we re-check sanity when the settings are changed)
 # We also re-check sanity and clear the cache when the version changes
 
-EMSCRIPTEN_VERSION = '1.5.3'
+EMSCRIPTEN_VERSION = '1.5.5'
 
 def generate_sanity():
   return EMSCRIPTEN_VERSION + '|' + get_llvm_target() + '|' + LLVM_ROOT
@@ -333,7 +340,7 @@ def check_sanity(force=False):
         logging.critical('Node.js (%s) does not seem to work, check the paths in %s' % (NODE_JS, EM_CONFIG))
         sys.exit(1)
 
-    for cmd in [CLANG, LLVM_LINK, LLVM_AR, LLVM_OPT, LLVM_AS, LLVM_DIS, LLVM_NM]:
+    for cmd in [CLANG, LINK_CMD[0], LLVM_AR, LLVM_OPT, LLVM_AS, LLVM_DIS, LLVM_NM]:
       if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'): # .exe extension required for Windows
         logging.critical('Cannot find %s, check the paths in %s' % (cmd, EM_CONFIG))
         sys.exit(1)
@@ -360,12 +367,31 @@ def check_sanity(force=False):
 
 # Tools/paths
 
-LLVM_ADD_VERSION = os.getenv('LLVM_ADD_VERSION')
-CLANG_ADD_VERSION = os.getenv('CLANG_ADD_VERSION')
+try:
+	LLVM_ADD_VERSION
+except NameError:
+	LLVM_ADD_VERSION = os.getenv('LLVM_ADD_VERSION')
+
+try:
+	CLANG_ADD_VERSION
+except NameError:
+	CLANG_ADD_VERSION = os.getenv('CLANG_ADD_VERSION')
+
+USING_PNACL_TOOLCHAIN = os.path.exists(os.path.join(LLVM_ROOT, 'pnacl-clang'))
+
+def modify_prefix(tool):
+  if USING_PNACL_TOOLCHAIN:
+    if tool.startswith('llvm-'):
+      tool = tool[5:]
+    tool = 'pnacl-' + tool
+    if WINDOWS:
+      tool += '.bat'
+  return tool
 
 # Some distributions ship with multiple llvm versions so they add
 # the version to the binaries, cope with that
 def build_llvm_tool_path(tool):
+  tool = modify_prefix(tool)
   if LLVM_ADD_VERSION:
     return os.path.join(LLVM_ROOT, tool + "-" + LLVM_ADD_VERSION)
   else:
@@ -374,6 +400,7 @@ def build_llvm_tool_path(tool):
 # Some distributions ship with multiple clang versions so they add
 # the version to the binaries, cope with that
 def build_clang_tool_path(tool):
+  tool = modify_prefix(tool)
   if CLANG_ADD_VERSION:
     return os.path.join(LLVM_ROOT, tool + "-" + CLANG_ADD_VERSION)
   else:
@@ -382,7 +409,11 @@ def build_clang_tool_path(tool):
 CLANG_CC=os.path.expanduser(build_clang_tool_path('clang'))
 CLANG_CPP=os.path.expanduser(build_clang_tool_path('clang++'))
 CLANG=CLANG_CPP
-LLVM_LINK=build_llvm_tool_path('llvm-link')
+if USING_PNACL_TOOLCHAIN:
+  # The PNaCl toolchain doesn't have llvm-link, but we can fake it
+  LINK_CMD = [build_llvm_tool_path('llvm-ld'), '-nostdlib', '-r']
+else:
+  LINK_CMD = [build_llvm_tool_path('llvm-link')]
 LLVM_AR=build_llvm_tool_path('llvm-ar')
 LLVM_OPT=os.path.expanduser(build_llvm_tool_path('opt'))
 LLVM_AS=os.path.expanduser(build_llvm_tool_path('llvm-as'))
@@ -599,7 +630,7 @@ def line_splitter(data):
 
   return out
 
-def limit_size(string, MAX=120*20):
+def limit_size(string, MAX=12000*20):
   if len(string) < MAX: return string
   return string[0:MAX/2] + '\n[..]\n' + string[-MAX/2:]
 
@@ -947,7 +978,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     logging.debug('emcc: llvm-linking: %s to %s', actual_files, target)
 
     # check for too-long command line
-    link_cmd = [LLVM_LINK] + actual_files + ['-o', target]
+    link_cmd = LINK_CMD + actual_files + ['-o', target]
     # 8k is a bit of an arbitrary limit, but a reasonable one
     # for max command line size before we use a respose file
     response_file = None
@@ -955,7 +986,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       logging.debug('using response file for llvm-link')
       [response_fd, response_file] = mkstemp(suffix='.response', dir=TEMP_DIR)
 
-      link_cmd = [LLVM_LINK, "@" + response_file]
+      link_cmd = LINK_CMD + ["@" + response_file]
 
       response_fh = os.fdopen(response_fd, 'w')
       for arg in actual_files:
@@ -999,7 +1030,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       opts = Building.pick_llvm_opts(opts)
     #opts += ['-debug-pass=Arguments']
     logging.debug('emcc: LLVM opts: ' + str(opts))
-    output = Popen([LLVM_OPT, filename] + opts + ['-o=' + filename + '.opt.bc'], stdout=PIPE).communicate()[0]
+    output = Popen([LLVM_OPT, filename] + opts + ['-o', filename + '.opt.bc'], stdout=PIPE).communicate()[0]
     assert os.path.exists(filename + '.opt.bc'), 'Failed to run llvm optimizations: ' + output
     shutil.move(filename + '.opt.bc', filename)
 
@@ -1007,7 +1038,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
   def llvm_opts(filename): # deprecated version, only for test runner. TODO: remove
     if Building.LLVM_OPTS:
       shutil.move(filename + '.o', filename + '.o.pre')
-      output = Popen([LLVM_OPT, filename + '.o.pre'] + Building.LLVM_OPT_OPTS + ['-o=' + filename + '.o'], stdout=PIPE).communicate()[0]
+      output = Popen([LLVM_OPT, filename + '.o.pre'] + Building.LLVM_OPT_OPTS + ['-o', filename + '.o'], stdout=PIPE).communicate()[0]
       assert os.path.exists(filename + '.o'), 'Failed to run llvm optimizations: ' + output
 
   @staticmethod
@@ -1018,7 +1049,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       output_filename = input_filename + '.o.ll'
       input_filename = input_filename + '.o'
     try_delete(output_filename)
-    output = Popen([LLVM_DIS, input_filename, '-o=' + output_filename], stdout=PIPE).communicate()[0]
+    output = Popen([LLVM_DIS, input_filename, '-o', output_filename], stdout=PIPE).communicate()[0]
     assert os.path.exists(output_filename), 'Could not create .ll file: ' + output
     return output_filename
 
@@ -1030,7 +1061,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       output_filename = input_filename + '.o'
       input_filename = input_filename + '.o.ll'
     try_delete(output_filename)
-    output = Popen([LLVM_AS, input_filename, '-o=' + output_filename], stdout=PIPE).communicate()[0]
+    output = Popen([LLVM_AS, input_filename, '-o', output_filename], stdout=PIPE).communicate()[0]
     assert os.path.exists(output_filename), 'Could not create bc file: ' + output
     return output_filename
 
@@ -1051,6 +1082,9 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
     for line in output.split('\n'):
       if len(line) == 0: continue
       parts = filter(lambda seg: len(seg) > 0, line.split(' '))
+      # pnacl-nm will print zero offsets for bitcode
+      if len(parts) == 3 and parts[0] == "00000000":
+        parts.pop(0)
       if len(parts) == 2: # ignore lines with absolute offsets, these are not bitcode anyhow (e.g. |00000630 t d_source_name|)
         status, symbol = parts
         if status == 'U':

@@ -360,6 +360,8 @@ function intertyper(data, sidePass, baseLineNums) {
             warn('Ignoring module asm: ' + item.tokens[2].text);
             return '/dev/null';
           }
+          if (token0Text == 'attributes')
+            return '/dev/null';
         }
         if (tokensLength >= 3 && (token0Text == 'call' || token1Text == 'call'))
           return 'Call';
@@ -700,6 +702,12 @@ function intertyper(data, sidePass, baseLineNums) {
       item.intertype = 'value';
       if (tokensLeft[0].text == 'sideeffect') tokensLeft.splice(0, 1);
       item.ident = tokensLeft[0].text.substr(1, tokensLeft[0].text.length-2) || ';'; // use ; for empty inline assembly
+      var i = 0;
+      splitTokenList(tokensLeft[3].item.tokens).map(function(element) {
+        var ident = toNiceIdent(element[1].text);
+        var type = element[0].text;
+        item.ident = item.ident.replace(new RegExp('\\$' + i++, 'g'), ident);
+      });
       return { forward: null, ret: [item], item: item };
     } 
     if (item.ident.substr(-2) == '()') {

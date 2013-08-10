@@ -33,6 +33,14 @@ E: mclow.lists@gmail.com
 E: marshall@idio.com
 D: Minor patches and bug fixes.
 
+N: Bill Fisher
+E: william.w.fisher@gmail.com
+D: Regex bug fixes.
+
+N: Matthew Dempsky
+E: matthew@dempsky.org
+D: Minor patches and bug fixes.
+
 N: Google Inc.
 D: Copyright owner and contributor of the CityHash algorithm
 
@@ -47,6 +55,10 @@ D: Minor patches and bug fixes.
 N: Argyrios Kyrtzidis
 E: kyrtzidis@apple.com
 D: Bug fixes.
+
+N: Bruce Mitchener, Jr.
+E: bruce.mitchener@gmail.com
+D: Emscripten-related changes.
 
 N: Michel Morin
 E: mimomorin@gmail.com
@@ -74,6 +86,14 @@ D: Implemented Cityhash as the string hash function on 64-bit machines
 N: Richard Smith
 D: Minor patches.
 
+N: Joerg Sonnenberger
+E: joerg@NetBSD.org
+D: NetBSD port.
+
+N: Stephan Tolksdorf
+E: st@quanttec.com
+D: Minor <atomic> fix
+
 N: Michael van der Westhuizen
 E: r1mikey at gmail dot com
 
@@ -84,6 +104,10 @@ D: Minor bug fix.
 N: Zhang Xiongpang
 E: zhangxiongpang@gmail.com
 D: Minor patches and bug fixes.
+
+N: Zhihao Yuan
+E: lichray@gmail.com
+D: Standard compatibility fixes.
 
 N: Jeffrey Yasskin
 E: jyasskin@gmail.com

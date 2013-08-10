@@ -1880,7 +1880,7 @@ public:
         seed(_Sseq& __q)
             {__seed(__q, integral_constant<unsigned,
                 1 + (__m == 0 ? (sizeof(result_type) * __CHAR_BIT__ - 1)/32
-                             :  (__m-1) / 0x100000000ull)>());}
+                             :  (__m > 0x100000000ull))>());}
 
     // generating functions
     _LIBCPP_INLINE_VISIBILITY
@@ -1969,36 +1969,9 @@ linear_congruential_engine<_UIntType, __a, __c, __m>::__seed(_Sseq& __q,
     uint32_t __ar[__k+3];
     __q.generate(__ar, __ar + __k + 3);
     result_type __s = static_cast<result_type>((__ar[3] +
-                                                (uint64_t)__ar[4] << 32) % __m);
+                                              ((uint64_t)__ar[4] << 32)) % __m);
     __x_ = __c == 0 && __s == 0 ? result_type(1) : __s;
 }
-
-template <class _CharT, class _Traits>
-class __save_flags
-{
-    typedef basic_ios<_CharT, _Traits> __stream_type;
-    typedef typename __stream_type::fmtflags fmtflags;
-
-    __stream_type& __stream_;
-    fmtflags       __fmtflags_;
-    _CharT         __fill_;
-
-    __save_flags(const __save_flags&);
-    __save_flags& operator=(const __save_flags&);
-public:
-    _LIBCPP_INLINE_VISIBILITY
-    explicit __save_flags(__stream_type& __stream)
-        : __stream_(__stream),
-          __fmtflags_(__stream.flags()),
-          __fill_(__stream.fill())
-        {}
-    _LIBCPP_INLINE_VISIBILITY
-    ~__save_flags()
-    {
-        __stream_.flags(__fmtflags_);
-        __stream_.fill(__fill_);
-    }
-};
 
 template <class _CharT, class _Traits,
           class _UIntType, _UIntType __a, _UIntType __c, _UIntType __m>

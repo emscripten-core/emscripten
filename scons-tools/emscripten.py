@@ -24,6 +24,7 @@ def build_version_file(env):
     
     EMSCRIPTEN_DEPENDENCIES = [
         env.Glob('${EMSCRIPTEN_HOME}/src/*.js'),
+        env.Glob('${EMSCRIPTEN_HOME}/src/embind/*.js'),
         env.Glob('${EMSCRIPTEN_HOME}/tools/*.py'),
         '${EMSCRIPTEN_HOME}/emscripten.py',
     ]
@@ -141,7 +142,7 @@ def emscripten(env, target_js, source_bc):
     [global_emscripten_min_js] = env.JSOptimizer(
         buildName('global.min.js'),
         closure_js,
-        JS_OPTIMIZER_PASSES=['simplifyExpressionsPost', 'compress', 'last'])
+        JS_OPTIMIZER_PASSES=['simplifyExpressionsPost', 'minifyWhitespace', 'last'])
 
     [emscripten_iteration_js] = env.WrapInModule(
         buildName('iteration.js'),
@@ -154,8 +155,6 @@ def emscripten(env, target_js, source_bc):
     [emscripten_min_js] = env.WrapInModule(
         buildName('min.js'),
         global_emscripten_min_js)
-
-    env.InstallAs(buildName('js'), emscripten_js)
 
     return [emscripten_iteration_js, emscripten_js, emscripten_min_js]
 
@@ -265,9 +264,9 @@ def generate(env):
     )
 
     env.Replace(
-        CC='${LLVM_ROOT}/${CLANG}',
-        CXX='${LLVM_ROOT}/${CLANGXX}',
-        AR='${LLVM_ROOT}/${LLVM_LINK}',
+        CC=os.path.join('${LLVM_ROOT}', '${CLANG}'),
+        CXX=os.path.join('${LLVM_ROOT}', '${CLANGXX}'),
+        AR=os.path.join('${LLVM_ROOT}', '${LLVM_LINK}'),
         ARCOM='$AR -o $TARGET $SOURCES',
         OBJSUFFIX='.bc',
         LIBPREFIX='',
@@ -301,6 +300,12 @@ def generate(env):
         '__IEEE_LITTLE_ENDIAN',
     ])
     
+    env.Append(
+        CPPPATH=[
+            env.Dir('${EMSCRIPTEN_HOME}/system/include'),
+        ]
+    )
+
     env['BUILDERS']['Emscripten'] = Builder(
         action='$PYTHON ${EMSCRIPTEN_HOME}/emscripten.py $EMSCRIPTEN_FLAGS $_EMSCRIPTEN_SETTINGS_FLAGS --temp-dir=$EMSCRIPTEN_TEMP_DIR --compiler $JS_ENGINE --relooper=third-party/relooper.js $SOURCE > $TARGET',
         target_scanner=EmscriptenScanner)

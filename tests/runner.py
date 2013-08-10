@@ -27,6 +27,10 @@ Running the main part of the test suite. Don't forget to run the other parts!
   benchmark - run before and after each set of changes before pushing to
               master, verify no regressions
   browser - runs pages in a web browser
+
+There are also commands to run specific subsets of the test suite:
+
+  browser sockets - runs websocket networking tests
   browser audio - runs audio tests in a web browser (requires human verification)
 
 To run one of those parts, do something like
@@ -3185,6 +3189,25 @@ Exiting setjmp function, level: 0, prev_jmp: -1
       '''
       self.do_run(src, 'caught std::exception')
 
+    def test_async_exit(self):
+      open('main.c', 'w').write(r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+        #include "emscripten.h"
+
+        void main_loop() {
+          exit(EXIT_SUCCESS);
+        }
+
+        int main() {
+          emscripten_set_main_loop(main_loop, 60, 0);
+          return 0;
+        }
+      ''')
+
+      Popen([PYTHON, EMCC, 'main.c']).communicate()
+      self.assertNotContained('Reached an unreachable!', run_js(self.in_dir('a.out.js'), stderr=STDOUT))
+
     def test_exit_stack(self):
       if self.emcc_args is None: return self.skip('requires emcc')
       if Settings.ASM_JS: return self.skip('uses report_stack without exporting')
@@ -3222,6 +3245,7 @@ Exiting setjmp function, level: 0, prev_jmp: -1
         }
         var Module = {
           postRun: function() {
+            Module.print('Exit Status: ' + EXITSTATUS);
             Module.print('postRun');
             assert(initialStack == STACKTOP, [initialStack, STACKTOP]);
             Module.print('ok.');
@@ -3230,7 +3254,7 @@ Exiting setjmp function, level: 0, prev_jmp: -1
       ''')
 
       self.emcc_args += ['--pre-js', 'pre.js']
-      self.do_run(src, '''reported\nExit Status: 1\npostRun\nok.\n''')
+      self.do_run(src, '''reported\nexit(1) called\nExit Status: 1\npostRun\nok.\n''')
 
     def test_class(self):
         src = '''
@@ -3695,6 +3719,82 @@ Exiting setjmp function, level: 0, prev_jmp: -1
       Settings.TOTAL_STACK = 1024
       self.do_run(src, 'ok!')
 
+    def test_stack_varargs2(self):
+      if self.emcc_args is None: return # too slow in other modes
+      Settings.TOTAL_STACK = 1024
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        void func(int i) {
+        }
+        int main() {
+          for (int i = 0; i < 1024; i++) {
+            printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+                     i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
+          }
+          printf("ok!\n");
+          return 0;
+        }
+      '''
+      self.do_run(src, 'ok!')
+
+      print 'with return'
+
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        int main() {
+          for (int i = 0; i < 1024; i++) {
+            int j = printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
+                     i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
+            printf(" (%d)\n", j);
+          }
+          printf("ok!\n");
+          return 0;
+        }
+      '''
+      self.do_run(src, 'ok!')
+
+      print 'with definitely no return'
+
+      src = r'''
+        #include <stdio.h>
+        #include <stdlib.h>
+        #include <stdarg.h>
+
+        void vary(const char *s, ...)
+        {
+          va_list v;
+          va_start(v, s);
+          char d[20];
+          vsnprintf(d, 20, s, v);
+          puts(d);
+
+          // Try it with copying
+          va_list tempva;
+          va_copy(tempva, v);
+          vsnprintf(d, 20, s, tempva);
+          puts(d);
+
+          va_end(v);
+        }
+
+        int main() {
+          for (int i = 0; i < 1024; i++) {
+            int j = printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
+                     i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
+            printf(" (%d)\n", j);
+            vary("*cheez: %d+%d*", 99, 24);
+            vary("*albeit*");
+          }
+          printf("ok!\n");
+          return 0;
+        }
+      '''
+      self.do_run(src, 'ok!')
+
     def test_stack_void(self):
       Settings.INLINING_LIMIT = 50
 
@@ -4085,16 +4185,10 @@ def process(filename):
 
         self.do_run(src, 'Inline JS is very cool\n3.64')
 
-    def zzztest_inlinejs2(self):
+    def test_inlinejs2(self):
         if Settings.ASM_JS: return self.skip('asm does not support random code, TODO: something that works in asm')
         src = r'''
           #include <stdio.h>
-
-          double get() {
-            double ret = 0;
-            __asm __volatile__("Math.abs(-12/3.3)":"=r"(ret)); // write to a variable
-            return ret;
-          }
 
           int mix(int x, int y) {
             int ret;
@@ -4108,15 +4202,13 @@ def process(filename):
           }
 
           int main(int argc, char **argv) {
-            asm("Module.print('Inline JS is very cool')");
-            printf("%.2f\n", get());
             printf("%d\n", mix(argc, argc/2));
             mult();
             return 0;
           }
           '''
 
-        self.do_run(src, 'Inline JS is very cool\n3.64\nwaka\nzakai\n')
+        self.do_run(src, '4\n200\n')
 
     def test_memorygrowth(self):
       if Settings.USE_TYPED_ARRAYS == 0: return self.skip('memory growth is only supported with typed arrays')
@@ -10220,6 +10312,7 @@ def process(filename):
         Settings.CORRECT_SIGNS = 0
 
     def test_exit_status(self):
+      if self.emcc_args is None: return self.skip('need emcc')
       src = r'''
         #include <stdio.h>
         #include <stdlib.h>
@@ -10227,14 +10320,20 @@ def process(filename):
           printf("cleanup\n");
         }
 
-        int main()
-        {
+        int main() {
           atexit(cleanup); // this atexit should still be called
           printf("hello, world!\n");
           exit(118); // Unusual exit status to make sure it's working!
         }
       '''
-      self.do_run(src, 'hello, world!\ncleanup\nExit Status: 118')
+      open('post.js', 'w').write('''
+        Module.addOnExit(function () {
+          Module.print('I see exit status: ' + EXITSTATUS);
+        });
+        Module.callMain();
+      ''')
+      self.emcc_args += ['-s', 'INVOKE_RUN=0', '--post-js', 'post.js']
+      self.do_run(src, 'hello, world!\nexit(118) called\ncleanup\nI see exit status: 118')
 
     def test_gc(self):
       if self.emcc_args == None: return self.skip('needs ta2')
@@ -10660,6 +10759,7 @@ Options that are modified or new in %s include:
           (['-O2', '--closure', '1'], lambda generated: 'function intArrayToString' not in generated, 'closure minifies the shell'),
           (['-O2'], lambda generated: 'var b=0' in generated and not 'function _main' in generated, 'registerize/minify is run by default in -O2'),
           (['-O2', '--minify', '0'], lambda generated: 'var b = 0' in generated and not 'function _main' in generated, 'minify is cancelled, but not registerize'),
+          (['-O2', '--js-opts', '0'], lambda generated: 'var b=0' not in generated and 'var b = 0' not in generated and 'function _main' in generated, 'js opts are cancelled'),
           (['-O2', '-g'], lambda generated: 'var b=0' not in generated and 'var b = 0' not in generated and 'function _main' in generated, 'registerize/minify is cancelled by -g'),
           (['-O2', '-g0'], lambda generated: 'var b=0'   in generated and not 'function _main' in generated, 'registerize/minify is run by default in -O2 -g0'),
           (['-O2', '-g1'], lambda generated: 'var b = 0' in generated and not 'function _main' in generated, 'compress is cancelled by -g1'),
@@ -11233,7 +11333,7 @@ f.close()
 
 
     def test_outline(self):
-      def test(name, src, libs, expected, expected_ranges, args=[], suffix='cpp', test_sizes=True):
+      def test(name, src, libs, expected, expected_ranges, args=[], suffix='cpp'):
         print name
 
         def measure_funcs(filename):
@@ -11259,7 +11359,7 @@ f.close()
           (['-g'], (100, 250, 500, 1000, 2000, 5000, 0))
         ]:
           for outlining_limit in outlining_limits:
-            print '\n', debug, outlining_limit, '\n'
+            print '\n', Building.COMPILER_TEST_OPTS, debug, outlining_limit, '\n'
             # TODO: test without -g3, tell all sorts
             Popen([PYTHON, EMCC, src] + libs + ['-o', 'test.js', '-O2'] + debug + ['-s', 'OUTLINING_LIMIT=%d' % outlining_limit] + args).communicate()
             assert os.path.exists('test.js')
@@ -11272,24 +11372,35 @@ f.close()
               low = expected_ranges[outlining_limit][0]
               seen = max(measure_funcs('test.js').values())
               high = expected_ranges[outlining_limit][1]
-              print outlining_limit, '   ', low, '<=', seen, '<=', high
-              if test_sizes: assert low <= seen <= high
+              print Building.COMPILER_TEST_OPTS, outlining_limit, '   ', low, '<=', seen, '<=', high
+              assert low <= seen <= high
 
-      for test_opts, test_sizes in [([], True), (['-O2'], False)]:
+      for test_opts, expected_ranges in [
+        ([], {
+           100: (190, 250),
+           250: (200, 330),
+           500: (250, 500),
+          1000: (230, 1000),
+          2000: (380, 2000),
+          5000: (800, 5000),
+             0: (1500, 5000)
+        }),
+        (['-O2'], {
+           100: (0, 1500),
+           250: (0, 1500),
+           500: (0, 1500),
+          1000: (0, 1500),
+          2000: (0, 2000),
+          5000: (0, 5000),
+             0: (0, 5000)
+        }),
+      ]:
         Building.COMPILER_TEST_OPTS = test_opts
         test('zlib', path_from_root('tests', 'zlib', 'example.c'), 
                      self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a']),
                      open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
-                     {
-                       100: (190, 250),
-                       250: (200, 330),
-                       500: (250, 310),
-                      1000: (230, 300),
-                      2000: (380, 450),
-                      5000: (800, 1100),
-                         0: (1500, 1800)
-                     },
-                     args=['-I' + path_from_root('tests', 'zlib')], suffix='c', test_sizes=test_sizes)
+                     expected_ranges,
+                     args=['-I' + path_from_root('tests', 'zlib')], suffix='c')
 
     def test_symlink(self):
       if os.name == 'nt':
@@ -11459,6 +11570,8 @@ int main(int argc, char const *argv[])
 
       for args, expected in [(['-I/usr/something'], True),
                              (['-L/usr/something'], True),
+                             (['-I/usr/something', '-Wno-warn-absolute-paths'], False),
+                             (['-L/usr/something', '-Wno-warn-absolute-paths'], False),
                              (['-Isubdir/something'], False),
                              (['-Lsubdir/something'], False),
                              ([], False)]:
@@ -12406,6 +12519,24 @@ elif 'browser' in str(sys.argv):
       'browser.test_freealut'
     ]
 
+  if 'sockets' in sys.argv:
+    print
+    print 'Running the browser socket tests.'
+    print
+    i = sys.argv.index('sockets')
+    sys.argv = sys.argv[:i] + sys.argv[i+1:]
+    i = sys.argv.index('browser')
+    sys.argv = sys.argv[:i] + sys.argv[i+1:]
+    sys.argv += [
+      'browser.test_sockets_bi',
+      'browser.test_sockets_gethostbyname',
+      'browser.test_sockets_bi_bigdata',
+      'browser.test_sockets_select_server_down',
+      'browser.test_sockets_select_server_closes_connection',
+      'browser.test_sockets_select_server_closes_connection_rw',
+      'browser.test_enet'
+    ]
+
   # Run a server and a web page. When a test runs, we tell the server about it,
   # which tells the web page, which then opens a window with the test. Doing
   # it this way then allows the page to close() itself when done.
@@ -13113,13 +13244,21 @@ Press any key to continue.'''
       open(os.path.join(self.get_dir(), 'sdl_image.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_image.c')).read()))
 
       for mem in [0, 1]:
-        Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_image.c'), '-O2', '--preload-file', 'screenshot.jpg', '-o', 'page.html', '--memory-init-file', str(mem)]).communicate()
-        self.run_browser('page.html', '', '/report_result?600')
+        for dest, dirname, basename in [('screenshot.jpg',                        '/',       'screenshot.jpg'),
+                                        ('screenshot.jpg@/assets/screenshot.jpg', '/assets', 'screenshot.jpg')]:
+          Popen([
+            PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_image.c'), '-o', 'page.html', '-O2', '--memory-init-file', str(mem),
+            '--preload-file', dest, '-DSCREENSHOT_DIRNAME="' + dirname + '"', '-DSCREENSHOT_BASENAME="' + basename + '"'
+          ]).communicate()
+          self.run_browser('page.html', '', '/report_result?600')
 
     def test_sdl_image_jpeg(self):
       shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.jpeg'))
-      open(os.path.join(self.get_dir(), 'sdl_image_jpeg.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_image_jpeg.c')).read()))
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_image_jpeg.c'), '--preload-file', 'screenshot.jpeg', '-o', 'page.html']).communicate()
+      open(os.path.join(self.get_dir(), 'sdl_image_jpeg.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_image.c')).read()))
+      Popen([
+        PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_image_jpeg.c'), '-o', 'page.html',
+        '--preload-file', 'screenshot.jpeg', '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.jpeg"'
+      ]).communicate()
       self.run_browser('page.html', '', '/report_result?600')
 
     def test_sdl_image_compressed(self):
@@ -13130,13 +13269,16 @@ Press any key to continue.'''
 
         basename = os.path.basename(image)
         shutil.copyfile(image, os.path.join(self.get_dir(), basename))
-        open(os.path.join(self.get_dir(), 'sdl_image.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_image.c')).read()).replace('screenshot.jpg', basename))
+        open(os.path.join(self.get_dir(), 'sdl_image.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_image.c')).read()))
 
         self.build_native_lzma()
-        Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_image.c'), '--preload-file', basename, '-o', 'page.html',
-               '--compression', '%s,%s,%s' % (path_from_root('third_party', 'lzma.js', 'lzma-native'),
-                                              path_from_root('third_party', 'lzma.js', 'lzma-decoder.js'),
-                                              'LZMA.decompress')]).communicate()
+        Popen([
+          PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_image.c'), '-o', 'page.html',
+          '--preload-file', basename, '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="' + basename + '"',
+          '--compression', '%s,%s,%s' % (path_from_root('third_party', 'lzma.js', 'lzma-native'),
+                                         path_from_root('third_party', 'lzma.js', 'lzma-decoder.js'),
+                                         'LZMA.decompress')
+        ]).communicate()
         shutil.move(os.path.join(self.get_dir(), basename), basename + '.renamedsoitcannotbefound');
         self.run_browser('page.html', '', '/report_result?' + str(width))
 
@@ -14006,14 +14148,14 @@ Press any key to continue.'''
 
     # always run these tests last
     # make sure to use different ports in each one because it takes a while for the processes to be cleaned up
-    def test_websockets(self):
+    def test_sockets(self):
       try:
         with self.WebsockHarness(8990):
-          self.btest('websockets.c', expected='571')
+          self.btest('sockets/test_sockets.c', expected='571', args=['-DSOCKK=8991'])
       finally:
         self.clean_pids()
 
-    def test_websockets_partial(self):
+    def test_sockets_partial(self):
       def partial(q):
         import socket
 
@@ -14036,7 +14178,7 @@ Press any key to continue.'''
 
       try:
         with self.WebsockHarness(8990, partial):
-          self.btest('websockets_partial.c', expected='165')
+          self.btest('sockets/test_sockets_partial.c', expected='165', args=['-DSOCKK=8991'])
       finally:
         self.clean_pids()
 
@@ -14048,44 +14190,35 @@ Press any key to continue.'''
         proc.communicate()
       return relay_server
 
-    def test_websockets_bi(self):
+    def test_sockets_bi(self):
       for datagram in [0,1]:
         for fileops in [0,1]:
           try:
             print >> sys.stderr, 'test_websocket_bi datagram %d, fileops %d' % (datagram, fileops)
-            with self.WebsockHarness(8992, self.make_relay_server(8992, 8994)):
-              with self.WebsockHarness(8994, no_server=True):
-                Popen([PYTHON, EMCC, path_from_root('tests', 'websockets_bi_side.c'), '-o', 'side.html', '-DSOCKK=8995', '-DTEST_DGRAM=%d' % datagram]).communicate()
-                self.btest('websockets_bi.c', expected='2499', args=['-DSOCKK=8993', '-DTEST_DGRAM=%d' % datagram, '-DTEST_FILE_OPS=%s' % fileops])
+            with self.WebsockHarness(6992, self.make_relay_server(6992, 6994)):
+              with self.WebsockHarness(6994, no_server=True):
+                Popen([PYTHON, EMCC, path_from_root('tests', 'sockets/test_sockets_bi_side.c'), '-o', 'side.html', '-DSOCKK=6995', '-DTEST_DGRAM=%d' % datagram]).communicate()
+                self.btest('sockets/test_sockets_bi.c', expected='2499', args=['-DSOCKK=6993', '-DTEST_DGRAM=%d' % datagram, '-DTEST_FILE_OPS=%s' % fileops])
           finally:
             self.clean_pids()
 
-    def test_websockets_bi_listen(self):
-      try:
-        with self.WebsockHarness(6992, self.make_relay_server(6992, 6994)):
-          with self.WebsockHarness(6994, no_server=True):
-            Popen([PYTHON, EMCC, path_from_root('tests', 'websockets_bi_side.c'), '-o', 'side.html', '-DSOCKK=6995']).communicate()
-            self.btest('websockets_bi_listener.c', expected='2499', args=['-DSOCKK=6993'])
-      finally:
-        self.clean_pids()
-
-    def test_websockets_gethostbyname(self):
+    def test_sockets_gethostbyname(self):
       try:
         with self.WebsockHarness(7000):
-          self.btest('websockets_gethostbyname.c', expected='571', args=['-O2'])
+          self.btest('sockets/test_sockets_gethostbyname.c', expected='571', args=['-O2', '-DSOCKK=7001'])
       finally:
         self.clean_pids()
 
-    def test_websockets_bi_bigdata(self):
+    def test_sockets_bi_bigdata(self):
       try:
         with self.WebsockHarness(3992, self.make_relay_server(3992, 3994)):
           with self.WebsockHarness(3994, no_server=True):
-            Popen([PYTHON, EMCC, path_from_root('tests', 'websockets_bi_side_bigdata.c'), '-o', 'side.html', '-DSOCKK=3995', '-s', 'SOCKET_DEBUG=0', '-I' + path_from_root('tests')]).communicate()
-            self.btest('websockets_bi_bigdata.c', expected='0', args=['-DSOCKK=3993', '-s', 'SOCKET_DEBUG=0', '-I' + path_from_root('tests')])
+            Popen([PYTHON, EMCC, path_from_root('tests', 'sockets/test_sockets_bi_side_bigdata.c'), '-o', 'side.html', '-DSOCKK=3995', '-s', 'SOCKET_DEBUG=0', '-I' + path_from_root('tests/sockets')]).communicate()
+            self.btest('sockets/test_sockets_bi_bigdata.c', expected='0', args=['-DSOCKK=3993', '-s', 'SOCKET_DEBUG=0', '-I' + path_from_root('tests/sockets')])
       finally:
         self.clean_pids()
 
-    def test_websockets_select_server_down(self):
+    def test_sockets_select_server_down(self):
       def closedServer(q):
         import socket
 
@@ -14094,11 +14227,11 @@ Press any key to continue.'''
         ssock.bind(("127.0.0.1", 8994))
       try:
         with self.WebsockHarness(8994, closedServer):
-          self.btest('websockets_select.c', expected='266')
+          self.btest('sockets/test_sockets_select.c', expected='266', args=['-DSOCKK=8995'])
       finally:
         self.clean_pids()
 
-    def test_websockets_select_server_closes_connection(self):
+    def test_sockets_select_server_closes_connection(self):
       def closingServer(q):
         import socket
 
@@ -14114,11 +14247,11 @@ Press any key to continue.'''
 
       try:
         with self.WebsockHarness(8994, closingServer):
-          self.btest('websockets_select_server_closes_connection.c', expected='266')
+          self.btest('sockets/test_sockets_select_server_closes_connection.c', expected='266', args=['-DSOCKK=8995'])
       finally:
         self.clean_pids()
 
-    def test_websockets_select_server_closes_connection_rw(self):
+    def test_sockets_select_server_closes_connection_rw(self):
       def closingServer_rw(q):
         import socket
 
@@ -14146,7 +14279,7 @@ Press any key to continue.'''
 
       try:
         with self.WebsockHarness(8998, closingServer_rw):
-          self.btest('websockets_select_server_closes_connection_rw.c', expected='266')
+          self.btest('sockets/test_sockets_select_server_closes_connection_rw.c', expected='266', args=['-DSOCKK=8999'])
       finally:
         self.clean_pids()
 
@@ -15049,7 +15182,7 @@ fi
                 print os.stat(os.path.join(EMCC_CACHE, libname + '.bc')).st_size, os.stat(basebc_name).st_size, os.stat(dcebc_name).st_size
                 assert os.stat(os.path.join(EMCC_CACHE, libname + '.bc')).st_size > 1000000, 'libc++ is big'
                 assert os.stat(basebc_name).st_size > 1000000, 'libc++ is indeed big'
-                assert os.stat(dcebc_name).st_size < 500000, 'Dead code elimination must remove most of libc++'
+                assert os.stat(dcebc_name).st_size < os.stat(basebc_name).st_size/2, 'Dead code elimination must remove most of libc++'
               # should only have metadata in -O0, not 1 and 2
               if i > 0:
                 for ll_name in ll_names:

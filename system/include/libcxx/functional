@@ -68,92 +68,116 @@ template <class T> reference_wrapper<const T> cref(const T& t) noexcept;
 template <class T> void cref(const T&& t) = delete;
 template <class T> reference_wrapper<const T> cref(reference_wrapper<T> t) noexcept;
 
-template <class T>
+template <class T> // <class T=void> in C++14
 struct plus : binary_function<T, T, T>
 {
     T operator()(const T& x, const T& y) const;
 };
 
-template <class T>
+template <class T> // <class T=void> in C++14
 struct minus : binary_function<T, T, T>
 {
     T operator()(const T& x, const T& y) const;
 };
 
-template <class T>
+template <class T> // <class T=void> in C++14
 struct multiplies : binary_function<T, T, T>
 {
     T operator()(const T& x, const T& y) const;
 };
 
-template <class T>
+template <class T> // <class T=void> in C++14
 struct divides : binary_function<T, T, T>
 {
     T operator()(const T& x, const T& y) const;
 };
 
-template <class T>
+template <class T> // <class T=void> in C++14
 struct modulus : binary_function<T, T, T>
 {
     T operator()(const T& x, const T& y) const;
 };
 
-template <class T>
+template <class T> // <class T=void> in C++14
 struct negate : unary_function<T, T>
 {
     T operator()(const T& x) const;
 };
 
-template <class T>
+template <class T> // <class T=void> in C++14
 struct equal_to : binary_function<T, T, bool>
 {
     bool operator()(const T& x, const T& y) const;
 };
 
-template <class T>
+template <class T> // <class T=void> in C++14
 struct not_equal_to : binary_function<T, T, bool>
 {
     bool operator()(const T& x, const T& y) const;
 };
 
-template <class T>
+template <class T> // <class T=void> in C++14
 struct greater : binary_function<T, T, bool>
 {
     bool operator()(const T& x, const T& y) const;
 };
 
-template <class T>
+template <class T> // <class T=void> in C++14
 struct less : binary_function<T, T, bool>
 {
     bool operator()(const T& x, const T& y) const;
 };
 
-template <class T>
+template <class T> // <class T=void> in C++14
 struct greater_equal : binary_function<T, T, bool>
 {
     bool operator()(const T& x, const T& y) const;
 };
 
-template <class T>
+template <class T> // <class T=void> in C++14
 struct less_equal : binary_function<T, T, bool>
 {
     bool operator()(const T& x, const T& y) const;
 };
 
-template <class T>
+template <class T> // <class T=void> in C++14
 struct logical_and : binary_function<T, T, bool>
 {
     bool operator()(const T& x, const T& y) const;
 };
 
-template <class T>
+template <class T> // <class T=void> in C++14
 struct logical_or : binary_function<T, T, bool>
 {
     bool operator()(const T& x, const T& y) const;
 };
 
-template <class T>
+template <class T> // <class T=void> in C++14
 struct logical_not : unary_function<T, bool>
+{
+    bool operator()(const T& x) const;
+};
+
+template <class T> // <class T=void> in C++14
+struct bit_and : unary_function<T, bool>
+{
+    bool operator()(const T& x, const T& y) const;
+};
+
+template <class T> // <class T=void> in C++14
+struct bit_or : unary_function<T, bool>
+{
+    bool operator()(const T& x, const T& y) const;
+};
+
+template <class T> // <class T=void> in C++14
+struct bit_xor : unary_function<T, bool>
+{
+    bool operator()(const T& x, const T& y) const;
+};
+
+template <class T=void> // C++14
+struct bit_xor : unary_function<T, bool>
 {
     bool operator()(const T& x) const;
 };
@@ -473,126 +497,398 @@ POLICY:  For non-variadic implementations, the number of arguments is limited
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
+#if _LIBCPP_STD_VER > 11
+template <class _Tp = void>
+#else
 template <class _Tp>
+#endif
 struct _LIBCPP_TYPE_VIS plus : binary_function<_Tp, _Tp, _Tp>
 {
     _LIBCPP_INLINE_VISIBILITY _Tp operator()(const _Tp& __x, const _Tp& __y) const
         {return __x + __y;}
 };
 
+#if _LIBCPP_STD_VER > 11
+template <>
+struct _LIBCPP_TYPE_VIS plus<void>
+{
+    template <class _T1, class _T2>
+    _LIBCPP_INLINE_VISIBILITY auto operator()(_T1&& __t, _T2&& __u) const
+        { return _VSTD::forward<_T1>(__t) + _VSTD::forward<_T2>(__u); }
+};
+#endif
+
+
+#if _LIBCPP_STD_VER > 11
+template <class _Tp = void>
+#else
 template <class _Tp>
+#endif
 struct _LIBCPP_TYPE_VIS minus : binary_function<_Tp, _Tp, _Tp>
 {
     _LIBCPP_INLINE_VISIBILITY _Tp operator()(const _Tp& __x, const _Tp& __y) const
         {return __x - __y;}
 };
 
+#if _LIBCPP_STD_VER > 11
+template <>
+struct _LIBCPP_TYPE_VIS minus<void>
+{
+    template <class _T1, class _T2>
+    _LIBCPP_INLINE_VISIBILITY auto operator()(_T1&& __t, _T2&& __u) const
+        { return _VSTD::forward<_T1>(__t) - _VSTD::forward<_T2>(__u); }
+};
+#endif
+
+
+#if _LIBCPP_STD_VER > 11
+template <class _Tp = void>
+#else
 template <class _Tp>
+#endif
 struct _LIBCPP_TYPE_VIS multiplies : binary_function<_Tp, _Tp, _Tp>
 {
     _LIBCPP_INLINE_VISIBILITY _Tp operator()(const _Tp& __x, const _Tp& __y) const
         {return __x * __y;}
 };
 
+#if _LIBCPP_STD_VER > 11
+template <>
+struct _LIBCPP_TYPE_VIS multiplies<void>
+{
+    template <class _T1, class _T2>
+    _LIBCPP_INLINE_VISIBILITY auto operator()(_T1&& __t, _T2&& __u) const
+        { return _VSTD::forward<_T1>(__t) * _VSTD::forward<_T2>(__u); }
+};
+#endif
+
+
+#if _LIBCPP_STD_VER > 11
+template <class _Tp = void>
+#else
 template <class _Tp>
+#endif
 struct _LIBCPP_TYPE_VIS divides : binary_function<_Tp, _Tp, _Tp>
 {
     _LIBCPP_INLINE_VISIBILITY _Tp operator()(const _Tp& __x, const _Tp& __y) const
         {return __x / __y;}
 };
 
+#if _LIBCPP_STD_VER > 11
+template <>
+struct _LIBCPP_TYPE_VIS divides<void>
+{
+    template <class _T1, class _T2>
+    _LIBCPP_INLINE_VISIBILITY auto operator()(_T1&& __t, _T2&& __u) const
+        { return _VSTD::forward<_T1>(__t) / _VSTD::forward<_T2>(__u); }
+};
+#endif
+
+
+#if _LIBCPP_STD_VER > 11
+template <class _Tp = void>
+#else
 template <class _Tp>
+#endif
 struct _LIBCPP_TYPE_VIS modulus : binary_function<_Tp, _Tp, _Tp>
 {
     _LIBCPP_INLINE_VISIBILITY _Tp operator()(const _Tp& __x, const _Tp& __y) const
         {return __x % __y;}
 };
 
+#if _LIBCPP_STD_VER > 11
+template <>
+struct _LIBCPP_TYPE_VIS modulus<void>
+{
+    template <class _T1, class _T2>
+    _LIBCPP_INLINE_VISIBILITY auto operator()(_T1&& __t, _T2&& __u) const
+        { return _VSTD::forward<_T1>(__t) % _VSTD::forward<_T2>(__u); }
+};
+#endif
+
+
+#if _LIBCPP_STD_VER > 11
+template <class _Tp = void>
+#else
 template <class _Tp>
+#endif
 struct _LIBCPP_TYPE_VIS negate : unary_function<_Tp, _Tp>
 {
     _LIBCPP_INLINE_VISIBILITY _Tp operator()(const _Tp& __x) const
         {return -__x;}
 };
 
+#if _LIBCPP_STD_VER > 11
+template <>
+struct _LIBCPP_TYPE_VIS negate<void>
+{
+    template <class _Tp>
+    _LIBCPP_INLINE_VISIBILITY auto operator()(_Tp&& __x) const
+        { return -_VSTD::forward<_Tp>(__x); }
+};
+#endif
+
+
+#if _LIBCPP_STD_VER > 11
+template <class _Tp = void>
+#else
 template <class _Tp>
+#endif
 struct _LIBCPP_TYPE_VIS equal_to : binary_function<_Tp, _Tp, bool>
 {
     _LIBCPP_INLINE_VISIBILITY bool operator()(const _Tp& __x, const _Tp& __y) const
         {return __x == __y;}
 };
 
+#if _LIBCPP_STD_VER > 11
+template <>
+struct _LIBCPP_TYPE_VIS equal_to<void>
+{
+    template <class _T1, class _T2> _LIBCPP_INLINE_VISIBILITY
+    auto operator()(_T1&& __t, _T2&& __u) const
+        { return _VSTD::forward<_T1>(__t) == _VSTD::forward<_T2>(__u); }
+};
+#endif
+
+
+#if _LIBCPP_STD_VER > 11
+template <class _Tp = void>
+#else
 template <class _Tp>
+#endif
 struct _LIBCPP_TYPE_VIS not_equal_to : binary_function<_Tp, _Tp, bool>
 {
     _LIBCPP_INLINE_VISIBILITY bool operator()(const _Tp& __x, const _Tp& __y) const
         {return __x != __y;}
 };
 
+#if _LIBCPP_STD_VER > 11
+template <>
+struct _LIBCPP_TYPE_VIS not_equal_to<void>
+{
+    template <class _T1, class _T2> _LIBCPP_INLINE_VISIBILITY
+    auto operator()(_T1&& __t, _T2&& __u) const
+        { return _VSTD::forward<_T1>(__t) != _VSTD::forward<_T2>(__u); }
+};
+#endif
+
+
+#if _LIBCPP_STD_VER > 11
+template <class _Tp = void>
+#else
 template <class _Tp>
+#endif
 struct _LIBCPP_TYPE_VIS greater : binary_function<_Tp, _Tp, bool>
 {
     _LIBCPP_INLINE_VISIBILITY bool operator()(const _Tp& __x, const _Tp& __y) const
         {return __x > __y;}
 };
 
+#if _LIBCPP_STD_VER > 11
+template <>
+struct _LIBCPP_TYPE_VIS greater<void>
+{
+    template <class _T1, class _T2> _LIBCPP_INLINE_VISIBILITY
+    auto operator()(_T1&& __t, _T2&& __u) const
+        { return _VSTD::forward<_T1>(__t) > _VSTD::forward<_T2>(__u); }
+};
+#endif
+
+
 // less in <__functional_base>
 
+#if _LIBCPP_STD_VER > 11
+template <class _Tp = void>
+#else
 template <class _Tp>
+#endif
 struct _LIBCPP_TYPE_VIS greater_equal : binary_function<_Tp, _Tp, bool>
 {
     _LIBCPP_INLINE_VISIBILITY bool operator()(const _Tp& __x, const _Tp& __y) const
         {return __x >= __y;}
 };
 
+#if _LIBCPP_STD_VER > 11
+template <>
+struct _LIBCPP_TYPE_VIS greater_equal<void>
+{
+    template <class _T1, class _T2> _LIBCPP_INLINE_VISIBILITY
+    auto operator()(_T1&& __t, _T2&& __u) const
+        { return _VSTD::forward<_T1>(__t) >= _VSTD::forward<_T2>(__u); }
+};
+#endif
+
+
+#if _LIBCPP_STD_VER > 11
+template <class _Tp = void>
+#else
 template <class _Tp>
+#endif
 struct _LIBCPP_TYPE_VIS less_equal : binary_function<_Tp, _Tp, bool>
 {
     _LIBCPP_INLINE_VISIBILITY bool operator()(const _Tp& __x, const _Tp& __y) const
         {return __x <= __y;}
 };
 
+#if _LIBCPP_STD_VER > 11
+template <>
+struct _LIBCPP_TYPE_VIS less_equal<void>
+{
+    template <class _T1, class _T2> _LIBCPP_INLINE_VISIBILITY
+    auto operator()(_T1&& __t, _T2&& __u) const
+        { return _VSTD::forward<_T1>(__t) <= _VSTD::forward<_T2>(__u); }
+};
+#endif
+
+
+#if _LIBCPP_STD_VER > 11
+template <class _Tp = void>
+#else
 template <class _Tp>
+#endif
 struct _LIBCPP_TYPE_VIS logical_and : binary_function<_Tp, _Tp, bool>
 {
     _LIBCPP_INLINE_VISIBILITY bool operator()(const _Tp& __x, const _Tp& __y) const
         {return __x && __y;}
 };
 
+#if _LIBCPP_STD_VER > 11
+template <>
+struct _LIBCPP_TYPE_VIS logical_and<void>
+{
+    template <class _T1, class _T2> _LIBCPP_INLINE_VISIBILITY
+    auto operator()(_T1&& __t, _T2&& __u) const
+        { return _VSTD::forward<_T1>(__t) && _VSTD::forward<_T2>(__u); }
+};
+#endif
+
+
+#if _LIBCPP_STD_VER > 11
+template <class _Tp = void>
+#else
 template <class _Tp>
+#endif
 struct _LIBCPP_TYPE_VIS logical_or : binary_function<_Tp, _Tp, bool>
 {
     _LIBCPP_INLINE_VISIBILITY bool operator()(const _Tp& __x, const _Tp& __y) const
         {return __x || __y;}
 };
 
+#if _LIBCPP_STD_VER > 11
+template <>
+struct _LIBCPP_TYPE_VIS logical_or<void>
+{
+    template <class _T1, class _T2> _LIBCPP_INLINE_VISIBILITY
+    auto operator()(_T1&& __t, _T2&& __u) const
+        { return _VSTD::forward<_T1>(__t) || _VSTD::forward<_T2>(__u); }
+};
+#endif
+
+
+#if _LIBCPP_STD_VER > 11
+template <class _Tp = void>
+#else
 template <class _Tp>
+#endif
 struct _LIBCPP_TYPE_VIS logical_not : unary_function<_Tp, bool>
 {
     _LIBCPP_INLINE_VISIBILITY bool operator()(const _Tp& __x) const
         {return !__x;}
 };
 
+#if _LIBCPP_STD_VER > 11
+template <>
+struct _LIBCPP_TYPE_VIS logical_not<void>
+{
+    template <class _Tp>
+    _LIBCPP_INLINE_VISIBILITY auto operator()(_Tp&& __x) const
+        { return !_VSTD::forward<_Tp>(__x); }
+};
+#endif
+
+
+#if _LIBCPP_STD_VER > 11
+template <class _Tp = void>
+#else
 template <class _Tp>
+#endif
 struct _LIBCPP_TYPE_VIS bit_and : binary_function<_Tp, _Tp, _Tp>
 {
     _LIBCPP_INLINE_VISIBILITY _Tp operator()(const _Tp& __x, const _Tp& __y) const
         {return __x & __y;}
 };
 
+#if _LIBCPP_STD_VER > 11
+template <>
+struct _LIBCPP_TYPE_VIS bit_and<void>
+{
+    template <class _T1, class _T2> _LIBCPP_INLINE_VISIBILITY
+    auto operator()(_T1&& __t, _T2&& __u) const
+        { return _VSTD::forward<_T1>(__t) & _VSTD::forward<_T2>(__u); }
+};
+#endif
+
+
+#if _LIBCPP_STD_VER > 11
+template <class _Tp = void>
+#else
 template <class _Tp>
+#endif
 struct _LIBCPP_TYPE_VIS bit_or : binary_function<_Tp, _Tp, _Tp>
 {
     _LIBCPP_INLINE_VISIBILITY _Tp operator()(const _Tp& __x, const _Tp& __y) const
         {return __x | __y;}
 };
 
+#if _LIBCPP_STD_VER > 11
+template <>
+struct _LIBCPP_TYPE_VIS bit_or<void>
+{
+    template <class _T1, class _T2> _LIBCPP_INLINE_VISIBILITY
+    auto operator()(_T1&& __t, _T2&& __u) const
+        { return _VSTD::forward<_T1>(__t) | _VSTD::forward<_T2>(__u); }
+};
+#endif
+
+
+#if _LIBCPP_STD_VER > 11
+template <class _Tp = void>
+#else
 template <class _Tp>
+#endif
 struct _LIBCPP_TYPE_VIS bit_xor : binary_function<_Tp, _Tp, _Tp>
 {
     _LIBCPP_INLINE_VISIBILITY _Tp operator()(const _Tp& __x, const _Tp& __y) const
         {return __x ^ __y;}
 };
+
+#if _LIBCPP_STD_VER > 11
+template <>
+struct _LIBCPP_TYPE_VIS bit_xor<void>
+{
+    template <class _T1, class _T2> _LIBCPP_INLINE_VISIBILITY
+    auto operator()(_T1&& __t, _T2&& __u) const
+        { return _VSTD::forward<_T1>(__t) ^ _VSTD::forward<_T2>(__u); }
+};
+#endif
+
+
+#if _LIBCPP_STD_VER > 11
+template <class _Tp = void>
+struct _LIBCPP_TYPE_VIS bit_not : unary_function<_Tp, _Tp>
+{
+    _LIBCPP_INLINE_VISIBILITY _Tp operator()(const _Tp& __x) const
+        {return ~__x;}
+};
+
+template <>
+struct _LIBCPP_TYPE_VIS bit_not<void>
+{
+    template <class _Tp>
+    _LIBCPP_INLINE_VISIBILITY auto operator()(_Tp&& __x) const
+        { return ~_VSTD::forward<_Tp>(__x); }
+};
+#endif
 
 template <class _Predicate>
 class _LIBCPP_TYPE_VIS unary_negate
@@ -1139,8 +1435,11 @@ public:
     function(const function&);
     function(function&&) _NOEXCEPT;
     template<class _Fp>
-      function(_Fp,
-               typename enable_if<__callable<_Fp>::value>::type* = 0);
+      function(_Fp, typename enable_if
+                                     <
+                                        __callable<_Fp>::value &&
+                                        !is_same<_Fp, function>::value
+                                      >::type* = 0);
 
     template<class _Alloc>
       _LIBCPP_INLINE_VISIBILITY
@@ -1162,7 +1461,8 @@ public:
     template<class _Fp>
       typename enable_if
       <
-        __callable<typename decay<_Fp>::type>::value,
+        __callable<typename decay<_Fp>::type>::value &&
+        !is_same<typename remove_reference<_Fp>::type, function>::value,
         function&
       >::type
       operator=(_Fp&&);
@@ -1266,7 +1566,11 @@ function<_Rp(_ArgTypes...)>::function(allocator_arg_t, const _Alloc&,
 template<class _Rp, class ..._ArgTypes>
 template <class _Fp>
 function<_Rp(_ArgTypes...)>::function(_Fp __f,
-                                     typename enable_if<__callable<_Fp>::value>::type*)
+                                     typename enable_if
+                                     <
+                                        __callable<_Fp>::value &&
+                                        !is_same<_Fp, function>::value
+                                     >::type*)
     : __f_(0)
 {
     if (__not_null(__f))
@@ -1370,7 +1674,8 @@ template<class _Rp, class ..._ArgTypes>
 template <class _Fp>
 typename enable_if
 <
-    function<_Rp(_ArgTypes...)>::template __callable<typename decay<_Fp>::type>::value,
+    function<_Rp(_ArgTypes...)>::template __callable<typename decay<_Fp>::type>::value &&
+    !is_same<typename remove_reference<_Fp>::type, function<_Rp(_ArgTypes...)>>::value,
     function<_Rp(_ArgTypes...)>&
 >::type
 function<_Rp(_ArgTypes...)>::operator=(_Fp&& __f)
@@ -1594,10 +1899,22 @@ template <class _Ti, bool IsReferenceWrapper, bool IsBindEx, bool IsPh,
           class _TupleUj>
 struct ____mu_return;
 
+template <bool _Invokable, class _Ti, class ..._Uj>
+struct ____mu_return_invokable  // false
+{
+    typedef __nat type;
+};
+
 template <class _Ti, class ..._Uj>
-struct ____mu_return<_Ti, false, true, false, tuple<_Uj...> >
+struct ____mu_return_invokable<true, _Ti, _Uj...>
 {
     typedef typename __invoke_of<_Ti&, _Uj...>::type type;
+};
+
+template <class _Ti, class ..._Uj>
+struct ____mu_return<_Ti, false, true, false, tuple<_Uj...> >
+    : public ____mu_return_invokable<__invokable<_Ti&, _Uj...>::value, _Ti, _Uj...>
+{
 };
 
 template <class _Ti, class _TupleUj>
@@ -1737,7 +2054,9 @@ public:
     template <class _Gp, class ..._BA,
               class = typename enable_if
                                <
-                                  is_constructible<_Fd, _Gp>::value
+                                  is_constructible<_Fd, _Gp>::value &&
+                                  !is_same<typename remove_reference<_Gp>::type,
+                                           __bind>::value
                                >::type>
       _LIBCPP_INLINE_VISIBILITY
       explicit __bind(_Gp&& __f, _BA&& ...__bound_args)
@@ -1802,7 +2121,13 @@ public:
 
 #endif  // _LIBCPP_HAS_NO_DEFAULTED_FUNCTIONS
 
-    template <class _Gp, class ..._BA>
+    template <class _Gp, class ..._BA,
+              class = typename enable_if
+                               <
+                                  is_constructible<_Fd, _Gp>::value &&
+                                  !is_same<typename remove_reference<_Gp>::type,
+                                           __bind_r>::value
+                               >::type>
       _LIBCPP_INLINE_VISIBILITY
       explicit __bind_r(_Gp&& __f, _BA&& ...__bound_args)
         : base(_VSTD::forward<_Gp>(__f),

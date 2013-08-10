@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/ioctl.h>
 #include <assert.h>
 #if EMSCRIPTEN
@@ -15,9 +16,15 @@
 
 #define EXPECTED_BYTES 5
 
-int SocketFD;
+int sockfd = -1;
 
-int done = 0;
+void finish(int result) {
+  close(sockfd);
+#if EMSCRIPTEN
+  REPORT_RESULT();
+#endif
+  exit(result);
+}
 
 void iter(void *arg) {
   static int state = 0;
@@ -27,42 +34,40 @@ void iter(void *arg) {
   static int readPos = 0;
   int selectRes;
   ssize_t transferAmount;
-  fd_set sett;
+  fd_set sett;  
   
-  
-  switch( state ){
+  switch (state) {
     case 0:
       // writing 10 bytes to the server
       
-      // the socket in the read file descriptors has to result in a 0 return value
-      // because the connection exists, but there is no data yet
-      FD_ZERO( &sett );
-      FD_SET(SocketFD, &sett);
+      // since the socket in the read file descriptors has no available data,
+      // select should tell us 0 handles are ready
+      FD_ZERO(&sett);
+      FD_SET(sockfd, &sett);
       selectRes = select(64, &sett, NULL, NULL, NULL);
-      if( selectRes != 0 ){
-        printf( "case 0: read select != 0\n" );
-        exit(EXIT_FAILURE);
+      if (selectRes != 0) {
+        printf("case 0: read select != 0 (%d)\n", selectRes);
+        finish(EXIT_FAILURE);
       }
       
       // the socket in the write file descriptors has to result in either a 0 or 1
       // the connection either is setting up or is established and writing is possible
-      FD_ZERO( &sett );
-      FD_SET(SocketFD, &sett);
+      FD_ZERO(&sett);
+      FD_SET(sockfd, &sett);
       selectRes = select(64, NULL, &sett, NULL, NULL);
-      if( selectRes == -1 ){
-        printf( "case 0: write select == -1\n" );
-        exit(EXIT_FAILURE);
-      }
-      if( selectRes == 0 ){
+      if (selectRes == -1) {
+        printf("case 0: write select == -1\n");
+        finish(EXIT_FAILURE);
+      } else if (selectRes == 0) {
         return;
       }
       
       // send a single byte
-      transferAmount = send( SocketFD, writebuf+writePos, 1, 0 );
+      transferAmount = send(sockfd, writebuf+writePos, 1, 0);
       writePos += transferAmount;
    
       // after 10 bytes switch to next state
-      if( writePos >= 10 ){
+      if (writePos >= 10) {
         state = 1;
       }
       break;
@@ -70,79 +75,86 @@ void iter(void *arg) {
     case 1:
       // wait until we can read one byte to make sure the server
       // has sent the data and then closed the connection
-      FD_ZERO( &sett );
-      FD_SET(SocketFD, &sett);
+      FD_ZERO(&sett);
+      FD_SET(sockfd, &sett);
       selectRes = select(64, &sett, NULL, NULL, NULL);
-      if( selectRes == -1 ){
-        printf( "case 1: read selectRes == -1\n" );
-        exit(EXIT_FAILURE);
-      }
-      if( selectRes == 0 )
+      if (selectRes == -1) {
+        printf("case 1: read selectRes == -1\n");
+        finish(EXIT_FAILURE);
+      } else if (selectRes == 0) {
         return;
+      }
 
       // read a single byte
-      transferAmount = recv( SocketFD, readbuf+readPos, 1, 0 );
+      transferAmount = recv(sockfd, readbuf+readPos, 1, 0);
       readPos += transferAmount;
    
       // if successfully reading 1 byte, switch to next state
-      if( readPos >= 1 ){
+      if (readPos >= 1) {
         state = 2;
       }
       break;
     
     case 2:
-      // calling select with the socket in the write file descriptors has
-      // to fail because the tcp network connection is already down
-      FD_ZERO( &sett );
-      FD_SET(SocketFD, &sett);
+      // calling select with the socket in the write file descriptors should
+      // succeed, but the socket should not set in the set.
+      FD_ZERO(&sett);
+      FD_SET(sockfd, &sett);
       selectRes = select(64, NULL, &sett, NULL, NULL);
-      if( selectRes != -1 ){
-        printf( "case 2: write selectRes != -1\n" );
-        exit(EXIT_FAILURE);
+      if (selectRes != 0 || FD_ISSET(sockfd, &sett)) {
+        printf("case 2: write selectRes != 0 || FD_ISSET(sockfd, &sett)\n");
+        finish(EXIT_FAILURE);
       }
 
       // calling select with the socket in the read file descriptors 
       // has to succeed because there is still data in the inQueue
-      FD_ZERO( &sett );
-      FD_SET(SocketFD, &sett);
+      FD_ZERO(&sett);
+      FD_SET(sockfd, &sett);
       selectRes = select(64, &sett, NULL, NULL, NULL);
-      if( selectRes != 1 ){
-        printf( "case 2: read selectRes != 1\n" );
-        exit(EXIT_FAILURE);
-      }
-      if( selectRes == 0 )
+      if (selectRes != 1) {
+        printf("case 2: read selectRes != 1\n");
+        finish(EXIT_FAILURE);
+      } else if (selectRes == 0) {
         return;
+      }
       
       // read a single byte
-      transferAmount = recv( SocketFD, readbuf+readPos, 1, 0 );
+      transferAmount = recv(sockfd, readbuf+readPos, 1, 0);
       readPos += transferAmount;
       
       // with 10 bytes read the inQueue is empty => switch state
-      if( readPos >= 10 ){
+      if (readPos >= 10) {
         state = 3;
       }
       break;
       
     case 3:
       // calling select with the socket in the read file descriptors 
-      // now also has to fail as the inQueue is empty
-      FD_ZERO( &sett );
-      FD_SET(SocketFD, &sett);
+      // should succeed
+      FD_ZERO(&sett);
+      FD_SET(sockfd, &sett);
       selectRes = select(64, &sett, NULL, NULL, NULL);
-      if( selectRes != -1 ){
-        printf( "case 3: read selectRes != -1\n" );
-        exit(EXIT_FAILURE);
+      if (selectRes != 1) {
+        printf("case 3: read selectRes != 1\n");
+        finish(EXIT_FAILURE);
+      }
+
+      // but recv should return 0 signaling the remote
+      // end has closed the connection.
+      transferAmount = recv(sockfd, readbuf, 1, 0);
+      if (transferAmount) {
+        printf("case 3: read != 0\n");
+        finish(EXIT_FAILURE);
       }
       
       // report back success, the 266 is just an arbitrary value without 
       // deeper meaning
-      int result = 266;
-      REPORT_RESULT();
+      finish(266);
       break;
       
     default:
-      printf( "Impossible state!\n" );
-      exit(EXIT_FAILURE);
+      printf("Impossible state!\n");
+      finish(EXIT_FAILURE);
       break;
   }
   
@@ -160,52 +172,36 @@ void iter(void *arg) {
 // as there are still 10 bytes to read from the inQueue. So, for the same socket the 
 // select call behaves differently depending on whether the socket is listed in the
 // read or write file descriptors.
-int main(void)
-{
-  struct sockaddr_in stSockAddr;
-  int Res;
-  SocketFD = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+int main() {
+  struct sockaddr_in addr;
+  int res;
 
-  if (-1 == SocketFD)
-  {
+  sockfd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+  if (sockfd == -1) {
     perror("cannot create socket");
-    exit(EXIT_FAILURE);
+    finish(EXIT_FAILURE);
   }
+  fcntl(sockfd, F_SETFL, O_NONBLOCK);
 
-  memset(&stSockAddr, 0, sizeof(stSockAddr));
-
-  stSockAddr.sin_family = AF_INET;
-  stSockAddr.sin_port = htons(
-#if EMSCRIPTEN
-    8999
-#else
-    8998
-#endif
-  );
-  Res = inet_pton(AF_INET, "127.0.0.1", &stSockAddr.sin_addr);
-
-  if (0 > Res) {
-    perror("error: first parameter is not a valid address family");
-    close(SocketFD);
-    exit(EXIT_FAILURE);
-  } else if (0 == Res) {
-    perror("char string (second parameter does not contain valid ipaddress)");
-    close(SocketFD);
-    exit(EXIT_FAILURE);
+  memset(&addr, 0, sizeof(addr));
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons(SOCKK);
+  if (inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr) != 1) {
+    perror("inet_pton failed");
+    finish(EXIT_FAILURE);
   }
 
   // This call should succeed (even if the server port is closed)
-  if (-1 == connect(SocketFD, (struct sockaddr *)&stSockAddr, sizeof(stSockAddr))) {
+  res = connect(sockfd, (struct sockaddr *)&addr, sizeof(addr));
+  if (res == -1 && errno != EINPROGRESS) {
     perror("connect failed");
-    close(SocketFD);
-    exit(EXIT_FAILURE);
-
+    finish(EXIT_FAILURE);
   }
 
 #if EMSCRIPTEN
   emscripten_set_main_loop(iter, 0, 0);
 #else
-  while (!done) iter(NULL);
+  while (1) iter(NULL);
 #endif
 
   return EXIT_SUCCESS;
