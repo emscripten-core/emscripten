@@ -486,6 +486,34 @@ var LibrarySDL = {
             }
           }
           break;
+
+        case 'touchstart':
+	  SDL.DOMButtons[0] = 1;
+	  SDL.events.push({
+	      type: 'mousedown',
+	      button: 0,
+	      pageX: event.changedTouches[0].pageX,
+	      pageY: event.changedTouches[0].pageY
+	  });
+	  break;
+        case 'touchend':
+	  SDL.DOMButtons[0] = 0;
+	  SDL.events.push({
+	      type: 'mouseup',
+	      button: 0,
+	      pageX: event.changedTouches[0].pageX,
+	      pageY: event.changedTouches[0].pageY
+	  });
+	  break;
+        case 'touchmove':
+	  SDL.events.push({
+	      type: 'mousemove',
+	      button: 0,
+	      pageX: event.changedTouches[0].pageX,
+	      pageY: event.changedTouches[0].pageY
+	  });
+	  break;
+
         case 'blur':
         case 'visibilitychange': {
           // Un-press all pressed keys: TODO
@@ -763,7 +791,8 @@ var LibrarySDL = {
   },
 
   SDL_SetVideoMode: function(width, height, depth, flags) {
-    ['mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll', 'mousewheel', 'mouseout'].forEach(function(event) {
+    ['mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll', 'mousewheel', 'mouseout',
+     'touchstart', 'touchend', 'touchmove'].forEach(function(event) {
       Module['canvas'].addEventListener(event, SDL.receiveEvent, true);
     });
     Browser.setCanvasSize(width, height, true);
@@ -2045,9 +2074,9 @@ var LibrarySDL = {
     console.log('TODO: SDL_GL_SetAttribute');
   },
 
-  SDL_GL_GetProcAddress__deps: ['$GLEmulation'],
+  SDL_GL_GetProcAddress__deps: ['$GL'],
   SDL_GL_GetProcAddress: function(name_) {
-    return GLEmulation.getProcAddress(Pointer_stringify(name_));
+    return GL.getProcAddress(Pointer_stringify(name_));
   },
 
   SDL_GL_SwapBuffers: function() {},
