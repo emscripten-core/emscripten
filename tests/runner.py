@@ -14035,7 +14035,7 @@ Press any key to continue.'''
         # the current test_enet
         if self.filename:
           Popen([CLANG_CC, path_from_root('tests', self.filename), '-o', 'server'] + self.args).communicate()
-          process = Popen(['./server'])
+          process = Popen([os.path.abspath('server')])
           self.pids.append(process.pid)
 
         # start the websocket proxy
@@ -14076,7 +14076,7 @@ Press any key to continue.'''
 
     def make_relay_server(self, port1, port2):
       print >> sys.stderr, 'creating relay server on ports %d,%d' % (port1, port2)
-      proc = Popen([PYTHON, path_from_root('tests', 'sockets/socket_relay.py'), str(port1), str(port2)])
+      proc = Popen([PYTHON, path_from_root('tests', 'sockets', 'socket_relay.py'), str(port1), str(port2)])
       return proc
 
     # always run these tests last
@@ -14087,20 +14087,20 @@ Press any key to continue.'''
     # proper listen server support.
 
     def test_sockets_echo(self):
-      sockets_include = '-I'+path_from_root('tests/sockets')
+      sockets_include = '-I'+path_from_root('tests', 'sockets')
 
       for datagram in [0]:
         dgram_define = '-DTEST_DGRAM=%d' % datagram
 
         for harness in [
-          self.WebsockifyServerHarness('sockets/test_sockets_echo_server.c', ['-DSOCKK=8990', dgram_define, sockets_include], 8991, 8990)
-          # self.CompiledServerHarness('sockets/test_sockets_echo_server.c', ['-DSOCKK=8990', dgram_define, sockets_include])
+          self.WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), ['-DSOCKK=8990', dgram_define, sockets_include], 8991, 8990)
+          # self.CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), ['-DSOCKK=8990', dgram_define, sockets_include])
         ]:
           with harness:
-            self.btest('sockets/test_sockets_echo_client.c', expected='0', args=['-DSOCKK=8991', dgram_define, sockets_include])
+            self.btest(os.path.join('sockets', 'test_sockets_echo_client.c'), expected='0', args=['-DSOCKK=8991', dgram_define, sockets_include])
 
     def test_sockets_echo_bigdata(self):
-      sockets_include = '-I'+path_from_root('tests/sockets')
+      sockets_include = '-I'+path_from_root('tests', 'sockets')
 
       for datagram in [0]:
         dgram_define = '-DTEST_DGRAM=%d' % datagram
@@ -14111,41 +14111,41 @@ Press any key to continue.'''
             message += str(unichr(ord('a') + (i % 26)))
 
         # re-write the client test with this literal (it's too big to pass via command line)
-        input_filename = path_from_root('tests/sockets', 'test_sockets_echo_client.c')
+        input_filename = path_from_root('tests', 'sockets', 'test_sockets_echo_client.c')
         input = open(input_filename).read()
         output = input.replace('#define MESSAGE "pingtothepong"', '#define MESSAGE "%s"' % message)
 
         for harness in [
-          self.WebsockifyServerHarness('sockets/test_sockets_echo_server.c', ['-DSOCKK=8992', dgram_define, sockets_include], 8993, 8992)
+          self.WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), ['-DSOCKK=8992', dgram_define, sockets_include], 8993, 8992)
         ]:
           with harness:
             self.btest(output, expected='0', args=['-DSOCKK=8993', dgram_define, sockets_include], force_c=True)
 
     def test_sockets_partial(self):
       for harness in [
-        self.WebsockifyServerHarness('sockets/test_sockets_partial_server.c', ['-DSOCKK=8994'], 8995, 8994)
+        self.WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_partial_server.c'), ['-DSOCKK=8994'], 8995, 8994)
       ]:
         with harness:
-          self.btest('sockets/test_sockets_partial_client.c', expected='165', args=['-DSOCKK=8995'])
+          self.btest(os.path.join('sockets', 'test_sockets_partial_client.c'), expected='165', args=['-DSOCKK=8995'])
 
     # TODO add support for gethostbyaddr to re-enable this test
     # def test_sockets_gethostbyname(self):
-    #   self.btest('sockets/test_sockets_gethostbyname.c', expected='0', args=['-O2', '-DSOCKK=8997'])
+    #   self.btest(os.path.join('sockets', 'test_sockets_gethostbyname.c'), expected='0', args=['-O2', '-DSOCKK=8997'])
 
     def test_sockets_select_server_no_accept(self):
       for harness in [
-        self.WebsockifyServerHarness('sockets/test_sockets_select_server_no_accept_server.c', ['-DSOCKK=8995'], 8996, 8995)
+        self.WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_select_server_no_accept_server.c'), ['-DSOCKK=8995'], 8996, 8995)
       ]:
-        self.btest('sockets/test_sockets_select_server_no_accept_client.c', expected='266', args=['-DSOCKK=8996'])
+        self.btest(os.path.join('sockets', 'test_sockets_select_server_no_accept_client.c'), expected='266', args=['-DSOCKK=8996'])
 
     def test_sockets_select_server_closes_connection_rw(self):
-      sockets_include = '-I'+path_from_root('tests/sockets')
+      sockets_include = '-I'+path_from_root('tests', 'sockets')
 
       for harness in [
-        self.WebsockifyServerHarness('sockets/test_sockets_echo_server.c', ['-DSOCKK=9004', sockets_include], 9005, 9004)
+        self.WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), ['-DSOCKK=9004', sockets_include], 9005, 9004)
       ]:
         with harness:
-          self.btest('sockets/test_sockets_select_server_closes_connection_client_rw.c', expected='266', args=['-DSOCKK=9005', sockets_include])
+          self.btest(os.path.join('sockets', 'test_sockets_select_server_closes_connection_client_rw.c'), expected='266', args=['-DSOCKK=9005', sockets_include])
 
     # TODO remove this once we have proper listen server support built into emscripten.
     # being that enet uses datagram sockets, we can't proxy to a native server with
@@ -14160,7 +14160,7 @@ Press any key to continue.'''
       Popen([PYTHON, path_from_root('emmake'), 'make']).communicate()
       enet = [self.in_dir('enet', '.libs', 'libenet.a'), '-I'+path_from_root('tests', 'enet', 'include')]
       os.chdir(pwd)
-      Popen([PYTHON, EMCC, path_from_root('tests/sockets', 'test_enet_server.c'), '-o', 'server.html', '-DSOCKK=2235'] + enet).communicate()
+      Popen([PYTHON, EMCC, path_from_root('tests', 'sockets', 'test_enet_server.c'), '-o', 'server.html', '-DSOCKK=2235'] + enet).communicate()
 
       with self.WebsockifyServerHarness('', [], 2235, 2234):
         with self.WebsockifyServerHarness('', [], 2237, 2236):
@@ -14168,7 +14168,7 @@ Press any key to continue.'''
           try:
             proc = self.make_relay_server(2234, 2236)
             pids.append(proc.pid)
-            self.btest('sockets/test_enet_client.c', expected='0', args=['-DSOCKK=2237'] + enet)
+            self.btest(os.path.join('sockets', 'test_enet_client.c'), expected='0', args=['-DSOCKK=2237'] + enet)
           finally:
             browser.clean_pids(pids);
 
@@ -14195,10 +14195,10 @@ Press any key to continue.'''
     #   os.chdir(pwd)
 
     #   for harness in [
-    #     self.CompiledServerHarness('sockets/test_enet_server.c', ['-DSOCKK=9010'] + enet_native, 9011, 9010)
+    #     self.CompiledServerHarness(os.path.join('sockets', 'test_enet_server.c'), ['-DSOCKK=9010'] + enet_native, 9011, 9010)
     #   ]:
     #     with harness:
-    #       self.btest('sockets/test_enet_client.c', expected='0', args=['-DSOCKK=9011'] + enet_emscripten)
+    #       self.btest(os.path.join('sockets', 'test_enet_client.c'), expected='0', args=['-DSOCKK=9011'] + enet_emscripten)
 
 elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
