@@ -14174,31 +14174,20 @@ Press any key to continue.'''
 
     # TODO use this once we have listen server support
     # def test_enet(self):
-    #   # build a native version of the enet lib
-    #   try_delete(self.in_dir('enet_native'))
-    #   shutil.copytree(path_from_root('tests', 'enet'), self.in_dir('enet_native'))
+    #   try_delete(self.in_dir('enet'))
+    #   shutil.copytree(path_from_root('tests', 'enet'), self.in_dir('enet'))
     #   pwd = os.getcwd()
-    #   os.chdir(self.in_dir('enet_native'))
-    #   Popen(['./configure']).communicate()
-    #   Popen(['make']).communicate()
-    #   enet_native = [self.in_dir('enet_native', '.libs', 'libenet.a'), '-I'+path_from_root('tests', 'enet', 'include')]
-    #   os.chdir(pwd)
-
-    #   # build a transpiled version of enet lib
-    #   try_delete(self.in_dir('enet_emscripten'))
-    #   shutil.copytree(path_from_root('tests', 'enet'), self.in_dir('enet_emscripten'))
-    #   pwd = os.getcwd()
-    #   os.chdir(self.in_dir('enet_emscripten'))
+    #   os.chdir(self.in_dir('enet'))
     #   Popen([PYTHON, path_from_root('emconfigure'), './configure']).communicate()
     #   Popen([PYTHON, path_from_root('emmake'), 'make']).communicate()
-    #   enet_emscripten = [self.in_dir('enet_emscripten', '.libs', 'libenet.a'), '-I'+path_from_root('tests', 'enet', 'include')]
+    #   enet = [self.in_dir('enet', '.libs', 'libenet.a'), '-I'+path_from_root('tests', 'enet', 'include')]
     #   os.chdir(pwd)
 
     #   for harness in [
-    #     self.CompiledServerHarness(os.path.join('sockets', 'test_enet_server.c'), ['-DSOCKK=9010'] + enet_native, 9011, 9010)
+    #     self.CompiledServerHarness(os.path.join('sockets', 'test_enet_server.c'), ['-DSOCKK=9010'] + enet, 9011, 9010)
     #   ]:
     #     with harness:
-    #       self.btest(os.path.join('sockets', 'test_enet_client.c'), expected='0', args=['-DSOCKK=9011'] + enet_emscripten)
+    #       self.btest(os.path.join('sockets', 'test_enet_client.c'), expected='0', args=['-DSOCKK=9011'] + enet)
 
 elif 'benchmark' in str(sys.argv):
   # Benchmarks. Run them with argument |benchmark|. To run a specific test, do
