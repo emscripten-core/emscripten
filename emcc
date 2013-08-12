@@ -471,8 +471,7 @@ Options that are modified or new in %s include:
                            to hide these warnings and acknowledge that the
                            explicit use of absolute paths is intentional.
 
-  --switchify              Convert if-else chains to switch statements if
-                           possible.
+  --no-switchify           Avoid converting if-else chains to switch statements.
 
 The target file, if specified (-o <target>), defines what will
 be generated:
@@ -737,7 +736,7 @@ try:
   save_bc = False
   memory_init_file = False
   use_preload_cache = False
-  switchify = False
+  switchify = True
 
   if use_cxx:
     default_cxx_std = '-std=c++03' # Enforce a consistent C++ standard when compiling .cpp files, if user does not specify one on the cmdline.
@@ -901,8 +900,8 @@ try:
       memory_init_file = int(newargs[i+1])
       newargs[i] = ''
       newargs[i+1] = ''
-    elif newargs[i] == '--switchify':
-      switchify = True
+    elif newargs[i] == '--no-switchify':
+      switchify = False
       newargs[i] = ''
     elif newargs[i].startswith(('-I', '-L')):
       path_name = newargs[i][2:]
