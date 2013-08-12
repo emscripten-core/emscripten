@@ -12232,6 +12232,8 @@ int main(int argc, char const *argv[])
          ['asm', 'outline']),
         (path_from_root('tools', 'test-js-optimizer-asm-outline3.js'), open(path_from_root('tools', 'test-js-optimizer-asm-outline3-output.js')).read(),
          ['asm', 'outline']),
+        (path_from_root('tools', 'test-js-optimizer-asm-switchify.js'), open(path_from_root('tools', 'test-js-optimizer-asm-switchify-output.js')).read(),
+         ['switchify'])
       ]:
         print input
         output = Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).communicate()[0]
@@ -14704,6 +14706,10 @@ process(sys.argv[1])
 
     def test_fasta_double_full(self):
       self.fasta('fasta_double_full', 'double', emcc_args=['-s', 'DOUBLE_MODE=1'])
+
+    def test_switch(self):
+      with open(path_from_root('tests', 'switch.c'), 'r') as f: src = f.read()
+      self.do_benchmark('skinning', src, 'start = 0\nend (sum=200000000)')
 
     def test_skinning(self):
       src = open(path_from_root('tests', 'skinning_test_no_simd.cpp'), 'r').read()
