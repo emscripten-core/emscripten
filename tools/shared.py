@@ -674,62 +674,89 @@ def expand_response(data):
 
 # Settings. A global singleton. Not pretty, but nicer than passing |, settings| everywhere
 
-class Settings:
-  @classmethod
-  def reset(self):
-    class Settings2:
-      QUANTUM_SIZE = 4
-      reset = Settings.reset
+class Settings2(type):
+  class __impl:
+    attrs = {}
 
-      # Given some emcc-type args (-O3, -s X=Y, etc.), fill Settings with the right settings
-      @classmethod
-      def load(self, args=[]):
-        # Load the JS defaults into python
-        settings = open(path_from_root('src', 'settings.js')).read().replace('var ', 'Settings.').replace('//', '#')
-        exec settings in globals()
+    def __init__(self):
+      self.reset()
 
-        # Apply additional settings. First -O, then -s
-        for i in range(len(args)):
-          if args[i].startswith('-O'):
-            level = eval(args[i][2])
-            Settings.apply_opt_level(level)
-        for i in range(len(args)):
-          if args[i] == '-s':
-            exec 'Settings.' + args[i+1] in globals() # execute the setting
+    @classmethod
+    def reset(self):
+      self.attrs = { 'QUANTUM_SIZE': 4 }
+      self.load()
 
-      # Transforms the Settings information into emcc-compatible args (-s X=Y, etc.). Basically
-      # the reverse of load_settings, except for -Ox which is relevant there but not here
-      @classmethod
-      def serialize(self):
-        ret = []
-        for key, value in Settings.__dict__.iteritems():
-          if key == key.upper(): # this is a hack. all of our settings are ALL_CAPS, python internals are not
-            jsoned = json.dumps(value, sort_keys=True)
-            ret += ['-s', key + '=' + jsoned]
-        return ret
+    # Given some emcc-type args (-O3, -s X=Y, etc.), fill Settings with the right settings
+    @classmethod
+    def load(self, args=[]):
+      # Load the JS defaults into python
+      settings = open(path_from_root('src', 'settings.js')).read().replace('//', '#')
+      settings = re.sub(r'var ([\w\d]+)', r'self.attrs["\1"]', settings)
+      exec settings
 
-      @classmethod
-      def apply_opt_level(self, opt_level, noisy=False):
-        if opt_level >= 1:
-          Settings.ASM_JS = 1
-          Settings.ASSERTIONS = 0
-          Settings.DISABLE_EXCEPTION_CATCHING = 1
-          Settings.EMIT_GENERATED_FUNCTIONS = 1
-        if opt_level >= 2:
-          Settings.RELOOP = 1
-          Settings.ALIASING_FUNCTION_POINTERS = 1
-        if opt_level >= 3:
-          # Aside from these, -O3 also runs closure compiler and llvm lto
-          Settings.FORCE_ALIGNED_MEMORY = 1
-          Settings.DOUBLE_MODE = 0
-          Settings.PRECISE_I64_MATH = 0
-          if noisy: logging.warning('Applying some potentially unsafe optimizations! (Use -O2 if this fails.)')
+      # Apply additional settings. First -O, then -s
+      for i in range(len(args)):
+        if args[i].startswith('-O'):
+          level = eval(args[i][2])
+          self.apply_opt_level(level)
+      for i in range(len(args)):
+        if args[i] == '-s':
+          declare = re.sub(r'([\w\d]+)\s*=\s*(.+)', r'self.attrs["\1"]=\2;', args[i+1])
+          exec declare
 
-    global Settings
-    Settings = Settings2
-    Settings.load() # load defaults
+    # Transforms the Settings information into emcc-compatible args (-s X=Y, etc.). Basically
+    # the reverse of load_settings, except for -Ox which is relevant there but not here
+    @classmethod
+    def serialize(self):
+      ret = []
+      for key, value in self.attrs.iteritems():
+        if key == key.upper(): # this is a hack. all of our settings are ALL_CAPS, python internals are not
+          jsoned = json.dumps(value, sort_keys=True)
+          ret += ['-s', key + '=' + jsoned]
+      return ret
 
-Settings.reset()
+    @classmethod
+    def apply_opt_level(self, opt_level, noisy=False):
+      if opt_level >= 1:
+        self.attrs['ASM_JS'] = 1
+        self.attrs['ASSERTIONS'] = 0
+        self.attrs['DISABLE_EXCEPTION_CATCHING'] = 1
+        self.attrs['EMIT_GENERATED_FUNCTIONS'] = 1
+      if opt_level >= 2:
+        self.attrs['RELOOP'] = 1
+        self.attrs['ALIASING_FUNCTION_POINTERS'] = 1
+      if opt_level >= 3:
+        # Aside from these, -O3 also runs closure compiler and llvm lto
+        self.attrs['FORCE_ALIGNED_MEMORY'] = 1
+        self.attrs['DOUBLE_MODE'] = 0
+        self.attrs['PRECISE_I64_MATH'] = 0
+        if noisy: logging.warning('Applying some potentially unsafe optimizations! (Use -O2 if this fails.)')
+
+    def __getattr__(self, attr):
+      if attr in self.attrs:
+        return self.attrs[attr]
+      else:
+        raise AttributeError
+
+    def __setattr__(self, attr, value):
+      self.attrs[attr] = value
+
+  __instance = None
+
+  @staticmethod
+  def instance():
+    if Settings2.__instance is None:
+      Settings2.__instance = Settings2.__impl()
+    return Settings2.__instance
+
+  def __getattr__(self, attr):
+    return getattr(self.instance(), attr)
+
+  def __setattr__(self, attr, value):
+    return setattr(self.instance(), attr, value)
+
+class Settings(object):
+  __metaclass__ = Settings2
 
 # Building
 
@@ -737,6 +764,7 @@ class Building:
   COMPILER = CLANG
   LLVM_OPTS = False
   COMPILER_TEST_OPTS = [] # For use of the test runner
+  JS_ENGINE_OVERRIDE = None # Used to pass the JS engine override from runner.py -> test_benchmark.py
 
   @staticmethod
   def get_building_env(native=False):
