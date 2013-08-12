@@ -549,7 +549,8 @@ safe_mod_func_uint32_t_u_u.exit.i.i:              ; preds = %189, %.preheader..p
   %p_5.sroa.0.0.extract.trunc2674116.i.i = phi i8 [ %p_5.sroa.0.0.extract.trunc2670.i.i, %189 ], [ -1, %.preheader..preheader.split_crit_edge.i.i ]
   %p_5.sroa.1.sroa.0.0.load6982115.i.i = phi i24 [ %p_5.sroa.1.sroa.0.0.load6978.i.i, %189 ], [ -1, %.preheader..preheader.split_crit_edge.i.i ]
   store i16 0, i16* @g_84, align 2
-  %p_5.sroa.1.1.insert.ext36.i.i = trunc i24 %p_5.sroa.1.sroa.0.0.load6982115.i.i to i16
+  %adddd = add i24 %p_5.sroa.1.sroa.0.0.load6982115.i.i, 1 ; test i24 add
+  %p_5.sroa.1.1.insert.ext36.i.i = trunc i24 %adddd to i16
   %p_5.sroa.1.1.insert.shift37.i.i = shl i16 %p_5.sroa.1.1.insert.ext36.i.i, 8
   %p_5.sroa.0.0.insert.ext10.i.i = zext i8 %p_5.sroa.0.0.extract.trunc2674116.i.i to i16
   %p_5.sroa.0.0.insert.insert12.i.i = or i16 %p_5.sroa.1.1.insert.shift37.i.i, %p_5.sroa.0.0.insert.ext10.i.i

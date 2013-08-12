@@ -765,7 +765,15 @@ function analyzer(data, sidePass) {
                       }
                       break;
                     }
-                    case 'add': case 'sub': case 'sdiv': case 'udiv': case 'mul': case 'urem': case 'srem':
+                    case 'add': case 'sub': case 'sdiv': case 'udiv': case 'mul': case 'urem': case 'srem': {
+                      if (sourceBits < 32) {
+                        // when we add illegal types like i24, we must work on the singleton chunks
+                        item.assignTo += '$0';
+                        item.params[0].ident += '$0';
+                        item.params[1].ident += '$0';
+                      }
+                      // fall through
+                    }
                     case 'uitofp': case 'sitofp': case 'fptosi': case 'fptoui': {
                       // We cannot do these in parallel chunks of 32-bit operations. We will handle these in processMathop
                       i++;
