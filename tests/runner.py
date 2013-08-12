@@ -13471,6 +13471,19 @@ Press any key to continue.'''
       Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_mouse.c'), '-O2', '--minify', '0', '-o', 'sdl_mouse.js', '--pre-js', 'pre.js']).communicate()
       self.run_browser('page.html', '', '/report_result?600')
 
+    def test_sdl_pumpevents(self):
+      # key events should be detected using SDL_PumpEvents
+      open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+        function keydown(c) {
+          var event = document.createEvent("KeyboardEvent");
+          event.initKeyEvent("keydown", true, true, window,
+                             0, 0, 0, 0,
+                             c, c);
+          document.dispatchEvent(event);
+        }
+      ''')
+      self.btest('sdl_pumpevents.c', expected='3', args=['--pre-js', 'pre.js'])
+
     def test_sdl_audio(self):
       shutil.copyfile(path_from_root('tests', 'sounds', 'alarmvictory_1.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
       shutil.copyfile(path_from_root('tests', 'sounds', 'alarmcreatemiltaryfoot_1.wav'), os.path.join(self.get_dir(), 'sound2.wav'))
