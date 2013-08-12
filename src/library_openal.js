@@ -41,7 +41,7 @@ var LibraryOpenAL = {
 
   alcDestroyContext: function(context) {
     // Stop playback, etc
-    clearInterval(context.interval);
+    clearInterval(AL.contexts[context - 1].interval);
   },
 
   alcCloseDevice: function(device) {
