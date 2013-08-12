@@ -1413,9 +1413,16 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/usleep.html
     // We're single-threaded, so use a busy loop. Super-ugly.
     var msec = useconds / 1000;
-    var start = Date.now();
-    while (Date.now() - start < msec) {
-      // Do nothing.
+    if (ENVIRONMENT_IS_WEB && window['performance'] && window['performance']['now']) {
+      var start = window['performance']['now']();
+      while (window['performance']['now']() - start < msec) {
+        // Do nothing.
+      }
+    } else {
+      var start = Date.now();
+      while (Date.now() - start < msec) {
+        // Do nothing.
+      }
     }
     return 0;
   },
