@@ -56,7 +56,7 @@ class benchmark(RunnerCore):
 
     # Pick the JS engine to benchmark. If you specify one, it will be picked. For example, python tests/runner.py benchmark SPIDERMONKEY_ENGINE
     global JS_ENGINE
-    JS_ENGINE = runner.js_engine_override if runner.js_engine_override is not None else JS_ENGINES[0]
+    JS_ENGINE = Building.JS_ENGINE_OVERRIDE if Building.JS_ENGINE_OVERRIDE is not None else JS_ENGINES[0]
     print 'Benchmarking JS engine: %s' % JS_ENGINE
 
   def print_stats(self, times, native_times, last=False, reps=TEST_REPS):

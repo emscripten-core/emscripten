@@ -38,7 +38,6 @@ except:
 checked_sanity = False
 test_modes = ['default', 'o1', 'o2', 'asm1', 'asm2', 'asm2g', 'asm2x86', 's_0_0', 's_0_1']
 test_index = 0
-js_engine_override = None
 
 class RunnerCore(unittest.TestCase):
   emcc_args = None
@@ -656,11 +655,6 @@ class BrowserCore(RunnerCore):
 ###################################################################################################
 
 if __name__ == '__main__':
-  # The runner module is imported by the tests, add the current module
-  # instance into the cache so global variables such as js_engine_override
-  # are shared correctly with the test suite modules.
-  sys.modules['runner'] = sys.modules[__name__]
-
   # Sanity checks
   total_engines = len(JS_ENGINES)
   JS_ENGINES = filter(check_engine, JS_ENGINES)
@@ -745,7 +739,7 @@ an individual test with
     arg = sys.argv[i]
     if arg.isupper():
       print 'Interpreting all capital argument "%s" as JS_ENGINE override' % arg
-      js_engine_override = eval(arg)
+      Building.JS_ENGINE_OVERRIDE = eval(arg)
       sys.argv[i] = None
   sys.argv = filter(lambda arg: arg is not None, sys.argv)
 
