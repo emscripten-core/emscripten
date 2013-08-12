@@ -108,6 +108,7 @@ var PRECISE_I64_MATH = 1; // If enabled, i64 addition etc. is emulated - which i
 var PRECISE_I32_MUL = 1; // If enabled, i32 multiplication is done with full precision, which means it is
                          // correct even if the value exceeds the JS double-integer limit of ~52 bits (otherwise,
                          // rounding will occur above that range).
+var TO_FLOAT32 = 0; // Use Math.toFloat32
 
 var CLOSURE_ANNOTATIONS = 0; // If set, the generated code will be annotated for the closure
                              // compiler. This potentially lets closure optimize the code better.
