@@ -365,8 +365,17 @@ function intertyper(data, sidePass, baseLineNums) {
         }
         if (tokensLength >= 3 && (token0Text == 'call' || token1Text == 'call'))
           return 'Call';
-        if (token0Text == 'target')
+        if (token0Text == 'target') {
+          if (token1Text == 'triple') {
+            var triple = item.tokens[3].text;
+            triple = triple.substr(1, triple.length-2);
+            var expected = TARGET_LE32 ? 'le32-unknown-nacl' : 'i386-pc-linux-gnu';
+            if (triple !== expected) {
+              warn('using an unexpected LLVM triple: ' + [triple, ' !== ', expected] + ' (are you using emcc for everything and not clang?)');
+            }
+          }
           return '/dev/null';
+        }
         if (token0Text == ';')
           return '/dev/null';
         if (tokensLength >= 3 && token0Text == 'invoke')
