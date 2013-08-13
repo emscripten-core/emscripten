@@ -108,6 +108,7 @@ var PRECISE_I64_MATH = 1; // If enabled, i64 addition etc. is emulated - which i
 var PRECISE_I32_MUL = 1; // If enabled, i32 multiplication is done with full precision, which means it is
                          // correct even if the value exceeds the JS double-integer limit of ~52 bits (otherwise,
                          // rounding will occur above that range).
+var TO_FLOAT32 = 0; // Use Math.toFloat32
 
 var CLOSURE_ANNOTATIONS = 0; // If set, the generated code will be annotated for the closure
                              // compiler. This potentially lets closure optimize the code better.
@@ -1391,10 +1392,8 @@ var C_DEFINES = {
    'ECOMM': '70',
    'EPROTO': '71',
    'EMULTIHOP': '74',
-   'ELBIN': '75',
    'EDOTDOT': '76',
    'EBADMSG': '77',
-   'EFTYPE': '79',
    'ENOTUNIQ': '80',
    'EBADFD': '81',
    'EREMCHG': '82',
@@ -1404,7 +1403,6 @@ var C_DEFINES = {
    'ELIBMAX': '86',
    'ELIBEXEC': '87',
    'ENOSYS': '88',
-   'ENMFILE': '89',
    'ENOTEMPTY': '90',
    'ENAMETOOLONG': '91',
    'ELOOP': '92',
@@ -1436,14 +1434,11 @@ var C_DEFINES = {
    'EISCONN': '127',
    'ENOTCONN': '128',
    'ETOOMANYREFS': '129',
-   'EPROCLIM': '130',
    'EUSERS': '131',
    'EDQUOT': '132',
    'ESTALE': '133',
    'ENOTSUP': '134',
    'ENOMEDIUM': '135',
-   'ENOSHARE': '136',
-   'ECASECLASH': '137',
    'EILSEQ': '138',
    'EOVERFLOW': '139',
    'ECANCELED': '140',

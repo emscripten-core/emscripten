@@ -14,9 +14,13 @@
 #include <emscripten.h>
 #endif
 
-#define EXPECTED_BYTES 5
+#include "test_sockets_msg.h"
 
-int sockfd = -1;
+#define MESSAGE "0123456789"
+
+int sockfd;
+msg_t readmsg;
+msg_t writemsg;
 
 void finish(int result) {
   close(sockfd);
@@ -26,12 +30,10 @@ void finish(int result) {
   exit(result);
 }
 
-void iter(void *arg) {
+void main_loop(void *arg) {
   static int state = 0;
-  static char writebuf[] = "01234567890123456789";
-  static int writePos = 0;
-  static char readbuf[1024];
   static int readPos = 0;
+  static int writePos = 0;
   int selectRes;
   ssize_t transferAmount;
   fd_set sett;  
@@ -63,11 +65,11 @@ void iter(void *arg) {
       }
       
       // send a single byte
-      transferAmount = send(sockfd, writebuf+writePos, 1, 0);
-      writePos += transferAmount;
+      transferAmount = do_msg_write(sockfd, &writemsg, writePos, 1, NULL, 0);
+      if (transferAmount != -1) writePos += transferAmount;
    
       // after 10 bytes switch to next state
-      if (writePos >= 10) {
+      if (writePos >= writemsg.length) {
         state = 1;
       }
       break;
@@ -86,8 +88,8 @@ void iter(void *arg) {
       }
 
       // read a single byte
-      transferAmount = recv(sockfd, readbuf+readPos, 1, 0);
-      readPos += transferAmount;
+      transferAmount = do_msg_read(sockfd, &readmsg, readPos, 1, NULL, NULL);
+      if (transferAmount != -1) readPos += transferAmount;
    
       // if successfully reading 1 byte, switch to next state
       if (readPos >= 1) {
@@ -119,11 +121,11 @@ void iter(void *arg) {
       }
       
       // read a single byte
-      transferAmount = recv(sockfd, readbuf+readPos, 1, 0);
-      readPos += transferAmount;
+      transferAmount = do_msg_read(sockfd, &readmsg, readPos, 1, NULL, NULL);
+      if (transferAmount != -1) readPos += transferAmount;
       
       // with 10 bytes read the inQueue is empty => switch state
-      if (readPos >= 10) {
+      if (readPos >= readmsg.length) {
         state = 3;
       }
       break;
@@ -141,7 +143,7 @@ void iter(void *arg) {
 
       // but recv should return 0 signaling the remote
       // end has closed the connection.
-      transferAmount = recv(sockfd, readbuf, 1, 0);
+      transferAmount = do_msg_read(sockfd, &readmsg, readPos, 0, NULL, NULL);
       if (transferAmount) {
         printf("case 3: read != 0\n");
         finish(EXIT_FAILURE);
@@ -176,6 +178,12 @@ int main() {
   struct sockaddr_in addr;
   int res;
 
+  memset(&readmsg, 0, sizeof(msg_t));
+  memset(&writemsg, 0, sizeof(msg_t));
+  writemsg.length = strlen(MESSAGE) + 1;
+  writemsg.buffer = malloc(writemsg.length);
+  strncpy(writemsg.buffer, MESSAGE, writemsg.length);
+
   sockfd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (sockfd == -1) {
     perror("cannot create socket");
@@ -199,9 +207,9 @@ int main() {
   }
 
 #if EMSCRIPTEN
-  emscripten_set_main_loop(iter, 0, 0);
+  emscripten_set_main_loop(main_loop, 0, 0);
 #else
-  while (1) iter(NULL);
+  while (1) main_loop(NULL);
 #endif
 
   return EXIT_SUCCESS;

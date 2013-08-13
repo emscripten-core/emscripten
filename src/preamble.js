@@ -853,6 +853,13 @@ Math['imul'] = function(a, b) {
 #endif
 Math.imul = Math['imul'];
 
+#if TO_FLOAT32
+if (!Math['toFloat32']) Math['toFloat32'] = function(x) {
+  return x;
+};
+Math.toFloat32 = Math['toFloat32'];
+#endif
+
 // A counter of dependencies for calling run(). If we need to
 // do asynchronous work before running, increment this and
 // decrement it. Incrementing must happen in a place like

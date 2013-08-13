@@ -519,6 +519,46 @@ var LibrarySDL = {
       return;
     },
 
+    handleEvent: function(event) {
+      if (event.handled) return;
+      event.handled = true;
+
+      switch (event.type) {
+        case 'keydown': case 'keyup': {
+          var down = event.type === 'keydown';
+          var code = SDL.keyCodes[event.keyCode] || event.keyCode;
+
+          {{{ makeSetValue('SDL.keyboardState', 'code', 'down', 'i8') }}};
+          // TODO: lmeta, rmeta, numlock, capslock, KMOD_MODE, KMOD_RESERVED
+          SDL.modState = ({{{ makeGetValue('SDL.keyboardState', '1248', 'i8') }}} ? 0x0040 | 0x0080 : 0) | // KMOD_LCTRL & KMOD_RCTRL
+            ({{{ makeGetValue('SDL.keyboardState', '1249', 'i8') }}} ? 0x0001 | 0x0002 : 0) | // KMOD_LSHIFT & KMOD_RSHIFT
+            ({{{ makeGetValue('SDL.keyboardState', '1250', 'i8') }}} ? 0x0100 | 0x0200 : 0); // KMOD_LALT & KMOD_RALT
+
+          if (down) {
+            SDL.keyboardMap[code] = event.keyCode; // save the DOM input, which we can use to unpress it during blur
+          } else {
+            delete SDL.keyboardMap[code];
+          }
+
+          break;
+        }
+        case 'mousedown': case 'mouseup':
+          if (event.type == 'mousedown') {
+            // SDL_BUTTON(x) is defined as (1 << ((x)-1)).  SDL buttons are 1-3,
+            // and DOM buttons are 0-2, so this means that the below formula is
+            // correct.
+            SDL.buttonState |= 1 << event.button;
+          } else if (event.type == 'mouseup') {
+            SDL.buttonState &= ~(1 << event.button);
+          }
+          // fall through
+        case 'mousemove': {
+          Browser.calculateMouseEvent(event);
+          break;
+        }
+      }
+    },
+
     makeCEvent: function(event, ptr) {
       if (typeof event === 'number') {
         // This is a pointer to a native C event that was SDL_PushEvent'ed
@@ -526,7 +566,9 @@ var LibrarySDL = {
         return;
       }
 
-      switch(event.type) {
+      SDL.handleEvent(event);
+
+      switch (event.type) {
         case 'keydown': case 'keyup': {
           var down = event.type === 'keydown';
           //Module.print('Received key event: ' + event.keyCode);
@@ -542,19 +584,6 @@ var LibrarySDL = {
           } else {
             scan = SDL.scanCodes[key] || key;
           }
-
-          var code = SDL.keyCodes[event.keyCode] || event.keyCode;
-          {{{ makeSetValue('SDL.keyboardState', 'code', 'down', 'i8') }}};
-          if (down) {
-            SDL.keyboardMap[code] = event.keyCode; // save the DOM input, which we can use to unpress it during blur
-          } else {
-            delete SDL.keyboardMap[code];
-          }
-
-          // TODO: lmeta, rmeta, numlock, capslock, KMOD_MODE, KMOD_RESERVED
-          SDL.modState = ({{{ makeGetValue('SDL.keyboardState', '1248', 'i8') }}} ? 0x0040 | 0x0080 : 0) | // KMOD_LCTRL & KMOD_RCTRL
-            ({{{ makeGetValue('SDL.keyboardState', '1249', 'i8') }}} ? 0x0001 | 0x0002 : 0) | // KMOD_LSHIFT & KMOD_RSHIFT
-            ({{{ makeGetValue('SDL.keyboardState', '1250', 'i8') }}} ? 0x0100 | 0x0200 : 0); // KMOD_LALT & KMOD_RALT
 
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.state', 'down ? 1 : 0', 'i8') }}}
@@ -575,18 +604,7 @@ var LibrarySDL = {
           }
           break;
         }
-        case 'mousedown': case 'mouseup':
-          if (event.type == 'mousedown') {
-            // SDL_BUTTON(x) is defined as (1 << ((x)-1)).  SDL buttons are 1-3,
-            // and DOM buttons are 0-2, so this means that the below formula is
-            // correct.
-            SDL.buttonState |= 1 << event.button;
-          } else if (event.type == 'mouseup') {
-            SDL.buttonState &= ~(1 << event.button);
-          }
-          // fall through
-        case 'mousemove': {
-          Browser.calculateMouseEvent(event);
+        case 'mousedown': case 'mouseup': case 'mousemove': {
           if (event.type != 'mousemove') {
             var down = event.type === 'mousedown';
             {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
@@ -1174,7 +1192,11 @@ var LibrarySDL = {
     }
   },
 
-  SDL_PumpEvents: function(){},
+  SDL_PumpEvents: function(){
+    SDL.events.forEach(function(event) {
+      SDL.handleEvent(event);
+    });
+  },
 
   SDL_SetColors: function(surf, colors, firstColor, nColors) {
     var surfData = SDL.surfaces[surf];
