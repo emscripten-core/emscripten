@@ -3475,6 +3475,9 @@ function outline(ast) {
         }
       }
     }
+    function done() {
+      return asmData.splitCounter >= asmData.maxOutlinings || measureSize(func) <= extraInfo.sizeToOutline;
+    }
     while (1) {
       i--;
       calcMinIndex(); // TODO: optimize
@@ -3530,7 +3533,7 @@ function outline(ast) {
         if (ret.length > pre) {
           // we outlined recursively, reset our state here
           //printErr('successful outline in recursion ' + func[1] + ' due to recursive in level ' + level);
-          if (measureSize(func) <= extraInfo.sizeToOutline) break;
+          if (done()) break;
           end = i-1;
           sizeSeen = 0;
           canRestart = true;
@@ -3570,7 +3573,7 @@ function outline(ast) {
         if (newFuncs.length) {
           ret.push.apply(ret, newFuncs);
         }
-        if (measureSize(func) <= extraInfo.sizeToOutline) break;
+        if (done()) break;
         sizeSeen = 0;
         end = i-1;
         canRestart = true;
