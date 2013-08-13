@@ -35,7 +35,7 @@ mergeInto(LibraryManager.library, {
           break;
         }
       }
-      this.message = ERRNO_MESSAGES[errno];
+      this.message = ERRNO_MESSAGES[errno] + ' : ' + new Error().stack;
     },
 
     handleFSError: function(e) {
@@ -1365,3 +1365,4 @@ mergeInto(LibraryManager.library, {
     }
   }
 });
+
