@@ -1056,7 +1056,7 @@ Press any key to continue.'''
     server.terminate()
 
   def test_glgears(self):
-    self.btest('hello_world_gles.c', reference='gears.png',
+    self.btest('hello_world_gles.c', reference='gears.png', reference_slack=1,
         args=['-DHAVE_BUILTIN_SINCOS'], outfile='something.html',
         message='You should see animating gears.')
 
@@ -1079,7 +1079,7 @@ Press any key to continue.'''
     self.btest('full_es2_sdlproc.c', '1', args=['-s', 'GL_TESTING=1', '-DHAVE_BUILTIN_SINCOS', '-s', 'FULL_ES2=1'])
 
   def test_glgears_deriv(self):
-    self.btest('hello_world_gles_deriv.c', reference='gears.png',
+    self.btest('hello_world_gles_deriv.c', reference='gears.png', reference_slack=1,
         args=['-DHAVE_BUILTIN_SINCOS'], outfile='something.html',
         message='You should see animating gears.')
     with open('something.html') as f:
