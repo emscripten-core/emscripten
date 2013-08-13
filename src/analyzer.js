@@ -953,9 +953,23 @@ function analyzer(data, sidePass) {
     if (type[0] == '{' || type[0] == '<') {
       type = nonPointing;
       var packed = type[0] == '<';
+      var internal = type;
+      if (packed) {
+        if (internal[internal.length-1] != '>') {
+          warnOnce('ignoring type ' + internal);
+          return; // function pointer or such
+        }
+        internal = internal.substr(1, internal.length-2);
+      }
+      assert(internal[0] == '{', internal);
+      if (internal[internal.length-1] != '}') {
+        warnOnce('ignoring type ' + internal);
+        return; // function pointer or such
+      }
+      internal = internal.substr(2, internal.length-4);
       Types.types[type] = {
         name_: type,
-        fields: splitTokenList(tokenize(type.substr(2 + packed, type.length - 4 - 2*packed)).tokens).map(function(segment) {
+        fields: splitTokenList(tokenize(internal).tokens).map(function(segment) {
           return segment[0].text;
         }),
         packed: packed,

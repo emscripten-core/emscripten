@@ -252,6 +252,7 @@ target triple = "i386-pc-linux-gnu"
 @g_287 = internal constant i32 -1, align 4
 
 define i32 @main(i32 %argc, i8** nocapture %argv) nounwind {
+  %msgdummy = alloca { i8*, { i64, i8* } (i8*)* } ; test for parsing of this kind of stuff, compilation-only test
   %p_6.i.i = alloca %union.U3, align 8
   %1 = icmp eq i32 %argc, 2
   br i1 %1, label %2, label %7
