@@ -48,6 +48,9 @@ class RunnerCore(unittest.TestCase):
 
   env = {}
 
+  def skipme(self): # used by tests we ask on the commandline to be skipped, see right before call to unittest.main
+    return self.skip('requested to be skipped')
+
   def setUp(self):
     Settings.reset()
     self.banned_js_engines = []
@@ -660,8 +663,54 @@ if __name__ == '__main__':
   elif len(JS_ENGINES) < total_engines:
     print 'WARNING: Not all the JS engines in JS_ENGINES appears to work, ignoring those.'
 
+  # Create a list of modules to load tests from
+  modules = []
+  for filename in glob.glob(os.path.join(os.path.dirname(__file__), 'test*.py')):
+    module_dir, module_file = os.path.split(filename)
+    module_name, module_ext = os.path.splitext(module_file)
+    __import__(module_name)
+    modules.append(sys.modules[module_name])
+
+  # Extract the JS engine override from the arguments (used by benchmarks)
+  for i in range(1, len(sys.argv)):
+    arg = sys.argv[i]
+    if arg.isupper():
+      print 'Interpreting all capital argument "%s" as JS_ENGINE override' % arg
+      Building.JS_ENGINE_OVERRIDE = eval(arg)
+      sys.argv[i] = None
+  sys.argv = filter(lambda arg: arg is not None, sys.argv)
+
   # If an argument comes in as test_*, treat it as a test of the default suite
   sys.argv = map(lambda arg: arg if not arg.startswith('test_') else 'default.' + arg, sys.argv)
+
+  # If a test (e.g. test_html) is specified as ALL.test_html, add an entry for each test_mode
+  if len(sys.argv) == 2 and sys.argv[1].startswith('ALL.'):
+    ignore, test = sys.argv[1].split('.')
+    print 'Running all test modes on test "%s"' % test
+    sys.argv = [sys.argv[0]] + map(lambda mode: mode+'.'+test, test_modes)
+
+  # Skip requested tests
+  for i in range(len(sys.argv)):
+    arg = sys.argv[i]
+    if arg.startswith('skip:'):
+      which = arg.split('skip:')[1]
+      if which.startswith('ALL.'):
+        ignore, test = which.split('.')
+        which = map(lambda mode: mode+'.'+test, test_modes)
+      else:
+        which = [which]
+
+      print >> sys.stderr, ','.join(which)
+      for test in which:
+        print >> sys.stderr, 'will skip "%s"' % test
+        for m in modules:
+          try:
+            exec('m.' + test + ' = RunnerCore("skipme")')
+            break
+          except:
+            pass
+      sys.argv[i] = None
+  sys.argv = filter(lambda arg: arg is not None, sys.argv)
 
   # If no tests were specified, run the core suite
   if len(sys.argv) == 1:
@@ -705,55 +754,6 @@ an individual test with
 
 '''
     time.sleep(2)
-
-  # If a test (e.g. test_html) is specified as ALL.test_html, add an entry for each test_mode
-  if len(sys.argv) == 2 and sys.argv[1].startswith('ALL.'):
-    ignore, test = sys.argv[1].split('.')
-    print 'Running all test modes on test "%s"' % test
-    sys.argv = [sys.argv[0]] + map(lambda mode: mode+'.'+test, test_modes)
-
-  # Extract the JS engine override from the arguments (used by benchmarks)
-  for i in range(1, len(sys.argv)):
-    arg = sys.argv[i]
-    if arg.isupper():
-      print 'Interpreting all capital argument "%s" as JS_ENGINE override' % arg
-      Building.JS_ENGINE_OVERRIDE = eval(arg)
-      sys.argv[i] = None
-  sys.argv = filter(lambda arg: arg is not None, sys.argv)
-
-  # Create a list of modules to load tests from
-  modules = []
-  for filename in glob.glob(os.path.join(os.path.dirname(__file__), 'test*.py')):
-    module_dir, module_file = os.path.split(filename)
-    module_name, module_ext = os.path.splitext(module_file)
-    __import__(module_name)
-    modules.append(sys.modules[module_name])
-
-  # Skip requested tests
-  def skipme(self):
-    return self.skip('requested to be skipped')
-
-  for i in range(len(sys.argv)):
-    arg = sys.argv[i]
-    if arg.startswith('skip:'):
-      which = arg.split('skip:')[1]
-      if which.startswith('ALL.'):
-        ignore, test = which.split('.')
-        which = map(lambda mode: mode+'.'+test, test_modes)
-      else:
-        which = [which]
-
-      print >> sys.stderr, ','.join(which)
-      for test in which:
-        print >> sys.stderr, 'will skip "%s"' % test
-        for m in modules:
-          try:
-            exec('m.' + test + ' = skipme')
-            break
-          except:
-            pass
-      sys.argv[i] = None
-  sys.argv = filter(lambda arg: arg is not None, sys.argv)
 
   # Filter and load tests from the discovered modules
   loader = unittest.TestLoader()
