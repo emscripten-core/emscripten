@@ -478,8 +478,6 @@ LibraryManager.library = {
   open: function(path, oflag, varargs) {
     // int open(const char *path, int oflag, ...);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/open.html
-    // NOTE: This implementation tries to mimic glibc rather than strictly
-    // following the POSIX standard.
     var mode = {{{ makeGetValue('varargs', 0, 'i32') }}};
     path = Pointer_stringify(path);
     try {

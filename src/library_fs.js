@@ -1202,6 +1202,7 @@ mergeInto(LibraryManager.library, {
     open: function(path, flags, mode, fd_start, fd_end) {
       path = PATH.normalize(path);
       flags = typeof flags === 'string' ? FS.modeStringToFlags(flags) : flags;
+      mode = typeof mode === 'undefined' ? 0666 : mode;
       if ((flags & {{{ cDefine('O_CREAT') }}})) {
         mode = (mode & {{{ cDefine('S_IALLUGO') }}}) | {{{ cDefine('S_IFREG') }}};
       } else {
