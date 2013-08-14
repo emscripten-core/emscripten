@@ -27,16 +27,21 @@ mergeInto(LibraryManager.library, {
     // to modify the filesystem freely before run() is called.
     ignorePermissions: true,
     
-    ErrnoError: function(errno) {
-      this.errno = errno;
-      for (var key in ERRNO_CODES) {
-        if (ERRNO_CODES[key] === errno) {
-          this.code = key;
-          break;
+    ErrnoError: (function() {
+      function ErrnoError(errno) {
+        this.errno = errno;
+        for (var key in ERRNO_CODES) {
+          if (ERRNO_CODES[key] === errno) {
+            this.code = key;
+            break;
+          }
         }
-      }
-      this.message = ERRNO_MESSAGES[errno] + ' : ' + new Error().stack;
-    },
+        this.message = ERRNO_MESSAGES[errno];
+      };
+      ErrnoError.prototype = new Error();
+      ErrnoError.prototype.constructor = ErrnoError;
+      return ErrnoError;
+    }()),
 
     handleFSError: function(e) {
       if (!(e instanceof FS.ErrnoError)) throw e + ' : ' + new Error().stack;
