@@ -3001,7 +3001,7 @@ function outline(ast) {
 
   // Try to flatten out code as much as possible, to make outlining more feasible.
   function flatten(func, asmData) {
-    var minSize = sizeToOutline;
+    var minSize = extraInfo.sizeToOutline/4;
     var helperId = 0;
     function getHelper() {
       while (1) {
