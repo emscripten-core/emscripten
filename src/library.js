@@ -100,7 +100,7 @@ LibraryManager.library = {
     }
     var entries;
     try {
-      entries = FS.readdir(stream);
+      entries = FS.readdir(stream.path);
     } catch (e) {
       return FS.handleFSError(e);
     }
