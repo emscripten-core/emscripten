@@ -125,6 +125,7 @@ var path = require('path');
 // Load some modules
 
 load('utility.js');
+load('settings.js');
 
 // Utilities
 

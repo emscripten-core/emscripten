@@ -6,64 +6,54 @@ function asmModule(stdlib) {
   if ((a | 0) == 1) {
    return 1;
   }
-  switch (a | 0) {
-  case 1:
+  if ((a | 0) == 1) {
    return 1;
-  case 3:
+  } else if ((a | 0) != 2) {
+   return 2;
+  } else if ((a | 0) == 3) {
    return 3;
-  case 4:
+  } else if ((a | 0) == 4) {
    return 4;
-  default:
-   if ((a | 0) != 2) {
-    return 2;
-   }
   }
   L0 : for (;;) {
-   switch (a | 0) {
-   case 1:
+   if ((a | 0) == 1) {
     return 1;
-   case 2:
+   } else if ((a | 0) == 2) {
     return 2;
-   case 3:
-    break L0;
-   case 4:
-    S0 : while (1) {
-     switch (b | 0) {
-     case 1:
+   } else if ((a | 0) == 3) {
+    break;
+   } else if ((a | 0) == 4) {
+    while (1) {
+     if ((b | 0) == 1) {
       return 1;
-     case 2:
+     } else if ((b | 0) == 2) {
       return 2;
-     case 3:
+     } else if ((b | 0) == 3) {
       return 3;
-     case 4:
+     } else if ((b | 0) == 4) {
       _g();
-      break;
-     case 5:
+     } else if ((b | 0) == 5) {
       break L0;
-     default:
-      break S0;
+     } else {
+      break;
      }
     }
-    break;
-   case 5:
-    switch (b | 0) {
-    case 1:
+   } else if ((a | 0) == 5) {
+    if ((b | 0) == 1) {
      return 1;
-    case 2:
+    } else if ((b | 0) == 2) {
      return 2;
-    case 3:
+    } else if ((b | 0) == 3) {
      return 3;
-    case 4:
+    } else if ((b | 0) == 4) {
      _g();
+    } else if ((b | 0) == 5) {
+     break L0;
+    } else {
      break;
-    case 5:
-     break L0;
-    default:
-     break L0;
     }
+   } else {
     break;
-   default:
-    break L0;
    }
    _g();
   }
@@ -77,6 +67,15 @@ function asmModule(stdlib) {
    return 4;
   } else if ((a | 0) == 5) {
    return 5;
+  }
+  if ((a | 0) == 10) {
+   return 1;
+  } else if ((b | 0) == 20) {
+   return 2;
+  } else if ((a | 0) == 30) {
+   return 3;
+  } else if ((b | 0) == 40) {
+   return 4;
   }
   return 0;
  }

@@ -106,6 +106,21 @@ function asmModule(stdlib) {
       return 5;
     }
 
+    // should not get switchified, because the resulting jump table would be
+    // rather sparse.
+    if ((a | 0) == 10) {
+      return 1;
+    }
+    else if ((b | 0) == 20) {
+      return 2;
+    }
+    else if ((a | 0) == 30) {
+      return 3;
+    }
+    else if ((b | 0) == 40) {
+      return 4;
+    }
+
     return 0;
   }
 
