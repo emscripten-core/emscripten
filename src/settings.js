@@ -412,6 +412,12 @@ var DEBUG_TAGS_SHOWING = [];
   //    metadata
   //    legalizer
 
+var SWITCH_MIN_DENSITY = 0.4; // Should range from 0-1. This is a heuristic for determining when we convert
+                              // a chain of if-else statements into a switch-case statement. In particular,
+                              // this measures how 'dense' the switch must be. That is, if there are N cases
+                              // and the largest case value is M, the density is given by N/M.
+var SWITCH_MIN_CASES = 2; // The number of cases that should exist before we convert an if-else statement
+                          // to a switch-case statement.
 
 // A cached set of defines, generated from the header files. This
 // lets the emscripten libc (library.js) see the right values.

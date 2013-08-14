@@ -268,10 +268,13 @@ EMSCRIPTEN_FUNCS();
   else:
     filenames = []
 
+  settings_file = temp_files.get('.json').name
+  with open(settings_file, 'w') as f: json.dump(shared.Settings.get_as_dict(), f)
+
   if len(filenames) > 0:
     # XXX Use '--nocrankshaft' to disable crankshaft to work around v8 bug 1895, needed for older v8/node (node 0.6.8+ should be ok)
     commands = map(lambda filename: js_engine +
-        [JS_OPTIMIZER, filename, 'noPrintMetadata'] +
+        [JS_OPTIMIZER, filename, 'noPrintMetadata', '--settings', settings_file] +
         (['--debug'] if source_map else []) + passes, filenames)
     #print [' '.join(command) for command in commands]
 

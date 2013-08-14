@@ -672,6 +672,14 @@ class Settings:
         return ret
 
       @classmethod
+      def get_as_dict(self):
+        d = {}
+        for key, value in Settings.__dict__.iteritems():
+          if key == key.upper():
+            d[key] = value
+        return d
+
+      @classmethod
       def apply_opt_level(self, opt_level, noisy=False):
         if opt_level >= 1:
           Settings.ASM_JS = 1

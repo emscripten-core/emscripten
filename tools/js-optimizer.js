@@ -1563,10 +1563,11 @@ function switchify(ast) {
       var cases = [];
       var clauseCount = 0;
       var negatedCase = null;
+      var maxValue = 0;
       do {
         var clauses = getSwitchableClauses(nextBlock[1], '==');
         if (clauses) {
-          cases.push([clauses.map(function(c) { return c[3]; }),
+          cases.push([clauses.map(function(c) { maxValue = Math.max(maxValue, c[3]); return c[3]; }),
                       ensureStatementList(nextBlock[2])]);
           clauseCount += clauses.length;
         } else if (!negatedCase) {
@@ -1597,7 +1598,8 @@ function switchify(ast) {
       }
 
       // XXX how many clauses before the transformation is worth it?
-      if (clauseCount < 2) return;
+      if (clauseCount < SWITCH_MIN_CASES) return;
+      if (clauseCount / maxValue < SWITCH_MIN_DENSITY) return;
 
       // at this point, we know that the if statement can be replaced,
       // so we can feel free to modify objects in the original ast.
@@ -3767,12 +3769,24 @@ var passes = {
 
 var suffix = '';
 
-arguments_ = arguments_.filter(function (arg) {
-  if (!/^--/.test(arg)) return true;
+var new_args = [];
+for (var i = 0; i < arguments_.length; ++i) {
+  var arg = arguments_[i];
+  if (!/^--/.test(arg)) {
+    new_args.push(arg);
+    continue;
+  }
 
   if (arg === '--debug') debug = true;
+  else if (arg === '--settings') {
+    var settings = JSON.parse(read(arguments_[++i]));
+    for (var k in settings) {
+      globalEval('var ' + k + '=' + JSON.stringify(settings[k]) + ';');
+    }
+  }
   else throw new Error('Unrecognized flag: ' + arg);
-});
+}
+arguments_ = new_args;
 
 
 var src = read(arguments_[0]);
