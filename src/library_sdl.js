@@ -258,7 +258,7 @@ var LibrarySDL = {
 
     makeSurface: function(width, height, flags, usePageCanvas, source, rmask, gmask, bmask, amask) {
       flags = flags || 0;
-      var surf = _malloc(14*Runtime.QUANTUM_SIZE);  // SDL_Surface has 14 fields of quantum size
+      var surf = _malloc(15*Runtime.QUANTUM_SIZE);  // SDL_Surface has 15 fields of quantum size
       var buffer = _malloc(width*height*4); // TODO: only allocate when locked the first time
       var pixelFormat = _malloc(18*Runtime.QUANTUM_SIZE);
       flags |= 1; // SDL_HWSURFACE - this tells SDL_MUSTLOCK that this needs to be locked
