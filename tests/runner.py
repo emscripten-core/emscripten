@@ -13687,7 +13687,7 @@ elif 'benchmark' in str(sys.argv):
   JS_ENGINE = JS_ENGINES[0]
   for i in range(1, len(sys.argv)):
     arg = sys.argv[i]
-    if arg is None or arg.startswith('benchmark.test_'):
+    if arg is None or arg.startswith('benchmark.test_') or arg.startswith('skip:'):
       continue
     if arg == '--spec':
       sys.argv[i] = None
