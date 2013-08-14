@@ -223,10 +223,10 @@ class sockets(BrowserCore):
           session: undefined,
           onpeer: function(peer, route) {
             window.open('http://localhost:8888/peer.html?' + route);
-            //iframe = document.createElement("IFRAME");
-            //iframe.setAttribute("src", "http://localhost:8888/peer.html?" + route);
-            //iframe.style.display = "none";
-            //document.body.appendChild(iframe);
+            // iframe = document.createElement("IFRAME");
+            // iframe.setAttribute("src", "http://localhost:8888/peer.html?" + route);
+            // iframe.style.display = "none";
+            // document.body.appendChild(iframe);
             peer.listen();
           },
           onconnect: function(peer) {
@@ -236,7 +236,7 @@ class sockets(BrowserCore):
           onerror: function(error) {
             console.error(error);
           }
-        }
+        },
       };
     ''')
 
@@ -251,6 +251,8 @@ class sockets(BrowserCore):
           onconnect: function(peer) {
           },
           ondisconnect: function(peer) {
+            // Calling window.close() from this handler hangs my browser, so run it in the next turn
+            setTimeout(window.close, 0);
           },
           onerror: function(error) {
             console.error(error);

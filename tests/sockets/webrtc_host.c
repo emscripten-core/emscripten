@@ -39,7 +39,7 @@ void iter(void* arg) {
 
 #if EMSCRIPTEN
     int result = 1;
-    // REPORT_RESULT();
+    REPORT_RESULT();
     exit(EXIT_SUCCESS);
     emscripten_cancel_main_loop();
 #endif

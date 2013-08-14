@@ -7237,7 +7237,7 @@ LibraryManager.library = {
   socket__deps: ['$FS', '$Sockets'],
   socket: function(family, type, protocol) {
     var INCOMING_QUEUE_LENGTH = 64;
-    var stream = FS.createStream({
+    var info = FS.createStream({
       addr: null,
       port: null,
       inQueue: new CircularBuffer(INCOMING_QUEUE_LENGTH),
@@ -7246,7 +7246,7 @@ LibraryManager.library = {
       socket: true,
       stream_ops: {}
     });
-    assert(stream.fd < 64); // select() assumes socket fd values are in 0..63
+    assert(info.fd < 64); // select() assumes socket fd values are in 0..63
     var stream = type == {{{ cDefine('SOCK_STREAM') }}};
     if (protocol) {
       assert(stream == (protocol == {{{ cDefine('IPPROTO_TCP') }}})); // if stream, must be tcp
@@ -7359,8 +7359,7 @@ LibraryManager.library = {
         }
       };
     };
-
-    return stream.fd;
+    return info.fd;
   },
 
   mkport__deps: ['$Sockets'],
