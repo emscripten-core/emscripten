@@ -7454,6 +7454,7 @@ LibraryManager.library = {
     buffer.set(data, info.header.byteLength);
 
     connection.send('unreliable', buffer.buffer);
+    return ret;
   },
 
   recvmsg__deps: ['$FS', '$Sockets', 'bind', '__setErrNo', '$ERRNO_CODES', 'htons'],
