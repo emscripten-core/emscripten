@@ -13700,40 +13700,42 @@ elif 'benchmark' in str(sys.argv):
   total_native_times = map(lambda x: 0., range(TOTAL_TESTS))
 
   class benchmark(RunnerCore):
-    def print_stats(self, times, native_times, last=False, reps=TEST_REPS):
+    def print_stats(self, a_times, b_times, a_name='JavaScript', b_name='Native', last=False, reps=TEST_REPS):
       if reps == 0:
         print '(no reps)'
         return
-      mean = sum(times)/len(times)
-      squared_times = map(lambda x: x*x, times)
-      mean_of_squared = sum(squared_times)/len(times)
-      std = math.sqrt(mean_of_squared - mean*mean)
-      sorted_times = times[:]
-      sorted_times.sort()
-      median = sum(sorted_times[len(sorted_times)/2 - 1:len(sorted_times)/2 + 1])/2
 
-      mean_native = sum(native_times)/len(native_times)
-      squared_native_times = map(lambda x: x*x, native_times)
-      mean_of_squared_native = sum(squared_native_times)/len(native_times)
-      std_native = math.sqrt(mean_of_squared_native - mean_native*mean_native)
-      sorted_native_times = native_times[:]
-      sorted_native_times.sort()
-      median_native = sum(sorted_native_times[len(sorted_native_times)/2 - 1:len(sorted_native_times)/2 + 1])/2
-
-      final = mean / mean_native
+      def calculate_stats(times):
+        s = {}
+        s['times'] = times
+        s['mean'] = sum(times)/len(times)
+        s['squared_times'] = map(lambda x: x*x, times)
+        s['mean_of_squared'] = sum(s['squared_times'])/len(times)
+        s['std'] = math.sqrt(s['mean_of_squared'] - s['mean']*s['mean'])
+        s['sorted_times'] = list(sorted(s['times']))
+        s['median'] = sum(s['sorted_times'][len(s['sorted_times'])/2 - 1:len(s['sorted_times'])/2 + 1])/2
+        return s
+      a_stats = calculate_stats(a_times)
+      b_stats = calculate_stats(b_times)
+      final = a_stats['mean'] / b_stats['mean']
 
       if last:
-        norm = 0
-        for i in range(len(times)):
-          norm += times[i]/native_times[i]
-        norm /= len(times)
+        import operator, itertools
+        norm = sum(itertools.starmap(operator.div, zip(a_times, b_times)))/len(a_times)
         print
-        print '  JavaScript: %.3f    Native: %.3f   Ratio:  %.3f  Normalized ratio: %.3f' % (mean, mean_native, final, norm)
+        print '  %12s: %.3f    %12s: %.3f   Ratio:  %.3f  Normalized ratio: %.3f' % (a_name, b_name, a_stats['mean'], b_stats['mean'], final, norm)
         return
 
+      def print_run(name, s):
+        sys.stdout.write('%12s: ' % name)
+        sys.stdout.write('mean: %(mean).3f (+-%(std).3f) secs  median: %(median).3f ' % s)
+        sys.stdout.write('range: %.3f-%.3f  (noise: %3.3f%%) ' % (min(s['times']), max(s['times']), 100*s['std']/s['mean']))
+
       print
-      print '   JavaScript: mean: %.3f (+-%.3f) secs  median: %.3f  range: %.3f-%.3f  (noise: %3.3f%%)  (%d runs)' % (mean, std, median, min(times), max(times), 100*std/mean, reps)
-      print '   Native    : mean: %.3f (+-%.3f) secs  median: %.3f  range: %.3f-%.3f  (noise: %3.3f%%)  JS is %.2f X slower' % (mean_native, std_native, median_native, min(native_times), max(native_times), 100*std_native/mean_native, final)
+      print_run(a_name, a_stats)
+      print '(%d runs)' % reps
+      print_run(b_name, b_stats)
+      print '%s is %.2f X slower' % (a_name, final)
 
     def do_benchmark(self, name, src, expected_output='FAIL', args=[], emcc_args=[], native_args=[], shared_args=[], force_c=False, reps=TEST_REPS, native_exec=None, output_parser=None, args_processor=None):
       args = args or [DEFAULT_ARG]
