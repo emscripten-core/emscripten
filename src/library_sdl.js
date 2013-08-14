@@ -755,6 +755,11 @@ var LibrarySDL = {
     return depth; // all modes are ok.
   },
 
+  SDL_AudioDriverName__deps: ['SDL_VideoDriverName'],
+  SDL_AudioDriverName: function(buf, max_size) {
+    return _SDL_VideoDriverName(buf, max_size);
+  },
+
   SDL_VideoDriverName: function(buf, max_size) {
     if (SDL.startTime === null) {
       return 0; //return NULL
