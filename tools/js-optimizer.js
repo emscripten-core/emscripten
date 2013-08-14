@@ -1567,7 +1567,12 @@ function switchify(ast) {
       do {
         var clauses = getSwitchableClauses(nextBlock[1], '==');
         if (clauses) {
-          cases.push([clauses.map(function(c) { maxValue = Math.max(maxValue, c[3]); return c[3]; }),
+          for (var i = 0; i < clauses.length; ++i) {
+            // cast to unsigned, then add 1 since a jump table with a max value
+            // of 0 needs 1 entry
+            maxValue = Math.max(maxValue, (clauses[i][3][1] >>> 0) + 1);
+          }
+          cases.push([clauses.map(function(c) { return c[3]; }),
                       ensureStatementList(nextBlock[2])]);
           clauseCount += clauses.length;
         } else if (!negatedCase) {
