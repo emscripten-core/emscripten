@@ -13683,16 +13683,22 @@ elif 'benchmark' in str(sys.argv):
     }
   ]
 
+  RESULT_FILE = None
+
   # Pick the JS engine to benchmark. If you specify one, it will be picked. For example, python tests/runner.py benchmark SPIDERMONKEY_ENGINE
   JS_ENGINE = JS_ENGINES[0]
   for i in range(1, len(sys.argv)):
     arg = sys.argv[i]
-    if arg.startswith('benchmark.test_'):
+    if arg is None or arg.startswith('benchmark.test_'):
       continue
-    if arg is '--spec':
+    if arg == '--spec':
       sys.argv[i] = None
       i += 1
       with open(sys.argv[i]) as f: BENCHMARK_SPEC = json.load(f)
+    elif arg == '--result-file':
+      sys.argv[i] = None
+      i += 1
+      RESULT_FILE = os.path.join(os.getcwd(), sys.argv[i])
     else:
       JS_ENGINE = eval(arg)
     sys.argv[i] = None
@@ -13702,7 +13708,8 @@ elif 'benchmark' in str(sys.argv):
   Building.COMPILER_TEST_OPTS = []
 
   TEST_REPS = 2
-  TOTAL_TESTS = 8
+  for spec in BENCHMARK_SPEC:
+    spec['times'] = {}
 
   # standard arguments for timing:
   # 0: no runtime, just startup
@@ -13713,10 +13720,9 @@ elif 'benchmark' in str(sys.argv):
   # 5: 10 seconds
   DEFAULT_ARG = '4'
 
-  tests_done = 0
-
   class benchmark(RunnerCore):
-    def print_stats(self, a_times, b_times, a_name='JavaScript', b_name='Native', last=False, reps=TEST_REPS):
+    @staticmethod
+    def print_stats(a_times, b_times, a_name='JavaScript', b_name='Native', last=False, reps=TEST_REPS):
       if reps == 0:
         print '(no reps)'
         return
@@ -13826,33 +13832,35 @@ process(sys.argv[1])
       filename = os.path.join(self.get_dir(), name + '.c' + ('' if force_c else 'pp'))
       with open(filename, 'w') as f: f.write(src)
 
-      global tests_done, BENCHMARK_SPEC
-      for spec in BENCHMARK_SPEC:
-        spec['times'] = {}
+      global BENCHMARK_SPEC
       for i, spec in enumerate(BENCHMARK_SPEC):
         times = spec['times']
-        if spec['type'] is 'js':
+        if spec['type'] == 'js':
           times[name] = self.bench_js(name, filename, expected_output, args,
               emcc_args + shared_args + spec['args'], reps, output_parser)
-        elif spec['type'] is 'native':
+        elif spec['type'] == 'native':
           times[name] = self.bench_native(filename, expected_output, args,
               shared_args + native_args + spec['args'], reps, native_exec, output_parser)
         else:
           raise RuntimeError('Unrecognized benchmark type ' + spec['type'])
-        if i == 0:
-          base_times = times[name]
-        else:
-          self.print_stats(times[name], base_times, reps=reps)
+        if i != 0:
+          base = BENCHMARK_SPEC[0]
+          self.print_stats(times[name], base['times'], spec['name'], base['name'], reps=reps)
 
-      tests_done += 1
-      if tests_done == TOTAL_TESTS and tests_done > 1:
+    @classmethod
+    def tearDownClass(cls):
+      if len(BENCHMARK_SPEC[0]['times'].keys()) > 1:
         print 'Total stats:',
         for i, spec in enumerate(BENCHMARK_SPEC):
           total_times = map(sum, spec['times'].itervalues())
           if i == 0:
             base_total_times = total_times
           else:
-            self.print_stats(total_times, base_total_times, last=True)
+            cls.print_stats(total_times, base_total_times, last=True)
+      if RESULT_FILE:
+        print 'Saving results to ' + RESULT_FILE
+        with open(RESULT_FILE, 'w') as f:
+          json.dump(BENCHMARK_SPEC, f, indent=4)
 
     def test_primes(self):
       src = r'''
