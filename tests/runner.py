@@ -13845,7 +13845,7 @@ process(sys.argv[1])
           raise RuntimeError('Unrecognized benchmark type ' + spec['type'])
         if i != 0:
           base = BENCHMARK_SPEC[0]
-          self.print_stats(times[name], base['times'], spec['name'], base['name'], reps=reps)
+          self.print_stats(times[name], base['times'][name], spec['name'], base['name'], reps=reps)
 
     @classmethod
     def tearDownClass(cls):
