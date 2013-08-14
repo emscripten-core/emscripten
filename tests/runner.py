@@ -13671,13 +13671,31 @@ elif 'benchmark' in str(sys.argv):
 
   Building.COMPILER = CLANG
 
+  BENCHMARK_SPEC = [
+    {
+      'name': 'Native',
+      'type': 'native',
+      'args': [],
+    }, {
+      'name': 'JavaScript',
+      'type': 'js',
+      'args': [],
+    }
+  ]
+
   # Pick the JS engine to benchmark. If you specify one, it will be picked. For example, python tests/runner.py benchmark SPIDERMONKEY_ENGINE
   JS_ENGINE = JS_ENGINES[0]
   for i in range(1, len(sys.argv)):
     arg = sys.argv[i]
-    if not arg.startswith('benchmark.test_'):
-      JS_ENGINE = eval(arg)
+    if arg.startswith('benchmark.test_'):
+      continue
+    if arg is '--spec':
       sys.argv[i] = None
+      i += 1
+      with open(sys.argv[i]) as f: BENCHMARK_SPEC = json.load(f)
+    else:
+      JS_ENGINE = eval(arg)
+    sys.argv[i] = None
   sys.argv = filter(lambda arg: arg is not None, sys.argv)
   print 'Benchmarking JS engine:', ' '.join(JS_ENGINE)
 
@@ -13696,8 +13714,6 @@ elif 'benchmark' in str(sys.argv):
   DEFAULT_ARG = '4'
 
   tests_done = 0
-  a_total_times = map(lambda x: 0., range(TOTAL_TESTS))
-  b_total_times = map(lambda x: 0., range(TOTAL_TESTS))
 
   class benchmark(RunnerCore):
     def print_stats(self, a_times, b_times, a_name='JavaScript', b_name='Native', last=False, reps=TEST_REPS):
@@ -13723,7 +13739,7 @@ elif 'benchmark' in str(sys.argv):
         import operator, itertools
         norm = sum(itertools.starmap(operator.div, zip(a_times, b_times)))/len(a_times)
         print
-        print '  %12s: %.3f    %12s: %.3f   Ratio:  %.3f  Normalized ratio: %.3f' % (a_name, b_name, a_stats['mean'], b_stats['mean'], final, norm)
+        print '  %12s: %.3f    %12s: %.3f   Ratio:  %.3f  Normalized ratio: %.3f' % (a_name, a_stats['mean'], b_name, b_stats['mean'], final, norm)
         return
 
       def print_run(name, s):
@@ -13803,31 +13819,40 @@ process(sys.argv[1])
         times.append(curr)
       return times
 
-    def do_benchmark(self, name, src, expected_output='FAIL', args=[], emcc_args=[], emcc_args_2=[], native_args=[], shared_args=[], force_c=False, reps=TEST_REPS, native_exec=None, output_parser=None, args_processor=None):
+    def do_benchmark(self, name, src, expected_output='FAIL', args=[], emcc_args=[], native_args=[], shared_args=[], force_c=False, reps=TEST_REPS, native_exec=None, output_parser=None, args_processor=None):
       args = args or [DEFAULT_ARG]
       if args_processor: args = args_processor(args)
 
       filename = os.path.join(self.get_dir(), name + '.c' + ('' if force_c else 'pp'))
       with open(filename, 'w') as f: f.write(src)
 
-      global a_total_times, b_total_times, tests_done
-      a_times = self.bench_js(name, filename, expected_output, args, emcc_args + shared_args, reps, output_parser)
-      a_total_times[tests_done] = sum(a_times)
-
-      if len(emcc_args_2) > 0:
-        b_times = self.bench_js(name, filename, expected_output, args, emcc_args_2 + shared_args, reps, output_parser)
-        b_total_times[tests_done] = sum(b_times)
-        print 'JS2 arguments: ' + ''.join(emcc_args_2)
-        self.print_stats(a_times, b_times, 'JS1', 'JS2', reps=reps)
-      else:
-        b_times = self.bench_native(filename, expected_output, args, shared_args + native_args, reps, native_exec, output_parser)
-        b_total_times[tests_done] = sum(b_times)
-        self.print_stats(a_times, b_times, reps=reps)
+      global tests_done, BENCHMARK_SPEC
+      for spec in BENCHMARK_SPEC:
+        spec['times'] = {}
+      for i, spec in enumerate(BENCHMARK_SPEC):
+        times = spec['times']
+        if spec['type'] is 'js':
+          times[name] = self.bench_js(name, filename, expected_output, args,
+              emcc_args + shared_args + spec['args'], reps, output_parser)
+        elif spec['type'] is 'native':
+          times[name] = self.bench_native(filename, expected_output, args,
+              shared_args + native_args + spec['args'], reps, native_exec, output_parser)
+        else:
+          raise RuntimeError('Unrecognized benchmark type ' + spec['type'])
+        if i == 0:
+          base_times = times[name]
+        else:
+          self.print_stats(times[name], base_times, reps=reps)
 
       tests_done += 1
       if tests_done == TOTAL_TESTS and tests_done > 1:
         print 'Total stats:',
-        self.print_stats(a_total_times, b_total_times, last=True)
+        for i, spec in enumerate(BENCHMARK_SPEC):
+          total_times = map(sum, spec['times'].itervalues())
+          if i == 0:
+            base_total_times = total_times
+          else:
+            self.print_stats(total_times, base_total_times, last=True)
 
     def test_primes(self):
       src = r'''
@@ -14078,7 +14103,6 @@ process(sys.argv[1])
     def test_switch(self):
       with open(path_from_root('tests', 'switch.c'), 'r') as f: src = f.read()
       self.do_benchmark('switch', src, 'start = 0\nend (sum=200000000)')
-      #self.do_benchmark('switch', src, 'start = 0\nend (sum=200000000)', emcc_args_2=['--no-switchify'])
 
     def test_skinning(self):
       src = open(path_from_root('tests', 'skinning_test_no_simd.cpp'), 'r').read()
