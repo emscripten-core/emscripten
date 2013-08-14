@@ -11651,8 +11651,6 @@ f.close()
          ['asm', 'outline']),
         (path_from_root('tools', 'test-js-optimizer-asm-outline2.js'), open(path_from_root('tools', 'test-js-optimizer-asm-outline2-output.js')).read(),
          ['asm', 'outline']),
-        (path_from_root('tools', 'test-js-optimizer-asm-outline3.js'), open(path_from_root('tools', 'test-js-optimizer-asm-outline3-output.js')).read(),
-         ['asm', 'outline']),
         (path_from_root('tools', 'test-js-optimizer-asm-switchify.js'), open(path_from_root('tools', 'test-js-optimizer-asm-switchify-output.js')).read(),
          ['switchify'])
       ]:
