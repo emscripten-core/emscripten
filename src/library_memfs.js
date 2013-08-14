@@ -10,16 +10,48 @@ mergeInto(LibraryManager.library, {
         throw new FS.ErrnoError(ERRNO_CODES.EPERM);
       }
       var node = FS.createNode(parent, name, mode, dev);
-      node.node_ops = MEMFS.node_ops;
       if (FS.isDir(node.mode)) {
-        node.stream_ops = MEMFS.stream_ops;
+        node.node_ops = {
+          getattr: MEMFS.node_ops.getattr,
+          setattr: MEMFS.node_ops.setattr,
+          lookup: MEMFS.node_ops.lookup,
+          mknod: MEMFS.node_ops.mknod,
+          mknod: MEMFS.node_ops.mknod,
+          rename: MEMFS.node_ops.rename,
+          unlink: MEMFS.node_ops.unlink,
+          rmdir: MEMFS.node_ops.rmdir,
+          readdir: MEMFS.node_ops.readdir,
+          symlink: MEMFS.node_ops.symlink
+        };
+        node.stream_ops = {
+          llseek: MEMFS.stream_ops.llseek
+        };
         node.contents = {};
       } else if (FS.isFile(node.mode)) {
-        node.stream_ops = MEMFS.stream_ops;
+        node.node_ops = {
+          getattr: MEMFS.node_ops.getattr,
+          setattr: MEMFS.node_ops.setattr
+        };
+        node.stream_ops = {
+          llseek: MEMFS.stream_ops.llseek,
+          read: MEMFS.stream_ops.read,
+          write: MEMFS.stream_ops.write,
+          allocate: MEMFS.stream_ops.allocate,
+          mmap: MEMFS.stream_ops.mmap
+        };
         node.contents = [];
       } else if (FS.isLink(node.mode)) {
-        node.stream_ops = MEMFS.stream_ops;
+        node.node_ops = {
+          getattr: MEMFS.node_ops.getattr,
+          setattr: MEMFS.node_ops.setattr,
+          readlink: MEMFS.node_ops.readlink
+        };
+        node.stream_ops = {};
       } else if (FS.isChrdev(node.mode)) {
+        node.node_ops = {
+          getattr: MEMFS.node_ops.getattr,
+          setattr: MEMFS.node_ops.setattr
+        };
         node.stream_ops = FS.chrdev_stream_ops;
       }
       node.timestamp = Date.now();
@@ -106,6 +138,16 @@ mergeInto(LibraryManager.library, {
         }
         delete parent.contents[name];
       },
+      readdir: function(node) {
+        var entries = ['.', '..']
+        for (var key in node.contents) {
+          if (!node.contents.hasOwnProperty(key)) {
+            continue;
+          }
+          entries.push(key);
+        }
+        return entries;
+      },
       symlink: function(parent, newname, oldpath) {
         var node = MEMFS.create_node(parent, newname, 0777 | {{{ cDefine('S_IFLNK') }}}, 0);
         node.link = oldpath;
@@ -119,19 +161,6 @@ mergeInto(LibraryManager.library, {
       },
     },
     stream_ops: {
-      open: function(stream) {
-        if (FS.isDir(stream.node.mode)) {
-          // cache off the directory entries when open'd
-          var entries = ['.', '..']
-          for (var key in stream.node.contents) {
-            if (!stream.node.contents.hasOwnProperty(key)) {
-              continue;
-            }
-            entries.push(key);
-          }
-          stream.entries = entries;
-        }
-      },
       read: function(stream, buffer, offset, length, position) {
         var contents = stream.node.contents;
         var size = Math.min(contents.length - position, length);
@@ -171,9 +200,6 @@ mergeInto(LibraryManager.library, {
         stream.ungotten = [];
         stream.position = position;
         return position;
-      },
-      readdir: function(stream) {
-        return stream.entries;
       },
       allocate: function(stream, offset, length) {
         var contents = stream.node.contents;
