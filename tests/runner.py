@@ -14131,8 +14131,6 @@ process(sys.argv[1])
 
     def lua(self, benchmark, expected, output_parser=None, args_processor=None):
       shutil.copyfile(path_from_root('tests', 'lua', benchmark + '.lua'), benchmark + '.lua')
-      #shutil.copyfile(path_from_root('tests', 'lua', 'binarytrees.lua'), 'binarytrees.lua')
-      #shutil.copyfile(path_from_root('tests', 'lua', 'scimark.lua'), 'scimark.lua')
       emcc_args = self.get_library('lua', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None) + \
                   ['--embed-file', benchmark + '.lua']
                   #['--embed-file', 'binarytrees.lua', '--embed-file', 'scimark.lua'] + ['--minify', '0']
@@ -14153,6 +14151,9 @@ process(sys.argv[1])
     def test_zzz_lua_binarytrees(self):
       # js version: ['binarytrees.lua', {0: 0, 1: 9.5, 2: 11.99, 3: 12.85, 4: 14.72, 5: 15.82}[arguments[0]]]
       self.lua('binarytrees', 'long lived tree of depth')
+
+    def test_zzz_lua_meteor_contest(self):
+      self.lua('meteor_contest', '2098 solutions found')
 
     def test_zzz_zlib(self):
       src = open(path_from_root('tests', 'zlib', 'benchmark.c'), 'r').read()
