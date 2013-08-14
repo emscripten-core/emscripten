@@ -13812,10 +13812,10 @@ process(sys.argv[1])
 
       self.print_stats(times, native_times, reps=reps)
 
-      #tests_done += 1
-      #if tests_done == TOTAL_TESTS:
-      #  print 'Total stats:',
-      #  self.print_stats(total_times, total_native_times, last=True)
+      tests_done += 1
+      if tests_done == TOTAL_TESTS and tests_done > 1:
+        print 'Total stats:',
+        self.print_stats(total_times, total_native_times, last=True)
 
     def test_primes(self):
       src = r'''
