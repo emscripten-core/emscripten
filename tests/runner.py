@@ -13696,8 +13696,8 @@ elif 'benchmark' in str(sys.argv):
   DEFAULT_ARG = '4'
 
   tests_done = 0
-  total_times = map(lambda x: 0., range(TOTAL_TESTS))
-  total_native_times = map(lambda x: 0., range(TOTAL_TESTS))
+  a_total_times = map(lambda x: 0., range(TOTAL_TESTS))
+  b_total_times = map(lambda x: 0., range(TOTAL_TESTS))
 
   class benchmark(RunnerCore):
     def print_stats(self, a_times, b_times, a_name='JavaScript', b_name='Native', last=False, reps=TEST_REPS):
@@ -13737,18 +13737,11 @@ elif 'benchmark' in str(sys.argv):
       print_run(b_name, b_stats)
       print '%s is %.2f X slower' % (a_name, final)
 
-    def do_benchmark(self, name, src, expected_output='FAIL', args=[], emcc_args=[], native_args=[], shared_args=[], force_c=False, reps=TEST_REPS, native_exec=None, output_parser=None, args_processor=None):
-      args = args or [DEFAULT_ARG]
-      if args_processor: args = args_processor(args)
+    def bench_js(self, name, filename, expected_output, args, compiler_args, reps, output_parser):
+      final_filename = os.path.join(self.get_dir(), name + '.js')
 
-      dirname = self.get_dir()
-      filename = os.path.join(dirname, name + '.c' + ('' if force_c else 'pp'))
-      f = open(filename, 'w')
-      f.write(src)
-      f.close()
-      final_filename = os.path.join(dirname, name + '.js')
-
-      open('hardcode.py', 'w').write('''
+      with open('hardcode.py', 'w') as f:
+        f.write('''
 def process(filename):
   js = open(filename).read()
   replaced = js.replace("run();", "run(%s.concat(Module[\\"arguments\\"]));")
@@ -13766,37 +13759,37 @@ process(sys.argv[1])
                       '-s', 'TOTAL_MEMORY=128*1024*1024',
                       '--closure', '1',
                       #'-g',
-                      '-o', final_filename] + shared_args + emcc_args, stdout=PIPE, stderr=self.stderr_redirect).communicate()
+                      '-o', final_filename] + compiler_args, stdout=PIPE, stderr=self.stderr_redirect).communicate()
       assert os.path.exists(final_filename), 'Failed to compile file: ' + output[0]
 
       # Run JS
-      global total_times, tests_done
       times = []
+      total_time = 0
       for i in range(reps):
         start = time.time()
         js_output = run_js(final_filename, engine=JS_ENGINE, args=args, stderr=PIPE, full_output=True)
 
         if i == 0 and 'uccessfully compiled asm.js code' in js_output:
           if 'asm.js link error' not in js_output:
-            print "[%s was asm.js'ified]" % name
+            print "[%s was asm.js'ified]" % filename
         if not output_parser:
           curr = time.time()-start
         else:
           curr = output_parser(js_output)
         times.append(curr)
-        total_times[tests_done] += curr
         if i == 0:
           # Sanity check on output
           self.assertContained(expected_output, js_output)
+      return times
 
+    def bench_native(self, filename, expected_output, args, compiler_args, reps, native_exec, output_parser):
       # Run natively
       if not native_exec:
-        self.build_native(filename, shared_args + native_args)
+        self.build_native(filename, compiler_args)
       else:
         shutil.copyfile(native_exec, filename + '.native')
         shutil.copymode(native_exec, filename + '.native')
-      global total_native_times
-      native_times = []
+      times = []
       for i in range(reps):
         start = time.time()
         native_output = self.run_native(filename, args)
@@ -13807,15 +13800,34 @@ process(sys.argv[1])
           curr = time.time()-start
         else:
           curr = output_parser(native_output)
-        native_times.append(curr)
-        total_native_times[tests_done] += curr
+        times.append(curr)
+      return times
 
-      self.print_stats(times, native_times, reps=reps)
+    def do_benchmark(self, name, src, expected_output='FAIL', args=[], emcc_args=[], emcc_args_2=[], native_args=[], shared_args=[], force_c=False, reps=TEST_REPS, native_exec=None, output_parser=None, args_processor=None):
+      args = args or [DEFAULT_ARG]
+      if args_processor: args = args_processor(args)
+
+      filename = os.path.join(self.get_dir(), name + '.c' + ('' if force_c else 'pp'))
+      with open(filename, 'w') as f: f.write(src)
+
+      global a_total_times, b_total_times, tests_done
+      a_times = self.bench_js(name, filename, expected_output, args, emcc_args + shared_args, reps, output_parser)
+      a_total_times[tests_done] = sum(a_times)
+
+      if len(emcc_args_2) > 0:
+        b_times = self.bench_js(name, filename, expected_output, args, emcc_args_2 + shared_args, reps, output_parser)
+        b_total_times[tests_done] = sum(b_times)
+        print 'JS2 arguments: ' + ''.join(emcc_args_2)
+        self.print_stats(a_times, b_times, 'JS1', 'JS2', reps=reps)
+      else:
+        b_times = self.bench_native(filename, expected_output, args, shared_args + native_args, reps, native_exec, output_parser)
+        b_total_times[tests_done] = sum(b_times)
+        self.print_stats(a_times, b_times, reps=reps)
 
       tests_done += 1
       if tests_done == TOTAL_TESTS and tests_done > 1:
         print 'Total stats:',
-        self.print_stats(total_times, total_native_times, last=True)
+        self.print_stats(a_total_times, b_total_times, last=True)
 
     def test_primes(self):
       src = r'''
@@ -14066,6 +14078,7 @@ process(sys.argv[1])
     def test_switch(self):
       with open(path_from_root('tests', 'switch.c'), 'r') as f: src = f.read()
       self.do_benchmark('switch', src, 'start = 0\nend (sum=200000000)')
+      #self.do_benchmark('switch', src, 'start = 0\nend (sum=200000000)', emcc_args_2=['--no-switchify'])
 
     def test_skinning(self):
       src = open(path_from_root('tests', 'skinning_test_no_simd.cpp'), 'r').read()
