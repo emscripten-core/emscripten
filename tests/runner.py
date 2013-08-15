@@ -13669,6 +13669,11 @@ elif 'benchmark' in str(sys.argv):
 
   Building.COMPILER = CLANG
 
+  # The first entry in this array is used as the base value that the others are
+  # measured relative to. E.g. we print stats describing how BENCHMARK_SPEC[N] is
+  # 2x slower than BENCHMARK_SPEC[0].
+  # This spec can be customized by passing a JSON file in this format to the
+  # runner, using the --spec flag.
   BENCHMARK_SPEC = [
     {
       'name': 'Native',
