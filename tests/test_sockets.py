@@ -198,3 +198,71 @@ class sockets(BrowserCore):
   #   ]:
   #     with harness:
   #       self.btest(os.path.join('sockets', 'test_enet_client.c'), expected='0', args=['-DSOCKK=9011'] + enet)
+
+  def test_webrtc(self):
+    host_src = 'webrtc_host.c'
+    peer_src = 'webrtc_peer.c'
+
+    host_outfile = 'host.html'
+    peer_outfile = 'peer.html'
+
+    host_filepath = path_from_root('tests', 'sockets', host_src)      
+    temp_host_filepath = os.path.join(self.get_dir(), os.path.basename(host_src))
+    with open(host_filepath) as f: host_src = f.read()
+    with open(temp_host_filepath, 'w') as f: f.write(self.with_report_result(host_src))
+
+    peer_filepath = path_from_root('tests', 'sockets', peer_src)      
+    temp_peer_filepath = os.path.join(self.get_dir(), os.path.basename(peer_src))
+    with open(peer_filepath) as f: peer_src = f.read()
+    with open(temp_peer_filepath, 'w') as f: f.write(self.with_report_result(peer_src))
+
+    open(os.path.join(self.get_dir(), 'host_pre.js'), 'w').write('''
+      var Module = {
+        webrtc: {
+          broker: 'https://mdsw.ch:8080',
+          session: undefined,
+          onpeer: function(peer, route) {
+            window.open('http://localhost:8888/peer.html?' + route);
+            // iframe = document.createElement("IFRAME");
+            // iframe.setAttribute("src", "http://localhost:8888/peer.html?" + route);
+            // iframe.style.display = "none";
+            // document.body.appendChild(iframe);
+            peer.listen();
+          },
+          onconnect: function(peer) {
+          },
+          ondisconnect: function(peer) {
+          },
+          onerror: function(error) {
+            console.error(error);
+          }
+        },
+      };
+    ''')
+
+    open(os.path.join(self.get_dir(), 'peer_pre.js'), 'w').write('''
+      var Module = {
+        webrtc: {
+          broker: 'https://mdsw.ch:8080',
+          session: window.location.toString().split('?')[1],
+          onpeer: function(peer, route) {
+            peer.connect(Module['webrtc']['session']);
+          },
+          onconnect: function(peer) {
+          },
+          ondisconnect: function(peer) {
+            // Calling window.close() from this handler hangs my browser, so run it in the next turn
+            setTimeout(window.close, 0);
+          },
+          onerror: function(error) {
+            console.error(error);
+          }
+        }
+      };
+    ''')
+
+    Popen([PYTHON, EMCC, temp_host_filepath, '-o', host_outfile] + ['-s', 'GL_TESTING=1', '--pre-js', 'host_pre.js', '-s', 'SOCKET_WEBRTC=1', '-s', 'SOCKET_DEBUG=1']).communicate()
+    Popen([PYTHON, EMCC, temp_peer_filepath, '-o', peer_outfile] + ['-s', 'GL_TESTING=1', '--pre-js', 'peer_pre.js', '-s', 'SOCKET_WEBRTC=1', '-s', 'SOCKET_DEBUG=1']).communicate()
+
+    expected = '1'
+    self.run_browser(host_outfile, '.', ['/report_result?' + e for e in expected])
