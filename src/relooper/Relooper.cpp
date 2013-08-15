@@ -205,11 +205,31 @@ void Block::Render(bool InLoop) {
     }
     bool SetCurrLabel = SetLabel && Target->IsCheckedMultipleEntry;
     bool HasFusedContent = Fused && contains(Fused->InnerMap, Target);
+    bool HasContent = SetCurrLabel || Details->Type != Branch::Direct || HasFusedContent || Details->Code;
     if (iter != ProcessedBranchesOut.end()) {
-      PrintIndented("%sif (%s) {\n", First ? "" : "} else ", Details->Condition);
-      First = false;
-    } else if (!First) {
-      PrintIndented("} else {\n");
+      // If there is nothing to show in this branch, omit the condition
+      if (HasContent) {
+        PrintIndented("%sif (%s) {\n", First ? "" : "} else ", Details->Condition);
+        First = false;
+      } else {
+        if (RemainingConditions.size() > 0) RemainingConditions += " && ";
+        RemainingConditions += "!(";
+        RemainingConditions += Details->Condition;
+        RemainingConditions += ")";
+      }
+    } else {
+      if (HasContent) {
+        if (RemainingConditions.size() > 0) {
+          if (First) {
+            PrintIndented("if (%s) {\n", RemainingConditions.c_str());
+            First = false;
+          } else {
+            PrintIndented("} else if (%s) {\n", RemainingConditions.c_str());
+          }
+        } else if (!First) {
+          PrintIndented("} else {\n");
+        }
+      }
     }
     if (!First) Indenter::Indent();
     Details->Render(Target, SetCurrLabel);
