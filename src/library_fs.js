@@ -51,7 +51,7 @@ mergeInto(LibraryManager.library, {
       for (var i = 0; i < name.length; i++) {
         hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
       }
-      return (parentid + hash) % FS.name_table.length;
+      return ((parentid + hash) >>> 0) % FS.name_table.length;
     },
     hashAddNode: function(node) {
       var hash = FS.hashName(node.parent.id, node.name);
