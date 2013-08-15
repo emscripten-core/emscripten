@@ -137,7 +137,7 @@ Options that are modified or new in %s include:
                            opt levels, see apply_opt_level() in
                            tools/shared.py and also src/settings.js.)
   -O2                      As -O1, plus the relooper (loop recreation),
-                           LLVM -O2 optimizations, and
+                           LLVM -O3 optimizations, and
 
                               -s ALIASING_FUNCTION_POINTERS=1
 
