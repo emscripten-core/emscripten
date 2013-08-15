@@ -801,7 +801,10 @@ function simplifyExpressions(ast) {
 //  HEAP[x >> 2]
 // very often. We can in some cases do the shift on the variable itself when it is set,
 // to greatly reduce the number of shift operations.
-// TODO: when shifting a variable, if there are other uses, keep an unshifted version too, to prevent slowdowns?
+// XXX this optimization is deprecated and currently invalid: does not handle overflows
+//     or non-aligned (round numbers, x >> 2 is a multiple of 4). Both are ok to assume
+//     for pointers (undefined behavior otherwise), but invalid in general, and we do
+//     no sufficiently-well distinguish the cases.
 function optimizeShiftsInternal(ast, conservative) {
   var MAX_SHIFTS = 3;
   traverseGeneratedFunctions(ast, function(fun) {

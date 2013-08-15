@@ -1621,9 +1621,6 @@ try:
 
     js_optimizer_queue += [get_eliminate(), 'simplifyExpressions']
 
-    if shared.Settings.RELOOP and not shared.Settings.ASM_JS:
-      js_optimizer_queue += ['optimizeShiftsAggressive', get_eliminate()] # aggressive shifts optimization requires loops, it breaks on switches
-
   if closure and not shared.Settings.ASM_JS:
     flush_js_optimizer_queue()
 
