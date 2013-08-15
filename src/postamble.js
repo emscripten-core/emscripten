@@ -127,6 +127,7 @@ Module['exit'] = Module.exit = exit;
 function abort(text) {
   if (text) {
     Module.print(text);
+    Module.printErr(text);
   }
 
   ABORT = true;
