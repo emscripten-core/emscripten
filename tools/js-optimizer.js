@@ -1564,14 +1564,14 @@ function switchify(ast) {
       var cases = [];
       var clauseCount = 0;
       var negatedCase = null;
+      var minValue = 0;
       var maxValue = 0;
       do {
         var clauses = getSwitchableClauses(nextBlock[1], '==');
         if (clauses) {
           for (var i = 0; i < clauses.length; ++i) {
-            // cast to unsigned, then add 1 since a jump table with a max value
-            // of 0 needs 1 entry
-            maxValue = Math.max(maxValue, (clauses[i][3][1] >>> 0) + 1);
+            minValue = Math.min(minValue, (clauses[i][3][1] >>> 0));
+            maxValue = Math.max(maxValue, (clauses[i][3][1] >>> 0));
           }
           cases.push([clauses.map(function(c) { return c[3]; }),
                       ensureStatementList(nextBlock[2])]);
@@ -1605,7 +1605,7 @@ function switchify(ast) {
 
       // XXX how many clauses before the transformation is worth it?
       if (clauseCount < SWITCH_MIN_CASES) return;
-      if (clauseCount / maxValue < SWITCH_MIN_DENSITY) return;
+      if (clauseCount / (maxValue - minValue + 1) < SWITCH_MIN_DENSITY) return;
 
       // at this point, we know that the if statement can be replaced,
       // so we can feel free to modify objects in the original ast.
