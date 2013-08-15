@@ -480,7 +480,7 @@ def server_func(dir, q):
       if 'report_' in s.path:
         q.put(s.path)
       else:
-        filename = s.path[1:]
+        filename = s.path.split('?')[0][1:]
         if os.path.exists(filename):
           s.send_response(200)
           s.send_header("Content-type", "text/html")
