@@ -65,6 +65,7 @@
          C optreset
          W posix_memalign
          W pvalloc
+         T readv
          W realloc
          W realloc_in_place
          T strtod
@@ -79,3 +80,4 @@
          W vwarnx
          W warn
          W warnx
+         T writev

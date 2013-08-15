@@ -1252,6 +1252,7 @@ try:
         os.path.join('libc', 'gen', 'vwarn.c'),
         os.path.join('libc', 'gen', 'vwarnx.c'),
         os.path.join('libc', 'stdlib', 'strtod.c'),
+        os.path.join('sys', 'uio.c'),
       ]
       return build_libc('libc.bc', libc_files)
 
