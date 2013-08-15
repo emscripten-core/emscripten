@@ -620,7 +620,7 @@ Press any key to continue.'''
   def test_sdl_canvas(self):
     open(os.path.join(self.get_dir(), 'sdl_canvas.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_canvas.c')).read()))
 
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_canvas.c'), '-o', 'page.html']).communicate()
+    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_canvas.c'), '-o', 'page.html', '-s', 'LEGACY_GL_EMULATION=1']).communicate()
     self.run_browser('page.html', '', '/report_result?1')
 
   def test_sdl_key(self):
@@ -843,50 +843,50 @@ Press any key to continue.'''
   def test_sdl_ogl(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
     self.btest('sdl_ogl.c', reference='screenshot-gray-purple.png', reference_slack=1,
-      args=['-O2', '--minify', '0', '--preload-file', 'screenshot.png'],
+      args=['-O2', '--minify', '0', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1'],
       message='You should see an image with gray at the top.')
 
   def test_sdl_ogl_defaultmatrixmode(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
     self.btest('sdl_ogl_defaultMatrixMode.c', reference='screenshot-gray-purple.png', reference_slack=1,
-      args=['--minify', '0', '--preload-file', 'screenshot.png'],
+      args=['--minify', '0', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1'],
       message='You should see an image with gray at the top.')
 
   def test_sdl_ogl_p(self):
     # Immediate mode with pointers
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
     self.btest('sdl_ogl_p.c', reference='screenshot-gray.png', reference_slack=1,
-      args=['--preload-file', 'screenshot.png'],
+      args=['--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1'],
       message='You should see an image with gray at the top.')
 
   def test_sdl_fog_simple(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
     self.btest('sdl_fog_simple.c', reference='screenshot-fog-simple.png',
-      args=['-O2', '--minify', '0', '--preload-file', 'screenshot.png'],
+      args=['-O2', '--minify', '0', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1'],
       message='You should see an image with fog.')
 
   def test_sdl_fog_negative(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
     self.btest('sdl_fog_negative.c', reference='screenshot-fog-negative.png',
-      args=['--preload-file', 'screenshot.png'],
+      args=['--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1'],
       message='You should see an image with fog.')
 
   def test_sdl_fog_density(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
     self.btest('sdl_fog_density.c', reference='screenshot-fog-density.png',
-      args=['--preload-file', 'screenshot.png'],
+      args=['--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1'],
       message='You should see an image with fog.')
 
   def test_sdl_fog_exp2(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
     self.btest('sdl_fog_exp2.c', reference='screenshot-fog-exp2.png',
-      args=['--preload-file', 'screenshot.png'],
+      args=['--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1'],
       message='You should see an image with fog.')
 
   def test_sdl_fog_linear(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
     self.btest('sdl_fog_linear.c', reference='screenshot-fog-linear.png', reference_slack=1,
-      args=['--preload-file', 'screenshot.png'],
+      args=['--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1'],
       message='You should see an image with fog.')
 
   def test_openal_playback(self):
@@ -903,7 +903,7 @@ Press any key to continue.'''
   def test_glfw(self):
     open(os.path.join(self.get_dir(), 'glfw.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'glfw.c')).read()))
 
-    Popen([PYTHON, EMCC, '-O2', os.path.join(self.get_dir(), 'glfw.c'), '-o', 'page.html']).communicate()
+    Popen([PYTHON, EMCC, '-O2', os.path.join(self.get_dir(), 'glfw.c'), '-o', 'page.html', '-s', 'LEGACY_GL_EMULATION=1']).communicate()
     self.run_browser('page.html', '', '/report_result?1')
 
   def test_egl_width_height(self):
@@ -1063,17 +1063,13 @@ Press any key to continue.'''
   def test_glgears_animation(self):
     es2_suffix = ['', '_full', '_full_944']
     for full_es2 in [0, 1, 2]:
-      for emulation in [0, 1]:
-        if full_es2 and emulation: continue
-        print full_es2, emulation
-        Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_gles%s.c' % es2_suffix[full_es2]), '-o', 'something.html',
-                                             '-DHAVE_BUILTIN_SINCOS', '-s', 'GL_TESTING=1',
-                                             '--shell-file', path_from_root('tests', 'hello_world_gles_shell.html')] +
-              (['-s', 'FORCE_GL_EMULATION=1'] if emulation else []) +
-              (['-s', 'FULL_ES2=1'] if full_es2 else []),
-              ).communicate()
-        self.run_browser('something.html', 'You should see animating gears.', '/report_gl_result?true')
-        assert ('var GLEmulation' in open(self.in_dir('something.html')).read()) == emulation, "emulation code should be added when asked for"
+      print full_es2
+      Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_gles%s.c' % es2_suffix[full_es2]), '-o', 'something.html',
+                                           '-DHAVE_BUILTIN_SINCOS', '-s', 'GL_TESTING=1',
+                                           '--shell-file', path_from_root('tests', 'hello_world_gles_shell.html')] +
+            (['-s', 'FULL_ES2=1'] if full_es2 else []),
+            ).communicate()
+      self.run_browser('something.html', 'You should see animating gears.', '/report_gl_result?true')
 
   def test_fulles2_sdlproc(self):
     self.btest('full_es2_sdlproc.c', '1', args=['-s', 'GL_TESTING=1', '-DHAVE_BUILTIN_SINCOS', '-s', 'FULL_ES2=1'])
@@ -1163,90 +1159,90 @@ Press any key to continue.'''
     self.btest('glgetattachedshaders.c', '1')
 
   def test_sdlglshader(self):
-    self.btest('sdlglshader.c', reference='sdlglshader.png', args=['-O2', '--closure', '1'])
+    self.btest('sdlglshader.c', reference='sdlglshader.png', args=['-O2', '--closure', '1', '-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_gl_ps(self):
     # pointers and a shader
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-    self.btest('gl_ps.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png'], reference_slack=1)
+    self.btest('gl_ps.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1'], reference_slack=1)
 
   def test_gl_ps_packed(self):
     # packed data that needs to be strided
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-    self.btest('gl_ps_packed.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png'], reference_slack=1)
+    self.btest('gl_ps_packed.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1'], reference_slack=1)
 
   def test_gl_ps_strides(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-    self.btest('gl_ps_strides.c', reference='gl_ps_strides.png', args=['--preload-file', 'screenshot.png'])
+    self.btest('gl_ps_strides.c', reference='gl_ps_strides.png', args=['--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_gl_renderers(self):
-    self.btest('gl_renderers.c', reference='gl_renderers.png', args=['-s', 'GL_UNSAFE_OPTS=0'])
+    self.btest('gl_renderers.c', reference='gl_renderers.png', args=['-s', 'GL_UNSAFE_OPTS=0', '-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_gl_stride(self):
-    self.btest('gl_stride.c', reference='gl_stride.png', args=['-s', 'GL_UNSAFE_OPTS=0'])
+    self.btest('gl_stride.c', reference='gl_stride.png', args=['-s', 'GL_UNSAFE_OPTS=0', '-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_matrix_identity(self):
-    self.btest('gl_matrix_identity.c', expected=['-1882984448', '460451840'])
+    self.btest('gl_matrix_identity.c', expected=['-1882984448', '460451840'], args=['-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_cubegeom_pre(self):
-    self.btest('cubegeom_pre.c', reference='cubegeom_pre.png')
+    self.btest('cubegeom_pre.c', reference='cubegeom_pre.png', args=['-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_cubegeom_pre2(self):
-    self.btest('cubegeom_pre2.c', reference='cubegeom_pre2.png', args=['-s', 'GL_DEBUG=1']) # some coverage for GL_DEBUG not breaking the build
+    self.btest('cubegeom_pre2.c', reference='cubegeom_pre2.png', args=['-s', 'GL_DEBUG=1', '-s', 'LEGACY_GL_EMULATION=1']) # some coverage for GL_DEBUG not breaking the build
 
   def test_cubegeom_pre3(self):
-    self.btest('cubegeom_pre3.c', reference='cubegeom_pre2.png')
+    self.btest('cubegeom_pre3.c', reference='cubegeom_pre2.png', args=['-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_cubegeom(self):
-    self.btest('cubegeom.c', args=['-O2', '-g'], reference='cubegeom.png')
+    self.btest('cubegeom.c', reference='cubegeom.png', args=['-O2', '-g', '-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_cubegeom_glew(self):
-    self.btest('cubegeom_glew.c', args=['-O2', '--closure', '1'], reference='cubegeom.png')
+    self.btest('cubegeom_glew.c', reference='cubegeom.png', args=['-O2', '--closure', '1', '-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_cubegeom_color(self):
-    self.btest('cubegeom_color.c', reference='cubegeom_color.png')
+    self.btest('cubegeom_color.c', reference='cubegeom_color.png', args=['-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_cubegeom_normal(self):
-    self.btest('cubegeom_normal.c', reference='cubegeom_normal.png')
+    self.btest('cubegeom_normal.c', reference='cubegeom_normal.png', args=['-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_cubegeom_normal_dap(self): # draw is given a direct pointer to clientside memory, no element array buffer
-    self.btest('cubegeom_normal_dap.c', reference='cubegeom_normal.png')
+    self.btest('cubegeom_normal_dap.c', reference='cubegeom_normal.png', args=['-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_cubegeom_normal_dap_far(self): # indices do nto start from 0
-    self.btest('cubegeom_normal_dap_far.c', reference='cubegeom_normal.png')
+    self.btest('cubegeom_normal_dap_far.c', reference='cubegeom_normal.png', args=['-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_cubegeom_normal_dap_far_range(self): # glDrawRangeElements
-    self.btest('cubegeom_normal_dap_far_range.c', reference='cubegeom_normal.png')
+    self.btest('cubegeom_normal_dap_far_range.c', reference='cubegeom_normal.png', args=['-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_cubegeom_normal_dap_far_glda(self): # use glDrawArrays
-    self.btest('cubegeom_normal_dap_far_glda.c', reference='cubegeom_normal_dap_far_glda.png')
+    self.btest('cubegeom_normal_dap_far_glda.c', reference='cubegeom_normal_dap_far_glda.png', args=['-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_cubegeom_normal_dap_far_glda_quad(self): # with quad
-    self.btest('cubegeom_normal_dap_far_glda_quad.c', reference='cubegeom_normal_dap_far_glda_quad.png')
+    self.btest('cubegeom_normal_dap_far_glda_quad.c', reference='cubegeom_normal_dap_far_glda_quad.png', args=['-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_cubegeom_mt(self):
-    self.btest('cubegeom_mt.c', reference='cubegeom_mt.png') # multitexture
+    self.btest('cubegeom_mt.c', reference='cubegeom_mt.png', args=['-s', 'LEGACY_GL_EMULATION=1']) # multitexture
 
   def test_cubegeom_color2(self):
-    self.btest('cubegeom_color2.c', reference='cubegeom_color2.png')
+    self.btest('cubegeom_color2.c', reference='cubegeom_color2.png', args=['-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_cubegeom_texturematrix(self):
-    self.btest('cubegeom_texturematrix.c', reference='cubegeom_texturematrix.png')
+    self.btest('cubegeom_texturematrix.c', reference='cubegeom_texturematrix.png', args=['-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_cubegeom_fog(self):
-    self.btest('cubegeom_fog.c', reference='cubegeom_fog.png')
+    self.btest('cubegeom_fog.c', reference='cubegeom_fog.png', args=['-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_cubegeom_pre_vao(self):
-    self.btest('cubegeom_pre_vao.c', reference='cubegeom_pre_vao.png')
+    self.btest('cubegeom_pre_vao.c', reference='cubegeom_pre_vao.png', args=['-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_cubegeom_pre2_vao(self):
-    self.btest('cubegeom_pre2_vao.c', reference='cubegeom_pre_vao.png')
+    self.btest('cubegeom_pre2_vao.c', reference='cubegeom_pre_vao.png', args=['-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_cubegeom_pre2_vao2(self):
-    self.btest('cubegeom_pre2_vao2.c', reference='cubegeom_pre2_vao2.png')
+    self.btest('cubegeom_pre2_vao2.c', reference='cubegeom_pre2_vao2.png', args=['-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_cube_explosion(self):
-    self.btest('cube_explosion.c', reference='cube_explosion.png')
+    self.btest('cube_explosion.c', reference='cube_explosion.png', args=['-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_sdl_canvas_blank(self):
     self.btest('sdl_canvas_blank.c', reference='sdl_canvas_blank.png')
@@ -1298,11 +1294,11 @@ Press any key to continue.'''
 
   def test_glbegin_points(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'screenshot.png'))
-    self.btest('glbegin_points.c', reference='glbegin_points.png', args=['--preload-file', 'screenshot.png'])
+    self.btest('glbegin_points.c', reference='glbegin_points.png', args=['--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_s3tc(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.dds'), os.path.join(self.get_dir(), 'screenshot.dds'))
-    self.btest('s3tc.c', reference='s3tc.png', args=['--preload-file', 'screenshot.dds'])
+    self.btest('s3tc.c', reference='s3tc.png', args=['--preload-file', 'screenshot.dds', '-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_s3tc_crunch(self):
     shutil.copyfile(path_from_root('tests', 'ship.dds'), 'ship.dds')
@@ -1313,7 +1309,7 @@ Press any key to continue.'''
     shutil.move('ship.dds', 'ship.donotfindme.dds') # make sure we load from the compressed
     shutil.move('bloom.dds', 'bloom.donotfindme.dds') # make sure we load from the compressed
     shutil.move('water.dds', 'water.donotfindme.dds') # make sure we load from the compressed
-    self.btest('s3tc_crunch.c', reference='s3tc_crunch.png', reference_slack=11, args=['--pre-js', 'pre.js'])
+    self.btest('s3tc_crunch.c', reference='s3tc_crunch.png', reference_slack=11, args=['--pre-js', 'pre.js', '-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_s3tc_crunch_split(self): # load several datafiles/outputs of file packager
     shutil.copyfile(path_from_root('tests', 'ship.dds'), 'ship.dds')
@@ -1324,14 +1320,14 @@ Press any key to continue.'''
     shutil.move('ship.dds', 'ship.donotfindme.dds') # make sure we load from the compressed
     shutil.move('bloom.dds', 'bloom.donotfindme.dds') # make sure we load from the compressed
     shutil.move('water.dds', 'water.donotfindme.dds') # make sure we load from the compressed
-    self.btest('s3tc_crunch.c', reference='s3tc_crunch.png', reference_slack=11, args=['--pre-js', 'asset_a.js', '--pre-js', 'asset_b.js'])
+    self.btest('s3tc_crunch.c', reference='s3tc_crunch.png', reference_slack=11, args=['--pre-js', 'asset_a.js', '--pre-js', 'asset_b.js', '-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_aniso(self):
     shutil.copyfile(path_from_root('tests', 'water.dds'), 'water.dds')
-    self.btest('aniso.c', reference='aniso.png', reference_slack=2, args=['--preload-file', 'water.dds'])
+    self.btest('aniso.c', reference='aniso.png', reference_slack=2, args=['--preload-file', 'water.dds', '-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_tex_nonbyte(self):
-    self.btest('tex_nonbyte.c', reference='tex_nonbyte.png')
+    self.btest('tex_nonbyte.c', reference='tex_nonbyte.png', args=['-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_float_tex(self):
     self.btest('float_tex.cpp', reference='float_tex.png')
@@ -1340,7 +1336,7 @@ Press any key to continue.'''
     self.btest('gl_subdata.cpp', reference='float_tex.png')
 
   def test_perspective(self):
-    self.btest('perspective.c', reference='perspective.png')
+    self.btest('perspective.c', reference='perspective.png', args=['-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_runtimelink(self):
     return self.skip('shared libs are deprecated')

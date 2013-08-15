@@ -1285,7 +1285,7 @@ var LibraryGL = {
     return Module.ctx.isFramebuffer(fb);
   },
 
-#if DISABLE_GL_EMULATION == 0
+#if LEGACY_GL_EMULATION
 
   // GL emulation: provides misc. functionality not present in OpenGL ES 2.0 or WebGL
 
@@ -1323,7 +1323,7 @@ var LibraryGL = {
       GLEmulation.fogColor = new Float32Array(4);
 
       // Add some emulation workarounds
-      Module.printErr('WARNING: using emscripten GL emulation. This is a collection of limited workarounds, do not expect it to work. (If you do not want this, build with -s DISABLE_GL_EMULATION=1)');
+      Module.printErr('WARNING: using emscripten GL emulation. This is a collection of limited workarounds, do not expect it to work.');
 #if GL_UNSAFE_OPTS == 0
       Module.printErr('WARNING: using emscripten GL emulation unsafe opts. If weirdness happens, try -s GL_UNSAFE_OPTS=0');
 #endif
@@ -4202,7 +4202,31 @@ var LibraryGL = {
   glBindVertexArrayOES: 'glBindVertexArray',
   glFramebufferTexture2DOES: 'glFramebufferTexture2D',
 
-#endif // DISABLE_GL_EMULATION == 0
+#else // LEGACY_GL_EMULATION
+
+  // Warn if code tries to use various emulation stuff, when emulation is disabled
+  glVertexPointer__deps: [function() {
+    error('Legacy GL function (glVertexPointer) called. You need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.');
+  }],
+  glVertexPointer: function(){},
+  glGenVertexArrays__deps: [function() {
+    error('Legacy GL function (glGenVertexArrays) called. You need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.');
+  }],
+  glGenVertexArrays: function(){},
+  glMatrixMode__deps: [function() {
+    error('Legacy GL function (glMatrixMode) called. You need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.');
+  }],
+  glMatrixMode: function(){},
+  glBegin__deps: [function() {
+    error('Legacy GL function (glBegin) called. You need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.');
+  }],
+  glBegin: function(){},
+  glLoadIdentity__deps: [function() {
+    error('Legacy GL function (glLoadIdentity) called. You need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.');
+  }],
+  glLoadIdentity: function(){},
+
+#endif // LEGACY_GL_EMULATION
 
   // GLU
 
@@ -4438,7 +4462,7 @@ var LibraryGL = {
 
 autoAddDeps(LibraryGL, '$GL');
 
-if (!DISABLE_GL_EMULATION) {
+if (LEGACY_GL_EMULATION) {
   // Emulation requires everything else, potentially
   LibraryGL.$GLEmulation__deps = LibraryGL.$GLEmulation__deps.slice(0); // the __deps object is shared
   var glFuncs = [];
@@ -4455,11 +4479,11 @@ if (!DISABLE_GL_EMULATION) {
     }
   });
 
-  if (FORCE_GL_EMULATION) {
-    LibraryGL.glDrawElements__deps = LibraryGL.glDrawElements__deps.concat('$GLEmulation');
-    LibraryGL.glDrawArrays__deps = LibraryGL.glDrawArrays__deps.concat('$GLEmulation');
-  }
+  LibraryGL.glDrawElements__deps = LibraryGL.glDrawElements__deps.concat('$GLEmulation');
+  LibraryGL.glDrawArrays__deps = LibraryGL.glDrawArrays__deps.concat('$GLEmulation');
 }
 
 mergeInto(LibraryManager.library, LibraryGL);
+
+assert(!(FULL_ES2 && LEGACY_GL_EMULATION), 'cannot emulate both ES2 and legacy GL');
 
