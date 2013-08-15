@@ -241,6 +241,7 @@ var setjmpLabels = {};
 #endif
 
 var ABORT = false; // whether we are quitting the application. no code should run after this. set in exit() and abort()
+var EXITSTATUS = 0;
 
 var undef = 0;
 // tempInt is used for 32-bit signed values or smaller. tempBigInt is used
@@ -851,6 +852,13 @@ Math['imul'] = function(a, b) {
 };
 #endif
 Math.imul = Math['imul'];
+
+#if TO_FLOAT32
+if (!Math['toFloat32']) Math['toFloat32'] = function(x) {
+  return x;
+};
+Math.toFloat32 = Math['toFloat32'];
+#endif
 
 // A counter of dependencies for calling run(). If we need to
 // do asynchronous work before running, increment this and

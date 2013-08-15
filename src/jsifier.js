@@ -658,6 +658,10 @@ function JSify(data, functionsOnly, givenFunctions) {
         }
       }
 
+      if (func.hasVarArgsCall) {
+        func.JS += INDENTATION + 'var tempVarArgs = 0;\n';
+      }
+
       // Prepare the stack, if we need one. If we have other stack allocations, force the stack to be set up.
       func.JS += INDENTATION + RuntimeGenerator.stackEnter(func.initialStack, func.otherStackAllocations) + ';\n';
 
@@ -1234,6 +1238,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           + (EXCEPTION_DEBUG ? 'Module.print("Exception: " + e + ", currently at: " + (new Error().stack)); ' : '')
           + 'return null } })();';
     }
+    ret = makeVarArgsCleanup(ret);
 
     if (item.assignTo) {
       ret = 'var ' + item.assignTo + ' = ' + ret;
@@ -1446,12 +1451,13 @@ function JSify(data, functionsOnly, givenFunctions) {
     });
 
     if (hasVarArgs && !useJSArgs) {
+      funcData.hasVarArgsCall = true;
       if (varargs.length === 0) {
         varargs = [0];
         varargsTypes = ['i32'];
       }
       var offset = 0;
-      varargs = '(tempInt=' + RuntimeGenerator.stackAlloc(varargs.length, ',') + ',' +
+      varargs = '(tempVarArgs=' + RuntimeGenerator.stackAlloc(varargs.length, ',') + ',' +
                 varargs.map(function(arg, i) {
                   var type = varargsTypes[i];
                   if (type == 0) return null;
@@ -1459,17 +1465,17 @@ function JSify(data, functionsOnly, givenFunctions) {
                   var ret;
                   assert(offset % Runtime.STACK_ALIGN == 0); // varargs must be aligned
                   if (!varargsByVals[i]) {
-                    ret = makeSetValue(getFastValue('tempInt', '+', offset), 0, arg, type, null, null, Runtime.STACK_ALIGN, null, ',');
+                    ret = makeSetValue(getFastValue('tempVarArgs', '+', offset), 0, arg, type, null, null, Runtime.STACK_ALIGN, null, ',');
                     offset += Runtime.alignMemory(Runtime.getNativeFieldSize(type), Runtime.STACK_ALIGN);
                   } else {
                     var size = calcAllocatedSize(removeAllPointing(type));
-                    ret = makeCopyValues(getFastValue('tempInt', '+', offset), arg, size, null, null, varargsByVals[i], ',');
+                    ret = makeCopyValues(getFastValue('tempVarArgs', '+', offset), arg, size, null, null, varargsByVals[i], ',');
                     offset += Runtime.forceAlign(size, Runtime.STACK_ALIGN);
                   }
                   return ret;
                 }).filter(function(arg) {
                   return arg !== null;
-                }).join(',') + ',tempInt)';
+                }).join(',') + ',tempVarArgs)';
       varargs = asmCoercion(varargs, 'i32');
     }
 
@@ -1557,10 +1563,24 @@ function JSify(data, functionsOnly, givenFunctions) {
 
     return ret;
   }
+
+  function makeVarArgsCleanup(js) {
+    if (js.indexOf('(tempVarArgs=') >= 0) {
+      if (js[js.length-1] == ';') {
+        return js + ' STACKTOP=tempVarArgs;';
+      } else {
+        assert(js.indexOf(';') < 0);
+        return '((' + js + '), STACKTOP=tempVarArgs)';
+      }
+    }
+    return js;
+  }
+
   makeFuncLineActor('getelementptr', function(item) { return finalizeLLVMFunctionCall(item) });
   makeFuncLineActor('call', function(item) {
     if (item.standalone && LibraryManager.isStubFunction(item.ident)) return ';';
-    return makeFunctionCall(item.ident, item.params, item.funcData, item.type, false, !!item.assignTo || !item.standalone) + (item.standalone ? ';' : '');
+    var ret = makeFunctionCall(item.ident, item.params, item.funcData, item.type, false, !!item.assignTo || !item.standalone) + (item.standalone ? ';' : '');
+    return makeVarArgsCleanup(ret);
   });
 
   makeFuncLineActor('unreachable', function(item) {

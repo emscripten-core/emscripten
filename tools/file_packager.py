@@ -40,7 +40,7 @@ TODO:        You can also provide .crn files yourself, pre-crunched. With this o
 '''
 
 import os, sys, shutil, random, uuid, ctypes
-
+import posixpath
 import shared
 from shared import Compression, execute, suffix, unsuffixed
 from subprocess import Popen, PIPE, STDOUT
@@ -216,7 +216,8 @@ for file_ in data_files:
   file_['dstpath'] = file_['dstpath'].replace(os.path.sep, '/') # name in the filesystem, native and emulated
   if file_['dstpath'].endswith('/'): # If user has submitted a directory name as the destination but omitted the destination filename, use the filename from source file
     file_['dstpath'] = file_['dstpath'] + os.path.basename(file_['srcpath'])
-  if file_['dstpath'].startswith('./'): file_['dstpath'] = file_['dstpath'][2:] # remove redundant ./ prefix
+  # make destination path always relative to the root
+  file_['dstpath'] = posixpath.normpath(os.path.join('/', file_['dstpath']))
   if DEBUG:
     print >> sys.stderr, 'Packaging file "' + file_['srcpath'] + '" to VFS in path "' + file_['dstpath'] + '".'
 
@@ -341,6 +342,8 @@ if has_preloaded:
 counter = 0
 for file_ in data_files:
   filename = file_['dstpath']
+  dirname = os.path.dirname(filename)
+  basename = os.path.basename(filename)
   if file_['mode'] == 'embed':
     # Embed
     data = map(ord, open(file_['srcpath'], 'rb').read())
@@ -356,7 +359,7 @@ for file_ in data_files:
           str_data = str(chunk)
         else:
           str_data += '.concat(' + str(chunk) + ')'
-    code += '''Module['FS_createDataFile']('/%s', '%s', %s, true, true);\n''' % (os.path.dirname(filename), os.path.basename(filename), str_data)
+    code += '''Module['FS_createDataFile']('%s', '%s', %s, true, true);\n''' % (dirname, basename, str_data)
   elif file_['mode'] == 'preload':
     # Preload
     varname = 'filePreload%d' % counter
@@ -389,7 +392,7 @@ for file_ in data_files:
       assert(arrayBuffer, 'Loading file %(filename)s failed.');
       var byteArray = !arrayBuffer.subarray ? new Uint8Array(arrayBuffer) : arrayBuffer;
       %(prepare)s
-      Module['FS_createPreloadedFile']('/%(dirname)s', '%(basename)s', byteArray, true, true, function() {
+      Module['FS_createPreloadedFile']('%(dirname)s', '%(basename)s', byteArray, true, true, function() {
         %(finish)s
       }%(fail)s);
     };
@@ -399,8 +402,8 @@ for file_ in data_files:
         'request': 'DataRequest', # In the past we also supported XHRs here
         'varname': varname,
         'filename': filename,
-        'dirname': os.path.dirname(filename),
-        'basename': os.path.basename(filename),
+        'dirname': dirname,
+        'basename': basename,
         'prepare': prepare,
         'finish': finish,
         'fail': '' if filename[-4:] not in AUDIO_SUFFIXES else ''', function() { Module['removeRunDependency']('fp %s') }''' % filename # workaround for chromium bug 124926 (still no audio with this, but at least we don't hang)

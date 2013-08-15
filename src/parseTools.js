@@ -396,11 +396,17 @@ function parseParamTokens(params) {
       // handle 'byval' and 'byval align X'. We store the alignment in 'byVal'
       byVal = QUANTUM_SIZE;
       segment.splice(1, 1);
+      if (segment[1] && segment[1].text === 'nocapture') {
+        segment.splice(1, 1);
+      }
       if (segment[1] && segment[1].text === 'align') {
         assert(isNumber(segment[2].text));
         byVal = parseInt(segment[2].text);
         segment.splice(1, 2);
       }
+    }
+    if (segment[1] && segment[1].text === 'nocapture') {
+      segment.splice(1, 1);
     }
     if (segment.length == 1) {
       if (segment[0].text == '...') {
@@ -2014,6 +2020,13 @@ function makeIsNaN(value) {
   return 'isNaN(' + value + ')';
 }
 
+function makeFloat(value, type) {
+  if (TO_FLOAT32 && type == 'float') {
+    return 'Math.toFloat32(' + value + ')';
+  }
+  return value;
+}
+
 // fptoui and fptosi are not in these, because we need to be careful about what we do there. We can't
 // just sign/unsign the input first.
 var UNSIGNED_OP = set('udiv', 'urem', 'uitofp', 'zext', 'lshr');
@@ -2269,11 +2282,11 @@ function processMathop(item) {
       return idents[0] + ' >>> ' + idents[1];
     }
     // basic float ops
-    case 'fadd': return getFastValue(idents[0], '+', idents[1], item.type);
-    case 'fsub': return getFastValue(idents[0], '-', idents[1], item.type);
-    case 'fdiv': return getFastValue(idents[0], '/', idents[1], item.type);
-    case 'fmul': return getFastValue(idents[0], '*', idents[1], item.type);
-    case 'frem': return getFastValue(idents[0], '%', idents[1], item.type);
+    case 'fadd': return makeFloat(getFastValue(idents[0], '+', idents[1], item.type), item.type);
+    case 'fsub': return makeFloat(getFastValue(idents[0], '-', idents[1], item.type), item.type);
+    case 'fdiv': return makeFloat(getFastValue(idents[0], '/', idents[1], item.type), item.type);
+    case 'fmul': return makeFloat(getFastValue(idents[0], '*', idents[1], item.type), item.type);
+    case 'frem': return makeFloat(getFastValue(idents[0], '%', idents[1], item.type), item.type);
     case 'uitofp': case 'sitofp': return asmCoercion(idents[0], 'double', op[0]);
     case 'fptoui': case 'fptosi': return makeRounding(idents[0], bitsLeft, op === 'fptosi', true);
 

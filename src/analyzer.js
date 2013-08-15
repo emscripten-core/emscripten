@@ -765,7 +765,15 @@ function analyzer(data, sidePass) {
                       }
                       break;
                     }
-                    case 'add': case 'sub': case 'sdiv': case 'udiv': case 'mul': case 'urem': case 'srem':
+                    case 'add': case 'sub': case 'sdiv': case 'udiv': case 'mul': case 'urem': case 'srem': {
+                      if (sourceBits < 32) {
+                        // when we add illegal types like i24, we must work on the singleton chunks
+                        item.assignTo += '$0';
+                        item.params[0].ident += '$0';
+                        item.params[1].ident += '$0';
+                      }
+                      // fall through
+                    }
                     case 'uitofp': case 'sitofp': case 'fptosi': case 'fptoui': {
                       // We cannot do these in parallel chunks of 32-bit operations. We will handle these in processMathop
                       i++;
@@ -945,9 +953,23 @@ function analyzer(data, sidePass) {
     if (type[0] == '{' || type[0] == '<') {
       type = nonPointing;
       var packed = type[0] == '<';
+      var internal = type;
+      if (packed) {
+        if (internal[internal.length-1] != '>') {
+          warnOnce('ignoring type ' + internal);
+          return; // function pointer or such
+        }
+        internal = internal.substr(1, internal.length-2);
+      }
+      assert(internal[0] == '{', internal);
+      if (internal[internal.length-1] != '}') {
+        warnOnce('ignoring type ' + internal);
+        return; // function pointer or such
+      }
+      internal = internal.substr(2, internal.length-4);
       Types.types[type] = {
         name_: type,
-        fields: splitTokenList(tokenize(type.substr(2 + packed, type.length - 4 - 2*packed)).tokens).map(function(segment) {
+        fields: splitTokenList(tokenize(internal).tokens).map(function(segment) {
           return segment[0].text;
         }),
         packed: packed,

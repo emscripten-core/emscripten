@@ -18,1725 +18,11 @@
 // Memory allocated during startup, in postsets, should only be ALLOC_STATIC
 
 LibraryManager.library = {
-  // ==========================================================================
-  // File system base.
-  // ==========================================================================
-
   // keep this low in memory, because we flatten arrays with them in them
   stdin: 'allocate(1, "i32*", ALLOC_STATIC)',
   stdout: 'allocate(1, "i32*", ALLOC_STATIC)',
   stderr: 'allocate(1, "i32*", ALLOC_STATIC)',
   _impure_ptr: 'allocate(1, "i32*", ALLOC_STATIC)',
-
-  $FS__deps: ['$ERRNO_CODES', '$ERRNO_MESSAGES', '__setErrNo', '$VFS', '$PATH', '$TTY', '$MEMFS', 'stdin', 'stdout', 'stderr', 'fflush'],
-  $FS__postset: 'FS.staticInit();' +
-                '__ATINIT__.unshift({ func: function() { if (!Module["noFSInit"] && !FS.init.initialized) FS.init() } });' +
-                '__ATMAIN__.push({ func: function() { FS.ignorePermissions = false } });' +
-                '__ATEXIT__.push({ func: function() { FS.quit() } });' +
-                // export some names through closure
-                'Module["FS_createFolder"] = FS.createFolder;' +
-                'Module["FS_createPath"] = FS.createPath;' +
-                'Module["FS_createDataFile"] = FS.createDataFile;' +
-                'Module["FS_createPreloadedFile"] = FS.createPreloadedFile;' +
-                'Module["FS_createLazyFile"] = FS.createLazyFile;' +
-                'Module["FS_createLink"] = FS.createLink;' +
-                'Module["FS_createDevice"] = FS.createDevice;',
-  $FS: {
-    root: null,
-    nodes: [null],
-    devices: [null],
-    streams: [null],
-    nextInode: 1,
-    name_table: new Array(4096),
-    currentPath: '/',
-    initialized: false,
-    // Whether we are currently ignoring permissions. Useful when preparing the
-    // filesystem and creating files inside read-only folders.
-    // This is set to false when the runtime is initialized, allowing you
-    // to modify the filesystem freely before run() is called.
-    ignorePermissions: true,
-    
-    ErrnoError: function(errno) {
-      this.errno = errno;
-      for (var key in ERRNO_CODES) {
-        if (ERRNO_CODES[key] === errno) {
-          this.code = key;
-          break;
-        }
-      }
-      this.message = ERRNO_MESSAGES[errno];
-    },
-
-    handleFSError: function(e) {
-      if (!(e instanceof FS.ErrnoError)) throw e + ' : ' + new Error().stack;
-      return ___setErrNo(e.errno);
-    },
-
-    //
-    // nodes
-    //
-    hashName: function(parentid, name) {
-      var hash = 0;
-      for (var i = 0; i < name.length; i++) {
-        hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
-      }
-      return (parentid + hash) % FS.name_table.length;
-    },
-    hashAddNode: function(node) {
-      var hash = FS.hashName(node.parent.id, node.name);
-      node.name_next = FS.name_table[hash];
-      FS.name_table[hash] = node;
-    },
-    hashRemoveNode: function(node) {
-      var hash = FS.hashName(node.parent.id, node.name);
-      if (FS.name_table[hash] === node) {
-        FS.name_table[hash] = node.name_next;
-      } else {
-        var current = FS.name_table[hash];
-        while (current) {
-          if (current.name_next === node) {
-            current.name_next = node.name_next;
-            break;
-          }
-          current = current.name_next;
-        }
-      }
-    },
-    lookupNode: function(parent, name) {
-      var err = FS.mayLookup(parent);
-      if (err) {
-        throw new FS.ErrnoError(err);
-      }
-      var hash = FS.hashName(parent.id, name);
-      for (var node = FS.name_table[hash]; node; node = node.name_next) {
-        if (node.parent.id === parent.id && node.name === name) {
-          return node;
-        }
-      }
-      // if we failed to find it in the cache, call into the VFS
-      return VFS.lookup(parent, name);
-    },
-    createNode: function(parent, name, mode, rdev) {
-      var node = {
-        id: FS.nextInode++,
-        name: name,
-        mode: mode,
-        node_ops: {},
-        stream_ops: {},
-        rdev: rdev,
-        parent: null,
-        mount: null
-      };
-      if (!parent) {
-        parent = node;  // root node sets parent to itself
-      }
-      node.parent = parent;
-      node.mount = parent.mount;
-      // compatibility
-      var readMode = {{{ cDefine('S_IRUGO') }}} | {{{ cDefine('S_IXUGO') }}};
-      var writeMode = {{{ cDefine('S_IWUGO') }}};
-      Object.defineProperty(node, 'read', {
-        get: function() { return (node.mode & readMode) === readMode; },
-        set: function(val) { val ? node.mode |= readMode : node.mode &= ~readMode; }
-      });
-      Object.defineProperty(node, 'write', {
-        get: function() { return (node.mode & writeMode) === writeMode; },
-        set: function(val) { val ? node.mode |= writeMode : node.mode &= ~writeMode; }
-      });
-      // TODO add:
-      // isFolder
-      // isDevice
-      FS.hashAddNode(node);
-      return node;
-    },
-    destroyNode: function(node) {
-      FS.hashRemoveNode(node);
-    },
-    isRoot: function(node) {
-      return node === node.parent;
-    },
-    isMountpoint: function(node) {
-      return node.mounted;
-    },
-    isFile: function(mode) {
-      return (mode & {{{ cDefine('S_IFMT') }}}) === {{{ cDefine('S_IFREG') }}};
-    },
-    isDir: function(mode) {
-      return (mode & {{{ cDefine('S_IFMT') }}}) === {{{ cDefine('S_IFDIR') }}};
-    },
-    isLink: function(mode) {
-      return (mode & {{{ cDefine('S_IFMT') }}}) === {{{ cDefine('S_IFLNK') }}};
-    },
-    isChrdev: function(mode) {
-      return (mode & {{{ cDefine('S_IFMT') }}}) === {{{ cDefine('S_IFCHR') }}};
-    },
-    isBlkdev: function(mode) {
-      return (mode & {{{ cDefine('S_IFMT') }}}) === {{{ cDefine('S_IFBLK') }}};
-    },
-    isFIFO: function(mode) {
-      return (mode & {{{ cDefine('S_IFMT') }}}) === {{{ cDefine('S_IFIFO') }}};
-    },
-
-    //
-    // paths
-    //
-    cwd: function() {
-      return FS.currentPath;
-    },
-    lookupPath: function(path, opts) {
-      path = PATH.resolve(FS.currentPath, path);
-      opts = opts || { recurse_count: 0 };
-
-      if (opts.recurse_count > 8) {  // max recursive lookup of 8
-        throw new FS.ErrnoError(ERRNO_CODES.ELOOP);
-      }
-
-      // split the path
-      var parts = PATH.normalizeArray(path.split('/').filter(function(p) {
-        return !!p;
-      }), false);
-
-      // start at the root
-      var current = FS.root;
-      var current_path = '/';
-
-      for (var i = 0; i < parts.length; i++) {
-        var islast = (i === parts.length-1);
-        if (islast && opts.parent) {
-          // stop resolving
-          break;
-        }
-
-        current = FS.lookupNode(current, parts[i]);
-        current_path = PATH.join(current_path, parts[i]);
-
-        // jump to the mount's root node if this is a mountpoint
-        if (FS.isMountpoint(current)) {
-          current = current.mount.root;
-        }
-
-        // follow symlinks
-        // by default, lookupPath will not follow a symlink if it is the final path component.
-        // setting opts.follow = true will override this behavior.
-        if (!islast || opts.follow) {
-          var count = 0;
-          while (FS.isLink(current.mode)) {
-            var link = VFS.readlink(current_path);
-            current_path = PATH.resolve(PATH.dirname(current_path), link);
-            
-            var lookup = FS.lookupPath(current_path, { recurse_count: opts.recurse_count });
-            current = lookup.node;
-
-            if (count++ > 40) {  // limit max consecutive symlinks to 40 (SYMLOOP_MAX).
-              throw new FS.ErrnoError(ERRNO_CODES.ELOOP);
-            }
-          }
-        }
-      }
-
-      return { path: current_path, node: current };
-    },
-    getPath: function(node) {
-      var path;
-      while (true) {
-        if (FS.isRoot(node)) {
-          return path ? PATH.join(node.mount.mountpoint, path) : node.mount.mountpoint;
-        }
-        path = path ? PATH.join(node.name, path) : node.name;
-        node = node.parent;
-      }
-    },
-
-    //
-    // permissions
-    //
-    flagModes: {
-      '"r"': {{{ cDefine('O_RDONLY') }}},
-      '"rs"': {{{ cDefine('O_RDONLY') }}} | {{{ cDefine('O_SYNC') }}},
-      '"r+"': {{{ cDefine('O_RDWR') }}},
-      '"w"': {{{ cDefine('O_TRUNC') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_WRONLY') }}},
-      '"wx"': {{{ cDefine('O_TRUNC') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_WRONLY') }}} | {{{ cDefine('O_EXCL') }}},
-      '"xw"': {{{ cDefine('O_TRUNC') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_WRONLY') }}} | {{{ cDefine('O_EXCL') }}},
-      '"w+"': {{{ cDefine('O_TRUNC') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_RDWR') }}},
-      '"wx+"': {{{ cDefine('O_TRUNC') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_RDWR') }}} | {{{ cDefine('O_EXCL') }}},
-      '"xw+"': {{{ cDefine('O_TRUNC') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_RDWR') }}} | {{{ cDefine('O_EXCL') }}},
-      '"a"': {{{ cDefine('O_APPEND') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_WRONLY') }}},
-      '"ax"': {{{ cDefine('O_APPEND') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_WRONLY') }}} | {{{ cDefine('O_EXCL') }}},
-      '"xa"': {{{ cDefine('O_APPEND') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_WRONLY') }}} | {{{ cDefine('O_EXCL') }}},
-      '"a+"': {{{ cDefine('O_APPEND') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_RDWR') }}},
-      '"ax+"': {{{ cDefine('O_APPEND') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_RDWR') }}} | {{{ cDefine('O_EXCL') }}},
-      '"xa+"': {{{ cDefine('O_APPEND') }}} | {{{ cDefine('O_CREAT') }}} | {{{ cDefine('O_RDWR') }}} | {{{ cDefine('O_EXCL') }}}
-    },
-    // convert the 'r', 'r+', etc. to it's corresponding set of O_* flags
-    modeStringToFlags: function(str) {
-      var flags = FS.flagModes[str];
-      if (typeof flags === 'undefined') {
-        throw new Error('Unknown file open mode: ' + str);
-      }
-      return flags;
-    },
-    // convert O_* bitmask to a string for nodePermissions
-    flagsToPermissionString: function(flag) {
-      var accmode = flag & {{{ cDefine('O_ACCMODE') }}};
-      var perms = ['r', 'w', 'rw'][accmode];
-      if ((flag & {{{ cDefine('O_TRUNC') }}})) {
-        perms += 'w';
-      }
-      return perms;
-    },
-    nodePermissions: function(node, perms) {
-      if (FS.ignorePermissions) {
-        return 0;
-      }
-      // return 0 if any user, group or owner bits are set.
-      if (perms.indexOf('r') !== -1 && !(node.mode & {{{ cDefine('S_IRUGO') }}})) {
-        return ERRNO_CODES.EACCES;
-      } else if (perms.indexOf('w') !== -1 && !(node.mode & {{{ cDefine('S_IWUGO') }}})) {
-        return ERRNO_CODES.EACCES;
-      } else if (perms.indexOf('x') !== -1 && !(node.mode & {{{ cDefine('S_IXUGO') }}})) {
-        return ERRNO_CODES.EACCES;
-      }
-      return 0;
-    },
-    mayLookup: function(dir) {
-      return FS.nodePermissions(dir, 'x');
-    },
-    mayMknod: function(mode) {
-      switch (mode & {{{ cDefine('S_IFMT') }}}) {
-        case {{{ cDefine('S_IFREG') }}}:
-        case {{{ cDefine('S_IFCHR') }}}:
-        case {{{ cDefine('S_IFBLK') }}}:
-        case {{{ cDefine('S_IFIFO') }}}:
-        case {{{ cDefine('S_IFSOCK') }}}:
-          return 0;
-        default:
-          return ERRNO_CODES.EINVAL;
-      }
-    },
-    mayCreate: function(dir, name) {
-      try {
-        var node = FS.lookupNode(dir, name);
-        return ERRNO_CODES.EEXIST;
-      } catch (e) {
-      }
-      return FS.nodePermissions(dir, 'wx');
-    },
-    mayDelete: function(dir, name, isdir) {
-      var node;
-      try {
-        node = FS.lookupNode(dir, name);
-      } catch (e) {
-        return e.errno;
-      }
-      var err = FS.nodePermissions(dir, 'wx');
-      if (err) {
-        return err;
-      }
-      if (isdir) {
-        if (!FS.isDir(node.mode)) {
-          return ERRNO_CODES.ENOTDIR;
-        }
-        if (FS.isRoot(node) || FS.getPath(node) === FS.currentPath) {
-          return ERRNO_CODES.EBUSY;
-        }
-      } else {
-        if (FS.isDir(node.mode)) {
-          return ERRNO_CODES.EISDIR;
-        }
-      }
-      return 0;
-    },
-    mayOpen: function(node, flags) {
-      if (!node) {
-        return ERRNO_CODES.ENOENT;
-      }
-      if (FS.isLink(node.mode)) {
-        return ERRNO_CODES.ELOOP;
-      } else if (FS.isDir(node.mode)) {
-        if ((flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_RDONLY')}}} ||  // opening for write
-            (flags & {{{ cDefine('O_TRUNC') }}})) {
-          return ERRNO_CODES.EISDIR;
-        }
-      }
-      return FS.nodePermissions(node, FS.flagsToPermissionString(flags));
-    },
-
-    //
-    // devices
-    //
-    // each character device consists of a device id + stream operations.
-    // when a character device node is created (e.g. /dev/stdin) it is
-    // assigned a device id that lets us map back to the actual device.
-    // by default, each character device stream (e.g. _stdin) uses chrdev_stream_ops.
-    // however, once opened, the stream's operations are overridden with
-    // the operations of the device its underlying node maps back to.
-    chrdev_stream_ops: {
-      open: function(stream) {
-        var device = FS.getDevice(stream.node.rdev);
-        // override node's stream ops with the device's
-        stream.stream_ops = device.stream_ops;
-        // forward the open call
-        if (stream.stream_ops.open) {
-          stream.stream_ops.open(stream);
-        }
-      },
-      llseek: function() {
-        throw new FS.ErrnoError(ERRNO_CODES.ESPIPE);
-      }
-    },
-    major: function(dev) {
-      return ((dev) >> 8);
-    },
-    minor: function(dev) {
-      return ((dev) & 0xff);
-    },
-    makedev: function(ma, mi) {
-      return ((ma) << 8 | (mi));
-    },
-    registerDevice: function(dev, ops) {
-      FS.devices[dev] = { stream_ops: ops };
-    },
-    getDevice: function(dev) {
-      return FS.devices[dev];
-    },
-
-    //
-    // streams
-    //
-    MAX_OPEN_FDS: 4096,
-    nextfd: function(fd_start, fd_end) {
-      fd_start = fd_start || 1;
-      fd_end = fd_end || FS.MAX_OPEN_FDS;
-      for (var fd = fd_start; fd <= fd_end; fd++) {
-        if (!FS.streams[fd]) {
-          return fd;
-        }
-      }
-      throw new FS.ErrnoError(ERRNO_CODES.EMFILE);
-    },
-    getStream: function(fd) {
-      return FS.streams[fd];
-    },
-    createStream: function(stream, fd_start, fd_end) {
-      var fd = FS.nextfd(fd_start, fd_end);
-      stream.fd = fd;
-      // compatibility
-      Object.defineProperty(stream, 'object', {
-        get: function() { return stream.node; },
-        set: function(val) { stream.node = val; }
-      });
-      Object.defineProperty(stream, 'isRead', {
-        get: function() { return (stream.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_WRONLY') }}}; }
-      });
-      Object.defineProperty(stream, 'isWrite', {
-        get: function() { return (stream.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_RDONLY') }}}; }
-      });
-      Object.defineProperty(stream, 'isAppend', {
-        get: function() { return (stream.flags & {{{ cDefine('O_APPEND') }}}); }
-      });
-      FS.streams[fd] = stream;
-      return stream;
-    },
-    closeStream: function(fd) {
-      FS.streams[fd] = null;
-    },
-
-    //
-    // general
-    //
-    createDefaultDirectories: function() {
-      VFS.mkdir('/tmp', 0777);
-    },
-    createDefaultDevices: function() {
-      // create /dev
-      VFS.mkdir('/dev', 0777);
-      // setup /dev/null
-      FS.registerDevice(FS.makedev(1, 3), {
-        read: function() { return 0; },
-        write: function() { return 0; }
-      });
-      VFS.mkdev('/dev/null', 0666, FS.makedev(1, 3));
-      // setup /dev/tty and /dev/tty1
-      // stderr needs to print output using Module['printErr']
-      // so we register a second tty just for it.
-      TTY.register(FS.makedev(5, 0), TTY.default_tty_ops);
-      TTY.register(FS.makedev(6, 0), TTY.default_tty1_ops);
-      VFS.mkdev('/dev/tty', 0666, FS.makedev(5, 0));
-      VFS.mkdev('/dev/tty1', 0666, FS.makedev(6, 0));
-      // we're not going to emulate the actual shm device,
-      // just create the tmp dirs that reside in it commonly
-      VFS.mkdir('/dev/shm', 0777);
-      VFS.mkdir('/dev/shm/tmp', 0777);
-    },
-    createStandardStreams: function() {
-      // TODO deprecate the old functionality of a single
-      // input / output callback and that utilizes FS.createDevice
-      // and instead require a unique set of stream ops
-
-      // by default, we symlink the standard streams to the
-      // default tty devices. however, if the standard streams
-      // have been overwritten we create a unique device for
-      // them instead.
-      if (Module['stdin']) {
-        FS.createDevice('/dev', 'stdin', Module['stdin']);
-      } else {
-        VFS.symlink('/dev/tty', '/dev/stdin');
-      }
-      if (Module['stdout']) {
-        FS.createDevice('/dev', 'stdout', null, Module['stdout']);
-      } else {
-        VFS.symlink('/dev/tty', '/dev/stdout');
-      }
-      if (Module['stderr']) {
-        FS.createDevice('/dev', 'stderr', null, Module['stderr']);
-      } else {
-        VFS.symlink('/dev/tty1', '/dev/stderr');
-      }
-
-      // open default streams for the stdin, stdout and stderr devices
-      var stdin = VFS.open('/dev/stdin', 'r');
-      {{{ makeSetValue(makeGlobalUse('_stdin'), 0, 'stdin.fd', 'void*') }}};
-      assert(stdin.fd === 1, 'invalid handle for stdin (' + stdin.fd + ')');
-
-      var stdout = VFS.open('/dev/stdout', 'w');
-      {{{ makeSetValue(makeGlobalUse('_stdout'), 0, 'stdout.fd', 'void*') }}};
-      assert(stdout.fd === 2, 'invalid handle for stdout (' + stdout.fd + ')');
-
-      var stderr = VFS.open('/dev/stderr', 'w');
-      {{{ makeSetValue(makeGlobalUse('_stderr'), 0, 'stderr.fd', 'void*') }}};
-      assert(stderr.fd === 3, 'invalid handle for stderr (' + stderr.fd + ')');
-    },
-    staticInit: function() {
-      FS.root = FS.createNode(null, '/', {{{ cDefine('S_IFDIR') }}} | 0777, 0);
-      VFS.mount(MEMFS, {}, '/');
-
-      FS.createDefaultDirectories();
-      FS.createDefaultDevices();
-    },
-    init: function(input, output, error) {
-      assert(!FS.init.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
-      FS.init.initialized = true;
-
-      // Allow Module.stdin etc. to provide defaults, if none explicitly passed to us here
-      Module['stdin'] = input || Module['stdin'];
-      Module['stdout'] = output || Module['stdout'];
-      Module['stderr'] = error || Module['stderr'];
-
-      FS.createStandardStreams();
-    },
-    quit: function() {
-      FS.init.initialized = false;
-      for (var i = 0; i < FS.streams.length; i++) {
-        var stream = FS.streams[i];
-        if (!stream) {
-          continue;
-        }
-        VFS.close(stream);
-      }
-    },
-
-    //
-    // compatibility
-    //
-    getMode: function(canRead, canWrite) {
-      var mode = 0;
-      if (canRead) mode |= {{{ cDefine('S_IRUGO') }}} | {{{ cDefine('S_IXUGO') }}};
-      if (canWrite) mode |= {{{ cDefine('S_IWUGO') }}};
-      return mode;
-    },
-    joinPath: function(parts, forceRelative) {
-      var path = PATH.join.apply(null, parts);
-      if (forceRelative && path[0] == '/') path = path.substr(1);
-      return path;
-    },
-    absolutePath: function(relative, base) {
-      return PATH.resolve(base, relative);
-    },
-    standardizePath: function(path) {
-      return PATH.normalize(path);
-    },
-    findObject: function(path, dontResolveLastLink) {
-      var ret = FS.analyzePath(path, dontResolveLastLink);
-      if (ret.exists) {
-        return ret.object;
-      } else {
-        ___setErrNo(ret.error);
-        return null;
-      }
-    },
-    analyzePath: function(path, dontResolveLastLink) {
-      // operate from within the context of the symlink's target
-      try {
-        var lookup = FS.lookupPath(path, { follow: !dontResolveLastLink });
-        path = lookup.path;
-      } catch (e) {
-      }
-      var ret = {
-        isRoot: false, exists: false, error: 0, name: null, path: null, object: null,
-        parentExists: false, parentPath: null, parentObject: null
-      };
-      try {
-        var lookup = FS.lookupPath(path, { parent: true });
-        ret.parentExists = true;
-        ret.parentPath = lookup.path;
-        ret.parentObject = lookup.node;
-        ret.name = PATH.basename(path);
-        lookup = FS.lookupPath(path, { follow: !dontResolveLastLink });
-        ret.exists = true;
-        ret.path = lookup.path;
-        ret.object = lookup.node;
-        ret.name = lookup.node.name;
-        ret.isRoot = lookup.path === '/';
-      } catch (e) {
-        ret.error = e.errno;
-      };
-      return ret;
-    },
-    createFolder: function(parent, name, canRead, canWrite) {
-      var path = PATH.join(typeof parent === 'string' ? parent : FS.getPath(parent), name);
-      var mode = FS.getMode(canRead, canWrite);
-      return VFS.mkdir(path, mode);
-    },
-    createPath: function(parent, path, canRead, canWrite) {
-      parent = typeof parent === 'string' ? parent : FS.getPath(parent);
-      var parts = path.split('/').reverse();
-      while (parts.length) {
-        var part = parts.pop();
-        if (!part) continue;
-        var current = PATH.join(parent, part);
-        try {
-          VFS.mkdir(current, 0777);
-        } catch (e) {
-          // ignore EEXIST
-        }
-        parent = current;
-      }
-      return current;
-    },
-    createFile: function(parent, name, properties, canRead, canWrite) {
-      var path = PATH.join(typeof parent === 'string' ? parent : FS.getPath(parent), name);
-      var mode = FS.getMode(canRead, canWrite);
-      return VFS.create(path, mode);
-    },
-    createDataFile: function(parent, name, data, canRead, canWrite) {
-      var path = PATH.join(typeof parent === 'string' ? parent : FS.getPath(parent), name);
-      var mode = FS.getMode(canRead, canWrite);
-      var node = VFS.create(path, mode);
-      if (data) {
-        if (typeof data === 'string') {
-          var arr = new Array(data.length);
-          for (var i = 0, len = data.length; i < len; ++i) arr[i] = data.charCodeAt(i);
-          data = arr;
-        }
-        // make sure we can write to the file
-        VFS.chmod(path, mode | {{{ cDefine('S_IWUGO') }}});
-        var stream = VFS.open(path, 'w');
-        VFS.write(stream, data, 0, data.length, 0);
-        VFS.close(stream);
-        VFS.chmod(path, mode);
-      }
-      return node;
-    },
-    createDevice: function(parent, name, input, output) {
-      var path = PATH.join(typeof parent === 'string' ? parent : FS.getPath(parent), name);
-      var mode = input && output ? 0777 : (input ? 0333 : 0555);
-      if (!FS.createDevice.major) FS.createDevice.major = 64;
-      var dev = FS.makedev(FS.createDevice.major++, 0);
-      // Create a fake device that a set of stream ops to emulate
-      // the old behavior.
-      FS.registerDevice(dev, {
-        open: function(stream) {
-          stream.seekable = false;
-        },
-        close: function(stream) {
-          // flush any pending line data
-          if (output && output.buffer && output.buffer.length) {
-            output({{{ charCode('\n') }}});
-          }
-        },
-        read: function(stream, buffer, offset, length, pos /* ignored */) {
-          var bytesRead = 0;
-          for (var i = 0; i < length; i++) {
-            var result;
-            try {
-              result = input();
-            } catch (e) {
-              throw new FS.ErrnoError(ERRNO_CODES.EIO);
-            }
-            if (result === undefined && bytesRead === 0) {
-              throw new FS.ErrnoError(ERRNO_CODES.EAGAIN);
-            }
-            if (result === null || result === undefined) break;
-            bytesRead++;
-            buffer[offset+i] = result;
-          }
-          if (bytesRead) {
-            stream.node.timestamp = Date.now();
-          }
-          return bytesRead;
-        },
-        write: function(stream, buffer, offset, length, pos) {
-          for (var i = 0; i < length; i++) {
-            try {
-              output(buffer[offset+i]);
-            } catch (e) {
-              throw new FS.ErrnoError(ERRNO_CODES.EIO);
-            }
-          }
-          if (length) {
-            stream.node.timestamp = Date.now();
-          }
-          return i;
-        }
-      });
-      return VFS.mkdev(path, mode, dev);
-    },
-    createLink: function(parent, name, target, canRead, canWrite) {
-      var path = PATH.join(typeof parent === 'string' ? parent : FS.getPath(parent), name);
-      return VFS.symlink(target, path);
-    },
-    // Makes sure a file's contents are loaded. Returns whether the file has
-    // been loaded successfully. No-op for files that have been loaded already.
-    forceLoadFile: function(obj) {
-      if (obj.isDevice || obj.isFolder || obj.link || obj.contents) return true;
-      var success = true;
-      if (typeof XMLHttpRequest !== 'undefined') {
-        throw new Error("Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread.");
-      } else if (Module['read']) {
-        // Command-line.
-        try {
-          // WARNING: Can't read binary files in V8's d8 or tracemonkey's js, as
-          //          read() will try to parse UTF8.
-          obj.contents = intArrayFromString(Module['read'](obj.url), true);
-        } catch (e) {
-          success = false;
-        }
-      } else {
-        throw new Error('Cannot load without read() or XMLHttpRequest.');
-      }
-      if (!success) ___setErrNo(ERRNO_CODES.EIO);
-      return success;
-    },
-    // Creates a file record for lazy-loading from a URL. XXX This requires a synchronous
-    // XHR, which is not possible in browsers except in a web worker! Use preloading,
-    // either --preload-file in emcc or FS.createPreloadedFile
-    createLazyFile: function(parent, name, url, canRead, canWrite) {
-      if (typeof XMLHttpRequest !== 'undefined') {
-        if (!ENVIRONMENT_IS_WORKER) throw 'Cannot do synchronous binary XHRs outside webworkers in modern browsers. Use --embed-file or --preload-file in emcc';
-        // Lazy chunked Uint8Array (implements get and length from Uint8Array). Actual getting is abstracted away for eventual reuse.
-        var LazyUint8Array = function() {
-          this.lengthKnown = false;
-          this.chunks = []; // Loaded chunks. Index is the chunk number
-        }
-        LazyUint8Array.prototype.get = function(idx) {
-          if (idx > this.length-1 || idx < 0) {
-            return undefined;
-          }
-          var chunkOffset = idx % this.chunkSize;
-          var chunkNum = Math.floor(idx / this.chunkSize);
-          return this.getter(chunkNum)[chunkOffset];
-        }
-        LazyUint8Array.prototype.setDataGetter = function(getter) {
-          this.getter = getter;
-        }
-        LazyUint8Array.prototype.cacheLength = function() {
-            // Find length
-            var xhr = new XMLHttpRequest();
-            xhr.open('HEAD', url, false);
-            xhr.send(null);
-            if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
-            var datalength = Number(xhr.getResponseHeader("Content-length"));
-            var header;
-            var hasByteServing = (header = xhr.getResponseHeader("Accept-Ranges")) && header === "bytes";
-#if SMALL_XHR_CHUNKS
-            var chunkSize = 1024; // Chunk size in bytes
-#else
-            var chunkSize = 1024*1024; // Chunk size in bytes
-#endif
-
-            if (!hasByteServing) chunkSize = datalength;
-
-            // Function to get a range from the remote URL.
-            var doXHR = (function(from, to) {
-              if (from > to) throw new Error("invalid range (" + from + ", " + to + ") or no bytes requested!");
-              if (to > datalength-1) throw new Error("only " + datalength + " bytes available! programmer error!");
-
-              // TODO: Use mozResponseArrayBuffer, responseStream, etc. if available.
-              var xhr = new XMLHttpRequest();
-              xhr.open('GET', url, false);
-              if (datalength !== chunkSize) xhr.setRequestHeader("Range", "bytes=" + from + "-" + to);
-
-              // Some hints to the browser that we want binary data.
-              if (typeof Uint8Array != 'undefined') xhr.responseType = 'arraybuffer';
-              if (xhr.overrideMimeType) {
-                xhr.overrideMimeType('text/plain; charset=x-user-defined');
-              }
-
-              xhr.send(null);
-              if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
-              if (xhr.response !== undefined) {
-                return new Uint8Array(xhr.response || []);
-              } else {
-                return intArrayFromString(xhr.responseText || '', true);
-              }
-            });
-            var lazyArray = this;
-            lazyArray.setDataGetter(function(chunkNum) {
-              var start = chunkNum * chunkSize;
-              var end = (chunkNum+1) * chunkSize - 1; // including this byte
-              end = Math.min(end, datalength-1); // if datalength-1 is selected, this is the last block
-              if (typeof(lazyArray.chunks[chunkNum]) === "undefined") {
-                lazyArray.chunks[chunkNum] = doXHR(start, end);
-              }
-              if (typeof(lazyArray.chunks[chunkNum]) === "undefined") throw new Error("doXHR failed!");
-              return lazyArray.chunks[chunkNum];
-            });
-
-            this._length = datalength;
-            this._chunkSize = chunkSize;
-            this.lengthKnown = true;
-        }
-
-        var lazyArray = new LazyUint8Array();
-        Object.defineProperty(lazyArray, "length", {
-            get: function() {
-                if(!this.lengthKnown) {
-                    this.cacheLength();
-                }
-                return this._length;
-            }
-        });
-        Object.defineProperty(lazyArray, "chunkSize", {
-            get: function() {
-                if(!this.lengthKnown) {
-                    this.cacheLength();
-                }
-                return this._chunkSize;
-            }
-        });
-
-        var properties = { isDevice: false, contents: lazyArray };
-      } else {
-        var properties = { isDevice: false, url: url };
-      }
-
-      var node = FS.createFile(parent, name, properties, canRead, canWrite);
-      // This is a total hack, but I want to get this lazy file code out of the
-      // core of MEMFS. If we want to keep this lazy file concept I feel it should
-      // be its own thin LAZYFS proxying calls to MEMFS.
-      if (properties.contents) {
-        node.contents = properties.contents;
-      } else if (properties.url) {
-        node.contents = null;
-        node.url = properties.url;
-      }
-      // override each stream op with one that tries to force load the lazy file first
-      var stream_ops = {};
-      var keys = Object.keys(node.stream_ops);
-      keys.forEach(function(key) {
-        var fn = node.stream_ops[key];
-        stream_ops[key] = function() {
-          if (!FS.forceLoadFile(node)) {
-            throw new FS.ErrnoError(ERRNO_CODES.EIO);
-          }
-          return fn.apply(null, arguments);
-        };
-      });
-      // use a custom read function
-      stream_ops.read = function(stream, buffer, offset, length, position) {
-        var contents = stream.node.contents;
-        var size = Math.min(contents.length - position, length);
-        if (contents.slice) { // normal array
-          for (var i = 0; i < size; i++) {
-            buffer[offset + i] = contents[position + i];
-          }
-        } else {
-          for (var i = 0; i < size; i++) { // LazyUint8Array from sync binary XHR
-            buffer[offset + i] = contents.get(position + i);
-          }
-        }
-        return size;
-      };
-      node.stream_ops = stream_ops;
-      return node;
-    },
-    // Preloads a file asynchronously. You can call this before run, for example in
-    // preRun. run will be delayed until this file arrives and is set up.
-    // If you call it after run(), you may want to pause the main loop until it
-    // completes, if so, you can use the onload parameter to be notified when
-    // that happens.
-    // In addition to normally creating the file, we also asynchronously preload
-    // the browser-friendly versions of it: For an image, we preload an Image
-    // element and for an audio, and Audio. These are necessary for SDL_Image
-    // and _Mixer to find the files in preloadedImages/Audios.
-    // You can also call this with a typed array instead of a url. It will then
-    // do preloading for the Image/Audio part, as if the typed array were the
-    // result of an XHR that you did manually.
-    createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile) {
-      Browser.init();
-      var fullname = FS.joinPath([parent, name], true);
-      function processData(byteArray) {
-        function finish(byteArray) {
-          if (!dontCreateFile) {
-            FS.createDataFile(parent, name, byteArray, canRead, canWrite);
-          }
-          if (onload) onload();
-          removeRunDependency('cp ' + fullname);
-        }
-        var handled = false;
-        Module['preloadPlugins'].forEach(function(plugin) {
-          if (handled) return;
-          if (plugin['canHandle'](fullname)) {
-            plugin['handle'](byteArray, fullname, finish, function() {
-              if (onerror) onerror();
-              removeRunDependency('cp ' + fullname);
-            });
-            handled = true;
-          }
-        });
-        if (!handled) finish(byteArray);
-      }
-      addRunDependency('cp ' + fullname);
-      if (typeof url == 'string') {
-        Browser.asyncLoad(url, function(byteArray) {
-          processData(byteArray);
-        }, onerror);
-      } else {
-        processData(url);
-      }
-    }
-  },
-  
-  $VFS__deps: ['$FS'],
-  $VFS: {
-    mount: function(type, opts, mountpoint) {
-      var mount = {
-        type: type,
-        opts: opts,
-        mountpoint: mountpoint,
-        root: null
-      };
-      var lookup;
-      if (mountpoint) {
-        lookup = FS.lookupPath(mountpoint, { follow: false });
-      }
-      // create a root node for the fs
-      var root = type.mount(mount);
-      root.mount = mount;
-      mount.root = root;
-      // assign the mount info to the mountpoint's node
-      if (lookup) {
-        lookup.node.mount = mount;
-        lookup.node.mounted = true;
-        // compatibility update FS.root if we mount to /
-        if (mountpoint === '/') {
-          FS.root = mount.root;
-        }
-      }
-      return root;
-    },
-    lookup: function(parent, name) {
-      return parent.node_ops.lookup(parent, name);
-    },
-    // generic function for all node creation
-    mknod: function(path, mode, dev) {
-      var lookup = FS.lookupPath(path, { parent: true });
-      var parent = lookup.node;
-      var name = PATH.basename(path);
-      var err = FS.mayCreate(parent, name);
-      if (err) {
-        throw new FS.ErrnoError(err);
-      }
-      if (!parent.node_ops.mknod) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
-      }
-      return parent.node_ops.mknod(parent, name, mode, dev);
-    },
-    // helpers to create specific types of nodes
-    create: function(path, mode) {
-      mode &= {{{ cDefine('S_IALLUGO') }}};
-      mode |= {{{ cDefine('S_IFREG') }}};
-      return VFS.mknod(path, mode, 0);
-    },
-    mkdir: function(path, mode) {
-      mode &= {{{ cDefine('S_IRWXUGO') }}} | {{{ cDefine('S_ISVTX') }}};
-      mode |= {{{ cDefine('S_IFDIR') }}};
-      return VFS.mknod(path, mode, 0);
-    },
-    mkdev: function(path, mode, dev) {
-      mode |= {{{ cDefine('S_IFCHR') }}};
-      return VFS.mknod(path, mode, dev);
-    },
-    symlink: function(oldpath, newpath) {
-      var lookup = FS.lookupPath(newpath, { parent: true });
-      var parent = lookup.node;
-      var newname = PATH.basename(newpath);
-      var err = FS.mayCreate(parent, newname);
-      if (err) {
-        throw new FS.ErrnoError(err);
-      }
-      if (!parent.node_ops.symlink) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
-      }
-      return parent.node_ops.symlink(parent, newname, oldpath);
-    },
-    rename: function(old_path, new_path) {
-      var old_dirname = PATH.dirname(old_path);
-      var new_dirname = PATH.dirname(new_path);
-      var old_name = PATH.basename(old_path);
-      var new_name = PATH.basename(new_path);
-      // parents must exist
-      var lookup, old_dir, new_dir;
-      try {
-        lookup = FS.lookupPath(old_path, { parent: true });
-        old_dir = lookup.node;
-        lookup = FS.lookupPath(new_path, { parent: true });
-        new_dir = lookup.node;
-      } catch (e) {
-        throw new FS.ErrnoError(ERRNO_CODES.EBUSY);
-      }
-      // need to be part of the same mount
-      if (old_dir.mount !== new_dir.mount) {
-        throw new FS.ErrnoError(ERRNO_CODES.EXDEV);
-      }
-      // source must exist
-      var old_node = FS.lookupNode(old_dir, old_name);
-      // old path should not be an ancestor of the new path
-      var relative = PATH.relative(old_path, new_dirname);
-      if (relative.charAt(0) !== '.') {
-        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
-      }
-      // new path should not be an ancestor of the old path
-      relative = PATH.relative(new_path, old_dirname);
-      if (relative.charAt(0) !== '.') {
-        throw new FS.ErrnoError(ERRNO_CODES.ENOTEMPTY);
-      }
-      // see if the new path alreay exists
-      var new_node;
-      try {
-        new_node = FS.lookupNode(new_dir, new_name);
-      } catch (e) {
-        // not fatal
-      }
-      // early out if nothing needs to changews
-      if (old_node === new_node) {
-        return;
-      }
-      // we'll need to delete the old entry
-      var isdir = FS.isDir(old_node.mode);
-      var err = FS.mayDelete(old_dir, old_name, isdir);
-      if (err) {
-        throw new FS.ErrnoError(err);
-      }
-      // need delete permissions if we'll be overwriting.
-      // need create permissions if new doesn't already exist.
-      err = new_node ?
-        FS.mayDelete(new_dir, new_name, isdir) :
-        FS.mayCreate(new_dir, new_name);
-      if (err) {
-        throw new FS.ErrnoError(err);
-      }
-      if (!old_dir.node_ops.rename) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
-      }
-      if (FS.isMountpoint(old_node) || (new_node && FS.isMountpoint(new_node))) {
-        throw new FS.ErrnoError(ERRNO_CODES.EBUSY);
-      }
-      // if we are going to change the parent, check write permissions
-      if (new_dir !== old_dir) {
-        err = FS.nodePermissions(old_dir, 'w');
-        if (err) {
-          throw new FS.ErrnoError(err);
-        }
-      }
-      // remove the node from the lookup hash
-      FS.hashRemoveNode(old_node);
-      // do the underlying fs rename
-      try {
-        old_node.node_ops.rename(old_node, new_dir, new_name);
-      } catch (e) {
-        throw e;
-      } finally {
-        // add the node back to the hash (in case node_ops.rename
-        // changed its name)
-        FS.hashAddNode(old_node);
-      }
-    },
-    rmdir: function(path) {
-      var lookup = FS.lookupPath(path, { parent: true });
-      var parent = lookup.node;
-      var name = PATH.basename(path);
-      var node = FS.lookupNode(parent, name);
-      var err = FS.mayDelete(parent, name, true);
-      if (err) {
-        throw new FS.ErrnoError(err);
-      }
-      if (!parent.node_ops.rmdir) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
-      }
-      if (FS.isMountpoint(node)) {
-        throw new FS.ErrnoError(ERRNO_CODES.EBUSY);
-      }
-      parent.node_ops.rmdir(parent, name);
-      FS.destroyNode(node);
-    },
-    unlink: function(path) {
-      var lookup = FS.lookupPath(path, { parent: true });
-      var parent = lookup.node;
-      var name = PATH.basename(path);
-      var node = FS.lookupNode(parent, name);
-      var err = FS.mayDelete(parent, name, false);
-      if (err) {
-        // POSIX says unlink should set EPERM, not EISDIR
-        if (err === ERRNO_CODES.EISDIR) err = ERRNO_CODES.EPERM;
-        throw new FS.ErrnoError(err);
-      }
-      if (!parent.node_ops.unlink) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
-      }
-      if (FS.isMountpoint(node)) {
-        throw new FS.ErrnoError(ERRNO_CODES.EBUSY);
-      }
-      parent.node_ops.unlink(parent, name);
-      FS.destroyNode(node);
-    },
-    readlink: function(path) {
-      var lookup = FS.lookupPath(path, { follow: false });
-      var link = lookup.node;
-      if (!link.node_ops.readlink) {
-        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
-      }
-      return link.node_ops.readlink(link);
-    },
-    stat: function(path, dontFollow) {
-      var lookup = FS.lookupPath(path, { follow: !dontFollow });
-      var node = lookup.node;
-      if (!node.node_ops.getattr) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
-      }
-      return node.node_ops.getattr(node);
-    },
-    lstat: function(path) {
-      return VFS.stat(path, true);
-    },
-    chmod: function(path, mode, dontFollow) {
-      var node;
-      if (typeof path === 'string') {
-        var lookup = FS.lookupPath(path, { follow: !dontFollow });
-        node = lookup.node;
-      } else {
-        node = path;
-      }
-      if (!node.node_ops.setattr) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
-      }
-      node.node_ops.setattr(node, {
-        mode: (mode & {{{ cDefine('S_IALLUGO') }}}) | (node.mode & ~{{{ cDefine('S_IALLUGO') }}}),
-        timestamp: Date.now()
-      });
-    },
-    lchmod: function(path, mode) {
-      VFS.chmod(path, mode, true);
-    },
-    fchmod: function(fd, mode) {
-      var stream = FS.getStream(fd);
-      if (!stream) {
-        throw new FS.ErrnoError(ERRNO_CODES.EBADF);
-      }
-      VFS.chmod(stream.node, mode);
-    },
-    chown: function(path, uid, gid, dontFollow) {
-      var node;
-      if (typeof path === 'string') {
-        var lookup = FS.lookupPath(path, { follow: !dontFollow });
-        node = lookup.node;
-      } else {
-        node = path;
-      }
-      if (!node.node_ops.setattr) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
-      }
-      node.node_ops.setattr(node, {
-        timestamp: Date.now()
-        // we ignore the uid / gid for now
-      });
-    },
-    lchown: function(path, uid, gid) {
-      VFS.chown(path, uid, gid, true);
-    },
-    fchown: function(fd, uid, gid) {
-      var stream = FS.getStream(fd);
-      if (!stream) {
-        throw new FS.ErrnoError(ERRNO_CODES.EBADF);
-      }
-      VFS.chown(stream.node, uid, gid);
-    },
-    truncate: function(path, len) {
-      if (len < 0) {
-        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
-      }
-      var node;
-      if (typeof path === 'string') {
-        var lookup = FS.lookupPath(path, { follow: true });
-        node = lookup.node;
-      } else {
-        node = path;
-      }
-      if (!node.node_ops.setattr) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
-      }
-      if (FS.isDir(node.mode)) {
-        throw new FS.ErrnoError(ERRNO_CODES.EISDIR);
-      }
-      if (!FS.isFile(node.mode)) {
-        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
-      }
-      var err = FS.nodePermissions(node, 'w');
-      if (err) {
-        throw new FS.ErrnoError(err);
-      }
-      node.node_ops.setattr(node, {
-        size: len,
-        timestamp: Date.now()
-      });
-    },
-    ftruncate: function(fd, len) {
-      var stream = FS.getStream(fd);
-      if (!stream) {
-        throw new FS.ErrnoError(ERRNO_CODES.EBADF);
-      }
-      if ((stream.flags & {{{ cDefine('O_ACCMODE') }}}) === {{{ cDefine('O_RDONLY')}}}) {
-        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
-      }
-      VFS.truncate(stream.node, len);
-    },
-    utime: function(path, atime, mtime) {
-      var lookup = FS.lookupPath(path, { follow: true });
-      var node = lookup.node;
-      node.node_ops.setattr(node, {
-        timestamp: Math.max(atime, mtime)
-      });
-    },
-    open: function(path, flags, mode, fd_start, fd_end) {
-      path = PATH.normalize(path);
-      flags = typeof flags === 'string' ? FS.modeStringToFlags(flags) : flags;
-      if ((flags & {{{ cDefine('O_CREAT') }}})) {
-        mode = (mode & {{{ cDefine('S_IALLUGO') }}}) | {{{ cDefine('S_IFREG') }}};
-      } else {
-        mode = 0;
-      }
-      var node;
-      try {
-        var lookup = FS.lookupPath(path, {
-          follow: !(flags & {{{ cDefine('O_NOFOLLOW') }}})
-        });
-        node = lookup.node;
-        path = lookup.path;
-      } catch (e) {
-        // ignore
-      }
-      // perhaps we need to create the node
-      if ((flags & {{{ cDefine('O_CREAT') }}})) {
-        if (node) {
-          // if O_CREAT and O_EXCL are set, error out if the node already exists
-          if ((flags & {{{ cDefine('O_EXCL') }}})) {
-            throw new FS.ErrnoError(ERRNO_CODES.EEXIST);
-          }
-        } else {
-          // node doesn't exist, try to create it
-          node = VFS.mknod(path, mode, 0);
-        }
-      }
-      if (!node) {
-        throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
-      }
-      // can't truncate a device
-      if (FS.isChrdev(node.mode)) {
-        flags &= ~{{{ cDefine('O_TRUNC') }}};
-      }
-      // check permissions
-      var err = FS.mayOpen(node, flags);
-      if (err) {
-        throw new FS.ErrnoError(err);
-      }
-      // do truncation if necessary
-      if ((flags & {{{ cDefine('O_TRUNC')}}})) {
-        VFS.truncate(node, 0);
-      }
-      // register the stream with the filesystem
-      var stream = FS.createStream({
-        path: path,
-        node: node,
-        flags: flags,
-        seekable: true,
-        position: 0,
-        stream_ops: node.stream_ops,
-        // used by the file family libc calls (fopen, fwrite, ferror, etc.)
-        ungotten: [],
-        error: false
-      }, fd_start, fd_end);
-      // call the new stream's open function
-      if (stream.stream_ops.open) {
-        stream.stream_ops.open(stream);
-      }
-      return stream;
-    },
-    close: function(stream) {
-      try {
-        if (stream.stream_ops.close) {
-          stream.stream_ops.close(stream);
-        }
-      } catch (e) {
-        throw e;
-      } finally {
-        FS.closeStream(stream.fd);
-      }
-    },
-    llseek: function(stream, offset, whence) {
-      if (!stream.seekable || !stream.stream_ops.llseek) {
-        throw new FS.ErrnoError(ERRNO_CODES.ESPIPE);
-      }
-      return stream.stream_ops.llseek(stream, offset, whence);
-    },
-    readdir: function(stream) {
-      if (!stream.stream_ops.readdir) {
-        throw new FS.ErrnoError(ERRNO_CODES.ENOTDIR);
-      }
-      return stream.stream_ops.readdir(stream);
-    },
-    read: function(stream, buffer, offset, length, position) {
-      if (length < 0 || position < 0) {
-        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
-      }
-      if ((stream.flags & {{{ cDefine('O_ACCMODE') }}}) === {{{ cDefine('O_WRONLY')}}}) {
-        throw new FS.ErrnoError(ERRNO_CODES.EBADF);
-      }
-      if (FS.isDir(stream.node.mode)) {
-        throw new FS.ErrnoError(ERRNO_CODES.EISDIR);
-      }
-      if (!stream.stream_ops.read) {
-        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
-      }
-      var seeking = true;
-      if (typeof position === 'undefined') {
-        position = stream.position;
-        seeking = false;
-      } else if (!stream.seekable) {
-        throw new FS.ErrnoError(ERRNO_CODES.ESPIPE);
-      }
-      var bytesRead = stream.stream_ops.read(stream, buffer, offset, length, position);
-      if (!seeking) stream.position += bytesRead;
-      return bytesRead;
-    },
-    write: function(stream, buffer, offset, length, position) {
-      if (length < 0 || position < 0) {
-        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
-      }
-      if ((stream.flags & {{{ cDefine('O_ACCMODE') }}}) === {{{ cDefine('O_RDONLY')}}}) {
-        throw new FS.ErrnoError(ERRNO_CODES.EBADF);
-      }
-      if (FS.isDir(stream.node.mode)) {
-        throw new FS.ErrnoError(ERRNO_CODES.EISDIR);
-      }
-      if (!stream.stream_ops.write) {
-        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
-      }
-      var seeking = true;
-      if (typeof position === 'undefined') {
-        position = stream.position;
-        seeking = false;
-      } else if (!stream.seekable) {
-        throw new FS.ErrnoError(ERRNO_CODES.ESPIPE);
-      }
-      if (stream.flags & {{{ cDefine('O_APPEND') }}}) {
-        // seek to the end before writing in append mode
-        VFS.llseek(stream, 0, {{{ cDefine('SEEK_END') }}});
-      }
-      var bytesWritten = stream.stream_ops.write(stream, buffer, offset, length, position);
-      if (!seeking) stream.position += bytesWritten;
-      return bytesWritten;
-    },
-    allocate: function(stream, offset, length) {
-      if (offset < 0 || length <= 0) {
-        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
-      }
-      if ((stream.flags & {{{ cDefine('O_ACCMODE') }}}) === {{{ cDefine('O_RDONLY')}}}) {
-        throw new FS.ErrnoError(ERRNO_CODES.EBADF);
-      }
-      if (!FS.isFile(stream.node.mode) && !FS.isDir(node.mode)) {
-        throw new FS.ErrnoError(ERRNO_CODES.ENODEV);
-      }
-      if (!stream.stream_ops.allocate) {
-        throw new FS.ErrnoError(ERRNO_CODES.EOPNOTSUPP);
-      }
-      stream.stream_ops.allocate(stream, offset, length);
-    },
-    mmap: function(stream, buffer, offset, length, position, prot, flags) {
-      // TODO if PROT is PROT_WRITE, make sure we have write acccess
-      if ((stream.flags & {{{ cDefine('O_ACCMODE') }}}) === {{{ cDefine('O_WRONLY')}}}) {
-        throw new FS.ErrnoError(ERRNO_CODES.EACCES);
-      }
-      if (!stream.stream_ops.mmap) {
-        throw new FS.errnoError(ERRNO_CODES.ENODEV);
-      }
-      return stream.stream_ops.mmap(stream, buffer, offset, length, position, prot, flags);
-    }
-  },
-
-  $MEMFS__deps: ['$FS'],
-  $MEMFS: {
-    mount: function(mount) {
-      return MEMFS.create_node(null, '/', {{{ cDefine('S_IFDIR') }}} | 0777, 0);
-    },
-    create_node: function(parent, name, mode, dev) {
-      if (FS.isBlkdev(mode) || FS.isFIFO(mode)) {
-        // no supported
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
-      }
-      var node = FS.createNode(parent, name, mode, dev);
-      node.node_ops = MEMFS.node_ops;
-      if (FS.isDir(node.mode)) {
-        node.stream_ops = MEMFS.stream_ops;
-        node.contents = {};
-      } else if (FS.isFile(node.mode)) {
-        node.stream_ops = MEMFS.stream_ops;
-        node.contents = [];
-      } else if (FS.isLink(node.mode)) {
-        node.stream_ops = MEMFS.stream_ops;
-      } else if (FS.isChrdev(node.mode)) {
-        node.stream_ops = FS.chrdev_stream_ops;
-      }
-      node.timestamp = Date.now();
-      // add the new node to the parent
-      if (parent) {
-        parent.contents[name] = node;
-      }
-      return node;
-    },
-    node_ops: {
-      getattr: function(node) {
-        var attr = {};
-        // device numbers reuse inode numbers.
-        attr.dev = FS.isChrdev(node.mode) ? node.id : 1;
-        attr.ino = node.id;
-        attr.mode = node.mode;
-        attr.nlink = 1;
-        attr.uid = 0;
-        attr.gid = 0;
-        attr.rdev = node.rdev;
-        if (FS.isDir(node.mode)) {
-          attr.size = 4096;
-        } else if (FS.isFile(node.mode)) {
-          attr.size = node.contents.length;
-        } else if (FS.isLink(node.mode)) {
-          attr.size = node.link.length;
-        } else {
-          attr.size = 0;
-        }
-        attr.atime = new Date(node.timestamp);
-        attr.mtime = new Date(node.timestamp);
-        attr.ctime = new Date(node.timestamp);
-        // NOTE: In our implementation, st_blocks = Math.ceil(st_size/st_blksize),
-        //       but this is not required by the standard.
-        attr.blksize = 4096;
-        attr.blocks = Math.ceil(attr.size / attr.blksize);
-        return attr;
-      },
-      setattr: function(node, attr) {
-        if (attr.mode !== undefined) {
-          node.mode = attr.mode;
-        }
-        if (attr.timestamp !== undefined) {
-          node.timestamp = attr.timestamp;
-        }
-        if (attr.size !== undefined) {
-          var contents = node.contents;
-          if (attr.size < contents.length) contents.length = attr.size;
-          else while (attr.size > contents.length) contents.push(0);
-        }
-      },
-      lookup: function(parent, name) {
-        throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
-      },
-      mknod: function(parent, name, mode, dev) {
-        return MEMFS.create_node(parent, name, mode, dev);
-      },
-      rename: function(old_node, new_dir, new_name) {
-        // if we're overwriting a directory at new_name, make sure it's empty.
-        if (FS.isDir(old_node.mode)) {
-          var new_node;
-          try {
-            new_node = FS.lookupNode(new_dir, new_name);
-          } catch (e) {
-          }
-          if (new_node) {
-            for (var i in new_node.contents) {
-              throw new FS.ErrnoError(ERRNO_CODES.ENOTEMPTY);
-            }
-          }
-        }
-        // do the internal rewiring
-        delete old_node.parent.contents[old_node.name];
-        old_node.name = new_name;
-        new_dir.contents[new_name] = old_node;
-      },
-      unlink: function(parent, name) {
-        delete parent.contents[name];
-      },
-      rmdir: function(parent, name) {
-        var node = FS.lookupNode(parent, name);
-        for (var i in node.contents) {
-          throw new FS.ErrnoError(ERRNO_CODES.ENOTEMPTY);
-        }
-        delete parent.contents[name];
-      },
-      symlink: function(parent, newname, oldpath) {
-        var node = MEMFS.create_node(parent, newname, 0777 | {{{ cDefine('S_IFLNK') }}}, 0);
-        node.link = oldpath;
-        return node;
-      },
-      readlink: function(node) {
-        if (!FS.isLink(node.mode)) {
-          throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
-        }
-        return node.link;
-      },
-    },
-    stream_ops: {
-      open: function(stream) {
-        if (FS.isDir(stream.node.mode)) {
-          // cache off the directory entries when open'd
-          var entries = ['.', '..']
-          for (var key in stream.node.contents) {
-            if (!stream.node.contents.hasOwnProperty(key)) {
-              continue;
-            }
-            entries.push(key);
-          }
-          stream.entries = entries;
-        }
-      },
-      read: function(stream, buffer, offset, length, position) {
-        var contents = stream.node.contents;
-        var size = Math.min(contents.length - position, length);
-#if USE_TYPED_ARRAYS == 2
-        if (contents.subarray) { // typed array
-          buffer.set(contents.subarray(position, position + size), offset);
-        } else
-#endif
-        {
-          for (var i = 0; i < size; i++) {
-            buffer[offset + i] = contents[position + i];
-          }
-        }
-        return size;
-      },
-      write: function(stream, buffer, offset, length, position) {
-        var contents = stream.node.contents;
-        while (contents.length < position) contents.push(0);
-        for (var i = 0; i < length; i++) {
-          contents[position + i] = buffer[offset + i];
-        }
-        stream.node.timestamp = Date.now();
-        return length;
-      },
-      llseek: function(stream, offset, whence) {
-        var position = offset;
-        if (whence === 1) {  // SEEK_CUR.
-          position += stream.position;
-        } else if (whence === 2) {  // SEEK_END.
-          if (FS.isFile(stream.node.mode)) {
-            position += stream.node.contents.length;
-          }
-        }
-        if (position < 0) {
-          throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
-        }
-        stream.ungotten = [];
-        stream.position = position;
-        return position;
-      },
-      readdir: function(stream) {
-        return stream.entries;
-      },
-      allocate: function(stream, offset, length) {
-        var contents = stream.node.contents;
-        var limit = offset + length;
-        while (limit > contents.length) contents.push(0);
-      },
-      mmap: function(stream, buffer, offset, length, position, prot, flags) {
-        if (!FS.isFile(stream.node.mode)) {
-          throw new FS.ErrnoError(ERRNO_CODES.ENODEV);
-        }
-        var ptr;
-        var allocated;
-        var contents = stream.node.contents;
-        // Only make a new copy when MAP_PRIVATE is specified.
-        if (!(flags & {{{ cDefine('MAP_PRIVATE') }}})) {
-          // We can't emulate MAP_SHARED when the file is not backed by the buffer
-          // we're mapping to (e.g. the HEAP buffer).
-          assert(contents.buffer === buffer || contents.buffer === buffer.buffer);
-          allocated = false;
-          ptr = contents.byteOffset;
-        } else {
-          // Try to avoid unnecessary slices.
-          if (position > 0 || position + length < contents.length) {
-            if (contents.subarray) {
-              contents = contents.subarray(position, position + length);
-            } else {
-              contents = Array.prototype.slice.call(contents, position, position + length);
-            }
-          }
-          allocated = true;
-          ptr = _malloc(length);
-          if (!ptr) {
-            throw new FS.ErrnoError(ERRNO_CODES.ENOMEM);
-          }
-          buffer.set(contents, ptr);
-        }
-        return { ptr: ptr, allocated: allocated };
-      },
-    }
-  },
-  
-  $SOCKFS__postset: '__ATINIT__.push({ func: function() { SOCKFS.root = VFS.mount(SOCKFS, {}, null); } });',
-  $SOCKFS__deps: ['$FS'],
-  $SOCKFS: {
-    mount: function(mount) {
-      var node = FS.createNode(null, '/', {{{ cDefine('S_IFDIR') }}} | 0777, 0);
-      node.node_ops = SOCKFS.node_ops;
-      node.stream_ops = SOCKFS.stream_ops;
-      return node;
-    },
-    node_ops: {
-    },
-    stream_ops: {
-    },
-    websocket_sock_ops: {
-    }
-  },
-
-  $TTY__deps: ['$FS'],
-  $TTY: {
-    ttys: [],
-    register: function(dev, ops) {
-      TTY.ttys[dev] = { input: [], output: [], ops: ops };
-      FS.registerDevice(dev, TTY.stream_ops);
-    },
-    stream_ops: {
-      open: function(stream) {
-        // this wouldn't be required if the library wasn't eval'd at first...
-        if (!TTY.utf8) {
-          TTY.utf8 = new Runtime.UTF8Processor();
-        }
-        var tty = TTY.ttys[stream.node.rdev];
-        if (!tty) {
-          throw new FS.ErrnoError(ERRNO_CODES.ENODEV);
-        }
-        stream.tty = tty;
-        stream.seekable = false;
-      },
-      close: function(stream) {
-        // flush any pending line data
-        if (stream.tty.output.length) {
-          stream.tty.ops.put_char(stream.tty, {{{ charCode('\n') }}});
-        }
-      },
-      read: function(stream, buffer, offset, length, pos /* ignored */) {
-        if (!stream.tty || !stream.tty.ops.get_char) {
-          throw new FS.ErrnoError(ERRNO_CODES.ENXIO);
-        }
-        var bytesRead = 0;
-        for (var i = 0; i < length; i++) {
-          var result;
-          try {
-            result = stream.tty.ops.get_char(stream.tty);
-          } catch (e) {
-            throw new FS.ErrnoError(ERRNO_CODES.EIO);
-          }
-          if (result === undefined && bytesRead === 0) {
-            throw new FS.ErrnoError(ERRNO_CODES.EAGAIN);
-          }
-          if (result === null || result === undefined) break;
-          bytesRead++;
-          buffer[offset+i] = result;
-        }
-        if (bytesRead) {
-          stream.node.timestamp = Date.now();
-        }
-        return bytesRead;
-      },
-      write: function(stream, buffer, offset, length, pos) {
-        if (!stream.tty || !stream.tty.ops.put_char) {
-          throw new FS.ErrnoError(ERRNO_CODES.ENXIO);
-        }
-        for (var i = 0; i < length; i++) {
-          try {
-            stream.tty.ops.put_char(stream.tty, buffer[offset+i]);
-          } catch (e) {
-            throw new FS.ErrnoError(ERRNO_CODES.EIO);
-          }
-        }
-        if (length) {
-          stream.node.timestamp = Date.now();
-        }
-        return i;
-      }
-    },
-    // NOTE: This is weird to support stdout and stderr
-    // overrides in addition to print and printErr orverrides.
-    default_tty_ops: {
-      get_char: function(tty) {
-        if (!tty.input.length) {
-          var result = null;
-          if (ENVIRONMENT_IS_NODE) {
-            if (process.stdin.destroyed) {
-              return undefined;
-            }
-            result = process.stdin.read();
-          } else if (typeof window != 'undefined' &&
-            typeof window.prompt == 'function') {
-            // Browser.
-            result = window.prompt('Input: ');  // returns null on cancel
-            if (result !== null) {
-              result += '\n';
-            }
-          } else if (typeof readline == 'function') {
-            // Command line.
-            result = readline();
-            if (result !== null) {
-              result += '\n';
-            }
-          }
-          if (!result) {
-            return null;
-          }
-          tty.input = intArrayFromString(result, true);
-        }
-        return tty.input.shift();
-      },
-      put_char: function(tty, val) {
-        if (val === null || val === {{{ charCode('\n') }}}) {
-          Module['print'](tty.output.join(''));
-          tty.output = [];
-        } else {
-          tty.output.push(TTY.utf8.processCChar(val));
-        }
-      }
-    },
-    default_tty1_ops: {
-      put_char: function(tty, val) {
-        if (val === null || val === {{{ charCode('\n') }}}) {
-          Module['printErr'](tty.output.join(''));
-          tty.output = [];
-        } else {
-          tty.output.push(TTY.utf8.processCChar(val));
-        }
-      }
-    }
-  },
-#endif
-
 
   // ==========================================================================
   // dirent.h
@@ -1814,7 +100,7 @@ LibraryManager.library = {
     }
     var entries;
     try {
-      entries = VFS.readdir(stream);
+      entries = FS.readdir(stream.path);
     } catch (e) {
       return FS.handleFSError(e);
     }
@@ -1893,7 +179,7 @@ LibraryManager.library = {
     }
     path = Pointer_stringify(path);
     try {
-      VFS.utime(path, time, time);
+      FS.utime(path, time, time);
       return 0;
     } catch (e) {
       FS.handleFSError(e);
@@ -1993,7 +279,7 @@ LibraryManager.library = {
     //       used in client code.
     path = typeof path !== 'string' ? Pointer_stringify(path) : path;
     try {
-      var stat = dontResolveLastLink ? VFS.lstat(path) : VFS.stat(path);
+      var stat = dontResolveLastLink ? FS.lstat(path) : FS.stat(path);
       {{{ makeSetValue('buf', '___stat_struct_layout.st_dev', 'stat.dev', 'i32') }}};
       {{{ makeSetValue('buf', '___stat_struct_layout.st_ino', 'stat.ino', 'i32') }}}
       {{{ makeSetValue('buf', '___stat_struct_layout.st_mode', 'stat.mode', 'i32') }}}
@@ -2043,7 +329,7 @@ LibraryManager.library = {
       return -1;
     }
     try {
-      VFS.mknod(path, mode, dev);
+      FS.mknod(path, mode, dev);
       return 0;
     } catch (e) {
       FS.handleFSError(e);
@@ -2056,7 +342,7 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/mkdir.html
     path = Pointer_stringify(path);
     try {
-      VFS.mkdir(path, mode, 0);
+      FS.mkdir(path, mode, 0);
       return 0;
     } catch (e) {
       FS.handleFSError(e);
@@ -2082,7 +368,7 @@ LibraryManager.library = {
     //       used in client code.
     path = typeof path !== 'string' ? Pointer_stringify(path) : path;
     try {
-      VFS.chmod(path, mode);
+      FS.chmod(path, mode);
       return 0;
     } catch (e) {
       FS.handleFSError(e);
@@ -2094,7 +380,7 @@ LibraryManager.library = {
     // int fchmod(int fildes, mode_t mode);
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/fchmod.html
     try {
-      VFS.fchmod(fildes, mode);
+      FS.fchmod(fildes, mode);
       return 0;
     } catch (e) {
       FS.handleFSError(e);
@@ -2105,7 +391,7 @@ LibraryManager.library = {
   lchmod: function(path, mode) {
     path = Pointer_stringify(path);
     try {
-      VFS.lchmod(path, mode);
+      FS.lchmod(path, mode);
       return 0;
     } catch (e) {
       FS.handleFSError(e);
@@ -2192,12 +478,10 @@ LibraryManager.library = {
   open: function(path, oflag, varargs) {
     // int open(const char *path, int oflag, ...);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/open.html
-    // NOTE: This implementation tries to mimic glibc rather than strictly
-    // following the POSIX standard.
     var mode = {{{ makeGetValue('varargs', 0, 'i32') }}};
     path = Pointer_stringify(path);
     try {
-      var stream = VFS.open(path, oflag, mode);
+      var stream = FS.open(path, oflag, mode);
       return stream.fd;
     } catch (e) {
       FS.handleFSError(e);
@@ -2237,7 +521,7 @@ LibraryManager.library = {
         }
         var newStream;
         try {
-          newStream = VFS.open(stream.path, stream.flags, 0, arg);
+          newStream = FS.open(stream.path, stream.flags, 0, arg);
         } catch (e) {
           FS.handleFSError(e);
           return -1;
@@ -2294,7 +578,7 @@ LibraryManager.library = {
       return -1;
     }
     try {
-      VFS.allocate(stream, offset, len);
+      FS.allocate(stream, offset, len);
       return 0;
     } catch (e) {
       FS.handleFSError(e);
@@ -2412,7 +696,7 @@ LibraryManager.library = {
     //       used in client code.
     if (typeof path !== 'string') path = Pointer_stringify(path);
     try {
-      VFS.chown(path, owner, group);
+      FS.chown(path, owner, group);
       return 0;
     } catch (e) {
       FS.handleFSError(e);
@@ -2436,7 +720,7 @@ LibraryManager.library = {
       return -1;
     }
     try {
-      VFS.close(stream);
+      FS.close(stream);
       return 0;
     } catch (e) {
       FS.handleFSError(e);;
@@ -2462,7 +746,7 @@ LibraryManager.library = {
     } else {
       _close(fildes2);
       try {
-        var stream2 = VFS.open(stream.path, stream.flags, 0, fildes2, fildes2);
+        var stream2 = FS.open(stream.path, stream.flags, 0, fildes2, fildes2);
         return stream2.fd;
       } catch (e) {
         FS.handleFSError(e);
@@ -2475,7 +759,7 @@ LibraryManager.library = {
     // int fchown(int fildes, uid_t owner, gid_t group);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fchown.html
     try {
-      VFS.fchown(fildes, owner, group);
+      FS.fchown(fildes, owner, group);
       return 0;
     } catch (e) {
       FS.handleFSError(e);
@@ -2578,7 +862,7 @@ LibraryManager.library = {
     // NOTE: The path argument may be a string, to simplify ftruncate().
     if (typeof path !== 'string') path = Pointer_stringify(path);
     try {
-      VFS.truncate(path, length);
+      FS.truncate(path, length);
       return 0;
     } catch (e) {
       FS.handleFSError(e);
@@ -2590,7 +874,7 @@ LibraryManager.library = {
     // int ftruncate(int fildes, off_t length);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/ftruncate.html
     try {
-      VFS.ftruncate(fildes, length);
+      FS.ftruncate(fildes, length);
       return 0;
     } catch (e) {
       FS.handleFSError(e);
@@ -2675,7 +959,7 @@ LibraryManager.library = {
       return -1;
     }
     try {
-      return VFS.llseek(stream, offset, whence);
+      return FS.llseek(stream, offset, whence);
     } catch (e) {
       FS.handleFSError(e);
       return -1;
@@ -2706,7 +990,7 @@ LibraryManager.library = {
       SAFE_HEAP_FILL_HISTORY(buf, buf+nbyte, 'i8'); // VFS does not use makeSetValues, so we need to do it manually
 #endif
 #endif
-      return VFS.read(stream, slab, buf, nbyte, offset);
+      return FS.read(stream, slab, buf, nbyte, offset);
     } catch (e) {
       FS.handleFSError(e);
       return -1;
@@ -2733,7 +1017,7 @@ LibraryManager.library = {
       SAFE_HEAP_FILL_HISTORY(buf, buf+nbyte, 'i8'); // VFS does not use makeSetValues, so we need to do it manually
 #endif
 #endif
-      return VFS.read(stream, slab, buf, nbyte);
+      return FS.read(stream, slab, buf, nbyte);
     } catch (e) {
       FS.handleFSError(e);
       return -1;
@@ -2750,7 +1034,7 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/rmdir.html
     path = Pointer_stringify(path);
     try {
-      VFS.rmdir(path);
+      FS.rmdir(path);
       return 0;
     } catch (e) {
       FS.handleFSError(e);
@@ -2763,7 +1047,7 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/unlink.html
     path = Pointer_stringify(path);
     try {
-      VFS.unlink(path);
+      FS.unlink(path);
       return 0;
     } catch (e) {
       FS.handleFSError(e);
@@ -2800,7 +1084,7 @@ LibraryManager.library = {
     path1 = Pointer_stringify(path1);
     path2 = Pointer_stringify(path2);
     try {
-      VFS.symlink(path1, path2);
+      FS.symlink(path1, path2);
       return 0;
     } catch (e) {
       FS.handleFSError(e);
@@ -2814,7 +1098,7 @@ LibraryManager.library = {
     path = Pointer_stringify(path);
     var str;
     try {
-      str = VFS.readlink(path);
+      str = FS.readlink(path);
     } catch (e) {
       FS.handleFSError(e);
       return -1;
@@ -2839,7 +1123,7 @@ LibraryManager.library = {
       SAFE_HEAP_FILL_HISTORY(buf, buf+nbyte, 'i8'); // VFS does not use makeSetValues, so we need to do it manually
 #endif
 #endif
-      return VFS.write(stream, slab, buf, nbyte, offset);
+      return FS.write(stream, slab, buf, nbyte, offset);
     } catch (e) {
       FS.handleFSError(e);
       return -1;
@@ -2866,7 +1150,7 @@ LibraryManager.library = {
       SAFE_HEAP_FILL_HISTORY(buf, buf+nbyte, 'i8'); // VFS does not use makeSetValues, so we need to do it manually
 #endif
 #endif
-      return VFS.write(stream, slab, buf, nbyte);
+      return FS.write(stream, slab, buf, nbyte);
     } catch (e) {
       FS.handleFSError(e);
       return -1;
@@ -2890,7 +1174,7 @@ LibraryManager.library = {
         value = ENV['PATH'] || '/';
         break;
       case {{{ cDefine('_CS_POSIX_V6_WIDTH_RESTRICTED_ENVS') }}}:
-        // Mimicing glibc.
+        // Mimicking glibc.
         value = 'POSIX_V6_ILP32_OFF32\nPOSIX_V6_ILP32_OFFBIG';
         break;
       case {{{ cDefine('_CS_GNU_LIBC_VERSION') }}}:
@@ -2950,6 +1234,7 @@ LibraryManager.library = {
   _exit: function(status) {
     // void _exit(int status);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/exit.html
+    Module.print('exit(' + status + ') called');
     Module['exit'](status);
   },
   fork__deps: ['__setErrNo', '$ERRNO_CODES'],
@@ -3126,9 +1411,16 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/usleep.html
     // We're single-threaded, so use a busy loop. Super-ugly.
     var msec = useconds / 1000;
-    var start = Date.now();
-    while (Date.now() - start < msec) {
-      // Do nothing.
+    if (ENVIRONMENT_IS_WEB && window['performance'] && window['performance']['now']) {
+      var start = window['performance']['now']();
+      while (window['performance']['now']() - start < msec) {
+        // Do nothing.
+      }
+    } else {
+      var start = Date.now();
+      while (Date.now() - start < msec) {
+        // Do nothing.
+      }
     }
     return 0;
   },
@@ -4335,7 +2627,7 @@ LibraryManager.library = {
     old_path = Pointer_stringify(old_path);
     new_path = Pointer_stringify(new_path);
     try {
-      VFS.rename(old_path, new_path);
+      FS.rename(old_path, new_path);
       return 0;
     } catch (e) {
       FS.handleFSError(e);
@@ -4599,7 +2891,7 @@ LibraryManager.library = {
       var info = FS.getStream(stream);
       if (!info) return -1;
       try {
-        var res = VFS.mmap(info, HEAPU8, start, num, offset, prot, flags);
+        var res = FS.mmap(info, HEAPU8, start, num, offset, prot, flags);
         ptr = res.ptr;
         allocated = res.allocated;
       } catch (e) {
@@ -8137,262 +6429,250 @@ LibraryManager.library = {
   // ==========================================================================
 
   $ERRNO_CODES: {
-    EPERM: 1,
-    ENOENT: 2,
-    ESRCH: 3,
-    EINTR: 4,
-    EIO: 5,
-    ENXIO: 6,
-    E2BIG: 7,
-    ENOEXEC: 8,
-    EBADF: 9,
-    ECHILD: 10,
-    EAGAIN: 11,
-    EWOULDBLOCK: 11,
-    ENOMEM: 12,
-    EACCES: 13,
-    EFAULT: 14,
-    ENOTBLK: 15,
-    EBUSY: 16,
-    EEXIST: 17,
-    EXDEV: 18,
-    ENODEV: 19,
-    ENOTDIR: 20,
-    EISDIR: 21,
-    EINVAL: 22,
-    ENFILE: 23,
-    EMFILE: 24,
-    ENOTTY: 25,
-    ETXTBSY: 26,
-    EFBIG: 27,
-    ENOSPC: 28,
-    ESPIPE: 29,
-    EROFS: 30,
-    EMLINK: 31,
-    EPIPE: 32,
-    EDOM: 33,
-    ERANGE: 34,
-    ENOMSG: 35,
-    EIDRM: 36,
-    ECHRNG: 37,
-    EL2NSYNC: 38,
-    EL3HLT: 39,
-    EL3RST: 40,
-    ELNRNG: 41,
-    EUNATCH: 42,
-    ENOCSI: 43,
-    EL2HLT: 44,
-    EDEADLK: 45,
-    ENOLCK: 46,
-    EBADE: 50,
-    EBADR: 51,
-    EXFULL: 52,
-    ENOANO: 53,
-    EBADRQC: 54,
-    EBADSLT: 55,
-    EDEADLOCK: 56,
-    EBFONT: 57,
-    ENOSTR: 60,
-    ENODATA: 61,
-    ETIME: 62,
-    ENOSR: 63,
-    ENONET: 64,
-    ENOPKG: 65,
-    EREMOTE: 66,
-    ENOLINK: 67,
-    EADV: 68,
-    ESRMNT: 69,
-    ECOMM: 70,
-    EPROTO: 71,
-    EMULTIHOP: 74,
-    ELBIN: 75,
-    EDOTDOT: 76,
-    EBADMSG: 77,
-    EFTYPE: 79,
-    ENOTUNIQ: 80,
-    EBADFD: 81,
-    EREMCHG: 82,
-    ELIBACC: 83,
-    ELIBBAD: 84,
-    ELIBSCN: 85,
-    ELIBMAX: 86,
-    ELIBEXEC: 87,
-    ENOSYS: 88,
-    ENMFILE: 89,
-    ENOTEMPTY: 90,
-    ENAMETOOLONG: 91,
-    ELOOP: 92,
-    EOPNOTSUPP: 95,
-    EPFNOSUPPORT: 96,
-    ECONNRESET: 104,
-    ENOBUFS: 105,
-    EAFNOSUPPORT: 106,
-    EPROTOTYPE: 107,
-    ENOTSOCK: 108,
-    ENOPROTOOPT: 109,
-    ESHUTDOWN: 110,
-    ECONNREFUSED: 111,
-    EADDRINUSE: 112,
-    ECONNABORTED: 113,
-    ENETUNREACH: 114,
-    ENETDOWN: 115,
-    ETIMEDOUT: 116,
-    EHOSTDOWN: 117,
-    EHOSTUNREACH: 118,
-    EINPROGRESS: 119,
-    EALREADY: 120,
-    EDESTADDRREQ: 121,
-    EMSGSIZE: 122,
-    EPROTONOSUPPORT: 123,
-    ESOCKTNOSUPPORT: 124,
-    EADDRNOTAVAIL: 125,
-    ENETRESET: 126,
-    EISCONN: 127,
-    ENOTCONN: 128,
-    ETOOMANYREFS: 129,
-    EPROCLIM: 130,
-    EUSERS: 131,
-    EDQUOT: 132,
-    ESTALE: 133,
-    ENOTSUP: 134,
-    ENOMEDIUM: 135,
-    ENOSHARE: 136,
-    ECASECLASH: 137,
-    EILSEQ: 138,
-    EOVERFLOW: 139,
-    ECANCELED: 140,
-    ENOTRECOVERABLE: 141,
-    EOWNERDEAD: 142,
-    ESTRPIPE: 143
+    EPERM: {{{ cDefine('EPERM') }}},
+    ENOENT: {{{ cDefine('ENOENT') }}},
+    ESRCH: {{{ cDefine('ESRCH') }}},
+    EINTR: {{{ cDefine('EINTR') }}},
+    EIO: {{{ cDefine('EIO') }}},
+    ENXIO: {{{ cDefine('ENXIO') }}},
+    E2BIG: {{{ cDefine('E2BIG') }}},
+    ENOEXEC: {{{ cDefine('ENOEXEC') }}},
+    EBADF: {{{ cDefine('EBADF') }}},
+    ECHILD: {{{ cDefine('ECHILD') }}},
+    EAGAIN: {{{ cDefine('EAGAIN') }}},
+    EWOULDBLOCK: {{{ cDefine('EWOULDBLOCK') }}},
+    ENOMEM: {{{ cDefine('ENOMEM') }}},
+    EACCES: {{{ cDefine('EACCES') }}},
+    EFAULT: {{{ cDefine('EFAULT') }}},
+    ENOTBLK: {{{ cDefine('ENOTBLK') }}},
+    EBUSY: {{{ cDefine('EBUSY') }}},
+    EEXIST: {{{ cDefine('EEXIST') }}},
+    EXDEV: {{{ cDefine('EXDEV') }}},
+    ENODEV: {{{ cDefine('ENODEV') }}},
+    ENOTDIR: {{{ cDefine('ENOTDIR') }}},
+    EISDIR: {{{ cDefine('EISDIR') }}},
+    EINVAL: {{{ cDefine('EINVAL') }}},
+    ENFILE: {{{ cDefine('ENFILE') }}},
+    EMFILE: {{{ cDefine('EMFILE') }}},
+    ENOTTY: {{{ cDefine('ENOTTY') }}},
+    ETXTBSY: {{{ cDefine('ETXTBSY') }}},
+    EFBIG: {{{ cDefine('EFBIG') }}},
+    ENOSPC: {{{ cDefine('ENOSPC') }}},
+    ESPIPE: {{{ cDefine('ESPIPE') }}},
+    EROFS: {{{ cDefine('EROFS') }}},
+    EMLINK: {{{ cDefine('EMLINK') }}},
+    EPIPE: {{{ cDefine('EPIPE') }}},
+    EDOM: {{{ cDefine('EDOM') }}},
+    ERANGE: {{{ cDefine('ERANGE') }}},
+    ENOMSG: {{{ cDefine('ENOMSG') }}},
+    EIDRM: {{{ cDefine('EIDRM') }}},
+    ECHRNG: {{{ cDefine('ECHRNG') }}},
+    EL2NSYNC: {{{ cDefine('EL2NSYNC') }}},
+    EL3HLT: {{{ cDefine('EL3HLT') }}},
+    EL3RST: {{{ cDefine('EL3RST') }}},
+    ELNRNG: {{{ cDefine('ELNRNG') }}},
+    EUNATCH: {{{ cDefine('EUNATCH') }}},
+    ENOCSI: {{{ cDefine('ENOCSI') }}},
+    EL2HLT: {{{ cDefine('EL2HLT') }}},
+    EDEADLK: {{{ cDefine('EDEADLK') }}},
+    ENOLCK: {{{ cDefine('ENOLCK') }}},
+    EBADE: {{{ cDefine('EBADE') }}},
+    EBADR: {{{ cDefine('EBADR') }}},
+    EXFULL: {{{ cDefine('EXFULL') }}},
+    ENOANO: {{{ cDefine('ENOANO') }}},
+    EBADRQC: {{{ cDefine('EBADRQC') }}},
+    EBADSLT: {{{ cDefine('EBADSLT') }}},
+    EDEADLOCK: {{{ cDefine('EDEADLOCK') }}},
+    EBFONT: {{{ cDefine('EBFONT') }}},
+    ENOSTR: {{{ cDefine('ENOSTR') }}},
+    ENODATA: {{{ cDefine('ENODATA') }}},
+    ETIME: {{{ cDefine('ETIME') }}},
+    ENOSR: {{{ cDefine('ENOSR') }}},
+    ENONET: {{{ cDefine('ENONET') }}},
+    ENOPKG: {{{ cDefine('ENOPKG') }}},
+    EREMOTE: {{{ cDefine('EREMOTE') }}},
+    ENOLINK: {{{ cDefine('ENOLINK') }}},
+    EADV: {{{ cDefine('EADV') }}},
+    ESRMNT: {{{ cDefine('ESRMNT') }}},
+    ECOMM: {{{ cDefine('ECOMM') }}},
+    EPROTO: {{{ cDefine('EPROTO') }}},
+    EMULTIHOP: {{{ cDefine('EMULTIHOP') }}},
+    EDOTDOT: {{{ cDefine('EDOTDOT') }}},
+    EBADMSG: {{{ cDefine('EBADMSG') }}},
+    ENOTUNIQ: {{{ cDefine('ENOTUNIQ') }}},
+    EBADFD: {{{ cDefine('EBADFD') }}},
+    EREMCHG: {{{ cDefine('EREMCHG') }}},
+    ELIBACC: {{{ cDefine('ELIBACC') }}},
+    ELIBBAD: {{{ cDefine('ELIBBAD') }}},
+    ELIBSCN: {{{ cDefine('ELIBSCN') }}},
+    ELIBMAX: {{{ cDefine('ELIBMAX') }}},
+    ELIBEXEC: {{{ cDefine('ELIBEXEC') }}},
+    ENOSYS: {{{ cDefine('ENOSYS') }}},
+    ENOTEMPTY: {{{ cDefine('ENOTEMPTY') }}},
+    ENAMETOOLONG: {{{ cDefine('ENAMETOOLONG') }}},
+    ELOOP: {{{ cDefine('ELOOP') }}},
+    EOPNOTSUPP: {{{ cDefine('EOPNOTSUPP') }}},
+    EPFNOSUPPORT: {{{ cDefine('EPFNOSUPPORT') }}},
+    ECONNRESET: {{{ cDefine('ECONNRESET') }}},
+    ENOBUFS: {{{ cDefine('ENOBUFS') }}},
+    EAFNOSUPPORT: {{{ cDefine('EAFNOSUPPORT') }}},
+    EPROTOTYPE: {{{ cDefine('EPROTOTYPE') }}},
+    ENOTSOCK: {{{ cDefine('ENOTSOCK') }}},
+    ENOPROTOOPT: {{{ cDefine('ENOPROTOOPT') }}},
+    ESHUTDOWN: {{{ cDefine('ESHUTDOWN') }}},
+    ECONNREFUSED: {{{ cDefine('ECONNREFUSED') }}},
+    EADDRINUSE: {{{ cDefine('EADDRINUSE') }}},
+    ECONNABORTED: {{{ cDefine('ECONNABORTED') }}},
+    ENETUNREACH: {{{ cDefine('ENETUNREACH') }}},
+    ENETDOWN: {{{ cDefine('ENETDOWN') }}},
+    ETIMEDOUT: {{{ cDefine('ETIMEDOUT') }}},
+    EHOSTDOWN: {{{ cDefine('EHOSTDOWN') }}},
+    EHOSTUNREACH: {{{ cDefine('EHOSTUNREACH') }}},
+    EINPROGRESS: {{{ cDefine('EINPROGRESS') }}},
+    EALREADY: {{{ cDefine('EALREADY') }}},
+    EDESTADDRREQ: {{{ cDefine('EDESTADDRREQ') }}},
+    EMSGSIZE: {{{ cDefine('EMSGSIZE') }}},
+    EPROTONOSUPPORT: {{{ cDefine('EPROTONOSUPPORT') }}},
+    ESOCKTNOSUPPORT: {{{ cDefine('ESOCKTNOSUPPORT') }}},
+    EADDRNOTAVAIL: {{{ cDefine('EADDRNOTAVAIL') }}},
+    ENETRESET: {{{ cDefine('ENETRESET') }}},
+    EISCONN: {{{ cDefine('EISCONN') }}},
+    ENOTCONN: {{{ cDefine('ENOTCONN') }}},
+    ETOOMANYREFS: {{{ cDefine('ETOOMANYREFS') }}},
+    EUSERS: {{{ cDefine('EUSERS') }}},
+    EDQUOT: {{{ cDefine('EDQUOT') }}},
+    ESTALE: {{{ cDefine('ESTALE') }}},
+    ENOTSUP: {{{ cDefine('ENOTSUP') }}},
+    ENOMEDIUM: {{{ cDefine('ENOMEDIUM') }}},
+    EILSEQ: {{{ cDefine('EILSEQ') }}},
+    EOVERFLOW: {{{ cDefine('EOVERFLOW') }}},
+    ECANCELED: {{{ cDefine('ECANCELED') }}},
+    ENOTRECOVERABLE: {{{ cDefine('ENOTRECOVERABLE') }}},
+    EOWNERDEAD: {{{ cDefine('EOWNERDEAD') }}},
+    ESTRPIPE: {{{ cDefine('ESTRPIPE') }}},
   },
   $ERRNO_MESSAGES: {
     0: 'Success',
-    1: 'Not super-user',
-    2: 'No such file or directory',
-    3: 'No such process',
-    4: 'Interrupted system call',
-    5: 'I/O error',
-    6: 'No such device or address',
-    7: 'Arg list too long',
-    8: 'Exec format error',
-    9: 'Bad file number',
-    10: 'No children',
-    11: 'No more processes',
-    12: 'Not enough core',
-    13: 'Permission denied',
-    14: 'Bad address',
-    15: 'Block device required',
-    16: 'Mount device busy',
-    17: 'File exists',
-    18: 'Cross-device link',
-    19: 'No such device',
-    20: 'Not a directory',
-    21: 'Is a directory',
-    22: 'Invalid argument',
-    23: 'Too many open files in system',
-    24: 'Too many open files',
-    25: 'Not a typewriter',
-    26: 'Text file busy',
-    27: 'File too large',
-    28: 'No space left on device',
-    29: 'Illegal seek',
-    30: 'Read only file system',
-    31: 'Too many links',
-    32: 'Broken pipe',
-    33: 'Math arg out of domain of func',
-    34: 'Math result not representable',
-    35: 'No message of desired type',
-    36: 'Identifier removed',
-    37: 'Channel number out of range',
-    38: 'Level 2 not synchronized',
-    39: 'Level 3 halted',
-    40: 'Level 3 reset',
-    41: 'Link number out of range',
-    42: 'Protocol driver not attached',
-    43: 'No CSI structure available',
-    44: 'Level 2 halted',
-    45: 'Deadlock condition',
-    46: 'No record locks available',
-    50: 'Invalid exchange',
-    51: 'Invalid request descriptor',
-    52: 'Exchange full',
-    53: 'No anode',
-    54: 'Invalid request code',
-    55: 'Invalid slot',
-    56: 'File locking deadlock error',
-    57: 'Bad font file fmt',
-    60: 'Device not a stream',
-    61: 'No data (for no delay io)',
-    62: 'Timer expired',
-    63: 'Out of streams resources',
-    64: 'Machine is not on the network',
-    65: 'Package not installed',
-    66: 'The object is remote',
-    67: 'The link has been severed',
-    68: 'Advertise error',
-    69: 'Srmount error',
-    70: 'Communication error on send',
-    71: 'Protocol error',
-    74: 'Multihop attempted',
-    75: 'Inode is remote (not really error)',
-    76: 'Cross mount point (not really error)',
-    77: 'Trying to read unreadable message',
-    79: 'Inappropriate file type or format',
-    80: 'Given log. name not unique',
-    81: 'f.d. invalid for this operation',
-    82: 'Remote address changed',
-    83: 'Can\t access a needed shared lib',
-    84: 'Accessing a corrupted shared lib',
-    85: '.lib section in a.out corrupted',
-    86: 'Attempting to link in too many libs',
-    87: 'Attempting to exec a shared library',
-    88: 'Function not implemented',
-    89: 'No more files',
-    90: 'Directory not empty',
-    91: 'File or path name too long',
-    92: 'Too many symbolic links',
-    95: 'Operation not supported on transport endpoint',
-    96: 'Protocol family not supported',
-    104: 'Connection reset by peer',
-    105: 'No buffer space available',
-    106: 'Address family not supported by protocol family',
-    107: 'Protocol wrong type for socket',
-    108: 'Socket operation on non-socket',
-    109: 'Protocol not available',
-    110: 'Can\'t send after socket shutdown',
-    111: 'Connection refused',
-    112: 'Address already in use',
-    113: 'Connection aborted',
-    114: 'Network is unreachable',
-    115: 'Network interface is not configured',
-    116: 'Connection timed out',
-    117: 'Host is down',
-    118: 'Host is unreachable',
-    119: 'Connection already in progress',
-    120: 'Socket already connected',
-    121: 'Destination address required',
-    122: 'Message too long',
-    123: 'Unknown protocol',
-    124: 'Socket type not supported',
-    125: 'Address not available',
-    126: 'ENETRESET',
-    127: 'Socket is already connected',
-    128: 'Socket is not connected',
-    129: 'TOOMANYREFS',
-    130: 'EPROCLIM',
-    131: 'EUSERS',
-    132: 'EDQUOT',
-    133: 'ESTALE',
-    134: 'Not supported',
-    135: 'No medium (in tape drive)',
-    136: 'No such host or network path',
-    137: 'Filename exists with different case',
-    138: 'EILSEQ',
-    139: 'Value too large for defined data type',
-    140: 'Operation canceled',
-    141: 'State not recoverable',
-    142: 'Previous owner died',
-    143: 'Streams pipe error',
+    {{{ cDefine('EPERM') }}}: 'Not super-user',
+    {{{ cDefine('ENOENT') }}}: 'No such file or directory',
+    {{{ cDefine('ESRCH') }}}: 'No such process',
+    {{{ cDefine('EINTR') }}}: 'Interrupted system call',
+    {{{ cDefine('EIO') }}}: 'I/O error',
+    {{{ cDefine('ENXIO') }}}: 'No such device or address',
+    {{{ cDefine('E2BIG') }}}: 'Arg list too long',
+    {{{ cDefine('ENOEXEC') }}}: 'Exec format error',
+    {{{ cDefine('EBADF') }}}: 'Bad file number',
+    {{{ cDefine('ECHILD') }}}: 'No children',
+    {{{ cDefine('EWOULDBLOCK') }}}: 'No more processes',
+    {{{ cDefine('ENOMEM') }}}: 'Not enough core',
+    {{{ cDefine('EACCES') }}}: 'Permission denied',
+    {{{ cDefine('EFAULT') }}}: 'Bad address',
+    {{{ cDefine('ENOTBLK') }}}: 'Block device required',
+    {{{ cDefine('EBUSY') }}}: 'Mount device busy',
+    {{{ cDefine('EEXIST') }}}: 'File exists',
+    {{{ cDefine('EXDEV') }}}: 'Cross-device link',
+    {{{ cDefine('ENODEV') }}}: 'No such device',
+    {{{ cDefine('ENOTDIR') }}}: 'Not a directory',
+    {{{ cDefine('EISDIR') }}}: 'Is a directory',
+    {{{ cDefine('EINVAL') }}}: 'Invalid argument',
+    {{{ cDefine('ENFILE') }}}: 'Too many open files in system',
+    {{{ cDefine('EMFILE') }}}: 'Too many open files',
+    {{{ cDefine('ENOTTY') }}}: 'Not a typewriter',
+    {{{ cDefine('ETXTBSY') }}}: 'Text file busy',
+    {{{ cDefine('EFBIG') }}}: 'File too large',
+    {{{ cDefine('ENOSPC') }}}: 'No space left on device',
+    {{{ cDefine('ESPIPE') }}}: 'Illegal seek',
+    {{{ cDefine('EROFS') }}}: 'Read only file system',
+    {{{ cDefine('EMLINK') }}}: 'Too many links',
+    {{{ cDefine('EPIPE') }}}: 'Broken pipe',
+    {{{ cDefine('EDOM') }}}: 'Math arg out of domain of func',
+    {{{ cDefine('ERANGE') }}}: 'Math result not representable',
+    {{{ cDefine('ENOMSG') }}}: 'No message of desired type',
+    {{{ cDefine('EIDRM') }}}: 'Identifier removed',
+    {{{ cDefine('ECHRNG') }}}: 'Channel number out of range',
+    {{{ cDefine('EL2NSYNC') }}}: 'Level 2 not synchronized',
+    {{{ cDefine('EL3HLT') }}}: 'Level 3 halted',
+    {{{ cDefine('EL3RST') }}}: 'Level 3 reset',
+    {{{ cDefine('ELNRNG') }}}: 'Link number out of range',
+    {{{ cDefine('EUNATCH') }}}: 'Protocol driver not attached',
+    {{{ cDefine('ENOCSI') }}}: 'No CSI structure available',
+    {{{ cDefine('EL2HLT') }}}: 'Level 2 halted',
+    {{{ cDefine('EDEADLK') }}}: 'Deadlock condition',
+    {{{ cDefine('ENOLCK') }}}: 'No record locks available',
+    {{{ cDefine('EBADE') }}}: 'Invalid exchange',
+    {{{ cDefine('EBADR') }}}: 'Invalid request descriptor',
+    {{{ cDefine('EXFULL') }}}: 'Exchange full',
+    {{{ cDefine('ENOANO') }}}: 'No anode',
+    {{{ cDefine('EBADRQC') }}}: 'Invalid request code',
+    {{{ cDefine('EBADSLT') }}}: 'Invalid slot',
+    {{{ cDefine('EDEADLOCK') }}}: 'File locking deadlock error',
+    {{{ cDefine('EBFONT') }}}: 'Bad font file fmt',
+    {{{ cDefine('ENOSTR') }}}: 'Device not a stream',
+    {{{ cDefine('ENODATA') }}}: 'No data (for no delay io)',
+    {{{ cDefine('ETIME') }}}: 'Timer expired',
+    {{{ cDefine('ENOSR') }}}: 'Out of streams resources',
+    {{{ cDefine('ENONET') }}}: 'Machine is not on the network',
+    {{{ cDefine('ENOPKG') }}}: 'Package not installed',
+    {{{ cDefine('EREMOTE') }}}: 'The object is remote',
+    {{{ cDefine('ENOLINK') }}}: 'The link has been severed',
+    {{{ cDefine('EADV') }}}: 'Advertise error',
+    {{{ cDefine('ESRMNT') }}}: 'Srmount error',
+    {{{ cDefine('ECOMM') }}}: 'Communication error on send',
+    {{{ cDefine('EPROTO') }}}: 'Protocol error',
+    {{{ cDefine('EMULTIHOP') }}}: 'Multihop attempted',
+    {{{ cDefine('EDOTDOT') }}}: 'Cross mount point (not really error)',
+    {{{ cDefine('EBADMSG') }}}: 'Trying to read unreadable message',
+    {{{ cDefine('ENOTUNIQ') }}}: 'Given log. name not unique',
+    {{{ cDefine('EBADFD') }}}: 'f.d. invalid for this operation',
+    {{{ cDefine('EREMCHG') }}}: 'Remote address changed',
+    {{{ cDefine('ELIBACC') }}}: 'Can   access a needed shared lib',
+    {{{ cDefine('ELIBBAD') }}}: 'Accessing a corrupted shared lib',
+    {{{ cDefine('ELIBSCN') }}}: '.lib section in a.out corrupted',
+    {{{ cDefine('ELIBMAX') }}}: 'Attempting to link in too many libs',
+    {{{ cDefine('ELIBEXEC') }}}: 'Attempting to exec a shared library',
+    {{{ cDefine('ENOSYS') }}}: 'Function not implemented',
+    {{{ cDefine('ENOTEMPTY') }}}: 'Directory not empty',
+    {{{ cDefine('ENAMETOOLONG') }}}: 'File or path name too long',
+    {{{ cDefine('ELOOP') }}}: 'Too many symbolic links',
+    {{{ cDefine('EOPNOTSUPP') }}}: 'Operation not supported on transport endpoint',
+    {{{ cDefine('EPFNOSUPPORT') }}}: 'Protocol family not supported',
+    {{{ cDefine('ECONNRESET') }}}: 'Connection reset by peer',
+    {{{ cDefine('ENOBUFS') }}}: 'No buffer space available',
+    {{{ cDefine('EAFNOSUPPORT') }}}: 'Address family not supported by protocol family',
+    {{{ cDefine('EPROTOTYPE') }}}: 'Protocol wrong type for socket',
+    {{{ cDefine('ENOTSOCK') }}}: 'Socket operation on non-socket',
+    {{{ cDefine('ENOPROTOOPT') }}}: 'Protocol not available',
+    {{{ cDefine('ESHUTDOWN') }}}: 'Can\'t send after socket shutdown',
+    {{{ cDefine('ECONNREFUSED') }}}: 'Connection refused',
+    {{{ cDefine('EADDRINUSE') }}}: 'Address already in use',
+    {{{ cDefine('ECONNABORTED') }}}: 'Connection aborted',
+    {{{ cDefine('ENETUNREACH') }}}: 'Network is unreachable',
+    {{{ cDefine('ENETDOWN') }}}: 'Network interface is not configured',
+    {{{ cDefine('ETIMEDOUT') }}}: 'Connection timed out',
+    {{{ cDefine('EHOSTDOWN') }}}: 'Host is down',
+    {{{ cDefine('EHOSTUNREACH') }}}: 'Host is unreachable',
+    {{{ cDefine('EINPROGRESS') }}}: 'Connection already in progress',
+    {{{ cDefine('EALREADY') }}}: 'Socket already connected',
+    {{{ cDefine('EDESTADDRREQ') }}}: 'Destination address required',
+    {{{ cDefine('EMSGSIZE') }}}: 'Message too long',
+    {{{ cDefine('EPROTONOSUPPORT') }}}: 'Unknown protocol',
+    {{{ cDefine('ESOCKTNOSUPPORT') }}}: 'Socket type not supported',
+    {{{ cDefine('EADDRNOTAVAIL') }}}: 'Address not available',
+    {{{ cDefine('ENETRESET') }}}: 'Connection reset by network',
+    {{{ cDefine('EISCONN') }}}: 'Socket is already connected',
+    {{{ cDefine('ENOTCONN') }}}: 'Socket is not connected',
+    {{{ cDefine('ETOOMANYREFS') }}}: 'Too many references',
+    {{{ cDefine('EUSERS') }}}: 'Too many users',
+    {{{ cDefine('EDQUOT') }}}: 'Quota exceeded',
+    {{{ cDefine('ESTALE') }}}: 'Stale file handle',
+    {{{ cDefine('ENOTSUP') }}}: 'Not supported',
+    {{{ cDefine('ENOMEDIUM') }}}: 'No medium (in tape drive)',
+    {{{ cDefine('EILSEQ') }}}: 'Illegal byte sequence',
+    {{{ cDefine('EOVERFLOW') }}}: 'Value too large for defined data type',
+    {{{ cDefine('ECANCELED') }}}: 'Operation canceled',
+    {{{ cDefine('ENOTRECOVERABLE') }}}: 'State not recoverable',
+    {{{ cDefine('EOWNERDEAD') }}}: 'Previous owner died',
+    {{{ cDefine('ESTRPIPE') }}}: 'Streams pipe error',
   },
   __errno_state: 0,
   __setErrNo__deps: ['__errno_state'],
@@ -9453,17 +7733,30 @@ LibraryManager.library = {
       return -1;
     }
 
-    return 0;
+    // always "fail" in non-blocking mode
+    ___setErrNo(ERRNO_CODES.EINPROGRESS);
+    return -1;
   },
 
   recv__deps: ['$FS'],
   recv: function(fd, buf, len, flags) {
     var info = FS.getStream(fd);
-    if (!info) return -1;
-    if (!info.hasData()) {
-      ___setErrNo(ERRNO_CODES.EAGAIN); // no data, and all sockets are nonblocking, so this is the right behavior
+    if (!info) {
+      ___setErrNo(ERRNO_CODES.EBADF);
       return -1;
     }
+#if SOCKET_WEBRTC == 0
+    if (!info.hasData()) {
+      if (info.socket.readyState === WebSocket.CLOSING || info.socket.readyState === WebSocket.CLOSED) {
+        // socket has closed
+        return 0;
+      } else {
+        // else, our socket is in a valid state but truly has nothing available
+        ___setErrNo(ERRNO_CODES.EAGAIN);
+        return -1;
+      }
+    }
+#endif
     var buffer = info.inQueue.shift();
 #if SOCKET_DEBUG
     Module.print('recv: ' + [Array.prototype.slice.call(buffer)]);
@@ -9485,7 +7778,19 @@ LibraryManager.library = {
   send__deps: ['$FS'],
   send: function(fd, buf, len, flags) {
     var info = FS.getStream(fd);
-    if (!info) return -1;
+    if (!info) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    }
+#if SOCKET_WEBRTC == 0
+    if (info.socket.readyState === WebSocket.CLOSING || info.socket.readyState === WebSocket.CLOSED) {
+      ___setErrNo(ERRNO_CODES.ENOTCONN);
+      return -1;
+    } else if (info.socket.readyState === WebSocket.CONNECTING) {
+      ___setErrNo(ERRNO_CODES.EAGAIN);
+      return -1;
+    }
+#endif
     info.sender(HEAPU8.subarray(buf, buf+len));
     return len;
   },
@@ -9623,7 +7928,8 @@ LibraryManager.library = {
 
   bind__deps: ['connect'],
   bind: function(fd, addr, addrlen) {
-    return _connect(fd, addr, addrlen);
+    _connect(fd, addr, addrlen);
+    return 0;
   },
 
   listen: function(fd, backlog) {
@@ -9656,24 +7962,12 @@ LibraryManager.library = {
     var errorCondition = 0;
 
     function canRead(info) {
-      // make sure hasData exists.
-      // we do create it when the socket is connected,
-      // but other implementations may create it lazily
-      if ((info.socket.readyState == WebSocket.CLOSING || info.socket.readyState == WebSocket.CLOSED) && info.inQueue.length == 0) {
-        errorCondition = -1;
-        return false;
-      }
-      return info.hasData && info.hasData();
+      return (info.hasData && info.hasData()) ||
+        info.socket.readyState == WebSocket.CLOSING ||  // let recv return 0 once closed
+        info.socket.readyState == WebSocket.CLOSED;
     }
 
     function canWrite(info) {
-      // make sure socket exists.
-      // we do create it when the socket is connected,
-      // but other implementations may create it lazily
-      if ((info.socket.readyState == WebSocket.CLOSING || info.socket.readyState == WebSocket.CLOSED)) {
-        errorCondition = -1;
-        return false;
-      }
       return info.socket && (info.socket.readyState == info.socket.OPEN);
     }
 
@@ -9692,7 +7986,11 @@ LibraryManager.library = {
         if (int_ & mask) {
           // index is in the set, check if it is ready for read
           var info = FS.getStream(fd);
-          if (info && can(info)) {
+          if (!info) {
+            ___setErrNo(ERRNO_CODES.EBADF);
+            return -1;
+          }
+          if (can(info)) {
             // set bit
             fd < 32 ? (dstLow = dstLow | mask) : (dstHigh = dstHigh | mask);
             bitsSet++;

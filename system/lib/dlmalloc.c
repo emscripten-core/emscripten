@@ -1,4 +1,14 @@
 
+/* XXX Emscripten XXX */
+#if EMSCRIPTEN
+#define DLMALLOC_EXPORT __attribute__((__weak__, __visibility__("default")))
+/* mmap uses malloc, so malloc can't use mmap */
+#define HAVE_MMAP 0
+/* we can only grow the heap up anyhow, so don't try to trim */
+#define MORECORE_CANNOT_TRIM 1
+#endif
+
+
 #define __THROW
 #define __attribute_malloc__
 #define __wur
@@ -532,10 +542,6 @@
 #define DLMALLOC_VERSION 20806
 #endif /* DLMALLOC_VERSION */
 
-#if EMSCRIPTEN
-#define DLMALLOC_EXPORT __attribute__((__weak__, __visibility__("default")))
-#endif
-
 #ifndef DLMALLOC_EXPORT
 #define DLMALLOC_EXPORT extern
 #endif
@@ -647,15 +653,7 @@ defined(__i386__) || defined(__x86_64__))) ||                    \
 #define MALLOC_INSPECT_ALL 0
 #endif  /* MALLOC_INSPECT_ALL */
 #ifndef HAVE_MMAP
-/* XXX Emscripten
- * mmap uses malloc, so malloc can't use mmap
- */
-#ifdef EMSCRIPTEN
-#define HAVE_MMAP 0
-#else
 #define HAVE_MMAP 1
-#endif
-
 #endif  /* HAVE_MMAP */
 #ifndef MMAP_CLEARS
 #define MMAP_CLEARS 1

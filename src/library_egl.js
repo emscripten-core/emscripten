@@ -260,8 +260,13 @@ var LibraryEGL = {
     }
 
     EGL.windowID = _glutCreateWindow();
-    EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
-    return 62004; // Magic ID for Emscripten EGLContext
+    if (EGL.windowID != 0) {
+      EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
+      return 62004; // Magic ID for Emscripten EGLContext
+    } else {
+      EGL.setErrorCode(0x3009 /* EGL_BAD_MATCH */); // By the EGL 1.4 spec, an implementation that does not support GLES2 (WebGL in this case), this error code is set.
+      return 0; /* EGL_NO_CONTEXT */
+    }
   },
 
   eglDestroyContext__deps: ['glutDestroyWindow', '$GL'],
