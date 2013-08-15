@@ -6,6 +6,7 @@ mergeInto(LibraryManager.library, {
   $Browser__deps: ['$PATH'],
   $Browser__postset: 'Module["requestFullScreen"] = function(lockPointer, resizeCanvas) { Browser.requestFullScreen(lockPointer, resizeCanvas) };\n' + // exports
                      'Module["requestAnimationFrame"] = function(func) { Browser.requestAnimationFrame(func) };\n' +
+                     'Module["setCanvasSize"] = function(width, height, noUpdates) { Browser.setCanvasSize(width, height, noUpdates) };\n' +
                      'Module["pauseMainLoop"] = function() { Browser.mainLoop.pause() };\n' +
                      'Module["resumeMainLoop"] = function() { Browser.mainLoop.resume() };\n' +
                      'Module["getUserMedia"] = function() { Browser.getUserMedia() }',
