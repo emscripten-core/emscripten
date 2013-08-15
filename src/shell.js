@@ -74,7 +74,12 @@ else if (ENVIRONMENT_IS_SHELL) {
   Module['print'] = print;
   if (typeof printErr != 'undefined') Module['printErr'] = printErr; // not present in v8 or older sm
 
-  Module['read'] = read;
+  if (typeof read != 'undefined') {
+    Module['read'] = read;
+  } else {
+    Module['read'] = function() { throw 'no read() available (jsc?)' };
+  }
+
   Module['readBinary'] = function(f) {
     return read(f, 'binary');
   };
