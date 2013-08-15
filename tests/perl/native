@@ -1,0 +1,269 @@
+free 3
+toke.c:712:PL_parser=-1983862400
+perly.c:335:yytoken=0
+perly.c:382:yystate=0
+perly.c:447:yytoken=3
+perly.c:454:yyn=1
+perly.c:382:yystate=1
+perly.c:514:yyval=0
+perly.c:580:yyn=103
+perly.c:382:yystate=8
+perly.c:514:yyval=0
+perly.c:580:yyn=110
+perly.c:382:yystate=15
+perly.c:514:yyval=0
+perly.c:580:yyn=114
+perly.c:382:yystate=102
+toke.c:4391:bof=0
+toke.c:4392:fake_eof=0
+toke.c:4397:orig_keyword=0
+toke.c:4415:PL_lex_state=10
+toke.c:4748:*s=10
+toke.c:4760:*s=10
+toke.c:4760:*s=0
+toke.c:4760:*s=10
+toke.c:4760:*s=0
+toke.c:1257:got_some_for_debugger=0
+toke.c:1261:linestr=-1979623072
+toke.c:4038:funcp=200312112
+toke.c:1318:buf=-1983861584
+toke.c:1319:new_bufend_pos=13
+toke.c:4760:*s=117
+toke.c:6508:keylookup
+toke.c:6517: 1; use 2
+
+toke.c:6520:0
+Check for plugged-in keyword
+Check for built-in keyword
+toke.c:6630:242
+toke.c:1482:s=-1983861581
+toke.c:1483:bufend=-1983861571
+toke.c:4317:s=-1983861580
+toke.c:1482:s=-1983861580
+toke.c:1483:bufend=-1983861571
+toke.c:2186:s=-1983861580
+creating scalar
+toke.c:2206:s=-1983861579
+toke.c:2211:version=-1983861520
+toke.c:1997:PL_nexttype[PL_nexttoke]=264
+toke.c:1997:PL_nexttype[PL_nexttoke]=264
+perly.c:447:yytoken=39
+perly.c:454:yyn=82
+perly.c:382:yystate=82
+perly.c:514:yyval=0
+toke.c:10731:oldsavestack_ix=38
+toke.c:10741:PL_compcv=-1979622880
+toke.c:10744:PL_subline=1
+perly.c:580:yyn=131
+perly.c:382:yystate=195
+perly.c:514:yyval=0
+perly.c:580:yyn=118
+perly.c:382:yystate=288
+toke.c:4391:bof=0
+toke.c:4392:fake_eof=0
+toke.c:4397:orig_keyword=0
+toke.c:4415:PL_lex_state=0
+perly.c:447:yytoken=21
+perly.c:454:yyn=346
+perly.c:382:yystate=346
+toke.c:4391:bof=0
+toke.c:4392:fake_eof=0
+toke.c:4397:orig_keyword=0
+toke.c:4415:PL_lex_state=0
+perly.c:447:yytoken=21
+perly.c:454:yyn=385
+perly.c:382:yystate=385
+toke.c:4391:bof=0
+toke.c:4392:fake_eof=0
+toke.c:4397:orig_keyword=0
+toke.c:4415:PL_lex_state=10
+toke.c:4748:*s=59
+toke.c:4760:*s=59
+perly.c:447:yytoken=20
+perly.c:514:yyval=0
+perly.c:580:yyn=152
+perly.c:382:yystate=404
+perly.c:447:yytoken=20
+perly.c:454:yyn=418
+perly.c:382:yystate=418
+perly.c:514:yyval=1
+creating scalar
+creating scalar
+creating scalar
+creating scalar
+free 3
+free 3
+free 3
+free 2free 3
+free 3
+free 3
+free 3
+free 1
+free 2free 3
+free 3
+free 3
+free 3
+free 3
+perly.c:580:yyn=117
+perly.c:382:yystate=100
+perly.c:514:yyval=0
+perly.c:580:yyn=115
+perly.c:382:yystate=218
+perly.c:514:yyval=0
+perly.c:580:yyn=114
+perly.c:382:yystate=102
+toke.c:4391:bof=0
+toke.c:4392:fake_eof=0
+toke.c:4397:orig_keyword=0
+toke.c:4415:PL_lex_state=10
+toke.c:4748:*s=32
+toke.c:4760:*s=32
+toke.c:4760:*s=117
+toke.c:6508:keylookup
+toke.c:6517: 2
+
+toke.c:6520:0
+Check for plugged-in keyword
+Check for built-in keyword
+toke.c:6630:242
+toke.c:1482:s=-1983861574
+toke.c:1483:bufend=-1983861571
+toke.c:4317:s=-1983861573
+toke.c:1482:s=-1983861573
+toke.c:1483:bufend=-1983861571
+toke.c:2186:s=-1983861573
+creating scalar
+toke.c:2206:s=-1983861572
+toke.c:2211:version=-1983860704
+toke.c:1997:PL_nexttype[PL_nexttoke]=264
+toke.c:1482:s=-1983861572
+toke.c:1483:bufend=-1983861571
+toke.c:1257:got_some_for_debugger=0
+toke.c:1261:linestr=-1979623072
+toke.c:4038:funcp=200312112
+free 3
+toke.c:1318:buf=-1983861584
+toke.c:1319:new_bufend_pos=14
+toke.c:1997:PL_nexttype[PL_nexttoke]=264
+perly.c:447:yytoken=39
+perly.c:454:yyn=82
+perly.c:382:yystate=82
+perly.c:514:yyval=38
+toke.c:10731:oldsavestack_ix=38
+toke.c:10741:PL_compcv=-1979622688
+toke.c:10744:PL_subline=1
+perly.c:580:yyn=131
+perly.c:382:yystate=195
+perly.c:514:yyval=0
+perly.c:580:yyn=118
+perly.c:382:yystate=288
+toke.c:4391:bof=0
+toke.c:4392:fake_eof=0
+toke.c:4397:orig_keyword=0
+toke.c:4415:PL_lex_state=0
+perly.c:447:yytoken=21
+perly.c:454:yyn=346
+perly.c:382:yystate=346
+toke.c:4391:bof=0
+toke.c:4392:fake_eof=0
+toke.c:4397:orig_keyword=0
+toke.c:4415:PL_lex_state=0
+perly.c:447:yytoken=21
+perly.c:454:yyn=385
+perly.c:382:yystate=385
+toke.c:4391:bof=0
+toke.c:4392:fake_eof=0
+toke.c:4397:orig_keyword=0
+toke.c:4415:PL_lex_state=10
+toke.c:4748:*s=59
+toke.c:4760:*s=59
+perly.c:447:yytoken=20
+perly.c:514:yyval=0
+perly.c:580:yyn=152
+perly.c:382:yystate=404
+perly.c:447:yytoken=20
+perly.c:454:yyn=418
+perly.c:382:yystate=418
+perly.c:514:yyval=1
+creating scalar
+creating scalar
+creating scalar
+creating scalar
+free 3
+free 3
+free 3
+free 2free 3
+free 3
+free 3
+free 3
+free 1
+free 2free 3
+free 3
+free 3
+free 3
+free 3
+perly.c:580:yyn=117
+perly.c:382:yystate=100
+perly.c:514:yyval=0
+perly.c:580:yyn=115
+perly.c:382:yystate=218
+perly.c:514:yyval=0
+perly.c:580:yyn=114
+perly.c:382:yystate=102
+toke.c:4391:bof=0
+toke.c:4392:fake_eof=0
+toke.c:4397:orig_keyword=0
+toke.c:4415:PL_lex_state=10
+toke.c:4748:*s=0
+toke.c:4760:*s=0
+perly.c:447:yytoken=0
+perly.c:454:yyn=-3
+perly.c:514:yyval=0
+perly.c:580:yyn=102
+perly.c:382:yystate=7
+perly.c:447:yytoken=0
+perly.c:454:yyn=14
+perly.c:704:yyresult=0
+perly.c:195:i=0
+free 3
+toke.c:778:PL_curcop=201887232
+free 3
+free 3
+toke.c:790:PL_parser=0
+free 3
+free 3
+free 3
+free 3
+free 3
+free 3
+free 2free 3
+free 3
+free 3
+free 3
+free 2free 3
+free 3
+free 3
+free 3
+free 2free 2free 2free 3
+free 3
+free 3
+free 3
+free 2free 2free 3
+free 3
+free 3
+free 3
+free 2free 2free 2free 3
+free 3
+free 3
+free 3
+free 2free 2free 3
+free 3
+free 2free 3
+free 3
+free 2free 2free 2free 3
+free 3
+free 3
+free 3
+free 3
+free 3
+free 2free 3

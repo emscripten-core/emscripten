@@ -14156,6 +14156,27 @@ process(sys.argv[1])
     def test_zzz_lua_meteor_contest(self):
       self.lua('meteor_contest', '2098 solutions found')
 
+    def perl(self, benchmark, expected, perl_libs=[], output_parser=None):
+      benchmark_file = path_from_root('tests', 'perl', 'benchmarks', benchmark + '.pl')
+      emcc_args = self.get_library('perl', ['plu'], configure=None) + ['--embed-file', benchmark_file]
+      for lib in perl_libs:
+        emcc_args += ['--embed-file', path_from_root('tests', 'perl', 'lib', lib + '.pm')]
+      shutil.copyfile(emcc_args[0], emcc_args[0] + '.bc')
+      emcc_args[0] += '.bc'
+      native_args = self.get_library('perl_native', ['plu'], configure=None, native=True)
+
+      self.do_benchmark('perl_' + benchmark, '', expected, force_c=True,
+                        args=['-I', path_from_root('tests', 'perl', 'lib'), benchmark_file, DEFAULT_ARG],
+                        emcc_args=emcc_args, native_args=native_args,
+                        native_exec=os.path.join('building', 'perl_native', 'plu'),
+                        output_parser=output_parser)
+
+    def test_zzz_perl_binarytrees(self):
+      self.perl('binarytrees', 'stretch tree of depth 7	 check: -1')
+
+    def test_zzz_perl_fannkuch_redux(self):
+      self.perl('fannkuch_redux', '1616\nPfannkuchen(8) = 22', perl_libs=['integer'])
+
     def test_zzz_zlib(self):
       src = open(path_from_root('tests', 'zlib', 'benchmark.c'), 'r').read()
       emcc_args = self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a']) + \

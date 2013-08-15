@@ -1,0 +1,72 @@
+Live
+^^^^
+http://themucker.github.io/plu/
+Tested with FF17, FF20, C29
+Does not work on mobile browsers
+
+ABOUT
+^^^^^
+plμ  is perl without CPAN/POSIX/XS/Bundled Modules, aka just
+perl and none of the fluff. It is derived from microperl
+and miniperl build files of the perl-5.16.3 code.
+
+INSTALLING
+^^^^^^^^^^
+* Linux
+> make
+> make plutest
+> plu -e "print 'hello world'"
+
+* Emscripten (Console)
+> CONSOLE=1 make -f Makefile_emcc
+> (modify entry_point.js to add virtual files)**
+> cat entry_point.js plu.js** > plu.run.js
+> node plu.run.js virtual_file.pl
+
+* Emscripten (for Web)
+> make -f Makefile_emcc
+> cp plu.js** to web_repl/js/microperl.js
+> open web_repl/repl.html in the browser !
+
+** https://github.com/kripken/emscripten/wiki/Filesystem-Guide
+** the generated js file has two problemtic lines, in init
+   method.
+
+(near)1291: var devFolder = FS.createFolder('/', 'dev', true, true);
+     change it to
+     var devFolder = FS.findObject('/dev') || FS.createFolder('/', 'dev', true, true);
+
+
+(near)1348: ... ALLOC_DYNAMIC ...
+      change it to
+      ALLOC_STATIC or ALLOC_NORMAL
+
+**NOTE**
+These two issues are fixed in emscripten as of Jun 3 2013.
+see: https://github.com/kripken/emscripten/commit/e94f8f736b347d23d714f3b07cd44629f5b1ab93
+
+web_repl/js/microperl.js has these patches applied
+
+There is also a CONSOLE=1 make option which generates
+plu.console.js, for debugging.
+
+SHOUTOUT
+^^^^^^^^
+* http://kripken.github.io/lua.vm.js/lua.vm.js.html
+  (for inspiration)
+* Shlomi Fish (http://www.shlomifish.org/) from #perl for his patient testing
+  and support.
+
+TODO
+^^^^
+* unit test emscripten code
+* write limitations
+* select a few CPAN modules for bundling
+* repl oriented towards beginners
+* s/js/perl/ ? (Don't think so, but a possibility)
+* experiment with perl source code for fun and profit !
+
+LICENSE
+^^^^^^^
+(tl;dr Artistic License 1)
+
