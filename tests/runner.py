@@ -13852,9 +13852,10 @@ process(sys.argv[1])
         for i, spec in enumerate(BENCHMARK_SPEC):
           total_times = map(sum, spec['times'].itervalues())
           if i == 0:
+            base_name = spec['name']
             base_total_times = total_times
           else:
-            cls.print_stats(total_times, base_total_times, last=True)
+            cls.print_stats(total_times, base_total_times, spec['name'], base_name, last=True)
       if RESULT_FILE:
         print 'Saving results to ' + RESULT_FILE
         with open(RESULT_FILE, 'w') as f:
