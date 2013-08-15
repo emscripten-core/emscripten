@@ -1,0 +1,7 @@
+written = 5000
+offset = 5000
+readed = 5000
+written = 5000
+read_offset = 5000
+offset = 0
+readed = 5000

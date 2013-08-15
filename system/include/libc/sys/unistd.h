@@ -11,6 +11,7 @@ extern "C" {
 #define __need_size_t
 #define __need_ptrdiff_t
 #include <stddef.h>
+#include <limits.h>
 
 extern char **environ;
 
@@ -506,6 +507,10 @@ void encrypt(char block[64], int edflag);
 
 #ifndef __CYGWIN__
 # define	MAXPATHLEN	1024
+#endif
+
+#ifndef SSIZE_MAX
+# define SSIZE_MAX      LONG_MAX
 #endif
 
 #ifdef __cplusplus
