@@ -649,6 +649,7 @@ class BrowserCore(RunnerCore):
       self.reftest(path_from_root('tests', reference))
       args = args + ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
     Popen([PYTHON, EMCC, temp_filepath, '-o', outfile] + args).communicate()
+    assert os.path.exists(outfile)
     if type(expected) is str: expected = [expected]
     self.run_browser(outfile, message, ['/report_result?' + e for e in expected])
 
@@ -772,3 +773,4 @@ an individual test with
     testRunner = unittest.TextTestRunner(verbosity=2)
     for suite in suites:
       testRunner.run(suite)
+
