@@ -1618,17 +1618,15 @@ var LibraryGL = {
       var glCompileShader = _glCompileShader;
       _glCompileShader = function(shader) {
         Module.ctx.compileShader(GL.shaders[shader]);
+#if GL_DEBUG
         if (!Module.ctx.getShaderParameter(GL.shaders[shader], Module.ctx.COMPILE_STATUS)) {
           Module.printErr('Failed to compile shader: ' + Module.ctx.getShaderInfoLog(GL.shaders[shader]));
           Module.printErr('Info: ' + JSON.stringify(GL.shaderInfos[shader]));
-#if GL_DEBUG
           Module.printErr('Original source: ' + GL.shaderOriginalSources[shader]);
           Module.printErr('Source: ' + GL.shaderSources[shader]);
           throw 'Shader compilation halt';
-#else
-          Module.printErr('Enable GL_DEBUG to see shader source');
-#endif
         }
+#endif
       };
 
       GL.programShaders = {};
