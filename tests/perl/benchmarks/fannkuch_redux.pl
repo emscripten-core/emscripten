@@ -47,7 +47,7 @@ sub fannkuchredux {
     } while (1);
 }
 
-$n = 8;
+$n = 9;
 my ($checksum, $maxflips) = fannkuchredux($n);
 print "$checksum\n";
 print "Pfannkuchen($n) = $maxflips\n";

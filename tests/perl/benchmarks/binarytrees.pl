@@ -17,7 +17,7 @@ sub check_tree {
     )
 }
 
-my $max_depth = 6;
+my $max_depth = 10;
 my $min_depth = 4;
 
 $max_depth = $min_depth + 2 if $min_depth + 2 > $max_depth;
@@ -44,4 +44,3 @@ for ( my $depth = $min_depth; $depth <= $max_depth; $depth += 2 ) {
 
 print "long lived tree of depth $max_depth\t check: ",
     check_tree($longlived_tree), "\n"
-

@@ -14172,10 +14172,10 @@ process(sys.argv[1])
                         output_parser=output_parser)
 
     def test_zzz_perl_binarytrees(self):
-      self.perl('binarytrees', 'stretch tree of depth 7	 check: -1')
+      self.perl('binarytrees', 'stretch tree of depth 11	 check: -1')
 
     def test_zzz_perl_fannkuch_redux(self):
-      self.perl('fannkuch_redux', '1616\nPfannkuchen(8) = 22', perl_libs=['integer'])
+      self.perl('fannkuch_redux', '8629\nPfannkuchen(9) = 30', perl_libs=['integer'])
 
     def test_zzz_zlib(self):
       src = open(path_from_root('tests', 'zlib', 'benchmark.c'), 'r').read()
