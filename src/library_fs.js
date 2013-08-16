@@ -18,7 +18,7 @@ mergeInto(LibraryManager.library, {
     devices: [null],
     streams: [null],
     nextInode: 1,
-    name_table: new Array(4096),
+    name_table: null,
     currentPath: '/',
     initialized: false,
     // Whether we are currently ignoring permissions. Useful when preparing the
@@ -868,6 +868,8 @@ mergeInto(LibraryManager.library, {
       assert(stderr.fd === 3, 'invalid handle for stderr (' + stderr.fd + ')');
     },
     staticInit: function() {
+      FS.name_table = new Array(4096);
+
       FS.root = FS.createNode(null, '/', {{{ cDefine('S_IFDIR') }}} | 0777, 0);
       FS.mount(MEMFS, {}, '/');
 
