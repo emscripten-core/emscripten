@@ -321,7 +321,7 @@ var Functions = {
       tables[sig][index] = ident;
     }
     var generated = false;
-    var wrapped = {};
+    var wrapped = {}; // whether we wrapped a lib func
     var maxTable = 0;
     for (var t in tables) {
       if (t == 'pre') continue;
@@ -344,10 +344,11 @@ var Functions = {
         if (ASM_JS) {
           var curr = table[i];
           if (curr && curr != '0' && !Functions.implementedFunctions[curr]) {
-            curr = toNiceIdent(curr); // fix Math.* to Math_*
+            var short = toNiceIdent(curr); // fix Math.* to Math_*
+            curr = t + '_' + short; // libfuncs can alias with different sigs, wrap each separately
             // This is a library function, we can't just put it in the function table, need a wrapper
             if (!wrapped[curr]) {
-              var args = '', arg_coercions = '', call = curr + '(', retPre = '', retPost = '';
+              var args = '', arg_coercions = '', call = short + '(', retPre = '', retPost = '';
               if (t[0] != 'v') {
                 if (t[0] == 'i') {
                   retPre = 'return ';
@@ -362,7 +363,7 @@ var Functions = {
                 call += (j > 1 ? ',' : '') + asmCoercion('a' + j, t[j] != 'i' ? 'float' : 'i32');
               }
               call += ')';
-              if (curr == '_setjmp') printErr('WARNING: setjmp used via a function pointer. If this is for libc setjmp (not something of your own with the same name), it will break things');
+              if (short == '_setjmp') printErr('WARNING: setjmp used via a function pointer. If this is for libc setjmp (not something of your own with the same name), it will break things');
               tables.pre += 'function ' + curr + '__wrapper(' + args + ') { ' + arg_coercions + ' ; ' + retPre + call + retPost + ' }\n';
               wrapped[curr] = 1;
             }

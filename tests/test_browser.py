@@ -1323,6 +1323,12 @@ Press any key to continue.'''
     self.btest('s3tc_crunch.c', reference='s3tc_crunch.png', reference_slack=11, args=['--pre-js', 'asset_a.js', '--pre-js', 'asset_b.js', '-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_aniso(self):
+    if SPIDERMONKEY_ENGINE in JS_ENGINES:
+      # asm.js-ification check
+      Popen([PYTHON, EMCC, path_from_root('tests', 'aniso.c'), '-O2', '-g2', '-s', 'LEGACY_GL_EMULATION=1']).communicate()
+      Settings.ASM_JS = 1
+      self.run_generated_code(SPIDERMONKEY_ENGINE, 'a.out.js')
+
     shutil.copyfile(path_from_root('tests', 'water.dds'), 'water.dds')
     self.btest('aniso.c', reference='aniso.png', reference_slack=2, args=['--preload-file', 'water.dds', '-s', 'LEGACY_GL_EMULATION=1'])
 
