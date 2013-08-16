@@ -190,6 +190,11 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   open(forwarded_file, 'w').write(forwarded_data)
   if DEBUG: print >> sys.stderr, '  emscript: phase 1 took %s seconds' % (time.time() - t)
 
+  indexed_functions = set()
+  forwarded_json = json.loads(forwarded_data)
+  for key in forwarded_json['Functions']['indexedFunctions'].iterkeys():
+    indexed_functions.add(key)
+
   # Phase 2 - func
 
   cores = int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
@@ -203,8 +208,6 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     chunk_size = MAX_CHUNK_SIZE # if 1 core, just use the max chunk size
 
   if DEBUG: t = time.time()
-  forwarded_json = json.loads(forwarded_data)
-  indexed_functions = set()
   if settings.get('ASM_JS'):
     settings['EXPORTED_FUNCTIONS'] = forwarded_json['EXPORTED_FUNCTIONS']
     save_settings()
