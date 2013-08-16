@@ -275,20 +275,15 @@ var Functions = {
   },
 
   // Mark a function as needing indexing. Python will coordinate them all
-  getIndex: function(ident, doNotCreate, sig) {
-    if (doNotCreate && !(ident in this.indexedFunctions)) {
-      if (!Functions.getIndex.tentative) Functions.getIndex.tentative = {}; // only used by GL emulation; TODO: generalize when needed
-      Functions.getIndex.tentative[ident] = 0;
-    }
+  getIndex: function(ident, sig) {
     var ret;
     if (phase != 'post' && singlePhase) {
-      if (!doNotCreate) this.indexedFunctions[ident] = 0; // tell python we need this indexized
       ret = "'{{ FI_" + toNiceIdent(ident) + " }}'"; // something python will replace later
+      this.indexedFunctions[ident] = 0;
     } else {
       if (!singlePhase) return 'NO_INDEX'; // Should not index functions in post
       ret = this.indexedFunctions[ident];
       if (!ret) {
-        if (doNotCreate) return '0';
         ret = this.nextIndex;
         this.nextIndex += 2; // Need to have indexes be even numbers, see |polymorph| test
         this.indexedFunctions[ident] = ret;

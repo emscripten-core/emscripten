@@ -16,6 +16,8 @@ var SETJMP_LABEL = -1;
 
 var INDENTATION = ' ';
 
+var functionStubSigs = {};
+
 // JSifier
 function JSify(data, functionsOnly, givenFunctions) {
   var mainPass = !functionsOnly;
@@ -407,6 +409,11 @@ function JSify(data, functionsOnly, givenFunctions) {
   // functionStub
   substrate.addActor('FunctionStub', {
     processItem: function(item) {
+      // note the signature
+      if (item.returnType && item.params) {
+        functionStubSigs[item.ident] = Functions.getSignature(item.returnType.text, item.params.map(function(arg) { return arg.type }), false);
+      }
+
       function addFromLibrary(ident) {
         if (ident in addedLibraryItems) return '';
         addedLibraryItems[ident] = true;
@@ -1537,7 +1544,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           // This is a call through an invoke_*, either a forced one, or a setjmp-required one
           // note: no need to update argsTypes at this point
           if (byPointerForced) Functions.unimplementedFunctions[callIdent] = sig;
-          args.unshift(byPointerForced ? Functions.getIndex(callIdent, undefined, sig) : asmCoercion(callIdent, 'i32'));
+          args.unshift(byPointerForced ? Functions.getIndex(callIdent, sig) : asmCoercion(callIdent, 'i32'));
           callIdent = 'invoke_' + sig;
         }
       } else if (SAFE_DYNCALLS) {
