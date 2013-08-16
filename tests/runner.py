@@ -766,11 +766,17 @@ an individual test with
     except:
       pass
 
+  numFailures = 0 # Keep count of the total number of failing tests.
+
   # Run the discovered tests
   if not len(suites):
     print >> sys.stderr, 'No tests found for %s' % str(sys.argv[1:])
+    numFailures = 1
   else:
     testRunner = unittest.TextTestRunner(verbosity=2)
     for suite in suites:
-      testRunner.run(suite)
+      results = testRunner.run(suite)
+      numFailures += len(results.errors) + len(results.failures)
 
+  # Return the number of failures as the process exit code for automating success/failure reporting.
+  exit(numFailures)
