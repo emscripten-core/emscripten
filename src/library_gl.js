@@ -4319,15 +4319,28 @@ LibraryGL.emscripten_GetProcAddress__deps = [function() {
   // ProcAddress is used, so include everything in GL. This runs before we go to the $ProcAddressTable object,
   // and we fill its deps just in time, and create the lookup table
   var table = {};
-  LibraryManager.library.emscripten_procAddressTable__deps = keys(LibraryGL).filter(function(x) {
-    if (x.substr(-6) == '__deps' || x.substr(-9) == '__postset' || x.substr(-5) == '__sig' || x.substr(0, 2) != 'gl') return false;
-    var sig = LibraryGL[x + '__sig'] || functionStubSigs['_' + x];
-    if (sig) {
-      table[x] = Functions.getIndex('_' + x, sig);
-      if (!(('_' + x) in Functions.implementedFunctions)) Functions.unimplementedFunctions[('_' + x)] = sig;
+  LibraryManager.library.emscripten_procAddressTable__deps = keys(LibraryGL).map(function(x) {
+    if (x.substr(-6) == '__deps' || x.substr(-9) == '__postset' || x.substr(-5) == '__sig' || x.substr(-5) == '__asm' || x.substr(0, 2) != 'gl') return null;
+    var original = x;
+    if (('_' + x) in Functions.implementedFunctions) {
+      // a user-implemented function aliases this one, but we still want it to be accessible by name, so rename it
+      var y = x + '__procTable';
+      LibraryManager.library[y] = LibraryManager.library[x];
+      LibraryManager.library[y + '__deps'] = LibraryManager.library[x + '__deps'];
+      LibraryManager.library[y + '__postset'] = LibraryManager.library[x + '__postset'];
+      LibraryManager.library[y + '__sig'] = LibraryManager.library[x + '__sig'];//|| Functions.implementedFunctions['_' + x];
+      LibraryManager.library[y + '__asm'] = LibraryManager.library[x + '__asm'];
+      x = y;
+      assert(!(y in Functions.implementedFunctions) && !Functions.unimplementedFunctions['_' + y]);
     }
-    return true;
-  });
+    var longX = '_' + x;
+    var sig = LibraryManager.library[x + '__sig'] || functionStubSigs[longX];
+    if (sig) {
+      table[original] = Functions.getIndex(longX, sig);
+      if (!(longX in Functions.implementedFunctions)) Functions.unimplementedFunctions[longX] = sig;
+    }
+    return x;
+  }).filter(function(x) { return x !== null });
   // convert table into function with switch, to not confuse closure compiler
   var tableImpl = 'switch(name) {\n';
   for (var x in table) tableImpl += 'case "' + x + '": return ' + table[x] + '; break;\n';
