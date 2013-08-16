@@ -4040,24 +4040,36 @@ var LibraryGL = {
 #else // LEGACY_GL_EMULATION
 
   // Warn if code tries to use various emulation stuff, when emulation is disabled
+  // (do not warn if INCLUDE_FULL_LIBRARY is one, because then likely the gl code will
+  // not be called anyhow, leave only the runtime aborts)
   glVertexPointer__deps: [function() {
+#if INCLUDE_FULL_LIBRARY == 0
     warn('Legacy GL function (glVertexPointer) called. You need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.');
+#endif
   }],
   glVertexPointer: function(){ throw 'Legacy GL function (glVertexPointer) called. You need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.'; },
   glGenVertexArrays__deps: [function() {
+#if INCLUDE_FULL_LIBRARY == 0
     warn('Legacy GL function (glGenVertexArrays) called. You need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.');
+#endif
   }],
   glGenVertexArrays: function(){ throw 'Legacy GL function (glGenVertexArrays) called. You need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.'; },
   glMatrixMode__deps: [function() {
+#if INCLUDE_FULL_LIBRARY == 0
     warn('Legacy GL function (glMatrixMode) called. You need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.');
+#endif
   }],
   glMatrixMode: function(){ throw 'Legacy GL function (glMatrixMode) called. You need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.'; },
   glBegin__deps: [function() {
+#if INCLUDE_FULL_LIBRARY == 0
     warn('Legacy GL function (glBegin) called. You need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.');
+#endif
   }],
   glBegin: function(){ throw 'Legacy GL function (glBegin) called. You need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.'; },
   glLoadIdentity__deps: [function() {
+#if INCLUDE_FULL_LIBRARY == 0
     warn('Legacy GL function (glLoadIdentity) called. You need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.');
+#endif
   }],
   glLoadIdentity: function(){ throw 'Legacy GL function (glLoadIdentity) called. You need to compile with -s LEGACY_GL_EMULATION=1 to enable legacy GL emulation.'; },
 
