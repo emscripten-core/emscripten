@@ -419,6 +419,49 @@ LibraryManager.library = {
   // TODO: Check if other aliases are needed.
 
   // ==========================================================================
+  // sys/statfs.h
+  // ==========================================================================
+
+  __statfs_struct_layout: Runtime.generateStructInfo([
+    ['i32', 'f_type'],
+    ['i32', 'f_bsize'],
+    ['i32', 'f_blocks'],
+    ['i32', 'f_bfree'],
+    ['i32', 'f_bavail'],
+    ['i32', 'f_files'],
+    ['i32', 'f_ffree'],
+    ['i32', 'f_fsid_val0'],
+    ['i32', 'f_fsid_val1'],
+    ['i32', 'f_namelen'],
+    ['i32', 'f_frsize']]),
+  statfs__deps: ['$FS', '__statfs_struct_layout'],
+  statfs: function(path, buf) {
+    // http://man7.org/linux/man-pages/man2/statfs.2.html
+    // int statfs(const char *path, struct statfs *buf);
+    var offsets = ___statfs_struct_layout;
+    // NOTE: None of the constants here are true. We're just returning safe and
+    //       sane values.
+    {{{ makeSetValue('buf', 'offsets.f_type', '0', 'i32') }}}
+    {{{ makeSetValue('buf', 'offsets.f_bsize', '4096', 'i32') }}}
+    {{{ makeSetValue('buf', 'offsets.f_blocks', '1000000', 'i32') }}}
+    {{{ makeSetValue('buf', 'offsets.f_bfree', '500000', 'i32') }}}
+    {{{ makeSetValue('buf', 'offsets.f_bavail', '500000', 'i32') }}}
+    {{{ makeSetValue('buf', 'offsets.f_files', 'FS.nextInode', 'i32') }}}
+    {{{ makeSetValue('buf', 'offsets.f_ffree', '1000000', 'i32') }}}
+    {{{ makeSetValue('buf', 'offsets.f_fsid_val0', '0', 'i32') }}}
+    {{{ makeSetValue('buf', 'offsets.f_fsid_val1', '0', 'i32') }}}
+    {{{ makeSetValue('buf', 'offsets.f_namelen', '255', 'i32') }}}
+    {{{ makeSetValue('buf', 'offsets.f_frsize', '4096', 'i32') }}}
+    return 0;
+  },
+  fstatfs__deps: ['statfs'],
+  fstatfs: function(fildes, buf) {
+    // http://man7.org/linux/man-pages/man2/statfs.2.html
+    // int fstatfs(int fd, struct statfs *buf);
+    return _statfs(0, buf);
+  },
+
+  // ==========================================================================
   // sys/statvfs.h
   // ==========================================================================
 
