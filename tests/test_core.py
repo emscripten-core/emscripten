@@ -6924,6 +6924,11 @@ def process(filename):
       '''
     self.do_run(src, re.sub('(^|\n)\s+', '\\1', expected), post_build=add_pre_run, extra_emscripten_args=['-H', 'libc/fcntl.h,poll.h'])
 
+  def test_statfs_statvfs(self):
+    if self.emcc_args is None: return self.skip('requires emcc')
+    src = open(path_from_root('tests', 'sys', 'statfs_statvfs.c'), 'r').read()
+    self.do_run(src, "success\n", force_c=True)
+
   def test_statvfs(self):
     src = r'''
       #include <stdio.h>
