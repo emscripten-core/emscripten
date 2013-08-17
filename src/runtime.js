@@ -420,9 +420,9 @@ var Runtime = {
       var c3 = buffer[2];
       var c4 = buffer[3];
       var ret;
-      if (buffer.length == 1) {
+      if (buffer.length == 2) {
         ret = String.fromCharCode(((c1 & 0x1F) << 6)  | (c2 & 0x3F));
-      } else if (buffer.length == 2) {
+      } else if (buffer.length == 3) {
         ret = String.fromCharCode(((c1 & 0x0F) << 12) | ((c2 & 0x3F) << 6)  | (c3 & 0x3F));
       } else {
         ret = String.fromCharCode(((c1 & 0x07) << 18) | ((c2 & 0x3F) << 12) | ((c3 & 0x3F) << 6) | (c4 & 0x3F));
