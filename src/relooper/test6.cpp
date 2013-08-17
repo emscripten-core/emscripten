@@ -7,13 +7,13 @@ int main() {
 
   void *r = rl_new_relooper();
 
-  void *b0 = rl_new_block("//0");
+  void *b0 = rl_new_block("//0", "the_var");
   rl_relooper_add_block(r, b0);
-  void *b1 = rl_new_block("//1");
+  void *b1 = rl_new_block("//1", "the_var");
   rl_relooper_add_block(r, b1);
-  void *b2 = rl_new_block("//2");
+  void *b2 = rl_new_block("//2", "the_var");
   rl_relooper_add_block(r, b2);
-  void *b3 = rl_new_block("//3");
+  void *b3 = rl_new_block("//3", "the_var");
   rl_relooper_add_block(r, b3);
 
   rl_block_add_branch_to(b0, b1, "check(0)", NULL);

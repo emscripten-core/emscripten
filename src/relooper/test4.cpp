@@ -7,19 +7,19 @@ int main() {
 
   void *r = rl_new_relooper();
 
-  void *b19 = rl_new_block("//19");
+  void *b19 = rl_new_block("//19", "the_var");
   rl_relooper_add_block(r, b19);
-  void *b20 = rl_new_block("//20");
+  void *b20 = rl_new_block("//20", "the_var");
   rl_relooper_add_block(r, b20);
-  void *b21 = rl_new_block("//21");
+  void *b21 = rl_new_block("//21", "the_var");
   rl_relooper_add_block(r, b21);
-  void *b22 = rl_new_block("//22");
+  void *b22 = rl_new_block("//22", "the_var");
   rl_relooper_add_block(r, b22);
-  void *b23 = rl_new_block("//23");
+  void *b23 = rl_new_block("//23", "the_var");
   rl_relooper_add_block(r, b23);
-  void *b24 = rl_new_block("//24");
+  void *b24 = rl_new_block("//24", "the_var");
   rl_relooper_add_block(r, b24);
-  void *b28 = rl_new_block("//28");
+  void *b28 = rl_new_block("//28", "the_var");
   rl_relooper_add_block(r, b28);
 
   rl_block_add_branch_to(b19, b20, " 1 ", NULL);

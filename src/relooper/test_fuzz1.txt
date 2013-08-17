@@ -3,7 +3,7 @@
 print('entry'); var label; var state; var decisions = [4, 1, 7, 2, 6, 6, 8]; var index = 0; function check() { if (index == decisions.length) throw 'HALT'; return decisions[index++] }
 print(5); state = check();
 print(6); state = check();
-if (state == 7) {
+if (the_var == state == 7) {
  print(7); state = check();
  label = 3;
 }
@@ -15,16 +15,16 @@ L5: while(1) {
  print(1); state = check();
  while(1) {
   print(3); state = check();
-  if (!(state == 8)) {
+  if (!(the_var == state == 8)) {
    continue L5;
   }
   print(8); state = check();
-  if (!(state == 4)) {
+  if (!(the_var == state == 4)) {
    label = 3;
    continue L5;
   }
   print(4); state = check();
-  if (!(state == 3)) {
+  if (!(the_var == state == 3)) {
    continue L5;
   }
  }

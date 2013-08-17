@@ -8,16 +8,16 @@ int main() {
   char *buffer = (char*)malloc(SIZE);
   Relooper::SetOutputBuffer(buffer, SIZE);
 
-  Block *b0 = new Block("print('entry'); var label; var state; var decisions = [133, 98, 134, 143, 162, 187, 130, 87, 91, 49, 102, 47, 9, 132, 179, 176, 157, 25, 64, 161, 57, 107, 16, 167, 185, 45, 191, 180, 23, 131]; var index = 0; function check() { if (index == decisions.length) throw 'HALT'; return decisions[index++] }");
-  Block *b1 = new Block("print(1); state = check();");
-  Block *b2 = new Block("print(2); state = check();");
-  Block *b3 = new Block("print(3); state = check();");
-  Block *b4 = new Block("print(4); state = check();");
-  Block *b5 = new Block("print(5); state = check();");
-  Block *b6 = new Block("print(6); state = check();");
-  Block *b7 = new Block("print(7); state = check();");
-  Block *b8 = new Block("print(8); state = check();");
-  Block *b9 = new Block("print(9); state = check();");
+  Block *b0 = new Block("print('entry'); var label; var state; var decisions = [133, 98, 134, 143, 162, 187, 130, 87, 91, 49, 102, 47, 9, 132, 179, 176, 157, 25, 64, 161, 57, 107, 16, 167, 185, 45, 191, 180, 23, 131]; var index = 0; function check() { if (index == decisions.length) throw 'HALT'; return decisions[index++] }", "the_var");
+  Block *b1 = new Block("print(1); state = check();", "the_var");
+  Block *b2 = new Block("print(2); state = check();", "the_var");
+  Block *b3 = new Block("print(3); state = check();", "the_var");
+  Block *b4 = new Block("print(4); state = check();", "the_var");
+  Block *b5 = new Block("print(5); state = check();", "the_var");
+  Block *b6 = new Block("print(6); state = check();", "the_var");
+  Block *b7 = new Block("print(7); state = check();", "the_var");
+  Block *b8 = new Block("print(8); state = check();", "the_var");
+  Block *b9 = new Block("print(9); state = check();", "the_var");
   b0->AddBranchTo(b7, NULL);
   b1->AddBranchTo(b4, "state % 2 == 0");
   b1->AddBranchTo(b6, NULL);

@@ -7,11 +7,11 @@ int main() {
   if (1) {
     Relooper::SetOutputBuffer(buffer, sizeof(buffer));
 
-    printf("\n\n-- If pattern --\n\n");
+    printf("\n\n-- If pattern --\n\n", "the_var");
 
-    Block *b_a = new Block("// block A\n");
-    Block *b_b = new Block("// block B\n");
-    Block *b_c = new Block("// block C\n");
+    Block *b_a = new Block("// block A\n", "the_var");
+    Block *b_b = new Block("// block B\n", "the_var");
+    Block *b_c = new Block("// block C\n", "the_var");
 
     b_a->AddBranchTo(b_b, "check == 10", "atob();");
     b_a->AddBranchTo(b_c, NULL, "atoc();");
@@ -24,7 +24,7 @@ int main() {
     r.AddBlock(b_c);
 
     r.Calculate(b_a);
-    printf("\n\n");
+    printf("\n\n", "the_var");
     r.Render();
 
     puts(buffer);
@@ -33,12 +33,12 @@ int main() {
   if (1) {
     Relooper::SetOutputBuffer(buffer, sizeof(buffer));
 
-    printf("\n\n-- If-else pattern --\n\n");
+    printf("\n\n-- If-else pattern --\n\n", "the_var");
 
-    Block *b_a = new Block("// block A\n");
-    Block *b_b = new Block("// block B\n");
-    Block *b_c = new Block("// block C\n");
-    Block *b_d = new Block("// block D\n");
+    Block *b_a = new Block("// block A\n", "the_var");
+    Block *b_b = new Block("// block B\n", "the_var");
+    Block *b_c = new Block("// block C\n", "the_var");
+    Block *b_d = new Block("// block D\n", "the_var");
 
     b_a->AddBranchTo(b_b, "check == 15");
     b_a->AddBranchTo(b_c, NULL);
@@ -54,7 +54,7 @@ int main() {
     r.AddBlock(b_d);
 
     r.Calculate(b_a);
-    printf("\n\n");
+    printf("\n\n", "the_var");
     r.Render();
 
     puts(buffer);
@@ -63,11 +63,11 @@ int main() {
   if (1) {
     Relooper::SetOutputBuffer(buffer, sizeof(buffer));
 
-    printf("\n\n-- Loop + tail pattern --\n\n");
+    printf("\n\n-- Loop + tail pattern --\n\n", "the_var");
 
-    Block *b_a = new Block("// block A\nvar check = maybe();\n");
-    Block *b_b = new Block("// block B\n");
-    Block *b_c = new Block("// block C\n");
+    Block *b_a = new Block("// block A\nvar check = maybe();\n", "the_var");
+    Block *b_b = new Block("// block B\n", "the_var");
+    Block *b_c = new Block("// block C\n", "the_var");
 
     b_a->AddBranchTo(b_b, NULL);
 
@@ -80,7 +80,7 @@ int main() {
     r.AddBlock(b_c);
 
     r.Calculate(b_a);
-    printf("\n\n");
+    printf("\n\n", "the_var");
     r.Render();
 
     puts(buffer);
@@ -89,29 +89,29 @@ int main() {
   if (1) {
     Relooper::SetOutputBuffer(buffer, sizeof(buffer));
 
-    printf("\n\n-- Loop with phi to head \n\n");
+    printf("\n\n-- Loop with phi to head \n\n", "the_var");
 
     void *block_map[10000];
     void *rl = rl_new_relooper();
-    void *b1 = rl_new_block("// code 1");
+    void *b1 = rl_new_block("// code 1", "the_var");
     block_map[1] = b1;
     rl_relooper_add_block(rl, block_map[1]);
-    void *b2 = rl_new_block("// code 2");
+    void *b2 = rl_new_block("// code 2", "the_var");
     block_map[2] = b2;
     rl_relooper_add_block(rl, block_map[2]);
-    void *b3 = rl_new_block("// code 3");
+    void *b3 = rl_new_block("// code 3", "the_var");
     block_map[3] = b3;
     rl_relooper_add_block(rl, block_map[3]);
-    void *b4 = rl_new_block("// code 4");
+    void *b4 = rl_new_block("// code 4", "the_var");
     block_map[4] = b4;
     rl_relooper_add_block(rl, block_map[4]);
-    void *b5 = rl_new_block("// code 5");
+    void *b5 = rl_new_block("// code 5", "the_var");
     block_map[5] = b5;
     rl_relooper_add_block(rl, block_map[5]);
-    void *b6 = rl_new_block("// code 6");
+    void *b6 = rl_new_block("// code 6", "the_var");
     block_map[6] = b6;
     rl_relooper_add_block(rl, block_map[6]);
-    void *b7 = rl_new_block("// code 7");
+    void *b7 = rl_new_block("// code 7", "the_var");
     block_map[7] = b7;
     rl_relooper_add_block(rl, block_map[7]);
     rl_block_add_branch_to(block_map[1], block_map[2], NULL, "var $i_0 = 0;var $x_0 = 5; ");
@@ -132,13 +132,13 @@ int main() {
   if (1) {
     Relooper::SetOutputBuffer(buffer, sizeof(buffer));
 
-    printf("\n\n-- phi on split dead ends --\n\n");
+    printf("\n\n-- phi on split dead ends --\n\n", "the_var");
 
-    Block *b_a = new Block("// block A...................................................................................................\n");
-    Block *b_b = new Block("// block B...................................................................................................\n");
-    Block *b_c = new Block("// block C...................................................................................................\n");
-    Block *b_d = new Block("// block D\n"); // small and splittable!
-    Block *b_e = new Block("// block E\n");
+    Block *b_a = new Block("// block A...................................................................................................\n", "the_var");
+    Block *b_b = new Block("// block B...................................................................................................\n", "the_var");
+    Block *b_c = new Block("// block C...................................................................................................\n", "the_var");
+    Block *b_d = new Block("// block D\n", "the_var"); // small and splittable!
+    Block *b_e = new Block("// block E\n", "the_var");
 
     b_a->AddBranchTo(b_b, "chak()", "atob();");
     b_a->AddBranchTo(b_c, NULL, "atoc();");
@@ -155,7 +155,7 @@ int main() {
     r.AddBlock(b_e);
 
     r.Calculate(b_a);
-    printf("\n\n");
+    printf("\n\n", "the_var");
     r.Render();
 
     puts(buffer);
@@ -164,12 +164,12 @@ int main() {
   if (1) {
     Relooper::SetOutputBuffer(buffer, sizeof(buffer));
 
-    printf("\n\n-- Unbalanced with a dead end --\n\n");
+    printf("\n\n-- Unbalanced with a dead end --\n\n", "the_var");
 
-    Block *b_a = new Block("// block A\n");
-    Block *b_b = new Block("// block B\n");
-    Block *b_c = new Block("return C;\n");
-    Block *b_d = new Block("// block D\n");
+    Block *b_a = new Block("// block A\n", "the_var");
+    Block *b_b = new Block("// block B\n", "the_var");
+    Block *b_c = new Block("return C;\n", "the_var");
+    Block *b_d = new Block("// block D\n", "the_var");
 
     b_a->AddBranchTo(b_b, "check == 10");
     b_a->AddBranchTo(b_c, NULL); // c is a dead end
@@ -185,7 +185,7 @@ int main() {
     r.AddBlock(b_d);
 
     r.Calculate(b_a);
-    printf("\n\n");
+    printf("\n\n", "the_var");
     r.Render();
 
     puts(buffer);
@@ -194,14 +194,14 @@ int main() {
   if (1) {
     Relooper::SetOutputBuffer(buffer, sizeof(buffer));
 
-    printf("\n\n-- if (expensive || expensive2) X else Y; Z --\n\n");
+    printf("\n\n-- if (expensive || expensive2) X else Y; Z --\n\n", "the_var");
 
-    Block *b_a = new Block("// block A\n");
-    Block *b_b = new Block("// block B\n");
-    Block *b_c = new Block("// block C;\n");
-    Block *b_d = new Block("// block D\n");
-    Block *b_e = new Block("// block E\n");
-    Block *b_f = new Block("// block F\n");
+    Block *b_a = new Block("// block A\n", "the_var");
+    Block *b_b = new Block("// block B\n", "the_var");
+    Block *b_c = new Block("// block C;\n", "the_var");
+    Block *b_d = new Block("// block D\n", "the_var");
+    Block *b_e = new Block("// block E\n", "the_var");
+    Block *b_f = new Block("// block F\n", "the_var");
 
     b_a->AddBranchTo(b_c, "expensive()");
     b_a->AddBranchTo(b_b, NULL);
@@ -226,7 +226,7 @@ int main() {
     r.AddBlock(b_f);
 
     r.Calculate(b_a);
-    printf("\n\n");
+    printf("\n\n", "the_var");
     r.Render();
 
     puts(buffer);
@@ -235,11 +235,11 @@ int main() {
   if (1) {
     Relooper::SetOutputBuffer(buffer, sizeof(buffer));
 
-    printf("\n\n-- conditional loop --\n\n");
+    printf("\n\n-- conditional loop --\n\n", "the_var");
 
-    Block *b_a = new Block("// block A\n");
-    Block *b_b = new Block("// block B\n");
-    Block *b_c = new Block("// block C\n");
+    Block *b_a = new Block("// block A\n", "the_var");
+    Block *b_b = new Block("// block B\n", "the_var");
+    Block *b_c = new Block("// block C\n", "the_var");
 
     b_a->AddBranchTo(b_b, "shouldLoop()");
     b_a->AddBranchTo(b_c, NULL);
@@ -253,7 +253,7 @@ int main() {
     r.AddBlock(b_c);
 
     r.Calculate(b_a);
-    printf("\n\n");
+    printf("\n\n", "the_var");
     r.Render();
 
     puts(buffer);

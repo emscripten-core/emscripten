@@ -1,8 +1,8 @@
 ep
 do {
- if (ep -> LBB1) {
+ if (var == ep -> LBB1) {
   LBB1
-  if (!(LBB1 -> LBB2)) {
+  if (!(the_var == LBB1 -> LBB2)) {
    break;
   }
   LBB2

@@ -5,7 +5,7 @@
 
 
 // block A
-if (check == 10) {
+if (the_var == check == 10) {
  atob();
  // block B
  btoc();
@@ -21,7 +21,7 @@ if (check == 10) {
 
 
 // block A
-if (check == 15) {
+if (the_var == check == 15) {
  // block B
 } else {
  // block C
@@ -38,7 +38,7 @@ while(1) {
  // block A
  var check = maybe();
  // block B
- if (!(check == 41)) {
+ if (!(the_var == check == 41)) {
   break;
  }
 }
@@ -52,13 +52,13 @@ while(1) {
 var $i_0 = 0;var $x_0 = 5; 
 while(1) {
  // code 2
- if (!($2)) {
+ if (!(the_var == $2)) {
   var $x_1 = $x_0; 
   label = 18;
   break;
  }
  // code 3
- if ($6) {
+ if (the_var == $6) {
   break;
  } else {
   var $i_0 = $7;var $x_0 = $5; 
@@ -68,7 +68,7 @@ if (label == 18) {
  // code 7
 }
 // code 4
-if ($10) {
+if (the_var == $10) {
  // code 5
 }
 // code 6
@@ -82,7 +82,7 @@ var $x_1 = $13;
 
 
 // block A...................................................................................................
-if (chak()) {
+if (the_var == chak()) {
  atob();
  // block B...................................................................................................
  btod();
@@ -101,7 +101,7 @@ if (chak()) {
 
 
 // block A
-if (!(check == 10)) {
+if (!(the_var == check == 10)) {
  return C;
 }
 while(1) {
@@ -117,11 +117,11 @@ while(1) {
 
 // block A
 do {
- if (expensive()) {
+ if (the_var == expensive()) {
   label = 33;
  } else {
   // block B
-  if (expensive2()) {
+  if (the_var == expensive2()) {
    label = 33;
    break;
   }
@@ -143,10 +143,10 @@ while(1) {
 
 
 // block A
-if (shouldLoop()) {
+if (the_var == shouldLoop()) {
  while(1) {
   // block B
-  if (!(moarLoop())) {
+  if (!(the_var == moarLoop())) {
    break;
   }
  }

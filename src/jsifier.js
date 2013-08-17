@@ -795,7 +795,12 @@ function JSify(data, functionsOnly, givenFunctions) {
             var label = block.labels[i];
             var content = getLabelLines(label, '', true);
             //printErr(func.ident + ' : ' + label.ident + ' : ' + content + '\n');
-            blockMap[label.ident] = Relooper.addBlock(content);
+            var last = label.lines[label.lines.length-1];
+            if (last.intertype != 'switch') {
+              blockMap[label.ident] = Relooper.addBlock(content);
+            } else {
+              blockMap[label.ident] = Relooper.addBlock(content, last.signedIdent);
+            }
           }
           // add branchings
           function relevant(x) { return x && x.length > 2 ? x : 0 } // ignores ';' which valueJS and label*JS can be if empty
@@ -812,7 +817,7 @@ function JSify(data, functionsOnly, givenFunctions) {
                 Relooper.addBranch(blockMap[ident], blockMap[last.labelFalse], 0, relevant(last.labelFalseJS));
               }
             } else if (last.intertype == 'switch') {
-              last.groupedLabels.forEach(function(switchLabel) {
+              last.switchLabels.forEach(function(switchLabel) {
                 Relooper.addBranch(blockMap[ident], blockMap[switchLabel.label], switchLabel.value, relevant(switchLabel.labelJS));
               });
               Relooper.addBranch(blockMap[ident], blockMap[last.defaultLabel], 0, relevant(last.defaultLabelJS));
@@ -1139,10 +1144,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     });
     var ret = '';
     var first = true;
-    var signedIdent = makeSignOp(item.ident, item.type, 're'); // we need to standardize for purpose of comparison
-    if (RELOOP) {
-      item.groupedLabels = [];
-    }
+    item.signedIdent = signedIdent = makeSignOp(item.ident, item.type, 're'); // we need to standardize for purpose of comparison
     if (!useIfs) {
       ret += 'switch(' + signedIdent + ') {\n';
     }
@@ -1167,13 +1169,6 @@ function JSify(data, functionsOnly, givenFunctions) {
       var phiSet = getPhiSetsForLabel(phiSets, targetLabel);
       ret += INDENTATION + '' + phiSet + makeBranch(targetLabel, item.currLabelId || null) + '\n';
       ret += '}\n';
-      if (RELOOP) {
-        item.groupedLabels.push({
-          label: targetLabel,
-          value: value,
-          labelJS: phiSet
-        });
-      }
     }
     var phiSet = item.defaultLabelJS = getPhiSetsForLabel(phiSets, item.defaultLabel);
     if (useIfs) {

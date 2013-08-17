@@ -104,12 +104,14 @@ void Branch::Render(Block *Target, bool SetLabel) {
 
 int Block::IdCounter = 1; // 0 is reserved for clearings
 
-Block::Block(const char *CodeInit) : Parent(NULL), Id(Block::IdCounter++), IsCheckedMultipleEntry(false) {
+Block::Block(const char *CodeInit, const char *BranchVarInit) : Parent(NULL), Id(Block::IdCounter++), IsCheckedMultipleEntry(false) {
   Code = strdup(CodeInit);
+  BranchVar = BranchVarInit ? strdup(BranchVarInit) : NULL;
 }
 
 Block::~Block() {
   if (Code) free((void*)Code);
+  if (BranchVar) free((void*)BranchVar);
   for (BlockBranchMap::iterator iter = ProcessedBranchesOut.begin(); iter != ProcessedBranchesOut.end(); iter++) {
     delete iter->second;
   }
@@ -189,6 +191,8 @@ void Block::Render(bool InLoop) {
   }
   assert(DefaultTarget); // Since each block *must* branch somewhere, this must be set
 
+  if (ProcessedBranchesOut.size() > 2) assert(BranchVar); // must have a branch variable if multiple conditions
+
   ministring RemainingConditions;
   bool First = true;
   for (BlockBranchMap::iterator iter = ProcessedBranchesOut.begin();; iter++) {
@@ -209,11 +213,15 @@ void Block::Render(bool InLoop) {
     if (iter != ProcessedBranchesOut.end()) {
       // If there is nothing to show in this branch, omit the condition
       if (HasContent) {
-        PrintIndented("%sif (%s) {\n", First ? "" : "} else ", Details->Condition);
+        PrintIndented("%sif (%s%s%s) {\n", First ? "" : "} else ", BranchVar ? BranchVar : "", BranchVar ? " == " : "", Details->Condition);
         First = false;
       } else {
         if (RemainingConditions.size() > 0) RemainingConditions += " && ";
         RemainingConditions += "!(";
+        if (BranchVar) {
+          RemainingConditions += BranchVar;
+          RemainingConditions += " == ";
+        }
         RemainingConditions += Details->Condition;
         RemainingConditions += ")";
       }
@@ -392,7 +400,7 @@ void Relooper::Calculate(Block *Entry) {
         PrintDebug("Splitting block %d\n", Original->Id);
         for (BlockSet::iterator iter = Original->BranchesIn.begin(); iter != Original->BranchesIn.end(); iter++) {
           Block *Prior = *iter;
-          Block *Split = new Block(Original->Code);
+          Block *Split = new Block(Original->Code, Original->BranchVar);
           Parent->Blocks.push_back(Split);
           PrintDebug("  to %d\n", Split->Id);
           Split->BranchesIn.insert(Prior);
@@ -1173,8 +1181,8 @@ void rl_set_asm_js_mode(int on) {
   Relooper::SetAsmJSMode(on);
 }
 
-void *rl_new_block(const char *text) {
-  Block *ret = new Block(text);
+void *rl_new_block(const char *text, const char *branch_var) {
+  Block *ret = new Block(text, branch_var);
 #if DEBUG
   printf("  void *b%d = rl_new_block(\"// code %d\");\n", ret->Id, ret->Id);
   __blockDebugMap__[ret] = ret->Id;
