@@ -1,32 +1,56 @@
 //0
-if (check(0)) {
- while(1) {
+switch (the_var) {
+check(0) {
+ L2: while(1) {
   //1
-  if (!(check(1))) {
+  switch (the_var) {
+  check(1) {
    break;
   }
+  default: {
+   break L2;
+  }
+  }
  }
- while(1) {
+ L4: while(1) {
   //2
-  if (!(check(2))) {
+  switch (the_var) {
+  check(2) {
    break;
+  }
+  default: {
+   break L4;
+  }
   }
  }
  //3
-} else {
+ break;
+}
+default: {
  goingFrom0to4();
- while(1) {
+ L7: while(1) {
   //4
-  if (!(check(4))) {
+  switch (the_var) {
+  check(4) {
    break;
   }
+  default: {
+   break L7;
+  }
+  }
  }
- while(1) {
+ L9: while(1) {
   //5
-  if (check(5)) {
+  switch (the_var) {
+  check(5) {
+   break L9;
    break;
+  }
+  default: {
+  }
   }
  }
  //3
+}
 }
 

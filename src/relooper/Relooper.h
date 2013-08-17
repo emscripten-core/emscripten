@@ -59,9 +59,10 @@ struct Block {
   Shape *Parent; // The shape we are directly inside
   int Id; // A unique identifier
   const char *Code; // The string representation of the code in this block. Owning pointer (we copy the input)
+  const char *BranchVar; // If we have more than one branch out, the variable whose value determines where we go
   bool IsCheckedMultipleEntry; // If true, we are a multiple entry, so reaching us requires setting the label variable
 
-  Block(const char *CodeInit);
+  Block(const char *CodeInit, const char *BranchVarInit);
   ~Block();
 
   void AddBranchTo(Block *Target, const char *Condition, const char *Code=NULL);
@@ -235,7 +236,7 @@ extern "C" {
 RELOOPERDLL_API void  rl_set_output_buffer(char *buffer, int size);
 RELOOPERDLL_API void  rl_make_output_buffer(int size);
 RELOOPERDLL_API void  rl_set_asm_js_mode(int on);
-RELOOPERDLL_API void *rl_new_block(const char *text);
+RELOOPERDLL_API void *rl_new_block(const char *text, const char *branch_var);
 RELOOPERDLL_API void  rl_delete_block(void *block);
 RELOOPERDLL_API void  rl_block_add_branch_to(void *from, void *to, const char *condition, const char *code);
 RELOOPERDLL_API void *rl_new_relooper();

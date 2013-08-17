@@ -8,11 +8,11 @@ int main() {
   char *buffer = (char*)malloc(SIZE);
   Relooper::SetOutputBuffer(buffer, SIZE);
 
-  Block *b0 = new Block("print('entry'); var label; var state; var decisions = [2, 2, 1, 3, 2, 2, 1, 3, 2, 3, 3, 1, 3, 2, 1]; var index = 0; function check() { if (index == decisions.length) throw 'HALT'; return decisions[index++] }");
-  Block *b1 = new Block("print(1); state = check();");
-  Block *b2 = new Block("print(2); state = check();");
-  Block *b3 = new Block("print(3); state = check();");
-  Block *b4 = new Block("print(4); state = check();");
+  Block *b0 = new Block("print('entry'); var label; var state; var decisions = [2, 2, 1, 3, 2, 2, 1, 3, 2, 3, 3, 1, 3, 2, 1]; var index = 0; function check() { if (index == decisions.length) throw 'HALT'; return decisions[index++] }", "the_var");
+  Block *b1 = new Block("print(1); state = check();", "the_var");
+  Block *b2 = new Block("print(2); state = check();", "the_var");
+  Block *b3 = new Block("print(3); state = check();", "the_var");
+  Block *b4 = new Block("print(4); state = check();", "the_var");
   b0->AddBranchTo(b2, "state == 2");
   b0->AddBranchTo(b4, NULL);
   b1->AddBranchTo(b1, NULL);

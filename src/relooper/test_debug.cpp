@@ -6,13 +6,13 @@ int main() {
   rl_set_output_buffer(buffer, sizeof(buffer));
 
   void *r = rl_new_relooper();
-  void *ep = rl_new_block("ep");
+  void *ep = rl_new_block("ep", "the_var");
   rl_relooper_add_block(r, ep);
-  void *LBB1 = rl_new_block("LBB1");
+  void *LBB1 = rl_new_block("LBB1", "the_var");
   rl_relooper_add_block(r, LBB1);
-  void *LBB2 = rl_new_block("LBB2");
+  void *LBB2 = rl_new_block("LBB2", "the_var");
   rl_relooper_add_block(r, LBB2);
-  void *LBB3 = rl_new_block("LBB3");
+  void *LBB3 = rl_new_block("LBB3", "the_var");
   rl_relooper_add_block(r, LBB3);
 
   rl_block_add_branch_to(ep, LBB1, "ep -> LBB1", NULL);

@@ -1,11 +1,25 @@
 //0
-do {
- if (check(0)) {
+L1: do {
+ switch (the_var) {
+ check(0) {
   //1
-  if (!(check(1))) {
+  switch (the_var) {
+  check(1) {
    break;
   }
+  default: {
+   break L1;
+  }
+  }
   //2
+  switch (the_var) {
+  default: {
+  }
+  }
+  break;
+ }
+ default: {
+ }
  }
 } while(0);
 //3

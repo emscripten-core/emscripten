@@ -1,52 +1,86 @@
 
 
 print('entry'); var label; var state; var decisions = [133, 98, 134, 143, 162, 187, 130, 87, 91, 49, 102, 47, 9, 132, 179, 176, 157, 25, 64, 161, 57, 107, 16, 167, 185, 45, 191, 180, 23, 131]; var index = 0; function check() { if (index == decisions.length) throw 'HALT'; return decisions[index++] }
+switch (the_var) {
+default: {
+}
+}
 L1: while(1) {
  print(7); state = check();
- if (state % 3 == 1) {
+ switch (the_var) {
+ state % 3 == 1 {
   label = 3;
- } else if (state % 3 == 0) {
-  print(8); state = check();
-  if (state % 2 == 0) {
-   label = 5;
-  } else {
-   label = 7;
-  }
- } else {
   break;
  }
- while(1) {
+ state % 3 == 0 {
+  print(8); state = check();
+  switch (the_var) {
+  state % 2 == 0 {
+   label = 5;
+   break;
+  }
+  default: {
+   label = 7;
+  }
+  }
+  break;
+ }
+ default: {
+  break L1;
+ }
+ }
+ L5: while(1) {
   if (label == 3) {
    label = 0;
    print(2); state = check();
+   switch (the_var) {
+   default: {
+   }
+   }
    print(1); state = check();
-   if (state % 2 == 0) {
+   switch (the_var) {
+   state % 2 == 0 {
     label = 5;
-    continue;
-   } else {
+    continue L5;
+    break;
+   }
+   default: {
     label = 7;
-    continue;
+    continue L5;
+   }
    }
   }
   else if (label == 5) {
    label = 0;
    print(4); state = check();
-   label = 3;
-   continue;
+   switch (the_var) {
+   default: {
+    label = 3;
+    continue L5;
+   }
+   }
   }
   else if (label == 7) {
    label = 0;
    print(6); state = check();
-   if (state % 2 == 0) {
+   switch (the_var) {
+   state % 2 == 0 {
     continue L1;
-   } else {
+    break;
+   }
+   default: {
     label = 7;
-    continue;
+    continue L5;
+   }
    }
   }
  }
 }
 while(1) {
  print(3); state = check();
+ switch (the_var) {
+ default: {
+ }
+ }
 }
 

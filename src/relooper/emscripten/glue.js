@@ -6,15 +6,22 @@
   var TBUFFER_SIZE = 10*1024*1024;
   var tbuffer = _malloc(TBUFFER_SIZE);
 
+  var VBUFFER_SIZE = 256;
+  var vbuffer = _malloc(VBUFFER_SIZE);
+
   var RelooperGlue = {};
   RelooperGlue['init'] = function() {
     this.r = _rl_new_relooper();
   },
-  RelooperGlue['addBlock'] = function(text) {
+  RelooperGlue['addBlock'] = function(text, branchVar) {
     assert(this.r);
     assert(text.length+1 < TBUFFER_SIZE);
     writeStringToMemory(text, tbuffer);
-    var b = _rl_new_block(tbuffer);
+    if (branchVar) {
+      assert(branchVar.length+1 < VBUFFER_SIZE);
+      writeStringToMemory(branchVar, vbuffer);
+    }
+    var b = _rl_new_block(tbuffer, branchVar ? vbuffer : 0);
     _rl_relooper_add_block(this.r, b);
     return b;
   };

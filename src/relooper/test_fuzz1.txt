@@ -1,31 +1,71 @@
 
 
 print('entry'); var label; var state; var decisions = [4, 1, 7, 2, 6, 6, 8]; var index = 0; function check() { if (index == decisions.length) throw 'HALT'; return decisions[index++] }
+switch (the_var) {
+default: {
+}
+}
 print(5); state = check();
+switch (the_var) {
+default: {
+}
+}
 print(6); state = check();
-if (state == 7) {
+switch (the_var) {
+state == 7 {
  print(7); state = check();
- label = 3;
+ switch (the_var) {
+ default: {
+  label = 3;
+ }
+ }
+ break;
+}
+default: {
+}
 }
 L5: while(1) {
  if (label == 3) {
   label = 0;
   print(2); state = check();
+  switch (the_var) {
+  default: {
+  }
+  }
  }
  print(1); state = check();
+ switch (the_var) {
+ default: {
+ }
+ }
  while(1) {
   print(3); state = check();
-  if (!(state == 8)) {
+  switch (the_var) {
+  state == 8 {
+   break;
+  }
+  default: {
    continue L5;
   }
+  }
   print(8); state = check();
-  if (!(state == 4)) {
+  switch (the_var) {
+  state == 4 {
+   break;
+  }
+  default: {
    label = 3;
    continue L5;
   }
+  }
   print(4); state = check();
-  if (!(state == 3)) {
+  switch (the_var) {
+  state == 3 {
+   break;
+  }
+  default: {
    continue L5;
+  }
   }
  }
 }

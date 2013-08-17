@@ -795,7 +795,13 @@ function JSify(data, functionsOnly, givenFunctions) {
             var label = block.labels[i];
             var content = getLabelLines(label, '', true);
             //printErr(func.ident + ' : ' + label.ident + ' : ' + content + '\n');
-            blockMap[label.ident] = Relooper.addBlock(content);
+            var last = label.lines[label.lines.length-1];
+            if (last.intertype != 'switch') {
+              blockMap[label.ident] = Relooper.addBlock(content);
+            } else {
+              assert(last.signedIdent);
+              blockMap[label.ident] = Relooper.addBlock(content, last.signedIdent);
+            }
           }
           // add branchings
           function relevant(x) { return x && x.length > 2 ? x : 0 } // ignores ';' which valueJS and label*JS can be if empty
@@ -1125,7 +1131,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
   });
   makeFuncLineActor('switch', function(item) {
-    var useIfs = RELOOP || item.switchLabels.length < 1024; // with a huge number of cases, if-else which looks nested to js parsers can cause problems
+    var useIfs = false;
     var phiSets = calcPhiSets(item);
     // Consolidate checks that go to the same label. This is important because it makes the relooper simpler and faster.
     var targetLabels = {}; // for each target label, the list of values going to it
@@ -1139,7 +1145,8 @@ function JSify(data, functionsOnly, givenFunctions) {
     });
     var ret = '';
     var first = true;
-    var signedIdent = makeSignOp(item.ident, item.type, 're'); // we need to standardize for purpose of comparison
+    signedIdent = makeSignOp(item.ident, item.type, 're'); // we need to standardize for purpose of comparison
+    if (!useIfs) item.signedIdent = signedIdent;
     if (RELOOP) {
       item.groupedLabels = [];
     }
