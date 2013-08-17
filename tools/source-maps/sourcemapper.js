@@ -16,6 +16,38 @@ function countLines(s) {
   return count;
 }
 
+// For a minor optimization, only do win32->unix normalization if we are actually on Windows,
+// which avoids redundantly scanning files if not needed.
+var isWindows = (process.platform === 'win32');
+
+var unixPathRe = new RegExp('\\\\', 'g');
+// Returns the given (possibly Windows) path p normalized to unix path separators '/'.
+function toUnixPath(p) {
+  if (isWindows) {
+    return p.replace(unixPathRe, '/');
+  } else {
+    return p;
+  }
+}
+
+var unixLineEndRe = new RegExp('\r\n', 'g');
+// Returns the given (possibly Windows) text data t normalized to unix line endings '\n'.
+function toUnixLineEnding(t) {
+  if (isWindows) {
+    return t.replace(unixLineEndRe, '\n');
+  } else {
+    return t;
+  }
+}
+
+// If path "p2" is a relative path, joins paths p1 and p2 to form "p1/p2". If p2 is an absolute path, "p2" is returned.
+function joinPath(p1, p2) {
+  if (p2[0] == '/' || (p2.length >= 3 && p2[1] == ':' && (p2[2] == '/' || p2[2] == '\\'))) // Is p2 an absolute path?
+    return p2;
+  else
+    return toUnixPath(path.join(p1, p2));
+}
+
 /*
  * Extracts the line (not block) comments from the generated function code and
  * invokes commentHandler with (comment content, line number of comment). This
@@ -105,8 +137,7 @@ function generateMap(mappings, sourceRoot, mapFileBaseName, generatedLineOffset)
     // avoid doing it unnecessarily
     if (!(originalFileName in seenFiles)) {
       seenFiles[originalFileName] = true;
-      var rootedPath = originalFileName[0] === path.sep ?
-          originalFileName : path.join(sourceRoot, originalFileName);
+      var rootedPath = joinPath(sourceRoot, originalFileName);
       try {
         generator.setSourceContent(originalFileName, fs.readFileSync(rootedPath, 'utf-8'));
       } catch (e) {
@@ -144,15 +175,15 @@ if (require.main === module) {
   } else {
     var opts = parseArgs(process.argv.slice(2));
     var fileName = opts._[0];
-    var sourceRoot = opts.sourceRoot ? opts.sourceRoot : ".";
-    var mapFileBaseName = opts.mapFileBaseName ? opts.mapFileBaseName : fileName;
+    var sourceRoot = opts.sourceRoot ? toUnixPath(opts.sourceRoot) : ".";
+    var mapFileBaseName = toUnixPath(opts.mapFileBaseName ? opts.mapFileBaseName : fileName);
     var generatedLineOffset = opts.offset ? parseInt(opts.offset, 10) : 0;
 
-    var generatedSource = fs.readFileSync(fileName, 'utf-8');
+    var generatedSource = toUnixLineEnding(fs.readFileSync(fileName, 'utf-8'));
     var source = generatedSource;
     var mappings = getMappings(generatedSource);
     for (var i = 1, l = opts._.length; i < l; i ++) {
-      var optimizedSource = fs.readFileSync(opts._[i], 'utf-8')
+      var optimizedSource = toUnixLineEnding(fs.readFileSync(opts._[i], 'utf-8'))
       var optimizedMappings = getMappings(optimizedSource);
       var newMappings = {};
       // uglify processes the code between EMSCRIPTEN_START_FUNCS and
