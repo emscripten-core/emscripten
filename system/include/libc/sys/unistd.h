@@ -102,7 +102,6 @@ uid_t   _EXFUN(getuid, (void ));
 #endif
 #if defined(EMSCRIPTEN) || defined(__CYGWIN__)
 char *	_EXFUN(getusershell, (void));
-char *  _EXFUN(getwd, (char *__buf ));
 int	_EXFUN(iruserok, (unsigned long raddr, int superuser, const char *ruser, const char *luser));
 #endif
 int     _EXFUN(isatty, (int __fildes ));
