@@ -489,6 +489,11 @@ var LibraryEGL = {
   eglSwapBuffers: function() {
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
   },
+
+  eglGetProcAddress__deps: ['emscripten_GetProcAddress'],
+  eglGetProcAddress: function(name_) {
+    return _emscripten_GetProcAddress(Pointer_stringify(name_));
+  },
 };
 
 autoAddDeps(LibraryEGL, '$EGL');
