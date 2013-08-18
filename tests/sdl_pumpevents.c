@@ -40,6 +40,20 @@ int loop2()
    return r;
 }
 
+int alphakey()
+{
+   unsigned i;
+   int r = 0;
+
+   SDL_PumpEvents();
+
+   const Uint8 *keys = SDL_GetKeyState(NULL);
+   if (keys[SDLK_a])
+      r = 4;
+
+   return r;
+}
+
 int main(int argc, char *argv[])
 {
    SDL_Init(SDL_INIT_EVERYTHING);
@@ -49,6 +63,8 @@ int main(int argc, char *argv[])
    result += loop1();
    emscripten_run_script("keydown(39);"); // right
    result += loop2();
+   emscripten_run_script("keydown(65);"); // A
+   result += alphakey();
    REPORT_RESULT();
    return 0;
 }
