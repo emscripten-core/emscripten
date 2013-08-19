@@ -1033,7 +1033,7 @@ int main(int argc, char const *argv[])
     self.assertContained('hello from lib', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
   def test_runtimelink_multi(self):
-    return self.skip('shared libs are deprecated')
+    return self.skip('BUILD_AS_SHARED_LIB=2 is deprecated')
     if Settings.ASM_JS: return self.skip('asm does not support runtime linking yet')
 
     if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('cannot run without spidermonkey due to node limitations')

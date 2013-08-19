@@ -1350,7 +1350,7 @@ Press any key to continue.'''
     self.btest('perspective.c', reference='perspective.png', args=['-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_runtimelink(self):
-    return self.skip('shared libs are deprecated')
+    return self.skip('BUILD_AS_SHARED_LIB=2 is deprecated')
     main, supp = self.setup_runtimelink_test()
 
     open(self.in_dir('supp.cpp'), 'w').write(supp)

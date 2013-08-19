@@ -5451,7 +5451,7 @@ The current type of b is: 9
         self.do_run(src, '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|24,0,20,0,4,4,8,12,12,16*\n*0,0,0,1,2,64,68,69,72*\n*2*')
 
   def test_runtimelink(self):
-    return self.skip('shared libs are deprecated')
+    return self.skip('BUILD_AS_SHARED_LIB=2 is deprecated')
     if Building.LLVM_OPTS: return self.skip('LLVM opts will optimize printf into puts in the parent, and the child will still look for puts')
     if Settings.ASM_JS: return self.skip('asm does not support runtime linking')
 
@@ -5470,7 +5470,6 @@ The current type of b is: 9
     self.do_run(main, 'supp: 54,2\nmain: 56\nsupp see: 543\nmain see: 76\nok.')
 
   def test_dlfcn_basic(self):
-    return self.skip('shared libs are deprecated')
     if Settings.ASM_JS: return self.skip('TODO: dlopen in asm')
 
     Settings.NAMED_GLOBALS = 1
@@ -5525,7 +5524,6 @@ def process(filename):
                 post_build=add_pre_run_and_checks)
 
   def test_dlfcn_qsort(self):
-    return self.skip('shared libs are deprecated')
     if self.emcc_args is None: return self.skip('requires emcc')
     if Settings.ASM_JS: return self.skip('TODO: dlopen in asm')
 
@@ -5622,7 +5620,6 @@ def process(filename):
                 post_build=add_pre_run_and_checks)
 
   def test_dlfcn_data_and_fptr(self):
-    return self.skip('shared libs are deprecated')
     if Settings.ASM_JS: return self.skip('TODO: dlopen in asm')
     if Building.LLVM_OPTS: return self.skip('LLVM opts will optimize out parent_func')
 
@@ -5727,7 +5724,6 @@ def process(filename):
                  post_build=add_pre_run_and_checks)
 
   def test_dlfcn_alias(self):
-    return self.skip('shared libs are deprecated')
     if Settings.ASM_JS: return self.skip('TODO: dlopen in asm')
 
     Settings.LINKABLE = 1
@@ -5785,7 +5781,6 @@ def process(filename):
     Settings.INCLUDE_FULL_LIBRARY = 0
 
   def test_dlfcn_varargs(self):
-    return self.skip('shared libs are deprecated')
     if Settings.ASM_JS: return self.skip('TODO: dlopen in asm')
 
     Settings.LINKABLE = 1
