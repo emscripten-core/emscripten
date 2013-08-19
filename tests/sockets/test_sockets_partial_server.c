@@ -87,7 +87,7 @@ int main() {
   int res;
 
   atexit(cleanup);
-  signal(SIGTERM, cleanup);
+  //signal(SIGTERM, cleanup);
 
   // create the socket
   serverfd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
