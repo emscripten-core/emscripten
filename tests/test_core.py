@@ -9582,15 +9582,15 @@ def process(filename):
       self.assertIdentical(clean(no_maps_file), clean(out_file))
       map_filename = out_filename + '.map'
       data = json.load(open(map_filename, 'r'))
-      self.assertIdentical(out_filename, data['file'])
-      self.assertIdentical(src_filename, data['sources'][0])
-      self.assertIdentical(src, data['sourcesContent'][0])
+      self.assertPathsIdentical(out_filename, data['file'])
+      self.assertPathsIdentical(src_filename, data['sources'][0])
+      self.assertTextDataIdentical(src, data['sourcesContent'][0])
       mappings = json.loads(jsrun.run_js(
         path_from_root('tools', 'source-maps', 'sourcemap2json.js'),
         tools.shared.NODE_JS, [map_filename]))
       seen_lines = set()
       for m in mappings:
-        self.assertIdentical(src_filename, m['source'])
+        self.assertPathsIdentical(src_filename, m['source'])
         seen_lines.add(m['originalLine'])
       # ensure that all the 'meaningful' lines in the original code get mapped
       assert seen_lines.issuperset([6, 7, 11, 12])
