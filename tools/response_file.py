@@ -6,8 +6,8 @@ def create_response_file(args, directory):
   (response_fd, response_filename) = tempfile.mkstemp(prefix='emscripten_', suffix='.rsp', dir=directory, text=True)
   response_fd = os.fdopen(response_fd, "w")
   #print >> sys.stderr, "Creating response file '%s'" % response_filename
-  args = map(lambda p: p.replace(' ', '').replace('\\', '\\\\').replace('"', '\\"'), args)
-  response_fd.write(' '.join(args))
+  args = map(lambda p: p.replace('\\', '\\\\').replace('"', '\\"'), args)
+  response_fd.write('"' + '" "'.join(args) + '"')
   response_fd.close()
   return response_filename
 
