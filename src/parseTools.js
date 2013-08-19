@@ -1244,7 +1244,7 @@ function indexizeFunctions(value, type) {
     if (!sig) {
       sig = Functions.unimplementedFunctions[value] = Functions.getSignature(out.returnType, out.segments ? out.segments.map(function(segment) { return segment[0].text }) : [], isVarArgsFunctionType(type));
     }
-    return Functions.getIndex(value, undefined, sig);
+    return Functions.getIndex(value, sig);
   }
   return value;
 }

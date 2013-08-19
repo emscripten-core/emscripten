@@ -275,6 +275,18 @@ process(sys.argv[1])
       print "Output: " + output[0]
     return output[0]
 
+  # Tests that the given two paths are identical, modulo path delimiters. E.g. "C:/foo" is equal to "C:\foo".
+  def assertPathsIdentical(self, path1, path2):
+    path1 = path1.replace('\\', '/')
+    path2 = path2.replace('\\', '/')
+    return self.assertIdentical(path1, path2)
+
+  # Tests that the given two multiline text content are identical, modulo line ending differences (\r\n on Windows, \n on Unix).
+  def assertTextDataIdentical(self, text1, text2):
+    text1 = text1.replace('\r\n', '\n')
+    text2 = text2.replace('\r\n', '\n')
+    return self.assertIdentical(text1, text2)
+
   def assertIdentical(self, values, y):
     if type(values) not in [list, tuple]: values = [values]
     for x in values:
@@ -480,7 +492,7 @@ def server_func(dir, q):
       if 'report_' in s.path:
         q.put(s.path)
       else:
-        filename = s.path[1:]
+        filename = s.path.split('?')[0][1:]
         if os.path.exists(filename):
           s.send_response(200)
           s.send_header("Content-type", "text/html")
@@ -649,6 +661,7 @@ class BrowserCore(RunnerCore):
       self.reftest(path_from_root('tests', reference))
       args = args + ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
     Popen([PYTHON, EMCC, temp_filepath, '-o', outfile] + args).communicate()
+    assert os.path.exists(outfile)
     if type(expected) is str: expected = [expected]
     self.run_browser(outfile, message, ['/report_result?' + e for e in expected])
 
@@ -765,10 +778,17 @@ an individual test with
     except:
       pass
 
+  numFailures = 0 # Keep count of the total number of failing tests.
+
   # Run the discovered tests
   if not len(suites):
     print >> sys.stderr, 'No tests found for %s' % str(sys.argv[1:])
+    numFailures = 1
   else:
     testRunner = unittest.TextTestRunner(verbosity=2)
     for suite in suites:
-      testRunner.run(suite)
+      results = testRunner.run(suite)
+      numFailures += len(results.errors) + len(results.failures)
+
+  # Return the number of failures as the process exit code for automating success/failure reporting.
+  exit(numFailures)

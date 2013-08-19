@@ -14,18 +14,13 @@
 #include <emscripten.h>
 #endif
 
-int serverfd = -1;
-int clientfd = -1;
+int serverfd = 0;
+int clientfd = 0;
 
-// csock.send("\x09\x01\x02\x03\x04\x05\x06\x07\x08\x09")
-// csock.send("\x08\x01\x02\x03\x04\x05\x06\x07\x08")
-// csock.send("\x07\x01\x02\x03\x04\x05\x06\x07")
-// csock.send("\x06\x01\x02\x03\x04\x05\x06")
-// csock.send("\x05\x01\x02\x03\x04\x05")
-// csock.send("\x04\x01\x02\x03\x04")
-// csock.send("\x03\x01\x02\x03")
-// csock.send("\x02\x01\x02")
-// csock.send("\x01\x01")
+void cleanup() {
+  if (serverfd) close(serverfd);
+  if (clientfd) close(clientfd);
+}
 
 void do_send(int sockfd) {
   static char* buffers[] = {
@@ -69,7 +64,7 @@ void iter(void *arg) {
   FD_ZERO(&fdr);
   FD_ZERO(&fdw);
   FD_SET(serverfd, &fdr);
-  if (clientfd != -1) FD_SET(clientfd, &fdw);
+  if (clientfd) FD_SET(clientfd, &fdw);
   res = select(64, &fdr, &fdw, NULL, NULL);
   if (res == -1) {
     perror("select failed");
@@ -90,6 +85,9 @@ void iter(void *arg) {
 int main() {
   struct sockaddr_in addr;
   int res;
+
+  atexit(cleanup);
+  signal(SIGTERM, cleanup);
 
   // create the socket
   serverfd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);

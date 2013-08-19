@@ -18,7 +18,7 @@ mergeInto(LibraryManager.library, {
     devices: [null],
     streams: [null],
     nextInode: 1,
-    name_table: new Array(4096),
+    name_table: null,
     currentPath: '/',
     initialized: false,
     // Whether we are currently ignoring permissions. Useful when preparing the
@@ -27,16 +27,21 @@ mergeInto(LibraryManager.library, {
     // to modify the filesystem freely before run() is called.
     ignorePermissions: true,
     
-    ErrnoError: function(errno) {
-      this.errno = errno;
-      for (var key in ERRNO_CODES) {
-        if (ERRNO_CODES[key] === errno) {
-          this.code = key;
-          break;
+    ErrnoError: (function() {
+      function ErrnoError(errno) {
+        this.errno = errno;
+        for (var key in ERRNO_CODES) {
+          if (ERRNO_CODES[key] === errno) {
+            this.code = key;
+            break;
+          }
         }
-      }
-      this.message = ERRNO_MESSAGES[errno] + ' : ' + new Error().stack;
-    },
+        this.message = ERRNO_MESSAGES[errno];
+      };
+      ErrnoError.prototype = new Error();
+      ErrnoError.prototype.constructor = ErrnoError;
+      return ErrnoError;
+    }()),
 
     handleFSError: function(e) {
       if (!(e instanceof FS.ErrnoError)) throw e + ' : ' + new Error().stack;
@@ -863,6 +868,8 @@ mergeInto(LibraryManager.library, {
       assert(stderr.fd === 3, 'invalid handle for stderr (' + stderr.fd + ')');
     },
     staticInit: function() {
+      FS.name_table = new Array(4096);
+
       FS.root = FS.createNode(null, '/', {{{ cDefine('S_IFDIR') }}} | 0777, 0);
       FS.mount(MEMFS, {}, '/');
 

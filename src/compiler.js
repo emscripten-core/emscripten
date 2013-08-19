@@ -203,6 +203,8 @@ if (phase == 'pre') {
   }
 }
 
+if (VERBOSE) printErr('VERBOSE is on, this generates a lot of output and can slow down compilation');
+
 // Load compiler code
 
 load('framework.js');

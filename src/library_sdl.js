@@ -2067,9 +2067,9 @@ var LibrarySDL = {
     console.log('TODO: SDL_GL_SetAttribute');
   },
 
-  SDL_GL_GetProcAddress__deps: ['$GLEmulation'],
+  SDL_GL_GetProcAddress__deps: ['emscripten_GetProcAddress'],
   SDL_GL_GetProcAddress: function(name_) {
-    return GLEmulation.getProcAddress(Pointer_stringify(name_));
+    return _emscripten_GetProcAddress(Pointer_stringify(name_));
   },
 
   SDL_GL_SwapBuffers: function() {},
