@@ -36,7 +36,7 @@ except:
 
 # Core test runner class, shared between normal tests and benchmarks
 checked_sanity = False
-test_modes = ['default', 'o1', 'o2', 'asm1', 'asm2', 'asm2g', 'asm2x86', 's_0_0', 's_0_1', 'other']
+test_modes = ['default', 'o1', 'o2', 'asm1', 'asm2', 'asm2g', 'asm2x86', 's_0_0', 's_0_1']
 test_index = 0
 
 class RunnerCore(unittest.TestCase):
@@ -732,6 +732,7 @@ if __name__ == '__main__':
 ==============================================================================
 Running the main part of the test suite. Don't forget to run the other parts!
 
+  other - tests separate from the main suite
   sanity - tests for first run, etc., modifies ~/.emscripten
   benchmark - run before and after each set of changes before pushing to
               master, verify no regressions
