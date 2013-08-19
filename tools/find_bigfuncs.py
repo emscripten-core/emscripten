@@ -1,5 +1,5 @@
 '''
-Simple tool to find big functions in an .ll file.
+Simple tool to find big functions in a js or ll file
 '''
 
 import os, sys, re
@@ -11,7 +11,7 @@ curr = None
 data = []
 for line in open(filename):
   i += 1
-  if line.startswith('function '):
+  if line.startswith(('function ', 'define ')):
     start = i
     curr = line
   elif line.startswith('}') and curr:

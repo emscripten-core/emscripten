@@ -16,6 +16,8 @@ var SETJMP_LABEL = -1;
 
 var INDENTATION = ' ';
 
+var functionStubSigs = {};
+
 // JSifier
 function JSify(data, functionsOnly, givenFunctions) {
   var mainPass = !functionsOnly;
@@ -278,7 +280,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         // they would shadow similarly-named globals in the parent.
         item.JS = '';
       } else {
-      	item.JS = makeGlobalDef(item.ident);
+        item.JS = makeGlobalDef(item.ident);
       }
 
       if (!NAMED_GLOBALS && isIndexableGlobal(item.ident)) {
@@ -407,6 +409,11 @@ function JSify(data, functionsOnly, givenFunctions) {
   // functionStub
   substrate.addActor('FunctionStub', {
     processItem: function(item) {
+      // note the signature
+      if (item.returnType && item.params) {
+        functionStubSigs[item.ident] = Functions.getSignature(item.returnType.text, item.params.map(function(arg) { return arg.type }), false);
+      }
+
       function addFromLibrary(ident) {
         if (ident in addedLibraryItems) return '';
         addedLibraryItems[ident] = true;
@@ -656,6 +663,10 @@ function JSify(data, functionsOnly, givenFunctions) {
         if (hasByVal) {
           func.JS += INDENTATION + 'var tempParam = 0;\n';
         }
+      }
+
+      if (func.hasVarArgsCall) {
+        func.JS += INDENTATION + 'var tempVarArgs = 0;\n';
       }
 
       // Prepare the stack, if we need one. If we have other stack allocations, force the stack to be set up.
@@ -1234,6 +1245,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           + (EXCEPTION_DEBUG ? 'Module.print("Exception: " + e + ", currently at: " + (new Error().stack)); ' : '')
           + 'return null } })();';
     }
+    ret = makeVarArgsCleanup(ret);
 
     if (item.assignTo) {
       ret = 'var ' + item.assignTo + ' = ' + ret;
@@ -1446,12 +1458,13 @@ function JSify(data, functionsOnly, givenFunctions) {
     });
 
     if (hasVarArgs && !useJSArgs) {
+      funcData.hasVarArgsCall = true;
       if (varargs.length === 0) {
         varargs = [0];
         varargsTypes = ['i32'];
       }
       var offset = 0;
-      varargs = '(tempInt=' + RuntimeGenerator.stackAlloc(varargs.length, ',') + ',' +
+      varargs = '(tempVarArgs=' + RuntimeGenerator.stackAlloc(varargs.length, ',') + ',' +
                 varargs.map(function(arg, i) {
                   var type = varargsTypes[i];
                   if (type == 0) return null;
@@ -1459,17 +1472,17 @@ function JSify(data, functionsOnly, givenFunctions) {
                   var ret;
                   assert(offset % Runtime.STACK_ALIGN == 0); // varargs must be aligned
                   if (!varargsByVals[i]) {
-                    ret = makeSetValue(getFastValue('tempInt', '+', offset), 0, arg, type, null, null, Runtime.STACK_ALIGN, null, ',');
+                    ret = makeSetValue(getFastValue('tempVarArgs', '+', offset), 0, arg, type, null, null, Runtime.STACK_ALIGN, null, ',');
                     offset += Runtime.alignMemory(Runtime.getNativeFieldSize(type), Runtime.STACK_ALIGN);
                   } else {
                     var size = calcAllocatedSize(removeAllPointing(type));
-                    ret = makeCopyValues(getFastValue('tempInt', '+', offset), arg, size, null, null, varargsByVals[i], ',');
+                    ret = makeCopyValues(getFastValue('tempVarArgs', '+', offset), arg, size, null, null, varargsByVals[i], ',');
                     offset += Runtime.forceAlign(size, Runtime.STACK_ALIGN);
                   }
                   return ret;
                 }).filter(function(arg) {
                   return arg !== null;
-                }).join(',') + ',tempInt)';
+                }).join(',') + ',tempVarArgs)';
       varargs = asmCoercion(varargs, 'i32');
     }
 
@@ -1531,7 +1544,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           // This is a call through an invoke_*, either a forced one, or a setjmp-required one
           // note: no need to update argsTypes at this point
           if (byPointerForced) Functions.unimplementedFunctions[callIdent] = sig;
-          args.unshift(byPointerForced ? Functions.getIndex(callIdent, undefined, sig) : asmCoercion(callIdent, 'i32'));
+          args.unshift(byPointerForced ? Functions.getIndex(callIdent, sig) : asmCoercion(callIdent, 'i32'));
           callIdent = 'invoke_' + sig;
         }
       } else if (SAFE_DYNCALLS) {
@@ -1557,10 +1570,24 @@ function JSify(data, functionsOnly, givenFunctions) {
 
     return ret;
   }
+
+  function makeVarArgsCleanup(js) {
+    if (js.indexOf('(tempVarArgs=') >= 0) {
+      if (js[js.length-1] == ';') {
+        return js + ' STACKTOP=tempVarArgs;';
+      } else {
+        assert(js.indexOf(';') < 0);
+        return '((' + js + '), STACKTOP=tempVarArgs)';
+      }
+    }
+    return js;
+  }
+
   makeFuncLineActor('getelementptr', function(item) { return finalizeLLVMFunctionCall(item) });
   makeFuncLineActor('call', function(item) {
     if (item.standalone && LibraryManager.isStubFunction(item.ident)) return ';';
-    return makeFunctionCall(item.ident, item.params, item.funcData, item.type, false, !!item.assignTo || !item.standalone) + (item.standalone ? ';' : '');
+    var ret = makeFunctionCall(item.ident, item.params, item.funcData, item.type, false, !!item.assignTo || !item.standalone) + (item.standalone ? ';' : '');
+    return makeVarArgsCleanup(ret);
   });
 
   makeFuncLineActor('unreachable', function(item) {
@@ -1608,7 +1635,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     //
 
     if (!mainPass) {
-      if (phase == 'pre' && !Variables.generatedGlobalBase) {
+      if (phase == 'pre' && !Variables.generatedGlobalBase && !BUILD_AS_SHARED_LIB) {
         Variables.generatedGlobalBase = true;
         // Globals are done, here is the rest of static memory
         assert((TARGET_LE32 && Runtime.GLOBAL_BASE == 8) || (TARGET_X86 && Runtime.GLOBAL_BASE == 4)); // this is assumed in e.g. relocations for linkable modules
@@ -1652,24 +1679,26 @@ function JSify(data, functionsOnly, givenFunctions) {
         print('}\n');
 
         if (USE_TYPED_ARRAYS == 2) {
-          print('var tempDoublePtr = Runtime.alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);\n');
-          print('assert(tempDoublePtr % 8 == 0);\n');
-          print('function copyTempFloat(ptr) { // functions, because inlining this code increases code size too much\n');
-          print('  HEAP8[tempDoublePtr] = HEAP8[ptr];\n');
-          print('  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];\n');
-          print('  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];\n');
-          print('  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];\n');
-          print('}\n');
-          print('function copyTempDouble(ptr) {\n');
-          print('  HEAP8[tempDoublePtr] = HEAP8[ptr];\n');
-          print('  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];\n');
-          print('  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];\n');
-          print('  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];\n');
-          print('  HEAP8[tempDoublePtr+4] = HEAP8[ptr+4];\n');
-          print('  HEAP8[tempDoublePtr+5] = HEAP8[ptr+5];\n');
-          print('  HEAP8[tempDoublePtr+6] = HEAP8[ptr+6];\n');
-          print('  HEAP8[tempDoublePtr+7] = HEAP8[ptr+7];\n');
-          print('}\n');
+          if (!BUILD_AS_SHARED_LIB) {
+            print('var tempDoublePtr = Runtime.alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);\n');
+            print('assert(tempDoublePtr % 8 == 0);\n');
+            print('function copyTempFloat(ptr) { // functions, because inlining this code increases code size too much\n');
+            print('  HEAP8[tempDoublePtr] = HEAP8[ptr];\n');
+            print('  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];\n');
+            print('  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];\n');
+            print('  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];\n');
+            print('}\n');
+            print('function copyTempDouble(ptr) {\n');
+            print('  HEAP8[tempDoublePtr] = HEAP8[ptr];\n');
+            print('  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];\n');
+            print('  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];\n');
+            print('  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];\n');
+            print('  HEAP8[tempDoublePtr+4] = HEAP8[ptr+4];\n');
+            print('  HEAP8[tempDoublePtr+5] = HEAP8[ptr+5];\n');
+            print('  HEAP8[tempDoublePtr+6] = HEAP8[ptr+6];\n');
+            print('  HEAP8[tempDoublePtr+7] = HEAP8[ptr+7];\n');
+            print('}\n');
+          }
         }
       }
 
@@ -1704,11 +1733,13 @@ function JSify(data, functionsOnly, givenFunctions) {
 
       legalizedI64s = legalizedI64sDefault;
 
-      print('STACK_BASE = STACKTOP = Runtime.alignMemory(STATICTOP);\n');
-      print('staticSealed = true; // seal the static portion of memory\n');
-      print('STACK_MAX = STACK_BASE + ' + TOTAL_STACK + ';\n');
-      print('DYNAMIC_BASE = DYNAMICTOP = Runtime.alignMemory(STACK_MAX);\n');
-      print('assert(DYNAMIC_BASE < TOTAL_MEMORY); // Stack must fit in TOTAL_MEMORY; allocations from here on may enlarge TOTAL_MEMORY\n');
+      if (!BUILD_AS_SHARED_LIB) {
+        print('STACK_BASE = STACKTOP = Runtime.alignMemory(STATICTOP);\n');
+        print('staticSealed = true; // seal the static portion of memory\n');
+        print('STACK_MAX = STACK_BASE + ' + TOTAL_STACK + ';\n');
+        print('DYNAMIC_BASE = DYNAMICTOP = Runtime.alignMemory(STACK_MAX);\n');
+        print('assert(DYNAMIC_BASE < TOTAL_MEMORY); // Stack must fit in TOTAL_MEMORY; allocations from here on may enlarge TOTAL_MEMORY\n');
+      }
 
       if (asmLibraryFunctions.length > 0) {
         print('// ASM_LIBRARY FUNCTIONS');

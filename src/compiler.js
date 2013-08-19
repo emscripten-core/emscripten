@@ -185,8 +185,7 @@ if (ASM_JS) {
   assert(!ALLOW_MEMORY_GROWTH, 'Cannot grow asm.js heap');
   assert((TOTAL_MEMORY&(TOTAL_MEMORY-1)) == 0, 'asm.js heap must be power of 2');
 }
-assert(!BUILD_AS_SHARED_LIB, 'shared libs are deprecated');
-//assert(!(!NAMED_GLOBALS && BUILD_AS_SHARED_LIB), 'shared libraries must have named globals');
+assert(!(!NAMED_GLOBALS && BUILD_AS_SHARED_LIB), 'shared libraries must have named globals');
 
 // Output some info and warnings based on settings
 
@@ -202,6 +201,8 @@ if (phase == 'pre') {
     print('// Note: Some Emscripten settings may limit the speed of the generated code.');
   }
 }
+
+if (VERBOSE) printErr('VERBOSE is on, this generates a lot of output and can slow down compilation');
 
 // Load compiler code
 

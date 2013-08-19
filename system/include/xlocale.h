@@ -1,4 +1,3 @@
-
 #ifndef _XLOCALE_H_
 #define _XLOCALE_H_
 
@@ -8,10 +7,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-long long strtoll_l(const char *start, char **end, int base, locale_t loc);
-unsigned long long strtoull_l(const char *start, char **end, int base, locale_t loc);
-double strtold_l(const char *start, char **end, locale_t loc);
 
 int strcoll_l(const char *s1, const char *s2, locale_t locale);
 int wcscoll_l(const wchar_t *ws1, const wchar_t *ws2, locale_t locale);
@@ -43,5 +38,5 @@ size_t strftime_l(char *s, size_t maxsize, const char *format, const struct tm *
 }
 #endif
 
-#endif /* _LOCALE_H_ */
+#endif /* _XLOCALE_H_ */
 

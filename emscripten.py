@@ -11,7 +11,6 @@ headers, for the libc implementation in JS).
 
 import os, sys, json, optparse, subprocess, re, time, multiprocessing, string
 
-from tools import shared
 from tools import jsrun, cache as cache_module, tempfiles
 from tools.response_file import read_response_file
 
@@ -26,6 +25,7 @@ def get_configuration():
   if hasattr(get_configuration, 'configuration'):
     return get_configuration.configuration
 
+  from tools import shared
   configuration = shared.Configuration(environ=os.environ)
   get_configuration.configuration = configuration
   return configuration
@@ -190,6 +190,11 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   open(forwarded_file, 'w').write(forwarded_data)
   if DEBUG: print >> sys.stderr, '  emscript: phase 1 took %s seconds' % (time.time() - t)
 
+  indexed_functions = set()
+  forwarded_json = json.loads(forwarded_data)
+  for key in forwarded_json['Functions']['indexedFunctions'].iterkeys():
+    indexed_functions.add(key)
+
   # Phase 2 - func
 
   cores = int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
@@ -203,8 +208,6 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     chunk_size = MAX_CHUNK_SIZE # if 1 core, just use the max chunk size
 
   if DEBUG: t = time.time()
-  forwarded_json = json.loads(forwarded_data)
-  indexed_functions = set()
   if settings.get('ASM_JS'):
     settings['EXPORTED_FUNCTIONS'] = forwarded_json['EXPORTED_FUNCTIONS']
     save_settings()
@@ -423,6 +426,8 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
     math_envs = ['Math.min'] # TODO: move min to maths
     asm_setup += '\n'.join(['var %s = %s;' % (f.replace('.', '_'), f) for f in math_envs])
 
+    if settings['TO_FLOAT32']: maths += ['Math.toFloat32']
+
     basic_funcs = ['abort', 'assert', 'asmPrintInt', 'asmPrintFloat'] + [m.replace('.', '_') for m in math_envs]
     if settings['RESERVED_FUNCTION_POINTERS'] > 0: basic_funcs.append('jsCall')
     if settings['SAFE_HEAP']: basic_funcs += ['SAFE_HEAP_LOAD', 'SAFE_HEAP_STORE', 'SAFE_HEAP_CLEAR']
@@ -469,6 +474,7 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
   }
 
 ''' % (sig, i, args, arg_coercions, jsret))
+      from tools import shared
       asm_setup += '\n' + shared.JS.make_invoke(sig) + '\n'
       basic_funcs.append('invoke_%s' % sig)
 
@@ -628,9 +634,10 @@ Runtime.stackRestore = function(top) { asm['stackRestore'](top) };
 
   # Create symbol table for self-dlopen
   if settings.get('DLOPEN_SUPPORT'):
-    symbol_table = { k:v+forwarded_json['Runtime']['GLOBAL_BASE']
-      for k,v in forwarded_json['Variables']['indexedGlobals'].iteritems()
-      if forwarded_json['Variables']['globals'][k]['named'] }
+    symbol_table = {}
+    for k, v in forwarded_json['Variables']['indexedGlobals'].iteritems():
+       if forwarded_json['Variables']['globals'][k]['named']:
+         symbol_table[k] = v + forwarded_json['Runtime']['GLOBAL_BASE']
     for raw in last_forwarded_json['Functions']['tables'].itervalues():
       if raw == '': continue
       table = map(string.strip, raw[raw.find('[')+1:raw.find(']')].split(","))
@@ -807,7 +814,7 @@ WARNING: You should normally never use this! Use emcc instead.
   '''
 
   if len(positional) != 1:
-    raise RuntimeError('Must provide exactly one positional argument.')
+    raise RuntimeError('Must provide exactly one positional argument. Got ' + str(len(positional)) + ': "' + '", "'.join(positional) + '"')
   keywords.infile = os.path.abspath(positional[0])
   if isinstance(keywords.outfile, basestring):
     keywords.outfile = open(keywords.outfile, 'w')

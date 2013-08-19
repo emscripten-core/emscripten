@@ -10,7 +10,7 @@
 //                   or otherwise).
 
 var LibrarySDL = {
-  $SDL__deps: ['$FS', '$Browser'],
+  $SDL__deps: ['$FS', '$PATH', '$Browser'],
   $SDL: {
     defaults: {
       width: 320,
@@ -258,7 +258,7 @@ var LibrarySDL = {
 
     makeSurface: function(width, height, flags, usePageCanvas, source, rmask, gmask, bmask, amask) {
       flags = flags || 0;
-      var surf = _malloc(14*Runtime.QUANTUM_SIZE);  // SDL_Surface has 14 fields of quantum size
+      var surf = _malloc(15*Runtime.QUANTUM_SIZE);  // SDL_Surface has 15 fields of quantum size
       var buffer = _malloc(width*height*4); // TODO: only allocate when locked the first time
       var pixelFormat = _malloc(18*Runtime.QUANTUM_SIZE);
       flags |= 1; // SDL_HWSURFACE - this tells SDL_MUSTLOCK that this needs to be locked
@@ -379,7 +379,8 @@ var LibrarySDL = {
       SDL.surfaces[surf] = null;
     },
 
-    touchX:0, touchY: 0,
+    touchX: 0, touchY: 0,
+    savedKeydown: null,
 
     receiveEvent: function(event) {
       switch(event.type) {
@@ -466,11 +467,29 @@ var LibrarySDL = {
             SDL.DOMButtons[event.button] = 0;
           }
 
-          if (event.type == 'keypress' && !SDL.textInput) {
-            break;
+          // SDL expects a unicode character to be passed to its keydown events.
+          // Unfortunately, the browser APIs only provide a charCode property on
+          // keypress events, so we must backfill in keydown events with their
+          // subsequent keypress event's charCode.
+          if (event.type === 'keypress' && SDL.savedKeydown) {
+            // charCode is read-only
+            SDL.savedKeydown.keypressCharCode = event.charCode;
+            SDL.savedKeydown = null;
+          } else if (event.type === 'keydown') {
+            SDL.savedKeydown = event;
           }
-          
-          SDL.events.push(event);
+
+          // If we preventDefault on keydown events, the subsequent keypress events
+          // won't fire. However, it's fine (and in some cases necessary) to
+          // preventDefault for keys that don't generate a character.
+          if (event.type !== 'keydown' || (event.keyCode === 8 /* backspace */ || event.keyCode === 9 /* tab */)) {
+            event.preventDefault();
+          }
+
+          // Don't push keypress events unless SDL_StartTextInput has been called.
+          if (event.type !== 'keypress' || SDL.textInput) {
+            SDL.events.push(event);
+          }
           break;
         case 'mouseout':
           // Un-press all pressed mouse buttons, because we might miss the release outside of the canvas
@@ -485,6 +504,7 @@ var LibrarySDL = {
               SDL.DOMButtons[i] = 0;
             }
           }
+          event.preventDefault();
           break;
         case 'blur':
         case 'visibilitychange': {
@@ -495,6 +515,7 @@ var LibrarySDL = {
               keyCode: SDL.keyboardMap[code]
             });
           }
+          event.preventDefault();
           break;
         }
         case 'unload':
@@ -506,17 +527,57 @@ var LibrarySDL = {
           return;
         case 'resize':
           SDL.events.push(event);
+          // manually triggered resize event doesn't have a preventDefault member
+          if (event.preventDefault) {
+            event.preventDefault();
+          }
           break;
       }
       if (SDL.events.length >= 10000) {
         Module.printErr('SDL event queue full, dropping events');
         SDL.events = SDL.events.slice(0, 10000);
       }
-      // manually triggered resize event doesn't have a preventDefault member
-      if (event.preventDefault) {
-        event.preventDefault();
-      }
       return;
+    },
+
+    handleEvent: function(event) {
+      if (event.handled) return;
+      event.handled = true;
+
+      switch (event.type) {
+        case 'keydown': case 'keyup': {
+          var down = event.type === 'keydown';
+          var code = SDL.keyCodes[event.keyCode] || event.keyCode;
+
+          {{{ makeSetValue('SDL.keyboardState', 'code', 'down', 'i8') }}};
+          // TODO: lmeta, rmeta, numlock, capslock, KMOD_MODE, KMOD_RESERVED
+          SDL.modState = ({{{ makeGetValue('SDL.keyboardState', '1248', 'i8') }}} ? 0x0040 | 0x0080 : 0) | // KMOD_LCTRL & KMOD_RCTRL
+            ({{{ makeGetValue('SDL.keyboardState', '1249', 'i8') }}} ? 0x0001 | 0x0002 : 0) | // KMOD_LSHIFT & KMOD_RSHIFT
+            ({{{ makeGetValue('SDL.keyboardState', '1250', 'i8') }}} ? 0x0100 | 0x0200 : 0); // KMOD_LALT & KMOD_RALT
+
+          if (down) {
+            SDL.keyboardMap[code] = event.keyCode; // save the DOM input, which we can use to unpress it during blur
+          } else {
+            delete SDL.keyboardMap[code];
+          }
+
+          break;
+        }
+        case 'mousedown': case 'mouseup':
+          if (event.type == 'mousedown') {
+            // SDL_BUTTON(x) is defined as (1 << ((x)-1)).  SDL buttons are 1-3,
+            // and DOM buttons are 0-2, so this means that the below formula is
+            // correct.
+            SDL.buttonState |= 1 << event.button;
+          } else if (event.type == 'mouseup') {
+            SDL.buttonState &= ~(1 << event.button);
+          }
+          // fall through
+        case 'mousemove': {
+          Browser.calculateMouseEvent(event);
+          break;
+        }
+      }
     },
 
     makeCEvent: function(event, ptr) {
@@ -526,7 +587,9 @@ var LibrarySDL = {
         return;
       }
 
-      switch(event.type) {
+      SDL.handleEvent(event);
+
+      switch (event.type) {
         case 'keydown': case 'keyup': {
           var down = event.type === 'keydown';
           //Module.print('Received key event: ' + event.keyCode);
@@ -543,26 +606,14 @@ var LibrarySDL = {
             scan = SDL.scanCodes[key] || key;
           }
 
-          var code = SDL.keyCodes[event.keyCode] || event.keyCode;
-          {{{ makeSetValue('SDL.keyboardState', 'code', 'down', 'i8') }}};
-          if (down) {
-            SDL.keyboardMap[code] = event.keyCode; // save the DOM input, which we can use to unpress it during blur
-          } else {
-            delete SDL.keyboardMap[code];
-          }
-
-          // TODO: lmeta, rmeta, numlock, capslock, KMOD_MODE, KMOD_RESERVED
-          SDL.modState = ({{{ makeGetValue('SDL.keyboardState', '1248', 'i8') }}} ? 0x0040 | 0x0080 : 0) | // KMOD_LCTRL & KMOD_RCTRL
-            ({{{ makeGetValue('SDL.keyboardState', '1249', 'i8') }}} ? 0x0001 | 0x0002 : 0) | // KMOD_LSHIFT & KMOD_RSHIFT
-            ({{{ makeGetValue('SDL.keyboardState', '1250', 'i8') }}} ? 0x0100 | 0x0200 : 0); // KMOD_LALT & KMOD_RALT
-
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.state', 'down ? 1 : 0', 'i8') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.repeat', '0', 'i8') }}} // TODO
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.scancode', 'scan', 'i32') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.sym', 'key', 'i32') }}}
-          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.mod', 'SDL.modState', 'i32') }}}
-          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.unicode', 'key', 'i32') }}}
+          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.mod', 'SDL.modState', 'i16') }}}
+          // some non-character keys (e.g. backspace and tab) won't have keypressCharCode set, fill in with the keyCode.
+          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.unicode', 'event.keypressCharCode || key', 'i32') }}}
 
           break;
         }
@@ -575,18 +626,7 @@ var LibrarySDL = {
           }
           break;
         }
-        case 'mousedown': case 'mouseup':
-          if (event.type == 'mousedown') {
-            // SDL_BUTTON(x) is defined as (1 << ((x)-1)).  SDL buttons are 1-3,
-            // and DOM buttons are 0-2, so this means that the below formula is
-            // correct.
-            SDL.buttonState |= 1 << event.button;
-          } else if (event.type == 'mouseup') {
-            SDL.buttonState &= ~(1 << event.button);
-          }
-          // fall through
-        case 'mousemove': {
-          Browser.calculateMouseEvent(event);
+        case 'mousedown': case 'mouseup': case 'mousemove': {
           if (event.type != 'mousemove') {
             var down = event.type === 'mousedown';
             {{{ makeSetValue('ptr', 'SDL.structs.MouseButtonEvent.type', 'SDL.DOMEventToSDLEvent[event.type]', 'i32') }}};
@@ -735,6 +775,11 @@ var LibrarySDL = {
     // SDL_VideoModeOK returns 0 if the requested mode is not supported under any bit depth, or returns the 
     // bits-per-pixel of the closest available mode with the given width, height and requested surface flags
     return depth; // all modes are ok.
+  },
+
+  SDL_AudioDriverName__deps: ['SDL_VideoDriverName'],
+  SDL_AudioDriverName: function(buf, max_size) {
+    return _SDL_VideoDriverName(buf, max_size);
   },
 
   SDL_VideoDriverName: function(buf, max_size) {
@@ -1174,7 +1219,11 @@ var LibrarySDL = {
     }
   },
 
-  SDL_PumpEvents: function(){},
+  SDL_PumpEvents: function(){
+    SDL.events.forEach(function(event) {
+      SDL.handleEvent(event);
+    });
+  },
 
   SDL_SetColors: function(surf, colors, firstColor, nColors) {
     var surfData = SDL.surfaces[surf];
@@ -1291,11 +1340,7 @@ var LibrarySDL = {
       }
 
       if (!raw) {
-        filename = FS.standardizePath(filename);
-        if (filename[0] == '/') {
-          // Convert the path to relative
-          filename = filename.substr(1);
-        }
+        filename = PATH.resolve(filename);
         var raw = Module["preloadedImages"][filename];
         if (!raw) {
           if (raw === null) Module.printErr('Trying to reuse preloaded image, but freePreloadedMediaOnUse is set!');
@@ -1513,8 +1558,7 @@ var LibrarySDL = {
     var bytes;
     
     if (rwops.filename !== undefined) {
-      filename = rwops.filename;
-      filename = FS.standardizePath(filename);
+      filename = PATH.resolve(rwops.filename);
       var raw = Module["preloadedAudios"][filename];
       if (!raw) {
         if (raw === null) Module.printErr('Trying to reuse preloaded audio, but freePreloadedMediaOnUse is set!');
@@ -1527,7 +1571,7 @@ var LibrarySDL = {
         
         // We found the file. Load the contents
         if (fileObject && !fileObject.isFolder && fileObject.read) {
-          bytes = fileObject.contents
+          bytes = fileObject.contents;
         } else {
           return 0;
         }
@@ -2045,9 +2089,9 @@ var LibrarySDL = {
     console.log('TODO: SDL_GL_SetAttribute');
   },
 
-  SDL_GL_GetProcAddress__deps: ['$GLEmulation'],
+  SDL_GL_GetProcAddress__deps: ['emscripten_GetProcAddress'],
   SDL_GL_GetProcAddress: function(name_) {
-    return GLEmulation.getProcAddress(Pointer_stringify(name_));
+    return _emscripten_GetProcAddress(Pointer_stringify(name_));
   },
 
   SDL_GL_SwapBuffers: function() {},

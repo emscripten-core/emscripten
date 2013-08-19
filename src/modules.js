@@ -46,7 +46,9 @@ var Debugging = {
     var form3ab = new RegExp(/^!(\d+) = metadata !{i32 \d+, (?:metadata !\d+|i32 \d+|null), metadata !(\d+).*$/);
     var form3ac = new RegExp(/^!(\d+) = metadata !{i32 \d+, (?:metadata !\d+|null), metadata !"[^"]*", metadata !(\d+)[^\[]*.*$/);
     var form3ad = new RegExp(/^!(\d+) = metadata !{i32 \d+, (?:i32 \d+|null), (?:i32 \d+|null), metadata !"[^"]*", metadata !"[^"]*", metadata !"[^"]*", metadata !(\d+),.*$/);
-    var form3b = new RegExp(/^!(\d+) = metadata !{i32 \d+, metadata !"([^"]+)", metadata !"([^"]*)", (metadata !\d+|null)}.*$/);
+    var form3ae = new RegExp(/^!(\d+) = metadata !{i32 \d+, metadata !(\d+).*$/);
+    // LLVM 3.3 drops the first and last parameters.
+    var form3b = new RegExp(/^!(\d+) = metadata !{(?:i32 \d+, )?metadata !"([^"]+)", metadata !"([^"]*)"(?:, (metadata !\d+|null))?}.*$/);
     var form3c = new RegExp(/^!(\d+) = metadata !{\w+\d* !?(\d+)[^\d].*$/);
     var form4 = new RegExp(/^!llvm.dbg.[\w\.]+ = .*$/);
     var form5 = new RegExp(/^!(\d+) = metadata !{.*$/);
@@ -75,7 +77,7 @@ var Debugging = {
         lines[i] = ';'; // return an empty line, to keep line numbers of subsequent lines the same
         continue;
       }
-      calc = form3a.exec(line) || form3ab.exec(line) || form3ac.exec(line) || form3ad.exec(line);
+      calc = form3a.exec(line) || form3ab.exec(line) || form3ac.exec(line) || form3ad.exec(line) || form3ae.exec(line);
       if (calc) {
         metadataToParentMetadata[calc[1]] = calc[2];
         lines[i] = ';';
@@ -273,20 +275,15 @@ var Functions = {
   },
 
   // Mark a function as needing indexing. Python will coordinate them all
-  getIndex: function(ident, doNotCreate, sig) {
-    if (doNotCreate && !(ident in this.indexedFunctions)) {
-      if (!Functions.getIndex.tentative) Functions.getIndex.tentative = {}; // only used by GL emulation; TODO: generalize when needed
-      Functions.getIndex.tentative[ident] = 0;
-    }
+  getIndex: function(ident, sig) {
     var ret;
     if (phase != 'post' && singlePhase) {
-      if (!doNotCreate) this.indexedFunctions[ident] = 0; // tell python we need this indexized
       ret = "'{{ FI_" + toNiceIdent(ident) + " }}'"; // something python will replace later
+      this.indexedFunctions[ident] = 0;
     } else {
       if (!singlePhase) return 'NO_INDEX'; // Should not index functions in post
       ret = this.indexedFunctions[ident];
       if (!ret) {
-        if (doNotCreate) return '0';
         ret = this.nextIndex;
         this.nextIndex += 2; // Need to have indexes be even numbers, see |polymorph| test
         this.indexedFunctions[ident] = ret;
@@ -324,7 +321,7 @@ var Functions = {
       tables[sig][index] = ident;
     }
     var generated = false;
-    var wrapped = {};
+    var wrapped = {}; // whether we wrapped a lib func
     var maxTable = 0;
     for (var t in tables) {
       if (t == 'pre') continue;
@@ -347,10 +344,11 @@ var Functions = {
         if (ASM_JS) {
           var curr = table[i];
           if (curr && curr != '0' && !Functions.implementedFunctions[curr]) {
-            curr = toNiceIdent(curr); // fix Math.* to Math_*
+            var short = toNiceIdent(curr); // fix Math.* to Math_*
+            curr = t + '_' + short; // libfuncs can alias with different sigs, wrap each separately
             // This is a library function, we can't just put it in the function table, need a wrapper
             if (!wrapped[curr]) {
-              var args = '', arg_coercions = '', call = curr + '(', retPre = '', retPost = '';
+              var args = '', arg_coercions = '', call = short + '(', retPre = '', retPost = '';
               if (t[0] != 'v') {
                 if (t[0] == 'i') {
                   retPre = 'return ';
@@ -365,7 +363,7 @@ var Functions = {
                 call += (j > 1 ? ',' : '') + asmCoercion('a' + j, t[j] != 'i' ? 'float' : 'i32');
               }
               call += ')';
-              if (curr == '_setjmp') printErr('WARNING: setjmp used via a function pointer. If this is for libc setjmp (not something of your own with the same name), it will break things');
+              if (short == '_setjmp') printErr('WARNING: setjmp used via a function pointer. If this is for libc setjmp (not something of your own with the same name), it will break things');
               tables.pre += 'function ' + curr + '__wrapper(' + args + ') { ' + arg_coercions + ' ; ' + retPre + call + retPost + ' }\n';
               wrapped[curr] = 1;
             }
@@ -422,7 +420,7 @@ var LibraryManager = {
   load: function() {
     if (this.library) return;
 
-    var libraries = ['library.js', 'library_path.js', 'library_browser.js', 'library_sdl.js', 'library_gl.js', 'library_glut.js', 'library_xlib.js', 'library_egl.js', 'library_gc.js', 'library_jansson.js', 'library_openal.js', 'library_glfw.js'].concat(additionalLibraries);
+    var libraries = ['library.js', 'library_path.js', 'library_fs.js', 'library_memfs.js', 'library_sockfs.js', 'library_tty.js', 'library_browser.js', 'library_sdl.js', 'library_gl.js', 'library_glut.js', 'library_xlib.js', 'library_egl.js', 'library_gc.js', 'library_jansson.js', 'library_openal.js', 'library_glfw.js'].concat(additionalLibraries);
     for (var i = 0; i < libraries.length; i++) {
       eval(processMacros(preprocess(read(libraries[i]))));
     }

@@ -3,8 +3,10 @@
 // Utilities for browser environments
 
 mergeInto(LibraryManager.library, {
+  $Browser__deps: ['$PATH'],
   $Browser__postset: 'Module["requestFullScreen"] = function(lockPointer, resizeCanvas) { Browser.requestFullScreen(lockPointer, resizeCanvas) };\n' + // exports
                      'Module["requestAnimationFrame"] = function(func) { Browser.requestAnimationFrame(func) };\n' +
+                     'Module["setCanvasSize"] = function(width, height, noUpdates) { Browser.setCanvasSize(width, height, noUpdates) };\n' +
                      'Module["pauseMainLoop"] = function() { Browser.mainLoop.pause() };\n' +
                      'Module["resumeMainLoop"] = function() { Browser.mainLoop.resume() };\n' +
                      'Module["getUserMedia"] = function() { Browser.getUserMedia() }',
@@ -60,7 +62,11 @@ mergeInto(LibraryManager.library, {
         console.log("warning: no blob constructor, cannot create blobs with mimetypes");
       }
       Browser.BlobBuilder = typeof MozBlobBuilder != "undefined" ? MozBlobBuilder : (typeof WebKitBlobBuilder != "undefined" ? WebKitBlobBuilder : (!Browser.hasBlobConstructor ? console.log("warning: no BlobBuilder") : null));
-      Browser.URLObject = typeof window != "undefined" ? (window.URL ? window.URL : window.webkitURL) : console.log("warning: cannot create object URLs");
+      Browser.URLObject = typeof window != "undefined" ? (window.URL ? window.URL : window.webkitURL) : undefined;
+      if (!Module.noImageDecoding && typeof Browser.URLObject === 'undefined') {
+        console.log("warning: Browser does not support creating object URLs. Built-in browser image decoding will not be available.");
+        Module.noImageDecoding = true;
+      }
 
       // Support for plugins that can process preloaded files. You can add more of these to
       // your app by creating and appending to Module.preloadPlugins.
@@ -558,10 +564,9 @@ mergeInto(LibraryManager.library, {
   emscripten_async_wget: function(url, file, onload, onerror) {
     var _url = Pointer_stringify(url);
     var _file = Pointer_stringify(file);
-    var index = _file.lastIndexOf('/');
     FS.createPreloadedFile(
-      _file.substr(0, index),
-      _file.substr(index +1),
+      PATH.dirname(_file),
+      PATH.basename(_file),
       _url, true, true,
       function() {
         if (onload) Runtime.dynCall('vi', onload, [file]);
@@ -636,10 +641,9 @@ mergeInto(LibraryManager.library, {
     var _file = Pointer_stringify(file);
     var data = FS.analyzePath(_file);
     if (!data.exists) return -1;
-    var index = _file.lastIndexOf('/');
     FS.createPreloadedFile(
-      _file.substr(0, index),
-      _file.substr(index +1),
+      PATH.dirname(_file),
+      PATH.basename(_file),
       new Uint8Array(data.object.contents), true, true,
       function() {
         if (onload) Runtime.dynCall('vi', onload, [file]);
@@ -659,7 +663,7 @@ mergeInto(LibraryManager.library, {
     var cname = _malloc(name.length+1);
     writeStringToMemory(name, cname);
     FS.createPreloadedFile(
-      '',
+      '/',
       name,
       {{{ makeHEAPView('U8', 'data', 'data + size') }}},
       true, true,

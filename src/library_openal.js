@@ -6,7 +6,128 @@ var LibraryOpenAL = {
     contexts: [],
     currentContext: null,
     QUEUE_INTERVAL: 25,
-    QUEUE_LOOKAHEAD: 100
+    QUEUE_LOOKAHEAD: 100,
+
+    updateSources: function(context) {
+      for (var i = 0; i < context.src.length; i++) {
+        AL.updateSource(context.src[i]);
+      }
+    },
+
+    updateSource: function(src) {
+#if OPENAL_DEBUG
+      var idx = AL.currentContext.src.indexOf(src);
+#endif
+      if (src.state !== 0x1012 /* AL_PLAYING */) {
+        return;
+      }
+
+      var currentTime = AL.currentContext.ctx.currentTime;
+      var startTime = src.bufferPosition;
+
+      for (var i = src.buffersPlayed; i < src.queue.length; i++) {
+        var entry = src.queue[i];
+
+        var startOffset = startTime - currentTime;
+        var endTime = startTime + entry.buffer.duration;
+
+        // Clean up old buffers.
+        if (currentTime >= endTime) {
+          // Update our location in the queue.
+          src.bufferPosition = endTime;
+          src.buffersPlayed = i + 1;
+
+          // Stop / restart the source when we hit the end.
+          if (src.buffersPlayed >= src.queue.length) {
+            if (src.loop) {
+              AL.setSourceState(src, 0x1012 /* AL_PLAYING */);
+            } else {
+              AL.setSourceState(src, 0x1014 /* AL_STOPPED */);
+            }
+          }
+        }
+        // Process all buffers that'll be played before the next tick.
+        else if (startOffset < (AL.QUEUE_LOOKAHEAD / 1000) && !entry.src) {
+          // If the start offset is negative, we need to offset the actual buffer.
+          var offset = Math.abs(Math.min(startOffset, 0));
+
+          entry.src = AL.currentContext.ctx.createBufferSource();
+          entry.src.buffer = entry.buffer;
+          entry.src.connect(src.gain);
+          entry.src.start(startTime, offset);
+          
+#if OPENAL_DEBUG
+          console.log('updateSource queuing buffer ' + i + ' for source ' + idx + ' at ' + startTime + ' (offset by ' + offset + ')');
+#endif
+        }
+
+        startTime = endTime;
+      }
+    },
+
+    setSourceState: function(src, state) {
+#if OPENAL_DEBUG
+      var idx = AL.currentContext.src.indexOf(src);
+#endif
+      if (state === 0x1012 /* AL_PLAYING */) {
+        if (src.state !== 0x1013 /* AL_PAUSED */) {
+          src.state = 0x1012 /* AL_PLAYING */;
+          // Reset our position.
+          src.bufferPosition = AL.currentContext.ctx.currentTime;
+          src.buffersPlayed = 0;
+#if OPENAL_DEBUG
+          console.log('setSourceState resetting and playing source ' + idx);
+#endif
+        } else {
+          src.state = 0x1012 /* AL_PLAYING */;
+          // Use the current offset from src.bufferPosition to resume at the correct point.
+          src.bufferPosition = AL.currentContext.ctx.currentTime - src.bufferPosition;
+#if OPENAL_DEBUG
+          console.log('setSourceState resuming source ' + idx + ' at ' + src.bufferPosition.toFixed(4));
+#endif
+        }
+        AL.stopSourceQueue(src);
+        AL.updateSource(src);
+      } else if (state === 0x1013 /* AL_PAUSED */) {
+        if (src.state === 0x1012 /* AL_PLAYING */) {
+          src.state = 0x1013 /* AL_PAUSED */;
+          // Store off the current offset to restore with on resume.
+          src.bufferPosition = AL.currentContext.ctx.currentTime - src.bufferPosition;
+          AL.stopSourceQueue(src);
+#if OPENAL_DEBUG
+          console.log('setSourceState pausing source ' + idx + ' at ' + src.bufferPosition.toFixed(4));
+#endif
+        }
+      } else if (state === 0x1014 /* AL_STOPPED */) {
+        if (src.state !== 0x1011 /* AL_INITIAL */) {
+          src.state = 0x1014 /* AL_STOPPED */;
+          src.buffersPlayed = src.queue.length;
+          AL.stopSourceQueue(src);
+#if OPENAL_DEBUG
+          console.log('setSourceState stopping source ' + idx);
+#endif
+        }
+      } else if (state == 0x1011 /* AL_INITIAL */) {
+        if (src.state !== 0x1011 /* AL_INITIAL */) {
+          src.state = 0x1011 /* AL_INITIAL */;
+          src.bufferPosition = 0;
+          src.buffersPlayed = 0;
+#if OPENAL_DEBUG
+          console.log('setSourceState initializing source ' + idx);
+#endif
+        }
+      }
+    },
+
+    stopSourceQueue: function(src) {
+      for (var i = 0; i < src.queue.length; i++) {
+        var entry = src.queue[i];
+        if (entry.src) {
+          entry.src.stop(0);
+          entry.src = null;
+        }
+      }
+    }
   },
 
   alcProcessContext: function(context) {},
@@ -41,7 +162,7 @@ var LibraryOpenAL = {
 
   alcDestroyContext: function(context) {
     // Stop playback, etc
-    clearInterval(context.interval);
+    clearInterval(AL.contexts[context - 1].interval);
   },
 
   alcCloseDevice: function(device) {
@@ -85,136 +206,12 @@ var LibraryOpenAL = {
         err: 0,
         src: [],
         buf: [],
-        interval: setInterval(function() { _updateSources(context); }, AL.QUEUE_INTERVAL)
+        interval: setInterval(function() { AL.updateSources(context); }, AL.QUEUE_INTERVAL)
       };
       AL.contexts.push(context);
       return AL.contexts.length;
     } else {
       return 0;
-    }
-  },
-
-  updateSources__deps: ['updateSource'],
-  updateSources: function(context) {
-    for (var i = 0; i < context.src.length; i++) {
-      _updateSource(context.src[i]);
-    }
-  },
-
-  updateSource__deps: ['setSourceState'],
-  updateSource: function(src) {
-#if OPENAL_DEBUG
-    var idx = AL.currentContext.src.indexOf(src);
-#endif
-    if (src.state !== 0x1012 /* AL_PLAYING */) {
-      return;
-    }
-
-    var currentTime = AL.currentContext.ctx.currentTime;
-    var startTime = src.bufferPosition;
-
-    for (var i = src.buffersPlayed; i < src.queue.length; i++) {
-      var entry = src.queue[i];
-
-      var startOffset = startTime - currentTime;
-      var endTime = startTime + entry.buffer.duration;
-
-      // Clean up old buffers.
-      if (currentTime >= endTime) {
-        // Update our location in the queue.
-        src.bufferPosition = endTime;
-        src.buffersPlayed = i + 1;
-
-        // Stop / restart the source when we hit the end.
-        if (src.buffersPlayed >= src.queue.length) {
-          if (src.loop) {
-            _setSourceState(src, 0x1012 /* AL_PLAYING */);
-          } else {
-            _setSourceState(src, 0x1014 /* AL_STOPPED */);
-          }
-        }
-      }
-      // Process all buffers that'll be played before the next tick.
-      else if (startOffset < (AL.QUEUE_LOOKAHEAD / 1000) && !entry.src) {
-        // If the start offset is negative, we need to offset the actual buffer.
-        var offset = Math.abs(Math.min(startOffset, 0));
-
-        entry.src = AL.currentContext.ctx.createBufferSource();
-        entry.src.buffer = entry.buffer;
-        entry.src.connect(src.gain);
-        entry.src.start(startTime, offset);
-        
-#if OPENAL_DEBUG
-        console.log('updateSource queuing buffer ' + i + ' for source ' + idx + ' at ' + startTime + ' (offset by ' + offset + ')');
-#endif
-      }
-
-      startTime = endTime;
-    }
-  },
-
-  setSourceState__deps: ['updateSource', 'stopSourceQueue'],
-  setSourceState: function(src, state) {
-#if OPENAL_DEBUG
-    var idx = AL.currentContext.src.indexOf(src);
-#endif
-    if (state === 0x1012 /* AL_PLAYING */) {
-      if (src.state !== 0x1013 /* AL_PAUSED */) {
-        src.state = 0x1012 /* AL_PLAYING */;
-        // Reset our position.
-        src.bufferPosition = AL.currentContext.ctx.currentTime;
-        src.buffersPlayed = 0;
-#if OPENAL_DEBUG
-        console.log('setSourceState resetting and playing source ' + idx);
-#endif
-      } else {
-        src.state = 0x1012 /* AL_PLAYING */;
-        // Use the current offset from src.bufferPosition to resume at the correct point.
-        src.bufferPosition = AL.currentContext.ctx.currentTime - src.bufferPosition;
-#if OPENAL_DEBUG
-        console.log('setSourceState resuming source ' + idx + ' at ' + src.bufferPosition.toFixed(4));
-#endif
-      }
-      _stopSourceQueue(src);
-      _updateSource(src);
-    } else if (state === 0x1013 /* AL_PAUSED */) {
-      if (src.state === 0x1012 /* AL_PLAYING */) {
-        src.state = 0x1013 /* AL_PAUSED */;
-        // Store off the current offset to restore with on resume.
-        src.bufferPosition = AL.currentContext.ctx.currentTime - src.bufferPosition;
-        _stopSourceQueue(src);
-#if OPENAL_DEBUG
-        console.log('setSourceState pausing source ' + idx + ' at ' + src.bufferPosition.toFixed(4));
-#endif
-      }
-    } else if (state === 0x1014 /* AL_STOPPED */) {
-      if (src.state !== 0x1011 /* AL_INITIAL */) {
-        src.state = 0x1014 /* AL_STOPPED */;
-        src.buffersPlayed = src.queue.length;
-        _stopSourceQueue(src);
-#if OPENAL_DEBUG
-        console.log('setSourceState stopping source ' + idx);
-#endif
-      }
-    } else if (state == 0x1011 /* AL_INITIAL */) {
-      if (src.state !== 0x1011 /* AL_INITIAL */) {
-        src.state = 0x1011 /* AL_INITIAL */;
-        src.bufferPosition = 0;
-        src.buffersPlayed = 0;
-#if OPENAL_DEBUG
-        console.log('setSourceState initializing source ' + idx);
-#endif
-      }
-    }
-  },
-
-  stopSourceQueue: function(src) {
-    for (var i = 0; i < src.queue.length; i++) {
-      var entry = src.queue[i];
-      if (entry.src) {
-        entry.src.stop(0);
-        entry.src = null;
-      }
     }
   },
 
@@ -336,7 +333,7 @@ var LibraryOpenAL = {
       } else {
         src.queue = [{ buffer: buffer }];
       }
-      _updateSource(src);
+      AL.updateSource(src);
       break;
     case 0x202 /* AL_SOURCE_RELATIVE */:
       if (value === 1 /* AL_TRUE */) {
@@ -505,7 +502,7 @@ var LibraryOpenAL = {
       src.queue.push({ buffer: buffer, src: null });
     }
 
-    _updateSource(src);
+    AL.updateSource(src);
   },
 
   alSourceUnqueueBuffers__deps: ["updateSource"],
@@ -544,7 +541,7 @@ var LibraryOpenAL = {
       src.buffersPlayed--;
     }
 
-    _updateSource(src);
+    AL.updateSource(src);
   },
 
   alDeleteBuffers: function(count, buffers)
@@ -687,7 +684,7 @@ var LibraryOpenAL = {
       AL.currentContext.err = 0xA001 /* AL_INVALID_NAME */;
       return;
     }
-    _setSourceState(src, 0x1012 /* AL_PLAYING */);
+    AL.setSourceState(src, 0x1012 /* AL_PLAYING */);
   },
 
   alSourceStop__deps: ['setSourceState'],
@@ -707,7 +704,7 @@ var LibraryOpenAL = {
       AL.currentContext.err = 0xA001 /* AL_INVALID_NAME */;
       return;
     }
-    _setSourceState(src, 0x1014 /* AL_STOPPED */);
+    AL.setSourceState(src, 0x1014 /* AL_STOPPED */);
   },
 
   alSourcePause__deps: ['setSourceState'],
@@ -727,7 +724,7 @@ var LibraryOpenAL = {
       AL.currentContext.err = 0xA001 /* AL_INVALID_NAME */;
       return;
     }
-    _setSourceState(src, 0x1013 /* AL_PAUSED */);
+    AL.setSourceState(src, 0x1013 /* AL_PAUSED */);
   },
 
   alGetSourcei__deps: ['updateSource'],
@@ -754,7 +751,7 @@ var LibraryOpenAL = {
     // so we also forcefully update the source when alGetSourcei is queried
     // to aid in the common scenario of application calling alGetSourcei(AL_BUFFERS_PROCESSED)
     // to recycle buffers.
-    _updateSource(src);
+    AL.updateSource(src);
 
     switch (param) {
     case 0x202 /* AL_SOURCE_RELATIVE */:

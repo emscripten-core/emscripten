@@ -801,7 +801,10 @@ function simplifyExpressions(ast) {
 //  HEAP[x >> 2]
 // very often. We can in some cases do the shift on the variable itself when it is set,
 // to greatly reduce the number of shift operations.
-// TODO: when shifting a variable, if there are other uses, keep an unshifted version too, to prevent slowdowns?
+// XXX this optimization is deprecated and currently invalid: does not handle overflows
+//     or non-aligned (round numbers, x >> 2 is a multiple of 4). Both are ok to assume
+//     for pointers (undefined behavior otherwise), but invalid in general, and we do
+//     no sufficiently-well distinguish the cases.
 function optimizeShiftsInternal(ast, conservative) {
   var MAX_SHIFTS = 3;
   traverseGeneratedFunctions(ast, function(fun) {
@@ -3001,7 +3004,7 @@ function outline(ast) {
 
   // Try to flatten out code as much as possible, to make outlining more feasible.
   function flatten(func, asmData) {
-    var minSize = sizeToOutline;
+    var minSize = extraInfo.sizeToOutline/4;
     var helperId = 0;
     function getHelper() {
       while (1) {
@@ -3106,7 +3109,9 @@ function outline(ast) {
     // Reserve an extra two spots per possible outlining: one for control flow var, the other for control flow data
     // The control variables are zeroed out when calling an outlined function, and after using
     // the value after they return.
-    asmData.maxOutlinings = Math.round(3*measureSize(func)/extraInfo.sizeToOutline);
+    var size = measureSize(func);
+    asmData.maxOutlinings = Math.round(3*size/extraInfo.sizeToOutline);
+    asmData.intendedPieces = Math.ceil(size/extraInfo.sizeToOutline);
     asmData.totalStackSize = stackSize + (stack.length + 2*asmData.maxOutlinings)*8;
     asmData.controlStackPos = function(i) { return stackSize + (stack.length + i)*8 };
     asmData.controlDataStackPos = function(i) { return stackSize + (stack.length + i)*8 + 4 };
@@ -3211,16 +3216,18 @@ function outline(ast) {
   var CONTROL_BREAK = 1, CONTROL_BREAK_LABEL = 2, CONTROL_CONTINUE = 3, CONTROL_CONTINUE_LABEL = 4, CONTROL_RETURN_VOID = 5, CONTROL_RETURN_INT = 6, CONTROL_RETURN_DOUBLE = 7;
 
   var sizeToOutline = null; // customized per function and as we make progress
-  function calculateThreshold(func) {
-    sizeToOutline = extraInfo.sizeToOutline;
+  function calculateThreshold(func, asmData) {
     var size = measureSize(func);
-    //var desiredChunks = Math.ceil(size/extraInfo.sizeToOutline);
-    ////sizeToOutline = Math.round((extraInfo.sizeToOutline + (2*size/desiredChunks))/3);
-    //sizeToOutline = Math.round(size/desiredChunks);
-    printErr('trying to reduce the size of ' + func[1] + ' which is ' + size + ' (>= ' + extraInfo.sizeToOutline + '), aim for ' + sizeToOutline);
+    if (size <= extraInfo.sizeToOutline) {
+      sizeToOutline = Infinity;
+      printErr('  no point in trying to reduce the size of ' + func[1] + ' which is ' + size + ' <= ' + extraInfo.sizeToOutline);
+    } else {
+      sizeToOutline = Math.round(size/Math.max(2, asmData.intendedPieces--));
+      printErr('trying to reduce the size of ' + func[1] + ' which is ' + size + ' (>=? ' + extraInfo.sizeToOutline + '), aim for ' + sizeToOutline);
+    }
   }
 
-  var level = 0;
+  var level = 0, loops = 0;
   var outliningParents = {}; // function name => parent it was outlined from
 
   function doOutline(func, asmData, stats, start, end) {
@@ -3241,21 +3248,29 @@ function outline(ast) {
       }
     });
     var reps = [];
-    // wipe out control variable
-    reps.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos(outlineIndex)), ['num', 0])]);
-    reps.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlDataStackPos(outlineIndex)), ['num', 0])]); // XXX not really needed
-    // add spills and reads before and after the call to the outlined code, and in the outlined code itself
-    keys(setUnion(codeInfo.reads, codeInfo.writes)).forEach(function(v) {
+    // add spills
+    function orderFunc(x, y) {
+      return (asmData.stackPos[x] - asmData.stackPos[y]) || x.localeCompare(y);
+    }
+    var sortedReadsAndWrites = keys(setUnion(codeInfo.reads, codeInfo.writes)).sort(orderFunc);
+    var sortedWrites = keys(codeInfo.writes).sort(orderFunc);
+    sortedReadsAndWrites.forEach(function(v) {
       if (!(v in owned)) {
         reps.push(['stat', ['assign', true, ['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], ['name', v]]]);
       }
     });
+    // wipe out control variable
+    reps.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlStackPos(outlineIndex)), ['num', 0])]);
+    reps.push(['stat', makeAssign(makeStackAccess(ASM_INT, asmData.controlDataStackPos(outlineIndex)), ['num', 0])]); // XXX not really needed
+    // do the call
     reps.push(['stat', ['call', ['name', newIdent], [['name', 'sp']]]]);
-    for (var v in codeInfo.writes) {
+    // add unspills
+    sortedWrites.forEach(function(v) {
       if (!(v in owned)) {
         reps.push(['stat', ['assign', true, ['name', v], makeAsmCoercion(['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], getAsmType(v, asmData))]]);
       }
-    }
+    });
+
     // Generate new function
     if (codeInfo.hasReturn || codeInfo.hasReturnInt || codeInfo.hasReturnDouble || codeInfo.hasBreak || codeInfo.hasContinue) {
       // we need to capture all control flow using a top-level labeled one-time loop in the outlined function
@@ -3389,16 +3404,17 @@ function outline(ast) {
       }
     }
     // add spills and unspills in outlined code outside the OL loop
-    keys(setUnion(codeInfo.reads, codeInfo.writes)).forEach(function(v) {
+    sortedReadsAndWrites.reverse();
+    sortedReadsAndWrites.forEach(function(v) {
       if (!(v in owned)) {
         code.unshift(['stat', ['assign', true, ['name', v], makeAsmCoercion(['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], getAsmType(v, asmData))]]);
       }
     });
-    for (var v in codeInfo.writes) {
+    sortedWrites.forEach(function(v) {
       if (!(v in owned)) {
         code.push(['stat', ['assign', true, ['sub', ['name', getAsmType(v, asmData) == ASM_INT ? 'HEAP32' : 'HEAPF32'], ['binary', '>>', ['binary', '+', ['name', 'sp'], ['num', asmData.stackPos[v]]], ['num', '2']]], ['name', v]]]);
       }
-    }
+    });
     // finalize
     var newFunc = ['defun', newIdent, ['sp'], code];
     var newAsmData = { params: { sp: ASM_INT }, vars: {} };
@@ -3436,8 +3452,8 @@ function outline(ast) {
       }
     }
     outliningParents[newIdent] = func[1];
-    printErr('performed outline ' + [func[1], newIdent, 'code sizes (pre/post):', originalCodeSize, measureSize(code), 'overhead (w/r):', setSize(setSub(codeInfo.writes, owned)), setSize(setSub(codeInfo.reads, owned))]);
-    calculateThreshold(func);
+    printErr('performed outline ' + [func[1], newIdent, 'code sizes (pre/post):', originalCodeSize, measureSize(code), 'overhead (w/r):', setSize(setSub(codeInfo.writes, owned)), setSize(setSub(codeInfo.reads, owned)), ' owned: ', setSize(owned), ' left: ', setSize(asmData.vars), setSize(asmData.params), ' loopsDepth: ', loops]);
+    calculateThreshold(func, asmData);
     return [newFunc];
   }
 
@@ -3461,6 +3477,9 @@ function outline(ast) {
           if (stat[0] == 'assign' && stat[2][0] == 'name' && stat[2][1] == 'sp') minIndex = i+1; // cannot outline |sp = |
         }
       }
+    }
+    function done() {
+      return asmData.splitCounter >= asmData.maxOutlinings || measureSize(func) <= extraInfo.sizeToOutline;
     }
     while (1) {
       i--;
@@ -3506,11 +3525,18 @@ function outline(ast) {
               if (subRet && subRet.length > 0) ret.push.apply(ret, subRet);
             }
             return null; // do not recurse into children, outlineStatements will do so if necessary
+          } else if (type == 'while') {
+            loops++;
+          }
+        }, function(node, type) {
+          if (type == 'while') {
+            loops--;
           }
         });
         if (ret.length > pre) {
           // we outlined recursively, reset our state here
           //printErr('successful outline in recursion ' + func[1] + ' due to recursive in level ' + level);
+          if (done()) break;
           end = i-1;
           sizeSeen = 0;
           canRestart = true;
@@ -3550,6 +3576,7 @@ function outline(ast) {
         if (newFuncs.length) {
           ret.push.apply(ret, newFuncs);
         }
+        if (done()) break;
         sizeSeen = 0;
         end = i-1;
         canRestart = true;
@@ -3581,8 +3608,8 @@ function outline(ast) {
       if (size >= extraInfo.sizeToOutline) {
         aggressiveVariableElimination(func, asmData);
         flatten(func, asmData);
-        calculateThreshold(func);
         analyzeFunction(func, asmData);
+        calculateThreshold(func, asmData);
         var stats = getStatements(func);
         var ret = outlineStatements(func, asmData, stats, 0.9*size);
         assert(level == 0);

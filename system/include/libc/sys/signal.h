@@ -298,7 +298,9 @@ int _EXFUN(sigqueue, (pid_t pid, int signo, const union sigval value));
 #define	SIGLOST 29	/* resource lost (eg, record-lock lost) */
 #define	SIGUSR1 30	/* user defined signal 1 */
 #define	SIGUSR2 31	/* user defined signal 2 */
-#define NSIG	32      /* signal 0 implied */
+#define NSIG	64      /* signal 0 implied */
+#define SIGRTMIN 32
+#define SIGRTMAX NSIG
 #endif
 #endif
 

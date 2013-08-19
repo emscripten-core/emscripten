@@ -1,9 +1,12 @@
 // g++ -fpermissive ../enet_server.c -I/home/alon/Dev/emscripten/system/include/emscripten/ -Iinclude/ -fpermissive .libs/libenet.a -o enet_server ; g++ ../enet_client.c -I/home/alon/Dev/emscripten/system/include/emscripten/ -Iinclude/ -fpermissive .libs/libenet.a -o enet_client
 
 #include <stdio.h>
-#include <emscripten.h>
-
+#include <string.h>
 #include <enet/enet.h>
+
+#if EMSCRIPTEN
+#include <emscripten.h>
+#endif
 
 ENetHost *host;
 
@@ -31,7 +34,9 @@ void main_loop() {
 #endif
   if (counter == 100) {
     printf("stop!\n");
+#if EMSCRIPTEN
     emscripten_cancel_main_loop();
+#endif
     return;
   }
 
@@ -82,7 +87,7 @@ int main (int argc, char ** argv)
 
   ENetAddress address;
   address.host = ENET_HOST_ANY;
-  address.port = 1235;
+  address.port = SOCKK;
   printf("create!\n");
   host = enet_host_create (& address /* the address to bind the server host to */,
                              32 /* allow up to 32 clients and/or outgoing connections */,
@@ -96,7 +101,11 @@ int main (int argc, char ** argv)
     exit (EXIT_FAILURE);
   }
 
+#if EMSCRIPTEN
   emscripten_set_main_loop(main_loop, 3, 1);
+#else
+  while (1) main_loop();
+#endif
 
   return 1;
 }
