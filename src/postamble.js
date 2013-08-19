@@ -19,7 +19,7 @@ Module['callMain'] = Module.callMain = function callMain(args) {
 
   args = args || [];
 
-  if (preloadStartTime !== null) {
+  if (ENVIRONMENT_IS_WEB && preloadStartTime !== null) {
     Module.printErr('preload time: ' + (Date.now() - preloadStartTime) + ' ms');
   }
 
