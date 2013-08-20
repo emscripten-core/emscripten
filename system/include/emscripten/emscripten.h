@@ -20,14 +20,13 @@ extern "C" {
 
 /*
  * Forces LLVM to not dead-code-eliminate a function. Note that
- * closure may still eliminate it at the JS level, for which you
- * should use EXPORTED_FUNCTIONS (see settings.js).
- *
- * **DEPRECATED**: Use EXPORTED_FUNCTIONS instead, which will work
- *                 with closure, asm.js, etc. For example
- *                   -s EXPORTED_FUNCTIONS=["_main", "myfunc"]
+ * you still need to use EXPORTED_FUNCTIONS so it stays alive
+ * in JS, e.g.
+ *     emcc -s EXPORTED_FUNCTIONS=["_main", "_myfunc"]
+ * and in the source file
+ *     void EMSCRIPTEN_KEEPALIVE myfunc() {..}
  */
-/* #define EMSCRIPTEN_KEEPALIVE __attribute__((used)) */
+#define EMSCRIPTEN_KEEPALIVE __attribute__((used))
 
 /*
  * Interface to the underlying JS engine. This function will

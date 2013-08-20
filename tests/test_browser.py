@@ -787,6 +787,9 @@ Press any key to continue.'''
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_mouse.c'), '-O2', '--minify', '0', '-o', 'sdl_mouse.js', '--pre-js', 'pre.js']).communicate()
     self.run_browser('page.html', '', '/report_result?600')
 
+  def test_glut_touchevents(self):
+    self.btest('glut_touchevents.c', '1')
+
   def test_sdl_pumpevents(self):
     # key events should be detected using SDL_PumpEvents
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
@@ -1350,7 +1353,7 @@ Press any key to continue.'''
     self.btest('perspective.c', reference='perspective.png', args=['-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_runtimelink(self):
-    return self.skip('shared libs are deprecated')
+    return self.skip('BUILD_AS_SHARED_LIB=2 is deprecated')
     main, supp = self.setup_runtimelink_test()
 
     open(self.in_dir('supp.cpp'), 'w').write(supp)

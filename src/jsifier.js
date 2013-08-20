@@ -280,7 +280,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         // they would shadow similarly-named globals in the parent.
         item.JS = '';
       } else {
-      	item.JS = makeGlobalDef(item.ident);
+        item.JS = makeGlobalDef(item.ident);
       }
 
       if (!NAMED_GLOBALS && isIndexableGlobal(item.ident)) {
@@ -1630,7 +1630,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     //
 
     if (!mainPass) {
-      if (phase == 'pre' && !Variables.generatedGlobalBase) {
+      if (phase == 'pre' && !Variables.generatedGlobalBase && !BUILD_AS_SHARED_LIB) {
         Variables.generatedGlobalBase = true;
         // Globals are done, here is the rest of static memory
         assert((TARGET_LE32 && Runtime.GLOBAL_BASE == 8) || (TARGET_X86 && Runtime.GLOBAL_BASE == 4)); // this is assumed in e.g. relocations for linkable modules
@@ -1674,24 +1674,26 @@ function JSify(data, functionsOnly, givenFunctions) {
         print('}\n');
 
         if (USE_TYPED_ARRAYS == 2) {
-          print('var tempDoublePtr = Runtime.alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);\n');
-          print('assert(tempDoublePtr % 8 == 0);\n');
-          print('function copyTempFloat(ptr) { // functions, because inlining this code increases code size too much\n');
-          print('  HEAP8[tempDoublePtr] = HEAP8[ptr];\n');
-          print('  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];\n');
-          print('  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];\n');
-          print('  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];\n');
-          print('}\n');
-          print('function copyTempDouble(ptr) {\n');
-          print('  HEAP8[tempDoublePtr] = HEAP8[ptr];\n');
-          print('  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];\n');
-          print('  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];\n');
-          print('  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];\n');
-          print('  HEAP8[tempDoublePtr+4] = HEAP8[ptr+4];\n');
-          print('  HEAP8[tempDoublePtr+5] = HEAP8[ptr+5];\n');
-          print('  HEAP8[tempDoublePtr+6] = HEAP8[ptr+6];\n');
-          print('  HEAP8[tempDoublePtr+7] = HEAP8[ptr+7];\n');
-          print('}\n');
+          if (!BUILD_AS_SHARED_LIB) {
+            print('var tempDoublePtr = Runtime.alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);\n');
+            print('assert(tempDoublePtr % 8 == 0);\n');
+            print('function copyTempFloat(ptr) { // functions, because inlining this code increases code size too much\n');
+            print('  HEAP8[tempDoublePtr] = HEAP8[ptr];\n');
+            print('  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];\n');
+            print('  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];\n');
+            print('  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];\n');
+            print('}\n');
+            print('function copyTempDouble(ptr) {\n');
+            print('  HEAP8[tempDoublePtr] = HEAP8[ptr];\n');
+            print('  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];\n');
+            print('  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];\n');
+            print('  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];\n');
+            print('  HEAP8[tempDoublePtr+4] = HEAP8[ptr+4];\n');
+            print('  HEAP8[tempDoublePtr+5] = HEAP8[ptr+5];\n');
+            print('  HEAP8[tempDoublePtr+6] = HEAP8[ptr+6];\n');
+            print('  HEAP8[tempDoublePtr+7] = HEAP8[ptr+7];\n');
+            print('}\n');
+          }
         }
       }
 
@@ -1726,11 +1728,13 @@ function JSify(data, functionsOnly, givenFunctions) {
 
       legalizedI64s = legalizedI64sDefault;
 
-      print('STACK_BASE = STACKTOP = Runtime.alignMemory(STATICTOP);\n');
-      print('staticSealed = true; // seal the static portion of memory\n');
-      print('STACK_MAX = STACK_BASE + ' + TOTAL_STACK + ';\n');
-      print('DYNAMIC_BASE = DYNAMICTOP = Runtime.alignMemory(STACK_MAX);\n');
-      print('assert(DYNAMIC_BASE < TOTAL_MEMORY); // Stack must fit in TOTAL_MEMORY; allocations from here on may enlarge TOTAL_MEMORY\n');
+      if (!BUILD_AS_SHARED_LIB) {
+        print('STACK_BASE = STACKTOP = Runtime.alignMemory(STATICTOP);\n');
+        print('staticSealed = true; // seal the static portion of memory\n');
+        print('STACK_MAX = STACK_BASE + ' + TOTAL_STACK + ';\n');
+        print('DYNAMIC_BASE = DYNAMICTOP = Runtime.alignMemory(STACK_MAX);\n');
+        print('assert(DYNAMIC_BASE < TOTAL_MEMORY); // Stack must fit in TOTAL_MEMORY; allocations from here on may enlarge TOTAL_MEMORY\n');
+      }
 
       if (asmLibraryFunctions.length > 0) {
         print('// ASM_LIBRARY FUNCTIONS');
@@ -1797,7 +1801,9 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
     if (HEADLESS) {
       print('if (!ENVIRONMENT_IS_WEB) {');
-      print(read('headless.js').replace("'%s'", "'http://emscripten.org'").replace("'?%s'", "''").replace('%s,', 'null,').replace('%d', '0'));
+      print(read('headlessCanvas.js'));
+      print('\n');
+      print(read('headless.js').replace("'%s'", "'http://emscripten.org'").replace("'?%s'", "''").replace("'?%s'", "'/'").replace('%s,', 'null,').replace('%d', '0'));
       print('}');
     }
     if (RUNTIME_TYPE_INFO) {

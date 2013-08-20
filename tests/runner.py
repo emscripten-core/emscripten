@@ -275,6 +275,18 @@ process(sys.argv[1])
       print "Output: " + output[0]
     return output[0]
 
+  # Tests that the given two paths are identical, modulo path delimiters. E.g. "C:/foo" is equal to "C:\foo".
+  def assertPathsIdentical(self, path1, path2):
+    path1 = path1.replace('\\', '/')
+    path2 = path2.replace('\\', '/')
+    return self.assertIdentical(path1, path2)
+
+  # Tests that the given two multiline text content are identical, modulo line ending differences (\r\n on Windows, \n on Unix).
+  def assertTextDataIdentical(self, text1, text2):
+    text1 = text1.replace('\r\n', '\n')
+    text2 = text2.replace('\r\n', '\n')
+    return self.assertIdentical(text1, text2)
+
   def assertIdentical(self, values, y):
     if type(values) not in [list, tuple]: values = [values]
     for x in values:
@@ -720,6 +732,7 @@ if __name__ == '__main__':
 ==============================================================================
 Running the main part of the test suite. Don't forget to run the other parts!
 
+  other - tests separate from the main suite
   sanity - tests for first run, etc., modifies ~/.emscripten
   benchmark - run before and after each set of changes before pushing to
               master, verify no regressions

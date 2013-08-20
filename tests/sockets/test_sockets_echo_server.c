@@ -37,6 +37,11 @@ typedef struct {
 server_t server;
 client_t client;
 
+void cleanup() {
+  if (server.fd) close(server.fd);
+  if (client.fd) close(client.fd);
+}
+
 void main_loop(void *arg) {
   int res;
   fd_set fdr;
@@ -104,6 +109,9 @@ void main_loop(void *arg) {
 int main() {
   struct sockaddr_in addr;
   int res;
+
+  atexit(cleanup);
+  //signal(SIGTERM, cleanup);
 
   memset(&server, 0, sizeof(server_t));
   memset(&client, 0, sizeof(client_t));

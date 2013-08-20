@@ -808,6 +808,80 @@ nada
     '''
     self.do_run(src, ',0,,2,C!,0,C!,0,,65535,C!,0,')
 
+  def test_double_i64_conversion(self):
+    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
+
+    src = r'''
+      #include <cassert>
+      #include <inttypes.h>
+      #include <stdio.h>
+
+      __attribute((noinline)) bool eq(double d, int64_t i) {
+        int64_t i2 = (int64_t)d;
+        if (i != i2) {
+          printf("%.20g converted to int64 returns %lld, not %lld as expected!\n", d, i2, i);
+        }
+        return i == i2;
+      }
+
+      int main() {
+        assert(eq(0.0, 0));
+        assert(eq(-0.0, 0));
+        assert(eq(0.1, 0));
+        assert(eq(-0.1, 0));
+        assert(eq(0.6, 0));
+        assert(eq(-0.6, 0));
+        assert(eq(1.0, 1));
+        assert(eq(-1.0, -1));
+        assert(eq(1.1, 1));
+        assert(eq(-1.1, -1));
+        assert(eq(1.6, 1));
+        assert(eq(-1.6, -1));
+        assert(eq(4294967295.0, 4294967295LL));
+        assert(eq(4294967295.5, 4294967295LL));
+        assert(eq(4294967296.0, 4294967296LL));
+        assert(eq(4294967296.5, 4294967296LL));
+        assert(eq(14294967295.0, 14294967295LL));
+        assert(eq(14294967295.5, 14294967295LL));
+        assert(eq(14294967296.0, 14294967296LL));
+        assert(eq(14294967296.5, 14294967296LL));
+        assert(eq(-4294967295.0, -4294967295LL));
+        assert(eq(-4294967295.5, -4294967295LL));
+        assert(eq(-4294967296.0, -4294967296LL));
+        assert(eq(-4294967296.5, -4294967296LL));
+        assert(eq(-14294967295.0, -14294967295LL));
+        assert(eq(-14294967295.5, -14294967295LL));
+        assert(eq(-14294967296.0, -14294967296LL));
+        assert(eq(-14294967296.5, -14294967296LL));
+
+        assert(eq(4294967295.3, 4294967295LL));
+        assert(eq(4294967296.3, 4294967296LL));
+        assert(eq(14294967295.3, 14294967295LL));
+        assert(eq(14294967296.3, 14294967296LL));
+        assert(eq(-4294967295.3, -4294967295LL));
+        assert(eq(-4294967296.3, -4294967296LL));
+        assert(eq(-14294967295.3, -14294967295LL));
+        assert(eq(-14294967296.3, -14294967296LL));
+
+        assert(eq(4294967295.8, 4294967295LL));
+        assert(eq(4294967296.8, 4294967296LL));
+        assert(eq(14294967295.8, 14294967295LL));
+        assert(eq(14294967296.8, 14294967296LL));
+        assert(eq(-4294967295.8, -4294967295LL));
+        assert(eq(-4294967296.8, -4294967296LL));
+        assert(eq(-14294967295.8, -14294967295LL));
+        assert(eq(-14294967296.8, -14294967296LL));
+
+        // The following number is the largest double such that all integers smaller than this can exactly be represented in a double.
+        assert(eq(9007199254740992.0, 9007199254740992LL /* == 2^53 */));
+        assert(eq(-9007199254740992.0, -9007199254740992LL /* == -2^53 */));
+
+        printf("OK!\n");
+        return 0;
+      }
+    '''
+    self.do_run(src, 'OK!\n');
+
   def test_negative_zero(self):
     src = r'''
       #include <stdio.h>
@@ -5451,7 +5525,7 @@ The current type of b is: 9
         self.do_run(src, '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|24,0,20,0,4,4,8,12,12,16*\n*0,0,0,1,2,64,68,69,72*\n*2*')
 
   def test_runtimelink(self):
-    return self.skip('shared libs are deprecated')
+    return self.skip('BUILD_AS_SHARED_LIB=2 is deprecated')
     if Building.LLVM_OPTS: return self.skip('LLVM opts will optimize printf into puts in the parent, and the child will still look for puts')
     if Settings.ASM_JS: return self.skip('asm does not support runtime linking')
 
@@ -5470,7 +5544,6 @@ The current type of b is: 9
     self.do_run(main, 'supp: 54,2\nmain: 56\nsupp see: 543\nmain see: 76\nok.')
 
   def test_dlfcn_basic(self):
-    return self.skip('shared libs are deprecated')
     if Settings.ASM_JS: return self.skip('TODO: dlopen in asm')
 
     Settings.NAMED_GLOBALS = 1
@@ -5525,7 +5598,6 @@ def process(filename):
                 post_build=add_pre_run_and_checks)
 
   def test_dlfcn_qsort(self):
-    return self.skip('shared libs are deprecated')
     if self.emcc_args is None: return self.skip('requires emcc')
     if Settings.ASM_JS: return self.skip('TODO: dlopen in asm')
 
@@ -5622,7 +5694,6 @@ def process(filename):
                 post_build=add_pre_run_and_checks)
 
   def test_dlfcn_data_and_fptr(self):
-    return self.skip('shared libs are deprecated')
     if Settings.ASM_JS: return self.skip('TODO: dlopen in asm')
     if Building.LLVM_OPTS: return self.skip('LLVM opts will optimize out parent_func')
 
@@ -5727,7 +5798,6 @@ def process(filename):
                  post_build=add_pre_run_and_checks)
 
   def test_dlfcn_alias(self):
-    return self.skip('shared libs are deprecated')
     if Settings.ASM_JS: return self.skip('TODO: dlopen in asm')
 
     Settings.LINKABLE = 1
@@ -5785,7 +5855,6 @@ def process(filename):
     Settings.INCLUDE_FULL_LIBRARY = 0
 
   def test_dlfcn_varargs(self):
-    return self.skip('shared libs are deprecated')
     if Settings.ASM_JS: return self.skip('TODO: dlopen in asm')
 
     Settings.LINKABLE = 1
@@ -7036,14 +7105,15 @@ def process(filename):
       #include <emscripten.h>
 
       int main() {
-        char *c = "μ†ℱ ╋ℯ╳╋";
+        char *c = "μ†ℱ ╋ℯ╳╋ 😇";
         printf("%d %d %d %d %s\n", c[0]&0xff, c[1]&0xff, c[2]&0xff, c[3]&0xff, c);
-        emscripten_run_script("cheez = _malloc(100);"
-                              "Module.writeStringToMemory(\"μ†ℱ ╋ℯ╳╋\", cheez);"
-                              "Module.print([Pointer_stringify(cheez), Module.getValue(cheez, 'i8')&0xff, Module.getValue(cheez+1, 'i8')&0xff, Module.getValue(cheez+2, 'i8')&0xff, Module.getValue(cheez+3, 'i8')&0xff, ]);");
+        emscripten_run_script(
+          "cheez = _malloc(100);"
+          "Module.writeStringToMemory(\"μ†ℱ ╋ℯ╳╋ 😇\", cheez);"
+          "Module.print([Pointer_stringify(cheez), Module.getValue(cheez, 'i8')&0xff, Module.getValue(cheez+1, 'i8')&0xff, Module.getValue(cheez+2, 'i8')&0xff, Module.getValue(cheez+3, 'i8')&0xff, ]);");
       }
     '''
-    self.do_run(src, '206 188 226 128 μ†ℱ ╋ℯ╳╋\nμ†ℱ ╋ℯ╳╋,206,188,226,128\n');
+    self.do_run(src, '206 188 226 128 μ†ℱ ╋ℯ╳╋ 😇\nμ†ℱ ╋ℯ╳╋ 😇,206,188,226,128\n');
 
   def test_direct_string_constant_usage(self):
     if self.emcc_args is None: return self.skip('requires libcxx')
@@ -9582,15 +9652,15 @@ def process(filename):
       self.assertIdentical(clean(no_maps_file), clean(out_file))
       map_filename = out_filename + '.map'
       data = json.load(open(map_filename, 'r'))
-      self.assertIdentical(out_filename, data['file'])
-      self.assertIdentical(src_filename, data['sources'][0])
-      self.assertIdentical(src, data['sourcesContent'][0])
+      self.assertPathsIdentical(out_filename, data['file'])
+      self.assertPathsIdentical(src_filename, data['sources'][0])
+      self.assertTextDataIdentical(src, data['sourcesContent'][0])
       mappings = json.loads(jsrun.run_js(
         path_from_root('tools', 'source-maps', 'sourcemap2json.js'),
         tools.shared.NODE_JS, [map_filename]))
       seen_lines = set()
       for m in mappings:
-        self.assertIdentical(src_filename, m['source'])
+        self.assertPathsIdentical(src_filename, m['source'])
         seen_lines.add(m['originalLine'])
       # ensure that all the 'meaningful' lines in the original code get mapped
       assert seen_lines.issuperset([6, 7, 11, 12])

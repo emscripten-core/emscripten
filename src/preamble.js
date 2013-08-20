@@ -524,6 +524,7 @@ function allocate(slab, types, allocator, ptr) {
 Module['allocate'] = allocate;
 
 function Pointer_stringify(ptr, /* optional */ length) {
+  // TODO: use TextDecoder
   // Find the length, and check for UTF while doing so
   var hasUtf = false;
   var t;
