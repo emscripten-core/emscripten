@@ -817,7 +817,7 @@ function JSify(data, functionsOnly, givenFunctions) {
                 Relooper.addBranch(blockMap[ident], blockMap[last.labelFalse], 0, relevant(last.labelFalseJS));
               }
             } else if (last.intertype == 'switch') {
-              last.switchLabels.forEach(function(switchLabel) {
+              last.groupedLabels.forEach(function(switchLabel) {
                 Relooper.addBranch(blockMap[ident], blockMap[switchLabel.label], switchLabel.value, relevant(switchLabel.labelJS));
               });
               Relooper.addBranch(blockMap[ident], blockMap[last.defaultLabel], 0, relevant(last.defaultLabelJS));
@@ -1145,6 +1145,9 @@ function JSify(data, functionsOnly, givenFunctions) {
     var ret = '';
     var first = true;
     item.signedIdent = signedIdent = makeSignOp(item.ident, item.type, 're'); // we need to standardize for purpose of comparison
+    if (RELOOP) {
+      item.groupedLabels = [];
+    }
     if (!useIfs) {
       ret += 'switch(' + signedIdent + ') {\n';
     }
@@ -1169,6 +1172,13 @@ function JSify(data, functionsOnly, givenFunctions) {
       var phiSet = getPhiSetsForLabel(phiSets, targetLabel);
       ret += INDENTATION + '' + phiSet + makeBranch(targetLabel, item.currLabelId || null) + '\n';
       ret += '}\n';
+      if (RELOOP) {
+        item.groupedLabels.push({
+          label: targetLabel,
+          value: value,
+          labelJS: phiSet
+        });
+      }
     }
     var phiSet = item.defaultLabelJS = getPhiSetsForLabel(phiSets, item.defaultLabel);
     if (useIfs) {
