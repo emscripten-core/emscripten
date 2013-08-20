@@ -787,6 +787,9 @@ Press any key to continue.'''
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_mouse.c'), '-O2', '--minify', '0', '-o', 'sdl_mouse.js', '--pre-js', 'pre.js']).communicate()
     self.run_browser('page.html', '', '/report_result?600')
 
+  def test_glut_touchevents(self):
+    self.btest('glut_touchevents.c', '1')
+
   def test_sdl_pumpevents(self):
     # key events should be detected using SDL_PumpEvents
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
