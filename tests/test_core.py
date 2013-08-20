@@ -808,6 +808,80 @@ nada
     '''
     self.do_run(src, ',0,,2,C!,0,C!,0,,65535,C!,0,')
 
+  def test_double_i64_conversion(self):
+    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
+
+    src = r'''
+      #include <cassert>
+      #include <inttypes.h>
+      #include <stdio.h>
+
+      __attribute((noinline)) bool eq(double d, int64_t i) {
+        int64_t i2 = (int64_t)d;
+        if (i != i2) {
+          printf("%.20g converted to int64 returns %lld, not %lld as expected!\n", d, i2, i);
+        }
+        return i == i2;
+      }
+
+      int main() {
+        assert(eq(0.0, 0));
+        assert(eq(-0.0, 0));
+        assert(eq(0.1, 0));
+        assert(eq(-0.1, 0));
+        assert(eq(0.6, 0));
+        assert(eq(-0.6, 0));
+        assert(eq(1.0, 1));
+        assert(eq(-1.0, -1));
+        assert(eq(1.1, 1));
+        assert(eq(-1.1, -1));
+        assert(eq(1.6, 1));
+        assert(eq(-1.6, -1));
+        assert(eq(4294967295.0, 4294967295LL));
+        assert(eq(4294967295.5, 4294967295LL));
+        assert(eq(4294967296.0, 4294967296LL));
+        assert(eq(4294967296.5, 4294967296LL));
+        assert(eq(14294967295.0, 14294967295LL));
+        assert(eq(14294967295.5, 14294967295LL));
+        assert(eq(14294967296.0, 14294967296LL));
+        assert(eq(14294967296.5, 14294967296LL));
+        assert(eq(-4294967295.0, -4294967295LL));
+        assert(eq(-4294967295.5, -4294967295LL));
+        assert(eq(-4294967296.0, -4294967296LL));
+        assert(eq(-4294967296.5, -4294967296LL));
+        assert(eq(-14294967295.0, -14294967295LL));
+        assert(eq(-14294967295.5, -14294967295LL));
+        assert(eq(-14294967296.0, -14294967296LL));
+        assert(eq(-14294967296.5, -14294967296LL));
+
+        assert(eq(4294967295.3, 4294967295LL));
+        assert(eq(4294967296.3, 4294967296LL));
+        assert(eq(14294967295.3, 14294967295LL));
+        assert(eq(14294967296.3, 14294967296LL));
+        assert(eq(-4294967295.3, -4294967295LL));
+        assert(eq(-4294967296.3, -4294967296LL));
+        assert(eq(-14294967295.3, -14294967295LL));
+        assert(eq(-14294967296.3, -14294967296LL));
+
+        assert(eq(4294967295.8, 4294967295LL));
+        assert(eq(4294967296.8, 4294967296LL));
+        assert(eq(14294967295.8, 14294967295LL));
+        assert(eq(14294967296.8, 14294967296LL));
+        assert(eq(-4294967295.8, -4294967295LL));
+        assert(eq(-4294967296.8, -4294967296LL));
+        assert(eq(-14294967295.8, -14294967295LL));
+        assert(eq(-14294967296.8, -14294967296LL));
+
+        // The following number is the largest double such that all integers smaller than this can exactly be represented in a double.
+        assert(eq(9007199254740992.0, 9007199254740992LL /* == 2^53 */));
+        assert(eq(-9007199254740992.0, -9007199254740992LL /* == -2^53 */));
+
+        printf("OK!\n");
+        return 0;
+      }
+    '''
+    self.do_run(src, 'OK!\n');
+
   def test_negative_zero(self):
     src = r'''
       #include <stdio.h>
@@ -10067,3 +10141,4 @@ for compiler, quantum, embetter, typed_arrays in [
   locals()[fullname] = make_run(fullname, fullname, compiler, embetter, quantum, typed_arrays)
 
 del T # T is just a shape for the specific subclasses, we don't test it itself
+
