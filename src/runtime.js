@@ -386,35 +386,51 @@ var Runtime = {
 
   // Returns a processor of UTF.
   // processCChar() receives characters from a C-like UTF representation and returns JS string fragments.
+  // See RFC3629 for details, the bytes are assumed to be valid UTF-8
   // processJSString() receives a JS string and returns a C-like UTF representation in an array
   UTF8Processor: function() {
     var buffer = [];
     var needed = 0;
     this.processCChar = function (code) {
-      code = code & 0xff;
-      if (needed) {
-        buffer.push(code);
-        needed--;
-      }
+      code = code & 0xFF;
+
       if (buffer.length == 0) {
-        if (code < 128) return String.fromCharCode(code);
+        if ((code & 0x80) == 0x00) {        // 0xxxxxxx
+          return String.fromCharCode(code);
+        }
         buffer.push(code);
-        if (code > 191 && code < 224) {
+        if ((code & 0xE0) == 0xC0) {        // 110xxxxx
           needed = 1;
-        } else {
+        } else if ((code & 0xF0) == 0xE0) { // 1110xxxx
           needed = 2;
+        } else {                            // 11110xxx
+          needed = 3;
         }
         return '';
       }
-      if (needed > 0) return '';
+
+      if (needed) {
+        buffer.push(code);
+        needed--;
+        if (needed > 0) return '';
+      }
+
       var c1 = buffer[0];
       var c2 = buffer[1];
       var c3 = buffer[2];
+      var c4 = buffer[3];
       var ret;
-      if (c1 > 191 && c1 < 224) {
-        ret = String.fromCharCode(((c1 & 31) << 6) | (c2 & 63));
+      if (buffer.length == 2) {
+        ret = String.fromCharCode(((c1 & 0x1F) << 6)  | (c2 & 0x3F));
+      } else if (buffer.length == 3) {
+        ret = String.fromCharCode(((c1 & 0x0F) << 12) | ((c2 & 0x3F) << 6)  | (c3 & 0x3F));
       } else {
-        ret = String.fromCharCode(((c1 & 15) << 12) | ((c2 & 63) << 6) | (c3 & 63));
+        // http://mathiasbynens.be/notes/javascript-encoding#surrogate-formulae
+        var codePoint = ((c1 & 0x07) << 18) | ((c2 & 0x3F) << 12) |
+                        ((c3 & 0x3F) << 6)  | (c4 & 0x3F);
+        ret = String.fromCharCode(
+          Math.floor((codePoint - 0x10000) / 0x400) + 0xD800,
+          (codePoint - 0x10000) % 0x400 + 0xDC00);
       }
       buffer.length = 0;
       return ret;
