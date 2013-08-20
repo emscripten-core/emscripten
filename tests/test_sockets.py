@@ -214,49 +214,14 @@ class sockets(BrowserCore):
         "0001:0000:0000:0000:0000:0000:ffff:ffff - 1::ffff:ffff\n"
     )
 
+  def test_getaddrinfo(self):
+    self.do_run(open(path_from_root('tests', 'sockets', 'test_getaddrinfo.c')).read(), 'success')
+
+  def test_getnameinfo(self):
+    self.do_run(open(path_from_root('tests', 'sockets', 'test_getnameinfo.c')).read(), 'success')
+
   def test_gethostbyname(self):
-    if Settings.USE_TYPED_ARRAYS != 2: return self.skip("assume t2 in gethostbyname")
-
-    src = r'''
-      #include <netdb.h>
-      #include <stdio.h>
-
-      void test(char *hostname) {
-        hostent *host = gethostbyname(hostname);
-        if (!host) {
-          printf("no such thing\n");
-          return;
-        }
-        printf("%s : %d : %d\n", host->h_name, host->h_addrtype, host->h_length);
-        char **name = host->h_aliases;
-        while (*name) {
-          printf("- %s\n", *name);
-          name++;
-        }
-        name = host->h_addr_list;
-        while (name && *name) {
-          printf("* ");
-          for (int i = 0; i < host->h_length; i++)
-            printf("%d.", (*name)[i]);
-          printf("\n");
-          name++;
-        }
-      }
-
-      int main() {
-        test("www.cheezburger.com");
-        test("fail.on.this.never.work"); // we will "work" on this - because we are just making aliases of names to ips
-        test("localhost");
-        return 0;
-      }
-    '''
-    self.do_run(src, '''www.cheezburger.com : 2 : 4
-* -84.29.1.0.
-fail.on.this.never.work : 2 : 4
-* -84.29.2.0.
-localhost : 2 : 4
-* -84.29.3.0.
-''')
+    self.do_run(open(path_from_root('tests', 'sockets', 'test_gethostbyname.c')).read(), 'success')
 
   def test_sockets_echo(self):
     sockets_include = '-I'+path_from_root('tests', 'sockets')
@@ -299,10 +264,6 @@ localhost : 2 : 4
     ]:
       with harness:
         self.btest(os.path.join('sockets', 'test_sockets_partial_client.c'), expected='165', args=['-DSOCKK=8995'])
-
-  # TODO add support for gethostbyaddr to re-enable this test
-  # def test_sockets_gethostbyname(self):
-  #   self.btest(os.path.join('sockets', 'test_sockets_gethostbyname.c'), expected='0', args=['-O2', '-DSOCKK=8997'])
 
   def test_sockets_select_server_down(self):
     for harness in [
