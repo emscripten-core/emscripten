@@ -395,15 +395,15 @@ var Runtime = {
       code = code & 0xFF;
 
       if (buffer.length == 0) {
-        if ((code & 0x80) == 0) {                 // 0xxxxxxx
+        if ((code & 0x80) == 0x00) {        // 0xxxxxxx
           return String.fromCharCode(code);
         }
         buffer.push(code);
-        if (((code & 0xE0) ^ 0xC0) == 0) {        // 110xxxxx
+        if ((code & 0xE0) == 0xC0) {        // 110xxxxx
           needed = 1;
-        } else if (((code & 0xF0) ^ 0xE0) == 0) { // 1110xxxx
+        } else if ((code & 0xF0) == 0xE0) { // 1110xxxx
           needed = 2;
-        } else {                                  // 11110xxx
+        } else {                            // 11110xxx
           needed = 3;
         }
         return '';
