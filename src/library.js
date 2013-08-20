@@ -7015,10 +7015,11 @@ LibraryManager.library = {
   },
   _inet_ntop6__deps: ['__setErrNo', '$ERRNO_CODES', '_inet_ntop6_raw'],
   _inet_ntop6: function(src, dst, size) {
-    var str = __inet_ntop6_raw([
+    var addr = [
       {{{ makeGetValue('src', '0', 'i32') }}}, {{{ makeGetValue('src', '4', 'i32') }}},
       {{{ makeGetValue('src', '8', 'i32') }}}, {{{ makeGetValue('src', '12', 'i32') }}}
-    ]);
+    ];
+    var str = __inet_ntop6_raw(addr);
     if (str.length+1 > size) {
       ___setErrNo(ERRNO_CODES.ENOSPC);
       return 0;
@@ -7160,10 +7161,55 @@ LibraryManager.library = {
   // netdb.h
   // ==========================================================================
 
-  // All we can do is alias names to ips. you give this a name, it returns an
-  // "ip" that we later know to use as a name. There is no way to do actual
-  // name resolving clientside in a browser.
-  // we do the aliasing in 172.29.*.*, giving us 65536 possibilities
+  // Fake hostname resolution helpers. We can't actually do this
+  // client-side in the browser, so instead we're generating fake
+  // IP addresses with _lookup_name that we can resolve later on
+  // with _lookup_addr.
+  _address_map: {
+    id: 1,
+    addrs: {},
+    names: {}
+  },
+
+  _lookup_name__deps: ['_address_map', '_inet_pton4_raw', '_inet_pton6_raw', '_inet_ntop4_raw'],
+  _lookup_name: function (name) {
+    // If the name is already a valid ipv4 / ipv6 address, don't generate a fake one.
+    var res = __inet_pton4_raw(name);
+    if (res) {
+      return name;
+    }
+    res = __inet_pton6_raw(name);
+    if (res) {
+      return name;
+    }
+
+    // See if this name is already mapped.
+    var addr;
+
+    if (__address_map.addrs[name]) {
+      addr = __address_map.addrs[name];
+    } else {
+      var id = __address_map.id++;
+      assert(id < 65535, 'exceeded max address mappings of 65535');
+
+      addr = '172.29.' + (id & 0xff) + '.' + (id & 0xff00);
+
+      __address_map.names[addr] = name;
+      __address_map.addrs[name] = addr;
+    }
+
+    return addr;
+  },
+
+  _lookup_addr__deps: ['_address_map'],
+  _lookup_addr: function (addr) {
+    if (__address_map.names[addr]) {
+      return __address_map.names[addr];
+    }
+
+    return null;
+  },
+
   // note: lots of leaking here!
   __hostent_struct_layout: Runtime.generateStructInfo([
     ['i8*', 'h_name'],
@@ -7173,32 +7219,53 @@ LibraryManager.library = {
     ['i8**', 'h_addr_list'],
   ]),
 
-  gethostbyname__deps: ['__hostent_struct_layout'],
+  _addrinfo_layout: Runtime.generateStructInfo([
+    ['i32', 'ai_flags'],
+    ['i32', 'ai_family'],
+    ['i32', 'ai_socktype'],
+    ['i32', 'ai_protocol'],
+    ['i32', 'ai_addrlen'],
+    ['*', 'ai_addr'],
+    ['*', 'ai_canonname'],
+    ['*', 'ai_next']
+  ]),
+
+  gethostbyaddr__deps: ['gethostbyname', '_inet_ntop4_raw', '_lookup_addr'],
+  gethostbyaddr: function (addr, addrlen, type) {
+    if (type !== {{{ cDefine('AF_INET') }}}) {
+      ___setErrNo(ERRNO_CODES.EAFNOSUPPORT);
+      return null;
+    }
+    addr = {{{ makeGetValue('addr', '0', 'i32') }}}; // addr is in_addr
+    var host = __inet_ntop4_raw(addr);
+    var lookup = __lookup_addr(host);
+    if (lookup) {
+      host = lookup;
+    }
+    var hostp = allocate(intArrayFromString(host), 'i8', ALLOC_STACK);
+    return _gethostbyname(hostp);
+  },
+
+  gethostbyname__deps: ['__hostent_struct_layout', '_inet_pton4_raw', '_lookup_name'],
   gethostbyname: function(name) {
     name = Pointer_stringify(name);
-      if (!_gethostbyname.id) {
-        _gethostbyname.id = 1;
-        _gethostbyname.table = {};
-      }
-    var id = _gethostbyname.id++;
-    assert(id < 65535);
-    var fakeAddr = 172 | (29 << 8) | ((id & 0xff) << 16) | ((id & 0xff00) << 24);
-    _gethostbyname.table[id] = name;
+
     // generate hostent
     var ret = _malloc(___hostent_struct_layout.__size__);
     var nameBuf = _malloc(name.length+1);
     writeStringToMemory(name, nameBuf);
-    setValue(ret+___hostent_struct_layout.h_name, nameBuf, 'i8*');
+    {{{ makeSetValue('ret', '___hostent_struct_layout.h_name', 'nameBuf', 'i8*') }}}
     var aliasesBuf = _malloc(4);
-    setValue(aliasesBuf, 0, 'i8*');
-    setValue(ret+___hostent_struct_layout.h_aliases, aliasesBuf, 'i8**');
-    setValue(ret+___hostent_struct_layout.h_addrtype, {{{ cDefine('AF_INET') }}}, 'i32');
-    setValue(ret+___hostent_struct_layout.h_length, 4, 'i32');
+    {{{ makeSetValue('aliasesBuf', '0', '0', 'i8*') }}}
+    {{{ makeSetValue('ret', '___hostent_struct_layout.h_aliases', 'aliasesBuf', 'i8**') }}}
+    var afinet = {{{ cDefine("AF_INET") }}};
+    {{{ makeSetValue('ret', '___hostent_struct_layout.h_addrtype', 'afinet', 'i32') }}}
+    {{{ makeSetValue('ret', '___hostent_struct_layout.h_length', '4', 'i32') }}}
     var addrListBuf = _malloc(12);
-    setValue(addrListBuf, addrListBuf+8, 'i32*');
-    setValue(addrListBuf+4, 0, 'i32*');
-    setValue(addrListBuf+8, fakeAddr, 'i32');
-    setValue(ret+___hostent_struct_layout.h_addr_list, addrListBuf, 'i8**');
+    {{{ makeSetValue('addrListBuf', '0', 'addrListBuf+8', 'i32*') }}}
+    {{{ makeSetValue('addrListBuf', '4', '0', 'i32*') }}}
+    {{{ makeSetValue('addrListBuf', '8', '__inet_pton4_raw(__lookup_name(name))', 'i32') }}}
+    {{{ makeSetValue('ret', '___hostent_struct_layout.h_addr_list', 'addrListBuf', 'i8**') }}}
     return ret;
   },
 
@@ -7207,8 +7274,235 @@ LibraryManager.library = {
     var data = _gethostbyname(name);
     _memcpy(hostData, data, ___hostent_struct_layout.__size__);
     _free(data);
-    setValue(errnum, 0, 'i32');
+    {{{ makeSetValue('errnum', '0', '0', 'i32') }}}
     return 0;
+  },
+
+  getaddrinfo__deps: ['$Sockets', '_addrinfo_layout', '_lookup_name', '_inet_pton4_raw', '_write_sockaddr', 'htons', 'htonl'],
+  getaddrinfo: function(node, service, hint, out) {
+    node = node ? Pointer_stringify(node) : null;
+    service = service ? Pointer_stringify(service) : null;
+    var addrs = [];
+    var canon = null;
+    var addr = 0;
+    var port = 0;
+    var flags = 0;
+    var family = {{{ cDefine('AF_UNSPEC') }}};
+    var type = 0;
+    var proto = 0;
+    var ai, last;
+
+    function allocaddrinfo(family, type, proto, canon, addr, port) {
+      var sa, salen, ai;
+      var res;
+
+      salen = family === {{{ cDefine('AF_INET6') }}} ?
+        Sockets.sockaddr_in6_layout.__size__ :
+        Sockets.sockaddr_in_layout.__size__;
+      sa = _malloc(salen);
+      res = __write_sockaddr(sa, family, addr, port);
+      assert(!res.errno);
+
+      ai = _malloc(__addrinfo_layout.__size__);
+      {{{ makeSetValue('ai', '__addrinfo_layout.ai_family', 'family', 'i32') }}};
+      {{{ makeSetValue('ai', '__addrinfo_layout.ai_socktype', 'type', 'i32') }}};
+      {{{ makeSetValue('ai', '__addrinfo_layout.ai_protocol', 'proto', 'i32') }}};
+      if (canon) {
+        {{{ makeSetValue('ai', '__addrinfo_layout.ai_canonname', 'canon', 'i32') }}};
+      }
+      {{{ makeSetValue('ai', '__addrinfo_layout.ai_addr', 'sa', '*') }}};
+      if (family === {{{ cDefine('AF_INET6') }}}) {
+        {{{ makeSetValue('ai', '__addrinfo_layout.ai_addrlen', 'Sockets.sockaddr_in6_layout.__size__', 'i32') }}};
+      } else {
+        {{{ makeSetValue('ai', '__addrinfo_layout.ai_addrlen', 'Sockets.sockaddr_in_layout.__size__', 'i32') }}};
+      }
+
+      return ai;
+    }
+
+    if (node === '*') {
+      node = null;
+    }
+    if (service === '*') {
+      service = null;
+    }
+    if (hint) {
+      flags = {{{ makeGetValue('hint', '__addrinfo_layout.ai_flags', 'i32') }}};
+      family = {{{ makeGetValue('hint', '__addrinfo_layout.ai_family', 'i32') }}};
+      type = {{{ makeGetValue('hint', '__addrinfo_layout.ai_socktype', 'i32') }}};
+      proto = {{{ makeGetValue('hint', '__addrinfo_layout.ai_protocol', 'i32') }}};
+    }
+    if (type && !proto) {
+      proto = type === {{{ cDefine('SOCK_DGRAM') }}} ? {{{ cDefine('IPPROTO_UDP') }}} : {{{ cDefine('IPPROTO_TCP') }}};
+    }
+    if (!type && proto) {
+      type = proto === {{{ cDefine('IPPROTO_UDP') }}} ? {{{ cDefine('SOCK_DGRAM') }}} : {{{ cDefine('SOCK_STREAM') }}};
+    }
+
+    if (!node && !service) {
+      return {{{ cDefine('EAI_NONAME') }}};
+    }
+    if (flags & ~({{{ cDefine('AI_PASSIVE') }}}|{{{ cDefine('AI_CANONNAME') }}}|{{{ cDefine('AI_NUMERICHOST') }}}|
+        {{{ cDefine('AI_NUMERICSERV') }}}|{{{ cDefine('AI_V4MAPPED') }}}|{{{ cDefine('AI_ALL') }}}|{{{ cDefine('AI_ADDRCONFIG') }}})) {
+      return {{{ cDefine('EAI_BADFLAGS') }}};
+    }
+    if (({{{ makeGetValue('hint', '__addrinfo_layout.ai_flags', 'i32') }}} & {{{ cDefine('AI_CANONNAME') }}}) && !node) {
+      return {{{ cDefine('EAI_BADFLAGS') }}};
+    }
+    if (flags & {{{ cDefine('AI_ADDRCONFIG') }}}) {
+      // TODO
+      return {{{ cDefine('EAI_NONAME') }}};
+    }
+    if (type !== {{{ cDefine('SOCK_STREAM') }}} && type !== {{{ cDefine('SOCK_DGRAM') }}}) {
+      return {{{ cDefine('EAI_SOCKTYPE') }}};
+    }
+    if (family !== {{{ cDefine('AF_UNSPEC') }}} && family !== {{{ cDefine('AF_INET') }}} && family !== {{{ cDefine('AF_INET6') }}}) {
+      return {{{ cDefine('EAI_FAMILY') }}};
+    }
+
+    {
+      if (!service) return {{{ cDefine('EAI_SERVICE') }}};
+
+      port = parseInt(service, 10);
+
+      if (isNaN(port)) {
+        if (flags & {{{ cDefine('AI_NUMERICSERV') }}}) {
+          return {{{ cDefine('EAI_NONAME') }}};
+        }
+        // TODO support resolving well-known service names from:
+        // http://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.txt
+        return {{{ cDefine('EAI_SERVICE') }}};
+      }
+    }
+
+    if (!node) {
+      if (family === {{{ cDefine('AF_UNSPEC') }}}) {
+        family = {{{ cDefine('AF_INET') }}};
+      }
+      if ((flags & {{{ cDefine('AI_PASSIVE') }}}) === 0) {
+        addr = _htonl({{{ cDefine('INADDR_LOOPBACK') }}});
+      }
+      ai = allocaddrinfo(family, type, proto, null, addr, port);
+      {{{ makeSetValue('out', '0', 'ai', '*') }}};
+      return 0;
+    }
+
+    //
+    // try as a numeric address
+    //
+    addr = __inet_pton4_raw(node);
+    if (addr !== null) {
+      // incoming node is a valid ipv4 address
+      if (family === {{{ cDefine('AF_UNSPEC') }}} || family === {{{ cDefine('AF_INET') }}}) {
+        family = {{{ cDefine('AF_INET') }}};
+      }
+      else if (family === {{{ cDefine('AF_INET6') }}} && (flags & {{{ cDefine('AI_V4MAPPED') }}})) {
+        addr = [0, 0, _htonl(0xffff), addr];
+        family = {{{ cDefine('AF_INET6') }}};
+      } else {
+        return {{{ cDefine('EAI_NONAME') }}};
+      }
+    } else {
+      addr = __inet_pton6_raw(node);
+      if (addr !== null) {
+        // incoming node is a valid ipv6 address
+        if (family === {{{ cDefine('AF_UNSPEC') }}} || family === {{{ cDefine('AF_INET6') }}}) {
+          family = {{{ cDefine('AF_INET6') }}};
+        } else {
+          return {{{ cDefine('EAI_NONAME') }}};
+        }
+      }
+    }
+    if (addr != null) {
+      ai = allocaddrinfo(family, type, proto, node, addr, port);
+      {{{ makeSetValue('out', '0', 'ai', '*') }}};
+      return 0;
+    }
+    if (flags & {{{ cDefine('AI_NUMERICHOST') }}}) {
+      return {{{ cDefine('EAI_NONAME') }}};
+    }
+
+    //
+    // try as a hostname
+    //
+    // resolve the hostname to a temporary fake address
+    node = __lookup_name(node);
+    addr = __inet_pton4_raw(node);
+    if (family === {{{ cDefine('AF_INET6') }}}) {
+      addr = [0, 0, _htonl(0xffff), addr];
+    }
+    ai = allocaddrinfo(family, type, proto, null, addr, port);
+    {{{ makeSetValue('out', '0', 'ai', '*') }}};
+    return 0;
+  },
+
+  freeaddrinfo__deps: ['$Sockets', '_addrinfo_layout'],
+  freeaddrinfo: function(ai) {
+    var sa = {{{ makeGetValue('ai', '__addrinfo_layout.ai_addr', '*') }}};
+    _free(sa);
+    _free(ai);
+  },
+
+  getnameinfo__deps: ['$Sockets', '__hostent_struct_layout', '_lookup_addr', '_inet_ntop4_raw', 'ntohs', 'gethostbyaddr'],
+  getnameinfo: function (sa, salen, node, nodelen, serv, servlen, flags) {
+    var addrstr;
+    // family / port offsets are common to both sockaddr_in and sockaddr_in6
+    var family = {{{ makeGetValue('sa', 'Sockets.sockaddr_in_layout.sin_family', 'i32') }}};
+    var port = _ntohs({{{ makeGetValue('sa', 'Sockets.sockaddr_in_layout.sin_port', 'i16') }}});
+
+    switch (family) {
+      case {{{ cDefine('AF_INET') }}}:
+        if (salen !== Sockets.sockaddr_in_layout.__size__) {
+          return {{{ cDefine('EAI_FAMILY') }}};
+        }
+        addrstr = __inet_ntop4_raw({{{ makeGetValue('sa', 'Sockets.sockaddr_in_layout.sin_addr', 'i32') }}});
+        break;
+      case {{{ cDefine('AF_INET6') }}}:
+        if (salen !== Sockets.sockaddr_in6_layout.__size__) {
+          return {{{ cDefine('EAI_FAMILY') }}};
+        }
+        addrstr = __inet_ntop6_raw(
+          {{{ makeGetValue('sa', 'Sockets.sockaddr_in6_layout.sin6_addr+0', 'i32') }}},
+          {{{ makeGetValue('sa', 'Sockets.sockaddr_in6_layout.sin6_addr+4', 'i32') }}},
+          {{{ makeGetValue('sa', 'Sockets.sockaddr_in6_layout.sin6_addr+8', 'i32') }}},
+          {{{ makeGetValue('sa', 'Sockets.sockaddr_in6_layout.sin6_addr+12', 'i32') }}}
+        );
+        break;
+      default:
+        return {{{ cDefine('EAI_FAMILY') }}};
+    }
+
+    if (node && nodelen) {
+      var lookup;
+      if ((flags & {{{ cDefine('NI_NUMERICHOST') }}}) || !(lookup = __lookup_addr(addrstr))) {
+        if (flags & {{{ cDefine('NI_NAMEREQD') }}}) {
+          return {{{ cDefine('EAI_NONAME') }}};
+        }
+      } else {
+        addrstr = lookup;
+      }
+      if (addrstr.length >= nodelen) {
+        return {{{ cDefine('EAI_OVERFLOW') }}};
+      }
+      writeStringToMemory(addrstr, node);
+    }
+
+    if (serv && servlen) {
+      var portstr = '' + port;
+      if (portstr.length > servlen) {
+        return {{{ cDefine('EAI_OVERFLOW') }}};
+      }
+      writeStringToMemory(portstr, serv);
+    }
+
+    return 0;
+  },
+
+  gai_strerror: function(val) {
+    if (!_gai_strerror.error) {
+      _gai_strerror.error = allocate(intArrayFromString("unknown error"), 'i8', ALLOC_NORMAL);
+    }
+    return _gai_strerror.error;
   },
 
   // ==========================================================================
@@ -7243,6 +7537,13 @@ LibraryManager.library = {
       ['i32', 'sin_addr'],
       ['i32', 'sin_zero'],
       ['i16', 'sin_zero_b'],
+    ]),
+    sockaddr_in6_layout: Runtime.generateStructInfo([
+      ['i32', 'sin6_family'],
+      ['i16', 'sin6_port'],
+      ['i32', 'sin6_flowinfo'],
+      ['b128', 'sin6_addr'],
+      ['i32', 'sin6_scope_id']
     ]),
     msghdr_layout: Runtime.generateStructInfo([
       ['*', 'msg_name'],
@@ -7637,6 +7938,61 @@ LibraryManager.library = {
     }
   },
 #else
+  // ==========================================================================
+  // socket.h
+  // ==========================================================================
+  _read_sockaddr: function (sa, salen) {
+    // family / port offsets are common to both sockaddr_in and sockaddr_in6
+    var family = {{{ makeGetValue('sa', 'Sockets.sockaddr_in_layout.sin_family', 'i32') }}};
+    var port = _ntohs({{{ makeGetValue('sa', 'Sockets.sockaddr_in_layout.sin_port', 'i16') }}});
+    var addr;
+
+    switch (family) {
+      case {{{ cDefine('AF_INET') }}}:
+        if (salen !== Sockets.sockaddr_in_layout.__size__) {
+          return { errno: ERRNO_CODES.EINVAL };
+        }
+        addr = __inet_ntop4_raw({{{ makeGetValue('sa', 'Sockets.sockaddr_in_layout.sin_addr', 'i32') }}});
+        break;
+      case {{{ cDefine('AF_INET6') }}}:
+        if (salen !== Sockets.sockaddr_in6_layout.__size__) {
+          return { errno: ERRNO_CODES.EINVAL };
+        }
+        addr = __inet_ntop6_raw(
+          {{{ makeGetValue('sa', 'Sockets.sockaddr_in6_layout.sin6_addr+0', 'i32') }}},
+          {{{ makeGetValue('sa', 'Sockets.sockaddr_in6_layout.sin6_addr+4', 'i32') }}},
+          {{{ makeGetValue('sa', 'Sockets.sockaddr_in6_layout.sin6_addr+8', 'i32') }}},
+          {{{ makeGetValue('sa', 'Sockets.sockaddr_in6_layout.sin6_addr+12', 'i32') }}}
+        );
+        break;
+      default:
+        return { errno: ERRNO_CODES.EAFNOSUPPORT };
+    }
+
+    return { family: family, addr: addr, port: port };
+  },
+  _write_sockaddr: function (sa, family, addr, port) {
+    switch (family) {
+      case {{{ cDefine('AF_INET') }}}:
+        {{{ makeSetValue('sa', 'Sockets.sockaddr_in_layout.sin_family', 'family', 'i32') }}};
+        {{{ makeSetValue('sa', 'Sockets.sockaddr_in_layout.sin_addr', 'addr', 'i32') }}};
+        {{{ makeSetValue('sa', 'Sockets.sockaddr_in_layout.sin_port', '_htons(port)', 'i16') }}};
+        break;
+      case {{{ cDefine('AF_INET6') }}}:
+        {{{ makeSetValue('sa', 'Sockets.sockaddr_in6_layout.sin6_family', 'family', 'i32') }}};
+        {{{ makeSetValue('sa', 'Sockets.sockaddr_in6_layout.sin6_addr+0', 'addr[0]', 'i32') }}};
+        {{{ makeSetValue('sa', 'Sockets.sockaddr_in6_layout.sin6_addr+4', 'addr[1]', 'i32') }}};
+        {{{ makeSetValue('sa', 'Sockets.sockaddr_in6_layout.sin6_addr+8', 'addr[2]', 'i32') }}};
+        {{{ makeSetValue('sa', 'Sockets.sockaddr_in6_layout.sin6_addr+12', 'addr[3]', 'i32') }}};
+        {{{ makeSetValue('sa', 'Sockets.sockaddr_in6_layout.sin6_port', '_htons(port)', 'i16') }}};
+        break;
+      default:
+        return { errno: ERRNO_CODES.EAFNOSUPPORT };
+    }
+    // kind of lame, but let's match _read_sockaddr's interface
+    return {};
+  },
+
   socket__deps: ['$FS', '$Sockets'],
   socket: function(family, type, protocol) {
     var stream = type == {{{ cDefine('SOCK_STREAM') }}};
@@ -7653,21 +8009,20 @@ LibraryManager.library = {
     return stream.fd;
   },
 
-  connect__deps: ['$FS', '$Sockets', '_inet_ntop4_raw', 'ntohs', 'gethostbyname'],
+  connect__deps: ['$FS', '$Sockets', '_inet_ntop4_raw', 'ntohs', '_lookup_addr'],
   connect: function(fd, addr, addrlen) {
     var info = FS.getStream(fd);
     if (!info) return -1;
+    // TODO support ipv6
     info.connected = true;
     info.addr = getValue(addr + Sockets.sockaddr_in_layout.sin_addr, 'i32');
     info.port = _htons(getValue(addr + Sockets.sockaddr_in_layout.sin_port, 'i16'));
     info.host = __inet_ntop4_raw(info.addr);
-    // Support 'fake' ips from gethostbyname
-    var parts = info.host.split('.');
-    if (parts[0] == '172' && parts[1] == '29') {
-      var low = Number(parts[2]);
-      var high = Number(parts[3]);
-      info.host = _gethostbyname.table[low + 0xff*high];
-      assert(info.host, 'problem translating fake ip ' + parts);
+    // The incoming address could perhaps be a fake address generated by gethostbyname,
+    // look it up to be sure.
+    var lookup = __lookup_addr(info.host);
+    if (lookup) {
+      info.host = lookup;
     }
     try {
       console.log('opening ws://' + info.host + ':' + info.port);
