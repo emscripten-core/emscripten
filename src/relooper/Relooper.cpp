@@ -1055,12 +1055,13 @@ void Relooper::Calculate(Block *Entry) {
         SHAPE_SWITCH(Root, {
           MultipleShape *Fused = Shape::IsMultiple(Root->Next);
           // If we are fusing a Multiple with a loop into this Simple, then visit it now
+          if (Fused && Fused->NeedLoop) {
+            LoopStack.push(Fused);
+          }
+          if (Simple->Inner->BranchVar) {
+            LoopStack.push(NULL); // a switch means breaks are now useless, push a dummy
+          }
           if (Fused) {
-            if (Simple->Inner->BranchVar) {
-              LoopStack.push(NULL); // a switch means breaks are now useless, push a dummy
-            } else if (Fused->NeedLoop) {
-              LoopStack.push(Fused);
-            }
             RECURSE_Multiple(Fused, FindLabeledLoops);
           }
           for (BlockBranchMap::iterator iter = Simple->Inner->ProcessedBranchesOut.begin(); iter != Simple->Inner->ProcessedBranchesOut.end(); iter++) {
@@ -1071,16 +1072,18 @@ void Relooper::Calculate(Block *Entry) {
               if (Details->Ancestor != LoopStack.top() && Details->Labeled) {
                 LabeledShape *Labeled = Shape::IsLabeled(Details->Ancestor);
                 Labeled->Labeled = true;
-                Details->Labeled = true;
               } else {
-                Details->Labeled = true;//false;
+                Details->Labeled = false;
               }
             }
           }
+          if (Simple->Inner->BranchVar) {
+            LoopStack.pop();
+          }
+          if (Fused && Fused->NeedLoop) {
+            LoopStack.pop();
+          }
           if (Fused) {
-            if (Simple->Inner->BranchVar || Fused->NeedLoop) {
-              LoopStack.pop();
-            }
             Next = Fused->Next;
           } else {
             Next = Root->Next;
