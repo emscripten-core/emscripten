@@ -412,9 +412,9 @@ var Runtime = {
       if (needed) {
         buffer.push(code);
         needed--;
+        if (needed > 0) return '';
       }
 
-      if (needed > 0) return '';
       var c1 = buffer[0];
       var c2 = buffer[1];
       var c3 = buffer[2];
