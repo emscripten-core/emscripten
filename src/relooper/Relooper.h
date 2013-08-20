@@ -139,7 +139,7 @@ typedef std::map<Block*, Shape*> BlockShapeMap;
 struct LabeledShape : public Shape {
   bool Labeled; // If we have a loop, whether it needs to be labeled
 
-  LabeledShape(ShapeType TypeInit) : Shape(TypeInit), Labeled(false) {}
+  LabeledShape(ShapeType TypeInit) : Shape(TypeInit), Labeled(true) {} // XXX false
 };
 
 struct MultipleShape : public LabeledShape {

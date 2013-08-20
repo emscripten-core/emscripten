@@ -74,8 +74,12 @@ int main() {
     branch_var = branch_vars[i]
     b = branches[i]
     for j in range(len(b)):
-      fast += '''  b%d->AddBranchTo(b%d, "%s%d");
-''' % (i, b[j], 'modded == ' if branch_var == 'NULL' else '', j)
+      if branch_var == 'NULL':
+        fast += '''  b%d->AddBranchTo(b%d, "modded == %d");
+''' % (i, b[j], j)
+      else:
+        fast += '''  b%d->AddBranchTo(b%d, "case %d:");
+''' % (i, b[j], j)
     fast += '''  b%d->AddBranchTo(b%d, NULL);
 ''' % (i, defaults[i])
 

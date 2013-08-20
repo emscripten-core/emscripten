@@ -799,6 +799,7 @@ function JSify(data, functionsOnly, givenFunctions) {
             if (last.intertype != 'switch') {
               blockMap[label.ident] = Relooper.addBlock(content);
             } else {
+              assert(last.signedIdent);
               blockMap[label.ident] = Relooper.addBlock(content, last.signedIdent);
             }
           }
@@ -1130,7 +1131,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
   });
   makeFuncLineActor('switch', function(item) {
-    var useIfs = RELOOP || item.switchLabels.length < 1024; // with a huge number of cases, if-else which looks nested to js parsers can cause problems
+    var useIfs = false;
     var phiSets = calcPhiSets(item);
     // Consolidate checks that go to the same label. This is important because it makes the relooper simpler and faster.
     var targetLabels = {}; // for each target label, the list of values going to it
@@ -1144,7 +1145,8 @@ function JSify(data, functionsOnly, givenFunctions) {
     });
     var ret = '';
     var first = true;
-    item.signedIdent = signedIdent = makeSignOp(item.ident, item.type, 're'); // we need to standardize for purpose of comparison
+    signedIdent = makeSignOp(item.ident, item.type, 're'); // we need to standardize for purpose of comparison
+    if (!useIfs) item.signedIdent = signedIdent;
     if (RELOOP) {
       item.groupedLabels = [];
     }

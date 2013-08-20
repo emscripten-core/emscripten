@@ -193,8 +193,14 @@ void Block::Render(bool InLoop) {
 
   if (ProcessedBranchesOut.size() > 2) assert(BranchVar); // must have a branch variable if multiple conditions
 
+  bool useSwitch = BranchVar != NULL;
+
+  if (useSwitch) {
+    PrintIndented("switch (%s) {\n", BranchVar);
+  }
+
   ministring RemainingConditions;
-  bool First = true;
+  bool First = !useSwitch; // when using a switch, there is no special first
   for (BlockBranchMap::iterator iter = ProcessedBranchesOut.begin();; iter++) {
     Block *Target;
     Branch *Details;
@@ -212,30 +218,39 @@ void Block::Render(bool InLoop) {
     bool HasContent = SetCurrLabel || Details->Type != Branch::Direct || HasFusedContent || Details->Code;
     if (iter != ProcessedBranchesOut.end()) {
       // If there is nothing to show in this branch, omit the condition
-      if (HasContent) {
-        PrintIndented("%sif (%s%s%s) {\n", First ? "" : "} else ", BranchVar ? BranchVar : "", BranchVar ? " == " : "", Details->Condition);
-        First = false;
+      if (useSwitch) {
+        PrintIndented("%s {\n", Details->Condition);
       } else {
-        if (RemainingConditions.size() > 0) RemainingConditions += " && ";
-        RemainingConditions += "!(";
-        if (BranchVar) {
-          RemainingConditions += BranchVar;
-          RemainingConditions += " == ";
+        if (HasContent) {
+          PrintIndented("%sif (%s) {\n", First ? "" : "} else ", Details->Condition);
+          First = false;
+        } else {
+          if (RemainingConditions.size() > 0) RemainingConditions += " && ";
+          RemainingConditions += "!(";
+          if (BranchVar) {
+            RemainingConditions += BranchVar;
+            RemainingConditions += " == ";
+          }
+          RemainingConditions += Details->Condition;
+          RemainingConditions += ")";
         }
-        RemainingConditions += Details->Condition;
-        RemainingConditions += ")";
       }
     } else {
-      if (HasContent) {
-        if (RemainingConditions.size() > 0) {
-          if (First) {
-            PrintIndented("if (%s) {\n", RemainingConditions.c_str());
-            First = false;
-          } else {
-            PrintIndented("} else if (%s) {\n", RemainingConditions.c_str());
+      // this is the default
+      if (useSwitch) {
+        PrintIndented("default: {\n");
+      } else {
+        if (HasContent) {
+          if (RemainingConditions.size() > 0) {
+            if (First) {
+              PrintIndented("if (%s) {\n", RemainingConditions.c_str());
+              First = false;
+            } else {
+              PrintIndented("} else if (%s) {\n", RemainingConditions.c_str());
+            }
+          } else if (!First) {
+            PrintIndented("} else {\n");
           }
-        } else if (!First) {
-          PrintIndented("} else {\n");
         }
       }
     }
@@ -244,7 +259,13 @@ void Block::Render(bool InLoop) {
     if (HasFusedContent) {
       Fused->InnerMap.find(Target)->second->Render(InLoop);
     }
+    if (useSwitch && iter != ProcessedBranchesOut.end()) {
+      PrintIndented("break;\n");
+    }
     if (!First) Indenter::Unindent();
+    if (useSwitch) {
+      PrintIndented("}\n");
+    }
     if (iter == ProcessedBranchesOut.end()) break;
   }
   if (!First) PrintIndented("}\n");
@@ -999,10 +1020,10 @@ void Relooper::Calculate(Block *Entry) {
                 }
               } else if (Details->Type == Branch::Break && LastLoop && LastLoop->Natural == Details->Ancestor->Natural) {
                 // it is important to simplify breaks, as simpler breaks enable other optimizations
-                Details->Labeled = false;
-                if (MultipleShape *Multiple = Shape::IsMultiple(Details->Ancestor)) {
-                  Multiple->NeedLoop--;
-                }
+                //Details->Labeled = false;
+                //if (MultipleShape *Multiple = Shape::IsMultiple(Details->Ancestor)) {
+                //  Multiple->NeedLoop--;
+                //}
               }
             }
           }
@@ -1034,8 +1055,12 @@ void Relooper::Calculate(Block *Entry) {
         SHAPE_SWITCH(Root, {
           MultipleShape *Fused = Shape::IsMultiple(Root->Next);
           // If we are fusing a Multiple with a loop into this Simple, then visit it now
-          if (Fused && Fused->NeedLoop) {
-            LoopStack.push(Fused);
+          if (Fused) {
+            if (Simple->Inner->BranchVar) {
+              LoopStack.push(NULL); // a switch means breaks are now useless, push a dummy
+            } else if (Fused->NeedLoop) {
+              LoopStack.push(Fused);
+            }
             RECURSE_Multiple(Fused, FindLabeledLoops);
           }
           for (BlockBranchMap::iterator iter = Simple->Inner->ProcessedBranchesOut.begin(); iter != Simple->Inner->ProcessedBranchesOut.end(); iter++) {
@@ -1048,12 +1073,14 @@ void Relooper::Calculate(Block *Entry) {
                 Labeled->Labeled = true;
                 Details->Labeled = true;
               } else {
-                Details->Labeled = false;
+                Details->Labeled = true;//false;
               }
             }
           }
-          if (Fused && Fused->NeedLoop) {
-            LoopStack.pop();
+          if (Fused) {
+            if (Simple->Inner->BranchVar || Fused->NeedLoop) {
+              LoopStack.pop();
+            }
             Next = Fused->Next;
           } else {
             Next = Root->Next;
