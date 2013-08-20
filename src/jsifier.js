@@ -1806,7 +1806,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
     if (HEADLESS) {
       print('if (!ENVIRONMENT_IS_WEB) {');
-      print(read('headless.js').replace("'%s'", "'http://emscripten.org'").replace("'?%s'", "''").replace('%s,', 'null,').replace('%d', '0'));
+      print(read('headless.js').replace("'%s'", "'http://emscripten.org'").replace("'?%s'", "''").replace("'?%s'", "'/'").replace('%s,', 'null,').replace('%d', '0'));
       print('}');
     }
     if (RUNTIME_TYPE_INFO) {

@@ -23,6 +23,7 @@ var window = {
       return '%s';
     },
     search: '?%s',
+    pathname: '%s',
   },
   fakeNow: 0, // we don't use Date.now()
   rafs: [],
@@ -84,6 +85,7 @@ var window = {
     },
     revokeObjectURL: function(x) {},
   },
+  encodeURIComponent: function(x) { return x },
 };
 var setTimeout = window.setTimeout;
 var document = {
