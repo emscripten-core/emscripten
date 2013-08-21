@@ -96,6 +96,133 @@ class CompiledServerHarness:
     # proper listen server support.
 
 class sockets(BrowserCore):
+  def test_inet(self):
+    src = r'''
+      #include <stdio.h>
+      #include <arpa/inet.h>
+
+      int main() {
+        printf("*%x,%x,%x,%x,%x,%x*\n", htonl(0xa1b2c3d4), htonl(0xfe3572e0), htonl(0x07abcdf0), htons(0xabcd), ntohl(0x43211234), ntohs(0xbeaf));
+        in_addr_t i = inet_addr("190.180.10.78");
+        printf("%x\n", i);
+        return 0;
+      }
+    '''
+    self.do_run(src, '*d4c3b2a1,e07235fe,f0cdab07,cdab,34122143,afbe*\n4e0ab4be\n')
+
+  def test_inet2(self):
+    src = r'''
+      #include <stdio.h>
+      #include <arpa/inet.h>
+
+      int main() {
+        struct in_addr x, x2;
+        int *y = (int*)&x;
+        *y = 0x12345678;
+        printf("%s\n", inet_ntoa(x));
+        int r = inet_aton(inet_ntoa(x), &x2);
+        printf("%s\n", inet_ntoa(x2));
+        return 0;
+      }
+    '''
+    self.do_run(src, '120.86.52.18\n120.86.52.18\n')
+
+  def test_inet3(self):
+    src = r'''
+      #include <stdio.h>
+      #include <arpa/inet.h>
+      #include <sys/socket.h>
+      int main() {
+        char dst[64];
+        struct in_addr x, x2;
+        int *y = (int*)&x;
+        *y = 0x12345678;
+        printf("%s\n", inet_ntop(AF_INET,&x,dst,sizeof dst));
+        int r = inet_aton(inet_ntoa(x), &x2);
+        printf("%s\n", inet_ntop(AF_INET,&x2,dst,sizeof dst));
+        return 0;
+      }
+    '''
+    self.do_run(src, '120.86.52.18\n120.86.52.18\n')
+
+  def test_inet4(self):
+    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('requires ta2')
+
+    src = r'''
+      #include <stdio.h>
+      #include <arpa/inet.h>
+      #include <sys/socket.h>
+
+      void test(char *test_addr){
+          char str[40];
+          struct in6_addr addr;
+          unsigned char *p = (unsigned char*)&addr;
+          int ret;
+          ret = inet_pton(AF_INET6,test_addr,&addr);
+          if(ret == -1) return;
+          if(ret == 0) return;
+          if(inet_ntop(AF_INET6,&addr,str,sizeof(str)) == NULL ) return;
+          printf("%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x - %s\n",
+               p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7],p[8],p[9],p[10],p[11],p[12],p[13],p[14],p[15],str);
+      }
+      int main(){
+          test("::");
+          test("::1");
+          test("::1.2.3.4");
+          test("::17.18.19.20");
+          test("::ffff:1.2.3.4");
+          test("1::ffff");
+          test("::255.255.255.255");
+          test("0:ff00:1::");
+          test("0:ff::");
+          test("abcd::");
+          test("ffff::a");
+          test("ffff::a:b");
+          test("ffff::a:b:c");
+          test("ffff::a:b:c:d");
+          test("ffff::a:b:c:d:e");
+          test("::1:2:0:0:0");
+          test("0:0:1:2:3::");
+          test("ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff");
+          test("1::255.255.255.255");
+
+          //below should fail and not produce results..
+          test("1.2.3.4");
+          test("");
+          test("-");
+      }
+    '''
+    self.do_run(src,
+        "0000:0000:0000:0000:0000:0000:0000:0000 - ::\n"
+        "0000:0000:0000:0000:0000:0000:0000:0001 - ::1\n"
+        "0000:0000:0000:0000:0000:0000:0102:0304 - ::1.2.3.4\n"
+        "0000:0000:0000:0000:0000:0000:1112:1314 - ::17.18.19.20\n"
+        "0000:0000:0000:0000:0000:ffff:0102:0304 - ::ffff:1.2.3.4\n"
+        "0001:0000:0000:0000:0000:0000:0000:ffff - 1::ffff\n"
+        "0000:0000:0000:0000:0000:0000:ffff:ffff - ::255.255.255.255\n"
+        "0000:ff00:0001:0000:0000:0000:0000:0000 - 0:ff00:1::\n"
+        "0000:00ff:0000:0000:0000:0000:0000:0000 - 0:ff::\n"
+        "abcd:0000:0000:0000:0000:0000:0000:0000 - abcd::\n"
+        "ffff:0000:0000:0000:0000:0000:0000:000a - ffff::a\n"
+        "ffff:0000:0000:0000:0000:0000:000a:000b - ffff::a:b\n"
+        "ffff:0000:0000:0000:0000:000a:000b:000c - ffff::a:b:c\n"
+        "ffff:0000:0000:0000:000a:000b:000c:000d - ffff::a:b:c:d\n"
+        "ffff:0000:0000:000a:000b:000c:000d:000e - ffff::a:b:c:d:e\n"
+        "0000:0000:0000:0001:0002:0000:0000:0000 - ::1:2:0:0:0\n"
+        "0000:0000:0001:0002:0003:0000:0000:0000 - 0:0:1:2:3::\n"
+        "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff - ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff\n"
+        "0001:0000:0000:0000:0000:0000:ffff:ffff - 1::ffff:ffff\n"
+    )
+
+  def test_getaddrinfo(self):
+    self.do_run(open(path_from_root('tests', 'sockets', 'test_getaddrinfo.c')).read(), 'success')
+
+  def test_getnameinfo(self):
+    self.do_run(open(path_from_root('tests', 'sockets', 'test_getnameinfo.c')).read(), 'success')
+
+  def test_gethostbyname(self):
+    self.do_run(open(path_from_root('tests', 'sockets', 'test_gethostbyname.c')).read(), 'success')
+
   def test_sockets_echo(self):
     sockets_include = '-I'+path_from_root('tests', 'sockets')
 
@@ -137,10 +264,6 @@ class sockets(BrowserCore):
     ]:
       with harness:
         self.btest(os.path.join('sockets', 'test_sockets_partial_client.c'), expected='165', args=['-DSOCKK=8995'])
-
-  # TODO add support for gethostbyaddr to re-enable this test
-  # def test_sockets_gethostbyname(self):
-  #   self.btest(os.path.join('sockets', 'test_sockets_gethostbyname.c'), expected='0', args=['-O2', '-DSOCKK=8997'])
 
   def test_sockets_select_server_no_accept(self):
     for harness in [
