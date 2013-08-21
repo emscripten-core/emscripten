@@ -1004,6 +1004,8 @@ void Relooper::Calculate(Block *Entry) {
         Root = Next;
         Next = NULL;
         SHAPE_SWITCH(Root, {
+          if (Simple->Inner->BranchVar) LastLoop = NULL; // a switch clears out the loop (TODO: only for breaks, not continue)
+
           // If there is a next block, we already know at Simple creation time to make direct branches,
           // and we can do nothing more. If there is no next however, then Natural is where we will
           // go to by doing nothing, so we can potentially optimize some branches to direct.
@@ -1020,10 +1022,10 @@ void Relooper::Calculate(Block *Entry) {
                 }
               } else if (Details->Type == Branch::Break && LastLoop && LastLoop->Natural == Details->Ancestor->Natural) {
                 // it is important to simplify breaks, as simpler breaks enable other optimizations
-                //Details->Labeled = false;
-                //if (MultipleShape *Multiple = Shape::IsMultiple(Details->Ancestor)) {
-                //  Multiple->NeedLoop--;
-                //}
+                Details->Labeled = false;
+                if (MultipleShape *Multiple = Shape::IsMultiple(Details->Ancestor)) {
+                  Multiple->NeedLoop--;
+                }
               }
             }
           }
