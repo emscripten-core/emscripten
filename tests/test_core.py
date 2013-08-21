@@ -3935,9 +3935,6 @@ def process(filename):
       self.do_run(src, 'Hello world!')
 
   def test_bigswitch(self):
-    if Settings.RELOOP: return self.skip('TODO: switch in relooper, issue #781')
-    if Settings.ASM_JS: return self.skip('TODO: switch too large for asm')
-
     src = open(path_from_root('tests', 'bigswitch.cpp')).read()
     self.do_run(src, '''34962: GL_ARRAY_BUFFER (0x8892)
 26214: what?
