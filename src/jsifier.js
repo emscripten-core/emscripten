@@ -1137,6 +1137,9 @@ function JSify(data, functionsOnly, givenFunctions) {
       maxx = Math.max(maxx, Math.abs(parseInt(switchLabel.value)));
     });
     var useIfs = !(maxx <= 2*1024*1024 && (maxx/item.switchLabels.length) < 10*1024);
+    if (VERBOSE && useIfs && item.switchLabels.length > 2) {
+      warn('not optimizing llvm switch into js switch because ' + [maxx, maxx/item.switchLabels.length]);
+    }
 
     var phiSets = calcPhiSets(item);
     // Consolidate checks that go to the same label. This is important because it makes the relooper simpler and faster.
