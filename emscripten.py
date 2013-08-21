@@ -552,52 +552,52 @@ var asm = (function(global, env, buffer) {
 ''' + ''.join(['''
   var tempRet%d = 0;''' % i for i in range(10)]) + '\n' + asm_global_funcs + '''
 // EMSCRIPTEN_START_FUNCS
-  function stackAlloc(size) {
-    size = size|0;
-    var ret = 0;
-    ret = STACKTOP;
-    STACKTOP = (STACKTOP + size)|0;
+function stackAlloc(size) {
+  size = size|0;
+  var ret = 0;
+  ret = STACKTOP;
+  STACKTOP = (STACKTOP + size)|0;
 ''' + ('STACKTOP = ((STACKTOP + 3)>>2)<<2;' if settings['TARGET_X86'] else 'STACKTOP = ((STACKTOP + 7)>>3)<<3;') + '''
-    return ret|0;
+  return ret|0;
+}
+function stackSave() {
+  return STACKTOP|0;
+}
+function stackRestore(top) {
+  top = top|0;
+  STACKTOP = top;
+}
+function setThrew(threw, value) {
+  threw = threw|0;
+  value = value|0;
+  if ((__THREW__|0) == 0) {
+    __THREW__ = threw;
+    threwValue = value;
   }
-  function stackSave() {
-    return STACKTOP|0;
-  }
-  function stackRestore(top) {
-    top = top|0;
-    STACKTOP = top;
-  }
-  function setThrew(threw, value) {
-    threw = threw|0;
-    value = value|0;
-    if ((__THREW__|0) == 0) {
-      __THREW__ = threw;
-      threwValue = value;
-    }
-  }
-  function copyTempFloat(ptr) {
-    ptr = ptr|0;
-    HEAP8[tempDoublePtr] = HEAP8[ptr];
-    HEAP8[tempDoublePtr+1|0] = HEAP8[ptr+1|0];
-    HEAP8[tempDoublePtr+2|0] = HEAP8[ptr+2|0];
-    HEAP8[tempDoublePtr+3|0] = HEAP8[ptr+3|0];
-  }
-  function copyTempDouble(ptr) {
-    ptr = ptr|0;
-    HEAP8[tempDoublePtr] = HEAP8[ptr];
-    HEAP8[tempDoublePtr+1|0] = HEAP8[ptr+1|0];
-    HEAP8[tempDoublePtr+2|0] = HEAP8[ptr+2|0];
-    HEAP8[tempDoublePtr+3|0] = HEAP8[ptr+3|0];
-    HEAP8[tempDoublePtr+4|0] = HEAP8[ptr+4|0];
-    HEAP8[tempDoublePtr+5|0] = HEAP8[ptr+5|0];
-    HEAP8[tempDoublePtr+6|0] = HEAP8[ptr+6|0];
-    HEAP8[tempDoublePtr+7|0] = HEAP8[ptr+7|0];
-  }
+}
+function copyTempFloat(ptr) {
+  ptr = ptr|0;
+  HEAP8[tempDoublePtr] = HEAP8[ptr];
+  HEAP8[tempDoublePtr+1|0] = HEAP8[ptr+1|0];
+  HEAP8[tempDoublePtr+2|0] = HEAP8[ptr+2|0];
+  HEAP8[tempDoublePtr+3|0] = HEAP8[ptr+3|0];
+}
+function copyTempDouble(ptr) {
+  ptr = ptr|0;
+  HEAP8[tempDoublePtr] = HEAP8[ptr];
+  HEAP8[tempDoublePtr+1|0] = HEAP8[ptr+1|0];
+  HEAP8[tempDoublePtr+2|0] = HEAP8[ptr+2|0];
+  HEAP8[tempDoublePtr+3|0] = HEAP8[ptr+3|0];
+  HEAP8[tempDoublePtr+4|0] = HEAP8[ptr+4|0];
+  HEAP8[tempDoublePtr+5|0] = HEAP8[ptr+5|0];
+  HEAP8[tempDoublePtr+6|0] = HEAP8[ptr+6|0];
+  HEAP8[tempDoublePtr+7|0] = HEAP8[ptr+7|0];
+}
 ''' + ''.join(['''
-  function setTempRet%d(value) {
-    value = value|0;
-    tempRet%d = value;
-  }
+function setTempRet%d(value) {
+  value = value|0;
+  tempRet%d = value;
+}
 ''' % (i, i) for i in range(10)])] + [PostSets.js + '\n'] + funcs_js + ['''
   %s
 
