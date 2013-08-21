@@ -224,6 +224,10 @@ EMSCRIPTEN_FUNCS();
   total_size = len(js)
   js = None
 
+  if 'last' in passes and len(funcs) > 0:
+    if max([len(func[1]) for func in funcs]) > 200000:
+      print >> sys.stderr, 'warning: Output contains some very large functions, consider using OUTLINING_LIMIT to break them up (see settings.js)'
+
   # if we are making source maps, we want our debug numbering to start from the
   # top of the file, so avoid breaking the JS into chunks
   cores = 1 if source_map else int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
