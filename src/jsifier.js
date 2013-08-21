@@ -796,10 +796,10 @@ function JSify(data, functionsOnly, givenFunctions) {
             var content = getLabelLines(label, '', true);
             //printErr(func.ident + ' : ' + label.ident + ' : ' + content + '\n');
             var last = label.lines[label.lines.length-1];
-            if (last.intertype != 'switch') {
+            if (!last.signedIdent) {
               blockMap[label.ident] = Relooper.addBlock(content);
             } else {
-              assert(last.signedIdent);
+              assert(last.intertype == 'switch');
               blockMap[label.ident] = Relooper.addBlock(content, last.signedIdent);
             }
           }
@@ -1131,7 +1131,13 @@ function JSify(data, functionsOnly, givenFunctions) {
     }
   });
   makeFuncLineActor('switch', function(item) {
-    var useIfs = false;
+    // use a switch if the range is not too big or sparse
+    var maxx = 0;
+    item.switchLabels.forEach(function(switchLabel) {
+      maxx = Math.max(maxx, Math.abs(parseInt(switchLabel.value)));
+    });
+    var useIfs = !(maxx <= 2*1024*1024 && (maxx/item.switchLabels.length) < 10*1024);
+
     var phiSets = calcPhiSets(item);
     // Consolidate checks that go to the same label. This is important because it makes the relooper simpler and faster.
     var targetLabels = {}; // for each target label, the list of values going to it

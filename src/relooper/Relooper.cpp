@@ -191,8 +191,6 @@ void Block::Render(bool InLoop) {
   }
   assert(DefaultTarget); // Since each block *must* branch somewhere, this must be set
 
-  if (ProcessedBranchesOut.size() > 2) assert(BranchVar); // must have a branch variable if multiple conditions
-
   bool useSwitch = BranchVar != NULL;
 
   if (useSwitch) {
