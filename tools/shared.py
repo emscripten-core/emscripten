@@ -843,6 +843,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       raise
     del env['EMMAKEN_JUST_CONFIGURE']
     if process.returncode is not 0:
+      logging.error('Configure step failed with non-zero return code ' + str(process.returncode) + '! Command line: ' + str(args))
       raise subprocess.CalledProcessError(cmd=args, returncode=process.returncode)
 
   @staticmethod
@@ -897,8 +898,7 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)''' % { 'winfix': '' if not WINDOWS e
       env[k] = v
     if configure: # Useful in debugging sometimes to comment this out (and the lines below up to and including the |link| call)
       try:
-        Building.configure(configure + configure_args, stdout=open(os.path.join(project_dir, 'configure_'), 'w'),
-                                                       stderr=open(os.path.join(project_dir, 'configure_err'), 'w'), env=env)
+        Building.configure(configure + configure_args, env=env)
       except subprocess.CalledProcessError, e:
         pass # Ignore exit code != 0
     def open_make_out(i, mode='r'):
