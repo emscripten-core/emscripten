@@ -1631,7 +1631,7 @@ try:
     if DEBUG: save_intermediate('closure')
 
   if js_opts:
-    if shared.Settings.OUTLINING_LIMIT > 0:
+    if shared.Settings.OUTLINING_LIMIT > 0 and shared.Settings.ASM_JS:
       js_optimizer_queue += ['outline']
       js_optimizer_extra_info['sizeToOutline'] = shared.Settings.OUTLINING_LIMIT
 
