@@ -1139,7 +1139,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       maxx = Math.max(maxx, curr);
     });
     var range = maxx - minn;
-    var useIfs = (item.switchLabels.length+1) < 6 || range > 2*1024*1024 || (range/item.switchLabels.length) > 10*1024; // heuristics
+    var useIfs = (item.switchLabels.length+1) < 6 || range > 10*1024 || (range/item.switchLabels.length) > 1024; // heuristics
     if (VERBOSE && useIfs && item.switchLabels.length > 2) {
       warn('not optimizing llvm switch into js switch because ' + [range, range/item.switchLabels.length]);
     }
