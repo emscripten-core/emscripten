@@ -1132,13 +1132,16 @@ function JSify(data, functionsOnly, givenFunctions) {
   });
   makeFuncLineActor('switch', function(item) {
     // use a switch if the range is not too big or sparse
-    var maxx = 0;
+    var minn = Infinity, maxx = -Infinity;
     item.switchLabels.forEach(function(switchLabel) {
-      maxx = Math.max(maxx, Math.abs(parseInt(switchLabel.value)));
+      var curr = Math.abs(parseInt(switchLabel.value));
+      minn = Math.min(minn, curr);
+      maxx = Math.max(maxx, curr);
     });
-    var useIfs = (item.switchLabels.length+1) < 6 || maxx > 2*1024*1024 || (maxx/item.switchLabels.length) > 10*1024; // heuristics
+    var range = maxx - minn;
+    var useIfs = (item.switchLabels.length+1) < 6 || range > 2*1024*1024 || (range/item.switchLabels.length) > 10*1024; // heuristics
     if (VERBOSE && useIfs && item.switchLabels.length > 2) {
-      warn('not optimizing llvm switch into js switch because ' + [maxx, maxx/item.switchLabels.length]);
+      warn('not optimizing llvm switch into js switch because ' + [range, range/item.switchLabels.length]);
     }
 
     var phiSets = calcPhiSets(item);
