@@ -3026,22 +3026,32 @@ function outline(ast) {
           if (ignore.indexOf(node) >= 0) continue;
           var type = node[0];
           if (measureSize(node) >= minSize) {
-            if (type === 'if' && node[3]) {
+            if ((type === 'if' && node[3]) || type === 'switch') {
+              var isIf = type === 'if';
               var reps = [];
               var helper = getHelper();
               // clear helper
               reps.push(['stat', ['assign', true, ['name', helper], ['num', 1]]]); // 1 means continue in ifs
               // gather parts
-              var parts = [];
-              var curr = node;
-              while (1) {
-                parts.push({ condition: curr[1], body: curr[2] });
-                curr = curr[3];
-                if (!curr) break;
-                if (curr[0] != 'if') {
-                  parts.push({ condition: null, body: curr });
-                  break;
+              var parts;
+              if (isIf) {
+                parts = [];
+                var curr = node;
+                while (1) {
+                  parts.push({ condition: curr[1], body: curr[2] });
+                  curr = curr[3];
+                  if (!curr) break;
+                  if (curr[0] != 'if') {
+                    parts.push({ condition: null, body: curr });
+                    break;
+                  }
                 }
+              } else { // switch
+                var switchVar = getHelper(); // switch var could be an expression
+                reps.push(['stat', ['assign', true, ['name', switchVar], node[1]]]);
+                parts = node[2].map(function(case_) {
+                  return { condition: case_[0], body: case_[1] };
+                });
               }
               // chunkify. Each chunk is a chain of if-elses, with the new overhead just on entry and exit
               var chunks = [];
@@ -3063,21 +3073,35 @@ function outline(ast) {
               // generate flattened code
               chunks.forEach(function(chunk) {
                 var pre = ['stat', ['assign', true, ['name', helper], ['num', 0]]];
-                var chain = null, tail = null;
-                chunk.forEach(function(part) {
-                  // add to chain
-                  var contents = makeIf(part.condition || ['num', 1], part.body[1]);
-                  if (chain) {
-                    tail[3] = contents;
-                  } else {
-                    chain = contents;
-                    ignore.push(contents);
+                if (isIf) {
+                  var chain = null, tail = null;
+                  chunk.forEach(function(part) {
+                    // add to chain
+                    var contents = makeIf(part.condition || ['num', 1], part.body[1]);
+                    if (chain) {
+                      tail[3] = contents;
+                    } else {
+                      chain = contents;
+                      ignore.push(contents);
+                    }
+                    tail = contents;
+                  });
+                  // if none of the ifs were entered, in the final else note that we need to continue
+                  tail[3] = ['block', [['stat', ['assign', true, ['name', helper], ['num', 1]]]]];
+                  reps.push(makeIf(['name', helper], [pre, chain]));
+                } else { // switch
+                  var hasDefault;
+                  var s = makeSwitch(['binary', '|', ['name', switchVar], ['num', 0]], chunk.map(function(part) {
+                    hasDefault = hasDefault || part.condition === null;
+                    return [part.condition, part.body];
+                  }));
+                  // if no default, add one where we note that we need to continue
+                  if (!hasDefault) {
+                    s[2].push([null, [['block', [['stat', ['assign', true, ['name', helper], ['num', 1]]]]]]]);
                   }
-                  tail = contents;
-                });
-                // if none of the ifs were entered, in the final else note that we need to continue
-                tail[3] = ['block', [['stat', ['assign', true, ['name', helper], ['num', 1]]]]];
-                reps.push(makeIf(['name', helper], [pre, chain]));
+                  ignore.push(s);
+                  reps.push(makeIf(['name', helper], [pre, s]));
+                }
               });
               // replace code and update i
               stats.splice.apply(stats, [i, 1].concat(reps));
