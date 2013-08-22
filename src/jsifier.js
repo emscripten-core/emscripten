@@ -1136,7 +1136,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     item.switchLabels.forEach(function(switchLabel) {
       maxx = Math.max(maxx, Math.abs(parseInt(switchLabel.value)));
     });
-    var useIfs = (item.switchLabels.length+1) < 8 || maxx > 2*1024*1024 || (maxx/item.switchLabels.length) > 10*1024; // heuristics
+    var useIfs = (item.switchLabels.length+1) < 6 || maxx > 2*1024*1024 || (maxx/item.switchLabels.length) > 10*1024; // heuristics
     if (VERBOSE && useIfs && item.switchLabels.length > 2) {
       warn('not optimizing llvm switch into js switch because ' + [maxx, maxx/item.switchLabels.length]);
     }
