@@ -244,7 +244,6 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       console.error("alDeleteSources called without a valid context");
 #endif
-      AL.currentContext.err = 0xA004 /* AL_INVALID_OPERATION */;
       return;
     }
     for (var i = 0; i < count; ++i) {
@@ -258,7 +257,6 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       console.error("alGenSources called without a valid context");
 #endif
-      AL.currentContext.err = 0xA004 /* AL_INVALID_OPERATION */;
       return;
     }
     for (var i = 0; i < count; ++i) {
@@ -318,7 +316,6 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       console.error("alSourcei called without a valid context");
 #endif
-      AL.currentContext.err = 0xA004 /* AL_INVALID_OPERATION */;
       return;
     }
     var src = AL.currentContext.src[source - 1];
@@ -387,7 +384,6 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       console.error("alSourcef called without a valid context");
 #endif
-      AL.currentContext.err = 0xA004 /* AL_INVALID_OPERATION */;
       return;
     }
     var src = AL.currentContext.src[source - 1];
@@ -440,7 +436,6 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       console.error("alSource3f called without a valid context");
 #endif
-      AL.currentContext.err = 0xA004 /* AL_INVALID_OPERATION */;
       return;
     }
     var src = AL.currentContext.src[source - 1];
@@ -481,7 +476,6 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       console.error("alSourceQueueBuffers called without a valid context");
 #endif
-      AL.currentContext.err = 0xA004 /* AL_INVALID_OPERATION */;
       return;
     }
     var src = AL.currentContext.src[source - 1];
@@ -518,7 +512,6 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       console.error("alSourceUnqueueBuffers called without a valid context");
 #endif
-      AL.currentContext.err = 0xA004 /* AL_INVALID_OPERATION */;
       return;
     }
     var src = AL.currentContext.src[source - 1];
@@ -557,7 +550,6 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       console.error("alDeleteBuffers called without a valid context");
 #endif
-      AL.currentContext.err = 0xA004 /* AL_INVALID_OPERATION */;
       return;
     }
     if (count > AL.currentContext.buf.length) {
@@ -601,7 +593,6 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       console.error("alGenBuffers called without a valid context");
 #endif
-      AL.currentContext.err = 0xA004 /* AL_INVALID_OPERATION */;
       return;
     }
     for (var i = 0; i < count; ++i) {
@@ -615,7 +606,6 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       console.error("alBufferData called without a valid context");
 #endif
-      AL.currentContext.err = 0xA004 /* AL_INVALID_OPERATION */;
       return;
     }
     if (buffer > AL.currentContext.buf.length) {
@@ -680,7 +670,6 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       console.error("alSourcePlay called without a valid context");
 #endif
-      AL.currentContext.err = 0xA004 /* AL_INVALID_OPERATION */;
       return;
     }
     var src = AL.currentContext.src[source - 1];
@@ -700,7 +689,6 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       console.error("alSourceStop called without a valid context");
 #endif
-      AL.currentContext.err = 0xA004 /* AL_INVALID_OPERATION */;
       return;
     }
     var src = AL.currentContext.src[source - 1];
@@ -720,7 +708,6 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       console.error("alSourcePause called without a valid context");
 #endif
-      AL.currentContext.err = 0xA004 /* AL_INVALID_OPERATION */;
       return;
     }
     var src = AL.currentContext.src[source - 1];
@@ -740,7 +727,6 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       console.error("alGetSourcei called without a valid context");
 #endif
-      AL.currentContext.err = 0xA004 /* AL_INVALID_OPERATION */;
       return;
     }
     var src = AL.currentContext.src[source - 1];
@@ -804,7 +790,6 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       console.error("alGetSourcef called without a valid context");
 #endif
-      AL.currentContext.err = 0xA004 /* AL_INVALID_OPERATION */;
       return;
     }
     var src = AL.currentContext.src[source - 1];
@@ -865,7 +850,6 @@ var LibraryOpenAL = {
 #if OPENAL_DEBUG
       console.error("alListenerfv called without a valid context");
 #endif
-      AL.currentContext.err = 0xA004 /* AL_INVALID_OPERATION */;
       return;
     }
     switch (param) {
