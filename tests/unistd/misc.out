@@ -44,3 +44,10 @@ setgid: -1, errno: 1
 setegid: -1, errno: 1
 setuid: -1, errno: 1
 seteuid: -1, errno: 1
+setpgrp: -1, errno: 1
+setsid: -1, errno: 1
+setpgid: -1, errno: 1
+setregid: -1, errno: 1
+setreuid: -1, errno: 1
+getgroups: 1, result: 0, errno: 0
+setgroups: -1, errno: 1
