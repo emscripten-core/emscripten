@@ -8322,13 +8322,15 @@ def process(filename):
     shutil.copyfile(path_from_root('tests', 'freetype', 'LiberationSansBold.ttf'), os.path.join(self.get_dir(), 'font.ttf'))
 
     # Main
-    self.do_run(open(path_from_root('tests', 'freetype', 'main.c'), 'r').read(),
-                 open(path_from_root('tests', 'freetype', 'ref.txt'), 'r').read(),
-                 ['font.ttf', 'test!', '150', '120', '25'],
-                 libraries=self.get_freetype(),
-                 includes=[path_from_root('tests', 'freetype', 'include')],
-                 post_build=post)
-                 #build_ll_hook=self.do_autodebug)
+    for outlining in [0, 5000]:
+      Settings.OUTLINING_LIMIT = outlining
+      print >> sys.stderr, 'outlining:', outlining
+      self.do_run(open(path_from_root('tests', 'freetype', 'main.c'), 'r').read(),
+                   open(path_from_root('tests', 'freetype', 'ref.txt'), 'r').read(),
+                   ['font.ttf', 'test!', '150', '120', '25'],
+                   libraries=self.get_freetype(),
+                   includes=[path_from_root('tests', 'freetype', 'include')],
+                   post_build=post)
 
     # github issue 324
     print '[issue 324]'
