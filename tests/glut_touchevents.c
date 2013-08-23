@@ -44,7 +44,7 @@ int main(int argc, char *argv[])
             event.target = Module['canvas'];
             event.button = 0;
             event.touches = touches;
-            event.initUIEvent(eventType, true, true);
+            event.initUIEvent(eventType, true, true, window, 1);
             Module['canvas'].dispatchEvent(event);
         }
     ));
