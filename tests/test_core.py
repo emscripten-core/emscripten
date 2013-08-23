@@ -3752,7 +3752,7 @@ def process(filename):
         }
         '''
 
-      self.do_run(src, 'Inline JS is very cool\n3.64')
+      self.do_run(src, 'Inline JS is very cool\n3.64\n')
 
   def test_inlinejs2(self):
       if Settings.ASM_JS: return self.skip('asm does not support random code, TODO: something that works in asm')
@@ -3778,6 +3778,27 @@ def process(filename):
         '''
 
       self.do_run(src, '4\n200\n')
+
+  def test_inlinejs3(self):
+      if Settings.ASM_JS: return self.skip('asm does not support random code, TODO: something that works in asm')
+      src = r'''
+        #include <stdio.h>
+        #include <emscripten.h>
+
+        int main() {
+          EM_ASM(Module.print('hello dere1'));
+          EM_ASM(
+            Module.print('hello dere2');
+          );
+          EM_ASM(
+            Module.print('hello dere3');
+            Module.print('hello dere' + 4);
+          );
+          return 0;
+        }
+        '''
+
+      self.do_run(src, 'hello dere1\nhello dere2\nhello dere3\nhello dere4\n')
 
   def test_memorygrowth(self):
     if Settings.USE_TYPED_ARRAYS == 0: return self.skip('memory growth is only supported with typed arrays')
