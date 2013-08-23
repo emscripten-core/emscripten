@@ -38,13 +38,12 @@ void do_send(int sockfd) {
   int i;
   int res;
   char *buffer;
-  struct sockaddr_in addr;
   socklen_t addrlen;
 
   for (i = 0; i < sizeof(buffers) / sizeof(char*); i++) {
     buffer = buffers[i];
 
-    res = sendto(sockfd, buffer, strlen(buffer), 0, (struct sockaddr *)&addr, sizeof(addr));
+    res = send(sockfd, buffer, strlen(buffer), 0);
     if (res == -1) {
       perror("send failed");
       exit(EXIT_FAILURE);
