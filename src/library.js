@@ -5368,7 +5368,7 @@ LibraryManager.library = {
     ['i32', 'tm_yday'],
     ['i32', 'tm_isdst'],
     ['i32', 'tm_gmtoff'],
-    ['i32', 'tm_zone']]),
+    ['i8*', 'tm_zone']]),
   // Statically allocated time struct.
   __tm_current: 'allocate({{{ Runtime.QUANTUM_SIZE }}}*26, "i8", ALLOC_STATIC)',
   // Statically allocated timezone string. We only use GMT as a timezone.
@@ -5429,8 +5429,8 @@ LibraryManager.library = {
   timegm__deps: ['mktime'],
   timegm: function(tmPtr) {
     _tzset();
-    var offset = {{{ makeGetValue(makeGlobalUse('__timezone'), 0, 'i32') }}};
-    var daylight = {{{ makeGetValue(makeGlobalUse('__daylight'), 0, 'i32') }}};
+    var offset = {{{ makeGetValue(makeGlobalUse('_timezone'), 0, 'i32') }}};
+    var daylight = {{{ makeGetValue(makeGlobalUse('_daylight'), 0, 'i32') }}};
     daylight = (daylight == 1) ? 60 * 60 : 0;
     var ret = _mktime(tmPtr) + offset - daylight;
     return ret;
@@ -5503,27 +5503,27 @@ LibraryManager.library = {
 
   // TODO: Initialize these to defaults on startup from system settings.
   // Note: glibc has one fewer underscore for all of these. Also used in other related functions (timegm)
-  _tzname: 'allocate({{{ 2*Runtime.QUANTUM_SIZE }}}, "i32*", ALLOC_STATIC)',
-  _daylight: 'allocate(1, "i32*", ALLOC_STATIC)',
-  _timezone: 'allocate(1, "i32*", ALLOC_STATIC)',
-  tzset__deps: ['_tzname', '_daylight', '_timezone'],
+  tzname: 'allocate({{{ 2*Runtime.QUANTUM_SIZE }}}, "i32*", ALLOC_STATIC)',
+  daylight: 'allocate(1, "i32*", ALLOC_STATIC)',
+  timezone: 'allocate(1, "i32*", ALLOC_STATIC)',
+  tzset__deps: ['tzname', 'daylight', 'timezone'],
   tzset: function() {
     // TODO: Use (malleable) environment variables instead of system settings.
     if (_tzset.called) return;
     _tzset.called = true;
 
-    {{{ makeSetValue(makeGlobalUse('__timezone'), '0', '-(new Date()).getTimezoneOffset() * 60', 'i32') }}}
+    {{{ makeSetValue(makeGlobalUse('_timezone'), '0', '-(new Date()).getTimezoneOffset() * 60', 'i32') }}}
 
     var winter = new Date(2000, 0, 1);
     var summer = new Date(2000, 6, 1);
-    {{{ makeSetValue(makeGlobalUse('__daylight'), '0', 'Number(winter.getTimezoneOffset() != summer.getTimezoneOffset())', 'i32') }}}
+    {{{ makeSetValue(makeGlobalUse('_daylight'), '0', 'Number(winter.getTimezoneOffset() != summer.getTimezoneOffset())', 'i32') }}}
 
     var winterName = 'GMT'; // XXX do not rely on browser timezone info, it is very unpredictable | winter.toString().match(/\(([A-Z]+)\)/)[1];
     var summerName = 'GMT'; // XXX do not rely on browser timezone info, it is very unpredictable | summer.toString().match(/\(([A-Z]+)\)/)[1];
     var winterNamePtr = allocate(intArrayFromString(winterName), 'i8', ALLOC_NORMAL);
     var summerNamePtr = allocate(intArrayFromString(summerName), 'i8', ALLOC_NORMAL);
-    {{{ makeSetValue(makeGlobalUse('__tzname'), '0', 'winterNamePtr', 'i32') }}}
-    {{{ makeSetValue(makeGlobalUse('__tzname'), Runtime.QUANTUM_SIZE, 'summerNamePtr', 'i32') }}}
+    {{{ makeSetValue(makeGlobalUse('_tzname'), '0', 'winterNamePtr', 'i32') }}}
+    {{{ makeSetValue(makeGlobalUse('_tzname'), Runtime.QUANTUM_SIZE, 'summerNamePtr', 'i32') }}}
   },
 
   stime__deps: ['$ERRNO_CODES', '__setErrNo'],
