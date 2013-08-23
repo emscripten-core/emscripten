@@ -3935,6 +3935,8 @@ def process(filename):
       self.do_run(src, 'Hello world!')
 
   def test_bigswitch(self):
+    if self.run_name != 'default': return self.skip('TODO: issue #781')
+
     src = open(path_from_root('tests', 'bigswitch.cpp')).read()
     self.do_run(src, '''34962: GL_ARRAY_BUFFER (0x8892)
 26214: what?
