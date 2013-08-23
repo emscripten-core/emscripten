@@ -329,13 +329,55 @@ if has_preloaded:
 
   # Data requests - for getting a block of data out of the big archive - have a similar API to XHRs
   code += '''
-    function DataRequest() {}
+    function DataRequest(start, end, crunched, audio) {
+      this.start = start;
+      this.end = end;
+      this.crunched = crunched;
+      this.audio = audio;
+    }
     DataRequest.prototype = {
       requests: {},
       open: function(mode, name) {
+        this.name = name;
         this.requests[name] = this;
+        Module['addRunDependency']('fp ' + this.name);
       },
-      send: function() {}
+      send: function() {},
+      onload: function() {
+        var data = this.byteArray.subarray(this.start, this.end);
+        var size = this.end - this.start;
+        var ptr = Module['_malloc'](size); // XXX leaked if a preload plugin replaces with new data
+        Module['HEAPU8'].set(data, ptr);
+        var arrayBuffer = Module['HEAPU8'].subarray(ptr, ptr + size);
+        assert(arrayBuffer, 'Loading file ' + name + ' failed');
+        var byteArray = !arrayBuffer.subarray ? new Uint8Array(arrayBuffer) : arrayBuffer;
+
+        if (this.crunched) {
+          var ddsHeader = byteArray.subarray(0, 128);
+          var that = this;
+          requestDecrunch(this.name, byteArray.subarray(128), function(ddsData) {
+            byteArray = new Uint8Array(ddsHeader.length + ddsData.length);
+            byteArray.set(ddsHeader, 0);
+            byteArray.set(ddsData, 128);
+            that.finish(byteArray);
+          });
+        } else {
+          this.finish(byteArray);
+        }
+      },
+      finish: function(byteArray) {
+        var that = this;
+        Module['FS_createPreloadedFile'](PATH.dirname(this.name), PATH.basename(this.name), byteArray, true, true, function() {
+          Module['removeRunDependency']('fp ' + that.name);
+        }, function() {
+          if (that.audio) {
+            Module['removeRunDependency']('fp ' + that.name); // workaround for chromium bug 124926 (still no audio with this, but at least we don't hang)
+          } else {
+            Runtime.warn('Preloading file ' + that.name + ' failed');
+          }
+        });
+        this.requests[this.name] = null;
+      },
     };
   '''
 
@@ -364,66 +406,23 @@ for file_ in data_files:
     # Preload
     varname = 'filePreload%d' % counter
     counter += 1
-    dds = crunch and filename.endswith(CRUNCH_INPUT_SUFFIX)
-
-    prepare = ''
-    finish = "Module['removeRunDependency']('fp %s');\n" % filename
-
-    if dds:
-      # decompress crunch format into dds
-      prepare = '''
-        var ddsHeader = byteArray.subarray(0, %(dds_header_size)d);
-        requestDecrunch('%(filename)s', byteArray.subarray(%(dds_header_size)d), function(ddsData) {
-          byteArray = new Uint8Array(ddsHeader.length + ddsData.length);
-          byteArray.set(ddsHeader, 0);
-          byteArray.set(ddsData, %(dds_header_size)d);
-''' % { 'filename': filename, 'dds_header_size': DDS_HEADER_SIZE }
-
-      finish += '''
-        });
-'''
-
-    code += '''
-    var %(varname)s = new %(request)s();
-    %(varname)s.open('GET', '%(filename)s', true);
-    %(varname)s.responseType = 'arraybuffer';
-    %(varname)s.onload = function() {
-      var arrayBuffer = %(varname)s.response;
-      assert(arrayBuffer, 'Loading file %(filename)s failed.');
-      var byteArray = !arrayBuffer.subarray ? new Uint8Array(arrayBuffer) : arrayBuffer;
-      %(prepare)s
-      Module['FS_createPreloadedFile']('%(dirname)s', '%(basename)s', byteArray, true, true, function() {
-        %(finish)s
-      }, %(fail)s, null, true);
-    };
-    Module['addRunDependency']('fp %(filename)s');
-    %(varname)s.send(null);
+    code += '''    new DataRequest(%(start)d, %(end)d, %(crunched)s, %(audio)s).open('GET', '%(filename)s');
 ''' % {
-        'request': 'DataRequest', # In the past we also supported XHRs here
-        'varname': varname,
-        'filename': filename,
-        'dirname': dirname,
-        'basename': basename,
-        'prepare': prepare,
-        'finish': finish,
-        'fail': 'null' if filename[-4:] not in AUDIO_SUFFIXES else '''function() { Module['removeRunDependency']('fp %s') }''' % filename # workaround for chromium bug 124926 (still no audio with this, but at least we don't hang)
-  }
+      'filename': file_['dstpath'],
+      'start': file_['data_start'],
+      'end': file_['data_end'],
+      'crunched': '1' if crunch and filename.endswith(CRUNCH_INPUT_SUFFIX) else '0',
+      'audio': '1' if filename[-4:] in AUDIO_SUFFIXES else '0',
+    }
   else:
     assert 0
 
 if has_preloaded:
   # Get the big archive and split it up
-  use_data = ''
+  use_data = '          DataRequest.prototype.byteArray = byteArray;\n'
   for file_ in data_files:
     if file_['mode'] == 'preload':
-      use_data += '''
-        curr = DataRequest.prototype.requests['%s'];
-        var data = byteArray.subarray(%d, %d);
-        var ptr = Module['_malloc'](%d);
-        Module['HEAPU8'].set(data, ptr);
-        curr.response = Module['HEAPU8'].subarray(ptr, ptr + %d);
-        curr.onload();
-      ''' % (file_['dstpath'], file_['data_start'], file_['data_end'], file_['data_end'] - file_['data_start'], file_['data_end'] - file_['data_start'])
+      use_data += '          DataRequest.prototype.requests["%s"].onload();\n' % (file_['dstpath'])
   use_data += "          Module['removeRunDependency']('datafile_%s');\n" % data_target
 
   if Compression.on:
