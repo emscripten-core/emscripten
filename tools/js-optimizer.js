@@ -1236,7 +1236,7 @@ function vacuum(ast) {
         }
       } break;
       case 'label': {
-        if (node[2][0] === 'toplevel' && (!node[2][1] || node[2][1].length === 0)) {
+        if (node[2] && node[2][0] === 'toplevel' && (!node[2][1] || node[2][1].length === 0)) {
           return emptyNode();
         }
       } break;
@@ -3627,6 +3627,7 @@ function outline(ast) {
     var newFuncs = [];
 
     funcs.forEach(function(func) {
+      vacuum(func); // clear out empty nodes that affect code size
       var asmData = normalizeAsm(func);
       var size = measureSize(func);
       if (size >= extraInfo.sizeToOutline) {
