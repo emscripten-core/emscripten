@@ -3057,16 +3057,24 @@ function outline(ast) {
               var chunks = [];
               var currSize = 0;
               var currChunk = [];
+              var force = false; // when we hit a case X: that falls through, we force inclusion of everything until a full case
               parts.forEach(function(part) {
                 var size = (part.condition ? measureSize(part.condition) : 0) + measureSize(part.body) + 5; // add constant for overhead of extra code
                 assert(size > 0);
-                if (size + currSize >= minSize && currSize) {
+                if (size + currSize >= minSize && currSize && !force) {
                   chunks.push(currChunk);
                   currChunk = [];
                   currSize = 0;
                 }
                 currChunk.push(part);
                 currSize += size;
+                if (!isIf) {
+                  var last = part.body;
+                  last = last[stats.length-1];
+                  if (last && last[0] === 'block') last = last[1][last[1].length-1];
+                  if (last && last[0] === 'stat') last = last[1];
+                  force = !last || last[0] !== 'break';
+                }
               });
               assert(currSize);
               chunks.push(currChunk);
@@ -3115,6 +3123,8 @@ function outline(ast) {
     });
   }
 
+  var maxTotalOutlinings = Infinity; // debugging tool
+
   // Prepares information for spilling of local variables
   function analyzeFunction(func, asmData) {
     var stack = []; // list of variables, each gets 8 bytes
@@ -3134,7 +3144,7 @@ function outline(ast) {
     // The control variables are zeroed out when calling an outlined function, and after using
     // the value after they return.
     var size = measureSize(func);
-    asmData.maxOutlinings = Math.round(3*size/extraInfo.sizeToOutline);
+    asmData.maxOutlinings = Math.min(Math.round(3*size/extraInfo.sizeToOutline), maxTotalOutlinings);
     asmData.intendedPieces = Math.ceil(size/extraInfo.sizeToOutline);
     asmData.totalStackSize = stackSize + (stack.length + 2*asmData.maxOutlinings)*8;
     asmData.controlStackPos = function(i) { return stackSize + (stack.length + i)*8 };
@@ -3464,6 +3474,7 @@ function outline(ast) {
       asmData.splitCounter--;
       return [];
     }
+    maxTotalOutlinings--;
     for (var v in owned) {
       if (v != 'sp') delete asmData.vars[v]; // parent does not need these anymore
     }
@@ -3620,6 +3631,8 @@ function outline(ast) {
 
   var funcs = ast[1];
 
+  var maxTotalFunctions = Infinity; // debugging tool
+
   var more = true;
   while (more) {
     more = false;
@@ -3630,7 +3643,8 @@ function outline(ast) {
       vacuum(func); // clear out empty nodes that affect code size
       var asmData = normalizeAsm(func);
       var size = measureSize(func);
-      if (size >= extraInfo.sizeToOutline) {
+      if (size >= extraInfo.sizeToOutline && maxTotalFunctions > 0) {
+        maxTotalFunctions--;
         aggressiveVariableElimination(func, asmData);
         flatten(func, asmData);
         analyzeFunction(func, asmData);
