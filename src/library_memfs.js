@@ -2,11 +2,17 @@ mergeInto(LibraryManager.library, {
   $MEMFS__deps: ['$FS'],
   $MEMFS: {
     // content modes
-    CONTENT_ORIGINAL: 1, // contains the original content written into it (in a typed array most likely)
+    CONTENT_OWNING: 1, // contains a subarray into the heap, and we own it - need to free() when no longer needed
     CONTENT_FLEXIBLE: 2, // has been modified or never set to anything, and is a flexible js array that can grow/shrink
+    CONTENT_FIXED: 3, // contains some fixed-size content written into it, in a typed array
     ensureFlexible: function(node) {
       if (node.contentMode !== MEMFS.CONTENT_FLEXIBLE) {
-        node.contents = Array.prototype.slice.call(node.contents);
+        var contents = node.contents;
+        node.contents = Array.prototype.slice.call(contents);
+        if (node.contentMode === MEMFS.CONTENT_OWNING) {
+          assert(contents.byteOffset);
+          Module['_free'](contents.byteOffset);
+        }
         node.contentMode = MEMFS.CONTENT_FLEXIBLE;
       }
     },
@@ -188,17 +194,24 @@ mergeInto(LibraryManager.library, {
         }
         return size;
       },
-      write: function(stream, buffer, offset, length, position) {
+      write: function(stream, buffer, offset, length, position, canOwn) {
         var node = stream.node;
         node.timestamp = Date.now();
         var contents = node.contents;
+#if USE_TYPED_ARRAYS == 2
         if (length && contents.length === 0 && position === 0 && buffer.subarray) {
           // just replace it with the new data
           assert(buffer.length);
-          node.contents = new Uint8Array(buffer.subarray(offset, offset+length)); // TODO: do not copy when unnecessary
-          node.contentMode = MEMFS.CONTENT_ORIGINAL;
+          if (canOwn && buffer.buffer === HEAP8.buffer && offset === 0) {
+            node.contents = buffer; // this is a subarray of the heap, and we can own it
+            node.contentMode = MEMFS.CONTENT_OWNING;
+          } else {
+            node.contents = new Uint8Array(buffer.subarray(offset, offset+length));
+            node.contentMode = MEMFS.CONTENT_FIXED;
+          }
           return length;
         }
+#endif
         MEMFS.ensureFlexible(node);
         var contents = node.contents;
         while (contents.length < position) contents.push(0);

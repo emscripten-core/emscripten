@@ -509,7 +509,7 @@ mergeInto(LibraryManager.library, {
       var mode = FS.getMode(canRead, canWrite);
       return FS.create(path, mode);
     },
-    createDataFile: function(parent, name, data, canRead, canWrite) {
+    createDataFile: function(parent, name, data, canRead, canWrite, canOwn) {
       var path = PATH.join(typeof parent === 'string' ? parent : FS.getPath(parent), name);
       var mode = FS.getMode(canRead, canWrite);
       var node = FS.create(path, mode);
@@ -522,7 +522,7 @@ mergeInto(LibraryManager.library, {
         // make sure we can write to the file
         FS.chmod(path, mode | {{{ cDefine('S_IWUGO') }}});
         var stream = FS.open(path, 'w');
-        FS.write(stream, data, 0, data.length, 0);
+        FS.write(stream, data, 0, data.length, 0, canOwn);
         FS.close(stream);
         FS.chmod(path, mode);
       }
@@ -766,7 +766,7 @@ mergeInto(LibraryManager.library, {
     // You can also call this with a typed array instead of a url. It will then
     // do preloading for the Image/Audio part, as if the typed array were the
     // result of an XHR that you did manually.
-    createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile) {
+    createPreloadedFile: function(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn) {
       Browser.init();
       // TODO we should allow people to just pass in a complete filename instead
       // of parent and name being that we just join them anyways
@@ -774,7 +774,7 @@ mergeInto(LibraryManager.library, {
       function processData(byteArray) {
         function finish(byteArray) {
           if (!dontCreateFile) {
-            FS.createDataFile(parent, name, byteArray, canRead, canWrite);
+            FS.createDataFile(parent, name, byteArray, canRead, canWrite, canOwn);
           }
           if (onload) onload();
           removeRunDependency('cp ' + fullname);
@@ -1323,7 +1323,7 @@ mergeInto(LibraryManager.library, {
       if (!seeking) stream.position += bytesRead;
       return bytesRead;
     },
-    write: function(stream, buffer, offset, length, position) {
+    write: function(stream, buffer, offset, length, position, canOwn) {
       if (length < 0 || position < 0) {
         throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
       }
@@ -1347,7 +1347,7 @@ mergeInto(LibraryManager.library, {
         // seek to the end before writing in append mode
         FS.llseek(stream, 0, {{{ cDefine('SEEK_END') }}});
       }
-      var bytesWritten = stream.stream_ops.write(stream, buffer, offset, length, position);
+      var bytesWritten = stream.stream_ops.write(stream, buffer, offset, length, position, canOwn);
       if (!seeking) stream.position += bytesWritten;
       return bytesWritten;
     },

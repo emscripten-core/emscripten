@@ -394,7 +394,7 @@ for file_ in data_files:
       %(prepare)s
       Module['FS_createPreloadedFile']('%(dirname)s', '%(basename)s', byteArray, true, true, function() {
         %(finish)s
-      }%(fail)s);
+      }, %(fail)s, null, true);
     };
     Module['addRunDependency']('fp %(filename)s');
     %(varname)s.send(null);
@@ -406,7 +406,7 @@ for file_ in data_files:
         'basename': basename,
         'prepare': prepare,
         'finish': finish,
-        'fail': '' if filename[-4:] not in AUDIO_SUFFIXES else ''', function() { Module['removeRunDependency']('fp %s') }''' % filename # workaround for chromium bug 124926 (still no audio with this, but at least we don't hang)
+        'fail': 'null' if filename[-4:] not in AUDIO_SUFFIXES else '''function() { Module['removeRunDependency']('fp %s') }''' % filename # workaround for chromium bug 124926 (still no audio with this, but at least we don't hang)
   }
   else:
     assert 0
