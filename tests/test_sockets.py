@@ -142,11 +142,12 @@ class sockets(BrowserCore):
   # def test_sockets_gethostbyname(self):
   #   self.btest(os.path.join('sockets', 'test_sockets_gethostbyname.c'), expected='0', args=['-O2', '-DSOCKK=8997'])
 
-  def test_sockets_select_server_no_accept(self):
+  def test_sockets_select_server_down(self):
     for harness in [
-      WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_select_server_no_accept_server.c'), ['-DSOCKK=8995'], 8996, 8995)
+      WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_select_server_down_server.c'), ['-DSOCKK=9002'], 9003, 9002)
     ]:
-      self.btest(os.path.join('sockets', 'test_sockets_select_server_no_accept_client.c'), expected='266', args=['-DSOCKK=8996'])
+      with harness:
+        self.btest(os.path.join('sockets', 'test_sockets_select_server_down_client.c'), expected='266', args=['-DSOCKK=9003'])
 
   def test_sockets_select_server_closes_connection_rw(self):
     sockets_include = '-I'+path_from_root('tests', 'sockets')
