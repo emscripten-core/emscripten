@@ -179,7 +179,7 @@ class sockets(BrowserCore):
         try:
           proc = make_relay_server(2234, 2236)
           pids.append(proc.pid)
-          self.btest(os.path.join('sockets', 'test_enet_client.c'), expected='0', args=['-DSOCKK=2237'] + enet)
+          self.btest(os.path.join('sockets', 'test_enet_client.c'), expected='0', args=['-DSOCKK=2237', '-DUSE_IFRAME'] + enet)
         finally:
           clean_pids(pids);
 
