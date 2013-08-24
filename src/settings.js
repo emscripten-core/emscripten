@@ -719,6 +719,7 @@ var C_DEFINES = {
    'PM_STR': '6',
    'POLLERR': '8',
    'POLLHUP': '16',
+   'POLLPRI': '32',
    'POLLIN': '1',
    'POLLNVAL': '4',
    'POLLOUT': '2',

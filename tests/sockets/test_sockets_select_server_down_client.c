@@ -48,7 +48,7 @@ void iter(void *arg) {
     char buffer[1024];
     int n = recv(sockfd, buffer, sizeof(buffer), 0);
     if (n == -1 && retries++ > 10) {
-      perror("revv failed");
+      perror("recv failed");
       finish(EXIT_FAILURE);
     } else if (!n) {
       perror("Connection to websocket server failed as expected.");
