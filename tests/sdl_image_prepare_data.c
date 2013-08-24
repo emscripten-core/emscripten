@@ -58,7 +58,7 @@ int main() {
   printf("prepare..\n");
 
   #define SIZE 203164
-  FILE *f = open("screenshot.not", "rb");
+  FILE *f = fopen("screenshot.not", "rb");
   char *buffer = malloc(SIZE);
   fread(buffer, SIZE, 1, f);
   fclose(f);
