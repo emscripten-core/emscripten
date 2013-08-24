@@ -38,8 +38,6 @@ class browser(BrowserCore):
         message='You should see "hello, world!" and a colored cube.')
 
   def test_html_source_map(self):
-    if 'test_html_source_map' not in str(sys.argv): return self.skip('''This test
-requires manual intervention; will not be run unless explicitly requested''')
     cpp_file = os.path.join(self.get_dir(), 'src.cpp')
     html_file = os.path.join(self.get_dir(), 'src.html')
     # browsers will try to 'guess' the corresponding original line if a
@@ -64,14 +62,20 @@ requires manual intervention; will not be run unless explicitly requested''')
       ''')
     # use relative paths when calling emcc, because file:// URIs can only load
     # sourceContent when the maps are relative paths
+    try_delete(html_file)
+    try_delete(html_file + '.map')
     Popen([PYTHON, EMCC, 'src.cpp', '-o', 'src.html', '-g4'],
         cwd=self.get_dir()).communicate()
+    assert os.path.exists(html_file)
+    assert os.path.exists(html_file + '.map')
+    import webbrowser, time
     webbrowser.open_new('file://' + html_file)
+    time.sleep(1)
     print '''
-Set the debugger to pause on exceptions
-You should see an exception thrown at src.cpp:7.
-Press any key to continue.'''
-    raw_input()
+If manually bisecting:
+  Check that you see src.cpp among the page sources.
+  Even better, add a breakpoint, e.g. on the printf, then reload, then step through and see the print (best to run with EM_SAVE_DIR=1 for the reload).
+'''
 
   def build_native_lzma(self):
     lzma_native = path_from_root('third_party', 'lzma.js', 'lzma-native')
