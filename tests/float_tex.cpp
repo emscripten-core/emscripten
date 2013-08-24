@@ -113,7 +113,7 @@ static void gl_init(void) {
     /* Store the vertices in a vertex buffer object (VBO) */
     glGenBuffers(1, &indicesVBO);
     glBindBuffer(GL_ARRAY_BUFFER, indicesVBO);
-    glBufferData(GL_ARRAY_BUFFER, elements.size() * sizeof(uint), &elements[0], GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, elements.size() * sizeof(float), &elements[0], GL_STATIC_DRAW);
     /* Get the locations of the uniforms so we can access them */
     nodeSamplerLocation      = glGetUniformLocation(program, "nodeInfo");
     glBindAttribLocation(program, 0, "indices");
