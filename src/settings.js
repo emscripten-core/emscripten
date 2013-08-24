@@ -6,6 +6,11 @@
 //   emcc -s OPTION1=VALUE1 -s OPTION2=VALUE2 [..other stuff..]
 //
 // See https://github.com/kripken/emscripten/wiki/Code-Generation-Modes/
+//
+// Note that the values here are the defaults in -O0, that is, unoptimized
+// mode. See apply_opt_level in tools/shared.py for how -O1,2,3 affect these
+// flags.
+//
 
 // Tuning
 var QUANTUM_SIZE = 4; // This is the size of an individual field in a structure. 1 would
@@ -385,9 +390,7 @@ var HEADLESS = 0; // If 1, will include shim code that tries to 'fake' a browser
 var BENCHMARK = 0; // If 1, will just time how long main() takes to execute, and not
                    // print out anything at all whatsoever. This is useful for benchmarking.
 
-var ASM_JS = 0; // If 1, generate code in asm.js format. XXX This is highly experimental,
-                // and will not work on most codebases yet. It is NOT recommended that you
-                // try this yet.
+var ASM_JS = 0; // If 1, generate code in asm.js format.
 
 var PGO = 0; // Enables profile-guided optimization in the form of runtime checks for
              // which functions are actually called. Emits a list during shutdown that you
