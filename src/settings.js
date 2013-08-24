@@ -131,6 +131,11 @@ var OUTLINING_LIMIT = 0; // A function size above which we try to automatically 
                          // large functions (JS engines often compile them very slowly,
                          // compile them with lower optimizations, or do not optimize them
                          // at all). If 0, we do not perform outlining at all.
+                         // To see which funcs are large, you can inspect the source
+                         // in a debug build (-g2 or -g for example), and can run
+                         // tools/find_bigfuncs.py on that to get a sorted list by size.
+                         // Another possibility is to look in the web console in firefox,
+                         // which will note slowly-compiling functions.
 
 // Generated code debugging options
 var SAFE_HEAP = 0; // Check each write to the heap, for example, this will give a clear
