@@ -170,6 +170,12 @@ void emscripten_hide_mouse();
 void emscripten_set_canvas_size(int width, int height);
 
 /*
+ * Get the current pixel width and height of the <canvas> element
+ * as well as whether the canvas is fullscreen or not.
+ */
+void emscripten_get_canvas_size(int *width, int *height, int *isFullscreen);
+
+/*
  * Returns the highest-precision representation of the
  * current time that the browser provides. This uses either
  * Date.now or performance.now. The result is *not* an
