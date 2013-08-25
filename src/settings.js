@@ -145,6 +145,7 @@ var OUTLINING_LIMIT = 0; // A function size above which we try to automatically 
                          // see the impact on compilation time, code size and runtime
                          // throughput. It is hard to say what values to start testing
                          // with, but something around 20,000 to 100,000 might make sense.
+                         // (The unit size is number of AST nodes.)
 
 // Generated code debugging options
 var SAFE_HEAP = 0; // Check each write to the heap, for example, this will give a clear
