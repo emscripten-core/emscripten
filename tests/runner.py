@@ -156,7 +156,11 @@ process(sys.argv[1])
 ''')
         transform.close()
         transform_args = ['--js-transform', "%s %s" % (PYTHON, transform_filename)]
+      if '--memory-init-file' in self.emcc_args:
+        try_delete(filename + '.o.js.mem')
       Building.emcc(filename + '.o.ll', Settings.serialize() + self.emcc_args + transform_args + Building.COMPILER_TEST_OPTS, filename + '.o.js')
+      if '--memory-init-file' in self.emcc_args:
+        assert os.path.exists(filename + '.o.js.mem')
       if post2: post2(filename + '.o.js')
 
   # Build JavaScript code from source code

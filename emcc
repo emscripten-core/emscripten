@@ -1577,6 +1577,35 @@ try:
 
   js_transform_tempfiles = [final]
 
+  if memory_init_file:
+    if shared.Settings.USE_TYPED_ARRAYS != 2:
+      if type(memory_init_file) == int: logging.warning('memory init file requires typed arrays mode 2')
+    else:
+      memfile = target + '.mem'
+      shared.try_delete(memfile)
+      def repl(m):
+        # handle chunking of the memory initializer
+        s = re.sub('[\[\]\n\(\)\. ]', '', m.groups(0)[0])
+        s = s.replace('concat', ',')
+        if s[-1] == ',': s = s[:-1]
+        open(memfile, 'wb').write(''.join(map(lambda x: chr(int(x or '0')), s.split(','))))
+        if DEBUG:
+          # Copy into temp dir as well, so can be run there too
+          temp_memfile = os.path.join(shared.EMSCRIPTEN_TEMP_DIR, os.path.basename(memfile))
+          if os.path.abspath(memfile) != os.path.abspath(memfile):
+            shutil.copyfile(memfile, temp_memfile)
+        return 'loadMemoryInitializer("%s");' % os.path.basename(memfile)
+      src = re.sub(shared.JS.memory_initializer_pattern, repl, open(final).read(), count=1)
+      open(final + '.mem.js', 'w').write(src)
+      final += '.mem.js'
+      js_transform_tempfiles[-1] = final # simple text substitution preserves comment line number mappings
+      if DEBUG:
+        if os.path.exists(memfile):
+          save_intermediate('meminit')
+          logging.debug('wrote memory initialization to %s' % memfile)
+        else:
+          logging.debug('did not see memory initialization')
+
   # It is useful to run several js optimizer passes together, to save on unneeded unparsing/reparsing
   js_optimizer_queue = []
   js_optimizer_extra_info = {}
@@ -1653,35 +1682,6 @@ try:
   src = open(final).read()
   src = re.sub(r'\n+[ \n]*\n+', '\n', src)
   open(final, 'w').write(src)
-
-  if memory_init_file:
-    if shared.Settings.USE_TYPED_ARRAYS != 2:
-      if type(memory_init_file) == int: logging.warning('memory init file requires typed arrays mode 2')
-    else:
-      memfile = target + '.mem'
-      shared.try_delete(memfile)
-      def repl(m):
-        # handle chunking of the memory initializer
-        s = re.sub('[\[\]\n\(\)\. ]', '', m.groups(0)[0])
-        s = s.replace('concat', ',')
-        if s[-1] == ',': s = s[:-1]
-        open(memfile, 'wb').write(''.join(map(lambda x: chr(int(x or '0')), s.split(','))))
-        if DEBUG:
-          # Copy into temp dir as well, so can be run there too
-          temp_memfile = os.path.join(shared.EMSCRIPTEN_TEMP_DIR, os.path.basename(memfile))
-          if os.path.abspath(memfile) != os.path.abspath(memfile):
-            shutil.copyfile(memfile, temp_memfile)
-        return 'loadMemoryInitializer("%s");' % os.path.basename(memfile)
-      src = re.sub(shared.JS.memory_initializer_pattern, repl, src, count=1)
-      open(final + '.mem.js', 'w').write(src)
-      final += '.mem.js'
-      js_transform_tempfiles[-1] = final # simple text substitution preserves comment line number mappings
-      if DEBUG:
-        if os.path.exists(memfile):
-          save_intermediate('meminit')
-          logging.debug('wrote memory initialization to %s' % memfile)
-        else:
-          logging.debug('did not see memory initialization')
 
   def generate_source_map(map_file_base_name, offset=0):
     jsrun.run_js(shared.path_from_root('tools', 'source-maps', 'sourcemapper.js'),
