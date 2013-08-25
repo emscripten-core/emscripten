@@ -5154,6 +5154,37 @@ LibraryManager.library = {
   },
 
   // ==========================================================================
+  // termios.h
+  // ==========================================================================
+  tcgetattr: function(fildes, termios_p) {
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/tcgetattr.html
+    var stream = FS.getStream(fildes);
+    if (!stream) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    }
+    if (!stream.tty) {
+      ___setErrNo(ERRNO_CODES.ENOTTY);
+      return -1;
+    }
+    return 0;
+  },
+
+  tcsetattr: function(fildes, optional_actions, termios_p) {
+    // http://pubs.opengroup.org/onlinepubs/7908799/xsh/tcsetattr.html
+    var stream = FS.getStream(fildes);
+    if (!stream) {
+      ___setErrNo(ERRNO_CODES.EBADF);
+      return -1;
+    }
+    if (!stream.tty) {
+      ___setErrNo(ERRNO_CODES.ENOTTY);
+      return -1;
+    }
+    return 0;
+  },
+
+  // ==========================================================================
   // time.h
   // ==========================================================================
 

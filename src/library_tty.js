@@ -69,14 +69,21 @@ mergeInto(LibraryManager.library, {
     // NOTE: This is weird to support stdout and stderr
     // overrides in addition to print and printErr overrides.
     default_tty_ops: {
+      // get_char has 3 particular return values:
+      // a.) the next character represented as an integer
+      // b.) undefined to signal that no data is currently available
+      // c.) null to signal an EOF
       get_char: function(tty) {
         if (!tty.input.length) {
           var result = null;
           if (ENVIRONMENT_IS_NODE) {
-            if (process.stdin.destroyed) {
-              return undefined;
+            if (process.stdin._readableState && process.stdin._readableState.ended) {
+              return null;  // EOF
             }
             result = process.stdin.read();
+            if (!result) {
+              return undefined;  // no data available
+            }
           } else if (typeof window != 'undefined' &&
             typeof window.prompt == 'function') {
             // Browser.
