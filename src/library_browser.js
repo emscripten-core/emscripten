@@ -821,6 +821,13 @@ mergeInto(LibraryManager.library, {
   emscripten_set_canvas_size: function(width, height) {
     Browser.setCanvasSize(width, height);
   },
+  
+  emscripten_get_canvas_size: function(width, height, isFullscreen) {
+    var canvas = Module['canvas'];
+    {{{ makeSetValue('width', '0', 'canvas.width', 'i32') }}};
+    {{{ makeSetValue('height', '0', 'canvas.height', 'i32') }}};
+    {{{ makeSetValue('isFullscreen', '0', 'Browser.isFullScreen ? 1 : 0', 'i32') }}};
+  },
 
   emscripten_get_now: function() {
     if (ENVIRONMENT_IS_NODE) {
