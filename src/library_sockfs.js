@@ -1,6 +1,5 @@
 mergeInto(LibraryManager.library, {
-  $SOCKFS__postset: '__ATINIT__.push({ func: function() { if (ENVIRONMENT_IS_NODE) { WebSocket = require("ws"); } } });\n' +
-                    '__ATINIT__.push({ func: function() { SOCKFS.root = FS.mount(SOCKFS, {}, null); } });',
+  $SOCKFS__postset: '__ATINIT__.push({ func: function() { SOCKFS.root = FS.mount(SOCKFS, {}, null); } });',
   $SOCKFS__deps: ['$FS'],
   $SOCKFS: {
     mount: function(mount) {
@@ -255,18 +254,18 @@ mergeInto(LibraryManager.library, {
 
         if (sock.recv_queue.length ||
             !dest ||  // connection-less sockets are always ready to read
-            (dest && dest.socket.readyState === WebSocket.CLOSING) ||
-            (dest && dest.socket.readyState === WebSocket.CLOSED)) {  // let recv return 0 once closed
+            (dest && dest.socket.readyState === dest.socket.CLOSING) ||
+            (dest && dest.socket.readyState === dest.socket.CLOSED)) {  // let recv return 0 once closed
           mask |= ({{{ cDefine('POLLRDNORM') }}} | {{{ cDefine('POLLIN') }}});
         }
 
         if (!dest ||  // connection-less sockets are always ready to write
-            (dest && dest.socket.readyState === WebSocket.OPEN)) {
+            (dest && dest.socket.readyState === dest.socket.OPEN)) {
           mask |= {{{ cDefine('POLLOUT') }}};
         }
 
-        if ((dest && dest.socket.readyState === WebSocket.CLOSING) ||
-            (dest && dest.socket.readyState === WebSocket.CLOSED)) {
+        if ((dest && dest.socket.readyState === dest.socket.CLOSING) ||
+            (dest && dest.socket.readyState === dest.socket.CLOSED)) {
           mask |= {{{ cDefine('POLLHUP') }}};
         }
 
@@ -344,7 +343,7 @@ mergeInto(LibraryManager.library, {
         if (typeof sock.daddr !== 'undefined' && typeof sock.dport !== 'undefined') {
           var dest = SOCKFS.websocket_sock_ops.getPeer(sock, sock.daddr, sock.dport);
           if (dest) {
-            if (dest.socket.readyState === WebSocket.CONNECTING) {
+            if (dest.socket.readyState === dest.socket.CONNECTING) {
               throw new FS.ErrnoError(ERRNO_CODES.EALREADY);
             } else {
               throw new FS.ErrnoError(ERRNO_CODES.EISCONN);
@@ -368,7 +367,7 @@ mergeInto(LibraryManager.library, {
         if (sock.server) {
            throw new FS.ErrnoError(ERRNO_CODES.EINVAL);  // already listening
         }
-        var WebSocketServer = WebSocket.Server;
+        var WebSocketServer = require('ws').Server;
         var host = sock.saddr;
 #if SOCKET_DEBUG
         console.log('listen: ' + host + ':' + sock.sport);
@@ -453,9 +452,9 @@ mergeInto(LibraryManager.library, {
 
         // early out if not connected with a connection-based socket
         if (sock.type === {{{ cDefine('SOCK_STREAM') }}}) {
-          if (!dest || dest.socket.readyState === WebSocket.CLOSING || dest.socket.readyState === WebSocket.CLOSED) {
+          if (!dest || dest.socket.readyState === dest.socket.CLOSING || dest.socket.readyState === dest.socket.CLOSED) {
             throw new FS.ErrnoError(ERRNO_CODES.ENOTCONN);
-          } else if (dest.socket.readyState === WebSocket.CONNECTING) {
+          } else if (dest.socket.readyState === dest.socket.CONNECTING) {
             throw new FS.ErrnoError(ERRNO_CODES.EAGAIN);
           }
         }
@@ -514,7 +513,7 @@ mergeInto(LibraryManager.library, {
               // if we have a destination address but are not connected, error out
               throw new FS.ErrnoError(ERRNO_CODES.ENOTCONN);
             }
-            else if (dest.socket.readyState === WebSocket.CLOSING || dest.socket.readyState === WebSocket.CLOSED) {
+            else if (dest.socket.readyState === dest.socket.CLOSING || dest.socket.readyState === dest.socket.CLOSED) {
               // return null if the socket has closed
               return null;
             }
