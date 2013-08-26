@@ -624,10 +624,14 @@ Runtime.stackRestore = function(top) { asm['stackRestore'](top) };
         return masks[sig]
       return re.sub(r'{{{ FTM_([\w\d_$]+) }}}', lambda m: fix(m), js) # masks[m.groups(0)[0]]
     funcs_js = map(lambda js: function_table_maskize(js, masks), funcs_js)
+
     if settings.get('DLOPEN_SUPPORT'):
       funcs_js.append('''
   asm.maxFunctionIndex = %d;
 ''' % max_mask)
+      for sig in last_forwarded_json['Functions']['tables'].iterkeys():
+        funcs_js.append('  var F_BASE_%s = 0;\n' % sig)
+
   else:
     function_tables_defs = '\n'.join([table for table in last_forwarded_json['Functions']['tables'].itervalues()])
     outfile.write(function_tables_defs)

@@ -1109,6 +1109,7 @@ try:
     if shared.Settings.ALIASING_FUNCTION_POINTERS:
       logging.warning('disabling ALIASING_FUNCTION_POINTERS for dlopen support')
       shared.Settings.ALIASING_FUNCTION_POINTERS = 0
+    shared.Settings.RESERVED_FUNCTION_POINTERS = max(shared.Settings.RESERVED_FUNCTION_POINTERS, 10)
 
   if shared.Settings.ASSERTIONS and shared.Settings.ALIASING_FUNCTION_POINTERS:
     logging.warning('ALIASING_FUNCTION_POINTERS is on, function pointer comparisons may be invalid across types')
