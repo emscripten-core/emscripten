@@ -547,7 +547,12 @@ var LibrarySDL = {
       switch (event.type) {
         case 'keydown': case 'keyup': {
           var down = event.type === 'keydown';
-          var code = SDL.keyCodes[event.keyCode] || event.keyCode;
+          var code = event.keyCode;
+          if (code >= 65 && code <= 90) {
+            code += 32; // make lowercase for SDL
+          } else {
+            code = SDL.keyCodes[event.keyCode] || event.keyCode;
+          }
 
           {{{ makeSetValue('SDL.keyboardState', 'code', 'down', 'i8') }}};
           // TODO: lmeta, rmeta, numlock, capslock, KMOD_MODE, KMOD_RESERVED
