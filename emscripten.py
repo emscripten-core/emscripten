@@ -606,10 +606,14 @@ function setTempRet%d(value) {
 // EMSCRIPTEN_END_ASM
 (%s, %s, buffer);
 %s;
+''' % (pre_tables + '\n'.join(function_tables_impls) + '\n' + function_tables_defs.replace('\n', '\n  '), exports, the_global, sending, receiving)]
+
+    if not settings.get('SIDE_MODULE'):
+      funcs_js.append('''
 Runtime.stackAlloc = function(size) { return asm['stackAlloc'](size) };
 Runtime.stackSave = function() { return asm['stackSave']() };
 Runtime.stackRestore = function(top) { asm['stackRestore'](top) };
-''' % (pre_tables + '\n'.join(function_tables_impls) + '\n' + function_tables_defs.replace('\n', '\n  '), exports, the_global, sending, receiving)]
+''')
 
     # Set function table masks
     masks = {}
