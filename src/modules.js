@@ -395,7 +395,7 @@ var Functions = {
       }
       // finalize table
       var indices = table.toString().replace('"', '');
-      if (BUILD_AS_SHARED_LIB) {
+      if (BUILD_AS_SHARED_LIB && !ASM_JS) {
         // Shared libraries reuse the parent's function table.
         tables[t] = Functions.getTable(t) + '.push.apply(' + Functions.getTable(t) + ', [' + indices + ']);\n';
       } else {
