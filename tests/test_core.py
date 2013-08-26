@@ -5581,6 +5581,12 @@ The current type of b is: 9
     self.do_run(main, 'supp: 54,2\nmain: 56\nsupp see: 543\nmain see: 76\nok.')
 
   def test_dlfcn_basic(self):
+    if self.emcc_args and '--memory-init-file' in self.emcc_args:
+      for i in range(len(self.emcc_args)):
+        if self.emcc_args[i] == '--memory-init-file':
+          self.emcc_args = self.emcc_args[:i] + self.emcc_args[i+2:]
+          break
+
     if not Settings.ASM_JS:
       Settings.NAMED_GLOBALS = 1
 
