@@ -805,7 +805,7 @@ If manually bisecting:
         document.dispatchEvent(event);
       }
     ''')
-    self.btest('sdl_pumpevents.c', expected='3', args=['--pre-js', 'pre.js'])
+    self.btest('sdl_pumpevents.c', expected='7', args=['--pre-js', 'pre.js'])
 
   def test_sdl_audio(self):
     shutil.copyfile(path_from_root('tests', 'sounds', 'alarmvictory_1.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
