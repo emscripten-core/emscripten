@@ -1660,8 +1660,12 @@ function JSify(data, functionsOnly, givenFunctions) {
         Variables.generatedGlobalBase = true;
         // Globals are done, here is the rest of static memory
         assert((TARGET_LE32 && Runtime.GLOBAL_BASE == 8) || (TARGET_X86 && Runtime.GLOBAL_BASE == 4)); // this is assumed in e.g. relocations for linkable modules
-        print('STATIC_BASE = ' + Runtime.GLOBAL_BASE + ';\n');
-        print('STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n');
+        if (!SIDE_MODULE) {
+          print('STATIC_BASE = ' + Runtime.GLOBAL_BASE + ';\n');
+          print('STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n');
+        } else {
+          print('// STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n'); // comment as metadata only
+        }
       }
       var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable);
       print(generated.map(function(item) { return item.JS; }).join('\n'));
@@ -1700,7 +1704,7 @@ function JSify(data, functionsOnly, givenFunctions) {
         print('}\n');
 
         if (USE_TYPED_ARRAYS == 2) {
-          if (!BUILD_AS_SHARED_LIB) {
+          if (!BUILD_AS_SHARED_LIB && !SIDE_MODULE) {
             print('var tempDoublePtr = Runtime.alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);\n');
             print('assert(tempDoublePtr % 8 == 0);\n');
             print('function copyTempFloat(ptr) { // functions, because inlining this code increases code size too much\n');
@@ -1754,7 +1758,7 @@ function JSify(data, functionsOnly, givenFunctions) {
 
       legalizedI64s = legalizedI64sDefault;
 
-      if (!BUILD_AS_SHARED_LIB) {
+      if (!BUILD_AS_SHARED_LIB && !SIDE_MODULE) {
         print('STACK_BASE = STACKTOP = Runtime.alignMemory(STATICTOP);\n');
         print('staticSealed = true; // seal the static portion of memory\n');
         print('STACK_MAX = STACK_BASE + ' + TOTAL_STACK + ';\n');
