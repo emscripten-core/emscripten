@@ -4664,6 +4664,12 @@ The current type of b is: 9
       '''
     self.do_run(src, 'BA')
 
+  def test_pthread_specific(self):
+    if self.emcc_args is None: return self.skip('requires emcc')
+    src = open(path_from_root('tests', 'pthread', 'specific.c'), 'r').read()
+    expected = open(path_from_root('tests', 'pthread', 'specific.c.txt'), 'r').read()
+    self.do_run(src, expected, force_c=True)
+
   def test_time(self):
     # XXX Not sure what the right output is here. Looks like the test started failing with daylight savings changes. Modified it to pass again.
     src = open(path_from_root('tests', 'time', 'src.c'), 'r').read()
