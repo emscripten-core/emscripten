@@ -1664,6 +1664,7 @@ function JSify(data, functionsOnly, givenFunctions) {
           print('STATIC_BASE = ' + Runtime.GLOBAL_BASE + ';\n');
           print('STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n');
         } else {
+          print('var H_BASE = parentModule["_malloc"](' + Runtime.alignMemory(Variables.nextIndexedOffset) + ');\n');
           print('// STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n'); // comment as metadata only
         }
       }
