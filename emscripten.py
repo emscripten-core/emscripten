@@ -612,17 +612,22 @@ Runtime.stackRestore = function(top) { asm['stackRestore'](top) };
 ''' % (pre_tables + '\n'.join(function_tables_impls) + '\n' + function_tables_defs.replace('\n', '\n  '), exports, the_global, sending, receiving)]
 
     # Set function table masks
-    def function_table_maskize(js):
-      masks = {}
-      default = None
-      for sig, table in last_forwarded_json['Functions']['tables'].iteritems():
-        masks[sig] = str(table.count(','))
-        default = sig
+    masks = {}
+    max_mask = 0
+    for sig, table in last_forwarded_json['Functions']['tables'].iteritems():
+      mask = table.count(',')
+      masks[sig] = str(mask)
+      max_mask = max(mask, max_mask)
+    def function_table_maskize(js, masks):
       def fix(m):
         sig = m.groups(0)[0]
         return masks[sig]
       return re.sub(r'{{{ FTM_([\w\d_$]+) }}}', lambda m: fix(m), js) # masks[m.groups(0)[0]]
-    funcs_js = map(function_table_maskize, funcs_js)
+    funcs_js = map(lambda js: function_table_maskize(js, masks), funcs_js)
+    if settings.get('DLOPEN_SUPPORT'):
+      funcs_js.append('''
+  asm.maxFunctionIndex = %d;
+''' % max_mask)
   else:
     function_tables_defs = '\n'.join([table for table in last_forwarded_json['Functions']['tables'].itervalues()])
     outfile.write(function_tables_defs)
