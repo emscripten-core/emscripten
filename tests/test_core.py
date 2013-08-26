@@ -5587,7 +5587,9 @@ The current type of b is: 9
           self.emcc_args = self.emcc_args[:i] + self.emcc_args[i+2:]
           break
 
-    if not Settings.ASM_JS:
+    if Settings.ASM_JS:
+      Settings.DLOPEN_SUPPORT = 1
+    else:
       Settings.NAMED_GLOBALS = 1
 
     lib_src = '''

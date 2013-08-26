@@ -5048,7 +5048,13 @@ LibraryManager.library = {
       }
 
       try {
-        var lib_module = eval(lib_data)({{{ Functions.getTable('x') }}}.length);
+        var lib_module = eval(lib_data)(
+#if ASM_JS
+          asm.maxFunctionIndex
+#else
+          {{{ Functions.getTable('x') }}}.length
+#endif
+        );
       } catch (e) {
 #if ASSERTIONS
         Module.printErr('Error in loading dynamic library: ' + e);
