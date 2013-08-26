@@ -19,6 +19,16 @@ extern "C" {
 #endif
 
 /*
+ * Convenient syntax for inline assembly/js. Allows stuff like
+ *
+ *    EM_ASM(window.alert('hai'));
+ *
+ * Note: double-quotes (") are not supported, but you can use
+ *       single-quotes (') in js anyhow.
+ */
+#define EM_ASM(...) asm(#__VA_ARGS__)
+
+/*
  * Forces LLVM to not dead-code-eliminate a function. Note that
  * you still need to use EXPORTED_FUNCTIONS so it stays alive
  * in JS, e.g.
@@ -158,6 +168,12 @@ void emscripten_hide_mouse();
  * on the Emscripten web page.
  */
 void emscripten_set_canvas_size(int width, int height);
+
+/*
+ * Get the current pixel width and height of the <canvas> element
+ * as well as whether the canvas is fullscreen or not.
+ */
+void emscripten_get_canvas_size(int *width, int *height, int *isFullscreen);
 
 /*
  * Returns the highest-precision representation of the

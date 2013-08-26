@@ -330,27 +330,6 @@ f.close()
           os.chdir(path_from_root('tests')) # Move away from the directory we are about to remove.
           shutil.rmtree(tempdirname)
 
-  def test_nostdincxx(self):
-    try:
-      old = os.environ.get('EMCC_LLVM_TARGET') or ''
-      for compiler in [EMCC, EMXX]:
-        for target in ['i386-pc-linux-gnu', 'le32-unknown-nacl']:
-          print compiler, target
-          os.environ['EMCC_LLVM_TARGET'] = target
-          out, err = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-v'], stdout=PIPE, stderr=PIPE).communicate()
-          out2, err2 = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-v', '-nostdinc++'], stdout=PIPE, stderr=PIPE).communicate()
-          assert out == out2
-          def focus(e):
-            assert 'search starts here:' in e, e
-            assert e.count('End of search list.') == 1, e
-            return e[e.index('search starts here:'):e.index('End of search list.')+20]
-          err = focus(err)
-          err2 = focus(err2)
-          assert err == err2, err + '\n\n\n\n' + err2
-    finally:
-      if old:
-        os.environ['EMCC_LLVM_TARGET'] = old
-
   def test_failure_error_code(self):
     for compiler in [EMCC, EMXX]:
       # Test that if one file is missing from the build, then emcc shouldn't succeed, and shouldn't try to produce an output file.
@@ -802,8 +781,8 @@ f.close()
 
     for test_opts, expected_ranges in [
       ([], {
-         100: (190, 250),
-         250: (200, 330),
+         100: (190, 275),
+         250: (200, 500),
          500: (250, 500),
         1000: (230, 1000),
         2000: (380, 2000),
@@ -1033,7 +1012,7 @@ int main(int argc, char const *argv[])
     self.assertContained('hello from lib', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
   def test_runtimelink_multi(self):
-    return self.skip('shared libs are deprecated')
+    return self.skip('BUILD_AS_SHARED_LIB=2 is deprecated')
     if Settings.ASM_JS: return self.skip('asm does not support runtime linking yet')
 
     if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('cannot run without spidermonkey due to node limitations')
@@ -1902,7 +1881,7 @@ seeked= file.
     if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('cannot run without spidermonkey due to node limitations (Uint8ClampedArray etc.)')
 
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), os.path.join(self.get_dir(), 'example.png'))
-    Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_canvas.c'), '-s', 'HEADLESS=1']).communicate()
+    Popen([PYTHON, EMCC, path_from_root('tests', 'sdl_headless.c'), '-s', 'HEADLESS=1']).communicate()
     output = run_js('a.out.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE)
     assert '''Init: 0
 Font: 0x1

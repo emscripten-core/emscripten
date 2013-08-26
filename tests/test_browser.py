@@ -38,8 +38,6 @@ class browser(BrowserCore):
         message='You should see "hello, world!" and a colored cube.')
 
   def test_html_source_map(self):
-    if 'test_html_source_map' not in str(sys.argv): return self.skip('''This test
-requires manual intervention; will not be run unless explicitly requested''')
     cpp_file = os.path.join(self.get_dir(), 'src.cpp')
     html_file = os.path.join(self.get_dir(), 'src.html')
     # browsers will try to 'guess' the corresponding original line if a
@@ -64,14 +62,20 @@ requires manual intervention; will not be run unless explicitly requested''')
       ''')
     # use relative paths when calling emcc, because file:// URIs can only load
     # sourceContent when the maps are relative paths
+    try_delete(html_file)
+    try_delete(html_file + '.map')
     Popen([PYTHON, EMCC, 'src.cpp', '-o', 'src.html', '-g4'],
         cwd=self.get_dir()).communicate()
+    assert os.path.exists(html_file)
+    assert os.path.exists(html_file + '.map')
+    import webbrowser, time
     webbrowser.open_new('file://' + html_file)
+    time.sleep(1)
     print '''
-Set the debugger to pause on exceptions
-You should see an exception thrown at src.cpp:7.
-Press any key to continue.'''
-    raw_input()
+If manually bisecting:
+  Check that you see src.cpp among the page sources.
+  Even better, add a breakpoint, e.g. on the printf, then reload, then step through and see the print (best to run with EM_SAVE_DIR=1 for the reload).
+'''
 
   def build_native_lzma(self):
     lzma_native = path_from_root('third_party', 'lzma.js', 'lzma-native')
@@ -787,6 +791,9 @@ Press any key to continue.'''
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl_mouse.c'), '-O2', '--minify', '0', '-o', 'sdl_mouse.js', '--pre-js', 'pre.js']).communicate()
     self.run_browser('page.html', '', '/report_result?600')
 
+  def test_glut_touchevents(self):
+    self.btest('glut_touchevents.c', '1')
+
   def test_sdl_pumpevents(self):
     # key events should be detected using SDL_PumpEvents
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
@@ -798,7 +805,7 @@ Press any key to continue.'''
         document.dispatchEvent(event);
       }
     ''')
-    self.btest('sdl_pumpevents.c', expected='3', args=['--pre-js', 'pre.js'])
+    self.btest('sdl_pumpevents.c', expected='7', args=['--pre-js', 'pre.js'])
 
   def test_sdl_audio(self):
     shutil.copyfile(path_from_root('tests', 'sounds', 'alarmvictory_1.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
@@ -1350,7 +1357,7 @@ Press any key to continue.'''
     self.btest('perspective.c', reference='perspective.png', args=['-s', 'LEGACY_GL_EMULATION=1'])
 
   def test_runtimelink(self):
-    return self.skip('shared libs are deprecated')
+    return self.skip('BUILD_AS_SHARED_LIB=2 is deprecated')
     main, supp = self.setup_runtimelink_test()
 
     open(self.in_dir('supp.cpp'), 'w').write(supp)

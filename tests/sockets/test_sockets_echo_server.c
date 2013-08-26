@@ -111,7 +111,7 @@ int main() {
   int res;
 
   atexit(cleanup);
-  signal(SIGTERM, cleanup);
+  //signal(SIGTERM, cleanup);
 
   memset(&server, 0, sizeof(server_t));
   memset(&client, 0, sizeof(client_t));

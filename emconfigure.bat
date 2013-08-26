@@ -1,2 +1,2 @@
 @echo off
-python %~dp0\emconfigure %*
+python "%~dp0\emconfigure" %*

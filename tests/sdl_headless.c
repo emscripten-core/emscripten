@@ -45,15 +45,6 @@ int main(int argc, char **argv) {
 
   SDL_LockSurface(screen);
 
-  int width, height, isFullscreen;
-  emscripten_get_canvas_size(&width, &height, &isFullscreen);
-
-  if (width != 600 && height != 450)
-  {
-    printf("error: wrong width/height\n");
-    abort();
-  }
-
   int sum = 0;
   for (int i = 0; i < screen->h; i++) {
     sum += *((char*)screen->pixels + i*screen->w*4 + i*4 + 0);

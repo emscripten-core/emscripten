@@ -1,6 +1,22 @@
 mergeInto(LibraryManager.library, {
   $MEMFS__deps: ['$FS'],
   $MEMFS: {
+    // content modes
+    CONTENT_OWNING: 1, // contains a subarray into the heap, and we own it - need to free() when no longer needed
+    CONTENT_FLEXIBLE: 2, // has been modified or never set to anything, and is a flexible js array that can grow/shrink
+    CONTENT_FIXED: 3, // contains some fixed-size content written into it, in a typed array
+    ensureFlexible: function(node) {
+      if (node.contentMode !== MEMFS.CONTENT_FLEXIBLE) {
+        var contents = node.contents;
+        node.contents = Array.prototype.slice.call(contents);
+        if (node.contentMode === MEMFS.CONTENT_OWNING) {
+          assert(contents.byteOffset);
+          Module['_free'](contents.byteOffset);
+        }
+        node.contentMode = MEMFS.CONTENT_FLEXIBLE;
+      }
+    },
+
     mount: function(mount) {
       return MEMFS.create_node(null, '/', {{{ cDefine('S_IFDIR') }}} | 0777, 0);
     },
@@ -40,6 +56,7 @@ mergeInto(LibraryManager.library, {
           mmap: MEMFS.stream_ops.mmap
         };
         node.contents = [];
+        node.contentMode = MEMFS.CONTENT_FLEXIBLE;
       } else if (FS.isLink(node.mode)) {
         node.node_ops = {
           getattr: MEMFS.node_ops.getattr,
@@ -98,6 +115,7 @@ mergeInto(LibraryManager.library, {
           node.timestamp = attr.timestamp;
         }
         if (attr.size !== undefined) {
+          MEMFS.ensureFlexible(node);
           var contents = node.contents;
           if (attr.size < contents.length) contents.length = attr.size;
           else while (attr.size > contents.length) contents.push(0);
@@ -165,7 +183,7 @@ mergeInto(LibraryManager.library, {
         var contents = stream.node.contents;
         var size = Math.min(contents.length - position, length);
 #if USE_TYPED_ARRAYS == 2
-        if (contents.subarray) { // typed array
+        if (size > 8 && contents.subarray) { // non-trivial, and typed array
           buffer.set(contents.subarray(position, position + size), offset);
         } else
 #endif
@@ -176,13 +194,30 @@ mergeInto(LibraryManager.library, {
         }
         return size;
       },
-      write: function(stream, buffer, offset, length, position) {
-        var contents = stream.node.contents;
+      write: function(stream, buffer, offset, length, position, canOwn) {
+        var node = stream.node;
+        node.timestamp = Date.now();
+        var contents = node.contents;
+#if USE_TYPED_ARRAYS == 2
+        if (length && contents.length === 0 && position === 0 && buffer.subarray) {
+          // just replace it with the new data
+          assert(buffer.length);
+          if (canOwn && buffer.buffer === HEAP8.buffer && offset === 0) {
+            node.contents = buffer; // this is a subarray of the heap, and we can own it
+            node.contentMode = MEMFS.CONTENT_OWNING;
+          } else {
+            node.contents = new Uint8Array(buffer.subarray(offset, offset+length));
+            node.contentMode = MEMFS.CONTENT_FIXED;
+          }
+          return length;
+        }
+#endif
+        MEMFS.ensureFlexible(node);
+        var contents = node.contents;
         while (contents.length < position) contents.push(0);
         for (var i = 0; i < length; i++) {
           contents[position + i] = buffer[offset + i];
         }
-        stream.node.timestamp = Date.now();
         return length;
       },
       llseek: function(stream, offset, whence) {
@@ -202,6 +237,7 @@ mergeInto(LibraryManager.library, {
         return position;
       },
       allocate: function(stream, offset, length) {
+        MEMFS.ensureFlexible(stream.node);
         var contents = stream.node.contents;
         var limit = offset + length;
         while (limit > contents.length) contents.push(0);
@@ -214,10 +250,10 @@ mergeInto(LibraryManager.library, {
         var allocated;
         var contents = stream.node.contents;
         // Only make a new copy when MAP_PRIVATE is specified.
-        if (!(flags & {{{ cDefine('MAP_PRIVATE') }}})) {
+        if ( !(flags & {{{ cDefine('MAP_PRIVATE') }}}) &&
+              (contents.buffer === buffer || contents.buffer === buffer.buffer) ) {
           // We can't emulate MAP_SHARED when the file is not backed by the buffer
           // we're mapping to (e.g. the HEAP buffer).
-          assert(contents.buffer === buffer || contents.buffer === buffer.buffer);
           allocated = false;
           ptr = contents.byteOffset;
         } else {
@@ -241,3 +277,4 @@ mergeInto(LibraryManager.library, {
     }
   }
 });
+

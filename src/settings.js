@@ -6,6 +6,11 @@
 //   emcc -s OPTION1=VALUE1 -s OPTION2=VALUE2 [..other stuff..]
 //
 // See https://github.com/kripken/emscripten/wiki/Code-Generation-Modes/
+//
+// Note that the values here are the defaults in -O0, that is, unoptimized
+// mode. See apply_opt_level in tools/shared.py for how -O1,2,3 affect these
+// flags.
+//
 
 // Tuning
 var QUANTUM_SIZE = 4; // This is the size of an individual field in a structure. 1 would
@@ -131,6 +136,16 @@ var OUTLINING_LIMIT = 0; // A function size above which we try to automatically 
                          // large functions (JS engines often compile them very slowly,
                          // compile them with lower optimizations, or do not optimize them
                          // at all). If 0, we do not perform outlining at all.
+                         // To see which funcs are large, you can inspect the source
+                         // in a debug build (-g2 or -g for example), and can run
+                         // tools/find_bigfuncs.py on that to get a sorted list by size.
+                         // Another possibility is to look in the web console in firefox,
+                         // which will note slowly-compiling functions.
+                         // You will probably want to experiment with various values to
+                         // see the impact on compilation time, code size and runtime
+                         // throughput. It is hard to say what values to start testing
+                         // with, but something around 20,000 to 100,000 might make sense.
+                         // (The unit size is number of AST nodes.)
 
 // Generated code debugging options
 var SAFE_HEAP = 0; // Check each write to the heap, for example, this will give a clear
@@ -315,11 +330,12 @@ var SIDE_MODULE = 0; // Corresponds to MAIN_MODULE
 
 var BUILD_AS_SHARED_LIB = 0; // Whether to build the code as a shared library
                              // 0 here means this is not a shared lib: It is a main file.
-                             // All shared library options (1 and 2) are currently deprecated XXX
                              // 1 means this is a normal shared lib, load it with dlopen()
                              // 2 means this is a shared lib that will be linked at runtime,
                              //   which means it will insert its functions into
                              //   the global namespace. See STATIC_LIBS_TO_LOAD.
+                             //
+                             // Value 2 is currently deprecated.
 var RUNTIME_LINKED_LIBS = []; // If this is a main file (BUILD_AS_SHARED_LIB == 0), then
                               // we will link these at runtime. They must have been built with
                               // BUILD_AS_SHARED_LIB == 2.
@@ -379,9 +395,7 @@ var HEADLESS = 0; // If 1, will include shim code that tries to 'fake' a browser
 var BENCHMARK = 0; // If 1, will just time how long main() takes to execute, and not
                    // print out anything at all whatsoever. This is useful for benchmarking.
 
-var ASM_JS = 0; // If 1, generate code in asm.js format. XXX This is highly experimental,
-                // and will not work on most codebases yet. It is NOT recommended that you
-                // try this yet.
+var ASM_JS = 0; // If 1, generate code in asm.js format.
 
 var PGO = 0; // Enables profile-guided optimization in the form of runtime checks for
              // which functions are actually called. Emits a list during shutdown that you

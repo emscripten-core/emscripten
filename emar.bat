@@ -1,2 +1,2 @@
 @echo off
-python %~dp0\emar %*
+python "%~dp0\emar" %*

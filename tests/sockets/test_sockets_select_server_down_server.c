@@ -14,38 +14,13 @@
 #include <emscripten.h>
 #endif
 
-int serverfd = -1;
-
-void iter(void *arg) {
-  int res;
-  fd_set fdr;
-  fd_set fdw;
-
-  // see if there are any connections to accept / write to
-  FD_ZERO(&fdr);
-  FD_ZERO(&fdw);
-  FD_SET(serverfd, &fdr);
-  if (clientfd != -1) FD_SET(clientfd, &fdw);
-  res = select(64, &fdr, &fdw, NULL, NULL);
-  if (res == -1) {
-    perror("select failed");
-    exit(EXIT_SUCCESS);
-  }
-
-  if (FD_ISSET(serverfd, &fdr)) {
-    printf("accepted someone\n");
-    clientfd = accept(serverfd, NULL, NULL);
-    assert(clientfd != -1);
-  }
-
-  if (FD_ISSET(clientfd, &fdw)) {
-    do_send(clientfd);
-  }
+void main_loop(void *arg) {
 }
 
 int main() {
   struct sockaddr_in addr;
   int res;
+  int serverfd;
 
   // create the socket
   serverfd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -55,7 +30,7 @@ int main() {
   }
   fcntl(serverfd, F_SETFL, O_NONBLOCK);
 
-  // bind and listen to the supplied port
+  // bind to the supplied port
   memset(&addr, 0, sizeof(addr));
   addr.sin_family = AF_INET;
   addr.sin_port = htons(SOCKK);
@@ -70,16 +45,12 @@ int main() {
     exit(EXIT_FAILURE);
   }
 
-  res = listen(serverfd, 50);
-  if (res == -1) {
-    perror("listen failed");
-    exit(EXIT_FAILURE);
-  }
+  close(serverfd);
 
 #if EMSCRIPTEN
-  emscripten_set_main_loop(iter, 60, 0);
+  emscripten_set_main_loop(main_loop, 60, 0);
 #else
-  while (1) iter(NULL);
+  while (1) main_loop(NULL); sleep(1);
 #endif
 
   return EXIT_SUCCESS;

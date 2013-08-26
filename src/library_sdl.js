@@ -379,7 +379,8 @@ var LibrarySDL = {
       SDL.surfaces[surf] = null;
     },
 
-    touchX:0, touchY: 0,
+    touchX: 0, touchY: 0,
+    savedKeydown: null,
 
     receiveEvent: function(event) {
       switch(event.type) {
@@ -466,11 +467,29 @@ var LibrarySDL = {
             SDL.DOMButtons[event.button] = 0;
           }
 
-          if (event.type == 'keypress' && !SDL.textInput) {
-            break;
+          // SDL expects a unicode character to be passed to its keydown events.
+          // Unfortunately, the browser APIs only provide a charCode property on
+          // keypress events, so we must backfill in keydown events with their
+          // subsequent keypress event's charCode.
+          if (event.type === 'keypress' && SDL.savedKeydown) {
+            // charCode is read-only
+            SDL.savedKeydown.keypressCharCode = event.charCode;
+            SDL.savedKeydown = null;
+          } else if (event.type === 'keydown') {
+            SDL.savedKeydown = event;
           }
-          
-          SDL.events.push(event);
+
+          // If we preventDefault on keydown events, the subsequent keypress events
+          // won't fire. However, it's fine (and in some cases necessary) to
+          // preventDefault for keys that don't generate a character.
+          if (event.type !== 'keydown' || (event.keyCode === 8 /* backspace */ || event.keyCode === 9 /* tab */)) {
+            event.preventDefault();
+          }
+
+          // Don't push keypress events unless SDL_StartTextInput has been called.
+          if (event.type !== 'keypress' || SDL.textInput) {
+            SDL.events.push(event);
+          }
           break;
         case 'mouseout':
           // Un-press all pressed mouse buttons, because we might miss the release outside of the canvas
@@ -485,6 +504,7 @@ var LibrarySDL = {
               SDL.DOMButtons[i] = 0;
             }
           }
+          event.preventDefault();
           break;
         case 'blur':
         case 'visibilitychange': {
@@ -495,6 +515,7 @@ var LibrarySDL = {
               keyCode: SDL.keyboardMap[code]
             });
           }
+          event.preventDefault();
           break;
         }
         case 'unload':
@@ -506,15 +527,15 @@ var LibrarySDL = {
           return;
         case 'resize':
           SDL.events.push(event);
+          // manually triggered resize event doesn't have a preventDefault member
+          if (event.preventDefault) {
+            event.preventDefault();
+          }
           break;
       }
       if (SDL.events.length >= 10000) {
         Module.printErr('SDL event queue full, dropping events');
         SDL.events = SDL.events.slice(0, 10000);
-      }
-      // manually triggered resize event doesn't have a preventDefault member
-      if (event.preventDefault) {
-        event.preventDefault();
       }
       return;
     },
@@ -526,7 +547,12 @@ var LibrarySDL = {
       switch (event.type) {
         case 'keydown': case 'keyup': {
           var down = event.type === 'keydown';
-          var code = SDL.keyCodes[event.keyCode] || event.keyCode;
+          var code = event.keyCode;
+          if (code >= 65 && code <= 90) {
+            code += 32; // make lowercase for SDL
+          } else {
+            code = SDL.keyCodes[event.keyCode] || event.keyCode;
+          }
 
           {{{ makeSetValue('SDL.keyboardState', 'code', 'down', 'i8') }}};
           // TODO: lmeta, rmeta, numlock, capslock, KMOD_MODE, KMOD_RESERVED
@@ -590,8 +616,9 @@ var LibrarySDL = {
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.repeat', '0', 'i8') }}} // TODO
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.scancode', 'scan', 'i32') }}}
           {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.sym', 'key', 'i32') }}}
-          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.mod', 'SDL.modState', 'i32') }}}
-          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.unicode', 'key', 'i32') }}}
+          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.mod', 'SDL.modState', 'i16') }}}
+          // some non-character keys (e.g. backspace and tab) won't have keypressCharCode set, fill in with the keyCode.
+          {{{ makeSetValue('ptr', 'SDL.structs.KeyboardEvent.keysym + SDL.structs.keysym.unicode', 'event.keypressCharCode || key', 'i32') }}}
 
           break;
         }

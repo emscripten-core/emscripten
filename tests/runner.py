@@ -732,6 +732,7 @@ if __name__ == '__main__':
 ==============================================================================
 Running the main part of the test suite. Don't forget to run the other parts!
 
+  other - tests separate from the main suite
   sanity - tests for first run, etc., modifies ~/.emscripten
   benchmark - run before and after each set of changes before pushing to
               master, verify no regressions

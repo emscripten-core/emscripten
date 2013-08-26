@@ -104,12 +104,14 @@ void Branch::Render(Block *Target, bool SetLabel) {
 
 int Block::IdCounter = 1; // 0 is reserved for clearings
 
-Block::Block(const char *CodeInit) : Parent(NULL), Id(Block::IdCounter++), IsCheckedMultipleEntry(false) {
+Block::Block(const char *CodeInit, const char *BranchVarInit) : Parent(NULL), Id(Block::IdCounter++), IsCheckedMultipleEntry(false) {
   Code = strdup(CodeInit);
+  BranchVar = BranchVarInit ? strdup(BranchVarInit) : NULL;
 }
 
 Block::~Block() {
   if (Code) free((void*)Code);
+  if (BranchVar) free((void*)BranchVar);
   for (BlockBranchMap::iterator iter = ProcessedBranchesOut.begin(); iter != ProcessedBranchesOut.end(); iter++) {
     delete iter->second;
   }
@@ -189,8 +191,14 @@ void Block::Render(bool InLoop) {
   }
   assert(DefaultTarget); // Since each block *must* branch somewhere, this must be set
 
+  bool useSwitch = BranchVar != NULL;
+
+  if (useSwitch) {
+    PrintIndented("switch (%s) {\n", BranchVar);
+  }
+
   ministring RemainingConditions;
-  bool First = true;
+  bool First = !useSwitch; // when using a switch, there is no special first
   for (BlockBranchMap::iterator iter = ProcessedBranchesOut.begin();; iter++) {
     Block *Target;
     Branch *Details;
@@ -208,26 +216,39 @@ void Block::Render(bool InLoop) {
     bool HasContent = SetCurrLabel || Details->Type != Branch::Direct || HasFusedContent || Details->Code;
     if (iter != ProcessedBranchesOut.end()) {
       // If there is nothing to show in this branch, omit the condition
-      if (HasContent) {
-        PrintIndented("%sif (%s) {\n", First ? "" : "} else ", Details->Condition);
-        First = false;
+      if (useSwitch) {
+        PrintIndented("%s {\n", Details->Condition);
       } else {
-        if (RemainingConditions.size() > 0) RemainingConditions += " && ";
-        RemainingConditions += "!(";
-        RemainingConditions += Details->Condition;
-        RemainingConditions += ")";
+        if (HasContent) {
+          PrintIndented("%sif (%s) {\n", First ? "" : "} else ", Details->Condition);
+          First = false;
+        } else {
+          if (RemainingConditions.size() > 0) RemainingConditions += " && ";
+          RemainingConditions += "!(";
+          if (BranchVar) {
+            RemainingConditions += BranchVar;
+            RemainingConditions += " == ";
+          }
+          RemainingConditions += Details->Condition;
+          RemainingConditions += ")";
+        }
       }
     } else {
-      if (HasContent) {
-        if (RemainingConditions.size() > 0) {
-          if (First) {
-            PrintIndented("if (%s) {\n", RemainingConditions.c_str());
-            First = false;
-          } else {
-            PrintIndented("} else if (%s) {\n", RemainingConditions.c_str());
+      // this is the default
+      if (useSwitch) {
+        PrintIndented("default: {\n");
+      } else {
+        if (HasContent) {
+          if (RemainingConditions.size() > 0) {
+            if (First) {
+              PrintIndented("if (%s) {\n", RemainingConditions.c_str());
+              First = false;
+            } else {
+              PrintIndented("} else if (%s) {\n", RemainingConditions.c_str());
+            }
+          } else if (!First) {
+            PrintIndented("} else {\n");
           }
-        } else if (!First) {
-          PrintIndented("} else {\n");
         }
       }
     }
@@ -236,7 +257,13 @@ void Block::Render(bool InLoop) {
     if (HasFusedContent) {
       Fused->InnerMap.find(Target)->second->Render(InLoop);
     }
+    if (useSwitch && iter != ProcessedBranchesOut.end()) {
+      PrintIndented("break;\n");
+    }
     if (!First) Indenter::Unindent();
+    if (useSwitch) {
+      PrintIndented("}\n");
+    }
     if (iter == ProcessedBranchesOut.end()) break;
   }
   if (!First) PrintIndented("}\n");
@@ -392,7 +419,7 @@ void Relooper::Calculate(Block *Entry) {
         PrintDebug("Splitting block %d\n", Original->Id);
         for (BlockSet::iterator iter = Original->BranchesIn.begin(); iter != Original->BranchesIn.end(); iter++) {
           Block *Prior = *iter;
-          Block *Split = new Block(Original->Code);
+          Block *Split = new Block(Original->Code, Original->BranchVar);
           Parent->Blocks.push_back(Split);
           PrintDebug("  to %d\n", Split->Id);
           Split->BranchesIn.insert(Prior);
@@ -975,6 +1002,8 @@ void Relooper::Calculate(Block *Entry) {
         Root = Next;
         Next = NULL;
         SHAPE_SWITCH(Root, {
+          if (Simple->Inner->BranchVar) LastLoop = NULL; // a switch clears out the loop (TODO: only for breaks, not continue)
+
           // If there is a next block, we already know at Simple creation time to make direct branches,
           // and we can do nothing more. If there is no next however, then Natural is where we will
           // go to by doing nothing, so we can potentially optimize some branches to direct.
@@ -1028,6 +1057,11 @@ void Relooper::Calculate(Block *Entry) {
           // If we are fusing a Multiple with a loop into this Simple, then visit it now
           if (Fused && Fused->NeedLoop) {
             LoopStack.push(Fused);
+          }
+          if (Simple->Inner->BranchVar) {
+            LoopStack.push(NULL); // a switch means breaks are now useless, push a dummy
+          }
+          if (Fused) {
             RECURSE_Multiple(Fused, FindLabeledLoops);
           }
           for (BlockBranchMap::iterator iter = Simple->Inner->ProcessedBranchesOut.begin(); iter != Simple->Inner->ProcessedBranchesOut.end(); iter++) {
@@ -1038,14 +1072,18 @@ void Relooper::Calculate(Block *Entry) {
               if (Details->Ancestor != LoopStack.top() && Details->Labeled) {
                 LabeledShape *Labeled = Shape::IsLabeled(Details->Ancestor);
                 Labeled->Labeled = true;
-                Details->Labeled = true;
               } else {
                 Details->Labeled = false;
               }
             }
           }
+          if (Simple->Inner->BranchVar) {
+            LoopStack.pop();
+          }
           if (Fused && Fused->NeedLoop) {
             LoopStack.pop();
+          }
+          if (Fused) {
             Next = Fused->Next;
           } else {
             Next = Root->Next;
@@ -1173,8 +1211,8 @@ void rl_set_asm_js_mode(int on) {
   Relooper::SetAsmJSMode(on);
 }
 
-void *rl_new_block(const char *text) {
-  Block *ret = new Block(text);
+void *rl_new_block(const char *text, const char *branch_var) {
+  Block *ret = new Block(text, branch_var);
 #if DEBUG
   printf("  void *b%d = rl_new_block(\"// code %d\");\n", ret->Id, ret->Id);
   __blockDebugMap__[ret] = ret->Id;

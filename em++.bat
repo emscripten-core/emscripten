@@ -1,2 +1,2 @@
 @echo off
-python %~dp0\em++ %*
+python "%~dp0\em++" %*

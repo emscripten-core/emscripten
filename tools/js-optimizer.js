@@ -1236,7 +1236,7 @@ function vacuum(ast) {
         }
       } break;
       case 'label': {
-        if (node[2][0] === 'toplevel' && (!node[2][1] || node[2][1].length === 0)) {
+        if (node[2] && node[2][0] === 'toplevel' && (!node[2][1] || node[2][1].length === 0)) {
           return emptyNode();
         }
       } break;
@@ -3026,58 +3026,90 @@ function outline(ast) {
           if (ignore.indexOf(node) >= 0) continue;
           var type = node[0];
           if (measureSize(node) >= minSize) {
-            if (type === 'if' && node[3]) {
+            if ((type === 'if' && node[3]) || type === 'switch') {
+              var isIf = type === 'if';
               var reps = [];
               var helper = getHelper();
               // clear helper
               reps.push(['stat', ['assign', true, ['name', helper], ['num', 1]]]); // 1 means continue in ifs
               // gather parts
-              var parts = [];
-              var curr = node;
-              while (1) {
-                parts.push({ condition: curr[1], body: curr[2] });
-                curr = curr[3];
-                if (!curr) break;
-                if (curr[0] != 'if') {
-                  parts.push({ condition: null, body: curr });
-                  break;
+              var parts;
+              if (isIf) {
+                parts = [];
+                var curr = node;
+                while (1) {
+                  parts.push({ condition: curr[1], body: curr[2] });
+                  curr = curr[3];
+                  if (!curr) break;
+                  if (curr[0] != 'if') {
+                    parts.push({ condition: null, body: curr });
+                    break;
+                  }
                 }
+              } else { // switch
+                var switchVar = getHelper(); // switch var could be an expression
+                reps.push(['stat', ['assign', true, ['name', switchVar], node[1]]]);
+                parts = node[2].map(function(case_) {
+                  return { condition: case_[0], body: case_[1] };
+                });
               }
               // chunkify. Each chunk is a chain of if-elses, with the new overhead just on entry and exit
               var chunks = [];
               var currSize = 0;
               var currChunk = [];
+              var force = false; // when we hit a case X: that falls through, we force inclusion of everything until a full case
               parts.forEach(function(part) {
                 var size = (part.condition ? measureSize(part.condition) : 0) + measureSize(part.body) + 5; // add constant for overhead of extra code
                 assert(size > 0);
-                if (size + currSize >= minSize && currSize) {
+                if (size + currSize >= minSize && currSize && !force) {
                   chunks.push(currChunk);
                   currChunk = [];
                   currSize = 0;
                 }
                 currChunk.push(part);
                 currSize += size;
+                if (!isIf) {
+                  var last = part.body;
+                  last = last[stats.length-1];
+                  if (last && last[0] === 'block') last = last[1][last[1].length-1];
+                  if (last && last[0] === 'stat') last = last[1];
+                  force = !last || last[0] !== 'break';
+                }
               });
               assert(currSize);
               chunks.push(currChunk);
               // generate flattened code
               chunks.forEach(function(chunk) {
                 var pre = ['stat', ['assign', true, ['name', helper], ['num', 0]]];
-                var chain = null, tail = null;
-                chunk.forEach(function(part) {
-                  // add to chain
-                  var contents = makeIf(part.condition || ['num', 1], part.body[1]);
-                  if (chain) {
-                    tail[3] = contents;
-                  } else {
-                    chain = contents;
-                    ignore.push(contents);
+                if (isIf) {
+                  var chain = null, tail = null;
+                  chunk.forEach(function(part) {
+                    // add to chain
+                    var contents = makeIf(part.condition || ['num', 1], part.body[1]);
+                    if (chain) {
+                      tail[3] = contents;
+                    } else {
+                      chain = contents;
+                      ignore.push(contents);
+                    }
+                    tail = contents;
+                  });
+                  // if none of the ifs were entered, in the final else note that we need to continue
+                  tail[3] = ['block', [['stat', ['assign', true, ['name', helper], ['num', 1]]]]];
+                  reps.push(makeIf(['name', helper], [pre, chain]));
+                } else { // switch
+                  var hasDefault;
+                  var s = makeSwitch(['binary', '|', ['name', switchVar], ['num', 0]], chunk.map(function(part) {
+                    hasDefault = hasDefault || part.condition === null;
+                    return [part.condition, part.body];
+                  }));
+                  // if no default, add one where we note that we need to continue
+                  if (!hasDefault) {
+                    s[2].push([null, [['block', [['stat', ['assign', true, ['name', helper], ['num', 1]]]]]]]);
                   }
-                  tail = contents;
-                });
-                // if none of the ifs were entered, in the final else note that we need to continue
-                tail[3] = ['block', [['stat', ['assign', true, ['name', helper], ['num', 1]]]]];
-                reps.push(makeIf(['name', helper], [pre, chain]));
+                  ignore.push(s);
+                  reps.push(makeIf(['name', helper], [pre, s]));
+                }
               });
               // replace code and update i
               stats.splice.apply(stats, [i, 1].concat(reps));
@@ -3090,6 +3122,8 @@ function outline(ast) {
       }
     });
   }
+
+  var maxTotalOutlinings = Infinity; // debugging tool
 
   // Prepares information for spilling of local variables
   function analyzeFunction(func, asmData) {
@@ -3110,7 +3144,7 @@ function outline(ast) {
     // The control variables are zeroed out when calling an outlined function, and after using
     // the value after they return.
     var size = measureSize(func);
-    asmData.maxOutlinings = Math.round(3*size/extraInfo.sizeToOutline);
+    asmData.maxOutlinings = Math.min(Math.round(3*size/extraInfo.sizeToOutline), maxTotalOutlinings);
     asmData.intendedPieces = Math.ceil(size/extraInfo.sizeToOutline);
     asmData.totalStackSize = stackSize + (stack.length + 2*asmData.maxOutlinings)*8;
     asmData.controlStackPos = function(i) { return stackSize + (stack.length + i)*8 };
@@ -3440,6 +3474,7 @@ function outline(ast) {
       asmData.splitCounter--;
       return [];
     }
+    maxTotalOutlinings--;
     for (var v in owned) {
       if (v != 'sp') delete asmData.vars[v]; // parent does not need these anymore
     }
@@ -3596,6 +3631,8 @@ function outline(ast) {
 
   var funcs = ast[1];
 
+  var maxTotalFunctions = Infinity; // debugging tool
+
   var more = true;
   while (more) {
     more = false;
@@ -3603,9 +3640,11 @@ function outline(ast) {
     var newFuncs = [];
 
     funcs.forEach(function(func) {
+      vacuum(func); // clear out empty nodes that affect code size
       var asmData = normalizeAsm(func);
       var size = measureSize(func);
-      if (size >= extraInfo.sizeToOutline) {
+      if (size >= extraInfo.sizeToOutline && maxTotalFunctions > 0) {
+        maxTotalFunctions--;
         aggressiveVariableElimination(func, asmData);
         flatten(func, asmData);
         analyzeFunction(func, asmData);

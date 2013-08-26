@@ -93,6 +93,7 @@ int main (int argc, char ** argv)
   }
 
 #if EMSCRIPTEN
+#if USE_IFRAME
   emscripten_run_script("console.log('adding iframe');"
                         "var iframe = document.createElement('iframe');"
                         "iframe.src = 'server.html';"
@@ -100,6 +101,7 @@ int main (int argc, char ** argv)
                         "iframe.height = '33%';"
                         "document.body.appendChild(iframe);"
                         "console.log('added.');");
+#endif
 #endif
 
 #if EMSCRIPTEN

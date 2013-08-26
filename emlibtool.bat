@@ -1,2 +1,2 @@
 @echo off
-python %~dp0\emlibtool %*
+python "%~dp0\emlibtool" %*

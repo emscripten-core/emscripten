@@ -808,6 +808,80 @@ nada
     '''
     self.do_run(src, ',0,,2,C!,0,C!,0,,65535,C!,0,')
 
+  def test_double_i64_conversion(self):
+    if Settings.USE_TYPED_ARRAYS != 2: return self.skip('needs ta2')
+
+    src = r'''
+      #include <cassert>
+      #include <inttypes.h>
+      #include <stdio.h>
+
+      __attribute((noinline)) bool eq(double d, int64_t i) {
+        int64_t i2 = (int64_t)d;
+        if (i != i2) {
+          printf("%.20g converted to int64 returns %lld, not %lld as expected!\n", d, i2, i);
+        }
+        return i == i2;
+      }
+
+      int main() {
+        assert(eq(0.0, 0));
+        assert(eq(-0.0, 0));
+        assert(eq(0.1, 0));
+        assert(eq(-0.1, 0));
+        assert(eq(0.6, 0));
+        assert(eq(-0.6, 0));
+        assert(eq(1.0, 1));
+        assert(eq(-1.0, -1));
+        assert(eq(1.1, 1));
+        assert(eq(-1.1, -1));
+        assert(eq(1.6, 1));
+        assert(eq(-1.6, -1));
+        assert(eq(4294967295.0, 4294967295LL));
+        assert(eq(4294967295.5, 4294967295LL));
+        assert(eq(4294967296.0, 4294967296LL));
+        assert(eq(4294967296.5, 4294967296LL));
+        assert(eq(14294967295.0, 14294967295LL));
+        assert(eq(14294967295.5, 14294967295LL));
+        assert(eq(14294967296.0, 14294967296LL));
+        assert(eq(14294967296.5, 14294967296LL));
+        assert(eq(-4294967295.0, -4294967295LL));
+        assert(eq(-4294967295.5, -4294967295LL));
+        assert(eq(-4294967296.0, -4294967296LL));
+        assert(eq(-4294967296.5, -4294967296LL));
+        assert(eq(-14294967295.0, -14294967295LL));
+        assert(eq(-14294967295.5, -14294967295LL));
+        assert(eq(-14294967296.0, -14294967296LL));
+        assert(eq(-14294967296.5, -14294967296LL));
+
+        assert(eq(4294967295.3, 4294967295LL));
+        assert(eq(4294967296.3, 4294967296LL));
+        assert(eq(14294967295.3, 14294967295LL));
+        assert(eq(14294967296.3, 14294967296LL));
+        assert(eq(-4294967295.3, -4294967295LL));
+        assert(eq(-4294967296.3, -4294967296LL));
+        assert(eq(-14294967295.3, -14294967295LL));
+        assert(eq(-14294967296.3, -14294967296LL));
+
+        assert(eq(4294967295.8, 4294967295LL));
+        assert(eq(4294967296.8, 4294967296LL));
+        assert(eq(14294967295.8, 14294967295LL));
+        assert(eq(14294967296.8, 14294967296LL));
+        assert(eq(-4294967295.8, -4294967295LL));
+        assert(eq(-4294967296.8, -4294967296LL));
+        assert(eq(-14294967295.8, -14294967295LL));
+        assert(eq(-14294967296.8, -14294967296LL));
+
+        // The following number is the largest double such that all integers smaller than this can exactly be represented in a double.
+        assert(eq(9007199254740992.0, 9007199254740992LL /* == 2^53 */));
+        assert(eq(-9007199254740992.0, -9007199254740992LL /* == -2^53 */));
+
+        printf("OK!\n");
+        return 0;
+      }
+    '''
+    self.do_run(src, 'OK!\n');
+
   def test_negative_zero(self):
     src = r'''
       #include <stdio.h>
@@ -3678,7 +3752,7 @@ def process(filename):
         }
         '''
 
-      self.do_run(src, 'Inline JS is very cool\n3.64')
+      self.do_run(src, 'Inline JS is very cool\n3.64\n')
 
   def test_inlinejs2(self):
       if Settings.ASM_JS: return self.skip('asm does not support random code, TODO: something that works in asm')
@@ -3704,6 +3778,27 @@ def process(filename):
         '''
 
       self.do_run(src, '4\n200\n')
+
+  def test_inlinejs3(self):
+      if Settings.ASM_JS: return self.skip('asm does not support random code, TODO: something that works in asm')
+      src = r'''
+        #include <stdio.h>
+        #include <emscripten.h>
+
+        int main() {
+          EM_ASM(Module.print('hello dere1'));
+          EM_ASM(
+            Module.print('hello dere2');
+          );
+          EM_ASM(
+            Module.print('hello dere3');
+            Module.print('hello dere' + 4);
+          );
+          return 0;
+        }
+        '''
+
+      self.do_run(src, 'hello dere1\nhello dere2\nhello dere3\nhello dere4\n')
 
   def test_memorygrowth(self):
     if Settings.USE_TYPED_ARRAYS == 0: return self.skip('memory growth is only supported with typed arrays')
@@ -3861,8 +3956,7 @@ def process(filename):
       self.do_run(src, 'Hello world!')
 
   def test_bigswitch(self):
-    if Settings.RELOOP: return self.skip('TODO: switch in relooper, issue #781')
-    if Settings.ASM_JS: return self.skip('TODO: switch too large for asm')
+    if self.run_name != 'default': return self.skip('TODO: issue #781')
 
     src = open(path_from_root('tests', 'bigswitch.cpp')).read()
     self.do_run(src, '''34962: GL_ARRAY_BUFFER (0x8892)
@@ -4569,6 +4663,12 @@ The current type of b is: 9
       }
       '''
     self.do_run(src, 'BA')
+
+  def test_pthread_specific(self):
+    if self.emcc_args is None: return self.skip('requires emcc')
+    src = open(path_from_root('tests', 'pthread', 'specific.c'), 'r').read()
+    expected = open(path_from_root('tests', 'pthread', 'specific.c.txt'), 'r').read()
+    self.do_run(src, expected, force_c=True)
 
   def test_time(self):
     # XXX Not sure what the right output is here. Looks like the test started failing with daylight savings changes. Modified it to pass again.
@@ -5451,7 +5551,7 @@ The current type of b is: 9
         self.do_run(src, '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|24,0,20,0,4,4,8,12,12,16*\n*0,0,0,1,2,64,68,69,72*\n*2*')
 
   def test_runtimelink(self):
-    return self.skip('shared libs are deprecated')
+    return self.skip('BUILD_AS_SHARED_LIB=2 is deprecated')
     if Building.LLVM_OPTS: return self.skip('LLVM opts will optimize printf into puts in the parent, and the child will still look for puts')
     if Settings.ASM_JS: return self.skip('asm does not support runtime linking')
 
@@ -5470,11 +5570,9 @@ The current type of b is: 9
     self.do_run(main, 'supp: 54,2\nmain: 56\nsupp see: 543\nmain see: 76\nok.')
 
   def test_dlfcn_basic(self):
-    return self.skip('shared libs are deprecated')
     if Settings.ASM_JS: return self.skip('TODO: dlopen in asm')
 
     Settings.NAMED_GLOBALS = 1
-    Settings.LINKABLE = 1
 
     lib_src = '''
       #include <cstdio>
@@ -5525,7 +5623,6 @@ def process(filename):
                 post_build=add_pre_run_and_checks)
 
   def test_dlfcn_qsort(self):
-    return self.skip('shared libs are deprecated')
     if self.emcc_args is None: return self.skip('requires emcc')
     if Settings.ASM_JS: return self.skip('TODO: dlopen in asm')
 
@@ -5622,7 +5719,6 @@ def process(filename):
                 post_build=add_pre_run_and_checks)
 
   def test_dlfcn_data_and_fptr(self):
-    return self.skip('shared libs are deprecated')
     if Settings.ASM_JS: return self.skip('TODO: dlopen in asm')
     if Building.LLVM_OPTS: return self.skip('LLVM opts will optimize out parent_func')
 
@@ -5727,7 +5823,6 @@ def process(filename):
                  post_build=add_pre_run_and_checks)
 
   def test_dlfcn_alias(self):
-    return self.skip('shared libs are deprecated')
     if Settings.ASM_JS: return self.skip('TODO: dlopen in asm')
 
     Settings.LINKABLE = 1
@@ -5785,7 +5880,6 @@ def process(filename):
     Settings.INCLUDE_FULL_LIBRARY = 0
 
   def test_dlfcn_varargs(self):
-    return self.skip('shared libs are deprecated')
     if Settings.ASM_JS: return self.skip('TODO: dlopen in asm')
 
     Settings.LINKABLE = 1
@@ -6673,6 +6767,7 @@ date: 18.07.2013w; day 18, month  7, year 2013, extra: 201, 3
   def test_files(self):
     if self.emcc_args is not None and '-O2' in self.emcc_args:
       self.emcc_args += ['--closure', '1'] # Use closure here, to test we don't break FS stuff
+      self.emcc_args = filter(lambda x: x != '-g', self.emcc_args) # ensure we test --closure 1 --memory-init-file 1 (-g would disable closure)
 
     Settings.CORRECT_SIGNS = 1 # Just so our output is what we expect. Can flip them both.
     post = '''
@@ -6699,8 +6794,13 @@ def process(filename):
     other.close()
 
     src = open(path_from_root('tests', 'files.cpp'), 'r').read()
+
+    mem_file = 'src.cpp.o.js.mem'
+    try_delete(mem_file)
     self.do_run(src, ('size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\nok.\ntexte\n', 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\nok.\n'),
                  post_build=post, extra_emscripten_args=['-H', 'libc/fcntl.h'])
+    if self.emcc_args and '--memory-init-file' in self.emcc_args:
+      assert os.path.exists(mem_file)
 
   def test_files_m(self):
     # Test for Module.stdin etc.
@@ -7036,14 +7136,15 @@ def process(filename):
       #include <emscripten.h>
 
       int main() {
-        char *c = "μ†ℱ ╋ℯ╳╋";
+        char *c = "μ†ℱ ╋ℯ╳╋ 😇";
         printf("%d %d %d %d %s\n", c[0]&0xff, c[1]&0xff, c[2]&0xff, c[3]&0xff, c);
-        emscripten_run_script("cheez = _malloc(100);"
-                              "Module.writeStringToMemory(\"μ†ℱ ╋ℯ╳╋\", cheez);"
-                              "Module.print([Pointer_stringify(cheez), Module.getValue(cheez, 'i8')&0xff, Module.getValue(cheez+1, 'i8')&0xff, Module.getValue(cheez+2, 'i8')&0xff, Module.getValue(cheez+3, 'i8')&0xff, ]);");
+        emscripten_run_script(
+          "cheez = _malloc(100);"
+          "Module.writeStringToMemory(\"μ†ℱ ╋ℯ╳╋ 😇\", cheez);"
+          "Module.print([Pointer_stringify(cheez), Module.getValue(cheez, 'i8')&0xff, Module.getValue(cheez+1, 'i8')&0xff, Module.getValue(cheez+2, 'i8')&0xff, Module.getValue(cheez+3, 'i8')&0xff, ]);");
       }
     '''
-    self.do_run(src, '206 188 226 128 μ†ℱ ╋ℯ╳╋\nμ†ℱ ╋ℯ╳╋,206,188,226,128\n');
+    self.do_run(src, '206 188 226 128 μ†ℱ ╋ℯ╳╋ 😇\nμ†ℱ ╋ℯ╳╋ 😇,206,188,226,128\n');
 
   def test_direct_string_constant_usage(self):
     if self.emcc_args is None: return self.skip('requires libcxx')
@@ -8232,13 +8333,15 @@ def process(filename):
     shutil.copyfile(path_from_root('tests', 'freetype', 'LiberationSansBold.ttf'), os.path.join(self.get_dir(), 'font.ttf'))
 
     # Main
-    self.do_run(open(path_from_root('tests', 'freetype', 'main.c'), 'r').read(),
-                 open(path_from_root('tests', 'freetype', 'ref.txt'), 'r').read(),
-                 ['font.ttf', 'test!', '150', '120', '25'],
-                 libraries=self.get_freetype(),
-                 includes=[path_from_root('tests', 'freetype', 'include')],
-                 post_build=post)
-                 #build_ll_hook=self.do_autodebug)
+    for outlining in [0, 5000]:
+      Settings.OUTLINING_LIMIT = outlining
+      print >> sys.stderr, 'outlining:', outlining
+      self.do_run(open(path_from_root('tests', 'freetype', 'main.c'), 'r').read(),
+                   open(path_from_root('tests', 'freetype', 'ref.txt'), 'r').read(),
+                   ['font.ttf', 'test!', '150', '120', '25'],
+                   libraries=self.get_freetype(),
+                   includes=[path_from_root('tests', 'freetype', 'include')],
+                   post_build=post)
 
     # github issue 324
     print '[issue 324]'

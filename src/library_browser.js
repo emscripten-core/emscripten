@@ -452,8 +452,21 @@ mergeInto(LibraryManager.library, {
         // Otherwise, calculate the movement based on the changes
         // in the coordinates.
         var rect = Module["canvas"].getBoundingClientRect();
-        var x = event.pageX - (window.scrollX + rect.left);
-        var y = event.pageY - (window.scrollY + rect.top);
+        var x, y;
+        if (event.type == 'touchstart' ||
+            event.type == 'touchend' ||
+            event.type == 'touchmove') {
+          var t = event.touches.item(0);
+          if (t) {
+            x = t.pageX - (window.scrollX + rect.left);
+            y = t.pageY - (window.scrollY + rect.top);
+          } else {
+            return;
+          }
+        } else {
+          x = event.pageX - (window.scrollX + rect.left);
+          y = event.pageY - (window.scrollY + rect.top);
+        }
 
         // the canvas might be CSS-scaled compared to its backbuffer;
         // SDL-using content will want mouse coordinates in terms
@@ -807,6 +820,13 @@ mergeInto(LibraryManager.library, {
 
   emscripten_set_canvas_size: function(width, height) {
     Browser.setCanvasSize(width, height);
+  },
+  
+  emscripten_get_canvas_size: function(width, height, isFullscreen) {
+    var canvas = Module['canvas'];
+    {{{ makeSetValue('width', '0', 'canvas.width', 'i32') }}};
+    {{{ makeSetValue('height', '0', 'canvas.height', 'i32') }}};
+    {{{ makeSetValue('isFullscreen', '0', 'Browser.isFullScreen ? 1 : 0', 'i32') }}};
   },
 
   emscripten_get_now: function() {

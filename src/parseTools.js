@@ -727,15 +727,37 @@ function makeI64(low, high) {
 // Splits a number (an integer in a double, possibly > 32 bits) into an USE_TYPED_ARRAYS == 2 i64 value.
 // Will suffer from rounding. mergeI64 does the opposite.
 function splitI64(value, floatConversion) {
-  // We need to min here, since our input might be a double, and large values are rounded, so they can
+  // general idea:
+  //
+  //  $1$0 = ~~$d >>> 0;
+  //  $1$1 = Math_abs($d) >= 1 ? (
+  //     $d > 0 ? Math.min(Math_floor(($d)/ 4294967296.0), 4294967295.0)
+  //            : Math_ceil(Math.min(-4294967296.0, $d - $1$0)/ 4294967296.0)
+  //  ) : 0;
+  //
+  // We need to min on positive values here, since our input might be a double, and large values are rounded, so they can
   // be slightly higher than expected. And if we get 4294967296, that will turn into a 0 if put into a
   // HEAP32 or |0'd, etc.
+  //
+  // For negatives, we need to ensure a -1 if the value is overall negative, even if not significant negative component
+
   var lowInput = legalizedI64s ? value : 'VALUE';
   if (floatConversion && ASM_JS) lowInput = asmFloatToInt(lowInput);
+  var low = lowInput + '>>>0';
+  var high = makeInlineCalculation(
+    asmCoercion('Math.abs(VALUE)', 'double') + ' >= ' + asmEnsureFloat('1', 'double') + ' ? ' +
+      '(VALUE > ' + asmEnsureFloat('0', 'double') + ' ? ' +
+               asmCoercion('Math.min(' + asmCoercion('Math.floor((VALUE)/' + asmEnsureFloat(4294967296, 'float') + ')', 'double') + ', ' + asmEnsureFloat(4294967295, 'float') + ')', 'i32') + '>>>0' +
+               ' : ' + asmFloatToInt(asmCoercion('Math.ceil((VALUE - +((' + asmFloatToInt('VALUE') + ')>>>0))/' + asmEnsureFloat(4294967296, 'float') + ')', 'double')) + '>>>0' + 
+      ')' +
+    ' : 0',
+    value,
+    'tempDouble'
+  );
   if (legalizedI64s) {
-    return [lowInput + '>>>0', asmCoercion('Math.min(' + asmCoercion('Math.floor((' + value + ')/' + asmEnsureFloat(4294967296, 'float') + ')', 'double') + ', ' + asmEnsureFloat(4294967295, 'float') + ')', 'i32') + '>>>0'];
+    return [low, high];
   } else {
-    return makeInlineCalculation(makeI64(lowInput + '>>>0', asmCoercion('Math.min(' + asmCoercion('Math.floor(VALUE/' + asmEnsureFloat(4294967296, 'float') + ')', 'double') + ', ' + asmEnsureFloat(4294967295, 'float') + ')', 'i32') + '>>>0'), value, 'tempBigIntP');
+    return makeI64(low, high);
   }
 }
 function mergeI64(value, unsigned) {

@@ -115,13 +115,27 @@ int main() {
 // === Optimizing shapes ===
 // Fusing Multiple to Simple
 ep
-do {
- if (ep -> LBB1) {
+L1: do {
+ switch (the_var) {
+ ep -> LBB1 {
   LBB1
-  if (!(LBB1 -> LBB2)) {
+  switch (the_var) {
+  LBB1 -> LBB2 {
    break;
   }
+  default: {
+   break L1;
+  }
+  }
   LBB2
+  switch (the_var) {
+  default: {
+  }
+  }
+  break;
+ }
+ default: {
+ }
  }
 } while(0);
 LBB3
