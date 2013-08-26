@@ -51,6 +51,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       var pre = processMacros(preprocess(read(preFile).replace('{{RUNTIME}}', getRuntime())));
       print(pre);
 
+      // Populate implementedFunctions. Note that this is before types, and will be updated later.
       data.unparsedFunctions.forEach(function(func) {
         Functions.implementedFunctions[func.ident] = Functions.getSignature(func.returnType, func.params.map(function(param) { return param.type }));
       });
@@ -1871,6 +1872,12 @@ function JSify(data, functionsOnly, givenFunctions) {
   // Data
 
   if (mainPass) {
+    if (phase == 'pre') {
+      // types have been parsed, so we can figure out function signatures (which can use types)
+      data.unparsedFunctions.forEach(function(func) {
+        Functions.implementedFunctions[func.ident] = Functions.getSignature(func.returnType, func.params.map(function(param) { return param.type }));
+      });
+    }
     substrate.addItems(data.functionStubs, 'FunctionStub');
     assert(data.functions.length == 0);
   } else {
