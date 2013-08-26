@@ -5567,7 +5567,6 @@ The current type of b is: 9
     if Settings.ASM_JS: return self.skip('TODO: dlopen in asm')
 
     Settings.NAMED_GLOBALS = 1
-    Settings.LINKABLE = 1
 
     lib_src = '''
       #include <cstdio>
