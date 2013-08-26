@@ -5580,7 +5580,7 @@ The current type of b is: 9
     Settings.RUNTIME_LINKED_LIBS = ['liblib.so'];
     self.do_run(main, 'supp: 54,2\nmain: 56\nsupp see: 543\nmain see: 76\nok.')
 
-  def test_dlfcn_basic(self):
+  def can_dlfcn(self):
     if self.emcc_args and '--memory-init-file' in self.emcc_args:
       for i in range(len(self.emcc_args)):
         if self.emcc_args[i] == '--memory-init-file':
@@ -5591,6 +5591,31 @@ The current type of b is: 9
       Settings.DLOPEN_SUPPORT = 1
     else:
       Settings.NAMED_GLOBALS = 1
+
+    if not self.is_le32():
+      self.skip('need le32 for dlfcn support')
+      return False
+    else:
+      return True
+
+  def prep_dlfcn_lib(self):
+    if Settings.ASM_JS:
+      Settings.MAIN_MODULE = 0
+      Settings.SIDE_MODULE = 1
+    else:
+      Settings.BUILD_AS_SHARED_LIB = 1
+
+  def prep_dlfcn_main(self):
+    if Settings.ASM_JS:
+      Settings.MAIN_MODULE = 1
+      Settings.SIDE_MODULE = 0
+    else:
+      Settings.BUILD_AS_SHARED_LIB = 0
+
+  def test_dlfcn_basic(self):
+    if not self.can_dlfcn(): return
+
+    self.prep_dlfcn_lib()
 
     lib_src = '''
       #include <cstdio>
@@ -5606,12 +5631,10 @@ The current type of b is: 9
       '''
     dirname = self.get_dir()
     filename = os.path.join(dirname, 'liblib.cpp')
-    if Settings.ASM_JS:
-      Settings.SIDE_MODULE = 1
-    else:
-      Settings.BUILD_AS_SHARED_LIB = 1
     self.build(lib_src, dirname, filename)
     shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+
+    self.prep_dlfcn_main()
 
     src = '''
       #include <cstdio>
@@ -5631,11 +5654,6 @@ The current type of b is: 9
         return 0;
       }
       '''
-    if Settings.ASM_JS:
-      Settings.MAIN_MODULE = 1
-      Settings.SIDE_MODULE = 0
-    else:
-      Settings.BUILD_AS_SHARED_LIB = 0
     add_pre_run_and_checks = '''
 def process(filename):
   src = open(filename, 'r').read().replace(
