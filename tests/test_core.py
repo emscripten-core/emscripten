@@ -5581,9 +5581,8 @@ The current type of b is: 9
     self.do_run(main, 'supp: 54,2\nmain: 56\nsupp see: 543\nmain see: 76\nok.')
 
   def test_dlfcn_basic(self):
-    if Settings.ASM_JS: return self.skip('TODO: dlopen in asm')
-
-    Settings.NAMED_GLOBALS = 1
+    if not Settings.ASM_JS:
+      Settings.NAMED_GLOBALS = 1
 
     lib_src = '''
       #include <cstdio>
@@ -5599,7 +5598,10 @@ The current type of b is: 9
       '''
     dirname = self.get_dir()
     filename = os.path.join(dirname, 'liblib.cpp')
-    Settings.BUILD_AS_SHARED_LIB = 1
+    if Settings.ASM_JS:
+      Settings.SIDE_MODULE = 1
+    else:
+      Settings.BUILD_AS_SHARED_LIB = 1
     self.build(lib_src, dirname, filename)
     shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
 
@@ -5621,7 +5623,11 @@ The current type of b is: 9
         return 0;
       }
       '''
-    Settings.BUILD_AS_SHARED_LIB = 0
+    if Settings.ASM_JS:
+      Settings.MAIN_MODULE = 1
+      Settings.SIDE_MODULE = 0
+    else:
+      Settings.BUILD_AS_SHARED_LIB = 0
     add_pre_run_and_checks = '''
 def process(filename):
   src = open(filename, 'r').read().replace(
