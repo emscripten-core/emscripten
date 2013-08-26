@@ -454,7 +454,7 @@ function JSify(data, functionsOnly, givenFunctions) {
 
         var postsetId = ident + '__postset';
         var postset = LibraryManager.library[postsetId];
-        if (postset && !addedLibraryItems[postsetId]) {
+        if (postset && !addedLibraryItems[postsetId] && !(BUILD_AS_SHARED_LIB && ASM_JS)) {
           addedLibraryItems[postsetId] = true;
           ret.push({
             intertype: 'GlobalVariablePostSet',
@@ -497,6 +497,7 @@ function JSify(data, functionsOnly, givenFunctions) {
             Functions.libraryFunctions[ident.substr(1)] = 2;
           }
         }
+        if (BUILD_AS_SHARED_LIB && ASM_JS) return ';'; // we import into the asm module js library stuff from the outside parent
         if ((!ASM_JS || phase == 'pre') &&
             (EXPORT_ALL || (ident in EXPORTED_FUNCTIONS))) {
           contentText += '\nModule["' + ident + '"] = ' + ident + ';';
@@ -507,7 +508,7 @@ function JSify(data, functionsOnly, givenFunctions) {
       var ret = [item];
       if (IGNORED_FUNCTIONS.indexOf(item.ident) >= 0) return null;
       var shortident = item.ident.substr(1);
-      if (BUILD_AS_SHARED_LIB) {
+      if (BUILD_AS_SHARED_LIB && !ASM_JS) {
         // Shared libraries reuse the runtime of their parents.
         item.JS = '';
       } else {
