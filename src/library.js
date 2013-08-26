@@ -5132,9 +5132,7 @@ LibraryManager.library = {
         } else {
           var result = lib.module[symbol];
           if (typeof result == 'function') {
-            {{{ Functions.getTable('x') }}}.push(result);
-            {{{ Functions.getTable('x') }}}.push(0);
-            result = {{{ Functions.getTable('x') }}}.length - 2;
+            result = Runtime.addFunction(result);
             lib.cached_functions = result;
           }
           return result;
