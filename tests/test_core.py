@@ -5616,7 +5616,6 @@ The current type of b is: 9
     if not self.can_dlfcn(): return
 
     self.prep_dlfcn_lib()
-
     lib_src = '''
       #include <cstdio>
 
@@ -5635,7 +5634,6 @@ The current type of b is: 9
     shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
 
     self.prep_dlfcn_main()
-
     src = '''
       #include <cstdio>
       #include <dlfcn.h>
@@ -5666,15 +5664,13 @@ def process(filename):
                 post_build=add_pre_run_and_checks)
 
   def test_dlfcn_qsort(self):
-    if self.emcc_args is None: return self.skip('requires emcc')
-    if Settings.ASM_JS: return self.skip('TODO: dlopen in asm')
-
-    Settings.LINKABLE = 1
-    Settings.NAMED_GLOBALS = 1
+    if not self.can_dlfcn(): return
 
     if Settings.USE_TYPED_ARRAYS == 2:
       Settings.CORRECT_SIGNS = 1 # Needed for unsafe optimizations
 
+    self.prep_dlfcn_lib()
+    Settings.EXPORTED_FUNCTIONS = ['_get_cmp']
     lib_src = '''
       int lib_cmp(const void* left, const void* right) {
         const int* a = (const int*) left;
@@ -5692,11 +5688,11 @@ def process(filename):
       '''
     dirname = self.get_dir()
     filename = os.path.join(dirname, 'liblib.cpp')
-    Settings.BUILD_AS_SHARED_LIB = 1
-    Settings.EXPORTED_FUNCTIONS = ['_get_cmp']
     self.build(lib_src, dirname, filename)
     shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
 
+    self.prep_dlfcn_main()
+    Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc']
     src = '''
       #include <stdio.h>
       #include <stdlib.h>
@@ -5747,8 +5743,6 @@ def process(filename):
         return 0;
       }
       '''
-    Settings.BUILD_AS_SHARED_LIB = 0
-    Settings.EXPORTED_FUNCTIONS = ['_main']
     add_pre_run_and_checks = '''
 def process(filename):
   src = open(filename, 'r').read().replace(
