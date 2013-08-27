@@ -375,7 +375,7 @@ if has_preloaded:
           } else {
             Runtime.warn('Preloading file ' + that.name + ' failed');
           }
-        });
+        }, false, true); // canOwn this data in the filesystem, it is a slide into the heap that will never change
         this.requests[this.name] = null;
       },
     };
