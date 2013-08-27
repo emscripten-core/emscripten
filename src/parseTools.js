@@ -430,6 +430,8 @@ function parseParamTokens(params) {
       ret.push(parseLLVMFunctionCall(segment));
     } else if (segment[1].text === 'blockaddress') {
       ret.push(parseBlockAddress(segment));
+    } else if (segment[1].type && segment[1].type == '{') {
+      ret.push(parseLLVMSegment(segment));
     } else {
       if (segment[2] && segment[2].text == 'to') { // part of bitcast params
         segment = segment.slice(0, 2);
