@@ -344,14 +344,7 @@ if has_preloaded:
       },
       send: function() {},
       onload: function() {
-        var data = this.byteArray.subarray(this.start, this.end);
-        var size = this.end - this.start;
-        var ptr = Module['_malloc'](size); // XXX leaked if a preload plugin replaces with new data
-        Module['HEAPU8'].set(data, ptr);
-        var arrayBuffer = Module['HEAPU8'].subarray(ptr, ptr + size);
-        assert(arrayBuffer, 'Loading file ' + name + ' failed');
-        var byteArray = !arrayBuffer.subarray ? new Uint8Array(arrayBuffer) : arrayBuffer;
-
+        var byteArray = this.byteArray.subarray(this.start, this.end);
         if (this.crunched) {
           var ddsHeader = byteArray.subarray(0, 128);
           var that = this;
@@ -419,7 +412,12 @@ for file_ in data_files:
 
 if has_preloaded:
   # Get the big archive and split it up
-  use_data = '          DataRequest.prototype.byteArray = byteArray;\n'
+  use_data = '''
+      // copy the entire loaded file into a spot in the heap. Files will refer to slices in that. They cannot be freed though.
+      var ptr = Module['_malloc'](byteArray.length);
+      Module['HEAPU8'].set(byteArray, ptr);
+      DataRequest.prototype.byteArray = Module['HEAPU8'].subarray(ptr, ptr+byteArray.length);
+'''
   for file_ in data_files:
     if file_['mode'] == 'preload':
       use_data += '          DataRequest.prototype.requests["%s"].onload();\n' % (file_['dstpath'])

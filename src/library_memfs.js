@@ -2,17 +2,13 @@ mergeInto(LibraryManager.library, {
   $MEMFS__deps: ['$FS'],
   $MEMFS: {
     // content modes
-    CONTENT_OWNING: 1, // contains a subarray into the heap, and we own it - need to free() when no longer needed
+    CONTENT_OWNING: 1, // contains a subarray into the heap, and we own it, without copying (note: someone else needs to free() it, if that is necessary)
     CONTENT_FLEXIBLE: 2, // has been modified or never set to anything, and is a flexible js array that can grow/shrink
     CONTENT_FIXED: 3, // contains some fixed-size content written into it, in a typed array
     ensureFlexible: function(node) {
       if (node.contentMode !== MEMFS.CONTENT_FLEXIBLE) {
         var contents = node.contents;
         node.contents = Array.prototype.slice.call(contents);
-        if (node.contentMode === MEMFS.CONTENT_OWNING) {
-          assert(contents.byteOffset);
-          Module['_free'](contents.byteOffset);
-        }
         node.contentMode = MEMFS.CONTENT_FLEXIBLE;
       }
     },
