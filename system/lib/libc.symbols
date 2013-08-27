@@ -67,6 +67,7 @@
          W pvalloc
          W realloc
          W realloc_in_place
+         T sendfile
          T strtod
          T strtod_l
          T strtof
