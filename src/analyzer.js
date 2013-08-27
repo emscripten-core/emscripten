@@ -281,6 +281,16 @@ function analyzer(data, sidePass) {
               Array.prototype.splice.apply(params, [i, 1].concat(toAdd));
               i += toAdd.length;
               continue;
+            } else if (param.intertype == 'structvalue') {
+              // 'flatten' out the struct into scalars
+              var toAdd = param.params;
+              toAdd.forEach(function(param) {
+                assert(param.intertype == 'value' && (param.type in Runtime.FLOAT_TYPES || getNumIntChunks(param.type) == 1), param.type);
+                param.byval = 0;
+              });
+              Array.prototype.splice.apply(params, [i, 1].concat(toAdd));
+              i += toAdd.length;
+              continue;
             }
             i++;
           }
