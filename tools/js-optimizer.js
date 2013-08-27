@@ -3487,7 +3487,7 @@ function outline(ast) {
       }
     }
     outliningParents[newIdent] = func[1];
-    printErr('performed outline ' + [func[1], newIdent, 'code sizes (pre/post):', originalCodeSize, measureSize(code), 'overhead (w/r):', setSize(setSub(codeInfo.writes, owned)), setSize(setSub(codeInfo.reads, owned)), ' owned: ', setSize(owned), ' left: ', setSize(asmData.vars), setSize(asmData.params), ' loopsDepth: ', loops]);
+    printErr('performed outline ' + [func[1], newIdent, 'pre size', originalCodeSize, 'resulting size', measureSize(code), 'overhead (w/r):', setSize(setSub(codeInfo.writes, owned)), setSize(setSub(codeInfo.reads, owned)), ' owned: ', setSize(owned), ' left: ', setSize(asmData.vars), setSize(asmData.params), ' loopsDepth: ', loops]);
     calculateThreshold(func, asmData);
     return [newFunc];
   }
@@ -3633,6 +3633,8 @@ function outline(ast) {
 
   var maxTotalFunctions = Infinity; // debugging tool
 
+  printErr('\n');
+
   var more = true;
   while (more) {
     more = false;
@@ -3691,7 +3693,8 @@ function outline(ast) {
             }
           }
         }
-        printErr('... resulting size of ' + func[1] + ' is ' + measureSize(func));
+        ret.push(func);
+        printErr('... resulting sizes of ' + func[1] + ' is ' + ret.map(measureSize) + '\n');
       }
       denormalizeAsm(func, asmData);
     });
