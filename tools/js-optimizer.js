@@ -3071,7 +3071,7 @@ function outline(ast) {
                 currSize += size;
                 if (!isIf) {
                   var last = part.body;
-                  last = last[stats.length-1];
+                  last = last[last.length-1];
                   if (last && last[0] === 'block') last = last[1][last[1].length-1];
                   if (last && last[0] === 'stat') last = last[1];
                   force = !last || !(last[0] in ALTER_FLOW);
