@@ -634,7 +634,7 @@ Runtime.stackRestore = function(top) { asm['stackRestore'](top) };
   asm.maxFunctionIndex = %d;
 ''' % max_mask)
       for sig in last_forwarded_json['Functions']['tables'].iterkeys():
-        funcs_js.append('  var F_BASE_%s = 0;\n' % sig)
+        funcs_js.append('  var F_BASE_%s = %s;\n' % (sig, 'FUNCTION_TABLE_OFFSET' if settings.get('SIDE_MODULE') else '0'))
 
   else:
     function_tables_defs = '\n'.join([table for table in last_forwarded_json['Functions']['tables'].itervalues()])
