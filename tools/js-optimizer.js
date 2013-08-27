@@ -135,6 +135,7 @@ var ASSIGN_OR_ALTER = set('assign', 'unary-postfix', 'unary-prefix');
 var CONTROL_FLOW = set('do', 'while', 'for', 'if', 'switch');
 var NAME_OR_NUM = set('name', 'num');
 var ASSOCIATIVE_BINARIES = set('+', '*', '|', '&', '^');
+var ALTER_FLOW = set('break', 'continue', 'return');
 
 var BREAK_CAPTURERS = set('do', 'while', 'for', 'switch');
 var CONTINUE_CAPTURERS = LOOP;
@@ -3073,7 +3074,7 @@ function outline(ast) {
                   last = last[stats.length-1];
                   if (last && last[0] === 'block') last = last[1][last[1].length-1];
                   if (last && last[0] === 'stat') last = last[1];
-                  force = !last || last[0] !== 'break';
+                  force = !last || !(last[0] in ALTER_FLOW);
                 }
               });
               assert(currSize);
