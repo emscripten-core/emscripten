@@ -14,6 +14,8 @@
   }, function(arg) {
     throw new Error('Broken device output.');
   });
+  FS.createDevice('/', 'createDevice-read-only', function() {});
+  FS.createDevice('/', 'createDevice-write-only', null, function() {});
   FS.createDataFile('/', 'file', '1234567890', true, true);
   FS.createFolder('/', 'folder', true, true);
 })();

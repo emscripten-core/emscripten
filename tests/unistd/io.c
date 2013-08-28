@@ -34,6 +34,19 @@ int main() {
   printf("errno: %d\n\n", errno);
   errno = 0;
 
+  int cd_ro_r = open("/createDevice-read-only", O_RDONLY);
+  printf("open read-only device from createDevice for read, errno: %d\n", errno);
+  errno = 0;
+  int cd_ro_w = open("/createDevice-read-only", O_WRONLY);
+  printf("open read-only device from createDevice for write, errno: %d\n", errno);
+  errno = 0;
+  int cd_wo_r = open("/createDevice-write-only", O_RDONLY);
+  printf("open write-only device from createDevice for read, errno: %d\n", errno);
+  errno = 0;
+  int cd_wo_w = open("/createDevice-write-only", O_WRONLY);
+  printf("open write-only device from createDevice for write, errno: %d\n\n", errno);
+  errno = 0;
+
   int f = open("/file", O_RDWR);
   printf("read from file: %d\n", read(f, readBuffer, sizeof readBuffer));
   printf("data: %s\n", readBuffer);
