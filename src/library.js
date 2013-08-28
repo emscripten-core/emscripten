@@ -2261,7 +2261,11 @@ LibraryManager.library = {
     // void clearerr(FILE *stream);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/clearerr.html
     stream = FS.getStream(stream);
-    if (stream) stream.error = false;
+    if (!stream) {
+      return;
+    }
+    stream.eof = false;
+    stream.error = false;
   },
   fclose__deps: ['close', 'fsync'],
   fclose: function(stream) {
@@ -2322,7 +2326,6 @@ LibraryManager.library = {
     if (streamObj.eof || streamObj.error) return -1;
     var ret = _fread(_fgetc.ret, 1, 1, stream);
     if (ret == 0) {
-      streamObj.eof = true;
       return -1;
     } else if (ret == -1) {
       streamObj.error = true;
