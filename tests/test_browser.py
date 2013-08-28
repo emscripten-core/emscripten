@@ -794,6 +794,17 @@ If manually bisecting:
   def test_glut_touchevents(self):
     self.btest('glut_touchevents.c', '1')
 
+  def test_file_db(self):
+    secret = str(time.time())
+    open('moar.txt', 'w').write(secret)
+    self.btest('file_db.cpp', '1', args=['--preload-file', 'moar.txt', '-DFIRST'])
+    shutil.copyfile('test.html', 'first.html')
+    self.btest('file_db.cpp', secret)
+    shutil.copyfile('test.html', 'second.html')
+    open('moar.txt', 'w').write('aliantha')
+    self.btest('file_db.cpp', secret, args=['--preload-file', 'moar.txt']) # even with a file there, we load over it
+    shutil.move('test.html', 'third.html')
+
   def test_sdl_pumpevents(self):
     # key events should be detected using SDL_PumpEvents
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
