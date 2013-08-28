@@ -68,6 +68,9 @@ mergeInto(LibraryManager.library, {
       }
       return f;
     },
+    extname: function(path) {
+      return PATH.splitPath(path)[3];
+    },
     join: function() {
       var paths = Array.prototype.slice.call(arguments, 0);
       return PATH.normalize(paths.filter(function(p, index) {
