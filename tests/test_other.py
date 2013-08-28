@@ -931,7 +931,9 @@ f.close()
   def test_stdin(self):
     Building.emcc(path_from_root('tests', 'module', 'test_stdin.c'), output_filename='a.out.js')
     open('in.txt', 'w').write('abcdef\nghijkl')
-    self.assertContained('abcdef\nghijkl\neof', run_js(os.path.join(self.get_dir(), 'a.out.js'), stdin=open('in.txt')))
+
+    for engine in JS_ENGINES:
+      self.assertContained('abcdef\nghijkl\neof', run_js(os.path.join(self.get_dir(), 'a.out.js'), engine=engine, stdin=open('in.txt')))
 
   def test_ungetc_fscanf(self):
     open('main.cpp', 'w').write(r'''
