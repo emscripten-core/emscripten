@@ -4287,9 +4287,9 @@ LibraryManager.library = {
     throw 'trap! ' + new Error().stack;
   },
 
-  __assert_fail: function(condition, file, line) {
+  __assert_fail: function(condition, filename, line, func) {
     ABORT = true;
-    throw 'Assertion failed: ' + Pointer_stringify(condition) + ' at ' + new Error().stack;
+    throw 'Assertion failed: ' + Pointer_stringify(condition) + ', at: ' + [filename ? Pointer_stringify(filename) : 'unknown filename', line, func ? Pointer_stringify(func) : 'unknown function'] + ' at ' + new Error().stack;
   },
 
   __assert_func: function(filename, line, func, condition) {
