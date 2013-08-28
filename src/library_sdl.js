@@ -46,6 +46,9 @@ var LibrarySDL = {
     keyboardState: null,
     keyboardMap: {},
 
+    canRequestFullscreen: false,
+    isRequestingFullscreen: false,
+
     textInput: false,
 
     startTime: null,
@@ -465,6 +468,23 @@ var LibrarySDL = {
             }
 
             SDL.DOMButtons[event.button] = 0;
+          }
+
+          // We can only request fullscreen as the result of user input.
+          // Due to this limitation, we toggle a boolean on keydown which
+          // SDL_WM_ToggleFullScreen will check and subsequently set another
+          // flag indicating for us to request fullscreen on the following
+          // keyup. This isn't perfect, but it enables SDL_WM_ToggleFullScreen
+          // to work as the result of a keypress (which is an extremely
+          // common use case).
+          if (event.type === 'keydown') {
+            SDL.canRequestFullscreen = true;
+          } else if (event.type === 'keyup') {
+            if (SDL.isRequestingFullscreen) {
+              Module['requestFullScreen'](true, true);
+              SDL.isRequestingFullscreen = false;
+            }
+            SDL.canRequestFullscreen = false;
           }
 
           // SDL expects a unicode character to be passed to its keydown events.
@@ -1282,7 +1302,11 @@ var LibrarySDL = {
       Module['canvas'].cancelFullScreen();
       return 1;
     } else {
-      return 0;
+      if (!SDL.canRequestFullscreen) {
+        return 0;
+      }
+      SDL.isRequestingFullscreen = true;
+      return 1;
     }
   },
 
