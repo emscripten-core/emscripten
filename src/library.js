@@ -5036,14 +5036,15 @@ LibraryManager.library = {
     return divt;
   },
 
-  __fpclassifyf: function(x) {
+  __fpclassify: function(x) {
     if (isNaN(x)) return {{{ cDefine('FP_NAN') }}};
     if (!isFinite(x)) return {{{ cDefine('FP_INFINITE') }}};
     if (x == 0) return {{{ cDefine('FP_ZERO') }}};
     // FP_SUBNORMAL..?
     return {{{ cDefine('FP_NORMAL') }}};
   },
-  __fpclassifyd: '__fpclassifyf',
+  __fpclassifyd: '__fpclassify', // Needed by tests/python/python.le32.bc
+  __fpclassifyf: '__fpclassify',
 
   // ==========================================================================
   // sys/utsname.h
