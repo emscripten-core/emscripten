@@ -444,6 +444,11 @@ def emscript(infile, settings, outfile, libraries=[], compiler_engine=None,
        forwarded_json['Functions']['libraryFunctions'].get('llvm_ctlz_i32'):
       basic_vars += ['cttz_i8', 'ctlz_i8']
 
+    if settings.get('DLOPEN_SUPPORT'):
+      for sig in last_forwarded_json['Functions']['tables'].iterkeys():
+        basic_vars.append('F_BASE_%s' % sig)
+        asm_setup += '  var F_BASE_%s = %s;\n' % (sig, 'FUNCTION_TABLE_OFFSET' if settings.get('SIDE_MODULE') else '0') + '\n'
+
     asm_runtime_funcs = ['stackAlloc', 'stackSave', 'stackRestore', 'setThrew'] + ['setTempRet%d' % i for i in range(10)]
     # function tables
     def asm_coerce(value, sig):
@@ -635,8 +640,6 @@ Runtime.stackRestore = function(top) { asm['stackRestore'](top) };
   Runtime.registerFunctions(asm, %(max_mask)d+1, %(sigs)s, Module);
   Module.SYMBOL_TABLE = SYMBOL_TABLE;
 ''' % { 'max_mask': max_mask, 'sigs': str(map(str, last_forwarded_json['Functions']['tables'].keys())) })
-      for sig in last_forwarded_json['Functions']['tables'].iterkeys():
-        funcs_js.append('  var F_BASE_%s = %s;\n' % (sig, 'FUNCTION_TABLE_OFFSET' if settings.get('SIDE_MODULE') else '0'))
 
   else:
     function_tables_defs = '\n'.join([table for table in last_forwarded_json['Functions']['tables'].itervalues()])
