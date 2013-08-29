@@ -569,6 +569,33 @@ function Pointer_stringify(ptr, /* optional */ length) {
 }
 Module['Pointer_stringify'] = Pointer_stringify;
 
+// Given a pointer 'ptr' to a null-terminated UTF32LE-encoded string in the emscripten HEAP, returns
+// a copy of that string as a Javascript String object.
+function utf32_to_jsstring(ptr) {
+  var i = 0;
+
+  var str = '';
+  while (1) {
+    var utf32 = {{{ makeGetValue('ptr', 'i*4', 'i32') }}};
+    if (utf32 == 0)
+      return str;
+    ++i;
+    str += String.fromCharCode(utf32);
+  }
+}
+Module['utf32_to_jsstring'] = utf32_to_jsstring;
+
+// Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr', 
+// null-terminated and encoded in UTF32LE form. The copy will require (str.length+1)*4 bytes of space in the HEAP.
+function jsstring_to_utf32(str, outPtr) {
+  for(var i = 0; i < str.length; ++i) {
+    var utf32 = str.charCodeAt(i);
+    {{{ makeSetValue('outPtr', 'i*4', 'utf32', 'i32') }}}
+  }
+  {{{ makeSetValue('outPtr', 'str.length*4', 0, 'i32') }}}
+}
+Module['jsstring_to_utf32'] = jsstring_to_utf32;
+
 // Memory management
 
 var PAGE_SIZE = 4096;
