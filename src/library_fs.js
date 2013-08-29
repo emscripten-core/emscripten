@@ -510,7 +510,7 @@ mergeInto(LibraryManager.library, {
       return FS.create(path, mode);
     },
     createDataFile: function(parent, name, data, canRead, canWrite, canOwn) {
-      var path = PATH.join(typeof parent === 'string' ? parent : FS.getPath(parent), name);
+      var path = name ? PATH.join(typeof parent === 'string' ? parent : FS.getPath(parent), name) : parent;
       var mode = FS.getMode(canRead, canWrite);
       var node = FS.create(path, mode);
       if (data) {
@@ -770,7 +770,7 @@ mergeInto(LibraryManager.library, {
       Browser.init();
       // TODO we should allow people to just pass in a complete filename instead
       // of parent and name being that we just join them anyways
-      var fullname = PATH.resolve(PATH.join(parent, name));
+      var fullname = name ? PATH.resolve(PATH.join(parent, name)) : parent;
       function processData(byteArray) {
         function finish(byteArray) {
           if (!dontCreateFile) {

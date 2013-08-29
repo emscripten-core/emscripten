@@ -360,7 +360,7 @@ if has_preloaded:
       },
       finish: function(byteArray) {
         var that = this;
-        Module['FS_createPreloadedFile'](PATH.dirname(this.name), PATH.basename(this.name), byteArray, true, true, function() {
+        Module['FS_createPreloadedFile'](this.name, null, byteArray, true, true, function() {
           Module['removeRunDependency']('fp ' + that.name);
         }, function() {
           if (that.audio) {
