@@ -8594,7 +8594,7 @@ def process(filename):
     do_test()
 
     # some test coverage for EMCC_DEBUG 1 and 2
-    if self.emcc_args and '-O2' in self.emcc_args and 'EMCC_DEBUG' not in os.environ:
+    if self.emcc_args and '-O2' in self.emcc_args and 'EMCC_DEBUG' not in os.environ and '-g' in self.emcc_args:
       shutil.copyfile('src.c.o.js', 'release.js')
       try:
         os.environ['EMCC_DEBUG'] = '1'
@@ -8609,7 +8609,8 @@ def process(filename):
         del os.environ['EMCC_DEBUG']
       for debug in [1,2]:
         def clean(text):
-          return text.replace('\n\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n').replace('{\n}', '{}')
+          text = text.replace('\n\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n').replace('\n\n', '\n').replace('{\n}', '{}')
+          return '\n'.join(sorted(text.split('\n')))
         self.assertIdentical(clean(open('release.js').read()), clean(open('debug%d.js' % debug).read())) # EMCC_DEBUG=1 mode must not generate different code!
         print >> sys.stderr, 'debug check %d passed too' % debug
 
@@ -9681,7 +9682,8 @@ def process(filename):
       # optimizer can deal with both types.
       out_file = re.sub(' *//@.*$', '', out_file, flags=re.MULTILINE)
       def clean(code):
-        return code.replace('{\n}', '{}')
+        code = code.replace('{\n}', '{}')
+        return '\n'.join(sorted(code.split('\n')))
       self.assertIdentical(clean(no_maps_file), clean(out_file))
       map_filename = out_filename + '.map'
       data = json.load(open(map_filename, 'r'))
