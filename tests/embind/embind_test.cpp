@@ -2248,6 +2248,11 @@ StringHolder return_StringHolder_copy(val func) {
     return func.as<StringHolder>();
 }
 
+StringHolder call_StringHolder_func(val func) {
+    return func().as<StringHolder>();
+}
+
 EMSCRIPTEN_BINDINGS(return_values) {
     function("return_StringHolder_copy", &return_StringHolder_copy);
+    function("call_StringHolder_func", &call_StringHolder_func);
 }

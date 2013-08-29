@@ -1899,6 +1899,18 @@ module({
             sh2.delete();
             sh1.delete();
         });
+
+        test("calling function that returns a StringHolder", function() {
+            var sh1 = new cm.StringHolder("Hello world");
+            var sh2 = cm.call_StringHolder_func(function() {
+                return sh1;
+            });
+            assert.equal("Hello world", sh1.get());
+            assert.equal("Hello world", sh2.get());
+            assert.false(sh1.isAliasOf(sh2));
+            sh2.delete();
+            sh1.delete();
+        });
     });
 });
 
