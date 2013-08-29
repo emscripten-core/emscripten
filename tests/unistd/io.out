@@ -22,6 +22,11 @@ TO DEVICE: 0
 write to device: 8
 errno: 0
 
+open read-only device from createDevice for read, errno: 0
+open read-only device from createDevice for write, errno: 13
+open write-only device from createDevice for read, errno: 13
+open write-only device from createDevice for write, errno: 0
+
 read from file: 10
 data: 1234567890
 errno: 0

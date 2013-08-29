@@ -6977,8 +6977,11 @@ def process(filename):
   src = open(filename, 'r').read().replace(
     '// {{PRE_RUN_ADDITIONS}}',
     \'\'\'
+      var dummy_device = FS.makedev(64, 0);
+      FS.registerDevice(dummy_device, {});
+
       FS.createDataFile('/', 'file', 'abcdef', true, true);
-      FS.createDevice('/', 'device', function() {}, function() {});
+      FS.mkdev('/device', 0666, dummy_device);
     \'\'\'
   )
   open(filename, 'w').write(src)
