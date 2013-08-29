@@ -836,8 +836,7 @@ mergeInto(LibraryManager.library, {
             var t = process['hrtime']();
             return t[0] * 1e3 + t[1] / 1e6;
           }
-      }
-      else if (typeof dateNow !== 'undefined') {
+      } else if (typeof dateNow !== 'undefined') {
         _emscripten_get_now.actual = dateNow;
       } else if (ENVIRONMENT_IS_WEB && window['performance'] && window['performance']['now']) {
         _emscripten_get_now.actual = function() { return window['performance']['now'](); };
