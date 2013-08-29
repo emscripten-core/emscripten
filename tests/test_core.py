@@ -5917,14 +5917,14 @@ def process(filename):
     Settings.INCLUDE_FULL_LIBRARY = 0
 
   def test_dlfcn_varargs(self):
-    if Settings.ASM_JS: return self.skip('TODO: dlopen in asm')
+    if not self.can_dlfcn(): return
 
     Settings.LINKABLE = 1
-    Settings.NAMED_GLOBALS = 1
 
     if Building.LLVM_OPTS == 2: return self.skip('LLVM LTO will optimize things that prevent shared objects from working')
     if Settings.QUANTUM_SIZE == 1: return self.skip('FIXME: Add support for this')
 
+    self.prep_dlfcn_lib()
     lib_src = r'''
       void print_ints(int n, ...);
       extern "C" void func() {
@@ -5933,15 +5933,16 @@ def process(filename):
       '''
     dirname = self.get_dir()
     filename = os.path.join(dirname, 'liblib.cpp')
-    Settings.BUILD_AS_SHARED_LIB = 1
     Settings.EXPORTED_FUNCTIONS = ['_func']
     self.build(lib_src, dirname, filename)
     shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
 
+    self.prep_dlfcn_main()
     src = r'''
       #include <stdarg.h>
       #include <stdio.h>
       #include <dlfcn.h>
+      #include <assert.h>
 
       void print_ints(int n, ...) {
         va_list args;
@@ -5959,13 +5960,13 @@ def process(filename):
         print_ints(2, 100, 200);
 
         lib_handle = dlopen("liblib.so", RTLD_NOW);
+        assert(lib_handle);
         fptr = (void (*)())dlsym(lib_handle, "func");
         fptr();
 
         return 0;
       }
       '''
-    Settings.BUILD_AS_SHARED_LIB = 0
     Settings.EXPORTED_FUNCTIONS = ['_main']
     add_pre_run_and_checks = '''
 def process(filename):
