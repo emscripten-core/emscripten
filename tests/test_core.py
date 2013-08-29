@@ -5860,7 +5860,7 @@ def process(filename):
                  post_build=add_pre_run_and_checks)
 
   def test_dlfcn_alias(self):
-    if Settings.ASM_JS: return self.skip('TODO: dlopen in asm')
+    if Settings.ASM_JS: return self.skip('this is not a valid case - libraries should not be able to access their parents globals willy nilly')
 
     Settings.LINKABLE = 1
     Settings.NAMED_GLOBALS = 1
