@@ -5050,11 +5050,11 @@ LibraryManager.library = {
       try {
         var lib_module = eval(lib_data)(
 #if ASM_JS
-          asm.maxFunctionIndex,
-          Module
+          Runtime.functionTable.length,
 #else
-          {{{ Functions.getTable('x') }}}.length
+          {{{ Functions.getTable('x') }}}.length,
 #endif
+          Module
         );
       } catch (e) {
 #if ASSERTIONS
@@ -5132,7 +5132,12 @@ LibraryManager.library = {
         } else {
           var result = lib.module[symbol];
           if (typeof result == 'function') {
+#if ASM_JS
+            result = lib.module.SYMBOL_TABLE[symbol];
+            assert(result);
+#else
             result = Runtime.addFunction(result);
+#endif
             lib.cached_functions = result;
           }
           return result;

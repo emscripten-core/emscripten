@@ -5714,6 +5714,13 @@ def process(filename):
         CMP_TYPE lib_cmp_ptr;
         int arr[5] = {4, 2, 5, 1, 3};
 
+        qsort((void*)arr, 5, sizeof(int), main_cmp);
+        printf("Sort with main comparison: ");
+        for (int i = 0; i < 5; i++) {
+          printf("%d ", arr[i]);
+        }
+        printf("\\n");
+
         lib_handle = dlopen("liblib.so", RTLD_NOW);
         if (lib_handle == NULL) {
           printf("Could not load lib.\\n");
@@ -5725,14 +5732,6 @@ def process(filename):
           return 1;
         }
         lib_cmp_ptr = getter_ptr();
-
-        qsort((void*)arr, 5, sizeof(int), main_cmp);
-        printf("Sort with main comparison: ");
-        for (int i = 0; i < 5; i++) {
-          printf("%d ", arr[i]);
-        }
-        printf("\\n");
-
         qsort((void*)arr, 5, sizeof(int), lib_cmp_ptr);
         printf("Sort with lib comparison: ");
         for (int i = 0; i < 5; i++) {

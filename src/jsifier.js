@@ -1406,6 +1406,7 @@ function JSify(data, functionsOnly, givenFunctions) {
     assert(ident != 'asm', 'Inline assembly cannot be compiled to JavaScript!');
 
     if (ASM_JS && funcData.setjmpTable) forceByPointer = true; // in asm.js mode, we must do an invoke for each call
+    if (ASM_JS && DLOPEN_SUPPORT) invoke = true; // go through invoke so we can access other modules TODO: optimize
 
     ident = Variables.resolveAliasToIdent(ident);
     var shortident = ident.slice(1);
