@@ -6063,7 +6063,7 @@ return 0;
 
         func_ptr = (FUNCTYPE)dlsym(lib_handle, "myfunc");
         assert(func_ptr != NULL);
-        assert(func_ptr(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0f, 0) == 13);
+        assert(func_ptr(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) == 13);
 
         puts("success");
 
