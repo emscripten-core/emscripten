@@ -5612,57 +5612,6 @@ The current type of b is: 9
     else:
       Settings.BUILD_AS_SHARED_LIB = 0
 
-  def test_dlfcn_unique_sig(self):
-    if not self.can_dlfcn(): return
-
-    self.prep_dlfcn_lib()
-    lib_src = '''
-      #include <stdio.h>
-      int myfunc(int a, int b, int c, int d, int e, int f, int g, int h, int i, int j, int k, int l, int m) {
-        return 13;
-      }
-      '''
-    Settings.EXPORTED_FUNCTIONS = ['_myfunc']
-    dirname = self.get_dir()
-    filename = os.path.join(dirname, 'liblib.c')
-    self.build(lib_src, dirname, filename)
-    shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
-
-    self.prep_dlfcn_main()
-    src = '''
-      #include <assert.h>
-      #include <stdio.h>
-      #include <dlfcn.h>
-
-      typedef int (*FUNCTYPE(int, int, int, int, int, int, int, int, int, int, int, int, int))();
-
-      int main() {
-        void *lib_handle;
-        FUNCTYPE *func_ptr;
-
-        lib_handle = dlopen("liblib.so", RTLD_NOW);
-        assert(lib_handle != NULL);
-
-        func_ptr = (FUNCTYPE*)dlsym(lib_handle, "myfunc");
-        assert(func_ptr != NULL);
-        assert(func_ptr(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0f, 0) == 13);
-
-        puts("success");
-
-        return 0;
-      }
-      '''
-    add_pre_run_and_checks = '''
-def process(filename):
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    "FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);"
-  )
-  open(filename, 'w').write(src)
-'''
-    Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc']
-    self.do_run(src, 'success', force_c=True, post_build=add_pre_run_and_checks)
-
   def test_dlfcn_basic(self):
     if not self.can_dlfcn(): return
 
@@ -6076,6 +6025,124 @@ return 0;
       # ensure there aren't too many globals; we don't want unnamed_addr
       assert table.count(',') == 3
     self.do_run(src, '123\n123', post_build=(None, post))
+
+
+  def test_dlfcn_unique_sig(self):
+    if not self.can_dlfcn(): return
+
+    self.prep_dlfcn_lib()
+    lib_src = '''
+      #include <stdio.h>
+
+      int myfunc(int a, int b, int c, int d, int e, int f, int g, int h, int i, int j, int k, int l, int m) {
+        return 13;
+      }
+      '''
+    Settings.EXPORTED_FUNCTIONS = ['_myfunc']
+    dirname = self.get_dir()
+    filename = os.path.join(dirname, 'liblib.c')
+    self.build(lib_src, dirname, filename)
+    shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+
+    self.prep_dlfcn_main()
+    src = '''
+      #include <assert.h>
+      #include <stdio.h>
+      #include <dlfcn.h>
+
+      typedef int (*FUNCTYPE)(int, int, int, int, int, int, int, int, int, int, int, int, int);
+
+      int main() {
+        void *lib_handle;
+        FUNCTYPE func_ptr;
+
+        lib_handle = dlopen("liblib.so", RTLD_NOW);
+        assert(lib_handle != NULL);
+
+        func_ptr = (FUNCTYPE)dlsym(lib_handle, "myfunc");
+        assert(func_ptr != NULL);
+        assert(func_ptr(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0f, 0) == 13);
+
+        puts("success");
+
+        return 0;
+      }
+      '''
+    add_pre_run_and_checks = '''
+def process(filename):
+  src = open(filename, 'r').read().replace(
+    '// {{PRE_RUN_ADDITIONS}}',
+    "FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);"
+  )
+  open(filename, 'w').write(src)
+'''
+    Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc']
+    self.do_run(src, 'success', force_c=True, post_build=add_pre_run_and_checks)
+
+
+  def test_dlfcn_stack_forward(self):
+    if not self.can_dlfcn(): return
+
+    self.prep_dlfcn_lib()
+    lib_src = '''
+      #include <assert.h>
+      #include <stdio.h>
+      #include <string.h>
+
+      int myfunc(const char *input) {
+        char bigstack[1024] = { 0 };
+
+        // make sure we didn't just trample the stack!
+        assert(!strcmp(input, "foobar"));
+
+        snprintf(bigstack, sizeof(bigstack), input);
+        return strlen(bigstack);
+      }
+      '''
+    Settings.EXPORTED_FUNCTIONS = ['_myfunc']
+    dirname = self.get_dir()
+    filename = os.path.join(dirname, 'liblib.c')
+    self.build(lib_src, dirname, filename)
+    shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
+
+    Settings.INCLUDE_FULL_LIBRARY = 1
+    self.prep_dlfcn_main()
+    src = '''
+      #include <assert.h>
+      #include <stdio.h>
+      #include <dlfcn.h>
+
+      typedef int (*FUNCTYPE)(const char *);
+
+      int main() {
+        void *lib_handle;
+        FUNCTYPE func_ptr;
+        char str[128];
+
+        snprintf(str, sizeof(str), "foobar");
+
+        lib_handle = dlopen("liblib.so", RTLD_NOW);
+        assert(lib_handle != NULL);
+
+        func_ptr = (FUNCTYPE)dlsym(lib_handle, "myfunc");
+        assert(func_ptr != NULL);
+        assert(func_ptr(str) == 6);
+
+        puts("success");
+
+        return 0;
+      }
+      '''
+    add_pre_run_and_checks = '''
+def process(filename):
+  src = open(filename, 'r').read().replace(
+    '// {{PRE_RUN_ADDITIONS}}',
+    "FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);"
+  )
+  open(filename, 'w').write(src)
+'''
+    Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc']
+    self.do_run(src, 'success', force_c=True, post_build=add_pre_run_and_checks)
 
   def test_rand(self):
     return self.skip('rand() is now random') # FIXME
