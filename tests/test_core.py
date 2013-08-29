@@ -5755,12 +5755,12 @@ def process(filename):
                 post_build=add_pre_run_and_checks)
 
   def test_dlfcn_data_and_fptr(self):
-    if Settings.ASM_JS: return self.skip('TODO: dlopen in asm')
+    if Settings.ASM_JS: return self.skip('this is not a valid case - libraries should not be able to access their parents globals willy nilly')
+    if not self.can_dlfcn(): return
+
     if Building.LLVM_OPTS: return self.skip('LLVM opts will optimize out parent_func')
 
-    Settings.LINKABLE = 1
-    Settings.NAMED_GLOBALS = 1
-
+    self.prep_dlfcn_lib()
     lib_src = '''
       #include <stdio.h>
 
@@ -5785,21 +5785,23 @@ def process(filename):
       '''
     dirname = self.get_dir()
     filename = os.path.join(dirname, 'liblib.cpp')
-    Settings.BUILD_AS_SHARED_LIB = 1
     Settings.EXPORTED_FUNCTIONS = ['_func']
     Settings.EXPORTED_GLOBALS = ['_global']
     self.build(lib_src, dirname, filename)
     shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
 
+    self.prep_dlfcn_main()
+    Settings.LINKABLE = 1
     src = '''
       #include <stdio.h>
       #include <dlfcn.h>
+      #include <emscripten.h>
 
       typedef void (*FUNCTYPE(int, void(*)()))();
 
       FUNCTYPE func;
 
-      void parent_func() {
+      void EMSCRIPTEN_KEEPALIVE parent_func() {
         printf("parent_func called from child\\n");
       }
 
@@ -5843,7 +5845,6 @@ def process(filename):
         return 0;
       }
       '''
-    Settings.BUILD_AS_SHARED_LIB = 0
     Settings.EXPORTED_FUNCTIONS = ['_main']
     Settings.EXPORTED_GLOBALS = []
     add_pre_run_and_checks = '''
