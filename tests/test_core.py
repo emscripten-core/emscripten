@@ -5917,6 +5917,8 @@ def process(filename):
     Settings.INCLUDE_FULL_LIBRARY = 0
 
   def test_dlfcn_varargs(self):
+    if Settings.ASM_JS: return self.skip('this is not a valid case - libraries should not be able to access their parents globals willy nilly')
+
     if not self.can_dlfcn(): return
 
     Settings.LINKABLE = 1
