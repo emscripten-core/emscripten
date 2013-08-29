@@ -5604,6 +5604,7 @@ The current type of b is: 9
       Settings.SIDE_MODULE = 1
     else:
       Settings.BUILD_AS_SHARED_LIB = 1
+      Settings.INCLUDE_FULL_LIBRARY = 0
 
   def prep_dlfcn_main(self):
     if Settings.ASM_JS:
@@ -5611,6 +5612,7 @@ The current type of b is: 9
       Settings.SIDE_MODULE = 0
     else:
       Settings.BUILD_AS_SHARED_LIB = 0
+      Settings.INCLUDE_FULL_LIBRARY = 1
 
   def test_dlfcn_basic(self):
     if not self.can_dlfcn(): return
@@ -6105,7 +6107,6 @@ def process(filename):
     self.build(lib_src, dirname, filename)
     shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
 
-    Settings.INCLUDE_FULL_LIBRARY = 1
     self.prep_dlfcn_main()
     src = '''
       #include <assert.h>
