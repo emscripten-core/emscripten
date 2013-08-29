@@ -7525,6 +7525,9 @@ def process(filename):
     '''
     self.do_run(src, '206 188 226 128 μ†ℱ ╋ℯ╳╋ 😇\nμ†ℱ ╋ℯ╳╋ 😇,206,188,226,128\n');
 
+  def test_utf32(self):
+    self.do_run(open(path_from_root('tests', 'utf32.cpp')).read(), 'OK.')
+
   def test_direct_string_constant_usage(self):
     if self.emcc_args is None: return self.skip('requires libcxx')
 
