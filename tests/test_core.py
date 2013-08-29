@@ -6016,13 +6016,9 @@ return 0;
             break
         else:
           raise Exception('Could not find symbol table!')
-      import json
-      table = json.loads(table[table.find('{'):table.rfind('}')+1])
-      actual = list(sorted(table.keys()))
+      table = table[table.find('{'):table.rfind('}')+1]
       # ensure there aren't too many globals; we don't want unnamed_addr
-      assert actual == ['_foo', '_global', '_main', '_repeatable'], \
-        "Symbol table does not match: %s" % actual
-
+      assert table.count(',') == 3
     self.do_run(src, '123\n123', post_build=(None, post))
 
   def test_rand(self):
