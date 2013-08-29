@@ -715,7 +715,7 @@ function intertyper(data, sidePass, baseLineNums) {
       splitTokenList(tokensLeft[3].item.tokens).map(function(element) {
         var ident = toNiceIdent(element[1].text);
         var type = element[0].text;
-        item.ident = item.ident.replace(new RegExp('\\$' + i++, 'g'), ident);
+        item.ident = item.ident.replace(new RegExp('\\$' + i++ + '([^0-9])', 'g'), ident.replace('$', '$$$$') + '$1');
       });
       return { forward: null, ret: [item], item: item };
     } 
