@@ -530,7 +530,7 @@ mergeInto(LibraryManager.library, {
     },
     createDevice: function(parent, name, input, output) {
       var path = PATH.join(typeof parent === 'string' ? parent : FS.getPath(parent), name);
-      var mode = input && output ? 0777 : (input ? 0333 : 0555);
+      var mode = FS.getMode(!!input, !!output);
       if (!FS.createDevice.major) FS.createDevice.major = 64;
       var dev = FS.makedev(FS.createDevice.major++, 0);
       // Create a fake device that a set of stream ops to emulate
