@@ -631,8 +631,10 @@ Runtime.stackRestore = function(top) { asm['stackRestore'](top) };
 
     if settings.get('DLOPEN_SUPPORT'):
       funcs_js.append('''
-  asm.maxFunctionIndex = %d;
-''' % max_mask)
+  asm.maxFunctionIndex = %(max_mask)d;
+  Runtime.registerFunctions(asm, %(max_mask)d+1, %(sigs)s, Module);
+  Module.SYMBOL_TABLE = SYMBOL_TABLE;
+''' % { 'max_mask': max_mask, 'sigs': str(map(str, last_forwarded_json['Functions']['tables'].keys())) })
       for sig in last_forwarded_json['Functions']['tables'].iterkeys():
         funcs_js.append('  var F_BASE_%s = %s;\n' % (sig, 'FUNCTION_TABLE_OFFSET' if settings.get('SIDE_MODULE') else '0'))
 
@@ -650,13 +652,18 @@ Runtime.stackRestore = function(top) { asm['stackRestore'](top) };
     symbol_table = {}
     for k, v in forwarded_json['Variables']['indexedGlobals'].iteritems():
        if forwarded_json['Variables']['globals'][k]['named']:
-         symbol_table[k] = v + forwarded_json['Runtime']['GLOBAL_BASE']
+         symbol_table[k] = str(v + forwarded_json['Runtime']['GLOBAL_BASE'])
     for raw in last_forwarded_json['Functions']['tables'].itervalues():
       if raw == '': continue
       table = map(string.strip, raw[raw.find('[')+1:raw.find(']')].split(","))
-      symbol_table.update(map(lambda x: (x[1], x[0]),
-        filter(lambda x: x[1] != '0', enumerate(table))))
-    outfile.write("var SYMBOL_TABLE = %s;" % json.dumps(symbol_table))
+      for i in range(len(table)):
+        value = table[i]
+        if value != '0':
+          if settings.get('SIDE_MODULE'):
+            symbol_table[value] = 'FUNCTION_TABLE_OFFSET+' + str(i)
+          else:
+            symbol_table[value] = str(i)
+    outfile.write("var SYMBOL_TABLE = %s;" % json.dumps(symbol_table).replace('"', ''))
 
   for funcs_js_item in funcs_js: # do this loop carefully to save memory
     funcs_js_item = indexize(funcs_js_item)

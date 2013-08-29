@@ -384,6 +384,34 @@ var Runtime = {
     return Runtime.funcWrappers[func];
   },
 
+#if DLOPEN_SUPPORT
+  functionTable: [], // will contain objects mapping sigs to js functions that call into the right asm module with the right index
+
+  registerFunctions: function(asm, num, sigs, jsModule) {
+    // use asm module dynCall_* from functionTable
+    if (num % 2 == 1) num++; // keep pointers even
+    var table = Runtime.functionTable;
+    var from = table.length;
+    assert(from % 2 == 0);
+    for (var i = 0; i < num; i++) {
+      table[from + i] = {};
+      sigs.forEach(function(sig) { // TODO: new Function etc.
+        var full = 'dynCall_' + sig;
+        table[from + i][sig] = function() {
+          arguments[i] -= from;
+          return asm[full].apply(null, arguments);
+        }
+      });
+    }
+    // patch js module dynCall_* to use functionTable
+    sigs.forEach(function(sig) {
+      jsModule['dynCall_' + sig] = function() {
+        return table[arguments[0]][sig].apply(null, arguments);
+      };
+    });
+  },
+#endif
+
   // Returns a processor of UTF.
   // processCChar() receives characters from a C-like UTF representation and returns JS string fragments.
   // See RFC3629 for details, the bytes are assumed to be valid UTF-8

@@ -3,6 +3,8 @@
   var Module = {};
   var args = [];
   Module.arguments = [];
+  Module.print = parentModule.print;
+  Module.printErr = parentModule.printErr;
 
   {{BODY}}
 
@@ -10,3 +12,4 @@
 
   return Module;
 });
+
