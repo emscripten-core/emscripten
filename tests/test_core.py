@@ -3734,6 +3734,11 @@ def process(filename):
       Settings.EXPORT_ALL = 1
       self.do_run(src, 'hello world!\n*100*\n*fivesix*\nmann\n', post_build=check)
 
+  def test_emscripten_get_now(self):
+      if self.run_name == 'o2':
+        self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
+      self.do_run(open(path_from_root('tests', 'emscripten_get_now.cpp')).read(), 'Timer resolution is good.')
+
   def test_inlinejs(self):
       if Settings.ASM_JS: return self.skip('asm does not support random code, TODO: something that works in asm')
       src = r'''

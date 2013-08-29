@@ -794,6 +794,9 @@ If manually bisecting:
   def test_glut_touchevents(self):
     self.btest('glut_touchevents.c', '1')
 
+  def test_emscripten_get_now(self):
+    self.btest('emscripten_get_now.cpp', '1')
+
   def test_file_db(self):
     secret = str(time.time())
     open('moar.txt', 'w').write(secret)
