@@ -1888,6 +1888,18 @@ module({
             sh.delete();
         });
     });
+
+    BaseFixture.extend("val::as from pointer to value", function() {
+        test("calling as on pointer with value makes a copy", function() {
+            var sh1 = new cm.StringHolder("Hello world");
+            var sh2 = cm.return_StringHolder_copy(sh1);
+            assert.equal("Hello world", sh1.get());
+            assert.equal("Hello world", sh2.get());
+            assert.false(sh1.isAliasOf(sh2));
+            sh2.delete();
+            sh1.delete();
+        });
+    });
 });
 
 /* global run_all_tests */

@@ -3,7 +3,7 @@
 /*global new_*/
 /*global createNamedFunction*/
 /*global readLatin1String, writeStringToMemory*/
-/*global requireRegisteredType, throwBindingError*/
+/*global requireRegisteredType, throwBindingError, runDestructors*/
 /*jslint sub:true*/ /* The symbols 'fromWireType' and 'toWireType' must be accessed via array notation to be closure-safe since craftInvokerFunction crafts functions as strings that can't be closured. */
 
 var Module = Module || {};
@@ -199,11 +199,12 @@ function __emval_set_property(handle, key, value) {
     _emval_handle_array[handle].value[_emval_handle_array[key].value] = _emval_handle_array[value].value;
 }
 
-function __emval_as(handle, returnType) {
+function __emval_as(handle, returnType, runDestructorsRef) {
     requireHandle(handle);
     returnType = requireRegisteredType(returnType, 'emval::as');
     var destructors = [];
-    // caller owns destructing
+    var rd = __emval_register(runDestructors.bind(undefined, destructors));
+    HEAP32[runDestructorsRef >> 2] = rd;
     return returnType['toWireType'](destructors, _emval_handle_array[handle].value);
 }
 

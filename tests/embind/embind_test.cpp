@@ -2243,3 +2243,11 @@ void clear_StringHolder(StringHolder& sh) {
 EMSCRIPTEN_BINDINGS(references) {
     function("clear_StringHolder", &clear_StringHolder);
 }
+
+StringHolder return_StringHolder_copy(val func) {
+    return func.as<StringHolder>();
+}
+
+EMSCRIPTEN_BINDINGS(return_values) {
+    function("return_StringHolder_copy", &return_StringHolder_copy);
+}

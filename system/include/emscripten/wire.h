@@ -7,6 +7,7 @@
 //
 // We'll call the on-the-wire type WireType.
 
+#include <stdio.h>
 #include <cstdlib>
 #include <memory>
 #include <string>
