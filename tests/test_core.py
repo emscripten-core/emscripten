@@ -5754,6 +5754,11 @@ def process(filename):
                 output_nicerizer=lambda x, err: x.replace('\n', '*'),
                 post_build=add_pre_run_and_checks)
 
+    if Settings.ASM_JS and os.path.exists(SPIDERMONKEY_ENGINE[0]):
+      out = run_js('liblib.so', engine=SPIDERMONKEY_ENGINE, full_output=True, stderr=STDOUT)
+      assert 'asm' in out
+      self.validate_asmjs(out)
+
   def test_dlfcn_data_and_fptr(self):
     if Settings.ASM_JS: return self.skip('this is not a valid case - libraries should not be able to access their parents globals willy nilly')
     if not self.can_dlfcn(): return
