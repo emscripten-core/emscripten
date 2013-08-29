@@ -5614,6 +5614,15 @@ The current type of b is: 9
       Settings.BUILD_AS_SHARED_LIB = 0
       Settings.INCLUDE_FULL_LIBRARY = 1
 
+  dlfcn_post_build = '''
+def process(filename):
+  src = open(filename, 'r').read().replace(
+    '// {{PRE_RUN_ADDITIONS}}',
+    "FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);"
+  )
+  open(filename, 'w').write(src)
+'''
+
   def test_dlfcn_basic(self):
     if not self.can_dlfcn(): return
 
@@ -5654,16 +5663,8 @@ The current type of b is: 9
         return 0;
       }
       '''
-    add_pre_run_and_checks = '''
-def process(filename):
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    "FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);"
-  )
-  open(filename, 'w').write(src)
-'''
     self.do_run(src, 'Constructing main object.\nConstructing lib object.\n',
-                post_build=add_pre_run_and_checks)
+                post_build=self.dlfcn_post_build)
 
   def test_dlfcn_qsort(self):
     if not self.can_dlfcn(): return
@@ -5744,17 +5745,9 @@ def process(filename):
         return 0;
       }
       '''
-    add_pre_run_and_checks = '''
-def process(filename):
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    "FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);"
-  )
-  open(filename, 'w').write(src)
-'''
     self.do_run(src, 'Sort with main comparison: 5 4 3 2 1 *Sort with lib comparison: 1 2 3 4 5 *',
                 output_nicerizer=lambda x, err: x.replace('\n', '*'),
-                post_build=add_pre_run_and_checks)
+                post_build=self.dlfcn_post_build)
 
     if Settings.ASM_JS and os.path.exists(SPIDERMONKEY_ENGINE[0]):
       out = run_js('liblib.so', engine=SPIDERMONKEY_ENGINE, full_output=True, stderr=STDOUT)
@@ -5854,17 +5847,9 @@ def process(filename):
       '''
     Settings.EXPORTED_FUNCTIONS = ['_main']
     Settings.EXPORTED_GLOBALS = []
-    add_pre_run_and_checks = '''
-def process(filename):
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    "FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);"
-  )
-  open(filename, 'w').write(src)
-'''
     self.do_run(src, 'In func: 13*First calling main_fptr from lib.*Second calling lib_fptr from main.*parent_func called from child*parent_func called from child*Var: 42*',
                  output_nicerizer=lambda x, err: x.replace('\n', '*'),
-                 post_build=add_pre_run_and_checks)
+                 post_build=self.dlfcn_post_build)
 
   def test_dlfcn_alias(self):
     if Settings.ASM_JS: return self.skip('this is not a valid case - libraries should not be able to access their parents globals willy nilly')
@@ -5909,17 +5894,9 @@ def process(filename):
     Settings.BUILD_AS_SHARED_LIB = 0
     Settings.INCLUDE_FULL_LIBRARY = 1
     Settings.EXPORTED_FUNCTIONS = ['_main']
-    add_pre_run_and_checks = '''
-def process(filename):
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    "FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);"
-  )
-  open(filename, 'w').write(src)
-'''
     self.do_run(src, 'Parent global: 123.*Parent global: 456.*',
                 output_nicerizer=lambda x, err: x.replace('\n', '*'),
-                post_build=add_pre_run_and_checks,
+                post_build=self.dlfcn_post_build,
                 extra_emscripten_args=['-H', 'libc/fcntl.h,libc/sys/unistd.h,poll.h,libc/math.h,libc/time.h,libc/langinfo.h'])
     Settings.INCLUDE_FULL_LIBRARY = 0
 
@@ -5977,16 +5954,8 @@ def process(filename):
       }
       '''
     Settings.EXPORTED_FUNCTIONS = ['_main']
-    add_pre_run_and_checks = '''
-def process(filename):
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    "FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);"
-  )
-  open(filename, 'w').write(src)
-'''
     self.do_run(src, '100\n200\n13\n42\n',
-                post_build=add_pre_run_and_checks)
+                post_build=self.dlfcn_post_build)
 
   def test_dlfcn_self(self):
     if Settings.USE_TYPED_ARRAYS == 1: return self.skip('Does not work with USE_TYPED_ARRAYS=1')
@@ -6070,16 +6039,8 @@ return 0;
         return 0;
       }
       '''
-    add_pre_run_and_checks = '''
-def process(filename):
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    "FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);"
-  )
-  open(filename, 'w').write(src)
-'''
     Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc']
-    self.do_run(src, 'success', force_c=True, post_build=add_pre_run_and_checks)
+    self.do_run(src, 'success', force_c=True, post_build=self.dlfcn_post_build)
 
 
   def test_dlfcn_stack_forward(self):
@@ -6134,16 +6095,8 @@ def process(filename):
         return 0;
       }
       '''
-    add_pre_run_and_checks = '''
-def process(filename):
-  src = open(filename, 'r').read().replace(
-    '// {{PRE_RUN_ADDITIONS}}',
-    "FS.createLazyFile('/', 'liblib.so', 'liblib.so', true, false);"
-  )
-  open(filename, 'w').write(src)
-'''
     Settings.EXPORTED_FUNCTIONS = ['_main', '_malloc']
-    self.do_run(src, 'success', force_c=True, post_build=add_pre_run_and_checks)
+    self.do_run(src, 'success', force_c=True, post_build=self.dlfcn_post_build)
 
   def test_rand(self):
     return self.skip('rand() is now random') # FIXME
