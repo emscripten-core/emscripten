@@ -6043,7 +6043,7 @@ return 0;
     self.do_run(src, 'success', force_c=True, post_build=self.dlfcn_post_build)
 
 
-  def test_dlfcn_stack_forward(self):
+  def test_dlfcn_stacks(self):
     if not self.can_dlfcn(): return
 
     self.prep_dlfcn_lib()
