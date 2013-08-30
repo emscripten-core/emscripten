@@ -11,16 +11,6 @@
 #include <emscripten.h>
 #endif
 
-int sockfd;
-
-void finish(int result) {
-  close(sockfd);
-#if EMSCRIPTEN
-  REPORT_RESULT();
-#endif
-  exit(result);
-}
-
 int main() {
   char str[INET_ADDRSTRLEN];
   struct in_addr addr;
@@ -29,6 +19,8 @@ int main() {
   
   // resolve the hostname ot an actual address
   struct hostent *host = gethostbyname("slashdot.org");
+  assert(host->h_addrtype == AF_INET);
+  assert(host->h_length == sizeof(uint32_t));
 
   // convert the raw address to a string
   char **raw_addr_list = host->h_addr_list;
@@ -43,6 +35,8 @@ int main() {
   // do a reverse lookup on the ip address
   struct hostent *host1 = gethostbyaddr(&addr, sizeof(addr), host->h_addrtype);
   assert(strstr(host1->h_name, "slashdot.org"));
+
+  puts("success");
 
   return EXIT_SUCCESS;
 }

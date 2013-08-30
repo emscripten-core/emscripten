@@ -52,6 +52,7 @@ int do_msg_write(int sockfd, msg_t *msg, int offset, int length, struct sockaddr
       assert(errno == EAGAIN);
       return res;
     }
+    printf("do_msg_write: sending message header for %d bytes\n", msg->length);
     assert(res == sizeof(int));
   }
 
