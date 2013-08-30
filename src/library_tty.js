@@ -1,17 +1,35 @@
 mergeInto(LibraryManager.library, {
   $TTY__deps: ['$FS'],
+  $TTY__postset: '__ATINIT__.unshift({ func: function() { TTY.init() } });' +
+                 '__ATEXIT__.push({ func: function() { TTY.shutdown() } });' +
+                 'TTY.utf8 = new Runtime.UTF8Processor();',
   $TTY: {
     ttys: [],
+    init: function () {
+      if (ENVIRONMENT_IS_NODE) {
+        // currently, FS.init does not distinguish if process.stdin is a file or TTY
+        // device, it always assumes it's a TTY device. because of this, we're forcing
+        // process.stdin to UTF8 encoding to at least make stdin reading compatible
+        // with text files until FS.init can be refactored.
+        process['stdin']['setEncoding']('utf8');
+      }
+    },
+    shutdown: function() {
+      if (ENVIRONMENT_IS_NODE) {
+        // inolen: any idea as to why node -e 'process.stdin.read()' wouldn't exit immediately (with process.stdin being a tty)?
+        // isaacs: because now it's reading from the stream, you've expressed interest in it, so that read() kicks off a _read() which creates a ReadReq operation
+        // inolen: I thought read() in that case was a synchronous operation that just grabbed some amount of buffered data if it exists?
+        // isaacs: it is. but it also triggers a _read() call, which calls readStart() on the handle
+        // isaacs: do process.stdin.pause() and i'd think it'd probably close the pending call
+        process['stdin']['pause']();
+      }
+    },
     register: function(dev, ops) {
       TTY.ttys[dev] = { input: [], output: [], ops: ops };
       FS.registerDevice(dev, TTY.stream_ops);
     },
     stream_ops: {
       open: function(stream) {
-        // this wouldn't be required if the library wasn't eval'd at first...
-        if (!TTY.utf8) {
-          TTY.utf8 = new Runtime.UTF8Processor();
-        }
         var tty = TTY.ttys[stream.node.rdev];
         if (!tty) {
           throw new FS.ErrnoError(ERRNO_CODES.ENODEV);
@@ -66,17 +84,22 @@ mergeInto(LibraryManager.library, {
         return i;
       }
     },
-    // NOTE: This is weird to support stdout and stderr
-    // overrides in addition to print and printErr overrides.
     default_tty_ops: {
+      // get_char has 3 particular return values:
+      // a.) the next character represented as an integer
+      // b.) undefined to signal that no data is currently available
+      // c.) null to signal an EOF
       get_char: function(tty) {
         if (!tty.input.length) {
           var result = null;
           if (ENVIRONMENT_IS_NODE) {
-            if (process.stdin.destroyed) {
-              return undefined;
+            result = process['stdin']['read']();
+            if (!result) {
+              if (process['stdin']['_readableState'] && process['stdin']['_readableState']['ended']) {
+                return null;  // EOF
+              }
+              return undefined;  // no data available
             }
-            result = process.stdin.read();
           } else if (typeof window != 'undefined' &&
             typeof window.prompt == 'function') {
             // Browser.
