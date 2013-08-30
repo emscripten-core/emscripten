@@ -80,13 +80,13 @@ class CompiledServerHarness:
   def __enter__(self):
     # assuming this is only used for WebSocket tests at the moment, validate that
     # the ws module is installed
-    child = Popen([NODE_JS, '-e', 'require("ws");'])
+    child = Popen(listify(NODE_JS) + ['-e', 'require("ws");'])
     child.communicate()
     assert child.returncode == 0, 'ws module for Node.js not installed. Please run \'npm install\' from %s' % EMSCRIPTEN_ROOT
 
     # compile the server
     Popen([PYTHON, EMCC, path_from_root('tests', self.filename), '-o', 'server.js', '-DSOCKK=%d' % self.listen_port] + self.args).communicate()
-    process = Popen([NODE_JS, 'server.js'])
+    process = Popen(listify(NODE_JS) + ['server.js'])
     self.pids.append(process.pid)
 
   def __exit__(self, *args, **kwargs):
@@ -399,3 +399,4 @@ class sockets(BrowserCore):
 
     expected = '1'
     self.run_browser(host_outfile, '.', ['/report_result?' + e for e in expected])
+
