@@ -17,7 +17,7 @@
 #undef main
 #endif
 
-const int tone_duration = 2000;
+const int tone_duration = 1000;
 
 struct BeepObject {
   double toneFrequency;
