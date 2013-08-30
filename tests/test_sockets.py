@@ -34,11 +34,11 @@ def make_relay_server(port1, port2):
   return proc
 
 class WebsockifyServerHarness:
-  def __init__(self, filename, args, listen_port, target_port):
+  def __init__(self, filename, args, listen_port):
     self.pids = []
     self.filename = filename
-    self.target_port = target_port
     self.listen_port = listen_port
+    self.target_port = listen_port-1
     self.args = args or []
 
   def __enter__(self):
@@ -48,7 +48,7 @@ class WebsockifyServerHarness:
     # NOTE empty filename support is a hack to support
     # the current test_enet
     if self.filename:
-      Popen([CLANG_CC, path_from_root('tests', self.filename), '-o', 'server'] + self.args).communicate()
+      Popen([CLANG_CC, path_from_root('tests', self.filename), '-o', 'server', '-DSOCKK=%d' % self.target_port] + self.args).communicate()
       process = Popen([os.path.abspath('server')])
       self.pids.append(process.pid)
 
@@ -71,9 +71,10 @@ class WebsockifyServerHarness:
 
 
 class CompiledServerHarness:
-  def __init__(self, filename, args):
+  def __init__(self, filename, args, listen_port):
     self.pids = []
     self.filename = filename
+    self.listen_port = listen_port
     self.args = args or []
 
   def __enter__(self):
@@ -84,7 +85,7 @@ class CompiledServerHarness:
     assert child.returncode == 0, 'ws module for Node.js not installed. Please run \'npm install\' from %s' % EMSCRIPTEN_ROOT
 
     # compile the server
-    Popen([PYTHON, EMCC, path_from_root('tests', self.filename), '-o', 'server.js'] + self.args).communicate()
+    Popen([PYTHON, EMCC, path_from_root('tests', self.filename), '-o', 'server.js', '-DSOCKK=%d' % self.listen_port] + self.args).communicate()
     process = Popen([NODE_JS, 'server.js'])
     self.pids.append(process.pid)
 
@@ -232,14 +233,14 @@ class sockets(BrowserCore):
 
     # Websockify-proxied servers can't run dgram tests
     harnesses = [
-      (WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), ['-DSOCKK=8990', sockets_include], 8991, 8990), 0)
+      (WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 49160), 0),
+      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0'], 49161), 0),
+      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=1'], 49162), 1)
     ]
-    for datagram in [0, 1]:
-      harnesses.append((CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), ['-DSOCKK=8991', '-DTEST_DGRAM=%d' % datagram, sockets_include]), datagram))
 
     for harness, datagram in harnesses:
       with harness:
-        self.btest(os.path.join('sockets', 'test_sockets_echo_client.c'), expected='0', args=['-DSOCKK=8991', '-DTEST_DGRAM=%d' % datagram, sockets_include])
+        self.btest(os.path.join('sockets', 'test_sockets_echo_client.c'), expected='0', args=['-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram, sockets_include])
 
   def test_sockets_echo_bigdata(self):
     sockets_include = '-I'+path_from_root('tests', 'sockets')
@@ -255,40 +256,40 @@ class sockets(BrowserCore):
     output = input.replace('#define MESSAGE "pingtothepong"', '#define MESSAGE "%s"' % message)
 
     harnesses = [
-      (WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), ['-DSOCKK=8992', sockets_include], 8993, 8992), 0)
+      (WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 49170), 0),
+      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=0'], 49171), 0),
+      (CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DTEST_DGRAM=1'], 49172), 1)
     ]
-    for datagram in [0, 1]:
-      harnesses.append((CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), ['-DSOCKK=8993', '-DTEST_DGRAM=%d' % datagram, sockets_include]), datagram))
 
     for harness, datagram in harnesses:
       with harness:
-        self.btest(output, expected='0', args=['-DSOCKK=8993', '-DTEST_DGRAM=%d' % datagram, sockets_include], force_c=True)
+        self.btest(output, expected='0', args=[sockets_include, '-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram], force_c=True)
 
   def test_sockets_partial(self):
     for harness in [
-      WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_partial_server.c'), ['-DSOCKK=8994'], 8995, 8994),
-      CompiledServerHarness(os.path.join('sockets', 'test_sockets_partial_server.c'), ['-DSOCKK=8995'])
+      WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_partial_server.c'), [], 49180),
+      CompiledServerHarness(os.path.join('sockets', 'test_sockets_partial_server.c'), [], 49181)
     ]:
       with harness:
-        self.btest(os.path.join('sockets', 'test_sockets_partial_client.c'), expected='165', args=['-DSOCKK=8995'])
+        self.btest(os.path.join('sockets', 'test_sockets_partial_client.c'), expected='165', args=['-DSOCKK=%d' % harness.listen_port])
 
   def test_sockets_select_server_down(self):
     for harness in [
-      WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_select_server_down_server.c'), ['-DSOCKK=9002'], 9003, 9002),
-      CompiledServerHarness(os.path.join('sockets', 'test_sockets_select_server_down_server.c'), ['-DSOCKK=9003'])
+      WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_select_server_down_server.c'), [], 49190),
+      CompiledServerHarness(os.path.join('sockets', 'test_sockets_select_server_down_server.c'), [], 49191)
     ]:
       with harness:
-        self.btest(os.path.join('sockets', 'test_sockets_select_server_down_client.c'), expected='266', args=['-DSOCKK=9003'])
+        self.btest(os.path.join('sockets', 'test_sockets_select_server_down_client.c'), expected='266', args=['-DSOCKK=%d' % harness.listen_port])
 
   def test_sockets_select_server_closes_connection_rw(self):
     sockets_include = '-I'+path_from_root('tests', 'sockets')
 
     for harness in [
-      WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), ['-DSOCKK=9004', sockets_include], 9005, 9004),
-      CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), ['-DSOCKK=9005'])
+      WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 49200),
+      CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 49201)
     ]:
       with harness:
-        self.btest(os.path.join('sockets', 'test_sockets_select_server_closes_connection_client_rw.c'), expected='266', args=['-DSOCKK=9005', sockets_include])
+        self.btest(os.path.join('sockets', 'test_sockets_select_server_closes_connection_client_rw.c'), expected='266', args=[sockets_include, '-DSOCKK=%d' % harness.listen_port])
 
   def test_enet(self):
     try_delete(self.in_dir('enet'))
@@ -301,10 +302,10 @@ class sockets(BrowserCore):
     os.chdir(pwd)
 
     for harness in [
-      CompiledServerHarness(os.path.join('sockets', 'test_enet_server.c'), ['-DSOCKK=9010'] + enet)
+      CompiledServerHarness(os.path.join('sockets', 'test_enet_server.c'), enet, 49210)
     ]:
       with harness:
-        self.btest(os.path.join('sockets', 'test_enet_client.c'), expected='0', args=['-DSOCKK=9010'] + enet)
+        self.btest(os.path.join('sockets', 'test_enet_client.c'), expected='0', args=enet + ['-DSOCKK=%d' % harness.listen_port])
 
   # This test is no longer in use for WebSockets as we can't truly emulate
   # a server in the browser (in the past, there were some hacks to make it
