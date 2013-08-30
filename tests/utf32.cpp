@@ -10,9 +10,9 @@ int main() {
 	const int len = (wstr.length()+1)*4;
 	char *memory = new char[len];
 
-	asm("var str = Module.utf32_to_jsstring(%0);"
+	asm("var str = Module.UTF32ToString(%0);"
 		"Module.print(str);"
-		"Module.jsstring_to_utf32(str, %1);"
+		"Module.stringToUTF32(str, %1);"
 	:
 	: "r"(wstr.c_str()), "r"(memory));
 
