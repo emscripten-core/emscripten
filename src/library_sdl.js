@@ -1603,9 +1603,9 @@ var LibrarySDL = {
             // Schedule the generated sample buffer to be played out at the correct time right after the previously scheduled
             // sample buffer has finished.
             var curtime = SDL.audioContext['currentTime'];
-            if (curtime > SDL.audio.nextPlayTime && SDL.audio.nextPlayTime != 0) {
-              console.log('warning: Audio callback had starved sending audio by ' + (curtime - SDL.audio.nextPlayTime) + ' seconds.');
-            }
+//            if (curtime > SDL.audio.nextPlayTime && SDL.audio.nextPlayTime != 0) {
+//              console.log('warning: Audio callback had starved sending audio by ' + (curtime - SDL.audio.nextPlayTime) + ' seconds.');
+//            }
             var playtime = Math.max(curtime, SDL.audio.nextPlayTime);
             SDL.audio.soundSource[SDL.audio.nextSoundSource]['start'](playtime);
             var buffer_duration = sizeSamplesPerChannel / SDL.audio.freq;
