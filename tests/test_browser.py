@@ -19,6 +19,7 @@ class browser(BrowserCore):
       'test_sdl_audio_mix_channels',
       'test_sdl_audio_mix',
       'test_sdl_audio_quickload',
+      'test_sdl_audio_beeps',
       'test_openal_playback',
       'test_openal_buffers',
       'test_freealut'
@@ -853,6 +854,13 @@ If manually bisecting:
     open(os.path.join(self.get_dir(), 'sdl_audio_quickload.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_audio_quickload.c')).read()))
 
     Popen([PYTHON, EMCC, '-O2', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio_quickload.c'), '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play"]']).communicate()
+    self.run_browser('page.html', '', '/report_result?1')
+
+  def test_sdl_audio_beeps(self):
+    open(os.path.join(self.get_dir(), 'sdl_audio_beep.cpp'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl_audio_beep.cpp')).read()))
+
+    # use closure to check for a possible bug with closure minifying away newer Audio() attributes
+    Popen([PYTHON, EMCC, '-O2', '--closure', '1', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio_beep.cpp'), '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-o', 'page.html']).communicate()
     self.run_browser('page.html', '', '/report_result?1')
 
   def test_sdl_gl_read(self):
