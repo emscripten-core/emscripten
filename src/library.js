@@ -7180,53 +7180,54 @@ LibraryManager.library = {
   // netdb.h
   // ==========================================================================
 
-  // Fake hostname resolution helpers. We can't actually do this
-  // client-side in the browser, so instead we're generating fake
-  // IP addresses with _lookup_name that we can resolve later on
-  // with _lookup_addr.
-  _address_map: {
-    id: 1,
-    addrs: {},
-    names: {}
-  },
+  // We can't actually resolve hostnames in the browser, so instead
+  // we're generating fake IP addresses with lookup_name that we can
+  // resolve later on with lookup_addr.
+  // We do the aliasing in 172.29.*.*, giving us 65536 possibilities.
+  $DNS: {
+    address_map: {
+      id: 1,
+      addrs: {},
+      names: {}
+    },
 
-  _lookup_name__deps: ['_address_map', '_inet_pton4_raw', '_inet_pton6_raw'],
-  _lookup_name: function (name) {
-    // If the name is already a valid ipv4 / ipv6 address, don't generate a fake one.
-    var res = __inet_pton4_raw(name);
-    if (res) {
-      return name;
+    lookup_name__deps: ['_inet_pton4_raw', '_inet_pton6_raw'],
+    lookup_name: function (name) {
+      // If the name is already a valid ipv4 / ipv6 address, don't generate a fake one.
+      var res = __inet_pton4_raw(name);
+      if (res) {
+        return name;
+      }
+      res = __inet_pton6_raw(name);
+      if (res) {
+        return name;
+      }
+
+      // See if this name is already mapped.
+      var addr;
+
+      if (DNS.address_map.addrs[name]) {
+        addr = DNS.address_map.addrs[name];
+      } else {
+        var id = DNS.address_map.id++;
+        assert(id < 65535, 'exceeded max address mappings of 65535');
+
+        addr = '172.29.' + (id & 0xff) + '.' + (id & 0xff00);
+
+        DNS.address_map.names[addr] = name;
+        DNS.address_map.addrs[name] = addr;
+      }
+
+      return addr;
+    },
+
+    lookup_addr: function (addr) {
+      if (DNS.address_map.names[addr]) {
+        return DNS.address_map.names[addr];
+      }
+
+      return null;
     }
-    res = __inet_pton6_raw(name);
-    if (res) {
-      return name;
-    }
-
-    // See if this name is already mapped.
-    var addr;
-
-    if (__address_map.addrs[name]) {
-      addr = __address_map.addrs[name];
-    } else {
-      var id = __address_map.id++;
-      assert(id < 65535, 'exceeded max address mappings of 65535');
-
-      addr = '172.29.' + (id & 0xff) + '.' + (id & 0xff00);
-
-      __address_map.names[addr] = name;
-      __address_map.addrs[name] = addr;
-    }
-
-    return addr;
-  },
-
-  _lookup_addr__deps: ['_address_map'],
-  _lookup_addr: function (addr) {
-    if (__address_map.names[addr]) {
-      return __address_map.names[addr];
-    }
-
-    return null;
   },
 
   // note: lots of leaking here!
@@ -7249,7 +7250,7 @@ LibraryManager.library = {
     ['*', 'ai_next']
   ]),
 
-  gethostbyaddr__deps: ['gethostbyname', '_inet_ntop4_raw', '_lookup_addr'],
+  gethostbyaddr__deps: ['$DNS', 'gethostbyname', '_inet_ntop4_raw'],
   gethostbyaddr: function (addr, addrlen, type) {
     if (type !== {{{ cDefine('AF_INET') }}}) {
       ___setErrNo(ERRNO_CODES.EAFNOSUPPORT);
@@ -7257,7 +7258,7 @@ LibraryManager.library = {
     }
     addr = {{{ makeGetValue('addr', '0', 'i32') }}}; // addr is in_addr
     var host = __inet_ntop4_raw(addr);
-    var lookup = __lookup_addr(host);
+    var lookup = DNS.lookup_addr(host);
     if (lookup) {
       host = lookup;
     }
@@ -7265,7 +7266,7 @@ LibraryManager.library = {
     return _gethostbyname(hostp);
   },
 
-  gethostbyname__deps: ['__hostent_struct_layout', '_inet_pton4_raw', '_lookup_name'],
+  gethostbyname__deps: ['$DNS', '__hostent_struct_layout', '_inet_pton4_raw'],
   gethostbyname: function(name) {
     name = Pointer_stringify(name);
 
@@ -7283,7 +7284,7 @@ LibraryManager.library = {
     var addrListBuf = _malloc(12);
     {{{ makeSetValue('addrListBuf', '0', 'addrListBuf+8', 'i32*') }}}
     {{{ makeSetValue('addrListBuf', '4', '0', 'i32*') }}}
-    {{{ makeSetValue('addrListBuf', '8', '__inet_pton4_raw(__lookup_name(name))', 'i32') }}}
+    {{{ makeSetValue('addrListBuf', '8', '__inet_pton4_raw(DNS.lookup_name(name))', 'i32') }}}
     {{{ makeSetValue('ret', '___hostent_struct_layout.h_addr_list', 'addrListBuf', 'i8**') }}}
     return ret;
   },
@@ -7297,7 +7298,7 @@ LibraryManager.library = {
     return 0;
   },
 
-  getaddrinfo__deps: ['$Sockets', '_addrinfo_layout', '_lookup_name', '_inet_pton4_raw', '_inet_ntop4_raw', '_inet_pton6_raw', '_inet_ntop6_raw', '_write_sockaddr', 'htonl'],
+  getaddrinfo__deps: ['$Sockets', '$DNS', '_addrinfo_layout', '_inet_pton4_raw', '_inet_ntop4_raw', '_inet_pton6_raw', '_inet_ntop6_raw', '_write_sockaddr', 'htonl'],
   getaddrinfo: function(node, service, hint, out) {
     var addrs = [];
     var canon = null;
@@ -7444,7 +7445,7 @@ LibraryManager.library = {
     // try as a hostname
     //
     // resolve the hostname to a temporary fake address
-    node = __lookup_name(node);
+    node = DNS.lookup_name(node);
     addr = __inet_pton4_raw(node);
     if (family === {{{ cDefine('AF_UNSPEC') }}}) {
       family = {{{ cDefine('AF_INET') }}}
@@ -7463,7 +7464,7 @@ LibraryManager.library = {
     _free(ai);
   },
 
-  getnameinfo__deps: ['$Sockets', '__hostent_struct_layout', '_read_sockaddr', '_lookup_addr'],
+  getnameinfo__deps: ['$Sockets', '$DNS', '__hostent_struct_layout', '_read_sockaddr'],
   getnameinfo: function (sa, salen, node, nodelen, serv, servlen, flags) {
     var info = __read_sockaddr(sa, salen);
     if (info.errno) {
@@ -7474,7 +7475,7 @@ LibraryManager.library = {
 
     if (node && nodelen) {
       var lookup;
-      if ((flags & {{{ cDefine('NI_NUMERICHOST') }}}) || !(lookup = __lookup_addr(addr))) {
+      if ((flags & {{{ cDefine('NI_NUMERICHOST') }}}) || !(lookup = DNS.lookup_addr(addr))) {
         if (flags & {{{ cDefine('NI_NAMEREQD') }}}) {
           return {{{ cDefine('EAI_NONAME') }}};
         }
@@ -8028,7 +8029,7 @@ LibraryManager.library = {
     _close(fd);
   },
 
-  bind__deps: ['$FS', '$SOCKFS', '$ERRNO_CODES', '__setErrNo', '_lookup_addr', '_read_sockaddr'],
+  bind__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_read_sockaddr'],
   bind: function(fd, addrp, addrlen) {
     var sock = SOCKFS.getSocket(fd);
     if (!sock) {
@@ -8042,7 +8043,7 @@ LibraryManager.library = {
       return -1;
     }
     var port = info.port;
-    var addr = __lookup_addr(info.addr) || info.addr;
+    var addr = DNS.lookup_addr(info.addr) || info.addr;
 
     try {
       sock.sock_ops.bind(sock, addr, port);
@@ -8053,7 +8054,7 @@ LibraryManager.library = {
     }
   },
 
-  connect__deps: ['$FS', '$SOCKFS', '$ERRNO_CODES', '__setErrNo', '_lookup_addr', '_read_sockaddr'],
+  connect__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_read_sockaddr'],
   connect: function(fd, addrp, addrlen) {
     var sock = SOCKFS.getSocket(fd);
     if (!sock) {
@@ -8067,7 +8068,7 @@ LibraryManager.library = {
       return -1;
     }
     var port = info.port;
-    var addr = __lookup_addr(info.addr) || info.addr;
+    var addr = DNS.lookup_addr(info.addr) || info.addr;
 
     try {
       sock.sock_ops.connect(sock, addr, port);
@@ -8094,7 +8095,7 @@ LibraryManager.library = {
     }
   },
 
-  accept__deps: ['$FS', '$SOCKFS', '$ERRNO_CODES', '__setErrNo', '_write_sockaddr', 'socket'],
+  accept__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_write_sockaddr', 'socket'],
   accept: function(fd, addrp, addrlen) {
     var sock = SOCKFS.getSocket(fd);
     if (!sock) {
@@ -8107,7 +8108,7 @@ LibraryManager.library = {
     try {
       sock.sock_ops.accept(sock, newsock, sock.stream.flags);
       if (addrp) {
-        var res = __write_sockaddr(addr, newsock.family, __lookup_name(newsock.daddr), newsock.dport);
+        var res = __write_sockaddr(addr, newsock.family, DNS.lookup_name(newsock.daddr), newsock.dport);
         assert(!res.errno);
       }
       return newfd;
@@ -8117,7 +8118,7 @@ LibraryManager.library = {
     }
   },
 
-  getsockname__deps: ['$FS', '$SOCKFS', '$ERRNO_CODES', '__setErrNo', '_write_sockaddr', '_lookup_name', '_inet_pton_raw'],
+  getsockname__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_write_sockaddr', '_inet_pton_raw'],
   getsockname: function (fd, addr, addrlen) {
     var sock = SOCKFS.getSocket(fd);
     if (!sock) {
@@ -8126,7 +8127,7 @@ LibraryManager.library = {
     }
     try {
       var info = sock.sock_ops.getname(sock);
-      var res = __write_sockaddr(addr, sock.family, __lookup_name(info.addr), info.port);
+      var res = __write_sockaddr(addr, sock.family, DNS.lookup_name(info.addr), info.port);
       assert(!res.errno);
       return 0;
     } catch (e) {
@@ -8135,7 +8136,7 @@ LibraryManager.library = {
     }
   },
 
-  getpeername__deps: ['$FS', '$SOCKFS', '$ERRNO_CODES', '__setErrNo', '_write_sockaddr', '_lookup_name', '_inet_pton_raw'],
+  getpeername__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_write_sockaddr', '_inet_pton_raw'],
   getpeername: function (fd, addr, addrlen) {
     var sock = SOCKFS.getSocket(fd);
     if (!sock) {
@@ -8144,7 +8145,7 @@ LibraryManager.library = {
     }
     try {
       var info = sock.sock_ops.getname(sock, true);
-      var res = __write_sockaddr(addr, sock.family, __lookup_name(info.addr), info.port);
+      var res = __write_sockaddr(addr, sock.family, DNS.lookup_name(info.addr), info.port);
       assert(!res.errno);
       return 0;
     } catch (e) {
@@ -8175,7 +8176,7 @@ LibraryManager.library = {
     return _read(fd, buf, len);
   },
 
-  sendto__deps: ['$FS', '$SOCKFS', '$ERRNO_CODES', '__setErrNo', '_lookup_addr', '_read_sockaddr'],
+  sendto__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_read_sockaddr'],
   sendto: function(fd, message, length, flags, dest_addr, dest_len) {
     var sock = SOCKFS.getSocket(fd);
     if (!sock) {
@@ -8190,7 +8191,7 @@ LibraryManager.library = {
       return -1;
     }
     var port = info.port;
-    var addr = __lookup_addr(info.addr) || info.addr;
+    var addr = DNS.lookup_addr(info.addr) || info.addr;
 
     // send the message
     try {
@@ -8202,7 +8203,7 @@ LibraryManager.library = {
     }
   },
 
-  recvfrom__deps: ['$FS', '$SOCKFS', '$ERRNO_CODES', '__setErrNo', '_lookup_name', '_write_sockaddr'],
+  recvfrom__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_write_sockaddr'],
   recvfrom: function(fd, buf, len, flags, addr, addrlen) {
     var sock = SOCKFS.getSocket(fd);
     if (!sock) {
@@ -8226,7 +8227,7 @@ LibraryManager.library = {
 
     // write the source address out
     if (addr) {
-      var res = __write_sockaddr(addr, sock.family, __lookup_name(msg.addr), msg.port);
+      var res = __write_sockaddr(addr, sock.family, DNS.lookup_name(msg.addr), msg.port);
       assert(!res.errno);
     }
     // write the buffer out
@@ -8235,7 +8236,7 @@ LibraryManager.library = {
     return msg.buffer.byteLength;
   },
 
-  sendmsg__deps: ['$FS', '$SOCKFS', '$ERRNO_CODES', '__setErrNo', '_lookup_addr', '_read_sockaddr'],
+  sendmsg__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_read_sockaddr'],
   sendmsg: function(fd, message, flags) {
     var sock = SOCKFS.getSocket(fd);
     if (!sock) {
@@ -8258,7 +8259,7 @@ LibraryManager.library = {
         return -1;
       }
       port = info.port;
-      addr = __lookup_addr(info.addr) || info.addr;
+      addr = DNS.lookup_addr(info.addr) || info.addr;
     }
 
     // concatenate scatter-gather arrays into one message buffer
@@ -8285,7 +8286,7 @@ LibraryManager.library = {
     }
   },
 
-  recvmsg__deps: ['$FS', '$SOCKFS', '$ERRNO_CODES', '__setErrNo', '_lookup_name', '_inet_pton_raw', '_write_sockaddr'],
+  recvmsg__deps: ['$FS', '$SOCKFS', '$DNS', '$ERRNO_CODES', '__setErrNo', '_inet_pton_raw', '_write_sockaddr'],
   recvmsg: function(fd, message, flags) {
     var sock = SOCKFS.getSocket(fd);
     if (!sock) {
@@ -8327,7 +8328,7 @@ LibraryManager.library = {
     // write the source address out
     var name = {{{ makeGetValue('message', 'Sockets.msghdr_layout.msg_name', '*') }}};
     if (name) {
-      var res = __write_sockaddr(name, sock.family, __lookup_name(msg.addr), msg.port);
+      var res = __write_sockaddr(name, sock.family, DNS.lookup_name(msg.addr), msg.port);
       assert(!res.errno);
     }
     // write the buffer out to the scatter-gather arrays

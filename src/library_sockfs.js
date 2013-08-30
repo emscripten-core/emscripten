@@ -207,12 +207,12 @@ mergeInto(LibraryManager.library, {
               data.length === 10 &&
               data[0] === 255 && data[1] === 255 && data[2] === 255 && data[3] === 255 &&
               data[4] === 'p'.charCodeAt(0) && data[5] === 'o'.charCodeAt(0) && data[6] === 'r'.charCodeAt(0) && data[7] === 't'.charCodeAt(0)) {
-              // update the peer's port and it's key in the peer map
-              var newport = ((data[8] << 8) | data[9]);
-              SOCKFS.websocket_sock_ops.removePeer(sock, peer);
-              peer.port = newport;
-              SOCKFS.websocket_sock_ops.addPeer(sock, peer);
-              return;
+            // update the peer's port and it's key in the peer map
+            var newport = ((data[8] << 8) | data[9]);
+            SOCKFS.websocket_sock_ops.removePeer(sock, peer);
+            peer.port = newport;
+            SOCKFS.websocket_sock_ops.addPeer(sock, peer);
+            return;
           }
 
           sock.recv_queue.push({ addr: peer.addr, port: peer.port, data: data });
