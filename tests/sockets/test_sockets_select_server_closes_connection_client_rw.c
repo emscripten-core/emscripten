@@ -89,7 +89,12 @@ void main_loop(void *arg) {
 
       // read a single byte
       transferAmount = do_msg_read(sockfd, &readmsg, readPos, 1, NULL, NULL);
-      if (transferAmount != -1) readPos += transferAmount;
+      if (transferAmount == 0) {
+        perror("server closed");
+        finish(EXIT_FAILURE);
+      } else if (transferAmount != -1) {
+        readPos += transferAmount;
+      }
    
       // if successfully reading 1 byte, switch to next state
       if (readPos >= 1) {
@@ -122,7 +127,12 @@ void main_loop(void *arg) {
       
       // read a single byte
       transferAmount = do_msg_read(sockfd, &readmsg, readPos, 1, NULL, NULL);
-      if (transferAmount != -1) readPos += transferAmount;
+      if (transferAmount == 0) {
+        perror("server closed");
+        finish(EXIT_FAILURE);
+      } else if (transferAmount != -1) {
+        readPos += transferAmount;
+      }
       
       // with 10 bytes read the inQueue is empty => switch state
       if (readPos >= readmsg.length) {

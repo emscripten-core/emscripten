@@ -285,8 +285,8 @@ class sockets(BrowserCore):
     sockets_include = '-I'+path_from_root('tests', 'sockets')
 
     for harness in [
-      WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 49200),
-      CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include], 49201)
+      WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DCLOSE_CLIENT_AFTER_ECHO'], 49200),
+      CompiledServerHarness(os.path.join('sockets', 'test_sockets_echo_server.c'), [sockets_include, '-DCLOSE_CLIENT_AFTER_ECHO'], 49201)
     ]:
       with harness:
         self.btest(os.path.join('sockets', 'test_sockets_select_server_closes_connection_client_rw.c'), expected='266', args=[sockets_include, '-DSOCKK=%d' % harness.listen_port])
