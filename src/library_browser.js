@@ -830,15 +830,21 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_get_now: function() {
-    if (ENVIRONMENT_IS_NODE) {
-        var t = process['hrtime']();
-        return t[0] * 1e3 + t[1] / 1e6;
+    if (!_emscripten_get_now.actual) {
+      if (ENVIRONMENT_IS_NODE) {
+          _emscripten_get_now.actual = function() {
+            var t = process['hrtime']();
+            return t[0] * 1e3 + t[1] / 1e6;
+          }
+      } else if (typeof dateNow !== 'undefined') {
+        _emscripten_get_now.actual = dateNow;
+      } else if (ENVIRONMENT_IS_WEB && window['performance'] && window['performance']['now']) {
+        _emscripten_get_now.actual = function() { return window['performance']['now'](); };
+      } else {
+        _emscripten_get_now.actual = Date.now;
+      }
     }
-    else if (ENVIRONMENT_IS_WEB && window['performance'] && window['performance']['now']) {
-      return window['performance']['now']();
-    } else {
-      return Date.now();
-    }
+    return _emscripten_get_now.actual();
   },
 
   emscripten_create_worker: function(url) {
